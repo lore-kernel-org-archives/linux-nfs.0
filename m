@@ -1,52 +1,71 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:60908 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1754630AbeEAOWk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 1 May 2018 10:22:40 -0400
-Subject: Re: Patches: fix non-standard getaddrinfo usage, minor fixups (fix
- w/musl)
-To: Will Dietz <w@wdtz.org>, linux-nfs@vger.kernel.org
-References: <CAKGWAO_DsJWLeKCrDytXLGUM-Je+P6T6d9z8P=tV_PCgJAYxzw@mail.gmail.com>
-From: Steve Dickson <SteveD@RedHat.com>
-Message-ID: <3c7482ac-9281-0451-261b-93a93efc54f4@RedHat.com>
-Date: Tue, 1 May 2018 10:22:39 -0400
+Received: from mx3-rdu2.redhat.com ([66.187.233.73]:43858 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1755935AbeEAO3M (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 1 May 2018 10:29:12 -0400
+From: David Howells <dhowells@redhat.com>
+In-Reply-To: <05034a85-013b-30b6-ce17-4c95d4cab195@infradead.org>
+References: <05034a85-013b-30b6-ce17-4c95d4cab195@infradead.org> <152414466005.23902.12967974041384198114.stgit@warthog.procyon.org.uk> <152414468332.23902.3065751107691714414.stgit@warthog.procyon.org.uk>
+To: Randy Dunlap <rdunlap@infradead.org>
+Cc: dhowells@redhat.com, viro@zeniv.linux.org.uk,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-security-module@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-afs@lists.infradead.org
+Subject: Re: [PATCH 03/24] VFS: Introduce the structs and doc for a filesystem context [ver #7]
 MIME-Version: 1.0
-In-Reply-To: <CAKGWAO_DsJWLeKCrDytXLGUM-Je+P6T6d9z8P=tV_PCgJAYxzw@mail.gmail.com>
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset="us-ascii"
+Date: Tue, 01 May 2018 15:29:10 +0100
+Message-ID: <8450.1525184950@warthog.procyon.org.uk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Randy Dunlap <rdunlap@infradead.org> wrote:
 
-
-On 04/29/2018 07:16 PM, Will Dietz wrote:
-> The getaddrinfo problem needs a proper fix and probably a
-> consideration of similar patterns elsewhere in the code.
+> > + (2) Parse the options and attach them to the context.  Options may be passed
+> > +     individually from userspace.
 > 
-> The others are relatively straightforward and are more suitable for use as-is.
+> Does this say that step (2) can be multiple small steps?
+
+Perhaps "phase (2)" would be a better name than "step (2)".  During (2),
+multiple argument-supplying calls may be made.
+
+> How does step (2) know when userspace has completed sending individual
+> options?
+
+Moving to phase (3) terminates phase (2).  This is triggered by userspace
+writing "x create" or "x reconfigure" to the fd as things stand.
+
+> > + (6) Return an error message attached to the context.
 > 
-> A fix not included would be to avoid using "-Werror" except when
-> developing-- or at least make its use optional.  Without knowledge of
-> the compilers used by downstream, this option may cause builds to fail
-> for unimportant reasons (and even if it works with all compilers
-> today, it might not tomorrow...).   Would be nice to have that in
-> before the next tagged release :).  GCC 7.3.0 seems to be unhappy with
-> some prototypes for example, I don't have them handy but can send them
-> along if that'd be useful.
+> where/how is this done?
+
+That got taken out and made general - which Linus then objected to.  I need to
+reinsert this and make it fscontext-specific as most people would really like
+to have it, the mount process being able to produce so many weird and
+wonderful errors.
+
+> > +When the VFS creates this, it allocates ->fs_context_size bytes (as specified
+> > +by the file_system_type object) to hold both the fs_context struct and any
+> > +extra data required by the filesystem.  The fs_context struct is placed at the
+> > +beginning of this space.  Any extra space beyond that is for use by the
+> > +filesystem.  The filesystem should wrap the struct in its own, e.g.:
 > 
-> Thanks! LMK if you have any questions or concerns, hopefully these are helpful.
-Having the patch attached like this makes it very different to review 
-and comment on... It much better when patches are posted in a thread. 
+>                                                       in its own struct, e.g.:
 
-Could you please repost these patch in a thread format...
-Here is the command I use:
+How about "... The filesystem should wrap the struct in one of its own, e.g."?
 
-DRYRUN=--dry-run
-DIR=/tmp
-git send-email $DRYRUN  --suppress-cc=all --suppress-from --no-chain-reply-to \
-   --from "My Name <myname@domain.com>" \
-   --to "Linux NFS Mailing list <linux-nfs@vger.kernel.org>" \
-   --smtp-server smtp.com $DIR/*.patch
+> > + (*) int security_fs_context_parse_option(struct fs_context *fc, char *opt);	
+> > +
+> > +     Called for each mount option.  The arguments are as for the
+> > +     ->parse_option() method.  An active LSM may reject one with an error, pass
+> > +     one over and return 0 or consume one and return 1.  If consumed, the
+> 
+> What does "pass one over" mean?
 
-tia,
+How about:
 
-steved
+	An active LSM may return 0 to pass the option on to the filesystem, 1
+	to cause the option to be discarded or an error to cause the option to
+	be rejected.
+
+David
