@@ -1,83 +1,146 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([198.137.202.133]:43410 "EHLO
-        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1755434AbeEAPbM (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 1 May 2018 11:31:12 -0400
-Subject: Re: [PATCH 03/24] VFS: Introduce the structs and doc for a filesystem
- context [ver #7]
-To: David Howells <dhowells@redhat.com>
-Cc: viro@zeniv.linux.org.uk, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org,
-        linux-security-module@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-afs@lists.infradead.org
-References: <05034a85-013b-30b6-ce17-4c95d4cab195@infradead.org>
- <152414466005.23902.12967974041384198114.stgit@warthog.procyon.org.uk>
- <152414468332.23902.3065751107691714414.stgit@warthog.procyon.org.uk>
- <8450.1525184950@warthog.procyon.org.uk>
-From: Randy Dunlap <rdunlap@infradead.org>
-Message-ID: <96dacc1b-cffa-3aa2-71f5-70c8159c805e@infradead.org>
-Date: Tue, 1 May 2018 08:31:00 -0700
+Received: from mail-io0-f196.google.com ([209.85.223.196]:46274 "EHLO
+        mail-io0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1756009AbeEAPhQ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 1 May 2018 11:37:16 -0400
+Subject: [PATCH v1 1/2] xprtrdma: Fix list corruption / DMAR errors during
+ MR recovery
+From: Chuck Lever <chuck.lever@oracle.com>
+To: anna.schumaker@netapp.com
+Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Date: Tue, 01 May 2018 11:37:14 -0400
+Message-ID: <20180501153714.5863.5219.stgit@manet.1015granger.net>
+In-Reply-To: <20180501153109.5863.33183.stgit@manet.1015granger.net>
+References: <20180501153109.5863.33183.stgit@manet.1015granger.net>
 MIME-Version: 1.0
-In-Reply-To: <8450.1525184950@warthog.procyon.org.uk>
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 05/01/2018 07:29 AM, David Howells wrote:
-> Randy Dunlap <rdunlap@infradead.org> wrote:
-> 
->>> + (2) Parse the options and attach them to the context.  Options may be passed
->>> +     individually from userspace.
->>
->> Does this say that step (2) can be multiple small steps?
-> 
-> Perhaps "phase (2)" would be a better name than "step (2)".  During (2),
-> multiple argument-supplying calls may be made.
+The ro_release_mr methods check whether mr->mr_list is empty.
+Therefore, be sure to always use list_del_init when removing an MR
+linked into a list using that field. Otherwise, when recovering from
+transport failures or device removal, list corruption can result, or
+MRs can get mapped or unmapped an odd number of times, resulting in
+IOMMU-related failures.
 
-Ack.
+In general this fix is appropriate back to v4.8. However, code
+changes since then make it impossible to apply this patch directly
+to stable kernels. The fix would have to be applied by hand or
+reworked for kernels earlier than v4.16.
 
->> How does step (2) know when userspace has completed sending individual
->> options?
-> 
-> Moving to phase (3) terminates phase (2).  This is triggered by userspace
-> writing "x create" or "x reconfigure" to the fd as things stand.
-> 
->>> + (6) Return an error message attached to the context.
->>
->> where/how is this done?
-> 
-> That got taken out and made general - which Linus then objected to.  I need to
-> reinsert this and make it fscontext-specific as most people would really like
-> to have it, the mount process being able to produce so many weird and
-> wonderful errors.
-> 
->>> +When the VFS creates this, it allocates ->fs_context_size bytes (as specified
->>> +by the file_system_type object) to hold both the fs_context struct and any
->>> +extra data required by the filesystem.  The fs_context struct is placed at the
->>> +beginning of this space.  Any extra space beyond that is for use by the
->>> +filesystem.  The filesystem should wrap the struct in its own, e.g.:
->>
->>                                                       in its own struct, e.g.:
-> 
-> How about "... The filesystem should wrap the struct in one of its own, e.g."?
+Backport guidance -- there are several cases:
+- When creating an MR, initialize mr_list so that using list_empty
+  on an as-yet-unused MR is safe.
+- When an MR is being handled by the remote invalidation path,
+  ensure that mr_list is reinitialized when it is removed from
+  rl_registered.
+- When an MR is being handled by rpcrdma_destroy_mrs, it is removed
+  from mr_all, but it may still be on an rl_registered list. In
+  that case, the MR needs to be removed from that list before being
+  released.
+- Other cases are covered by using list_del_init in rpcrdma_mr_pop.
 
-OK.
+Fixes: 9d6b04097882 ('xprtrdma: Place registered MWs on a ... ')
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+ net/sunrpc/xprtrdma/fmr_ops.c   |    5 +----
+ net/sunrpc/xprtrdma/frwr_ops.c  |    9 +++------
+ net/sunrpc/xprtrdma/verbs.c     |    5 +++++
+ net/sunrpc/xprtrdma/xprt_rdma.h |    2 +-
+ 4 files changed, 10 insertions(+), 11 deletions(-)
 
->>> + (*) int security_fs_context_parse_option(struct fs_context *fc, char *opt);	
->>> +
->>> +     Called for each mount option.  The arguments are as for the
->>> +     ->parse_option() method.  An active LSM may reject one with an error, pass
->>> +     one over and return 0 or consume one and return 1.  If consumed, the
->>
->> What does "pass one over" mean?
-> 
-> How about:
-> 
-> 	An active LSM may return 0 to pass the option on to the filesystem, 1
-> 	to cause the option to be discarded or an error to cause the option to
-> 	be rejected.
+diff --git a/net/sunrpc/xprtrdma/fmr_ops.c b/net/sunrpc/xprtrdma/fmr_ops.c
+index 5cc68a8..f2f6395 100644
+--- a/net/sunrpc/xprtrdma/fmr_ops.c
++++ b/net/sunrpc/xprtrdma/fmr_ops.c
+@@ -72,6 +72,7 @@ enum {
+ 	if (IS_ERR(mr->fmr.fm_mr))
+ 		goto out_fmr_err;
+ 
++	INIT_LIST_HEAD(&mr->mr_list);
+ 	return 0;
+ 
+ out_fmr_err:
+@@ -102,10 +103,6 @@ enum {
+ 	LIST_HEAD(unmap_list);
+ 	int rc;
+ 
+-	/* Ensure MW is not on any rl_registered list */
+-	if (!list_empty(&mr->mr_list))
+-		list_del(&mr->mr_list);
+-
+ 	kfree(mr->fmr.fm_physaddrs);
+ 	kfree(mr->mr_sg);
+ 
+diff --git a/net/sunrpc/xprtrdma/frwr_ops.c b/net/sunrpc/xprtrdma/frwr_ops.c
+index c5743a0..c59c5c7 100644
+--- a/net/sunrpc/xprtrdma/frwr_ops.c
++++ b/net/sunrpc/xprtrdma/frwr_ops.c
+@@ -110,6 +110,7 @@
+ 	if (!mr->mr_sg)
+ 		goto out_list_err;
+ 
++	INIT_LIST_HEAD(&mr->mr_list);
+ 	sg_init_table(mr->mr_sg, depth);
+ 	init_completion(&frwr->fr_linv_done);
+ 	return 0;
+@@ -133,10 +134,6 @@
+ {
+ 	int rc;
+ 
+-	/* Ensure MR is not on any rl_registered list */
+-	if (!list_empty(&mr->mr_list))
+-		list_del(&mr->mr_list);
+-
+ 	rc = ib_dereg_mr(mr->frwr.fr_mr);
+ 	if (rc)
+ 		pr_err("rpcrdma: final ib_dereg_mr for %p returned %i\n",
+@@ -195,7 +192,7 @@
+ 	return;
+ 
+ out_release:
+-	pr_err("rpcrdma: FRWR reset failed %d, %p release\n", rc, mr);
++	pr_err("rpcrdma: FRWR reset failed %d, %p released\n", rc, mr);
+ 	r_xprt->rx_stats.mrs_orphaned++;
+ 
+ 	spin_lock(&r_xprt->rx_buf.rb_mrlock);
+@@ -476,7 +473,7 @@
+ 
+ 	list_for_each_entry(mr, mrs, mr_list)
+ 		if (mr->mr_handle == rep->rr_inv_rkey) {
+-			list_del(&mr->mr_list);
++			list_del_init(&mr->mr_list);
+ 			trace_xprtrdma_remoteinv(mr);
+ 			mr->frwr.fr_state = FRWR_IS_INVALID;
+ 			rpcrdma_mr_unmap_and_put(mr);
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index fe5eaca..c345d36 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -1254,6 +1254,11 @@ struct rpcrdma_req *
+ 		list_del(&mr->mr_all);
+ 
+ 		spin_unlock(&buf->rb_mrlock);
++
++		/* Ensure MW is not on any rl_registered list */
++		if (!list_empty(&mr->mr_list))
++			list_del(&mr->mr_list);
++
+ 		ia->ri_ops->ro_release_mr(mr);
+ 		count++;
+ 		spin_lock(&buf->rb_mrlock);
+diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+index 3d3b423..cb41b12 100644
+--- a/net/sunrpc/xprtrdma/xprt_rdma.h
++++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+@@ -380,7 +380,7 @@ enum {
+ 	struct rpcrdma_mr *mr;
+ 
+ 	mr = list_first_entry(list, struct rpcrdma_mr, mr_list);
+-	list_del(&mr->mr_list);
++	list_del_init(&mr->mr_list);
+ 	return mr;
+ }
+ 
 
-Much better. Thanks.
-
--- 
-~Randy
