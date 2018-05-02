@@ -1,183 +1,338 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx3-rdu2.redhat.com ([66.187.233.73]:58758 "EHLO mx1.redhat.com"
+Received: from mx3-rdu2.redhat.com ([66.187.233.73]:53850 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1750925AbeEBSVl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 2 May 2018 14:21:41 -0400
-Received: from smtp.corp.redhat.com (int-mx04.intmail.prod.int.rdu2.redhat.com [10.11.54.4])
+        id S1751579AbeEBSYR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 2 May 2018 14:24:17 -0400
+Received: from smtp.corp.redhat.com (int-mx03.intmail.prod.int.rdu2.redhat.com [10.11.54.3])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id E6DC48D774
-        for <linux-nfs@vger.kernel.org>; Wed,  2 May 2018 18:21:40 +0000 (UTC)
-Subject: Re: [PATCH 2/7] nfs-utils: Make config includes relative to current
- config
+        by mx1.redhat.com (Postfix) with ESMTPS id 2E09AEBFEE
+        for <linux-nfs@vger.kernel.org>; Wed,  2 May 2018 18:24:17 +0000 (UTC)
+Subject: Re: [PATCH 5/7] nfs-utils: tidy up output of conf_report
 To: Justin Mitchell <jumitche@redhat.com>,
         Linux NFS Mailing list <linux-nfs@vger.kernel.org>
 References: <1524496788.7418.2.camel@redhat.com>
- <1524497125.7418.5.camel@redhat.com>
+ <1524497271.7418.8.camel@redhat.com>
 From: Steve Dickson <SteveD@RedHat.com>
-Message-ID: <6f363a98-479a-8d7e-cbd5-bd5d7248f41d@RedHat.com>
-Date: Wed, 2 May 2018 14:21:40 -0400
+Message-ID: <4c559761-d48a-b488-4781-36a453d0889d@RedHat.com>
+Date: Wed, 2 May 2018 14:24:16 -0400
 MIME-Version: 1.0
-In-Reply-To: <1524497125.7418.5.camel@redhat.com>
+In-Reply-To: <1524497271.7418.8.camel@redhat.com>
 Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Justin,
+More styling comments... 
 
-Sorry for taking so long to get to this... 
-
-Most of my comments is about the style you are using.
-
-I would like to keep the coding style somewhat the same 
-and in a few places that is not just not happening...
-
-On 04/23/2018 11:25 AM, Justin Mitchell wrote:
-> When including additional config files with the include directive
-> make relative paths be relative to the current config file instead
-> of to the process's cwd.
+On 04/23/2018 11:27 AM, Justin Mitchell wrote:
+> Previously unused conf_report() function is modified to output
+> an alphabetically sorted version of the current configuration
+> to the nominated FILE handle.
 > 
 > Signed-off-by: Justin Mitchell <jumitche@redhat.com>
 > ---
->  support/nfs/conffile.c | 50 +++++++++++++++++++++++++++++++++++++++++---------
->  1 file changed, 41 insertions(+), 9 deletions(-)
+>  support/include/conffile.h |   3 +-
+>  support/nfs/conffile.c     | 237 ++++++++++++++++++++++++++++-----------------
+>  2 files changed, 151 insertions(+), 89 deletions(-)
 > 
+> diff --git a/support/include/conffile.h b/support/include/conffile.h
+> index 6baaf9a..bc2d61f 100644
+> --- a/support/include/conffile.h
+> +++ b/support/include/conffile.h
+> @@ -37,6 +37,7 @@
+>  #include <ctype.h>
+>  #include <stdint.h>
+>  #include <stdbool.h>
+> +#include <stdio.h>
+>  
+>  struct conf_list_node {
+>  	TAILQ_ENTRY(conf_list_node) link;
+> @@ -65,7 +66,7 @@ extern void     conf_cleanup(void);
+>  extern int      conf_match_num(const char *, const char *, int);
+>  extern int      conf_remove(int, const char *, const char *);
+>  extern int      conf_remove_section(int, const char *);
+> -extern void     conf_report(void);
+> +extern void     conf_report(FILE *);
+>  
+>  /*
+>   * Convert letter from upper case to lower case
 > diff --git a/support/nfs/conffile.c b/support/nfs/conffile.c
-> index a4cc236..42c0913 100644
+> index 7ed5646..9148557 100644
 > --- a/support/nfs/conffile.c
 > +++ b/support/nfs/conffile.c
-> @@ -49,6 +49,7 @@
->  #include <errno.h>
->  #include <err.h>
->  #include <syslog.h>
-> +#include <libgen.h>
+> @@ -1055,117 +1055,178 @@ conf_end(int transaction, int commit)
+>   * Configuration is "stored in reverse order", so reverse it again.
+>   */
+>  struct dumper {
+> -	char *s, *v;
+> +	char *section;
+> +	char *arg;
+> +	char *tag;
+> +	char *value;
+>  	struct dumper *next;
+>  };
 >  
->  #include "conffile.h"
->  #include "xlog.h"
-> @@ -60,7 +61,7 @@ static char * conf_readfile(const char *path);
->  static int conf_set(int , const char *, const char *, const char *, 
->  	const char *, int , int );
->  static void conf_parse(int trans, char *buf, 
-> -	char **section, char **subsection);
-> +	char **section, char **subsection, const char *filename);
+> +static int dumper_section_compare(const struct dumper *nodea, const struct dumper *nodeb)
+> +{
+> +	int ret;
+> +
+> +	// missing node, shouldnt happen
+> +	if (!nodea || !nodeb) return -1;
+> +	// if only one has a section name, the blank one goes first
+> +	if (!nodea->section &&  nodeb->section) return -1;
+> +	if ( nodea->section && !nodeb->section) return  1;
+> +	// no section names at all
+> +	if (!nodea->section && !nodeb->section) return  0;
+> +	// two section names, do they match
+> +	ret = strcmp(nodea->section, nodeb->section);
+> +	// section names differ, that was easy
+> +	if (ret != 0) return ret;
+> +	// sections matched, but how about sub-sections, again blank goes first
+> +	if (!nodea->arg &&  nodeb->arg) return -1;
+> +	if ( nodea->arg && !nodeb->arg) return  1;
+> +
+> +	// both have sub-section args and they differ
+> +	if (nodea->arg && nodeb->arg && (ret=strcmp(nodea->arg, nodeb->arg))!=0)
+> +		return ret;
+Please use normal comment braces and this code is just
+very hard to read do to one-lining your if statements and spacing.
+
+> +
+> +	return 0;
+> +}
+> +
+> +static bool 
+> +should_escape(const char * text)
+> +{
+> +	int len;
+> +	if (!text) return false;
+> +	if (isspace(text[0])) return true;
+> +	len = strlen(text);
+> +	if (isspace(text[len-1])) return true;
+> +	return false;
+Again... hard to read... New lines are a good thing! :-) 
+
+> +}
+> +
+>  static void
+> -conf_report_dump(struct dumper *node)
+> +conf_report_dump_text(struct dumper *head, FILE *ff)
+>  {
+> -	/* Recursive, cleanup when we're done.  */
+> -	if (node->next)
+> -		conf_report_dump(node->next);
+> -
+> -	if (node->v)
+> -		xlog(LOG_INFO, "%s=\t%s", node->s, node->v);
+> -	else if (node->s) {
+> -		xlog(LOG_INFO, "%s", node->s);
+> -		if (strlen(node->s) > 0)
+> -			free(node->s);
+> +	const struct dumper *node = head;
+> +	const struct dumper *last = NULL;
+> +
+> +	for (node=head; node!=NULL; node=node->next) {
+> +		if (dumper_section_compare(last, node)!=0) {
+> +			if (node != head) fprintf(ff, "\n");
+> +			if (node->arg)
+> +				fprintf(ff, "[%s \"%s\"]\n", node->section, node->arg);
+> +			else
+> +				fprintf(ff, "[%s]\n", node->section);
+> +		}
+> +		fprintf(ff, " %s", node->tag);
+> +		if (node->value) {
+> +			if (should_escape(node->value))
+> +				fprintf(ff, " = \"%s\"", node->value);
+> +			else
+> +				fprintf(ff, " = %s", node->value);
+> +		}
+> +		fprintf(ff, "\n");
+> +
+> +		last = node;
+>  	}
+> +}
 >  
->  struct conf_trans {
->  	TAILQ_ENTRY (conf_trans) link;
-> @@ -206,12 +207,40 @@ conf_set_now(const char *section, const char *arg, const char *tag,
->  	return 0;
+> -	free (node);
+> +/* compare two dumper nodes for sorting */
+> +static int dumper_compare(const void * a, const void * b)
+> +{
+> +	const struct dumper *nodea = *(struct dumper **)a;
+> +	const struct dumper *nodeb = *(struct dumper **)b;
+> +	int ret;
+> +
+> +	// missing node, shouldnt happen
+> +	if (!nodea || !nodeb) return -1;
+> +
+> +	ret = dumper_section_compare(nodea, nodeb);
+> +	if (ret != 0) return ret;
+> +
+> +	// sub-sections match (both blank, or both same)
+> +	// so we compare the tag names
+> +	
+> +	// blank tags shouldnt happen, but paranoia
+> +	if (!nodea->tag &&  nodeb->tag) return -1;
+> +	if ( nodea->tag && !nodeb->tag) return  1;
+> +	if (!nodea->tag && !nodeb->tag) return  0;
+> +
+> +	// last test, compare the tags directly
+> +	ret = strcmp(nodea->tag, nodeb->tag);
+> +	return ret;
 >  }
 >  
-> +/* Attempt to construct a relative path to the new file */
-> +static char *
-> +relative_path(const char *oldfile, const char *newfile)
-> +{
-> +	char * tmpcopy = NULL;
-> +	char * dir = NULL;
-> +	char * relpath = NULL;
-The space between the '*' and variable is not need.
- 
+> -void
+> -conf_report (void)
+> +static struct dumper *conf_report_sort(struct dumper *start)
+>  {
+> -	struct conf_binding *cb, *last = 0;
+> -	unsigned int i, len, diff_arg = 0;
+> -	char *current_section = (char *)0;
+> -	char *current_arg = (char *)0;
+> -	struct dumper *dumper, *dnode;
+> +	struct dumper **list;
+> +	struct dumper *node;
+> +	unsigned int count = 0;
+>  
+> -	dumper = dnode = (struct dumper *)calloc(1, sizeof *dumper);
+> -	if (!dumper)
+> -		goto mem_fail;
+> +	// how long is this list
+> +	for (node=start; node!=NULL; node=node->next) count++;
 > +
-> +	if (!newfile) return strdup(oldfile);
-> +	if (newfile[0] == '/') return strdup(newfile);
-Go a head a put a newline and tab after the if statement.
+> +	// no need to sort a list of 1 or less
+> +	if (count < 2) return start;
+> +
+> +	// make an array of all the node
+> +	list = calloc(count, sizeof(struct dumper *));
+> +	if (!list) goto mem_err;
+> +
+> +	unsigned int i=0;
+> +	for (node=start; node!=NULL; node=node->next) {
+> +		list[i++] = node;
+> +	}
+> +
+> +	// sort the array
+> +	qsort(list, count, sizeof(struct dumper *), dumper_compare);
+> +
+> +	// turn sorted array back into a linked list
+Normal comments braces... please.. 
 
+steved.
+> +	for (i=0; i<count-1; i++) {
+> +		list[i]->next = list[i+1];
+> +	}
+> +	list[count-1]->next = NULL;
 > +
-> +	tmpcopy = strdup(oldfile);
-> +	if (!tmpcopy) goto mem_err;
+> +	// remember the new head of list and cleanup
+> +	node = list[0];
+> +	free(list);
 > +
-> +	dir = dirname(tmpcopy);
-> +	size_t pathlen =  strlen(dir)+strlen(newfile)+2;
-> +	relpath = calloc(1, pathlen);
-> +	if (!relpath) goto mem_err;
-> +	snprintf(relpath, pathlen, "%s/%s", dir, newfile);
-Same here... That is just hard to read IMHO...
-
-Also put all variable at the top of the routine. 
-
- 
+> +	// return the new head of list
+> +	return node;
 > +
-> +	free(tmpcopy);
-> +	return relpath;
 > +mem_err:
-> +	if (tmpcopy) free(tmpcopy);
+> +	free(list);
 > +	return NULL;
 > +}
 > +
+> +void
+> +conf_report (FILE *outfile)
+> +{
+> +	struct conf_binding *cb = NULL;
+> +	unsigned int i;
+> +	struct dumper *dumper = NULL, *dnode = NULL;
+>  
+>  	xlog(LOG_INFO, "conf_report: dumping running configuration");
+>  
+> -	for (i = 0; i < sizeof conf_bindings / sizeof conf_bindings[0]; i++)
+> +	for (i = 0; i < sizeof conf_bindings / sizeof conf_bindings[0]; i++) {
+>  		for (cb = LIST_FIRST(&conf_bindings[i]); cb; cb = LIST_NEXT(cb, link)) {
+> -			if (!cb->is_default) {
+> -				/* Make sure the Section arugment is the same */
+> -				if (current_arg && current_section && cb->arg) {
+> -					if (strcmp(cb->section, current_section) == 0 &&
+> -						strcmp(cb->arg, current_arg) != 0)
+> -					diff_arg = 1;
+> -				}
+> -				/* Dump this entry.  */
+> -				if (!current_section || strcmp(cb->section, current_section) 
+> -							|| diff_arg) {
+> -					if (current_section || diff_arg) {
+> -						len = strlen (current_section) + 3;
+> -						if (current_arg)
+> -							len += strlen(current_arg) + 3;
+> -						dnode->s = malloc(len);
+> -						if (!dnode->s)
+> -							goto mem_fail;
+> -
+> -						if (current_arg)
+> -							snprintf(dnode->s, len, "[%s \"%s\"]", 
+> -								current_section, current_arg);
+> -						else
+> -							snprintf(dnode->s, len, "[%s]", current_section);
+> -
+> -						dnode->next = 
+> -							(struct dumper *)calloc(1, sizeof (struct dumper));
+> -						dnode = dnode->next;
+> -						if (!dnode)
+> -							goto mem_fail;
+> -
+> -						dnode->s = "";
+> -						dnode->next = 
+> -							(struct dumper *)calloc(1, sizeof (struct dumper));
+> -						dnode = dnode->next;
+> -						if (!dnode)
+> -						goto mem_fail;
+> -					}
+> -					current_section = cb->section;
+> -					current_arg = cb->arg;
+> -					diff_arg = 0;
+> -				}
+> -				dnode->s = cb->tag;
+> -				dnode->v = cb->value;
+> -				dnode->next = (struct dumper *)calloc (1, sizeof (struct dumper));
+> -				dnode = dnode->next;
+> -				if (!dnode)
+> -					goto mem_fail;
+> -				last = cb;
+> +			struct dumper *newnode = calloc(1, sizeof (struct dumper));
+> +			if (!newnode) goto mem_fail;
 > +
->  /*
->   * Parse the line LINE of SZ bytes.  Skip Comments, recognize section
->   * headers and feed tag-value pairs into our configuration database.
->   */
->  static void
-> -conf_parse_line(int trans, char *line, int lineno, char **section, char **subsection)
-> +conf_parse_line(int trans, char *line, const char *filename, int lineno, char **section, char **subsection)
->  {
->  	char *val, *ptr;
->  
-> @@ -366,10 +395,12 @@ conf_parse_line(int trans, char *line, int lineno, char **section, char **subsec
->  
->  	if (strcasecmp(line, "include")==0) {
->  		/* load and parse subordinate config files */
-> -		char * subconf = conf_readfile(val);
-> +		char * relpath = relative_path(filename, val);
-> +		char * subconf = conf_readfile(relpath);
-Same here no space also isn't subconf being over written?
-
->  		if (subconf == NULL) {
-> -			xlog_warn("config file error: line %d: "
-> -			"error loading included config", lineno);
-> +			xlog_warn("%s:%d: error loading included config %s", 
-> +				  filename, lineno, relpath);
-> +			if (relpath) free(relpath);
->  			return;
+> +			newnode->next = dumper;
+> +			dumper = newnode;
+> +
+> +			newnode->section = cb->section;
+> +			newnode->arg = cb->arg;
+> +			newnode->tag = cb->tag;
+> +			newnode->value = cb->value;
 >  		}
+>  	}
 >  
-> @@ -383,10 +414,11 @@ conf_parse_line(int trans, char *line, int lineno, char **section, char **subsec
->  				inc_subsection = strdup(*subsection);
->  		}
+> -	if (last) {
+> -		len = strlen(last->section) + 3;
+> -		if (last->arg)
+> -			len += strlen(last->arg) + 3;
+> -		dnode->s = malloc(len);
+> -		if (!dnode->s)
+> -			goto mem_fail;
+> -		if (last->arg)
+> -			snprintf(dnode->s, len, "[%s \"%s\"]", last->section, last->arg);
+> -		else
+> -			snprintf(dnode->s, len, "[%s]", last->section);
+> -	}
+> -	conf_report_dump(dumper);
+> -	return;
+> +	dumper = conf_report_sort(dumper);
+> +	conf_report_dump_text(dumper, outfile);
+> +	goto cleanup;
 >  
-> -		conf_parse(trans, subconf, &inc_section, &inc_subsection);
-> +		conf_parse(trans, subconf, &inc_section, &inc_subsection, relpath);
->  
->  		if (inc_section) free(inc_section);
->  		if (inc_subsection) free(inc_subsection);
-> +		if (relpath) free(relpath);
-Are these if even needed? Won't these either be NULL or allocated memory?
-
-Again... I'm trying to is keep the coding similar which hopefully
-will make the code easier to read...
- 
->  		free(subconf);
->  	} else {
->  		/* XXX Perhaps should we not ignore errors?  */
-> @@ -396,7 +428,7 @@ conf_parse_line(int trans, char *line, int lineno, char **section, char **subsec
->  
->  /* Parse the mapped configuration file.  */
->  static void
-> -conf_parse(int trans, char *buf, char **section, char **subsection)
-> +conf_parse(int trans, char *buf, char **section, char **subsection, const char *filename)
->  {
->  	char *cp = buf;
->  	char *bufend = NULL;
-> @@ -413,7 +445,7 @@ conf_parse(int trans, char *buf, char **section, char **subsection)
->  			else {
->  				*cp = '\0';
->  				lineno++;
-> -				conf_parse_line(trans, line, lineno, section, subsection);
-> +				conf_parse_line(trans, line, filename, lineno, section, subsection);
->  				line = cp + 1;
->  			}
->  		}
-> @@ -508,7 +540,7 @@ conf_load_file(const char *conf_file)
->  	/* Parse config contents into the transaction queue */
->  	char *section = NULL;
->  	char *subsection = NULL;
-> -	conf_parse(trans, conf_data, &section, &subsection);
-> +	conf_parse(trans, conf_data, &section, &subsection, conf_file);
->  	if (section) free(section);
->  	if (subsection) free(subsection);
-Same here...
-
-steved.
->  	free(conf_data);
+>  mem_fail:
+>  	xlog_warn("conf_report: malloc/calloc failed");
+> +cleanup:
+>  	while ((dnode = dumper) != 0) {
+>  		dumper = dumper->next;
+> -		if (dnode->s)
+> -			free(dnode->s);
+>  		free(dnode);
+>  	}
+>  	return;
 > 
