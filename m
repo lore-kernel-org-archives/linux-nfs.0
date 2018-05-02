@@ -1,135 +1,183 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx3-rdu2.redhat.com ([66.187.233.73]:59158 "EHLO mx1.redhat.com"
+Received: from mx3-rdu2.redhat.com ([66.187.233.73]:58758 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1751181AbeEBLHb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 2 May 2018 07:07:31 -0400
-Received: from smtp.corp.redhat.com (int-mx06.intmail.prod.int.rdu2.redhat.com [10.11.54.6])
+        id S1750925AbeEBSVl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 2 May 2018 14:21:41 -0400
+Received: from smtp.corp.redhat.com (int-mx04.intmail.prod.int.rdu2.redhat.com [10.11.54.4])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 01ED3406C74A
-        for <linux-nfs@vger.kernel.org>; Wed,  2 May 2018 11:07:31 +0000 (UTC)
-Message-ID: <1525259249.7518.1.camel@redhat.com>
-Subject: [PATCH] nfs-utils: Add man page for nfsconftool cli
-From: Justin Mitchell <jumitche@redhat.com>
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Cc: Steve Dickson <steved@redhat.com>
-Date: Wed, 02 May 2018 12:07:29 +0100
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+        by mx1.redhat.com (Postfix) with ESMTPS id E6DC48D774
+        for <linux-nfs@vger.kernel.org>; Wed,  2 May 2018 18:21:40 +0000 (UTC)
+Subject: Re: [PATCH 2/7] nfs-utils: Make config includes relative to current
+ config
+To: Justin Mitchell <jumitche@redhat.com>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+References: <1524496788.7418.2.camel@redhat.com>
+ <1524497125.7418.5.camel@redhat.com>
+From: Steve Dickson <SteveD@RedHat.com>
+Message-ID: <6f363a98-479a-8d7e-cbd5-bd5d7248f41d@RedHat.com>
+Date: Wed, 2 May 2018 14:21:40 -0400
+MIME-Version: 1.0
+In-Reply-To: <1524497125.7418.5.camel@redhat.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Provide a man page for the cli tool added by my previous patchset
+Hi Justin,
 
-Signed-off-by: Justin Mitchell <jumitche@redhat.com>
----
- tools/nfsconf/Makefile.am     |  3 ++
- tools/nfsconf/nfsconftool.man | 81 +++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 84 insertions(+)
- create mode 100644 tools/nfsconf/nfsconftool.man
+Sorry for taking so long to get to this... 
 
-diff --git a/tools/nfsconf/Makefile.am b/tools/nfsconf/Makefile.am
-index 4baaa26..a15a7d9 100644
---- a/tools/nfsconf/Makefile.am
-+++ b/tools/nfsconf/Makefile.am
-@@ -1,5 +1,8 @@
- ## Process this file with automake to produce Makefile.in
+Most of my comments is about the style you are using.
+
+I would like to keep the coding style somewhat the same 
+and in a few places that is not just not happening...
+
+On 04/23/2018 11:25 AM, Justin Mitchell wrote:
+> When including additional config files with the include directive
+> make relative paths be relative to the current config file instead
+> of to the process's cwd.
+> 
+> Signed-off-by: Justin Mitchell <jumitche@redhat.com>
+> ---
+>  support/nfs/conffile.c | 50 +++++++++++++++++++++++++++++++++++++++++---------
+>  1 file changed, 41 insertions(+), 9 deletions(-)
+> 
+> diff --git a/support/nfs/conffile.c b/support/nfs/conffile.c
+> index a4cc236..42c0913 100644
+> --- a/support/nfs/conffile.c
+> +++ b/support/nfs/conffile.c
+> @@ -49,6 +49,7 @@
+>  #include <errno.h>
+>  #include <err.h>
+>  #include <syslog.h>
+> +#include <libgen.h>
+>  
+>  #include "conffile.h"
+>  #include "xlog.h"
+> @@ -60,7 +61,7 @@ static char * conf_readfile(const char *path);
+>  static int conf_set(int , const char *, const char *, const char *, 
+>  	const char *, int , int );
+>  static void conf_parse(int trans, char *buf, 
+> -	char **section, char **subsection);
+> +	char **section, char **subsection, const char *filename);
+>  
+>  struct conf_trans {
+>  	TAILQ_ENTRY (conf_trans) link;
+> @@ -206,12 +207,40 @@ conf_set_now(const char *section, const char *arg, const char *tag,
+>  	return 0;
+>  }
+>  
+> +/* Attempt to construct a relative path to the new file */
+> +static char *
+> +relative_path(const char *oldfile, const char *newfile)
+> +{
+> +	char * tmpcopy = NULL;
+> +	char * dir = NULL;
+> +	char * relpath = NULL;
+The space between the '*' and variable is not need.
  
-+man8_MANS	= nfsconftool.man
-+EXTRA_DIST	= $(man8_MANS)
-+
- bin_PROGRAMS = nfsconftool
+> +
+> +	if (!newfile) return strdup(oldfile);
+> +	if (newfile[0] == '/') return strdup(newfile);
+Go a head a put a newline and tab after the if statement.
+
+> +
+> +	tmpcopy = strdup(oldfile);
+> +	if (!tmpcopy) goto mem_err;
+> +
+> +	dir = dirname(tmpcopy);
+> +	size_t pathlen =  strlen(dir)+strlen(newfile)+2;
+> +	relpath = calloc(1, pathlen);
+> +	if (!relpath) goto mem_err;
+> +	snprintf(relpath, pathlen, "%s/%s", dir, newfile);
+Same here... That is just hard to read IMHO...
+
+Also put all variable at the top of the routine. 
+
  
- nfsconftool_SOURCES = nfsconfcli.c
-diff --git a/tools/nfsconf/nfsconftool.man b/tools/nfsconf/nfsconftool.man
-new file mode 100644
-index 0000000..b70ec38
---- /dev/null
-+++ b/tools/nfsconf/nfsconftool.man
-@@ -0,0 +1,81 @@
-+.\"
-+.\" nfsconftool(8)
-+.\"
-+.TH nfsconftool 8 "2 May 2018"
-+.SH NAME
-+nfsconftool \- Query various NFS configuration settings
-+.SH SYNOPSIS
-+.B nfsconftool \-\-dump
-+.RB [ \-v | \-\-verbose ]
-+.RB [ \-f | \-\-file
-+.IR infile.conf ]
-+.RI [ outfile ]
-+.P
-+.B nfsconftool \-\-get
-+.RB [ \-v | \-\-verbose ]
-+.RB [ \-f | \-\-file
-+.IR infile.conf ]
-+.RB [ \-a | \-\-arg
-+.IR subsection ]
-+.IR section
-+.IR tag
-+.P
-+.B nfsconftool \-\-isset
-+.RB [ \-v | \-\-verbose ]
-+.RB [ \-f | \-\-file
-+.IR infile.conf ]
-+.RB [ \-a | \-\-arg
-+.IR subsection ]
-+.IR section
-+.IR tag
-+.SH DESCRIPTION
-+The
-+.B nfsconftool
-+command can be used to test for and retrieve configuration settings
-+from a range of nfs-utils configuration files.
-+.SS Modes
-+The following modes are available:
-+.IP "\fB\-d, \-\-dump\fP"
-+Output an alphabetically sorted dump of the current configuration in conf file format. Accepts an optional filename in which to write the output.
-+.IP "\fB\-i, \-\-isset\fP"
-+Test if a specific tag has a value set.
-+.IP "\fB\-g, \-\-get\fP"
-+Output the current value of the specified tag.
-+.SH OPTIONS
-+.SS Options valid in all modes
-+.TP
-+.B \-v, \-\-verbose
-+Increase verbosity and print debugging information.
-+.TP
-+.B \-f, \-\-file \fIinfile\fR
-+Select a different config file to operate upon, default is
-+.I /etc/nfs.conf
-+.SS Options only valid in \fB\-\-get\fR and \fB\-\-isset\fR modes.
-+.TP
-+.B \-a, \-\-arg \fIsubsection\fR
-+Select a specific sub-section
-+.SH EXIT STATUS
-+.SS \fB\-\-isset\fR mode
-+In this mode the command will return success (0) if the selected tag has a value, any other exit code indicates the value is not set, or some other error has occured.
-+.SS all other modes
-+Success is indicated by an exit status of zero, any other status indicates an error. Error messages are output on stderr, and increasing verbosity will give more detailed explanations if any are available.
-+.SH EXAMPLES
-+.TP
-+.B nfsconftool -v --dump --file /tmp/testconf.conf  sorted.conf
-+Check a new config file for syntax errors and output a sorted version for ease of comparison with existing settings.
-+.TP
-+.B if ! nfsconftool --isset gssd preferred-realm ; then echo 'No prefered realm configured for gss'; fi
-+The tool allows for easy testing of configuration values from shell scripts, here we test if a specific value has been set.
-+.TP
-+.B nfsconftool --file /etc/nfsmount.conf --get --arg /home MountPoint background
-+Show default value for \fIbackground\fR option for NFS mounts of the \fI/home\fR path.
-+.SH FILES
-+.TP
-+.B /etc/nfs.conf
-+.SH SEE ALSO
-+.BR nfsd (8),
-+.BR exportfs (8),
-+.BR idmapd (8),
-+.BR statd (8)
-+.SH AUTHOR
-+Justin Mitchell <jumitche@redhat.com>
--- 
-1.8.3.1
+> +
+> +	free(tmpcopy);
+> +	return relpath;
+> +mem_err:
+> +	if (tmpcopy) free(tmpcopy);
+> +	return NULL;
+> +}
+> +
+> +
+>  /*
+>   * Parse the line LINE of SZ bytes.  Skip Comments, recognize section
+>   * headers and feed tag-value pairs into our configuration database.
+>   */
+>  static void
+> -conf_parse_line(int trans, char *line, int lineno, char **section, char **subsection)
+> +conf_parse_line(int trans, char *line, const char *filename, int lineno, char **section, char **subsection)
+>  {
+>  	char *val, *ptr;
+>  
+> @@ -366,10 +395,12 @@ conf_parse_line(int trans, char *line, int lineno, char **section, char **subsec
+>  
+>  	if (strcasecmp(line, "include")==0) {
+>  		/* load and parse subordinate config files */
+> -		char * subconf = conf_readfile(val);
+> +		char * relpath = relative_path(filename, val);
+> +		char * subconf = conf_readfile(relpath);
+Same here no space also isn't subconf being over written?
 
+>  		if (subconf == NULL) {
+> -			xlog_warn("config file error: line %d: "
+> -			"error loading included config", lineno);
+> +			xlog_warn("%s:%d: error loading included config %s", 
+> +				  filename, lineno, relpath);
+> +			if (relpath) free(relpath);
+>  			return;
+>  		}
+>  
+> @@ -383,10 +414,11 @@ conf_parse_line(int trans, char *line, int lineno, char **section, char **subsec
+>  				inc_subsection = strdup(*subsection);
+>  		}
+>  
+> -		conf_parse(trans, subconf, &inc_section, &inc_subsection);
+> +		conf_parse(trans, subconf, &inc_section, &inc_subsection, relpath);
+>  
+>  		if (inc_section) free(inc_section);
+>  		if (inc_subsection) free(inc_subsection);
+> +		if (relpath) free(relpath);
+Are these if even needed? Won't these either be NULL or allocated memory?
 
+Again... I'm trying to is keep the coding similar which hopefully
+will make the code easier to read...
+ 
+>  		free(subconf);
+>  	} else {
+>  		/* XXX Perhaps should we not ignore errors?  */
+> @@ -396,7 +428,7 @@ conf_parse_line(int trans, char *line, int lineno, char **section, char **subsec
+>  
+>  /* Parse the mapped configuration file.  */
+>  static void
+> -conf_parse(int trans, char *buf, char **section, char **subsection)
+> +conf_parse(int trans, char *buf, char **section, char **subsection, const char *filename)
+>  {
+>  	char *cp = buf;
+>  	char *bufend = NULL;
+> @@ -413,7 +445,7 @@ conf_parse(int trans, char *buf, char **section, char **subsection)
+>  			else {
+>  				*cp = '\0';
+>  				lineno++;
+> -				conf_parse_line(trans, line, lineno, section, subsection);
+> +				conf_parse_line(trans, line, filename, lineno, section, subsection);
+>  				line = cp + 1;
+>  			}
+>  		}
+> @@ -508,7 +540,7 @@ conf_load_file(const char *conf_file)
+>  	/* Parse config contents into the transaction queue */
+>  	char *section = NULL;
+>  	char *subsection = NULL;
+> -	conf_parse(trans, conf_data, &section, &subsection);
+> +	conf_parse(trans, conf_data, &section, &subsection, conf_file);
+>  	if (section) free(section);
+>  	if (subsection) free(subsection);
+Same here...
 
+steved.
+>  	free(conf_data);
+> 
