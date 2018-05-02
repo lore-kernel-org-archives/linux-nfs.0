@@ -1,173 +1,135 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:43545 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751079AbeEAVfL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 1 May 2018 17:35:11 -0400
-From: NeilBrown <neilb@suse.com>
-To: paulmck@linux.vnet.ibm.com
-Date: Wed, 02 May 2018 07:34:56 +1000
-Cc: Steven Rostedt <rostedt@goodmis.org>,
-        Josh Triplett <josh@joshtriplett.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Mathieu Desnoyers <mathieu.desnoyers@efficios.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        linux-nfs@vger.kernel.org, Lai Jiangshan <jiangshanlai@gmail.com>,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH 3/4 v2] rculist: add list_for_each_entry_from_rcu()
-In-Reply-To: <20180501141404.GD26088@linux.vnet.ibm.com>
-References: <152506256513.7246.13171564155614823841.stgit@noble> <152506269061.7246.13075216914692813995.stgit@noble> <20180430052032.GA16963@localhost> <20180430134308.GT26088@linux.vnet.ibm.com> <20180430111454.722c2aa8@gandalf.local.home> <20180430153505.GW26088@linux.vnet.ibm.com> <87y3h4gjdq.fsf@notabene.neil.brown.name> <20180501141404.GD26088@linux.vnet.ibm.com>
-Message-ID: <87vac7giv3.fsf@notabene.neil.brown.name>
-MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
+Received: from mx3-rdu2.redhat.com ([66.187.233.73]:59158 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1751181AbeEBLHb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 2 May 2018 07:07:31 -0400
+Received: from smtp.corp.redhat.com (int-mx06.intmail.prod.int.rdu2.redhat.com [10.11.54.6])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id 01ED3406C74A
+        for <linux-nfs@vger.kernel.org>; Wed,  2 May 2018 11:07:31 +0000 (UTC)
+Message-ID: <1525259249.7518.1.camel@redhat.com>
+Subject: [PATCH] nfs-utils: Add man page for nfsconftool cli
+From: Justin Mitchell <jumitche@redhat.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Cc: Steve Dickson <steved@redhat.com>
+Date: Wed, 02 May 2018 12:07:29 +0100
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+Provide a man page for the cli tool added by my previous patchset
 
-On Tue, May 01 2018, Paul E. McKenney wrote:
+Signed-off-by: Justin Mitchell <jumitche@redhat.com>
+---
+ tools/nfsconf/Makefile.am     |  3 ++
+ tools/nfsconf/nfsconftool.man | 81 +++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 84 insertions(+)
+ create mode 100644 tools/nfsconf/nfsconftool.man
 
-> On Tue, May 01, 2018 at 01:11:29PM +1000, NeilBrown wrote:
->>=20
->> list_for_each_entry_from_rcu() is an RCU version of
->> list_for_each_entry_from().  It walks a linked list under rcu
->> protection, from a given start point.
->>=20
->> It is similar to list_for_each_entry_continue_rcu() but starts *at*
->> the given position rather than *after* it.
->>=20
->> Naturally, the start point must be known to be in the list.
->>=20
->> Also update the documentation for list_for_each_entry_continue_rcu()
->> to match the documentation for the new list_for_each_entry_from_rcu(),
->> and add list_for_each_entry_from_rcu() and the already existing
->> hlist_for_each_entry_from_rcu() to section 7 of whatisRCU.txt.
->>=20
->> Signed-off-by: NeilBrown <neilb@suse.com>
->
-> I am guessing that it would be more convenient for you to carry this
-> with the patches using it, so:
->
-> Reviewed-by: Paul E. McKenney <paulmck@linux.vnet.ibm.com>
+diff --git a/tools/nfsconf/Makefile.am b/tools/nfsconf/Makefile.am
+index 4baaa26..a15a7d9 100644
+--- a/tools/nfsconf/Makefile.am
++++ b/tools/nfsconf/Makefile.am
+@@ -1,5 +1,8 @@
+ ## Process this file with automake to produce Makefile.in
+ 
++man8_MANS	= nfsconftool.man
++EXTRA_DIST	= $(man8_MANS)
++
+ bin_PROGRAMS = nfsconftool
+ 
+ nfsconftool_SOURCES = nfsconfcli.c
+diff --git a/tools/nfsconf/nfsconftool.man b/tools/nfsconf/nfsconftool.man
+new file mode 100644
+index 0000000..b70ec38
+--- /dev/null
++++ b/tools/nfsconf/nfsconftool.man
+@@ -0,0 +1,81 @@
++.\"
++.\" nfsconftool(8)
++.\"
++.TH nfsconftool 8 "2 May 2018"
++.SH NAME
++nfsconftool \- Query various NFS configuration settings
++.SH SYNOPSIS
++.B nfsconftool \-\-dump
++.RB [ \-v | \-\-verbose ]
++.RB [ \-f | \-\-file
++.IR infile.conf ]
++.RI [ outfile ]
++.P
++.B nfsconftool \-\-get
++.RB [ \-v | \-\-verbose ]
++.RB [ \-f | \-\-file
++.IR infile.conf ]
++.RB [ \-a | \-\-arg
++.IR subsection ]
++.IR section
++.IR tag
++.P
++.B nfsconftool \-\-isset
++.RB [ \-v | \-\-verbose ]
++.RB [ \-f | \-\-file
++.IR infile.conf ]
++.RB [ \-a | \-\-arg
++.IR subsection ]
++.IR section
++.IR tag
++.SH DESCRIPTION
++The
++.B nfsconftool
++command can be used to test for and retrieve configuration settings
++from a range of nfs-utils configuration files.
++.SS Modes
++The following modes are available:
++.IP "\fB\-d, \-\-dump\fP"
++Output an alphabetically sorted dump of the current configuration in conf file format. Accepts an optional filename in which to write the output.
++.IP "\fB\-i, \-\-isset\fP"
++Test if a specific tag has a value set.
++.IP "\fB\-g, \-\-get\fP"
++Output the current value of the specified tag.
++.SH OPTIONS
++.SS Options valid in all modes
++.TP
++.B \-v, \-\-verbose
++Increase verbosity and print debugging information.
++.TP
++.B \-f, \-\-file \fIinfile\fR
++Select a different config file to operate upon, default is
++.I /etc/nfs.conf
++.SS Options only valid in \fB\-\-get\fR and \fB\-\-isset\fR modes.
++.TP
++.B \-a, \-\-arg \fIsubsection\fR
++Select a specific sub-section
++.SH EXIT STATUS
++.SS \fB\-\-isset\fR mode
++In this mode the command will return success (0) if the selected tag has a value, any other exit code indicates the value is not set, or some other error has occured.
++.SS all other modes
++Success is indicated by an exit status of zero, any other status indicates an error. Error messages are output on stderr, and increasing verbosity will give more detailed explanations if any are available.
++.SH EXAMPLES
++.TP
++.B nfsconftool -v --dump --file /tmp/testconf.conf  sorted.conf
++Check a new config file for syntax errors and output a sorted version for ease of comparison with existing settings.
++.TP
++.B if ! nfsconftool --isset gssd preferred-realm ; then echo 'No prefered realm configured for gss'; fi
++The tool allows for easy testing of configuration values from shell scripts, here we test if a specific value has been set.
++.TP
++.B nfsconftool --file /etc/nfsmount.conf --get --arg /home MountPoint background
++Show default value for \fIbackground\fR option for NFS mounts of the \fI/home\fR path.
++.SH FILES
++.TP
++.B /etc/nfs.conf
++.SH SEE ALSO
++.BR nfsd (8),
++.BR exportfs (8),
++.BR idmapd (8),
++.BR statd (8)
++.SH AUTHOR
++Justin Mitchell <jumitche@redhat.com>
+-- 
+1.8.3.1
 
-Thanks Paul,
- yes I do hope this patch will go in with the other NFS patches.
- I'll wait to see what Trond and Anna think before proceeding with
- anything myself.
-
-Thanks a lot,
-NeilBrown
 
 
->
-> If not, please let me know.
->
-> 							Thanx, Paul
->
->> ---
->>  Documentation/RCU/whatisRCU.txt |  2 ++
->>  include/linux/rculist.h         | 32 +++++++++++++++++++++++++++++++-
->>  2 files changed, 33 insertions(+), 1 deletion(-)
->>=20
->> diff --git a/Documentation/RCU/whatisRCU.txt b/Documentation/RCU/whatisR=
-CU.txt
->> index a27fbfb0efb8..b7d38bd212d2 100644
->> --- a/Documentation/RCU/whatisRCU.txt
->> +++ b/Documentation/RCU/whatisRCU.txt
->> @@ -814,11 +814,13 @@ RCU list traversal:
->>  	list_next_rcu
->>  	list_for_each_entry_rcu
->>  	list_for_each_entry_continue_rcu
->> +	list_for_each_entry_from_rcu
->>  	hlist_first_rcu
->>  	hlist_next_rcu
->>  	hlist_pprev_rcu
->>  	hlist_for_each_entry_rcu
->>  	hlist_for_each_entry_rcu_bh
->> +	hlist_for_each_entry_from_rcu
->>  	hlist_for_each_entry_continue_rcu
->>  	hlist_for_each_entry_continue_rcu_bh
->>  	hlist_nulls_first_rcu
->> diff --git a/include/linux/rculist.h b/include/linux/rculist.h
->> index 127f534fec94..4786c2235b98 100644
->> --- a/include/linux/rculist.h
->> +++ b/include/linux/rculist.h
->> @@ -396,13 +396,43 @@ static inline void list_splice_tail_init_rcu(struc=
-t list_head *list,
->>   * @member:	the name of the list_head within the struct.
->>   *
->>   * Continue to iterate over list of given type, continuing after
->> - * the current position.
->> + * the current position which must have been in the list when the RCU r=
-ead
->> + * lock was taken.
->> + * This would typically require either that you obtained the node from a
->> + * previous walk of the list in the same RCU read-side critical section=
-, or
->> + * that you held some sort of non-RCU reference (such as a reference co=
-unt)
->> + * to keep the node alive *and* in the list.
->> + *
->> + * This iterator is similar to list_for_each_entry_from_rcu() except
->> + * this starts after the given position and that one starts at the given
->> + * position.
->>   */
->>  #define list_for_each_entry_continue_rcu(pos, head, member) 		\
->>  	for (pos =3D list_entry_rcu(pos->member.next, typeof(*pos), member); \
->>  	     &pos->member !=3D (head);	\
->>  	     pos =3D list_entry_rcu(pos->member.next, typeof(*pos), member))
->>=20=20
->> +/**
->> + * list_for_each_entry_from_rcu - iterate over a list from current point
->> + * @pos:	the type * to use as a loop cursor.
->> + * @head:	the head for your list.
->> + * @member:	the name of the list_node within the struct.
->> + *
->> + * Iterate over the tail of a list starting from a given position,
->> + * which must have been in the list when the RCU read lock was taken.
->> + * This would typically require either that you obtained the node from a
->> + * previous walk of the list in the same RCU read-side critical section=
-, or
->> + * that you held some sort of non-RCU reference (such as a reference co=
-unt)
->> + * to keep the node alive *and* in the list.
->> + *
->> + * This iterator is similar to list_for_each_entry_continue_rcu() except
->> + * this starts from the given position and that one starts from the pos=
-ition
->> + * after the given position.
->> + */
->> +#define list_for_each_entry_from_rcu(pos, head, member)			\
->> +	for (; &(pos)->member !=3D (head);					\
->> +		pos =3D list_entry_rcu(pos->member.next, typeof(*(pos)), member))
->> +
->>  /**
->>   * hlist_del_rcu - deletes entry from hash list without re-initializati=
-on
->>   * @n: the element to delete from the hash list.
->> --=20
->> 2.14.0.rc0.dirty
->>=20
-
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlro3YAACgkQOeye3VZi
-gbn1cg/7B/lreIqWbpbNaUQLBofW0qaNYU+036XvxxEOioH0KIjJUlEGPlTQXAMf
-6+CQzRZxDv40yY9Qhplmt+7NzKlwtmE0CKX91vA7eVBPsvEj4yMb+WtUFC3g84hP
-eqZW7E6KLMIT4WutuuuBnB0C6MIGvaNyRGZkZEEBdJKvCgsOjUEIuo7rrI0Vk5pR
-YALDOvoUgacG1zO43UFKLXTJOcRDX+2Rkaa8zxEGZbkdCA2CayqqYAhKbaDKNv+S
-WZM6C5+c/NKWqwug0g8u/7pu0RuAK1j87NSRQUwwvFYbK9LybNgI2dUjTBLbN8Zu
-xdI3yEnNIvxLi4Al2LgxwgcIuNgjabl60DYDaArIfTKDsW2mQphQU7X7A89JpnAP
-pesmeaaM4BeHrP6WMl3Ntl9jhYc+qupS3vgJLdiiMPHTbtqVw8Af+I9g+ieQMft2
-j5936wSi6ES75qLAUrkWCEHSAZlPf4Uxaf8j1fjP9CdKvLGPanNz/VCAtb2ibvuf
-luprWq3JM2dT24hvZHhUSs4SvYizs3RFBdpbBH8fF5GoEC6Jg0d7i9ByVuaRKATi
-ZWMxRhsPw4hNs7DuQA4EnG91XskC9yk/b+Ri/Ma/GXTJVENDne+6Px4OqS4gsiDB
-lThL/T6+1xFKPgcPmWzX0szTt0iu0nrZ9Fwe70k0+c9OhWZx2u0=
-=UHW1
------END PGP SIGNATURE-----
---=-=-=--
