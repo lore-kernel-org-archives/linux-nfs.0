@@ -1,19 +1,19 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx3-rdu2.redhat.com ([66.187.233.73]:47998 "EHLO mx1.redhat.com"
+Received: from mx3-rdu2.redhat.com ([66.187.233.73]:39224 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1751291AbeECQsv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 3 May 2018 12:48:51 -0400
-Received: from smtp.corp.redhat.com (int-mx03.intmail.prod.int.rdu2.redhat.com [10.11.54.3])
+        id S1750954AbeECQtf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 3 May 2018 12:49:35 -0400
+Received: from smtp.corp.redhat.com (int-mx05.intmail.prod.int.rdu2.redhat.com [10.11.54.5])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 2A7F5401DEAB
-        for <linux-nfs@vger.kernel.org>; Thu,  3 May 2018 16:48:51 +0000 (UTC)
-Message-ID: <1525366129.7550.21.camel@redhat.com>
-Subject: [PATCH v2 3/7] nfs-utils: Use config file name in error messages
+        by mx1.redhat.com (Postfix) with ESMTPS id 1D8ED406F88F
+        for <linux-nfs@vger.kernel.org>; Thu,  3 May 2018 16:49:35 +0000 (UTC)
+Message-ID: <1525366173.7550.22.camel@redhat.com>
+Subject: [PATCH v2 4/7] nfs-utils: Indicate if config file was missing
 From: Justin Mitchell <jumitche@redhat.com>
 To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
 Cc: Steve Dickson <SteveD@RedHat.com>
-Date: Thu, 03 May 2018 17:48:49 +0100
+Date: Thu, 03 May 2018 17:49:33 +0100
 In-Reply-To: <1525365943.7550.18.camel@redhat.com>
 References: <1525365943.7550.18.camel@redhat.com>
 Content-Type: text/plain; charset="UTF-8"
@@ -21,132 +21,72 @@ Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Improve readability of error configuration error messages
-by including the filename currently being read.
+Return an indication that the config file could not be loaded
+for processes that want to differentiate this from empty config
 
 Signed-off-by: Justin Mitchell <jumitche@redhat.com>
 ---
- support/nfs/conffile.c | 45 ++++++++++++++++++++++++++-------------------
- 1 file changed, 26 insertions(+), 19 deletions(-)
+ support/include/conffile.h |  2 +-
+ support/nfs/conffile.c     | 10 +++++-----
+ 2 files changed, 6 insertions(+), 6 deletions(-)
 
+diff --git a/support/include/conffile.h b/support/include/conffile.h
+index ad20067..6baaf9a 100644
+--- a/support/include/conffile.h
++++ b/support/include/conffile.h
+@@ -60,7 +60,7 @@ extern _Bool    conf_get_bool(const char *, const char *, _Bool);
+ extern char    *conf_get_str(const char *, const char *);
+ extern char    *conf_get_str_with_def(const char *, const char *, char *);
+ extern char    *conf_get_section(const char *, const char *, const char *);
+-extern void     conf_init_file(const char *);
++extern int      conf_init_file(const char *);
+ extern void     conf_cleanup(void);
+ extern int      conf_match_num(const char *, const char *, int);
+ extern int      conf_remove(int, const char *, const char *);
 diff --git a/support/nfs/conffile.c b/support/nfs/conffile.c
-index 95dda99..5fb58ea 100644
+index 5fb58ea..e65caaf 100644
 --- a/support/nfs/conffile.c
 +++ b/support/nfs/conffile.c
-@@ -285,8 +285,9 @@ conf_parse_line(int trans, char *line, const char *filename, int lineno, char **
- 		/* find the closing ] */
- 		ptr = strchr(line, ']');
- 		if (ptr == NULL) {
--			xlog_warn("config file error: line %d: "
-- 				"non-matched ']', ignoring until next section", lineno);
-+			xlog_warn("config error at %s:%d: "
-+				  "non-matched ']', ignoring until next section",
-+				  filename, lineno);
- 			return;
- 		}
+@@ -547,7 +547,7 @@ static void conf_free_bindings(void)
+ }
  
-@@ -311,7 +312,8 @@ conf_parse_line(int trans, char *line, const char *filename, int lineno, char **
- 		/* copy the section name */
- 		*section = strdup(line);
- 		if (!*section) {
--			xlog_warn("conf_parse_line: %d: malloc failed", lineno);
-+			xlog_warn("config error at %s:%d:"
-+				  "malloc failed", filename, lineno);
- 			return;
- 		}
+ /* Open the config file and map it into our address space, then parse it.  */
+-static void
++static int
+ conf_load_file(const char *conf_file)
+ {
+ 	int trans;
+@@ -557,7 +557,7 @@ conf_load_file(const char *conf_file)
+ 	conf_data = conf_readfile(conf_file);
  
-@@ -321,14 +323,16 @@ conf_parse_line(int trans, char *line, const char *filename, int lineno, char **
- 		/* check for the closing " */
- 		ptr = strchr(val, '"');
- 		if (ptr == NULL) {
--			xlog_warn("config file error: line %d: "
-- 				"non-matched '\"', ignoring until next section", lineno);
-+			xlog_warn("config error at %s:%d: "
-+				  "non-matched '\"', ignoring until next section",
-+				filename, lineno);
- 			return;
- 		}
- 		*ptr = '\0';
- 		*subsection = strdup(val);
- 		if (!*subsection)
--			xlog_warn("conf_parse_line: %d: malloc arg failed", lineno);
-+			xlog_warn("config error at %s:%d: "
-+				  "malloc failed", filename, lineno);
- 		return;
- 	}
+ 	if (conf_data == NULL)
+-		return;
++		return 1;
  
-@@ -339,15 +343,17 @@ conf_parse_line(int trans, char *line, const char *filename, int lineno, char **
- 	if (ptr == NULL) {
- 		/* Other non-empty lines are weird.  */
- 		if (line[strspn(line, " \t")])
--			xlog_warn("config file error: line %d: "
--				"line not empty and not an assignment", lineno);
-+			xlog_warn("config error at %s:%d: "
-+				"line not empty and not an assignment",
-+				filename, lineno);
- 		return;
- 	}
+ 	/* Load default configuration values.  */
+ 	conf_load_defaults();
+@@ -575,10 +575,10 @@ conf_load_file(const char *conf_file)
  
- 	/* If no section, we are ignoring the line.  */
- 	if (!*section) {
--		xlog_warn("config file error: line %d: "
--			"ignoring line due to no section", lineno);
-+		xlog_warn("config error at %s:%d: "
-+			  "ignoring line not in a section",
-+			  filename, lineno);
- 		return;
- 	}
+ 	/* Apply the new configuration values */
+ 	conf_end(trans, 1);
+-	return;
++	return 0;
+ }
  
-@@ -364,8 +370,8 @@ conf_parse_line(int trans, char *line, const char *filename, int lineno, char **
- 		val++;
- 		ptr = strchr(val, '"');
- 		if (ptr == NULL) {
--			xlog_warn("config file error: line %d: "
--				"unmatched quotes", lineno);
-+			xlog_warn("config error at %s:%d: "
-+				  "unmatched quotes",filename, lineno);
- 			return;
- 		}
- 		*ptr = '\0';
-@@ -374,8 +380,8 @@ conf_parse_line(int trans, char *line, const char *filename, int lineno, char **
- 		val++;
- 		ptr = strchr(val, '\'');
- 		if (ptr == NULL) {
--			xlog_warn("config file error: line %d: "
--				"unmatched quotes", lineno);
-+			xlog_warn("config error at %s:%d: "
-+				  "unmatched quotes", filename, lineno);
- 			return;
- 		}
- 		*ptr = '\0';
-@@ -392,13 +398,13 @@ conf_parse_line(int trans, char *line, const char *filename, int lineno, char **
- 	}
+-void
++int
+ conf_init_file(const char *conf_file)
+ {
+ 	unsigned int i;
+@@ -589,7 +589,7 @@ conf_init_file(const char *conf_file)
+ 	TAILQ_INIT (&conf_trans_queue);
  
- 	if (*line == '\0') {
--		xlog_warn("config file error: line %d: "
--			"missing tag in assignment", lineno);
-+		xlog_warn("config error at %s:%d: "
-+			  "missing tag in assignment", filename, lineno);
- 		return;
- 	}
- 	if (*val == '\0') {
--		xlog_warn("config file error: line %d: "
--			"missing value in assignment", lineno);
-+		xlog_warn("config error at %s:%d: "
-+			  "missing value in assignment", filename, lineno);
- 		return;
- 	}
+ 	if (conf_file == NULL) conf_file=NFS_CONFFILE;
+-	conf_load_file(conf_file);
++	return conf_load_file(conf_file);
+ }
  
-@@ -409,7 +415,8 @@ conf_parse_line(int trans, char *line, const char *filename, int lineno, char **
- 		char *relpath = relative_path(filename, val);
- 		char *subconf = conf_readfile(relpath);
- 		if (subconf == NULL) {
--			xlog_warn("%s:%d: error loading included config",
-+			xlog_warn("config error at %s:%d: "
-+				  "error loading included config",
- 				  filename, lineno);
- 			if (relpath)
- 				free(relpath);
+ /*
 -- 
 1.8.3.1
 
