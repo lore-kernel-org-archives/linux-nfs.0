@@ -1,19 +1,20 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx3-rdu2.redhat.com ([66.187.233.73]:32796 "EHLO mx1.redhat.com"
+Received: from mx3-rdu2.redhat.com ([66.187.233.73]:39182 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1750954AbeECQrV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 3 May 2018 12:47:21 -0400
-Received: from smtp.corp.redhat.com (int-mx05.intmail.prod.int.rdu2.redhat.com [10.11.54.5])
+        id S1751095AbeECQsH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 3 May 2018 12:48:07 -0400
+Received: from smtp.corp.redhat.com (int-mx06.intmail.prod.int.rdu2.redhat.com [10.11.54.6])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id F21B876FBA
-        for <linux-nfs@vger.kernel.org>; Thu,  3 May 2018 16:47:20 +0000 (UTC)
-Message-ID: <1525366039.7550.19.camel@redhat.com>
-Subject: [PATCH v2 1/7] nfs-utils: Fix minor memory leaks
+        by mx1.redhat.com (Postfix) with ESMTPS id C87984270961
+        for <linux-nfs@vger.kernel.org>; Thu,  3 May 2018 16:48:06 +0000 (UTC)
+Message-ID: <1525366085.7550.20.camel@redhat.com>
+Subject: [PATCH v2 2/7] nfs-utils: Make config includes relative to current
+ config
 From: Justin Mitchell <jumitche@redhat.com>
 To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
 Cc: Steve Dickson <SteveD@RedHat.com>
-Date: Thu, 03 May 2018 17:47:19 +0100
+Date: Thu, 03 May 2018 17:48:05 +0100
 In-Reply-To: <1525365943.7550.18.camel@redhat.com>
 References: <1525365943.7550.18.camel@redhat.com>
 Content-Type: text/plain; charset="UTF-8"
@@ -21,182 +22,169 @@ Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Fix some minor memory leaks, typos, and trailing whitespace
+When including additional config files with the include directive
+make relative paths be relative to the current config file instead
+of to the process's cwd.
 
 Signed-off-by: Justin Mitchell <jumitche@redhat.com>
 ---
- support/nfs/conffile.c | 42 +++++++++++++++++++++++-------------------
- 1 file changed, 23 insertions(+), 19 deletions(-)
+ support/nfs/conffile.c | 76 +++++++++++++++++++++++++++++++++++++++++---------
+ 1 file changed, 63 insertions(+), 13 deletions(-)
 
 diff --git a/support/nfs/conffile.c b/support/nfs/conffile.c
-index 29f132d..28e29b7 100644
+index 28e29b7..95dda99 100644
 --- a/support/nfs/conffile.c
 +++ b/support/nfs/conffile.c
-@@ -57,9 +57,9 @@
+@@ -49,6 +49,7 @@
+ #include <errno.h>
+ #include <err.h>
+ #include <syslog.h>
++#include <libgen.h>
  
- static void conf_load_defaults(void);
- static char * conf_readfile(const char *path);
--static int conf_set(int , const char *, const char *, const char *, 
-+static int conf_set(int , const char *, const char *, const char *,
+ #include "conffile.h"
+ #include "xlog.h"
+@@ -60,7 +61,7 @@ static char * conf_readfile(const char *path);
+ static int conf_set(int , const char *, const char *, const char *,
  	const char *, int , int );
--static void conf_parse(int trans, char *buf, 
-+static void conf_parse(int trans, char *buf,
- 	char **section, char **subsection);
+ static void conf_parse(int trans, char *buf,
+-	char **section, char **subsection);
++	char **section, char **subsection, const char *filename);
  
  struct conf_trans {
-@@ -177,7 +177,7 @@ conf_remove_section_now(const char *section)
-  * into SECTION of our configuration database.
-  */
- static int
--conf_set_now(const char *section, const char *arg, const char *tag, 
-+conf_set_now(const char *section, const char *arg, const char *tag,
- 	const char *value, int override, int is_default)
- {
- 	struct conf_binding *node = 0;
-@@ -186,7 +186,7 @@ conf_set_now(const char *section, const char *arg, const char *tag,
- 		conf_remove_now(section, tag);
- 	else if (conf_get_section(section, arg, tag)) {
- 		if (!is_default) {
--			xlog(LOG_INFO, "conf_set: duplicate tag [%s]:%s, ignoring...\n", 
-+			xlog(LOG_INFO, "conf_set: duplicate tag [%s]:%s, ignoring...",
- 				section, tag);
- 		}
- 		return 1;
-@@ -220,7 +220,7 @@ conf_parse_line(int trans, char *line, int lineno, char **section, char **subsec
- 		return;
- 
- 	/* Strip off any leading blanks */
--	while (isblank(*line)) 
-+	while (isblank(*line))
- 		line++;
- 
- 	/* Lines starting with '#' or ';' are comments.  */
-@@ -241,7 +241,7 @@ conf_parse_line(int trans, char *line, int lineno, char **section, char **subsec
- 		}
- 
- 		/* Strip off any blanks after '[' */
--		while (isblank(*line)) 
-+		while (isblank(*line))
- 			line++;
- 
- 		/* find the closing ] */
-@@ -256,7 +256,7 @@ conf_parse_line(int trans, char *line, int lineno, char **section, char **subsec
- 		*(ptr--) = '\0';
- 
- 		/* Strip off any blanks before ']' */
--		while (ptr >= line && isblank(*ptr)) 
-+		while (ptr >= line && isblank(*ptr))
- 			*(ptr--)='\0';
- 
- 		/* look for an arg to split from the section name */
-@@ -289,7 +289,7 @@ conf_parse_line(int trans, char *line, int lineno, char **section, char **subsec
- 		}
- 		*ptr = '\0';
- 		*subsection = strdup(val);
--		if (!*subsection) 
-+		if (!*subsection)
- 			xlog_warn("conf_parse_line: %d: malloc arg failed", lineno);
- 		return;
- 	}
-@@ -535,8 +535,8 @@ conf_init_file(const char *conf_file)
- 	conf_load_file(conf_file);
+ 	TAILQ_ENTRY (conf_trans) link;
+@@ -206,12 +207,49 @@ conf_set_now(const char *section, const char *arg, const char *tag,
+ 	return 0;
  }
  
--/* 
-- * Empty the config and free up any used memory 
-+/*
-+ * Empty the config and free up any used memory
++/* Attempt to construct a relative path to the new file */
++static char *
++relative_path(const char *oldfile, const char *newfile)
++{
++	char *tmpcopy = NULL;
++	char *dir = NULL;
++	char *relpath = NULL;
++	size_t pathlen;
++
++	if (!newfile)
++		return strdup(oldfile);
++
++	if (newfile[0] == '/')
++		return strdup(newfile);
++
++	tmpcopy = strdup(oldfile);
++	if (!tmpcopy)
++		goto mem_err;
++
++	dir = dirname(tmpcopy);
++
++	pathlen = strlen(dir) + strlen(newfile) + 2;
++	relpath = calloc(1, pathlen);
++	if (!relpath)
++		goto mem_err;
++
++	snprintf(relpath, pathlen, "%s/%s", dir, newfile);
++
++	free(tmpcopy);
++	return relpath;
++mem_err:
++	if (tmpcopy)
++		free(tmpcopy);
++	return NULL;
++}
++
++
+ /*
+  * Parse the line LINE of SZ bytes.  Skip Comments, recognize section
+  * headers and feed tag-value pairs into our configuration database.
   */
- void
- conf_cleanup(void)
-@@ -618,7 +618,7 @@ conf_match_num(const char *section, const char *tag, int x)
- 		xlog(LOG_INFO, "conf_match_num: %s:%s %d==%d?", section, tag, val, x);
- 		return x == val;
- 	case 3:
--		xlog(LOG_INFO, "conf_match_num: %s:%s %d<=%d<=%d?", section, 
-+		xlog(LOG_INFO, "conf_match_num: %s:%s %d<=%d<=%d?", section,
- 			tag, min, x, max);
- 		return min <= x && max >= x;
- 	default:
-@@ -642,7 +642,7 @@ char *
- conf_get_str_with_def(const char *section, const char *tag, char *def)
+ static void
+-conf_parse_line(int trans, char *line, int lineno, char **section, char **subsection)
++conf_parse_line(int trans, char *line, const char *filename, int lineno, char **section, char **subsection)
  {
- 	char * result = conf_get_section(section, NULL, tag);
--	if (!result) 
-+	if (!result)
- 		return def;
- 	return result;
- }
-@@ -659,7 +659,7 @@ retry:
- 	for (; cb; cb = LIST_NEXT (cb, link)) {
- 		if (strcasecmp(section, cb->section) != 0)
- 			continue;
--		if (arg && strcasecmp(arg, cb->arg) != 0)
-+		if (arg && (cb->arg == NULL || strcasecmp(arg, cb->arg) != 0))
- 			continue;
- 		if (strcasecmp(tag, cb->tag) != 0)
- 			continue;
-@@ -917,6 +917,8 @@ conf_set(int transaction, const char *section, const char *arg,
- fail:
- 	if (node->tag)
- 		free(node->tag);
-+	if (node->arg)
-+		free(node->arg);
- 	if (node->section)
- 		free(node->section);
- 	if (node)
-@@ -987,8 +989,8 @@ conf_end(int transaction, int commit)
- 			if (commit) {
- 				switch (node->op) {
- 				case CONF_SET:
--					conf_set_now(node->section, node->arg, 
--						node->tag, node->value, node->override, 
-+					conf_set_now(node->section, node->arg,
-+						node->tag, node->value, node->override,
- 						node->is_default);
- 					break;
- 				case CONF_REMOVE:
-@@ -1004,6 +1006,8 @@ conf_end(int transaction, int commit)
- 			TAILQ_REMOVE (&conf_trans_queue, node, link);
- 			if (node->section)
- 				free(node->section);
-+			if (node->arg)
-+				free(node->arg);
- 			if (node->tag)
- 				free(node->tag);
- 			if (node->value)
-@@ -1066,7 +1070,7 @@ conf_report (void)
- 					diff_arg = 1;
- 				}
- 				/* Dump this entry.  */
--				if (!current_section || strcmp(cb->section, current_section) 
-+				if (!current_section || strcmp(cb->section, current_section)
- 							|| diff_arg) {
- 					if (current_section || diff_arg) {
- 						len = strlen (current_section) + 3;
-@@ -1077,19 +1081,19 @@ conf_report (void)
- 							goto mem_fail;
+ 	char *val, *ptr;
  
- 						if (current_arg)
--							snprintf(dnode->s, len, "[%s \"%s\"]", 
-+							snprintf(dnode->s, len, "[%s \"%s\"]",
- 								current_section, current_arg);
- 						else
- 							snprintf(dnode->s, len, "[%s]", current_section);
+@@ -366,27 +404,34 @@ conf_parse_line(int trans, char *line, int lineno, char **section, char **subsec
  
--						dnode->next = 
-+						dnode->next =
- 							(struct dumper *)calloc(1, sizeof (struct dumper));
- 						dnode = dnode->next;
- 						if (!dnode)
- 							goto mem_fail;
+ 	if (strcasecmp(line, "include")==0) {
+ 		/* load and parse subordinate config files */
+-		char * subconf = conf_readfile(val);
++		char *inc_section = NULL;
++		char *inc_subsection = NULL;
++		char *relpath = relative_path(filename, val);
++		char *subconf = conf_readfile(relpath);
+ 		if (subconf == NULL) {
+-			xlog_warn("config file error: line %d: "
+-			"error loading included config", lineno);
++			xlog_warn("%s:%d: error loading included config",
++				  filename, lineno);
++			if (relpath)
++				free(relpath);
+ 			return;
+ 		}
  
- 						dnode->s = "";
--						dnode->next = 
-+						dnode->next =
- 							(struct dumper *)calloc(1, sizeof (struct dumper));
- 						dnode = dnode->next;
- 						if (!dnode)
+ 		/* copy the section data so the included file can inherit it
+ 		 * without accidentally changing it for us */
+-		char * inc_section = NULL;
+-		char * inc_subsection = NULL;
+ 		if (*section != NULL) {
+ 			inc_section = strdup(*section);
+ 			if (*subsection != NULL)
+ 				inc_subsection = strdup(*subsection);
+ 		}
+ 
+-		conf_parse(trans, subconf, &inc_section, &inc_subsection);
++		conf_parse(trans, subconf, &inc_section, &inc_subsection, relpath);
+ 
+-		if (inc_section) free(inc_section);
+-		if (inc_subsection) free(inc_subsection);
++		if (inc_section)
++			free(inc_section);
++		if (inc_subsection)
++			free(inc_subsection);
++		if (relpath)
++			free(relpath);
+ 		free(subconf);
+ 	} else {
+ 		/* XXX Perhaps should we not ignore errors?  */
+@@ -396,7 +441,7 @@ conf_parse_line(int trans, char *line, int lineno, char **section, char **subsec
+ 
+ /* Parse the mapped configuration file.  */
+ static void
+-conf_parse(int trans, char *buf, char **section, char **subsection)
++conf_parse(int trans, char *buf, char **section, char **subsection, const char *filename)
+ {
+ 	char *cp = buf;
+ 	char *bufend = NULL;
+@@ -413,7 +458,7 @@ conf_parse(int trans, char *buf, char **section, char **subsection)
+ 			else {
+ 				*cp = '\0';
+ 				lineno++;
+-				conf_parse_line(trans, line, lineno, section, subsection);
++				conf_parse_line(trans, line, filename, lineno, section, subsection);
+ 				line = cp + 1;
+ 			}
+ 		}
+@@ -434,6 +479,11 @@ static char *
+ conf_readfile(const char *path)
+ {
+ 	struct stat sb;
++	if (!path) {
++		xlog_err("conf_readfile: no path given");
++		return NULL;
++	}
++
+ 	if ((stat (path, &sb) == 0) || (errno != ENOENT)) {
+ 		char *new_conf_addr = NULL;
+ 		size_t sz = sb.st_size;
+@@ -508,7 +558,7 @@ conf_load_file(const char *conf_file)
+ 	/* Parse config contents into the transaction queue */
+ 	char *section = NULL;
+ 	char *subsection = NULL;
+-	conf_parse(trans, conf_data, &section, &subsection);
++	conf_parse(trans, conf_data, &section, &subsection, conf_file);
+ 	if (section) free(section);
+ 	if (subsection) free(subsection);
+ 	free(conf_data);
 -- 
 1.8.3.1
 
