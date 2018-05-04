@@ -1,14 +1,15 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f195.google.com ([209.85.223.195]:36563 "EHLO
+Received: from mail-io0-f195.google.com ([209.85.223.195]:43264 "EHLO
         mail-io0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751612AbeEDTeu (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 4 May 2018 15:34:50 -0400
-Subject: [PATCH v1 04/19] xprtrdma: Fix max_send_wr computation
+        with ESMTP id S1751573AbeEDTeo (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 4 May 2018 15:34:44 -0400
+Subject: [PATCH v1 03/19] xprtrdma: Create transport's CM ID in the correct
+ network namespace
 From: Chuck Lever <chuck.lever@oracle.com>
 To: anna.schumaker@netapp.com
 Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Fri, 04 May 2018 15:34:48 -0400
-Message-ID: <20180504193448.31688.73469.stgit@manet.1015granger.net>
+Date: Fri, 04 May 2018 15:34:42 -0400
+Message-ID: <20180504193442.31688.58984.stgit@manet.1015granger.net>
 In-Reply-To: <20180504192748.31688.3678.stgit@manet.1015granger.net>
 References: <20180504192748.31688.3678.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -16,164 +17,28 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-For FRWR, the computation of max_send_wr is split between
-frwr_op_open and rpcrdma_ep_create, which makes it difficult to tell
-that the max_send_wr result is currently incorrect if frwr_op_open
-has to reduce the credit limit to accommodate a small max_qp_wr.
-This is a problem now that extra WRs are needed for backchannel
-operations and a drain CQE.
-
-So, refactor the computation so that it is all done in ->ro_open,
-and fix the FRWR version of this computation so that it
-accommodates HCAs with small max_qp_wr correctly.
+Set up RPC/RDMA transport in mount.nfs's network namespace. This
+passes the correct namespace information to the RDMA core, similar
+to how RPC sockets are created (see xs_create_sock).
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/fmr_ops.c  |   22 ++++++++++++++++++++++
- net/sunrpc/xprtrdma/frwr_ops.c |   30 ++++++++++++++++++++++++++----
- net/sunrpc/xprtrdma/verbs.c    |   24 ++++--------------------
- 3 files changed, 52 insertions(+), 24 deletions(-)
+ net/sunrpc/xprtrdma/verbs.c |    4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/fmr_ops.c b/net/sunrpc/xprtrdma/fmr_ops.c
-index f2f6395..0815f9e 100644
---- a/net/sunrpc/xprtrdma/fmr_ops.c
-+++ b/net/sunrpc/xprtrdma/fmr_ops.c
-@@ -156,10 +156,32 @@ enum {
- 	fmr_op_release_mr(mr);
- }
- 
-+/* On success, sets:
-+ *	ep->rep_attr.cap.max_send_wr
-+ *	ep->rep_attr.cap.max_recv_wr
-+ *	cdata->max_requests
-+ *	ia->ri_max_segs
-+ */
- static int
- fmr_op_open(struct rpcrdma_ia *ia, struct rpcrdma_ep *ep,
- 	    struct rpcrdma_create_data_internal *cdata)
- {
-+	int max_qp_wr;
-+
-+	max_qp_wr = ia->ri_device->attrs.max_qp_wr;
-+	max_qp_wr -= RPCRDMA_BACKWARD_WRS;
-+	max_qp_wr -= 1;
-+	if (max_qp_wr < RPCRDMA_MIN_SLOT_TABLE)
-+		return -ENOMEM;
-+	if (cdata->max_requests > max_qp_wr)
-+		cdata->max_requests = max_qp_wr;
-+	ep->rep_attr.cap.max_send_wr = cdata->max_requests;
-+	ep->rep_attr.cap.max_send_wr += RPCRDMA_BACKWARD_WRS;
-+	ep->rep_attr.cap.max_send_wr += 1; /* for ib_drain_sq */
-+	ep->rep_attr.cap.max_recv_wr = cdata->max_requests;
-+	ep->rep_attr.cap.max_recv_wr += RPCRDMA_BACKWARD_WRS;
-+	ep->rep_attr.cap.max_recv_wr += 1; /* for ib_drain_rq */
-+
- 	ia->ri_max_segs = max_t(unsigned int, 1, RPCRDMA_MAX_DATA_SEGS /
- 				RPCRDMA_MAX_FMR_SGES);
- 	return 0;
-diff --git a/net/sunrpc/xprtrdma/frwr_ops.c b/net/sunrpc/xprtrdma/frwr_ops.c
-index c59c5c7..cf5095d6 100644
---- a/net/sunrpc/xprtrdma/frwr_ops.c
-+++ b/net/sunrpc/xprtrdma/frwr_ops.c
-@@ -202,12 +202,22 @@
- 	frwr_op_release_mr(mr);
- }
- 
-+/* On success, sets:
-+ *	ep->rep_attr.cap.max_send_wr
-+ *	ep->rep_attr.cap.max_recv_wr
-+ *	cdata->max_requests
-+ *	ia->ri_max_segs
-+ *
-+ * And these FRWR-related fields:
-+ *	ia->ri_max_frwr_depth
-+ *	ia->ri_mrtype
-+ */
- static int
- frwr_op_open(struct rpcrdma_ia *ia, struct rpcrdma_ep *ep,
- 	     struct rpcrdma_create_data_internal *cdata)
- {
- 	struct ib_device_attr *attrs = &ia->ri_device->attrs;
--	int depth, delta;
-+	int max_qp_wr, depth, delta;
- 
- 	ia->ri_mrtype = IB_MR_TYPE_MEM_REG;
- 	if (attrs->device_cap_flags & IB_DEVICE_SG_GAPS_REG)
-@@ -241,14 +251,26 @@
- 		} while (delta > 0);
- 	}
- 
--	ep->rep_attr.cap.max_send_wr *= depth;
--	if (ep->rep_attr.cap.max_send_wr > attrs->max_qp_wr) {
--		cdata->max_requests = attrs->max_qp_wr / depth;
-+	max_qp_wr = ia->ri_device->attrs.max_qp_wr;
-+	max_qp_wr -= RPCRDMA_BACKWARD_WRS;
-+	max_qp_wr -= 1;
-+	if (max_qp_wr < RPCRDMA_MIN_SLOT_TABLE)
-+		return -ENOMEM;
-+	if (cdata->max_requests > max_qp_wr)
-+		cdata->max_requests = max_qp_wr;
-+	ep->rep_attr.cap.max_send_wr = cdata->max_requests * depth;
-+	if (ep->rep_attr.cap.max_send_wr > max_qp_wr) {
-+		cdata->max_requests = max_qp_wr / depth;
- 		if (!cdata->max_requests)
- 			return -EINVAL;
- 		ep->rep_attr.cap.max_send_wr = cdata->max_requests *
- 					       depth;
- 	}
-+	ep->rep_attr.cap.max_send_wr += RPCRDMA_BACKWARD_WRS;
-+	ep->rep_attr.cap.max_send_wr += 1; /* for ib_drain_sq */
-+	ep->rep_attr.cap.max_recv_wr = cdata->max_requests;
-+	ep->rep_attr.cap.max_recv_wr += RPCRDMA_BACKWARD_WRS;
-+	ep->rep_attr.cap.max_recv_wr += 1; /* for ib_drain_rq */
- 
- 	ia->ri_max_segs = max_t(unsigned int, 1, RPCRDMA_MAX_DATA_SEGS /
- 				ia->ri_max_frwr_depth);
 diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 817a692..581d0ae 100644
+index 331d372..817a692 100644
 --- a/net/sunrpc/xprtrdma/verbs.c
 +++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -501,8 +501,8 @@
- 		  struct rpcrdma_create_data_internal *cdata)
- {
- 	struct rpcrdma_connect_private *pmsg = &ep->rep_cm_private;
--	unsigned int max_qp_wr, max_sge;
- 	struct ib_cq *sendcq, *recvcq;
-+	unsigned int max_sge;
- 	int rc;
+@@ -306,8 +306,8 @@
+ 	init_completion(&ia->ri_done);
+ 	init_completion(&ia->ri_remove_done);
  
- 	max_sge = min_t(unsigned int, ia->ri_device->attrs.max_sge,
-@@ -513,29 +513,13 @@
- 	}
- 	ia->ri_max_send_sges = max_sge;
- 
--	if (ia->ri_device->attrs.max_qp_wr <= RPCRDMA_BACKWARD_WRS) {
--		dprintk("RPC:       %s: insufficient wqe's available\n",
--			__func__);
--		return -ENOMEM;
--	}
--	max_qp_wr = ia->ri_device->attrs.max_qp_wr - RPCRDMA_BACKWARD_WRS - 1;
--
--	/* check provider's send/recv wr limits */
--	if (cdata->max_requests > max_qp_wr)
--		cdata->max_requests = max_qp_wr;
-+	rc = ia->ri_ops->ro_open(ia, ep, cdata);
-+	if (rc)
-+		return rc;
- 
- 	ep->rep_attr.event_handler = rpcrdma_qp_async_error_upcall;
- 	ep->rep_attr.qp_context = ep;
- 	ep->rep_attr.srq = NULL;
--	ep->rep_attr.cap.max_send_wr = cdata->max_requests;
--	ep->rep_attr.cap.max_send_wr += RPCRDMA_BACKWARD_WRS;
--	ep->rep_attr.cap.max_send_wr += 1;	/* drain cqe */
--	rc = ia->ri_ops->ro_open(ia, ep, cdata);
--	if (rc)
--		return rc;
--	ep->rep_attr.cap.max_recv_wr = cdata->max_requests;
--	ep->rep_attr.cap.max_recv_wr += RPCRDMA_BACKWARD_WRS;
--	ep->rep_attr.cap.max_recv_wr += 1;	/* drain cqe */
- 	ep->rep_attr.cap.max_send_sge = max_sge;
- 	ep->rep_attr.cap.max_recv_sge = 1;
- 	ep->rep_attr.cap.max_inline_data = 0;
+-	id = rdma_create_id(&init_net, rpcrdma_conn_upcall, xprt, RDMA_PS_TCP,
+-			    IB_QPT_RC);
++	id = rdma_create_id(xprt->rx_xprt.xprt_net, rpcrdma_conn_upcall,
++			    xprt, RDMA_PS_TCP, IB_QPT_RC);
+ 	if (IS_ERR(id)) {
+ 		rc = PTR_ERR(id);
+ 		dprintk("RPC:       %s: rdma_create_id() failed %i\n",
 
