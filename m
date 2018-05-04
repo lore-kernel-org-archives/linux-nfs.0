@@ -1,15 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f193.google.com ([209.85.223.193]:46451 "EHLO
-        mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751477AbeEDTee (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 4 May 2018 15:34:34 -0400
-Subject: [PATCH v1 01/19] xprtrdma: Add proper SPDX tags for
- NetApp-contributed source
+Received: from mail-io0-f195.google.com ([209.85.223.195]:36563 "EHLO
+        mail-io0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751612AbeEDTeu (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 4 May 2018 15:34:50 -0400
+Subject: [PATCH v1 04/19] xprtrdma: Fix max_send_wr computation
 From: Chuck Lever <chuck.lever@oracle.com>
 To: anna.schumaker@netapp.com
 Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Fri, 04 May 2018 15:34:32 -0400
-Message-ID: <20180504193432.31688.65935.stgit@manet.1015granger.net>
+Date: Fri, 04 May 2018 15:34:48 -0400
+Message-ID: <20180504193448.31688.73469.stgit@manet.1015granger.net>
 In-Reply-To: <20180504192748.31688.3678.stgit@manet.1015granger.net>
 References: <20180504192748.31688.3678.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -17,78 +16,164 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+For FRWR, the computation of max_send_wr is split between
+frwr_op_open and rpcrdma_ep_create, which makes it difficult to tell
+that the max_send_wr result is currently incorrect if frwr_op_open
+has to reduce the credit limit to accommodate a small max_qp_wr.
+This is a problem now that extra WRs are needed for backchannel
+operations and a drain CQE.
+
+So, refactor the computation so that it is all done in ->ro_open,
+and fix the FRWR version of this computation so that it
+accommodates HCAs with small max_qp_wr correctly.
+
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- include/linux/sunrpc/rpc_rdma.h |    1 +
- include/linux/sunrpc/xprtrdma.h |    1 +
- net/sunrpc/xprtrdma/module.c    |    1 +
- net/sunrpc/xprtrdma/rpc_rdma.c  |    1 +
- net/sunrpc/xprtrdma/transport.c |    1 +
- net/sunrpc/xprtrdma/verbs.c     |    1 +
- net/sunrpc/xprtrdma/xprt_rdma.h |    1 +
- 7 files changed, 7 insertions(+)
+ net/sunrpc/xprtrdma/fmr_ops.c  |   22 ++++++++++++++++++++++
+ net/sunrpc/xprtrdma/frwr_ops.c |   30 ++++++++++++++++++++++++++----
+ net/sunrpc/xprtrdma/verbs.c    |   24 ++++--------------------
+ 3 files changed, 52 insertions(+), 24 deletions(-)
 
-diff --git a/include/linux/sunrpc/rpc_rdma.h b/include/linux/sunrpc/rpc_rdma.h
-index 8f144db..92d182f 100644
---- a/include/linux/sunrpc/rpc_rdma.h
-+++ b/include/linux/sunrpc/rpc_rdma.h
-@@ -1,3 +1,4 @@
-+/* SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause */
- /*
-  * Copyright (c) 2015-2017 Oracle. All rights reserved.
-  * Copyright (c) 2003-2007 Network Appliance, Inc. All rights reserved.
-diff --git a/include/linux/sunrpc/xprtrdma.h b/include/linux/sunrpc/xprtrdma.h
-index 5859563..86fc38f 100644
---- a/include/linux/sunrpc/xprtrdma.h
-+++ b/include/linux/sunrpc/xprtrdma.h
-@@ -1,3 +1,4 @@
-+/* SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause */
- /*
-  * Copyright (c) 2003-2007 Network Appliance, Inc. All rights reserved.
-  *
-diff --git a/net/sunrpc/xprtrdma/module.c b/net/sunrpc/xprtrdma/module.c
-index a762d19..f338065 100644
---- a/net/sunrpc/xprtrdma/module.c
-+++ b/net/sunrpc/xprtrdma/module.c
-@@ -1,3 +1,4 @@
-+// SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause
- /*
-  * Copyright (c) 2015, 2017 Oracle.  All rights reserved.
-  */
-diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index e8adad3..8f89e3f 100644
---- a/net/sunrpc/xprtrdma/rpc_rdma.c
-+++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -1,3 +1,4 @@
-+// SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause
- /*
-  * Copyright (c) 2014-2017 Oracle.  All rights reserved.
-  * Copyright (c) 2003-2007 Network Appliance, Inc. All rights reserved.
-diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index cc1aad3..4717578 100644
---- a/net/sunrpc/xprtrdma/transport.c
-+++ b/net/sunrpc/xprtrdma/transport.c
-@@ -1,3 +1,4 @@
-+// SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause
- /*
-  * Copyright (c) 2014-2017 Oracle.  All rights reserved.
-  * Copyright (c) 2003-2007 Network Appliance, Inc. All rights reserved.
+diff --git a/net/sunrpc/xprtrdma/fmr_ops.c b/net/sunrpc/xprtrdma/fmr_ops.c
+index f2f6395..0815f9e 100644
+--- a/net/sunrpc/xprtrdma/fmr_ops.c
++++ b/net/sunrpc/xprtrdma/fmr_ops.c
+@@ -156,10 +156,32 @@ enum {
+ 	fmr_op_release_mr(mr);
+ }
+ 
++/* On success, sets:
++ *	ep->rep_attr.cap.max_send_wr
++ *	ep->rep_attr.cap.max_recv_wr
++ *	cdata->max_requests
++ *	ia->ri_max_segs
++ */
+ static int
+ fmr_op_open(struct rpcrdma_ia *ia, struct rpcrdma_ep *ep,
+ 	    struct rpcrdma_create_data_internal *cdata)
+ {
++	int max_qp_wr;
++
++	max_qp_wr = ia->ri_device->attrs.max_qp_wr;
++	max_qp_wr -= RPCRDMA_BACKWARD_WRS;
++	max_qp_wr -= 1;
++	if (max_qp_wr < RPCRDMA_MIN_SLOT_TABLE)
++		return -ENOMEM;
++	if (cdata->max_requests > max_qp_wr)
++		cdata->max_requests = max_qp_wr;
++	ep->rep_attr.cap.max_send_wr = cdata->max_requests;
++	ep->rep_attr.cap.max_send_wr += RPCRDMA_BACKWARD_WRS;
++	ep->rep_attr.cap.max_send_wr += 1; /* for ib_drain_sq */
++	ep->rep_attr.cap.max_recv_wr = cdata->max_requests;
++	ep->rep_attr.cap.max_recv_wr += RPCRDMA_BACKWARD_WRS;
++	ep->rep_attr.cap.max_recv_wr += 1; /* for ib_drain_rq */
++
+ 	ia->ri_max_segs = max_t(unsigned int, 1, RPCRDMA_MAX_DATA_SEGS /
+ 				RPCRDMA_MAX_FMR_SGES);
+ 	return 0;
+diff --git a/net/sunrpc/xprtrdma/frwr_ops.c b/net/sunrpc/xprtrdma/frwr_ops.c
+index c59c5c7..cf5095d6 100644
+--- a/net/sunrpc/xprtrdma/frwr_ops.c
++++ b/net/sunrpc/xprtrdma/frwr_ops.c
+@@ -202,12 +202,22 @@
+ 	frwr_op_release_mr(mr);
+ }
+ 
++/* On success, sets:
++ *	ep->rep_attr.cap.max_send_wr
++ *	ep->rep_attr.cap.max_recv_wr
++ *	cdata->max_requests
++ *	ia->ri_max_segs
++ *
++ * And these FRWR-related fields:
++ *	ia->ri_max_frwr_depth
++ *	ia->ri_mrtype
++ */
+ static int
+ frwr_op_open(struct rpcrdma_ia *ia, struct rpcrdma_ep *ep,
+ 	     struct rpcrdma_create_data_internal *cdata)
+ {
+ 	struct ib_device_attr *attrs = &ia->ri_device->attrs;
+-	int depth, delta;
++	int max_qp_wr, depth, delta;
+ 
+ 	ia->ri_mrtype = IB_MR_TYPE_MEM_REG;
+ 	if (attrs->device_cap_flags & IB_DEVICE_SG_GAPS_REG)
+@@ -241,14 +251,26 @@
+ 		} while (delta > 0);
+ 	}
+ 
+-	ep->rep_attr.cap.max_send_wr *= depth;
+-	if (ep->rep_attr.cap.max_send_wr > attrs->max_qp_wr) {
+-		cdata->max_requests = attrs->max_qp_wr / depth;
++	max_qp_wr = ia->ri_device->attrs.max_qp_wr;
++	max_qp_wr -= RPCRDMA_BACKWARD_WRS;
++	max_qp_wr -= 1;
++	if (max_qp_wr < RPCRDMA_MIN_SLOT_TABLE)
++		return -ENOMEM;
++	if (cdata->max_requests > max_qp_wr)
++		cdata->max_requests = max_qp_wr;
++	ep->rep_attr.cap.max_send_wr = cdata->max_requests * depth;
++	if (ep->rep_attr.cap.max_send_wr > max_qp_wr) {
++		cdata->max_requests = max_qp_wr / depth;
+ 		if (!cdata->max_requests)
+ 			return -EINVAL;
+ 		ep->rep_attr.cap.max_send_wr = cdata->max_requests *
+ 					       depth;
+ 	}
++	ep->rep_attr.cap.max_send_wr += RPCRDMA_BACKWARD_WRS;
++	ep->rep_attr.cap.max_send_wr += 1; /* for ib_drain_sq */
++	ep->rep_attr.cap.max_recv_wr = cdata->max_requests;
++	ep->rep_attr.cap.max_recv_wr += RPCRDMA_BACKWARD_WRS;
++	ep->rep_attr.cap.max_recv_wr += 1; /* for ib_drain_rq */
+ 
+ 	ia->ri_max_segs = max_t(unsigned int, 1, RPCRDMA_MAX_DATA_SEGS /
+ 				ia->ri_max_frwr_depth);
 diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index c345d36..10f5032 100644
+index 817a692..581d0ae 100644
 --- a/net/sunrpc/xprtrdma/verbs.c
 +++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -1,3 +1,4 @@
-+// SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause
- /*
-  * Copyright (c) 2014-2017 Oracle.  All rights reserved.
-  * Copyright (c) 2003-2007 Network Appliance, Inc. All rights reserved.
-diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index cb41b12..e83ba758 100644
---- a/net/sunrpc/xprtrdma/xprt_rdma.h
-+++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -1,3 +1,4 @@
-+/* SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause */
- /*
-  * Copyright (c) 2014-2017 Oracle.  All rights reserved.
-  * Copyright (c) 2003-2007 Network Appliance, Inc. All rights reserved.
+@@ -501,8 +501,8 @@
+ 		  struct rpcrdma_create_data_internal *cdata)
+ {
+ 	struct rpcrdma_connect_private *pmsg = &ep->rep_cm_private;
+-	unsigned int max_qp_wr, max_sge;
+ 	struct ib_cq *sendcq, *recvcq;
++	unsigned int max_sge;
+ 	int rc;
+ 
+ 	max_sge = min_t(unsigned int, ia->ri_device->attrs.max_sge,
+@@ -513,29 +513,13 @@
+ 	}
+ 	ia->ri_max_send_sges = max_sge;
+ 
+-	if (ia->ri_device->attrs.max_qp_wr <= RPCRDMA_BACKWARD_WRS) {
+-		dprintk("RPC:       %s: insufficient wqe's available\n",
+-			__func__);
+-		return -ENOMEM;
+-	}
+-	max_qp_wr = ia->ri_device->attrs.max_qp_wr - RPCRDMA_BACKWARD_WRS - 1;
+-
+-	/* check provider's send/recv wr limits */
+-	if (cdata->max_requests > max_qp_wr)
+-		cdata->max_requests = max_qp_wr;
++	rc = ia->ri_ops->ro_open(ia, ep, cdata);
++	if (rc)
++		return rc;
+ 
+ 	ep->rep_attr.event_handler = rpcrdma_qp_async_error_upcall;
+ 	ep->rep_attr.qp_context = ep;
+ 	ep->rep_attr.srq = NULL;
+-	ep->rep_attr.cap.max_send_wr = cdata->max_requests;
+-	ep->rep_attr.cap.max_send_wr += RPCRDMA_BACKWARD_WRS;
+-	ep->rep_attr.cap.max_send_wr += 1;	/* drain cqe */
+-	rc = ia->ri_ops->ro_open(ia, ep, cdata);
+-	if (rc)
+-		return rc;
+-	ep->rep_attr.cap.max_recv_wr = cdata->max_requests;
+-	ep->rep_attr.cap.max_recv_wr += RPCRDMA_BACKWARD_WRS;
+-	ep->rep_attr.cap.max_recv_wr += 1;	/* drain cqe */
+ 	ep->rep_attr.cap.max_send_sge = max_sge;
+ 	ep->rep_attr.cap.max_recv_sge = 1;
+ 	ep->rep_attr.cap.max_inline_data = 0;
 
