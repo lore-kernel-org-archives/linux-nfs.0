@@ -1,14 +1,15 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f68.google.com ([209.85.214.68]:51349 "EHLO
-        mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751632AbeEDTfB (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 4 May 2018 15:35:01 -0400
-Subject: [PATCH v1 06/19] SUNRPC: Add a ->free_slot transport callout
+Received: from mail-io0-f193.google.com ([209.85.223.193]:39924 "EHLO
+        mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751623AbeEDTez (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 4 May 2018 15:34:55 -0400
+Subject: [PATCH v1 05/19] SUNRPC: Initialize rpc_rqst outside of
+ xprt->reserve_lock
 From: Chuck Lever <chuck.lever@oracle.com>
 To: anna.schumaker@netapp.com
 Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Fri, 04 May 2018 15:34:59 -0400
-Message-ID: <20180504193458.31688.45870.stgit@manet.1015granger.net>
+Date: Fri, 04 May 2018 15:34:53 -0400
+Message-ID: <20180504193453.31688.86162.stgit@manet.1015granger.net>
 In-Reply-To: <20180504192748.31688.3678.stgit@manet.1015granger.net>
 References: <20180504192748.31688.3678.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -16,129 +17,96 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Refactor: xprtrdma needs to have better control over when RPCs are
-awoken from the backlog queue, so replace xprt_free_slot with a
-transport op callout.
+alloc_slot is a transport-specific op, but initializing an rpc_rqst
+is common to all transports. In addition, the only part of initial-
+izing an rpc_rqst that needs serialization is getting a fresh XID.
+
+Move rpc_rqst initialization to common code in preparation for
+adding a transport-specific alloc_slot to xprtrdma.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- include/linux/sunrpc/xprt.h                |    4 ++++
- net/sunrpc/xprt.c                          |    5 +++--
- net/sunrpc/xprtrdma/svc_rdma_backchannel.c |    1 +
- net/sunrpc/xprtrdma/transport.c            |    1 +
- net/sunrpc/xprtsock.c                      |    4 ++++
- 5 files changed, 13 insertions(+), 2 deletions(-)
+ include/linux/sunrpc/xprt.h |    1 +
+ net/sunrpc/clnt.c           |    1 +
+ net/sunrpc/xprt.c           |   12 +++++++-----
+ 3 files changed, 9 insertions(+), 5 deletions(-)
 
 diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
-index 9784e28..706eef1 100644
+index 5fea0fb..9784e28 100644
 --- a/include/linux/sunrpc/xprt.h
 +++ b/include/linux/sunrpc/xprt.h
-@@ -127,6 +127,8 @@ struct rpc_xprt_ops {
- 	int		(*reserve_xprt)(struct rpc_xprt *xprt, struct rpc_task *task);
- 	void		(*release_xprt)(struct rpc_xprt *xprt, struct rpc_task *task);
- 	void		(*alloc_slot)(struct rpc_xprt *xprt, struct rpc_task *task);
-+	void		(*free_slot)(struct rpc_xprt *xprt,
-+				     struct rpc_rqst *req);
- 	void		(*rpcbind)(struct rpc_task *task);
- 	void		(*set_port)(struct rpc_xprt *xprt, unsigned short port);
- 	void		(*connect)(struct rpc_xprt *xprt, struct rpc_task *task);
-@@ -329,6 +331,8 @@ struct xprt_class {
+@@ -324,6 +324,7 @@ struct xprt_class {
+ struct rpc_xprt		*xprt_create_transport(struct xprt_create *args);
+ void			xprt_connect(struct rpc_task *task);
+ void			xprt_reserve(struct rpc_task *task);
++void			xprt_request_init(struct rpc_task *task);
+ void			xprt_retry_reserve(struct rpc_task *task);
  int			xprt_reserve_xprt(struct rpc_xprt *xprt, struct rpc_task *task);
  int			xprt_reserve_xprt_cong(struct rpc_xprt *xprt, struct rpc_task *task);
- void			xprt_alloc_slot(struct rpc_xprt *xprt, struct rpc_task *task);
-+void			xprt_free_slot(struct rpc_xprt *xprt,
-+				       struct rpc_rqst *req);
- void			xprt_lock_and_alloc_slot(struct rpc_xprt *xprt, struct rpc_task *task);
- bool			xprt_prepare_transmit(struct rpc_task *task);
- void			xprt_transmit(struct rpc_task *task);
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index c2266f3..d839c33 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -1546,6 +1546,7 @@ void rpc_force_rebind(struct rpc_clnt *clnt)
+ 	task->tk_status = 0;
+ 	if (status >= 0) {
+ 		if (task->tk_rqstp) {
++			xprt_request_init(task);
+ 			task->tk_action = call_refresh;
+ 			return;
+ 		}
 diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-index 2d95926..3c85af0 100644
+index 70f0050..2d95926 100644
 --- a/net/sunrpc/xprt.c
 +++ b/net/sunrpc/xprt.c
-@@ -1186,7 +1186,7 @@ void xprt_lock_and_alloc_slot(struct rpc_xprt *xprt, struct rpc_task *task)
+@@ -66,7 +66,7 @@
+  * Local functions
+  */
+ static void	 xprt_init(struct rpc_xprt *xprt, struct net *net);
+-static void	xprt_request_init(struct rpc_task *, struct rpc_xprt *);
++static __be32	xprt_alloc_xid(struct rpc_xprt *xprt);
+ static void	xprt_connect_status(struct rpc_task *task);
+ static int      __xprt_get_cong(struct rpc_xprt *, struct rpc_task *);
+ static void     __xprt_put_cong(struct rpc_xprt *, struct rpc_rqst *);
+@@ -987,6 +987,8 @@ bool xprt_prepare_transmit(struct rpc_task *task)
+ 		task->tk_status = -EAGAIN;
+ 		goto out_unlock;
+ 	}
++	if (!bc_prealloc(req) && !req->rq_xmit_bytes_sent)
++		req->rq_xid = xprt_alloc_xid(xprt);
+ 	ret = true;
+ out_unlock:
+ 	spin_unlock_bh(&xprt->transport_lock);
+@@ -1163,10 +1165,10 @@ void xprt_alloc_slot(struct rpc_xprt *xprt, struct rpc_task *task)
+ out_init_req:
+ 	xprt->stat.max_slots = max_t(unsigned int, xprt->stat.max_slots,
+ 				     xprt->num_reqs);
++	spin_unlock(&xprt->reserve_lock);
++
+ 	task->tk_status = 0;
+ 	task->tk_rqstp = req;
+-	xprt_request_init(task, xprt);
+-	spin_unlock(&xprt->reserve_lock);
  }
- EXPORT_SYMBOL_GPL(xprt_lock_and_alloc_slot);
+ EXPORT_SYMBOL_GPL(xprt_alloc_slot);
  
--static void xprt_free_slot(struct rpc_xprt *xprt, struct rpc_rqst *req)
-+void xprt_free_slot(struct rpc_xprt *xprt, struct rpc_rqst *req)
+@@ -1303,8 +1305,9 @@ static inline void xprt_init_xid(struct rpc_xprt *xprt)
+ 	xprt->xid = prandom_u32();
+ }
+ 
+-static void xprt_request_init(struct rpc_task *task, struct rpc_xprt *xprt)
++void xprt_request_init(struct rpc_task *task)
  {
- 	spin_lock(&xprt->reserve_lock);
- 	if (!xprt_dynamic_free_slot(xprt, req)) {
-@@ -1196,6 +1196,7 @@ static void xprt_free_slot(struct rpc_xprt *xprt, struct rpc_rqst *req)
- 	xprt_wake_up_backlog(xprt);
- 	spin_unlock(&xprt->reserve_lock);
- }
-+EXPORT_SYMBOL_GPL(xprt_free_slot);
++	struct rpc_xprt *xprt = task->tk_xprt;
+ 	struct rpc_rqst	*req = task->tk_rqstp;
  
- static void xprt_free_all_slots(struct rpc_xprt *xprt)
- {
-@@ -1375,7 +1376,7 @@ void xprt_release(struct rpc_task *task)
- 
- 	dprintk("RPC: %5u release request %p\n", task->tk_pid, req);
- 	if (likely(!bc_prealloc(req)))
--		xprt_free_slot(xprt, req);
-+		xprt->ops->free_slot(xprt, req);
- 	else
- 		xprt_free_bc_request(req);
- }
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_backchannel.c b/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
-index a73632c..1035516 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
-@@ -273,6 +273,7 @@ static int svc_rdma_bc_sendto(struct svcxprt_rdma *rdma,
- 	.reserve_xprt		= xprt_reserve_xprt_cong,
- 	.release_xprt		= xprt_release_xprt_cong,
- 	.alloc_slot		= xprt_alloc_slot,
-+	.free_slot		= xprt_free_slot,
- 	.release_request	= xprt_release_rqst_cong,
- 	.buf_alloc		= xprt_rdma_bc_allocate,
- 	.buf_free		= xprt_rdma_bc_free,
-diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index 4717578..cf5e866 100644
---- a/net/sunrpc/xprtrdma/transport.c
-+++ b/net/sunrpc/xprtrdma/transport.c
-@@ -781,6 +781,7 @@ void xprt_rdma_print_stats(struct rpc_xprt *xprt, struct seq_file *seq)
- 	.reserve_xprt		= xprt_reserve_xprt_cong,
- 	.release_xprt		= xprt_release_xprt_cong, /* sunrpc/xprt.c */
- 	.alloc_slot		= xprt_alloc_slot,
-+	.free_slot		= xprt_free_slot,
- 	.release_request	= xprt_release_rqst_cong,       /* ditto */
- 	.set_retrans_timeout	= xprt_set_retrans_timeout_def, /* ditto */
- 	.timer			= xprt_rdma_timer,
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index c8902f1..9e1c502 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -2763,6 +2763,7 @@ static void bc_destroy(struct rpc_xprt *xprt)
- 	.reserve_xprt		= xprt_reserve_xprt,
- 	.release_xprt		= xs_tcp_release_xprt,
- 	.alloc_slot		= xprt_alloc_slot,
-+	.free_slot		= xprt_free_slot,
- 	.rpcbind		= xs_local_rpcbind,
- 	.set_port		= xs_local_set_port,
- 	.connect		= xs_local_connect,
-@@ -2782,6 +2783,7 @@ static void bc_destroy(struct rpc_xprt *xprt)
- 	.reserve_xprt		= xprt_reserve_xprt_cong,
- 	.release_xprt		= xprt_release_xprt_cong,
- 	.alloc_slot		= xprt_alloc_slot,
-+	.free_slot		= xprt_free_slot,
- 	.rpcbind		= rpcb_getport_async,
- 	.set_port		= xs_set_port,
- 	.connect		= xs_connect,
-@@ -2803,6 +2805,7 @@ static void bc_destroy(struct rpc_xprt *xprt)
- 	.reserve_xprt		= xprt_reserve_xprt,
- 	.release_xprt		= xs_tcp_release_xprt,
- 	.alloc_slot		= xprt_lock_and_alloc_slot,
-+	.free_slot		= xprt_free_slot,
- 	.rpcbind		= rpcb_getport_async,
- 	.set_port		= xs_set_port,
- 	.connect		= xs_connect,
-@@ -2834,6 +2837,7 @@ static void bc_destroy(struct rpc_xprt *xprt)
- 	.reserve_xprt		= xprt_reserve_xprt,
- 	.release_xprt		= xprt_release_xprt,
- 	.alloc_slot		= xprt_alloc_slot,
-+	.free_slot		= xprt_free_slot,
- 	.buf_alloc		= bc_malloc,
- 	.buf_free		= bc_free,
- 	.send_request		= bc_send_request,
+ 	INIT_LIST_HEAD(&req->rq_list);
+@@ -1312,7 +1315,6 @@ static void xprt_request_init(struct rpc_task *task, struct rpc_xprt *xprt)
+ 	req->rq_task	= task;
+ 	req->rq_xprt    = xprt;
+ 	req->rq_buffer  = NULL;
+-	req->rq_xid     = xprt_alloc_xid(xprt);
+ 	req->rq_connect_cookie = xprt->connect_cookie - 1;
+ 	req->rq_bytes_sent = 0;
+ 	req->rq_snd_buf.len = 0;
 
