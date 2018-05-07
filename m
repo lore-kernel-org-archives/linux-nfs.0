@@ -1,87 +1,76 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:52656 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752158AbeEGSpV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 7 May 2018 14:45:21 -0400
-Date: Mon, 7 May 2018 14:45:20 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Scott Mayhew <smayhew@redhat.com>
-Cc: jlayton@kernel.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfsd: make nfsd4_scsi_identify_device retry with a
- larger buffer
-Message-ID: <20180507184520.GF4749@fieldses.org>
-References: <20180507130131.7221-1-smayhew@redhat.com>
+Received: from mail-it0-f49.google.com ([209.85.214.49]:33225 "EHLO
+        mail-it0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752631AbeEGT0w (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 7 May 2018 15:26:52 -0400
+Subject: [PATCH v1 00/19] NFS/RDMA server for-next
+From: Chuck Lever <chuck.lever@oracle.com>
+To: bfields@fieldses.org
+Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Date: Mon, 07 May 2018 15:26:49 -0400
+Message-ID: <20180507192126.4608.63295.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20180507130131.7221-1-smayhew@redhat.com>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, May 07, 2018 at 09:01:31AM -0400, Scott Mayhew wrote:
-> nfsd4_scsi_identify_device() performs a single IDENTIFY command for the
-> device identification VPD page using a small buffer.  If the reply is
-> too large to fit in this buffer then the GETDEVICEINFO reply will not
-> contain any info for the SCSI volume aside from the registration key.
-> This can happen for example if the device has descriptors using long
-> SCSI name strings.
-> 
-> When the initial reply from the device indicates a larger buffer is
-> needed, retry once using the page length from that reply.
+Hi Bruce-
 
-Looks good, but how did you choose 65532 as the maximum?  Does the scsi
-layer give us any maximum?
+Here are all the patches I'd like to see merged into the next kernel
+(v4.18 or v5.0) if possible. The main changes are:
 
-Also, I don't know why this is bothering me, but: I'd prefer "buflen" to
-"bufflen".
+ - Added trace points to svcrdma
+ - Post Recv WRs in Receive completion handler
+ - Handle Send WRs with fewer page allocations
+ - Lots of clean up that results from these changes
 
---b.
+The svc_rdma_recv_ctxt and svc_rdma_send_ctxt changes improve the
+efficiency of the transport receive and send paths by reducing
+memory allocation and DMA mapping activity per RPC. Posting Recv
+WRs in the Receive completion handler means the Receive Queue
+does not bounce among all the CPUs.
 
-> 
-> Signed-off-by: Scott Mayhew <smayhew@redhat.com>
-> ---
->  fs/nfsd/blocklayout.c | 18 +++++++++++++-----
->  1 file changed, 13 insertions(+), 5 deletions(-)
-> 
-> diff --git a/fs/nfsd/blocklayout.c b/fs/nfsd/blocklayout.c
-> index 70b8bf7..0cd9249 100644
-> --- a/fs/nfsd/blocklayout.c
-> +++ b/fs/nfsd/blocklayout.c
-> @@ -216,13 +216,14 @@ static int nfsd4_scsi_identify_device(struct block_device *bdev,
->  	struct request_queue *q = bdev->bd_disk->queue;
->  	struct request *rq;
->  	struct scsi_request *req;
-> -	size_t bufflen = 252, len, id_len;
-> +	size_t bufflen = 252, maxlen = 65532, len, id_len;
->  	u8 *buf, *d, type, assoc;
-> -	int error;
-> +	int retries = 1, error;
->  
->  	if (WARN_ON_ONCE(!blk_queue_scsi_passthrough(q)))
->  		return -EINVAL;
->  
-> +again:
->  	buf = kzalloc(bufflen, GFP_KERNEL);
->  	if (!buf)
->  		return -ENOMEM;
-> @@ -255,9 +256,16 @@ static int nfsd4_scsi_identify_device(struct block_device *bdev,
->  
->  	len = (buf[2] << 8) + buf[3] + 4;
->  	if (len > bufflen) {
-> -		pr_err("pNFS: INQUIRY 0x83 response invalid (len = %zd)\n",
-> -			len);
-> -		goto out_put_request;
-> +		if (len < maxlen && retries--) {
-> +			blk_put_request(rq);
-> +			kfree(buf);
-> +			bufflen = len;
-> +			goto again;
-> +		} else {
-> +			pr_err("pNFS: INQUIRY 0x83 response invalid (len = %zd)\n",
-> +				len);
-> +			goto out_put_request;
-> +		}
->  	}
->  
->  	d = buf + 4;
-> -- 
-> 2.9.5
+---
+
+Chuck Lever (19):
+      svcrdma: Add proper SPDX tags for NetApp-contributed source
+      svcrdma: Use passed-in net namespace when creating RDMA listener
+      xprtrdma: Prepare RPC/RDMA includes for server-side trace points
+      svcrdma: Trace key RPC/RDMA protocol events
+      svcrdma: Trace key RDMA API events
+      svcrdma: Introduce svc_rdma_recv_ctxt
+      svcrdma: Remove sc_rq_depth
+      svcrdma: Simplify svc_rdma_recv_ctxt_put
+      svcrdma: Preserve Receive buffer until svc_rdma_sendto
+      svcrdma: Persistently allocate and DMA-map Receive buffers
+      svcrdma: Allocate recv_ctxt's on CPU handling Receives
+      svcrdma: Refactor svc_rdma_dma_map_buf
+      svcrdma: Clean up Send SGE accounting
+      svcrdma: Introduce svc_rdma_send_ctxt
+      svcrdma: Don't overrun the SGE array in svc_rdma_send_ctxt
+      svcrdma: Remove post_send_wr
+      svcrdma: Simplify svc_rdma_send()
+      svcrdma: Persistently allocate and DMA-map Send buffers
+      svcrdma: Remove unused svc_rdma_op_ctxt
+
+
+ include/linux/sunrpc/svc_rdma.h            |   95 ++---
+ include/trace/events/rpcrdma.h             |  584 ++++++++++++++++++++++++++++
+ net/sunrpc/xprtrdma/backchannel.c          |    2 
+ net/sunrpc/xprtrdma/fmr_ops.c              |    3 
+ net/sunrpc/xprtrdma/frwr_ops.c             |    2 
+ net/sunrpc/xprtrdma/module.c               |    4 
+ net/sunrpc/xprtrdma/rpc_rdma.c             |    7 
+ net/sunrpc/xprtrdma/svc_rdma.c             |    3 
+ net/sunrpc/xprtrdma/svc_rdma_backchannel.c |   54 +--
+ net/sunrpc/xprtrdma/svc_rdma_recvfrom.c    |  439 +++++++++++++++------
+ net/sunrpc/xprtrdma/svc_rdma_rw.c          |  133 +++---
+ net/sunrpc/xprtrdma/svc_rdma_sendto.c      |  510 ++++++++++++++++--------
+ net/sunrpc/xprtrdma/svc_rdma_transport.c   |  484 ++++-------------------
+ net/sunrpc/xprtrdma/transport.c            |    4 
+ net/sunrpc/xprtrdma/verbs.c                |    1 
+ net/sunrpc/xprtrdma/xprt_rdma.h            |    2 
+ 16 files changed, 1461 insertions(+), 866 deletions(-)
+
+--
+Chuck Lever
