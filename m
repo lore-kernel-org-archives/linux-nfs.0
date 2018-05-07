@@ -1,15 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f68.google.com ([209.85.214.68]:54846 "EHLO
-        mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752444AbeEGT1j (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 7 May 2018 15:27:39 -0400
-Subject: [PATCH v1 09/19] svcrdma: Preserve Receive buffer until
- svc_rdma_sendto
+Received: from mail-it0-f67.google.com ([209.85.214.67]:56115 "EHLO
+        mail-it0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752460AbeEGT1e (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 7 May 2018 15:27:34 -0400
+Subject: [PATCH v1 08/19] svcrdma: Simplify svc_rdma_recv_ctxt_put
 From: Chuck Lever <chuck.lever@oracle.com>
 To: bfields@fieldses.org
 Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Mon, 07 May 2018 15:27:37 -0400
-Message-ID: <20180507192737.4608.29315.stgit@klimt.1015granger.net>
+Date: Mon, 07 May 2018 15:27:32 -0400
+Message-ID: <20180507192732.4608.7636.stgit@klimt.1015granger.net>
 In-Reply-To: <20180507192126.4608.63295.stgit@klimt.1015granger.net>
 References: <20180507192126.4608.63295.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
@@ -17,85 +16,207 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Rather than releasing the incoming svc_rdma_recv_ctxt at the end of
-svc_rdma_recvfrom, hold onto it until svc_rdma_sendto.
+Currently svc_rdma_recv_ctxt_put's callers have to know whether they
+want to free the ctxt's pages or not. This means the human
+developers have to know when and why to set that free_pages
+argument.
 
-This permits the contents of the Receive buffer to be preserved
-through svc_process and then referenced directly in sendto as it
-constructs Write and Reply chunks to return to the client.
+Instead, the ctxt should carry that information with it so that
+svc_rdma_recv_ctxt_put does the right thing no matter who is
+calling.
 
-The real changes will come in subsequent patches.
+We want to keep track of the number of pages in the Receive buffer
+separately from the number of pages pulled over by RDMA Read. This
+is so that the correct number of pages can be freed properly and
+that number is well-documented.
 
-Note: I cannot use ->xpo_release_rqst for this purpose because that
-is called _before_ ->xpo_sendto. svc_rdma_sendto uses information in
-the received Call transport header to construct the Reply transport
-header, which is preserved in the RPC's Receive buffer.
+So now, rc_hdr_count is the number of pages consumed by head[0]
+(ie., the page index where the Read chunk should start); and
+rc_page_count is always the number of pages that need to be released
+when the ctxt is put.
 
-The historical comment in svc_send() isn't helpful: it is already
-obvious that ->xpo_release_rqst is being called before ->xpo_sendto,
-but there is no explanation for this ordering going back to the
-beginning of the git era.
+The @free_pages argument is no longer needed.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/svc_rdma_recvfrom.c |    2 +-
- net/sunrpc/xprtrdma/svc_rdma_sendto.c   |   14 +++++++++++---
- 2 files changed, 12 insertions(+), 4 deletions(-)
+ include/linux/sunrpc/svc_rdma.h         |    3 +-
+ net/sunrpc/xprtrdma/svc_rdma_recvfrom.c |   41 +++++++++++++++++--------------
+ net/sunrpc/xprtrdma/svc_rdma_rw.c       |    4 ++-
+ 3 files changed, 25 insertions(+), 23 deletions(-)
 
+diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
+index 3cb6631..f0bd0b6d 100644
+--- a/include/linux/sunrpc/svc_rdma.h
++++ b/include/linux/sunrpc/svc_rdma.h
+@@ -173,8 +173,7 @@ extern int svc_rdma_handle_bc_reply(struct rpc_xprt *xprt,
+ extern void svc_rdma_recv_ctxts_destroy(struct svcxprt_rdma *rdma);
+ extern bool svc_rdma_post_recvs(struct svcxprt_rdma *rdma);
+ extern void svc_rdma_recv_ctxt_put(struct svcxprt_rdma *rdma,
+-				   struct svc_rdma_recv_ctxt *ctxt,
+-				   int free_pages);
++				   struct svc_rdma_recv_ctxt *ctxt);
+ extern void svc_rdma_flush_recv_queues(struct svcxprt_rdma *rdma);
+ extern int svc_rdma_recvfrom(struct svc_rqst *);
+ 
 diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-index ecfe7c9..d9fef52 100644
+index b7d9c55..ecfe7c9 100644
 --- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
 +++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-@@ -789,7 +789,7 @@ int svc_rdma_recvfrom(struct svc_rqst *rqstp)
+@@ -175,18 +175,15 @@ static void svc_rdma_recv_ctxt_unmap(struct svcxprt_rdma *rdma,
+  * svc_rdma_recv_ctxt_put - Return recv_ctxt to free list
+  * @rdma: controlling svcxprt_rdma
+  * @ctxt: object to return to the free list
+- * @free_pages: Non-zero if rc_pages should be freed
+  *
+  */
+ void svc_rdma_recv_ctxt_put(struct svcxprt_rdma *rdma,
+-			    struct svc_rdma_recv_ctxt *ctxt,
+-			    int free_pages)
++			    struct svc_rdma_recv_ctxt *ctxt)
+ {
+ 	unsigned int i;
+ 
+-	if (free_pages)
+-		for (i = 0; i < ctxt->rc_page_count; i++)
+-			put_page(ctxt->rc_pages[i]);
++	for (i = 0; i < ctxt->rc_page_count; i++)
++		put_page(ctxt->rc_pages[i]);
+ 	spin_lock(&rdma->sc_recv_lock);
+ 	list_add(&ctxt->rc_list, &rdma->sc_recv_ctxts);
+ 	spin_unlock(&rdma->sc_recv_lock);
+@@ -243,11 +240,11 @@ static int svc_rdma_post_recv(struct svcxprt_rdma *rdma)
+ 
+ err_put_ctxt:
+ 	svc_rdma_recv_ctxt_unmap(rdma, ctxt);
+-	svc_rdma_recv_ctxt_put(rdma, ctxt, 1);
++	svc_rdma_recv_ctxt_put(rdma, ctxt);
+ 	return -ENOMEM;
+ err_post:
+ 	svc_rdma_recv_ctxt_unmap(rdma, ctxt);
+-	svc_rdma_recv_ctxt_put(rdma, ctxt, 1);
++	svc_rdma_recv_ctxt_put(rdma, ctxt);
+ 	svc_xprt_put(&rdma->sc_xprt);
+ 	return ret;
+ }
+@@ -316,7 +313,7 @@ static void svc_rdma_wc_receive(struct ib_cq *cq, struct ib_wc *wc)
+ 		       ib_wc_status_msg(wc->status),
+ 		       wc->status, wc->vendor_err);
+ post_err:
+-	svc_rdma_recv_ctxt_put(rdma, ctxt, 1);
++	svc_rdma_recv_ctxt_put(rdma, ctxt);
+ 	set_bit(XPT_CLOSE, &rdma->sc_xprt.xpt_flags);
+ 	svc_xprt_enqueue(&rdma->sc_xprt);
+ out:
+@@ -334,11 +331,11 @@ void svc_rdma_flush_recv_queues(struct svcxprt_rdma *rdma)
+ 
+ 	while ((ctxt = svc_rdma_next_recv_ctxt(&rdma->sc_read_complete_q))) {
+ 		list_del(&ctxt->rc_list);
+-		svc_rdma_recv_ctxt_put(rdma, ctxt, 1);
++		svc_rdma_recv_ctxt_put(rdma, ctxt);
+ 	}
+ 	while ((ctxt = svc_rdma_next_recv_ctxt(&rdma->sc_rq_dto_q))) {
+ 		list_del(&ctxt->rc_list);
+-		svc_rdma_recv_ctxt_put(rdma, ctxt, 1);
++		svc_rdma_recv_ctxt_put(rdma, ctxt);
+ 	}
+ }
+ 
+@@ -383,16 +380,19 @@ static void svc_rdma_build_arg_xdr(struct svc_rqst *rqstp,
+ 		len -= min_t(u32, len, ctxt->rc_sges[sge_no].length);
+ 		sge_no++;
+ 	}
++	ctxt->rc_hdr_count = sge_no;
+ 	rqstp->rq_respages = &rqstp->rq_pages[sge_no];
+ 	rqstp->rq_next_page = rqstp->rq_respages + 1;
+ 
+ 	/* If not all pages were used from the SGL, free the remaining ones */
+-	len = sge_no;
+ 	while (sge_no < ctxt->rc_recv_wr.num_sge) {
+ 		page = ctxt->rc_pages[sge_no++];
+ 		put_page(page);
+ 	}
+-	ctxt->rc_page_count = len;
++
++	/* @ctxt's pages have all been released or moved to @rqstp->rq_pages.
++	 */
++	ctxt->rc_page_count = 0;
+ 
+ 	/* Set up tail */
+ 	rqstp->rq_arg.tail[0].iov_base = NULL;
+@@ -602,11 +602,14 @@ static void rdma_read_complete(struct svc_rqst *rqstp,
+ {
+ 	int page_no;
+ 
+-	/* Copy RPC pages */
++	/* Move Read chunk pages to rqstp so that they will be released
++	 * when svc_process is done with them.
++	 */
+ 	for (page_no = 0; page_no < head->rc_page_count; page_no++) {
+ 		put_page(rqstp->rq_pages[page_no]);
+ 		rqstp->rq_pages[page_no] = head->rc_pages[page_no];
+ 	}
++	head->rc_page_count = 0;
+ 
+ 	/* Point rq_arg.pages past header */
+ 	rqstp->rq_arg.pages = &rqstp->rq_pages[head->rc_hdr_count];
+@@ -777,7 +780,7 @@ int svc_rdma_recvfrom(struct svc_rqst *rqstp)
+ 	if (svc_rdma_is_backchannel_reply(xprt, p)) {
+ 		ret = svc_rdma_handle_bc_reply(xprt->xpt_bc_xprt, p,
+ 					       &rqstp->rq_arg);
+-		svc_rdma_recv_ctxt_put(rdma_xprt, ctxt, 0);
++		svc_rdma_recv_ctxt_put(rdma_xprt, ctxt);
+ 		return ret;
+ 	}
+ 
+@@ -786,7 +789,7 @@ int svc_rdma_recvfrom(struct svc_rqst *rqstp)
  		goto out_readchunk;
  
  complete:
--	svc_rdma_recv_ctxt_put(rdma_xprt, ctxt);
-+	rqstp->rq_xprt_ctxt = ctxt;
+-	svc_rdma_recv_ctxt_put(rdma_xprt, ctxt, 0);
++	svc_rdma_recv_ctxt_put(rdma_xprt, ctxt);
  	rqstp->rq_prot = IPPROTO_MAX;
  	svc_xprt_copy_addrs(rqstp, xprt);
  	return rqstp->rq_arg.len;
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-index a397d9a..cbbde70 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-@@ -623,6 +623,7 @@ int svc_rdma_sendto(struct svc_rqst *rqstp)
- 	struct svc_xprt *xprt = rqstp->rq_xprt;
- 	struct svcxprt_rdma *rdma =
- 		container_of(xprt, struct svcxprt_rdma, sc_xprt);
-+	struct svc_rdma_recv_ctxt *rctxt = rqstp->rq_xprt_ctxt;
- 	__be32 *p, *rdma_argp, *rdma_resp, *wr_lst, *rp_ch;
- 	struct xdr_buf *xdr = &rqstp->rq_res;
- 	struct page *res_page;
-@@ -675,7 +676,12 @@ int svc_rdma_sendto(struct svc_rqst *rqstp)
- 				      wr_lst, rp_ch);
- 	if (ret < 0)
- 		goto err0;
--	return 0;
-+	ret = 0;
-+
-+out:
-+	rqstp->rq_xprt_ctxt = NULL;
-+	svc_rdma_recv_ctxt_put(rdma, rctxt);
-+	return ret;
+@@ -799,16 +802,16 @@ int svc_rdma_recvfrom(struct svc_rqst *rqstp)
  
-  err2:
- 	if (ret != -E2BIG && ret != -EINVAL)
-@@ -684,12 +690,14 @@ int svc_rdma_sendto(struct svc_rqst *rqstp)
- 	ret = svc_rdma_send_error_msg(rdma, rdma_resp, rqstp);
- 	if (ret < 0)
- 		goto err0;
--	return 0;
-+	ret = 0;
-+	goto out;
+ out_err:
+ 	svc_rdma_send_error(rdma_xprt, p, ret);
+-	svc_rdma_recv_ctxt_put(rdma_xprt, ctxt, 0);
++	svc_rdma_recv_ctxt_put(rdma_xprt, ctxt);
+ 	return 0;
  
-  err1:
- 	put_page(res_page);
-  err0:
- 	trace_svcrdma_send_failed(rqstp, ret);
- 	set_bit(XPT_CLOSE, &xprt->xpt_flags);
--	return -ENOTCONN;
-+	ret = -ENOTCONN;
-+	goto out;
+ out_postfail:
+ 	if (ret == -EINVAL)
+ 		svc_rdma_send_error(rdma_xprt, p, ret);
+-	svc_rdma_recv_ctxt_put(rdma_xprt, ctxt, 1);
++	svc_rdma_recv_ctxt_put(rdma_xprt, ctxt);
+ 	return ret;
+ 
+ out_drop:
+-	svc_rdma_recv_ctxt_put(rdma_xprt, ctxt, 1);
++	svc_rdma_recv_ctxt_put(rdma_xprt, ctxt);
+ 	return 0;
  }
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_rw.c b/net/sunrpc/xprtrdma/svc_rdma_rw.c
+index c080ce2..8242aa3 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_rw.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_rw.c
+@@ -282,7 +282,7 @@ static void svc_rdma_wc_read_done(struct ib_cq *cq, struct ib_wc *wc)
+ 			pr_err("svcrdma: read ctx: %s (%u/0x%x)\n",
+ 			       ib_wc_status_msg(wc->status),
+ 			       wc->status, wc->vendor_err);
+-		svc_rdma_recv_ctxt_put(rdma, info->ri_readctxt, 1);
++		svc_rdma_recv_ctxt_put(rdma, info->ri_readctxt);
+ 	} else {
+ 		spin_lock(&rdma->sc_rq_dto_lock);
+ 		list_add_tail(&info->ri_readctxt->rc_list,
+@@ -834,7 +834,7 @@ int svc_rdma_recv_read_chunk(struct svcxprt_rdma *rdma, struct svc_rqst *rqstp,
+ 	 * head->rc_arg. Pages involved with RDMA Read I/O are
+ 	 * transferred there.
+ 	 */
+-	head->rc_hdr_count = head->rc_page_count;
++	head->rc_page_count = head->rc_hdr_count;
+ 	head->rc_arg.head[0] = rqstp->rq_arg.head[0];
+ 	head->rc_arg.tail[0] = rqstp->rq_arg.tail[0];
+ 	head->rc_arg.pages = head->rc_pages;
 
