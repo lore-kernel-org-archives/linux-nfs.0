@@ -1,53 +1,73 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx3-rdu2.redhat.com ([66.187.233.73]:54682 "EHLO mx1.redhat.com"
+Received: from mx3-rdu2.redhat.com ([66.187.233.73]:43384 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1752129AbeEGNBJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 7 May 2018 09:01:09 -0400
+        id S1751848AbeEGNBb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 7 May 2018 09:01:31 -0400
 From: Scott Mayhew <smayhew@redhat.com>
 To: bfields@fieldses.org, jlayton@kernel.org
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] nfsd: restrict rd_maxcount to svc_max_payload in nfsd_encode_readdir
-Date: Mon,  7 May 2018 09:01:08 -0400
-Message-Id: <20180507130108.7136-1-smayhew@redhat.com>
+Subject: [PATCH] nfsd: make nfsd4_scsi_identify_device retry with a larger buffer
+Date: Mon,  7 May 2018 09:01:31 -0400
+Message-Id: <20180507130131.7221-1-smayhew@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-nfsd4_readdir_rsize restricts rd_maxcount to svc_max_payload when
-estimating the size of the readdir reply, but nfsd_encode_readdir
-restricts it to INT_MAX when encoding the reply.  This can result in log
-messages like "kernel: RPC request reserved 32896 but used 1049444".
+nfsd4_scsi_identify_device() performs a single IDENTIFY command for the
+device identification VPD page using a small buffer.  If the reply is
+too large to fit in this buffer then the GETDEVICEINFO reply will not
+contain any info for the SCSI volume aside from the registration key.
+This can happen for example if the device has descriptors using long
+SCSI name strings.
 
-Restrict rd_dircount similarly (no reason it should be larger than
-svc_max_payload).
+When the initial reply from the device indicates a larger buffer is
+needed, retry once using the page length from that reply.
 
-Signen-off-by: Scott Mayhew <smayhew@redhat.com>
+Signed-off-by: Scott Mayhew <smayhew@redhat.com>
 ---
- fs/nfsd/nfs4xdr.c | 5 +++--
- 1 file changed, 3 insertions(+), 2 deletions(-)
+ fs/nfsd/blocklayout.c | 18 +++++++++++++-----
+ 1 file changed, 13 insertions(+), 5 deletions(-)
 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 1d048dd..cfe535c 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -3651,7 +3651,8 @@ nfsd4_encode_readdir(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4
- 		nfserr = nfserr_resource;
- 		goto err_no_verf;
+diff --git a/fs/nfsd/blocklayout.c b/fs/nfsd/blocklayout.c
+index 70b8bf7..0cd9249 100644
+--- a/fs/nfsd/blocklayout.c
++++ b/fs/nfsd/blocklayout.c
+@@ -216,13 +216,14 @@ static int nfsd4_scsi_identify_device(struct block_device *bdev,
+ 	struct request_queue *q = bdev->bd_disk->queue;
+ 	struct request *rq;
+ 	struct scsi_request *req;
+-	size_t bufflen = 252, len, id_len;
++	size_t bufflen = 252, maxlen = 65532, len, id_len;
+ 	u8 *buf, *d, type, assoc;
+-	int error;
++	int retries = 1, error;
+ 
+ 	if (WARN_ON_ONCE(!blk_queue_scsi_passthrough(q)))
+ 		return -EINVAL;
+ 
++again:
+ 	buf = kzalloc(bufflen, GFP_KERNEL);
+ 	if (!buf)
+ 		return -ENOMEM;
+@@ -255,9 +256,16 @@ static int nfsd4_scsi_identify_device(struct block_device *bdev,
+ 
+ 	len = (buf[2] << 8) + buf[3] + 4;
+ 	if (len > bufflen) {
+-		pr_err("pNFS: INQUIRY 0x83 response invalid (len = %zd)\n",
+-			len);
+-		goto out_put_request;
++		if (len < maxlen && retries--) {
++			blk_put_request(rq);
++			kfree(buf);
++			bufflen = len;
++			goto again;
++		} else {
++			pr_err("pNFS: INQUIRY 0x83 response invalid (len = %zd)\n",
++				len);
++			goto out_put_request;
++		}
  	}
--	maxcount = min_t(u32, readdir->rd_maxcount, INT_MAX);
-+	maxcount = svc_max_payload(resp->rqstp);
-+	maxcount = min_t(u32, readdir->rd_maxcount, maxcount);
- 	/*
- 	 * Note the rfc defines rd_maxcount as the size of the
- 	 * READDIR4resok structure, which includes the verifier above
-@@ -3665,7 +3666,7 @@ nfsd4_encode_readdir(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4
  
- 	/* RFC 3530 14.2.24 allows us to ignore dircount when it's 0: */
- 	if (!readdir->rd_dircount)
--		readdir->rd_dircount = INT_MAX;
-+		readdir->rd_dircount = svc_max_payload(resp->rqstp);
- 
- 	readdir->xdr = xdr;
- 	readdir->rd_maxcount = maxcount;
+ 	d = buf + 4;
 -- 
 2.9.5
 
