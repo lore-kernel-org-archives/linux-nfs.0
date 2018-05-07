@@ -1,73 +1,106 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx3-rdu2.redhat.com ([66.187.233.73]:43384 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1751848AbeEGNBb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 7 May 2018 09:01:31 -0400
-From: Scott Mayhew <smayhew@redhat.com>
-To: bfields@fieldses.org, jlayton@kernel.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] nfsd: make nfsd4_scsi_identify_device retry with a larger buffer
-Date: Mon,  7 May 2018 09:01:31 -0400
-Message-Id: <20180507130131.7221-1-smayhew@redhat.com>
+Received: from mx144.netapp.com ([216.240.21.25]:18748 "EHLO mx144.netapp.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751923AbeEGNcy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 7 May 2018 09:32:54 -0400
+Subject: Re: [PATCH v1 01/19] xprtrdma: Add proper SPDX tags for
+ NetApp-contributed source
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: <linux-rdma@vger.kernel.org>, <linux-nfs@vger.kernel.org>
+References: <20180504192748.31688.3678.stgit@manet.1015granger.net>
+ <20180504193432.31688.65935.stgit@manet.1015granger.net>
+From: Anna Schumaker <Anna.Schumaker@Netapp.com>
+Message-ID: <4da36188-17d2-7b68-2974-80402c96359c@Netapp.com>
+Date: Mon, 7 May 2018 09:27:16 -0400
+MIME-Version: 1.0
+In-Reply-To: <20180504193432.31688.65935.stgit@manet.1015granger.net>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-nfsd4_scsi_identify_device() performs a single IDENTIFY command for the
-device identification VPD page using a small buffer.  If the reply is
-too large to fit in this buffer then the GETDEVICEINFO reply will not
-contain any info for the SCSI volume aside from the registration key.
-This can happen for example if the device has descriptors using long
-SCSI name strings.
+Hi Chuck,
 
-When the initial reply from the device indicates a larger buffer is
-needed, retry once using the page length from that reply.
+On 05/04/2018 03:34 PM, Chuck Lever wrote:
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+>  include/linux/sunrpc/rpc_rdma.h |    1 +
+>  include/linux/sunrpc/xprtrdma.h |    1 +
+>  net/sunrpc/xprtrdma/module.c    |    1 +
+>  net/sunrpc/xprtrdma/rpc_rdma.c  |    1 +
+>  net/sunrpc/xprtrdma/transport.c |    1 +
+>  net/sunrpc/xprtrdma/verbs.c     |    1 +
+>  net/sunrpc/xprtrdma/xprt_rdma.h |    1 +
+>  7 files changed, 7 insertions(+)
+> 
+> diff --git a/include/linux/sunrpc/rpc_rdma.h b/include/linux/sunrpc/rpc_rdma.h
+> index 8f144db..92d182f 100644
+> --- a/include/linux/sunrpc/rpc_rdma.h
+> +++ b/include/linux/sunrpc/rpc_rdma.h
+> @@ -1,3 +1,4 @@
+> +/* SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause */
+>  /*
+>   * Copyright (c) 2015-2017 Oracle. All rights reserved.
+>   * Copyright (c) 2003-2007 Network Appliance, Inc. All rights reserved.
+> diff --git a/include/linux/sunrpc/xprtrdma.h b/include/linux/sunrpc/xprtrdma.h
+> index 5859563..86fc38f 100644
+> --- a/include/linux/sunrpc/xprtrdma.h
+> +++ b/include/linux/sunrpc/xprtrdma.h
+> @@ -1,3 +1,4 @@
+> +/* SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause */
+>  /*
+>   * Copyright (c) 2003-2007 Network Appliance, Inc. All rights reserved.
+>   *
+> diff --git a/net/sunrpc/xprtrdma/module.c b/net/sunrpc/xprtrdma/module.c
+> index a762d19..f338065 100644
+> --- a/net/sunrpc/xprtrdma/module.c
+> +++ b/net/sunrpc/xprtrdma/module.c
+> @@ -1,3 +1,4 @@
+> +// SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause
 
-Signed-off-by: Scott Mayhew <smayhew@redhat.com>
----
- fs/nfsd/blocklayout.c | 18 +++++++++++++-----
- 1 file changed, 13 insertions(+), 5 deletions(-)
+I'm not familiar with hte SPDX-License-Identifier tag.  Is there a reason it has to exist in a separate comment block at the top of the file instead of getting rolled in with the copyright stuff right below it?
 
-diff --git a/fs/nfsd/blocklayout.c b/fs/nfsd/blocklayout.c
-index 70b8bf7..0cd9249 100644
---- a/fs/nfsd/blocklayout.c
-+++ b/fs/nfsd/blocklayout.c
-@@ -216,13 +216,14 @@ static int nfsd4_scsi_identify_device(struct block_device *bdev,
- 	struct request_queue *q = bdev->bd_disk->queue;
- 	struct request *rq;
- 	struct scsi_request *req;
--	size_t bufflen = 252, len, id_len;
-+	size_t bufflen = 252, maxlen = 65532, len, id_len;
- 	u8 *buf, *d, type, assoc;
--	int error;
-+	int retries = 1, error;
- 
- 	if (WARN_ON_ONCE(!blk_queue_scsi_passthrough(q)))
- 		return -EINVAL;
- 
-+again:
- 	buf = kzalloc(bufflen, GFP_KERNEL);
- 	if (!buf)
- 		return -ENOMEM;
-@@ -255,9 +256,16 @@ static int nfsd4_scsi_identify_device(struct block_device *bdev,
- 
- 	len = (buf[2] << 8) + buf[3] + 4;
- 	if (len > bufflen) {
--		pr_err("pNFS: INQUIRY 0x83 response invalid (len = %zd)\n",
--			len);
--		goto out_put_request;
-+		if (len < maxlen && retries--) {
-+			blk_put_request(rq);
-+			kfree(buf);
-+			bufflen = len;
-+			goto again;
-+		} else {
-+			pr_err("pNFS: INQUIRY 0x83 response invalid (len = %zd)\n",
-+				len);
-+			goto out_put_request;
-+		}
- 	}
- 
- 	d = buf + 4;
--- 
-2.9.5
+Either way, can you use the C-style ("/* ... */") comments here (and in a few other places below) for consistency?
 
+Thanks,
+Anna
+
+>  /*
+>   * Copyright (c) 2015, 2017 Oracle.  All rights reserved.
+>   */
+> diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
+> index e8adad3..8f89e3f 100644
+> --- a/net/sunrpc/xprtrdma/rpc_rdma.c
+> +++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+> @@ -1,3 +1,4 @@
+> +// SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause
+>  /*
+>   * Copyright (c) 2014-2017 Oracle.  All rights reserved.
+>   * Copyright (c) 2003-2007 Network Appliance, Inc. All rights reserved.
+> diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
+> index cc1aad3..4717578 100644
+> --- a/net/sunrpc/xprtrdma/transport.c
+> +++ b/net/sunrpc/xprtrdma/transport.c
+> @@ -1,3 +1,4 @@
+> +// SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause
+>  /*
+>   * Copyright (c) 2014-2017 Oracle.  All rights reserved.
+>   * Copyright (c) 2003-2007 Network Appliance, Inc. All rights reserved.
+> diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+> index c345d36..10f5032 100644
+> --- a/net/sunrpc/xprtrdma/verbs.c
+> +++ b/net/sunrpc/xprtrdma/verbs.c
+> @@ -1,3 +1,4 @@
+> +// SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause
+>  /*
+>   * Copyright (c) 2014-2017 Oracle.  All rights reserved.
+>   * Copyright (c) 2003-2007 Network Appliance, Inc. All rights reserved.
+> diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+> index cb41b12..e83ba758 100644
+> --- a/net/sunrpc/xprtrdma/xprt_rdma.h
+> +++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+> @@ -1,3 +1,4 @@
+> +/* SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause */
+>  /*
+>   * Copyright (c) 2014-2017 Oracle.  All rights reserved.
+>   * Copyright (c) 2003-2007 Network Appliance, Inc. All rights reserved.
+> 
