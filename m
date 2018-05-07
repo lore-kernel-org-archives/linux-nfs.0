@@ -1,81 +1,53 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qt0-f194.google.com ([209.85.216.194]:35339 "EHLO
-        mail-qt0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751748AbeEDUXo (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 4 May 2018 16:23:44 -0400
-Received: by mail-qt0-f194.google.com with SMTP id f5-v6so15698862qth.2
-        for <linux-nfs@vger.kernel.org>; Fri, 04 May 2018 13:23:44 -0700 (PDT)
-From: schumaker.anna@gmail.com
-To: Trond.Myklebust@primarydata.com, linux-nfs@vger.kernel.org
-Subject: [PATCH 5/5] NFS: Combine nfs4_call_sync() with nfs4_call_sync_sequence()
-Date: Fri,  4 May 2018 16:22:52 -0400
-Message-Id: <20180504202252.5862-6-Anna.Schumaker@Netapp.com>
-In-Reply-To: <20180504202252.5862-1-Anna.Schumaker@Netapp.com>
-References: <20180504202252.5862-1-Anna.Schumaker@Netapp.com>
+Received: from mx3-rdu2.redhat.com ([66.187.233.73]:54682 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1752129AbeEGNBJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 7 May 2018 09:01:09 -0400
+From: Scott Mayhew <smayhew@redhat.com>
+To: bfields@fieldses.org, jlayton@kernel.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH] nfsd: restrict rd_maxcount to svc_max_payload in nfsd_encode_readdir
+Date: Mon,  7 May 2018 09:01:08 -0400
+Message-Id: <20180507130108.7136-1-smayhew@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Anna Schumaker <Anna.Schumaker@Netapp.com>
+nfsd4_readdir_rsize restricts rd_maxcount to svc_max_payload when
+estimating the size of the readdir reply, but nfsd_encode_readdir
+restricts it to INT_MAX when encoding the reply.  This can result in log
+messages like "kernel: RPC request reserved 32896 but used 1049444".
 
-The nfs4_call_sync_sequence() version only hase a single user,
-nfs4_call_sync(), so let's just add in a call to nfs4_init_sequence()
-instead of needing to have another function just to do this.
+Restrict rd_dircount similarly (no reason it should be larger than
+svc_max_payload).
 
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+Signen-off-by: Scott Mayhew <smayhew@redhat.com>
 ---
- fs/nfs/nfs4proc.c | 25 ++++++++-----------------
- 1 file changed, 8 insertions(+), 17 deletions(-)
+ fs/nfsd/nfs4xdr.c | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 505f605dcac2..99d77f6e7e40 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -993,11 +993,13 @@ static const struct rpc_call_ops nfs40_call_sync_ops = {
- 	.rpc_call_done = nfs40_call_sync_done,
- };
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 1d048dd..cfe535c 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -3651,7 +3651,8 @@ nfsd4_encode_readdir(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4
+ 		nfserr = nfserr_resource;
+ 		goto err_no_verf;
+ 	}
+-	maxcount = min_t(u32, readdir->rd_maxcount, INT_MAX);
++	maxcount = svc_max_payload(resp->rqstp);
++	maxcount = min_t(u32, readdir->rd_maxcount, maxcount);
+ 	/*
+ 	 * Note the rfc defines rd_maxcount as the size of the
+ 	 * READDIR4resok structure, which includes the verifier above
+@@ -3665,7 +3666,7 @@ nfsd4_encode_readdir(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4
  
--static int nfs4_call_sync_sequence(struct rpc_clnt *clnt,
--				   struct nfs_server *server,
--				   struct rpc_message *msg,
--				   struct nfs4_sequence_args *args,
--				   struct nfs4_sequence_res *res)
-+int nfs4_call_sync(struct rpc_clnt *clnt,
-+		   struct nfs_server *server,
-+		   struct rpc_message *msg,
-+		   struct nfs4_sequence_args *args,
-+		   struct nfs4_sequence_res *res,
-+		   int cache_reply,
-+		   int privileged)
- {
- 	int ret;
- 	struct rpc_task *task;
-@@ -1014,6 +1016,7 @@ static int nfs4_call_sync_sequence(struct rpc_clnt *clnt,
- 		.callback_data = &data
- 	};
+ 	/* RFC 3530 14.2.24 allows us to ignore dircount when it's 0: */
+ 	if (!readdir->rd_dircount)
+-		readdir->rd_dircount = INT_MAX;
++		readdir->rd_dircount = svc_max_payload(resp->rqstp);
  
-+	nfs4_init_sequence(args, res, cache_reply, privileged);
- 	task = rpc_run_task(&task_setup);
- 	if (IS_ERR(task))
- 		ret = PTR_ERR(task);
-@@ -1024,18 +1027,6 @@ static int nfs4_call_sync_sequence(struct rpc_clnt *clnt,
- 	return ret;
- }
- 
--int nfs4_call_sync(struct rpc_clnt *clnt,
--		   struct nfs_server *server,
--		   struct rpc_message *msg,
--		   struct nfs4_sequence_args *args,
--		   struct nfs4_sequence_res *res,
--		   int cache_reply,
--		   int privileged)
--{
--	nfs4_init_sequence(args, res, cache_reply, privileged);
--	return nfs4_call_sync_sequence(clnt, server, msg, args, res);
--}
--
- static void update_changeattr(struct inode *dir, struct nfs4_change_info *cinfo,
- 		unsigned long timestamp)
- {
+ 	readdir->xdr = xdr;
+ 	readdir->rd_maxcount = maxcount;
 -- 
-2.17.0
+2.9.5
 
