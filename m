@@ -1,103 +1,67 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx3-rdu2.redhat.com ([66.187.233.73]:54128 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1752755AbeEGURl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 7 May 2018 16:17:41 -0400
-Date: Mon, 7 May 2018 16:17:40 -0400
-From: Scott Mayhew <smayhew@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: jlayton@kernel.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfsd: make nfsd4_scsi_identify_device retry with a
- larger buffer
-Message-ID: <20180507201740.4m6rff36bjuuv55t@tonberry.usersys.redhat.com>
-References: <20180507130131.7221-1-smayhew@redhat.com>
- <20180507184520.GF4749@fieldses.org>
+Received: from fieldses.org ([173.255.197.46]:50786 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S932339AbeEHQJW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 8 May 2018 12:09:22 -0400
+Date: Tue, 8 May 2018 12:09:22 -0400
+From: "bfields@fieldses.org" <bfields@fieldses.org>
+To: Trond Myklebust <trondmy@hammer.space>
+Cc: "syzbot+4b98281f2401ab849f4b@syzkaller.appspotmail.com"
+        <syzbot+4b98281f2401ab849f4b@syzkaller.appspotmail.com>,
+        "syzkaller-bugs@googlegroups.com" <syzkaller-bugs@googlegroups.com>,
+        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+        "davem@davemloft.net" <davem@davemloft.net>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "jlayton@kernel.org" <jlayton@kernel.org>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>
+Subject: [PATCH 1/2] sunrpc: handle ENOMEM in rpcb_getport_async
+Message-ID: <20180508160922.GB6151@fieldses.org>
+References: <f4f5e80803d08f47b9056a0366dd@google.com>
+ <20180417213308.GC18217@fieldses.org>
+ <1524002074.63751.5.camel@hammer.space>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20180507184520.GF4749@fieldses.org>
+In-Reply-To: <1524002074.63751.5.camel@hammer.space>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 07 May 2018, J. Bruce Fields wrote:
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-> On Mon, May 07, 2018 at 09:01:31AM -0400, Scott Mayhew wrote:
-> > nfsd4_scsi_identify_device() performs a single IDENTIFY command for the
-> > device identification VPD page using a small buffer.  If the reply is
-> > too large to fit in this buffer then the GETDEVICEINFO reply will not
-> > contain any info for the SCSI volume aside from the registration key.
-> > This can happen for example if the device has descriptors using long
-> > SCSI name strings.
-> > 
-> > When the initial reply from the device indicates a larger buffer is
-> > needed, retry once using the page length from that reply.
-> 
-> Looks good, but how did you choose 65532 as the maximum?  Does the scsi
-> layer give us any maximum?
+If we ignore the error we'll hit a null dereference a little later.
 
-So I wasn't quite sure about that.  The allocation length field for an
-INQUIRY command is two bytes.  There are various fields that the SPC-3
-doc says have to be a multiple of 4, but I couldn't find anything that
-says whether that applies to the allocation length.  Since the initial
-value 252 is a muliple of 4, I figured it wouldn't hurt anything to have
-the maximum be a multiple of 4 too.
+Reported-by: syzbot+4b98281f2401ab849f4b@syzkaller.appspotmail.com
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ net/sunrpc/rpcb_clnt.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
 
-OTOH if you look at scsi_get_vpd_buf() in drivers/scsi/scsi.c, the
-initial buffer size is SCSI_VPD_PG_LEN, which is 255.
+diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
+index c526f8fb37c9..82c120e51d64 100644
+--- a/net/sunrpc/rpcb_clnt.c
++++ b/net/sunrpc/rpcb_clnt.c
+@@ -771,6 +771,12 @@ void rpcb_getport_async(struct rpc_task *task)
+ 	case RPCBVERS_3:
+ 		map->r_netid = xprt->address_strings[RPC_DISPLAY_NETID];
+ 		map->r_addr = rpc_sockaddr2uaddr(sap, GFP_ATOMIC);
++		if (!map->r_addr) {
++			status = -ENOMEM;
++			dprintk("RPC: %5u %s: no memory available\n",
++				task->tk_pid, __func__);
++			goto bailout_free_args;
++		}
+ 		map->r_owner = "";
+ 		break;
+ 	case RPCBVERS_2:
+@@ -793,6 +799,8 @@ void rpcb_getport_async(struct rpc_task *task)
+ 	rpc_put_task(child);
+ 	return;
+ 
++bailout_free_args:
++	kfree(map);
+ bailout_release_client:
+ 	rpc_release_client(rpcb_clnt);
+ bailout_nofree:
+-- 
+2.17.0
 
--Scott
-
-> 
-> Also, I don't know why this is bothering me, but: I'd prefer "buflen" to
-> "bufflen".
-> 
-> --b.
-> 
-> > 
-> > Signed-off-by: Scott Mayhew <smayhew@redhat.com>
-> > ---
-> >  fs/nfsd/blocklayout.c | 18 +++++++++++++-----
-> >  1 file changed, 13 insertions(+), 5 deletions(-)
-> > 
-> > diff --git a/fs/nfsd/blocklayout.c b/fs/nfsd/blocklayout.c
-> > index 70b8bf7..0cd9249 100644
-> > --- a/fs/nfsd/blocklayout.c
-> > +++ b/fs/nfsd/blocklayout.c
-> > @@ -216,13 +216,14 @@ static int nfsd4_scsi_identify_device(struct block_device *bdev,
-> >  	struct request_queue *q = bdev->bd_disk->queue;
-> >  	struct request *rq;
-> >  	struct scsi_request *req;
-> > -	size_t bufflen = 252, len, id_len;
-> > +	size_t bufflen = 252, maxlen = 65532, len, id_len;
-> >  	u8 *buf, *d, type, assoc;
-> > -	int error;
-> > +	int retries = 1, error;
-> >  
-> >  	if (WARN_ON_ONCE(!blk_queue_scsi_passthrough(q)))
-> >  		return -EINVAL;
-> >  
-> > +again:
-> >  	buf = kzalloc(bufflen, GFP_KERNEL);
-> >  	if (!buf)
-> >  		return -ENOMEM;
-> > @@ -255,9 +256,16 @@ static int nfsd4_scsi_identify_device(struct block_device *bdev,
-> >  
-> >  	len = (buf[2] << 8) + buf[3] + 4;
-> >  	if (len > bufflen) {
-> > -		pr_err("pNFS: INQUIRY 0x83 response invalid (len = %zd)\n",
-> > -			len);
-> > -		goto out_put_request;
-> > +		if (len < maxlen && retries--) {
-> > +			blk_put_request(rq);
-> > +			kfree(buf);
-> > +			bufflen = len;
-> > +			goto again;
-> > +		} else {
-> > +			pr_err("pNFS: INQUIRY 0x83 response invalid (len = %zd)\n",
-> > +				len);
-> > +			goto out_put_request;
-> > +		}
-> >  	}
-> >  
-> >  	d = buf + 4;
-> > -- 
-> > 2.9.5
