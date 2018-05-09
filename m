@@ -1,108 +1,152 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:53420 "EHLO fieldses.org"
+Received: from mx2.suse.de ([195.135.220.15]:38649 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S965118AbeEIVDK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 9 May 2018 17:03:10 -0400
-Date: Wed, 9 May 2018 17:03:09 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v1 09/19] svcrdma: Preserve Receive buffer until
- svc_rdma_sendto
-Message-ID: <20180509210309.GC31959@fieldses.org>
-References: <20180507192126.4608.63295.stgit@klimt.1015granger.net>
- <20180507192737.4608.29315.stgit@klimt.1015granger.net>
+        id S965147AbeEIVEv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 9 May 2018 17:04:51 -0400
+Date: Wed, 9 May 2018 23:04:47 +0200
+From: Michal Hocko <mhocko@kernel.org>
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Cc: "Theodore Y. Ts'o" <tytso@mit.edu>,
+        LKML <linux-kernel@vger.kernel.org>,
+        Artem Bityutskiy <dedekind1@gmail.com>,
+        Richard Weinberger <richard@nod.at>,
+        David Woodhouse <dwmw2@infradead.org>,
+        Brian Norris <computersforpeace@gmail.com>,
+        Boris Brezillon <boris.brezillon@free-electrons.com>,
+        Marek Vasut <marek.vasut@gmail.com>,
+        Cyrille Pitchen <cyrille.pitchen@wedev4u.fr>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Steven Whitehouse <swhiteho@redhat.com>,
+        Bob Peterson <rpeterso@redhat.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Adrian Hunter <adrian.hunter@intel.com>,
+        Philippe Ombredanne <pombredanne@nexb.com>,
+        Kate Stewart <kstewart@linuxfoundation.org>,
+        Mikulas Patocka <mpatocka@redhat.com>,
+        linux-mtd@lists.infradead.org, linux-ext4@vger.kernel.org,
+        cluster-devel@redhat.com, linux-nfs@vger.kernel.org,
+        linux-mm@kvack.org
+Subject: Re: vmalloc with GFP_NOFS
+Message-ID: <20180509210447.GX32366@dhcp22.suse.cz>
+References: <20180424162712.GL17484@dhcp22.suse.cz>
+ <20180424183536.GF30619@thunk.org>
+ <20180424192542.GS17484@dhcp22.suse.cz>
+ <20180509134222.GU32366@dhcp22.suse.cz>
+ <20180509151351.GA4111@magnolia>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20180507192737.4608.29315.stgit@klimt.1015granger.net>
+In-Reply-To: <20180509151351.GA4111@magnolia>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, May 07, 2018 at 03:27:37PM -0400, Chuck Lever wrote:
-> Rather than releasing the incoming svc_rdma_recv_ctxt at the end of
-> svc_rdma_recvfrom, hold onto it until svc_rdma_sendto.
+On Wed 09-05-18 08:13:51, Darrick J. Wong wrote:
+> On Wed, May 09, 2018 at 03:42:22PM +0200, Michal Hocko wrote:
+> > On Tue 24-04-18 13:25:42, Michal Hocko wrote:
+> > [...]
+> > > > As a suggestion, could you take
+> > > > documentation about how to convert to the memalloc_nofs_{save,restore}
+> > > > scope api (which I think you've written about e-mails at length
+> > > > before), and put that into a file in Documentation/core-api?
+> > > 
+> > > I can.
+> > 
+> > Does something like the below sound reasonable/helpful?
+> > ---
+> > =================================
+> > GFP masks used from FS/IO context
+> > =================================
+> > 
+> > :Date: Mapy, 2018
+> > :Author: Michal Hocko <mhocko@kernel.org>
+> > 
+> > Introduction
+> > ============
+> > 
+> > FS resp. IO submitting code paths have to be careful when allocating
 > 
-> This permits the contents of the Receive buffer to be preserved
-> through svc_process and then referenced directly in sendto as it
-> constructs Write and Reply chunks to return to the client.
+> Not sure what 'FS resp. IO' means here -- 'FS and IO' ?
 > 
-> The real changes will come in subsequent patches.
+> (Or is this one of those things where this looks like plain English text
+> but in reality it's some sort of markup that I'm not so familiar with?)
 > 
-> Note: I cannot use ->xpo_release_rqst for this purpose because that
-> is called _before_ ->xpo_sendto. svc_rdma_sendto uses information in
-> the received Call transport header to construct the Reply transport
-> header, which is preserved in the RPC's Receive buffer.
-> 
-> The historical comment in svc_send() isn't helpful: it is already
-> obvious that ->xpo_release_rqst is being called before ->xpo_sendto,
-> but there is no explanation for this ordering going back to the
-> beginning of the git era.
+> Confused because I've seen 'resp.' used as shorthand for
+> 'responsible'...
 
-Yeah.  I'm fine with deleting that comment at least.  (Or maybe moving
-the call if it makes sense, I haven't thought about it.)
-
---b.
+Well, I've tried to cover both. Filesystem and IO code paths which
+allocate while in sensitive context. IO submission is kinda clear but I
+am not sure what a general term for filsystem code paths would be. I
+would be greatful for any hints here.
 
 > 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
->  net/sunrpc/xprtrdma/svc_rdma_recvfrom.c |    2 +-
->  net/sunrpc/xprtrdma/svc_rdma_sendto.c   |   14 +++++++++++---
->  2 files changed, 12 insertions(+), 4 deletions(-)
+> > memory to prevent from potential recursion deadlocks caused by direct
+> > memory reclaim calling back into the FS/IO path and block on already
+> > held resources (e.g. locks). Traditional way to avoid this problem
 > 
-> diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-> index ecfe7c9..d9fef52 100644
-> --- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-> +++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-> @@ -789,7 +789,7 @@ int svc_rdma_recvfrom(struct svc_rqst *rqstp)
->  		goto out_readchunk;
->  
->  complete:
-> -	svc_rdma_recv_ctxt_put(rdma_xprt, ctxt);
-> +	rqstp->rq_xprt_ctxt = ctxt;
->  	rqstp->rq_prot = IPPROTO_MAX;
->  	svc_xprt_copy_addrs(rqstp, xprt);
->  	return rqstp->rq_arg.len;
-> diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-> index a397d9a..cbbde70 100644
-> --- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-> +++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-> @@ -623,6 +623,7 @@ int svc_rdma_sendto(struct svc_rqst *rqstp)
->  	struct svc_xprt *xprt = rqstp->rq_xprt;
->  	struct svcxprt_rdma *rdma =
->  		container_of(xprt, struct svcxprt_rdma, sc_xprt);
-> +	struct svc_rdma_recv_ctxt *rctxt = rqstp->rq_xprt_ctxt;
->  	__be32 *p, *rdma_argp, *rdma_resp, *wr_lst, *rp_ch;
->  	struct xdr_buf *xdr = &rqstp->rq_res;
->  	struct page *res_page;
-> @@ -675,7 +676,12 @@ int svc_rdma_sendto(struct svc_rqst *rqstp)
->  				      wr_lst, rp_ch);
->  	if (ret < 0)
->  		goto err0;
-> -	return 0;
-> +	ret = 0;
-> +
-> +out:
-> +	rqstp->rq_xprt_ctxt = NULL;
-> +	svc_rdma_recv_ctxt_put(rdma, rctxt);
-> +	return ret;
->  
->   err2:
->  	if (ret != -E2BIG && ret != -EINVAL)
-> @@ -684,12 +690,14 @@ int svc_rdma_sendto(struct svc_rqst *rqstp)
->  	ret = svc_rdma_send_error_msg(rdma, rdma_resp, rqstp);
->  	if (ret < 0)
->  		goto err0;
-> -	return 0;
-> +	ret = 0;
-> +	goto out;
->  
->   err1:
->  	put_page(res_page);
->   err0:
->  	trace_svcrdma_send_failed(rqstp, ret);
->  	set_bit(XPT_CLOSE, &xprt->xpt_flags);
-> -	return -ENOTCONN;
-> +	ret = -ENOTCONN;
-> +	goto out;
->  }
+> 'The traditional way to avoid this deadlock problem...'
+
+Done
+
+> > is to clear __GFP_FS resp. __GFP_IO (note the later implies clearing
+> > the first as well) in the gfp mask when calling an allocator. GFP_NOFS
+> > resp. GFP_NOIO can be used as shortcut.
+> > 
+> > This has been the traditional way to avoid deadlocks since ages. It
+> 
+> I think this sentence is a little redundant with the previous sentence,
+> you could chop it out and join this paragraph to the one before it.
+
+OK
+
+> 
+> > turned out though that above approach has led to abuses when the restricted
+> > gfp mask is used "just in case" without a deeper consideration which leads
+> > to problems because an excessive use of GFP_NOFS/GFP_NOIO can lead to
+> > memory over-reclaim or other memory reclaim issues.
+> > 
+> > New API
+> > =======
+> > 
+> > Since 4.12 we do have a generic scope API for both NOFS and NOIO context
+> > ``memalloc_nofs_save``, ``memalloc_nofs_restore`` resp. ``memalloc_noio_save``,
+> > ``memalloc_noio_restore`` which allow to mark a scope to be a critical
+> > section from the memory reclaim recursion into FS/IO POV. Any allocation
+> > from that scope will inherently drop __GFP_FS resp. __GFP_IO from the given
+> > mask so no memory allocation can recurse back in the FS/IO.
+> > 
+> > FS/IO code then simply calls the appropriate save function right at
+> > the layer where a lock taken from the reclaim context (e.g. shrinker)
+> > is taken and the corresponding restore function when the lock is
+> > released. All that ideally along with an explanation what is the reclaim
+> > context for easier maintenance.
+> > 
+> > What about __vmalloc(GFP_NOFS)
+> > ==============================
+> > 
+> > vmalloc doesn't support GFP_NOFS semantic because there are hardcoded
+> > GFP_KERNEL allocations deep inside the allocator which are quit non-trivial
+> 
+> ...which are quite non-trivial...
+
+fixed
+
+> > to fix up. That means that calling ``vmalloc`` with GFP_NOFS/GFP_NOIO is
+> > almost always a bug. The good news is that the NOFS/NOIO semantic can be
+> > achieved by the scope api.
+> > 
+> > In the ideal world, upper layers should already mark dangerous contexts
+> > and so no special care is required and vmalloc should be called without
+> > any problems. Sometimes if the context is not really clear or there are
+> > layering violations then the recommended way around that is to wrap ``vmalloc``
+> > by the scope API with a comment explaining the problem.
+> 
+> Otherwise looks ok to me based on my understanding of how all this is
+> supposed to work...
+> 
+> Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
+
+Thanks for your review!
+
+-- 
+Michal Hocko
+SUSE Labs
