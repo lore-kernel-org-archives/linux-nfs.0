@@ -1,77 +1,111 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:48484 "EHLO mx2.suse.de"
+Received: from fieldses.org ([173.255.197.46]:54914 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753979AbeEJHSb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 10 May 2018 03:18:31 -0400
-Date: Thu, 10 May 2018 09:18:25 +0200
-From: Michal Hocko <mhocko@kernel.org>
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
-Cc: "Theodore Y. Ts'o" <tytso@mit.edu>,
-        LKML <linux-kernel@vger.kernel.org>,
-        Artem Bityutskiy <dedekind1@gmail.com>,
-        Richard Weinberger <richard@nod.at>,
-        David Woodhouse <dwmw2@infradead.org>,
-        Brian Norris <computersforpeace@gmail.com>,
-        Boris Brezillon <boris.brezillon@free-electrons.com>,
-        Marek Vasut <marek.vasut@gmail.com>,
-        Cyrille Pitchen <cyrille.pitchen@wedev4u.fr>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Steven Whitehouse <swhiteho@redhat.com>,
-        Bob Peterson <rpeterso@redhat.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Adrian Hunter <adrian.hunter@intel.com>,
-        Philippe Ombredanne <pombredanne@nexb.com>,
-        Kate Stewart <kstewart@linuxfoundation.org>,
-        Mikulas Patocka <mpatocka@redhat.com>,
-        linux-mtd@lists.infradead.org, linux-ext4@vger.kernel.org,
-        cluster-devel@redhat.com, linux-nfs@vger.kernel.org,
-        linux-mm@kvack.org
-Subject: Re: vmalloc with GFP_NOFS
-Message-ID: <20180510071825.GC32366@dhcp22.suse.cz>
-References: <20180424162712.GL17484@dhcp22.suse.cz>
- <20180424183536.GF30619@thunk.org>
- <20180424192542.GS17484@dhcp22.suse.cz>
- <20180509134222.GU32366@dhcp22.suse.cz>
- <20180509151351.GA4111@magnolia>
- <20180509210447.GX32366@dhcp22.suse.cz>
- <20180509220231.GD25312@magnolia>
- <20180510055825.GB32366@dhcp22.suse.cz>
+        id S965300AbeEJOQv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 10 May 2018 10:16:51 -0400
+Date: Thu, 10 May 2018 10:16:51 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Scott Mayhew <smayhew@redhat.com>
+Cc: jlayton@kernel.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfsd: make nfsd4_scsi_identify_device retry with a
+ larger buffer
+Message-ID: <20180510141651.GA29678@fieldses.org>
+References: <20180507130131.7221-1-smayhew@redhat.com>
+ <20180507184520.GF4749@fieldses.org>
+ <20180507201740.4m6rff36bjuuv55t@tonberry.usersys.redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20180510055825.GB32366@dhcp22.suse.cz>
+In-Reply-To: <20180507201740.4m6rff36bjuuv55t@tonberry.usersys.redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu 10-05-18 07:58:25, Michal Hocko wrote:
-> On Wed 09-05-18 15:02:31, Darrick J. Wong wrote:
-> > On Wed, May 09, 2018 at 11:04:47PM +0200, Michal Hocko wrote:
-> > > On Wed 09-05-18 08:13:51, Darrick J. Wong wrote:
-> [...]
-> > > > > FS resp. IO submitting code paths have to be careful when allocating
-> > > > 
-> > > > Not sure what 'FS resp. IO' means here -- 'FS and IO' ?
-> > > > 
-> > > > (Or is this one of those things where this looks like plain English text
-> > > > but in reality it's some sort of markup that I'm not so familiar with?)
-> > > > 
-> > > > Confused because I've seen 'resp.' used as shorthand for
-> > > > 'responsible'...
-> > > 
-> > > Well, I've tried to cover both. Filesystem and IO code paths which
-> > > allocate while in sensitive context. IO submission is kinda clear but I
-> > > am not sure what a general term for filsystem code paths would be. I
-> > > would be greatful for any hints here.
-> > 
-> > "Code paths in the filesystem and IO stacks must be careful when
-> > allocating memory to prevent recursion deadlocks caused by direct memory
-> > reclaim calling back into the FS or IO paths and blocking on already
-> > held resources (e.g. locks)." ?
+On Mon, May 07, 2018 at 04:17:40PM -0400, Scott Mayhew wrote:
+> On Mon, 07 May 2018, J. Bruce Fields wrote:
 > 
-> Great, thanks!
+> > On Mon, May 07, 2018 at 09:01:31AM -0400, Scott Mayhew wrote:
+> > > nfsd4_scsi_identify_device() performs a single IDENTIFY command for the
+> > > device identification VPD page using a small buffer.  If the reply is
+> > > too large to fit in this buffer then the GETDEVICEINFO reply will not
+> > > contain any info for the SCSI volume aside from the registration key.
+> > > This can happen for example if the device has descriptors using long
+> > > SCSI name strings.
+> > > 
+> > > When the initial reply from the device indicates a larger buffer is
+> > > needed, retry once using the page length from that reply.
+> > 
+> > Looks good, but how did you choose 65532 as the maximum?  Does the scsi
+> > layer give us any maximum?
+> 
+> So I wasn't quite sure about that.  The allocation length field for an
+> INQUIRY command is two bytes.  There are various fields that the SPC-3
+> doc says have to be a multiple of 4, but I couldn't find anything that
+> says whether that applies to the allocation length.  Since the initial
+> value 252 is a muliple of 4, I figured it wouldn't hurt anything to have
+> the maximum be a multiple of 4 too.
+> 
+> OTOH if you look at scsi_get_vpd_buf() in drivers/scsi/scsi.c, the
+> initial buffer size is SCSI_VPD_PG_LEN, which is 255.
 
-I dared to extend the last part to "(e.g. locks - most commonly those
-used for the transaction context)"
--- 
-Michal Hocko
-SUSE Labs
+OK.  Well, till we have some input from a scsi expert, would you mind
+just adding a brief summary of the above as a code comment?
+
+--b.
+
+> 
+> -Scott
+> 
+> > 
+> > Also, I don't know why this is bothering me, but: I'd prefer "buflen" to
+> > "bufflen".
+> > 
+> > --b.
+> > 
+> > > 
+> > > Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+> > > ---
+> > >  fs/nfsd/blocklayout.c | 18 +++++++++++++-----
+> > >  1 file changed, 13 insertions(+), 5 deletions(-)
+> > > 
+> > > diff --git a/fs/nfsd/blocklayout.c b/fs/nfsd/blocklayout.c
+> > > index 70b8bf7..0cd9249 100644
+> > > --- a/fs/nfsd/blocklayout.c
+> > > +++ b/fs/nfsd/blocklayout.c
+> > > @@ -216,13 +216,14 @@ static int nfsd4_scsi_identify_device(struct block_device *bdev,
+> > >  	struct request_queue *q = bdev->bd_disk->queue;
+> > >  	struct request *rq;
+> > >  	struct scsi_request *req;
+> > > -	size_t bufflen = 252, len, id_len;
+> > > +	size_t bufflen = 252, maxlen = 65532, len, id_len;
+> > >  	u8 *buf, *d, type, assoc;
+> > > -	int error;
+> > > +	int retries = 1, error;
+> > >  
+> > >  	if (WARN_ON_ONCE(!blk_queue_scsi_passthrough(q)))
+> > >  		return -EINVAL;
+> > >  
+> > > +again:
+> > >  	buf = kzalloc(bufflen, GFP_KERNEL);
+> > >  	if (!buf)
+> > >  		return -ENOMEM;
+> > > @@ -255,9 +256,16 @@ static int nfsd4_scsi_identify_device(struct block_device *bdev,
+> > >  
+> > >  	len = (buf[2] << 8) + buf[3] + 4;
+> > >  	if (len > bufflen) {
+> > > -		pr_err("pNFS: INQUIRY 0x83 response invalid (len = %zd)\n",
+> > > -			len);
+> > > -		goto out_put_request;
+> > > +		if (len < maxlen && retries--) {
+> > > +			blk_put_request(rq);
+> > > +			kfree(buf);
+> > > +			bufflen = len;
+> > > +			goto again;
+> > > +		} else {
+> > > +			pr_err("pNFS: INQUIRY 0x83 response invalid (len = %zd)\n",
+> > > +				len);
+> > > +			goto out_put_request;
+> > > +		}
+> > >  	}
+> > >  
+> > >  	d = buf + 4;
+> > > -- 
+> > > 2.9.5
