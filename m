@@ -1,11 +1,11 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp2120.oracle.com ([156.151.31.85]:47040 "EHLO
-        userp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S935307AbeEIWEH (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 9 May 2018 18:04:07 -0400
-Date: Wed, 9 May 2018 15:02:31 -0700
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-To: Michal Hocko <mhocko@kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:41148 "EHLO mx2.suse.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1756644AbeEJF63 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 10 May 2018 01:58:29 -0400
+Date: Thu, 10 May 2018 07:58:25 +0200
+From: Michal Hocko <mhocko@kernel.org>
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Cc: "Theodore Y. Ts'o" <tytso@mit.edu>,
         LKML <linux-kernel@vger.kernel.org>,
         Artem Bityutskiy <dedekind1@gmail.com>,
@@ -28,135 +28,45 @@ Cc: "Theodore Y. Ts'o" <tytso@mit.edu>,
         cluster-devel@redhat.com, linux-nfs@vger.kernel.org,
         linux-mm@kvack.org
 Subject: Re: vmalloc with GFP_NOFS
-Message-ID: <20180509220231.GD25312@magnolia>
+Message-ID: <20180510055825.GB32366@dhcp22.suse.cz>
 References: <20180424162712.GL17484@dhcp22.suse.cz>
  <20180424183536.GF30619@thunk.org>
  <20180424192542.GS17484@dhcp22.suse.cz>
  <20180509134222.GU32366@dhcp22.suse.cz>
  <20180509151351.GA4111@magnolia>
  <20180509210447.GX32366@dhcp22.suse.cz>
+ <20180509220231.GD25312@magnolia>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20180509210447.GX32366@dhcp22.suse.cz>
+In-Reply-To: <20180509220231.GD25312@magnolia>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, May 09, 2018 at 11:04:47PM +0200, Michal Hocko wrote:
-> On Wed 09-05-18 08:13:51, Darrick J. Wong wrote:
-> > On Wed, May 09, 2018 at 03:42:22PM +0200, Michal Hocko wrote:
-> > > On Tue 24-04-18 13:25:42, Michal Hocko wrote:
-> > > [...]
-> > > > > As a suggestion, could you take
-> > > > > documentation about how to convert to the memalloc_nofs_{save,restore}
-> > > > > scope api (which I think you've written about e-mails at length
-> > > > > before), and put that into a file in Documentation/core-api?
-> > > > 
-> > > > I can.
+On Wed 09-05-18 15:02:31, Darrick J. Wong wrote:
+> On Wed, May 09, 2018 at 11:04:47PM +0200, Michal Hocko wrote:
+> > On Wed 09-05-18 08:13:51, Darrick J. Wong wrote:
+[...]
+> > > > FS resp. IO submitting code paths have to be careful when allocating
 > > > 
-> > > Does something like the below sound reasonable/helpful?
-> > > ---
-> > > =================================
-> > > GFP masks used from FS/IO context
-> > > =================================
+> > > Not sure what 'FS resp. IO' means here -- 'FS and IO' ?
 > > > 
-> > > :Date: Mapy, 2018
-> > > :Author: Michal Hocko <mhocko@kernel.org>
+> > > (Or is this one of those things where this looks like plain English text
+> > > but in reality it's some sort of markup that I'm not so familiar with?)
 > > > 
-> > > Introduction
-> > > ============
-> > > 
-> > > FS resp. IO submitting code paths have to be careful when allocating
+> > > Confused because I've seen 'resp.' used as shorthand for
+> > > 'responsible'...
 > > 
-> > Not sure what 'FS resp. IO' means here -- 'FS and IO' ?
-> > 
-> > (Or is this one of those things where this looks like plain English text
-> > but in reality it's some sort of markup that I'm not so familiar with?)
-> > 
-> > Confused because I've seen 'resp.' used as shorthand for
-> > 'responsible'...
+> > Well, I've tried to cover both. Filesystem and IO code paths which
+> > allocate while in sensitive context. IO submission is kinda clear but I
+> > am not sure what a general term for filsystem code paths would be. I
+> > would be greatful for any hints here.
 > 
-> Well, I've tried to cover both. Filesystem and IO code paths which
-> allocate while in sensitive context. IO submission is kinda clear but I
-> am not sure what a general term for filsystem code paths would be. I
-> would be greatful for any hints here.
+> "Code paths in the filesystem and IO stacks must be careful when
+> allocating memory to prevent recursion deadlocks caused by direct memory
+> reclaim calling back into the FS or IO paths and blocking on already
+> held resources (e.g. locks)." ?
 
-"Code paths in the filesystem and IO stacks must be careful when
-allocating memory to prevent recursion deadlocks caused by direct memory
-reclaim calling back into the FS or IO paths and blocking on already
-held resources (e.g. locks)." ?
-
---D
-
-> 
-> > 
-> > > memory to prevent from potential recursion deadlocks caused by direct
-> > > memory reclaim calling back into the FS/IO path and block on already
-> > > held resources (e.g. locks). Traditional way to avoid this problem
-> > 
-> > 'The traditional way to avoid this deadlock problem...'
-> 
-> Done
-> 
-> > > is to clear __GFP_FS resp. __GFP_IO (note the later implies clearing
-> > > the first as well) in the gfp mask when calling an allocator. GFP_NOFS
-> > > resp. GFP_NOIO can be used as shortcut.
-> > > 
-> > > This has been the traditional way to avoid deadlocks since ages. It
-> > 
-> > I think this sentence is a little redundant with the previous sentence,
-> > you could chop it out and join this paragraph to the one before it.
-> 
-> OK
-> 
-> > 
-> > > turned out though that above approach has led to abuses when the restricted
-> > > gfp mask is used "just in case" without a deeper consideration which leads
-> > > to problems because an excessive use of GFP_NOFS/GFP_NOIO can lead to
-> > > memory over-reclaim or other memory reclaim issues.
-> > > 
-> > > New API
-> > > =======
-> > > 
-> > > Since 4.12 we do have a generic scope API for both NOFS and NOIO context
-> > > ``memalloc_nofs_save``, ``memalloc_nofs_restore`` resp. ``memalloc_noio_save``,
-> > > ``memalloc_noio_restore`` which allow to mark a scope to be a critical
-> > > section from the memory reclaim recursion into FS/IO POV. Any allocation
-> > > from that scope will inherently drop __GFP_FS resp. __GFP_IO from the given
-> > > mask so no memory allocation can recurse back in the FS/IO.
-> > > 
-> > > FS/IO code then simply calls the appropriate save function right at
-> > > the layer where a lock taken from the reclaim context (e.g. shrinker)
-> > > is taken and the corresponding restore function when the lock is
-> > > released. All that ideally along with an explanation what is the reclaim
-> > > context for easier maintenance.
-> > > 
-> > > What about __vmalloc(GFP_NOFS)
-> > > ==============================
-> > > 
-> > > vmalloc doesn't support GFP_NOFS semantic because there are hardcoded
-> > > GFP_KERNEL allocations deep inside the allocator which are quit non-trivial
-> > 
-> > ...which are quite non-trivial...
-> 
-> fixed
-> 
-> > > to fix up. That means that calling ``vmalloc`` with GFP_NOFS/GFP_NOIO is
-> > > almost always a bug. The good news is that the NOFS/NOIO semantic can be
-> > > achieved by the scope api.
-> > > 
-> > > In the ideal world, upper layers should already mark dangerous contexts
-> > > and so no special care is required and vmalloc should be called without
-> > > any problems. Sometimes if the context is not really clear or there are
-> > > layering violations then the recommended way around that is to wrap ``vmalloc``
-> > > by the scope API with a comment explaining the problem.
-> > 
-> > Otherwise looks ok to me based on my understanding of how all this is
-> > supposed to work...
-> > 
-> > Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
-> 
-> Thanks for your review!
-> 
-> -- 
-> Michal Hocko
-> SUSE Labs
+Great, thanks!
+-- 
+Michal Hocko
+SUSE Labs
