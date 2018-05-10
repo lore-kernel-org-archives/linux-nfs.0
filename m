@@ -1,75 +1,77 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp-fw-33001.amazon.com ([207.171.190.10]:42564 "EHLO
-        smtp-fw-33001.amazon.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1756233AbeEJGNA (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 10 May 2018 02:13:00 -0400
-From: Vallish Vaidyeshwara <vallish@amazon.com>
-To: <trond.myklebust@primarydata.com>, <anna.schumaker@netapp.com>,
-        <jlayton@kernel.org>, <bfields@fieldses.org>,
-        <linux-nfs@vger.kernel.org>
-CC: <jsstraus@amazon.com>
-Subject: [PATCH 0/2] SUNRPC: Clean up port reuse behavior on reconnects
-Date: Thu, 10 May 2018 06:12:52 +0000
-Message-ID: <1525932774-98736-1-git-send-email-vallish@amazon.com>
+Received: from mx2.suse.de ([195.135.220.15]:48484 "EHLO mx2.suse.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1753979AbeEJHSb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 10 May 2018 03:18:31 -0400
+Date: Thu, 10 May 2018 09:18:25 +0200
+From: Michal Hocko <mhocko@kernel.org>
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Cc: "Theodore Y. Ts'o" <tytso@mit.edu>,
+        LKML <linux-kernel@vger.kernel.org>,
+        Artem Bityutskiy <dedekind1@gmail.com>,
+        Richard Weinberger <richard@nod.at>,
+        David Woodhouse <dwmw2@infradead.org>,
+        Brian Norris <computersforpeace@gmail.com>,
+        Boris Brezillon <boris.brezillon@free-electrons.com>,
+        Marek Vasut <marek.vasut@gmail.com>,
+        Cyrille Pitchen <cyrille.pitchen@wedev4u.fr>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Steven Whitehouse <swhiteho@redhat.com>,
+        Bob Peterson <rpeterso@redhat.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Adrian Hunter <adrian.hunter@intel.com>,
+        Philippe Ombredanne <pombredanne@nexb.com>,
+        Kate Stewart <kstewart@linuxfoundation.org>,
+        Mikulas Patocka <mpatocka@redhat.com>,
+        linux-mtd@lists.infradead.org, linux-ext4@vger.kernel.org,
+        cluster-devel@redhat.com, linux-nfs@vger.kernel.org,
+        linux-mm@kvack.org
+Subject: Re: vmalloc with GFP_NOFS
+Message-ID: <20180510071825.GC32366@dhcp22.suse.cz>
+References: <20180424162712.GL17484@dhcp22.suse.cz>
+ <20180424183536.GF30619@thunk.org>
+ <20180424192542.GS17484@dhcp22.suse.cz>
+ <20180509134222.GU32366@dhcp22.suse.cz>
+ <20180509151351.GA4111@magnolia>
+ <20180509210447.GX32366@dhcp22.suse.cz>
+ <20180509220231.GD25312@magnolia>
+ <20180510055825.GB32366@dhcp22.suse.cz>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20180510055825.GB32366@dhcp22.suse.cz>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We have seen examples of NFSv4 client reconnections failing due to
-client source port reuse combined with stateful TCP state tracking in
-middleboxes.
+On Thu 10-05-18 07:58:25, Michal Hocko wrote:
+> On Wed 09-05-18 15:02:31, Darrick J. Wong wrote:
+> > On Wed, May 09, 2018 at 11:04:47PM +0200, Michal Hocko wrote:
+> > > On Wed 09-05-18 08:13:51, Darrick J. Wong wrote:
+> [...]
+> > > > > FS resp. IO submitting code paths have to be careful when allocating
+> > > > 
+> > > > Not sure what 'FS resp. IO' means here -- 'FS and IO' ?
+> > > > 
+> > > > (Or is this one of those things where this looks like plain English text
+> > > > but in reality it's some sort of markup that I'm not so familiar with?)
+> > > > 
+> > > > Confused because I've seen 'resp.' used as shorthand for
+> > > > 'responsible'...
+> > > 
+> > > Well, I've tried to cover both. Filesystem and IO code paths which
+> > > allocate while in sensitive context. IO submission is kinda clear but I
+> > > am not sure what a general term for filsystem code paths would be. I
+> > > would be greatful for any hints here.
+> > 
+> > "Code paths in the filesystem and IO stacks must be careful when
+> > allocating memory to prevent recursion deadlocks caused by direct memory
+> > reclaim calling back into the FS or IO paths and blocking on already
+> > held resources (e.g. locks)." ?
+> 
+> Great, thanks!
 
-Commit 0f7a622ca616 ("rpc: xs_bind - do not bind when requesting a
-random ephemeral port"), commit 4dda9c8a5e34 ("SUNRPC: Set SO_REUSEPORT
-socket option for TCP connections"), and commit 1f4c17a03ba7 ("SUNRPC:
-Handle EADDRNOTAVAIL on connection failures") had unintended side effects
-of making port reuse dependent on whether that client uses reserved or
-non-reserved source ports.
-
-This series fixes the observed NFSv4 client reconnect failures by
-choosing a new source port regardless of which port range is in use
-for RST or FIN terminating the prior connection. This series does
-not restore the original always-reuse behavior that existed prior to
-commits mentioned above.
-
-Patch 1:
---------
-SUNRPC: Need to reuse non-reserved port for reconnect
-
-This patch restores the original behavior of port reuse in all
-scenarios.
-
-Patch 2:
---------
-SUNRPC: Reconnect with new port on server initiated connection
-    termination
-
-Client uses a new port only in cases where server has terminated
-the connection explicitly using RST or FIN.
-
-Proposed outcome with this patch series:
-----------------------------------------
-------------------------------------------------------------------
-| Port type | Connection termination | Current    | With this    |
-|           |         type           | behavior   | patch series |
-------------------------------------------------------------------
-|  Reserved | Network partition-DROP | Reuse port | Reuse port   |
-------------------------------------------------------------------
-|  Reserved | FIN from server        | Reuse port | New port     |
-------------------------------------------------------------------
-|  Reserved | RST from server        | Reuse port | New port     |
-------------------------------------------------------------------
-|  Non-Resv | Network partition-DROP | New port   | Reuse port   |
-------------------------------------------------------------------
-|  Non-Resv | FIN from server        | New port   | New port     |
-------------------------------------------------------------------
-|  Non-Resv | RST from server        | New port   | New port     |
-------------------------------------------------------------------
-
- net/sunrpc/xprtsock.c | 9 ++++++++-
- 1 file changed, 8 insertions(+), 1 deletion(-)
-
+I dared to extend the last part to "(e.g. locks - most commonly those
+used for the transaction context)"
 -- 
-2.7.3.AMZN
-
+Michal Hocko
+SUSE Labs
