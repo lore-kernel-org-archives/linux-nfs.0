@@ -1,105 +1,35 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-cys01nam02on0097.outbound.protection.outlook.com ([104.47.37.97]:44992
-        "EHLO NAM02-CY1-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S966629AbeEJR0P (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 10 May 2018 13:26:15 -0400
-From: Trond Myklebust <trondmy@hammerspace.com>
-To: "vallish@amazon.com" <vallish@amazon.com>
-CC: "bfields@fieldses.org" <bfields@fieldses.org>,
+Received: from fieldses.org ([173.255.197.46]:57680 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S966631AbeEJRh2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 10 May 2018 13:37:28 -0400
+Date: Thu, 10 May 2018 13:37:28 -0400
+From: "bfields@fieldses.org" <bfields@fieldses.org>
+To: Vallish Vaidyeshwara <vallish@amazon.com>
+Cc: Trond Myklebust <trondmy@hammerspace.com>,
         "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        "jsstraus@amazon.com" <jsstraus@amazon.com>,
         "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "jlayton@kernel.org" <jlayton@kernel.org>
+        "jlayton@kernel.org" <jlayton@kernel.org>,
+        "jsstraus@amazon.com" <jsstraus@amazon.com>
 Subject: Re: [PATCH 2/2] SUNRPC: Reconnect with new port on server initiated
  connection termination
-Date: Thu, 10 May 2018 17:26:12 +0000
-Message-ID: <08366f6b15fd26aa2523dc9375bffd0cb3955940.camel@hammerspace.com>
+Message-ID: <20180510173728.GA3736@fieldses.org>
 References: <1525932774-98736-1-git-send-email-vallish@amazon.com>
-         <1525932774-98736-3-git-send-email-vallish@amazon.com>
-         <aa092f62079986ec164863f33873b278f69f79a9.camel@hammerspace.com>
-         <20180510162202.GA24317@amazon.com>
-In-Reply-To: <20180510162202.GA24317@amazon.com>
-Content-Type: text/plain; charset="utf-8"
+ <1525932774-98736-3-git-send-email-vallish@amazon.com>
+ <aa092f62079986ec164863f33873b278f69f79a9.camel@hammerspace.com>
+ <20180510162202.GA24317@amazon.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20180510162202.GA24317@amazon.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDE4LTA1LTEwIGF0IDE2OjIyICswMDAwLCBWYWxsaXNoIFZhaWR5ZXNod2FyYSB3
-cm90ZToNCj4gT24gVGh1LCBNYXkgMTAsIDIwMTggYXQgMDM6MjU6MTRQTSArMDAwMCwgVHJvbmQg
-TXlrbGVidXN0IHdyb3RlOg0KPiA+IE9uIFRodSwgMjAxOC0wNS0xMCBhdCAwNjoxMiArMDAwMCwg
-VmFsbGlzaCBWYWlkeWVzaHdhcmEgd3JvdGU6DQo+ID4gPiBTZXJ2ZXIgaW5pdGlhdGVkIHNvY2tl
-dCBjbG9zZSBjYW4gY29ycnVwdCBjb25uZWN0aW9uIHN0YXRlDQo+ID4gPiB0cmFja2luZw0KPiA+
-ID4gdGFibGUgaW4gY29uanVuY3Rpb24gd2l0aCBvdGhlciBuZXR3b3JrIG1pZGRsZSBib3hlcy4g
-SW4NCj4gPiA+IHNpdHVhdGlvbnMNCj4gPiA+IGxpa2UgdGhlc2UsIGNsaWVudCBjb25uZWN0aW9u
-IGhhbmdzIHRpbGwgY29ubmVjdGlvbiBzdGF0ZQ0KPiA+ID4gdHJhY2tpbmcNCj4gPiA+IHRhYmxl
-IGVudHJpZXMgYWdlIG91dCBhbmQgZ2V0IHB1cmdlZC4gQ2xpZW50IHJlY29ubmVjdGlvbiB3aXRo
-IGENCj4gPiA+IG5ldw0KPiA+ID4gcG9ydCBpbiBzdWNoIGEgc2l0dWF0aW9uIHdpbGwgYXZvaWQg
-Y29ubmVjdGlvbiBoYW5nLg0KPiA+ID4gDQo+ID4gPiBSZXZpZXdlZC1ieTogSmFjb2IgU3RyYXVz
-cyA8anNzdHJhdXNAYW1hem9uLmNvbT4NCj4gPiA+IFJldmlld2VkLWJ5OiBBbGFrZXNoIEhhbG9p
-IDxhbGFrZXNoaEBhbWF6b24uY29tPg0KPiA+ID4gU2lnbmVkLW9mZi1ieTogVmFsbGlzaCBWYWlk
-eWVzaHdhcmEgPHZhbGxpc2hAYW1hem9uLmNvbT4NCj4gPiA+IC0tLQ0KPiA+ID4gIG5ldC9zdW5y
-cGMveHBydHNvY2suYyB8IDUgKysrKysNCj4gPiA+ICAxIGZpbGUgY2hhbmdlZCwgNSBpbnNlcnRp
-b25zKCspDQo+ID4gPiANCj4gPiA+IGRpZmYgLS1naXQgYS9uZXQvc3VucnBjL3hwcnRzb2NrLmMg
-Yi9uZXQvc3VucnBjL3hwcnRzb2NrLmMNCj4gPiA+IGluZGV4IDViZjc1YjMuLmQyOTNjOGQgMTAw
-NjQ0DQo+ID4gPiAtLS0gYS9uZXQvc3VucnBjL3hwcnRzb2NrLmMNCj4gPiA+ICsrKyBiL25ldC9z
-dW5ycGMveHBydHNvY2suYw0KPiA+ID4gQEAgLTE2MjksNiArMTYyOSw4IEBAIHN0YXRpYyB2b2lk
-IHhzX3RjcF9zdGF0ZV9jaGFuZ2Uoc3RydWN0IHNvY2sNCj4gPiA+ICpzaykNCj4gPiA+ICAJCS8q
-IFRoZSBzZXJ2ZXIgaW5pdGlhdGVkIGEgc2h1dGRvd24gb2YgdGhlIHNvY2tldA0KPiA+ID4gKi8N
-Cj4gPiA+ICAJCXhwcnQtPmNvbm5lY3RfY29va2llKys7DQo+ID4gPiAgCQljbGVhcl9iaXQoWFBS
-VF9DT05ORUNURUQsICZ4cHJ0LT5zdGF0ZSk7DQo+ID4gPiArCQkvKiBTZXJ2ZXIgc2VudCBGSU4s
-IHJlY29ubmVjdCB3aXRoIGEgbmV3IHBvcnQgKi8NCj4gPiA+ICsJCXRyYW5zcG9ydC0+c3JjcG9y
-dCA9IDA7DQo+ID4gPiAgCQl4c190Y3BfZm9yY2VfY2xvc2UoeHBydCk7DQo+ID4gPiAgCQkvKiBm
-YWxsIHRocm91Z2ggKi8NCj4gPiA+ICAJY2FzZSBUQ1BfQ0xPU0lORzoNCj4gPiA+IEBAIC0xNjUw
-LDYgKzE2NTIsOSBAQCBzdGF0aWMgdm9pZCB4c190Y3Bfc3RhdGVfY2hhbmdlKHN0cnVjdCBzb2Nr
-DQo+ID4gPiAqc2spDQo+ID4gPiAgCQkJCQkmdHJhbnNwb3J0LT5zb2NrX3N0YXRlKSkNCj4gPiA+
-ICAJCQl4cHJ0X2NsZWFyX2Nvbm5lY3RpbmcoeHBydCk7DQo+ID4gPiAgCQljbGVhcl9iaXQoWFBS
-VF9DTE9TSU5HLCAmeHBydC0+c3RhdGUpOw0KPiA+ID4gKwkJLyogU2VydmVyIHNlbnQgUlNULCBy
-ZWNvbm5lY3Qgd2l0aCBhIG5ldyBwb3J0ICovDQo+ID4gPiArCQlpZiAoc2stPnNrX2VyciA9PSBF
-Q09OTlJFU0VUKQ0KPiA+ID4gKwkJCXRyYW5zcG9ydC0+c3JjcG9ydCA9IDA7DQo+ID4gPiAgCQlp
-ZiAoc2stPnNrX2VycikNCj4gPiA+ICAJCQl4cHJ0X3dha2VfcGVuZGluZ190YXNrcyh4cHJ0LCAt
-c2stDQo+ID4gPiA+c2tfZXJyKTsNCj4gPiA+ICAJCS8qIFRyaWdnZXIgdGhlIHNvY2tldCByZWxl
-YXNlICovDQo+ID4gDQo+ID4gTkFDSy4gVGhpcyB3aWxsIHV0dGVybHkgYnJlYWsgTkZTdjIsIE5G
-U3YzIGFuZCBORlN2NC4wIGR1cGxpY2F0ZQ0KPiA+IHJlcGxheQ0KPiA+IGNhY2hlIHNlbWFudGlj
-cy4gDQo+ID4gDQo+ID4gQ2hlZXJzDQo+ID4gICBUcm9uZA0KPiA+IC0tIA0KPiA+IFRyb25kIE15
-a2xlYnVzdA0KPiA+IExpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lciwgSGFtbWVyc3BhY2UNCj4g
-PiB0cm9uZC5teWtsZWJ1c3RAaGFtbWVyc3BhY2UuY29tDQo+IA0KPiBIZWxsbyBUcm9uZCwNCj4g
-DQo+IFRoZSBmaXJzdCBwYXRjaCBpbiB0aGlzIHNlcmllcyBpcyBhY3R1YWxseSBoZWxwaW5nIHJl
-c3RvcmUgRFJDDQo+IGJlaGF2aW9yIGluDQo+IGNhc2VzIGxpa2UgbmV0d29yayBwYXJ0aXRpb24g
-d2hlcmUgcGFja2V0cyBhcmUgZHJvcHBlZDoNCj4gW1BBVENIIDEvMl0gU1VOUlBDOiBOZWVkIHRv
-IHJldXNlIG5vbi1yZXNlcnZlZCBwb3J0IGZvciByZWNvbm5lY3QNCj4gUGF0Y2ggMSBzdGFydHMg
-cmV1c2luZyBwb3J0IGluIGFsbCBjYXNlcy4NCj4gDQo+IFRoZSBzZWNvbmQgcGF0Y2ggaXMgc3Rp
-bGwgbm90IGJyZWFraW5nIERSQyBzZW1hbnRpY3MsIHRvIHF1b3RlIGZyb20NCj4gc291cmNlDQo+
-IGNvZGU6DQo+IA0KPiA8Y29kZSBzbmlwPg0KPiAgIC8qKg0KPiAgICAqIHhzX2Nsb3NlIC0gY2xv
-c2UgYSBzb2NrZXQNCj4gICAgKiBAeHBydDogdHJhbnNwb3J0DQo+ICAgICoNCj4gICAgKiBUaGlz
-IGlzIHVzZWQgd2hlbiBhbGwgcmVxdWVzdHMgYXJlIGNvbXBsZXRlOyBpZSwgbm8gRFJDIHN0YXRl
-DQo+IHJlbWFpbnMNCj4gICAgKiBvbiB0aGUgc2VydmVyIHdlIHdhbnQgdG8gc2F2ZS4NCj4gICAg
-Kg0KPiAgICAqIFRoZSBjYWxsZXIgX211c3RfIGJlIGhvbGRpbmcgWFBSVF9MT0NLRUQgaW4gb3Jk
-ZXIgdG8gYXZvaWQNCj4gaXNzdWVzIHdpdGgNCj4gICAgKiB4c19yZXNldF90cmFuc3BvcnQoKSB6
-ZXJvaW5nIHRoZSBzb2NrZXQgZnJvbSB1bmRlcm5lYXRoIGENCj4gd3JpdGVyLg0KPiAgICAqLw0K
-PiAgIHN0YXRpYyB2b2lkIHhzX2Nsb3NlKHN0cnVjdCBycGNfeHBydCAqeHBydCkNCj4gPGNvZGUg
-c25pcD4NCj4gDQo+IElmIHRoZSBzZXJ2ZXIgaGFzIGNsb3NlZCBhIGNvbm5lY3Rpb24sIHRoZW4g
-bm8gRFJDIHN0YXRlIHJlbWFpbnMgb24NCj4gdGhlIHNlcnZlcg0KPiB3ZSB3YW50IHRvIHVzZS4N
-Cj4gDQo+IFRoZSBzZWNvbmQgcGF0Y2ggaXMgZXhwbG9pdGluZyB0aGlzIHNlbWFudGljcyBhbmQg
-dXNpbmcgYSBuZXcgcG9ydCBpbg0KPiBmb2xsb3dpbmcNCj4gMiBjYXNlczoNCj4gYSkgUlNUIGZy
-b20gc2VydmVyIGltcGxpZXMgdGhlIGNvbm5lY3Rpb24gd2FzIHRvcm4gZG93biAmIG5vIHVzZWZ1
-bA0KPiBEUkMgZXhpc3RzDQo+IG9uIHNlcnZlcg0KPiBiKSBGSU4gZnJvbSBzZXJ2ZXIgaW1wbGll
-cyB0aGF0IHNlcnZlciBpcyBzaHV0dGluZyBkb3duIHRoZQ0KPiBjb25uZWN0aW9uIGFzIHBhcnQN
-Cj4gb2YgY2xvc2UgYW5kIG5vIERSQyBzdGF0ZSByZW1haW5zDQo+IA0KPiBQbGVhc2UgbGV0IG1l
-IGtub3cgaWYgSSBoYXZlIG1pc3NlZCBzb21ldGhpbmcgb2J2aW91cywgSSBkZWZpbml0ZWx5DQo+
-IGRvIG5vdCB3YW50DQo+IHRvIGJyZWFrIERSQyBhcyB0aGF0IGlzIG5vdCB0aGUgaW50ZW50aW9u
-IG9mIHRoaXMgcGF0Y2ggc2VyaWVzLiBJcw0KPiB0aGVyZSBhDQo+IHNpdHVhdGlvbiB3aGVyZSBz
-ZXJ2ZXIgY2FuIGNsb3NlIGEgY29ubmVjdGlvbiBhbmQgc3RpbGwga2VlcCBEUkM/DQo+IA0KDQpU
-aGUgRFJDIGRvZXMgbm90IGV4aXN0IGZvciB0aGUgYmVuZWZpdCBvZiB0aGUgc2VydmVyLCBidXQg
-Zm9yIHRoZQ0KYmVuZWZpdCBvZiB0aGUgY2xpZW50LiBJdCBpcyB0aGVyZSB0byBlbnN1cmUgdGhh
-dCBpZiB0aGUgY2xpZW50IHJlcGxheXMNCnRoZSByZXF1ZXN0LCB0aGVuIGl0IGdldHMgdGhlIGV4
-YWN0IHNhbWUgcmVwbHkgYXMgaXQgc2hvdWxkIGhhdmUNCnJlY2VpdmVkIHdoZW4gdGhlIGZpcnN0
-IHJlcXVlc3Qgd2FzIHNlbnQuIEJlYXJpbmcgdGhhdCBpbiBtaW5kOg0KDQogICAxLiBXaGF0IGd1
-YXJhbnRlZXMgdGhhdCBhbGwgc2VydmVycyBiZWhhdmUgY29ycmVjdGx5IHcuci50LiBlbnN1cmlu
-Zw0KICAgICAgdGhhdCB0aGV5IGhhdmUgc2VudCBhbGwgcmVwbGllcyB0byBhbnkgb3V0c3RhbmRp
-bmcgUlBDIGNhbGwgYmVmb3JlDQogICAgICBzaHV0dGluZyBkb3duIHRoZSBjb25uZWN0aW9uLiBJ
-J20gbm90IHN1cmUgdGhhdCBldmVuIHRoZSBMaW51eA0KICAgICAgc2VydmVyIGRvZXMgdGhhdC4N
-CiAgIDIuIEhvdyB3b3VsZCBhIHNlcnZlciBldmVuIGtub3cgd2hldGhlciBvciBub3QgdGhlIGNs
-aWVudCBtYXkgbmVlZCB0bw0KICAgICAgcmVwbGF5IGEgcmVxdWVzdD8NCg0KLS0gDQpUcm9uZCBN
-eWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lciwgSGFtbWVyc3BhY2UNCnRyb25k
-Lm15a2xlYnVzdEBoYW1tZXJzcGFjZS5jb20=
+On Thu, May 10, 2018 at 04:22:02PM +0000, Vallish Vaidyeshwara wrote:
+> If the server has closed a connection, then no DRC state remains on the server
+> we want to use.
+
+That's not a rule, as far as I know.  Certainly the Linux server doesn't
+destroy DRC state on closing a connection.  (Should it? I'm not sure
+that's a good idea.)
+
+--b.
