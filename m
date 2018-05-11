@@ -1,89 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([198.137.202.133]:46822 "EHLO
-        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752745AbeEKIHC (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 11 May 2018 04:07:02 -0400
-Date: Fri, 11 May 2018 01:06:59 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Scott Mayhew <smayhew@redhat.com>
-Cc: bfields@fieldses.org, jlayton@kernel.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2] nfsd: make nfsd4_scsi_identify_device retry with a
- larger buffer
-Message-ID: <20180511080659.GA6345@infradead.org>
-References: <20180510204929.24328-1-smayhew@redhat.com>
+Received: from mail-it0-f54.google.com ([209.85.214.54]:37256 "EHLO
+        mail-it0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752596AbeEKKWB (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 11 May 2018 06:22:01 -0400
+Received: by mail-it0-f54.google.com with SMTP id 70-v6so1530785ity.2
+        for <linux-nfs@vger.kernel.org>; Fri, 11 May 2018 03:22:01 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20180510204929.24328-1-smayhew@redhat.com>
+From: Goran <sendmailtogoran@gmail.com>
+Date: Fri, 11 May 2018 12:21:59 +0200
+Message-ID: <CABS5c+GR6xJwV6im=N36Qmax-P6ZWrJYwDDVdekF3LWQ0tToXw@mail.gmail.com>
+Subject: unstable nfs connection
+To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, May 10, 2018 at 04:49:29PM -0400, Scott Mayhew wrote:
-> nfsd4_scsi_identify_device() performs a single IDENTIFY command for the
-> device identification VPD page using a small buffer.  If the reply is
-> too large to fit in this buffer then the GETDEVICEINFO reply will not
-> contain any info for the SCSI volume aside from the registration key.
-> This can happen for example if the device has descriptors using long
-> SCSI name strings.
-> 
-> When the initial reply from the device indicates a larger buffer is
-> needed, retry once using the page length from that reply.
-> 
-> Signed-off-by: Scott Mayhew <smayhew@redhat.com>
-> ---
->  fs/nfsd/blocklayout.c | 25 ++++++++++++++++++++-----
->  1 file changed, 20 insertions(+), 5 deletions(-)
-> 
-> Changes since v1:
-> - added comment explaining the initial and max buffer lengths
-> - changed the len-to-maxlen comparison from "<" to "<="
-> 
-> diff --git a/fs/nfsd/blocklayout.c b/fs/nfsd/blocklayout.c
-> index 70b8bf7..aa1c6f9 100644
-> --- a/fs/nfsd/blocklayout.c
-> +++ b/fs/nfsd/blocklayout.c
-> @@ -216,13 +216,21 @@ static int nfsd4_scsi_identify_device(struct block_device *bdev,
->  	struct request_queue *q = bdev->bd_disk->queue;
->  	struct request *rq;
->  	struct scsi_request *req;
-> -	size_t bufflen = 252, len, id_len;
-> +	/*
-> +	 * The allocation length (passed in bytes 3 and 4 of the INQUIRY
-> +	 * command descriptor block) specifies the number of bytes that have
-> +	 * been allocated for the data-in buffer.
-> +	 * 252 is the highest one-byte value that is a multiple of 4.
-> +	 * 65532 is the highest two-byte value that is a multiple of 4.
-> +	 */
-> +	size_t bufflen = 252, maxlen = 65532, len, id_len;
->  	u8 *buf, *d, type, assoc;
-> -	int error;
-> +	int retries = 1, error;
->  
->  	if (WARN_ON_ONCE(!blk_queue_scsi_passthrough(q)))
->  		return -EINVAL;
->  
-> +again:
->  	buf = kzalloc(bufflen, GFP_KERNEL);
->  	if (!buf)
->  		return -ENOMEM;
-> @@ -255,9 +263,16 @@ static int nfsd4_scsi_identify_device(struct block_device *bdev,
->  
->  	len = (buf[2] << 8) + buf[3] + 4;
->  	if (len > bufflen) {
-> -		pr_err("pNFS: INQUIRY 0x83 response invalid (len = %zd)\n",
-> -			len);
-> -		goto out_put_request;
-> +		if (len <= maxlen && retries--) {
-> +			blk_put_request(rq);
-> +			kfree(buf);
-> +			bufflen = len;
-> +			goto again;
-> +		} else {
-> +			pr_err("pNFS: INQUIRY 0x83 response invalid (len = %zd)\n",
-> +				len);
-> +			goto out_put_request;
+I have an issue with nfs which I'm using the first time.
 
-No need for an else after a goto.
+I have a server running arch linux. Further the server is running
+several container, each container itself is running arch linux too.
+One container is running nfsd.
 
-Otherwise looks fine:
+The nfs-container is connected via a virtual bridge. The bridge is
+hosted by the server. One physical device is connected to that bridge.
+A physical switch is connected to that physical device. The client is
+connected to the physical switch.
 
-Reviewed-by: Christoph Hellwig <hch@lst.de>
+To keep it simpler:
+client -- clients NIC -- physical switch -- server NIC -- server
+bridge -- container NIC -- container
+
+At first sight, everything works well, I can boot diskless/readonly
+from NFS. I use dracut for that. I can log into the client and start
+working.
+
+If the client is just doing nothing I get after some time (e.g. 5 minutes)
+
+nfs: server 172.17.0.5 not responding. still trying
+
+or
+
+nfs: server 172.17.0.5 not responding.timed out
+
+If 10 clients starts at same time, the above error comes immediatly.
+
+I took a look like at the containers nic
+
+23: eth0@if24: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc
+noqueue state UP mode DEFAULT group default qlen 1000
+    link/ether 42:3b:82:03:c0:7d brd ff:ff:ff:ff:ff:ff link-netnsid 0
+    RX: bytes  packets  errors  dropped overrun mcast
+    44184595   388170   0       205     0       0
+    TX: bytes  packets  errors  dropped carrier collsns
+    902023963  112922   0       0       0       0
+
+but this seems not too much dropped packages for me. I'm more a C++
+guy, not as much an Linux admin. So I'm asking how can I debug this
+nfs-connection to make it stable?
+
+Regards
+Goran
