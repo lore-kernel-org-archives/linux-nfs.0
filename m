@@ -1,52 +1,68 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-by2nam01on0097.outbound.protection.outlook.com ([104.47.34.97]:46352
-        "EHLO NAM01-BY2-obe.outbound.protection.outlook.com"
+Received: from mail-eopbgr660068.outbound.protection.outlook.com ([40.107.66.68]:63168
+        "EHLO CAN01-QB1-obe.outbound.protection.outlook.com"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1751270AbeEMOI0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sun, 13 May 2018 10:08:26 -0400
-From: Trond Myklebust <trondmy@hammerspace.com>
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "rmacklem@uoguelph.ca" <rmacklem@uoguelph.ca>
+        id S1751947AbeEMUpC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sun, 13 May 2018 16:45:02 -0400
+From: Rick Macklem <rmacklem@uoguelph.ca>
+To: Trond Myklebust <trondmy@hammerspace.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
 Subject: Re: NFSv4.1 client recovery of opens after server crash/reboot
-Date: Sun, 13 May 2018 14:08:23 +0000
-Message-ID: <c64b0f479f17120585412aa7fb44aadd20a08e6c.camel@hammerspace.com>
+Date: Sun, 13 May 2018 20:44:59 +0000
+Message-ID: <YTOPR0101MB095342F796D66C79224906ADDD9D0@YTOPR0101MB0953.CANPRD01.PROD.OUTLOOK.COM>
 References: <YTOPR0101MB095358258682ACC6D4F8DC02DD9E0@YTOPR0101MB0953.CANPRD01.PROD.OUTLOOK.COM>
-         <YTOPR0101MB0953BA8247D49E4679F7AF67DD9D0@YTOPR0101MB0953.CANPRD01.PROD.OUTLOOK.COM>
-In-Reply-To: <YTOPR0101MB0953BA8247D49E4679F7AF67DD9D0@YTOPR0101MB0953.CANPRD01.PROD.OUTLOOK.COM>
-Content-Type: text/plain; charset="utf-8"
+         <YTOPR0101MB0953BA8247D49E4679F7AF67DD9D0@YTOPR0101MB0953.CANPRD01.PROD.OUTLOOK.COM>,<c64b0f479f17120585412aa7fb44aadd20a08e6c.camel@hammerspace.com>
+In-Reply-To: <c64b0f479f17120585412aa7fb44aadd20a08e6c.camel@hammerspace.com>
+Content-Type: text/plain; charset="iso-8859-1"
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gU3VuLCAyMDE4LTA1LTEzIGF0IDEyOjEyICswMDAwLCBSaWNrIE1hY2tsZW0gd3JvdGU6DQo+
-IEkgd3JvdGU6DQo+ID4gSSBqdXN0IHJhbiBhIGxpdHRsZSB0ZXN0IG9mIGFuIE5GU3Y0LjEgc2Vy
-dmVyIChGcmVlQlNEKSByZWJvb3QNCj4gPiB3aGlsZSB0aGUgTGludXggY2xpZW50DQo+ID4gaGFk
-IHR3byBmaWxlcyBvcGVuIG92ZXIgYW4gTkZTdjQuMSBtb3VudCAobGludXgtNC4xNy1yYzIpLg0K
-PiA+IEl0IGJhc2ljYWxseSB3b3JrZWQsIGJ1dCB3aGVuIEkgbG9va2VkIGF0IHRoZSBwYWNrZXQg
-dHJhY2UgaW4NCj4gPiB3aXJlc2hhcmssIGl0IHdhc24ndCB3aGF0DQo+ID4gSSBleHBlY3RlZC4N
-Cj4gPiBUaGUgb3BlcmF0aW9ucyB3ZXJlIGJhc2ljYWxseToNCj4gPiAxIC0gRXhjaGFuZ2VJRA0K
-PiA+IDIgLSBDcmVhdGVTZXNzaW9uDQo+ID4gMyAtIFJlY2xhaW1Db21wbGV0ZQ0KPiA+IDQgLSBP
-cGVuL0NsYWltX0ZIIGRvbmUgdHdpY2UgdG8gcmVjbGFpbSB0aGUgT3BlbnMNCj4gPiANCj4gPiBU
-aGlzIHNlZW1zICJ1bnNhZmUiIHRvIG1lLCBzaW5jZSBJIHRoaW5rIGl0IHdvdWxkIGJlIHBvc3Np
-YmxlIGZvcg0KPiA+IGFub3RoZXIgY2xpZW50IHRvID5PcGVuIHRoZSBmaWxlIHdpdGggT1BFTl9E
-RU5ZX0JPVEggYmV0d2VlbiAjMyBhbmQNCj4gPiAjNCwgY2F1c2luZyAjNCB0byBmYWlsLg0KPiA+
-IEkgd2FzIGV4cGVjdGluZyBzb21ldGhpbmcgbGlrZToNCj4gPiAxIC0gRXhjaGFuZ2VJRA0KPiA+
-IDIgLSBDcmVhdGVTZXNzaW9uDQo+ID4gMyAtIE9wZW4vQ2xhaW1fcHJldmlvdXMgZG9uZSB0d2lj
-ZSB0byByZWNsYWltIHRoZSBPcGVucw0KPiA+IDQgLSBSZWNsYWltQ29tcGxldGUNCj4gDQo+IEkg
-Zm9yZ290IHRvIG1lbnRpb24gdGhhdCB0aGlzIGlzIHByb2JhYmx5IG5vdCBhIHNlcmlvdXMgaXNz
-dWUgcmlnaHQNCj4gbm93LCBzaW5jZSBtb3N0DQo+IGV4dGFudCBjbGllbnRzIChGcmVlQlNEIGFu
-ZCBMaW51eCBJIHRoaW5rPykgYWx3YXlzIGRvIE9wZW5zIHdpdGgNCj4gT1BFTl9TSEFSRV9ERU5Z
-X05PTkUuDQo+IFRoZSBvbmx5IGN1cnJlbnQgY2xpZW50IEkgYW0gYXdhcmUgb2YgdGhhdCBkb2Vz
-IE9QRU5fU0hBUkVfREVOWV94eA0KPiBvdGhlciB0aGFuDQo+IE5PTkUgaXMgdGhlIEVTWGkgNi41
-IGNsaWVudC4gQnR3LCB0aGlzIGNsaWVudCBoYXMgc2VyaW91cyBpc3N1ZXMgdGhhdA0KPiBJIG1p
-Z2h0IHBvc3QgaGVyZSwgc28gdGhlIExpbnV4IHNlcnZlciBtYWludGFpbmVycyBhcmUgYXdhcmUg
-b2YgdGhlbS4NCj4gDQoNCkhpIFJpY2ssDQoNClRoZSBMaW51eCBjbGllbnQgd2lsbCBhdHRlbXB0
-IHRvIHJlY2xhaW0gb3BlbnMgY29ycmVjdGx5IChpLmUuIGJlZm9yZQ0Kc2VuZGluZyBSRUNMQUlN
-X0NPTVBMRVRFKS4gSG93ZXZlciBpdCB3aWxsIG5vdCBhdHRlbXB0IHRvIHJlY2xhaW0gYW55DQps
-b2NrIHN0YXRlIGlmIHRoZSBzZXJ2ZXIgYWR2ZXJ0aXNlcyBhIGRpZmZlcmVudCBpZGVudGl0eSBh
-ZnRlciB0aGUNCnJlYm9vdCAoc2VlIFJGQzU2NjEsIHNlY3Rpb24gOC40LjIuMS4pLiBBcmUgeW91
-IGNlcnRhaW4gdGhhdCB0aGUNCkZyZWVCU0Qgc2VydmVyIGlzIGFkdmVydGlzaW5nIHRoZSBzYW1l
-ICBlaXJfc2VydmVyX293bmVyIGFuZA0KZWlyX3NlcnZlcl9zY29wZSBmaWVsZHMgYWZ0ZXIgdGhl
-IHJlYm9vdD8NCg0KQ2hlZXJzDQogIFRyb25kDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXgg
-TkZTIGNsaWVudCBtYWludGFpbmVyLCBIYW1tZXJzcGFjZQ0KdHJvbmQubXlrbGVidXN0QGhhbW1l
-cnNwYWNlLmNvbQ0K
+Trond Myklebust wrote:
+>On Sun, 2018-05-13 at 12:12 +0000, Rick Macklem wrote:
+>> I wrote:
+>> > I just ran a little test of an NFSv4.1 server (FreeBSD) reboot
+>> > while the Linux client
+>> > had two files open over an NFSv4.1 mount (linux-4.17-rc2).
+>> > It basically worked, but when I looked at the packet trace in
+>> > wireshark, it wasn't what
+>> > I expected.
+>> > The operations were basically:
+>> > 1 - ExchangeID
+>> > 2 - CreateSession
+>> > 3 - ReclaimComplete
+>> > 4 - Open/Claim_FH done twice to reclaim the Opens
+>> >
+>> > This seems "unsafe" to me, since I think it would be possible for
+>> > another client to >Open the file with OPEN_DENY_BOTH between #3 and
+>> > #4, causing #4 to fail.
+>> > I was expecting something like:
+>> > 1 - ExchangeID
+>> > 2 - CreateSession
+>> > 3 - Open/Claim_previous done twice to reclaim the Opens
+>> > 4 - ReclaimComplete
+>>
+>> I forgot to mention that this is probably not a serious issue right
+>> now, since most
+>> extant clients (FreeBSD and Linux I think?) always do Opens with
+>> OPEN_SHARE_DENY_NONE.
+>> The only current client I am aware of that does OPEN_SHARE_DENY_xx
+>> other than
+>> NONE is the ESXi 6.5 client. Btw, this client has serious issues that
+>> I might post here, so the Linux server maintainers are aware of them.
+>>
+>
+>Hi Rick,
+>
+>The Linux client will attempt to reclaim opens correctly (i.e. before
+>sending RECLAIM_COMPLETE). However it will not attempt to reclaim any
+>lock state if the server advertises a different identity after the
+>reboot (see RFC5661, section 8.4.2.1.). Are you certain that the
+>FreeBSD server is advertising the same  eir_server_owner and
+>eir_server_scope fields after the reboot?
+Ouch, yes, my mistake...
+The eir_server_scope had changed.
+
+Thanks and sorry for the noise, rick
+ps: If I see a problem with the eir_server_scope the same, I'll post again, but
+      I doubt that will happen.
