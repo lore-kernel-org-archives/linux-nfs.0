@@ -1,39 +1,43 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from zeniv.linux.org.uk ([195.92.253.2]:42806 "EHLO
-        ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751884AbeENRAn (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 14 May 2018 13:00:43 -0400
-Date: Mon, 14 May 2018 18:00:41 +0100
-From: Al Viro <viro@ZenIV.linux.org.uk>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Jeff Layton <jlayton@kernel.org>
-Subject: Re: [RFC][PATCH] nfsd: vfs_mkdir() might succeed leaving dentry
- negative unhashed
-Message-ID: <20180514170041.GJ30522@ZenIV.linux.org.uk>
-References: <20180511211339.GG30522@ZenIV.linux.org.uk>
- <20180514153216.GC7160@fieldses.org>
- <20180514154550.GH30522@ZenIV.linux.org.uk>
- <20180514162704.GE7160@fieldses.org>
+Received: from mail-it0-f66.google.com ([209.85.214.66]:33944 "EHLO
+        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752109AbeENRUJ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 14 May 2018 13:20:09 -0400
+Received: by mail-it0-f66.google.com with SMTP id c5-v6so9168566itj.1
+        for <linux-nfs@vger.kernel.org>; Mon, 14 May 2018 10:20:08 -0700 (PDT)
+Subject: [PATCH] svcrdma: Fix incorrect return value/type in
+ svc_rdma_post_recvs
+From: Chuck Lever <chuck.lever@oracle.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, dan.carpenter@oracle.com
+Date: Mon, 14 May 2018 13:20:06 -0400
+Message-ID: <20180514172006.2217.10418.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20180514162704.GE7160@fieldses.org>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, May 14, 2018 at 12:27:04PM -0400, J. Bruce Fields wrote:
-> > > 	if (!err)
-> > > 		err = fh_update(reshp);
-> > > 
-> > > at the end of nfsd_create_locked.
-> > 
-> > Might be too late for that, though - the trouble hits when we hit
-> > nfsd_create_setattr().
-> 
-> Oh, got it.  Could move the bottom fh_update to just above the
-> nfsd_create_setattr(), though?
+This crept in during the development process and wasn't caught
+before I posted the "final" version.
 
-Probably, but I'm not comfortable enough with the nfsd guts wrt in-core
-fhandle and assumptions made by users of such, so I'd rather bounce that
-question to nfsd maintainers ;-)
+Reported-by: Dan Carpenter <dan.carpenter@oracle.com>
+Fixes: 0b2613c5883f ('svcrdma: Allocate recv_ctxt's on CPU ... ')
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+ net/sunrpc/xprtrdma/svc_rdma_recvfrom.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+index 09ce09b..841fca1 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+@@ -270,7 +270,7 @@ bool svc_rdma_post_recvs(struct svcxprt_rdma *rdma)
+ 	for (i = 0; i < rdma->sc_max_requests; i++) {
+ 		ctxt = svc_rdma_recv_ctxt_get(rdma);
+ 		if (!ctxt)
+-			return -ENOMEM;
++			return false;
+ 		ctxt->rc_temp = true;
+ 		ret = __svc_rdma_post_recv(rdma, ctxt);
+ 		if (ret) {
+
