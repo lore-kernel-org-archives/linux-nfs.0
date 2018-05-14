@@ -1,78 +1,71 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.cn.fujitsu.com ([183.91.158.132]:4475 "EHLO
-        heian.cn.fujitsu.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1751626AbeENGnD (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 14 May 2018 02:43:03 -0400
-Subject: Re: SGID loss with nfsv3
-To: "J. Bruce Fields" <bfields@fieldses.org>
-References: <f9f2d605-b930-7db8-ad1e-fd189e074e9c@cn.fujitsu.com>
- <20180430201623.GA3207@fieldses.org>
-From: Lu Xinyu <luxy.fnst@cn.fujitsu.com>
-CC: <linux-nfs@vger.kernel.org>
-Message-ID: <060c9d41-8772-80e1-e938-21ec7b6315ef@cn.fujitsu.com>
-Date: Mon, 14 May 2018 14:43:49 +0800
+Received: from userp2130.oracle.com ([156.151.31.86]:41774 "EHLO
+        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752133AbeENJM7 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 14 May 2018 05:12:59 -0400
+Received: from pps.filterd (userp2130.oracle.com [127.0.0.1])
+        by userp2130.oracle.com (8.16.0.22/8.16.0.22) with SMTP id w4E9B7jM173988
+        for <linux-nfs@vger.kernel.org>; Mon, 14 May 2018 09:12:59 GMT
+Received: from userv0021.oracle.com (userv0021.oracle.com [156.151.31.71])
+        by userp2130.oracle.com with ESMTP id 2hx29w31rc-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK)
+        for <linux-nfs@vger.kernel.org>; Mon, 14 May 2018 09:12:59 +0000
+Received: from aserv0121.oracle.com (aserv0121.oracle.com [141.146.126.235])
+        by userv0021.oracle.com (8.14.4/8.14.4) with ESMTP id w4E9CwHK021338
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK)
+        for <linux-nfs@vger.kernel.org>; Mon, 14 May 2018 09:12:58 GMT
+Received: from abhmp0014.oracle.com (abhmp0014.oracle.com [141.146.116.20])
+        by aserv0121.oracle.com (8.14.4/8.13.8) with ESMTP id w4E9CwnX008245
+        for <linux-nfs@vger.kernel.org>; Mon, 14 May 2018 09:12:58 GMT
+Date: Mon, 14 May 2018 12:12:52 +0300
+From: Dan Carpenter <dan.carpenter@oracle.com>
+To: chuck.lever@oracle.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [bug report] svcrdma: Allocate recv_ctxt's on CPU handling Receives
+Message-ID: <20180514091251.GA25443@mwanda>
 MIME-Version: 1.0
-In-Reply-To: <20180430201623.GA3207@fieldses.org>
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,Bruce
+Hello Chuck Lever,
 
-On 20180501 04:16, J. Bruce Fields wrote:
-> On Wed, Apr 25, 2018 at 02:03:20PM +0800, Lu Xinyu wrote:
->> hi, folks
->>
->>
->> I have client and server using nfsv3. The kernels are all 4.16-rc3.
->> In client I mount a partition or a disk formatted in xfs/ext4 in
->> /nfstest. It seems there is someting wrong with inheritance of sgid. I
->> try the following operations in the client.
->>> [root@localhost ]#id user1
->>> uid=1003(user1) gid=1006(testgroup1)
->> groups=1006(testgroup1),1007(testgroup2)
->>> [root@localhost ]# mount -t nfs -o vers=3 -o noac
->> 192.168.56.9:/data/nfstest /mnt/test/
->>> [root@localhost ]# cd /mnt/test/
->>> [root@localhost ]# mkdir mainsub
->>> [root@localhost ]# setfacl -d -m u:user2:rwx mainsub/
->>> [root@localhost ]# chown user1:testgroup1 mainsub/
->>>                  # chmod 2775 mainsub/
->>> [root@localhost ]# runuser -u user1 -g testgroup1 mkdir mainsub/subdir1
->>> [root@localhost ]# runuser -u user1 -g testgroup2 mkdir mainsub/subdir2
->>> [root@localhost ]# ls -l mainsub/
->>> drwxrwsr-x+ 2 user1 testgroup1 4096 Mar  6 22:50 subdir1
->>> drwxrwxr-x+ 2 user1 testgroup1 4096 Mar  6 22:50 subdir2
->>
->>
->> The subdir2 losts SGID. But if the same operations are applied in the
->> xfs or ext4 directedly, the SGID could be interited normally.
->>
->>> [root@localhost ]# ls -l mainsub/
->>> drwxrwsr-x+ 2 user1 testgroup1 4096 Mar  6 22:55 subdir1
->>> drwxrwsr-x+ 2 user1 testgroup1 4096 Mar  6 22:55 subdir2
->>
->> Is this a bug of NFSv3?
->>
->>> https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=073931017b49d9458aa351605b43a7e34598caef
->>
->>
->> Clear SGID bit when setting file permissions
->>
->> It seems this patch will clear the nfs sgid. Should we keep it?
-> 
-> Just searching for that commit id.... It looks like this was fixed by
-> ext4 by a3bb2d5587521eea6dab2d05326abb0afb460abd "ext4: Don't clear SGID
-> when inheriting ACLs".  And there are similar patches for a bunch of
-> other filesystems.
-> 
-> --b.
-> 
-Thanks for reply.
-The SGID will not be cleared on the xfs. However, when it mounts a nfs
-the SGID will get lost. I think it is a NFS bug.
+The patch 0b2613c5883f: "svcrdma: Allocate recv_ctxt's on CPU
+handling Receives" from May 7, 2018, leads to the following static
+checker warning:
 
+	net/sunrpc/xprtrdma/svc_rdma_recvfrom.c:273 svc_rdma_post_recvs()
+	warn: signedness bug returning '(-12)'
 
-Xinyu Lu
+net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+   258  /**
+   259   * svc_rdma_post_recvs - Post initial set of Recv WRs
+   260   * @rdma: fresh svcxprt_rdma
+   261   *
+   262   * Returns true if successful, otherwise false.
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   263   */
+   264  bool svc_rdma_post_recvs(struct svcxprt_rdma *rdma)
+   265  {
+   266          struct svc_rdma_recv_ctxt *ctxt;
+   267          unsigned int i;
+   268          int ret;
+   269  
+   270          for (i = 0; i < rdma->sc_max_requests; i++) {
+   271                  ctxt = svc_rdma_recv_ctxt_get(rdma);
+   272                  if (!ctxt)
+   273                          return -ENOMEM;
+                                ^^^^^^^^^^^^^^^
+   274                  ctxt->rc_temp = true;
+   275                  ret = __svc_rdma_post_recv(rdma, ctxt);
+   276                  if (ret) {
+   277                          pr_err("svcrdma: failure posting recv buffers: %d\n",
+   278                                 ret);
+   279                          return false;
+   280                  }
+   281          }
+   282          return true;
+   283  }
 
-
+regards,
+dan carpenter
