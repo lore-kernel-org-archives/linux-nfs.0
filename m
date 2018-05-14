@@ -1,64 +1,84 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from discipline.rit.edu ([129.21.6.207]:62129 "HELO
-        discipline.rit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with SMTP id S1751198AbeENLbx (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 14 May 2018 07:31:53 -0400
-From: Andrew W Elble <aweits@rit.edu>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: <linux-nfs@vger.kernel.org>, <jlayton@kernel.org>
-Subject: Re: [PATCH v2] nfsd: fix error handling in nfs4_set_delegation()
-References: <20180509120249.62022-1-aweits@rit.edu>
-        <20180511213005.GF3765@fieldses.org>
-Date: Mon, 14 May 2018 07:31:53 -0400
-In-Reply-To: <20180511213005.GF3765@fieldses.org> (J. Bruce Fields's message
-        of "Fri, 11 May 2018 17:30:05 -0400")
-Message-ID: <m21see79sm.fsf@discipline.rit.edu>
+Received: from fieldses.org ([173.255.197.46]:58952 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S932642AbeENOcW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 14 May 2018 10:32:22 -0400
+Date: Mon, 14 May 2018 10:32:22 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Lu Xinyu <luxy.fnst@cn.fujitsu.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: SGID loss with nfsv3
+Message-ID: <20180514143222.GA7160@fieldses.org>
+References: <f9f2d605-b930-7db8-ad1e-fd189e074e9c@cn.fujitsu.com>
+ <20180430201623.GA3207@fieldses.org>
+ <060c9d41-8772-80e1-e938-21ec7b6315ef@cn.fujitsu.com>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <060c9d41-8772-80e1-e938-21ec7b6315ef@cn.fujitsu.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Mon, May 14, 2018 at 02:43:49PM +0800, Lu Xinyu wrote:
+> Hi,Bruce
+> 
+> On 20180501 04:16, J. Bruce Fields wrote:
+> > On Wed, Apr 25, 2018 at 02:03:20PM +0800, Lu Xinyu wrote:
+> >> hi, folks
+> >>
+> >>
+> >> I have client and server using nfsv3. The kernels are all 4.16-rc3.
+> >> In client I mount a partition or a disk formatted in xfs/ext4 in
+> >> /nfstest. It seems there is someting wrong with inheritance of sgid. I
+> >> try the following operations in the client.
+> >>> [root@localhost ]#id user1
+> >>> uid=1003(user1) gid=1006(testgroup1)
+> >> groups=1006(testgroup1),1007(testgroup2)
+> >>> [root@localhost ]# mount -t nfs -o vers=3 -o noac
+> >> 192.168.56.9:/data/nfstest /mnt/test/
+> >>> [root@localhost ]# cd /mnt/test/
+> >>> [root@localhost ]# mkdir mainsub
+> >>> [root@localhost ]# setfacl -d -m u:user2:rwx mainsub/
+> >>> [root@localhost ]# chown user1:testgroup1 mainsub/
+> >>>                  # chmod 2775 mainsub/
+> >>> [root@localhost ]# runuser -u user1 -g testgroup1 mkdir mainsub/subdir1
+> >>> [root@localhost ]# runuser -u user1 -g testgroup2 mkdir mainsub/subdir2
+> >>> [root@localhost ]# ls -l mainsub/
+> >>> drwxrwsr-x+ 2 user1 testgroup1 4096 Mar  6 22:50 subdir1
+> >>> drwxrwxr-x+ 2 user1 testgroup1 4096 Mar  6 22:50 subdir2
+> >>
+> >>
+> >> The subdir2 losts SGID. But if the same operations are applied in the
+> >> xfs or ext4 directedly, the SGID could be interited normally.
+> >>
+> >>> [root@localhost ]# ls -l mainsub/
+> >>> drwxrwsr-x+ 2 user1 testgroup1 4096 Mar  6 22:55 subdir1
+> >>> drwxrwsr-x+ 2 user1 testgroup1 4096 Mar  6 22:55 subdir2
+> >>
+> >> Is this a bug of NFSv3?
+> >>
+> >>> https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=073931017b49d9458aa351605b43a7e34598caef
+> >>
+> >>
+> >> Clear SGID bit when setting file permissions
+> >>
+> >> It seems this patch will clear the nfs sgid. Should we keep it?
+> > 
+> > Just searching for that commit id.... It looks like this was fixed by
+> > ext4 by a3bb2d5587521eea6dab2d05326abb0afb460abd "ext4: Don't clear SGID
+> > when inheriting ACLs".  And there are similar patches for a bunch of
+> > other filesystems.
+> > 
+> > --b.
+> > 
+> Thanks for reply.
+> The SGID will not be cleared on the xfs. However, when it mounts a nfs
+> the SGID will get lost. I think it is a NFS bug.
 
->> +	/*
->> +	 * This delegation is doomed, tell the recall logic
->> +	 * that it's being destroyed here.
->> +	 */
->> +
->> +	if (status) {
->> +		dp->dl_time++;
->> +		list_del_init(&dp->dl_recall_lru);
->> +		dp->dl_stid.sc_type = NFS4_CLOSED_DELEG_STID;
->> +	}
->
-> I'm trying to figure out if this fixes an actual bug.  The code should
-> be able to deal with a callback on an already unhashed delegation, so I
-> think you're right it would at worst just be an unnecessary recall.
+Also, I should have noticed that the fixes I mentioned are already in
+the kernel you're testing.
 
-But an 'normal' unhashed delegation would have a persistent refcount,
-this one would not. If the recall code gets a hold of it, it will
-place it on nn->del_recall_lru, and then free it in nfsd4_cb_recall_release()?
+Maybe nfs or knfsd needed a corresponding fix.  I can't remember if you
+posted a network trace--that would help assign blame to the client or
+the server side.
 
-> This won't catch every such case (could be that nfsd4_cb_recall_prepare
-> already ran and we're too late), so I wonder if this is worth it.
->
-> More interesting to me is what exactly it would take to hit this
-> case....  Another thread would have to have succesfully hashed a
-> delegation for this client and file to make our hash_delegation_locked
-> fail.  So there would be two leases for the same file and client, but
-> with different delegation pointers as the fl_owner.  I *think* we handle
-> that OK.  But it was likely problematic previously when we were still
-> using the file pointer as the fl_owner.
-
-I'm thinking this is more easily hit via fp->fi_had_conflict, if a lease
-break comes in at the right time?
-
-Thanks,
-
-Andy
-
--- 
-Andrew W. Elble
-aweits@discipline.rit.edu
-Infrastructure Engineer, Communications Technical Lead
-Rochester Institute of Technology
-PGP: BFAD 8461 4CCF DC95 DA2C B0EB 965B 082E 863E C912
+--b.
