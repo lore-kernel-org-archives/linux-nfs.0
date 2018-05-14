@@ -1,71 +1,64 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp2130.oracle.com ([156.151.31.86]:41774 "EHLO
-        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752133AbeENJM7 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 14 May 2018 05:12:59 -0400
-Received: from pps.filterd (userp2130.oracle.com [127.0.0.1])
-        by userp2130.oracle.com (8.16.0.22/8.16.0.22) with SMTP id w4E9B7jM173988
-        for <linux-nfs@vger.kernel.org>; Mon, 14 May 2018 09:12:59 GMT
-Received: from userv0021.oracle.com (userv0021.oracle.com [156.151.31.71])
-        by userp2130.oracle.com with ESMTP id 2hx29w31rc-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK)
-        for <linux-nfs@vger.kernel.org>; Mon, 14 May 2018 09:12:59 +0000
-Received: from aserv0121.oracle.com (aserv0121.oracle.com [141.146.126.235])
-        by userv0021.oracle.com (8.14.4/8.14.4) with ESMTP id w4E9CwHK021338
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK)
-        for <linux-nfs@vger.kernel.org>; Mon, 14 May 2018 09:12:58 GMT
-Received: from abhmp0014.oracle.com (abhmp0014.oracle.com [141.146.116.20])
-        by aserv0121.oracle.com (8.14.4/8.13.8) with ESMTP id w4E9CwnX008245
-        for <linux-nfs@vger.kernel.org>; Mon, 14 May 2018 09:12:58 GMT
-Date: Mon, 14 May 2018 12:12:52 +0300
-From: Dan Carpenter <dan.carpenter@oracle.com>
-To: chuck.lever@oracle.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [bug report] svcrdma: Allocate recv_ctxt's on CPU handling Receives
-Message-ID: <20180514091251.GA25443@mwanda>
+Received: from discipline.rit.edu ([129.21.6.207]:62129 "HELO
+        discipline.rit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with SMTP id S1751198AbeENLbx (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 14 May 2018 07:31:53 -0400
+From: Andrew W Elble <aweits@rit.edu>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: <linux-nfs@vger.kernel.org>, <jlayton@kernel.org>
+Subject: Re: [PATCH v2] nfsd: fix error handling in nfs4_set_delegation()
+References: <20180509120249.62022-1-aweits@rit.edu>
+        <20180511213005.GF3765@fieldses.org>
+Date: Mon, 14 May 2018 07:31:53 -0400
+In-Reply-To: <20180511213005.GF3765@fieldses.org> (J. Bruce Fields's message
+        of "Fri, 11 May 2018 17:30:05 -0400")
+Message-ID: <m21see79sm.fsf@discipline.rit.edu>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello Chuck Lever,
 
-The patch 0b2613c5883f: "svcrdma: Allocate recv_ctxt's on CPU
-handling Receives" from May 7, 2018, leads to the following static
-checker warning:
+>> +	/*
+>> +	 * This delegation is doomed, tell the recall logic
+>> +	 * that it's being destroyed here.
+>> +	 */
+>> +
+>> +	if (status) {
+>> +		dp->dl_time++;
+>> +		list_del_init(&dp->dl_recall_lru);
+>> +		dp->dl_stid.sc_type = NFS4_CLOSED_DELEG_STID;
+>> +	}
+>
+> I'm trying to figure out if this fixes an actual bug.  The code should
+> be able to deal with a callback on an already unhashed delegation, so I
+> think you're right it would at worst just be an unnecessary recall.
 
-	net/sunrpc/xprtrdma/svc_rdma_recvfrom.c:273 svc_rdma_post_recvs()
-	warn: signedness bug returning '(-12)'
+But an 'normal' unhashed delegation would have a persistent refcount,
+this one would not. If the recall code gets a hold of it, it will
+place it on nn->del_recall_lru, and then free it in nfsd4_cb_recall_release()?
 
-net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-   258  /**
-   259   * svc_rdma_post_recvs - Post initial set of Recv WRs
-   260   * @rdma: fresh svcxprt_rdma
-   261   *
-   262   * Returns true if successful, otherwise false.
-                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   263   */
-   264  bool svc_rdma_post_recvs(struct svcxprt_rdma *rdma)
-   265  {
-   266          struct svc_rdma_recv_ctxt *ctxt;
-   267          unsigned int i;
-   268          int ret;
-   269  
-   270          for (i = 0; i < rdma->sc_max_requests; i++) {
-   271                  ctxt = svc_rdma_recv_ctxt_get(rdma);
-   272                  if (!ctxt)
-   273                          return -ENOMEM;
-                                ^^^^^^^^^^^^^^^
-   274                  ctxt->rc_temp = true;
-   275                  ret = __svc_rdma_post_recv(rdma, ctxt);
-   276                  if (ret) {
-   277                          pr_err("svcrdma: failure posting recv buffers: %d\n",
-   278                                 ret);
-   279                          return false;
-   280                  }
-   281          }
-   282          return true;
-   283  }
+> This won't catch every such case (could be that nfsd4_cb_recall_prepare
+> already ran and we're too late), so I wonder if this is worth it.
+>
+> More interesting to me is what exactly it would take to hit this
+> case....  Another thread would have to have succesfully hashed a
+> delegation for this client and file to make our hash_delegation_locked
+> fail.  So there would be two leases for the same file and client, but
+> with different delegation pointers as the fl_owner.  I *think* we handle
+> that OK.  But it was likely problematic previously when we were still
+> using the file pointer as the fl_owner.
 
-regards,
-dan carpenter
+I'm thinking this is more easily hit via fp->fi_had_conflict, if a lease
+break comes in at the right time?
+
+Thanks,
+
+Andy
+
+-- 
+Andrew W. Elble
+aweits@discipline.rit.edu
+Infrastructure Engineer, Communications Technical Lead
+Rochester Institute of Technology
+PGP: BFAD 8461 4CCF DC95 DA2C B0EB 965B 082E 863E C912
