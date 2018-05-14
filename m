@@ -1,84 +1,107 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:58952 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:59046 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S932642AbeENOcW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 14 May 2018 10:32:22 -0400
-Date: Mon, 14 May 2018 10:32:22 -0400
+        id S1752019AbeENPcR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 14 May 2018 11:32:17 -0400
+Date: Mon, 14 May 2018 11:32:16 -0400
 From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Lu Xinyu <luxy.fnst@cn.fujitsu.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: SGID loss with nfsv3
-Message-ID: <20180514143222.GA7160@fieldses.org>
-References: <f9f2d605-b930-7db8-ad1e-fd189e074e9c@cn.fujitsu.com>
- <20180430201623.GA3207@fieldses.org>
- <060c9d41-8772-80e1-e938-21ec7b6315ef@cn.fujitsu.com>
+To: Al Viro <viro@ZenIV.linux.org.uk>
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Jeff Layton <jlayton@kernel.org>
+Subject: Re: [RFC][PATCH] nfsd: vfs_mkdir() might succeed leaving dentry
+ negative unhashed
+Message-ID: <20180514153216.GC7160@fieldses.org>
+References: <20180511211339.GG30522@ZenIV.linux.org.uk>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <060c9d41-8772-80e1-e938-21ec7b6315ef@cn.fujitsu.com>
+In-Reply-To: <20180511211339.GG30522@ZenIV.linux.org.uk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, May 14, 2018 at 02:43:49PM +0800, Lu Xinyu wrote:
-> Hi,Bruce
+On Fri, May 11, 2018 at 10:13:39PM +0100, Al Viro wrote:
+> [-stable fodder; as it is, one can e.g. add
+> /mnt/cgroup     localhost(rw,no_root_squash,fsid=4242)
+> to /etc/exports,
+> mount -t cgroup none /mnt/cgroup
+> mkdir /tmp/a
+> mount -t nfs localhost://mnt/cgroup /tmp/a
+> mkdir /tmp/a/foo
+
+How is the cgroup filesystem exportable?  That sounds like a bug in
+itself.  We don't want people using NFS as some kind of weird remote
+configuration protocol.
+
+> and have knfsd oops; the patch below deals with that.
 > 
-> On 20180501 04:16, J. Bruce Fields wrote:
-> > On Wed, Apr 25, 2018 at 02:03:20PM +0800, Lu Xinyu wrote:
-> >> hi, folks
-> >>
-> >>
-> >> I have client and server using nfsv3. The kernels are all 4.16-rc3.
-> >> In client I mount a partition or a disk formatted in xfs/ext4 in
-> >> /nfstest. It seems there is someting wrong with inheritance of sgid. I
-> >> try the following operations in the client.
-> >>> [root@localhost ]#id user1
-> >>> uid=1003(user1) gid=1006(testgroup1)
-> >> groups=1006(testgroup1),1007(testgroup2)
-> >>> [root@localhost ]# mount -t nfs -o vers=3 -o noac
-> >> 192.168.56.9:/data/nfstest /mnt/test/
-> >>> [root@localhost ]# cd /mnt/test/
-> >>> [root@localhost ]# mkdir mainsub
-> >>> [root@localhost ]# setfacl -d -m u:user2:rwx mainsub/
-> >>> [root@localhost ]# chown user1:testgroup1 mainsub/
-> >>>                  # chmod 2775 mainsub/
-> >>> [root@localhost ]# runuser -u user1 -g testgroup1 mkdir mainsub/subdir1
-> >>> [root@localhost ]# runuser -u user1 -g testgroup2 mkdir mainsub/subdir2
-> >>> [root@localhost ]# ls -l mainsub/
-> >>> drwxrwsr-x+ 2 user1 testgroup1 4096 Mar  6 22:50 subdir1
-> >>> drwxrwxr-x+ 2 user1 testgroup1 4096 Mar  6 22:50 subdir2
-> >>
-> >>
-> >> The subdir2 losts SGID. But if the same operations are applied in the
-> >> xfs or ext4 directedly, the SGID could be interited normally.
-> >>
-> >>> [root@localhost ]# ls -l mainsub/
-> >>> drwxrwsr-x+ 2 user1 testgroup1 4096 Mar  6 22:55 subdir1
-> >>> drwxrwsr-x+ 2 user1 testgroup1 4096 Mar  6 22:55 subdir2
-> >>
-> >> Is this a bug of NFSv3?
-> >>
-> >>> https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=073931017b49d9458aa351605b43a7e34598caef
-> >>
-> >>
-> >> Clear SGID bit when setting file permissions
-> >>
-> >> It seems this patch will clear the nfs sgid. Should we keep it?
-> > 
-> > Just searching for that commit id.... It looks like this was fixed by
-> > ext4 by a3bb2d5587521eea6dab2d05326abb0afb460abd "ext4: Don't clear SGID
-> > when inheriting ACLs".  And there are similar patches for a bunch of
-> > other filesystems.
-> > 
-> > --b.
-> > 
-> Thanks for reply.
-> The SGID will not be cleared on the xfs. However, when it mounts a nfs
-> the SGID will get lost. I think it is a NFS bug.
+> Questions:
+> 	1) is fh_update() use below legitimate, or should we
+> do fh_put/fh_compose instead?
 
-Also, I should have noticed that the fixes I mentioned are already in
-the kernel you're testing.
+fh_update looks OK to me, but do we need it here?  There's already a
 
-Maybe nfs or knfsd needed a corresponding fix.  I can't remember if you
-posted a network trace--that would help assign blame to the client or
-the server side.
+	if (!err)
+		err = fh_update(reshp);
+
+at the end of nfsd_create_locked.
+
+> 	2) is nfserr_serverfail valid for situation when
+> directory created by such vfs_mkdir() manages to disappear
+> under us immediately afterwards?  Or should we return nfserr_stale
+> instead?
+
+We just got a successful result on the create and the parent's still
+locked, so if somebody hits this I think we want them reporting a bug,
+not wasting time trying to find a mistake in their own logic.
+
+> It's in vfs.git#for-linus, if you prefer to use git for review...
+> ]
+> 
+> That can (and does, on some filesystems) happen - ->mkdir() (and thus
+> vfs_mkdir()) can legitimately leave its argument negative and just
+> unhash it, counting upon the lookup to pick the object we'd created
+> next time we try to look at that name.
+> 
+> Some vfs_mkdir() callers forget about that possibility...
+
+I'd rather have this in a helper function with a comment or two, but I
+can do that as a followup patch.
 
 --b.
+
+> 
+> Signed-off-by: Al Viro <viro@zeniv.linux.org.uk>
+> ---
+> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+> index 2410b093a2e6..b0555d7d8200 100644
+> --- a/fs/nfsd/vfs.c
+> +++ b/fs/nfsd/vfs.c
+> @@ -1201,6 +1201,28 @@ nfsd_create_locked(struct svc_rqst *rqstp, struct svc_fh *fhp,
+>  		break;
+>  	case S_IFDIR:
+>  		host_err = vfs_mkdir(dirp, dchild, iap->ia_mode);
+> +		if (!host_err && unlikely(d_unhashed(dchild))) {
+> +			struct dentry *d;
+> +			d = lookup_one_len(dchild->d_name.name,
+> +					   dchild->d_parent,
+> +					   dchild->d_name.len);
+> +			if (IS_ERR(d)) {
+> +				host_err = PTR_ERR(d);
+> +				break;
+> +			}
+> +			if (unlikely(d_is_negative(d))) {
+> +				dput(d);
+> +				err = nfserr_serverfault;
+> +				goto out;
+> +			}
+> +			dput(resfhp->fh_dentry);
+> +			resfhp->fh_dentry = dget(d);
+> +			err = fh_update(resfhp);
+> +			dput(dchild);
+> +			dchild = d;
+> +			if (err)
+> +				goto out;
+> +		}
+>  		break;
+>  	case S_IFCHR:
+>  	case S_IFBLK:
