@@ -1,68 +1,78 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-eopbgr660068.outbound.protection.outlook.com ([40.107.66.68]:63168
-        "EHLO CAN01-QB1-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1751947AbeEMUpC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sun, 13 May 2018 16:45:02 -0400
-From: Rick Macklem <rmacklem@uoguelph.ca>
-To: Trond Myklebust <trondmy@hammerspace.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: NFSv4.1 client recovery of opens after server crash/reboot
-Date: Sun, 13 May 2018 20:44:59 +0000
-Message-ID: <YTOPR0101MB095342F796D66C79224906ADDD9D0@YTOPR0101MB0953.CANPRD01.PROD.OUTLOOK.COM>
-References: <YTOPR0101MB095358258682ACC6D4F8DC02DD9E0@YTOPR0101MB0953.CANPRD01.PROD.OUTLOOK.COM>
-         <YTOPR0101MB0953BA8247D49E4679F7AF67DD9D0@YTOPR0101MB0953.CANPRD01.PROD.OUTLOOK.COM>,<c64b0f479f17120585412aa7fb44aadd20a08e6c.camel@hammerspace.com>
-In-Reply-To: <c64b0f479f17120585412aa7fb44aadd20a08e6c.camel@hammerspace.com>
-Content-Type: text/plain; charset="iso-8859-1"
+Received: from mail.cn.fujitsu.com ([183.91.158.132]:4475 "EHLO
+        heian.cn.fujitsu.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+        with ESMTP id S1751626AbeENGnD (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 14 May 2018 02:43:03 -0400
+Subject: Re: SGID loss with nfsv3
+To: "J. Bruce Fields" <bfields@fieldses.org>
+References: <f9f2d605-b930-7db8-ad1e-fd189e074e9c@cn.fujitsu.com>
+ <20180430201623.GA3207@fieldses.org>
+From: Lu Xinyu <luxy.fnst@cn.fujitsu.com>
+CC: <linux-nfs@vger.kernel.org>
+Message-ID: <060c9d41-8772-80e1-e938-21ec7b6315ef@cn.fujitsu.com>
+Date: Mon, 14 May 2018 14:43:49 +0800
 MIME-Version: 1.0
+In-Reply-To: <20180430201623.GA3207@fieldses.org>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Trond Myklebust wrote:
->On Sun, 2018-05-13 at 12:12 +0000, Rick Macklem wrote:
->> I wrote:
->> > I just ran a little test of an NFSv4.1 server (FreeBSD) reboot
->> > while the Linux client
->> > had two files open over an NFSv4.1 mount (linux-4.17-rc2).
->> > It basically worked, but when I looked at the packet trace in
->> > wireshark, it wasn't what
->> > I expected.
->> > The operations were basically:
->> > 1 - ExchangeID
->> > 2 - CreateSession
->> > 3 - ReclaimComplete
->> > 4 - Open/Claim_FH done twice to reclaim the Opens
->> >
->> > This seems "unsafe" to me, since I think it would be possible for
->> > another client to >Open the file with OPEN_DENY_BOTH between #3 and
->> > #4, causing #4 to fail.
->> > I was expecting something like:
->> > 1 - ExchangeID
->> > 2 - CreateSession
->> > 3 - Open/Claim_previous done twice to reclaim the Opens
->> > 4 - ReclaimComplete
->>
->> I forgot to mention that this is probably not a serious issue right
->> now, since most
->> extant clients (FreeBSD and Linux I think?) always do Opens with
->> OPEN_SHARE_DENY_NONE.
->> The only current client I am aware of that does OPEN_SHARE_DENY_xx
->> other than
->> NONE is the ESXi 6.5 client. Btw, this client has serious issues that
->> I might post here, so the Linux server maintainers are aware of them.
->>
->
->Hi Rick,
->
->The Linux client will attempt to reclaim opens correctly (i.e. before
->sending RECLAIM_COMPLETE). However it will not attempt to reclaim any
->lock state if the server advertises a different identity after the
->reboot (see RFC5661, section 8.4.2.1.). Are you certain that the
->FreeBSD server is advertising the same  eir_server_owner and
->eir_server_scope fields after the reboot?
-Ouch, yes, my mistake...
-The eir_server_scope had changed.
+Hi,Bruce
 
-Thanks and sorry for the noise, rick
-ps: If I see a problem with the eir_server_scope the same, I'll post again, but
-      I doubt that will happen.
+On 20180501 04:16, J. Bruce Fields wrote:
+> On Wed, Apr 25, 2018 at 02:03:20PM +0800, Lu Xinyu wrote:
+>> hi, folks
+>>
+>>
+>> I have client and server using nfsv3. The kernels are all 4.16-rc3.
+>> In client I mount a partition or a disk formatted in xfs/ext4 in
+>> /nfstest. It seems there is someting wrong with inheritance of sgid. I
+>> try the following operations in the client.
+>>> [root@localhost ]#id user1
+>>> uid=1003(user1) gid=1006(testgroup1)
+>> groups=1006(testgroup1),1007(testgroup2)
+>>> [root@localhost ]# mount -t nfs -o vers=3 -o noac
+>> 192.168.56.9:/data/nfstest /mnt/test/
+>>> [root@localhost ]# cd /mnt/test/
+>>> [root@localhost ]# mkdir mainsub
+>>> [root@localhost ]# setfacl -d -m u:user2:rwx mainsub/
+>>> [root@localhost ]# chown user1:testgroup1 mainsub/
+>>>                  # chmod 2775 mainsub/
+>>> [root@localhost ]# runuser -u user1 -g testgroup1 mkdir mainsub/subdir1
+>>> [root@localhost ]# runuser -u user1 -g testgroup2 mkdir mainsub/subdir2
+>>> [root@localhost ]# ls -l mainsub/
+>>> drwxrwsr-x+ 2 user1 testgroup1 4096 Mar  6 22:50 subdir1
+>>> drwxrwxr-x+ 2 user1 testgroup1 4096 Mar  6 22:50 subdir2
+>>
+>>
+>> The subdir2 losts SGID. But if the same operations are applied in the
+>> xfs or ext4 directedly, the SGID could be interited normally.
+>>
+>>> [root@localhost ]# ls -l mainsub/
+>>> drwxrwsr-x+ 2 user1 testgroup1 4096 Mar  6 22:55 subdir1
+>>> drwxrwsr-x+ 2 user1 testgroup1 4096 Mar  6 22:55 subdir2
+>>
+>> Is this a bug of NFSv3?
+>>
+>>> https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=073931017b49d9458aa351605b43a7e34598caef
+>>
+>>
+>> Clear SGID bit when setting file permissions
+>>
+>> It seems this patch will clear the nfs sgid. Should we keep it?
+> 
+> Just searching for that commit id.... It looks like this was fixed by
+> ext4 by a3bb2d5587521eea6dab2d05326abb0afb460abd "ext4: Don't clear SGID
+> when inheriting ACLs".  And there are similar patches for a bunch of
+> other filesystems.
+> 
+> --b.
+> 
+Thanks for reply.
+The SGID will not be cleared on the xfs. However, when it mounts a nfs
+the SGID will get lost. I think it is a NFS bug.
+
+
+Xinyu Lu
+
+
