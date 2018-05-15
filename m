@@ -1,19 +1,19 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx3-rdu2.redhat.com ([66.187.233.73]:59734 "EHLO mx1.redhat.com"
+Received: from mx3-rdu2.redhat.com ([66.187.233.73]:59746 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1752428AbeEOPyB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 15 May 2018 11:54:01 -0400
-Received: from smtp.corp.redhat.com (int-mx04.intmail.prod.int.rdu2.redhat.com [10.11.54.4])
+        id S1752323AbeEOPyx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 15 May 2018 11:54:53 -0400
+Received: from smtp.corp.redhat.com (int-mx06.intmail.prod.int.rdu2.redhat.com [10.11.54.6])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 88FF640200A0
-        for <linux-nfs@vger.kernel.org>; Tue, 15 May 2018 15:54:00 +0000 (UTC)
-Message-ID: <1526399638.7441.9.camel@redhat.com>
-Subject: [PATCH v3 5/8] nfs-utils: tidy up output of conf_report
+        by mx1.redhat.com (Postfix) with ESMTPS id BC60C40200A0
+        for <linux-nfs@vger.kernel.org>; Tue, 15 May 2018 15:54:52 +0000 (UTC)
+Message-ID: <1526399690.7441.10.camel@redhat.com>
+Subject: [PATCH v3 6/8] nfs-utils: Add nfsconftool cli
 From: Justin Mitchell <jumitche@redhat.com>
 To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
 Cc: Steve Dickson <steved@redhat.com>
-Date: Tue, 15 May 2018 16:53:58 +0100
+Date: Tue, 15 May 2018 16:54:50 +0100
 In-Reply-To: <1526399410.7441.4.camel@redhat.com>
 References: <1526399410.7441.4.camel@redhat.com>
 Content-Type: text/plain; charset="UTF-8"
@@ -21,366 +21,262 @@ Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Previously unused conf_report() function is modified to output
-an alphabetically sorted version of the current configuration
-to the nominated FILE handle.
+This tool uses the conffile facilities to allow commandline
+querying of configuration settings and to dump the current
+config for diagnosis and testing
 
 Signed-off-by: Justin Mitchell <jumitche@redhat.com>
 ---
- support/include/conffile.h |   3 +-
- support/nfs/conffile.c     | 293 +++++++++++++++++++++++++++++++--------------
- 2 files changed, 207 insertions(+), 89 deletions(-)
+ Makefile.am                |   2 +-
+ configure.ac               |   1 +
+ tools/Makefile.am          |   2 +
+ tools/nfsconf/Makefile.am  |   8 ++
+ tools/nfsconf/nfsconfcli.c | 180 +++++++++++++++++++++++++++++++++++++++++++++
+ 5 files changed, 192 insertions(+), 1 deletion(-)
+ create mode 100644 tools/nfsconf/Makefile.am
+ create mode 100644 tools/nfsconf/nfsconfcli.c
 
-diff --git a/support/include/conffile.h b/support/include/conffile.h
-index 6baaf9a..bc2d61f 100644
---- a/support/include/conffile.h
-+++ b/support/include/conffile.h
-@@ -37,6 +37,7 @@
- #include <ctype.h>
- #include <stdint.h>
- #include <stdbool.h>
+diff --git a/Makefile.am b/Makefile.am
+index e1f39aa..0022084 100644
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -2,7 +2,7 @@
+ 
+ AUTOMAKE_OPTIONS = foreign
+ 
+-SUBDIRS = tools support utils linux-nfs tests systemd
++SUBDIRS = support tools utils linux-nfs tests systemd
+ 
+ MAINTAINERCLEANFILES = Makefile.in
+ 
+diff --git a/configure.ac b/configure.ac
+index 5a11636..b925666 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -616,6 +616,7 @@ AC_CONFIG_FILES([
+ 	tools/rpcgen/Makefile
+ 	tools/mountstats/Makefile
+ 	tools/nfs-iostat/Makefile
++	tools/nfsconf/Makefile
+ 	utils/Makefile
+ 	utils/blkmapd/Makefile
+ 	utils/nfsdcltrack/Makefile
+diff --git a/tools/Makefile.am b/tools/Makefile.am
+index f2ce282..4266da4 100644
+--- a/tools/Makefile.am
++++ b/tools/Makefile.am
+@@ -6,6 +6,8 @@ if CONFIG_RPCGEN
+ OPTDIRS += rpcgen
+ endif
+ 
++OPTDIRS += nfsconf
++
+ SUBDIRS = locktest rpcdebug nlmtest mountstats nfs-iostat $(OPTDIRS)
+ 
+ MAINTAINERCLEANFILES = Makefile.in
+diff --git a/tools/nfsconf/Makefile.am b/tools/nfsconf/Makefile.am
+new file mode 100644
+index 0000000..0042db9
+--- /dev/null
++++ b/tools/nfsconf/Makefile.am
+@@ -0,0 +1,8 @@
++## Process this file with automake to produce Makefile.in
++
++bin_PROGRAMS = nfsconftool
++
++nfsconftool_SOURCES = nfsconfcli.c
++nfsconftool_LDADD = ../../support/nfs/libnfsconf.la
++
++MAINTAINERCLEANFILES = Makefile.in
+diff --git a/tools/nfsconf/nfsconfcli.c b/tools/nfsconf/nfsconfcli.c
+new file mode 100644
+index 0000000..034ec51
+--- /dev/null
++++ b/tools/nfsconf/nfsconfcli.c
+@@ -0,0 +1,180 @@
++#include <stdlib.h>
++#include <unistd.h>
 +#include <stdio.h>
- 
- struct conf_list_node {
- 	TAILQ_ENTRY(conf_list_node) link;
-@@ -65,7 +66,7 @@ extern void     conf_cleanup(void);
- extern int      conf_match_num(const char *, const char *, int);
- extern int      conf_remove(int, const char *, const char *);
- extern int      conf_remove_section(int, const char *);
--extern void     conf_report(void);
-+extern void     conf_report(FILE *);
- 
- /*
-  * Convert letter from upper case to lower case
-diff --git a/support/nfs/conffile.c b/support/nfs/conffile.c
-index e65caaf..1e8034a 100644
---- a/support/nfs/conffile.c
-+++ b/support/nfs/conffile.c
-@@ -1080,117 +1080,234 @@ conf_end(int transaction, int commit)
-  * Configuration is "stored in reverse order", so reverse it again.
-  */
- struct dumper {
--	char *s, *v;
-+	char *section;
-+	char *arg;
-+	char *tag;
-+	char *value;
- 	struct dumper *next;
- };
- 
-+/*
-+ * Test if two nodes belong to the same (sub)sections
-+ */
-+static int
-+dumper_section_compare(const struct dumper *nodea, const struct dumper *nodeb)
++#include <getopt.h>
++#include <string.h>
++#include <errno.h>
++#include "config.h"
++#include "conffile.h"
++#include "xlog.h"
++
++typedef enum {
++	MODE_NONE,
++	MODE_GET,
++	MODE_ISSET,
++	MODE_DUMP
++} confmode_t;
++
++static void usage(const char *name)
 +{
-+	int ret;
++	fprintf(stderr, "Usage: %s [-v] [--file filename.conf] ...\n", name);
++	fprintf(stderr, "Options:\n");
++	fprintf(stderr, " -v			Increase Verbosity\n");
++	fprintf(stderr, " --file filename.conf	Load this config file\n");
++	fprintf(stderr, "     (Default config file: " NFS_CONFFILE "\n");
++	fprintf(stderr, "Modes:\n");
++	fprintf(stderr, "  --dump [outputfile]\n");
++	fprintf(stderr, "      Outputs the configuration to the named file\n");
++	fprintf(stderr, "  --get [--arg subsection] {section} {tag}\n");
++	fprintf(stderr, "      Output one specific config value\n");
++	fprintf(stderr, "  --isset [--arg subsection] {section} {tag}\n");
++	fprintf(stderr, "      Return code indicates if config value is present\n");
++}
 +
-+	/* missing node, shouldnt happen */
-+	if (!nodea || !nodeb)
-+		return -1;
++int main(int argc, char **argv)
++{
++	const char * val;
++	char * confpath = NFS_CONFFILE;
++	char * arg = NULL;
++	int verbose=0;
++	int ret = 0;
++	char * dumpfile = NULL;
 +
-+	/* no section names at all, they are equal */
-+	if (!nodea->section && !nodeb->section)
-+		return 0;
++	confmode_t mode = MODE_NONE;
 +
-+	/* if only one has a section name, the blank one goes first */
-+	if (!nodea->section && nodeb->section)
-+		return -1;
++	while (1) {
++		int c;
++		int index = 0;
++		struct option long_options[] = {
++			{"get",		no_argument, 0, 'g' },
++			{"arg",	  required_argument, 0, 'a' },
++			{"isset", 	no_argument, 0, 'i' },
++			{"dump",  optional_argument, 0, 'd' },
++			{"file",  required_argument, 0, 'f' },
++			{"verbose",	no_argument, 0, 'v' },
++			{NULL,			  0, 0, 0 }
++		};
 +
-+	if (nodea->section && !nodeb->section)
++		c = getopt_long(argc, argv, "ga:id::f:v", long_options, &index);
++		if (c == -1) break;
++
++		switch (c) {
++			case 0:
++				break;
++			case 'f':
++				/* user specified souce path for config */
++				confpath = optarg;
++				break;
++			case 'a':
++				/* user supplied a sub-section name */
++				arg = optarg;
++				break;
++			case 'v':
++				verbose++;
++				break;
++			case 'g':
++				mode = MODE_GET;
++				break;
++			case 'i':
++				mode = MODE_ISSET;
++				break;
++			case 'd':
++				/* check if user supplied a filename for dump */
++				if (optarg == NULL && argv[optind] != NULL
++				    && argv[optind][0] != '-')
++					optarg = argv[optind++];
++				mode = MODE_DUMP;
++				dumpfile = optarg;
++				break;
++			default:
++				usage(argv[0]);
++				return 1;
++		}
++	}
++
++	/* configure the logging that conffile.c uses */
++	if (verbose)
++		xlog_config(D_ALL, 1);
++	xlog_stderr(1);
++	xlog_syslog(0);
++	xlog_open("nfsconftool");
++
++	if (mode == MODE_NONE) {
++		fprintf(stderr, "Error: No MODE selected.\n");
++		usage(argv[0]);
 +		return 1;
-+
-+	/* both have section names, but do they match */
-+	ret = strcmp(nodea->section, nodeb->section);
-+
-+	/* section names differ, that was easy */
-+	if (ret != 0)
-+		return ret;
-+
-+	/* sections matched, but how about sub-sections,
-+	 * again, if only one has a value the blank goes first
-+	 */
-+	if (!nodea->arg && nodeb->arg)
-+		return -1;
-+
-+	if (nodea->arg && !nodeb->arg)
-+		return  1;
-+
-+	/* both have sub-section args and they differ */
-+	if (nodea->arg && nodeb->arg
-+	&& (ret=strcmp(nodea->arg, nodeb->arg))!=0)
-+		return ret;
-+
-+	return 0;
-+}
-+
-+/* If a string starts or ends with a space it should be quoted */
-+static bool
-+should_escape(const char *text)
-+{
-+	int len;
-+
-+	/* no string, no escaping needed */
-+	if (!text)
-+		return false;
-+
-+	/* first character is a space */
-+	if (isspace(text[0]))
-+		return true;
-+
-+	/* last character is a space */
-+	len = strlen(text);
-+	if (isspace(text[len-1]))
-+		return true;
-+
-+	return false;
-+}
-+
- static void
--conf_report_dump(struct dumper *node)
-+conf_report_dump_text(struct dumper *head, FILE *ff)
- {
--	/* Recursive, cleanup when we're done.  */
--	if (node->next)
--		conf_report_dump(node->next);
--
--	if (node->v)
--		xlog(LOG_INFO, "%s=\t%s", node->s, node->v);
--	else if (node->s) {
--		xlog(LOG_INFO, "%s", node->s);
--		if (strlen(node->s) > 0)
--			free(node->s);
-+	const struct dumper *node = head;
-+	const struct dumper *last = NULL;
-+
-+	for (node=head; node!=NULL; node=node->next) {
-+		/* starting a new section, print the section header */
-+		if (dumper_section_compare(last, node)!=0) {
-+			if (node != head)
-+				fprintf(ff, "\n");
-+			if (node->arg)
-+				fprintf(ff, "[%s \"%s\"]\n", node->section, node->arg);
-+			else
-+				fprintf(ff, "[%s]\n", node->section);
-+		}
-+
-+		/* now print the tag and its value */
-+		fprintf(ff, " %s", node->tag);
-+		if (node->value) {
-+			if (should_escape(node->value))
-+				fprintf(ff, " = \"%s\"", node->value);
-+			else
-+				fprintf(ff, " = %s", node->value);
-+		}
-+		fprintf(ff, "\n");
-+
-+		last = node;
- 	}
-+}
- 
--	free (node);
-+/* sort by tag compare function */
-+static int
-+dumper_compare(const void *a, const void *b)
-+{
-+	const struct dumper *nodea = *(struct dumper **)a;
-+	const struct dumper *nodeb = *(struct dumper **)b;
-+	int ret;
-+
-+	/* missing node, shouldnt happen */
-+	if (!nodea || !nodeb)
-+		return -1;
-+
-+	/* are the two nodes in different (sub)sections */
-+	ret = dumper_section_compare(nodea, nodeb);
-+	if (ret != 0)
-+		return ret;
-+
-+	/* sub-sections match (both blank, or both same)
-+	 * so we compare the tag names
-+	 */
-+
-+	/* blank tags shouldnt happen, but paranoia */
-+	if (!nodea->tag && !nodeb->tag)
-+		return  0;
-+
-+	/* still shouldnt happen, but use the blank-goes-first logic */
-+	if (!nodea->tag &&  nodeb->tag)
-+		return -1;
-+	if ( nodea->tag && !nodeb->tag)
-+		return  1;
-+
-+	/* last test, compare the tags directly */
-+	ret = strcmp(nodea->tag, nodeb->tag);
-+	return ret;
- }
- 
--void
--conf_report (void)
-+/* sort all of the report nodes */
-+static struct dumper *
-+conf_report_sort(struct dumper *start)
- {
--	struct conf_binding *cb, *last = 0;
--	unsigned int i, len, diff_arg = 0;
--	char *current_section = (char *)0;
--	char *current_arg = (char *)0;
--	struct dumper *dumper, *dnode;
-+	struct dumper **list;
-+	struct dumper *node;
-+	unsigned int count = 0;
-+	unsigned int i=0;
-+
-+	/* how long is this list */
-+	for (node=start; node!=NULL; node=node->next)
-+		count++;
-+
-+	/* no need to sort a list with less than 2 items */
-+	if (count < 2)
-+		return start;
-+
-+	/* build an array of all the nodes */
-+	list = calloc(count, sizeof(struct dumper *));
-+	if (!list)
-+		goto mem_err;
-+
-+	for (node=start,i=0; node!=NULL; node=node->next) {
-+		list[i++] = node;
 +	}
 +
-+	/* sort the array alphabetically by section and tag */
-+	qsort(list, count, sizeof(struct dumper *), dumper_compare);
-+
-+	/* rebuild the linked list in sorted order */
-+	for (i=0; i<count-1; i++) {
-+		list[i]->next = list[i+1];
++	if (conf_init_file(confpath)) {
++		/* config file was missing or had an error, warn about it */
++		if (verbose || mode != MODE_ISSET)
++			fprintf(stderr, "Error loading config file %s\n",
++				confpath);
++		/* this isnt fatal for --isset */
++		if (mode != MODE_ISSET)
++			return 1;
 +	}
-+	list[count-1]->next = NULL;
 +
-+	/* remember the new head of list and discard the sorting array */
-+	node = list[0];
-+	free(list);
- 
--	dumper = dnode = (struct dumper *)calloc(1, sizeof *dumper);
--	if (!dumper)
--		goto mem_fail;
-+	/* return the new head of list */
-+	return node;
++	/* --dump mode, output the current configuration */
++	if (mode == MODE_DUMP) {
++		/* default to writing it to stdout */
++		FILE *out = stdout;
 +
-+mem_err:
-+	free(list);
-+	return NULL;
-+}
++		/* user specified a file to write to instead */
++		if (dumpfile) {
++			out = fopen(dumpfile, "w");
++			if (out == NULL) {
++				fprintf(stderr, "Error opening dumpfile %s: %s\n",
++					dumpfile, strerror(errno));
++				ret = 2;
++				goto cleanup;
++			}
++			if (verbose)
++				printf("Dumping config to %s\n", dumpfile);
++		}
 +
-+/* Output a copy of the current configuration to file */
-+void
-+conf_report(FILE *outfile)
-+{
-+	struct conf_binding *cb = NULL;
-+	unsigned int i;
-+	struct dumper *dumper = NULL, *dnode = NULL;
- 
- 	xlog(LOG_INFO, "conf_report: dumping running configuration");
- 
--	for (i = 0; i < sizeof conf_bindings / sizeof conf_bindings[0]; i++)
-+	/* build a linked list of all the config nodes */
-+	for (i = 0; i < sizeof conf_bindings / sizeof conf_bindings[0]; i++) {
- 		for (cb = LIST_FIRST(&conf_bindings[i]); cb; cb = LIST_NEXT(cb, link)) {
--			if (!cb->is_default) {
--				/* Make sure the Section arugment is the same */
--				if (current_arg && current_section && cb->arg) {
--					if (strcmp(cb->section, current_section) == 0 &&
--						strcmp(cb->arg, current_arg) != 0)
--					diff_arg = 1;
--				}
--				/* Dump this entry.  */
--				if (!current_section || strcmp(cb->section, current_section)
--							|| diff_arg) {
--					if (current_section || diff_arg) {
--						len = strlen (current_section) + 3;
--						if (current_arg)
--							len += strlen(current_arg) + 3;
--						dnode->s = malloc(len);
--						if (!dnode->s)
--							goto mem_fail;
--
--						if (current_arg)
--							snprintf(dnode->s, len, "[%s \"%s\"]",
--								current_section, current_arg);
--						else
--							snprintf(dnode->s, len, "[%s]", current_section);
--
--						dnode->next =
--							(struct dumper *)calloc(1, sizeof (struct dumper));
--						dnode = dnode->next;
--						if (!dnode)
--							goto mem_fail;
--
--						dnode->s = "";
--						dnode->next =
--							(struct dumper *)calloc(1, sizeof (struct dumper));
--						dnode = dnode->next;
--						if (!dnode)
--						goto mem_fail;
--					}
--					current_section = cb->section;
--					current_arg = cb->arg;
--					diff_arg = 0;
--				}
--				dnode->s = cb->tag;
--				dnode->v = cb->value;
--				dnode->next = (struct dumper *)calloc (1, sizeof (struct dumper));
--				dnode = dnode->next;
--				if (!dnode)
--					goto mem_fail;
--				last = cb;
-+			struct dumper *newnode = calloc(1, sizeof (struct dumper));
-+			if (!newnode)
-+				goto mem_fail;
++		/* output the configuration */
++		conf_report(out);
 +
-+			newnode->next = dumper;
-+			dumper = newnode;
++		/* close that user specified file */
++		if (dumpfile)
++			fclose(out);
++	} else
++	/* --iset and --get share a lot of code */
++	if (mode == MODE_GET || mode == MODE_ISSET) {
++		char * section = NULL;
++		char * tag = NULL;
 +
-+			newnode->section = cb->section;
-+			newnode->arg = cb->arg;
-+			newnode->tag = cb->tag;
-+			newnode->value = cb->value;
- 		}
- 	}
- 
--	if (last) {
--		len = strlen(last->section) + 3;
--		if (last->arg)
--			len += strlen(last->arg) + 3;
--		dnode->s = malloc(len);
--		if (!dnode->s)
--			goto mem_fail;
--		if (last->arg)
--			snprintf(dnode->s, len, "[%s \"%s\"]", last->section, last->arg);
--		else
--			snprintf(dnode->s, len, "[%s]", last->section);
--	}
--	conf_report_dump(dumper);
--	return;
-+	/* sort the list then print it */
-+	dumper = conf_report_sort(dumper);
-+	conf_report_dump_text(dumper, outfile);
-+	goto cleanup;
- 
- mem_fail:
- 	xlog_warn("conf_report: malloc/calloc failed");
++		/* test they supplied section and tag names */
++		if (optind+1 >= argc) {
++			fprintf(stderr, "Error: insufficient arguments for mode\n");
++			usage(argv[0]);
++			ret = 2;
++			goto cleanup;
++		}
++
++		/* now we have a section and tag name */
++		section = argv[optind++];
++		tag = argv[optind++];
++
++		/* retrieve the specified tags value */
++		val = conf_get_section(section, arg, tag);
++		if (val != NULL) {
++			/* ret=0, success, mode --get wants to output the value as well */
++			if (mode == MODE_GET)
++				printf("%s\n", val);
++		} else {
++			/* ret=1, no value found, tell the user if they asked */
++			if (mode == MODE_GET && verbose)
++				fprintf(stderr, "Tag '%s' not found\n", tag);
++			ret = 1;
++		}
++	} else {
++		fprintf(stderr, "Mode not yet implimented.\n");
++		ret = 2;
++	}
++
 +cleanup:
-+	/* traverse the linked list freeing all the nodes */
- 	while ((dnode = dumper) != 0) {
- 		dumper = dumper->next;
--		if (dnode->s)
--			free(dnode->s);
- 		free(dnode);
- 	}
- 	return;
++	conf_cleanup();
++	return ret;
++}
 -- 
 1.8.3.1
+
 
 
 
