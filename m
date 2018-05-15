@@ -1,88 +1,169 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-sn1nam01on0106.outbound.protection.outlook.com ([104.47.32.106]:18356
-        "EHLO NAM01-SN1-obe.outbound.protection.outlook.com"
+Received: from mx3-rdu2.redhat.com ([66.187.233.73]:39594 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1752418AbeEON7Z (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 15 May 2018 09:59:25 -0400
-From: Trond Myklebust <trondmy@hammerspace.com>
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "dwysocha@redhat.com" <dwysocha@redhat.com>
-Subject: Re: [PATCH] Fix possible stack smash in
- nfs_idmap_read_and_verify_message
-Date: Tue, 15 May 2018 13:59:23 +0000
-Message-ID: <da9db571bbeb0e4e341859ab7cd160b9f0e5c0c7.camel@hammerspace.com>
-References: <20180417201118.17841-1-dwysocha@redhat.com>
-         <1526389606.3803.4.camel@redhat.com>
-In-Reply-To: <1526389606.3803.4.camel@redhat.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+        id S1752145AbeEOOwP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 15 May 2018 10:52:15 -0400
+Message-ID: <1cd0dc42bf058d88d2cf239ca04e81e3726203b1.camel@redhat.com>
+Subject: Re: [PATCH v1 01/19] svcrdma: Add proper SPDX tags for
+ NetApp-contributed source
+From: Doug Ledford <dledford@redhat.com>
+To: Chuck Lever <chuck.lever@oracle.com>,
+        Bruce Fields <bfields@fieldses.org>
+Cc: linux-rdma@vger.kernel.org,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Date: Tue, 15 May 2018 10:52:14 -0400
+In-Reply-To: <32DBD8DB-07FD-4D89-B88A-348B0F6103BB@oracle.com>
+References: <20180507192126.4608.63295.stgit@klimt.1015granger.net>
+         <20180507192655.4608.26260.stgit@klimt.1015granger.net>
+         <20180509202323.GA31959@fieldses.org>
+         <32DBD8DB-07FD-4D89-B88A-348B0F6103BB@oracle.com>
+Content-Type: multipart/signed; micalg="pgp-sha256";
+        protocol="application/pgp-signature"; boundary="=-0kmFk/k97E46IAiSwFKI"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDE4LTA1LTE1IGF0IDA5OjA2IC0wNDAwLCBEYXZpZCBXeXNvY2hhbnNraSB3cm90
-ZToNCj4gT24gVHVlLCAyMDE4LTA0LTE3IGF0IDE2OjExIC0wNDAwLCBEYXZlIFd5c29jaGFuc2tp
-IHdyb3RlOg0KPiA+IEluIG5mc19pZG1hcF9yZWFkX2FuZF92ZXJpZnlfbWVzc2FnZSB0aGVyZSBp
-cyBhbiB1bnByb3RlY3RlZA0KPiA+IHNwcmludGYNCj4gPiB0aGF0IGNvbnZlcnRzIHRoZSBfX3Uz
-MiAnaW1faWQnIGZyb20gc3RydWN0IGlkbWFwX21zZyB0byAnaWRfc3RyJw0KPiA+IHRoYXQgaXMg
-YSBzdGFjayB2YXJpYWJsZSBvZiAnTkZTX1VJTlRfTUFYTEVOJyAoZGVmaW5lZCBhcyAxMSkuDQo+
-ID4gSWYgYSB1aWQgb3IgZ2lkIHZhbHVlIGlzID4gMjE0NzQ4MzY0NyA9IDB4N2ZmZmZmZmYgd2Ug
-Y29ycnVwdA0KPiA+IGtlcm5lbCBtZW1vcnkgYnkgb25lIGJ5dGUgYW5kIGlmIENPTkZJR19DQ19T
-VEFDS1BST1RFQ1RPUl9TVFJPTkcNCj4gPiBpcyBzZXQgd2Ugc2VlIGEgc3RhY2stcHJvdGVjdG9y
-IHBhbmljIGFzIGZvbGxvd3M6DQo+ID4gDQo+ID4gWzExNTU4MDUzLjYxNjU2NV0gS2VybmVsIHBh
-bmljIC0gbm90IHN5bmNpbmc6IHN0YWNrLXByb3RlY3RvcjoNCj4gPiBLZXJuZWwgc3RhY2sgaXMg
-Y29ycnVwdGVkIGluOiBmZmZmZmZmZmEwNWI4YThjDQo+ID4gDQo+ID4gWzExNTU4MDUzLjYzOTA2
-M10gQ1BVOiA2IFBJRDogOTQyMyBDb21tOiBycGMuaWRtYXBkIFRhaW50ZWQ6DQo+ID4gRyAgICAg
-ICAgVyAgICAgIC0tLS0tLS0tLS0tLSBUIDMuMTAuMC01MTQuZWw3Lng4Nl82NCAjMQ0KPiA+IFsx
-MTU1ODA1My42NDE5OTBdIEhhcmR3YXJlIG5hbWU6IFJlZCBIYXQgT3BlblN0YWNrIENvbXB1dGUs
-IEJJT1MNCj4gPiAxLjEwLjItMy5lbDdfNC4xIDA0LzAxLzIwMTQNCj4gPiBbMTE1NTgwNTMuNjQ0
-NDYyXSAgZmZmZmZmZmY4MThjN2JjMCAwMDAwMDAwMGIxZjNhZWMxDQo+ID4gZmZmZjg4MGRlMGY5
-YmQ0OCBmZmZmZmZmZjgxNjg1ZWFjDQo+ID4gWzExNTU4MDUzLjY0NjQzMF0gIGZmZmY4ODBkZTBm
-OWJkYzggZmZmZmZmZmY4MTY3ZjJiMw0KPiA+IGZmZmZmZmZmMDAwMDAwMTAgZmZmZjg4MGRlMGY5
-YmRkOA0KPiA+IFsxMTU1ODA1My42NDgzMTNdICBmZmZmODgwZGUwZjliZDc4IDAwMDAwMDAwYjFm
-M2FlYzENCj4gPiBmZmZmZmZmZjgxMWRjYjAzIGZmZmZmZmZmYTA1YjhhOGMNCj4gPiBbMTE1NTgw
-NTMuNjUwMTA3XSBDYWxsIFRyYWNlOg0KPiA+IFsxMTU1ODA1My42NTEzNDddICBbPGZmZmZmZmZm
-ODE2ODVlYWM+XSBkdW1wX3N0YWNrKzB4MTkvMHgxYg0KPiA+IFsxMTU1ODA1My42NTMwMTNdICBb
-PGZmZmZmZmZmODE2N2YyYjM+XSBwYW5pYysweGUzLzB4MWYyDQo+ID4gWzExNTU4MDUzLjY2NjI0
-MF0gIFs8ZmZmZmZmZmY4MTFkY2IwMz5dID8ga2ZyZWUrMHgxMDMvMHgxNDANCj4gPiBbMTE1NTgw
-NTMuNjgyNTg5XSAgWzxmZmZmZmZmZmEwNWI4YThjPl0gPw0KPiA+IGlkbWFwX3BpcGVfZG93bmNh
-bGwrMHgxY2MvMHgxZTAgW25mc3Y0XQ0KPiA+IFsxMTU1ODA1My42ODk3MTBdICBbPGZmZmZmZmZm
-ODEwODU1ZGI+XSBfX3N0YWNrX2Noa19mYWlsKzB4MWIvMHgzMA0KPiA+IFsxMTU1ODA1My42OTE2
-MTldICBbPGZmZmZmZmZmYTA1YjhhOGM+XQ0KPiA+IGlkbWFwX3BpcGVfZG93bmNhbGwrMHgxY2Mv
-MHgxZTAgW25mc3Y0XQ0KPiA+IFsxMTU1ODA1My42OTM4NjddICBbPGZmZmZmZmZmYTAwMjA5ZDY+
-XSBycGNfcGlwZV93cml0ZSsweDU2LzB4NzANCj4gPiBbc3VucnBjXQ0KPiA+IFsxMTU1ODA1My42
-OTU3NjNdICBbPGZmZmZmZmZmODExZmUxMmQ+XSB2ZnNfd3JpdGUrMHhiZC8weDFlMA0KPiA+IFsx
-MTU1ODA1My43MDIyMzZdICBbPGZmZmZmZmZmODEwYWNjY2M+XSA/IHRhc2tfd29ya19ydW4rMHhh
-Yy8weGUwDQo+ID4gWzExNTU4MDUzLjcwNDIxNV0gIFs8ZmZmZmZmZmY4MTFmZWM0Zj5dIFN5U193
-cml0ZSsweDdmLzB4ZTANCj4gPiBbMTE1NTgwNTMuNzA5Njc0XSAgWzxmZmZmZmZmZjgxNjk2NGM5
-Pl0NCj4gPiBzeXN0ZW1fY2FsbF9mYXN0cGF0aCsweDE2LzB4MWINCj4gPiANCj4gPiBGaXggdGhp
-cyBieSBzbnByaW50ZiBhbmQgYSBzYWZlIGxlbmd0aCBiYXNlZCBvbiBzaXplb2YoaWRfc3RyKS4N
-Cj4gPiANCj4gPiBTaWduZWQtb2ZmLWJ5OiBEYXZlIFd5c29jaGFuc2tpIDxkd3lzb2NoYUByZWRo
-YXQuY29tPg0KPiA+IFJlcG9ydGVkLWJ5OiBTdGVwaGVuIEpvaG5zdG9uIDxzam9obnN0b0ByZWRo
-YXQuY29tPg0KPiA+IC0tLQ0KPiA+ICBmcy9uZnMvbmZzNGlkbWFwLmMgfCAyICstDQo+ID4gIDEg
-ZmlsZSBjaGFuZ2VkLCAxIGluc2VydGlvbigrKSwgMSBkZWxldGlvbigtKQ0KPiA+IA0KPiA+IGRp
-ZmYgLS1naXQgYS9mcy9uZnMvbmZzNGlkbWFwLmMgYi9mcy9uZnMvbmZzNGlkbWFwLmMNCj4gPiBp
-bmRleCAyMmRjMzBhNjc5YTAuLmE4YzY2M2Y4ZGQ5OSAxMDA2NDQNCj4gPiAtLS0gYS9mcy9uZnMv
-bmZzNGlkbWFwLmMNCj4gPiArKysgYi9mcy9uZnMvbmZzNGlkbWFwLmMNCj4gPiBAQCAtNjI3LDcg
-KzYyNyw3IEBAIHN0YXRpYyBpbnQNCj4gPiBuZnNfaWRtYXBfcmVhZF9hbmRfdmVyaWZ5X21lc3Nh
-Z2Uoc3RydWN0IGlkbWFwX21zZyAqaW0sDQo+ID4gIAkJaWYgKHN0cmNtcCh1cGNhbGwtPmltX25h
-bWUsIGltLT5pbV9uYW1lKSAhPSAwKQ0KPiA+ICAJCQlicmVhazsNCj4gPiAgCQkvKiBOb3RlOiBo
-ZXJlIHdlIHN0b3JlIHRoZSBOVUwgdGVybWluYXRvciB0b28gKi8NCj4gPiAtCQlsZW4gPSBzcHJp
-bnRmKGlkX3N0ciwgIiVkIiwgaW0tPmltX2lkKSArIDE7DQo+ID4gKwkJbGVuID0gc25wcmludGYo
-aWRfc3RyLCBzaXplb2YoaWRfc3RyKSwgIiV1IiwgaW0tDQo+ID4gPmltX2lkKSArIDE7DQo+ID4g
-IAkJcmV0ID0gbmZzX2lkbWFwX2luc3RhbnRpYXRlKGtleSwgYXV0aGtleSwgaWRfc3RyLA0KPiA+
-IGxlbik7DQo+ID4gIAkJYnJlYWs7DQo+ID4gIAljYXNlIElETUFQX0NPTlZfSURUT05BTUU6DQo+
-IA0KPiANCj4gSSBkaWQgbm90IHNlZSBhbnkgcmVwbHkgdG8gdGhpcyBhbmQgd2UgZGlkIGhhdmUg
-b25lIGN1c3RvbWVyIGhpdCB0aGlzDQo+IHdoaWNoIGNhdXNlZCBhIGNvbnNpZGVyYWJsZSBvdXRh
-Z2Ugb2YgbWFueSBtYWNoaW5lcy4gIEluIGVzc2VuY2Ugb25jZQ0KPiB0aGlzIGhhcHBlbmVkLCBp
-dCBiZWNhbWUgYSBEb1Mgb24gYWxsIG1hY2hpbmVzIHVzaW5nIGlkbWFwcGluZyBhbmQNCj4gdGhl
-eQ0KPiBpbXBsZW1lbnRlZCBhIHRlbXBvcmFyeSB3b3JrYXJvdW5kLg0KPiANCj4gQW5uYSAvIFRy
-b25kIC0gaWYgeW91IG5lZWQgbWUgdG8gaW1wcm92ZSB0aGUgcGF0Y2ggaGVhZGVyIG9yIHdhbnQN
-Cj4gY2xhcmlmaWNhdGlvbiBvciBzZWUgYSBwcm9ibGVtIHdpdGggaXQsIHBsZWFzZSBsZXQgbWUg
-a25vdy4NCj4gDQoNCklmIHRoZSB2YWx1ZSBvZiBORlNfVUlOVF9NQVhMRU4gaXMgdG9vIHNtYWxs
-LCB0aGVuIHNob3VsZG4ndCB3ZSBiZQ0KaW5jcmVhc2luZyBpdD8gVGhhdCB3b3VsZCBhcHBlYXIg
-dG8gYmUgdGhlIHJlYWwgYnVnIGhlcmUuDQoNCkkgZG8gYWdyZWUgdGhhdCB0aGUgIiVkIiBzaG91
-bGQgYmUgY2hhbmdlZCB0byAiJXUiLCB0aG91Z2guIElzbid0IHRoYXQNCnN1ZmZpY2llbnQgdG8g
-bWFrZSB0aGUgYnVmZmVyIGxhcmdlIGVub3VnaD8NCg0KQ2hlZXJzDQogVHJvbmQNCg0KLS0gDQpU
-cm9uZCBNeWtsZWJ1c3QNCkNUTywgSGFtbWVyc3BhY2UgSW5jDQo0MzAwIEVsIENhbWlubyBSZWFs
-LCBTdWl0ZSAxMDUNCkxvcyBBbHRvcywgQ0EgOTQwMjINCnd3dy5oYW1tZXIuc3BhY2UgaWQ9Ii14
-LWV2by1zZWxlY3Rpb24tZW5kLW1hcmtlciI+
+
+--=-0kmFk/k97E46IAiSwFKI
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+
+On Wed, 2018-05-09 at 16:42 -0400, Chuck Lever wrote:
+> > On May 9, 2018, at 4:23 PM, J. Bruce Fields <bfields@fieldses.org> wrot=
+e:
+> >=20
+> > Looking at the git history, it looks like others are taking this as an
+> > opportunity to replace the existing boilerplate.  Could we do this here=
+?
+> > Looks like "BSD-3-Clause" does in fact refer to a license that's
+> > word-for-word the same as the one included here (except for the name of
+> > the copyright holder), so I wonder if we need it written out here any
+> > more.
+> >=20
+> > (Minor point, I'm applying this anyway and you can follow up with the
+> > remval patch or not.)
+>=20
+> Because the holder's name is part of the boilerplate, I feel
+> that it is up to the holder to submit a patch removing the
+> whole copyright notice if they are comfortable doing that.
+>=20
+> But IANAL. Feel free to convince me that I'm being prudish.
+
+As long as you leave their ownership statement, the SPDX replacement is
+a direct replacement for the license text.  Just because the two are in
+the same comment block (the ownership statement and date, and the text
+of the actual license) does not mean they are a single item.  The
+license is a license, the other is an ownership statement, and replacing
+the long form license term with an accepted short form license term that
+is regarded as being identical to the long form is perfectly acceptable.
+
+>=20
+> > --b.
+> >=20
+> > On Mon, May 07, 2018 at 03:26:55PM -0400, Chuck Lever wrote:
+> > > Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> > > ---
+> > > include/linux/sunrpc/svc_rdma.h          |    1 +
+> > > net/sunrpc/xprtrdma/svc_rdma.c           |    1 +
+> > > net/sunrpc/xprtrdma/svc_rdma_recvfrom.c  |    1 +
+> > > net/sunrpc/xprtrdma/svc_rdma_sendto.c    |    1 +
+> > > net/sunrpc/xprtrdma/svc_rdma_transport.c |    1 +
+> > > 5 files changed, 5 insertions(+)
+> > >=20
+> > > diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/s=
+vc_rdma.h
+> > > index 7337e12..88da0c9 100644
+> > > --- a/include/linux/sunrpc/svc_rdma.h
+> > > +++ b/include/linux/sunrpc/svc_rdma.h
+> > > @@ -1,3 +1,4 @@
+> > > +/* SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause */
+> > > /*
+> > >  * Copyright (c) 2005-2006 Network Appliance, Inc. All rights reserve=
+d.
+> > >  *
+> > > diff --git a/net/sunrpc/xprtrdma/svc_rdma.c b/net/sunrpc/xprtrdma/svc=
+_rdma.c
+> > > index dd8a431..a490532 100644
+> > > --- a/net/sunrpc/xprtrdma/svc_rdma.c
+> > > +++ b/net/sunrpc/xprtrdma/svc_rdma.c
+> > > @@ -1,3 +1,4 @@
+> > > +// SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause
+> > > /*
+> > >  * Copyright (c) 2005-2006 Network Appliance, Inc. All rights reserve=
+d.
+> > >  *
+> > > diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xpr=
+trdma/svc_rdma_recvfrom.c
+> > > index 3d45015..9eae95d 100644
+> > > --- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+> > > +++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+> > > @@ -1,3 +1,4 @@
+> > > +// SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause
+> > > /*
+> > >  * Copyright (c) 2016, 2017 Oracle. All rights reserved.
+> > >  * Copyright (c) 2014 Open Grid Computing, Inc. All rights reserved.
+> > > diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c b/net/sunrpc/xprtr=
+dma/svc_rdma_sendto.c
+> > > index 649441d..79bd3a3 100644
+> > > --- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+> > > +++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+> > > @@ -1,3 +1,4 @@
+> > > +// SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause
+> > > /*
+> > >  * Copyright (c) 2016 Oracle. All rights reserved.
+> > >  * Copyright (c) 2014 Open Grid Computing, Inc. All rights reserved.
+> > > diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xp=
+rtrdma/svc_rdma_transport.c
+> > > index 96cc8f6..3633254 100644
+> > > --- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
+> > > +++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+> > > @@ -1,3 +1,4 @@
+> > > +// SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause
+> > > /*
+> > >  * Copyright (c) 2014 Open Grid Computing, Inc. All rights reserved.
+> > >  * Copyright (c) 2005-2007 Network Appliance, Inc. All rights reserve=
+d.
+> >=20
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>=20
+> --
+> Chuck Lever
+>=20
+>=20
+>=20
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+--=20
+Doug Ledford <dledford@redhat.com>
+    GPG KeyID: B826A3330E572FDD
+    Key fingerprint =3D AE6B 1BDA 122B 23B4 265B  1274 B826 A333 0E57 2FDD
+--=-0kmFk/k97E46IAiSwFKI
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: This is a digitally signed message part
+Content-Transfer-Encoding: 7bit
+
+-----BEGIN PGP SIGNATURE-----
+
+iQIzBAABCAAdFiEErmsb2hIrI7QmWxJ0uCajMw5XL90FAlr69B4ACgkQuCajMw5X
+L93lZg//Y/3glYx7/pE8LKvIRbFP15+fVhGjTthHLBgiHiexRR4hlhNpP9F69d4t
+OqJ9dtMFqYo/34F8ajCGOKpvhEv78p2ex6l6Cx39xm+pRrP0H/QmbXUPxxo6jxXb
+oWWW2N9/Yfg13hYI2Zg9XcZp4Qxif8KhsjjioC5+LSO5Mnd5kDkUXXpzgx0yMSLo
+6Q+TM9ArFLw1+Hd8t41W8TUWVN5JS39XwhdEj6sQFBOcf90KdyiqEow/M0YsdgLU
+kadsttVP+yCOoTSTQwGt01ojkfX8DgRH888WvyVjTghTWmgCmwMf89V0N6iLyWtv
+l0WJ4WknXeUCT9oYFuTmUhMSrCEwq2oxvQLO6srwh3LQkVCbbdH1bC2Kw7j6GgpW
+A4r8m/DHZEMASoxgr/WWg4tFgBxDWsecmEPPVHt8xI4hv1TygUloQhSgROnMdQHc
+7UN5s9zgk15lSPMN4v7GKZItz4SFksbZcwc1k4h0JrQfnfIa90Y/kvjqtOGGXIXd
+7kgn+b9dFW78JzDSmwg+LVJihCIrSU6bGmragQ9W0AddAYEh04shynW2o/IbnrHY
+wObJhkf1F7cUi52wg8RlwOvDsLbvD0vJzGHKynMXQOOyCi+++in9eTlk+onMXbB0
+bvlm6MzdtwZb1NumYmrI8bAvDdlsO+WhTORy++RXn3N92dhIhUA=
+=//PQ
+-----END PGP SIGNATURE-----
+
+--=-0kmFk/k97E46IAiSwFKI--
+
