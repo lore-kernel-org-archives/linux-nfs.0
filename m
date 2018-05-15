@@ -1,85 +1,88 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qt0-f196.google.com ([209.85.216.196]:41240 "EHLO
-        mail-qt0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752911AbeEONGt (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 15 May 2018 09:06:49 -0400
-Received: by mail-qt0-f196.google.com with SMTP id g13-v6so67945qth.8
-        for <linux-nfs@vger.kernel.org>; Tue, 15 May 2018 06:06:48 -0700 (PDT)
-Received: from unused (nat-pool-rdu-t.redhat.com. [66.187.233.202])
-        by smtp.gmail.com with ESMTPSA id b133-v6sm4188qkc.41.2018.05.15.06.06.47
-        for <linux-nfs@vger.kernel.org>
-        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Tue, 15 May 2018 06:06:47 -0700 (PDT)
-Message-ID: <1526389606.3803.4.camel@redhat.com>
+Received: from mail-sn1nam01on0106.outbound.protection.outlook.com ([104.47.32.106]:18356
+        "EHLO NAM01-SN1-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1752418AbeEON7Z (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 15 May 2018 09:59:25 -0400
+From: Trond Myklebust <trondmy@hammerspace.com>
+To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "dwysocha@redhat.com" <dwysocha@redhat.com>
 Subject: Re: [PATCH] Fix possible stack smash in
  nfs_idmap_read_and_verify_message
-From: David Wysochanski <dwysocha@redhat.com>
-To: linux-nfs@vger.kernel.org
-Date: Tue, 15 May 2018 09:06:46 -0400
-In-Reply-To: <20180417201118.17841-1-dwysocha@redhat.com>
+Date: Tue, 15 May 2018 13:59:23 +0000
+Message-ID: <da9db571bbeb0e4e341859ab7cd160b9f0e5c0c7.camel@hammerspace.com>
 References: <20180417201118.17841-1-dwysocha@redhat.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+         <1526389606.3803.4.camel@redhat.com>
+In-Reply-To: <1526389606.3803.4.camel@redhat.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2018-04-17 at 16:11 -0400, Dave Wysochanski wrote:
-> In nfs_idmap_read_and_verify_message there is an unprotected sprintf
-> that converts the __u32 'im_id' from struct idmap_msg to 'id_str'
-> that is a stack variable of 'NFS_UINT_MAXLEN' (defined as 11).
-> If a uid or gid value is > 2147483647 = 0x7fffffff we corrupt
-> kernel memory by one byte and if CONFIG_CC_STACKPROTECTOR_STRONG
-> is set we see a stack-protector panic as follows:
-> 
-> [11558053.616565] Kernel panic - not syncing: stack-protector: Kernel stack is corrupted in: ffffffffa05b8a8c
-> 
-> [11558053.639063] CPU: 6 PID: 9423 Comm: rpc.idmapd Tainted: G        W      ------------ T 3.10.0-514.el7.x86_64 #1
-> [11558053.641990] Hardware name: Red Hat OpenStack Compute, BIOS 1.10.2-3.el7_4.1 04/01/2014
-> [11558053.644462]  ffffffff818c7bc0 00000000b1f3aec1 ffff880de0f9bd48 ffffffff81685eac
-> [11558053.646430]  ffff880de0f9bdc8 ffffffff8167f2b3 ffffffff00000010 ffff880de0f9bdd8
-> [11558053.648313]  ffff880de0f9bd78 00000000b1f3aec1 ffffffff811dcb03 ffffffffa05b8a8c
-> [11558053.650107] Call Trace:
-> [11558053.651347]  [<ffffffff81685eac>] dump_stack+0x19/0x1b
-> [11558053.653013]  [<ffffffff8167f2b3>] panic+0xe3/0x1f2
-> [11558053.666240]  [<ffffffff811dcb03>] ? kfree+0x103/0x140
-> [11558053.682589]  [<ffffffffa05b8a8c>] ? idmap_pipe_downcall+0x1cc/0x1e0 [nfsv4]
-> [11558053.689710]  [<ffffffff810855db>] __stack_chk_fail+0x1b/0x30
-> [11558053.691619]  [<ffffffffa05b8a8c>] idmap_pipe_downcall+0x1cc/0x1e0 [nfsv4]
-> [11558053.693867]  [<ffffffffa00209d6>] rpc_pipe_write+0x56/0x70 [sunrpc]
-> [11558053.695763]  [<ffffffff811fe12d>] vfs_write+0xbd/0x1e0
-> [11558053.702236]  [<ffffffff810acccc>] ? task_work_run+0xac/0xe0
-> [11558053.704215]  [<ffffffff811fec4f>] SyS_write+0x7f/0xe0
-> [11558053.709674]  [<ffffffff816964c9>] system_call_fastpath+0x16/0x1b
-> 
-> Fix this by snprintf and a safe length based on sizeof(id_str).
-> 
-> Signed-off-by: Dave Wysochanski <dwysocha@redhat.com>
-> Reported-by: Stephen Johnston <sjohnsto@redhat.com>
-> ---
->  fs/nfs/nfs4idmap.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
-> 
-> diff --git a/fs/nfs/nfs4idmap.c b/fs/nfs/nfs4idmap.c
-> index 22dc30a679a0..a8c663f8dd99 100644
-> --- a/fs/nfs/nfs4idmap.c
-> +++ b/fs/nfs/nfs4idmap.c
-> @@ -627,7 +627,7 @@ static int nfs_idmap_read_and_verify_message(struct idmap_msg *im,
->  		if (strcmp(upcall->im_name, im->im_name) != 0)
->  			break;
->  		/* Note: here we store the NUL terminator too */
-> -		len = sprintf(id_str, "%d", im->im_id) + 1;
-> +		len = snprintf(id_str, sizeof(id_str), "%u", im->im_id) + 1;
->  		ret = nfs_idmap_instantiate(key, authkey, id_str, len);
->  		break;
->  	case IDMAP_CONV_IDTONAME:
-
-
-I did not see any reply to this and we did have one customer hit this
-which caused a considerable outage of many machines.  In essence once
-this happened, it became a DoS on all machines using idmapping and they
-implemented a temporary workaround.
-
-Anna / Trond - if you need me to improve the patch header or want
-clarification or see a problem with it, please let me know.
-
-Thanks.
+T24gVHVlLCAyMDE4LTA1LTE1IGF0IDA5OjA2IC0wNDAwLCBEYXZpZCBXeXNvY2hhbnNraSB3cm90
+ZToNCj4gT24gVHVlLCAyMDE4LTA0LTE3IGF0IDE2OjExIC0wNDAwLCBEYXZlIFd5c29jaGFuc2tp
+IHdyb3RlOg0KPiA+IEluIG5mc19pZG1hcF9yZWFkX2FuZF92ZXJpZnlfbWVzc2FnZSB0aGVyZSBp
+cyBhbiB1bnByb3RlY3RlZA0KPiA+IHNwcmludGYNCj4gPiB0aGF0IGNvbnZlcnRzIHRoZSBfX3Uz
+MiAnaW1faWQnIGZyb20gc3RydWN0IGlkbWFwX21zZyB0byAnaWRfc3RyJw0KPiA+IHRoYXQgaXMg
+YSBzdGFjayB2YXJpYWJsZSBvZiAnTkZTX1VJTlRfTUFYTEVOJyAoZGVmaW5lZCBhcyAxMSkuDQo+
+ID4gSWYgYSB1aWQgb3IgZ2lkIHZhbHVlIGlzID4gMjE0NzQ4MzY0NyA9IDB4N2ZmZmZmZmYgd2Ug
+Y29ycnVwdA0KPiA+IGtlcm5lbCBtZW1vcnkgYnkgb25lIGJ5dGUgYW5kIGlmIENPTkZJR19DQ19T
+VEFDS1BST1RFQ1RPUl9TVFJPTkcNCj4gPiBpcyBzZXQgd2Ugc2VlIGEgc3RhY2stcHJvdGVjdG9y
+IHBhbmljIGFzIGZvbGxvd3M6DQo+ID4gDQo+ID4gWzExNTU4MDUzLjYxNjU2NV0gS2VybmVsIHBh
+bmljIC0gbm90IHN5bmNpbmc6IHN0YWNrLXByb3RlY3RvcjoNCj4gPiBLZXJuZWwgc3RhY2sgaXMg
+Y29ycnVwdGVkIGluOiBmZmZmZmZmZmEwNWI4YThjDQo+ID4gDQo+ID4gWzExNTU4MDUzLjYzOTA2
+M10gQ1BVOiA2IFBJRDogOTQyMyBDb21tOiBycGMuaWRtYXBkIFRhaW50ZWQ6DQo+ID4gRyAgICAg
+ICAgVyAgICAgIC0tLS0tLS0tLS0tLSBUIDMuMTAuMC01MTQuZWw3Lng4Nl82NCAjMQ0KPiA+IFsx
+MTU1ODA1My42NDE5OTBdIEhhcmR3YXJlIG5hbWU6IFJlZCBIYXQgT3BlblN0YWNrIENvbXB1dGUs
+IEJJT1MNCj4gPiAxLjEwLjItMy5lbDdfNC4xIDA0LzAxLzIwMTQNCj4gPiBbMTE1NTgwNTMuNjQ0
+NDYyXSAgZmZmZmZmZmY4MThjN2JjMCAwMDAwMDAwMGIxZjNhZWMxDQo+ID4gZmZmZjg4MGRlMGY5
+YmQ0OCBmZmZmZmZmZjgxNjg1ZWFjDQo+ID4gWzExNTU4MDUzLjY0NjQzMF0gIGZmZmY4ODBkZTBm
+OWJkYzggZmZmZmZmZmY4MTY3ZjJiMw0KPiA+IGZmZmZmZmZmMDAwMDAwMTAgZmZmZjg4MGRlMGY5
+YmRkOA0KPiA+IFsxMTU1ODA1My42NDgzMTNdICBmZmZmODgwZGUwZjliZDc4IDAwMDAwMDAwYjFm
+M2FlYzENCj4gPiBmZmZmZmZmZjgxMWRjYjAzIGZmZmZmZmZmYTA1YjhhOGMNCj4gPiBbMTE1NTgw
+NTMuNjUwMTA3XSBDYWxsIFRyYWNlOg0KPiA+IFsxMTU1ODA1My42NTEzNDddICBbPGZmZmZmZmZm
+ODE2ODVlYWM+XSBkdW1wX3N0YWNrKzB4MTkvMHgxYg0KPiA+IFsxMTU1ODA1My42NTMwMTNdICBb
+PGZmZmZmZmZmODE2N2YyYjM+XSBwYW5pYysweGUzLzB4MWYyDQo+ID4gWzExNTU4MDUzLjY2NjI0
+MF0gIFs8ZmZmZmZmZmY4MTFkY2IwMz5dID8ga2ZyZWUrMHgxMDMvMHgxNDANCj4gPiBbMTE1NTgw
+NTMuNjgyNTg5XSAgWzxmZmZmZmZmZmEwNWI4YThjPl0gPw0KPiA+IGlkbWFwX3BpcGVfZG93bmNh
+bGwrMHgxY2MvMHgxZTAgW25mc3Y0XQ0KPiA+IFsxMTU1ODA1My42ODk3MTBdICBbPGZmZmZmZmZm
+ODEwODU1ZGI+XSBfX3N0YWNrX2Noa19mYWlsKzB4MWIvMHgzMA0KPiA+IFsxMTU1ODA1My42OTE2
+MTldICBbPGZmZmZmZmZmYTA1YjhhOGM+XQ0KPiA+IGlkbWFwX3BpcGVfZG93bmNhbGwrMHgxY2Mv
+MHgxZTAgW25mc3Y0XQ0KPiA+IFsxMTU1ODA1My42OTM4NjddICBbPGZmZmZmZmZmYTAwMjA5ZDY+
+XSBycGNfcGlwZV93cml0ZSsweDU2LzB4NzANCj4gPiBbc3VucnBjXQ0KPiA+IFsxMTU1ODA1My42
+OTU3NjNdICBbPGZmZmZmZmZmODExZmUxMmQ+XSB2ZnNfd3JpdGUrMHhiZC8weDFlMA0KPiA+IFsx
+MTU1ODA1My43MDIyMzZdICBbPGZmZmZmZmZmODEwYWNjY2M+XSA/IHRhc2tfd29ya19ydW4rMHhh
+Yy8weGUwDQo+ID4gWzExNTU4MDUzLjcwNDIxNV0gIFs8ZmZmZmZmZmY4MTFmZWM0Zj5dIFN5U193
+cml0ZSsweDdmLzB4ZTANCj4gPiBbMTE1NTgwNTMuNzA5Njc0XSAgWzxmZmZmZmZmZjgxNjk2NGM5
+Pl0NCj4gPiBzeXN0ZW1fY2FsbF9mYXN0cGF0aCsweDE2LzB4MWINCj4gPiANCj4gPiBGaXggdGhp
+cyBieSBzbnByaW50ZiBhbmQgYSBzYWZlIGxlbmd0aCBiYXNlZCBvbiBzaXplb2YoaWRfc3RyKS4N
+Cj4gPiANCj4gPiBTaWduZWQtb2ZmLWJ5OiBEYXZlIFd5c29jaGFuc2tpIDxkd3lzb2NoYUByZWRo
+YXQuY29tPg0KPiA+IFJlcG9ydGVkLWJ5OiBTdGVwaGVuIEpvaG5zdG9uIDxzam9obnN0b0ByZWRo
+YXQuY29tPg0KPiA+IC0tLQ0KPiA+ICBmcy9uZnMvbmZzNGlkbWFwLmMgfCAyICstDQo+ID4gIDEg
+ZmlsZSBjaGFuZ2VkLCAxIGluc2VydGlvbigrKSwgMSBkZWxldGlvbigtKQ0KPiA+IA0KPiA+IGRp
+ZmYgLS1naXQgYS9mcy9uZnMvbmZzNGlkbWFwLmMgYi9mcy9uZnMvbmZzNGlkbWFwLmMNCj4gPiBp
+bmRleCAyMmRjMzBhNjc5YTAuLmE4YzY2M2Y4ZGQ5OSAxMDA2NDQNCj4gPiAtLS0gYS9mcy9uZnMv
+bmZzNGlkbWFwLmMNCj4gPiArKysgYi9mcy9uZnMvbmZzNGlkbWFwLmMNCj4gPiBAQCAtNjI3LDcg
+KzYyNyw3IEBAIHN0YXRpYyBpbnQNCj4gPiBuZnNfaWRtYXBfcmVhZF9hbmRfdmVyaWZ5X21lc3Nh
+Z2Uoc3RydWN0IGlkbWFwX21zZyAqaW0sDQo+ID4gIAkJaWYgKHN0cmNtcCh1cGNhbGwtPmltX25h
+bWUsIGltLT5pbV9uYW1lKSAhPSAwKQ0KPiA+ICAJCQlicmVhazsNCj4gPiAgCQkvKiBOb3RlOiBo
+ZXJlIHdlIHN0b3JlIHRoZSBOVUwgdGVybWluYXRvciB0b28gKi8NCj4gPiAtCQlsZW4gPSBzcHJp
+bnRmKGlkX3N0ciwgIiVkIiwgaW0tPmltX2lkKSArIDE7DQo+ID4gKwkJbGVuID0gc25wcmludGYo
+aWRfc3RyLCBzaXplb2YoaWRfc3RyKSwgIiV1IiwgaW0tDQo+ID4gPmltX2lkKSArIDE7DQo+ID4g
+IAkJcmV0ID0gbmZzX2lkbWFwX2luc3RhbnRpYXRlKGtleSwgYXV0aGtleSwgaWRfc3RyLA0KPiA+
+IGxlbik7DQo+ID4gIAkJYnJlYWs7DQo+ID4gIAljYXNlIElETUFQX0NPTlZfSURUT05BTUU6DQo+
+IA0KPiANCj4gSSBkaWQgbm90IHNlZSBhbnkgcmVwbHkgdG8gdGhpcyBhbmQgd2UgZGlkIGhhdmUg
+b25lIGN1c3RvbWVyIGhpdCB0aGlzDQo+IHdoaWNoIGNhdXNlZCBhIGNvbnNpZGVyYWJsZSBvdXRh
+Z2Ugb2YgbWFueSBtYWNoaW5lcy4gIEluIGVzc2VuY2Ugb25jZQ0KPiB0aGlzIGhhcHBlbmVkLCBp
+dCBiZWNhbWUgYSBEb1Mgb24gYWxsIG1hY2hpbmVzIHVzaW5nIGlkbWFwcGluZyBhbmQNCj4gdGhl
+eQ0KPiBpbXBsZW1lbnRlZCBhIHRlbXBvcmFyeSB3b3JrYXJvdW5kLg0KPiANCj4gQW5uYSAvIFRy
+b25kIC0gaWYgeW91IG5lZWQgbWUgdG8gaW1wcm92ZSB0aGUgcGF0Y2ggaGVhZGVyIG9yIHdhbnQN
+Cj4gY2xhcmlmaWNhdGlvbiBvciBzZWUgYSBwcm9ibGVtIHdpdGggaXQsIHBsZWFzZSBsZXQgbWUg
+a25vdy4NCj4gDQoNCklmIHRoZSB2YWx1ZSBvZiBORlNfVUlOVF9NQVhMRU4gaXMgdG9vIHNtYWxs
+LCB0aGVuIHNob3VsZG4ndCB3ZSBiZQ0KaW5jcmVhc2luZyBpdD8gVGhhdCB3b3VsZCBhcHBlYXIg
+dG8gYmUgdGhlIHJlYWwgYnVnIGhlcmUuDQoNCkkgZG8gYWdyZWUgdGhhdCB0aGUgIiVkIiBzaG91
+bGQgYmUgY2hhbmdlZCB0byAiJXUiLCB0aG91Z2guIElzbid0IHRoYXQNCnN1ZmZpY2llbnQgdG8g
+bWFrZSB0aGUgYnVmZmVyIGxhcmdlIGVub3VnaD8NCg0KQ2hlZXJzDQogVHJvbmQNCg0KLS0gDQpU
+cm9uZCBNeWtsZWJ1c3QNCkNUTywgSGFtbWVyc3BhY2UgSW5jDQo0MzAwIEVsIENhbWlubyBSZWFs
+LCBTdWl0ZSAxMDUNCkxvcyBBbHRvcywgQ0EgOTQwMjINCnd3dy5oYW1tZXIuc3BhY2UgaWQ9Ii14
+LWV2by1zZWxlY3Rpb24tZW5kLW1hcmtlciI+
