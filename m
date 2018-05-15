@@ -1,20 +1,19 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx3-rdu2.redhat.com ([66.187.233.73]:45082 "EHLO mx1.redhat.com"
+Received: from mx3-rdu2.redhat.com ([66.187.233.73]:59840 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1752323AbeEOPzd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 15 May 2018 11:55:33 -0400
-Received: from smtp.corp.redhat.com (int-mx05.intmail.prod.int.rdu2.redhat.com [10.11.54.5])
+        id S1753465AbeEOP4q (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 15 May 2018 11:56:46 -0400
+Received: from smtp.corp.redhat.com (int-mx06.intmail.prod.int.rdu2.redhat.com [10.11.54.6])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 24C664201AF2
-        for <linux-nfs@vger.kernel.org>; Tue, 15 May 2018 15:55:33 +0000 (UTC)
-Message-ID: <1526399731.7441.11.camel@redhat.com>
-Subject: [PATCH v3 7/8] nfs-utils: use nfsconftool cli to test library
- function
+        by mx1.redhat.com (Postfix) with ESMTPS id A604F40201A0
+        for <linux-nfs@vger.kernel.org>; Tue, 15 May 2018 15:56:45 +0000 (UTC)
+Message-ID: <1526399803.7441.13.camel@redhat.com>
+Subject: [PATCH v3 8/8] nfs-utils: Add man page for nfsconftool cli
 From: Justin Mitchell <jumitche@redhat.com>
 To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
 Cc: Steve Dickson <steved@redhat.com>
-Date: Tue, 15 May 2018 16:55:31 +0100
+Date: Tue, 15 May 2018 16:56:43 +0100
 In-Reply-To: <1526399410.7441.4.camel@redhat.com>
 References: <1526399410.7441.4.camel@redhat.com>
 Content-Type: text/plain; charset="UTF-8"
@@ -22,191 +21,115 @@ Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Uses the nfsconftool cli to test that the configuration
-library functions are operating as expected
+Provide a man page for nfsconftool
 
 Signed-off-by: Justin Mitchell <jumitche@redhat.com>
 ---
- tests/nfsconf/01-errors.conf | 20 ++++++++++++++++++++
- tests/nfsconf/01-errors.exp  | 14 ++++++++++++++
- tests/nfsconf/02-valid.conf  | 25 +++++++++++++++++++++++++
- tests/nfsconf/02-valid.exp   | 26 ++++++++++++++++++++++++++
- tests/nfsconf/02-valid.sub   |  7 +++++++
- tests/t0002-nfsconf.sh       | 38 ++++++++++++++++++++++++++++++++++++++
- 6 files changed, 130 insertions(+)
- create mode 100644 tests/nfsconf/01-errors.conf
- create mode 100644 tests/nfsconf/01-errors.exp
- create mode 100644 tests/nfsconf/02-valid.conf
- create mode 100644 tests/nfsconf/02-valid.exp
- create mode 100644 tests/nfsconf/02-valid.sub
- create mode 100755 tests/t0002-nfsconf.sh
+ tools/nfsconf/Makefile.am     |  3 ++
+ tools/nfsconf/nfsconftool.man | 81 +++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 84 insertions(+)
+ create mode 100644 tools/nfsconf/nfsconftool.man
 
-diff --git a/tests/nfsconf/01-errors.conf b/tests/nfsconf/01-errors.conf
+diff --git a/tools/nfsconf/Makefile.am b/tools/nfsconf/Makefile.am
+index 0042db9..3e6923b 100644
+--- a/tools/nfsconf/Makefile.am
++++ b/tools/nfsconf/Makefile.am
+@@ -1,5 +1,8 @@
+ ## Process this file with automake to produce Makefile.in
+ 
++man8_MANS	= nfsconftool.man
++EXTRA_DIST	= $(man8_MANS)
++
+ bin_PROGRAMS = nfsconftool
+ 
+ nfsconftool_SOURCES = nfsconfcli.c
+diff --git a/tools/nfsconf/nfsconftool.man b/tools/nfsconf/nfsconftool.man
 new file mode 100644
-index 0000000..ca64d2c
+index 0000000..b70ec38
 --- /dev/null
-+++ b/tests/nfsconf/01-errors.conf
-@@ -0,0 +1,20 @@
-+# file of deliberate errors
-+[default]
-+
-+
-+[ one
-+
-+[ two " foo ]
-+aa = foo
-+
-+[ three 
-+val = none
-+
-+[four]
-+one
-+ = two
-+three =
-+four = foo = bar
-+five = " nothing
-+six = normal
-+
-diff --git a/tests/nfsconf/01-errors.exp b/tests/nfsconf/01-errors.exp
-new file mode 100644
-index 0000000..2bf1b8c
---- /dev/null
-+++ b/tests/nfsconf/01-errors.exp
-@@ -0,0 +1,14 @@
-+nfsconf: config error at 01-errors.conf:5: non-matched ']', ignoring until next section
-+nfsconf: config error at 01-errors.conf:7: non-matched '"', ignoring until next section
-+nfsconf: config error at 01-errors.conf:10: non-matched ']', ignoring until next section
-+nfsconf: config error at 01-errors.conf:11: ignoring line not in a section
-+nfsconf: config error at 01-errors.conf:14: line not empty and not an assignment
-+nfsconf: config error at 01-errors.conf:15: missing tag in assignment
-+nfsconf: config error at 01-errors.conf:16: missing value in assignment
-+nfsconf: config error at 01-errors.conf:18: unmatched quotes
-+[four]
-+ four = foo = bar
-+ six = normal
-+
-+[two]
-+ aa = foo
-diff --git a/tests/nfsconf/02-valid.conf b/tests/nfsconf/02-valid.conf
-new file mode 100644
-index 0000000..ca8ccab
---- /dev/null
-+++ b/tests/nfsconf/02-valid.conf
-@@ -0,0 +1,25 @@
-+[environment]
-+one = 1
-+two = 2
-+three = 3
-+
-+[section_one]
-+one = 11
-+two = 22
-+three = $three
-+ four   =   "six  "
-+ five six = seven eight
-+
-+[section_two "two"]
-+one = Un
-+two = Dau
-+include = "02-valid.sub"
-+
-+[section_two "one"]
-+one = Un
-+two = Deux
-+
-+[section_two "two"]
-+four = Pedwar
-+   five   =    " Pump "
-+
-diff --git a/tests/nfsconf/02-valid.exp b/tests/nfsconf/02-valid.exp
-new file mode 100644
-index 0000000..379d7a4
---- /dev/null
-+++ b/tests/nfsconf/02-valid.exp
-@@ -0,0 +1,26 @@
-+[environment]
-+ one = 1
-+ three = 3
-+ two = 2
-+
-+[extra_section]
-+ bar = baz
-+ foo = bar
-+
-+[section_one]
-+ five six = seven eight
-+ four = "six  "
-+ one = 11
-+ three = $three
-+ two = 22
-+
-+[section_two "one"]
-+ one = Un
-+ two = Deux
-+
-+[section_two "two"]
-+ five = " Pump "
-+ four = Pedwar
-+ one = Un
-+ three = Tri
-+ two = Dau
-diff --git a/tests/nfsconf/02-valid.sub b/tests/nfsconf/02-valid.sub
-new file mode 100644
-index 0000000..ab7beda
---- /dev/null
-+++ b/tests/nfsconf/02-valid.sub
-@@ -0,0 +1,7 @@
-+# Included configs don't need a section, it is inherited
-+three=Tri
-+
-+# But if they do, that works also
-+[extra_section]
-+foo = bar
-+bar = baz
-diff --git a/tests/t0002-nfsconf.sh b/tests/t0002-nfsconf.sh
-new file mode 100755
-index 0000000..511d248
---- /dev/null
-+++ b/tests/t0002-nfsconf.sh
-@@ -0,0 +1,38 @@
-+#!/bin/bash
-+
-+TESTFILES=nfsconf
-+DUMPER=`realpath ../tools/nfsconf/nfsconftool`
-+
-+BASEDIR=`dirname "$0"`
-+pushd $BASEDIR/$TESTFILES
-+
-+rm -f *.out
-+
-+TCOUNT=0
-+TPASS=0
-+
-+for i in *.conf
-+do
-+TNAME=`basename "$i" .conf`
-+
-+echo "Running test $TNAME"
-+TCOUNT=$((TCOUNT + 1))
-+
-+if ! $DUMPER --file "$i" --dump - > "$TNAME.out" 2>&1
-+then
-+echo "Error running test $TNAME"
-+elif ! diff -u "$TNAME.exp" "$TNAME.out"
-+then
-+echo "FAIL differences detected in test $TNAME"
-+else
-+echo "PASS $TNAME"
-+TPASS=$((TPASS + 1))
-+fi
-+
-+done
-+
-+echo "nfsconf tests complete. $TPASS of $TCOUNT tests passed"
-+
-+if [ $TPASS -lt $TCOUNT ]; then
-+exit 1
-+fi
++++ b/tools/nfsconf/nfsconftool.man
+@@ -0,0 +1,81 @@
++.\"
++.\" nfsconftool(8)
++.\"
++.TH nfsconftool 8 "2 May 2018"
++.SH NAME
++nfsconftool \- Query various NFS configuration settings
++.SH SYNOPSIS
++.B nfsconftool \-\-dump
++.RB [ \-v | \-\-verbose ]
++.RB [ \-f | \-\-file
++.IR infile.conf ]
++.RI [ outfile ]
++.P
++.B nfsconftool \-\-get
++.RB [ \-v | \-\-verbose ]
++.RB [ \-f | \-\-file
++.IR infile.conf ]
++.RB [ \-a | \-\-arg
++.IR subsection ]
++.IR section
++.IR tag
++.P
++.B nfsconftool \-\-isset
++.RB [ \-v | \-\-verbose ]
++.RB [ \-f | \-\-file
++.IR infile.conf ]
++.RB [ \-a | \-\-arg
++.IR subsection ]
++.IR section
++.IR tag
++.SH DESCRIPTION
++The
++.B nfsconftool
++command can be used to test for and retrieve configuration settings
++from a range of nfs-utils configuration files.
++.SS Modes
++The following modes are available:
++.IP "\fB\-d, \-\-dump\fP"
++Output an alphabetically sorted dump of the current configuration in conf file format. Accepts an optional filename in which to write the output.
++.IP "\fB\-i, \-\-isset\fP"
++Test if a specific tag has a value set.
++.IP "\fB\-g, \-\-get\fP"
++Output the current value of the specified tag.
++.SH OPTIONS
++.SS Options valid in all modes
++.TP
++.B \-v, \-\-verbose
++Increase verbosity and print debugging information.
++.TP
++.B \-f, \-\-file \fIinfile\fR
++Select a different config file to operate upon, default is
++.I /etc/nfs.conf
++.SS Options only valid in \fB\-\-get\fR and \fB\-\-isset\fR modes.
++.TP
++.B \-a, \-\-arg \fIsubsection\fR
++Select a specific sub-section
++.SH EXIT STATUS
++.SS \fB\-\-isset\fR mode
++In this mode the command will return success (0) if the selected tag has a value, any other exit code indicates the value is not set, or some other error has occured.
++.SS all other modes
++Success is indicated by an exit status of zero, any other status indicates an error. Error messages are output on stderr, and increasing verbosity will give more detailed explanations if any are available.
++.SH EXAMPLES
++.TP
++.B nfsconftool -v --dump --file /tmp/testconf.conf  sorted.conf
++Check a new config file for syntax errors and output a sorted version for ease of comparison with existing settings.
++.TP
++.B if ! nfsconftool --isset gssd preferred-realm ; then echo 'No prefered realm configured for gss'; fi
++The tool allows for easy testing of configuration values from shell scripts, here we test if a specific value has been set.
++.TP
++.B nfsconftool --file /etc/nfsmount.conf --get --arg /home MountPoint background
++Show default value for \fIbackground\fR option for NFS mounts of the \fI/home\fR path.
++.SH FILES
++.TP
++.B /etc/nfs.conf
++.SH SEE ALSO
++.BR nfsd (8),
++.BR exportfs (8),
++.BR idmapd (8),
++.BR statd (8)
++.SH AUTHOR
++Justin Mitchell <jumitche@redhat.com>
 -- 
 1.8.3.1
 
