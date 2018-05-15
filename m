@@ -1,137 +1,97 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx3-rdu2.redhat.com ([66.187.233.73]:59840 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1753465AbeEOP4q (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 15 May 2018 11:56:46 -0400
-Received: from smtp.corp.redhat.com (int-mx06.intmail.prod.int.rdu2.redhat.com [10.11.54.6])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id A604F40201A0
-        for <linux-nfs@vger.kernel.org>; Tue, 15 May 2018 15:56:45 +0000 (UTC)
-Message-ID: <1526399803.7441.13.camel@redhat.com>
-Subject: [PATCH v3 8/8] nfs-utils: Add man page for nfsconftool cli
-From: Justin Mitchell <jumitche@redhat.com>
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Cc: Steve Dickson <steved@redhat.com>
-Date: Tue, 15 May 2018 16:56:43 +0100
-In-Reply-To: <1526399410.7441.4.camel@redhat.com>
-References: <1526399410.7441.4.camel@redhat.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from mail-it0-f66.google.com ([209.85.214.66]:37010 "EHLO
+        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1754300AbeEORDm (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 15 May 2018 13:03:42 -0400
+Received: by mail-it0-f66.google.com with SMTP id 70-v6so3482204ity.2
+        for <linux-nfs@vger.kernel.org>; Tue, 15 May 2018 10:03:42 -0700 (PDT)
+From: schumaker.anna@gmail.com
+To: Trond.Myklebust@hammerspace.com, linux-nfs@vger.kernel.org
+Subject: [PATCH] NFS: Merge nfs41_free_stateid() with _nfs41_free_stateid()
+Date: Tue, 15 May 2018 13:03:39 -0400
+Message-Id: <20180515170339.12971-1-Anna.Schumaker@Netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Provide a man page for nfsconftool
+From: Anna Schumaker <Anna.Schumaker@Netapp.com>
 
-Signed-off-by: Justin Mitchell <jumitche@redhat.com>
+Having these exist as two functions doesn't seem to add anything useful,
+and I think merging them together makes this easier to follow.
+
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 ---
- tools/nfsconf/Makefile.am     |  3 ++
- tools/nfsconf/nfsconftool.man | 81 +++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 84 insertions(+)
- create mode 100644 tools/nfsconf/nfsconftool.man
+ fs/nfs/nfs4proc.c | 37 ++++++++++++++-----------------------
+ 1 file changed, 14 insertions(+), 23 deletions(-)
 
-diff --git a/tools/nfsconf/Makefile.am b/tools/nfsconf/Makefile.am
-index 0042db9..3e6923b 100644
---- a/tools/nfsconf/Makefile.am
-+++ b/tools/nfsconf/Makefile.am
-@@ -1,5 +1,8 @@
- ## Process this file with automake to produce Makefile.in
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 9cf678477a37..33e24c971d1a 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -9299,7 +9299,17 @@ static const struct rpc_call_ops nfs41_free_stateid_ops = {
+ 	.rpc_release = nfs41_free_stateid_release,
+ };
  
-+man8_MANS	= nfsconftool.man
-+EXTRA_DIST	= $(man8_MANS)
-+
- bin_PROGRAMS = nfsconftool
+-static struct rpc_task *_nfs41_free_stateid(struct nfs_server *server,
++/**
++ * nfs41_free_stateid - perform a FREE_STATEID operation
++ *
++ * @server: server / transport on which to perform the operation
++ * @stateid: state ID to release
++ * @cred: credential
++ * @is_recovery: set to true if this call needs to be privileged
++ *
++ * Note: this function is always asynchronous.
++ */
++static int nfs41_free_stateid(struct nfs_server *server,
+ 		const nfs4_stateid *stateid,
+ 		struct rpc_cred *cred,
+ 		bool privileged)
+@@ -9315,6 +9325,7 @@ static struct rpc_task *_nfs41_free_stateid(struct nfs_server *server,
+ 		.flags = RPC_TASK_ASYNC,
+ 	};
+ 	struct nfs_free_stateid_data *data;
++	struct rpc_task *task;
  
- nfsconftool_SOURCES = nfsconfcli.c
-diff --git a/tools/nfsconf/nfsconftool.man b/tools/nfsconf/nfsconftool.man
-new file mode 100644
-index 0000000..b70ec38
---- /dev/null
-+++ b/tools/nfsconf/nfsconftool.man
-@@ -0,0 +1,81 @@
-+.\"
-+.\" nfsconftool(8)
-+.\"
-+.TH nfsconftool 8 "2 May 2018"
-+.SH NAME
-+nfsconftool \- Query various NFS configuration settings
-+.SH SYNOPSIS
-+.B nfsconftool \-\-dump
-+.RB [ \-v | \-\-verbose ]
-+.RB [ \-f | \-\-file
-+.IR infile.conf ]
-+.RI [ outfile ]
-+.P
-+.B nfsconftool \-\-get
-+.RB [ \-v | \-\-verbose ]
-+.RB [ \-f | \-\-file
-+.IR infile.conf ]
-+.RB [ \-a | \-\-arg
-+.IR subsection ]
-+.IR section
-+.IR tag
-+.P
-+.B nfsconftool \-\-isset
-+.RB [ \-v | \-\-verbose ]
-+.RB [ \-f | \-\-file
-+.IR infile.conf ]
-+.RB [ \-a | \-\-arg
-+.IR subsection ]
-+.IR section
-+.IR tag
-+.SH DESCRIPTION
-+The
-+.B nfsconftool
-+command can be used to test for and retrieve configuration settings
-+from a range of nfs-utils configuration files.
-+.SS Modes
-+The following modes are available:
-+.IP "\fB\-d, \-\-dump\fP"
-+Output an alphabetically sorted dump of the current configuration in conf file format. Accepts an optional filename in which to write the output.
-+.IP "\fB\-i, \-\-isset\fP"
-+Test if a specific tag has a value set.
-+.IP "\fB\-g, \-\-get\fP"
-+Output the current value of the specified tag.
-+.SH OPTIONS
-+.SS Options valid in all modes
-+.TP
-+.B \-v, \-\-verbose
-+Increase verbosity and print debugging information.
-+.TP
-+.B \-f, \-\-file \fIinfile\fR
-+Select a different config file to operate upon, default is
-+.I /etc/nfs.conf
-+.SS Options only valid in \fB\-\-get\fR and \fB\-\-isset\fR modes.
-+.TP
-+.B \-a, \-\-arg \fIsubsection\fR
-+Select a specific sub-section
-+.SH EXIT STATUS
-+.SS \fB\-\-isset\fR mode
-+In this mode the command will return success (0) if the selected tag has a value, any other exit code indicates the value is not set, or some other error has occured.
-+.SS all other modes
-+Success is indicated by an exit status of zero, any other status indicates an error. Error messages are output on stderr, and increasing verbosity will give more detailed explanations if any are available.
-+.SH EXAMPLES
-+.TP
-+.B nfsconftool -v --dump --file /tmp/testconf.conf  sorted.conf
-+Check a new config file for syntax errors and output a sorted version for ease of comparison with existing settings.
-+.TP
-+.B if ! nfsconftool --isset gssd preferred-realm ; then echo 'No prefered realm configured for gss'; fi
-+The tool allows for easy testing of configuration values from shell scripts, here we test if a specific value has been set.
-+.TP
-+.B nfsconftool --file /etc/nfsmount.conf --get --arg /home MountPoint background
-+Show default value for \fIbackground\fR option for NFS mounts of the \fI/home\fR path.
-+.SH FILES
-+.TP
-+.B /etc/nfs.conf
-+.SH SEE ALSO
-+.BR nfsd (8),
-+.BR exportfs (8),
-+.BR idmapd (8),
-+.BR statd (8)
-+.SH AUTHOR
-+Justin Mitchell <jumitche@redhat.com>
+ 	nfs4_state_protect(server->nfs_client, NFS_SP4_MACH_CRED_STATEID,
+ 		&task_setup.rpc_client, &msg);
+@@ -9322,7 +9333,7 @@ static struct rpc_task *_nfs41_free_stateid(struct nfs_server *server,
+ 	dprintk("NFS call  free_stateid %p\n", stateid);
+ 	data = kmalloc(sizeof(*data), GFP_NOFS);
+ 	if (!data)
+-		return ERR_PTR(-ENOMEM);
++		return -ENOMEM;
+ 	data->server = server;
+ 	nfs4_stateid_copy(&data->args.stateid, stateid);
+ 
+@@ -9331,27 +9342,7 @@ static struct rpc_task *_nfs41_free_stateid(struct nfs_server *server,
+ 	msg.rpc_argp = &data->args;
+ 	msg.rpc_resp = &data->res;
+ 	nfs4_init_sequence(&data->args.seq_args, &data->res.seq_res, 1, privileged);
+-	return rpc_run_task(&task_setup);
+-}
+-
+-/**
+- * nfs41_free_stateid - perform a FREE_STATEID operation
+- *
+- * @server: server / transport on which to perform the operation
+- * @stateid: state ID to release
+- * @cred: credential
+- * @is_recovery: set to true if this call needs to be privileged
+- *
+- * Note: this function is always asynchronous.
+- */
+-static int nfs41_free_stateid(struct nfs_server *server,
+-		const nfs4_stateid *stateid,
+-		struct rpc_cred *cred,
+-		bool is_recovery)
+-{
+-	struct rpc_task *task;
+-
+-	task = _nfs41_free_stateid(server, stateid, cred, is_recovery);
++	task = rpc_run_task(&task_setup);
+ 	if (IS_ERR(task))
+ 		return PTR_ERR(task);
+ 	rpc_put_task(task);
 -- 
-1.8.3.1
-
-
+2.17.0
 
