@@ -1,75 +1,118 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from szxga07-in.huawei.com ([45.249.212.35]:59919 "EHLO huawei.com"
-        rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1751475AbeEPKhc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 16 May 2018 06:37:32 -0400
-Subject: Re: mounting NFS on the same host leads to D state
-To: "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        <jlayton@kernel.org>, <linux-nfs@vger.kernel.org>,
-        Eric Dumazet <edumazet@google.com>
-References: <737a947e-a53d-fcd2-bbc3-ca373bea6cb1@huawei.com>
-CC: <yangerkun@huawei.com>, "weiyongjun (A)" <weiyongjun1@huawei.com>
-From: maowenan <maowenan@huawei.com>
-Message-ID: <19ceda78-8419-baee-2cdb-c2a02562e7db@huawei.com>
-Date: Wed, 16 May 2018 18:37:15 +0800
+Received: from fieldses.org ([173.255.197.46]:35526 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751475AbeEPOJO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 16 May 2018 10:09:14 -0400
+Date: Wed, 16 May 2018 10:09:14 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Al Viro <viro@ZenIV.linux.org.uk>
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Jeff Layton <jlayton@kernel.org>
+Subject: Re: [RFC][PATCH] nfsd: vfs_mkdir() might succeed leaving dentry
+ negative unhashed
+Message-ID: <20180516140914.GA3730@fieldses.org>
+References: <20180511211339.GG30522@ZenIV.linux.org.uk>
+ <20180514153216.GC7160@fieldses.org>
+ <20180514154550.GH30522@ZenIV.linux.org.uk>
+ <20180514164743.GI30522@ZenIV.linux.org.uk>
 MIME-Version: 1.0
-In-Reply-To: <737a947e-a53d-fcd2-bbc3-ca373bea6cb1@huawei.com>
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20180514164743.GI30522@ZenIV.linux.org.uk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
+On Mon, May 14, 2018 at 05:47:43PM +0100, Al Viro wrote:
+> On Mon, May 14, 2018 at 04:45:51PM +0100, Al Viro wrote:
+> 
+> > > > 	2) is nfserr_serverfail valid for situation when
+> > > > directory created by such vfs_mkdir() manages to disappear
+> > > > under us immediately afterwards?  Or should we return nfserr_stale
+> > > > instead?
+> > > 
+> > > We just got a successful result on the create and the parent's still
+> > > locked, so if somebody hits this I think we want them reporting a bug,
+> > > not wasting time trying to find a mistake in their own logic.
+> > 
+> > No.  Suppose it's NFS-over-NFS (and yes, I agree that it's a bad idea;
+> > somebody *has* done that).  Lookup after successful mkdir can legitimately
+> > fail if it's been removed server-side.
+> > 
+> > And we *will* need to allow nfs_mkdir() to return that way in some cases
+> > (== success with dentry passed to it left unhashed negative), I'm afraid ;-/
+> 
+> Consider the situation when you have NFS reexported - there's server S1,
+> exporting a filesystem to S2, which reexports it for client C.
 
-I have tested in recent version 4.16 rc7 and find it also has the same issue.
-@Eric do you have any comments about this nfs issue?
+Thanks for the explanation!  I'd missed the connection between this and
+the mkdir/filehandle-lookup races.
 
-On 2018/5/15 11:47, maowenan wrote:
-> Hi,
-> 
-> Recently I have tested NFS and exportfs scenario,
-> that NFS server and client are in the same host.
-> And I found mounting NFS filesystm onto the same host
-> can lead to rpc.mountd and related task become D state.
-> My kernel version is based on 3.10, and I find 4.15 has the same
-> appearance.
-> 
-> My test step as below:
-> 1)create dir.
-> mkdir -p /home/test1 /home/test2
-> 2)share dir /home/test1
-> echo '/home/test1 localhost(rw,all_squash,anonuid=0,anongid=0)' > /etc/exports
-> 3)exportfs
-> exportfs -vr || echo "Failed to export /home/test1"
-> 4)mount NFS.
-> mount localhost:/home/test1 /home/test2 -o vers=3,soft
-> 5)share dir /home/test2
-> echo '/home/test2 *(rw,all_squash,anonuid=0,anongid=0)' >> /etc/exports
-> 6)exportfs
-> exportfs -vr
-> 7) list /home/test2
-> ls /home/test2
-> then we found ls command is hung, ls and rpc.mountd became "D" state, and after
-> 180 second ls command return.
-> 
-> Another scenario as below:
-> 1)create dir.
-> mkdir -p /home/test3 /home/test4
-> 2)share dir /home/test3
-> echo '/home/test3 localhost(rw,sync,no_wdelay,anonuid=0,anongid=0,no_subtree_check)' > /etc/exports
-> 3)exportfs
-> exportfs -r
-> 4)to see NFS status
-> showmount -e localhost
-> 5)mount NFS
-> mount -t nfs4 -o proto=tcp,nolock,soft,timeo=50 localhost:/home/test3 /home/test4
-> 6) stop nfs service,and  and check ls task state is D.
-> service nfs stop
-> ls /home/test4
-> ls command is hung and became D state.
-> 
-> I wonder to know is it reasonable about these test scenario because NFS server and
-> client are in the same host? Since some task went into D state, is there any reason about this?
-> and is there any patch to fix this issue?
-> Here is a link to talk about NFS mounting on the same host,  https://lwn.net/Articles/595652/
-> 
+	Acked-by: J. Bruce Fields <bfields@redhat.com>
 
+for the patch.
+
+--b.
+
+> 
+> On S2, process A does stat foo, gets ENOENT and proceeds to mkdir foo.  
+> Dentry of foo is passed to nfs_mkdir(), which calls e.g. nfs3_proc_mkdir(),
+> which calls nfs3_do_create(), which requests S1 to create the damn thing.
+> Then, after that succeeds, it calls nfs_instantiate().  There we would 
+> proceed to get the inode and call d_add(dentry, inode).
+> 
+> In the meanwhile, C, having figured out the fhandle S2 would assign to
+> foo (e.g. having spied upon the traffic, etc.) sends that fhandle to
+> S2.  nfs_fh_to_dentry() is called by process B on S2 (either knfsd, or,
+> in case if C==S2 and attacker has done open-by-fhandle - the caller
+> of open_by_handle(2)).  It gets the inode - the damn thing has been
+> created on S1 already.  That inode still has no dentries attached to
+> it (B has just set it up), so d_obtain_alias() creates one and attaches
+> to it.
+> 
+> Now A gets around to nfs_fhget() and finds the same inode.  Voila -
+> d_add(dentry, inode) and we are fucked; two dentries over the same
+> directory inode.  Fun starts very shortly when fs/exportfs/* code
+> is used by B to reconnect its dentry - the things really get bogus
+> once that constraint is violated.
+> 
+> The obvious solution would be to replace that d_add() with
+> 	res = d_splice_alias(inode, dentry);
+> 	if (IS_ERR(res)) {
+> 		error = PTR_ERR(res);
+> 		goto out_error;
+> 	}
+> 	dput(res);
+> 	
+> leaving the dentry passed to nfs_mkdir() unhashed and negative if
+> we hit that race.  That's fine - the next lookup (e.g. the one
+> done by exportfs to reconnect the sucker) will find the right
+> dentry in dcache; it's just that it won't the one passed to
+> vfs_mkdir().
+> 
+> That's different from the local case - there mkdir gets the inumber,
+> inserts locked in-core inode with that inumber into icache and
+> only then proceeds to set on-disk data up.  Anyone guessing the
+> inumber (and thus the fhandle) will either get -ESTALE (if they
+> come first, as in this scenario) or find the in-core inode mkdir
+> is setting up and wait for it to be unlocked, at which point
+> d_obtain_alias() will already find it attached to dentry passed
+> to mkdir.
+> 
+> But that critically relies upon the icache search key being known
+> to mkdir *BEFORE* the on-disk metadata starts looking acceptable.
+> For NFS we really can't do that - there the key is S1's fhandle
+> and we don't get that until S1 has created the damn thing.
+> 
+> I don't see any variation of the trick used by local filesystems
+> that would not have this race; we really can end up with B getting
+> there first and creating directory inode with dentry attached to
+> it before A gets through.  Which, AFAICS, leaves only one solution -
+> let A put the dentry created by B in place of what had been passed
+> to A (and leave its argument unhashed).  Which is trivial to
+> implement (see above); however, it means that NFS itself is in
+> the same class as cgroup - its ->mkdir() may, in some cases,
+> end up succeeding and leaving its argument unhashed negative.
+> Note that dcache is perfectly fine after that - we have hashed
+> positive dentry with the right name and right parent, over the
+> inode for directory we'd just created; everything's fine, except
+> that it's not the struct dentry originally passed to vfs_mkdir().
