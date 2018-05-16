@@ -1,61 +1,75 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:33776 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751728AbeEOWGA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 15 May 2018 18:06:00 -0400
-Date: Tue, 15 May 2018 18:05:59 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Andreas Gruenbacher <agruenba@redhat.com>
-Cc: Lu Xinyu <luxy.fnst@cn.fujitsu.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        fnst-xmlinux@cn.fujitsu.com
-Subject: Re: SGID loss with nfsv3
-Message-ID: <20180515220559.GD8178@fieldses.org>
-References: <f9f2d605-b930-7db8-ad1e-fd189e074e9c@cn.fujitsu.com>
- <20180430201623.GA3207@fieldses.org>
- <060c9d41-8772-80e1-e938-21ec7b6315ef@cn.fujitsu.com>
- <20180514143222.GA7160@fieldses.org>
- <5b6540f4-f744-5e51-c32f-c8809fbfed81@cn.fujitsu.com>
- <20180515204147.GA8178@fieldses.org>
- <20180515204244.GB8178@fieldses.org>
- <CAHc6FU5G2Y=H3C_YG7aASybzEfKrAuWRZFw-YoZuSw2i84qrag@mail.gmail.com>
+Received: from szxga07-in.huawei.com ([45.249.212.35]:59919 "EHLO huawei.com"
+        rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1751475AbeEPKhc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 16 May 2018 06:37:32 -0400
+Subject: Re: mounting NFS on the same host leads to D state
+To: "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+        <jlayton@kernel.org>, <linux-nfs@vger.kernel.org>,
+        Eric Dumazet <edumazet@google.com>
+References: <737a947e-a53d-fcd2-bbc3-ca373bea6cb1@huawei.com>
+CC: <yangerkun@huawei.com>, "weiyongjun (A)" <weiyongjun1@huawei.com>
+From: maowenan <maowenan@huawei.com>
+Message-ID: <19ceda78-8419-baee-2cdb-c2a02562e7db@huawei.com>
+Date: Wed, 16 May 2018 18:37:15 +0800
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAHc6FU5G2Y=H3C_YG7aASybzEfKrAuWRZFw-YoZuSw2i84qrag@mail.gmail.com>
+In-Reply-To: <737a947e-a53d-fcd2-bbc3-ca373bea6cb1@huawei.com>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, May 15, 2018 at 11:47:10PM +0200, Andreas Gruenbacher wrote:
-> Hi Bruce,
-> 
-> On 15 May 2018 at 22:42, J. Bruce Fields <bfields@fieldses.org> wrote:
-> > Ugh, resending with Andreas's address spelled correctly.
-> >
-> > On Tue, May 15, 2018 at 04:41:47PM -0400, J. Bruce Fields wrote:
-> >> Looking at the problem more closely....
-> >>
-> >> So the desired behavior is that the SGID bit gets cleared on an explicit
-> >> set of the acl, but not when the acl is merely inherited as part of file
-> >> creation?
-> 
-> ideally yes, but that's not achievable over NFSv3, only over NFSv4.
-> 
-> >> If I understand correctly, in the NFSv3 case default acl inheritance is
-> >> done manually by the client, which queries the default acl, calculates
-> >> the inherited acl itself, and applies the result to the new file using a
-> >> setacl call to the server.
-> >>
-> >> The server isn't capable of distinguishing this setacl call from any
-> >> other setacl call, so can't know that it should skip clearing the SGID
-> >> bit.
-> >>
-> >> Andreas, do I have that right?  Is this fixable?
-> 
-> Yes, I believe that's exactly what's happening.
+Hi,
 
-Well, we can't back out the CVE fix, so I think just living with this
-behavior (the SGID being cleared sometimes when it didn't need to be) is
-our least bad option.  NFSv4 has the protocol we need to get this right,
-and doesn't have this bug.
+I have tested in recent version 4.16 rc7 and find it also has the same issue.
+@Eric do you have any comments about this nfs issue?
 
---b.
+On 2018/5/15 11:47, maowenan wrote:
+> Hi,
+> 
+> Recently I have tested NFS and exportfs scenario,
+> that NFS server and client are in the same host.
+> And I found mounting NFS filesystm onto the same host
+> can lead to rpc.mountd and related task become D state.
+> My kernel version is based on 3.10, and I find 4.15 has the same
+> appearance.
+> 
+> My test step as below:
+> 1)create dir.
+> mkdir -p /home/test1 /home/test2
+> 2)share dir /home/test1
+> echo '/home/test1 localhost(rw,all_squash,anonuid=0,anongid=0)' > /etc/exports
+> 3)exportfs
+> exportfs -vr || echo "Failed to export /home/test1"
+> 4)mount NFS.
+> mount localhost:/home/test1 /home/test2 -o vers=3,soft
+> 5)share dir /home/test2
+> echo '/home/test2 *(rw,all_squash,anonuid=0,anongid=0)' >> /etc/exports
+> 6)exportfs
+> exportfs -vr
+> 7) list /home/test2
+> ls /home/test2
+> then we found ls command is hung, ls and rpc.mountd became "D" state, and after
+> 180 second ls command return.
+> 
+> Another scenario as below:
+> 1)create dir.
+> mkdir -p /home/test3 /home/test4
+> 2)share dir /home/test3
+> echo '/home/test3 localhost(rw,sync,no_wdelay,anonuid=0,anongid=0,no_subtree_check)' > /etc/exports
+> 3)exportfs
+> exportfs -r
+> 4)to see NFS status
+> showmount -e localhost
+> 5)mount NFS
+> mount -t nfs4 -o proto=tcp,nolock,soft,timeo=50 localhost:/home/test3 /home/test4
+> 6) stop nfs service,and  and check ls task state is D.
+> service nfs stop
+> ls /home/test4
+> ls command is hung and became D state.
+> 
+> I wonder to know is it reasonable about these test scenario because NFS server and
+> client are in the same host? Since some task went into D state, is there any reason about this?
+> and is there any patch to fix this issue?
+> Here is a link to talk about NFS mounting on the same host,  https://lwn.net/Articles/595652/
+> 
+
