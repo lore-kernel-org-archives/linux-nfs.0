@@ -1,17 +1,16 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f196.google.com ([209.85.223.196]:41930 "EHLO
-        mail-io0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751184AbeERPj3 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 18 May 2018 11:39:29 -0400
-Received: by mail-io0-f196.google.com with SMTP id e12-v6so6678213iob.8
-        for <linux-nfs@vger.kernel.org>; Fri, 18 May 2018 08:39:29 -0700 (PDT)
-Subject: [PATCH RFC 3/4] nfsd: Use correct credential for NFSv4.0 callback
- with GSS
+Received: from mail-io0-f178.google.com ([209.85.223.178]:45881 "EHLO
+        mail-io0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751184AbeERPjf (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 18 May 2018 11:39:35 -0400
+Received: by mail-io0-f178.google.com with SMTP id c9-v6so6672958iob.12
+        for <linux-nfs@vger.kernel.org>; Fri, 18 May 2018 08:39:34 -0700 (PDT)
+Subject: [PATCH RFC 4/4] nfsd: Remove callback_cred
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-nfs@vger.kernel.org
 Cc: simo@redhat.com
-Date: Fri, 18 May 2018 11:39:27 -0400
-Message-ID: <20180518153927.7706.68868.stgit@klimt.1015granger.net>
+Date: Fri, 18 May 2018 11:39:33 -0400
+Message-ID: <20180518153933.7706.67273.stgit@klimt.1015granger.net>
 In-Reply-To: <20180518153018.7706.87172.stgit@klimt.1015granger.net>
 References: <20180518153018.7706.87172.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
@@ -19,61 +18,96 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I've had trouble when operating a multi-homed Linux NFS server with
-Kerberos using NFSv4.0. Lately, I've seen my clients reporting
-this (and then hanging):
-
-May  9 11:43:26 manet kernel: NFS: NFSv4 callback contains invalid cred
-
-The client-side commit f11b2a1cfbf5 ("nfs4: copy acceptor name from
-context to nfs_client") appears to be related, but I suspect this
-problem has been going on for some time before that.
-
-RFC 7530 Section 3.3.3 says:
-> For Kerberos V5, nfs/hostname would be a server principal in the
-> Kerberos Key Distribution Center database.  This is the same
-> principal the client acquired a GSS-API context for when it issued
-> the SETCLIENTID operation ...
-
-In other words, an NFSv4.0 client expects that the server will use
-the same GSS principal for callback that the client used to
-establish its lease. For example, if the client used the service
-principal "nfs@server.domain" to establish its lease, the server
-is required to use "nfs@server.domain" when performing NFSv4.0
-callback operations.
-
-The Linux NFS server currently does not. It uses a common service
-principal for all callback connections. Sometimes this works as
-expected, and other times -- for example, when the server is
-accessible via multiple hostnames -- it won't work at all.
-
-This patch scrapes the target name from the client credential,
-and uses that for the NFSv4.0 callback credential. That should
-be correct much more often.
+Clean up: The global callback_cred is no longer used, so it can be
+removed.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfsd/nfs4callback.c |    9 ++++++++-
- 1 file changed, 8 insertions(+), 1 deletion(-)
+ fs/nfsd/nfs4callback.c |   20 --------------------
+ fs/nfsd/nfs4state.c    |   10 ++--------
+ fs/nfsd/state.h        |    2 --
+ 3 files changed, 2 insertions(+), 30 deletions(-)
 
 diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index 1f04d2a..0e9ff86 100644
+index 0e9ff86..c088f97 100644
 --- a/fs/nfsd/nfs4callback.c
 +++ b/fs/nfsd/nfs4callback.c
-@@ -769,7 +769,14 @@ void cleanup_callback_cred(void)
+@@ -746,26 +746,6 @@ static int max_cb_time(struct net *net)
+ 	return max(nn->nfsd4_lease/10, (time_t)1) * HZ;
+ }
+ 
+-static struct rpc_cred *callback_cred;
+-
+-int set_callback_cred(void)
+-{
+-	if (callback_cred)
+-		return 0;
+-	callback_cred = rpc_lookup_machine_cred("nfs");
+-	if (!callback_cred)
+-		return -ENOMEM;
+-	return 0;
+-}
+-
+-void cleanup_callback_cred(void)
+-{
+-	if (callback_cred) {
+-		put_rpccred(callback_cred);
+-		callback_cred = NULL;
+-	}
+-}
+-
  static struct rpc_cred *get_backchannel_cred(struct nfs4_client *clp, struct rpc_clnt *client, struct nfsd4_session *ses)
  {
  	if (clp->cl_minorversion == 0) {
--		return get_rpccred(callback_cred);
-+		char *principal = clp->cl_cred.cr_targ_princ ?
-+					clp->cl_cred.cr_targ_princ : "nfs";
-+		struct rpc_cred *cred;
-+
-+		cred = rpc_lookup_machine_cred(principal);
-+		if (!IS_ERR(cred))
-+			get_rpccred(cred);
-+		return cred;
- 	} else {
- 		struct rpc_auth *auth = client->cl_auth;
- 		struct auth_cred acred = {};
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index e56abb7..88dc890 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -7195,14 +7195,10 @@ static int nfs4_state_create_net(struct net *net)
+ {
+ 	int ret;
+ 
+-	ret = set_callback_cred();
+-	if (ret)
+-		return ret;
+-
+ 	laundry_wq = alloc_workqueue("%s", WQ_UNBOUND, 0, "nfsd4");
+ 	if (laundry_wq == NULL) {
+ 		ret = -ENOMEM;
+-		goto out_cleanup_cred;
++		goto out;
+ 	}
+ 	ret = nfsd4_create_callback_queue();
+ 	if (ret)
+@@ -7213,8 +7209,7 @@ static int nfs4_state_create_net(struct net *net)
+ 
+ out_free_laundry:
+ 	destroy_workqueue(laundry_wq);
+-out_cleanup_cred:
+-	cleanup_callback_cred();
++out:
+ 	return ret;
+ }
+ 
+@@ -7251,7 +7246,6 @@ static int nfs4_state_create_net(struct net *net)
+ {
+ 	destroy_workqueue(laundry_wq);
+ 	nfsd4_destroy_callback_queue();
+-	cleanup_callback_cred();
+ }
+ 
+ static void
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index f3772ea..0b15dac 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -617,8 +617,6 @@ extern struct nfs4_client_reclaim *nfsd4_find_reclaim_client(const char *recdir,
+ 							struct nfsd_net *nn);
+ extern __be32 nfs4_check_open_reclaim(clientid_t *clid,
+ 		struct nfsd4_compound_state *cstate, struct nfsd_net *nn);
+-extern int set_callback_cred(void);
+-extern void cleanup_callback_cred(void);
+ extern void nfsd4_probe_callback(struct nfs4_client *clp);
+ extern void nfsd4_probe_callback_sync(struct nfs4_client *clp);
+ extern void nfsd4_change_callback(struct nfs4_client *clp, struct nfs4_cb_conn *);
 
