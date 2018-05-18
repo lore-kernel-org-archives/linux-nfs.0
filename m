@@ -1,229 +1,84 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-vk0-f67.google.com ([209.85.213.67]:38101 "EHLO
-        mail-vk0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750763AbeERVCq (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 18 May 2018 17:02:46 -0400
-Received: by mail-vk0-f67.google.com with SMTP id u8-v6so5656456vku.5
-        for <linux-nfs@vger.kernel.org>; Fri, 18 May 2018 14:02:45 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <EDBF0CF4-3E94-44EF-8541-9445409F0B9B@oracle.com>
-References: <20180518153018.7706.87172.stgit@klimt.1015granger.net>
- <CAN-5tyGDGOqPKXKD+LQq8Ub3CUosmaaAq=ir3Gp7R3LKABwtEQ@mail.gmail.com>
- <DB8E23EF-80A4-48D0-B53C-AD2A4B0076E2@oracle.com> <CAN-5tyFs4nxAwVynpr=Q5d_t+N5s9sa=2+1mj4-pZ-m1Xe3ZRA@mail.gmail.com>
- <EDBF0CF4-3E94-44EF-8541-9445409F0B9B@oracle.com>
-From: Olga Kornievskaia <aglo@umich.edu>
-Date: Fri, 18 May 2018 17:02:44 -0400
-Message-ID: <CAN-5tyHH026MJgpX7B11xLa_THMJiikudx-Foo8ZNdcW6AKf-Q@mail.gmail.com>
-Subject: Re: [PATCH RFC 0/4] Use correct NFSv4.0 callback credential
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Simo Sorce <simo@redhat.com>
-Content-Type: text/plain; charset="UTF-8"
+Received: from mx3-rdu2.redhat.com ([66.187.233.73]:58788 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1751009AbeERVNF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 18 May 2018 17:13:05 -0400
+Received: from smtp.corp.redhat.com (int-mx05.intmail.prod.int.rdu2.redhat.com [10.11.54.5])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id 2728940711DD
+        for <linux-nfs@vger.kernel.org>; Fri, 18 May 2018 21:13:05 +0000 (UTC)
+Received: from rhel7u5-node2.dwysocha.net (dhcp145-42.rdu.redhat.com [10.13.145.42])
+        by smtp.corp.redhat.com (Postfix) with ESMTPS id 1BBCFADF98
+        for <linux-nfs@vger.kernel.org>; Fri, 18 May 2018 21:13:05 +0000 (UTC)
+From: Dave Wysochanski <dwysocha@redhat.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH] Fix 16-byte memory leak in gssp_accept_sec_context_upcall
+Date: Fri, 18 May 2018 17:13:04 -0400
+Message-Id: <1526677984-29854-1-git-send-email-dwysocha@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, May 18, 2018 at 4:56 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
->
->
->> On May 18, 2018, at 4:11 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
->>
->> On Fri, May 18, 2018 at 3:23 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
->>>
->>>
->>>> On May 18, 2018, at 2:53 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
->>>>
->>>> Hi Chuck,
->>>>
->>>> I'm not convinced that "srchost=" is necessary. I believe that
->>>> everything that is needed is suppose to be encoded in the "target="
->>>> option.
->>>
->>> I don't believe target= has what we want. For NFSv4.0 callback:
->>>
->>>  A. The callback source principal needs to be the same as the client's
->>>     NFS server target principal.
->>
->> Correct and by specifying "nfs" and "*" I think that signals to the
->> gssd to pick the NFS server principal (which is what the client would
->> used as the target for the client to server authentication).
->>
->>>  B. The callback target principal needs to be the same as the client's
->>>     NFS server source principal.
->>>
->>> Today, for NFSv4.0 callbacks, the kernel passes to gssd:
->>>
->>>  target= it uses B for this
->>>
->>>  service= it always sets this to "nfs"
->>>
->>> And gssd "makes up" the hostname part of A using gethostname(3), which
->>> is bogus for multi-homed NFS servers.
->>
->> I agree that's bogus. Instead we should grab the domain from the
->> "target=" string.
->>
->>
->>> So my patch series does the following for NFSv4.0 callbacks:
->>>
->>> 1. It acquires the actual target principal the client used to establish
->>>   it's lease. This is A above.
->>>
->>> 2. Instead of always passing "nfs" as the service= value, it passes
->>>   the non-hostname part of A. That should be "nfs" but it doesn't
->>>   have to be.
->>
->> Ok so yes it has historically have always been "nfs" (even thought
->> it's only RECOMMENDED by the spec) and I don't think this is the case
->> to add complexity to change a well established behavior?
->>
->>> 3. Instead of letting gssd make up the hostname part of the source
->>>   principal, it passes the hostname part of A.
->>
->> I'm arguing that hostname part of A should have been a part of the "target="
->
-> For a callback credential upcall:
->
->   target name= client's principal @ client's hostname
->   source name= server's principal @ server's hostname
->
-> I don't see how gssd on a multi-homed server could derive "server's
-> hostname" correctly from "client's hostname" in every case. As I
-> explained below, the kernel retains the correct "server's hostname"
-> string in clp->cl_cred even if the client should connect from another
-> hostname within the lease expiry period.
->
-> Example:
->
-> Given a client manet that has
->
-> - an interface named manet.domain
-> - an interface named manet.other.domain
-> - one key in its keytab: host/manet.domain@REALM
->
-> And given a server klimt that has
->
-> - an interface named klimt.domain
-> - an interface named klimt.other.domain
-> - a key in its keytab: nfs/klimt.domain@REALM
-> - a key in its keytab: nfs/klimt.other.domain@REAM
->
-> Now suppose the client manet mounts klimt.other with NFSv4.0 and
-> sec=krb5. The client establishes a GSS context using:
->
->    source=host/manet.domain@REALM
->    target=nfs/klimt.other.domain@REALM
->
-> and we want the server to establish a GSS context for the callback
-> channel that looks like:
->
->    source=nfs/klimt.other.domain@REALM
->    target=host/manet.domain@REALM
->
-> How does gssd construct the correct source principal given the
-> target host/manet.domain@REALM ? Today it picks
-> nfs/klimt.domain@REALM , which is incorrect.
->
-> Further, if the client then connects via klimt.domain but continues
-> to use the original GSS context and lease, how does gssd know it
-> needs to use source=nfs/klimt.other.domain@REALM if it needs to
-> re-establish the callback context for some reason?
+There is a 16-byte memory leak inside sunrpc/auth_gss on an nfs server when
+a client mounts with 'sec=krb5' in a simple mount / umount loop.  The leak
+is seen by either monitoring the kmalloc-16 slab or with kmemleak enabled
 
-I agree, if source and target mix "other.domain" with "domain" then
-gssd can't do anything. We do need the srchost passed in. I was
-confused by your original use- case where I assumed that such domain
-mixing would not take place.
+unreferenced object 0xffff92e6a045f030 (size 16):
+  comm "nfsd", pid 1096, jiffies 4294936658 (age 761.110s)
+  hex dump (first 16 bytes):
+    2a 86 48 86 f7 12 01 02 02 00 00 00 00 00 00 00  *.H.............
+  backtrace:
+    [<000000004b2b79a7>] gssx_dec_buffer+0x79/0x90 [auth_rpcgss]
+    [<000000002610ac1a>] gssx_dec_accept_sec_context+0x215/0x6dd [auth_rpcgss]
+    [<000000004fd0e81d>] rpcauth_unwrap_resp+0xa9/0xe0 [sunrpc]
+    [<000000002b099233>] call_decode+0x1e9/0x840 [sunrpc]
+    [<00000000954fc846>] __rpc_execute+0x80/0x3f0 [sunrpc]
+    [<00000000c83a961c>] rpc_run_task+0x10d/0x150 [sunrpc]
+    [<000000002c2cdcd2>] rpc_call_sync+0x4d/0xa0 [sunrpc]
+    [<000000000b74eea2>] gssp_accept_sec_context_upcall+0x196/0x470 [auth_rpcgss]
+    [<000000003271273f>] svcauth_gss_proxy_init+0x188/0x520 [auth_rpcgss]
+    [<000000001cf69f01>] svcauth_gss_accept+0x3a6/0xb50 [auth_rpcgss]
 
-> The only way gssd can know these things for certain is if the
-> kernel explicitly requests "nfs/klimt.other.domain@REALM" as the
-> source principal for this GSS context. srchost= enables the
-> kernel to request a specific hostname for the source principal.
->
-> Currently our upcall does not specify a REALM for either principal,
-> but that should be straightforward to add.
->
-> I'm in favor of not having magic in gssd that figures this stuff
-> out based on a heuristic, but rather I'd like the kernel ask for
-> precisely what it needs every time.
->
->
->>> That should provide the correct source principal in the multi-home
->>> case, and it should be backwards-compatible with older gssd's.
->>>
->>>
->>> Now here's why it's not enough to use getsockname(3) on target=
->>> to predict the correct source hostname:
->>>
->>> If the client has established the lease when mounting from one
->>> particular hostname, and then mounts from another, it will have
->>> to continue managing the lease using the principal it has already
->>> established with the first hostname. NFSD knows what that is, and
->>> can tell gssd what it needs to be. gssd, using only getsockname(3),
->>> would probably pick something that is wrong.
->>>
->>>
->>>> I thought target just needed to correctly identify the domain for
->>>> which authentication is taking place.
->>>
->>> That's what srchost= does. We can call it something else if that
->>> helps.
->>>
->>>
->>>> Then I think more changes should
->>>> be in nfs-utils to make sure that we find credentials for that
->>>> particular domain instead of going by the gethostbyname() results.
->>>
->>> That's a patch to gssd that I didn't post. I will post that later if
->>> we all agree srchost= is OK.
->>>
->>> srchost= is optional. If it's not present in the upcall, gssd will
->>> continue to use the result of gethostname(3) to construct the source
->>> principal.
->>>
->>>
->>>> On Fri, May 18, 2018 at 11:39 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
->>>>> I've been experimenting with this series that modifies NFSD to
->>>>> discover and use the correct GSS service principal when constructing
->>>>> its NFSv4.0 callback channels. I'm interested in review of this
->>>>> approach. There are a couple of code comments marked with XXX that
->>>>> also need some attention.
->>>>>
->>>>> The rpc.gssd change mentioned in 1/4 is unremarkable and will be
->>>>> made available once there is consensus about the kernel changes
->>>>> in this series. No gssproxy changes are necessary.
->>>>>
->>>>> ---
->>>>>
->>>>> Chuck Lever (4):
->>>>>     sunrpc: Enable the kernel to specify the hostname part of service principals
->>>>>     sunrpc: Extract target name into svc_cred
->>>>>     nfsd: Use correct credential for NFSv4.0 callback with GSS
->>>>>     nfsd: Remove callback_cred
->>>>>
->>>>>
->>>>> fs/nfsd/nfs4callback.c               |   29 ++++----------
->>>>> fs/nfsd/nfs4state.c                  |   17 +++-----
->>>>> fs/nfsd/state.h                      |    2 -
->>>>> include/linux/sunrpc/svcauth.h       |    3 +
->>>>> net/sunrpc/auth_gss/auth_gss.c       |   20 ++++++++--
->>>>> net/sunrpc/auth_gss/gss_rpc_upcall.c |   70 ++++++++++++++++++++++------------
->>>>> 6 files changed, 80 insertions(+), 61 deletions(-)
->>>>>
->>>>> --
->>>>> Chuck Lever
->>>>> --
->>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>>>> the body of a message to majordomo@vger.kernel.org
->>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>>> --
->>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>>> the body of a message to majordomo@vger.kernel.org
->>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>>
->>> --
->>> Chuck Lever
->
-> --
-> Chuck Lever
->
->
->
+If you map the above to code you'll see the following call chain
+  gssx_dec_accept_sec_context
+    gssx_dec_ctx  (missing from kmemleak output)
+      gssx_dec_buffer(xdr, &ctx->mech)
+
+Inside gssx_dec_buffer there is 'kmemdup' where we allocate memory for
+any gssx_buffer (buf) and store into buf->data.  In the above instance,
+'buf == &ctx->mech).
+
+Further up in the chain in gssp_accept_sec_context_upcall we see ctx->mech
+is part of a stack variable 'struct gssx_ctx rctxh'.  Now later inside
+gssp_accept_sec_context_upcall after gssp_call, there is a number of
+memcpy and kfree statements, but there is no kfree(rctxh.mech.data)
+after the memcpy into data->mech_oid.data.
+
+With this patch applied and the same mount / unmount loop, the kmalloc-16
+slab is stable and kmemleak enabled no longer shows the above backtrace.
+
+Signed-off-by: Dave Wysochanski <dwysocha@redhat.com>
+---
+ net/sunrpc/auth_gss/gss_rpc_upcall.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/net/sunrpc/auth_gss/gss_rpc_upcall.c b/net/sunrpc/auth_gss/gss_rpc_upcall.c
+index 46b295e..d98e2b6 100644
+--- a/net/sunrpc/auth_gss/gss_rpc_upcall.c
++++ b/net/sunrpc/auth_gss/gss_rpc_upcall.c
+@@ -298,9 +298,11 @@ int gssp_accept_sec_context_upcall(struct net *net,
+ 	if (res.context_handle) {
+ 		data->out_handle = rctxh.exported_context_token;
+ 		data->mech_oid.len = rctxh.mech.len;
+-		if (rctxh.mech.data)
++		if (rctxh.mech.data) {
+ 			memcpy(data->mech_oid.data, rctxh.mech.data,
+ 						data->mech_oid.len);
++			kfree(rctxh.mech.data);
++		}
+ 		client_name = rctxh.src_name.display_name;
+ 	}
+ 
+-- 
+1.8.3.1
+
