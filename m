@@ -1,159 +1,115 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp2120.oracle.com ([156.151.31.85]:52012 "EHLO
-        userp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752280AbeEST3D (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 19 May 2018 15:29:03 -0400
-Content-Type: text/plain;
-        charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 11.3 \(3445.6.18\))
-Subject: Re: Conflict tcp port between rpcinfo and other applications
+Received: from mail-io0-f181.google.com ([209.85.223.181]:45320 "EHLO
+        mail-io0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752472AbeESUjv (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 19 May 2018 16:39:51 -0400
+Received: by mail-io0-f181.google.com with SMTP id c9-v6so10162867iob.12
+        for <linux-nfs@vger.kernel.org>; Sat, 19 May 2018 13:39:50 -0700 (PDT)
+Subject: [PATCH RFC] Make bindresvport(3) avoid IANA-assigned ports
 From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <CANpxKHHg2yrtWqZiM+Hnz+GgpaPyCW8ZmJ6OsGKdpBt9qgM+fA@mail.gmail.com>
-Date: Sat, 19 May 2018 15:28:58 -0400
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <A292CF59-A2F5-4FC9-8083-9EDBA175742E@oracle.com>
-References: <CANpxKHFczD0v7O39zzR_dyOYEV7n5bwjJmEQxLnNuxf4HHJCqQ@mail.gmail.com>
- <494F9084-A5C6-42E4-B198-29747B5929FF@oracle.com>
- <CANpxKHHg2yrtWqZiM+Hnz+GgpaPyCW8ZmJ6OsGKdpBt9qgM+fA@mail.gmail.com>
-To: Naruto Nguyen <narutonguyen2018@gmail.com>
+To: narutonguyen2018@gmail.com
+Cc: linux-nfs@vger.kernel.org, libtirpc-devel@lists.sourceforge.net
+Date: Sat, 19 May 2018 16:39:48 -0400
+Message-ID: <20180519203436.9560.83609.stgit@klimt.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+There have been complaints over many years that bindresvport(3) can
+bind to a reserved port that is also assigned to a well-known
+service, preventing that service from starting as long as bindresv-
+port's caller is still squatting on that port.  For instance:
 
+https://sourceware.org/bugzilla/show_bug.cgi?id=1014
+https://bugzilla.redhat.com/show_bug.cgi?id=103401
+https://bugzilla.novell.com/show_bug.cgi?id=262341
+https://bugs.debian.org/638322
+http://cyberelk.net/tim/software/portreserve/
+https://sources.debian.org/src/glibc/2.26-3/debian/patches/any/local-bindresvport_blacklist.diff/
 
-> On May 19, 2018, at 5:07 AM, Naruto Nguyen =
-<narutonguyen2018@gmail.com> wrote:
->=20
-> Hi Chuck,
->=20
-> Thanks for your reply.
->=20
-> Yep, could you please post your patch here?
+statd, for example, has a long-running downcall client that can
+squat on a reserved port for as long as the system is up. statd is
+courteous enough to try hard to avoid choosing a well-known port
+for its downcall client.
 
-I will post in a separate thread. This is a patch to libtirpc, so
-you will have to build and install that, then build and install
-rpcinfo. You are using a distribution with libtirpc, right?
+bindresvport(3) is a generic API, and therefore can't simply skip
+all ports assigned in /etc/services, as that leaves a pretty skimpy
+set of remaining ports that can be used.
 
-It is a new and experimental patch, so it might need some additional
-debugging. Thanks for helping test.
+An explicit blacklist might be used to prevent the use of just a
+few common services. Although /etc/bindresvport.blacklist is
+historically supported on several distributions, there have been
+some objections to that approach in the long term:
 
+- It should be improved by making the blacklist a directory (say,
+  /etc/bindresvport.blacklist.d/) so that other packages can
+  easily insert new blacklisted ports when they are installed.
 
-> You mean that after I
-> applied your patch and running rpcinfo as a regular user, the CLNT API
-> will pick a dynamic port instead of reserved port, right?
+- But it would be even nicer if there wasn't an additional adminis-
+  trative interface, particularly one that largely duplicates what
+  is already in /etc/services .
 
-That would be ideal, but that is not the case because of backwards
-compatibility concerns.
+Thus I'm proposing a slightly different approach: Change bindresv-
+port(3) so it tries to skip IANA-assigned ports; if no unused port
+is found, search again, but allow the use of IANA-assigned ports
+this time.
 
-With the patch, when the CNLT API consumer has CAP_NET_BIND_SERVICE
-(for example, the consumer is a root user) bindresvport(3) will
-attempt to choose a reserved port that is not assigned to a service
-in /etc/services. If there are no such ports available, it will
-choose a reserved port that does in appear in /etc/services.
+This gives reasonable avoidance behavior but still allows operation
+when the set of unassigned ports runs out, and does not introduce
+another administrative interface.
 
-Thus with the patch, rpcinfo running as root will use a reserved
-port, but it will try to avoid the use of any port that is
-registered in /etc/services.
+See also commit c254b435007e.
 
-I don't know of a reason why rpcinfo needs to use a reserved port.
-The use of a reserved port in this case is simply an undocumented
-behavior of the glibc and current libtirpc CLNT API.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+ src/bindresvport.c |    9 ++++++++-
+ 1 file changed, 8 insertions(+), 1 deletion(-)
 
-The benefit of the patch is that once all CLNT API consumers are
-rebuilt with this version of libtirpc, they will all try to avoid
-reserved ports that are in /etc/services, even if they run as root.
+Hi Naruto-
 
-The downside is that it isn't a 100% reliable solution: a possible
-collision can still occur with an assigned reserved port if there
-are no other reserved ports available.
+Please apply this patch to the latest libtirpc source tree. Rebuild
+it, then "sudo make install". Then rebuild rpcinfo to pull in the
+rebuilt version of libtirpc.
 
-
-> or without
-> your patch, if I run as a normal user instead of root, rpcinfo will
-> pick dynamic port instead of reserve port?
-
-With or without the patch, running rpcinfo as a normal user should
-be enough to cause it to use an ephemeral port.
-
-
-> "Is it possible to give the rpcinfo executable a set of file
-> capabilities that disables CAP_NET_BIND_SERVICE?"
->=20
-> Could you please explain more how to disable CAP_NET_BIND_SERVICE?
-> that's look good as well.
-
-This solution should select an ephemeral port rather than a reserved
-port, even when it is invoked by a root user. Start with "man setcap".
-
-Note that I haven't tried this, and it requires that the file system
-where the rpcinfo executable is stored supports file capabilities,
-so if it resides on NFS for instance, this won't work at all.
-
-
-> Thanks,
-> Brs,
-> Bao
->=20
-> On 18 May 2018 at 21:43, Chuck Lever <chuck.lever@oracle.com> wrote:
->>=20
->>=20
->>> On May 18, 2018, at 7:09 AM, Naruto Nguyen =
-<narutonguyen2018@gmail.com> wrote:
->>>=20
->>> Hello everyone,
->>>=20
->>> When I use "rpcinfo -T tcp $Host_A nfs 3" to query NFS program
->>> information on the Host_A, rpcinfo opens a tcp connection to query =
-and
->>> return sucessfully but the problem is after that the tcp port is in
->>> TIME_WAITstate for 1 minutes. So during this 1 minutes, there is a
->>> chance that another application opens the same port as the current
->>> TIME_WAIT port, then it cannot start because the port is in =
-TIME_WAIT
->>> state.
->>>=20
->>> For example, rpcinfo opens tcp port 830 to query, then after that =
-port
->>> 830 goes to TIME_WAIT state. Later during that time, ssh netconfig
->>> starts and use 830 (830 is NETCONF over SSH) -> fails to start with
->>> the reason the port is in use.
->>>=20
->>> My question is if we have any ways to prevent this:
->>>=20
->>> 1. I found no option in rpcinfo command to specify tcp port to use =
-when querying
->>> 2. Change tcp_fin_timeout but it is not a good option
->>> 3. Reserve 830 port by calling "nc" to listen on 830 port, then =
-start
->>> rpcinfo, after rpcinfo returns, we will the "nc" process". This =
-option
->>> has a limitation that we have to reserve all welknown ports before
->>> calling rpcinfo, and we have to kill all "nc" process after rpcinfo
->>> returns.
->>>=20
->>> Could you please let me know if we have any good way to avoid that?
->>=20
->> The problem is that rpcinfo is using the generic CLNT API of =
-libtirpc,
->> which uses bindresvport(3) under the hood. If the caller has the
->> CAP_NET_BIND_SERVICE, bindresvport(3) will work and pick a reserved
->> port at random, without consideration to whether the port is an
->> IANA-assigned port.
->>=20
->> I have a patch that modifies bindresvport() to attempt to select a =
-port
->> that is not in /etc/services. I can post it here for you to try, let
->> me know.
->>=20
->> You can try running rpcinfo as a regular user so that the CLNT API
->> will pick an ephemeral port instead of a reserved port.
->>=20
->> Is it possible to give the rpcinfo executable a set of file
->> capabilities that disables CAP_NET_BIND_SERVICE?
-
-
---
-Chuck Lever
-
-
+diff --git a/src/bindresvport.c b/src/bindresvport.c
+index 2d8f2bc..6423afb 100644
+--- a/src/bindresvport.c
++++ b/src/bindresvport.c
+@@ -85,6 +85,7 @@ bindresvport_sa(sd, sa)
+ 	socklen_t salen;
+ 	int nports;
+ 	int endport = ENDPORT;
++	int pass;
+ 	int i;
+ 
+ 	mutex_lock(&port_lock);
+@@ -130,11 +131,15 @@ bindresvport_sa(sd, sa)
+         }
+         res = -1;
+         errno = EADDRINUSE;
+-		again:
++        pass = 1;
++	setservent(1);
++again:
+         for (i = 0; i < nports; ++i) {
+                 *portp = htons(port++);
+                  if (port > endport) 
+                         port = startport;
++		if (pass == 1 && getservbyport(*portp, NULL))
++			continue;
+                 res = bind(sd, sa, salen);
+ 		if (res >= 0 || errno != EADDRINUSE)
+ 	                break;
+@@ -144,8 +149,10 @@ bindresvport_sa(sd, sa)
+ 	    endport = STARTPORT - 1;
+ 	    nports = STARTPORT - LOWPORT;
+ 	    port = LOWPORT + port % (STARTPORT - LOWPORT);
++	    pass++;
+ 	    goto again;
+ 	}
++	endservent();
+ 	mutex_unlock(&port_lock);
+ 
+         return (res);
 
