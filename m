@@ -1,50 +1,286 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:42328 "EHLO mx2.suse.de"
+Received: from mx1.redhat.com ([209.132.183.28]:58154 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751624AbeEUJFu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 21 May 2018 05:05:50 -0400
-Date: Mon, 21 May 2018 10:05:47 +0100
-From: Mel Gorman <mgorman@suse.de>
-To: Christoph Hellwig <hch@lst.de>
-Cc: Trond Myklebust <trondmy@hammerspace.com>,
-        linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
-        linux-nfs@vger.kernel.org
-Subject: Re: do we still need ->is_dirty_writeback
-Message-ID: <20180521090547.shpifu2sivrishas@suse.de>
-References: <20180518170812.GA5190@lst.de>
+        id S1752918AbeEUPbC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 21 May 2018 11:31:02 -0400
+Received: from smtp.corp.redhat.com (int-mx07.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id BDF95C3FBB
+        for <linux-nfs@vger.kernel.org>; Mon, 21 May 2018 15:31:02 +0000 (UTC)
+Subject: Re: [PATCH v3 6/8] nfs-utils: Add nfsconftool cli
+To: Justin Mitchell <jumitche@redhat.com>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+References: <1526399410.7441.4.camel@redhat.com>
+ <1526399690.7441.10.camel@redhat.com>
+From: Steve Dickson <SteveD@RedHat.com>
+Message-ID: <75abed07-917b-00b7-14ac-d37ac7019e26@RedHat.com>
+Date: Mon, 21 May 2018 11:31:01 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-15
-In-Reply-To: <20180518170812.GA5190@lst.de>
+In-Reply-To: <1526399690.7441.10.camel@redhat.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, May 18, 2018 at 07:08:12PM +0200, Christoph Hellwig wrote:
-> Hi Mel,
+Hello,
+
+On 05/15/2018 11:54 AM, Justin Mitchell wrote:
+> This tool uses the conffile facilities to allow commandline
+> querying of configuration settings and to dump the current
+> config for diagnosis and testing
+Justin, would mind if I change he name of this tool from
+nfsconftool to just nfsconf? 
+
+steved.
+
 > 
-> you added the is_dirty_writeback callback a couple years ago mostly
-> to work around the crazy ext3 writeback code, which is long gone now.
-> We still use buffer_check_dirty_writeback on the block device, but
-> without that ext3 case we really should not need it anymore.
+> Signed-off-by: Justin Mitchell <jumitche@redhat.com>
+> ---
+>  Makefile.am                |   2 +-
+>  configure.ac               |   1 +
+>  tools/Makefile.am          |   2 +
+>  tools/nfsconf/Makefile.am  |   8 ++
+>  tools/nfsconf/nfsconfcli.c | 180 +++++++++++++++++++++++++++++++++++++++++++++
+>  5 files changed, 192 insertions(+), 1 deletion(-)
+>  create mode 100644 tools/nfsconf/Makefile.am
+>  create mode 100644 tools/nfsconf/nfsconfcli.c
 > 
-> That leaves NFS, where I don't understand why it doesn't simply
-> use PageWrite?
-
-If you mean PageWriteback the patch was to treat some pages as if they were
-under writeback even if the page state didn't reflect that. The intent was
-to catch the case when kswapd was scanning that it would not prematurely
-skip over pages under writeback or were really dirty from being skipped and
-clean pages being reclaimed instead. In an extreme case, it would avoid
-a premature OOM if the number of clean pages that could be reclaimed was
-too small. However, it was (is?) a corner case and the mechanisms that
-control throttling have changed a lot since.
-
-If the callback is problematic for some reason, I don't object to it
-being removed. At worst, there will be rare cases where reclaim finds
-clean pages and steals them prematurely. There are plenty of other cases
-where page age inversion issues exist (e.g. NUMA machines that reclaim
-young pages from local node when the working set is larger than a node)
-and it's rare that people notice.
-
--- 
-Mel Gorman
-SUSE Labs
+> diff --git a/Makefile.am b/Makefile.am
+> index e1f39aa..0022084 100644
+> --- a/Makefile.am
+> +++ b/Makefile.am
+> @@ -2,7 +2,7 @@
+>  
+>  AUTOMAKE_OPTIONS = foreign
+>  
+> -SUBDIRS = tools support utils linux-nfs tests systemd
+> +SUBDIRS = support tools utils linux-nfs tests systemd
+>  
+>  MAINTAINERCLEANFILES = Makefile.in
+>  
+> diff --git a/configure.ac b/configure.ac
+> index 5a11636..b925666 100644
+> --- a/configure.ac
+> +++ b/configure.ac
+> @@ -616,6 +616,7 @@ AC_CONFIG_FILES([
+>  	tools/rpcgen/Makefile
+>  	tools/mountstats/Makefile
+>  	tools/nfs-iostat/Makefile
+> +	tools/nfsconf/Makefile
+>  	utils/Makefile
+>  	utils/blkmapd/Makefile
+>  	utils/nfsdcltrack/Makefile
+> diff --git a/tools/Makefile.am b/tools/Makefile.am
+> index f2ce282..4266da4 100644
+> --- a/tools/Makefile.am
+> +++ b/tools/Makefile.am
+> @@ -6,6 +6,8 @@ if CONFIG_RPCGEN
+>  OPTDIRS += rpcgen
+>  endif
+>  
+> +OPTDIRS += nfsconf
+> +
+>  SUBDIRS = locktest rpcdebug nlmtest mountstats nfs-iostat $(OPTDIRS)
+>  
+>  MAINTAINERCLEANFILES = Makefile.in
+> diff --git a/tools/nfsconf/Makefile.am b/tools/nfsconf/Makefile.am
+> new file mode 100644
+> index 0000000..0042db9
+> --- /dev/null
+> +++ b/tools/nfsconf/Makefile.am
+> @@ -0,0 +1,8 @@
+> +## Process this file with automake to produce Makefile.in
+> +
+> +bin_PROGRAMS = nfsconftool
+> +
+> +nfsconftool_SOURCES = nfsconfcli.c
+> +nfsconftool_LDADD = ../../support/nfs/libnfsconf.la
+> +
+> +MAINTAINERCLEANFILES = Makefile.in
+> diff --git a/tools/nfsconf/nfsconfcli.c b/tools/nfsconf/nfsconfcli.c
+> new file mode 100644
+> index 0000000..034ec51
+> --- /dev/null
+> +++ b/tools/nfsconf/nfsconfcli.c
+> @@ -0,0 +1,180 @@
+> +#include <stdlib.h>
+> +#include <unistd.h>
+> +#include <stdio.h>
+> +#include <getopt.h>
+> +#include <string.h>
+> +#include <errno.h>
+> +#include "config.h"
+> +#include "conffile.h"
+> +#include "xlog.h"
+> +
+> +typedef enum {
+> +	MODE_NONE,
+> +	MODE_GET,
+> +	MODE_ISSET,
+> +	MODE_DUMP
+> +} confmode_t;
+> +
+> +static void usage(const char *name)
+> +{
+> +	fprintf(stderr, "Usage: %s [-v] [--file filename.conf] ...\n", name);
+> +	fprintf(stderr, "Options:\n");
+> +	fprintf(stderr, " -v			Increase Verbosity\n");
+> +	fprintf(stderr, " --file filename.conf	Load this config file\n");
+> +	fprintf(stderr, "     (Default config file: " NFS_CONFFILE "\n");
+> +	fprintf(stderr, "Modes:\n");
+> +	fprintf(stderr, "  --dump [outputfile]\n");
+> +	fprintf(stderr, "      Outputs the configuration to the named file\n");
+> +	fprintf(stderr, "  --get [--arg subsection] {section} {tag}\n");
+> +	fprintf(stderr, "      Output one specific config value\n");
+> +	fprintf(stderr, "  --isset [--arg subsection] {section} {tag}\n");
+> +	fprintf(stderr, "      Return code indicates if config value is present\n");
+> +}
+> +
+> +int main(int argc, char **argv)
+> +{
+> +	const char * val;
+> +	char * confpath = NFS_CONFFILE;
+> +	char * arg = NULL;
+> +	int verbose=0;
+> +	int ret = 0;
+> +	char * dumpfile = NULL;
+> +
+> +	confmode_t mode = MODE_NONE;
+> +
+> +	while (1) {
+> +		int c;
+> +		int index = 0;
+> +		struct option long_options[] = {
+> +			{"get",		no_argument, 0, 'g' },
+> +			{"arg",	  required_argument, 0, 'a' },
+> +			{"isset", 	no_argument, 0, 'i' },
+> +			{"dump",  optional_argument, 0, 'd' },
+> +			{"file",  required_argument, 0, 'f' },
+> +			{"verbose",	no_argument, 0, 'v' },
+> +			{NULL,			  0, 0, 0 }
+> +		};
+> +
+> +		c = getopt_long(argc, argv, "ga:id::f:v", long_options, &index);
+> +		if (c == -1) break;
+> +
+> +		switch (c) {
+> +			case 0:
+> +				break;
+> +			case 'f':
+> +				/* user specified souce path for config */
+> +				confpath = optarg;
+> +				break;
+> +			case 'a':
+> +				/* user supplied a sub-section name */
+> +				arg = optarg;
+> +				break;
+> +			case 'v':
+> +				verbose++;
+> +				break;
+> +			case 'g':
+> +				mode = MODE_GET;
+> +				break;
+> +			case 'i':
+> +				mode = MODE_ISSET;
+> +				break;
+> +			case 'd':
+> +				/* check if user supplied a filename for dump */
+> +				if (optarg == NULL && argv[optind] != NULL
+> +				    && argv[optind][0] != '-')
+> +					optarg = argv[optind++];
+> +				mode = MODE_DUMP;
+> +				dumpfile = optarg;
+> +				break;
+> +			default:
+> +				usage(argv[0]);
+> +				return 1;
+> +		}
+> +	}
+> +
+> +	/* configure the logging that conffile.c uses */
+> +	if (verbose)
+> +		xlog_config(D_ALL, 1);
+> +	xlog_stderr(1);
+> +	xlog_syslog(0);
+> +	xlog_open("nfsconftool");
+> +
+> +	if (mode == MODE_NONE) {
+> +		fprintf(stderr, "Error: No MODE selected.\n");
+> +		usage(argv[0]);
+> +		return 1;
+> +	}
+> +
+> +	if (conf_init_file(confpath)) {
+> +		/* config file was missing or had an error, warn about it */
+> +		if (verbose || mode != MODE_ISSET)
+> +			fprintf(stderr, "Error loading config file %s\n",
+> +				confpath);
+> +		/* this isnt fatal for --isset */
+> +		if (mode != MODE_ISSET)
+> +			return 1;
+> +	}
+> +
+> +	/* --dump mode, output the current configuration */
+> +	if (mode == MODE_DUMP) {
+> +		/* default to writing it to stdout */
+> +		FILE *out = stdout;
+> +
+> +		/* user specified a file to write to instead */
+> +		if (dumpfile) {
+> +			out = fopen(dumpfile, "w");
+> +			if (out == NULL) {
+> +				fprintf(stderr, "Error opening dumpfile %s: %s\n",
+> +					dumpfile, strerror(errno));
+> +				ret = 2;
+> +				goto cleanup;
+> +			}
+> +			if (verbose)
+> +				printf("Dumping config to %s\n", dumpfile);
+> +		}
+> +
+> +		/* output the configuration */
+> +		conf_report(out);
+> +
+> +		/* close that user specified file */
+> +		if (dumpfile)
+> +			fclose(out);
+> +	} else
+> +	/* --iset and --get share a lot of code */
+> +	if (mode == MODE_GET || mode == MODE_ISSET) {
+> +		char * section = NULL;
+> +		char * tag = NULL;
+> +
+> +		/* test they supplied section and tag names */
+> +		if (optind+1 >= argc) {
+> +			fprintf(stderr, "Error: insufficient arguments for mode\n");
+> +			usage(argv[0]);
+> +			ret = 2;
+> +			goto cleanup;
+> +		}
+> +
+> +		/* now we have a section and tag name */
+> +		section = argv[optind++];
+> +		tag = argv[optind++];
+> +
+> +		/* retrieve the specified tags value */
+> +		val = conf_get_section(section, arg, tag);
+> +		if (val != NULL) {
+> +			/* ret=0, success, mode --get wants to output the value as well */
+> +			if (mode == MODE_GET)
+> +				printf("%s\n", val);
+> +		} else {
+> +			/* ret=1, no value found, tell the user if they asked */
+> +			if (mode == MODE_GET && verbose)
+> +				fprintf(stderr, "Tag '%s' not found\n", tag);
+> +			ret = 1;
+> +		}
+> +	} else {
+> +		fprintf(stderr, "Mode not yet implimented.\n");
+> +		ret = 2;
+> +	}
+> +
+> +cleanup:
+> +	conf_cleanup();
+> +	return ret;
+> +}
+> 
