@@ -1,63 +1,42 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:9096 "EHLO mx1.redhat.com"
+Received: from mx142.netapp.com ([216.240.21.19]:32455 "EHLO mx142.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751277AbeEVSXv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 22 May 2018 14:23:51 -0400
-Received: from smtp.corp.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.26])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 4961C30BA1E7
-        for <linux-nfs@vger.kernel.org>; Tue, 22 May 2018 18:23:51 +0000 (UTC)
-Subject: Re: [PATCH v3 0/8] nfs-utils: nfsconf cli tool and code tests
-To: Justin Mitchell <jumitche@redhat.com>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-References: <1526399410.7441.4.camel@redhat.com>
-From: Steve Dickson <SteveD@RedHat.com>
-Message-ID: <06652e97-983b-77cd-c7b6-0ccaeeda788c@RedHat.com>
-Date: Tue, 22 May 2018 14:23:50 -0400
+        id S1751336AbeEVSkv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 22 May 2018 14:40:51 -0400
+From: Olga Kornievskaia <kolga@netapp.com>
+To: <trond.myklebust@hammerspace.com>, <anna.schumaker@netapp.com>
+CC: <linux-nfs@vger.kernel.org>
+Subject: [PATCH 1/1] [SUNRPC] make sure to clone timeout values
+Date: Tue, 22 May 2018 14:40:48 -0400
+Message-ID: <20180522184048.21586-1-kolga@netapp.com>
 MIME-Version: 1.0
-In-Reply-To: <1526399410.7441.4.camel@redhat.com>
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+From: Olga Kornievskaia <olga.kornievskaia@gmail.com>
 
+For pNFS, the operations to DS currently timeout in 10s. According
+to the spec, the client must not be re-trying an NFSv4.1 operation
+unless the connection was broken.
 
-On 05/15/2018 11:50 AM, Justin Mitchell wrote:
-> Apologies for the noise, I missed some files out when I last
-> reposted, so here is an updated and tested version.
-> 
-> v3
-> Include files that were missed out of v2
-> Add the man page for nfsconftool
-> 
-> v2
-> Updated style and commenting to make the code clearer
-> 
-> v1
-> This series introduces a new cli tool to nfs-utils which provides
-> for the dumping of the current configuration, querying of individual
-> settings in a scripting friendly manner and by extention the 
-> scripted testing and verification of nfsconf functionality.
-> 
-> The previously unreferenced conf_report() is modified to produce
-> a sorted output, which allows you to --dump the current config in
-> a way thats easier to diff
-> 
-> As well as some improved error messages a script is included which
-> tests the current config parsing code by supplying various example
-> config files and comparing the results of the --dump output.
-> 
-> The cli tool also allows a simple test to check if a config item
-> has been set, and to retrieve the current value in a way that is
-> easy to call from a shell script.
-> 
-> As the next stage I hope to impliment config setting via the cli 
-> tool in order to provide an api for automation and management tools
-> 
-> Signed-off-by: Justin Mitchell <jumitche@redhat.com>
-> 
-> 
-The series was committed with the name change... Thank you!
+Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+---
+ net/sunrpc/clnt.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-steved.
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 6e432ec..97517eb 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -668,6 +668,7 @@ struct rpc_clnt *
+ 		.prognumber	= clnt->cl_prog,
+ 		.version	= clnt->cl_vers,
+ 		.authflavor	= flavor,
++		.timeout	= clnt->cl_timeout,
+ 	};
+ 	return __rpc_clone_client(&args, clnt);
+ }
+-- 
+1.8.3.1
+
