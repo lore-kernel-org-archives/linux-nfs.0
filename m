@@ -1,129 +1,302 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp2120.oracle.com ([156.151.31.85]:54136 "EHLO
-        userp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1754407AbeEUVac (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 21 May 2018 17:30:32 -0400
-Content-Type: text/plain;
-        charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 11.3 \(3445.6.18\))
-Subject: Re: [PATCH] Fix 16-byte memory leak in gssp_accept_sec_context_upcall
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20180521212815.GC11447@fieldses.org>
-Date: Mon, 21 May 2018 14:30:15 -0700
-Cc: Dave Wysochanski <dwysocha@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <4C9F1329-1F7D-4B10-8570-BB57211B7BC2@oracle.com>
-References: <1526677984-29854-1-git-send-email-dwysocha@redhat.com>
- <20180521212815.GC11447@fieldses.org>
-To: Bruce Fields <bfields@fieldses.org>
+Received: from mx3-rdu2.redhat.com ([66.187.233.73]:43820 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1751279AbeEVJZ5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 22 May 2018 05:25:57 -0400
+Received: from smtp.corp.redhat.com (int-mx04.intmail.prod.int.rdu2.redhat.com [10.11.54.4])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id 090E1195446
+        for <linux-nfs@vger.kernel.org>; Tue, 22 May 2018 09:25:57 +0000 (UTC)
+Message-ID: <1526981155.7452.5.camel@redhat.com>
+Subject: Re: [PATCH v3 6/8] nfs-utils: Add nfsconftool cli
+From: Justin Mitchell <jumitche@redhat.com>
+To: Steve Dickson <SteveD@RedHat.com>
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Date: Tue, 22 May 2018 10:25:55 +0100
+In-Reply-To: <75abed07-917b-00b7-14ac-d37ac7019e26@RedHat.com>
+References: <1526399410.7441.4.camel@redhat.com>
+         <1526399690.7441.10.camel@redhat.com>
+         <75abed07-917b-00b7-14ac-d37ac7019e26@RedHat.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Agreed, I was just pawing around in that code, and
-this patch looks sane and plausible.
+On Mon, 2018-05-21 at 11:31 -0400, Steve Dickson wrote:
+> Hello,
+> 
+> On 05/15/2018 11:54 AM, Justin Mitchell wrote:
+> > This tool uses the conffile facilities to allow commandline
+> > querying of configuration settings and to dump the current
+> > config for diagnosis and testing
+> Justin, would mind if I change he name of this tool from
+> nfsconftool to just nfsconf? 
 
-Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
+I do not mind what the name is, as a tool for querying (and eventually
+manipulating) nfs config files it seemed suitably self explanatory, if a
+little long winded.
 
-> On May 21, 2018, at 2:28 PM, bfields@fieldses.org wrote:
->=20
-> This looks right, thanks, it's just waiting on testing--the latest
-> Fedora update seems to have broken my test rig's krb5 server, =
-hopefully
-> I'll get that back up tommorrow.
->=20
-> --b.
->=20
-> On Fri, May 18, 2018 at 05:13:04PM -0400, Dave Wysochanski wrote:
->> There is a 16-byte memory leak inside sunrpc/auth_gss on an nfs =
-server when
->> a client mounts with 'sec=3Dkrb5' in a simple mount / umount loop.  =
-The leak
->> is seen by either monitoring the kmalloc-16 slab or with kmemleak =
-enabled
->>=20
->> unreferenced object 0xffff92e6a045f030 (size 16):
->>  comm "nfsd", pid 1096, jiffies 4294936658 (age 761.110s)
->>  hex dump (first 16 bytes):
->>    2a 86 48 86 f7 12 01 02 02 00 00 00 00 00 00 00  *.H.............
->>  backtrace:
->>    [<000000004b2b79a7>] gssx_dec_buffer+0x79/0x90 [auth_rpcgss]
->>    [<000000002610ac1a>] gssx_dec_accept_sec_context+0x215/0x6dd =
-[auth_rpcgss]
->>    [<000000004fd0e81d>] rpcauth_unwrap_resp+0xa9/0xe0 [sunrpc]
->>    [<000000002b099233>] call_decode+0x1e9/0x840 [sunrpc]
->>    [<00000000954fc846>] __rpc_execute+0x80/0x3f0 [sunrpc]
->>    [<00000000c83a961c>] rpc_run_task+0x10d/0x150 [sunrpc]
->>    [<000000002c2cdcd2>] rpc_call_sync+0x4d/0xa0 [sunrpc]
->>    [<000000000b74eea2>] gssp_accept_sec_context_upcall+0x196/0x470 =
-[auth_rpcgss]
->>    [<000000003271273f>] svcauth_gss_proxy_init+0x188/0x520 =
-[auth_rpcgss]
->>    [<000000001cf69f01>] svcauth_gss_accept+0x3a6/0xb50 [auth_rpcgss]
->>=20
->> If you map the above to code you'll see the following call chain
->>  gssx_dec_accept_sec_context
->>    gssx_dec_ctx  (missing from kmemleak output)
->>      gssx_dec_buffer(xdr, &ctx->mech)
->>=20
->> Inside gssx_dec_buffer there is 'kmemdup' where we allocate memory =
-for
->> any gssx_buffer (buf) and store into buf->data.  In the above =
-instance,
->> 'buf =3D=3D &ctx->mech).
->>=20
->> Further up in the chain in gssp_accept_sec_context_upcall we see =
-ctx->mech
->> is part of a stack variable 'struct gssx_ctx rctxh'.  Now later =
-inside
->> gssp_accept_sec_context_upcall after gssp_call, there is a number of
->> memcpy and kfree statements, but there is no kfree(rctxh.mech.data)
->> after the memcpy into data->mech_oid.data.
->>=20
->> With this patch applied and the same mount / unmount loop, the =
-kmalloc-16
->> slab is stable and kmemleak enabled no longer shows the above =
-backtrace.
->>=20
->> Signed-off-by: Dave Wysochanski <dwysocha@redhat.com>
->> ---
->> net/sunrpc/auth_gss/gss_rpc_upcall.c | 4 +++-
->> 1 file changed, 3 insertions(+), 1 deletion(-)
->>=20
->> diff --git a/net/sunrpc/auth_gss/gss_rpc_upcall.c =
-b/net/sunrpc/auth_gss/gss_rpc_upcall.c
->> index 46b295e..d98e2b6 100644
->> --- a/net/sunrpc/auth_gss/gss_rpc_upcall.c
->> +++ b/net/sunrpc/auth_gss/gss_rpc_upcall.c
->> @@ -298,9 +298,11 @@ int gssp_accept_sec_context_upcall(struct net =
-*net,
->> 	if (res.context_handle) {
->> 		data->out_handle =3D rctxh.exported_context_token;
->> 		data->mech_oid.len =3D rctxh.mech.len;
->> -		if (rctxh.mech.data)
->> +		if (rctxh.mech.data) {
->> 			memcpy(data->mech_oid.data, rctxh.mech.data,
->> 						data->mech_oid.len);
->> +			kfree(rctxh.mech.data);
->> +		}
->> 		client_name =3D rctxh.src_name.display_name;
->> 	}
->>=20
->> --=20
->> 1.8.3.1
->>=20
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
-in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+So sure, change it unless anyone else has a better suggestion ?
+
+
+> 
+> steved.
+> 
+> > 
+> > Signed-off-by: Justin Mitchell <jumitche@redhat.com>
+> > ---
+> >  Makefile.am                |   2 +-
+> >  configure.ac               |   1 +
+> >  tools/Makefile.am          |   2 +
+> >  tools/nfsconf/Makefile.am  |   8 ++
+> >  tools/nfsconf/nfsconfcli.c | 180 +++++++++++++++++++++++++++++++++++++++++++++
+> >  5 files changed, 192 insertions(+), 1 deletion(-)
+> >  create mode 100644 tools/nfsconf/Makefile.am
+> >  create mode 100644 tools/nfsconf/nfsconfcli.c
+> > 
+> > diff --git a/Makefile.am b/Makefile.am
+> > index e1f39aa..0022084 100644
+> > --- a/Makefile.am
+> > +++ b/Makefile.am
+> > @@ -2,7 +2,7 @@
+> >  
+> >  AUTOMAKE_OPTIONS = foreign
+> >  
+> > -SUBDIRS = tools support utils linux-nfs tests systemd
+> > +SUBDIRS = support tools utils linux-nfs tests systemd
+> >  
+> >  MAINTAINERCLEANFILES = Makefile.in
+> >  
+> > diff --git a/configure.ac b/configure.ac
+> > index 5a11636..b925666 100644
+> > --- a/configure.ac
+> > +++ b/configure.ac
+> > @@ -616,6 +616,7 @@ AC_CONFIG_FILES([
+> >  	tools/rpcgen/Makefile
+> >  	tools/mountstats/Makefile
+> >  	tools/nfs-iostat/Makefile
+> > +	tools/nfsconf/Makefile
+> >  	utils/Makefile
+> >  	utils/blkmapd/Makefile
+> >  	utils/nfsdcltrack/Makefile
+> > diff --git a/tools/Makefile.am b/tools/Makefile.am
+> > index f2ce282..4266da4 100644
+> > --- a/tools/Makefile.am
+> > +++ b/tools/Makefile.am
+> > @@ -6,6 +6,8 @@ if CONFIG_RPCGEN
+> >  OPTDIRS += rpcgen
+> >  endif
+> >  
+> > +OPTDIRS += nfsconf
+> > +
+> >  SUBDIRS = locktest rpcdebug nlmtest mountstats nfs-iostat $(OPTDIRS)
+> >  
+> >  MAINTAINERCLEANFILES = Makefile.in
+> > diff --git a/tools/nfsconf/Makefile.am b/tools/nfsconf/Makefile.am
+> > new file mode 100644
+> > index 0000000..0042db9
+> > --- /dev/null
+> > +++ b/tools/nfsconf/Makefile.am
+> > @@ -0,0 +1,8 @@
+> > +## Process this file with automake to produce Makefile.in
+> > +
+> > +bin_PROGRAMS = nfsconftool
+> > +
+> > +nfsconftool_SOURCES = nfsconfcli.c
+> > +nfsconftool_LDADD = ../../support/nfs/libnfsconf.la
+> > +
+> > +MAINTAINERCLEANFILES = Makefile.in
+> > diff --git a/tools/nfsconf/nfsconfcli.c b/tools/nfsconf/nfsconfcli.c
+> > new file mode 100644
+> > index 0000000..034ec51
+> > --- /dev/null
+> > +++ b/tools/nfsconf/nfsconfcli.c
+> > @@ -0,0 +1,180 @@
+> > +#include <stdlib.h>
+> > +#include <unistd.h>
+> > +#include <stdio.h>
+> > +#include <getopt.h>
+> > +#include <string.h>
+> > +#include <errno.h>
+> > +#include "config.h"
+> > +#include "conffile.h"
+> > +#include "xlog.h"
+> > +
+> > +typedef enum {
+> > +	MODE_NONE,
+> > +	MODE_GET,
+> > +	MODE_ISSET,
+> > +	MODE_DUMP
+> > +} confmode_t;
+> > +
+> > +static void usage(const char *name)
+> > +{
+> > +	fprintf(stderr, "Usage: %s [-v] [--file filename.conf] ...\n", name);
+> > +	fprintf(stderr, "Options:\n");
+> > +	fprintf(stderr, " -v			Increase Verbosity\n");
+> > +	fprintf(stderr, " --file filename.conf	Load this config file\n");
+> > +	fprintf(stderr, "     (Default config file: " NFS_CONFFILE "\n");
+> > +	fprintf(stderr, "Modes:\n");
+> > +	fprintf(stderr, "  --dump [outputfile]\n");
+> > +	fprintf(stderr, "      Outputs the configuration to the named file\n");
+> > +	fprintf(stderr, "  --get [--arg subsection] {section} {tag}\n");
+> > +	fprintf(stderr, "      Output one specific config value\n");
+> > +	fprintf(stderr, "  --isset [--arg subsection] {section} {tag}\n");
+> > +	fprintf(stderr, "      Return code indicates if config value is present\n");
+> > +}
+> > +
+> > +int main(int argc, char **argv)
+> > +{
+> > +	const char * val;
+> > +	char * confpath = NFS_CONFFILE;
+> > +	char * arg = NULL;
+> > +	int verbose=0;
+> > +	int ret = 0;
+> > +	char * dumpfile = NULL;
+> > +
+> > +	confmode_t mode = MODE_NONE;
+> > +
+> > +	while (1) {
+> > +		int c;
+> > +		int index = 0;
+> > +		struct option long_options[] = {
+> > +			{"get",		no_argument, 0, 'g' },
+> > +			{"arg",	  required_argument, 0, 'a' },
+> > +			{"isset", 	no_argument, 0, 'i' },
+> > +			{"dump",  optional_argument, 0, 'd' },
+> > +			{"file",  required_argument, 0, 'f' },
+> > +			{"verbose",	no_argument, 0, 'v' },
+> > +			{NULL,			  0, 0, 0 }
+> > +		};
+> > +
+> > +		c = getopt_long(argc, argv, "ga:id::f:v", long_options, &index);
+> > +		if (c == -1) break;
+> > +
+> > +		switch (c) {
+> > +			case 0:
+> > +				break;
+> > +			case 'f':
+> > +				/* user specified souce path for config */
+> > +				confpath = optarg;
+> > +				break;
+> > +			case 'a':
+> > +				/* user supplied a sub-section name */
+> > +				arg = optarg;
+> > +				break;
+> > +			case 'v':
+> > +				verbose++;
+> > +				break;
+> > +			case 'g':
+> > +				mode = MODE_GET;
+> > +				break;
+> > +			case 'i':
+> > +				mode = MODE_ISSET;
+> > +				break;
+> > +			case 'd':
+> > +				/* check if user supplied a filename for dump */
+> > +				if (optarg == NULL && argv[optind] != NULL
+> > +				    && argv[optind][0] != '-')
+> > +					optarg = argv[optind++];
+> > +				mode = MODE_DUMP;
+> > +				dumpfile = optarg;
+> > +				break;
+> > +			default:
+> > +				usage(argv[0]);
+> > +				return 1;
+> > +		}
+> > +	}
+> > +
+> > +	/* configure the logging that conffile.c uses */
+> > +	if (verbose)
+> > +		xlog_config(D_ALL, 1);
+> > +	xlog_stderr(1);
+> > +	xlog_syslog(0);
+> > +	xlog_open("nfsconftool");
+> > +
+> > +	if (mode == MODE_NONE) {
+> > +		fprintf(stderr, "Error: No MODE selected.\n");
+> > +		usage(argv[0]);
+> > +		return 1;
+> > +	}
+> > +
+> > +	if (conf_init_file(confpath)) {
+> > +		/* config file was missing or had an error, warn about it */
+> > +		if (verbose || mode != MODE_ISSET)
+> > +			fprintf(stderr, "Error loading config file %s\n",
+> > +				confpath);
+> > +		/* this isnt fatal for --isset */
+> > +		if (mode != MODE_ISSET)
+> > +			return 1;
+> > +	}
+> > +
+> > +	/* --dump mode, output the current configuration */
+> > +	if (mode == MODE_DUMP) {
+> > +		/* default to writing it to stdout */
+> > +		FILE *out = stdout;
+> > +
+> > +		/* user specified a file to write to instead */
+> > +		if (dumpfile) {
+> > +			out = fopen(dumpfile, "w");
+> > +			if (out == NULL) {
+> > +				fprintf(stderr, "Error opening dumpfile %s: %s\n",
+> > +					dumpfile, strerror(errno));
+> > +				ret = 2;
+> > +				goto cleanup;
+> > +			}
+> > +			if (verbose)
+> > +				printf("Dumping config to %s\n", dumpfile);
+> > +		}
+> > +
+> > +		/* output the configuration */
+> > +		conf_report(out);
+> > +
+> > +		/* close that user specified file */
+> > +		if (dumpfile)
+> > +			fclose(out);
+> > +	} else
+> > +	/* --iset and --get share a lot of code */
+> > +	if (mode == MODE_GET || mode == MODE_ISSET) {
+> > +		char * section = NULL;
+> > +		char * tag = NULL;
+> > +
+> > +		/* test they supplied section and tag names */
+> > +		if (optind+1 >= argc) {
+> > +			fprintf(stderr, "Error: insufficient arguments for mode\n");
+> > +			usage(argv[0]);
+> > +			ret = 2;
+> > +			goto cleanup;
+> > +		}
+> > +
+> > +		/* now we have a section and tag name */
+> > +		section = argv[optind++];
+> > +		tag = argv[optind++];
+> > +
+> > +		/* retrieve the specified tags value */
+> > +		val = conf_get_section(section, arg, tag);
+> > +		if (val != NULL) {
+> > +			/* ret=0, success, mode --get wants to output the value as well */
+> > +			if (mode == MODE_GET)
+> > +				printf("%s\n", val);
+> > +		} else {
+> > +			/* ret=1, no value found, tell the user if they asked */
+> > +			if (mode == MODE_GET && verbose)
+> > +				fprintf(stderr, "Tag '%s' not found\n", tag);
+> > +			ret = 1;
+> > +		}
+> > +	} else {
+> > +		fprintf(stderr, "Mode not yet implimented.\n");
+> > +		ret = 2;
+> > +	}
+> > +
+> > +cleanup:
+> > +	conf_cleanup();
+> > +	return ret;
+> > +}
+> > 
 > --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
-in
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
---
-Chuck Lever
-
 
 
