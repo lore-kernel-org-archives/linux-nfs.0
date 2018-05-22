@@ -1,84 +1,130 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp-o-1.desy.de ([131.169.56.154]:36617 "EHLO smtp-o-1.desy.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751575AbeEVVBK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 22 May 2018 17:01:10 -0400
-Received: from smtp-buf-1.desy.de (smtp-buf-1.desy.de [131.169.56.164])
-        by smtp-o-1.desy.de (DESY-O-1) with ESMTP id D37392804E7
-        for <linux-nfs@vger.kernel.org>; Tue, 22 May 2018 23:01:08 +0200 (CEST)
-Date: Tue, 22 May 2018 23:01:08 +0200 (CEST)
-From: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
+Received: from aserp2130.oracle.com ([141.146.126.79]:41310 "EHLO
+        aserp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751575AbeEVVCI (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 22 May 2018 17:02:08 -0400
+Content-Type: text/plain;
+        charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 11.3 \(3445.6.18\))
+Subject: Re: [RFC] protect against denial-of-service on a 4.0 mount
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <CAN-5tyHLEm3SQ5_ayDr6_TECpQndN_haKSyodf7Ls61RbLR2_g@mail.gmail.com>
+Date: Tue, 22 May 2018 14:02:00 -0700
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <E54CA1D0-00E7-4EEF-B77F-78B65AF2FC08@oracle.com>
+References: <CAN-5tyEo3d18aWny5U65NWGP1G_4kdrKGw2VDEO8vipCoivAQw@mail.gmail.com>
+ <594BD2F7-35FC-4E26-81D7-404194B7005A@oracle.com>
+ <CAN-5tyHXhy7yS+6mNAyTzr9tX4vA9gma8AeRtvNG0-FNZaL_Yg@mail.gmail.com>
+ <537AAFBD-62BA-4F0B-9B2E-D27500A1205B@oracle.com>
+ <CAN-5tyHLEm3SQ5_ayDr6_TECpQndN_haKSyodf7Ls61RbLR2_g@mail.gmail.com>
 To: Olga Kornievskaia <aglo@umich.edu>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
-Message-ID: <1719906626.7570776.1527022868136.JavaMail.zimbra@desy.de>
-In-Reply-To: <CAN-5tyE4gO9=pDtSPC+vbH4HuBs69Qyt8tSPFMM6_cg32BrH9A@mail.gmail.com>
-References: <CAN-5tyH2OVzr5TTN_sCrKxEiXaDiPzh=8zykR__jq=k2ve5Vaw@mail.gmail.com> <955655871.7566389.1527021265316.JavaMail.zimbra@desy.de> <CAN-5tyE4gO9=pDtSPC+vbH4HuBs69Qyt8tSPFMM6_cg32BrH9A@mail.gmail.com>
-Subject: Re: question: re-try of operations in PNFS
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Agree, there shouldn't be an extra option for that and probably fresher kernels have dropped
-that option. If I recall correctly, the options was there to protect client from pnfs bugs. E.g.
-fall back to MDS if it thinks that something went wrong and client happy.
 
-I haven't seen that problem for quite some time. However on modern kernels (and RHEL 7) we prefer
-to use flexfiles pnfs layout. One of the reasons is the option to avoid io through mds.
 
-I will try to reproduce it.
+> On May 22, 2018, at 1:38 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
+>=20
+> On Tue, May 22, 2018 at 4:22 PM, Chuck Lever <chuck.lever@oracle.com> =
+wrote:
+>>=20
+>>=20
+>>> On May 22, 2018, at 1:17 PM, Olga Kornievskaia <aglo@umich.edu> =
+wrote:
+>>>=20
+>>> On Tue, May 22, 2018 at 4:08 PM, Chuck Lever =
+<chuck.lever@oracle.com> wrote:
+>>>>=20
+>>>>=20
+>>>>> On May 22, 2018, at 1:03 PM, Olga Kornievskaia <aglo@umich.edu> =
+wrote:
+>>>>>=20
+>>>>> I'm looking for comments on the approach to deal with the =
+following
+>>>>> denial-of-service issue.
+>>>>>=20
+>>>>> Currently, during the nfs4.0 mount, the code takes the content
+>>>>> supplied by the user in the mount command for "clientaddr" and =
+that
+>>>>> becomes part of the content of the SETCLIENTID client id. There =
+are no
+>>>>> verifications that the supplied address belongs to the client
+>>>>> initiating the mount.
+>>>>>=20
+>>>>> A denial of services comes from where there are 2 clients with IP =
+A
+>>>>> and IP B (bad one). Client IP A mounts and has "IP A" in the
+>>>>> SETCLIENTID. Client IP B does a mount and specified "clientaddr=3DIP=
+ A".
+>>>>> This causes the server to invalidate the lease for the legitimate
+>>>>> client IP A.
+>>>>=20
+>>>> Generally if this is a concern, Kerberos can be used during
+>>>> the SETCLIENTID to mutually authenticate the client and
+>>>> server. Shouldn't that prevent client B from tampering with
+>>>> client A's lease?
+>>>=20
+>>> It turns out to be a concern by folks (customers) that are using the
+>>> code. Kerberos does not help here. Client IP B can have a valid
+>>> Kerberos identity and still supply "clientaddr=3D" not belonging to =
+it
+>>> for the SETCLIENTID and interfere with the other's lease.
+>>=20
+>> SETCLIENTID is associated with a client ID string and a Kerberos
+>> principal. The server is supposed to deny a client with the same
+>> string (and perhaps the same callback information) but a different
+>> Kerberos identity from purging an existing lease belonging to a
+>> different principal. NFS4ERR_CLID_INUSE.
+>>=20
+>> Are you saying the two clients have exactly the same host
+>> principal? That seems... wrong.
+>>=20
+>=20
+> Are you sure client ID is associated with a Kerberos principal?
+>=20
+> Looking ta the code that constructs the clientid content. I don't see
+> that cl_nodename takes in principal identity.
+>        scnprintf(str, len, "Linux NFSv%u.%u %s",
+>                        clp->rpc_ops->version, clp->cl_minorversion,
+>                        clp->cl_rpcclient->cl_nodename);
 
-Regards,
-   Tigran.
+That's correct.
 
------ Original Message -----
-> From: "Olga Kornievskaia" <aglo@umich.edu>
-> To: "Tigran Mkrtchyan" <tigran.mkrtchyan@desy.de>
-> Cc: "linux-nfs" <linux-nfs@vger.kernel.org>
-> Sent: Tuesday, May 22, 2018 10:45:59 PM
-> Subject: Re: question: re-try of operations in PNFS
+Normally the Linux client picks up the host principal in the
+client's keytab and uses that as the credential for lease
+management operations like SETCLIENTID, without any regard to
+whether sec=3Dsys or sec=3Dkrb5-yada is used on the mount command.
+The client ID string is not supposed to change between those
+cases.
 
-> On Tue, May 22, 2018 at 4:34 PM, Mkrtchyan, Tigran
-> <tigran.mkrtchyan@desy.de> wrote:
->> Hi Olga,
->>
->> we saw similar issues with early version of RHEL6 kernels, but this was fixed in
->> the later version.
->> and it's possible now to set timeout with
->>
->> dataserver_timeo and dataserver_retrans
->>
->> bugzilla: https://bugzilla.redhat.com/show_bug.cgi?id=1175413
->>
->> Which which kernel do you observe it?
-> 
-> Upstream kernel. But I'm arguing that there shouldn't be a need to
-> specify a dataserver_timeo because it shouldn't timeout at all just
-> like MDS operations.
-> 
-> Also curiously, "man nfs" doesn't list "datasever_timeo" option and
-> when I try to use it on a RHEL7.4 machine it says incorrect option.
-> Also grep thru the upstream kernel code for "dataserver_timeo" is
-> empty too.
-> 
->>
->> Regards,
->>    Tigran.
->>
->> ----- Original Message -----
->>> From: "Olga Kornievskaia" <aglo@umich.edu>
->>> To: "linux-nfs" <linux-nfs@vger.kernel.org>
->>> Sent: Thursday, May 17, 2018 10:43:34 PM
->>> Subject: question: re-try of operations in PNFS
->>
->>> Hi Trond,
->>>
->>> Is there a reason why an rpc connection to the DS is set to timeout
->>> requests instead of waiting until the reply from the server ? Requests
->>> to DS timeout in 10sec and are resent to MDS.
->>>
->>> Thank you.
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>> the body of a message to majordomo@vger.kernel.org
-> >> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+The server associates the client ID string with the Kerberos
+principal the client used to perform the SETCLIENTID.
+
+If a different Kerberos principal is used with a SETCLIENTID
+that bears the same client ID string as a client whose lease
+is still active, the server is supposed to reject that
+SETCLIENTID with NFS4ERR_CLID_INUSE.
+
+
+> I have also tried to do a mount with and without Kerberos and the
+> clientid string is that same has NFSv4.0 client ip/server ip.
+
+A quick way to disable the use of Kerberos for lease management
+is to
+
+  sudo mv /etc/krb5.keytab /etc/krb5.keytab.bak
+
+and then restart rpc.gssd.
+
+If the clients are using AUTH_UNIX credentials for SETCLIENTID,
+client A and client B would have to have the same cl_nodename
+to be able to futz with each others leases. Is that the case?
+
+There used to be a way to get the client to include a uniquifier
+in the client ID string. Has that logic been removed?
+
+--
+Chuck Lever
+
+
+
