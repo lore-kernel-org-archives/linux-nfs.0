@@ -1,59 +1,65 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ua0-f195.google.com ([209.85.217.195]:46694 "EHLO
-        mail-ua0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751858AbeEVT2y (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 22 May 2018 15:28:54 -0400
-Received: by mail-ua0-f195.google.com with SMTP id e8-v6so13090152uam.13
-        for <linux-nfs@vger.kernel.org>; Tue, 22 May 2018 12:28:53 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <d9d84d1b2cdb6054aba1ed5124f4d632355dec0b.camel@hammerspace.com>
-References: <20180522184048.21586-1-kolga@netapp.com> <d9d84d1b2cdb6054aba1ed5124f4d632355dec0b.camel@hammerspace.com>
-From: Olga Kornievskaia <aglo@umich.edu>
-Date: Tue, 22 May 2018 15:28:52 -0400
-Message-ID: <CAN-5tyEEVqnQgNJq_pbaujsVBeVQ0y0AwNgP=cJxA9aj2=o_9w@mail.gmail.com>
+Received: from mail-co1nam03on0128.outbound.protection.outlook.com ([104.47.40.128]:56946
+        "EHLO NAM03-CO1-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1752644AbeEVT40 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 22 May 2018 15:56:26 -0400
+From: Trond Myklebust <trondmy@hammerspace.com>
+To: "aglo@umich.edu" <aglo@umich.edu>
+CC: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "kolga@netapp.com" <kolga@netapp.com>
 Subject: Re: [PATCH 1/1] [SUNRPC] make sure to clone timeout values
-To: Trond Myklebust <trondmy@hammerspace.com>
-Cc: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        "kolga@netapp.com" <kolga@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+Date: Tue, 22 May 2018 19:56:23 +0000
+Message-ID: <30255bb83a9b4df3f104e981788bb4f8df323b7e.camel@hammerspace.com>
+References: <20180522184048.21586-1-kolga@netapp.com>
+         <d9d84d1b2cdb6054aba1ed5124f4d632355dec0b.camel@hammerspace.com>
+         <CAN-5tyEEVqnQgNJq_pbaujsVBeVQ0y0AwNgP=cJxA9aj2=o_9w@mail.gmail.com>
+In-Reply-To: <CAN-5tyEEVqnQgNJq_pbaujsVBeVQ0y0AwNgP=cJxA9aj2=o_9w@mail.gmail.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, May 22, 2018 at 3:03 PM, Trond Myklebust
-<trondmy@hammerspace.com> wrote:
-> On Tue, 2018-05-22 at 14:40 -0400, Olga Kornievskaia wrote:
->> From: Olga Kornievskaia <olga.kornievskaia@gmail.com>
->>
->> For pNFS, the operations to DS currently timeout in 10s. According
->> to the spec, the client must not be re-trying an NFSv4.1 operation
->> unless the connection was broken.
->>
->> Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
->> ---
->>  net/sunrpc/clnt.c | 1 +
->>  1 file changed, 1 insertion(+)
->>
->> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
->> index 6e432ec..97517eb 100644
->> --- a/net/sunrpc/clnt.c
->> +++ b/net/sunrpc/clnt.c
->> @@ -668,6 +668,7 @@ struct rpc_clnt *
->>               .prognumber     = clnt->cl_prog,
->>               .version        = clnt->cl_vers,
->>               .authflavor     = flavor,
->> +             .timeout        = clnt->cl_timeout,
->>       };
->>       return __rpc_clone_client(&args, clnt);
->>  }
->
-> What does this patch have to do with pNFS? That's the generic RPC
-> client cloning API you are changing.
->
-> The pNFS/files timeouts are intended to be set using the
-> dataserver_retrans and dataserver_timeo module parameters described at
-> the bottom of fs/nfs/filelayout/filelayoutdev.c
-
-Ok so perhaps the code needs to re-written so that it allows for the
-DS to get an rpc client with its timeouts set. Which currently doesn't
-happen.
+T24gVHVlLCAyMDE4LTA1LTIyIGF0IDE1OjI4IC0wNDAwLCBPbGdhIEtvcm5pZXZza2FpYSB3cm90
+ZToNCj4gT24gVHVlLCBNYXkgMjIsIDIwMTggYXQgMzowMyBQTSwgVHJvbmQgTXlrbGVidXN0DQo+
+IDx0cm9uZG15QGhhbW1lcnNwYWNlLmNvbT4gd3JvdGU6DQo+ID4gT24gVHVlLCAyMDE4LTA1LTIy
+IGF0IDE0OjQwIC0wNDAwLCBPbGdhIEtvcm5pZXZza2FpYSB3cm90ZToNCj4gPiA+IEZyb206IE9s
+Z2EgS29ybmlldnNrYWlhIDxvbGdhLmtvcm5pZXZza2FpYUBnbWFpbC5jb20+DQo+ID4gPiANCj4g
+PiA+IEZvciBwTkZTLCB0aGUgb3BlcmF0aW9ucyB0byBEUyBjdXJyZW50bHkgdGltZW91dCBpbiAx
+MHMuDQo+ID4gPiBBY2NvcmRpbmcNCj4gPiA+IHRvIHRoZSBzcGVjLCB0aGUgY2xpZW50IG11c3Qg
+bm90IGJlIHJlLXRyeWluZyBhbiBORlN2NC4xDQo+ID4gPiBvcGVyYXRpb24NCj4gPiA+IHVubGVz
+cyB0aGUgY29ubmVjdGlvbiB3YXMgYnJva2VuLg0KPiA+ID4gDQo+ID4gPiBTaWduZWQtb2ZmLWJ5
+OiBPbGdhIEtvcm5pZXZza2FpYSA8a29sZ2FAbmV0YXBwLmNvbT4NCj4gPiA+IC0tLQ0KPiA+ID4g
+IG5ldC9zdW5ycGMvY2xudC5jIHwgMSArDQo+ID4gPiAgMSBmaWxlIGNoYW5nZWQsIDEgaW5zZXJ0
+aW9uKCspDQo+ID4gPiANCj4gPiA+IGRpZmYgLS1naXQgYS9uZXQvc3VucnBjL2NsbnQuYyBiL25l
+dC9zdW5ycGMvY2xudC5jDQo+ID4gPiBpbmRleCA2ZTQzMmVjLi45NzUxN2ViIDEwMDY0NA0KPiA+
+ID4gLS0tIGEvbmV0L3N1bnJwYy9jbG50LmMNCj4gPiA+ICsrKyBiL25ldC9zdW5ycGMvY2xudC5j
+DQo+ID4gPiBAQCAtNjY4LDYgKzY2OCw3IEBAIHN0cnVjdCBycGNfY2xudCAqDQo+ID4gPiAgICAg
+ICAgICAgICAgIC5wcm9nbnVtYmVyICAgICA9IGNsbnQtPmNsX3Byb2csDQo+ID4gPiAgICAgICAg
+ICAgICAgIC52ZXJzaW9uICAgICAgICA9IGNsbnQtPmNsX3ZlcnMsDQo+ID4gPiAgICAgICAgICAg
+ICAgIC5hdXRoZmxhdm9yICAgICA9IGZsYXZvciwNCj4gPiA+ICsgICAgICAgICAgICAgLnRpbWVv
+dXQgICAgICAgID0gY2xudC0+Y2xfdGltZW91dCwNCj4gPiA+ICAgICAgIH07DQo+ID4gPiAgICAg
+ICByZXR1cm4gX19ycGNfY2xvbmVfY2xpZW50KCZhcmdzLCBjbG50KTsNCj4gPiA+ICB9DQo+ID4g
+DQo+ID4gV2hhdCBkb2VzIHRoaXMgcGF0Y2ggaGF2ZSB0byBkbyB3aXRoIHBORlM/IFRoYXQncyB0
+aGUgZ2VuZXJpYyBSUEMNCj4gPiBjbGllbnQgY2xvbmluZyBBUEkgeW91IGFyZSBjaGFuZ2luZy4N
+Cj4gPiANCj4gPiBUaGUgcE5GUy9maWxlcyB0aW1lb3V0cyBhcmUgaW50ZW5kZWQgdG8gYmUgc2V0
+IHVzaW5nIHRoZQ0KPiA+IGRhdGFzZXJ2ZXJfcmV0cmFucyBhbmQgZGF0YXNlcnZlcl90aW1lbyBt
+b2R1bGUgcGFyYW1ldGVycyBkZXNjcmliZWQNCj4gPiBhdA0KPiA+IHRoZSBib3R0b20gb2YgZnMv
+bmZzL2ZpbGVsYXlvdXQvZmlsZWxheW91dGRldi5jDQo+IA0KPiBPayBzbyBwZXJoYXBzIHRoZSBj
+b2RlIG5lZWRzIHRvIHJlLXdyaXR0ZW4gc28gdGhhdCBpdCBhbGxvd3MgZm9yIHRoZQ0KPiBEUyB0
+byBnZXQgYW4gcnBjIGNsaWVudCB3aXRoIGl0cyB0aW1lb3V0cyBzZXQuIFdoaWNoIGN1cnJlbnRs
+eQ0KPiBkb2Vzbid0DQo+IGhhcHBlbi4NCj4gDQo+IEZyb20gd2hhdCBJIGNvdWxkIHRlbGwgdGhl
+IERTIGNvZGUgdHJpZXMgdG8gc2V0IHRoZSB0aW1lb3V0IHZhbHVlcyBpbg0KPiBuZnM0X3NldF9k
+c19jbGllbnQoKSBidXQgdGhhdCBoYXMgbm8gZWZmZWN0Lg0KPiANCj4gbmZzNF9maW5kX29yX2Ny
+ZWF0ZV9kc19jbGllbnQoKSBjYWxscyBycGNfY2xvbmVfY2xpZW50X3NldF9hdXRoKCkNCj4gd2hp
+Y2ggY3JlYXRlcyBhbiBycGMgY2xpZW50IGJ1dCB0aGUgdGltZW91dCB0aGF0IHdlcmUgc2V0IGFy
+ZSBpZ25vcmVkDQo+IGFuZCBpbnN0ZWFkIHRoZSBycGMgY2xpZW50IGlzIGdldHRpbmcgY3JlYXRl
+ZCB3aXRoIHRoaXMgMTBzIHRpbWVvdXQuDQo+IA0KPiAoYnV0IEkgdGhvdWdodCB0aGF0IGluIGdl
+bmVyYWwgaXQgbWFkZSBzZW5zZSB0aGF0IGEgY2xvbmUgYWxzbyBjb3BpZXMNCj4gdGhlIHRpbWVv
+dXQgdmFsdWVzKQ0KPiANCg0KSXQgZG9lcyBub3QgbWFrZSBzZW5zZSB3aGVuIHlvdSBjb25zaWRl
+ciB0aGF0IHRoZSB0aW1lb3V0IGlzIGEgcGVyLQ0KdHJhbnNwb3J0IGF0dHJpYnV0ZS4NCg0KRldJ
+VywgSSd2ZSBubyBpZGVhIHdoZXJlIHRoaXMgMTBzIHRpbWVvdXQgeW91IGFyZSBzZWVpbmcgaXMg
+Y29taW5nDQpmcm9tLiBQZXJoYXBzIGl0IGlzIHdvcnRod2hpbGUgZmlndXJpbmcgdGhhdCBvdXQg
+Zmlyc3Q/DQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWlu
+ZXIsIEhhbW1lcnNwYWNlDQp0cm9uZC5teWtsZWJ1c3RAaGFtbWVyc3BhY2UuY29tDQoNCg==
