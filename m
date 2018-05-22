@@ -1,77 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp2130.oracle.com ([156.151.31.86]:37570 "EHLO
-        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751582AbeEVQR6 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 22 May 2018 12:17:58 -0400
-Content-Type: text/plain;
-        charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 11.3 \(3445.6.18\))
-Subject: Re: EVM HMAC and FS UUID
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20180522160751.GB30724@fieldses.org>
-Date: Tue, 22 May 2018 09:17:53 -0700
-Cc: trond.myklebust@hammerspace.com,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <0AD3BFFF-8A3D-440A-B186-0019B8D924B2@oracle.com>
-References: <04B6BFF9-AC1E-4E46-810B-7DDE5ED63345@oracle.com>
- <20180522160751.GB30724@fieldses.org>
-To: Bruce Fields <bfields@fieldses.org>
+Received: from mx1.redhat.com ([209.132.183.28]:9096 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751277AbeEVSXv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 22 May 2018 14:23:51 -0400
+Received: from smtp.corp.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.26])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id 4961C30BA1E7
+        for <linux-nfs@vger.kernel.org>; Tue, 22 May 2018 18:23:51 +0000 (UTC)
+Subject: Re: [PATCH v3 0/8] nfs-utils: nfsconf cli tool and code tests
+To: Justin Mitchell <jumitche@redhat.com>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+References: <1526399410.7441.4.camel@redhat.com>
+From: Steve Dickson <SteveD@RedHat.com>
+Message-ID: <06652e97-983b-77cd-c7b6-0ccaeeda788c@RedHat.com>
+Date: Tue, 22 May 2018 14:23:50 -0400
+MIME-Version: 1.0
+In-Reply-To: <1526399410.7441.4.camel@redhat.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
 
-> On May 22, 2018, at 9:07 AM, Bruce Fields <bfields@fieldses.org> wrote:
+On 05/15/2018 11:50 AM, Justin Mitchell wrote:
+> Apologies for the noise, I missed some files out when I last
+> reposted, so here is an updated and tested version.
 > 
-> On Tue, May 22, 2018 at 08:53:34AM -0700, Chuck Lever wrote:
->> Hi-
->> 
->> I'm continuing to look at NFS support for the Linux Integrity
->> Measurement Architecture.
->> 
->> When computing an HMAC hash of file attributes, sometimes the
->> FS UUID is included. For a client to verify that hash, the
->> server will have to expose that UUID somehow.
->> 
->> Is there currently an NFSv4 attribute that carries the FS UUID?
+> v3
+> Include files that were missed out of v2
+> Add the man page for nfsconftool
 > 
-> I think the fsid is as close as you get.
+> v2
+> Updated style and commenting to make the code clearer
 > 
-> Do you need to calculate hashes in exactly the way the server does?  If
-> you're assuming a "dumb server" that just stores signatures without
-> interpreting them, then maybe not?
+> v1
+> This series introduces a new cli tool to nfs-utils which provides
+> for the dumping of the current configuration, querying of individual
+> settings in a scripting friendly manner and by extention the 
+> scripted testing and verification of nfsconf functionality.
+> 
+> The previously unreferenced conf_report() is modified to produce
+> a sorted output, which allows you to --dump the current config in
+> a way thats easier to diff
+> 
+> As well as some improved error messages a script is included which
+> tests the current config parsing code by supplying various example
+> config files and comparing the results of the --dump output.
+> 
+> The cli tool also allows a simple test to check if a config item
+> has been set, and to retrieve the current value in a way that is
+> easy to call from a shell script.
+> 
+> As the next stage I hope to impliment config setting via the cli 
+> tool in order to provide an api for automation and management tools
+> 
+> Signed-off-by: Justin Mitchell <jumitche@redhat.com>
+> 
+> 
+The series was committed with the name change... Thank you!
 
-The hashes have to be computed the same way everywhere, of course,
-whether it's on a client or on the server.
-
-Assuming that NFS were not in the picture, then the EVM hash would
-use the raw FS UUID. This is the hash that would be exposed to NFS
-clients if that filesystem were suddenly to be exported. So the
-NFS clients would need to have the same raw FS UUID in order to
-verify the hash. (And I'm actually not sure what benefit there is
-to including the FS UUID).
-
-I see two alternatives:
-
--- Provide a new read-only filesystem attribute that exposes the
-   FS UUID
-
--- The FS UUID is optional. We could make it illegal to use the
-   FS UUID in EVM hashes that will be exposed via NFS
-
-The bigger picture:
-
-- The input set for the hash contains optional items that will have
-to be given to remote EVM hash consumers. I think a new attribute
-that lists the set of hashed attributes will be necessary.
-
-- The input set can contain security.* xattrs, like security.SMACK64.
-These are currently not exposed to NFS clients, but not all files
-will have them. Not quite sure how to make that work generally.
-
-
---
-Chuck Lever
-
-
-
+steved.
