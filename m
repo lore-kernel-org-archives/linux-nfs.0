@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx142.netapp.com ([216.240.21.19]:26209 "EHLO mx142.netapp.com"
+Received: from mx141.netapp.com ([216.240.21.12]:4592 "EHLO mx141.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S935170AbeEXUDR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 24 May 2018 16:03:17 -0400
+        id S935330AbeEXUFt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 24 May 2018 16:05:49 -0400
 From: Olga Kornievskaia <kolga@netapp.com>
-To: <steved@redhat.org>
+To: <steved@redhat.com>
 CC: <linux-nfs@vger.kernel.org>
 Subject: [PATCH 1/1] nfs-utils: Add check of clientaddr argument
-Date: Thu, 24 May 2018 16:03:13 -0400
-Message-ID: <20180524200313.22647-1-kolga@netapp.com>
+Date: Thu, 24 May 2018 16:05:42 -0400
+Message-ID: <20180524200542.22685-1-kolga@netapp.com>
 MIME-Version: 1.0
 Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
