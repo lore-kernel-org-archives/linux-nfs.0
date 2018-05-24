@@ -1,48 +1,43 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx3-rdu2.redhat.com ([66.187.233.73]:40426 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1755082AbeEXN0z (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 24 May 2018 09:26:55 -0400
-From: Waiman Long <longman@redhat.com>
-To: Ingo Molnar <mingo@redhat.com>,
-        Peter Zijlstra <peterz@infradead.org>,
-        Thomas Gleixner <tglx@linutronix.de>
-Cc: linux-kernel@vger.kernel.org, Davidlohr Bueso <dave@stgolabs.net>,
-        Dan Williams <dan.j.williams@intel.com>,
-        Arnd Bergmann <arnd@arndb.de>, linux-nfs@vger.kernel.org,
-        Waiman Long <longman@redhat.com>
-Subject: [PATCH] locking/rwsem: Fix up_read_non_owner() warning with DEBUG_RWSEMS
-Date: Thu, 24 May 2018 09:26:38 -0400
-Message-Id: <1527168398-4291-1-git-send-email-longman@redhat.com>
+Received: from mx1.redhat.com ([209.132.183.28]:54130 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S966309AbeEXRad (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 24 May 2018 13:30:33 -0400
+From: Steve Dickson <SteveD@RedHat.com>
+Subject: ANNOUNCE: nfs-utils-2.3.2 released.
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Cc: "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
+Message-ID: <ae4d2ce7-ca45-9f65-54a2-bbb44ca4c34d@RedHat.com>
+Date: Thu, 24 May 2018 13:30:32 -0400
+MIME-Version: 1.0
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-It was found that the use of up_read_non_owner() in NFS was causing
-the following warning when DEBUG_RWSEMS was configured.
+Hello,
 
-  DEBUG_LOCKS_WARN_ON(sem->owner != ((struct task_struct *)(1UL << 0)))
+nfs-utils-2.3.2 has just been released.
 
-Looking into the rwsem.c file, it was discovered that the corresponding
-down_read_non_owner() function was not setting the owner field properly.
-This is fixed now, and the warning should be gone.
+Along with the usual bug fixes:
+   * libjunction support was added.
+   * The nfsref command was added that administers junctions
+   * Most compile warnings are now fatal errors.
+   * The nfsconf command was added that dump, gets and
+     test setting in /etc/nfs.conf
 
-Signed-off-by: Waiman Long <longman@redhat.com>
----
- kernel/locking/rwsem.c | 1 +
- 1 file changed, 1 insertion(+)
+The tarballs can be found in
+  https://www.kernel.org/pub/linux/utils/nfs-utils/2.3.2/
+or
+  http://sourceforge.net/projects/nfs/files/nfs-utils/2.3.2
 
-diff --git a/kernel/locking/rwsem.c b/kernel/locking/rwsem.c
-index bc1e507..776308d 100644
---- a/kernel/locking/rwsem.c
-+++ b/kernel/locking/rwsem.c
-@@ -181,6 +181,7 @@ void down_read_non_owner(struct rw_semaphore *sem)
- 	might_sleep();
- 
- 	__down_read(sem);
-+	rwsem_set_reader_owned(sem);
- }
- 
- EXPORT_SYMBOL(down_read_non_owner);
--- 
-1.8.3.1
+The change log is in
+   https://www.kernel.org/pub/linux/utils/nfs-utils/2.3.2/2.3.2-Changelog
+or
+   http://sourceforge.net/projects/nfs/files/nfs-utils/2.3.2/
 
+The git tree is at:
+   git://linux-nfs.org/~steved/nfs-utils
+
+Please send comments/bugs to linux-nfs@vger.kernel.org
+
+steved.
