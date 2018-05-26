@@ -1,233 +1,193 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp2130.oracle.com ([141.146.126.79]:44306 "EHLO
-        aserp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1030394AbeEYWfd (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 25 May 2018 18:35:33 -0400
-Content-Type: text/plain;
-        charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 11.3 \(3445.6.18\))
-Subject: Re: [PATCH 1/1] nfs-utils: Add check of clientaddr argument
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <CC64DAF4-5BE4-4433-8CF7-23B8E887E668@oracle.com>
-Date: Fri, 25 May 2018 15:35:25 -0700
-Cc: Olga Kornievskaia <kolga@netapp.com>,
-        Steve Dickson <steved@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <0079153E-7153-4246-AFD6-864E53100D8E@oracle.com>
-References: <20180524200542.22685-1-kolga@netapp.com>
- <48E7EEA0-C804-4AB3-9C08-10A5B14B8976@oracle.com>
- <CAN-5tyHb4WDXqqeYxQm+kzjmSquaKZ3fqsVkMW1Hx5RCmdxb2Q@mail.gmail.com>
- <63AA3A00-6272-4D91-AC0A-30C9A169DBD1@oracle.com>
- <CAN-5tyHXpp1DgX4ULnnWmUoyPHFUOVWR0PiMhhaD89Gxn9Hf-g@mail.gmail.com>
- <CC64DAF4-5BE4-4433-8CF7-23B8E887E668@oracle.com>
-To: Olga Kornievskaia <aglo@umich.edu>, trond.myklebust@hammerspace.com
+Received: from mail-yw0-f194.google.com ([209.85.161.194]:45604 "EHLO
+        mail-yw0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1030936AbeEZAdE (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 25 May 2018 20:33:04 -0400
+Received: by mail-yw0-f194.google.com with SMTP id m65-v6so2262728ywc.12
+        for <linux-nfs@vger.kernel.org>; Fri, 25 May 2018 17:33:04 -0700 (PDT)
+MIME-Version: 1.0
+References: <20180525213123.2113748-1-arnd@arndb.de>
+In-Reply-To: <20180525213123.2113748-1-arnd@arndb.de>
+From: Greg Thelen <gthelen@google.com>
+Date: Fri, 25 May 2018 17:32:52 -0700
+Message-ID: <CAHH2K0Ysgi30gHPN8EEdDa+PfSFJLo8=6j-aq=SYy=_h6K0kPg@mail.gmail.com>
+Subject: Re: [PATCH] IB: Revert "remove redundant INFINIBAND kconfig dependencies"
+To: arnd@arndb.de
+Cc: Doug Ledford <dledford@redhat.com>, Jason Gunthorpe <jgg@ziepe.ca>,
+        Keith Busch <keith.busch@intel.com>, Jens Axboe <axboe@fb.com>,
+        Christoph Hellwig <hch@lst.de>,
+        Sagi Grimberg <sagi@grimberg.me>, oleg.drokin@intel.com,
+        andreas.dilger@intel.com, jsimmons@infradead.org,
+        gregkh@linuxfoundation.org, Steve French <sfrench@samba.org>,
+        ericvh@gmail.com, rminnich@sandia.gov, lucho@ionkov.net,
+        "David S. Miller" <davem@davemloft.net>,
+        santosh.shilimkar@oracle.com, trond.myklebust@hammerspace.com,
+        anna.schumaker@netapp.com, bfields@fieldses.org,
+        jlayton@kernel.org, Bart Van Assche <bart.vanassche@wdc.com>,
+        linux-rdma@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>,
+        linux-nvme@lists.infradead.org, lustre-devel@lists.lustre.org,
+        devel@driverdev.osuosl.org, linux-cifs@vger.kernel.org,
+        samba-technical@lists.samba.org,
+        v9fs-developer@lists.sourceforge.net, netdev@vger.kernel.org,
+        rds-devel@oss.oracle.com, linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Fri, May 25, 2018 at 2:32 PM Arnd Bergmann <arnd@arndb.de> wrote:
+
+> Several subsystems depend on INFINIBAND_ADDR_TRANS, which in turn depends
+> on INFINIBAND. However, when with CONFIG_INIFIBAND=m, this leads to a
+> link error when another driver using it is built-in. The
+> INFINIBAND_ADDR_TRANS dependency is insufficient here as this is
+> a 'bool' symbol that does not force anything to be a module in turn.
+
+> fs/cifs/smbdirect.o: In function `smbd_disconnect_rdma_work':
+> smbdirect.c:(.text+0x1e4): undefined reference to `rdma_disconnect'
+> net/9p/trans_rdma.o: In function `rdma_request':
+> trans_rdma.c:(.text+0x7bc): undefined reference to `rdma_disconnect'
+> net/9p/trans_rdma.o: In function `rdma_destroy_trans':
+> trans_rdma.c:(.text+0x830): undefined reference to `ib_destroy_qp'
+> trans_rdma.c:(.text+0x858): undefined reference to `ib_dealloc_pd'
+
+> Fixes: 9533b292a7ac ("IB: remove redundant INFINIBAND kconfig
+dependencies")
+> Signed-off-by: Arnd Bergmann <arnd@arndb.de>
+
+Acked-by: Greg Thelen <gthelen@google.com>
+
+Sorry for the 9533b292a7ac problem.
+At this point the in release cycle, I think Arnd's revert is best.
+
+If there is interest, I've put a little thought into an alternative fix:
+making INFINIBAND_ADDR_TRANS tristate.  But it's nontrivial.
+So I prefer this simple revert for now.
+
+Doug: do you need anything from me on this?
+
+> ---
+> The patch that introduced the problem has been queued in the
+> rdma-fixes/for-rc tree. Please revert the patch before sending
+> the branch to Linus.
+> ---
+>     drivers/infiniband/ulp/srpt/Kconfig | 2 +-
+>     drivers/nvme/host/Kconfig           | 2 +-
+>     drivers/nvme/target/Kconfig         | 2 +-
+>     drivers/staging/lustre/lnet/Kconfig | 2 +-
+>     fs/cifs/Kconfig                     | 2 +-
+>     net/9p/Kconfig                      | 2 +-
+>     net/rds/Kconfig                     | 2 +-
+>     net/sunrpc/Kconfig                  | 2 +-
+>     8 files changed, 8 insertions(+), 8 deletions(-)
+
+> diff --git a/drivers/infiniband/ulp/srpt/Kconfig
+b/drivers/infiniband/ulp/srpt/Kconfig
+> index 25bf6955b6d0..fb8b7182f05e 100644
+> --- a/drivers/infiniband/ulp/srpt/Kconfig
+> +++ b/drivers/infiniband/ulp/srpt/Kconfig
+> @@ -1,6 +1,6 @@
+>     config INFINIBAND_SRPT
+>            tristate "InfiniBand SCSI RDMA Protocol target support"
+> -       depends on INFINIBAND_ADDR_TRANS && TARGET_CORE
+> +       depends on INFINIBAND && INFINIBAND_ADDR_TRANS && TARGET_CORE
+>            ---help---
+
+>              Support for the SCSI RDMA Protocol (SRP) Target driver. The
+> diff --git a/drivers/nvme/host/Kconfig b/drivers/nvme/host/Kconfig
+> index dbb7464c018c..88a8b5916624 100644
+> --- a/drivers/nvme/host/Kconfig
+> +++ b/drivers/nvme/host/Kconfig
+> @@ -27,7 +27,7 @@ config NVME_FABRICS
+
+>     config NVME_RDMA
+>            tristate "NVM Express over Fabrics RDMA host driver"
+> -       depends on INFINIBAND_ADDR_TRANS && BLOCK
+> +       depends on INFINIBAND && INFINIBAND_ADDR_TRANS && BLOCK
+>            select NVME_CORE
+>            select NVME_FABRICS
+>            select SG_POOL
+> diff --git a/drivers/nvme/target/Kconfig b/drivers/nvme/target/Kconfig
+> index 7595664ee753..3c7b61ddb0d1 100644
+> --- a/drivers/nvme/target/Kconfig
+> +++ b/drivers/nvme/target/Kconfig
+> @@ -27,7 +27,7 @@ config NVME_TARGET_LOOP
+
+>     config NVME_TARGET_RDMA
+>            tristate "NVMe over Fabrics RDMA target support"
+> -       depends on INFINIBAND_ADDR_TRANS
+> +       depends on INFINIBAND && INFINIBAND_ADDR_TRANS
+>            depends on NVME_TARGET
+>            select SGL_ALLOC
+>            help
+> diff --git a/drivers/staging/lustre/lnet/Kconfig
+b/drivers/staging/lustre/lnet/Kconfig
+> index f3b1ad4bd3dc..ad049e6f24e4 100644
+> --- a/drivers/staging/lustre/lnet/Kconfig
+> +++ b/drivers/staging/lustre/lnet/Kconfig
+> @@ -34,7 +34,7 @@ config LNET_SELFTEST
+
+>     config LNET_XPRT_IB
+>            tristate "LNET infiniband support"
+> -       depends on LNET && PCI && INFINIBAND_ADDR_TRANS
+> +       depends on LNET && PCI && INFINIBAND && INFINIBAND_ADDR_TRANS
+>            default LNET && INFINIBAND
+>            help
+>              This option allows the LNET users to use infiniband as an
+> diff --git a/fs/cifs/Kconfig b/fs/cifs/Kconfig
+> index d61e2de8d0eb..5f132d59dfc2 100644
+> --- a/fs/cifs/Kconfig
+> +++ b/fs/cifs/Kconfig
+> @@ -197,7 +197,7 @@ config CIFS_SMB311
+
+>     config CIFS_SMB_DIRECT
+>            bool "SMB Direct support (Experimental)"
+> -       depends on CIFS=m && INFINIBAND_ADDR_TRANS || CIFS=y &&
+INFINIBAND_ADDR_TRANS=y
+> +       depends on CIFS=m && INFINIBAND && INFINIBAND_ADDR_TRANS ||
+CIFS=y && INFINIBAND=y && INFINIBAND_ADDR_TRANS=y
+>            help
+>              Enables SMB Direct experimental support for SMB 3.0, 3.02 and
+3.1.1.
+>              SMB Direct allows transferring SMB packets over RDMA. If
+unsure,
+> diff --git a/net/9p/Kconfig b/net/9p/Kconfig
+> index 46c39f7da444..e6014e0e51f7 100644
+> --- a/net/9p/Kconfig
+> +++ b/net/9p/Kconfig
+> @@ -32,7 +32,7 @@ config NET_9P_XEN
 
 
-> On May 25, 2018, at 10:04 AM, Chuck Lever <chuck.lever@oracle.com> =
-wrote:
->=20
->=20
->=20
->> On May 25, 2018, at 9:44 AM, Olga Kornievskaia <aglo@umich.edu> =
-wrote:
->>=20
->> On Fri, May 25, 2018 at 12:24 PM, Chuck Lever =
-<chuck.lever@oracle.com> wrote:
->>> Hi Olga-
->>>=20
->>>> On May 25, 2018, at 7:02 AM, Olga Kornievskaia <aglo@umich.edu> =
-wrote:
->>>>=20
->>>> Thank you for the comments. Will hopefully address them in the next =
-version.
->>>>=20
->>>> On Thu, May 24, 2018 at 8:50 PM, Chuck Lever =
-<chuck.lever@oracle.com> wrote:
->>>>> Hi Olga-
->>>>>=20
->>>>>> On May 24, 2018, at 1:05 PM, Olga Kornievskaia <kolga@netapp.com> =
-wrote:
->>>>>>=20
->>>>>> If the user supplies a clientaddr value,
->>>>>=20
->>>>> Please say "NFS client administrator" not "user". A
->>>>> "user" is any non-privileged user, so saying that a
->>>>> "user" can set this value is misleading.
->>>>=20
->>>> Ok will change it.
->>>>=20
->>>>>> it should be either
->>>>>> a special value of either IPV4/IPV6 any address or a local =
-address
->>>>>> on the same network that the server being mounted.
->>>>>=20
->>>>> This option should allow any local address the client has,
->>>>> not just an address that is on the same network as the
->>>>> server. See below for further explanation.
->>>>=20
->>>> Ok, I added this to the comment specifically as I didn't know if =
-this
->>>> would pose a problem. I didn't know if allowing any address was =
-useful
->>>> as when it's not specified the address on the same network as the
->>>> server is chosen.
->>>=20
->>> Yep, any of the client's local addresses should be allowed.
->>>=20
->>>=20
->>>>>> Otherwise, we
->>>>>> disallow the client to use an arbitrary value of the clientaddr =
-value.
->>>>>> This value is used to construct a client id of SETCLIENTID and
->>>>>> providing a false value can interfere with the real owner's =
-mount.
->>>>>=20
->>>>> The patch description is misleading:
->>>>>=20
->>>>> Interference occurs only if the real owner's lease is
->>>>> not protected by Kerberos AND this client has the same
->>>>> client ID string as another client.
->>>>=20
->>>> Ok I will add this more explicit detail when the interference =
-occurs
->>>> (when neither of the machines are using Kerberos and the other =
-client
->>>> machine is not using a module parameter to add a unique identifier =
-to
->>>> the client ID string). I think otherwise it is knowns that client =
-ID
->>>> is created with the value of the clientaddr.
->>>=20
->>> The only way a problem occurs is if the clientaddr is the
->>> same AND the cl_nodename is the same. How is that happening?
->>=20
->> Client ID in the SETCLIENTID is constructed by
->> nfs4_init_nonuniform_client_string() function and it uses cl_ipaddr
->> and not cl_nodename.
->=20
-> 5614         scnprintf(str, len, "Linux NFSv4.0 %s/%s %s",
-> 5615                         clp->cl_ipaddr,
-> 5616                         rpc_peeraddr2str(clp->cl_rpcclient, =
-RPC_DISPLAY_ADDR),
-> 5617                         rpc_peeraddr2str(clp->cl_rpcclient, =
-RPC_DISPLAY_PROTO));
->=20
-> So I get your point now: if two Linux NFSv4.0 clients mount the
-> same server and specify the same callback address, and do not
-> specify "migration", they will indeed present exactly the same
-> client ID string to the server.
->=20
-> I had remembered there was more in that string, but I guess I
-> was thinking of the uniform client ID string.
->=20
-> And it will break badly if several clients decide to use
-> clientaddr=3D0.0.0.0. Trond, any thoughts? Why aren't the
-> nodename or uniquifier available in this string?
+>     config NET_9P_RDMA
+> -       depends on INET && INFINIBAND_ADDR_TRANS
+> +       depends on INET && INFINIBAND && INFINIBAND_ADDR_TRANS
+>            tristate "9P RDMA Transport (Experimental)"
+>            help
+>              This builds support for an RDMA transport.
+> diff --git a/net/rds/Kconfig b/net/rds/Kconfig
+> index 1a31502ee7db..bffde4b46c5d 100644
+> --- a/net/rds/Kconfig
+> +++ b/net/rds/Kconfig
+> @@ -8,7 +8,7 @@ config RDS
 
-I can think of legitimate cases where two unique NFSv4.0
-clients having the same IP address might mount the same
-server.
+>     config RDS_RDMA
+>            tristate "RDS over Infiniband"
+> -       depends on RDS && INFINIBAND_ADDR_TRANS
+> +       depends on RDS && INFINIBAND && INFINIBAND_ADDR_TRANS
+>            ---help---
+>              Allow RDS to use Infiniband as a transport.
+>              This transport supports RDMA operations.
+> diff --git a/net/sunrpc/Kconfig b/net/sunrpc/Kconfig
+> index 6358e5271070..ac09ca803296 100644
+> --- a/net/sunrpc/Kconfig
+> +++ b/net/sunrpc/Kconfig
+> @@ -50,7 +50,7 @@ config SUNRPC_DEBUG
 
-- clientaddr=3D0.0.0.0, as mentioned above
-
-- clients behind NATs using a private subnet that happen
-to be numbered the same (192.168.0.77, say).
-
-Restricting the addresses allowed as the clientaddr=3D
-value does not address these cases.
-
-
-We already have some workarounds:
-
-- Use NFSv4.1 or later
-
-- Use NFSv4.0 with the "migration" option
-
-- Use Kerberos (give the clients and server service
-  principals) and fix the server to reject SETCLIENTID
-  using a recognized client ID string but an unrecognized
-  authentication flavor and principal
-
-And possible fixes might include:
-
-- Improve the Linux client's non-UCS format
-
-- Make "migration" the default behavior
-
-I am still in favor of validating the clientaddr value,
-but again, IMO that just papers over the real problem,
-which is the current non-UCS client ID string format.
-
-Have a restful holiday weekend.
-
-
->>> Why are the cl_nodenames the same? If they are not the same,
->>> then it is not possible that the clients' leases are inter-
->>> fering with each other, and something else is going on.
->>>=20
->>>=20
->>>>> The Linux client's client ID string also contains the
->>>>> system's cl_nodename. Both the cl_nodename and the
->>>>> callback address have to be the same as some other
->>>>> client's, and they both have to be Linux, for this to
->>>>> be a problem.
->>>>>=20
->>>>> It's more likely that the customer's clients are all
->>>>> named the same (maybe they are copied from the same
->>>>> system image), and reverse DNS lookup is giving them
->>>>> all the same clientaddr=3D . That's an unsupported
->>>>> configuration and there are already ways to address
->>>>> this.
->>>>>=20
->>>>> Or perhaps I don't understand the use case that is
->>>>> causing the problem. Can the patch description explain
->>>>> why your customer is trying to set clientaddr=3D ?
->>>>=20
->>>> The customer case was a simple mistake of including the wrong =
-address.
->>>=20
->>> But that doesn't answer the question. Why did the
->>> customer feel the need to set clientaddr=3D ?
->>=20
->> I don't know. In the end they decided they didn't need the clientaddr =
-at all.
->>=20
->>>> Do you fundamentally disagree that there is a case for
->>>> denial-of-service here?
->>>=20
->>> The only service that is affected if the clientaddr is
->>> set incorrectly is on the client where the mistake
->>> occurs. If the cl_nodenames are all unique then other
->>> clients should not be affected by the mistake. If
->>> that is happening, that's a server bug.
->>>=20
->>> If the problem was that the customer set the wrong
->>> address, let's say that, rather than claiming that the
->>> patch prevents lease tampering.
->>=20
->> Ok I can change it to lease tampering (I really don't care that =
-much).
->> But to just to discuss a bit further, how's lease tampering not a
->> denial-of-service? It interfere with a client's ability to make
->> progress.
->=20
->=20
+>     config SUNRPC_XPRT_RDMA
+>            tristate "RPC-over-RDMA transport"
+> -       depends on SUNRPC && INFINIBAND_ADDR_TRANS
+> +       depends on SUNRPC && INFINIBAND && INFINIBAND_ADDR_TRANS
+>            default SUNRPC && INFINIBAND
+>            select SG_POOL
+>            help
 > --
-> Chuck Lever
->=20
->=20
->=20
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
-in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
---
-Chuck Lever
-
-
-
+> 2.9.0
