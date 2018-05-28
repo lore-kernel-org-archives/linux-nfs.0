@@ -1,93 +1,53 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from dschgrazlin2.univ.trieste.it ([140.105.55.81]:32996 "EHLO
-        dschgrazlin2.units.it" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1032818AbeE0QeB (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 27 May 2018 12:34:01 -0400
-Received: from dschgrazlin2.units.it (loopback [127.0.0.1])
-        by dschgrazlin2.units.it (8.15.2/8.15.2) with ESMTP id w4RGQ0fO011746
-        for <linux-nfs@vger.kernel.org>; Sun, 27 May 2018 18:26:00 +0200
-From: gabriele balducci <balducci@units.it>
+Received: from smtp.gentoo.org ([140.211.166.183]:43848 "EHLO smtp.gentoo.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1033462AbeE1KWD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 28 May 2018 06:22:03 -0400
+From: Lars Wendler <polynomial-c@gentoo.org>
 To: linux-nfs@vger.kernel.org
-Subject: nfs-utils-2.3.2: glitch crashes build
-MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Date: Sun, 27 May 2018 18:26:00 +0200
-Message-ID: <11745.1527438384@dschgrazlin2.units.it>
+Cc: Lars Wendler <polynomial-c@gentoo.org>
+Subject: [PATCH] Fix undefined references and bad include when build with junction support
+Date: Mon, 28 May 2018 12:21:48 +0200
+Message-Id: <20180528102148.10201-1-polynomial-c@gentoo.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-hello
+---
+ support/junction/Makefile.am | 2 +-
+ utils/nfsref/Makefile.am     | 6 +++---
+ 2 files changed, 4 insertions(+), 4 deletions(-)
 
-building 2.3.2 fails with:
+diff --git a/support/junction/Makefile.am b/support/junction/Makefile.am
+index 97e7426..89cb532 100644
+--- a/support/junction/Makefile.am
++++ b/support/junction/Makefile.am
+@@ -31,4 +31,4 @@ libjunction_la_SOURCES	= display.c export-cache.c junction.c \
+ 
+ MAINTAINERCLEANFILES	= Makefile.in
+ 
+-AM_CPPFLAGS		= -I. -I../include -I/usr/include/libxml2
++AM_CPPFLAGS		= -I. -I../include -I/usr/include/libxml2 @TIRPC_CFLAGS@
+diff --git a/utils/nfsref/Makefile.am b/utils/nfsref/Makefile.am
+index 2b2bb53..a652b03 100644
+--- a/utils/nfsref/Makefile.am
++++ b/utils/nfsref/Makefile.am
+@@ -27,13 +27,13 @@ noinst_HEADERS		= nfsref.h
+ 
+ sbin_PROGRAMS		= nfsref
+ nfsref_SOURCES		= add.c lookup.c nfsref.c remove.c
+-LDADD			= $(LIBXML2) $(LIBCAP) \
+-			  ../../support/nfs/libnfs.la \
++LIBS			+= $(LIBXML2) $(LIBCAP)
++LDADD			=  ../../support/nfs/libnfs.la \
+ 			  ../../support/junction/libjunction.la
+ 
+ man8_MANS		= nfsref.man
+ 
+ MAINTAINERCLEANFILES	= Makefile.in
+ 
+-AM_CPPFLAGS		= -I. -I../../support/include
++AM_CPPFLAGS		= -I. -I../../support/include @TIRPC_CFLAGS@
+ ##AM_LDFLAGS		= -Wl,--as-needed
+-- 
+2.17.0
 
-  mountd.c:706:3: note: 'sprintf' output between 6 and 16 bytes into a destination of size 10
-     sprintf(tag, "vers%d", vers);
-     ^~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  cc1: some warnings being treated as errors
-
-and
-
-  nfsd.c:102:3: note: 'sprintf' output between 6 and 16 bytes into a destination of size 10
-     sprintf(tag, "vers%d", i);
-     ^~~~~~~~~~~~~~~~~~~~~~~~~
-  cc1: some warnings being treated as errors
-
-I guess the reason is (https://marc.info/?l=linux-nfs&m=152718306728854&w=2):
-
-    * Most compile warnings are now fatal errors.
-
-and (configure):
-
-  checking whether CC supports -Werror=format-overflow=2... yes
-
-This fixes everything for me:
-
-  diff -c utils/mountd/mountd.c.FIX_VAR_DIM utils/mountd/mountd.c
-  *** utils/mountd/mountd.c.FIX_VAR_DIM	Sun May 27 18:16:46 2018
-  --- utils/mountd/mountd.c	Sun May 27 18:16:46 2018
-  ***************
-  *** 702,708 ****
-          else
-                  NFSCTL_TCPUNSET(_rpcprotobits);
-          for (vers = 2; vers <= 4; vers++) {
-  ! 		char tag[10];
-                  sprintf(tag, "vers%d", vers);
-                  if (conf_get_bool("nfsd", tag, NFSCTL_VERISSET(nfs_version, vers)))
-                          NFSCTL_VERSET(nfs_version, vers);
-  --- 702,708 ----
-          else
-                  NFSCTL_TCPUNSET(_rpcprotobits);
-          for (vers = 2; vers <= 4; vers++) {
-  ! 		char tag[20];
-                  sprintf(tag, "vers%d", vers);
-                  if (conf_get_bool("nfsd", tag, NFSCTL_VERISSET(nfs_version, vers)))
-                          NFSCTL_VERSET(nfs_version, vers);
-
-
-
-  diff -c utils/nfsd/nfsd.c.FIX_VAR_DIM utils/nfsd/nfsd.c
-  *** utils/nfsd/nfsd.c.FIX_VAR_DIM	Sun May 27 18:16:46 2018
-  --- utils/nfsd/nfsd.c	Sun May 27 18:16:46 2018
-  ***************
-  *** 98,104 ****
-          else
-                  NFSCTL_TCPUNSET(protobits);
-          for (i = 2; i <= 4; i++) {
-  ! 		char tag[10];
-                  sprintf(tag, "vers%d", i);
-                  if (conf_get_bool("nfsd", tag, NFSCTL_VERISSET(versbits, i)))
-                          NFSCTL_VERSET(versbits, i);
-  --- 98,104 ----
-          else
-                  NFSCTL_TCPUNSET(protobits);
-          for (i = 2; i <= 4; i++) {
-  ! 		char tag[20];
-                  sprintf(tag, "vers%d", i);
-                  if (conf_get_bool("nfsd", tag, NFSCTL_VERISSET(versbits, i)))
-                          NFSCTL_VERSET(versbits, i);
-
-
-I thought the maintainers might be interested in fixing upstream
-
-ciao
-gabriele
