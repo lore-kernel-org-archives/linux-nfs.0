@@ -1,53 +1,75 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.gentoo.org ([140.211.166.183]:43848 "EHLO smtp.gentoo.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1033462AbeE1KWD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 28 May 2018 06:22:03 -0400
-From: Lars Wendler <polynomial-c@gentoo.org>
-To: linux-nfs@vger.kernel.org
-Cc: Lars Wendler <polynomial-c@gentoo.org>
-Subject: [PATCH] Fix undefined references and bad include when build with junction support
-Date: Mon, 28 May 2018 12:21:48 +0200
-Message-Id: <20180528102148.10201-1-polynomial-c@gentoo.org>
+Received: from mail-wr0-f195.google.com ([209.85.128.195]:38596 "EHLO
+        mail-wr0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S940255AbeE1QkB (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 28 May 2018 12:40:01 -0400
+Received: by mail-wr0-f195.google.com with SMTP id 94-v6so21177099wrf.5
+        for <linux-nfs@vger.kernel.org>; Mon, 28 May 2018 09:40:00 -0700 (PDT)
+Date: Mon, 28 May 2018 10:39:49 -0600
+From: Jason Gunthorpe <jgg@ziepe.ca>
+To: Greg Thelen <gthelen@google.com>
+Cc: arnd@arndb.de, Doug Ledford <dledford@redhat.com>,
+        Keith Busch <keith.busch@intel.com>, Jens Axboe <axboe@fb.com>,
+        Christoph Hellwig <hch@lst.de>,
+        Sagi Grimberg <sagi@grimberg.me>, oleg.drokin@intel.com,
+        andreas.dilger@intel.com, jsimmons@infradead.org,
+        gregkh@linuxfoundation.org, Steve French <sfrench@samba.org>,
+        ericvh@gmail.com, rminnich@sandia.gov, lucho@ionkov.net,
+        "David S. Miller" <davem@davemloft.net>,
+        santosh.shilimkar@oracle.com, trond.myklebust@hammerspace.com,
+        anna.schumaker@netapp.com, bfields@fieldses.org,
+        jlayton@kernel.org, Bart Van Assche <bart.vanassche@wdc.com>,
+        linux-rdma@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>,
+        linux-nvme@lists.infradead.org, lustre-devel@lists.lustre.org,
+        devel@driverdev.osuosl.org, linux-cifs@vger.kernel.org,
+        samba-technical@lists.samba.org,
+        v9fs-developer@lists.sourceforge.net, netdev@vger.kernel.org,
+        rds-devel@oss.oracle.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] IB: Revert "remove redundant INFINIBAND kconfig
+ dependencies"
+Message-ID: <20180528163949.GA17505@ziepe.ca>
+References: <20180525213123.2113748-1-arnd@arndb.de>
+ <CAHH2K0Ysgi30gHPN8EEdDa+PfSFJLo8=6j-aq=SYy=_h6K0kPg@mail.gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CAHH2K0Ysgi30gHPN8EEdDa+PfSFJLo8=6j-aq=SYy=_h6K0kPg@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
----
- support/junction/Makefile.am | 2 +-
- utils/nfsref/Makefile.am     | 6 +++---
- 2 files changed, 4 insertions(+), 4 deletions(-)
+On Fri, May 25, 2018 at 05:32:52PM -0700, Greg Thelen wrote:
+> On Fri, May 25, 2018 at 2:32 PM Arnd Bergmann <arnd@arndb.de> wrote:
+> 
+> > Several subsystems depend on INFINIBAND_ADDR_TRANS, which in turn depends
+> > on INFINIBAND. However, when with CONFIG_INIFIBAND=m, this leads to a
+> > link error when another driver using it is built-in. The
+> > INFINIBAND_ADDR_TRANS dependency is insufficient here as this is
+> > a 'bool' symbol that does not force anything to be a module in turn.
+> 
+> > fs/cifs/smbdirect.o: In function `smbd_disconnect_rdma_work':
+> > smbdirect.c:(.text+0x1e4): undefined reference to `rdma_disconnect'
+> > net/9p/trans_rdma.o: In function `rdma_request':
+> > trans_rdma.c:(.text+0x7bc): undefined reference to `rdma_disconnect'
+> > net/9p/trans_rdma.o: In function `rdma_destroy_trans':
+> > trans_rdma.c:(.text+0x830): undefined reference to `ib_destroy_qp'
+> > trans_rdma.c:(.text+0x858): undefined reference to `ib_dealloc_pd'
+> 
+> > Fixes: 9533b292a7ac ("IB: remove redundant INFINIBAND kconfig
+> dependencies")
+> > Signed-off-by: Arnd Bergmann <arnd@arndb.de>
+> 
+> Acked-by: Greg Thelen <gthelen@google.com>
+> 
+> Sorry for the 9533b292a7ac problem.
+> At this point the in release cycle, I think Arnd's revert is best.
+> 
+> If there is interest, I've put a little thought into an alternative fix:
+> making INFINIBAND_ADDR_TRANS tristate.  But it's nontrivial.
+> So I prefer this simple revert for now.
 
-diff --git a/support/junction/Makefile.am b/support/junction/Makefile.am
-index 97e7426..89cb532 100644
---- a/support/junction/Makefile.am
-+++ b/support/junction/Makefile.am
-@@ -31,4 +31,4 @@ libjunction_la_SOURCES	= display.c export-cache.c junction.c \
- 
- MAINTAINERCLEANFILES	= Makefile.in
- 
--AM_CPPFLAGS		= -I. -I../include -I/usr/include/libxml2
-+AM_CPPFLAGS		= -I. -I../include -I/usr/include/libxml2 @TIRPC_CFLAGS@
-diff --git a/utils/nfsref/Makefile.am b/utils/nfsref/Makefile.am
-index 2b2bb53..a652b03 100644
---- a/utils/nfsref/Makefile.am
-+++ b/utils/nfsref/Makefile.am
-@@ -27,13 +27,13 @@ noinst_HEADERS		= nfsref.h
- 
- sbin_PROGRAMS		= nfsref
- nfsref_SOURCES		= add.c lookup.c nfsref.c remove.c
--LDADD			= $(LIBXML2) $(LIBCAP) \
--			  ../../support/nfs/libnfs.la \
-+LIBS			+= $(LIBXML2) $(LIBCAP)
-+LDADD			=  ../../support/nfs/libnfs.la \
- 			  ../../support/junction/libjunction.la
- 
- man8_MANS		= nfsref.man
- 
- MAINTAINERCLEANFILES	= Makefile.in
- 
--AM_CPPFLAGS		= -I. -I../../support/include
-+AM_CPPFLAGS		= -I. -I../../support/include @TIRPC_CFLAGS@
- ##AM_LDFLAGS		= -Wl,--as-needed
--- 
-2.17.0
+Is that a normal thing to do?
 
+> Doug: do you need anything from me on this?
+
+I can take the revert..
+
+Jason
