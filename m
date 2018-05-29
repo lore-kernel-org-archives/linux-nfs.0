@@ -1,10 +1,10 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ua0-f179.google.com ([209.85.217.179]:34936 "EHLO
-        mail-ua0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S966790AbeE2Uv7 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 29 May 2018 16:51:59 -0400
-Received: by mail-ua0-f179.google.com with SMTP id a2-v6so10965921uak.2
-        for <linux-nfs@vger.kernel.org>; Tue, 29 May 2018 13:51:58 -0700 (PDT)
+Received: from mail-vk0-f41.google.com ([209.85.213.41]:35989 "EHLO
+        mail-vk0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S966175AbeE2Uwq (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 29 May 2018 16:52:46 -0400
+Received: by mail-vk0-f41.google.com with SMTP id i185-v6so9760524vkg.3
+        for <linux-nfs@vger.kernel.org>; Tue, 29 May 2018 13:52:46 -0700 (PDT)
 MIME-Version: 1.0
 In-Reply-To: <20180529203657.GD16759@fieldses.org>
 References: <CAN-5tyHXhy7yS+6mNAyTzr9tX4vA9gma8AeRtvNG0-FNZaL_Yg@mail.gmail.com>
@@ -14,8 +14,8 @@ References: <CAN-5tyHXhy7yS+6mNAyTzr9tX4vA9gma8AeRtvNG0-FNZaL_Yg@mail.gmail.com>
  <58E2765B-6238-479D-968A-0FE2F5F01928@oracle.com> <20180529195628.GB16759@fieldses.org>
  <CAN-5tyHN3zVO6ZYfDO_ghRCV+WT8j7qZOGLHjSQ2eMv+8srvjQ@mail.gmail.com> <20180529203657.GD16759@fieldses.org>
 From: Olga Kornievskaia <aglo@umich.edu>
-Date: Tue, 29 May 2018 16:51:57 -0400
-Message-ID: <CAN-5tyGoy8-vb_4=Y3G4vf3mDPg5j8+09M-yFZMkbL9hK7q1nQ@mail.gmail.com>
+Date: Tue, 29 May 2018 16:52:44 -0400
+Message-ID: <CAN-5tyECNAY2h7JYi_ocq2A7Mbi4U8gW=qungiEWX6kAYWSpsQ@mail.gmail.com>
 Subject: Re: [RFC] protect against denial-of-service on a 4.0 mount
 To: "J. Bruce Fields" <bfields@fieldses.org>
 Cc: Chuck Lever <chuck.lever@oracle.com>,
@@ -82,5 +82,5 @@ On Tue, May 29, 2018 at 4:36 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
 >
 > Right, but does it have opens or delegations?  That's what I took as the
 > definition of "state" for the code above.  Could be wrong, I don't know.
->
-> --b.
+
+Ah I see. no I didn't have anything opens. I just did mounts.
