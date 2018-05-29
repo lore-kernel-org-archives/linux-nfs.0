@@ -1,91 +1,50 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp2130.oracle.com ([141.146.126.79]:56562 "EHLO
-        aserp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S965614AbeE2TPP (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 29 May 2018 15:15:15 -0400
-Content-Type: text/plain;
-        charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 11.3 \(3445.6.18\))
-Subject: Re: [PATCH RFC 0/4] Use correct NFSv4.0 callback credential
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20180529191315.GA31484@parsley.fieldses.org>
-Date: Tue, 29 May 2018 15:14:59 -0400
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <65F50CE6-31CA-4D17-9EE8-09227CA96156@oracle.com>
-References: <1526659388.10011.10.camel@redhat.com>
- <35C7F5A1-5192-4F00-B2C9-1BDFD5C00C94@oracle.com>
- <20180529191315.GA31484@parsley.fieldses.org>
-To: Bruce Fields <bfields@redhat.com>
+Received: from mail-by2nam03on0136.outbound.protection.outlook.com ([104.47.42.136]:54752
+        "EHLO NAM03-BY2-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S965759AbeE2TYA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 29 May 2018 15:24:00 -0400
+From: Trond Myklebust <trondmy@hammerspace.com>
+To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "schumaker.anna@gmail.com" <schumaker.anna@gmail.com>
+Subject: Re: [PATCH] NFSv4: Fix sillyrename to return the delegation when
+ appropriate
+Date: Tue, 29 May 2018 19:23:57 +0000
+Message-ID: <2dd4316007bdb3bff5a89663644ff9598a7ae131.camel@hammerspace.com>
+References: <20180529154814.12843-1-trond.myklebust@hammerspace.com>
+         <816a261e-c94c-4d69-36b9-3f308e8787a9@gmail.com>
+In-Reply-To: <816a261e-c94c-4d69-36b9-3f308e8787a9@gmail.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-> On May 29, 2018, at 3:13 PM, J. Bruce Fields <bfields@redhat.com> =
-wrote:
->=20
-> On Tue, May 29, 2018 at 02:21:58PM -0400, Chuck Lever wrote:
->>=20
->>=20
->>> Begin forwarded message:
->>>=20
->>> From: Simo Sorce <simo@redhat.com>
->>> Subject: Re: [PATCH RFC 0/4] Use correct NFSv4.0 callback credential
->>> Date: May 18, 2018 at 12:03:08 PM EDT
->>> To: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
->>>=20
->>> On Fri, 2018-05-18 at 11:39 -0400, Chuck Lever wrote:
->>>> I've been experimenting with this series that modifies NFSD to
->>>> discover and use the correct GSS service principal when =
-constructing
->>>> its NFSv4.0 callback channels. I'm interested in review of this
->>>> approach. There are a couple of code comments marked with XXX that
->>>> also need some attention.
->>>>=20
->>>> The rpc.gssd change mentioned in 1/4 is unremarkable and will be
->>>> made available once there is consensus about the kernel changes
->>>> in this series. No gssproxy changes are necessary.
->>>>=20
->>>> ---
->>>>=20
->>>> Chuck Lever (4):
->>>>     sunrpc: Enable the kernel to specify the hostname part of =
-service principals
->>>>     sunrpc: Extract target name into svc_cred
->>>>     nfsd: Use correct credential for NFSv4.0 callback with GSS
->>>>     nfsd: Remove callback_cred
->>>>=20
->>>>=20
->>>> fs/nfsd/nfs4callback.c               |   29 ++++----------
->>>> fs/nfsd/nfs4state.c                  |   17 +++-----
->>>> fs/nfsd/state.h                      |    2 -
->>>> include/linux/sunrpc/svcauth.h       |    3 +
->>>> net/sunrpc/auth_gss/auth_gss.c       |   20 ++++++++--
->>>> net/sunrpc/auth_gss/gss_rpc_upcall.c |   70 =
-++++++++++++++++++++++------------
->>>> 6 files changed, 80 insertions(+), 61 deletions(-)
->>>>=20
->>>> --
->>>> Chuck Lever
->>>=20
->>> Ack for the sunrpc gssp changes.
->>=20
->> Hi Bruce, are you willing to take this series for v4.18?
->=20
-> Sure.  Are you going to repost?
-
-Except for Simo's Ack, there haven't been any requests for
-changes, so I hadn't planned to repost. But it wouldn't be
-a problem if you'd like me to post again.
-
-
->> If so, I can post the gssd patch that goes with it.
->=20
-> Sounds good.
-
-
---
-Chuck Lever
-
-
-
+T24gVHVlLCAyMDE4LTA1LTI5IGF0IDE0OjMzIC0wNDAwLCBBbm5hIFNjaHVtYWtlciB3cm90ZToN
+Cj4gSGkgVHJvbmQsDQo+IA0KPiBPbiAwNS8yOS8yMDE4IDExOjQ4IEFNLCBUcm9uZCBNeWtsZWJ1
+c3Qgd3JvdGU6DQo+ID4gSWYgdGhlIGZpbGUgYmVpbmcgc2lsbHlyZW5hbWVkIGlzIGJlaW5nIGNv
+bXBsZXRlbHkgZGVsZXRlZCwgb3INCj4gPiB3ZSBhcmUgdXNpbmcgTkZTdjQuMCwgdGhlbiB3ZSBu
+ZWVkIHRvIHJldHVybiB0aGUgZGVsZWdhdGlvbiBiZWZvcmUNCj4gPiBzZW5kaW5nIG9mZiB0aGUg
+c2lsbHlkZWxldGUuDQo+ID4gDQo+ID4gU2lnbmVkLW9mZi1ieTogVHJvbmQgTXlrbGVidXN0IDx0
+cm9uZC5teWtsZWJ1c3RAaGFtbWVyc3BhY2UuY29tPg0KPiA+IC0tLQ0KPiA+ICBmcy9uZnMvZGly
+LmMgfCAyMyArKysrKysrKysrKysrKysrKysrKysrLQ0KPiA+ICAxIGZpbGUgY2hhbmdlZCwgMjIg
+aW5zZXJ0aW9ucygrKSwgMSBkZWxldGlvbigtKQ0KPiA+IA0KPiA+IGRpZmYgLS1naXQgYS9mcy9u
+ZnMvZGlyLmMgYi9mcy9uZnMvZGlyLmMNCj4gPiBpbmRleCBiMzE1ZjUzYjNhZWMuLmVkMjBmZjUx
+Zjg2NSAxMDA2NDQNCj4gPiAtLS0gYS9mcy9uZnMvZGlyLmMNCj4gPiArKysgYi9mcy9uZnMvZGly
+LmMNCj4gPiBAQCAtMTM5OSwxMSArMTM5OSwzMiBAQCBFWFBPUlRfU1lNQk9MX0dQTChuZnNfbG9v
+a3VwKTsNCj4gPiAgI2lmIElTX0VOQUJMRUQoQ09ORklHX05GU19WNCkNCj4gPiAgc3RhdGljIGlu
+dCBuZnM0X2xvb2t1cF9yZXZhbGlkYXRlKHN0cnVjdCBkZW50cnkgKiwgdW5zaWduZWQgaW50KTsN
+Cj4gPiAgDQo+ID4gKy8qDQo+ID4gKyAqIENhbGxlZCB3aGVuIHRoZSBkZW50cnkgbG9zZXMgaW5v
+ZGUuDQo+ID4gKyAqIFdlIHVzZSBpdCB0byBjbGVhbiB1cCBzaWxseS1yZW5hbWVkIGZpbGVzLg0K
+PiA+ICsgKi8NCj4gPiArc3RhdGljIHZvaWQgbmZzNF9kZW50cnlfaXB1dChzdHJ1Y3QgZGVudHJ5
+ICpkZW50cnksIHN0cnVjdCBpbm9kZQ0KPiA+ICppbm9kZSkNCj4gPiArew0KPiA+ICsJaWYgKFNf
+SVNESVIoaW5vZGUtPmlfbW9kZSkpDQo+ID4gKwkJLyogZHJvcCBhbnkgcmVhZGRpciBjYWNoZSBh
+cyBpdCBjb3VsZCBlYXNpbHkgYmUNCj4gPiBvbGQgKi8NCj4gPiArCQlORlNfSShpbm9kZSktPmNh
+Y2hlX3ZhbGlkaXR5IHw9DQo+ID4gTkZTX0lOT19JTlZBTElEX0RBVEE7DQo+ID4gKw0KPiA+ICsJ
+aWYgKGRlbnRyeS0+ZF9mbGFncyAmIERDQUNIRV9ORlNGU19SRU5BTUVEKSB7DQo+ID4gKwkJaWYg
+KGlub2RlLT5pX25saW5rID09IDEpDQo+ID4gKwkJCW5mczRfaW5vZGVfcmV0dXJuX2RlbGVnYXRp
+b24oaW5vZGUpOw0KPiA+ICsJCWVsc2UNCj4gPiArCQkJbmZzNF9pbm9kZV9tYWtlX3dyaXRlYWJs
+ZShpbm9kZSk7DQo+IA0KPiBJIHRoaW5rIHRoZXNlIGZ1bmN0aW9ucyBuZWVkIHRvIGJlIGV4cG9y
+dGVkIGluIGRlbGVnYXRpb24uYyB0byBhdm9pZA0KPiB1bmRlZmluZWQgc3ltYm9sIHdhcm5pbmdz
+IGZyb20gdGhlIGNvbXBpbGVyLg0KPiANCg0KV2hvb3BzLiBZZXMsIHRoYW5rcyBmb3Igbm90aWNp
+bmchDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIs
+IEhhbW1lcnNwYWNlDQp0cm9uZC5teWtsZWJ1c3RAaGFtbWVyc3BhY2UuY29tDQoNCg==
