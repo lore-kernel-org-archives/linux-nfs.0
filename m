@@ -1,60 +1,82 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-co1nam03on0132.outbound.protection.outlook.com ([104.47.40.132]:45034
-        "EHLO NAM03-CO1-obe.outbound.protection.outlook.com"
+Received: from mx3-rdu2.redhat.com ([66.187.233.73]:51038 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S966949AbeE2Vhp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 29 May 2018 17:37:45 -0400
-From: Trond Myklebust <trondmy@hammerspace.com>
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "rgoldwyn@suse.de" <rgoldwyn@suse.de>,
-        "linux-unionfs@vger.kernel.org" <linux-unionfs@vger.kernel.org>
-Subject: Re: nfs4_acl restricts copy_up in overlayfs
-Date: Tue, 29 May 2018 21:37:42 +0000
-Message-ID: <f2af62fdf8a5bb185ec75cff118178d58b28ceb4.camel@hammerspace.com>
-References: <f74fae81-d1bc-1c0e-7b41-69502bd7c489@suse.de>
-In-Reply-To: <f74fae81-d1bc-1c0e-7b41-69502bd7c489@suse.de>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+        id S966504AbeE2Vrc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 29 May 2018 17:47:32 -0400
+From: Dave Wysochanski <dwysocha@redhat.com>
+To: trondmy@hammerspace.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v2] NFSv4: Fix possible 1-byte stack overflow in nfs_idmap_read_and_verify_message
+Date: Tue, 29 May 2018 17:47:30 -0400
+Message-Id: <20180529214730.1506-1-dwysocha@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDE4LTA1LTI5IGF0IDE1OjMyIC0wNTAwLCBHb2xkd3luIFJvZHJpZ3VlcyB3cm90
-ZToNCj4gV2hpbGUgbW91bnRpbmcgb3ZlcmxheWZzIHdpdGggTkZTIGFzIGEgbG93ZXIgZGlyZWN0
-b3J5IGFuZCBhIGxvY2FsDQo+IGZpbGVzeXN0ZW0gYXMgYW4gdXBwZXIgbGF5ZXIgbGVhZHMgdG8g
-Y29weV91cCBmYWlsdXJlcyBiZWNhdXNlIE5GUzQNCj4gaGFzDQo+IGFuIGV4dHJhIHN5c3RlbS5u
-ZnM0X2FjbCB3aGljaCBjYW5ub3QgYmUgY29waWVkIHVwLiBUaGlzIGhhcyBiZWVuDQo+IGRpc2N1
-c3NlZCBiZWZvcmUgWzFdIGFuZCBbMl0gd2l0aCB0aGUgc3VnZ2VzdGlvbiB0aGF0IG5mczRfYWNs
-IGlzDQo+IGRlcml2ZWQgZnJvbSBwb3NpeF9hY2xzIG9yIGp1c3QgaW5vZGUtPmlfbW9kZSAqbW9z
-dCogb2YgdGhlIHRpbWVzIGFuZA0KPiBoZW5jZSBpdCBjYW4gYmUgbWFwcGVkIGJhY2suDQo+IA0K
-PiBUaGUgcHJvYmxlbSBpcyBORlMgY2xpZW50IGtub3dzIG5vdGhpbmcgYWJvdXQgbmZzNF9hY2wg
-YW5kIGl0IGlzDQo+IGRlY29kZWQNCj4gaW4gbmZzNC1hY2wtdG9vbHMuIEV2ZW4gaWYgd2UgbWFr
-ZSBuZnMgY2xpZW50IGNhcGFibGUgb2YgdW5kZXJzdGFuZA0KPiBuZnM0X2FjbCB4YXR0ciwgY2Fu
-IGl0IGJlIHVzZWQgdG8gcGVyZm9ybSBBQ0wncyBmb3IgdGhlIHN5c3RlbS4NCj4gQUZBSVUsDQo+
-IGl0IGlzIHVzZXMgdXNlci9ncm91cCBuYW1lcyBhcyBvcHBvc2VkIHVpZC9naWQgdG8gcGVyZm9y
-bSBpZCBtYXBwaW5nLg0KPiBDYW4gdGhlIGNsaWVudCBtYXAgaXQgYmFjayB0byB1c2VyIG5hbWVz
-IGFuZCBkZXJpdmUgaWYgaXQgaXMganVzdCBhbg0KPiByZXBsaWNhIG9mIGlub2RlJ3MgaV9tb2Rl
-Pw0KPiANCj4gVGhlIGlkZWEgaXMgdG8gc3VwcHJlc3MgbmZzNF9hY2wgaWYgaXQgaXMgdGhlIHNh
-bWUgYXMgaW5vZGUncyBpX21vZGUuDQo+IFRoaXMgbWVhbnMgbmZzNC1hY2wtdG9vbHMvbmZzNF9n
-ZXRhY2wgd291bGQgZ2l2ZSBubyByZXN1bHRzIHdoZW4NCj4gcmVxdWVzdGluZyBmb3IgQUNMcy4g
-VGhpcyB3b3VsZCBicmVhayBleGlzdGluZyBhcHBsaWNhdGlvbnMgaWYgdGhleQ0KPiBleHBlY3Qg
-c29tZSBvdXRwdXQgZnJvbSBuZnM0X2dldGZhY2wuDQo+IA0KPiBJcyB0aGVyZSBhIGJldHRlciB3
-YXkgdG8gaWRlbnRpZnkgaWYgbmZzNF9hY2wgaXMganVzdCBhDQo+IHJlcHJlc2VudGF0aW9uDQo+
-IG9mIGlfbW9kZSBhdCB0aGUgY2xpZW50IGVuZCBhbmQgY2FuIGJlIHNhZmVseSBpZ25vcmVkIGR1
-cmluZyBhbg0KPiBvdmVybGF5ZnMgY29weV91cD8gQ2FuIHdlIGluY2x1ZGUgYSBmbGFnIGZvciB0
-aGlzPw0KPiANCj4gDQo+IFsxXSBodHRwczovL3d3dy5zcGluaWNzLm5ldC9saXN0cy9saW51eC1u
-ZnMvbXNnNjEwNDUuaHRtbA0KPiBbMl0gaHR0cHM6Ly93d3cuc3Bpbmljcy5uZXQvbGlzdHMvbGlu
-dXgtdW5pb25mcy9tc2cwNDczNi5odG1sDQo+IA0KDQpJZiB0aGUgcGVybWlzc2lvbnMgYXJlIHVu
-Y2hhbmdlZCBzbyB0aGF0IG92ZXJsYXlmcyBpcyBub3QgdHJ5aW5nIHRvDQpvdmVycmlkZSB0aGUg
-d2F5IHRoZSBzZXJ2ZXIgaW50ZXJwcmV0cyB0aGUgQUNMLCBhbmQgY3JlZGVudGlhbCBoZWxkIGJ5
-DQp0aGUgdXNlciwgdGhlbiB5b3UgYXJlIGJldHRlciBvZmYgY2FsbGluZyB0aGUgTGludXggY2xp
-ZW50IGZvcg0Kb3Blbi9jbG9zZSBhbmQgcGVybWlzc2lvbnMgY2FsbHMuDQoNCk9uY2UgeW91J3Zl
-IGFsbG93ZWQgdGhlIHVzZXIgdG8gY2htb2Qgb3IgY2hvd24gdGhlIGZpbGUsIHlvdSBhcmUgb24N
-CnlvdXIgb3duLCBiZWNhdXNlIHlvdXIgc2VjdXJpdHkgbW9kZWwgZm9yIHRoZSBmaWxlIHdpbGwg
-aGF2ZSBmb3JrZWQNCndpdGggdGhlIHNlY3VyaXR5IG1vZGVsIHByb3ZpZGVkIGJ5IE5GUy4gQXQg
-dGhhdCBwb2ludCwgdGhlIGZpbGUgaGFkDQpiZXR0ZXIgaGF2ZSBiZWVuIGNvcGllZCB1cCwgYW5k
-IHlvdSdkIGJldHRlciBiZSByZWFkeSB0byBtYW5hZ2UgaXQNCmVudGlyZWx5IGZyb20gb3Zlcmxh
-eWZzLg0KDQpUaGUgYWJvdmUgYXBwbGllcyBub3Qgb25seSB3aGVuIHRoZSBmaWxlIGlzIHN1Ympl
-Y3QgdG8gTkZTdjQgYWNscywgYnV0DQppdCBpcyBhbHNvIHRydWUgd2hlbiB5b3UgYXJlIHVzaW5n
-IHN0cm9uZyBhdXRoZW50aWNhdGlvbiAoaS5lLiBLZXJiZXJvcw0KVikuDQoNCi0tIA0KVHJvbmQg
-TXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIsIEhhbW1lcnNwYWNlDQp0cm9u
-ZC5teWtsZWJ1c3RAaGFtbWVyc3BhY2UuY29tDQoNCg==
+In nfs_idmap_read_and_verify_message there is an incorrect sprintf '%d'
+that converts the __u32 'im_id' from struct idmap_msg to 'id_str', which
+is a stack char array variable of length NFS_UINT_MAXLEN == 11.
+If a uid or gid value is > 2147483647 = 0x7fffffff, the conversion
+overflows into a negative value, for example:
+crash> p (unsigned) (0x80000000)
+$1 = 2147483648
+crash> p (signed) (0x80000000)
+$2 = -2147483648
+The '-' sign is written to the buffer and this causes a 1 byte overflow
+when the NULL byte is written, which corrupts kernel stack memory.  If
+CONFIG_CC_STACKPROTECTOR_STRONG is set we see a stack-protector panic:
+
+[11558053.616565] Kernel panic - not syncing: stack-protector: Kernel stack is corrupted in: ffffffffa05b8a8c
+[11558053.639063] CPU: 6 PID: 9423 Comm: rpc.idmapd Tainted: G        W      ------------ T 3.10.0-514.el7.x86_64 #1
+[11558053.641990] Hardware name: Red Hat OpenStack Compute, BIOS 1.10.2-3.el7_4.1 04/01/2014
+[11558053.644462]  ffffffff818c7bc0 00000000b1f3aec1 ffff880de0f9bd48 ffffffff81685eac
+[11558053.646430]  ffff880de0f9bdc8 ffffffff8167f2b3 ffffffff00000010 ffff880de0f9bdd8
+[11558053.648313]  ffff880de0f9bd78 00000000b1f3aec1 ffffffff811dcb03 ffffffffa05b8a8c
+[11558053.650107] Call Trace:
+[11558053.651347]  [<ffffffff81685eac>] dump_stack+0x19/0x1b
+[11558053.653013]  [<ffffffff8167f2b3>] panic+0xe3/0x1f2
+[11558053.666240]  [<ffffffff811dcb03>] ? kfree+0x103/0x140
+[11558053.682589]  [<ffffffffa05b8a8c>] ? idmap_pipe_downcall+0x1cc/0x1e0 [nfsv4]
+[11558053.689710]  [<ffffffff810855db>] __stack_chk_fail+0x1b/0x30
+[11558053.691619]  [<ffffffffa05b8a8c>] idmap_pipe_downcall+0x1cc/0x1e0 [nfsv4]
+[11558053.693867]  [<ffffffffa00209d6>] rpc_pipe_write+0x56/0x70 [sunrpc]
+[11558053.695763]  [<ffffffff811fe12d>] vfs_write+0xbd/0x1e0
+[11558053.702236]  [<ffffffff810acccc>] ? task_work_run+0xac/0xe0
+[11558053.704215]  [<ffffffff811fec4f>] SyS_write+0x7f/0xe0
+[11558053.709674]  [<ffffffff816964c9>] system_call_fastpath+0x16/0x1b
+
+Fix this by calling the internally defined nfs_map_numeric_to_string()
+function which properly uses '%u' to convert this __u32.  For consistency,
+also replace the one other place where snprintf is called.
+
+Signed-off-by: Dave Wysochanski <dwysocha@redhat.com>
+Reported-by: Stephen Johnston <sjohnsto@redhat.com>
+---
+ fs/nfs/nfs4idmap.c | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/fs/nfs/nfs4idmap.c b/fs/nfs/nfs4idmap.c
+index 22dc30a679a0..b6f9d84ba19b 100644
+--- a/fs/nfs/nfs4idmap.c
++++ b/fs/nfs/nfs4idmap.c
+@@ -343,7 +343,7 @@ static ssize_t nfs_idmap_lookup_name(__u32 id, const char *type, char *buf,
+ 	int id_len;
+ 	ssize_t ret;
+ 
+-	id_len = snprintf(id_str, sizeof(id_str), "%u", id);
++	id_len = nfs_map_numeric_to_string(id, id_str, sizeof(id_str));
+ 	ret = nfs_idmap_get_key(id_str, id_len, type, buf, buflen, idmap);
+ 	if (ret < 0)
+ 		return -EINVAL;
+@@ -627,7 +627,8 @@ static int nfs_idmap_read_and_verify_message(struct idmap_msg *im,
+ 		if (strcmp(upcall->im_name, im->im_name) != 0)
+ 			break;
+ 		/* Note: here we store the NUL terminator too */
+-		len = sprintf(id_str, "%d", im->im_id) + 1;
++		len = 1 + nfs_map_numeric_to_string(im->im_id, id_str,
++						    sizeof(id_str));
+ 		ret = nfs_idmap_instantiate(key, authkey, id_str, len);
+ 		break;
+ 	case IDMAP_CONV_IDTONAME:
+-- 
+2.14.3
+
