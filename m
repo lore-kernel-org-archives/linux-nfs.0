@@ -1,46 +1,95 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:36409 "EHLO mx2.suse.de"
+Received: from fieldses.org ([173.255.197.46]:51672 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S966399AbeE2Uc1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 29 May 2018 16:32:27 -0400
-From: Goldwyn Rodrigues <rgoldwyn@suse.de>
-Subject: nfs4_acl restricts copy_up in overlayfs
-To: linux-nfs@vger.kernel.org,
-        "linux-unionfs@vger.kernel.org" <linux-unionfs@vger.kernel.org>
-Message-ID: <f74fae81-d1bc-1c0e-7b41-69502bd7c489@suse.de>
-Date: Tue, 29 May 2018 15:32:23 -0500
+        id S966808AbeE2UfV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 29 May 2018 16:35:21 -0400
+Date: Tue, 29 May 2018 16:35:21 -0400
+From: Bruce Fields <bfields@fieldses.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Olga Kornievskaia <aglo@umich.edu>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [RFC] protect against denial-of-service on a 4.0 mount
+Message-ID: <20180529203521.GC16759@fieldses.org>
+References: <CAN-5tyHXhy7yS+6mNAyTzr9tX4vA9gma8AeRtvNG0-FNZaL_Yg@mail.gmail.com>
+ <537AAFBD-62BA-4F0B-9B2E-D27500A1205B@oracle.com>
+ <CAN-5tyHLEm3SQ5_ayDr6_TECpQndN_haKSyodf7Ls61RbLR2_g@mail.gmail.com>
+ <E54CA1D0-00E7-4EEF-B77F-78B65AF2FC08@oracle.com>
+ <CAN-5tyH7gCyZ=-11TaYC3-WhYcB5n+W3Ua=TdDq=PZk24n+DbQ@mail.gmail.com>
+ <EFDDE2C2-8E09-4F7A-B95A-785EA48E4804@oracle.com>
+ <CAN-5tyGu++ULeUZKtZH=ZjUwqLNrcaZ4dSjH=iHXe0fCeudajA@mail.gmail.com>
+ <58E2765B-6238-479D-968A-0FE2F5F01928@oracle.com>
+ <20180529195628.GB16759@fieldses.org>
+ <1768D584-0BF8-4155-92A7-52F9CC44544C@oracle.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1768D584-0BF8-4155-92A7-52F9CC44544C@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Tue, May 29, 2018 at 04:03:46PM -0400, Chuck Lever wrote:
+> 
+> 
+> > On May 29, 2018, at 3:56 PM, bfields@fieldses.org wrote:
+> > 
+> > On Tue, May 22, 2018 at 03:36:12PM -0700, Chuck Lever wrote:
+> >>> On May 22, 2018, at 3:11 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
+> >>>> If an AUTH_UNIX client can tamper with a lease established
+> >>>> by an AUTH_GSS client, that's a pretty serious server bug.
+> >>>> 
+> >>>> Which server implementation is this?
+> >>> 
+> >>> This is linux 4.16-rc1.
+> >> 
+> >> Would it be easy for you confirm if two AUTH_GSS clients are
+> >> appropriately protected from each other? It would be good to
+> >> file a bug on bugzilla.linux-nfs.org to document the full
+> >> extent of the badness.
+> > 
+> > If you try a setclientid with a client name matching an
+> > already-established client with state, then nfsd4_setclientid() should
+> > be returning CLID_INUSE:
+> > 
+> > 	if (conf && client_has_state(conf)) {
+> > 		...
+> > 		status = nfserr_clid_inuse;
+> > 		...
+> > 		if (!same_creds(&conf->cl_cred, &rqstp->rq_cred)) {
+> > 			...
+> > 			goto out;
+> > 		}
+> > 	}
+> > 
+> > So if you're seeing SETCLIENTID succeed then maybe same_creds() or
+> > client_has_state() is failing.
+> > 
+> > Maybe client_has_state()?--that will fail (and allow the setclientid) if
+> > the v4.0 client doesn't currently have any opens or delegations.
+> > 
+> > I think that's correct: 
+> > 
+> > 	https://tools.ietf.org/html/rfc7530#section-9.1.2
+> > 
+> > 	when the server gets a SETCLIENTID for a client ID that
+> > 	currently has no state, or it has state but the lease has
+> > 	expired, rather than returning NFS4ERR_CLID_INUSE, the server
+> > 	MUST allow the SETCLIENTID and confirm the new client ID if
+> > 	followed by the appropriate SETCLIENTID_CONFIRM.
+> > 
+> > That's left out of the later breakdown of cases in 16.33.5,
+> > unfortunately.
+> 
+> That prevents certain denial of service attacks. A client can't
+> lose state because of this. However, it can do a SETCLIENTID
+> then later be prevented from doing its first OPEN?
 
-While mounting overlayfs with NFS as a lower directory and a local
-filesystem as an upper layer leads to copy_up failures because NFS4 has
-an extra system.nfs4_acl which cannot be copied up. This has been
-discussed before [1] and [2] with the suggestion that nfs4_acl is
-derived from posix_acls or just inode->i_mode *most* of the times and
-hence it can be mapped back.
+Yeah, I think so.
 
-The problem is NFS client knows nothing about nfs4_acl and it is decoded
-in nfs4-acl-tools. Even if we make nfs client capable of understand
-nfs4_acl xattr, can it be used to perform ACL's for the system. AFAIU,
-it is uses user/group names as opposed uid/gid to perform id mapping.
-Can the client map it back to user names and derive if it is just an
-replica of inode's i_mode?
+Looking back at changelogs, the only motivation was to avoid annoyances
+in testing, where the same client might rapidly mount several different
+security flavors.  The client may have been wrong not to change its
+identifier in that case, I don't know.
 
-The idea is to suppress nfs4_acl if it is the same as inode's i_mode.
-This means nfs4-acl-tools/nfs4_getacl would give no results when
-requesting for ACLs. This would break existing applications if they
-expect some output from nfs4_getfacl.
+All a bit academic for 4.1, where the client pretty much always has a
+session.
 
-Is there a better way to identify if nfs4_acl is just a representation
-of i_mode at the client end and can be safely ignored during an
-overlayfs copy_up? Can we include a flag for this?
-
-
-[1] https://www.spinics.net/lists/linux-nfs/msg61045.html
-[2] https://www.spinics.net/lists/linux-unionfs/msg04736.html
-
--- 
-Goldwyn
+--b.
