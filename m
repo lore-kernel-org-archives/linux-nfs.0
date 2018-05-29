@@ -1,77 +1,71 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f194.google.com ([209.85.223.194]:39316 "EHLO
-        mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1754646AbeE2Sdy (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 29 May 2018 14:33:54 -0400
-Received: by mail-io0-f194.google.com with SMTP id 200-v6so17754806ioz.6
-        for <linux-nfs@vger.kernel.org>; Tue, 29 May 2018 11:33:54 -0700 (PDT)
-Subject: Re: [PATCH] NFSv4: Fix sillyrename to return the delegation when
- appropriate
-To: Trond Myklebust <trondmy@gmail.com>, linux-nfs@vger.kernel.org
-References: <20180529154814.12843-1-trond.myklebust@hammerspace.com>
-From: Anna Schumaker <schumaker.anna@gmail.com>
-Message-ID: <816a261e-c94c-4d69-36b9-3f308e8787a9@gmail.com>
-Date: Tue, 29 May 2018 14:33:52 -0400
+Received: from mx1.redhat.com ([209.132.183.28]:35444 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S965614AbeE2TNR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 29 May 2018 15:13:17 -0400
+Date: Tue, 29 May 2018 15:13:15 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: Fwd: [PATCH RFC 0/4] Use correct NFSv4.0 callback credential
+Message-ID: <20180529191315.GA31484@parsley.fieldses.org>
+References: <1526659388.10011.10.camel@redhat.com>
+ <35C7F5A1-5192-4F00-B2C9-1BDFD5C00C94@oracle.com>
 MIME-Version: 1.0
-In-Reply-To: <20180529154814.12843-1-trond.myklebust@hammerspace.com>
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <35C7F5A1-5192-4F00-B2C9-1BDFD5C00C94@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Trond,
-
-On 05/29/2018 11:48 AM, Trond Myklebust wrote:
-> If the file being sillyrenamed is being completely deleted, or
-> we are using NFSv4.0, then we need to return the delegation before
-> sending off the sillydelete.
+On Tue, May 29, 2018 at 02:21:58PM -0400, Chuck Lever wrote:
 > 
-> Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
-> ---
->  fs/nfs/dir.c | 23 ++++++++++++++++++++++-
->  1 file changed, 22 insertions(+), 1 deletion(-)
 > 
-> diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-> index b315f53b3aec..ed20ff51f865 100644
-> --- a/fs/nfs/dir.c
-> +++ b/fs/nfs/dir.c
-> @@ -1399,11 +1399,32 @@ EXPORT_SYMBOL_GPL(nfs_lookup);
->  #if IS_ENABLED(CONFIG_NFS_V4)
->  static int nfs4_lookup_revalidate(struct dentry *, unsigned int);
->  
-> +/*
-> + * Called when the dentry loses inode.
-> + * We use it to clean up silly-renamed files.
-> + */
-> +static void nfs4_dentry_iput(struct dentry *dentry, struct inode *inode)
-> +{
-> +	if (S_ISDIR(inode->i_mode))
-> +		/* drop any readdir cache as it could easily be old */
-> +		NFS_I(inode)->cache_validity |= NFS_INO_INVALID_DATA;
-> +
-> +	if (dentry->d_flags & DCACHE_NFSFS_RENAMED) {
-> +		if (inode->i_nlink == 1)
-> +			nfs4_inode_return_delegation(inode);
-> +		else
-> +			nfs4_inode_make_writeable(inode);
-
-I think these functions need to be exported in delegation.c to avoid undefined symbol warnings from the compiler.
-
-Thanks,
-Anna
-
-> +		nfs_complete_unlink(dentry, inode);
-> +		nfs_drop_nlink(inode);
-> +	}
-> +	iput(inode);
-> +}
-> +
->  const struct dentry_operations nfs4_dentry_operations = {
->  	.d_revalidate	= nfs4_lookup_revalidate,
->  	.d_weak_revalidate	= nfs_weak_revalidate,
->  	.d_delete	= nfs_dentry_delete,
-> -	.d_iput		= nfs_dentry_iput,
-> +	.d_iput		= nfs4_dentry_iput,
->  	.d_automount	= nfs_d_automount,
->  	.d_release	= nfs_d_release,
->  };
+> > Begin forwarded message:
+> > 
+> > From: Simo Sorce <simo@redhat.com>
+> > Subject: Re: [PATCH RFC 0/4] Use correct NFSv4.0 callback credential
+> > Date: May 18, 2018 at 12:03:08 PM EDT
+> > To: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
+> > 
+> > On Fri, 2018-05-18 at 11:39 -0400, Chuck Lever wrote:
+> >> I've been experimenting with this series that modifies NFSD to
+> >> discover and use the correct GSS service principal when constructing
+> >> its NFSv4.0 callback channels. I'm interested in review of this
+> >> approach. There are a couple of code comments marked with XXX that
+> >> also need some attention.
+> >> 
+> >> The rpc.gssd change mentioned in 1/4 is unremarkable and will be
+> >> made available once there is consensus about the kernel changes
+> >> in this series. No gssproxy changes are necessary.
+> >> 
+> >> ---
+> >> 
+> >> Chuck Lever (4):
+> >>      sunrpc: Enable the kernel to specify the hostname part of service principals
+> >>      sunrpc: Extract target name into svc_cred
+> >>      nfsd: Use correct credential for NFSv4.0 callback with GSS
+> >>      nfsd: Remove callback_cred
+> >> 
+> >> 
+> >> fs/nfsd/nfs4callback.c               |   29 ++++----------
+> >> fs/nfsd/nfs4state.c                  |   17 +++-----
+> >> fs/nfsd/state.h                      |    2 -
+> >> include/linux/sunrpc/svcauth.h       |    3 +
+> >> net/sunrpc/auth_gss/auth_gss.c       |   20 ++++++++--
+> >> net/sunrpc/auth_gss/gss_rpc_upcall.c |   70 ++++++++++++++++++++++------------
+> >> 6 files changed, 80 insertions(+), 61 deletions(-)
+> >> 
+> >> --
+> >> Chuck Lever
+> > 
+> > Ack for the sunrpc gssp changes.
 > 
+> Hi Bruce, are you willing to take this series for v4.18?
+
+Sure.  Are you going to repost?
+
+> If so, I can post the gssd patch that goes with it.
+
+Sounds good.
+
+--b.
