@@ -1,66 +1,75 @@
-Return-Path: <trondmy@hammerspace.com>
-From: Trond Myklebust <trondmy@hammerspace.com>
-To: "bcodding@redhat.com" <bcodding@redhat.com>, "anna.schumaker@netapp.com"
-	<anna.schumaker@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFSv4: Don't add a new lock on an interrupted wait for
- LOCK
-Date: Tue, 29 May 2018 14:02:32 +0000
-Message-ID: <ea1ea9737290a1a553f179efdc472f084935eb24.camel@hammerspace.com>
-References: <1e2732518f990acac47ef20d936ac8a1200d7a79.1525345895.git.bcodding@redhat.com>
-In-Reply-To: <1e2732518f990acac47ef20d936ac8a1200d7a79.1525345895.git.bcodding@redhat.com>
-Content-Type: text/plain; charset="utf-8"
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from mail-io0-f193.google.com ([209.85.223.193]:37370 "EHLO
+        mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S934948AbeE2PsN (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 29 May 2018 11:48:13 -0400
+Received: by mail-io0-f193.google.com with SMTP id e20-v6so18158961iof.4
+        for <linux-nfs@vger.kernel.org>; Tue, 29 May 2018 08:48:13 -0700 (PDT)
+Received: from leira.trondhjem.org.localdomain (c-68-49-162-121.hsd1.mi.comcast.net. [68.49.162.121])
+        by smtp.gmail.com with ESMTPSA id t7-v6sm7000580ite.35.2018.05.29.08.48.11
+        for <linux-nfs@vger.kernel.org>
+        (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
+        Tue, 29 May 2018 08:48:11 -0700 (PDT)
+From: Trond Myklebust <trondmy@gmail.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH] NFSv4: Only pass the delegation to setattr if we're sending a truncate
+Date: Tue, 29 May 2018 11:47:50 -0400
+Message-Id: <20180529154750.12783-1-trond.myklebust@hammerspace.com>
 MIME-Version: 1.0
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDE4LTA1LTAzIGF0IDA3OjEyIC0wNDAwLCBCZW5qYW1pbiBDb2RkaW5ndG9uIHdy
-b3RlOg0KPiBJZiB0aGUgd2FpdCBmb3IgYSBMT0NLIG9wZXJhdGlvbiBpcyBpbnRlcnJ1cHRlZCwg
-YW5kIHRoZW4gdGhlIGZpbGUgaXMNCj4gY2xvc2VkLCB0aGUgbG9ja3MgY2xlYW51cCBjb2RlIHdp
-bGwgYXNzdW1lIHRoYXQgbm8gbmV3IGxvY2tzIHdpbGwgYmUNCj4gYWRkZWQNCj4gdG8gdGhlIGlu
-b2RlIGFmdGVyIGl0IGhhcyBjb21wbGV0ZWQuICBXZSBhbHJlYWR5IGhhdmUgYSBtZWNoYW5pc20g
-dG8NCj4gZGV0ZWN0DQo+IGlmIHRoZXJlIHdhcyBzaWduYWwsIHNvIGxldCdzIHVzZSB0aGF0IHRv
-IGF2b2lkIHJlY3JlYXRpbmcgdGhlIGxvY2FsDQo+IGxvY2sNCj4gb25jZSB0aGUgUlBDIGNvbXBs
-ZXRlcy4gIEFsc28gc2tpcCByZS1zZW5kaW5nIHRoZSBMT0NLIG9wZXJhdGlvbiBmb3INCj4gdGhl
-DQo+IHZhcmlvdXMgZXJyb3IgY2FzZXMgaWYgd2Ugd2VyZSBzaWduYWxlZC4NCj4gDQo+IFNpZ25l
-ZC1vZmYtYnk6IEJlbmphbWluIENvZGRpbmd0b24gPGJjb2RkaW5nQHJlZGhhdC5jb20+DQo+IC0t
-LQ0KPiAgZnMvbmZzL25mczRwcm9jLmMgfCAyNCArKysrKysrKysrKysrKy0tLS0tLS0tLS0NCj4g
-IDEgZmlsZSBjaGFuZ2VkLCAxNCBpbnNlcnRpb25zKCspLCAxMCBkZWxldGlvbnMoLSkNCj4gDQo+
-IGRpZmYgLS1naXQgYS9mcy9uZnMvbmZzNHByb2MuYyBiL2ZzL25mcy9uZnM0cHJvYy5jDQo+IGlu
-ZGV4IDQ3ZjNjMjczMjQ1ZS4uMWFiYTAwOWE1ZWY4IDEwMDY0NA0KPiAtLS0gYS9mcy9uZnMvbmZz
-NHByb2MuYw0KPiArKysgYi9mcy9uZnMvbmZzNHByb2MuYw0KPiBAQCAtNjM0NSwzMiArNjM0NSwz
-NiBAQCBzdGF0aWMgdm9pZCBuZnM0X2xvY2tfZG9uZShzdHJ1Y3QgcnBjX3Rhc2sNCj4gKnRhc2ss
-IHZvaWQgKmNhbGxkYXRhKQ0KPiAgCWNhc2UgMDoNCj4gIAkJcmVuZXdfbGVhc2UoTkZTX1NFUlZF
-UihkX2lub2RlKGRhdGEtPmN0eC0+ZGVudHJ5KSksDQo+ICAJCQkJZGF0YS0+dGltZXN0YW1wKTsN
-Cj4gLQkJaWYgKGRhdGEtPmFyZy5uZXdfbG9jaykgew0KPiArCQlpZiAoZGF0YS0+YXJnLm5ld19s
-b2NrICYmICFkYXRhLT5jYW5jZWxsZWQpIHsNCj4gIAkJCWRhdGEtPmZsLmZsX2ZsYWdzICY9IH4o
-RkxfU0xFRVAgfA0KPiBGTF9BQ0NFU1MpOw0KPiAtCQkJaWYgKGxvY2tzX2xvY2tfaW5vZGVfd2Fp
-dChsc3AtPmxzX3N0YXRlLQ0KPiA+aW5vZGUsICZkYXRhLT5mbCkgPCAwKSB7DQo+IC0JCQkJcnBj
-X3Jlc3RhcnRfY2FsbF9wcmVwYXJlKHRhc2spOw0KPiArCQkJaWYgKGxvY2tzX2xvY2tfaW5vZGVf
-d2FpdChsc3AtPmxzX3N0YXRlLQ0KPiA+aW5vZGUsICZkYXRhLT5mbCkgPiAwKQ0KDQpBRkFJQ1Mg
-dGhpcyB3aWxsIG5ldmVyIGJlIHRydWU7IEl0IGxvb2tzIHRvIG1lIGFzIGlmDQpsb2Nrc19sb2Nr
-X2lub2RlX3dhaXQoKSBhbHdheXMgcmV0dXJucyAnMCcgb3IgYSBuZWdhdGl2ZSBlcnJvciB2YWx1
-ZS4NCkFtIEkgbWlzc2luZyBzb21ldGhpbmc/DQoNCj4gIAkJCQlicmVhazsNCj4gLQkJCX0NCj4g
-IAkJfQ0KPiArDQo+ICAJCWlmIChkYXRhLT5hcmcubmV3X2xvY2tfb3duZXIgIT0gMCkgew0KPiAg
-CQkJbmZzX2NvbmZpcm1fc2VxaWQoJmxzcC0+bHNfc2VxaWQsIDApOw0KPiAgCQkJbmZzNF9zdGF0
-ZWlkX2NvcHkoJmxzcC0+bHNfc3RhdGVpZCwgJmRhdGEtDQo+ID5yZXMuc3RhdGVpZCk7DQo+ICAJ
-CQlzZXRfYml0KE5GU19MT0NLX0lOSVRJQUxJWkVELCAmbHNwLQ0KPiA+bHNfZmxhZ3MpOw0KPiAt
-CQl9IGVsc2UgaWYgKCFuZnM0X3VwZGF0ZV9sb2NrX3N0YXRlaWQobHNwLCAmZGF0YS0NCj4gPnJl
-cy5zdGF0ZWlkKSkNCj4gLQkJCXJwY19yZXN0YXJ0X2NhbGxfcHJlcGFyZSh0YXNrKTsNCj4gKwkJ
-CWdvdG8gb3V0X2RvbmU7DQo+ICsJCX0gZWxzZSBpZiAobmZzNF91cGRhdGVfbG9ja19zdGF0ZWlk
-KGxzcCwgJmRhdGEtDQo+ID5yZXMuc3RhdGVpZCkpDQo+ICsJCQlnb3RvIG91dF9kb25lOw0KPiAr
-DQo+ICAJCWJyZWFrOw0KPiAgCWNhc2UgLU5GUzRFUlJfQkFEX1NUQVRFSUQ6DQo+ICAJY2FzZSAt
-TkZTNEVSUl9PTERfU1RBVEVJRDoNCj4gIAljYXNlIC1ORlM0RVJSX1NUQUxFX1NUQVRFSUQ6DQo+
-ICAJY2FzZSAtTkZTNEVSUl9FWFBJUkVEOg0KPiAgCQlpZiAoZGF0YS0+YXJnLm5ld19sb2NrX293
-bmVyICE9IDApIHsNCj4gLQkJCWlmICghbmZzNF9zdGF0ZWlkX21hdGNoKCZkYXRhLQ0KPiA+YXJn
-Lm9wZW5fc3RhdGVpZCwNCj4gKwkJCWlmIChuZnM0X3N0YXRlaWRfbWF0Y2goJmRhdGEtDQo+ID5h
-cmcub3Blbl9zdGF0ZWlkLA0KPiAgCQkJCQkJJmxzcC0+bHNfc3RhdGUtDQo+ID5vcGVuX3N0YXRl
-aWQpKQ0KPiAtCQkJCXJwY19yZXN0YXJ0X2NhbGxfcHJlcGFyZSh0YXNrKTsNCj4gLQkJfSBlbHNl
-IGlmICghbmZzNF9zdGF0ZWlkX21hdGNoKCZkYXRhLQ0KPiA+YXJnLmxvY2tfc3RhdGVpZCwNCj4g
-KwkJCQlnb3RvIG91dF9kb25lOw0KPiArCQl9IGVsc2UgaWYgKG5mczRfc3RhdGVpZF9tYXRjaCgm
-ZGF0YS0NCj4gPmFyZy5sb2NrX3N0YXRlaWQsDQo+ICAJCQkJCQkmbHNwLT5sc19zdGF0ZWlkKSkN
-Cj4gLQkJCQlycGNfcmVzdGFydF9jYWxsX3ByZXBhcmUodGFzayk7DQo+ICsJCQkJZ290byBvdXRf
-ZG9uZTsNCj4gIAl9DQo+ICsJaWYgKCFkYXRhLT5jYW5jZWxsZWQpDQo+ICsJCXJwY19yZXN0YXJ0
-X2NhbGxfcHJlcGFyZSh0YXNrKTsNCj4gK291dF9kb25lOg0KPiAgCWRwcmludGsoIiVzOiBkb25l
-LCByZXQgPSAlZCFcbiIsIF9fZnVuY19fLCBkYXRhLQ0KPiA+cnBjX3N0YXR1cyk7DQo+ICB9DQo+
-ICANCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIsIEhh
-bW1lcnNwYWNlDQp0cm9uZC5teWtsZWJ1c3RAaGFtbWVyc3BhY2UuY29tDQoNCg==
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+
+Even then it isn't really necessary. The reason why we may not want to
+pass in a stateid in other cases is that we cannot use the delegation
+credential.
+
+Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
+---
+ fs/nfs/nfs4proc.c | 12 +++++++-----
+ 1 file changed, 7 insertions(+), 5 deletions(-)
+
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 553cb8f98194..844eafbf1564 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -3032,7 +3032,6 @@ static int _nfs4_do_setattr(struct inode *inode,
+ 	};
+ 	struct rpc_cred *delegation_cred = NULL;
+ 	unsigned long timestamp = jiffies;
+-	fmode_t fmode;
+ 	bool truncate;
+ 	int status;
+ 
+@@ -3040,11 +3039,12 @@ static int _nfs4_do_setattr(struct inode *inode,
+ 
+ 	/* Servers should only apply open mode checks for file size changes */
+ 	truncate = (arg->iap->ia_valid & ATTR_SIZE) ? true : false;
+-	fmode = truncate ? FMODE_WRITE : FMODE_READ;
++	if (!truncate)
++		goto zero_stateid;
+ 
+-	if (nfs4_copy_delegation_stateid(inode, fmode, &arg->stateid, &delegation_cred)) {
++	if (nfs4_copy_delegation_stateid(inode, FMODE_WRITE, &arg->stateid, &delegation_cred)) {
+ 		/* Use that stateid */
+-	} else if (truncate && ctx != NULL) {
++	} else if (ctx != NULL) {
+ 		struct nfs_lock_context *l_ctx;
+ 		if (!nfs4_valid_open_stateid(ctx->state))
+ 			return -EBADF;
+@@ -3056,8 +3056,10 @@ static int _nfs4_do_setattr(struct inode *inode,
+ 		nfs_put_lock_context(l_ctx);
+ 		if (status == -EIO)
+ 			return -EBADF;
+-	} else
++	} else {
++zero_stateid:
+ 		nfs4_stateid_copy(&arg->stateid, &zero_stateid);
++	}
+ 	if (delegation_cred)
+ 		msg.rpc_cred = delegation_cred;
+ 
+-- 
+2.17.0
+
