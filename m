@@ -1,124 +1,147 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-by2nam03on0091.outbound.protection.outlook.com ([104.47.42.91]:43058
-        "EHLO NAM03-BY2-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S932393AbeE3Wdt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 30 May 2018 18:33:49 -0400
-From: Trond Myklebust <trondmy@hammerspace.com>
-To: "aglo@umich.edu" <aglo@umich.edu>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 00/19] Layoutget on OPEN
-Date: Wed, 30 May 2018 22:33:45 +0000
-Message-ID: <dc9bf3e913f3459da31c5b801efcab6077318168.camel@hammerspace.com>
-References: <20180530180553.38769-1-trond.myklebust@hammerspace.com>
-         <CAN-5tyExDWpWuZ5_EwTHbxPbr+FC9jg4zB_Y2pdAHKmX2mDPsQ@mail.gmail.com>
-         <8cf44605f0635b591e097594167289160e0e0d8b.camel@hammerspace.com>
-         <CAN-5tyF8J9tBwLTRLEc=f1LJ4PGoY9cxJsKX4dD330z8Vs8PJg@mail.gmail.com>
-         <CAN-5tyFR0R4XtcB_RAxqRQjwdXU=vBY7oDr5ATMOSS6F2MoJpw@mail.gmail.com>
-         <CAN-5tyFZ9JWPOoLd01+rEw2+TO9O6ZrfLWsmTQbeZh=wdBhx6w@mail.gmail.com>
-         <CAN-5tyH8zDtVWo_vBbGA87vssNZfp+mVJLaVB=FzGoz2uy3LYw@mail.gmail.com>
-In-Reply-To: <CAN-5tyH8zDtVWo_vBbGA87vssNZfp+mVJLaVB=FzGoz2uy3LYw@mail.gmail.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-it0-f66.google.com ([209.85.214.66]:38968 "EHLO
+        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S932459AbeE3WwV (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 30 May 2018 18:52:21 -0400
+Received: by mail-it0-f66.google.com with SMTP id c3-v6so25668960itj.4
+        for <linux-nfs@vger.kernel.org>; Wed, 30 May 2018 15:52:21 -0700 (PDT)
+Received: from leira.trondhjem.org.localdomain (c-68-49-162-121.hsd1.mi.comcast.net. [68.49.162.121])
+        by smtp.gmail.com with ESMTPSA id b75-v6sm21753530ioa.50.2018.05.30.15.52.19
+        for <linux-nfs@vger.kernel.org>
+        (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
+        Wed, 30 May 2018 15:52:20 -0700 (PDT)
+From: Trond Myklebust <trondmy@gmail.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH v2] NFSv4: Fix sillyrename to return the delegation when appropriate
+Date: Wed, 30 May 2018 18:51:58 -0400
+Message-Id: <20180530225158.8659-1-trond.myklebust@hammerspace.com>
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDE4LTA1LTMwIGF0IDE1OjQ3IC0wNDAwLCBPbGdhIEtvcm5pZXZza2FpYSB3cm90
-ZToNCj4gSSBnZXQgYSBrZXJuZWwgb29wcw0KPiANCj4gWyAgMTAxLjg4MTA1OF0gQlVHOiB1bmFi
-bGUgdG8gaGFuZGxlIGtlcm5lbCBOVUxMIHBvaW50ZXIgZGVyZWZlcmVuY2UNCj4gYXQgMDAwMDAw
-MDAwMDAwMDA4OA0KPiBbICAxMDEuODg0MzAyXSBQR0QgODAwMDAwMDAyZTBkYzA2NyBQNEQgODAw
-MDAwMDAyZTBkYzA2NyBQVUQgMmUwZGQwNjcNCj4gUE1EIDANCj4gWyAgMTAxLjg4Njc3M10gT29w
-czogMDAwMCBbIzFdIFNNUCBQVEkNCj4gWyAgMTAxLjg4ODAyNl0gTW9kdWxlcyBsaW5rZWQgaW46
-IG5mc19sYXlvdXRfbmZzdjQxX2ZpbGVzDQo+IHJwY3NlY19nc3Nfa3JiNSBuZnN2NCBkbnNfcmVz
-b2x2ZXIgbmZzIGliX2lzZXIgbGliaXNjc2kNCj4gc2NzaV90cmFuc3BvcnRfaXNjc2kgaWJfc3Jw
-IHNjc2lfdHJhbnNwb3J0X3NycCBpYl9pcG9pYiByZG1hX3VjbQ0KPiBpYl91Y20gaWJfdXZlcmJz
-IGliX3VtYWQgcnBjcmRtYSByZG1hX2NtIGl3X2NtIGliX2NtIGliX2NvcmUgcmZjb21tDQo+IGZ1
-c2UgaXA2dF9ycGZpbHRlciBpcHRfUkVKRUNUIG5mX3JlamVjdF9pcHY0IGlwNnRfUkVKRUNUDQo+
-IG5mX3JlamVjdF9pcHY2IHh0X2Nvbm50cmFjayBlYnRhYmxlX25hdCBlYnRhYmxlX2Jyb3V0ZSBi
-cmlkZ2Ugc3RwIGxsYw0KPiBpcDZ0YWJsZV9uYXQgbmZfY29ubnRyYWNrX2lwdjYgbmZfZGVmcmFn
-X2lwdjYgbmZfbmF0X2lwdjYNCj4gaXA2dGFibGVfbWFuZ2xlIGlwNnRhYmxlX3NlY3VyaXR5IGlw
-NnRhYmxlX3JhdyBpcHRhYmxlX25hdA0KPiBuZl9jb25udHJhY2tfaXB2NCBuZl9kZWZyYWdfaXB2
-NCBuZl9uYXRfaXB2NCBuZl9uYXQgbmZfY29ubnRyYWNrDQo+IGlwdGFibGVfbWFuZ2xlIGlwdGFi
-bGVfc2VjdXJpdHkgaXB0YWJsZV9yYXcgZWJ0YWJsZV9maWx0ZXIgZWJ0YWJsZXMNCj4gaXA2dGFi
-bGVfZmlsdGVyIGlwNl90YWJsZXMgaXB0YWJsZV9maWx0ZXIgYm5lcCBzbmRfc2VxX21pZGkNCj4g
-c25kX3NlcV9taWRpX2V2ZW50IGNvcmV0ZW1wIGNyY3QxMGRpZl9wY2xtdWwgY3JjMzJfcGNsbXVs
-DQo+IGdoYXNoX2NsbXVsbmlfaW50ZWwgcGNiYyBidHVzYiBidHJ0bCB1dmN2aWRlbyBidGJjbSBz
-bmRfZW5zMTM3MQ0KPiBidGludGVsDQo+IFsgIDEwMS45MTMxOTZdICBzbmRfYWM5N19jb2RlYyBi
-bHVldG9vdGggYWM5N19idXMgYWVzbmlfaW50ZWwgc25kX3NlcQ0KPiB2aWRlb2J1ZjJfdm1hbGxv
-YyBjcnlwdG9fc2ltZCB2aWRlb2J1ZjJfbWVtb3BzIHZpZGVvYnVmMl92NGwyIGNyeXB0ZA0KPiBn
-bHVlX2hlbHBlciB2aWRlb2RldiB2bXdfYmFsbG9vbiBzbmRfcGNtIHBjc3BrciBleHQ0IHNuZF90
-aW1lcg0KPiBtYmNhY2hlDQo+IGpiZDIgc25kX3Jhd21pZGkgdmlkZW9idWYyX2NvbW1vbiBzbmRf
-c2VxX2RldmljZSBzbmQgcmZraWxsDQo+IGVjZGhfZ2VuZXJpYyB2bXdfdm1jaSBzaHBjaHAgc291
-bmRjb3JlIGkyY19waWl4NCBuZnNkIG5mc19hY2wgbG9ja2QNCj4gYXV0aF9ycGNnc3MgZ3JhY2Ug
-c3VucnBjIGlwX3RhYmxlcyB4ZnMgbGliY3JjMzJjIHNyX21vZCBjZHJvbQ0KPiBhdGFfZ2VuZXJp
-YyB2bXdnZnggcGF0YV9hY3BpIGRybV9rbXNfaGVscGVyIHN5c2NvcHlhcmVhIHN5c2ZpbGxyZWN0
-DQo+IHN5c2ltZ2JsdCBmYl9zeXNfZm9wcyB0dG0gc2RfbW9kIGRybSBjcmMzMmNfaW50ZWwgYWhj
-aSBhdGFfcGlpeA0KPiBsaWJhaGNpIHNlcmlvX3JhdyBsaWJhdGEgbXB0c3BpIHNjc2lfdHJhbnNw
-b3J0X3NwaSBlMTAwMCBpMmNfY29yZQ0KPiBtcHRzY3NpaCBtcHRiYXNlIGRtX21pcnJvciBkbV9y
-ZWdpb25faGFzaCBkbV9sb2cgZG1fbW9kDQo+IFsgIDEwMS45MzQxNzVdIENQVTogMCBQSUQ6IDI0
-ODUgQ29tbTogYmFzaCBUYWludGVkOiBHICAgICAgICBXDQo+IDQuMTcuMC1yYzcrICMxMTENCj4g
-WyAgMTAxLjkzODA2NF0gSGFyZHdhcmUgbmFtZTogVk13YXJlLCBJbmMuIFZNd2FyZSBWaXJ0dWFs
-DQo+IFBsYXRmb3JtLzQ0MEJYIERlc2t0b3AgUmVmZXJlbmNlIFBsYXRmb3JtLCBCSU9TIDYuMDAg
-MDcvMDIvMjAxNQ0KPiBbICAxMDEuOTQzMzk1XSBSSVA6DQo+IDAwMTA6ZmxfcG5mc191cGRhdGVf
-bGF5b3V0LmNvbnN0cHJvcC4yMisweDUxLzB4MTUwDQo+IFtuZnNfbGF5b3V0X25mc3Y0MV9maWxl
-c10NCj4gWyAgMTAxLjk0NzU4Nl0gUlNQOiAwMDE4OmZmZmZiMDA0NDMwMjdhYzAgRUZMQUdTOiAw
-MDAxMDI0Ng0KPiBbICAxMDEuOTQ5NTEzXSBSQVg6IDAwMDAwMDAwMDAwMDAwMDAgUkJYOiBmZmZm
-OTczOWJhZGE0NmMwIFJDWDoNCj4gMDAwMDAwMDE4MDJhMDAyOA0KPiBbICAxMDEuOTUyMDk0XSBS
-RFg6IDAwMDAwMDAxODAyYTAwMjkgUlNJOiAwMDAwMDAwMDAwMDAwMDAwIFJESToNCj4gMDAwMDAw
-MDA0MDAwMDAwMA0KPiBbICAxMDEuOTU0ODYyXSBSQlA6IGZmZmY5NzM5NmNkNzA2MDggUjA4OiBm
-ZmZmOTczOWIzYjJkMjAwIFIwOToNCj4gMDAwMDAwMDE4MDJhMDAyOA0KPiBbICAxMDEuOTU3OTk5
-XSBSMTA6IDAwMDAwMDAwYjNiMmQxMDEgUjExOiBmZmZmOTczOWIzYjJkMjAwIFIxMjoNCj4gMDAw
-MDAwMDAwMTQwMDA0MA0KPiBbICAxMDEuOTYwNTUyXSBSMTM6IDAwMDAwMDAwMDAwMDAwMDAgUjE0
-OiBmZmZmYjAwNDQzMDI3ZDkwIFIxNToNCj4gZmZmZjk3MzliOTEyNjAwMA0KPiBbICAxMDEuOTYz
-MDgzXSBGUzogIDAwMDA3ZjMxZDMxYjA3NDAoMDAwMCkgR1M6ZmZmZjk3MzliYjYwMDAwMCgwMDAw
-KQ0KPiBrbmxHUzowMDAwMDAwMDAwMDAwMDAwDQo+IFsgIDEwMS45NjYwMjFdIENTOiAgMDAxMCBE
-UzogMDAwMCBFUzogMDAwMCBDUjA6IDAwMDAwMDAwODAwNTAwMzMNCj4gWyAgMTAxLjk2ODQ2OF0g
-Q1IyOiAwMDAwMDAwMDAwMDAwMDg4IENSMzogMDAwMDAwMDAyZTBmMDAwNiBDUjQ6DQo+IDAwMDAw
-MDAwMDAxNjA2ZjANCj4gWyAgMTAxLjk3MTI0MF0gQ2FsbCBUcmFjZToNCj4gWyAgMTAxLjk3MjE3
-OF0gIGZpbGVsYXlvdXRfcGdfaW5pdF93cml0ZSsweDIyMy8weDI3MA0KPiBbbmZzX2xheW91dF9u
-ZnN2NDFfZmlsZXNdDQo+IFsgIDEwMS45NzQ3NDFdICBfX25mc19wYWdlaW9fYWRkX3JlcXVlc3Qr
-MHgxMTcvMHgzYzAgW25mc10NCj4gWyAgMTAxLjk3NjYzN10gID8gcmFkaXhfdHJlZV90YWdfY2xl
-YXIrMHg5Yy8weGQwDQo+IFsgIDEwMS45NzgyMzBdICBuZnNfcGFnZWlvX2FkZF9yZXF1ZXN0KzB4
-MTdmLzB4MzEwIFtuZnNdDQo+IFsgIDEwMS45ODAxMjNdICBuZnNfZG9fd3JpdGVwYWdlKzB4MThl
-LzB4MzkwIFtuZnNdDQo+IFsgIDEwMS45ODE3NzRdICBuZnNfd3JpdGVwYWdlc19jYWxsYmFjaysw
-eGYvMHgyMCBbbmZzXQ0KPiBbICAxMDEuOTgzNTI2XSAgd3JpdGVfY2FjaGVfcGFnZXMrMHgyMWYv
-MHg0NjANCj4gWyAgMTAxLjk4NTA3N10gID8gbmZzX2RvX3dyaXRlcGFnZSsweDM5MC8weDM5MCBb
-bmZzXQ0KPiBbICAxMDEuOTg2ODUzXSAgPyB3Yl93YWtldXBfZGVsYXllZCsweDUyLzB4NjANCj4g
-WyAgMTAxLjk4ODMxNV0gID8gX19zZXRfcGFnZV9kaXJ0eV9ub2J1ZmZlcnMrMHgxMTkvMHgxODAN
-Cj4gWyAgMTAxLjk5MDEyNV0gID8gX2NvbmRfcmVzY2hlZCsweDE1LzB4MzANCj4gWyAgMTAxLjk5
-MTQ4MV0gID8ga21lbV9jYWNoZV9hbGxvY190cmFjZSsweGFlLzB4MWMwDQo+IFsgIDEwMS45OTMx
-NTFdICBuZnNfd3JpdGVwYWdlcysweGIyLzB4MTIwIFtuZnNdDQo+IFsgIDEwMS45OTQ3MDVdICBk
-b193cml0ZXBhZ2VzKzB4MTcvMHg3MA0KPiBbICAxMDEuOTk2MDEyXSAgX19maWxlbWFwX2ZkYXRh
-d3JpdGVfcmFuZ2UrMHhjNS8weDEwMA0KPiBbICAxMDEuOTk3NzI3XSAgZmlsZW1hcF93cml0ZV9h
-bmRfd2FpdF9yYW5nZSsweDMwLzB4ODANCj4gWyAgMTAxLjk5OTQ1M10gIG5mc19maWxlX2ZzeW5j
-KzB4MzkvMHgxZjAgW25mc10NCj4gWyAgMTAyLjAwMDk5MV0gIGZpbHBfY2xvc2UrMHgyYS8weDcw
-DQo+IFsgIDEwMi4wMDIxNzZdICBkb19kdXAyKzB4NzkvMHhkMA0KPiBbICAxMDIuMDAzMjkzXSAg
-X194NjRfc3lzX2R1cDIrMHgxYS8weDYwDQo+IFsgIDEwMi4wMDQ2MzldICBkb19zeXNjYWxsXzY0
-KzB4NTUvMHgxODANCj4gWyAgMTAyLjAwNTk1MV0gIGVudHJ5X1NZU0NBTExfNjRfYWZ0ZXJfaHdm
-cmFtZSsweDQ0LzB4YTkNCj4gWyAgMTAyLjAwNzc3MV0gUklQOiAwMDMzOjB4N2YzMWQyODlmZjE3
-DQo+IFsgIDEwMi4wMDkwOTNdIFJTUDogMDAyYjowMDAwN2ZmZjI2OTY2OGI4IEVGTEFHUzogMDAw
-MDAyNDYgT1JJR19SQVg6DQo+IDAwMDAwMDAwMDAwMDAwMjENCj4gWyAgMTAyLjAxMTc3Ml0gUkFY
-OiBmZmZmZmZmZmZmZmZmZmRhIFJCWDogMDAwMDAwMDAwMjY0NDc5MCBSQ1g6DQo+IDAwMDA3ZjMx
-ZDI4OWZmMTcNCj4gWyAgMTAyLjAxNDMyM10gUkRYOiAwMDAwMDAwMDAwMDAwMDAxIFJTSTogMDAw
-MDAwMDAwMDAwMDAwMSBSREk6DQo+IDAwMDAwMDAwMDAwMDAwMGENCj4gWyAgMTAyLjAxNjg1Ml0g
-UkJQOiAwMDAwN2ZmZjI2OTY2OTQwIFIwODogMDAwMDAwMDAwMDAwMDAwYSBSMDk6DQo+IDAwMDAw
-MDAwMDI2M2EyNTANCj4gWyAgMTAyLjAxOTM4MF0gUjEwOiAwMDAwMDAwMDAwMDAwMDAzIFIxMTog
-MDAwMDAwMDAwMDAwMDI0NiBSMTI6DQo+IDAwMDAwMDAwMDAwMDAwMDcNCj4gWyAgMTAyLjAyMTky
-OF0gUjEzOiAwMDAwMDAwMDAwMDAwMDA5IFIxNDogMDAwMDAwMDAwMDAwMDAwMSBSMTU6DQo+IDAw
-MDAwMDAwMDAwMDAwMDANCj4gWyAgMTAyLjAyNDQ1NF0gQ29kZTogYjYgZmMgZjggZmYgNDggODUg
-YzAgNDggODkgYzMgNzQgMTMgNDggM2QgMDAgZjANCj4gZmYgZmYgNzcgMGIgNDggODMgN2IgNzgg
-MDAgNDggOGIgNDUgZTggNzQgMGMgNDggODMgYzQgMDggNDggODkgZDggNWINCj4gNWQgNDEgNWMg
-YzMgPDQ4PiA4YiA5MCA4OCAwMCAwMCAwMCA0OCA4YiA4MCA5MCAwMCAwMCAwMCA0OCA4ZCA3MyA2
-OA0KPiA0NA0KPiA4OSBlMQ0KPiBbICAxMDIuMDMxMDQ4XSBSSVA6IGZsX3BuZnNfdXBkYXRlX2xh
-eW91dC5jb25zdHByb3AuMjIrMHg1MS8weDE1MA0KPiBbbmZzX2xheW91dF9uZnN2NDFfZmlsZXNd
-IFJTUDogZmZmZmIwMDQ0MzAyN2FjMA0KPiBbICAxMDIuMDM0NjkyXSBDUjI6IDAwMDAwMDAwMDAw
-MDAwODgNCj4gWyAgMTAyLjAzNjIyNV0gLS0tWyBlbmQgdHJhY2UgYWU2Yjc4ZWYzOTkyYTQzOCBd
-LS0tDQo+IFsgIDEwMi4wMzc5NjldIEtlcm5lbCBwYW5pYyAtIG5vdCBzeW5jaW5nOiBGYXRhbCBl
-eGNlcHRpb24NCj4gWyAgMTAyLjAzOTkwMV0gS2VybmVsIE9mZnNldDogMHgzNjYwMDAwMCBmcm9t
-IDB4ZmZmZmZmZmY4MTAwMDAwMA0KPiAocmVsb2NhdGlvbiByYW5nZTogMHhmZmZmZmZmZjgwMDAw
-MDAwLTB4ZmZmZmZmZmZiZmZmZmZmZikNCj4gWyAgMTAyLjA0MzcxN10gLS0tWyBlbmQgS2VybmVs
-IHBhbmljIC0gbm90IHN5bmNpbmc6IEZhdGFsIGV4Y2VwdGlvbg0KPiBdLS0tDQoNClVyZ2guLiBU
-aGF0IHdhcyBhIHBvcnRpbmcgZXJyb3I6IE1lYSBjdWxwYS4uLg0KDQpTaG91bGQgYmUgZml4ZWQg
-aW4gdGhlIHRlc3RpbmcgYnJhbmNoIG5vdy4NCg0KQ2hlZXJzDQogIFRyb25kDQotLSANClRyb25k
-IE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBIYW1tZXJzcGFjZQ0KdHJv
-bmQubXlrbGVidXN0QGhhbW1lcnNwYWNlLmNvbQ0KDQo=
+Ensure that we pass down the inode of the file being deleted so
+that we can return any delegation being held.
+
+Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
+---
+ fs/nfs/nfs3proc.c       |  4 +++-
+ fs/nfs/nfs4proc.c       |  5 +++--
+ fs/nfs/proc.c           |  4 +++-
+ fs/nfs/unlink.c         | 10 +++++-----
+ include/linux/nfs_xdr.h |  2 +-
+ 5 files changed, 15 insertions(+), 10 deletions(-)
+
+diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
+index 6ed6a4195906..5645ef4c5259 100644
+--- a/fs/nfs/nfs3proc.c
++++ b/fs/nfs/nfs3proc.c
+@@ -414,7 +414,9 @@ nfs3_proc_remove(struct inode *dir, struct dentry *dentry)
+ }
+ 
+ static void
+-nfs3_proc_unlink_setup(struct rpc_message *msg, struct dentry *dentry)
++nfs3_proc_unlink_setup(struct rpc_message *msg,
++		struct dentry *dentry,
++		struct inode *inode)
+ {
+ 	msg->rpc_proc = &nfs3_procedures[NFS3PROC_REMOVE];
+ }
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 844eafbf1564..d21c5e4220a0 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -4260,11 +4260,12 @@ static int nfs4_proc_rmdir(struct inode *dir, const struct qstr *name)
+ 	return err;
+ }
+ 
+-static void nfs4_proc_unlink_setup(struct rpc_message *msg, struct dentry *dentry)
++static void nfs4_proc_unlink_setup(struct rpc_message *msg,
++		struct dentry *dentry,
++		struct inode *inode)
+ {
+ 	struct nfs_removeargs *args = msg->rpc_argp;
+ 	struct nfs_removeres *res = msg->rpc_resp;
+-	struct inode *inode = d_inode(dentry);
+ 
+ 	res->server = NFS_SB(dentry->d_sb);
+ 	msg->rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_REMOVE];
+diff --git a/fs/nfs/proc.c b/fs/nfs/proc.c
+index 80c350b6232a..763f77e7f1f1 100644
+--- a/fs/nfs/proc.c
++++ b/fs/nfs/proc.c
+@@ -321,7 +321,9 @@ nfs_proc_remove(struct inode *dir, struct dentry *dentry)
+ }
+ 
+ static void
+-nfs_proc_unlink_setup(struct rpc_message *msg, struct dentry *dentry)
++nfs_proc_unlink_setup(struct rpc_message *msg,
++		struct dentry *dentry,
++		struct inode *inode)
+ {
+ 	msg->rpc_proc = &nfs_procedures[NFSPROC_REMOVE];
+ }
+diff --git a/fs/nfs/unlink.c b/fs/nfs/unlink.c
+index bf54fc9ae135..6a73b8c808ea 100644
+--- a/fs/nfs/unlink.c
++++ b/fs/nfs/unlink.c
+@@ -85,7 +85,7 @@ static const struct rpc_call_ops nfs_unlink_ops = {
+ 	.rpc_call_prepare = nfs_unlink_prepare,
+ };
+ 
+-static void nfs_do_call_unlink(struct nfs_unlinkdata *data)
++static void nfs_do_call_unlink(struct inode *inode, struct nfs_unlinkdata *data)
+ {
+ 	struct rpc_message msg = {
+ 		.rpc_argp = &data->args,
+@@ -105,7 +105,7 @@ static void nfs_do_call_unlink(struct nfs_unlinkdata *data)
+ 	data->args.fh = NFS_FH(dir);
+ 	nfs_fattr_init(data->res.dir_attr);
+ 
+-	NFS_PROTO(dir)->unlink_setup(&msg, data->dentry);
++	NFS_PROTO(dir)->unlink_setup(&msg, data->dentry, inode);
+ 
+ 	task_setup_data.rpc_client = NFS_CLIENT(dir);
+ 	task = rpc_run_task(&task_setup_data);
+@@ -113,7 +113,7 @@ static void nfs_do_call_unlink(struct nfs_unlinkdata *data)
+ 		rpc_put_task_async(task);
+ }
+ 
+-static int nfs_call_unlink(struct dentry *dentry, struct nfs_unlinkdata *data)
++static int nfs_call_unlink(struct dentry *dentry, struct inode *inode, struct nfs_unlinkdata *data)
+ {
+ 	struct inode *dir = d_inode(dentry->d_parent);
+ 	struct dentry *alias;
+@@ -153,7 +153,7 @@ static int nfs_call_unlink(struct dentry *dentry, struct nfs_unlinkdata *data)
+ 		return ret;
+ 	}
+ 	data->dentry = alias;
+-	nfs_do_call_unlink(data);
++	nfs_do_call_unlink(inode, data);
+ 	return 1;
+ }
+ 
+@@ -231,7 +231,7 @@ nfs_complete_unlink(struct dentry *dentry, struct inode *inode)
+ 	dentry->d_fsdata = NULL;
+ 	spin_unlock(&dentry->d_lock);
+ 
+-	if (NFS_STALE(inode) || !nfs_call_unlink(dentry, data))
++	if (NFS_STALE(inode) || !nfs_call_unlink(dentry, inode, data))
+ 		nfs_free_unlinkdata(data);
+ }
+ 
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 52b481dfd61e..d3cefe57c2a3 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -1591,7 +1591,7 @@ struct nfs_rpc_ops {
+ 	int	(*create)  (struct inode *, struct dentry *,
+ 			    struct iattr *, int);
+ 	int	(*remove)  (struct inode *, struct dentry *);
+-	void	(*unlink_setup)  (struct rpc_message *, struct dentry *);
++	void	(*unlink_setup)  (struct rpc_message *, struct dentry *, struct inode *);
+ 	void	(*unlink_rpc_prepare) (struct rpc_task *, struct nfs_unlinkdata *);
+ 	int	(*unlink_done) (struct rpc_task *, struct inode *);
+ 	void	(*rename_setup)  (struct rpc_message *msg,
+-- 
+2.17.0
+
