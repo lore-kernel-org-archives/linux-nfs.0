@@ -1,82 +1,64 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx3-rdu2.redhat.com ([66.187.233.73]:51038 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S966504AbeE2Vrc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 29 May 2018 17:47:32 -0400
-From: Dave Wysochanski <dwysocha@redhat.com>
-To: trondmy@hammerspace.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2] NFSv4: Fix possible 1-byte stack overflow in nfs_idmap_read_and_verify_message
-Date: Tue, 29 May 2018 17:47:30 -0400
-Message-Id: <20180529214730.1506-1-dwysocha@redhat.com>
+Received: from alln-iport-5.cisco.com ([173.37.142.92]:61678 "EHLO
+        alln-iport-5.cisco.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S968105AbeE3Ari (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 29 May 2018 20:47:38 -0400
+From: "Shawn Lu (shawlu)" <shawlu@cisco.com>
+To: "trond.myklebust@primarydata.com" <trond.myklebust@primarydata.com>,
+        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+        "jlayton@poochiereds.net" <jlayton@poochiereds.net>,
+        "bfields@fieldses.org" <bfields@fieldses.org>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Is "unmount -f"  worked as expected? 
+Date: Wed, 30 May 2018 00:38:10 +0000
+Message-ID: <8CC8F228-1A66-4A44-A23B-855E33F4D1D5@cisco.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In nfs_idmap_read_and_verify_message there is an incorrect sprintf '%d'
-that converts the __u32 'im_id' from struct idmap_msg to 'id_str', which
-is a stack char array variable of length NFS_UINT_MAXLEN == 11.
-If a uid or gid value is > 2147483647 = 0x7fffffff, the conversion
-overflows into a negative value, for example:
-crash> p (unsigned) (0x80000000)
-$1 = 2147483648
-crash> p (signed) (0x80000000)
-$2 = -2147483648
-The '-' sign is written to the buffer and this causes a 1 byte overflow
-when the NULL byte is written, which corrupts kernel stack memory.  If
-CONFIG_CC_STACKPROTECTOR_STRONG is set we see a stack-protector panic:
-
-[11558053.616565] Kernel panic - not syncing: stack-protector: Kernel stack is corrupted in: ffffffffa05b8a8c
-[11558053.639063] CPU: 6 PID: 9423 Comm: rpc.idmapd Tainted: G        W      ------------ T 3.10.0-514.el7.x86_64 #1
-[11558053.641990] Hardware name: Red Hat OpenStack Compute, BIOS 1.10.2-3.el7_4.1 04/01/2014
-[11558053.644462]  ffffffff818c7bc0 00000000b1f3aec1 ffff880de0f9bd48 ffffffff81685eac
-[11558053.646430]  ffff880de0f9bdc8 ffffffff8167f2b3 ffffffff00000010 ffff880de0f9bdd8
-[11558053.648313]  ffff880de0f9bd78 00000000b1f3aec1 ffffffff811dcb03 ffffffffa05b8a8c
-[11558053.650107] Call Trace:
-[11558053.651347]  [<ffffffff81685eac>] dump_stack+0x19/0x1b
-[11558053.653013]  [<ffffffff8167f2b3>] panic+0xe3/0x1f2
-[11558053.666240]  [<ffffffff811dcb03>] ? kfree+0x103/0x140
-[11558053.682589]  [<ffffffffa05b8a8c>] ? idmap_pipe_downcall+0x1cc/0x1e0 [nfsv4]
-[11558053.689710]  [<ffffffff810855db>] __stack_chk_fail+0x1b/0x30
-[11558053.691619]  [<ffffffffa05b8a8c>] idmap_pipe_downcall+0x1cc/0x1e0 [nfsv4]
-[11558053.693867]  [<ffffffffa00209d6>] rpc_pipe_write+0x56/0x70 [sunrpc]
-[11558053.695763]  [<ffffffff811fe12d>] vfs_write+0xbd/0x1e0
-[11558053.702236]  [<ffffffff810acccc>] ? task_work_run+0xac/0xe0
-[11558053.704215]  [<ffffffff811fec4f>] SyS_write+0x7f/0xe0
-[11558053.709674]  [<ffffffff816964c9>] system_call_fastpath+0x16/0x1b
-
-Fix this by calling the internally defined nfs_map_numeric_to_string()
-function which properly uses '%u' to convert this __u32.  For consistency,
-also replace the one other place where snprintf is called.
-
-Signed-off-by: Dave Wysochanski <dwysocha@redhat.com>
-Reported-by: Stephen Johnston <sjohnsto@redhat.com>
----
- fs/nfs/nfs4idmap.c | 5 +++--
- 1 file changed, 3 insertions(+), 2 deletions(-)
-
-diff --git a/fs/nfs/nfs4idmap.c b/fs/nfs/nfs4idmap.c
-index 22dc30a679a0..b6f9d84ba19b 100644
---- a/fs/nfs/nfs4idmap.c
-+++ b/fs/nfs/nfs4idmap.c
-@@ -343,7 +343,7 @@ static ssize_t nfs_idmap_lookup_name(__u32 id, const char *type, char *buf,
- 	int id_len;
- 	ssize_t ret;
- 
--	id_len = snprintf(id_str, sizeof(id_str), "%u", id);
-+	id_len = nfs_map_numeric_to_string(id, id_str, sizeof(id_str));
- 	ret = nfs_idmap_get_key(id_str, id_len, type, buf, buflen, idmap);
- 	if (ret < 0)
- 		return -EINVAL;
-@@ -627,7 +627,8 @@ static int nfs_idmap_read_and_verify_message(struct idmap_msg *im,
- 		if (strcmp(upcall->im_name, im->im_name) != 0)
- 			break;
- 		/* Note: here we store the NUL terminator too */
--		len = sprintf(id_str, "%d", im->im_id) + 1;
-+		len = 1 + nfs_map_numeric_to_string(im->im_id, id_str,
-+						    sizeof(id_str));
- 		ret = nfs_idmap_instantiate(key, authkey, id_str, len);
- 		break;
- 	case IDMAP_CONV_IDTONAME:
--- 
-2.14.3
-
+RGVhciBNYWludGFpbmVycyBvZiBORlM6DQoNCiAgSSBuZWVkIGhlbHAgdG8gYmV0dGVyIHVuZGVy
+c3RhbmQgYmVoYXZpb3Igb2Yg4oCcLWbigJ0gb3B0aW9uIGZvciAg4oCcdW1vdW504oCdIE5GUyBm
+aWxlIHN5c3RlbS4gIEhlcmUgaXMgd2hhdCBJIGdvdCBmcm9tICAgTWFuIHBhZ2UgKCAgaHR0cHM6
+Ly9saW51eC5kaWUubmV0L21hbi84L3Vtb3VudCkgOg0KDQog4oCcIC1mIEZvcmNlIHVubW91bnQg
+KGluIGNhc2Ugb2YgYW4gdW5yZWFjaGFibGUgTkZTIHN5c3RlbSkuIChSZXF1aXJlcyBrZXJuZWwg
+Mi4xLjExNiBvciBsYXRlci4p4oCdIA0KDQpNeSBpbnRlcnByZXRhdGlvbiBvZiBNYW4gcGFnZSBp
+cyDigJx1bW91bnQg4oCTZuKAnSAgc2hvdWxkIGFibGUgdG8gZm9yY2UgdW1vdW50IG5mcyB3aGVu
+IE5GUyBzZXJ2ZXIgaXMgbm90IGF2YWlsYWJsZS4gDQoNCk9uIG15IHRlc3QsIEkgYW0gb2JzZXJ2
+ZWQg4oCcdW1vdW50IOKAk2bigJ0gIGlzIG5vdCBhbHdheXMgd29yayBhcyBleHBlY3RlZC4gIEFs
+c28gdGhlcmUgc29tZSBiZWhhdmlvciBkaWZmZXJlbmNlIG9uICDigJx1bW91bnQg4oCTZiDigJwg
+d2l0aCByZWdhcmRpbmcgdG8gZGlmZmVyZW50IE5GUyB2ZXJzaW9uLiAgDQpIZXJlIGlzIG15IGV4
+cGVyaW1lbnQgb24gNC40IEtlcm5lbCAoIEkgYW0gYmVsaWV2ZSB0aGlzIGlzIHRydWUgZm9yIGxh
+dGVzdCBrZXJuZWwpOg0KICBUZXN0IGZvciBuZnN2MzoNCmEpICBGcm9tIEhvc3QgQSwgU3RhcnQg
+TkZTIHNlcnZlciBhbmQgZXhwb3J0IOKAnC9zaGFyZWTigJ0gZGlyZWN0b3J5ICx3aGljaCBoYXMg
+b25seSBteSBmaWxlIHRlc3QudHh0DQpiKSAgZnJvbSBIb3N0IEIsICAgcmVtb3RlIG1vdW50ICBo
+b3N0IEE6L3NoYXJlZCB0byAgICAvdGVzdCAgdXNpbmcgbmZzdjMNCmMpICBmcm9tIGhvc3QgQiAg
+b3BlbiBmaWxlIC90ZXN0L3Rlc3QudHh0DQpkKSBmcm9tIGhvc3QgQiwgIGRvICDigJx1bW91bnQg
+4oCTZiAgL3Rlc3TigJwsICBpdCByZXR1cm5zIOKAnGRldmljZSBpcyBidXN54oCdDQplKSBGcm9t
+IGhvc3QgQSAsICBkbyBmb2xsb3dpbmcg4oCccm0gIC1mIC9ldGMvZXhwb3J0cyA7IHRvdWNoIC9l
+dGMvZXhwb3J0cyA7IGV4cG9ydGZzIC1yYeKAnQ0KZikgRnJvbSBob3N0IEIgLCAgICBkbyAg4oCc
+dW1vdW50IOKAk2YgIC90ZXN04oCcLCAgaXQgcmV0dXJucyDigJxkZXZpY2UgaXMgYnVzeeKAnQ0K
+ZykgUmVib290IEhPU1QgQQ0KaCkgRnJvbSBob3N0IEI6ICBkbyAg4oCcdW1vdW50IOKAk2YgIC90
+ZXN04oCcICBzdWNjZWVkLiANCg0KIFRlc3QgZm9yIG5mc3Y0Og0KaSkJIEZyb20gSG9zdCBBLCBT
+dGFydCBORlMgc2VydmVyIGFuZCBleHBvcnQg4oCcL3NoYXJlZOKAnSBkaXJlY3RvcnkgLHdoaWNo
+IGhhcyBvbmx5IG15IGZpbGUgdGVzdC50eHQNCmopCSBmcm9tIEhvc3QgQiwgICByZW1vdGUgbW91
+bnQgIGhvc3QgQTovc2hhcmVkIHRvICAgIC90ZXN0ICB1c2luZyBuZnN2NA0KaykJIGZyb20gaG9z
+dCBCICBvcGVuIGZpbGUgL3Rlc3QvdGVzdC50eHQNCmwpCWZyb20gaG9zdCBCLCAgZG8gIOKAnHVt
+b3VudCDigJNmICAvdGVzdOKAnCwgIGl0IHJldHVybnMg4oCcZGV2aWNlIGlzIGJ1c3nigJ0NCm0p
+CUZyb20gaG9zdCBBICwgIGRvIGZvbGxvd2luZyDigJxybSAgLWYgL2V0Yy9leHBvcnRzIDsgdG91
+Y2ggL2V0Yy9leHBvcnRzIDsgZXhwb3J0ZnMgLXJh4oCdDQpuKQlGcm9tIGhvc3QgQiAsICAgIGRv
+ICDigJx1bW91bnQg4oCTZiAgL3Rlc3TigJwsICBpdCByZXR1cm5zIOKAnGRldmljZSBpcyBidXN5
+4oCdDQpvKQlSZWJvb3QgTkZTIHNlcnZlciggSE9TVCBBKQ0KcCkJRnJvbSBob3N0IEI6ICBkbyAg
+4oCcdW1vdW50IOKAk2YgIC90ZXN04oCcICAsICBzdGlsbCByZXR1cm4g4oCcZGV2aWNlIGlzIGJ1
+c3nigJ0NCiAgIA0KDQpGb3IgYm90aCBuZnN2MyBhbmQgbmZzdjQsICDigJx1bW91bnQg4oCTZiDi
+gJwgd2lsbCBmYWlscyBldmVuIHRoZSBzdXBlciBibG9jayBpcyBhbHJlYWR5IOKAnHN0YWxlZOKA
+nShjaGVjayBzdGVwIGYgYW5kIHN0ZXAgbikgLiAg4oCcLWbigJ0gb3B0aW9uIGZvciBORlN2NCBp
+cyBtb3JlIOKAnGJyb2tlbuKAnSBzaW5jZSBub3cgaXQgd2lsbCBub3Qgc3VjY2VlZCBldmVuIHdp
+dGggTkZTIHNlcnZlciBvZmYgbGluZS4gIA0KDQpIZXJlIG15IHF1ZXN0aW9uczoNCjEuIElmIOKA
+nHVtb3VudCDigJNmIOKAnCAgY2Fu4oCZdCBmb3JjZSB1bm1vdW50IOKAnHN0YWxlZCDigJ0gbmZz
+IG1vdW50ICwgICBIb3cgaXQgZGlmZmVyZW50aWFsIGl0c2VsZiBmcm9tIHJlZ3VsYXIgdW1vdW50
+ICh3aXRob3V0IOKAk2YpPyAgDQoyLiBpcyAg4oCcLWbigJ0gIG9wdGlvbiBpcyDigJxicm9rZW7i
+gJ0gZm9yIE5GU3Y0IG9yIGl0IGlzIGludGVuZCBiZWhhdmlvciB0byBmYWlsIOKAnHVtb3VudCDi
+gJNm4oCdIGV2ZW4gU2VydmVyIGlzIG9mZmxpbmUgPyAgIA0KDQpSZWFsbHkgYXBwcmVjaWF0ZSBp
+ZiBzb21lb25lIGluIHRoZSBtYWlsaW5nIGxpc3QgY2FuIGhlbHAgdG8gYW5zd2VyIG15IGR1bWIg
+cXVlc3Rpb25zLiANCg0KDQpUaGFua3MsDQpTaGF3biANCg0KDQoNCg0KDQoNCg==
