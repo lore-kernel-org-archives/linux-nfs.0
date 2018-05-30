@@ -1,64 +1,85 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from alln-iport-5.cisco.com ([173.37.142.92]:61678 "EHLO
-        alln-iport-5.cisco.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S968105AbeE3Ari (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 29 May 2018 20:47:38 -0400
-From: "Shawn Lu (shawlu)" <shawlu@cisco.com>
-To: "trond.myklebust@primarydata.com" <trond.myklebust@primarydata.com>,
-        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        "jlayton@poochiereds.net" <jlayton@poochiereds.net>,
-        "bfields@fieldses.org" <bfields@fieldses.org>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Is "unmount -f"  worked as expected? 
-Date: Wed, 30 May 2018 00:38:10 +0000
-Message-ID: <8CC8F228-1A66-4A44-A23B-855E33F4D1D5@cisco.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from mx2.suse.de ([195.135.220.15]:60367 "EHLO mx2.suse.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S966885AbeE3BIY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 29 May 2018 21:08:24 -0400
+Subject: Re: nfs4_acl restricts copy_up in overlayfs
+To: Trond Myklebust <trondmy@hammerspace.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-unionfs@vger.kernel.org" <linux-unionfs@vger.kernel.org>
+References: <f74fae81-d1bc-1c0e-7b41-69502bd7c489@suse.de>
+ <f2af62fdf8a5bb185ec75cff118178d58b28ceb4.camel@hammerspace.com>
+From: Goldwyn Rodrigues <rgoldwyn@suse.de>
+Message-ID: <2cf94c6b-e819-79af-4ac9-3b19d26dc6d9@suse.de>
+Date: Tue, 29 May 2018 20:08:20 -0500
 MIME-Version: 1.0
+In-Reply-To: <f2af62fdf8a5bb185ec75cff118178d58b28ceb4.camel@hammerspace.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-RGVhciBNYWludGFpbmVycyBvZiBORlM6DQoNCiAgSSBuZWVkIGhlbHAgdG8gYmV0dGVyIHVuZGVy
-c3RhbmQgYmVoYXZpb3Igb2Yg4oCcLWbigJ0gb3B0aW9uIGZvciAg4oCcdW1vdW504oCdIE5GUyBm
-aWxlIHN5c3RlbS4gIEhlcmUgaXMgd2hhdCBJIGdvdCBmcm9tICAgTWFuIHBhZ2UgKCAgaHR0cHM6
-Ly9saW51eC5kaWUubmV0L21hbi84L3Vtb3VudCkgOg0KDQog4oCcIC1mIEZvcmNlIHVubW91bnQg
-KGluIGNhc2Ugb2YgYW4gdW5yZWFjaGFibGUgTkZTIHN5c3RlbSkuIChSZXF1aXJlcyBrZXJuZWwg
-Mi4xLjExNiBvciBsYXRlci4p4oCdIA0KDQpNeSBpbnRlcnByZXRhdGlvbiBvZiBNYW4gcGFnZSBp
-cyDigJx1bW91bnQg4oCTZuKAnSAgc2hvdWxkIGFibGUgdG8gZm9yY2UgdW1vdW50IG5mcyB3aGVu
-IE5GUyBzZXJ2ZXIgaXMgbm90IGF2YWlsYWJsZS4gDQoNCk9uIG15IHRlc3QsIEkgYW0gb2JzZXJ2
-ZWQg4oCcdW1vdW50IOKAk2bigJ0gIGlzIG5vdCBhbHdheXMgd29yayBhcyBleHBlY3RlZC4gIEFs
-c28gdGhlcmUgc29tZSBiZWhhdmlvciBkaWZmZXJlbmNlIG9uICDigJx1bW91bnQg4oCTZiDigJwg
-d2l0aCByZWdhcmRpbmcgdG8gZGlmZmVyZW50IE5GUyB2ZXJzaW9uLiAgDQpIZXJlIGlzIG15IGV4
-cGVyaW1lbnQgb24gNC40IEtlcm5lbCAoIEkgYW0gYmVsaWV2ZSB0aGlzIGlzIHRydWUgZm9yIGxh
-dGVzdCBrZXJuZWwpOg0KICBUZXN0IGZvciBuZnN2MzoNCmEpICBGcm9tIEhvc3QgQSwgU3RhcnQg
-TkZTIHNlcnZlciBhbmQgZXhwb3J0IOKAnC9zaGFyZWTigJ0gZGlyZWN0b3J5ICx3aGljaCBoYXMg
-b25seSBteSBmaWxlIHRlc3QudHh0DQpiKSAgZnJvbSBIb3N0IEIsICAgcmVtb3RlIG1vdW50ICBo
-b3N0IEE6L3NoYXJlZCB0byAgICAvdGVzdCAgdXNpbmcgbmZzdjMNCmMpICBmcm9tIGhvc3QgQiAg
-b3BlbiBmaWxlIC90ZXN0L3Rlc3QudHh0DQpkKSBmcm9tIGhvc3QgQiwgIGRvICDigJx1bW91bnQg
-4oCTZiAgL3Rlc3TigJwsICBpdCByZXR1cm5zIOKAnGRldmljZSBpcyBidXN54oCdDQplKSBGcm9t
-IGhvc3QgQSAsICBkbyBmb2xsb3dpbmcg4oCccm0gIC1mIC9ldGMvZXhwb3J0cyA7IHRvdWNoIC9l
-dGMvZXhwb3J0cyA7IGV4cG9ydGZzIC1yYeKAnQ0KZikgRnJvbSBob3N0IEIgLCAgICBkbyAg4oCc
-dW1vdW50IOKAk2YgIC90ZXN04oCcLCAgaXQgcmV0dXJucyDigJxkZXZpY2UgaXMgYnVzeeKAnQ0K
-ZykgUmVib290IEhPU1QgQQ0KaCkgRnJvbSBob3N0IEI6ICBkbyAg4oCcdW1vdW50IOKAk2YgIC90
-ZXN04oCcICBzdWNjZWVkLiANCg0KIFRlc3QgZm9yIG5mc3Y0Og0KaSkJIEZyb20gSG9zdCBBLCBT
-dGFydCBORlMgc2VydmVyIGFuZCBleHBvcnQg4oCcL3NoYXJlZOKAnSBkaXJlY3RvcnkgLHdoaWNo
-IGhhcyBvbmx5IG15IGZpbGUgdGVzdC50eHQNCmopCSBmcm9tIEhvc3QgQiwgICByZW1vdGUgbW91
-bnQgIGhvc3QgQTovc2hhcmVkIHRvICAgIC90ZXN0ICB1c2luZyBuZnN2NA0KaykJIGZyb20gaG9z
-dCBCICBvcGVuIGZpbGUgL3Rlc3QvdGVzdC50eHQNCmwpCWZyb20gaG9zdCBCLCAgZG8gIOKAnHVt
-b3VudCDigJNmICAvdGVzdOKAnCwgIGl0IHJldHVybnMg4oCcZGV2aWNlIGlzIGJ1c3nigJ0NCm0p
-CUZyb20gaG9zdCBBICwgIGRvIGZvbGxvd2luZyDigJxybSAgLWYgL2V0Yy9leHBvcnRzIDsgdG91
-Y2ggL2V0Yy9leHBvcnRzIDsgZXhwb3J0ZnMgLXJh4oCdDQpuKQlGcm9tIGhvc3QgQiAsICAgIGRv
-ICDigJx1bW91bnQg4oCTZiAgL3Rlc3TigJwsICBpdCByZXR1cm5zIOKAnGRldmljZSBpcyBidXN5
-4oCdDQpvKQlSZWJvb3QgTkZTIHNlcnZlciggSE9TVCBBKQ0KcCkJRnJvbSBob3N0IEI6ICBkbyAg
-4oCcdW1vdW50IOKAk2YgIC90ZXN04oCcICAsICBzdGlsbCByZXR1cm4g4oCcZGV2aWNlIGlzIGJ1
-c3nigJ0NCiAgIA0KDQpGb3IgYm90aCBuZnN2MyBhbmQgbmZzdjQsICDigJx1bW91bnQg4oCTZiDi
-gJwgd2lsbCBmYWlscyBldmVuIHRoZSBzdXBlciBibG9jayBpcyBhbHJlYWR5IOKAnHN0YWxlZOKA
-nShjaGVjayBzdGVwIGYgYW5kIHN0ZXAgbikgLiAg4oCcLWbigJ0gb3B0aW9uIGZvciBORlN2NCBp
-cyBtb3JlIOKAnGJyb2tlbuKAnSBzaW5jZSBub3cgaXQgd2lsbCBub3Qgc3VjY2VlZCBldmVuIHdp
-dGggTkZTIHNlcnZlciBvZmYgbGluZS4gIA0KDQpIZXJlIG15IHF1ZXN0aW9uczoNCjEuIElmIOKA
-nHVtb3VudCDigJNmIOKAnCAgY2Fu4oCZdCBmb3JjZSB1bm1vdW50IOKAnHN0YWxlZCDigJ0gbmZz
-IG1vdW50ICwgICBIb3cgaXQgZGlmZmVyZW50aWFsIGl0c2VsZiBmcm9tIHJlZ3VsYXIgdW1vdW50
-ICh3aXRob3V0IOKAk2YpPyAgDQoyLiBpcyAg4oCcLWbigJ0gIG9wdGlvbiBpcyDigJxicm9rZW7i
-gJ0gZm9yIE5GU3Y0IG9yIGl0IGlzIGludGVuZCBiZWhhdmlvciB0byBmYWlsIOKAnHVtb3VudCDi
-gJNm4oCdIGV2ZW4gU2VydmVyIGlzIG9mZmxpbmUgPyAgIA0KDQpSZWFsbHkgYXBwcmVjaWF0ZSBp
-ZiBzb21lb25lIGluIHRoZSBtYWlsaW5nIGxpc3QgY2FuIGhlbHAgdG8gYW5zd2VyIG15IGR1bWIg
-cXVlc3Rpb25zLiANCg0KDQpUaGFua3MsDQpTaGF3biANCg0KDQoNCg0KDQoNCg==
+
+
+On 05/29/2018 04:37 PM, Trond Myklebust wrote:
+> On Tue, 2018-05-29 at 15:32 -0500, Goldwyn Rodrigues wrote:
+>> While mounting overlayfs with NFS as a lower directory and a local
+>> filesystem as an upper layer leads to copy_up failures because NFS4
+>> has
+>> an extra system.nfs4_acl which cannot be copied up. This has been
+>> discussed before [1] and [2] with the suggestion that nfs4_acl is
+>> derived from posix_acls or just inode->i_mode *most* of the times and
+>> hence it can be mapped back.
+>>
+>> The problem is NFS client knows nothing about nfs4_acl and it is
+>> decoded
+>> in nfs4-acl-tools. Even if we make nfs client capable of understand
+>> nfs4_acl xattr, can it be used to perform ACL's for the system.
+>> AFAIU,
+>> it is uses user/group names as opposed uid/gid to perform id mapping.
+>> Can the client map it back to user names and derive if it is just an
+>> replica of inode's i_mode?
+>>
+>> The idea is to suppress nfs4_acl if it is the same as inode's i_mode.
+>> This means nfs4-acl-tools/nfs4_getacl would give no results when
+>> requesting for ACLs. This would break existing applications if they
+>> expect some output from nfs4_getfacl.
+>>
+>> Is there a better way to identify if nfs4_acl is just a
+>> representation
+>> of i_mode at the client end and can be safely ignored during an
+>> overlayfs copy_up? Can we include a flag for this?
+>>
+>>
+>> [1] https://www.spinics.net/lists/linux-nfs/msg61045.html
+>> [2] https://www.spinics.net/lists/linux-unionfs/msg04736.html
+>>
+> 
+> If the permissions are unchanged so that overlayfs is not trying to
+> override the way the server interprets the ACL, and credential held by
+> the user, then you are better off calling the Linux client for
+> open/close and permissions calls.
+> 
+> Once you've allowed the user to chmod or chown the file, you are on
+> your own, because your security model for the file will have forked
+> with the security model provided by NFS. At that point, the file had
+> better have been copied up, and you'd better be ready to manage it
+> entirely from overlayfs.
+> 
+> The above applies not only when the file is subject to NFSv4 acls, but
+> it is also true when you are using strong authentication (i.e. Kerberos
+> V).
+> 
+
+The files permissions are checked during copy ups because a data copy
+also happens in case of a change. The problem however is not the checks
+have to happen for this operation but if we should bypass NFS security
+for consequent ones.
+
+For example, If we copy_up the file just because the current user is
+able to, it would not copy the nfs4_acl. If there is a NFS4 acl rule to
+DENY another user, the earlier denied user will be able to access the
+file after the copy_up because we did not copy the nfs4_acl.
+
+Overlayfs tries to make sure that all xattr from an underlying
+filesystem is compatible with the one being copied to. nfs4_acl is not
+compatible with a local filesystem it rejects the copy_up as EOPNOTSUPP.
