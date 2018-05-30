@@ -1,102 +1,41 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-by2nam01on0138.outbound.protection.outlook.com ([104.47.34.138]:23360
-        "EHLO NAM01-BY2-obe.outbound.protection.outlook.com"
+Received: from mx3-rdu2.redhat.com ([66.187.233.73]:42386 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S934360AbeE3DCA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 29 May 2018 23:02:00 -0400
-From: Trond Myklebust <trondmy@hammerspace.com>
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "rgoldwyn@suse.de" <rgoldwyn@suse.de>,
-        "linux-unionfs@vger.kernel.org" <linux-unionfs@vger.kernel.org>
-Subject: Re: nfs4_acl restricts copy_up in overlayfs
-Date: Wed, 30 May 2018 03:01:56 +0000
-Message-ID: <75266c983a03f6dbfd5d1a39c94fa6d56a1a8a22.camel@hammerspace.com>
-References: <f74fae81-d1bc-1c0e-7b41-69502bd7c489@suse.de>
-         <f2af62fdf8a5bb185ec75cff118178d58b28ceb4.camel@hammerspace.com>
-         <2cf94c6b-e819-79af-4ac9-3b19d26dc6d9@suse.de>
-In-Reply-To: <2cf94c6b-e819-79af-4ac9-3b19d26dc6d9@suse.de>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+        id S934727AbeE3Hjr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 30 May 2018 03:39:47 -0400
+Received: from smtp.corp.redhat.com (int-mx06.intmail.prod.int.rdu2.redhat.com [10.11.54.6])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id 6E56C76F91
+        for <linux-nfs@vger.kernel.org>; Wed, 30 May 2018 07:39:47 +0000 (UTC)
+From: Rinku Kothiya <rkothiya@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: steved@redhat.com
+Subject: [nfs-utils PATCH] Fixed missed read of config file by nolockmgr (bz 1413272)
+Date: Wed, 30 May 2018 13:09:43 +0530
+Message-Id: <1527665983-17319-1-git-send-email-rkothiya@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDE4LTA1LTI5IGF0IDIwOjA4IC0wNTAwLCBHb2xkd3luIFJvZHJpZ3VlcyB3cm90
-ZToNCj4gDQo+IE9uIDA1LzI5LzIwMTggMDQ6MzcgUE0sIFRyb25kIE15a2xlYnVzdCB3cm90ZToN
-Cj4gPiBPbiBUdWUsIDIwMTgtMDUtMjkgYXQgMTU6MzIgLTA1MDAsIEdvbGR3eW4gUm9kcmlndWVz
-IHdyb3RlOg0KPiA+ID4gV2hpbGUgbW91bnRpbmcgb3ZlcmxheWZzIHdpdGggTkZTIGFzIGEgbG93
-ZXIgZGlyZWN0b3J5IGFuZCBhDQo+ID4gPiBsb2NhbA0KPiA+ID4gZmlsZXN5c3RlbSBhcyBhbiB1
-cHBlciBsYXllciBsZWFkcyB0byBjb3B5X3VwIGZhaWx1cmVzIGJlY2F1c2UNCj4gPiA+IE5GUzQN
-Cj4gPiA+IGhhcw0KPiA+ID4gYW4gZXh0cmEgc3lzdGVtLm5mczRfYWNsIHdoaWNoIGNhbm5vdCBi
-ZSBjb3BpZWQgdXAuIFRoaXMgaGFzIGJlZW4NCj4gPiA+IGRpc2N1c3NlZCBiZWZvcmUgWzFdIGFu
-ZCBbMl0gd2l0aCB0aGUgc3VnZ2VzdGlvbiB0aGF0IG5mczRfYWNsIGlzDQo+ID4gPiBkZXJpdmVk
-IGZyb20gcG9zaXhfYWNscyBvciBqdXN0IGlub2RlLT5pX21vZGUgKm1vc3QqIG9mIHRoZSB0aW1l
-cw0KPiA+ID4gYW5kDQo+ID4gPiBoZW5jZSBpdCBjYW4gYmUgbWFwcGVkIGJhY2suDQo+ID4gPiAN
-Cj4gPiA+IFRoZSBwcm9ibGVtIGlzIE5GUyBjbGllbnQga25vd3Mgbm90aGluZyBhYm91dCBuZnM0
-X2FjbCBhbmQgaXQgaXMNCj4gPiA+IGRlY29kZWQNCj4gPiA+IGluIG5mczQtYWNsLXRvb2xzLiBF
-dmVuIGlmIHdlIG1ha2UgbmZzIGNsaWVudCBjYXBhYmxlIG9mDQo+ID4gPiB1bmRlcnN0YW5kDQo+
-ID4gPiBuZnM0X2FjbCB4YXR0ciwgY2FuIGl0IGJlIHVzZWQgdG8gcGVyZm9ybSBBQ0wncyBmb3Ig
-dGhlIHN5c3RlbS4NCj4gPiA+IEFGQUlVLA0KPiA+ID4gaXQgaXMgdXNlcyB1c2VyL2dyb3VwIG5h
-bWVzIGFzIG9wcG9zZWQgdWlkL2dpZCB0byBwZXJmb3JtIGlkDQo+ID4gPiBtYXBwaW5nLg0KPiA+
-ID4gQ2FuIHRoZSBjbGllbnQgbWFwIGl0IGJhY2sgdG8gdXNlciBuYW1lcyBhbmQgZGVyaXZlIGlm
-IGl0IGlzIGp1c3QNCj4gPiA+IGFuDQo+ID4gPiByZXBsaWNhIG9mIGlub2RlJ3MgaV9tb2RlPw0K
-PiA+ID4gDQo+ID4gPiBUaGUgaWRlYSBpcyB0byBzdXBwcmVzcyBuZnM0X2FjbCBpZiBpdCBpcyB0
-aGUgc2FtZSBhcyBpbm9kZSdzDQo+ID4gPiBpX21vZGUuDQo+ID4gPiBUaGlzIG1lYW5zIG5mczQt
-YWNsLXRvb2xzL25mczRfZ2V0YWNsIHdvdWxkIGdpdmUgbm8gcmVzdWx0cyB3aGVuDQo+ID4gPiBy
-ZXF1ZXN0aW5nIGZvciBBQ0xzLiBUaGlzIHdvdWxkIGJyZWFrIGV4aXN0aW5nIGFwcGxpY2F0aW9u
-cyBpZg0KPiA+ID4gdGhleQ0KPiA+ID4gZXhwZWN0IHNvbWUgb3V0cHV0IGZyb20gbmZzNF9nZXRm
-YWNsLg0KPiA+ID4gDQo+ID4gPiBJcyB0aGVyZSBhIGJldHRlciB3YXkgdG8gaWRlbnRpZnkgaWYg
-bmZzNF9hY2wgaXMganVzdCBhDQo+ID4gPiByZXByZXNlbnRhdGlvbg0KPiA+ID4gb2YgaV9tb2Rl
-IGF0IHRoZSBjbGllbnQgZW5kIGFuZCBjYW4gYmUgc2FmZWx5IGlnbm9yZWQgZHVyaW5nIGFuDQo+
-ID4gPiBvdmVybGF5ZnMgY29weV91cD8gQ2FuIHdlIGluY2x1ZGUgYSBmbGFnIGZvciB0aGlzPw0K
-PiA+ID4gDQo+ID4gPiANCj4gPiA+IFsxXSBodHRwczovL3d3dy5zcGluaWNzLm5ldC9saXN0cy9s
-aW51eC1uZnMvbXNnNjEwNDUuaHRtbA0KPiA+ID4gWzJdIGh0dHBzOi8vd3d3LnNwaW5pY3MubmV0
-L2xpc3RzL2xpbnV4LXVuaW9uZnMvbXNnMDQ3MzYuaHRtbA0KPiA+ID4gDQo+ID4gDQo+ID4gSWYg
-dGhlIHBlcm1pc3Npb25zIGFyZSB1bmNoYW5nZWQgc28gdGhhdCBvdmVybGF5ZnMgaXMgbm90IHRy
-eWluZyB0bw0KPiA+IG92ZXJyaWRlIHRoZSB3YXkgdGhlIHNlcnZlciBpbnRlcnByZXRzIHRoZSBB
-Q0wsIGFuZCBjcmVkZW50aWFsIGhlbGQNCj4gPiBieQ0KPiA+IHRoZSB1c2VyLCB0aGVuIHlvdSBh
-cmUgYmV0dGVyIG9mZiBjYWxsaW5nIHRoZSBMaW51eCBjbGllbnQgZm9yDQo+ID4gb3Blbi9jbG9z
-ZSBhbmQgcGVybWlzc2lvbnMgY2FsbHMuDQo+ID4gDQo+ID4gT25jZSB5b3UndmUgYWxsb3dlZCB0
-aGUgdXNlciB0byBjaG1vZCBvciBjaG93biB0aGUgZmlsZSwgeW91IGFyZSBvbg0KPiA+IHlvdXIg
-b3duLCBiZWNhdXNlIHlvdXIgc2VjdXJpdHkgbW9kZWwgZm9yIHRoZSBmaWxlIHdpbGwgaGF2ZSBm
-b3JrZWQNCj4gPiB3aXRoIHRoZSBzZWN1cml0eSBtb2RlbCBwcm92aWRlZCBieSBORlMuIEF0IHRo
-YXQgcG9pbnQsIHRoZSBmaWxlDQo+ID4gaGFkDQo+ID4gYmV0dGVyIGhhdmUgYmVlbiBjb3BpZWQg
-dXAsIGFuZCB5b3UnZCBiZXR0ZXIgYmUgcmVhZHkgdG8gbWFuYWdlIGl0DQo+ID4gZW50aXJlbHkg
-ZnJvbSBvdmVybGF5ZnMuDQo+ID4gDQo+ID4gVGhlIGFib3ZlIGFwcGxpZXMgbm90IG9ubHkgd2hl
-biB0aGUgZmlsZSBpcyBzdWJqZWN0IHRvIE5GU3Y0IGFjbHMsDQo+ID4gYnV0DQo+ID4gaXQgaXMg
-YWxzbyB0cnVlIHdoZW4geW91IGFyZSB1c2luZyBzdHJvbmcgYXV0aGVudGljYXRpb24gKGkuZS4N
-Cj4gPiBLZXJiZXJvcw0KPiA+IFYpLg0KPiA+IA0KPiANCj4gVGhlIGZpbGVzIHBlcm1pc3Npb25z
-IGFyZSBjaGVja2VkIGR1cmluZyBjb3B5IHVwcyBiZWNhdXNlIGEgZGF0YSBjb3B5DQo+IGFsc28g
-aGFwcGVucyBpbiBjYXNlIG9mIGEgY2hhbmdlLiBUaGUgcHJvYmxlbSBob3dldmVyIGlzIG5vdCB0
-aGUNCj4gY2hlY2tzDQo+IGhhdmUgdG8gaGFwcGVuIGZvciB0aGlzIG9wZXJhdGlvbiBidXQgaWYg
-d2Ugc2hvdWxkIGJ5cGFzcyBORlMNCj4gc2VjdXJpdHkNCj4gZm9yIGNvbnNlcXVlbnQgb25lcy4N
-Cj4gDQo+IEZvciBleGFtcGxlLCBJZiB3ZSBjb3B5X3VwIHRoZSBmaWxlIGp1c3QgYmVjYXVzZSB0
-aGUgY3VycmVudCB1c2VyIGlzDQo+IGFibGUgdG8sIGl0IHdvdWxkIG5vdCBjb3B5IHRoZSBuZnM0
-X2FjbC4gSWYgdGhlcmUgaXMgYSBORlM0IGFjbCBydWxlDQo+IHRvDQo+IERFTlkgYW5vdGhlciB1
-c2VyLCB0aGUgZWFybGllciBkZW5pZWQgdXNlciB3aWxsIGJlIGFibGUgdG8gYWNjZXNzIHRoZQ0K
-PiBmaWxlIGFmdGVyIHRoZSBjb3B5X3VwIGJlY2F1c2Ugd2UgZGlkIG5vdCBjb3B5IHRoZSBuZnM0
-X2FjbC4NCj4gDQoNCkFzIEkgc2FpZCwgeW91IGFyZSBmb3JraW5nIHRoZSBzZWN1cml0eSBtb2Rl
-bC4gWW91IGFyZSB0cnlpbmcgdG8gbWFrZQ0KdGhlIE5GUyBjbGllbnQgYWN0IGFzIGEgcHJveHkg
-Zm9yIHRoZSBORlMgc2VydmVyIHdpdGhvdXQgZ2l2aW5nIGl0DQplbm91Z2ggaW5mb3JtYXRpb24g
-dG8gZG8gc28uDQoNClRoZSBORlMgY2xpZW50IGlzIGNhcmVmdWwgdG8gX2Fsd2F5c18gbGVhdmUg
-aW50ZXJwcmV0aW5nIHRoZSBBQ0wsIG1vZGUsDQphbmQgb3RoZXIgc2VjdXJpdHkgaW5mb3JtYXRp
-b24gdG8gdGhlIHNlcnZlci4gSWYgaXQgbXVzdCB0cnkgdG8gYWN0IGFzDQphIHByb3h5IGZvciB0
-aGUgc2VydmVyIHdoZW4gc2VydmluZyB1cCBjYWNoZWQgaW5mb3JtYXRpb24sIHRoZW4gaXQgdXNl
-cw0KdGhlIEFDQ0VTUyBycGMgY2FsbCB0byBlbnN1cmUgdGhhdCBpdCBkb2Vzbid0IGdpdmUgdXAg
-aW5mb3JtYXRpb24gdGhhdA0KdGhlIHNlcnZlciB3b3VsZCBub3JtYWxseSBkZW55IHRvIGEgcGFy
-dGljdWxhciB1c2VyLg0KDQo+IE92ZXJsYXlmcyB0cmllcyB0byBtYWtlIHN1cmUgdGhhdCBhbGwg
-eGF0dHIgZnJvbSBhbiB1bmRlcmx5aW5nDQo+IGZpbGVzeXN0ZW0gaXMgY29tcGF0aWJsZSB3aXRo
-IHRoZSBvbmUgYmVpbmcgY29waWVkIHRvLiBuZnM0X2FjbCBpcw0KPiBub3QNCj4gY29tcGF0aWJs
-ZSB3aXRoIGEgbG9jYWwgZmlsZXN5c3RlbSBpdCByZWplY3RzIHRoZSBjb3B5X3VwIGFzDQo+IEVP
-UE5PVFNVUFAuDQo+IA0KPiBGcm9tIHRoZSBuZnNkIGNvZGUgKG5mc2RfZ2V0X25mczRfYWNsKSwg
-aW4gKm1vc3QqIGNhc2VzIG5mczRfYWNsIGlzDQo+IGp1c3QNCj4gYSByZXByZXNlbnRhdGlvbiBv
-ZiBpX21vZGUgYW5kIGRvZXMgbm90IHJlcXVpcmUgYSBzcGVjaWFsIEFDTC4gDQoNCklmIHlvdXIg
-c2VydmVyIGlzIGEga25mc2QgYmFzZWQgTGludXggc2VydmVyLCB0aGVuIG1heWJlLiBJZiBpdCdz
-DQphbnl0aGluZyBlbHNlLCB0aGVuIHRoZSBhYm92ZSBzdGF0ZW1lbnQgaXMgZGVhZCB3cm9uZy4g
-RWl0aGVyIHdheSwNCnlvdSdkIGJlIG9wZW5pbmcgYSBsYXJnZSBjYW4gb2Ygc2VjdXJpdHkgd29y
-bXMgYnkgbWFraW5nIHRob3NlDQphc3N1bXB0aW9ucy4NCg0KPiBIb3dldmVyLA0KPiBqdXN0IGJl
-Y2F1c2UgdGhlcmUgaXMgYSBuZnM0X2FjbCwgYSBjb3B5X3VwIGRvZXMgbm90IGhhcHBlbiBpbiB0
-aGUNCj4gY2xpZW50Lg0KDQpXaGljaCB3b3VsZCBhcHBlYXIgdG8gYmUgdGhlIG1vcmUgc2VjdXJl
-IGJlaGF2aW91ciBpZiB5b3UgYXJlIHVuYWJsZSB0bw0KZW5mb3JjZSB0aGUgZXhhY3Qgc2FtZSBz
-ZWN1cml0eSBzZW1hbnRpY3MgYXMgdGhlIHNlcnZlci4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QN
-CkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lciwgSGFtbWVyc3BhY2UNCnRyb25kLm15a2xlYnVz
-dEBoYW1tZXJzcGFjZS5jb20NCg0K
+Signed-off-by: Rinku Kothiya <rkothiya@redhat.com>
+Resolves: bz1413272
+---
+ nfs-config.service | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/nfs-config.service b/nfs-config.service
+index 7f65305..f16b2ed 100644
+--- a/nfs-config.service
++++ b/nfs-config.service
+@@ -2,6 +2,8 @@
+ Description=Preprocess NFS configuration
+ After=local-fs.target
+ DefaultDependencies=no
++PartOf=nfs-server.service
++Restart=always
+ 
+ [Service]
+ Type=oneshot
+-- 
+2.7.5
+
