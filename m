@@ -1,63 +1,108 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:55926 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1755025AbeEaPSU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 31 May 2018 11:18:20 -0400
-Date: Thu, 31 May 2018 11:18:19 -0400
-From: "bfields@fieldses.org" <bfields@fieldses.org>
-To: "Shawn Lu (shawlu)" <shawlu@cisco.com>
-Cc: Joshua Watt <jpewhacker@gmail.com>,
-        "trond.myklebust@primarydata.com" <trond.myklebust@primarydata.com>,
-        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        "jlayton@poochiereds.net" <jlayton@poochiereds.net>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: Is "unmount -f"  worked as expected?
-Message-ID: <20180531151819.GC1298@fieldses.org>
-References: <8CC8F228-1A66-4A44-A23B-855E33F4D1D5@cisco.com>
- <0dae4862d6e5b754ba8f90a6391b6645fdf6889a.camel@gmail.com>
- <EE6D39C5-09BB-4133-9CF5-674038E1538F@cisco.com>
+Received: from sonic301-27.consmr.mail.gq1.yahoo.com ([98.137.64.153]:42083
+        "EHLO sonic301-27.consmr.mail.gq1.yahoo.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1755466AbeEaP0b (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 31 May 2018 11:26:31 -0400
+Subject: Re: [PATCH 1/1] Fix memory leak in kernfs_security_xattr_set and
+ kernfs_security_xattr_set
+To: CHANDAN VN <chandan.vn@samsung.com>, gregkh@linuxfoundation.org,
+        tj@kernel.org, bfields@fieldses.org, jlayton@kernel.org,
+        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
+Cc: cpgs@samsung.com, sireesha.t@samsung.com,
+        Casey Schaufler <casey@schaufler-ca.com>
+References: <CGME20180531092848epcas1p24b638ccd6da00f1e039bdb64de7e1a5b@epcas1p2.samsung.com>
+ <1527758911-18610-1-git-send-email-chandan.vn@samsung.com>
+From: Casey Schaufler <casey@schaufler-ca.com>
+Message-ID: <cae274dd-e9e5-39b1-8b7b-aec1b3e76fe9@schaufler-ca.com>
+Date: Thu, 31 May 2018 08:26:23 -0700
 MIME-Version: 1.0
+In-Reply-To: <1527758911-18610-1-git-send-email-chandan.vn@samsung.com>
 Content-Type: text/plain; charset=utf-8
-In-Reply-To: <EE6D39C5-09BB-4133-9CF5-674038E1538F@cisco.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, May 31, 2018 at 03:14:44PM +0000, Shawn Lu (shawlu) wrote:
->  Thanks Joshua for great help.   From context provided by joshua, I am
->  believe that the community is full aware of the “-f “ issue, but
->  still pending on solution. 
-> 
->  Wondering whether community have consensus yet on what should be the
->  correct behavior for “ force unmount”?  I hope maintainer of NFS can
->  give some guardian for direction.
-> 
-> My use case is also on embedded system where NFS server can go offline
-> unexpected. What I looks for is something that can aggressive umount
-> NFS in timely manner.  Data loss is secondly in my situation.
+On 5/31/2018 2:28 AM, CHANDAN VN wrote:
+> From: "sireesha.t" <sireesha.t@samsung.com>
+>
+> Leak is caused because smack_inode_getsecurity() is allocating memory
+> using kstrdup(). Though the security_release_secctx() is called, it
+> would not free the allocated memory. Calling security_release_secctx is
+> not relevant for this scenario as inode_getsecurity() does not provide a
+> "secctx".
+>
+> Similar fix has been mainlined:
+> https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git/commit/?id=57e7ba04d422c3d41c8426380303ec9b7533ded9
+>
+> The fix is to replace the security_release_secctx() with a kfree()
+>
+> Below is the KMEMLEAK dump:
+> unreferenced object 0xffffffc025e11c80 (size 64):
+>   comm "systemd-tmpfile", pid 2452, jiffies 4294894464 (age 235587.492s)
+>   hex dump (first 32 bytes):
+>     53 79 73 74 65 6d 3a 3a 53 68 61 72 65 64 00 00  System::Shared..
+>     00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
+>   backtrace:
+>     [<ffffff80081be770>] __save_stack_trace+0x28/0x34
+>     [<ffffff80081bedb8>] create_object+0x130/0x25c
+>     [<ffffff80088c82f8>] kmemleak_alloc+0x30/0x5c
+>     [<ffffff80081b3ef0>] __kmalloc_track_caller+0x1cc/0x2a8
+>     [<ffffff800818673c>] kstrdup+0x3c/0x6c
+>     [<ffffff80082d78b0>] smack_inode_getsecurity+0xcc/0xec
+>     [<ffffff80082d78f4>] smack_inode_getsecctx+0x24/0x44
+>     [<ffffff80082d5ea0>] security_inode_getsecctx+0x50/0x70
+>     [<ffffff800823bbcc>] kernfs_security_xattr_set+0x74/0xe0
+>     [<ffffff80081eafec>] __vfs_setxattr+0x74/0x90
+>     [<ffffff80081eb088>] __vfs_setxattr_noperm+0x80/0x1ac
+>     [<ffffff80081eb238>] vfs_setxattr+0x84/0xac
+>     [<ffffff80081eb374>] setxattr+0x114/0x178
+>     [<ffffff80081eb44c>] path_setxattr+0x74/0xb8
+>     [<ffffff80081ebdcc>] SyS_lsetxattr+0x10/0x1c
+>     [<ffffff800808310c>] __sys_trace_return+0x0/0x4
+>
+> Signed-off-by: sireesha.t <sireesha.t@samsung.com>
+> Signed-off-by: CHANDAN VN <chandan.vn@samsung.com>
 
-Dumb question: in that case, why not just cut power?
+Why not:
 
-> One case is involved with  cross mounted nfs from different host.
+ static int smack_inode_getsecctx(struct inode *inode, void **ctx, u32 *ctxlen)
+ {
+-	int len = 0;
+-	len = smack_inode_getsecurity(inode, XATTR_SMACK_SUFFIX, ctx, true);
++	int len = smack_inode_getsecurity(inode, XATTR_SMACK_SUFFIX, ctx, false);
+ 
+ 	if (len < 0)
+ 		return len;
 
-Note: in theory I think there are some deadlocks possible if client and
-server mount each other.  (Each host could be waiting on the other one
-to process writes before it can free memory that it needs to make
-progress.)
+> ---
+>  fs/kernfs/inode.c | 3 ++-
+>  fs/nfsd/nfs4xdr.c | 2 +-
+>  2 files changed, 3 insertions(+), 2 deletions(-)
+>
+> diff --git a/fs/kernfs/inode.c b/fs/kernfs/inode.c
+> index a343039..53befb8 100644
+> --- a/fs/kernfs/inode.c
+> +++ b/fs/kernfs/inode.c
+> @@ -369,7 +369,8 @@ static int kernfs_security_xattr_set(const struct xattr_handler *handler,
+>  	mutex_unlock(&kernfs_mutex);
+>  
+>  	if (secdata)
+> -		security_release_secctx(secdata, secdata_len);
+> +		kfree(secdata);
+> +
+>  	return error;
+>  }
+>  
+> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+> index aaa88c1..1e0dbe9 100644
+> --- a/fs/nfsd/nfs4xdr.c
+> +++ b/fs/nfsd/nfs4xdr.c
+> @@ -2911,7 +2911,7 @@ static int get_parent_attributes(struct svc_export *exp, struct kstat *stat)
+>  out:
+>  #ifdef CONFIG_NFSD_V4_SECURITY_LABEL
+>  	if (context)
+> -		security_release_secctx(context, contextlen);
+> +		kfree(context);
+>  #endif /* CONFIG_NFSD_V4_SECURITY_LABEL */
+>  	kfree(acl);
+>  	if (tempfh) {
 
---b.
-
-> Here,
-> both server and client will be  shutdown at same time on reboot.  NFS
-> client side will stuck on shutdown for long time if “umount –l”  is
-> used to umount NFS.
-> 
-> The previous work done by Joshua and  Neil Brown will definitely help
-> to resolve my use case if patch can be up streamed.  Hope magic will
-> happen soon . 
-> 
-> Just wondering whether a kernel configure (eg.
-> CONFIG_NFS_AGRRESSIVE_SHUTDOWN)  can be added to enhance “force
-> umount “ to act more aggressive.  This feature will be off by default
-> so the admin use to the “soft “ force mount will get the same behavior
-> as before.  When the feature is turn on,  “umount –f”  is Guarantee to
-> succeed.  
