@@ -1,120 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from alln-iport-1.cisco.com ([173.37.142.88]:36672 "EHLO
-        alln-iport-1.cisco.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1755134AbeEaPOr (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 31 May 2018 11:14:47 -0400
-From: "Shawn Lu (shawlu)" <shawlu@cisco.com>
-To: Joshua Watt <jpewhacker@gmail.com>,
+Received: from fieldses.org ([173.255.197.46]:55926 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1755025AbeEaPSU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 31 May 2018 11:18:20 -0400
+Date: Thu, 31 May 2018 11:18:19 -0400
+From: "bfields@fieldses.org" <bfields@fieldses.org>
+To: "Shawn Lu (shawlu)" <shawlu@cisco.com>
+Cc: Joshua Watt <jpewhacker@gmail.com>,
         "trond.myklebust@primarydata.com" <trond.myklebust@primarydata.com>,
         "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
         "jlayton@poochiereds.net" <jlayton@poochiereds.net>,
-        "bfields@fieldses.org" <bfields@fieldses.org>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
 Subject: Re: Is "unmount -f"  worked as expected?
-Date: Thu, 31 May 2018 15:14:44 +0000
-Message-ID: <EE6D39C5-09BB-4133-9CF5-674038E1538F@cisco.com>
+Message-ID: <20180531151819.GC1298@fieldses.org>
 References: <8CC8F228-1A66-4A44-A23B-855E33F4D1D5@cisco.com>
  <0dae4862d6e5b754ba8f90a6391b6645fdf6889a.camel@gmail.com>
-In-Reply-To: <0dae4862d6e5b754ba8f90a6391b6645fdf6889a.camel@gmail.com>
-Content-Type: text/plain; charset="utf-8"
+ <EE6D39C5-09BB-4133-9CF5-674038E1538F@cisco.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <EE6D39C5-09BB-4133-9CF5-674038E1538F@cisco.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-SGk6IEFsbDoNCg0KIFRoYW5rcyBKb3NodWEgZm9yIGdyZWF0IGhlbHAuICAgRnJvbSBjb250ZXh0
-IHByb3ZpZGVkIGJ5IGpvc2h1YSwgSSBhbSBiZWxpZXZlIHRoYXQgdGhlIGNvbW11bml0eSBpcyBm
-dWxsIGF3YXJlIG9mIHRoZSDigJwtZiDigJwgaXNzdWUsIGJ1dCBzdGlsbCBwZW5kaW5nIG9uIHNv
-bHV0aW9uLiANCg0KIFdvbmRlcmluZyB3aGV0aGVyIGNvbW11bml0eSBoYXZlIGNvbnNlbnN1cyB5
-ZXQgb24gd2hhdCBzaG91bGQgYmUgdGhlIGNvcnJlY3QgYmVoYXZpb3IgZm9yIOKAnCBmb3JjZSB1
-bm1vdW504oCdPyAgSSBob3BlIG1haW50YWluZXIgb2YgTkZTIGNhbiBnaXZlIHNvbWUgZ3VhcmRp
-YW4gZm9yIGRpcmVjdGlvbi4NCg0KTXkgdXNlIGNhc2UgaXMgYWxzbyBvbiBlbWJlZGRlZCBzeXN0
-ZW0gd2hlcmUgTkZTIHNlcnZlciBjYW4gZ28gb2ZmbGluZSB1bmV4cGVjdGVkLiBXaGF0IEkgbG9v
-a3MgZm9yIGlzIHNvbWV0aGluZyB0aGF0IGNhbiBhZ2dyZXNzaXZlIHVtb3VudCBORlMgaW4gdGlt
-ZWx5IG1hbm5lci4gIERhdGEgbG9zcyBpcyBzZWNvbmRseSBpbiBteSBzaXR1YXRpb24uICBPbmUg
-Y2FzZSAgaXMgaW52b2x2ZWQgd2l0aCAgY3Jvc3MgbW91bnRlZCBuZnMgZnJvbSBkaWZmZXJlbnQg
-aG9zdC4gSGVyZSwgYm90aCBzZXJ2ZXIgYW5kIGNsaWVudCB3aWxsIGJlICBzaHV0ZG93biBhdCBz
-YW1lIHRpbWUgb24gcmVib290LiAgTkZTIGNsaWVudCBzaWRlIHdpbGwgc3R1Y2sgb24gc2h1dGRv
-d24gZm9yIGxvbmcgdGltZSBpZiDigJx1bW91bnQg4oCTbOKAnSAgaXMgdXNlZCB0byB1bW91bnQg
-TkZTLg0KDQpUaGUgcHJldmlvdXMgd29yayBkb25lIGJ5IEpvc2h1YSBhbmQgIE5laWwgQnJvd24g
-d2lsbCBkZWZpbml0ZWx5IGhlbHAgdG8gcmVzb2x2ZSBteSB1c2UgY2FzZSBpZiBwYXRjaCBjYW4g
-YmUgdXAgc3RyZWFtZWQuICBIb3BlIG1hZ2ljIHdpbGwgaGFwcGVuIHNvb24gLiANCg0KSnVzdCB3
-b25kZXJpbmcgd2hldGhlciBhIGtlcm5lbCBjb25maWd1cmUgKGVnLiAgQ09ORklHX05GU19BR1JS
-RVNTSVZFX1NIVVRET1dOKSAgY2FuIGJlIGFkZGVkIHRvIGVuaGFuY2Ug4oCcZm9yY2UgIHVtb3Vu
-dCDigJwgdG8gYWN0IG1vcmUgYWdncmVzc2l2ZS4NClRoaXMgZmVhdHVyZSB3aWxsIGJlIG9mZiBi
-eSBkZWZhdWx0IHNvIHRoZSBhZG1pbiB1c2UgdG8gdGhlIOKAnHNvZnQg4oCcIGZvcmNlIG1vdW50
-IHdpbGwgZ2V0IHRoZSBzYW1lIGJlaGF2aW9yIGFzIGJlZm9yZS4gIFdoZW4gdGhlIGZlYXR1cmUg
-aXMgdHVybiBvbiwgIOKAnHVtb3VudCDigJNm4oCdICBpcyANCkd1YXJhbnRlZSB0byBzdWNjZWVk
-LiAgDQoNCg0KPk9uIDUvMzAvMTgsIDY6NDQgQU0sICJKb3NodWEgV2F0dCIgPGpwZXdoYWNrZXJA
-Z21haWwuY29tPiB3cm90ZToNCg0KID4gICBPbiBXZWQsIDIwMTgtMDUtMzAgYXQgMDA6MzggKzAw
-MDAsIFNoYXduIEx1IChzaGF3bHUpIHdyb3RlOg0KID4gICA+IERlYXIgTWFpbnRhaW5lcnMgb2Yg
-TkZTOg0KID4gICA+IA0KID4gICA+ICAgSSBuZWVkIGhlbHAgdG8gYmV0dGVyIHVuZGVyc3RhbmQg
-YmVoYXZpb3Igb2Yg4oCcLWbigJ0gb3B0aW9uDQogPiAgID4gZm9yICDigJx1bW91bnTigJ0gTkZT
-IGZpbGUgc3lzdGVtLiAgSGVyZSBpcyB3aGF0IEkgZ290IGZyb20gICBNYW4gcGFnZQ0KID4gICA+
-ICggIGh0dHBzOi8vbGludXguZGllLm5ldC9tYW4vOC91bW91bnQpIDoNCiA+ICAgPiANCiA+ICAg
-PiAg4oCcIC1mIEZvcmNlIHVubW91bnQgKGluIGNhc2Ugb2YgYW4gdW5yZWFjaGFibGUgTkZTIHN5
-c3RlbSkuIChSZXF1aXJlcw0KID4gICA+IGtlcm5lbCAyLjEuMTE2IG9yIGxhdGVyLinigJ0gDQog
-PiAgID4gDQogPiAgID4gTXkgaW50ZXJwcmV0YXRpb24gb2YgTWFuIHBhZ2UgaXMg4oCcdW1vdW50
-IOKAk2bigJ0gIHNob3VsZCBhYmxlIHRvIGZvcmNlDQogPiAgID4gdW1vdW50IG5mcyB3aGVuIE5G
-UyBzZXJ2ZXIgaXMgbm90IGF2YWlsYWJsZS4gDQogPiAgID4gDQogPiAgID4gT24gbXkgdGVzdCwg
-SSBhbSBvYnNlcnZlZCDigJx1bW91bnQg4oCTZuKAnSAgaXMgbm90IGFsd2F5cyB3b3JrIGFzDQog
-PiAgPiBleHBlY3RlZC4gIEFsc28gdGhlcmUgc29tZSBiZWhhdmlvciBkaWZmZXJlbmNlIG9uICDi
-gJx1bW91bnQg4oCTZiDigJwgd2l0aA0KID4gID4gcmVnYXJkaW5nIHRvIGRpZmZlcmVudCBORlMg
-dmVyc2lvbi4gIA0KID4gID4gSGVyZSBpcyBteSBleHBlcmltZW50IG9uIDQuNCBLZXJuZWwgKCBJ
-IGFtIGJlbGlldmUgdGhpcyBpcyB0cnVlIGZvcg0KID4gID4gbGF0ZXN0IGtlcm5lbCk6DQogPiAg
-PiAgIFRlc3QgZm9yIG5mc3YzOg0KID4gID4gYSkgIEZyb20gSG9zdCBBLCBTdGFydCBORlMgc2Vy
-dmVyIGFuZCBleHBvcnQg4oCcL3NoYXJlZOKAnSBkaXJlY3RvcnkNCiA+ICA+ICx3aGljaCBoYXMg
-b25seSBteSBmaWxlIHRlc3QudHh0DQogPiAgPiBiKSAgZnJvbSBIb3N0IEIsICAgcmVtb3RlIG1v
-dW50ICBob3N0IEE6L3NoYXJlZCB0byAgICAvdGVzdCAgdXNpbmcNCiA+ICA+IG5mc3YzDQogPiAg
-PiBjKSAgZnJvbSBob3N0IEIgIG9wZW4gZmlsZSAvdGVzdC90ZXN0LnR4dA0KID4gID4gZCkgZnJv
-bSBob3N0IEIsICBkbyAg4oCcdW1vdW50IOKAk2YgIC90ZXN04oCcLCAgaXQgcmV0dXJucyDigJxk
-ZXZpY2UgaXMgYnVzeeKAnQ0KID4gID4gZSkgRnJvbSBob3N0IEEgLCAgZG8gZm9sbG93aW5nIOKA
-nHJtICAtZiAvZXRjL2V4cG9ydHMgOyB0b3VjaA0KID4gID4gL2V0Yy9leHBvcnRzIDsgZXhwb3J0
-ZnMgLXJh4oCdDQogPiAgPiBmKSBGcm9tIGhvc3QgQiAsICAgIGRvICDigJx1bW91bnQg4oCTZiAg
-L3Rlc3TigJwsICBpdCByZXR1cm5zIOKAnGRldmljZSBpcw0KID4gID4gYnVzeeKAnQ0KID4gID4g
-ZykgUmVib290IEhPU1QgQQ0KID4gID4gaCkgRnJvbSBob3N0IEI6ICBkbyAg4oCcdW1vdW50IOKA
-k2YgIC90ZXN04oCcICBzdWNjZWVkLiANCiA+ICA+IA0KID4gID4gIFRlc3QgZm9yIG5mc3Y0Og0K
-ID4gID4gaSkJIEZyb20gSG9zdCBBLCBTdGFydCBORlMgc2VydmVyIGFuZCBleHBvcnQg4oCcL3No
-YXJlZOKAnQ0KID4gID4gZGlyZWN0b3J5ICx3aGljaCBoYXMgb25seSBteSBmaWxlIHRlc3QudHh0
-DQogPiAgPiBqKQkgZnJvbSBIb3N0IEIsICAgcmVtb3RlIG1vdW50ICBob3N0IEE6L3NoYXJlZA0K
-ID4gID4gdG8gICAgL3Rlc3QgIHVzaW5nIG5mc3Y0DQogPiAgPiBrKQkgZnJvbSBob3N0IEIgIG9w
-ZW4gZmlsZSAvdGVzdC90ZXN0LnR4dA0KID4gID4gbCkJZnJvbSBob3N0IEIsICBkbyAg4oCcdW1v
-dW50IOKAk2YgIC90ZXN04oCcLCAgaXQgcmV0dXJucyDigJxkZXZpY2UNCiA+ICA+IGlzIGJ1c3ni
-gJ0NCiA+ICA+IG0pCUZyb20gaG9zdCBBICwgIGRvIGZvbGxvd2luZyDigJxybSAgLWYgL2V0Yy9l
-eHBvcnRzIDsgdG91Y2gNCiA+ICA+IC9ldGMvZXhwb3J0cyA7IGV4cG9ydGZzIC1yYeKAnQ0KID4g
-ID4gbikJRnJvbSBob3N0IEIgLCAgICBkbyAg4oCcdW1vdW50IOKAk2YgIC90ZXN04oCcLCAgaXQg
-cmV0dXJucw0KID4gID4g4oCcZGV2aWNlIGlzIGJ1c3nigJ0NCiA+ICA+IG8pCVJlYm9vdCBORlMg
-c2VydmVyKCBIT1NUIEEpDQogPiAgPiBwKQlGcm9tIGhvc3QgQjogIGRvICDigJx1bW91bnQg4oCT
-ZiAgL3Rlc3TigJwgICwgIHN0aWxsIHJldHVybg0KID4gID4g4oCcZGV2aWNlIGlzIGJ1c3nigJ0N
-CiA+ICA+ICAgIA0KID4gID4gDQogPiAgPiBGb3IgYm90aCBuZnN2MyBhbmQgbmZzdjQsICDigJx1
-bW91bnQg4oCTZiDigJwgd2lsbCBmYWlscyBldmVuIHRoZSBzdXBlcg0KID4gID4gYmxvY2sgaXMg
-YWxyZWFkeSDigJxzdGFsZWTigJ0oY2hlY2sgc3RlcCBmIGFuZCBzdGVwIG4pIC4gIOKAnC1m4oCd
-IG9wdGlvbiBmb3INCiA+ICA+IE5GU3Y0IGlzIG1vcmUg4oCcYnJva2Vu4oCdIHNpbmNlIG5vdyBp
-dCB3aWxsIG5vdCBzdWNjZWVkIGV2ZW4gd2l0aCBORlMNCiA+ICA+IHNlcnZlciBvZmYgbGluZS4g
-IA0KID4gID4gDQogPiAgPiBIZXJlIG15IHF1ZXN0aW9uczoNCiA+ICA+IDEuIElmIOKAnHVtb3Vu
-dCDigJNmIOKAnCAgY2Fu4oCZdCBmb3JjZSB1bm1vdW50IOKAnHN0YWxlZCDigJ0gbmZzIG1vdW50
-ICwgICBIb3cNCiA+ICA+IGl0IGRpZmZlcmVudGlhbCBpdHNlbGYgZnJvbSByZWd1bGFyIHVtb3Vu
-dCAod2l0aG91dCDigJNmKT8gIA0KID4gID4gMi4gaXMgIOKAnC1m4oCdICBvcHRpb24gaXMg4oCc
-YnJva2Vu4oCdIGZvciBORlN2NCBvciBpdCBpcyBpbnRlbmQgYmVoYXZpb3IgdG8NCiA+ICA+IGZh
-aWwg4oCcdW1vdW50IOKAk2bigJ0gZXZlbiBTZXJ2ZXIgaXMgb2ZmbGluZSA/ICAgDQogICAgDQog
-PiAgIEknbSBub3QgYW4gTkZTIG1haW50YWluZXIsIGJ1dCBJIGhhZCBhIHZlcnkgc2ltaWxhciBx
-dWVzdGlvbiBhIGZldw0KID4gICBtb250aHMgYWdvIGFuZCBldmVuIHdyb3RlIHNvbWUgcGF0Y2hl
-cyB0byB0cnkgYW5kIGdldCBhIG1vcmUgImZvcmNlZnVsIg0KID4gICB1bm1vdW50LiBVbmZvcnR1
-bmF0ZWx5LCBJIGdvdCBkaXN0cmFjdGVkIHdpdGggb3RoZXIgdGFza3MgYW5kIGhhdmVuJ3QNCiA+
-ICAgbG9vcGVkIGFyb3VuZCB0byBmaW5pc2ggdGhlIGpvYi4gWW91IGNhbiByZWFkIHRocm91Z2gg
-dGhlIGxlbmd0aHkNCiA+ICAgZGlzY3Vzc2lvbiBhbmQgcGF0Y2hlcyBoZXJlOg0KICAgIA0KID4g
-ICBJbml0aWFsIERpc2N1c3Npb246DQogPiAgIGh0dHBzOi8vd3d3LnNwaW5pY3MubmV0L2xpc3Rz
-L2xpbnV4LW5mcy9tc2c2NjA3My5odG1sDQogICAgDQogPiAgIFJGQyBQYXRjaGVzOg0KID4gICBo
-dHRwczovL3d3dy5zcGluaWNzLm5ldC9saXN0cy9saW51eC1uZnMvbXNnNjYzNDguaHRtbA0KID4g
-ICBodHRwczovL3d3dy5zcGluaWNzLm5ldC9saXN0cy9saW51eC1uZnMvbXNnNjY0MjEuaHRtbA0K
-ID4gICBodHRwczovL3d3dy5zcGluaWNzLm5ldC9saXN0cy9saW51eC1uZnMvbXNnNjY0NjYuaHRt
-bA0KID4gICBodHRwczovL3d3dy5zcGluaWNzLm5ldC9saXN0cy9saW51eC1uZnMvbXNnNjY0ODMu
-aHRtbA0KICAgIA0KID4gICBIb3BlZnVsbHksIHRoYXQgaGVscHMuIElmIHlvdSBhcmUgaW50ZXJl
-c3RlZCBpbiByZXZpdmluZyB0aGlzIHdvcmssIEkNCiA+ICAgYW0gc3RpbGwgaW50ZXJlc3RlZCBh
-bmQgd291bGQgYmUgd2lsbGluZyB0byBoZWxwIG91dC4NCg0KWWVzLiAgVGhlIHBhdGNoIHByb3Zp
-ZGVkIHdpbGwgaGVscC4gIEkgd2lsbCB0cnkgaXQgb3V0IGFuZCBhc2sgZm9yICBoZWxwIGlmIEkg
-bmVlZCBnbyBmdXJ0aGVyLg0KID4gICA+IA0KID4gICAgPiBSZWFsbHkgYXBwcmVjaWF0ZSBpZiBz
-b21lb25lIGluIHRoZSBtYWlsaW5nIGxpc3QgY2FuIGhlbHAgdG8gYW5zd2VyDQogPiAgICA+IG15
-IGR1bWIgcXVlc3Rpb25zLiANCiA+ICAgID4gDQogPiAgICA+IA0KID4gICAgPiBUaGFua3MsDQog
-PiAgICA+IFNoYXduIA0KID4gDQogPiANCiA+IA0KID4gDQogPiANCiA+IA0KICA+IE5yeWJYx6d2
-Xineunsubit7Il5ucno/aCY/R2g/KOmajt2iaiI/P2163pZmaH5tDQogICAgDQpUaGFua3MsDQoN
-ClNoYXduIA0KDQoNCg0K
+On Thu, May 31, 2018 at 03:14:44PM +0000, Shawn Lu (shawlu) wrote:
+>  Thanks Joshua for great help.   From context provided by joshua, I am
+>  believe that the community is full aware of the “-f “ issue, but
+>  still pending on solution. 
+> 
+>  Wondering whether community have consensus yet on what should be the
+>  correct behavior for “ force unmount”?  I hope maintainer of NFS can
+>  give some guardian for direction.
+> 
+> My use case is also on embedded system where NFS server can go offline
+> unexpected. What I looks for is something that can aggressive umount
+> NFS in timely manner.  Data loss is secondly in my situation.
+
+Dumb question: in that case, why not just cut power?
+
+> One case is involved with  cross mounted nfs from different host.
+
+Note: in theory I think there are some deadlocks possible if client and
+server mount each other.  (Each host could be waiting on the other one
+to process writes before it can free memory that it needs to make
+progress.)
+
+--b.
+
+> Here,
+> both server and client will be  shutdown at same time on reboot.  NFS
+> client side will stuck on shutdown for long time if “umount –l”  is
+> used to umount NFS.
+> 
+> The previous work done by Joshua and  Neil Brown will definitely help
+> to resolve my use case if patch can be up streamed.  Hope magic will
+> happen soon . 
+> 
+> Just wondering whether a kernel configure (eg.
+> CONFIG_NFS_AGRRESSIVE_SHUTDOWN)  can be added to enhance “force
+> umount “ to act more aggressive.  This feature will be off by default
+> so the admin use to the “soft “ force mount will get the same behavior
+> as before.  When the feature is turn on,  “umount –f”  is Guarantee to
+> succeed.  
