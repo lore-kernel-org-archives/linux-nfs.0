@@ -1,92 +1,75 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailout1.samsung.com ([203.254.224.24]:23629 "EHLO
-        mailout1.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1754164AbeEaJ2v (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 31 May 2018 05:28:51 -0400
-From: CHANDAN VN <chandan.vn@samsung.com>
-To: gregkh@linuxfoundation.org, tj@kernel.org, bfields@fieldses.org,
-        jlayton@kernel.org, linux-kernel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, casey@schaufler-ca.com
-Cc: cpgs@samsung.com, chandan.vn@samsung.com, sireesha.t@samsung.com
-Subject: [PATCH 1/1] Fix memory leak in kernfs_security_xattr_set and
- kernfs_security_xattr_set
-Date: Thu, 31 May 2018 14:58:31 +0530
-Message-id: <1527758911-18610-1-git-send-email-chandan.vn@samsung.com>
-References: <CGME20180531092848epcas1p24b638ccd6da00f1e039bdb64de7e1a5b@epcas1p2.samsung.com>
+Received: from mail-oi0-f66.google.com ([209.85.218.66]:35731 "EHLO
+        mail-oi0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1754273AbeEaKAD (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 31 May 2018 06:00:03 -0400
+Received: by mail-oi0-f66.google.com with SMTP id e8-v6so816272oii.2
+        for <linux-nfs@vger.kernel.org>; Thu, 31 May 2018 03:00:03 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <20180531004554.GA29116@fieldses.org>
+References: <f74fae81-d1bc-1c0e-7b41-69502bd7c489@suse.de> <f2af62fdf8a5bb185ec75cff118178d58b28ceb4.camel@hammerspace.com>
+ <2cf94c6b-e819-79af-4ac9-3b19d26dc6d9@suse.de> <75266c983a03f6dbfd5d1a39c94fa6d56a1a8a22.camel@hammerspace.com>
+ <a0617bb0-b7a5-fab2-c72c-595e005bd8f7@suse.de> <20180531004554.GA29116@fieldses.org>
+From: Miklos Szeredi <miklos@szeredi.hu>
+Date: Thu, 31 May 2018 12:00:01 +0200
+Message-ID: <CAJfpegtoLpwo6aA9=uF72UDaKvv_Q3bUbv778VwnSDa72yO9Mw@mail.gmail.com>
+Subject: Re: nfs4_acl restricts copy_up in overlayfs
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Goldwyn Rodrigues <rgoldwyn@suse.de>,
+        Trond Myklebust <trondmy@hammerspace.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-unionfs@vger.kernel.org" <linux-unionfs@vger.kernel.org>,
+        Andreas Gruenbacher <agruenba@redhat.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "sireesha.t" <sireesha.t@samsung.com>
+On Thu, May 31, 2018 at 2:45 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> On Wed, May 30, 2018 at 05:33:11AM -0500, Goldwyn Rodrigues wrote:
+>> I am not trying to override the security. I am trying to detect
+>> duplication of security information. The common case of NFS
+>> communication does not require the additional security parameters
+>> (doesn't mean it is not required). So my question is: is it possible to
+>> detect at the client that nfs4_acl is a duplicate of information which
+>> can be and is represented by inode alone. If yes, can it be suppressed
+>> by the client.
+>
+> No, that's not possible.
+>
+> The user's identity could be mapped in various ways.  You've got no way
+> to know whether root squashing is in effect, for example.  Or to know
+> what the user@EXAMPLE.COM krb5 identity that you're running as might map
+> to on the server.
+>
+> So it's hard to even tell whether a given user matches the file's owner
+> or group.  So even the mode bits are kind of meaningless to the client.
 
-Leak is caused because smack_inode_getsecurity() is allocating memory
-using kstrdup(). Though the security_release_secctx() is called, it
-would not free the allocated memory. Calling security_release_secctx is
-not relevant for this scenario as inode_getsecurity() does not provide a
-"secctx".
+The basic security model for overlayfs is that underlying filesystems
+are just storage.  Access to these filesystems is done with the
+capabilities of the task that created the overlay instance with
+mount(2).  That capability set is saved and used for any access to
+underlying storage.
 
-Similar fix has been mainlined:
-https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git/commit/?id=57e7ba04d422c3d41c8426380303ec9b7533ded9
+Access to overlayfs itself is controlled by metadata in the file
+(mode, uid, gid, posix_acl, security xattr, etc...).
 
-The fix is to replace the security_release_secctx() with a kfree()
+So if one of the layers is NFS, the permissions in the server are only
+checked against the mounter's creds (usually superuser).  Access
+checks are not performed by the server on behalf of the task accessing
+the overlay.    This means, that overlayfs could give access to an NFS
+file, where access on the NFS mount would be denied.  This needs to be
+understood by the admin mounting the overlay.
 
-Below is the KMEMLEAK dump:
-unreferenced object 0xffffffc025e11c80 (size 64):
-  comm "systemd-tmpfile", pid 2452, jiffies 4294894464 (age 235587.492s)
-  hex dump (first 32 bytes):
-    53 79 73 74 65 6d 3a 3a 53 68 61 72 65 64 00 00  System::Shared..
-    00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
-  backtrace:
-    [<ffffff80081be770>] __save_stack_trace+0x28/0x34
-    [<ffffff80081bedb8>] create_object+0x130/0x25c
-    [<ffffff80088c82f8>] kmemleak_alloc+0x30/0x5c
-    [<ffffff80081b3ef0>] __kmalloc_track_caller+0x1cc/0x2a8
-    [<ffffff800818673c>] kstrdup+0x3c/0x6c
-    [<ffffff80082d78b0>] smack_inode_getsecurity+0xcc/0xec
-    [<ffffff80082d78f4>] smack_inode_getsecctx+0x24/0x44
-    [<ffffff80082d5ea0>] security_inode_getsecctx+0x50/0x70
-    [<ffffff800823bbcc>] kernfs_security_xattr_set+0x74/0xe0
-    [<ffffff80081eafec>] __vfs_setxattr+0x74/0x90
-    [<ffffff80081eb088>] __vfs_setxattr_noperm+0x80/0x1ac
-    [<ffffff80081eb238>] vfs_setxattr+0x84/0xac
-    [<ffffff80081eb374>] setxattr+0x114/0x178
-    [<ffffff80081eb44c>] path_setxattr+0x74/0xb8
-    [<ffffff80081ebdcc>] SyS_lsetxattr+0x10/0x1c
-    [<ffffff800808310c>] __sys_trace_return+0x0/0x4
+So how to handle nfs4_acls with this model?
 
-Signed-off-by: sireesha.t <sireesha.t@samsung.com>
-Signed-off-by: CHANDAN VN <chandan.vn@samsung.com>
----
- fs/kernfs/inode.c | 3 ++-
- fs/nfsd/nfs4xdr.c | 2 +-
- 2 files changed, 3 insertions(+), 2 deletions(-)
+We could just ignore them and this can be achieved with mounting the
+NFS filesystem with "noacl".  I'm not against specifically ignoring
+nfs4_acl in overlayfs by default, as that seems to be the simplest
+solution to this problem and fits the overlayfs security model.
+Later, if we want to make use of this attribute to check access (on
+the overlay, not in the NFS server), we can add an option to enable
+this.  But AFAICS that one requires richacl's to make it upstream at
+least.
 
-diff --git a/fs/kernfs/inode.c b/fs/kernfs/inode.c
-index a343039..53befb8 100644
---- a/fs/kernfs/inode.c
-+++ b/fs/kernfs/inode.c
-@@ -369,7 +369,8 @@ static int kernfs_security_xattr_set(const struct xattr_handler *handler,
- 	mutex_unlock(&kernfs_mutex);
- 
- 	if (secdata)
--		security_release_secctx(secdata, secdata_len);
-+		kfree(secdata);
-+
- 	return error;
- }
- 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index aaa88c1..1e0dbe9 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -2911,7 +2911,7 @@ static int get_parent_attributes(struct svc_export *exp, struct kstat *stat)
- out:
- #ifdef CONFIG_NFSD_V4_SECURITY_LABEL
- 	if (context)
--		security_release_secctx(context, contextlen);
-+		kfree(context);
- #endif /* CONFIG_NFSD_V4_SECURITY_LABEL */
- 	kfree(acl);
- 	if (tempfh) {
--- 
-1.9.1
-
+Thanks,
+Miklos
