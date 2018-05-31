@@ -1,68 +1,80 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from alln-iport-5.cisco.com ([173.37.142.92]:31967 "EHLO
-        alln-iport-5.cisco.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1755877AbeEaSok (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 31 May 2018 14:44:40 -0400
-From: "Shawn Lu (shawlu)" <shawlu@cisco.com>
-To: "bfields@fieldses.org" <bfields@fieldses.org>
-CC: Joshua Watt <jpewhacker@gmail.com>,
-        "trond.myklebust@primarydata.com" <trond.myklebust@primarydata.com>,
-        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        "jlayton@poochiereds.net" <jlayton@poochiereds.net>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "xe-linux-external(mailer list)" <xe-linux-external@cisco.com>
-Subject: Re: Is "unmount -f"  worked as expected?
-Date: Thu, 31 May 2018 18:44:36 +0000
-Message-ID: <CD2C23CA-AA8E-4791-B432-9DF05598F7BC@cisco.com>
-References: <8CC8F228-1A66-4A44-A23B-855E33F4D1D5@cisco.com>
- <0dae4862d6e5b754ba8f90a6391b6645fdf6889a.camel@gmail.com>
- <EE6D39C5-09BB-4133-9CF5-674038E1538F@cisco.com>
- <20180531151819.GC1298@fieldses.org>
- <C8362635-4E93-4C96-9827-E241565D27DF@cisco.com>
- <20180531173456.GE1298@fieldses.org>
-In-Reply-To: <20180531173456.GE1298@fieldses.org>
-Content-Type: text/plain; charset="utf-8"
+Received: from fieldses.org ([173.255.197.46]:56374 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1756035AbeEaS7V (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 31 May 2018 14:59:21 -0400
+Date: Thu, 31 May 2018 14:59:20 -0400
+To: Trond Myklebust <trondmy@gmail.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 00/19] Layoutget on OPEN
+Message-ID: <20180531185920.GA3557@fieldses.org>
+References: <20180530180553.38769-1-trond.myklebust@hammerspace.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20180530180553.38769-1-trond.myklebust@hammerspace.com>
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-DQpIaTogIEJydWNlOg0KDQo+IE9uIDUvMzEvMTgsIDEwOjM0IEFNLCAiYmZpZWxkc0BmaWVsZHNl
-cy5vcmciIDxiZmllbGRzQGZpZWxkc2VzLm9yZz4gd3JvdGU6DQoNCj4gIE9uIFRodSwgTWF5IDMx
-LCAyMDE4IGF0IDA0OjUxOjQ5UE0gKzAwMDAsIFNoYXduIEx1IChzaGF3bHUpIHdyb3RlOg0KPiAg
-ID4gPk9uIDUvMzEvMTgsIDg6MTggQU0sICJiZmllbGRzQGZpZWxkc2VzLm9yZyIgPGJmaWVsZHNA
-ZmllbGRzZXMub3JnPiB3cm90ZToNCj4gICA+ICA+ICA+IE9uZSBjYXNlIGlzIGludm9sdmVkIHdp
-dGggIGNyb3NzIG1vdW50ZWQgbmZzIGZyb20gZGlmZmVyZW50IGhvc3QuDQo+ICAgPiAgICANCj4g
-ICAgPiAgPiAgTm90ZTogaW4gdGhlb3J5IEkgdGhpbmsgdGhlcmUgYXJlIHNvbWUgZGVhZGxvY2tz
-IHBvc3NpYmxlIGlmIGNsaWVudCBhbmQNCj4gICA+ICA+ICAgc2VydmVyIG1vdW50IGVhY2ggb3Ro
-ZXIuICAoRWFjaCBob3N0IGNvdWxkIGJlIHdhaXRpbmcgb24gdGhlIG90aGVyIG9uZQ0KPiAgID4g
-ID4gICB0byBwcm9jZXNzIHdyaXRlcyBiZWZvcmUgaXQgY2FuIGZyZWUgbWVtb3J5IHRoYXQgaXQg
-bmVlZHMgdG8gbWFrZQ0KPiAgID4gID4gICBwcm9ncmVzcy4pDQo+ICA+DQo+ICAgPiBZZXMuICBJ
-IGhvcGUgYWdncmVzc2l2ZSB1bW91bnQgIHdpbGwgIGhlbHAgYnkgc2V0dGluZyBhIHZlcnkgc2hv
-cnQgZ3JhY2UgcGVyaW9kIGFuZCB0aW1lb3V0IGJlZm9yZSB1bW91bnQuDQogICAgDQo+ICAgTm8s
-IHRoZSBkZWFkbG9jayBpc24ndCBhbiB1bm1vdW50aW5nIHByb2JsZW0sIGl0J3MgYSBwcm9ibGVt
-IHRoYXQgY291bGQNCj4gIGhhcHBlbiBkdXJpbmcgbm9ybWFsIG9wZXJhdGlvbi4gIEkgZG9uJ3Qg
-a25vdyBpZiBpdCdzIGVhc3kgdG8gcmVwcm9kdWNlLg0KPiAgIFlvdSdkIHByb2JhYmx5IG5lZWQg
-b25lIG9yIGJvdGggaG9zdHMgdG8gYmUgd3JpdGluZyB0byBORlMgdmVyeSBxdWlja2x5Lg0KICAN
-ClllcywgVGhpcyB3aWxsIGEgYmlnIGlzc3VlIGZvciBjcm9zcyBtb3VudC4gIEx1Y2tpbHksIHdl
-IGhhdmUgbm90IGV4cGVyaWVuY2UgaXQgeWV0IGR1ZSB0byBsb3cgdHJhZmZpYy4gIA0KDQpCeSB0
-aGUgd2F5LCB3aGF0IGlzIHlvdXIgc3VnZ2VzdGlvbiBvbiB0aGUgcm9hZCB0byBlbmhhbmNlIOKA
-nHVtb3VudCDigJNm4oCdID8gICBXaWxsIGFkZCBrZXJuZWwgY29uZmlnIG9wdGlvbiB0byBzdXBw
-b3J0IGd1YXJhbnRlZWQgZm9yY2UgdW5tb3VudCBoZWxwcz8NCiAgPiAgLS1iLg0KDQpUaGFua3Ms
-DQpTaGF3bg0KT24gNS8zMS8xOCwgMTA6MzQgQU0sICJiZmllbGRzQGZpZWxkc2VzLm9yZyIgPGJm
-aWVsZHNAZmllbGRzZXMub3JnPiB3cm90ZToNCg0KICAgIE9uIFRodSwgTWF5IDMxLCAyMDE4IGF0
-IDA0OjUxOjQ5UE0gKzAwMDAsIFNoYXduIEx1IChzaGF3bHUpIHdyb3RlOg0KICAgID4gPk9uIDUv
-MzEvMTgsIDg6MTggQU0sICJiZmllbGRzQGZpZWxkc2VzLm9yZyIgPGJmaWVsZHNAZmllbGRzZXMu
-b3JnPiB3cm90ZToNCiAgICA+ICA+ICA+IE9uZSBjYXNlIGlzIGludm9sdmVkIHdpdGggIGNyb3Nz
-IG1vdW50ZWQgbmZzIGZyb20gZGlmZmVyZW50IGhvc3QuDQogICAgPiAgICAgDQogICAgPiAgPiAg
-Tm90ZTogaW4gdGhlb3J5IEkgdGhpbmsgdGhlcmUgYXJlIHNvbWUgZGVhZGxvY2tzIHBvc3NpYmxl
-IGlmIGNsaWVudCBhbmQNCiAgICA+ICA+ICAgc2VydmVyIG1vdW50IGVhY2ggb3RoZXIuICAoRWFj
-aCBob3N0IGNvdWxkIGJlIHdhaXRpbmcgb24gdGhlIG90aGVyIG9uZQ0KICAgID4gID4gICB0byBw
-cm9jZXNzIHdyaXRlcyBiZWZvcmUgaXQgY2FuIGZyZWUgbWVtb3J5IHRoYXQgaXQgbmVlZHMgdG8g
-bWFrZQ0KICAgID4gID4gICBwcm9ncmVzcy4pDQogICAgPiANCiAgICA+IFllcy4gIEkgaG9wZSBh
-Z2dyZXNzaXZlIHVtb3VudCAgd2lsbCAgaGVscCBieSBzZXR0aW5nIGEgdmVyeSBzaG9ydCBncmFj
-ZSBwZXJpb2QgYW5kIHRpbWVvdXQgYmVmb3JlIHVtb3VudC4NCiAgICANCiAgICBObywgdGhlIGRl
-YWRsb2NrIGlzbid0IGFuIHVubW91bnRpbmcgcHJvYmxlbSwgaXQncyBhIHByb2JsZW0gdGhhdCBj
-b3VsZA0KICAgIGhhcHBlbiBkdXJpbmcgbm9ybWFsIG9wZXJhdGlvbi4gIEkgZG9uJ3Qga25vdyBp
-ZiBpdCdzIGVhc3kgdG8gcmVwcm9kdWNlLg0KICAgIFlvdSdkIHByb2JhYmx5IG5lZWQgb25lIG9y
-IGJvdGggaG9zdHMgdG8gYmUgd3JpdGluZyB0byBORlMgdmVyeSBxdWlja2x5Lg0KICAgIA0KICAg
-IC0tYi4NCiAgICANCg0K
+On Wed, May 30, 2018 at 02:05:34PM -0400, Trond Myklebust wrote:
+> This patchset is something we've been sitting on for a couple of years
+> in order to allow it to mature. It was mainly developed by Fred Isaman
+> while he was working for Primary Data, but we've had a few bugfixes
+> come in since then.
+> The main reason for delaying the upstream merge was to ensure that
+> adding layoutget to the OPEN compound was safe (does not cause existing
+> layouts to be automatically revoked) and that it gives us a real
+> performance benefit.
+
+Do you have any of the performance data?
+
+Or just a rough summary explaining when it helps most and by how much?
+
+--b.
+
+> 
+> Fred Isaman (14):
+>   pnfs: Remove redundant assignment from nfs4_proc_layoutget().
+>   pnfs: Store return value of decode_layoutget for later processing
+>   NFS4: move ctx into nfs4_run_open_task
+>   pnfs: Add layout driver flag PNFS_LAYOUTGET_ON_OPEN
+>   pnfs: refactor send_layoutget
+>   pnfs: move allocations out of nfs4_proc_layoutget
+>   pnfs: Add conditional encode/decode of LAYOUTGET within OPEN compound
+>   pnfs: Move nfs4_opendata into nfs4_fs.h
+>   pnfs: Change pnfs_alloc_init_layoutget_args call signature
+>   pnfs: Add LAYOUTGET to OPEN of a new file
+>   pnfs: Add LAYOUTGET to OPEN of an existing file
+>   pnfs: Stop attempting LAYOUTGET on OPEN on failure
+>   pnfs: Add barrier to prevent lgopen using LAYOUTGET during recall
+>   pnfs: Fix manipulation of NFS_LAYOUT_FIRST_LAYOUTGET
+> 
+> Trond Myklebust (5):
+>   NFSv4/pnfs: Ensure pnfs_parse_lgopen() won't try to parse
+>     uninitialised data
+>   NFSv4/pnfs: Don't switch off layoutget-on-open for transient errors
+>   pNFS: Don't send LAYOUTGET on OPEN for read, if we already have cached
+>     data
+>   pnfs: Don't call commit on failed layoutget-on-open
+>   pnfs: Don't release the sequence slot until we've processed layoutget
+>     on open
+> 
+>  fs/nfs/callback_proc.c                 |   2 +
+>  fs/nfs/flexfilelayout/flexfilelayout.c |   1 +
+>  fs/nfs/nfs4_fs.h                       |  25 +++
+>  fs/nfs/nfs4proc.c                      |  97 +++++----
+>  fs/nfs/nfs4state.c                     |   8 +
+>  fs/nfs/nfs4xdr.c                       |  65 +++++-
+>  fs/nfs/pnfs.c                          | 266 +++++++++++++++++++++----
+>  fs/nfs/pnfs.h                          |  28 ++-
+>  include/linux/nfs_fs_sb.h              |   2 +
+>  include/linux/nfs_xdr.h                |   4 +
+>  10 files changed, 398 insertions(+), 100 deletions(-)
+> 
+> -- 
+> 2.17.0
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
