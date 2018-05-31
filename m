@@ -1,60 +1,144 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yw0-f194.google.com ([209.85.161.194]:33286 "EHLO
-        mail-yw0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1755562AbeEaQLK (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 31 May 2018 12:11:10 -0400
-Date: Thu, 31 May 2018 09:11:07 -0700
-From: Tejun Heo <tj@kernel.org>
-To: Casey Schaufler <casey@schaufler-ca.com>
-Cc: CHANDAN VN <chandan.vn@samsung.com>, gregkh@linuxfoundation.org,
-        bfields@fieldses.org, jlayton@kernel.org,
-        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        cpgs@samsung.com, sireesha.t@samsung.com,
-        Chris Wright <chrisw@sous-sol.org>,
-        linux-security-module@vger.kernel.org
-Subject: Re: [PATCH 1/1] Fix memory leak in kernfs_security_xattr_set and
- kernfs_security_xattr_set
-Message-ID: <20180531161107.GV1351649@devbig577.frc2.facebook.com>
-References: <CGME20180531092848epcas1p24b638ccd6da00f1e039bdb64de7e1a5b@epcas1p2.samsung.com>
- <1527758911-18610-1-git-send-email-chandan.vn@samsung.com>
- <20180531153943.GR1351649@devbig577.frc2.facebook.com>
- <4f00f9ae-3302-83b9-c083-d21ade380eb2@schaufler-ca.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4f00f9ae-3302-83b9-c083-d21ade380eb2@schaufler-ca.com>
+Received: from userp2130.oracle.com ([156.151.31.86]:33638 "EHLO
+        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1755609AbeEaQOi (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 31 May 2018 12:14:38 -0400
+Content-Type: text/plain;
+        charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 11.3 \(3445.6.18\))
+Subject: Re: nfs-utils-2.3.2: glitch crashes build
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <965f2a16-dc1e-39e0-80f8-f55166a5106e@RedHat.com>
+Date: Thu, 31 May 2018 12:14:17 -0400
+Cc: gabriele balducci <balducci@units.it>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <83B1E5B4-6B7E-47B6-965D-4C49BEA15C8F@oracle.com>
+References: <11745.1527438384@dschgrazlin2.units.it>
+ <965f2a16-dc1e-39e0-80f8-f55166a5106e@RedHat.com>
+To: Steve Dickson <SteveD@RedHat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, May 31, 2018 at 09:04:25AM -0700, Casey Schaufler wrote:
-> On 5/31/2018 8:39 AM, Tejun Heo wrote:
-> > (cc'ing more security folks and copying whole body)
-> >
-> > So, I'm sure the patch fixes the memory leak but API wise it looks
-> > super confusing.  Can security folks chime in here?  Is this the right
-> > fix?
-> 
-> security_inode_getsecctx() provides a security context. Technically,
-> this is a data blob, although both provider provide a null terminated
-> string. security_inode_getsecurity(), on the other hand, provides a
-> string to match an attribute name. The former releases the security
-> context with security_release_secctx(), where the later releases the
-> string with kfree().
-> 
-> When the Smack hook smack_inode_getsecctx() was added in 2009
-> for use by labeled NFS the alloc value passed to
-> smack_inode_getsecurity() was set incorrectly. This wasn't a
-> major issue, since labeled NFS is a fringe case. When kernfs
-> started using the hook, it became the issue you discovered.
-> 
-> The reason that we have all this confusion is that SELinux
-> generates security contexts as needed, while Smack keeps them
-> around all the time. Releasing an SELinux context frees memory,
-> while releasing a Smack context is a null operation.
 
-Any chance this detail can be hidden behind security api?  This looks
-pretty error-prone, no?
 
-Thanks.
+> On May 31, 2018, at 11:13 AM, Steve Dickson <SteveD@RedHat.com> wrote:
+>=20
+> Hello gabriele
+>=20
+> I wonder why I am not seeing these warnings...=20
 
--- 
-tejun
+fwiw, upstream nfs-utils no longer builds on RHEL 7 latest.
+The recent commit that turned some compiler warnings into
+errors causes a bunch of build failures on that platform.
+
+In particular, %m is not portable, and it is used all over
+in xlog, printf, and scanf formatting strings.
+
+
+> Thank you very much for the patch... Would you
+> mind if I added a=20
+>   Signed-off-by: gabriele balducci <balducci@units.it>
+>=20
+> to the official patch?=20
+>=20
+> steved.
+> On 05/27/2018 12:26 PM, gabriele balducci wrote:
+>> hello
+>>=20
+>> building 2.3.2 fails with:
+>>=20
+>>  mountd.c:706:3: note: 'sprintf' output between 6 and 16 bytes into a =
+destination of size 10
+>>     sprintf(tag, "vers%d", vers);
+>>     ^~~~~~~~~~~~~~~~~~~~~~~~~~~~
+>>  cc1: some warnings being treated as errors
+>>=20
+>> and
+>>=20
+>>  nfsd.c:102:3: note: 'sprintf' output between 6 and 16 bytes into a =
+destination of size 10
+>>     sprintf(tag, "vers%d", i);
+>>     ^~~~~~~~~~~~~~~~~~~~~~~~~
+>>  cc1: some warnings being treated as errors
+>>=20
+>> I guess the reason is =
+(https://marc.info/?l=3Dlinux-nfs&m=3D152718306728854&w=3D2):
+>>=20
+>>    * Most compile warnings are now fatal errors.
+>>=20
+>> and (configure):
+>>=20
+>>  checking whether CC supports -Werror=3Dformat-overflow=3D2... yes
+>>=20
+>> This fixes everything for me:
+>>=20
+>>  diff -c utils/mountd/mountd.c.FIX_VAR_DIM utils/mountd/mountd.c
+>>  *** utils/mountd/mountd.c.FIX_VAR_DIM	Sun May 27 18:16:46 2018
+>>  --- utils/mountd/mountd.c	Sun May 27 18:16:46 2018
+>>  ***************
+>>  *** 702,708 ****
+>>          else
+>>                  NFSCTL_TCPUNSET(_rpcprotobits);
+>>          for (vers =3D 2; vers <=3D 4; vers++) {
+>>  ! 		char tag[10];
+>>                  sprintf(tag, "vers%d", vers);
+>>                  if (conf_get_bool("nfsd", tag, =
+NFSCTL_VERISSET(nfs_version, vers)))
+>>                          NFSCTL_VERSET(nfs_version, vers);
+>>  --- 702,708 ----
+>>          else
+>>                  NFSCTL_TCPUNSET(_rpcprotobits);
+>>          for (vers =3D 2; vers <=3D 4; vers++) {
+>>  ! 		char tag[20];
+>>                  sprintf(tag, "vers%d", vers);
+>>                  if (conf_get_bool("nfsd", tag, =
+NFSCTL_VERISSET(nfs_version, vers)))
+>>                          NFSCTL_VERSET(nfs_version, vers);
+>>=20
+>>=20
+>>=20
+>>  diff -c utils/nfsd/nfsd.c.FIX_VAR_DIM utils/nfsd/nfsd.c
+>>  *** utils/nfsd/nfsd.c.FIX_VAR_DIM	Sun May 27 18:16:46 2018
+>>  --- utils/nfsd/nfsd.c	Sun May 27 18:16:46 2018
+>>  ***************
+>>  *** 98,104 ****
+>>          else
+>>                  NFSCTL_TCPUNSET(protobits);
+>>          for (i =3D 2; i <=3D 4; i++) {
+>>  ! 		char tag[10];
+>>                  sprintf(tag, "vers%d", i);
+>>                  if (conf_get_bool("nfsd", tag, =
+NFSCTL_VERISSET(versbits, i)))
+>>                          NFSCTL_VERSET(versbits, i);
+>>  --- 98,104 ----
+>>          else
+>>                  NFSCTL_TCPUNSET(protobits);
+>>          for (i =3D 2; i <=3D 4; i++) {
+>>  ! 		char tag[20];
+>>                  sprintf(tag, "vers%d", i);
+>>                  if (conf_get_bool("nfsd", tag, =
+NFSCTL_VERISSET(versbits, i)))
+>>                          NFSCTL_VERSET(versbits, i);
+>>=20
+>>=20
+>> I thought the maintainers might be interested in fixing upstream
+>>=20
+>> ciao
+>> gabriele
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
+in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>=20
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
+in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+--
+Chuck Lever
+
+
+
