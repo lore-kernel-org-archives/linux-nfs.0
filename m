@@ -1,75 +1,79 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-oi0-f66.google.com ([209.85.218.66]:35731 "EHLO
-        mail-oi0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1754273AbeEaKAD (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 31 May 2018 06:00:03 -0400
-Received: by mail-oi0-f66.google.com with SMTP id e8-v6so816272oii.2
-        for <linux-nfs@vger.kernel.org>; Thu, 31 May 2018 03:00:03 -0700 (PDT)
+Received: from mail-co1nam03on0123.outbound.protection.outlook.com ([104.47.40.123]:34048
+        "EHLO NAM03-CO1-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1754197AbeEaMk7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 31 May 2018 08:40:59 -0400
+From: Trond Myklebust <trondmy@hammerspace.com>
+To: "aglo@umich.edu" <aglo@umich.edu>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 04/19] pnfs: Add layout driver flag PNFS_LAYOUTGET_ON_OPEN
+Date: Thu, 31 May 2018 12:40:56 +0000
+Message-ID: <3a4eafca05bfa82c7993990681f5184c0c3d09d3.camel@hammerspace.com>
+References: <20180530180553.38769-1-trond.myklebust@hammerspace.com>
+         <20180530180553.38769-2-trond.myklebust@hammerspace.com>
+         <20180530180553.38769-3-trond.myklebust@hammerspace.com>
+         <20180530180553.38769-4-trond.myklebust@hammerspace.com>
+         <20180530180553.38769-5-trond.myklebust@hammerspace.com>
+         <CAN-5tyGKCoRKLW2_KVP8_eMx0mqC7U2yEYNr=jj5_ybM+vaL6Q@mail.gmail.com>
+In-Reply-To: <CAN-5tyGKCoRKLW2_KVP8_eMx0mqC7U2yEYNr=jj5_ybM+vaL6Q@mail.gmail.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-In-Reply-To: <20180531004554.GA29116@fieldses.org>
-References: <f74fae81-d1bc-1c0e-7b41-69502bd7c489@suse.de> <f2af62fdf8a5bb185ec75cff118178d58b28ceb4.camel@hammerspace.com>
- <2cf94c6b-e819-79af-4ac9-3b19d26dc6d9@suse.de> <75266c983a03f6dbfd5d1a39c94fa6d56a1a8a22.camel@hammerspace.com>
- <a0617bb0-b7a5-fab2-c72c-595e005bd8f7@suse.de> <20180531004554.GA29116@fieldses.org>
-From: Miklos Szeredi <miklos@szeredi.hu>
-Date: Thu, 31 May 2018 12:00:01 +0200
-Message-ID: <CAJfpegtoLpwo6aA9=uF72UDaKvv_Q3bUbv778VwnSDa72yO9Mw@mail.gmail.com>
-Subject: Re: nfs4_acl restricts copy_up in overlayfs
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Goldwyn Rodrigues <rgoldwyn@suse.de>,
-        Trond Myklebust <trondmy@hammerspace.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-unionfs@vger.kernel.org" <linux-unionfs@vger.kernel.org>,
-        Andreas Gruenbacher <agruenba@redhat.com>
-Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, May 31, 2018 at 2:45 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> On Wed, May 30, 2018 at 05:33:11AM -0500, Goldwyn Rodrigues wrote:
->> I am not trying to override the security. I am trying to detect
->> duplication of security information. The common case of NFS
->> communication does not require the additional security parameters
->> (doesn't mean it is not required). So my question is: is it possible to
->> detect at the client that nfs4_acl is a duplicate of information which
->> can be and is represented by inode alone. If yes, can it be suppressed
->> by the client.
->
-> No, that's not possible.
->
-> The user's identity could be mapped in various ways.  You've got no way
-> to know whether root squashing is in effect, for example.  Or to know
-> what the user@EXAMPLE.COM krb5 identity that you're running as might map
-> to on the server.
->
-> So it's hard to even tell whether a given user matches the file's owner
-> or group.  So even the mode bits are kind of meaningless to the client.
-
-The basic security model for overlayfs is that underlying filesystems
-are just storage.  Access to these filesystems is done with the
-capabilities of the task that created the overlay instance with
-mount(2).  That capability set is saved and used for any access to
-underlying storage.
-
-Access to overlayfs itself is controlled by metadata in the file
-(mode, uid, gid, posix_acl, security xattr, etc...).
-
-So if one of the layers is NFS, the permissions in the server are only
-checked against the mounter's creds (usually superuser).  Access
-checks are not performed by the server on behalf of the task accessing
-the overlay.    This means, that overlayfs could give access to an NFS
-file, where access on the NFS mount would be denied.  This needs to be
-understood by the admin mounting the overlay.
-
-So how to handle nfs4_acls with this model?
-
-We could just ignore them and this can be achieved with mounting the
-NFS filesystem with "noacl".  I'm not against specifically ignoring
-nfs4_acl in overlayfs by default, as that seems to be the simplest
-solution to this problem and fits the overlayfs security model.
-Later, if we want to make use of this attribute to check access (on
-the overlay, not in the NFS server), we can add an option to enable
-this.  But AFAICS that one requires richacl's to make it upstream at
-least.
-
-Thanks,
-Miklos
+T24gV2VkLCAyMDE4LTA1LTMwIGF0IDE2OjEwIC0wNDAwLCBPbGdhIEtvcm5pZXZza2FpYSB3cm90
+ZToNCj4gSGkgVHJvbmQsDQo+IA0KPiBUaGlzIGZlYXR1cmUgaXMgZW5hYmxlZCBmb3IgRmxleGZp
+bGVzIGxheW91dCB0eXBlLiBJcyB0aGVyZSBhIHJlYXNvbg0KPiB0aGF0IGl0IHNob3VsZG4ndCBi
+ZSBnZW5lcmljIGZvciBhbGwgcG5mcz8NCg0KWWVzIGFuZCBuby4gSXQgcmVsaWVzIG9uIHVzZSBv
+ZiB0aGUgImN1cnJlbnQgc3RhdGVpZCIgZmVhdHVyZSwgd2hpY2gNCmhhcyBub3QgcHJldmlvdXNs
+eSBzZWVuIGhlYXZ5IHVzZSwgYW5kIHRoZSBhYmlsaXR5IG9mIHRoZSBwTkZTIHNlcnZlcg0KdG8g
+aGFuZGxlIGxheW91dGdldCByYWNlcyBjb3JyZWN0bHkgKHdoZW4gdGhlIGNsaWVudCBzZW5kcyAy
+IGxheW91dGdldA0KcmVxdWVzdHMgaW4gcGFyYWxsZWwsIGJvdGggdXNpbmcgdGhlIG9wZW4gc3Rh
+dGVpZCkuIElmIHRoZSBzZXJ2ZXIgaXMNCmludmFsaWRhdGluZyBvbmUgb2YgdGhlIHJlc3VsdGlu
+ZyBsYXlvdXQgc3RhdGVpZHMgYXMgaXQgc2hvdWxkLCB0aGVuIGl0DQpoYWQgYmV0dGVyIGVpdGhl
+ciBoYXZlIGEgZ29vZCBmZW5jaW5nIG1lY2hhbmlzbSwgb3IgaXQgbXVzdCByZWNhbGwgdGhhdA0K
+bGF5b3V0IHN0YXRlaWQgYmVmb3JlIGhhbmRpbmcgb3V0IHRoZSBzZWNvbmQgbGF5b3V0Lg0KDQpG
+b3IgdGhhdCByZWFzb24sIEknZCBsaWtlIHRvIGVuc3VyZSB0aGF0IHdlIGF0IGxlYXN0IHRlc3Qg
+dGhlIGV4aXN0aW5nDQpwTkZTIGltcGxlbWVudGF0aW9ucyB0byBlbnN1cmUgd2UgZG9uJ3Qgc2Vl
+IHJlZ3Jlc3Npb25zIGJlZm9yZSB3ZQ0KZW5hYmxlIHRoZSBmZWF0dXJlLg0KDQoNCj4gT24gV2Vk
+LCBNYXkgMzAsIDIwMTggYXQgMjowNSBQTSwgVHJvbmQgTXlrbGVidXN0IDx0cm9uZG15QGdtYWls
+LmNvbT4NCj4gd3JvdGU6DQo+ID4gRnJvbTogRnJlZCBJc2FtYW4gPGZyZWQuaXNhbWFuQGdtYWls
+LmNvbT4NCj4gPiANCj4gPiBEcml2ZXIgY2FuIHNldCBmbGFnIHRvIGFsbG93IExBWU9VVEdFVCB0
+byBiZSBzZW50IHdpdGggT1BFTi4NCj4gPiANCj4gPiBTaWduZWQtb2ZmLWJ5OiBGcmVkIElzYW1h
+biA8ZnJlZC5pc2FtYW5AZ21haWwuY29tPg0KPiA+IFNpZ25lZC1vZmYtYnk6IFRyb25kIE15a2xl
+YnVzdCA8dHJvbmQubXlrbGVidXN0QGhhbW1lcnNwYWNlLmNvbT4NCj4gPiAtLS0NCj4gPiAgZnMv
+bmZzL2ZsZXhmaWxlbGF5b3V0L2ZsZXhmaWxlbGF5b3V0LmMgfCAxICsNCj4gPiAgZnMvbmZzL3Bu
+ZnMuaCAgICAgICAgICAgICAgICAgICAgICAgICAgfCAxICsNCj4gPiAgMiBmaWxlcyBjaGFuZ2Vk
+LCAyIGluc2VydGlvbnMoKykNCj4gPiANCj4gPiBkaWZmIC0tZ2l0IGEvZnMvbmZzL2ZsZXhmaWxl
+bGF5b3V0L2ZsZXhmaWxlbGF5b3V0LmMNCj4gPiBiL2ZzL25mcy9mbGV4ZmlsZWxheW91dC9mbGV4
+ZmlsZWxheW91dC5jDQo+ID4gaW5kZXggYzc1YWQ5ODJiY2ZjLi4zYWUwMzhkOWMyOTIgMTAwNjQ0
+DQo+ID4gLS0tIGEvZnMvbmZzL2ZsZXhmaWxlbGF5b3V0L2ZsZXhmaWxlbGF5b3V0LmMNCj4gPiAr
+KysgYi9mcy9uZnMvZmxleGZpbGVsYXlvdXQvZmxleGZpbGVsYXlvdXQuYw0KPiA+IEBAIC0yMzQ3
+LDYgKzIzNDcsNyBAQCBzdGF0aWMgc3RydWN0IHBuZnNfbGF5b3V0ZHJpdmVyX3R5cGUNCj4gPiBm
+bGV4ZmlsZWxheW91dF90eXBlID0gew0KPiA+ICAgICAgICAgLmlkICAgICAgICAgICAgICAgICAg
+ICAgPSBMQVlPVVRfRkxFWF9GSUxFUywNCj4gPiAgICAgICAgIC5uYW1lICAgICAgICAgICAgICAg
+ICAgID0gIkxBWU9VVF9GTEVYX0ZJTEVTIiwNCj4gPiAgICAgICAgIC5vd25lciAgICAgICAgICAg
+ICAgICAgID0gVEhJU19NT0RVTEUsDQo+ID4gKyAgICAgICAuZmxhZ3MgICAgICAgICAgICAgICAg
+ICA9IFBORlNfTEFZT1VUR0VUX09OX09QRU4sDQo+ID4gICAgICAgICAuc2V0X2xheW91dGRyaXZl
+ciAgICAgICA9IGZmX2xheW91dF9zZXRfbGF5b3V0ZHJpdmVyLA0KPiA+ICAgICAgICAgLmFsbG9j
+X2xheW91dF9oZHIgICAgICAgPSBmZl9sYXlvdXRfYWxsb2NfbGF5b3V0X2hkciwNCj4gPiAgICAg
+ICAgIC5mcmVlX2xheW91dF9oZHIgICAgICAgID0gZmZfbGF5b3V0X2ZyZWVfbGF5b3V0X2hkciwN
+Cj4gPiBkaWZmIC0tZ2l0IGEvZnMvbmZzL3BuZnMuaCBiL2ZzL25mcy9wbmZzLmgNCj4gPiBpbmRl
+eCBkYWY2Y2JmNWMxNWYuLmY3MWE1NWYxMWI5NyAxMDA2NDQNCj4gPiAtLS0gYS9mcy9uZnMvcG5m
+cy5oDQo+ID4gKysrIGIvZnMvbmZzL3BuZnMuaA0KPiA+IEBAIC0xMTAsNiArMTEwLDcgQEAgZW51
+bSBsYXlvdXRkcml2ZXJfcG9saWN5X2ZsYWdzIHsNCj4gPiAgICAgICAgIFBORlNfTEFZT1VUUkVU
+X09OX1NFVEFUVFIgICAgICAgPSAxIDw8IDAsDQo+ID4gICAgICAgICBQTkZTX0xBWU9VVFJFVF9P
+Tl9FUlJPUiAgICAgICAgID0gMSA8PCAxLA0KPiA+ICAgICAgICAgUE5GU19SRUFEX1dIT0xFX1BB
+R0UgICAgICAgICAgICA9IDEgPDwgMiwNCj4gPiArICAgICAgIFBORlNfTEFZT1VUR0VUX09OX09Q
+RU4gICAgICAgICAgPSAxIDw8IDMsDQo+ID4gIH07DQo+ID4gDQo+ID4gIHN0cnVjdCBuZnM0X2Rl
+dmljZWlkX25vZGU7DQo+ID4gLS0NCj4gPiAyLjE3LjANCj4gPiANCj4gPiAtLQ0KPiA+IFRvIHVu
+c3Vic2NyaWJlIGZyb20gdGhpcyBsaXN0OiBzZW5kIHRoZSBsaW5lICJ1bnN1YnNjcmliZSBsaW51
+eC0NCj4gPiBuZnMiIGluDQo+ID4gdGhlIGJvZHkgb2YgYSBtZXNzYWdlIHRvIG1ham9yZG9tb0B2
+Z2VyLmtlcm5lbC5vcmcNCj4gPiBNb3JlIG1ham9yZG9tbyBpbmZvIGF0ICBodHRwOi8vdmdlci5r
+ZXJuZWwub3JnL21ham9yZG9tby1pbmZvLmh0bWwNCj4gDQo+IC0tDQo+IFRvIHVuc3Vic2NyaWJl
+IGZyb20gdGhpcyBsaXN0OiBzZW5kIHRoZSBsaW5lICJ1bnN1YnNjcmliZSBsaW51eC1uZnMiDQo+
+IGluDQo+IHRoZSBib2R5IG9mIGEgbWVzc2FnZSB0byBtYWpvcmRvbW9Admdlci5rZXJuZWwub3Jn
+DQo+IE1vcmUgbWFqb3Jkb21vIGluZm8gYXQgIGh0dHA6Ly92Z2VyLmtlcm5lbC5vcmcvbWFqb3Jk
+b21vLWluZm8uaHRtbA0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFp
+bnRhaW5lciwgSGFtbWVyc3BhY2UNCnRyb25kLm15a2xlYnVzdEBoYW1tZXJzcGFjZS5jb20NCg0K
