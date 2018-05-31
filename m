@@ -1,66 +1,174 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcdn-iport-2.cisco.com ([173.37.86.73]:65527 "EHLO
-        rcdn-iport-2.cisco.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1755818AbeEaRBT (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 31 May 2018 13:01:19 -0400
-From: "Shawn Lu (shawlu)" <shawlu@cisco.com>
-To: "bfields@fieldses.org" <bfields@fieldses.org>
-CC: Joshua Watt <jpewhacker@gmail.com>,
-        "trond.myklebust@primarydata.com" <trond.myklebust@primarydata.com>,
-        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        "jlayton@poochiereds.net" <jlayton@poochiereds.net>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: Is "unmount -f"  worked as expected?
-Date: Thu, 31 May 2018 16:51:49 +0000
-Message-ID: <C8362635-4E93-4C96-9827-E241565D27DF@cisco.com>
-References: <8CC8F228-1A66-4A44-A23B-855E33F4D1D5@cisco.com>
- <0dae4862d6e5b754ba8f90a6391b6645fdf6889a.camel@gmail.com>
- <EE6D39C5-09BB-4133-9CF5-674038E1538F@cisco.com>
- <20180531151819.GC1298@fieldses.org>
-In-Reply-To: <20180531151819.GC1298@fieldses.org>
-Content-Type: text/plain; charset="utf-8"
+Received: from mx3-rdu2.redhat.com ([66.187.233.73]:57192 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1755660AbeEaRBv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 31 May 2018 13:01:51 -0400
+Subject: Re: nfs-utils-2.3.2: glitch crashes build
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: gabriele balducci <balducci@units.it>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+References: <11745.1527438384@dschgrazlin2.units.it>
+ <965f2a16-dc1e-39e0-80f8-f55166a5106e@RedHat.com>
+ <83B1E5B4-6B7E-47B6-965D-4C49BEA15C8F@oracle.com>
+ <5a7c1a19-9ca7-6f8e-5b5d-64324290cf79@RedHat.com>
+ <7653539C-F184-441F-A827-0F2F7F7C7FE5@oracle.com>
+From: Steve Dickson <SteveD@RedHat.com>
+Message-ID: <e4ad8b72-1165-619a-3e2d-815ed65112b1@RedHat.com>
+Date: Thu, 31 May 2018 13:01:50 -0400
 MIME-Version: 1.0
+In-Reply-To: <7653539C-F184-441F-A827-0F2F7F7C7FE5@oracle.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-DQoNCj5PbiA1LzMxLzE4LCA4OjE4IEFNLCAiYmZpZWxkc0BmaWVsZHNlcy5vcmciIDxiZmllbGRz
-QGZpZWxkc2VzLm9yZz4gd3JvdGU6DQoNCiA+ICBPbiBUaHUsIE1heSAzMSwgMjAxOCBhdCAwMzox
-NDo0NFBNICswMDAwLCBTaGF3biBMdSAoc2hhd2x1KSB3cm90ZToNCiA+ICAgPiAgVGhhbmtzIEpv
-c2h1YSBmb3IgZ3JlYXQgaGVscC4gICBGcm9tIGNvbnRleHQgcHJvdmlkZWQgYnkgam9zaHVhLCBJ
-IGFtDQogPiAgID4gIGJlbGlldmUgdGhhdCB0aGUgY29tbXVuaXR5IGlzIGZ1bGwgYXdhcmUgb2Yg
-dGhlIOKAnC1mIOKAnCBpc3N1ZSwgYnV0DQogPiAgID4gIHN0aWxsIHBlbmRpbmcgb24gc29sdXRp
-b24uIA0KID4gICA+IA0KID4gICA+ICBXb25kZXJpbmcgd2hldGhlciBjb21tdW5pdHkgaGF2ZSBj
-b25zZW5zdXMgeWV0IG9uIHdoYXQgc2hvdWxkIGJlIHRoZQ0KID4gICA+ICBjb3JyZWN0IGJlaGF2
-aW9yIGZvciDigJwgZm9yY2UgdW5tb3VudOKAnT8gIEkgaG9wZSBtYWludGFpbmVyIG9mIE5GUyBj
-YW4NCiA+ICAgPiAgZ2l2ZSBzb21lIGd1YXJkaWFuIGZvciBkaXJlY3Rpb24uDQogPiAgID4gDQog
-PiAgID4gTXkgdXNlIGNhc2UgaXMgYWxzbyBvbiBlbWJlZGRlZCBzeXN0ZW0gd2hlcmUgTkZTIHNl
-cnZlciBjYW4gZ28gb2ZmbGluZQ0KID4gICA+IHVuZXhwZWN0ZWQuIFdoYXQgSSBsb29rcyBmb3Ig
-aXMgc29tZXRoaW5nIHRoYXQgY2FuIGFnZ3Jlc3NpdmUgdW1vdW50DQogPiAgID4gTkZTIGluIHRp
-bWVseSBtYW5uZXIuICBEYXRhIGxvc3MgaXMgc2Vjb25kbHkgaW4gbXkgc2l0dWF0aW9uLg0KICAg
-IA0KID4gICBEdW1iIHF1ZXN0aW9uOiBpbiB0aGF0IGNhc2UsIHdoeSBub3QganVzdCBjdXQgcG93
-ZXI/DQoNCuKYuiB0aGlzIGlzIGJlc3QgZWZmb3J0LiAgd2Ugc3RpbGwgY2FyZSBhYm91dCBkYXRh
-IGxvc3MgYXQgbG9jYWwgbW91bnQuIEluIHNvbWUgY2FzZXMsIGRhdGEgbG9zcyBjYW7igJl0IGJl
-IGF2b2lkZWQgaWYgTkZTIGNsaWVudCBkb2VzbuKAmXQgd2FudCB0byBoYW5nIGluIHRoZXJlIHVu
-dGlsIHNlcnZlciByZWNvdmVyeS4gDQogICAgDQogPiAgPiBPbmUgY2FzZSBpcyBpbnZvbHZlZCB3
-aXRoICBjcm9zcyBtb3VudGVkIG5mcyBmcm9tIGRpZmZlcmVudCBob3N0Lg0KICAgIA0KID4gIE5v
-dGU6IGluIHRoZW9yeSBJIHRoaW5rIHRoZXJlIGFyZSBzb21lIGRlYWRsb2NrcyBwb3NzaWJsZSBp
-ZiBjbGllbnQgYW5kDQogPiAgIHNlcnZlciBtb3VudCBlYWNoIG90aGVyLiAgKEVhY2ggaG9zdCBj
-b3VsZCBiZSB3YWl0aW5nIG9uIHRoZSBvdGhlciBvbmUNCiA+ICAgdG8gcHJvY2VzcyB3cml0ZXMg
-YmVmb3JlIGl0IGNhbiBmcmVlIG1lbW9yeSB0aGF0IGl0IG5lZWRzIHRvIG1ha2UNCiA+ICAgcHJv
-Z3Jlc3MuKQ0KDQpZZXMuICBJIGhvcGUgYWdncmVzc2l2ZSB1bW91bnQgIHdpbGwgIGhlbHAgYnkg
-c2V0dGluZyBhIHZlcnkgc2hvcnQgZ3JhY2UgcGVyaW9kIGFuZCB0aW1lb3V0IGJlZm9yZSB1bW91
-bnQuDQoNCiAgICANCiA+ICAgLS1iLg0KICAgIA0KID4gICA+IEhlcmUsDQogPiAgID4gYm90aCBz
-ZXJ2ZXIgYW5kIGNsaWVudCB3aWxsIGJlICBzaHV0ZG93biBhdCBzYW1lIHRpbWUgb24gcmVib290
-LiAgTkZTDQogPiAgID4gY2xpZW50IHNpZGUgd2lsbCBzdHVjayBvbiBzaHV0ZG93biBmb3IgbG9u
-ZyB0aW1lIGlmIOKAnHVtb3VudCDigJNs4oCdICBpcw0KID4gICA+IHVzZWQgdG8gdW1vdW50IE5G
-Uy4NCiA+ICAgPiANCiA+ICAgPiBUaGUgcHJldmlvdXMgd29yayBkb25lIGJ5IEpvc2h1YSBhbmQg
-IE5laWwgQnJvd24gd2lsbCBkZWZpbml0ZWx5IGhlbHANCiA+ICAgPiB0byByZXNvbHZlIG15IHVz
-ZSBjYXNlIGlmIHBhdGNoIGNhbiBiZSB1cCBzdHJlYW1lZC4gIEhvcGUgbWFnaWMgd2lsbA0KID4g
-ICA+IGhhcHBlbiBzb29uIC4gDQogPiAgID4gDQogICAgPiBKdXN0IHdvbmRlcmluZyB3aGV0aGVy
-IGEga2VybmVsIGNvbmZpZ3VyZSAoZWcuDQogICAgPiBDT05GSUdfTkZTX0FHUlJFU1NJVkVfU0hV
-VERPV04pICBjYW4gYmUgYWRkZWQgdG8gZW5oYW5jZSDigJxmb3JjZQ0KICAgID4gdW1vdW50IOKA
-nCB0byBhY3QgbW9yZSBhZ2dyZXNzaXZlLiAgVGhpcyBmZWF0dXJlIHdpbGwgYmUgb2ZmIGJ5IGRl
-ZmF1bHQNCiAgICA+IHNvIHRoZSBhZG1pbiB1c2UgdG8gdGhlIOKAnHNvZnQg4oCcIGZvcmNlIG1v
-dW50IHdpbGwgZ2V0IHRoZSBzYW1lIGJlaGF2aW9yDQogICAgPiBhcyBiZWZvcmUuICBXaGVuIHRo
-ZSBmZWF0dXJlIGlzIHR1cm4gb24sICDigJx1bW91bnQg4oCTZuKAnSAgaXMgR3VhcmFudGVlIHRv
-DQogICAgPiBzdWNjZWVkLiAgDQogICAgDQoNCg==
+
+
+On 05/31/2018 12:48 PM, Chuck Lever wrote:
+> 
+> 
+>> On May 31, 2018, at 12:40 PM, Steve Dickson <SteveD@RedHat.com> wrote:
+>>
+>>
+>>
+>> On 05/31/2018 12:14 PM, Chuck Lever wrote:
+>>>
+>>>
+>>>> On May 31, 2018, at 11:13 AM, Steve Dickson <SteveD@RedHat.com> wrote:
+>>>>
+>>>> Hello gabriele
+>>>>
+>>>> I wonder why I am not seeing these warnings... 
+>>>
+>>> fwiw, upstream nfs-utils no longer builds on RHEL 7 latest.
+>>> The recent commit that turned some compiler warnings into
+>>> errors causes a bunch of build failures on that platform.
+>> Yeah I know....
+> 
+> Cool, this was just an fyi.
+Question what gcc are you using? 
+
+The one I'm using 'gcc-4.8.5 does not support
+checking whether CC supports -Werror=format-overflow=2... no
+checking whether CC supports -Werror=int-conversion... no
+checking whether CC supports -Werror=incompatible-pointer-types... no
+checking whether CC supports -Werror=misleading-indentation... no
+
+steved.
+> 
+> 
+>> It was suggested to me by some glibc
+>> guys.... I figured there would be some pain.... 
+>>
+>> I'll looking the rhel7 issue.. 
+>>
+>> steved.
+>>
+>>>
+>>> In particular, %m is not portable, and it is used all over
+>>> in xlog, printf, and scanf formatting strings.
+>>>
+>>>
+>>>> Thank you very much for the patch... Would you
+>>>> mind if I added a 
+>>>>  Signed-off-by: gabriele balducci <balducci@units.it>
+>>>>
+>>>> to the official patch? 
+>>>>
+>>>> steved.
+>>>> On 05/27/2018 12:26 PM, gabriele balducci wrote:
+>>>>> hello
+>>>>>
+>>>>> building 2.3.2 fails with:
+>>>>>
+>>>>> mountd.c:706:3: note: 'sprintf' output between 6 and 16 bytes into a destination of size 10
+>>>>>    sprintf(tag, "vers%d", vers);
+>>>>>    ^~~~~~~~~~~~~~~~~~~~~~~~~~~~
+>>>>> cc1: some warnings being treated as errors
+>>>>>
+>>>>> and
+>>>>>
+>>>>> nfsd.c:102:3: note: 'sprintf' output between 6 and 16 bytes into a destination of size 10
+>>>>>    sprintf(tag, "vers%d", i);
+>>>>>    ^~~~~~~~~~~~~~~~~~~~~~~~~
+>>>>> cc1: some warnings being treated as errors
+>>>>>
+>>>>> I guess the reason is (https://marc.info/?l=linux-nfs&m=152718306728854&w=2):
+>>>>>
+>>>>>   * Most compile warnings are now fatal errors.
+>>>>>
+>>>>> and (configure):
+>>>>>
+>>>>> checking whether CC supports -Werror=format-overflow=2... yes
+>>>>>
+>>>>> This fixes everything for me:
+>>>>>
+>>>>> diff -c utils/mountd/mountd.c.FIX_VAR_DIM utils/mountd/mountd.c
+>>>>> *** utils/mountd/mountd.c.FIX_VAR_DIM	Sun May 27 18:16:46 2018
+>>>>> --- utils/mountd/mountd.c	Sun May 27 18:16:46 2018
+>>>>> ***************
+>>>>> *** 702,708 ****
+>>>>>         else
+>>>>>                 NFSCTL_TCPUNSET(_rpcprotobits);
+>>>>>         for (vers = 2; vers <= 4; vers++) {
+>>>>> ! 		char tag[10];
+>>>>>                 sprintf(tag, "vers%d", vers);
+>>>>>                 if (conf_get_bool("nfsd", tag, NFSCTL_VERISSET(nfs_version, vers)))
+>>>>>                         NFSCTL_VERSET(nfs_version, vers);
+>>>>> --- 702,708 ----
+>>>>>         else
+>>>>>                 NFSCTL_TCPUNSET(_rpcprotobits);
+>>>>>         for (vers = 2; vers <= 4; vers++) {
+>>>>> ! 		char tag[20];
+>>>>>                 sprintf(tag, "vers%d", vers);
+>>>>>                 if (conf_get_bool("nfsd", tag, NFSCTL_VERISSET(nfs_version, vers)))
+>>>>>                         NFSCTL_VERSET(nfs_version, vers);
+>>>>>
+>>>>>
+>>>>>
+>>>>> diff -c utils/nfsd/nfsd.c.FIX_VAR_DIM utils/nfsd/nfsd.c
+>>>>> *** utils/nfsd/nfsd.c.FIX_VAR_DIM	Sun May 27 18:16:46 2018
+>>>>> --- utils/nfsd/nfsd.c	Sun May 27 18:16:46 2018
+>>>>> ***************
+>>>>> *** 98,104 ****
+>>>>>         else
+>>>>>                 NFSCTL_TCPUNSET(protobits);
+>>>>>         for (i = 2; i <= 4; i++) {
+>>>>> ! 		char tag[10];
+>>>>>                 sprintf(tag, "vers%d", i);
+>>>>>                 if (conf_get_bool("nfsd", tag, NFSCTL_VERISSET(versbits, i)))
+>>>>>                         NFSCTL_VERSET(versbits, i);
+>>>>> --- 98,104 ----
+>>>>>         else
+>>>>>                 NFSCTL_TCPUNSET(protobits);
+>>>>>         for (i = 2; i <= 4; i++) {
+>>>>> ! 		char tag[20];
+>>>>>                 sprintf(tag, "vers%d", i);
+>>>>>                 if (conf_get_bool("nfsd", tag, NFSCTL_VERISSET(versbits, i)))
+>>>>>                         NFSCTL_VERSET(versbits, i);
+>>>>>
+>>>>>
+>>>>> I thought the maintainers might be interested in fixing upstream
+>>>>>
+>>>>> ciao
+>>>>> gabriele
+>>>>> --
+>>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>>>> the body of a message to majordomo@vger.kernel.org
+>>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>>>>
+>>>> --
+>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>>> the body of a message to majordomo@vger.kernel.org
+>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>>
+>>> --
+>>> Chuck Lever
+>>>
+>>>
+>>>
+> 
+> --
+> Chuck Lever
+> 
+> 
+> 
