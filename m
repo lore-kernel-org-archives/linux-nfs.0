@@ -1,40 +1,50 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from sonic301-27.consmr.mail.gq1.yahoo.com ([98.137.64.153]:42083
-        "EHLO sonic301-27.consmr.mail.gq1.yahoo.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1755466AbeEaP0b (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 31 May 2018 11:26:31 -0400
+Received: from mail-yw0-f194.google.com ([209.85.161.194]:42355 "EHLO
+        mail-yw0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1755417AbeEaPjr (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 31 May 2018 11:39:47 -0400
+Date: Thu, 31 May 2018 08:39:43 -0700
+From: Tejun Heo <tj@kernel.org>
+To: CHANDAN VN <chandan.vn@samsung.com>
+Cc: gregkh@linuxfoundation.org, bfields@fieldses.org,
+        jlayton@kernel.org, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, casey@schaufler-ca.com,
+        cpgs@samsung.com, sireesha.t@samsung.com,
+        Chris Wright <chrisw@sous-sol.org>,
+        linux-security-module@vger.kernel.org
 Subject: Re: [PATCH 1/1] Fix memory leak in kernfs_security_xattr_set and
  kernfs_security_xattr_set
-To: CHANDAN VN <chandan.vn@samsung.com>, gregkh@linuxfoundation.org,
-        tj@kernel.org, bfields@fieldses.org, jlayton@kernel.org,
-        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
-Cc: cpgs@samsung.com, sireesha.t@samsung.com,
-        Casey Schaufler <casey@schaufler-ca.com>
+Message-ID: <20180531153943.GR1351649@devbig577.frc2.facebook.com>
 References: <CGME20180531092848epcas1p24b638ccd6da00f1e039bdb64de7e1a5b@epcas1p2.samsung.com>
  <1527758911-18610-1-git-send-email-chandan.vn@samsung.com>
-From: Casey Schaufler <casey@schaufler-ca.com>
-Message-ID: <cae274dd-e9e5-39b1-8b7b-aec1b3e76fe9@schaufler-ca.com>
-Date: Thu, 31 May 2018 08:26:23 -0700
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
 In-Reply-To: <1527758911-18610-1-git-send-email-chandan.vn@samsung.com>
-Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 5/31/2018 2:28 AM, CHANDAN VN wrote:
+(cc'ing more security folks and copying whole body)
+
+So, I'm sure the patch fixes the memory leak but API wise it looks
+super confusing.  Can security folks chime in here?  Is this the right
+fix?
+
+Thanks.
+
+On Thu, May 31, 2018 at 02:58:31PM +0530, CHANDAN VN wrote:
 > From: "sireesha.t" <sireesha.t@samsung.com>
->
+> 
 > Leak is caused because smack_inode_getsecurity() is allocating memory
 > using kstrdup(). Though the security_release_secctx() is called, it
 > would not free the allocated memory. Calling security_release_secctx is
 > not relevant for this scenario as inode_getsecurity() does not provide a
 > "secctx".
->
+> 
 > Similar fix has been mainlined:
 > https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git/commit/?id=57e7ba04d422c3d41c8426380303ec9b7533ded9
->
+> 
 > The fix is to replace the security_release_secctx() with a kfree()
->
+> 
 > Below is the KMEMLEAK dump:
 > unreferenced object 0xffffffc025e11c80 (size 64):
 >   comm "systemd-tmpfile", pid 2452, jiffies 4294894464 (age 235587.492s)
@@ -58,26 +68,14 @@ On 5/31/2018 2:28 AM, CHANDAN VN wrote:
 >     [<ffffff80081eb44c>] path_setxattr+0x74/0xb8
 >     [<ffffff80081ebdcc>] SyS_lsetxattr+0x10/0x1c
 >     [<ffffff800808310c>] __sys_trace_return+0x0/0x4
->
+> 
 > Signed-off-by: sireesha.t <sireesha.t@samsung.com>
 > Signed-off-by: CHANDAN VN <chandan.vn@samsung.com>
-
-Why not:
-
- static int smack_inode_getsecctx(struct inode *inode, void **ctx, u32 *ctxlen)
- {
--	int len = 0;
--	len = smack_inode_getsecurity(inode, XATTR_SMACK_SUFFIX, ctx, true);
-+	int len = smack_inode_getsecurity(inode, XATTR_SMACK_SUFFIX, ctx, false);
- 
- 	if (len < 0)
- 		return len;
-
 > ---
 >  fs/kernfs/inode.c | 3 ++-
 >  fs/nfsd/nfs4xdr.c | 2 +-
 >  2 files changed, 3 insertions(+), 2 deletions(-)
->
+> 
 > diff --git a/fs/kernfs/inode.c b/fs/kernfs/inode.c
 > index a343039..53befb8 100644
 > --- a/fs/kernfs/inode.c
@@ -105,4 +103,9 @@ Why not:
 >  #endif /* CONFIG_NFSD_V4_SECURITY_LABEL */
 >  	kfree(acl);
 >  	if (tempfh) {
+> -- 
+> 1.9.1
+> 
 
+-- 
+tejun
