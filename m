@@ -1,84 +1,111 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-sn1nam01on0136.outbound.protection.outlook.com ([104.47.32.136]:9655
-        "EHLO NAM01-SN1-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1754995AbeEaMrH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 31 May 2018 08:47:07 -0400
-From: Trond Myklebust <trondmy@hammerspace.com>
-To: "bfields@fieldses.org" <bfields@fieldses.org>,
-        "miklos@szeredi.hu" <miklos@szeredi.hu>
-CC: "agruenba@redhat.com" <agruenba@redhat.com>,
+Received: from mail-ot0-f180.google.com ([74.125.82.180]:45885 "EHLO
+        mail-ot0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1755146AbeEaMzR (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 31 May 2018 08:55:17 -0400
+Received: by mail-ot0-f180.google.com with SMTP id 15-v6so25123388otn.12
+        for <linux-nfs@vger.kernel.org>; Thu, 31 May 2018 05:55:16 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <128c74cb1507d7eab36ac8d32182dbbc7d3f9f88.camel@hammerspace.com>
+References: <f74fae81-d1bc-1c0e-7b41-69502bd7c489@suse.de> <f2af62fdf8a5bb185ec75cff118178d58b28ceb4.camel@hammerspace.com>
+ <2cf94c6b-e819-79af-4ac9-3b19d26dc6d9@suse.de> <75266c983a03f6dbfd5d1a39c94fa6d56a1a8a22.camel@hammerspace.com>
+ <a0617bb0-b7a5-fab2-c72c-595e005bd8f7@suse.de> <20180531004554.GA29116@fieldses.org>
+ <CAJfpegtoLpwo6aA9=uF72UDaKvv_Q3bUbv778VwnSDa72yO9Mw@mail.gmail.com> <128c74cb1507d7eab36ac8d32182dbbc7d3f9f88.camel@hammerspace.com>
+From: Miklos Szeredi <miklos@szeredi.hu>
+Date: Thu, 31 May 2018 14:55:16 +0200
+Message-ID: <CAJfpeguK9rmXK4F7wkE8of7gwDTV_KbM4yWAW8iGJ0RvOMH0-g@mail.gmail.com>
+Subject: Re: nfs4_acl restricts copy_up in overlayfs
+To: Trond Myklebust <trondmy@hammerspace.com>
+Cc: "bfields@fieldses.org" <bfields@fieldses.org>,
+        "agruenba@redhat.com" <agruenba@redhat.com>,
         "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
         "rgoldwyn@suse.de" <rgoldwyn@suse.de>,
         "linux-unionfs@vger.kernel.org" <linux-unionfs@vger.kernel.org>
-Subject: Re: nfs4_acl restricts copy_up in overlayfs
-Date: Thu, 31 May 2018 12:47:05 +0000
-Message-ID: <128c74cb1507d7eab36ac8d32182dbbc7d3f9f88.camel@hammerspace.com>
-References: <f74fae81-d1bc-1c0e-7b41-69502bd7c489@suse.de>
-         <f2af62fdf8a5bb185ec75cff118178d58b28ceb4.camel@hammerspace.com>
-         <2cf94c6b-e819-79af-4ac9-3b19d26dc6d9@suse.de>
-         <75266c983a03f6dbfd5d1a39c94fa6d56a1a8a22.camel@hammerspace.com>
-         <a0617bb0-b7a5-fab2-c72c-595e005bd8f7@suse.de>
-         <20180531004554.GA29116@fieldses.org>
-         <CAJfpegtoLpwo6aA9=uF72UDaKvv_Q3bUbv778VwnSDa72yO9Mw@mail.gmail.com>
-In-Reply-To: <CAJfpegtoLpwo6aA9=uF72UDaKvv_Q3bUbv778VwnSDa72yO9Mw@mail.gmail.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDE4LTA1LTMxIGF0IDEyOjAwICswMjAwLCBNaWtsb3MgU3plcmVkaSB3cm90ZToN
-Cj4gT24gVGh1LCBNYXkgMzEsIDIwMTggYXQgMjo0NSBBTSwgSi4gQnJ1Y2UgRmllbGRzIDxiZmll
-bGRzQGZpZWxkc2VzLm9yDQo+IGc+IHdyb3RlOg0KPiA+IE9uIFdlZCwgTWF5IDMwLCAyMDE4IGF0
-IDA1OjMzOjExQU0gLTA1MDAsIEdvbGR3eW4gUm9kcmlndWVzIHdyb3RlOg0KPiA+ID4gSSBhbSBu
-b3QgdHJ5aW5nIHRvIG92ZXJyaWRlIHRoZSBzZWN1cml0eS4gSSBhbSB0cnlpbmcgdG8gZGV0ZWN0
-DQo+ID4gPiBkdXBsaWNhdGlvbiBvZiBzZWN1cml0eSBpbmZvcm1hdGlvbi4gVGhlIGNvbW1vbiBj
-YXNlIG9mIE5GUw0KPiA+ID4gY29tbXVuaWNhdGlvbiBkb2VzIG5vdCByZXF1aXJlIHRoZSBhZGRp
-dGlvbmFsIHNlY3VyaXR5IHBhcmFtZXRlcnMNCj4gPiA+IChkb2Vzbid0IG1lYW4gaXQgaXMgbm90
-IHJlcXVpcmVkKS4gU28gbXkgcXVlc3Rpb24gaXM6IGlzIGl0DQo+ID4gPiBwb3NzaWJsZSB0bw0K
-PiA+ID4gZGV0ZWN0IGF0IHRoZSBjbGllbnQgdGhhdCBuZnM0X2FjbCBpcyBhIGR1cGxpY2F0ZSBv
-ZiBpbmZvcm1hdGlvbg0KPiA+ID4gd2hpY2gNCj4gPiA+IGNhbiBiZSBhbmQgaXMgcmVwcmVzZW50
-ZWQgYnkgaW5vZGUgYWxvbmUuIElmIHllcywgY2FuIGl0IGJlDQo+ID4gPiBzdXBwcmVzc2VkDQo+
-ID4gPiBieSB0aGUgY2xpZW50Lg0KPiA+IA0KPiA+IE5vLCB0aGF0J3Mgbm90IHBvc3NpYmxlLg0K
-PiA+IA0KPiA+IFRoZSB1c2VyJ3MgaWRlbnRpdHkgY291bGQgYmUgbWFwcGVkIGluIHZhcmlvdXMg
-d2F5cy4gIFlvdSd2ZSBnb3Qgbm8NCj4gPiB3YXkNCj4gPiB0byBrbm93IHdoZXRoZXIgcm9vdCBz
-cXVhc2hpbmcgaXMgaW4gZWZmZWN0LCBmb3IgZXhhbXBsZS4gIE9yIHRvDQo+ID4ga25vdw0KPiA+
-IHdoYXQgdGhlIHVzZXJARVhBTVBMRS5DT00ga3JiNSBpZGVudGl0eSB0aGF0IHlvdSdyZSBydW5u
-aW5nIGFzDQo+ID4gbWlnaHQgbWFwDQo+ID4gdG8gb24gdGhlIHNlcnZlci4NCj4gPiANCj4gPiBT
-byBpdCdzIGhhcmQgdG8gZXZlbiB0ZWxsIHdoZXRoZXIgYSBnaXZlbiB1c2VyIG1hdGNoZXMgdGhl
-IGZpbGUncw0KPiA+IG93bmVyDQo+ID4gb3IgZ3JvdXAuICBTbyBldmVuIHRoZSBtb2RlIGJpdHMg
-YXJlIGtpbmQgb2YgbWVhbmluZ2xlc3MgdG8gdGhlDQo+ID4gY2xpZW50Lg0KPiANCj4gVGhlIGJh
-c2ljIHNlY3VyaXR5IG1vZGVsIGZvciBvdmVybGF5ZnMgaXMgdGhhdCB1bmRlcmx5aW5nIGZpbGVz
-eXN0ZW1zDQo+IGFyZSBqdXN0IHN0b3JhZ2UuICBBY2Nlc3MgdG8gdGhlc2UgZmlsZXN5c3RlbXMg
-aXMgZG9uZSB3aXRoIHRoZQ0KPiBjYXBhYmlsaXRpZXMgb2YgdGhlIHRhc2sgdGhhdCBjcmVhdGVk
-IHRoZSBvdmVybGF5IGluc3RhbmNlIHdpdGgNCj4gbW91bnQoMikuICBUaGF0IGNhcGFiaWxpdHkg
-c2V0IGlzIHNhdmVkIGFuZCB1c2VkIGZvciBhbnkgYWNjZXNzIHRvDQo+IHVuZGVybHlpbmcgc3Rv
-cmFnZS4NCj4gDQo+IEFjY2VzcyB0byBvdmVybGF5ZnMgaXRzZWxmIGlzIGNvbnRyb2xsZWQgYnkg
-bWV0YWRhdGEgaW4gdGhlIGZpbGUNCj4gKG1vZGUsIHVpZCwgZ2lkLCBwb3NpeF9hY2wsIHNlY3Vy
-aXR5IHhhdHRyLCBldGMuLi4pLg0KPiANCj4gU28gaWYgb25lIG9mIHRoZSBsYXllcnMgaXMgTkZT
-LCB0aGUgcGVybWlzc2lvbnMgaW4gdGhlIHNlcnZlciBhcmUNCj4gb25seQ0KPiBjaGVja2VkIGFn
-YWluc3QgdGhlIG1vdW50ZXIncyBjcmVkcyAodXN1YWxseSBzdXBlcnVzZXIpLiAgQWNjZXNzDQo+
-IGNoZWNrcyBhcmUgbm90IHBlcmZvcm1lZCBieSB0aGUgc2VydmVyIG9uIGJlaGFsZiBvZiB0aGUg
-dGFzaw0KPiBhY2Nlc3NpbmcNCj4gdGhlIG92ZXJsYXkuICAgIFRoaXMgbWVhbnMsIHRoYXQgb3Zl
-cmxheWZzIGNvdWxkIGdpdmUgYWNjZXNzIHRvIGFuDQo+IE5GUw0KPiBmaWxlLCB3aGVyZSBhY2Nl
-c3Mgb24gdGhlIE5GUyBtb3VudCB3b3VsZCBiZSBkZW5pZWQuICBUaGlzIG5lZWRzIHRvDQo+IGJl
-DQo+IHVuZGVyc3Rvb2QgYnkgdGhlIGFkbWluIG1vdW50aW5nIHRoZSBvdmVybGF5Lg0KPiANCj4g
-U28gaG93IHRvIGhhbmRsZSBuZnM0X2FjbHMgd2l0aCB0aGlzIG1vZGVsPw0KPiANCj4gV2UgY291
-bGQganVzdCBpZ25vcmUgdGhlbSBhbmQgdGhpcyBjYW4gYmUgYWNoaWV2ZWQgd2l0aCBtb3VudGlu
-ZyB0aGUNCj4gTkZTIGZpbGVzeXN0ZW0gd2l0aCAibm9hY2wiLiAgSSdtIG5vdCBhZ2FpbnN0IHNw
-ZWNpZmljYWxseSBpZ25vcmluZw0KPiBuZnM0X2FjbCBpbiBvdmVybGF5ZnMgYnkgZGVmYXVsdCwg
-YXMgdGhhdCBzZWVtcyB0byBiZSB0aGUgc2ltcGxlc3QNCj4gc29sdXRpb24gdG8gdGhpcyBwcm9i
-bGVtIGFuZCBmaXRzIHRoZSBvdmVybGF5ZnMgc2VjdXJpdHkgbW9kZWwuDQo+IExhdGVyLCBpZiB3
-ZSB3YW50IHRvIG1ha2UgdXNlIG9mIHRoaXMgYXR0cmlidXRlIHRvIGNoZWNrIGFjY2VzcyAob24N
-Cj4gdGhlIG92ZXJsYXksIG5vdCBpbiB0aGUgTkZTIHNlcnZlciksIHdlIGNhbiBhZGQgYW4gb3B0
-aW9uIHRvIGVuYWJsZQ0KPiB0aGlzLiAgQnV0IEFGQUlDUyB0aGF0IG9uZSByZXF1aXJlcyByaWNo
-YWNsJ3MgdG8gbWFrZSBpdCB1cHN0cmVhbSBhdA0KPiBsZWFzdC4NCg0KJ25vYWNsJyBkb2VzIG5v
-dCBtZWFuIHdoYXQgeW91IHRoaW5rIGl0IG1lYW5zLiBJdCBkb2Vzbid0IG1lYW4gdGhhdCB0aGUN
-Ck5GUyBzZWN1cml0eSBtb2RlbCBpcyBjaGFuZ2VkIGluIGFueSB3YXkuIFNlY3VyaXR5IGlzIHN0
-aWxsIGVuZm9yY2VkIGJ5DQp0aGUgc2VydmVyLg0KDQpBbmQgbm8sIHJpY2hhY2wgd29uJ3QgaGVs
-cCB5b3UgZ2V0IGZ1cnRoZXIgZWl0aGVyLg0KDQpJJ20gc3RpbGwgaW4gc3Ryb25nIGRpc2FncmVl
-bWVudCB3aXRoIHRoZSBtb2RlbCB5b3UgYXJlIHByZXNlbnRpbmcNCmhlcmUuIEl0IGlzIGEgY2xp
-ZW50IGVuZm9yY2VkIG1vZGVsLCB3aGljaCBpcyBub3QgZXZlciBnb2luZyB0byBiZQ0KY29tcGF0
-aWJsZSB3aXRoIHRoZSBORlMgbW9kZWwuDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBO
-RlMgY2xpZW50IG1haW50YWluZXIsIEhhbW1lcnNwYWNlDQp0cm9uZC5teWtsZWJ1c3RAaGFtbWVy
-c3BhY2UuY29tDQoNCg==
+On Thu, May 31, 2018 at 2:47 PM, Trond Myklebust
+<trondmy@hammerspace.com> wrote:
+> On Thu, 2018-05-31 at 12:00 +0200, Miklos Szeredi wrote:
+>> On Thu, May 31, 2018 at 2:45 AM, J. Bruce Fields <bfields@fieldses.or
+>> g> wrote:
+>> > On Wed, May 30, 2018 at 05:33:11AM -0500, Goldwyn Rodrigues wrote:
+>> > > I am not trying to override the security. I am trying to detect
+>> > > duplication of security information. The common case of NFS
+>> > > communication does not require the additional security parameters
+>> > > (doesn't mean it is not required). So my question is: is it
+>> > > possible to
+>> > > detect at the client that nfs4_acl is a duplicate of information
+>> > > which
+>> > > can be and is represented by inode alone. If yes, can it be
+>> > > suppressed
+>> > > by the client.
+>> >
+>> > No, that's not possible.
+>> >
+>> > The user's identity could be mapped in various ways.  You've got no
+>> > way
+>> > to know whether root squashing is in effect, for example.  Or to
+>> > know
+>> > what the user@EXAMPLE.COM krb5 identity that you're running as
+>> > might map
+>> > to on the server.
+>> >
+>> > So it's hard to even tell whether a given user matches the file's
+>> > owner
+>> > or group.  So even the mode bits are kind of meaningless to the
+>> > client.
+>>
+>> The basic security model for overlayfs is that underlying filesystems
+>> are just storage.  Access to these filesystems is done with the
+>> capabilities of the task that created the overlay instance with
+>> mount(2).  That capability set is saved and used for any access to
+>> underlying storage.
+>>
+>> Access to overlayfs itself is controlled by metadata in the file
+>> (mode, uid, gid, posix_acl, security xattr, etc...).
+>>
+>> So if one of the layers is NFS, the permissions in the server are
+>> only
+>> checked against the mounter's creds (usually superuser).  Access
+>> checks are not performed by the server on behalf of the task
+>> accessing
+>> the overlay.    This means, that overlayfs could give access to an
+>> NFS
+>> file, where access on the NFS mount would be denied.  This needs to
+>> be
+>> understood by the admin mounting the overlay.
+>>
+>> So how to handle nfs4_acls with this model?
+>>
+>> We could just ignore them and this can be achieved with mounting the
+>> NFS filesystem with "noacl".  I'm not against specifically ignoring
+>> nfs4_acl in overlayfs by default, as that seems to be the simplest
+>> solution to this problem and fits the overlayfs security model.
+>> Later, if we want to make use of this attribute to check access (on
+>> the overlay, not in the NFS server), we can add an option to enable
+>> this.  But AFAICS that one requires richacl's to make it upstream at
+>> least.
+>
+> 'noacl' does not mean what you think it means. It doesn't mean that the
+> NFS security model is changed in any way. Security is still enforced by
+> the server.
+
+I understand.  Ignoring nfs4_acl in overlayfs will have the same
+result as adding noacl to the underlying NFS mount.
+
+> And no, richacl won't help you get further either.
+>
+> I'm still in strong disagreement with the model you are presenting
+> here. It is a client enforced model, which is not ever going to be
+> compatible with the NFS model.
+
+It's the only sane model that overlayfs can do.
+
+Think of it this way:  creating an image file on NFS, formating it to
+ext4 and mounting it locally through the loop device is not going to
+be compatible with the NFS security model either.  Should we care?
+
+Thanks,
+Miklos
