@@ -1,109 +1,92 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:41824 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751037AbeEaFXb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 31 May 2018 01:23:31 -0400
-From: NeilBrown <neilb@suse.com>
-To: Steven Rostedt <rostedt@goodmis.org>
-To: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Date: Thu, 31 May 2018 15:23:22 +1000
-Subject: [PATCH 1/4 v2] NFS: slight optimization for walking list for delegations
-In-Reply-To: <20180430111741.561df374@gandalf.local.home>
-References: <152506256513.7246.13171564155614823841.stgit@noble> <152506269054.7246.3941740801391514623.stgit@noble> <20180430111741.561df374@gandalf.local.home>
-Message-ID: <871sdsv1o5.fsf@notabene.neil.brown.name>
-MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
+Received: from mailout1.samsung.com ([203.254.224.24]:23629 "EHLO
+        mailout1.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1754164AbeEaJ2v (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 31 May 2018 05:28:51 -0400
+From: CHANDAN VN <chandan.vn@samsung.com>
+To: gregkh@linuxfoundation.org, tj@kernel.org, bfields@fieldses.org,
+        jlayton@kernel.org, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, casey@schaufler-ca.com
+Cc: cpgs@samsung.com, chandan.vn@samsung.com, sireesha.t@samsung.com
+Subject: [PATCH 1/1] Fix memory leak in kernfs_security_xattr_set and
+ kernfs_security_xattr_set
+Date: Thu, 31 May 2018 14:58:31 +0530
+Message-id: <1527758911-18610-1-git-send-email-chandan.vn@samsung.com>
+References: <CGME20180531092848epcas1p24b638ccd6da00f1e039bdb64de7e1a5b@epcas1p2.samsung.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+From: "sireesha.t" <sireesha.t@samsung.com>
 
+Leak is caused because smack_inode_getsecurity() is allocating memory
+using kstrdup(). Though the security_release_secctx() is called, it
+would not free the allocated memory. Calling security_release_secctx is
+not relevant for this scenario as inode_getsecurity() does not provide a
+"secctx".
 
-There are 3 places where we walk the list of delegations
-for an nfs_client.
-In each case there are two nested loops, one for nfs_servers
-and one for nfs_delegations.
+Similar fix has been mainlined:
+https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git/commit/?id=57e7ba04d422c3d41c8426380303ec9b7533ded9
 
-When we find an interesting delegation we try to get an active
-reference to the server.  If that fails, it is pointless to
-continue to look at the other delegation for the server as
-we will never be able to get an active reference.
-So instead of continuing in the inner loop, break out
-and continue in the outer loop.
+The fix is to replace the security_release_secctx() with a kfree()
 
-Signed-off-by: NeilBrown <neilb@suse.com>
-=2D--
+Below is the KMEMLEAK dump:
+unreferenced object 0xffffffc025e11c80 (size 64):
+  comm "systemd-tmpfile", pid 2452, jiffies 4294894464 (age 235587.492s)
+  hex dump (first 32 bytes):
+    53 79 73 74 65 6d 3a 3a 53 68 61 72 65 64 00 00  System::Shared..
+    00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
+  backtrace:
+    [<ffffff80081be770>] __save_stack_trace+0x28/0x34
+    [<ffffff80081bedb8>] create_object+0x130/0x25c
+    [<ffffff80088c82f8>] kmemleak_alloc+0x30/0x5c
+    [<ffffff80081b3ef0>] __kmalloc_track_caller+0x1cc/0x2a8
+    [<ffffff800818673c>] kstrdup+0x3c/0x6c
+    [<ffffff80082d78b0>] smack_inode_getsecurity+0xcc/0xec
+    [<ffffff80082d78f4>] smack_inode_getsecctx+0x24/0x44
+    [<ffffff80082d5ea0>] security_inode_getsecctx+0x50/0x70
+    [<ffffff800823bbcc>] kernfs_security_xattr_set+0x74/0xe0
+    [<ffffff80081eafec>] __vfs_setxattr+0x74/0x90
+    [<ffffff80081eb088>] __vfs_setxattr_noperm+0x80/0x1ac
+    [<ffffff80081eb238>] vfs_setxattr+0x84/0xac
+    [<ffffff80081eb374>] setxattr+0x114/0x178
+    [<ffffff80081eb44c>] path_setxattr+0x74/0xb8
+    [<ffffff80081ebdcc>] SyS_lsetxattr+0x10/0x1c
+    [<ffffff800808310c>] __sys_trace_return+0x0/0x4
 
-This time with a Signed-off-by - sorry.
-I took the opportunity to follow Steven's suggestion
-of adding a comment to the new 'break' statements.
+Signed-off-by: sireesha.t <sireesha.t@samsung.com>
+Signed-off-by: CHANDAN VN <chandan.vn@samsung.com>
+---
+ fs/kernfs/inode.c | 3 ++-
+ fs/nfsd/nfs4xdr.c | 2 +-
+ 2 files changed, 3 insertions(+), 2 deletions(-)
 
-Thanks,
-NeilBrown
+diff --git a/fs/kernfs/inode.c b/fs/kernfs/inode.c
+index a343039..53befb8 100644
+--- a/fs/kernfs/inode.c
++++ b/fs/kernfs/inode.c
+@@ -369,7 +369,8 @@ static int kernfs_security_xattr_set(const struct xattr_handler *handler,
+ 	mutex_unlock(&kernfs_mutex);
+ 
+ 	if (secdata)
+-		security_release_secctx(secdata, secdata_len);
++		kfree(secdata);
++
+ 	return error;
+ }
+ 
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index aaa88c1..1e0dbe9 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -2911,7 +2911,7 @@ static int get_parent_attributes(struct svc_export *exp, struct kstat *stat)
+ out:
+ #ifdef CONFIG_NFSD_V4_SECURITY_LABEL
+ 	if (context)
+-		security_release_secctx(context, contextlen);
++		kfree(context);
+ #endif /* CONFIG_NFSD_V4_SECURITY_LABEL */
+ 	kfree(acl);
+ 	if (tempfh) {
+-- 
+1.9.1
 
- fs/nfs/delegation.c | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
-
-diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
-index 1819d0d0ba4b..b9cd3864335b 100644
-=2D-- a/fs/nfs/delegation.c
-+++ b/fs/nfs/delegation.c
-@@ -495,7 +495,7 @@ int nfs_client_return_marked_delegations(struct nfs_cli=
-ent *clp)
- 			if (!nfs_delegation_need_return(delegation))
- 				continue;
- 			if (!nfs_sb_active(server->super))
-=2D				continue;
-+				break; /* continue in outer loop */
- 			inode =3D nfs_delegation_grab_inode(delegation);
- 			if (inode =3D=3D NULL) {
- 				rcu_read_unlock();
-@@ -887,7 +887,7 @@ void nfs_delegation_reap_unclaimed(struct nfs_client *c=
-lp)
- 						&delegation->flags) =3D=3D 0)
- 				continue;
- 			if (!nfs_sb_active(server->super))
-=2D				continue;
-+				break; /* continue in outer loop */
- 			inode =3D nfs_delegation_grab_inode(delegation);
- 			if (inode =3D=3D NULL) {
- 				rcu_read_unlock();
-@@ -995,7 +995,7 @@ void nfs_reap_expired_delegations(struct nfs_client *cl=
-p)
- 						&delegation->flags) =3D=3D 0)
- 				continue;
- 			if (!nfs_sb_active(server->super))
-=2D				continue;
-+				break; /* continue in outer loop */
- 			inode =3D nfs_delegation_grab_inode(delegation);
- 			if (inode =3D=3D NULL) {
- 				rcu_read_unlock();
-=2D-=20
-2.14.0.rc0.dirty
-
-
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlsPhsoACgkQOeye3VZi
-gblvRQ//Tu/cVIQx08FqyB/9ThWlSIIh2qwKl2YArYslc8alme8E0Mre4fjI/MA5
-/E0r/4r9bU0/hKJfgOy8KlOr4WZjxjV1XAxugYOjhcNzPo+DABkSvxDD+UUGRIVk
-a7ZLaAqu2gdkAB/oDraV+UCOalOSapzzJhPlUmpTTk8E6AKUI+kwmUyRz1ND66yI
-rmhPT+17k1m/Qxf7pQCT5vK04ePj1xNdVdtprM0mCM582jd/fq8FvvKYCWu2oOPI
-9n0O12d/i93loSyC/KgRg4prC7W9w3MO1Ieauke05tzEAwXSCkM2VNkjNByAGPJT
-CIKRlC6x3euM1gq/0u5JSks8smCTu2Hy4YElXXNQPwIC57zOMdfLXGopl7iQ2/Ps
-XtEfb8053LY+FlksZ+RT/disuCbSKZPu00gLVFZifYXwM5YwEqbAtYtWdVYG2SNE
-JeAQH94DqIgG2LwHybnVB2sKnfgqk87Y3i7jMm1/Iih4fGBlmEAqrQ0QOtb00g7c
-Aq3b4g1uEaRS47WOs3guTrYugPX6OPZIPR48qv71zIErYjjiG5S3wRxfUaq/d2of
-PjOSK5rF9yO7ARQ4jwdasriKrTN/fSAQxHY7XGOjrhLeyaas5UJLLCy5bkoDpmAh
-SbJQ4VbcZejO8/SrWpW0HRdIm3+wH2r4/lZ2m4O518lhpoi/8DM=
-=7MYm
------END PGP SIGNATURE-----
---=-=-=--
