@@ -1,116 +1,42 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp2120.oracle.com ([156.151.31.85]:42564 "EHLO
-        userp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1755729AbeEaRJj (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 31 May 2018 13:09:39 -0400
-Content-Type: text/plain;
-        charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 11.3 \(3445.6.18\))
-Subject: Re: Enabling EVM on NFS mounts
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <729C6BCE-D60D-4687-8DD0-52E1EF35E535@oracle.com>
-Date: Thu, 31 May 2018 13:09:35 -0400
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <B2F3310F-541B-4A07-9142-C66424DD5EAF@oracle.com>
-References: <729C6BCE-D60D-4687-8DD0-52E1EF35E535@oracle.com>
-To: linux-integrity@vger.kernel.org
+Received: from fieldses.org ([173.255.197.46]:56224 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1755737AbeEaRe4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 31 May 2018 13:34:56 -0400
+Date: Thu, 31 May 2018 13:34:56 -0400
+From: "bfields@fieldses.org" <bfields@fieldses.org>
+To: "Shawn Lu (shawlu)" <shawlu@cisco.com>
+Cc: Joshua Watt <jpewhacker@gmail.com>,
+        "trond.myklebust@primarydata.com" <trond.myklebust@primarydata.com>,
+        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+        "jlayton@poochiereds.net" <jlayton@poochiereds.net>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: Is "unmount -f"  worked as expected?
+Message-ID: <20180531173456.GE1298@fieldses.org>
+References: <8CC8F228-1A66-4A44-A23B-855E33F4D1D5@cisco.com>
+ <0dae4862d6e5b754ba8f90a6391b6645fdf6889a.camel@gmail.com>
+ <EE6D39C5-09BB-4133-9CF5-674038E1538F@cisco.com>
+ <20180531151819.GC1298@fieldses.org>
+ <C8362635-4E93-4C96-9827-E241565D27DF@cisco.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <C8362635-4E93-4C96-9827-E241565D27DF@cisco.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Thu, May 31, 2018 at 04:51:49PM +0000, Shawn Lu (shawlu) wrote:
+> >On 5/31/18, 8:18 AM, "bfields@fieldses.org" <bfields@fieldses.org> wrote:
+>  >  > One case is involved with  cross mounted nfs from different host.
+>     
+>  >  Note: in theory I think there are some deadlocks possible if client and
+>  >   server mount each other.  (Each host could be waiting on the other one
+>  >   to process writes before it can free memory that it needs to make
+>  >   progress.)
+> 
+> Yes.  I hope aggressive umount  will  help by setting a very short grace period and timeout before umount.
 
-> On May 21, 2018, at 6:28 PM, Chuck Lever <chuck.lever@oracle.com> =
-wrote:
->=20
-> I'm in the middle of rewriting
->=20
-> =
-https://datatracker.ietf.org/doc/draft-cel-nfsv4-linux-seclabel-xtensions/=
+No, the deadlock isn't an unmounting problem, it's a problem that could
+happen during normal operation.  I don't know if it's easy to reproduce.
+You'd probably need one or both hosts to be writing to NFS very quickly.
 
->=20
-> which was recently rejected by the nfsv4 Working Group for
-> plausible and fixable reasons. They like the idea, but my
-> proposal for using NFSv4 security labels is not workable
-> even as an experiment.
->=20
-> As I compose a fresh Internet-Draft I'm trying to understand
-> what an EVM HMAC covers, and I found this:
->=20
-> http://linux-ima.sourceforge.net/evmctl.1.html
->=20
->> EVM protects file metadata by including following attributes into =
-HMAC and signature calculation: inode number, inode generation, UID, =
-GID, file mode, security.selinux, security.SMACK64, security.ima, =
-security.capability.
->=20
->> EVM HMAC and signature may also include additional file and file =
-system attributes. Currently supported additional attributes are =
-filesystem UUID and extra SMACK extended attributes.
->=20
->=20
-> The computation of the IMA HMAC is straightforward, but it
-> appears that the EVM HMAC is evolving, and not all of the
-> input items would necessarily be visible to remote EVM
-> consumers.
->=20
-> Is there any way an NFS client would be able to tell exactly
-> what attributes were used to compute an EVM hash, and what
-> should it do if the whole input set is not available for
-> verification?
->=20
-> Amongst the security. xattrs, I believe only security.selinux
-> is currently exposed via NFS. Thus an NFS client EVM would
-> see only that particular xattr and not others by which it can
-> compute or verify the EVM hash.
->=20
-> Does the inclusion here of "security.capability" mean that NFS
-> support for EVM and for file capabilities are inseparable? Is
-> the content of security.capability in a binary or human-readable
-> format?
->=20
-> Filesystem attributes such as a UUID, type, or disk label might
-> not be visible to NFS clients.
->=20
-> Would there be any reason to protect ACLs with the EVM hash?
-
-I've submitted a replacement document for=20
-
-=
-https://datatracker.ietf.org/doc/draft-cel-nfsv4-linux-seclabel-xtensions/=
-
-
-Please see:
-
-https://datatracker.ietf.org/doc/draft-ietf-nfsv4-integrity-measurement/
-
-The following changes have been made since linux-seclabel-xtensions:
-
-- The original personal draft has been promoted to a Working Group
-document. There were no objections from members of the WG to
-taking this work. The WG will meet at IETF 102 in July and I
-intend to discuss this work with them at that time.
-
-- Support for Linux file capabilities has been removed. I plan to
-submit a separate Internet-Draft that specifies capabilities
-support, once nfsv4-integrity-measurement is under way.
-
-- The use of NFSv4 Security Labels has been replaced with new
-OPTIONAL fattr4 attributes. The document includes an XDR definition
-of the new attributes. The document is now organized like RFC 8275.
-
-- To address the issues I raised earlier in this thread, support has
-been added for EVM HMAC hashes covering optional extended attributes.
-The server advertises a per-filesystem list of which optional
-attributes are included in EVM HMAC hashes.
-
-- The discussion is more sensitive to servers that support storing
-hashes but do not permit native access to them (ie., non-Linux
-NFSv4.2 server implementations).
-
-- The Security Considerations section has been expanded.
-
-
---
-Chuck Lever
-
-
-
+--b.
