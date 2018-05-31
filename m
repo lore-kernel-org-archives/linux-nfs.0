@@ -1,174 +1,116 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx3-rdu2.redhat.com ([66.187.233.73]:57192 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1755660AbeEaRBv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 31 May 2018 13:01:51 -0400
-Subject: Re: nfs-utils-2.3.2: glitch crashes build
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: gabriele balducci <balducci@units.it>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-References: <11745.1527438384@dschgrazlin2.units.it>
- <965f2a16-dc1e-39e0-80f8-f55166a5106e@RedHat.com>
- <83B1E5B4-6B7E-47B6-965D-4C49BEA15C8F@oracle.com>
- <5a7c1a19-9ca7-6f8e-5b5d-64324290cf79@RedHat.com>
- <7653539C-F184-441F-A827-0F2F7F7C7FE5@oracle.com>
-From: Steve Dickson <SteveD@RedHat.com>
-Message-ID: <e4ad8b72-1165-619a-3e2d-815ed65112b1@RedHat.com>
-Date: Thu, 31 May 2018 13:01:50 -0400
-MIME-Version: 1.0
-In-Reply-To: <7653539C-F184-441F-A827-0F2F7F7C7FE5@oracle.com>
-Content-Type: text/plain; charset=utf-8
+Received: from userp2120.oracle.com ([156.151.31.85]:42564 "EHLO
+        userp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1755729AbeEaRJj (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 31 May 2018 13:09:39 -0400
+Content-Type: text/plain;
+        charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 11.3 \(3445.6.18\))
+Subject: Re: Enabling EVM on NFS mounts
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <729C6BCE-D60D-4687-8DD0-52E1EF35E535@oracle.com>
+Date: Thu, 31 May 2018 13:09:35 -0400
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <B2F3310F-541B-4A07-9142-C66424DD5EAF@oracle.com>
+References: <729C6BCE-D60D-4687-8DD0-52E1EF35E535@oracle.com>
+To: linux-integrity@vger.kernel.org
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
+> On May 21, 2018, at 6:28 PM, Chuck Lever <chuck.lever@oracle.com> =
+wrote:
+>=20
+> I'm in the middle of rewriting
+>=20
+> =
+https://datatracker.ietf.org/doc/draft-cel-nfsv4-linux-seclabel-xtensions/=
 
-On 05/31/2018 12:48 PM, Chuck Lever wrote:
-> 
-> 
->> On May 31, 2018, at 12:40 PM, Steve Dickson <SteveD@RedHat.com> wrote:
->>
->>
->>
->> On 05/31/2018 12:14 PM, Chuck Lever wrote:
->>>
->>>
->>>> On May 31, 2018, at 11:13 AM, Steve Dickson <SteveD@RedHat.com> wrote:
->>>>
->>>> Hello gabriele
->>>>
->>>> I wonder why I am not seeing these warnings... 
->>>
->>> fwiw, upstream nfs-utils no longer builds on RHEL 7 latest.
->>> The recent commit that turned some compiler warnings into
->>> errors causes a bunch of build failures on that platform.
->> Yeah I know....
-> 
-> Cool, this was just an fyi.
-Question what gcc are you using? 
+>=20
+> which was recently rejected by the nfsv4 Working Group for
+> plausible and fixable reasons. They like the idea, but my
+> proposal for using NFSv4 security labels is not workable
+> even as an experiment.
+>=20
+> As I compose a fresh Internet-Draft I'm trying to understand
+> what an EVM HMAC covers, and I found this:
+>=20
+> http://linux-ima.sourceforge.net/evmctl.1.html
+>=20
+>> EVM protects file metadata by including following attributes into =
+HMAC and signature calculation: inode number, inode generation, UID, =
+GID, file mode, security.selinux, security.SMACK64, security.ima, =
+security.capability.
+>=20
+>> EVM HMAC and signature may also include additional file and file =
+system attributes. Currently supported additional attributes are =
+filesystem UUID and extra SMACK extended attributes.
+>=20
+>=20
+> The computation of the IMA HMAC is straightforward, but it
+> appears that the EVM HMAC is evolving, and not all of the
+> input items would necessarily be visible to remote EVM
+> consumers.
+>=20
+> Is there any way an NFS client would be able to tell exactly
+> what attributes were used to compute an EVM hash, and what
+> should it do if the whole input set is not available for
+> verification?
+>=20
+> Amongst the security. xattrs, I believe only security.selinux
+> is currently exposed via NFS. Thus an NFS client EVM would
+> see only that particular xattr and not others by which it can
+> compute or verify the EVM hash.
+>=20
+> Does the inclusion here of "security.capability" mean that NFS
+> support for EVM and for file capabilities are inseparable? Is
+> the content of security.capability in a binary or human-readable
+> format?
+>=20
+> Filesystem attributes such as a UUID, type, or disk label might
+> not be visible to NFS clients.
+>=20
+> Would there be any reason to protect ACLs with the EVM hash?
 
-The one I'm using 'gcc-4.8.5 does not support
-checking whether CC supports -Werror=format-overflow=2... no
-checking whether CC supports -Werror=int-conversion... no
-checking whether CC supports -Werror=incompatible-pointer-types... no
-checking whether CC supports -Werror=misleading-indentation... no
+I've submitted a replacement document for=20
 
-steved.
-> 
-> 
->> It was suggested to me by some glibc
->> guys.... I figured there would be some pain.... 
->>
->> I'll looking the rhel7 issue.. 
->>
->> steved.
->>
->>>
->>> In particular, %m is not portable, and it is used all over
->>> in xlog, printf, and scanf formatting strings.
->>>
->>>
->>>> Thank you very much for the patch... Would you
->>>> mind if I added a 
->>>>  Signed-off-by: gabriele balducci <balducci@units.it>
->>>>
->>>> to the official patch? 
->>>>
->>>> steved.
->>>> On 05/27/2018 12:26 PM, gabriele balducci wrote:
->>>>> hello
->>>>>
->>>>> building 2.3.2 fails with:
->>>>>
->>>>> mountd.c:706:3: note: 'sprintf' output between 6 and 16 bytes into a destination of size 10
->>>>>    sprintf(tag, "vers%d", vers);
->>>>>    ^~~~~~~~~~~~~~~~~~~~~~~~~~~~
->>>>> cc1: some warnings being treated as errors
->>>>>
->>>>> and
->>>>>
->>>>> nfsd.c:102:3: note: 'sprintf' output between 6 and 16 bytes into a destination of size 10
->>>>>    sprintf(tag, "vers%d", i);
->>>>>    ^~~~~~~~~~~~~~~~~~~~~~~~~
->>>>> cc1: some warnings being treated as errors
->>>>>
->>>>> I guess the reason is (https://marc.info/?l=linux-nfs&m=152718306728854&w=2):
->>>>>
->>>>>   * Most compile warnings are now fatal errors.
->>>>>
->>>>> and (configure):
->>>>>
->>>>> checking whether CC supports -Werror=format-overflow=2... yes
->>>>>
->>>>> This fixes everything for me:
->>>>>
->>>>> diff -c utils/mountd/mountd.c.FIX_VAR_DIM utils/mountd/mountd.c
->>>>> *** utils/mountd/mountd.c.FIX_VAR_DIM	Sun May 27 18:16:46 2018
->>>>> --- utils/mountd/mountd.c	Sun May 27 18:16:46 2018
->>>>> ***************
->>>>> *** 702,708 ****
->>>>>         else
->>>>>                 NFSCTL_TCPUNSET(_rpcprotobits);
->>>>>         for (vers = 2; vers <= 4; vers++) {
->>>>> ! 		char tag[10];
->>>>>                 sprintf(tag, "vers%d", vers);
->>>>>                 if (conf_get_bool("nfsd", tag, NFSCTL_VERISSET(nfs_version, vers)))
->>>>>                         NFSCTL_VERSET(nfs_version, vers);
->>>>> --- 702,708 ----
->>>>>         else
->>>>>                 NFSCTL_TCPUNSET(_rpcprotobits);
->>>>>         for (vers = 2; vers <= 4; vers++) {
->>>>> ! 		char tag[20];
->>>>>                 sprintf(tag, "vers%d", vers);
->>>>>                 if (conf_get_bool("nfsd", tag, NFSCTL_VERISSET(nfs_version, vers)))
->>>>>                         NFSCTL_VERSET(nfs_version, vers);
->>>>>
->>>>>
->>>>>
->>>>> diff -c utils/nfsd/nfsd.c.FIX_VAR_DIM utils/nfsd/nfsd.c
->>>>> *** utils/nfsd/nfsd.c.FIX_VAR_DIM	Sun May 27 18:16:46 2018
->>>>> --- utils/nfsd/nfsd.c	Sun May 27 18:16:46 2018
->>>>> ***************
->>>>> *** 98,104 ****
->>>>>         else
->>>>>                 NFSCTL_TCPUNSET(protobits);
->>>>>         for (i = 2; i <= 4; i++) {
->>>>> ! 		char tag[10];
->>>>>                 sprintf(tag, "vers%d", i);
->>>>>                 if (conf_get_bool("nfsd", tag, NFSCTL_VERISSET(versbits, i)))
->>>>>                         NFSCTL_VERSET(versbits, i);
->>>>> --- 98,104 ----
->>>>>         else
->>>>>                 NFSCTL_TCPUNSET(protobits);
->>>>>         for (i = 2; i <= 4; i++) {
->>>>> ! 		char tag[20];
->>>>>                 sprintf(tag, "vers%d", i);
->>>>>                 if (conf_get_bool("nfsd", tag, NFSCTL_VERISSET(versbits, i)))
->>>>>                         NFSCTL_VERSET(versbits, i);
->>>>>
->>>>>
->>>>> I thought the maintainers might be interested in fixing upstream
->>>>>
->>>>> ciao
->>>>> gabriele
->>>>> --
->>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>>>> the body of a message to majordomo@vger.kernel.org
->>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>>>>
->>>> --
->>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>>> the body of a message to majordomo@vger.kernel.org
->>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>>
->>> --
->>> Chuck Lever
->>>
->>>
->>>
-> 
-> --
-> Chuck Lever
-> 
-> 
-> 
+=
+https://datatracker.ietf.org/doc/draft-cel-nfsv4-linux-seclabel-xtensions/=
+
+
+Please see:
+
+https://datatracker.ietf.org/doc/draft-ietf-nfsv4-integrity-measurement/
+
+The following changes have been made since linux-seclabel-xtensions:
+
+- The original personal draft has been promoted to a Working Group
+document. There were no objections from members of the WG to
+taking this work. The WG will meet at IETF 102 in July and I
+intend to discuss this work with them at that time.
+
+- Support for Linux file capabilities has been removed. I plan to
+submit a separate Internet-Draft that specifies capabilities
+support, once nfsv4-integrity-measurement is under way.
+
+- The use of NFSv4 Security Labels has been replaced with new
+OPTIONAL fattr4 attributes. The document includes an XDR definition
+of the new attributes. The document is now organized like RFC 8275.
+
+- To address the issues I raised earlier in this thread, support has
+been added for EVM HMAC hashes covering optional extended attributes.
+The server advertises a per-filesystem list of which optional
+attributes are included in EVM HMAC hashes.
+
+- The discussion is more sensitive to servers that support storing
+hashes but do not permit native access to them (ie., non-Linux
+NFSv4.2 server implementations).
+
+- The Security Considerations section has been expanded.
+
+
+--
+Chuck Lever
+
+
+
