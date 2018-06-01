@@ -1,60 +1,108 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from sonic306-26.consmr.mail.gq1.yahoo.com ([98.137.68.89]:42785
-        "EHLO sonic306-26.consmr.mail.gq1.yahoo.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1752594AbeFAQlm (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Jun 2018 12:41:42 -0400
-Subject: Re: [PATCH 1/1] Fix memory leak in kernfs_security_xattr_set and
- kernfs_security_xattr_set
-To: chandan.vn@samsung.com,
-        "linux-security-module@vger.kernel.org"
-        <linux-security-module@vger.kernel.org>
-Cc: Tejun Heo <tj@kernel.org>,
-        "gregkh@linuxfoundation.org" <gregkh@linuxfoundation.org>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "jlayton@kernel.org" <jlayton@kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        CPGS <cpgs@samsung.com>,
-        Sireesha Talluri <sireesha.t@samsung.com>,
-        Chris Wright <chrisw@sous-sol.org>,
-        Casey Schaufler <casey@schaufler-ca.com>
-References: <02d9878e-65bf-5de8-9658-cf0f692f358c@schaufler-ca.com>
- <1ced6bce-92cc-7e0c-fab4-0aaa3d03b82f@schaufler-ca.com>
- <1527758911-18610-1-git-send-email-chandan.vn@samsung.com>
- <20180531153943.GR1351649@devbig577.frc2.facebook.com>
- <4f00f9ae-3302-83b9-c083-d21ade380eb2@schaufler-ca.com>
- <20180531161107.GV1351649@devbig577.frc2.facebook.com>
- <20180601085609epcms5p5fefac0156a4816e9e48751211ab595ee@epcms5p5>
- <CGME20180531092848epcas1p24b638ccd6da00f1e039bdb64de7e1a5b@epcms5p7>
- <20180601162913epcms5p7737f5b4376d8865af1eae119aa866550@epcms5p7>
-From: Casey Schaufler <casey@schaufler-ca.com>
-Message-ID: <5b0b157a-0e8c-d8f5-901e-836d545a8e4c@schaufler-ca.com>
-Date: Fri, 1 Jun 2018 09:41:39 -0700
+Received: from mail-ot0-f172.google.com ([74.125.82.172]:44960 "EHLO
+        mail-ot0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751964AbeFARCV (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Jun 2018 13:02:21 -0400
+Received: by mail-ot0-f172.google.com with SMTP id w13-v6so2648595ote.11
+        for <linux-nfs@vger.kernel.org>; Fri, 01 Jun 2018 10:02:21 -0700 (PDT)
 MIME-Version: 1.0
-In-Reply-To: <20180601162913epcms5p7737f5b4376d8865af1eae119aa866550@epcms5p7>
-Content-Type: text/plain; charset=utf-8
+In-Reply-To: <20180601160857.GE10666@fieldses.org>
+References: <CAJfpegsW7CwZYJf_EH80aaYotMMBDk1BjR_RA6dz8e=Y3-ox5w@mail.gmail.com>
+ <d6fab628-6fd1-de33-2ca4-d82917205ce7@suse.de> <95e00ce46fe1f5fed50fe24947eee0dda51e0140.camel@hammerspace.com>
+ <c59d0be3-a10b-02c3-8126-3402a6a0eab1@suse.de> <828f320cde910a45983d91bddb6477d21c5cae33.camel@hammerspace.com>
+ <CAJfpegvuvFzNwSZRLCMCrhms-K4Ge=PTcn4uezLgV8U3ag+4xQ@mail.gmail.com>
+ <20180601135033.GA10666@fieldses.org> <CAJfpegvG4rkesopg=qj1H288X6H9CXu=N_fuYEsuWJ-O=5785A@mail.gmail.com>
+ <20180601142640.GC10666@fieldses.org> <CAJfpegtmSK5yuU-Vz7mPODy=iP+=BLMs2fy=sH-iWG8g3jeBfg@mail.gmail.com>
+ <20180601160857.GE10666@fieldses.org>
+From: Miklos Szeredi <miklos@szeredi.hu>
+Date: Fri, 1 Jun 2018 19:02:20 +0200
+Message-ID: <CAJfpeguFobmD5EdvYU7eFaaShMYxt9j72k=GKGHyh3-D-uCB-Q@mail.gmail.com>
+Subject: Re: nfs4_acl restricts copy_up in overlayfs
+To: "bfields@fieldses.org" <bfields@fieldses.org>
+Cc: Trond Myklebust <trondmy@hammerspace.com>,
+        "rgoldwyn@suse.de" <rgoldwyn@suse.de>,
+        "agruenba@redhat.com" <agruenba@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-unionfs@vger.kernel.org" <linux-unionfs@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 6/1/2018 9:29 AM, CHANDAN VN wrote:
->>>  I agree that the fix can be done simply by using "false" for 
->>>  smack_inode_getsecurity(), but what happens with kernfs_node_setsecdata()
->>>  and smack_inode_notifysecctx(). kernfs_node_setsecdata() is probably ignorable
->>>  but smack_inode_notifysecctx() is sending the "ctx" to smack_inode_setsecurity()
->>>  and since "ctx" would be NULL because we used "false", smack_inode_setsecurity()
->>>  becomes dummy.
->  
->> Thank you for pointing this out. You're right, there's more
->> at issue here than changing the alloc flag will fix. I think
->> that calling smack_inode_getsecurity() from smack_inode_getsecctx()
->> is making the code more complicated than it needs to be. I will
->> have a patch shortly.
-> If you think the patch would take time or is complicated, I suggest that the kfree() fix should go
-> to fix the leaks for now.
+On Fri, Jun 1, 2018 at 6:08 PM, bfields@fieldses.org
+<bfields@fieldses.org> wrote:
+> On Fri, Jun 01, 2018 at 04:43:51PM +0200, Miklos Szeredi wrote:
+>> On Fri, Jun 1, 2018 at 4:26 PM, bfields@fieldses.org
+>> <bfields@fieldses.org> wrote:
+>> > On Fri, Jun 01, 2018 at 04:00:22PM +0200, Miklos Szeredi wrote:
+>> >> On Fri, Jun 1, 2018 at 3:50 PM, bfields@fieldses.org
+>> >> <bfields@fieldses.org> wrote:
+>> >> > On Fri, Jun 01, 2018 at 03:32:59PM +0200, Miklos Szeredi wrote:
+>> >> >> How do you define "safely"?
+>> >> >>
+>> >> >> Is it safe for root to do
+>> >> >>
+>> >> >>   cp -a /nfs/remotedir /tmp/localdir
+>> >> >>
+>> >> >> ?
+>> >> >>
+>> >> >> That's essentially what an overlayfs mount with an NFS layer does with
+>> >> >> respect to access permissions:
+>> >> >>
+>> >> >>  - remote files are not modifiable to anyone, unless server allows
+>> >> >>
+>> >> >>  - remote files *readable to root* will provide access based on local DAC check.
+>> >> >>
+>> >> >> Does that need to be made clear in the docs?  Surely.  But it does NOT
+>> >> >> mean it's dangerous or that it's not useful with an arbitrary NFS
+>> >> >> server
+>> >> >
+>> >> > We should definitely have clear documentation, but despite that, in
+>> >> > practice lots of people *will* be surprised when permissions are
+>> >> > enforced differently after copy-up, and those surprises may well have
+>> >> > unpleasant implications.
+>> >>
+>> >> Permissions are enforced exactly the same before and after copy-up.
+>> >> That's one of the good points in doing the permission checks locally.
+>> >
+>> > Whoops, sorry, I missed that.  So you always read owners and mode bits
+>> > out of the cached inode and used those to check permissions instead of
+>> > calling access?
+>> >
+>> > That still sounds pretty confusing.  E.g. if the server's squashing root
+>> > to a user without permission to read a file, you'll pass local
+>> > permission checks, but the success a given read may actually depend on
+>> > whether the data's already cached?
+>>
+>> You have a point there.  I think current code can be inconsistent like
+>> that.  But that's only because it doesn't stack file operations.
+>> Stacking f_ops is now queued up for 4.18, which means that *all* calls
+>> into underlying layers should be with the same creds (those of the
+>> mounting task), regardless of the creds of the task performing the
+>> operation.
+>>
+>> So if NFS server is denying read to mounter (because of root squashing
+>> or for other reason), then that file will not be accessible from
+>> overlayfs by anyone and will not be in the cache either.  If access to
+>> mounter is allowed, then the access will be based on local DAC.
+>>
+>> Look at ovl_permission(), I think it pretty clearly describes this model.
+>
+> Thanks!  Uh, so generic_permission is the thing that just does the usual
+> mode/acl checks on the in-core inode, and inode_permission is the one
+> that also calls into the filesystem?
 
-Heavens no! The patch is very simple. I'm building a kernel with
-it now, and should have it tested and posted within a few hours.
-The implementation of smack_inode_getsecctx() that's there is
-understandable, but wrong. There's a much better way to do the
-job.
+Right.
 
+> But I'm still a little confused--if I'm reading right, "realinode" is
+> the lower inode before copyup, and the upper inode after, so can't
+> inode_permission(realinode, mask) return different results before and
+> after copyup?
+
+Theoretically, yes.  Not in any sane setup, though.
+
+The inode_permission() checks on realinode are for making sure the
+mounter cannot gain undue privileges (will be especially important
+with userns mounts).
+
+Thanks,
+Miklos
