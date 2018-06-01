@@ -1,86 +1,74 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx141.netapp.com ([216.240.21.12]:17218 "EHLO mx141.netapp.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751854AbeFASIC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 1 Jun 2018 14:08:02 -0400
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-From: Anna Schumaker <Anna.Schumaker@Netapp.com>
-Subject: [GIT PULL] Please pull nfs-over-rdma updates for 4.18
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-ID: <14ba1e8e-0386-4142-1a95-daa484322bc8@Netapp.com>
-Date: Fri, 1 Jun 2018 14:07:54 -0400
+Received: from mail-oi0-f42.google.com ([209.85.218.42]:40206 "EHLO
+        mail-oi0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751964AbeFATOj (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Jun 2018 15:14:39 -0400
+Received: by mail-oi0-f42.google.com with SMTP id f79-v6so9444423oib.7
+        for <linux-nfs@vger.kernel.org>; Fri, 01 Jun 2018 12:14:39 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+In-Reply-To: <20180601174336.GF10666@fieldses.org>
+References: <95e00ce46fe1f5fed50fe24947eee0dda51e0140.camel@hammerspace.com>
+ <c59d0be3-a10b-02c3-8126-3402a6a0eab1@suse.de> <828f320cde910a45983d91bddb6477d21c5cae33.camel@hammerspace.com>
+ <CAJfpegvuvFzNwSZRLCMCrhms-K4Ge=PTcn4uezLgV8U3ag+4xQ@mail.gmail.com>
+ <20180601135033.GA10666@fieldses.org> <CAJfpegvG4rkesopg=qj1H288X6H9CXu=N_fuYEsuWJ-O=5785A@mail.gmail.com>
+ <20180601142640.GC10666@fieldses.org> <CAJfpegtmSK5yuU-Vz7mPODy=iP+=BLMs2fy=sH-iWG8g3jeBfg@mail.gmail.com>
+ <20180601160857.GE10666@fieldses.org> <CAJfpeguFobmD5EdvYU7eFaaShMYxt9j72k=GKGHyh3-D-uCB-Q@mail.gmail.com>
+ <20180601174336.GF10666@fieldses.org>
+From: Miklos Szeredi <miklos@szeredi.hu>
+Date: Fri, 1 Jun 2018 21:14:38 +0200
+Message-ID: <CAJfpegsjGEoych6QE2YcH8kkJ9B=Hfk47BMuJ7ECjMViMUpisA@mail.gmail.com>
+Subject: Re: nfs4_acl restricts copy_up in overlayfs
+To: "bfields@fieldses.org" <bfields@fieldses.org>
+Cc: Trond Myklebust <trondmy@hammerspace.com>,
+        "rgoldwyn@suse.de" <rgoldwyn@suse.de>,
+        "agruenba@redhat.com" <agruenba@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-unionfs@vger.kernel.org" <linux-unionfs@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The following changes since commit 75bc37fefc4471e718ba8e651aa74673d4e0a9eb:
+On Fri, Jun 1, 2018 at 7:43 PM, bfields@fieldses.org
+<bfields@fieldses.org> wrote:
+> On Fri, Jun 01, 2018 at 07:02:20PM +0200, Miklos Szeredi wrote:
+>> On Fri, Jun 1, 2018 at 6:08 PM, bfields@fieldses.org
+>> <bfields@fieldses.org> wrote:
+>> > On Fri, Jun 01, 2018 at 04:43:51PM +0200, Miklos Szeredi wrote:
+>> >> Look at ovl_permission(), I think it pretty clearly describes this model.
+>> >
+>> > Thanks!  Uh, so generic_permission is the thing that just does the usual
+>> > mode/acl checks on the in-core inode, and inode_permission is the one
+>> > that also calls into the filesystem?
+>>
+>> Right.
+>>
+>> > But I'm still a little confused--if I'm reading right, "realinode" is
+>> > the lower inode before copyup, and the upper inode after, so can't
+>> > inode_permission(realinode, mask) return different results before and
+>> > after copyup?
+>>
+>> Theoretically, yes.  Not in any sane setup, though.
+>
+> If root squashing is enabled and you mount as root, then it will change.
+>
+> That's not an unlikely case, it's pretty much the default.
 
-  Linux 4.17-rc4 (2018-05-06 16:57:38 -1000)
+Let's see: root squashing will change root creds to nobody's creds, right?
 
-are available in the Git repository at:
+That results in a weird situation, where user foo is trying to access
+a file owned by foo, but which doesn't have read permission for
+"other" will not be able to perform a read on that file.  In fact, no
+user will be able to read that file, including root.   Copying up the
+file will also fail, since that requires read permission.
 
-  git://git.linux-nfs.org/projects/anna/linux-nfs.git tags/nfs-rdma-for-4.18-1
+So for that case it's not true that permission will change, since
+copy-up won't be possible.
 
-for you to fetch changes up to 11d0ac16b02eab8cda32efcb51bfab452dab760b:
-
-  xprtrdma: Remove transfertypes array (2018-06-01 13:56:30 -0400)
-
-----------------------------------------------------------------
-Stable patches:
-- xprtrdma: Return -ENOBUFS when no pages are available
-
-New features:
-- Add ->alloc_slot() and ->free_slot() functions
-
-Bugfixes and cleanups:
-- Add missing SPDX tags to some files
-- Try to fail mount quickly if client has no RDMA devices
-- Create transport IDs in the correct network namespace
-- Fix max_send_wr computation
-- Clean up receive tracepoints
-- Refactor receive handling
-- Remove unused functions
+That leaves the case where no read or write permissions are involved,
+which is execute.  I think we should just mask that out from the
+inode_permission() check.  Makes no sense to ask underlying filesystem
+about execute permission.   With that we'll have consistent
+permissions before and after copy-up.  Right?
 
 Thanks,
-Anna
-
-----------------------------------------------------------------
-Chuck Lever (19):
-      xprtrdma: Add proper SPDX tags for NetApp-contributed source
-      xprtrdma: Try to fail quickly if proto=rdma
-      xprtrdma: Create transport's CM ID in the correct network namespace
-      xprtrdma: Fix max_send_wr computation
-      SUNRPC: Initialize rpc_rqst outside of xprt->reserve_lock
-      SUNRPC: Add a ->free_slot transport callout
-      xprtrdma: Introduce ->alloc_slot call-out for xprtrdma
-      xprtrdma: Make rpc_rqst part of rpcrdma_req
-      xprtrdma: Clean up Receive trace points
-      xprtrdma: Move Receive posting to Receive handler
-      xprtrdma: Remove rpcrdma_ep_{post_recv, post_extra_recv}
-      xprtrdma: Remove rpcrdma_buffer_get_req_locked()
-      xprtrdma: Remove rpcrdma_buffer_get_rep_locked()
-      xprtrdma: Make rpcrdma_sendctx_put_locked() a static function
-      xprtrdma: Return -ENOBUFS when no pages are available
-      xprtrdma: Move common wait_for_buffer_space call to parent function
-      xprtrdma: Wait on empty sendctx queue
-      xprtrdma: Add trace_xprtrdma_dma_map(mr)
-      xprtrdma: Remove transfertypes array
-
- include/linux/sunrpc/rpc_rdma.h            |   1 +
- include/linux/sunrpc/xprt.h                |   6 ++++-
- include/linux/sunrpc/xprtrdma.h            |   1 +
- include/trace/events/rpcrdma.h             |  76 ++++++++++++++++++++++++++++++++++++++++++++--------------------
- net/sunrpc/clnt.c                          |   1 +
- net/sunrpc/xprt.c                          |  17 +++++++++------
- net/sunrpc/xprtrdma/backchannel.c          | 105 +++++++++++++++++++++++++++++++++-------------------------------------------------------
- net/sunrpc/xprtrdma/fmr_ops.c              |  23 ++++++++++++++++++++
- net/sunrpc/xprtrdma/frwr_ops.c             |  31 ++++++++++++++++++++++----
- net/sunrpc/xprtrdma/module.c               |   1 +
- net/sunrpc/xprtrdma/rpc_rdma.c             |  66 +++++++++++++++++++------------------------------------
- net/sunrpc/xprtrdma/svc_rdma_backchannel.c |   1 +
- net/sunrpc/xprtrdma/transport.c            |  64 +++++++++++++++++++++++++++++++++++++++---------------
- net/sunrpc/xprtrdma/verbs.c                | 291 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------------------------------------------------------------------------------------------------------------------------------------------------
- net/sunrpc/xprtrdma/xprt_rdma.h            |  26 ++++++++++------------
- net/sunrpc/xprtsock.c                      |   4 ++++
- 16 files changed, 359 insertions(+), 355 deletions(-)
+Miklos
