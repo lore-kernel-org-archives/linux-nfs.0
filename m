@@ -1,86 +1,86 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from sonic301-28.consmr.mail.gq1.yahoo.com ([98.137.64.154]:42494
-        "EHLO sonic301-28.consmr.mail.gq1.yahoo.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1752839AbeFARpR (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Jun 2018 13:45:17 -0400
-Subject: [PATCH] Smack: Fix memory leak in smack_inode_getsecctx
-To: chandan.vn@samsung.com,
-        "linux-security-module@vger.kernel.org"
-        <linux-security-module@vger.kernel.org>
-Cc: Tejun Heo <tj@kernel.org>,
-        "gregkh@linuxfoundation.org" <gregkh@linuxfoundation.org>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "jlayton@kernel.org" <jlayton@kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        CPGS <cpgs@samsung.com>,
-        Sireesha Talluri <sireesha.t@samsung.com>,
-        Chris Wright <chrisw@sous-sol.org>,
-        Casey Schaufler <casey@schaufler-ca.com>
-References: <02d9878e-65bf-5de8-9658-cf0f692f358c@schaufler-ca.com>
- <1ced6bce-92cc-7e0c-fab4-0aaa3d03b82f@schaufler-ca.com>
- <1527758911-18610-1-git-send-email-chandan.vn@samsung.com>
- <20180531153943.GR1351649@devbig577.frc2.facebook.com>
- <4f00f9ae-3302-83b9-c083-d21ade380eb2@schaufler-ca.com>
- <20180531161107.GV1351649@devbig577.frc2.facebook.com>
- <20180601085609epcms5p5fefac0156a4816e9e48751211ab595ee@epcms5p5>
- <CGME20180531092848epcas1p24b638ccd6da00f1e039bdb64de7e1a5b@epcms5p7>
- <20180601162913epcms5p7737f5b4376d8865af1eae119aa866550@epcms5p7>
- <5b0b157a-0e8c-d8f5-901e-836d545a8e4c@schaufler-ca.com>
-From: Casey Schaufler <casey@schaufler-ca.com>
-Message-ID: <fa278910-5c99-11dc-c9cb-b88a97592e53@schaufler-ca.com>
-Date: Fri, 1 Jun 2018 10:45:12 -0700
+Received: from mx141.netapp.com ([216.240.21.12]:17218 "EHLO mx141.netapp.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751854AbeFASIC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 1 Jun 2018 14:08:02 -0400
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+From: Anna Schumaker <Anna.Schumaker@Netapp.com>
+Subject: [GIT PULL] Please pull nfs-over-rdma updates for 4.18
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-ID: <14ba1e8e-0386-4142-1a95-daa484322bc8@Netapp.com>
+Date: Fri, 1 Jun 2018 14:07:54 -0400
 MIME-Version: 1.0
-In-Reply-To: <5b0b157a-0e8c-d8f5-901e-836d545a8e4c@schaufler-ca.com>
 Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Fix memory leak in smack_inode_getsecctx
+The following changes since commit 75bc37fefc4471e718ba8e651aa74673d4e0a9eb:
 
-The implementation of smack_inode_getsecctx() made
-incorrect assumptions about how Smack presents a security
-context. Smack does not need to allocate memory to support
-security contexts, so "releasing" a Smack context is a no-op.
-The code made an unnecessary copy and returned that as a
-context, which was never freed. The revised implementation
-returns the context correctly.
+  Linux 4.17-rc4 (2018-05-06 16:57:38 -1000)
 
-Signed-off-by: Casey Schaufler <casey@schaufler-ca.com>
----
- security/smack/smack_lsm.c | 12 +++++-------
- 1 file changed, 5 insertions(+), 7 deletions(-)
+are available in the Git repository at:
 
-diff --git a/security/smack/smack_lsm.c b/security/smack/smack_lsm.c
-index 0b414836bebd..5e3beae334a8 100644
---- a/security/smack/smack_lsm.c
-+++ b/security/smack/smack_lsm.c
-@@ -1545,9 +1545,9 @@ static int smack_inode_listsecurity(struct inode *inode, char *buffer,
-  */
- static void smack_inode_getsecid(struct inode *inode, u32 *secid)
- {
--	struct inode_smack *isp = inode->i_security;
-+	struct smack_known *skp = smk_of_inode(inode);
- 
--	*secid = isp->smk_inode->smk_secid;
-+	*secid = skp->smk_secid;
- }
- 
- /*
-@@ -4538,12 +4538,10 @@ static int smack_inode_setsecctx(struct dentry *dentry, void *ctx, u32 ctxlen)
- 
- static int smack_inode_getsecctx(struct inode *inode, void **ctx, u32 *ctxlen)
- {
--	int len = 0;
--	len = smack_inode_getsecurity(inode, XATTR_SMACK_SUFFIX, ctx, true);
-+	struct smack_known *skp = smk_of_inode(inode);
- 
--	if (len < 0)
--		return len;
--	*ctxlen = len;
-+	*ctx = skp->smk_known;
-+	*ctxlen = strlen(skp->smk_known);
- 	return 0;
- }
- 
+  git://git.linux-nfs.org/projects/anna/linux-nfs.git tags/nfs-rdma-for-4.18-1
 
+for you to fetch changes up to 11d0ac16b02eab8cda32efcb51bfab452dab760b:
+
+  xprtrdma: Remove transfertypes array (2018-06-01 13:56:30 -0400)
+
+----------------------------------------------------------------
+Stable patches:
+- xprtrdma: Return -ENOBUFS when no pages are available
+
+New features:
+- Add ->alloc_slot() and ->free_slot() functions
+
+Bugfixes and cleanups:
+- Add missing SPDX tags to some files
+- Try to fail mount quickly if client has no RDMA devices
+- Create transport IDs in the correct network namespace
+- Fix max_send_wr computation
+- Clean up receive tracepoints
+- Refactor receive handling
+- Remove unused functions
+
+Thanks,
+Anna
+
+----------------------------------------------------------------
+Chuck Lever (19):
+      xprtrdma: Add proper SPDX tags for NetApp-contributed source
+      xprtrdma: Try to fail quickly if proto=rdma
+      xprtrdma: Create transport's CM ID in the correct network namespace
+      xprtrdma: Fix max_send_wr computation
+      SUNRPC: Initialize rpc_rqst outside of xprt->reserve_lock
+      SUNRPC: Add a ->free_slot transport callout
+      xprtrdma: Introduce ->alloc_slot call-out for xprtrdma
+      xprtrdma: Make rpc_rqst part of rpcrdma_req
+      xprtrdma: Clean up Receive trace points
+      xprtrdma: Move Receive posting to Receive handler
+      xprtrdma: Remove rpcrdma_ep_{post_recv, post_extra_recv}
+      xprtrdma: Remove rpcrdma_buffer_get_req_locked()
+      xprtrdma: Remove rpcrdma_buffer_get_rep_locked()
+      xprtrdma: Make rpcrdma_sendctx_put_locked() a static function
+      xprtrdma: Return -ENOBUFS when no pages are available
+      xprtrdma: Move common wait_for_buffer_space call to parent function
+      xprtrdma: Wait on empty sendctx queue
+      xprtrdma: Add trace_xprtrdma_dma_map(mr)
+      xprtrdma: Remove transfertypes array
+
+ include/linux/sunrpc/rpc_rdma.h            |   1 +
+ include/linux/sunrpc/xprt.h                |   6 ++++-
+ include/linux/sunrpc/xprtrdma.h            |   1 +
+ include/trace/events/rpcrdma.h             |  76 ++++++++++++++++++++++++++++++++++++++++++++--------------------
+ net/sunrpc/clnt.c                          |   1 +
+ net/sunrpc/xprt.c                          |  17 +++++++++------
+ net/sunrpc/xprtrdma/backchannel.c          | 105 +++++++++++++++++++++++++++++++++-------------------------------------------------------
+ net/sunrpc/xprtrdma/fmr_ops.c              |  23 ++++++++++++++++++++
+ net/sunrpc/xprtrdma/frwr_ops.c             |  31 ++++++++++++++++++++++----
+ net/sunrpc/xprtrdma/module.c               |   1 +
+ net/sunrpc/xprtrdma/rpc_rdma.c             |  66 +++++++++++++++++++------------------------------------
+ net/sunrpc/xprtrdma/svc_rdma_backchannel.c |   1 +
+ net/sunrpc/xprtrdma/transport.c            |  64 +++++++++++++++++++++++++++++++++++++++---------------
+ net/sunrpc/xprtrdma/verbs.c                | 291 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------------------------------------------------------------------------------------------------------------------------------------------------
+ net/sunrpc/xprtrdma/xprt_rdma.h            |  26 ++++++++++------------
+ net/sunrpc/xprtsock.c                      |   4 ++++
+ 16 files changed, 359 insertions(+), 355 deletions(-)
