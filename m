@@ -1,71 +1,67 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ot0-f170.google.com ([74.125.82.170]:37390 "EHLO
-        mail-ot0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750850AbeFAOAX (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Jun 2018 10:00:23 -0400
-Received: by mail-ot0-f170.google.com with SMTP id 101-v6so6900778oth.4
-        for <linux-nfs@vger.kernel.org>; Fri, 01 Jun 2018 07:00:23 -0700 (PDT)
+Received: from fieldses.org ([173.255.197.46]:58398 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751378AbeFAORZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 1 Jun 2018 10:17:25 -0400
+Date: Fri, 1 Jun 2018 10:17:25 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@kernel.org>
+Cc: devel@lists.nfs-ganesha.org, sostapov@redhat.com,
+        Supriti.Singh@suse.com,
+        "open list:NFS, SUNRPC, AND..." <linux-nfs@vger.kernel.org>
+Subject: Re: [RFC PATCH] rados_cluster: add a "design" manpage
+Message-ID: <20180601141725.GB10666@fieldses.org>
+References: <20180523122140.8373-1-jlayton@kernel.org>
+ <20180531213733.GB4654@fieldses.org>
+ <fbc5ad16342dc1b4d50041bfa1274fc0197486a9.camel@kernel.org>
 MIME-Version: 1.0
-In-Reply-To: <20180601135033.GA10666@fieldses.org>
-References: <CAJfpegtoLpwo6aA9=uF72UDaKvv_Q3bUbv778VwnSDa72yO9Mw@mail.gmail.com>
- <128c74cb1507d7eab36ac8d32182dbbc7d3f9f88.camel@hammerspace.com>
- <CAJfpeguK9rmXK4F7wkE8of7gwDTV_KbM4yWAW8iGJ0RvOMH0-g@mail.gmail.com>
- <e692f5a6f612660ad0a64e083ed7a1398629aa6d.camel@hammerspace.com>
- <CAJfpegsW7CwZYJf_EH80aaYotMMBDk1BjR_RA6dz8e=Y3-ox5w@mail.gmail.com>
- <d6fab628-6fd1-de33-2ca4-d82917205ce7@suse.de> <95e00ce46fe1f5fed50fe24947eee0dda51e0140.camel@hammerspace.com>
- <c59d0be3-a10b-02c3-8126-3402a6a0eab1@suse.de> <828f320cde910a45983d91bddb6477d21c5cae33.camel@hammerspace.com>
- <CAJfpegvuvFzNwSZRLCMCrhms-K4Ge=PTcn4uezLgV8U3ag+4xQ@mail.gmail.com> <20180601135033.GA10666@fieldses.org>
-From: Miklos Szeredi <miklos@szeredi.hu>
-Date: Fri, 1 Jun 2018 16:00:22 +0200
-Message-ID: <CAJfpegvG4rkesopg=qj1H288X6H9CXu=N_fuYEsuWJ-O=5785A@mail.gmail.com>
-Subject: Re: nfs4_acl restricts copy_up in overlayfs
-To: "bfields@fieldses.org" <bfields@fieldses.org>
-Cc: Trond Myklebust <trondmy@hammerspace.com>,
-        "rgoldwyn@suse.de" <rgoldwyn@suse.de>,
-        "agruenba@redhat.com" <agruenba@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-unionfs@vger.kernel.org" <linux-unionfs@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <fbc5ad16342dc1b4d50041bfa1274fc0197486a9.camel@kernel.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jun 1, 2018 at 3:50 PM, bfields@fieldses.org
-<bfields@fieldses.org> wrote:
-> On Fri, Jun 01, 2018 at 03:32:59PM +0200, Miklos Szeredi wrote:
->> How do you define "safely"?
->>
->> Is it safe for root to do
->>
->>   cp -a /nfs/remotedir /tmp/localdir
->>
->> ?
->>
->> That's essentially what an overlayfs mount with an NFS layer does with
->> respect to access permissions:
->>
->>  - remote files are not modifiable to anyone, unless server allows
->>
->>  - remote files *readable to root* will provide access based on local DAC check.
->>
->> Does that need to be made clear in the docs?  Surely.  But it does NOT
->> mean it's dangerous or that it's not useful with an arbitrary NFS
->> server
->
-> We should definitely have clear documentation, but despite that, in
-> practice lots of people *will* be surprised when permissions are
-> enforced differently after copy-up, and those surprises may well have
-> unpleasant implications.
+On Fri, Jun 01, 2018 at 06:42:37AM -0400, Jeff Layton wrote:
+> Thanks for having a look. Hmm...you're right.
+> 
+>         nn->nfsd4_lease = 90;   /* default lease time */                        
+>         nn->nfsd4_grace = 90;                                                   
+> 
+> nit: We should probably add a #define'd constant for that at some
+> point...but, might this be problematic?
+> 
+> In the pessimal case, you might renew your lease just before the server
+> crashes. It then comes back up quickly and starts the grace period. By
+> the time the client contacts the server again the grace period is almost
+> over and you may have very little time to actually do any reclaim.
+> 
+> ISTR that when we were working on the server at PD we had determined
+> that we needed around 2 grace periods + a small fudge factor. I don't
+> recall the details of how we determined it though.
 
-Permissions are enforced exactly the same before and after copy-up.
-That's one of the good points in doing the permission checks locally.
+OK, I'd be interested in any of that.
 
-That "cp -a /nfs/remotedir /tmp/localdir" example is almost exactly
-equivalent to:
+If we decide we need a larger grace/lease ratio, we may want to adjust
+default lease down at same time to avoid increasing grace period, as
+that's always an annoyance.
 
-  mount -t overlay -olowerdir=/nfs/remotedir,upperdir=/tmp/upper,...
-/tmp/localdir
+> Even worse: 
+> 
+>         $ cat /proc/sys/fs/lease-break-time 
+>         45
+> 
+> Maybe we should be basing the v4 lease time on the lease-break-time
+> value? It seems like we ought to revoke delegations after two lease
+> periods rather than after half of one.
 
-except the copy is delayed until modification.
+No, we ignore lease-break-time on delegations.  See the comment in
+fs/nfsd/nfs4state.c:nfsd_break_deleg_cb():
 
-Thanks,
-Miklos
+	/*
+	 * We don't want the locks code to timeout the lease for us;
+	 * we'll remove it ourself if a delegation isn't returned
+	 * in time:
+	 */
+	fl->fl_break_time = 0;
+
+
+--b.
