@@ -1,103 +1,104 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:59524 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751005AbeFBAul (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 1 Jun 2018 20:50:41 -0400
-Date: Fri, 1 Jun 2018 20:50:40 -0400
-From: "bfields@fieldses.org" <bfields@fieldses.org>
-To: Miklos Szeredi <miklos@szeredi.hu>
-Cc: Trond Myklebust <trondmy@hammerspace.com>,
-        "rgoldwyn@suse.de" <rgoldwyn@suse.de>,
-        "agruenba@redhat.com" <agruenba@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-unionfs@vger.kernel.org" <linux-unionfs@vger.kernel.org>
-Subject: Re: nfs4_acl restricts copy_up in overlayfs
-Message-ID: <20180602005040.GH10666@fieldses.org>
-References: <828f320cde910a45983d91bddb6477d21c5cae33.camel@hammerspace.com>
- <CAJfpegvuvFzNwSZRLCMCrhms-K4Ge=PTcn4uezLgV8U3ag+4xQ@mail.gmail.com>
- <20180601135033.GA10666@fieldses.org>
- <CAJfpegvG4rkesopg=qj1H288X6H9CXu=N_fuYEsuWJ-O=5785A@mail.gmail.com>
- <20180601142640.GC10666@fieldses.org>
- <CAJfpegtmSK5yuU-Vz7mPODy=iP+=BLMs2fy=sH-iWG8g3jeBfg@mail.gmail.com>
- <20180601160857.GE10666@fieldses.org>
- <CAJfpeguFobmD5EdvYU7eFaaShMYxt9j72k=GKGHyh3-D-uCB-Q@mail.gmail.com>
- <20180601174336.GF10666@fieldses.org>
- <CAJfpegsjGEoych6QE2YcH8kkJ9B=Hfk47BMuJ7ECjMViMUpisA@mail.gmail.com>
+Received: from mail-ua0-f194.google.com ([209.85.217.194]:37334 "EHLO
+        mail-ua0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750886AbeFBNhh (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 2 Jun 2018 09:37:37 -0400
+Received: by mail-ua0-f194.google.com with SMTP id i3-v6so19220067uad.4
+        for <linux-nfs@vger.kernel.org>; Sat, 02 Jun 2018 06:37:36 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAJfpegsjGEoych6QE2YcH8kkJ9B=Hfk47BMuJ7ECjMViMUpisA@mail.gmail.com>
+In-Reply-To: <010D5261-BC69-41A0-BBF1-F72377BB6DE4@oracle.com>
+References: <20180524200542.22685-1-kolga@netapp.com> <48E7EEA0-C804-4AB3-9C08-10A5B14B8976@oracle.com>
+ <CAN-5tyHb4WDXqqeYxQm+kzjmSquaKZ3fqsVkMW1Hx5RCmdxb2Q@mail.gmail.com>
+ <63AA3A00-6272-4D91-AC0A-30C9A169DBD1@oracle.com> <CAN-5tyHXpp1DgX4ULnnWmUoyPHFUOVWR0PiMhhaD89Gxn9Hf-g@mail.gmail.com>
+ <CC64DAF4-5BE4-4433-8CF7-23B8E887E668@oracle.com> <0079153E-7153-4246-AFD6-864E53100D8E@oracle.com>
+ <CAN-5tyFPDknZxR9XR28usGHAyTDKtnp5JpCOVhbB-bjBhND6dw@mail.gmail.com>
+ <FA8C3ECA-948F-42B1-AC8B-1C257212DD59@oracle.com> <010D5261-BC69-41A0-BBF1-F72377BB6DE4@oracle.com>
+From: Olga Kornievskaia <aglo@umich.edu>
+Date: Sat, 2 Jun 2018 09:37:35 -0400
+Message-ID: <CAN-5tyFEDeXCjEcx_1EaaC0o_i-QBZGCB6gMLV0HVo8y8JOK1A@mail.gmail.com>
+Subject: Re: [PATCH 1/1] nfs-utils: Add check of clientaddr argument
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: trond.myklebust@hammerspace.com,
+        Olga Kornievskaia <kolga@netapp.com>,
+        Steve Dickson <steved@redhat.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jun 01, 2018 at 09:14:38PM +0200, Miklos Szeredi wrote:
-> On Fri, Jun 1, 2018 at 7:43 PM, bfields@fieldses.org
-> <bfields@fieldses.org> wrote:
-> > On Fri, Jun 01, 2018 at 07:02:20PM +0200, Miklos Szeredi wrote:
-> >> On Fri, Jun 1, 2018 at 6:08 PM, bfields@fieldses.org
-> >> <bfields@fieldses.org> wrote:
-> >> > On Fri, Jun 01, 2018 at 04:43:51PM +0200, Miklos Szeredi wrote:
-> >> >> Look at ovl_permission(), I think it pretty clearly describes this model.
-> >> >
-> >> > Thanks!  Uh, so generic_permission is the thing that just does the usual
-> >> > mode/acl checks on the in-core inode, and inode_permission is the one
-> >> > that also calls into the filesystem?
-> >>
-> >> Right.
-> >>
-> >> > But I'm still a little confused--if I'm reading right, "realinode" is
-> >> > the lower inode before copyup, and the upper inode after, so can't
-> >> > inode_permission(realinode, mask) return different results before and
-> >> > after copyup?
-> >>
-> >> Theoretically, yes.  Not in any sane setup, though.
-> >
-> > If root squashing is enabled and you mount as root, then it will change.
-> >
-> > That's not an unlikely case, it's pretty much the default.
-> 
-> Let's see: root squashing will change root creds to nobody's creds, right?
-> 
-> That results in a weird situation, where user foo is trying to access
-> a file owned by foo, but which doesn't have read permission for
-> "other" will not be able to perform a read on that file.  In fact, no
-> user will be able to read that file, including root.   Copying up the
-> file will also fail, since that requires read permission.
-> 
-> So for that case it's not true that permission will change, since
-> copy-up won't be possible.
+On Fri, Jun 1, 2018 at 5:42 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>
+>
+>> On May 29, 2018, at 4:53 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>>
+>>> On May 29, 2018, at 4:07 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
+>>>
+>>> On Fri, May 25, 2018 at 6:35 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>>>>
+>>>> I can think of legitimate cases where two unique NFSv4.0
+>>>> clients having the same IP address might mount the same
+>>>> server.
+>>>>
+>>>> - clientaddr=0.0.0.0, as mentioned above
+>>>
+>>> I think this should be prohibited. If this is used a way to signify to
+>>> the server to no give out delegations, then there could be other means
+>>> of doing so. Let's add a mount option 'nodeleg', client would send a
+>>> valid callback info to the server but if the option is set, then it
+>>> will not start a callback server. That would prevent the server from
+>>> being able to establish a callback path (which is the same thing as
+>>> sending 0.0.0.0).
+>>
+>> That introduces delays while the server is probing the client's
+>> callback server. The spec specifically allows a client to send
+>> 0.0.0.0 to signify that the server should not use callbacks.
+>>
+>> And mount.nfs has allowed that setting for a long time.
+>>
+>> IMO we have to continue to allow 0.0.0.0.
+>
+> Still thinking about this.
+>
+> Not using cl_ipaddr in the client ID string helps. I have a patch
+> that does this.
+>
+> The question I've been wondering since the original post is "are there
+> any other use cases where mount.nfs can't properly guess which address
+> to provide?" That's why I was asking why your customer was using
+> clientaddr.
+>
+> If we have confidence that mount.nfs is 100% reliable about choosing
+> a good local address, except in the NAT case where we should just be
+> disabling CB, then we could have mount.nfs strip off a user-supplied
+> clientaddr and construct its own in all cases but the "clientaddr=
+> 0.0.0.0" case (and it's IPv6 equivalent).
 
-Fair enough.  That's still pretty weird behavior.
+When you were saying that we want to enable the client to specify any
+address that's available to it, I was thinking you were considering a
+case of a multihome machine where the client wants to have normal nfs
+connection go over one network but have the callback able to go over
+another interface. I'm almost certain that was not the setup that the
+customer was using but I can ask. In general, I don't think we really
+know how the customers are using this because we only hear about
+issues and not when things are just working.
 
-Arguably if you're going to do something different here then maybe it's
-good for the difference to manifest in a way that's really obvious in
-common cases, so people don't just overlook it.
+So that I'm clear about what you saying: are you proposing two
+different approaches. First is to do away with cl_ipaddr in client ID.
+Then nothing is changed with the mount.nfs. Or second, we keep
+cl_ipaddr as is in client ID and then instead change mount.nfs to
+always choose the callback address for the user and only allow for
+clientaddr=0.0.0.0 user input case?
 
-> That leaves the case where no read or write permissions are involved,
-> which is execute.  I think we should just mask that out from the
-> inode_permission() check.  Makes no sense to ask underlying filesystem
-> about execute permission.
+Let me start with the 2nd one, I'm ok with it as long as we clearly
+document it in man pages. As is right now I'm disappointed that
+nowhere is the clientaddr=0.0.0.0 is documented (or even clearly
+talked about in the spec). However, if there is at all of value having
+a callback being on a different network, then I think instead, my
+original approach that does the checks would be a better way to do (i
+have a draft patch for it).
 
-I suppose so.
-
-> With that we'll have consistent permissions before and after copy-up.
-> Right?
-
-Hm.  If inode_permission(realinode, mask) changes across copy-up: 
-
-	- if the difference is in execute, you're telling me we'll
-	  ignore that.
-	- if it changes from denying to allowing read, you don't care
-	  since that will prevent the copy up in the first place.
-	- if it changes from denying to allowing write, that has no
-	  effect since you only care about read permission for copyup in
-	  the case someone requests write permission.  (Hm, the special
-	  file case should be weird.  I guess those just don't get
-	  copied up?  Still I think people will be surprised by
-	  permission failures here.)
-	- if it changes from allowing read or write to denying--then
-	  we're no longer talking about root, assuming the permission
-	  check on the copied-up inode wouldn't fail for root.  We don't
-	  currently allow non-root to mount NFS, but there are people
-	  that would like to see that change.
-
---b.
+If we are changing how the client Id is constructed and not using the
+cl_ipaddr, then I would like to know what would be used. But as long
+as you feel like such in my view a major change doesn't do anything
+bad, then I'm ok with it as it addresses the issue of user input to
+mount.nfs mistakenly or maliciously causing problems.
