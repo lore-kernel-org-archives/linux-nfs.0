@@ -1,85 +1,76 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f195.google.com ([209.85.223.195]:35763 "EHLO
-        mail-io0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1753654AbeFDOxi (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Jun 2018 10:53:38 -0400
-Received: by mail-io0-f195.google.com with SMTP id u4-v6so14654978iof.2
-        for <linux-nfs@vger.kernel.org>; Mon, 04 Jun 2018 07:53:37 -0700 (PDT)
-Received: from gateway.1015granger.net (c-68-61-232-219.hsd1.mi.comcast.net. [68.61.232.219])
-        by smtp.gmail.com with ESMTPSA id q2-v6sm4442044ioh.40.2018.06.04.07.53.35
-        for <linux-nfs@vger.kernel.org>
-        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Mon, 04 Jun 2018 07:53:35 -0700 (PDT)
-Received: from manet.1015granger.net (manet.1015granger.net [192.168.1.51])
-        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id w54ErYpe004629
-        for <linux-nfs@vger.kernel.org>; Mon, 4 Jun 2018 14:53:34 GMT
-Subject: [PATCH v1 2/2] NFSv4.0: Remove transport protocol name from non-UCS
- client ID
+Received: from aserp2120.oracle.com ([141.146.126.78]:44826 "EHLO
+        aserp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753686AbeFDPDe (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Jun 2018 11:03:34 -0400
+Content-Type: text/plain;
+        charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 11.3 \(3445.6.18\))
+Subject: Re: [PATCH 1/4] xtab.c: Removed overflow in implicit constant
+ conversion errors
 From: Chuck Lever <chuck.lever@oracle.com>
-To: linux-nfs@vger.kernel.org
-Date: Mon, 04 Jun 2018 10:53:34 -0400
-Message-ID: <20180604145334.11877.12862.stgit@manet.1015granger.net>
-In-Reply-To: <20180604144154.11877.19298.stgit@manet.1015granger.net>
-References: <20180604144154.11877.19298.stgit@manet.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+In-Reply-To: <20180604145051.146390-2-steved@redhat.com>
+Date: Mon, 4 Jun 2018 11:03:19 -0400
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <4EACDD0C-7BBF-4267-BB60-53DCD0E05256@oracle.com>
+References: <20180604145051.146390-1-steved@redhat.com>
+ <20180604145051.146390-2-steved@redhat.com>
+To: Steve Dickson <steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Commit 69dd716c5ffd ("NFSv4: Add socket proto argument to
-setclientid") (2007) added the transport protocol name to the client
-ID string, but the patch description doesn't explain why this was
-necessary.
 
-At that time, the only transport protocol name that would have been
-used is "tcp" (for both IPv4 and IPv6), resulting in no additional
-distinctiveness of the client ID string.
 
-Since there is one client instance, the server should recognize it's
-state whether the client is connecting via TCP or RDMA. Same client,
-same lease.
+> On Jun 4, 2018, at 10:50 AM, Steve Dickson <steved@redhat.com> wrote:
+>=20
+> xtab.c: In function 'xtab_read':
+> xtab.c:60:4: error: overflow in implicit constant conversion
+> [-Werror=3Doverflow]
+>    exp->m_xtabent =3D 1;
+>    ^
+> xtab.c:61:4: error: overflow in implicit constant conversion
+> [-Werror=3Doverflow]
+>    exp->m_mayexport =3D 1;
+>=20
+> Signed-off-by: Steve Dickson <steved@redhat.com>
+> ---
+> support/include/exportfs.h | 2 +-
+> 1 file changed, 1 insertion(+), 1 deletion(-)
+>=20
+> diff --git a/support/include/exportfs.h b/support/include/exportfs.h
+> index 8af47a8..a82a9b8 100644
+> --- a/support/include/exportfs.h
+> +++ b/support/include/exportfs.h
+> @@ -97,7 +97,7 @@ typedef struct mexport {
+> 	struct mclient *	m_client;
+> 	struct exportent	m_export;
+> 	int			m_exported;	/* known to knfsd. */
+> -	int			m_xtabent  : 1,	/* xtab entry exists */
+> +	unsigned int m_xtabent : 1,	/* xtab entry exists */
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
- fs/nfs/nfs4proc.c |   14 ++++----------
- 1 file changed, 4 insertions(+), 10 deletions(-)
+Nit: White space damage. "m_xtabent" and the colon should line up with =
+the following fields.
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index fa6f9a2..aa07745 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5595,8 +5595,6 @@ static void nfs4_init_boot_verifier(const struct nfs_client *clp,
- 		strlen(clp->cl_rpcclient->cl_nodename) +
- 		1 +
- 		strlen(rpc_peeraddr2str(clp->cl_rpcclient, RPC_DISPLAY_ADDR)) +
--		1 +
--		strlen(rpc_peeraddr2str(clp->cl_rpcclient, RPC_DISPLAY_PROTO)) +
- 		1;
- 	rcu_read_unlock();
- 	if (nfs4_client_id_uniquifier[0] != '\0')
-@@ -5615,20 +5613,16 @@ static void nfs4_init_boot_verifier(const struct nfs_client *clp,
- 
- 	rcu_read_lock();
- 	if (nfs4_client_id_uniquifier[0] != '\0')
--		scnprintf(str, len, "Linux NFSv4.0 %s/%s/%s %s",
-+		scnprintf(str, len, "Linux NFSv4.0 %s/%s/%s",
- 			  clp->cl_rpcclient->cl_nodename,
- 			  nfs4_client_id_uniquifier,
- 			  rpc_peeraddr2str(clp->cl_rpcclient,
--					   RPC_DISPLAY_ADDR),
--			  rpc_peeraddr2str(clp->cl_rpcclient,
--					   RPC_DISPLAY_PROTO));
-+					   RPC_DISPLAY_ADDR));
- 	else
--		scnprintf(str, len, "Linux NFSv4.0 %s/%s %s",
-+		scnprintf(str, len, "Linux NFSv4.0 %s/%s",
- 			  clp->cl_rpcclient->cl_nodename,
- 			  rpc_peeraddr2str(clp->cl_rpcclient,
--					   RPC_DISPLAY_ADDR),
--			  rpc_peeraddr2str(clp->cl_rpcclient,
--					   RPC_DISPLAY_PROTO));
-+					   RPC_DISPLAY_ADDR));
- 	rcu_read_unlock();
- 
- 	clp->cl_owner_id = str;
+Overall these look like all the errors I hit. Thanks for the fixes!
+
+
+> 				m_mayexport: 1,	/* derived from xtabbed =
+*/
+> 				m_changed  : 1, /* options (may) have =
+changed */
+> 				m_warned   : 1; /* warned about multiple =
+exports
+> --=20
+> 1.8.3.1
+>=20
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
+in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+--
+Chuck Lever
+
+
 
