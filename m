@@ -1,56 +1,50 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yw0-f196.google.com ([209.85.161.196]:37771 "EHLO
-        mail-yw0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750997AbeFDV1H (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Jun 2018 17:27:07 -0400
-Date: Mon, 4 Jun 2018 14:27:04 -0700
-From: Tejun Heo <tj@kernel.org>
-To: Casey Schaufler <casey@schaufler-ca.com>
-Cc: "linux-security-module@vger.kernel.org"
-        <linux-security-module@vger.kernel.org>, chandan.vn@samsung.com,
-        "gregkh@linuxfoundation.org" <gregkh@linuxfoundation.org>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "jlayton@kernel.org" <jlayton@kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        CPGS <cpgs@samsung.com>,
-        Sireesha Talluri <sireesha.t@samsung.com>,
-        Chris Wright <chrisw@sous-sol.org>
-Subject: Re: [PATCH] Smack: Fix memory leak in smack_inode_getsecctx
-Message-ID: <20180604212704.GC1351649@devbig577.frc2.facebook.com>
-References: <1527758911-18610-1-git-send-email-chandan.vn@samsung.com>
- <20180531153943.GR1351649@devbig577.frc2.facebook.com>
- <4f00f9ae-3302-83b9-c083-d21ade380eb2@schaufler-ca.com>
- <20180531161107.GV1351649@devbig577.frc2.facebook.com>
- <20180601085609epcms5p5fefac0156a4816e9e48751211ab595ee@epcms5p5>
- <CGME20180531092848epcas1p24b638ccd6da00f1e039bdb64de7e1a5b@epcms5p7>
- <20180601162913epcms5p7737f5b4376d8865af1eae119aa866550@epcms5p7>
- <5b0b157a-0e8c-d8f5-901e-836d545a8e4c@schaufler-ca.com>
- <fa278910-5c99-11dc-c9cb-b88a97592e53@schaufler-ca.com>
- <b6cc4bd5-8d79-bbc2-373f-ea0bf0806884@schaufler-ca.com>
+Received: from mail.kernel.org ([198.145.29.99]:55740 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751099AbeFDVbo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 4 Jun 2018 17:31:44 -0400
+Date: Mon, 4 Jun 2018 17:31:41 -0400
+From: Steven Rostedt <rostedt@goodmis.org>
+To: NeilBrown <neilb@suse.com>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH 1/4 v2] NFS: slight optimization for walking list for
+ delegations
+Message-ID: <20180604173141.0a154b80@gandalf.local.home>
+In-Reply-To: <871sdsv1o5.fsf@notabene.neil.brown.name>
+References: <152506256513.7246.13171564155614823841.stgit@noble>
+        <152506269054.7246.3941740801391514623.stgit@noble>
+        <20180430111741.561df374@gandalf.local.home>
+        <871sdsv1o5.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <b6cc4bd5-8d79-bbc2-373f-ea0bf0806884@schaufler-ca.com>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jun 04, 2018 at 02:01:34PM -0700, Casey Schaufler wrote:
-> On 6/1/2018 10:45 AM, Casey Schaufler wrote:
-> > Fix memory leak in smack_inode_getsecctx
-> >
-> > The implementation of smack_inode_getsecctx() made
-> > incorrect assumptions about how Smack presents a security
-> > context. Smack does not need to allocate memory to support
-> > security contexts, so "releasing" a Smack context is a no-op.
-> > The code made an unnecessary copy and returned that as a
-> > context, which was never freed. The revised implementation
-> > returns the context correctly.
-> >
-> > Signed-off-by: Casey Schaufler <casey@schaufler-ca.com>
+On Thu, 31 May 2018 15:23:22 +1000
+NeilBrown <neilb@suse.com> wrote:
+
+> There are 3 places where we walk the list of delegations
+> for an nfs_client.
+> In each case there are two nested loops, one for nfs_servers
+> and one for nfs_delegations.
 > 
-> Tejun, does this pass your tests?
+> When we find an interesting delegation we try to get an active
+> reference to the server.  If that fails, it is pointless to
+> continue to look at the other delegation for the server as
+> we will never be able to get an active reference.
+> So instead of continuing in the inner loop, break out
+> and continue in the outer loop.
+> 
+> Signed-off-by: NeilBrown <neilb@suse.com>
+> ---
+> 
+> This time with a Signed-off-by - sorry.
+> I took the opportunity to follow Steven's suggestion
+> of adding a comment to the new 'break' statements.
+> 
 
-Oh, I'm not the one who reported.  Chandan?
+Acked-by: Steven Rostedt (VMware) <rostedt@goodmis.org>
 
--- 
-tejun
+-- Steve
