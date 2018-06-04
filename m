@@ -1,150 +1,45 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp2120.oracle.com ([141.146.126.78]:56098 "EHLO
-        aserp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750779AbeFDSAe (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Jun 2018 14:00:34 -0400
-Content-Type: text/plain;
-        charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 11.3 \(3445.6.18\))
-Subject: Re: Question: On write code path
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <CAN88X1EcS4VoH+5P=r+HdTZcCdprnHmUt56h9pwiHhQ9L_6F6A@mail.gmail.com>
-Date: Mon, 4 Jun 2018 14:00:29 -0400
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <171BD113-0AC9-430D-9B45-D68CC5DAFE39@oracle.com>
-References: <CAN88X1FR8EnrdwKq=w=yQx7Y=c=Ooek5RSGKODRvFQSZst-+eg@mail.gmail.com>
- <209C26D7-4799-4273-8F88-02B43B82514B@oracle.com>
- <CAN88X1EcS4VoH+5P=r+HdTZcCdprnHmUt56h9pwiHhQ9L_6F6A@mail.gmail.com>
-To: Rahul Deshmukh <rahul.deshmukh@gmail.com>
+Received: from mail-ua0-f172.google.com ([209.85.217.172]:41507 "EHLO
+        mail-ua0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750779AbeFDUWR (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Jun 2018 16:22:17 -0400
+Received: by mail-ua0-f172.google.com with SMTP id a5-v6so6869659uao.8
+        for <linux-nfs@vger.kernel.org>; Mon, 04 Jun 2018 13:22:16 -0700 (PDT)
+MIME-Version: 1.0
+From: Chris Takemura <ctakemura@google.com>
+Date: Mon, 4 Jun 2018 13:22:05 -0700
+Message-ID: <CAJf8aWTT-UMvTm6uKumm9kVBF+7mcfzoL51GM8kJJ=3TgY_HBg@mail.gmail.com>
+Subject: nfsd threads hanging in nfsd4_cstate_assign_replay?
+To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Rahul-
+Hi linux-nfs,
 
-> On Jun 4, 2018, at 1:41 PM, Rahul Deshmukh <rahul.deshmukh@gmail.com> =
-wrote:
->=20
-> Hi Chuck,
->=20
-> Thanks for the reply and confirming the understanding.
->=20
-> Just want to understand any particular reason for not maintaining
-> alignment for the case other than NFS/RDMA?
+I've got an NFS server that's behaving a little oddly -- it loses
+threads to disk sleep at the rate of about 1 every 5 minutes.  Threads
+stuck in this state all have the same stack:
 
-The RPC Call information and the payload appear contiguously in
-the ingress data stream because that's how RPC over a stream
-socket works (RFC 5531).
+[<ffffffffc069e4ce>] nfsd4_cstate_assign_replay.part.78+0x1e/0x30 [nfsd]
+[<ffffffffc06a4ecc>] nfs4_preprocess_seqid_op+0xfc/0x190 [nfsd]
+[<ffffffffc06a5bb6>] nfsd4_close+0x66/0x2c0 [nfsd]
+[<ffffffffc06934fe>] nfsd4_proc_compound+0x3be/0x720 [nfsd]
+[<ffffffffc067fec6>] nfsd_dispatch+0xd6/0x270 [nfsd]
+[<ffffffffc04eef16>] svc_process_common+0x456/0x730 [sunrpc]
+[<ffffffffc04ef2f5>] svc_process+0x105/0x1c0 [sunrpc]
+[<ffffffffc067f8f0>] nfsd+0xf0/0x160 [nfsd]
+[<ffffffffb109f158>] kthread+0xd8/0xf0
+[<ffffffffb181b6f5>] ret_from_fork+0x55/0x80
+[<ffffffffffffffff>] 0xffffffffffffffff
 
-NFS/RDMA moves the NFS WRITE payload independently of incoming RPC
-Calls, in a way that preserves the alignment of each data payload.
+This is on ubuntu, with kernel version 4.4.0-119-generic
+#143~14.04.1-Ubuntu.  As you can tell from the backtrace, it's serving
+NFS4.
 
-(Small NFS WRITEs with NFS/RDMA are basically datagrams, thus they
-still need pull-up and data copy).
+I've been increasing the thread count to compensate for the hung
+threads -- note that the total number of threads doesn't affect the
+rate of hangs, which is stubbornly constant.
 
-
-> Due to this any file system below NFS needs to handle this or suffer
-> partial write.
-
-Yes, I believe that's correct, and as far as I know the VFS is
-capable of taking care of re-aligning the payload. This is not a
-functional issue, but rather one of performance scalability.
-
-The NFS/RDMA WRITE path is not perfect either, but thanks to the
-aligned transfer of pages, there is an opportunity to fix it so
-that correct page alignment can be maintained from the client
-application all the way to the file system on the server. I'm
-working in this area right now.
-
-
-> Thanks.
-> Rahul.
->=20
-> On Mon, Jun 4, 2018 at 10:45 PM, Chuck Lever <chuck.lever@oracle.com> =
-wrote:
->>=20
->>=20
->>> On Jun 4, 2018, at 12:27 PM, Rahul Deshmukh =
-<rahul.deshmukh@gmail.com> wrote:
->>>=20
->>> Hello
->>>=20
->>> I was just trying NFS + Lustre i.e. NFS running on Lustre, during =
-this
->>> experiment it is observed that the write requests that we get is not =
-page
->>> aligned even if the application is sending it correctly. Mostly it =
-is the
->>> first and last page which is not aligned.
->>>=20
->>> After digging more into code it seems it is because of following =
-code :
->>>=20
->>> static int fill_in_write_vector(struct kvec *vec, struct nfsd4_write =
-*write)
->>> {
->>>       int i =3D 1;
->>>       int buflen =3D write->wr_buflen;
->>>=20
->>>       vec[0].iov_base =3D write->wr_head.iov_base;
->>>       vec[0].iov_len =3D min_t(int, buflen, write->wr_head.iov_len); =
-<=3D=3D=3D=3D=3D=3D
->>>       buflen -=3D vec[0].iov_len;
->>>=20
->>>       while (buflen) {
->>>               vec[i].iov_base =3D page_address(write->wr_pagelist[i =
-- 1]);
->>>               vec[i].iov_len =3D min_t(int, PAGE_SIZE, buflen);
->>>               buflen -=3D vec[i].iov_len;
->>>               i++;
->>>       }
->>>       return i;
->>> }
->>>=20
->>> nfsd4_write()
->>> {
->>> :
->>> nvecs =3D fill_in_write_vector(rqstp->rq_vec, write);
->>> :
->>> }
->>>=20
->>> i.e. 0th vector is filled with min of buflen or wr_head and rest =
-differently
->>>=20
->>> Because of this, first and last page is not aligned.
->>>=20
->>> The question here is, why 0th vector is separatly filled with
->>> different size (as it
->>> seems it is causing page un-alinged iovec) ? Or  am I missing any
->>> thing at my end
->>> because of un-alignment is seen ?
->>=20
->> The TCP transport fills the sink buffer from page 0 forward, =
-contiguously.
->> The first page of that buffer contains the RPC and NFS header =
-information,
->> then the first part of the NFS WRITE payload.
->>=20
->> The vector is built so that the 0th element points into the first =
-page
->> right where the payload starts. Then it goes to the next page of the
->> buffer and starts at byte zero, and so on.
->>=20
->> NFS/RDMA can transport a payload while retaining its alignment.
->>=20
->>=20
->> --
->> Chuck Lever
->>=20
->>=20
->>=20
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
-in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
---
-Chuck Lever
-
-
-
+Do you have any idea what could be causing this, and how I can stop
+it, preferably without interrupting service?
