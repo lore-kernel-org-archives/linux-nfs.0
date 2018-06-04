@@ -1,53 +1,51 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:54390 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751473AbeFDOux (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 4 Jun 2018 10:50:53 -0400
-Received: from smtp.corp.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.26])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 14EFD30D19A6
-        for <linux-nfs@vger.kernel.org>; Mon,  4 Jun 2018 14:50:53 +0000 (UTC)
-Received: from steved.boston.devel.redhat.com (ovpn-116-215.phx2.redhat.com [10.3.116.215])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id BF88330012D0
-        for <linux-nfs@vger.kernel.org>; Mon,  4 Jun 2018 14:50:52 +0000 (UTC)
-From: Steve Dickson <steved@redhat.com>
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 0/4] Removed more warnings that now errors via -W
-Date: Mon,  4 Jun 2018 10:50:47 -0400
-Message-Id: <20180604145051.146390-1-steved@redhat.com>
+Received: from mail-it0-f66.google.com ([209.85.214.66]:34450 "EHLO
+        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753616AbeFDOx0 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Jun 2018 10:53:26 -0400
+Received: by mail-it0-f66.google.com with SMTP id y127-v6so10598111itd.1
+        for <linux-nfs@vger.kernel.org>; Mon, 04 Jun 2018 07:53:26 -0700 (PDT)
+Received: from gateway.1015granger.net (c-68-61-232-219.hsd1.mi.comcast.net. [68.61.232.219])
+        by smtp.gmail.com with ESMTPSA id 69-v6sm5035117iod.52.2018.06.04.07.53.24
+        for <linux-nfs@vger.kernel.org>
+        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Mon, 04 Jun 2018 07:53:25 -0700 (PDT)
+Received: from manet.1015granger.net (manet.1015granger.net [192.168.1.51])
+        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id w54ErNjN004623
+        for <linux-nfs@vger.kernel.org>; Mon, 4 Jun 2018 14:53:23 GMT
+Subject: [PATCH v1 0/2] Improve construction of non-UCS
+From: Chuck Lever <chuck.lever@oracle.com>
+To: linux-nfs@vger.kernel.org
+Date: Mon, 04 Jun 2018 10:53:23 -0400
+Message-ID: <20180604144154.11877.19298.stgit@manet.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The patches remove more warnings that are errors via the -W flags. 
-Basically allows RHEL7 to compile with following flags:
+The following series proposes improvements to the default NFSv4.0
+client ID strings. The purpose is to decrease the chance that two
+distinct clients will choose the same string, and to make the same
+client connecting via different transports choose the same string.
 
--Wformat=2 -Wmissing-include-dirs \
--Wunused -Wlogical-op \
--Wmissing-prototypes -Wmissing-declarations -Wstrict-prototypes \
--Wmissing-noreturn -Wshadow \
--Wunreachable-code -Wdisabled-optimization \
--fstrict-aliasing -fstrict-overflow \
--fexceptions -fstack-protector \
--fasynchronous-unwind-tables -fpie" \
+The use of the nodename comes from the NFSv4.1 (uniform) client
+ID string. It has some shortcomings as well, but it is better
+overall than using the client's local address. The use of the
+uniquifier is also copied from the uniform client ID string.
 
-There are still warnings but there are no more fatel errors. 
+The goal is to make the default behavior better. Preventing a
+malicious administrator from choosing the same nodename, uniquifier,
+and/or client address on purpose is not possible.
+
+---
+
+Chuck Lever (2):
+      NFSv4.0: Remove cl_ipaddr from non-UCS client ID
+      NFSv4.0: Remove transport protocol name from non-UCS client ID
 
 
-Steve Dickson (4):
-  xtab.c: Removed overflow in implicit constant conversion errors
-  Removed ISO C does not support the '%m' gnu_printf format errors
-  Removed format expects argument of type errors
-  gssd.c: Remomved a couple of warning errors
+ fs/nfs/nfs4proc.c |   24 ++++++++++++++++--------
+ 1 file changed, 16 insertions(+), 8 deletions(-)
 
- support/include/exportfs.h |  2 +-
- utils/gssd/gssd.c          | 20 ++++++++++----------
- utils/idmapd/idmapd.c      |  3 ++-
- utils/nfsidmap/nfsidmap.c  |  2 +-
- utils/nfsstat/nfsstat.c    |  6 +++---
- utils/statd/statd.c        |  7 ++++---
- 6 files changed, 21 insertions(+), 19 deletions(-)
-
--- 
-1.8.3.1
-
+--
+Chuck Lever
