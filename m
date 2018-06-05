@@ -1,72 +1,150 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx3-rdu2.redhat.com ([66.187.233.73]:53644 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1751665AbeFEPag (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 5 Jun 2018 11:30:36 -0400
-Received: from smtp.corp.redhat.com (int-mx03.intmail.prod.int.rdu2.redhat.com [10.11.54.3])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 2B6A810D44C
-        for <linux-nfs@vger.kernel.org>; Tue,  5 Jun 2018 15:30:36 +0000 (UTC)
-Received: from steved.boston.devel.redhat.com (steved.boston.devel.redhat.com [10.19.60.47])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 0466C10FFE73
-        for <linux-nfs@vger.kernel.org>; Tue,  5 Jun 2018 15:30:35 +0000 (UTC)
-From: Steve Dickson <steved@redhat.com>
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 2/2] Remove a number of stringop-overflow warnings
-Date: Tue,  5 Jun 2018 11:30:34 -0400
-Message-Id: <20180605153034.49074-2-steved@redhat.com>
-In-Reply-To: <20180605153034.49074-1-steved@redhat.com>
-References: <20180605153034.49074-1-steved@redhat.com>
+Received: from mx141.netapp.com ([216.240.21.12]:23221 "EHLO mx141.netapp.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751667AbeFEPv2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 5 Jun 2018 11:51:28 -0400
+From: Olga Kornievskaia <kolga@netapp.com>
+To: <steved@redhat.com>
+CC: <linux-nfs@vger.kernel.org>
+Subject: [PATCH v2 1/1] Add check of clientaddr argument
+Date: Tue, 5 Jun 2018 11:51:27 -0400
+Message-ID: <20180605155127.27429-1-kolga@netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-umich_ldap.c:1128:3: warning: ‘strncat’ specified bound 128
-	equals destination size [-Wstringop-overflow=]
+If the user supplies a clientaddr value, it should be either
+a special value of either IPv4/IPv6 any address or one of the
+machine's network addresses. Otherwise, the use of an arbitrary
+value of the clientaddr value is not allowed.
 
-umich_ldap.c:1130:3: warning: ‘strncat’ specified bound 128
-	equals destination size [-Wstringop-overflow=]
-
-idmapd.c:313:2: warning: ‘strncat’ specified bound 4096
-	equals destination size [-Wstringop-overflow=]
-
-Signed-off-by: Steve Dickson <steved@redhat.com>
+Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
 ---
- support/nfsidmap/umich_ldap.c | 4 ++--
- utils/idmapd/idmapd.c         | 2 +-
- 2 files changed, 3 insertions(+), 3 deletions(-)
+ utils/mount/network.c | 45 +++++++++++++++++++++++++++++++++++++++++++++
+ utils/mount/network.h |  2 ++
+ utils/mount/stropts.c | 28 +++++++++++++++++++++++++---
+ 3 files changed, 72 insertions(+), 3 deletions(-)
 
-diff --git a/support/nfsidmap/umich_ldap.c b/support/nfsidmap/umich_ldap.c
-index 0e31b1c..b661110 100644
---- a/support/nfsidmap/umich_ldap.c
-+++ b/support/nfsidmap/umich_ldap.c
-@@ -1125,9 +1125,9 @@ umichldap_init(void)
+diff --git a/utils/mount/network.c b/utils/mount/network.c
+index e490399..2a54f82 100644
+--- a/utils/mount/network.c
++++ b/utils/mount/network.c
+@@ -50,6 +50,8 @@
+ #include <rpc/rpc.h>
+ #include <rpc/pmap_prot.h>
+ #include <rpc/pmap_clnt.h>
++#include <net/if.h>
++#include <ifaddrs.h>
  
- 	/* Verify required information is supplied */
- 	if (server_in == NULL || strlen(server_in) == 0)
--		strncat(missing_msg, "LDAP_server ", sizeof(missing_msg));
-+		strncat(missing_msg, "LDAP_server ", sizeof(missing_msg)-1);
- 	if (ldap_info.base == NULL || strlen(ldap_info.base) == 0)
--		strncat(missing_msg, "LDAP_base ", sizeof(missing_msg));
-+		strncat(missing_msg, "LDAP_base ", sizeof(missing_msg)-1);
- 	if (strlen(missing_msg) != 0) {
- 		IDMAP_LOG(0, ("umichldap_init: Missing required information: "
- 			  "%s", missing_msg));
-diff --git a/utils/idmapd/idmapd.c b/utils/idmapd/idmapd.c
-index 2585fb2..4811e0f 100644
---- a/utils/idmapd/idmapd.c
-+++ b/utils/idmapd/idmapd.c
-@@ -310,7 +310,7 @@ main(int argc, char **argv)
- 	if (!serverstart && !clientstart)
- 		errx(1, "it is illegal to specify both -C and -S");
+ #include "sockaddr.h"
+ #include "xcommon.h"
+@@ -1759,3 +1761,46 @@ int nfs_umount_do_umnt(struct mount_options *options,
  
--	strncat(pipefsdir, "/nfs", sizeof(pipefsdir));
-+	strncat(pipefsdir, "/nfs", sizeof(pipefsdir)-1);
+ 	return EX_SUCCESS;
+ }
++
++int nfs_is_inaddr_any(struct sockaddr *nfs_saddr)
++{
++	switch (nfs_saddr->sa_family) {
++	case AF_INET: {
++		if (((struct sockaddr_in *)nfs_saddr)->sin_addr.s_addr ==
++				INADDR_ANY)
++			return 1;
++	}
++	case AF_INET6:
++		if (!memcmp(&((struct sockaddr_in6 *)nfs_saddr)->sin6_addr,
++				&in6addr_any, sizeof(in6addr_any)))
++			return 1;
++	}
++	return 0;
++}
++
++int nfs_addr_matches_localips(struct sockaddr *nfs_saddr)
++{
++	struct ifaddrs *myaddrs, *ifa;
++	int found = 0;
++
++	/* acquire exiting network interfaces */
++	if (getifaddrs(&myaddrs) != 0)
++		return 0;
++
++	/* interate over the available interfaces and check if we
++	 * we find a match to the supplied clientaddr value
++	 */
++	for (ifa = myaddrs; ifa != NULL; ifa = ifa->ifa_next) {
++		if (ifa->ifa_addr == NULL)
++			continue;
++		if (!(ifa->ifa_flags & IFF_UP))
++			continue;
++		if (!memcmp(ifa->ifa_addr, nfs_saddr,
++				sizeof(struct sockaddr))) {
++			found = 1;
++			break;
++		}
++	}
++	freeifaddrs(myaddrs);
++	return found;
++}
+diff --git a/utils/mount/network.h b/utils/mount/network.h
+index ecaac33..0fc98ac 100644
+--- a/utils/mount/network.h
++++ b/utils/mount/network.h
+@@ -54,6 +54,8 @@ int nfs_callback_address(const struct sockaddr *, const socklen_t,
+ int clnt_ping(struct sockaddr_in *, const unsigned long,
+ 		const unsigned long, const unsigned int,
+ 		struct sockaddr_in *);
++int nfs_is_inaddr_any(struct sockaddr *);
++int nfs_addr_matches_localips(struct sockaddr *);
  
- 	daemon_init(fg);
+ struct mount_options;
+ 
+diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+index d1b0708..e22216f 100644
+--- a/utils/mount/stropts.c
++++ b/utils/mount/stropts.c
+@@ -229,7 +229,8 @@ static int nfs_append_addr_option(const struct sockaddr *sap,
+ 
+ /*
+  * Called to discover our address and append an appropriate 'clientaddr='
+- * option to the options string.
++ * option to the options string. If the supplied 'clientaddr=' value does
++ * not match either IPV4/IPv6 any or a local address, then fail the mount.
+  *
+  * Returns 1 if 'clientaddr=' option created successfully or if
+  * 'clientaddr=' option is already present; otherwise zero.
+@@ -242,8 +243,29 @@ static int nfs_append_clientaddr_option(const struct sockaddr *sap,
+ 	struct sockaddr *my_addr = &address.sa;
+ 	socklen_t my_len = sizeof(address);
+ 
+-	if (po_contains(options, "clientaddr") == PO_FOUND)
+-		return 1;
++	if (po_contains(options, "clientaddr") == PO_FOUND) {
++		char *addr = po_get(options, "clientaddr");
++		union nfs_sockaddr nfs_address;
++		struct sockaddr *nfs_saddr = &nfs_address.sa;
++		socklen_t nfs_salen = sizeof(nfs_address);
++
++		/* translate the input for clientaddr to nfs_sockaddr */
++		if (!nfs_string_to_sockaddr(addr, nfs_saddr, &nfs_salen))
++			return 0;
++
++		/* check for IPV4_ANY and IPV6_ANY */
++		if (nfs_is_inaddr_any(nfs_saddr))
++			return 1;
++
++		/* check if ip matches local network addresses */
++		if (!nfs_addr_matches_localips(nfs_saddr)) {
++			nfs_error(_("%s: supplied clientaddr=%s does not "
++				"match any existing network addresses"),
++				progname, addr);
++			return 0;
++		} else
++			return 1;
++	}
+ 
+ 	nfs_callback_address(sap, salen, my_addr, &my_len);
  
 -- 
-2.17.1
+1.8.3.1
 
