@@ -1,56 +1,60 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx3-rdu2.redhat.com ([66.187.233.73]:37610 "EHLO mx1.redhat.com"
+Received: from mx3-rdu2.redhat.com ([66.187.233.73]:43114 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1752077AbeFERU6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 5 Jun 2018 13:20:58 -0400
-Received: from smtp.corp.redhat.com (int-mx03.intmail.prod.int.rdu2.redhat.com [10.11.54.3])
+        id S1752055AbeFERVf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 5 Jun 2018 13:21:35 -0400
+Received: from smtp.corp.redhat.com (int-mx06.intmail.prod.int.rdu2.redhat.com [10.11.54.6])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id B8110814F0B8
-        for <linux-nfs@vger.kernel.org>; Tue,  5 Jun 2018 17:20:57 +0000 (UTC)
+        by mx1.redhat.com (Postfix) with ESMTPS id 2D2564187E4C
+        for <linux-nfs@vger.kernel.org>; Tue,  5 Jun 2018 17:21:35 +0000 (UTC)
 Received: from steved.boston.devel.redhat.com (steved.boston.devel.redhat.com [10.19.60.47])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 99A6310F1C1A
-        for <linux-nfs@vger.kernel.org>; Tue,  5 Jun 2018 17:20:57 +0000 (UTC)
-Subject: Re: [PATCH 0/2] Fixing a couple warnings
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 0C211205D521
+        for <linux-nfs@vger.kernel.org>; Tue,  5 Jun 2018 17:21:34 +0000 (UTC)
+Subject: Re: [PATCH 0/4] Removed more warnings that now errors via -W
 To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-References: <20180531155525.60495-1-steved@redhat.com>
+References: <20180604145051.146390-1-steved@redhat.com>
 From: Steve Dickson <SteveD@RedHat.com>
-Message-ID: <86493d04-6bd3-bdc4-9be2-038566fa295b@RedHat.com>
-Date: Tue, 5 Jun 2018 13:20:57 -0400
+Message-ID: <970c9873-e9d5-1962-8a8f-16f8ac50034c@RedHat.com>
+Date: Tue, 5 Jun 2018 13:21:33 -0400
 MIME-Version: 1.0
-In-Reply-To: <20180531155525.60495-1-steved@redhat.com>
+In-Reply-To: <20180604145051.146390-1-steved@redhat.com>
 Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
 
-On 05/31/2018 11:55 AM, Steve Dickson wrote:
-> Here are a couple warnings that I started getting
-> when I compiled on a freshly install Fedora 28.
+On 06/04/2018 10:50 AM, Steve Dickson wrote:
+> The patches remove more warnings that are errors via the -W flags. 
+> Basically allows RHEL7 to compile with following flags:
 > 
-> The first patch turns off the compiling of rpcgen
-> by default. The command produces code that cause
-> a number of warnings which are now errors. 
+> -Wformat=2 -Wmissing-include-dirs \
+> -Wunused -Wlogical-op \
+> -Wmissing-prototypes -Wmissing-declarations -Wstrict-prototypes \
+> -Wmissing-noreturn -Wshadow \
+> -Wunreachable-code -Wdisabled-optimization \
+> -fstrict-aliasing -fstrict-overflow \
+> -fexceptions -fstack-protector \
+> -fasynchronous-unwind-tables -fpie" \
 > 
-> The old glibc rpcgen, which is now in the 
-> rpcsvc-proto package, does a much better job
-> of not creating warnings.
+> There are still warnings but there are no more fatel errors. 
 > 
-> The second patch fixes a couple warnings I 
-> was not seeing.
 > 
-> Steve Dickson (1):
->   rpcgen: Only compile the command when configured.
+> Steve Dickson (4):
+>   xtab.c: Removed overflow in implicit constant conversion errors
+>   Removed ISO C does not support the '%m' gnu_printf format errors
+>   Removed format expects argument of type errors
+>   gssd.c: Remomved a couple of warning errors
 > 
-> gabriele balducci (1):
->   Fixed format overflow warnings in mountd and nfsd
+>  support/include/exportfs.h |  2 +-
+>  utils/gssd/gssd.c          | 20 ++++++++++----------
+>  utils/idmapd/idmapd.c      |  3 ++-
+>  utils/nfsidmap/nfsidmap.c  |  2 +-
+>  utils/nfsstat/nfsstat.c    |  6 +++---
+>  utils/statd/statd.c        |  7 ++++---
+>  6 files changed, 21 insertions(+), 19 deletions(-)
 > 
->  configure.ac          | 2 +-
->  utils/mountd/mountd.c | 2 +-
->  utils/nfsd/nfsd.c     | 2 +-
->  3 files changed, 3 insertions(+), 3 deletions(-)
-> 
-Committed... 
+Committed... with the nit fixed.
 
 steved.
