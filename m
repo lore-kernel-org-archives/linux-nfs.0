@@ -1,217 +1,235 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp2120.oracle.com ([141.146.126.78]:54074 "EHLO
-        aserp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751744AbeFEQt6 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Jun 2018 12:49:58 -0400
-Content-Type: text/plain;
-        charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 11.3 \(3445.6.18\))
-Subject: Re: [PATCH v2 1/1] Add check of clientaddr argument
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20180605155127.27429-1-kolga@netapp.com>
-Date: Tue, 5 Jun 2018 12:49:40 -0400
-Cc: Steve Dickson <steved@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <17CC43F7-6649-434B-BC7E-92623BA79CF5@oracle.com>
-References: <20180605155127.27429-1-kolga@netapp.com>
-To: Olga Kornievskaia <kolga@netapp.com>
+Received: from mx3-rdu2.redhat.com ([66.187.233.73]:37100 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1752047AbeFERU3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 5 Jun 2018 13:20:29 -0400
+Subject: Re: [PATCH v1] gssd: Add "srchost=" upcall parameter
+To: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
+References: <20180529195448.2291.73141.stgit@klimt.1015granger.net>
+From: Steve Dickson <SteveD@RedHat.com>
+Message-ID: <351fc3ab-acac-da36-64af-c99b8eb0e8bd@RedHat.com>
+Date: Tue, 5 Jun 2018 13:20:27 -0400
+MIME-Version: 1.0
+In-Reply-To: <20180529195448.2291.73141.stgit@klimt.1015granger.net>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
 
-> On Jun 5, 2018, at 11:51 AM, Olga Kornievskaia <kolga@netapp.com> =
-wrote:
->=20
-> If the user supplies a clientaddr value,
-
-Suggest instead:
-
- "If an NFS client administrator supplies the clientaddr mount option,"
-
-
-> it should be either
-> a special value of either IPv4/IPv6 any address or one of the
-> machine's network addresses. Otherwise, the use of an arbitrary
-> value of the clientaddr value is not allowed.
-
-> Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+On 05/29/2018 03:54 PM, Chuck Lever wrote:
+> The callback client used by NFSv4.0 servers to send CB calls has to
+> use a source principal that is the same as the target principal
+> that the client used to establish the forward channel.
+> 
+> In multi-homed server set-ups, the domain part of the principal's
+> hostname may not be the same as server's DNS domain. So gssd can
+> no longer assume that. The kernel can scrape that domain off the
+> forward channel's principal and pass that up to gssd.
+> 
+> This patch adds a new parameter, "srchost", to the kernel upcall.
+> When the kernel presents this new parameter in an upcall, gssd will
+> use it, along with the "service" parameter, to construct the service
+> principal for the keytab lookup.
+> 
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 > ---
-> utils/mount/network.c | 45 =
-+++++++++++++++++++++++++++++++++++++++++++++
-> utils/mount/network.h |  2 ++
-> utils/mount/stropts.c | 28 +++++++++++++++++++++++++---
-> 3 files changed, 72 insertions(+), 3 deletions(-)
->=20
-> diff --git a/utils/mount/network.c b/utils/mount/network.c
-> index e490399..2a54f82 100644
-> --- a/utils/mount/network.c
-> +++ b/utils/mount/network.c
-> @@ -50,6 +50,8 @@
-> #include <rpc/rpc.h>
-> #include <rpc/pmap_prot.h>
-> #include <rpc/pmap_clnt.h>
-> +#include <net/if.h>
-> +#include <ifaddrs.h>
->=20
-> #include "sockaddr.h"
-> #include "xcommon.h"
-> @@ -1759,3 +1761,46 @@ int nfs_umount_do_umnt(struct mount_options =
-*options,
->=20
-> 	return EX_SUCCESS;
-> }
-> +
-> +int nfs_is_inaddr_any(struct sockaddr *nfs_saddr)
-> +{
-> +	switch (nfs_saddr->sa_family) {
-> +	case AF_INET: {
-> +		if (((struct sockaddr_in *)nfs_saddr)->sin_addr.s_addr =
-=3D=3D
-> +				INADDR_ANY)
-> +			return 1;
-> +	}
-> +	case AF_INET6:
-> +		if (!memcmp(&((struct sockaddr_in6 =
-*)nfs_saddr)->sin6_addr,
-> +				&in6addr_any, sizeof(in6addr_any)))
-> +			return 1;
-> +	}
-> +	return 0;
-> +}
-> +
-> +int nfs_addr_matches_localips(struct sockaddr *nfs_saddr)
-> +{
-> +	struct ifaddrs *myaddrs, *ifa;
-> +	int found =3D 0;
-> +
-> +	/* acquire exiting network interfaces */
-> +	if (getifaddrs(&myaddrs) !=3D 0)
-> +		return 0;
-> +
-> +	/* interate over the available interfaces and check if we
-> +	 * we find a match to the supplied clientaddr value
-> +	 */
-> +	for (ifa =3D myaddrs; ifa !=3D NULL; ifa =3D ifa->ifa_next) {
-> +		if (ifa->ifa_addr =3D=3D NULL)
-> +			continue;
-> +		if (!(ifa->ifa_flags & IFF_UP))
-> +			continue;
-> +		if (!memcmp(ifa->ifa_addr, nfs_saddr,
-> +				sizeof(struct sockaddr))) {
-> +			found =3D 1;
-> +			break;
+>  utils/gssd/gssd_proc.c |   23 +++++++++++++----------
+>  utils/gssd/krb5_util.c |   27 ++++++++++++++++++---------
+>  utils/gssd/krb5_util.h |    2 +-
+>  3 files changed, 32 insertions(+), 20 deletions(-)
+Committed.... 
+
+steved.
+
+> 
+> diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
+> index ce73777..8767e26 100644
+> --- a/utils/gssd/gssd_proc.c
+> +++ b/utils/gssd/gssd_proc.c
+> @@ -520,8 +520,9 @@ out:
+>  }
+>  
+>  static AUTH *
+> -krb5_use_machine_creds(struct clnt_info *clp, uid_t uid, char *tgtname,
+> -		    char *service, CLIENT **rpc_clnt)
+> +krb5_use_machine_creds(struct clnt_info *clp, uid_t uid,
+> +		       char *srchost, char *tgtname, char *service,
+> +		       CLIENT **rpc_clnt)
+>  {
+>  	AUTH	*auth = NULL;
+>  	char	**credlist = NULL;
+> @@ -534,7 +535,7 @@ krb5_use_machine_creds(struct clnt_info *clp, uid_t uid, char *tgtname,
+>  
+>  	do {
+>  		gssd_refresh_krb5_machine_credential(clp->servername, NULL,
+> -						service);
+> +						     service, srchost);
+>  	/*
+>  	 * Get a list of credential cache names and try each
+>  	 * of them until one works or we've tried them all
+> @@ -594,8 +595,8 @@ out:
+>   * context on behalf of the kernel
+>   */
+>  static void
+> -process_krb5_upcall(struct clnt_info *clp, uid_t uid, int fd, char *tgtname,
+> -		    char *service)
+> +process_krb5_upcall(struct clnt_info *clp, uid_t uid, int fd, char *srchost,
+> +		    char *tgtname, char *service)
+>  {
+>  	CLIENT			*rpc_clnt = NULL;
+>  	AUTH			*auth = NULL;
+> @@ -643,7 +644,7 @@ process_krb5_upcall(struct clnt_info *clp, uid_t uid, int fd, char *tgtname,
+>  	if (auth == NULL) {
+>  		if (uid == 0 && (root_uses_machine_creds == 1 ||
+>  				service != NULL)) {
+> -			auth =	krb5_use_machine_creds(clp, uid, tgtname,
+> +			auth =	krb5_use_machine_creds(clp, uid, srchost, tgtname,
+>  							service, &rpc_clnt);
+>  			if (auth == NULL)
+>  				goto out_return_error;
+> @@ -714,7 +715,7 @@ handle_krb5_upcall(struct clnt_upcall_info *info)
+>  
+>  	printerr(2, "\n%s: uid %d (%s)\n", __func__, info->uid, clp->relpath);
+>  
+> -	process_krb5_upcall(clp, info->uid, clp->krb5_fd, NULL, NULL);
+> +	process_krb5_upcall(clp, info->uid, clp->krb5_fd, NULL, NULL, NULL);
+>  	free(info);
+>  }
+>  
+> @@ -728,11 +729,12 @@ handle_gssd_upcall(struct clnt_upcall_info *info)
+>  	char			*uidstr = NULL;
+>  	char			*target = NULL;
+>  	char			*service = NULL;
+> +	char			*srchost = NULL;
+>  	char			*enctypes = NULL;
+>  	char			*upcall_str;
+>  	char			*pbuf = info->lbuf;
+>  
+> -	printerr(2, "\n%s: '%s' (%s)\n", __func__, info->lbuf, clp->relpath);
+> +	printerr(2, "%s: '%s' (%s)\n", __func__, info->lbuf, clp->relpath);
+>  
+>  	upcall_str = strdup(info->lbuf);
+>  	if (upcall_str == NULL) {
+> @@ -751,6 +753,8 @@ handle_gssd_upcall(struct clnt_upcall_info *info)
+>  			target = p + strlen("target=");
+>  		else if (!strncmp(p, "service=", strlen("service=")))
+>  			service = p + strlen("service=");
+> +		else if (!strncmp(p, "srchost=", strlen("srchost=")))
+> +			srchost = p + strlen("srchost=");
+>  	}
+>  
+>  	if (!mech || strlen(mech) < 1) {
+> @@ -802,7 +806,7 @@ handle_gssd_upcall(struct clnt_upcall_info *info)
+>  	}
+>  
+>  	if (strcmp(mech, "krb5") == 0 && clp->servername)
+> -		process_krb5_upcall(clp, uid, clp->gssd_fd, target, service);
+> +		process_krb5_upcall(clp, uid, clp->gssd_fd, srchost, target, service);
+>  	else {
+>  		if (clp->servername)
+>  			printerr(0, "WARNING: handle_gssd_upcall: "
+> @@ -815,4 +819,3 @@ out_nomem:
+>  	free(info);
+>  	return;
+>  }
+> -
+> diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
+> index b342b06..eba1aac 100644
+> --- a/utils/gssd/krb5_util.c
+> +++ b/utils/gssd/krb5_util.c
+> @@ -757,7 +757,8 @@ gssd_search_krb5_keytab(krb5_context context, krb5_keytab kt,
+>   * the server hostname.
+>   */
+>  static int
+> -find_keytab_entry(krb5_context context, krb5_keytab kt, const char *tgtname,
+> +find_keytab_entry(krb5_context context, krb5_keytab kt,
+> +		  const char *srchost, const char *tgtname,
+>  		  krb5_keytab_entry *kte, const char **svcnames)
+>  {
+>  	krb5_error_code code;
+> @@ -781,7 +782,9 @@ find_keytab_entry(krb5_context context, krb5_keytab kt, const char *tgtname,
+>  		goto out;
+>  
+>  	/* Get full local hostname */
+> -	if (gethostname(myhostname, sizeof(myhostname)) == -1) {
+> +	if (srchost) {
+> +		strcpy(myhostname, srchost);
+> +	} else if (gethostname(myhostname, sizeof(myhostname)) == -1) {
+>  		retval = errno;
+>  		k5err = gssd_k5_err_msg(context, retval);
+>  		printerr(1, "%s while getting local hostname\n", k5err);
+> @@ -807,10 +810,12 @@ find_keytab_entry(krb5_context context, krb5_keytab kt, const char *tgtname,
+>  	        myhostad[i+1] = 0;
+>  	}
+>  
+> -	retval = get_full_hostname(myhostname, myhostname, sizeof(myhostname));
+> -	if (retval) {
+> -		/* Don't use myhostname */
+> -		myhostname[0] = 0;
+> +	if (!srchost) {
+> +		retval = get_full_hostname(myhostname, myhostname, sizeof(myhostname));
+> +		if (retval) {
+> +			/* Don't use myhostname */
+> +			myhostname[0] = 0;
 > +		}
-> +	}
-> +	freeifaddrs(myaddrs);
-> +	return found;
-> +}
-
-This looks like what we discussed, and it is implemented IMO
-correctly. Can you also provide an update to nfs(5)?
-
-After all the dialog and thinking more about it, I'm less convinced
-that prohibiting non-local addresses is wise. The client can mount
-through a NAT and specify a clientaddr that points to the NAT. That
-seems like a correct configuration that would now be prohibited.
-
-However I don't know of any actual deployments like this, so it's
-hard to argue convincingly that mount.nfs needs to continue to allow
-it.
-
-May I suggest a slight alteration?
-
- - If the value of clientaddr=3D is not a presentation address,
-   report the problem and fail the mount (no change)
-
- - Allow the value of clientaddr=3D to be an ANY address without
-   complaint (no change)
-
- - If the value of clientaddr=3D is not a local address, warn but
-   allow it (rather than failing)
-
-That permits flexibility but also gives a good indication to
-administrators who have made an honest mistake.
-
-
-> diff --git a/utils/mount/network.h b/utils/mount/network.h
-> index ecaac33..0fc98ac 100644
-> --- a/utils/mount/network.h
-> +++ b/utils/mount/network.h
-> @@ -54,6 +54,8 @@ int nfs_callback_address(const struct sockaddr *, =
-const socklen_t,
-> int clnt_ping(struct sockaddr_in *, const unsigned long,
-> 		const unsigned long, const unsigned int,
-> 		struct sockaddr_in *);
-> +int nfs_is_inaddr_any(struct sockaddr *);
-> +int nfs_addr_matches_localips(struct sockaddr *);
->=20
-> struct mount_options;
->=20
-> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-> index d1b0708..e22216f 100644
-> --- a/utils/mount/stropts.c
-> +++ b/utils/mount/stropts.c
-> @@ -229,7 +229,8 @@ static int nfs_append_addr_option(const struct =
-sockaddr *sap,
->=20
-> /*
->  * Called to discover our address and append an appropriate =
-'clientaddr=3D'
-> - * option to the options string.
-> + * option to the options string. If the supplied 'clientaddr=3D' =
-value does
-> + * not match either IPV4/IPv6 any or a local address, then fail the =
-mount.
->  *
->  * Returns 1 if 'clientaddr=3D' option created successfully or if
->  * 'clientaddr=3D' option is already present; otherwise zero.
-> @@ -242,8 +243,29 @@ static int nfs_append_clientaddr_option(const =
-struct sockaddr *sap,
-> 	struct sockaddr *my_addr =3D &address.sa;
-> 	socklen_t my_len =3D sizeof(address);
->=20
-> -	if (po_contains(options, "clientaddr") =3D=3D PO_FOUND)
-> -		return 1;
-> +	if (po_contains(options, "clientaddr") =3D=3D PO_FOUND) {
-> +		char *addr =3D po_get(options, "clientaddr");
-> +		union nfs_sockaddr nfs_address;
-> +		struct sockaddr *nfs_saddr =3D &nfs_address.sa;
-> +		socklen_t nfs_salen =3D sizeof(nfs_address);
+>  	}
+>  
+>  	code = krb5_get_default_realm(context, &default_realm);
+> @@ -1140,7 +1145,7 @@ gssd_get_krb5_machine_cred_list(char ***list)
+>  		if (ple->ccname) {
+>  			/* Make sure cred is up-to-date before returning it */
+>  			retval = gssd_refresh_krb5_machine_credential(NULL, ple,
+> -				NULL);
+> +								      NULL, NULL);
+>  			if (retval)
+>  				continue;
+>  			if (i + 1 > listsize) {
+> @@ -1231,7 +1236,7 @@ gssd_destroy_krb5_machine_creds(void)
+>  int
+>  gssd_refresh_krb5_machine_credential(char *hostname,
+>  				     struct gssd_k5_kt_princ *ple, 
+> -					 char *service)
+> +				     char *service, char *srchost)
+>  {
+>  	krb5_error_code code = 0;
+>  	krb5_context context;
+> @@ -1240,6 +1245,9 @@ gssd_refresh_krb5_machine_credential(char *hostname,
+>  	char *k5err = NULL;
+>  	const char *svcnames[] = { "$", "root", "nfs", "host", NULL };
+>  
+> +	printerr(2, "%s: hostname=%s ple=%p service=%s srchost=%s\n",
+> +		__func__, hostname, ple, service, srchost);
 > +
-> +		/* translate the input for clientaddr to nfs_sockaddr */
-> +		if (!nfs_string_to_sockaddr(addr, nfs_saddr, =
-&nfs_salen))
-> +			return 0;
-> +
-> +		/* check for IPV4_ANY and IPV6_ANY */
-> +		if (nfs_is_inaddr_any(nfs_saddr))
-> +			return 1;
-> +
-> +		/* check if ip matches local network addresses */
-> +		if (!nfs_addr_matches_localips(nfs_saddr)) {
-> +			nfs_error(_("%s: supplied clientaddr=3D%s does =
-not "
-> +				"match any existing network addresses"),
-> +				progname, addr);
-> +			return 0;
-> +		} else
-> +			return 1;
-> +	}
->=20
-> 	nfs_callback_address(sap, salen, my_addr, &my_len);
->=20
-> --=20
-> 1.8.3.1
->=20
+>  	/*
+>  	 * If a specific service name was specified, use it.
+>  	 * Otherwise, use the default list.
+> @@ -1270,7 +1278,8 @@ gssd_refresh_krb5_machine_credential(char *hostname,
+>  	if (ple == NULL) {
+>  		krb5_keytab_entry kte;
+>  
+> -		code = find_keytab_entry(context, kt, hostname, &kte, svcnames);
+> +		code = find_keytab_entry(context, kt, srchost, hostname,
+> +					 &kte, svcnames);
+>  		if (code) {
+>  			printerr(0, "ERROR: %s: no usable keytab entry found "
+>  				 "in keytab %s for connection with host %s\n",
+> diff --git a/utils/gssd/krb5_util.h b/utils/gssd/krb5_util.h
+> index e3bbb07..b000b44 100644
+> --- a/utils/gssd/krb5_util.h
+> +++ b/utils/gssd/krb5_util.h
+> @@ -30,7 +30,7 @@ void gssd_free_krb5_machine_cred_list(char **list);
+>  void gssd_destroy_krb5_machine_creds(void);
+>  int  gssd_refresh_krb5_machine_credential(char *hostname,
+>  					  struct gssd_k5_kt_princ *ple, 
+> -					  char *service);
+> +					  char *service, char *srchost);
+>  char *gssd_k5_err_msg(krb5_context context, krb5_error_code code);
+>  void gssd_k5_get_default_realm(char **def_realm);
+>  
+> 
 > --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
-in
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
---
-Chuck Lever
-
-
-
+> 
