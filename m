@@ -1,60 +1,37 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp2120.oracle.com ([141.146.126.78]:37864 "EHLO
-        aserp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752410AbeFFPIf (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Jun 2018 11:08:35 -0400
-From: Chuck Lever <chuck.lever@oracle.com>
-Content-Type: text/plain;
-        charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 11.3 \(3445.6.18\))
-Subject: Fwd: [PATCH v1 0/2] Improve construction of non-UCS
-Date: Wed, 6 Jun 2018 11:08:25 -0400
+Received: from mail-by2nam01on0099.outbound.protection.outlook.com ([104.47.34.99]:14365
+        "EHLO NAM01-BY2-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1752963AbeFFPoy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 6 Jun 2018 11:44:54 -0400
+From: Trond Myklebust <trondmy@hammerspace.com>
+To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "chuck.lever@oracle.com" <chuck.lever@oracle.com>
+Subject: Re: [PATCH v1 2/2] NFSv4.0: Remove transport protocol name from
+ non-UCS client ID
+Date: Wed, 6 Jun 2018 15:44:51 +0000
+Message-ID: <d14af3599d007587137eb6814baa98b91ff3efc8.camel@hammerspace.com>
 References: <20180604144154.11877.19298.stgit@manet.1015granger.net>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-To: trond.myklebust@hammerspace.com
-Message-Id: <743809C0-9838-4F6F-82E2-073EB4C1543C@oracle.com>
+         <20180604145334.11877.12862.stgit@manet.1015granger.net>
+In-Reply-To: <20180604145334.11877.12862.stgit@manet.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Trond-
-
-> Begin forwarded message:
-> 
-> From: Chuck Lever <chuck.lever@oracle.com>
-> Subject: [PATCH v1 0/2] Improve construction of non-UCS
-> Date: June 4, 2018 at 10:53:23 AM EDT
-> To: linux-nfs@vger.kernel.org
-> 
-> The following series proposes improvements to the default NFSv4.0
-> client ID strings. The purpose is to decrease the chance that two
-> distinct clients will choose the same string, and to make the same
-> client connecting via different transports choose the same string.
-> 
-> The use of the nodename comes from the NFSv4.1 (uniform) client
-> ID string. It has some shortcomings as well, but it is better
-> overall than using the client's local address. The use of the
-> uniquifier is also copied from the uniform client ID string.
-> 
-> The goal is to make the default behavior better. Preventing a
-> malicious administrator from choosing the same nodename, uniquifier,
-> and/or client address on purpose is not possible.
-> 
-> ---
-> 
-> Chuck Lever (2):
->      NFSv4.0: Remove cl_ipaddr from non-UCS client ID
->      NFSv4.0: Remove transport protocol name from non-UCS client ID
-> 
-> 
-> fs/nfs/nfs4proc.c |   24 ++++++++++++++++--------
-> 1 file changed, 16 insertions(+), 8 deletions(-)
-
-Are you building the official NFS client PR for this merge window?
-Would you consider taking this series?
-
-
---
-Chuck Lever
-
-
-
+T24gTW9uLCAyMDE4LTA2LTA0IGF0IDEwOjUzIC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
+Q29tbWl0IDY5ZGQ3MTZjNWZmZCAoIk5GU3Y0OiBBZGQgc29ja2V0IHByb3RvIGFyZ3VtZW50IHRv
+DQo+IHNldGNsaWVudGlkIikgKDIwMDcpIGFkZGVkIHRoZSB0cmFuc3BvcnQgcHJvdG9jb2wgbmFt
+ZSB0byB0aGUgY2xpZW50DQo+IElEIHN0cmluZywgYnV0IHRoZSBwYXRjaCBkZXNjcmlwdGlvbiBk
+b2Vzbid0IGV4cGxhaW4gd2h5IHRoaXMgd2FzDQo+IG5lY2Vzc2FyeS4NCj4gDQo+IEF0IHRoYXQg
+dGltZSwgdGhlIG9ubHkgdHJhbnNwb3J0IHByb3RvY29sIG5hbWUgdGhhdCB3b3VsZCBoYXZlIGJl
+ZW4NCj4gdXNlZCBpcyAidGNwIiAoZm9yIGJvdGggSVB2NCBhbmQgSVB2NiksIHJlc3VsdGluZyBp
+biBubyBhZGRpdGlvbmFsDQo+IGRpc3RpbmN0aXZlbmVzcyBvZiB0aGUgY2xpZW50IElEIHN0cmlu
+Zy4NCj4gDQo+IFNpbmNlIHRoZXJlIGlzIG9uZSBjbGllbnQgaW5zdGFuY2UsIHRoZSBzZXJ2ZXIg
+c2hvdWxkIHJlY29nbml6ZSBpdCdzDQo+IHN0YXRlIHdoZXRoZXIgdGhlIGNsaWVudCBpcyBjb25u
+ZWN0aW5nIHZpYSBUQ1Agb3IgUkRNQS4gU2FtZSBjbGllbnQsDQo+IHNhbWUgbGVhc2UuDQoNClRo
+ZSByZWFzb24gd2h5IHRoaXMgaXMgdGhlIGNhc2Ugbm93IGlzIGJlY2F1c2UgdGhlIHRydW5raW5n
+IGNvZGUNCm92ZXJyaWRlcyB0aGUgZ3VhcmRyYWlscyBpbiBuZnNfZ2V0X2NsaWVudCgpLiBUaGUg
+bGF0dGVyIGRvZXMgbWF0Y2ggb24NCnRoZSBwcm90b2NvbC4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1
+c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lciwgSGFtbWVyc3BhY2UNCnRyb25kLm15a2xl
+YnVzdEBoYW1tZXJzcGFjZS5jb20NCg0K
