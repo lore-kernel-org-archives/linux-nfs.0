@@ -1,72 +1,124 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.99]:60082 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753125AbeFGLWO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 7 Jun 2018 07:22:14 -0400
+Received: from mail-ot0-f196.google.com ([74.125.82.196]:36398 "EHLO
+        mail-ot0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752996AbeFGLuL (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Jun 2018 07:50:11 -0400
+Received: by mail-ot0-f196.google.com with SMTP id c15-v6so1306635otl.3
+        for <linux-nfs@vger.kernel.org>; Thu, 07 Jun 2018 04:50:11 -0700 (PDT)
 MIME-Version: 1.0
-In-Reply-To: <CAJKOXPd2rntNOpU1quR9Zm_J22+=pEaj4ZTC_tdZ0zcRYUciFg@mail.gmail.com>
-References: <CAJKOXPd2rntNOpU1quR9Zm_J22+=pEaj4ZTC_tdZ0zcRYUciFg@mail.gmail.com>
-From: Krzysztof Kozlowski <krzk@kernel.org>
-Date: Thu, 7 Jun 2018 13:22:11 +0200
-Message-ID: <CAJKOXPcD3NecVq7yhpJb3whUZe28yq9OrwUpAyEt103KcSNtJA@mail.gmail.com>
-Subject: Re: [BUG BISECT] NFSv4 client fails on Flush Journal to Persistent Storage
-To: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Jeff Layton <jlayton@kernel.org>,
-        "David S. Miller" <davem@davemloft.net>, linux-nfs@vger.kernel.org,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        "linux-samsung-soc@vger.kernel.org"
-        <linux-samsung-soc@vger.kernel.org>
+In-Reply-To: <20180602005040.GH10666@fieldses.org>
+References: <828f320cde910a45983d91bddb6477d21c5cae33.camel@hammerspace.com>
+ <CAJfpegvuvFzNwSZRLCMCrhms-K4Ge=PTcn4uezLgV8U3ag+4xQ@mail.gmail.com>
+ <20180601135033.GA10666@fieldses.org> <CAJfpegvG4rkesopg=qj1H288X6H9CXu=N_fuYEsuWJ-O=5785A@mail.gmail.com>
+ <20180601142640.GC10666@fieldses.org> <CAJfpegtmSK5yuU-Vz7mPODy=iP+=BLMs2fy=sH-iWG8g3jeBfg@mail.gmail.com>
+ <20180601160857.GE10666@fieldses.org> <CAJfpeguFobmD5EdvYU7eFaaShMYxt9j72k=GKGHyh3-D-uCB-Q@mail.gmail.com>
+ <20180601174336.GF10666@fieldses.org> <CAJfpegsjGEoych6QE2YcH8kkJ9B=Hfk47BMuJ7ECjMViMUpisA@mail.gmail.com>
+ <20180602005040.GH10666@fieldses.org>
+From: Miklos Szeredi <miklos@szeredi.hu>
+Date: Thu, 7 Jun 2018 13:50:09 +0200
+Message-ID: <CAJfpegtt8jZ0j_3gwSSUUc6bC7NF6s6qtFEJELztsevLdWROZQ@mail.gmail.com>
+Subject: Re: nfs4_acl restricts copy_up in overlayfs
+To: "bfields@fieldses.org" <bfields@fieldses.org>
+Cc: Trond Myklebust <trondmy@hammerspace.com>,
+        "rgoldwyn@suse.de" <rgoldwyn@suse.de>,
+        "agruenba@redhat.com" <agruenba@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-unionfs@vger.kernel.org" <linux-unionfs@vger.kernel.org>
 Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jun 7, 2018 at 1:19 PM, Krzysztof Kozlowski <krzk@kernel.org> wrote=
-:
-> Hi,
+On Sat, Jun 2, 2018 at 2:50 AM, bfields@fieldses.org
+<bfields@fieldses.org> wrote:
+> On Fri, Jun 01, 2018 at 09:14:38PM +0200, Miklos Szeredi wrote:
+>> On Fri, Jun 1, 2018 at 7:43 PM, bfields@fieldses.org
+>> <bfields@fieldses.org> wrote:
+>> > On Fri, Jun 01, 2018 at 07:02:20PM +0200, Miklos Szeredi wrote:
+>> >> On Fri, Jun 1, 2018 at 6:08 PM, bfields@fieldses.org
+>> >> <bfields@fieldses.org> wrote:
+>> >> > On Fri, Jun 01, 2018 at 04:43:51PM +0200, Miklos Szeredi wrote:
+>> >> >> Look at ovl_permission(), I think it pretty clearly describes this model.
+>> >> >
+>> >> > Thanks!  Uh, so generic_permission is the thing that just does the usual
+>> >> > mode/acl checks on the in-core inode, and inode_permission is the one
+>> >> > that also calls into the filesystem?
+>> >>
+>> >> Right.
+>> >>
+>> >> > But I'm still a little confused--if I'm reading right, "realinode" is
+>> >> > the lower inode before copyup, and the upper inode after, so can't
+>> >> > inode_permission(realinode, mask) return different results before and
+>> >> > after copyup?
+>> >>
+>> >> Theoretically, yes.  Not in any sane setup, though.
+>> >
+>> > If root squashing is enabled and you mount as root, then it will change.
+>> >
+>> > That's not an unlikely case, it's pretty much the default.
+>>
+>> Let's see: root squashing will change root creds to nobody's creds, right?
+>>
+>> That results in a weird situation, where user foo is trying to access
+>> a file owned by foo, but which doesn't have read permission for
+>> "other" will not be able to perform a read on that file.  In fact, no
+>> user will be able to read that file, including root.   Copying up the
+>> file will also fail, since that requires read permission.
+>>
+>> So for that case it's not true that permission will change, since
+>> copy-up won't be possible.
 >
-> When booting my boards under recent linux-next, I see failures of systemd=
-:
+> Fair enough.  That's still pretty weird behavior.
 >
-> [FAILED] Failed to start Flush Journal to Persistent Storage.
-> See 'systemctl status systemd-journal-flush.service' for details.
->          Starting Create Volatile Files and Directories...
-> [**    ] A start job is running for Create V=E2=80=A6 [  223.209289] nfs:
-> server 192.168.1.10 not responding, still trying
-> [  223.209377] nfs: server 192.168.1.10 not responding, still trying
+> Arguably if you're going to do something different here then maybe it's
+> good for the difference to manifest in a way that's really obvious in
+> common cases, so people don't just overlook it.
 >
-> Effectively the boards fails to boot. Example is here:
-> https://krzk.eu/#/builders/1/builds/2157
+>> That leaves the case where no read or write permissions are involved,
+>> which is execute.  I think we should just mask that out from the
+>> inode_permission() check.  Makes no sense to ask underlying filesystem
+>> about execute permission.
 >
-> This was bisected to:
-> commit 37ac86c3a76c113619b7d9afe0251bbfc04cb80a
-> Author: Chuck Lever <chuck.lever@oracle.com>
-> Date:   Fri May 4 15:34:53 2018 -0400
+> I suppose so.
 >
->     SUNRPC: Initialize rpc_rqst outside of xprt->reserve_lock
+>> With that we'll have consistent permissions before and after copy-up.
+>> Right?
 >
->     alloc_slot is a transport-specific op, but initializing an rpc_rqst
->     is common to all transports. In addition, the only part of initial-
->     izing an rpc_rqst that needs serialization is getting a fresh XID.
+> Hm.  If inode_permission(realinode, mask) changes across copy-up:
 >
->     Move rpc_rqst initialization to common code in preparation for
->     adding a transport-specific alloc_slot to xprtrdma.
->
->     Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->     Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
->
->
-> Bisect log attached. Full configuration:
-> 1. exynos_defconfig
-> 2. ARMv7, octa-core, Exynos5422 and Exynos4412 (Odroid XU3, U3 and others=
-)
-> 3. NFSv4 client (from Raspberry Pi)
->
-> Let me know if you need any more information.
+>         - if the difference is in execute, you're telling me we'll
+>           ignore that.
+>         - if it changes from denying to allowing read, you don't care
+>           since that will prevent the copy up in the first place.
+>         - if it changes from denying to allowing write, that has no
+>           effect since you only care about read permission for copyup in
+>           the case someone requests write permission.  (Hm, the special
+>           file case should be weird.  I guess those just don't get
+>           copied up?  Still I think people will be surprised by
+>           permission failures here.)
 
-Ah, I forgot maybe the most important information in reproducment -
-client uses NFS root (NFSv4).
+Special file can get copied up on metadata change.  We shoudln't ask
+server at all for permissions in this case.  That would be consistent
+with the "cp -a" model.
 
-Best regards,
-Krzysztof
+>         - if it changes from allowing read or write to denying--then
+>           we're no longer talking about root, assuming the permission
+>           check on the copied-up inode wouldn't fail for root.  We don't
+>           currently allow non-root to mount NFS, but there are people
+>           that would like to see that change.
+
+The "cp -a" model should work even for userns unprivileged mounts.  We
+do assume a certain sanity with setups: I'm sure someone could come up
+with a setup (e.g. with selinux) where weirdness happens after
+copy-up.
+
+Thanks,
+Miklos
+
+
+
+>
+> --b.
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-unionfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
