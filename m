@@ -1,134 +1,115 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f193.google.com ([209.85.223.193]:34793 "EHLO
-        mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752952AbeFHUbQ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Jun 2018 16:31:16 -0400
-Received: by mail-io0-f193.google.com with SMTP id e15-v6so17341135iog.1
-        for <linux-nfs@vger.kernel.org>; Fri, 08 Jun 2018 13:31:15 -0700 (PDT)
-Received: from leira.trondhjem.org.localdomain (50-36-175-81.alma.mi.frontiernet.net. [50.36.175.81])
-        by smtp.gmail.com with ESMTPSA id q11-v6sm1845166ita.15.2018.06.08.13.31.13
-        for <linux-nfs@vger.kernel.org>
-        (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
-        Fri, 08 Jun 2018 13:31:14 -0700 (PDT)
-From: Trond Myklebust <trondmy@gmail.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 2/2] NFSv4: Return NFS4ERR_DELAY when a layout recall fails due to igrab()
-Date: Fri,  8 Jun 2018 16:30:46 -0400
-Message-Id: <20180608203046.32370-2-trond.myklebust@hammerspace.com>
-In-Reply-To: <20180608203046.32370-1-trond.myklebust@hammerspace.com>
-References: <20180608203046.32370-1-trond.myklebust@hammerspace.com>
-MIME-Version: 1.0
+Received: from mx3-rdu2.redhat.com ([66.187.233.73]:46468 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1752904AbeFHUbr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 8 Jun 2018 16:31:47 -0400
+From: Scott Mayhew <smayhew@redhat.com>
+To: bfields@fieldses.org, jlayton@kernel.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH] nfsd: fix potential use-after-free in nfsd4_decode_getdeviceinfo
+Date: Fri,  8 Jun 2018 16:31:46 -0400
+Message-Id: <20180608203146.19810-1-smayhew@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
----
- fs/nfs/callback_proc.c | 26 ++++++++++++++------------
- 1 file changed, 14 insertions(+), 12 deletions(-)
+When running a fuzz tester against a KASAN-enabled kernel, the following
+splat periodically occurs.
 
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index eacd09dcdad1..3a49bb19ef07 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -128,7 +128,6 @@ static struct inode *nfs_layout_find_inode_by_stateid(struct nfs_client *clp,
- 	struct inode *inode;
- 	struct pnfs_layout_hdr *lo;
- 
--restart:
- 	list_for_each_entry_rcu(server, &clp->cl_superblocks, client_link) {
- 		list_for_each_entry(lo, &server->layouts, plh_layouts) {
- 			if (stateid != NULL &&
-@@ -136,20 +135,20 @@ static struct inode *nfs_layout_find_inode_by_stateid(struct nfs_client *clp,
- 				continue;
- 			inode = igrab(lo->plh_inode);
- 			if (!inode)
--				continue;
-+				return ERR_PTR(-EAGAIN);
- 			if (!nfs_sb_active(inode->i_sb)) {
- 				rcu_read_unlock();
- 				spin_unlock(&clp->cl_lock);
- 				iput(inode);
- 				spin_lock(&clp->cl_lock);
- 				rcu_read_lock();
--				goto restart;
-+				return ERR_PTR(-EAGAIN);
- 			}
- 			return inode;
- 		}
- 	}
- 
--	return NULL;
-+	return ERR_PTR(-ENOENT);
- }
- 
- /*
-@@ -166,7 +165,6 @@ static struct inode *nfs_layout_find_inode_by_fh(struct nfs_client *clp,
- 	struct inode *inode;
- 	struct pnfs_layout_hdr *lo;
- 
--restart:
- 	list_for_each_entry_rcu(server, &clp->cl_superblocks, client_link) {
- 		list_for_each_entry(lo, &server->layouts, plh_layouts) {
- 			nfsi = NFS_I(lo->plh_inode);
-@@ -176,20 +174,20 @@ static struct inode *nfs_layout_find_inode_by_fh(struct nfs_client *clp,
- 				continue;
- 			inode = igrab(lo->plh_inode);
- 			if (!inode)
--				continue;
-+				return ERR_PTR(-EAGAIN);
- 			if (!nfs_sb_active(inode->i_sb)) {
- 				rcu_read_unlock();
- 				spin_unlock(&clp->cl_lock);
- 				iput(inode);
- 				spin_lock(&clp->cl_lock);
- 				rcu_read_lock();
--				goto restart;
-+				return ERR_PTR(-EAGAIN);
- 			}
- 			return inode;
- 		}
- 	}
- 
--	return NULL;
-+	return ERR_PTR(-ENOENT);
- }
- 
- static struct inode *nfs_layout_find_inode(struct nfs_client *clp,
-@@ -201,7 +199,7 @@ static struct inode *nfs_layout_find_inode(struct nfs_client *clp,
- 	spin_lock(&clp->cl_lock);
- 	rcu_read_lock();
- 	inode = nfs_layout_find_inode_by_stateid(clp, stateid);
--	if (!inode)
-+	if (inode == ERR_PTR(-ENOENT))
- 		inode = nfs_layout_find_inode_by_fh(clp, fh);
- 	rcu_read_unlock();
- 	spin_unlock(&clp->cl_lock);
-@@ -256,8 +254,11 @@ static u32 initiate_file_draining(struct nfs_client *clp,
- 	LIST_HEAD(free_me_list);
- 
- 	ino = nfs_layout_find_inode(clp, &args->cbl_fh, &args->cbl_stateid);
--	if (!ino)
--		goto out;
-+	if (IS_ERR(ino)) {
-+		if (ino == ERR_PTR(-EAGAIN))
-+			rv = NFS4ERR_DELAY;
-+		goto out_noput;
-+	}
- 
- 	pnfs_layoutcommit_inode(ino, false);
- 
-@@ -303,9 +304,10 @@ static u32 initiate_file_draining(struct nfs_client *clp,
- 	nfs_commit_inode(ino, 0);
- 	pnfs_put_layout_hdr(lo);
- out:
-+	nfs_iput_and_deactive(ino);
-+out_noput:
- 	trace_nfs4_cb_layoutrecall_file(clp, &args->cbl_fh, ino,
- 			&args->cbl_stateid, -rv);
--	nfs_iput_and_deactive(ino);
- 	return rv;
- }
- 
+The problem occurs when the test sends a GETDEVICEINFO request with a
+malformed xdr array (size but no data) for gdia_notify_types and the
+array size is > 0x3fffffff, which results in an overflow in the value of
+nbytes which is passed to read_buf().
+
+If the array size is 0x40000000, 0x80000000, or 0xc0000000, then after
+the overflow occurs, the value of nbytes 0, and when that happens the
+pointer returned by read_buf() points to the end of the xdr data (i.e.
+argp->end) when really it should be returning NULL.
+
+Fix this by returning NFS4ERR_BAD_XDR if the array size is > 1000 (this
+value is arbitrary, but it's the same threshold used by
+nfsd4_decode_bitmap()... in could really be any value >= 1 since it's
+expected to get at most a single bitmap in gdia_notify_types).
+
+[  119.256854] ==================================================================
+[  119.257611] BUG: KASAN: use-after-free in nfsd4_decode_getdeviceinfo+0x5a4/0x5b0 [nfsd]
+[  119.258422] Read of size 4 at addr ffff880113ada000 by task nfsd/538
+
+[  119.259146] CPU: 0 PID: 538 Comm: nfsd Not tainted 4.17.0+ #1
+[  119.259662] Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS 1.9.3-1.fc25 04/01/2014
+[  119.261202] Call Trace:
+[  119.262265]  dump_stack+0x71/0xab
+[  119.263371]  print_address_description+0x6a/0x270
+[  119.264609]  kasan_report+0x258/0x380
+[  119.265854]  ? nfsd4_decode_getdeviceinfo+0x5a4/0x5b0 [nfsd]
+[  119.267291]  nfsd4_decode_getdeviceinfo+0x5a4/0x5b0 [nfsd]
+[  119.268549]  ? nfs4svc_decode_compoundargs+0xa5b/0x13c0 [nfsd]
+[  119.269873]  ? nfsd4_decode_sequence+0x490/0x490 [nfsd]
+[  119.271095]  nfs4svc_decode_compoundargs+0xa5b/0x13c0 [nfsd]
+[  119.272393]  ? nfsd4_release_compoundargs+0x1b0/0x1b0 [nfsd]
+[  119.273658]  nfsd_dispatch+0x183/0x850 [nfsd]
+[  119.274918]  svc_process+0x161c/0x31a0 [sunrpc]
+[  119.276172]  ? svc_printk+0x190/0x190 [sunrpc]
+[  119.277386]  ? svc_xprt_release+0x451/0x680 [sunrpc]
+[  119.278622]  nfsd+0x2b9/0x430 [nfsd]
+[  119.279771]  ? nfsd_destroy+0x1c0/0x1c0 [nfsd]
+[  119.281157]  kthread+0x2db/0x390
+[  119.282347]  ? kthread_create_worker_on_cpu+0xc0/0xc0
+[  119.283756]  ret_from_fork+0x35/0x40
+
+[  119.286041] Allocated by task 436:
+[  119.287525]  kasan_kmalloc+0xa0/0xd0
+[  119.288685]  kmem_cache_alloc+0xe9/0x1f0
+[  119.289900]  get_empty_filp+0x7b/0x410
+[  119.291037]  path_openat+0xca/0x4220
+[  119.292242]  do_filp_open+0x182/0x280
+[  119.293411]  do_sys_open+0x216/0x360
+[  119.294555]  do_syscall_64+0xa0/0x2f0
+[  119.295721]  entry_SYSCALL_64_after_hwframe+0x44/0xa9
+
+[  119.298068] Freed by task 436:
+[  119.299271]  __kasan_slab_free+0x130/0x180
+[  119.300557]  kmem_cache_free+0x78/0x210
+[  119.301823]  rcu_process_callbacks+0x35b/0xbd0
+[  119.303162]  __do_softirq+0x192/0x5ea
+
+[  119.305443] The buggy address belongs to the object at ffff880113ada000
+                which belongs to the cache filp of size 256
+[  119.308556] The buggy address is located 0 bytes inside of
+                256-byte region [ffff880113ada000, ffff880113ada100)
+[  119.311376] The buggy address belongs to the page:
+[  119.312728] page:ffffea00044eb680 count:1 mapcount:0 mapping:0000000000000000 index:0xffff880113ada780
+[  119.314428] flags: 0x17ffe000000100(slab)
+[  119.315740] raw: 0017ffe000000100 0000000000000000 ffff880113ada780 00000001000c0001
+[  119.317379] raw: ffffea0004553c60 ffffea00045c11e0 ffff88011b167e00 0000000000000000
+[  119.319050] page dumped because: kasan: bad access detected
+
+[  119.321652] Memory state around the buggy address:
+[  119.322993]  ffff880113ad9f00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+[  119.324515]  ffff880113ad9f80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+[  119.326087] >ffff880113ada000: fb fb fb fb fb fb fb fb fb fb fb fb fb fb fb fb
+[  119.327547]                    ^
+[  119.328730]  ffff880113ada080: fb fb fb fb fb fb fb fb fb fb fb fb fb fb fb fb
+[  119.330218]  ffff880113ada100: fc fc fc fc fc fc fc fc fb fb fb fb fb fb fb fb
+[  119.331740] ==================================================================
+
+Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+---
+ fs/nfsd/nfs4xdr.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 1d048dd..48e412e 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -1585,6 +1585,8 @@ nfsd4_decode_getdeviceinfo(struct nfsd4_compoundargs *argp,
+ 	gdev->gd_maxcount = be32_to_cpup(p++);
+ 	num = be32_to_cpup(p++);
+ 	if (num) {
++		if (num > 1000)
++			goto xdr_error;
+ 		READ_BUF(4 * num);
+ 		gdev->gd_notify_types = be32_to_cpup(p++);
+ 		for (i = 1; i < num; i++) {
 -- 
-2.17.1
+2.9.5
 
