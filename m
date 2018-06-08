@@ -1,110 +1,134 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f193.google.com ([209.85.223.193]:38280 "EHLO
+Received: from mail-io0-f193.google.com ([209.85.223.193]:34793 "EHLO
         mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752756AbeFHUbO (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Jun 2018 16:31:14 -0400
-Received: by mail-io0-f193.google.com with SMTP id l19-v6so17313431ioj.5
-        for <linux-nfs@vger.kernel.org>; Fri, 08 Jun 2018 13:31:14 -0700 (PDT)
+        with ESMTP id S1752952AbeFHUbQ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Jun 2018 16:31:16 -0400
+Received: by mail-io0-f193.google.com with SMTP id e15-v6so17341135iog.1
+        for <linux-nfs@vger.kernel.org>; Fri, 08 Jun 2018 13:31:15 -0700 (PDT)
 Received: from leira.trondhjem.org.localdomain (50-36-175-81.alma.mi.frontiernet.net. [50.36.175.81])
-        by smtp.gmail.com with ESMTPSA id q11-v6sm1845166ita.15.2018.06.08.13.31.12
+        by smtp.gmail.com with ESMTPSA id q11-v6sm1845166ita.15.2018.06.08.13.31.13
         for <linux-nfs@vger.kernel.org>
         (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
-        Fri, 08 Jun 2018 13:31:13 -0700 (PDT)
+        Fri, 08 Jun 2018 13:31:14 -0700 (PDT)
 From: Trond Myklebust <trondmy@gmail.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 1/2] NFSv4: Return NFS4ERR_DELAY when a delegation recall fails due to igrab()
-Date: Fri,  8 Jun 2018 16:30:45 -0400
-Message-Id: <20180608203046.32370-1-trond.myklebust@hammerspace.com>
+Subject: [PATCH v2 2/2] NFSv4: Return NFS4ERR_DELAY when a layout recall fails due to igrab()
+Date: Fri,  8 Jun 2018 16:30:46 -0400
+Message-Id: <20180608203046.32370-2-trond.myklebust@hammerspace.com>
+In-Reply-To: <20180608203046.32370-1-trond.myklebust@hammerspace.com>
+References: <20180608203046.32370-1-trond.myklebust@hammerspace.com>
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If the attempt to recall the delegation fails because the inode is
-in the process of being evicted from cache, then use NFS4ERR_DELAY
-to ask the server to retry later.
-
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/callback_proc.c |  8 ++++++--
- fs/nfs/delegation.c    | 16 +++++++++-------
- 2 files changed, 15 insertions(+), 9 deletions(-)
+ fs/nfs/callback_proc.c | 26 ++++++++++++++------------
+ 1 file changed, 14 insertions(+), 12 deletions(-)
 
 diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index d561161b7c3e..eacd09dcdad1 100644
+index eacd09dcdad1..3a49bb19ef07 100644
 --- a/fs/nfs/callback_proc.c
 +++ b/fs/nfs/callback_proc.c
-@@ -40,7 +40,9 @@ __be32 nfs4_callback_getattr(void *argp, void *resp,
- 		rpc_peeraddr2str(cps->clp->cl_rpcclient, RPC_DISPLAY_ADDR));
+@@ -128,7 +128,6 @@ static struct inode *nfs_layout_find_inode_by_stateid(struct nfs_client *clp,
+ 	struct inode *inode;
+ 	struct pnfs_layout_hdr *lo;
  
- 	inode = nfs_delegation_find_inode(cps->clp, &args->fh);
--	if (inode == NULL) {
-+	if (IS_ERR(inode)) {
-+		if (inode == ERR_PTR(-EAGAIN))
-+			res->status = htonl(NFS4ERR_DELAY);
- 		trace_nfs4_cb_getattr(cps->clp, &args->fh, NULL,
- 				-ntohl(res->status));
- 		goto out;
-@@ -86,7 +88,9 @@ __be32 nfs4_callback_recall(void *argp, void *resp,
- 
- 	res = htonl(NFS4ERR_BADHANDLE);
- 	inode = nfs_delegation_find_inode(cps->clp, &args->fh);
--	if (inode == NULL) {
-+	if (IS_ERR(inode)) {
-+		if (inode == ERR_PTR(-EAGAIN))
-+			res = htonl(NFS4ERR_DELAY);
- 		trace_nfs4_cb_recall(cps->clp, &args->fh, NULL,
- 				&args->stateid, -ntohl(res));
- 		goto out;
-diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
-index 91c3737d69df..4b845d2fdb81 100644
---- a/fs/nfs/delegation.c
-+++ b/fs/nfs/delegation.c
-@@ -849,19 +849,21 @@ nfs_delegation_find_inode_server(struct nfs_server *server,
- 				 const struct nfs_fh *fhandle)
- {
- 	struct nfs_delegation *delegation;
--	struct inode *res = NULL;
-+	struct inode *res;
- 
- 	list_for_each_entry_rcu(delegation, &server->delegations, super_list) {
- 		spin_lock(&delegation->lock);
- 		if (delegation->inode != NULL &&
- 		    nfs_compare_fh(fhandle, &NFS_I(delegation->inode)->fh) == 0) {
- 			res = igrab(delegation->inode);
-+			if (res == NULL)
-+				res = ERR_PTR(-EAGAIN);
- 		}
- 		spin_unlock(&delegation->lock);
- 		if (res != NULL)
--			break;
-+			return res;
- 	}
--	return res;
-+	return ERR_PTR(-ENOENT);
- }
- 
- /**
-@@ -876,16 +878,16 @@ struct inode *nfs_delegation_find_inode(struct nfs_client *clp,
- 					const struct nfs_fh *fhandle)
- {
- 	struct nfs_server *server;
--	struct inode *res = NULL;
-+	struct inode *res;
- 
- 	rcu_read_lock();
+-restart:
  	list_for_each_entry_rcu(server, &clp->cl_superblocks, client_link) {
- 		res = nfs_delegation_find_inode_server(server, fhandle);
--		if (res != NULL)
--			break;
-+		if (res != ERR_PTR(-ENOENT))
-+			return res;
+ 		list_for_each_entry(lo, &server->layouts, plh_layouts) {
+ 			if (stateid != NULL &&
+@@ -136,20 +135,20 @@ static struct inode *nfs_layout_find_inode_by_stateid(struct nfs_client *clp,
+ 				continue;
+ 			inode = igrab(lo->plh_inode);
+ 			if (!inode)
+-				continue;
++				return ERR_PTR(-EAGAIN);
+ 			if (!nfs_sb_active(inode->i_sb)) {
+ 				rcu_read_unlock();
+ 				spin_unlock(&clp->cl_lock);
+ 				iput(inode);
+ 				spin_lock(&clp->cl_lock);
+ 				rcu_read_lock();
+-				goto restart;
++				return ERR_PTR(-EAGAIN);
+ 			}
+ 			return inode;
+ 		}
  	}
- 	rcu_read_unlock();
--	return res;
+ 
+-	return NULL;
 +	return ERR_PTR(-ENOENT);
  }
  
- static void nfs_delegation_mark_reclaim_server(struct nfs_server *server)
+ /*
+@@ -166,7 +165,6 @@ static struct inode *nfs_layout_find_inode_by_fh(struct nfs_client *clp,
+ 	struct inode *inode;
+ 	struct pnfs_layout_hdr *lo;
+ 
+-restart:
+ 	list_for_each_entry_rcu(server, &clp->cl_superblocks, client_link) {
+ 		list_for_each_entry(lo, &server->layouts, plh_layouts) {
+ 			nfsi = NFS_I(lo->plh_inode);
+@@ -176,20 +174,20 @@ static struct inode *nfs_layout_find_inode_by_fh(struct nfs_client *clp,
+ 				continue;
+ 			inode = igrab(lo->plh_inode);
+ 			if (!inode)
+-				continue;
++				return ERR_PTR(-EAGAIN);
+ 			if (!nfs_sb_active(inode->i_sb)) {
+ 				rcu_read_unlock();
+ 				spin_unlock(&clp->cl_lock);
+ 				iput(inode);
+ 				spin_lock(&clp->cl_lock);
+ 				rcu_read_lock();
+-				goto restart;
++				return ERR_PTR(-EAGAIN);
+ 			}
+ 			return inode;
+ 		}
+ 	}
+ 
+-	return NULL;
++	return ERR_PTR(-ENOENT);
+ }
+ 
+ static struct inode *nfs_layout_find_inode(struct nfs_client *clp,
+@@ -201,7 +199,7 @@ static struct inode *nfs_layout_find_inode(struct nfs_client *clp,
+ 	spin_lock(&clp->cl_lock);
+ 	rcu_read_lock();
+ 	inode = nfs_layout_find_inode_by_stateid(clp, stateid);
+-	if (!inode)
++	if (inode == ERR_PTR(-ENOENT))
+ 		inode = nfs_layout_find_inode_by_fh(clp, fh);
+ 	rcu_read_unlock();
+ 	spin_unlock(&clp->cl_lock);
+@@ -256,8 +254,11 @@ static u32 initiate_file_draining(struct nfs_client *clp,
+ 	LIST_HEAD(free_me_list);
+ 
+ 	ino = nfs_layout_find_inode(clp, &args->cbl_fh, &args->cbl_stateid);
+-	if (!ino)
+-		goto out;
++	if (IS_ERR(ino)) {
++		if (ino == ERR_PTR(-EAGAIN))
++			rv = NFS4ERR_DELAY;
++		goto out_noput;
++	}
+ 
+ 	pnfs_layoutcommit_inode(ino, false);
+ 
+@@ -303,9 +304,10 @@ static u32 initiate_file_draining(struct nfs_client *clp,
+ 	nfs_commit_inode(ino, 0);
+ 	pnfs_put_layout_hdr(lo);
+ out:
++	nfs_iput_and_deactive(ino);
++out_noput:
+ 	trace_nfs4_cb_layoutrecall_file(clp, &args->cbl_fh, ino,
+ 			&args->cbl_stateid, -rv);
+-	nfs_iput_and_deactive(ino);
+ 	return rv;
+ }
+ 
 -- 
 2.17.1
 
