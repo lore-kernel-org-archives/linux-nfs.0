@@ -1,124 +1,158 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ot0-f196.google.com ([74.125.82.196]:36398 "EHLO
-        mail-ot0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752996AbeFGLuL (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Jun 2018 07:50:11 -0400
-Received: by mail-ot0-f196.google.com with SMTP id c15-v6so1306635otl.3
-        for <linux-nfs@vger.kernel.org>; Thu, 07 Jun 2018 04:50:11 -0700 (PDT)
+Received: from fieldses.org ([173.255.197.46]:44824 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1752692AbeFHPyK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 8 Jun 2018 11:54:10 -0400
+Date: Fri, 8 Jun 2018 11:54:10 -0400
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Rahul Deshmukh <rahul.deshmukh@gmail.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: Question: On write code path
+Message-ID: <20180608155410.GA12719@fieldses.org>
+References: <CAN88X1FR8EnrdwKq=w=yQx7Y=c=Ooek5RSGKODRvFQSZst-+eg@mail.gmail.com>
+ <209C26D7-4799-4273-8F88-02B43B82514B@oracle.com>
+ <CAN88X1EcS4VoH+5P=r+HdTZcCdprnHmUt56h9pwiHhQ9L_6F6A@mail.gmail.com>
+ <171BD113-0AC9-430D-9B45-D68CC5DAFE39@oracle.com>
 MIME-Version: 1.0
-In-Reply-To: <20180602005040.GH10666@fieldses.org>
-References: <828f320cde910a45983d91bddb6477d21c5cae33.camel@hammerspace.com>
- <CAJfpegvuvFzNwSZRLCMCrhms-K4Ge=PTcn4uezLgV8U3ag+4xQ@mail.gmail.com>
- <20180601135033.GA10666@fieldses.org> <CAJfpegvG4rkesopg=qj1H288X6H9CXu=N_fuYEsuWJ-O=5785A@mail.gmail.com>
- <20180601142640.GC10666@fieldses.org> <CAJfpegtmSK5yuU-Vz7mPODy=iP+=BLMs2fy=sH-iWG8g3jeBfg@mail.gmail.com>
- <20180601160857.GE10666@fieldses.org> <CAJfpeguFobmD5EdvYU7eFaaShMYxt9j72k=GKGHyh3-D-uCB-Q@mail.gmail.com>
- <20180601174336.GF10666@fieldses.org> <CAJfpegsjGEoych6QE2YcH8kkJ9B=Hfk47BMuJ7ECjMViMUpisA@mail.gmail.com>
- <20180602005040.GH10666@fieldses.org>
-From: Miklos Szeredi <miklos@szeredi.hu>
-Date: Thu, 7 Jun 2018 13:50:09 +0200
-Message-ID: <CAJfpegtt8jZ0j_3gwSSUUc6bC7NF6s6qtFEJELztsevLdWROZQ@mail.gmail.com>
-Subject: Re: nfs4_acl restricts copy_up in overlayfs
-To: "bfields@fieldses.org" <bfields@fieldses.org>
-Cc: Trond Myklebust <trondmy@hammerspace.com>,
-        "rgoldwyn@suse.de" <rgoldwyn@suse.de>,
-        "agruenba@redhat.com" <agruenba@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-unionfs@vger.kernel.org" <linux-unionfs@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <171BD113-0AC9-430D-9B45-D68CC5DAFE39@oracle.com>
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Jun 2, 2018 at 2:50 AM, bfields@fieldses.org
-<bfields@fieldses.org> wrote:
-> On Fri, Jun 01, 2018 at 09:14:38PM +0200, Miklos Szeredi wrote:
->> On Fri, Jun 1, 2018 at 7:43 PM, bfields@fieldses.org
->> <bfields@fieldses.org> wrote:
->> > On Fri, Jun 01, 2018 at 07:02:20PM +0200, Miklos Szeredi wrote:
->> >> On Fri, Jun 1, 2018 at 6:08 PM, bfields@fieldses.org
->> >> <bfields@fieldses.org> wrote:
->> >> > On Fri, Jun 01, 2018 at 04:43:51PM +0200, Miklos Szeredi wrote:
->> >> >> Look at ovl_permission(), I think it pretty clearly describes this model.
->> >> >
->> >> > Thanks!  Uh, so generic_permission is the thing that just does the usual
->> >> > mode/acl checks on the in-core inode, and inode_permission is the one
->> >> > that also calls into the filesystem?
->> >>
->> >> Right.
->> >>
->> >> > But I'm still a little confused--if I'm reading right, "realinode" is
->> >> > the lower inode before copyup, and the upper inode after, so can't
->> >> > inode_permission(realinode, mask) return different results before and
->> >> > after copyup?
->> >>
->> >> Theoretically, yes.  Not in any sane setup, though.
->> >
->> > If root squashing is enabled and you mount as root, then it will change.
->> >
->> > That's not an unlikely case, it's pretty much the default.
->>
->> Let's see: root squashing will change root creds to nobody's creds, right?
->>
->> That results in a weird situation, where user foo is trying to access
->> a file owned by foo, but which doesn't have read permission for
->> "other" will not be able to perform a read on that file.  In fact, no
->> user will be able to read that file, including root.   Copying up the
->> file will also fail, since that requires read permission.
->>
->> So for that case it's not true that permission will change, since
->> copy-up won't be possible.
->
-> Fair enough.  That's still pretty weird behavior.
->
-> Arguably if you're going to do something different here then maybe it's
-> good for the difference to manifest in a way that's really obvious in
-> common cases, so people don't just overlook it.
->
->> That leaves the case where no read or write permissions are involved,
->> which is execute.  I think we should just mask that out from the
->> inode_permission() check.  Makes no sense to ask underlying filesystem
->> about execute permission.
->
-> I suppose so.
->
->> With that we'll have consistent permissions before and after copy-up.
->> Right?
->
-> Hm.  If inode_permission(realinode, mask) changes across copy-up:
->
->         - if the difference is in execute, you're telling me we'll
->           ignore that.
->         - if it changes from denying to allowing read, you don't care
->           since that will prevent the copy up in the first place.
->         - if it changes from denying to allowing write, that has no
->           effect since you only care about read permission for copyup in
->           the case someone requests write permission.  (Hm, the special
->           file case should be weird.  I guess those just don't get
->           copied up?  Still I think people will be surprised by
->           permission failures here.)
+On Mon, Jun 04, 2018 at 02:00:29PM -0400, Chuck Lever wrote:
+> Hi Rahul-
+> 
+> > On Jun 4, 2018, at 1:41 PM, Rahul Deshmukh <rahul.deshmukh@gmail.com> wrote:
+> > 
+> > Hi Chuck,
+> > 
+> > Thanks for the reply and confirming the understanding.
+> > 
+> > Just want to understand any particular reason for not maintaining
+> > alignment for the case other than NFS/RDMA?
+> 
+> The RPC Call information and the payload appear contiguously in
+> the ingress data stream because that's how RPC over a stream
+> socket works (RFC 5531).
 
-Special file can get copied up on metadata change.  We shoudln't ask
-server at all for permissions in this case.  That would be consistent
-with the "cp -a" model.
+We set up the buffers and receive network data into them before we know
+where in the request the write data might be.
 
->         - if it changes from allowing read or write to denying--then
->           we're no longer talking about root, assuming the permission
->           check on the copied-up inode wouldn't fail for root.  We don't
->           currently allow non-root to mount NFS, but there are people
->           that would like to see that change.
+I've been curious whether it might be possible to parse some of the data
+as we receive it in svc_tcp_recvfrom().  NFSv4 compounds are potentially
+very complicated, so it's not just a matter of reading a few bytes from
+the header.  On the other hand, it's OK if we guess wrong sometimes, as
+long as we guess right often enough to get a performance benefit.  Also
+we might be able to use previous information about write data offsets
+from this client to improve our guess.
 
-The "cp -a" model should work even for userns unprivileged mounts.  We
-do assume a certain sanity with setups: I'm sure someone could come up
-with a setup (e.g. with selinux) where weirdness happens after
-copy-up.
+It could be a fair amount of work to code and to test the performance
+improvement, and I don't know whether it's worth the trouble or whether
+we should tell people that care to use rdma....
 
-Thanks,
-Miklos
+--b.
 
-
-
->
-> --b.
+> NFS/RDMA moves the NFS WRITE payload independently of incoming RPC
+> Calls, in a way that preserves the alignment of each data payload.
+> 
+> (Small NFS WRITEs with NFS/RDMA are basically datagrams, thus they
+> still need pull-up and data copy).
+> 
+> 
+> > Due to this any file system below NFS needs to handle this or suffer
+> > partial write.
+> 
+> Yes, I believe that's correct, and as far as I know the VFS is
+> capable of taking care of re-aligning the payload. This is not a
+> functional issue, but rather one of performance scalability.
+> 
+> The NFS/RDMA WRITE path is not perfect either, but thanks to the
+> aligned transfer of pages, there is an opportunity to fix it so
+> that correct page alignment can be maintained from the client
+> application all the way to the file system on the server. I'm
+> working in this area right now.
+> 
+> 
+> > Thanks.
+> > Rahul.
+> > 
+> > On Mon, Jun 4, 2018 at 10:45 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+> >> 
+> >> 
+> >>> On Jun 4, 2018, at 12:27 PM, Rahul Deshmukh <rahul.deshmukh@gmail.com> wrote:
+> >>> 
+> >>> Hello
+> >>> 
+> >>> I was just trying NFS + Lustre i.e. NFS running on Lustre, during this
+> >>> experiment it is observed that the write requests that we get is not page
+> >>> aligned even if the application is sending it correctly. Mostly it is the
+> >>> first and last page which is not aligned.
+> >>> 
+> >>> After digging more into code it seems it is because of following code :
+> >>> 
+> >>> static int fill_in_write_vector(struct kvec *vec, struct nfsd4_write *write)
+> >>> {
+> >>>       int i = 1;
+> >>>       int buflen = write->wr_buflen;
+> >>> 
+> >>>       vec[0].iov_base = write->wr_head.iov_base;
+> >>>       vec[0].iov_len = min_t(int, buflen, write->wr_head.iov_len); <======
+> >>>       buflen -= vec[0].iov_len;
+> >>> 
+> >>>       while (buflen) {
+> >>>               vec[i].iov_base = page_address(write->wr_pagelist[i - 1]);
+> >>>               vec[i].iov_len = min_t(int, PAGE_SIZE, buflen);
+> >>>               buflen -= vec[i].iov_len;
+> >>>               i++;
+> >>>       }
+> >>>       return i;
+> >>> }
+> >>> 
+> >>> nfsd4_write()
+> >>> {
+> >>> :
+> >>> nvecs = fill_in_write_vector(rqstp->rq_vec, write);
+> >>> :
+> >>> }
+> >>> 
+> >>> i.e. 0th vector is filled with min of buflen or wr_head and rest differently
+> >>> 
+> >>> Because of this, first and last page is not aligned.
+> >>> 
+> >>> The question here is, why 0th vector is separatly filled with
+> >>> different size (as it
+> >>> seems it is causing page un-alinged iovec) ? Or  am I missing any
+> >>> thing at my end
+> >>> because of un-alignment is seen ?
+> >> 
+> >> The TCP transport fills the sink buffer from page 0 forward, contiguously.
+> >> The first page of that buffer contains the RPC and NFS header information,
+> >> then the first part of the NFS WRITE payload.
+> >> 
+> >> The vector is built so that the 0th element points into the first page
+> >> right where the payload starts. Then it goes to the next page of the
+> >> buffer and starts at byte zero, and so on.
+> >> 
+> >> NFS/RDMA can transport a payload while retaining its alignment.
+> >> 
+> >> 
+> >> --
+> >> Chuck Lever
+> >> 
+> >> 
+> >> 
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
 > --
-> To unsubscribe from this list: send the line "unsubscribe linux-unionfs" in
+> Chuck Lever
+> 
+> 
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
