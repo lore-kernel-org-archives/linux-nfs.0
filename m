@@ -1,66 +1,76 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx0a-001b2d01.pphosted.com ([148.163.156.1]:49990 "EHLO
-        mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S934279AbeFMKER (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Jun 2018 06:04:17 -0400
-Received: from pps.filterd (m0098410.ppops.net [127.0.0.1])
-        by mx0a-001b2d01.pphosted.com (8.16.0.22/8.16.0.22) with SMTP id w5D9x1sn116014
-        for <linux-nfs@vger.kernel.org>; Wed, 13 Jun 2018 06:04:17 -0400
-Received: from e11.ny.us.ibm.com (e11.ny.us.ibm.com [129.33.205.201])
-        by mx0a-001b2d01.pphosted.com with ESMTP id 2jjwt0h7sc-1
-        (version=TLSv1.2 cipher=AES256-GCM-SHA384 bits=256 verify=NOT)
-        for <linux-nfs@vger.kernel.org>; Wed, 13 Jun 2018 06:04:17 -0400
-Received: from localhost
-        by e11.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-        for <linux-nfs@vger.kernel.org> from <paulmck@linux.vnet.ibm.com>;
-        Wed, 13 Jun 2018 06:04:15 -0400
-Date: Wed, 13 Jun 2018 03:06:07 -0700
-From: "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>
-To: NeilBrown <neilb@suse.com>
-Cc: Linus Torvalds <torvalds@linux-foundation.org>,
-        trondmy@hammerspace.com,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [GIT PULL] Please pull NFS client changes for 4.18
-Reply-To: paulmck@linux.vnet.ibm.com
-References: <e5c90488937d14e9df81752a024be9d1e73ed398.camel@hammerspace.com>
- <CA+55aFxYMg+F9Jdi_25X-Qtt=7imqjQhLnjEyQXOQ6+eJvy83A@mail.gmail.com>
- <CA+55aFw+2+xCRAaMo8qgvZ7qNgRMo6D=WkwP7APQndG-y5b3dw@mail.gmail.com>
- <CA+55aFz3jmGST_cOB+qH6qZTFa5HJcw2JoeWxJEZdWgeO4=vNQ@mail.gmail.com>
- <20180613010427.GD3593@linux.vnet.ibm.com>
- <CA+55aFyWS-MC44k=LnGWr-Kq4_DRkJmub00Fj-tVrGxCL-PxGA@mail.gmail.com>
- <20180613013914.GE3593@linux.vnet.ibm.com>
- <87muvzihr8.fsf@notabene.neil.brown.name>
+Received: from andre.telenet-ops.be ([195.130.132.53]:34246 "EHLO
+        andre.telenet-ops.be" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S935286AbeFMMBl (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Jun 2018 08:01:41 -0400
+From: Geert Uytterhoeven <geert@linux-m68k.org>
+To: Chuck Lever <chuck.lever@oracle.com>,
+        "J . Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@kernel.org>,
+        Trond Myklebust <trond.myklebust@hammerspace.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        "David S . Miller" <davem@davemloft.net>
+Cc: linux-nfs@vger.kernel.org, netdev@vger.kernel.org,
+        linux-kernel@vger.kernel.org,
+        Geert Uytterhoeven <geert@linux-m68k.org>
+Subject: [PATCH] SUNRPC: Move inline xprt_alloc_xid() up to fix compiler warning
+Date: Wed, 13 Jun 2018 14:01:38 +0200
+Message-Id: <1528891298-26694-1-git-send-email-geert@linux-m68k.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <87muvzihr8.fsf@notabene.neil.brown.name>
-Message-Id: <20180613100607.GH3593@linux.vnet.ibm.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jun 13, 2018 at 11:42:51AM +1000, NeilBrown wrote:
-> On Tue, Jun 12 2018, Paul E. McKenney wrote:
-> 
-> > On Tue, Jun 12, 2018 at 06:11:50PM -0700, Linus Torvalds wrote:
-> >> On Tue, Jun 12, 2018 at 6:02 PM Paul E. McKenney
-> >> <paulmck@linux.vnet.ibm.com> wrote:
-> >> >
-> >> > We did review this one, and Neil did make requested changes to the comment
-> >> > header and documentation.
-> >> 
-> >> Oh, I checked the commit for "acked-by" from you and didn't see any,
-> >> so I was assuming this was just Neil and Trond on their own..
-> >
-> > Hmmm...  I gave them a Reviewed-by, but perhaps it got lost.
-> >
-> > http://lkml.kernel.org/r/20180501141404.GD26088@linux.vnet.ibm.com
-> 
-> Sorry about that.  I think I planned to add it after I heard back from
-> Trond what he thought of the patch, but I didn't hear anything until it
-> landed.  I'll try to be more proactive next time.
+With gcc 4.1.2:
 
-Not a problem from my viewpoint.  There may come a time when I need to
-care about contribution metrics, but I don't need to at the moment.  ;-)
+    net/sunrpc/xprt.c:69: warning: ‘xprt_alloc_xid’ declared inline after being called
+    net/sunrpc/xprt.c:69: warning: previous declaration of ‘xprt_alloc_xid’ was here
 
-							Thanx, Paul
+To fix this, move the function up, before its caller, and remove the no
+longer needed forward declaration.
+
+Fixes: 37ac86c3a76c1136 ("SUNRPC: Initialize rpc_rqst outside of xprt->reserve_lock")
+Signed-off-by: Geert Uytterhoeven <geert@linux-m68k.org>
+---
+ net/sunrpc/xprt.c | 11 +++++------
+ 1 file changed, 5 insertions(+), 6 deletions(-)
+
+diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+index 3c85af058227d14b..60a8b9f91cf94b54 100644
+--- a/net/sunrpc/xprt.c
++++ b/net/sunrpc/xprt.c
+@@ -66,7 +66,6 @@
+  * Local functions
+  */
+ static void	 xprt_init(struct rpc_xprt *xprt, struct net *net);
+-static __be32	xprt_alloc_xid(struct rpc_xprt *xprt);
+ static void	xprt_connect_status(struct rpc_task *task);
+ static int      __xprt_get_cong(struct rpc_xprt *, struct rpc_task *);
+ static void     __xprt_put_cong(struct rpc_xprt *, struct rpc_rqst *);
+@@ -956,6 +955,11 @@ static void xprt_timer(struct rpc_task *task)
+ 		task->tk_status = 0;
+ }
+ 
++static inline __be32 xprt_alloc_xid(struct rpc_xprt *xprt)
++{
++	return (__force __be32)xprt->xid++;
++}
++
+ /**
+  * xprt_prepare_transmit - reserve the transport before sending a request
+  * @task: RPC task about to send a request
+@@ -1296,11 +1300,6 @@ void xprt_retry_reserve(struct rpc_task *task)
+ 	xprt->ops->alloc_slot(xprt, task);
+ }
+ 
+-static inline __be32 xprt_alloc_xid(struct rpc_xprt *xprt)
+-{
+-	return (__force __be32)xprt->xid++;
+-}
+-
+ static inline void xprt_init_xid(struct rpc_xprt *xprt)
+ {
+ 	xprt->xid = prandom_u32();
+-- 
+2.7.4
 
