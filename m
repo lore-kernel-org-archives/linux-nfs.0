@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:55506 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:55502 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1754695AbeFNTVf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        id S1754691AbeFNTVf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
         Thu, 14 Jun 2018 15:21:35 -0400
 From: "J. Bruce Fields" <bfields@redhat.com>
 To: linux-nfs@vger.kernel.org
 Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 2/2] nfsd4: support change_attr_type attribute
-Date: Thu, 14 Jun 2018 15:21:33 -0400
-Message-Id: <1529004093-5866-3-git-send-email-bfields@redhat.com>
+Subject: [PATCH 1/2] nfsd: fix NFSv4 time_delta attribute
+Date: Thu, 14 Jun 2018 15:21:32 -0400
+Message-Id: <1529004093-5866-2-git-send-email-bfields@redhat.com>
 In-Reply-To: <1529004093-5866-1-git-send-email-bfields@redhat.com>
 References: <1529004093-5866-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -16,78 +16,63 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 From: "J. Bruce Fields" <bfields@redhat.com>
 
-The change attribute is what is used by clients to revalidate their
-caches.  Our server may use i_version or ctime for that purpose.  Those
-choices behave slightly differently, and it may be useful to the client
-to know which we're using.  This attribute tells the client that.  The
-Linux client doesn't yet use this attribute yet, though.
+Currently we return the worst-case value of 1 second in the time delta
+attribute.  That's not terribly useful.  Instead, return a value
+calculated from the time granularity supported by the filesystem and the
+system clock.
 
 Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/nfsd/nfs4xdr.c    | 10 ++++++++++
- fs/nfsd/nfsd.h       |  1 +
- include/linux/nfs4.h |  8 ++++++++
- 3 files changed, 19 insertions(+)
+ fs/nfsd/nfs4xdr.c | 29 ++++++++++++++++++++++++++---
+ 1 file changed, 26 insertions(+), 3 deletions(-)
 
 diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 4c5fa0ff2387..eea31ff4a3ff 100644
+index 59d471025949..4c5fa0ff2387 100644
 --- a/fs/nfsd/nfs4xdr.c
 +++ b/fs/nfsd/nfs4xdr.c
-@@ -2888,6 +2888,16 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp,
- 			goto out;
- 	}
+@@ -2003,6 +2003,31 @@ static __be32 *encode_change(__be32 *p, struct kstat *stat, struct inode *inode,
+ 	return p;
+ }
  
-+	if (bmval2 & FATTR4_WORD2_CHANGE_ATTR_TYPE) {
-+		p = xdr_reserve_space(xdr, 4);
-+		if (!p)
-+			goto out_resource;
-+		if (IS_I_VERSION(d_inode(dentry)))
-+			*p++ = cpu_to_be32(NFS4_CHANGE_TYPE_IS_MONOTONIC_INCR);
-+		else
-+			*p++ = cpu_to_be32(NFS4_CHANGE_TYPE_IS_TIME_METADATA);
-+	}
++/*
++ * ctime (in NFSv4, time_metadata) is not writeable, and the client
++ * doesn't really care what resolution could theoretically be stored by
++ * the filesystem.
++ *
++ * The client cares how close together changes can be while still
++ * guaranteeing ctime changes.  For most filesystems (which have
++ * timestamps with nanosecond fields) that is limited by the resolution
++ * of the time returned from current_time() (which I'm assuming to be
++ * 1/HZ).
++ */
++static __be32 *encode_time_delta(__be32 *p, struct inode *inode)
++{
++	struct timespec ts;
++	u32 ns;
 +
- 	if (bmval2 & FATTR4_WORD2_SECURITY_LABEL) {
- 		status = nfsd4_encode_security_label(xdr, rqstp, context,
- 								contextlen);
-diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
-index 3fce905d0365..066899929863 100644
---- a/fs/nfsd/nfsd.h
-+++ b/fs/nfsd/nfsd.h
-@@ -360,6 +360,7 @@ void		nfsd_lockd_shutdown(void);
- 
- #define NFSD4_2_SUPPORTED_ATTRS_WORD2 \
- 	(NFSD4_1_SUPPORTED_ATTRS_WORD2 | \
-+	FATTR4_WORD2_CHANGE_ATTR_TYPE | \
- 	FATTR4_WORD2_MODE_UMASK | \
- 	NFSD4_2_SECURITY_ATTRS)
- 
-diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-index 57ffaa20d564..0877ed333733 100644
---- a/include/linux/nfs4.h
-+++ b/include/linux/nfs4.h
-@@ -374,6 +374,13 @@ enum lock_type4 {
- 	NFS4_WRITEW_LT = 4
- };
- 
-+enum change_attr_type4 {
-+	NFS4_CHANGE_TYPE_IS_MONOTONIC_INCR = 0,
-+	NFS4_CHANGE_TYPE_IS_VERSION_COUNTER = 1,
-+	NFS4_CHANGE_TYPE_IS_VERSION_COUNTER_NOPNFS = 2,
-+	NFS4_CHANGE_TYPE_IS_TIME_METADATA = 3,
-+	NFS4_CHANGE_TYPE_IS_UNDEFINED = 4
-+};
- 
- /* Mandatory Attributes */
- #define FATTR4_WORD0_SUPPORTED_ATTRS    (1UL << 0)
-@@ -441,6 +448,7 @@ enum lock_type4 {
- #define FATTR4_WORD2_LAYOUT_BLKSIZE     (1UL << 1)
- #define FATTR4_WORD2_MDSTHRESHOLD       (1UL << 4)
- #define FATTR4_WORD2_CLONE_BLKSIZE	(1UL << 13)
-+#define FATTR4_WORD2_CHANGE_ATTR_TYPE	(1UL << 15)
- #define FATTR4_WORD2_SECURITY_LABEL     (1UL << 16)
- #define FATTR4_WORD2_MODE_UMASK		(1UL << 17)
- 
++	ns = max(NSEC_PER_SEC/HZ, inode->i_sb->s_time_gran);
++	ts = ns_to_timespec(ns);
++
++	p = xdr_encode_hyper(p, ts.tv_sec);
++	*p++ = cpu_to_be32(ts.tv_nsec);
++
++	return p;
++}
++
+ static __be32 *encode_cinfo(__be32 *p, struct nfsd4_change_info *c)
+ {
+ 	*p++ = cpu_to_be32(c->atomic);
+@@ -2794,9 +2819,7 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp,
+ 		p = xdr_reserve_space(xdr, 12);
+ 		if (!p)
+ 			goto out_resource;
+-		*p++ = cpu_to_be32(0);
+-		*p++ = cpu_to_be32(1);
+-		*p++ = cpu_to_be32(0);
++		p = encode_time_delta(p, d_inode(dentry));
+ 	}
+ 	if (bmval1 & FATTR4_WORD1_TIME_METADATA) {
+ 		p = xdr_reserve_space(xdr, 12);
 -- 
 2.17.1
 
