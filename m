@@ -1,91 +1,43 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:55128 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S965297AbeFNOdX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 14 Jun 2018 10:33:23 -0400
-Date: Thu, 14 Jun 2018 10:33:23 -0400
-From: Bruce Fields <bfields@fieldses.org>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Steve Dickson <steved@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        kinglongmee@gmail.com
-Subject: Re: [PATCH] Reallow AUTH_NULL on v4 mounts.
-Message-ID: <20180614143323.GC24594@fieldses.org>
-References: <20180614135201.GB24594@fieldses.org>
- <012E671E-A2DE-4A3D-8BCD-C83BC8D73783@oracle.com>
+Received: from mail-cys01nam02on0124.outbound.protection.outlook.com ([104.47.37.124]:5232
+        "EHLO NAM02-CY1-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1755071AbeFNQ0Z (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 14 Jun 2018 12:26:25 -0400
+From: Trond Myklebust <trondmy@hammerspace.com>
+To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "schumaker.anna@gmail.com" <schumaker.anna@gmail.com>
+CC: "ross.zwisler@linux.intel.com" <ross.zwisler@linux.intel.com>
+Subject: Re: [PATCH] NFS: Fix an rcu deadlock in nfs_delegation_find_inode()
+Date: Thu, 14 Jun 2018 16:26:21 +0000
+Message-ID: <d04511bbd3c35862af6267ba696954af3e724f14.camel@hammerspace.com>
+References: <20180614133917.27656-1-Anna.Schumaker@Netapp.com>
+In-Reply-To: <20180614133917.27656-1-Anna.Schumaker@Netapp.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <012E671E-A2DE-4A3D-8BCD-C83BC8D73783@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jun 14, 2018 at 10:21:39AM -0400, Chuck Lever wrote:
-> 
-> 
-> > On Jun 14, 2018, at 9:52 AM, bfields@fieldses.org wrote:
-> > 
-> > From: "J. Bruce Fields" <bfields@redhat.com>
-> > 
-> > Kinglong Mee noted that the loop in seicnfo_addflavor (which sets the
-> > security flavors allowed on the v4 pseudoroot) was adding flavors 1 and
-> > 0 twice; this is because flav_map ends with these entries:
-> > 
-> > 	{ "unix",       AUTH_UNIX               },
-> >        { "sys",        AUTH_SYS                },
-> >        { "null",       AUTH_NULL               },
-> >        { "none",       AUTH_NONE               },
-> > 
-> > where AUTH_UNIX == AUTH_SYS == 1 and AUTH_NULL == AUTH_NONE == 1.
-> 
-> Hi Bruce, patch description may be incorrect: NULL and NONE should be 0.
-
-Yes, thanks!  Steve, let me know if you want me to resend or correct the
-typo yourself.--b.
-
-> 
-> > We
-> > need to allow two names for each of those two security flavors for
-> > historical reasons.
-> > 
-> > The patch correctly fixed this by fixing the check for a duplicate
-> > flavor number in secinfo_addflavor().  However it also went one step
-> > further and rejected the flavor number 0.  This is unnecessary and
-> > causes the kernel to fail any NFSv4 mounts using AUTH_NULL.
-> > 
-> > The fact that we've apparently gone a few years without anyone noticing
-> > this suggests AUTH_NULL isn't used very much!  Still, this should be
-> > fixed....
-> > 
-> > Fixes: e69eaaf93626
-> > Cc: Kinglong Mee <kinglongmee@gmail.com>
-> > Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> > ---
-> > utils/mountd/v4root.c | 3 ---
-> > 1 file changed, 3 deletions(-)
-> > 
-> > diff --git a/utils/mountd/v4root.c b/utils/mountd/v4root.c
-> > index d735dbfe192d..c93bd4db51c8 100644
-> > --- a/utils/mountd/v4root.c
-> > +++ b/utils/mountd/v4root.c
-> > @@ -69,9 +69,6 @@ set_pseudofs_security(struct exportent *pseudo, int flags)
-> > 	for (flav = flav_map; flav < flav_map + flav_map_size; flav++) {
-> > 		struct sec_entry *new;
-> > 
-> > -		if (!flav->fnum)
-> > -			continue;
-> > -
-> > 		i = secinfo_addflavor(flav, pseudo);
-> > 		new = &pseudo->e_secinfo[i];
-> > 
-> > -- 
-> > 2.17.1
-> > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> --
-> Chuck Lever
-> 
-> 
+T24gVGh1LCAyMDE4LTA2LTE0IGF0IDA5OjM5IC0wNDAwLCBzY2h1bWFrZXIuYW5uYUBnbWFpbC5j
+b20gd3JvdGU6DQo+IEZyb206IEFubmEgU2NodW1ha2VyIDxBbm5hLlNjaHVtYWtlckBOZXRhcHAu
+Y29tPg0KPiANCj4gSSB3YXMgYWJsZSB0byByZXByb2R1Y2UgdGhpcyBwcmV0dHkgcmVndWxhcmls
+eSB1c2luZyB4ZnN0ZXN0cw0KPiBnZW5lcmljLzAxMyBvbiBORlMgdjQuMC4NCj4gDQo+IFJlcG9y
+dGVkLWJ5OiBSb3NzIFp3aXNsZXIgPFJvc3MuWndpc2xlckBsaW51eC5pbnRlbC5jb20+DQo+IEZp
+eGVzOiBhMzM3ZmU5MSAoTkZTdjQ6IFJldHVybiBORlM0RVJSX0RFTEFZIHdoZW4gYSBkZWxlZ2F0
+aW9uIHJlY2FsbA0KPiBmYWlscyBkdWUgdG8gaWdyYWIoKSkNCj4gU2lnbmVkLW9mZi1ieTogQW5u
+YSBTY2h1bWFrZXIgPEFubmEuU2NodW1ha2VyQE5ldGFwcC5jb20+DQo+IC0tLQ0KPiAgZnMvbmZz
+L2RlbGVnYXRpb24uYyB8IDQgKysrLQ0KPiAgMSBmaWxlIGNoYW5nZWQsIDMgaW5zZXJ0aW9ucygr
+KSwgMSBkZWxldGlvbigtKQ0KPiANCj4gZGlmZiAtLWdpdCBhL2ZzL25mcy9kZWxlZ2F0aW9uLmMg
+Yi9mcy9uZnMvZGVsZWdhdGlvbi5jDQo+IGluZGV4IGJiZDA0NjU1MzVlYi4uZjAzM2YzYTY5YTNi
+IDEwMDY0NA0KPiAtLS0gYS9mcy9uZnMvZGVsZWdhdGlvbi5jDQo+ICsrKyBiL2ZzL25mcy9kZWxl
+Z2F0aW9uLmMNCj4gQEAgLTg4Myw4ICs4ODMsMTAgQEAgc3RydWN0IGlub2RlICpuZnNfZGVsZWdh
+dGlvbl9maW5kX2lub2RlKHN0cnVjdA0KPiBuZnNfY2xpZW50ICpjbHAsDQo+ICAJcmN1X3JlYWRf
+bG9jaygpOw0KPiAgCWxpc3RfZm9yX2VhY2hfZW50cnlfcmN1KHNlcnZlciwgJmNscC0+Y2xfc3Vw
+ZXJibG9ja3MsDQo+IGNsaWVudF9saW5rKSB7DQo+ICAJCXJlcyA9IG5mc19kZWxlZ2F0aW9uX2Zp
+bmRfaW5vZGVfc2VydmVyKHNlcnZlciwNCj4gZmhhbmRsZSk7DQo+IC0JCWlmIChyZXMgIT0gRVJS
+X1BUUigtRU5PRU5UKSkNCj4gKwkJaWYgKHJlcyAhPSBFUlJfUFRSKC1FTk9FTlQpKSB7DQo+ICsJ
+CQlyY3VfcmVhZF91bmxvY2soKTsNCj4gIAkJCXJldHVybiByZXM7DQo+ICsJCX0NCj4gIAl9DQo+
+ICAJcmN1X3JlYWRfdW5sb2NrKCk7DQo+ICAJcmV0dXJuIEVSUl9QVFIoLUVOT0VOVCk7DQoNCk9o
+LCBkdWguLi4gVGhhbmtzIGZvciBzcG90dGluZyB0aGF0IQ0KDQotLSANClRyb25kIE15a2xlYnVz
+dA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBIYW1tZXJzcGFjZQ0KdHJvbmQubXlrbGVi
+dXN0QGhhbW1lcnNwYWNlLmNvbQ0KDQo=
