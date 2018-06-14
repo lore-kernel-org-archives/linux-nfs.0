@@ -1,153 +1,107 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:55296 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1755085AbeFNQc6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 14 Jun 2018 12:32:58 -0400
-Date: Thu, 14 Jun 2018 12:32:57 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@kernel.org>
-Cc: devel@lists.nfs-ganesha.org, sostapov@redhat.com,
-        Supriti.Singh@suse.com,
-        "open list:NFS, SUNRPC, AND..." <linux-nfs@vger.kernel.org>
-Subject: Re: [RFC PATCH] rados_cluster: add a "design" manpage
-Message-ID: <20180614163257.GD24594@fieldses.org>
-References: <20180523122140.8373-1-jlayton@kernel.org>
- <20180531213733.GB4654@fieldses.org>
- <fbc5ad16342dc1b4d50041bfa1274fc0197486a9.camel@kernel.org>
- <20180601141725.GB10666@fieldses.org>
- <84dd9dbf7e11818cd4188b01e0834a1f04cd24ae.camel@kernel.org>
- <20180601144655.GD10666@fieldses.org>
- <20180608163307.GC12719@fieldses.org>
- <9783b24b59a30f700c307cdd2771ea72c67be097.camel@kernel.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <9783b24b59a30f700c307cdd2771ea72c67be097.camel@kernel.org>
+Received: from userp2130.oracle.com ([156.151.31.86]:33734 "EHLO
+        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1754616AbeFNRTX (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Jun 2018 13:19:23 -0400
+Content-Type: text/plain;
+        charset=utf-8
+Mime-Version: 1.0 (Mac OS X Mail 11.4 \(3445.8.2\))
+Subject: Re: [PATCH] SUNRPC: Move inline xprt_alloc_xid() up to fix compiler
+ warning
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1528891298-26694-1-git-send-email-geert@linux-m68k.org>
+Date: Thu, 14 Jun 2018 13:19:07 -0400
+Cc: Bruce Fields <bfields@fieldses.org>,
+        Jeff Layton <jlayton@kernel.org>,
+        Trond Myklebust <trond.myklebust@hammerspace.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        "David S . Miller" <davem@davemloft.net>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org
+Message-Id: <675726D3-9273-4051-B38F-6377B8445A27@oracle.com>
+References: <1528891298-26694-1-git-send-email-geert@linux-m68k.org>
+To: Geert Uytterhoeven <geert@linux-m68k.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jun 14, 2018 at 06:01:27AM -0400, Jeff Layton wrote:
-> I know this is a "best effort" sort of thing, but should this be done
-> with atomic loads and stores (READ_ONCE/WRITE_ONCE)?
-
-We're just setting it to 1 when a reclaim comes in, and then once a
-second checking the result and clearing it.  So yes that's a slightly
-sloppy way of checking whether something happens once a second.
-
-I *think* the worst that could happen is something like:
-
-	read 0 from somebody_reclaimed
-					reclaim writes 1 to somebody_reclaimed
-	write 0 to somebody_reclaimed
-
-and then a client that's reclaiming only very close to the 1-second mark
-could get overlooked.
-
-I'm assuming in any reasonable situation that a client can manage at
-least 10-100 reclaims a second, and that the race window is probably
-several orders of magnitude less than a second (even after taking into
-account weird memory ordering).
-
-Would READ/WRITE_ONCE do it right?  I'm not sure it's worth it.
-
---b.
 
 
-> 
-> >  
-> >  	dprintk("NFSD: nfsd4_open filename %.*s op_openowner %p\n",
-> >  		(int)open->op_fname.len, open->op_fname.data,
-> > @@ -424,6 +425,7 @@ nfsd4_open(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
-> >  			if (status)
-> >  				goto out;
-> >  			open->op_openowner->oo_flags |= NFS4_OO_CONFIRMED;
-> > +			reclaim = true;
-> >  		case NFS4_OPEN_CLAIM_FH:
-> >  		case NFS4_OPEN_CLAIM_DELEG_CUR_FH:
-> >  			status = do_open_fhandle(rqstp, cstate, open);
-> > @@ -452,6 +454,8 @@ nfsd4_open(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
-> >  	WARN(status && open->op_created,
-> >  	     "nfsd4_process_open2 failed to open newly-created file! status=%u\n",
-> >  	     be32_to_cpu(status));
-> > +	if (reclaim && !status)
-> > +		nn->somebody_reclaimed = true;
-> >  out:
-> >  	if (resfh && resfh != &cstate->current_fh) {
-> >  		fh_dup2(&cstate->current_fh, resfh);
-> > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> > index 59ae65d3eec3..ffe816fe6e89 100644
-> > --- a/fs/nfsd/nfs4state.c
-> > +++ b/fs/nfsd/nfs4state.c
-> > @@ -4689,6 +4689,28 @@ nfsd4_end_grace(struct nfsd_net *nn)
-> >  	 */
-> >  }
-> >  
-> > +/*
-> > + * If we've waited a lease period but there are still clients trying to
-> > + * reclaim, wait a little longer to give them a chance to finish.
-> > + */
-> > +static bool clients_still_reclaiming(struct nfsd_net *nn)
-> > +{
-> > +	unsigned long now = get_seconds();
-> > +	unsigned long double_grace_period_end = nn->boot_time +
-> > +						2 * nn->nfsd4_lease;
-> > +
-> > +	if (!nn->somebody_reclaimed)
-> > +		return false;
-> > +	nn->somebody_reclaimed = false;
-> > +	/*
-> > +	 * If we've given them *two* lease times to reclaim, and they're
-> > +	 * still not done, give up:
-> > +	 */
-> > +	if (time_after(now, double_grace_period_end))
-> > +		return false;
-> > +	return true;
-> > +}
-> > +
-> >  static time_t
-> >  nfs4_laundromat(struct nfsd_net *nn)
-> >  {
-> > @@ -4702,6 +4724,11 @@ nfs4_laundromat(struct nfsd_net *nn)
-> >  	time_t t, new_timeo = nn->nfsd4_lease;
-> >  
-> >  	dprintk("NFSD: laundromat service - starting\n");
-> > +
-> > +	if (clients_still_reclaiming(nn)) {
-> > +		new_timeo = 0;
-> > +		goto out;
-> > +	}
-> >  	nfsd4_end_grace(nn);
-> >  	INIT_LIST_HEAD(&reaplist);
-> >  	spin_lock(&nn->client_lock);
-> > @@ -4799,7 +4826,7 @@ nfs4_laundromat(struct nfsd_net *nn)
-> >  		posix_unblock_lock(&nbl->nbl_lock);
-> >  		free_blocked_lock(nbl);
-> >  	}
-> > -
-> > +out:
-> >  	new_timeo = max_t(time_t, new_timeo, NFSD_LAUNDROMAT_MINTIMEOUT);
-> >  	return new_timeo;
-> >  }
-> > @@ -6049,6 +6076,8 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
-> >  	case 0: /* success! */
-> >  		nfs4_inc_and_copy_stateid(&lock->lk_resp_stateid, &lock_stp->st_stid);
-> >  		status = 0;
-> > +		if (lock->lk_reclaim)
-> > +			nn->somebody_reclaimed = true;
-> >  		break;
-> >  	case FILE_LOCK_DEFERRED:
-> >  		nbl = NULL;
-> > diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-> > index d107b4426f7e..5f22476cf371 100644
-> > --- a/fs/nfsd/nfsctl.c
-> > +++ b/fs/nfsd/nfsctl.c
-> > @@ -1239,6 +1239,7 @@ static __net_init int nfsd_init_net(struct net *net)
-> >  		goto out_idmap_error;
-> >  	nn->nfsd4_lease = 90;	/* default lease time */
-> >  	nn->nfsd4_grace = 90;
-> > +	nn->somebody_reclaimed = false;
-> >  	nn->clverifier_counter = prandom_u32();
-> >  	nn->clientid_counter = prandom_u32();
-> >  
-> 
-> -- 
-> Jeff Layton <jlayton@kernel.org>
+> On Jun 13, 2018, at 8:01 AM, Geert Uytterhoeven <geert@linux-m68k.org> =
+wrote:
+>=20
+> With gcc 4.1.2:
+>=20
+>    net/sunrpc/xprt.c:69: warning: =E2=80=98xprt_alloc_xid=E2=80=99 =
+declared inline after being called
+>    net/sunrpc/xprt.c:69: warning: previous declaration of =
+=E2=80=98xprt_alloc_xid=E2=80=99 was here
+>=20
+> To fix this, move the function up, before its caller, and remove the =
+no
+> longer needed forward declaration.
+>=20
+> Fixes: 37ac86c3a76c1136 ("SUNRPC: Initialize rpc_rqst outside of =
+xprt->reserve_lock")
+> Signed-off-by: Geert Uytterhoeven <geert@linux-m68k.org>
+> ---
+> net/sunrpc/xprt.c | 11 +++++------
+> 1 file changed, 5 insertions(+), 6 deletions(-)
+>=20
+> diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+> index 3c85af058227d14b..60a8b9f91cf94b54 100644
+> --- a/net/sunrpc/xprt.c
+> +++ b/net/sunrpc/xprt.c
+> @@ -66,7 +66,6 @@
+>  * Local functions
+>  */
+> static void	 xprt_init(struct rpc_xprt *xprt, struct net *net);
+> -static __be32	xprt_alloc_xid(struct rpc_xprt *xprt);
+> static void	xprt_connect_status(struct rpc_task *task);
+> static int      __xprt_get_cong(struct rpc_xprt *, struct rpc_task *);
+> static void     __xprt_put_cong(struct rpc_xprt *, struct rpc_rqst *);
+> @@ -956,6 +955,11 @@ static void xprt_timer(struct rpc_task *task)
+> 		task->tk_status =3D 0;
+> }
+>=20
+> +static inline __be32 xprt_alloc_xid(struct rpc_xprt *xprt)
+> +{
+> +	return (__force __be32)xprt->xid++;
+> +}
+> +
+> /**
+>  * xprt_prepare_transmit - reserve the transport before sending a =
+request
+>  * @task: RPC task about to send a request
+> @@ -1296,11 +1300,6 @@ void xprt_retry_reserve(struct rpc_task *task)
+> 	xprt->ops->alloc_slot(xprt, task);
+> }
+>=20
+> -static inline __be32 xprt_alloc_xid(struct rpc_xprt *xprt)
+> -{
+> -	return (__force __be32)xprt->xid++;
+> -}
+> -
+
+For code organization, we might want to keep xprt_alloc_xid
+together with xprt_init_xid. Would it be better to simply
+remove the "inline" directive from these two and let the
+compiler choose the best optimization?
+
+
+> static inline void xprt_init_xid(struct rpc_xprt *xprt)
+> {
+> 	xprt->xid =3D prandom_u32();
+> --=20
+> 2.7.4
+>=20
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
+in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+--
+Chuck Lever
+
+
+
