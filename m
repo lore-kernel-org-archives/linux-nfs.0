@@ -1,47 +1,64 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f66.google.com ([209.85.214.66]:55370 "EHLO
-        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1754912AbeFNNjZ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Jun 2018 09:39:25 -0400
-Received: by mail-it0-f66.google.com with SMTP id 16-v6so8327413itl.5
-        for <linux-nfs@vger.kernel.org>; Thu, 14 Jun 2018 06:39:25 -0700 (PDT)
-From: schumaker.anna@gmail.com
-To: Trond.Myklebust@hammerspace.com, linux-nfs@vger.kernel.org
-Cc: ross.zwisler@linux.intel.com
-Subject: [PATCH] NFS: Fix an rcu deadlock in nfs_delegation_find_inode()
-Date: Thu, 14 Jun 2018 09:39:17 -0400
-Message-Id: <20180614133917.27656-1-Anna.Schumaker@Netapp.com>
+Received: from fieldses.org ([173.255.197.46]:55058 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1755360AbeFNNwC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 14 Jun 2018 09:52:02 -0400
+Date: Thu, 14 Jun 2018 09:52:01 -0400
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org, kinglongmee@gmail.com
+Subject: [PATCH] Reallow AUTH_NULL on v4 mounts.
+Message-ID: <20180614135201.GB24594@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Anna Schumaker <Anna.Schumaker@Netapp.com>
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-I was able to reproduce this pretty regularily using xfstests
-generic/013 on NFS v4.0.
+Kinglong Mee noted that the loop in seicnfo_addflavor (which sets the
+security flavors allowed on the v4 pseudoroot) was adding flavors 1 and
+0 twice; this is because flav_map ends with these entries:
 
-Reported-by: Ross Zwisler <Ross.Zwisler@linux.intel.com>
-Fixes: a337fe91 (NFSv4: Return NFS4ERR_DELAY when a delegation recall fails due to igrab())
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+	{ "unix",       AUTH_UNIX               },
+        { "sys",        AUTH_SYS                },
+        { "null",       AUTH_NULL               },
+        { "none",       AUTH_NONE               },
+
+where AUTH_UNIX == AUTH_SYS == 1 and AUTH_NULL == AUTH_NONE == 1.  We
+need to allow two names for each of those two security flavors for
+historical reasons.
+
+The patch correctly fixed this by fixing the check for a duplicate
+flavor number in secinfo_addflavor().  However it also went one step
+further and rejected the flavor number 0.  This is unnecessary and
+causes the kernel to fail any NFSv4 mounts using AUTH_NULL.
+
+The fact that we've apparently gone a few years without anyone noticing
+this suggests AUTH_NULL isn't used very much!  Still, this should be
+fixed....
+
+Fixes: e69eaaf93626
+Cc: Kinglong Mee <kinglongmee@gmail.com>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/nfs/delegation.c | 4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
+ utils/mountd/v4root.c | 3 ---
+ 1 file changed, 3 deletions(-)
 
-diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
-index bbd0465535eb..f033f3a69a3b 100644
---- a/fs/nfs/delegation.c
-+++ b/fs/nfs/delegation.c
-@@ -883,8 +883,10 @@ struct inode *nfs_delegation_find_inode(struct nfs_client *clp,
- 	rcu_read_lock();
- 	list_for_each_entry_rcu(server, &clp->cl_superblocks, client_link) {
- 		res = nfs_delegation_find_inode_server(server, fhandle);
--		if (res != ERR_PTR(-ENOENT))
-+		if (res != ERR_PTR(-ENOENT)) {
-+			rcu_read_unlock();
- 			return res;
-+		}
- 	}
- 	rcu_read_unlock();
- 	return ERR_PTR(-ENOENT);
+diff --git a/utils/mountd/v4root.c b/utils/mountd/v4root.c
+index d735dbfe192d..c93bd4db51c8 100644
+--- a/utils/mountd/v4root.c
++++ b/utils/mountd/v4root.c
+@@ -69,9 +69,6 @@ set_pseudofs_security(struct exportent *pseudo, int flags)
+ 	for (flav = flav_map; flav < flav_map + flav_map_size; flav++) {
+ 		struct sec_entry *new;
+ 
+-		if (!flav->fnum)
+-			continue;
+-
+ 		i = secinfo_addflavor(flav, pseudo);
+ 		new = &pseudo->e_secinfo[i];
+ 
 -- 
 2.17.1
 
