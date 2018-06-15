@@ -1,83 +1,88 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f68.google.com ([209.85.214.68]:33257 "EHLO
-        mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1756519AbeFOWm7 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Jun 2018 18:42:59 -0400
-Received: by mail-it0-f68.google.com with SMTP id k17-v6so6346618ita.0
-        for <linux-nfs@vger.kernel.org>; Fri, 15 Jun 2018 15:42:59 -0700 (PDT)
+Received: from mail-io0-f194.google.com ([209.85.223.194]:33429 "EHLO
+        mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1756715AbeFOWnA (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Jun 2018 18:43:00 -0400
+Received: by mail-io0-f194.google.com with SMTP id d185-v6so12089403ioe.0
+        for <linux-nfs@vger.kernel.org>; Fri, 15 Jun 2018 15:43:00 -0700 (PDT)
 Received: from leira.trondhjem.org.localdomain (50-124-245-47.alma.mi.frontiernet.net. [50.124.245.47])
-        by smtp.gmail.com with ESMTPSA id b100-v6sm1498214itd.16.2018.06.15.15.42.56
+        by smtp.gmail.com with ESMTPSA id b100-v6sm1498214itd.16.2018.06.15.15.42.58
         for <linux-nfs@vger.kernel.org>
         (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
-        Fri, 15 Jun 2018 15:42:57 -0700 (PDT)
+        Fri, 15 Jun 2018 15:42:58 -0700 (PDT)
 From: Trond Myklebust <trondmy@gmail.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH 1/2] pNFS: Always free the session slot on error in nfs4_layoutget_handle_exception
-Date: Fri, 15 Jun 2018 18:42:33 -0400
-Message-Id: <20180615224234.62723-1-trond.myklebust@hammerspace.com>
+Subject: [PATCH 2/2] pNFS: Don't send layoutreturn if the layout is already invalid
+Date: Fri, 15 Jun 2018 18:42:34 -0400
+Message-Id: <20180615224234.62723-2-trond.myklebust@hammerspace.com>
+In-Reply-To: <20180615224234.62723-1-trond.myklebust@hammerspace.com>
+References: <20180615224234.62723-1-trond.myklebust@hammerspace.com>
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Right now, we can call nfs_commit_inode() while holding the session slot,
-which could lead to NFSv4 deadlocks. Ensure we only keep the slot if
-the server returned a layout that we have to process.
+If the layout was invalidated due to a reboot, then don't try to send
+a layoutreturn for it.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/nfs4proc.c | 17 ++++++++++-------
- 1 file changed, 10 insertions(+), 7 deletions(-)
+ fs/nfs/nfs4proc.c | 16 ++++++++++++++++
+ 1 file changed, 16 insertions(+)
 
 diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index ed45090e4df6..2c8c2696415e 100644
+index 2c8c2696415e..6dd146885da9 100644
 --- a/fs/nfs/nfs4proc.c
 +++ b/fs/nfs/nfs4proc.c
-@@ -8650,6 +8650,8 @@ nfs4_layoutget_handle_exception(struct rpc_task *task,
+@@ -3294,6 +3294,7 @@ static void nfs4_close_prepare(struct rpc_task *task, void *data)
+ 	struct nfs4_closedata *calldata = data;
+ 	struct nfs4_state *state = calldata->state;
+ 	struct inode *inode = calldata->inode;
++	struct pnfs_layout_hdr *lo;
+ 	bool is_rdonly, is_wronly, is_rdwr;
+ 	int call_close = 0;
  
- 	dprintk("--> %s tk_status => %d\n", __func__, -task->tk_status);
- 
-+	nfs4_sequence_free_slot(&lgp->res.seq_res);
-+
- 	switch (nfs4err) {
- 	case 0:
- 		goto out;
-@@ -8714,7 +8716,6 @@ nfs4_layoutget_handle_exception(struct rpc_task *task,
- 		goto out;
+@@ -3337,6 +3338,12 @@ static void nfs4_close_prepare(struct rpc_task *task, void *data)
+ 		goto out_wait;
  	}
  
--	nfs4_sequence_free_slot(&lgp->res.seq_res);
- 	err = nfs4_handle_exception(server, nfs4err, exception);
- 	if (!status) {
- 		if (exception->retry)
-@@ -8786,20 +8787,22 @@ nfs4_proc_layoutget(struct nfs4_layoutget *lgp, long *timeout)
- 	if (IS_ERR(task))
- 		return ERR_CAST(task);
- 	status = rpc_wait_for_completion_task(task);
--	if (status == 0) {
-+	if (status != 0)
-+		goto out;
++	lo = calldata->arg.lr_args ? calldata->arg.lr_args->layout : NULL;
++	if (lo && !pnfs_layout_is_valid(lo)) {
++		calldata->arg.lr_args = NULL;
++		calldata->res.lr_res = NULL;
++	}
 +
-+	/* if layoutp->len is 0, nfs4_layoutget_prepare called rpc_exit */
-+	if (task->tk_status < 0 || lgp->res.layoutp->len == 0) {
- 		status = nfs4_layoutget_handle_exception(task, lgp, &exception);
- 		*timeout = exception.timeout;
--	}
--
-+	} else
-+		lseg = pnfs_layout_process(lgp);
-+out:
- 	trace_nfs4_layoutget(lgp->args.ctx,
- 			&lgp->args.range,
- 			&lgp->res.range,
- 			&lgp->res.stateid,
- 			status);
+ 	if (calldata->arg.fmode == 0)
+ 		task->tk_msg.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_CLOSE];
  
--	/* if layoutp->len is 0, nfs4_layoutget_prepare called rpc_exit */
--	if (status == 0 && lgp->res.layoutp->len)
--		lseg = pnfs_layout_process(lgp);
- 	rpc_put_task(task);
- 	dprintk("<-- %s status=%d\n", __func__, status);
- 	if (status)
+@@ -5972,12 +5979,19 @@ static void nfs4_delegreturn_release(void *calldata)
+ static void nfs4_delegreturn_prepare(struct rpc_task *task, void *data)
+ {
+ 	struct nfs4_delegreturndata *d_data;
++	struct pnfs_layout_hdr *lo;
+ 
+ 	d_data = (struct nfs4_delegreturndata *)data;
+ 
+ 	if (!d_data->lr.roc && nfs4_wait_on_layoutreturn(d_data->inode, task))
+ 		return;
+ 
++	lo = d_data->args.lr_args ? d_data->args.lr_args->layout : NULL;
++	if (lo && !pnfs_layout_is_valid(lo)) {
++		d_data->args.lr_args = NULL;
++		d_data->res.lr_res = NULL;
++	}
++
+ 	nfs4_setup_sequence(d_data->res.server->nfs_client,
+ 			&d_data->args.seq_args,
+ 			&d_data->res.seq_res,
+@@ -8820,6 +8834,8 @@ nfs4_layoutreturn_prepare(struct rpc_task *task, void *calldata)
+ 			&lrp->args.seq_args,
+ 			&lrp->res.seq_res,
+ 			task);
++	if (!pnfs_layout_is_valid(lrp->args.layout))
++		rpc_exit(task, 0);
+ }
+ 
+ static void nfs4_layoutreturn_done(struct rpc_task *task, void *calldata)
 -- 
 2.17.1
 
