@@ -1,140 +1,41 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.99]:58346 "EHLO mail.kernel.org"
+Received: from mail.kernel.org ([198.145.29.99]:43152 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1756005AbeFOO2q (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 15 Jun 2018 10:28:46 -0400
-MIME-Version: 1.0
-In-Reply-To: <BCD39D7E-EEEC-4EB9-824E-63323C333C88@oracle.com>
-References: <CAJKOXPd2rntNOpU1quR9Zm_J22+=pEaj4ZTC_tdZ0zcRYUciFg@mail.gmail.com>
- <CAPKp9uZ79ybkv7dMpcy2GQ9L+rWk+vdExQ48diWWQPOUdDQtSQ@mail.gmail.com>
- <CAJKOXPfX0CytKcYDaDAYYuCQjk-mcGjFRHfZco-wPQsc4G1agA@mail.gmail.com> <BCD39D7E-EEEC-4EB9-824E-63323C333C88@oracle.com>
-From: Krzysztof Kozlowski <krzk@kernel.org>
-Date: Fri, 15 Jun 2018 16:28:43 +0200
-Message-ID: <CAJKOXPcw-i99_U-Ltuuf6w-WRK7V4gNqVSYkCMGFEXQG2DL2XQ@mail.gmail.com>
-Subject: Re: [BUG BISECT] NFSv4 client fails on Flush Journal to Persistent Storage
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Sudeep Holla <sudeep.holla@arm.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Bruce Fields <bfields@fieldses.org>,
-        Jeff Layton <jlayton@kernel.org>,
-        "David S. Miller" <davem@davemloft.net>,
-        netdev <netdev@vger.kernel.org>,
-        open list <linux-kernel@vger.kernel.org>,
-        "linux-samsung-soc@vger.kernel.org"
-        <linux-samsung-soc@vger.kernel.org>
+        id S1754672AbeFOQ6P (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 15 Jun 2018 12:58:15 -0400
+Message-ID: <38ae86e328af14b45ee89fae2a4221b8404782db.camel@kernel.org>
+Subject: Re: [PATCH 0/2] knfsd change_attr_type & time_delta improvements
+From: Jeff Layton <jlayton@kernel.org>
+To: "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org
+Date: Fri, 15 Jun 2018 12:58:12 -0400
+In-Reply-To: <1529004093-5866-1-git-send-email-bfields@redhat.com>
+References: <1529004093-5866-1-git-send-email-bfields@redhat.com>
 Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jun 15, 2018 at 4:23 PM, Chuck Lever <chuck.lever@oracle.com> wrote=
-:
->
->
->> On Jun 15, 2018, at 10:07 AM, Krzysztof Kozlowski <krzk@kernel.org> wrot=
-e:
->>
->> On Fri, Jun 15, 2018 at 2:53 PM, Sudeep Holla <sudeep.holla@arm.com> wro=
-te:
->>> Hi,
->>>
->>> On Thu, Jun 7, 2018 at 12:19 PM, Krzysztof Kozlowski <krzk@kernel.org> =
-wrote:
->>>> Hi,
->>>>
->>>> When booting my boards under recent linux-next, I see failures of syst=
-emd:
->>>>
->>>> [FAILED] Failed to start Flush Journal to Persistent Storage.
->>>> See 'systemctl status systemd-journal-flush.service' for details.
->>>>         Starting Create Volatile Files and Directories...
->>>> [**    ] A start job is running for Create V=E2=80=A6 [  223.209289] n=
-fs:
->>>> server 192.168.1.10 not responding, still trying
->>>> [  223.209377] nfs: server 192.168.1.10 not responding, still trying
->>>>
->>>> Effectively the boards fails to boot. Example is here:
->>>> https://krzk.eu/#/builders/1/builds/2157
->>>>
->>>
->>> I too encountered the same issue.
->>>
->>>> This was bisected to:
->>>> commit 37ac86c3a76c113619b7d9afe0251bbfc04cb80a
->>>> Author: Chuck Lever <chuck.lever@oracle.com>
->>>> Date:   Fri May 4 15:34:53 2018 -0400
->>>>
->>>>    SUNRPC: Initialize rpc_rqst outside of xprt->reserve_lock
->>>>
->>>>    alloc_slot is a transport-specific op, but initializing an rpc_rqst
->>>>    is common to all transports. In addition, the only part of initial-
->>>>    izing an rpc_rqst that needs serialization is getting a fresh XID.
->>>>
->>>>    Move rpc_rqst initialization to common code in preparation for
->>>>    adding a transport-specific alloc_slot to xprtrdma.
->>>>
->>>>    Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->>>>    Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
->>>>
->>>
->>> Unfortunately, spent time to bisect independently without seeing this
->>> report and got the same culprit.
->>>
->>>>
->>>> Bisect log attached. Full configuration:
->>>> 1. exynos_defconfig
->>>> 2. ARMv7, octa-core, Exynos5422 and Exynos4412 (Odroid XU3, U3 and oth=
-ers)
->>>> 3. NFSv4 client (from Raspberry Pi)
->>>>
->>>
->>> Yes the issue is seen only with NFSv4 client and with latest systemd I =
-think.
->>> My Ubuntu 16.04(32bit FS) is  boots fine while 18.04 has the above issu=
-e.
->>> Passing nfsv3 in kernel command line makes it work again.
->>
->> Thanks for reply!
->>
->> I test it on systemd versions 236 and 238... and it fails on both.
->> However one board passes always - it is Odroid HC1 with same core
->> configuration as described before. Probably there is some different SW
->> package on it.
->>
->>>> Let me know if you need any more information.
->>>>
->>>
->>> Also I was observing this issue with Linus master branch from
->>> the time the above patch was merged until today. The issue
->>> is no longer seen since this morning however I just enabled lockdep
->>> and got these messages.
->>
->> All recent linux-next fail. Today's Linus' tree (4c5e8fc62d6a ("Merge
->> tag 'linux-kselftest-4.18-rc1-2' of
->> git://git.kernel.org/pub/scm/linux/kernel/git/shuah/linux-kselftest"))
->> managed to get up on one board but stuck on different board with the
->> same issue.
->>
->> I am quite surprised that there is no response from the author of the
->> commit and this was just moved from next (while failing) to Linus'
->> tree... bringing the issue to mainline now.
->
-> Sorry. This morning is the first time I've seen this report, which was
-> not To: or Cc'd to me.
+On Thu, 2018-06-14 at 15:21 -0400, J. Bruce Fields wrote:
+> From: "J. Bruce Fields" <bfields@redhat.com>
+> 
+> Implement change_attr_type, and fix time_delta.
+> 
+> I don't think the client currently uses either, I'm just assuming
+> they'll be useful some day, especially now that (thanks to jlayton) the
+> change attribute should be a real change attribute now in the
+> IS_I_VERSION() case.
+> 
+> 
+> J. Bruce Fields (2):
+>   nfsd: fix NFSv4 time_delta attribute
+>   nfsd4: support change_attr_type attribute
+> 
+>  fs/nfsd/nfs4xdr.c    | 39 ++++++++++++++++++++++++++++++++++++---
+>  fs/nfsd/nfsd.h       |  1 +
+>  include/linux/nfs4.h |  8 ++++++++
+>  3 files changed, 45 insertions(+), 3 deletions(-)
+> 
 
-D'oh! That's mine mistake. Apparently I missed to put you on CC list.
-Sorry for that.
+Both look good.
 
-
-> Since I don't have access to this kind of hardware, I will have to ask
-> for your help to perform basic troubleshooting.
->
-> Can we start by capturing the network traffic that occurs while you
-> reproduce the problem? Use tshark or tcpdump on your NFS server, filter
-> on the IP of the client, and send me (or the list) the raw pcap file.
-
-Sure, I'll send you tcpdump without Cc-ing list.
-
-Best regards,
-Krzysztof
+Reviewed-by: Jeff Layton <jlayton@kernel.org>
