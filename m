@@ -1,139 +1,86 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:33946 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S936284AbeFRTwQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 18 Jun 2018 15:52:16 -0400
-Date: Mon, 18 Jun 2018 15:52:16 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Anna Schumaker <schumakeranna@gmail.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: v4.18-rc1 client deadlock
-Message-ID: <20180618195216.GA24185@fieldses.org>
-References: <20180618183931.GH6355@fieldses.org>
- <CAFX2Jfn27dgiOtKjKf0xCJ__AspzKE3=tjqoc4A5RY_2QLPuAw@mail.gmail.com>
+Received: from mail-it0-f65.google.com ([209.85.214.65]:34227 "EHLO
+        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S936381AbeFRTzp (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Jun 2018 15:55:45 -0400
+Received: by mail-it0-f65.google.com with SMTP id y127-v6so12624262itd.1
+        for <linux-nfs@vger.kernel.org>; Mon, 18 Jun 2018 12:55:45 -0700 (PDT)
+Subject: [PATCH v1] sunrpc: Prevent duplicate XID allocation
+From: Chuck Lever <chuck.lever@oracle.com>
+To: linux-nfs@vger.kernel.org
+Cc: geert@linux-m68k.org, krzk@kernel.org
+Date: Mon, 18 Jun 2018 15:55:43 -0400
+Message-ID: <20180618195510.26098.42839.stgit@manet.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAFX2Jfn27dgiOtKjKf0xCJ__AspzKE3=tjqoc4A5RY_2QLPuAw@mail.gmail.com>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jun 18, 2018 at 03:46:16PM -0400, Anna Schumaker wrote:
-> If this is generic/013, then this might be the same issue I was hitting
-> last week.  I sent out a patch titled: "NFS: Fix an rcu deadlock in
-> nfs_delegation_find_inode()" that should fix it.
-> 
-> I hope this helps!
+Krzysztof Kozlowski <krzk@kernel.org> reports that a heavy NFSv4
+WRITE workload against a slow NFS server causes his Raspberry Pi
+clients to stall. Krzysztof bisected it to commit 37ac86c3a76c
+("SUNRPC: Initialize rpc_rqst outside of xprt->reserve_lock") .
 
-I saw it hang in connectathon tests, not xfstests.
+I was able to reproduce similar behavior and it appears that rarely
+the RPC client layer is re-allocating an XID for an RPC that it has
+already partially sent. This results in the client ignoring the
+subsequent reply, which carries the original XID.
 
-That said, Trond's linux-next (which includes your patch) seems to be
-getting through all the same tests without a hang.
+For various reasons, checking !req->rq_xmit_bytes_sent in
+xprt_prepare_transmit is not a 100% reliable mechanism for
+determining when a fresh XID is needed.
 
-(Still the same lock debugging warning, though, is it know whether
-that's a real bug or a false positive?)
+Trond's preference is to allocate the XID at the time each rpc_rqst
+slot is initialized.
 
---b.
+This patch should also address a gcc 4.1.2 complaint reported by
+Geert Uytterhoeven <geert@linux-m68k.org>.
 
-> Anna
-> 
-> On Mon, Jun 18, 2018 at 2:40 PM J. Bruce Fields <bfields@fieldses.org>
-> wrote:
-> 
-> > Connectathon tests are hanging for me on v4.18-rc1.  Is this a known
-> > issue?
-> >
-> > --b.
-> >
-> > [  128.335964] mount.nfs (5196) used greatest stack depth: 11208 bytes left
-> > [  135.170104] ------------[ cut here ]------------
-> > [  135.171318] DEBUG_LOCKS_WARN_ON(sem->owner != ((struct task_struct
-> > *)(1UL << 0)))
-> > [  135.171334] WARNING: CPU: 2 PID: 54 at kernel/locking/rwsem.c:217
-> > up_read_non_owner+0x58/0x60
-> > [  135.176504] Modules linked in: rpcsec_gss_krb5 nfsv4 nfs lockd grace
-> > auth_rpcgss sunrpc
-> > [  135.179149] CPU: 2 PID: 54 Comm: kworker/2:1 Not tainted
-> > 4.18.0-rc1-13725-g5b7b15aee641 #1778
-> > [  135.180826] Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS
-> > 1.11.0-2.fc28 04/01/2014
-> > [  135.182101] Workqueue: nfsiod rpc_async_release [sunrpc]
-> > [  135.182725] RIP: 0010:up_read_non_owner+0x58/0x60
-> > [  135.183338] Code: bc 00 5b c3 e8 b9 34 66 00 85 c0 74 df 8b 05 bf 15 c1
-> > 02 85 c0 75 d5 48 c7 c6 18 7d 51 82 48 c7 c7 fb 71 50 82 e8 0c 94 fa ff
-> > <0f> 0b eb be 0f 1f 40 00 0f 1f 44 00 00 53 48 8b 74 24 08 48 89 fb
-> > [  135.186349] RSP: 0018:ffffc900001cbe18 EFLAGS: 00010286
-> > [  135.187033] RAX: 0000000000000000 RBX: ffff880069a748d8 RCX:
-> > 0000000000000001
-> > [  135.187982] RDX: 0000000080000001 RSI: ffffffff825602b6 RDI:
-> > 00000000ffffffff
-> > [  135.188896] RBP: ffff88006a1d0e00 R08: 0000000000000000 R09:
-> > 0000000000000001
-> > [  135.189806] R10: 0000000000000000 R11: 0000000000000000 R12:
-> > ffff88006450c000
-> > [  135.190731] R13: ffff88007d371c00 R14: 0000000000000000 R15:
-> > ffff88007fd20480
-> > [  135.191643] FS:  0000000000000000(0000) GS:ffff88007fd00000(0000)
-> > knlGS:0000000000000000
-> > [  135.192803] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-> > [  135.193511] CR2: 00007f87b0883cb4 CR3: 0000000002858003 CR4:
-> > 00000000001606e0
-> > [  135.194558] Call Trace:
-> > [  135.194792]  nfs_async_unlink_release+0x2d/0x80 [nfs]
-> > [  135.195405]  rpc_free_task+0x2d/0x60 [sunrpc]
-> > [  135.195868]  process_one_work+0x212/0x640
-> > [  135.196288]  worker_thread+0x3c/0x390
-> > [  135.196681]  ? process_one_work+0x640/0x640
-> > [  135.197161]  kthread+0x11d/0x140
-> > [  135.197463]  ? kthread_flush_work_fn+0x10/0x10
-> > [  135.197978]  ret_from_fork+0x3a/0x50
-> > [  135.198366] irq event stamp: 78327
-> > [  135.198676] hardirqs last  enabled at (78327): [<ffffffff81cb9419>]
-> > _raw_spin_unlock_irq+0x29/0x50
-> > [  135.199791] hardirqs last disabled at (78326): [<ffffffff81cb927f>]
-> > _raw_spin_lock_irq+0xf/0x40
-> > [  135.200929] softirqs last  enabled at (69438): [<ffffffff81103226>]
-> > srcu_invoke_callbacks+0xd6/0x190
-> > [  135.202182] softirqs last disabled at (69434): [<ffffffff81103226>]
-> > srcu_invoke_callbacks+0xd6/0x190
-> > [  135.203471] ---[ end trace 7b0fac2ca4af7443 ]---
-> > [  569.422994] nfs: server test1.fieldses.org not responding, still trying
-> > [  604.238967] INFO: task bigfile:9141 blocked for more than 120 seconds.
-> > [  604.242603]       Tainted: G        W
-> >  4.18.0-rc1-13725-g5b7b15aee641 #1778
-> > [  604.245664] "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables
-> > this message.
-> > [  604.247738] bigfile         D12696  9141   9106 0x00000000
-> > [  604.249033] Call Trace:
-> > [  604.249405]  ? __schedule+0x317/0xbb0
-> > [  604.250153]  schedule+0x32/0x90
-> > [  604.250767]  io_schedule+0x12/0x40
-> > [  604.251425]  wait_on_page_bit+0x110/0x150
-> > [  604.251883]  ? add_to_page_cache_lru+0xe0/0xe0
-> > [  604.252418]  __filemap_fdatawait_range+0xbc/0x120
-> > [  604.252967]  filemap_write_and_wait_range+0x3e/0x70
-> > [  604.253536]  nfs_file_fsync+0x6a/0x3e0 [nfs]
-> > [  604.254002]  do_fsync+0x38/0x70
-> > [  604.254274]  __x64_sys_fsync+0x10/0x20
-> > [  604.254631]  do_syscall_64+0x50/0x180
-> > [  604.255073]  entry_SYSCALL_64_after_hwframe+0x49/0xbe
-> > [  604.255660] RIP: 0033:0x7fd696044b14
-> > [  604.256008] Code: Bad RIP value.
-> > [  604.256313] RSP: 002b:00007ffc894e5898 EFLAGS: 00000246 ORIG_RAX:
-> > 000000000000004a
-> > [  604.257255] RAX: ffffffffffffffda RBX: 0000000000000000 RCX:
-> > 00007fd696044b14
-> > [  604.258133] RDX: 0000000000002000 RSI: 0000000000605280 RDI:
-> > 0000000000000003
-> > [  604.259074] RBP: 00007ffc894e5cf0 R08: 0000000000000003 R09:
-> > 0000000000000000
-> > [  604.259977] R10: 0000000000000000 R11: 0000000000000246 R12:
-> > 0000000000400f90
-> > [  604.260878] R13: 00007ffc894e5e10 R14: 0000000000000000 R15:
-> > 0000000000000000
-> > [  604.261760] INFO: lockdep is turned off.
-> >
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> >
+Reported-by: Krzysztof Kozlowski <krzk@kernel.org>
+Fixes: 37ac86c3a76c ("SUNRPC: Initialize rpc_rqst outside of ... ")
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+ net/sunrpc/xprt.c |   10 +++++++---
+ 1 file changed, 7 insertions(+), 3 deletions(-)
+
+Hi-
+
+Interested in review, testing, other comments, etc. Thanks!
+
+
+diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+index 3c85af0..3fabf9f6 100644
+--- a/net/sunrpc/xprt.c
++++ b/net/sunrpc/xprt.c
+@@ -987,8 +987,6 @@ bool xprt_prepare_transmit(struct rpc_task *task)
+ 		task->tk_status = -EAGAIN;
+ 		goto out_unlock;
+ 	}
+-	if (!bc_prealloc(req) && !req->rq_xmit_bytes_sent)
+-		req->rq_xid = xprt_alloc_xid(xprt);
+ 	ret = true;
+ out_unlock:
+ 	spin_unlock_bh(&xprt->transport_lock);
+@@ -1298,7 +1296,12 @@ void xprt_retry_reserve(struct rpc_task *task)
+ 
+ static inline __be32 xprt_alloc_xid(struct rpc_xprt *xprt)
+ {
+-	return (__force __be32)xprt->xid++;
++	__be32 xid;
++
++	spin_lock(&xprt->reserve_lock);
++	xid = (__force __be32)xprt->xid++;
++	spin_unlock(&xprt->reserve_lock);
++	return xid;
+ }
+ 
+ static inline void xprt_init_xid(struct rpc_xprt *xprt)
+@@ -1316,6 +1319,7 @@ void xprt_request_init(struct rpc_task *task)
+ 	req->rq_task	= task;
+ 	req->rq_xprt    = xprt;
+ 	req->rq_buffer  = NULL;
++	req->rq_xid	= xprt_alloc_xid(xprt);
+ 	req->rq_connect_cookie = xprt->connect_cookie - 1;
+ 	req->rq_bytes_sent = 0;
+ 	req->rq_snd_buf.len = 0;
+
