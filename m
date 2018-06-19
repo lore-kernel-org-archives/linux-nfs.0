@@ -1,145 +1,45 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp2130.oracle.com ([156.151.31.86]:60976 "EHLO
-        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1755319AbeFSVYm (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Jun 2018 17:24:42 -0400
-From: Bill Baker <bill.baker@oracle.com>
-To: trond.myklebust@hammerspace.com, anna.schumaker@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2] NFSv4 client live hangs after live data migration recovery
-Date: Tue, 19 Jun 2018 16:24:58 -0500
-Message-Id: <1529443498-24846-1-git-send-email-bill.baker@oracle.com>
+Received: from smtprelay0233.hostedemail.com ([216.40.44.233]:33661 "EHLO
+        smtprelay.hostedemail.com" rhost-flags-OK-OK-OK-FAIL)
+        by vger.kernel.org with ESMTP id S935772AbeFSWDT (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Jun 2018 18:03:19 -0400
+Received: from smtprelay.hostedemail.com (10.5.19.251.rfc1918.com [10.5.19.251])
+        by smtpgrave07.hostedemail.com (Postfix) with ESMTP id B27E918044B59
+        for <linux-nfs@vger.kernel.org>; Tue, 19 Jun 2018 21:56:12 +0000 (UTC)
+Message-ID: <0dead6e0deabafe0abdd4b30f97bcdf5c12cd824.camel@perches.com>
+Subject: Re: [PATCH] [Bug 16494] NFS client over TCP hangs due to packet loss
+From: Joe Perches <joe@perches.com>
+To: Andy Chittenden <andyc.bluearc@gmail.com>,
+        'Trond Myklebust' <Trond.Myklebust@netapp.com>
+Cc: 'Andrew Morton' <akpm@linux-foundation.org>,
+        'David Miller' <davem@davemloft.net>, kuznet@ms2.inr.ac.ru,
+        pekkas@netcore.fi, jmorris@namei.org, yoshfuji@linux-ipv6.org,
+        kaber@trash.net, eric.dumazet@gmail.com,
+        William.Allen.Simpson@gmail.com, gilad@codefidence.com,
+        ilpo.jarvinen@helsinki.fi, netdev@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        "'J. Bruce Fields'" <bfields@fieldses.org>,
+        'Neil Brown' <neilb@suse.de>,
+        'Chuck Lever' <chuck.lever@oracle.com>,
+        'Benny Halevy' <bhalevy@panasas.com>,
+        'Alexandros Batsakis' <batsakis@netapp.com>,
+        Andy Chittenden <andyc@bluearc.com>
+Date: Tue, 19 Jun 2018 14:56:05 -0700
+In-Reply-To: <4c5fc9f3.487e0e0a.2960.ffffe4ec@mx.google.com>
+References: <4c57cfe8.887b0e0a.2f79.4772@mx.google.com>
+         <20100803.012144.267950450.davem@davemloft.net>
+         <20100803021110.f0b3877b.akpm@linux-foundation.org>
+         <4C57EE9A.7040308@gmail.com>  <4c5ad0d6.42ecd80a.47d7.0dfc@mx.google.com>
+         <1281037822.2948.49.camel@heimdal.trondhjem.org>
+         <4c5bd64a.4a2ae30a.0283.0551@mx.google.com>
+         <4c5fc9f3.487e0e0a.2960.ffffe4ec@mx.google.com>
+Content-Type: text/plain; charset="ISO-8859-1"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bill Baker <Bill.Baker@Oracle.com>
+On Mon, 2010-08-09 at 10:27 +0100, Andy Chittenden wrote:
 
-After a live data migration event at the NFS server, the client may send
-I/O requests to the wrong server, causing a live hang due to repeated
-recovery events.  On the wire, this will appear as an I/O request failing
-with NFS4ERR_BADSESSION, followed by successful CREATE_SESSION, repeatedly.
-NFS4ERR_BADSSESSION is returned because the session ID being used was
-issued by the other server and is not valid at the old server.
-
-The failure is caused by async worker threads having cached the transport
-(xprt) in the rpc_task structure.  After the migration recovery completes,
-the task is redispatched and the task resends the request to the wrong
-server based on the old value still present in tk_xprt.
-
-The solution is to recompute the tk_xprt field of the rpc_task structure
-so that the request goes to the correct server.
-
-Signed-off-by: Bill Baker <bill.baker@oracle.com>
-Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
-Tested-by: Helen Chao <helen.chao@oracle.com>
-Fixes: fb43d17210ba ("SUNRPC: Use the multipath iterator to assign a ...")
-Cc: stable@vger.kernel.org #4.9
----
- fs/nfs/nfs4proc.c           |  9 ++++++++-
- include/linux/sunrpc/clnt.h |  1 +
- net/sunrpc/clnt.c           | 28 ++++++++++++++++++++--------
- 3 files changed, 29 insertions(+), 9 deletions(-)
-
-Changes since v1:
-- Added "Fixes:" and "Cc: stable" tags
-
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index ed45090..2b1552b 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -581,8 +581,15 @@ int nfs4_handle_exception(struct nfs_server *server, int errorcode, struct nfs4_
- 		ret = -EIO;
- 	return ret;
- out_retry:
--	if (ret == 0)
-+	if (ret == 0) {
- 		exception->retry = 1;
-+		/*
-+		 * For NFS4ERR_MOVED, the client transport will need to
-+		 * be recomputed after migration recovery has completed.
-+		 */
-+		if (errorcode == -NFS4ERR_MOVED)
-+			rpc_task_release_transport(task);
-+	}
- 	return ret;
- }
- 
-diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
-index 9b11b6a..73d5c4a 100644
---- a/include/linux/sunrpc/clnt.h
-+++ b/include/linux/sunrpc/clnt.h
-@@ -156,6 +156,7 @@ int		rpc_switch_client_transport(struct rpc_clnt *,
- 
- void		rpc_shutdown_client(struct rpc_clnt *);
- void		rpc_release_client(struct rpc_clnt *);
-+void		rpc_task_release_transport(struct rpc_task *);
- void		rpc_task_release_client(struct rpc_task *);
- 
- int		rpcb_create_local(struct net *);
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index d839c33..0d85425 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -965,10 +965,20 @@ struct rpc_clnt *rpc_bind_new_program(struct rpc_clnt *old,
- }
- EXPORT_SYMBOL_GPL(rpc_bind_new_program);
- 
-+void rpc_task_release_transport(struct rpc_task *task)
-+{
-+	struct rpc_xprt *xprt = task->tk_xprt;
-+
-+	if (xprt) {
-+		task->tk_xprt = NULL;
-+		xprt_put(xprt);
-+	}
-+}
-+EXPORT_SYMBOL_GPL(rpc_task_release_transport);
-+
- void rpc_task_release_client(struct rpc_task *task)
- {
- 	struct rpc_clnt *clnt = task->tk_client;
--	struct rpc_xprt *xprt = task->tk_xprt;
- 
- 	if (clnt != NULL) {
- 		/* Remove from client task list */
-@@ -979,12 +989,14 @@ void rpc_task_release_client(struct rpc_task *task)
- 
- 		rpc_release_client(clnt);
- 	}
-+	rpc_task_release_transport(task);
-+}
- 
--	if (xprt != NULL) {
--		task->tk_xprt = NULL;
--
--		xprt_put(xprt);
--	}
-+static
-+void rpc_task_set_transport(struct rpc_task *task, struct rpc_clnt *clnt)
-+{
-+	if (!task->tk_xprt)
-+		task->tk_xprt = xprt_iter_get_next(&clnt->cl_xpi);
- }
- 
- static
-@@ -992,8 +1004,7 @@ void rpc_task_set_client(struct rpc_task *task, struct rpc_clnt *clnt)
- {
- 
- 	if (clnt != NULL) {
--		if (task->tk_xprt == NULL)
--			task->tk_xprt = xprt_iter_get_next(&clnt->cl_xpi);
-+		rpc_task_set_transport(task, clnt);
- 		task->tk_client = clnt;
- 		atomic_inc(&clnt->cl_count);
- 		if (clnt->cl_softrtry)
-@@ -1512,6 +1523,7 @@ void rpc_force_rebind(struct rpc_clnt *clnt)
- 		clnt->cl_program->version[clnt->cl_vers]->counts[idx]++;
- 	clnt->cl_stats->rpccnt++;
- 	task->tk_action = call_reserve;
-+	rpc_task_set_transport(task, clnt);
- }
- 
- /*
--- 
-1.8.3.1
+You really need to check your clock.
+Mail sent in the year 2010?
 
