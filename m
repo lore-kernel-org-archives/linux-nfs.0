@@ -1,45 +1,58 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtprelay0233.hostedemail.com ([216.40.44.233]:33661 "EHLO
-        smtprelay.hostedemail.com" rhost-flags-OK-OK-OK-FAIL)
-        by vger.kernel.org with ESMTP id S935772AbeFSWDT (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Jun 2018 18:03:19 -0400
-Received: from smtprelay.hostedemail.com (10.5.19.251.rfc1918.com [10.5.19.251])
-        by smtpgrave07.hostedemail.com (Postfix) with ESMTP id B27E918044B59
-        for <linux-nfs@vger.kernel.org>; Tue, 19 Jun 2018 21:56:12 +0000 (UTC)
-Message-ID: <0dead6e0deabafe0abdd4b30f97bcdf5c12cd824.camel@perches.com>
-Subject: Re: [PATCH] [Bug 16494] NFS client over TCP hangs due to packet loss
-From: Joe Perches <joe@perches.com>
-To: Andy Chittenden <andyc.bluearc@gmail.com>,
-        'Trond Myklebust' <Trond.Myklebust@netapp.com>
-Cc: 'Andrew Morton' <akpm@linux-foundation.org>,
-        'David Miller' <davem@davemloft.net>, kuznet@ms2.inr.ac.ru,
-        pekkas@netcore.fi, jmorris@namei.org, yoshfuji@linux-ipv6.org,
-        kaber@trash.net, eric.dumazet@gmail.com,
-        William.Allen.Simpson@gmail.com, gilad@codefidence.com,
-        ilpo.jarvinen@helsinki.fi, netdev@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        "'J. Bruce Fields'" <bfields@fieldses.org>,
-        'Neil Brown' <neilb@suse.de>,
-        'Chuck Lever' <chuck.lever@oracle.com>,
-        'Benny Halevy' <bhalevy@panasas.com>,
-        'Alexandros Batsakis' <batsakis@netapp.com>,
-        Andy Chittenden <andyc@bluearc.com>
-Date: Tue, 19 Jun 2018 14:56:05 -0700
-In-Reply-To: <4c5fc9f3.487e0e0a.2960.ffffe4ec@mx.google.com>
-References: <4c57cfe8.887b0e0a.2f79.4772@mx.google.com>
-         <20100803.012144.267950450.davem@davemloft.net>
-         <20100803021110.f0b3877b.akpm@linux-foundation.org>
-         <4C57EE9A.7040308@gmail.com>  <4c5ad0d6.42ecd80a.47d7.0dfc@mx.google.com>
-         <1281037822.2948.49.camel@heimdal.trondhjem.org>
-         <4c5bd64a.4a2ae30a.0283.0551@mx.google.com>
-         <4c5fc9f3.487e0e0a.2960.ffffe4ec@mx.google.com>
-Content-Type: text/plain; charset="ISO-8859-1"
-Mime-Version: 1.0
+Received: from mx1.redhat.com ([209.132.183.28]:45260 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751629AbeFSXJ6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 19 Jun 2018 19:09:58 -0400
+Subject: Re: [PATCH] locking/rwsem: Fix up_read_non_owner() warning with
+ DEBUG_RWSEMS
+To: Ingo Molnar <mingo@redhat.com>,
+        Peter Zijlstra <peterz@infradead.org>,
+        Thomas Gleixner <tglx@linutronix.de>
+Cc: linux-kernel@vger.kernel.org, Davidlohr Bueso <dave@stgolabs.net>,
+        Dan Williams <dan.j.williams@intel.com>,
+        Arnd Bergmann <arnd@arndb.de>, linux-nfs@vger.kernel.org,
+        =?UTF-8?Q?Uwe_Kleine-K=c3=b6nig?= <u.kleine-koenig@pengutronix.de>
+References: <1527168398-4291-1-git-send-email-longman@redhat.com>
+From: Waiman Long <longman@redhat.com>
+Message-ID: <ba5a8266-b475-0f80-50eb-1ed39ffa6d2a@redhat.com>
+Date: Wed, 20 Jun 2018 07:09:54 +0800
+MIME-Version: 1.0
+In-Reply-To: <1527168398-4291-1-git-send-email-longman@redhat.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2010-08-09 at 10:27 +0100, Andy Chittenden wrote:
+On 05/24/2018 09:26 PM, Waiman Long wrote:
+> It was found that the use of up_read_non_owner() in NFS was causing
+> the following warning when DEBUG_RWSEMS was configured.
+>
+>   DEBUG_LOCKS_WARN_ON(sem->owner != ((struct task_struct *)(1UL << 0)))
+>
+> Looking into the rwsem.c file, it was discovered that the corresponding
+> down_read_non_owner() function was not setting the owner field properly.
+> This is fixed now, and the warning should be gone.
+>
+> Signed-off-by: Waiman Long <longman@redhat.com>
+> ---
+>  kernel/locking/rwsem.c | 1 +
+>  1 file changed, 1 insertion(+)
+>
+> diff --git a/kernel/locking/rwsem.c b/kernel/locking/rwsem.c
+> index bc1e507..776308d 100644
+> --- a/kernel/locking/rwsem.c
+> +++ b/kernel/locking/rwsem.c
+> @@ -181,6 +181,7 @@ void down_read_non_owner(struct rw_semaphore *sem)
+>  	might_sleep();
+>  tch
+>  	__down_read(sem);
+> +	rwsem_set_reader_owned(sem);
+>  }
+>  
+>  EXPORT_SYMBOL(down_read_non_owner);
 
-You really need to check your clock.
-Mail sent in the year 2010?
+Since the 4.18 merge window has been closed. Can that patch be merged
+upstream?
+
+Cheers,
+Longman
 
