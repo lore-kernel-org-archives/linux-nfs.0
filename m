@@ -1,17 +1,18 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:47784 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:38050 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S966655AbeFSQ5F (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 19 Jun 2018 12:57:05 -0400
-Subject: Re: [PATCH v3 1/2] Add check of clientaddr argument
+        id S967071AbeFSQ5Y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 19 Jun 2018 12:57:24 -0400
+Subject: Re: [PATCH v3 2/2] nfs(5): update clientaddr value options
 To: Olga Kornievskaia <kolga@netapp.com>
 Cc: linux-nfs@vger.kernel.org
 References: <20180605192909.27578-1-kolga@netapp.com>
+ <20180605192909.27578-2-kolga@netapp.com>
 From: Steve Dickson <SteveD@RedHat.com>
-Message-ID: <7af99d29-e2e4-422a-48ba-364b5371c30b@RedHat.com>
-Date: Tue, 19 Jun 2018 12:57:04 -0400
+Message-ID: <df111fc8-3be1-0cac-5f52-363046e8bc80@RedHat.com>
+Date: Tue, 19 Jun 2018 12:57:23 -0400
 MIME-Version: 1.0
-In-Reply-To: <20180605192909.27578-1-kolga@netapp.com>
+In-Reply-To: <20180605192909.27578-2-kolga@netapp.com>
 Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
@@ -19,137 +20,29 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 
 On 06/05/2018 03:29 PM, Olga Kornievskaia wrote:
-> If the NFS client administrator supplies the clientaddr mount
-> option, it should be either a special value of either IPv4/IPv6
-> any address or one of the machine's network addresses. Otherwise,
-> warn the administrator about the use of an arbitrary value for
-> the clientaddr value.
+> Document the use of IPv4/IPv6_ANY address as values to the clientaddr
+> as a way to tell the server that the client does not want delegations.
 > 
 > Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
 Committed... 
 
 steved.
-> `
 > ---
->  utils/mount/network.c | 45 +++++++++++++++++++++++++++++++++++++++++++++
->  utils/mount/network.h |  2 ++
->  utils/mount/stropts.c | 24 ++++++++++++++++++++++--
->  3 files changed, 69 insertions(+), 2 deletions(-)
+>  utils/mount/nfs.man | 3 +++
+>  1 file changed, 3 insertions(+)
 > 
-> diff --git a/utils/mount/network.c b/utils/mount/network.c
-> index e490399..2a54f82 100644
-> --- a/utils/mount/network.c
-> +++ b/utils/mount/network.c
-> @@ -50,6 +50,8 @@
->  #include <rpc/rpc.h>
->  #include <rpc/pmap_prot.h>
->  #include <rpc/pmap_clnt.h>
-> +#include <net/if.h>
-> +#include <ifaddrs.h>
->  
->  #include "sockaddr.h"
->  #include "xcommon.h"
-> @@ -1759,3 +1761,46 @@ int nfs_umount_do_umnt(struct mount_options *options,
->  
->  	return EX_SUCCESS;
->  }
-> +
-> +int nfs_is_inaddr_any(struct sockaddr *nfs_saddr)
-> +{
-> +	switch (nfs_saddr->sa_family) {
-> +	case AF_INET: {
-> +		if (((struct sockaddr_in *)nfs_saddr)->sin_addr.s_addr ==
-> +				INADDR_ANY)
-> +			return 1;
-> +	}
-> +	case AF_INET6:
-> +		if (!memcmp(&((struct sockaddr_in6 *)nfs_saddr)->sin6_addr,
-> +				&in6addr_any, sizeof(in6addr_any)))
-> +			return 1;
-> +	}
-> +	return 0;
-> +}
-> +
-> +int nfs_addr_matches_localips(struct sockaddr *nfs_saddr)
-> +{
-> +	struct ifaddrs *myaddrs, *ifa;
-> +	int found = 0;
-> +
-> +	/* acquire exiting network interfaces */
-> +	if (getifaddrs(&myaddrs) != 0)
-> +		return 0;
-> +
-> +	/* interate over the available interfaces and check if we
-> +	 * we find a match to the supplied clientaddr value
-> +	 */
-> +	for (ifa = myaddrs; ifa != NULL; ifa = ifa->ifa_next) {
-> +		if (ifa->ifa_addr == NULL)
-> +			continue;
-> +		if (!(ifa->ifa_flags & IFF_UP))
-> +			continue;
-> +		if (!memcmp(ifa->ifa_addr, nfs_saddr,
-> +				sizeof(struct sockaddr))) {
-> +			found = 1;
-> +			break;
-> +		}
-> +	}
-> +	freeifaddrs(myaddrs);
-> +	return found;
-> +}
-> diff --git a/utils/mount/network.h b/utils/mount/network.h
-> index ecaac33..0fc98ac 100644
-> --- a/utils/mount/network.h
-> +++ b/utils/mount/network.h
-> @@ -54,6 +54,8 @@ int nfs_callback_address(const struct sockaddr *, const socklen_t,
->  int clnt_ping(struct sockaddr_in *, const unsigned long,
->  		const unsigned long, const unsigned int,
->  		struct sockaddr_in *);
-> +int nfs_is_inaddr_any(struct sockaddr *);
-> +int nfs_addr_matches_localips(struct sockaddr *);
->  
->  struct mount_options;
->  
-> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-> index d1b0708..4d2e37e 100644
-> --- a/utils/mount/stropts.c
-> +++ b/utils/mount/stropts.c
-> @@ -229,7 +229,8 @@ static int nfs_append_addr_option(const struct sockaddr *sap,
->  
->  /*
->   * Called to discover our address and append an appropriate 'clientaddr='
-> - * option to the options string.
-> + * option to the options string. If the supplied 'clientaddr=' value does
-> + * not match either IPV4/IPv6 any or a local address, then fail the mount.
->   *
->   * Returns 1 if 'clientaddr=' option created successfully or if
->   * 'clientaddr=' option is already present; otherwise zero.
-> @@ -242,8 +243,27 @@ static int nfs_append_clientaddr_option(const struct sockaddr *sap,
->  	struct sockaddr *my_addr = &address.sa;
->  	socklen_t my_len = sizeof(address);
->  
-> -	if (po_contains(options, "clientaddr") == PO_FOUND)
-> +	if (po_contains(options, "clientaddr") == PO_FOUND) {
-> +		char *addr = po_get(options, "clientaddr");
-> +		union nfs_sockaddr nfs_address;
-> +		struct sockaddr *nfs_saddr = &nfs_address.sa;
-> +		socklen_t nfs_salen = sizeof(nfs_address);
-> +
-> +		/* translate the input for clientaddr to nfs_sockaddr */
-> +		if (!nfs_string_to_sockaddr(addr, nfs_saddr, &nfs_salen))
-> +			return 0;
-> +
-> +		/* check for IPV4_ANY and IPV6_ANY */
-> +		if (nfs_is_inaddr_any(nfs_saddr))
-> +			return 1;
-> +
-> +		/* check if ip matches local network addresses */
-> +		if (!nfs_addr_matches_localips(nfs_saddr))
-> +			nfs_error(_("%s: [warning] supplied clientaddr=%s "
-> +				"does not match any existing network "
-> +				"addresses"), progname, addr);
->  		return 1;
-> +	}
->  
->  	nfs_callback_address(sap, salen, my_addr, &my_len);
->  
+> diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
+> index bd1508c..9ee9bd9 100644
+> --- a/utils/mount/nfs.man
+> +++ b/utils/mount/nfs.man
+> @@ -835,6 +835,9 @@ to perform NFS version 4.0 callback requests against
+>  files on this mount point. If  the  server is unable to
+>  establish callback connections to clients, performance
+>  may degrade, or accesses to files may temporarily hang.
+> +Can specify a value of IPv4_ANY (0.0.0.0) or equivalent
+> +IPv6 any address which will signal to the NFS server that
+> +this NFS client does not want delegations.
+>  .IP
+>  If this option is not specified, the
+>  .BR mount (8)
 > 
