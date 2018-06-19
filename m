@@ -1,59 +1,155 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:36313 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:47784 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1030228AbeFSQ4k (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 19 Jun 2018 12:56:40 -0400
-Subject: Re: [PATCH] exports: document change to "insecure" export option
-To: "J. Bruce Fields" <bfields@fieldses.org>
+        id S966655AbeFSQ5F (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 19 Jun 2018 12:57:05 -0400
+Subject: Re: [PATCH v3 1/2] Add check of clientaddr argument
+To: Olga Kornievskaia <kolga@netapp.com>
 Cc: linux-nfs@vger.kernel.org
-References: <20180614133238.GA24594@fieldses.org>
+References: <20180605192909.27578-1-kolga@netapp.com>
 From: Steve Dickson <SteveD@RedHat.com>
-Message-ID: <e698f0ad-0c7f-a527-5c55-f09cd88ca2e2@RedHat.com>
-Date: Tue, 19 Jun 2018 12:56:39 -0400
+Message-ID: <7af99d29-e2e4-422a-48ba-364b5371c30b@RedHat.com>
+Date: Tue, 19 Jun 2018 12:57:04 -0400
 MIME-Version: 1.0
-In-Reply-To: <20180614133238.GA24594@fieldses.org>
+In-Reply-To: <20180605192909.27578-1-kolga@netapp.com>
 Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
 
-On 06/14/2018 09:32 AM, J. Bruce Fields wrote:
-> From: "J. Bruce Fields" <bfields@redhat.com>
+On 06/05/2018 03:29 PM, Olga Kornievskaia wrote:
+> If the NFS client administrator supplies the clientaddr mount
+> option, it should be either a special value of either IPv4/IPv6
+> any address or one of the machine's network addresses. Otherwise,
+> warn the administrator about the use of an arbitrary value for
+> the clientaddr value.
 > 
-> We're changing the kernel to allow gss requests from high ports even
-> when "secure" is set.
-> 
-> If the change gets backported to distro kernels, the kernel version may
-> be an imperfect predictor of the behavior, but I think it's the best we
-> can do.
-> 
-> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-Committed.... 
+> Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+Committed... 
 
 steved.
+> `
 > ---
->  utils/exportfs/exports.man | 8 +++++---
->  1 file changed, 5 insertions(+), 3 deletions(-)
+>  utils/mount/network.c | 45 +++++++++++++++++++++++++++++++++++++++++++++
+>  utils/mount/network.h |  2 ++
+>  utils/mount/stropts.c | 24 ++++++++++++++++++++++--
+>  3 files changed, 69 insertions(+), 2 deletions(-)
 > 
-> diff --git a/utils/exportfs/exports.man b/utils/exportfs/exports.man
-> index 4f95f3a2197e..e3a16f6b276a 100644
-> --- a/utils/exportfs/exports.man
-> +++ b/utils/exportfs/exports.man
-> @@ -131,10 +131,12 @@ this way are ro, rw, no_root_squash, root_squash, and all_squash.
->  understands the following export options:
->  .TP
->  .IR secure
-> -This option requires that requests originate on an Internet port less
-> -than IPPORT_RESERVED (1024). This option is on by default. To turn it
-> -off, specify
-> +This option requires that requests not using gss originate on an
-> +Internet port less than IPPORT_RESERVED (1024). This option is on by default.
-> +To turn it off, specify
->  .IR insecure .
-> +(NOTE: older kernels (before upstream kernel version 4.17) enforced this
-> +requirement on gss requests as well.)
->  .TP
->  .IR rw
->  Allow both read and write requests on this NFS volume. The
+> diff --git a/utils/mount/network.c b/utils/mount/network.c
+> index e490399..2a54f82 100644
+> --- a/utils/mount/network.c
+> +++ b/utils/mount/network.c
+> @@ -50,6 +50,8 @@
+>  #include <rpc/rpc.h>
+>  #include <rpc/pmap_prot.h>
+>  #include <rpc/pmap_clnt.h>
+> +#include <net/if.h>
+> +#include <ifaddrs.h>
+>  
+>  #include "sockaddr.h"
+>  #include "xcommon.h"
+> @@ -1759,3 +1761,46 @@ int nfs_umount_do_umnt(struct mount_options *options,
+>  
+>  	return EX_SUCCESS;
+>  }
+> +
+> +int nfs_is_inaddr_any(struct sockaddr *nfs_saddr)
+> +{
+> +	switch (nfs_saddr->sa_family) {
+> +	case AF_INET: {
+> +		if (((struct sockaddr_in *)nfs_saddr)->sin_addr.s_addr ==
+> +				INADDR_ANY)
+> +			return 1;
+> +	}
+> +	case AF_INET6:
+> +		if (!memcmp(&((struct sockaddr_in6 *)nfs_saddr)->sin6_addr,
+> +				&in6addr_any, sizeof(in6addr_any)))
+> +			return 1;
+> +	}
+> +	return 0;
+> +}
+> +
+> +int nfs_addr_matches_localips(struct sockaddr *nfs_saddr)
+> +{
+> +	struct ifaddrs *myaddrs, *ifa;
+> +	int found = 0;
+> +
+> +	/* acquire exiting network interfaces */
+> +	if (getifaddrs(&myaddrs) != 0)
+> +		return 0;
+> +
+> +	/* interate over the available interfaces and check if we
+> +	 * we find a match to the supplied clientaddr value
+> +	 */
+> +	for (ifa = myaddrs; ifa != NULL; ifa = ifa->ifa_next) {
+> +		if (ifa->ifa_addr == NULL)
+> +			continue;
+> +		if (!(ifa->ifa_flags & IFF_UP))
+> +			continue;
+> +		if (!memcmp(ifa->ifa_addr, nfs_saddr,
+> +				sizeof(struct sockaddr))) {
+> +			found = 1;
+> +			break;
+> +		}
+> +	}
+> +	freeifaddrs(myaddrs);
+> +	return found;
+> +}
+> diff --git a/utils/mount/network.h b/utils/mount/network.h
+> index ecaac33..0fc98ac 100644
+> --- a/utils/mount/network.h
+> +++ b/utils/mount/network.h
+> @@ -54,6 +54,8 @@ int nfs_callback_address(const struct sockaddr *, const socklen_t,
+>  int clnt_ping(struct sockaddr_in *, const unsigned long,
+>  		const unsigned long, const unsigned int,
+>  		struct sockaddr_in *);
+> +int nfs_is_inaddr_any(struct sockaddr *);
+> +int nfs_addr_matches_localips(struct sockaddr *);
+>  
+>  struct mount_options;
+>  
+> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+> index d1b0708..4d2e37e 100644
+> --- a/utils/mount/stropts.c
+> +++ b/utils/mount/stropts.c
+> @@ -229,7 +229,8 @@ static int nfs_append_addr_option(const struct sockaddr *sap,
+>  
+>  /*
+>   * Called to discover our address and append an appropriate 'clientaddr='
+> - * option to the options string.
+> + * option to the options string. If the supplied 'clientaddr=' value does
+> + * not match either IPV4/IPv6 any or a local address, then fail the mount.
+>   *
+>   * Returns 1 if 'clientaddr=' option created successfully or if
+>   * 'clientaddr=' option is already present; otherwise zero.
+> @@ -242,8 +243,27 @@ static int nfs_append_clientaddr_option(const struct sockaddr *sap,
+>  	struct sockaddr *my_addr = &address.sa;
+>  	socklen_t my_len = sizeof(address);
+>  
+> -	if (po_contains(options, "clientaddr") == PO_FOUND)
+> +	if (po_contains(options, "clientaddr") == PO_FOUND) {
+> +		char *addr = po_get(options, "clientaddr");
+> +		union nfs_sockaddr nfs_address;
+> +		struct sockaddr *nfs_saddr = &nfs_address.sa;
+> +		socklen_t nfs_salen = sizeof(nfs_address);
+> +
+> +		/* translate the input for clientaddr to nfs_sockaddr */
+> +		if (!nfs_string_to_sockaddr(addr, nfs_saddr, &nfs_salen))
+> +			return 0;
+> +
+> +		/* check for IPV4_ANY and IPV6_ANY */
+> +		if (nfs_is_inaddr_any(nfs_saddr))
+> +			return 1;
+> +
+> +		/* check if ip matches local network addresses */
+> +		if (!nfs_addr_matches_localips(nfs_saddr))
+> +			nfs_error(_("%s: [warning] supplied clientaddr=%s "
+> +				"does not match any existing network "
+> +				"addresses"), progname, addr);
+>  		return 1;
+> +	}
+>  
+>  	nfs_callback_address(sap, salen, my_addr, &my_len);
+>  
 > 
