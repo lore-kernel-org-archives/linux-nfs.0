@@ -1,20 +1,18 @@
-Return-Path: <bfields@fieldses.org>
-Date: Tue, 19 Jun 2018 09:55:53 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Return-Path: <hch@lst.de>
+Date: Tue, 19 Jun 2018 16:11:07 +0200
+From: Christoph Hellwig <hch@lst.de>
 To: Benjamin Coddington <bcodding@redhat.com>
-Cc: Jeff Layton <jlayton@kernel.org>,
+Cc: bfields@fieldses.org, Jeff Layton <jlayton@kernel.org>,
 	Bart Van Assche <bart.vanassche@sandisk.com>,
 	Christoph Hellwig <hch@lst.de>, linux-nfs@vger.kernel.org
 Subject: Re: [PATCH] nfsd: don't advertise a SCSI layout for an unsupported
- request_queue
-Message-ID: <20180619135553.GA1985@fieldses.org>
+	request_queue
+Message-ID: <20180619141106.GB13089@lst.de>
 References: <be316794f70ba6e4b2e0314cd6fca9ad2447cdc2.1529398437.git.bcodding@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 In-Reply-To: <be316794f70ba6e4b2e0314cd6fca9ad2447cdc2.1529398437.git.bcodding@redhat.com>
 List-ID: <linux-nfs.vger.kernel.org>
-
-Thanks, applying.--b.
 
 On Tue, Jun 19, 2018 at 04:57:24AM -0400, Benjamin Coddington wrote:
 > Commit 30181faae37f ("nfsd: Check queue type before submitting a SCSI
@@ -30,43 +28,7 @@ On Tue, Jun 19, 2018 at 04:57:24AM -0400, Benjamin Coddington wrote:
 > overwrite the layout type.
 > 
 > Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
-> ---
->  fs/nfsd/nfs4layouts.c | 11 ++---------
->  1 file changed, 2 insertions(+), 9 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4layouts.c b/fs/nfsd/nfs4layouts.c
-> index 7d888369f85a..0ba7d3150213 100644
-> --- a/fs/nfsd/nfs4layouts.c
-> +++ b/fs/nfsd/nfs4layouts.c
-> @@ -133,27 +133,20 @@ void nfsd4_setup_layout_type(struct svc_export *exp)
->  	if (!(exp->ex_flags & NFSEXP_PNFS))
->  		return;
->  
-> -	/*
-> -	 * If flex file is configured, use it by default. Otherwise
-> -	 * check if the file system supports exporting a block-like layout.
-> -	 * If the block device supports reservations prefer the SCSI layout,
-> -	 * otherwise advertise the block layout.
-> -	 */
->  #ifdef CONFIG_NFSD_FLEXFILELAYOUT
->  	exp->ex_layout_types |= 1 << LAYOUT_FLEX_FILES;
->  #endif
->  #ifdef CONFIG_NFSD_BLOCKLAYOUT
-> -	/* overwrite flex file layout selection if needed */
->  	if (sb->s_export_op->get_uuid &&
->  	    sb->s_export_op->map_blocks &&
->  	    sb->s_export_op->commit_blocks)
->  		exp->ex_layout_types |= 1 << LAYOUT_BLOCK_VOLUME;
->  #endif
->  #ifdef CONFIG_NFSD_SCSILAYOUT
-> -	/* overwrite block layout selection if needed */
->  	if (sb->s_export_op->map_blocks &&
->  	    sb->s_export_op->commit_blocks &&
-> -	    sb->s_bdev && sb->s_bdev->bd_disk->fops->pr_ops)
-> +	    sb->s_bdev && sb->s_bdev->bd_disk->fops->pr_ops &&
-> +		blk_queue_scsi_passthrough(sb->s_bdev->bd_disk->queue))
->  		exp->ex_layout_types |= 1 << LAYOUT_SCSI;
->  #endif
->  }
-> -- 
-> 2.14.3
+
+Looks good,
+
+Reviewed-by: Christoph Hellwig <hch@lst.de>
