@@ -1,59 +1,69 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.99]:40106 "EHLO mail.kernel.org"
+Received: from mx1.redhat.com ([209.132.183.28]:39076 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750807AbeFSGeG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 19 Jun 2018 02:34:06 -0400
-Received: from mail-wr0-f174.google.com (mail-wr0-f174.google.com [209.85.128.174])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
-        (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 466FD20883
-        for <linux-nfs@vger.kernel.org>; Tue, 19 Jun 2018 06:34:05 +0000 (UTC)
-Received: by mail-wr0-f174.google.com with SMTP id v13-v6so19188395wrp.13
-        for <linux-nfs@vger.kernel.org>; Mon, 18 Jun 2018 23:34:05 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <20180618195510.26098.42839.stgit@manet.1015granger.net>
-References: <20180618195510.26098.42839.stgit@manet.1015granger.net>
-From: Krzysztof Kozlowski <krzk@kernel.org>
-Date: Tue, 19 Jun 2018 08:34:03 +0200
-Message-ID: <CAJKOXPdpYR+CGeDGpbYeEvR87x70enEMCD2tCbz5umjj71iG6g@mail.gmail.com>
-Subject: Re: [PATCH v1] sunrpc: Prevent duplicate XID allocation
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: linux-nfs@vger.kernel.org, geert@linux-m68k.org
-Content-Type: text/plain; charset="UTF-8"
+        id S1755865AbeFSI50 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 19 Jun 2018 04:57:26 -0400
+From: Benjamin Coddington <bcodding@redhat.com>
+To: bfields@fieldses.org, Jeff Layton <jlayton@kernel.org>,
+        Bart Van Assche <bart.vanassche@sandisk.com>
+Cc: Christoph Hellwig <hch@lst.de>, linux-nfs@vger.kernel.org
+Subject: [PATCH] nfsd: don't advertise a SCSI layout for an unsupported request_queue
+Date: Tue, 19 Jun 2018 04:57:24 -0400
+Message-Id: <be316794f70ba6e4b2e0314cd6fca9ad2447cdc2.1529398437.git.bcodding@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 18 June 2018 at 21:55, Chuck Lever <chuck.lever@oracle.com> wrote:
-> Krzysztof Kozlowski <krzk@kernel.org> reports that a heavy NFSv4
-> WRITE workload against a slow NFS server causes his Raspberry Pi
-> clients to stall. Krzysztof bisected it to commit 37ac86c3a76c
-> ("SUNRPC: Initialize rpc_rqst outside of xprt->reserve_lock") .
->
-> I was able to reproduce similar behavior and it appears that rarely
-> the RPC client layer is re-allocating an XID for an RPC that it has
-> already partially sent. This results in the client ignoring the
-> subsequent reply, which carries the original XID.
->
-> For various reasons, checking !req->rq_xmit_bytes_sent in
-> xprt_prepare_transmit is not a 100% reliable mechanism for
-> determining when a fresh XID is needed.
->
-> Trond's preference is to allocate the XID at the time each rpc_rqst
-> slot is initialized.
->
-> This patch should also address a gcc 4.1.2 complaint reported by
-> Geert Uytterhoeven <geert@linux-m68k.org>.
->
-> Reported-by: Krzysztof Kozlowski <krzk@kernel.org>
-> Fixes: 37ac86c3a76c ("SUNRPC: Initialize rpc_rqst outside of ... ")
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
->  net/sunrpc/xprt.c |   10 +++++++---
->  1 file changed, 7 insertions(+), 3 deletions(-)
+Commit 30181faae37f ("nfsd: Check queue type before submitting a SCSI
+request") did the work of ensuring that we don't send SCSI requests to a
+request queue that won't support them, but that check is in the
+GETDEVICEINFO path.  Let's not set the SCSI layout in fs_layout_type in the
+first place, and then we'll have less clients sending GETDEVICEINFO for
+non-SCSI request queues and less unnecessary WARN_ONs.
 
-This fixes the problems, thanks!
+While we're in here, remove some outdated comments that refer to
+"overwriting" layout seletion because commit 8a4c3926889e ("nfsd: allow
+nfsd to advertise multiple layout types") changed things to no longer
+overwrite the layout type.
 
-Tested-by: Krzysztof Kozlowski <krzk@kernel.org>
+Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
+---
+ fs/nfsd/nfs4layouts.c | 11 ++---------
+ 1 file changed, 2 insertions(+), 9 deletions(-)
 
-Best regards,
-Krzysztof
+diff --git a/fs/nfsd/nfs4layouts.c b/fs/nfsd/nfs4layouts.c
+index 7d888369f85a..0ba7d3150213 100644
+--- a/fs/nfsd/nfs4layouts.c
++++ b/fs/nfsd/nfs4layouts.c
+@@ -133,27 +133,20 @@ void nfsd4_setup_layout_type(struct svc_export *exp)
+ 	if (!(exp->ex_flags & NFSEXP_PNFS))
+ 		return;
+ 
+-	/*
+-	 * If flex file is configured, use it by default. Otherwise
+-	 * check if the file system supports exporting a block-like layout.
+-	 * If the block device supports reservations prefer the SCSI layout,
+-	 * otherwise advertise the block layout.
+-	 */
+ #ifdef CONFIG_NFSD_FLEXFILELAYOUT
+ 	exp->ex_layout_types |= 1 << LAYOUT_FLEX_FILES;
+ #endif
+ #ifdef CONFIG_NFSD_BLOCKLAYOUT
+-	/* overwrite flex file layout selection if needed */
+ 	if (sb->s_export_op->get_uuid &&
+ 	    sb->s_export_op->map_blocks &&
+ 	    sb->s_export_op->commit_blocks)
+ 		exp->ex_layout_types |= 1 << LAYOUT_BLOCK_VOLUME;
+ #endif
+ #ifdef CONFIG_NFSD_SCSILAYOUT
+-	/* overwrite block layout selection if needed */
+ 	if (sb->s_export_op->map_blocks &&
+ 	    sb->s_export_op->commit_blocks &&
+-	    sb->s_bdev && sb->s_bdev->bd_disk->fops->pr_ops)
++	    sb->s_bdev && sb->s_bdev->bd_disk->fops->pr_ops &&
++		blk_queue_scsi_passthrough(sb->s_bdev->bd_disk->queue))
+ 		exp->ex_layout_types |= 1 << LAYOUT_SCSI;
+ #endif
+ }
+-- 
+2.14.3
+
