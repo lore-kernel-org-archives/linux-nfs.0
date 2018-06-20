@@ -1,19 +1,19 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx3-rdu2.redhat.com ([66.187.233.73]:44926 "EHLO mx1.redhat.com"
+Received: from mx3-rdu2.redhat.com ([66.187.233.73]:44896 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1751166AbeFTMMx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 20 Jun 2018 08:12:53 -0400
-Received: from smtp.corp.redhat.com (int-mx06.intmail.prod.int.rdu2.redhat.com [10.11.54.6])
+        id S932077AbeFTMMU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 20 Jun 2018 08:12:20 -0400
+Received: from smtp.corp.redhat.com (int-mx03.intmail.prod.int.rdu2.redhat.com [10.11.54.3])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id D512140200A7
-        for <linux-nfs@vger.kernel.org>; Wed, 20 Jun 2018 12:12:52 +0000 (UTC)
-Message-ID: <1529496770.7473.11.camel@redhat.com>
-Subject: [PATCH 3/5] nfs-utils: swap xlog_err for less fatal version
+        by mx1.redhat.com (Postfix) with ESMTPS id DCCE040200A7
+        for <linux-nfs@vger.kernel.org>; Wed, 20 Jun 2018 12:12:19 +0000 (UTC)
+Message-ID: <1529496736.7473.10.camel@redhat.com>
+Subject: [PATCH 2/5] nfs-utils: Fix comparison check for subsection headers
 From: Justin Mitchell <jumitche@redhat.com>
 To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
 Cc: Steve Dickson <steved@redhat.com>
-Date: Wed, 20 Jun 2018 13:12:50 +0100
+Date: Wed, 20 Jun 2018 13:12:16 +0100
 In-Reply-To: <1529496583.7473.8.camel@redhat.com>
 References: <1529496583.7473.8.camel@redhat.com>
 Content-Type: text/plain; charset="UTF-8"
@@ -21,28 +21,28 @@ Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Use of xlog_err is immediately fatal, switch to using
-xlog(L_ERROR, ...) instead so that the error handling and
-cleanup mechanisms can operate properly
+When comparing two config section headers it incorrectly
+handled matching section names where only one had a
+subsection value
 
 Signed-off-by: Justin Mitchell <jumitche@redhat.com>
 ---
- support/nfs/conffile.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ support/nfs/conffile.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
 diff --git a/support/nfs/conffile.c b/support/nfs/conffile.c
-index 51b85f2..c7c3a62 100644
+index d20460e..51b85f2 100644
 --- a/support/nfs/conffile.c
 +++ b/support/nfs/conffile.c
-@@ -495,7 +495,7 @@ conf_readfile(const char *path)
- {
- 	struct stat sb;
- 	if (!path) {
--		xlog_err("conf_readfile: no path given");
-+		xlog(L_ERROR, "conf_readfile: no path given");
- 		return NULL;
- 	}
- 
+@@ -727,6 +727,8 @@ retry:
+ 			continue;
+ 		if (arg && (cb->arg == NULL || strcasecmp(arg, cb->arg) != 0))
+ 			continue;
++		if (!arg && cb->arg)
++			continue;
+ 		if (strcasecmp(tag, cb->tag) != 0)
+ 			continue;
+ 		if (cb->value[0] == '$') {
 -- 
 1.8.3.1
 
