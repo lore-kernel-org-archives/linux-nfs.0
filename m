@@ -1,61 +1,60 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx3-rdu2.redhat.com ([66.187.233.73]:54048 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1754230AbeFTQVf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 20 Jun 2018 12:21:35 -0400
-Received: from smtp.corp.redhat.com (int-mx06.intmail.prod.int.rdu2.redhat.com [10.11.54.6])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id F15C040201A2
-        for <linux-nfs@vger.kernel.org>; Wed, 20 Jun 2018 16:21:34 +0000 (UTC)
-From: Kenneth Dsouza <kdsouza@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: steved@redhat.com, sorenson@redhat.com
-Subject: [PATCH] nfs-utils: Fix minor memory leaks before return.
-Date: Wed, 20 Jun 2018 21:51:29 +0530
-Message-Id: <20180620162129.12692-1-kdsouza@redhat.com>
+Received: from mail-wr0-f195.google.com ([209.85.128.195]:40436 "EHLO
+        mail-wr0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S932088AbeFTQkn (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Jun 2018 12:40:43 -0400
+Subject: Re: [PATCH] [Bug 16494] NFS client over TCP hangs due to packet loss
+To: Joe Perches <joe@perches.com>,
+        'Trond Myklebust' <Trond.Myklebust@netapp.com>
+Cc: 'Andrew Morton' <akpm@linux-foundation.org>,
+        'David Miller' <davem@davemloft.net>, kuznet@ms2.inr.ac.ru,
+        pekkas@netcore.fi, jmorris@namei.org, yoshfuji@linux-ipv6.org,
+        kaber@trash.net, eric.dumazet@gmail.com,
+        William.Allen.Simpson@gmail.com, gilad@codefidence.com,
+        ilpo.jarvinen@helsinki.fi, netdev@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        "'J. Bruce Fields'" <bfields@fieldses.org>,
+        'Neil Brown' <neilb@suse.de>,
+        'Chuck Lever' <chuck.lever@oracle.com>,
+        'Benny Halevy' <bhalevy@panasas.com>,
+        'Alexandros Batsakis' <batsakis@netapp.com>,
+        Andy Chittenden <andyc@bluearc.com>
+References: <4c57cfe8.887b0e0a.2f79.4772@mx.google.com>
+ <20100803.012144.267950450.davem@davemloft.net>
+ <20100803021110.f0b3877b.akpm@linux-foundation.org>
+ <4C57EE9A.7040308@gmail.com> <4c5ad0d6.42ecd80a.47d7.0dfc@mx.google.com>
+ <1281037822.2948.49.camel@heimdal.trondhjem.org>
+ <4c5bd64a.4a2ae30a.0283.0551@mx.google.com>
+ <4c5fc9f3.487e0e0a.2960.ffffe4ec@mx.google.com>
+ <0dead6e0deabafe0abdd4b30f97bcdf5c12cd824.camel@perches.com>
+From: Andy C <andyc.bluearc@gmail.com>
+Message-ID: <bac42441-07c8-bb94-7559-94f9047654fa@gmail.com>
+Date: Wed, 20 Jun 2018 17:40:40 +0100
+MIME-Version: 1.0
+In-Reply-To: <0dead6e0deabafe0abdd4b30f97bcdf5c12cd824.camel@perches.com>
+Content-Type: text/plain; charset=utf-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Kenneth D'souza <kdsouza@redhat.com>
-Signed-off-by: Frank Sorenson <sorenson@redhat.com>
----
- support/junction/path.c            | 4 +++-
- support/nfsidmap/nfsidmap_common.c | 4 +++-
- 2 files changed, 6 insertions(+), 2 deletions(-)
+On 2018-06-19 22:56, Joe Perches wrote:
+> On Mon, 2010-08-09 at 10:27 +0100, Andy Chittenden wrote:
+>
+> You really need to check your clock.
+> Mail sent in the year 2010?
+>
+I didn't send it just now. I sent it on 2010-08-09 at 10:27. And I did 
+receive a copy at that time. If I'm reading the headers correctly, 
+something happened here:
 
-diff --git a/support/junction/path.c b/support/junction/path.c
-index 68a1d13..e74e4c4 100644
---- a/support/junction/path.c
-+++ b/support/junction/path.c
-@@ -326,8 +326,10 @@ nsdb_posix_to_path_array(const char *pathname, char ***path_array)
- 			break;
- 		next = strchrnul(component, '/');
- 		length = (size_t)(next - component);
--		if (length > 255)
-+		if (length > 255) {
-+			nsdb_free_string_array(result);
- 			return FEDFS_ERR_SVRFAULT;
-+		}
- 
- 		result[i] = strndup(component, length);
- 		if (result[i] == NULL) {
-diff --git a/support/nfsidmap/nfsidmap_common.c b/support/nfsidmap/nfsidmap_common.c
-index 5242c7e..f89b82e 100644
---- a/support/nfsidmap/nfsidmap_common.c
-+++ b/support/nfsidmap/nfsidmap_common.c
-@@ -57,8 +57,10 @@ struct conf_list *get_local_realms(void)
- 			return NULL;
- 
- 		node->field = calloc(1, NFS4_MAX_DOMAIN_LEN);
--		if (node->field == NULL)
-+		if (node->field == NULL) {
-+			free(node);
- 			return NULL;
-+		}
- 
- 		nfs4_get_default_domain(NULL, node->field, NFS4_MAX_DOMAIN_LEN);
- 		toupper_str(node->field);
+Received: from mchehab by bombadil.infradead.org with local (Exim 4.90_1 #2 (Red Hat Linux))
+	id 1fVNCq-0005da-3g; Tue, 19 Jun 2018 20:26:24 +0000
+Received: from vger.kernel.org ([209.132.180.67])
+	by bombadil.infradead.org with esmtp (Exim 4.72 #1 (Red Hat Linux))
+	id 1OiOdm-0004za-Ks; Mon, 09 Aug 2010 09:27:30 +0000
+Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
+	id S1755981Ab0HIJ1U (ORCPT <rfc822;tgraf@infradead.org> + 8 others);
+	Mon, 9 Aug 2010 05:27:20 -0400
+
 -- 
-2.14.3
+Andy
 
