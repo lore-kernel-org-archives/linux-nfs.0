@@ -1,56 +1,35 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([198.137.202.133]:60474 "EHLO
-        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1753594AbeFTJR7 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Jun 2018 05:17:59 -0400
-Date: Wed, 20 Jun 2018 11:17:52 +0200
-From: Peter Zijlstra <peterz@infradead.org>
-To: Waiman Long <longman@redhat.com>
-Cc: Ingo Molnar <mingo@redhat.com>,
-        Thomas Gleixner <tglx@linutronix.de>,
-        linux-kernel@vger.kernel.org, Davidlohr Bueso <dave@stgolabs.net>,
-        Dan Williams <dan.j.williams@intel.com>,
-        Arnd Bergmann <arnd@arndb.de>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] locking/rwsem: Fix up_read_non_owner() warning with
- DEBUG_RWSEMS
-Message-ID: <20180620091752.GL2476@hirez.programming.kicks-ass.net>
-References: <1527168398-4291-1-git-send-email-longman@redhat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1527168398-4291-1-git-send-email-longman@redhat.com>
+Received: from mx3-rdu2.redhat.com ([66.187.233.73]:44798 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1751422AbeFTMJr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 20 Jun 2018 08:09:47 -0400
+Received: from smtp.corp.redhat.com (int-mx04.intmail.prod.int.rdu2.redhat.com [10.11.54.4])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id 38108402312B
+        for <linux-nfs@vger.kernel.org>; Wed, 20 Jun 2018 12:09:47 +0000 (UTC)
+Message-ID: <1529496583.7473.8.camel@redhat.com>
+Subject: [PATCH 0/5] nfs-utils: config value setting
+From: Justin Mitchell <jumitche@redhat.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Cc: Steve Dickson <steved@redhat.com>
+Date: Wed, 20 Jun 2018 13:09:43 +0100
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, May 24, 2018 at 09:26:38AM -0400, Waiman Long wrote:
-> It was found that the use of up_read_non_owner() in NFS was causing
-> the following warning when DEBUG_RWSEMS was configured.
-> 
->   DEBUG_LOCKS_WARN_ON(sem->owner != ((struct task_struct *)(1UL << 0)))
-> 
-> Looking into the rwsem.c file, it was discovered that the corresponding
-> down_read_non_owner() function was not setting the owner field properly.
-> This is fixed now, and the warning should be gone.
-> 
-> Signed-off-by: Waiman Long <longman@redhat.com>
+As part of my ongoing efforts to improve storage management integration
+with NFS I offer this support for setting configuration file values.
 
-Acked-by: Peter Zijlstra (Intel) <peterz@infradead.org>
+This code only updates a single config entry at a time, it attempts to
+preserve the existing structure and style of the comments file, and
+takes every precaution that the replacement file is written before using
+rename(2) to replace the original.
 
-> ---
->  kernel/locking/rwsem.c | 1 +
->  1 file changed, 1 insertion(+)
-> 
-> diff --git a/kernel/locking/rwsem.c b/kernel/locking/rwsem.c
-> index bc1e507..776308d 100644
-> --- a/kernel/locking/rwsem.c
-> +++ b/kernel/locking/rwsem.c
-> @@ -181,6 +181,7 @@ void down_read_non_owner(struct rw_semaphore *sem)
->  	might_sleep();
->  
->  	__down_read(sem);
-> +	rwsem_set_reader_owned(sem);
->  }
->  
->  EXPORT_SYMBOL(down_read_non_owner);
-> -- 
-> 1.8.3.1
-> 
+The cli nfsconf tool is also updated to be the first consumer of this
+functionality.
+
+Signed-off-by: Justin Mitchell <jumitche@redhat.com>
+
+
