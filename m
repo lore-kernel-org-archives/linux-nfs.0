@@ -1,86 +1,42 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f66.google.com ([209.85.214.66]:38742 "EHLO
-        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750760AbeFSXUH (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Jun 2018 19:20:07 -0400
-Received: by mail-it0-f66.google.com with SMTP id v83-v6so2922208itc.3
-        for <linux-nfs@vger.kernel.org>; Tue, 19 Jun 2018 16:20:07 -0700 (PDT)
-Received: from leira.trondhjem.org.localdomain (50-124-245-47.alma.mi.frontiernet.net. [50.124.245.47])
-        by smtp.gmail.com with ESMTPSA id 192-v6sm630771itl.41.2018.06.19.16.20.05
-        for <linux-nfs@vger.kernel.org>
-        (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
-        Tue, 19 Jun 2018 16:20:05 -0700 (PDT)
-From: Trond Myklebust <trondmy@gmail.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 1/2] pNFS/flexfiles: Don't tie up all the rpciod threads in resends
-Date: Tue, 19 Jun 2018 19:19:42 -0400
-Message-Id: <20180619231943.105925-1-trond.myklebust@hammerspace.com>
+Received: from mx01.eckelmann.de ([217.19.183.92]:56442 "EHLO
+        mx01.eckelmann.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751092AbeFTFzB (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Jun 2018 01:55:01 -0400
+From: "Schenk, Gavin" <G.Schenk@eckelmann.de>
+To: "tglx@linutronix.de" <tglx@linutronix.de>,
+        "longman@redhat.com" <longman@redhat.com>,
+        "peterz@infradead.org" <peterz@infradead.org>,
+        "mingo@redhat.com" <mingo@redhat.com>
+CC: "dan.j.williams@intel.com" <dan.j.williams@intel.com>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "u.kleine-koenig@pengutronix.de" <u.kleine-koenig@pengutronix.de>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "arnd@arndb.de" <arnd@arndb.de>,
+        "dave@stgolabs.net" <dave@stgolabs.net>
+Subject: Re: [Customers.Eckelmann] [PATCH] locking/rwsem: Fix
+ up_read_non_owner() warning with DEBUG_RWSEMS
+Date: Wed, 20 Jun 2018 05:49:30 +0000
+Message-ID: <052d9796f814fc5d6625ac7fcd00dc37b0f11da1.camel@eckelmann.de>
+References: <1527168398-4291-1-git-send-email-longman@redhat.com>
+         <ba5a8266-b475-0f80-50eb-1ed39ffa6d2a@redhat.com>
+In-Reply-To: <ba5a8266-b475-0f80-50eb-1ed39ffa6d2a@redhat.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We do not want to have rpciod threads perform recursive calls into the
-RPC layer since that can deadlock. In particular, having to wait for
-a layoutget can be nasty... We want rather to defer scheduling those
-retries until we're in the rpc_release() callback, since that is
-called from the nfsiod workqueue.
-
-Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
----
- fs/nfs/flexfilelayout/flexfilelayout.c | 11 ++++++++---
- include/linux/nfs_xdr.h                |  2 ++
- 2 files changed, 10 insertions(+), 3 deletions(-)
-
-diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
-index 3ae038d9c292..336b4d560e2c 100644
---- a/fs/nfs/flexfilelayout/flexfilelayout.c
-+++ b/fs/nfs/flexfilelayout/flexfilelayout.c
-@@ -1243,17 +1243,18 @@ static int ff_layout_read_done_cb(struct rpc_task *task,
- 					   hdr->ds_clp, hdr->lseg,
- 					   hdr->pgio_mirror_idx);
- 
-+	clear_bit(NFS_IOHDR_RESEND_PNFS, &hdr->flags);
-+	clear_bit(NFS_IOHDR_RESEND_MDS, &hdr->flags);
- 	switch (err) {
- 	case -NFS4ERR_RESET_TO_PNFS:
- 		if (ff_layout_choose_best_ds_for_read(hdr->lseg,
- 					hdr->pgio_mirror_idx + 1,
- 					&hdr->pgio_mirror_idx))
- 			goto out_eagain;
--		ff_layout_read_record_layoutstats_done(task, hdr);
--		pnfs_read_resend_pnfs(hdr);
-+		set_bit(NFS_IOHDR_RESEND_PNFS, &hdr->flags);
- 		return task->tk_status;
- 	case -NFS4ERR_RESET_TO_MDS:
--		ff_layout_reset_read(hdr);
-+		set_bit(NFS_IOHDR_RESEND_MDS, &hdr->flags);
- 		return task->tk_status;
- 	case -EAGAIN:
- 		goto out_eagain;
-@@ -1403,6 +1404,10 @@ static void ff_layout_read_release(void *data)
- 	struct nfs_pgio_header *hdr = data;
- 
- 	ff_layout_read_record_layoutstats_done(&hdr->task, hdr);
-+	if (test_bit(NFS_IOHDR_RESEND_PNFS, &hdr->flags))
-+		pnfs_read_resend_pnfs(hdr);
-+	else if (test_bit(NFS_IOHDR_RESEND_MDS, &hdr->flags))
-+		ff_layout_reset_read(hdr);
- 	pnfs_generic_rw_release(data);
- }
- 
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 9dee3c23895d..712eed156d09 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1438,6 +1438,8 @@ enum {
- 	NFS_IOHDR_EOF,
- 	NFS_IOHDR_REDO,
- 	NFS_IOHDR_STAT,
-+	NFS_IOHDR_RESEND_PNFS,
-+	NFS_IOHDR_RESEND_MDS,
- };
- 
- struct nfs_io_completion;
--- 
-2.17.1
-
+SGksDQoNCk9uIFdlZCwgMjAxOC0wNi0yMCBhdCAwNzowOSArMDgwMCwgV2FpbWFuIExvbmcgd3Jv
+dGU6DQo+IE9uIDA1LzI0LzIwMTggMDk6MjYgUE0sIFdhaW1hbiBMb25nIHdyb3RlOg0KPiA+IEl0
+IHdhcyBmb3VuZCB0aGF0IHRoZSB1c2Ugb2YgdXBfcmVhZF9ub25fb3duZXIoKSBpbiBORlMgd2Fz
+IGNhdXNpbmcNCj4gPiB0aGUgZm9sbG93aW5nIHdhcm5pbmcgd2hlbiBERUJVR19SV1NFTVMgd2Fz
+IGNvbmZpZ3VyZWQuDQo+ID4gDQo+ID4gICBERUJVR19MT0NLU19XQVJOX09OKHNlbS0+b3duZXIg
+IT0gKChzdHJ1Y3QgdGFza19zdHJ1Y3QgKikoMVVMIDw8IDApKSkNCj4gPiANCj4gPiBMb29raW5n
+IGludG8gdGhlIHJ3c2VtLmMgZmlsZSwgaXQgd2FzIGRpc2NvdmVyZWQgdGhhdCB0aGUgY29ycmVz
+cG9uZGluZw0KPiA+IGRvd25fcmVhZF9ub25fb3duZXIoKSBmdW5jdGlvbiB3YXMgbm90IHNldHRp
+bmcgdGhlIG93bmVyIGZpZWxkIHByb3Blcmx5Lg0KPiA+IFRoaXMgaXMgZml4ZWQgbm93LCBhbmQg
+dGhlIHdhcm5pbmcgc2hvdWxkIGJlIGdvbmUuDQo+ID4gDQo+ID4gU2lnbmVkLW9mZi1ieTogV2Fp
+bWFuIExvbmcgPGxvbmdtYW5AcmVkaGF0LmNvbT4NClRlc3RlZC1ieTogR2F2aW4gU2NoZW5rIDxn
+LnNjaGVua0BlY2tlbG1hbm4uZGU+DQoNClRoaXMgZml4ZXMgbXkgcmVwcm9kdWNpYmxlIGxvY2tp
+bmcgc3BsYXQgd2hlbiBib290aW5nIHdpdGggbmZzcm9vdCBhbmQgY2hhbmdpbmcgcGFzc3dvcmQu
+IFRoYW5rIHlvdSENCg0KUmVnYXJkcw0KR2F2aW4gU2NoZW5rDQo=
