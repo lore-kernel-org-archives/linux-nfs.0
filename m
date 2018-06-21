@@ -1,58 +1,53 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp2120.oracle.com ([156.151.31.85]:54546 "EHLO
-        userp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S933388AbeFUQfc (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Jun 2018 12:35:32 -0400
-Received: from pps.filterd (userp2120.oracle.com [127.0.0.1])
-        by userp2120.oracle.com (8.16.0.22/8.16.0.22) with SMTP id w5LGYQOf189101
-        for <linux-nfs@vger.kernel.org>; Thu, 21 Jun 2018 16:35:31 GMT
-Received: from aserv0022.oracle.com (aserv0022.oracle.com [141.146.126.234])
-        by userp2120.oracle.com with ESMTP id 2jmu6y1g62-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK)
-        for <linux-nfs@vger.kernel.org>; Thu, 21 Jun 2018 16:35:31 +0000
-Received: from aserv0122.oracle.com (aserv0122.oracle.com [141.146.126.236])
-        by aserv0022.oracle.com (8.14.4/8.14.4) with ESMTP id w5LGZUvB013432
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK)
-        for <linux-nfs@vger.kernel.org>; Thu, 21 Jun 2018 16:35:30 GMT
-Received: from abhmp0002.oracle.com (abhmp0002.oracle.com [141.146.116.8])
-        by aserv0122.oracle.com (8.14.4/8.14.4) with ESMTP id w5LGZU8x020120
-        for <linux-nfs@vger.kernel.org>; Thu, 21 Jun 2018 16:35:30 GMT
-From: Manjunath Patil <manjunath.b.patil@oracle.com>
-To: linux-nfs@vger.kernel.org
-Cc: manjunath.b.patil@oracle.com
-Subject: [PATCH 2/2] nfsd: return ENOSPC if unable to allocate a session slot
-Date: Thu, 21 Jun 2018 16:35:33 +0000
-Message-Id: <1529598933-16506-2-git-send-email-manjunath.b.patil@oracle.com>
-In-Reply-To: <1529598933-16506-1-git-send-email-manjunath.b.patil@oracle.com>
-References: <1529598933-16506-1-git-send-email-manjunath.b.patil@oracle.com>
+Received: from mail-sn1nam01on0109.outbound.protection.outlook.com ([104.47.32.109]:30240
+        "EHLO NAM01-SN1-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S933409AbeFUQwV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 21 Jun 2018 12:52:21 -0400
+From: Trond Myklebust <trondmy@hammerspace.com>
+To: "torvalds@linux-foundation.org" <torvalds@linux-foundation.org>
+CC: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: [GIT PULL] Please pull NFS client bugfixes for 4.18
+Date: Thu, 21 Jun 2018 16:52:17 +0000
+Message-ID: <8d9108335a1528f8609bce75bd5c18874a382b1b.camel@hammerspace.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Presently nfserr_jukebox is being returned by nfsd for create_session
-request if server is unable to allocate a session slot. This may be
-treated as NFS4ERR_DELAY by the clients and which may continue to re-try
-create_session in loop leading NFSv4.1+ mounts in hung state. nfsd
-should return nfserr_nospc in this case as per rfc5661(section-18.36.4
-subpoint 4. Session creation).
-
-Signed-off-by: Manjunath Patil <manjunath.b.patil@oracle.com>
----
- fs/nfsd/nfs4state.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 8571414..3734e08 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -2716,7 +2716,7 @@ static __be32 check_forechannel_attrs(struct nfsd4_channel_attrs *ca, struct nfs
- 	 */
- 	ca->maxreqs = nfsd4_get_drc_mem(ca);
- 	if (!ca->maxreqs)
--		return nfserr_jukebox;
-+		return nfserr_nospc;
- 
- 	return nfs_ok;
- }
--- 
-1.8.3.1
-
+SGkgTGludXMsDQoNClRoZSBmb2xsb3dpbmcgY2hhbmdlcyBzaW5jZSBjb21taXQgOTNiN2Y3YWQy
+MDE4ZDIwMzc1NTliMWQwODkyNDE3ODY0Yzc4YjM3MToNCg0KICBza2lwIExBWU9VVFJFVFVSTiBp
+ZiBsYXlvdXQgaXMgaW52YWxpZCAoMjAxOC0wNi0xMiAwODo0ODowNCAtMDQwMCkNCg0KYXJlIGF2
+YWlsYWJsZSBpbiB0aGUgR2l0IHJlcG9zaXRvcnkgYXQ6DQoNCiAgZ2l0Oi8vZ2l0LmxpbnV4LW5m
+cy5vcmcvcHJvamVjdHMvdHJvbmRteS9saW51eC1uZnMuZ2l0IHRhZ3MvbmZzLWZvci00LjE4LTIN
+Cg0KZm9yIHlvdSB0byBmZXRjaCBjaGFuZ2VzIHVwIHRvIDdiMGRmOTJhYzEyMTQ4MDk4MzkxYmY1
+M2YzNDk0YWYxNzgxMmYyNjQ6DQoNCiAgcE5GUy9mbGV4ZmlsZXM6IFByb2Nlc3Mgd3JpdGViYWNr
+IHJlc2VuZHMgZnJvbSBuZnNpb2QgY29udGV4dCBhcyB3ZWxsICgyMDE4LTA2LTE5IDA5OjI1OjI3
+IC0wNDAwKQ0KDQpDaGVlcnMsDQogIFRyb25kDQoNCi0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0NCk5GUyBjbGllbnQgYnVnZml4
+ZXMgZm9yIExpbnV4IDQuMTgNCg0KSGlnaHRsaWdodHMgaW5jbHVkZToNCg0KQnVnZml4ZXM6DQot
+IEZpeCBhbiByY3UgZGVhZGxvY2sgaW4gbmZzX2RlbGVnYXRpb25fZmluZF9pbm9kZSgpDQotIEZp
+eCBORlN2NCBkZWFkbG9ja3MgZHVlIHRvIG5vdCBmcmVlaW5nIHRoZSBzZXNzaW9uIHNsb3QgaW4g
+bGF5b3V0Z2V0DQotIERvbid0IHNlbmQgbGF5b3V0cmV0dXJuIGlmIHRoZSBsYXlvdXQgaXMgYWxy
+ZWFkeSBpbnZhbGlkDQotIFByZXZlbnQgZHVwbGljYXRlIFhJRCBhbGxvY2F0aW9uDQotIGZsZXhm
+aWxlczogRG9uJ3QgdGllIHVwIGFsbCB0aGUgcnBjaW9kIHRocmVhZHMgaW4gcmVzZW5kcw0KDQot
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tDQpBbm5hIFNjaHVtYWtlciAoMSk6DQogICAgICBORlM6IEZpeCBhbiByY3UgZGVhZGxv
+Y2sgaW4gbmZzX2RlbGVnYXRpb25fZmluZF9pbm9kZSgpDQoNCkNodWNrIExldmVyICgxKToNCiAg
+ICAgIHN1bnJwYzogUHJldmVudCBkdXBsaWNhdGUgWElEIGFsbG9jYXRpb24NCg0KVHJvbmQgTXlr
+bGVidXN0ICg0KToNCiAgICAgIHBORlM6IEFsd2F5cyBmcmVlIHRoZSBzZXNzaW9uIHNsb3Qgb24g
+ZXJyb3IgaW4gbmZzNF9sYXlvdXRnZXRfaGFuZGxlX2V4Y2VwdGlvbg0KICAgICAgcE5GUzogRG9u
+J3Qgc2VuZCBsYXlvdXRyZXR1cm4gaWYgdGhlIGxheW91dCBpcyBhbHJlYWR5IGludmFsaWQNCiAg
+ICAgIHBORlMvZmxleGZpbGVzOiBEb24ndCB0aWUgdXAgYWxsIHRoZSBycGNpb2QgdGhyZWFkcyBp
+biByZXNlbmRzDQogICAgICBwTkZTL2ZsZXhmaWxlczogUHJvY2VzcyB3cml0ZWJhY2sgcmVzZW5k
+cyBmcm9tIG5mc2lvZCBjb250ZXh0IGFzIHdlbGwNCg0KIGZzL25mcy9kZWxlZ2F0aW9uLmMgICAg
+ICAgICAgICAgICAgICAgIHwgIDQgKysrLQ0KIGZzL25mcy9mbGV4ZmlsZWxheW91dC9mbGV4Zmls
+ZWxheW91dC5jIHwgMjEgKysrKysrKysrKysrKysrKy0tLS0tDQogZnMvbmZzL25mczRwcm9jLmMg
+ICAgICAgICAgICAgICAgICAgICAgfCAzMyArKysrKysrKysrKysrKysrKysrKysrKysrKy0tLS0t
+LS0NCiBmcy9uZnMvcG5mcy5oICAgICAgICAgICAgICAgICAgICAgICAgICB8ICA1ICsrKysrDQog
+aW5jbHVkZS9saW51eC9uZnNfeGRyLmggICAgICAgICAgICAgICAgfCAgMiArKw0KIG5ldC9zdW5y
+cGMveHBydC5jICAgICAgICAgICAgICAgICAgICAgIHwgMTAgKysrKysrKy0tLQ0KIDYgZmlsZXMg
+Y2hhbmdlZCwgNTkgaW5zZXJ0aW9ucygrKSwgMTYgZGVsZXRpb25zKC0pDQotLSANClRyb25kIE15
+a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBIYW1tZXJzcGFjZQ0KdHJvbmQu
+bXlrbGVidXN0QGhhbW1lcnNwYWNlLmNvbQ0KDQo=
