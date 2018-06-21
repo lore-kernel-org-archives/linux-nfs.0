@@ -1,60 +1,56 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wr0-f195.google.com ([209.85.128.195]:40436 "EHLO
-        mail-wr0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S932088AbeFTQkn (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Jun 2018 12:40:43 -0400
-Subject: Re: [PATCH] [Bug 16494] NFS client over TCP hangs due to packet loss
-To: Joe Perches <joe@perches.com>,
-        'Trond Myklebust' <Trond.Myklebust@netapp.com>
-Cc: 'Andrew Morton' <akpm@linux-foundation.org>,
-        'David Miller' <davem@davemloft.net>, kuznet@ms2.inr.ac.ru,
-        pekkas@netcore.fi, jmorris@namei.org, yoshfuji@linux-ipv6.org,
-        kaber@trash.net, eric.dumazet@gmail.com,
-        William.Allen.Simpson@gmail.com, gilad@codefidence.com,
-        ilpo.jarvinen@helsinki.fi, netdev@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        "'J. Bruce Fields'" <bfields@fieldses.org>,
-        'Neil Brown' <neilb@suse.de>,
-        'Chuck Lever' <chuck.lever@oracle.com>,
-        'Benny Halevy' <bhalevy@panasas.com>,
-        'Alexandros Batsakis' <batsakis@netapp.com>,
-        Andy Chittenden <andyc@bluearc.com>
-References: <4c57cfe8.887b0e0a.2f79.4772@mx.google.com>
- <20100803.012144.267950450.davem@davemloft.net>
- <20100803021110.f0b3877b.akpm@linux-foundation.org>
- <4C57EE9A.7040308@gmail.com> <4c5ad0d6.42ecd80a.47d7.0dfc@mx.google.com>
- <1281037822.2948.49.camel@heimdal.trondhjem.org>
- <4c5bd64a.4a2ae30a.0283.0551@mx.google.com>
- <4c5fc9f3.487e0e0a.2960.ffffe4ec@mx.google.com>
- <0dead6e0deabafe0abdd4b30f97bcdf5c12cd824.camel@perches.com>
-From: Andy C <andyc.bluearc@gmail.com>
-Message-ID: <bac42441-07c8-bb94-7559-94f9047654fa@gmail.com>
-Date: Wed, 20 Jun 2018 17:40:40 +0100
-MIME-Version: 1.0
-In-Reply-To: <0dead6e0deabafe0abdd4b30f97bcdf5c12cd824.camel@perches.com>
-Content-Type: text/plain; charset=utf-8; format=flowed
+Received: from userp2120.oracle.com ([156.151.31.85]:53558 "EHLO
+        userp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S933297AbeFUQeA (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Jun 2018 12:34:00 -0400
+Received: from pps.filterd (userp2120.oracle.com [127.0.0.1])
+        by userp2120.oracle.com (8.16.0.22/8.16.0.22) with SMTP id w5LGP7bf182975
+        for <linux-nfs@vger.kernel.org>; Thu, 21 Jun 2018 16:33:59 GMT
+Received: from aserv0022.oracle.com (aserv0022.oracle.com [141.146.126.234])
+        by userp2120.oracle.com with ESMTP id 2jmu6y1g04-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK)
+        for <linux-nfs@vger.kernel.org>; Thu, 21 Jun 2018 16:33:59 +0000
+Received: from userv0121.oracle.com (userv0121.oracle.com [156.151.31.72])
+        by aserv0022.oracle.com (8.14.4/8.14.4) with ESMTP id w5LGXwJF007591
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK)
+        for <linux-nfs@vger.kernel.org>; Thu, 21 Jun 2018 16:33:58 GMT
+Received: from abhmp0008.oracle.com (abhmp0008.oracle.com [141.146.116.14])
+        by userv0121.oracle.com (8.14.4/8.13.8) with ESMTP id w5LGXvuC007714
+        for <linux-nfs@vger.kernel.org>; Thu, 21 Jun 2018 16:33:58 GMT
+From: Manjunath Patil <manjunath.b.patil@oracle.com>
+To: linux-nfs@vger.kernel.org
+Cc: manjunath.b.patil@oracle.com
+Subject: [PATCH nfs-utils] mount: handle ENOSPC in nfs_autonegotiate()
+Date: Thu, 21 Jun 2018 09:34:20 -0700
+Message-Id: <1529598860-1960-1-git-send-email-manjunath.b.patil@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2018-06-19 22:56, Joe Perches wrote:
-> On Mon, 2010-08-09 at 10:27 +0100, Andy Chittenden wrote:
->
-> You really need to check your clock.
-> Mail sent in the year 2010?
->
-I didn't send it just now. I sent it on 2010-08-09 at 10:27. And I did 
-receive a copy at that time. If I'm reading the headers correctly, 
-something happened here:
+The server may return NFS4ERR_NOSPC during NFSv4.1+ mount if there is a
+memory pressure to allocate a DRC slot for session being created. In
+such cases, try with lower nfs versions, which may succeed as DRC is
+shared by clients.
 
-Received: from mchehab by bombadil.infradead.org with local (Exim 4.90_1 #2 (Red Hat Linux))
-	id 1fVNCq-0005da-3g; Tue, 19 Jun 2018 20:26:24 +0000
-Received: from vger.kernel.org ([209.132.180.67])
-	by bombadil.infradead.org with esmtp (Exim 4.72 #1 (Red Hat Linux))
-	id 1OiOdm-0004za-Ks; Mon, 09 Aug 2010 09:27:30 +0000
-Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-	id S1755981Ab0HIJ1U (ORCPT <rfc822;tgraf@infradead.org> + 8 others);
-	Mon, 9 Aug 2010 05:27:20 -0400
+Signed-off-by: Manjunath Patil <manjunath.b.patil@oracle.com>
+---
+ utils/mount/stropts.c | 4 ++++
+ 1 file changed, 4 insertions(+)
 
+diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+index d1b0708..7e97a88 100644
+--- a/utils/mount/stropts.c
++++ b/utils/mount/stropts.c
+@@ -881,6 +881,10 @@ check_result:
+ 	case EINVAL:
+ 		/* A less clear indication that our client
+ 		 * does not support NFSv4 minor version. */
++	case ENOSPC:
++		/* Server returned NFS4ERR_NOSPC for create session [NFSv4.1+].
++		 * Try with lower NFS versions which share DRC amoung clients and
++		 * hence low memory may be ok. */
+ 	case EACCES:
+ 		/* An unclear indication that the server
+ 		 * may not support NFSv4 minor version. */
 -- 
-Andy
+1.8.3.1
 
