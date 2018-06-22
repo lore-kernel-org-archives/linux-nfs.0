@@ -1,97 +1,126 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-eopbgr700114.outbound.protection.outlook.com ([40.107.70.114]:36023
-        "EHLO NAM04-SN1-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S933860AbeFVPxj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 22 Jun 2018 11:53:39 -0400
-From: Trond Myklebust <trondmy@hammerspace.com>
-To: "bfields@fieldses.org" <bfields@fieldses.org>,
-        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        "davem@davemloft.net" <davem@davemloft.net>,
-        "icytxw@gmail.com" <icytxw@gmail.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "jlayton@kernel.org" <jlayton@kernel.org>
-Subject: Re: UBSAN: Undefined behaviour in net/sunrpc/xprt.c:568
-Date: Fri, 22 Jun 2018 15:53:35 +0000
-Message-ID: <0d9eacb7522546f61f05cbfdb48411b18fa9cc59.camel@hammerspace.com>
-References: <CAAzSK-xrH-GShWzMk6sv9z1tcnUCFwdpYK82aTppWfgsTs7Ubg@mail.gmail.com>
-In-Reply-To: <CAAzSK-xrH-GShWzMk6sv9z1tcnUCFwdpYK82aTppWfgsTs7Ubg@mail.gmail.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-pf0-f196.google.com ([209.85.192.196]:36985 "EHLO
+        mail-pf0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1754464AbeFVQyA (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Jun 2018 12:54:00 -0400
+Received: by mail-pf0-f196.google.com with SMTP id y5-v6so3490901pfn.4
+        for <linux-nfs@vger.kernel.org>; Fri, 22 Jun 2018 09:54:00 -0700 (PDT)
+Date: Fri, 22 Jun 2018 09:53:57 -0700
+From: Stephen Hemminger <stephen@networkplumber.org>
+To: trond.myklebust@hammerspace.com, anna.schumaker@netapp.com,
+        jlayton@kernel.org
+Cc: linux-nfs@vger.kernel.org
+Subject: Fw: [Bug 200187] New: UBSAN: Undefined behaviour in
+ net/sunrpc/xprt.c:568
+Message-ID: <20180622095357.3969e951@xeon-e3>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDE4LTA2LTIyIGF0IDIzOjM5ICswODAwLCBhaXIgaWN5IHdyb3RlOg0KPiBIaSwN
-Cj4gSXQgc2VlbXMgbGlrZSB0aGF0IHRvLT50b19yZXRyaWVzIHRvIGxhcmdlIHdoaWxlIHNoaWZ0
-IGV4cG9uZW50Lg0KPiAJaWYgKHRvLT50b19leHBvbmVudGlhbCkNCj4gCQlyZXEtPnJxX21ham9y
-dGltZW8gPDw9IHRvLT50b19yZXRyaWVzOw0KPiAJZWxzZQ0KPiANCj4gPT09PT09PT09PT09PT09
-PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09DQo+
-ID09PT09PT09PT09DQo+IFVCU0FOOiBVbmRlZmluZWQgYmVoYXZpb3VyIGluIG5ldC9zdW5ycGMv
-eHBydC5jOjU2ODoyMg0KPiBzaGlmdCBleHBvbmVudCA1MzY4NzA5NzYgaXMgdG9vIGxhcmdlIGZv
-ciA2NC1iaXQgdHlwZSAnbG9uZyB1bnNpZ25lZA0KPiBpbnQnDQo+IENQVTogMCBQSUQ6IDIxMjE5
-IENvbW06IHN5ei1leGVjdXRvcjEgTm90IHRhaW50ZWQgNC4xOC4wLXJjMSAjMg0KPiBIYXJkd2Fy
-ZSBuYW1lOiBRRU1VIFN0YW5kYXJkIFBDIChpNDQwRlggKyBQSUlYLCAxOTk2KSwgQklPUyByZWwt
-DQo+IDEuMTAuMi0wLWc1ZjRjN2IxLXByZWJ1aWx0LnFlbXUtcHJvamVjdC5vcmcgMDQvMDEvMjAx
-NA0KPiBDYWxsIFRyYWNlOg0KPiAgX19kdW1wX3N0YWNrIGxpYi9kdW1wX3N0YWNrLmM6NzcgW2lu
-bGluZV0NCj4gIGR1bXBfc3RhY2srMHgxMjIvMHgxYzggbGliL2R1bXBfc3RhY2suYzoxMTMNCj4g
-IHVic2FuX2VwaWxvZ3VlKzB4MTIvMHg4NiBsaWIvdWJzYW4uYzoxNTkNCj4gIF9fdWJzYW5faGFu
-ZGxlX3NoaWZ0X291dF9vZl9ib3VuZHMrMHgyOWEvMHgyZmYgbGliL3Vic2FuLmM6NDI1DQo+ICB4
-cHJ0X3Jlc2V0X21ham9ydGltZW8rMHgzMjMvMHg0NDAgbmV0L3N1bnJwYy94cHJ0LmM6NTY4DQo+
-ICB4cHJ0X3JlcXVlc3RfaW5pdCsweDRkMi8weDczMCBuZXQvc3VucnBjL3hwcnQuYzoxMzMwDQo+
-ICBjYWxsX3Jlc2VydmVyZXN1bHQrMHg5ZC8weDI0MCBuZXQvc3VucnBjL2NsbnQuYzoxNTQ5DQo+
-ICBfX3JwY19leGVjdXRlKzB4MjNhLzB4YzIwIG5ldC9zdW5ycGMvc2NoZWQuYzo3ODQNCj4gIHJw
-Y19leGVjdXRlKzB4ZjUvMHgyNTAgbmV0L3N1bnJwYy9zY2hlZC5jOjg1Mg0KPiAgcnBjX3J1bl90
-YXNrKzB4NGExLzB4OWYwIG5ldC9zdW5ycGMvY2xudC5jOjEwNTMNCj4gIHJwY19jYWxsX3N5bmMr
-MHhjZi8weDFhMCBuZXQvc3VucnBjL2NsbnQuYzoxMDgyDQo+ICBycGNfcGluZysweGRlLzB4MTQw
-IG5ldC9zdW5ycGMvY2xudC5jOjI1MTQNCj4gIHJwY19jcmVhdGVfeHBydCsweDFlOC8weDU5MCBu
-ZXQvc3VucnBjL2NsbnQuYzo0NzkNCj4gIHJwY19jcmVhdGUrMHgzYTkvMHg2MDAgbmV0L3N1bnJw
-Yy9jbG50LmM6NTg3DQo+ICBuZnNfY3JlYXRlX3JwY19jbGllbnQrMHgzYTEvMHg0ZDAgZnMvbmZz
-L2NsaWVudC5jOjUyMw0KPiAgbmZzX2luaXRfY2xpZW50KzB4N2IvMHgxMDAgZnMvbmZzL2NsaWVu
-dC5jOjYzNA0KPiAgbmZzX2dldF9jbGllbnQrMHhhNzQvMHgxNDQwIGZzL25mcy9jbGllbnQuYzo0
-MjUNCj4gIG5mc19pbml0X3NlcnZlcisweDIzNi8weGRmMCBmcy9uZnMvY2xpZW50LmM6NjcwDQo+
-ICBuZnNfY3JlYXRlX3NlcnZlcisweDlhLzB4NzUwIGZzL25mcy9jbGllbnQuYzo5NTMNCj4gIG5m
-c190cnlfbW91bnQrMHgyNzAvMHhhZjAgZnMvbmZzL3N1cGVyLmM6MTg4NA0KPiAgbmZzX2ZzX21v
-dW50KzB4MTUxZi8weDMwZTAgZnMvbmZzL3N1cGVyLmM6MjY5NQ0KPiAgbW91bnRfZnMrMHhhZi8w
-eDMzMCBmcy9zdXBlci5jOjEyNzcNCj4gIHZmc19rZXJuX21vdW50KzB4ZmMvMHg0ZDAgZnMvbmFt
-ZXNwYWNlLmM6MTAzNw0KPiAgZG9fbmV3X21vdW50IGZzL25hbWVzcGFjZS5jOjI1MTggW2lubGlu
-ZV0NCj4gIGRvX21vdW50KzB4NDZmLzB4MmZhMCBmcy9uYW1lc3BhY2UuYzoyODQ4DQo+ICBrc3lz
-X21vdW50KzB4YjAvMHgxMjAgZnMvbmFtZXNwYWNlLmM6MzA2NA0KPiAgX19kb19zeXNfbW91bnQg
-ZnMvbmFtZXNwYWNlLmM6MzA3OCBbaW5saW5lXQ0KPiAgX19zZV9zeXNfbW91bnQgZnMvbmFtZXNw
-YWNlLmM6MzA3NSBbaW5saW5lXQ0KPiAgX194NjRfc3lzX21vdW50KzB4Y2MvMHgxNzAgZnMvbmFt
-ZXNwYWNlLmM6MzA3NQ0KPiAgZG9fc3lzY2FsbF82NCsweGI4LzB4M2EwIGFyY2gveDg2L2VudHJ5
-L2NvbW1vbi5jOjI5MA0KPiAgZW50cnlfU1lTQ0FMTF82NF9hZnRlcl9od2ZyYW1lKzB4NDkvMHhi
-ZQ0KPiBSSVA6IDAwMzM6MHg0NTVhMDkNCj4gQ29kZTogMWQgYmEgZmIgZmYgYzMgNjYgMmUgMGYg
-MWYgODQgMDAgMDAgMDAgMDAgMDAgNjYgOTAgNDggODkgZjggNDgNCj4gODkgZjcgNDggODkgZDYg
-NDggODkgY2EgNGQgODkgYzIgNGQgODkgYzggNGMgOGIgNGMgMjQgMDggMGYgMDUgPDQ4Pg0KPiAz
-ZCAwMSBmMCBmZiBmZiAwZiA4MyBlYiBiOSBmYiBmZiBjMyA2NiAyZSAwZiAxZiA4NCAwMCAwMCAw
-MCAwMCANCj4gUlNQOiAwMDJiOjAwMDA3ZjExYzcyNGFjNjggRUZMQUdTOiAwMDAwMDI0NiBPUklH
-X1JBWDoNCj4gMDAwMDAwMDAwMDAwMDBhNQ0KPiBSQVg6IGZmZmZmZmZmZmZmZmZmZGEgUkJYOiAw
-MDAwN2YxMWM3MjRiNmQ0IFJDWDogMDAwMDAwMDAwMDQ1NWEwOQ0KPiBSRFg6IDAwMDAwMDAwMjAw
-MDAxYzAgUlNJOiAwMDAwMDAwMDIwMDAwMTAwIFJESTogMDAwMDAwMDAyMDAwMDIwMA0KPiBSQlA6
-IDAwMDAwMDAwMDA3MmJlYTAgUjA4OiAwMDAwMDAwMDIwMDAwMTgwIFIwOTogMDAwMDAwMDAwMDAw
-MDAwMA0KPiBSMTA6IDAwMDAwMDAwMDAwMDAwMDAgUjExOiAwMDAwMDAwMDAwMDAwMjQ2IFIxMjog
-MDAwMDAwMDBmZmZmZmZmZg0KPiBSMTM6IDAwMDAwMDAwMDAwMDA0ZDEgUjE0OiAwMDAwMDAwMDAw
-NmZjNDM4IFIxNTogMDAwMDAwMDAwMDAwMDAwMA0KPiA9PT09PT09PT09PT09PT09PT09PT09PT09
-PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT0NCj4gPT09PT09PT09
-PT0NCj4gcnBjYmluZDogUlBDIGNhbGwgcmV0dXJuZWQgZXJyb3IgMjINCj4gcnBjYmluZDogUlBD
-IGNhbGwgcmV0dXJuZWQgZXJyb3IgMjINCj4gcnBjYmluZDogUlBDIGNhbGwgcmV0dXJuZWQgZXJy
-b3IgMjINCj4gcnBjYmluZDogUlBDIGNhbGwgcmV0dXJuZWQgZXJyb3IgMjINCj4gcnBjYmluZDog
-UlBDIGNhbGwgcmV0dXJuZWQgZXJyb3IgMjINCj4gRkFULWZzIChsb29wMSk6IGJvZ3VzIG51bWJl
-ciBvZiByZXNlcnZlZCBzZWN0b3JzDQo+IEZBVC1mcyAobG9vcDEpOiBDYW4ndCBmaW5kIGEgdmFs
-aWQgRkFUIGZpbGVzeXN0ZW0NCj4gRkFULWZzIChsb29wMSk6IGJvZ3VzIG51bWJlciBvZiByZXNl
-cnZlZCBzZWN0b3JzDQo+IEZBVC1mcyAobG9vcDEpOiBDYW4ndCBmaW5kIGEgdmFsaWQgRkFUIGZp
-bGVzeXN0ZW0NCj4gRkFULWZzIChsb29wMSk6IGJvZ3VzIG51bWJlciBvZiByZXNlcnZlZCBzZWN0
-b3JzDQo+IEZBVC1mcyAobG9vcDEpOiBDYW4ndCBmaW5kIGEgdmFsaWQgRkFUIGZpbGVzeXN0ZW0N
-Cj4gRkFULWZzIChsb29wMSk6IGJvZ3VzIG51bWJlciBvZiByZXNlcnZlZCBzZWN0b3JzDQo+IEZB
-VC1mcyAobG9vcDEpOiBDYW4ndCBmaW5kIGEgdmFsaWQgRkFUIGZpbGVzeXN0ZW0NCj4gRkFULWZz
-IChsb29wMSk6IGJvZ3VzIG51bWJlciBvZiByZXNlcnZlZCBzZWN0b3JzDQo+IEZBVC1mcyAobG9v
-cDEpOiBDYW4ndCBmaW5kIGEgdmFsaWQgRkFUIGZpbGVzeXN0ZW0NCj4gRVhUNC1mcyAoc2RhKTog
-cmUtbW91bnRlZC4gT3B0czogDQo+IEVYVDQtZnMgKHNkYSk6IHJlLW1vdW50ZWQuIE9wdHM6IA0K
-PiBFWFQ0LWZzIChzZGEpOiByZS1tb3VudGVkLiBPcHRzOiANCj4gRVhUNC1mcyAoc2RhKTogcmUt
-bW91bnRlZC4gT3B0czogDQo+IEVYVDQtZnMgKHNkYSk6IHJlLW1vdW50ZWQuIE9wdHM6DQo+IFRo
-aXMgYnVnIGNhbiBiZSByZXBybywgaWYgeW91IG5lZWQsIHBsZWFzZSB0ZWxsIG1lLg0KPiBUaGFu
-a3MsDQo+IEljeXR4dw0KDQpXb3VsZCB5b3Ugc2V0IHN1Y2ggYSBjb21iaW5hdGlvbiBmb3IgdGhl
-IHRpbWVvdXQrcmV0cmllcyBpbiB0aGUgZmlyc3QNCnBsYWNlPyBZZXMgaXQncyBwb3NzaWJsZSwg
-YnV0IG5vIGl0J3Mgbm90IHNhbmUuDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMg
-Y2xpZW50IG1haW50YWluZXIsIEhhbW1lcnNwYWNlDQp0cm9uZC5teWtsZWJ1c3RAaGFtbWVyc3Bh
-Y2UuY29tDQoNCg==
+
+
+Begin forwarded message:
+
+Date: Fri, 22 Jun 2018 15:09:48 +0000
+From: bugzilla-daemon@bugzilla.kernel.org
+To: stephen@networkplumber.org
+Subject: [Bug 200187] New: UBSAN: Undefined behaviour in net/sunrpc/xprt.c:568
+
+
+https://bugzilla.kernel.org/show_bug.cgi?id=200187
+
+            Bug ID: 200187
+           Summary: UBSAN: Undefined behaviour in net/sunrpc/xprt.c:568
+           Product: Networking
+           Version: 2.5
+    Kernel Version: v4.18-rc2
+          Hardware: All
+                OS: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: normal
+          Priority: P1
+         Component: Other
+          Assignee: stephen@networkplumber.org
+          Reporter: icytxw@gmail.com
+        Regression: No
+
+It seems like that to->to_retries to large while shift exponent.
+        if (to->to_exponential)
+                req->rq_majortimeo <<= to->to_retries;
+        else
+
+================================================================================
+UBSAN: Undefined behaviour in net/sunrpc/xprt.c:568:22
+shift exponent 536870976 is too large for 64-bit type 'long unsigned int'
+CPU: 0 PID: 21219 Comm: syz-executor1 Not tainted 4.18.0-rc1 #2
+Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS
+rel-1.10.2-0-g5f4c7b1-prebuilt.qemu-project.org 04/01/2014
+Call Trace:
+ __dump_stack lib/dump_stack.c:77 [inline]
+ dump_stack+0x122/0x1c8 lib/dump_stack.c:113
+ ubsan_epilogue+0x12/0x86 lib/ubsan.c:159
+ __ubsan_handle_shift_out_of_bounds+0x29a/0x2ff lib/ubsan.c:425
+ xprt_reset_majortimeo+0x323/0x440 net/sunrpc/xprt.c:568
+ xprt_request_init+0x4d2/0x730 net/sunrpc/xprt.c:1330
+ call_reserveresult+0x9d/0x240 net/sunrpc/clnt.c:1549
+ __rpc_execute+0x23a/0xc20 net/sunrpc/sched.c:784
+ rpc_execute+0xf5/0x250 net/sunrpc/sched.c:852
+ rpc_run_task+0x4a1/0x9f0 net/sunrpc/clnt.c:1053
+ rpc_call_sync+0xcf/0x1a0 net/sunrpc/clnt.c:1082
+ rpc_ping+0xde/0x140 net/sunrpc/clnt.c:2514
+ rpc_create_xprt+0x1e8/0x590 net/sunrpc/clnt.c:479
+ rpc_create+0x3a9/0x600 net/sunrpc/clnt.c:587
+ nfs_create_rpc_client+0x3a1/0x4d0 fs/nfs/client.c:523
+ nfs_init_client+0x7b/0x100 fs/nfs/client.c:634
+ nfs_get_client+0xa74/0x1440 fs/nfs/client.c:425
+ nfs_init_server+0x236/0xdf0 fs/nfs/client.c:670
+ nfs_create_server+0x9a/0x750 fs/nfs/client.c:953
+ nfs_try_mount+0x270/0xaf0 fs/nfs/super.c:1884
+ nfs_fs_mount+0x151f/0x30e0 fs/nfs/super.c:2695
+ mount_fs+0xaf/0x330 fs/super.c:1277
+ vfs_kern_mount+0xfc/0x4d0 fs/namespace.c:1037
+ do_new_mount fs/namespace.c:2518 [inline]
+ do_mount+0x46f/0x2fa0 fs/namespace.c:2848
+ ksys_mount+0xb0/0x120 fs/namespace.c:3064
+ __do_sys_mount fs/namespace.c:3078 [inline]
+ __se_sys_mount fs/namespace.c:3075 [inline]
+ __x64_sys_mount+0xcc/0x170 fs/namespace.c:3075
+ do_syscall_64+0xb8/0x3a0 arch/x86/entry/common.c:290
+ entry_SYSCALL_64_after_hwframe+0x49/0xbe
+RIP: 0033:0x455a09
+Code: 1d ba fb ff c3 66 2e 0f 1f 84 00 00 00 00 00 66 90 48 89 f8 48 89 f7 48
+89 d6 48 89 ca 4d 89 c2 4d 89 c8 4c 8b 4c 24 08 0f 05 <48> 3d 01 f0 ff ff 0f 83
+eb b9 fb ff c3 66 2e 0f 1f 84 00 00 00 00 
+RSP: 002b:00007f11c724ac68 EFLAGS: 00000246 ORIG_RAX: 00000000000000a5
+RAX: ffffffffffffffda RBX: 00007f11c724b6d4 RCX: 0000000000455a09
+RDX: 00000000200001c0 RSI: 0000000020000100 RDI: 0000000020000200
+RBP: 000000000072bea0 R08: 0000000020000180 R09: 0000000000000000
+R10: 0000000000000000 R11: 0000000000000246 R12: 00000000ffffffff
+R13: 00000000000004d1 R14: 00000000006fc438 R15: 0000000000000000
+================================================================================
+rpcbind: RPC call returned error 22
+rpcbind: RPC call returned error 22
+rpcbind: RPC call returned error 22
+rpcbind: RPC call returned error 22
+rpcbind: RPC call returned error 22
+FAT-fs (loop1): bogus number of reserved sectors
+FAT-fs (loop1): Can't find a valid FAT filesystem
+FAT-fs (loop1): bogus number of reserved sectors
+FAT-fs (loop1): Can't find a valid FAT filesystem
+FAT-fs (loop1): bogus number of reserved sectors
+FAT-fs (loop1): Can't find a valid FAT filesystem
+FAT-fs (loop1): bogus number of reserved sectors
+FAT-fs (loop1): Can't find a valid FAT filesystem
+FAT-fs (loop1): bogus number of reserved sectors
+FAT-fs (loop1): Can't find a valid FAT filesystem
+EXT4-fs (sda): re-mounted. Opts: 
+EXT4-fs (sda): re-mounted. Opts: 
+EXT4-fs (sda): re-mounted. Opts: 
+EXT4-fs (sda): re-mounted. Opts: 
+EXT4-fs (sda): re-mounted. Opts:
+
+-- 
+You are receiving this mail because:
+You are the assignee for the bug.
