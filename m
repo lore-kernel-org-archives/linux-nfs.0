@@ -1,114 +1,60 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f67.google.com ([209.85.214.67]:52897 "EHLO
-        mail-it0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1754537AbeFVVth (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Jun 2018 17:49:37 -0400
-Received: by mail-it0-f67.google.com with SMTP id m194-v6so4812112itg.2
-        for <linux-nfs@vger.kernel.org>; Fri, 22 Jun 2018 14:49:37 -0700 (PDT)
-Content-Type: text/plain;
-        charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 11.4 \(3445.8.2\))
+Received: from mail-eopbgr730137.outbound.protection.outlook.com ([40.107.73.137]:21088
+        "EHLO NAM05-DM3-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1751377AbeFVWbh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 22 Jun 2018 18:31:37 -0400
+From: Trond Myklebust <trondmy@hammerspace.com>
+To: "bfields@fieldses.org" <bfields@fieldses.org>,
+        "chucklever@gmail.com" <chucklever@gmail.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "manjunath.b.patil@oracle.com" <manjunath.b.patil@oracle.com>
 Subject: Re: [PATCH 2/2] nfsd: return ENOSPC if unable to allocate a session
  slot
-From: Chuck Lever <chucklever@gmail.com>
-In-Reply-To: <20180622175416.GA7119@fieldses.org>
-Date: Fri, 22 Jun 2018 17:49:34 -0400
-Cc: Manjunath Patil <manjunath.b.patil@oracle.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <148E65CF-D3D4-4E43-A190-822C5F7824B9@gmail.com>
+Date: Fri, 22 Jun 2018 22:31:34 +0000
+Message-ID: <180d25ce5474539f15a84a23258d15c71ec11ad9.camel@hammerspace.com>
 References: <1529598933-16506-1-git-send-email-manjunath.b.patil@oracle.com>
- <1529598933-16506-2-git-send-email-manjunath.b.patil@oracle.com>
- <20180622175416.GA7119@fieldses.org>
-To: Bruce Fields <bfields@fieldses.org>
+         <1529598933-16506-2-git-send-email-manjunath.b.patil@oracle.com>
+         <20180622175416.GA7119@fieldses.org>
+         <148E65CF-D3D4-4E43-A190-822C5F7824B9@gmail.com>
+In-Reply-To: <148E65CF-D3D4-4E43-A190-822C5F7824B9@gmail.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Bruce-
-
-
-> On Jun 22, 2018, at 1:54 PM, J. Bruce Fields <bfields@fieldses.org> =
-wrote:
->=20
-> On Thu, Jun 21, 2018 at 04:35:33PM +0000, Manjunath Patil wrote:
->> Presently nfserr_jukebox is being returned by nfsd for create_session
->> request if server is unable to allocate a session slot. This may be
->> treated as NFS4ERR_DELAY by the clients and which may continue to =
-re-try
->> create_session in loop leading NFSv4.1+ mounts in hung state. nfsd
->> should return nfserr_nospc in this case as per =
-rfc5661(section-18.36.4
->> subpoint 4. Session creation).
->=20
-> I don't think the spec actually gives us an error that we can use to =
-say
-> a CREATE_SESSION failed permanently for lack of resources.
-
-The current situation is that the server replies NFS4ERR_DELAY,
-and the client retries indefinitely. The goal is to let the
-client choose whether it wants to try the CREATE_SESSION again,
-try a different NFS version, or fail the mount request.
-
-Bill and I both looked at this section of RFC 5661. It seems to
-us that the use of NFS4ERR_NOSPC is appropriate and unambiguous
-in this situation, and it is an allowed status for the
-CREATE_SESSION operation. NFS4ERR_DELAY OTOH is not helpful.
-
-
-> Better would be to avoid the need to fail at all.
-
-That would be good too.
-
-
->  Possibilities:
->=20
-> 	- revive Trond's patches some time back to do dynamic slot size
-> 	  renegotiation
-> 	- make sure the systems you're testing on already have
-> 	  de766e570413 and 44d8660d3bb0 applied.
-> 	- further liberalise the limits here: do we need them at all, or
-> 	  should we just wait till a kmalloc fails?  Or maybe take a
-> 	  hybrid approach?: e.g. allow an arbitrary number of clients
-> 	  and only limit slots & slotsizes.
-
-> --b.
->=20
->>=20
->> Signed-off-by: Manjunath Patil <manjunath.b.patil@oracle.com>
->> ---
->> fs/nfsd/nfs4state.c | 2 +-
->> 1 file changed, 1 insertion(+), 1 deletion(-)
->>=20
->> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
->> index 8571414..3734e08 100644
->> --- a/fs/nfsd/nfs4state.c
->> +++ b/fs/nfsd/nfs4state.c
->> @@ -2716,7 +2716,7 @@ static __be32 check_forechannel_attrs(struct =
-nfsd4_channel_attrs *ca, struct nfs
->> 	 */
->> 	ca->maxreqs =3D nfsd4_get_drc_mem(ca);
->> 	if (!ca->maxreqs)
->> -		return nfserr_jukebox;
->> +		return nfserr_nospc;
->>=20
->> 	return nfs_ok;
->> }
->> --=20
->> 1.8.3.1
->>=20
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
-in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
-in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
---
-Chuck Lever
-chucklever@gmail.com
-
-
-
+T24gRnJpLCAyMDE4LTA2LTIyIGF0IDE3OjQ5IC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
+SGkgQnJ1Y2UtDQo+IA0KPiANCj4gPiBPbiBKdW4gMjIsIDIwMTgsIGF0IDE6NTQgUE0sIEouIEJy
+dWNlIEZpZWxkcyA8YmZpZWxkc0BmaWVsZHNlcy5vcmc+DQo+ID4gd3JvdGU6DQo+ID4gDQo+ID4g
+T24gVGh1LCBKdW4gMjEsIDIwMTggYXQgMDQ6MzU6MzNQTSArMDAwMCwgTWFuanVuYXRoIFBhdGls
+IHdyb3RlOg0KPiA+ID4gUHJlc2VudGx5IG5mc2Vycl9qdWtlYm94IGlzIGJlaW5nIHJldHVybmVk
+IGJ5IG5mc2QgZm9yDQo+ID4gPiBjcmVhdGVfc2Vzc2lvbg0KPiA+ID4gcmVxdWVzdCBpZiBzZXJ2
+ZXIgaXMgdW5hYmxlIHRvIGFsbG9jYXRlIGEgc2Vzc2lvbiBzbG90LiBUaGlzIG1heQ0KPiA+ID4g
+YmUNCj4gPiA+IHRyZWF0ZWQgYXMgTkZTNEVSUl9ERUxBWSBieSB0aGUgY2xpZW50cyBhbmQgd2hp
+Y2ggbWF5IGNvbnRpbnVlIHRvDQo+ID4gPiByZS10cnkNCj4gPiA+IGNyZWF0ZV9zZXNzaW9uIGlu
+IGxvb3AgbGVhZGluZyBORlN2NC4xKyBtb3VudHMgaW4gaHVuZyBzdGF0ZS4NCj4gPiA+IG5mc2QN
+Cj4gPiA+IHNob3VsZCByZXR1cm4gbmZzZXJyX25vc3BjIGluIHRoaXMgY2FzZSBhcyBwZXIgcmZj
+NTY2MShzZWN0aW9uLQ0KPiA+ID4gMTguMzYuNA0KPiA+ID4gc3VicG9pbnQgNC4gU2Vzc2lvbiBj
+cmVhdGlvbikuDQo+ID4gDQo+ID4gSSBkb24ndCB0aGluayB0aGUgc3BlYyBhY3R1YWxseSBnaXZl
+cyB1cyBhbiBlcnJvciB0aGF0IHdlIGNhbiB1c2UNCj4gPiB0byBzYXkNCj4gPiBhIENSRUFURV9T
+RVNTSU9OIGZhaWxlZCBwZXJtYW5lbnRseSBmb3IgbGFjayBvZiByZXNvdXJjZXMuDQo+IA0KPiBU
+aGUgY3VycmVudCBzaXR1YXRpb24gaXMgdGhhdCB0aGUgc2VydmVyIHJlcGxpZXMgTkZTNEVSUl9E
+RUxBWSwNCj4gYW5kIHRoZSBjbGllbnQgcmV0cmllcyBpbmRlZmluaXRlbHkuIFRoZSBnb2FsIGlz
+IHRvIGxldCB0aGUNCj4gY2xpZW50IGNob29zZSB3aGV0aGVyIGl0IHdhbnRzIHRvIHRyeSB0aGUg
+Q1JFQVRFX1NFU1NJT04gYWdhaW4sDQo+IHRyeSBhIGRpZmZlcmVudCBORlMgdmVyc2lvbiwgb3Ig
+ZmFpbCB0aGUgbW91bnQgcmVxdWVzdC4NCj4gDQo+IEJpbGwgYW5kIEkgYm90aCBsb29rZWQgYXQg
+dGhpcyBzZWN0aW9uIG9mIFJGQyA1NjYxLiBJdCBzZWVtcyB0bw0KPiB1cyB0aGF0IHRoZSB1c2Ug
+b2YgTkZTNEVSUl9OT1NQQyBpcyBhcHByb3ByaWF0ZSBhbmQgdW5hbWJpZ3VvdXMNCj4gaW4gdGhp
+cyBzaXR1YXRpb24sIGFuZCBpdCBpcyBhbiBhbGxvd2VkIHN0YXR1cyBmb3IgdGhlDQo+IENSRUFU
+RV9TRVNTSU9OIG9wZXJhdGlvbi4gTkZTNEVSUl9ERUxBWSBPVE9IIGlzIG5vdCBoZWxwZnVsLg0K
+DQpUaGVyZSBhcmUgYSByYW5nZSBvZiBlcnJvcnMgd2hpY2ggd2UgbWF5IG5lZWQgdG8gaGFuZGxl
+IGJ5IGRlc3Ryb3lpbmcNCnRoZSBzZXNzaW9uLCBhbmQgdGhlbiBjcmVhdGluZyBhIG5ldyBvbmUg
+KG1haW5seSB0aGUgb25lcyB3aGVyZSB0aGUNCmNsaWVudCBhbmQgc2VydmVyIHNsb3QgaGFuZGxp
+bmcgZ2V0IG91dCBvZiBzeW5jKS4gVGhhdCdzIHdoeSByZXR1cm5pbmcNCk5GUzRFUlJfTk9TUEMg
+aW4gcmVzcG9uc2UgdG8gQ1JFQVRFX1NFU1NJT04gaXMgdW5oZWxwZnVsLCBhbmQgaXMgd2h5DQp0
+aGUgb25seSBzYW5lIHJlc3BvbnNlIGJ5IHRoZSBjbGllbnQgd2lsbCBiZSB0byB0cmVhdCBpcyBh
+cyBhIHRlbXBvcmFyeQ0KZXJyb3IuDQoNCklPVzogdGhlc2UgcGF0Y2hlcyB3aWxsIG5vdCBiZSBh
+Y2NlcHRhYmxlLCBldmVuIHdpdGggYSByZXdyaXRlLCBhcyB0aGV5DQphcmUgYmFzZWQgb24gYSBm
+bGF3ZWQgYXNzdW1wdGlvbi4NCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50
+IG1haW50YWluZXIsIEhhbW1lcnNwYWNlDQp0cm9uZC5teWtsZWJ1c3RAaGFtbWVyc3BhY2UuY29t
+DQoNCg==
