@@ -1,78 +1,97 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp2120.oracle.com ([141.146.126.78]:35480 "EHLO
-        aserp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751335AbeFVO2a (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Jun 2018 10:28:30 -0400
-Subject: Re: [PATCH 1/2] nfsv4: handle ENOSPC during create session
-To: Trond Myklebust <trondmy@hammerspace.com>
-References: <1529598933-16506-1-git-send-email-manjunath.b.patil@oracle.com>
- <fcbb5bdcf513cd8aff17e33403688cf1cecdee3d.camel@hammerspace.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-From: Manjunath Patil <manjunath.b.patil@oracle.com>
-Message-ID: <a1ef068f-57f3-6af1-4f94-7b4fc7a317ca@oracle.com>
-Date: Fri, 22 Jun 2018 07:28:24 -0700
+Received: from mail-eopbgr700114.outbound.protection.outlook.com ([40.107.70.114]:36023
+        "EHLO NAM04-SN1-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S933860AbeFVPxj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 22 Jun 2018 11:53:39 -0400
+From: Trond Myklebust <trondmy@hammerspace.com>
+To: "bfields@fieldses.org" <bfields@fieldses.org>,
+        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+        "davem@davemloft.net" <davem@davemloft.net>,
+        "icytxw@gmail.com" <icytxw@gmail.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "jlayton@kernel.org" <jlayton@kernel.org>
+Subject: Re: UBSAN: Undefined behaviour in net/sunrpc/xprt.c:568
+Date: Fri, 22 Jun 2018 15:53:35 +0000
+Message-ID: <0d9eacb7522546f61f05cbfdb48411b18fa9cc59.camel@hammerspace.com>
+References: <CAAzSK-xrH-GShWzMk6sv9z1tcnUCFwdpYK82aTppWfgsTs7Ubg@mail.gmail.com>
+In-Reply-To: <CAAzSK-xrH-GShWzMk6sv9z1tcnUCFwdpYK82aTppWfgsTs7Ubg@mail.gmail.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-In-Reply-To: <fcbb5bdcf513cd8aff17e33403688cf1cecdee3d.camel@hammerspace.com>
-Content-Type: text/plain; charset=utf-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Thank you for your comments Trond. Let me come back with better version.
-
--Thanks,
-Manjunath
-On 6/21/2018 10:04 AM, Trond Myklebust wrote:
-> On Thu, 2018-06-21 at 16:35 +0000, Manjunath Patil wrote:
->> Presently the client mount hangs for NFS4ERR_NOSPC repsonse from
->> server
->> during create session operation. Handle this error at the client side
->> and pass it back to user-space, which may chose to mount with lower
->> nfs
->> versions.
->>
->> Signed-off-by: Manjunath Patil <manjunath.b.patil@oracle.com>
->> ---
->>   fs/nfs/nfs4state.c | 6 ++++++
->>   1 file changed, 6 insertions(+)
->>
->> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
->> index 2bf2eaa..2134cf5 100644
->> --- a/fs/nfs/nfs4state.c
->> +++ b/fs/nfs/nfs4state.c
->> @@ -381,6 +381,8 @@ int nfs41_discover_server_trunking(struct
->> nfs_client *clp,
->>   	}
->>   	nfs4_schedule_state_manager(clp);
->>   	status = nfs_wait_client_init_complete(clp);
->> +	if (!status) /* -ERESTARTSYS */
->> +		status = nfs_client_init_status(clp);
-> Nack... The trunking code is _not_ the place to do session error
-> detection.
->
->>   	if (status < 0)
->>   		nfs_put_client(clp);
->>   	return status;
->> @@ -1919,6 +1921,9 @@ static int
->> nfs4_handle_reclaim_lease_error(struct nfs_client *clp, int status)
->>   		dprintk("%s: exit with error %d for server %s\n",
->>   				__func__, -EPROTONOSUPPORT, clp-
->>> cl_hostname);
->>   		return -EPROTONOSUPPORT;
->> +	case -NFS4ERR_NOSPC:
->> +		nfs_mark_client_ready(clp, status);
->> +		/*fall through*/
-> Nack... This would cause existing mounts to suddenly permanently fail.
->
->>   	case -NFS4ERR_NOT_SAME: /* FixMe: implement recovery
->>   				 * in nfs4_exchange_id */
->>   	default:
->> @@ -2186,6 +2191,7 @@ int nfs4_discover_server_trunking(struct
->> nfs_client *clp,
->>   	case 0:
->>   	case -EINTR:
->>   	case -ERESTARTSYS:
->> +	case -NFS4ERR_NOSPC:
->>   		break;
->>   	case -ETIMEDOUT:
->>   		if (clnt->cl_softrtry)
-
+T24gRnJpLCAyMDE4LTA2LTIyIGF0IDIzOjM5ICswODAwLCBhaXIgaWN5IHdyb3RlOg0KPiBIaSwN
+Cj4gSXQgc2VlbXMgbGlrZSB0aGF0IHRvLT50b19yZXRyaWVzIHRvIGxhcmdlIHdoaWxlIHNoaWZ0
+IGV4cG9uZW50Lg0KPiAJaWYgKHRvLT50b19leHBvbmVudGlhbCkNCj4gCQlyZXEtPnJxX21ham9y
+dGltZW8gPDw9IHRvLT50b19yZXRyaWVzOw0KPiAJZWxzZQ0KPiANCj4gPT09PT09PT09PT09PT09
+PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09DQo+
+ID09PT09PT09PT09DQo+IFVCU0FOOiBVbmRlZmluZWQgYmVoYXZpb3VyIGluIG5ldC9zdW5ycGMv
+eHBydC5jOjU2ODoyMg0KPiBzaGlmdCBleHBvbmVudCA1MzY4NzA5NzYgaXMgdG9vIGxhcmdlIGZv
+ciA2NC1iaXQgdHlwZSAnbG9uZyB1bnNpZ25lZA0KPiBpbnQnDQo+IENQVTogMCBQSUQ6IDIxMjE5
+IENvbW06IHN5ei1leGVjdXRvcjEgTm90IHRhaW50ZWQgNC4xOC4wLXJjMSAjMg0KPiBIYXJkd2Fy
+ZSBuYW1lOiBRRU1VIFN0YW5kYXJkIFBDIChpNDQwRlggKyBQSUlYLCAxOTk2KSwgQklPUyByZWwt
+DQo+IDEuMTAuMi0wLWc1ZjRjN2IxLXByZWJ1aWx0LnFlbXUtcHJvamVjdC5vcmcgMDQvMDEvMjAx
+NA0KPiBDYWxsIFRyYWNlOg0KPiAgX19kdW1wX3N0YWNrIGxpYi9kdW1wX3N0YWNrLmM6NzcgW2lu
+bGluZV0NCj4gIGR1bXBfc3RhY2srMHgxMjIvMHgxYzggbGliL2R1bXBfc3RhY2suYzoxMTMNCj4g
+IHVic2FuX2VwaWxvZ3VlKzB4MTIvMHg4NiBsaWIvdWJzYW4uYzoxNTkNCj4gIF9fdWJzYW5faGFu
+ZGxlX3NoaWZ0X291dF9vZl9ib3VuZHMrMHgyOWEvMHgyZmYgbGliL3Vic2FuLmM6NDI1DQo+ICB4
+cHJ0X3Jlc2V0X21ham9ydGltZW8rMHgzMjMvMHg0NDAgbmV0L3N1bnJwYy94cHJ0LmM6NTY4DQo+
+ICB4cHJ0X3JlcXVlc3RfaW5pdCsweDRkMi8weDczMCBuZXQvc3VucnBjL3hwcnQuYzoxMzMwDQo+
+ICBjYWxsX3Jlc2VydmVyZXN1bHQrMHg5ZC8weDI0MCBuZXQvc3VucnBjL2NsbnQuYzoxNTQ5DQo+
+ICBfX3JwY19leGVjdXRlKzB4MjNhLzB4YzIwIG5ldC9zdW5ycGMvc2NoZWQuYzo3ODQNCj4gIHJw
+Y19leGVjdXRlKzB4ZjUvMHgyNTAgbmV0L3N1bnJwYy9zY2hlZC5jOjg1Mg0KPiAgcnBjX3J1bl90
+YXNrKzB4NGExLzB4OWYwIG5ldC9zdW5ycGMvY2xudC5jOjEwNTMNCj4gIHJwY19jYWxsX3N5bmMr
+MHhjZi8weDFhMCBuZXQvc3VucnBjL2NsbnQuYzoxMDgyDQo+ICBycGNfcGluZysweGRlLzB4MTQw
+IG5ldC9zdW5ycGMvY2xudC5jOjI1MTQNCj4gIHJwY19jcmVhdGVfeHBydCsweDFlOC8weDU5MCBu
+ZXQvc3VucnBjL2NsbnQuYzo0NzkNCj4gIHJwY19jcmVhdGUrMHgzYTkvMHg2MDAgbmV0L3N1bnJw
+Yy9jbG50LmM6NTg3DQo+ICBuZnNfY3JlYXRlX3JwY19jbGllbnQrMHgzYTEvMHg0ZDAgZnMvbmZz
+L2NsaWVudC5jOjUyMw0KPiAgbmZzX2luaXRfY2xpZW50KzB4N2IvMHgxMDAgZnMvbmZzL2NsaWVu
+dC5jOjYzNA0KPiAgbmZzX2dldF9jbGllbnQrMHhhNzQvMHgxNDQwIGZzL25mcy9jbGllbnQuYzo0
+MjUNCj4gIG5mc19pbml0X3NlcnZlcisweDIzNi8weGRmMCBmcy9uZnMvY2xpZW50LmM6NjcwDQo+
+ICBuZnNfY3JlYXRlX3NlcnZlcisweDlhLzB4NzUwIGZzL25mcy9jbGllbnQuYzo5NTMNCj4gIG5m
+c190cnlfbW91bnQrMHgyNzAvMHhhZjAgZnMvbmZzL3N1cGVyLmM6MTg4NA0KPiAgbmZzX2ZzX21v
+dW50KzB4MTUxZi8weDMwZTAgZnMvbmZzL3N1cGVyLmM6MjY5NQ0KPiAgbW91bnRfZnMrMHhhZi8w
+eDMzMCBmcy9zdXBlci5jOjEyNzcNCj4gIHZmc19rZXJuX21vdW50KzB4ZmMvMHg0ZDAgZnMvbmFt
+ZXNwYWNlLmM6MTAzNw0KPiAgZG9fbmV3X21vdW50IGZzL25hbWVzcGFjZS5jOjI1MTggW2lubGlu
+ZV0NCj4gIGRvX21vdW50KzB4NDZmLzB4MmZhMCBmcy9uYW1lc3BhY2UuYzoyODQ4DQo+ICBrc3lz
+X21vdW50KzB4YjAvMHgxMjAgZnMvbmFtZXNwYWNlLmM6MzA2NA0KPiAgX19kb19zeXNfbW91bnQg
+ZnMvbmFtZXNwYWNlLmM6MzA3OCBbaW5saW5lXQ0KPiAgX19zZV9zeXNfbW91bnQgZnMvbmFtZXNw
+YWNlLmM6MzA3NSBbaW5saW5lXQ0KPiAgX194NjRfc3lzX21vdW50KzB4Y2MvMHgxNzAgZnMvbmFt
+ZXNwYWNlLmM6MzA3NQ0KPiAgZG9fc3lzY2FsbF82NCsweGI4LzB4M2EwIGFyY2gveDg2L2VudHJ5
+L2NvbW1vbi5jOjI5MA0KPiAgZW50cnlfU1lTQ0FMTF82NF9hZnRlcl9od2ZyYW1lKzB4NDkvMHhi
+ZQ0KPiBSSVA6IDAwMzM6MHg0NTVhMDkNCj4gQ29kZTogMWQgYmEgZmIgZmYgYzMgNjYgMmUgMGYg
+MWYgODQgMDAgMDAgMDAgMDAgMDAgNjYgOTAgNDggODkgZjggNDgNCj4gODkgZjcgNDggODkgZDYg
+NDggODkgY2EgNGQgODkgYzIgNGQgODkgYzggNGMgOGIgNGMgMjQgMDggMGYgMDUgPDQ4Pg0KPiAz
+ZCAwMSBmMCBmZiBmZiAwZiA4MyBlYiBiOSBmYiBmZiBjMyA2NiAyZSAwZiAxZiA4NCAwMCAwMCAw
+MCAwMCANCj4gUlNQOiAwMDJiOjAwMDA3ZjExYzcyNGFjNjggRUZMQUdTOiAwMDAwMDI0NiBPUklH
+X1JBWDoNCj4gMDAwMDAwMDAwMDAwMDBhNQ0KPiBSQVg6IGZmZmZmZmZmZmZmZmZmZGEgUkJYOiAw
+MDAwN2YxMWM3MjRiNmQ0IFJDWDogMDAwMDAwMDAwMDQ1NWEwOQ0KPiBSRFg6IDAwMDAwMDAwMjAw
+MDAxYzAgUlNJOiAwMDAwMDAwMDIwMDAwMTAwIFJESTogMDAwMDAwMDAyMDAwMDIwMA0KPiBSQlA6
+IDAwMDAwMDAwMDA3MmJlYTAgUjA4OiAwMDAwMDAwMDIwMDAwMTgwIFIwOTogMDAwMDAwMDAwMDAw
+MDAwMA0KPiBSMTA6IDAwMDAwMDAwMDAwMDAwMDAgUjExOiAwMDAwMDAwMDAwMDAwMjQ2IFIxMjog
+MDAwMDAwMDBmZmZmZmZmZg0KPiBSMTM6IDAwMDAwMDAwMDAwMDA0ZDEgUjE0OiAwMDAwMDAwMDAw
+NmZjNDM4IFIxNTogMDAwMDAwMDAwMDAwMDAwMA0KPiA9PT09PT09PT09PT09PT09PT09PT09PT09
+PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT0NCj4gPT09PT09PT09
+PT0NCj4gcnBjYmluZDogUlBDIGNhbGwgcmV0dXJuZWQgZXJyb3IgMjINCj4gcnBjYmluZDogUlBD
+IGNhbGwgcmV0dXJuZWQgZXJyb3IgMjINCj4gcnBjYmluZDogUlBDIGNhbGwgcmV0dXJuZWQgZXJy
+b3IgMjINCj4gcnBjYmluZDogUlBDIGNhbGwgcmV0dXJuZWQgZXJyb3IgMjINCj4gcnBjYmluZDog
+UlBDIGNhbGwgcmV0dXJuZWQgZXJyb3IgMjINCj4gRkFULWZzIChsb29wMSk6IGJvZ3VzIG51bWJl
+ciBvZiByZXNlcnZlZCBzZWN0b3JzDQo+IEZBVC1mcyAobG9vcDEpOiBDYW4ndCBmaW5kIGEgdmFs
+aWQgRkFUIGZpbGVzeXN0ZW0NCj4gRkFULWZzIChsb29wMSk6IGJvZ3VzIG51bWJlciBvZiByZXNl
+cnZlZCBzZWN0b3JzDQo+IEZBVC1mcyAobG9vcDEpOiBDYW4ndCBmaW5kIGEgdmFsaWQgRkFUIGZp
+bGVzeXN0ZW0NCj4gRkFULWZzIChsb29wMSk6IGJvZ3VzIG51bWJlciBvZiByZXNlcnZlZCBzZWN0
+b3JzDQo+IEZBVC1mcyAobG9vcDEpOiBDYW4ndCBmaW5kIGEgdmFsaWQgRkFUIGZpbGVzeXN0ZW0N
+Cj4gRkFULWZzIChsb29wMSk6IGJvZ3VzIG51bWJlciBvZiByZXNlcnZlZCBzZWN0b3JzDQo+IEZB
+VC1mcyAobG9vcDEpOiBDYW4ndCBmaW5kIGEgdmFsaWQgRkFUIGZpbGVzeXN0ZW0NCj4gRkFULWZz
+IChsb29wMSk6IGJvZ3VzIG51bWJlciBvZiByZXNlcnZlZCBzZWN0b3JzDQo+IEZBVC1mcyAobG9v
+cDEpOiBDYW4ndCBmaW5kIGEgdmFsaWQgRkFUIGZpbGVzeXN0ZW0NCj4gRVhUNC1mcyAoc2RhKTog
+cmUtbW91bnRlZC4gT3B0czogDQo+IEVYVDQtZnMgKHNkYSk6IHJlLW1vdW50ZWQuIE9wdHM6IA0K
+PiBFWFQ0LWZzIChzZGEpOiByZS1tb3VudGVkLiBPcHRzOiANCj4gRVhUNC1mcyAoc2RhKTogcmUt
+bW91bnRlZC4gT3B0czogDQo+IEVYVDQtZnMgKHNkYSk6IHJlLW1vdW50ZWQuIE9wdHM6DQo+IFRo
+aXMgYnVnIGNhbiBiZSByZXBybywgaWYgeW91IG5lZWQsIHBsZWFzZSB0ZWxsIG1lLg0KPiBUaGFu
+a3MsDQo+IEljeXR4dw0KDQpXb3VsZCB5b3Ugc2V0IHN1Y2ggYSBjb21iaW5hdGlvbiBmb3IgdGhl
+IHRpbWVvdXQrcmV0cmllcyBpbiB0aGUgZmlyc3QNCnBsYWNlPyBZZXMgaXQncyBwb3NzaWJsZSwg
+YnV0IG5vIGl0J3Mgbm90IHNhbmUuDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMg
+Y2xpZW50IG1haW50YWluZXIsIEhhbW1lcnNwYWNlDQp0cm9uZC5teWtsZWJ1c3RAaGFtbWVyc3Bh
+Y2UuY29tDQoNCg==
