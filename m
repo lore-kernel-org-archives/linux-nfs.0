@@ -1,72 +1,106 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-by2nam03on0108.outbound.protection.outlook.com ([104.47.42.108]:43648
-        "EHLO NAM03-BY2-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1754513AbeFVXKr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 22 Jun 2018 19:10:47 -0400
-From: Trond Myklebust <trondmy@hammerspace.com>
-To: "bfields@fieldses.org" <bfields@fieldses.org>,
-        "chucklever@gmail.com" <chucklever@gmail.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "manjunath.b.patil@oracle.com" <manjunath.b.patil@oracle.com>
+Received: from mail-it0-f67.google.com ([209.85.214.67]:39536 "EHLO
+        mail-it0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751818AbeFWTAC (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 23 Jun 2018 15:00:02 -0400
+Received: by mail-it0-f67.google.com with SMTP id p185-v6so7132171itp.4
+        for <linux-nfs@vger.kernel.org>; Sat, 23 Jun 2018 12:00:02 -0700 (PDT)
+Content-Type: text/plain;
+        charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 11.4 \(3445.8.2\))
 Subject: Re: [PATCH 2/2] nfsd: return ENOSPC if unable to allocate a session
  slot
-Date: Fri, 22 Jun 2018 23:10:43 +0000
-Message-ID: <d5a982833688604031fe1b1ad0356fc3f22ef169.camel@hammerspace.com>
-References: <1529598933-16506-1-git-send-email-manjunath.b.patil@oracle.com>
-         <1529598933-16506-2-git-send-email-manjunath.b.patil@oracle.com>
-         <20180622175416.GA7119@fieldses.org>
-         <148E65CF-D3D4-4E43-A190-822C5F7824B9@gmail.com>
-         <180d25ce5474539f15a84a23258d15c71ec11ad9.camel@hammerspace.com>
+From: Chuck Lever <chucklever@gmail.com>
 In-Reply-To: <180d25ce5474539f15a84a23258d15c71ec11ad9.camel@hammerspace.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Date: Sat, 23 Jun 2018 15:00:00 -0400
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        "manjunath.b.patil@oracle.com" <manjunath.b.patil@oracle.com>
+Message-Id: <B3031B82-6CCC-4A11-938F-AD052CC360CD@gmail.com>
+References: <1529598933-16506-1-git-send-email-manjunath.b.patil@oracle.com>
+ <1529598933-16506-2-git-send-email-manjunath.b.patil@oracle.com>
+ <20180622175416.GA7119@fieldses.org>
+ <148E65CF-D3D4-4E43-A190-822C5F7824B9@gmail.com>
+ <180d25ce5474539f15a84a23258d15c71ec11ad9.camel@hammerspace.com>
+To: Trond Myklebust <trondmy@hammerspace.com>,
+        Bruce Fields <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDE4LTA2LTIyIGF0IDE4OjMxIC0wNDAwLCBUcm9uZCBNeWtsZWJ1c3Qgd3JvdGU6
-DQo+IE9uIEZyaSwgMjAxOC0wNi0yMiBhdCAxNzo0OSAtMDQwMCwgQ2h1Y2sgTGV2ZXIgd3JvdGU6
-DQo+ID4gSGkgQnJ1Y2UtDQo+ID4gDQo+ID4gDQo+ID4gPiBPbiBKdW4gMjIsIDIwMTgsIGF0IDE6
-NTQgUE0sIEouIEJydWNlIEZpZWxkcyA8YmZpZWxkc0BmaWVsZHNlcy5vcg0KPiA+ID4gZz4NCj4g
-PiA+IHdyb3RlOg0KPiA+ID4gDQo+ID4gPiBPbiBUaHUsIEp1biAyMSwgMjAxOCBhdCAwNDozNToz
-M1BNICswMDAwLCBNYW5qdW5hdGggUGF0aWwgd3JvdGU6DQo+ID4gPiA+IFByZXNlbnRseSBuZnNl
-cnJfanVrZWJveCBpcyBiZWluZyByZXR1cm5lZCBieSBuZnNkIGZvcg0KPiA+ID4gPiBjcmVhdGVf
-c2Vzc2lvbg0KPiA+ID4gPiByZXF1ZXN0IGlmIHNlcnZlciBpcyB1bmFibGUgdG8gYWxsb2NhdGUg
-YSBzZXNzaW9uIHNsb3QuIFRoaXMNCj4gPiA+ID4gbWF5DQo+ID4gPiA+IGJlDQo+ID4gPiA+IHRy
-ZWF0ZWQgYXMgTkZTNEVSUl9ERUxBWSBieSB0aGUgY2xpZW50cyBhbmQgd2hpY2ggbWF5IGNvbnRp
-bnVlDQo+ID4gPiA+IHRvDQo+ID4gPiA+IHJlLXRyeQ0KPiA+ID4gPiBjcmVhdGVfc2Vzc2lvbiBp
-biBsb29wIGxlYWRpbmcgTkZTdjQuMSsgbW91bnRzIGluIGh1bmcgc3RhdGUuDQo+ID4gPiA+IG5m
-c2QNCj4gPiA+ID4gc2hvdWxkIHJldHVybiBuZnNlcnJfbm9zcGMgaW4gdGhpcyBjYXNlIGFzIHBl
-ciByZmM1NjYxKHNlY3Rpb24tDQo+ID4gPiA+IDE4LjM2LjQNCj4gPiA+ID4gc3VicG9pbnQgNC4g
-U2Vzc2lvbiBjcmVhdGlvbikuDQo+ID4gPiANCj4gPiA+IEkgZG9uJ3QgdGhpbmsgdGhlIHNwZWMg
-YWN0dWFsbHkgZ2l2ZXMgdXMgYW4gZXJyb3IgdGhhdCB3ZSBjYW4gdXNlDQo+ID4gPiB0byBzYXkN
-Cj4gPiA+IGEgQ1JFQVRFX1NFU1NJT04gZmFpbGVkIHBlcm1hbmVudGx5IGZvciBsYWNrIG9mIHJl
-c291cmNlcy4NCj4gPiANCj4gPiBUaGUgY3VycmVudCBzaXR1YXRpb24gaXMgdGhhdCB0aGUgc2Vy
-dmVyIHJlcGxpZXMgTkZTNEVSUl9ERUxBWSwNCj4gPiBhbmQgdGhlIGNsaWVudCByZXRyaWVzIGlu
-ZGVmaW5pdGVseS4gVGhlIGdvYWwgaXMgdG8gbGV0IHRoZQ0KPiA+IGNsaWVudCBjaG9vc2Ugd2hl
-dGhlciBpdCB3YW50cyB0byB0cnkgdGhlIENSRUFURV9TRVNTSU9OIGFnYWluLA0KPiA+IHRyeSBh
-IGRpZmZlcmVudCBORlMgdmVyc2lvbiwgb3IgZmFpbCB0aGUgbW91bnQgcmVxdWVzdC4NCj4gPiAN
-Cj4gPiBCaWxsIGFuZCBJIGJvdGggbG9va2VkIGF0IHRoaXMgc2VjdGlvbiBvZiBSRkMgNTY2MS4g
-SXQgc2VlbXMgdG8NCj4gPiB1cyB0aGF0IHRoZSB1c2Ugb2YgTkZTNEVSUl9OT1NQQyBpcyBhcHBy
-b3ByaWF0ZSBhbmQgdW5hbWJpZ3VvdXMNCj4gPiBpbiB0aGlzIHNpdHVhdGlvbiwgYW5kIGl0IGlz
-IGFuIGFsbG93ZWQgc3RhdHVzIGZvciB0aGUNCj4gPiBDUkVBVEVfU0VTU0lPTiBvcGVyYXRpb24u
-IE5GUzRFUlJfREVMQVkgT1RPSCBpcyBub3QgaGVscGZ1bC4NCj4gDQo+IFRoZXJlIGFyZSBhIHJh
-bmdlIG9mIGVycm9ycyB3aGljaCB3ZSBtYXkgbmVlZCB0byBoYW5kbGUgYnkgZGVzdHJveWluZw0K
-PiB0aGUgc2Vzc2lvbiwgYW5kIHRoZW4gY3JlYXRpbmcgYSBuZXcgb25lIChtYWlubHkgdGhlIG9u
-ZXMgd2hlcmUgdGhlDQo+IGNsaWVudCBhbmQgc2VydmVyIHNsb3QgaGFuZGxpbmcgZ2V0IG91dCBv
-ZiBzeW5jKS4gVGhhdCdzIHdoeQ0KPiByZXR1cm5pbmcNCj4gTkZTNEVSUl9OT1NQQyBpbiByZXNw
-b25zZSB0byBDUkVBVEVfU0VTU0lPTiBpcyB1bmhlbHBmdWwsIGFuZCBpcyB3aHkNCj4gdGhlIG9u
-bHkgc2FuZSByZXNwb25zZSBieSB0aGUgY2xpZW50IHdpbGwgYmUgdG8gdHJlYXQgaXMgYXMgYQ0K
-PiB0ZW1wb3JhcnkNCj4gZXJyb3IuDQo+IA0KPiBJT1c6IHRoZXNlIHBhdGNoZXMgd2lsbCBub3Qg
-YmUgYWNjZXB0YWJsZSwgZXZlbiB3aXRoIGEgcmV3cml0ZSwgYXMNCj4gdGhleQ0KPiBhcmUgYmFz
-ZWQgb24gYSBmbGF3ZWQgYXNzdW1wdGlvbi4NCg0KVGhlIG9uZSB1c2UgY2FzZSBmb3IgTkZTNEVS
-Ul9OT1NQQyBmb3Igd2hpY2ggaXQgd291bGQgYXBwZWFyIHRvIG1ha2UNCnNlbnNlIHRvIHRyZWF0
-IGl0IGFzIGEgbW9yZSBvciBsZXNzIHBlcm1hbmVudCBlcnJvciwgaXMgaWYgdGhlIGNsaWVudA0K
-aXMgZW5nYWdpbmcgaW4gY2xpZW50IElEIHRydW5raW5nLCBhbmQgaXQgdHJpZXMgdG8gc2V0IHVw
-IHRvbyBtYW55DQpzZXNzaW9ucy4gSWYgdGhhdCBoYXBwZW5zLCB0aGVuIHRoZSBzZXJ2ZXIgbmVl
-ZHMgYSB3YXkgdG8gdGVsbCB0aGUNCmNsaWVudCB0byBzdG9wIGNyZWF0aW5nIG5ldyBzZXNzaW9u
-cy4gSG93ZXZlciBJJ20gbm90IGF3YXJlIG9mIGFueQ0KY2xpZW50cyBvdXQgdGhlcmUgdGhhdCBk
-byBjbGllbnQgaWQgdHJ1bmtpbmcuLi4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkNUTywgSGFt
-bWVyc3BhY2UgSW5jDQo0MzAwIEVsIENhbWlubyBSZWFsLCBTdWl0ZSAxMDUNCkxvcyBBbHRvcywg
-Q0EgOTQwMjINCnd3dy5oYW1tZXIuc3BhY2UgaWQ9Ii14LWV2by1zZWxlY3Rpb24tZW5kLW1hcmtl
-ciI+
+
+
+> On Jun 22, 2018, at 6:31 PM, Trond Myklebust <trondmy@hammerspace.com> =
+wrote:
+>=20
+> On Fri, 2018-06-22 at 17:49 -0400, Chuck Lever wrote:
+>> Hi Bruce-
+>>=20
+>>=20
+>>> On Jun 22, 2018, at 1:54 PM, J. Bruce Fields <bfields@fieldses.org>
+>>> wrote:
+>>>=20
+>>> On Thu, Jun 21, 2018 at 04:35:33PM +0000, Manjunath Patil wrote:
+>>>> Presently nfserr_jukebox is being returned by nfsd for
+>>>> create_session
+>>>> request if server is unable to allocate a session slot. This may
+>>>> be
+>>>> treated as NFS4ERR_DELAY by the clients and which may continue to
+>>>> re-try
+>>>> create_session in loop leading NFSv4.1+ mounts in hung state.
+>>>> nfsd
+>>>> should return nfserr_nospc in this case as per rfc5661(section-
+>>>> 18.36.4
+>>>> subpoint 4. Session creation).
+>>>=20
+>>> I don't think the spec actually gives us an error that we can use
+>>> to say
+>>> a CREATE_SESSION failed permanently for lack of resources.
+>>=20
+>> The current situation is that the server replies NFS4ERR_DELAY,
+>> and the client retries indefinitely. The goal is to let the
+>> client choose whether it wants to try the CREATE_SESSION again,
+>> try a different NFS version, or fail the mount request.
+>>=20
+>> Bill and I both looked at this section of RFC 5661. It seems to
+>> us that the use of NFS4ERR_NOSPC is appropriate and unambiguous
+>> in this situation, and it is an allowed status for the
+>> CREATE_SESSION operation. NFS4ERR_DELAY OTOH is not helpful.
+>=20
+> There are a range of errors which we may need to handle by destroying
+> the session, and then creating a new one (mainly the ones where the
+> client and server slot handling get out of sync). That's why returning
+> NFS4ERR_NOSPC in response to CREATE_SESSION is unhelpful, and is why
+> the only sane response by the client will be to treat it as a =
+temporary
+> error.
+
+> IOW: these patches will not be acceptable, even with a rewrite, as =
+they
+> are based on a flawed assumption.
+
+Fair enough. We're not attached to any particular solution/fix.
+
+So let's take "recovery of an active mount" out of the picture
+for a moment.
+
+The narrow problem is behavioral: during initial contact with an
+unfamiliar server, the server can hold off a client indefinitely
+by sending NFS4ERR_DELAY for example until another client unmounts.
+We want to find a way to allow clients to make progress when a
+server is short of resources.
+
+It appears that the mount(2) system call does not return as long
+as the server is still returning NFS4ERR_DELAY. Possibly user
+space is never given an opportunity to stop retrying, and thus
+mount.nfs gets stuck.
+
+It appears that DELAY is OK for EXCHANGE_ID too. So if a server
+decides to return DELAY to EXCHANGE_ID, I wonder if our client's
+trunking detection would be hamstrung by one bad server...
+
+
+--
+Chuck Lever
+chucklever@gmail.com
+
+
+
