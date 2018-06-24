@@ -1,99 +1,49 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-bl2nam02on0112.outbound.protection.outlook.com ([104.47.38.112]:23784
-        "EHLO NAM02-BL2-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1751929AbeFXN4t (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sun, 24 Jun 2018 09:56:49 -0400
-From: Trond Myklebust <trondmy@hammerspace.com>
-To: "bfields@fieldses.org" <bfields@fieldses.org>,
-        "chucklever@gmail.com" <chucklever@gmail.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "manjunath.b.patil@oracle.com" <manjunath.b.patil@oracle.com>
-Subject: Re: [PATCH 2/2] nfsd: return ENOSPC if unable to allocate a session
- slot
-Date: Sun, 24 Jun 2018 13:56:46 +0000
-Message-ID: <d60d8566d215a70d63a31faf8da9ea9126324fa9.camel@hammerspace.com>
-References: <1529598933-16506-1-git-send-email-manjunath.b.patil@oracle.com>
-         <1529598933-16506-2-git-send-email-manjunath.b.patil@oracle.com>
-         <20180622175416.GA7119@fieldses.org>
-         <148E65CF-D3D4-4E43-A190-822C5F7824B9@gmail.com>
-         <180d25ce5474539f15a84a23258d15c71ec11ad9.camel@hammerspace.com>
-         <B3031B82-6CCC-4A11-938F-AD052CC360CD@gmail.com>
-In-Reply-To: <B3031B82-6CCC-4A11-938F-AD052CC360CD@gmail.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from mx1.redhat.com ([209.132.183.28]:40682 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1750851AbeFXSgV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sun, 24 Jun 2018 14:36:21 -0400
+Received: from smtp.corp.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.27])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id 5E0DC4A6F3
+        for <linux-nfs@vger.kernel.org>; Sun, 24 Jun 2018 18:36:21 +0000 (UTC)
+Received: from steved.boston.devel.redhat.com (ovpn-116-218.phx2.redhat.com [10.3.116.218])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 15A12916BB
+        for <linux-nfs@vger.kernel.org>; Sun, 24 Jun 2018 18:36:21 +0000 (UTC)
+From: Steve Dickson <steved@redhat.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH] nfsdcltrack: getopt_long() fails on a non x86_64 archs
+Date: Sun, 24 Jun 2018 14:36:19 -0400
+Message-Id: <20180624183619.59562-1-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gU2F0LCAyMDE4LTA2LTIzIGF0IDE1OjAwIC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
-PiBPbiBKdW4gMjIsIDIwMTgsIGF0IDY6MzEgUE0sIFRyb25kIE15a2xlYnVzdCA8dHJvbmRteUBo
-YW1tZXJzcGFjZS5jDQo+ID4gb20+IHdyb3RlOg0KPiA+IA0KPiA+IE9uIEZyaSwgMjAxOC0wNi0y
-MiBhdCAxNzo0OSAtMDQwMCwgQ2h1Y2sgTGV2ZXIgd3JvdGU6DQo+ID4gPiBIaSBCcnVjZS0NCj4g
-PiA+IA0KPiA+ID4gDQo+ID4gPiA+IE9uIEp1biAyMiwgMjAxOCwgYXQgMTo1NCBQTSwgSi4gQnJ1
-Y2UgRmllbGRzIDxiZmllbGRzQGZpZWxkc2VzLg0KPiA+ID4gPiBvcmc+DQo+ID4gPiA+IHdyb3Rl
-Og0KPiA+ID4gPiANCj4gPiA+ID4gT24gVGh1LCBKdW4gMjEsIDIwMTggYXQgMDQ6MzU6MzNQTSAr
-MDAwMCwgTWFuanVuYXRoIFBhdGlsDQo+ID4gPiA+IHdyb3RlOg0KPiA+ID4gPiA+IFByZXNlbnRs
-eSBuZnNlcnJfanVrZWJveCBpcyBiZWluZyByZXR1cm5lZCBieSBuZnNkIGZvcg0KPiA+ID4gPiA+
-IGNyZWF0ZV9zZXNzaW9uDQo+ID4gPiA+ID4gcmVxdWVzdCBpZiBzZXJ2ZXIgaXMgdW5hYmxlIHRv
-IGFsbG9jYXRlIGEgc2Vzc2lvbiBzbG90LiBUaGlzDQo+ID4gPiA+ID4gbWF5DQo+ID4gPiA+ID4g
-YmUNCj4gPiA+ID4gPiB0cmVhdGVkIGFzIE5GUzRFUlJfREVMQVkgYnkgdGhlIGNsaWVudHMgYW5k
-IHdoaWNoIG1heQ0KPiA+ID4gPiA+IGNvbnRpbnVlIHRvDQo+ID4gPiA+ID4gcmUtdHJ5DQo+ID4g
-PiA+ID4gY3JlYXRlX3Nlc3Npb24gaW4gbG9vcCBsZWFkaW5nIE5GU3Y0LjErIG1vdW50cyBpbiBo
-dW5nIHN0YXRlLg0KPiA+ID4gPiA+IG5mc2QNCj4gPiA+ID4gPiBzaG91bGQgcmV0dXJuIG5mc2Vy
-cl9ub3NwYyBpbiB0aGlzIGNhc2UgYXMgcGVyDQo+ID4gPiA+ID4gcmZjNTY2MShzZWN0aW9uLQ0K
-PiA+ID4gPiA+IDE4LjM2LjQNCj4gPiA+ID4gPiBzdWJwb2ludCA0LiBTZXNzaW9uIGNyZWF0aW9u
-KS4NCj4gPiA+ID4gDQo+ID4gPiA+IEkgZG9uJ3QgdGhpbmsgdGhlIHNwZWMgYWN0dWFsbHkgZ2l2
-ZXMgdXMgYW4gZXJyb3IgdGhhdCB3ZSBjYW4NCj4gPiA+ID4gdXNlDQo+ID4gPiA+IHRvIHNheQ0K
-PiA+ID4gPiBhIENSRUFURV9TRVNTSU9OIGZhaWxlZCBwZXJtYW5lbnRseSBmb3IgbGFjayBvZiBy
-ZXNvdXJjZXMuDQo+ID4gPiANCj4gPiA+IFRoZSBjdXJyZW50IHNpdHVhdGlvbiBpcyB0aGF0IHRo
-ZSBzZXJ2ZXIgcmVwbGllcyBORlM0RVJSX0RFTEFZLA0KPiA+ID4gYW5kIHRoZSBjbGllbnQgcmV0
-cmllcyBpbmRlZmluaXRlbHkuIFRoZSBnb2FsIGlzIHRvIGxldCB0aGUNCj4gPiA+IGNsaWVudCBj
-aG9vc2Ugd2hldGhlciBpdCB3YW50cyB0byB0cnkgdGhlIENSRUFURV9TRVNTSU9OIGFnYWluLA0K
-PiA+ID4gdHJ5IGEgZGlmZmVyZW50IE5GUyB2ZXJzaW9uLCBvciBmYWlsIHRoZSBtb3VudCByZXF1
-ZXN0Lg0KPiA+ID4gDQo+ID4gPiBCaWxsIGFuZCBJIGJvdGggbG9va2VkIGF0IHRoaXMgc2VjdGlv
-biBvZiBSRkMgNTY2MS4gSXQgc2VlbXMgdG8NCj4gPiA+IHVzIHRoYXQgdGhlIHVzZSBvZiBORlM0
-RVJSX05PU1BDIGlzIGFwcHJvcHJpYXRlIGFuZCB1bmFtYmlndW91cw0KPiA+ID4gaW4gdGhpcyBz
-aXR1YXRpb24sIGFuZCBpdCBpcyBhbiBhbGxvd2VkIHN0YXR1cyBmb3IgdGhlDQo+ID4gPiBDUkVB
-VEVfU0VTU0lPTiBvcGVyYXRpb24uIE5GUzRFUlJfREVMQVkgT1RPSCBpcyBub3QgaGVscGZ1bC4N
-Cj4gPiANCj4gPiBUaGVyZSBhcmUgYSByYW5nZSBvZiBlcnJvcnMgd2hpY2ggd2UgbWF5IG5lZWQg
-dG8gaGFuZGxlIGJ5DQo+ID4gZGVzdHJveWluZw0KPiA+IHRoZSBzZXNzaW9uLCBhbmQgdGhlbiBj
-cmVhdGluZyBhIG5ldyBvbmUgKG1haW5seSB0aGUgb25lcyB3aGVyZSB0aGUNCj4gPiBjbGllbnQg
-YW5kIHNlcnZlciBzbG90IGhhbmRsaW5nIGdldCBvdXQgb2Ygc3luYykuIFRoYXQncyB3aHkNCj4g
-PiByZXR1cm5pbmcNCj4gPiBORlM0RVJSX05PU1BDIGluIHJlc3BvbnNlIHRvIENSRUFURV9TRVNT
-SU9OIGlzIHVuaGVscGZ1bCwgYW5kIGlzDQo+ID4gd2h5DQo+ID4gdGhlIG9ubHkgc2FuZSByZXNw
-b25zZSBieSB0aGUgY2xpZW50IHdpbGwgYmUgdG8gdHJlYXQgaXQgYXMgYQ0KPiA+IHRlbXBvcmFy
-eQ0KPiA+IGVycm9yLg0KPiA+IElPVzogdGhlc2UgcGF0Y2hlcyB3aWxsIG5vdCBiZSBhY2NlcHRh
-YmxlLCBldmVuIHdpdGggYSByZXdyaXRlLCBhcw0KPiA+IHRoZXkNCj4gPiBhcmUgYmFzZWQgb24g
-YSBmbGF3ZWQgYXNzdW1wdGlvbi4NCj4gDQo+IEZhaXIgZW5vdWdoLiBXZSdyZSBub3QgYXR0YWNo
-ZWQgdG8gYW55IHBhcnRpY3VsYXIgc29sdXRpb24vZml4Lg0KPiANCj4gU28gbGV0J3MgdGFrZSAi
-cmVjb3Zlcnkgb2YgYW4gYWN0aXZlIG1vdW50IiBvdXQgb2YgdGhlIHBpY3R1cmUNCj4gZm9yIGEg
-bW9tZW50Lg0KPiANCj4gVGhlIG5hcnJvdyBwcm9ibGVtIGlzIGJlaGF2aW9yYWw6IGR1cmluZyBp
-bml0aWFsIGNvbnRhY3Qgd2l0aCBhbg0KPiB1bmZhbWlsaWFyIHNlcnZlciwgdGhlIHNlcnZlciBj
-YW4gaG9sZCBvZmYgYSBjbGllbnQgaW5kZWZpbml0ZWx5DQo+IGJ5IHNlbmRpbmcgTkZTNEVSUl9E
-RUxBWSBmb3IgZXhhbXBsZSB1bnRpbCBhbm90aGVyIGNsaWVudCB1bm1vdW50cy4NCj4gV2Ugd2Fu
-dCB0byBmaW5kIGEgd2F5IHRvIGFsbG93IGNsaWVudHMgdG8gbWFrZSBwcm9ncmVzcyB3aGVuIGEN
-Cj4gc2VydmVyIGlzIHNob3J0IG9mIHJlc291cmNlcy4NCj4gDQo+IEl0IGFwcGVhcnMgdGhhdCB0
-aGUgbW91bnQoMikgc3lzdGVtIGNhbGwgZG9lcyBub3QgcmV0dXJuIGFzIGxvbmcNCj4gYXMgdGhl
-IHNlcnZlciBpcyBzdGlsbCByZXR1cm5pbmcgTkZTNEVSUl9ERUxBWS4gUG9zc2libHkgdXNlcg0K
-PiBzcGFjZSBpcyBuZXZlciBnaXZlbiBhbiBvcHBvcnR1bml0eSB0byBzdG9wIHJldHJ5aW5nLCBh
-bmQgdGh1cw0KPiBtb3VudC5uZnMgZ2V0cyBzdHVjay4NCj4gDQo+IEl0IGFwcGVhcnMgdGhhdCBE
-RUxBWSBpcyBPSyBmb3IgRVhDSEFOR0VfSUQgdG9vLiBTbyBpZiBhIHNlcnZlcg0KPiBkZWNpZGVz
-IHRvIHJldHVybiBERUxBWSB0byBFWENIQU5HRV9JRCwgSSB3b25kZXIgaWYgb3VyIGNsaWVudCdz
-DQo+IHRydW5raW5nIGRldGVjdGlvbiB3b3VsZCBiZSBoYW1zdHJ1bmcgYnkgb25lIGJhZCBzZXJ2
-ZXIuLi4NCg0KVGhlICdtb3VudCcgcHJvZ3JhbSBoYXMgdGhlICdyZXRyeScgb3B0aW9uIGluIG9y
-ZGVyIHRvIHNldCBhIHRpbWVvdXQNCmZvciB0aGUgbW91bnQgb3BlcmF0aW9uIGl0c2VsZi4gSXMg
-dGhhdCBvcHRpb24gbm90IHdvcmtpbmcgY29ycmVjdGx5Pw0KSWYgc28sIHdlIHNob3VsZCBkZWZp
-bml0ZWx5IGZpeCB0aGF0Lg0KV2UgbWlnaHQgYWxzbyB3YW50IHRvIGxvb2sgaW50byBtYWtpbmcg
-aXQgdGFrZSB2YWx1ZXMgPCAxIG1pbnV0ZS4gVGhhdA0KY291bGQgYmUgYWNjb21wbGlzaGVkIGVp
-dGhlciBieSBleHRlbmRpbmcgdGhlIHN5bnRheCBvZiB0aGUgJ3JldHJ5Jw0Kb3B0aW9uIChlLmcu
-OiAncmV0cnk9PG1pbnV0ZXM+OjxzZWNvbmRzPicpIG9yIGJ5IGFkZGluZyBhIG5ldyBvcHRpb24N
-CihlLmcuICdzcmV0cnk9PHNlY29uZHM+JykuDQoNCkl0IHdvdWxkIHRoZW4gYmUgdXAgdG8gdGhl
-IGNhbGxlciBvZiBtb3VudCB0byBkZWNpZGUgdGhlIHBvbGljeSBvZiB3aGF0DQp0byBkbyBhZnRl
-ciBhIHRpbWVvdXQuIFJlbmVnb3RpYXRpb24gZG93bndhcmQgdG8gTkZTdjMgbWlnaHQgYmUgYW4N
-Cm9wdGlvbiwgYnV0IGl0J3Mgbm90IHNvbWV0aGluZyB0aGF0IG1vc3QgcGVvcGxlIHdhbnQgdG8g
-ZG8gaW4gdGhlIGNhc2UNCndoZXJlIHRoZXJlIGFyZSBsb3RzIG9mIGNsaWVudHMgY29tcGV0aW5n
-IGZvciByZXNvdXJjZXMgc2luY2UgdGhhdCdzDQpwcmVjaXNlbHkgdGhlIHJlZ2ltZSB3aGVyZSB0
-aGUgTkZTdjMgRFJDIHNjaGVtZSBicmVha3MgZG93biAobG90cyBvZg0KZGlzY29ubmVjdGlvbnMs
-IGNvbWJpbmVkIHdpdGggYSBoaWdoIHR1cm5vdmVyIG9mIERSQyBzbG90cykuDQoNCi0tIA0KVHJv
-bmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIsIEhhbW1lcnNwYWNlDQp0
-cm9uZC5teWtsZWJ1c3RAaGFtbWVyc3BhY2UuY29tDQoNCg==
+getopt_long() returns an int, not char, which
+matters on non-x86_64 archs since a char is
+signed on x86_64 arch but unsigned on other
+archs.
+
+Fixes: https://bugzilla.redhat.com/show_bug.cgi?id=1551903
+
+Signed-off-by: Steve Dickson <steved@redhat.com>
+---
+ utils/nfsdcltrack/nfsdcltrack.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/utils/nfsdcltrack/nfsdcltrack.c b/utils/nfsdcltrack/nfsdcltrack.c
+index 76b06d2..b45a904 100644
+--- a/utils/nfsdcltrack/nfsdcltrack.c
++++ b/utils/nfsdcltrack/nfsdcltrack.c
+@@ -553,7 +553,7 @@ find_cmd(char *cmdname)
+ int
+ main(int argc, char **argv)
+ {
+-	char arg;
++	int arg;
+ 	char *val;
+ 	int rc = 0;
+ 	char *progname, *cmdarg = NULL;
+-- 
+2.17.1
+
