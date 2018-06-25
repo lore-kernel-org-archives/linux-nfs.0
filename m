@@ -1,302 +1,284 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:60868 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753049AbeFYPv7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 25 Jun 2018 11:51:59 -0400
+Received: from mail-eopbgr690091.outbound.protection.outlook.com ([40.107.69.91]:9984
+        "EHLO NAM04-CO1-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S932073AbeFYQTG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 25 Jun 2018 12:19:06 -0400
+From: Trond Myklebust <trondmy@hammerspace.com>
+To: "SteveD@RedHat.com" <SteveD@RedHat.com>,
+        "chuck.lever@oracle.com" <chuck.lever@oracle.com>
+CC: "Anna.Schumaker@netapp.com" <Anna.Schumaker@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
 Subject: Re: [PATCH] Stop mounts hanging in upcalls to rpc.gssd.
-To: Trond Myklebust <trondmy@gmail.com>,
-        Chuck Lever <chuck.lever@oracle.com>
-Cc: Anna Schumaker <Anna.Schumaker@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Date: Mon, 25 Jun 2018 16:19:03 +0000
+Message-ID: <05a344493e243fb1a640b704dfaf7525cc1071c8.camel@hammerspace.com>
 References: <20180618172542.45519-1-steved@redhat.com>
- <0e1aa697-e0ee-d150-3720-3cdda2d2f700@RedHat.com>
- <80bc2e24a8f4168ba144ee4757817dc749a441d8.camel@gmail.com>
- <17b2fd3e-c9f4-6804-363a-1d49ca990940@RedHat.com>
- <B3A9BE44-BA84-49E6-A72E-A3EBABCFE093@gmail.com>
- <2f89b1e5-7e3d-c584-9f09-78b6f3e8a6f4@RedHat.com>
- <CAABAsM7m6FgOSdC2Nzm-+gsZQcCGBt2HBgw3Yp6vuFbrFV_6gw@mail.gmail.com>
- <26557818-3e4f-684b-c4a2-5fc63959930c@RedHat.com>
- <CAABAsM5Y=N7tG8CnVn8f=U6a4MU4EXYCC8e2MkyM6=-mxXg0Wg@mail.gmail.com>
- <919983d5-5e20-887d-eac7-822fd801106a@RedHat.com>
- <8EFFA012-4DF5-4B94-AB9F-DCCEDD646D02@gmail.com>
- <05786ef7-5382-5a6b-09e8-514668c3c812@RedHat.com>
- <B8735945-084F-4112-AEA6-EB3E758B6CE7@oracle.com>
- <1843936cc56ae782dd4e96fd3b3a2a40476c78f0.camel@gmail.com>
-From: Steve Dickson <SteveD@RedHat.com>
-Message-ID: <eddaa5b5-95dc-5876-45df-c3b343d5e92b@RedHat.com>
-Date: Mon, 25 Jun 2018 11:51:58 -0400
+         <0e1aa697-e0ee-d150-3720-3cdda2d2f700@RedHat.com>
+         <80bc2e24a8f4168ba144ee4757817dc749a441d8.camel@gmail.com>
+         <17b2fd3e-c9f4-6804-363a-1d49ca990940@RedHat.com>
+         <B3A9BE44-BA84-49E6-A72E-A3EBABCFE093@gmail.com>
+         <2f89b1e5-7e3d-c584-9f09-78b6f3e8a6f4@RedHat.com>
+         <CAABAsM7m6FgOSdC2Nzm-+gsZQcCGBt2HBgw3Yp6vuFbrFV_6gw@mail.gmail.com>
+         <26557818-3e4f-684b-c4a2-5fc63959930c@RedHat.com>
+         <CAABAsM5Y=N7tG8CnVn8f=U6a4MU4EXYCC8e2MkyM6=-mxXg0Wg@mail.gmail.com>
+         <919983d5-5e20-887d-eac7-822fd801106a@RedHat.com>
+         <8EFFA012-4DF5-4B94-AB9F-DCCEDD646D02@gmail.com>
+         <05786ef7-5382-5a6b-09e8-514668c3c812@RedHat.com>
+         <B8735945-084F-4112-AEA6-EB3E758B6CE7@oracle.com>
+         <1843936cc56ae782dd4e96fd3b3a2a40476c78f0.camel@gmail.com>
+         <eddaa5b5-95dc-5876-45df-c3b343d5e92b@RedHat.com>
+In-Reply-To: <eddaa5b5-95dc-5876-45df-c3b343d5e92b@RedHat.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-In-Reply-To: <1843936cc56ae782dd4e96fd3b3a2a40476c78f0.camel@gmail.com>
-Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-On 06/25/2018 11:38 AM, Trond Myklebust wrote:
-> On Mon, 2018-06-25 at 11:10 -0400, Chuck Lever wrote:
->>> On Jun 25, 2018, at 9:54 AM, Steve Dickson <SteveD@redhat.com>
->>> wrote:
->>>
->>> Hello,
->>>
->>> This was a private email Trond and I were having
->>> about adding a timeout to upcalls to the rpc.gssd
->>> so the kernel will not hang, forever, when
->>> rpc.gssd goes south.
->>>
->>> On 06/24/2018 07:52 PM, Trond Myklebust wrote:
->>>>
->>>>
->>>>> On Jun 24, 2018, at 19:26, Steve Dickson <SteveD@RedHat.com
->>>>> <mailto:SteveD@RedHat.com>> wrote:
->>>>>
->>>>>
->>>>>
->>>>> On 06/24/2018 06:54 PM, Trond Myklebust wrote:
->>>>>> On Sun, 24 Jun 2018 at 17:16, Steve Dickson <SteveD@redhat.co
->>>>>> m <mailto:SteveD@redhat.com>> wrote:
->>>>>>>
->>>>>>>
->>>>>>>
->>>>>>> On 06/24/2018 03:24 PM, Trond Myklebust wrote:
->>>>>>>> On Sun, 24 Jun 2018 at 14:55, Steve Dickson <SteveD@redha
->>>>>>>> t.com <mailto:SteveD@redhat.com>> wrote:
->>>>>>>>>
->>>>>>>>>
->>>>>>>>>
->>>>>>>>> On 06/24/2018 02:35 PM, Trond Myklebust wrote:
->>>>>>>>>> I’m talking about the racy behaviour we used to have
->>>>>>>>>> at startup when the rpc.gssd client was slow to
->>>>>>>>>> initialise, which caused the NFS client to time out
->>>>>>>>>> and then renegotiate the security flavour. We added
->>>>>>>>>> the gssd_running() variable in order to avoid that
->>>>>>>>>> problem by having gssd register itself when it starts
->>>>>>>>>> up.
->>>>>>>>>
->>>>>>>>> I think we have taken care of the slow start up with
->>>>>>>>> Olga's work
->>>>>>>>> making rpc.gssd multi thread... An new thread is create
->>>>>>>>> for every
->>>>>>>>> upcall (which actually caused the bug in gssproxy).
->>>>>>>>>
->>>>>>>>> As I remember it.. we added gssd_running() because if
->>>>>>>>> rpc.gssd
->>>>>>>>> was not running all mounts would hang when we change
->>>>>>>>> the
->>>>>>>>> SECINFO to use krb5i... I could be wrong on that.
->>>>>>>>>
->>>>>>>>
->>>>>>>> They were not hanging. They were timing out, but it took
->>>>>>>> too long.
->>>>>>>
->>>>>>> Where did the timeout come from? Once the upcall was in the
->>>>>>> for (;;) loop in gss_cred_init() the only thing that would
->>>>>>> break that loop is a signal... did the RPC layer send a
->>>>>>> signal?
->>>>>>>
->>>>>>>>
->>>>>>>>>>
->>>>>>>>>> IOW: what I’m worried about is unwanted automatic
->>>>>>>>>> security re-negotiation during 'mount', and that
->>>>>>>>>> people end up with sec=sys when they would normally
->>>>>>>>>> expect strong security.
->>>>>>>>>
->>>>>>>>> I tested this... When the sec is not specified on the
->>>>>>>>> mount, the
->>>>>>>>> mount will roll back to a sys sec. But when the sec is
->>>>>>>>> specified
->>>>>>>>> (aka sec=krb5), the mount will fail.
->>>>>>>>
->>>>>>>> ...and that's the problem: the "mount will roll back to
->>>>>>>> sys sec"
->>>>>>>> issue. If we pass the gssd_running() test, then we should
->>>>>>>> not be
->>>>>>>> rolling back to auth_sys.
->>>>>>>
->>>>>>> But if the mount is a non secure mount (aka -o sec=krb5 is
->>>>>>> not specified)
->>>>>>> why shouldn't we roll back to auth_sys?
->>>>>>
->>>>>> Because we want _predictable_ behaviour, not behaviour that
->>>>>> is subject
->>>>>> to randomness. If I have configured rpc.gssd, then I want the
->>>>>> result
->>>>>> of the security negotiation to depend _only_ on whether or
->>>>>> not the
->>>>>> server also supports gssd.
->>>>>
->>>>> I think the problem is this... You don't configure rpc.gssd to
->>>>> come up.
->>>>> If /etc/krb5.conf exists then rpc.gssd comes up... auto-
->>>>> majestically
->>>>> Which turns all NFS mounts into secure mounts whether you
->>>>> wanted
->>>>> or not.. Due to the SECINFO default.
->>>>>
->>>>> So the predictable behavior is, in a kerberos configured env,
->>>>> when
->>>>> secure mounts are *not* specified, secure mount will not by
->>>>> tried.
->>>>>
->>>>> But that is not the case... Due to to the SECINFO default and
->>>>> the fact
->>>>> rpc.gssd exists... a secure SECINFO (via an upcall) will be
->>>>> tried.
->>>>>
->>>>> Now in the same environment, and a secure mount is tried... it
->>>>> will
->>>>> fail if the server and client are not married via kerberos... 
->>>>>
->>>>> Again, in the same environment, kerberos is configured and the
->>>>> client
->>>>> and server not married via the KDC and rpc.gssd is off in the
->>>>> woods
->>>>> due to some kerberos issue.. A non secured mount should not
->>>>> hang forever. 
->>>>> It should time out and use a auth_sys flavor. no?
->>>>
->>>> If rpc.gssd does not come up, then nothing is going to be
->>>> listening or writing on the rpc_pipefs pseudo files, and so
->>>> gssd_running() returns ‘false’, we return ‘EACCES’ on all upcalls
->>>> and all is hunky dory. This is the case today with or without any
->>>> further kernel changes.
->>>>
->>>> If rpc.gssd crashes and all the rpc_pipefs connections are
->>>> closed, then we call gss_pipe_release(), which causes all pending
->>>> gss messages to exit with the error EPIPE.
->>>
->>> Right... In those two cases, a crash or not coming up, work just
->>> fine.
->>> Its the case when rpc.gssd does come up but hangs in the libkrb5
->>> code
->>> or the gssproxy code... Adding a timeout handles that case.
->>>
->>>>
->>>>>
->>>>>> con
->>>>>>>>
->>>>>>>>>>
->>>>>>>>>> Concerning Simo’s comment, the answer is that we
->>>>>>>>>> don’t support renegotiating security on the fly in
->>>>>>>>>> the kernel, and if the user specifies a hard mount,
->>>>>>>>>> then the required kernel behaviour if rpc.gssd dies
->>>>>>>>>> is to wait+retry forever for recovery.
->>>>>>>>>
->>>>>>>>> I agree there should not be "renegotiating security on
->>>>>>>>> the fly" when
->>>>>>>>> the security is specified the mount should fail, not
->>>>>>>>> hang... which
->>>>>>>>> happens today.
->>>>>>>>>
->>>>>>>>> When a sec is not specified, I think the mount should
->>>>>>>>> succeed when
->>>>>>>>> rpc.gssd is off in the wood, as a sys sec mount.
->>>>>>>>>
->>>>>>>>> But currently there is no "wait+retry". There is just a
->>>>>>>>> wait... no retry.
->>>>>>>>> This patch does introduce a retry... but not forever.
->>>>>>>>>
->>>>>>>>> But I think we both agree that rpc.gssd should not hang
->>>>>>>>> mounts
->>>>>>>>> forever when a sec is not specified... right?
->>>>>>>>
->>>>>>>> If rpc.gssd is up and running, and is connected to
->>>>>>>> rpc_pipefs, then we
->>>>>>>> should not hang. If rpc.gssd is up and running, but is
->>>>>>>> just being
->>>>>>>> slow, then the mount should hang until it gets a
->>>>>>>> response.
->>>>>>>
->>>>>>> But if rpc.gssd does hang... it hangs forever... There is
->>>>>>> not timeout
->>>>>>> in the kernel, and I thinking there should be, esp for non
->>>>>>> secure mounts.
->>>>>>>
->>>>>>
->>>>>> I don't understand. Is this by design or is it a bug?
->>>>>
->>>>> A bug in the userland space... The flux capacitor breaks and
->>>>> everything hangs... :-) 
->>>>>
->>>>>>
->>>>>> If it is by design, then what's the reason for that design?
->>>>>> If it's a
->>>>>> bug, then why are we talking about changing the kernel
->>>>>> instead of
->>>>>> fixing the problem in gssd?
->>>>>
->>>>> Its fixing the kernel not to hang on buggy userland (aka
->>>>> kerberos) apps
->>>>> when when those apps are not even required
->>>>
->>>> No, I don’t accept that argument. rpc.gssd is a dedicated program
->>>> that has exactly one purpose: to supply the kernel with GSS
->>>> sessions on demand because the kernel cannot do so itself. If it
->>>> hangs, then the kernel cannot make progress, and so the services
->>>> which depend on GSS will hang too.
->>>
->>> Fine... when the -o sec=krb5 is specified all mounts needed that
->>> service
->>> should hang (when rpc.gssd hangs)... I agree with that... But
->>>
->>> The mounts that don't specify a sec should not get hung up
->>> in a service it is not asking for... IMHO... which is the case
->>> today.
->>
->> That's the operational issue, but gssd is code we have 100% control
->> over. This is not arbitrary user space code. I have less sympathy
->> with the "kernel should work around user bugs" argument in this case.
-> 
-> Precisely.
-Hell... I say anything I need to say... ;-) You know that! 
-
-> 
->>>> If you want to put a policy around timeouts, then killing
->>>> rpc.gssd will do just as well (see above), will work with legacy
->>>> kernels, and allows you to keep the policy entirely in userland.
->>>> IOW: Add a watchdog timer that kills rpc.gssd if it hangs and
->>>> fails to reset the timer. You can even put that timer inside
->>>> rpc.gssd itself (add a call to setitimer() and add a signal
->>>> handler for SIGALARM that just kills the program).
->>>
->>> With this approach there is no history... Meaning when the 
->>> SIGALARM pops, the thread will not know if it or is not 
->>> making process... With timeouts there is history because 
->>> there has been timeouts and retries... 
-> 
-> ...and POLICY, which we do our very very best to keep out of the
-> kernel. The problem here is that as soon as we add yet another timeout,
-> there is always someone somewhere who wants to tweak the timeout
-> policy.
-I'll have you know... I scientifically pick that timeout value! 8-)
- 
-> 
-> Now for some things, it is hard to avoid putting the policy in the
-> kernel (e.g. attribute cache timeout control). With other things, like
-> this, we have a choice of implementing the policy in userland, where it
-> is easy to add tweaks, and then putting really dumb controls in the
-> kernel (i.e. is someone listening on the rpc_pipefs pseudofiles or
-> should I report an error).
-> We already have those dumb controls in the kernel. The bit we haven't
-> implemented is the tweak policy in userland.
-So are you saying if the timeout value in the kernel from
-userland, you are good with doing the timeout in the kernel?
-
-steved.
-
-> 
-> 
->>> How about this... When the timeout occurs and the -o sec was
->>> not specified, the mount will still fail instead of becoming a 
->>> auth_sys mount. This would tell mount there is a problem
->>> and have it do the appropriate thing, whatever that is.
->>>
->>> Basically have the kernel says "Houston we have a problem"
->>> then let Houston go fix it... :-)
->>
->> Philosophical agreement that a problem should be reported whenever
->> the kernel expects a quick reply and does not get one. Without that
->> it is difficult to address operational problems in gssd (either
->> local configuration issues, network failures, or real bugs).
-> 
+T24gTW9uLCAyMDE4LTA2LTI1IGF0IDExOjUxIC0wNDAwLCBTdGV2ZSBEaWNrc29uIHdyb3RlOg0K
+PiANCj4gT24gMDYvMjUvMjAxOCAxMTozOCBBTSwgVHJvbmQgTXlrbGVidXN0IHdyb3RlOg0KPiA+
+IE9uIE1vbiwgMjAxOC0wNi0yNSBhdCAxMToxMCAtMDQwMCwgQ2h1Y2sgTGV2ZXIgd3JvdGU6DQo+
+ID4gPiA+IE9uIEp1biAyNSwgMjAxOCwgYXQgOTo1NCBBTSwgU3RldmUgRGlja3NvbiA8U3RldmVE
+QHJlZGhhdC5jb20+DQo+ID4gPiA+IHdyb3RlOg0KPiA+ID4gPiANCj4gPiA+ID4gSGVsbG8sDQo+
+ID4gPiA+IA0KPiA+ID4gPiBUaGlzIHdhcyBhIHByaXZhdGUgZW1haWwgVHJvbmQgYW5kIEkgd2Vy
+ZSBoYXZpbmcNCj4gPiA+ID4gYWJvdXQgYWRkaW5nIGEgdGltZW91dCB0byB1cGNhbGxzIHRvIHRo
+ZSBycGMuZ3NzZA0KPiA+ID4gPiBzbyB0aGUga2VybmVsIHdpbGwgbm90IGhhbmcsIGZvcmV2ZXIs
+IHdoZW4NCj4gPiA+ID4gcnBjLmdzc2QgZ29lcyBzb3V0aC4NCj4gPiA+ID4gDQo+ID4gPiA+IE9u
+IDA2LzI0LzIwMTggMDc6NTIgUE0sIFRyb25kIE15a2xlYnVzdCB3cm90ZToNCj4gPiA+ID4gPiAN
+Cj4gPiA+ID4gPiANCj4gPiA+ID4gPiA+IE9uIEp1biAyNCwgMjAxOCwgYXQgMTk6MjYsIFN0ZXZl
+IERpY2tzb24gPFN0ZXZlREBSZWRIYXQuY29tDQo+ID4gPiA+ID4gPiA8bWFpbHRvOlN0ZXZlREBS
+ZWRIYXQuY29tPj4gd3JvdGU6DQo+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+IA0KPiA+ID4gPiA+
+ID4gDQo+ID4gPiA+ID4gPiBPbiAwNi8yNC8yMDE4IDA2OjU0IFBNLCBUcm9uZCBNeWtsZWJ1c3Qg
+d3JvdGU6DQo+ID4gPiA+ID4gPiA+IE9uIFN1biwgMjQgSnVuIDIwMTggYXQgMTc6MTYsIFN0ZXZl
+IERpY2tzb24gPFN0ZXZlREByZWRoYQ0KPiA+ID4gPiA+ID4gPiB0LmNvDQo+ID4gPiA+ID4gPiA+
+IG0gPG1haWx0bzpTdGV2ZURAcmVkaGF0LmNvbT4+IHdyb3RlOg0KPiA+ID4gPiA+ID4gPiA+IA0K
+PiA+ID4gPiA+ID4gPiA+IA0KPiA+ID4gPiA+ID4gPiA+IA0KPiA+ID4gPiA+ID4gPiA+IE9uIDA2
+LzI0LzIwMTggMDM6MjQgUE0sIFRyb25kIE15a2xlYnVzdCB3cm90ZToNCj4gPiA+ID4gPiA+ID4g
+PiA+IE9uIFN1biwgMjQgSnVuIDIwMTggYXQgMTQ6NTUsIFN0ZXZlIERpY2tzb24gPFN0ZXZlREBy
+DQo+ID4gPiA+ID4gPiA+ID4gPiBlZGhhDQo+ID4gPiA+ID4gPiA+ID4gPiB0LmNvbSA8bWFpbHRv
+OlN0ZXZlREByZWRoYXQuY29tPj4gd3JvdGU6DQo+ID4gPiA+ID4gPiA+ID4gPiA+IA0KPiA+ID4g
+PiA+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+ID4gPiA+ID4gDQo+ID4gPiA+ID4gPiA+ID4gPiA+
+IE9uIDA2LzI0LzIwMTggMDI6MzUgUE0sIFRyb25kIE15a2xlYnVzdCB3cm90ZToNCj4gPiA+ID4g
+PiA+ID4gPiA+ID4gPiBJ4oCZbSB0YWxraW5nIGFib3V0IHRoZSByYWN5IGJlaGF2aW91ciB3ZSB1
+c2VkIHRvDQo+ID4gPiA+ID4gPiA+ID4gPiA+ID4gaGF2ZQ0KPiA+ID4gPiA+ID4gPiA+ID4gPiA+
+IGF0IHN0YXJ0dXAgd2hlbiB0aGUgcnBjLmdzc2QgY2xpZW50IHdhcyBzbG93IHRvDQo+ID4gPiA+
+ID4gPiA+ID4gPiA+ID4gaW5pdGlhbGlzZSwgd2hpY2ggY2F1c2VkIHRoZSBORlMgY2xpZW50IHRv
+IHRpbWUNCj4gPiA+ID4gPiA+ID4gPiA+ID4gPiBvdXQNCj4gPiA+ID4gPiA+ID4gPiA+ID4gPiBh
+bmQgdGhlbiByZW5lZ290aWF0ZSB0aGUgc2VjdXJpdHkgZmxhdm91ci4gV2UNCj4gPiA+ID4gPiA+
+ID4gPiA+ID4gPiBhZGRlZA0KPiA+ID4gPiA+ID4gPiA+ID4gPiA+IHRoZSBnc3NkX3J1bm5pbmco
+KSB2YXJpYWJsZSBpbiBvcmRlciB0byBhdm9pZA0KPiA+ID4gPiA+ID4gPiA+ID4gPiA+IHRoYXQN
+Cj4gPiA+ID4gPiA+ID4gPiA+ID4gPiBwcm9ibGVtIGJ5IGhhdmluZyBnc3NkIHJlZ2lzdGVyIGl0
+c2VsZiB3aGVuIGl0DQo+ID4gPiA+ID4gPiA+ID4gPiA+ID4gc3RhcnRzDQo+ID4gPiA+ID4gPiA+
+ID4gPiA+ID4gdXAuDQo+ID4gPiA+ID4gPiA+ID4gPiA+IA0KPiA+ID4gPiA+ID4gPiA+ID4gPiBJ
+IHRoaW5rIHdlIGhhdmUgdGFrZW4gY2FyZSBvZiB0aGUgc2xvdyBzdGFydCB1cA0KPiA+ID4gPiA+
+ID4gPiA+ID4gPiB3aXRoDQo+ID4gPiA+ID4gPiA+ID4gPiA+IE9sZ2EncyB3b3JrDQo+ID4gPiA+
+ID4gPiA+ID4gPiA+IG1ha2luZyBycGMuZ3NzZCBtdWx0aSB0aHJlYWQuLi4gQW4gbmV3IHRocmVh
+ZCBpcw0KPiA+ID4gPiA+ID4gPiA+ID4gPiBjcmVhdGUNCj4gPiA+ID4gPiA+ID4gPiA+ID4gZm9y
+IGV2ZXJ5DQo+ID4gPiA+ID4gPiA+ID4gPiA+IHVwY2FsbCAod2hpY2ggYWN0dWFsbHkgY2F1c2Vk
+IHRoZSBidWcgaW4gZ3NzcHJveHkpLg0KPiA+ID4gPiA+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+
+ID4gPiA+ID4gQXMgSSByZW1lbWJlciBpdC4uIHdlIGFkZGVkIGdzc2RfcnVubmluZygpIGJlY2F1
+c2UNCj4gPiA+ID4gPiA+ID4gPiA+ID4gaWYNCj4gPiA+ID4gPiA+ID4gPiA+ID4gcnBjLmdzc2QN
+Cj4gPiA+ID4gPiA+ID4gPiA+ID4gd2FzIG5vdCBydW5uaW5nIGFsbCBtb3VudHMgd291bGQgaGFu
+ZyB3aGVuIHdlDQo+ID4gPiA+ID4gPiA+ID4gPiA+IGNoYW5nZQ0KPiA+ID4gPiA+ID4gPiA+ID4g
+PiB0aGUNCj4gPiA+ID4gPiA+ID4gPiA+ID4gU0VDSU5GTyB0byB1c2Uga3JiNWkuLi4gSSBjb3Vs
+ZCBiZSB3cm9uZyBvbiB0aGF0Lg0KPiA+ID4gPiA+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+ID4g
+PiA+IA0KPiA+ID4gPiA+ID4gPiA+ID4gVGhleSB3ZXJlIG5vdCBoYW5naW5nLiBUaGV5IHdlcmUg
+dGltaW5nIG91dCwgYnV0IGl0DQo+ID4gPiA+ID4gPiA+ID4gPiB0b29rDQo+ID4gPiA+ID4gPiA+
+ID4gPiB0b28gbG9uZy4NCj4gPiA+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+ID4gPiBXaGVyZSBk
+aWQgdGhlIHRpbWVvdXQgY29tZSBmcm9tPyBPbmNlIHRoZSB1cGNhbGwgd2FzIGluDQo+ID4gPiA+
+ID4gPiA+ID4gdGhlDQo+ID4gPiA+ID4gPiA+ID4gZm9yICg7OykgbG9vcCBpbiBnc3NfY3JlZF9p
+bml0KCkgdGhlIG9ubHkgdGhpbmcgdGhhdA0KPiA+ID4gPiA+ID4gPiA+IHdvdWxkDQo+ID4gPiA+
+ID4gPiA+ID4gYnJlYWsgdGhhdCBsb29wIGlzIGEgc2lnbmFsLi4uIGRpZCB0aGUgUlBDIGxheWVy
+IHNlbmQgYQ0KPiA+ID4gPiA+ID4gPiA+IHNpZ25hbD8NCj4gPiA+ID4gPiA+ID4gPiANCj4gPiA+
+ID4gPiA+ID4gPiA+IA0KPiA+ID4gPiA+ID4gPiA+ID4gPiA+IA0KPiA+ID4gPiA+ID4gPiA+ID4g
+PiA+IElPVzogd2hhdCBJ4oCZbSB3b3JyaWVkIGFib3V0IGlzIHVud2FudGVkIGF1dG9tYXRpYw0K
+PiA+ID4gPiA+ID4gPiA+ID4gPiA+IHNlY3VyaXR5IHJlLW5lZ290aWF0aW9uIGR1cmluZyAnbW91
+bnQnLCBhbmQgdGhhdA0KPiA+ID4gPiA+ID4gPiA+ID4gPiA+IHBlb3BsZSBlbmQgdXAgd2l0aCBz
+ZWM9c3lzIHdoZW4gdGhleSB3b3VsZA0KPiA+ID4gPiA+ID4gPiA+ID4gPiA+IG5vcm1hbGx5DQo+
+ID4gPiA+ID4gPiA+ID4gPiA+ID4gZXhwZWN0IHN0cm9uZyBzZWN1cml0eS4NCj4gPiA+ID4gPiA+
+ID4gPiA+ID4gDQo+ID4gPiA+ID4gPiA+ID4gPiA+IEkgdGVzdGVkIHRoaXMuLi4gV2hlbiB0aGUg
+c2VjIGlzIG5vdCBzcGVjaWZpZWQgb24NCj4gPiA+ID4gPiA+ID4gPiA+ID4gdGhlDQo+ID4gPiA+
+ID4gPiA+ID4gPiA+IG1vdW50LCB0aGUNCj4gPiA+ID4gPiA+ID4gPiA+ID4gbW91bnQgd2lsbCBy
+b2xsIGJhY2sgdG8gYSBzeXMgc2VjLiBCdXQgd2hlbiB0aGUgc2VjDQo+ID4gPiA+ID4gPiA+ID4g
+PiA+IGlzDQo+ID4gPiA+ID4gPiA+ID4gPiA+IHNwZWNpZmllZA0KPiA+ID4gPiA+ID4gPiA+ID4g
+PiAoYWthIHNlYz1rcmI1KSwgdGhlIG1vdW50IHdpbGwgZmFpbC4NCj4gPiA+ID4gPiA+ID4gPiA+
+IA0KPiA+ID4gPiA+ID4gPiA+ID4gLi4uYW5kIHRoYXQncyB0aGUgcHJvYmxlbTogdGhlICJtb3Vu
+dCB3aWxsIHJvbGwgYmFjaw0KPiA+ID4gPiA+ID4gPiA+ID4gdG8NCj4gPiA+ID4gPiA+ID4gPiA+
+IHN5cyBzZWMiDQo+ID4gPiA+ID4gPiA+ID4gPiBpc3N1ZS4gSWYgd2UgcGFzcyB0aGUgZ3NzZF9y
+dW5uaW5nKCkgdGVzdCwgdGhlbiB3ZQ0KPiA+ID4gPiA+ID4gPiA+ID4gc2hvdWxkDQo+ID4gPiA+
+ID4gPiA+ID4gPiBub3QgYmUNCj4gPiA+ID4gPiA+ID4gPiA+IHJvbGxpbmcgYmFjayB0byBhdXRo
+X3N5cy4NCj4gPiA+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+ID4gPiBCdXQgaWYgdGhlIG1vdW50
+IGlzIGEgbm9uIHNlY3VyZSBtb3VudCAoYWthIC1vIHNlYz1rcmI1DQo+ID4gPiA+ID4gPiA+ID4g
+aXMNCj4gPiA+ID4gPiA+ID4gPiBub3Qgc3BlY2lmaWVkKQ0KPiA+ID4gPiA+ID4gPiA+IHdoeSBz
+aG91bGRuJ3Qgd2Ugcm9sbCBiYWNrIHRvIGF1dGhfc3lzPw0KPiA+ID4gPiA+ID4gPiANCj4gPiA+
+ID4gPiA+ID4gQmVjYXVzZSB3ZSB3YW50IF9wcmVkaWN0YWJsZV8gYmVoYXZpb3VyLCBub3QgYmVo
+YXZpb3VyDQo+ID4gPiA+ID4gPiA+IHRoYXQNCj4gPiA+ID4gPiA+ID4gaXMgc3ViamVjdA0KPiA+
+ID4gPiA+ID4gPiB0byByYW5kb21uZXNzLiBJZiBJIGhhdmUgY29uZmlndXJlZCBycGMuZ3NzZCwg
+dGhlbiBJIHdhbnQNCj4gPiA+ID4gPiA+ID4gdGhlDQo+ID4gPiA+ID4gPiA+IHJlc3VsdA0KPiA+
+ID4gPiA+ID4gPiBvZiB0aGUgc2VjdXJpdHkgbmVnb3RpYXRpb24gdG8gZGVwZW5kIF9vbmx5XyBv
+biB3aGV0aGVyDQo+ID4gPiA+ID4gPiA+IG9yDQo+ID4gPiA+ID4gPiA+IG5vdCB0aGUNCj4gPiA+
+ID4gPiA+ID4gc2VydmVyIGFsc28gc3VwcG9ydHMgZ3NzZC4NCj4gPiA+ID4gPiA+IA0KPiA+ID4g
+PiA+ID4gSSB0aGluayB0aGUgcHJvYmxlbSBpcyB0aGlzLi4uIFlvdSBkb24ndCBjb25maWd1cmUg
+cnBjLmdzc2QNCj4gPiA+ID4gPiA+IHRvDQo+ID4gPiA+ID4gPiBjb21lIHVwLg0KPiA+ID4gPiA+
+ID4gSWYgL2V0Yy9rcmI1LmNvbmYgZXhpc3RzIHRoZW4gcnBjLmdzc2QgY29tZXMgdXAuLi4gYXV0
+by0NCj4gPiA+ID4gPiA+IG1hamVzdGljYWxseQ0KPiA+ID4gPiA+ID4gV2hpY2ggdHVybnMgYWxs
+IE5GUyBtb3VudHMgaW50byBzZWN1cmUgbW91bnRzIHdoZXRoZXIgeW91DQo+ID4gPiA+ID4gPiB3
+YW50ZWQNCj4gPiA+ID4gPiA+IG9yIG5vdC4uIER1ZSB0byB0aGUgU0VDSU5GTyBkZWZhdWx0Lg0K
+PiA+ID4gPiA+ID4gDQo+ID4gPiA+ID4gPiBTbyB0aGUgcHJlZGljdGFibGUgYmVoYXZpb3IgaXMs
+IGluIGEga2VyYmVyb3MgY29uZmlndXJlZA0KPiA+ID4gPiA+ID4gZW52LA0KPiA+ID4gPiA+ID4g
+d2hlbg0KPiA+ID4gPiA+ID4gc2VjdXJlIG1vdW50cyBhcmUgKm5vdCogc3BlY2lmaWVkLCBzZWN1
+cmUgbW91bnQgd2lsbCBub3QgYnkNCj4gPiA+ID4gPiA+IHRyaWVkLg0KPiA+ID4gPiA+ID4gDQo+
+ID4gPiA+ID4gPiBCdXQgdGhhdCBpcyBub3QgdGhlIGNhc2UuLi4gRHVlIHRvIHRvIHRoZSBTRUNJ
+TkZPIGRlZmF1bHQNCj4gPiA+ID4gPiA+IGFuZA0KPiA+ID4gPiA+ID4gdGhlIGZhY3QNCj4gPiA+
+ID4gPiA+IHJwYy5nc3NkIGV4aXN0cy4uLiBhIHNlY3VyZSBTRUNJTkZPICh2aWEgYW4gdXBjYWxs
+KSB3aWxsIGJlDQo+ID4gPiA+ID4gPiB0cmllZC4NCj4gPiA+ID4gPiA+IA0KPiA+ID4gPiA+ID4g
+Tm93IGluIHRoZSBzYW1lIGVudmlyb25tZW50LCBhbmQgYSBzZWN1cmUgbW91bnQgaXMgdHJpZWQu
+Li4NCj4gPiA+ID4gPiA+IGl0DQo+ID4gPiA+ID4gPiB3aWxsDQo+ID4gPiA+ID4gPiBmYWlsIGlm
+IHRoZSBzZXJ2ZXIgYW5kIGNsaWVudCBhcmUgbm90IG1hcnJpZWQgdmlhDQo+ID4gPiA+ID4gPiBr
+ZXJiZXJvcy4uLiANCj4gPiA+ID4gPiA+IA0KPiA+ID4gPiA+ID4gQWdhaW4sIGluIHRoZSBzYW1l
+IGVudmlyb25tZW50LCBrZXJiZXJvcyBpcyBjb25maWd1cmVkIGFuZA0KPiA+ID4gPiA+ID4gdGhl
+DQo+ID4gPiA+ID4gPiBjbGllbnQNCj4gPiA+ID4gPiA+IGFuZCBzZXJ2ZXIgbm90IG1hcnJpZWQg
+dmlhIHRoZSBLREMgYW5kIHJwYy5nc3NkIGlzIG9mZiBpbg0KPiA+ID4gPiA+ID4gdGhlDQo+ID4g
+PiA+ID4gPiB3b29kcw0KPiA+ID4gPiA+ID4gZHVlIHRvIHNvbWUga2VyYmVyb3MgaXNzdWUuLiBB
+IG5vbiBzZWN1cmVkIG1vdW50IHNob3VsZCBub3QNCj4gPiA+ID4gPiA+IGhhbmcgZm9yZXZlci4g
+DQo+ID4gPiA+ID4gPiBJdCBzaG91bGQgdGltZSBvdXQgYW5kIHVzZSBhIGF1dGhfc3lzIGZsYXZv
+ci4gbm8/DQo+ID4gPiA+ID4gDQo+ID4gPiA+ID4gSWYgcnBjLmdzc2QgZG9lcyBub3QgY29tZSB1
+cCwgdGhlbiBub3RoaW5nIGlzIGdvaW5nIHRvIGJlDQo+ID4gPiA+ID4gbGlzdGVuaW5nIG9yIHdy
+aXRpbmcgb24gdGhlIHJwY19waXBlZnMgcHNldWRvIGZpbGVzLCBhbmQgc28NCj4gPiA+ID4gPiBn
+c3NkX3J1bm5pbmcoKSByZXR1cm5zIOKAmGZhbHNl4oCZLCB3ZSByZXR1cm4g4oCYRUFDQ0VT4oCZ
+IG9uIGFsbA0KPiA+ID4gPiA+IHVwY2FsbHMNCj4gPiA+ID4gPiBhbmQgYWxsIGlzIGh1bmt5IGRv
+cnkuIFRoaXMgaXMgdGhlIGNhc2UgdG9kYXkgd2l0aCBvciB3aXRob3V0DQo+ID4gPiA+ID4gYW55
+DQo+ID4gPiA+ID4gZnVydGhlciBrZXJuZWwgY2hhbmdlcy4NCj4gPiA+ID4gPiANCj4gPiA+ID4g
+PiBJZiBycGMuZ3NzZCBjcmFzaGVzIGFuZCBhbGwgdGhlIHJwY19waXBlZnMgY29ubmVjdGlvbnMg
+YXJlDQo+ID4gPiA+ID4gY2xvc2VkLCB0aGVuIHdlIGNhbGwgZ3NzX3BpcGVfcmVsZWFzZSgpLCB3
+aGljaCBjYXVzZXMgYWxsDQo+ID4gPiA+ID4gcGVuZGluZw0KPiA+ID4gPiA+IGdzcyBtZXNzYWdl
+cyB0byBleGl0IHdpdGggdGhlIGVycm9yIEVQSVBFLg0KPiA+ID4gPiANCj4gPiA+ID4gUmlnaHQu
+Li4gSW4gdGhvc2UgdHdvIGNhc2VzLCBhIGNyYXNoIG9yIG5vdCBjb21pbmcgdXAsIHdvcmsNCj4g
+PiA+ID4ganVzdA0KPiA+ID4gPiBmaW5lLg0KPiA+ID4gPiBJdHMgdGhlIGNhc2Ugd2hlbiBycGMu
+Z3NzZCBkb2VzIGNvbWUgdXAgYnV0IGhhbmdzIGluIHRoZQ0KPiA+ID4gPiBsaWJrcmI1DQo+ID4g
+PiA+IGNvZGUNCj4gPiA+ID4gb3IgdGhlIGdzc3Byb3h5IGNvZGUuLi4gQWRkaW5nIGEgdGltZW91
+dCBoYW5kbGVzIHRoYXQgY2FzZS4NCj4gPiA+ID4gDQo+ID4gPiA+ID4gDQo+ID4gPiA+ID4gPiAN
+Cj4gPiA+ID4gPiA+ID4gY29uDQo+ID4gPiA+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+ID4gPiA+
+ID4gPiANCj4gPiA+ID4gPiA+ID4gPiA+ID4gPiBDb25jZXJuaW5nIFNpbW/igJlzIGNvbW1lbnQs
+IHRoZSBhbnN3ZXIgaXMgdGhhdCB3ZQ0KPiA+ID4gPiA+ID4gPiA+ID4gPiA+IGRvbuKAmXQgc3Vw
+cG9ydCByZW5lZ290aWF0aW5nIHNlY3VyaXR5IG9uIHRoZSBmbHkNCj4gPiA+ID4gPiA+ID4gPiA+
+ID4gPiBpbg0KPiA+ID4gPiA+ID4gPiA+ID4gPiA+IHRoZSBrZXJuZWwsIGFuZCBpZiB0aGUgdXNl
+ciBzcGVjaWZpZXMgYSBoYXJkDQo+ID4gPiA+ID4gPiA+ID4gPiA+ID4gbW91bnQsDQo+ID4gPiA+
+ID4gPiA+ID4gPiA+ID4gdGhlbiB0aGUgcmVxdWlyZWQga2VybmVsIGJlaGF2aW91ciBpZiBycGMu
+Z3NzZA0KPiA+ID4gPiA+ID4gPiA+ID4gPiA+IGRpZXMNCj4gPiA+ID4gPiA+ID4gPiA+ID4gPiBp
+cyB0byB3YWl0K3JldHJ5IGZvcmV2ZXIgZm9yIHJlY292ZXJ5Lg0KPiA+ID4gPiA+ID4gPiA+ID4g
+PiANCj4gPiA+ID4gPiA+ID4gPiA+ID4gSSBhZ3JlZSB0aGVyZSBzaG91bGQgbm90IGJlICJyZW5l
+Z290aWF0aW5nIHNlY3VyaXR5DQo+ID4gPiA+ID4gPiA+ID4gPiA+IG9uDQo+ID4gPiA+ID4gPiA+
+ID4gPiA+IHRoZSBmbHkiIHdoZW4NCj4gPiA+ID4gPiA+ID4gPiA+ID4gdGhlIHNlY3VyaXR5IGlz
+IHNwZWNpZmllZCB0aGUgbW91bnQgc2hvdWxkIGZhaWwsDQo+ID4gPiA+ID4gPiA+ID4gPiA+IG5v
+dA0KPiA+ID4gPiA+ID4gPiA+ID4gPiBoYW5nLi4uIHdoaWNoDQo+ID4gPiA+ID4gPiA+ID4gPiA+
+IGhhcHBlbnMgdG9kYXkuDQo+ID4gPiA+ID4gPiA+ID4gPiA+IA0KPiA+ID4gPiA+ID4gPiA+ID4g
+PiBXaGVuIGEgc2VjIGlzIG5vdCBzcGVjaWZpZWQsIEkgdGhpbmsgdGhlIG1vdW50DQo+ID4gPiA+
+ID4gPiA+ID4gPiA+IHNob3VsZA0KPiA+ID4gPiA+ID4gPiA+ID4gPiBzdWNjZWVkIHdoZW4NCj4g
+PiA+ID4gPiA+ID4gPiA+ID4gcnBjLmdzc2QgaXMgb2ZmIGluIHRoZSB3b29kLCBhcyBhIHN5cyBz
+ZWMgbW91bnQuDQo+ID4gPiA+ID4gPiA+ID4gPiA+IA0KPiA+ID4gPiA+ID4gPiA+ID4gPiBCdXQg
+Y3VycmVudGx5IHRoZXJlIGlzIG5vICJ3YWl0K3JldHJ5Ii4gVGhlcmUgaXMNCj4gPiA+ID4gPiA+
+ID4gPiA+ID4ganVzdCBhDQo+ID4gPiA+ID4gPiA+ID4gPiA+IHdhaXQuLi4gbm8gcmV0cnkuDQo+
+ID4gPiA+ID4gPiA+ID4gPiA+IFRoaXMgcGF0Y2ggZG9lcyBpbnRyb2R1Y2UgYSByZXRyeS4uLiBi
+dXQgbm90DQo+ID4gPiA+ID4gPiA+ID4gPiA+IGZvcmV2ZXIuDQo+ID4gPiA+ID4gPiA+ID4gPiA+
+IA0KPiA+ID4gPiA+ID4gPiA+ID4gPiBCdXQgSSB0aGluayB3ZSBib3RoIGFncmVlIHRoYXQgcnBj
+Lmdzc2Qgc2hvdWxkIG5vdA0KPiA+ID4gPiA+ID4gPiA+ID4gPiBoYW5nDQo+ID4gPiA+ID4gPiA+
+ID4gPiA+IG1vdW50cw0KPiA+ID4gPiA+ID4gPiA+ID4gPiBmb3JldmVyIHdoZW4gYSBzZWMgaXMg
+bm90IHNwZWNpZmllZC4uLiByaWdodD8NCj4gPiA+ID4gPiA+ID4gPiA+IA0KPiA+ID4gPiA+ID4g
+PiA+ID4gSWYgcnBjLmdzc2QgaXMgdXAgYW5kIHJ1bm5pbmcsIGFuZCBpcyBjb25uZWN0ZWQgdG8N
+Cj4gPiA+ID4gPiA+ID4gPiA+IHJwY19waXBlZnMsIHRoZW4gd2UNCj4gPiA+ID4gPiA+ID4gPiA+
+IHNob3VsZCBub3QgaGFuZy4gSWYgcnBjLmdzc2QgaXMgdXAgYW5kIHJ1bm5pbmcsIGJ1dA0KPiA+
+ID4gPiA+ID4gPiA+ID4gaXMNCj4gPiA+ID4gPiA+ID4gPiA+IGp1c3QgYmVpbmcNCj4gPiA+ID4g
+PiA+ID4gPiA+IHNsb3csIHRoZW4gdGhlIG1vdW50IHNob3VsZCBoYW5nIHVudGlsIGl0IGdldHMg
+YQ0KPiA+ID4gPiA+ID4gPiA+ID4gcmVzcG9uc2UuDQo+ID4gPiA+ID4gPiA+ID4gDQo+ID4gPiA+
+ID4gPiA+ID4gQnV0IGlmIHJwYy5nc3NkIGRvZXMgaGFuZy4uLiBpdCBoYW5ncyBmb3JldmVyLi4u
+IFRoZXJlDQo+ID4gPiA+ID4gPiA+ID4gaXMNCj4gPiA+ID4gPiA+ID4gPiBub3QgdGltZW91dA0K
+PiA+ID4gPiA+ID4gPiA+IGluIHRoZSBrZXJuZWwsIGFuZCBJIHRoaW5raW5nIHRoZXJlIHNob3Vs
+ZCBiZSwgZXNwIGZvcg0KPiA+ID4gPiA+ID4gPiA+IG5vbg0KPiA+ID4gPiA+ID4gPiA+IHNlY3Vy
+ZSBtb3VudHMuDQo+ID4gPiA+ID4gPiA+ID4gDQo+ID4gPiA+ID4gPiA+IA0KPiA+ID4gPiA+ID4g
+PiBJIGRvbid0IHVuZGVyc3RhbmQuIElzIHRoaXMgYnkgZGVzaWduIG9yIGlzIGl0IGEgYnVnPw0K
+PiA+ID4gPiA+ID4gDQo+ID4gPiA+ID4gPiBBIGJ1ZyBpbiB0aGUgdXNlcmxhbmQgc3BhY2UuLi4g
+VGhlIGZsdXggY2FwYWNpdG9yIGJyZWFrcw0KPiA+ID4gPiA+ID4gYW5kDQo+ID4gPiA+ID4gPiBl
+dmVyeXRoaW5nIGhhbmdzLi4uIDotKSANCj4gPiA+ID4gPiA+IA0KPiA+ID4gPiA+ID4gPiANCj4g
+PiA+ID4gPiA+ID4gSWYgaXQgaXMgYnkgZGVzaWduLCB0aGVuIHdoYXQncyB0aGUgcmVhc29uIGZv
+ciB0aGF0DQo+ID4gPiA+ID4gPiA+IGRlc2lnbj8NCj4gPiA+ID4gPiA+ID4gSWYgaXQncyBhDQo+
+ID4gPiA+ID4gPiA+IGJ1ZywgdGhlbiB3aHkgYXJlIHdlIHRhbGtpbmcgYWJvdXQgY2hhbmdpbmcg
+dGhlIGtlcm5lbA0KPiA+ID4gPiA+ID4gPiBpbnN0ZWFkIG9mDQo+ID4gPiA+ID4gPiA+IGZpeGlu
+ZyB0aGUgcHJvYmxlbSBpbiBnc3NkPw0KPiA+ID4gPiA+ID4gDQo+ID4gPiA+ID4gPiBJdHMgZml4
+aW5nIHRoZSBrZXJuZWwgbm90IHRvIGhhbmcgb24gYnVnZ3kgdXNlcmxhbmQgKGFrYQ0KPiA+ID4g
+PiA+ID4ga2VyYmVyb3MpIGFwcHMNCj4gPiA+ID4gPiA+IHdoZW4gd2hlbiB0aG9zZSBhcHBzIGFy
+ZSBub3QgZXZlbiByZXF1aXJlZA0KPiA+ID4gPiA+IA0KPiA+ID4gPiA+IE5vLCBJIGRvbuKAmXQg
+YWNjZXB0IHRoYXQgYXJndW1lbnQuIHJwYy5nc3NkIGlzIGEgZGVkaWNhdGVkDQo+ID4gPiA+ID4g
+cHJvZ3JhbQ0KPiA+ID4gPiA+IHRoYXQgaGFzIGV4YWN0bHkgb25lIHB1cnBvc2U6IHRvIHN1cHBs
+eSB0aGUga2VybmVsIHdpdGggR1NTDQo+ID4gPiA+ID4gc2Vzc2lvbnMgb24gZGVtYW5kIGJlY2F1
+c2UgdGhlIGtlcm5lbCBjYW5ub3QgZG8gc28gaXRzZWxmLiBJZg0KPiA+ID4gPiA+IGl0DQo+ID4g
+PiA+ID4gaGFuZ3MsIHRoZW4gdGhlIGtlcm5lbCBjYW5ub3QgbWFrZSBwcm9ncmVzcywgYW5kIHNv
+IHRoZQ0KPiA+ID4gPiA+IHNlcnZpY2VzDQo+ID4gPiA+ID4gd2hpY2ggZGVwZW5kIG9uIEdTUyB3
+aWxsIGhhbmcgdG9vLg0KPiA+ID4gPiANCj4gPiA+ID4gRmluZS4uLiB3aGVuIHRoZSAtbyBzZWM9
+a3JiNSBpcyBzcGVjaWZpZWQgYWxsIG1vdW50cyBuZWVkZWQNCj4gPiA+ID4gdGhhdA0KPiA+ID4g
+PiBzZXJ2aWNlDQo+ID4gPiA+IHNob3VsZCBoYW5nICh3aGVuIHJwYy5nc3NkIGhhbmdzKS4uLiBJ
+IGFncmVlIHdpdGggdGhhdC4uLiBCdXQNCj4gPiA+ID4gDQo+ID4gPiA+IFRoZSBtb3VudHMgdGhh
+dCBkb24ndCBzcGVjaWZ5IGEgc2VjIHNob3VsZCBub3QgZ2V0IGh1bmcgdXANCj4gPiA+ID4gaW4g
+YSBzZXJ2aWNlIGl0IGlzIG5vdCBhc2tpbmcgZm9yLi4uIElNSE8uLi4gd2hpY2ggaXMgdGhlIGNh
+c2UNCj4gPiA+ID4gdG9kYXkuDQo+ID4gPiANCj4gPiA+IFRoYXQncyB0aGUgb3BlcmF0aW9uYWwg
+aXNzdWUsIGJ1dCBnc3NkIGlzIGNvZGUgd2UgaGF2ZSAxMDAlDQo+ID4gPiBjb250cm9sDQo+ID4g
+PiBvdmVyLiBUaGlzIGlzIG5vdCBhcmJpdHJhcnkgdXNlciBzcGFjZSBjb2RlLiBJIGhhdmUgbGVz
+cyBzeW1wYXRoeQ0KPiA+ID4gd2l0aCB0aGUgImtlcm5lbCBzaG91bGQgd29yayBhcm91bmQgdXNl
+ciBidWdzIiBhcmd1bWVudCBpbiB0aGlzDQo+ID4gPiBjYXNlLg0KPiA+IA0KPiA+IFByZWNpc2Vs
+eS4NCj4gDQo+IEhlbGwuLi4gSSBzYXkgYW55dGhpbmcgSSBuZWVkIHRvIHNheS4uLiA7LSkgWW91
+IGtub3cgdGhhdCEgDQoNCuKYug0KDQo+ID4gDQo+ID4gPiA+ID4gSWYgeW91IHdhbnQgdG8gcHV0
+IGEgcG9saWN5IGFyb3VuZCB0aW1lb3V0cywgdGhlbiBraWxsaW5nDQo+ID4gPiA+ID4gcnBjLmdz
+c2Qgd2lsbCBkbyBqdXN0IGFzIHdlbGwgKHNlZSBhYm92ZSksIHdpbGwgd29yayB3aXRoDQo+ID4g
+PiA+ID4gbGVnYWN5DQo+ID4gPiA+ID4ga2VybmVscywgYW5kIGFsbG93cyB5b3UgdG8ga2VlcCB0
+aGUgcG9saWN5IGVudGlyZWx5IGluDQo+ID4gPiA+ID4gdXNlcmxhbmQuDQo+ID4gPiA+ID4gSU9X
+OiBBZGQgYSB3YXRjaGRvZyB0aW1lciB0aGF0IGtpbGxzIHJwYy5nc3NkIGlmIGl0IGhhbmdzIGFu
+ZA0KPiA+ID4gPiA+IGZhaWxzIHRvIHJlc2V0IHRoZSB0aW1lci4gWW91IGNhbiBldmVuIHB1dCB0
+aGF0IHRpbWVyIGluc2lkZQ0KPiA+ID4gPiA+IHJwYy5nc3NkIGl0c2VsZiAoYWRkIGEgY2FsbCB0
+byBzZXRpdGltZXIoKSBhbmQgYWRkIGEgc2lnbmFsDQo+ID4gPiA+ID4gaGFuZGxlciBmb3IgU0lH
+QUxBUk0gdGhhdCBqdXN0IGtpbGxzIHRoZSBwcm9ncmFtKS4NCj4gPiA+ID4gDQo+ID4gPiA+IFdp
+dGggdGhpcyBhcHByb2FjaCB0aGVyZSBpcyBubyBoaXN0b3J5Li4uIE1lYW5pbmcgd2hlbiB0aGUg
+DQo+ID4gPiA+IFNJR0FMQVJNIHBvcHMsIHRoZSB0aHJlYWQgd2lsbCBub3Qga25vdyBpZiBpdCBv
+ciBpcyBub3QgDQo+ID4gPiA+IG1ha2luZyBwcm9jZXNzLi4uIFdpdGggdGltZW91dHMgdGhlcmUg
+aXMgaGlzdG9yeSBiZWNhdXNlIA0KPiA+ID4gPiB0aGVyZSBoYXMgYmVlbiB0aW1lb3V0cyBhbmQg
+cmV0cmllcy4uLiANCj4gPiANCj4gPiAuLi5hbmQgUE9MSUNZLCB3aGljaCB3ZSBkbyBvdXIgdmVy
+eSB2ZXJ5IGJlc3QgdG8ga2VlcCBvdXQgb2YgdGhlDQo+ID4ga2VybmVsLiBUaGUgcHJvYmxlbSBo
+ZXJlIGlzIHRoYXQgYXMgc29vbiBhcyB3ZSBhZGQgeWV0IGFub3RoZXINCj4gPiB0aW1lb3V0LA0K
+PiA+IHRoZXJlIGlzIGFsd2F5cyBzb21lb25lIHNvbWV3aGVyZSB3aG8gd2FudHMgdG8gdHdlYWsg
+dGhlIHRpbWVvdXQNCj4gPiBwb2xpY3kuDQo+IA0KPiBJJ2xsIGhhdmUgeW91IGtub3cuLi4gSSBz
+Y2llbnRpZmljYWxseSBwaWNrIHRoYXQgdGltZW91dCB2YWx1ZSEgOC0pDQo+ICANCj4gPiANCj4g
+PiBOb3cgZm9yIHNvbWUgdGhpbmdzLCBpdCBpcyBoYXJkIHRvIGF2b2lkIHB1dHRpbmcgdGhlIHBv
+bGljeSBpbiB0aGUNCj4gPiBrZXJuZWwgKGUuZy4gYXR0cmlidXRlIGNhY2hlIHRpbWVvdXQgY29u
+dHJvbCkuIFdpdGggb3RoZXIgdGhpbmdzLA0KPiA+IGxpa2UNCj4gPiB0aGlzLCB3ZSBoYXZlIGEg
+Y2hvaWNlIG9mIGltcGxlbWVudGluZyB0aGUgcG9saWN5IGluIHVzZXJsYW5kLA0KPiA+IHdoZXJl
+IGl0DQo+ID4gaXMgZWFzeSB0byBhZGQgdHdlYWtzLCBhbmQgdGhlbiBwdXR0aW5nIHJlYWxseSBk
+dW1iIGNvbnRyb2xzIGluIHRoZQ0KPiA+IGtlcm5lbCAoaS5lLiBpcyBzb21lb25lIGxpc3Rlbmlu
+ZyBvbiB0aGUgcnBjX3BpcGVmcyBwc2V1ZG9maWxlcyBvcg0KPiA+IHNob3VsZCBJIHJlcG9ydCBh
+biBlcnJvcikuDQo+ID4gV2UgYWxyZWFkeSBoYXZlIHRob3NlIGR1bWIgY29udHJvbHMgaW4gdGhl
+IGtlcm5lbC4gVGhlIGJpdCB3ZQ0KPiA+IGhhdmVuJ3QNCj4gPiBpbXBsZW1lbnRlZCBpcyB0aGUg
+dHdlYWsgcG9saWN5IGluIHVzZXJsYW5kLg0KPiANCj4gU28gYXJlIHlvdSBzYXlpbmcgaWYgdGhl
+IHRpbWVvdXQgdmFsdWUgaW4gdGhlIGtlcm5lbCBmcm9tDQo+IHVzZXJsYW5kLCB5b3UgYXJlIGdv
+b2Qgd2l0aCBkb2luZyB0aGUgdGltZW91dCBpbiB0aGUga2VybmVsPw0KPiANCg0KTm8uIEknbSBz
+YXlpbmcgdGhhdCBJJ20gc2ljayBvZiBoYXZpbmcgdG8gcGFzcyBpbiBtb3JlIGFuZCBtb3JlDQp0
+aW1lb3V0cyB0byB0aGUga2VybmVsLiBXZSBhbHJlYWR5IGhhdmUgc2V2ZXJhbCBkaWZmZXJlbnQg
+bW91bnQNCm9wdGlvbnMsIHNldmVyYWwgbW9kdWxlIHBhcmFtZXRlcnMuIEhlcmUncyBhIGNoYWxs
+ZW5nZTogc2VlIGlmIHlvdSBjYW4NCmVudW1lcmF0ZSB0aGVtIGFsbC4NCg0KSSdtIHNheWluZyB0
+aGF0IHdlIGNhbiBkbyB0aGlzIGVudGlyZWx5IGluIHVzZXJsYW5kIHdpdGhvdXQgYW55IGtlcm5l
+bA0KY2hhbmdlcy4gQXMgbG9uZyBhcyB0aGF0IGhhc24ndCBiZWVuIGF0dGVtcHRlZCBhbmQgcHJv
+dmVuIHRvIGJlIGZsYXdlZCwNCnRoZW4gdGhlcmUgaXMgbm8gcmVhc29uIHRvIGFjY2VwdCBhbnkg
+a2VybmVsIHBhdGNoZXMuDQoNCj4gc3RldmVkLg0KPiANCj4gPiANCj4gPiANCj4gPiA+ID4gSG93
+IGFib3V0IHRoaXMuLi4gV2hlbiB0aGUgdGltZW91dCBvY2N1cnMgYW5kIHRoZSAtbyBzZWMgd2Fz
+DQo+ID4gPiA+IG5vdCBzcGVjaWZpZWQsIHRoZSBtb3VudCB3aWxsIHN0aWxsIGZhaWwgaW5zdGVh
+ZCBvZiBiZWNvbWluZyBhIA0KPiA+ID4gPiBhdXRoX3N5cyBtb3VudC4gVGhpcyB3b3VsZCB0ZWxs
+IG1vdW50IHRoZXJlIGlzIGEgcHJvYmxlbQ0KPiA+ID4gPiBhbmQgaGF2ZSBpdCBkbyB0aGUgYXBw
+cm9wcmlhdGUgdGhpbmcsIHdoYXRldmVyIHRoYXQgaXMuDQo+ID4gPiA+IA0KPiA+ID4gPiBCYXNp
+Y2FsbHkgaGF2ZSB0aGUga2VybmVsIHNheXMgIkhvdXN0b24gd2UgaGF2ZSBhIHByb2JsZW0iDQo+
+ID4gPiA+IHRoZW4gbGV0IEhvdXN0b24gZ28gZml4IGl0Li4uIDotKQ0KPiA+ID4gDQo+ID4gPiBQ
+aGlsb3NvcGhpY2FsIGFncmVlbWVudCB0aGF0IGEgcHJvYmxlbSBzaG91bGQgYmUgcmVwb3J0ZWQN
+Cj4gPiA+IHdoZW5ldmVyDQo+ID4gPiB0aGUga2VybmVsIGV4cGVjdHMgYSBxdWljayByZXBseSBh
+bmQgZG9lcyBub3QgZ2V0IG9uZS4gV2l0aG91dA0KPiA+ID4gdGhhdA0KPiA+ID4gaXQgaXMgZGlm
+ZmljdWx0IHRvIGFkZHJlc3Mgb3BlcmF0aW9uYWwgcHJvYmxlbXMgaW4gZ3NzZCAoZWl0aGVyDQo+
+ID4gPiBsb2NhbCBjb25maWd1cmF0aW9uIGlzc3VlcywgbmV0d29yayBmYWlsdXJlcywgb3IgcmVh
+bCBidWdzKS4NCj4gDQo+IC0tDQo+IFRvIHVuc3Vic2NyaWJlIGZyb20gdGhpcyBsaXN0OiBzZW5k
+IHRoZSBsaW5lICJ1bnN1YnNjcmliZSBsaW51eC1uZnMiDQo+IGluDQo+IHRoZSBib2R5IG9mIGEg
+bWVzc2FnZSB0byBtYWpvcmRvbW9Admdlci5rZXJuZWwub3JnDQo+IE1vcmUgbWFqb3Jkb21vIGlu
+Zm8gYXQgIGh0dHA6Ly92Z2VyLmtlcm5lbC5vcmcvbWFqb3Jkb21vLWluZm8uaHRtbA0KLS0gDQpU
+cm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lciwgSGFtbWVyc3BhY2UN
+CnRyb25kLm15a2xlYnVzdEBoYW1tZXJzcGFjZS5jb20NCg0K
