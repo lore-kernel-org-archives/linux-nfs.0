@@ -1,146 +1,203 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-sn1nam02on0124.outbound.protection.outlook.com ([104.47.36.124]:16128
-        "EHLO NAM02-SN1-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1752645AbeFYQp6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 25 Jun 2018 12:45:58 -0400
-From: Trond Myklebust <trondmy@hammerspace.com>
-To: "chucklever@gmail.com" <chucklever@gmail.com>
-CC: "bfields@fieldses.org" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "manjunath.b.patil@oracle.com" <manjunath.b.patil@oracle.com>
+Received: from userp2120.oracle.com ([156.151.31.85]:54284 "EHLO
+        userp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1754918AbeFYRDS (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Jun 2018 13:03:18 -0400
 Subject: Re: [PATCH 2/2] nfsd: return ENOSPC if unable to allocate a session
  slot
-Date: Mon, 25 Jun 2018 16:45:55 +0000
-Message-ID: <3ab59d77e9e3a9d462a07d09964cdfc1e491f998.camel@hammerspace.com>
+To: Chuck Lever <chucklever@gmail.com>,
+        Trond Myklebust <trondmy@hammerspace.com>
+Cc: Bruce Fields <bfields@fieldses.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
 References: <1529598933-16506-1-git-send-email-manjunath.b.patil@oracle.com>
-         <1529598933-16506-2-git-send-email-manjunath.b.patil@oracle.com>
-         <20180622175416.GA7119@fieldses.org>
-         <148E65CF-D3D4-4E43-A190-822C5F7824B9@gmail.com>
-         <180d25ce5474539f15a84a23258d15c71ec11ad9.camel@hammerspace.com>
-         <B3031B82-6CCC-4A11-938F-AD052CC360CD@gmail.com>
-         <d60d8566d215a70d63a31faf8da9ea9126324fa9.camel@hammerspace.com>
-         <1131E2BE-162D-45BB-BC24-49097733ACC3@gmail.com>
-In-Reply-To: <1131E2BE-162D-45BB-BC24-49097733ACC3@gmail.com>
-Content-Type: text/plain; charset="utf-8"
+ <1529598933-16506-2-git-send-email-manjunath.b.patil@oracle.com>
+ <20180622175416.GA7119@fieldses.org>
+ <148E65CF-D3D4-4E43-A190-822C5F7824B9@gmail.com>
+ <180d25ce5474539f15a84a23258d15c71ec11ad9.camel@hammerspace.com>
+ <B3031B82-6CCC-4A11-938F-AD052CC360CD@gmail.com>
+ <d60d8566d215a70d63a31faf8da9ea9126324fa9.camel@hammerspace.com>
+ <1131E2BE-162D-45BB-BC24-49097733ACC3@gmail.com>
+From: Manjunath Patil <manjunath.b.patil@oracle.com>
+Message-ID: <3ab9ddf4-f51a-12f0-8d33-256c2bded552@oracle.com>
+Date: Mon, 25 Jun 2018 10:03:10 -0700
 MIME-Version: 1.0
+In-Reply-To: <1131E2BE-162D-45BB-BC24-49097733ACC3@gmail.com>
+Content-Type: text/plain; charset=utf-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDE4LTA2LTI1IGF0IDExOjM5IC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
-PiBPbiBKdW4gMjQsIDIwMTgsIGF0IDk6NTYgQU0sIFRyb25kIE15a2xlYnVzdCA8dHJvbmRteUBo
-YW1tZXJzcGFjZS5jDQo+ID4gb20+IHdyb3RlOg0KPiA+IA0KPiA+IE9uIFNhdCwgMjAxOC0wNi0y
-MyBhdCAxNTowMCAtMDQwMCwgQ2h1Y2sgTGV2ZXIgd3JvdGU6DQo+ID4gPiA+IE9uIEp1biAyMiwg
-MjAxOCwgYXQgNjozMSBQTSwgVHJvbmQgTXlrbGVidXN0IDx0cm9uZG15QGhhbW1lcnNwYQ0KPiA+
-ID4gPiBjZS5jDQo+ID4gPiA+IG9tPiB3cm90ZToNCj4gPiA+ID4gDQo+ID4gPiA+IE9uIEZyaSwg
-MjAxOC0wNi0yMiBhdCAxNzo0OSAtMDQwMCwgQ2h1Y2sgTGV2ZXIgd3JvdGU6DQo+ID4gPiA+ID4g
-SGkgQnJ1Y2UtDQo+ID4gPiA+ID4gDQo+ID4gPiA+ID4gDQo+ID4gPiA+ID4gPiBPbiBKdW4gMjIs
-IDIwMTgsIGF0IDE6NTQgUE0sIEouIEJydWNlIEZpZWxkcyA8YmZpZWxkc0BmaWVsZA0KPiA+ID4g
-PiA+ID4gc2VzLg0KPiA+ID4gPiA+ID4gb3JnPg0KPiA+ID4gPiA+ID4gd3JvdGU6DQo+ID4gPiA+
-ID4gPiANCj4gPiA+ID4gPiA+IE9uIFRodSwgSnVuIDIxLCAyMDE4IGF0IDA0OjM1OjMzUE0gKzAw
-MDAsIE1hbmp1bmF0aCBQYXRpbA0KPiA+ID4gPiA+ID4gd3JvdGU6DQo+ID4gPiA+ID4gPiA+IFBy
-ZXNlbnRseSBuZnNlcnJfanVrZWJveCBpcyBiZWluZyByZXR1cm5lZCBieSBuZnNkIGZvcg0KPiA+
-ID4gPiA+ID4gPiBjcmVhdGVfc2Vzc2lvbg0KPiA+ID4gPiA+ID4gPiByZXF1ZXN0IGlmIHNlcnZl
-ciBpcyB1bmFibGUgdG8gYWxsb2NhdGUgYSBzZXNzaW9uIHNsb3QuDQo+ID4gPiA+ID4gPiA+IFRo
-aXMNCj4gPiA+ID4gPiA+ID4gbWF5DQo+ID4gPiA+ID4gPiA+IGJlDQo+ID4gPiA+ID4gPiA+IHRy
-ZWF0ZWQgYXMgTkZTNEVSUl9ERUxBWSBieSB0aGUgY2xpZW50cyBhbmQgd2hpY2ggbWF5DQo+ID4g
-PiA+ID4gPiA+IGNvbnRpbnVlIHRvDQo+ID4gPiA+ID4gPiA+IHJlLXRyeQ0KPiA+ID4gPiA+ID4g
-PiBjcmVhdGVfc2Vzc2lvbiBpbiBsb29wIGxlYWRpbmcgTkZTdjQuMSsgbW91bnRzIGluIGh1bmcN
-Cj4gPiA+ID4gPiA+ID4gc3RhdGUuDQo+ID4gPiA+ID4gPiA+IG5mc2QNCj4gPiA+ID4gPiA+ID4g
-c2hvdWxkIHJldHVybiBuZnNlcnJfbm9zcGMgaW4gdGhpcyBjYXNlIGFzIHBlcg0KPiA+ID4gPiA+
-ID4gPiByZmM1NjYxKHNlY3Rpb24tDQo+ID4gPiA+ID4gPiA+IDE4LjM2LjQNCj4gPiA+ID4gPiA+
-ID4gc3VicG9pbnQgNC4gU2Vzc2lvbiBjcmVhdGlvbikuDQo+ID4gPiA+ID4gPiANCj4gPiA+ID4g
-PiA+IEkgZG9uJ3QgdGhpbmsgdGhlIHNwZWMgYWN0dWFsbHkgZ2l2ZXMgdXMgYW4gZXJyb3IgdGhh
-dCB3ZQ0KPiA+ID4gPiA+ID4gY2FuDQo+ID4gPiA+ID4gPiB1c2UNCj4gPiA+ID4gPiA+IHRvIHNh
-eQ0KPiA+ID4gPiA+ID4gYSBDUkVBVEVfU0VTU0lPTiBmYWlsZWQgcGVybWFuZW50bHkgZm9yIGxh
-Y2sgb2YgcmVzb3VyY2VzLg0KPiA+ID4gPiA+IA0KPiA+ID4gPiA+IFRoZSBjdXJyZW50IHNpdHVh
-dGlvbiBpcyB0aGF0IHRoZSBzZXJ2ZXIgcmVwbGllcw0KPiA+ID4gPiA+IE5GUzRFUlJfREVMQVks
-DQo+ID4gPiA+ID4gYW5kIHRoZSBjbGllbnQgcmV0cmllcyBpbmRlZmluaXRlbHkuIFRoZSBnb2Fs
-IGlzIHRvIGxldCB0aGUNCj4gPiA+ID4gPiBjbGllbnQgY2hvb3NlIHdoZXRoZXIgaXQgd2FudHMg
-dG8gdHJ5IHRoZSBDUkVBVEVfU0VTU0lPTg0KPiA+ID4gPiA+IGFnYWluLA0KPiA+ID4gPiA+IHRy
-eSBhIGRpZmZlcmVudCBORlMgdmVyc2lvbiwgb3IgZmFpbCB0aGUgbW91bnQgcmVxdWVzdC4NCj4g
-PiA+ID4gPiANCj4gPiA+ID4gPiBCaWxsIGFuZCBJIGJvdGggbG9va2VkIGF0IHRoaXMgc2VjdGlv
-biBvZiBSRkMgNTY2MS4gSXQgc2VlbXMNCj4gPiA+ID4gPiB0bw0KPiA+ID4gPiA+IHVzIHRoYXQg
-dGhlIHVzZSBvZiBORlM0RVJSX05PU1BDIGlzIGFwcHJvcHJpYXRlIGFuZA0KPiA+ID4gPiA+IHVu
-YW1iaWd1b3VzDQo+ID4gPiA+ID4gaW4gdGhpcyBzaXR1YXRpb24sIGFuZCBpdCBpcyBhbiBhbGxv
-d2VkIHN0YXR1cyBmb3IgdGhlDQo+ID4gPiA+ID4gQ1JFQVRFX1NFU1NJT04gb3BlcmF0aW9uLiBO
-RlM0RVJSX0RFTEFZIE9UT0ggaXMgbm90IGhlbHBmdWwuDQo+ID4gPiA+IA0KPiA+ID4gPiBUaGVy
-ZSBhcmUgYSByYW5nZSBvZiBlcnJvcnMgd2hpY2ggd2UgbWF5IG5lZWQgdG8gaGFuZGxlIGJ5DQo+
-ID4gPiA+IGRlc3Ryb3lpbmcNCj4gPiA+ID4gdGhlIHNlc3Npb24sIGFuZCB0aGVuIGNyZWF0aW5n
-IGEgbmV3IG9uZSAobWFpbmx5IHRoZSBvbmVzIHdoZXJlDQo+ID4gPiA+IHRoZQ0KPiA+ID4gPiBj
-bGllbnQgYW5kIHNlcnZlciBzbG90IGhhbmRsaW5nIGdldCBvdXQgb2Ygc3luYykuIFRoYXQncyB3
-aHkNCj4gPiA+ID4gcmV0dXJuaW5nDQo+ID4gPiA+IE5GUzRFUlJfTk9TUEMgaW4gcmVzcG9uc2Ug
-dG8gQ1JFQVRFX1NFU1NJT04gaXMgdW5oZWxwZnVsLCBhbmQNCj4gPiA+ID4gaXMNCj4gPiA+ID4g
-d2h5DQo+ID4gPiA+IHRoZSBvbmx5IHNhbmUgcmVzcG9uc2UgYnkgdGhlIGNsaWVudCB3aWxsIGJl
-IHRvIHRyZWF0IGl0IGFzIGENCj4gPiA+ID4gdGVtcG9yYXJ5DQo+ID4gPiA+IGVycm9yLg0KPiA+
-ID4gPiBJT1c6IHRoZXNlIHBhdGNoZXMgd2lsbCBub3QgYmUgYWNjZXB0YWJsZSwgZXZlbiB3aXRo
-IGEgcmV3cml0ZSwNCj4gPiA+ID4gYXMNCj4gPiA+ID4gdGhleQ0KPiA+ID4gPiBhcmUgYmFzZWQg
-b24gYSBmbGF3ZWQgYXNzdW1wdGlvbi4NCj4gPiA+IA0KPiA+ID4gRmFpciBlbm91Z2guIFdlJ3Jl
-IG5vdCBhdHRhY2hlZCB0byBhbnkgcGFydGljdWxhciBzb2x1dGlvbi9maXguDQo+ID4gPiANCj4g
-PiA+IFNvIGxldCdzIHRha2UgInJlY292ZXJ5IG9mIGFuIGFjdGl2ZSBtb3VudCIgb3V0IG9mIHRo
-ZSBwaWN0dXJlDQo+ID4gPiBmb3IgYSBtb21lbnQuDQo+ID4gPiANCj4gPiA+IFRoZSBuYXJyb3cg
-cHJvYmxlbSBpcyBiZWhhdmlvcmFsOiBkdXJpbmcgaW5pdGlhbCBjb250YWN0IHdpdGggYW4NCj4g
-PiA+IHVuZmFtaWxpYXIgc2VydmVyLCB0aGUgc2VydmVyIGNhbiBob2xkIG9mZiBhIGNsaWVudCBp
-bmRlZmluaXRlbHkNCj4gPiA+IGJ5IHNlbmRpbmcgTkZTNEVSUl9ERUxBWSBmb3IgZXhhbXBsZSB1
-bnRpbCBhbm90aGVyIGNsaWVudA0KPiA+ID4gdW5tb3VudHMuDQo+ID4gPiBXZSB3YW50IHRvIGZp
-bmQgYSB3YXkgdG8gYWxsb3cgY2xpZW50cyB0byBtYWtlIHByb2dyZXNzIHdoZW4gYQ0KPiA+ID4g
-c2VydmVyIGlzIHNob3J0IG9mIHJlc291cmNlcy4NCj4gPiA+IA0KPiA+ID4gSXQgYXBwZWFycyB0
-aGF0IHRoZSBtb3VudCgyKSBzeXN0ZW0gY2FsbCBkb2VzIG5vdCByZXR1cm4gYXMgbG9uZw0KPiA+
-ID4gYXMgdGhlIHNlcnZlciBpcyBzdGlsbCByZXR1cm5pbmcgTkZTNEVSUl9ERUxBWS4gUG9zc2li
-bHkgdXNlcg0KPiA+ID4gc3BhY2UgaXMgbmV2ZXIgZ2l2ZW4gYW4gb3Bwb3J0dW5pdHkgdG8gc3Rv
-cCByZXRyeWluZywgYW5kIHRodXMNCj4gPiA+IG1vdW50Lm5mcyBnZXRzIHN0dWNrLg0KPiA+ID4g
-DQo+ID4gPiBJdCBhcHBlYXJzIHRoYXQgREVMQVkgaXMgT0sgZm9yIEVYQ0hBTkdFX0lEIHRvby4g
-U28gaWYgYSBzZXJ2ZXINCj4gPiA+IGRlY2lkZXMgdG8gcmV0dXJuIERFTEFZIHRvIEVYQ0hBTkdF
-X0lELCBJIHdvbmRlciBpZiBvdXIgY2xpZW50J3MNCj4gPiA+IHRydW5raW5nIGRldGVjdGlvbiB3
-b3VsZCBiZSBoYW1zdHJ1bmcgYnkgb25lIGJhZCBzZXJ2ZXIuLi4NCj4gPiANCj4gPiBUaGUgJ21v
-dW50JyBwcm9ncmFtIGhhcyB0aGUgJ3JldHJ5JyBvcHRpb24gaW4gb3JkZXIgdG8gc2V0IGENCj4g
-PiB0aW1lb3V0DQo+ID4gZm9yIHRoZSBtb3VudCBvcGVyYXRpb24gaXRzZWxmLiBJcyB0aGF0IG9w
-dGlvbiBub3Qgd29ya2luZw0KPiA+IGNvcnJlY3RseT8NCj4gDQo+IE1hbmp1bmF0aCB3aWxsIG5l
-ZWQgdG8gY29uZmlybSB0aGF0LCBidXQgbXkgdW5kZXJzdGFuZGluZyBpcyB0aGF0DQo+IG1vdW50
-Lm5mcyBpcyBub3QgcmVnYWluaW5nIGNvbnRyb2wgd2hlbiB0aGUgc2VydmVyIHJldHVybnMgREVM
-QVkNCj4gdG8gQ1JFQVRFX1NFU1NJT04uIE15IGNvbmNsdXNpb24gd2FzIHRoYXQgbW91bnQoMikg
-aXMgbm90IHJldHVybmluZy4NCj4gDQo+IA0KPiA+IElmIHNvLCB3ZSBzaG91bGQgZGVmaW5pdGVs
-eSBmaXggdGhhdC4NCj4gDQo+IE15IHJlY29sbGVjdGlvbiBpcyB0aGF0IG1vdW50Lm5mcyBwb2xs
-cywgaXQgZG9lcyBub3Qgc2V0IGEgdGltZXINCj4gc2lnbmFsLiBTbyBpdCB3aWxsIGNhbGwgbW91
-bnQoMikgcmVwZWF0ZWRseSB1bnRpbCBlaXRoZXIgInJldHJ5Ig0KPiBtaW51dGVzIGhhcyBwYXNz
-ZWQsIG9yIG1vdW50KDIpIHN1Y2NlZWRzLiBJIGRvbid0IHRoaW5rIGl0IHdpbGwNCj4gZGVhbCB3
-aXRoIG1vdW50KDIpIG5vdCByZXR1cm5pbmcsIGJ1dCBJIGNvdWxkIGJlIHdyb25nIGFib3V0IHRo
-YXQuDQo+IA0KPiBNeSBwcmVmZXJlbmNlIHdvdWxkIGJlIHRvIG1ha2UgdGhlIGtlcm5lbCBtb3Jl
-IHJlbGlhYmxlIChpZSBtb3VudCgyKQ0KPiBmYWlscyBpbW1lZGlhdGVseSBpbiB0aGlzIGNhc2Up
-LiBUaGF0IGdpdmVzIG1vdW50Lm5mcyBzb21lIHRpbWUgdG8NCj4gdHJ5IG90aGVyIHRoaW5ncyAo
-bGlrZSwgdHJ5IHRoZSBvcmlnaW5hbCBtb3VudCBhZ2FpbiBhZnRlciBhIGZldw0KPiBtb21lbnRz
-LCBvciBmYWxsIGJhY2sgdG8gTkZTdjQuMCwgb3IgZmFpbCkuDQoNCkZhbGxpbmcgYmFjayB0byBO
-RlN2NC4wIGlzIGFsc28gd3JvbmcgaW4gdGhpcyBjYXNlLiA0LjAgcmVsaWVzIG9uIHRoZQ0KRFJD
-IGZvciByZXBsYXkgcHJvdGVjdGlvbiBhZ2FpbnN0IGFsbCBub24tc3RhdGVmdWwgbm9uaWRlbXBv
-dGVudA0Kb3BlcmF0aW9ucyAoaS5lLiBta2RpcigpLCB1bmxpbmsoKSwgcmVuYW1lKCksIC4uLiku
-DQoNCklmIHlvdSB3YW50IHRvIG1ha2UgRU5PU1BDIGEgZmF0YWwgZXJyb3IsIHRoZW4gdGhhdCBt
-ZWFucyB5b3UgbmVlZCB0bw0KZWR1Y2F0ZSB1c2VycyBhYm91dCB0aGUgcmVtZWRpZXMsIGFuZCBJ
-IGNhbid0IHNlZSB0aGF0IHdlJ3JlIGFncmVlaW5nDQpvbiB3aGF0IGNvbnN0aXR1dGVzIHRoZSBy
-aWdodCByZW1lZHkgaGVyZS4gU28gaSBkaXNhZ3JlZSB0aGF0IGl0IGlzIE9LDQp0byBleHBvc2Ug
-dGhpcyBwYXJ0aWN1bGFyIGVycm9yIHRvIHVzZXJsYW5kIGZvciBub3cuDQoNCkknbSBPSyB3aXRo
-IGZpeGluZydyZXRyeT0nLCBidXQgdGhhdCdzIGJlY2F1c2UgaXQgaXMgYSB3ZWxsIGRlZmluZWQN
-CmNvbnRyb2wgbWVjaGFuaXNtLg0KDQo+IFdlIGRvbid0IHdhbnQgbW91bnQubmZzIHRvIHdhaXQg
-Zm9yIHRoZSBmdWxsIHJldHJ5PSB3aGlsZSBkb2luZw0KPiBub3RoaW5nIGVsc2UuIFRoYXQgd291
-bGQgbWFrZSB0aGlzIHBhcnRpY3VsYXIgZmFpbHVyZSBtb2RlIGJlaGF2ZQ0KPiBkaWZmZXJlbnRs
-eSB0aGFuIGFsbCB0aGUgb3RoZXIgbW9kZXMgd2UgaGF2ZSBoYWQsIGhpc3RvcmljYWxseSwgSUlV
-Qy4NCj4gDQo+IEFsc28sIEkgYWdyZWUgd2l0aCBCcnVjZSB0aGF0IHRoZSBzZXJ2ZXIgc2hvdWxk
-IG1ha2UgQ1JFQVRFX1NFU1NJT04NCj4gbGVzcyBsaWtlbHkgdG8gZmFpbC4gVGhhdCB3b3VsZCBh
-bHNvIGJlbmVmaXQgc3RhdGUgcmVjb3ZlcnkuDQo+IA0KPiANCj4gPiBXZSBtaWdodCBhbHNvIHdh
-bnQgdG8gbG9vayBpbnRvIG1ha2luZyBpdCB0YWtlIHZhbHVlcyA8IDEgbWludXRlLg0KPiA+IFRo
-YXQNCj4gPiBjb3VsZCBiZSBhY2NvbXBsaXNoZWQgZWl0aGVyIGJ5IGV4dGVuZGluZyB0aGUgc3lu
-dGF4IG9mIHRoZSAncmV0cnknDQo+ID4gb3B0aW9uIChlLmcuOiAncmV0cnk9PG1pbnV0ZXM+Ojxz
-ZWNvbmRzPicpIG9yIGJ5IGFkZGluZyBhIG5ldw0KPiA+IG9wdGlvbg0KPiA+IChlLmcuICdzcmV0
-cnk9PHNlY29uZHM+JykuDQo+ID4gDQo+ID4gSXQgd291bGQgdGhlbiBiZSB1cCB0byB0aGUgY2Fs
-bGVyIG9mIG1vdW50IHRvIGRlY2lkZSB0aGUgcG9saWN5IG9mDQo+ID4gd2hhdA0KPiA+IHRvIGRv
-IGFmdGVyIGEgdGltZW91dC4NCj4gDQo+IEkgYWdyZWUgdGhhdCB0aGUgY2FsbGVyIG9mIG1vdW50
-KDIpIHNob3VsZCBiZSBhbGxvd2VkIHRvIHByb3ZpZGUgdGhlDQo+IHBvbGljeS4NCj4gDQo+IA0K
-PiA+IFJlbmVnb3RpYXRpb24gZG93bndhcmQgdG8gTkZTdjMgbWlnaHQgYmUgYW4NCj4gPiBvcHRp
-b24sIGJ1dCBpdCdzIG5vdCBzb21ldGhpbmcgdGhhdCBtb3N0IHBlb3BsZSB3YW50IHRvIGRvIGlu
-IHRoZQ0KPiA+IGNhc2UNCj4gPiB3aGVyZSB0aGVyZSBhcmUgbG90cyBvZiBjbGllbnRzIGNvbXBl
-dGluZyBmb3IgcmVzb3VyY2VzIHNpbmNlDQo+ID4gdGhhdCdzDQo+ID4gcHJlY2lzZWx5IHRoZSBy
-ZWdpbWUgd2hlcmUgdGhlIE5GU3YzIERSQyBzY2hlbWUgYnJlYWtzIGRvd24gKGxvdHMNCj4gPiBv
-Zg0KPiA+IGRpc2Nvbm5lY3Rpb25zLCBjb21iaW5lZCB3aXRoIGEgaGlnaCB0dXJub3ZlciBvZiBE
-UkMgc2xvdHMpLg0KPiANCj4gLS0NCj4gQ2h1Y2sgTGV2ZXINCj4gY2h1Y2tsZXZlckBnbWFpbC5j
-b20NCj4gDQo+IA0KPiANCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpDVE8sIEhhbW1lcnNwYWNlIElu
-Yw0KNDMwMCBFbCBDYW1pbm8gUmVhbCwgU3VpdGUgMTA1DQpMb3MgQWx0b3MsIENBIDk0MDIyDQp3
-d3cuaGFtbWVyLnNwYWNlDQo=
+On 6/25/2018 8:39 AM, Chuck Lever wrote:
+
+>
+>> On Jun 24, 2018, at 9:56 AM, Trond Myklebust <trondmy@hammerspace.com> wrote:
+>>
+>> On Sat, 2018-06-23 at 15:00 -0400, Chuck Lever wrote:
+>>>> On Jun 22, 2018, at 6:31 PM, Trond Myklebust <trondmy@hammerspace.c
+>>>> om> wrote:
+>>>>
+>>>> On Fri, 2018-06-22 at 17:49 -0400, Chuck Lever wrote:
+>>>>> Hi Bruce-
+>>>>>
+>>>>>
+>>>>>> On Jun 22, 2018, at 1:54 PM, J. Bruce Fields <bfields@fieldses.
+>>>>>> org>
+>>>>>> wrote:
+>>>>>>
+>>>>>> On Thu, Jun 21, 2018 at 04:35:33PM +0000, Manjunath Patil
+>>>>>> wrote:
+>>>>>>> Presently nfserr_jukebox is being returned by nfsd for
+>>>>>>> create_session
+>>>>>>> request if server is unable to allocate a session slot. This
+>>>>>>> may
+>>>>>>> be
+>>>>>>> treated as NFS4ERR_DELAY by the clients and which may
+>>>>>>> continue to
+>>>>>>> re-try
+>>>>>>> create_session in loop leading NFSv4.1+ mounts in hung state.
+>>>>>>> nfsd
+>>>>>>> should return nfserr_nospc in this case as per
+>>>>>>> rfc5661(section-
+>>>>>>> 18.36.4
+>>>>>>> subpoint 4. Session creation).
+>>>>>> I don't think the spec actually gives us an error that we can
+>>>>>> use
+>>>>>> to say
+>>>>>> a CREATE_SESSION failed permanently for lack of resources.
+>>>>> The current situation is that the server replies NFS4ERR_DELAY,
+>>>>> and the client retries indefinitely. The goal is to let the
+>>>>> client choose whether it wants to try the CREATE_SESSION again,
+>>>>> try a different NFS version, or fail the mount request.
+>>>>>
+>>>>> Bill and I both looked at this section of RFC 5661. It seems to
+>>>>> us that the use of NFS4ERR_NOSPC is appropriate and unambiguous
+>>>>> in this situation, and it is an allowed status for the
+>>>>> CREATE_SESSION operation. NFS4ERR_DELAY OTOH is not helpful.
+>>>> There are a range of errors which we may need to handle by
+>>>> destroying
+>>>> the session, and then creating a new one (mainly the ones where the
+>>>> client and server slot handling get out of sync). That's why
+>>>> returning
+>>>> NFS4ERR_NOSPC in response to CREATE_SESSION is unhelpful, and is
+>>>> why
+>>>> the only sane response by the client will be to treat it as a
+>>>> temporary
+>>>> error.
+>>>> IOW: these patches will not be acceptable, even with a rewrite, as
+>>>> they
+>>>> are based on a flawed assumption.
+>>> Fair enough. We're not attached to any particular solution/fix.
+>>>
+>>> So let's take "recovery of an active mount" out of the picture
+>>> for a moment.
+>>>
+>>> The narrow problem is behavioral: during initial contact with an
+>>> unfamiliar server, the server can hold off a client indefinitely
+>>> by sending NFS4ERR_DELAY for example until another client unmounts.
+>>> We want to find a way to allow clients to make progress when a
+>>> server is short of resources.
+>>>
+>>> It appears that the mount(2) system call does not return as long
+>>> as the server is still returning NFS4ERR_DELAY. Possibly user
+>>> space is never given an opportunity to stop retrying, and thus
+>>> mount.nfs gets stuck.
+>>>
+>>> It appears that DELAY is OK for EXCHANGE_ID too. So if a server
+>>> decides to return DELAY to EXCHANGE_ID, I wonder if our client's
+>>> trunking detection would be hamstrung by one bad server...
+>> The 'mount' program has the 'retry' option in order to set a timeout
+>> for the mount operation itself. Is that option not working correctly?
+> Manjunath will need to confirm that, but my understanding is that
+> mount.nfs is not regaining control when the server returns DELAY
+> to CREATE_SESSION. My conclusion was that mount(2) is not returning.
+>
+yes. this is true. Even with setting a retry the mount calls blocks on 
+client side indefinitely.
+On the wire I can see CREATE_SESSION and NFS4ERR_DELAY exchanges 
+happening continuously.
+
+I am not sure about the effects, but a NFSv4.0 mount to same server at 
+this moment succeeds.
+
+More information:
+...
+2144  09:54:32.473054 write(1, "mount.nfs: trying text-based opt"..., 
+113) = 113 <0.000337>
+2144  09:54:32.473468 mount("10.211.47.123:/exports", "/NFSMNT", "nfs", 
+0, "retry=1,vers=4,minorversion=1,ad"... <unfinished ...>
+2143  09:56:42.253947 <... wait4 resumed> 0x7fffb2e13ec8, 0, NULL) = ? 
+ERESTARTSYS (To be restarted if SA_RESTART is set) <129.800036>
+2143  09:56:42.254142 --- SIGINT {si_signo=SIGINT, si_code=SI_KERNEL} ---
+...
+
+The client mount call hangs here -
+[<ffffffffa05204d2>] nfs_wait_client_init_complete+0x52/0xc0 [nfs]
+[<ffffffffa05872ed>] nfs41_discover_server_trunking+0x6d/0xb0 [nfsv4]
+[<ffffffffa0587802>] nfs4_discover_server_trunking+0x82/0x2e0 [nfsv4]
+[<ffffffffa058f8d6>] nfs4_init_client+0x136/0x300 [nfsv4]
+[<ffffffffa05210bf>] nfs_get_client+0x24f/0x2f0 [nfs]
+[<ffffffffa058eeef>] nfs4_set_client+0x9f/0xf0 [nfsv4]
+[<ffffffffa059039e>] nfs4_create_server+0x13e/0x3b0 [nfsv4]
+[<ffffffffa05881b2>] nfs4_remote_mount+0x32/0x60 [nfsv4]
+[<ffffffff8121df3e>] mount_fs+0x3e/0x180
+[<ffffffff8123a6db>] vfs_kern_mount+0x6b/0x110
+[<ffffffffa05880d6>] nfs_do_root_mount+0x86/0xc0 [nfsv4]
+[<ffffffffa05884c4>] nfs4_try_mount+0x44/0xc0 [nfsv4]
+[<ffffffffa052ed6b>] nfs_fs_mount+0x4cb/0xda0 [nfs]
+[<ffffffff8121df3e>] mount_fs+0x3e/0x180
+[<ffffffff8123a6db>] vfs_kern_mount+0x6b/0x110
+[<ffffffff8123d5c1>] do_mount+0x251/0xcf0
+[<ffffffff8123e3a2>] SyS_mount+0xa2/0x110
+[<ffffffff81751f4b>] tracesys_phase2+0x6d/0x72
+[<ffffffffffffffff>] 0xffffffffffffffff
+
+I have a setup to reproduce this. If you need any more info, please let 
+me know.
+
+-Thanks,
+Manjunath
+>> If so, we should definitely fix that.
+> My recollection is that mount.nfs polls, it does not set a timer
+> signal. So it will call mount(2) repeatedly until either "retry"
+> minutes has passed, or mount(2) succeeds. I don't think it will
+> deal with mount(2) not returning, but I could be wrong about that.
+>
+> My preference would be to make the kernel more reliable (ie mount(2)
+> fails immediately in this case). That gives mount.nfs some time to
+> try other things (like, try the original mount again after a few
+> moments, or fall back to NFSv4.0, or fail).
+>
+> We don't want mount.nfs to wait for the full retry= while doing
+> nothing else. That would make this particular failure mode behave
+> differently than all the other modes we have had, historically, IIUC.
+>
+> Also, I agree with Bruce that the server should make CREATE_SESSION
+> less likely to fail. That would also benefit state recovery.
+>
+>
+>> We might also want to look into making it take values < 1 minute. That
+>> could be accomplished either by extending the syntax of the 'retry'
+>> option (e.g.: 'retry=<minutes>:<seconds>') or by adding a new option
+>> (e.g. 'sretry=<seconds>').
+>>
+>> It would then be up to the caller of mount to decide the policy of what
+>> to do after a timeout.
+> I agree that the caller of mount(2) should be allowed to provide the
+> policy.
+>
+>
+>> Renegotiation downward to NFSv3 might be an
+>> option, but it's not something that most people want to do in the case
+>> where there are lots of clients competing for resources since that's
+>> precisely the regime where the NFSv3 DRC scheme breaks down (lots of
+>> disconnections, combined with a high turnover of DRC slots).
+> --
+> Chuck Lever
+> chucklever@gmail.com
+>
+>
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
