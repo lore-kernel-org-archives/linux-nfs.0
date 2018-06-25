@@ -1,57 +1,71 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:45328 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:45652 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751347AbeFYPgu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 25 Jun 2018 11:36:50 -0400
-Received: from smtp.corp.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 6EB61C0587D1
-        for <linux-nfs@vger.kernel.org>; Mon, 25 Jun 2018 15:36:50 +0000 (UTC)
-Received: from steved.boston.devel.redhat.com (ovpn-116-218.phx2.redhat.com [10.3.116.218])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 37E9C7D4B0
-        for <linux-nfs@vger.kernel.org>; Mon, 25 Jun 2018 15:36:50 +0000 (UTC)
-Subject: Re: [PATCH] nfsdcltrack: getopt_long() fails on a non x86_64 archs
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-References: <20180624183619.59562-1-steved@redhat.com>
+        id S1751906AbeFYPhJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 25 Jun 2018 11:37:09 -0400
+Subject: Re: [PATCH] nfsstat: fix typo causing --mounts unrecognized option
+To: yongcheng.yang@gmail.com, linux-nfs@vger.kernel.org
+References: <1529644004-15544-1-git-send-email-yongcheng.yang@gmail.com>
 From: Steve Dickson <SteveD@RedHat.com>
-Message-ID: <4b24a9c7-a019-2a7c-1fdd-dd9d2b9a4c20@RedHat.com>
-Date: Mon, 25 Jun 2018 11:36:49 -0400
+Message-ID: <a8810502-85fa-d55a-879e-20f99a984b7e@RedHat.com>
+Date: Mon, 25 Jun 2018 11:37:08 -0400
 MIME-Version: 1.0
-In-Reply-To: <20180624183619.59562-1-steved@redhat.com>
+In-Reply-To: <1529644004-15544-1-git-send-email-yongcheng.yang@gmail.com>
 Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
 
-On 06/24/2018 02:36 PM, Steve Dickson wrote:
-> getopt_long() returns an int, not char, which
-> matters on non-x86_64 archs since a char is
-> signed on x86_64 arch but unsigned on other
-> archs.
+On 06/22/2018 01:06 AM, yongcheng.yang@gmail.com wrote:
+> From: Yongcheng Yang <yongcheng.yang@gmail.com>
 > 
-> Fixes: https://bugzilla.redhat.com/show_bug.cgi?id=1551903
+> This reverts commit acf95d32a44fd8357c24e8a04ec53fc6900bfc58
 > 
-> Signed-off-by: Steve Dickson <steved@redhat.com>
+> Signed-off-by: Yongcheng Yang <yongcheng.yang@gmail.com>
 Committed... 
 
 steved.
+
 > ---
->  utils/nfsdcltrack/nfsdcltrack.c | 2 +-
+> 
+> Hi Steve,
+> 
+> To keep pace with the (nfsstat) man page, "mounted" should be replaced by "mounts".
+> 
+> Test logs:
+> 
+> [root@ nfsstat]# rpm -q nfs-utils
+> nfs-utils-2.3.1-xxx
+> [root@ nfsstat]# nfsstat --mounts
+> nfsstat: unrecognized option '--mounts'
+> Try `nfsstat --help' for more information.
+> 
+> [root@ nfsstat]# nfsstat.new --mounts
+> /mnt from localhost:/export_test
+>  Flags: rw,relatime,vers=4.2,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp6,timeo=600,retrans=2,sec=sys,clientaddr=::1,local_lock=none,addr=::1
+> 
+> [root@ nfsstat]# 
+> 
+> Thanks,
+> Yongcheng
+> 
+> ---
+> 
+>  utils/nfsstat/nfsstat.c | 2 +-
 >  1 file changed, 1 insertion(+), 1 deletion(-)
 > 
-> diff --git a/utils/nfsdcltrack/nfsdcltrack.c b/utils/nfsdcltrack/nfsdcltrack.c
-> index 76b06d2..b45a904 100644
-> --- a/utils/nfsdcltrack/nfsdcltrack.c
-> +++ b/utils/nfsdcltrack/nfsdcltrack.c
-> @@ -553,7 +553,7 @@ find_cmd(char *cmdname)
->  int
->  main(int argc, char **argv)
->  {
-> -	char arg;
-> +	int arg;
->  	char *val;
->  	int rc = 0;
->  	char *progname, *cmdarg = NULL;
+> diff --git a/utils/nfsstat/nfsstat.c b/utils/nfsstat/nfsstat.c
+> index 8fccea7..ca84532 100644
+> --- a/utils/nfsstat/nfsstat.c
+> +++ b/utils/nfsstat/nfsstat.c
+> @@ -340,7 +340,7 @@ static struct option longopts[] =
+>  	{ "all", 0, 0, 'v' },
+>  	{ "auto", 0, 0, '\3' },
+>  	{ "client", 0, 0, 'c' },
+> -	{ "mounted", 0, 0, 'm' },
+> +	{ "mounts", 0, 0, 'm' },
+>  	{ "nfs", 0, 0, 'n' },
+>  	{ "rpc", 0, 0, 'r' },
+>  	{ "server", 0, 0, 's' },
 > 
