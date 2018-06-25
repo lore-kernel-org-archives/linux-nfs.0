@@ -1,46 +1,176 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-eopbgr680095.outbound.protection.outlook.com ([40.107.68.95]:43665
-        "EHLO NAM04-BN3-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1751851AbeFXU4f (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sun, 24 Jun 2018 16:56:35 -0400
-From: Trond Myklebust <trondmy@hammerspace.com>
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "armin.groesslinger@uni-passau.de" <armin.groesslinger@uni-passau.de>
-Subject: Re: Commit which exposes blocked tasks with NFSv4.0 and Kerberos
-Date: Sun, 24 Jun 2018 20:56:31 +0000
-Message-ID: <7545bff284c4f03efed693faaa5fa6633c08d927.camel@hammerspace.com>
-References: <12dbf081-259b-edbc-bf4e-d9dc1b77fc9b@uni-passau.de>
-In-Reply-To: <12dbf081-259b-edbc-bf4e-d9dc1b77fc9b@uni-passau.de>
-Content-Type: text/plain; charset="utf-8"
+Received: from mx1.redhat.com ([209.132.183.28]:49794 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S933935AbeFYNyu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 25 Jun 2018 09:54:50 -0400
+Subject: Re: [PATCH] Stop mounts hanging in upcalls to rpc.gssd.
+To: Trond Myklebust <trondmy@gmail.com>
+Cc: Anna Schumaker <Anna.Schumaker@netapp.com>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+References: <20180618172542.45519-1-steved@redhat.com>
+ <0e1aa697-e0ee-d150-3720-3cdda2d2f700@RedHat.com>
+ <80bc2e24a8f4168ba144ee4757817dc749a441d8.camel@gmail.com>
+ <17b2fd3e-c9f4-6804-363a-1d49ca990940@RedHat.com>
+ <B3A9BE44-BA84-49E6-A72E-A3EBABCFE093@gmail.com>
+ <2f89b1e5-7e3d-c584-9f09-78b6f3e8a6f4@RedHat.com>
+ <CAABAsM7m6FgOSdC2Nzm-+gsZQcCGBt2HBgw3Yp6vuFbrFV_6gw@mail.gmail.com>
+ <26557818-3e4f-684b-c4a2-5fc63959930c@RedHat.com>
+ <CAABAsM5Y=N7tG8CnVn8f=U6a4MU4EXYCC8e2MkyM6=-mxXg0Wg@mail.gmail.com>
+ <919983d5-5e20-887d-eac7-822fd801106a@RedHat.com>
+ <8EFFA012-4DF5-4B94-AB9F-DCCEDD646D02@gmail.com>
+From: Steve Dickson <SteveD@RedHat.com>
+Message-ID: <05786ef7-5382-5a6b-09e8-514668c3c812@RedHat.com>
+Date: Mon, 25 Jun 2018 09:54:49 -0400
 MIME-Version: 1.0
+In-Reply-To: <8EFFA012-4DF5-4B94-AB9F-DCCEDD646D02@gmail.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gU3VuLCAyMDE4LTA2LTI0IGF0IDIyOjMwICswMjAwLCBBcm1pbiBHcsO2w59saW5nZXIgd3Jv
-dGU6DQo+IEhlbGxvIE5GUyBkZXZlbG9wZXJzLA0KPiANCj4gSSd2ZSB3cml0dGVuIHRvIHRoaXMg
-bGlzdCBiZWZvcmUgWzFdLFsyXSBjb25jZXJuaW5nIHVuaW50ZXJydXB0aWJsZQ0KPiBodW5nDQo+
-IHRhc2tzIGluIGNsaWVudHMgdXNpbmcgTkZTdjQuMCB3aXRoIEtlcmJlcm9zLiBJIGhhdmUgYWxz
-byB3cml0dGVuDQo+IHNjcmlwdHMgKHdoaWNoIGNhbiBiZSBjbG9uZWQgZnJvbSBbM10pIHdoaWNo
-IGhlbHAgdG8gcmVwcm9kdWNlIHRoZQ0KPiBoYW5ncw0KPiBieSBjb25maWd1cmluZyB0d28gdmly
-dHVhbCBtYWNoaW5lcyB3aXRoIHRoZSByZXF1aXJlZCBzZXR1cCBhbmQgYQ0KPiB0ZXN0DQo+IHBy
-b2dyYW0gd2hpY2ggdHJpZ2dlcnMgdGhlIGhhbmdzIHJhdGhlciBxdWlja2x5IChzZWUgWzJdIGZv
-cg0KPiBkZXRhaWxzKS4NCj4gDQo+IE1lYW53aGlsZSwgSSBoYXZlIGJlZW4gYWJsZSB0byBkbyBz
-b21lIGJpc2VjdGluZyBvZiBrZXJuZWwgc291cmNlcyB0bw0KPiBmaW5kIGEgY29tbWl0IHdoaWNo
-IGV4cG9zZXMgdGhlIGhhbmdzLiBJdCBzZWVtcyB0aGF0IHNpbmNlIGNvbW1pdA0KPiANCj4gMmFj
-YTViODY5YWNlNjdhNjNhYWI4OTU2NTllNWRjMTRjMzNhNGQ2ZQ0KPiBTVU5SUEM6IEFkZCBtaXNz
-aW5nIHN1cHBvcnQgZm9yIFJQQ19DTE5UX0NSRUFURV9OT19SRVRSQU5TX1RJTUVPVVQNCj4gDQo+
-IChpbnRyb2R1Y2VkIHdpdGggdjMuMTgtcmMxKSB0aGUgdW5pbnRlcnJ1cHRpYmxlIGhhbmdzIG9j
-Y3VyLiBXaGVuIEkNCj4gcmV2ZXJ0IHRoaXMgY29tbWl0LCB0aGVuIEkgZG8gbm90IG9ic2VydmUg
-dGhlIHVuaW50ZXJydXB0aWJsZSBoYW5ncy4NCj4gSSd2ZSB0ZXN0ZWQgdGhpcyBvbiBVYnVudHUg
-MTYuMDQncyA0LjQga2VybmVsIGFuZCBEZWJpYW4gOSdzIDQuOQ0KPiBrZXJuZWwNCj4gYW5kIHNl
-dmVyYWwgc3RvY2sga2VybmVscy4NCg0KVGhhdCdzIHRoZSBwYXRjaCB0aGF0IGltcGxlbWVudHMg
-dGhpcyBwYXJ0IG9mIHRoZSBORlN2NCBzcGVjOg0KIGh0dHBzOi8vdG9vbHMuaWV0Zi5vcmcvaHRt
-bC9yZmM3NTMwI3NlY3Rpb24tMy4xLjENCg0KDQpTbyBhcmUgeW91IHNlZWluZyB0aGUgY29ubmVj
-dGlvbiBicmVhayB3aGVuIHRoZXNlIGhhbmdzIG9jY3VyPyBJZiB0aGUNCmNvbm5lY3Rpb24gaGFz
-bid0IGJyb2tlbiwgdGhlbiB0aGUgcHJvYmxlbSBpcyBtb3JlIGxpa2VseSB0byBiZSB0aGUNCnNl
-cnZlciBzaWxlbnRseSBkcm9wcGluZyByZXF1ZXN0cywgYW5kIGhlbmNlIGZhaWxpbmcgdG8gbWVl
-dCB0aGUNCm9ibGlnYXRpb24gdG8gcmVwbHkgdG8gdGhlIGNsaWVudCdzIFJQQyBjYWxsIChhcyBz
-cGVsbGVkIG91dCBpbiB0aGUNCmFib3ZlIHNlY3Rpb24gb2YgdGhlIHNwZWMpLg0KDQotLSANClRy
-b25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBIYW1tZXJzcGFjZQ0K
-dHJvbmQubXlrbGVidXN0QGhhbW1lcnNwYWNlLmNvbQ0KDQo=
+Hello,
+
+This was a private email Trond and I were having
+about adding a timeout to upcalls to the rpc.gssd
+so the kernel will not hang, forever, when
+rpc.gssd goes south.
+ 
+On 06/24/2018 07:52 PM, Trond Myklebust wrote:
+> 
+> 
+>> On Jun 24, 2018, at 19:26, Steve Dickson <SteveD@RedHat.com <mailto:SteveD@RedHat.com>> wrote:
+>>
+>>
+>>
+>> On 06/24/2018 06:54 PM, Trond Myklebust wrote:
+>>> On Sun, 24 Jun 2018 at 17:16, Steve Dickson <SteveD@redhat.com <mailto:SteveD@redhat.com>> wrote:
+>>>>
+>>>>
+>>>>
+>>>> On 06/24/2018 03:24 PM, Trond Myklebust wrote:
+>>>>> On Sun, 24 Jun 2018 at 14:55, Steve Dickson <SteveD@redhat.com <mailto:SteveD@redhat.com>> wrote:
+>>>>>>
+>>>>>>
+>>>>>>
+>>>>>> On 06/24/2018 02:35 PM, Trond Myklebust wrote:
+>>>>>>> I’m talking about the racy behaviour we used to have at startup when the rpc.gssd client was slow to initialise, which caused the NFS client to time out and then renegotiate the security flavour. We added the gssd_running() variable in order to avoid that problem by having gssd register itself when it starts up.
+>>>>>> I think we have taken care of the slow start up with Olga's work
+>>>>>> making rpc.gssd multi thread... An new thread is create for every
+>>>>>> upcall (which actually caused the bug in gssproxy).
+>>>>>>
+>>>>>> As I remember it.. we added gssd_running() because if rpc.gssd
+>>>>>> was not running all mounts would hang when we change the
+>>>>>> SECINFO to use krb5i... I could be wrong on that.
+>>>>>>
+>>>>>
+>>>>> They were not hanging. They were timing out, but it took too long.
+>>>> Where did the timeout come from? Once the upcall was in the
+>>>> for (;;) loop in gss_cred_init() the only thing that would
+>>>> break that loop is a signal... did the RPC layer send a signal?
+>>>>
+>>>>>
+>>>>>>>
+>>>>>>> IOW: what I’m worried about is unwanted automatic security re-negotiation during 'mount', and that people end up with sec=sys when they would normally expect strong security.
+>>>>>> I tested this... When the sec is not specified on the mount, the
+>>>>>> mount will roll back to a sys sec. But when the sec is specified
+>>>>>> (aka sec=krb5), the mount will fail.
+>>>>>
+>>>>> ...and that's the problem: the "mount will roll back to sys sec"
+>>>>> issue. If we pass the gssd_running() test, then we should not be
+>>>>> rolling back to auth_sys.
+>>>> But if the mount is a non secure mount (aka -o sec=krb5 is not specified)
+>>>> why shouldn't we roll back to auth_sys?
+>>>
+>>> Because we want _predictable_ behaviour, not behaviour that is subject
+>>> to randomness. If I have configured rpc.gssd, then I want the result
+>>> of the security negotiation to depend _only_ on whether or not the
+>>> server also supports gssd.
+>> I think the problem is this... You don't configure rpc.gssd to come up.
+>> If /etc/krb5.conf exists then rpc.gssd comes up... auto-majestically
+>> Which turns all NFS mounts into secure mounts whether you wanted
+>> or not.. Due to the SECINFO default.
+>>
+>> So the predictable behavior is, in a kerberos configured env, when
+>> secure mounts are *not* specified, secure mount will not by tried.
+>>
+>> But that is not the case... Due to to the SECINFO default and the fact
+>> rpc.gssd exists... a secure SECINFO (via an upcall) will be tried.
+>>
+>> Now in the same environment, and a secure mount is tried... it will
+>> fail if the server and client are not married via kerberos... 
+>>
+>> Again, in the same environment, kerberos is configured and the client
+>> and server not married via the KDC and rpc.gssd is off in the woods
+>> due to some kerberos issue.. A non secured mount should not hang forever. 
+>> It should time out and use a auth_sys flavor. no?
+> 
+> If rpc.gssd does not come up, then nothing is going to be listening or writing on the rpc_pipefs pseudo files, and so gssd_running() returns ‘false’, we return ‘EACCES’ on all upcalls and all is hunky dory. This is the case today with or without any further kernel changes.
+> 
+> If rpc.gssd crashes and all the rpc_pipefs connections are closed, then we call gss_pipe_release(), which causes all pending gss messages to exit with the error EPIPE.
+Right... In those two cases, a crash or not coming up, work just fine.
+Its the case when rpc.gssd does come up but hangs in the libkrb5 code
+or the gssproxy code... Adding a timeout handles that case.
+
+> 
+>>
+>>> con
+>>>>>
+>>>>>>>
+>>>>>>> Concerning Simo’s comment, the answer is that we don’t support renegotiating security on the fly in the kernel, and if the user specifies a hard mount, then the required kernel behaviour if rpc.gssd dies is to wait+retry forever for recovery.
+>>>>>> I agree there should not be "renegotiating security on the fly" when
+>>>>>> the security is specified the mount should fail, not hang... which
+>>>>>> happens today.
+>>>>>>
+>>>>>> When a sec is not specified, I think the mount should succeed when
+>>>>>> rpc.gssd is off in the wood, as a sys sec mount.
+>>>>>>
+>>>>>> But currently there is no "wait+retry". There is just a wait... no retry.
+>>>>>> This patch does introduce a retry... but not forever.
+>>>>>>
+>>>>>> But I think we both agree that rpc.gssd should not hang mounts
+>>>>>> forever when a sec is not specified... right?
+>>>>>
+>>>>> If rpc.gssd is up and running, and is connected to rpc_pipefs, then we
+>>>>> should not hang. If rpc.gssd is up and running, but is just being
+>>>>> slow, then the mount should hang until it gets a response.
+>>>> But if rpc.gssd does hang... it hangs forever... There is not timeout
+>>>> in the kernel, and I thinking there should be, esp for non secure mounts.
+>>>>
+>>>
+>>> I don't understand. Is this by design or is it a bug?
+>> A bug in the userland space... The flux capacitor breaks and
+>> everything hangs... :-) 
+>>
+>>>
+>>> If it is by design, then what's the reason for that design? If it's a
+>>> bug, then why are we talking about changing the kernel instead of
+>>> fixing the problem in gssd?
+>> Its fixing the kernel not to hang on buggy userland (aka kerberos) apps
+>> when when those apps are not even required
+> 
+> No, I don’t accept that argument. rpc.gssd is a dedicated program that has exactly one purpose: to supply the kernel with GSS sessions on demand because the kernel cannot do so itself. If it hangs, then the kernel cannot make progress, and so the services which depend on GSS will hang too.
+Fine... when the -o sec=krb5 is specified all mounts needed that service
+should hang (when rpc.gssd hangs)... I agree with that... But
+
+The mounts that don't specify a sec should not get hung up
+in a service it is not asking for... IMHO... which is the case today.
+
+> 
+> If you want to put a policy around timeouts, then killing rpc.gssd will do just as well (see above), will work with legacy kernels, and allows you to keep the policy entirely in userland.
+> IOW: Add a watchdog timer that kills rpc.gssd if it hangs and fails to reset the timer. You can even put that timer inside rpc.gssd itself (add a call to setitimer() and add a signal handler for SIGALARM that just kills the program).
+With this approach there is no history... Meaning when the 
+SIGALARM pops, the thread will not know if it or is not 
+making process... With timeouts there is history because 
+there has been timeouts and retries... 
+
+How about this... When the timeout occurs and the -o sec was
+not specified, the mount will still fail instead of becoming a 
+auth_sys mount. This would tell mount there is a problem
+and have it do the appropriate thing, whatever that is.
+
+Basically have the kernel says "Houston we have a problem"
+then let Houston go fix it... :-) 
+
+steved.
+
+  
+
