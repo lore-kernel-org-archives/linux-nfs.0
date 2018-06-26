@@ -1,122 +1,175 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:51444 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752237AbeFYWEB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 25 Jun 2018 18:04:01 -0400
-Date: Mon, 25 Jun 2018 18:04:00 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Manjunath Patil <manjunath.b.patil@oracle.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 2/2] nfsd: return ENOSPC if unable to allocate a session
- slot
-Message-ID: <20180625220400.GE8293@fieldses.org>
-References: <1529598933-16506-1-git-send-email-manjunath.b.patil@oracle.com>
- <1529598933-16506-2-git-send-email-manjunath.b.patil@oracle.com>
- <20180622175416.GA7119@fieldses.org>
- <20180624202615.GA31496@fieldses.org>
- <bde64edc-5684-82d7-4488-e2ebdd7018fc@oracle.com>
+Received: from mail-eopbgr60111.outbound.protection.outlook.com ([40.107.6.111]:9159
+        "EHLO EUR04-DB3-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1750919AbeFZGNy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 26 Jun 2018 02:13:54 -0400
+Date: Mon, 25 Jun 2018 23:13:22 -0700
+From: Andrei Vagin <avagin@virtuozzo.com>
+To: David Howells <dhowells@redhat.com>
+Cc: viro@zeniv.linux.org.uk, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org,
+        linux-security-module@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-afs@lists.infradead.org
+Subject: Re: [12/24] proc: Add fs_context support to procfs [ver #7]
+Message-ID: <20180626061320.GA12548@outlook.office365.com>
+References: <152414474815.23902.6952548431423168966.stgit@warthog.procyon.org.uk>
+ <20180619033450.GA11639@outlook.office365.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <bde64edc-5684-82d7-4488-e2ebdd7018fc@oracle.com>
+Content-Type: text/plain; charset=koi8-r
+In-Reply-To: <20180619033450.GA11639@outlook.office365.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jun 25, 2018 at 10:17:21AM -0700, Manjunath Patil wrote:
-> Hi Bruce,
+On Mon, Jun 18, 2018 at 08:34:50PM -0700, Andrei Vagin wrote:
+> Hi David,
 > 
-> I could reproduce this issue by lowering the amount of RAM. On my
-> virtual box VM with 176M MB of RAM I can reproduce this with 3
-> clients.
+> We run CRIU tests for vfs/for-next, and today a few of these test failed. I
+> found that the problem appears after this patch..
+> 
+> >  int pid_ns_prepare_proc(struct pid_namespace *ns)
+> >  {
+> > +	struct proc_fs_context *ctx;
+> > +	struct fs_context *fc;
+> >  	struct vfsmount *mnt;
+> > +	int ret;
+> > +
+> > +	fc = vfs_new_fs_context(&proc_fs_type, NULL, 0,
+> > +				FS_CONTEXT_FOR_KERNEL_MOUNT);
+> > +	if (IS_ERR(fc))
+> > +		return PTR_ERR(fc);
+> > +
+> > +	ctx = container_of(fc, struct proc_fs_context, fc);
+> > +	if (ctx->pid_ns != ns) {
+> > +		put_pid_ns(ctx->pid_ns);
+> > +		get_pid_ns(ns);
+> > +		ctx->pid_ns = ns;
+> > +	}
+> > +
+> > +	ret = vfs_get_tree(fc);
+> > +	if (ret < 0) {
+> > +		put_fs_context(fc);
+> > +		return ret;
+> > +	}
+> >  
+> > -	mnt = kern_mount_data(&proc_fs_type, ns, 0);
 
-I know how to reproduce it, I was just wondering what motivated it--were
-customers hitting it (how), was it just artificial testing?
+Here ns->user_ns and get_current_cred()->user_ns are not always equal
 
-Oh well, it probably needs to be fixed regardless.
+> > +	mnt = vfs_create_mount(fc);
+> > +	put_fs_context(fc);
+> >  	if (IS_ERR(mnt))
+> >  		return PTR_ERR(mnt);
+> >  
 
---b.
+> #define _GNU_SOURCE
+> #include <sys/types.h>
+> #include <sched.h>
+> #include <unistd.h>
+> #include <stdio.h>
+> #include <sys/mount.h>
+> #include <sys/wait.h>
+> #include <sys/stat.h>
+> #include <fcntl.h>
+> #include <stdlib.h>
+> #include <grp.h>
+> #include <linux/limits.h>
+> 
+> 
+> #define NS_STACK_SIZE	4096
+> 
+> #define __stack_aligned__	__attribute__((aligned(16)))
+> 
+> /* All arguments should be above stack, because it grows down */
+> struct ns_exec_args {
+> 	char stack[NS_STACK_SIZE] __stack_aligned__;
+> 	char stack_ptr[0];
+> 	int pfd[2];
+> };
+> 
+> static int ns_exec(void *_arg)
+> {
+> 	struct ns_exec_args *args = (struct ns_exec_args *) _arg;
+> 	int ret;
+> 
+> 	close(args->pfd[1]);
+> 	if (read(args->pfd[0], &ret, sizeof(ret)) != sizeof(ret))
+> 		return -1;
+> 
+> 	setsid();
+> 
+> 	if (setuid(0) || setgid(0) || setgroups(0, NULL)) {
+> 		fprintf(stderr, "set*id failed: %m\n");
+> 		return -1;
+> 	}
+> 
+> 	if (mount("proc", "/mnt", "proc", MS_MGC_VAL | MS_NOSUID | MS_NOEXEC | MS_NODEV, NULL)) {
+> 		fprintf(stderr, "mount(/proc) failed: %m\n");
+> 		return -1;
+> 	}
+> 
+> 	return 0;
+> }
+> 
+> #define UID_MAP "0 100000 100000\n100000 200000 50000"
+> #define GID_MAP "0 400000 50000\n50000 500000 100000"
+> int main()
+> {
+> 	pid_t pid;
+> 	int ret, status;
+> 	struct ns_exec_args args;
+> 	int flags;
+> 	char pname[PATH_MAX];
+> 	int fd, pfd[2];
+> 
+> 	if (pipe(pfd))
+> 		return 1;
+> 
+> 	args.pfd[0] = pfd[0];
+> 	args.pfd[1] = pfd[1];
+> 
+> 	flags = CLONE_NEWPID | CLONE_NEWNS | CLONE_NEWUTS |
+> 		CLONE_NEWNET | CLONE_NEWIPC | CLONE_NEWUSER | SIGCHLD;
+> 
+> 	pid = clone(ns_exec, args.stack_ptr, flags, &args);
+> 	if (pid < 0) {
+> 		fprintf(stderr, "clone() failed: %m\n");
+> 		exit(1);
+> 	}
+> 
+> 
+> 	snprintf(pname, sizeof(pname), "/proc/%d/uid_map", pid);
+> 	fd = open(pname, O_WRONLY);
+> 	if (fd < 0) {
+> 		fprintf(stderr, "open(%s): %m\n", pname);
+> 		exit(1);
+> 	}
+> 	if (write(fd, UID_MAP, sizeof(UID_MAP)) < 0) {
+> 		fprintf(stderr, "write(" UID_MAP "): %m\n");
+> 		exit(1);
+> 	}
+> 	close(fd);
+> 
+> 	snprintf(pname, sizeof(pname), "/proc/%d/gid_map", pid);
+> 	fd = open(pname, O_WRONLY);
+> 	if (fd < 0) {
+> 		fprintf(stderr, "open(%s): %m\n", pname);
+> 		exit(1);
+> 	}
+> 	if (write(fd, GID_MAP, sizeof(GID_MAP)) < 0) {
+> 		fprintf(stderr, "write(" GID_MAP "): %m\n");
+> 		exit(1);
+> 	}
+> 	close(fd);
+> 
+> 	if (write(pfd[1], &ret, sizeof(ret)) != sizeof(ret))
+> 		return 1;
+> 
+> 	if (waitpid(pid, &status, 0) != pid)
+> 		return 1;
+> 	if (status)
+> 		return 1;
+> 
+> 	return 0;
+> }
 
-> My kernel didn't have the following fixes -
-> 
->    de766e5 nfsd: give out fewer session slots as limit approaches
->    44d8660 nfsd: increase DRC cache limit
-> 
-> Once I apply these patches, the issue recurs with 10+ clients.
-> Once the mount starts to hang due to this issue, a NFSv4.0 still succeeds.
-> 
-> I took the latest mainline kernel [4.18.0-rc1] and made the server
-> return NFS4ERR_DELAY[nfserr_jukebox] if its unable to allocate 50
-> slots[just to accelerate the issue]
-> 
->    -       if (!ca->maxreqs)
->    +       if (ca->maxreqs < 50) {
->               ...
->                    return nfserr_jukebox;
-> 
-> Then used the same client[4.18.0-rc1] and observed that mount calls
-> still hangs[indefinitely].
-> Typically the client hangs here - [stack are from oracle kernel] -
-> 
->    [root@OL7U5-work ~]# ps -ef | grep mount
->    root      2032  1732  0 09:49 pts/0    00:00:00 strace -tttvf -o
->    /tmp/a.out mount 10.211.47.123:/exports /NFSMNT -vvv -o retry=1
->    root      2034  2032  0 09:49 pts/0    00:00:00 mount
->    10.211.47.123:/exports /NFSMNT -vvv -o retry=1
->    root      2035  2034  0 09:49 pts/0    00:00:00 /sbin/mount.nfs
->    10.211.47.123:/exports /NFSMNT -v -o rw,retry=1
->    root      2039  1905  0 09:49 pts/1    00:00:00 grep --color=auto mount
->    [root@OL7U5-work ~]# cat /proc/2035/stack
->    [<ffffffffa05204d2>] nfs_wait_client_init_complete+0x52/0xc0 [nfs]
->    [<ffffffffa05872ed>] nfs41_discover_server_trunking+0x6d/0xb0 [nfsv4]
->    [<ffffffffa0587802>] nfs4_discover_server_trunking+0x82/0x2e0 [nfsv4]
->    [<ffffffffa058f8d6>] nfs4_init_client+0x136/0x300 [nfsv4]
->    [<ffffffffa05210bf>] nfs_get_client+0x24f/0x2f0 [nfs]
->    [<ffffffffa058eeef>] nfs4_set_client+0x9f/0xf0 [nfsv4]
->    [<ffffffffa059039e>] nfs4_create_server+0x13e/0x3b0 [nfsv4]
->    [<ffffffffa05881b2>] nfs4_remote_mount+0x32/0x60 [nfsv4]
->    [<ffffffff8121df3e>] mount_fs+0x3e/0x180
->    [<ffffffff8123a6db>] vfs_kern_mount+0x6b/0x110
->    [<ffffffffa05880d6>] nfs_do_root_mount+0x86/0xc0 [nfsv4]
->    [<ffffffffa05884c4>] nfs4_try_mount+0x44/0xc0 [nfsv4]
->    [<ffffffffa052ed6b>] nfs_fs_mount+0x4cb/0xda0 [nfs]
->    [<ffffffff8121df3e>] mount_fs+0x3e/0x180
->    [<ffffffff8123a6db>] vfs_kern_mount+0x6b/0x110
->    [<ffffffff8123d5c1>] do_mount+0x251/0xcf0
->    [<ffffffff8123e3a2>] SyS_mount+0xa2/0x110
->    [<ffffffff81751f4b>] tracesys_phase2+0x6d/0x72
->    [<ffffffffffffffff>] 0xffffffffffffffff
-> 
->    [root@OL7U5-work ~]# cat /proc/2034/stack
->    [<ffffffff8108c147>] do_wait+0x217/0x2a0
->    [<ffffffff8108d360>] do_wait4+0x80/0x110
->    [<ffffffff8108d40d>] SyS_wait4+0x1d/0x20
->    [<ffffffff81751f4b>] tracesys_phase2+0x6d/0x72
->    [<ffffffffffffffff>] 0xffffffffffffffff
-> 
->    [root@OL7U5-work ~]# cat /proc/2032/stack
->    [<ffffffff8108c147>] do_wait+0x217/0x2a0
->    [<ffffffff8108d360>] do_wait4+0x80/0x110
->    [<ffffffff8108d40d>] SyS_wait4+0x1d/0x20
->    [<ffffffff81751ddc>] system_call_fastpath+0x18/0xd6
->    [<ffffffffffffffff>] 0xffffffffffffffff
-> 
-> -Thanks,
-> Manjunath
-> On 6/24/2018 1:26 PM, J. Bruce Fields wrote:
-> >By the way, could you share some more details with us about the
-> >situation when you (or your customers) are actually hitting this case?
-> >
-> >How many clients, what kind of clients, etc.  And what version of the
-> >server were you seeing the problem on?  (I'm mainly curious whether
-> >de766e570413 and 44d8660d3bb0 were already applied.)
-> >
-> >I'm glad we're thinking about how to handle this case, but my feeling is
-> >that the server is probably just being *much* too conservative about
-> >these allocations, and the most important thing may be to fix that and
-> >make it a lot rarer that we hit this case in the first place.
-> >
-> >--b.
-> >--
-> >To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> >the body of a message to majordomo@vger.kernel.org
-> >More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
