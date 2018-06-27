@@ -1,62 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f193.google.com ([209.85.223.193]:44965 "EHLO
+Received: from mail-io0-f193.google.com ([209.85.223.193]:34475 "EHLO
         mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S965557AbeF0SSx (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Jun 2018 14:18:53 -0400
-Received: by mail-io0-f193.google.com with SMTP id g7-v6so2758592ioh.11
-        for <linux-nfs@vger.kernel.org>; Wed, 27 Jun 2018 11:18:53 -0700 (PDT)
+        with ESMTP id S965736AbeF0SSw (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Jun 2018 14:18:52 -0400
+Received: by mail-io0-f193.google.com with SMTP id e15-v6so2778231iog.1
+        for <linux-nfs@vger.kernel.org>; Wed, 27 Jun 2018 11:18:52 -0700 (PDT)
 Received: from leira.trondhjem.org.localdomain ([50.105.87.45])
         by smtp.gmail.com with ESMTPSA id x5-v6sm2105233ioa.65.2018.06.27.11.18.51
         for <linux-nfs@vger.kernel.org>
         (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
-        Wed, 27 Jun 2018 11:18:52 -0700 (PDT)
+        Wed, 27 Jun 2018 11:18:51 -0700 (PDT)
 From: Trond Myklebust <trondmy@gmail.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH 3/5] pNFS: Ignore non-recalled layouts in pnfs_layout_need_return()
-Date: Wed, 27 Jun 2018 14:18:26 -0400
-Message-Id: <20180627181828.27680-3-trond.myklebust@hammerspace.com>
-In-Reply-To: <20180627181828.27680-2-trond.myklebust@hammerspace.com>
+Subject: [PATCH 2/5] pNFS: Don't update the stateid when replying NFS4ERR_DELAY to a layout recall
+Date: Wed, 27 Jun 2018 14:18:25 -0400
+Message-Id: <20180627181828.27680-2-trond.myklebust@hammerspace.com>
+In-Reply-To: <20180627181828.27680-1-trond.myklebust@hammerspace.com>
 References: <20180627181828.27680-1-trond.myklebust@hammerspace.com>
- <20180627181828.27680-2-trond.myklebust@hammerspace.com>
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If a layout has been recalled, then we should fire off a layoutreturn as
-soon as all the layout segments that match the recall have been retired.
+RFC5661 doesn't state directly that the client should update the layout
+stateid if it returns NFS4ERR_NOMATCHING_LAYOUT in response to a recall,
+however it does state that this error will "cleanly indicate completion"
+on par with returning the layout. For this reason, we assume that the
+client should update the layout stateid. The Linux pNFS server definitely
+does expect this behaviour.
+
+However, if the client replies NFS4ERR_DELAY, then it is stating that
+the recall was not processed, so it would be very wrong to update the
+layout stateid.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/pnfs.c | 11 ++++++++++-
- 1 file changed, 10 insertions(+), 1 deletion(-)
+ fs/nfs/callback_proc.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 17776ef734d7..bf7f0b21066d 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1160,12 +1160,21 @@ static bool
- pnfs_layout_need_return(struct pnfs_layout_hdr *lo)
- {
- 	struct pnfs_layout_segment *s;
-+	enum pnfs_iomode iomode;
-+	u32 seq;
+diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+index af2322256aa4..efca3d6c89f2 100644
+--- a/fs/nfs/callback_proc.c
++++ b/fs/nfs/callback_proc.c
+@@ -273,7 +273,6 @@ static u32 initiate_file_draining(struct nfs_client *clp,
+ 	rv = pnfs_check_callback_stateid(lo, &args->cbl_stateid);
+ 	if (rv != NFS_OK)
+ 		goto unlock;
+-	pnfs_set_layout_stateid(lo, &args->cbl_stateid, true);
  
- 	if (!test_bit(NFS_LAYOUT_RETURN_REQUESTED, &lo->plh_flags))
- 		return false;
- 
--	/* Defer layoutreturn until all lsegs are done */
-+	seq = lo->plh_return_seq;
-+	iomode = lo->plh_return_iomode;
-+
-+	/* Defer layoutreturn until all recalled lsegs are done */
- 	list_for_each_entry(s, &lo->plh_segs, pls_list) {
-+		if (seq && pnfs_seqid_is_newer(s->pls_seq, seq))
-+			continue;
-+		if (iomode != IOMODE_ANY && s->pls_range.iomode != iomode)
-+			continue;
- 		if (test_bit(NFS_LSEG_LAYOUTRETURN, &s->pls_flags))
- 			return false;
+ 	/*
+ 	 * Enforce RFC5661 Section 12.5.5.2.1.5 (Bulk Recall and Return)
+@@ -283,6 +282,7 @@ static u32 initiate_file_draining(struct nfs_client *clp,
+ 		goto unlock;
  	}
+ 
++	pnfs_set_layout_stateid(lo, &args->cbl_stateid, true);
+ 	switch (pnfs_mark_matching_lsegs_return(lo, &free_me_list,
+ 				&args->cbl_range,
+ 				be32_to_cpu(args->cbl_stateid.seqid))) {
 -- 
 2.17.1
 
