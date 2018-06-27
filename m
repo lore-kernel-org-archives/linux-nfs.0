@@ -1,166 +1,139 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qt0-f195.google.com ([209.85.216.195]:39499 "EHLO
-        mail-qt0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751410AbeF0AP7 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Jun 2018 20:15:59 -0400
-Received: by mail-qt0-f195.google.com with SMTP id c23-v6so214732qtn.6
-        for <linux-nfs@vger.kernel.org>; Tue, 26 Jun 2018 17:15:58 -0700 (PDT)
-Message-ID: <1530058556.4210.0.camel@redhat.com>
-Subject: Re: [RFC PATCH 3/3] sunrpc: Change rpc_print_iostats to
- rpc_clnt_show_stats and handle rpc_clnt clones
-From: David Wysochanski <dwysocha@redhat.com>
+Received: from mail-wm0-f65.google.com ([74.125.82.65]:35127 "EHLO
+        mail-wm0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752035AbeF0Kdd (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Jun 2018 06:33:33 -0400
+Received: by mail-wm0-f65.google.com with SMTP id z137-v6so4925928wmc.0
+        for <linux-nfs@vger.kernel.org>; Wed, 27 Jun 2018 03:33:32 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <20180519203436.9560.83609.stgit@klimt.1015granger.net>
+References: <20180519203436.9560.83609.stgit@klimt.1015granger.net>
+From: Naruto Nguyen <narutonguyen2018@gmail.com>
+Date: Wed, 27 Jun 2018 17:33:31 +0700
+Message-ID: <CANpxKHGTMfhy1HKWVxqV9XyyWW5ieL-NR7VjTZs26B5Rc6nayw@mail.gmail.com>
+Subject: Re: [PATCH RFC] Make bindresvport(3) avoid IANA-assigned ports
 To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Date: Tue, 26 Jun 2018 20:15:56 -0400
-In-Reply-To: <E7A8E5A1-7EC0-4DF4-9568-C16E834AFAFE@oracle.com>
-References: <20180626235623.26898-1-dwysocha@redhat.com>
-         <20180626235623.26898-4-dwysocha@redhat.com>
-         <E7A8E5A1-7EC0-4DF4-9568-C16E834AFAFE@oracle.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        libtirpc-devel@lists.sourceforge.net
 Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2018-06-26 at 20:13 -0400, Chuck Lever wrote:
-> > On Jun 26, 2018, at 7:56 PM, Dave Wysochanski <dwysocha@redhat.com> wrote:
-> > 
-> > The existing rpc_print_iostats has a few shortcomings.  First, the naming
-> > is not consistent with other functions in the kernel that display stats.
-> > Second, it is really displaying stats for an rpc_clnt structure as it
-> > displays both xprt stats and per-op stats.  Third, it does not handle
-> > rpc_clnt clones, which is important for the one in-kernel tree caller
-> > of this function, the NFS client's nfs_show_stats function.
-> > 
-> > Fix all of the above by renaming the rpc_print_iostats to
-> > rpc_clnt_show_stats and looping through any rpc_clnt clones via
-> > cl_parent.
-> > 
-> > Once this interface is fixed, this addresses a problem with NFSv4.
-> > Before this patch, the /proc/self/mountstats always showed incorrect
-> > counts for NFSv4 state related opcodes such as SEQUENCE and RENEW.
-> > These counts were always 0 even though many ops would go over the
-> > wire.  The reason for this is there are multiple rpc_clnt structures
-> > allocated for any given NFSv4 mount, and inside nfs_show_stats() we callled
-> > into rpc_print_iostats() which only handled one of them, nfs_server->client.
-> > Fix these counts by calling sunrpc's new rpc_clnt_show_stats() function,
-> > which handles cloned rpc_clnt structs and prints the stats together.
-> > 
-> > Note that one side-effect of the above is that multiple mounts from
-> > the same NFS server will show identical counts in the above ops due
-> > to the fact the one rpc_clnt (representing the NFSv4 client state)
-> > is shared across mounts.
-> > 
-> > Signed-off-by: Dave Wysochanski <dwysocha@redhat.com>
-> > ---
-> > fs/nfs/super.c                 |  2 +-
-> > include/linux/sunrpc/metrics.h |  6 +++---
-> > net/sunrpc/stats.c             | 17 ++++++++++++-----
-> > 3 files changed, 16 insertions(+), 9 deletions(-)
-> > 
-> > diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-> > index 5e470e233c83..bdf39fa1bfbc 100644
-> > --- a/fs/nfs/super.c
-> > +++ b/fs/nfs/super.c
-> > @@ -884,7 +884,7 @@ int nfs_show_stats(struct seq_file *m, struct dentry *root)
-> > #endif
-> > 	seq_printf(m, "\n");
-> > 
-> > -	rpc_print_iostats(m, nfss->client);
-> > +	rpc_clnt_show_stats(m, nfss->client);
-> > 
-> > 	return 0;
-> > }
-> > diff --git a/include/linux/sunrpc/metrics.h b/include/linux/sunrpc/metrics.h
-> > index 9baed7b355b2..3daa5b42d871 100644
-> > --- a/include/linux/sunrpc/metrics.h
-> > +++ b/include/linux/sunrpc/metrics.h
-> > @@ -30,7 +30,7 @@
-> > #include <linux/ktime.h>
-> > #include <linux/spinlock.h>
-> > 
-> > -#define RPC_IOSTATS_VERS	"1.0"
-> > +#define RPC_IOSTATS_VERS	"1.1"
-> 
-> A quick browse does not reveal a format change in /proc/self/mountstats.
-> Did I miss it? If there's no change, VERS should stay "1.0".
-> 
+Hi Chuck,
 
-No there is not a format change, so you're right.
+Thanks a lot for your patch. Looks like it works as expected. But I
+have read about this patch at another thread
+https://sourceforge.net/p/libtirpc/mailman/libtirpc-devel/thread/20180601155057.GA23836%40suse.de/#msg36332436.
 
-Thanks!
+In this thread, as I understand this patch still does not resolve a
+problem regarding to deadlock when getservbyport can use NIS as you
+and Thorsten discussed, right? I am not quite clear about the use case
+of this deadlock so please correct me if I am wrong.
 
-> 
-> > struct rpc_iostats {
-> > 	spinlock_t		om_lock;
-> > @@ -82,7 +82,7 @@ void			rpc_count_iostats(const struct rpc_task *,
-> > 					  struct rpc_iostats *);
-> > void			rpc_count_iostats_metrics(const struct rpc_task *,
-> > 					  struct rpc_iostats *);
-> > -void			rpc_print_iostats(struct seq_file *, struct rpc_clnt *);
-> > +void			rpc_clnt_show_stats(struct seq_file *, struct rpc_clnt *);
-> > void			rpc_free_iostats(struct rpc_iostats *);
-> > 
-> > #else  /*  CONFIG_PROC_FS  */
-> > @@ -95,7 +95,7 @@ static inline void rpc_count_iostats_metrics(const struct rpc_task *task,
-> > {
-> > }
-> > 
-> > -static inline void rpc_print_iostats(struct seq_file *seq, struct rpc_clnt *clnt) {}
-> > +static inline void rpc_clnt_show_stats(struct seq_file *seq, struct rpc_clnt *clnt) {}
-> > static inline void rpc_free_iostats(struct rpc_iostats *stats) {}
-> > 
-> > #endif  /*  CONFIG_PROC_FS  */
-> > diff --git a/net/sunrpc/stats.c b/net/sunrpc/stats.c
-> > index 32adddd7fb78..2c9453465c78 100644
-> > --- a/net/sunrpc/stats.c
-> > +++ b/net/sunrpc/stats.c
-> > @@ -235,13 +235,12 @@ static void _print_rpc_iostats(struct seq_file *seq, struct rpc_iostats *stats,
-> > 		   ktime_to_ms(stats->om_execute));
-> > }
-> > 
-> > -void rpc_print_iostats(struct seq_file *seq, struct rpc_clnt *clnt)
-> > +void rpc_clnt_show_stats(struct seq_file *seq, struct rpc_clnt *clnt)
-> > {
-> > -	struct rpc_iostats *stats = clnt->cl_metrics;
-> > 	struct rpc_xprt *xprt;
-> > 	unsigned int op, maxproc = clnt->cl_maxproc;
-> > 
-> > -	if (!stats)
-> > +	if (!clnt->cl_metrics)
-> > 		return;
-> > 
-> > 	seq_printf(seq, "\tRPC iostats version: %s  ", RPC_IOSTATS_VERS);
-> > @@ -256,10 +255,18 @@ void rpc_print_iostats(struct seq_file *seq, struct rpc_clnt *clnt)
-> > 
-> > 	seq_printf(seq, "\tper-op statistics\n");
-> > 	for (op = 0; op < maxproc; op++) {
-> > -		_print_rpc_iostats(seq, &stats[op], op, clnt->cl_procinfo);
-> > +		struct rpc_iostats stats = { 0 };
-> > +		struct rpc_clnt *next = clnt;
-> > +		do {
-> > +			_add_rpc_iostats(&stats, &next->cl_metrics[op]);
-> > +			if (next == next->cl_parent)
-> > +				break;
-> > +			next = next->cl_parent;
-> > +		} while (next);
-> > +		_print_rpc_iostats(seq, &stats, op, clnt->cl_procinfo);
-> > 	}
-> > }
-> > -EXPORT_SYMBOL_GPL(rpc_print_iostats);
-> > +EXPORT_SYMBOL_GPL(rpc_clnt_show_stats);
-> > 
-> > /*
-> >  * Register/unregister RPC proc files
-> > -- 
-> > 2.14.3
-> > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> --
-> Chuck Lever
-> 
-> 
-> 
+Could you please let me know which is the final solution for this
+issue, your patch or Thorsten's blacklist hack solution (SUSE 15 years
+solution), or you are investigating another solution?
+
+Thanks,
+Brs,
+Bao
+
+
+On 20 May 2018 at 03:39, Chuck Lever <chuck.lever@oracle.com> wrote:
+> There have been complaints over many years that bindresvport(3) can
+> bind to a reserved port that is also assigned to a well-known
+> service, preventing that service from starting as long as bindresv-
+> port's caller is still squatting on that port.  For instance:
+>
+> https://sourceware.org/bugzilla/show_bug.cgi?id=1014
+> https://bugzilla.redhat.com/show_bug.cgi?id=103401
+> https://bugzilla.novell.com/show_bug.cgi?id=262341
+> https://bugs.debian.org/638322
+> http://cyberelk.net/tim/software/portreserve/
+> https://sources.debian.org/src/glibc/2.26-3/debian/patches/any/local-bindresvport_blacklist.diff/
+>
+> statd, for example, has a long-running downcall client that can
+> squat on a reserved port for as long as the system is up. statd is
+> courteous enough to try hard to avoid choosing a well-known port
+> for its downcall client.
+>
+> bindresvport(3) is a generic API, and therefore can't simply skip
+> all ports assigned in /etc/services, as that leaves a pretty skimpy
+> set of remaining ports that can be used.
+>
+> An explicit blacklist might be used to prevent the use of just a
+> few common services. Although /etc/bindresvport.blacklist is
+> historically supported on several distributions, there have been
+> some objections to that approach in the long term:
+>
+> - It should be improved by making the blacklist a directory (say,
+>   /etc/bindresvport.blacklist.d/) so that other packages can
+>   easily insert new blacklisted ports when they are installed.
+>
+> - But it would be even nicer if there wasn't an additional adminis-
+>   trative interface, particularly one that largely duplicates what
+>   is already in /etc/services .
+>
+> Thus I'm proposing a slightly different approach: Change bindresv-
+> port(3) so it tries to skip IANA-assigned ports; if no unused port
+> is found, search again, but allow the use of IANA-assigned ports
+> this time.
+>
+> This gives reasonable avoidance behavior but still allows operation
+> when the set of unassigned ports runs out, and does not introduce
+> another administrative interface.
+>
+> See also commit c254b435007e.
+>
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+>  src/bindresvport.c |    9 ++++++++-
+>  1 file changed, 8 insertions(+), 1 deletion(-)
+>
+> Hi Naruto-
+>
+> Please apply this patch to the latest libtirpc source tree. Rebuild
+> it, then "sudo make install". Then rebuild rpcinfo to pull in the
+> rebuilt version of libtirpc.
+>
+> diff --git a/src/bindresvport.c b/src/bindresvport.c
+> index 2d8f2bc..6423afb 100644
+> --- a/src/bindresvport.c
+> +++ b/src/bindresvport.c
+> @@ -85,6 +85,7 @@ bindresvport_sa(sd, sa)
+>         socklen_t salen;
+>         int nports;
+>         int endport = ENDPORT;
+> +       int pass;
+>         int i;
+>
+>         mutex_lock(&port_lock);
+> @@ -130,11 +131,15 @@ bindresvport_sa(sd, sa)
+>          }
+>          res = -1;
+>          errno = EADDRINUSE;
+> -               again:
+> +        pass = 1;
+> +       setservent(1);
+> +again:
+>          for (i = 0; i < nports; ++i) {
+>                  *portp = htons(port++);
+>                   if (port > endport)
+>                          port = startport;
+> +               if (pass == 1 && getservbyport(*portp, NULL))
+> +                       continue;
+>                  res = bind(sd, sa, salen);
+>                 if (res >= 0 || errno != EADDRINUSE)
+>                         break;
+> @@ -144,8 +149,10 @@ bindresvport_sa(sd, sa)
+>             endport = STARTPORT - 1;
+>             nports = STARTPORT - LOWPORT;
+>             port = LOWPORT + port % (STARTPORT - LOWPORT);
+> +           pass++;
+>             goto again;
+>         }
+> +       endservent();
+>         mutex_unlock(&port_lock);
+>
+>          return (res);
+>
