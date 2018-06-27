@@ -1,64 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f196.google.com ([209.85.223.196]:41979 "EHLO
-        mail-io0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S965736AbeF0SSy (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Jun 2018 14:18:54 -0400
-Received: by mail-io0-f196.google.com with SMTP id k16-v6so2759239ioa.8
-        for <linux-nfs@vger.kernel.org>; Wed, 27 Jun 2018 11:18:54 -0700 (PDT)
+Received: from mail-io0-f193.google.com ([209.85.223.193]:44965 "EHLO
+        mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S965557AbeF0SSx (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Jun 2018 14:18:53 -0400
+Received: by mail-io0-f193.google.com with SMTP id g7-v6so2758592ioh.11
+        for <linux-nfs@vger.kernel.org>; Wed, 27 Jun 2018 11:18:53 -0700 (PDT)
 Received: from leira.trondhjem.org.localdomain ([50.105.87.45])
-        by smtp.gmail.com with ESMTPSA id x5-v6sm2105233ioa.65.2018.06.27.11.18.52
+        by smtp.gmail.com with ESMTPSA id x5-v6sm2105233ioa.65.2018.06.27.11.18.51
         for <linux-nfs@vger.kernel.org>
         (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
-        Wed, 27 Jun 2018 11:18:53 -0700 (PDT)
+        Wed, 27 Jun 2018 11:18:52 -0700 (PDT)
 From: Trond Myklebust <trondmy@gmail.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH 4/5] pNFS/flexfiles: Ensure we always return a layout if it has layoutstats
-Date: Wed, 27 Jun 2018 14:18:27 -0400
-Message-Id: <20180627181828.27680-4-trond.myklebust@hammerspace.com>
-In-Reply-To: <20180627181828.27680-3-trond.myklebust@hammerspace.com>
+Subject: [PATCH 3/5] pNFS: Ignore non-recalled layouts in pnfs_layout_need_return()
+Date: Wed, 27 Jun 2018 14:18:26 -0400
+Message-Id: <20180627181828.27680-3-trond.myklebust@hammerspace.com>
+In-Reply-To: <20180627181828.27680-2-trond.myklebust@hammerspace.com>
 References: <20180627181828.27680-1-trond.myklebust@hammerspace.com>
  <20180627181828.27680-2-trond.myklebust@hammerspace.com>
- <20180627181828.27680-3-trond.myklebust@hammerspace.com>
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If a layout segment is carrying layoutstats or layout error information,
-then we always want to return it rather than using a forgetful model.
+If a layout has been recalled, then we should fire off a layoutreturn as
+soon as all the layout segments that match the recall have been retired.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/flexfilelayout/flexfilelayout.c | 3 +++
- 1 file changed, 3 insertions(+)
+ fs/nfs/pnfs.c | 11 ++++++++++-
+ 1 file changed, 10 insertions(+), 1 deletion(-)
 
-diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
-index 8f003792ccde..280b6b060d53 100644
---- a/fs/nfs/flexfilelayout/flexfilelayout.c
-+++ b/fs/nfs/flexfilelayout/flexfilelayout.c
-@@ -1323,6 +1323,7 @@ static void ff_layout_read_record_layoutstats_done(struct rpc_task *task,
- 			FF_LAYOUT_COMP(hdr->lseg, hdr->pgio_mirror_idx),
- 			hdr->args.count,
- 			hdr->res.count);
-+	set_bit(NFS_LSEG_LAYOUTRETURN, &hdr->lseg->pls_flags);
- }
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 17776ef734d7..bf7f0b21066d 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1160,12 +1160,21 @@ static bool
+ pnfs_layout_need_return(struct pnfs_layout_hdr *lo)
+ {
+ 	struct pnfs_layout_segment *s;
++	enum pnfs_iomode iomode;
++	u32 seq;
  
- static int ff_layout_read_prepare_common(struct rpc_task *task,
-@@ -1507,6 +1508,7 @@ static void ff_layout_write_record_layoutstats_done(struct rpc_task *task,
- 			FF_LAYOUT_COMP(hdr->lseg, hdr->pgio_mirror_idx),
- 			hdr->args.count, hdr->res.count,
- 			hdr->res.verf->committed);
-+	set_bit(NFS_LSEG_LAYOUTRETURN, &hdr->lseg->pls_flags);
- }
+ 	if (!test_bit(NFS_LAYOUT_RETURN_REQUESTED, &lo->plh_flags))
+ 		return false;
  
- static int ff_layout_write_prepare_common(struct rpc_task *task,
-@@ -1615,6 +1617,7 @@ static void ff_layout_commit_record_layoutstats_done(struct rpc_task *task,
- 	nfs4_ff_layout_stat_io_end_write(task,
- 			FF_LAYOUT_COMP(cdata->lseg, cdata->ds_commit_index),
- 			count, count, NFS_FILE_SYNC);
-+	set_bit(NFS_LSEG_LAYOUTRETURN, &cdata->lseg->pls_flags);
- }
- 
- static void ff_layout_commit_prepare_common(struct rpc_task *task,
+-	/* Defer layoutreturn until all lsegs are done */
++	seq = lo->plh_return_seq;
++	iomode = lo->plh_return_iomode;
++
++	/* Defer layoutreturn until all recalled lsegs are done */
+ 	list_for_each_entry(s, &lo->plh_segs, pls_list) {
++		if (seq && pnfs_seqid_is_newer(s->pls_seq, seq))
++			continue;
++		if (iomode != IOMODE_ANY && s->pls_range.iomode != iomode)
++			continue;
+ 		if (test_bit(NFS_LSEG_LAYOUTRETURN, &s->pls_flags))
+ 			return false;
+ 	}
 -- 
 2.17.1
 
