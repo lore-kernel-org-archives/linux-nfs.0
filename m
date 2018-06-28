@@ -1,78 +1,126 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-co1nam03on0093.outbound.protection.outlook.com ([104.47.40.93]:59424
-        "EHLO NAM03-CO1-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S966247AbeF1ORc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 28 Jun 2018 10:17:32 -0400
-From: Trond Myklebust <trondmy@hammerspace.com>
-To: "libtirpc-devel@lists.sourceforge.net"
-        <libtirpc-devel@lists.sourceforge.net>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "chuck.lever@oracle.com" <chuck.lever@oracle.com>
+Received: from aserp2130.oracle.com ([141.146.126.79]:57222 "EHLO
+        aserp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S966209AbeF1O34 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Jun 2018 10:29:56 -0400
+Content-Type: text/plain;
+        charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 11.4 \(3445.8.2\))
 Subject: Re: [PATCH] Handle RPC_CANTDECODEARGS response in rpcbind query
-Date: Thu, 28 Jun 2018 14:17:29 +0000
-Message-ID: <b4786b94c7a2fc3c30e09e317b3bdb3855203469.camel@hammerspace.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <b4786b94c7a2fc3c30e09e317b3bdb3855203469.camel@hammerspace.com>
+Date: Thu, 28 Jun 2018 10:29:41 -0400
+Cc: libtirpc List <libtirpc-devel@lists.sourceforge.net>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <99AF8F3B-CD0A-4234-9341-E1C2A85F58DC@oracle.com>
 References: <20180628134503.13942.25482.stgit@klimt.1015granger.net>
-In-Reply-To: <20180628134503.13942.25482.stgit@klimt.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+ <b4786b94c7a2fc3c30e09e317b3bdb3855203469.camel@hammerspace.com>
+To: Trond Myklebust <trondmy@hammerspace.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDE4LTA2LTI4IGF0IDA5OjQ1IC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
-V2UgaGF2ZSBhIHJlcG9ydCB0aGF0IHNvbWUgY29tbWVyY2lhbCBORlMgZmlsZSBzZXJ2ZXJzIHN0
-aWxsIGRvIG5vdA0KPiBzdXBwb3J0IHJwY2JpbmQgdjQgY29ycmVjdGx5LiBUaGV5IHJldHVybiBS
-UENfQ0FOVERFQ09ERUFSR1MgaW5zdGVhZA0KPiBvZiBSUENfUFJPR1ZFUlNNSVNNQVRDSCwgc28g
-b3VyIHJwY2JpbmQgY2xpZW50IG5vdyBlcnJvcnMgb3V0DQo+IGltbWVkaWF0ZWx5IGluc3RlYWQg
-b2YgdHJ5aW5nIGEgbG93ZXIgcnBjYmluZCB2ZXJzaW9uLg0KPiANCj4gVG8gYWRkcmVzcyB0aGlz
-LCBjb252ZXJ0IHRoZSAiaWYgKCkgZWxzZSBpZiAoKSBlbHNlIGlmICgpIiB0byBhDQo+IHN3aXRj
-aCBzdGF0ZW1lbnQgdG8gbWFrZSBpdCBzdHJhaWdodGZvcndhcmQgdG8gYWRkIG5ldyBzdGF0dXMg
-Y29kZXMNCj4gdG8gdGhlIGVycm9yIHByb2Nlc3NpbmcgbG9naWMuIFRoZW4sIGFkZCBhIGNhc2Ug
-Zm9yDQo+IFJQQ19DQU5UREVDT0RFQVJHUy4NCj4gDQo+IFJlcG9ydGVkLWJ5OiBZdWFuLVlhbyBT
-dW5nIDx5eXN1bmdAY3MubmN0dS5lZHUudHc+DQo+IEZpeGVzOiA1ZTdiNTdiYzIwYmQgKCJycGNp
-bmZvOiBjaGFuZ2Ugb3JkZXIgb2YgdmVyc2lvbiB0byBiZSAuLi4gIikNCj4gU2lnbmVkLW9mZi1i
-eTogQ2h1Y2sgTGV2ZXIgPGNodWNrLmxldmVyQG9yYWNsZS5jb20+DQo+IFRlc3RlZC1ieTogWXVh
-bi1ZYW8gU3VuZyA8eXlzdW5nQGNzLm5jdHUuZWR1LnR3Pg0KPiAtLS0NCj4gIHNyYy9ycGNiX2Ns
-bnQuYyB8ICAgMTMgKysrKysrKysrLS0tLQ0KPiAgMSBmaWxlIGNoYW5nZWQsIDkgaW5zZXJ0aW9u
-cygrKSwgNCBkZWxldGlvbnMoLSkNCj4gDQo+IGRpZmYgLS1naXQgYS9zcmMvcnBjYl9jbG50LmMg
-Yi9zcmMvcnBjYl9jbG50LmMNCj4gaW5kZXggNGI0NDM2NC4uZDZmZWZkMCAxMDA2NDQNCj4gLS0t
-IGEvc3JjL3JwY2JfY2xudC5jDQo+ICsrKyBiL3NyYy9ycGNiX2NsbnQuYw0KPiBAQCAtODQ2LDYg
-Kzg0Niw3IEBAIF9fcnBjYl9maW5kYWRkcl90aW1lZChwcm9ncmFtLCB2ZXJzaW9uLCBuY29uZiwN
-Cj4gaG9zdCwgY2xwcCwgdHApDQo+ICAJc3RydWN0IG5ldGJ1ZiAqYWRkcmVzcyA9IE5VTEw7DQo+
-ICAJcnBjdmVyc190IHN0YXJ0X3ZlcnMgPSBSUENCVkVSUzQ7DQo+ICAJc3RydWN0IG5ldGJ1ZiBz
-ZXJ2YWRkcjsNCj4gKwlzdHJ1Y3QgcnBjX2VyciBycGNlcnI7DQo+ICANCj4gIAkvKiBwYXJhbWV0
-ZXIgY2hlY2tpbmcgKi8NCj4gIAlpZiAobmNvbmYgPT0gTlVMTCkgew0KPiBAQCAtOTAyLDcgKzkw
-Myw4IEBAIF9fcnBjYl9maW5kYWRkcl90aW1lZChwcm9ncmFtLCB2ZXJzaW9uLCBuY29uZiwNCj4g
-aG9zdCwgY2xwcCwgdHApDQo+ICAJCWNsbnRfc3QgPSBDTE5UX0NBTEwoY2xpZW50LA0KPiAocnBj
-cHJvY190KVJQQ0JQUk9DX0dFVEFERFIsDQo+ICAJCSAgICAoeGRycHJvY190KSB4ZHJfcnBjYiwg
-KGNoYXIgKikodm9pZCAqKSZwYXJtcywNCj4gIAkJICAgICh4ZHJwcm9jX3QpIHhkcl93cmFwc3Ry
-aW5nLCAoY2hhciAqKSh2b2lkICopDQo+ICZ1YSwgKnRwKTsNCj4gLQkJaWYgKGNsbnRfc3QgPT0g
-UlBDX1NVQ0NFU1MpIHsNCj4gKwkJc3dpdGNoIChjbG50X3N0KSB7DQo+ICsJCWNhc2UgUlBDX1NV
-Q0NFU1M6DQo+ICAJCQlpZiAoKHVhID09IE5VTEwpIHx8ICh1YVswXSA9PSAwKSkgew0KPiAgCQkJ
-CS8qIGFkZHJlc3MgdW5rbm93biAqLw0KPiAgCQkJCXJwY19jcmVhdGVlcnIuY2Zfc3RhdCA9DQo+
-IFJQQ19QUk9HTk9UUkVHSVNURVJFRDsNCj4gQEAgLTkyNCwxMiArOTI2LDE1IEBAIF9fcnBjYl9m
-aW5kYWRkcl90aW1lZChwcm9ncmFtLCB2ZXJzaW9uLCBuY29uZiwNCj4gaG9zdCwgY2xwcCwgdHAp
-DQo+ICAJCQkgICAgKGNoYXIgKikodm9pZCAqKSZzZXJ2YWRkcik7DQo+ICAJCQlfX3JwY19maXh1
-cF9hZGRyKGFkZHJlc3MsICZzZXJ2YWRkcik7DQo+ICAJCQlnb3RvIGRvbmU7DQo+IC0JCX0gZWxz
-ZSBpZiAoY2xudF9zdCA9PSBSUENfUFJPR1ZFUlNNSVNNQVRDSCkgew0KPiAtCQkJc3RydWN0IHJw
-Y19lcnIgcnBjZXJyOw0KPiArCQljYXNlIFJQQ19QUk9HVkVSU01JU01BVENIOg0KPiAgCQkJY2xu
-dF9nZXRlcnIoY2xpZW50LCAmcnBjZXJyKTsNCj4gIAkJCWlmIChycGNlcnIucmVfdmVycy5sb3cg
-PiBSUENCVkVSUzQpDQo+ICAJCQkJZ290byBlcnJvcjsgIC8qIGEgbmV3IHZlcnNpb24sIGNhbid0
-DQo+IGhhbmRsZSAqLw0KPiAtCQl9IGVsc2UgaWYgKGNsbnRfc3QgIT0gUlBDX1BST0dVTkFWQUlM
-KSB7DQo+ICsJCQkvKiBUcnkgdGhlIG5leHQgbG93ZXIgdmVyc2lvbiAqLw0KPiArCQljYXNlIFJQ
-Q19QUk9HVU5BVkFJTDoNCj4gKwkJY2FzZSBSUENfQ0FOVERFQ09ERUFSR1M6DQo+ICsJCQlicmVh
-azsNCj4gKwkJZGVmYXVsdDoNCj4gIAkJCS8qIENhbnQgaGFuZGxlIHRoaXMgZXJyb3IgKi8NCj4g
-IAkJCXJwY19jcmVhdGVlcnIuY2Zfc3RhdCA9IGNsbnRfc3Q7DQo+ICAJCQljbG50X2dldGVycihj
-bGllbnQsDQo+ICZycGNfY3JlYXRlZXJyLmNmX2Vycm9yKTsNCj4gDQo+IC0tDQoNCkludGVyZXN0
-aW5nLi4uIERvIHRoZXNlIHNlcnZlcnMgcmV0dXJuIGFueSBvdGhlciBub24tc2FuY3Rpb25lZCBl
-cnJvcnM/DQoNCkkgY2FuJ3QgZmluZCBSUENfQ0FOVERFQ09ERUFSR1MgZGVzY3JpYmVkIGluIGFu
-eSBvZiB0aGUgb2ZmaWNpYWwgUkZDcw0KcGVydGFpbmluZyB0byBSUEMsIE5GUyBvciB0aGUgUlBD
-QklORCBwcm90b2NvbC4gSXQgYXBwZWFycyB0byBiZSBsaXN0ZWQNCmFtb25nIHRoZSBwcml2YXRl
-IGVycm9yIGNvZGVzIGluIHRoZSBsaWJ0aXJwYyBoZWFkZXIgZmlsZXMsIGFuZCBpbiBzb21lDQpq
-YXZhIGxpYnJhcmllcywgYnV0IGdvb2dsaW5nIGFyb3VuZCBhcHBlYXJlZCB0byBpbmRpY2F0ZSB0
-aGF0IHRob3NlDQpjb2RlcyBhcmUgaW50ZW5kZWQgZm9yIGludGVybmFsIGxpYnJhcnkgc2lnbmFs
-bGluZyBvbmx5LCBhbmQgc2hvdWxkIG5vdA0KYXBwZWFyIG9uIHRoZSB3aXJlOg0KDQogaHR0cHM6
-Ly9wZW9wbGUuZWVjcy5iZXJrZWxleS5lZHUvfmpvbmFoL2phdmFkb2Mvb3JnL2FjcGx0L29uY3Jw
-Yy9PbmNScA0KY0V4Y2VwdGlvbi5odG1sDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBO
-RlMgY2xpZW50IG1haW50YWluZXIsIEhhbW1lcnNwYWNlDQp0cm9uZC5teWtsZWJ1c3RAaGFtbWVy
-c3BhY2UuY29tDQoNCg==
+
+
+> On Jun 28, 2018, at 10:17 AM, Trond Myklebust =
+<trondmy@hammerspace.com> wrote:
+>=20
+> On Thu, 2018-06-28 at 09:45 -0400, Chuck Lever wrote:
+>> We have a report that some commercial NFS file servers still do not
+>> support rpcbind v4 correctly. They return RPC_CANTDECODEARGS instead
+>> of RPC_PROGVERSMISMATCH, so our rpcbind client now errors out
+>> immediately instead of trying a lower rpcbind version.
+>>=20
+>> To address this, convert the "if () else if () else if ()" to a
+>> switch statement to make it straightforward to add new status codes
+>> to the error processing logic. Then, add a case for
+>> RPC_CANTDECODEARGS.
+>>=20
+>> Reported-by: Yuan-Yao Sung <yysung@cs.nctu.edu.tw>
+>> Fixes: 5e7b57bc20bd ("rpcinfo: change order of version to be ... ")
+>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>> Tested-by: Yuan-Yao Sung <yysung@cs.nctu.edu.tw>
+>> ---
+>> src/rpcb_clnt.c |   13 +++++++++----
+>> 1 file changed, 9 insertions(+), 4 deletions(-)
+>>=20
+>> diff --git a/src/rpcb_clnt.c b/src/rpcb_clnt.c
+>> index 4b44364..d6fefd0 100644
+>> --- a/src/rpcb_clnt.c
+>> +++ b/src/rpcb_clnt.c
+>> @@ -846,6 +846,7 @@ __rpcb_findaddr_timed(program, version, nconf,
+>> host, clpp, tp)
+>> 	struct netbuf *address =3D NULL;
+>> 	rpcvers_t start_vers =3D RPCBVERS4;
+>> 	struct netbuf servaddr;
+>> +	struct rpc_err rpcerr;
+>>=20
+>> 	/* parameter checking */
+>> 	if (nconf =3D=3D NULL) {
+>> @@ -902,7 +903,8 @@ __rpcb_findaddr_timed(program, version, nconf,
+>> host, clpp, tp)
+>> 		clnt_st =3D CLNT_CALL(client,
+>> (rpcproc_t)RPCBPROC_GETADDR,
+>> 		    (xdrproc_t) xdr_rpcb, (char *)(void *)&parms,
+>> 		    (xdrproc_t) xdr_wrapstring, (char *)(void *)
+>> &ua, *tp);
+>> -		if (clnt_st =3D=3D RPC_SUCCESS) {
+>> +		switch (clnt_st) {
+>> +		case RPC_SUCCESS:
+>> 			if ((ua =3D=3D NULL) || (ua[0] =3D=3D 0)) {
+>> 				/* address unknown */
+>> 				rpc_createerr.cf_stat =3D
+>> RPC_PROGNOTREGISTERED;
+>> @@ -924,12 +926,15 @@ __rpcb_findaddr_timed(program, version, nconf,
+>> host, clpp, tp)
+>> 			    (char *)(void *)&servaddr);
+>> 			__rpc_fixup_addr(address, &servaddr);
+>> 			goto done;
+>> -		} else if (clnt_st =3D=3D RPC_PROGVERSMISMATCH) {
+>> -			struct rpc_err rpcerr;
+>> +		case RPC_PROGVERSMISMATCH:
+>> 			clnt_geterr(client, &rpcerr);
+>> 			if (rpcerr.re_vers.low > RPCBVERS4)
+>> 				goto error;  /* a new version, can't
+>> handle */
+>> -		} else if (clnt_st !=3D RPC_PROGUNAVAIL) {
+>> +			/* Try the next lower version */
+>> +		case RPC_PROGUNAVAIL:
+>> +		case RPC_CANTDECODEARGS:
+>> +			break;
+>> +		default:
+>> 			/* Cant handle this error */
+>> 			rpc_createerr.cf_stat =3D clnt_st;
+>> 			clnt_geterr(client,
+>> &rpc_createerr.cf_error);
+>>=20
+>> --
+>=20
+> Interesting... Do these servers return any other non-sanctioned =
+errors?
+
+It's a NetApp filer. GARBAGE_ARGS is what goes on the wire.
+
+
+> I can't find RPC_CANTDECODEARGS described in any of the official RFCs
+> pertaining to RPC, NFS or the RPCBIND protocol. It appears to be =
+listed
+> among the private error codes in the libtirpc header files, and in =
+some
+> java libraries, but googling around appeared to indicate that those
+> codes are intended for internal library signaling only, and should not
+> appear on the wire:
+>=20
+> https://people.eecs.berkeley.edu/~jonah/javadoc/org/acplt/oncrpc/OncRp
+> cException.html
+
+RPC_CANTDECODEARGS is part of the public RPC API, it doesn't go on
+the wire.
+
+I will fix the patch description and resend.
+
+
+--
+Chuck Lever
+
+
+
