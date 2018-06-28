@@ -1,55 +1,87 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-sn1nam02on0116.outbound.protection.outlook.com ([104.47.36.116]:4736
-        "EHLO NAM02-SN1-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S965572AbeF1QR2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 28 Jun 2018 12:17:28 -0400
-From: Trond Myklebust <trondmy@hammerspace.com>
-To: "steved@redhat.com" <steved@redhat.com>,
-        "libtirpc-devel@lists.sourceforge.net"
-        <libtirpc-devel@lists.sourceforge.net>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:60634 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S935611AbeF1Qk7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 28 Jun 2018 12:40:59 -0400
 Subject: Re: [PATCH] xdrstdio_create buffers do not output encoded values on
  ppc
-Date: Thu, 28 Jun 2018 16:17:25 +0000
-Message-ID: <1af4bef9877dabeece80e0901d672d93273a48b2.camel@hammerspace.com>
+To: Trond Myklebust <trondmy@hammerspace.com>,
+        "libtirpc-devel@lists.sourceforge.net"
+        <libtirpc-devel@lists.sourceforge.net>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
 References: <20180628152914.7445-1-steved@redhat.com>
-In-Reply-To: <20180628152914.7445-1-steved@redhat.com>
-Content-Type: text/plain; charset="utf-8"
+ <1af4bef9877dabeece80e0901d672d93273a48b2.camel@hammerspace.com>
+From: Steve Dickson <SteveD@RedHat.com>
+Message-ID: <1d791547-ef01-6fbd-b9cf-17d3c9bdcf10@RedHat.com>
+Date: Thu, 28 Jun 2018 12:40:58 -0400
 MIME-Version: 1.0
+In-Reply-To: <1af4bef9877dabeece80e0901d672d93273a48b2.camel@hammerspace.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDE4LTA2LTI4IGF0IDExOjI5IC0wNDAwLCBTdGV2ZSBEaWNrc29uIHdyb3RlOg0K
-PiBGcm9tOiBEYW5pZWwgU2FuZHMgPGRuc2FuZHNAc2FuZGlhLmdvdj4NCj4gDQo+IFRoZSBjYXVz
-ZSBpcyB0aGF0IHRoZSB4ZHJfcHV0bG9uZyB1c2VzIGEgbG9uZyB0byBzdG9yZSB0aGUNCj4gY29u
-dmVydGVkIHZhbHVlLCB0aGVuIHBhc3NlcyBpdCB0byBmd3JpdGUgYXMgYSBieXRlIGJ1ZmZlci4N
-Cj4gT25seSB0aGUgZmlyc3QgNCBieXRlcyBhcmUgd3JpdHRlbiwgd2hpY2ggaXMgb2theSBmb3Ig
-YSBMRQ0KPiBzeXN0ZW0gYWZ0ZXIgYnl0ZXN3YXBwaW5nLCBidXQgd3JpdGVzIGFsbCB6ZXJvZXMg
-b24gQkUgc3lzdGVtcy4NCj4gDQo+IEZpeGVzOiBodHRwczovL2J1Z3ppbGxhLnJlZGhhdC5jb20v
-c2hvd19idWcuY2dpP2lkPTEyNjE3MzgNCj4gDQo+IFNpZ25lZC1vZmYtYnk6IFN0ZXZlIERpY2tz
-b24gPHN0ZXZlZEByZWRoYXQuY29tPg0KPiAtLS0NCj4gIHNyYy94ZHJfc3RkaW8uYyB8IDEwICsr
-KysrLS0tLS0NCj4gIDEgZmlsZSBjaGFuZ2VkLCA1IGluc2VydGlvbnMoKyksIDUgZGVsZXRpb25z
-KC0pDQo+IA0KPiBkaWZmIC0tZ2l0IGEvc3JjL3hkcl9zdGRpby5jIGIvc3JjL3hkcl9zdGRpby5j
-DQo+IGluZGV4IDQ0MTAyNjIuLmI0MTVmNjEgMTAwNjQ0DQo+IC0tLSBhL3NyYy94ZHJfc3RkaW8u
-Yw0KPiArKysgYi9zcmMveGRyX3N0ZGlvLmMNCj4gQEAgLTEwMywxMCArMTAzLDEwIEBAIHhkcnN0
-ZGlvX2dldGxvbmcoeGRycywgbHApDQo+ICAJWERSICp4ZHJzOw0KPiAgCWxvbmcgKmxwOw0KPiAg
-ew0KPiAtDQo+IC0JaWYgKGZyZWFkKGxwLCBzaXplb2YoaW50MzJfdCksIDEsIChGSUxFICopeGRy
-cy0+eF9wcml2YXRlKQ0KPiAhPSAxKQ0KPiArCXVfaW50MzJfdCBteWNvcHk7DQo+ICsJaWYgKGZy
-ZWFkKCZteWNvcHksIHNpemVvZih1X2ludDMyX3QpLCAxLCAoRklMRSAqKXhkcnMtDQo+ID54X3By
-aXZhdGUpICE9IDEpDQo+ICAJCXJldHVybiAoRkFMU0UpOw0KPiAtCSpscCA9IChsb25nKW50b2hs
-KCh1X2ludDMyX3QpKmxwKTsNCj4gKwkqbHAgPSAobG9uZyludG9obChteWNvcHkpOw0KPiAgCXJl
-dHVybiAoVFJVRSk7DQo+ICB9DQo+ICANCj4gQEAgLTExNSw5ICsxMTUsOSBAQCB4ZHJzdGRpb19w
-dXRsb25nKHhkcnMsIGxwKQ0KPiAgCVhEUiAqeGRyczsNCj4gIAljb25zdCBsb25nICpscDsNCj4g
-IHsNCj4gLQlsb25nIG15Y29weSA9IChsb25nKWh0b25sKCh1X2ludDMyX3QpKmxwKTsNCj4gKwl1
-X2ludDMyX3QgbXljb3B5ID0gKHVfaW50MzJfdClodG9ubCgodV9pbnQzMl90KSpscCk7DQo+ICAN
-Cj4gLQlpZiAoZndyaXRlKCZteWNvcHksIHNpemVvZihpbnQzMl90KSwgMSwgKEZJTEUgKil4ZHJz
-LQ0KPiA+eF9wcml2YXRlKSAhPSAxKQ0KPiArCWlmIChmd3JpdGUoJm15Y29weSwgc2l6ZW9mKHVf
-aW50MzJfdCksIDEsIChGSUxFICopeGRycy0NCj4gPnhfcHJpdmF0ZSkgIT0gMSkNCj4gIAkJcmV0
-dXJuIChGQUxTRSk7DQo+ICAJcmV0dXJuIChUUlVFKTsNCj4gIH0NCg0KSG1tLi4uIEdpdmVuIHRo
-YXQgbW9zdCBzZXR1cHMgdG9kYXkgdGVuZCB0byBiZSA2NC1iaXQsIHNob3VsZG4ndCB0aGVyZQ0K
-YWxzbyBiZSBib3VuZHMgY2hlY2tpbmcgaW4gdGhlIGFib3ZlICd4ZHJzdGRpb19wdXRsb25nKCkn
-IGluIG9yZGVyIHRvDQptYWtlIGl0IHNhZmU/DQoNClNvbWV0aGluZyBsaWtlDQoNCmlmICgobG9u
-ZykodV9pbnQzMl90KSpscCAhPSAqbHApIHJldHVybiAoRkFMU0UpOw0KDQotLSANClRyb25kIE15
-a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBIYW1tZXJzcGFjZQ0KdHJvbmQu
-bXlrbGVidXN0QGhhbW1lcnNwYWNlLmNvbQ0KDQo=
+
+
+On 06/28/2018 12:17 PM, Trond Myklebust wrote:
+> On Thu, 2018-06-28 at 11:29 -0400, Steve Dickson wrote:
+>> From: Daniel Sands <dnsands@sandia.gov>
+>>
+>> The cause is that the xdr_putlong uses a long to store the
+>> converted value, then passes it to fwrite as a byte buffer.
+>> Only the first 4 bytes are written, which is okay for a LE
+>> system after byteswapping, but writes all zeroes on BE systems.
+>>
+>> Fixes: https://bugzilla.redhat.com/show_bug.cgi?id=1261738
+>>
+>> Signed-off-by: Steve Dickson <steved@redhat.com>
+>> ---
+>>  src/xdr_stdio.c | 10 +++++-----
+>>  1 file changed, 5 insertions(+), 5 deletions(-)
+>>
+>> diff --git a/src/xdr_stdio.c b/src/xdr_stdio.c
+>> index 4410262..b415f61 100644
+>> --- a/src/xdr_stdio.c
+>> +++ b/src/xdr_stdio.c
+>> @@ -103,10 +103,10 @@ xdrstdio_getlong(xdrs, lp)
+>>  	XDR *xdrs;
+>>  	long *lp;
+>>  {
+>> -
+>> -	if (fread(lp, sizeof(int32_t), 1, (FILE *)xdrs->x_private)
+>> != 1)
+>> +	u_int32_t mycopy;
+>> +	if (fread(&mycopy, sizeof(u_int32_t), 1, (FILE *)xdrs-
+>>> x_private) != 1)
+>>  		return (FALSE);
+>> -	*lp = (long)ntohl((u_int32_t)*lp);
+>> +	*lp = (long)ntohl(mycopy);
+>>  	return (TRUE);
+>>  }
+>>  
+>> @@ -115,9 +115,9 @@ xdrstdio_putlong(xdrs, lp)
+>>  	XDR *xdrs;
+>>  	const long *lp;
+>>  {
+>> -	long mycopy = (long)htonl((u_int32_t)*lp);
+>> +	u_int32_t mycopy = (u_int32_t)htonl((u_int32_t)*lp);
+>>  
+>> -	if (fwrite(&mycopy, sizeof(int32_t), 1, (FILE *)xdrs-
+>>> x_private) != 1)
+>> +	if (fwrite(&mycopy, sizeof(u_int32_t), 1, (FILE *)xdrs-
+>>> x_private) != 1)
+>>  		return (FALSE);
+>>  	return (TRUE);
+>>  }
+> 
+> Hmm... Given that most setups today tend to be 64-bit, shouldn't there
+> also be bounds checking in the above 'xdrstdio_putlong()' in order to
+> make it safe?
+> 
+> Something like
+> 
+> if ((long)(u_int32_t)*lp != *lp) return (FALSE);
+> 
+Sorry... I'm not following this... why is this necessary
+and what are you making safe?
+
+steved.
