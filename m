@@ -1,78 +1,61 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f68.google.com ([209.85.214.68]:33617 "EHLO
-        mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S966506AbeF1OeY (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Jun 2018 10:34:24 -0400
-Received: by mail-it0-f68.google.com with SMTP id k17-v6so21686674ita.0
-        for <linux-nfs@vger.kernel.org>; Thu, 28 Jun 2018 07:34:24 -0700 (PDT)
-Subject: [PATCH v2] Handle GARBAGE_ARGS response in rpcbind query
-From: Chuck Lever <chuck.lever@oracle.com>
-To: linux-nfs@vger.kernel.org, libtirpc-devel@lists.sourceforge.net
-Date: Thu, 28 Jun 2018 10:34:22 -0400
-Message-ID: <20180628143422.14145.77695.stgit@klimt.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mx1.redhat.com ([209.132.183.28]:32996 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S965440AbeF1P3Q (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 28 Jun 2018 11:29:16 -0400
+From: Steve Dickson <steved@redhat.com>
+To: Libtirpc-devel Mailing List <libtirpc-devel@lists.sourceforge.net>
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH] xdrstdio_create buffers do not output encoded values on ppc
+Date: Thu, 28 Jun 2018 11:29:14 -0400
+Message-Id: <20180628152914.7445-1-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We have a report that some commercial NFS file servers still do not
-support rpcbind v4 correctly. They return GARBAGE_ARGS instead of
-PROG_MISMATCH or PROG_UNAVAIL, so our rpcbind client now errors out
-immediately instead of trying a lower rpcbind version.
+From: Daniel Sands <dnsands@sandia.gov>
 
-To address this, convert the "if () else if () else if ()" to a
-switch statement to make it straightforward to add new status codes
-to the error processing logic. Then, add a case for
-RPC_CANTDECODEARGS (the API status code used when the remote
-responds with GARBAGE_ARGS).
+The cause is that the xdr_putlong uses a long to store the
+converted value, then passes it to fwrite as a byte buffer.
+Only the first 4 bytes are written, which is okay for a LE
+system after byteswapping, but writes all zeroes on BE systems.
 
-Reported-by: Yuan-Yao Sung <yysung@cs.nctu.edu.tw>
-Fixes: 5e7b57bc20bd ("rpcinfo: change order of version to be ... ")
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Tested-by: Yuan-Yao Sung <yysung@cs.nctu.edu.tw>
+Fixes: https://bugzilla.redhat.com/show_bug.cgi?id=1261738
+
+Signed-off-by: Steve Dickson <steved@redhat.com>
 ---
- src/rpcb_clnt.c |   13 +++++++++----
- 1 file changed, 9 insertions(+), 4 deletions(-)
+ src/xdr_stdio.c | 10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
 
-diff --git a/src/rpcb_clnt.c b/src/rpcb_clnt.c
-index 4b44364..d6fefd0 100644
---- a/src/rpcb_clnt.c
-+++ b/src/rpcb_clnt.c
-@@ -846,6 +846,7 @@ __rpcb_findaddr_timed(program, version, nconf, host, clpp, tp)
- 	struct netbuf *address = NULL;
- 	rpcvers_t start_vers = RPCBVERS4;
- 	struct netbuf servaddr;
-+	struct rpc_err rpcerr;
+diff --git a/src/xdr_stdio.c b/src/xdr_stdio.c
+index 4410262..b415f61 100644
+--- a/src/xdr_stdio.c
++++ b/src/xdr_stdio.c
+@@ -103,10 +103,10 @@ xdrstdio_getlong(xdrs, lp)
+ 	XDR *xdrs;
+ 	long *lp;
+ {
+-
+-	if (fread(lp, sizeof(int32_t), 1, (FILE *)xdrs->x_private) != 1)
++	u_int32_t mycopy;
++	if (fread(&mycopy, sizeof(u_int32_t), 1, (FILE *)xdrs->x_private) != 1)
+ 		return (FALSE);
+-	*lp = (long)ntohl((u_int32_t)*lp);
++	*lp = (long)ntohl(mycopy);
+ 	return (TRUE);
+ }
  
- 	/* parameter checking */
- 	if (nconf == NULL) {
-@@ -902,7 +903,8 @@ __rpcb_findaddr_timed(program, version, nconf, host, clpp, tp)
- 		clnt_st = CLNT_CALL(client, (rpcproc_t)RPCBPROC_GETADDR,
- 		    (xdrproc_t) xdr_rpcb, (char *)(void *)&parms,
- 		    (xdrproc_t) xdr_wrapstring, (char *)(void *) &ua, *tp);
--		if (clnt_st == RPC_SUCCESS) {
-+		switch (clnt_st) {
-+		case RPC_SUCCESS:
- 			if ((ua == NULL) || (ua[0] == 0)) {
- 				/* address unknown */
- 				rpc_createerr.cf_stat = RPC_PROGNOTREGISTERED;
-@@ -924,12 +926,15 @@ __rpcb_findaddr_timed(program, version, nconf, host, clpp, tp)
- 			    (char *)(void *)&servaddr);
- 			__rpc_fixup_addr(address, &servaddr);
- 			goto done;
--		} else if (clnt_st == RPC_PROGVERSMISMATCH) {
--			struct rpc_err rpcerr;
-+		case RPC_PROGVERSMISMATCH:
- 			clnt_geterr(client, &rpcerr);
- 			if (rpcerr.re_vers.low > RPCBVERS4)
- 				goto error;  /* a new version, can't handle */
--		} else if (clnt_st != RPC_PROGUNAVAIL) {
-+			/* Try the next lower version */
-+		case RPC_PROGUNAVAIL:
-+		case RPC_CANTDECODEARGS:
-+			break;
-+		default:
- 			/* Cant handle this error */
- 			rpc_createerr.cf_stat = clnt_st;
- 			clnt_geterr(client, &rpc_createerr.cf_error);
+@@ -115,9 +115,9 @@ xdrstdio_putlong(xdrs, lp)
+ 	XDR *xdrs;
+ 	const long *lp;
+ {
+-	long mycopy = (long)htonl((u_int32_t)*lp);
++	u_int32_t mycopy = (u_int32_t)htonl((u_int32_t)*lp);
+ 
+-	if (fwrite(&mycopy, sizeof(int32_t), 1, (FILE *)xdrs->x_private) != 1)
++	if (fwrite(&mycopy, sizeof(u_int32_t), 1, (FILE *)xdrs->x_private) != 1)
+ 		return (FALSE);
+ 	return (TRUE);
+ }
+-- 
+2.17.1
 
