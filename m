@@ -1,108 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp2120.oracle.com ([141.146.126.78]:45004 "EHLO
-        aserp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S934965AbeF2TTp (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Jun 2018 15:19:45 -0400
-Content-Type: text/plain;
-        charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 11.4 \(3445.8.2\))
-Subject: Re: [Libtirpc-devel] [PATCH V2] xdrstdio_create buffers do not output
- encoded values on ppc
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20180629184256.20532-1-steved@redhat.com>
-Date: Fri, 29 Jun 2018 15:19:14 -0400
-Cc: libtirpc List <libtirpc-devel@lists.sourceforge.net>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <E0ED4A20-1E4F-4DD8-A410-AFD63F2B4DE6@oracle.com>
+Received: from mail-co1nam03on0124.outbound.protection.outlook.com ([104.47.40.124]:51840
+        "EHLO NAM03-CO1-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S936799AbeF2T3w (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 29 Jun 2018 15:29:52 -0400
+From: Trond Myklebust <trondmy@hammerspace.com>
+To: "steved@redhat.com" <steved@redhat.com>,
+        "libtirpc-devel@lists.sourceforge.net"
+        <libtirpc-devel@lists.sourceforge.net>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH V2] xdrstdio_create buffers do not output encoded values
+ on ppc
+Date: Fri, 29 Jun 2018 19:29:50 +0000
+Message-ID: <6ce6dd9fe59250132029e42acd03807a83b2f2d9.camel@hammerspace.com>
 References: <20180629184256.20532-1-steved@redhat.com>
-To: Steve Dickson <steved@redhat.com>
+In-Reply-To: <20180629184256.20532-1-steved@redhat.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-> On Jun 29, 2018, at 2:42 PM, Steve Dickson <steved@redhat.com> wrote:
->=20
-> From: Daniel Sands <dnsands@sandia.gov>
->=20
-> The cause is that the xdr_putlong uses a long to store the
-> converted value, then passes it to fwrite as a byte buffer.
-> Only the first 4 bytes are written, which is okay for a LE
-> system after byteswapping, but writes all zeroes on BE systems.
->=20
-> Fixes: https://bugzilla.redhat.com/show_bug.cgi?id=3D1261738
->=20
-> Signed-off-by: Steve Dickson <steved@redhat.com>
-> ---
-> v2: Added bounds checking
->    Changed from unsigned to signed
->=20
-> src/xdr_stdio.c | 14 +++++++++++---
-> 1 file changed, 11 insertions(+), 3 deletions(-)
->=20
-> diff --git a/src/xdr_stdio.c b/src/xdr_stdio.c
-> index 4410262..b902acd 100644
-> --- a/src/xdr_stdio.c
-> +++ b/src/xdr_stdio.c
-> @@ -103,10 +103,12 @@ xdrstdio_getlong(xdrs, lp)
-> 	XDR *xdrs;
-> 	long *lp;
-> {
-> +	int32_t mycopy;
->=20
-> -	if (fread(lp, sizeof(int32_t), 1, (FILE *)xdrs->x_private) !=3D =
-1)
-> +	if (fread(&mycopy, sizeof(int32_t), 1, (FILE *)xdrs->x_private) =
-!=3D 1)
-> 		return (FALSE);
-> -	*lp =3D (long)ntohl((u_int32_t)*lp);
-> +
-> +	*lp =3D (long)ntohl(mycopy);
-> 	return (TRUE);
-> }
->=20
-> @@ -115,8 +117,14 @@ xdrstdio_putlong(xdrs, lp)
-> 	XDR *xdrs;
-> 	const long *lp;
-> {
-> -	long mycopy =3D (long)htonl((u_int32_t)*lp);
-> +	int32_t mycopy;
-> +
-> +#if defined(_LP64)
-
-I don't find an _LP64 macro defined within libtirpc or the C libraries
-on my RHEL 7 system. The test really should look something like this:
-
-#if __BITS_PER_LONG =3D=3D 64
-
-though I'm sure that's not right either.
-
-
-> +	if ((*lp > INT32_MAX) || (*lp < INT32_MIN))
-> +		return (FALSE);
-> +#endif
->=20
-> +	mycopy =3D (int32_t)htonl((int32_t)*lp);
-> 	if (fwrite(&mycopy, sizeof(int32_t), 1, (FILE *)xdrs->x_private) =
-!=3D 1)
-> 		return (FALSE);
-> 	return (TRUE);
-> --=20
-> 2.17.1
->=20
->=20
-> =
---------------------------------------------------------------------------=
-----
-> Check out the vibrant tech community on one of the world's most
-> engaging tech sites, Slashdot.org! http://sdm.link/slashdot
-> _______________________________________________
-> Libtirpc-devel mailing list
-> Libtirpc-devel@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/libtirpc-devel
-
---
-Chuck Lever
-
-
-
+T24gRnJpLCAyMDE4LTA2LTI5IGF0IDE0OjQyIC0wNDAwLCBTdGV2ZSBEaWNrc29uIHdyb3RlOg0K
+PiBGcm9tOiBEYW5pZWwgU2FuZHMgPGRuc2FuZHNAc2FuZGlhLmdvdj4NCj4gDQo+IFRoZSBjYXVz
+ZSBpcyB0aGF0IHRoZSB4ZHJfcHV0bG9uZyB1c2VzIGEgbG9uZyB0byBzdG9yZSB0aGUNCj4gY29u
+dmVydGVkIHZhbHVlLCB0aGVuIHBhc3NlcyBpdCB0byBmd3JpdGUgYXMgYSBieXRlIGJ1ZmZlci4N
+Cj4gT25seSB0aGUgZmlyc3QgNCBieXRlcyBhcmUgd3JpdHRlbiwgd2hpY2ggaXMgb2theSBmb3Ig
+YSBMRQ0KPiBzeXN0ZW0gYWZ0ZXIgYnl0ZXN3YXBwaW5nLCBidXQgd3JpdGVzIGFsbCB6ZXJvZXMg
+b24gQkUgc3lzdGVtcy4NCj4gDQo+IEZpeGVzOiBodHRwczovL2J1Z3ppbGxhLnJlZGhhdC5jb20v
+c2hvd19idWcuY2dpP2lkPTEyNjE3MzgNCj4gDQo+IFNpZ25lZC1vZmYtYnk6IFN0ZXZlIERpY2tz
+b24gPHN0ZXZlZEByZWRoYXQuY29tPg0KPiAtLS0NCj4gdjI6IEFkZGVkIGJvdW5kcyBjaGVja2lu
+Zw0KPiAgICAgQ2hhbmdlZCBmcm9tIHVuc2lnbmVkIHRvIHNpZ25lZA0KPiANCj4gIHNyYy94ZHJf
+c3RkaW8uYyB8IDE0ICsrKysrKysrKysrLS0tDQo+ICAxIGZpbGUgY2hhbmdlZCwgMTEgaW5zZXJ0
+aW9ucygrKSwgMyBkZWxldGlvbnMoLSkNCj4gDQo+IGRpZmYgLS1naXQgYS9zcmMveGRyX3N0ZGlv
+LmMgYi9zcmMveGRyX3N0ZGlvLmMNCj4gaW5kZXggNDQxMDI2Mi4uYjkwMmFjZCAxMDA2NDQNCj4g
+LS0tIGEvc3JjL3hkcl9zdGRpby5jDQo+ICsrKyBiL3NyYy94ZHJfc3RkaW8uYw0KPiBAQCAtMTAz
+LDEwICsxMDMsMTIgQEAgeGRyc3RkaW9fZ2V0bG9uZyh4ZHJzLCBscCkNCj4gIAlYRFIgKnhkcnM7
+DQo+ICAJbG9uZyAqbHA7DQo+ICB7DQo+ICsJaW50MzJfdCBteWNvcHk7DQo+ICANCj4gLQlpZiAo
+ZnJlYWQobHAsIHNpemVvZihpbnQzMl90KSwgMSwgKEZJTEUgKil4ZHJzLT54X3ByaXZhdGUpDQo+
+ICE9IDEpDQo+ICsJaWYgKGZyZWFkKCZteWNvcHksIHNpemVvZihpbnQzMl90KSwgMSwgKEZJTEUg
+Kil4ZHJzLQ0KPiA+eF9wcml2YXRlKSAhPSAxKQ0KPiAgCQlyZXR1cm4gKEZBTFNFKTsNCj4gLQkq
+bHAgPSAobG9uZyludG9obCgodV9pbnQzMl90KSpscCk7DQo+ICsNCj4gKwkqbHAgPSAobG9uZylu
+dG9obChteWNvcHkpOw0KPiAgCXJldHVybiAoVFJVRSk7DQo+ICB9DQo+ICANCj4gQEAgLTExNSw4
+ICsxMTcsMTQgQEAgeGRyc3RkaW9fcHV0bG9uZyh4ZHJzLCBscCkNCj4gIAlYRFIgKnhkcnM7DQo+
+ICAJY29uc3QgbG9uZyAqbHA7DQo+ICB7DQo+IC0JbG9uZyBteWNvcHkgPSAobG9uZylodG9ubCgo
+dV9pbnQzMl90KSpscCk7DQo+ICsJaW50MzJfdCBteWNvcHk7DQo+ICsNCj4gKyNpZiBkZWZpbmVk
+KF9MUDY0KQ0KPiArCWlmICgoKmxwID4gSU5UMzJfTUFYKSB8fCAoKmxwIDwgSU5UMzJfTUlOKSkN
+Cj4gKwkJcmV0dXJuIChGQUxTRSk7DQoNClRoZSB3aWxsIHdvcmsganVzdCBmaW5lIGlmIHlvdXIg
+Y2FzdCBpczoNCglpbnQgYTsNCg0KCWxwID0gKGxvbmcpYTsNCg0KLi4uYnV0IGl0IHdvbid0IGRv
+IHRoZSByaWdodCB0aGluZyBmb3INCg0KCXVuc2lnbmVkIGludCBiID0gVUlOVDMyX01BWDsNCg0K
+CWxwID0gKGxvbmcpYjsJLyogc2V0IGxwIHRvIFVJTlQzMl9NQVggKi8NCg0KU2luY2UgdGhlcmUg
+dXMgbm8gZGVkaWNhdGVkIHhkcnN0ZGlvX3B1dHVsb25nKCkgdG8gdXNlIGZvciB1bnNpZ25lZA0K
+aW50ZWdlcnMsIHdlIG5lZWQgdGhlIGNoZWNrIHRvIHdvcmsgZm9yIGJvdGggY2FzZXMuDQpGb3Ig
+dGhhdCByZWFzb24sIEkgdGhpbmsgdGhlIGFib3ZlIGNoZWNrIGVpdGhlciBoYXMgdG8gYmU6DQoN
+CglpZiAoKmxwID09IChsb25nKSgodV9pbnQzMl90KSpscCkpDQoJCXJldHVybiAoRkFMU0UpOw0K
+DQouLi5vciBzb21ldGhpbmcgdWdsaWVyIGxpa2UNCg0KCWlmICgqbHAgPiBVSU5UMzJfTUFYIHx8
+ICpscCA8IElOVDMyX01JTikNCgkJcmV0dXJuIChGQUxTRSk7DQoNCj4gKyNlbmRpZg0KPiAgDQo+
+ICsJbXljb3B5ID0gKGludDMyX3QpaHRvbmwoKGludDMyX3QpKmxwKTsNCj4gIAlpZiAoZndyaXRl
+KCZteWNvcHksIHNpemVvZihpbnQzMl90KSwgMSwgKEZJTEUgKil4ZHJzLQ0KPiA+eF9wcml2YXRl
+KSAhPSAxKQ0KPiAgCQlyZXR1cm4gKEZBTFNFKTsNCj4gIAlyZXR1cm4gKFRSVUUpOw0KLS0gDQpU
+cm9uZCBNeWtsZWJ1c3QNCkNUTywgSGFtbWVyc3BhY2UgSW5jDQo0MzAwIEVsIENhbWlubyBSZWFs
+LCBTdWl0ZSAxMDUNCkxvcyBBbHRvcywgQ0EgOTQwMjINCnd3dy5oYW1tZXIuc3BhY2UNCg0K
