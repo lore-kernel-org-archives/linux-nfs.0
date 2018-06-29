@@ -1,219 +1,147 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp2120.oracle.com ([156.151.31.85]:60920 "EHLO
-        userp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1753527AbeF2UlU (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Jun 2018 16:41:20 -0400
-Content-Type: text/plain;
-        charset=utf-8
-Mime-Version: 1.0 (Mac OS X Mail 11.4 \(3445.8.2\))
+Received: from mail-by2nam01on0130.outbound.protection.outlook.com ([104.47.34.130]:22528
+        "EHLO NAM01-BY2-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S933124AbeF2U6q (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 29 Jun 2018 16:58:46 -0400
+From: Trond Myklebust <trondmy@hammerspace.com>
+To: "chuck.lever@oracle.com" <chuck.lever@oracle.com>
+CC: "steved@redhat.com" <steved@redhat.com>,
+        "libtirpc-devel@lists.sourceforge.net"
+        <libtirpc-devel@lists.sourceforge.net>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
 Subject: Re: [PATCH V2] xdrstdio_create buffers do not output encoded values
  on ppc
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <ea38c288fa8de49b568f7357cb77f222a5cec9d8.camel@hammerspace.com>
-Date: Fri, 29 Jun 2018 16:40:51 -0400
-Cc: Steve Dickson <steved@redhat.com>,
-        libtirpc List <libtirpc-devel@lists.sourceforge.net>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <0390374D-1328-4D34-9C9F-B9EE7D28113C@oracle.com>
+Date: Fri, 29 Jun 2018 20:58:43 +0000
+Message-ID: <afc52f42009700923b7f8e2a6649bc3731e4fcd8.camel@hammerspace.com>
 References: <20180629184256.20532-1-steved@redhat.com>
- <6ce6dd9fe59250132029e42acd03807a83b2f2d9.camel@hammerspace.com>
- <D1BA743A-4D18-45CE-919D-F832D8001497@oracle.com>
- <e8af0b57cfe3d9932470e2b6aa3f30fa45c189a0.camel@hammerspace.com>
- <B56D996C-7BC6-47B2-807B-D4915286FBCB@oracle.com>
- <ea38c288fa8de49b568f7357cb77f222a5cec9d8.camel@hammerspace.com>
-To: Trond Myklebust <trondmy@hammerspace.com>
+         <6ce6dd9fe59250132029e42acd03807a83b2f2d9.camel@hammerspace.com>
+         <D1BA743A-4D18-45CE-919D-F832D8001497@oracle.com>
+         <e8af0b57cfe3d9932470e2b6aa3f30fa45c189a0.camel@hammerspace.com>
+         <B56D996C-7BC6-47B2-807B-D4915286FBCB@oracle.com>
+         <ea38c288fa8de49b568f7357cb77f222a5cec9d8.camel@hammerspace.com>
+         <0390374D-1328-4D34-9C9F-B9EE7D28113C@oracle.com>
+In-Reply-To: <0390374D-1328-4D34-9C9F-B9EE7D28113C@oracle.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-> On Jun 29, 2018, at 4:15 PM, Trond Myklebust <trondmy@hammerspace.com> =
-wrote:
->=20
-> On Fri, 2018-06-29 at 16:02 -0400, Chuck Lever wrote:
->>> On Jun 29, 2018, at 3:48 PM, Trond Myklebust <trondmy@hammerspace.c
->>> om> wrote:
->>>=20
->>> On Fri, 2018-06-29 at 15:33 -0400, Chuck Lever wrote:
->>>>> On Jun 29, 2018, at 3:29 PM, Trond Myklebust <trondmy@hammerspa
->>>>> ce.c
->>>>> om> wrote:
->>>>>=20
->>>>> On Fri, 2018-06-29 at 14:42 -0400, Steve Dickson wrote:
->>>>>> From: Daniel Sands <dnsands@sandia.gov>
->>>>>>=20
->>>>>> The cause is that the xdr_putlong uses a long to store the
->>>>>> converted value, then passes it to fwrite as a byte buffer.
->>>>>> Only the first 4 bytes are written, which is okay for a LE
->>>>>> system after byteswapping, but writes all zeroes on BE
->>>>>> systems.
->>>>>>=20
->>>>>> Fixes: https://bugzilla.redhat.com/show_bug.cgi?id=3D1261738
->>>>>>=20
->>>>>> Signed-off-by: Steve Dickson <steved@redhat.com>
->>>>>> ---
->>>>>> v2: Added bounds checking
->>>>>>  Changed from unsigned to signed
->>>>>>=20
->>>>>> src/xdr_stdio.c | 14 +++++++++++---
->>>>>> 1 file changed, 11 insertions(+), 3 deletions(-)
->>>>>>=20
->>>>>> diff --git a/src/xdr_stdio.c b/src/xdr_stdio.c
->>>>>> index 4410262..b902acd 100644
->>>>>> --- a/src/xdr_stdio.c
->>>>>> +++ b/src/xdr_stdio.c
->>>>>> @@ -103,10 +103,12 @@ xdrstdio_getlong(xdrs, lp)
->>>>>> 	XDR *xdrs;
->>>>>> 	long *lp;
->>>>>> {
->>>>>> +	int32_t mycopy;
->>>>>>=20
->>>>>> -	if (fread(lp, sizeof(int32_t), 1, (FILE *)xdrs-
->>>>>>> x_private)
->>>>>>=20
->>>>>> !=3D 1)
->>>>>> +	if (fread(&mycopy, sizeof(int32_t), 1, (FILE *)xdrs-
->>>>>>> x_private) !=3D 1)
->>>>>>=20
->>>>>> 		return (FALSE);
->>>>>> -	*lp =3D (long)ntohl((u_int32_t)*lp);
->>>>>> +
->>>>>> +	*lp =3D (long)ntohl(mycopy);
->>>>>> 	return (TRUE);
->>>>>> }
->>>>>>=20
->>>>>> @@ -115,8 +117,14 @@ xdrstdio_putlong(xdrs, lp)
->>>>>> 	XDR *xdrs;
->>>>>> 	const long *lp;
->>>>>> {
->>>>>> -	long mycopy =3D (long)htonl((u_int32_t)*lp);
->>>>>> +	int32_t mycopy;
->>>>>> +
->>>>>> +#if defined(_LP64)
->>>>>> +	if ((*lp > INT32_MAX) || (*lp < INT32_MIN))
->>>>>> +		return (FALSE);
->>>>>=20
->>>>> The will work just fine if your cast is:
->>>>> 	int a;
->>>>>=20
->>>>> 	lp =3D (long)a;
->>>>>=20
->>>>> ...but it won't do the right thing for
->>>>>=20
->>>>> 	unsigned int b =3D UINT32_MAX;
->>>>>=20
->>>>> 	lp =3D (long)b;	/* set lp to UINT32_MAX */
->>>>=20
->>>> mycopy is an int32_t now. Does that help?
->>>=20
->>> Not really. 'mycopy' isn't involved in the check above, and *lp =3D=3D=
-
->>> UINT32_MAX should in either case get cast to the same 32-bit bit
->>> pattern whether mycopy is an int32_t or a u_int32_t.
->>> It's when you try to cast back from 'mycopy' to a long type that
->>> the
->>> two can end up differing (an int32_t might get sign extended).
->>=20
->> AFAICT we are casting *lp to an int32_t in this function. mycopy
->> is not being cast to a long here.
->>=20
->> Do you mean xdrstdio_GETlong needs further protection? Could be,
->> there is a cast of an int32_t to a long there.
->>=20
->> I agree that we should vet xdrstdio_getlong and xdrstdio_putlong for
->> sign-extension issues very carefully.
->>=20
->=20
-> The worry for xdrstdio_putlong() should be how we handle the =
-truncation
-> when going from (long)-> big endian (int32_t/u_int32_t). We don't want
-> to silently lose information.
-
-To put it in terms of an API contract:
-
-If the value in *lp cannot be expressed in 32 bits, xdrstdio_putlong
-returns FALSE.
-
-
-> AFAICS, when casting from a 'long' type, whether 'mycopy' is signed or
-> unsigned doesn't really matter when considering what ends up getting
-> encoded, as long as it is of size 32-bits. The exception would be if
-> sizeof(long) < 4, but libtirpc is broken for that case anyway...
->=20
->>>>> Since there us no dedicated xdrstdio_putulong() to use for
->>>>> unsigned
->>>>> integers, we need the check to work for both cases.
->>>>> For that reason, I think the above check either has to be:
->>>>>=20
->>>>> 	if (*lp =3D=3D (long)((u_int32_t)*lp))
->>>>> 		return (FALSE);
->>>>>=20
->>>>> ...or something uglier like
->>>>>=20
->>>>> 	if (*lp > UINT32_MAX || *lp < INT32_MIN)
->>>>> 		return (FALSE);
-
-On 32 bit systems, long ranges between INT32_MIN and INT32_MAX.
-The more narrow range seems to me to be the most portable, as it
-guarantees that this API works for exactly the same set of values on
-both 32- and 64-bit systems.
-
-Thus I would prefer to exclude the range between INT32_MAX and
-UINT32_MAX.
-
-
->>>>>> +#endif
->>>>>>=20
->>>>>> +	mycopy =3D (int32_t)htonl((int32_t)*lp);
->>>>>> 	if (fwrite(&mycopy, sizeof(int32_t), 1, (FILE *)xdrs-
->>>>>>> x_private) !=3D 1)
->>>>>>=20
->>>>>> 		return (FALSE);
->>>>>> 	return (TRUE);
->>>>>=20
->>>>> --=20
->>>>> Trond Myklebust
->>>>> CTO, Hammerspace Inc
->>>>> 4300 El Camino Real, Suite 105
->>>>> Los Altos, CA 94022
->>>>> www.hammer.space
->>>>>=20
->>>>> =
-N=E2=80=B9=C2=A7=C4=93=C3=A6=C4=97r=C4=BC=E2=80=BAy=C3=BA=C4=8D=C5=A1=C3=98=
-b=C4=93X=C5=BD=C4=B7=C4=AE=C2=A7v=C3=98^=E2=80=93)=C3=9E=C5=A1{.n=C4=AE+=E2=
-=80=B0=C2=B7=C4=A8=C5=A0{=C4=85=C2=9D=C3=BB"=C5=BE=C3=98^n=E2=80=A1r=C4=84=
-=C3=B6=C4=B6z=C3=8B=1A=C2=81=C3=ABh=E2=84=A2=C4=BB=C4=8D=C2=AD=C3=9A&
->>>>> =C4=92=C3=B8=1E=C5=AA
->>>>> =
-G=C5=A6=C2=9D=C3=A9h=C5=AA=03(=C2=AD=C3=A9=C5=A1=C5=BD=C5=A0=C3=9D=C4=92j"=
-=C2=9D=C3=BA=1A=C4=B7=1Bm=C2=A7=C4=B8=C3=AF=C2=81=C4=99=C3=A4z=C4=91=C3=9E=
-=E2=80=93=C5=A0=C4=81=C3=BEf=C4=A2=C4=92=C2=B7h=C5=A1=CB=86=C2=A7~=CB=86m
->>>>=20
->>>> --
->>>> Chuck Lever
->>>>=20
->>>>=20
->>>>=20
->>>=20
->>> --=20
->>> Trond Myklebust
->>> Linux NFS client maintainer, Hammerspace
->>> trond.myklebust@hammerspace.com
->>=20
->> --
->> Chuck Lever
->>=20
->>=20
->>=20
-> --=20
-> Trond Myklebust
-> CTO, Hammerspace Inc
-> 4300 El Camino Real, Suite 105
-> Los Altos, CA 94022
-> www.hammer.space
-
---
-Chuck Lever
-
-
-
+T24gRnJpLCAyMDE4LTA2LTI5IGF0IDE2OjQwIC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
+PiBPbiBKdW4gMjksIDIwMTgsIGF0IDQ6MTUgUE0sIFRyb25kIE15a2xlYnVzdCA8dHJvbmRteUBo
+YW1tZXJzcGFjZS5jDQo+ID4gb20+IHdyb3RlOg0KPiA+IA0KPiA+IE9uIEZyaSwgMjAxOC0wNi0y
+OSBhdCAxNjowMiAtMDQwMCwgQ2h1Y2sgTGV2ZXIgd3JvdGU6DQo+ID4gPiA+IE9uIEp1biAyOSwg
+MjAxOCwgYXQgMzo0OCBQTSwgVHJvbmQgTXlrbGVidXN0IDx0cm9uZG15QGhhbW1lcnNwYQ0KPiA+
+ID4gPiBjZS5jDQo+ID4gPiA+IG9tPiB3cm90ZToNCj4gPiA+ID4gDQo+ID4gPiA+IE9uIEZyaSwg
+MjAxOC0wNi0yOSBhdCAxNTozMyAtMDQwMCwgQ2h1Y2sgTGV2ZXIgd3JvdGU6DQo+ID4gPiA+ID4g
+PiBPbiBKdW4gMjksIDIwMTgsIGF0IDM6MjkgUE0sIFRyb25kIE15a2xlYnVzdCA8dHJvbmRteUBo
+YW1tZQ0KPiA+ID4gPiA+ID4gcnNwYQ0KPiA+ID4gPiA+ID4gY2UuYw0KPiA+ID4gPiA+ID4gb20+
+IHdyb3RlOg0KPiA+ID4gPiA+ID4gDQo+ID4gPiA+ID4gPiBPbiBGcmksIDIwMTgtMDYtMjkgYXQg
+MTQ6NDIgLTA0MDAsIFN0ZXZlIERpY2tzb24gd3JvdGU6DQo+ID4gPiA+ID4gPiA+IEZyb206IERh
+bmllbCBTYW5kcyA8ZG5zYW5kc0BzYW5kaWEuZ292Pg0KPiA+ID4gPiA+ID4gPiANCj4gPiA+ID4g
+PiA+ID4gVGhlIGNhdXNlIGlzIHRoYXQgdGhlIHhkcl9wdXRsb25nIHVzZXMgYSBsb25nIHRvIHN0
+b3JlDQo+ID4gPiA+ID4gPiA+IHRoZQ0KPiA+ID4gPiA+ID4gPiBjb252ZXJ0ZWQgdmFsdWUsIHRo
+ZW4gcGFzc2VzIGl0IHRvIGZ3cml0ZSBhcyBhIGJ5dGUNCj4gPiA+ID4gPiA+ID4gYnVmZmVyLg0K
+PiA+ID4gPiA+ID4gPiBPbmx5IHRoZSBmaXJzdCA0IGJ5dGVzIGFyZSB3cml0dGVuLCB3aGljaCBp
+cyBva2F5IGZvciBhDQo+ID4gPiA+ID4gPiA+IExFDQo+ID4gPiA+ID4gPiA+IHN5c3RlbSBhZnRl
+ciBieXRlc3dhcHBpbmcsIGJ1dCB3cml0ZXMgYWxsIHplcm9lcyBvbiBCRQ0KPiA+ID4gPiA+ID4g
+PiBzeXN0ZW1zLg0KPiA+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+ID4gRml4ZXM6IGh0dHBzOi8v
+YnVnemlsbGEucmVkaGF0LmNvbS9zaG93X2J1Zy5jZ2k/aWQ9MTI2MTczDQo+ID4gPiA+ID4gPiA+
+IDgNCj4gPiA+ID4gPiA+ID4gDQo+ID4gPiA+ID4gPiA+IFNpZ25lZC1vZmYtYnk6IFN0ZXZlIERp
+Y2tzb24gPHN0ZXZlZEByZWRoYXQuY29tPg0KPiA+ID4gPiA+ID4gPiAtLS0NCj4gPiA+ID4gPiA+
+ID4gdjI6IEFkZGVkIGJvdW5kcyBjaGVja2luZw0KPiA+ID4gPiA+ID4gPiAgQ2hhbmdlZCBmcm9t
+IHVuc2lnbmVkIHRvIHNpZ25lZA0KPiA+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+ID4gc3JjL3hk
+cl9zdGRpby5jIHwgMTQgKysrKysrKysrKystLS0NCj4gPiA+ID4gPiA+ID4gMSBmaWxlIGNoYW5n
+ZWQsIDExIGluc2VydGlvbnMoKyksIDMgZGVsZXRpb25zKC0pDQo+ID4gPiA+ID4gPiA+IA0KPiA+
+ID4gPiA+ID4gPiBkaWZmIC0tZ2l0IGEvc3JjL3hkcl9zdGRpby5jIGIvc3JjL3hkcl9zdGRpby5j
+DQo+ID4gPiA+ID4gPiA+IGluZGV4IDQ0MTAyNjIuLmI5MDJhY2QgMTAwNjQ0DQo+ID4gPiA+ID4g
+PiA+IC0tLSBhL3NyYy94ZHJfc3RkaW8uYw0KPiA+ID4gPiA+ID4gPiArKysgYi9zcmMveGRyX3N0
+ZGlvLmMNCj4gPiA+ID4gPiA+ID4gQEAgLTEwMywxMCArMTAzLDEyIEBAIHhkcnN0ZGlvX2dldGxv
+bmcoeGRycywgbHApDQo+ID4gPiA+ID4gPiA+IAlYRFIgKnhkcnM7DQo+ID4gPiA+ID4gPiA+IAls
+b25nICpscDsNCj4gPiA+ID4gPiA+ID4gew0KPiA+ID4gPiA+ID4gPiArCWludDMyX3QgbXljb3B5
+Ow0KPiA+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+ID4gLQlpZiAoZnJlYWQobHAsIHNpemVvZihp
+bnQzMl90KSwgMSwgKEZJTEUgKil4ZHJzLQ0KPiA+ID4gPiA+ID4gPiA+IHhfcHJpdmF0ZSkNCj4g
+PiA+ID4gPiA+ID4gDQo+ID4gPiA+ID4gPiA+ICE9IDEpDQo+ID4gPiA+ID4gPiA+ICsJaWYgKGZy
+ZWFkKCZteWNvcHksIHNpemVvZihpbnQzMl90KSwgMSwgKEZJTEUNCj4gPiA+ID4gPiA+ID4gKil4
+ZHJzLQ0KPiA+ID4gPiA+ID4gPiA+IHhfcHJpdmF0ZSkgIT0gMSkNCj4gPiA+ID4gPiA+ID4gDQo+
+ID4gPiA+ID4gPiA+IAkJcmV0dXJuIChGQUxTRSk7DQo+ID4gPiA+ID4gPiA+IC0JKmxwID0gKGxv
+bmcpbnRvaGwoKHVfaW50MzJfdCkqbHApOw0KPiA+ID4gPiA+ID4gPiArDQo+ID4gPiA+ID4gPiA+
+ICsJKmxwID0gKGxvbmcpbnRvaGwobXljb3B5KTsNCj4gPiA+ID4gPiA+ID4gCXJldHVybiAoVFJV
+RSk7DQo+ID4gPiA+ID4gPiA+IH0NCj4gPiA+ID4gPiA+ID4gDQo+ID4gPiA+ID4gPiA+IEBAIC0x
+MTUsOCArMTE3LDE0IEBAIHhkcnN0ZGlvX3B1dGxvbmcoeGRycywgbHApDQo+ID4gPiA+ID4gPiA+
+IAlYRFIgKnhkcnM7DQo+ID4gPiA+ID4gPiA+IAljb25zdCBsb25nICpscDsNCj4gPiA+ID4gPiA+
+ID4gew0KPiA+ID4gPiA+ID4gPiAtCWxvbmcgbXljb3B5ID0gKGxvbmcpaHRvbmwoKHVfaW50MzJf
+dCkqbHApOw0KPiA+ID4gPiA+ID4gPiArCWludDMyX3QgbXljb3B5Ow0KPiA+ID4gPiA+ID4gPiAr
+DQo+ID4gPiA+ID4gPiA+ICsjaWYgZGVmaW5lZChfTFA2NCkNCj4gPiA+ID4gPiA+ID4gKwlpZiAo
+KCpscCA+IElOVDMyX01BWCkgfHwgKCpscCA8IElOVDMyX01JTikpDQo+ID4gPiA+ID4gPiA+ICsJ
+CXJldHVybiAoRkFMU0UpOw0KPiA+ID4gPiA+ID4gDQo+ID4gPiA+ID4gPiBUaGUgd2lsbCB3b3Jr
+IGp1c3QgZmluZSBpZiB5b3VyIGNhc3QgaXM6DQo+ID4gPiA+ID4gPiAJaW50IGE7DQo+ID4gPiA+
+ID4gPiANCj4gPiA+ID4gPiA+IAlscCA9IChsb25nKWE7DQo+ID4gPiA+ID4gPiANCj4gPiA+ID4g
+PiA+IC4uLmJ1dCBpdCB3b24ndCBkbyB0aGUgcmlnaHQgdGhpbmcgZm9yDQo+ID4gPiA+ID4gPiAN
+Cj4gPiA+ID4gPiA+IAl1bnNpZ25lZCBpbnQgYiA9IFVJTlQzMl9NQVg7DQo+ID4gPiA+ID4gPiAN
+Cj4gPiA+ID4gPiA+IAlscCA9IChsb25nKWI7CS8qIHNldCBscCB0byBVSU5UMzJfTUFYICovDQo+
+ID4gPiA+ID4gDQo+ID4gPiA+ID4gbXljb3B5IGlzIGFuIGludDMyX3Qgbm93LiBEb2VzIHRoYXQg
+aGVscD8NCj4gPiA+ID4gDQo+ID4gPiA+IE5vdCByZWFsbHkuICdteWNvcHknIGlzbid0IGludm9s
+dmVkIGluIHRoZSBjaGVjayBhYm92ZSwgYW5kICpscA0KPiA+ID4gPiA9PQ0KPiA+ID4gPiBVSU5U
+MzJfTUFYIHNob3VsZCBpbiBlaXRoZXIgY2FzZSBnZXQgY2FzdCB0byB0aGUgc2FtZSAzMi1iaXQN
+Cj4gPiA+ID4gYml0DQo+ID4gPiA+IHBhdHRlcm4gd2hldGhlciBteWNvcHkgaXMgYW4gaW50MzJf
+dCBvciBhIHVfaW50MzJfdC4NCj4gPiA+ID4gSXQncyB3aGVuIHlvdSB0cnkgdG8gY2FzdCBiYWNr
+IGZyb20gJ215Y29weScgdG8gYSBsb25nIHR5cGUNCj4gPiA+ID4gdGhhdA0KPiA+ID4gPiB0aGUN
+Cj4gPiA+ID4gdHdvIGNhbiBlbmQgdXAgZGlmZmVyaW5nIChhbiBpbnQzMl90IG1pZ2h0IGdldCBz
+aWduIGV4dGVuZGVkKS4NCj4gPiA+IA0KPiA+ID4gQUZBSUNUIHdlIGFyZSBjYXN0aW5nICpscCB0
+byBhbiBpbnQzMl90IGluIHRoaXMgZnVuY3Rpb24uIG15Y29weQ0KPiA+ID4gaXMgbm90IGJlaW5n
+IGNhc3QgdG8gYSBsb25nIGhlcmUuDQo+ID4gPiANCj4gPiA+IERvIHlvdSBtZWFuIHhkcnN0ZGlv
+X0dFVGxvbmcgbmVlZHMgZnVydGhlciBwcm90ZWN0aW9uPyBDb3VsZCBiZSwNCj4gPiA+IHRoZXJl
+IGlzIGEgY2FzdCBvZiBhbiBpbnQzMl90IHRvIGEgbG9uZyB0aGVyZS4NCj4gPiA+IA0KPiA+ID4g
+SSBhZ3JlZSB0aGF0IHdlIHNob3VsZCB2ZXQgeGRyc3RkaW9fZ2V0bG9uZyBhbmQgeGRyc3RkaW9f
+cHV0bG9uZw0KPiA+ID4gZm9yDQo+ID4gPiBzaWduLWV4dGVuc2lvbiBpc3N1ZXMgdmVyeSBjYXJl
+ZnVsbHkuDQo+ID4gPiANCj4gPiANCj4gPiBUaGUgd29ycnkgZm9yIHhkcnN0ZGlvX3B1dGxvbmco
+KSBzaG91bGQgYmUgaG93IHdlIGhhbmRsZSB0aGUNCj4gPiB0cnVuY2F0aW9uDQo+ID4gd2hlbiBn
+b2luZyBmcm9tIChsb25nKS0+IGJpZyBlbmRpYW4gKGludDMyX3QvdV9pbnQzMl90KS4gV2UgZG9u
+J3QNCj4gPiB3YW50DQo+ID4gdG8gc2lsZW50bHkgbG9zZSBpbmZvcm1hdGlvbi4NCj4gDQo+IFRv
+IHB1dCBpdCBpbiB0ZXJtcyBvZiBhbiBBUEkgY29udHJhY3Q6DQo+IA0KPiBJZiB0aGUgdmFsdWUg
+aW4gKmxwIGNhbm5vdCBiZSBleHByZXNzZWQgaW4gMzIgYml0cywgeGRyc3RkaW9fcHV0bG9uZw0K
+PiByZXR1cm5zIEZBTFNFLg0KDQpBY2suLi4NCg0KPiANCj4gDQo+ID4gQUZBSUNTLCB3aGVuIGNh
+c3RpbmcgZnJvbSBhICdsb25nJyB0eXBlLCB3aGV0aGVyICdteWNvcHknIGlzIHNpZ25lZA0KPiA+
+IG9yDQo+ID4gdW5zaWduZWQgZG9lc24ndCByZWFsbHkgbWF0dGVyIHdoZW4gY29uc2lkZXJpbmcg
+d2hhdCBlbmRzIHVwDQo+ID4gZ2V0dGluZw0KPiA+IGVuY29kZWQsIGFzIGxvbmcgYXMgaXQgaXMg
+b2Ygc2l6ZSAzMi1iaXRzLiBUaGUgZXhjZXB0aW9uIHdvdWxkIGJlDQo+ID4gaWYNCj4gPiBzaXpl
+b2YobG9uZykgPCA0LCBidXQgbGlidGlycGMgaXMgYnJva2VuIGZvciB0aGF0IGNhc2UgYW55d2F5
+Li4uDQo+ID4gDQo+ID4gPiA+ID4gPiBTaW5jZSB0aGVyZSB1cyBubyBkZWRpY2F0ZWQgeGRyc3Rk
+aW9fcHV0dWxvbmcoKSB0byB1c2UgZm9yDQo+ID4gPiA+ID4gPiB1bnNpZ25lZA0KPiA+ID4gPiA+
+ID4gaW50ZWdlcnMsIHdlIG5lZWQgdGhlIGNoZWNrIHRvIHdvcmsgZm9yIGJvdGggY2FzZXMuDQo+
+ID4gPiA+ID4gPiBGb3IgdGhhdCByZWFzb24sIEkgdGhpbmsgdGhlIGFib3ZlIGNoZWNrIGVpdGhl
+ciBoYXMgdG8gYmU6DQo+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+IAlpZiAoKmxwID09IChsb25n
+KSgodV9pbnQzMl90KSpscCkpDQo+ID4gPiA+ID4gPiAJCXJldHVybiAoRkFMU0UpOw0KPiA+ID4g
+PiA+ID4gDQo+ID4gPiA+ID4gPiAuLi5vciBzb21ldGhpbmcgdWdsaWVyIGxpa2UNCj4gPiA+ID4g
+PiA+IA0KPiA+ID4gPiA+ID4gCWlmICgqbHAgPiBVSU5UMzJfTUFYIHx8ICpscCA8IElOVDMyX01J
+TikNCj4gPiA+ID4gPiA+IAkJcmV0dXJuIChGQUxTRSk7DQo+IA0KPiBPbiAzMiBiaXQgc3lzdGVt
+cywgbG9uZyByYW5nZXMgYmV0d2VlbiBJTlQzMl9NSU4gYW5kIElOVDMyX01BWC4NCj4gVGhlIG1v
+cmUgbmFycm93IHJhbmdlIHNlZW1zIHRvIG1lIHRvIGJlIHRoZSBtb3N0IHBvcnRhYmxlLCBhcyBp
+dA0KPiBndWFyYW50ZWVzIHRoYXQgdGhpcyBBUEkgd29ya3MgZm9yIGV4YWN0bHkgdGhlIHNhbWUg
+c2V0IG9mIHZhbHVlcyBvbg0KPiBib3RoIDMyLSBhbmQgNjQtYml0IHN5c3RlbXMuDQo+IA0KPiBU
+aHVzIEkgd291bGQgcHJlZmVyIHRvIGV4Y2x1ZGUgdGhlIHJhbmdlIGJldHdlZW4gSU5UMzJfTUFY
+IGFuZA0KPiBVSU5UMzJfTUFYLg0KPiANCj4gDQo+ID4gPiA+ID4gPiA+ICsjZW5kaWYNCj4gPiA+
+ID4gPiA+ID4gDQo+ID4gPiA+ID4gPiA+ICsJbXljb3B5ID0gKGludDMyX3QpaHRvbmwoKGludDMy
+X3QpKmxwKTsNCj4gPiA+ID4gPiA+ID4gCWlmIChmd3JpdGUoJm15Y29weSwgc2l6ZW9mKGludDMy
+X3QpLCAxLCAoRklMRSAqKXhkcnMtDQo+ID4gPiA+ID4gPiA+ID4geF9wcml2YXRlKSAhPSAxKQ0K
+PiA+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+ID4gCQlyZXR1cm4gKEZBTFNFKTsNCj4gPiA+ID4g
+PiA+ID4gCXJldHVybiAoVFJVRSk7DQo+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+IC0tIA0KPiA+
+ID4gPiA+ID4gVHJvbmQgTXlrbGVidXN0DQo+ID4gPiA+ID4gPiBDVE8sIEhhbW1lcnNwYWNlIElu
+Yw0KPiA+ID4gPiA+ID4gNDMwMCBFbCBDYW1pbm8gUmVhbCwgU3VpdGUgMTA1DQo+ID4gPiA+ID4g
+PiBMb3MgQWx0b3MsIENBIDk0MDIyDQo+ID4gPiA+ID4gPiB3d3cuaGFtbWVyLnNwYWNlDQo+ID4g
+PiA+ID4gPiANCj4gPiA+ID4gPiA+IE7igLnCp8STw6bEl3LEvOKAunnDusSNxaHDmGLEk1jFvcS3
+xK7Cp3bDmF7igJMpw57FoXsubsSuK+KAsMK3xKjFoHvEhcKdw7sixb7DmF5u4oChcsSEw7bEtnrD
+ixrCgcOraOKEosS7DQo+ID4gPiA+ID4gPiDEjcKtw5omDQo+ID4gPiA+ID4gPiDEksO4HsWqDQo+
+ID4gPiA+ID4gPiBHxabCncOpaMWqAyjCrcOpxaHFvcWgw53Ekmoiwp3DuhrEtxttwqfEuMOvwoHE
+mcOkesSRw57igJPFoMSBw75mxKLEksK3aMWhy4bCp37Lhm0NCj4gPiA+ID4gPiANCj4gPiA+ID4g
+PiAtLQ0KPiA+ID4gPiA+IENodWNrIExldmVyDQo+ID4gPiA+ID4gDQo+ID4gPiA+ID4gDQo+ID4g
+PiA+ID4gDQo+ID4gPiA+IA0KPiA+ID4gPiAtLSANCj4gPiA+ID4gVHJvbmQgTXlrbGVidXN0DQo+
+ID4gPiA+IExpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lciwgSGFtbWVyc3BhY2UNCj4gPiA+ID4g
+dHJvbmQubXlrbGVidXN0QGhhbW1lcnNwYWNlLmNvbQ0KPiA+ID4gDQo+ID4gPiAtLQ0KPiA+ID4g
+Q2h1Y2sgTGV2ZXINCj4gPiA+IA0KPiA+ID4gDQo+ID4gPiANCj4gPiANCj4gPiAtLSANCj4gPiBU
+cm9uZCBNeWtsZWJ1c3QNCj4gPiBDVE8sIEhhbW1lcnNwYWNlIEluYw0KPiA+IDQzMDAgRWwgQ2Ft
+aW5vIFJlYWwsIFN1aXRlIDEwNQ0KPiA+IExvcyBBbHRvcywgQ0EgOTQwMjINCj4gPiB3d3cuaGFt
+bWVyLnNwYWNlDQo+IA0KPiAtLQ0KPiBDaHVjayBMZXZlcg0KPiANCj4gDQo+IA0KLS0gDQpUcm9u
+ZCBNeWtsZWJ1c3QNCkNUTywgSGFtbWVyc3BhY2UgSW5jDQo0MzAwIEVsIENhbWlubyBSZWFsLCBT
+dWl0ZSAxMDUNCkxvcyBBbHRvcywgQ0EgOTQwMjINCnd3dy5oYW1tZXIuc3BhY2UNCg0K
