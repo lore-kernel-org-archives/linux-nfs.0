@@ -1,147 +1,123 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-by2nam01on0130.outbound.protection.outlook.com ([104.47.34.130]:22528
-        "EHLO NAM01-BY2-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S933124AbeF2U6q (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 29 Jun 2018 16:58:46 -0400
-From: Trond Myklebust <trondmy@hammerspace.com>
-To: "chuck.lever@oracle.com" <chuck.lever@oracle.com>
-CC: "steved@redhat.com" <steved@redhat.com>,
-        "libtirpc-devel@lists.sourceforge.net"
-        <libtirpc-devel@lists.sourceforge.net>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH V2] xdrstdio_create buffers do not output encoded values
- on ppc
-Date: Fri, 29 Jun 2018 20:58:43 +0000
-Message-ID: <afc52f42009700923b7f8e2a6649bc3731e4fcd8.camel@hammerspace.com>
-References: <20180629184256.20532-1-steved@redhat.com>
-         <6ce6dd9fe59250132029e42acd03807a83b2f2d9.camel@hammerspace.com>
-         <D1BA743A-4D18-45CE-919D-F832D8001497@oracle.com>
-         <e8af0b57cfe3d9932470e2b6aa3f30fa45c189a0.camel@hammerspace.com>
-         <B56D996C-7BC6-47B2-807B-D4915286FBCB@oracle.com>
-         <ea38c288fa8de49b568f7357cb77f222a5cec9d8.camel@hammerspace.com>
-         <0390374D-1328-4D34-9C9F-B9EE7D28113C@oracle.com>
-In-Reply-To: <0390374D-1328-4D34-9C9F-B9EE7D28113C@oracle.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-it0-f67.google.com ([209.85.214.67]:39198 "EHLO
+        mail-it0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S932618AbeF2VQ3 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Jun 2018 17:16:29 -0400
+Received: by mail-it0-f67.google.com with SMTP id p185-v6so4707777itp.4
+        for <linux-nfs@vger.kernel.org>; Fri, 29 Jun 2018 14:16:28 -0700 (PDT)
+Received: from leira.trondhjem.org.localdomain ([50.105.87.45])
+        by smtp.gmail.com with ESMTPSA id d136-v6sm1112647itd.22.2018.06.29.14.16.27
+        for <linux-nfs@vger.kernel.org>
+        (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
+        Fri, 29 Jun 2018 14:16:27 -0700 (PDT)
+From: Trond Myklebust <trondmy@gmail.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH] pNFS: Parse the results of layoutget on open even if permissions checks fail
+Date: Fri, 29 Jun 2018 17:16:06 -0400
+Message-Id: <20180629211606.13087-1-trond.myklebust@hammerspace.com>
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDE4LTA2LTI5IGF0IDE2OjQwIC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
-PiBPbiBKdW4gMjksIDIwMTgsIGF0IDQ6MTUgUE0sIFRyb25kIE15a2xlYnVzdCA8dHJvbmRteUBo
-YW1tZXJzcGFjZS5jDQo+ID4gb20+IHdyb3RlOg0KPiA+IA0KPiA+IE9uIEZyaSwgMjAxOC0wNi0y
-OSBhdCAxNjowMiAtMDQwMCwgQ2h1Y2sgTGV2ZXIgd3JvdGU6DQo+ID4gPiA+IE9uIEp1biAyOSwg
-MjAxOCwgYXQgMzo0OCBQTSwgVHJvbmQgTXlrbGVidXN0IDx0cm9uZG15QGhhbW1lcnNwYQ0KPiA+
-ID4gPiBjZS5jDQo+ID4gPiA+IG9tPiB3cm90ZToNCj4gPiA+ID4gDQo+ID4gPiA+IE9uIEZyaSwg
-MjAxOC0wNi0yOSBhdCAxNTozMyAtMDQwMCwgQ2h1Y2sgTGV2ZXIgd3JvdGU6DQo+ID4gPiA+ID4g
-PiBPbiBKdW4gMjksIDIwMTgsIGF0IDM6MjkgUE0sIFRyb25kIE15a2xlYnVzdCA8dHJvbmRteUBo
-YW1tZQ0KPiA+ID4gPiA+ID4gcnNwYQ0KPiA+ID4gPiA+ID4gY2UuYw0KPiA+ID4gPiA+ID4gb20+
-IHdyb3RlOg0KPiA+ID4gPiA+ID4gDQo+ID4gPiA+ID4gPiBPbiBGcmksIDIwMTgtMDYtMjkgYXQg
-MTQ6NDIgLTA0MDAsIFN0ZXZlIERpY2tzb24gd3JvdGU6DQo+ID4gPiA+ID4gPiA+IEZyb206IERh
-bmllbCBTYW5kcyA8ZG5zYW5kc0BzYW5kaWEuZ292Pg0KPiA+ID4gPiA+ID4gPiANCj4gPiA+ID4g
-PiA+ID4gVGhlIGNhdXNlIGlzIHRoYXQgdGhlIHhkcl9wdXRsb25nIHVzZXMgYSBsb25nIHRvIHN0
-b3JlDQo+ID4gPiA+ID4gPiA+IHRoZQ0KPiA+ID4gPiA+ID4gPiBjb252ZXJ0ZWQgdmFsdWUsIHRo
-ZW4gcGFzc2VzIGl0IHRvIGZ3cml0ZSBhcyBhIGJ5dGUNCj4gPiA+ID4gPiA+ID4gYnVmZmVyLg0K
-PiA+ID4gPiA+ID4gPiBPbmx5IHRoZSBmaXJzdCA0IGJ5dGVzIGFyZSB3cml0dGVuLCB3aGljaCBp
-cyBva2F5IGZvciBhDQo+ID4gPiA+ID4gPiA+IExFDQo+ID4gPiA+ID4gPiA+IHN5c3RlbSBhZnRl
-ciBieXRlc3dhcHBpbmcsIGJ1dCB3cml0ZXMgYWxsIHplcm9lcyBvbiBCRQ0KPiA+ID4gPiA+ID4g
-PiBzeXN0ZW1zLg0KPiA+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+ID4gRml4ZXM6IGh0dHBzOi8v
-YnVnemlsbGEucmVkaGF0LmNvbS9zaG93X2J1Zy5jZ2k/aWQ9MTI2MTczDQo+ID4gPiA+ID4gPiA+
-IDgNCj4gPiA+ID4gPiA+ID4gDQo+ID4gPiA+ID4gPiA+IFNpZ25lZC1vZmYtYnk6IFN0ZXZlIERp
-Y2tzb24gPHN0ZXZlZEByZWRoYXQuY29tPg0KPiA+ID4gPiA+ID4gPiAtLS0NCj4gPiA+ID4gPiA+
-ID4gdjI6IEFkZGVkIGJvdW5kcyBjaGVja2luZw0KPiA+ID4gPiA+ID4gPiAgQ2hhbmdlZCBmcm9t
-IHVuc2lnbmVkIHRvIHNpZ25lZA0KPiA+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+ID4gc3JjL3hk
-cl9zdGRpby5jIHwgMTQgKysrKysrKysrKystLS0NCj4gPiA+ID4gPiA+ID4gMSBmaWxlIGNoYW5n
-ZWQsIDExIGluc2VydGlvbnMoKyksIDMgZGVsZXRpb25zKC0pDQo+ID4gPiA+ID4gPiA+IA0KPiA+
-ID4gPiA+ID4gPiBkaWZmIC0tZ2l0IGEvc3JjL3hkcl9zdGRpby5jIGIvc3JjL3hkcl9zdGRpby5j
-DQo+ID4gPiA+ID4gPiA+IGluZGV4IDQ0MTAyNjIuLmI5MDJhY2QgMTAwNjQ0DQo+ID4gPiA+ID4g
-PiA+IC0tLSBhL3NyYy94ZHJfc3RkaW8uYw0KPiA+ID4gPiA+ID4gPiArKysgYi9zcmMveGRyX3N0
-ZGlvLmMNCj4gPiA+ID4gPiA+ID4gQEAgLTEwMywxMCArMTAzLDEyIEBAIHhkcnN0ZGlvX2dldGxv
-bmcoeGRycywgbHApDQo+ID4gPiA+ID4gPiA+IAlYRFIgKnhkcnM7DQo+ID4gPiA+ID4gPiA+IAls
-b25nICpscDsNCj4gPiA+ID4gPiA+ID4gew0KPiA+ID4gPiA+ID4gPiArCWludDMyX3QgbXljb3B5
-Ow0KPiA+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+ID4gLQlpZiAoZnJlYWQobHAsIHNpemVvZihp
-bnQzMl90KSwgMSwgKEZJTEUgKil4ZHJzLQ0KPiA+ID4gPiA+ID4gPiA+IHhfcHJpdmF0ZSkNCj4g
-PiA+ID4gPiA+ID4gDQo+ID4gPiA+ID4gPiA+ICE9IDEpDQo+ID4gPiA+ID4gPiA+ICsJaWYgKGZy
-ZWFkKCZteWNvcHksIHNpemVvZihpbnQzMl90KSwgMSwgKEZJTEUNCj4gPiA+ID4gPiA+ID4gKil4
-ZHJzLQ0KPiA+ID4gPiA+ID4gPiA+IHhfcHJpdmF0ZSkgIT0gMSkNCj4gPiA+ID4gPiA+ID4gDQo+
-ID4gPiA+ID4gPiA+IAkJcmV0dXJuIChGQUxTRSk7DQo+ID4gPiA+ID4gPiA+IC0JKmxwID0gKGxv
-bmcpbnRvaGwoKHVfaW50MzJfdCkqbHApOw0KPiA+ID4gPiA+ID4gPiArDQo+ID4gPiA+ID4gPiA+
-ICsJKmxwID0gKGxvbmcpbnRvaGwobXljb3B5KTsNCj4gPiA+ID4gPiA+ID4gCXJldHVybiAoVFJV
-RSk7DQo+ID4gPiA+ID4gPiA+IH0NCj4gPiA+ID4gPiA+ID4gDQo+ID4gPiA+ID4gPiA+IEBAIC0x
-MTUsOCArMTE3LDE0IEBAIHhkcnN0ZGlvX3B1dGxvbmcoeGRycywgbHApDQo+ID4gPiA+ID4gPiA+
-IAlYRFIgKnhkcnM7DQo+ID4gPiA+ID4gPiA+IAljb25zdCBsb25nICpscDsNCj4gPiA+ID4gPiA+
-ID4gew0KPiA+ID4gPiA+ID4gPiAtCWxvbmcgbXljb3B5ID0gKGxvbmcpaHRvbmwoKHVfaW50MzJf
-dCkqbHApOw0KPiA+ID4gPiA+ID4gPiArCWludDMyX3QgbXljb3B5Ow0KPiA+ID4gPiA+ID4gPiAr
-DQo+ID4gPiA+ID4gPiA+ICsjaWYgZGVmaW5lZChfTFA2NCkNCj4gPiA+ID4gPiA+ID4gKwlpZiAo
-KCpscCA+IElOVDMyX01BWCkgfHwgKCpscCA8IElOVDMyX01JTikpDQo+ID4gPiA+ID4gPiA+ICsJ
-CXJldHVybiAoRkFMU0UpOw0KPiA+ID4gPiA+ID4gDQo+ID4gPiA+ID4gPiBUaGUgd2lsbCB3b3Jr
-IGp1c3QgZmluZSBpZiB5b3VyIGNhc3QgaXM6DQo+ID4gPiA+ID4gPiAJaW50IGE7DQo+ID4gPiA+
-ID4gPiANCj4gPiA+ID4gPiA+IAlscCA9IChsb25nKWE7DQo+ID4gPiA+ID4gPiANCj4gPiA+ID4g
-PiA+IC4uLmJ1dCBpdCB3b24ndCBkbyB0aGUgcmlnaHQgdGhpbmcgZm9yDQo+ID4gPiA+ID4gPiAN
-Cj4gPiA+ID4gPiA+IAl1bnNpZ25lZCBpbnQgYiA9IFVJTlQzMl9NQVg7DQo+ID4gPiA+ID4gPiAN
-Cj4gPiA+ID4gPiA+IAlscCA9IChsb25nKWI7CS8qIHNldCBscCB0byBVSU5UMzJfTUFYICovDQo+
-ID4gPiA+ID4gDQo+ID4gPiA+ID4gbXljb3B5IGlzIGFuIGludDMyX3Qgbm93LiBEb2VzIHRoYXQg
-aGVscD8NCj4gPiA+ID4gDQo+ID4gPiA+IE5vdCByZWFsbHkuICdteWNvcHknIGlzbid0IGludm9s
-dmVkIGluIHRoZSBjaGVjayBhYm92ZSwgYW5kICpscA0KPiA+ID4gPiA9PQ0KPiA+ID4gPiBVSU5U
-MzJfTUFYIHNob3VsZCBpbiBlaXRoZXIgY2FzZSBnZXQgY2FzdCB0byB0aGUgc2FtZSAzMi1iaXQN
-Cj4gPiA+ID4gYml0DQo+ID4gPiA+IHBhdHRlcm4gd2hldGhlciBteWNvcHkgaXMgYW4gaW50MzJf
-dCBvciBhIHVfaW50MzJfdC4NCj4gPiA+ID4gSXQncyB3aGVuIHlvdSB0cnkgdG8gY2FzdCBiYWNr
-IGZyb20gJ215Y29weScgdG8gYSBsb25nIHR5cGUNCj4gPiA+ID4gdGhhdA0KPiA+ID4gPiB0aGUN
-Cj4gPiA+ID4gdHdvIGNhbiBlbmQgdXAgZGlmZmVyaW5nIChhbiBpbnQzMl90IG1pZ2h0IGdldCBz
-aWduIGV4dGVuZGVkKS4NCj4gPiA+IA0KPiA+ID4gQUZBSUNUIHdlIGFyZSBjYXN0aW5nICpscCB0
-byBhbiBpbnQzMl90IGluIHRoaXMgZnVuY3Rpb24uIG15Y29weQ0KPiA+ID4gaXMgbm90IGJlaW5n
-IGNhc3QgdG8gYSBsb25nIGhlcmUuDQo+ID4gPiANCj4gPiA+IERvIHlvdSBtZWFuIHhkcnN0ZGlv
-X0dFVGxvbmcgbmVlZHMgZnVydGhlciBwcm90ZWN0aW9uPyBDb3VsZCBiZSwNCj4gPiA+IHRoZXJl
-IGlzIGEgY2FzdCBvZiBhbiBpbnQzMl90IHRvIGEgbG9uZyB0aGVyZS4NCj4gPiA+IA0KPiA+ID4g
-SSBhZ3JlZSB0aGF0IHdlIHNob3VsZCB2ZXQgeGRyc3RkaW9fZ2V0bG9uZyBhbmQgeGRyc3RkaW9f
-cHV0bG9uZw0KPiA+ID4gZm9yDQo+ID4gPiBzaWduLWV4dGVuc2lvbiBpc3N1ZXMgdmVyeSBjYXJl
-ZnVsbHkuDQo+ID4gPiANCj4gPiANCj4gPiBUaGUgd29ycnkgZm9yIHhkcnN0ZGlvX3B1dGxvbmco
-KSBzaG91bGQgYmUgaG93IHdlIGhhbmRsZSB0aGUNCj4gPiB0cnVuY2F0aW9uDQo+ID4gd2hlbiBn
-b2luZyBmcm9tIChsb25nKS0+IGJpZyBlbmRpYW4gKGludDMyX3QvdV9pbnQzMl90KS4gV2UgZG9u
-J3QNCj4gPiB3YW50DQo+ID4gdG8gc2lsZW50bHkgbG9zZSBpbmZvcm1hdGlvbi4NCj4gDQo+IFRv
-IHB1dCBpdCBpbiB0ZXJtcyBvZiBhbiBBUEkgY29udHJhY3Q6DQo+IA0KPiBJZiB0aGUgdmFsdWUg
-aW4gKmxwIGNhbm5vdCBiZSBleHByZXNzZWQgaW4gMzIgYml0cywgeGRyc3RkaW9fcHV0bG9uZw0K
-PiByZXR1cm5zIEZBTFNFLg0KDQpBY2suLi4NCg0KPiANCj4gDQo+ID4gQUZBSUNTLCB3aGVuIGNh
-c3RpbmcgZnJvbSBhICdsb25nJyB0eXBlLCB3aGV0aGVyICdteWNvcHknIGlzIHNpZ25lZA0KPiA+
-IG9yDQo+ID4gdW5zaWduZWQgZG9lc24ndCByZWFsbHkgbWF0dGVyIHdoZW4gY29uc2lkZXJpbmcg
-d2hhdCBlbmRzIHVwDQo+ID4gZ2V0dGluZw0KPiA+IGVuY29kZWQsIGFzIGxvbmcgYXMgaXQgaXMg
-b2Ygc2l6ZSAzMi1iaXRzLiBUaGUgZXhjZXB0aW9uIHdvdWxkIGJlDQo+ID4gaWYNCj4gPiBzaXpl
-b2YobG9uZykgPCA0LCBidXQgbGlidGlycGMgaXMgYnJva2VuIGZvciB0aGF0IGNhc2UgYW55d2F5
-Li4uDQo+ID4gDQo+ID4gPiA+ID4gPiBTaW5jZSB0aGVyZSB1cyBubyBkZWRpY2F0ZWQgeGRyc3Rk
-aW9fcHV0dWxvbmcoKSB0byB1c2UgZm9yDQo+ID4gPiA+ID4gPiB1bnNpZ25lZA0KPiA+ID4gPiA+
-ID4gaW50ZWdlcnMsIHdlIG5lZWQgdGhlIGNoZWNrIHRvIHdvcmsgZm9yIGJvdGggY2FzZXMuDQo+
-ID4gPiA+ID4gPiBGb3IgdGhhdCByZWFzb24sIEkgdGhpbmsgdGhlIGFib3ZlIGNoZWNrIGVpdGhl
-ciBoYXMgdG8gYmU6DQo+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+IAlpZiAoKmxwID09IChsb25n
-KSgodV9pbnQzMl90KSpscCkpDQo+ID4gPiA+ID4gPiAJCXJldHVybiAoRkFMU0UpOw0KPiA+ID4g
-PiA+ID4gDQo+ID4gPiA+ID4gPiAuLi5vciBzb21ldGhpbmcgdWdsaWVyIGxpa2UNCj4gPiA+ID4g
-PiA+IA0KPiA+ID4gPiA+ID4gCWlmICgqbHAgPiBVSU5UMzJfTUFYIHx8ICpscCA8IElOVDMyX01J
-TikNCj4gPiA+ID4gPiA+IAkJcmV0dXJuIChGQUxTRSk7DQo+IA0KPiBPbiAzMiBiaXQgc3lzdGVt
-cywgbG9uZyByYW5nZXMgYmV0d2VlbiBJTlQzMl9NSU4gYW5kIElOVDMyX01BWC4NCj4gVGhlIG1v
-cmUgbmFycm93IHJhbmdlIHNlZW1zIHRvIG1lIHRvIGJlIHRoZSBtb3N0IHBvcnRhYmxlLCBhcyBp
-dA0KPiBndWFyYW50ZWVzIHRoYXQgdGhpcyBBUEkgd29ya3MgZm9yIGV4YWN0bHkgdGhlIHNhbWUg
-c2V0IG9mIHZhbHVlcyBvbg0KPiBib3RoIDMyLSBhbmQgNjQtYml0IHN5c3RlbXMuDQo+IA0KPiBU
-aHVzIEkgd291bGQgcHJlZmVyIHRvIGV4Y2x1ZGUgdGhlIHJhbmdlIGJldHdlZW4gSU5UMzJfTUFY
-IGFuZA0KPiBVSU5UMzJfTUFYLg0KPiANCj4gDQo+ID4gPiA+ID4gPiA+ICsjZW5kaWYNCj4gPiA+
-ID4gPiA+ID4gDQo+ID4gPiA+ID4gPiA+ICsJbXljb3B5ID0gKGludDMyX3QpaHRvbmwoKGludDMy
-X3QpKmxwKTsNCj4gPiA+ID4gPiA+ID4gCWlmIChmd3JpdGUoJm15Y29weSwgc2l6ZW9mKGludDMy
-X3QpLCAxLCAoRklMRSAqKXhkcnMtDQo+ID4gPiA+ID4gPiA+ID4geF9wcml2YXRlKSAhPSAxKQ0K
-PiA+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+ID4gCQlyZXR1cm4gKEZBTFNFKTsNCj4gPiA+ID4g
-PiA+ID4gCXJldHVybiAoVFJVRSk7DQo+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+IC0tIA0KPiA+
-ID4gPiA+ID4gVHJvbmQgTXlrbGVidXN0DQo+ID4gPiA+ID4gPiBDVE8sIEhhbW1lcnNwYWNlIElu
-Yw0KPiA+ID4gPiA+ID4gNDMwMCBFbCBDYW1pbm8gUmVhbCwgU3VpdGUgMTA1DQo+ID4gPiA+ID4g
-PiBMb3MgQWx0b3MsIENBIDk0MDIyDQo+ID4gPiA+ID4gPiB3d3cuaGFtbWVyLnNwYWNlDQo+ID4g
-PiA+ID4gPiANCj4gPiA+ID4gPiA+IE7igLnCp8STw6bEl3LEvOKAunnDusSNxaHDmGLEk1jFvcS3
-xK7Cp3bDmF7igJMpw57FoXsubsSuK+KAsMK3xKjFoHvEhcKdw7sixb7DmF5u4oChcsSEw7bEtnrD
-ixrCgcOraOKEosS7DQo+ID4gPiA+ID4gPiDEjcKtw5omDQo+ID4gPiA+ID4gPiDEksO4HsWqDQo+
-ID4gPiA+ID4gPiBHxabCncOpaMWqAyjCrcOpxaHFvcWgw53Ekmoiwp3DuhrEtxttwqfEuMOvwoHE
-mcOkesSRw57igJPFoMSBw75mxKLEksK3aMWhy4bCp37Lhm0NCj4gPiA+ID4gPiANCj4gPiA+ID4g
-PiAtLQ0KPiA+ID4gPiA+IENodWNrIExldmVyDQo+ID4gPiA+ID4gDQo+ID4gPiA+ID4gDQo+ID4g
-PiA+ID4gDQo+ID4gPiA+IA0KPiA+ID4gPiAtLSANCj4gPiA+ID4gVHJvbmQgTXlrbGVidXN0DQo+
-ID4gPiA+IExpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lciwgSGFtbWVyc3BhY2UNCj4gPiA+ID4g
-dHJvbmQubXlrbGVidXN0QGhhbW1lcnNwYWNlLmNvbQ0KPiA+ID4gDQo+ID4gPiAtLQ0KPiA+ID4g
-Q2h1Y2sgTGV2ZXINCj4gPiA+IA0KPiA+ID4gDQo+ID4gPiANCj4gPiANCj4gPiAtLSANCj4gPiBU
-cm9uZCBNeWtsZWJ1c3QNCj4gPiBDVE8sIEhhbW1lcnNwYWNlIEluYw0KPiA+IDQzMDAgRWwgQ2Ft
-aW5vIFJlYWwsIFN1aXRlIDEwNQ0KPiA+IExvcyBBbHRvcywgQ0EgOTQwMjINCj4gPiB3d3cuaGFt
-bWVyLnNwYWNlDQo+IA0KPiAtLQ0KPiBDaHVjayBMZXZlcg0KPiANCj4gDQo+IA0KLS0gDQpUcm9u
-ZCBNeWtsZWJ1c3QNCkNUTywgSGFtbWVyc3BhY2UgSW5jDQo0MzAwIEVsIENhbWlubyBSZWFsLCBT
-dWl0ZSAxMDUNCkxvcyBBbHRvcywgQ0EgOTQwMjINCnd3dy5oYW1tZXIuc3BhY2UNCg0K
+Even if the results of the permissions checks failed, we should parse
+the results of the layout on open call so that we can return the
+layout if required.
+Note that we also want to ignore the sequence counter for whether or not
+a layout recall occurred. If the recall pertained to our OPEN, then the
+callback will know, and will attempt to wait for us to finih processing
+anyway.
+
+Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
+---
+ fs/nfs/callback_proc.c    | 2 --
+ fs/nfs/nfs4proc.c         | 5 +++--
+ fs/nfs/pnfs.c             | 4 ----
+ include/linux/nfs_fs_sb.h | 1 -
+ include/linux/nfs_xdr.h   | 1 -
+ 5 files changed, 3 insertions(+), 10 deletions(-)
+
+diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+index efca3d6c89f2..43ba390bb653 100644
+--- a/fs/nfs/callback_proc.c
++++ b/fs/nfs/callback_proc.c
+@@ -331,8 +331,6 @@ static u32 initiate_bulk_draining(struct nfs_client *clp,
+ static u32 do_callback_layoutrecall(struct nfs_client *clp,
+ 				    struct cb_layoutrecallargs *args)
+ {
+-	write_seqcount_begin(&clp->cl_callback_count);
+-	write_seqcount_end(&clp->cl_callback_count);
+ 	if (args->cbl_recall_type == RETURN_FILE)
+ 		return initiate_file_draining(clp, args);
+ 	return initiate_bulk_draining(clp, args);
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 0a95f0a76343..2da29bc1f5d9 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2834,6 +2834,9 @@ static int _nfs4_open_and_get_state(struct nfs4_opendata *opendata,
+ 				nfs_save_change_attribute(d_inode(opendata->dir)));
+ 	}
+ 
++	/* Parse layoutget results before we check for access */
++	pnfs_parse_lgopen(state->inode, opendata->lgp, ctx);
++
+ 	ret = nfs4_opendata_access(sp->so_cred, opendata, state, fmode, flags);
+ 	if (ret != 0)
+ 		goto out;
+@@ -2842,8 +2845,6 @@ static int _nfs4_open_and_get_state(struct nfs4_opendata *opendata,
+ 		nfs_inode_attach_open_context(ctx);
+ 		if (read_seqcount_retry(&sp->so_reclaim_seqcount, seq))
+ 			nfs4_schedule_stateid_recovery(server, state);
+-		else
+-			pnfs_parse_lgopen(state->inode, opendata->lgp, ctx);
+ 	}
+ 
+ out:
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 030c39c107c2..7fdac8b504dd 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1018,7 +1018,6 @@ pnfs_alloc_init_layoutget_args(struct inode *ino,
+ 	nfs4_stateid_copy(&lgp->args.stateid, stateid);
+ 	lgp->gfp_flags = gfp_flags;
+ 	lgp->cred = get_rpccred(ctx->cred);
+-	lgp->callback_count = raw_seqcount_begin(&server->nfs_client->cl_callback_count);
+ 	return lgp;
+ }
+ 
+@@ -2181,9 +2180,6 @@ void pnfs_parse_lgopen(struct inode *ino, struct nfs4_layoutget *lgp,
+ 	} else
+ 		lo = NFS_I(lgp->args.inode)->layout;
+ 
+-	if (read_seqcount_retry(&srv->nfs_client->cl_callback_count,
+-				lgp->callback_count))
+-		return;
+ 	lseg = pnfs_layout_process(lgp);
+ 	if (!IS_ERR(lseg)) {
+ 		iomode = lgp->args.range.iomode;
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index 74ae3e1d19a0..2c18d618604e 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -28,7 +28,6 @@ struct nfs41_impl_id;
+ struct nfs_client {
+ 	refcount_t		cl_count;
+ 	atomic_t		cl_mds_count;
+-	seqcount_t		cl_callback_count;
+ 	int			cl_cons_state;	/* current construction state (-ve: init error) */
+ #define NFS_CS_READY		0		/* ready to be used */
+ #define NFS_CS_INITING		1		/* busy initialising */
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 712eed156d09..3b7325cfb291 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -271,7 +271,6 @@ struct nfs4_layoutget {
+ 	struct nfs4_layoutget_args args;
+ 	struct nfs4_layoutget_res res;
+ 	struct rpc_cred *cred;
+-	unsigned callback_count;
+ 	gfp_t gfp_flags;
+ };
+ 
+-- 
+2.17.1
+
