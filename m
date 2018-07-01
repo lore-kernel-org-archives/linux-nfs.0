@@ -1,123 +1,71 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f67.google.com ([209.85.214.67]:39198 "EHLO
-        mail-it0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S932618AbeF2VQ3 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Jun 2018 17:16:29 -0400
-Received: by mail-it0-f67.google.com with SMTP id p185-v6so4707777itp.4
-        for <linux-nfs@vger.kernel.org>; Fri, 29 Jun 2018 14:16:28 -0700 (PDT)
-Received: from leira.trondhjem.org.localdomain ([50.105.87.45])
-        by smtp.gmail.com with ESMTPSA id d136-v6sm1112647itd.22.2018.06.29.14.16.27
-        for <linux-nfs@vger.kernel.org>
-        (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
-        Fri, 29 Jun 2018 14:16:27 -0700 (PDT)
-From: Trond Myklebust <trondmy@gmail.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH] pNFS: Parse the results of layoutget on open even if permissions checks fail
-Date: Fri, 29 Jun 2018 17:16:06 -0400
-Message-Id: <20180629211606.13087-1-trond.myklebust@hammerspace.com>
+Received: from mail.linuxfoundation.org ([140.211.169.12]:37602 "EHLO
+        mail.linuxfoundation.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1031929AbeGAQmS (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 1 Jul 2018 12:42:18 -0400
+From: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+To: linux-kernel@vger.kernel.org
+Cc: Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
+        stable@vger.kernel.org, Waiman Long <longman@redhat.com>,
+        Thomas Gleixner <tglx@linutronix.de>,
+        "Peter Zijlstra (Intel)" <peterz@infradead.org>,
+        Gavin Schenk <g.schenk@eckelmann.de>,
+        Davidlohr Bueso <dave@stgolabs.net>,
+        Dan Williams <dan.j.williams@intel.com>,
+        Arnd Bergmann <arnd@arndb.de>, linux-nfs@vger.kernel.org
+Subject: [PATCH 4.17 126/220] locking/rwsem: Fix up_read_non_owner() warning with DEBUG_RWSEMS
+Date: Sun,  1 Jul 2018 18:22:30 +0200
+Message-Id: <20180701160913.605670833@linuxfoundation.org>
+In-Reply-To: <20180701160908.272447118@linuxfoundation.org>
+References: <20180701160908.272447118@linuxfoundation.org>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Even if the results of the permissions checks failed, we should parse
-the results of the layout on open call so that we can return the
-layout if required.
-Note that we also want to ignore the sequence counter for whether or not
-a layout recall occurred. If the recall pertained to our OPEN, then the
-callback will know, and will attempt to wait for us to finih processing
-anyway.
+4.17-stable review patch.  If anyone has any objections, please let me know.
 
-Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
+------------------
+
+From: Waiman Long <longman@redhat.com>
+
+commit 03eeafdd9ab06a770d42c2b264d50dff7e2f4eee upstream.
+
+It was found that the use of up_read_non_owner() in NFS was causing
+the following warning when DEBUG_RWSEMS was configured.
+
+  DEBUG_LOCKS_WARN_ON(sem->owner != ((struct task_struct *)(1UL << 0)))
+
+Looking into the rwsem.c file, it was discovered that the corresponding
+down_read_non_owner() function was not setting the owner field properly.
+This is fixed now, and the warning should be gone.
+
+Fixes: 5149cbac4235 ("locking/rwsem: Add DEBUG_RWSEMS to look for lock/unlock mismatches")
+Signed-off-by: Waiman Long <longman@redhat.com>
+Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
+Acked-by: Peter Zijlstra (Intel) <peterz@infradead.org>
+Tested-by: Gavin Schenk <g.schenk@eckelmann.de>
+Cc: Davidlohr Bueso <dave@stgolabs.net>
+Cc: Dan Williams <dan.j.williams@intel.com>
+Cc: Arnd Bergmann <arnd@arndb.de>
+Cc: linux-nfs@vger.kernel.org
+Cc: stable@vger.kernel.org
+Link: https://lkml.kernel.org/r/1527168398-4291-1-git-send-email-longman@redhat.com
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+
 ---
- fs/nfs/callback_proc.c    | 2 --
- fs/nfs/nfs4proc.c         | 5 +++--
- fs/nfs/pnfs.c             | 4 ----
- include/linux/nfs_fs_sb.h | 1 -
- include/linux/nfs_xdr.h   | 1 -
- 5 files changed, 3 insertions(+), 10 deletions(-)
+ kernel/locking/rwsem.c |    1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index efca3d6c89f2..43ba390bb653 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -331,8 +331,6 @@ static u32 initiate_bulk_draining(struct nfs_client *clp,
- static u32 do_callback_layoutrecall(struct nfs_client *clp,
- 				    struct cb_layoutrecallargs *args)
- {
--	write_seqcount_begin(&clp->cl_callback_count);
--	write_seqcount_end(&clp->cl_callback_count);
- 	if (args->cbl_recall_type == RETURN_FILE)
- 		return initiate_file_draining(clp, args);
- 	return initiate_bulk_draining(clp, args);
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 0a95f0a76343..2da29bc1f5d9 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -2834,6 +2834,9 @@ static int _nfs4_open_and_get_state(struct nfs4_opendata *opendata,
- 				nfs_save_change_attribute(d_inode(opendata->dir)));
- 	}
+--- a/kernel/locking/rwsem.c
++++ b/kernel/locking/rwsem.c
+@@ -181,6 +181,7 @@ void down_read_non_owner(struct rw_semap
+ 	might_sleep();
  
-+	/* Parse layoutget results before we check for access */
-+	pnfs_parse_lgopen(state->inode, opendata->lgp, ctx);
-+
- 	ret = nfs4_opendata_access(sp->so_cred, opendata, state, fmode, flags);
- 	if (ret != 0)
- 		goto out;
-@@ -2842,8 +2845,6 @@ static int _nfs4_open_and_get_state(struct nfs4_opendata *opendata,
- 		nfs_inode_attach_open_context(ctx);
- 		if (read_seqcount_retry(&sp->so_reclaim_seqcount, seq))
- 			nfs4_schedule_stateid_recovery(server, state);
--		else
--			pnfs_parse_lgopen(state->inode, opendata->lgp, ctx);
- 	}
- 
- out:
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 030c39c107c2..7fdac8b504dd 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1018,7 +1018,6 @@ pnfs_alloc_init_layoutget_args(struct inode *ino,
- 	nfs4_stateid_copy(&lgp->args.stateid, stateid);
- 	lgp->gfp_flags = gfp_flags;
- 	lgp->cred = get_rpccred(ctx->cred);
--	lgp->callback_count = raw_seqcount_begin(&server->nfs_client->cl_callback_count);
- 	return lgp;
+ 	__down_read(sem);
++	rwsem_set_reader_owned(sem);
  }
  
-@@ -2181,9 +2180,6 @@ void pnfs_parse_lgopen(struct inode *ino, struct nfs4_layoutget *lgp,
- 	} else
- 		lo = NFS_I(lgp->args.inode)->layout;
- 
--	if (read_seqcount_retry(&srv->nfs_client->cl_callback_count,
--				lgp->callback_count))
--		return;
- 	lseg = pnfs_layout_process(lgp);
- 	if (!IS_ERR(lseg)) {
- 		iomode = lgp->args.range.iomode;
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index 74ae3e1d19a0..2c18d618604e 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -28,7 +28,6 @@ struct nfs41_impl_id;
- struct nfs_client {
- 	refcount_t		cl_count;
- 	atomic_t		cl_mds_count;
--	seqcount_t		cl_callback_count;
- 	int			cl_cons_state;	/* current construction state (-ve: init error) */
- #define NFS_CS_READY		0		/* ready to be used */
- #define NFS_CS_INITING		1		/* busy initialising */
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 712eed156d09..3b7325cfb291 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -271,7 +271,6 @@ struct nfs4_layoutget {
- 	struct nfs4_layoutget_args args;
- 	struct nfs4_layoutget_res res;
- 	struct rpc_cred *cred;
--	unsigned callback_count;
- 	gfp_t gfp_flags;
- };
- 
--- 
-2.17.1
+ EXPORT_SYMBOL(down_read_non_owner);
+
 
