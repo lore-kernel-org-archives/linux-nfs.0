@@ -1,64 +1,31 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp2130.oracle.com ([156.151.31.86]:37362 "EHLO
-        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1754010AbeGEQIu (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Jul 2018 12:08:50 -0400
-From: Calum Mackay <calum.mackay@oracle.com>
-To: trondmy@hammerspace.com, anna.schumaker@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] nfs: Referrals not inheriting proto setting from parent
-Date: Thu,  5 Jul 2018 17:08:08 +0100
-Message-Id: <20180705160808.7849-1-calum.mackay@oracle.com>
-Sender: linux-nfs-owner@vger.kernel.org
+Return-Path: <hch@lst.de>
+Date: Thu, 5 Jul 2018 21:40:49 +0200
+From: Christoph Hellwig <hch@lst.de>
+To: Dan Carpenter <dan.carpenter@oracle.com>
+Cc: Trond Myklebust <trond.myklebust@hammerspace.com>,
+	Christoph Hellwig <hch@lst.de>,
+	Anna Schumaker <anna.schumaker@netapp.com>,
+	Philippe Ombredanne <pombredanne@nexb.com>,
+	Benjamin Coddington <bcodding@redhat.com>,
+	linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] pnfs/blocklayout: off by one in bl_map_stripe()
+Message-ID: <20180705194049.GA29032@lst.de>
+References: <20180704095957.bujo2izpjlcvjanb@kili.mountain>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20180704095957.bujo2izpjlcvjanb@kili.mountain>
 List-ID: <linux-nfs.vger.kernel.org>
 
-Commit 530ea4219231 ("nfs: Referrals should use the same proto setting
-as their parent") encloses the fix with #ifdef CONFIG_SUNRPC_XPRT_RDMA.
+On Wed, Jul 04, 2018 at 12:59:58PM +0300, Dan Carpenter wrote:
+> "dev->nr_children" is the number of children which were parsed
+> successfully in bl_parse_stripe().  It could be all of them and then, in
+> that case, it is equal to v->stripe.volumes_count.  Either way, the >
+> should be >= so that we don't go beyond the end of what we're supposed
+> to.
+> 
+> Fixes: 5c83746a0cf2 ("pnfs/blocklayout: in-kernel GETDEVICEINFO XDR parsing")
+> Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
 
-CONFIG_SUNRPC_XPRT_RDMA is a tristate option, so it should be tested
-with #if IS_ENABLED().
+Looks good:
 
-Fixes: 530ea4219231 ("nfs: Referrals should use the same proto setting as their parent")
-Reported-by: Helen Chao <helen.chao@oracle.com>
-Tested-by: Helen Chao <helen.chao@oracle.com>
-Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
-Reviewed-by: Bill Baker <bill.baker@oracle.com>
-Signed-off-by: Calum Mackay <calum.mackay@oracle.com>
----
- fs/nfs/nfs4client.c | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
-
-diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
-index 979631411a0e..d7124fb12041 100644
---- a/fs/nfs/nfs4client.c
-+++ b/fs/nfs/nfs4client.c
-@@ -1127,7 +1127,7 @@ struct nfs_server *nfs4_create_referral_server(struct nfs_clone_mount *data,
- 	nfs_server_copy_userdata(server, parent_server);
- 
- 	/* Get a client representation */
--#ifdef CONFIG_SUNRPC_XPRT_RDMA
-+#if IS_ENABLED(CONFIG_SUNRPC_XPRT_RDMA)
- 	rpc_set_port(data->addr, NFS_RDMA_PORT);
- 	error = nfs4_set_client(server, data->hostname,
- 				data->addr,
-@@ -1139,7 +1139,7 @@ struct nfs_server *nfs4_create_referral_server(struct nfs_clone_mount *data,
- 				parent_client->cl_net);
- 	if (!error)
- 		goto init_server;
--#endif	/* CONFIG_SUNRPC_XPRT_RDMA */
-+#endif	/* IS_ENABLED(CONFIG_SUNRPC_XPRT_RDMA) */
- 
- 	rpc_set_port(data->addr, NFS_PORT);
- 	error = nfs4_set_client(server, data->hostname,
-@@ -1153,7 +1153,7 @@ struct nfs_server *nfs4_create_referral_server(struct nfs_clone_mount *data,
- 	if (error < 0)
- 		goto error;
- 
--#ifdef CONFIG_SUNRPC_XPRT_RDMA
-+#if IS_ENABLED(CONFIG_SUNRPC_XPRT_RDMA)
- init_server:
- #endif
- 	error = nfs_init_server_rpcclient(server, parent_server->client->cl_timeout, data->authflavor);
--- 
-2.9.3
-
+Reviewed-by: Christoph Hellwig <hch@lst.de>
