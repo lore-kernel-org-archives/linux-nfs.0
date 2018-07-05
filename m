@@ -1,44 +1,64 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.99]:54968 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753131AbeGEJsR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 5 Jul 2018 05:48:17 -0400
-From: Jeff Layton <jlayton@kernel.org>
-To: trond.myklebust@hammerspace.com, anna.schumaker@netapp.com
+Received: from userp2130.oracle.com ([156.151.31.86]:37362 "EHLO
+        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1754010AbeGEQIu (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Jul 2018 12:08:50 -0400
+From: Calum Mackay <calum.mackay@oracle.com>
+To: trondmy@hammerspace.com, anna.schumaker@netapp.com
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] nfs: initiate returning delegation when reclaiming one that's been recalled
-Date: Thu,  5 Jul 2018 05:48:14 -0400
-Message-Id: <20180705094814.4940-1-jlayton@kernel.org>
+Subject: [PATCH] nfs: Referrals not inheriting proto setting from parent
+Date: Thu,  5 Jul 2018 17:08:08 +0100
+Message-Id: <20180705160808.7849-1-calum.mackay@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When reclaiming a delegation via CLAIM_PREVIOUS open, the server can
-indicate that the delegation has been recalled since it was issued by
-setting the "recalled" flag in the delegation.
+Commit 530ea4219231 ("nfs: Referrals should use the same proto setting
+as their parent") encloses the fix with #ifdef CONFIG_SUNRPC_XPRT_RDMA.
 
-Ensure that we respect the flag by initiating a delegation return when
-it is set.
+CONFIG_SUNRPC_XPRT_RDMA is a tristate option, so it should be tested
+with #if IS_ENABLED().
 
-Signed-off-by: Jeff Layton <jlayton@kernel.org>
+Fixes: 530ea4219231 ("nfs: Referrals should use the same proto setting as their parent")
+Reported-by: Helen Chao <helen.chao@oracle.com>
+Tested-by: Helen Chao <helen.chao@oracle.com>
+Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
+Reviewed-by: Bill Baker <bill.baker@oracle.com>
+Signed-off-by: Calum Mackay <calum.mackay@oracle.com>
 ---
- fs/nfs/nfs4proc.c | 4 ++++
- 1 file changed, 4 insertions(+)
+ fs/nfs/nfs4client.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 6dd146885da9..bf454debd99a 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -1773,6 +1773,10 @@ nfs4_opendata_check_deleg(struct nfs4_opendata *data, struct nfs4_state *state)
- 				data->o_res.delegation_type,
- 				&data->o_res.delegation,
- 				data->o_res.pagemod_limit);
-+
-+	if (data->o_res.do_recall)
-+		nfs_async_inode_return_delegation(state->inode,
-+						  &data->o_res.delegation);
- }
+diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+index 979631411a0e..d7124fb12041 100644
+--- a/fs/nfs/nfs4client.c
++++ b/fs/nfs/nfs4client.c
+@@ -1127,7 +1127,7 @@ struct nfs_server *nfs4_create_referral_server(struct nfs_clone_mount *data,
+ 	nfs_server_copy_userdata(server, parent_server);
  
- /*
+ 	/* Get a client representation */
+-#ifdef CONFIG_SUNRPC_XPRT_RDMA
++#if IS_ENABLED(CONFIG_SUNRPC_XPRT_RDMA)
+ 	rpc_set_port(data->addr, NFS_RDMA_PORT);
+ 	error = nfs4_set_client(server, data->hostname,
+ 				data->addr,
+@@ -1139,7 +1139,7 @@ struct nfs_server *nfs4_create_referral_server(struct nfs_clone_mount *data,
+ 				parent_client->cl_net);
+ 	if (!error)
+ 		goto init_server;
+-#endif	/* CONFIG_SUNRPC_XPRT_RDMA */
++#endif	/* IS_ENABLED(CONFIG_SUNRPC_XPRT_RDMA) */
+ 
+ 	rpc_set_port(data->addr, NFS_PORT);
+ 	error = nfs4_set_client(server, data->hostname,
+@@ -1153,7 +1153,7 @@ struct nfs_server *nfs4_create_referral_server(struct nfs_clone_mount *data,
+ 	if (error < 0)
+ 		goto error;
+ 
+-#ifdef CONFIG_SUNRPC_XPRT_RDMA
++#if IS_ENABLED(CONFIG_SUNRPC_XPRT_RDMA)
+ init_server:
+ #endif
+ 	error = nfs_init_server_rpcclient(server, parent_server->client->cl_timeout, data->authflavor);
 -- 
-2.17.1
+2.9.3
 
