@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx141.netapp.com ([216.240.21.12]:22229 "EHLO mx141.netapp.com"
+Received: from mx144.netapp.com ([216.240.21.25]:6292 "EHLO mx144.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S932704AbeGITNf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 9 Jul 2018 15:13:35 -0400
+        id S1754523AbeGITNb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 9 Jul 2018 15:13:31 -0400
 From: Olga Kornievskaia <kolga@netapp.com>
 To: <Trond.Myklebust@hammerspace.com>, <anna.schumaker@netapp.com>
 CC: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v9 06/13] NFS handle COPY reply CB_OFFLOAD call race
-Date: Mon, 9 Jul 2018 15:13:32 -0400
-Message-ID: <20180709191339.44740-7-kolga@netapp.com>
+Subject: [PATCH v9 02/13] NFS CB_OFFLOAD xdr
+Date: Mon, 9 Jul 2018 15:13:28 -0400
+Message-ID: <20180709191339.44740-3-kolga@netapp.com>
 In-Reply-To: <20180709191339.44740-1-kolga@netapp.com>
 References: <20180709191339.44740-1-kolga@netapp.com>
 MIME-Version: 1.0
@@ -16,157 +16,161 @@ Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-It's possible that server replies back with CB_OFFLOAD call and
-COPY reply at the same time such that client will process
-CB_OFFLOAD before reply to COPY. For that keep a list of pending
-callback stateids received and then before waiting on completion
-check the pending list.
-
-Cleanup any pending copies on the client shutdown.
-
 Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
 ---
- fs/nfs/callback_proc.c    | 17 ++++++++++++++---
- fs/nfs/nfs42proc.c        | 22 ++++++++++++++++++++--
- fs/nfs/nfs4client.c       | 15 +++++++++++++++
- include/linux/nfs_fs_sb.h |  1 +
- 4 files changed, 50 insertions(+), 5 deletions(-)
+ fs/nfs/callback.h      | 12 ++++++++
+ fs/nfs/callback_proc.c |  7 +++++
+ fs/nfs/callback_xdr.c  | 80 +++++++++++++++++++++++++++++++++++++++++++++++++-
+ 3 files changed, 98 insertions(+), 1 deletion(-)
 
+diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
+index a20a0bc..8f34daf 100644
+--- a/fs/nfs/callback.h
++++ b/fs/nfs/callback.h
+@@ -184,6 +184,18 @@ struct cb_notify_lock_args {
+ extern __be32 nfs4_callback_notify_lock(void *argp, void *resp,
+ 					 struct cb_process_state *cps);
+ #endif /* CONFIG_NFS_V4_1 */
++#ifdef CONFIG_NFS_V4_2
++struct cb_offloadargs {
++	struct nfs_fh		coa_fh;
++	nfs4_stateid		coa_stateid;
++	uint32_t		error;
++	uint64_t		wr_count;
++	struct nfs_writeverf	wr_writeverf;
++};
++
++extern __be32 nfs4_callback_offload(void *args, void *dummy,
++				    struct cb_process_state *cps);
++#endif /* CONFIG_NFS_V4_2 */
+ extern int check_gss_callback_principal(struct nfs_client *, struct svc_rqst *);
+ extern __be32 nfs4_callback_getattr(void *argp, void *resp,
+ 				    struct cb_process_state *cps);
 diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index 2c4a889..07f29c8 100644
+index 43ba390..9647616 100644
 --- a/fs/nfs/callback_proc.c
 +++ b/fs/nfs/callback_proc.c
-@@ -681,11 +681,12 @@ __be32 nfs4_callback_offload(void *data, void *dummy,
- 	struct cb_offloadargs *args = data;
- 	struct nfs_server *server;
- 	struct nfs4_copy_state *copy;
-+	bool found = false;
- 
-+	spin_lock(&cps->clp->cl_lock);
- 	rcu_read_lock();
- 	list_for_each_entry_rcu(server, &cps->clp->cl_superblocks,
- 				client_link) {
--		spin_lock(&server->nfs_client->cl_lock);
- 		list_for_each_entry(copy, &server->ss_copies, copies) {
- 			if (memcmp(args->coa_stateid.other,
- 					copy->stateid.other,
-@@ -693,13 +694,23 @@ __be32 nfs4_callback_offload(void *data, void *dummy,
- 				continue;
- 			nfs4_copy_cb_args(copy, args);
- 			complete(&copy->completion);
--			spin_unlock(&server->nfs_client->cl_lock);
-+			found = true;
- 			goto out;
- 		}
--		spin_unlock(&server->nfs_client->cl_lock);
- 	}
- out:
- 	rcu_read_unlock();
-+	if (!found) {
-+		copy = kzalloc(sizeof(struct nfs4_copy_state), GFP_NOFS);
-+		if (!copy) {
-+			spin_unlock(&cps->clp->cl_lock);
-+			return htonl(NFS4ERR_SERVERFAULT);
-+		}
-+		memcpy(&copy->stateid, &args->coa_stateid, NFS4_STATEID_SIZE);
-+		nfs4_copy_cb_args(copy, args);
-+		list_add_tail(&copy->copies, &cps->clp->pending_cb_stateids);
-+	}
-+	spin_unlock(&cps->clp->cl_lock);
- 
- 	return 0;
+@@ -661,3 +661,10 @@ __be32 nfs4_callback_notify_lock(void *argp, void *resp,
+ 	return htonl(NFS4_OK);
  }
-diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
-index 023aea8..c7d31f7 100644
---- a/fs/nfs/nfs42proc.c
-+++ b/fs/nfs/nfs42proc.c
-@@ -138,14 +138,31 @@ static int handle_async_copy(struct nfs42_copy_res *res,
- {
- 	struct nfs4_copy_state *copy;
- 	int status = NFS4_OK;
-+	bool found_pending = false;
-+
-+	spin_lock(&server->nfs_client->cl_lock);
-+	list_for_each_entry(copy, &server->nfs_client->pending_cb_stateids,
-+				copies) {
-+		if (memcmp(&res->write_res.stateid, &copy->stateid,
-+				NFS4_STATEID_SIZE))
-+			continue;
-+		found_pending = true;
-+		list_del(&copy->copies);
-+		break;
-+	}
-+	if (found_pending) {
-+		spin_unlock(&server->nfs_client->cl_lock);
-+		goto out;
-+	}
- 
- 	copy = kzalloc(sizeof(struct nfs4_copy_state), GFP_NOFS);
--	if (!copy)
-+	if (!copy) {
-+		spin_unlock(&server->nfs_client->cl_lock);
- 		return -ENOMEM;
-+	}
- 	memcpy(&copy->stateid, &res->write_res.stateid, NFS4_STATEID_SIZE);
- 	init_completion(&copy->completion);
- 
--	spin_lock(&server->nfs_client->cl_lock);
- 	list_add_tail(&copy->copies, &server->ss_copies);
- 	spin_unlock(&server->nfs_client->cl_lock);
- 
-@@ -153,6 +170,7 @@ static int handle_async_copy(struct nfs42_copy_res *res,
- 	spin_lock(&server->nfs_client->cl_lock);
- 	list_del_init(&copy->copies);
- 	spin_unlock(&server->nfs_client->cl_lock);
-+out:
- 	res->write_res.count = copy->count;
- 	memcpy(&res->write_res.verifier, &copy->verf, sizeof(copy->verf));
- 	status = -copy->error;
-diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
-index 9796314..d68ba73 100644
---- a/fs/nfs/nfs4client.c
-+++ b/fs/nfs/nfs4client.c
-@@ -156,9 +156,23 @@ struct rpc_clnt *
- 	}
- }
- 
-+static void
-+nfs4_cleanup_callback(struct nfs_client *clp)
+ #endif /* CONFIG_NFS_V4_1 */
++#ifdef CONFIG_NFS_V4_2
++__be32 nfs4_callback_offload(void *args, void *dummy,
++			     struct cb_process_state *cps)
 +{
-+	struct nfs4_copy_state *cp_state;
++	return 0;
++}
++#endif /* CONFIG_NFS_V4_2 */
+diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
+index a813979..d1dea85 100644
+--- a/fs/nfs/callback_xdr.c
++++ b/fs/nfs/callback_xdr.c
+@@ -38,6 +38,9 @@
+ #define CB_OP_RECALLSLOT_RES_MAXSZ	(CB_OP_HDR_RES_MAXSZ)
+ #define CB_OP_NOTIFY_LOCK_RES_MAXSZ	(CB_OP_HDR_RES_MAXSZ)
+ #endif /* CONFIG_NFS_V4_1 */
++#ifdef CONFIG_NFS_V4_2
++#define CB_OP_OFFLOAD_RES_MAXSZ		(CB_OP_HDR_RES_MAXSZ)
++#endif /* CONFIG_NFS_V4_2 */
+ 
+ #define NFSDBG_FACILITY NFSDBG_CALLBACK
+ 
+@@ -527,7 +530,72 @@ static __be32 decode_notify_lock_args(struct svc_rqst *rqstp,
+ }
+ 
+ #endif /* CONFIG_NFS_V4_1 */
++#ifdef CONFIG_NFS_V4_2
++static __be32 decode_write_response(struct xdr_stream *xdr,
++					struct cb_offloadargs *args)
++{
++	__be32 *p;
 +
-+	while (!list_empty(&clp->pending_cb_stateids)) {
-+		cp_state = list_entry(clp->pending_cb_stateids.next,
-+					struct nfs4_copy_state, copies);
-+		list_del(&cp_state->copies);
-+		kfree(cp_state);
++	/* skip the always zero field */
++	p = read_buf(xdr, 4);
++	if (unlikely(!p))
++		goto out;
++	p++;
++
++	/* decode count, stable_how, verifier */
++	p = xdr_inline_decode(xdr, 8 + 4);
++	if (unlikely(!p))
++		goto out;
++	p = xdr_decode_hyper(p, &args->wr_count);
++	args->wr_writeverf.committed = be32_to_cpup(p);
++	p = xdr_inline_decode(xdr, NFS4_VERIFIER_SIZE);
++	if (likely(p)) {
++		memcpy(&args->wr_writeverf.verifier.data[0], p,
++			NFS4_VERIFIER_SIZE);
++		return 0;
 +	}
++out:
++	return htonl(NFS4ERR_RESOURCE);
 +}
 +
- void nfs41_shutdown_client(struct nfs_client *clp)
++static __be32 decode_offload_args(struct svc_rqst *rqstp,
++					struct xdr_stream *xdr,
++					void *data)
++{
++	struct cb_offloadargs *args = data;
++	__be32 *p;
++	__be32 status;
++
++	/* decode fh */
++	status = decode_fh(xdr, &args->coa_fh);
++	if (unlikely(status != 0))
++		return status;
++
++	/* decode stateid */
++	status = decode_stateid(xdr, &args->coa_stateid);
++	if (unlikely(status != 0))
++		return status;
+ 
++	/* decode status */
++	p = read_buf(xdr, 4);
++	if (unlikely(!p))
++		goto out;
++	args->error = ntohl(*p++);
++	if (!args->error) {
++		status = decode_write_response(xdr, args);
++		if (unlikely(status != 0))
++			return status;
++	} else {
++		p = xdr_inline_decode(xdr, 8);
++		if (unlikely(!p))
++			goto out;
++		p = xdr_decode_hyper(p, &args->wr_count);
++	}
++	return 0;
++out:
++	return htonl(NFS4ERR_RESOURCE);
++}
++#endif /* CONFIG_NFS_V4_2 */
+ static __be32 encode_string(struct xdr_stream *xdr, unsigned int len, const char *str)
  {
- 	if (nfs4_has_session(clp)) {
-+		nfs4_cleanup_callback(clp);
- 		nfs4_shutdown_ds_clients(clp);
- 		nfs4_destroy_session(clp->cl_session);
- 		nfs4_destroy_clientid(clp);
-@@ -202,6 +216,7 @@ struct nfs_client *nfs4_alloc_client(const struct nfs_client_initdata *cl_init)
- #if IS_ENABLED(CONFIG_NFS_V4_1)
- 	init_waitqueue_head(&clp->cl_lock_waitq);
- #endif
-+	INIT_LIST_HEAD(&clp->pending_cb_stateids);
- 	return clp;
+ 	if (unlikely(xdr_stream_encode_opaque(xdr, str, len) < 0))
+@@ -773,7 +841,10 @@ static void nfs4_cb_free_slot(struct cb_process_state *cps)
+ 	if (status != htonl(NFS4ERR_OP_ILLEGAL))
+ 		return status;
  
- error:
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index f88952d..bf39d9c 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -121,6 +121,7 @@ struct nfs_client {
- #endif
- 
- 	struct net		*cl_net;
-+	struct list_head	pending_cb_stateids;
+-	if (op_nr == OP_CB_OFFLOAD)
++	if (op_nr == OP_CB_OFFLOAD) {
++		*op = &callback_ops[op_nr];
++		return htonl(NFS_OK);
++	} else
+ 		return htonl(NFS4ERR_NOTSUPP);
+ 	return htonl(NFS4ERR_OP_ILLEGAL);
+ }
+@@ -969,6 +1040,13 @@ static __be32 nfs4_callback_compound(struct svc_rqst *rqstp)
+ 		.res_maxsize = CB_OP_NOTIFY_LOCK_RES_MAXSZ,
+ 	},
+ #endif /* CONFIG_NFS_V4_1 */
++#ifdef CONFIG_NFS_V4_2
++	[OP_CB_OFFLOAD] = {
++		.process_op = nfs4_callback_offload,
++		.decode_args = decode_offload_args,
++		.res_maxsize = CB_OP_OFFLOAD_RES_MAXSZ,
++	},
++#endif /* CONFIG_NFS_V4_2 */
  };
  
  /*
