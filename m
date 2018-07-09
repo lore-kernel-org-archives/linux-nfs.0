@@ -1,115 +1,69 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx141.netapp.com ([216.240.21.12]:35214 "EHLO mx141.netapp.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S933256AbeGIT0d (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 9 Jul 2018 15:26:33 -0400
-From: Olga Kornievskaia <kolga@netapp.com>
-To: <bfields@redhat.com>
-CC: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v9 8/9] NFSD support OFFLOAD_STATUS
-Date: Mon, 9 Jul 2018 15:26:37 -0400
-Message-ID: <20180709192638.44799-9-kolga@netapp.com>
-In-Reply-To: <20180709192638.44799-1-kolga@netapp.com>
-References: <20180709192638.44799-1-kolga@netapp.com>
+Received: from mail-it0-f67.google.com ([209.85.214.67]:35197 "EHLO
+        mail-it0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S933025AbeGIV5d (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Jul 2018 17:57:33 -0400
+Received: by mail-it0-f67.google.com with SMTP id l16-v6so28575501ita.0
+        for <linux-nfs@vger.kernel.org>; Mon, 09 Jul 2018 14:57:33 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain
+References: <1529598933-16506-1-git-send-email-manjunath.b.patil@oracle.com>
+ <1529598933-16506-2-git-send-email-manjunath.b.patil@oracle.com>
+ <20180622175416.GA7119@fieldses.org> <20180709142512.GA17769@fieldses.org>
+In-Reply-To: <20180709142512.GA17769@fieldses.org>
+From: Trond Myklebust <trondmy@gmail.com>
+Date: Mon, 9 Jul 2018 17:57:21 -0400
+Message-ID: <CAABAsM6vDOaudUZYWH23oGiWGqX5Bd1YbCDnL6L=pxzMXgZzaw@mail.gmail.com>
+Subject: Re: [PATCH 2/2] nfsd: return ENOSPC if unable to allocate a session slot
+To: Dr James Bruce Fields <bfields@fieldses.org>
+Cc: manjunath.b.patil@oracle.com, linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Search the list for the asynchronous copy based on the stateid,
-then lookup the number of bytes copied so far.
+On Mon, 9 Jul 2018 at 10:27, J. Bruce Fields <bfields@fieldses.org> wrote:
+>
+> On Fri, Jun 22, 2018 at 01:54:16PM -0400, bfields wrote:
+> > On Thu, Jun 21, 2018 at 04:35:33PM +0000, Manjunath Patil wrote:
+> > > Presently nfserr_jukebox is being returned by nfsd for create_session
+> > > request if server is unable to allocate a session slot. This may be
+> > > treated as NFS4ERR_DELAY by the clients and which may continue to re-try
+> > > create_session in loop leading NFSv4.1+ mounts in hung state. nfsd
+> > > should return nfserr_nospc in this case as per rfc5661(section-18.36.4
+> > > subpoint 4. Session creation).
+> >
+> > I don't think the spec actually gives us an error that we can use to say
+> > a CREATE_SESSION failed permanently for lack of resources.
+> >
+> > Better would be to avoid the need to fail at all.  Possibilities:
+> >
+> >       - revive Trond's patches some time back to do dynamic slot size
+>
+> By the way, I finally got around to reviewing those patches (5 years
+> late!).  One issue is that they seem to take the slot count requested by
+> the client at CREATE_SESSION as a lower bound.  And the current client
+> requests a lot of slots (1024, I think?--this is just from looking at
+> the code, I should watch a mount).  Anyway, I assume that's not a hard
+> requirement and that we can fix it.
+>
+> Also the slot number is driven entirely by the server's guess at what
+> the client needs--we might also want to take into account whether we're
+> running out of server resources.
+>
+> So that still leaves the question of how to cap the total slot memory.
+>
+> I'm beginning to wonder whether that's a good idea at all.  Perhaps it'd
+> be better for now just to keep going till kmalloc fails.  There's no
+> shortage of other ways that a malicious client could DOS the server
+> anyway.
+>
+> I'll probably forward-port and repost Trond's patches some time in the
+> next month.
 
-Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
----
- fs/nfsd/nfs4proc.c | 45 ++++++++++++++++++++++++++++++++-------------
- fs/nfsd/state.h    |  2 ++
- 2 files changed, 34 insertions(+), 13 deletions(-)
+To be fair, if I were redoing the patches today, I'd probably change
+them to ensure that we only grow the session slot table size using the
+sequence target_slot, but shrink it using the CB_RECALL_SLOT
+mechanism. That makes for a much cleaner implementation with less
+heuristics needed on the part of both the client and server.
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 7247fb0..1343640 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1273,6 +1273,23 @@ static int nfsd4_do_async_copy(void *data)
- 	goto out;
- }
- 
-+struct nfsd4_copy *
-+find_async_copy(struct nfs4_client *clp, stateid_t *stateid)
-+{
-+	struct nfsd4_copy *copy;
-+
-+	spin_lock(&clp->async_lock);
-+	list_for_each_entry(copy, &clp->async_copies, copies) {
-+		if (memcmp(&copy->cp_stateid, stateid, NFS4_STATEID_SIZE))
-+			continue;
-+		refcount_inc(&copy->refcount);
-+		spin_unlock(&clp->async_lock);
-+		return copy;
-+	}
-+	spin_unlock(&clp->async_lock);
-+	return NULL;
-+}
-+
- static __be32
- nfsd4_offload_cancel(struct svc_rqst *rqstp,
- 		     struct nfsd4_compound_state *cstate,
-@@ -1281,20 +1298,10 @@ static int nfsd4_do_async_copy(void *data)
- 	struct nfsd4_offload_status *os = &u->offload_status;
- 	__be32 status = 0;
- 	struct nfsd4_copy *copy;
--	bool found = false;
- 	struct nfs4_client *clp = cstate->clp;
- 
--	spin_lock(&clp->async_lock);
--	list_for_each_entry(copy, &clp->async_copies, copies) {
--		if (memcmp(&copy->cp_stateid, &os->stateid,
--				NFS4_STATEID_SIZE))
--			continue;
--		found = true;
--		refcount_inc(&copy->refcount);
--		break;
--	}
--	spin_unlock(&clp->async_lock);
--	if (found) {
-+	copy = find_async_copy(clp, &os->stateid);
-+	if (copy) {
- 		set_tsk_thread_flag(copy->copy_task, TIF_SIGPENDING);
- 		kthread_stop(copy->copy_task);
- 		nfs4_put_copy(copy);
-@@ -1331,7 +1338,19 @@ static int nfsd4_do_async_copy(void *data)
- 		     struct nfsd4_compound_state *cstate,
- 		     union nfsd4_op_u *u)
- {
--	return nfserr_notsupp;
-+	struct nfsd4_offload_status *os = &u->offload_status;
-+	__be32 status = 0;
-+	struct nfsd4_copy *copy;
-+	struct nfs4_client *clp = cstate->clp;
-+
-+	copy = find_async_copy(clp, &os->stateid);
-+	if (copy) {
-+		os->count = copy->cp_res.wr_bytes_written;
-+		nfs4_put_copy(copy);
-+	} else
-+		status = nfserr_bad_stateid;
-+
-+	return status;
- }
- 
- static __be32
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 0ee2ed3..0bd4329 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -642,6 +642,8 @@ extern struct nfs4_client_reclaim *nfs4_client_to_reclaim(const char *name,
- struct nfs4_file *find_file(struct knfsd_fh *fh);
- void put_nfs4_file(struct nfs4_file *fi);
- extern void nfs4_put_copy(struct nfsd4_copy *copy);
-+extern struct nfsd4_copy *
-+find_async_copy(struct nfs4_client *clp, stateid_t *staetid);
- static inline void get_nfs4_file(struct nfs4_file *fi)
- {
- 	refcount_inc(&fi->fi_ref);
--- 
-1.8.3.1
-
+Cheers
+  Trond
