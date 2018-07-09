@@ -1,167 +1,77 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx144.netapp.com ([216.240.21.25]:29289 "EHLO mx144.netapp.com"
+Received: from mx141.netapp.com ([216.240.21.12]:22229 "EHLO mx141.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S932704AbeGITNl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 9 Jul 2018 15:13:41 -0400
+        id S1754521AbeGITN3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 9 Jul 2018 15:13:29 -0400
 From: Olga Kornievskaia <kolga@netapp.com>
 To: <Trond.Myklebust@hammerspace.com>, <anna.schumaker@netapp.com>
 CC: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v9 11/13] NFS recover from destination server reboot for copies
-Date: Mon, 9 Jul 2018 15:13:37 -0400
-Message-ID: <20180709191339.44740-12-kolga@netapp.com>
-In-Reply-To: <20180709191339.44740-1-kolga@netapp.com>
-References: <20180709191339.44740-1-kolga@netapp.com>
+Subject: [PATCH v9 00/13] NFS support for async intra COPY
+Date: Mon, 9 Jul 2018 15:13:26 -0400
+Message-ID: <20180709191339.44740-1-kolga@netapp.com>
 MIME-Version: 1.0
 Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Mark the destination state to indicate a server-side copy is
-happening. On detecting a reboot and recovering open state check
-if any state is engaged in a server-side copy, if so, find the
-copy and mark it and then signal the waiting thread. Upon wakeup,
-if copy was marked then propage EAGAIN to the nfsd_copy_file_range
-and restart the copy from scratch.
+Change the client side to always request an asynchronous copy.
 
-Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
----
- fs/nfs/nfs42proc.c     | 16 +++++++++++++---
- fs/nfs/nfs4_fs.h       |  3 +++
- fs/nfs/nfs4file.c      |  9 +++++++--
- fs/nfs/nfs4state.c     | 15 +++++++++++++++
- include/linux/nfs_fs.h |  2 ++
- 5 files changed, 40 insertions(+), 5 deletions(-)
+If server replies to the COPY with the copy stateid, client will go
+wait on the CB_OFFLOAD. To fend off the race between CB_OFFLOAD and
+COPY reply, we check the list of pending callbacks before going to
+wait. Client adds the copy to the global list of copy stateids for the
+callback to look thru and signal the waiting copy.
 
-diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
-index d158526..ac5b784 100644
---- a/fs/nfs/nfs42proc.c
-+++ b/fs/nfs/nfs42proc.c
-@@ -140,6 +140,7 @@ static int handle_async_copy(struct nfs42_copy_res *res,
- 	struct nfs4_copy_state *copy;
- 	int status = NFS4_OK;
- 	bool found_pending = false;
-+	struct nfs_open_context *ctx = nfs_file_open_context(dst);
- 
- 	spin_lock(&server->nfs_client->cl_lock);
- 	list_for_each_entry(copy, &server->nfs_client->pending_cb_stateids,
-@@ -163,6 +164,7 @@ static int handle_async_copy(struct nfs42_copy_res *res,
- 	}
- 	memcpy(&copy->stateid, &res->write_res.stateid, NFS4_STATEID_SIZE);
- 	init_completion(&copy->completion);
-+	copy->parent_state = ctx->state;
- 
- 	list_add_tail(&copy->copies, &server->ss_copies);
- 	spin_unlock(&server->nfs_client->cl_lock);
-@@ -172,9 +174,10 @@ static int handle_async_copy(struct nfs42_copy_res *res,
- 	list_del_init(&copy->copies);
- 	spin_unlock(&server->nfs_client->cl_lock);
- 	if (status == -ERESTARTSYS) {
--		nfs42_do_offload_cancel_async(dst, &copy->stateid);
--		kfree(copy);
--		return status;
-+		goto out_cancel;
-+	} else if (copy->flags) {
-+		status = -EAGAIN;
-+		goto out_cancel;
- 	}
- out:
- 	res->write_res.count = copy->count;
-@@ -183,6 +186,10 @@ static int handle_async_copy(struct nfs42_copy_res *res,
- 
- 	kfree(copy);
- 	return status;
-+out_cancel:
-+	nfs42_do_offload_cancel_async(dst, &copy->stateid);
-+	kfree(copy);
-+	return status;
- }
- 
- static int process_copy_commit(struct file *dst, loff_t pos_dst,
-@@ -254,6 +261,9 @@ static ssize_t _nfs42_proc_copy(struct file *src,
- 		if (!res->commit_res.verf)
- 			return -ENOMEM;
- 	}
-+	set_bit(NFS_CLNT_DST_SSC_COPY_STATE,
-+		&dst_lock->open_context->state->flags);
-+
- 	status = nfs4_call_sync(server->client, server, &msg,
- 				&args->seq_args, &res->seq_res, 0);
- 	if (status == -ENOTSUPP)
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index e87d414..542b2fc 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -163,6 +163,9 @@ enum {
- 	NFS_STATE_RECOVERY_FAILED,	/* OPEN stateid state recovery failed */
- 	NFS_STATE_MAY_NOTIFY_LOCK,	/* server may CB_NOTIFY_LOCK */
- 	NFS_STATE_CHANGE_WAIT,		/* A state changing operation is outstanding */
-+#ifdef CONFIG_NFS_V4_2
-+	NFS_CLNT_DST_SSC_COPY_STATE,    /* dst server open state on client*/
-+#endif /* CONFIG_NFS_V4_2 */
- };
- 
- struct nfs4_state {
-diff --git a/fs/nfs/nfs4file.c b/fs/nfs/nfs4file.c
-index 6b3b372..eaef5fa 100644
---- a/fs/nfs/nfs4file.c
-+++ b/fs/nfs/nfs4file.c
-@@ -133,10 +133,15 @@ static ssize_t nfs4_copy_file_range(struct file *file_in, loff_t pos_in,
- 				    struct file *file_out, loff_t pos_out,
- 				    size_t count, unsigned int flags)
- {
-+	ssize_t ret;
-+
- 	if (file_inode(file_in) == file_inode(file_out))
- 		return -EINVAL;
--
--	return nfs42_proc_copy(file_in, pos_in, file_out, pos_out, count);
-+retry:
-+	ret = nfs42_proc_copy(file_in, pos_in, file_out, pos_out, count);
-+	if (ret == -EAGAIN)
-+		goto retry;
-+	return ret;
- }
- 
- static loff_t nfs4_file_llseek(struct file *filep, loff_t offset, int whence)
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 2bf2eaa..6ce6782 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -1590,6 +1590,21 @@ static int nfs4_reclaim_open_state(struct nfs4_state_owner *sp, const struct nfs
- 					&state->flags);
- 				nfs4_put_open_state(state);
- 				spin_lock(&sp->so_lock);
-+#ifdef CONFIG_NFS_V4_2
-+				if (test_bit(NFS_CLNT_DST_SSC_COPY_STATE, &state->flags)) {
-+					struct nfs4_copy_state *copy;
-+
-+					spin_lock(&sp->so_server->nfs_client->cl_lock);
-+					list_for_each_entry(copy, &sp->so_server->ss_copies, copies) {
-+						if (memcmp(&state->stateid.other, &copy->parent_state->stateid.other, NFS4_STATEID_SIZE))
-+							continue;
-+						copy->flags = 1;
-+						complete(&copy->completion);
-+						break;
-+					}
-+					spin_unlock(&sp->so_server->nfs_client->cl_lock);
-+				}
-+#endif /* CONFIG_NFS_V4_2 */
- 				goto restart;
- 			}
- 		}
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index 645ad8e..a0831e9 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -192,6 +192,8 @@ struct nfs4_copy_state {
- 	uint64_t		count;
- 	struct nfs_writeverf	verf;
- 	int			error;
-+	int			flags;
-+	struct nfs4_state	*parent_state;
- };
- 
- /*
+When the client receives reply from the CB_OFFLOAD with some bytes and
+committed how is UNSTABLE, then COMMIT is sent to the server. The results
+are propagated to the VFS and application. Assuming that application
+will deal with a partial result and continue from the new offset if needed.
+
+If server errs with ERR_OFFLOAD_NOREQS the copy will be re-sent as a
+synchronous COPY. If application cancels an in-flight COPY,
+OFFLOAD_CANCEL is sent to the server (sending it as an async RPC in the
+context of the nfsid_workqueue).
+
+v9.
+--reworked patches so that OFFLOAD_STATUS are the last 2 patches.
+
+Anna Schumaker (1):
+  fs: Don't copy beyond the end of the file
+
+Olga Kornievskaia (12):
+  NFS CB_OFFLOAD xdr
+  NFS OFFLOAD_CANCEL xdr
+  NFS COPY xdr handle async reply
+  NFS add support for asynchronous COPY
+  NFS handle COPY reply CB_OFFLOAD call race
+  NFS export nfs4_async_handle_error
+  NFS send OFFLOAD_CANCEL when COPY killed
+  NFS handle COPY ERR_OFFLOAD_NO_REQS
+  NFS add a simple sync nfs4_proc_commit after async COPY
+  NFS recover from destination server reboot for copies
+  NFS OFFLOAD_STATUS xdr
+  NFS OFFLOAD_STATUS op
+
+ fs/nfs/callback.h         |  12 +++
+ fs/nfs/callback_proc.c    |  54 ++++++++++
+ fs/nfs/callback_xdr.c     |  80 ++++++++++++++-
+ fs/nfs/client.c           |   1 +
+ fs/nfs/nfs42.h            |   5 +-
+ fs/nfs/nfs42proc.c        | 252 ++++++++++++++++++++++++++++++++++++++++++++--
+ fs/nfs/nfs42xdr.c         | 189 +++++++++++++++++++++++++++++++---
+ fs/nfs/nfs4_fs.h          |   8 +-
+ fs/nfs/nfs4client.c       |  15 +++
+ fs/nfs/nfs4file.c         |   9 +-
+ fs/nfs/nfs4proc.c         |  38 ++++++-
+ fs/nfs/nfs4state.c        |  15 +++
+ fs/nfs/nfs4xdr.c          |   2 +
+ fs/read_write.c           |   3 +
+ include/linux/nfs4.h      |   2 +
+ include/linux/nfs_fs.h    |  11 ++
+ include/linux/nfs_fs_sb.h |   4 +
+ include/linux/nfs_xdr.h   |  14 +++
+ 18 files changed, 689 insertions(+), 25 deletions(-)
+
 -- 
 1.8.3.1
 
