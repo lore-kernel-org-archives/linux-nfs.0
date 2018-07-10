@@ -1,39 +1,71 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.jpl.nasa.gov ([128.149.139.106]:36806 "EHLO
-        mail.jpl.nasa.gov" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S932620AbeGJCfH (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Jul 2018 22:35:07 -0400
-Received: from [128.149.87.53] (ps-128-149-87-53.jpl.nasa.gov [128.149.87.53])
-        (authenticated (0 bits))
-        by smtp.jpl.nasa.gov (Sentrion-MTA-4.3.1/Sentrion-MTA-4.3.1) with ESMTP id w6A2SrQA027722
-        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128 bits) verified NO)
-        for <linux-nfs@vger.kernel.org>; Mon, 9 Jul 2018 19:28:54 -0700
-To: linux-nfs@vger.kernel.org
-From: Peter Scott <pjscott@jpl.nasa.gov>
-Subject: NFSv4 file lock reporting interface request
-Message-ID: <8dd8a352-aaca-71af-aca7-9be6c7039ff4@jpl.nasa.gov>
-Date: Mon, 9 Jul 2018 19:28:53 -0700
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8; format=flowed
+Received: from mx1.redhat.com ([209.132.183.28]:26250 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S933631AbeGJOoH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 10 Jul 2018 10:44:07 -0400
+From: Steve Dickson <steved@redhat.com>
+To: Libtirpc-devel Mailing List <libtirpc-devel@lists.sourceforge.net>
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH V3] xdrstdio_create buffers do not output encoded values on ppc
+Date: Tue, 10 Jul 2018 10:44:05 -0400
+Message-Id: <20180710144405.28795-1-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello.  I am with the institutional hosting service at NASA's Jet 
-Propulsion Laboratory and we have been trying to find the answer to an 
-apparently simple question.
+From: Daniel Sands <dnsands@sandia.gov>
 
-We are running an NFSv4 server on Centos 7 and we need to get the server 
-to tell us which files it thinks are locked by which clients.  This is 
-because we have observed failure modes where something apparently has a 
-lock (because attempting to lock the file again blocks) but we can't 
-find a client that has the lock. Finding out what the server believes 
-would be critical to troubleshooting this.
+The cause is that the xdr_putlong uses a long to store the
+converted value, then passes it to fwrite as a byte buffer.
+Only the first 4 bytes are written, which is okay for a LE
+system after byteswapping, but writes all zeroes on BE systems.
 
-We tracked down Trond Myklebust and Neil Brown and conversation suggests 
-that this is a function that is (a) not currently available and (b) 
-reasonable to ask for.  So this is me suggesting that an interface be 
-provided to have knfsd output its list of locked files and clients.
+Fixes: https://bugzilla.redhat.com/show_bug.cgi?id=1261738
 
-Regards,
-Peter Scott
-Office of the CIO
+Signed-off-by: Steve Dickson <steved@redhat.com>
+---
+v3: Reworked the bounds checking
+
+v2: Added bounds checking
+    Changed from unsigned to signed
+
+ src/xdr_stdio.c | 14 +++++++++++---
+ 1 file changed, 11 insertions(+), 3 deletions(-)
+
+diff --git a/src/xdr_stdio.c b/src/xdr_stdio.c
+index 4410262..b902acd 100644
+--- a/src/xdr_stdio.c
++++ b/src/xdr_stdio.c
+@@ -103,10 +103,12 @@ xdrstdio_getlong(xdrs, lp)
+ 	XDR *xdrs;
+ 	long *lp;
+ {
++	int32_t mycopy;
+ 
+-	if (fread(lp, sizeof(int32_t), 1, (FILE *)xdrs->x_private) != 1)
++	if (fread(&mycopy, sizeof(int32_t), 1, (FILE *)xdrs->x_private) != 1)
+ 		return (FALSE);
+-	*lp = (long)ntohl((u_int32_t)*lp);
++
++	*lp = (long)ntohl(mycopy);
+ 	return (TRUE);
+ }
+ 
+@@ -115,8 +117,14 @@ xdrstdio_putlong(xdrs, lp)
+ 	XDR *xdrs;
+ 	const long *lp;
+ {
+-	long mycopy = (long)htonl((u_int32_t)*lp);
++	int32_t mycopy;
++
++#if defined(_LP64)
++	if ((*lp > INT32_MAX) || (*lp < INT32_MIN))
++		return (FALSE);
++#endif
+ 
++	mycopy = (int32_t)htonl((int32_t)*lp);
+ 	if (fwrite(&mycopy, sizeof(int32_t), 1, (FILE *)xdrs->x_private) != 1)
+ 		return (FALSE);
+ 	return (TRUE);
+-- 
+2.17.1
+
