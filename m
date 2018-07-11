@@ -1,46 +1,175 @@
-Return-Path: <trondmy@hammerspace.com>
-From: Trond Myklebust <trondmy@hammerspace.com>
-To: "bcodding@redhat.com" <bcodding@redhat.com>, "smayhew@redhat.com"
-	<smayhew@redhat.com>
-CC: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-	"linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-	"dhowells@redhat.com" <dhowells@redhat.com>
-Subject: Re: [PATCH] nfs: add minor version to nfs_server_key for fscache
-Date: Wed, 11 Jul 2018 16:48:17 +0000
-Message-ID: <9322c4d50a0828c7592beaac2bbca63bc0b12255.camel@hammerspace.com>
-References: <20180711122219.20808-1-smayhew@redhat.com>
-	 <1F59764C-4E7C-4D15-BE35-490D61F0349F@redhat.com>
-	 <20180711162447.GI10135@coeurl.usersys.redhat.com>
-In-Reply-To: <20180711162447.GI10135@coeurl.usersys.redhat.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from userp2120.oracle.com ([156.151.31.85]:58384 "EHLO
+        userp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1732542AbeGKSMW (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Jul 2018 14:12:22 -0400
+Content-Type: text/plain;
+        charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 11.4 \(3445.8.2\))
+Subject: Re: [Libtirpc-devel] [PATCH V4] xdrstdio_create buffers do not output
+ encoded values on ppc
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <0953d758440850222bab04aaf3822b396bd736c6.camel@hammer.space>
+Date: Wed, 11 Jul 2018 14:06:23 -0400
+Cc: Steve Dickson <SteveD@RedHat.com>,
+        libtirpc List <libtirpc-devel@lists.sourceforge.net>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <760B43CD-1561-414E-B186-DB7974707C0E@oracle.com>
+References: <20180711152521.8238-1-steved@redhat.com>
+ <b4a310ec-0e91-9aca-f91e-d5efeb391e59@RedHat.com>
+ <0953d758440850222bab04aaf3822b396bd736c6.camel@hammer.space>
+To: Trond Myklebust <trondmy@hammerspace.com>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDE4LTA3LTExIGF0IDEyOjI0IC0wNDAwLCBTY290dCBNYXloZXcgd3JvdGU6DQo+
-IE9uIFdlZCwgMTEgSnVsIDIwMTgsIEJlbmphbWluIENvZGRpbmd0b24gd3JvdGU6DQo+IA0KPiA+
-IFNvIHRoZXJlJ3MgdHdvIGNoYW5nZXMgaGVyZSwgdGhlIGZpcnN0IGlzIHRoYXQgd2UgZG9uJ3Qg
-Y2FsbA0KPiA+IG5mc19mc2NhY2hlX2dldF9jbGllbnRfY29va2llKCkgaWYgcnBjX29wcy0+aW5p
-dF9jbGllbnQgZmFpbHMsDQo+ID4gd2hpY2ggbWFrZXMNCj4gPiBzZW5zZS4gIFRoZSBzZWNvbmQg
-aXMgdGhhdCB3ZSBjcmVhdGUgc2VwYXJhdGUgZnNjYWNoZSBpbmRleGVzIGZvcg0KPiA+IG1pbm9y
-DQo+ID4gdmVyc2lvbnMuICBXaHkgZG8gd2UgbmVlZCBzZXBhcmF0ZSBjYWNoZXMgaWYgdGhlIG5m
-c19jbGllbnQgaXMgdGhlDQo+ID4gc2FtZT8gIEkNCj4gPiB0aG91Z2h0IHRoYXQgdGhlIG5mc19j
-bGllbnQgaXMganVzdCB0aGVyZSB0byBoYXZlIHNvbWV0aGluZyB0byBoYW5nDQo+ID4gdGhlDQo+
-ID4gc3VwZXJibG9jayBjYWNoZXMgZnJvbS4uDQo+ID4gDQo+ID4gSXMgdGhlIHByb2JsZW0gdGhh
-dCB3ZSBjYW4gdGFrZSBkb3duIG9uZSBuZnNfY2xpZW50IGFuZCB0aGVuDQo+ID4gaW5pdGlhbGl6
-ZSBhDQo+ID4gbmV3IG9uZSwgYnV0IHRoZSBuZnNfc2VydmVyX2tleSBpcyBleGFjdGx5IHRoZSBz
-YW1lLCBzbyBub3cgd2UNCj4gPiBzdGFydCB0byBhZGQNCj4gPiBuZXcgb2JqZWN0cyBiZWZvcmUg
-ZnNjYWNoZSBoYXMgY2xlYW5lZCB1cCBvbGQgcmVmZXJlbmNlcz8NCj4gDQo+IFRoZSBuZnNfY2xp
-ZW50cyBhcmVuJ3QgdGhlIHNhbWUsIGFuZCBub3RoaW5nJ3MgYmVpbmcgdG9ybiBkb3duLg0KPiAN
-Cj4gSSdtIHVzaW5nIHN0ZXZlZCdzICJydW5jdGhvbiIgc2NyaXB0IGZyb20gY3Rob24gd2hpY2gg
-cGVyZm9ybXMNCj4gbXVsdGlwbGUgY3Rob24gcnVucyBzaW11bHRhbmVpb3VzbHkuICBJIGhhdmUg
-ZGlmZmVyZW50IHN1cGVyYmxvY2tzLA0KPiBuZnNfc2VydmVycywgbmZzX2NsaWVudHMsIGFuZCBm
-c2NhY2hlX2Nvb2tpZXMuICBCdXQgdGhlIGtleXMgZm9yIHRoZQ0KPiB2NC54IG1vdW50cyBhcmUg
-YWxsIHRoZSBzYW1lLiAgRGF2aWQgaW5kaWNhdGVkIHRoYXQgd2FzIHByb2JsZW1hdGljLA0KPiBz
-bw0KPiBJIHN1Z2dlc3RlZCBhZGRpbmcgdGhlIG1pbm9yIHZlcnNpb24gdG8gdGhlIGtleSwgd2hp
-Y2ggaGUgc2FpZCB3YXMNCj4gZmluZS4NCg0KU28gd2hhdCBpcyB0aGUgdXNlIGNhc2UgZm9yIGhh
-dmluZyBhIE5GU3Y0IGFuZCBORlN2NC4xIG1vdW50IG9mIHRoZQ0Kc2FtZSBmaWxlc3lzdGVtPyBJ
-IGFncmVlIHdlIHNob3VsZG4ndCBjcmFzaCwgYnV0IEknbSBsb3N0IGFzIHRvIHdoeQ0Kc29tZW9u
-ZSB3b3VsZCB3YW50IHRvIGRvIHRoaXMuDQoNCklPVzogV2h5IGlzbid0IHRoZSByaWdodCB0aGlu
-ZyB0byBkbyBoZXJlIGp1c3QgdG8gcmVtb3ZlIHRoZSBib2d1cw0KQlVHX09OKCk/DQoNCi0tIA0K
-VHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIsIEhhbW1lcnNwYWNl
-DQp0cm9uZC5teWtsZWJ1c3RAaGFtbWVyc3BhY2UuY29tDQoNCg==
+
+
+> On Jul 11, 2018, at 12:38 PM, Trond Myklebust =
+<trondmy@hammerspace.com> wrote:
+>=20
+> On Wed, 2018-07-11 at 12:05 -0400, Steve Dickson wrote:
+>> Hey Trond,
+>>=20
+>> On 07/11/2018 11:25 AM, Steve Dickson wrote:
+>>> The cause is that the xdr_putlong uses a long to store the
+>>> converted value, then passes it to fwrite as a byte buffer.
+>>> Only the first 4 bytes are written, which is okay for a LE
+>>> system after byteswapping, but writes all zeroes on BE systems.
+>>>=20
+>>> Fixes: https://bugzilla.redhat.com/show_bug.cgi?id=3D1261738
+>>>=20
+>>> Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
+>>> Signed-off-by: Steve Dickson <steved@redhat.com>
+>>> ---
+>>> v4: Use UINT32_MAX instead of INT32_MAX in boundary check.
+>>=20
+>> Talking with some old crusty types ;-) they pointed out
+>> that all these routines use a signed arguments and
+>> always have... So again why is using an unsigned max
+>> the right thing to do?=20
+>=20
+> As I said earlier, you are casting from a larger type to a smaller
+> type, and you want it to work for both signed and unsigned 32-bit
+> values. Consider this kind of code:
+>=20
+>        int32_t foo =3D 0xFFFF0000;
+>        ret =3D xdrstdio_putlong(xdr, foo);
+>=20
+> Since foo is signed, then (long)foo ends up getting cast to
+> 0xFFFFFFFFFFFF0000L, which is negative, but is > (long)INT32_MIN. So
+> ret =3D=3D TRUE;
+
+On 32-bit systems, xdrstdio_putlong() cannot work for values
+between INT32_MAX and UINT32_MAX. It should return FALSE for
+these values on 64-bit systems. In fact, that is the way this
+API behaves for other 64-bit aware libtirpc implementations.
+
+
+> Now try:
+>=20
+>        uint32_t bar =3D 0xFFFF0000U;
+>        ret =3D xdrstdio_putlong(xdr, bar);
+>=20
+>=20
+> Since bar is unsigned, then (long)bar gets cast to 0xFFFF0000L. That =
+is
+> clearly > (long)INT32_MAX =3D=3D 0x7FFFFFFFL, and so the above fails =
+with
+> ret =3D=3D FALSE.
+>=20
+>=20
+> BTW: The above is pretty much exactly how xdr_int32_t() and
+> xdr_uint32_t() work. The former does a signed cast to long, while the
+> latter does an unsigned cast to long.
+
+If that's the case, we should examine how other 64-bit aware
+libtirpc implementations work and fix ours to behave the same.
+Our libtirpc forked in the late 1990s before 64-bit systems
+were widely deployed, so I have some doubts whether our
+implementation is correct.
+
+
+>> steved.
+>>=20
+>>>=20
+>>> v3: Reworked the bounds checking
+>>>=20
+>>> v2: Added bounds checking
+>>>    Changed from unsigned to signed
+>>>=20
+>>> src/xdr_stdio.c | 15 ++++++++++++---
+>>> 1 file changed, 12 insertions(+), 3 deletions(-)
+>>>=20
+>>> diff --git a/src/xdr_stdio.c b/src/xdr_stdio.c
+>>> index 4410262..846c7bf 100644
+>>> --- a/src/xdr_stdio.c
+>>> +++ b/src/xdr_stdio.c
+>>> @@ -38,6 +38,7 @@
+>>>  */
+>>>=20
+>>> #include <stdio.h>
+>>> +#include <stdint.h>
+>>>=20
+>>> #include <arpa/inet.h>
+>>> #include <rpc/types.h>
+>>> @@ -103,10 +104,12 @@ xdrstdio_getlong(xdrs, lp)
+>>> 	XDR *xdrs;
+>>> 	long *lp;
+>>> {
+>>> +	int32_t mycopy;
+>>>=20
+>>> -	if (fread(lp, sizeof(int32_t), 1, (FILE *)xdrs->x_private)=20
+>>> !=3D 1)
+>>> +	if (fread(&mycopy, sizeof(int32_t), 1, (FILE *)xdrs-
+>>>> x_private) !=3D 1)
+>>> 		return (FALSE);
+>>> -	*lp =3D (long)ntohl((u_int32_t)*lp);
+>>> +
+>>> +	*lp =3D (long)ntohl(mycopy);
+>>> 	return (TRUE);
+>>> }
+>>>=20
+>>> @@ -115,8 +118,14 @@ xdrstdio_putlong(xdrs, lp)
+>>> 	XDR *xdrs;
+>>> 	const long *lp;
+>>> {
+>>> -	long mycopy =3D (long)htonl((u_int32_t)*lp);
+>>> +	int32_t mycopy;
+>>> +
+>>> +#if defined(_LP64)
+>>> +	if ((*lp > UINT32_MAX) || (*lp < INT32_MIN))
+>>> +		return (FALSE);
+>>> +#endif
+>>>=20
+>>> +	mycopy =3D (int32_t)htonl((int32_t)*lp);
+>>> 	if (fwrite(&mycopy, sizeof(int32_t), 1, (FILE *)xdrs-
+>>>> x_private) !=3D 1)
+>>> 		return (FALSE);
+>>> 	return (TRUE);
+>>>=20
+>>=20
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs"
+>> in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> --=20
+> Trond Myklebust
+> Linux NFS client maintainer, Hammerspace
+> trond.myklebust@hammerspace.com
+>=20
+> =
+--------------------------------------------------------------------------=
+----
+> Check out the vibrant tech community on one of the world's most
+> engaging tech sites, Slashdot.org! http://sdm.link/slashdot
+> _______________________________________________
+> Libtirpc-devel mailing list
+> Libtirpc-devel@lists.sourceforge.net
+> https://lists.sourceforge.net/lists/listinfo/libtirpc-devel
+
+--
+Chuck Lever
+
+
+
