@@ -1,123 +1,208 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp2130.oracle.com ([156.151.31.86]:35538 "EHLO
-        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1729670AbeGMOv0 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Jul 2018 10:51:26 -0400
-Content-Type: text/plain;
-        charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 11.4 \(3445.8.2\))
-Subject: Re: RDMA connection closed and not re-opened
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <9b0802b9-ad7c-0969-6087-9f2aef703143@genome.arizona.edu>
-Date: Fri, 13 Jul 2018 10:36:27 -0400
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <0423D037-63F9-4BA6-882A-CBD9EBC630F2@oracle.com>
-References: <f1e596cf-0e70-39af-99e9-a0a7e912bad3@genome.arizona.edu>
- <4A72535B-E6D2-4E8A-B6DB-BF09856A41EB@gmail.com>
- <19cd3809-669b-2d63-d453-ed553c9e01a9@genome.arizona.edu>
- <E7AAFE10-FBFE-41E9-9731-D9C50DD2F654@oracle.com>
- <57cf42c5-d12d-fff3-fd77-0d191d32111e@genome.arizona.edu>
- <9b0802b9-ad7c-0969-6087-9f2aef703143@genome.arizona.edu>
-To: admin@genome.arizona.edu
+Received: from mail.kernel.org ([198.145.29.99]:59430 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1729725AbeGMP4C (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 13 Jul 2018 11:56:02 -0400
+Message-ID: <8fc65417ebda26a198e01e8c82f41ae08ab3c803.camel@kernel.org>
+Subject: Re: [PATCH] nfsd: fix leaked file lock with nfs exported overlayfs
+From: Jeff Layton <jlayton@kernel.org>
+To: Amir Goldstein <amir73il@gmail.com>,
+        "J . Bruce Fields" <bfields@fieldses.org>
+Cc: Miklos Szeredi <miklos@szeredi.hu>,
+        Eddie Horng <eddiehorng.tw@gmail.com>,
+        linux-unionfs@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org
+Date: Fri, 13 Jul 2018 11:40:50 -0400
+In-Reply-To: <1531491744-13277-1-git-send-email-amir73il@gmail.com>
+References: <1531491744-13277-1-git-send-email-amir73il@gmail.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Fri, 2018-07-13 at 17:22 +0300, Amir Goldstein wrote:
+> nfsd and lockd call vfs_lock_file() to lock/unlock the inode
+> returned by locks_inode(file).
+> 
+> Many places in nfsd/lockd code use the inode returned by
+> file_inode(file) for lock manipulation. With Overlayfs, file_inode()
+> (the underlying inode) is not the same object as locks_inode() (the
+> overlay inode). This can result in "Leaked POSIX lock" messages
+> and eventually to a kernel crash as reported by Eddie Horng:
+> https://marc.info/?l=linux-unionfs&m=153086643202072&w=2
+> 
+> Fix all the call sites in nfsd/lockd that should use locks_inode().
+> This is a correctness bug that manifested when overlayfs gained
+> NFS export support in v4.16.
+> 
+> Reported-by: Eddie Horng <eddiehorng.tw@gmail.com>
+> Tested-by: Eddie Horng <eddiehorng.tw@gmail.com>
+> Cc: Jeff Layton <jlayton@kernel.org>
+> Fixes: 8383f1748829 ("ovl: wire up NFS export operations")
+> Signed-off-by: Amir Goldstein <amir73il@gmail.com>
+> ---
+> 
+> Hi Bruce,
+> 
+> For the purpose of locks, nfsd/lockd should look at locks_inode()
+> just like vfs lock functions.
+> 
+> Hopefully, Miklos's work on stacked overlayfs file operations will
+> be merged soon and locks_inode() will become the same as file_inode(),
+> but we will still need this fix for stable kernels v4.16 through v4.18.
+> 
+> Beyond testing by Eddie, I also verified no regressions when running
+> nfstest with exported overlayfs.
+> 
+> Thanks,
+> Amir.
+> 
+>  fs/lockd/clntlock.c         |  2 +-
+>  fs/lockd/clntproc.c         |  2 +-
+>  fs/lockd/svclock.c          | 16 ++++++++--------
+>  fs/lockd/svcsubs.c          |  4 ++--
+>  fs/nfsd/nfs4state.c         |  2 +-
+>  include/linux/lockd/lockd.h |  4 ++--
+>  6 files changed, 15 insertions(+), 15 deletions(-)
+> 
+> diff --git a/fs/lockd/clntlock.c b/fs/lockd/clntlock.c
+> index 96c1d14c18f1..c2a128678e6e 100644
+> --- a/fs/lockd/clntlock.c
+> +++ b/fs/lockd/clntlock.c
+> @@ -187,7 +187,7 @@ __be32 nlmclnt_grant(const struct sockaddr *addr, const struct nlm_lock *lock)
+>  			continue;
+>  		if (!rpc_cmp_addr(nlm_addr(block->b_host), addr))
+>  			continue;
+> -		if (nfs_compare_fh(NFS_FH(file_inode(fl_blocked->fl_file)) ,fh) != 0)
+> +		if (nfs_compare_fh(NFS_FH(locks_inode(fl_blocked->fl_file)), fh) != 0)
+>  			continue;
+>  		/* Alright, we found a lock. Set the return status
+>  		 * and wake up the caller
+> diff --git a/fs/lockd/clntproc.c b/fs/lockd/clntproc.c
+> index a2c0dfc6fdc0..d20b92f271c2 100644
+> --- a/fs/lockd/clntproc.c
+> +++ b/fs/lockd/clntproc.c
+> @@ -128,7 +128,7 @@ static void nlmclnt_setlockargs(struct nlm_rqst *req, struct file_lock *fl)
+>  	char *nodename = req->a_host->h_rpcclnt->cl_nodename;
+>  
+>  	nlmclnt_next_cookie(&argp->cookie);
+> -	memcpy(&lock->fh, NFS_FH(file_inode(fl->fl_file)), sizeof(struct nfs_fh));
+> +	memcpy(&lock->fh, NFS_FH(locks_inode(fl->fl_file)), sizeof(struct nfs_fh));
+>  	lock->caller  = nodename;
+>  	lock->oh.data = req->a_owner;
+>  	lock->oh.len  = snprintf(req->a_owner, sizeof(req->a_owner), "%u@%s",
+> diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
+> index 3701bccab478..74330daeab71 100644
+> --- a/fs/lockd/svclock.c
+> +++ b/fs/lockd/svclock.c
+> @@ -405,8 +405,8 @@ nlmsvc_lock(struct svc_rqst *rqstp, struct nlm_file *file,
+>  	__be32			ret;
+>  
+>  	dprintk("lockd: nlmsvc_lock(%s/%ld, ty=%d, pi=%d, %Ld-%Ld, bl=%d)\n",
+> -				file_inode(file->f_file)->i_sb->s_id,
+> -				file_inode(file->f_file)->i_ino,
+> +				locks_inode(file->f_file)->i_sb->s_id,
+> +				locks_inode(file->f_file)->i_ino,
+>  				lock->fl.fl_type, lock->fl.fl_pid,
+>  				(long long)lock->fl.fl_start,
+>  				(long long)lock->fl.fl_end,
+> @@ -511,8 +511,8 @@ nlmsvc_testlock(struct svc_rqst *rqstp, struct nlm_file *file,
+>  	__be32			ret;
+>  
+>  	dprintk("lockd: nlmsvc_testlock(%s/%ld, ty=%d, %Ld-%Ld)\n",
+> -				file_inode(file->f_file)->i_sb->s_id,
+> -				file_inode(file->f_file)->i_ino,
+> +				locks_inode(file->f_file)->i_sb->s_id,
+> +				locks_inode(file->f_file)->i_ino,
+>  				lock->fl.fl_type,
+>  				(long long)lock->fl.fl_start,
+>  				(long long)lock->fl.fl_end);
+> @@ -566,8 +566,8 @@ nlmsvc_unlock(struct net *net, struct nlm_file *file, struct nlm_lock *lock)
+>  	int	error;
+>  
+>  	dprintk("lockd: nlmsvc_unlock(%s/%ld, pi=%d, %Ld-%Ld)\n",
+> -				file_inode(file->f_file)->i_sb->s_id,
+> -				file_inode(file->f_file)->i_ino,
+> +				locks_inode(file->f_file)->i_sb->s_id,
+> +				locks_inode(file->f_file)->i_ino,
+>  				lock->fl.fl_pid,
+>  				(long long)lock->fl.fl_start,
+>  				(long long)lock->fl.fl_end);
+> @@ -595,8 +595,8 @@ nlmsvc_cancel_blocked(struct net *net, struct nlm_file *file, struct nlm_lock *l
+>  	int status = 0;
+>  
+>  	dprintk("lockd: nlmsvc_cancel(%s/%ld, pi=%d, %Ld-%Ld)\n",
+> -				file_inode(file->f_file)->i_sb->s_id,
+> -				file_inode(file->f_file)->i_ino,
+> +				locks_inode(file->f_file)->i_sb->s_id,
+> +				locks_inode(file->f_file)->i_ino,
+>  				lock->fl.fl_pid,
+>  				(long long)lock->fl.fl_start,
+>  				(long long)lock->fl.fl_end);
+> diff --git a/fs/lockd/svcsubs.c b/fs/lockd/svcsubs.c
+> index 4ec3d6e03e76..899360ba3b84 100644
+> --- a/fs/lockd/svcsubs.c
+> +++ b/fs/lockd/svcsubs.c
+> @@ -44,7 +44,7 @@ static inline void nlm_debug_print_fh(char *msg, struct nfs_fh *f)
+>  
+>  static inline void nlm_debug_print_file(char *msg, struct nlm_file *file)
+>  {
+> -	struct inode *inode = file_inode(file->f_file);
+> +	struct inode *inode = locks_inode(file->f_file);
+>  
+>  	dprintk("lockd: %s %s/%ld\n",
+>  		msg, inode->i_sb->s_id, inode->i_ino);
+> @@ -414,7 +414,7 @@ nlmsvc_match_sb(void *datap, struct nlm_file *file)
+>  {
+>  	struct super_block *sb = datap;
+>  
+> -	return sb == file_inode(file->f_file)->i_sb;
+> +	return sb == locks_inode(file->f_file)->i_sb;
+>  }
+>  
+>  /**
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 857141446d6b..4a17fad93411 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -6293,7 +6293,7 @@ check_for_locks(struct nfs4_file *fp, struct nfs4_lockowner *lowner)
+>  		return status;
+>  	}
+>  
+> -	inode = file_inode(filp);
+> +	inode = locks_inode(filp);
+>  	flctx = inode->i_flctx;
+>  
+>  	if (flctx && !list_empty_careful(&flctx->flc_posix)) {
+> diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
+> index 4fd95dbeb52f..b065ef406770 100644
+> --- a/include/linux/lockd/lockd.h
+> +++ b/include/linux/lockd/lockd.h
+> @@ -299,7 +299,7 @@ int           nlmsvc_unlock_all_by_ip(struct sockaddr *server_addr);
+>  
+>  static inline struct inode *nlmsvc_file_inode(struct nlm_file *file)
+>  {
+> -	return file_inode(file->f_file);
+> +	return locks_inode(file->f_file);
+>  }
+>  
 
+fwiw, I think the above delta turns out to be the real fix here, as that
+affects nlm_file_inuse.
+ 
+>  static inline int __nlm_privileged_request4(const struct sockaddr *sap)
+> @@ -359,7 +359,7 @@ static inline int nlm_privileged_requester(const struct svc_rqst *rqstp)
+>  static inline int nlm_compare_locks(const struct file_lock *fl1,
+>  				    const struct file_lock *fl2)
+>  {
+> -	return file_inode(fl1->fl_file) == file_inode(fl2->fl_file)
+> +	return locks_inode(fl1->fl_file) == locks_inode(fl2->fl_file)
+>  	     && fl1->fl_pid   == fl2->fl_pid
+>  	     && fl1->fl_owner == fl2->fl_owner
+>  	     && fl1->fl_start == fl2->fl_start
 
-> On Jul 12, 2018, at 6:44 PM, admin@genome.arizona.edu wrote:
->=20
->> Thanks we will see how it goes with the latest kernel and if there =
-are still problems I'll look into filing bug report with CentOS or =
-something.
->=20
-> So, the latest CentOS kernel, 2.6.32-696.30.1, has not helped yet.  In =
-the mean time we have reverted to using NFS/TCP over the gigabit =
-ethernet link, which creates a bottleneck for the full processing of our =
-cluster, but at least hasn't crashed yet.
+I think this looks OK. I was a bit hesitant as I wasn't sure whether
+this would change the filehandles presented by the nfsd, but I don't
+think it will.
 
-You should be able to mount using "proto=3Dtcp" with your mlx4 cards.
-That avoids the use of NFS/RDMA but would enable the use of the
-higher bandwidth network fabric.
-
-
-> I did notice that the hangups have all been after 8pm in each =
-occurrence.  Each night at 8PM, the NFS server acts as a NFS client and =
-runs a couple rsnapshot jobs which backup to a different NFS server.
-
-Can you diagram your full configuration during the backup? Does the
-NFS client mount the NFS server on this same host? Does it use
-NFS/RDMA or can it use ssh instead of NFS?
-
-
-> Even with NFS/TCP the NFS server became unresponsive after 8pm when =
-the rsnapshot jobs were running.  I can see in the system messages the =
-same sort of errors with Ganglia we were seeing, as well as rsyslog =
-dropping messages related to the ganglia process, as well as nfsd =
-peername failed (err 107).  For example,
->=20
-> Jul 11 20:07:31 pac /usr/sbin/gmetad[3582]: poll() timeout from source =
-0 for [Pac] data source after 0 bytes read
-> <repeated 13 times>
-> Jul 11 20:21:31 pac /usr/sbin/gmetad[3582]: RRD_update =
-(/var/lib/ganglia/rrds/Pac/n003.genome.arizona.edu/load_one.rrd): =
-/var/lib/ganglia/rrds/Pac/n003.genome.arizona.edu/load_one.rrd: illegal =
-attempt to update using time 1531365691 when last update time is =
-1531365691 (minimum one second step)
-> <many messages like this from all the nodes n001-n009
-> Jul 11 20:21:31 pac rsyslogd-2177: imuxsock begins to drop messages =
-from pid 3582 due to rate-limiting
-> Jul 11 20:22:25 pac rsyslogd-2177: imuxsock lost 116 messages from pid =
-3582 due to rate-limiting
-> Jul 11 20:22:25 pac /usr/sbin/gmetad[3582]: poll() timeout from source =
-0 for [Pac] data source after 0 bytes read
-> <bunch more of these and RRD_update errors>
-> Jul 11 20:41:54 pac rsyslogd-2177: imuxsock begins to drop messages =
-from pid 3582 due to rate-limiting
-> Jul 11 20:42:34 pac rsyslogd-2177: imuxsock lost 116 messages from pid =
-3582 due to rate-limiting
-> Jul 11 21:09:56 pac kernel: nfsd: peername failed (err 107)!
-> <repeated 9 more times>
-> Jul 11 21:09:59 pac /usr/sbin/gmetad[3582]: poll() timeout from source =
-0 for [Pac] data source after 0 bytes read
-> <repeated ~50 more times>
-> Jul 11 21:48:30 pac /usr/sbin/gmetad[3582]: poll() timeout from source =
-0 for [Pac] data source after 0 bytes read
-> Jul 11 21:48:43 pac kernel: nfsd: peername failed (err 107)!
-> <repeated 3 more times>
-> Jul 11 21:53:59 pac /usr/sbin/gmetad[3582]: poll() timeout from source =
-0 for [Pac] data source after 0 bytes read
-> Jul 11 22:39:05 pac rsnapshot[24727]: /usr/bin/rsnapshot -V -c =
-/etc/rsnapshotData.conf daily: completed successfully
-> Jul 11 23:16:24 pac /usr/sbin/gmetad[3582]: poll() timeout from source =
-0 for [Pac] data source after 0 bytes read
-> <EOF>
->=20
->=20
-> The difference is it was able to recover once the rsnapshot jobs had =
-completed and our other cluster jobs (daligner) are still running and =
-servers are responsive.
-
-That does describe a possible server overload. Using only GbE could
-slow things down enough to avoid catastrophic deadlock.
-
-
-> We are going to let this large job finish with the NFS/TCP before I =
-file a bug report with CentOS..   but i thought this extra info might be =
-helpful in troubleshooting.  I found the CentOS bug report page and =
-there are several options for the "Category"  including "rdma" or =
-"kernel" ... which do you think I should file it under?
-
-I'm not familiar with the CentOS bug database. If there's an "NFS"
-category, I would go with that.
-
-Before filing, you should search that database to see if there are
-similar bugs. Simply Googling "peername failed!" brings up several
-NFSD related entries right at the top of the list that appear
-similar to your circumstance (and there is no mention of NFS/RDMA).
-
-
---
-Chuck Lever
-
-
-
+Reviewed-by: Jeff Layton <jlayton@kernel.org>
