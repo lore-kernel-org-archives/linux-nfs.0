@@ -1,90 +1,54 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp2120.oracle.com ([156.151.31.85]:42996 "EHLO
-        userp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726793AbeGNO4X (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 14 Jul 2018 10:56:23 -0400
-Content-Type: text/plain;
-        charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 11.4 \(3445.8.2\))
-Subject: Re: RDMA connection closed and not re-opened
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <5b08ea1b-4cde-c432-92cc-04eff469ed54@genome.arizona.edu>
-Date: Sat, 14 Jul 2018 10:37:00 -0400
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <7F74B5E4-DCAD-46E1-988F-68E79FBD72FA@oracle.com>
-References: <f1e596cf-0e70-39af-99e9-a0a7e912bad3@genome.arizona.edu>
- <4A72535B-E6D2-4E8A-B6DB-BF09856A41EB@gmail.com>
- <19cd3809-669b-2d63-d453-ed553c9e01a9@genome.arizona.edu>
- <E7AAFE10-FBFE-41E9-9731-D9C50DD2F654@oracle.com>
- <57cf42c5-d12d-fff3-fd77-0d191d32111e@genome.arizona.edu>
- <9b0802b9-ad7c-0969-6087-9f2aef703143@genome.arizona.edu>
- <0423D037-63F9-4BA6-882A-CBD9EBC630F2@oracle.com>
- <5b08ea1b-4cde-c432-92cc-04eff469ed54@genome.arizona.edu>
-To: admin@genome.arizona.edu
+Received: from mx1.redhat.com ([209.132.183.28]:33402 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1727007AbeGOXQi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sun, 15 Jul 2018 19:16:38 -0400
+Date: Sun, 15 Jul 2018 18:52:07 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Olga Kornievskaia <aglo@umich.edu>
+Cc: Olga Kornievskaia <kolga@netapp.com>,
+        linux-nfs <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v9 0/9] NFSD support for async COPY
+Message-ID: <20180715225207.GA19475@parsley.fieldses.org>
+References: <20180709192638.44799-1-kolga@netapp.com>
+ <20180712185611.GB10033@parsley.fieldses.org>
+ <CAN-5tyFeuDxTFTpM_-ZJp27sc87A1TU0ToDJxb2Kw4jTGFA+-A@mail.gmail.com>
+ <20180712191645.GC10033@parsley.fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20180712191645.GC10033@parsley.fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Thu, Jul 12, 2018 at 03:16:45PM -0400, J. Bruce Fields wrote:
+> On Thu, Jul 12, 2018 at 03:11:14PM -0400, Olga Kornievskaia wrote:
+> > On Thu, Jul 12, 2018 at 2:56 PM, J. Bruce Fields <bfields@redhat.com> wrote:
+> > > I think we got confused in the previous discussion of this.
+> > >
+> > > The reason I wanted the module parameter was that server-to-server copy
+> > > would allow a rogue client to direct the server to copy from any server
+> > > it wishes, and I thought this was potentially risky, and want people to
+> > > opt into it rather than having it the default.
+> > >
+> > > That doesn't apply to asynchronous copy on its own.
+> > >
+> > > So this module parameter could wait for the next patchset.
+> > 
+> > To clarify, you want "inter" copy offload to be configuration, but it
+> > already was (when it was first posted) under config option. Now
+> > instead of a compile option you prefer this to be a module parameter?
+> 
+> That's right.
+> 
+> I'd like distributions to be able to include server-to-server-copy
+> capable kernels, but I don't want it on by default because I think
+> responsible administrators will want to do some firewalling first.
+> 
+> > Do you have any other comments? I'd rather not re-post another version
+> > if you have more comments.
+> 
+> In that case I'd recommend holding off till next week.
 
+I read through the rest of the patches and don't see any show stoppers.
 
-> On Jul 13, 2018, at 6:32 PM, admin@genome.arizona.edu wrote:
->=20
-> Chuck Lever wrote on 07/13/2018 07:36 AM:
->> You should be able to mount using "proto=3Dtcp" with your mlx4 cards.
->> That avoids the use of NFS/RDMA but would enable the use of the
->> higher bandwidth network fabric.
-> Thanks I could definitely try that.  IPoIB has it's own set of issues =
-though but can cross that bridge when I get to it....
-
-Stick with connected mode and keep rsize and wsize smaller
-than the IPoIB MTU, which can be set as high as 65KB.
-
-
->> Can you diagram your full configuration during the backup?
-> The main server in relation to this issue, which is named "pac" in the =
-log files, has several local storage devices which are exported over the =
-Ethernet and Infiniband interfaces.  In addition, it has several other =
-mounts over Ethernet to some of our other NFS servers.  The =
-rsnapshot/backup job uses rsync to read from the local storage and sends =
-to the NFS mounts to another server using standard 1Gb ethernet and TCP =
-protocol.  So the answer to your second question,
->> Does the
->> NFS client mount the NFS server on this same host?
-> I believe is "yes"
-
-I wasn't entirely clear: Does pac mount itself?
-
-I don't know what the workload is like on this "self mount" but
-we recommend not to use this kind of configuration, because it
-is prone to deadlock with a significant workload.
-
-
->> Does it use
->> NFS/RDMA or can it use ssh instead of NFS?
-> Currently just uses NFS/TCP over 1Gb Ethernet link.  rsnapshot does =
-have the ability to use SSH
-
-I was thinking that it might be better to use ssh and avoid NFS
-for the backup workload, in order to avoid pac mounting itself.
-
-
->> I'm not familiar with the CentOS bug database. If there's an "NFS"
->> category, I would go with that.
-> There is no "NFS" category, only nfs-utils, nfs-utils-lib, and =
-nfs4-acl-tools.  So I'm guessing if we want to report against NFS then =
-"kernel" would be the category?
-
-In the "kernel" category, there might be an "NFS or NFSD"
-subcomponent.
-
-
->> Before filing, you should search that database to see if there are
->> similar bugs. Simply Googling "peername failed!" brings up several
->> NFSD related entries right at the top of the list that appear
->> similar to your circumstance (and there is no mention of NFS/RDMA).
-> Thanks I will be checking that out
-
---
-Chuck Lever
-
-
-
+--b.
