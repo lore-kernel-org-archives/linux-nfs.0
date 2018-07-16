@@ -1,54 +1,51 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:33402 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727007AbeGOXQi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sun, 15 Jul 2018 19:16:38 -0400
-Date: Sun, 15 Jul 2018 18:52:07 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Olga Kornievskaia <aglo@umich.edu>
-Cc: Olga Kornievskaia <kolga@netapp.com>,
-        linux-nfs <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v9 0/9] NFSD support for async COPY
-Message-ID: <20180715225207.GA19475@parsley.fieldses.org>
-References: <20180709192638.44799-1-kolga@netapp.com>
- <20180712185611.GB10033@parsley.fieldses.org>
- <CAN-5tyFeuDxTFTpM_-ZJp27sc87A1TU0ToDJxb2Kw4jTGFA+-A@mail.gmail.com>
- <20180712191645.GC10033@parsley.fieldses.org>
+Received: from youngberry.canonical.com ([91.189.89.112]:46715 "EHLO
+        youngberry.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727857AbeGPMhF (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 16 Jul 2018 08:37:05 -0400
+From: Colin King <colin.king@canonical.com>
+To: "J . Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@kernel.org>, linux-nfs@vger.kernel.org
+Cc: kernel-janitors@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: [PATCH] nfsd: fix memory leak of async_copy
+Date: Mon, 16 Jul 2018 13:09:54 +0100
+Message-Id: <20180716120954.6720-1-colin.king@canonical.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20180712191645.GC10033@parsley.fieldses.org>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jul 12, 2018 at 03:16:45PM -0400, J. Bruce Fields wrote:
-> On Thu, Jul 12, 2018 at 03:11:14PM -0400, Olga Kornievskaia wrote:
-> > On Thu, Jul 12, 2018 at 2:56 PM, J. Bruce Fields <bfields@redhat.com> wrote:
-> > > I think we got confused in the previous discussion of this.
-> > >
-> > > The reason I wanted the module parameter was that server-to-server copy
-> > > would allow a rogue client to direct the server to copy from any server
-> > > it wishes, and I thought this was potentially risky, and want people to
-> > > opt into it rather than having it the default.
-> > >
-> > > That doesn't apply to asynchronous copy on its own.
-> > >
-> > > So this module parameter could wait for the next patchset.
-> > 
-> > To clarify, you want "inter" copy offload to be configuration, but it
-> > already was (when it was first posted) under config option. Now
-> > instead of a compile option you prefer this to be a module parameter?
-> 
-> That's right.
-> 
-> I'd like distributions to be able to include server-to-server-copy
-> capable kernels, but I don't want it on by default because I think
-> responsible administrators will want to do some firewalling first.
-> 
-> > Do you have any other comments? I'd rather not re-post another version
-> > if you have more comments.
-> 
-> In that case I'd recommend holding off till next week.
+From: Colin Ian King <colin.king@canonical.com>
 
-I read through the rest of the patches and don't see any show stoppers.
+In the case where async_copy is successfully allocated but
+the call to nfs4_init_cp_state fails, async_copy is not
+currently freed and the memory is leaked. Fix this by kfree'ing
+it before returning.
 
---b.
+Detected by CoverityScan, CID#1471823 ("Resource leak")
+
+Fixes: beb1814d5a8a ("NFSD create new stateid for async copy")
+Signed-off-by: Colin Ian King <colin.king@canonical.com>
+---
+ fs/nfsd/nfs4proc.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 8f3368353aaf..3fb96a2708b9 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -1295,8 +1295,10 @@ nfsd4_copy(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		async_copy = kzalloc(sizeof(struct nfsd4_copy), GFP_KERNEL);
+ 		if (!async_copy)
+ 			goto out;
+-		if (!nfs4_init_cp_state(nn, copy))
++		if (!nfs4_init_cp_state(nn, copy)) {
++			kfree(async_copy);
+ 			goto out;
++		}
+ 		refcount_set(&async_copy->refcount, 1);
+ 		memcpy(&copy->cp_res.cb_stateid, &copy->cp_stateid,
+ 			sizeof(copy->cp_stateid));
+-- 
+2.17.1
+
