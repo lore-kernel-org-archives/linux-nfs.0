@@ -1,28 +1,55 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx3-rdu2.redhat.com ([66.187.233.73]:58560 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726985AbeGRVfs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 18 Jul 2018 17:35:48 -0400
-From: David Howells <dhowells@redhat.com>
-In-Reply-To: <20180718121216.GK10135@coeurl.usersys.redhat.com>
-References: <20180718121216.GK10135@coeurl.usersys.redhat.com> <20180711122219.20808-1-smayhew@redhat.com> <9138.1531475067@warthog.procyon.org.uk>
-To: Scott Mayhew <smayhew@redhat.com>
-Cc: dhowells@redhat.com, trond.myklebust@hammerspace.com,
-        anna.schumaker@netapp.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfs: add minor version to nfs_server_key for fscache
+Received: from esa5.hgst.iphmx.com ([216.71.153.144]:24077 "EHLO
+        esa5.hgst.iphmx.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726672AbeGSHul (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Jul 2018 03:50:41 -0400
+From: Aditya Agnihotri <Aditya.Agnihotri@wdc.com>
+To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: pNFS, multiple paths to Data Server not used by pNFS linux client.
+Date: Thu, 19 Jul 2018 07:09:01 +0000
+Message-ID: <SN6PR04MB4909ED311126ACD9341E339E82520@SN6PR04MB4909.namprd04.prod.outlook.com>
+Content-Type: text/plain; charset="iso-8859-1"
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Date: Wed, 18 Jul 2018 21:56:07 +0100
-Message-ID: <19765.1531947367@warthog.procyon.org.uk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Scott Mayhew <smayhew@redhat.com> wrote:
+Hi
 
-> With v4.18-rc5 plus those four patches, I no longer get the "Unexpected
-> object collision" message when running cthon (and no oops either,
-> obviously).
+We are testing our pNFS server with linux client, when the server returns m=
+ultiple paths to a v4 DS via GETDEVINFO, we see that the client validated t=
+he paths (does exchange id) but does not use the alternate paths in IO.
+Tracing the code path, it seems that when DS is a NFS v3 server, path is ad=
+ded, but for NFS v4 DS server, client setup function callback path fails to=
+ add.
 
-Thanks!
+Forcing the paths to be added seems to fix the issue, so we think there mig=
+ht be a bug.
 
-David
+We see that when data server is v3, it's setup function does call
+rpc_xprt_switch_add_xprt
+
+=20
+via , static const struct rpc_call_ops rpc_cb_add_xprt_call_ops =3D {
+        .rpc_call_done =3D rpc_cb_add_xprt_done,
+        .rpc_release =3D rpc_cb_add_xprt_release,
+};
+
+=20
+nfs4_pnfs_ds_connect->_nfs4_pnfs_v3_ds_connect->
+rpc_clnt_add_xprt->
+rpc_clnt_test_and_add_xprt->
+rpc_cb_add_xprt_done->rpc_xprt_switch_add_xprt
+
+but v4 add xprt does not, so a connection for multipathing gets validated f=
+or v4, but never added.
+
+nfs4_pnfs_ds_connect->nfs4_pnfs_ds_connect->
+rpc_clnt_add_xprt->rpc_clnt_setup_test_and_add_xprt returns error(1) but ne=
+ver adds.
+
+Thanks
+-Aditya
+
+
+
+
