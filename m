@@ -1,55 +1,41 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from esa5.hgst.iphmx.com ([216.71.153.144]:24077 "EHLO
-        esa5.hgst.iphmx.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726672AbeGSHul (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Jul 2018 03:50:41 -0400
-From: Aditya Agnihotri <Aditya.Agnihotri@wdc.com>
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: pNFS, multiple paths to Data Server not used by pNFS linux client.
-Date: Thu, 19 Jul 2018 07:09:01 +0000
-Message-ID: <SN6PR04MB4909ED311126ACD9341E339E82520@SN6PR04MB4909.namprd04.prod.outlook.com>
-Content-Type: text/plain; charset="iso-8859-1"
+Received: from mail-eopbgr720096.outbound.protection.outlook.com ([40.107.72.96]:56576
+        "EHLO NAM05-CO1-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1727553AbeGSUab (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 19 Jul 2018 16:30:31 -0400
+From: Trond Myklebust <trondmy@hammerspace.com>
+To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "sargun@sargun.me" <sargun@sargun.me>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
+CC: "kinglongmee@gmail.com" <kinglongmee@gmail.com>,
+        "Anna.Schumaker@Netapp.com" <Anna.Schumaker@Netapp.com>,
+        "ebiederm@xmission.com" <ebiederm@xmission.com>
+Subject: Re: [PATCH] net/sunrpc: Add user namespace support
+Date: Thu, 19 Jul 2018 19:45:50 +0000
+Message-ID: <e3988e150b5737e13f8b05ab25fd3ed3e5d42c14.camel@hammerspace.com>
+References: <20180719174246.GA19824@ircssh-2.c.rugged-nimbus-611.internal>
+In-Reply-To: <20180719174246.GA19824@ircssh-2.c.rugged-nimbus-611.internal>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi
-
-We are testing our pNFS server with linux client, when the server returns m=
-ultiple paths to a v4 DS via GETDEVINFO, we see that the client validated t=
-he paths (does exchange id) but does not use the alternate paths in IO.
-Tracing the code path, it seems that when DS is a NFS v3 server, path is ad=
-ded, but for NFS v4 DS server, client setup function callback path fails to=
- add.
-
-Forcing the paths to be added seems to fix the issue, so we think there mig=
-ht be a bug.
-
-We see that when data server is v3, it's setup function does call
-rpc_xprt_switch_add_xprt
-
-=20
-via , static const struct rpc_call_ops rpc_cb_add_xprt_call_ops =3D {
-        .rpc_call_done =3D rpc_cb_add_xprt_done,
-        .rpc_release =3D rpc_cb_add_xprt_release,
-};
-
-=20
-nfs4_pnfs_ds_connect->_nfs4_pnfs_v3_ds_connect->
-rpc_clnt_add_xprt->
-rpc_clnt_test_and_add_xprt->
-rpc_cb_add_xprt_done->rpc_xprt_switch_add_xprt
-
-but v4 add xprt does not, so a connection for multipathing gets validated f=
-or v4, but never added.
-
-nfs4_pnfs_ds_connect->nfs4_pnfs_ds_connect->
-rpc_clnt_add_xprt->rpc_clnt_setup_test_and_add_xprt returns error(1) but ne=
-ver adds.
-
-Thanks
--Aditya
-
-
-
-
+T24gVGh1LCAyMDE4LTA3LTE5IGF0IDE3OjQyICswMDAwLCBTYXJndW4gRGhpbGxvbiB3cm90ZToN
+Cj4gVGhpcyBhZGRzIHRoZSBhYmlsaXR5IHRvIHBhc3MgYSBub24taW5pdCB1c2VyIG5hbWVzcGFj
+ZSB0bw0KPiBycGNhdXRoX2NyZWF0ZSwNCj4gdmlhIHJwY19hdXRoX2NyZWF0ZV9hcmdzLiBJZiB0
+aGUgc3BlY2lmaWMgYXV0aGVudGljYXRpb24gbWVjaGFuaXNtDQo+IGRvZXMgbm90IHN1cHBvcnQg
+bm9uLWluaXQgdXNlciBuYW1lc3BhY2VzLCB0aGVuIGl0IHdpbGwgcmV0dXJuIGFuDQo+IGVycm9y
+Lg0KPiANCj4gQ3VycmVudGx5LCB0aGUgb25seSB0d28gYXV0aGVudGljYXRpb24gbWVjaGFuaXNt
+cyB0aGF0IHN1cHBvcnQNCj4gbm9uLWluaXQgdXNlciBuYW1lc3BhY2VzIGFyZSBhdXRoX251bGws
+IGFuZCBhdXRoX3VuaXguIGF1dGhfdW5peA0KPiB3aWxsIHNlbmQgdGhlIFVJRCAvIEdJRCBmcm9t
+IHRoZSB1c2VyIG5hbWVzcGFjZSBmb3IgYXV0aGVudGljYXRpb24uDQo+IA0KDQpGaXJzdGx5LCBw
+bGVhc2UgYXQgbGVhc3QgQ2MgdGhlIGxpbnV4LW5mcyBtYWlsaW5nIGxpc3QgKGFzIHBlciB0aGUN
+Ck1BSU5UQUlORVJTIGZpbGUpIHdoZW4gY2hhbmdpbmcgTkZTIGFuZCBzdW5ycGMgY29kZS4NCg0K
+U2Vjb25kbHksIGNhbiB5b3UgcGxlYXNlIGV4cGxhaW4gd2h5IHdlIHdvdWxkIHdhbnQgdG8gdXNl
+IGFueSB1c2VyDQpuYW1lc3BhY2Ugb3RoZXIgdGhhbiB0aGUgb25lIHNwZWNpZmllZCBpbiB0aGUg
+bmV0IG5hbWVzcGFjZSBzdHJ1Y3R1cmUNCihzdHJ1Y3QgbmV0KSB3aGVuIGNvbW11bmljYXRpbmcg
+d2l0aCBuZXR3b3JrIHJlc291cmNlcyBzdWNoIGFzDQpycGMuZ3NzZCwgdGhlIGlkbWFwcGVyIG9y
+LCBmb3IgdGhhdCBtYXR0ZXIsIHRoZSBORlMgc2VydmVyPw0KDQpUaGFua3MNCiAgVHJvbmQNCi0t
+IA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIsIEhhbW1lcnNw
+YWNlDQp0cm9uZC5teWtsZWJ1c3RAaGFtbWVyc3BhY2UuY29tDQoNCg==
