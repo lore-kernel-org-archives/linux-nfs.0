@@ -1,71 +1,83 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ed1-f68.google.com ([209.85.208.68]:46633 "EHLO
-        mail-ed1-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1730054AbeGTAqz (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Jul 2018 20:46:55 -0400
-Received: by mail-ed1-f68.google.com with SMTP id o8-v6so8328651edt.13
-        for <linux-nfs@vger.kernel.org>; Thu, 19 Jul 2018 17:01:25 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <e3988e150b5737e13f8b05ab25fd3ed3e5d42c14.camel@hammerspace.com>
-References: <20180719174246.GA19824@ircssh-2.c.rugged-nimbus-611.internal> <e3988e150b5737e13f8b05ab25fd3ed3e5d42c14.camel@hammerspace.com>
-From: Sargun Dhillon <sargun@sargun.me>
-Date: Thu, 19 Jul 2018 17:00:43 -0700
-Message-ID: <CAMp4zn9fXdRgw6gh8q4m77OtGVuXf-S8TwMwhvzQGhkO7USvUw@mail.gmail.com>
+Received: from mail-co1nam03on0134.outbound.protection.outlook.com ([104.47.40.134]:22848
+        "EHLO NAM03-CO1-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1730266AbeGTBWs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 19 Jul 2018 21:22:48 -0400
+From: Trond Myklebust <trondmy@hammerspace.com>
+To: "sargun@sargun.me" <sargun@sargun.me>
+CC: "kinglongmee@gmail.com" <kinglongmee@gmail.com>,
+        "Anna.Schumaker@netapp.com" <Anna.Schumaker@netapp.com>,
+        "ebiederm@xmission.com" <ebiederm@xmission.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
 Subject: Re: [PATCH] net/sunrpc: Add user namespace support
-To: Trond Myklebust <trondmy@hammerspace.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-        "kinglongmee@gmail.com" <kinglongmee@gmail.com>,
-        "Anna.Schumaker@Netapp.com" <Anna.Schumaker@netapp.com>,
-        "ebiederm@xmission.com" <ebiederm@xmission.com>
-Content-Type: text/plain; charset="UTF-8"
+Date: Fri, 20 Jul 2018 00:37:06 +0000
+Message-ID: <eaa128b662f96340426d9635c3e883235a3d4616.camel@hammerspace.com>
+References: <20180719174246.GA19824@ircssh-2.c.rugged-nimbus-611.internal>
+         <e3988e150b5737e13f8b05ab25fd3ed3e5d42c14.camel@hammerspace.com>
+         <CAMp4zn9fXdRgw6gh8q4m77OtGVuXf-S8TwMwhvzQGhkO7USvUw@mail.gmail.com>
+In-Reply-To: <CAMp4zn9fXdRgw6gh8q4m77OtGVuXf-S8TwMwhvzQGhkO7USvUw@mail.gmail.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jul 19, 2018 at 12:45 PM, Trond Myklebust
-<trondmy@hammerspace.com> wrote:
->
-> On Thu, 2018-07-19 at 17:42 +0000, Sargun Dhillon wrote:
-> > This adds the ability to pass a non-init user namespace to
-> > rpcauth_create,
-> > via rpc_auth_create_args. If the specific authentication mechanism
-> > does not support non-init user namespaces, then it will return an
-> > error.
-> >
-> > Currently, the only two authentication mechanisms that support
-> > non-init user namespaces are auth_null, and auth_unix. auth_unix
-> > will send the UID / GID from the user namespace for authentication.
-> >
->
-> Firstly, please at least Cc the linux-nfs mailing list (as per the
-> MAINTAINERS file) when changing NFS and sunrpc code.
-Sorry about that.
-
->
-> Secondly, can you please explain why we would want to use any user
-> namespace other than the one specified in the net namespace structure
-> (struct net) when communicating with network resources such as
-> rpc.gssd, the idmapper or, for that matter, the NFS server?
-We mount NFS volumes for containers (user namespaces) today. On
-multiple machines, they may have different mappings of uids in the
-user namespace to kuids. If this is the case, it breaks auth_unix
-because it uses the kuid in the init user ns mapping for the uid it
-sends to the server.
-
-I think that if we moved to using the net->user_ns for auth_unix,
-that'd be great, but it'd break userspace, as far as I know. We have a
-slightly hacked version of this patch that uses the s_user_ns from the
-nfs superblock, and I think that uids from the backing store (whether
-it be a block device, or a server), should be written as the kuid, and
-translated when it goes in and out of the userns.
-
-Do you have any other suggestions, if we eventually want to enable
-NFS4 for user namespaces?
->
-> Thanks
->   Trond
-> --
-> Trond Myklebust
-> Linux NFS client maintainer, Hammerspace
-> trond.myklebust@hammerspace.com
->
+T24gVGh1LCAyMDE4LTA3LTE5IGF0IDE3OjAwIC0wNzAwLCBTYXJndW4gRGhpbGxvbiB3cm90ZToN
+Cj4gT24gVGh1LCBKdWwgMTksIDIwMTggYXQgMTI6NDUgUE0sIFRyb25kIE15a2xlYnVzdA0KPiA8
+dHJvbmRteUBoYW1tZXJzcGFjZS5jb20+IHdyb3RlOg0KPiA+IA0KPiA+IE9uIFRodSwgMjAxOC0w
+Ny0xOSBhdCAxNzo0MiArMDAwMCwgU2FyZ3VuIERoaWxsb24gd3JvdGU6DQo+ID4gPiBUaGlzIGFk
+ZHMgdGhlIGFiaWxpdHkgdG8gcGFzcyBhIG5vbi1pbml0IHVzZXIgbmFtZXNwYWNlIHRvDQo+ID4g
+PiBycGNhdXRoX2NyZWF0ZSwNCj4gPiA+IHZpYSBycGNfYXV0aF9jcmVhdGVfYXJncy4gSWYgdGhl
+IHNwZWNpZmljIGF1dGhlbnRpY2F0aW9uDQo+ID4gPiBtZWNoYW5pc20NCj4gPiA+IGRvZXMgbm90
+IHN1cHBvcnQgbm9uLWluaXQgdXNlciBuYW1lc3BhY2VzLCB0aGVuIGl0IHdpbGwgcmV0dXJuIGFu
+DQo+ID4gPiBlcnJvci4NCj4gPiA+IA0KPiA+ID4gQ3VycmVudGx5LCB0aGUgb25seSB0d28gYXV0
+aGVudGljYXRpb24gbWVjaGFuaXNtcyB0aGF0IHN1cHBvcnQNCj4gPiA+IG5vbi1pbml0IHVzZXIg
+bmFtZXNwYWNlcyBhcmUgYXV0aF9udWxsLCBhbmQgYXV0aF91bml4LiBhdXRoX3VuaXgNCj4gPiA+
+IHdpbGwgc2VuZCB0aGUgVUlEIC8gR0lEIGZyb20gdGhlIHVzZXIgbmFtZXNwYWNlIGZvcg0KPiA+
+ID4gYXV0aGVudGljYXRpb24uDQo+ID4gPiANCj4gPiANCj4gPiBGaXJzdGx5LCBwbGVhc2UgYXQg
+bGVhc3QgQ2MgdGhlIGxpbnV4LW5mcyBtYWlsaW5nIGxpc3QgKGFzIHBlciB0aGUNCj4gPiBNQUlO
+VEFJTkVSUyBmaWxlKSB3aGVuIGNoYW5naW5nIE5GUyBhbmQgc3VucnBjIGNvZGUuDQo+IA0KPiBT
+b3JyeSBhYm91dCB0aGF0Lg0KPiANCj4gPiANCj4gPiBTZWNvbmRseSwgY2FuIHlvdSBwbGVhc2Ug
+ZXhwbGFpbiB3aHkgd2Ugd291bGQgd2FudCB0byB1c2UgYW55IHVzZXINCj4gPiBuYW1lc3BhY2Ug
+b3RoZXIgdGhhbiB0aGUgb25lIHNwZWNpZmllZCBpbiB0aGUgbmV0IG5hbWVzcGFjZQ0KPiA+IHN0
+cnVjdHVyZQ0KPiA+IChzdHJ1Y3QgbmV0KSB3aGVuIGNvbW11bmljYXRpbmcgd2l0aCBuZXR3b3Jr
+IHJlc291cmNlcyBzdWNoIGFzDQo+ID4gcnBjLmdzc2QsIHRoZSBpZG1hcHBlciBvciwgZm9yIHRo
+YXQgbWF0dGVyLCB0aGUgTkZTIHNlcnZlcj8NCj4gDQo+IFdlIG1vdW50IE5GUyB2b2x1bWVzIGZv
+ciBjb250YWluZXJzICh1c2VyIG5hbWVzcGFjZXMpIHRvZGF5LiBPbg0KPiBtdWx0aXBsZSBtYWNo
+aW5lcywgdGhleSBtYXkgaGF2ZSBkaWZmZXJlbnQgbWFwcGluZ3Mgb2YgdWlkcyBpbiB0aGUNCj4g
+dXNlciBuYW1lc3BhY2UgdG8ga3VpZHMuIElmIHRoaXMgaXMgdGhlIGNhc2UsIGl0IGJyZWFrcyBh
+dXRoX3VuaXgNCj4gYmVjYXVzZSBpdCB1c2VzIHRoZSBrdWlkIGluIHRoZSBpbml0IHVzZXIgbnMg
+bWFwcGluZyBmb3IgdGhlIHVpZCBpdA0KPiBzZW5kcyB0byB0aGUgc2VydmVyLg0KPiANCg0KVGhl
+IHBvaW50IGlzIHRoYXQgdGhlIHVzZXIgbmFtZXNwYWNlIGNvbnZlcnNpb25zIHRoYXQgaGFwcGVu
+IGluIHRoZQ0Kc3VucnBjIGxheWVyIGFyZSBhbGwgZm9yIGRlYWxpbmcgd2l0aCBzZXJ2aWNlcy4g
+VGhlIEFVVEhfR1NTIHVwY2FsbHMNCnNob3VsZCBfb25seV8gYmUgc3BlYWtpbmcgdG8gYW4gcnBj
+Lmdzc2QgZGFlbW9uIHRoYXQgcnVucyBpbiB3aGF0ZXZlcg0KY29udGFpbmVyIHRoYXQgb3ducyB0
+aGUgbmV0IG5hbWVzcGFjZSAoYW5kIHRoYXQgY3JlYXRlZCB0aGUgcnBjX3BpcGVmcw0Kb2JqZWN0
+cykuDQoNCkRpdHRvIGZvciB0aGUgaWRtYXBwZXIgYWx0aG91Z2ggaWYgeW91IHVzZSB0aGUga2V5
+cmluZyBiYXNlZCAoaS5lLiB0aGUNCm5vbiBsZWdhY3kpIGlkbWFwcGVyLCB0aGF0IHJ1bnMgaW4g
+dGhlIGluaXQgbmFtZXNwYWNlLg0KDQo+IEkgdGhpbmsgdGhhdCBpZiB3ZSBtb3ZlZCB0byB1c2lu
+ZyB0aGUgbmV0LT51c2VyX25zIGZvciBhdXRoX3VuaXgsDQo+IHRoYXQnZCBiZSBncmVhdCwgYnV0
+IGl0J2QgYnJlYWsgdXNlcnNwYWNlLCBhcyBmYXIgYXMgSSBrbm93LiBXZSBoYXZlDQo+IGENCj4g
+c2xpZ2h0bHkgaGFja2VkIHZlcnNpb24gb2YgdGhpcyBwYXRjaCB0aGF0IHVzZXMgdGhlIHNfdXNl
+cl9ucyBmcm9tDQo+IHRoZQ0KPiBuZnMgc3VwZXJibG9jaywgYW5kIEkgdGhpbmsgdGhhdCB1aWRz
+IGZyb20gdGhlIGJhY2tpbmcgc3RvcmUgKHdoZXRoZXINCj4gaXQgYmUgYSBibG9jayBkZXZpY2Us
+IG9yIGEgc2VydmVyKSwgc2hvdWxkIGJlIHdyaXR0ZW4gYXMgdGhlIGt1aWQsDQo+IGFuZA0KPiB0
+cmFuc2xhdGVkIHdoZW4gaXQgZ29lcyBpbiBhbmQgb3V0IG9mIHRoZSB1c2VybnMuDQoNClRoZSBh
+Y3R1YWwgYXBwbGljYXRpb25zIHJ1bm5pbmcgaW4gdGhlIGNvbnRhaW5lcnMgYXJlIGludGVyYWN0
+aW5nDQp0aHJvdWdoIHRoZSBzdGFuZGFyZCBzeXN0ZW0gY2FsbHMuIFRoZXkgZG8gbm90IG5lZWQg
+YW55IGV4dHJhDQpjb252ZXJzaW9uLCBiZWNhdXNlIHRoZSBzeXNjYWxscyBjb252ZXJ0IHRoZW0g
+dG8ga3VpZHMgYW5kIGJhY2suDQoNCklPVzogV2UgY2FuIGNvbXBsZXRlbHkgaWdub3JlIHRoZSB1
+c2VyIG5hbWVzcGFjZSBvZiB0aGUgY29udGFpbmVyLA0Kc2luY2UgdGhhdCBpcyB0YWtlbiBjYXJl
+IG9mIGF0IHRoZSBzeXNjYWxsIGxldmVsLg0KDQpUaGUgb25seSBuYW1lc3BhY2VzIHdlIGNhcmUg
+YWJvdXQgYXJlOg0KDQoxKSBUaGUgY29udGFpbmVyIHRoYXQgc2V0IHVwIHRoZSBtb3VudCBpbiB0
+aGUgZmlyc3QgcGxhY2UsIHNpbmNlDQpwcmVzdW1hYmx5IGlzIGlzIGF1dGhvcmlzZWQgdG8gdXNl
+IGl0cyBvd24gdWlkL2dpZHMgd2hlbiB0YWxraW5nIHRvIHRoZQ0KbW91bnRwb2ludC4gVGhhdCB1
+c2VyIG5hbWVzcGFjZSBoYWQgYmV0dGVyIGJlIHRoZSBzYW1lIG9uZSBhcyB0aGUgb25lDQpzYXZl
+ZCBpbiAnc3RydWN0IG5ldCcgdGhhdCB3YXMgc2F2ZWQgd2hlbiB3ZSBzZXQgdXAgdGhlIG1vdW50
+cG9pbnQuDQoNCjIpIFRoZSBjb250YWluZXJzIHRoYXQgYXJlIHJ1bm5pbmcgcnBjLmdzc2QgYW5k
+IHJwYy5pZG1hcGQuIEFnYWluLA0KdGhvc2UgYXJlIHRpZWQgdG8gc3RydWN0IG5ldC4NCg0KPiBE
+byB5b3UgaGF2ZSBhbnkgb3RoZXIgc3VnZ2VzdGlvbnMsIGlmIHdlIGV2ZW50dWFsbHkgd2FudCB0
+byBlbmFibGUNCj4gTkZTNCBmb3IgdXNlciBuYW1lc3BhY2VzPw0KDQpTZWUgYWJvdmUuDQoNCi0t
+IA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIsIEhhbW1lcnNw
+YWNlDQp0cm9uZC5teWtsZWJ1c3RAaGFtbWVyc3BhY2UuY29tDQoNCg==
