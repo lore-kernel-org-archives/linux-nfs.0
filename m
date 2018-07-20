@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx142.netapp.com ([216.240.21.19]:10810 "EHLO mx142.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1728469AbeGTXJY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 20 Jul 2018 19:09:24 -0400
+        id S1728403AbeGTXJ0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 20 Jul 2018 19:09:26 -0400
 From: Olga Kornievskaia <kolga@netapp.com>
 To: <bfields@redhat.com>
 CC: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v10 7/9] NFSD handle OFFLOAD_CANCEL op
-Date: Fri, 20 Jul 2018 18:19:23 -0400
-Message-ID: <20180720221925.50744-8-kolga@netapp.com>
+Subject: [PATCH v10 9/9] NFSD stop ongoing async copies on client shutdown
+Date: Fri, 20 Jul 2018 18:19:25 -0400
+Message-ID: <20180720221925.50744-10-kolga@netapp.com>
 In-Reply-To: <20180720221925.50744-1-kolga@netapp.com>
 References: <20180720221925.50744-1-kolga@netapp.com>
 MIME-Version: 1.0
@@ -18,124 +18,135 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 From: Olga Kornievskaia <olga.kornievskaia@gmail.com>
 
-Upon receiving OFFLOAD_CANCEL search the list of copy stateids,
-if found then set the SIGPENDING signal so that do_splice stops
-copying and also send kthread_stop to the copy thread to stop
-and wait for it. Take a reference on the copy from the
-offload_cancel thread so that it won't go away while we are
-trying to process it.
+If client received DESTROY_CLIENTID and there are (for some reason)
+on-going async copies, send CLIENT_BUSY error back (eg., client
+didn't send OFFLOAD_CANCEL).
+
+If client's lease expired and client structure is being shutdown
+and there are on-going async copies, then shutdown the copies.
 
 Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
 ---
- fs/nfsd/nfs4proc.c | 40 +++++++++++++++++++++++++++++++++++++---
- fs/nfsd/state.h    |  1 +
- fs/nfsd/xdr4.h     |  1 +
- 3 files changed, 39 insertions(+), 3 deletions(-)
+ fs/nfsd/nfs4proc.c  | 53 ++++++++++++++++++++++++++++++++++++++++++++++++-----
+ fs/nfsd/nfs4state.c |  4 +++-
+ fs/nfsd/state.h     |  1 +
+ fs/nfsd/xdr4.h      |  1 +
+ 4 files changed, 53 insertions(+), 6 deletions(-)
 
 diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index f77d964..c375520 100644
+index c122153..24af7f4 100644
 --- a/fs/nfsd/nfs4proc.c
 +++ b/fs/nfsd/nfs4proc.c
-@@ -1100,11 +1100,19 @@ static int fill_in_write_vector(struct kvec *vec, struct nfsd4_write *write)
- out:
- 	return status;
+@@ -1108,6 +1108,51 @@ void nfs4_put_copy(struct nfsd4_copy *copy)
+ 	kfree(copy);
  }
-+
-+void nfs4_put_copy(struct nfsd4_copy *copy)
+ 
++static bool
++check_and_set_stop_copy(struct nfsd4_copy *copy)
 +{
-+	if (!refcount_dec_and_test(&copy->refcount))
-+		return;
-+	kfree(copy);
++	bool value;
++
++	spin_lock(&copy->cp_clp->async_lock);
++	value = copy->stopped;
++	if (!copy->stopped)
++		copy->stopped = true;
++	spin_unlock(&copy->cp_clp->async_lock);
++	return value;
++}
++
++static void nfsd4_stop_copy(struct nfsd4_copy *copy)
++{
++	/* only 1 thread should stop the copy */
++	if (!check_and_set_stop_copy(copy)) {
++		set_tsk_thread_flag(copy->copy_task, TIF_SIGPENDING);
++		kthread_stop(copy->copy_task);
++	}
++	nfs4_put_copy(copy);
++}
++
++static struct nfsd4_copy *nfsd4_get_copy(struct nfs4_client *clp)
++{
++	struct nfsd4_copy *copy = NULL;
++
++	spin_lock(&clp->async_lock);
++	if (!list_empty(&clp->async_copies)) {
++		copy = list_first_entry(&clp->async_copies, struct nfsd4_copy,
++					copies);
++		refcount_inc(&copy->refcount);
++	}
++	spin_unlock(&clp->async_lock);
++	return copy;
++}
++
++void nfsd4_shutdown_copy(struct nfs4_client *clp)
++{
++	struct nfsd4_copy *copy;
++
++	while ((copy = nfsd4_get_copy(clp)) != NULL)
++		nfsd4_stop_copy(copy);
 +}
 +
  static void nfsd4_cb_offload_release(struct nfsd4_callback *cb)
  {
  	struct nfsd4_copy *copy = container_of(cb, struct nfsd4_copy, cp_cb);
+@@ -1303,11 +1348,9 @@ struct nfsd4_copy *
+ 	struct nfs4_client *clp = cstate->clp;
  
--	kfree(copy);
-+	nfs4_put_copy(copy);
- }
+ 	copy = find_async_copy(clp, &os->stateid);
+-	if (copy) {
+-		set_tsk_thread_flag(copy->copy_task, TIF_SIGPENDING);
+-		kthread_stop(copy->copy_task);
+-		nfs4_put_copy(copy);
+-	} else
++	if (copy)
++		nfsd4_stop_copy(copy);
++	else
+ 		status = nfserr_bad_stateid;
  
- static int nfsd4_cb_offload_done(struct nfsd4_callback *cb,
-@@ -1133,6 +1141,8 @@ static ssize_t _nfsd_copy_file_range(struct nfsd4_copy *copy)
- 	u64 dst_pos = copy->cp_dst_pos;
- 
- 	do {
-+		if (signalled() || kthread_should_stop())
-+			break;
- 		bytes_copied = nfsd_copy_file_range(copy->file_src, src_pos,
- 				copy->file_dst, dst_pos, bytes_total);
- 		if (bytes_copied <= 0)
-@@ -1188,7 +1198,7 @@ static void cleanup_async_copy(struct nfsd4_copy *copy)
- 	spin_lock(&copy->cp_clp->async_lock);
- 	list_del(&copy->copies);
- 	spin_unlock(&copy->cp_clp->async_lock);
--	kfree(copy);
-+	nfs4_put_copy(copy);
- }
- 
- static int nfsd4_do_async_copy(void *data)
-@@ -1240,6 +1250,7 @@ static int nfsd4_do_async_copy(void *data)
- 			kfree(async_copy);
- 			goto out;
+ 	return status;
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index ede1603..51b008e 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -1974,6 +1974,7 @@ static __be32 mark_client_expired_locked(struct nfs4_client *clp)
  		}
-+		refcount_set(&async_copy->refcount, 1);
- 		memcpy(&copy->cp_res.cb_stateid, &copy->cp_stateid,
- 			sizeof(copy->cp_stateid));
- 		dup_copy_fields(copy, async_copy);
-@@ -1269,7 +1280,30 @@ static int nfsd4_do_async_copy(void *data)
- 		     struct nfsd4_compound_state *cstate,
- 		     union nfsd4_op_u *u)
- {
--	return 0;
-+	struct nfsd4_offload_status *os = &u->offload_status;
-+	__be32 status = 0;
-+	struct nfsd4_copy *copy;
-+	bool found = false;
-+	struct nfs4_client *clp = cstate->clp;
-+
-+	spin_lock(&clp->async_lock);
-+	list_for_each_entry(copy, &clp->async_copies, copies) {
-+		if (memcmp(&copy->cp_stateid, &os->stateid,
-+				NFS4_STATEID_SIZE))
-+			continue;
-+		found = true;
-+		refcount_inc(&copy->refcount);
-+		break;
-+	}
-+	spin_unlock(&clp->async_lock);
-+	if (found) {
-+		set_tsk_thread_flag(copy->copy_task, TIF_SIGPENDING);
-+		kthread_stop(copy->copy_task);
-+		nfs4_put_copy(copy);
-+	} else
-+		status = nfserr_bad_stateid;
-+
-+	return status;
+ 	}
+ 	nfsd4_return_all_client_layouts(clp);
++	nfsd4_shutdown_copy(clp);
+ 	nfsd4_shutdown_callback(clp);
+ 	if (clp->cl_cb_conn.cb_xprt)
+ 		svc_xprt_put(clp->cl_cb_conn.cb_xprt);
+@@ -2504,7 +2505,8 @@ static bool client_has_state(struct nfs4_client *clp)
+ 		|| !list_empty(&clp->cl_lo_states)
+ #endif
+ 		|| !list_empty(&clp->cl_delegations)
+-		|| !list_empty(&clp->cl_sessions);
++		|| !list_empty(&clp->cl_sessions)
++		|| !list_empty(&clp->async_copies);
  }
  
- static __be32
+ __be32
 diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index d8893427..0ee2ed3 100644
+index 0bd4329..8db45f9 100644
 --- a/fs/nfsd/state.h
 +++ b/fs/nfsd/state.h
-@@ -641,6 +641,7 @@ extern struct nfs4_client_reclaim *nfs4_client_to_reclaim(const char *name,
- 
- struct nfs4_file *find_file(struct knfsd_fh *fh);
- void put_nfs4_file(struct nfs4_file *fi);
-+extern void nfs4_put_copy(struct nfsd4_copy *copy);
- static inline void get_nfs4_file(struct nfs4_file *fi)
- {
- 	refcount_inc(&fi->fi_ref);
+@@ -634,6 +634,7 @@ extern void nfsd4_init_cb(struct nfsd4_callback *cb, struct nfs4_client *clp,
+ extern int nfsd4_create_callback_queue(void);
+ extern void nfsd4_destroy_callback_queue(void);
+ extern void nfsd4_shutdown_callback(struct nfs4_client *);
++extern void nfsd4_shutdown_copy(struct nfs4_client *clp);
+ extern void nfsd4_prepare_cb_recall(struct nfs4_delegation *dp);
+ extern struct nfs4_client_reclaim *nfs4_client_to_reclaim(const char *name,
+ 							struct nfsd_net *nn);
 diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index 5af9eae..249d883 100644
+index 249d883..feeb6d4 100644
 --- a/fs/nfsd/xdr4.h
 +++ b/fs/nfsd/xdr4.h
-@@ -542,6 +542,7 @@ struct nfsd4_copy {
- 
+@@ -543,6 +543,7 @@ struct nfsd4_copy {
  	struct list_head	copies;
  	struct task_struct	*copy_task;
-+	refcount_t		refcount;
+ 	refcount_t		refcount;
++	bool			stopped;
  };
  
  struct nfsd4_seek {
