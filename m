@@ -1,155 +1,146 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ua0-f172.google.com ([209.85.217.172]:41470 "EHLO
-        mail-ua0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2388128AbeGTTsL (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 20 Jul 2018 15:48:11 -0400
-Received: by mail-ua0-f172.google.com with SMTP id t14-v6so8076358uao.8
-        for <linux-nfs@vger.kernel.org>; Fri, 20 Jul 2018 11:58:36 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <e3b2ce8ec4896a2900571ab1f7bc8f9f6b06c99f.camel@hammerspace.com>
-References: <CAN-5tyH75NZyiZ43_--oGOcugYiyQk=soBs5XwMq91uRX4+2hA@mail.gmail.com>
- <7cccfa69267c44dbb629b154ee942df8280875bc.camel@hammerspace.com>
- <CAN-5tyHcrOFMmcnWC8svkiTU5B1ZqJVG03SoQCP1n9zdTTvJeA@mail.gmail.com>
- <CAN-5tyGqP1uOBTV9xd-CJ4HhdnQP9O66Rbm1nNoj5HhYMN=1Nw@mail.gmail.com> <e3b2ce8ec4896a2900571ab1f7bc8f9f6b06c99f.camel@hammerspace.com>
-From: Olga Kornievskaia <aglo@umich.edu>
-Date: Fri, 20 Jul 2018 14:58:35 -0400
-Message-ID: <CAN-5tyGWUNBcA0WN4VixpiYYfHkUMXT9722DC-j7aUjWmkJLRw@mail.gmail.com>
+Received: from mail-eopbgr700103.outbound.protection.outlook.com ([40.107.70.103]:62768
+        "EHLO NAM04-SN1-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S2388006AbeGTUL3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 20 Jul 2018 16:11:29 -0400
+From: Trond Myklebust <trondmy@hammerspace.com>
+To: "aglo@umich.edu" <aglo@umich.edu>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
 Subject: Re: sending duplicate GETATTRs
-To: Trond Myklebust <trondmy@hammerspace.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+Date: Fri, 20 Jul 2018 19:19:43 +0000
+Message-ID: <c0e4b7568918364fd4bdfab5a34e87ac6d251e9a.camel@hammerspace.com>
+References: <CAN-5tyH75NZyiZ43_--oGOcugYiyQk=soBs5XwMq91uRX4+2hA@mail.gmail.com>
+         <7cccfa69267c44dbb629b154ee942df8280875bc.camel@hammerspace.com>
+         <CAN-5tyHcrOFMmcnWC8svkiTU5B1ZqJVG03SoQCP1n9zdTTvJeA@mail.gmail.com>
+         <CAN-5tyGqP1uOBTV9xd-CJ4HhdnQP9O66Rbm1nNoj5HhYMN=1Nw@mail.gmail.com>
+         <e3b2ce8ec4896a2900571ab1f7bc8f9f6b06c99f.camel@hammerspace.com>
+         <CAN-5tyGWUNBcA0WN4VixpiYYfHkUMXT9722DC-j7aUjWmkJLRw@mail.gmail.com>
+In-Reply-To: <CAN-5tyGWUNBcA0WN4VixpiYYfHkUMXT9722DC-j7aUjWmkJLRw@mail.gmail.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jul 20, 2018 at 2:46 PM, Trond Myklebust
-<trondmy@hammerspace.com> wrote:
-> On Fri, 2018-07-20 at 14:40 -0400, Olga Kornievskaia wrote:
->> On Fri, Jul 20, 2018 at 2:17 PM, Olga Kornievskaia <aglo@umich.edu>
->> wrote:
->> > On Fri, Jul 20, 2018 at 2:05 PM, Trond Myklebust
->> > <trondmy@hammerspace.com> wrote:
->> > > On Fri, 2018-07-20 at 13:26 -0400, Olga Kornievskaia wrote:
->> > > > Hi Trond,
->> > > >
->> > > > I would some help understanding attributes management.
->> > > >
->> > > > Right now, any time a directory inode that was marked with
->> > > > INVALID_ACCESS (say to a change_attribute changed) ends up
->> > > > triggering
->> > > > sending a duplicate GETATTR. I don't think that's correct.
->> > > >
->> > > > In nfs_execute_ok() we check if (nfs_check_cache_invalid(inode,
->> > > > NFS_INO_INVALID_ACCESS)) and the call __nfs_revalidate_inode()
->> > > > which
->> > > > will trigger GETATTR. I don't understand why after calling this
->> > > > function the INVALID_ACCESS doesn't get cleared? Because that's
->> > > > what
->> > > > causes the double GETATTR to be sent.
->> > > >
->> > > > On the open path, the first time the getattr is sent is in
->> > > >
->> > > > Jul 19 15:39:52 ipa18 kernel: dump_stack+0x5a/0x73
->> > > > Jul 19 15:39:52 ipa18 kernel: nfs4_proc_getattr+0x65/0x110
->> > > > [nfsv4]
->> > > > Jul 19 15:39:52 ipa18 kernel: __nfs_revalidate_inode+0xe1/0x370
->> > > > [nfs]
->> > > > Jul 19 15:39:52 ipa18 kernel: nfs_permission+0x16b/0x1f0 [nfs]
->> > > > Jul 19 15:39:52 ipa18 kernel: inode_permission+0xab/0x130
->> > > > Jul 19 15:39:52 ipa18 kernel: link_path_walk+0x29d/0x520
->> > > > Jul 19 15:39:52 ipa18 kernel: path_openat+0xf6/0x1230
->> > > > Jul 19 15:39:52 ipa18 kernel: do_filp_open+0x91/0x100
->> > > > Jul 19 15:39:52 ipa18 kernel: do_sys_open+0x126/0x210
->> > > > Jul 19 15:39:52 ipa18 kernel: do_syscall_64+0x55/0x180
->> > > > Jul 19 15:39:52 ipa18 kernel:
->> > > > entry_SYSCALL_64_after_hwframe+0x44/0xa9
->> > > >
->> > > > And then again during the open
->> > > >
->> > > > Jul 19 15:39:52 ipa18 kernel: dump_stack+0x5a/0x73
->> > > > Jul 19 15:39:52 ipa18 kernel: nfs4_proc_getattr+0x65/0x110
->> > > > [nfsv4]
->> > > > Jul 19 15:39:52 ipa18 kernel: __nfs_revalidate_inode+0xe1/0x370
->> > > > [nfs]
->> > > > Jul 19 15:39:52 ipa18 kernel: nfs_permission+0x16b/0x1f0 [nfs]
->> > > > Jul 19 15:39:52 ipa18 kernel: inode_permission+0xab/0x130
->> > > > Jul 19 15:39:52 ipa18 kernel: path_openat+0x942/0x1230
->> > > > Jul 19 15:39:52 ipa18 kernel: do_filp_open+0x91/0x100
->> > > > Jul 19 15:39:52 ipa18 kernel: do_sys_open+0x126/0x210
->> > > > Jul 19 15:39:52 ipa18 kernel: do_syscall_64+0x55/0x180
->> > > > Jul 19 15:39:52 ipa18 kernel:
->> > > > entry_SYSCALL_64_after_hwframe+0x44/0xa9
->> > > >
->> > > > Can't we remove INVALID_ACCESS after we revalidated the inode?
->> > > > This
->> > > > removes the duplicated GETATTRs. Is this a valid way of fixing
->> > > > this
->> > > > issue?
->> > > >
->> > > > diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
->> > > > index 8f8e9e9..2b55a45 100644
->> > > > --- a/fs/nfs/dir.c
->> > > > +++ b/fs/nfs/dir.c
->> > > > @@ -2504,6 +2504,8 @@ static int nfs_execute_ok(struct inode
->> > > > *inode,
->> > > > int mask)
->> > > >                 if (mask & MAY_NOT_BLOCK)
->> > > >                         return -ECHILD;
->> > > >                 ret = __nfs_revalidate_inode(server, inode);
->> > > > +               if (!ret)
->> > > > +                       NFS_I(inode)->cache_validity &=
->> > > > ~NFS_INO_INVALID_ACCESS;
->> > > >         }
->> > > >         if (ret == 0 && !execute_ok(inode))
->> > > >                 ret = -EACCES;
->> > >
->> > >
->> > > I don't see how the above makes sense.
->> > >
->> > > Either the attribute revalidation confirmed that the change attr,
->> > > mode
->> > > + uid + gid are unchanged, in which case the call to
->> > > nfs_refresh_inode() during revalidation will fail to set
->> > > NFS_INO_INVALID_ACCESS, or it confirmed that at least one of them
->> > > has
->> > > changed, in which case we do want to revalidate the access cache.
->> >
->> > I'm confused as to against what are we checking then?
->> >
->> > We flagged a directory inode to have invalid attributes. So we sent
->> > a
->> > GETATTR. I would think that after getting the result all our
->> > attributes should be valid. Why would a client as the next
->> > operation
->> > send another GETATTR for the same inode?
->> >
->>
->> I didn't answer your question but rather explained what I see client
->> do.
->>
->> Let's me see if I can try again:
->> in nfs_execute_ok() the check for the INVALID_CACHE is true so the
->> code calls __nfs_revalidate_inode() which ends up sending a GETATTR.
->> Could it be that what's happening is that GETATTRs reply for the
->> change_attr is different than what we have stored. BUT that's
->> obvious,
->> we knew that to begin with since we are validating the attributes. So
->> we update it and then we send another GETATTR now the GETATTR sends
->> back the "same" change_attr and this time it matches what we have
->> stored. Why is this 2nd GETATTR necessary? The attribute should be
->> marked as valid after a getting a successful GETATTR.
->>
-> Oh... I see what you are saying. Yes, that check looks like it should
-> be looking for NFS_INO_INVALID_OTHER.
-
-Whew. ok I'm glad something make sense. However, you lost me on
-"NFS_INO_INVALID_OTHER". What does that flag means?
-Are you talking about checking the check in nfs_execute_ok() to check
-for INVALID_OTHER instead of INVALID_ACCESS?
-
->
-> --
-> Trond Myklebust
-> CTO, Hammerspace Inc
-> 4300 El Camino Real, Suite 105
-> Los Altos, CA 94022
-> www.hammer.space
+T24gRnJpLCAyMDE4LTA3LTIwIGF0IDE0OjU4IC0wNDAwLCBPbGdhIEtvcm5pZXZza2FpYSB3cm90
+ZToNCj4gT24gRnJpLCBKdWwgMjAsIDIwMTggYXQgMjo0NiBQTSwgVHJvbmQgTXlrbGVidXN0DQo+
+IDx0cm9uZG15QGhhbW1lcnNwYWNlLmNvbT4gd3JvdGU6DQo+ID4gT24gRnJpLCAyMDE4LTA3LTIw
+IGF0IDE0OjQwIC0wNDAwLCBPbGdhIEtvcm5pZXZza2FpYSB3cm90ZToNCj4gPiA+IE9uIEZyaSwg
+SnVsIDIwLCAyMDE4IGF0IDI6MTcgUE0sIE9sZ2EgS29ybmlldnNrYWlhIDxhZ2xvQHVtaWNoLmVk
+DQo+ID4gPiB1Pg0KPiA+ID4gd3JvdGU6DQo+ID4gPiA+IE9uIEZyaSwgSnVsIDIwLCAyMDE4IGF0
+IDI6MDUgUE0sIFRyb25kIE15a2xlYnVzdA0KPiA+ID4gPiA8dHJvbmRteUBoYW1tZXJzcGFjZS5j
+b20+IHdyb3RlOg0KPiA+ID4gPiA+IE9uIEZyaSwgMjAxOC0wNy0yMCBhdCAxMzoyNiAtMDQwMCwg
+T2xnYSBLb3JuaWV2c2thaWEgd3JvdGU6DQo+ID4gPiA+ID4gPiBIaSBUcm9uZCwNCj4gPiA+ID4g
+PiA+IA0KPiA+ID4gPiA+ID4gSSB3b3VsZCBzb21lIGhlbHAgdW5kZXJzdGFuZGluZyBhdHRyaWJ1
+dGVzIG1hbmFnZW1lbnQuDQo+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+IFJpZ2h0IG5vdywgYW55
+IHRpbWUgYSBkaXJlY3RvcnkgaW5vZGUgdGhhdCB3YXMgbWFya2VkIHdpdGgNCj4gPiA+ID4gPiA+
+IElOVkFMSURfQUNDRVNTIChzYXkgdG8gYSBjaGFuZ2VfYXR0cmlidXRlIGNoYW5nZWQpIGVuZHMg
+dXANCj4gPiA+ID4gPiA+IHRyaWdnZXJpbmcNCj4gPiA+ID4gPiA+IHNlbmRpbmcgYSBkdXBsaWNh
+dGUgR0VUQVRUUi4gSSBkb24ndCB0aGluayB0aGF0J3MgY29ycmVjdC4NCj4gPiA+ID4gPiA+IA0K
+PiA+ID4gPiA+ID4gSW4gbmZzX2V4ZWN1dGVfb2soKSB3ZSBjaGVjayBpZg0KPiA+ID4gPiA+ID4g
+KG5mc19jaGVja19jYWNoZV9pbnZhbGlkKGlub2RlLA0KPiA+ID4gPiA+ID4gTkZTX0lOT19JTlZB
+TElEX0FDQ0VTUykpIGFuZCB0aGUgY2FsbA0KPiA+ID4gPiA+ID4gX19uZnNfcmV2YWxpZGF0ZV9p
+bm9kZSgpDQo+ID4gPiA+ID4gPiB3aGljaA0KPiA+ID4gPiA+ID4gd2lsbCB0cmlnZ2VyIEdFVEFU
+VFIuIEkgZG9uJ3QgdW5kZXJzdGFuZCB3aHkgYWZ0ZXIgY2FsbGluZw0KPiA+ID4gPiA+ID4gdGhp
+cw0KPiA+ID4gPiA+ID4gZnVuY3Rpb24gdGhlIElOVkFMSURfQUNDRVNTIGRvZXNuJ3QgZ2V0IGNs
+ZWFyZWQ/IEJlY2F1c2UNCj4gPiA+ID4gPiA+IHRoYXQncw0KPiA+ID4gPiA+ID4gd2hhdA0KPiA+
+ID4gPiA+ID4gY2F1c2VzIHRoZSBkb3VibGUgR0VUQVRUUiB0byBiZSBzZW50Lg0KPiA+ID4gPiA+
+ID4gDQo+ID4gPiA+ID4gPiBPbiB0aGUgb3BlbiBwYXRoLCB0aGUgZmlyc3QgdGltZSB0aGUgZ2V0
+YXR0ciBpcyBzZW50IGlzIGluDQo+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+IEp1bCAxOSAxNToz
+OTo1MiBpcGExOCBrZXJuZWw6IGR1bXBfc3RhY2srMHg1YS8weDczDQo+ID4gPiA+ID4gPiBKdWwg
+MTkgMTU6Mzk6NTIgaXBhMTgga2VybmVsOiBuZnM0X3Byb2NfZ2V0YXR0cisweDY1LzB4MTEwDQo+
+ID4gPiA+ID4gPiBbbmZzdjRdDQo+ID4gPiA+ID4gPiBKdWwgMTkgMTU6Mzk6NTIgaXBhMTgga2Vy
+bmVsOg0KPiA+ID4gPiA+ID4gX19uZnNfcmV2YWxpZGF0ZV9pbm9kZSsweGUxLzB4MzcwDQo+ID4g
+PiA+ID4gPiBbbmZzXQ0KPiA+ID4gPiA+ID4gSnVsIDE5IDE1OjM5OjUyIGlwYTE4IGtlcm5lbDog
+bmZzX3Blcm1pc3Npb24rMHgxNmIvMHgxZjANCj4gPiA+ID4gPiA+IFtuZnNdDQo+ID4gPiA+ID4g
+PiBKdWwgMTkgMTU6Mzk6NTIgaXBhMTgga2VybmVsOiBpbm9kZV9wZXJtaXNzaW9uKzB4YWIvMHgx
+MzANCj4gPiA+ID4gPiA+IEp1bCAxOSAxNTozOTo1MiBpcGExOCBrZXJuZWw6IGxpbmtfcGF0aF93
+YWxrKzB4MjlkLzB4NTIwDQo+ID4gPiA+ID4gPiBKdWwgMTkgMTU6Mzk6NTIgaXBhMTgga2VybmVs
+OiBwYXRoX29wZW5hdCsweGY2LzB4MTIzMA0KPiA+ID4gPiA+ID4gSnVsIDE5IDE1OjM5OjUyIGlw
+YTE4IGtlcm5lbDogZG9fZmlscF9vcGVuKzB4OTEvMHgxMDANCj4gPiA+ID4gPiA+IEp1bCAxOSAx
+NTozOTo1MiBpcGExOCBrZXJuZWw6IGRvX3N5c19vcGVuKzB4MTI2LzB4MjEwDQo+ID4gPiA+ID4g
+PiBKdWwgMTkgMTU6Mzk6NTIgaXBhMTgga2VybmVsOiBkb19zeXNjYWxsXzY0KzB4NTUvMHgxODAN
+Cj4gPiA+ID4gPiA+IEp1bCAxOSAxNTozOTo1MiBpcGExOCBrZXJuZWw6DQo+ID4gPiA+ID4gPiBl
+bnRyeV9TWVNDQUxMXzY0X2FmdGVyX2h3ZnJhbWUrMHg0NC8weGE5DQo+ID4gPiA+ID4gPiANCj4g
+PiA+ID4gPiA+IEFuZCB0aGVuIGFnYWluIGR1cmluZyB0aGUgb3Blbg0KPiA+ID4gPiA+ID4gDQo+
+ID4gPiA+ID4gPiBKdWwgMTkgMTU6Mzk6NTIgaXBhMTgga2VybmVsOiBkdW1wX3N0YWNrKzB4NWEv
+MHg3Mw0KPiA+ID4gPiA+ID4gSnVsIDE5IDE1OjM5OjUyIGlwYTE4IGtlcm5lbDogbmZzNF9wcm9j
+X2dldGF0dHIrMHg2NS8weDExMA0KPiA+ID4gPiA+ID4gW25mc3Y0XQ0KPiA+ID4gPiA+ID4gSnVs
+IDE5IDE1OjM5OjUyIGlwYTE4IGtlcm5lbDoNCj4gPiA+ID4gPiA+IF9fbmZzX3JldmFsaWRhdGVf
+aW5vZGUrMHhlMS8weDM3MA0KPiA+ID4gPiA+ID4gW25mc10NCj4gPiA+ID4gPiA+IEp1bCAxOSAx
+NTozOTo1MiBpcGExOCBrZXJuZWw6IG5mc19wZXJtaXNzaW9uKzB4MTZiLzB4MWYwDQo+ID4gPiA+
+ID4gPiBbbmZzXQ0KPiA+ID4gPiA+ID4gSnVsIDE5IDE1OjM5OjUyIGlwYTE4IGtlcm5lbDogaW5v
+ZGVfcGVybWlzc2lvbisweGFiLzB4MTMwDQo+ID4gPiA+ID4gPiBKdWwgMTkgMTU6Mzk6NTIgaXBh
+MTgga2VybmVsOiBwYXRoX29wZW5hdCsweDk0Mi8weDEyMzANCj4gPiA+ID4gPiA+IEp1bCAxOSAx
+NTozOTo1MiBpcGExOCBrZXJuZWw6IGRvX2ZpbHBfb3BlbisweDkxLzB4MTAwDQo+ID4gPiA+ID4g
+PiBKdWwgMTkgMTU6Mzk6NTIgaXBhMTgga2VybmVsOiBkb19zeXNfb3BlbisweDEyNi8weDIxMA0K
+PiA+ID4gPiA+ID4gSnVsIDE5IDE1OjM5OjUyIGlwYTE4IGtlcm5lbDogZG9fc3lzY2FsbF82NCsw
+eDU1LzB4MTgwDQo+ID4gPiA+ID4gPiBKdWwgMTkgMTU6Mzk6NTIgaXBhMTgga2VybmVsOg0KPiA+
+ID4gPiA+ID4gZW50cnlfU1lTQ0FMTF82NF9hZnRlcl9od2ZyYW1lKzB4NDQvMHhhOQ0KPiA+ID4g
+PiA+ID4gDQo+ID4gPiA+ID4gPiBDYW4ndCB3ZSByZW1vdmUgSU5WQUxJRF9BQ0NFU1MgYWZ0ZXIg
+d2UgcmV2YWxpZGF0ZWQgdGhlDQo+ID4gPiA+ID4gPiBpbm9kZT8NCj4gPiA+ID4gPiA+IFRoaXMN
+Cj4gPiA+ID4gPiA+IHJlbW92ZXMgdGhlIGR1cGxpY2F0ZWQgR0VUQVRUUnMuIElzIHRoaXMgYSB2
+YWxpZCB3YXkgb2YNCj4gPiA+ID4gPiA+IGZpeGluZw0KPiA+ID4gPiA+ID4gdGhpcw0KPiA+ID4g
+PiA+ID4gaXNzdWU/DQo+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+IGRpZmYgLS1naXQgYS9mcy9u
+ZnMvZGlyLmMgYi9mcy9uZnMvZGlyLmMNCj4gPiA+ID4gPiA+IGluZGV4IDhmOGU5ZTkuLjJiNTVh
+NDUgMTAwNjQ0DQo+ID4gPiA+ID4gPiAtLS0gYS9mcy9uZnMvZGlyLmMNCj4gPiA+ID4gPiA+ICsr
+KyBiL2ZzL25mcy9kaXIuYw0KPiA+ID4gPiA+ID4gQEAgLTI1MDQsNiArMjUwNCw4IEBAIHN0YXRp
+YyBpbnQgbmZzX2V4ZWN1dGVfb2soc3RydWN0DQo+ID4gPiA+ID4gPiBpbm9kZQ0KPiA+ID4gPiA+
+ID4gKmlub2RlLA0KPiA+ID4gPiA+ID4gaW50IG1hc2spDQo+ID4gPiA+ID4gPiAgICAgICAgICAg
+ICAgICAgaWYgKG1hc2sgJiBNQVlfTk9UX0JMT0NLKQ0KPiA+ID4gPiA+ID4gICAgICAgICAgICAg
+ICAgICAgICAgICAgcmV0dXJuIC1FQ0hJTEQ7DQo+ID4gPiA+ID4gPiAgICAgICAgICAgICAgICAg
+cmV0ID0gX19uZnNfcmV2YWxpZGF0ZV9pbm9kZShzZXJ2ZXIsDQo+ID4gPiA+ID4gPiBpbm9kZSk7
+DQo+ID4gPiA+ID4gPiArICAgICAgICAgICAgICAgaWYgKCFyZXQpDQo+ID4gPiA+ID4gPiArICAg
+ICAgICAgICAgICAgICAgICAgICBORlNfSShpbm9kZSktPmNhY2hlX3ZhbGlkaXR5ICY9DQo+ID4g
+PiA+ID4gPiB+TkZTX0lOT19JTlZBTElEX0FDQ0VTUzsNCj4gPiA+ID4gPiA+ICAgICAgICAgfQ0K
+PiA+ID4gPiA+ID4gICAgICAgICBpZiAocmV0ID09IDAgJiYgIWV4ZWN1dGVfb2soaW5vZGUpKQ0K
+PiA+ID4gPiA+ID4gICAgICAgICAgICAgICAgIHJldCA9IC1FQUNDRVM7DQo+ID4gPiA+ID4gDQo+
+ID4gPiA+ID4gDQo+ID4gPiA+ID4gSSBkb24ndCBzZWUgaG93IHRoZSBhYm92ZSBtYWtlcyBzZW5z
+ZS4NCj4gPiA+ID4gPiANCj4gPiA+ID4gPiBFaXRoZXIgdGhlIGF0dHJpYnV0ZSByZXZhbGlkYXRp
+b24gY29uZmlybWVkIHRoYXQgdGhlIGNoYW5nZQ0KPiA+ID4gPiA+IGF0dHIsDQo+ID4gPiA+ID4g
+bW9kZQ0KPiA+ID4gPiA+ICsgdWlkICsgZ2lkIGFyZSB1bmNoYW5nZWQsIGluIHdoaWNoIGNhc2Ug
+dGhlIGNhbGwgdG8NCj4gPiA+ID4gPiBuZnNfcmVmcmVzaF9pbm9kZSgpIGR1cmluZyByZXZhbGlk
+YXRpb24gd2lsbCBmYWlsIHRvIHNldA0KPiA+ID4gPiA+IE5GU19JTk9fSU5WQUxJRF9BQ0NFU1Ms
+IG9yIGl0IGNvbmZpcm1lZCB0aGF0IGF0IGxlYXN0IG9uZSBvZg0KPiA+ID4gPiA+IHRoZW0NCj4g
+PiA+ID4gPiBoYXMNCj4gPiA+ID4gPiBjaGFuZ2VkLCBpbiB3aGljaCBjYXNlIHdlIGRvIHdhbnQg
+dG8gcmV2YWxpZGF0ZSB0aGUgYWNjZXNzDQo+ID4gPiA+ID4gY2FjaGUuDQo+ID4gPiA+IA0KPiA+
+ID4gPiBJJ20gY29uZnVzZWQgYXMgdG8gYWdhaW5zdCB3aGF0IGFyZSB3ZSBjaGVja2luZyB0aGVu
+Pw0KPiA+ID4gPiANCj4gPiA+ID4gV2UgZmxhZ2dlZCBhIGRpcmVjdG9yeSBpbm9kZSB0byBoYXZl
+IGludmFsaWQgYXR0cmlidXRlcy4gU28gd2UNCj4gPiA+ID4gc2VudA0KPiA+ID4gPiBhDQo+ID4g
+PiA+IEdFVEFUVFIuIEkgd291bGQgdGhpbmsgdGhhdCBhZnRlciBnZXR0aW5nIHRoZSByZXN1bHQg
+YWxsIG91cg0KPiA+ID4gPiBhdHRyaWJ1dGVzIHNob3VsZCBiZSB2YWxpZC4gV2h5IHdvdWxkIGEg
+Y2xpZW50IGFzIHRoZSBuZXh0DQo+ID4gPiA+IG9wZXJhdGlvbg0KPiA+ID4gPiBzZW5kIGFub3Ro
+ZXIgR0VUQVRUUiBmb3IgdGhlIHNhbWUgaW5vZGU/DQo+ID4gPiA+IA0KPiA+ID4gDQo+ID4gPiBJ
+IGRpZG4ndCBhbnN3ZXIgeW91ciBxdWVzdGlvbiBidXQgcmF0aGVyIGV4cGxhaW5lZCB3aGF0IEkg
+c2VlDQo+ID4gPiBjbGllbnQNCj4gPiA+IGRvLg0KPiA+ID4gDQo+ID4gPiBMZXQncyBtZSBzZWUg
+aWYgSSBjYW4gdHJ5IGFnYWluOg0KPiA+ID4gaW4gbmZzX2V4ZWN1dGVfb2soKSB0aGUgY2hlY2sg
+Zm9yIHRoZSBJTlZBTElEX0NBQ0hFIGlzIHRydWUgc28NCj4gPiA+IHRoZQ0KPiA+ID4gY29kZSBj
+YWxscyBfX25mc19yZXZhbGlkYXRlX2lub2RlKCkgd2hpY2ggZW5kcyB1cCBzZW5kaW5nIGENCj4g
+PiA+IEdFVEFUVFIuDQo+ID4gPiBDb3VsZCBpdCBiZSB0aGF0IHdoYXQncyBoYXBwZW5pbmcgaXMg
+dGhhdCBHRVRBVFRScyByZXBseSBmb3IgdGhlDQo+ID4gPiBjaGFuZ2VfYXR0ciBpcyBkaWZmZXJl
+bnQgdGhhbiB3aGF0IHdlIGhhdmUgc3RvcmVkLiBCVVQgdGhhdCdzDQo+ID4gPiBvYnZpb3VzLA0K
+PiA+ID4gd2Uga25ldyB0aGF0IHRvIGJlZ2luIHdpdGggc2luY2Ugd2UgYXJlIHZhbGlkYXRpbmcg
+dGhlDQo+ID4gPiBhdHRyaWJ1dGVzLiBTbw0KPiA+ID4gd2UgdXBkYXRlIGl0IGFuZCB0aGVuIHdl
+IHNlbmQgYW5vdGhlciBHRVRBVFRSIG5vdyB0aGUgR0VUQVRUUg0KPiA+ID4gc2VuZHMNCj4gPiA+
+IGJhY2sgdGhlICJzYW1lIiBjaGFuZ2VfYXR0ciBhbmQgdGhpcyB0aW1lIGl0IG1hdGNoZXMgd2hh
+dCB3ZSBoYXZlDQo+ID4gPiBzdG9yZWQuIFdoeSBpcyB0aGlzIDJuZCBHRVRBVFRSIG5lY2Vzc2Fy
+eT8gVGhlIGF0dHJpYnV0ZSBzaG91bGQNCj4gPiA+IGJlDQo+ID4gPiBtYXJrZWQgYXMgdmFsaWQg
+YWZ0ZXIgYSBnZXR0aW5nIGEgc3VjY2Vzc2Z1bCBHRVRBVFRSLg0KPiA+ID4gDQo+ID4gDQo+ID4g
+T2guLi4gSSBzZWUgd2hhdCB5b3UgYXJlIHNheWluZy4gWWVzLCB0aGF0IGNoZWNrIGxvb2tzIGxp
+a2UgaXQNCj4gPiBzaG91bGQNCj4gPiBiZSBsb29raW5nIGZvciBORlNfSU5PX0lOVkFMSURfT1RI
+RVIuDQo+IA0KPiBXaGV3LiBvayBJJ20gZ2xhZCBzb21ldGhpbmcgbWFrZSBzZW5zZS4gSG93ZXZl
+ciwgeW91IGxvc3QgbWUgb24NCj4gIk5GU19JTk9fSU5WQUxJRF9PVEhFUiIuIFdoYXQgZG9lcyB0
+aGF0IGZsYWcgbWVhbnM/DQo+IEFyZSB5b3UgdGFsa2luZyBhYm91dCBjaGVja2luZyB0aGUgY2hl
+Y2sgaW4gbmZzX2V4ZWN1dGVfb2soKSB0byBjaGVjaw0KPiBmb3IgSU5WQUxJRF9PVEhFUiBpbnN0
+ZWFkIG9mIElOVkFMSURfQUNDRVNTPw0KPiANCg0KSSdtIHNheWluZyB0aGF0IGZ1bmN0aW9uIHNo
+b3VsZCBwcm9iYWJseSByZWFkIGFzOg0KDQpzdGF0aWMgaW50IG5mc19leGVjdXRlX29rKHN0cnVj
+dCBpbm9kZSAqaW5vZGUsIGludCBtYXNrKQ0Kew0KICAgICAgICBzdHJ1Y3QgbmZzX3NlcnZlciAq
+c2VydmVyID0gTkZTX1NFUlZFUihpbm9kZSk7DQogICAgICAgIGludCByZXQgPSAwOw0KDQogICAg
+ICAgIGlmIChuZnNfY2hlY2tfY2FjaGVfaW52YWxpZChpbm9kZSwgTkZTX0lOT19JTlZBTElEX09U
+SEVSKSkgew0KICAgICAgICAgICAgICAgIGlmIChtYXNrICYgTUFZX05PVF9CTE9DSykNCiAgICAg
+ICAgICAgICAgICAgICAgICAgIHJldHVybiAtRUNISUxEOw0KICAgICAgICAgICAgICAgIHJldCA9
+IF9fbmZzX3JldmFsaWRhdGVfaW5vZGUoc2VydmVyLCBpbm9kZSk7DQogICAgICAgIH0NCiAgICAg
+ICAgaWYgKHJldCA9PSAwICYmICFleGVjdXRlX29rKGlub2RlKSkNCiAgICAgICAgICAgICAgICBy
+ZXQgPSAtRUFDQ0VTOw0KICAgICAgICByZXR1cm4gcmV0Ow0KfQ0KDQotLSANClRyb25kIE15a2xl
+YnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBIYW1tZXJzcGFjZQ0KdHJvbmQubXlr
+bGVidXN0QGhhbW1lcnNwYWNlLmNvbQ0KDQo=
