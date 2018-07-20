@@ -1,122 +1,198 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-by2nam03on0091.outbound.protection.outlook.com ([104.47.42.91]:4614
-        "EHLO NAM03-BY2-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1727518AbeGTMgB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 20 Jul 2018 08:36:01 -0400
-From: Trond Myklebust <trondmy@hammerspace.com>
-To: "sargun@sargun.me" <sargun@sargun.me>
-CC: "kinglongmee@gmail.com" <kinglongmee@gmail.com>,
+Received: from mail-ed1-f67.google.com ([209.85.208.67]:41560 "EHLO
+        mail-ed1-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1731939AbeGTRzz (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 20 Jul 2018 13:55:55 -0400
+Received: by mail-ed1-f67.google.com with SMTP id s24-v6so10308056edr.8
+        for <linux-nfs@vger.kernel.org>; Fri, 20 Jul 2018 10:06:44 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <6c61182847d8f2bfbf9e6d0fb010b40c53e921d7.camel@hammerspace.com>
+References: <20180719174246.GA19824@ircssh-2.c.rugged-nimbus-611.internal>
+ <e3988e150b5737e13f8b05ab25fd3ed3e5d42c14.camel@hammerspace.com>
+ <CAMp4zn9fXdRgw6gh8q4m77OtGVuXf-S8TwMwhvzQGhkO7USvUw@mail.gmail.com>
+ <eaa128b662f96340426d9635c3e883235a3d4616.camel@hammerspace.com>
+ <CAMp4zn-mw1U3PoS9k_JePieU2+owg6hdXdrQ2Lt3p173J_sRbg@mail.gmail.com> <6c61182847d8f2bfbf9e6d0fb010b40c53e921d7.camel@hammerspace.com>
+From: Sargun Dhillon <sargun@sargun.me>
+Date: Fri, 20 Jul 2018 10:06:02 -0700
+Message-ID: <CAMp4zn_6h59hfsQ6kpiLb8HEY_GiptmP_qzk2+e=u5yiggg7=Q@mail.gmail.com>
+Subject: Re: [PATCH] net/sunrpc: Add user namespace support
+To: Trond Myklebust <trondmy@hammerspace.com>
+Cc: "kinglongmee@gmail.com" <kinglongmee@gmail.com>,
         "Anna.Schumaker@netapp.com" <Anna.Schumaker@netapp.com>,
         "ebiederm@xmission.com" <ebiederm@xmission.com>,
         "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
         "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
-Subject: Re: [PATCH] net/sunrpc: Add user namespace support
-Date: Fri, 20 Jul 2018 11:48:02 +0000
-Message-ID: <6c61182847d8f2bfbf9e6d0fb010b40c53e921d7.camel@hammerspace.com>
-References: <20180719174246.GA19824@ircssh-2.c.rugged-nimbus-611.internal>
-         <e3988e150b5737e13f8b05ab25fd3ed3e5d42c14.camel@hammerspace.com>
-         <CAMp4zn9fXdRgw6gh8q4m77OtGVuXf-S8TwMwhvzQGhkO7USvUw@mail.gmail.com>
-         <eaa128b662f96340426d9635c3e883235a3d4616.camel@hammerspace.com>
-         <CAMp4zn-mw1U3PoS9k_JePieU2+owg6hdXdrQ2Lt3p173J_sRbg@mail.gmail.com>
-In-Reply-To: <CAMp4zn-mw1U3PoS9k_JePieU2+owg6hdXdrQ2Lt3p173J_sRbg@mail.gmail.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDE4LTA3LTE5IGF0IDIzOjEyIC0wNzAwLCBTYXJndW4gRGhpbGxvbiB3cm90ZToN
-Cj4gT24gVGh1LCBKdWwgMTksIDIwMTggYXQgNTozNyBQTSwgVHJvbmQgTXlrbGVidXN0DQo+IDx0
-cm9uZG15QGhhbW1lcnNwYWNlLmNvbT4gd3JvdGU6DQo+ID4gT24gVGh1LCAyMDE4LTA3LTE5IGF0
-IDE3OjAwIC0wNzAwLCBTYXJndW4gRGhpbGxvbiB3cm90ZToNCj4gPiA+IE9uIFRodSwgSnVsIDE5
-LCAyMDE4IGF0IDEyOjQ1IFBNLCBUcm9uZCBNeWtsZWJ1c3QNCj4gPiA+IDx0cm9uZG15QGhhbW1l
-cnNwYWNlLmNvbT4gd3JvdGU6DQo+ID4gPiA+IA0KPiA+ID4gPiBPbiBUaHUsIDIwMTgtMDctMTkg
-YXQgMTc6NDIgKzAwMDAsIFNhcmd1biBEaGlsbG9uIHdyb3RlOg0KPiA+ID4gPiA+IFRoaXMgYWRk
-cyB0aGUgYWJpbGl0eSB0byBwYXNzIGEgbm9uLWluaXQgdXNlciBuYW1lc3BhY2UgdG8NCj4gPiA+
-ID4gPiBycGNhdXRoX2NyZWF0ZSwNCj4gPiA+ID4gPiB2aWEgcnBjX2F1dGhfY3JlYXRlX2FyZ3Mu
-IElmIHRoZSBzcGVjaWZpYyBhdXRoZW50aWNhdGlvbg0KPiA+ID4gPiA+IG1lY2hhbmlzbQ0KPiA+
-ID4gPiA+IGRvZXMgbm90IHN1cHBvcnQgbm9uLWluaXQgdXNlciBuYW1lc3BhY2VzLCB0aGVuIGl0
-IHdpbGwNCj4gPiA+ID4gPiByZXR1cm4gYW4NCj4gPiA+ID4gPiBlcnJvci4NCj4gPiA+ID4gPiAN
-Cj4gPiA+ID4gPiBDdXJyZW50bHksIHRoZSBvbmx5IHR3byBhdXRoZW50aWNhdGlvbiBtZWNoYW5p
-c21zIHRoYXQNCj4gPiA+ID4gPiBzdXBwb3J0DQo+ID4gPiA+ID4gbm9uLWluaXQgdXNlciBuYW1l
-c3BhY2VzIGFyZSBhdXRoX251bGwsIGFuZCBhdXRoX3VuaXguDQo+ID4gPiA+ID4gYXV0aF91bml4
-DQo+ID4gPiA+ID4gd2lsbCBzZW5kIHRoZSBVSUQgLyBHSUQgZnJvbSB0aGUgdXNlciBuYW1lc3Bh
-Y2UgZm9yDQo+ID4gPiA+ID4gYXV0aGVudGljYXRpb24uDQo+ID4gPiA+ID4gDQo+ID4gPiA+IA0K
-PiA+ID4gPiBGaXJzdGx5LCBwbGVhc2UgYXQgbGVhc3QgQ2MgdGhlIGxpbnV4LW5mcyBtYWlsaW5n
-IGxpc3QgKGFzIHBlcg0KPiA+ID4gPiB0aGUNCj4gPiA+ID4gTUFJTlRBSU5FUlMgZmlsZSkgd2hl
-biBjaGFuZ2luZyBORlMgYW5kIHN1bnJwYyBjb2RlLg0KPiA+ID4gDQo+ID4gPiBTb3JyeSBhYm91
-dCB0aGF0Lg0KPiA+ID4gDQo+ID4gPiA+IA0KPiA+ID4gPiBTZWNvbmRseSwgY2FuIHlvdSBwbGVh
-c2UgZXhwbGFpbiB3aHkgd2Ugd291bGQgd2FudCB0byB1c2UgYW55DQo+ID4gPiA+IHVzZXINCj4g
-PiA+ID4gbmFtZXNwYWNlIG90aGVyIHRoYW4gdGhlIG9uZSBzcGVjaWZpZWQgaW4gdGhlIG5ldCBu
-YW1lc3BhY2UNCj4gPiA+ID4gc3RydWN0dXJlDQo+ID4gPiA+IChzdHJ1Y3QgbmV0KSB3aGVuIGNv
-bW11bmljYXRpbmcgd2l0aCBuZXR3b3JrIHJlc291cmNlcyBzdWNoIGFzDQo+ID4gPiA+IHJwYy5n
-c3NkLCB0aGUgaWRtYXBwZXIgb3IsIGZvciB0aGF0IG1hdHRlciwgdGhlIE5GUyBzZXJ2ZXI/DQo+
-ID4gPiANCj4gPiA+IFdlIG1vdW50IE5GUyB2b2x1bWVzIGZvciBjb250YWluZXJzICh1c2VyIG5h
-bWVzcGFjZXMpIHRvZGF5LiBPbg0KPiA+ID4gbXVsdGlwbGUgbWFjaGluZXMsIHRoZXkgbWF5IGhh
-dmUgZGlmZmVyZW50IG1hcHBpbmdzIG9mIHVpZHMgaW4NCj4gPiA+IHRoZQ0KPiA+ID4gdXNlciBu
-YW1lc3BhY2UgdG8ga3VpZHMuIElmIHRoaXMgaXMgdGhlIGNhc2UsIGl0IGJyZWFrcyBhdXRoX3Vu
-aXgNCj4gPiA+IGJlY2F1c2UgaXQgdXNlcyB0aGUga3VpZCBpbiB0aGUgaW5pdCB1c2VyIG5zIG1h
-cHBpbmcgZm9yIHRoZSB1aWQNCj4gPiA+IGl0DQo+ID4gPiBzZW5kcyB0byB0aGUgc2VydmVyLg0K
-PiA+ID4gDQo+ID4gDQo+ID4gVGhlIHBvaW50IGlzIHRoYXQgdGhlIHVzZXIgbmFtZXNwYWNlIGNv
-bnZlcnNpb25zIHRoYXQgaGFwcGVuIGluIHRoZQ0KPiA+IHN1bnJwYyBsYXllciBhcmUgYWxsIGZv
-ciBkZWFsaW5nIHdpdGggc2VydmljZXMuIFRoZSBBVVRIX0dTUw0KPiA+IHVwY2FsbHMNCj4gPiBz
-aG91bGQgX29ubHlfIGJlIHNwZWFraW5nIHRvIGFuIHJwYy5nc3NkIGRhZW1vbiB0aGF0IHJ1bnMg
-aW4NCj4gPiB3aGF0ZXZlcg0KPiA+IGNvbnRhaW5lciB0aGF0IG93bnMgdGhlIG5ldCBuYW1lc3Bh
-Y2UgKGFuZCB0aGF0IGNyZWF0ZWQgdGhlDQo+ID4gcnBjX3BpcGVmcw0KPiA+IG9iamVjdHMpLg0K
-PiA+IA0KPiA+IERpdHRvIGZvciB0aGUgaWRtYXBwZXIgYWx0aG91Z2ggaWYgeW91IHVzZSB0aGUg
-a2V5cmluZyBiYXNlZCAoaS5lLg0KPiA+IHRoZQ0KPiA+IG5vbiBsZWdhY3kpIGlkbWFwcGVyLCB0
-aGF0IHJ1bnMgaW4gdGhlIGluaXQgbmFtZXNwYWNlLg0KPiA+IA0KPiA+ID4gSSB0aGluayB0aGF0
-IGlmIHdlIG1vdmVkIHRvIHVzaW5nIHRoZSBuZXQtPnVzZXJfbnMgZm9yIGF1dGhfdW5peCwNCj4g
-PiA+IHRoYXQnZCBiZSBncmVhdCwgYnV0IGl0J2QgYnJlYWsgdXNlcnNwYWNlLCBhcyBmYXIgYXMg
-SSBrbm93LiBXZQ0KPiA+ID4gaGF2ZQ0KPiA+ID4gYQ0KPiA+ID4gc2xpZ2h0bHkgaGFja2VkIHZl
-cnNpb24gb2YgdGhpcyBwYXRjaCB0aGF0IHVzZXMgdGhlIHNfdXNlcl9ucw0KPiA+ID4gZnJvbQ0K
-PiA+ID4gdGhlDQo+ID4gPiBuZnMgc3VwZXJibG9jaywgYW5kIEkgdGhpbmsgdGhhdCB1aWRzIGZy
-b20gdGhlIGJhY2tpbmcgc3RvcmUNCj4gPiA+ICh3aGV0aGVyDQo+ID4gPiBpdCBiZSBhIGJsb2Nr
-IGRldmljZSwgb3IgYSBzZXJ2ZXIpLCBzaG91bGQgYmUgd3JpdHRlbiBhcyB0aGUNCj4gPiA+IGt1
-aWQsDQo+ID4gPiBhbmQNCj4gPiA+IHRyYW5zbGF0ZWQgd2hlbiBpdCBnb2VzIGluIGFuZCBvdXQg
-b2YgdGhlIHVzZXJucy4NCj4gPiANCj4gPiBUaGUgYWN0dWFsIGFwcGxpY2F0aW9ucyBydW5uaW5n
-IGluIHRoZSBjb250YWluZXJzIGFyZSBpbnRlcmFjdGluZw0KPiA+IHRocm91Z2ggdGhlIHN0YW5k
-YXJkIHN5c3RlbSBjYWxscy4gVGhleSBkbyBub3QgbmVlZCBhbnkgZXh0cmENCj4gPiBjb252ZXJz
-aW9uLCBiZWNhdXNlIHRoZSBzeXNjYWxscyBjb252ZXJ0IHRoZW0gdG8ga3VpZHMgYW5kIGJhY2su
-DQo+ID4gDQo+ID4gSU9XOiBXZSBjYW4gY29tcGxldGVseSBpZ25vcmUgdGhlIHVzZXIgbmFtZXNw
-YWNlIG9mIHRoZSBjb250YWluZXIsDQo+ID4gc2luY2UgdGhhdCBpcyB0YWtlbiBjYXJlIG9mIGF0
-IHRoZSBzeXNjYWxsIGxldmVsLg0KPiA+IA0KPiA+IFRoZSBvbmx5IG5hbWVzcGFjZXMgd2UgY2Fy
-ZSBhYm91dCBhcmU6DQo+ID4gDQo+ID4gMSkgVGhlIGNvbnRhaW5lciB0aGF0IHNldCB1cCB0aGUg
-bW91bnQgaW4gdGhlIGZpcnN0IHBsYWNlLCBzaW5jZQ0KPiA+IHByZXN1bWFibHkgaXMgaXMgYXV0
-aG9yaXNlZCB0byB1c2UgaXRzIG93biB1aWQvZ2lkcyB3aGVuIHRhbGtpbmcgdG8NCj4gPiB0aGUN
-Cj4gPiBtb3VudHBvaW50LiBUaGF0IHVzZXIgbmFtZXNwYWNlIGhhZCBiZXR0ZXIgYmUgdGhlIHNh
-bWUgb25lIGFzIHRoZQ0KPiA+IG9uZQ0KPiA+IHNhdmVkIGluICdzdHJ1Y3QgbmV0JyB0aGF0IHdh
-cyBzYXZlZCB3aGVuIHdlIHNldCB1cCB0aGUgbW91bnRwb2ludC4NCj4gPiANCj4gPiAyKSBUaGUg
-Y29udGFpbmVycyB0aGF0IGFyZSBydW5uaW5nIHJwYy5nc3NkIGFuZCBycGMuaWRtYXBkLiBBZ2Fp
-biwNCj4gPiB0aG9zZSBhcmUgdGllZCB0byBzdHJ1Y3QgbmV0Lg0KPiA+IA0KPiANCj4gV2hlbiB0
-aGUgc2VydmVyIHByZXNlbnRzIHdpdGggTkZTX0NBUF9VSURHSURfTk9NQVAsIGFuZCB5b3UgdXNl
-DQo+IGF1dGhfdW5peCB0aGVyZSBhcmUgbm8gdXBjYWxscyB0byBycGMuZ3NzZCwgbm9yIHJwYy5p
-ZG1hcGQuIFRoZQ0KPiBtYXBwaW5nIHRvIHVpZCBpbiB0aGUgaW5pdCB1c2VyIG5zIGFyZSBzZW50
-IHRvIHRoZSBORlMgc2VydmVyLCBldmVuDQo+IGlmDQo+IG5ldC0+dXNlcl9ucyBpcyBub3QgaW5p
-dF91c2VyX25zLiBUaGUgc3lzY2FsbCBoYXBwZW5zIHdpdGggYSB1c2VyIGluDQo+IGENCj4gdXNl
-ciBuYW1lc3BhY2Ugd2l0aCwgc2F5LCBJRCAwLCBhbmQgdGhlaXIgY3JlZCBoYXMgdGhlDQo+IGZy
-b21fa3VpZCgmaW5pdF91c2VyX25zLi4uKSBvZiAxMDAsIHRoZSB1aWQgdGhlIHNlcnZlciByZWNl
-aXZlcyBpcw0KPiBzdGlsbCAxMDAuDQoNClRoZSBjdXJyZW50IGNvZGUgYXNzdW1lcyB0aGF0IHRo
-ZSBpbml0IG5hbWVzcGFjZSBzZXRzIHVwIGFsbA0KbW91bnRwb2ludHMuIEl0IGlzIGJyb2tlbiBp
-ZiB0aGUgbW91bnRwb2ludCBnZXRzIHNldCB1cCBmcm9tIGluc2lkZSBhDQpjb250YWluZXIuDQoN
-Cj4gSWYgd2UgY2hvb3NlIHRvIGNvbnZlcnQgdGhlbSBiYXNlZCBvbiB0aGUgbmV0d29yayBuYW1l
-c3BhY2UsIGl0IHdvdWxkDQo+IHNvbHZlIHRoZSBwcm9ibGVtIGp1c3QgZmluZSwgYnV0IHRoYXQn
-ZCBiZSBhIHVzZXJzcGFjZSBicmVha2luZw0KPiBjaGFuZ2UuIEkgdGhpbmsgd2UgaGF2ZSB0byB1
-c2UgdGhlIHNfdXNlcl9ucy4NCg0KVGhlIHNfdXNlcl9ucyBkb2Vzbid0IHJlbGF0ZSB0byBhbnl0
-aGluZyBzcGVjaWFsIG9uIHRoZSBzZXJ2ZXIuIEl0DQpkb2Vzbid0IHJlbGF0ZSB0byB0aGUgcnBj
-Lmdzc2QgcHJvY2VzcywgYW5kIGl0IGRvZXNuJ3QgcmVsYXRlIHRvIHRoZQ0KcnBjLmlkbWFwZCBw
-cm9jZXNzLiBXaHkgd291bGQgd2Ugd2FudCB0byBnaXZlIGl0IGEgcm9sZSBhdCBhbGwgZm9yIE5G
-Uz8NCg0KQXNpZGUgZnJvbSB0aGF0LCB3aHkgd291bGQgYSBjb250YWluZXIgb3JjaGVzdHJhdG9y
-IHByb2Nlc3MgKG9yDQp3aGF0ZXZlciBpcyBzZXR0aW5nIHVwIHRoZSBtb3VudHBvaW50IGhlcmUp
-IG5lZWQgdG8gcnVuIHdpdGggYQ0KZGlmZmVyZW50IHVzZXIgbmFtZXNwYWNlIGluIGl0cyBwcm9j
-ZXNzIGNyZWRzIGFuZCBpdHMgbmV0IG5hbWVzcGFjZT8NClRoYXQgd291bGQgbWVhbiB0aGF0IHdl
-J2QgYmUgdXNpbmcgZGlmZmVyZW50IHVzZXIgbmFtZXNwYWNlcyBmb3INCnJwY19waXBlZnMgYW5k
-IGZvciB0aGUgTkZTIGZpbGVzeXN0ZW0uDQpJT1c6IHdoZW4gdGFsa2luZyB0byB0aGUgcnBjLmdz
-c2QgZGFlbW9uLCBJJ2QgZW5kIHVwIHVzaW5nIG9uZSB1c2VyDQpuYW1lc3BhY2UgZm9yIHNldHRp
-bmcgdXAgdGhlIGxpbmsgdG8gdGhlIGRhZW1vbiB2aWEgcnBjX3BpcGVmcywgdGhlbg0KSSdkIGJl
-IHVzaW5nIGEgZGlmZmVyZW50IHVzZXIgbmFtZXNwYWNlIHdoZW4gY29tbXVuaWNhdGluZyB3aXRo
-IHRoZQ0KcnBjLmdzc2QgZGFlbW9uIG9uIHRoZSBvdGhlciBlbmQgb2YgdGhhdCBsaW5rLiBJbiB3
-aGF0IHVzZXIgbmFtZXNwYWNlDQp3b3VsZCB0aGUgcnBjLmdzc2QgZGFlbW9uIGJlIGV4cGVjdGVk
-IHRvIHJ1biBpbiB0aGlzIGtpbmQgb2Ygc2NlbmFyaW8/DQpEaXR0byBmb3IgcnBjLmlkbWFwZC4N
-Cg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lciwgSGFt
-bWVyc3BhY2UNCnRyb25kLm15a2xlYnVzdEBoYW1tZXJzcGFjZS5jb20NCg0K
+On Fri, Jul 20, 2018 at 4:48 AM, Trond Myklebust
+<trondmy@hammerspace.com> wrote:
+> On Thu, 2018-07-19 at 23:12 -0700, Sargun Dhillon wrote:
+>> On Thu, Jul 19, 2018 at 5:37 PM, Trond Myklebust
+>> <trondmy@hammerspace.com> wrote:
+>> > On Thu, 2018-07-19 at 17:00 -0700, Sargun Dhillon wrote:
+>> > > On Thu, Jul 19, 2018 at 12:45 PM, Trond Myklebust
+>> > > <trondmy@hammerspace.com> wrote:
+>> > > >
+>> > > > On Thu, 2018-07-19 at 17:42 +0000, Sargun Dhillon wrote:
+>> > > > > This adds the ability to pass a non-init user namespace to
+>> > > > > rpcauth_create,
+>> > > > > via rpc_auth_create_args. If the specific authentication
+>> > > > > mechanism
+>> > > > > does not support non-init user namespaces, then it will
+>> > > > > return an
+>> > > > > error.
+>> > > > >
+>> > > > > Currently, the only two authentication mechanisms that
+>> > > > > support
+>> > > > > non-init user namespaces are auth_null, and auth_unix.
+>> > > > > auth_unix
+>> > > > > will send the UID / GID from the user namespace for
+>> > > > > authentication.
+>> > > > >
+>> > > >
+>> > > > Firstly, please at least Cc the linux-nfs mailing list (as per
+>> > > > the
+>> > > > MAINTAINERS file) when changing NFS and sunrpc code.
+>> > >
+>> > > Sorry about that.
+>> > >
+>> > > >
+>> > > > Secondly, can you please explain why we would want to use any
+>> > > > user
+>> > > > namespace other than the one specified in the net namespace
+>> > > > structure
+>> > > > (struct net) when communicating with network resources such as
+>> > > > rpc.gssd, the idmapper or, for that matter, the NFS server?
+>> > >
+>> > > We mount NFS volumes for containers (user namespaces) today. On
+>> > > multiple machines, they may have different mappings of uids in
+>> > > the
+>> > > user namespace to kuids. If this is the case, it breaks auth_unix
+>> > > because it uses the kuid in the init user ns mapping for the uid
+>> > > it
+>> > > sends to the server.
+>> > >
+>> >
+>> > The point is that the user namespace conversions that happen in the
+>> > sunrpc layer are all for dealing with services. The AUTH_GSS
+>> > upcalls
+>> > should _only_ be speaking to an rpc.gssd daemon that runs in
+>> > whatever
+>> > container that owns the net namespace (and that created the
+>> > rpc_pipefs
+>> > objects).
+>> >
+>> > Ditto for the idmapper although if you use the keyring based (i.e.
+>> > the
+>> > non legacy) idmapper, that runs in the init namespace.
+>> >
+>> > > I think that if we moved to using the net->user_ns for auth_unix,
+>> > > that'd be great, but it'd break userspace, as far as I know. We
+>> > > have
+>> > > a
+>> > > slightly hacked version of this patch that uses the s_user_ns
+>> > > from
+>> > > the
+>> > > nfs superblock, and I think that uids from the backing store
+>> > > (whether
+>> > > it be a block device, or a server), should be written as the
+>> > > kuid,
+>> > > and
+>> > > translated when it goes in and out of the userns.
+>> >
+>> > The actual applications running in the containers are interacting
+>> > through the standard system calls. They do not need any extra
+>> > conversion, because the syscalls convert them to kuids and back.
+>> >
+>> > IOW: We can completely ignore the user namespace of the container,
+>> > since that is taken care of at the syscall level.
+>> >
+>> > The only namespaces we care about are:
+>> >
+>> > 1) The container that set up the mount in the first place, since
+>> > presumably is is authorised to use its own uid/gids when talking to
+>> > the
+>> > mountpoint. That user namespace had better be the same one as the
+>> > one
+>> > saved in 'struct net' that was saved when we set up the mountpoint.
+>> >
+>> > 2) The containers that are running rpc.gssd and rpc.idmapd. Again,
+>> > those are tied to struct net.
+>> >
+>>
+>> When the server presents with NFS_CAP_UIDGID_NOMAP, and you use
+>> auth_unix there are no upcalls to rpc.gssd, nor rpc.idmapd. The
+>> mapping to uid in the init user ns are sent to the NFS server, even
+>> if
+>> net->user_ns is not init_user_ns. The syscall happens with a user in
+>> a
+>> user namespace with, say, ID 0, and their cred has the
+>> from_kuid(&init_user_ns...) of 100, the uid the server receives is
+>> still 100.
+>
+> The current code assumes that the init namespace sets up all
+> mountpoints. It is broken if the mountpoint gets set up from inside a
+> container.
+>
+So, is it okay to change the current "broken" behaviour, even if it
+breaks existing users, who do NFS mounts from network namespaces,
+which are in turn owned by non init user namespaces? You can do this
+today by:
+# Session 1
+unshare -U
+unshare -n
+PID=$(echo $$)
+
+# Session 2
+nsenter -t $PID -n
+Setup networking
+
+# Session 1
+mount ${VOLUME that has NFS_CAP_UIDGID_NOMAP}:/ /mnt/tmp
+
+# And then it'll send init user NS UIDs instead of user namespace UIDs
+to the NFS server for auth_unix, writes. This means you have to have
+the same mapping of user NS UIDs to init user NS UIDs across all
+systems.
+
+Is this the "broken" behaviour you're talking about? Can we change
+this behavour, so auth_unix looks at the network namespace -> user_ns
+when encoding UIDs on the wire?
+
+>> If we choose to convert them based on the network namespace, it would
+>> solve the problem just fine, but that'd be a userspace breaking
+>> change. I think we have to use the s_user_ns.
+>
+> The s_user_ns doesn't relate to anything special on the server. It
+> doesn't relate to the rpc.gssd process, and it doesn't relate to the
+> rpc.idmapd process. Why would we want to give it a role at all for NFS?
+See above. Right now, s_user_ns is always init_user_ns, since we don't
+allow the mount to be owned by a non-init user ns. This would allow us
+to safely change the behaviour in the future, without changing the
+behaviour on userspace.
+
+>
+> Aside from that, why would a container orchestrator process (or
+> whatever is setting up the mountpoint here) need to run with a
+> different user namespace in its process creds and its net namespace?
+> That would mean that we'd be using different user namespaces for
+> rpc_pipefs and for the NFS filesystem.
+> IOW: when talking to the rpc.gssd daemon, I'd end up using one user
+> namespace for setting up the link to the daemon via rpc_pipefs, then
+> I'd be using a different user namespace when communicating with the
+> rpc.gssd daemon on the other end of that link. In what user namespace
+> would the rpc.gssd daemon be expected to run in this kind of scenario?
+> Ditto for rpc.idmapd.
+I don't have strong opinions about this. The only thing I care about
+is which UIDs get sent to and fro the NFS server via AUTH_UNIX, and
+how are UIDs interpreted when you have NFS_CAP_UIDGID_NOMAP? Right
+now, all of this is interpreted based on init_user_ns.
+
+>
+> --
+> Trond Myklebust
+> Linux NFS client maintainer, Hammerspace
+> trond.myklebust@hammerspace.com
+>
