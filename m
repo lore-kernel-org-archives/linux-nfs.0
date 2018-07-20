@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx144.netapp.com ([216.240.21.25]:56973 "EHLO mx144.netapp.com"
+Received: from mx143.netapp.com ([216.240.21.24]:49366 "EHLO mx143.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1728297AbeGTXJV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 20 Jul 2018 19:09:21 -0400
+        id S1728297AbeGTXJT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 20 Jul 2018 19:09:19 -0400
 From: Olga Kornievskaia <kolga@netapp.com>
 To: <bfields@redhat.com>
 CC: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v10 4/9] NFSD xdr callback stateid in async COPY reply
-Date: Fri, 20 Jul 2018 18:19:20 -0400
-Message-ID: <20180720221925.50744-5-kolga@netapp.com>
+Subject: [PATCH v10 2/9] NFSD OFFLOAD_STATUS xdr
+Date: Fri, 20 Jul 2018 18:19:18 -0400
+Message-ID: <20180720221925.50744-3-kolga@netapp.com>
 In-Reply-To: <20180720221925.50744-1-kolga@netapp.com>
 References: <20180720221925.50744-1-kolga@netapp.com>
 MIME-Version: 1.0
@@ -18,54 +18,143 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
 ---
- fs/nfsd/nfs4xdr.c | 21 +++++++++++++++++----
- 1 file changed, 17 insertions(+), 4 deletions(-)
+ fs/nfsd/nfs4proc.c | 20 ++++++++++++++++++++
+ fs/nfsd/nfs4xdr.c  | 27 +++++++++++++++++++++++++--
+ fs/nfsd/xdr4.h     | 10 ++++++++++
+ 3 files changed, 55 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 54b9b64..48beb0c 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -4200,15 +4200,27 @@ static __be32 nfsd4_encode_readv(struct nfsd4_compoundres *resp,
- #endif /* CONFIG_NFSD_PNFS */
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 5d99e88..15089b2 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -1155,6 +1155,13 @@ static int fill_in_write_vector(struct kvec *vec, struct nfsd4_write *write)
+ 	fput(file);
+ 	return status;
+ }
++static __be32
++nfsd4_offload_status(struct svc_rqst *rqstp,
++		     struct nfsd4_compound_state *cstate,
++		     union nfsd4_op_u *u)
++{
++	return nfserr_notsupp;
++}
  
  static __be32
--nfsd42_encode_write_res(struct nfsd4_compoundres *resp, struct nfsd42_write_res *write)
-+nfsd42_encode_write_res(struct nfsd4_compoundres *resp,
-+		struct nfsd42_write_res *write, bool sync)
+ nfsd4_allocate(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+@@ -2052,6 +2059,14 @@ static inline u32 nfsd4_copy_rsize(struct svc_rqst *rqstp, struct nfsd4_op *op)
+ 		1 /* cr_synchronous */) * sizeof(__be32);
+ }
+ 
++static inline u32 nfsd4_offload_status_rsize(struct svc_rqst *rqstp,
++					     struct nfsd4_op *op)
++{
++	return (op_encode_hdr_size +
++		2 /* osr_count */ +
++		1 /* osr_complete<1> optional 0 for now */) * sizeof(__be32);
++}
++
+ #ifdef CONFIG_NFSD_PNFS
+ static inline u32 nfsd4_getdeviceinfo_rsize(struct svc_rqst *rqstp, struct nfsd4_op *op)
  {
- 	__be32 *p;
-+	p = xdr_reserve_space(&resp->xdr, 4);
+@@ -2465,6 +2480,11 @@ static inline u32 nfsd4_seek_rsize(struct svc_rqst *rqstp, struct nfsd4_op *op)
+ 		.op_name = "OP_SEEK",
+ 		.op_rsize_bop = nfsd4_seek_rsize,
+ 	},
++	[OP_OFFLOAD_STATUS] = {
++		.op_func = nfsd4_offload_status,
++		.op_name = "OP_OFFLOAD_STATUS",
++		.op_rsize_bop = nfsd4_offload_status_rsize,
++	},
+ };
+ 
+ /**
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index a96843c..3f2a620 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -1770,6 +1770,13 @@ static __be32 nfsd4_decode_reclaim_complete(struct nfsd4_compoundargs *argp, str
+ }
+ 
+ static __be32
++nfsd4_decode_offload_status(struct nfsd4_compoundargs *argp,
++			    struct nfsd4_offload_status *os)
++{
++	return nfsd4_decode_stateid(argp, &os->stateid);
++}
++
++static __be32
+ nfsd4_decode_seek(struct nfsd4_compoundargs *argp, struct nfsd4_seek *seek)
+ {
+ 	DECODE_HEAD;
+@@ -1876,7 +1883,7 @@ static __be32 nfsd4_decode_reclaim_complete(struct nfsd4_compoundargs *argp, str
+ 	[OP_LAYOUTERROR]	= (nfsd4_dec)nfsd4_decode_notsupp,
+ 	[OP_LAYOUTSTATS]	= (nfsd4_dec)nfsd4_decode_notsupp,
+ 	[OP_OFFLOAD_CANCEL]	= (nfsd4_dec)nfsd4_decode_notsupp,
+-	[OP_OFFLOAD_STATUS]	= (nfsd4_dec)nfsd4_decode_notsupp,
++	[OP_OFFLOAD_STATUS]	= (nfsd4_dec)nfsd4_decode_offload_status,
+ 	[OP_READ_PLUS]		= (nfsd4_dec)nfsd4_decode_notsupp,
+ 	[OP_SEEK]		= (nfsd4_dec)nfsd4_decode_seek,
+ 	[OP_WRITE_SAME]		= (nfsd4_dec)nfsd4_decode_notsupp,
+@@ -4226,6 +4233,22 @@ static __be32 nfsd4_encode_readv(struct nfsd4_compoundres *resp,
+ }
+ 
+ static __be32
++nfsd4_encode_offload_status(struct nfsd4_compoundres *resp, __be32 nfserr,
++			    struct nfsd4_offload_status *os)
++{
++	struct xdr_stream *xdr = &resp->xdr;
++	__be32 *p;
++
++	p = xdr_reserve_space(xdr, 8 + 4);
 +	if (!p)
 +		return nfserr_resource;
- 
--	p = xdr_reserve_space(&resp->xdr, 4 + 8 + 4 + NFS4_VERIFIER_SIZE);
-+	if (sync)
-+		*p++ = cpu_to_be32(0);
-+	else {
-+		__be32 nfserr;
-+		*p++ = cpu_to_be32(1);
-+		nfserr = nfsd4_encode_stateid(&resp->xdr, &write->cb_stateid);
-+		if (nfserr)
-+			return nfserr;
-+	}
-+	p = xdr_reserve_space(&resp->xdr, 8 + 4 + NFS4_VERIFIER_SIZE);
- 	if (!p)
- 		return nfserr_resource;
- 
--	*p++ = cpu_to_be32(0);
- 	p = xdr_encode_hyper(p, write->wr_bytes_written);
- 	*p++ = cpu_to_be32(write->wr_stable_how);
- 	p = xdr_encode_opaque_fixed(p, write->wr_verifier.data,
-@@ -4222,7 +4234,8 @@ static __be32 nfsd4_encode_readv(struct nfsd4_compoundres *resp,
++	p = xdr_encode_hyper(p, os->count);
++	*p++ = cpu_to_be32(0);
++
++	return nfserr;
++}
++
++static __be32
+ nfsd4_encode_seek(struct nfsd4_compoundres *resp, __be32 nfserr,
+ 		  struct nfsd4_seek *seek)
  {
- 	__be32 *p;
+@@ -4328,7 +4351,7 @@ static __be32 nfsd4_encode_readv(struct nfsd4_compoundres *resp,
+ 	[OP_LAYOUTERROR]	= (nfsd4_enc)nfsd4_encode_noop,
+ 	[OP_LAYOUTSTATS]	= (nfsd4_enc)nfsd4_encode_noop,
+ 	[OP_OFFLOAD_CANCEL]	= (nfsd4_enc)nfsd4_encode_noop,
+-	[OP_OFFLOAD_STATUS]	= (nfsd4_enc)nfsd4_encode_noop,
++	[OP_OFFLOAD_STATUS]	= (nfsd4_enc)nfsd4_encode_offload_status,
+ 	[OP_READ_PLUS]		= (nfsd4_enc)nfsd4_encode_noop,
+ 	[OP_SEEK]		= (nfsd4_enc)nfsd4_encode_seek,
+ 	[OP_WRITE_SAME]		= (nfsd4_enc)nfsd4_encode_noop,
+diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+index b7c34f4..06cf218 100644
+--- a/fs/nfsd/xdr4.h
++++ b/fs/nfsd/xdr4.h
+@@ -545,6 +545,15 @@ struct nfsd4_seek {
+ 	loff_t		seek_pos;
+ };
  
--	nfserr = nfsd42_encode_write_res(resp, &copy->cp_res);
-+	nfserr = nfsd42_encode_write_res(resp, &copy->cp_res,
-+			copy->cp_synchronous);
- 	if (nfserr)
- 		return nfserr;
- 
++struct nfsd4_offload_status {
++	/* request */
++	stateid_t	stateid;
++
++	/* response */
++	u64		count;
++	u32		status;
++};
++
+ struct nfsd4_op {
+ 	int					opnum;
+ 	const struct nfsd4_operation *		opdesc;
+@@ -603,6 +612,7 @@ struct nfsd4_op {
+ 		struct nfsd4_fallocate		deallocate;
+ 		struct nfsd4_clone		clone;
+ 		struct nfsd4_copy		copy;
++		struct nfsd4_offload_status	offload_status;
+ 		struct nfsd4_seek		seek;
+ 	} u;
+ 	struct nfs4_replay *			replay;
 -- 
 1.8.3.1
 
