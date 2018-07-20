@@ -1,31 +1,115 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-vk0-f51.google.com ([209.85.213.51]:45949 "EHLO
-        mail-vk0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2388006AbeGTTds (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 20 Jul 2018 15:33:48 -0400
-Received: by mail-vk0-f51.google.com with SMTP id b78-v6so6514276vka.12
-        for <linux-nfs@vger.kernel.org>; Fri, 20 Jul 2018 11:44:17 -0700 (PDT)
+Received: from mail-dm3nam03on0124.outbound.protection.outlook.com ([104.47.41.124]:17604
+        "EHLO NAM03-DM3-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S2388244AbeGTTge (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 20 Jul 2018 15:36:34 -0400
+From: Trond Myklebust <trondmy@hammerspace.com>
+To: "aglo@umich.edu" <aglo@umich.edu>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: sending duplicate GETATTRs
+Date: Fri, 20 Jul 2018 18:46:55 +0000
+Message-ID: <e3b2ce8ec4896a2900571ab1f7bc8f9f6b06c99f.camel@hammerspace.com>
+References: <CAN-5tyH75NZyiZ43_--oGOcugYiyQk=soBs5XwMq91uRX4+2hA@mail.gmail.com>
+         <7cccfa69267c44dbb629b154ee942df8280875bc.camel@hammerspace.com>
+         <CAN-5tyHcrOFMmcnWC8svkiTU5B1ZqJVG03SoQCP1n9zdTTvJeA@mail.gmail.com>
+         <CAN-5tyGqP1uOBTV9xd-CJ4HhdnQP9O66Rbm1nNoj5HhYMN=1Nw@mail.gmail.com>
+In-Reply-To: <CAN-5tyGqP1uOBTV9xd-CJ4HhdnQP9O66Rbm1nNoj5HhYMN=1Nw@mail.gmail.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-From: Olga Kornievskaia <aglo@umich.edu>
-Date: Fri, 20 Jul 2018 14:44:16 -0400
-Message-ID: <CAN-5tyHi8g-WS451xrGOfgjaSzthVKYwdLK77Cy+Bah_2qF+KA@mail.gmail.com>
-Subject: Another question about v3 attribute handling
-To: Trond Myklebust <trondmy@hammerspace.com>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Trond,
-
-This is a different question but is related to the attribute handling.
-
-What I see in v4, is that say the client received a reply to the OPEN
-with before and after change_attr values for the directory. We check
-if the before value is the same as what we have in the cache and if
-it's not then we invalidate the directory attributes.
-
-It seems that we don't have similar check for the v3. If in v3, the
-server returned a before that was different from what could be seen on
-the network trace as the before for the directory, it does not trigger
-invalidation. Is this expected because it's v3 or is this a bug?
+T24gRnJpLCAyMDE4LTA3LTIwIGF0IDE0OjQwIC0wNDAwLCBPbGdhIEtvcm5pZXZza2FpYSB3cm90
+ZToNCj4gT24gRnJpLCBKdWwgMjAsIDIwMTggYXQgMjoxNyBQTSwgT2xnYSBLb3JuaWV2c2thaWEg
+PGFnbG9AdW1pY2guZWR1Pg0KPiB3cm90ZToNCj4gPiBPbiBGcmksIEp1bCAyMCwgMjAxOCBhdCAy
+OjA1IFBNLCBUcm9uZCBNeWtsZWJ1c3QNCj4gPiA8dHJvbmRteUBoYW1tZXJzcGFjZS5jb20+IHdy
+b3RlOg0KPiA+ID4gT24gRnJpLCAyMDE4LTA3LTIwIGF0IDEzOjI2IC0wNDAwLCBPbGdhIEtvcm5p
+ZXZza2FpYSB3cm90ZToNCj4gPiA+ID4gSGkgVHJvbmQsDQo+ID4gPiA+IA0KPiA+ID4gPiBJIHdv
+dWxkIHNvbWUgaGVscCB1bmRlcnN0YW5kaW5nIGF0dHJpYnV0ZXMgbWFuYWdlbWVudC4NCj4gPiA+
+ID4gDQo+ID4gPiA+IFJpZ2h0IG5vdywgYW55IHRpbWUgYSBkaXJlY3RvcnkgaW5vZGUgdGhhdCB3
+YXMgbWFya2VkIHdpdGgNCj4gPiA+ID4gSU5WQUxJRF9BQ0NFU1MgKHNheSB0byBhIGNoYW5nZV9h
+dHRyaWJ1dGUgY2hhbmdlZCkgZW5kcyB1cA0KPiA+ID4gPiB0cmlnZ2VyaW5nDQo+ID4gPiA+IHNl
+bmRpbmcgYSBkdXBsaWNhdGUgR0VUQVRUUi4gSSBkb24ndCB0aGluayB0aGF0J3MgY29ycmVjdC4N
+Cj4gPiA+ID4gDQo+ID4gPiA+IEluIG5mc19leGVjdXRlX29rKCkgd2UgY2hlY2sgaWYgKG5mc19j
+aGVja19jYWNoZV9pbnZhbGlkKGlub2RlLA0KPiA+ID4gPiBORlNfSU5PX0lOVkFMSURfQUNDRVNT
+KSkgYW5kIHRoZSBjYWxsIF9fbmZzX3JldmFsaWRhdGVfaW5vZGUoKQ0KPiA+ID4gPiB3aGljaA0K
+PiA+ID4gPiB3aWxsIHRyaWdnZXIgR0VUQVRUUi4gSSBkb24ndCB1bmRlcnN0YW5kIHdoeSBhZnRl
+ciBjYWxsaW5nIHRoaXMNCj4gPiA+ID4gZnVuY3Rpb24gdGhlIElOVkFMSURfQUNDRVNTIGRvZXNu
+J3QgZ2V0IGNsZWFyZWQ/IEJlY2F1c2UgdGhhdCdzDQo+ID4gPiA+IHdoYXQNCj4gPiA+ID4gY2F1
+c2VzIHRoZSBkb3VibGUgR0VUQVRUUiB0byBiZSBzZW50Lg0KPiA+ID4gPiANCj4gPiA+ID4gT24g
+dGhlIG9wZW4gcGF0aCwgdGhlIGZpcnN0IHRpbWUgdGhlIGdldGF0dHIgaXMgc2VudCBpcyBpbg0K
+PiA+ID4gPiANCj4gPiA+ID4gSnVsIDE5IDE1OjM5OjUyIGlwYTE4IGtlcm5lbDogZHVtcF9zdGFj
+aysweDVhLzB4NzMNCj4gPiA+ID4gSnVsIDE5IDE1OjM5OjUyIGlwYTE4IGtlcm5lbDogbmZzNF9w
+cm9jX2dldGF0dHIrMHg2NS8weDExMA0KPiA+ID4gPiBbbmZzdjRdDQo+ID4gPiA+IEp1bCAxOSAx
+NTozOTo1MiBpcGExOCBrZXJuZWw6IF9fbmZzX3JldmFsaWRhdGVfaW5vZGUrMHhlMS8weDM3MA0K
+PiA+ID4gPiBbbmZzXQ0KPiA+ID4gPiBKdWwgMTkgMTU6Mzk6NTIgaXBhMTgga2VybmVsOiBuZnNf
+cGVybWlzc2lvbisweDE2Yi8weDFmMCBbbmZzXQ0KPiA+ID4gPiBKdWwgMTkgMTU6Mzk6NTIgaXBh
+MTgga2VybmVsOiBpbm9kZV9wZXJtaXNzaW9uKzB4YWIvMHgxMzANCj4gPiA+ID4gSnVsIDE5IDE1
+OjM5OjUyIGlwYTE4IGtlcm5lbDogbGlua19wYXRoX3dhbGsrMHgyOWQvMHg1MjANCj4gPiA+ID4g
+SnVsIDE5IDE1OjM5OjUyIGlwYTE4IGtlcm5lbDogcGF0aF9vcGVuYXQrMHhmNi8weDEyMzANCj4g
+PiA+ID4gSnVsIDE5IDE1OjM5OjUyIGlwYTE4IGtlcm5lbDogZG9fZmlscF9vcGVuKzB4OTEvMHgx
+MDANCj4gPiA+ID4gSnVsIDE5IDE1OjM5OjUyIGlwYTE4IGtlcm5lbDogZG9fc3lzX29wZW4rMHgx
+MjYvMHgyMTANCj4gPiA+ID4gSnVsIDE5IDE1OjM5OjUyIGlwYTE4IGtlcm5lbDogZG9fc3lzY2Fs
+bF82NCsweDU1LzB4MTgwDQo+ID4gPiA+IEp1bCAxOSAxNTozOTo1MiBpcGExOCBrZXJuZWw6DQo+
+ID4gPiA+IGVudHJ5X1NZU0NBTExfNjRfYWZ0ZXJfaHdmcmFtZSsweDQ0LzB4YTkNCj4gPiA+ID4g
+DQo+ID4gPiA+IEFuZCB0aGVuIGFnYWluIGR1cmluZyB0aGUgb3Blbg0KPiA+ID4gPiANCj4gPiA+
+ID4gSnVsIDE5IDE1OjM5OjUyIGlwYTE4IGtlcm5lbDogZHVtcF9zdGFjaysweDVhLzB4NzMNCj4g
+PiA+ID4gSnVsIDE5IDE1OjM5OjUyIGlwYTE4IGtlcm5lbDogbmZzNF9wcm9jX2dldGF0dHIrMHg2
+NS8weDExMA0KPiA+ID4gPiBbbmZzdjRdDQo+ID4gPiA+IEp1bCAxOSAxNTozOTo1MiBpcGExOCBr
+ZXJuZWw6IF9fbmZzX3JldmFsaWRhdGVfaW5vZGUrMHhlMS8weDM3MA0KPiA+ID4gPiBbbmZzXQ0K
+PiA+ID4gPiBKdWwgMTkgMTU6Mzk6NTIgaXBhMTgga2VybmVsOiBuZnNfcGVybWlzc2lvbisweDE2
+Yi8weDFmMCBbbmZzXQ0KPiA+ID4gPiBKdWwgMTkgMTU6Mzk6NTIgaXBhMTgga2VybmVsOiBpbm9k
+ZV9wZXJtaXNzaW9uKzB4YWIvMHgxMzANCj4gPiA+ID4gSnVsIDE5IDE1OjM5OjUyIGlwYTE4IGtl
+cm5lbDogcGF0aF9vcGVuYXQrMHg5NDIvMHgxMjMwDQo+ID4gPiA+IEp1bCAxOSAxNTozOTo1MiBp
+cGExOCBrZXJuZWw6IGRvX2ZpbHBfb3BlbisweDkxLzB4MTAwDQo+ID4gPiA+IEp1bCAxOSAxNToz
+OTo1MiBpcGExOCBrZXJuZWw6IGRvX3N5c19vcGVuKzB4MTI2LzB4MjEwDQo+ID4gPiA+IEp1bCAx
+OSAxNTozOTo1MiBpcGExOCBrZXJuZWw6IGRvX3N5c2NhbGxfNjQrMHg1NS8weDE4MA0KPiA+ID4g
+PiBKdWwgMTkgMTU6Mzk6NTIgaXBhMTgga2VybmVsOg0KPiA+ID4gPiBlbnRyeV9TWVNDQUxMXzY0
+X2FmdGVyX2h3ZnJhbWUrMHg0NC8weGE5DQo+ID4gPiA+IA0KPiA+ID4gPiBDYW4ndCB3ZSByZW1v
+dmUgSU5WQUxJRF9BQ0NFU1MgYWZ0ZXIgd2UgcmV2YWxpZGF0ZWQgdGhlIGlub2RlPw0KPiA+ID4g
+PiBUaGlzDQo+ID4gPiA+IHJlbW92ZXMgdGhlIGR1cGxpY2F0ZWQgR0VUQVRUUnMuIElzIHRoaXMg
+YSB2YWxpZCB3YXkgb2YgZml4aW5nDQo+ID4gPiA+IHRoaXMNCj4gPiA+ID4gaXNzdWU/DQo+ID4g
+PiA+IA0KPiA+ID4gPiBkaWZmIC0tZ2l0IGEvZnMvbmZzL2Rpci5jIGIvZnMvbmZzL2Rpci5jDQo+
+ID4gPiA+IGluZGV4IDhmOGU5ZTkuLjJiNTVhNDUgMTAwNjQ0DQo+ID4gPiA+IC0tLSBhL2ZzL25m
+cy9kaXIuYw0KPiA+ID4gPiArKysgYi9mcy9uZnMvZGlyLmMNCj4gPiA+ID4gQEAgLTI1MDQsNiAr
+MjUwNCw4IEBAIHN0YXRpYyBpbnQgbmZzX2V4ZWN1dGVfb2soc3RydWN0IGlub2RlDQo+ID4gPiA+
+ICppbm9kZSwNCj4gPiA+ID4gaW50IG1hc2spDQo+ID4gPiA+ICAgICAgICAgICAgICAgICBpZiAo
+bWFzayAmIE1BWV9OT1RfQkxPQ0spDQo+ID4gPiA+ICAgICAgICAgICAgICAgICAgICAgICAgIHJl
+dHVybiAtRUNISUxEOw0KPiA+ID4gPiAgICAgICAgICAgICAgICAgcmV0ID0gX19uZnNfcmV2YWxp
+ZGF0ZV9pbm9kZShzZXJ2ZXIsIGlub2RlKTsNCj4gPiA+ID4gKyAgICAgICAgICAgICAgIGlmICgh
+cmV0KQ0KPiA+ID4gPiArICAgICAgICAgICAgICAgICAgICAgICBORlNfSShpbm9kZSktPmNhY2hl
+X3ZhbGlkaXR5ICY9DQo+ID4gPiA+IH5ORlNfSU5PX0lOVkFMSURfQUNDRVNTOw0KPiA+ID4gPiAg
+ICAgICAgIH0NCj4gPiA+ID4gICAgICAgICBpZiAocmV0ID09IDAgJiYgIWV4ZWN1dGVfb2soaW5v
+ZGUpKQ0KPiA+ID4gPiAgICAgICAgICAgICAgICAgcmV0ID0gLUVBQ0NFUzsNCj4gPiA+IA0KPiA+
+ID4gDQo+ID4gPiBJIGRvbid0IHNlZSBob3cgdGhlIGFib3ZlIG1ha2VzIHNlbnNlLg0KPiA+ID4g
+DQo+ID4gPiBFaXRoZXIgdGhlIGF0dHJpYnV0ZSByZXZhbGlkYXRpb24gY29uZmlybWVkIHRoYXQg
+dGhlIGNoYW5nZSBhdHRyLA0KPiA+ID4gbW9kZQ0KPiA+ID4gKyB1aWQgKyBnaWQgYXJlIHVuY2hh
+bmdlZCwgaW4gd2hpY2ggY2FzZSB0aGUgY2FsbCB0bw0KPiA+ID4gbmZzX3JlZnJlc2hfaW5vZGUo
+KSBkdXJpbmcgcmV2YWxpZGF0aW9uIHdpbGwgZmFpbCB0byBzZXQNCj4gPiA+IE5GU19JTk9fSU5W
+QUxJRF9BQ0NFU1MsIG9yIGl0IGNvbmZpcm1lZCB0aGF0IGF0IGxlYXN0IG9uZSBvZiB0aGVtDQo+
+ID4gPiBoYXMNCj4gPiA+IGNoYW5nZWQsIGluIHdoaWNoIGNhc2Ugd2UgZG8gd2FudCB0byByZXZh
+bGlkYXRlIHRoZSBhY2Nlc3MgY2FjaGUuDQo+ID4gDQo+ID4gSSdtIGNvbmZ1c2VkIGFzIHRvIGFn
+YWluc3Qgd2hhdCBhcmUgd2UgY2hlY2tpbmcgdGhlbj8NCj4gPiANCj4gPiBXZSBmbGFnZ2VkIGEg
+ZGlyZWN0b3J5IGlub2RlIHRvIGhhdmUgaW52YWxpZCBhdHRyaWJ1dGVzLiBTbyB3ZSBzZW50DQo+
+ID4gYQ0KPiA+IEdFVEFUVFIuIEkgd291bGQgdGhpbmsgdGhhdCBhZnRlciBnZXR0aW5nIHRoZSBy
+ZXN1bHQgYWxsIG91cg0KPiA+IGF0dHJpYnV0ZXMgc2hvdWxkIGJlIHZhbGlkLiBXaHkgd291bGQg
+YSBjbGllbnQgYXMgdGhlIG5leHQNCj4gPiBvcGVyYXRpb24NCj4gPiBzZW5kIGFub3RoZXIgR0VU
+QVRUUiBmb3IgdGhlIHNhbWUgaW5vZGU/DQo+ID4gDQo+IA0KPiBJIGRpZG4ndCBhbnN3ZXIgeW91
+ciBxdWVzdGlvbiBidXQgcmF0aGVyIGV4cGxhaW5lZCB3aGF0IEkgc2VlIGNsaWVudA0KPiBkby4N
+Cj4gDQo+IExldCdzIG1lIHNlZSBpZiBJIGNhbiB0cnkgYWdhaW46DQo+IGluIG5mc19leGVjdXRl
+X29rKCkgdGhlIGNoZWNrIGZvciB0aGUgSU5WQUxJRF9DQUNIRSBpcyB0cnVlIHNvIHRoZQ0KPiBj
+b2RlIGNhbGxzIF9fbmZzX3JldmFsaWRhdGVfaW5vZGUoKSB3aGljaCBlbmRzIHVwIHNlbmRpbmcg
+YSBHRVRBVFRSLg0KPiBDb3VsZCBpdCBiZSB0aGF0IHdoYXQncyBoYXBwZW5pbmcgaXMgdGhhdCBH
+RVRBVFRScyByZXBseSBmb3IgdGhlDQo+IGNoYW5nZV9hdHRyIGlzIGRpZmZlcmVudCB0aGFuIHdo
+YXQgd2UgaGF2ZSBzdG9yZWQuIEJVVCB0aGF0J3MNCj4gb2J2aW91cywNCj4gd2Uga25ldyB0aGF0
+IHRvIGJlZ2luIHdpdGggc2luY2Ugd2UgYXJlIHZhbGlkYXRpbmcgdGhlIGF0dHJpYnV0ZXMuIFNv
+DQo+IHdlIHVwZGF0ZSBpdCBhbmQgdGhlbiB3ZSBzZW5kIGFub3RoZXIgR0VUQVRUUiBub3cgdGhl
+IEdFVEFUVFIgc2VuZHMNCj4gYmFjayB0aGUgInNhbWUiIGNoYW5nZV9hdHRyIGFuZCB0aGlzIHRp
+bWUgaXQgbWF0Y2hlcyB3aGF0IHdlIGhhdmUNCj4gc3RvcmVkLiBXaHkgaXMgdGhpcyAybmQgR0VU
+QVRUUiBuZWNlc3Nhcnk/IFRoZSBhdHRyaWJ1dGUgc2hvdWxkIGJlDQo+IG1hcmtlZCBhcyB2YWxp
+ZCBhZnRlciBhIGdldHRpbmcgYSBzdWNjZXNzZnVsIEdFVEFUVFIuDQo+IA0KT2guLi4gSSBzZWUg
+d2hhdCB5b3UgYXJlIHNheWluZy4gWWVzLCB0aGF0IGNoZWNrIGxvb2tzIGxpa2UgaXQgc2hvdWxk
+DQpiZSBsb29raW5nIGZvciBORlNfSU5PX0lOVkFMSURfT1RIRVIuDQoNCi0tIA0KVHJvbmQgTXlr
+bGVidXN0DQpDVE8sIEhhbW1lcnNwYWNlIEluYw0KNDMwMCBFbCBDYW1pbm8gUmVhbCwgU3VpdGUg
+MTA1DQpMb3MgQWx0b3MsIENBIDk0MDIyDQp3d3cuaGFtbWVyLnNwYWNlDQo=
