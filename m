@@ -1,76 +1,77 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ua0-f178.google.com ([209.85.217.178]:38971 "EHLO
-        mail-ua0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2387942AbeGTSPh (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 20 Jul 2018 14:15:37 -0400
-Received: by mail-ua0-f178.google.com with SMTP id g18-v6so7929619uam.6
-        for <linux-nfs@vger.kernel.org>; Fri, 20 Jul 2018 10:26:22 -0700 (PDT)
+Received: from mail-eopbgr700135.outbound.protection.outlook.com ([40.107.70.135]:40861
+        "EHLO NAM04-SN1-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1733128AbeGTSzN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 20 Jul 2018 14:55:13 -0400
+From: Trond Myklebust <trondmy@hammerspace.com>
+To: "aglo@umich.edu" <aglo@umich.edu>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: sending duplicate GETATTRs
+Date: Fri, 20 Jul 2018 18:05:46 +0000
+Message-ID: <7cccfa69267c44dbb629b154ee942df8280875bc.camel@hammerspace.com>
+References: <CAN-5tyH75NZyiZ43_--oGOcugYiyQk=soBs5XwMq91uRX4+2hA@mail.gmail.com>
+In-Reply-To: <CAN-5tyH75NZyiZ43_--oGOcugYiyQk=soBs5XwMq91uRX4+2hA@mail.gmail.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-From: Olga Kornievskaia <aglo@umich.edu>
-Date: Fri, 20 Jul 2018 13:26:21 -0400
-Message-ID: <CAN-5tyH75NZyiZ43_--oGOcugYiyQk=soBs5XwMq91uRX4+2hA@mail.gmail.com>
-Subject: sending duplicate GETATTRs
-To: Trond Myklebust <trondmy@hammerspace.com>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Trond,
-
-I would some help understanding attributes management.
-
-Right now, any time a directory inode that was marked with
-INVALID_ACCESS (say to a change_attribute changed) ends up triggering
-sending a duplicate GETATTR. I don't think that's correct.
-
-In nfs_execute_ok() we check if (nfs_check_cache_invalid(inode,
-NFS_INO_INVALID_ACCESS)) and the call __nfs_revalidate_inode() which
-will trigger GETATTR. I don't understand why after calling this
-function the INVALID_ACCESS doesn't get cleared? Because that's what
-causes the double GETATTR to be sent.
-
-On the open path, the first time the getattr is sent is in
-
-Jul 19 15:39:52 ipa18 kernel: dump_stack+0x5a/0x73
-Jul 19 15:39:52 ipa18 kernel: nfs4_proc_getattr+0x65/0x110 [nfsv4]
-Jul 19 15:39:52 ipa18 kernel: __nfs_revalidate_inode+0xe1/0x370 [nfs]
-Jul 19 15:39:52 ipa18 kernel: nfs_permission+0x16b/0x1f0 [nfs]
-Jul 19 15:39:52 ipa18 kernel: inode_permission+0xab/0x130
-Jul 19 15:39:52 ipa18 kernel: link_path_walk+0x29d/0x520
-Jul 19 15:39:52 ipa18 kernel: path_openat+0xf6/0x1230
-Jul 19 15:39:52 ipa18 kernel: do_filp_open+0x91/0x100
-Jul 19 15:39:52 ipa18 kernel: do_sys_open+0x126/0x210
-Jul 19 15:39:52 ipa18 kernel: do_syscall_64+0x55/0x180
-Jul 19 15:39:52 ipa18 kernel: entry_SYSCALL_64_after_hwframe+0x44/0xa9
-
-And then again during the open
-
-Jul 19 15:39:52 ipa18 kernel: dump_stack+0x5a/0x73
-Jul 19 15:39:52 ipa18 kernel: nfs4_proc_getattr+0x65/0x110 [nfsv4]
-Jul 19 15:39:52 ipa18 kernel: __nfs_revalidate_inode+0xe1/0x370 [nfs]
-Jul 19 15:39:52 ipa18 kernel: nfs_permission+0x16b/0x1f0 [nfs]
-Jul 19 15:39:52 ipa18 kernel: inode_permission+0xab/0x130
-Jul 19 15:39:52 ipa18 kernel: path_openat+0x942/0x1230
-Jul 19 15:39:52 ipa18 kernel: do_filp_open+0x91/0x100
-Jul 19 15:39:52 ipa18 kernel: do_sys_open+0x126/0x210
-Jul 19 15:39:52 ipa18 kernel: do_syscall_64+0x55/0x180
-Jul 19 15:39:52 ipa18 kernel: entry_SYSCALL_64_after_hwframe+0x44/0xa9
-
-Can't we remove INVALID_ACCESS after we revalidated the inode? This
-removes the duplicated GETATTRs. Is this a valid way of fixing this
-issue?
-
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 8f8e9e9..2b55a45 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -2504,6 +2504,8 @@ static int nfs_execute_ok(struct inode *inode, int mask)
-                if (mask & MAY_NOT_BLOCK)
-                        return -ECHILD;
-                ret = __nfs_revalidate_inode(server, inode);
-+               if (!ret)
-+                       NFS_I(inode)->cache_validity &= ~NFS_INO_INVALID_ACCESS;
-        }
-        if (ret == 0 && !execute_ok(inode))
-                ret = -EACCES;
+T24gRnJpLCAyMDE4LTA3LTIwIGF0IDEzOjI2IC0wNDAwLCBPbGdhIEtvcm5pZXZza2FpYSB3cm90
+ZToNCj4gSGkgVHJvbmQsDQo+IA0KPiBJIHdvdWxkIHNvbWUgaGVscCB1bmRlcnN0YW5kaW5nIGF0
+dHJpYnV0ZXMgbWFuYWdlbWVudC4NCj4gDQo+IFJpZ2h0IG5vdywgYW55IHRpbWUgYSBkaXJlY3Rv
+cnkgaW5vZGUgdGhhdCB3YXMgbWFya2VkIHdpdGgNCj4gSU5WQUxJRF9BQ0NFU1MgKHNheSB0byBh
+IGNoYW5nZV9hdHRyaWJ1dGUgY2hhbmdlZCkgZW5kcyB1cCB0cmlnZ2VyaW5nDQo+IHNlbmRpbmcg
+YSBkdXBsaWNhdGUgR0VUQVRUUi4gSSBkb24ndCB0aGluayB0aGF0J3MgY29ycmVjdC4NCj4gDQo+
+IEluIG5mc19leGVjdXRlX29rKCkgd2UgY2hlY2sgaWYgKG5mc19jaGVja19jYWNoZV9pbnZhbGlk
+KGlub2RlLA0KPiBORlNfSU5PX0lOVkFMSURfQUNDRVNTKSkgYW5kIHRoZSBjYWxsIF9fbmZzX3Jl
+dmFsaWRhdGVfaW5vZGUoKSB3aGljaA0KPiB3aWxsIHRyaWdnZXIgR0VUQVRUUi4gSSBkb24ndCB1
+bmRlcnN0YW5kIHdoeSBhZnRlciBjYWxsaW5nIHRoaXMNCj4gZnVuY3Rpb24gdGhlIElOVkFMSURf
+QUNDRVNTIGRvZXNuJ3QgZ2V0IGNsZWFyZWQ/IEJlY2F1c2UgdGhhdCdzIHdoYXQNCj4gY2F1c2Vz
+IHRoZSBkb3VibGUgR0VUQVRUUiB0byBiZSBzZW50Lg0KPiANCj4gT24gdGhlIG9wZW4gcGF0aCwg
+dGhlIGZpcnN0IHRpbWUgdGhlIGdldGF0dHIgaXMgc2VudCBpcyBpbg0KPiANCj4gSnVsIDE5IDE1
+OjM5OjUyIGlwYTE4IGtlcm5lbDogZHVtcF9zdGFjaysweDVhLzB4NzMNCj4gSnVsIDE5IDE1OjM5
+OjUyIGlwYTE4IGtlcm5lbDogbmZzNF9wcm9jX2dldGF0dHIrMHg2NS8weDExMCBbbmZzdjRdDQo+
+IEp1bCAxOSAxNTozOTo1MiBpcGExOCBrZXJuZWw6IF9fbmZzX3JldmFsaWRhdGVfaW5vZGUrMHhl
+MS8weDM3MCBbbmZzXQ0KPiBKdWwgMTkgMTU6Mzk6NTIgaXBhMTgga2VybmVsOiBuZnNfcGVybWlz
+c2lvbisweDE2Yi8weDFmMCBbbmZzXQ0KPiBKdWwgMTkgMTU6Mzk6NTIgaXBhMTgga2VybmVsOiBp
+bm9kZV9wZXJtaXNzaW9uKzB4YWIvMHgxMzANCj4gSnVsIDE5IDE1OjM5OjUyIGlwYTE4IGtlcm5l
+bDogbGlua19wYXRoX3dhbGsrMHgyOWQvMHg1MjANCj4gSnVsIDE5IDE1OjM5OjUyIGlwYTE4IGtl
+cm5lbDogcGF0aF9vcGVuYXQrMHhmNi8weDEyMzANCj4gSnVsIDE5IDE1OjM5OjUyIGlwYTE4IGtl
+cm5lbDogZG9fZmlscF9vcGVuKzB4OTEvMHgxMDANCj4gSnVsIDE5IDE1OjM5OjUyIGlwYTE4IGtl
+cm5lbDogZG9fc3lzX29wZW4rMHgxMjYvMHgyMTANCj4gSnVsIDE5IDE1OjM5OjUyIGlwYTE4IGtl
+cm5lbDogZG9fc3lzY2FsbF82NCsweDU1LzB4MTgwDQo+IEp1bCAxOSAxNTozOTo1MiBpcGExOCBr
+ZXJuZWw6DQo+IGVudHJ5X1NZU0NBTExfNjRfYWZ0ZXJfaHdmcmFtZSsweDQ0LzB4YTkNCj4gDQo+
+IEFuZCB0aGVuIGFnYWluIGR1cmluZyB0aGUgb3Blbg0KPiANCj4gSnVsIDE5IDE1OjM5OjUyIGlw
+YTE4IGtlcm5lbDogZHVtcF9zdGFjaysweDVhLzB4NzMNCj4gSnVsIDE5IDE1OjM5OjUyIGlwYTE4
+IGtlcm5lbDogbmZzNF9wcm9jX2dldGF0dHIrMHg2NS8weDExMCBbbmZzdjRdDQo+IEp1bCAxOSAx
+NTozOTo1MiBpcGExOCBrZXJuZWw6IF9fbmZzX3JldmFsaWRhdGVfaW5vZGUrMHhlMS8weDM3MCBb
+bmZzXQ0KPiBKdWwgMTkgMTU6Mzk6NTIgaXBhMTgga2VybmVsOiBuZnNfcGVybWlzc2lvbisweDE2
+Yi8weDFmMCBbbmZzXQ0KPiBKdWwgMTkgMTU6Mzk6NTIgaXBhMTgga2VybmVsOiBpbm9kZV9wZXJt
+aXNzaW9uKzB4YWIvMHgxMzANCj4gSnVsIDE5IDE1OjM5OjUyIGlwYTE4IGtlcm5lbDogcGF0aF9v
+cGVuYXQrMHg5NDIvMHgxMjMwDQo+IEp1bCAxOSAxNTozOTo1MiBpcGExOCBrZXJuZWw6IGRvX2Zp
+bHBfb3BlbisweDkxLzB4MTAwDQo+IEp1bCAxOSAxNTozOTo1MiBpcGExOCBrZXJuZWw6IGRvX3N5
+c19vcGVuKzB4MTI2LzB4MjEwDQo+IEp1bCAxOSAxNTozOTo1MiBpcGExOCBrZXJuZWw6IGRvX3N5
+c2NhbGxfNjQrMHg1NS8weDE4MA0KPiBKdWwgMTkgMTU6Mzk6NTIgaXBhMTgga2VybmVsOg0KPiBl
+bnRyeV9TWVNDQUxMXzY0X2FmdGVyX2h3ZnJhbWUrMHg0NC8weGE5DQo+IA0KPiBDYW4ndCB3ZSBy
+ZW1vdmUgSU5WQUxJRF9BQ0NFU1MgYWZ0ZXIgd2UgcmV2YWxpZGF0ZWQgdGhlIGlub2RlPyBUaGlz
+DQo+IHJlbW92ZXMgdGhlIGR1cGxpY2F0ZWQgR0VUQVRUUnMuIElzIHRoaXMgYSB2YWxpZCB3YXkg
+b2YgZml4aW5nIHRoaXMNCj4gaXNzdWU/DQo+IA0KPiBkaWZmIC0tZ2l0IGEvZnMvbmZzL2Rpci5j
+IGIvZnMvbmZzL2Rpci5jDQo+IGluZGV4IDhmOGU5ZTkuLjJiNTVhNDUgMTAwNjQ0DQo+IC0tLSBh
+L2ZzL25mcy9kaXIuYw0KPiArKysgYi9mcy9uZnMvZGlyLmMNCj4gQEAgLTI1MDQsNiArMjUwNCw4
+IEBAIHN0YXRpYyBpbnQgbmZzX2V4ZWN1dGVfb2soc3RydWN0IGlub2RlICppbm9kZSwNCj4gaW50
+IG1hc2spDQo+ICAgICAgICAgICAgICAgICBpZiAobWFzayAmIE1BWV9OT1RfQkxPQ0spDQo+ICAg
+ICAgICAgICAgICAgICAgICAgICAgIHJldHVybiAtRUNISUxEOw0KPiAgICAgICAgICAgICAgICAg
+cmV0ID0gX19uZnNfcmV2YWxpZGF0ZV9pbm9kZShzZXJ2ZXIsIGlub2RlKTsNCj4gKyAgICAgICAg
+ICAgICAgIGlmICghcmV0KQ0KPiArICAgICAgICAgICAgICAgICAgICAgICBORlNfSShpbm9kZSkt
+PmNhY2hlX3ZhbGlkaXR5ICY9DQo+IH5ORlNfSU5PX0lOVkFMSURfQUNDRVNTOw0KPiAgICAgICAg
+IH0NCj4gICAgICAgICBpZiAocmV0ID09IDAgJiYgIWV4ZWN1dGVfb2soaW5vZGUpKQ0KPiAgICAg
+ICAgICAgICAgICAgcmV0ID0gLUVBQ0NFUzsNCg0KDQpJIGRvbid0IHNlZSBob3cgdGhlIGFib3Zl
+IG1ha2VzIHNlbnNlLg0KDQpFaXRoZXIgdGhlIGF0dHJpYnV0ZSByZXZhbGlkYXRpb24gY29uZmly
+bWVkIHRoYXQgdGhlIGNoYW5nZSBhdHRyLCBtb2RlDQorIHVpZCArIGdpZCBhcmUgdW5jaGFuZ2Vk
+LCBpbiB3aGljaCBjYXNlIHRoZSBjYWxsIHRvDQpuZnNfcmVmcmVzaF9pbm9kZSgpIGR1cmluZyBy
+ZXZhbGlkYXRpb24gd2lsbCBmYWlsIHRvIHNldA0KTkZTX0lOT19JTlZBTElEX0FDQ0VTUywgb3Ig
+aXQgY29uZmlybWVkIHRoYXQgYXQgbGVhc3Qgb25lIG9mIHRoZW0gaGFzDQpjaGFuZ2VkLCBpbiB3
+aGljaCBjYXNlIHdlIGRvIHdhbnQgdG8gcmV2YWxpZGF0ZSB0aGUgYWNjZXNzIGNhY2hlLg0KDQot
+LSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBIYW1tZXJz
+cGFjZQ0KdHJvbmQubXlrbGVidXN0QGhhbW1lcnNwYWNlLmNvbQ0KDQo=
