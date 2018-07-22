@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx3-rdu2.redhat.com ([66.187.233.73]:47672 "EHLO mx1.redhat.com"
+Received: from mx3-rdu2.redhat.com ([66.187.233.73]:59856 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1728034AbeGVKXc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sun, 22 Jul 2018 06:23:32 -0400
+        id S1727774AbeGVKXd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sun, 22 Jul 2018 06:23:33 -0400
 From: jiyin@redhat.com
 To: bfields@redhat.com
 Cc: linux-nfs@vger.kernel.org, "Jianhong.Yin" <yin-jianhong@163.com>
-Subject: [PATCH 4/6] pynfs: python3 support plan: "raise E, args:" -> "raise E(args)"
-Date: Sun, 22 Jul 2018 17:27:08 +0800
-Message-Id: <20180722092710.17521-4-jiyin@redhat.com>
+Subject: [PATCH 5/6] pynfs: python3 support plan: remove suffix 'L' of long integer
+Date: Sun, 22 Jul 2018 17:27:09 +0800
+Message-Id: <20180722092710.17521-5-jiyin@redhat.com>
 In-Reply-To: <20180722092710.17521-1-jiyin@redhat.com>
 References: <20180722092710.17521-1-jiyin@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -16,388 +16,431 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 From: "Jianhong.Yin" <yin-jianhong@163.com>
 
-'/raise / { :loop /[^\\]$/! {N; b loop};
-  s/\<raise  *([[:alnum:]]+), *(.+)$/raise \1(\2)/;
-  s/%sraise  *([[:alnum:]]+), *([^"]+)\\n"/%sraise \1(\2)\\n"/; }'
+s/(0x[[:xdigit:]]+)L\>/\1/g
+s/(\<[[:digit:]]+)L\>/\1/g
 
 Signed-off-by: Jianhong Yin <yin-jianhong@163.com>
 ---
- nfs4.0/lib/rpc/rpcsec/sec_auth_gss.py | 52 +++++++++++++--------------
- nfs4.0/nfs4state.py                   | 28 +++++++--------
- nfs4.1/config.py                      |  2 +-
- nfs4.1/nfs4state.py                   |  4 +--
- xdr/xdrgen.py                         | 22 ++++++------
- 5 files changed, 54 insertions(+), 54 deletions(-)
+ nfs4.0/lib/rpc/rpc.py                 | 14 +++++++-------
+ nfs4.0/lib/rpc/rpcsec/sec_auth_gss.py |  2 +-
+ nfs4.0/nfs4lib.py                     |  8 ++++----
+ nfs4.0/nfs4server.py                  |  6 +++---
+ nfs4.0/nfs4state.py                   |  4 ++--
+ nfs4.0/servertests/environment.py     |  2 +-
+ nfs4.0/servertests/st_commit.py       |  8 ++++----
+ nfs4.1/client41tests/environment.py   |  2 +-
+ nfs4.1/dataserver.py                  |  2 +-
+ nfs4.1/fs.py                          |  2 +-
+ nfs4.1/nfs4client.py                  |  2 +-
+ nfs4.1/nfs4lib.py                     | 10 +++++-----
+ nfs4.1/nfs4server.py                  |  4 ++--
+ nfs4.1/server41tests/environment.py   |  4 ++--
+ nfs4.1/server41tests/st_debug.py      |  2 +-
+ nfs4.1/testmod.py                     |  2 +-
+ rpc/rpc.py                            |  8 ++++----
+ 17 files changed, 41 insertions(+), 41 deletions(-)
 
+diff --git a/nfs4.0/lib/rpc/rpc.py b/nfs4.0/lib/rpc/rpc.py
+index 83a51c4..d9c1401 100644
+--- a/nfs4.0/lib/rpc/rpc.py
++++ b/nfs4.0/lib/rpc/rpc.py
+@@ -157,9 +157,9 @@ def _recv_record(self):
+     while not last:
+         rec_mark = self.recv_all(4)
+         count = struct.unpack('>L', rec_mark)[0]
+-        last = count & 0x80000000L
++        last = count & 0x80000000
+         if last:
+-            count &= 0x7fffffffL
++            count &= 0x7fffffff
+         data += self.recv_all(count)
+     return data
+ 
+@@ -171,7 +171,7 @@ def _send_record(self, data, chunksize=2048):
+         chunk = data[i:i+chunksize]
+         i += chunksize
+         if i >= dlen:
+-            last = 0x80000000L
++            last = 0x80000000
+         mark = struct.pack('>L', last | len(chunk))
+         self.sendall(mark + chunk)
+ 
+@@ -202,7 +202,7 @@ class RPCClient(object):
+         self._rpcunpacker = {t : rpc_pack.RPCUnpacker('')}
+         self.default_prog = program
+         self.default_vers = version
+-        self.xid = 0L
++        self.xid = 0
+         self._xidlist = {}
+         if sec_list is None:
+             sec_list = [SecAuthNone()]
+@@ -558,8 +558,8 @@ class RPCServer(Server):
+             str = self.readbufs[fd]
+             if len(str) >= 4:
+                 packetlen = struct.unpack('>L', str[0:4])[0]
+-                last = 0x80000000L & packetlen
+-                packetlen &= 0x7fffffffL
++                last = 0x80000000 & packetlen
++                packetlen &= 0x7fffffff
+                 if len(str) >= 4 + packetlen:
+                     self.packetbufs[fd].append(str[4:4 + packetlen])
+                     self.readbufs[fd] = str[4 + packetlen:]
+@@ -593,7 +593,7 @@ class RPCServer(Server):
+                 last = 0
+                 self.recordbufs[fd][0] = data[chunksize:]
+             else:
+-                last = 0x80000000L
++                last = 0x80000000
+                 del self.recordbufs[fd][0]
+             mark = struct.pack('>L', last | len(chunk))
+             self.writebufs[fd] = (mark + chunk)
 diff --git a/nfs4.0/lib/rpc/rpcsec/sec_auth_gss.py b/nfs4.0/lib/rpc/rpcsec/sec_auth_gss.py
-index 2c68875..6351355 100644
+index 6351355..ee6ad53 100644
 --- a/nfs4.0/lib/rpc/rpcsec/sec_auth_gss.py
 +++ b/nfs4.0/lib/rpc/rpcsec/sec_auth_gss.py
-@@ -127,8 +127,8 @@ class SecAuthGss(SecFlavor):
-         self.gss_seq_num = 0
-         d = gssapi.importName("nfs@%s" % client.remotehost)
-         if d['major'] != gssapi.GSS_S_COMPLETE:
--            raise SecError, "gssapi.importName returned: %s" % \
--                  show_major(d['major'])
-+            raise SecError("gssapi.importName returned: %s" % \
-+                  show_major(d['major']))
-         name = d['name']
-         # We need to send NULLPROCs with token from initSecContext
-         good_major = [gssapi.GSS_S_COMPLETE, gssapi.GSS_S_CONTINUE_NEEDED]
-@@ -141,11 +141,11 @@ class SecAuthGss(SecFlavor):
-             major = d['major']
-             context = d['context']
-             if major not in good_major:
--                raise SecError, "gssapi.initSecContext returned: %s" % \
--                      show_major(major)
-+                raise SecError("gssapi.initSecContext returned: %s" % \
-+                      show_major(major))
-             if (major == gssapi.GSS_S_CONTINUE_NEEDED) and \
-                    (reply_major == gssapi.GSS_S_COMPLETE):
--                raise SecError, "Unexpected GSS_S_COMPLETE from server"
-+                raise SecError("Unexpected GSS_S_COMPLETE from server")
-             token = d['token']
-             if reply_major != gssapi.GSS_S_COMPLETE:
-                 # FRED - sec 5.2.2 of RFC 2203 mentions possibility that
-@@ -161,13 +161,13 @@ class SecAuthGss(SecFlavor):
-                 up.done()
-                 reply_major = res.gss_major
-                 if reply_major not in good_major:
--                    raise SecError, "Server returned: %s" % \
--                          show_major(reply_major)
-+                    raise SecError("Server returned: %s" % \
-+                          show_major(reply_major))
-                 self.init = 2
-                 reply_token = res.gss_token
-             if major == gssapi.GSS_S_COMPLETE:
-                 if reply_major != gssapi.GSS_S_COMPLETE:
--                    raise SecError, "Unexpected COMPLETE from client"
-+                    raise SecError("Unexpected COMPLETE from client")
-                 break
-         self.gss_context = context
-         self.gss_handle = res.handle
-@@ -240,8 +240,8 @@ class SecAuthGss(SecFlavor):
-             d = gssapi.getMIC(self.gss_context, data)
-             major = d['major']
-             if major != gssapi.GSS_S_COMPLETE:
--                raise SecError, "gssapi.getMIC returned: %s" % \
--                      show_major(major)
-+                raise SecError("gssapi.getMIC returned: %s" % \
-+                      show_major(major))
-             return opaque_auth(RPCSEC_GSS, d['token'])
-         
-     def _make_cred_gss(self, handle, service, gss_proc=RPCSEC_GSS_DATA, seq=0):
-@@ -266,8 +266,8 @@ class SecAuthGss(SecFlavor):
-             data = p.get_buffer() + data
-             d = gssapi.getMIC(self.gss_context, data)
-             if d['major'] != gssapi.GSS_S_COMPLETE:
--                raise SecError, "gssapi.getMIC returned: %s" % \
--                      show_major(d['major'])
-+                raise SecError("gssapi.getMIC returned: %s" % \
-+                      show_major(d['major']))
-             p.reset()
-             p.pack_opaque(data)
-             p.pack_opaque(d['token'])
-@@ -280,14 +280,14 @@ class SecAuthGss(SecFlavor):
-             data = p.get_buffer() + data
-             d = gssapi.wrap(self.gss_context, data)
-             if d['major'] != gssapi.GSS_S_COMPLETE:
--                raise SecError, "gssapi.wrap returned: %s" % \
--                      show_major(d['major'])
-+                raise SecError("gssapi.wrap returned: %s" % \
-+                      show_major(d['major']))
-             p.reset()
-             p.pack_opaque(d['msg'])
-             data = p.get_buffer()
-         else:
-             # Not really necessary, should have already raised XDRError
--            raise SecError, "Unknown service %i for RPCSEC_GSS" % gss_cred.service
-+            raise SecError("Unknown service %i for RPCSEC_GSS" % gss_cred.service)
-         return data
+@@ -72,7 +72,7 @@ def show_major(m):
+     """Return string corresponding to major code"""
+     if m == 0:
+         return gss_major_codes[0]
+-    call = m & 0xff000000L
++    call = m & 0xff000000
+     routine = m & 0xff0000
+     supp = m & 0xffff
+     out = []
+diff --git a/nfs4.0/nfs4lib.py b/nfs4.0/nfs4lib.py
+index a0fdce1..d255eb7 100644
+--- a/nfs4.0/nfs4lib.py
++++ b/nfs4.0/nfs4lib.py
+@@ -93,7 +93,7 @@ class FancyNFS4Packer(nfs4_pack.NFS4Packer):
+     def filter_bitmap4(self, data):
+         out = []
+         while data:
+-            out.append(data & 0xffffffffL)
++            out.append(data & 0xffffffff)
+             data >>= 32
+         return out
  
-     def unsecure_data(self, data, cred):
-@@ -305,14 +305,14 @@ class SecAuthGss(SecFlavor):
-             p.done()
-             d = gssapi.verifyMIC(self.gss_context, data, checksum)
-             if d['major'] != gssapi.GSS_S_COMPLETE:
--                raise SecError, "gssapi.verifyMIC returned: %s" % \
--                      show_major(d['major'])
-+                raise SecError("gssapi.verifyMIC returned: %s" % \
-+                      show_major(d['major']))
-             p.reset(data)
-             seqnum = p.unpack_uint()
-             if seqnum != gss_cred.seq_num:
--                raise SecError, \
-+                raise SecError(\
-                       "Mismatched seqnum in reply: got %i, expected %i" % \
--                      (seqnum, gss_cred.seq_num)
-+                      (seqnum, gss_cred.seq_num))
-             data = p.get_buffer()[p.get_position():]
-         elif gss_cred.service == rpc_gss_svc_privacy:
-             # data = opaque[wrap([gss_seq_num+data])]
-@@ -322,18 +322,18 @@ class SecAuthGss(SecFlavor):
-             p.done()
-             d = gssapi.unwrap(self.gss_context, data)
-             if d['major'] != gssapi.GSS_S_COMPLETE:
--                raise SecError, "gssapi.unwrap returned %s" % \
--                      show_major(d['major'])
-+                raise SecError("gssapi.unwrap returned %s" % \
-+                      show_major(d['major']))
-             p.reset(d['msg'])
-             seqnum = p.unpack_uint()
-             if seqnum != gss_cred.seq_num:
--                raise SecError, \
-+                raise SecError(\
-                       "Mismatched seqnum in reply: got %i, expected %i" % \
--                      (seqnum, self.gss_cred.seq_num)
-+                      (seqnum, self.gss_cred.seq_num))
-             data = p.get_buffer()[p.get_position():]
-         else:
-             # Not really necessary, should have already raised XDRError
--            raise SecError, "Unknown service %i for RPCSEC_GSS" % gss_cred.service
-+            raise SecError("Unknown service %i for RPCSEC_GSS" % gss_cred.service)
-         return data
+@@ -108,7 +108,7 @@ class FancyNFS4Packer(nfs4_pack.NFS4Packer):
+ class FancyNFS4Unpacker(nfs4_pack.NFS4Unpacker):
+     def filter_bitmap4(self, data):
+         """Put bitmap into single long, instead of array of 32bit chunks"""
+-        out = 0L
++        out = 0
+         shift = 0
+         for i in data:
+             out |= (long(i) << shift)
+@@ -1006,9 +1006,9 @@ def fattr2dict(obj):
  
-     def _gss_cred_from_opaque_auth(self, auth):
-@@ -361,8 +361,8 @@ class SecAuthGss(SecFlavor):
-         p.pack_uint(i)
-         d = gssapi.getMIC(self.gss_context, p.get_buffer())
-         if d['major'] != gssapi.GSS_S_COMPLETE:
--            raise SecError, "gssapi.getMIC returned: %s" % \
--                  show_major(d['major'])
-+            raise SecError("gssapi.getMIC returned: %s" % \
-+                  show_major(d['major']))
-         return opaque_auth(RPCSEC_GSS, d['token'])
+ def list2bitmap(list):
+     """Construct a bitmap from a list of bit numbers"""
+-    mask = 0L
++    mask = 0
+     for bit in list:
+-        mask |= 1L << bit
++        mask |= 1 << bit
+     return mask
  
-     def check_verf(self, rverf, cred):
+ def bitmap2list(bitmap):
+diff --git a/nfs4.0/nfs4server.py b/nfs4.0/nfs4server.py
+index cb3ea72..163bd60 100755
+--- a/nfs4.0/nfs4server.py
++++ b/nfs4.0/nfs4server.py
+@@ -475,7 +475,7 @@ class NFS4Server(rpc.RPCServer):
+             e = verify_name(filename)
+             if e: raise NFS4Error(e)
+             # At this point we know it is CLAIM_NULL with valid filename and cfh
+-            attrset = 0L
++            attrset = 0
+             ci_old = self.curr_fh.fattr4_change
+             if op.opopen.openhow.opentype == OPEN4_CREATE:
+                 print("  CREATING FILE.")
+@@ -812,13 +812,13 @@ class NFS4Server(rpc.RPCServer):
+         print("  CURRENT FILEHANDLE: %s" % repr(self.curr_fh))
+         print(op.opsetattr.obj_attributes)
+         if not self.curr_fh:
+-            return simple_error(NFS4ERR_NOFILEHANDLE, 0L)
++            return simple_error(NFS4ERR_NOFILEHANDLE, 0)
+         try:
+             attrdict = op.opsetattr.obj_attributes
+             if FATTR4_SIZE in attrdict:
+                 # This counts as a write, so must do some checking
+                 if self.curr_fh.get_type() != NF4REG:
+-                    return simple_error(NFS4ERR_BAD_STATEID, 0L)
++                    return simple_error(NFS4ERR_BAD_STATEID, 0)
+                 oldsize = self.curr_fh.fattr4_size
+                 newsize = attrdict[FATTR4_SIZE]
+                 if oldsize <= newsize:
 diff --git a/nfs4.0/nfs4state.py b/nfs4.0/nfs4state.py
-index 064aadd..e854b3b 100755
+index e854b3b..484a284 100755
 --- a/nfs4.0/nfs4state.py
 +++ b/nfs4.0/nfs4state.py
-@@ -146,7 +146,7 @@ class NFSServerState:
+@@ -26,7 +26,7 @@ POSIXLOCK = True # If True, allow locks to be split/joined automatically
+ POSIXACL = True # If True, forces acls to follow posix mapping rules
  
-         def addentry(self, entry):
-             if not isinstance(entry, self.CacheEntry):
--                raise TypeError, "Bad entry: %s" % str(entry)
-+                raise TypeError("Bad entry: %s" % str(entry))
-             if self.exists(x=entry.x) or self.exists(c=entry.c):
-                 raise "Bad Cache"
-             self.list.append(entry)
-@@ -200,7 +200,7 @@ class NFSServerState:
-             elif isinstance(owner, lock_owner4):
-                 self.openid = openid
-             else:
--                raise TypeError, "Passed in owner = %s" % str(owner)
-+                raise TypeError("Passed in owner = %s" % str(owner))
-             # An owner is confirmed with OpenConfirm, a lock by sending stateid
-             self.confirmed = False
-             self.owner = owner
-@@ -323,7 +323,7 @@ class NFSServerState:
-         Conflict will raise NFS4Error.
-         """
-         if not isinstance(owner, open_owner4):
--            raise TypeError, "Owner was given as %s" % str(owner)
-+            raise TypeError("Owner was given as %s" % str(owner))
-         info = self.__getinfo(owner)
-         if not info.confirmed:
-             # Remove any pending open (RFC 3530 sec 14.2.18)
-@@ -380,7 +380,7 @@ class NFSServerState:
-     def __state2id(self, stateid, checkseq=False):
-         """Translate nfs4 stateid to internal id"""
-         if not isinstance(stateid, stateid4):
--            raise TypeError, "State was given as %s" % str(stateid)
-+            raise TypeError("State was given as %s" % str(stateid))
+ class NFS4Error(Exception):
+-    def __init__(self, code, msg=None, attrs=0L, lock_denied=None):
++    def __init__(self, code, msg=None, attrs=0, lock_denied=None):
+         self.code = code
+         self.name = nfsstat4[code]
+         if msg is None:
+@@ -384,7 +384,7 @@ class NFSServerState:
          # Check for special stateids
          if stateid.seqid==0 and stateid.other==chr(0)*12:
              return 0
-@@ -407,11 +407,11 @@ class NFSServerState:
-         info = self.__owner2info(owner, allownew)
+-        if stateid.seqid==0xffffffffL and stateid.other==chr(0xff)*12:
++        if stateid.seqid==0xffffffff and stateid.other==chr(0xff)*12:
+             return 1
+         # Check for self consistency
+         if stateid.other[:4] != self.instance:
+diff --git a/nfs4.0/servertests/environment.py b/nfs4.0/servertests/environment.py
+index a848ed4..a5cfe60 100644
+--- a/nfs4.0/servertests/environment.py
++++ b/nfs4.0/servertests/environment.py
+@@ -119,7 +119,7 @@ class Environment(testmod.Environment):
+         self.filedata = "This is the file test data."
+         self.linkdata = "/etc/X11"
+         self.stateid0 = stateid4(0, '')
+-        self.stateid1 = stateid4(0xffffffffL, '\xff'*12)
++        self.stateid1 = stateid4(0xffffffff, '\xff'*12)
+ 
+     def _get_security(self, opts):
+         if opts.security == 'none':
+diff --git a/nfs4.0/servertests/st_commit.py b/nfs4.0/servertests/st_commit.py
+index e903739..eecf2c8 100644
+--- a/nfs4.0/servertests/st_commit.py
++++ b/nfs4.0/servertests/st_commit.py
+@@ -42,7 +42,7 @@ def testCommitOffsetMax1(t, env):
+     DEPEND: MKFILE
+     CODE: CMT1c
+     """
+-    _commit(t, env.c1, 0xffffffffffffffffL, statlist=[NFS4_OK, NFS4ERR_INVAL])
++    _commit(t, env.c1, 0xffffffffffffffff, statlist=[NFS4_OK, NFS4ERR_INVAL])
+ 
+ def testCommitOffsetMax2(t, env):
+     """COMMIT
+@@ -51,7 +51,7 @@ def testCommitOffsetMax2(t, env):
+     DEPEND: MKFILE
+     CODE: CMT1d
+     """
+-    _commit(t, env.c1, 0xfffffffffffffffeL, statlist=[NFS4_OK, NFS4ERR_INVAL])
++    _commit(t, env.c1, 0xfffffffffffffffe, statlist=[NFS4_OK, NFS4ERR_INVAL])
+ 
+ def testCommitCount1(t, env):
+     """COMMIT
+@@ -69,7 +69,7 @@ def testCommitCountMax(t, env):
+     DEPEND: MKFILE
+     CODE: CMT1f
+     """
+-    _commit(t, env.c1, 0, 0xffffffffL)
++    _commit(t, env.c1, 0, 0xffffffff)
+ 
+ def testLink(t, env):
+     """COMMIT
+@@ -159,5 +159,5 @@ def testCommitOverflow(t, env):
+     fh, stateid = c.create_confirm(t.code)
+     res = c.write_file(fh, _text, 0, stateid, how=UNSTABLE4)
+     check(res, msg="WRITE with how=UNSTABLE4")
+-    res = c.commit_file(fh, 0xfffffffffffffff0L, 64)
++    res = c.commit_file(fh, 0xfffffffffffffff0, 64)
+     check(res, NFS4ERR_INVAL, "COMMIT with offset + count overflow")
+diff --git a/nfs4.1/client41tests/environment.py b/nfs4.1/client41tests/environment.py
+index 6b48d12..7c7bb0c 100644
+--- a/nfs4.1/client41tests/environment.py
++++ b/nfs4.1/client41tests/environment.py
+@@ -373,7 +373,7 @@ def clean_dir(sess, path):
+             res = sess.compound(ops)
+         check(res, msg="Trying to remove %s" % repr(e.name))
+ 
+-def do_readdir(sess, file, cookie=0, cookieverf='', attrs=0L,
++def do_readdir(sess, file, cookie=0, cookieverf='', attrs=0,
+                dircount=4096, maxcount=4096):
+     # Since we may not get whole directory listing in one readdir request,
+     # loop until we do. For each request result, create a flat list
+diff --git a/nfs4.1/dataserver.py b/nfs4.1/dataserver.py
+index f32f3d7..80179f8 100644
+--- a/nfs4.1/dataserver.py
++++ b/nfs4.1/dataserver.py
+@@ -206,7 +206,7 @@ class DataServer41(DataServer):
+ 
+     def get_size(self, fh):
+         ops = [op4.putfh(fh),
+-               op4.getattr(1L << const4.FATTR4_SIZE)]
++               op4.getattr(1 << const4.FATTR4_SIZE)]
+         res = self._execute(ops)
+         attrdict = res.resarray[-1].obj_attributes
+         return attrdict.get(const4.FATTR4_SIZE, 0)
+diff --git a/nfs4.1/fs.py b/nfs4.1/fs.py
+index d9b58f2..b0b06d5 100644
+--- a/nfs4.1/fs.py
++++ b/nfs4.1/fs.py
+@@ -306,7 +306,7 @@ class FSObject(object):
+         # STUB - need to check principal, and set owner/group if needed
+         log_o.log(5, "FSObject.set_attrs(%r)" % attrs)
+         info = nfs4lib.attr_info
+-        bitmap = 0L
++        bitmap = 0
          try:
-             if fh is None:
--                raise ValueError, "File is None"
-+                raise ValueError("File is None")
-             return info.files[fh.handle]
-         except KeyError:
-             if not allownew:
--                raise ValueError, "File %s not open for %s" % (fh.name, info)
-+                raise ValueError("File %s not open for %s" % (fh.name, info))
-             #print("Creating new id %i for fh %s" % (self.next_id, fh.handle))
-             id = info.files[fh.handle] = self.next_id
-             self.next_id += 1
-@@ -428,12 +428,12 @@ class NFSServerState:
-         elif isinstance(owner, lock_owner4):
-             ownerdict = self.lockowners
-         else:
--            raise TypeError, "Gave owner as %s" % str(owner)
-+            raise TypeError("Gave owner as %s" % str(owner))
-         self.__check_clientid(owner.clientid)
-         try:
-             info = ownerdict[owner.clientid][owner.owner]
-         except KeyError:
--            if not allownew: raise ValueError, "Unknown owner %s" % str(owner)
-+            if not allownew: raise ValueError("Unknown owner %s" % str(owner))
-             #print("Creating new info")
-             info = self.OwnerInfo(owner)
-             if owner.clientid in ownerdict:
-@@ -694,8 +694,8 @@ class NFSFileState:
-             self.start = start
-             self.end = end
-             if start < 0 or end < start:
--                raise ValueError, "Bad values for start and end (%s, %s)" % \
--                                  (start, end)
-+                raise ValueError("Bad values for start and end (%s, %s)" % \
-+                                  (start, end))
+             for attr in attrs:
+                 if self.fs.fattr4_supported_attrs & attr == 0:
+diff --git a/nfs4.1/nfs4client.py b/nfs4.1/nfs4client.py
+index 708850d..135981d 100644
+--- a/nfs4.1/nfs4client.py
++++ b/nfs4.1/nfs4client.py
+@@ -611,7 +611,7 @@ sha256 = '`\x86H\x01e\x03\x04\x02\x01'
+ binding_opts = conn_binding4args(True, ["gibberish", sha256])
+ fore_attrs = channel_attrs4(4096,4096,4096,128,8,[])
+ cb_sec= callback_sec_parms4(0)
+-C.compound([C.create_session_op(0,1,0L,0,binding_opts, fore_attrs, fore_attrs,123,[cb_sec])])
++C.compound([C.create_session_op(0,1,0,0,binding_opts, fore_attrs, fore_attrs,123,[cb_sec])])
+ """
  
-         def __repr__(self):
-             if self.type & 1: str = "READ"
-@@ -1478,7 +1478,7 @@ class DirList:
-         for x in self.list:
-             if x.name == name:
-                 return x.fh
--        raise KeyError, "Invalid key %s" % name
-+        raise KeyError("Invalid key %s" % name)
+ """ SEQUENCE
+diff --git a/nfs4.1/nfs4lib.py b/nfs4.1/nfs4lib.py
+index 96752c2..20eae0f 100644
+--- a/nfs4.1/nfs4lib.py
++++ b/nfs4.1/nfs4lib.py
+@@ -194,7 +194,7 @@ class FancyNFS4Packer(NFS4Packer):
+     def filter_bitmap4(self, data):
+         out = []
+         while data:
+-            out.append(data & 0xffffffffL)
++            out.append(data & 0xffffffff)
+             data >>= 32
+         return out
  
-     def __setitem__(self, name, fh):
-         """Allows self[name] = fh"""
-@@ -1499,18 +1499,18 @@ class DirList:
-             if x.name == name:
-                 self.list.remove(x)
-                 return
--        raise KeyError, "Invalid key %s" % name
-+        raise KeyError("Invalid key %s" % name)
+@@ -217,7 +217,7 @@ class FancyNFS4Packer(NFS4Packer):
+ class FancyNFS4Unpacker(NFS4Unpacker):
+     def filter_bitmap4(self, data):
+         """Put bitmap into single long, instead of array of 32bit chunks"""
+-        out = 0L
++        out = 0
+         shift = 0
+         for i in data:
+             out |= (long(i) << shift)
+@@ -276,9 +276,9 @@ def fattr2dict(obj):
  
-     def getcookie(self, name):
-         for x in self.list:
-             if x.name == name:
-                 return x.cookie
--        raise KeyError, "Invalid key %s" % name
-+        raise KeyError("Invalid key %s" % name)
+ def list2bitmap(list):
+     """Construct a bitmap from a list of bit numbers"""
+-    mask = 0L
++    mask = 0
+     for bit in list:
+-        mask |= 1L << bit
++        mask |= 1 << bit
+     return mask
  
-     def readdir(self, cookie):
-         """Returns DirEnt list containing all entries larger than cookie"""
-         if cookie < 0 or cookie > self.__lastcookie:
--            raise IndexError, "Invalid cookie %i" % cookie
-+            raise IndexError("Invalid cookie %i" % cookie)
-         i = None
-         for x in self.list:
-             if x.cookie > cookie:
-diff --git a/nfs4.1/config.py b/nfs4.1/config.py
-index 23b5b9a..b4a45d7 100644
---- a/nfs4.1/config.py
-+++ b/nfs4.1/config.py
-@@ -56,7 +56,7 @@ def _opline(value):
-         l = value
-     else:
-         print('                 OPLINE type ', type(value))
--        raise TypeError, 'Only type list or str accepted'
-+        raise TypeError('Only type list or str accepted')
-     if l[0] == "ERROR":
-         if not len(l) == 3:
-             print('                 OPLINE length ', len)
-diff --git a/nfs4.1/nfs4state.py b/nfs4.1/nfs4state.py
-index 2214c0d..95f84df 100644
---- a/nfs4.1/nfs4state.py
-+++ b/nfs4.1/nfs4state.py
-@@ -99,8 +99,8 @@ class ByteLock(object):
-         self.start = start
-         self.end = end
-         if start < 0 or end < start:
--            raise ValueError, "Bad values for start and end (%s, %s)" % \
--                              (start, end)
-+            raise ValueError("Bad values for start and end (%s, %s)" % \
-+                              (start, end))
+ def bitmap2list(bitmap):
+@@ -565,7 +565,7 @@ def attr_name(bitnum):
+     return bitnum2attr.get(bitnum, "unknown_%r" % bitnum)
  
-     def __repr__(self):
-         str = ("WRITE" if self.iswrite else "READ")
-diff --git a/xdr/xdrgen.py b/xdr/xdrgen.py
-index 6353835..0aa1a52 100755
---- a/xdr/xdrgen.py
-+++ b/xdr/xdrgen.py
-@@ -819,7 +819,7 @@ class Info(object):
-                         (prefix, self.id)
-                 if self.len is not None:
-                     limit = "%sif len(data) > %s:\n" \
--                            "%s%sraise XDRError, 'array length too long'\n" %\
-+                            "%s%sraise XDRError('array length too long')\n" %\
-                             (prefix, self.fullname(self.len), prefix, varindent)
-                     array = limit + array
-         else:
-@@ -846,7 +846,7 @@ class Info(object):
-                          (prefix, newdata, self.id)
-                 if self.len is not None:
-                     limit = "%sif len(%s) > %s:\n" \
--                            "%s%sraise XDRError, 'array length too long'\n" %\
-+                            "%s%sraise XDRError('array length too long')\n" %\
-                             (prefix, newdata, self.fullname(self.len), prefix, indent)
-                     array += limit
-             newdata = 'data'
-@@ -858,7 +858,7 @@ class Info(object):
-         prefix, data, subheader, array = self._array_pack(prefix, data)
-         varlist = ["const.%s" % l.id for l in self.body]
-         check = "%sif self.check_enum and %s not in [%s]:\n" \
--                "%s%sraise XDRError, 'value=%%s not in enum %s' %% %s\n" % \
-+                "%s%sraise XDRError('value=%%s not in enum %s' %% %s)\n" % \
-                 (prefix, data, ', '.join(varlist),
-                  prefix, indent, self.id, data)
-         pack = check + "%sself.pack_int(%s)\n" % (prefix, data)
-@@ -868,7 +868,7 @@ class Info(object):
-         prefix, data, subheader, array = self._array_unpack(prefix, data)
-         varlist = ["const.%s" % l.id for l in self.body]
-         check = "%sif self.check_enum and %s not in [%s]:\n" \
--                "%s%sraise XDRError, 'value=%%s not in enum %s' %% %s\n" % \
-+                "%s%sraise XDRError('value=%%s not in enum %s' %% %s)\n" % \
-                 (prefix, data, ', '.join(varlist),
-                  prefix, indent, self.id, data)
-         unpack = "%s%s = self.unpack_int()\n" % (prefix, data)
-@@ -908,7 +908,7 @@ class Info(object):
-         if default != []:
-             pack += default[0].packout(prefix + indent, data)
-         else:
--            pack += "%s%sraise XDRError, 'bad switch=%%s' %% %s.%s\n" % \
-+            pack += "%s%sraise XDRError('bad switch=%%s' %% %s.%s)\n" % \
-                     (prefix, indent, data, switch.id)
-         return subheader + pack + array
+ class NFS4Error(Exception):
+-    def __init__(self, status, attrs=0L, lock_denied=None, tag=None, check_msg=None):
++    def __init__(self, status, attrs=0, lock_denied=None, tag=None, check_msg=None):
+         self.status = status
+         self.name = xdrdef.nfs4_const.nfsstat4[status]
+         if check_msg is None:
+diff --git a/nfs4.1/nfs4server.py b/nfs4.1/nfs4server.py
+index f8bd251..cd78082 100755
+--- a/nfs4.1/nfs4server.py
++++ b/nfs4.1/nfs4server.py
+@@ -212,7 +212,7 @@ class ClientList(object):
+     def __init__(self):
+         self._data = {}
+         self.lock = Lock("ClientList")
+-        self._nextid = 0L
++        self._nextid = 0
  
-@@ -950,7 +950,7 @@ class Info(object):
- ##                       (prefix, indent, data, data, default[0].id)
- ##             unpack += arm
-         else:
--            unpack += "%s%sraise XDRError, 'bad switch=%%s' %% %s.%s\n" % \
-+            unpack += "%s%sraise XDRError('bad switch=%%s' %% %s.%s)\n" % \
-                       (prefix, indent, data, switch.id)
-             
-         return subheader + unpack + array
-@@ -1220,7 +1220,7 @@ class type_info(Info):
+     def __getitem__(self, key):
+         return self._data.get(key)
+@@ -1381,7 +1381,7 @@ class NFS4Server(rpc.Server):
  
-     def packout(self, prefix='', data='data'):
-         check = "%sif %s.%s is None:\n" \
--                "%s%sraise TypeError, '%s.%s == None'\n" % \
-+                "%s%sraise TypeError('%s.%s == None')\n" % \
-                 (prefix, data, self.id, prefix, indent, data, self.id)
-         if self.type == 'void':
-             return prefix + 'pass\n'
-@@ -1279,8 +1279,8 @@ class type_info(Info):
-             limit = ''
-         else:
-             limit = "%sif len(%s) > %s and self.check_array:\n" \
--                    "%s%sraise XDRError, " \
--                    "'array length too long for %s'\n" % \
-+                    "%s%sraise XDRError(" \
-+                    "'array length too long for %s')\n" % \
-                     (prefix, data, self.fullname(self.len), prefix, indent, data)
-         if self.fixed:
-             fixchar = 'f'
-@@ -1303,8 +1303,8 @@ class type_info(Info):
-             limit = ''
-         else:
-             limit = "%sif len(%s) > %s and self.check_array:\n" \
--                    "%s%sraise XDRError, " \
--                    "'array length too long for %s'\n" % \
-+                    "%s%sraise XDRError(" \
-+                    "'array length too long for %s')\n" % \
-                     (prefix, data, self.fullname(self.len), prefix, indent, data)
-         if self.fixed:
-             fixchar = 'f'
+     def open_claim_null(self, arg, env):
+         """Simulated switch function from op_open that handles CLAIM_NULL"""
+-        bitmask = 0L
++        bitmask = 0
+         # cfh holds dir, claim.file holds name
+         if not env.cfh.isdir:
+             raise NFS4Error(NFS4ERR_NOTDIR)
+diff --git a/nfs4.1/server41tests/environment.py b/nfs4.1/server41tests/environment.py
+index 1a837ee..823dfe3 100644
+--- a/nfs4.1/server41tests/environment.py
++++ b/nfs4.1/server41tests/environment.py
+@@ -139,7 +139,7 @@ class Environment(testmod.Environment):
+         self.filedata = "This is the file test data."
+         self.linkdata = "/etc/X11"
+         self.stateid0 = stateid4(0, '')
+-        self.stateid1 = stateid4(0xffffffffL, '\xff'*12)
++        self.stateid1 = stateid4(0xffffffff, '\xff'*12)
+ 
+         log.info("Created client to %s, %i" % (opts.server, opts.port))
+ 
+@@ -429,7 +429,7 @@ def clean_dir(sess, path):
+             res = sess.compound(ops)
+         check(res, msg="Trying to remove %s" % repr(e.name))
+ 
+-def do_readdir(sess, file, cookie=0, cookieverf='', attrs=0L,
++def do_readdir(sess, file, cookie=0, cookieverf='', attrs=0,
+                dircount=4096, maxcount=4096):
+     # Since we may not get whole directory listing in one readdir request,
+     # loop until we do. For each request result, create a flat list
+diff --git a/nfs4.1/server41tests/st_debug.py b/nfs4.1/server41tests/st_debug.py
+index e34d03f..345fc77 100644
+--- a/nfs4.1/server41tests/st_debug.py
++++ b/nfs4.1/server41tests/st_debug.py
+@@ -89,7 +89,7 @@ def testDeadlock(t, env):
+     def ops(i):
+         return [op.putfh(fh),
+                 op.write(stateid, i*1000, UNSTABLE4, chr(97+i)*100),
+-                op.getattr(42950721818L)
++                op.getattr(42950721818)
+                 ]
+     xids = [sess1.compound_async(ops(i), slot=i) for i in range(4)]
+     for xid in xids:
+diff --git a/nfs4.1/testmod.py b/nfs4.1/testmod.py
+index 8108a23..21e9915 100644
+--- a/nfs4.1/testmod.py
++++ b/nfs4.1/testmod.py
+@@ -374,7 +374,7 @@ def createtests(testdir):
+     # Reduce doc string info into format easier to work with
+     used_codes = {}
+     flag_dict = {}
+-    bit = 1L
++    bit = 1
+     for t in tests:
+ ##         if not t.flags_list:
+ ##             raise RuntimeError("%s has no flags" % t.fullname)
+diff --git a/rpc/rpc.py b/rpc/rpc.py
+index 834fedd..af2b325 100644
+--- a/rpc/rpc.py
++++ b/rpc/rpc.py
+@@ -265,8 +265,8 @@ class Pipe(object):
+                 # We don't even have the packet length yet, wait for more data
+                 break
+             packetlen = struct.unpack('>L', buf[0:4])[0]
+-            last = 0x80000000L & packetlen
+-            packetlen &= 0x7fffffffL
++            last = 0x80000000 & packetlen
++            packetlen &= 0x7fffffff
+             packetlen += 4 # Include size of record mark
+             if len(buf) < packetlen:
+                 # We don't have a full packet yet, wait for more data
+@@ -310,7 +310,7 @@ class Pipe(object):
+                 chunk = record[i: i + count]
+                 i += count
+                 if i >= dlen:
+-                    last = 0x80000000L
++                    last = 0x80000000
+                 mark = struct.pack('>L', last | len(chunk))
+                 out += mark + chunk
+             return out
+@@ -351,7 +351,7 @@ class RpcPipe(Pipe):
+         Pipe.__init__(self, *args, **kwargs)
+         self._pending = {} # {xid:defer}
+         self._lock = threading.Lock() # Protects fields below
+-        self._xid = random.randint(0, 0x7fffffffL)
++        self._xid = random.randint(0, 0x7fffffff)
+         self.set_active()
+ 
+     def _get_xid(self):
 -- 
 2.17.1
 
