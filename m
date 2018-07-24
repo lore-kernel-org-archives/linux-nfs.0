@@ -1,10 +1,10 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pl0-f65.google.com ([209.85.160.65]:41062 "EHLO
+Received: from mail-pl0-f65.google.com ([209.85.160.65]:38297 "EHLO
         mail-pl0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2388938AbeGXUht (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Jul 2018 16:37:49 -0400
-Received: by mail-pl0-f65.google.com with SMTP id w8-v6so2191995ply.8
-        for <linux-nfs@vger.kernel.org>; Tue, 24 Jul 2018 12:29:52 -0700 (PDT)
+        with ESMTP id S2388949AbeGXUhu (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Jul 2018 16:37:50 -0400
+Received: by mail-pl0-f65.google.com with SMTP id b1-v6so2198228pls.5
+        for <linux-nfs@vger.kernel.org>; Tue, 24 Jul 2018 12:29:54 -0700 (PDT)
 From: Stephen Hemminger <stephen@networkplumber.org>
 To: davem@davemloft.net, ericvh@gmail.com, rminnich@sandia.gov,
         lucho@ionkov.net, ralf@linux-mips.org, jreuter@yaina.de,
@@ -26,138 +26,189 @@ Cc: netdev@vger.kernel.org, v9fs-developer@lists.sourceforge.net,
         linux-x25@vger.kernel.org,
         Stephen Hemminger <sthemmin@microsoft.com>,
         Stephen Hemminger <stephen@networkplumber.org>
-Subject: [PATCH PATCH net-next 14/18] decnet: whitespace fixes
-Date: Tue, 24 Jul 2018 12:29:14 -0700
-Message-Id: <20180724192918.31165-15-sthemmin@microsoft.com>
+Subject: [PATCH PATCH net-next 15/18] sunrpc: whitespace fixes
+Date: Tue, 24 Jul 2018 12:29:15 -0700
+Message-Id: <20180724192918.31165-16-sthemmin@microsoft.com>
 In-Reply-To: <20180724192918.31165-1-sthemmin@microsoft.com>
 References: <20180724192918.31165-1-sthemmin@microsoft.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Remove trailing whitespace and extra lines at EOF
+Remove trailing whitespace and blank line at EOF
 
 Signed-off-by: Stephen Hemminger <stephen@networkplumber.org>
 ---
- net/decnet/Kconfig              | 1 -
- net/decnet/Makefile             | 1 -
- net/decnet/TODO                 | 5 ++---
- net/decnet/dn_fib.c             | 2 --
- net/decnet/dn_nsp_in.c          | 1 -
- net/decnet/dn_nsp_out.c         | 1 -
- net/decnet/dn_route.c           | 1 -
- net/decnet/dn_rules.c           | 2 --
- net/decnet/netfilter/Makefile   | 1 -
- net/decnet/netfilter/dn_rtmsg.c | 1 -
- 10 files changed, 2 insertions(+), 14 deletions(-)
+ net/sunrpc/auth_gss/auth_gss.c          | 2 +-
+ net/sunrpc/auth_gss/gss_generic_token.c | 1 -
+ net/sunrpc/auth_gss/gss_krb5_crypto.c   | 1 -
+ net/sunrpc/auth_gss/gss_krb5_keys.c     | 1 -
+ net/sunrpc/auth_gss/gss_krb5_seal.c     | 1 -
+ net/sunrpc/auth_gss/gss_krb5_unseal.c   | 1 -
+ net/sunrpc/auth_gss/gss_krb5_wrap.c     | 1 -
+ net/sunrpc/auth_gss/svcauth_gss.c       | 2 +-
+ net/sunrpc/backchannel_rqst.c           | 1 -
+ net/sunrpc/clnt.c                       | 2 +-
+ net/sunrpc/rpcb_clnt.c                  | 2 +-
+ net/sunrpc/stats.c                      | 1 -
+ net/sunrpc/sunrpc.h                     | 1 -
+ net/sunrpc/xprt.c                       | 2 +-
+ net/sunrpc/xprtsock.c                   | 1 -
+ 15 files changed, 5 insertions(+), 15 deletions(-)
 
-diff --git a/net/decnet/Kconfig b/net/decnet/Kconfig
-index f3393e154f0f..dcc74956badd 100644
---- a/net/decnet/Kconfig
-+++ b/net/decnet/Kconfig
-@@ -40,4 +40,3 @@ config DECNET_ROUTER
- 	  to work.
+diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+index be8f103d22fd..b67ad98a36a6 100644
+--- a/net/sunrpc/auth_gss/auth_gss.c
++++ b/net/sunrpc/auth_gss/auth_gss.c
+@@ -1571,7 +1571,7 @@ static int gss_cred_is_negative_entry(struct rpc_cred *cred)
+ 	if (test_bit(RPCAUTH_CRED_NEGATIVE, &cred->cr_flags)) {
+ 		unsigned long now = jiffies;
+ 		unsigned long begin, expire;
+-		struct gss_cred *gss_cred; 
++		struct gss_cred *gss_cred;
  
- 	  See <file:Documentation/networking/decnet.txt> for more information.
+ 		gss_cred = container_of(cred, struct gss_cred, gc_base);
+ 		begin = gss_cred->gc_upcall_timestamp;
+diff --git a/net/sunrpc/auth_gss/gss_generic_token.c b/net/sunrpc/auth_gss/gss_generic_token.c
+index 254defe446a7..fe97f3106536 100644
+--- a/net/sunrpc/auth_gss/gss_generic_token.c
++++ b/net/sunrpc/auth_gss/gss_generic_token.c
+@@ -231,4 +231,3 @@ g_verify_token_header(struct xdr_netobj *mech, int *body_size,
+ }
+ 
+ EXPORT_SYMBOL_GPL(g_verify_token_header);
 -
-diff --git a/net/decnet/Makefile b/net/decnet/Makefile
-index 9e38122d942b..07b38e441b2d 100644
---- a/net/decnet/Makefile
-+++ b/net/decnet/Makefile
-@@ -8,4 +8,3 @@ decnet-$(CONFIG_DECNET_ROUTER) += dn_fib.o dn_rules.o dn_table.o
- decnet-y += sysctl_net_decnet.o
- 
- obj-$(CONFIG_NETFILTER) += netfilter/
--
-diff --git a/net/decnet/TODO b/net/decnet/TODO
-index ebb5ac69d128..358e9eb49016 100644
---- a/net/decnet/TODO
-+++ b/net/decnet/TODO
-@@ -16,14 +16,14 @@ Steve's quick list of things that need finishing off:
- 
-  o Verify errors etc. against POSIX 1003.1g (draft)
- 
-- o Using send/recvmsg() to get at connect/disconnect data (POSIX 1003.1g) 
-+ o Using send/recvmsg() to get at connect/disconnect data (POSIX 1003.1g)
-    [maybe this should be done at socket level... the control data in the
-     send/recvmsg() calls should simply be a vector of set/getsockopt()
-     calls]
- 
-  o check MSG_CTRUNC is set where it should be.
- 
-- o Find all the commonality between DECnet and IPv4 routing code and extract 
-+ o Find all the commonality between DECnet and IPv4 routing code and extract
-    it into a small library of routines. [probably a project for 2.7.xx]
- 
-  o Add perfect socket hashing - an idea suggested by Paul Koning. Currently
-@@ -38,4 +38,3 @@ Steve's quick list of things that need finishing off:
-  o DECnet sendpages() function
- 
-  o AIO for DECnet
--
-diff --git a/net/decnet/dn_fib.c b/net/decnet/dn_fib.c
-index fce94cbd4378..f78fe58eafc8 100644
---- a/net/decnet/dn_fib.c
-+++ b/net/decnet/dn_fib.c
-@@ -797,5 +797,3 @@ void __init dn_fib_init(void)
- 	rtnl_register_module(THIS_MODULE, PF_DECnet, RTM_DELROUTE,
- 			     dn_fib_rtm_delroute, NULL, 0);
+diff --git a/net/sunrpc/auth_gss/gss_krb5_crypto.c b/net/sunrpc/auth_gss/gss_krb5_crypto.c
+index 8654494b4d0a..a1acee106faa 100644
+--- a/net/sunrpc/auth_gss/gss_krb5_crypto.c
++++ b/net/sunrpc/auth_gss/gss_krb5_crypto.c
+@@ -1077,4 +1077,3 @@ krb5_rc4_setup_enc_key(struct krb5_ctx *kctx, struct crypto_skcipher *cipher,
+ 	dprintk("%s: returning %d\n", __func__, err);
+ 	return err;
  }
 -
--
-diff --git a/net/decnet/dn_nsp_in.c b/net/decnet/dn_nsp_in.c
-index 34aba55ed573..2fb5e055ba25 100644
---- a/net/decnet/dn_nsp_in.c
-+++ b/net/decnet/dn_nsp_in.c
-@@ -912,4 +912,3 @@ int dn_nsp_backlog_rcv(struct sock *sk, struct sk_buff *skb)
- 
- 	return NET_RX_SUCCESS;
+diff --git a/net/sunrpc/auth_gss/gss_krb5_keys.c b/net/sunrpc/auth_gss/gss_krb5_keys.c
+index 870133146026..f7fe2d2b851f 100644
+--- a/net/sunrpc/auth_gss/gss_krb5_keys.c
++++ b/net/sunrpc/auth_gss/gss_krb5_keys.c
+@@ -324,4 +324,3 @@ u32 gss_krb5_aes_make_key(const struct gss_krb5_enctype *gk5e,
+ err_out:
+ 	return ret;
  }
 -
-diff --git a/net/decnet/dn_nsp_out.c b/net/decnet/dn_nsp_out.c
-index 56a52a004c56..a1779de6bd9c 100644
---- a/net/decnet/dn_nsp_out.c
-+++ b/net/decnet/dn_nsp_out.c
-@@ -701,4 +701,3 @@ void dn_nsp_send_conninit(struct sock *sk, unsigned char msgflg)
- 
- 	dn_nsp_send(skb);
+diff --git a/net/sunrpc/auth_gss/gss_krb5_seal.c b/net/sunrpc/auth_gss/gss_krb5_seal.c
+index 94a2b3f082a8..eaad9bc7a0bd 100644
+--- a/net/sunrpc/auth_gss/gss_krb5_seal.c
++++ b/net/sunrpc/auth_gss/gss_krb5_seal.c
+@@ -229,4 +229,3 @@ gss_get_mic_kerberos(struct gss_ctx *gss_ctx, struct xdr_buf *text,
+ 		return gss_get_mic_v2(ctx, text, token);
+ 	}
  }
 -
-diff --git a/net/decnet/dn_route.c b/net/decnet/dn_route.c
-index e74765024d88..3107a2e24e6b 100644
---- a/net/decnet/dn_route.c
-+++ b/net/decnet/dn_route.c
-@@ -1925,4 +1925,3 @@ void __exit dn_route_cleanup(void)
- 	remove_proc_entry("decnet_cache", init_net.proc_net);
- 	dst_entries_destroy(&dn_dst_ops);
+diff --git a/net/sunrpc/auth_gss/gss_krb5_unseal.c b/net/sunrpc/auth_gss/gss_krb5_unseal.c
+index b601a73cc9db..ef2b25b86d2f 100644
+--- a/net/sunrpc/auth_gss/gss_krb5_unseal.c
++++ b/net/sunrpc/auth_gss/gss_krb5_unseal.c
+@@ -225,4 +225,3 @@ gss_verify_mic_kerberos(struct gss_ctx *gss_ctx,
+ 		return gss_verify_mic_v2(ctx, message_buffer, read_token);
+ 	}
  }
 -
-diff --git a/net/decnet/dn_rules.c b/net/decnet/dn_rules.c
-index 72236695db3d..4a4e3c17740c 100644
---- a/net/decnet/dn_rules.c
-+++ b/net/decnet/dn_rules.c
-@@ -256,5 +256,3 @@ void __exit dn_fib_rules_cleanup(void)
- 	rtnl_unlock();
- 	rcu_barrier();
+diff --git a/net/sunrpc/auth_gss/gss_krb5_wrap.c b/net/sunrpc/auth_gss/gss_krb5_wrap.c
+index a737c2da0837..286fd22404f2 100644
+--- a/net/sunrpc/auth_gss/gss_krb5_wrap.c
++++ b/net/sunrpc/auth_gss/gss_krb5_wrap.c
+@@ -623,4 +623,3 @@ gss_unwrap_kerberos(struct gss_ctx *gctx, int offset, struct xdr_buf *buf)
+ 		return gss_unwrap_kerberos_v2(kctx, offset, buf);
+ 	}
  }
 -
--
-diff --git a/net/decnet/netfilter/Makefile b/net/decnet/netfilter/Makefile
-index 255c1ae9daeb..b579e52130aa 100644
---- a/net/decnet/netfilter/Makefile
-+++ b/net/decnet/netfilter/Makefile
-@@ -3,4 +3,3 @@
- #
+diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
+index 5089dbb96d58..860f2a1bbb67 100644
+--- a/net/sunrpc/auth_gss/svcauth_gss.c
++++ b/net/sunrpc/auth_gss/svcauth_gss.c
+@@ -1389,7 +1389,7 @@ static void destroy_use_gss_proxy_proc_entry(struct net *net)
+ 	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
  
- obj-$(CONFIG_DECNET_NF_GRABULATOR) += dn_rtmsg.o
+ 	if (sn->use_gssp_proc) {
+-		remove_proc_entry("use-gss-proxy", sn->proc_net_rpc); 
++		remove_proc_entry("use-gss-proxy", sn->proc_net_rpc);
+ 		clear_gssp_clnt(sn);
+ 	}
+ }
+diff --git a/net/sunrpc/backchannel_rqst.c b/net/sunrpc/backchannel_rqst.c
+index c2c68a15b59d..3c15a99b9700 100644
+--- a/net/sunrpc/backchannel_rqst.c
++++ b/net/sunrpc/backchannel_rqst.c
+@@ -362,4 +362,3 @@ void xprt_complete_bc_request(struct rpc_rqst *req, uint32_t copied)
+ 	wake_up(&bc_serv->sv_cb_waitq);
+ 	spin_unlock(&bc_serv->sv_cb_lock);
+ }
 -
-diff --git a/net/decnet/netfilter/dn_rtmsg.c b/net/decnet/netfilter/dn_rtmsg.c
-index ab395e55cd78..a4faacadd8a8 100644
---- a/net/decnet/netfilter/dn_rtmsg.c
-+++ b/net/decnet/netfilter/dn_rtmsg.c
-@@ -158,4 +158,3 @@ MODULE_ALIAS_NET_PF_PROTO(PF_NETLINK, NETLINK_DNRTMSG);
- 
- module_init(dn_rtmsg_init);
- module_exit(dn_rtmsg_fini);
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index d839c33ae7d9..3818e4d55c66 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -892,7 +892,7 @@ rpc_free_client(struct rpc_clnt *clnt)
+ /*
+  * Free an RPC client
+  */
+-static struct rpc_clnt * 
++static struct rpc_clnt *
+ rpc_free_auth(struct rpc_clnt *clnt)
+ {
+ 	if (clnt->cl_auth == NULL)
+diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
+index c526f8fb37c9..c7872bc13860 100644
+--- a/net/sunrpc/rpcb_clnt.c
++++ b/net/sunrpc/rpcb_clnt.c
+@@ -213,7 +213,7 @@ static void rpcb_set_local(struct net *net, struct rpc_clnt *clnt,
+ 	sn->rpcb_local_clnt = clnt;
+ 	sn->rpcb_local_clnt4 = clnt4;
+ 	sn->rpcb_is_af_local = is_af_local ? 1 : 0;
+-	smp_wmb(); 
++	smp_wmb();
+ 	sn->rpcb_users = 1;
+ 	dprintk("RPC:       created new rpcb local clients (rpcb_local_clnt: "
+ 		"%p, rpcb_local_clnt4: %p) for net %x%s\n",
+diff --git a/net/sunrpc/stats.c b/net/sunrpc/stats.c
+index f68aa46c9dd7..86f316503c7c 100644
+--- a/net/sunrpc/stats.c
++++ b/net/sunrpc/stats.c
+@@ -310,4 +310,3 @@ void rpc_proc_exit(struct net *net)
+ 	dprintk("RPC:       unregistering /proc/net/rpc\n");
+ 	remove_proc_entry("rpc", net->proc_net);
+ }
+-
+diff --git a/net/sunrpc/sunrpc.h b/net/sunrpc/sunrpc.h
+index 09a0315ea77b..c9bacb3c930f 100644
+--- a/net/sunrpc/sunrpc.h
++++ b/net/sunrpc/sunrpc.h
+@@ -57,4 +57,3 @@ int svc_send_common(struct socket *sock, struct xdr_buf *xdr,
+ int rpc_clients_notifier_register(void);
+ void rpc_clients_notifier_unregister(void);
+ #endif /* _NET_SUNRPC_SUNRPC_H */
+-
+diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+index 3fabf9f6a0f9..a8db2e3f8904 100644
+--- a/net/sunrpc/xprt.c
++++ b/net/sunrpc/xprt.c
+@@ -880,7 +880,7 @@ static void xprt_wait_on_pinned_rqst(struct rpc_rqst *req)
+ __must_hold(&req->rq_xprt->recv_lock)
+ {
+ 	struct rpc_task *task = req->rq_task;
+-	
++
+ 	if (task && test_bit(RPC_TASK_MSG_RECV, &task->tk_runstate)) {
+ 		spin_unlock(&req->rq_xprt->recv_lock);
+ 		set_bit(RPC_TASK_MSG_RECV_WAIT, &task->tk_runstate);
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 9e1c5024aba9..6b7539c0466e 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -3375,4 +3375,3 @@ module_param_named(tcp_max_slot_table_entries, xprt_max_tcp_slot_table_entries,
+ 		   max_slot_table_size, 0644);
+ module_param_named(udp_slot_table_entries, xprt_udp_slot_table_entries,
+ 		   slot_table_size, 0644);
 -
 -- 
 2.18.0
