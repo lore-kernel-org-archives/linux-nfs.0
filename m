@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx3-rdu2.redhat.com ([66.187.233.73]:52764 "EHLO mx1.redhat.com"
+Received: from mx3-rdu2.redhat.com ([66.187.233.73]:54704 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S2388391AbeGXIjR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 24 Jul 2018 04:39:17 -0400
+        id S2388421AbeGXIjW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 24 Jul 2018 04:39:22 -0400
 From: jiyin@redhat.com
 To: bfields@redhat.com
 Cc: linux-nfs@vger.kernel.org, "Jianhong.Yin" <yin-jianhong@163.com>
-Subject: [PATCH 10/24] pynfs: python3 support plan: not equal op s/ <> / != /
-Date: Tue, 24 Jul 2018 15:33:28 +0800
-Message-Id: <20180724073342.5738-10-jiyin@redhat.com>
+Subject: [PATCH 12/24] pynfs: python3 support plan: file() -> open()
+Date: Tue, 24 Jul 2018 15:33:30 +0800
+Message-Id: <20180724073342.5738-12-jiyin@redhat.com>
 In-Reply-To: <20180724073342.5738-1-jiyin@redhat.com>
 References: <20180724073342.5738-1-jiyin@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -18,68 +18,85 @@ From: "Jianhong.Yin" <yin-jianhong@163.com>
 
 Signed-off-by: Jianhong Yin <yin-jianhong@163.com>
 ---
- nfs4.0/nfs4lib.py    | 4 ++--
- nfs4.0/nfs4server.py | 4 ++--
- nfs4.1/nfs4client.py | 2 +-
- 3 files changed, 5 insertions(+), 5 deletions(-)
+ nfs4.0/testserver.py | 2 +-
+ nfs4.1/testclient.py | 2 +-
+ nfs4.1/testserver.py | 2 +-
+ showresults.py       | 2 +-
+ xdr/xdrgen.py        | 6 +++---
+ 5 files changed, 7 insertions(+), 7 deletions(-)
 
-diff --git a/nfs4.0/nfs4lib.py b/nfs4.0/nfs4lib.py
-index dddbf91..6f6d2f9 100644
---- a/nfs4.0/nfs4lib.py
-+++ b/nfs4.0/nfs4lib.py
-@@ -227,7 +227,7 @@ class CBServer(rpc.RPCServer):
-             cbid = cmp4args.callback_ident
-         except XDRError:
-             return NFS4ERR_BADXDR, [], tag
--        if cmp4args.minorversion <> 0:
-+        if cmp4args.minorversion != 0:
-             return NFS4ERR_MINOR_VERS_MISMATCH, [], tag
-         results = []
-         ok = NFS4_OK
-@@ -239,7 +239,7 @@ class CBServer(rpc.RPCServer):
-                 resop4 = CB_ILLEGAL4res(NFS4ERR_OP_ILLEGAL)
-                 result = nfs_cb_resop4(resop=OP_ILLEGAL, opcbillegal=resop4)
-             results += [ result ]
--            if ok <> NFS4_OK:
-+            if ok != NFS4_OK:
-                 break
-         return ok, results, tag
-         
-diff --git a/nfs4.0/nfs4server.py b/nfs4.0/nfs4server.py
-index 18b0aad..753372e 100755
---- a/nfs4.0/nfs4server.py
-+++ b/nfs4.0/nfs4server.py
-@@ -171,7 +171,7 @@ class NFS4Server(rpc.RPCServer):
-             return NFS4ERR_BADXDR, [], tag
-         print("TCP NFSv4 COMPOUND call, tag: %s, n_ops: %d" % \
-               (repr(tag), len(cmp4args.argarray)))
--        if cmp4args.minorversion <> 0:
-+        if cmp4args.minorversion != 0:
-             return NFS4ERR_MINOR_VERS_MISMATCH, [], tag
-         if not verify_utf8(tag):
-             return NFS4ERR_INVAL, [], tag
-@@ -183,7 +183,7 @@ class NFS4Server(rpc.RPCServer):
-             print("*** %s (%d) ***" % (opname, op.argop))
-             ok, result = getattr(self, opname.lower())(op)
-             results += [ result ]
--            if ok <> NFS4_OK:
-+            if ok != NFS4_OK:
-                 print(" ! error %s" % nfsstat4[ok])
-                 break
-         print("Replying. Status %s (%d)" % (nfsstat4[ok], ok))
-diff --git a/nfs4.1/nfs4client.py b/nfs4.1/nfs4client.py
-index 5288942..0588d7b 100644
---- a/nfs4.1/nfs4client.py
-+++ b/nfs4.1/nfs4client.py
-@@ -177,7 +177,7 @@ class NFS4Client(rpc.Client, rpc.Server):
-     def op_cb_compound(self, args, cred):
-         env = CompoundState(args, cred)
-         # Check for problems with the compound itself
--        if args.minorversion <> 0:
-+        if args.minorversion != 0:
-             if args.minorversion not in self.minor_versions:
-                 env.results.set_empty_return(NFS4ERR_MINOR_VERS_MISMATCH)
-                 return env
+diff --git a/nfs4.0/testserver.py b/nfs4.0/testserver.py
+index 96012a1..fcee8e9 100755
+--- a/nfs4.0/testserver.py
++++ b/nfs4.0/testserver.py
+@@ -354,7 +354,7 @@ def main():
+         print(sys.exc_info()[1])
+         sys.exit(1)
+     if opt.outfile is not None:
+-        fd = file(opt.outfile, 'w')
++        fd = open(opt.outfile, 'w')
+     try:
+         clean_finish = False
+         testmod.runtests(tests, opt, env, run_filter)
+diff --git a/nfs4.1/testclient.py b/nfs4.1/testclient.py
+index 1027fa6..47b74bd 100755
+--- a/nfs4.1/testclient.py
++++ b/nfs4.1/testclient.py
+@@ -313,7 +313,7 @@ def main():
+         print(sys.exc_info()[1])
+         sys.exit(1)
+     if opt.outfile is not None:
+-        fd = file(opt.outfile, 'w')
++        fd = open(opt.outfile, 'w')
+     try:
+         clean_finish = False
+         testmod.runtests(tests, opt, env, run_filter)
+diff --git a/nfs4.1/testserver.py b/nfs4.1/testserver.py
+index 101cfb1..c21221e 100755
+--- a/nfs4.1/testserver.py
++++ b/nfs4.1/testserver.py
+@@ -333,7 +333,7 @@ def main():
+         print(sys.exc_info()[1])
+         sys.exit(1)
+     if opt.outfile is not None:
+-        fd = file(opt.outfile, 'w')
++        fd = open(opt.outfile, 'w')
+     try:
+         clean_finish = False
+         testmod.runtests(tests, opt, env, run_filter)
+diff --git a/showresults.py b/showresults.py
+index 962407d..ed23f7b 100755
+--- a/showresults.py
++++ b/showresults.py
+@@ -38,7 +38,7 @@ class MyUnpickler(pickle.Unpickler):
+             return self.Unknown(name)
+ 
+ def show(filename, opt):
+-    fd = file(filename, 'r')
++    fd = open(filename, 'r')
+     p = MyUnpickler(fd)
+     tests = p.load()
+     testmod.printresults(tests, opt)
+diff --git a/xdr/xdrgen.py b/xdr/xdrgen.py
+index b5119cc..bed2181 100755
+--- a/xdr/xdrgen.py
++++ b/xdr/xdrgen.py
+@@ -1419,12 +1419,12 @@ def run(infile, filters=True, pass_attrs=True, debug=False):
+ 
+     comment_string = "# Generated by rpcgen.py from %s on %s\n" % \
+                      (infile, time.asctime())
+-    const_fd = file(constants_file + ".py", "w")
++    const_fd = open(constants_file + ".py", "w")
+     const_fd.write(comment_string)
+-    type_fd = file(types_file + ".py", "w")
++    type_fd = open(types_file + ".py", "w")
+     type_fd.write(comment_string)
+     type_fd.write("import %s as const\n" % constants_file)
+-    pack_fd = file(packer_file + ".py", "w")
++    pack_fd = open(packer_file + ".py", "w")
+     pack_fd.write(comment_string)
+     pack_fd.write(pack_header % (constants_file, types_file))
+     pack_fd.write(pack_init % name_base.upper())
 -- 
 2.17.1
 
