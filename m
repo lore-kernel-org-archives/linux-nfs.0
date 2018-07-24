@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx3-rdu2.redhat.com ([66.187.233.73]:54710 "EHLO mx1.redhat.com"
+Received: from mx3-rdu2.redhat.com ([66.187.233.73]:53708 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S2388421AbeGXIjY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 24 Jul 2018 04:39:24 -0400
+        id S2388421AbeGXIj0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 24 Jul 2018 04:39:26 -0400
 From: jiyin@redhat.com
 To: bfields@redhat.com
 Cc: linux-nfs@vger.kernel.org, "Jianhong.Yin" <yin-jianhong@163.com>
-Subject: [PATCH 13/24] pynfs: python3 support plan: list.sort() -> newlist = sorted(list)
-Date: Tue, 24 Jul 2018 15:33:31 +0800
-Message-Id: <20180724073342.5738-13-jiyin@redhat.com>
+Subject: [PATCH 14/24] pynfs: python3 support plan: Relative Import -> Absolute Import
+Date: Tue, 24 Jul 2018 15:33:32 +0800
+Message-Id: <20180724073342.5738-14-jiyin@redhat.com>
 In-Reply-To: <20180724073342.5738-1-jiyin@redhat.com>
 References: <20180724073342.5738-1-jiyin@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -18,216 +18,158 @@ From: "Jianhong.Yin" <yin-jianhong@163.com>
 
 Signed-off-by: Jianhong Yin <yin-jianhong@163.com>
 ---
- xdr/xdrgen.py | 56 ++++++++++++++++++++++++++++++++-------------------
- 1 file changed, 35 insertions(+), 21 deletions(-)
+ nfs4.0/lib/rpc/rpc.py                  | 23 ++++++++++++-----------
+ nfs4.0/lib/rpc/rpcsec/sec_auth_gss.py  |  2 +-
+ nfs4.0/lib/rpc/rpcsec/sec_auth_none.py |  2 +-
+ nfs4.0/lib/rpc/rpcsec/sec_auth_sys.py  |  2 +-
+ nfs4.0/nfs4lib.py                      | 20 +++++++++++---------
+ xdr/xdrgen.py                          |  4 +++-
+ 6 files changed, 29 insertions(+), 24 deletions(-)
 
+diff --git a/nfs4.0/lib/rpc/rpc.py b/nfs4.0/lib/rpc/rpc.py
+index be14658..86075b2 100644
+--- a/nfs4.0/lib/rpc/rpc.py
++++ b/nfs4.0/lib/rpc/rpc.py
+@@ -7,6 +7,7 @@
+ #                    Information Technology Integration
+ #
+ 
++from __future__ import absolute_import
+ import struct
+ import xdrlib
+ import socket
+@@ -14,17 +15,17 @@ import select
+ import threading
+ import errno
+ 
+-from rpc_const import *
+-from rpc_type import *
+-import rpc_pack
++from rpc.rpc_const import *
++from rpc.rpc_type import *
++import rpc.rpc_pack as rpc_pack
+ 
+ # Import security flavors and store valid ones
+-from rpcsec.sec_auth_none import SecAuthNone
+-from rpcsec.sec_auth_sys import SecAuthSys
++from .rpcsec.sec_auth_none import SecAuthNone
++from .rpcsec.sec_auth_sys import SecAuthSys
+ supported = {'none' : SecAuthNone,
+              'sys'  : SecAuthSys }
+ try:
+-    from rpcsec.sec_auth_gss import SecAuthGss
++    from .rpcsec.sec_auth_gss import SecAuthGss
+     supported['gss'] = SecAuthGss
+ except ImportError:
+     pass
+@@ -427,11 +428,11 @@ class RPCClient(object):
+         cred = self.security.make_cred()
+         p.pack_uint(xid)
+         p.pack_enum(CALL)
+-	p.pack_uint(RPCVERSION)
+-	p.pack_uint(prog)
+-	p.pack_uint(vers)
+-	p.pack_uint(proc)
+-	p.pack_opaque_auth(cred)
++        p.pack_uint(RPCVERSION)
++        p.pack_uint(prog)
++        p.pack_uint(vers)
++        p.pack_uint(proc)
++        p.pack_opaque_auth(cred)
+         verf = self.security.make_verf(p.get_buffer())
+         p.pack_opaque_auth(verf)
+         return p.get_buffer(), cred
+diff --git a/nfs4.0/lib/rpc/rpcsec/sec_auth_gss.py b/nfs4.0/lib/rpc/rpcsec/sec_auth_gss.py
+index ee6ad53..1b5eb93 100644
+--- a/nfs4.0/lib/rpc/rpcsec/sec_auth_gss.py
++++ b/nfs4.0/lib/rpc/rpcsec/sec_auth_gss.py
+@@ -1,4 +1,4 @@
+-from base import SecFlavor, SecError
++from .base import SecFlavor, SecError
+ from rpc.rpc_const import RPCSEC_GSS
+ from rpc.rpc_type import opaque_auth
+ from gss_const import *
+diff --git a/nfs4.0/lib/rpc/rpcsec/sec_auth_none.py b/nfs4.0/lib/rpc/rpcsec/sec_auth_none.py
+index 7058203..ec8896a 100644
+--- a/nfs4.0/lib/rpc/rpcsec/sec_auth_none.py
++++ b/nfs4.0/lib/rpc/rpcsec/sec_auth_none.py
+@@ -1,4 +1,4 @@
+-from base import SecFlavor
++from .base import SecFlavor
+ 
+ class SecAuthNone(SecFlavor):
+     pass
+diff --git a/nfs4.0/lib/rpc/rpcsec/sec_auth_sys.py b/nfs4.0/lib/rpc/rpcsec/sec_auth_sys.py
+index 27fc52e..778d379 100644
+--- a/nfs4.0/lib/rpc/rpcsec/sec_auth_sys.py
++++ b/nfs4.0/lib/rpc/rpcsec/sec_auth_sys.py
+@@ -1,4 +1,4 @@
+-from base import SecFlavor, SecError
++from .base import SecFlavor, SecError
+ from rpc.rpc_const import AUTH_SYS
+ from rpc.rpc_type import opaque_auth
+ from xdrlib import Packer, Error
+diff --git a/nfs4.0/nfs4lib.py b/nfs4.0/nfs4lib.py
+index 6f6d2f9..79e386e 100644
+--- a/nfs4.0/nfs4lib.py
++++ b/nfs4.0/nfs4lib.py
+@@ -24,16 +24,8 @@
+ # along with this program; if not, write to the Free Software
+ # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ 
++from __future__ import absolute_import
+ 
+-
+-import rpc
+-import threading
+-from xdrlib import Error as XDRError
+-import xdrdef.nfs4_const as nfs4_const
+-from xdrdef.nfs4_const import *
+-import xdrdef.nfs4_type as nfs4_type
+-from xdrdef.nfs4_type import *
+-import xdrdef.nfs4_pack as nfs4_pack
+ import time
+ import struct
+ import socket
+@@ -41,6 +33,16 @@ import sys
+ import re
+ import inspect
+ from os.path import basename
++import threading
++
++import rpc.rpc as rpc
++import rpc.rpc_const as rpc_const
++import xdrdef.nfs4_const as nfs4_const
++from  xdrdef.nfs4_const import *
++import xdrdef.nfs4_type as nfs4_type
++from xdrdef.nfs4_type import *
++from xdrlib import Error as XDRError
++import xdrdef.nfs4_pack as nfs4_pack
+ 
+ import nfs_ops
+ op4 = nfs_ops.NFS4ops()
 diff --git a/xdr/xdrgen.py b/xdr/xdrgen.py
-index bed2181..6303184 100755
+index 6303184..abfc8d7 100755
 --- a/xdr/xdrgen.py
 +++ b/xdr/xdrgen.py
-@@ -305,7 +305,7 @@ def t_linecomment(t):
- def t_error(t):
-     print("Illegal character %s at %d type %s" % (repr(t.value[0]), t.lexer.lineno, t.type))
-     t.lexer.skip(1)
--    
-+
- # Build the lexer
- lex.lex(debug=0)
- 
-@@ -641,7 +641,7 @@ def p_proc_firstarg(t):
- def p_type_specifier_list(t):
-     '''type_specifier_list : COMMA type_specifier type_specifier_list
-                            | empty'''
--    
-+
- 
- ##########################################################################
- #                                                                        #
-@@ -718,7 +718,7 @@ class Info(object):
- 
-     def const_output(self):
-         return None
--    
-+
-     def type_output(self):
-         return None
- 
-@@ -853,7 +853,7 @@ class Info(object):
-         else:
-             subheader = array = varindent = ''
-         return prefix+varindent, newdata, subheader, array
--        
-+
-     def packenum(self, prefix, data='data'):
-         prefix, data, subheader, array = self._array_pack(prefix, data)
-         varlist = ["const.%s" % l.id for l in self.body]
-@@ -952,7 +952,7 @@ class Info(object):
-         else:
-             unpack += "%s%sraise XDRError('bad switch=%%s' %% %s.%s)\n" % \
-                       (prefix, indent, data, switch.id)
--            
-+
-         return subheader + unpack + array
- 
-     def xdrbody(self, prefix=''):
-@@ -977,7 +977,7 @@ class Info(object):
-                         ''.join(["%s\n" % d.xdrout(prefix + indent)
-                                  for d in self.body[-1].declarations])
-         return body
--            
-+
- class const_info(Info):
-     """The result of 'CONST ID EQUALS constant SEMI' or inside of enum as
-     'ID EQUALS value' """
-@@ -988,13 +988,16 @@ class const_info(Info):
-         self.lineno = self.sortno = lineno
-         self.type = 'const'
-         self.enum = enum
--        
-+
-     def __repr__(self):
-         return "constant %s=%s at line %s" % (self.id, self.value, self.lineno)
- 
-+    def __lt__(self, other):
-+        return self.sortno < other.sortno
-+
-     def xdrout(self, prefix=''):
-         return "%s%s = %s" % (prefix, self.id, self.value)
--    
-+
-     def const_output(self):
-         return "%s = %s\n" % (self.id, self.value)
- 
-@@ -1016,6 +1019,9 @@ class enum_info(Info):
-         self.array = False
-         self.parent = True
- 
-+    def __lt__(self, other):
-+        return self.sortno < other.sortno
-+
-     def const_output(self):
-         body = ''.join(["%s%s : '%s',\n" % (indent, l.value, l.id)
-                         for l in self.body])
-@@ -1029,7 +1035,7 @@ class enum_info(Info):
-         header = "%sdef unpack_%s(self):\n" % (indent, self.id)
-         return header + self.unpackenum(indent2) + \
-                self._get_unpack_footer()
--        
-+
- class struct_info(Info):
-     """The result of 'TYPEDEF STRUCT <struct_body> ID <array> SEMI' or
-     'STRUCT ID <struct_body> SEMI'
-@@ -1048,6 +1054,9 @@ class struct_info(Info):
-         self.array = False
-         self.parent = True
- 
-+    def __lt__(self, other):
-+        return self.sortno < other.sortno
-+
-     def type_output(self):
-         comment = '%s# ' % indent
-         xdrbody = self.xdrbody(comment)
-@@ -1079,11 +1088,11 @@ class struct_info(Info):
-                    (indent, indent2, candidates[0].id)
-         else:
-             return ''
--        
-+
-     def pack_output(self):
-         header = self._get_pack_header()
-         return header + self.packstruct(indent2)
--        
-+
-     def unpack_output(self):
-         header = "%sdef unpack_%s(self):\n" % (indent, self.id)
-         return header + self.unpackstruct(indent2) + \
-@@ -1107,6 +1116,9 @@ class union_info(Info):
-         self.array = False
-         self.parent = True
- 
-+    def __lt__(self, other):
-+        return self.sortno < other.sortno
-+
-     def union_getattr(self, prefix=indent):
-         return "%sdef __getattr__(self, attr):\n"\
-                "%s%sreturn getattr(self.switch, attr)\n" % \
-@@ -1174,6 +1186,9 @@ class type_info(Info):
-             self.fixed = False
-         self.parent = False
- 
-+    def __lt__(self, other):
-+        return self.sortno < other.sortno
-+
-     def __str__(self):
-         return "%s %s at line %s" % (self.type, self.id, self.lineno)
- 
-@@ -1198,14 +1213,14 @@ class type_info(Info):
-             x.len = self.len
-             x.fixed = self.fixed
-         return x
--        
-+
-     def xdrout(self, prefix=''):
-         if self.type == 'void':
-             return "%svoid;" % prefix
-         elif self.type == 'enum':
-             body = self.xdrbody(prefix)
-             name = "%senum {\n%s%s}" % (prefix, body, prefix)
--            
-+
-         elif self.type == 'struct':
-             body = self.xdrbody(prefix)
-             name = "%sstruct {\n%s%s}" % (prefix, body, prefix)
-@@ -1260,7 +1275,7 @@ class type_info(Info):
-                     return "%s = %s\n" % (self.id, self.type)
-                 elif cast.type == "enum":
-                     return "%s = const.%s\n" % (self.id, self.type)
--        
-+
-     def pack_output(self):
-         if not self.array:
-             return "%spack_%s = pack_%s\n" % (indent, self.id, self.type)
-@@ -1297,7 +1312,7 @@ class type_info(Info):
-         pack = "%sself.pack_%s%s(%s%s%s)\n" % \
-                (prefix, fixchar, type, fixnum, data, packer)
-         return limit + pack
--        
-+
-     def _unpack_array(self, prefix, data='data'):
-         if self.fixed or self.len is None:
-             limit = ''
-@@ -1322,9 +1337,9 @@ class type_info(Info):
-         pack = "%s%s = self.unpack_%s%s(%s)\n" % \
-                (prefix, data, fixchar, type, ', '.join(fixnum+packer))
-         return pack + limit
--        
--     
--        
-+
-+
-+
- ##########################################################################
- #                                                                        #
- #                          Main Loop                                     #
-@@ -1430,8 +1445,7 @@ def run(infile, filters=True, pass_attrs=True, debug=False):
-     pack_fd.write(pack_init % name_base.upper())
-     pack_fd.write(packer_start)
- 
--    type_list = name_dict.values()
--    type_list.sort()
-+    type_list = sorted(name_dict.values())
-     for value in type_list:
-         #print(value)
-         output = value.const_output()
-@@ -1454,7 +1468,7 @@ def run(infile, filters=True, pass_attrs=True, debug=False):
-         if output is not None:
-             pack_fd.write(output)
-             pack_fd.write('\n')
--            
-+
-     const_fd.close()
-     type_fd.close()
-     pack_fd.close()
+@@ -1354,6 +1354,8 @@ allow_attr_passthrough = True # Option which allows substructure attrs to
+                               # be referenced directly, in cases where there
+                               # is a unique substructure to search.
+ pack_header = """\
++import sys,os
++sys.path.append(os.path.dirname(__file__))
+ import %s as const
+ import %s as types
+ import xdrlib
+@@ -1438,7 +1440,7 @@ def run(infile, filters=True, pass_attrs=True, debug=False):
+     const_fd.write(comment_string)
+     type_fd = open(types_file + ".py", "w")
+     type_fd.write(comment_string)
+-    type_fd.write("import %s as const\n" % constants_file)
++    type_fd.write("import sys,os\nsys.path.append(os.path.dirname(__file__))\nimport %s as const\n" % constants_file)
+     pack_fd = open(packer_file + ".py", "w")
+     pack_fd.write(comment_string)
+     pack_fd.write(pack_header % (constants_file, types_file))
 -- 
 2.17.1
 
