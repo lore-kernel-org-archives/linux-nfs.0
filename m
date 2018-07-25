@@ -1,75 +1,75 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx3-rdu2.redhat.com ([66.187.233.73]:52406 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1727691AbeGYPOD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 25 Jul 2018 11:14:03 -0400
-From: David Howells <dhowells@redhat.com>
-To: torvalds@linux-foundation.org
-cc: dhowells@redhat.com, kiran.modukuri@gmail.com,
-        linux-cachefs@redhat.com, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [GIT PULL] fscache and cachefiles fixes
-MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Date: Wed, 25 Jul 2018 15:02:12 +0100
-Message-ID: <7828.1532527332@warthog.procyon.org.uk>
+Received: from userp2130.oracle.com ([156.151.31.86]:52818 "EHLO
+        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1728051AbeGYPoO (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Jul 2018 11:44:14 -0400
+Content-Type: text/plain;
+        charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 11.5 \(3445.9.1\))
+Subject: Re: [BUG BISECT] NFSv4 client fails on Flush Journal to Persistent
+ Storage
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <CAJKOXPfMiaGP9xqPcOQMs+a4RKvhK03v51e5r3GaUiFs0G=61Q@mail.gmail.com>
+Date: Wed, 25 Jul 2018 10:31:54 -0400
+Cc: Trond Myklebust <trondmy@hammerspace.com>,
+        "sudeep.holla@arm.com" <sudeep.holla@arm.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Bruce Fields <bfields@fieldses.org>,
+        Jeff Layton <jlayton@kernel.org>,
+        "David S. Miller" <davem@davemloft.net>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        "linux-samsung-soc@vger.kernel.org"
+        <linux-samsung-soc@vger.kernel.org>
+Message-Id: <9B9E1627-AC2E-4A0C-AB6E-5815876A59AB@oracle.com>
+References: <CAJKOXPd2rntNOpU1quR9Zm_J22+=pEaj4ZTC_tdZ0zcRYUciFg@mail.gmail.com>
+ <CAPKp9uZ79ybkv7dMpcy2GQ9L+rWk+vdExQ48diWWQPOUdDQtSQ@mail.gmail.com>
+ <CAJKOXPfX0CytKcYDaDAYYuCQjk-mcGjFRHfZco-wPQsc4G1agA@mail.gmail.com>
+ <BCD39D7E-EEEC-4EB9-824E-63323C333C88@oracle.com>
+ <CAJKOXPcw-i99_U-Ltuuf6w-WRK7V4gNqVSYkCMGFEXQG2DL2XQ@mail.gmail.com>
+ <CAJKOXPf7V1z4pNZ2RsjkJmaVAgk34_rPOtQOc7J5KRMSRemrdg@mail.gmail.com>
+ <082848F5-6360-4523-BA95-601777E17CF2@oracle.com>
+ <CAJKOXPe4uqOZGd_zb_Mqq4Fspu63LHZky86O4tPaD3BZNCBS6w@mail.gmail.com>
+ <6AAC5897-8762-4209-8718-67291B87AA00@oracle.com>
+ <d617f8a85c3414230cd755fe0e4470c0f8bd17ff.camel@hammerspace.com>
+ <26995E49-E8DD-421D-BABF-9E672B9383BD@oracle.com>
+ <30a1455b6817361f8228c022628aef5cdee70c3e.camel@hammerspace.com>
+ <784782B0-A387-4D3B-A517-E85D851162B8@oracle.com>
+ <CAJKOXPfMiaGP9xqPcOQMs+a4RKvhK03v51e5r3GaUiFs0G=61Q@mail.gmail.com>
+To: Krzysztof Kozlowski <krzk@kernel.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Linus,
 
-Can you pull these fixes for fscache and cachefiles please?
 
-There are five:
+> On Jul 25, 2018, at 9:27 AM, Krzysztof Kozlowski <krzk@kernel.org> wrote:
+> 
+> On 18 June 2018 at 18:20, Chuck Lever <chuck.lever@oracle.com> wrote:
+>> 
+>> The extra serialization appears to have a reproducible performance
+>> impact on RDMA, which no longer takes the reserve_lock when allocating
+>> a slot.
+>> 
+>> I could put an xprt_alloc_xid call in xprt_alloc_slot, but that would
+>> only work for socket-based transports. Would it be OK if RDMA had its
+>> own XID allocation mechanism?
+> 
+> Hi,
+> 
+> On recent next the issue appeared again. My boards with NFSv4 root
+> timeout on 80% of boots. This time my NFS server is faster - Pi3 B+
+> :).
+> 
+> Is this know? Should I start long bisect or maybe you can point me to
+> possible causes?
 
- (1) Allow cancelled operations to be queued so they can be cleaned up.
+Hi Krzysztof, I don't know of any recent changes. Bisecting would be
+a good place to start.
 
- (2) Fix a refcounting bug in the monitoring of reads on backend files
-     whereby a race can occur between monitor objects being listed for work,
-     the work processing being queued and the work processor running and
-     destroying the monitor objects.
 
- (3) Fix a ref overput in object attachment, whereby a tentatively
-     considered object is put in error handling without first being 'got'.
+--
+Chuck Lever
 
- (4) Fix a missing clear of the CACHEFILES_OBJECT_ACTIVE flag whereby an
-     assertion occurs when we retry because it seems the object is now
-     active.
 
- (5) Wait rather BUG'ing on an object collision in the depths of cachefiles
-     as the active object should be being cleaned up - also depends on (4).
-
-David
----
-The following changes since commit fc36def997cfd6cbff3eda4f82853a5c311c5466:
-
-  mm: teach dump_page() to correctly output poisoned struct pages (2018-07-03 17:32:19 -0700)
-
-are available in the Git repository at:
-
-  git://git.kernel.org/pub/scm/linux/kernel/git/dhowells/linux-fs.git tags/fscache-fixes-20180725
-
-for you to fetch changes up to c2412ac45a8f8f1cd582723c1a139608694d410d:
-
-  cachefiles: Wait rather than BUG'ing on "Unexpected object collision" (2018-07-25 14:49:00 +0100)
-
-----------------------------------------------------------------
-fscache fixes
-
-----------------------------------------------------------------
-Kiran Kumar Modukuri (5):
-      fscache: Allow cancelled operations to be enqueued
-      cachefiles: Fix refcounting bug in backing-file read monitoring
-      fscache: Fix reference overput in fscache_attach_object() error handling
-      cachefiles: Fix missing clear of the CACHEFILES_OBJECT_ACTIVE flag
-      cachefiles: Wait rather than BUG'ing on "Unexpected object collision"
-
- fs/cachefiles/bind.c   |  3 ++-
- fs/cachefiles/namei.c  |  3 +--
- fs/cachefiles/rdwr.c   | 17 ++++++++++++-----
- fs/fscache/cache.c     |  2 +-
- fs/fscache/cookie.c    |  7 ++++---
- fs/fscache/object.c    |  1 +
- fs/fscache/operation.c |  6 ++++--
- 7 files changed, 25 insertions(+), 14 deletions(-)
 
