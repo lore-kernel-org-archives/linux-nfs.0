@@ -1,50 +1,42 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from shards.monkeyblade.net ([23.128.96.9]:38336 "EHLO
-        shards.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2388466AbeGXWUE (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Jul 2018 18:20:04 -0400
-Date: Tue, 24 Jul 2018 14:11:41 -0700 (PDT)
-Message-Id: <20180724.141141.740309584672047092.davem@davemloft.net>
-To: stephen@networkplumber.org
-Cc: ericvh@gmail.com, rminnich@sandia.gov, lucho@ionkov.net,
-        ralf@linux-mips.org, jreuter@yaina.de, pablo@netfilter.org,
-        kadlec@blackhole.kfki.hu, fw@strlen.de, alex.aring@gmail.com,
-        stefan@datenfreihafen.org, kuznet@ms2.inr.ac.ru,
-        yoshfuji@linux-ipv6.org, johannes@sipsolutions.net,
-        jhs@mojatatu.com, xiyou.wangcong@gmail.com, jiri@resnulli.us,
-        vyasevich@gmail.com, nhorman@tuxdriver.com,
-        marcelo.leitner@gmail.com, trond.myklebust@hammerspace.com,
-        anna.schumaker@netapp.com, steffen.klassert@secunet.com,
-        herbert@gondor.apana.org.au, netdev@vger.kernel.org,
-        v9fs-developer@lists.sourceforge.net, linux-hams@vger.kernel.org,
-        ceph-devel@vger.kernel.org,
-        linux-decnet-user@lists.sourceforge.net,
-        netfilter-devel@vger.kernel.org, coreteam@netfilter.org,
-        linux-wpan@vger.kernel.org, linux-s390@vger.kernel.org,
-        linux-wireless@vger.kernel.org, linux-rdma@vger.kernel.org,
-        linux-sctp@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-x25@vger.kernel.org, sthemmin@microsoft.com
-Subject: Re: [PATCH PATCH net-next 00/18] net whitespace cleanups
-From: David Miller <davem@davemloft.net>
-In-Reply-To: <20180724192918.31165-1-sthemmin@microsoft.com>
-References: <20180724192918.31165-1-sthemmin@microsoft.com>
-Mime-Version: 1.0
-Content-Type: Text/Plain; charset=us-ascii
-Sender: linux-nfs-owner@vger.kernel.org
+Return-Path: <dhowells@redhat.com>
+From: David Howells <dhowells@redhat.com>
+In-Reply-To: <9322c4d50a0828c7592beaac2bbca63bc0b12255.camel@hammerspace.com>
+References: <9322c4d50a0828c7592beaac2bbca63bc0b12255.camel@hammerspace.com> <20180711122219.20808-1-smayhew@redhat.com> <1F59764C-4E7C-4D15-BE35-490D61F0349F@redhat.com> <20180711162447.GI10135@coeurl.usersys.redhat.com>
+To: Trond Myklebust <trondmy@hammerspace.com>
+Cc: dhowells@redhat.com, "bcodding@redhat.com" <bcodding@redhat.com>,
+    "smayhew@redhat.com" <smayhew@redhat.com>,
+    "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+    "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] nfs: add minor version to nfs_server_key for fscache
+MIME-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Date: Wed, 25 Jul 2018 11:07:04 +0100
+Message-ID: <8844.1532513224@warthog.procyon.org.uk>
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Stephen Hemminger <stephen@networkplumber.org>
-Date: Tue, 24 Jul 2018 12:29:00 -0700
+Trond Myklebust <trondmy@hammerspace.com> wrote:
 
-> Ran script that I use to check for trailing whitespace and
-> blank lines at end of files across all files in net/ directory.
-> These are errors that checkpatch reports and git flags.
-> 
-> These are the resulting fixes broken up mostly by subsystem.
+> So what is the use case for having a NFSv4 and NFSv4.1 mount of the
+> same filesystem? I agree we shouldn't crash, but I'm lost as to why
+> someone would want to do this.
 
-I skipped 9p, ceph, and sunrpc since those don't go via my tree.
+Note that one thing I'm thinking of adding to the mount overhaul is the
+ability for the VFS core to either upcall or open a config file to find
+default parameters for a new mount.  This would make it easier to configure
+network and protocol parameters across automounts.
 
-I applied the rest because it's mostly small and won't cause too
-many conflicts in the future.
+> IOW: Why isn't the right thing to do here just to remove the bogus
+> BUG_ON()?
 
-Thanks.
+Because it's not exactly bogus - or, rather, it should now be redundant with
+the upper layer (fscache) weeding out collisions between live cookies - but
+that will still throw a warning that you're getting a collision, say between
+an nfs-4.1 and a nfs-4.2 mount.
+
+The problem is that fscache isn't equipped to deal with handling multiple
+users of the same cache object and the cache coherence implications there of.
+I'm looking to change the former by changing the data I/O interface to take an
+iterator and stop it from tracking netfs pages beyond that, but managing cache
+coherence has to be up to the network filesystem.
+
+David
