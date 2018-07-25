@@ -1,80 +1,56 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from charlotte.tuxdriver.com ([70.61.120.58]:39044 "EHLO
-        smtp.tuxdriver.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728492AbeGYONX (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Jul 2018 10:13:23 -0400
-Date: Wed, 25 Jul 2018 08:59:49 -0400
-From: Neil Horman <nhorman@tuxdriver.com>
-To: Stephen Hemminger <stephen@networkplumber.org>
-Cc: davem@davemloft.net, ericvh@gmail.com, rminnich@sandia.gov,
-        lucho@ionkov.net, ralf@linux-mips.org, jreuter@yaina.de,
-        pablo@netfilter.org, kadlec@blackhole.kfki.hu, fw@strlen.de,
-        alex.aring@gmail.com, stefan@datenfreihafen.org,
-        kuznet@ms2.inr.ac.ru, yoshfuji@linux-ipv6.org,
-        johannes@sipsolutions.net, jhs@mojatatu.com,
-        xiyou.wangcong@gmail.com, jiri@resnulli.us, vyasevich@gmail.com,
-        marcelo.leitner@gmail.com, trond.myklebust@hammerspace.com,
-        anna.schumaker@netapp.com, steffen.klassert@secunet.com,
-        herbert@gondor.apana.org.au, netdev@vger.kernel.org,
-        v9fs-developer@lists.sourceforge.net, linux-hams@vger.kernel.org,
-        ceph-devel@vger.kernel.org,
-        linux-decnet-user@lists.sourceforge.net,
-        netfilter-devel@vger.kernel.org, coreteam@netfilter.org,
-        linux-wpan@vger.kernel.org, linux-s390@vger.kernel.org,
-        linux-wireless@vger.kernel.org, linux-rdma@vger.kernel.org,
-        linux-sctp@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-x25@vger.kernel.org,
-        Stephen Hemminger <sthemmin@microsoft.com>
-Subject: Re: [PATCH PATCH net-next 08/18] sctp: whitespace fixes
-Message-ID: <20180725125949.GB3622@hmswarspite.think-freely.org>
-References: <20180724192918.31165-1-sthemmin@microsoft.com>
- <20180724192918.31165-9-sthemmin@microsoft.com>
+Received: from mail.kernel.org ([198.145.29.99]:37626 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1728358AbeGYOj3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 25 Jul 2018 10:39:29 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20180724192918.31165-9-sthemmin@microsoft.com>
+In-Reply-To: <784782B0-A387-4D3B-A517-E85D851162B8@oracle.com>
+References: <CAJKOXPd2rntNOpU1quR9Zm_J22+=pEaj4ZTC_tdZ0zcRYUciFg@mail.gmail.com>
+ <CAPKp9uZ79ybkv7dMpcy2GQ9L+rWk+vdExQ48diWWQPOUdDQtSQ@mail.gmail.com>
+ <CAJKOXPfX0CytKcYDaDAYYuCQjk-mcGjFRHfZco-wPQsc4G1agA@mail.gmail.com>
+ <BCD39D7E-EEEC-4EB9-824E-63323C333C88@oracle.com> <CAJKOXPcw-i99_U-Ltuuf6w-WRK7V4gNqVSYkCMGFEXQG2DL2XQ@mail.gmail.com>
+ <CAJKOXPf7V1z4pNZ2RsjkJmaVAgk34_rPOtQOc7J5KRMSRemrdg@mail.gmail.com>
+ <082848F5-6360-4523-BA95-601777E17CF2@oracle.com> <CAJKOXPe4uqOZGd_zb_Mqq4Fspu63LHZky86O4tPaD3BZNCBS6w@mail.gmail.com>
+ <6AAC5897-8762-4209-8718-67291B87AA00@oracle.com> <d617f8a85c3414230cd755fe0e4470c0f8bd17ff.camel@hammerspace.com>
+ <26995E49-E8DD-421D-BABF-9E672B9383BD@oracle.com> <30a1455b6817361f8228c022628aef5cdee70c3e.camel@hammerspace.com>
+ <784782B0-A387-4D3B-A517-E85D851162B8@oracle.com>
+From: Krzysztof Kozlowski <krzk@kernel.org>
+Date: Wed, 25 Jul 2018 15:27:46 +0200
+Message-ID: <CAJKOXPfMiaGP9xqPcOQMs+a4RKvhK03v51e5r3GaUiFs0G=61Q@mail.gmail.com>
+Subject: Re: [BUG BISECT] NFSv4 client fails on Flush Journal to Persistent Storage
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Trond Myklebust <trondmy@hammerspace.com>,
+        "sudeep.holla@arm.com" <sudeep.holla@arm.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@kernel.org>,
+        "David S. Miller" <davem@davemloft.net>, linux-nfs@vger.kernel.org,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        "linux-samsung-soc@vger.kernel.org"
+        <linux-samsung-soc@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jul 24, 2018 at 12:29:08PM -0700, Stephen Hemminger wrote:
-> Remove blank line at EOF and trailing whitespace.
-> 
-> Signed-off-by: Stephen Hemminger <stephen@networkplumber.org>
-> ---
->  net/sctp/Kconfig         | 4 ++--
->  net/sctp/sm_sideeffect.c | 1 -
->  2 files changed, 2 insertions(+), 3 deletions(-)
-> 
-> diff --git a/net/sctp/Kconfig b/net/sctp/Kconfig
-> index c740b189d4ba..950ecf6e7439 100644
-> --- a/net/sctp/Kconfig
-> +++ b/net/sctp/Kconfig
-> @@ -41,8 +41,8 @@ config SCTP_DBG_OBJCNT
->  	bool "SCTP: Debug object counts"
->  	depends on PROC_FS
->  	help
-> -	  If you say Y, this will enable debugging support for counting the 
-> -	  type of objects that are currently allocated.  This is useful for 
-> +	  If you say Y, this will enable debugging support for counting the
-> +	  type of objects that are currently allocated.  This is useful for
->  	  identifying memory leaks. This debug information can be viewed by
->  	  'cat /proc/net/sctp/sctp_dbg_objcnt'
->  
-> diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
-> index 298112ca8c06..85d393090238 100644
-> --- a/net/sctp/sm_sideeffect.c
-> +++ b/net/sctp/sm_sideeffect.c
-> @@ -1827,4 +1827,3 @@ static int sctp_cmd_interpreter(enum sctp_event event_type,
->  	error = -ENOMEM;
->  	goto out;
->  }
-> -
-> -- 
-> 2.18.0
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
+On 18 June 2018 at 18:20, Chuck Lever <chuck.lever@oracle.com> wrote:
+>
+> The extra serialization appears to have a reproducible performance
+> impact on RDMA, which no longer takes the reserve_lock when allocating
+> a slot.
+>
+> I could put an xprt_alloc_xid call in xprt_alloc_slot, but that would
+> only work for socket-based transports. Would it be OK if RDMA had its
+> own XID allocation mechanism?
 
+Hi,
+
+On recent next the issue appeared again. My boards with NFSv4 root
+timeout on 80% of boots. This time my NFS server is faster - Pi3 B+
+:).
+
+Is this know? Should I start long bisect or maybe you can point me to
+possible causes?
+
+Best regards,
+Krzysztof
