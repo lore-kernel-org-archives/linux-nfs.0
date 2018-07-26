@@ -1,121 +1,57 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:46552 "EHLO mx1.redhat.com"
+Received: from mx143.netapp.com ([216.240.21.24]:58259 "EHLO mx143.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1730083AbeGZQRV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 26 Jul 2018 12:17:21 -0400
-Received: from smtp.corp.redhat.com (int-mx05.intmail.prod.int.phx2.redhat.com [10.5.11.15])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 18E7483F45
-        for <linux-nfs@vger.kernel.org>; Thu, 26 Jul 2018 15:00:07 +0000 (UTC)
-Received: from steved.boston.devel.redhat.com (ovpn-116-180.phx2.redhat.com [10.3.116.180])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id C75EE5B680
-        for <linux-nfs@vger.kernel.org>; Thu, 26 Jul 2018 15:00:06 +0000 (UTC)
-Subject: Fwd: [Libtirpc-devel] [PATCH] rpcbind: Disable remote calls by
- default
-References: <20180726145436.12241-1-steved@redhat.com>
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-From: Steve Dickson <SteveD@RedHat.com>
-Message-ID: <2ee1b124-204a-71be-d60c-d7620d13aca2@RedHat.com>
-Date: Thu, 26 Jul 2018 11:00:06 -0400
+        id S1730827AbeGZVXF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 26 Jul 2018 17:23:05 -0400
+From: Olga Kornievskaia <kolga@netapp.com>
+To: <Trond.Myklebust@hammerspace.com>, <anna.schumaker@netapp.com>
+CC: <linux-nfs@vger.kernel.org>
+Subject: [PATCH 1/1] NFSv4.0 fix client reference leak in callback
+Date: Thu, 26 Jul 2018 16:04:47 -0400
+Message-ID: <20180726200447.52345-1-kolga@netapp.com>
 MIME-Version: 1.0
-In-Reply-To: <20180726145436.12241-1-steved@redhat.com>
-Content-Type: text/plain; charset=windows-1252
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+If there is an error during processing of a callback message, it leads
+to refrence leak on the client structure and eventually an unclean
+superblock.
 
-FYI... I probably should have cc-ed this list as well...
-
-steved.
-
--------- Forwarded Message --------
-Subject: [Libtirpc-devel] [PATCH] rpcbind: Disable remote calls by default
-Date: Thu, 26 Jul 2018 10:54:36 -0400
-From: Steve Dickson <steved@redhat.com>
-To: Libtirpc-devel Mailing List <libtirpc-devel@lists.sourceforge.net>
-
-Added a new configuration flag --enable-rmtcalls
-which will be needed to enable the remote call
-functionality.
-
-This also stops rpcbind from opening up random
-listening ports.
-
-Signed-off-by: Steve Dickson <steved@redhat.com>
+Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
 ---
- Makefile.am   | 4 ++++
- configure.ac  | 4 ++++
- src/rpcbind.c | 6 +++++-
- 3 files changed, 13 insertions(+), 1 deletion(-)
+ fs/nfs/callback_xdr.c | 11 ++++++++---
+ 1 file changed, 8 insertions(+), 3 deletions(-)
 
-diff --git a/Makefile.am b/Makefile.am
-index c160a95..a536ffb 100644
---- a/Makefile.am
-+++ b/Makefile.am
-@@ -29,6 +29,10 @@ if LIBWRAP
- AM_CPPFLAGS +=	-DLIBWRAP
- endif
+diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
+index a813979..cb905c0 100644
+--- a/fs/nfs/callback_xdr.c
++++ b/fs/nfs/callback_xdr.c
+@@ -883,16 +883,21 @@ static __be32 nfs4_callback_compound(struct svc_rqst *rqstp)
  
-+if RMTCALLS
-+AM_CPPFLAGS +=	-DRMTCALLS
-+endif
-+
- bin_PROGRAMS = rpcinfo
- sbin_PROGRAMS = rpcbind
- 
-diff --git a/configure.ac b/configure.ac
-index 359a418..1587d4d 100644
---- a/configure.ac
-+++ b/configure.ac
-@@ -21,6 +21,10 @@ AC_ARG_ENABLE([warmstarts],
-   AS_HELP_STRING([--enable-warmstarts], [Enables Warm Starts @<:@default=no@:>@]))
- AM_CONDITIONAL(WARMSTART, test x$enable_warmstarts = xyes)
- 
-+AC_ARG_ENABLE([rmtcalls],
-+  AS_HELP_STRING([--enable-rmtcalls], [Enables Remote Calls @<:@default=no@:>@]))
-+AM_CONDITIONAL(RMTCALLS, test x$enable_rmtcalls = xyes)
-+
- AC_ARG_WITH([statedir],
-   AS_HELP_STRING([--with-statedir=ARG], [use ARG as state dir @<:@default=/var/run/rpcbind@:>@])
-   ,, [with_statedir=/var/run/rpcbind])
-diff --git a/src/rpcbind.c b/src/rpcbind.c
-index 8db8dfc..cc848b1 100644
---- a/src/rpcbind.c
-+++ b/src/rpcbind.c
-@@ -794,12 +794,14 @@ got_socket:
- 		}
+ 	if (hdr_arg.minorversion == 0) {
+ 		cps.clp = nfs4_find_client_ident(SVC_NET(rqstp), hdr_arg.cb_ident);
+-		if (!cps.clp || !check_gss_callback_principal(cps.clp, rqstp))
++		if (!cps.clp || !check_gss_callback_principal(cps.clp, rqstp)) {
++			if (cps.clp)
++				nfs_put_client(cps.clp);
+ 			goto out_invalidcred;
++		}
  	}
- #endif
-+
-+
-+#ifdef RMTCALLS
- 	/*
- 	 * rmtcall only supported on CLTS transports for now.
- 	 */
- 	if (nconf->nc_semantics == NC_TPI_CLTS) {
- 		status = create_rmtcall_fd(nconf);
+ 
+ 	cps.minorversion = hdr_arg.minorversion;
+ 	hdr_res.taglen = hdr_arg.taglen;
+ 	hdr_res.tag = hdr_arg.tag;
+-	if (encode_compound_hdr_res(&xdr_out, &hdr_res) != 0)
++	if (encode_compound_hdr_res(&xdr_out, &hdr_res) != 0) {
++		if (cps.clp)
++			nfs_put_client(cps.clp);
+ 		return rpc_system_err;
 -
- #ifdef RPCBIND_DEBUG
- 		if (debugging) {
- 			if (status < 0) {
-@@ -813,6 +815,8 @@ got_socket:
- 		}
- #endif
- 	}
-+#endif
-+
- 	return (0);
- error:
- 	close(fd);
++	}
+ 	while (status == 0 && nops != hdr_arg.nops) {
+ 		status = process_op(nops, rqstp, &xdr_in,
+ 				    rqstp->rq_argp, &xdr_out, rqstp->rq_resp,
 -- 
-2.17.1
+1.8.3.1
 
-
-------------------------------------------------------------------------------
-Check out the vibrant tech community on one of the world's most
-engaging tech sites, Slashdot.org! http://sdm.link/slashdot
-_______________________________________________
-Libtirpc-devel mailing list
-Libtirpc-devel@lists.sourceforge.net
-https://lists.sourceforge.net/lists/listinfo/libtirpc-devel
