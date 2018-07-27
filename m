@@ -1,48 +1,38 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.cn.fujitsu.com ([183.91.158.132]:46847 "EHLO
-        heian.cn.fujitsu.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1725819AbeG0EJH (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 27 Jul 2018 00:09:07 -0400
-From: xuhuan <xuhuan.fnst@cn.fujitsu.com>
-To: <mora@netapp.com>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: nfstest_cache :directory listing changed before acdirmin
-Message-ID: <3c1e663c-7391-92f5-ccfe-e833a2fbc4af@cn.fujitsu.com>
-Date: Fri, 27 Jul 2018 10:47:57 +0800
+Received: from 93521.net ([185.232.65.148]:44083 "EHLO flyracing.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S2388901AbeG0QWK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 27 Jul 2018 12:22:10 -0400
+To: linux-nfs@vger.kernel.org
+Subject: company photos
+Message-ID: <41bb23d9a8cb797e35662f372cb7ae73@gotoilsupplies.com>
+Date: Fri, 27 Jul 2018 13:03:35 +0200
+From: "Jeremy" <dinsingi@arvindguptatoys.com>
+Reply-To: juhutanl@sina.com
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; format=flowed; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Jorge.
+I would like to contact the person who manages your images for your
+company?
 
-I tested nfstest_cache on the lastest kernel,there were some
-FAIL in the result.(It failed with all versions of nfs)
-Is this the cache's bug? Or i missed some arguments ?
+We services such as background image cut out, clipping path, shadow adding
+(drop shadow, reflection shadow, natural shadow, mirror effect), image
+masking, product image editing.
 
-./nfstest_cache --nfsversion=4 -e /nfsroot --server 192.168.227.10 --client 192.168.227.12 >cache4.log
-(version 3,4.1,4.2 had the same result).
+The following are the kind of services together:
+Clipping Path Service
+Cut out image,Image Clipping, Clip image
+Photo Masking Service
+Crop image, Photo cut out
+Beauty Retouching, Model retouching
 
-*** Verify consistency of data caching with NFSv4 on a directory acdirmin = 10
-    TEST: Running test 'acdirmin_data'
-    FAIL: Directory listing should have not changed at t=0
-    FAIL: Directory listing should have not changed just before acdirmin
-    PASS: Directory listing should have changed just after acdirmin
-    TIME: 10.308059s
-*** Verify consistency of data caching with NFSv4 on a directory acdirmin = 10 acdirmax = 20
-    TEST: Running test 'acdirmax_data'
-    FAIL: Directory listing should have not changed at t=0
-    FAIL: Directory listing should have not changed just before acdirmax
-    PASS: Directory listing should have changed just after acdirmax
-    FAIL: Directory listing should have not changed just before acdirmin
-    PASS: Directory listing should have changed just after acdirmin
-    TIME: 1m0.623938s
-*** Verify consistency of data caching with NFSv4 on a directory actimeo = 10
-    FAIL: Directory listing should have not changed at t=0
-    FAIL: Directory listing should have not changed just before actimeo
-    PASS: Directory listing should have changed just after actimeo
-    TIME: 11.027872s
+We can give you editing test on your photos.
 
-Huan Xu
+Also, we also use the most recent application as well as techniques such as
+Adobe Photoshop.
 
+Thanks,
+Jeremy
 
