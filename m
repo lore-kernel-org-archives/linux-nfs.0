@@ -1,39 +1,112 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.kazatk.kz ([91.215.136.126]:50094 "EHLO mail.kazatk.kz"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1728736AbeG1MT4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sat, 28 Jul 2018 08:19:56 -0400
-Date: Sat, 28 Jul 2018 16:45:31 +0600 (ALMT)
-From: Andrew Martinez <d.zhailauova@kazatk.kz>
-Reply-To: andrewmartinez0@hotmail.com
-Message-ID: <96811772.31634.1532774731505.JavaMail.zimbra@kazatk.kz>
-Subject: 
+Received: from mail-it0-f66.google.com ([209.85.214.66]:53317 "EHLO
+        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1728900AbeG1QNg (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 28 Jul 2018 12:13:36 -0400
+Subject: [PATCH] xprtrdma: Fix disconnect regression
+From: Chuck Lever <chuck.lever@oracle.com>
+To: anna.schumaker@netapp.com
+Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Date: Sat, 28 Jul 2018 10:46:47 -0400
+Message-ID: <20180728144051.3612.82362.stgit@manet.1015granger.net>
 MIME-Version: 1.0
-Content-Type: multipart/alternative;
-        boundary="----=_Part_31633_1721284417.1532774731503"
-To: unlisted-recipients:; (no To-header on input)@mail.corp.redhat.com
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-------=_Part_31633_1721284417.1532774731503
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
+I found that injecting disconnects with v4.18-rc resulted in
+random failures of the multi-threaded git regression test.
+
+The root cause appears to be that, after a reconnect, the
+RPC/RDMA transport is waking pending RPCs before the transport has
+posted enough Receive buffers to receive the Replies. If a Reply
+arrives before enough Receive buffers are posted, the connection
+is dropped. A few connection drops happen in quick succession as
+the client and server struggle to regain credit synchronization.
+
+This regression was introduced with commit 7c8d9e7c8863 ("xprtrdma:
+Move Receive posting to Receive handler"). The client is supposed to
+post a single Receive when a connection is established because
+it's not supposed to send more than one RPC Call before it gets
+a fresh credit grant in the first RPC Reply [RFC 8166, Section
+3.3.3].
+
+Unfortunately there appears to be a longstanding bug in the Linux
+client's credit accounting mechanism. On connect, it simply dumps
+all pending RPC Calls onto the new connection. It's possible it has
+done this ever since the RPC/RDMA transport was added to the kernel
+ten years ago.
+
+Servers have so far been tolerant of this bad behavior. Currently no
+server implementation ever changes its credit grant over reconnects,
+and servers always repost enough Receives before connections are
+fully established.
+
+The Linux client implementation used to post a Receive before each
+of these Calls. This has covered up the flooding send behavior.
+
+I could try to correct this old bug so that the client sends exactly
+one RPC Call and waits for a Reply. Since we are so close to the
+next merge window, I'm going to instead provide a simple patch to
+post enough Receives before a reconnect completes (based on the
+number of credits granted to the previous connection).
+
+The spurious disconnects will be gone, but the client will still
+send multiple RPC Calls immediately after a reconnect.
+
+Addressing the latter problem will wait for a merge window because
+a) I expect it to be a large change requiring lots of testing, and
+b) obviously the Linux client has interoperated successfully since
+day zero while still being broken.
+
+Fixes: 7c8d9e7c8863 ("xprtrdma: Move Receive posting to ... ")
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+ net/sunrpc/xprtrdma/verbs.c |    5 ++---
+ 1 file changed, 2 insertions(+), 3 deletions(-)
+
+Hi Anna-
+
+Would it be possible to get this into linux-next and then v4.18-rc ?
+I know this is very late, but I found this issue only recently and
+it took a few days to nail down a simple fix.
 
 
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index 16161a3..e8d1024 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -280,7 +280,6 @@
+ 		++xprt->rx_xprt.connect_cookie;
+ 		connstate = -ECONNABORTED;
+ connected:
+-		xprt->rx_buf.rb_credits = 1;
+ 		ep->rep_connected = connstate;
+ 		rpcrdma_conn_func(ep);
+ 		wake_up_all(&ep->rep_connect_wait);
+@@ -755,6 +754,7 @@
+ 	}
+ 
+ 	ep->rep_connected = 0;
++	rpcrdma_post_recvs(r_xprt, true);
+ 
+ 	rc = rdma_connect(ia->ri_id, &ep->rep_remote_cma);
+ 	if (rc) {
+@@ -773,8 +773,6 @@
+ 
+ 	dprintk("RPC:       %s: connected\n", __func__);
+ 
+-	rpcrdma_post_recvs(r_xprt, true);
+-
+ out:
+ 	if (rc)
+ 		ep->rep_connected = rc;
+@@ -1171,6 +1169,7 @@ struct rpcrdma_req *
+ 		list_add(&req->rl_list, &buf->rb_send_bufs);
+ 	}
+ 
++	buf->rb_credits = 1;
+ 	buf->rb_posted_receives = 0;
+ 	INIT_LIST_HEAD(&buf->rb_recv_bufs);
+ 
 
-
-Brauchen Sie einen Kredit? Wenn ja, mailen Sie uns jetzt f=C3=BCr weitere I=
-nformationen
-
-Do you need a loan of any kind? If Yes email us now for more info
-------=_Part_31633_1721284417.1532774731503
-Content-Type: text/html; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
-
-<html><head><style> body {height: 100%; color:#000000; font-size:12pt; font=
--family:arial, helvetica, sans-serif;}</style></head><body><div><br></div><=
-div><br></div><div><br></div><div>Brauchen Sie einen Kredit? Wenn ja, maile=
-n Sie uns jetzt f=C3=BCr weitere Informationen</div><div><br></div><div><br=
-></div><div>Do you need a loan of any kind? If Yes email us now for more in=
-fo&nbsp;</div></body></html>
-------=_Part_31633_1721284417.1532774731503--
