@@ -1,112 +1,44 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f66.google.com ([209.85.214.66]:53317 "EHLO
-        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728900AbeG1QNg (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 28 Jul 2018 12:13:36 -0400
-Subject: [PATCH] xprtrdma: Fix disconnect regression
-From: Chuck Lever <chuck.lever@oracle.com>
-To: anna.schumaker@netapp.com
-Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Sat, 28 Jul 2018 10:46:47 -0400
-Message-ID: <20180728144051.3612.82362.stgit@manet.1015granger.net>
+Received: from mail.pmfi.pr.gov.br ([177.87.102.15]:58268 "HELO
+        webmail.pmfi.pr.gov.br" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with SMTP id S1726170AbeG2LDq (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 29 Jul 2018 07:03:46 -0400
+Date: Sun, 29 Jul 2018 06:22:20 -0300 (GMT-03:00)
+From: Tom Crist <rogerio.rmm@pmfi.pr.gov.br>
+Reply-To: Tom Crist <cristtom01@gmail.com>
+Message-ID: <1090294235.422736.1532856140371.JavaMail.root@pmfi.pr.gov.br>
+Subject: =?utf-8?Q?Ich_spende_Ihnen_Spendengelder_in_H=C3=B6he_von_2.600.000_Euro.?=
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: multipart/alternative;
+        boundary="----=_Part_422735_137548801.1532856140369"
+To: unlisted-recipients:; (no To-header on input)@mail.corp.redhat.com
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I found that injecting disconnects with v4.18-rc resulted in
-random failures of the multi-threaded git regression test.
-
-The root cause appears to be that, after a reconnect, the
-RPC/RDMA transport is waking pending RPCs before the transport has
-posted enough Receive buffers to receive the Replies. If a Reply
-arrives before enough Receive buffers are posted, the connection
-is dropped. A few connection drops happen in quick succession as
-the client and server struggle to regain credit synchronization.
-
-This regression was introduced with commit 7c8d9e7c8863 ("xprtrdma:
-Move Receive posting to Receive handler"). The client is supposed to
-post a single Receive when a connection is established because
-it's not supposed to send more than one RPC Call before it gets
-a fresh credit grant in the first RPC Reply [RFC 8166, Section
-3.3.3].
-
-Unfortunately there appears to be a longstanding bug in the Linux
-client's credit accounting mechanism. On connect, it simply dumps
-all pending RPC Calls onto the new connection. It's possible it has
-done this ever since the RPC/RDMA transport was added to the kernel
-ten years ago.
-
-Servers have so far been tolerant of this bad behavior. Currently no
-server implementation ever changes its credit grant over reconnects,
-and servers always repost enough Receives before connections are
-fully established.
-
-The Linux client implementation used to post a Receive before each
-of these Calls. This has covered up the flooding send behavior.
-
-I could try to correct this old bug so that the client sends exactly
-one RPC Call and waits for a Reply. Since we are so close to the
-next merge window, I'm going to instead provide a simple patch to
-post enough Receives before a reconnect completes (based on the
-number of credits granted to the previous connection).
-
-The spurious disconnects will be gone, but the client will still
-send multiple RPC Calls immediately after a reconnect.
-
-Addressing the latter problem will wait for a merge window because
-a) I expect it to be a large change requiring lots of testing, and
-b) obviously the Linux client has interoperated successfully since
-day zero while still being broken.
-
-Fixes: 7c8d9e7c8863 ("xprtrdma: Move Receive posting to ... ")
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
- net/sunrpc/xprtrdma/verbs.c |    5 ++---
- 1 file changed, 2 insertions(+), 3 deletions(-)
-
-Hi Anna-
-
-Would it be possible to get this into linux-next and then v4.18-rc ?
-I know this is very late, but I found this issue only recently and
-it took a few days to nail down a simple fix.
+------=_Part_422735_137548801.1532856140369
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 7bit
 
 
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 16161a3..e8d1024 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -280,7 +280,6 @@
- 		++xprt->rx_xprt.connect_cookie;
- 		connstate = -ECONNABORTED;
- connected:
--		xprt->rx_buf.rb_credits = 1;
- 		ep->rep_connected = connstate;
- 		rpcrdma_conn_func(ep);
- 		wake_up_all(&ep->rep_connect_wait);
-@@ -755,6 +754,7 @@
- 	}
- 
- 	ep->rep_connected = 0;
-+	rpcrdma_post_recvs(r_xprt, true);
- 
- 	rc = rdma_connect(ia->ri_id, &ep->rep_remote_cma);
- 	if (rc) {
-@@ -773,8 +773,6 @@
- 
- 	dprintk("RPC:       %s: connected\n", __func__);
- 
--	rpcrdma_post_recvs(r_xprt, true);
--
- out:
- 	if (rc)
- 		ep->rep_connected = rc;
-@@ -1171,6 +1169,7 @@ struct rpcrdma_req *
- 		list_add(&req->rl_list, &buf->rb_send_bufs);
- 	}
- 
-+	buf->rb_credits = 1;
- 	buf->rb_posted_receives = 0;
- 	INIT_LIST_HEAD(&buf->rb_recv_bufs);
- 
 
+
+
+Hallo ihr habt eine Wohlt&auml;tigkeitsspende von 2.600.000,00 EUR, ich gewann die Amerika-Lotterie in Amerika im Wert von $ 40 Millionen und ich spende einen Teil davon an f&uuml;nf Gl&uuml;ckspersonen und Wohlt&auml;tigkeitsh&auml;user in Erinnerung an meine verstorbene Frau, die an Krebs gestorben ist. Kontaktieren Sie mich f&uuml;r weitere Details unter: cristtom01@gmail.com
+
+Gr&uuml;&szlig;e
+Herr Tom Crist
+
+------=_Part_422735_137548801.1532856140369
+Content-Type: text/html; charset=utf-8
+Content-Transfer-Encoding: 7bit
+
+<div></div>
+<div></div>
+<div></div>
+<div>
+<div>Hallo ihr habt eine Wohlt&auml;tigkeitsspende von 2.600.000,00 EUR, ich gewann die Amerika-Lotterie in Amerika im Wert von $ 40 Millionen und ich spende einen Teil davon an f&uuml;nf Gl&uuml;ckspersonen und Wohlt&auml;tigkeitsh&auml;user in Erinnerung an meine verstorbene Frau, die an Krebs gestorben ist. Kontaktieren Sie mich f&uuml;r weitere Details unter:&nbsp;<a href="mailto:cristtom01@gmail.com" target="_blank">cristtom01@gmail.com</a></div>
+<div></div>
+<div>Gr&uuml;&szlig;e</div>
+<div>Herr Tom Crist</div>
+</div>
+------=_Part_422735_137548801.1532856140369--
