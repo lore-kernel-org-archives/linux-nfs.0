@@ -1,137 +1,123 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f68.google.com ([209.85.214.68]:37793 "EHLO
-        mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725814AbeG3EMY (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jul 2018 00:12:24 -0400
-Received: by mail-it0-f68.google.com with SMTP id h20-v6so14818619itf.2
+Received: from mail-it0-f67.google.com ([209.85.214.67]:54245 "EHLO
+        mail-it0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725816AbeG3EMZ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jul 2018 00:12:25 -0400
+Received: by mail-it0-f67.google.com with SMTP id 72-v6so15241894itw.3
         for <linux-nfs@vger.kernel.org>; Sun, 29 Jul 2018 19:39:39 -0700 (PDT)
 From: Trond Myklebust <trondmy@gmail.com>
 To: Anna Schumaker <Anna.Schumaker@Netapp.com>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] NFSv4: bump/drop the nlink count on the parent dir when we mkdir/rmdir
-Date: Sun, 29 Jul 2018 22:39:14 -0400
-Message-Id: <20180730023915.27911-1-trond.myklebust@hammerspace.com>
+Subject: [PATCH] pnfs: Fix handling of NFS4ERR_OLD_STATEID replies to layoutreturn
+Date: Sun, 29 Jul 2018 22:39:15 -0400
+Message-Id: <20180730023915.27911-2-trond.myklebust@hammerspace.com>
+In-Reply-To: <20180730023915.27911-1-trond.myklebust@hammerspace.com>
+References: <20180730023915.27911-1-trond.myklebust@hammerspace.com>
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Ensure that we always bump or drop the nlink count on the parent directory
-when we do a mkdir or a rmdir(). This needs to be done by hand as we don't
-have pre/post op attributes.
+If the server tells us that out layoutreturn raced with another layout
+update, then we must ensure that the new layout segments are not in use
+before we resend with an updated layout stateid.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/nfs4proc.c | 50 +++++++++++++++++++++++++++++++++++++++--------
- 1 file changed, 42 insertions(+), 8 deletions(-)
+ fs/nfs/nfs4proc.c |  6 +++---
+ fs/nfs/pnfs.c     | 17 ++++++++++++++---
+ fs/nfs/pnfs.h     |  4 ++--
+ 3 files changed, 19 insertions(+), 8 deletions(-)
 
 diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 5a8190ec31a2..ca7e0939d21f 100644
+index ca7e0939d21f..f73a8315933f 100644
 --- a/fs/nfs/nfs4proc.c
 +++ b/fs/nfs/nfs4proc.c
-@@ -1071,12 +1071,26 @@ int nfs4_call_sync(struct rpc_clnt *clnt,
- 	return nfs4_call_sync_sequence(clnt, server, msg, args, res);
- }
- 
--static void update_changeattr(struct inode *dir, struct nfs4_change_info *cinfo,
-+static void
-+nfs4_inc_nlink_locked(struct inode *inode)
-+{
-+	NFS_I(inode)->cache_validity |= NFS_INO_INVALID_OTHER;
-+	inc_nlink(inode);
-+}
-+
-+static void
-+nfs4_dec_nlink_locked(struct inode *inode)
-+{
-+	NFS_I(inode)->cache_validity |= NFS_INO_INVALID_OTHER;
-+	inc_nlink(inode);
-+}
-+
-+static void
-+update_changeattr_locked(struct inode *dir, struct nfs4_change_info *cinfo,
- 		unsigned long timestamp)
+@@ -3243,7 +3243,7 @@ static void nfs4_close_done(struct rpc_task *task, void *data)
+ 			calldata->res.lr_res = NULL;
+ 			break;
+ 		case -NFS4ERR_OLD_STATEID:
+-			if (nfs4_refresh_layout_stateid(&calldata->arg.lr_args->stateid,
++			if (nfs4_layoutreturn_refresh_stateid(&calldata->arg.lr_args->stateid,
+ 						calldata->inode))
+ 				goto lr_restart;
+ 			/* Fallthrough */
+@@ -5937,7 +5937,7 @@ static void nfs4_delegreturn_done(struct rpc_task *task, void *calldata)
+ 			data->res.lr_res = NULL;
+ 			break;
+ 		case -NFS4ERR_OLD_STATEID:
+-			if (nfs4_refresh_layout_stateid(&data->args.lr_args->stateid,
++			if (nfs4_layoutreturn_refresh_stateid(&data->args.lr_args->stateid,
+ 						data->inode))
+ 				goto lr_restart;
+ 			/* Fallthrough */
+@@ -8886,7 +8886,7 @@ static void nfs4_layoutreturn_done(struct rpc_task *task, void *calldata)
+ 	server = NFS_SERVER(lrp->args.inode);
+ 	switch (task->tk_status) {
+ 	case -NFS4ERR_OLD_STATEID:
+-		if (nfs4_refresh_layout_stateid(&lrp->args.stateid,
++		if (nfs4_layoutreturn_refresh_stateid(&lrp->args.stateid,
+ 					lrp->args.inode))
+ 			goto out_restart;
+ 		/* Fallthrough */
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 7fdac8b504dd..7020f726275c 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -361,18 +361,29 @@ pnfs_clear_lseg_state(struct pnfs_layout_segment *lseg,
+ /*
+  * Update the seqid of a layout stateid
+  */
+-bool nfs4_refresh_layout_stateid(nfs4_stateid *dst, struct inode *inode)
++bool nfs4_layoutreturn_refresh_stateid(nfs4_stateid *dst, struct inode *inode)
  {
- 	struct nfs_inode *nfsi = NFS_I(dir);
+ 	struct pnfs_layout_hdr *lo;
++	struct pnfs_layout_range range = {
++		.iomode = IOMODE_ANY,
++		.offset = 0,
++		.length = NFS4_MAX_UINT64,
++	};
+ 	bool ret = false;
++	LIST_HEAD(head);
++	int err;
  
--	spin_lock(&dir->i_lock);
- 	nfsi->cache_validity |= NFS_INO_INVALID_CTIME
- 		| NFS_INO_INVALID_MTIME
- 		| NFS_INO_INVALID_DATA;
-@@ -1093,6 +1107,14 @@ static void update_changeattr(struct inode *dir, struct nfs4_change_info *cinfo,
- 	nfsi->read_cache_jiffies = timestamp;
- 	nfsi->attr_gencount = nfs_inc_attr_generation_counter();
- 	nfs_fscache_invalidate(dir);
-+}
-+
-+static void
-+update_changeattr(struct inode *dir, struct nfs4_change_info *cinfo,
-+		unsigned long timestamp)
-+{
-+	spin_lock(&dir->i_lock);
-+	update_changeattr_locked(dir, cinfo, timestamp);
- 	spin_unlock(&dir->i_lock);
+ 	spin_lock(&inode->i_lock);
+ 	lo = NFS_I(inode)->layout;
+ 	if (lo && nfs4_stateid_match_other(dst, &lo->plh_stateid)) {
+-		dst->seqid = lo->plh_stateid.seqid;
+-		ret = true;
++		err = pnfs_mark_matching_lsegs_return(lo, &head, &range, 0);
++		if (err != -EBUSY) {
++			dst->seqid = lo->plh_stateid.seqid;
++			ret = true;
++		}
+ 	}
+ 	spin_unlock(&inode->i_lock);
++	pnfs_free_lseg_list(&head);
+ 	return ret;
  }
  
-@@ -4237,7 +4259,8 @@ nfs4_proc_create(struct inode *dir, struct dentry *dentry, struct iattr *sattr,
- 	return status;
- }
- 
--static int _nfs4_proc_remove(struct inode *dir, const struct qstr *name)
-+static int
-+_nfs4_proc_remove(struct inode *dir, const struct qstr *name, u32 ftype)
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 3fe81424337d..1a38a3b533b5 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -259,7 +259,7 @@ int pnfs_destroy_layouts_byfsid(struct nfs_client *clp,
+ 		bool is_recall);
+ int pnfs_destroy_layouts_byclid(struct nfs_client *clp,
+ 		bool is_recall);
+-bool nfs4_refresh_layout_stateid(nfs4_stateid *dst, struct inode *inode);
++bool nfs4_layoutreturn_refresh_stateid(nfs4_stateid *dst, struct inode *inode);
+ void pnfs_put_layout_hdr(struct pnfs_layout_hdr *lo);
+ void pnfs_set_layout_stateid(struct pnfs_layout_hdr *lo,
+ 			     const nfs4_stateid *new,
+@@ -780,7 +780,7 @@ static inline void nfs4_pnfs_v3_ds_connect_unload(void)
  {
- 	struct nfs_server *server = NFS_SERVER(dir);
- 	struct nfs_removeargs args = {
-@@ -4256,8 +4279,14 @@ static int _nfs4_proc_remove(struct inode *dir, const struct qstr *name)
- 	int status;
- 
- 	status = nfs4_call_sync(server->client, server, &msg, &args.seq_args, &res.seq_res, 1);
--	if (status == 0)
--		update_changeattr(dir, &res.cinfo, timestamp);
-+	if (status == 0) {
-+		spin_lock(&dir->i_lock);
-+		update_changeattr_locked(dir, &res.cinfo, timestamp);
-+		/* Removing a directory decrements nlink in the parent */
-+		if (ftype == NF4DIR && dir->i_nlink > 2)
-+			nfs4_dec_nlink_locked(dir);
-+		spin_unlock(&dir->i_lock);
-+	}
- 	return status;
  }
  
-@@ -4274,7 +4303,7 @@ static int nfs4_proc_remove(struct inode *dir, struct dentry *dentry)
- 			nfs4_inode_make_writeable(inode);
- 	}
- 	do {
--		err = _nfs4_proc_remove(dir, &dentry->d_name);
-+		err = _nfs4_proc_remove(dir, &dentry->d_name, NF4REG);
- 		trace_nfs4_remove(dir, &dentry->d_name, err);
- 		err = nfs4_handle_exception(NFS_SERVER(dir), err,
- 				&exception);
-@@ -4288,7 +4317,7 @@ static int nfs4_proc_rmdir(struct inode *dir, const struct qstr *name)
- 	int err;
- 
- 	do {
--		err = _nfs4_proc_remove(dir, name);
-+		err = _nfs4_proc_remove(dir, name, NF4DIR);
- 		trace_nfs4_remove(dir, name, err);
- 		err = nfs4_handle_exception(NFS_SERVER(dir), err,
- 				&exception);
-@@ -4492,8 +4521,13 @@ static int nfs4_do_create(struct inode *dir, struct dentry *dentry, struct nfs4_
- 	int status = nfs4_call_sync(NFS_SERVER(dir)->client, NFS_SERVER(dir), &data->msg,
- 				    &data->arg.seq_args, &data->res.seq_res, 1);
- 	if (status == 0) {
--		update_changeattr(dir, &data->res.dir_cinfo,
-+		spin_lock(&dir->i_lock);
-+		update_changeattr_locked(dir, &data->res.dir_cinfo,
- 				data->res.fattr->time_start);
-+		/* Creating a directory bumps nlink in the parent */
-+		if (data->arg.ftype == NF4DIR)
-+			nfs4_inc_nlink_locked(dir);
-+		spin_unlock(&dir->i_lock);
- 		status = nfs_instantiate(dentry, data->res.fh, data->res.fattr, data->res.label);
- 	}
- 	return status;
+-static inline bool nfs4_refresh_layout_stateid(nfs4_stateid *dst,
++static inline bool nfs4_layoutreturn_refresh_stateid(nfs4_stateid *dst,
+ 		struct inode *inode)
+ {
+ 	return false;
 -- 
 2.17.1
 
