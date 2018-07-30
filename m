@@ -1,46 +1,137 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-eopbgr700122.outbound.protection.outlook.com ([40.107.70.122]:37600
-        "EHLO NAM04-SN1-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1728528AbeG3Ay7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sun, 29 Jul 2018 20:54:59 -0400
-From: Trond Myklebust <trondmy@hammerspace.com>
-To: "Suresh.Jayaraman@wdc.com" <Suresh.Jayaraman@wdc.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-CC: "Aditya.Agnihotri@wdc.com" <Aditya.Agnihotri@wdc.com>
-Subject: Re: pNFS, multiple paths to Data Server not used by pNFS linux
- client.
-Date: Sun, 29 Jul 2018 23:22:42 +0000
-Message-ID: <e8093d124a34f08ec4c1053df14ba760c4b57efb.camel@hammerspace.com>
-References: <SN6PR04MB4909ED311126ACD9341E339E82520@SN6PR04MB4909.namprd04.prod.outlook.com>
-         <BYAPR04MB4757AB8C13E8FA228B679D4083550@BYAPR04MB4757.namprd04.prod.outlook.com>
-In-Reply-To: <BYAPR04MB4757AB8C13E8FA228B679D4083550@BYAPR04MB4757.namprd04.prod.outlook.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-it0-f68.google.com ([209.85.214.68]:37793 "EHLO
+        mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725814AbeG3EMY (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jul 2018 00:12:24 -0400
+Received: by mail-it0-f68.google.com with SMTP id h20-v6so14818619itf.2
+        for <linux-nfs@vger.kernel.org>; Sun, 29 Jul 2018 19:39:39 -0700 (PDT)
+From: Trond Myklebust <trondmy@gmail.com>
+To: Anna Schumaker <Anna.Schumaker@Netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH] NFSv4: bump/drop the nlink count on the parent dir when we mkdir/rmdir
+Date: Sun, 29 Jul 2018 22:39:14 -0400
+Message-Id: <20180730023915.27911-1-trond.myklebust@hammerspace.com>
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-SGkgU3VyZXNoLA0KDQpPbiBUdWUsIDIwMTgtMDctMjQgYXQgMDk6NTggKzAwMDAsIFN1cmVzaCBK
-YXlhcmFtYW4gd3JvdGU6DQo+IEhpIFRyb25kIGV0IGFsLA0KPiANCj4gT24gMDcvMTkvMjAxOCAx
-MjozOSBQTSwgQWRpdHlhIEFnbmlob3RyaSB3cm90ZToNCj4gPiANCj4gPiBXZSBhcmUgdGVzdGlu
-ZyBvdXIgcE5GUyBzZXJ2ZXIgd2l0aCBsaW51eCBjbGllbnQsIHdoZW4gdGhlIHNlcnZlcg0KPiA+
-IHJldHVybnMgbXVsdGlwbGUgcGF0aHMgdG8gYSB2NCBEUyB2aWEgR0VUREVWSU5GTywgd2Ugc2Vl
-IHRoYXQgdGhlDQo+ID4gY2xpZW50IHZhbGlkYXRlZCB0aGUgcGF0aHMgKGRvZXMgZXhjaGFuZ2Ug
-aWQpIGJ1dCBkb2VzIG5vdCB1c2UgdGhlDQo+ID4gYWx0ZXJuYXRlIHBhdGhzIGluIElPLg0KPiA+
-IFRyYWNpbmcgdGhlIGNvZGUgcGF0aCwgaXQgc2VlbXMgdGhhdCB3aGVuIERTIGlzIGEgTkZTIHYz
-IHNlcnZlciwNCj4gPiBwYXRoIGlzIGFkZGVkLCBidXQgZm9yIE5GUyB2NCBEUyBzZXJ2ZXIsIGNs
-aWVudCBzZXR1cCBmdW5jdGlvbg0KPiA+IGNhbGxiYWNrIHBhdGggZmFpbHMgdG8gYWRkLg0KPiAN
-Cj4gSXMgdGhpcyBvYnNlcnZhdGlvbiB0aGF0IHJwY19jbG50X3NldHVwX3Rlc3RfYW5kX2FkZF94
-cHJ0KCkgZG9lc24ndA0KPiBjYWxsDQo+IHJwY194cHJ0X3N3aXRjaF9hZGRfeHBydCgpIG5laXRo
-ZXIgaW4gdGhlIHRlc3QgZnVuY3Rpb24gbm9yIGxldA0KPiBycGNfY2xudF9hZGRfeHBydCgpIGFk
-ZCB0aGUgeHBydCBjb3JyZWN0PyBUaGlzIHNlZW1zIHRvIGJlIGxpbWl0aW5nDQo+IExpbnV4IHBO
-RlMgY2xpZW50IGZyb20gdXNpbmcgbXVsdGlwbGUgcGF0aHMgd2l0aCBUZWdpbGUvV0QgcE5GUw0K
-PiBzZXJ2ZXIuDQo+IA0KPiBJZiB5ZXMsIHdvdWxkIHlvdSBsaWtlIGEgcGF0Y2ggdGhhdCBhdHRl
-bXB0cyB0byBmaXggdGhpcz8NCj4gDQoNCkkgYmVsaWV2ZSB0aGF0IHRoZSBvbmx5IHJlYXNvbiB3
-aHkgdGhlIE5GU3Y0IERTIHNlcnZlciBjb2RlIHdhcyBuZXZlcg0KY2hhbmdlZCBpcyB0aGF0IGl0
-IHdvdWxkIG5lZWQgdG8gYmUgdGVzdGVkLCBhbmQgbm9uZSBvZiB1cyBoYXMgc3VjaCBhDQpzZXR1
-cCB0byB0ZXN0IHdpdGguDQoNClNvIHllcywgaWYgeW91J3JlIGFibGUgdG8gdGVzdCBvdXQgdGhh
-dCBzZXR1cCBhbmQgYXJlIHNlZWluZyBhIGJ1ZywNCnRoZW4gd2UncmUgaGFwcHkgdG8gdGFrZSBh
-IGZpeC4NCg0KQ2hlZXJzDQogIFRyb25kDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZT
-IGNsaWVudCBtYWludGFpbmVyLCBIYW1tZXJzcGFjZQ0KdHJvbmQubXlrbGVidXN0QGhhbW1lcnNw
-YWNlLmNvbQ0KDQoNCg==
+Ensure that we always bump or drop the nlink count on the parent directory
+when we do a mkdir or a rmdir(). This needs to be done by hand as we don't
+have pre/post op attributes.
+
+Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
+---
+ fs/nfs/nfs4proc.c | 50 +++++++++++++++++++++++++++++++++++++++--------
+ 1 file changed, 42 insertions(+), 8 deletions(-)
+
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 5a8190ec31a2..ca7e0939d21f 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -1071,12 +1071,26 @@ int nfs4_call_sync(struct rpc_clnt *clnt,
+ 	return nfs4_call_sync_sequence(clnt, server, msg, args, res);
+ }
+ 
+-static void update_changeattr(struct inode *dir, struct nfs4_change_info *cinfo,
++static void
++nfs4_inc_nlink_locked(struct inode *inode)
++{
++	NFS_I(inode)->cache_validity |= NFS_INO_INVALID_OTHER;
++	inc_nlink(inode);
++}
++
++static void
++nfs4_dec_nlink_locked(struct inode *inode)
++{
++	NFS_I(inode)->cache_validity |= NFS_INO_INVALID_OTHER;
++	inc_nlink(inode);
++}
++
++static void
++update_changeattr_locked(struct inode *dir, struct nfs4_change_info *cinfo,
+ 		unsigned long timestamp)
+ {
+ 	struct nfs_inode *nfsi = NFS_I(dir);
+ 
+-	spin_lock(&dir->i_lock);
+ 	nfsi->cache_validity |= NFS_INO_INVALID_CTIME
+ 		| NFS_INO_INVALID_MTIME
+ 		| NFS_INO_INVALID_DATA;
+@@ -1093,6 +1107,14 @@ static void update_changeattr(struct inode *dir, struct nfs4_change_info *cinfo,
+ 	nfsi->read_cache_jiffies = timestamp;
+ 	nfsi->attr_gencount = nfs_inc_attr_generation_counter();
+ 	nfs_fscache_invalidate(dir);
++}
++
++static void
++update_changeattr(struct inode *dir, struct nfs4_change_info *cinfo,
++		unsigned long timestamp)
++{
++	spin_lock(&dir->i_lock);
++	update_changeattr_locked(dir, cinfo, timestamp);
+ 	spin_unlock(&dir->i_lock);
+ }
+ 
+@@ -4237,7 +4259,8 @@ nfs4_proc_create(struct inode *dir, struct dentry *dentry, struct iattr *sattr,
+ 	return status;
+ }
+ 
+-static int _nfs4_proc_remove(struct inode *dir, const struct qstr *name)
++static int
++_nfs4_proc_remove(struct inode *dir, const struct qstr *name, u32 ftype)
+ {
+ 	struct nfs_server *server = NFS_SERVER(dir);
+ 	struct nfs_removeargs args = {
+@@ -4256,8 +4279,14 @@ static int _nfs4_proc_remove(struct inode *dir, const struct qstr *name)
+ 	int status;
+ 
+ 	status = nfs4_call_sync(server->client, server, &msg, &args.seq_args, &res.seq_res, 1);
+-	if (status == 0)
+-		update_changeattr(dir, &res.cinfo, timestamp);
++	if (status == 0) {
++		spin_lock(&dir->i_lock);
++		update_changeattr_locked(dir, &res.cinfo, timestamp);
++		/* Removing a directory decrements nlink in the parent */
++		if (ftype == NF4DIR && dir->i_nlink > 2)
++			nfs4_dec_nlink_locked(dir);
++		spin_unlock(&dir->i_lock);
++	}
+ 	return status;
+ }
+ 
+@@ -4274,7 +4303,7 @@ static int nfs4_proc_remove(struct inode *dir, struct dentry *dentry)
+ 			nfs4_inode_make_writeable(inode);
+ 	}
+ 	do {
+-		err = _nfs4_proc_remove(dir, &dentry->d_name);
++		err = _nfs4_proc_remove(dir, &dentry->d_name, NF4REG);
+ 		trace_nfs4_remove(dir, &dentry->d_name, err);
+ 		err = nfs4_handle_exception(NFS_SERVER(dir), err,
+ 				&exception);
+@@ -4288,7 +4317,7 @@ static int nfs4_proc_rmdir(struct inode *dir, const struct qstr *name)
+ 	int err;
+ 
+ 	do {
+-		err = _nfs4_proc_remove(dir, name);
++		err = _nfs4_proc_remove(dir, name, NF4DIR);
+ 		trace_nfs4_remove(dir, name, err);
+ 		err = nfs4_handle_exception(NFS_SERVER(dir), err,
+ 				&exception);
+@@ -4492,8 +4521,13 @@ static int nfs4_do_create(struct inode *dir, struct dentry *dentry, struct nfs4_
+ 	int status = nfs4_call_sync(NFS_SERVER(dir)->client, NFS_SERVER(dir), &data->msg,
+ 				    &data->arg.seq_args, &data->res.seq_res, 1);
+ 	if (status == 0) {
+-		update_changeattr(dir, &data->res.dir_cinfo,
++		spin_lock(&dir->i_lock);
++		update_changeattr_locked(dir, &data->res.dir_cinfo,
+ 				data->res.fattr->time_start);
++		/* Creating a directory bumps nlink in the parent */
++		if (data->arg.ftype == NF4DIR)
++			nfs4_inc_nlink_locked(dir);
++		spin_unlock(&dir->i_lock);
+ 		status = nfs_instantiate(dentry, data->res.fh, data->res.fattr, data->res.label);
+ 	}
+ 	return status;
+-- 
+2.17.1
+
