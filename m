@@ -1,87 +1,92 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:35756 "EHLO mx1.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:35784 "EHLO mx1.suse.de"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1725886AbeGaWxM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 31 Jul 2018 18:53:12 -0400
+        id S1725886AbeGaWxO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 31 Jul 2018 18:53:14 -0400
 From: Mark Fasheh <mfasheh@suse.de>
 To: Al Viro <viro@ZenIV.linux.org.uk>, linux-fsdevel@vger.kernel.org
 Cc: linux-btrfs@vger.kernel.org,
         Andrew Morton <akpm@linux-foundation.org>,
         Amir Goldstein <amir73il@gmail.com>,
         linux-unionfs@vger.kernel.org, Jeff Mahoney <jeffm@suse.com>,
-        linux-nfs@vger.kernel.org
-Subject: [RFC PATCH 0/4] vfs: map unique ino/dev pairs for user space
-Date: Tue, 31 Jul 2018 14:10:41 -0700
-Message-Id: <20180731211045.5671-1-mfasheh@suse.de>
+        linux-nfs@vger.kernel.org, Mark Fasheh <mfasheh@suse.de>
+Subject: [PATCH 1/4] vfs: introduce function to map unique ino/dev pairs
+Date: Tue, 31 Jul 2018 14:10:42 -0700
+Message-Id: <20180731211045.5671-2-mfasheh@suse.de>
+In-Reply-To: <20180731211045.5671-1-mfasheh@suse.de>
+References: <20180731211045.5671-1-mfasheh@suse.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
+There are places in the VFS where we export an ino/dev pair to userspace.
+/proc/PID/maps is a good example - we directly expose inode->i_ino and
+inode->i_sb->s_dev to userspace there.  Many filesystems don't put a unique
+value in inode->i_ino and instead rely on ->getattr to provide the real
+inode number to userspace.  super->s_dev is similar - some filesystems
+expose a difference device from what's put in super->s_dev when queried via
+stat/statx.
 
-These patches are follow-up to this conversation on fsdevel which provides a
-good break-down of the core problem:
+Ultimately this makes it impossible for a user (or software) to match one of
+those reported pairs to the right inode.
 
-https://www.spinics.net/lists/linux-fsdevel/msg128003.html
+We can fix this by adding a helper function, vfs_map_unique_ino_dev(), which
+will query the owning filesystem (via ->getattr) to get the correct ino/dev
+pair.  Later patches will update those places which simply dump inode->i_ino
+and super->s_dev to use the helper.
 
-That e-mail was in turn a follow-up to the following patch series:
+Signed-off-by: Mark Fasheh <mfasheh@suse.de>
+---
+ fs/stat.c          | 23 +++++++++++++++++++++++
+ include/linux/fs.h |  2 ++
+ 2 files changed, 25 insertions(+)
 
-https://lwn.net/Articles/753917/
+diff --git a/fs/stat.c b/fs/stat.c
+index f8e6fb2c3657..80ea42505219 100644
+--- a/fs/stat.c
++++ b/fs/stat.c
+@@ -84,6 +84,29 @@ int vfs_getattr_nosec(const struct path *path, struct kstat *stat,
+ }
+ EXPORT_SYMBOL(vfs_getattr_nosec);
+ 
++void vfs_map_unique_ino_dev(struct dentry *dentry, u64 *ino, dev_t *dev)
++{
++	int ret;
++	struct path path;
++	struct kstat stat;
++
++	path.mnt = NULL;
++	path.dentry = dentry;
++	/* ->dev is always returned, so we only need to specify ino here */
++	ret = vfs_getattr_nosec(&path, &stat, STATX_INO, 0);
++	if (ret) {
++		struct inode *inode = d_inode(dentry);
++		/* Fallback to old behavior in case of getattr error */
++		*ino = inode->i_ino;
++		*dev = inode->i_sb->s_dev;
++		return ret;
++	}
++	*ino = stat.ino;
++	*dev = stat.dev;
++	return 0;
++}
++EXPORT_SYMBOL(vfs_map_unique_ino_dev);
++
+ /*
+  * vfs_getattr - Get the enhanced basic attributes of a file
+  * @path: The file of interest
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index d78d146a98da..b80789472438 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -3077,6 +3077,8 @@ extern void kfree_link(void *);
+ extern void generic_fillattr(struct inode *, struct kstat *);
+ extern int vfs_getattr_nosec(const struct path *, struct kstat *, u32, unsigned int);
+ extern int vfs_getattr(const struct path *, struct kstat *, u32, unsigned int);
++extern void vfs_map_unique_ino_dev(struct dentry *dentry, u64 *ino, dev_t *dev);
++
+ void __inode_add_bytes(struct inode *inode, loff_t bytes);
+ void inode_add_bytes(struct inode *inode, loff_t bytes);
+ void __inode_sub_bytes(struct inode *inode, loff_t bytes);
+-- 
+2.15.1
 
-which tried to solve the dev portion of this problem with a bit of structure
-re-routing but was never accepted.
-
-
-We have an inconsistency in how the kernel is exporting inode number /
-device pairs for user space.  I'm not talking about stat(2) or statx(2) here
-but everywhere else where an ino/dev is exported into a buffer for user
-space.
-
-We typically do this by simply dumping the potentially 32 bit inode->i_ino
-and single device from super->s_dev.  Sometimes these values differ from
-what is returned via stat(2) or statx(2).  Some filesystems might even show
-duplicate (but internally different!) pairs when the raw i_ino/s_dev is
-used.
-
-Aside from breaking software which expects these pairs to be unique, this
-can put the user in a situation where they might not be able to find an
-inode referenced from some kernel log (be it /proc/, printk buffer, etc). 
-What's even worse - depending on how ino is exported, they might even find
-an existing but /wrong/ file.
-
-The following patches fix these inconsistencies by introducing a VFS helper
-function which calls the underlying filesystem ->getattr to get our real
-inode number / device pair.  The returned values can then be used at those
-places in the kernel where we are incorrectly reporting our ino/dev pair. 
-We then update fs/proc/ and fs/locks.c to use this helper when writing to
-/proc/PID/maps and /proc/locks respectively.
-
-
-For anyone who is watching the evolution of these patches, this would be one
-implementation of the 'callback' method which I discussed in my last e-mail. 
-This approach is very straight forward and easy to understand but has some
-drawbacks:
-
-- Not all of the call sites can tolerate errors.  Instead, we fallback to
-  inode->i_ino and super->s_dev in case of getattr error.  That behavior is
-  no worse than what we have today but what we have today is pretty bad so I
-  don't particularly feel good about that. It's better than nothing though.
-
-- There are places in the kernel where we could never call into ->getattr. 
-  There are tons of tracepoints for example that are printing the the wrong
-  ino/dev pair.
-
-- The helper function has to fake a path struct because getting a vfsmount
-  from inside these call sites is impossible.  This isn't actually a big
-  deal as nobody except NFS cares and the NFS patch is very trivial.  It's
-  ugly though, so if we had consensus on this approach I would happily
-  rework our ->getattr function signature, perhaps pulling the vfsmount and
-  dentry arguments back out.
-
-- The dentry argument to ->getattr is potentially problematic as we have
-  some places which _only_ have an inode. Even if we had a dentry I'm not
-  sure what would keep it from going negative while in the middle of our
-  ->getattr call.
-
-
-Comments and review would be greatly appreciated. Thanks,
-	--Mark
