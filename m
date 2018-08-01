@@ -1,68 +1,35 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:33992 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:34002 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2389656AbeHAREb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 1 Aug 2018 13:04:31 -0400
-Date: Wed, 1 Aug 2018 11:18:20 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: nixiaoming <nixiaoming@huawei.com>
-Cc: jlayton@kernel.org, chuck.lever@oracle.com,
-        trondmy@hammerspace.com, andros@netapp.com,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH v2] fs/nfsd: Delete invalid assignment statements in
- nfsd4_decode_exchange_id
-Message-ID: <20180801151820.GA18338@fieldses.org>
-References: <20180723015711.27961-1-nixiaoming@huawei.com>
+        id S2389692AbeHARGt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 1 Aug 2018 13:06:49 -0400
+Date: Wed, 1 Aug 2018 11:20:38 -0400
+From: Bruce Fields <bfields@fieldses.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-rdma@vger.kernel.org,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v1 0/4] NFS/RDMA server patches for v4.19
+Message-ID: <20180801152038.GB18338@fieldses.org>
+References: <20180727142007.21878.77494.stgit@klimt.1015granger.net>
+ <20180801143622.GF16651@fieldses.org>
+ <A73AEC28-2A67-4EFB-8C42-0B0842F4DF4D@oracle.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20180723015711.27961-1-nixiaoming@huawei.com>
+In-Reply-To: <A73AEC28-2A67-4EFB-8C42-0B0842F4DF4D@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jul 23, 2018 at 09:57:11AM +0800, nixiaoming wrote:
-> READ_BUF(8);
-> dummy = be32_to_cpup(p++);
-> dummy = be32_to_cpup(p++);
-> ...
-> READ_BUF(4);
-> dummy = be32_to_cpup(p++);
+On Wed, Aug 01, 2018 at 11:14:14AM -0400, Chuck Lever wrote:
+> > On Aug 1, 2018, at 10:36 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> > But I'd rather not invest a lot of time trying to make NFSv2/v3 better,
+> > the priority for older protocols is just to avoid regressions.
 > 
-> Assigning value to "dummy" here, but that stored value
-> is overwritten before it can be used.
-> At the same time READ_BUF() will re-update the pointer p.
+> Fair 'nuf.
 > 
-> delete invalid assignment statements
+> I'm not clear where NFSv4.0 fits here. I realize most of us would
+> consider NFSv4.0 to be a "legacy protocol". Does the Linux server
+> utilize the DRC for NFSv4.0 ?
 
-Thanks, applying with a minor comment tweak to clarify that we're
-intentionally not reading these:
-
--		/* ssp_window and ssp_num_gss_handles */
-+		/* ignore ssp_window and ssp_num_gss_handles: */
- 		READ_BUF(8);
- 		break;
-
---b.
-
-> 
-> Signed-off-by: nixiaoming <nixiaoming@huawei.com>
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> Signed-off-by: Trond Myklebust <trondmy@hammerspace.com>
-> ---
->  fs/nfsd/nfs4xdr.c | 2 --
->  1 file changed, 2 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-> index a96843c..375ad4b 100644
-> --- a/fs/nfsd/nfs4xdr.c
-> +++ b/fs/nfsd/nfs4xdr.c
-> @@ -1392,8 +1392,6 @@ nfsd4_decode_exchange_id(struct nfsd4_compoundargs *argp,
->  
->  		/* ssp_window and ssp_num_gss_handles */
->  		READ_BUF(8);
-> -		dummy = be32_to_cpup(p++);
-> -		dummy = be32_to_cpup(p++);
->  		break;
->  	default:
->  		goto xdr_error;
-> -- 
-> 2.10.1
+If I remember correctly, it uses the DRC and decides whether to cache
+particular compounds based on the mix of operation numbers making up the
+compound.  (I wrote that code but haven't looked at it recently.)--b.
