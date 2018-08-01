@@ -1,98 +1,75 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yw0-f195.google.com ([209.85.161.195]:46384 "EHLO
+Received: from mail-yw0-f195.google.com ([209.85.161.195]:34253 "EHLO
         mail-yw0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1733098AbeHAHZF (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Aug 2018 03:25:05 -0400
+        with ESMTP id S1731897AbeHAICZ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Aug 2018 04:02:25 -0400
 MIME-Version: 1.0
-In-Reply-To: <20180731232127.GB20761@wotan.suse.de>
-References: <20180731211045.5671-1-mfasheh@suse.de> <20180731211045.5671-2-mfasheh@suse.de>
- <20180731232127.GB20761@wotan.suse.de>
+In-Reply-To: <CAJfpegtyTnYdqYmwG5Jqn6rhDMhjdrkOO5Ziu91f5E+sEgyZoQ@mail.gmail.com>
+References: <1531491744-13277-1-git-send-email-amir73il@gmail.com>
+ <8fc65417ebda26a198e01e8c82f41ae08ab3c803.camel@kernel.org>
+ <CAOQ4uxhvLVLLh_DyXp4q27NNo-+55tbdHOCu3=p8pNin66vv-g@mail.gmail.com> <CAJfpegtyTnYdqYmwG5Jqn6rhDMhjdrkOO5Ziu91f5E+sEgyZoQ@mail.gmail.com>
 From: Amir Goldstein <amir73il@gmail.com>
-Date: Wed, 1 Aug 2018 08:41:14 +0300
-Message-ID: <CAOQ4uxiXV=jobVxp_T2NNb7TdbDX+qNjfm4VCr5qAjgLX9BrgA@mail.gmail.com>
-Subject: Re: [PATCH 1/4] vfs: introduce function to map unique ino/dev pairs
-To: Mark Fasheh <mfasheh@suse.de>
-Cc: Al Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Linux Btrfs <linux-btrfs@vger.kernel.org>,
-        Andrew Morton <akpm@linux-foundation.org>,
+Date: Wed, 1 Aug 2018 09:18:24 +0300
+Message-ID: <CAOQ4uxg+kuAuZ=o7U+77mrYO5zkFAGCkNpiZSVDdYKcdm631_w@mail.gmail.com>
+Subject: Re: [PATCH] nfsd: fix leaked file lock with nfs exported overlayfs
+To: Miklos Szeredi <miklos@szeredi.hu>
+Cc: Jeff Layton <jlayton@kernel.org>,
+        "J . Bruce Fields" <bfields@fieldses.org>,
+        Eddie Horng <eddiehorng.tw@gmail.com>,
         overlayfs <linux-unionfs@vger.kernel.org>,
-        Jeff Mahoney <jeffm@suse.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>
 Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Aug 1, 2018 at 2:21 AM, Mark Fasheh <mfasheh@suse.de> wrote:
+On Tue, Jul 17, 2018 at 5:24 PM, Miklos Szeredi <miklos@szeredi.hu> wrote:
+> On Fri, Jul 13, 2018 at 6:05 PM, Amir Goldstein <amir73il@gmail.com> wrote:
+>> On Fri, Jul 13, 2018 at 6:40 PM, Jeff Layton <jlayton@kernel.org> wrote:
+>>> On Fri, 2018-07-13 at 17:22 +0300, Amir Goldstein wrote:
+>>>> nfsd and lockd call vfs_lock_file() to lock/unlock the inode
+>>>> returned by locks_inode(file).
+>>>>
+>>>> Many places in nfsd/lockd code use the inode returned by
+>>>> file_inode(file) for lock manipulation. With Overlayfs, file_inode()
+>>>> (the underlying inode) is not the same object as locks_inode() (the
+>>>> overlay inode). This can result in "Leaked POSIX lock" messages
+>>>> and eventually to a kernel crash as reported by Eddie Horng:
+>>>> https://marc.info/?l=linux-unionfs&m=153086643202072&w=2
+>>>>
+>>>> Fix all the call sites in nfsd/lockd that should use locks_inode().
+>>>> This is a correctness bug that manifested when overlayfs gained
+>>>> NFS export support in v4.16.
+>>>>
+>>>> Reported-by: Eddie Horng <eddiehorng.tw@gmail.com>
+>>>> Tested-by: Eddie Horng <eddiehorng.tw@gmail.com>
+>>>> Cc: Jeff Layton <jlayton@kernel.org>
+>>>> Fixes: 8383f1748829 ("ovl: wire up NFS export operations")
+>>>> Signed-off-by: Amir Goldstein <amir73il@gmail.com>
+>>>> ---
+>>>>
+>>>> Hi Bruce,
+>>>>
+>>>> For the purpose of locks, nfsd/lockd should look at locks_inode()
+>>>> just like vfs lock functions.
+>>>>
+>>>> Hopefully, Miklos's work on stacked overlayfs file operations will
+>>>> be merged soon and locks_inode() will become the same as file_inode(),
+>>>> but we will still need this fix for stable kernels v4.16 through v4.18.
 >
-> On Tue, Jul 31, 2018 at 02:10:42PM -0700, Mark Fasheh wrote:
->> diff --git a/fs/stat.c b/fs/stat.c
->> index f8e6fb2c3657..80ea42505219 100644
->> --- a/fs/stat.c
->> +++ b/fs/stat.c
->> @@ -84,6 +84,29 @@ int vfs_getattr_nosec(const struct path *path, struct kstat *stat,
->>  }
->>  EXPORT_SYMBOL(vfs_getattr_nosec);
->>
->> +void vfs_map_unique_ino_dev(struct dentry *dentry, u64 *ino, dev_t *dev)
->> +{
->> +     int ret;
->> +     struct path path;
->> +     struct kstat stat;
->> +
->> +     path.mnt = NULL;
->> +     path.dentry = dentry;
->> +     /* ->dev is always returned, so we only need to specify ino here */
->> +     ret = vfs_getattr_nosec(&path, &stat, STATX_INO, 0);
->> +     if (ret) {
->> +             struct inode *inode = d_inode(dentry);
->> +             /* Fallback to old behavior in case of getattr error */
->> +             *ino = inode->i_ino;
->> +             *dev = inode->i_sb->s_dev;
->> +             return ret;
+> Needs a Cc: stable@... tag then.
 >
-> Ooof, attached is a version of this patch which doesn't try to return a value
-> from a void function. Apologies for the extra e-mail.
+> Should I take this patch (based on the fact that it only affects
+> overlayfs exports)?
 >
-> From Mark Fasheh <mfasheh@suse.de>
+> Or will you take it, Bruce?
 >
-> [PATCH 1/4] vfs: introduce function to map unique ino/dev pairs
->
-> There are places in the VFS where we export an ino/dev pair to userspace.
-> /proc/PID/maps is a good example - we directly expose inode->i_ino and
-> inode->i_sb->s_dev to userspace there.  Many filesystems don't put a unique
-> value in inode->i_ino and instead rely on ->getattr to provide the real
-> inode number to userspace.  super->s_dev is similar - some filesystems
-> expose a difference device from what's put in super->s_dev when queried via
-> stat/statx.
->
-> Ultimately this makes it impossible for a user (or software) to match one of
-> those reported pairs to the right inode.
->
-> We can fix this by adding a helper function, vfs_map_unique_ino_dev(), which
-> will query the owning filesystem (via ->getattr) to get the correct ino/dev
-> pair.  Later patches will update those places which simply dump inode->i_ino
-> and super->s_dev to use the helper.
->
-> Signed-off-by: Mark Fasheh <mfasheh@suse.de>
-> ---
->  fs/stat.c          | 22 ++++++++++++++++++++++
->  include/linux/fs.h |  2 ++
->  2 files changed, 24 insertions(+)
->
-> diff --git a/fs/stat.c b/fs/stat.c
-> index f8e6fb2c3657..20c72d618ed5 100644
-> --- a/fs/stat.c
-> +++ b/fs/stat.c
-> @@ -84,6 +84,28 @@ int vfs_getattr_nosec(const struct path *path, struct kstat *stat,
->  }
->  EXPORT_SYMBOL(vfs_getattr_nosec);
->
-> +void vfs_map_unique_ino_dev(struct dentry *dentry, u64 *ino, dev_t *dev)
 
-I find this function name a bit more than function can guaranty.
-It's just a fancy wrapper around ->getattr()
-How about vfs_get_ino_dev() ?
+Bruce? Jeff?
+
+It's probably a good time for someone to put this patch in -next.
+
+Should Miklos do it?
 
 Thanks,
 Amir.
