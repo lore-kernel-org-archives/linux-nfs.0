@@ -1,35 +1,47 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:34002 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:34020 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2389692AbeHARGt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 1 Aug 2018 13:06:49 -0400
-Date: Wed, 1 Aug 2018 11:20:38 -0400
-From: Bruce Fields <bfields@fieldses.org>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: linux-rdma@vger.kernel.org,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v1 0/4] NFS/RDMA server patches for v4.19
-Message-ID: <20180801152038.GB18338@fieldses.org>
-References: <20180727142007.21878.77494.stgit@klimt.1015granger.net>
- <20180801143622.GF16651@fieldses.org>
- <A73AEC28-2A67-4EFB-8C42-0B0842F4DF4D@oracle.com>
+        id S2388988AbeHARRv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 1 Aug 2018 13:17:51 -0400
+Date: Wed, 1 Aug 2018 11:31:36 -0400
+From: "J . Bruce Fields" <bfields@fieldses.org>
+To: Eric Biggers <ebiggers3@gmail.com>
+Cc: linux-nfs@vger.kernel.org, Jeff Layton <jlayton@kernel.org>,
+        Eric Biggers <ebiggers@google.com>
+Subject: Re: [PATCH] nfsd: constify write_op[]
+Message-ID: <20180801153136.GC18338@fieldses.org>
+References: <20180717180125.142261-1-ebiggers3@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <A73AEC28-2A67-4EFB-8C42-0B0842F4DF4D@oracle.com>
+In-Reply-To: <20180717180125.142261-1-ebiggers3@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Aug 01, 2018 at 11:14:14AM -0400, Chuck Lever wrote:
-> > On Aug 1, 2018, at 10:36 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> > But I'd rather not invest a lot of time trying to make NFSv2/v3 better,
-> > the priority for older protocols is just to avoid regressions.
+On Tue, Jul 17, 2018 at 11:01:25AM -0700, Eric Biggers wrote:
+> From: Eric Biggers <ebiggers@google.com>
 > 
-> Fair 'nuf.
-> 
-> I'm not clear where NFSv4.0 fits here. I realize most of us would
-> consider NFSv4.0 to be a "legacy protocol". Does the Linux server
-> utilize the DRC for NFSv4.0 ?
+> write_op[] is never modified, so make it 'const'.
 
-If I remember correctly, it uses the DRC and decides whether to cache
-particular compounds based on the mix of operation numbers making up the
-compound.  (I wrote that code but haven't looked at it recently.)--b.
+Thanks, applying for 2.19.--b.
+
+> 
+> Signed-off-by: Eric Biggers <ebiggers@google.com>
+> ---
+>  fs/nfsd/nfsctl.c | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+> 
+> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+> index 2c46451c7d60..19aa4ded2590 100644
+> --- a/fs/nfsd/nfsctl.c
+> +++ b/fs/nfsd/nfsctl.c
+> @@ -73,7 +73,7 @@ static ssize_t write_recoverydir(struct file *file, char *buf, size_t size);
+>  static ssize_t write_v4_end_grace(struct file *file, char *buf, size_t size);
+>  #endif
+>  
+> -static ssize_t (*write_op[])(struct file *, char *, size_t) = {
+> +static ssize_t (*const write_op[])(struct file *, char *, size_t) = {
+>  	[NFSD_Fh] = write_filehandle,
+>  	[NFSD_FO_UnlockIP] = write_unlock_ip,
+>  	[NFSD_FO_UnlockFS] = write_unlock_fs,
+> -- 
+> 2.18.0.203.gfac676dfb9-goog
