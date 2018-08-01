@@ -1,100 +1,85 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from szxga06-in.huawei.com ([45.249.212.32]:60915 "EHLO huawei.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S2387419AbeHAIMe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 1 Aug 2018 04:12:34 -0400
-From: YueHaibing <yuehaibing@huawei.com>
-To: <davem@davemloft.net>, <trond.myklebust@hammerspace.com>,
-        <anna.schumaker@netapp.com>, <bfields@fieldses.org>,
-        <jlayton@kernel.org>, <ebiggers@google.com>,
-        <chuck.lever@oracle.com>
-CC: <linux-kernel@vger.kernel.org>, <netdev@vger.kernel.org>,
-        <linux-nfs@vger.kernel.org>, YueHaibing <yuehaibing@huawei.com>
-Subject: [PATCH] sunrpc: remove redundant variables 'checksumlen','blocksize' and 'data'
-Date: Wed, 1 Aug 2018 14:28:10 +0800
-Message-ID: <20180801062810.19752-1-yuehaibing@huawei.com>
-MIME-Version: 1.0
+Received: from mail-qk0-f195.google.com ([209.85.220.195]:46207 "EHLO
+        mail-qk0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2387592AbeHAMtL (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Aug 2018 08:49:11 -0400
+Received: by mail-qk0-f195.google.com with SMTP id 191-v6so6381599qki.13
+        for <linux-nfs@vger.kernel.org>; Wed, 01 Aug 2018 04:03:57 -0700 (PDT)
+Message-ID: <b5b90ff75a222ce3ace37dbd625916ae9aaa9830.camel@poochiereds.net>
+Subject: Re: [PATCH 4/4] locks: map correct ino/dev pairs when exporting to
+ userspace
+From: Jeff Layton <jlayton@poochiereds.net>
+To: Mark Fasheh <mfasheh@suse.de>, Al Viro <viro@ZenIV.linux.org.uk>,
+        linux-fsdevel@vger.kernel.org
+Cc: linux-btrfs@vger.kernel.org,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Amir Goldstein <amir73il@gmail.com>,
+        linux-unionfs@vger.kernel.org, Jeff Mahoney <jeffm@suse.com>,
+        linux-nfs@vger.kernel.org
+Date: Wed, 01 Aug 2018 07:03:54 -0400
+In-Reply-To: <20180731211045.5671-5-mfasheh@suse.de>
+References: <20180731211045.5671-1-mfasheh@suse.de>
+         <20180731211045.5671-5-mfasheh@suse.de>
 Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Variables 'checksumlen','blocksize' and 'data' are being assigned,
-but are never used,hence they are redundant and can be removed.
+On Tue, 2018-07-31 at 14:10 -0700, Mark Fasheh wrote:
+> /proc/locks does not always print the correct inode number/device pair.
+> Update lock_get_status() to use vfs_map_unique_ino_dev() to get the real,
+> unique values for userspace.
+> 
+> Signed-off-by: Mark Fasheh <mfasheh@suse.de>
+> ---
+>  fs/locks.c | 12 +++++++++---
+>  1 file changed, 9 insertions(+), 3 deletions(-)
+> 
+> diff --git a/fs/locks.c b/fs/locks.c
+> index db7b6917d9c5..3a012df87fd8 100644
+> --- a/fs/locks.c
+> +++ b/fs/locks.c
+> @@ -2621,6 +2621,7 @@ static void lock_get_status(struct seq_file *f, struct file_lock *fl,
+>  			    loff_t id, char *pfx)
+>  {
+>  	struct inode *inode = NULL;
+> +	struct dentry *dentry;
+>  	unsigned int fl_pid;
+>  	struct pid_namespace *proc_pidns = file_inode(f->file)->i_sb->s_fs_info;
+>  
+> @@ -2633,8 +2634,10 @@ static void lock_get_status(struct seq_file *f, struct file_lock *fl,
+>  	if (fl_pid == 0)
+>  		return;
+>  
+> -	if (fl->fl_file != NULL)
+> +	if (fl->fl_file != NULL) {
+>  		inode = locks_inode(fl->fl_file);
+> +		dentry = file_dentry(fl->fl_file);
+> +	}
+>  
+>  	seq_printf(f, "%lld:%s ", id, pfx);
+>  	if (IS_POSIX(fl)) {
+> @@ -2681,10 +2684,13 @@ static void lock_get_status(struct seq_file *f, struct file_lock *fl,
+>  			       : (fl->fl_type == F_WRLCK) ? "WRITE" : "READ ");
+>  	}
+>  	if (inode) {
+> +		__u64 ino;
+> +		dev_t dev;
+> +
+> +		vfs_map_unique_ino_dev(dentry, &ino, &dev);
 
-fix fllowing warning:
+This code is under a spinlock (blocked_locks_lock or ctx->flc_lock). I
+don't think it'll be ok to call ->getattr while holding a spinlock.
 
-net/sunrpc/auth_gss/gss_krb5_wrap.c:443:7: warning: variable ‘blocksize’ set but not used [-Wunused-but-set-variable]
-net/sunrpc/auth_gss/gss_krb5_crypto.c:376:15: warning: variable ‘checksumlen’ set but not used [-Wunused-but-set-variable]
-net/sunrpc/xprtrdma/svc_rdma.c:97:9: warning: variable ‘data’ set but not used [-Wunused-but-set-variable]
+>  		/* userspace relies on this representation of dev_t */
+>  		seq_printf(f, "%d %02x:%02x:%ld ", fl_pid,
+> -				MAJOR(inode->i_sb->s_dev),
+> -				MINOR(inode->i_sb->s_dev), inode->i_ino);
+> +				MAJOR(dev), MINOR(dev), inode->i_ino);
+>  	} else {
+>  		seq_printf(f, "%d <none>:0 ", fl_pid);
+>  	}
 
-Signed-off-by: YueHaibing <yuehaibing@huawei.com>
----
- net/sunrpc/auth_gss/gss_krb5_crypto.c | 2 --
- net/sunrpc/auth_gss/gss_krb5_wrap.c   | 2 --
- net/sunrpc/xprtrdma/svc_rdma.c        | 2 --
- 3 files changed, 6 deletions(-)
-
-diff --git a/net/sunrpc/auth_gss/gss_krb5_crypto.c b/net/sunrpc/auth_gss/gss_krb5_crypto.c
-index 8654494..84a16fd 100644
---- a/net/sunrpc/auth_gss/gss_krb5_crypto.c
-+++ b/net/sunrpc/auth_gss/gss_krb5_crypto.c
-@@ -373,7 +373,6 @@ make_checksum_v2(struct krb5_ctx *kctx, char *header, int hdrlen,
- 	struct scatterlist sg[1];
- 	int err = -1;
- 	u8 *checksumdata;
--	unsigned int checksumlen;
- 
- 	if (kctx->gk5e->keyed_cksum == 0) {
- 		dprintk("%s: expected keyed hash for %s\n",
-@@ -393,7 +392,6 @@ make_checksum_v2(struct krb5_ctx *kctx, char *header, int hdrlen,
- 	tfm = crypto_alloc_ahash(kctx->gk5e->cksum_name, 0, CRYPTO_ALG_ASYNC);
- 	if (IS_ERR(tfm))
- 		goto out_free_cksum;
--	checksumlen = crypto_ahash_digestsize(tfm);
- 
- 	req = ahash_request_alloc(tfm, GFP_NOFS);
- 	if (!req)
-diff --git a/net/sunrpc/auth_gss/gss_krb5_wrap.c b/net/sunrpc/auth_gss/gss_krb5_wrap.c
-index a737c2d..9a1347f 100644
---- a/net/sunrpc/auth_gss/gss_krb5_wrap.c
-+++ b/net/sunrpc/auth_gss/gss_krb5_wrap.c
-@@ -440,7 +440,6 @@ static u32
- gss_wrap_kerberos_v2(struct krb5_ctx *kctx, u32 offset,
- 		     struct xdr_buf *buf, struct page **pages)
- {
--	int		blocksize;
- 	u8		*ptr, *plainhdr;
- 	s32		now;
- 	u8		flags = 0x00;
-@@ -473,7 +472,6 @@ gss_wrap_kerberos_v2(struct krb5_ctx *kctx, u32 offset,
- 	*ptr++ = 0xff;
- 	be16ptr = (__be16 *)ptr;
- 
--	blocksize = crypto_skcipher_blocksize(kctx->acceptor_enc);
- 	*be16ptr++ = 0;
- 	/* "inner" token header always uses 0 for RRC */
- 	*be16ptr++ = 0;
-diff --git a/net/sunrpc/xprtrdma/svc_rdma.c b/net/sunrpc/xprtrdma/svc_rdma.c
-index 357ba90..134bef6a 100644
---- a/net/sunrpc/xprtrdma/svc_rdma.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma.c
-@@ -94,7 +94,6 @@ static int read_reset_stat(struct ctl_table *table, int write,
- 		atomic_set(stat, 0);
- 	else {
- 		char str_buf[32];
--		char *data;
- 		int len = snprintf(str_buf, 32, "%d\n", atomic_read(stat));
- 		if (len >= 32)
- 			return -EFAULT;
-@@ -103,7 +102,6 @@ static int read_reset_stat(struct ctl_table *table, int write,
- 			*lenp = 0;
- 			return 0;
- 		}
--		data = &str_buf[*ppos];
- 		len -= *ppos;
- 		if (len > *lenp)
- 			len = *lenp;
 -- 
-2.7.0
-
+Jeff Layton <jlayton@poochiereds.net>
 
