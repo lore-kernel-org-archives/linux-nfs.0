@@ -1,154 +1,207 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ma1ind01on0052.outbound.protection.outlook.com ([104.47.100.52]:32804
-        "EHLO IND01-MA1-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S2389234AbeHAPns (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 1 Aug 2018 11:43:48 -0400
-From: Cynthia Taylor <cynthia.taylor@sunmicrodigital.com>
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Hybrid Cloud Storage Users List.
-Date: Wed, 1 Aug 2018 13:55:40 +0000
-Message-ID: <PN1PR01MB0832144F226BDF5BB345942D8E2D0@PN1PR01MB0832.INDPRD01.PROD.OUTLOOK.COM>
-Content-Type: multipart/alternative;
-        boundary="_000_PN1PR01MB0832144F226BDF5BB345942D8E2D0PN1PR01MB0832INDP_"
+Received: from fieldses.org ([173.255.197.46]:33866 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S2389247AbeHAQAD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 1 Aug 2018 12:00:03 -0400
+Date: Wed, 1 Aug 2018 10:14:06 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v1 4/4] NFSD: Handle full-length symlinks
+Message-ID: <20180801141406.GD16651@fieldses.org>
+References: <20180727142007.21878.77494.stgit@klimt.1015granger.net>
+ <20180727151910.21878.49021.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20180727151910.21878.49021.stgit@klimt.1015granger.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---_000_PN1PR01MB0832144F226BDF5BB345942D8E2D0PN1PR01MB0832INDP_
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: quoted-printable
+On Fri, Jul 27, 2018 at 11:19:10AM -0400, Chuck Lever wrote:
+> I've given up on the idea of zero-copy handling of SYMLINK on the
+> server side. This is because the Linux VFS symlink API requires the
+> symlink pathname to be in a NUL-terminated kmalloc'd buffer. The
+> NUL-termination is going to be problematic (watching out for
+> landing on a page boundary and dealing with a 4096-byte pathname).
+> 
+> I don't believe that SYMLINK creation is on a performance path or is
+> requested frequently enough that it will cause noticeable CPU cache
+> pollution due to data copies.
 
-Hi,
+Sounds fine.
 
-I would like to know if you are interested in acquiring Hybrid Cloud Storag=
-e Users List.
+The limits here are weird.  In the v2 case the maximum length is
+NFS_MAXPATHLEN == 1024.  OK, I see, I guess that limit was imposed by
+the NFSv2 protocol.  In the v3 case it's NFS3_MAXPATHLEN == PATH_MAX ==
+4096.  But we were imposing an artificial max of 4095 just so we could
+fit the result in one page with null termination.
 
-We also have some of Top Cloud Storage users list of: Dell EMC, HPE, NetApp=
-, IBM, Hitachi Ventara, Huawei, Oracle, Fujitsu and Many More
+OK, makes sense to me (though I can't recall anyone actually complaining
+about that limit).
 
-Information fields: Names, Title, Email, Phone, Company Name, Company URL, =
-Company physical address, SIC Code, Industry, Company Size (Revenue and Emp=
-loyee).
-
-Let me know if you are interested and I will get back to you with the count=
-s and price list.
-
-Regards,
-Cynthia Taylor
-Data Consultant
-
-
-If you don't want to include yourself in our mailing list, please reply bac=
-k "Leave Out" in a subject line
+--b.
 
 
---_000_PN1PR01MB0832144F226BDF5BB345942D8E2D0PN1PR01MB0832INDP_
-Content-Type: text/html; charset="us-ascii"
-Content-Transfer-Encoding: quoted-printable
-
-<html xmlns:o=3D"urn:schemas-microsoft-com:office:office" xmlns:w=3D"urn:sc=
-hemas-microsoft-com:office:word" xmlns:m=3D"http://schemas.microsoft.com/of=
-fice/2004/12/omml" xmlns=3D"http://www.w3.org/TR/REC-html40">
-<head>
-<meta http-equiv=3D"Content-Type" content=3D"text/html; charset=3Dus-ascii"=
->
-<meta name=3D"Generator" content=3D"Microsoft Word 15 (filtered medium)">
-<style><!--
-/* Font Definitions */
-@font-face
-	{font-family:Calibri;
-	panose-1:2 15 5 2 2 2 4 3 2 4;}
-@font-face
-	{font-family:Cambria;
-	panose-1:2 4 5 3 5 4 6 3 2 4;}
-/* Style Definitions */
-p.MsoNormal, li.MsoNormal, div.MsoNormal
-	{margin:0in;
-	margin-bottom:.0001pt;
-	font-size:11.0pt;
-	font-family:"Calibri","sans-serif";}
-p.MsoNoSpacing, li.MsoNoSpacing, div.MsoNoSpacing
-	{mso-style-priority:1;
-	margin:0in;
-	margin-bottom:.0001pt;
-	font-size:11.0pt;
-	font-family:"Calibri","sans-serif";}
-.MsoChpDefault
-	{mso-style-type:export-only;
-	font-family:"Calibri","sans-serif";}
-.MsoPapDefault
-	{mso-style-type:export-only;
-	margin-bottom:8.0pt;
-	line-height:107%;}
-@page WordSection1
-	{size:8.5in 11.0in;
-	margin:1.0in 1.0in 1.0in 1.0in;}
-div.WordSection1
-	{page:WordSection1;}
---></style>
-</head>
-<body lang=3D"EN-US">
-<div class=3D"WordSection1">
-<p class=3D"MsoNormal"><a name=3D"OLE_LINK17"></a><a name=3D"OLE_LINK19"></=
-a><a name=3D"OLE_LINK18"></a><span style=3D"font-family:&quot;Cambria&quot;=
-,&quot;serif&quot;;color:black;background:white">Hi,</span><span style=3D"f=
-ont-family:&quot;Cambria&quot;,&quot;serif&quot;;color:black"><br>
-<br>
-<span style=3D"background:white">I would like to know if you are interested=
- in acquiring</span>
-<a name=3D"OLE_LINK23"></a><a name=3D"OLE_LINK22"></a><a name=3D"OLE_LINK21=
-"></a><a name=3D"OLE_LINK20"></a><a name=3D"OLE_LINK16"></a><a name=3D"OLE_=
-LINK15"></a><a name=3D"OLE_LINK14"></a><a name=3D"OLE_LINK13"></a><a name=
-=3D"OLE_LINK12"></a><a name=3D"OLE_LINK11"></a><a name=3D"OLE_LINK10"></a><=
-a name=3D"OLE_LINK8"></a><a name=3D"OLE_LINK9"></a><a name=3D"OLE_LINK3"></=
-a><a name=3D"OLE_LINK1"></a><a name=3D"OLE_LINK2"></a><b><u><span style=3D"=
-background:white">Hybrid
- Cloud Storage&nbsp;Users List.</span></u></b><b><u><span style=3D"backgrou=
-nd:white"><o:p></o:p></span></u></b></span></p>
-<p class=3D"MsoNormal"><b><span style=3D"font-family:&quot;Cambria&quot;,&q=
-uot;serif&quot;;color:black;background:white"><o:p>&nbsp;</o:p></span></b><=
-/p>
-<p class=3D"MsoNormal"><b><u>We also have some of Top Cloud Storage users l=
-ist of:</u>
-</b>Dell EMC, HPE, NetApp, IBM, Hitachi Ventara, Huawei, Oracle, Fujitsu an=
-d Many More<b><span style=3D"font-family:&quot;Cambria&quot;,&quot;serif&qu=
-ot;;color:black;background:white"><o:p></o:p></span></b></p>
-<p class=3D"MsoNormal"><b><span style=3D"font-family:&quot;Cambria&quot;,&q=
-uot;serif&quot;;color:black;background:white"><o:p>&nbsp;</o:p></span></b><=
-/p>
-<p class=3D"MsoNormal"><span style=3D"font-family:&quot;Cambria&quot;,&quot=
-;serif&quot;;color:black;background:white">Information fields:
-<b>Names, Title, Email, Phone, Company Name, Company URL, Company physical =
-address, SIC Code, Industry, Company Size (Revenue and Employee).</b></span=
-><span style=3D"font-family:&quot;Cambria&quot;,&quot;serif&quot;;color:bla=
-ck"><o:p></o:p></span></p>
-<p class=3D"MsoNormal"><span style=3D"font-family:&quot;Cambria&quot;,&quot=
-;serif&quot;;color:black;background:white">&nbsp;</span><span style=3D"font=
--family:&quot;Cambria&quot;,&quot;serif&quot;;color:black"><o:p></o:p></spa=
-n></p>
-<p class=3D"MsoNormal"><span style=3D"font-family:&quot;Cambria&quot;,&quot=
-;serif&quot;;color:black;background:white">Let me know if you are intereste=
-d and I will get back to you with the counts and price list.</span><span st=
-yle=3D"font-family:&quot;Cambria&quot;,&quot;serif&quot;;color:black"><br>
-<br>
-<a name=3D"OLE_LINK6"></a><a name=3D"OLE_LINK7"></a><b><span style=3D"backg=
-round:white">Regards,</span><o:p></o:p></b></span></p>
-<p class=3D"MsoNormal"><a name=3D"OLE_LINK4"></a><a name=3D"OLE_LINK5"></a>=
-<b><span style=3D"font-family:&quot;Cambria&quot;,&quot;serif&quot;;color:b=
-lack">Cynthia Taylor<span style=3D"background:white"><o:p></o:p></span></sp=
-an></b></p>
-<p class=3D"MsoNormal"><b><span style=3D"font-family:&quot;Cambria&quot;,&q=
-uot;serif&quot;;color:black;background:white">Data Consultant
-</span></b><span style=3D"font-family:&quot;Cambria&quot;,&quot;serif&quot;=
-;color:black"><o:p></o:p></span></p>
-<p class=3D"MsoNormal"><o:p>&nbsp;</o:p></p>
-<p class=3D"MsoNoSpacing" style=3D"text-align:justify"><span style=3D"color=
-:#DBDBDB">If you don't want to include yourself in our mailing list, please=
- reply back &#8220;Leave Out&quot; in a subject line<o:p></o:p></span></p>
-<p class=3D"MsoNormal"><o:p>&nbsp;</o:p></p>
-</div>
-</body>
-</html>
-
---_000_PN1PR01MB0832144F226BDF5BB345942D8E2D0PN1PR01MB0832INDP_--
+> 
+> There will be two places where a transport callout will be necessary
+> to fill in the rqstp: one will be in the svc_fill_symlink_pathname()
+> helper that is used by NFSv2 and NFSv3, and the other will be in
+> nfsd4_decode_create().
+> 
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+>  fs/nfsd/nfs3proc.c         |    2 +
+>  fs/nfsd/nfsproc.c          |    2 +
+>  include/linux/sunrpc/svc.h |    3 +-
+>  net/sunrpc/svc.c           |   67 ++++++++++++++++----------------------------
+>  4 files changed, 31 insertions(+), 43 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs3proc.c b/fs/nfsd/nfs3proc.c
+> index 8d1c2d1a..9eb8086 100644
+> --- a/fs/nfsd/nfs3proc.c
+> +++ b/fs/nfsd/nfs3proc.c
+> @@ -290,6 +290,7 @@
+>  		RETURN_STATUS(nfserr_nametoolong);
+>  
+>  	argp->tname = svc_fill_symlink_pathname(rqstp, &argp->first,
+> +						page_address(rqstp->rq_arg.pages[0]),
+>  						argp->tlen);
+>  	if (IS_ERR(argp->tname))
+>  		RETURN_STATUS(nfserrno(PTR_ERR(argp->tname)));
+> @@ -303,6 +304,7 @@
+>  	fh_init(&resp->fh, NFS3_FHSIZE);
+>  	nfserr = nfsd_symlink(rqstp, &resp->dirfh, argp->fname, argp->flen,
+>  						   argp->tname, &resp->fh);
+> +	kfree(argp->tname);
+>  	RETURN_STATUS(nfserr);
+>  }
+>  
+> diff --git a/fs/nfsd/nfsproc.c b/fs/nfsd/nfsproc.c
+> index a6faee5..0d20fd1 100644
+> --- a/fs/nfsd/nfsproc.c
+> +++ b/fs/nfsd/nfsproc.c
+> @@ -454,6 +454,7 @@
+>  		return nfserr_nametoolong;
+>  
+>  	argp->tname = svc_fill_symlink_pathname(rqstp, &argp->first,
+> +						page_address(rqstp->rq_arg.pages[0]),
+>  						argp->tlen);
+>  	if (IS_ERR(argp->tname))
+>  		return nfserrno(PTR_ERR(argp->tname));
+> @@ -466,6 +467,7 @@
+>  	nfserr = nfsd_symlink(rqstp, &argp->ffh, argp->fname, argp->flen,
+>  						 argp->tname, &newfh);
+>  
+> +	kfree(argp->tname);
+>  	fh_put(&argp->ffh);
+>  	fh_put(&newfh);
+>  	return nfserr;
+> diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+> index 43f88bd..73e130a 100644
+> --- a/include/linux/sunrpc/svc.h
+> +++ b/include/linux/sunrpc/svc.h
+> @@ -499,7 +499,8 @@ unsigned int	   svc_fill_write_vector(struct svc_rqst *rqstp,
+>  					 struct page **pages,
+>  					 struct kvec *first, size_t total);
+>  char		  *svc_fill_symlink_pathname(struct svc_rqst *rqstp,
+> -					     struct kvec *first, size_t total);
+> +					     struct kvec *first, void *p,
+> +					     size_t total);
+>  
+>  #define	RPC_MAX_ADDRBUFLEN	(63U)
+>  
+> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+> index 2194ed5..d13e05f 100644
+> --- a/net/sunrpc/svc.c
+> +++ b/net/sunrpc/svc.c
+> @@ -1577,65 +1577,48 @@ unsigned int svc_fill_write_vector(struct svc_rqst *rqstp, struct page **pages,
+>   * svc_fill_symlink_pathname - Construct pathname argument for VFS symlink call
+>   * @rqstp: svc_rqst to operate on
+>   * @first: buffer containing first section of pathname
+> + * @p: buffer containing remaining section of pathname
+>   * @total: total length of the pathname argument
+>   *
+> - * Returns pointer to a NUL-terminated string, or an ERR_PTR. The buffer is
+> - * released automatically when @rqstp is recycled.
+> + * The VFS symlink API demands a NUL-terminated pathname in mapped memory.
+> + * Returns pointer to a NUL-terminated string, or an ERR_PTR. Caller must free
+> + * the returned string.
+>   */
+>  char *svc_fill_symlink_pathname(struct svc_rqst *rqstp, struct kvec *first,
+> -				size_t total)
+> +				void *p, size_t total)
+>  {
+> -	struct xdr_buf *arg = &rqstp->rq_arg;
+> -	struct page **pages;
+> -	char *result;
+> -
+> -	/* VFS API demands a NUL-terminated pathname. This function
+> -	 * uses a page from @rqstp as the pathname buffer, to enable
+> -	 * direct placement. Thus the total buffer size is PAGE_SIZE.
+> -	 * Space in this buffer for NUL-termination requires that we
+> -	 * cap the size of the returned symlink pathname just a
+> -	 * little early.
+> -	 */
+> -	if (total > PAGE_SIZE - 1)
+> -		return ERR_PTR(-ENAMETOOLONG);
+> +	size_t len, remaining;
+> +	char *result, *dst;
+>  
+> -	/* Some types of transport can present the pathname entirely
+> -	 * in rq_arg.pages. If not, then copy the pathname into one
+> -	 * page.
+> -	 */
+> -	pages = arg->pages;
+> -	WARN_ON_ONCE(arg->page_base != 0);
+> -	if (first->iov_base == 0) {
+> -		result = page_address(*pages);
+> -		result[total] = '\0';
+> -	} else {
+> -		size_t len, remaining;
+> -		char *dst;
+> +	result = kmalloc(total + 1, GFP_KERNEL);
+> +	if (!result)
+> +		return ERR_PTR(-ESERVERFAULT);
+>  
+> -		result = page_address(*(rqstp->rq_next_page++));
+> -		dst = result;
+> -		remaining = total;
+> +	dst = result;
+> +	remaining = total;
+>  
+> -		len = min_t(size_t, total, first->iov_len);
+> +	len = min_t(size_t, total, first->iov_len);
+> +	if (len) {
+>  		memcpy(dst, first->iov_base, len);
+>  		dst += len;
+>  		remaining -= len;
+> +	}
+>  
+> -		/* No more than one page left */
+> -		if (remaining) {
+> -			len = min_t(size_t, remaining, PAGE_SIZE);
+> -			memcpy(dst, page_address(*pages), len);
+> -			dst += len;
+> -		}
+> -
+> -		*dst = '\0';
+> +	if (remaining) {
+> +		len = min_t(size_t, remaining, PAGE_SIZE);
+> +		memcpy(dst, p, len);
+> +		dst += len;
+>  	}
+>  
+> -	/* Sanity check: we don't allow the pathname argument to
+> +	*dst = '\0';
+> +
+> +	/* Sanity check: Linux doesn't allow the pathname argument to
+>  	 * contain a NUL byte.
+>  	 */
+> -	if (strlen(result) != total)
+> +	if (strlen(result) != total) {
+> +		kfree(result);
+>  		return ERR_PTR(-EINVAL);
+> +	}
+>  	return result;
+>  }
+>  EXPORT_SYMBOL_GPL(svc_fill_symlink_pathname);
