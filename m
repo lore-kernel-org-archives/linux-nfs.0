@@ -1,123 +1,107 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:36626 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([173.255.197.46]:33652 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2387654AbeHANc5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 1 Aug 2018 09:32:57 -0400
-Date: Wed, 1 Aug 2018 07:46:47 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Ye Xiaolong <xiaolong.ye@intel.com>
-Cc: Stephen Rothwell <sfr@canb.auug.org.au>, linux-nfs@vger.kernel.org,
-        lkp@01.org, LKML <linux-kernel@vger.kernel.org>,
-        "Chen, Rong A" <rong.a.chen@intel.com>
-Subject: Re: [LKP] [lkp-robot] [nfsd4] 517dc52baa: fsmark.files_per_sec 32.4%
- improvement
-Message-ID: <20180801114642.GA21500@parsley.fieldses.org>
-References: <20180620065243.GD11011@yexl-desktop>
- <20180620154950.GA28475@parsley.fieldses.org>
- <87va9vu21f.fsf@yhuang-dev.intel.com>
- <20180716065500.GU27608@yexl-desktop>
- <20180727002225.GF17169@yexl-desktop>
+        id S2389240AbeHAOqH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 1 Aug 2018 10:46:07 -0400
+Date: Wed, 1 Aug 2018 09:00:26 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: YueHaibing <yuehaibing@huawei.com>
+Cc: davem@davemloft.net, trond.myklebust@hammerspace.com,
+        anna.schumaker@netapp.com, jlayton@kernel.org, ebiggers@google.com,
+        chuck.lever@oracle.com, linux-kernel@vger.kernel.org,
+        netdev@vger.kernel.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] sunrpc: remove redundant variables
+ 'checksumlen','blocksize' and 'data'
+Message-ID: <20180801130026.GA16651@fieldses.org>
+References: <20180801062810.19752-1-yuehaibing@huawei.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20180727002225.GF17169@yexl-desktop>
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <20180801062810.19752-1-yuehaibing@huawei.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jul 27, 2018 at 08:22:25AM +0800, Ye Xiaolong wrote:
-> On 07/16, Ye Xiaolong wrote:
-> >On 07/04, Huang, Ying wrote:
-> >>"J. Bruce Fields" <bfields@redhat.com> writes:
-> >>
-> >>> Thanks!
-> >>>
-> >>> On Wed, Jun 20, 2018 at 02:52:43PM +0800, kernel test robot wrote:
-> >>>> FYI, we noticed a 32.4% improvement of fsmark.files_per_sec due to commit:
-> >>>> 
-> >>>> 
-> >>>> commit: 517dc52baa2a508c82f68bbc7219b48169e6b29f ("nfsd4: shortern default lease period")
-> >>>> https://git.kernel.org/cgit/linux/kernel/git/next/linux-next.git master
-> >>>
-> >>> That doesn't make any sense....
-> >>>
-> >>> OK, I think I see the problem:
-> >>>
-> >>>> in testcase: fsmark
-> >>>> on test machine: 48 threads Intel(R) Xeon(R) CPU E5-2697 v2 @ 2.70GHz with 64G memory
-> >>>> with following parameters:
-> >>>> 
-> >>>> 	iterations: 1x
-> >>>> 	nr_threads: 1t
-> >>>> 	disk: 1BRD_48G
-> >>>> 	fs: f2fs
-> >>>> 	fs2: nfsv4
-> >>>> 	filesize: 4M
-> >>>> 	test_size: 40G
-> >>>> 	sync_method: fsyncBeforeClose
-> >>>> 	cpufreq_governor: performance
-> >>>> 
-> >>>> test-description: The fsmark is a file system benchmark to test synchronous write workloads, for example, mail servers workload.
-> >>>> test-url: https://sourceforge.net/projects/fsmark/
-> >>>> 
-> >>>> 
-> >>>> 
-> >>>> Details are as below:
-> >>>> -------------------------------------------------------------------------------------------------->
-> >>>> 
-> >>>> 
-> >>>> To reproduce:
-> >>>> 
-> >>>>         git clone https://github.com/intel/lkp-tests.git
-> >>>>         cd lkp-tests
-> >>>>         bin/lkp install job.yaml  # job file is attached in this email
-> >>>>         bin/lkp run     job.yaml
-> >>>> 
-> >>>> =========================================================================================
-> >>>> compiler/cpufreq_governor/disk/filesize/fs2/fs/iterations/kconfig/nr_threads/rootfs/sync_method/tbox_group/test_size/testcase:
-> >>>>   gcc-7/performance/1BRD_48G/4M/nfsv4/f2fs/1x/x86_64-rhel-7.2/1t/debian-x86_64-2016-08-31.cgz/fsyncBeforeClose/ivb44/40G/fsmark
-> >>>> 
-> >>>> commit: 
-> >>>>   c2993a1d7d ("nfsd4: extend reclaim period for reclaiming clients")
-> >>>>   517dc52baa ("nfsd4: shortern default lease period")
-> >>>> 
-> >>>> c2993a1d7d6687fd 517dc52baa2a508c82f68bbc72 
-> >>>> ---------------- -------------------------- 
-> >>>>          %stddev     %change         %stddev
-> >>>>              \          |                \  
-> >>>>      53.60           +32.4%      70.95        fsmark.files_per_sec
-> >>>>     191.89           -24.4%     145.16        fsmark.time.elapsed_time
-> >>>>     191.89           -24.4%     145.16        fsmark.time.elapsed_time.max
-> >>>
-> >>> So what happened is the test took about 45 seconds less.
-> >>>
-> >>> I suspect you're starting the nfs server and then immediately running
-> >>> this test.
-> >>
-> >>Yes.
-> >>
-> >>> The problem is that if there's a grace period on startup, any open will
-> >>> just hang until the grace period ends.
-> >>>
-> >>> This patch changed the default grace period from 90 seconds to 45, so
-> >>> that would explain the change.
-> >>>
-> >>> In my testing I usually 
-> >>>
-> >>> 	start the nfs server
-> >>> 	on the client:
-> >>> 		mount the server
-> >>> 		touch a file
-> >>>
-> >>> When the touch returns, I know any grace period has completed, and then
-> >>> I can run any tests normally.
-> >>
-> >
-> >I've modified our test to touch a file before running the actual workload, then
-> >requeue tests for both commit 517dc52baa and its parent c2993a1d7d, but the
-> >result seems persistent which shows a ~30% improvement of fsmark.files_per_sec.
-> >
-> 
-> Any suggestions?
-
-You're sure you only start timing after the "touch" returns?
+Thanks, applying (assuming Chuck's got no objection to the svc_rdma
+part).
 
 --b.
+
+On Wed, Aug 01, 2018 at 02:28:10PM +0800, YueHaibing wrote:
+> Variables 'checksumlen','blocksize' and 'data' are being assigned,
+> but are never used,hence they are redundant and can be removed.
+> 
+> fix fllowing warning:
+> 
+> net/sunrpc/auth_gss/gss_krb5_wrap.c:443:7: warning: variable ‘blocksize’ set but not used [-Wunused-but-set-variable]
+> net/sunrpc/auth_gss/gss_krb5_crypto.c:376:15: warning: variable ‘checksumlen’ set but not used [-Wunused-but-set-variable]
+> net/sunrpc/xprtrdma/svc_rdma.c:97:9: warning: variable ‘data’ set but not used [-Wunused-but-set-variable]
+> 
+> Signed-off-by: YueHaibing <yuehaibing@huawei.com>
+> ---
+>  net/sunrpc/auth_gss/gss_krb5_crypto.c | 2 --
+>  net/sunrpc/auth_gss/gss_krb5_wrap.c   | 2 --
+>  net/sunrpc/xprtrdma/svc_rdma.c        | 2 --
+>  3 files changed, 6 deletions(-)
+> 
+> diff --git a/net/sunrpc/auth_gss/gss_krb5_crypto.c b/net/sunrpc/auth_gss/gss_krb5_crypto.c
+> index 8654494..84a16fd 100644
+> --- a/net/sunrpc/auth_gss/gss_krb5_crypto.c
+> +++ b/net/sunrpc/auth_gss/gss_krb5_crypto.c
+> @@ -373,7 +373,6 @@ make_checksum_v2(struct krb5_ctx *kctx, char *header, int hdrlen,
+>  	struct scatterlist sg[1];
+>  	int err = -1;
+>  	u8 *checksumdata;
+> -	unsigned int checksumlen;
+>  
+>  	if (kctx->gk5e->keyed_cksum == 0) {
+>  		dprintk("%s: expected keyed hash for %s\n",
+> @@ -393,7 +392,6 @@ make_checksum_v2(struct krb5_ctx *kctx, char *header, int hdrlen,
+>  	tfm = crypto_alloc_ahash(kctx->gk5e->cksum_name, 0, CRYPTO_ALG_ASYNC);
+>  	if (IS_ERR(tfm))
+>  		goto out_free_cksum;
+> -	checksumlen = crypto_ahash_digestsize(tfm);
+>  
+>  	req = ahash_request_alloc(tfm, GFP_NOFS);
+>  	if (!req)
+> diff --git a/net/sunrpc/auth_gss/gss_krb5_wrap.c b/net/sunrpc/auth_gss/gss_krb5_wrap.c
+> index a737c2d..9a1347f 100644
+> --- a/net/sunrpc/auth_gss/gss_krb5_wrap.c
+> +++ b/net/sunrpc/auth_gss/gss_krb5_wrap.c
+> @@ -440,7 +440,6 @@ static u32
+>  gss_wrap_kerberos_v2(struct krb5_ctx *kctx, u32 offset,
+>  		     struct xdr_buf *buf, struct page **pages)
+>  {
+> -	int		blocksize;
+>  	u8		*ptr, *plainhdr;
+>  	s32		now;
+>  	u8		flags = 0x00;
+> @@ -473,7 +472,6 @@ gss_wrap_kerberos_v2(struct krb5_ctx *kctx, u32 offset,
+>  	*ptr++ = 0xff;
+>  	be16ptr = (__be16 *)ptr;
+>  
+> -	blocksize = crypto_skcipher_blocksize(kctx->acceptor_enc);
+>  	*be16ptr++ = 0;
+>  	/* "inner" token header always uses 0 for RRC */
+>  	*be16ptr++ = 0;
+> diff --git a/net/sunrpc/xprtrdma/svc_rdma.c b/net/sunrpc/xprtrdma/svc_rdma.c
+> index 357ba90..134bef6a 100644
+> --- a/net/sunrpc/xprtrdma/svc_rdma.c
+> +++ b/net/sunrpc/xprtrdma/svc_rdma.c
+> @@ -94,7 +94,6 @@ static int read_reset_stat(struct ctl_table *table, int write,
+>  		atomic_set(stat, 0);
+>  	else {
+>  		char str_buf[32];
+> -		char *data;
+>  		int len = snprintf(str_buf, 32, "%d\n", atomic_read(stat));
+>  		if (len >= 32)
+>  			return -EFAULT;
+> @@ -103,7 +102,6 @@ static int read_reset_stat(struct ctl_table *table, int write,
+>  			*lenp = 0;
+>  			return 0;
+>  		}
+> -		data = &str_buf[*ppos];
+>  		len -= *ppos;
+>  		if (len > *lenp)
+>  			len = *lenp;
+> -- 
+> 2.7.0
+> 
