@@ -1,44 +1,112 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:38606 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S2389900AbeHATcr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 1 Aug 2018 15:32:47 -0400
-Date: Wed, 1 Aug 2018 17:45:56 +0000
-From: Mark Fasheh <mfasheh@suse.de>
-To: Amir Goldstein <amir73il@gmail.com>
-Cc: Al Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Linux Btrfs <linux-btrfs@vger.kernel.org>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        overlayfs <linux-unionfs@vger.kernel.org>,
-        Jeff Mahoney <jeffm@suse.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 4/4] locks: map correct ino/dev pairs when exporting to
- userspace
-Message-ID: <20180801174556.GD20761@wotan.suse.de>
-Reply-To: Mark Fasheh <mfasheh@suse.de>
-References: <20180731211045.5671-1-mfasheh@suse.de>
- <20180731211045.5671-5-mfasheh@suse.de>
- <CAOQ4uxgQnO-nZxF51TLFF-+Lx+XmxgnN-6bHbvFNwLkGC3qNEg@mail.gmail.com>
+Received: from esa12.utexas.iphmx.com ([216.71.154.221]:29612 "EHLO
+        esa12.utexas.iphmx.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2387511AbeHAUIY (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Aug 2018 16:08:24 -0400
+To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+From: Patrick Goetz <pgoetz@math.utexas.edu>
+Subject: Restricting UDP access triggers systemd dependency issues
+Message-ID: <63d1365d-d178-0d4b-1755-51418fe9a438@math.utexas.edu>
+Date: Wed, 1 Aug 2018 13:11:46 -0500
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAOQ4uxgQnO-nZxF51TLFF-+Lx+XmxgnN-6bHbvFNwLkGC3qNEg@mail.gmail.com>
+Content-Type: text/plain; charset=utf-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Aug 01, 2018 at 08:37:31AM +0300, Amir Goldstein wrote:
-> >         if (inode) {
-> > +               __u64 ino;
-> > +               dev_t dev;
-> > +
-> > +               vfs_map_unique_ino_dev(dentry, &ino, &dev);
-> >                 /* userspace relies on this representation of dev_t */
-> >                 seq_printf(f, "%d %02x:%02x:%ld ", fl_pid,
-> > -                               MAJOR(inode->i_sb->s_dev),
-> > -                               MINOR(inode->i_sb->s_dev), inode->i_ino);
-> > +                               MAJOR(dev), MINOR(dev), inode->i_ino);
-> 
-> Don't you mean ,ino); ?
+Not sure if this list is an appropriate venue for this issue, but I 
+can't think of where else to post.
 
-Indeed I do, thanks for catching that one Amir.
-	--Mark
+On an Ubuntu 18.04 machine, with version 1:1.3.4-2.1ubuntu5 of the 
+nfs-kernel-server package, I have the following strange issue.  The 
+machine is joined to an AD domain, but the NFS service is completely 
+independent from the directory service.
+
+If I enable an rpc.nfsd environment variable restricting UPD access:
+
+root@snakeskin:/lib/systemd/system# cat /run/sysconfig/nfs-utils
+PIPEFS_MOUNTPOINT=/run/rpc_pipefs
+RPCNFSDARGS=" 8"
+RPCMOUNTDARGS="--manage-gids -N 2 -N 3 -U"
+STATDARGS=""
+RPCSVCGSSDARGS=""
+
+
+The nfs-kernel-server service refuses to start. (I've experimented with 
+all RPCMOUNTDARGS options, and the problem only occurs when -U is in the 
+list.)
+
+root@snakeskin:/lib/systemd/system# systemctl restart nfs-kernel-server
+A dependency job for nfs-server.service failed. See 'journalctl -xe' for 
+details.
+
+The failed service is rpc.svcgssd:
+
+================================================
+Aug 01 12:58:21 snakeskin rpc.svcgssd[5635]: ERROR: GSS-API: error in 
+gss_acquire_cred(): GSS_S_FAILURE (Unspecified GSS failure.  Minor code 
+may provide more information) - No key table entry found matching nfs/@
+Aug 01 12:58:21 snakeskin rpc.svcgssd[5635]: unable to obtain root 
+(machine) credentials
+Aug 01 12:58:21 snakeskin rpc.svcgssd[5635]: do you have a keytab entry 
+for nfs/<your.host>@<YOUR.REALM> in /etc/krb5.keytab?
+Aug 01 12:58:21 snakeskin systemd[1]: rpc-svcgssd.service: Control 
+process exited, code=exited status=1
+Aug 01 12:58:21 snakeskin systemd[1]: rpc-svcgssd.service: Failed with 
+result 'exit-code'.
+Aug 01 12:58:21 snakeskin systemd[1]: Failed to start RPC security 
+service for NFS server.
+-- Subject: Unit rpc-svcgssd.service has failed
+-- Defined-By: systemd
+-- Support: http://www.ubuntu.com/support
+-- 
+-- Unit rpc-svcgssd.service has failed.
+=====================================================
+
+As indicated in the /etc/default/nfs-kernel-server file, this service 
+shouldn't even be needed unless kerberos is managing exports:
+
+# Do you want to start the svcgssd daemon? It is only required for Kerberos
+# exports. Valid alternatives are "yes" and "no"; the default is "no".
+NEED_SVCGSSD=""
+
+# Options for rpc.svcgssd.
+RPCSVCGSSDOPTS=""
+
+
+However, the "NEED_SVCGSSD" isn't processed by nfs-config.service, and 
+setting it explicitly to "no" has no effect.  Also notice RPCSVCGSSDOPTS 
+which is converted to RPCSVCGSSDARGS by the nfs-config.service script, 
+/usr/lib/systemd/scripts/nfs-utils_env.sh:
+
+   echo RPCSVCGSSDARGS=\"$RPCSVCGSSDOPTS\"
+
+This isn't being picked up by the rpc-svcgssd service, which is looking 
+for a differently named environment variable:
+
+============================================================
+root@snakeskin:/lib/systemd/system# cat rpc-svcgssd.service
+[Unit]
+Description=RPC security service for NFS server
+DefaultDependencies=no
+Requires=run-rpc_pipefs.mount
+After=run-rpc_pipefs.mount local-fs.target
+PartOf=nfs-server.service
+PartOf=nfs-utils.service
+
+ConditionPathExists=/etc/krb5.keytab
+
+Wants=nfs-config.service
+After=nfs-config.service
+
+[Service]
+EnvironmentFile=-/run/sysconfig/nfs-utils
+Type=forking
+ExecStart=/usr/sbin/rpc.svcgssd $SVCGSSDARGS
+============================================================
+
+It seems that someone clearly messed up the service files, but is it the 
+Debian package maintainer or upstream?
+
+Also, is there a solution to not allowing UDP service while still 
+allowing rpc.nfsd to run?
+
