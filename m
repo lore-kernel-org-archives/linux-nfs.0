@@ -1,248 +1,129 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp2120.oracle.com ([141.146.126.78]:35190 "EHLO
-        aserp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2389344AbeHAQCx (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Aug 2018 12:02:53 -0400
-Content-Type: text/plain;
-        charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 11.5 \(3445.9.1\))
-Subject: Re: [PATCH v1 4/4] NFSD: Handle full-length symlinks
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20180801141406.GD16651@fieldses.org>
-Date: Wed, 1 Aug 2018 10:16:52 -0400
-Cc: linux-rdma@vger.kernel.org,
+Received: from fieldses.org ([173.255.197.46]:33880 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S2389547AbeHAQGG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 1 Aug 2018 12:06:06 -0400
+Date: Wed, 1 Aug 2018 10:20:07 -0400
+From: Bruce Fields <bfields@fieldses.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: YueHaibing <yuehaibing@huawei.com>, davem@davemloft.net,
+        trond.myklebust@hammerspace.com,
+        Anna Schumaker <anna.schumaker@netapp.com>, jlayton@kernel.org,
+        ebiggers@google.com, linux-kernel@vger.kernel.org,
+        netdev@vger.kernel.org,
         Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <E69AF667-87AA-441D-9768-1F342FA59F50@oracle.com>
-References: <20180727142007.21878.77494.stgit@klimt.1015granger.net>
- <20180727151910.21878.49021.stgit@klimt.1015granger.net>
- <20180801141406.GD16651@fieldses.org>
-To: Bruce Fields <bfields@fieldses.org>
+Subject: Re: [PATCH] sunrpc: remove redundant variables
+ 'checksumlen','blocksize' and 'data'
+Message-ID: <20180801142007.GE16651@fieldses.org>
+References: <20180801062810.19752-1-yuehaibing@huawei.com>
+ <9BA49886-5754-480E-BBB3-CC76E5A2C3B7@oracle.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <9BA49886-5754-480E-BBB3-CC76E5A2C3B7@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Wed, Aug 01, 2018 at 10:15:29AM -0400, Chuck Lever wrote:
+> 
+> 
+> > On Aug 1, 2018, at 2:28 AM, YueHaibing <yuehaibing@huawei.com> wrote:
+> > 
+> > Variables 'checksumlen','blocksize' and 'data' are being assigned,
+> > but are never used,hence they are redundant and can be removed.
+> > 
+> > fix fllowing warning:
+> 
+> ^fllowing^following
+> 
+> For the svc_rdma.c part:
+> 
+> Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
 
+Thanks.--b.
 
-> On Aug 1, 2018, at 10:14 AM, J. Bruce Fields <bfields@fieldses.org> =
-wrote:
->=20
-> On Fri, Jul 27, 2018 at 11:19:10AM -0400, Chuck Lever wrote:
->> I've given up on the idea of zero-copy handling of SYMLINK on the
->> server side. This is because the Linux VFS symlink API requires the
->> symlink pathname to be in a NUL-terminated kmalloc'd buffer. The
->> NUL-termination is going to be problematic (watching out for
->> landing on a page boundary and dealing with a 4096-byte pathname).
->>=20
->> I don't believe that SYMLINK creation is on a performance path or is
->> requested frequently enough that it will cause noticeable CPU cache
->> pollution due to data copies.
->=20
-> Sounds fine.
->=20
-> The limits here are weird.  In the v2 case the maximum length is
-> NFS_MAXPATHLEN =3D=3D 1024.  OK, I see, I guess that limit was imposed =
-by
-> the NFSv2 protocol.
-
-Right.
-
-
-> In the v3 case it's NFS3_MAXPATHLEN =3D=3D PATH_MAX =3D=3D
-> 4096.  But we were imposing an artificial max of 4095 just so we could
-> fit the result in one page with null termination.
->=20
-> OK, makes sense to me (though I can't recall anyone actually =
-complaining
-> about that limit).
-
-I haven't heard complaints either. I'm just trying to make this
-code a little more sensible. :-)
-
-
-> --b.
->=20
->=20
->>=20
->> There will be two places where a transport callout will be necessary
->> to fill in the rqstp: one will be in the svc_fill_symlink_pathname()
->> helper that is used by NFSv2 and NFSv3, and the other will be in
->> nfsd4_decode_create().
->>=20
->> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->> ---
->> fs/nfsd/nfs3proc.c         |    2 +
->> fs/nfsd/nfsproc.c          |    2 +
->> include/linux/sunrpc/svc.h |    3 +-
->> net/sunrpc/svc.c           |   67 =
-++++++++++++++++----------------------------
->> 4 files changed, 31 insertions(+), 43 deletions(-)
->>=20
->> diff --git a/fs/nfsd/nfs3proc.c b/fs/nfsd/nfs3proc.c
->> index 8d1c2d1a..9eb8086 100644
->> --- a/fs/nfsd/nfs3proc.c
->> +++ b/fs/nfsd/nfs3proc.c
->> @@ -290,6 +290,7 @@
->> 		RETURN_STATUS(nfserr_nametoolong);
->>=20
->> 	argp->tname =3D svc_fill_symlink_pathname(rqstp, &argp->first,
->> +						=
-page_address(rqstp->rq_arg.pages[0]),
->> 						argp->tlen);
->> 	if (IS_ERR(argp->tname))
->> 		RETURN_STATUS(nfserrno(PTR_ERR(argp->tname)));
->> @@ -303,6 +304,7 @@
->> 	fh_init(&resp->fh, NFS3_FHSIZE);
->> 	nfserr =3D nfsd_symlink(rqstp, &resp->dirfh, argp->fname, =
-argp->flen,
->> 						   argp->tname, =
-&resp->fh);
->> +	kfree(argp->tname);
->> 	RETURN_STATUS(nfserr);
->> }
->>=20
->> diff --git a/fs/nfsd/nfsproc.c b/fs/nfsd/nfsproc.c
->> index a6faee5..0d20fd1 100644
->> --- a/fs/nfsd/nfsproc.c
->> +++ b/fs/nfsd/nfsproc.c
->> @@ -454,6 +454,7 @@
->> 		return nfserr_nametoolong;
->>=20
->> 	argp->tname =3D svc_fill_symlink_pathname(rqstp, &argp->first,
->> +						=
-page_address(rqstp->rq_arg.pages[0]),
->> 						argp->tlen);
->> 	if (IS_ERR(argp->tname))
->> 		return nfserrno(PTR_ERR(argp->tname));
->> @@ -466,6 +467,7 @@
->> 	nfserr =3D nfsd_symlink(rqstp, &argp->ffh, argp->fname, =
-argp->flen,
->> 						 argp->tname, &newfh);
->>=20
->> +	kfree(argp->tname);
->> 	fh_put(&argp->ffh);
->> 	fh_put(&newfh);
->> 	return nfserr;
->> diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
->> index 43f88bd..73e130a 100644
->> --- a/include/linux/sunrpc/svc.h
->> +++ b/include/linux/sunrpc/svc.h
->> @@ -499,7 +499,8 @@ unsigned int	   svc_fill_write_vector(struct =
-svc_rqst *rqstp,
->> 					 struct page **pages,
->> 					 struct kvec *first, size_t =
-total);
->> char		  *svc_fill_symlink_pathname(struct svc_rqst *rqstp,
->> -					     struct kvec *first, size_t =
-total);
->> +					     struct kvec *first, void =
-*p,
->> +					     size_t total);
->>=20
->> #define	RPC_MAX_ADDRBUFLEN	(63U)
->>=20
->> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
->> index 2194ed5..d13e05f 100644
->> --- a/net/sunrpc/svc.c
->> +++ b/net/sunrpc/svc.c
->> @@ -1577,65 +1577,48 @@ unsigned int svc_fill_write_vector(struct =
-svc_rqst *rqstp, struct page **pages,
->>  * svc_fill_symlink_pathname - Construct pathname argument for VFS =
-symlink call
->>  * @rqstp: svc_rqst to operate on
->>  * @first: buffer containing first section of pathname
->> + * @p: buffer containing remaining section of pathname
->>  * @total: total length of the pathname argument
->>  *
->> - * Returns pointer to a NUL-terminated string, or an ERR_PTR. The =
-buffer is
->> - * released automatically when @rqstp is recycled.
->> + * The VFS symlink API demands a NUL-terminated pathname in mapped =
-memory.
->> + * Returns pointer to a NUL-terminated string, or an ERR_PTR. Caller =
-must free
->> + * the returned string.
->>  */
->> char *svc_fill_symlink_pathname(struct svc_rqst *rqstp, struct kvec =
-*first,
->> -				size_t total)
->> +				void *p, size_t total)
->> {
->> -	struct xdr_buf *arg =3D &rqstp->rq_arg;
->> -	struct page **pages;
->> -	char *result;
->> -
->> -	/* VFS API demands a NUL-terminated pathname. This function
->> -	 * uses a page from @rqstp as the pathname buffer, to enable
->> -	 * direct placement. Thus the total buffer size is PAGE_SIZE.
->> -	 * Space in this buffer for NUL-termination requires that we
->> -	 * cap the size of the returned symlink pathname just a
->> -	 * little early.
->> -	 */
->> -	if (total > PAGE_SIZE - 1)
->> -		return ERR_PTR(-ENAMETOOLONG);
->> +	size_t len, remaining;
->> +	char *result, *dst;
->>=20
->> -	/* Some types of transport can present the pathname entirely
->> -	 * in rq_arg.pages. If not, then copy the pathname into one
->> -	 * page.
->> -	 */
->> -	pages =3D arg->pages;
->> -	WARN_ON_ONCE(arg->page_base !=3D 0);
->> -	if (first->iov_base =3D=3D 0) {
->> -		result =3D page_address(*pages);
->> -		result[total] =3D '\0';
->> -	} else {
->> -		size_t len, remaining;
->> -		char *dst;
->> +	result =3D kmalloc(total + 1, GFP_KERNEL);
->> +	if (!result)
->> +		return ERR_PTR(-ESERVERFAULT);
->>=20
->> -		result =3D page_address(*(rqstp->rq_next_page++));
->> -		dst =3D result;
->> -		remaining =3D total;
->> +	dst =3D result;
->> +	remaining =3D total;
->>=20
->> -		len =3D min_t(size_t, total, first->iov_len);
->> +	len =3D min_t(size_t, total, first->iov_len);
->> +	if (len) {
->> 		memcpy(dst, first->iov_base, len);
->> 		dst +=3D len;
->> 		remaining -=3D len;
->> +	}
->>=20
->> -		/* No more than one page left */
->> -		if (remaining) {
->> -			len =3D min_t(size_t, remaining, PAGE_SIZE);
->> -			memcpy(dst, page_address(*pages), len);
->> -			dst +=3D len;
->> -		}
->> -
->> -		*dst =3D '\0';
->> +	if (remaining) {
->> +		len =3D min_t(size_t, remaining, PAGE_SIZE);
->> +		memcpy(dst, p, len);
->> +		dst +=3D len;
->> 	}
->>=20
->> -	/* Sanity check: we don't allow the pathname argument to
->> +	*dst =3D '\0';
->> +
->> +	/* Sanity check: Linux doesn't allow the pathname argument to
->> 	 * contain a NUL byte.
->> 	 */
->> -	if (strlen(result) !=3D total)
->> +	if (strlen(result) !=3D total) {
->> +		kfree(result);
->> 		return ERR_PTR(-EINVAL);
->> +	}
->> 	return result;
->> }
->> EXPORT_SYMBOL_GPL(svc_fill_symlink_pathname);
-
---
-Chuck Lever
-
-
-
+> 
+> 
+> > net/sunrpc/auth_gss/gss_krb5_wrap.c:443:7: warning: variable ‘blocksize’ set but not used [-Wunused-but-set-variable]
+> > net/sunrpc/auth_gss/gss_krb5_crypto.c:376:15: warning: variable ‘checksumlen’ set but not used [-Wunused-but-set-variable]
+> > net/sunrpc/xprtrdma/svc_rdma.c:97:9: warning: variable ‘data’ set but not used [-Wunused-but-set-variable]
+> > 
+> > Signed-off-by: YueHaibing <yuehaibing@huawei.com>
+> > ---
+> > net/sunrpc/auth_gss/gss_krb5_crypto.c | 2 --
+> > net/sunrpc/auth_gss/gss_krb5_wrap.c   | 2 --
+> > net/sunrpc/xprtrdma/svc_rdma.c        | 2 --
+> > 3 files changed, 6 deletions(-)
+> > 
+> > diff --git a/net/sunrpc/auth_gss/gss_krb5_crypto.c b/net/sunrpc/auth_gss/gss_krb5_crypto.c
+> > index 8654494..84a16fd 100644
+> > --- a/net/sunrpc/auth_gss/gss_krb5_crypto.c
+> > +++ b/net/sunrpc/auth_gss/gss_krb5_crypto.c
+> > @@ -373,7 +373,6 @@ make_checksum_v2(struct krb5_ctx *kctx, char *header, int hdrlen,
+> > 	struct scatterlist sg[1];
+> > 	int err = -1;
+> > 	u8 *checksumdata;
+> > -	unsigned int checksumlen;
+> > 
+> > 	if (kctx->gk5e->keyed_cksum == 0) {
+> > 		dprintk("%s: expected keyed hash for %s\n",
+> > @@ -393,7 +392,6 @@ make_checksum_v2(struct krb5_ctx *kctx, char *header, int hdrlen,
+> > 	tfm = crypto_alloc_ahash(kctx->gk5e->cksum_name, 0, CRYPTO_ALG_ASYNC);
+> > 	if (IS_ERR(tfm))
+> > 		goto out_free_cksum;
+> > -	checksumlen = crypto_ahash_digestsize(tfm);
+> > 
+> > 	req = ahash_request_alloc(tfm, GFP_NOFS);
+> > 	if (!req)
+> > diff --git a/net/sunrpc/auth_gss/gss_krb5_wrap.c b/net/sunrpc/auth_gss/gss_krb5_wrap.c
+> > index a737c2d..9a1347f 100644
+> > --- a/net/sunrpc/auth_gss/gss_krb5_wrap.c
+> > +++ b/net/sunrpc/auth_gss/gss_krb5_wrap.c
+> > @@ -440,7 +440,6 @@ static u32
+> > gss_wrap_kerberos_v2(struct krb5_ctx *kctx, u32 offset,
+> > 		     struct xdr_buf *buf, struct page **pages)
+> > {
+> > -	int		blocksize;
+> > 	u8		*ptr, *plainhdr;
+> > 	s32		now;
+> > 	u8		flags = 0x00;
+> > @@ -473,7 +472,6 @@ gss_wrap_kerberos_v2(struct krb5_ctx *kctx, u32 offset,
+> > 	*ptr++ = 0xff;
+> > 	be16ptr = (__be16 *)ptr;
+> > 
+> > -	blocksize = crypto_skcipher_blocksize(kctx->acceptor_enc);
+> > 	*be16ptr++ = 0;
+> > 	/* "inner" token header always uses 0 for RRC */
+> > 	*be16ptr++ = 0;
+> > diff --git a/net/sunrpc/xprtrdma/svc_rdma.c b/net/sunrpc/xprtrdma/svc_rdma.c
+> > index 357ba90..134bef6a 100644
+> > --- a/net/sunrpc/xprtrdma/svc_rdma.c
+> > +++ b/net/sunrpc/xprtrdma/svc_rdma.c
+> > @@ -94,7 +94,6 @@ static int read_reset_stat(struct ctl_table *table, int write,
+> > 		atomic_set(stat, 0);
+> > 	else {
+> > 		char str_buf[32];
+> > -		char *data;
+> > 		int len = snprintf(str_buf, 32, "%d\n", atomic_read(stat));
+> > 		if (len >= 32)
+> > 			return -EFAULT;
+> > @@ -103,7 +102,6 @@ static int read_reset_stat(struct ctl_table *table, int write,
+> > 			*lenp = 0;
+> > 			return 0;
+> > 		}
+> > -		data = &str_buf[*ppos];
+> > 		len -= *ppos;
+> > 		if (len > *lenp)
+> > 			len = *lenp;
+> > -- 
+> > 2.7.0
+> > 
+> > 
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> --
+> Chuck Lever
+> 
+> 
