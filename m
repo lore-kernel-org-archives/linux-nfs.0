@@ -1,75 +1,100 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yw0-f195.google.com ([209.85.161.195]:34253 "EHLO
-        mail-yw0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1731897AbeHAICZ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Aug 2018 04:02:25 -0400
+Received: from szxga06-in.huawei.com ([45.249.212.32]:60915 "EHLO huawei.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S2387419AbeHAIMe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 1 Aug 2018 04:12:34 -0400
+From: YueHaibing <yuehaibing@huawei.com>
+To: <davem@davemloft.net>, <trond.myklebust@hammerspace.com>,
+        <anna.schumaker@netapp.com>, <bfields@fieldses.org>,
+        <jlayton@kernel.org>, <ebiggers@google.com>,
+        <chuck.lever@oracle.com>
+CC: <linux-kernel@vger.kernel.org>, <netdev@vger.kernel.org>,
+        <linux-nfs@vger.kernel.org>, YueHaibing <yuehaibing@huawei.com>
+Subject: [PATCH] sunrpc: remove redundant variables 'checksumlen','blocksize' and 'data'
+Date: Wed, 1 Aug 2018 14:28:10 +0800
+Message-ID: <20180801062810.19752-1-yuehaibing@huawei.com>
 MIME-Version: 1.0
-In-Reply-To: <CAJfpegtyTnYdqYmwG5Jqn6rhDMhjdrkOO5Ziu91f5E+sEgyZoQ@mail.gmail.com>
-References: <1531491744-13277-1-git-send-email-amir73il@gmail.com>
- <8fc65417ebda26a198e01e8c82f41ae08ab3c803.camel@kernel.org>
- <CAOQ4uxhvLVLLh_DyXp4q27NNo-+55tbdHOCu3=p8pNin66vv-g@mail.gmail.com> <CAJfpegtyTnYdqYmwG5Jqn6rhDMhjdrkOO5Ziu91f5E+sEgyZoQ@mail.gmail.com>
-From: Amir Goldstein <amir73il@gmail.com>
-Date: Wed, 1 Aug 2018 09:18:24 +0300
-Message-ID: <CAOQ4uxg+kuAuZ=o7U+77mrYO5zkFAGCkNpiZSVDdYKcdm631_w@mail.gmail.com>
-Subject: Re: [PATCH] nfsd: fix leaked file lock with nfs exported overlayfs
-To: Miklos Szeredi <miklos@szeredi.hu>
-Cc: Jeff Layton <jlayton@kernel.org>,
-        "J . Bruce Fields" <bfields@fieldses.org>,
-        Eddie Horng <eddiehorng.tw@gmail.com>,
-        overlayfs <linux-unionfs@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>
 Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jul 17, 2018 at 5:24 PM, Miklos Szeredi <miklos@szeredi.hu> wrote:
-> On Fri, Jul 13, 2018 at 6:05 PM, Amir Goldstein <amir73il@gmail.com> wrote:
->> On Fri, Jul 13, 2018 at 6:40 PM, Jeff Layton <jlayton@kernel.org> wrote:
->>> On Fri, 2018-07-13 at 17:22 +0300, Amir Goldstein wrote:
->>>> nfsd and lockd call vfs_lock_file() to lock/unlock the inode
->>>> returned by locks_inode(file).
->>>>
->>>> Many places in nfsd/lockd code use the inode returned by
->>>> file_inode(file) for lock manipulation. With Overlayfs, file_inode()
->>>> (the underlying inode) is not the same object as locks_inode() (the
->>>> overlay inode). This can result in "Leaked POSIX lock" messages
->>>> and eventually to a kernel crash as reported by Eddie Horng:
->>>> https://marc.info/?l=linux-unionfs&m=153086643202072&w=2
->>>>
->>>> Fix all the call sites in nfsd/lockd that should use locks_inode().
->>>> This is a correctness bug that manifested when overlayfs gained
->>>> NFS export support in v4.16.
->>>>
->>>> Reported-by: Eddie Horng <eddiehorng.tw@gmail.com>
->>>> Tested-by: Eddie Horng <eddiehorng.tw@gmail.com>
->>>> Cc: Jeff Layton <jlayton@kernel.org>
->>>> Fixes: 8383f1748829 ("ovl: wire up NFS export operations")
->>>> Signed-off-by: Amir Goldstein <amir73il@gmail.com>
->>>> ---
->>>>
->>>> Hi Bruce,
->>>>
->>>> For the purpose of locks, nfsd/lockd should look at locks_inode()
->>>> just like vfs lock functions.
->>>>
->>>> Hopefully, Miklos's work on stacked overlayfs file operations will
->>>> be merged soon and locks_inode() will become the same as file_inode(),
->>>> but we will still need this fix for stable kernels v4.16 through v4.18.
->
-> Needs a Cc: stable@... tag then.
->
-> Should I take this patch (based on the fact that it only affects
-> overlayfs exports)?
->
-> Or will you take it, Bruce?
->
+Variables 'checksumlen','blocksize' and 'data' are being assigned,
+but are never used,hence they are redundant and can be removed.
 
-Bruce? Jeff?
+fix fllowing warning:
 
-It's probably a good time for someone to put this patch in -next.
+net/sunrpc/auth_gss/gss_krb5_wrap.c:443:7: warning: variable ‘blocksize’ set but not used [-Wunused-but-set-variable]
+net/sunrpc/auth_gss/gss_krb5_crypto.c:376:15: warning: variable ‘checksumlen’ set but not used [-Wunused-but-set-variable]
+net/sunrpc/xprtrdma/svc_rdma.c:97:9: warning: variable ‘data’ set but not used [-Wunused-but-set-variable]
 
-Should Miklos do it?
+Signed-off-by: YueHaibing <yuehaibing@huawei.com>
+---
+ net/sunrpc/auth_gss/gss_krb5_crypto.c | 2 --
+ net/sunrpc/auth_gss/gss_krb5_wrap.c   | 2 --
+ net/sunrpc/xprtrdma/svc_rdma.c        | 2 --
+ 3 files changed, 6 deletions(-)
 
-Thanks,
-Amir.
+diff --git a/net/sunrpc/auth_gss/gss_krb5_crypto.c b/net/sunrpc/auth_gss/gss_krb5_crypto.c
+index 8654494..84a16fd 100644
+--- a/net/sunrpc/auth_gss/gss_krb5_crypto.c
++++ b/net/sunrpc/auth_gss/gss_krb5_crypto.c
+@@ -373,7 +373,6 @@ make_checksum_v2(struct krb5_ctx *kctx, char *header, int hdrlen,
+ 	struct scatterlist sg[1];
+ 	int err = -1;
+ 	u8 *checksumdata;
+-	unsigned int checksumlen;
+ 
+ 	if (kctx->gk5e->keyed_cksum == 0) {
+ 		dprintk("%s: expected keyed hash for %s\n",
+@@ -393,7 +392,6 @@ make_checksum_v2(struct krb5_ctx *kctx, char *header, int hdrlen,
+ 	tfm = crypto_alloc_ahash(kctx->gk5e->cksum_name, 0, CRYPTO_ALG_ASYNC);
+ 	if (IS_ERR(tfm))
+ 		goto out_free_cksum;
+-	checksumlen = crypto_ahash_digestsize(tfm);
+ 
+ 	req = ahash_request_alloc(tfm, GFP_NOFS);
+ 	if (!req)
+diff --git a/net/sunrpc/auth_gss/gss_krb5_wrap.c b/net/sunrpc/auth_gss/gss_krb5_wrap.c
+index a737c2d..9a1347f 100644
+--- a/net/sunrpc/auth_gss/gss_krb5_wrap.c
++++ b/net/sunrpc/auth_gss/gss_krb5_wrap.c
+@@ -440,7 +440,6 @@ static u32
+ gss_wrap_kerberos_v2(struct krb5_ctx *kctx, u32 offset,
+ 		     struct xdr_buf *buf, struct page **pages)
+ {
+-	int		blocksize;
+ 	u8		*ptr, *plainhdr;
+ 	s32		now;
+ 	u8		flags = 0x00;
+@@ -473,7 +472,6 @@ gss_wrap_kerberos_v2(struct krb5_ctx *kctx, u32 offset,
+ 	*ptr++ = 0xff;
+ 	be16ptr = (__be16 *)ptr;
+ 
+-	blocksize = crypto_skcipher_blocksize(kctx->acceptor_enc);
+ 	*be16ptr++ = 0;
+ 	/* "inner" token header always uses 0 for RRC */
+ 	*be16ptr++ = 0;
+diff --git a/net/sunrpc/xprtrdma/svc_rdma.c b/net/sunrpc/xprtrdma/svc_rdma.c
+index 357ba90..134bef6a 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma.c
++++ b/net/sunrpc/xprtrdma/svc_rdma.c
+@@ -94,7 +94,6 @@ static int read_reset_stat(struct ctl_table *table, int write,
+ 		atomic_set(stat, 0);
+ 	else {
+ 		char str_buf[32];
+-		char *data;
+ 		int len = snprintf(str_buf, 32, "%d\n", atomic_read(stat));
+ 		if (len >= 32)
+ 			return -EFAULT;
+@@ -103,7 +102,6 @@ static int read_reset_stat(struct ctl_table *table, int write,
+ 			*lenp = 0;
+ 			return 0;
+ 		}
+-		data = &str_buf[*ppos];
+ 		len -= *ppos;
+ 		if (len > *lenp)
+ 			len = *lenp;
+-- 
+2.7.0
+
+
