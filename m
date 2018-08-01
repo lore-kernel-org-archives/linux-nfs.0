@@ -1,43 +1,57 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f194.google.com ([209.85.223.194]:45254 "EHLO
-        mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726444AbeHAUQV (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Aug 2018 16:16:21 -0400
-Received: by mail-io0-f194.google.com with SMTP id k16-v6so16900348iom.12
-        for <linux-nfs@vger.kernel.org>; Wed, 01 Aug 2018 11:29:20 -0700 (PDT)
-From: Trond Myklebust <trondmy@gmail.com>
-To: Anna Schumaker <Anna.Schumaker@Netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] pnfs: pnfs_find_lseg() should not check NFS_LSEG_LAYOUTRETURN
-Date: Wed,  1 Aug 2018 14:28:57 -0400
-Message-Id: <20180801182857.59882-1-trond.myklebust@hammerspace.com>
-MIME-Version: 1.0
+Received: from mx3-rdu2.redhat.com ([66.187.233.73]:53460 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1732111AbeHAU16 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 1 Aug 2018 16:27:58 -0400
+Received: from smtp.corp.redhat.com (int-mx04.intmail.prod.int.rdu2.redhat.com [10.11.54.4])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id A05BA40241C4
+        for <linux-nfs@vger.kernel.org>; Wed,  1 Aug 2018 18:40:52 +0000 (UTC)
+From: Steve Dickson <steved@redhat.com>
+To: "J . Bruce Fields" <bfields@redhat.com>
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH] Turn ENOATTR errors into ENODATA errrors
+Date: Wed,  1 Aug 2018 14:40:52 -0400
+Message-Id: <20180801184052.21215-1-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Layout segment validity is determined only by the NFS_LSEG_VALID flag. If
-it is set, the layout segment is finable. As it is, when the flexfiles
-driver sets NFS_LSEG_LAYOUTRETURN to indicate that we cannot discard
-the layout segment, but that it must be returned, then this can result
-in an unnecessary layoutget storm.
+The defining  of ENOATTR, which was an defined as ENODATA,
+was removed from the attr/xattr.h in modern releases
 
-Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
+Signed-off-by: Steve Dickson <steved@redhat.com>
 ---
- fs/nfs/pnfs.c | 1 -
- 1 file changed, 1 deletion(-)
+ libnfs4acl/nfs4_acl_for_path.c | 2 +-
+ libnfs4acl/nfs4_set_acl.c      | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 7020f726275c..8f03bdb191aa 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1650,7 +1650,6 @@ pnfs_find_lseg(struct pnfs_layout_hdr *lo,
- 
- 	list_for_each_entry(lseg, &lo->plh_segs, pls_list) {
- 		if (test_bit(NFS_LSEG_VALID, &lseg->pls_flags) &&
--		    !test_bit(NFS_LSEG_LAYOUTRETURN, &lseg->pls_flags) &&
- 		    pnfs_lseg_range_match(&lseg->pls_range, range,
- 					  strict_iomode)) {
- 			ret = pnfs_get_lseg(lseg);
+diff --git a/libnfs4acl/nfs4_acl_for_path.c b/libnfs4acl/nfs4_acl_for_path.c
+index a51dc34..2fbf6c9 100644
+--- a/libnfs4acl/nfs4_acl_for_path.c
++++ b/libnfs4acl/nfs4_acl_for_path.c
+@@ -94,7 +94,7 @@ static int nfs4_getxattr(const char *path, void *value, size_t size)
+ 	if (res < -10000) {
+ 		fprintf(stderr,"An internal NFS server error code (%d) was returned; this should never happen.\n",res);
+ 	} else if (res < 0) {
+-		if (errno == ENOATTR)
++		if (errno == ENODATA)
+ 			fprintf(stderr,"Attribute not found on file: %s\n", path);
+ 		else if (errno == EREMOTEIO)
+ 		    fprintf(stderr,"An NFS server error occurred.\n");
+diff --git a/libnfs4acl/nfs4_set_acl.c b/libnfs4acl/nfs4_set_acl.c
+index b9edf2b..6c9b072 100644
+--- a/libnfs4acl/nfs4_set_acl.c
++++ b/libnfs4acl/nfs4_set_acl.c
+@@ -55,7 +55,7 @@ int nfs4_set_acl(struct nfs4_acl *acl, const char *path)
+ 	} else if (res < 0) {
+ 		if (errno == EOPNOTSUPP)
+ 			fprintf(stderr,"Operation to set ACL not supported.\n");
+-		else if (errno == ENOATTR)
++		else if (errno == ENODATA)
+ 			fprintf(stderr,"ACL Attribute not found on file.\n");
+ 		else if (errno == EREMOTEIO)
+ 			fprintf(stderr,"An NFS server error occurred.\n");
 -- 
 2.17.1
 
