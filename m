@@ -1,45 +1,42 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from 286669.com ([167.88.5.160]:54950 "EHLO wildcoasttents.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1732255AbeHBQEx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 2 Aug 2018 12:04:53 -0400
-To: linux-nfs@vger.kernel.org
-Subject: for the retouching
-Message-ID: <774f111c2b36e6377bcf0ce1f6a3cb49@vabeach.com>
-Date: Thu, 02 Aug 2018 15:52:45 +0200
-From: "Sam" <elitmaint@epfguzzi.com>
-Reply-To: luozongpic@aliyun.com
+Received: from fieldses.org ([173.255.197.46]:36026 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1732531AbeHBQGT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 2 Aug 2018 12:06:19 -0400
+Date: Thu, 2 Aug 2018 10:14:55 -0400
+To: Peter Scott <pjscott@jpl.nasa.gov>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: NFSv4 file lock reporting interface request
+Message-ID: <20180802141455.GB31569@fieldses.org>
+References: <8dd8a352-aaca-71af-aca7-9be6c7039ff4@jpl.nasa.gov>
 MIME-Version: 1.0
-Content-Type: text/plain; format=flowed; charset="UTF-8"
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <8dd8a352-aaca-71af-aca7-9be6c7039ff4@jpl.nasa.gov>
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-As a boutique team, we work personally with our clients to ensure the good
-results.
+On Mon, Jul 09, 2018 at 07:28:53PM -0700, Peter Scott wrote:
+> Hello.  I am with the institutional hosting service at NASA's Jet
+> Propulsion Laboratory and we have been trying to find the answer to
+> an apparently simple question.
+> 
+> We are running an NFSv4 server on Centos 7 and we need to get the
+> server to tell us which files it thinks are locked by which
+> clients.  This is because we have observed failure modes where
+> something apparently has a lock (because attempting to lock the file
+> again blocks) but we can't find a client that has the lock. Finding
+> out what the server believes would be critical to troubleshooting
+> this.
+> 
+> We tracked down Trond Myklebust and Neil Brown and conversation
+> suggests that this is a function that is (a) not currently available
+> and (b) reasonable to ask for.  So this is me suggesting that an
+> interface be provided to have knfsd output its list of locked files
+> and clients.
 
-Having over a decade of hands-on experience in photography and retouching,
-we have been inspired
-to expand our services to the public.
-We are team of artists who have excelled in fields such as art,
-photography, retouching, graphics and design.
+Yes, we really need to do that.  If anyone has the cycles to take it on
+I'm happy to talk about it.  Otherwise, I'll get to it myself
+eventually....
 
-No matter what your field of interest is in, we can learn to work with your
-style to give you the best product.
-
-We provide below image editing services:
-Clipping path
-Image cut out
-Image shadow creation
-Image masking
-Photo retouching
-Beauty retouching (skin, face, body retouching)
-Glamour retouching
-Product retouching
-Color correction
-and others
-
-We provide testing for our services.
-
-Thanks,
-Sam
-
+--b.
