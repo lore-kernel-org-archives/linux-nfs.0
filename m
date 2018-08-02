@@ -1,19 +1,19 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from gateway31.websitewelcome.com ([192.185.143.52]:28478 "EHLO
-        gateway31.websitewelcome.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1729888AbeHBCxo (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Aug 2018 22:53:44 -0400
-Received: from cm16.websitewelcome.com (cm16.websitewelcome.com [100.42.49.19])
-        by gateway31.websitewelcome.com (Postfix) with ESMTP id 93E1539447
-        for <linux-nfs@vger.kernel.org>; Wed,  1 Aug 2018 19:44:06 -0500 (CDT)
-Date: Wed, 1 Aug 2018 19:44:05 -0500
+Received: from gateway32.websitewelcome.com ([192.185.145.1]:43128 "EHLO
+        gateway32.websitewelcome.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1726828AbeHBDGd (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Aug 2018 23:06:33 -0400
+Received: from cm17.websitewelcome.com (cm17.websitewelcome.com [100.42.49.20])
+        by gateway32.websitewelcome.com (Postfix) with ESMTP id E395D2873CB
+        for <linux-nfs@vger.kernel.org>; Wed,  1 Aug 2018 19:55:52 -0500 (CDT)
+Date: Wed, 1 Aug 2018 19:55:51 -0500
 From: "Gustavo A. R. Silva" <gustavo@embeddedor.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>,
-        Jeff Layton <jlayton@kernel.org>
+To: Trond Myklebust <trond.myklebust@hammerspace.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>
 Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
         "Gustavo A. R. Silva" <gustavo@embeddedor.com>
-Subject: [PATCH] nfsd: use true and false for boolean values
-Message-ID: <20180802004405.GA23995@embeddedor.com>
+Subject: [PATCH] pnfs: Use true and false for boolean values
+Message-ID: <20180802005551.GA27876@embeddedor.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
@@ -26,38 +26,22 @@ This issue was detected with the help of Coccinelle.
 
 Signed-off-by: Gustavo A. R. Silva <gustavo@embeddedor.com>
 ---
- fs/nfsd/nfsfh.c | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+ fs/nfs/pnfs.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/nfsd/nfsfh.c b/fs/nfsd/nfsfh.c
-index a008e76..b319080 100644
---- a/fs/nfsd/nfsfh.c
-+++ b/fs/nfsd/nfsfh.c
-@@ -451,7 +451,7 @@ static bool fsid_type_ok_for_exp(u8 fsid_type, struct svc_export *exp)
- 	switch (fsid_type) {
- 	case FSID_DEV:
- 		if (!old_valid_dev(exp_sb(exp)->s_dev))
--			return 0;
-+			return false;
- 		/* FALL THROUGH */
- 	case FSID_MAJOR_MINOR:
- 	case FSID_ENCODE_DEV:
-@@ -461,13 +461,13 @@ static bool fsid_type_ok_for_exp(u8 fsid_type, struct svc_export *exp)
- 	case FSID_UUID8:
- 	case FSID_UUID16:
- 		if (!is_root_export(exp))
--			return 0;
-+			return false;
- 		/* fall through */
- 	case FSID_UUID4_INUM:
- 	case FSID_UUID16_INUM:
- 		return exp->ex_uuid != NULL;
- 	}
--	return 1;
-+	return true;
- }
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 7020f72..5513dda 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1628,7 +1628,7 @@ pnfs_lseg_range_match(const struct pnfs_layout_range *ls_range,
+ 	    (range->iomode != ls_range->iomode &&
+ 	     strict_iomode) ||
+ 	    !pnfs_lseg_range_intersecting(ls_range, range))
+-		return 0;
++		return false;
  
- 
+ 	/* range1 covers only the first byte in the range */
+ 	range1 = *range;
 -- 
 2.7.4
 
