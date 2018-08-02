@@ -1,40 +1,80 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from szxga06-in.huawei.com ([45.249.212.32]:41709 "EHLO huawei.com"
+Received: from szxga01-in.huawei.com ([45.249.212.187]:6399 "EHLO huawei.com"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1725954AbeHBHXx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 2 Aug 2018 03:23:53 -0400
-From: Wei Yongjun <weiyongjun1@huawei.com>
-To: Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>
-CC: Wei Yongjun <weiyongjun1@huawei.com>, <linux-nfs@vger.kernel.org>,
-        <kernel-janitors@vger.kernel.org>
-Subject: [PATCH -next] NFSv4: Fix error handling in nfs4_sp4_select_mode()
-Date: Thu, 2 Aug 2018 05:42:04 +0000
-Message-ID: <1533188524-152221-1-git-send-email-weiyongjun1@huawei.com>
-Content-Type: text/plain; charset="ISO-8859-1"
+        id S1732298AbeHBOvt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 2 Aug 2018 10:51:49 -0400
+From: Nixiaoming <nixiaoming@huawei.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: "jlayton@kernel.org" <jlayton@kernel.org>,
+        "chuck.lever@oracle.com" <chuck.lever@oracle.com>,
+        "trondmy@hammerspace.com" <trondmy@hammerspace.com>,
+        "andros@netapp.com" <andros@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Subject: RE: [PATCH v2] fs/nfsd: Delete invalid assignment statements in
+ nfsd4_decode_exchange_id
+Date: Thu, 2 Aug 2018 13:00:26 +0000
+Message-ID: <E490CD805F7529488761C40FD9D26EF12A730A64@dggemm507-mbx.china.huawei.com>
+References: <20180723015711.27961-1-nixiaoming@huawei.com>
+ <20180801151820.GA18338@fieldses.org>
+In-Reply-To: <20180801151820.GA18338@fieldses.org>
+Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Error code is set in the error handling cases but never used. Fix it.
+On Wednesday, August 01, 2018 11:18 PM ,  J. Bruce Fields  wrote: 
+>On Mon, Jul 23, 2018 at 09:57:11AM +0800, nixiaoming wrote:
+>> READ_BUF(8);
+>> dummy = be32_to_cpup(p++);
+>> dummy = be32_to_cpup(p++);
+>> ...
+>> READ_BUF(4);
+>> dummy = be32_to_cpup(p++);
+>> 
+>> Assigning value to "dummy" here, but that stored value
+>> is overwritten before it can be used.
+>> At the same time READ_BUF() will re-update the pointer p.
+>> 
+>> delete invalid assignment statements
+>
+>Thanks, applying with a minor comment tweak to clarify that we're
+>intentionally not reading these:
+>
+>-		/* ssp_window and ssp_num_gss_handles */
+>+		/* ignore ssp_window and ssp_num_gss_handles: */
+> 		READ_BUF(8);
+> 		break;
+>
+>--b.
+>
 
-Fixes: 937e3133cd0b ("NFSv4.1: Ensure we clear the SP4_MACH_CRED flags in nfs4_sp4_select_mode()")
-Signed-off-by: Wei Yongjun <weiyongjun1@huawei.com>
----
- fs/nfs/nfs4proc.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Thanks for your advice
+I will update the patch as soon as possible according to your advice.
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index c571ee4..8ae1b8d 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -7785,7 +7785,7 @@ static int nfs4_sp4_select_mode(struct nfs_client *clp,
- 	}
- out:
- 	clp->cl_sp4_flags = flags;
--	return 0;
-+	return ret;
- }
- 
- struct nfs41_exchange_id_data {
+>> 
+>> Signed-off-by: nixiaoming <nixiaoming@huawei.com>
+>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>2
+>> Signed-off-by: Trond Myklebust <trondmy@hammerspace.com>
+>> ---
+>>  fs/nfsd/nfs4xdr.c | 2 --
+>>  1 file changed, 2 deletions(-)
+>> 
+>> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+>> index a96843c..375ad4b 100644
+>> --- a/fs/nfsd/nfs4xdr.c
+>> +++ b/fs/nfsd/nfs4xdr.c
+>> @@ -1392,8 +1392,6 @@ nfsd4_decode_exchange_id(struct nfsd4_compoundargs *argp,
+>>  
+>>  		/* ssp_window and ssp_num_gss_handles */
+>>  		READ_BUF(8);
+>> -		dummy = be32_to_cpup(p++);
+>> -		dummy = be32_to_cpup(p++);
+>>  		break;
+>>  	default:
+>>  		goto xdr_error;
+>> -- 
+>> 2.10.1
+
+
 
