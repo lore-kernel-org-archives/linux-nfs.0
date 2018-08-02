@@ -1,42 +1,25 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:36026 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1732531AbeHBQGT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 2 Aug 2018 12:06:19 -0400
-Date: Thu, 2 Aug 2018 10:14:55 -0400
-To: Peter Scott <pjscott@jpl.nasa.gov>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: NFSv4 file lock reporting interface request
-Message-ID: <20180802141455.GB31569@fieldses.org>
-References: <8dd8a352-aaca-71af-aca7-9be6c7039ff4@jpl.nasa.gov>
+Received: from mail-ua0-f179.google.com ([209.85.217.179]:37096 "EHLO
+        mail-ua0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1732457AbeHBRFy (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Aug 2018 13:05:54 -0400
+Received: by mail-ua0-f179.google.com with SMTP id y10-v6so1703823uao.4
+        for <linux-nfs@vger.kernel.org>; Thu, 02 Aug 2018 08:14:17 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <8dd8a352-aaca-71af-aca7-9be6c7039ff4@jpl.nasa.gov>
-From: bfields@fieldses.org (J. Bruce Fields)
+From: Olga Kornievskaia <aglo@umich.edu>
+Date: Thu, 2 Aug 2018 11:14:15 -0400
+Message-ID: <CAN-5tyERJVoiUR3ub8yjMor3YYN5ksdd93dpKoW=4OkGw6OPpg@mail.gmail.com>
+Subject: noresvport and port re-use
+To: linux-nfs <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jul 09, 2018 at 07:28:53PM -0700, Peter Scott wrote:
-> Hello.  I am with the institutional hosting service at NASA's Jet
-> Propulsion Laboratory and we have been trying to find the answer to
-> an apparently simple question.
-> 
-> We are running an NFSv4 server on Centos 7 and we need to get the
-> server to tell us which files it thinks are locked by which
-> clients.  This is because we have observed failure modes where
-> something apparently has a lock (because attempting to lock the file
-> again blocks) but we can't find a client that has the lock. Finding
-> out what the server believes would be critical to troubleshooting
-> this.
-> 
-> We tracked down Trond Myklebust and Neil Brown and conversation
-> suggests that this is a function that is (a) not currently available
-> and (b) reasonable to ask for.  So this is me suggesting that an
-> interface be provided to have knfsd output its list of locked files
-> and clients.
+Hi folks,
 
-Yes, we really need to do that.  If anyone has the cycles to take it on
-I'm happy to talk about it.  Otherwise, I'll get to it myself
-eventually....
+There is no documentation of this behavior but when "noresvport" is
+specified, the client will not try to re-use the port upon connection
+re-establishement. Is this an oversight or a desired behavior (ie.,
+client doesn't need to be conservative and re-use ports)?
 
---b.
+Thank you.
