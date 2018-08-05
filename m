@@ -1,29 +1,30 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from clst15.ewebhost.site ([107.172.201.182]:39514 "EHLO
-        mastercraft.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1732266AbeHCQe4 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Aug 2018 12:34:56 -0400
+Received: from 23-94-25-199-host.colocrossing.com ([23.94.25.199]:40790 "EHLO
+        metalcraftgear.com" rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org
+        with ESMTP id S1726680AbeHEXY1 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 5 Aug 2018 19:24:27 -0400
 To: linux-nfs@vger.kernel.org
-Subject: Enhancing your images
-Message-ID: <055a9c0a3d28b3f1fec6d422014f3713@captharry.com>
-Date: Fri, 03 Aug 2018 14:01:50 +0200
-From: "Sam" <nanoitist@scooterlandus.com>
+Subject: give editing
+Message-ID: <9736a057a6178372b82ed58cc5d00c50@menupix.com>
+Date: Sun, 05 Aug 2018 14:56:20 +0200
+From: "Sam Dennis" <jesupamler@screaminreelskitimat.com>
 Reply-To: luozongpic@aliyun.com
 MIME-Version: 1.0
 Content-Type: text/plain; format=flowed; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Do you have photos for editing?
-We are image team and we can process 500+ images each day.
+Want to know if you have photos for editing?
+We can edit 300+ images each day.
 
-We edit ecommerce photo, jewelry photos, and beauty model photos.
-also wedding photos.
+We can work on ecommerce photos, jewelry photos, and portrait photos.
 
-We do cut out and clipping path for photos, also retouching.
+We give cut out and clipping path for different kind of photos, and also we
+provide retouching for
+them.
 
-You may send us a test photo to check our quality.
+Send us a test photo and we will do testing for you.
 
 Thanks,
-Sam Parker
+Sam Dennis
 
