@@ -1,44 +1,77 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:45306 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726414AbeHGXcm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 7 Aug 2018 19:32:42 -0400
-Date: Tue, 7 Aug 2018 17:16:24 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Tom Tucker <tom@opengridcomputing.com>
-Cc: Cedric Blancher <cedric.blancher@gmail.com>,
-        Peter Scott <pjscott@jpl.nasa.gov>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: NFSv4 file lock reporting interface request
-Message-ID: <20180807211624.GB18903@fieldses.org>
-References: <8dd8a352-aaca-71af-aca7-9be6c7039ff4@jpl.nasa.gov>
- <CALXu0UdHWGOnMYk-xGG6_GWGfdpXffc0U-+Ark0joEYvhPSh_g@mail.gmail.com>
- <20180807203419.GB18415@fieldses.org>
- <f72df1af-1d8e-9203-0587-0e7b4a7db9aa@opengridcomputing.com>
+Received: from mx2.suse.de ([195.135.220.15]:41576 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1726975AbeHHBgz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 7 Aug 2018 21:36:55 -0400
+From: NeilBrown <neilb@suse.com>
+To: Trond Myklebust <trond.myklebust@hammerspace.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>
+Date: Wed, 08 Aug 2018 09:20:02 +1000
+Subject: [PATCH] NFS: Use an appropriate work queue for direct-write completion
+cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Message-ID: <878t5hydb1.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <f72df1af-1d8e-9203-0587-0e7b4a7db9aa@opengridcomputing.com>
+Content-Type: multipart/signed; boundary="=-=-=";
+        micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Aug 07, 2018 at 04:05:42PM -0500, Tom Tucker wrote:
-> FWIW, I don't think dtrace does/did what NASA is asking for, but
-> that's really irrelevant. The locks in NFSv4 are application
-> specific locks, not generic kernel locks, so a service looking for
-> spinlocks, mutexes, etc... wouldn't really be helpful I don't
-> think.  However implementing a /sys/class, debugfs thingy that
-> dumped the nfsv4 locks held is fairly simple, although I would think
-> there are security implications.
+--=-=-=
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
-We already have /proc/locks for locks taken by regular applications, it
-just misses locks from nfsd.
 
-We could extend that.  But /proc/locks has some other problems and best
-is probably to make a list of those and make sure we address them all at
-once.  It's a potential woodshedding exercise.  I haven't done any work
-on it.
+When a direct-write completes, a work_struct is schedule to handle
+the completion.
+When NFS is being used for swap, the direct write might be a swap-out,
+so memory allocation can block until the write completes.
+The work queue currently used is not WQ_MEM_RECLAIM, so tasks
+can block waiting for memory - this leads to deadlock.
 
-Alternatively I guess we could make a separate interface just for file
-locks held by knfsd.
+So use nfsiod_workqueue instead.  This will always have a running
+thread, and work items should never block waiting for memory.
 
---b.
+Signed-off-by: Neil Brown <neilb@suse.com>
+=2D--
+ fs/nfs/direct.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+index 621c517b325c..aa12c3063bae 100644
+=2D-- a/fs/nfs/direct.c
++++ b/fs/nfs/direct.c
+@@ -758,7 +758,7 @@ static void nfs_direct_write_schedule_work(struct work_=
+struct *work)
+=20
+ static void nfs_direct_write_complete(struct nfs_direct_req *dreq)
+ {
+=2D	schedule_work(&dreq->work); /* Calls nfs_direct_write_schedule_work */
++	queue_work(nfsiod_workqueue, &dreq->work); /* Calls nfs_direct_write_sche=
+dule_work */
+ }
+=20
+ static void nfs_direct_write_completion(struct nfs_pgio_header *hdr)
+=2D-=20
+2.14.0.rc0.dirty
+
+
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+
+iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAltqKSMACgkQOeye3VZi
+gbnfBxAAsQmDECwLH6JuKN6lmOPVFoQR1odn1cLtQznviSUf8ekpz4eiKrSFKGaK
+B+KdRxT9o/YGP5klcfzo6HqFT75tAo5Jo5ZE07zdc4txchm3OmbM8818fMbdcUA4
+aJDtGpIsBHOACoUDEakXwUHjskRnSftR+Vbic7o3HWpy+NNwrjA8yaKRrBGKpmkK
+BbsjlA2BOxt5Daad4zffbMSbrrR4nGE6vQg5FslKCmXp/StuxZyWYWbXac2+5QQJ
+7mNdFXl0tKpU5LDLkwRUu4HbyONJjbtXTg4LGJN+k2W7i7HOY60cQMwF/JMcoa0e
+a+UwPF7+MWWu4WVWqm8aeWR/YjzIYQePom/eZUloeqeV59049Q4anlLPxVbbS142
+FZSlihq78dtaVfB2icZCZI9DmwmmJxZkxlQE0roc3F+/KGFikiYOB2E3r4XLmECR
+fcpr4QGurz/gE0NEqCKnC/VG9a7zh9U+nC0estqRp2oZXZL6XBpT9pnMOPsa/V1Y
+J/yWjCpbj1DoKTZ5tTA0XUJGv8nZIwg4Oanu+8H0YdmlkmDNHUXL4ntSH/tsxv0s
+rugLNayT3Q/hXW/ZIgQt1SWKPBYoAQAiSbUWD+kOnWnV2YqtCZLOZTryo1Djrmzx
+woTLNpmhuQdMsAWewxKWP4r+KA9xzUBt5iwS5pPly6ZKAuuYB4o=
+=ERjw
+-----END PGP SIGNATURE-----
+--=-=-=--
