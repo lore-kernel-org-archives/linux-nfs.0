@@ -1,106 +1,127 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ua0-f169.google.com ([209.85.217.169]:47000 "EHLO
-        mail-ua0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728671AbeHFWR0 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Aug 2018 18:17:26 -0400
-Received: by mail-ua0-f169.google.com with SMTP id u11-v6so13555309uan.13
-        for <linux-nfs@vger.kernel.org>; Mon, 06 Aug 2018 13:06:45 -0700 (PDT)
+Received: from mga14.intel.com ([192.55.52.115]:58953 "EHLO mga14.intel.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1727545AbeHGHOM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 7 Aug 2018 03:14:12 -0400
+Subject: Re: [LKP] [lkp-robot] [nfsd4] 517dc52baa: fsmark.files_per_sec 32.4%
+ improvement
+To: "J. Bruce Fields" <bfields@redhat.com>
+Cc: Ye Xiaolong <xiaolong.ye@intel.com>,
+        Stephen Rothwell <sfr@canb.auug.org.au>,
+        linux-nfs@vger.kernel.org, lkp@01.org,
+        LKML <linux-kernel@vger.kernel.org>
+References: <20180620065243.GD11011@yexl-desktop>
+ <20180620154950.GA28475@parsley.fieldses.org>
+ <87va9vu21f.fsf@yhuang-dev.intel.com> <20180716065500.GU27608@yexl-desktop>
+ <20180727002225.GF17169@yexl-desktop>
+ <20180801114642.GA21500@parsley.fieldses.org>
+From: Rong Chen <rong.a.chen@intel.com>
+Message-ID: <63c5dff1-ab1d-3caa-682e-c8b5ff7025d5@intel.com>
+Date: Tue, 7 Aug 2018 13:02:16 +0800
 MIME-Version: 1.0
-In-Reply-To: <542A2763-0F02-41DA-964E-EBA5DAF7592D@oracle.com>
-References: <CAN-5tyERJVoiUR3ub8yjMor3YYN5ksdd93dpKoW=4OkGw6OPpg@mail.gmail.com>
- <CAN-5tyGeq11izA3J6mfiCnEzg1NE_9z13unx6PDy8SNK_ahASg@mail.gmail.com>
- <9B79CDF3-838E-4E81-BE9C-0BB47E2FC404@oracle.com> <CAN-5tyG-CDdR4JLJ2SS8TnUugh8ZbtH_fuZVAqp0WiiORcdn4Q@mail.gmail.com>
- <6A214429-6CBB-4EED-8327-AAD93F70C93C@oracle.com> <542A2763-0F02-41DA-964E-EBA5DAF7592D@oracle.com>
-From: Olga Kornievskaia <aglo@umich.edu>
-Date: Mon, 6 Aug 2018 16:06:44 -0400
-Message-ID: <CAN-5tyEP4iFJNgq6ipwxGjOrXLFnzgxLeVeKpmWvz33VFFsDQA@mail.gmail.com>
-Subject: Re: noresvport and port re-use
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+In-Reply-To: <20180801114642.GA21500@parsley.fieldses.org>
+Content-Type: text/plain; charset=utf-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Aug 6, 2018 at 2:01 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
->
->
->> On Aug 6, 2018, at 1:49 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
->>
->>
->>
->>> On Aug 6, 2018, at 12:06 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
->>>
->>> On Mon, Aug 6, 2018 at 10:46 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
->>>>
->>>>
->>>>> On Aug 2, 2018, at 12:42 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
->>>>>
->>>>> On Thu, Aug 2, 2018 at 11:14 AM, Olga Kornievskaia <aglo@umich.edu> wrote:
->>>>>> Hi folks,
->>>>>>
->>>>>> There is no documentation of this behavior but when "noresvport" is
->>>>>> specified, the client will not try to re-use the port upon connection
->>>>>> re-establishement. Is this an oversight or a desired behavior (ie.,
->>>>>> client doesn't need to be conservative and re-use ports)?
->>>>>>
->>>>>> Thank you.
->>>>>
->>>>> I'm going to speculate on the reason myself and would like to hear
->>>>> some folks thoughts.
->>>>>
->>>>> When we specify "noresvport" we use port=0 value that tells the kernel
->>>>> - use any port. When connection is re-established port=0 so NFS has no
->>>>> control over which port the kernel will choose.
->>>>>
->>>>> When client re-establishes the connection with a different port, that
->>>>> has an effect on the server's replay cache. Any thoughts on that?
->>>>>
->>>>> Should the client remember which non-privileged port it used and then
->>>>> the next time request a specific port?
->>>>
->>>> The basic constraint is that:
->>>>
->>>> If the client actively disconnects, or if the client is using an NFSv4
->>>> session, then for a fresh connection the client is free to use any
->>>> available source port in the range selected by the "resvport" mount
->>>> option.
->>>>
->>>> If there is no NFSv4 session and the server or the network transport
->>>> actively disconnects (say, due to a keep-alive timeout), the client
->>>> should attempt to use the same source port as the previous connection
->>>> in order to preserve DRC content on the server.
->>>
->>> Hi Chuck,
->>>
->>> Thanks for the reply. I'm considering your 2nd case where the server
->>> reset the connection and client is re-establishing it and this is a v3
->>> mount (this DRC is important). When "noresvport" is specified, then
->>> the kernel makes no attempts at re-use the same non-reserved port.
->>> However, I'm not sure it is possible to re-use a non-reserved port.
->>
->> Why do you believe that?
->
-> That was terse. What I mean is, I don't know whether it is possible or
-> not to re-use an ephemeral port. I don't know of a reason why it would
-> not be possible to re-use one. Do you?
->
 
-I'm thinking the way the API works is that we set port=0 when we setup
-the socket which tells the kernel to use any non-privilege port. I'm
-hazy on the details of how the reconnection is happening. So I'm
-thinking kernel tells us the connection got closed and we call into
-kernel to re-connect. I think the port at the reconnect time is again
-just 0 which tells the kernel "use any port". To make it possible to
-re-use the port, I think we(NFS) need to save the port from the
-"original" connection and then connecting again instead of the 0
-specify the saved port? That's my hand wavy explanation of port
-re-use.
 
->>> Given this behavior, shouldn't we be discouraging folks to mount with
->>> v3 and "noresvport" option?
+On 08/01/2018 07:46 PM, J. Bruce Fields wrote:
+> On Fri, Jul 27, 2018 at 08:22:25AM +0800, Ye Xiaolong wrote:
+>> On 07/16, Ye Xiaolong wrote:
+>>> On 07/04, Huang, Ying wrote:
+>>>> "J. Bruce Fields" <bfields@redhat.com> writes:
+>>>>
+>>>>> Thanks!
+>>>>>
+>>>>> On Wed, Jun 20, 2018 at 02:52:43PM +0800, kernel test robot wrote:
+>>>>>> FYI, we noticed a 32.4% improvement of fsmark.files_per_sec due to commit:
+>>>>>>
+>>>>>>
+>>>>>> commit: 517dc52baa2a508c82f68bbc7219b48169e6b29f ("nfsd4: shortern default lease period")
+>>>>>> https://git.kernel.org/cgit/linux/kernel/git/next/linux-next.git master
+>>>>> That doesn't make any sense....
+>>>>>
+>>>>> OK, I think I see the problem:
+>>>>>
+>>>>>> in testcase: fsmark
+>>>>>> on test machine: 48 threads Intel(R) Xeon(R) CPU E5-2697 v2 @ 2.70GHz with 64G memory
+>>>>>> with following parameters:
+>>>>>>
+>>>>>> 	iterations: 1x
+>>>>>> 	nr_threads: 1t
+>>>>>> 	disk: 1BRD_48G
+>>>>>> 	fs: f2fs
+>>>>>> 	fs2: nfsv4
+>>>>>> 	filesize: 4M
+>>>>>> 	test_size: 40G
+>>>>>> 	sync_method: fsyncBeforeClose
+>>>>>> 	cpufreq_governor: performance
+>>>>>>
+>>>>>> test-description: The fsmark is a file system benchmark to test synchronous write workloads, for example, mail servers workload.
+>>>>>> test-url: https://sourceforge.net/projects/fsmark/
+>>>>>>
+>>>>>>
+>>>>>>
+>>>>>> Details are as below:
+>>>>>> -------------------------------------------------------------------------------------------------->
+>>>>>>
+>>>>>>
+>>>>>> To reproduce:
+>>>>>>
+>>>>>>          git clone https://github.com/intel/lkp-tests.git
+>>>>>>          cd lkp-tests
+>>>>>>          bin/lkp install job.yaml  # job file is attached in this email
+>>>>>>          bin/lkp run     job.yaml
+>>>>>>
+>>>>>> =========================================================================================
+>>>>>> compiler/cpufreq_governor/disk/filesize/fs2/fs/iterations/kconfig/nr_threads/rootfs/sync_method/tbox_group/test_size/testcase:
+>>>>>>    gcc-7/performance/1BRD_48G/4M/nfsv4/f2fs/1x/x86_64-rhel-7.2/1t/debian-x86_64-2016-08-31.cgz/fsyncBeforeClose/ivb44/40G/fsmark
+>>>>>>
+>>>>>> commit:
+>>>>>>    c2993a1d7d ("nfsd4: extend reclaim period for reclaiming clients")
+>>>>>>    517dc52baa ("nfsd4: shortern default lease period")
+>>>>>>
+>>>>>> c2993a1d7d6687fd 517dc52baa2a508c82f68bbc72
+>>>>>> ---------------- --------------------------
+>>>>>>           %stddev     %change         %stddev
+>>>>>>               \          |                \
+>>>>>>       53.60           +32.4%      70.95        fsmark.files_per_sec
+>>>>>>      191.89           -24.4%     145.16        fsmark.time.elapsed_time
+>>>>>>      191.89           -24.4%     145.16        fsmark.time.elapsed_time.max
+>>>>> So what happened is the test took about 45 seconds less.
+>>>>>
+>>>>> I suspect you're starting the nfs server and then immediately running
+>>>>> this test.
+>>>> Yes.
+>>>>
+>>>>> The problem is that if there's a grace period on startup, any open will
+>>>>> just hang until the grace period ends.
+>>>>>
+>>>>> This patch changed the default grace period from 90 seconds to 45, so
+>>>>> that would explain the change.
+>>>>>
+>>>>> In my testing I usually
+>>>>>
+>>>>> 	start the nfs server
+>>>>> 	on the client:
+>>>>> 		mount the server
+>>>>> 		touch a file
+>>>>>
+>>>>> When the touch returns, I know any grace period has completed, and then
+>>>>> I can run any tests normally.
+>>> I've modified our test to touch a file before running the actual workload, then
+>>> requeue tests for both commit 517dc52baa and its parent c2993a1d7d, but the
+>>> result seems persistent which shows a ~30% improvement of fsmark.files_per_sec.
+>>>
+>> Any suggestions?	
+> You're sure you only start timing after the "touch" returns?
+The result is normal after retesting, thank you for helping us improve 
+the test.
+
+Best Regards,
+Rong, Chen
+
 >
-> --
-> Chuck Lever
->
->
->
+> --b.
+
