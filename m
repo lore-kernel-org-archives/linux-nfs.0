@@ -1,51 +1,58 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx3-rdu2.redhat.com ([66.187.233.73]:56722 "EHLO mx1.redhat.com"
+Received: from mail-cys01nam02on0091.outbound.protection.outlook.com ([104.47.37.91]:45293
+        "EHLO NAM02-CY1-obe.outbound.protection.outlook.com"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726733AbeHHNzS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 8 Aug 2018 09:55:18 -0400
-From: Scott Mayhew <smayhew@redhat.com>
-To: bfields@fieldses.org, jlayton@kernel.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] nfsd: ensure that writing '+4' to /proc/fs/nfsd/versions enables minor version 0
-Date: Wed,  8 Aug 2018 07:36:00 -0400
-Message-Id: <20180808113600.11502-1-smayhew@redhat.com>
+        id S1726680AbeHHPBS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 8 Aug 2018 11:01:18 -0400
+From: Trond Myklebust <trondmy@hammerspace.com>
+To: "bfields@fieldses.org" <bfields@fieldses.org>,
+        "smayhew@redhat.com" <smayhew@redhat.com>,
+        "jlayton@kernel.org" <jlayton@kernel.org>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] nfsd: ensure that writing '+4' to /proc/fs/nfsd/versions
+ enables minor version 0
+Date: Wed, 8 Aug 2018 12:41:43 +0000
+Message-ID: <0ad3edde2c778dc0477c314b94c194b8365e2ee9.camel@hammerspace.com>
+References: <20180808113600.11502-1-smayhew@redhat.com>
+In-Reply-To: <20180808113600.11502-1-smayhew@redhat.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-According to commit d3635ff07e8 ("nfsd: fix configuration of supported
-minor versions"), it should be possible to use either '4.0' or '4' to
-enable or disable minor version 0.
-
-Currently, writing '+4' to /proc/fs/nfsd/versions has no effect unless
-no minor versions are enabled.  That leaves rpc.nfsd without an easy
-way to re-enable v4.0, since that's what it does when invoked with
-'-V 4.0'.
-
-Fixes: d3635ff07e8 ("nfsd: fix configuration of supported minor versions")
-Signed-off-by: Scott Mayhew <smayhew@redhat.com>
----
- fs/nfsd/nfsctl.c | 8 ++++++++
- 1 file changed, 8 insertions(+)
-
-diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index d107b4426f7e..b3f9f9233953 100644
---- a/fs/nfsd/nfsctl.c
-+++ b/fs/nfsd/nfsctl.c
-@@ -614,6 +614,14 @@ static ssize_t __write_versions(struct file *file, char *buf, size_t size)
- 					minor = 0;
- 					while (nfsd_minorversion(minor, cmd) >= 0)
- 						minor++;
-+				} else if (cmd == NFSD_SET) {
-+					/*
-+					 * We have +4 but there are already some minors
-+					 * enabled.  We must ensure 4.0 gets enabled,
-+					 * since it could be a request from rpc.nfsd.
-+					 */
-+					if (nfsd_minorversion(0, cmd) < 0)
-+						return -EINVAL;
- 				}
- 				break;
- 			default:
--- 
-2.14.4
-
+T24gV2VkLCAyMDE4LTA4LTA4IGF0IDA3OjM2IC0wNDAwLCBTY290dCBNYXloZXcgd3JvdGU6DQo+
+IEFjY29yZGluZyB0byBjb21taXQgZDM2MzVmZjA3ZTggKCJuZnNkOiBmaXggY29uZmlndXJhdGlv
+biBvZg0KPiBzdXBwb3J0ZWQNCj4gbWlub3IgdmVyc2lvbnMiKSwgaXQgc2hvdWxkIGJlIHBvc3Np
+YmxlIHRvIHVzZSBlaXRoZXIgJzQuMCcgb3IgJzQnIHRvDQo+IGVuYWJsZSBvciBkaXNhYmxlIG1p
+bm9yIHZlcnNpb24gMC4NCj4gDQo+IEN1cnJlbnRseSwgd3JpdGluZyAnKzQnIHRvIC9wcm9jL2Zz
+L25mc2QvdmVyc2lvbnMgaGFzIG5vIGVmZmVjdA0KPiB1bmxlc3MNCj4gbm8gbWlub3IgdmVyc2lv
+bnMgYXJlIGVuYWJsZWQuICBUaGF0IGxlYXZlcyBycGMubmZzZCB3aXRob3V0IGFuIGVhc3kNCj4g
+d2F5IHRvIHJlLWVuYWJsZSB2NC4wLCBzaW5jZSB0aGF0J3Mgd2hhdCBpdCBkb2VzIHdoZW4gaW52
+b2tlZCB3aXRoDQo+ICctViA0LjAnLg0KPiANCj4gRml4ZXM6IGQzNjM1ZmYwN2U4ICgibmZzZDog
+Zml4IGNvbmZpZ3VyYXRpb24gb2Ygc3VwcG9ydGVkIG1pbm9yDQo+IHZlcnNpb25zIikNCj4gU2ln
+bmVkLW9mZi1ieTogU2NvdHQgTWF5aGV3IDxzbWF5aGV3QHJlZGhhdC5jb20+DQo+IC0tLQ0KPiAg
+ZnMvbmZzZC9uZnNjdGwuYyB8IDggKysrKysrKysNCj4gIDEgZmlsZSBjaGFuZ2VkLCA4IGluc2Vy
+dGlvbnMoKykNCj4gDQo+IGRpZmYgLS1naXQgYS9mcy9uZnNkL25mc2N0bC5jIGIvZnMvbmZzZC9u
+ZnNjdGwuYw0KPiBpbmRleCBkMTA3YjQ0MjZmN2UuLmIzZjlmOTIzMzk1MyAxMDA2NDQNCj4gLS0t
+IGEvZnMvbmZzZC9uZnNjdGwuYw0KPiArKysgYi9mcy9uZnNkL25mc2N0bC5jDQo+IEBAIC02MTQs
+NiArNjE0LDE0IEBAIHN0YXRpYyBzc2l6ZV90IF9fd3JpdGVfdmVyc2lvbnMoc3RydWN0IGZpbGUN
+Cj4gKmZpbGUsIGNoYXIgKmJ1Ziwgc2l6ZV90IHNpemUpDQo+ICAJCQkJCW1pbm9yID0gMDsNCj4g
+IAkJCQkJd2hpbGUgKG5mc2RfbWlub3J2ZXJzaW9uKG1pbm9yLA0KPiBjbWQpID49IDApDQo+ICAJ
+CQkJCQltaW5vcisrOw0KPiArCQkJCX0gZWxzZSBpZiAoY21kID09IE5GU0RfU0VUKSB7DQo+ICsJ
+CQkJCS8qDQo+ICsJCQkJCSAqIFdlIGhhdmUgKzQgYnV0IHRoZXJlIGFyZQ0KPiBhbHJlYWR5IHNv
+bWUgbWlub3JzDQo+ICsJCQkJCSAqIGVuYWJsZWQuICBXZSBtdXN0IGVuc3VyZSA0LjANCj4gZ2V0
+cyBlbmFibGVkLA0KPiArCQkJCQkgKiBzaW5jZSBpdCBjb3VsZCBiZSBhIHJlcXVlc3QNCj4gZnJv
+bSBycGMubmZzZC4NCj4gKwkJCQkJICovDQo+ICsJCQkJCWlmIChuZnNkX21pbm9ydmVyc2lvbigw
+LCBjbWQpIDwNCj4gMCkNCj4gKwkJCQkJCXJldHVybiAtRUlOVkFMOw0KPiAgCQkJCX0NCj4gIAkJ
+CQlicmVhazsNCj4gIAkJCWRlZmF1bHQ6DQoNClRoaXMgYnJlYWtzIHRoZSBpbnRlbnRpb24gYmVo
+aW5kIHRoYXQgcGF0Y2gsIHdoaWNoIHdhcyB0byBlbnN1cmUgdGhhdA0KKzQgbXVzdCBfbm90XyBh
+dXRvbWF0aWNhbGx5IGVuYWJsZSA0LjAuLi4NCg0KSW5zdGVhZCwgeW91IHVzZSArLy00LjAgdG8g
+ZW5hYmxlL2Rpc2FibGUgNC4wLCBqdXN0IGxpa2UgeW91IHVzZSArLy00LjEgDQp0byBlbmFibGUv
+ZGlzYWJsZSA0LjEsICsvLTQuMiB0byBlbmFibGUvZGlzYWJsZSA0LjIsIGV0YywgZXRjLi4uDQoN
+ClRoZSBzcGVjaWFsIHZhbHVlICsvLTQgZXhpc3RzIGluIG9yZGVyIGFsbG93IHlvdSB0byBkaXNh
+YmxlL2VuYWJsZSB2NA0KYWx0b2dldGhlci4gaS5lLiAnLTQnIGFjdHMgYXMgYSBtYXNrIHRvIHR1
+cm4gb2ZmIHY0LnggZm9yIGFsbCB2YWx1ZXMgb2YNCnguICcrNCcgd2lsbCBlbmFibGUgdjQueCBm
+b3IgdGhvc2UgdmFsdWVzIG9mIHggd2hpY2ggaGF2ZSBiZWVuDQpleHBsaWNpdGx5IHNldC4NCg0K
+LS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkNUTywgSGFtbWVyc3BhY2UgSW5jDQo0MzAwIEVsIENhbWlu
+byBSZWFsLCBTdWl0ZSAxMDUNCkxvcyBBbHRvcywgQ0EgOTQwMjINCnd3dy5oYW1tZXIuc3BhY2UN
+Cg0KDQo=
