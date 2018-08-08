@@ -1,10 +1,17 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mails1n0-route0.email.arizona.edu ([128.196.130.69]:6903 "EHLO
-        mails1n0-route0.email.arizona.edu" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1729620AbeHHVcy (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Aug 2018 17:32:54 -0400
+Received: from aserp2130.oracle.com ([141.146.126.79]:45590 "EHLO
+        aserp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1729686AbeHHWJ5 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Aug 2018 18:09:57 -0400
+Content-Type: text/plain;
+        charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 11.5 \(3445.9.1\))
 Subject: Re: RDMA connection closed and not re-opened
-To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <961e1f70-36bd-bfd2-eb3a-514c89b6cac6@genome.arizona.edu>
+Date: Wed, 8 Aug 2018 15:18:12 -0400
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <73F6B026-3F80-46C4-B550-E94E614F22A0@oracle.com>
 References: <f1e596cf-0e70-39af-99e9-a0a7e912bad3@genome.arizona.edu>
  <4A72535B-E6D2-4E8A-B6DB-BF09856A41EB@gmail.com>
  <19cd3809-669b-2d63-d453-ed553c9e01a9@genome.arizona.edu>
@@ -16,33 +23,60 @@ References: <f1e596cf-0e70-39af-99e9-a0a7e912bad3@genome.arizona.edu>
  <7F74B5E4-DCAD-46E1-988F-68E79FBD72FA@oracle.com>
  <51f7869c-de9a-65c3-9fd7-0133ca7232e1@genome.arizona.edu>
  <C5123ADC-2220-4C1C-B45E-0D9E16E9EFA7@oracle.com>
-From: admin@genome.arizona.edu
-Message-ID: <961e1f70-36bd-bfd2-eb3a-514c89b6cac6@genome.arizona.edu>
-Date: Wed, 8 Aug 2018 12:11:37 -0700
-MIME-Version: 1.0
-In-Reply-To: <C5123ADC-2220-4C1C-B45E-0D9E16E9EFA7@oracle.com>
-Content-Type: text/plain; charset=utf-8; format=flowed
+ <961e1f70-36bd-bfd2-eb3a-514c89b6cac6@genome.arizona.edu>
+To: admin@genome.arizona.edu
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Chuck Lever wrote on 08/08/2018 12:01 PM:
->> On Aug 8, 2018, at 2:54 PM, admin@genome.arizona.edu wrote:
->> Chuck Lever wrote on 07/14/2018 07:37 AM:
->>>> On Jul 13, 2018, at 6:32 PM, admin@genome.arizona.edu wrote:
->>>> Chuck Lever wrote on 07/13/2018 07:36 AM:
->>>>> You should be able to mount using "proto=tcp" with your mlx4 cards.
->>>>> That avoids the use of NFS/RDMA but would enable the use of the
->>>>> higher bandwidth network fabric.
->>>> Thanks I could definitely try that.  IPoIB has it's own set of issues though but can cross that bridge when I get to it....
->>> Stick with connected mode and keep rsize and wsize smaller
->>> than the IPoIB MTU, which can be set as high as 65KB.
->> We are running in this setup, so far so good... however the rsize/wsize were much greater than the IPoIB MTU, and it is probably causing these "page allocation failures" which fortunately have not been fatal; our computation is still running.  In the ifcfg file for the IPoIB interface, the MTU is set to 65520, which was the recommended maximum from the Red Hat manual.  So should rsize/wsize be set to 65519? or is it better to pick another value that is a multiple 1024 or something?
-> 
-> The r/wsize settings have to be power of two. The next power of
-> two smaller than 65520 is 32768. Try "rsize=32768,wsize=32768" .
 
-Thanks but what is the reason for that?  After googling around a while 
-for rsize/wsize settings, i finally found in the nfs manual page (of all 
-places!!) that "If a specified value is within the supported range but 
-not a multiple of 1024, it is rounded down to the nearest multiple of 
-1024."  So it sound like we could use 63KiB or 64512.
+
+> On Aug 8, 2018, at 3:11 PM, admin@genome.arizona.edu wrote:
+>=20
+> Chuck Lever wrote on 08/08/2018 12:01 PM:
+>>> On Aug 8, 2018, at 2:54 PM, admin@genome.arizona.edu wrote:
+>>> Chuck Lever wrote on 07/14/2018 07:37 AM:
+>>>>> On Jul 13, 2018, at 6:32 PM, admin@genome.arizona.edu wrote:
+>>>>> Chuck Lever wrote on 07/13/2018 07:36 AM:
+>>>>>> You should be able to mount using "proto=3Dtcp" with your mlx4 =
+cards.
+>>>>>> That avoids the use of NFS/RDMA but would enable the use of the
+>>>>>> higher bandwidth network fabric.
+>>>>> Thanks I could definitely try that.  IPoIB has it's own set of =
+issues though but can cross that bridge when I get to it....
+>>>> Stick with connected mode and keep rsize and wsize smaller
+>>>> than the IPoIB MTU, which can be set as high as 65KB.
+>>> We are running in this setup, so far so good... however the =
+rsize/wsize were much greater than the IPoIB MTU, and it is probably =
+causing these "page allocation failures" which fortunately have not been =
+fatal; our computation is still running.  In the ifcfg file for the =
+IPoIB interface, the MTU is set to 65520, which was the recommended =
+maximum from the Red Hat manual.  So should rsize/wsize be set to 65519? =
+or is it better to pick another value that is a multiple 1024 or =
+something?
+>> The r/wsize settings have to be power of two. The next power of
+>> two smaller than 65520 is 32768. Try "rsize=3D32768,wsize=3D32768" .
+>=20
+> Thanks but what is the reason for that?  After googling around a while =
+for rsize/wsize settings, i finally found in the nfs manual page (of all =
+places!!) that "If a specified value is within the supported range but =
+not a multiple of 1024, it is rounded down to the nearest multiple of =
+1024." So it sound like we could use 63KiB or 64512.
+
+I just tried this:
+
+[root@manet ~]# mount -o vers=3D3,rsize=3D65520,wsize=3D65520 =
+klimt:/export/tmp/ /mnt
+[root@manet ~]# grep klimt /proc/mounts
+klimt:/export/tmp/ /mnt nfs =
+rw,relatime,vers=3D3,rsize=3D32768,wsize=3D32768,namlen=3D255,hard,proto=3D=
+tcp,timeo=3D600,retrans=3D2,sec=3Dsys,mountaddr=3D192.168.1.55,mountvers=3D=
+3,mountport=3D20048,mountproto=3Dudp,local_lock=3Dnone,addr=3D192.168.1.55=
+ 0 0
+
+Looks like the man page is wrong.
+
+--
+Chuck Lever
+
+
+
