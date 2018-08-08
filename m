@@ -1,61 +1,80 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp2130.oracle.com ([141.146.126.79]:33754 "EHLO
-        aserp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727530AbeHHXQb (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Aug 2018 19:16:31 -0400
-From: Chuck Lever <chuck.lever@oracle.com>
-Content-Type: text/plain;
-        charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 11.5 \(3445.9.1\))
-Subject: RFC: xprt_lock_connect
-Message-Id: <55352755-3A99-4193-98E6-25A9B8181F6E@oracle.com>
-Date: Wed, 8 Aug 2018 15:53:34 -0400
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-To: Trond Myklebust <trondmy@hammerspace.com>
+Received: from mail-eopbgr700090.outbound.protection.outlook.com ([40.107.70.90]:18444
+        "EHLO NAM04-SN1-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1729938AbeHHXkk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 8 Aug 2018 19:40:40 -0400
+From: Trond Myklebust <trondmy@hammerspace.com>
+To: "chuck.lever@oracle.com" <chuck.lever@oracle.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: RFC: xprt_lock_connect
+Date: Wed, 8 Aug 2018 21:19:06 +0000
+Message-ID: <f9a316e2de500bd4d4e4c3be8f29613e36bc1f3f.camel@hammerspace.com>
+References: <55352755-3A99-4193-98E6-25A9B8181F6E@oracle.com>
+In-Reply-To: <55352755-3A99-4193-98E6-25A9B8181F6E@oracle.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Trond-
-
-For maintainability and legibility, I'm attempting to make the
-the RPC/RDMA connect logic act a little more like the TCP
-connect logic. I noticed this patch:
-
-commit 718ba5b87343df303017585200ee182e937eabfc
-Author:     Trond Myklebust <trond.myklebust@primarydata.com>
-AuthorDate: Sun Feb 8 18:19:25 2015 -0500
-Commit:     Trond Myklebust <trond.myklebust@primarydata.com>
-CommitDate: Sun Feb 8 21:47:29 2015 -0500
-
-    SUNRPC: Add helpers to prevent socket create from racing
-
-    The socket lock is currently held by the task that is requesting the
-    connection be established. While that is efficient in the case where
-    the connection happens quickly, it is racy in the case where it doesn't.
-    What we really want is for the connect helper to be able to block access
-    to the socket while it is being set up.
-    
-    This patch does so by arranging to transfer the socket lock from the
-    task that is requesting the connect attempt, and then releasing that
-    lock once everything is done.
-    This scheme also gives us automatic protection against collisions with
-    the RPC close code, so we can kill the cancel_delayed_work_sync()
-    call in xs_close().
-    
-    Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-
-Your patch description refers to "the socket lock" but it appears
-to be manipulating the transport send lock. The new helpers are
-added in net/sunrpc/xprt.c, not in xprtsock.c. And, there is a
-hunk that changes the generic xprt_connect() function.
-
-Therefore, I'm wondering if these helpers are of value also to
-other transports that make use of connections. Should xprtrdma
-adopt the use of these helpers too?
-
-
---
-Chuck Lever
-
-
-
+T24gV2VkLCAyMDE4LTA4LTA4IGF0IDE1OjUzIC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
+SGkgVHJvbmQtDQo+IA0KPiBGb3IgbWFpbnRhaW5hYmlsaXR5IGFuZCBsZWdpYmlsaXR5LCBJJ20g
+YXR0ZW1wdGluZyB0byBtYWtlIHRoZQ0KPiB0aGUgUlBDL1JETUEgY29ubmVjdCBsb2dpYyBhY3Qg
+YSBsaXR0bGUgbW9yZSBsaWtlIHRoZSBUQ1ANCj4gY29ubmVjdCBsb2dpYy4gSSBub3RpY2VkIHRo
+aXMgcGF0Y2g6DQo+IA0KPiBjb21taXQgNzE4YmE1Yjg3MzQzZGYzMDMwMTc1ODUyMDBlZTE4MmU5
+MzdlYWJmYw0KPiBBdXRob3I6ICAgICBUcm9uZCBNeWtsZWJ1c3QgPHRyb25kLm15a2xlYnVzdEBw
+cmltYXJ5ZGF0YS5jb20+DQo+IEF1dGhvckRhdGU6IFN1biBGZWIgOCAxODoxOToyNSAyMDE1IC0w
+NTAwDQo+IENvbW1pdDogICAgIFRyb25kIE15a2xlYnVzdCA8dHJvbmQubXlrbGVidXN0QHByaW1h
+cnlkYXRhLmNvbT4NCj4gQ29tbWl0RGF0ZTogU3VuIEZlYiA4IDIxOjQ3OjI5IDIwMTUgLTA1MDAN
+Cj4gDQo+ICAgICBTVU5SUEM6IEFkZCBoZWxwZXJzIHRvIHByZXZlbnQgc29ja2V0IGNyZWF0ZSBm
+cm9tIHJhY2luZw0KPiANCj4gICAgIFRoZSBzb2NrZXQgbG9jayBpcyBjdXJyZW50bHkgaGVsZCBi
+eSB0aGUgdGFzayB0aGF0IGlzIHJlcXVlc3RpbmcNCj4gdGhlDQo+ICAgICBjb25uZWN0aW9uIGJl
+IGVzdGFibGlzaGVkLiBXaGlsZSB0aGF0IGlzIGVmZmljaWVudCBpbiB0aGUgY2FzZQ0KPiB3aGVy
+ZQ0KPiAgICAgdGhlIGNvbm5lY3Rpb24gaGFwcGVucyBxdWlja2x5LCBpdCBpcyByYWN5IGluIHRo
+ZSBjYXNlIHdoZXJlIGl0DQo+IGRvZXNuJ3QuDQo+ICAgICBXaGF0IHdlIHJlYWxseSB3YW50IGlz
+IGZvciB0aGUgY29ubmVjdCBoZWxwZXIgdG8gYmUgYWJsZSB0byBibG9jaw0KPiBhY2Nlc3MNCj4g
+ICAgIHRvIHRoZSBzb2NrZXQgd2hpbGUgaXQgaXMgYmVpbmcgc2V0IHVwLg0KPiAgICAgDQo+ICAg
+ICBUaGlzIHBhdGNoIGRvZXMgc28gYnkgYXJyYW5naW5nIHRvIHRyYW5zZmVyIHRoZSBzb2NrZXQg
+bG9jayBmcm9tDQo+IHRoZQ0KPiAgICAgdGFzayB0aGF0IGlzIHJlcXVlc3RpbmcgdGhlIGNvbm5l
+Y3QgYXR0ZW1wdCwgYW5kIHRoZW4gcmVsZWFzaW5nDQo+IHRoYXQNCj4gICAgIGxvY2sgb25jZSBl
+dmVyeXRoaW5nIGlzIGRvbmUuDQo+ICAgICBUaGlzIHNjaGVtZSBhbHNvIGdpdmVzIHVzIGF1dG9t
+YXRpYyBwcm90ZWN0aW9uIGFnYWluc3QgY29sbGlzaW9ucw0KPiB3aXRoDQo+ICAgICB0aGUgUlBD
+IGNsb3NlIGNvZGUsIHNvIHdlIGNhbiBraWxsIHRoZSBjYW5jZWxfZGVsYXllZF93b3JrX3N5bmMo
+KQ0KPiAgICAgY2FsbCBpbiB4c19jbG9zZSgpLg0KPiAgICAgDQo+ICAgICBTaWduZWQtb2ZmLWJ5
+OiBUcm9uZCBNeWtsZWJ1c3QgPHRyb25kLm15a2xlYnVzdEBwcmltYXJ5ZGF0YS5jb20+DQo+IA0K
+PiBZb3VyIHBhdGNoIGRlc2NyaXB0aW9uIHJlZmVycyB0byAidGhlIHNvY2tldCBsb2NrIiBidXQg
+aXQgYXBwZWFycw0KPiB0byBiZSBtYW5pcHVsYXRpbmcgdGhlIHRyYW5zcG9ydCBzZW5kIGxvY2su
+IFRoZSBuZXcgaGVscGVycyBhcmUNCj4gYWRkZWQgaW4gbmV0L3N1bnJwYy94cHJ0LmMsIG5vdCBp
+biB4cHJ0c29jay5jLiBBbmQsIHRoZXJlIGlzIGENCj4gaHVuayB0aGF0IGNoYW5nZXMgdGhlIGdl
+bmVyaWMgeHBydF9jb25uZWN0KCkgZnVuY3Rpb24uDQo+IA0KPiBUaGVyZWZvcmUsIEknbSB3b25k
+ZXJpbmcgaWYgdGhlc2UgaGVscGVycyBhcmUgb2YgdmFsdWUgYWxzbyB0bw0KPiBvdGhlciB0cmFu
+c3BvcnRzIHRoYXQgbWFrZSB1c2Ugb2YgY29ubmVjdGlvbnMuIFNob3VsZCB4cHJ0cmRtYQ0KPiBh
+ZG9wdCB0aGUgdXNlIG9mIHRoZXNlIGhlbHBlcnMgdG9vPw0KPiANCg0KSGVoLi4uIFlvdSdyZSB0
+b28gbGF0ZS4g4pi64pi64pi6DQoNCkknbSBwcmV0dHkgc3VyZSB0aGF0IGxvY2sgaXMgb25lIG9m
+IHRoZSBiaWdnZXN0IGJvdHRsZW5lY2tzIGluIHRoZSBUQ1ANCnNlbmQgcGF0aCB0b2RheSBhbmQg
+c28gSSdtIGluIHRoZSBwcm9jZXNzIG9mIHJld3JpdGluZyB0aGF0IGNvZGUuDQoNClRoZSBwcm9i
+bGVtIGlzIHRoaXM6IHRoZSBhYm92ZSBsb2NrIHNlcmlhbGlzZXMgYWxsIFJQQyB0YXNrcyB0aGF0
+IGdvIHRvDQphIHNpbmdsZSBzb2NrZXQsIHdoaWNoIGlzIHNvcnQgb2YgZGVzaXJhYmxlLiBIb3dl
+dmVyIGl0IGRvZXMgc28gYnkNCnBhc3NpbmcgdGhlIGxvY2sgZnJvbSBycGNfdGFzayB0byBycGNf
+dGFzaywgYW5kIHNvIHdoZW4gdGhlIGxvY2sgaXMNCmNvbnRlbmRlZCwgd2UgZW5kIHVwIHB1dHRp
+bmcgZWFjaCB0YXNrIHRvIHNsZWVwLCBpdCB3YWl0cyBmb3IgaXRzIHR1cm4NCmluIHRoZSBxdWV1
+ZSwgdGhlbiB0aGUgdGFzayBnZXRzIHNjaGVkdWxlZCBvbiB0aGUgd29ya3F1ZXVlLCBpdCBkb2Vz
+DQppdHMgdGhpbmcgKGVuY29kZXMgdGhlIFhEUiwgYW5kIHB1dHMgaXRzZWxmIHRocm91Z2ggdGhl
+IHNvY2tldCksIGFuZA0KdGhlbiB3YWtlcyB1cCB0aGUgbmV4dCB0YXNrLg0KSU9XOiBlYWNoIHRp
+bWUgd2UgaGFuZCBvZmYgdGhlIGxvY2ssIHdlIHRha2UgYSB3b3JrcXVldWUgcXVldWluZyBoaXQs
+DQp3aXRoIHRoZSB0YXNrIGhhdmluZyB0byB3YWl0IHVudGlsIGFueSBvdGhlciBzZW5kIHRhc2sg
+b3IgcmVwbHkgdGhhdCBpcw0KYWhlYWQgb2YgaXQgaW4gdGhlIHF1ZXVlIGhhcyBydW4uIFdlIGFs
+c28gZG8gdGhlIFhEUiBlbmNvZGluZyB1bmRlciB0aGUNCmxvY2ssIGZ1cnRoZXIgYWRkaW5nIGxh
+dGVuY3kuLi4NCg0KV2hhdCBJIHdhbnQgdG8gZG8gKGFuZCBhbSBpbiB0aGUgcHJvY2VzcyBvZiBj
+b2RpbmcpIGlzIHRvIGNvbnZlcnQgdGhhdA0Kd2hvbGUgdGhpbmcgaW50byBhIHF1ZXVlLCB3aGVy
+ZSBpZiB0aGUgbG9jayBpcyBjb250ZW5kZWQsIHRoZSBpbmNvbWluZw0KdGFzayBzaW1wbHkgYWRk
+cyBpdHNlbGYgdG8gdGhlIHF1ZXVlIGFuZCB0aGVuIHB1dHMgaXRzZWxmIHRvIHNsZWVwLg0KVGhl
+biB3aG9ldmVyIGFjdHVhbGx5IGZpcnN0IG9idGFpbnMgdGhlIGxvY2sgaXMgdGFza2VkIHdpdGgg
+dHJ5aW5nIHRvDQpkcmFpbiB0aGUgcXVldWUgYnkgc2VuZGluZyBhcyBtYW55IG9mIHRob3NlIHF1
+ZXVlZCByZXF1ZXN0cyBhcyB3aWxsDQphY3R1YWxseSBmaXQgaW4gdGhlIHNvY2tldCBidWZmZXIu
+DQpUaGUgYXNzdW1wdGlvbiBpcyB0aGF0IHdlIGNhbiBwZXJmb3JtIHRoZSBYRFIgZW5jb2Rpbmcg
+YmVmb3JlIHdlDQplbnF1ZXVlIHRoZSByZXF1ZXN0IChzbyB3ZSBtb3ZlIHRoYXQgb3V0IG9mIHRo
+ZSBsb2NrIHRvbyksIHdoaWNoIGlzDQp1c3VhbGx5IHRoZSBjYXNlLCBidXQgbWlnaHQgYmUgYSBs
+aXR0bGUgYXdrd2FyZCB3aGVuIGRvaW5nIFJQQ1NFQ19HU1MuDQoNCkNoZWVycw0KICBUcm9uZA0K
+DQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBIYW1t
+ZXJzcGFjZQ0KdHJvbmQubXlrbGVidXN0QGhhbW1lcnNwYWNlLmNvbQ0KDQoNCg==
