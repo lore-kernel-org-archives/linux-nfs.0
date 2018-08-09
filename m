@@ -1,33 +1,48 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mails2n1-route0.email.arizona.edu ([128.196.130.123]:37974 "EHLO
-        mails2n1-route0.email.arizona.edu" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1727530AbeHIBdi (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Aug 2018 21:33:38 -0400
-From: Chandler <admin@genome.arizona.edu>
-Subject: RDMA connection closed and not re-opened
-To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-References: <f1e596cf-0e70-39af-99e9-a0a7e912bad3@genome.arizona.edu>
- <4A72535B-E6D2-4E8A-B6DB-BF09856A41EB@gmail.com>
- <19cd3809-669b-2d63-d453-ed553c9e01a9@genome.arizona.edu>
- <E7AAFE10-FBFE-41E9-9731-D9C50DD2F654@oracle.com>
- <57cf42c5-d12d-fff3-fd77-0d191d32111e@genome.arizona.edu>
- <9b0802b9-ad7c-0969-6087-9f2aef703143@genome.arizona.edu>
- <0423D037-63F9-4BA6-882A-CBD9EBC630F2@oracle.com>
- <5b08ea1b-4cde-c432-92cc-04eff469ed54@genome.arizona.edu>
- <7F74B5E4-DCAD-46E1-988F-68E79FBD72FA@oracle.com>
- <51f7869c-de9a-65c3-9fd7-0133ca7232e1@genome.arizona.edu>
- <C5123ADC-2220-4C1C-B45E-0D9E16E9EFA7@oracle.com>
- <961e1f70-36bd-bfd2-eb3a-514c89b6cac6@genome.arizona.edu>
- <73F6B026-3F80-46C4-B550-E94E614F22A0@oracle.com>
-Message-ID: <4f059493-79e3-032c-62e2-5f91c59000aa@genome.arizona.edu>
-Date: Wed, 8 Aug 2018 16:11:29 -0700
+Received: from esa4.hgst.iphmx.com ([216.71.154.42]:60295 "EHLO
+        esa4.hgst.iphmx.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727579AbeHIL5D (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Aug 2018 07:57:03 -0400
+From: Suresh Jayaraman <Suresh.Jayaraman@wdc.com>
+To: Trond Myklebust <trondmy@hammerspace.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Aditya Agnihotri <Aditya.Agnihotri@wdc.com>
+Subject: Re: pNFS, multiple paths to Data Server not used by pNFS linux
+ client.
+Date: Thu, 9 Aug 2018 09:33:01 +0000
+Message-ID: <815B7ECF-E196-46AF-BE31-15ED28BA8E34@wdc.com>
+References: <SN6PR04MB4909ED311126ACD9341E339E82520@SN6PR04MB4909.namprd04.prod.outlook.com>
+ <BYAPR04MB4757AB8C13E8FA228B679D4083550@BYAPR04MB4757.namprd04.prod.outlook.com>
+ <e8093d124a34f08ec4c1053df14ba760c4b57efb.camel@hammerspace.com>
+In-Reply-To: <e8093d124a34f08ec4c1053df14ba760c4b57efb.camel@hammerspace.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-In-Reply-To: <73F6B026-3F80-46C4-B550-E94E614F22A0@oracle.com>
-Content-Type: text/plain; charset=utf-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Chuck Lever wrote on 08/08/2018 12:18 PM:
-> Looks like the man page is wrong.
-
-Right you are!
+VHJvbmQgTXlrbGVidXN0IDx0cm9uZG15QGhhbW1lcnNwYWNlLmNvbT4gd3JvdGU6DQoNCj4gSGkg
+U3VyZXNoLA0KPiANCj4gT24gVHVlLCAyMDE4LTA3LTI0IGF0IDA5OjU4ICswMDAwLCBTdXJlc2gg
+SmF5YXJhbWFuIHdyb3RlOg0KPj4gSGkgVHJvbmQgZXQgYWwsDQo+PiANCj4+IE9uIDA3LzE5LzIw
+MTggMTI6MzkgUE0sIEFkaXR5YSBBZ25paG90cmkgd3JvdGU6DQo+Pj4gV2UgYXJlIHRlc3Rpbmcg
+b3VyIHBORlMgc2VydmVyIHdpdGggbGludXggY2xpZW50LCB3aGVuIHRoZSBzZXJ2ZXINCj4+PiBy
+ZXR1cm5zIG11bHRpcGxlIHBhdGhzIHRvIGEgdjQgRFMgdmlhIEdFVERFVklORk8sIHdlIHNlZSB0
+aGF0IHRoZQ0KPj4+IGNsaWVudCB2YWxpZGF0ZWQgdGhlIHBhdGhzIChkb2VzIGV4Y2hhbmdlIGlk
+KSBidXQgZG9lcyBub3QgdXNlIHRoZQ0KPj4+IGFsdGVybmF0ZSBwYXRocyBpbiBJTy4NCj4+PiBU
+cmFjaW5nIHRoZSBjb2RlIHBhdGgsIGl0IHNlZW1zIHRoYXQgd2hlbiBEUyBpcyBhIE5GUyB2MyBz
+ZXJ2ZXIsDQo+Pj4gcGF0aCBpcyBhZGRlZCwgYnV0IGZvciBORlMgdjQgRFMgc2VydmVyLCBjbGll
+bnQgc2V0dXAgZnVuY3Rpb24NCj4+PiBjYWxsYmFjayBwYXRoIGZhaWxzIHRvIGFkZC4NCj4+IA0K
+Pj4gSXMgdGhpcyBvYnNlcnZhdGlvbiB0aGF0IHJwY19jbG50X3NldHVwX3Rlc3RfYW5kX2FkZF94
+cHJ0KCkgZG9lc24ndA0KPj4gY2FsbA0KPj4gcnBjX3hwcnRfc3dpdGNoX2FkZF94cHJ0KCkgbmVp
+dGhlciBpbiB0aGUgdGVzdCBmdW5jdGlvbiBub3IgbGV0DQo+PiBycGNfY2xudF9hZGRfeHBydCgp
+IGFkZCB0aGUgeHBydCBjb3JyZWN0PyBUaGlzIHNlZW1zIHRvIGJlIGxpbWl0aW5nDQo+PiBMaW51
+eCBwTkZTIGNsaWVudCBmcm9tIHVzaW5nIG11bHRpcGxlIHBhdGhzIHdpdGggVGVnaWxlL1dEIHBO
+RlMNCj4+IHNlcnZlci4NCj4+IA0KPj4gSWYgeWVzLCB3b3VsZCB5b3UgbGlrZSBhIHBhdGNoIHRo
+YXQgYXR0ZW1wdHMgdG8gZml4IHRoaXM/DQo+IA0KPiBJIGJlbGlldmUgdGhhdCB0aGUgb25seSBy
+ZWFzb24gd2h5IHRoZSBORlN2NCBEUyBzZXJ2ZXIgY29kZSB3YXMgbmV2ZXINCj4gY2hhbmdlZCBp
+cyB0aGF0IGl0IHdvdWxkIG5lZWQgdG8gYmUgdGVzdGVkLCBhbmQgbm9uZSBvZiB1cyBoYXMgc3Vj
+aCBhDQo+IHNldHVwIHRvIHRlc3Qgd2l0aC4NCj4gDQo+IFNvIHllcywgaWYgeW91J3JlIGFibGUg
+dG8gdGVzdCBvdXQgdGhhdCBzZXR1cCBhbmQgYXJlIHNlZWluZyBhIGJ1ZywNCj4gdGhlbiB3ZSdy
+ZSBoYXBweSB0byB0YWtlIGEgZml4Lg0KPiANCg0KVGhhbmtzIFRyb25kLiBJdCBsb29rcyBsaWtl
+IHdlIG5lZWQgdG8gZ28gdGhyb3VnaCBhbiBhcHByb3ZhbCBwcm9jZXNzDQpiZWZvcmUgd2Ugc3Vi
+bWl0IHRoZSBwYXRjaC4gSSBndWVzcyBpdCBzaG91bGRu4oCZdCB0YWtlIGxvbmcuDQoNClRoYW5r
+cywNCg0KLS0NClN1cmVzaCBKYXlhcmFtYW4=
