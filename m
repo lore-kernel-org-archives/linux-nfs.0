@@ -1,149 +1,136 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx3-rdu2.redhat.com ([66.187.233.73]:55850 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1730419AbeHISMa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 9 Aug 2018 14:12:30 -0400
-Date: Thu, 9 Aug 2018 11:46:58 -0400
-From: Scott Mayhew <smayhew@redhat.com>
-To: Trond Myklebust <trondmy@hammerspace.com>
-Cc: "bfields@fieldses.org" <bfields@fieldses.org>,
-        "jlayton@kernel.org" <jlayton@kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfsd: ensure that writing '+4' to /proc/fs/nfsd/versions
- enables minor version 0
-Message-ID: <20180809154658.GJ18747@coeurl.usersys.redhat.com>
-References: <20180808113600.11502-1-smayhew@redhat.com>
- <0ad3edde2c778dc0477c314b94c194b8365e2ee9.camel@hammerspace.com>
- <20180808130732.GI18747@coeurl.usersys.redhat.com>
+Received: from out1-smtp.messagingengine.com ([66.111.4.25]:55415 "EHLO
+        out1-smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1726756AbeHIUdc (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Aug 2018 16:33:32 -0400
+Received: from compute5.internal (compute5.nyi.internal [10.202.2.45])
+        by mailout.nyi.internal (Postfix) with ESMTP id 33FAF20DD4
+        for <linux-nfs@vger.kernel.org>; Thu,  9 Aug 2018 14:07:33 -0400 (EDT)
+Message-Id: <1533838052.2201783.1469033928.4B670F71@webmail.messagingengine.com>
+From: mrsvd1v4rgo1@airpost.net
+To: linux-nfs@vger.kernel.org
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20180808130732.GI18747@coeurl.usersys.redhat.com>
+Content-Type: text/plain; charset="utf-8"
+Date: Thu, 09 Aug 2018 11:07:32 -0700
+Subject: Help with user ID mapping?
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 08 Aug 2018, Scott Mayhew wrote:
+Hi All,
 
-> On Wed, 08 Aug 2018, Trond Myklebust wrote:
-> 
-> > On Wed, 2018-08-08 at 07:36 -0400, Scott Mayhew wrote:
-> > > According to commit d3635ff07e8 ("nfsd: fix configuration of
-> > > supported
-> > > minor versions"), it should be possible to use either '4.0' or '4' to
-> > > enable or disable minor version 0.
-> > > 
-> > > Currently, writing '+4' to /proc/fs/nfsd/versions has no effect
-> > > unless
-> > > no minor versions are enabled.  That leaves rpc.nfsd without an easy
-> > > way to re-enable v4.0, since that's what it does when invoked with
-> > > '-V 4.0'.
-> > > 
-> > > Fixes: d3635ff07e8 ("nfsd: fix configuration of supported minor
-> > > versions")
-> > > Signed-off-by: Scott Mayhew <smayhew@redhat.com>
-> > > ---
-> > >  fs/nfsd/nfsctl.c | 8 ++++++++
-> > >  1 file changed, 8 insertions(+)
-> > > 
-> > > diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-> > > index d107b4426f7e..b3f9f9233953 100644
-> > > --- a/fs/nfsd/nfsctl.c
-> > > +++ b/fs/nfsd/nfsctl.c
-> > > @@ -614,6 +614,14 @@ static ssize_t __write_versions(struct file
-> > > *file, char *buf, size_t size)
-> > >  					minor = 0;
-> > >  					while (nfsd_minorversion(minor,
-> > > cmd) >= 0)
-> > >  						minor++;
-> > > +				} else if (cmd == NFSD_SET) {
-> > > +					/*
-> > > +					 * We have +4 but there are
-> > > already some minors
-> > > +					 * enabled.  We must ensure 4.0
-> > > gets enabled,
-> > > +					 * since it could be a request
-> > > from rpc.nfsd.
-> > > +					 */
-> > > +					if (nfsd_minorversion(0, cmd) <
-> > > 0)
-> > > +						return -EINVAL;
-> > >  				}
-> > >  				break;
-> > >  			default:
-> > 
-> > This breaks the intention behind that patch, which was to ensure that
-> > +4 must _not_ automatically enable 4.0...
-> > 
-> > Instead, you use +/-4.0 to enable/disable 4.0, just like you use +/-4.1 
-> > to enable/disable 4.1, +/-4.2 to enable/disable 4.2, etc, etc...
-> > 
-> > The special value +/-4 exists in order allow you to disable/enable v4
-> > altogether. i.e. '-4' acts as a mask to turn off v4.x for all values of
-> > x. '+4' will enable v4.x for those values of x which have been
-> > explicitly set.
-> 
-> Okay I guess I'm confused by this wording from the commit message in
-> d3635ff07e8:
-> 
->     Allow the user to use either '4.0' or '4' to enable or disable minor
->     version 0.  Other minor versions are still enabled or disabled using the
->     '4.x' format.
+I'm trying to get a NFS4 client & server id mapping working right.
 
-Okay I see that that commit message actually came from Bruce and is
-different than the original commit message... but in your original cover
-letter (https://marc.info/?l=linux-nfs&m=148780658904187&w=2) you stated
-that '+4' should enable 4.0:
+My client mounts to a couple of NFS4 servers.
 
-"""
-2) Allow the user to use either '4.0' or '4' in order to enable or disable
-   minor version 0. Other minor versions remain enabled/disabled using the
-   '4.x' format.
-"""
+I want to get it setup so that for just ONE of them, files added to or modified on the server BY my local client, logged in EITHER as my user or root, get written with a specific user/group ==  "nobody:users"
 
-I thought the point of your patches were to allow the user to enable 4.x
-(for x > 0) without enabling 4.0.  My patch doesn't change that.  All it
-does is allow '+4' to enable 4.0, which is what both Bruce's commit
-message and your cover letter says it should do.
+I'm pretty sure that all the magic is done with idmapd config.
 
-current HEAD:
+This is what I put together after reading the docs and a bunch of posts online.  Obviously I'm still doing something wrong.
 
-[root@fedora27_1236568e ~]# echo '-4' >/proc/fs/nfsd/versions
-[root@fedora27_1236568e ~]# cat /proc/fs/nfsd/versions
--2 +3 -4 -4.0 -4.1 -4.2
-[root@fedora27_1236568e ~]# echo '+4.1' >/proc/fs/nfsd/versions
-[root@fedora27_1236568e ~]# !cat
-cat /proc/fs/nfsd/versions
--2 +3 +4 -4.0 +4.1 -4.2
-[root@fedora27_1236568e ~]# echo '+4' >/proc/fs/nfsd/versions
-[root@fedora27_1236568e ~]# !cat
-cat /proc/fs/nfsd/versions
--2 +3 +4 -4.0 +4.1 -4.2
+On my Desktop I have an autofs mount
 
-with my patch:
+	cat /etc/auto.nfs4 | grep TEST
+		TEST     -fstype=nfs,vers=4,_netdev,rw,proto=tcp,async,soft,cto,user,sec=sys,exec,nosuid,nodev,fsc,forcedirectio,rsize=32768,wsize=32768  nas.my.lan:/data/media1
 
-[root@fedora27_8686dfcb ~]# echo '-4' >/proc/fs/nfsd/versions 
-[root@fedora27_8686dfcb ~]# cat /proc/fs/nfsd/versions 
--2 +3 -4 -4.0 -4.1 -4.2
-[root@fedora27_8686dfcb ~]# echo '+4.1' >/proc/fs/nfsd/versions
-[root@fedora27_8686dfcb ~]# !cat
-cat /proc/fs/nfsd/versions 
--2 +3 +4 -4.0 +4.1 -4.2 <----- 4.0 is still disabled
-[root@fedora27_8686dfcb ~]# echo '+4' >/proc/fs/nfsd/versions 
-[root@fedora27_8686dfcb ~]# !cat
-cat /proc/fs/nfsd/versions 
--2 +3 +4 +4.1 -4.2 <----- 4.0 is enabled
+I've got local users of
 
--Scott
+	id nobody
+		uid=65534(nobody) gid=65533(nobody) groups=65534(nogroup),65533(nobody)
 
-> 
-> Should rpc.nfsd be changed then?  The way it is now, nfssvc_print_vers() will
-> write '+4' if you run 'rpc.nfsd -V4.0'...
-> 
-> > 
-> > -- 
-> > Trond Myklebust
-> > CTO, Hammerspace Inc
-> > 4300 El Camino Real, Suite 105
-> > Los Altos, CA 94022
-> > www.hammer.space
-> > 
-> > 
+	id testuser
+		uid=1000(testuser) gid=100(users) groups=6(disk),0(root),494(serviio),33(video),10(wheel),100(users)
+
+	id root
+		uid=0(root) gid=0(root) groups=6(disk),494(serviio),100(users),0(root)
+
+And a mapping config of
+
+	cat /etc/idmapd.conf
+		[General]
+
+		Verbosity = 0
+		Pipefs-Directory = /var/lib/nfs/rpc_pipefs
+		Domain = localdomain
+
+		[Mapping]
+
+		Nobody-User = nobody
+		Nobody-Group = nobody
+
+
+When I create files on the server from my local client as either a normal user or root
+
+	cd /mnt/NFS4/TEST
+	whoami
+		testuser
+	touch test1.txt
+	su
+	whoami
+		root
+	touch test2.txt
+
+Locally, it looks like I end up with "nobody:nobody"
+
+	ls -al test*
+		-rw-r--r-- 1 nobody nobody 0 Aug  9 10:31 test1.txt
+		-rw-r--r-- 1 nobody nobody 0 Aug  9 10:31 test2.txt
+
+
+On the Server, the export is
+
+	grep vol /etc/exports
+		/data/media1     10.1.1.0/24(rw,sync,no_wdelay,insecure,no_root_squash,insecure_locks,sec=sys,anonuid=1025,anongid=100)
+
+Users are
+
+	id nobody
+		uid=99(nobody) gid=99(nobody) groups=99(nobody)
+
+	id testuser
+		uid=1026(testuser) gid=100(users) groups=100(users),101(administrators),1023(http)
+
+	id root
+		uid=0(root) gid=0(root) groups=0(root),2(daemon),19(log)
+
+	id 1025
+		uid=1025(guest) gid=100(users) groups=100(users)
+
+and the mapping file is
+
+	cat /etc/idmapd.conf
+		[General]
+		Verbosity = 0
+		Pipefs-Directory = /var/lib/nfs/rpc_pipefs
+		Domain = my.lan
+
+		[Mapping]
+		Nobody-User  = nobody
+		Nobody-Group = nobody
+
+		[Translation]
+		Method = nsswitch
+
+		[Static]
+
+But still
+
+	cd /data/media1
+	ls -al test*
+		-rw-r--r-- 1 1000 users 0 Aug  9 10:31 test1.txt
+		-rw-r--r-- 1 root root  0 Aug  9 10:31 test2.txt
+
+I'll be the 1st to admit that I'm having a heckuva time understanding this mapping biz! :-/
+
+What do I need to change in my config so i end up with
+
+	cd /data/media1
+	ls -al test*
+		-rw-r--r-- 1 nobody users 0 Aug  9 10:31 test1.txt
+		-rw-r--r-- 1 nobody users  0 Aug  9 10:31 test2.txt
+
+on this and only this server?  I.e., so I can use THIS mapping for THIS server, and OTHER mappings for OTHER servers.
+
+Thanks for any help!
+
+Arnie
