@@ -1,48 +1,112 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from esa4.hgst.iphmx.com ([216.71.154.42]:60295 "EHLO
-        esa4.hgst.iphmx.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727579AbeHIL5D (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Aug 2018 07:57:03 -0400
-From: Suresh Jayaraman <Suresh.Jayaraman@wdc.com>
-To: Trond Myklebust <trondmy@hammerspace.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Aditya Agnihotri <Aditya.Agnihotri@wdc.com>
-Subject: Re: pNFS, multiple paths to Data Server not used by pNFS linux
- client.
-Date: Thu, 9 Aug 2018 09:33:01 +0000
-Message-ID: <815B7ECF-E196-46AF-BE31-15ED28BA8E34@wdc.com>
-References: <SN6PR04MB4909ED311126ACD9341E339E82520@SN6PR04MB4909.namprd04.prod.outlook.com>
- <BYAPR04MB4757AB8C13E8FA228B679D4083550@BYAPR04MB4757.namprd04.prod.outlook.com>
- <e8093d124a34f08ec4c1053df14ba760c4b57efb.camel@hammerspace.com>
-In-Reply-To: <e8093d124a34f08ec4c1053df14ba760c4b57efb.camel@hammerspace.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from mx3-rdu2.redhat.com ([66.187.233.73]:51256 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1727371AbeHIMkK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 9 Aug 2018 08:40:10 -0400
+From: "Benjamin Coddington" <bcodding@redhat.com>
+To: "Trond Myklebust" <trondmy@gmail.com>,
+        "Jeff Layton" <jlayton@kernel.org>
+Cc: linux-nfs@vger.kernel.org, "Kenneth Johansson" <ken@kenjo.org>
+Subject: Re: [PATCH] NFSv4: Fix _nfs4_do_setlk()
+Date: Thu, 09 Aug 2018 06:15:57 -0400
+Message-ID: <19EA38AB-751D-4BB6-B081-D1F12E306F2E@redhat.com>
+In-Reply-To: <20180730024052.28026-1-trond.myklebust@hammerspace.com>
+References: <20180730024052.28026-1-trond.myklebust@hammerspace.com>
 MIME-Version: 1.0
+Content-Type: text/plain; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-VHJvbmQgTXlrbGVidXN0IDx0cm9uZG15QGhhbW1lcnNwYWNlLmNvbT4gd3JvdGU6DQoNCj4gSGkg
-U3VyZXNoLA0KPiANCj4gT24gVHVlLCAyMDE4LTA3LTI0IGF0IDA5OjU4ICswMDAwLCBTdXJlc2gg
-SmF5YXJhbWFuIHdyb3RlOg0KPj4gSGkgVHJvbmQgZXQgYWwsDQo+PiANCj4+IE9uIDA3LzE5LzIw
-MTggMTI6MzkgUE0sIEFkaXR5YSBBZ25paG90cmkgd3JvdGU6DQo+Pj4gV2UgYXJlIHRlc3Rpbmcg
-b3VyIHBORlMgc2VydmVyIHdpdGggbGludXggY2xpZW50LCB3aGVuIHRoZSBzZXJ2ZXINCj4+PiBy
-ZXR1cm5zIG11bHRpcGxlIHBhdGhzIHRvIGEgdjQgRFMgdmlhIEdFVERFVklORk8sIHdlIHNlZSB0
-aGF0IHRoZQ0KPj4+IGNsaWVudCB2YWxpZGF0ZWQgdGhlIHBhdGhzIChkb2VzIGV4Y2hhbmdlIGlk
-KSBidXQgZG9lcyBub3QgdXNlIHRoZQ0KPj4+IGFsdGVybmF0ZSBwYXRocyBpbiBJTy4NCj4+PiBU
-cmFjaW5nIHRoZSBjb2RlIHBhdGgsIGl0IHNlZW1zIHRoYXQgd2hlbiBEUyBpcyBhIE5GUyB2MyBz
-ZXJ2ZXIsDQo+Pj4gcGF0aCBpcyBhZGRlZCwgYnV0IGZvciBORlMgdjQgRFMgc2VydmVyLCBjbGll
-bnQgc2V0dXAgZnVuY3Rpb24NCj4+PiBjYWxsYmFjayBwYXRoIGZhaWxzIHRvIGFkZC4NCj4+IA0K
-Pj4gSXMgdGhpcyBvYnNlcnZhdGlvbiB0aGF0IHJwY19jbG50X3NldHVwX3Rlc3RfYW5kX2FkZF94
-cHJ0KCkgZG9lc24ndA0KPj4gY2FsbA0KPj4gcnBjX3hwcnRfc3dpdGNoX2FkZF94cHJ0KCkgbmVp
-dGhlciBpbiB0aGUgdGVzdCBmdW5jdGlvbiBub3IgbGV0DQo+PiBycGNfY2xudF9hZGRfeHBydCgp
-IGFkZCB0aGUgeHBydCBjb3JyZWN0PyBUaGlzIHNlZW1zIHRvIGJlIGxpbWl0aW5nDQo+PiBMaW51
-eCBwTkZTIGNsaWVudCBmcm9tIHVzaW5nIG11bHRpcGxlIHBhdGhzIHdpdGggVGVnaWxlL1dEIHBO
-RlMNCj4+IHNlcnZlci4NCj4+IA0KPj4gSWYgeWVzLCB3b3VsZCB5b3UgbGlrZSBhIHBhdGNoIHRo
-YXQgYXR0ZW1wdHMgdG8gZml4IHRoaXM/DQo+IA0KPiBJIGJlbGlldmUgdGhhdCB0aGUgb25seSBy
-ZWFzb24gd2h5IHRoZSBORlN2NCBEUyBzZXJ2ZXIgY29kZSB3YXMgbmV2ZXINCj4gY2hhbmdlZCBp
-cyB0aGF0IGl0IHdvdWxkIG5lZWQgdG8gYmUgdGVzdGVkLCBhbmQgbm9uZSBvZiB1cyBoYXMgc3Vj
-aCBhDQo+IHNldHVwIHRvIHRlc3Qgd2l0aC4NCj4gDQo+IFNvIHllcywgaWYgeW91J3JlIGFibGUg
-dG8gdGVzdCBvdXQgdGhhdCBzZXR1cCBhbmQgYXJlIHNlZWluZyBhIGJ1ZywNCj4gdGhlbiB3ZSdy
-ZSBoYXBweSB0byB0YWtlIGEgZml4Lg0KPiANCg0KVGhhbmtzIFRyb25kLiBJdCBsb29rcyBsaWtl
-IHdlIG5lZWQgdG8gZ28gdGhyb3VnaCBhbiBhcHByb3ZhbCBwcm9jZXNzDQpiZWZvcmUgd2Ugc3Vi
-bWl0IHRoZSBwYXRjaC4gSSBndWVzcyBpdCBzaG91bGRu4oCZdCB0YWtlIGxvbmcuDQoNClRoYW5r
-cywNCg0KLS0NClN1cmVzaCBKYXlhcmFtYW4=
+Hi Jeff and Trond, thanks for the fix-up and apologies for the 
+fire-drill.
+
+I ran this through my test and want to report that it still fixes up my
+leftover lock problem, and looks right to me.
+
+Ben
+
+On 29 Jul 2018, at 22:40, Trond Myklebust wrote:
+
+> The patch to fix the case where a lock request was interrupted ended 
+> up
+> changing default handling of errors such as NFS4ERR_DENIED and caused 
+> the
+> client to immediately resend the lock request. Let's do a partial 
+> revert
+> of that request so that the default is now to exit, but change the way
+> we handle resends to take into account the fact that the user may have
+> interrupted the request.
+>
+> Reported-by: Kenneth Johansson <ken@kenjo.org>
+> Fixes: a3cf9bca2ace ("NFSv4: Don't add a new lock on an interrupted 
+> wait..")
+> Cc: Benjamin Coddington <bcodding@redhat.com>
+> Cc: Jeff Layton <jlayton@kernel.org>
+> Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
+> ---
+>  fs/nfs/nfs4proc.c | 26 +++++++++++++-------------
+>  1 file changed, 13 insertions(+), 13 deletions(-)
+>
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index f73a8315933f..8e482f634d60 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -6501,34 +6501,34 @@ static void nfs4_lock_done(struct rpc_task 
+> *task, void *calldata)
+>  		if (data->arg.new_lock && !data->cancelled) {
+>  			data->fl.fl_flags &= ~(FL_SLEEP | FL_ACCESS);
+>  			if (locks_lock_inode_wait(lsp->ls_state->inode, &data->fl) < 0)
+> -				break;
+> +				goto out_restart;
+>  		}
+> -
+>  		if (data->arg.new_lock_owner != 0) {
+>  			nfs_confirm_seqid(&lsp->ls_seqid, 0);
+>  			nfs4_stateid_copy(&lsp->ls_stateid, &data->res.stateid);
+>  			set_bit(NFS_LOCK_INITIALIZED, &lsp->ls_flags);
+> -			goto out_done;
+> -		} else if (nfs4_update_lock_stateid(lsp, &data->res.stateid))
+> -			goto out_done;
+> -
+> +		} else if (!nfs4_update_lock_stateid(lsp, &data->res.stateid))
+> +			goto out_restart;
+>  		break;
+>  	case -NFS4ERR_BAD_STATEID:
+>  	case -NFS4ERR_OLD_STATEID:
+>  	case -NFS4ERR_STALE_STATEID:
+>  	case -NFS4ERR_EXPIRED:
+>  		if (data->arg.new_lock_owner != 0) {
+> -			if (nfs4_stateid_match(&data->arg.open_stateid,
+> +			if (!nfs4_stateid_match(&data->arg.open_stateid,
+>  						&lsp->ls_state->open_stateid))
+> -				goto out_done;
+> -		} else if (nfs4_stateid_match(&data->arg.lock_stateid,
+> +				goto out_restart;
+> +		} else if (!nfs4_stateid_match(&data->arg.lock_stateid,
+>  						&lsp->ls_stateid))
+> -				goto out_done;
+> +				goto out_restart;
+>  	}
+> -	if (!data->cancelled)
+> -		rpc_restart_call_prepare(task);
+>  out_done:
+>  	dprintk("%s: done, ret = %d!\n", __func__, data->rpc_status);
+> +	return;
+> +out_restart:
+> +	if (!data->cancelled)
+> +		rpc_restart_call_prepare(task);
+> +	goto out_done;
+>  }
+>
+>  static void nfs4_lock_release(void *calldata)
+> @@ -6537,7 +6537,7 @@ static void nfs4_lock_release(void *calldata)
+>
+>  	dprintk("%s: begin!\n", __func__);
+>  	nfs_free_seqid(data->arg.open_seqid);
+> -	if (data->cancelled) {
+> +	if (data->cancelled && data->rpc_status == 0) {
+>  		struct rpc_task *task;
+>  		task = nfs4_do_unlck(&data->fl, data->ctx, data->lsp,
+>  				data->arg.lock_seqid);
+> -- 
+> 2.17.1
