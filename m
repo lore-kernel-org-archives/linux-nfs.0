@@ -1,112 +1,163 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx3-rdu2.redhat.com ([66.187.233.73]:51256 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1727371AbeHIMkK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 9 Aug 2018 08:40:10 -0400
-From: "Benjamin Coddington" <bcodding@redhat.com>
-To: "Trond Myklebust" <trondmy@gmail.com>,
-        "Jeff Layton" <jlayton@kernel.org>
-Cc: linux-nfs@vger.kernel.org, "Kenneth Johansson" <ken@kenjo.org>
-Subject: Re: [PATCH] NFSv4: Fix _nfs4_do_setlk()
-Date: Thu, 09 Aug 2018 06:15:57 -0400
-Message-ID: <19EA38AB-751D-4BB6-B081-D1F12E306F2E@redhat.com>
-In-Reply-To: <20180730024052.28026-1-trond.myklebust@hammerspace.com>
-References: <20180730024052.28026-1-trond.myklebust@hammerspace.com>
-MIME-Version: 1.0
-Content-Type: text/plain; format=flowed
+Received: from aserp2120.oracle.com ([141.146.126.78]:52796 "EHLO
+        aserp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1731222AbeHIQbM (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Aug 2018 12:31:12 -0400
+Content-Type: text/plain;
+        charset=utf-8
+Mime-Version: 1.0 (Mac OS X Mail 11.5 \(3445.9.1\))
+Subject: Re: RFC: xprt_lock_connect
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <f9a316e2de500bd4d4e4c3be8f29613e36bc1f3f.camel@hammerspace.com>
+Date: Thu, 9 Aug 2018 10:05:57 -0400
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <3A6E623E-19AB-438E-A083-C3C86E9DE48B@oracle.com>
+References: <55352755-3A99-4193-98E6-25A9B8181F6E@oracle.com>
+ <f9a316e2de500bd4d4e4c3be8f29613e36bc1f3f.camel@hammerspace.com>
+To: Trond Myklebust <trondmy@hammerspace.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Jeff and Trond, thanks for the fix-up and apologies for the 
-fire-drill.
 
-I ran this through my test and want to report that it still fixes up my
-leftover lock problem, and looks right to me.
 
-Ben
+> On Aug 8, 2018, at 5:19 PM, Trond Myklebust <trondmy@hammerspace.com> =
+wrote:
+>=20
+> On Wed, 2018-08-08 at 15:53 -0400, Chuck Lever wrote:
+>> Hi Trond-
+>>=20
+>> For maintainability and legibility, I'm attempting to make the
+>> the RPC/RDMA connect logic act a little more like the TCP
+>> connect logic. I noticed this patch:
+>>=20
+>> commit 718ba5b87343df303017585200ee182e937eabfc
+>> Author:     Trond Myklebust <trond.myklebust@primarydata.com>
+>> AuthorDate: Sun Feb 8 18:19:25 2015 -0500
+>> Commit:     Trond Myklebust <trond.myklebust@primarydata.com>
+>> CommitDate: Sun Feb 8 21:47:29 2015 -0500
+>>=20
+>>    SUNRPC: Add helpers to prevent socket create from racing
+>>=20
+>>    The socket lock is currently held by the task that is requesting
+>> the
+>>    connection be established. While that is efficient in the case
+>> where
+>>    the connection happens quickly, it is racy in the case where it
+>> doesn't.
+>>    What we really want is for the connect helper to be able to block
+>> access
+>>    to the socket while it is being set up.
+>>=20
+>>    This patch does so by arranging to transfer the socket lock from
+>> the
+>>    task that is requesting the connect attempt, and then releasing
+>> that
+>>    lock once everything is done.
+>>    This scheme also gives us automatic protection against collisions
+>> with
+>>    the RPC close code, so we can kill the cancel_delayed_work_sync()
+>>    call in xs_close().
+>>=20
+>>    Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+>>=20
+>> Your patch description refers to "the socket lock" but it appears
+>> to be manipulating the transport send lock. The new helpers are
+>> added in net/sunrpc/xprt.c, not in xprtsock.c. And, there is a
+>> hunk that changes the generic xprt_connect() function.
+>>=20
+>> Therefore, I'm wondering if these helpers are of value also to
+>> other transports that make use of connections. Should xprtrdma
+>> adopt the use of these helpers too?
+>>=20
+>=20
+> Heh... You're too late. =C3=A2=C2=98=C5=A1=C3=A2=C2=98=C5=A1=C3=A2=C2=98=
+=C5=A1
+>=20
+> I'm pretty sure that lock is one of the biggest bottlenecks in the TCP
+> send path today and so I'm in the process of rewriting that code.
 
-On 29 Jul 2018, at 22:40, Trond Myklebust wrote:
+> The problem is this: the above lock serialises all RPC tasks that go =
+to
+> a single socket, which is sort of desirable. However it does so by
+> passing the lock from rpc_task to rpc_task, and so when the lock is
+> contended, we end up putting each task to sleep, it waits for its turn
+> in the queue, then the task gets scheduled on the workqueue, it does
+> its thing (encodes the XDR, and puts itself through the socket), and
+> then wakes up the next task.
+> IOW: each time we hand off the lock, we take a workqueue queuing hit,
+> with the task having to wait until any other send task or reply that =
+is
+> ahead of it in the queue has run. We also do the XDR encoding under =
+the
+> lock, further adding latency...
 
-> The patch to fix the case where a lock request was interrupted ended 
-> up
-> changing default handling of errors such as NFS4ERR_DENIED and caused 
-> the
-> client to immediately resend the lock request. Let's do a partial 
-> revert
-> of that request so that the default is now to exit, but change the way
-> we handle resends to take into account the fact that the user may have
-> interrupted the request.
->
-> Reported-by: Kenneth Johansson <ken@kenjo.org>
-> Fixes: a3cf9bca2ace ("NFSv4: Don't add a new lock on an interrupted 
-> wait..")
-> Cc: Benjamin Coddington <bcodding@redhat.com>
-> Cc: Jeff Layton <jlayton@kernel.org>
-> Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
-> ---
->  fs/nfs/nfs4proc.c | 26 +++++++++++++-------------
->  1 file changed, 13 insertions(+), 13 deletions(-)
->
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index f73a8315933f..8e482f634d60 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -6501,34 +6501,34 @@ static void nfs4_lock_done(struct rpc_task 
-> *task, void *calldata)
->  		if (data->arg.new_lock && !data->cancelled) {
->  			data->fl.fl_flags &= ~(FL_SLEEP | FL_ACCESS);
->  			if (locks_lock_inode_wait(lsp->ls_state->inode, &data->fl) < 0)
-> -				break;
-> +				goto out_restart;
->  		}
-> -
->  		if (data->arg.new_lock_owner != 0) {
->  			nfs_confirm_seqid(&lsp->ls_seqid, 0);
->  			nfs4_stateid_copy(&lsp->ls_stateid, &data->res.stateid);
->  			set_bit(NFS_LOCK_INITIALIZED, &lsp->ls_flags);
-> -			goto out_done;
-> -		} else if (nfs4_update_lock_stateid(lsp, &data->res.stateid))
-> -			goto out_done;
-> -
-> +		} else if (!nfs4_update_lock_stateid(lsp, &data->res.stateid))
-> +			goto out_restart;
->  		break;
->  	case -NFS4ERR_BAD_STATEID:
->  	case -NFS4ERR_OLD_STATEID:
->  	case -NFS4ERR_STALE_STATEID:
->  	case -NFS4ERR_EXPIRED:
->  		if (data->arg.new_lock_owner != 0) {
-> -			if (nfs4_stateid_match(&data->arg.open_stateid,
-> +			if (!nfs4_stateid_match(&data->arg.open_stateid,
->  						&lsp->ls_state->open_stateid))
-> -				goto out_done;
-> -		} else if (nfs4_stateid_match(&data->arg.lock_stateid,
-> +				goto out_restart;
-> +		} else if (!nfs4_stateid_match(&data->arg.lock_stateid,
->  						&lsp->ls_stateid))
-> -				goto out_done;
-> +				goto out_restart;
->  	}
-> -	if (!data->cancelled)
-> -		rpc_restart_call_prepare(task);
->  out_done:
->  	dprintk("%s: done, ret = %d!\n", __func__, data->rpc_status);
-> +	return;
-> +out_restart:
-> +	if (!data->cancelled)
-> +		rpc_restart_call_prepare(task);
-> +	goto out_done;
->  }
->
->  static void nfs4_lock_release(void *calldata)
-> @@ -6537,7 +6537,7 @@ static void nfs4_lock_release(void *calldata)
->
->  	dprintk("%s: begin!\n", __func__);
->  	nfs_free_seqid(data->arg.open_seqid);
-> -	if (data->cancelled) {
-> +	if (data->cancelled && data->rpc_status == 0) {
->  		struct rpc_task *task;
->  		task = nfs4_do_unlck(&data->fl, data->ctx, data->lsp,
->  				data->arg.lock_seqid);
-> -- 
-> 2.17.1
+Indeed, RPC wake-ups are a major, if not the primary, limiter on RPC =
+Call
+rate on a contended transport. The transport send lock is a top source
+of sleeps and wake-ups. The backlog queue is similar.
+
+Fewer wake-ups will help reduce both per-RPC latency and latency =
+variance.
+
+
+> What I want to do (and am in the process of coding) is to convert that
+> whole thing into a queue, where if the lock is contended, the incoming
+> task simply adds itself to the queue and then puts itself to sleep.
+> Then whoever actually first obtains the lock is tasked with trying to
+> drain the queue by sending as many of those queued requests as will
+> actually fit in the socket buffer.
+
+I've also been exploring xprt reserve/release replacements for xprtrdma,
+which needs a new reserve/release mechanism for a lot of reasons.
+
+For instance, note the architectural differences:
+
+ - RPC/TCP : stream-oriented, connection-oriented, no congestion control
+ - RPC/UDP : datagram-oriented, not connection-oriented, needs =
+congestion control
+ - RPC/RDMA : datagram-oriented, connection-oriented, needs congestion =
+control
+
+xprtrdma currently uses the UDP congestion control scheme, but it's not =
+a
+perfect fit. rq_cong does not work very well after a reconnect where the
+congestion accounting has to be reset during connection establishment, =
+for
+instance.
+
+What changes do you intend to make to the UDP congestion control =
+mechanism?
+
+Would it be helpful to split out xprtrdma's reserve/release first before
+going down this road?
+
+
+> The assumption is that we can perform the XDR encoding before we
+> enqueue the request (so we move that out of the lock too), which is
+> usually the case, but might be a little awkward when doing RPCSEC_GSS.
+
+The GSS sequence number will be an interesting challenge.
+
+As you consider the internal APIs, please keep in mind issues related to
+XDR encoding for xprtrdma:
+
+- Today, xprtrdma schedules memory registration and constructs the
+transport header in ->send_request, while the transport send lock is =
+held.
+For a retransmit on a new connection, RPC/RDMA requires that memory be
+re-registered, for example, which means the transport header needs to be
+constructed again (new R_keys).
+
+- Scheduling memory registration outside the transport send lock might =
+be
+beneficial, but xprtrdma relies on this architecture to avoid =
+fine-grained
+locking of transport resources used while registering memory and =
+constructing
+the transport header.
+
+
+--
+Chuck Lever
+
+
