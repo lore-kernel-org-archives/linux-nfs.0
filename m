@@ -1,136 +1,120 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from out1-smtp.messagingengine.com ([66.111.4.25]:55415 "EHLO
-        out1-smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726756AbeHIUdc (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Aug 2018 16:33:32 -0400
-Received: from compute5.internal (compute5.nyi.internal [10.202.2.45])
-        by mailout.nyi.internal (Postfix) with ESMTP id 33FAF20DD4
-        for <linux-nfs@vger.kernel.org>; Thu,  9 Aug 2018 14:07:33 -0400 (EDT)
-Message-Id: <1533838052.2201783.1469033928.4B670F71@webmail.messagingengine.com>
-From: mrsvd1v4rgo1@airpost.net
-To: linux-nfs@vger.kernel.org
-MIME-Version: 1.0
+Received: from mail-bl2nam02on0119.outbound.protection.outlook.com ([104.47.38.119]:40105
+        "EHLO NAM02-BL2-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1727000AbeHIUh1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 9 Aug 2018 16:37:27 -0400
+From: Trond Myklebust <trondmy@hammerspace.com>
+To: "smayhew@redhat.com" <smayhew@redhat.com>
+CC: "bfields@fieldses.org" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "jlayton@kernel.org" <jlayton@kernel.org>
+Subject: Re: [PATCH] nfsd: ensure that writing '+4' to /proc/fs/nfsd/versions
+ enables minor version 0
+Date: Thu, 9 Aug 2018 18:11:21 +0000
+Message-ID: <09d2c1dc867309ad27f9bc48526b4035994c3a6c.camel@hammerspace.com>
+References: <20180808113600.11502-1-smayhew@redhat.com>
+         <0ad3edde2c778dc0477c314b94c194b8365e2ee9.camel@hammerspace.com>
+         <20180808130732.GI18747@coeurl.usersys.redhat.com>
+         <20180809154658.GJ18747@coeurl.usersys.redhat.com>
+In-Reply-To: <20180809154658.GJ18747@coeurl.usersys.redhat.com>
 Content-Type: text/plain; charset="utf-8"
-Date: Thu, 09 Aug 2018 11:07:32 -0700
-Subject: Help with user ID mapping?
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi All,
-
-I'm trying to get a NFS4 client & server id mapping working right.
-
-My client mounts to a couple of NFS4 servers.
-
-I want to get it setup so that for just ONE of them, files added to or modified on the server BY my local client, logged in EITHER as my user or root, get written with a specific user/group ==  "nobody:users"
-
-I'm pretty sure that all the magic is done with idmapd config.
-
-This is what I put together after reading the docs and a bunch of posts online.  Obviously I'm still doing something wrong.
-
-On my Desktop I have an autofs mount
-
-	cat /etc/auto.nfs4 | grep TEST
-		TEST     -fstype=nfs,vers=4,_netdev,rw,proto=tcp,async,soft,cto,user,sec=sys,exec,nosuid,nodev,fsc,forcedirectio,rsize=32768,wsize=32768  nas.my.lan:/data/media1
-
-I've got local users of
-
-	id nobody
-		uid=65534(nobody) gid=65533(nobody) groups=65534(nogroup),65533(nobody)
-
-	id testuser
-		uid=1000(testuser) gid=100(users) groups=6(disk),0(root),494(serviio),33(video),10(wheel),100(users)
-
-	id root
-		uid=0(root) gid=0(root) groups=6(disk),494(serviio),100(users),0(root)
-
-And a mapping config of
-
-	cat /etc/idmapd.conf
-		[General]
-
-		Verbosity = 0
-		Pipefs-Directory = /var/lib/nfs/rpc_pipefs
-		Domain = localdomain
-
-		[Mapping]
-
-		Nobody-User = nobody
-		Nobody-Group = nobody
-
-
-When I create files on the server from my local client as either a normal user or root
-
-	cd /mnt/NFS4/TEST
-	whoami
-		testuser
-	touch test1.txt
-	su
-	whoami
-		root
-	touch test2.txt
-
-Locally, it looks like I end up with "nobody:nobody"
-
-	ls -al test*
-		-rw-r--r-- 1 nobody nobody 0 Aug  9 10:31 test1.txt
-		-rw-r--r-- 1 nobody nobody 0 Aug  9 10:31 test2.txt
-
-
-On the Server, the export is
-
-	grep vol /etc/exports
-		/data/media1     10.1.1.0/24(rw,sync,no_wdelay,insecure,no_root_squash,insecure_locks,sec=sys,anonuid=1025,anongid=100)
-
-Users are
-
-	id nobody
-		uid=99(nobody) gid=99(nobody) groups=99(nobody)
-
-	id testuser
-		uid=1026(testuser) gid=100(users) groups=100(users),101(administrators),1023(http)
-
-	id root
-		uid=0(root) gid=0(root) groups=0(root),2(daemon),19(log)
-
-	id 1025
-		uid=1025(guest) gid=100(users) groups=100(users)
-
-and the mapping file is
-
-	cat /etc/idmapd.conf
-		[General]
-		Verbosity = 0
-		Pipefs-Directory = /var/lib/nfs/rpc_pipefs
-		Domain = my.lan
-
-		[Mapping]
-		Nobody-User  = nobody
-		Nobody-Group = nobody
-
-		[Translation]
-		Method = nsswitch
-
-		[Static]
-
-But still
-
-	cd /data/media1
-	ls -al test*
-		-rw-r--r-- 1 1000 users 0 Aug  9 10:31 test1.txt
-		-rw-r--r-- 1 root root  0 Aug  9 10:31 test2.txt
-
-I'll be the 1st to admit that I'm having a heckuva time understanding this mapping biz! :-/
-
-What do I need to change in my config so i end up with
-
-	cd /data/media1
-	ls -al test*
-		-rw-r--r-- 1 nobody users 0 Aug  9 10:31 test1.txt
-		-rw-r--r-- 1 nobody users  0 Aug  9 10:31 test2.txt
-
-on this and only this server?  I.e., so I can use THIS mapping for THIS server, and OTHER mappings for OTHER servers.
-
-Thanks for any help!
-
-Arnie
+T24gVGh1LCAyMDE4LTA4LTA5IGF0IDExOjQ2IC0wNDAwLCBTY290dCBNYXloZXcgd3JvdGU6DQo+
+IE9uIFdlZCwgMDggQXVnIDIwMTgsIFNjb3R0IE1heWhldyB3cm90ZToNCj4gDQo+ID4gT24gV2Vk
+LCAwOCBBdWcgMjAxOCwgVHJvbmQgTXlrbGVidXN0IHdyb3RlOg0KPiA+IA0KPiA+ID4gT24gV2Vk
+LCAyMDE4LTA4LTA4IGF0IDA3OjM2IC0wNDAwLCBTY290dCBNYXloZXcgd3JvdGU6DQo+ID4gPiA+
+IEFjY29yZGluZyB0byBjb21taXQgZDM2MzVmZjA3ZTggKCJuZnNkOiBmaXggY29uZmlndXJhdGlv
+biBvZg0KPiA+ID4gPiBzdXBwb3J0ZWQNCj4gPiA+ID4gbWlub3IgdmVyc2lvbnMiKSwgaXQgc2hv
+dWxkIGJlIHBvc3NpYmxlIHRvIHVzZSBlaXRoZXIgJzQuMCcgb3INCj4gPiA+ID4gJzQnIHRvDQo+
+ID4gPiA+IGVuYWJsZSBvciBkaXNhYmxlIG1pbm9yIHZlcnNpb24gMC4NCj4gPiA+ID4gDQo+ID4g
+PiA+IEN1cnJlbnRseSwgd3JpdGluZyAnKzQnIHRvIC9wcm9jL2ZzL25mc2QvdmVyc2lvbnMgaGFz
+IG5vIGVmZmVjdA0KPiA+ID4gPiB1bmxlc3MNCj4gPiA+ID4gbm8gbWlub3IgdmVyc2lvbnMgYXJl
+IGVuYWJsZWQuICBUaGF0IGxlYXZlcyBycGMubmZzZCB3aXRob3V0IGFuDQo+ID4gPiA+IGVhc3kN
+Cj4gPiA+ID4gd2F5IHRvIHJlLWVuYWJsZSB2NC4wLCBzaW5jZSB0aGF0J3Mgd2hhdCBpdCBkb2Vz
+IHdoZW4gaW52b2tlZA0KPiA+ID4gPiB3aXRoDQo+ID4gPiA+ICctViA0LjAnLg0KPiA+ID4gPiAN
+Cj4gPiA+ID4gRml4ZXM6IGQzNjM1ZmYwN2U4ICgibmZzZDogZml4IGNvbmZpZ3VyYXRpb24gb2Yg
+c3VwcG9ydGVkIG1pbm9yDQo+ID4gPiA+IHZlcnNpb25zIikNCj4gPiA+ID4gU2lnbmVkLW9mZi1i
+eTogU2NvdHQgTWF5aGV3IDxzbWF5aGV3QHJlZGhhdC5jb20+DQo+ID4gPiA+IC0tLQ0KPiA+ID4g
+PiAgZnMvbmZzZC9uZnNjdGwuYyB8IDggKysrKysrKysNCj4gPiA+ID4gIDEgZmlsZSBjaGFuZ2Vk
+LCA4IGluc2VydGlvbnMoKykNCj4gPiA+ID4gDQo+ID4gPiA+IGRpZmYgLS1naXQgYS9mcy9uZnNk
+L25mc2N0bC5jIGIvZnMvbmZzZC9uZnNjdGwuYw0KPiA+ID4gPiBpbmRleCBkMTA3YjQ0MjZmN2Uu
+LmIzZjlmOTIzMzk1MyAxMDA2NDQNCj4gPiA+ID4gLS0tIGEvZnMvbmZzZC9uZnNjdGwuYw0KPiA+
+ID4gPiArKysgYi9mcy9uZnNkL25mc2N0bC5jDQo+ID4gPiA+IEBAIC02MTQsNiArNjE0LDE0IEBA
+IHN0YXRpYyBzc2l6ZV90IF9fd3JpdGVfdmVyc2lvbnMoc3RydWN0DQo+ID4gPiA+IGZpbGUNCj4g
+PiA+ID4gKmZpbGUsIGNoYXIgKmJ1Ziwgc2l6ZV90IHNpemUpDQo+ID4gPiA+ICAJCQkJCW1pbm9y
+ID0gMDsNCj4gPiA+ID4gIAkJCQkJd2hpbGUNCj4gPiA+ID4gKG5mc2RfbWlub3J2ZXJzaW9uKG1p
+bm9yLA0KPiA+ID4gPiBjbWQpID49IDApDQo+ID4gPiA+ICAJCQkJCQltaW5vcisrOw0KPiA+ID4g
+PiArCQkJCX0gZWxzZSBpZiAoY21kID09IE5GU0RfU0VUKSB7DQo+ID4gPiA+ICsJCQkJCS8qDQo+
+ID4gPiA+ICsJCQkJCSAqIFdlIGhhdmUgKzQgYnV0IHRoZXJlDQo+ID4gPiA+IGFyZQ0KPiA+ID4g
+PiBhbHJlYWR5IHNvbWUgbWlub3JzDQo+ID4gPiA+ICsJCQkJCSAqIGVuYWJsZWQuICBXZSBtdXN0
+DQo+ID4gPiA+IGVuc3VyZSA0LjANCj4gPiA+ID4gZ2V0cyBlbmFibGVkLA0KPiA+ID4gPiArCQkJ
+CQkgKiBzaW5jZSBpdCBjb3VsZCBiZSBhDQo+ID4gPiA+IHJlcXVlc3QNCj4gPiA+ID4gZnJvbSBy
+cGMubmZzZC4NCj4gPiA+ID4gKwkJCQkJICovDQo+ID4gPiA+ICsJCQkJCWlmDQo+ID4gPiA+IChu
+ZnNkX21pbm9ydmVyc2lvbigwLCBjbWQpIDwNCj4gPiA+ID4gMCkNCj4gPiA+ID4gKwkJCQkJCXJl
+dHVybiAtRUlOVkFMOw0KPiA+ID4gPiAgCQkJCX0NCj4gPiA+ID4gIAkJCQlicmVhazsNCj4gPiA+
+ID4gIAkJCWRlZmF1bHQ6DQo+ID4gPiANCj4gPiA+IFRoaXMgYnJlYWtzIHRoZSBpbnRlbnRpb24g
+YmVoaW5kIHRoYXQgcGF0Y2gsIHdoaWNoIHdhcyB0byBlbnN1cmUNCj4gPiA+IHRoYXQNCj4gPiA+
+ICs0IG11c3QgX25vdF8gYXV0b21hdGljYWxseSBlbmFibGUgNC4wLi4uDQo+ID4gPiANCj4gPiA+
+IEluc3RlYWQsIHlvdSB1c2UgKy8tNC4wIHRvIGVuYWJsZS9kaXNhYmxlIDQuMCwganVzdCBsaWtl
+IHlvdSB1c2UNCj4gPiA+ICsvLTQuMSANCj4gPiA+IHRvIGVuYWJsZS9kaXNhYmxlIDQuMSwgKy8t
+NC4yIHRvIGVuYWJsZS9kaXNhYmxlIDQuMiwgZXRjLCBldGMuLi4NCj4gPiA+IA0KPiA+ID4gVGhl
+IHNwZWNpYWwgdmFsdWUgKy8tNCBleGlzdHMgaW4gb3JkZXIgYWxsb3cgeW91IHRvDQo+ID4gPiBk
+aXNhYmxlL2VuYWJsZSB2NA0KPiA+ID4gYWx0b2dldGhlci4gaS5lLiAnLTQnIGFjdHMgYXMgYSBt
+YXNrIHRvIHR1cm4gb2ZmIHY0LnggZm9yIGFsbA0KPiA+ID4gdmFsdWVzIG9mDQo+ID4gPiB4LiAn
+KzQnIHdpbGwgZW5hYmxlIHY0LnggZm9yIHRob3NlIHZhbHVlcyBvZiB4IHdoaWNoIGhhdmUgYmVl
+bg0KPiA+ID4gZXhwbGljaXRseSBzZXQuDQo+ID4gDQo+ID4gT2theSBJIGd1ZXNzIEknbSBjb25m
+dXNlZCBieSB0aGlzIHdvcmRpbmcgZnJvbSB0aGUgY29tbWl0IG1lc3NhZ2UNCj4gPiBpbg0KPiA+
+IGQzNjM1ZmYwN2U4Og0KPiA+IA0KPiA+ICAgICBBbGxvdyB0aGUgdXNlciB0byB1c2UgZWl0aGVy
+ICc0LjAnIG9yICc0JyB0byBlbmFibGUgb3IgZGlzYWJsZQ0KPiA+IG1pbm9yDQo+ID4gICAgIHZl
+cnNpb24gMC4gIE90aGVyIG1pbm9yIHZlcnNpb25zIGFyZSBzdGlsbCBlbmFibGVkIG9yIGRpc2Fi
+bGVkDQo+ID4gdXNpbmcgdGhlDQo+ID4gICAgICc0LngnIGZvcm1hdC4NCj4gDQo+IE9rYXkgSSBz
+ZWUgdGhhdCB0aGF0IGNvbW1pdCBtZXNzYWdlIGFjdHVhbGx5IGNhbWUgZnJvbSBCcnVjZSBhbmQg
+aXMNCj4gZGlmZmVyZW50IHRoYW4gdGhlIG9yaWdpbmFsIGNvbW1pdCBtZXNzYWdlLi4uIGJ1dCBp
+biB5b3VyIG9yaWdpbmFsDQo+IGNvdmVyDQo+IGxldHRlciAoaHR0cHM6Ly9tYXJjLmluZm8vP2w9
+bGludXgtbmZzJm09MTQ4NzgwNjU4OTA0MTg3Jnc9MikgeW91DQo+IHN0YXRlZA0KPiB0aGF0ICcr
+NCcgc2hvdWxkIGVuYWJsZSA0LjA6DQo+IA0KPiAiIiINCj4gMikgQWxsb3cgdGhlIHVzZXIgdG8g
+dXNlIGVpdGhlciAnNC4wJyBvciAnNCcgaW4gb3JkZXIgdG8gZW5hYmxlIG9yDQo+IGRpc2FibGUN
+Cj4gICAgbWlub3IgdmVyc2lvbiAwLiBPdGhlciBtaW5vciB2ZXJzaW9ucyByZW1haW4gZW5hYmxl
+ZC9kaXNhYmxlZA0KPiB1c2luZyB0aGUNCj4gICAgJzQueCcgZm9ybWF0Lg0KPiAiIiINCj4gDQo+
+IEkgdGhvdWdodCB0aGUgcG9pbnQgb2YgeW91ciBwYXRjaGVzIHdlcmUgdG8gYWxsb3cgdGhlIHVz
+ZXIgdG8gZW5hYmxlDQo+IDQueA0KPiAoZm9yIHggPiAwKSB3aXRob3V0IGVuYWJsaW5nIDQuMC4g
+IE15IHBhdGNoIGRvZXNuJ3QgY2hhbmdlIHRoYXQuICBBbGwNCj4gaXQNCj4gZG9lcyBpcyBhbGxv
+dyAnKzQnIHRvIGVuYWJsZSA0LjAsIHdoaWNoIGlzIHdoYXQgYm90aCBCcnVjZSdzIGNvbW1pdA0K
+PiBtZXNzYWdlIGFuZCB5b3VyIGNvdmVyIGxldHRlciBzYXlzIGl0IHNob3VsZCBkby4NCj4gDQo+
+IGN1cnJlbnQgSEVBRDoNCj4gDQo+IFtyb290QGZlZG9yYTI3XzEyMzY1NjhlIH5dIyBlY2hvICct
+NCcgPi9wcm9jL2ZzL25mc2QvdmVyc2lvbnMNCj4gW3Jvb3RAZmVkb3JhMjdfMTIzNjU2OGUgfl0j
+IGNhdCAvcHJvYy9mcy9uZnNkL3ZlcnNpb25zDQo+IC0yICszIC00IC00LjAgLTQuMSAtNC4yDQo+
+IFtyb290QGZlZG9yYTI3XzEyMzY1NjhlIH5dIyBlY2hvICcrNC4xJyA+L3Byb2MvZnMvbmZzZC92
+ZXJzaW9ucw0KPiBbcm9vdEBmZWRvcmEyN18xMjM2NTY4ZSB+XSMgIWNhdA0KPiBjYXQgL3Byb2Mv
+ZnMvbmZzZC92ZXJzaW9ucw0KPiAtMiArMyArNCAtNC4wICs0LjEgLTQuMg0KPiBbcm9vdEBmZWRv
+cmEyN18xMjM2NTY4ZSB+XSMgZWNobyAnKzQnID4vcHJvYy9mcy9uZnNkL3ZlcnNpb25zDQo+IFty
+b290QGZlZG9yYTI3XzEyMzY1NjhlIH5dIyAhY2F0DQo+IGNhdCAvcHJvYy9mcy9uZnNkL3ZlcnNp
+b25zDQo+IC0yICszICs0IC00LjAgKzQuMSAtNC4yDQo+IA0KPiB3aXRoIG15IHBhdGNoOg0KPiAN
+Cj4gW3Jvb3RAZmVkb3JhMjdfODY4NmRmY2Igfl0jIGVjaG8gJy00JyA+L3Byb2MvZnMvbmZzZC92
+ZXJzaW9ucyANCj4gW3Jvb3RAZmVkb3JhMjdfODY4NmRmY2Igfl0jIGNhdCAvcHJvYy9mcy9uZnNk
+L3ZlcnNpb25zIA0KPiAtMiArMyAtNCAtNC4wIC00LjEgLTQuMg0KPiBbcm9vdEBmZWRvcmEyN184
+Njg2ZGZjYiB+XSMgZWNobyAnKzQuMScgPi9wcm9jL2ZzL25mc2QvdmVyc2lvbnMNCj4gW3Jvb3RA
+ZmVkb3JhMjdfODY4NmRmY2Igfl0jICFjYXQNCj4gY2F0IC9wcm9jL2ZzL25mc2QvdmVyc2lvbnMg
+DQo+IC0yICszICs0IC00LjAgKzQuMSAtNC4yIDwtLS0tLSA0LjAgaXMgc3RpbGwgZGlzYWJsZWQN
+Cj4gW3Jvb3RAZmVkb3JhMjdfODY4NmRmY2Igfl0jIGVjaG8gJys0JyA+L3Byb2MvZnMvbmZzZC92
+ZXJzaW9ucyANCj4gW3Jvb3RAZmVkb3JhMjdfODY4NmRmY2Igfl0jICFjYXQNCj4gY2F0IC9wcm9j
+L2ZzL25mc2QvdmVyc2lvbnMgDQo+IC0yICszICs0ICs0LjEgLTQuMiA8LS0tLS0gNC4wIGlzIGVu
+YWJsZWQNCg0KVGhpcyBpcyBub3Qgd2hhdCBpcyBpbnRlbmRlZC4gQXMgSSBzYWlkLCB0aGUgaW50
+ZW50aW9uIHdhcyB0aGF0IHlvdQ0Kc2hvdWxkIHVzZSAnKzQuMCcgdG8gZW5hYmxlIDQuMCBhbmQg
+Jy00LjAnIHRvIGRpc2FibGUgaXQuDQoNClRoZSBleGNlcHRpb24gaXMgZm9yIGxlZ2FjeSBrZXJu
+ZWxzLCB3aGljaCBhcmUgbm90IHR5cGljYWxseSBhYmxlIHRvDQpyZWNvZ25pc2UgdGhlICcrNC4w
+JyBvciAnLTQuMCcsIHNvIGZvciB0aG9zZSBrZXJuZWxzIChhbmQgdGhvc2Uga2VybmVscw0Kb25s
+eSksIHRoZSAnKzQnLyctNCcgbmVlZCB0byBjb250aW51ZSB0byB3b3JrIGFzIGJlZm9yZS4NCg0K
+PiANCj4gLVNjb3R0DQo+IA0KPiA+IA0KPiA+IFNob3VsZCBycGMubmZzZCBiZSBjaGFuZ2VkIHRo
+ZW4/ICBUaGUgd2F5IGl0IGlzIG5vdywNCj4gPiBuZnNzdmNfcHJpbnRfdmVycygpIHdpbGwNCj4g
+PiB3cml0ZSAnKzQnIGlmIHlvdSBydW4gJ3JwYy5uZnNkIC1WNC4wJy4uLg0KPiA+IA0KPiA+ID4g
+DQo+ID4gPiAtLSANCj4gPiA+IFRyb25kIE15a2xlYnVzdA0KPiA+ID4gQ1RPLCBIYW1tZXJzcGFj
+ZSBJbmMNCj4gPiA+IDQzMDAgRWwgQ2FtaW5vIFJlYWwsIFN1aXRlIDEwNQ0KPiA+ID4gTG9zIEFs
+dG9zLCBDQSA5NDAyMg0KPiA+ID4gd3d3LmhhbW1lci5zcGFjZQ0KPiA+ID4gDQo+ID4gPiANCi0t
+IA0KVHJvbmQgTXlrbGVidXN0DQpDVE8sIEhhbW1lcnNwYWNlIEluYw0KNDMwMCBFbCBDYW1pbm8g
+UmVhbCwgU3VpdGUgMTA1DQpMb3MgQWx0b3MsIENBIDk0MDIyDQp3d3cuaGFtbWVyLnNwYWNlDQoN
+Cg0K
