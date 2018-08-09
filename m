@@ -1,120 +1,78 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-bl2nam02on0119.outbound.protection.outlook.com ([104.47.38.119]:40105
-        "EHLO NAM02-BL2-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1727000AbeHIUh1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 9 Aug 2018 16:37:27 -0400
-From: Trond Myklebust <trondmy@hammerspace.com>
-To: "smayhew@redhat.com" <smayhew@redhat.com>
-CC: "bfields@fieldses.org" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "jlayton@kernel.org" <jlayton@kernel.org>
-Subject: Re: [PATCH] nfsd: ensure that writing '+4' to /proc/fs/nfsd/versions
- enables minor version 0
-Date: Thu, 9 Aug 2018 18:11:21 +0000
-Message-ID: <09d2c1dc867309ad27f9bc48526b4035994c3a6c.camel@hammerspace.com>
-References: <20180808113600.11502-1-smayhew@redhat.com>
-         <0ad3edde2c778dc0477c314b94c194b8365e2ee9.camel@hammerspace.com>
-         <20180808130732.GI18747@coeurl.usersys.redhat.com>
-         <20180809154658.GJ18747@coeurl.usersys.redhat.com>
-In-Reply-To: <20180809154658.GJ18747@coeurl.usersys.redhat.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from mx1.redhat.com ([209.132.183.28]:59842 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726890AbeHIXBY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 9 Aug 2018 19:01:24 -0400
+Date: Thu, 9 Aug 2018 16:34:53 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Olga Kornievskaia <kolga@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v10 0/9] NFSD support for async COPY
+Message-ID: <20180809203450.GE14104@parsley.fieldses.org>
+References: <20180720221925.50744-1-kolga@netapp.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20180720221925.50744-1-kolga@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDE4LTA4LTA5IGF0IDExOjQ2IC0wNDAwLCBTY290dCBNYXloZXcgd3JvdGU6DQo+
-IE9uIFdlZCwgMDggQXVnIDIwMTgsIFNjb3R0IE1heWhldyB3cm90ZToNCj4gDQo+ID4gT24gV2Vk
-LCAwOCBBdWcgMjAxOCwgVHJvbmQgTXlrbGVidXN0IHdyb3RlOg0KPiA+IA0KPiA+ID4gT24gV2Vk
-LCAyMDE4LTA4LTA4IGF0IDA3OjM2IC0wNDAwLCBTY290dCBNYXloZXcgd3JvdGU6DQo+ID4gPiA+
-IEFjY29yZGluZyB0byBjb21taXQgZDM2MzVmZjA3ZTggKCJuZnNkOiBmaXggY29uZmlndXJhdGlv
-biBvZg0KPiA+ID4gPiBzdXBwb3J0ZWQNCj4gPiA+ID4gbWlub3IgdmVyc2lvbnMiKSwgaXQgc2hv
-dWxkIGJlIHBvc3NpYmxlIHRvIHVzZSBlaXRoZXIgJzQuMCcgb3INCj4gPiA+ID4gJzQnIHRvDQo+
-ID4gPiA+IGVuYWJsZSBvciBkaXNhYmxlIG1pbm9yIHZlcnNpb24gMC4NCj4gPiA+ID4gDQo+ID4g
-PiA+IEN1cnJlbnRseSwgd3JpdGluZyAnKzQnIHRvIC9wcm9jL2ZzL25mc2QvdmVyc2lvbnMgaGFz
-IG5vIGVmZmVjdA0KPiA+ID4gPiB1bmxlc3MNCj4gPiA+ID4gbm8gbWlub3IgdmVyc2lvbnMgYXJl
-IGVuYWJsZWQuICBUaGF0IGxlYXZlcyBycGMubmZzZCB3aXRob3V0IGFuDQo+ID4gPiA+IGVhc3kN
-Cj4gPiA+ID4gd2F5IHRvIHJlLWVuYWJsZSB2NC4wLCBzaW5jZSB0aGF0J3Mgd2hhdCBpdCBkb2Vz
-IHdoZW4gaW52b2tlZA0KPiA+ID4gPiB3aXRoDQo+ID4gPiA+ICctViA0LjAnLg0KPiA+ID4gPiAN
-Cj4gPiA+ID4gRml4ZXM6IGQzNjM1ZmYwN2U4ICgibmZzZDogZml4IGNvbmZpZ3VyYXRpb24gb2Yg
-c3VwcG9ydGVkIG1pbm9yDQo+ID4gPiA+IHZlcnNpb25zIikNCj4gPiA+ID4gU2lnbmVkLW9mZi1i
-eTogU2NvdHQgTWF5aGV3IDxzbWF5aGV3QHJlZGhhdC5jb20+DQo+ID4gPiA+IC0tLQ0KPiA+ID4g
-PiAgZnMvbmZzZC9uZnNjdGwuYyB8IDggKysrKysrKysNCj4gPiA+ID4gIDEgZmlsZSBjaGFuZ2Vk
-LCA4IGluc2VydGlvbnMoKykNCj4gPiA+ID4gDQo+ID4gPiA+IGRpZmYgLS1naXQgYS9mcy9uZnNk
-L25mc2N0bC5jIGIvZnMvbmZzZC9uZnNjdGwuYw0KPiA+ID4gPiBpbmRleCBkMTA3YjQ0MjZmN2Uu
-LmIzZjlmOTIzMzk1MyAxMDA2NDQNCj4gPiA+ID4gLS0tIGEvZnMvbmZzZC9uZnNjdGwuYw0KPiA+
-ID4gPiArKysgYi9mcy9uZnNkL25mc2N0bC5jDQo+ID4gPiA+IEBAIC02MTQsNiArNjE0LDE0IEBA
-IHN0YXRpYyBzc2l6ZV90IF9fd3JpdGVfdmVyc2lvbnMoc3RydWN0DQo+ID4gPiA+IGZpbGUNCj4g
-PiA+ID4gKmZpbGUsIGNoYXIgKmJ1Ziwgc2l6ZV90IHNpemUpDQo+ID4gPiA+ICAJCQkJCW1pbm9y
-ID0gMDsNCj4gPiA+ID4gIAkJCQkJd2hpbGUNCj4gPiA+ID4gKG5mc2RfbWlub3J2ZXJzaW9uKG1p
-bm9yLA0KPiA+ID4gPiBjbWQpID49IDApDQo+ID4gPiA+ICAJCQkJCQltaW5vcisrOw0KPiA+ID4g
-PiArCQkJCX0gZWxzZSBpZiAoY21kID09IE5GU0RfU0VUKSB7DQo+ID4gPiA+ICsJCQkJCS8qDQo+
-ID4gPiA+ICsJCQkJCSAqIFdlIGhhdmUgKzQgYnV0IHRoZXJlDQo+ID4gPiA+IGFyZQ0KPiA+ID4g
-PiBhbHJlYWR5IHNvbWUgbWlub3JzDQo+ID4gPiA+ICsJCQkJCSAqIGVuYWJsZWQuICBXZSBtdXN0
-DQo+ID4gPiA+IGVuc3VyZSA0LjANCj4gPiA+ID4gZ2V0cyBlbmFibGVkLA0KPiA+ID4gPiArCQkJ
-CQkgKiBzaW5jZSBpdCBjb3VsZCBiZSBhDQo+ID4gPiA+IHJlcXVlc3QNCj4gPiA+ID4gZnJvbSBy
-cGMubmZzZC4NCj4gPiA+ID4gKwkJCQkJICovDQo+ID4gPiA+ICsJCQkJCWlmDQo+ID4gPiA+IChu
-ZnNkX21pbm9ydmVyc2lvbigwLCBjbWQpIDwNCj4gPiA+ID4gMCkNCj4gPiA+ID4gKwkJCQkJCXJl
-dHVybiAtRUlOVkFMOw0KPiA+ID4gPiAgCQkJCX0NCj4gPiA+ID4gIAkJCQlicmVhazsNCj4gPiA+
-ID4gIAkJCWRlZmF1bHQ6DQo+ID4gPiANCj4gPiA+IFRoaXMgYnJlYWtzIHRoZSBpbnRlbnRpb24g
-YmVoaW5kIHRoYXQgcGF0Y2gsIHdoaWNoIHdhcyB0byBlbnN1cmUNCj4gPiA+IHRoYXQNCj4gPiA+
-ICs0IG11c3QgX25vdF8gYXV0b21hdGljYWxseSBlbmFibGUgNC4wLi4uDQo+ID4gPiANCj4gPiA+
-IEluc3RlYWQsIHlvdSB1c2UgKy8tNC4wIHRvIGVuYWJsZS9kaXNhYmxlIDQuMCwganVzdCBsaWtl
-IHlvdSB1c2UNCj4gPiA+ICsvLTQuMSANCj4gPiA+IHRvIGVuYWJsZS9kaXNhYmxlIDQuMSwgKy8t
-NC4yIHRvIGVuYWJsZS9kaXNhYmxlIDQuMiwgZXRjLCBldGMuLi4NCj4gPiA+IA0KPiA+ID4gVGhl
-IHNwZWNpYWwgdmFsdWUgKy8tNCBleGlzdHMgaW4gb3JkZXIgYWxsb3cgeW91IHRvDQo+ID4gPiBk
-aXNhYmxlL2VuYWJsZSB2NA0KPiA+ID4gYWx0b2dldGhlci4gaS5lLiAnLTQnIGFjdHMgYXMgYSBt
-YXNrIHRvIHR1cm4gb2ZmIHY0LnggZm9yIGFsbA0KPiA+ID4gdmFsdWVzIG9mDQo+ID4gPiB4LiAn
-KzQnIHdpbGwgZW5hYmxlIHY0LnggZm9yIHRob3NlIHZhbHVlcyBvZiB4IHdoaWNoIGhhdmUgYmVl
-bg0KPiA+ID4gZXhwbGljaXRseSBzZXQuDQo+ID4gDQo+ID4gT2theSBJIGd1ZXNzIEknbSBjb25m
-dXNlZCBieSB0aGlzIHdvcmRpbmcgZnJvbSB0aGUgY29tbWl0IG1lc3NhZ2UNCj4gPiBpbg0KPiA+
-IGQzNjM1ZmYwN2U4Og0KPiA+IA0KPiA+ICAgICBBbGxvdyB0aGUgdXNlciB0byB1c2UgZWl0aGVy
-ICc0LjAnIG9yICc0JyB0byBlbmFibGUgb3IgZGlzYWJsZQ0KPiA+IG1pbm9yDQo+ID4gICAgIHZl
-cnNpb24gMC4gIE90aGVyIG1pbm9yIHZlcnNpb25zIGFyZSBzdGlsbCBlbmFibGVkIG9yIGRpc2Fi
-bGVkDQo+ID4gdXNpbmcgdGhlDQo+ID4gICAgICc0LngnIGZvcm1hdC4NCj4gDQo+IE9rYXkgSSBz
-ZWUgdGhhdCB0aGF0IGNvbW1pdCBtZXNzYWdlIGFjdHVhbGx5IGNhbWUgZnJvbSBCcnVjZSBhbmQg
-aXMNCj4gZGlmZmVyZW50IHRoYW4gdGhlIG9yaWdpbmFsIGNvbW1pdCBtZXNzYWdlLi4uIGJ1dCBp
-biB5b3VyIG9yaWdpbmFsDQo+IGNvdmVyDQo+IGxldHRlciAoaHR0cHM6Ly9tYXJjLmluZm8vP2w9
-bGludXgtbmZzJm09MTQ4NzgwNjU4OTA0MTg3Jnc9MikgeW91DQo+IHN0YXRlZA0KPiB0aGF0ICcr
-NCcgc2hvdWxkIGVuYWJsZSA0LjA6DQo+IA0KPiAiIiINCj4gMikgQWxsb3cgdGhlIHVzZXIgdG8g
-dXNlIGVpdGhlciAnNC4wJyBvciAnNCcgaW4gb3JkZXIgdG8gZW5hYmxlIG9yDQo+IGRpc2FibGUN
-Cj4gICAgbWlub3IgdmVyc2lvbiAwLiBPdGhlciBtaW5vciB2ZXJzaW9ucyByZW1haW4gZW5hYmxl
-ZC9kaXNhYmxlZA0KPiB1c2luZyB0aGUNCj4gICAgJzQueCcgZm9ybWF0Lg0KPiAiIiINCj4gDQo+
-IEkgdGhvdWdodCB0aGUgcG9pbnQgb2YgeW91ciBwYXRjaGVzIHdlcmUgdG8gYWxsb3cgdGhlIHVz
-ZXIgdG8gZW5hYmxlDQo+IDQueA0KPiAoZm9yIHggPiAwKSB3aXRob3V0IGVuYWJsaW5nIDQuMC4g
-IE15IHBhdGNoIGRvZXNuJ3QgY2hhbmdlIHRoYXQuICBBbGwNCj4gaXQNCj4gZG9lcyBpcyBhbGxv
-dyAnKzQnIHRvIGVuYWJsZSA0LjAsIHdoaWNoIGlzIHdoYXQgYm90aCBCcnVjZSdzIGNvbW1pdA0K
-PiBtZXNzYWdlIGFuZCB5b3VyIGNvdmVyIGxldHRlciBzYXlzIGl0IHNob3VsZCBkby4NCj4gDQo+
-IGN1cnJlbnQgSEVBRDoNCj4gDQo+IFtyb290QGZlZG9yYTI3XzEyMzY1NjhlIH5dIyBlY2hvICct
-NCcgPi9wcm9jL2ZzL25mc2QvdmVyc2lvbnMNCj4gW3Jvb3RAZmVkb3JhMjdfMTIzNjU2OGUgfl0j
-IGNhdCAvcHJvYy9mcy9uZnNkL3ZlcnNpb25zDQo+IC0yICszIC00IC00LjAgLTQuMSAtNC4yDQo+
-IFtyb290QGZlZG9yYTI3XzEyMzY1NjhlIH5dIyBlY2hvICcrNC4xJyA+L3Byb2MvZnMvbmZzZC92
-ZXJzaW9ucw0KPiBbcm9vdEBmZWRvcmEyN18xMjM2NTY4ZSB+XSMgIWNhdA0KPiBjYXQgL3Byb2Mv
-ZnMvbmZzZC92ZXJzaW9ucw0KPiAtMiArMyArNCAtNC4wICs0LjEgLTQuMg0KPiBbcm9vdEBmZWRv
-cmEyN18xMjM2NTY4ZSB+XSMgZWNobyAnKzQnID4vcHJvYy9mcy9uZnNkL3ZlcnNpb25zDQo+IFty
-b290QGZlZG9yYTI3XzEyMzY1NjhlIH5dIyAhY2F0DQo+IGNhdCAvcHJvYy9mcy9uZnNkL3ZlcnNp
-b25zDQo+IC0yICszICs0IC00LjAgKzQuMSAtNC4yDQo+IA0KPiB3aXRoIG15IHBhdGNoOg0KPiAN
-Cj4gW3Jvb3RAZmVkb3JhMjdfODY4NmRmY2Igfl0jIGVjaG8gJy00JyA+L3Byb2MvZnMvbmZzZC92
-ZXJzaW9ucyANCj4gW3Jvb3RAZmVkb3JhMjdfODY4NmRmY2Igfl0jIGNhdCAvcHJvYy9mcy9uZnNk
-L3ZlcnNpb25zIA0KPiAtMiArMyAtNCAtNC4wIC00LjEgLTQuMg0KPiBbcm9vdEBmZWRvcmEyN184
-Njg2ZGZjYiB+XSMgZWNobyAnKzQuMScgPi9wcm9jL2ZzL25mc2QvdmVyc2lvbnMNCj4gW3Jvb3RA
-ZmVkb3JhMjdfODY4NmRmY2Igfl0jICFjYXQNCj4gY2F0IC9wcm9jL2ZzL25mc2QvdmVyc2lvbnMg
-DQo+IC0yICszICs0IC00LjAgKzQuMSAtNC4yIDwtLS0tLSA0LjAgaXMgc3RpbGwgZGlzYWJsZWQN
-Cj4gW3Jvb3RAZmVkb3JhMjdfODY4NmRmY2Igfl0jIGVjaG8gJys0JyA+L3Byb2MvZnMvbmZzZC92
-ZXJzaW9ucyANCj4gW3Jvb3RAZmVkb3JhMjdfODY4NmRmY2Igfl0jICFjYXQNCj4gY2F0IC9wcm9j
-L2ZzL25mc2QvdmVyc2lvbnMgDQo+IC0yICszICs0ICs0LjEgLTQuMiA8LS0tLS0gNC4wIGlzIGVu
-YWJsZWQNCg0KVGhpcyBpcyBub3Qgd2hhdCBpcyBpbnRlbmRlZC4gQXMgSSBzYWlkLCB0aGUgaW50
-ZW50aW9uIHdhcyB0aGF0IHlvdQ0Kc2hvdWxkIHVzZSAnKzQuMCcgdG8gZW5hYmxlIDQuMCBhbmQg
-Jy00LjAnIHRvIGRpc2FibGUgaXQuDQoNClRoZSBleGNlcHRpb24gaXMgZm9yIGxlZ2FjeSBrZXJu
-ZWxzLCB3aGljaCBhcmUgbm90IHR5cGljYWxseSBhYmxlIHRvDQpyZWNvZ25pc2UgdGhlICcrNC4w
-JyBvciAnLTQuMCcsIHNvIGZvciB0aG9zZSBrZXJuZWxzIChhbmQgdGhvc2Uga2VybmVscw0Kb25s
-eSksIHRoZSAnKzQnLyctNCcgbmVlZCB0byBjb250aW51ZSB0byB3b3JrIGFzIGJlZm9yZS4NCg0K
-PiANCj4gLVNjb3R0DQo+IA0KPiA+IA0KPiA+IFNob3VsZCBycGMubmZzZCBiZSBjaGFuZ2VkIHRo
-ZW4/ICBUaGUgd2F5IGl0IGlzIG5vdywNCj4gPiBuZnNzdmNfcHJpbnRfdmVycygpIHdpbGwNCj4g
-PiB3cml0ZSAnKzQnIGlmIHlvdSBydW4gJ3JwYy5uZnNkIC1WNC4wJy4uLg0KPiA+IA0KPiA+ID4g
-DQo+ID4gPiAtLSANCj4gPiA+IFRyb25kIE15a2xlYnVzdA0KPiA+ID4gQ1RPLCBIYW1tZXJzcGFj
-ZSBJbmMNCj4gPiA+IDQzMDAgRWwgQ2FtaW5vIFJlYWwsIFN1aXRlIDEwNQ0KPiA+ID4gTG9zIEFs
-dG9zLCBDQSA5NDAyMg0KPiA+ID4gd3d3LmhhbW1lci5zcGFjZQ0KPiA+ID4gDQo+ID4gPiANCi0t
-IA0KVHJvbmQgTXlrbGVidXN0DQpDVE8sIEhhbW1lcnNwYWNlIEluYw0KNDMwMCBFbCBDYW1pbm8g
-UmVhbCwgU3VpdGUgMTA1DQpMb3MgQWx0b3MsIENBIDk0MDIyDQp3d3cuaGFtbWVyLnNwYWNlDQoN
-Cg0K
+Thanks, I've added these to my -next branch, and I want to read through
+them tomorrow.
+
+--b.
+
+On Fri, Jul 20, 2018 at 06:19:16PM -0400, Olga Kornievskaia wrote:
+> From: Olga Kornievskaia <olga.kornievskaia@gmail.com>
+> 
+> To do asynchronous copies, NFSD creates a new kthread to handle the request.
+> Upon receiving the COPY, it generates a unique copy stateid (stored in a
+> global list for keeping track of state for OFFLOAD_STATUS to be queried by),
+> starts the thread, and replies back to the client. nfsd4_copy arguments that
+> are allocated on the stack are copies for the kthread.
+> 
+> For the async copy handler, copy is done in the loop for the requested
+> number of bytes. If an error is encountered and partial copy has happened,
+> a successful partial copy is returned in the CB_OFFLOAD. vfs_copy_file_range
+> is called with 4MB chunks for both async and sync, allowing for 4MB
+> granularity of OFFLOAD_STATUS queiry. Once copy is done, the results are
+> queued for the callback workqueue and sent via CB_OFFLOAD.
+> 
+> When the server received an OFFLOAD_CANCEL, it will find the kthread running
+> the copy and will send a SIGPENDING and kthread_stop() and it will interrupt
+> the ongoing do_splice() and once vfs returns we are choosing not to send
+> the CB_OFFLOAD back to the client.
+> 
+> When the server receives an OFFLOAD_STATUS, it will find the kthread running
+> the copy and will locate within the copy state the current number of bytes
+> copied so far.
+> 
+> v10:
+> -- removed the module parameter
+> -- nfsd4_init_copy_res() changed to void
+> -- freed async_copy in nfsd4_copy() on an error case caught by kbuild
+> 
+> Olga Kornievskaia (9):
+>   NFSD CB_OFFLOAD xdr
+>   NFSD OFFLOAD_STATUS xdr
+>   NFSD OFFLOAD_CANCEL xdr
+>   NFSD xdr callback stateid in async COPY reply
+>   NFSD introduce async copy feature
+>   NFSD create new stateid for async copy
+>   NFSD handle OFFLOAD_CANCEL op
+>   NFSD support OFFLOAD_STATUS
+>   NFSD stop ongoing async copies on client shutdown
+> 
+>  fs/nfsd/netns.h        |   8 ++
+>  fs/nfsd/nfs4callback.c |  98 +++++++++++++++++
+>  fs/nfsd/nfs4proc.c     | 293 ++++++++++++++++++++++++++++++++++++++++++++++---
+>  fs/nfsd/nfs4state.c    |  38 ++++++-
+>  fs/nfsd/nfs4xdr.c      |  50 +++++++--
+>  fs/nfsd/nfsctl.c       |   1 +
+>  fs/nfsd/state.h        |  10 ++
+>  fs/nfsd/xdr4.h         |  28 +++++
+>  fs/nfsd/xdr4cb.h       |  10 ++
+>  9 files changed, 512 insertions(+), 24 deletions(-)
+> 
+> -- 
+> 1.8.3.1
+> 
