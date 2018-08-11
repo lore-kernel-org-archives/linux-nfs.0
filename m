@@ -1,109 +1,20 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:54432 "EHLO fieldses.org"
+Received: from mail.inea.gob.ve ([201.248.92.145]:36096 "EHLO mail.inea.gob.ve"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1728093AbeHLP7C (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sun, 12 Aug 2018 11:59:02 -0400
-Date: Sun, 12 Aug 2018 09:21:00 -0400
-From: Bruce Fields <bfields@fieldses.org>
-To: NeilBrown <neilb@suse.com>
-Cc: Nelson Elhage <nelhage@nelhage.com>,
-        Christoph Hellwig <hch@lst.de>, linux-nfs@vger.kernel.org,
-        James Brown <jbrown@easypost.com>
-Subject: Re: NFSv3 may inappropriately return EPERM for fsetxattr
-Message-ID: <20180812132100.GL7906@fieldses.org>
-References: <CAPSG9dbOPRv_gM_w_Ys9fJ-fSPRnw+Rgb3yaaHVEqZ9YyDntzg@mail.gmail.com>
- <20160321144349.GA12804@lst.de>
- <CAPSG9dZX45Uq07Xue55Aom3i-WyH9_SA_SKydBjsEX1Y14VwoA@mail.gmail.com>
- <874lg3roua.fsf@notabene.neil.brown.name>
- <20180810170027.GF7906@fieldses.org>
- <20180810170312.GG7906@fieldses.org>
- <87d0uor11r.fsf@notabene.neil.brown.name>
+        id S1727683AbeHLXod (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sun, 12 Aug 2018 19:44:33 -0400
+Content-Type: text/plain; charset="iso-8859-1"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <87d0uor11r.fsf@notabene.neil.brown.name>
+Subject: REPLY AS SOON AS POSSIBLE
+To: Recipients <mariadanieltg@gmail.com>
+From: "Dr Chien Direktor von Hang Seng" <mariadanieltg@gmail.com>
+Date: Sat, 11 Aug 2018 23:49:30 +0100
+Reply-To: draymndch@yahoo.co.jp
+Message-Id: <20180811224941.878DC1BB3A8E@mail.inea.gob.ve>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Aug 12, 2018 at 08:28:00AM +1000, NeilBrown wrote:
-> On Fri, Aug 10 2018, Bruce Fields wrote:
-> 
-> > On Fri, Aug 10, 2018 at 01:00:27PM -0400, Bruce Fields wrote:
-> >> On Fri, Aug 10, 2018 at 11:29:33AM +1000, NeilBrown wrote:
-> >> > On Mon, Mar 21 2016, Nelson Elhage wrote:
-> >> > 
-> >> > > That's correct. The other detail that seems to be important is that
-> >> > > the user making the call must be different from the user owning the
-> >> > > file. We've also been using user remapping on the server, so that
-> >> > > non-xattr calls succeed in that configuration.
-> >> > >
-> >> > > The reproducer James added in the bugzilla is:
-> >> > >
-> >> > > (on machine with IP address 10.1.1.1)
-> >> > > sudo mkdir /nfs_test
-> >> > > sudo useradd -u 10000 test_user
-> >> > > sudo chown test_user /nfs_test
-> >> > > echo "/nfs_test 10.1.1.2(rw,all_squash,anonuid=10000)" | sudo tee -a
-> >> > > /etc/exports
-> >> > > sudo exportfs -a
-> >> > >
-> >> > > (on machine with IP address 10.1.1.2)
-> >> > > sudo mkdir /nfs_test
-> >> > > sudo mount -t nfs -o vers=3,noacl 10.1.1.1:/nfs_test /nfs_test
-> >> > > touch /nfs_test/foo
-> >> > > install -m 755 /nfs_test/foo /nfs_test/bar
-> >> > 
-> >> > Did anything ever happen about this?
-> >> > I have a customer with a similar problem (in 4.4) but I cannot see any
-> >> > evidence of fixes landing in mainline.
-> >> > 
-> >> > Problem happens with you have uid mapping on the server
-> >> > (e.g. anonuid=10000 as above) and a user with a different uid on the
-> >> > client attempts setacl on a file with that user.
-> >> > As anon is mapped to the owner of the file, setacl should be allowed.
-> >> > However set_posix_acl() calls inode_owner_or_capable() which checks if
-> >> > the client-side uid matches the visible inode->i_uid - they don't.
-> >> > 
-> >> > Testing i_uid on the client is always incorrect for permission checking
-> >> > with NFS - the client should always ask the server, either with ACCESS
-> >> > or, in this case, by simply attempting the operation.
-> >> > 
-> >> > Any suggestions how best to fix this?
-> >> > - We could move the responsibility for permission checking into
-> >> >   i_op->set_acl, but that would be a large change and might make it too
-> >> >   easy for other filesystems to get it wrong.
-> >> > - we could have some sort of flag asking set_posix_acl(), but that's
-> >> >   rather clumsy.... maybe if i_op->set_acl_check_perm use that without
-> >> >   testing ownership first??
-> >> > - we could copy
-> >> >     posic_acl_xattr_{get,set,list} into nfs together with functions
-> >> >     they call, modify set_posix_acl() to not test ownership,
-> >> >     and provide a local 'struct xattr_handler' structure for NFS.
-> >> > 
-> >> > I don't really like any of those suggestions.  Can someone else do any
-> >> > better?
-> >> 
-> >> Do we have important callers of inode_owner_or_capable() in the vfs (as
-> >> opposed to in individual filesystems), and do any of them pose a similar
-> >> problem for network filesystems?
-> >
-> > do_linkat()->may_linkat() looks kinda suspicious to me.  Or what about
-> > the O_NOATIME check in map_open()?  Just engaging in dumb grepping
-> > here....
-> >
-> > --b.
-> 
-> NOATIME, both in open and fcntl, is rejected on NFS.  This seems valid
-> as there is no way in the protocol to ask the server to no update the
-> atime.
-> 
-> Others I found we just short-cuts to avoid calling i_op->permission() if
-> the caller was an owner.  I don't *think* that would affect NFS much
-> ... though if an owner didn't have write permission, some things might
-> be incorrectly forbidden.  Maybe.
+I am Vice Chairman of Hang Seng Bank, I have Important Matter to Discuss with you concerning my late client. Died without a NEXT OF KIN. Send me your private email for full details information. email me at E-Mail: draymdm@gmail.com
 
-OK, so not too important.  Still, it sounds like
-inode_owner_or_capable() is something people expect to work for any
-filesystem, so I wonder if there's a way to do that.  Or at least
-disable it.
-
---b.
+Regards 
+Mr.Fung
