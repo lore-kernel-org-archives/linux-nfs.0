@@ -1,34 +1,39 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pl0-f67.google.com ([209.85.160.67]:39957 "EHLO
-        mail-pl0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725896AbeHMG0x (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Aug 2018 02:26:53 -0400
-To: trond.myklebust@hammerspace.com, anna.schumaker@netapp.com
-Cc: linux-nfs@vger.kernel.org,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
-From: Jia-Ju Bai <baijiaju1990@gmail.com>
-Subject: [BUG] fs: nfs: pnfs_nfs: a possible sleep-in-atomic-context bug in
- pnfs_generic_recover_commit_reqs()
-Message-ID: <6e0b1c99-bfe5-29a9-51b1-1c71fe0b91b4@gmail.com>
-Date: Mon, 13 Aug 2018 11:46:28 +0800
+Received: from unassigned.psychz.net ([104.149.231.218]:56041 "EHLO
+        soapequipment.com" rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org
+        with ESMTP id S1728215AbeHMLl5 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Aug 2018 07:41:57 -0400
+To: linux-nfs@vger.kernel.org
+Subject: our mobile apps design
+Message-ID: <b5f9495733b20230e1add3a994176dec@altadevices.com>
+Date: Mon, 13 Aug 2018 08:00:57 +0200
+From: "Jack Dike" <ferriiam@bathandbliss.com>
+Reply-To: cengjaos@aliyun.com
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Type: text/plain; format=flowed; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The kernel may sleep with holding a spinlock.
+Do you need mobile apps development? We can do it for you.
 
-The function call paths (from bottom to top) in Linux-4.16 are:
+We are an India base company. Here are the details about us:
+Years in business: 8
+Staffs: 125
+App developed: 350
 
-[FUNC] mutex_lock_nested
-fs/nfs/write.c, 1045: mutex_lock_nested in nfs_scan_commit_list
-fs/nfs/pnfs_nfs.c, 145: nfs_scan_commit_list in 
-pnfs_generic_recover_commit_reqs
-fs/nfs/pnfs_nfs.c, 154: spin_lock in pnfs_generic_recover_commit_reqs
+We work on Android, iOS, Ionic, and PhoneGap platforms, we have clients
+across different kind of industries.
+Such like retail, media and entertainment, BFSI, hospitality, social media,
+eCommerce, food and beverages, etc.
 
-I do not find a good way to fix, so I only report.
-This is found by my static analysis tool (DSAC).
+We do below:
+Mobile Apps
+Mobile App UI/UX designing
+App Maintenance and Support
+Website or ecommerce portal development
 
+Please reply back if you are interested in what we do.
+We will share our portfolios to you.
 
-Thanks,
-Jia-Ju Bai
+Regards,
+Jack
