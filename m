@@ -1,165 +1,93 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx142.netapp.com ([216.240.21.19]:5433 "EHLO mx142.netapp.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1729152AbeHMWPs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 13 Aug 2018 18:15:48 -0400
-From: Olga Kornievskaia <kolga@netapp.com>
-To: <Trond.Myklebust@hammerspace.com>, <anna.schumaker@netapp.com>
-CC: <linux-nfs@vger.kernel.org>
-Subject: [PATCH 09/11] NFS recover from destination server reboot for copies
-Date: Mon, 13 Aug 2018 15:33:01 -0400
-Message-ID: <20180813193301.58849-1-kolga@netapp.com>
+Received: from mx2.suse.de ([195.135.220.15]:49038 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1726053AbeHNLtj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 14 Aug 2018 07:49:39 -0400
+From: NeilBrown <neilb@suse.com>
+To: Bruce Fields <bfields@fieldses.org>
+Date: Tue, 14 Aug 2018 19:03:14 +1000
+Cc: Nelson Elhage <nelhage@nelhage.com>,
+        Christoph Hellwig <hch@lst.de>, linux-nfs@vger.kernel.org,
+        James Brown <jbrown@easypost.com>
+Subject: Re: NFSv3 may inappropriately return EPERM for fsetxattr
+In-Reply-To: <878t5bqgx0.fsf@notabene.neil.brown.name>
+References: <CAPSG9dbOPRv_gM_w_Ys9fJ-fSPRnw+Rgb3yaaHVEqZ9YyDntzg@mail.gmail.com> <20160321144349.GA12804@lst.de> <CAPSG9dZX45Uq07Xue55Aom3i-WyH9_SA_SKydBjsEX1Y14VwoA@mail.gmail.com> <874lg3roua.fsf@notabene.neil.brown.name> <20180810170027.GF7906@fieldses.org> <20180810170312.GG7906@fieldses.org> <87d0uor11r.fsf@notabene.neil.brown.name> <20180812132100.GL7906@fieldses.org> <878t5bqgx0.fsf@notabene.neil.brown.name>
+Message-ID: <87ftzhb9rh.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: multipart/signed; boundary="=-=-=";
+        micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Mark the destination state to indicate a server-side copy is
-happening. On detecting a reboot and recovering open state check
-if any state is engaged in a server-side copy, if so, find the
-copy and mark it and then signal the waiting thread. Upon wakeup,
-if copy was marked then propage EAGAIN to the nfsd_copy_file_range
-and restart the copy from scratch.
+--=-=-=
+Content-Type: text/plain
 
-Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
----
- fs/nfs/nfs42proc.c     | 16 +++++++++++++---
- fs/nfs/nfs4_fs.h       |  3 +++
- fs/nfs/nfs4file.c      |  9 +++++++--
- fs/nfs/nfs4state.c     | 16 ++++++++++++++++
- include/linux/nfs_fs.h |  2 ++
- 5 files changed, 41 insertions(+), 5 deletions(-)
+On Mon, Aug 13 2018, NeilBrown wrote:
 
-diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
-index aeb9837..0c16b91 100644
---- a/fs/nfs/nfs42proc.c
-+++ b/fs/nfs/nfs42proc.c
-@@ -140,6 +140,7 @@ static int handle_async_copy(struct nfs42_copy_res *res,
- 	struct nfs4_copy_state *copy;
- 	int status = NFS4_OK;
- 	bool found_pending = false;
-+	struct nfs_open_context *ctx = nfs_file_open_context(dst);
- 
- 	spin_lock(&server->nfs_client->cl_lock);
- 	list_for_each_entry(copy, &server->nfs_client->pending_cb_stateids,
-@@ -163,6 +164,7 @@ static int handle_async_copy(struct nfs42_copy_res *res,
- 	}
- 	memcpy(&copy->stateid, &res->write_res.stateid, NFS4_STATEID_SIZE);
- 	init_completion(&copy->completion);
-+	copy->parent_state = ctx->state;
- 
- 	list_add_tail(&copy->copies, &server->ss_copies);
- 	spin_unlock(&server->nfs_client->cl_lock);
-@@ -172,9 +174,10 @@ static int handle_async_copy(struct nfs42_copy_res *res,
- 	list_del_init(&copy->copies);
- 	spin_unlock(&server->nfs_client->cl_lock);
- 	if (status == -ERESTARTSYS) {
--		nfs42_do_offload_cancel_async(dst, &copy->stateid);
--		kfree(copy);
--		return status;
-+		goto out_cancel;
-+	} else if (copy->flags) {
-+		status = -EAGAIN;
-+		goto out_cancel;
- 	}
- out:
- 	res->write_res.count = copy->count;
-@@ -183,6 +186,10 @@ static int handle_async_copy(struct nfs42_copy_res *res,
- 
- 	kfree(copy);
- 	return status;
-+out_cancel:
-+	nfs42_do_offload_cancel_async(dst, &copy->stateid);
-+	kfree(copy);
-+	return status;
- }
- 
- static ssize_t _nfs42_proc_copy(struct file *src,
-@@ -230,6 +237,9 @@ static ssize_t _nfs42_proc_copy(struct file *src,
- 		if (!res->commit_res.verf)
- 			return -ENOMEM;
- 	}
-+	set_bit(NFS_CLNT_DST_SSC_COPY_STATE,
-+		&dst_lock->open_context->state->flags);
-+
- 	status = nfs4_call_sync(server->client, server, &msg,
- 				&args->seq_args, &res->seq_res, 0);
- 	if (status == -ENOTSUPP)
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index a417aaa..345197c 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -163,6 +163,9 @@ enum {
- 	NFS_STATE_RECOVERY_FAILED,	/* OPEN stateid state recovery failed */
- 	NFS_STATE_MAY_NOTIFY_LOCK,	/* server may CB_NOTIFY_LOCK */
- 	NFS_STATE_CHANGE_WAIT,		/* A state changing operation is outstanding */
-+#ifdef CONFIG_NFS_V4_2
-+	NFS_CLNT_DST_SSC_COPY_STATE,    /* dst server open state on client*/
-+#endif /* CONFIG_NFS_V4_2 */
- };
- 
- struct nfs4_state {
-diff --git a/fs/nfs/nfs4file.c b/fs/nfs/nfs4file.c
-index 6b3b372..eaef5fa 100644
---- a/fs/nfs/nfs4file.c
-+++ b/fs/nfs/nfs4file.c
-@@ -133,10 +133,15 @@ static ssize_t nfs4_copy_file_range(struct file *file_in, loff_t pos_in,
- 				    struct file *file_out, loff_t pos_out,
- 				    size_t count, unsigned int flags)
- {
-+	ssize_t ret;
-+
- 	if (file_inode(file_in) == file_inode(file_out))
- 		return -EINVAL;
--
--	return nfs42_proc_copy(file_in, pos_in, file_out, pos_out, count);
-+retry:
-+	ret = nfs42_proc_copy(file_in, pos_in, file_out, pos_out, count);
-+	if (ret == -EAGAIN)
-+		goto retry;
-+	return ret;
- }
- 
- static loff_t nfs4_file_llseek(struct file *filep, loff_t offset, int whence)
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 2bf2eaa..12cb450 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -1588,6 +1588,22 @@ static int nfs4_reclaim_open_state(struct nfs4_state_owner *sp, const struct nfs
- 				}
- 				clear_bit(NFS_STATE_RECLAIM_NOGRACE,
- 					&state->flags);
-+#ifdef CONFIG_NFS_V4_2
-+				if (test_bit(NFS_CLNT_DST_SSC_COPY_STATE, &state->flags)) {
-+					struct nfs4_copy_state *copy;
-+
-+					spin_lock(&sp->so_server->nfs_client->cl_lock);
-+					list_for_each_entry(copy, &sp->so_server->ss_copies, copies) {
-+						if (memcmp(&state->stateid.other, &copy->parent_state->stateid.other, NFS4_STATEID_SIZE))
-+							continue;
-+						copy->flags = 1;
-+						complete(&copy->completion);
-+						printk("AGLO: server rebooted waking up the copy\n");
-+						break;
-+					}
-+					spin_unlock(&sp->so_server->nfs_client->cl_lock);
-+				}
-+#endif /* CONFIG_NFS_V4_2 */
- 				nfs4_put_open_state(state);
- 				spin_lock(&sp->so_lock);
- 				goto restart;
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index 645ad8e..a0831e9 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -192,6 +192,8 @@ struct nfs4_copy_state {
- 	uint64_t		count;
- 	struct nfs_writeverf	verf;
- 	int			error;
-+	int			flags;
-+	struct nfs4_state	*parent_state;
- };
- 
- /*
--- 
-1.8.3.1
+> On Sun, Aug 12 2018, Bruce Fields wrote:
+>> OK, so not too important.  Still, it sounds like
+>> inode_owner_or_capable() is something people expect to work for any
+>> filesystem, so I wonder if there's a way to do that.  Or at least
+>> disable it.
+>
+> We could add a new flag - MAY_OWN (or something) - to the flags
+> recognised by inode_permission() and i_op->permission().
+>
+> If ->permission isn't set, inode_permission() uses
+> inode_owner_or_capable().
+> If it is, it gets to call that, or do whatever is appropriate.
+>
+> Is this flag the same as NFS_MAY_OWNER_OVERRIDE or not....??
+>
+
+Pursuing this thought...
+  NFSD_MAY_OWNER_OVERRIDE means "an operation is requested which
+   may always be performed by the owner of the file, even if they
+   don't have explicit permission via DAC setting."
+
+I think this is a reasonable description of how inode_owner_or_capable()
+is used.  It is sometimes used on its own, where there is no permission
+but that is relevant such as O_NOATIME or set_posix_acl(), or is used
+as a precursor to and inode_permission() check, as in notify_change().
+
+The biggest difference is that NFSD_MAY_OWNER_OVERRIDE does have the
+"or_capable".
+As nfsd drops CAP_FOWNER, and the extra test won't hurt it.
+
+So I now think that a good solution to this problem would be to hoist
+NFSD_MAY_OWNER_OVERRIDE into the VFS and change inode_permission() and
+various i_op->permission functions to handle it.
+
+All we need is a good name....
+  MAY_BY_OWNER  ???
+  MAY_IF_OWNER
+  MAY_BE_OWNER ???
+
+MAY_READ means "may I please read this file".  The flag needs to say
+"may I act as the owner of this file", so
+  MAY_ACT_AS_OWNER ????
+
+Thought?
+
+NeilBrown
+
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+
+iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAltymtIACgkQOeye3VZi
+gbnG3g/+LNlIIfRL5CtRzVmf/ojtvk+idx6RRPG5XY0l1IaRpwxlGkw3O+hduZ0D
+w+L3nwAxChHiGYnlGUAreqeZm+32DQOUZrfkhxPhGCQ34BFzx63Wat7O/FkS/EvF
+t8BS1nQMMYplSnFx6tK1aRcumrglPQ02H7V4i1gx4Ww5nRJ9EcnpnJnd87vqSqEs
+s7qu9c0lHMxC7Xtcbovwihy7xN91O7UYjaM1ViG60a9NPslNaPdrM1YZFsoH6/Nd
+HmeWWTF+tVh0SuByBldu7c+kkb9684X0EgZxfT3xhJCDATj/mpVCQJtZnF2/ECW/
+mmjzxYkUfVspMJ8SPAKaaNKpzFn21ARbxOhqetLNKa2xGshUyy3AF/kPjByDb4AR
+yGpXmdBlj1/DSzkcfigQaPZVfiuVE5gqQGc+nW/X57Vbc/cwDs3UWSzif2DlgkcA
+KxZ1HYM6lqKgWTd6QPfTaHYsXg3TvSBzcp/S/3c5pNSEoU9OQjIDX1SKa1ubqlyE
+evURakL+iHg16mJcau/MH9fEfib3g2gmEwgh2gty2mRzrp14DGZW0JKTezGUx45J
+e/rnS1FBhCW+fKiLYeHgkl9e0tNJyp1ghGddA0vlyMtMv3xSlmaTYoaeA0Y6aoOy
+ffdsjyQcasDUnlEJnVmKHjO0FD2oSN3EyvuGnp8pdPta1TXaO/U=
+=tjxs
+-----END PGP SIGNATURE-----
+--=-=-=--
