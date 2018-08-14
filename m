@@ -1,97 +1,92 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f66.google.com ([209.85.214.66]:52211 "EHLO
-        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728873AbeHNNfB (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Aug 2018 09:35:01 -0400
-Received: by mail-it0-f66.google.com with SMTP id e14-v6so17523152itf.1
-        for <linux-nfs@vger.kernel.org>; Tue, 14 Aug 2018 03:48:23 -0700 (PDT)
-From: Trond Myklebust <trondmy@gmail.com>
-To: Anna Schumaker <Anna.Schumaker@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] pNFS: When updating the stateid in layoutreturn, also update the recall range
-Date: Tue, 14 Aug 2018 06:47:59 -0400
-Message-Id: <20180814104759.20556-1-trond.myklebust@hammerspace.com>
+Received: from fieldses.org ([173.255.197.46]:58994 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1725988AbeHNWcS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 14 Aug 2018 18:32:18 -0400
+Date: Tue, 14 Aug 2018 15:43:34 -0400
+From: Bruce Fields <bfields@fieldses.org>
+To: NeilBrown <neilb@suse.com>
+Cc: Nelson Elhage <nelhage@nelhage.com>,
+        Christoph Hellwig <hch@lst.de>, linux-nfs@vger.kernel.org,
+        James Brown <jbrown@easypost.com>
+Subject: Re: NFSv3 may inappropriately return EPERM for fsetxattr
+Message-ID: <20180814194334.GO7906@fieldses.org>
+References: <CAPSG9dbOPRv_gM_w_Ys9fJ-fSPRnw+Rgb3yaaHVEqZ9YyDntzg@mail.gmail.com>
+ <20160321144349.GA12804@lst.de>
+ <CAPSG9dZX45Uq07Xue55Aom3i-WyH9_SA_SKydBjsEX1Y14VwoA@mail.gmail.com>
+ <874lg3roua.fsf@notabene.neil.brown.name>
+ <20180810170027.GF7906@fieldses.org>
+ <20180810170312.GG7906@fieldses.org>
+ <87d0uor11r.fsf@notabene.neil.brown.name>
+ <20180812132100.GL7906@fieldses.org>
+ <878t5bqgx0.fsf@notabene.neil.brown.name>
+ <87ftzhb9rh.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <87ftzhb9rh.fsf@notabene.neil.brown.name>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When we update the layout stateid in nfs4_layoutreturn_refresh_stateid, we
-should also update the range in order to let the server know we're actually
-returning everything.
+On Tue, Aug 14, 2018 at 07:03:14PM +1000, NeilBrown wrote:
+> On Mon, Aug 13 2018, NeilBrown wrote:
+> 
+> > On Sun, Aug 12 2018, Bruce Fields wrote:
+> >> OK, so not too important.  Still, it sounds like
+> >> inode_owner_or_capable() is something people expect to work for any
+> >> filesystem, so I wonder if there's a way to do that.  Or at least
+> >> disable it.
+> >
+> > We could add a new flag - MAY_OWN (or something) - to the flags
+> > recognised by inode_permission() and i_op->permission().
+> >
+> > If ->permission isn't set, inode_permission() uses
+> > inode_owner_or_capable().
+> > If it is, it gets to call that, or do whatever is appropriate.
+> >
+> > Is this flag the same as NFS_MAY_OWNER_OVERRIDE or not....??
+> >
+> 
+> Pursuing this thought...
+>   NFSD_MAY_OWNER_OVERRIDE means "an operation is requested which
+>    may always be performed by the owner of the file, even if they
+>    don't have explicit permission via DAC setting."
+> 
+> I think this is a reasonable description of how inode_owner_or_capable()
+> is used.  It is sometimes used on its own, where there is no permission
+> but that is relevant such as O_NOATIME or set_posix_acl(), or is used
+> as a precursor to and inode_permission() check, as in notify_change().
+> 
+> The biggest difference is that NFSD_MAY_OWNER_OVERRIDE does have the
+> "or_capable".
+> As nfsd drops CAP_FOWNER, and the extra test won't hurt it.
+> 
+> So I now think that a good solution to this problem would be to hoist
+> NFSD_MAY_OWNER_OVERRIDE into the VFS and change inode_permission() and
+> various i_op->permission functions to handle it.
+> 
+> All we need is a good name....
+>   MAY_BY_OWNER  ???
+>   MAY_IF_OWNER
+>   MAY_BE_OWNER ???
+> 
+> MAY_READ means "may I please read this file".  The flag needs to say
+> "may I act as the owner of this file", so
+>   MAY_ACT_AS_OWNER ????
 
-Fixes: 16c278dbfa63 ("pnfs: Fix handling of NFS4ERR_OLD_STATEID replies...")
-Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
----
- fs/nfs/nfs4proc.c | 3 +++
- fs/nfs/pnfs.c     | 5 ++++-
- fs/nfs/pnfs.h     | 4 +++-
- 3 files changed, 10 insertions(+), 2 deletions(-)
+It's still a little different from the other permission bits in that I
+believe
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 9a349587d077..a5f0de68e710 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -3246,6 +3246,7 @@ static void nfs4_close_done(struct rpc_task *task, void *data)
- 			break;
- 		case -NFS4ERR_OLD_STATEID:
- 			if (nfs4_layoutreturn_refresh_stateid(&calldata->arg.lr_args->stateid,
-+						&calldata->arg.lr_args->range,
- 						calldata->inode))
- 				goto lr_restart;
- 			/* Fallthrough */
-@@ -5950,6 +5951,7 @@ static void nfs4_delegreturn_done(struct rpc_task *task, void *calldata)
- 			break;
- 		case -NFS4ERR_OLD_STATEID:
- 			if (nfs4_layoutreturn_refresh_stateid(&data->args.lr_args->stateid,
-+						&data->args.lr_args->range,
- 						data->inode))
- 				goto lr_restart;
- 			/* Fallthrough */
-@@ -8899,6 +8901,7 @@ static void nfs4_layoutreturn_done(struct rpc_task *task, void *calldata)
- 	switch (task->tk_status) {
- 	case -NFS4ERR_OLD_STATEID:
- 		if (nfs4_layoutreturn_refresh_stateid(&lrp->args.stateid,
-+					&lrp->args.range,
- 					lrp->args.inode))
- 			goto out_restart;
- 		/* Fallthrough */
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 8f03bdb191aa..8ef3c1feee92 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -361,7 +361,9 @@ pnfs_clear_lseg_state(struct pnfs_layout_segment *lseg,
- /*
-  * Update the seqid of a layout stateid
-  */
--bool nfs4_layoutreturn_refresh_stateid(nfs4_stateid *dst, struct inode *inode)
-+bool nfs4_layoutreturn_refresh_stateid(nfs4_stateid *dst,
-+		struct pnfs_layout_range *dst_range,
-+		struct inode *inode)
- {
- 	struct pnfs_layout_hdr *lo;
- 	struct pnfs_layout_range range = {
-@@ -379,6 +381,7 @@ bool nfs4_layoutreturn_refresh_stateid(nfs4_stateid *dst, struct inode *inode)
- 		err = pnfs_mark_matching_lsegs_return(lo, &head, &range, 0);
- 		if (err != -EBUSY) {
- 			dst->seqid = lo->plh_stateid.seqid;
-+			*dst_range = range;
- 			ret = true;
- 		}
- 	}
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 1a38a3b533b5..f490d19f7290 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -259,7 +259,9 @@ int pnfs_destroy_layouts_byfsid(struct nfs_client *clp,
- 		bool is_recall);
- int pnfs_destroy_layouts_byclid(struct nfs_client *clp,
- 		bool is_recall);
--bool nfs4_layoutreturn_refresh_stateid(nfs4_stateid *dst, struct inode *inode);
-+bool nfs4_layoutreturn_refresh_stateid(nfs4_stateid *dst,
-+		struct pnfs_layout_range *dst_range,
-+		struct inode *inode);
- void pnfs_put_layout_hdr(struct pnfs_layout_hdr *lo);
- void pnfs_set_layout_stateid(struct pnfs_layout_hdr *lo,
- 			     const nfs4_stateid *new,
--- 
-2.17.1
+	permission(., READ|WRITE)
+		== permission(., READ) && permission(., WRITE)
+
+but
+
+	permission(., READ|OWNER_OVERRIDE)
+		== permission(., READ) || permission(., OWNER_OVERRIDE)
+
+?
+
+Anyway, naming aside....  I don't know, sounds like it might work?
+Honestly I'm not completely sure I understand the proposal.
+
+--b.
