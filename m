@@ -1,97 +1,92 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.cn.fujitsu.com ([183.91.158.132]:40987 "EHLO
-        heian.cn.fujitsu.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1728213AbeHOHuE (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Aug 2018 03:50:04 -0400
+Received: from mail-eopbgr700130.outbound.protection.outlook.com ([40.107.70.130]:63840
+        "EHLO NAM04-SN1-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1727141AbeHOOhQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 15 Aug 2018 10:37:16 -0400
+From: Trond Myklebust <trondmy@hammerspace.com>
+To: "bfields@fieldses.org" <bfields@fieldses.org>,
+        "xuhuan.fnst@cn.fujitsu.com" <xuhuan.fnst@cn.fujitsu.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
 Subject: Re: xfstest generci/465 failed under all versions of NFS
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Date: Wed, 15 Aug 2018 11:43:30 +0000
+Message-ID: <c30862a1380dfc7461fc63eefe612d47e37cd481.camel@hammerspace.com>
 References: <ff080c90-e2e9-686f-9bcd-b6a4af8ac1a0@cn.fujitsu.com>
- <20180806192743.GA9158@fieldses.org>
-From: xuhuan <xuhuan.fnst@cn.fujitsu.com>
-Message-ID: <f766633c-868e-c52c-48b3-b1805022a87b@cn.fujitsu.com>
-Date: Wed, 15 Aug 2018 12:57:38 +0800
-MIME-Version: 1.0
-In-Reply-To: <20180806192743.GA9158@fieldses.org>
+         <20180806192743.GA9158@fieldses.org>
+         <f766633c-868e-c52c-48b3-b1805022a87b@cn.fujitsu.com>
+In-Reply-To: <f766633c-868e-c52c-48b3-b1805022a87b@cn.fujitsu.com>
 Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Sorry.i sent it already some days ago,but i didn't
-notice that the mail was not cc the nfs Mail list for
-some reason. so i have to sent this one more time.
-
-Maybe the send fail is because the picture i attached.
-so this time i attach nothing.
-
-On 08/07/2018 03:27 AM, J. Bruce Fields wrote:
-> On Mon, Aug 06, 2018 at 05:29:33PM +0800, xuhuan wrote:
->> I test NFS in xfstest generic/465 useing kernel v4.18-rc6.
->> I tested it with all version of nfs ,and all got failed.
->>
->> This patch fixes a bug in the xfs filesystem.Prior to this patch,
->> generic/465 is failed under the xfs file system.
->>
->> https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=ee70daaba82d70766d0723b743d9fdeb3b06102a
->>
->> Now, under the xfs file system, generic/465 is passed, but when I use
->> it to test NFS, while the server using the xfs file system, the test will still fail.
->> I think it is a nfs's bug.I donnot know where is it.
-> generic/465 says "Test i_size is updated properly under dio read/write".
-> So I guess it's doing some direct IO that appends to a file and then a
-> stat to confirm that we get the new i_size?
->
-> If this isn't working when run on an NFS filesystem, then I think either
-> the client isn't asking the server for the new i_size, or maybe it's
-> asking but getting a bad response.  The bad response might have the old
-> i_size.  Or I wonder if the client would be confused if the server
-> failed to update the change attribute (i_version) for some reason?
->
-> Does this test fail when we export other filesystems?  Is the failure
-> new, or has it always failed?
-
-ext4 and xfs are both PASS now.
-On the nfs,the failure is not new,it seems to be always failed.
-
-> --b.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
->
-For the generic/465 test of xfstest. I intercepted the tcpdump
- data in a single loop. (Sent a 1M file in the loop)
-
-For the NFS file system, it is divided into 4 requests and is read
-and written 4 times.For multi-threaded operations, these 4
-read/write operations may cause competition, resulting in
-incomplete content being read during a read operation.
-(At one fail try, the read operation reads the contents 
-of the file when the third page is written)
-
-So, is the NFS file system not suitable for this test?
-
-
-write       write       write        write
-|aaaa.......|aaaa.......|aaaa........|aaaa.......|
-^read       ^read       ^read        ^read       ^1M 
-
-
-Fail
-(There are many failure scenarios. This is only one of them)
-
-|00000000000|aaaa.......|aaaa........|aaaa.......|
-^read                   ^read       ^read        ^read       ^1M 
-
-
-PASS
-|00000000000|00000000000|00000000000|00000000000|
-^read                   ^read                   ^read                 ^read                 ^1M 
-
-PASS
-|aaaa.......|aaaa.......|aaaa........|aaaa.......|
-^read       ^read       ^read        ^read       ^1M 
-
-Thanks
-Xu
+T24gV2VkLCAyMDE4LTA4LTE1IGF0IDEyOjU3ICswODAwLCB4dWh1YW4gd3JvdGU6DQo+IFNvcnJ5
+Lmkgc2VudCBpdCBhbHJlYWR5IHNvbWUgZGF5cyBhZ28sYnV0IGkgZGlkbid0DQo+IG5vdGljZSB0
+aGF0IHRoZSBtYWlsIHdhcyBub3QgY2MgdGhlIG5mcyBNYWlsIGxpc3QgZm9yDQo+IHNvbWUgcmVh
+c29uLiBzbyBpIGhhdmUgdG8gc2VudCB0aGlzIG9uZSBtb3JlIHRpbWUuDQo+IA0KPiBNYXliZSB0
+aGUgc2VuZCBmYWlsIGlzIGJlY2F1c2UgdGhlIHBpY3R1cmUgaSBhdHRhY2hlZC4NCj4gc28gdGhp
+cyB0aW1lIGkgYXR0YWNoIG5vdGhpbmcuDQo+IA0KPiBPbiAwOC8wNy8yMDE4IDAzOjI3IEFNLCBK
+LiBCcnVjZSBGaWVsZHMgd3JvdGU6DQo+ID4gT24gTW9uLCBBdWcgMDYsIDIwMTggYXQgMDU6Mjk6
+MzNQTSArMDgwMCwgeHVodWFuIHdyb3RlOg0KPiA+ID4gSSB0ZXN0IE5GUyBpbiB4ZnN0ZXN0IGdl
+bmVyaWMvNDY1IHVzZWluZyBrZXJuZWwgdjQuMTgtcmM2Lg0KPiA+ID4gSSB0ZXN0ZWQgaXQgd2l0
+aCBhbGwgdmVyc2lvbiBvZiBuZnMgLGFuZCBhbGwgZ290IGZhaWxlZC4NCj4gPiA+IA0KPiA+ID4g
+VGhpcyBwYXRjaCBmaXhlcyBhIGJ1ZyBpbiB0aGUgeGZzIGZpbGVzeXN0ZW0uUHJpb3IgdG8gdGhp
+cyBwYXRjaCwNCj4gPiA+IGdlbmVyaWMvNDY1IGlzIGZhaWxlZCB1bmRlciB0aGUgeGZzIGZpbGUg
+c3lzdGVtLg0KPiA+ID4gDQo+ID4gPiANCmh0dHBzOi8vZ2l0Lmtlcm5lbC5vcmcvcHViL3NjbS9s
+aW51eC9rZXJuZWwvZ2l0L3RvcnZhbGRzL2xpbnV4LmdpdC9jb21taXQvP2lkPWVlNzBkYWFiYTgy
+ZDcwNzY2ZDA3MjNiNzQzZDlmZGViM2IwNjEwMmENCj4gPiA+IA0KPiA+ID4gTm93LCB1bmRlciB0
+aGUgeGZzIGZpbGUgc3lzdGVtLCBnZW5lcmljLzQ2NSBpcyBwYXNzZWQsIGJ1dCB3aGVuIEkNCj4g
+PiA+IHVzZQ0KPiA+ID4gaXQgdG8gdGVzdCBORlMsIHdoaWxlIHRoZSBzZXJ2ZXIgdXNpbmcgdGhl
+IHhmcyBmaWxlIHN5c3RlbSwgdGhlDQo+ID4gPiB0ZXN0IHdpbGwgc3RpbGwgZmFpbC4NCj4gPiA+
+IEkgdGhpbmsgaXQgaXMgYSBuZnMncyBidWcuSSBkb25ub3Qga25vdyB3aGVyZSBpcyBpdC4NCj4g
+PiANCj4gPiBnZW5lcmljLzQ2NSBzYXlzICJUZXN0IGlfc2l6ZSBpcyB1cGRhdGVkIHByb3Blcmx5
+IHVuZGVyIGRpbw0KPiA+IHJlYWQvd3JpdGUiLg0KPiA+IFNvIEkgZ3Vlc3MgaXQncyBkb2luZyBz
+b21lIGRpcmVjdCBJTyB0aGF0IGFwcGVuZHMgdG8gYSBmaWxlIGFuZA0KPiA+IHRoZW4gYQ0KPiA+
+IHN0YXQgdG8gY29uZmlybSB0aGF0IHdlIGdldCB0aGUgbmV3IGlfc2l6ZT8NCj4gPiANCj4gPiBJ
+ZiB0aGlzIGlzbid0IHdvcmtpbmcgd2hlbiBydW4gb24gYW4gTkZTIGZpbGVzeXN0ZW0sIHRoZW4g
+SSB0aGluaw0KPiA+IGVpdGhlcg0KPiA+IHRoZSBjbGllbnQgaXNuJ3QgYXNraW5nIHRoZSBzZXJ2
+ZXIgZm9yIHRoZSBuZXcgaV9zaXplLCBvciBtYXliZQ0KPiA+IGl0J3MNCj4gPiBhc2tpbmcgYnV0
+IGdldHRpbmcgYSBiYWQgcmVzcG9uc2UuICBUaGUgYmFkIHJlc3BvbnNlIG1pZ2h0IGhhdmUgdGhl
+DQo+ID4gb2xkDQo+ID4gaV9zaXplLiAgT3IgSSB3b25kZXIgaWYgdGhlIGNsaWVudCB3b3VsZCBi
+ZSBjb25mdXNlZCBpZiB0aGUgc2VydmVyDQo+ID4gZmFpbGVkIHRvIHVwZGF0ZSB0aGUgY2hhbmdl
+IGF0dHJpYnV0ZSAoaV92ZXJzaW9uKSBmb3Igc29tZSByZWFzb24/DQo+ID4gDQo+ID4gRG9lcyB0
+aGlzIHRlc3QgZmFpbCB3aGVuIHdlIGV4cG9ydCBvdGhlciBmaWxlc3lzdGVtcz8gIElzIHRoZQ0K
+PiA+IGZhaWx1cmUNCj4gPiBuZXcsIG9yIGhhcyBpdCBhbHdheXMgZmFpbGVkPw0KPiANCj4gZXh0
+NCBhbmQgeGZzIGFyZSBib3RoIFBBU1Mgbm93Lg0KPiBPbiB0aGUgbmZzLHRoZSBmYWlsdXJlIGlz
+IG5vdCBuZXcsaXQgc2VlbXMgdG8gYmUgYWx3YXlzIGZhaWxlZC4NCj4gDQo+ID4gLS1iLg0KPiA+
+IC0tDQo+ID4gVG8gdW5zdWJzY3JpYmUgZnJvbSB0aGlzIGxpc3Q6IHNlbmQgdGhlIGxpbmUgInVu
+c3Vic2NyaWJlIGxpbnV4LQ0KPiA+IG5mcyIgaW4NCj4gPiB0aGUgYm9keSBvZiBhIG1lc3NhZ2Ug
+dG8gbWFqb3Jkb21vQHZnZXIua2VybmVsLm9yZw0KPiA+IE1vcmUgbWFqb3Jkb21vIGluZm8gYXQg
+IGh0dHA6Ly92Z2VyLmtlcm5lbC5vcmcvbWFqb3Jkb21vLWluZm8uaHRtbA0KPiA+IA0KPiA+IA0K
+PiANCj4gRm9yIHRoZSBnZW5lcmljLzQ2NSB0ZXN0IG9mIHhmc3Rlc3QuIEkgaW50ZXJjZXB0ZWQg
+dGhlIHRjcGR1bXANCj4gIGRhdGEgaW4gYSBzaW5nbGUgbG9vcC4gKFNlbnQgYSAxTSBmaWxlIGlu
+IHRoZSBsb29wKQ0KPiANCj4gRm9yIHRoZSBORlMgZmlsZSBzeXN0ZW0sIGl0IGlzIGRpdmlkZWQg
+aW50byA0IHJlcXVlc3RzIGFuZCBpcyByZWFkDQo+IGFuZCB3cml0dGVuIDQgdGltZXMuRm9yIG11
+bHRpLXRocmVhZGVkIG9wZXJhdGlvbnMsIHRoZXNlIDQNCj4gcmVhZC93cml0ZSBvcGVyYXRpb25z
+IG1heSBjYXVzZSBjb21wZXRpdGlvbiwgcmVzdWx0aW5nIGluDQo+IGluY29tcGxldGUgY29udGVu
+dCBiZWluZyByZWFkIGR1cmluZyBhIHJlYWQgb3BlcmF0aW9uLg0KPiAoQXQgb25lIGZhaWwgdHJ5
+LCB0aGUgcmVhZCBvcGVyYXRpb24gcmVhZHMgdGhlIGNvbnRlbnRzIA0KPiBvZiB0aGUgZmlsZSB3
+aGVuIHRoZSB0aGlyZCBwYWdlIGlzIHdyaXR0ZW4pDQo+IA0KPiBTbywgaXMgdGhlIE5GUyBmaWxl
+IHN5c3RlbSBub3Qgc3VpdGFibGUgZm9yIHRoaXMgdGVzdD8NCj4gDQo+IA0KPiB3cml0ZSAgICAg
+ICB3cml0ZSAgICAgICB3cml0ZSAgICAgICAgd3JpdGUNCj4gPiBhYWFhLi4uLi4uLnxhYWFhLi4u
+Li4uLnxhYWFhLi4uLi4uLi58YWFhYS4uLi4uLi58DQo+IA0KPiBecmVhZCAgICAgICBecmVhZCAg
+ICAgICBecmVhZCAgICAgICAgXnJlYWQgICAgICAgXjFNIA0KPiANCj4gDQo+IEZhaWwNCj4gKFRo
+ZXJlIGFyZSBtYW55IGZhaWx1cmUgc2NlbmFyaW9zLiBUaGlzIGlzIG9ubHkgb25lIG9mIHRoZW0p
+DQo+IA0KPiA+IDAwMDAwMDAwMDAwfGFhYWEuLi4uLi4ufGFhYWEuLi4uLi4uLnxhYWFhLi4uLi4u
+LnwNCj4gDQo+IF5yZWFkICAgICAgICAgICAgICAgICAgIF5yZWFkICAgICAgIF5yZWFkICAgICAg
+ICBecmVhZCAgICAgICBeMU0gDQo+IA0KPiANCj4gUEFTUw0KPiA+IDAwMDAwMDAwMDAwfDAwMDAw
+MDAwMDAwfDAwMDAwMDAwMDAwfDAwMDAwMDAwMDAwfA0KPiANCj4gXnJlYWQgICAgICAgICAgICAg
+ICAgICAgXnJlYWQgICAgICAgICAgICAgICAgICAgXnJlYWQgICAgICAgICAgICAgICAgDQo+ICBe
+cmVhZCAgICAgICAgICAgICAgICAgXjFNIA0KPiANCj4gUEFTUw0KPiA+IGFhYWEuLi4uLi4ufGFh
+YWEuLi4uLi4ufGFhYWEuLi4uLi4uLnxhYWFhLi4uLi4uLnwNCj4gDQo+IF5yZWFkICAgICAgIF5y
+ZWFkICAgICAgIF5yZWFkICAgICAgICBecmVhZCAgICAgICBeMU0gDQo+IA0KPiBUaGFua3MNCj4g
+WHUNCg0KQnJva2VuIHRlc3QsIGFmYWljcy4gSXQncyBhIGZ1bmRhbWVudGFsIHRlbmFudCBvZiBP
+X0RJUkVDVCB0aGF0IHRoZXJlDQphcmUgbm8gZ3VhcmRyYWlscy4NCg0KQXBwbGljYXRpb25zIHRo
+YXQgY2hvb3NlIHRvIHVzZSBPX0RJUkVDVCBhcmUgcmVzcG9uc2libGUgZm9yIHByb3ZpZGluZw0K
+dGhlaXIgb3duIGxvY2tpbmcsIGFuZCBmb3IgZW5zdXJpbmcgdGhhdCByZWFkcyBhbmQgd3JpdGVz
+IHRvIHRoZSBzYW1lDQpvZmZzZXRzIGRvbid0IGNvbmZsaWN0LiBUaGUga2VybmVsIGxvY2tpbmcg
+dG8gZW5zdXJlIHRoaXMga2luZCBvZg0KY29uc2lzdGVuY3kgZm9yIGJ1ZmZlcmVkIHJlYWRzL3dy
+aXRlcyBpcyBub3JtYWxseSBkb25lIGF0IHRoZSBwYWdlDQpjYWNoZSBsZXZlbCwgc28gd2hlbiB5
+b3UgcmVtb3ZlIHRoZSBwYWdlIGNhY2hlLi4uDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51
+eCBORlMgY2xpZW50IG1haW50YWluZXIsIEhhbW1lcnNwYWNlDQp0cm9uZC5teWtsZWJ1c3RAaGFt
+bWVyc3BhY2UuY29tDQoNCg0K
