@@ -1,80 +1,34 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx141.netapp.com ([216.240.21.12]:54990 "EHLO mx141.netapp.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1729347AbeHOSLt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 15 Aug 2018 14:11:49 -0400
-From: "Schumaker, Anna" <Anna.Schumaker@netapp.com>
-To: "trondmy@gmail.com" <trondmy@gmail.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] pNFS: When updating the stateid in layoutreturn, also
- update the recall range
-Date: Wed, 15 Aug 2018 15:19:11 +0000
-Message-ID: <70c1e06838b2f5bfcfddf1e427aa3f5ee11e8b16.camel@netapp.com>
-References: <20180814104759.20556-1-trond.myklebust@hammerspace.com>
-In-Reply-To: <20180814104759.20556-1-trond.myklebust@hammerspace.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from mx3-rdu2.redhat.com ([66.187.233.73]:43250 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1729293AbeHOSkb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 15 Aug 2018 14:40:31 -0400
+From: Steve Dickson <SteveD@RedHat.com>
+Subject: ANNOUNCE: rpcbind-1.2.5 released.
+To: libtirpc <libtirpc-devel@lists.sourceforge.net>
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Message-ID: <8fa4531b-4cb2-fa11-5241-f396e8747271@RedHat.com>
+Date: Wed, 15 Aug 2018 11:47:51 -0400
 MIME-Version: 1.0
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-SGkgVHJvbmQsDQoNCk9uIFR1ZSwgMjAxOC0wOC0xNCBhdCAwNjo0NyAtMDQwMCwgVHJvbmQgTXlr
-bGVidXN0IHdyb3RlOg0KPiBXaGVuIHdlIHVwZGF0ZSB0aGUgbGF5b3V0IHN0YXRlaWQgaW4NCj4g
-bmZzNF9sYXlvdXRyZXR1cm5fcmVmcmVzaF9zdGF0ZWlkLCB3ZQ0KPiBzaG91bGQgYWxzbyB1cGRh
-dGUgdGhlIHJhbmdlIGluIG9yZGVyIHRvIGxldCB0aGUgc2VydmVyIGtub3cgd2UncmUNCj4gYWN0
-dWFsbHkNCj4gcmV0dXJuaW5nIGV2ZXJ5dGhpbmcuDQo+IA0KPiBGaXhlczogMTZjMjc4ZGJmYTYz
-ICgicG5mczogRml4IGhhbmRsaW5nIG9mIE5GUzRFUlJfT0xEX1NUQVRFSUQNCj4gcmVwbGllcy4u
-LiIpDQo+IFNpZ25lZC1vZmYtYnk6IFRyb25kIE15a2xlYnVzdCA8dHJvbmQubXlrbGVidXN0QGhh
-bW1lcnNwYWNlLmNvbT4NCj4gLS0tDQo+ICBmcy9uZnMvbmZzNHByb2MuYyB8IDMgKysrDQo+ICBm
-cy9uZnMvcG5mcy5jICAgICB8IDUgKysrKy0NCj4gIGZzL25mcy9wbmZzLmggICAgIHwgNCArKyst
-DQo+ICAzIGZpbGVzIGNoYW5nZWQsIDEwIGluc2VydGlvbnMoKyksIDIgZGVsZXRpb25zKC0pDQo+
-IA0KPiBkaWZmIC0tZ2l0IGEvZnMvbmZzL25mczRwcm9jLmMgYi9mcy9uZnMvbmZzNHByb2MuYw0K
-PiBpbmRleCA5YTM0OTU4N2QwNzcuLmE1ZjBkZTY4ZTcxMCAxMDA2NDQNCj4gLS0tIGEvZnMvbmZz
-L25mczRwcm9jLmMNCj4gKysrIGIvZnMvbmZzL25mczRwcm9jLmMNCj4gQEAgLTMyNDYsNiArMzI0
-Niw3IEBAIHN0YXRpYyB2b2lkIG5mczRfY2xvc2VfZG9uZShzdHJ1Y3QgcnBjX3Rhc2sNCj4gKnRh
-c2ssIHZvaWQgKmRhdGEpDQo+ICAJCQlicmVhazsNCj4gIAkJY2FzZSAtTkZTNEVSUl9PTERfU1RB
-VEVJRDoNCj4gIAkJCWlmDQo+IChuZnM0X2xheW91dHJldHVybl9yZWZyZXNoX3N0YXRlaWQoJmNh
-bGxkYXRhLT5hcmcubHJfYXJncy0+c3RhdGVpZCwNCj4gKwkJCQkJCSZjYWxsZGF0YS0+YXJnLmxy
-X2FyZ3MtDQo+ID5yYW5nZSwNCj4gIAkJCQkJCWNhbGxkYXRhLT5pbm9kZSkpDQo+ICAJCQkJZ290
-byBscl9yZXN0YXJ0Ow0KPiAgCQkJLyogRmFsbHRocm91Z2ggKi8NCj4gQEAgLTU5NTAsNiArNTk1
-MSw3IEBAIHN0YXRpYyB2b2lkIG5mczRfZGVsZWdyZXR1cm5fZG9uZShzdHJ1Y3QNCj4gcnBjX3Rh
-c2sgKnRhc2ssIHZvaWQgKmNhbGxkYXRhKQ0KPiAgCQkJYnJlYWs7DQo+ICAJCWNhc2UgLU5GUzRF
-UlJfT0xEX1NUQVRFSUQ6DQo+ICAJCQlpZiAobmZzNF9sYXlvdXRyZXR1cm5fcmVmcmVzaF9zdGF0
-ZWlkKCZkYXRhLQ0KPiA+YXJncy5scl9hcmdzLT5zdGF0ZWlkLA0KPiArCQkJCQkJJmRhdGEtPmFy
-Z3MubHJfYXJncy0NCj4gPnJhbmdlLA0KPiAgCQkJCQkJZGF0YS0+aW5vZGUpKQ0KPiAgCQkJCWdv
-dG8gbHJfcmVzdGFydDsNCj4gIAkJCS8qIEZhbGx0aHJvdWdoICovDQo+IEBAIC04ODk5LDYgKzg5
-MDEsNyBAQCBzdGF0aWMgdm9pZCBuZnM0X2xheW91dHJldHVybl9kb25lKHN0cnVjdA0KPiBycGNf
-dGFzayAqdGFzaywgdm9pZCAqY2FsbGRhdGEpDQo+ICAJc3dpdGNoICh0YXNrLT50a19zdGF0dXMp
-IHsNCj4gIAljYXNlIC1ORlM0RVJSX09MRF9TVEFURUlEOg0KPiAgCQlpZiAobmZzNF9sYXlvdXRy
-ZXR1cm5fcmVmcmVzaF9zdGF0ZWlkKCZscnAtDQo+ID5hcmdzLnN0YXRlaWQsDQo+ICsJCQkJCSZs
-cnAtPmFyZ3MucmFuZ2UsDQo+ICAJCQkJCWxycC0+YXJncy5pbm9kZSkpDQo+ICAJCQlnb3RvIG91
-dF9yZXN0YXJ0Ow0KPiAgCQkvKiBGYWxsdGhyb3VnaCAqLw0KPiBkaWZmIC0tZ2l0IGEvZnMvbmZz
-L3BuZnMuYyBiL2ZzL25mcy9wbmZzLmMNCj4gaW5kZXggOGYwM2JkYjE5MWFhLi44ZWYzYzFmZWVl
-OTIgMTAwNjQ0DQo+IC0tLSBhL2ZzL25mcy9wbmZzLmMNCj4gKysrIGIvZnMvbmZzL3BuZnMuYw0K
-PiBAQCAtMzYxLDcgKzM2MSw5IEBAIHBuZnNfY2xlYXJfbHNlZ19zdGF0ZShzdHJ1Y3QgcG5mc19s
-YXlvdXRfc2VnbWVudA0KPiAqbHNlZywNCj4gIC8qDQo+ICAgKiBVcGRhdGUgdGhlIHNlcWlkIG9m
-IGEgbGF5b3V0IHN0YXRlaWQNCj4gICAqLw0KPiAtYm9vbCBuZnM0X2xheW91dHJldHVybl9yZWZy
-ZXNoX3N0YXRlaWQobmZzNF9zdGF0ZWlkICpkc3QsIHN0cnVjdA0KPiBpbm9kZSAqaW5vZGUpDQo+
-ICtib29sIG5mczRfbGF5b3V0cmV0dXJuX3JlZnJlc2hfc3RhdGVpZChuZnM0X3N0YXRlaWQgKmRz
-dCwNCj4gKwkJc3RydWN0IHBuZnNfbGF5b3V0X3JhbmdlICpkc3RfcmFuZ2UsDQo+ICsJCXN0cnVj
-dCBpbm9kZSAqaW5vZGUpDQo+ICB7DQo+ICAJc3RydWN0IHBuZnNfbGF5b3V0X2hkciAqbG87DQo+
-ICAJc3RydWN0IHBuZnNfbGF5b3V0X3JhbmdlIHJhbmdlID0gew0KPiBAQCAtMzc5LDYgKzM4MSw3
-IEBAIGJvb2wNCj4gbmZzNF9sYXlvdXRyZXR1cm5fcmVmcmVzaF9zdGF0ZWlkKG5mczRfc3RhdGVp
-ZCAqZHN0LCBzdHJ1Y3QgaW5vZGUNCj4gKmlub2RlKQ0KPiAgCQllcnIgPSBwbmZzX21hcmtfbWF0
-Y2hpbmdfbHNlZ3NfcmV0dXJuKGxvLCAmaGVhZCwNCj4gJnJhbmdlLCAwKTsNCj4gIAkJaWYgKGVy
-ciAhPSAtRUJVU1kpIHsNCj4gIAkJCWRzdC0+c2VxaWQgPSBsby0+cGxoX3N0YXRlaWQuc2VxaWQ7
-DQo+ICsJCQkqZHN0X3JhbmdlID0gcmFuZ2U7DQo+ICAJCQlyZXQgPSB0cnVlOw0KPiAgCQl9DQo+
-ICAJfQ0KPiBkaWZmIC0tZ2l0IGEvZnMvbmZzL3BuZnMuaCBiL2ZzL25mcy9wbmZzLmgNCj4gaW5k
-ZXggMWEzOGEzYjUzM2I1Li5mNDkwZDE5ZjcyOTAgMTAwNjQ0DQo+IC0tLSBhL2ZzL25mcy9wbmZz
-LmgNCj4gKysrIGIvZnMvbmZzL3BuZnMuaA0KPiBAQCAtMjU5LDcgKzI1OSw5IEBAIGludCBwbmZz
-X2Rlc3Ryb3lfbGF5b3V0c19ieWZzaWQoc3RydWN0IG5mc19jbGllbnQNCj4gKmNscCwNCj4gIAkJ
-Ym9vbCBpc19yZWNhbGwpOw0KPiAgaW50IHBuZnNfZGVzdHJveV9sYXlvdXRzX2J5Y2xpZChzdHJ1
-Y3QgbmZzX2NsaWVudCAqY2xwLA0KPiAgCQlib29sIGlzX3JlY2FsbCk7DQo+IC1ib29sIG5mczRf
-bGF5b3V0cmV0dXJuX3JlZnJlc2hfc3RhdGVpZChuZnM0X3N0YXRlaWQgKmRzdCwgc3RydWN0DQo+
-IGlub2RlICppbm9kZSk7DQo+ICtib29sIG5mczRfbGF5b3V0cmV0dXJuX3JlZnJlc2hfc3RhdGVp
-ZChuZnM0X3N0YXRlaWQgKmRzdCwNCj4gKwkJc3RydWN0IHBuZnNfbGF5b3V0X3JhbmdlICpkc3Rf
-cmFuZ2UsDQo+ICsJCXN0cnVjdCBpbm9kZSAqaW5vZGUpOw0KDQpDYW4geW91IHBsZWFzZSBhbHNv
-IHVwZGF0ZSB0aGUgZnVuY3Rpb24gc2lnbmF0dXJlIHVzZWQgd2hlbg0KQ09ORklHX05GU19WNF8x
-PW4/DQoNClRoYW5rcywNCkFubmENCg0KPiAgdm9pZCBwbmZzX3B1dF9sYXlvdXRfaGRyKHN0cnVj
-dCBwbmZzX2xheW91dF9oZHIgKmxvKTsNCj4gIHZvaWQgcG5mc19zZXRfbGF5b3V0X3N0YXRlaWQo
-c3RydWN0IHBuZnNfbGF5b3V0X2hkciAqbG8sDQo+ICAJCQkgICAgIGNvbnN0IG5mczRfc3RhdGVp
-ZCAqbmV3LA0K
+This release contains:
+- Remote calls are disabled by default
+- Fixed a few memory issues
+- Fixed a few build and autotools issue
+- Fixed a few boot and systemd issues. 
+
+See the 1.2.5-ChangeLog for more details.  
+
+Both the tarball and change log can be found at
+  http://sourceforge.net/projects/rpcbind
+
+The git tree was moved to:
+   git://linux-nfs.org/~steved/rpcbind.git
+
+Please send comments/bugs to linux-nfs@vger.kernel.org and/or
+libtirpc-devel@lists.sourceforge.net
+
+steved.
