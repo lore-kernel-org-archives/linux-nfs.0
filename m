@@ -1,75 +1,116 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pg1-f196.google.com ([209.85.215.196]:47000 "EHLO
-        mail-pg1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725971AbeHPVga (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Aug 2018 17:36:30 -0400
+Received: from mx143.netapp.com ([216.240.21.24]:5685 "EHLO mx143.netapp.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1725899AbeHPV5X (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 16 Aug 2018 17:57:23 -0400
+From: "Schumaker, Anna" <Anna.Schumaker@netapp.com>
+To: "trond.myklebust@hammerspace.com" <trond.myklebust@hammerspace.com>,
+        "Bill.Baker@Oracle.com" <Bill.Baker@Oracle.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v2] NFSv4 client live hangs after live data migration
+ recovery
+Date: Thu, 16 Aug 2018 18:57:08 +0000
+Message-ID: <f1608ed1629132fd79d9bc0979e4b8d4230b0ba7.camel@netapp.com>
+References: <1529443498-24846-1-git-send-email-bill.baker@oracle.com>
+         <0b76bdfc-7712-2c20-2d43-7ddd5406e057@Oracle.com>
+In-Reply-To: <0b76bdfc-7712-2c20-2d43-7ddd5406e057@Oracle.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-References: <153313703562.13253.5766498657900728120.stgit@warthog.procyon.org.uk>
- <17763.1534350685@warthog.procyon.org.uk> <87pnyiew8x.fsf@xmission.com>
- <CAH2r5muKOWBe9zMM8duNJ3rp1bzQh-mUj5zYoARO5pmc4de_+A@mail.gmail.com> <87tvnuz0ms.fsf@suse.com>
-In-Reply-To: <87tvnuz0ms.fsf@suse.com>
-From: Steve French <smfrench@gmail.com>
-Date: Thu, 16 Aug 2018 13:36:13 -0500
-Message-ID: <CAH2r5mvLSf2Cqdi9LwVre2MyiSh+7ZxGgRp_Am3D_090oFDCzw@mail.gmail.com>
-Subject: Re: Should we split the network filesystem setup into two phases?
-To: =?UTF-8?Q?Aur=C3=A9lien_Aptel?= <aaptel@suse.com>
-Cc: "Eric W. Biederman" <ebiederm@xmission.com>,
-        David Howells <dhowells@redhat.com>,
-        trond.myklebust@hammerspace.com,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Steve French <sfrench@samba.org>,
-        Steve Dickson <steved@redhat.com>,
-        Al Viro <viro@zeniv.linux.org.uk>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        ebiederm@redhat.com, linux-api@vger.kernel.org,
-        linux-security-module@vger.kernel.org,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>, linux-nfs@vger.kernel.org,
-        CIFS <linux-cifs@vger.kernel.org>, linux-afs@lists.infradead.org,
-        ceph-devel@vger.kernel.org, v9fs-developer@lists.sourceforge.net
-Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Aug 16, 2018 at 12:23 PM Aur=C3=A9lien Aptel <aaptel@suse.com> wrot=
-e:
->
-> Steve French <smfrench@gmail.com> writes:
-> > In cifs we attempt to match new mounts to existing tree connections
-> > (instances of connections to a \\server\share) from other mount(s)
-> > based first on whether security settings match (e.g. are both
-> > Kerberos) and then on whether encryption is on/off and whether this is
-> > a snapshot mount (smb3 previous versions feature).  If neither is
-> > mounted with a snaphsot and the encryption settings match then
-> > we will use the same tree id to talk with the server as the other
-> > mounts use.  Interesting idea to allow mount to force a new
-> > tree id.
->
-> We actually already have this mount option in cifs.ko, it's "nosharesock"=
-.
-
-Yes - good point.  It is very easy to do on cifs.  I mainly use that to sim=
-ulate
-multiple clients for testing servers (so each mount to the same server
-whether or not the share matched, looks like a different client, coming
-from a different socket and thus with different session ids and tree
-ids as well).
-
-It is very useful when trying to simulate multiple clients running to the s=
-ame
-server while using only one client machine (or VM).
-
-> > What was the NFS mount option you were talking about?
-> > Looking at the nfs man page the only one that looked similar
-> > was "nosharecache"
-
-The nfs man page apparently discourages its use:
-
-"As of kernel 2.6.18, the behavior specified by nosharecache is legacy
-caching behavior. This is  considered  a  data risk"
-
-
---=20
-Thanks,
-
-Steve
+T24gVGh1LCAyMDE4LTA4LTE2IGF0IDEwOjU5IC0wNTAwLCBCaWxsIEJha2VyIHdyb3RlOg0KPiBI
+aSwgVHJvbmQsIGV0IGFsLA0KDQpIaSBCaWxsLA0KDQo+IA0KPiBIYXZlIHlvdSBoYWQgYSBjaGFu
+Y2UgdG8gbG9vayBhdCB0aGlzIHBhdGNoPyAgSSdkIGxpa2UgdG8gZ2V0IHNvbWUNCj4gZmVlZGJh
+Y2sgKG9yIGFjY2VwdGFuY2UgaW50byB0aGUgbmV4dCBtZXJnZSB3aW5kb3cpLiAgQXMgaXQgc3Rh
+bmRzDQo+IG5vdywgdGhlIGxpdmUgZGF0YSBtaWdyYXRpb24gZmVhdHVyZSBpcyBjb21wbGV0ZWx5
+IGJyb2tlbiBpbiB0aGUNCj4gTkZTdjQgY2xpZW50IGluIHRoZSBjdXJyZW50IHVwc3RyZWFtIGtl
+cm5lbC4NCg0KSSBoYXZlIHRoaXMgcGF0Y2ggcXVldWVkIHVwIGluIG15IGxpbnV4LW5leHQgYnJh
+bmNoIGZvciA0LjE5DQoNClRoYW5rcyBmb3IgY2hlY2tpbmchDQpBbm5hDQoNCj4gDQo+IFRoYW5r
+cywNCj4gQg0KPiANCj4gT24gMDYvMTkvMjAxOCAwNDoyNCBQTSwgQmlsbCBCYWtlciB3cm90ZToN
+Cj4gPiBGcm9tOiBCaWxsIEJha2VyIDxCaWxsLkJha2VyQE9yYWNsZS5jb20+DQo+ID4gDQo+ID4g
+QWZ0ZXIgYSBsaXZlIGRhdGEgbWlncmF0aW9uIGV2ZW50IGF0IHRoZSBORlMgc2VydmVyLCB0aGUg
+Y2xpZW50IG1heQ0KPiA+IHNlbmQNCj4gPiBJL08gcmVxdWVzdHMgdG8gdGhlIHdyb25nIHNlcnZl
+ciwgY2F1c2luZyBhIGxpdmUgaGFuZyBkdWUgdG8NCj4gPiByZXBlYXRlZA0KPiA+IHJlY292ZXJ5
+IGV2ZW50cy4gIE9uIHRoZSB3aXJlLCB0aGlzIHdpbGwgYXBwZWFyIGFzIGFuIEkvTyByZXF1ZXN0
+DQo+ID4gZmFpbGluZw0KPiA+IHdpdGggTkZTNEVSUl9CQURTRVNTSU9OLCBmb2xsb3dlZCBieSBz
+dWNjZXNzZnVsIENSRUFURV9TRVNTSU9OLA0KPiA+IHJlcGVhdGVkbHkuDQo+ID4gTkZTNEVSUl9C
+QURTU0VTU0lPTiBpcyByZXR1cm5lZCBiZWNhdXNlIHRoZSBzZXNzaW9uIElEIGJlaW5nIHVzZWQN
+Cj4gPiB3YXMNCj4gPiBpc3N1ZWQgYnkgdGhlIG90aGVyIHNlcnZlciBhbmQgaXMgbm90IHZhbGlk
+IGF0IHRoZSBvbGQgc2VydmVyLg0KPiA+IA0KPiA+IFRoZSBmYWlsdXJlIGlzIGNhdXNlZCBieSBh
+c3luYyB3b3JrZXIgdGhyZWFkcyBoYXZpbmcgY2FjaGVkIHRoZQ0KPiA+IHRyYW5zcG9ydA0KPiA+
+ICh4cHJ0KSBpbiB0aGUgcnBjX3Rhc2sgc3RydWN0dXJlLiAgQWZ0ZXIgdGhlIG1pZ3JhdGlvbiBy
+ZWNvdmVyeQ0KPiA+IGNvbXBsZXRlcywNCj4gPiB0aGUgdGFzayBpcyByZWRpc3BhdGNoZWQgYW5k
+IHRoZSB0YXNrIHJlc2VuZHMgdGhlIHJlcXVlc3QgdG8gdGhlDQo+ID4gd3JvbmcNCj4gPiBzZXJ2
+ZXIgYmFzZWQgb24gdGhlIG9sZCB2YWx1ZSBzdGlsbCBwcmVzZW50IGluIHRrX3hwcnQuDQo+ID4g
+DQo+ID4gVGhlIHNvbHV0aW9uIGlzIHRvIHJlY29tcHV0ZSB0aGUgdGtfeHBydCBmaWVsZCBvZiB0
+aGUgcnBjX3Rhc2sNCj4gPiBzdHJ1Y3R1cmUNCj4gPiBzbyB0aGF0IHRoZSByZXF1ZXN0IGdvZXMg
+dG8gdGhlIGNvcnJlY3Qgc2VydmVyLg0KPiA+IA0KPiA+IFNpZ25lZC1vZmYtYnk6IEJpbGwgQmFr
+ZXIgPGJpbGwuYmFrZXJAb3JhY2xlLmNvbT4NCj4gPiBSZXZpZXdlZC1ieTogQ2h1Y2sgTGV2ZXIg
+PGNodWNrLmxldmVyQG9yYWNsZS5jb20+DQo+ID4gVGVzdGVkLWJ5OiBIZWxlbiBDaGFvIDxoZWxl
+bi5jaGFvQG9yYWNsZS5jb20+DQo+ID4gRml4ZXM6IGZiNDNkMTcyMTBiYSAoIlNVTlJQQzogVXNl
+IHRoZSBtdWx0aXBhdGggaXRlcmF0b3IgdG8gYXNzaWduDQo+ID4gYSAuLi4iKQ0KPiA+IENjOiBz
+dGFibGVAdmdlci5rZXJuZWwub3JnICM0LjkNCj4gPiAtLS0NCj4gPiAgIGZzL25mcy9uZnM0cHJv
+Yy5jICAgICAgICAgICB8ICA5ICsrKysrKysrLQ0KPiA+ICAgaW5jbHVkZS9saW51eC9zdW5ycGMv
+Y2xudC5oIHwgIDEgKw0KPiA+ICAgbmV0L3N1bnJwYy9jbG50LmMgICAgICAgICAgIHwgMjggKysr
+KysrKysrKysrKysrKysrKystLS0tLS0tLQ0KPiA+ICAgMyBmaWxlcyBjaGFuZ2VkLCAyOSBpbnNl
+cnRpb25zKCspLCA5IGRlbGV0aW9ucygtKQ0KPiA+IA0KPiA+IENoYW5nZXMgc2luY2UgdjE6DQo+
+ID4gLSBBZGRlZCAiRml4ZXM6IiBhbmQgIkNjOiBzdGFibGUiIHRhZ3MNCj4gPiANCj4gPiBkaWZm
+IC0tZ2l0IGEvZnMvbmZzL25mczRwcm9jLmMgYi9mcy9uZnMvbmZzNHByb2MuYw0KPiA+IGluZGV4
+IGVkNDUwOTAuLjJiMTU1MmIgMTAwNjQ0DQo+ID4gLS0tIGEvZnMvbmZzL25mczRwcm9jLmMNCj4g
+PiArKysgYi9mcy9uZnMvbmZzNHByb2MuYw0KPiA+IEBAIC01ODEsOCArNTgxLDE1IEBAIGludCBu
+ZnM0X2hhbmRsZV9leGNlcHRpb24oc3RydWN0IG5mc19zZXJ2ZXINCj4gPiAqc2VydmVyLCBpbnQg
+ZXJyb3Jjb2RlLCBzdHJ1Y3QgbmZzNF8NCj4gPiAgIAkJcmV0ID0gLUVJTzsNCj4gPiAgIAlyZXR1
+cm4gcmV0Ow0KPiA+ICAgb3V0X3JldHJ5Og0KPiA+IC0JaWYgKHJldCA9PSAwKQ0KPiA+ICsJaWYg
+KHJldCA9PSAwKSB7DQo+ID4gICAJCWV4Y2VwdGlvbi0+cmV0cnkgPSAxOw0KPiA+ICsJCS8qDQo+
+ID4gKwkJICogRm9yIE5GUzRFUlJfTU9WRUQsIHRoZSBjbGllbnQgdHJhbnNwb3J0IHdpbGwgbmVl
+ZCB0bw0KPiA+ICsJCSAqIGJlIHJlY29tcHV0ZWQgYWZ0ZXIgbWlncmF0aW9uIHJlY292ZXJ5IGhh
+cw0KPiA+IGNvbXBsZXRlZC4NCj4gPiArCQkgKi8NCj4gPiArCQlpZiAoZXJyb3Jjb2RlID09IC1O
+RlM0RVJSX01PVkVEKQ0KPiA+ICsJCQlycGNfdGFza19yZWxlYXNlX3RyYW5zcG9ydCh0YXNrKTsN
+Cj4gPiArCX0NCj4gPiAgIAlyZXR1cm4gcmV0Ow0KPiA+ICAgfQ0KPiA+ICAgDQo+ID4gZGlmZiAt
+LWdpdCBhL2luY2x1ZGUvbGludXgvc3VucnBjL2NsbnQuaA0KPiA+IGIvaW5jbHVkZS9saW51eC9z
+dW5ycGMvY2xudC5oDQo+ID4gaW5kZXggOWIxMWI2YS4uNzNkNWM0YSAxMDA2NDQNCj4gPiAtLS0g
+YS9pbmNsdWRlL2xpbnV4L3N1bnJwYy9jbG50LmgNCj4gPiArKysgYi9pbmNsdWRlL2xpbnV4L3N1
+bnJwYy9jbG50LmgNCj4gPiBAQCAtMTU2LDYgKzE1Niw3IEBAIGludAkJcnBjX3N3aXRjaF9jbGll
+bnRfdHJhbnNwb3J0KHN0cg0KPiA+IHVjdCBycGNfY2xudCAqLA0KPiA+ICAgDQo+ID4gICB2b2lk
+CQlycGNfc2h1dGRvd25fY2xpZW50KHN0cnVjdCBycGNfY2xudCAqKTsNCj4gPiAgIHZvaWQJCXJw
+Y19yZWxlYXNlX2NsaWVudChzdHJ1Y3QgcnBjX2NsbnQgKik7DQo+ID4gK3ZvaWQJCXJwY190YXNr
+X3JlbGVhc2VfdHJhbnNwb3J0KHN0cnVjdCBycGNfdGFzayAqKTsNCj4gPiAgIHZvaWQJCXJwY190
+YXNrX3JlbGVhc2VfY2xpZW50KHN0cnVjdCBycGNfdGFzayAqKTsNCj4gPiAgIA0KPiA+ICAgaW50
+CQlycGNiX2NyZWF0ZV9sb2NhbChzdHJ1Y3QgbmV0ICopOw0KPiA+IGRpZmYgLS1naXQgYS9uZXQv
+c3VucnBjL2NsbnQuYyBiL25ldC9zdW5ycGMvY2xudC5jDQo+ID4gaW5kZXggZDgzOWMzMy4uMGQ4
+NTQyNSAxMDA2NDQNCj4gPiAtLS0gYS9uZXQvc3VucnBjL2NsbnQuYw0KPiA+ICsrKyBiL25ldC9z
+dW5ycGMvY2xudC5jDQo+ID4gQEAgLTk2NSwxMCArOTY1LDIwIEBAIHN0cnVjdCBycGNfY2xudCAq
+cnBjX2JpbmRfbmV3X3Byb2dyYW0oc3RydWN0DQo+ID4gcnBjX2NsbnQgKm9sZCwNCj4gPiAgIH0N
+Cj4gPiAgIEVYUE9SVF9TWU1CT0xfR1BMKHJwY19iaW5kX25ld19wcm9ncmFtKTsNCj4gPiAgIA0K
+PiA+ICt2b2lkIHJwY190YXNrX3JlbGVhc2VfdHJhbnNwb3J0KHN0cnVjdCBycGNfdGFzayAqdGFz
+aykNCj4gPiArew0KPiA+ICsJc3RydWN0IHJwY194cHJ0ICp4cHJ0ID0gdGFzay0+dGtfeHBydDsN
+Cj4gPiArDQo+ID4gKwlpZiAoeHBydCkgew0KPiA+ICsJCXRhc2stPnRrX3hwcnQgPSBOVUxMOw0K
+PiA+ICsJCXhwcnRfcHV0KHhwcnQpOw0KPiA+ICsJfQ0KPiA+ICt9DQo+ID4gK0VYUE9SVF9TWU1C
+T0xfR1BMKHJwY190YXNrX3JlbGVhc2VfdHJhbnNwb3J0KTsNCj4gPiArDQo+ID4gICB2b2lkIHJw
+Y190YXNrX3JlbGVhc2VfY2xpZW50KHN0cnVjdCBycGNfdGFzayAqdGFzaykNCj4gPiAgIHsNCj4g
+PiAgIAlzdHJ1Y3QgcnBjX2NsbnQgKmNsbnQgPSB0YXNrLT50a19jbGllbnQ7DQo+ID4gLQlzdHJ1
+Y3QgcnBjX3hwcnQgKnhwcnQgPSB0YXNrLT50a194cHJ0Ow0KPiA+ICAgDQo+ID4gICAJaWYgKGNs
+bnQgIT0gTlVMTCkgew0KPiA+ICAgCQkvKiBSZW1vdmUgZnJvbSBjbGllbnQgdGFzayBsaXN0ICov
+DQo+ID4gQEAgLTk3OSwxMiArOTg5LDE0IEBAIHZvaWQgcnBjX3Rhc2tfcmVsZWFzZV9jbGllbnQo
+c3RydWN0IHJwY190YXNrDQo+ID4gKnRhc2spDQo+ID4gICANCj4gPiAgIAkJcnBjX3JlbGVhc2Vf
+Y2xpZW50KGNsbnQpOw0KPiA+ICAgCX0NCj4gPiArCXJwY190YXNrX3JlbGVhc2VfdHJhbnNwb3J0
+KHRhc2spOw0KPiA+ICt9DQo+ID4gICANCj4gPiAtCWlmICh4cHJ0ICE9IE5VTEwpIHsNCj4gPiAt
+CQl0YXNrLT50a194cHJ0ID0gTlVMTDsNCj4gPiAtDQo+ID4gLQkJeHBydF9wdXQoeHBydCk7DQo+
+ID4gLQl9DQo+ID4gK3N0YXRpYw0KPiA+ICt2b2lkIHJwY190YXNrX3NldF90cmFuc3BvcnQoc3Ry
+dWN0IHJwY190YXNrICp0YXNrLCBzdHJ1Y3QgcnBjX2NsbnQNCj4gPiAqY2xudCkNCj4gPiArew0K
+PiA+ICsJaWYgKCF0YXNrLT50a194cHJ0KQ0KPiA+ICsJCXRhc2stPnRrX3hwcnQgPSB4cHJ0X2l0
+ZXJfZ2V0X25leHQoJmNsbnQtPmNsX3hwaSk7DQo+ID4gICB9DQo+ID4gICANCj4gPiAgIHN0YXRp
+Yw0KPiA+IEBAIC05OTIsOCArMTAwNCw3IEBAIHZvaWQgcnBjX3Rhc2tfc2V0X2NsaWVudChzdHJ1
+Y3QgcnBjX3Rhc2sNCj4gPiAqdGFzaywgc3RydWN0IHJwY19jbG50ICpjbG50KQ0KPiA+ICAgew0K
+PiA+ICAgDQo+ID4gICAJaWYgKGNsbnQgIT0gTlVMTCkgew0KPiA+IC0JCWlmICh0YXNrLT50a194
+cHJ0ID09IE5VTEwpDQo+ID4gLQkJCXRhc2stPnRrX3hwcnQgPSB4cHJ0X2l0ZXJfZ2V0X25leHQo
+JmNsbnQtDQo+ID4gPmNsX3hwaSk7DQo+ID4gKwkJcnBjX3Rhc2tfc2V0X3RyYW5zcG9ydCh0YXNr
+LCBjbG50KTsNCj4gPiAgIAkJdGFzay0+dGtfY2xpZW50ID0gY2xudDsNCj4gPiAgIAkJYXRvbWlj
+X2luYygmY2xudC0+Y2xfY291bnQpOw0KPiA+ICAgCQlpZiAoY2xudC0+Y2xfc29mdHJ0cnkpDQo+
+ID4gQEAgLTE1MTIsNiArMTUyMyw3IEBAIHZvaWQgcnBjX2ZvcmNlX3JlYmluZChzdHJ1Y3QgcnBj
+X2NsbnQgKmNsbnQpDQo+ID4gICAJCWNsbnQtPmNsX3Byb2dyYW0tPnZlcnNpb25bY2xudC0+Y2xf
+dmVyc10tDQo+ID4gPmNvdW50c1tpZHhdKys7DQo+ID4gICAJY2xudC0+Y2xfc3RhdHMtPnJwY2Nu
+dCsrOw0KPiA+ICAgCXRhc2stPnRrX2FjdGlvbiA9IGNhbGxfcmVzZXJ2ZTsNCj4gPiArCXJwY190
+YXNrX3NldF90cmFuc3BvcnQodGFzaywgY2xudCk7DQo+ID4gICB9DQo+ID4gICANCj4gPiAgIC8q
+DQo+ID4gDQo+IA0KPiANCg==
