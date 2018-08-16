@@ -1,63 +1,111 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-eopbgr710099.outbound.protection.outlook.com ([40.107.71.99]:27115
-        "EHLO NAM05-BY2-obe.outbound.protection.outlook.com"
+Received: from mx3-rdu2.redhat.com ([66.187.233.73]:44512 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1727526AbeHPT05 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 16 Aug 2018 15:26:57 -0400
-From: Trond Myklebust <trondmy@hammerspace.com>
-To: "bfields@fieldses.org" <bfields@fieldses.org>,
+        id S2392441AbeHPTjB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 16 Aug 2018 15:39:01 -0400
+Message-ID: <db81635e277b32df7b0e708241de08d06d0d4c9a.camel@redhat.com>
+Subject: Re: [PATCH v2 1/4] sunrpc: Enable the kernel to specify the
+ hostname part of service principals
+From: Simo Sorce <simo@redhat.com>
+To: Trond Myklebust <trondmy@hammerspace.com>,
+        "bfields@fieldses.org" <bfields@fieldses.org>,
         "chuck.lever@oracle.com" <chuck.lever@oracle.com>
-CC: "simo@redhat.com" <simo@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v2 1/4] sunrpc: Enable the kernel to specify the hostname
- part of service principals
-Date: Thu, 16 Aug 2018 16:27:23 +0000
-Message-ID: <3e9c0dd18719fdc37a00aa5f5e9cddc8010d24e5.camel@hammerspace.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Date: Thu, 16 Aug 2018 12:39:21 -0400
+In-Reply-To: <3e9c0dd18719fdc37a00aa5f5e9cddc8010d24e5.camel@hammerspace.com>
 References: <20180816160404.2230.55488.stgit@klimt.1015granger.net>
          <20180816160554.2230.58754.stgit@klimt.1015granger.net>
-In-Reply-To: <20180816160554.2230.58754.stgit@klimt.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+         <3e9c0dd18719fdc37a00aa5f5e9cddc8010d24e5.camel@hammerspace.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDE4LTA4LTE2IGF0IDEyOjA1IC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
-QSBtdWx0aS1ob21lZCBORlMgc2VydmVyIG1heSBoYXZlIG1vcmUgdGhhbiBvbmUgIm5mcyIga2V5
-IGluIGl0cw0KPiBrZXl0YWIuIEVuYWJsZSB0aGUga2VybmVsIHRvIHBpY2sgdGhlIGtleSBpdCB3
-YW50cyBhcyBhIG1hY2hpbmUNCj4gY3JlZGVudGlhbCB3aGVuIGVzdGFibGlzaGluZyBhIEdTUyBj
-b250ZXh0Lg0KPiANCj4gVGhpcyBpcyB1c2VmdWwgZm9yIEdTUy1wcm90ZWN0ZWQgTkZTdjQuMCBj
-YWxsYmFja3MsIHdoaWNoIGFyZQ0KPiByZXF1aXJlZCBieSBSRkMgNzUzMCBTMy4zLjMgdG8gdXNl
-IHRoZSBzYW1lIHByaW5jaXBhbCBhcyB0aGUgc2VydmljZQ0KPiBwcmluY2lwYWwgdGhlIGNsaWVu
-dCB1c2VkIHdoZW4gZXN0YWJsaXNoaW5nIGl0cyBsZWFzZS4NCj4gDQo+IEEgY29tcGxlbWVudGFy
-eSBtb2RpZmljYXRpb24gdG8gcnBjLmdzc2QgaXMgcmVxdWlyZWQgdG8gZnVsbHkgZW5hYmxlDQo+
-IHRoaXMgZmVhdHVyZS4NCj4gDQo+IFNpZ25lZC1vZmYtYnk6IENodWNrIExldmVyIDxjaHVjay5s
-ZXZlckBvcmFjbGUuY29tPg0KPiAtLS0NCj4gIG5ldC9zdW5ycGMvYXV0aF9nc3MvYXV0aF9nc3Mu
-YyB8ICAgMjAgKysrKysrKysrKysrKysrKystLS0NCj4gIDEgZmlsZSBjaGFuZ2VkLCAxNyBpbnNl
-cnRpb25zKCspLCAzIGRlbGV0aW9ucygtKQ0KPiANCj4gZGlmZiAtLWdpdCBhL25ldC9zdW5ycGMv
-YXV0aF9nc3MvYXV0aF9nc3MuYw0KPiBiL25ldC9zdW5ycGMvYXV0aF9nc3MvYXV0aF9nc3MuYw0K
-PiBpbmRleCBiZThmMTAzLi4xOTQzZTExIDEwMDY0NA0KPiAtLS0gYS9uZXQvc3VucnBjL2F1dGhf
-Z3NzL2F1dGhfZ3NzLmMNCj4gKysrIGIvbmV0L3N1bnJwYy9hdXRoX2dzcy9hdXRoX2dzcy5jDQo+
-IEBAIC0yODQsNyArMjg0LDEyIEBAIHN0cnVjdCBnc3NfYXV0aCB7DQo+ICAJcmV0dXJuIHA7DQo+
-ICB9DQo+ICANCj4gLSNkZWZpbmUgVVBDQUxMX0JVRl9MRU4gMTI4DQo+ICsvKiBYWFg6IE5lZWQg
-c29tZSBkb2N1bWVudGF0aW9uIGFib3V0IHdoeSBVUENBTExfQlVGX0xFTiBpcyBzbw0KPiBzbWFs
-bC4NCj4gKyAqCUlzIHVzZXIgc3BhY2UgZXhwZWN0aW5nIG5vIG1vcmUgdGhhbiBVUENBTExfQlVG
-X0xFTiBieXRlcz8NCj4gKyAqCU5vdGUgdGhhdCB0aGVyZSBhcmUgbm93IF90d29fIE5JX01BWEhP
-U1Qgc2l6ZWQgZGF0YSBpdGVtcw0KPiArICoJYmVpbmcgcGFzc2VkIGluIHRoaXMgc3RyaW5nLg0K
-PiArICovDQo+ICsjZGVmaW5lIFVQQ0FMTF9CVUZfTEVOCTI1Ng0KPiAgDQoNCldoeT8gVGhlIHNl
-cnZpY2VzIGFyZSBjdXJyZW50bHkgIm5mcyIgb3IgIm5mc2QiLiBIb3N0bmFtZXMgYXJlIG5vcm1h
-bGx5DQo8IDY0IGNoYXJhY3RlcnMuDQoNCj4gIHN0cnVjdCBnc3NfdXBjYWxsX21zZyB7DQo+ICAJ
-cmVmY291bnRfdCBjb3VudDsNCj4gQEAgLTQ2Miw4ICs0NjcsMTcgQEAgc3RhdGljIGludCBnc3Nf
-ZW5jb2RlX3YxX21zZyhzdHJ1Y3QNCj4gZ3NzX3VwY2FsbF9tc2cgKmdzc19tc2csDQo+ICAJCXAg
-Kz0gbGVuOw0KPiAgCQlnc3NfbXNnLT5tc2cubGVuICs9IGxlbjsNCj4gIAl9DQo+IC0JaWYgKHNl
-cnZpY2VfbmFtZSAhPSBOVUxMKSB7DQo+IC0JCWxlbiA9IHNjbnByaW50ZihwLCBidWZsZW4sICJz
-ZXJ2aWNlPSVzICIsDQo+IHNlcnZpY2VfbmFtZSk7DQo+ICsJaWYgKHNlcnZpY2VfbmFtZSkgew0K
-PiArCQljaGFyICpjID0gc3RyY2hyKHNlcnZpY2VfbmFtZSwgJ0AnKTsNCj4gKw0KPiArCQlpZiAo
-IWMpDQo+ICsJCQlsZW4gPSBzY25wcmludGYocCwgYnVmbGVuLCAic2VydmljZT0lcyAiLA0KPiAr
-CQkJCQlzZXJ2aWNlX25hbWUpOw0KPiArCQllbHNlDQo+ICsJCQlsZW4gPSBzY25wcmludGYocCwg
-YnVmbGVuLA0KPiArCQkJCQkic2VydmljZT0lLipzIHNyY2hvc3Q9JXMgIiwNCj4gKwkJCQkJKGlu
-dCkoYyAtIHNlcnZpY2VfbmFtZSksDQo+ICsJCQkJCXNlcnZpY2VfbmFtZSwgYyArIDEpOw0KPiAg
-CQlidWZsZW4gLT0gbGVuOw0KPiAgCQlwICs9IGxlbjsNCj4gIAkJZ3NzX21zZy0+bXNnLmxlbiAr
-PSBsZW47DQoNCklzbid0IHRoaXMganVzdCBkdXBsaWNhdGluZyB0aGUgZnVuY3Rpb25hbGl0eSBv
-ZiB0aGUgJ3RhcmdldCcgYXJndW1lbnQ/DQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpDVE8sIEhh
-bW1lcnNwYWNlIEluYw0KNDMwMCBFbCBDYW1pbm8gUmVhbCwgU3VpdGUgMTA1DQpMb3MgQWx0b3Ms
-IENBIDk0MDIyDQp3d3cuaGFtbWVyLnNwYWNlDQoNCg0K
+On Thu, 2018-08-16 at 16:27 +0000, Trond Myklebust wrote:
+> On Thu, 2018-08-16 at 12:05 -0400, Chuck Lever wrote:
+> > A multi-homed NFS server may have more than one "nfs" key in its
+> > keytab. Enable the kernel to pick the key it wants as a machine
+> > credential when establishing a GSS context.
+> > 
+> > This is useful for GSS-protected NFSv4.0 callbacks, which are
+> > required by RFC 7530 S3.3.3 to use the same principal as the service
+> > principal the client used when establishing its lease.
+> > 
+> > A complementary modification to rpc.gssd is required to fully enable
+> > this feature.
+> > 
+> > Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> > ---
+> >  net/sunrpc/auth_gss/auth_gss.c |   20 +++++++++++++++++---
+> >  1 file changed, 17 insertions(+), 3 deletions(-)
+> > 
+> > diff --git a/net/sunrpc/auth_gss/auth_gss.c
+> > b/net/sunrpc/auth_gss/auth_gss.c
+> > index be8f103..1943e11 100644
+> > --- a/net/sunrpc/auth_gss/auth_gss.c
+> > +++ b/net/sunrpc/auth_gss/auth_gss.c
+> > @@ -284,7 +284,12 @@ struct gss_auth {
+> >  	return p;
+> >  }
+> >  
+> > -#define UPCALL_BUF_LEN 128
+> > +/* XXX: Need some documentation about why UPCALL_BUF_LEN is so
+> > small.
+> > + *	Is user space expecting no more than UPCALL_BUF_LEN bytes?
+> > + *	Note that there are now _two_ NI_MAXHOST sized data items
+> > + *	being passed in this string.
+> > + */
+> > +#define UPCALL_BUF_LEN	256
+> >  
+> 
+> Why? The services are currently "nfs" or "nfsd". Hostnames are normally
+> < 64 characters.
+
+For Kerberos hostnames are fully qualified DNS names, so easily longer
+than 64 bytes.
+
+> >  struct gss_upcall_msg {
+> >  	refcount_t count;
+> > @@ -462,8 +467,17 @@ static int gss_encode_v1_msg(struct
+> > gss_upcall_msg *gss_msg,
+> >  		p += len;
+> >  		gss_msg->msg.len += len;
+> >  	}
+> > -	if (service_name != NULL) {
+> > -		len = scnprintf(p, buflen, "service=%s ",
+> > service_name);
+> > +	if (service_name) {
+> > +		char *c = strchr(service_name, '@');
+> > +
+> > +		if (!c)
+> > +			len = scnprintf(p, buflen, "service=%s ",
+> > +					service_name);
+> > +		else
+> > +			len = scnprintf(p, buflen,
+> > +					"service=%.*s srchost=%s ",
+> > +					(int)(c - service_name),
+> > +					service_name, c + 1);
+> >  		buflen -= len;
+> >  		p += len;
+> >  		gss_msg->msg.len += len;
+> 
+> Isn't this just duplicating the functionality of the 'target' argument?
+
+No, but I'll let Chuck re-explain.
+
+Chuck, people are often confused about this, perhaps we need a
+clarifying comment here to avoid some "optimization" to the code to
+happen later.
+
+HTH,
+Simo.
+
+> 
+> -- 
+> Trond Myklebust
+> CTO, Hammerspace Inc
+> 4300 El Camino Real, Suite 105
+> Los Altos, CA 94022
+> www.hammer.space
+> 
+> 
