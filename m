@@ -1,111 +1,94 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx3-rdu2.redhat.com ([66.187.233.73]:44512 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S2392441AbeHPTjB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 16 Aug 2018 15:39:01 -0400
-Message-ID: <db81635e277b32df7b0e708241de08d06d0d4c9a.camel@redhat.com>
-Subject: Re: [PATCH v2 1/4] sunrpc: Enable the kernel to specify the
- hostname part of service principals
-From: Simo Sorce <simo@redhat.com>
-To: Trond Myklebust <trondmy@hammerspace.com>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "chuck.lever@oracle.com" <chuck.lever@oracle.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Date: Thu, 16 Aug 2018 12:39:21 -0400
-In-Reply-To: <3e9c0dd18719fdc37a00aa5f5e9cddc8010d24e5.camel@hammerspace.com>
-References: <20180816160404.2230.55488.stgit@klimt.1015granger.net>
-         <20180816160554.2230.58754.stgit@klimt.1015granger.net>
-         <3e9c0dd18719fdc37a00aa5f5e9cddc8010d24e5.camel@hammerspace.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from out03.mta.xmission.com ([166.70.13.233]:47274 "EHLO
+        out03.mta.xmission.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725969AbeHPUVW (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Aug 2018 16:21:22 -0400
+From: ebiederm@xmission.com (Eric W. Biederman)
+To: Steve French <smfrench@gmail.com>
+Cc: David Howells <dhowells@redhat.com>,
+        trond.myklebust@hammerspace.com,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Steve French <sfrench@samba.org>,
+        Steve Dickson <steved@redhat.com>,
+        Al Viro <viro@zeniv.linux.org.uk>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        ebiederm@redhat.com, linux-api@vger.kernel.org,
+        linux-security-module@vger.kernel.org,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>, linux-nfs@vger.kernel.org,
+        CIFS <linux-cifs@vger.kernel.org>, linux-afs@lists.infradead.org,
+        ceph-devel@vger.kernel.org, v9fs-developer@lists.sourceforge.net
+References: <153313703562.13253.5766498657900728120.stgit@warthog.procyon.org.uk>
+        <17763.1534350685@warthog.procyon.org.uk>
+        <87pnyiew8x.fsf@xmission.com>
+        <CAH2r5muKOWBe9zMM8duNJ3rp1bzQh-mUj5zYoARO5pmc4de_+A@mail.gmail.com>
+Date: Thu, 16 Aug 2018 12:21:23 -0500
+In-Reply-To: <CAH2r5muKOWBe9zMM8duNJ3rp1bzQh-mUj5zYoARO5pmc4de_+A@mail.gmail.com>
+        (Steve French's message of "Thu, 16 Aug 2018 11:24:56 -0500")
+Message-ID: <87in4acjn0.fsf@xmission.com>
+MIME-Version: 1.0
+Content-Type: text/plain
+Subject: Re: Should we split the network filesystem setup into two phases?
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2018-08-16 at 16:27 +0000, Trond Myklebust wrote:
-> On Thu, 2018-08-16 at 12:05 -0400, Chuck Lever wrote:
-> > A multi-homed NFS server may have more than one "nfs" key in its
-> > keytab. Enable the kernel to pick the key it wants as a machine
-> > credential when establishing a GSS context.
-> > 
-> > This is useful for GSS-protected NFSv4.0 callbacks, which are
-> > required by RFC 7530 S3.3.3 to use the same principal as the service
-> > principal the client used when establishing its lease.
-> > 
-> > A complementary modification to rpc.gssd is required to fully enable
-> > this feature.
-> > 
-> > Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> > ---
-> >  net/sunrpc/auth_gss/auth_gss.c |   20 +++++++++++++++++---
-> >  1 file changed, 17 insertions(+), 3 deletions(-)
-> > 
-> > diff --git a/net/sunrpc/auth_gss/auth_gss.c
-> > b/net/sunrpc/auth_gss/auth_gss.c
-> > index be8f103..1943e11 100644
-> > --- a/net/sunrpc/auth_gss/auth_gss.c
-> > +++ b/net/sunrpc/auth_gss/auth_gss.c
-> > @@ -284,7 +284,12 @@ struct gss_auth {
-> >  	return p;
-> >  }
-> >  
-> > -#define UPCALL_BUF_LEN 128
-> > +/* XXX: Need some documentation about why UPCALL_BUF_LEN is so
-> > small.
-> > + *	Is user space expecting no more than UPCALL_BUF_LEN bytes?
-> > + *	Note that there are now _two_ NI_MAXHOST sized data items
-> > + *	being passed in this string.
-> > + */
-> > +#define UPCALL_BUF_LEN	256
-> >  
-> 
-> Why? The services are currently "nfs" or "nfsd". Hostnames are normally
-> < 64 characters.
+Steve French <smfrench@gmail.com> writes:
 
-For Kerberos hostnames are fully qualified DNS names, so easily longer
-than 64 bytes.
+> On Thu, Aug 16, 2018 at 2:56 AM Eric W. Biederman <ebiederm@xmission.com> wrote:
+>>
+>> David Howells <dhowells@redhat.com> writes:
+>>
+>> > Having just re-ported NFS on top of the new mount API stuff, I find that I
+>> > don't really like the idea of superblocks being separated by communication
+>> > parameters - especially when it might seem reasonable to be able to adjust
+>> > those parameters.
+>> >
+>> > Does it make sense to abstract out the remote peer and allow (a) that to be
+>> > configured separately from any superblocks using it and (b) that to be used to
+>> > create superblocks?
+> <snip>
+>> At least for devpts we always create a new filesystem instance every
+>> time mount(2) is called.  NFS seems to have the option to create a new
+>> filesystem instance every time mount(2) is called as well, (even if the
+>> filesystem parameters are the same).  And depending on the case I can
+>> see the attraction for other filesystems as well.
+>>
+>> So I don't think we can completely abandon the option for filesystems
+>> to always create a new filesystem instance when mount(8) is called.
+>
+> In cifs we attempt to match new mounts to existing tree connections
+> (instances of connections to a \\server\share) from other mount(s)
+> based first on whether security settings match (e.g. are both
+> Kerberos) and then on whether encryption is on/off and whether this is
+> a snapshot mount (smb3 previous versions feature).  If neither is
+> mounted with a snaphsot and the encryption settings match then
+> we will use the same tree id to talk with the server as the other
+> mounts use.  Interesting idea to allow mount to force a new
+> tree id.
+>
+> What was the NFS mount option you were talking about?
+> Looking at the nfs man page the only one that looked similar
+> was "nosharecache"
 
-> >  struct gss_upcall_msg {
-> >  	refcount_t count;
-> > @@ -462,8 +467,17 @@ static int gss_encode_v1_msg(struct
-> > gss_upcall_msg *gss_msg,
-> >  		p += len;
-> >  		gss_msg->msg.len += len;
-> >  	}
-> > -	if (service_name != NULL) {
-> > -		len = scnprintf(p, buflen, "service=%s ",
-> > service_name);
-> > +	if (service_name) {
-> > +		char *c = strchr(service_name, '@');
-> > +
-> > +		if (!c)
-> > +			len = scnprintf(p, buflen, "service=%s ",
-> > +					service_name);
-> > +		else
-> > +			len = scnprintf(p, buflen,
-> > +					"service=%.*s srchost=%s ",
-> > +					(int)(c - service_name),
-> > +					service_name, c + 1);
-> >  		buflen -= len;
-> >  		p += len;
-> >  		gss_msg->msg.len += len;
-> 
-> Isn't this just duplicating the functionality of the 'target' argument?
+I was remembering this from reading the nfs mount code:
 
-No, but I'll let Chuck re-explain.
+static int nfs_compare_super(struct super_block *sb, void *data)
+{
+...
+	if (!nfs_compare_super_address(old, server))
+		return 0;
+	/* Note: NFS_MOUNT_UNSHARED == NFS4_MOUNT_UNSHARED */
+	if (old->flags & NFS_MOUNT_UNSHARED)
+		return 0;
+...
+}
 
-Chuck, people are often confused about this, perhaps we need a
-clarifying comment here to avoid some "optimization" to the code to
-happen later.
+If a filesystem has NFS_MOUNT_UNSHARED set it does not serve as a
+candidate for new mount requests.  Skimming the code it looks like
+nosharecache is what sets NFS_MOUNT_UNSHARED.
 
-HTH,
-Simo.
 
-> 
-> -- 
-> Trond Myklebust
-> CTO, Hammerspace Inc
-> 4300 El Camino Real, Suite 105
-> Los Altos, CA 94022
-> www.hammer.space
-> 
-> 
+Another interesting and common case is tmpfs which always creates a new
+filesystem instance whenever it is mounted.
+
+Eric
