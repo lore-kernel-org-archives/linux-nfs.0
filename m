@@ -1,90 +1,43 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:39894 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([173.255.197.46]:34350 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725901AbeHPQSE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 16 Aug 2018 12:18:04 -0400
-Date: Thu, 16 Aug 2018 09:19:28 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH RFC 0/4] Use correct NFSv4.0 callback credential
-Message-ID: <20180816131927.GA17129@parsley.fieldses.org>
-References: <1526659388.10011.10.camel@redhat.com>
- <35C7F5A1-5192-4F00-B2C9-1BDFD5C00C94@oracle.com>
- <20180529191315.GA31484@parsley.fieldses.org>
- <65F50CE6-31CA-4D17-9EE8-09227CA96156@oracle.com>
- <3BDF8F8D-8C4F-4F50-ADA4-263E83D9430C@oracle.com>
+        id S1728737AbeHPSUS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 16 Aug 2018 14:20:18 -0400
+Date: Thu, 16 Aug 2018 11:21:10 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@kernel.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH] lock maintainers won't be much help with fcntl issues
+Message-ID: <20180816152110.GP7906@fieldses.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <3BDF8F8D-8C4F-4F50-ADA4-263E83D9430C@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Aug 15, 2018 at 06:27:36PM -0400, Chuck Lever wrote:
-> 
-> 
-> > On May 29, 2018, at 3:14 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
-> > 
-> > 
-> > 
-> >> On May 29, 2018, at 3:13 PM, J. Bruce Fields <bfields@redhat.com> wrote:
-> >> 
-> >> On Tue, May 29, 2018 at 02:21:58PM -0400, Chuck Lever wrote:
-> >>> 
-> >>> 
-> >>>> Begin forwarded message:
-> >>>> 
-> >>>> From: Simo Sorce <simo@redhat.com>
-> >>>> Subject: Re: [PATCH RFC 0/4] Use correct NFSv4.0 callback credential
-> >>>> Date: May 18, 2018 at 12:03:08 PM EDT
-> >>>> To: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
-> >>>> 
-> >>>> On Fri, 2018-05-18 at 11:39 -0400, Chuck Lever wrote:
-> >>>>> I've been experimenting with this series that modifies NFSD to
-> >>>>> discover and use the correct GSS service principal when constructing
-> >>>>> its NFSv4.0 callback channels. I'm interested in review of this
-> >>>>> approach. There are a couple of code comments marked with XXX that
-> >>>>> also need some attention.
-> >>>>> 
-> >>>>> The rpc.gssd change mentioned in 1/4 is unremarkable and will be
-> >>>>> made available once there is consensus about the kernel changes
-> >>>>> in this series. No gssproxy changes are necessary.
-> >>>>> 
-> >>>>> ---
-> >>>>> 
-> >>>>> Chuck Lever (4):
-> >>>>>    sunrpc: Enable the kernel to specify the hostname part of service principals
-> >>>>>    sunrpc: Extract target name into svc_cred
-> >>>>>    nfsd: Use correct credential for NFSv4.0 callback with GSS
-> >>>>>    nfsd: Remove callback_cred
-> >>>>> 
-> >>>>> 
-> >>>>> fs/nfsd/nfs4callback.c               |   29 ++++----------
-> >>>>> fs/nfsd/nfs4state.c                  |   17 +++-----
-> >>>>> fs/nfsd/state.h                      |    2 -
-> >>>>> include/linux/sunrpc/svcauth.h       |    3 +
-> >>>>> net/sunrpc/auth_gss/auth_gss.c       |   20 ++++++++--
-> >>>>> net/sunrpc/auth_gss/gss_rpc_upcall.c |   70 ++++++++++++++++++++++------------
-> >>>>> 6 files changed, 80 insertions(+), 61 deletions(-)
-> >>>>> 
-> >>>>> --
-> >>>>> Chuck Lever
-> >>>> 
-> >>>> Ack for the sunrpc gssp changes.
-> >>> 
-> >>> Hi Bruce, are you willing to take this series for v4.18?
-> >> 
-> >> Sure.  Are you going to repost?
-> > 
-> > Except for Simo's Ack, there haven't been any requests for
-> > changes, so I hadn't planned to repost. But it wouldn't be
-> > a problem if you'd like me to post again.
-> 
-> Hi Bruce-
-> 
-> I don't see these patches in v4.18 nor in your nfsd-next tree.
-> Did they get dropped?
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Apologies, I think so, could you repost?
+Most of the stuff in fcntl.c has nothing to do with locks.  The stuff
+that does have anything to do with locks is pretty trivial glue code
+that calls into locks.c for the real work.
 
---b.
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ MAINTAINERS | 3 ---
+ 1 file changed, 3 deletions(-)
+
+diff --git a/MAINTAINERS b/MAINTAINERS
+index 9d5eeff51b5f..a5dca2be8513 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -5541,9 +5541,6 @@ M:	Jeff Layton <jlayton@kernel.org>
+ M:	"J. Bruce Fields" <bfields@fieldses.org>
+ L:	linux-fsdevel@vger.kernel.org
+ S:	Maintained
+-F:	include/linux/fcntl.h
+-F:	include/uapi/linux/fcntl.h
+-F:	fs/fcntl.c
+ F:	fs/locks.c
+ 
+ FILESYSTEMS (VFS and infrastructure)
+-- 
+2.17.1
