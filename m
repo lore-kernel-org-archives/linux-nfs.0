@@ -1,77 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pf1-f196.google.com ([209.85.210.196]:39054 "EHLO
-        mail-pf1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2389145AbeHPTYh (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Aug 2018 15:24:37 -0400
+Received: from mail-eopbgr710099.outbound.protection.outlook.com ([40.107.71.99]:27115
+        "EHLO NAM05-BY2-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1727526AbeHPT05 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 16 Aug 2018 15:26:57 -0400
+From: Trond Myklebust <trondmy@hammerspace.com>
+To: "bfields@fieldses.org" <bfields@fieldses.org>,
+        "chuck.lever@oracle.com" <chuck.lever@oracle.com>
+CC: "simo@redhat.com" <simo@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v2 1/4] sunrpc: Enable the kernel to specify the hostname
+ part of service principals
+Date: Thu, 16 Aug 2018 16:27:23 +0000
+Message-ID: <3e9c0dd18719fdc37a00aa5f5e9cddc8010d24e5.camel@hammerspace.com>
+References: <20180816160404.2230.55488.stgit@klimt.1015granger.net>
+         <20180816160554.2230.58754.stgit@klimt.1015granger.net>
+In-Reply-To: <20180816160554.2230.58754.stgit@klimt.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-References: <153313703562.13253.5766498657900728120.stgit@warthog.procyon.org.uk>
- <17763.1534350685@warthog.procyon.org.uk> <87pnyiew8x.fsf@xmission.com>
-In-Reply-To: <87pnyiew8x.fsf@xmission.com>
-From: Steve French <smfrench@gmail.com>
-Date: Thu, 16 Aug 2018 11:24:56 -0500
-Message-ID: <CAH2r5muKOWBe9zMM8duNJ3rp1bzQh-mUj5zYoARO5pmc4de_+A@mail.gmail.com>
-Subject: Re: Should we split the network filesystem setup into two phases?
-To: "Eric W. Biederman" <ebiederm@xmission.com>
-Cc: David Howells <dhowells@redhat.com>,
-        trond.myklebust@hammerspace.com,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Steve French <sfrench@samba.org>,
-        Steve Dickson <steved@redhat.com>,
-        Al Viro <viro@zeniv.linux.org.uk>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        ebiederm@redhat.com, linux-api@vger.kernel.org,
-        linux-security-module@vger.kernel.org,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>, linux-nfs@vger.kernel.org,
-        CIFS <linux-cifs@vger.kernel.org>, linux-afs@lists.infradead.org,
-        ceph-devel@vger.kernel.org, v9fs-developer@lists.sourceforge.net
-Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Aug 16, 2018 at 2:56 AM Eric W. Biederman <ebiederm@xmission.com> wrote:
->
-> David Howells <dhowells@redhat.com> writes:
->
-> > Having just re-ported NFS on top of the new mount API stuff, I find that I
-> > don't really like the idea of superblocks being separated by communication
-> > parameters - especially when it might seem reasonable to be able to adjust
-> > those parameters.
-> >
-> > Does it make sense to abstract out the remote peer and allow (a) that to be
-> > configured separately from any superblocks using it and (b) that to be used to
-> > create superblocks?
-<snip>
-> At least for devpts we always create a new filesystem instance every
-> time mount(2) is called.  NFS seems to have the option to create a new
-> filesystem instance every time mount(2) is called as well, (even if the
-> filesystem parameters are the same).  And depending on the case I can
-> see the attraction for other filesystems as well.
->
-> So I don't think we can completely abandon the option for filesystems
-> to always create a new filesystem instance when mount(8) is called.
-
-In cifs we attempt to match new mounts to existing tree connections
-(instances of connections to a \\server\share) from other mount(s)
-based first on whether security settings match (e.g. are both
-Kerberos) and then on whether encryption is on/off and whether this is
-a snapshot mount (smb3 previous versions feature).  If neither is
-mounted with a snaphsot and the encryption settings match then
-we will use the same tree id to talk with the server as the other
-mounts use.  Interesting idea to allow mount to force a new
-tree id.
-
-What was the NFS mount option you were talking about?
-Looking at the nfs man page the only one that looked similar
-was "nosharecache"
-
-> I most definitely support thinking this through and figuring out how it
-> best make sense for the new filesystem API to create new filesystem
-> instances or fail to create new filesystems instances.
-
-Yes - it is an interesting question.
-
--- 
-Thanks,
-
-Steve
+T24gVGh1LCAyMDE4LTA4LTE2IGF0IDEyOjA1IC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
+QSBtdWx0aS1ob21lZCBORlMgc2VydmVyIG1heSBoYXZlIG1vcmUgdGhhbiBvbmUgIm5mcyIga2V5
+IGluIGl0cw0KPiBrZXl0YWIuIEVuYWJsZSB0aGUga2VybmVsIHRvIHBpY2sgdGhlIGtleSBpdCB3
+YW50cyBhcyBhIG1hY2hpbmUNCj4gY3JlZGVudGlhbCB3aGVuIGVzdGFibGlzaGluZyBhIEdTUyBj
+b250ZXh0Lg0KPiANCj4gVGhpcyBpcyB1c2VmdWwgZm9yIEdTUy1wcm90ZWN0ZWQgTkZTdjQuMCBj
+YWxsYmFja3MsIHdoaWNoIGFyZQ0KPiByZXF1aXJlZCBieSBSRkMgNzUzMCBTMy4zLjMgdG8gdXNl
+IHRoZSBzYW1lIHByaW5jaXBhbCBhcyB0aGUgc2VydmljZQ0KPiBwcmluY2lwYWwgdGhlIGNsaWVu
+dCB1c2VkIHdoZW4gZXN0YWJsaXNoaW5nIGl0cyBsZWFzZS4NCj4gDQo+IEEgY29tcGxlbWVudGFy
+eSBtb2RpZmljYXRpb24gdG8gcnBjLmdzc2QgaXMgcmVxdWlyZWQgdG8gZnVsbHkgZW5hYmxlDQo+
+IHRoaXMgZmVhdHVyZS4NCj4gDQo+IFNpZ25lZC1vZmYtYnk6IENodWNrIExldmVyIDxjaHVjay5s
+ZXZlckBvcmFjbGUuY29tPg0KPiAtLS0NCj4gIG5ldC9zdW5ycGMvYXV0aF9nc3MvYXV0aF9nc3Mu
+YyB8ICAgMjAgKysrKysrKysrKysrKysrKystLS0NCj4gIDEgZmlsZSBjaGFuZ2VkLCAxNyBpbnNl
+cnRpb25zKCspLCAzIGRlbGV0aW9ucygtKQ0KPiANCj4gZGlmZiAtLWdpdCBhL25ldC9zdW5ycGMv
+YXV0aF9nc3MvYXV0aF9nc3MuYw0KPiBiL25ldC9zdW5ycGMvYXV0aF9nc3MvYXV0aF9nc3MuYw0K
+PiBpbmRleCBiZThmMTAzLi4xOTQzZTExIDEwMDY0NA0KPiAtLS0gYS9uZXQvc3VucnBjL2F1dGhf
+Z3NzL2F1dGhfZ3NzLmMNCj4gKysrIGIvbmV0L3N1bnJwYy9hdXRoX2dzcy9hdXRoX2dzcy5jDQo+
+IEBAIC0yODQsNyArMjg0LDEyIEBAIHN0cnVjdCBnc3NfYXV0aCB7DQo+ICAJcmV0dXJuIHA7DQo+
+ICB9DQo+ICANCj4gLSNkZWZpbmUgVVBDQUxMX0JVRl9MRU4gMTI4DQo+ICsvKiBYWFg6IE5lZWQg
+c29tZSBkb2N1bWVudGF0aW9uIGFib3V0IHdoeSBVUENBTExfQlVGX0xFTiBpcyBzbw0KPiBzbWFs
+bC4NCj4gKyAqCUlzIHVzZXIgc3BhY2UgZXhwZWN0aW5nIG5vIG1vcmUgdGhhbiBVUENBTExfQlVG
+X0xFTiBieXRlcz8NCj4gKyAqCU5vdGUgdGhhdCB0aGVyZSBhcmUgbm93IF90d29fIE5JX01BWEhP
+U1Qgc2l6ZWQgZGF0YSBpdGVtcw0KPiArICoJYmVpbmcgcGFzc2VkIGluIHRoaXMgc3RyaW5nLg0K
+PiArICovDQo+ICsjZGVmaW5lIFVQQ0FMTF9CVUZfTEVOCTI1Ng0KPiAgDQoNCldoeT8gVGhlIHNl
+cnZpY2VzIGFyZSBjdXJyZW50bHkgIm5mcyIgb3IgIm5mc2QiLiBIb3N0bmFtZXMgYXJlIG5vcm1h
+bGx5DQo8IDY0IGNoYXJhY3RlcnMuDQoNCj4gIHN0cnVjdCBnc3NfdXBjYWxsX21zZyB7DQo+ICAJ
+cmVmY291bnRfdCBjb3VudDsNCj4gQEAgLTQ2Miw4ICs0NjcsMTcgQEAgc3RhdGljIGludCBnc3Nf
+ZW5jb2RlX3YxX21zZyhzdHJ1Y3QNCj4gZ3NzX3VwY2FsbF9tc2cgKmdzc19tc2csDQo+ICAJCXAg
+Kz0gbGVuOw0KPiAgCQlnc3NfbXNnLT5tc2cubGVuICs9IGxlbjsNCj4gIAl9DQo+IC0JaWYgKHNl
+cnZpY2VfbmFtZSAhPSBOVUxMKSB7DQo+IC0JCWxlbiA9IHNjbnByaW50ZihwLCBidWZsZW4sICJz
+ZXJ2aWNlPSVzICIsDQo+IHNlcnZpY2VfbmFtZSk7DQo+ICsJaWYgKHNlcnZpY2VfbmFtZSkgew0K
+PiArCQljaGFyICpjID0gc3RyY2hyKHNlcnZpY2VfbmFtZSwgJ0AnKTsNCj4gKw0KPiArCQlpZiAo
+IWMpDQo+ICsJCQlsZW4gPSBzY25wcmludGYocCwgYnVmbGVuLCAic2VydmljZT0lcyAiLA0KPiAr
+CQkJCQlzZXJ2aWNlX25hbWUpOw0KPiArCQllbHNlDQo+ICsJCQlsZW4gPSBzY25wcmludGYocCwg
+YnVmbGVuLA0KPiArCQkJCQkic2VydmljZT0lLipzIHNyY2hvc3Q9JXMgIiwNCj4gKwkJCQkJKGlu
+dCkoYyAtIHNlcnZpY2VfbmFtZSksDQo+ICsJCQkJCXNlcnZpY2VfbmFtZSwgYyArIDEpOw0KPiAg
+CQlidWZsZW4gLT0gbGVuOw0KPiAgCQlwICs9IGxlbjsNCj4gIAkJZ3NzX21zZy0+bXNnLmxlbiAr
+PSBsZW47DQoNCklzbid0IHRoaXMganVzdCBkdXBsaWNhdGluZyB0aGUgZnVuY3Rpb25hbGl0eSBv
+ZiB0aGUgJ3RhcmdldCcgYXJndW1lbnQ/DQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpDVE8sIEhh
+bW1lcnNwYWNlIEluYw0KNDMwMCBFbCBDYW1pbm8gUmVhbCwgU3VpdGUgMTA1DQpMb3MgQWx0b3Ms
+IENBIDk0MDIyDQp3d3cuaGFtbWVyLnNwYWNlDQoNCg0K
