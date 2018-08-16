@@ -1,163 +1,75 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp2130.oracle.com ([141.146.126.79]:51306 "EHLO
-        aserp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727592AbeHPS7C (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Aug 2018 14:59:02 -0400
-Subject: Re: [PATCH v2] NFSv4 client live hangs after live data migration
- recovery
-To: trond.myklebust@hammerspace.com, anna.schumaker@netapp.com
-Cc: linux-nfs@vger.kernel.org
-References: <1529443498-24846-1-git-send-email-bill.baker@oracle.com>
-From: Bill Baker <Bill.Baker@Oracle.com>
-Message-ID: <0b76bdfc-7712-2c20-2d43-7ddd5406e057@Oracle.com>
-Date: Thu, 16 Aug 2018 10:59:44 -0500
+Received: from mail-io0-f194.google.com ([209.85.223.194]:40450 "EHLO
+        mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2392167AbeHPTFV (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Aug 2018 15:05:21 -0400
+Received: by mail-io0-f194.google.com with SMTP id l14-v6so4290621iob.7
+        for <linux-nfs@vger.kernel.org>; Thu, 16 Aug 2018 09:05:58 -0700 (PDT)
+Subject: [PATCH v2 1/4] sunrpc: Enable the kernel to specify the hostname
+ part of service principals
+From: Chuck Lever <chuck.lever@oracle.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, simo@redhat.com
+Date: Thu, 16 Aug 2018 12:05:54 -0400
+Message-ID: <20180816160554.2230.58754.stgit@klimt.1015granger.net>
+In-Reply-To: <20180816160404.2230.55488.stgit@klimt.1015granger.net>
+References: <20180816160404.2230.55488.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
-In-Reply-To: <1529443498-24846-1-git-send-email-bill.baker@oracle.com>
-Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+A multi-homed NFS server may have more than one "nfs" key in its
+keytab. Enable the kernel to pick the key it wants as a machine
+credential when establishing a GSS context.
 
-Hi, Trond, et al,
+This is useful for GSS-protected NFSv4.0 callbacks, which are
+required by RFC 7530 S3.3.3 to use the same principal as the service
+principal the client used when establishing its lease.
 
-Have you had a chance to look at this patch?  I'd like to get some
-feedback (or acceptance into the next merge window).  As it stands
-now, the live data migration feature is completely broken in the
-NFSv4 client in the current upstream kernel.
+A complementary modification to rpc.gssd is required to fully enable
+this feature.
 
-Thanks,
-B
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+ net/sunrpc/auth_gss/auth_gss.c |   20 +++++++++++++++++---
+ 1 file changed, 17 insertions(+), 3 deletions(-)
 
-On 06/19/2018 04:24 PM, Bill Baker wrote:
-> From: Bill Baker <Bill.Baker@Oracle.com>
-> 
-> After a live data migration event at the NFS server, the client may send
-> I/O requests to the wrong server, causing a live hang due to repeated
-> recovery events.  On the wire, this will appear as an I/O request failing
-> with NFS4ERR_BADSESSION, followed by successful CREATE_SESSION, repeatedly.
-> NFS4ERR_BADSSESSION is returned because the session ID being used was
-> issued by the other server and is not valid at the old server.
-> 
-> The failure is caused by async worker threads having cached the transport
-> (xprt) in the rpc_task structure.  After the migration recovery completes,
-> the task is redispatched and the task resends the request to the wrong
-> server based on the old value still present in tk_xprt.
-> 
-> The solution is to recompute the tk_xprt field of the rpc_task structure
-> so that the request goes to the correct server.
-> 
-> Signed-off-by: Bill Baker <bill.baker@oracle.com>
-> Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
-> Tested-by: Helen Chao <helen.chao@oracle.com>
-> Fixes: fb43d17210ba ("SUNRPC: Use the multipath iterator to assign a ...")
-> Cc: stable@vger.kernel.org #4.9
-> ---
->   fs/nfs/nfs4proc.c           |  9 ++++++++-
->   include/linux/sunrpc/clnt.h |  1 +
->   net/sunrpc/clnt.c           | 28 ++++++++++++++++++++--------
->   3 files changed, 29 insertions(+), 9 deletions(-)
-> 
-> Changes since v1:
-> - Added "Fixes:" and "Cc: stable" tags
-> 
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index ed45090..2b1552b 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -581,8 +581,15 @@ int nfs4_handle_exception(struct nfs_server *server, int errorcode, struct nfs4_
->   		ret = -EIO;
->   	return ret;
->   out_retry:
-> -	if (ret == 0)
-> +	if (ret == 0) {
->   		exception->retry = 1;
-> +		/*
-> +		 * For NFS4ERR_MOVED, the client transport will need to
-> +		 * be recomputed after migration recovery has completed.
-> +		 */
-> +		if (errorcode == -NFS4ERR_MOVED)
-> +			rpc_task_release_transport(task);
-> +	}
->   	return ret;
->   }
->   
-> diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
-> index 9b11b6a..73d5c4a 100644
-> --- a/include/linux/sunrpc/clnt.h
-> +++ b/include/linux/sunrpc/clnt.h
-> @@ -156,6 +156,7 @@ int		rpc_switch_client_transport(struct rpc_clnt *,
->   
->   void		rpc_shutdown_client(struct rpc_clnt *);
->   void		rpc_release_client(struct rpc_clnt *);
-> +void		rpc_task_release_transport(struct rpc_task *);
->   void		rpc_task_release_client(struct rpc_task *);
->   
->   int		rpcb_create_local(struct net *);
-> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-> index d839c33..0d85425 100644
-> --- a/net/sunrpc/clnt.c
-> +++ b/net/sunrpc/clnt.c
-> @@ -965,10 +965,20 @@ struct rpc_clnt *rpc_bind_new_program(struct rpc_clnt *old,
->   }
->   EXPORT_SYMBOL_GPL(rpc_bind_new_program);
->   
-> +void rpc_task_release_transport(struct rpc_task *task)
-> +{
-> +	struct rpc_xprt *xprt = task->tk_xprt;
-> +
-> +	if (xprt) {
-> +		task->tk_xprt = NULL;
-> +		xprt_put(xprt);
-> +	}
-> +}
-> +EXPORT_SYMBOL_GPL(rpc_task_release_transport);
-> +
->   void rpc_task_release_client(struct rpc_task *task)
->   {
->   	struct rpc_clnt *clnt = task->tk_client;
-> -	struct rpc_xprt *xprt = task->tk_xprt;
->   
->   	if (clnt != NULL) {
->   		/* Remove from client task list */
-> @@ -979,12 +989,14 @@ void rpc_task_release_client(struct rpc_task *task)
->   
->   		rpc_release_client(clnt);
->   	}
-> +	rpc_task_release_transport(task);
-> +}
->   
-> -	if (xprt != NULL) {
-> -		task->tk_xprt = NULL;
-> -
-> -		xprt_put(xprt);
-> -	}
-> +static
-> +void rpc_task_set_transport(struct rpc_task *task, struct rpc_clnt *clnt)
-> +{
-> +	if (!task->tk_xprt)
-> +		task->tk_xprt = xprt_iter_get_next(&clnt->cl_xpi);
->   }
->   
->   static
-> @@ -992,8 +1004,7 @@ void rpc_task_set_client(struct rpc_task *task, struct rpc_clnt *clnt)
->   {
->   
->   	if (clnt != NULL) {
-> -		if (task->tk_xprt == NULL)
-> -			task->tk_xprt = xprt_iter_get_next(&clnt->cl_xpi);
-> +		rpc_task_set_transport(task, clnt);
->   		task->tk_client = clnt;
->   		atomic_inc(&clnt->cl_count);
->   		if (clnt->cl_softrtry)
-> @@ -1512,6 +1523,7 @@ void rpc_force_rebind(struct rpc_clnt *clnt)
->   		clnt->cl_program->version[clnt->cl_vers]->counts[idx]++;
->   	clnt->cl_stats->rpccnt++;
->   	task->tk_action = call_reserve;
-> +	rpc_task_set_transport(task, clnt);
->   }
->   
->   /*
-> 
-
--- 
-Bill Baker - Oracle Linux NFS
+diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+index be8f103..1943e11 100644
+--- a/net/sunrpc/auth_gss/auth_gss.c
++++ b/net/sunrpc/auth_gss/auth_gss.c
+@@ -284,7 +284,12 @@ struct gss_auth {
+ 	return p;
+ }
+ 
+-#define UPCALL_BUF_LEN 128
++/* XXX: Need some documentation about why UPCALL_BUF_LEN is so small.
++ *	Is user space expecting no more than UPCALL_BUF_LEN bytes?
++ *	Note that there are now _two_ NI_MAXHOST sized data items
++ *	being passed in this string.
++ */
++#define UPCALL_BUF_LEN	256
+ 
+ struct gss_upcall_msg {
+ 	refcount_t count;
+@@ -462,8 +467,17 @@ static int gss_encode_v1_msg(struct gss_upcall_msg *gss_msg,
+ 		p += len;
+ 		gss_msg->msg.len += len;
+ 	}
+-	if (service_name != NULL) {
+-		len = scnprintf(p, buflen, "service=%s ", service_name);
++	if (service_name) {
++		char *c = strchr(service_name, '@');
++
++		if (!c)
++			len = scnprintf(p, buflen, "service=%s ",
++					service_name);
++		else
++			len = scnprintf(p, buflen,
++					"service=%.*s srchost=%s ",
++					(int)(c - service_name),
++					service_name, c + 1);
+ 		buflen -= len;
+ 		p += len;
+ 		gss_msg->msg.len += len;
