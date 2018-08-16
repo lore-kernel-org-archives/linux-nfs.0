@@ -1,112 +1,77 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f68.google.com ([209.85.214.68]:50180 "EHLO
-        mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2392167AbeHPTFd (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Aug 2018 15:05:33 -0400
-Received: by mail-it0-f68.google.com with SMTP id j81-v6so6989607ite.0
-        for <linux-nfs@vger.kernel.org>; Thu, 16 Aug 2018 09:06:11 -0700 (PDT)
-Subject: [PATCH v2 4/4] nfsd: Remove callback_cred
-From: Chuck Lever <chuck.lever@oracle.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, simo@redhat.com
-Date: Thu, 16 Aug 2018 12:06:09 -0400
-Message-ID: <20180816160609.2230.86228.stgit@klimt.1015granger.net>
-In-Reply-To: <20180816160404.2230.55488.stgit@klimt.1015granger.net>
-References: <20180816160404.2230.55488.stgit@klimt.1015granger.net>
+Received: from mail-pf1-f196.google.com ([209.85.210.196]:39054 "EHLO
+        mail-pf1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2389145AbeHPTYh (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Aug 2018 15:24:37 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+References: <153313703562.13253.5766498657900728120.stgit@warthog.procyon.org.uk>
+ <17763.1534350685@warthog.procyon.org.uk> <87pnyiew8x.fsf@xmission.com>
+In-Reply-To: <87pnyiew8x.fsf@xmission.com>
+From: Steve French <smfrench@gmail.com>
+Date: Thu, 16 Aug 2018 11:24:56 -0500
+Message-ID: <CAH2r5muKOWBe9zMM8duNJ3rp1bzQh-mUj5zYoARO5pmc4de_+A@mail.gmail.com>
+Subject: Re: Should we split the network filesystem setup into two phases?
+To: "Eric W. Biederman" <ebiederm@xmission.com>
+Cc: David Howells <dhowells@redhat.com>,
+        trond.myklebust@hammerspace.com,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Steve French <sfrench@samba.org>,
+        Steve Dickson <steved@redhat.com>,
+        Al Viro <viro@zeniv.linux.org.uk>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        ebiederm@redhat.com, linux-api@vger.kernel.org,
+        linux-security-module@vger.kernel.org,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>, linux-nfs@vger.kernel.org,
+        CIFS <linux-cifs@vger.kernel.org>, linux-afs@lists.infradead.org,
+        ceph-devel@vger.kernel.org, v9fs-developer@lists.sourceforge.net
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: The global callback_cred is no longer used, so it can be
-removed.
+On Thu, Aug 16, 2018 at 2:56 AM Eric W. Biederman <ebiederm@xmission.com> wrote:
+>
+> David Howells <dhowells@redhat.com> writes:
+>
+> > Having just re-ported NFS on top of the new mount API stuff, I find that I
+> > don't really like the idea of superblocks being separated by communication
+> > parameters - especially when it might seem reasonable to be able to adjust
+> > those parameters.
+> >
+> > Does it make sense to abstract out the remote peer and allow (a) that to be
+> > configured separately from any superblocks using it and (b) that to be used to
+> > create superblocks?
+<snip>
+> At least for devpts we always create a new filesystem instance every
+> time mount(2) is called.  NFS seems to have the option to create a new
+> filesystem instance every time mount(2) is called as well, (even if the
+> filesystem parameters are the same).  And depending on the case I can
+> see the attraction for other filesystems as well.
+>
+> So I don't think we can completely abandon the option for filesystems
+> to always create a new filesystem instance when mount(8) is called.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
- fs/nfsd/nfs4callback.c |   20 --------------------
- fs/nfsd/nfs4state.c    |   10 ++--------
- fs/nfsd/state.h        |    2 --
- 3 files changed, 2 insertions(+), 30 deletions(-)
+In cifs we attempt to match new mounts to existing tree connections
+(instances of connections to a \\server\share) from other mount(s)
+based first on whether security settings match (e.g. are both
+Kerberos) and then on whether encryption is on/off and whether this is
+a snapshot mount (smb3 previous versions feature).  If neither is
+mounted with a snaphsot and the encryption settings match then
+we will use the same tree id to talk with the server as the other
+mounts use.  Interesting idea to allow mount to force a new
+tree id.
 
-diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index 0e9ff86..c088f97 100644
---- a/fs/nfsd/nfs4callback.c
-+++ b/fs/nfsd/nfs4callback.c
-@@ -746,26 +746,6 @@ static int max_cb_time(struct net *net)
- 	return max(nn->nfsd4_lease/10, (time_t)1) * HZ;
- }
- 
--static struct rpc_cred *callback_cred;
--
--int set_callback_cred(void)
--{
--	if (callback_cred)
--		return 0;
--	callback_cred = rpc_lookup_machine_cred("nfs");
--	if (!callback_cred)
--		return -ENOMEM;
--	return 0;
--}
--
--void cleanup_callback_cred(void)
--{
--	if (callback_cred) {
--		put_rpccred(callback_cred);
--		callback_cred = NULL;
--	}
--}
--
- static struct rpc_cred *get_backchannel_cred(struct nfs4_client *clp, struct rpc_clnt *client, struct nfsd4_session *ses)
- {
- 	if (clp->cl_minorversion == 0) {
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 9d9bc4c..b7e68fd 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -7202,14 +7202,10 @@ static int nfs4_state_create_net(struct net *net)
- {
- 	int ret;
- 
--	ret = set_callback_cred();
--	if (ret)
--		return ret;
--
- 	laundry_wq = alloc_workqueue("%s", WQ_UNBOUND, 0, "nfsd4");
- 	if (laundry_wq == NULL) {
- 		ret = -ENOMEM;
--		goto out_cleanup_cred;
-+		goto out;
- 	}
- 	ret = nfsd4_create_callback_queue();
- 	if (ret)
-@@ -7220,8 +7216,7 @@ static int nfs4_state_create_net(struct net *net)
- 
- out_free_laundry:
- 	destroy_workqueue(laundry_wq);
--out_cleanup_cred:
--	cleanup_callback_cred();
-+out:
- 	return ret;
- }
- 
-@@ -7258,7 +7253,6 @@ static int nfs4_state_create_net(struct net *net)
- {
- 	destroy_workqueue(laundry_wq);
- 	nfsd4_destroy_callback_queue();
--	cleanup_callback_cred();
- }
- 
- static void
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index f3772ea..0b15dac 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -617,8 +617,6 @@ extern struct nfs4_client_reclaim *nfsd4_find_reclaim_client(const char *recdir,
- 							struct nfsd_net *nn);
- extern __be32 nfs4_check_open_reclaim(clientid_t *clid,
- 		struct nfsd4_compound_state *cstate, struct nfsd_net *nn);
--extern int set_callback_cred(void);
--extern void cleanup_callback_cred(void);
- extern void nfsd4_probe_callback(struct nfs4_client *clp);
- extern void nfsd4_probe_callback_sync(struct nfs4_client *clp);
- extern void nfsd4_change_callback(struct nfs4_client *clp, struct nfs4_cb_conn *);
+What was the NFS mount option you were talking about?
+Looking at the nfs man page the only one that looked similar
+was "nosharecache"
+
+> I most definitely support thinking this through and figuring out how it
+> best make sense for the new filesystem API to create new filesystem
+> instances or fail to create new filesystems instances.
+
+Yes - it is an interesting question.
+
+-- 
+Thanks,
+
+Steve
