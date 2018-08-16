@@ -1,116 +1,161 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx143.netapp.com ([216.240.21.24]:5685 "EHLO mx143.netapp.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725899AbeHPV5X (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 16 Aug 2018 17:57:23 -0400
-From: "Schumaker, Anna" <Anna.Schumaker@netapp.com>
-To: "trond.myklebust@hammerspace.com" <trond.myklebust@hammerspace.com>,
-        "Bill.Baker@Oracle.com" <Bill.Baker@Oracle.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v2] NFSv4 client live hangs after live data migration
- recovery
-Date: Thu, 16 Aug 2018 18:57:08 +0000
-Message-ID: <f1608ed1629132fd79d9bc0979e4b8d4230b0ba7.camel@netapp.com>
-References: <1529443498-24846-1-git-send-email-bill.baker@oracle.com>
-         <0b76bdfc-7712-2c20-2d43-7ddd5406e057@Oracle.com>
-In-Reply-To: <0b76bdfc-7712-2c20-2d43-7ddd5406e057@Oracle.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from userp2130.oracle.com ([156.151.31.86]:46634 "EHLO
+        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725947AbeHPWD2 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Aug 2018 18:03:28 -0400
+Content-Type: text/plain;
+        charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 11.5 \(3445.9.1\))
+Subject: Re: [PATCH v2 1/4] sunrpc: Enable the kernel to specify the hostname
+ part of service principals
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <3e9c0dd18719fdc37a00aa5f5e9cddc8010d24e5.camel@hammerspace.com>
+Date: Thu, 16 Aug 2018 15:03:05 -0400
+Cc: Bruce Fields <bfields@fieldses.org>,
+        "simo@redhat.com" <simo@redhat.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <F7F06D13-320C-438E-AAC9-6B43AC213D79@oracle.com>
+References: <20180816160404.2230.55488.stgit@klimt.1015granger.net>
+ <20180816160554.2230.58754.stgit@klimt.1015granger.net>
+ <3e9c0dd18719fdc37a00aa5f5e9cddc8010d24e5.camel@hammerspace.com>
+To: Trond Myklebust <trondmy@hammerspace.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDE4LTA4LTE2IGF0IDEwOjU5IC0wNTAwLCBCaWxsIEJha2VyIHdyb3RlOg0KPiBI
-aSwgVHJvbmQsIGV0IGFsLA0KDQpIaSBCaWxsLA0KDQo+IA0KPiBIYXZlIHlvdSBoYWQgYSBjaGFu
-Y2UgdG8gbG9vayBhdCB0aGlzIHBhdGNoPyAgSSdkIGxpa2UgdG8gZ2V0IHNvbWUNCj4gZmVlZGJh
-Y2sgKG9yIGFjY2VwdGFuY2UgaW50byB0aGUgbmV4dCBtZXJnZSB3aW5kb3cpLiAgQXMgaXQgc3Rh
-bmRzDQo+IG5vdywgdGhlIGxpdmUgZGF0YSBtaWdyYXRpb24gZmVhdHVyZSBpcyBjb21wbGV0ZWx5
-IGJyb2tlbiBpbiB0aGUNCj4gTkZTdjQgY2xpZW50IGluIHRoZSBjdXJyZW50IHVwc3RyZWFtIGtl
-cm5lbC4NCg0KSSBoYXZlIHRoaXMgcGF0Y2ggcXVldWVkIHVwIGluIG15IGxpbnV4LW5leHQgYnJh
-bmNoIGZvciA0LjE5DQoNClRoYW5rcyBmb3IgY2hlY2tpbmchDQpBbm5hDQoNCj4gDQo+IFRoYW5r
-cywNCj4gQg0KPiANCj4gT24gMDYvMTkvMjAxOCAwNDoyNCBQTSwgQmlsbCBCYWtlciB3cm90ZToN
-Cj4gPiBGcm9tOiBCaWxsIEJha2VyIDxCaWxsLkJha2VyQE9yYWNsZS5jb20+DQo+ID4gDQo+ID4g
-QWZ0ZXIgYSBsaXZlIGRhdGEgbWlncmF0aW9uIGV2ZW50IGF0IHRoZSBORlMgc2VydmVyLCB0aGUg
-Y2xpZW50IG1heQ0KPiA+IHNlbmQNCj4gPiBJL08gcmVxdWVzdHMgdG8gdGhlIHdyb25nIHNlcnZl
-ciwgY2F1c2luZyBhIGxpdmUgaGFuZyBkdWUgdG8NCj4gPiByZXBlYXRlZA0KPiA+IHJlY292ZXJ5
-IGV2ZW50cy4gIE9uIHRoZSB3aXJlLCB0aGlzIHdpbGwgYXBwZWFyIGFzIGFuIEkvTyByZXF1ZXN0
-DQo+ID4gZmFpbGluZw0KPiA+IHdpdGggTkZTNEVSUl9CQURTRVNTSU9OLCBmb2xsb3dlZCBieSBz
-dWNjZXNzZnVsIENSRUFURV9TRVNTSU9OLA0KPiA+IHJlcGVhdGVkbHkuDQo+ID4gTkZTNEVSUl9C
-QURTU0VTU0lPTiBpcyByZXR1cm5lZCBiZWNhdXNlIHRoZSBzZXNzaW9uIElEIGJlaW5nIHVzZWQN
-Cj4gPiB3YXMNCj4gPiBpc3N1ZWQgYnkgdGhlIG90aGVyIHNlcnZlciBhbmQgaXMgbm90IHZhbGlk
-IGF0IHRoZSBvbGQgc2VydmVyLg0KPiA+IA0KPiA+IFRoZSBmYWlsdXJlIGlzIGNhdXNlZCBieSBh
-c3luYyB3b3JrZXIgdGhyZWFkcyBoYXZpbmcgY2FjaGVkIHRoZQ0KPiA+IHRyYW5zcG9ydA0KPiA+
-ICh4cHJ0KSBpbiB0aGUgcnBjX3Rhc2sgc3RydWN0dXJlLiAgQWZ0ZXIgdGhlIG1pZ3JhdGlvbiBy
-ZWNvdmVyeQ0KPiA+IGNvbXBsZXRlcywNCj4gPiB0aGUgdGFzayBpcyByZWRpc3BhdGNoZWQgYW5k
-IHRoZSB0YXNrIHJlc2VuZHMgdGhlIHJlcXVlc3QgdG8gdGhlDQo+ID4gd3JvbmcNCj4gPiBzZXJ2
-ZXIgYmFzZWQgb24gdGhlIG9sZCB2YWx1ZSBzdGlsbCBwcmVzZW50IGluIHRrX3hwcnQuDQo+ID4g
-DQo+ID4gVGhlIHNvbHV0aW9uIGlzIHRvIHJlY29tcHV0ZSB0aGUgdGtfeHBydCBmaWVsZCBvZiB0
-aGUgcnBjX3Rhc2sNCj4gPiBzdHJ1Y3R1cmUNCj4gPiBzbyB0aGF0IHRoZSByZXF1ZXN0IGdvZXMg
-dG8gdGhlIGNvcnJlY3Qgc2VydmVyLg0KPiA+IA0KPiA+IFNpZ25lZC1vZmYtYnk6IEJpbGwgQmFr
-ZXIgPGJpbGwuYmFrZXJAb3JhY2xlLmNvbT4NCj4gPiBSZXZpZXdlZC1ieTogQ2h1Y2sgTGV2ZXIg
-PGNodWNrLmxldmVyQG9yYWNsZS5jb20+DQo+ID4gVGVzdGVkLWJ5OiBIZWxlbiBDaGFvIDxoZWxl
-bi5jaGFvQG9yYWNsZS5jb20+DQo+ID4gRml4ZXM6IGZiNDNkMTcyMTBiYSAoIlNVTlJQQzogVXNl
-IHRoZSBtdWx0aXBhdGggaXRlcmF0b3IgdG8gYXNzaWduDQo+ID4gYSAuLi4iKQ0KPiA+IENjOiBz
-dGFibGVAdmdlci5rZXJuZWwub3JnICM0LjkNCj4gPiAtLS0NCj4gPiAgIGZzL25mcy9uZnM0cHJv
-Yy5jICAgICAgICAgICB8ICA5ICsrKysrKysrLQ0KPiA+ICAgaW5jbHVkZS9saW51eC9zdW5ycGMv
-Y2xudC5oIHwgIDEgKw0KPiA+ICAgbmV0L3N1bnJwYy9jbG50LmMgICAgICAgICAgIHwgMjggKysr
-KysrKysrKysrKysrKysrKystLS0tLS0tLQ0KPiA+ICAgMyBmaWxlcyBjaGFuZ2VkLCAyOSBpbnNl
-cnRpb25zKCspLCA5IGRlbGV0aW9ucygtKQ0KPiA+IA0KPiA+IENoYW5nZXMgc2luY2UgdjE6DQo+
-ID4gLSBBZGRlZCAiRml4ZXM6IiBhbmQgIkNjOiBzdGFibGUiIHRhZ3MNCj4gPiANCj4gPiBkaWZm
-IC0tZ2l0IGEvZnMvbmZzL25mczRwcm9jLmMgYi9mcy9uZnMvbmZzNHByb2MuYw0KPiA+IGluZGV4
-IGVkNDUwOTAuLjJiMTU1MmIgMTAwNjQ0DQo+ID4gLS0tIGEvZnMvbmZzL25mczRwcm9jLmMNCj4g
-PiArKysgYi9mcy9uZnMvbmZzNHByb2MuYw0KPiA+IEBAIC01ODEsOCArNTgxLDE1IEBAIGludCBu
-ZnM0X2hhbmRsZV9leGNlcHRpb24oc3RydWN0IG5mc19zZXJ2ZXINCj4gPiAqc2VydmVyLCBpbnQg
-ZXJyb3Jjb2RlLCBzdHJ1Y3QgbmZzNF8NCj4gPiAgIAkJcmV0ID0gLUVJTzsNCj4gPiAgIAlyZXR1
-cm4gcmV0Ow0KPiA+ICAgb3V0X3JldHJ5Og0KPiA+IC0JaWYgKHJldCA9PSAwKQ0KPiA+ICsJaWYg
-KHJldCA9PSAwKSB7DQo+ID4gICAJCWV4Y2VwdGlvbi0+cmV0cnkgPSAxOw0KPiA+ICsJCS8qDQo+
-ID4gKwkJICogRm9yIE5GUzRFUlJfTU9WRUQsIHRoZSBjbGllbnQgdHJhbnNwb3J0IHdpbGwgbmVl
-ZCB0bw0KPiA+ICsJCSAqIGJlIHJlY29tcHV0ZWQgYWZ0ZXIgbWlncmF0aW9uIHJlY292ZXJ5IGhh
-cw0KPiA+IGNvbXBsZXRlZC4NCj4gPiArCQkgKi8NCj4gPiArCQlpZiAoZXJyb3Jjb2RlID09IC1O
-RlM0RVJSX01PVkVEKQ0KPiA+ICsJCQlycGNfdGFza19yZWxlYXNlX3RyYW5zcG9ydCh0YXNrKTsN
-Cj4gPiArCX0NCj4gPiAgIAlyZXR1cm4gcmV0Ow0KPiA+ICAgfQ0KPiA+ICAgDQo+ID4gZGlmZiAt
-LWdpdCBhL2luY2x1ZGUvbGludXgvc3VucnBjL2NsbnQuaA0KPiA+IGIvaW5jbHVkZS9saW51eC9z
-dW5ycGMvY2xudC5oDQo+ID4gaW5kZXggOWIxMWI2YS4uNzNkNWM0YSAxMDA2NDQNCj4gPiAtLS0g
-YS9pbmNsdWRlL2xpbnV4L3N1bnJwYy9jbG50LmgNCj4gPiArKysgYi9pbmNsdWRlL2xpbnV4L3N1
-bnJwYy9jbG50LmgNCj4gPiBAQCAtMTU2LDYgKzE1Niw3IEBAIGludAkJcnBjX3N3aXRjaF9jbGll
-bnRfdHJhbnNwb3J0KHN0cg0KPiA+IHVjdCBycGNfY2xudCAqLA0KPiA+ICAgDQo+ID4gICB2b2lk
-CQlycGNfc2h1dGRvd25fY2xpZW50KHN0cnVjdCBycGNfY2xudCAqKTsNCj4gPiAgIHZvaWQJCXJw
-Y19yZWxlYXNlX2NsaWVudChzdHJ1Y3QgcnBjX2NsbnQgKik7DQo+ID4gK3ZvaWQJCXJwY190YXNr
-X3JlbGVhc2VfdHJhbnNwb3J0KHN0cnVjdCBycGNfdGFzayAqKTsNCj4gPiAgIHZvaWQJCXJwY190
-YXNrX3JlbGVhc2VfY2xpZW50KHN0cnVjdCBycGNfdGFzayAqKTsNCj4gPiAgIA0KPiA+ICAgaW50
-CQlycGNiX2NyZWF0ZV9sb2NhbChzdHJ1Y3QgbmV0ICopOw0KPiA+IGRpZmYgLS1naXQgYS9uZXQv
-c3VucnBjL2NsbnQuYyBiL25ldC9zdW5ycGMvY2xudC5jDQo+ID4gaW5kZXggZDgzOWMzMy4uMGQ4
-NTQyNSAxMDA2NDQNCj4gPiAtLS0gYS9uZXQvc3VucnBjL2NsbnQuYw0KPiA+ICsrKyBiL25ldC9z
-dW5ycGMvY2xudC5jDQo+ID4gQEAgLTk2NSwxMCArOTY1LDIwIEBAIHN0cnVjdCBycGNfY2xudCAq
-cnBjX2JpbmRfbmV3X3Byb2dyYW0oc3RydWN0DQo+ID4gcnBjX2NsbnQgKm9sZCwNCj4gPiAgIH0N
-Cj4gPiAgIEVYUE9SVF9TWU1CT0xfR1BMKHJwY19iaW5kX25ld19wcm9ncmFtKTsNCj4gPiAgIA0K
-PiA+ICt2b2lkIHJwY190YXNrX3JlbGVhc2VfdHJhbnNwb3J0KHN0cnVjdCBycGNfdGFzayAqdGFz
-aykNCj4gPiArew0KPiA+ICsJc3RydWN0IHJwY194cHJ0ICp4cHJ0ID0gdGFzay0+dGtfeHBydDsN
-Cj4gPiArDQo+ID4gKwlpZiAoeHBydCkgew0KPiA+ICsJCXRhc2stPnRrX3hwcnQgPSBOVUxMOw0K
-PiA+ICsJCXhwcnRfcHV0KHhwcnQpOw0KPiA+ICsJfQ0KPiA+ICt9DQo+ID4gK0VYUE9SVF9TWU1C
-T0xfR1BMKHJwY190YXNrX3JlbGVhc2VfdHJhbnNwb3J0KTsNCj4gPiArDQo+ID4gICB2b2lkIHJw
-Y190YXNrX3JlbGVhc2VfY2xpZW50KHN0cnVjdCBycGNfdGFzayAqdGFzaykNCj4gPiAgIHsNCj4g
-PiAgIAlzdHJ1Y3QgcnBjX2NsbnQgKmNsbnQgPSB0YXNrLT50a19jbGllbnQ7DQo+ID4gLQlzdHJ1
-Y3QgcnBjX3hwcnQgKnhwcnQgPSB0YXNrLT50a194cHJ0Ow0KPiA+ICAgDQo+ID4gICAJaWYgKGNs
-bnQgIT0gTlVMTCkgew0KPiA+ICAgCQkvKiBSZW1vdmUgZnJvbSBjbGllbnQgdGFzayBsaXN0ICov
-DQo+ID4gQEAgLTk3OSwxMiArOTg5LDE0IEBAIHZvaWQgcnBjX3Rhc2tfcmVsZWFzZV9jbGllbnQo
-c3RydWN0IHJwY190YXNrDQo+ID4gKnRhc2spDQo+ID4gICANCj4gPiAgIAkJcnBjX3JlbGVhc2Vf
-Y2xpZW50KGNsbnQpOw0KPiA+ICAgCX0NCj4gPiArCXJwY190YXNrX3JlbGVhc2VfdHJhbnNwb3J0
-KHRhc2spOw0KPiA+ICt9DQo+ID4gICANCj4gPiAtCWlmICh4cHJ0ICE9IE5VTEwpIHsNCj4gPiAt
-CQl0YXNrLT50a194cHJ0ID0gTlVMTDsNCj4gPiAtDQo+ID4gLQkJeHBydF9wdXQoeHBydCk7DQo+
-ID4gLQl9DQo+ID4gK3N0YXRpYw0KPiA+ICt2b2lkIHJwY190YXNrX3NldF90cmFuc3BvcnQoc3Ry
-dWN0IHJwY190YXNrICp0YXNrLCBzdHJ1Y3QgcnBjX2NsbnQNCj4gPiAqY2xudCkNCj4gPiArew0K
-PiA+ICsJaWYgKCF0YXNrLT50a194cHJ0KQ0KPiA+ICsJCXRhc2stPnRrX3hwcnQgPSB4cHJ0X2l0
-ZXJfZ2V0X25leHQoJmNsbnQtPmNsX3hwaSk7DQo+ID4gICB9DQo+ID4gICANCj4gPiAgIHN0YXRp
-Yw0KPiA+IEBAIC05OTIsOCArMTAwNCw3IEBAIHZvaWQgcnBjX3Rhc2tfc2V0X2NsaWVudChzdHJ1
-Y3QgcnBjX3Rhc2sNCj4gPiAqdGFzaywgc3RydWN0IHJwY19jbG50ICpjbG50KQ0KPiA+ICAgew0K
-PiA+ICAgDQo+ID4gICAJaWYgKGNsbnQgIT0gTlVMTCkgew0KPiA+IC0JCWlmICh0YXNrLT50a194
-cHJ0ID09IE5VTEwpDQo+ID4gLQkJCXRhc2stPnRrX3hwcnQgPSB4cHJ0X2l0ZXJfZ2V0X25leHQo
-JmNsbnQtDQo+ID4gPmNsX3hwaSk7DQo+ID4gKwkJcnBjX3Rhc2tfc2V0X3RyYW5zcG9ydCh0YXNr
-LCBjbG50KTsNCj4gPiAgIAkJdGFzay0+dGtfY2xpZW50ID0gY2xudDsNCj4gPiAgIAkJYXRvbWlj
-X2luYygmY2xudC0+Y2xfY291bnQpOw0KPiA+ICAgCQlpZiAoY2xudC0+Y2xfc29mdHJ0cnkpDQo+
-ID4gQEAgLTE1MTIsNiArMTUyMyw3IEBAIHZvaWQgcnBjX2ZvcmNlX3JlYmluZChzdHJ1Y3QgcnBj
-X2NsbnQgKmNsbnQpDQo+ID4gICAJCWNsbnQtPmNsX3Byb2dyYW0tPnZlcnNpb25bY2xudC0+Y2xf
-dmVyc10tDQo+ID4gPmNvdW50c1tpZHhdKys7DQo+ID4gICAJY2xudC0+Y2xfc3RhdHMtPnJwY2Nu
-dCsrOw0KPiA+ICAgCXRhc2stPnRrX2FjdGlvbiA9IGNhbGxfcmVzZXJ2ZTsNCj4gPiArCXJwY190
-YXNrX3NldF90cmFuc3BvcnQodGFzaywgY2xudCk7DQo+ID4gICB9DQo+ID4gICANCj4gPiAgIC8q
-DQo+ID4gDQo+IA0KPiANCg==
+
+
+> On Aug 16, 2018, at 12:27 PM, Trond Myklebust =
+<trondmy@hammerspace.com> wrote:
+>=20
+> On Thu, 2018-08-16 at 12:05 -0400, Chuck Lever wrote:
+>> A multi-homed NFS server may have more than one "nfs" key in its
+>> keytab. Enable the kernel to pick the key it wants as a machine
+>> credential when establishing a GSS context.
+>>=20
+>> This is useful for GSS-protected NFSv4.0 callbacks, which are
+>> required by RFC 7530 S3.3.3 to use the same principal as the service
+>> principal the client used when establishing its lease.
+>>=20
+>> A complementary modification to rpc.gssd is required to fully enable
+>> this feature.
+>>=20
+>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>> ---
+>> net/sunrpc/auth_gss/auth_gss.c |   20 +++++++++++++++++---
+>> 1 file changed, 17 insertions(+), 3 deletions(-)
+>>=20
+>> diff --git a/net/sunrpc/auth_gss/auth_gss.c
+>> b/net/sunrpc/auth_gss/auth_gss.c
+>> index be8f103..1943e11 100644
+>> --- a/net/sunrpc/auth_gss/auth_gss.c
+>> +++ b/net/sunrpc/auth_gss/auth_gss.c
+>> @@ -284,7 +284,12 @@ struct gss_auth {
+>> 	return p;
+>> }
+>>=20
+>> -#define UPCALL_BUF_LEN 128
+>> +/* XXX: Need some documentation about why UPCALL_BUF_LEN is so
+>> small.
+>> + *	Is user space expecting no more than UPCALL_BUF_LEN bytes?
+>> + *	Note that there are now _two_ NI_MAXHOST sized data items
+>> + *	being passed in this string.
+>> + */
+>> +#define UPCALL_BUF_LEN	256
+>>=20
+>=20
+> Why? The services are currently "nfs" or "nfsd". Hostnames are =
+normally
+> < 64 characters.
+
+True, but that's an average. We actually should be accommodating the
+largest possible hostname here: /usr/include/netdb.h defines NI_MAXHOST
+as 1024. Thus even 256 is too small, but as you point out it will work
+fine in most real world cases.
+
+
+>> struct gss_upcall_msg {
+>> 	refcount_t count;
+>> @@ -462,8 +467,17 @@ static int gss_encode_v1_msg(struct
+>> gss_upcall_msg *gss_msg,
+>> 		p +=3D len;
+>> 		gss_msg->msg.len +=3D len;
+>> 	}
+>> -	if (service_name !=3D NULL) {
+>> -		len =3D scnprintf(p, buflen, "service=3D%s ",
+>> service_name);
+>> +	if (service_name) {
+>> +		char *c =3D strchr(service_name, '@');
+>> +
+>> +		if (!c)
+>> +			len =3D scnprintf(p, buflen, "service=3D%s ",
+>> +					service_name);
+>> +		else
+>> +			len =3D scnprintf(p, buflen,
+>> +					"service=3D%.*s srchost=3D%s ",
+>> +					(int)(c - service_name),
+>> +					service_name, c + 1);
+>> 		buflen -=3D len;
+>> 		p +=3D len;
+>> 		gss_msg->msg.len +=3D len;
+>=20
+> Isn't this just duplicating the functionality of the 'target' =
+argument?
+
+I might not understand your question, but I believe the answer is no.
+
+I have a multi-homed client and server. The primary hostname of the
+client is "manet.example.net" and the server is "klimt.example.net"
+Both have IB interfaces, respectively "manet.ib.example.net" and
+"klimt.ib.example.net".
+
+Now I do this:
+
+manet# mount -o vers=3D4.0,sec=3Dsys klimt.ib.example.net:/export /mnt
+
+The mount is AUTH_SYS, but lease management is done using krb5i because
+both systems have a keytab. For the callback channel, RFC 7530 requires
+that the server use the client's lease management auth flavor. Moreover,
+the server is required to use the same acceptor that the client
+authenticated to (in this case, "klimt.ib.example.net").
+
+So now the server establishes a GSS context for it's callback channel:
+
+Aug 16 11:00:17 klimt rpc.gssd[1186]: handle_gssd_upcall: 'mech=3Dkrb5 =
+uid=3D0 target=3Dhost@manet.example.net service=3Dnfs =
+srchost=3Dklimt.ib.example.net enctypes=3D18,17,16,23,3,1,2 ' =
+(nfsd4_cb/clnt4)
+
+The "target" is the principal of the remote service the server is
+authenticating to. In full, the target is:
+
+   host/manet.example.net@EXAMPLE.NET
+
+The "srchost" is the hostname part of the server's service principal. =
+This
+has to match the acceptor string provided by the client, thus the full
+source principal has to be:
+
+   nfs/klimt.ib.example.net@EXAMPLE.NET
+
+gssd uses the service=3D and srchost=3D to select the correct key in its
+keytab when it establishes a GSS context for the callback channel. =
+Without
+srchost it would select the key for klimt.example.net, which is the
+wrong key in this case. Since this commit:
+
+commit f11b2a1cfbf5dd783eb55cb470509d06e20d1c78
+Author:     Jeff Layton <jlayton@poochiereds.net>
+AuthorDate: Sat Jun 21 20:52:17 2014 -0400
+Commit:     Trond Myklebust <trond.myklebust@primarydata.com>
+CommitDate: Sat Jul 12 18:41:25 2014 -0400
+
+    nfs4: copy acceptor name from context to nfs_client
+
+the client rejects NFSv4.0 callbacks using krb5 with the wrong acceptor
+string with "NFSv4 callback contains invalid cred". This occurs _after_
+the server has established a GSS context and a connection to the client,
+so it has already granted delegations which it now cannot recall.
+
+
+--
+Chuck Lever
