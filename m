@@ -1,125 +1,196 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-eopbgr730114.outbound.protection.outlook.com ([40.107.73.114]:33884
-        "EHLO NAM05-DM3-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1725837AbeHQH41 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 17 Aug 2018 03:56:27 -0400
-From: Trond Myklebust <trondmy@hammerspace.com>
-To: "chuck.lever@oracle.com" <chuck.lever@oracle.com>
-CC: "bfields@fieldses.org" <bfields@fieldses.org>,
-        "simo@redhat.com" <simo@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Received: from userp2120.oracle.com ([156.151.31.85]:60268 "EHLO
+        userp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726355AbeHQQqv (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Aug 2018 12:46:51 -0400
+Content-Type: text/plain;
+        charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 11.5 \(3445.9.1\))
 Subject: Re: [PATCH v2 1/4] sunrpc: Enable the kernel to specify the hostname
  part of service principals
-Date: Fri, 17 Aug 2018 04:54:29 +0000
-Message-ID: <ffcd984c8709ab03552de22c80aa91732ce5f0d1.camel@hammerspace.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <ffcd984c8709ab03552de22c80aa91732ce5f0d1.camel@hammerspace.com>
+Date: Fri, 17 Aug 2018 09:43:07 -0400
+Cc: Bruce Fields <bfields@fieldses.org>,
+        "simo@redhat.com" <simo@redhat.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <B16A995D-03EE-4D80-90D1-4D2A2573E73E@oracle.com>
 References: <20180816160404.2230.55488.stgit@klimt.1015granger.net>
-         <20180816160554.2230.58754.stgit@klimt.1015granger.net>
-         <3e9c0dd18719fdc37a00aa5f5e9cddc8010d24e5.camel@hammerspace.com>
-         <F7F06D13-320C-438E-AAC9-6B43AC213D79@oracle.com>
-In-Reply-To: <F7F06D13-320C-438E-AAC9-6B43AC213D79@oracle.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+ <20180816160554.2230.58754.stgit@klimt.1015granger.net>
+ <3e9c0dd18719fdc37a00aa5f5e9cddc8010d24e5.camel@hammerspace.com>
+ <F7F06D13-320C-438E-AAC9-6B43AC213D79@oracle.com>
+ <ffcd984c8709ab03552de22c80aa91732ce5f0d1.camel@hammerspace.com>
+To: Trond Myklebust <trondmy@hammerspace.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDE4LTA4LTE2IGF0IDE1OjAzIC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
-PiBPbiBBdWcgMTYsIDIwMTgsIGF0IDEyOjI3IFBNLCBUcm9uZCBNeWtsZWJ1c3QgPA0KPiA+IHRy
-b25kbXlAaGFtbWVyc3BhY2UuY29tPiB3cm90ZToNCj4gPiANCj4gPiBPbiBUaHUsIDIwMTgtMDgt
-MTYgYXQgMTI6MDUgLTA0MDAsIENodWNrIExldmVyIHdyb3RlOg0KPiA+ID4gQSBtdWx0aS1ob21l
-ZCBORlMgc2VydmVyIG1heSBoYXZlIG1vcmUgdGhhbiBvbmUgIm5mcyIga2V5IGluIGl0cw0KPiA+
-ID4ga2V5dGFiLiBFbmFibGUgdGhlIGtlcm5lbCB0byBwaWNrIHRoZSBrZXkgaXQgd2FudHMgYXMg
-YSBtYWNoaW5lDQo+ID4gPiBjcmVkZW50aWFsIHdoZW4gZXN0YWJsaXNoaW5nIGEgR1NTIGNvbnRl
-eHQuDQo+ID4gPiANCj4gPiA+IFRoaXMgaXMgdXNlZnVsIGZvciBHU1MtcHJvdGVjdGVkIE5GU3Y0
-LjAgY2FsbGJhY2tzLCB3aGljaCBhcmUNCj4gPiA+IHJlcXVpcmVkIGJ5IFJGQyA3NTMwIFMzLjMu
-MyB0byB1c2UgdGhlIHNhbWUgcHJpbmNpcGFsIGFzIHRoZQ0KPiA+ID4gc2VydmljZQ0KPiA+ID4g
-cHJpbmNpcGFsIHRoZSBjbGllbnQgdXNlZCB3aGVuIGVzdGFibGlzaGluZyBpdHMgbGVhc2UuDQo+
-ID4gPiANCj4gPiA+IEEgY29tcGxlbWVudGFyeSBtb2RpZmljYXRpb24gdG8gcnBjLmdzc2QgaXMg
-cmVxdWlyZWQgdG8gZnVsbHkNCj4gPiA+IGVuYWJsZQ0KPiA+ID4gdGhpcyBmZWF0dXJlLg0KPiA+
-ID4gDQo+ID4gPiBTaWduZWQtb2ZmLWJ5OiBDaHVjayBMZXZlciA8Y2h1Y2subGV2ZXJAb3JhY2xl
-LmNvbT4NCj4gPiA+IC0tLQ0KPiA+ID4gbmV0L3N1bnJwYy9hdXRoX2dzcy9hdXRoX2dzcy5jIHwg
-ICAyMCArKysrKysrKysrKysrKysrKy0tLQ0KPiA+ID4gMSBmaWxlIGNoYW5nZWQsIDE3IGluc2Vy
-dGlvbnMoKyksIDMgZGVsZXRpb25zKC0pDQo+ID4gPiANCj4gPiA+IGRpZmYgLS1naXQgYS9uZXQv
-c3VucnBjL2F1dGhfZ3NzL2F1dGhfZ3NzLmMNCj4gPiA+IGIvbmV0L3N1bnJwYy9hdXRoX2dzcy9h
-dXRoX2dzcy5jDQo+ID4gPiBpbmRleCBiZThmMTAzLi4xOTQzZTExIDEwMDY0NA0KPiA+ID4gLS0t
-IGEvbmV0L3N1bnJwYy9hdXRoX2dzcy9hdXRoX2dzcy5jDQo+ID4gPiArKysgYi9uZXQvc3VucnBj
-L2F1dGhfZ3NzL2F1dGhfZ3NzLmMNCj4gPiA+IEBAIC0yODQsNyArMjg0LDEyIEBAIHN0cnVjdCBn
-c3NfYXV0aCB7DQo+ID4gPiAJcmV0dXJuIHA7DQo+ID4gPiB9DQo+ID4gPiANCj4gPiA+IC0jZGVm
-aW5lIFVQQ0FMTF9CVUZfTEVOIDEyOA0KPiA+ID4gKy8qIFhYWDogTmVlZCBzb21lIGRvY3VtZW50
-YXRpb24gYWJvdXQgd2h5IFVQQ0FMTF9CVUZfTEVOIGlzIHNvDQo+ID4gPiBzbWFsbC4NCj4gPiA+
-ICsgKglJcyB1c2VyIHNwYWNlIGV4cGVjdGluZyBubyBtb3JlIHRoYW4gVVBDQUxMX0JVRl9MRU4N
-Cj4gPiA+IGJ5dGVzPw0KPiA+ID4gKyAqCU5vdGUgdGhhdCB0aGVyZSBhcmUgbm93IF90d29fIE5J
-X01BWEhPU1Qgc2l6ZWQgZGF0YQ0KPiA+ID4gaXRlbXMNCj4gPiA+ICsgKgliZWluZyBwYXNzZWQg
-aW4gdGhpcyBzdHJpbmcuDQo+ID4gPiArICovDQo+ID4gPiArI2RlZmluZSBVUENBTExfQlVGX0xF
-TgkyNTYNCj4gPiA+IA0KPiA+IA0KPiA+IFdoeT8gVGhlIHNlcnZpY2VzIGFyZSBjdXJyZW50bHkg
-Im5mcyIgb3IgIm5mc2QiLiBIb3N0bmFtZXMgYXJlDQo+ID4gbm9ybWFsbHkNCj4gPiA8IDY0IGNo
-YXJhY3RlcnMuDQo+IA0KPiBUcnVlLCBidXQgdGhhdCdzIGFuIGF2ZXJhZ2UuIFdlIGFjdHVhbGx5
-IHNob3VsZCBiZSBhY2NvbW1vZGF0aW5nIHRoZQ0KPiBsYXJnZXN0IHBvc3NpYmxlIGhvc3RuYW1l
-IGhlcmU6IC91c3IvaW5jbHVkZS9uZXRkYi5oIGRlZmluZXMNCj4gTklfTUFYSE9TVA0KPiBhcyAx
-MDI0LiBUaHVzIGV2ZW4gMjU2IGlzIHRvbyBzbWFsbCwgYnV0IGFzIHlvdSBwb2ludCBvdXQgaXQg
-d2lsbA0KPiB3b3JrDQo+IGZpbmUgaW4gbW9zdCByZWFsIHdvcmxkIGNhc2VzLg0KPiANCj4gDQo+
-ID4gPiBzdHJ1Y3QgZ3NzX3VwY2FsbF9tc2cgew0KPiA+ID4gCXJlZmNvdW50X3QgY291bnQ7DQo+
-ID4gPiBAQCAtNDYyLDggKzQ2NywxNyBAQCBzdGF0aWMgaW50IGdzc19lbmNvZGVfdjFfbXNnKHN0
-cnVjdA0KPiA+ID4gZ3NzX3VwY2FsbF9tc2cgKmdzc19tc2csDQo+ID4gPiAJCXAgKz0gbGVuOw0K
-PiA+ID4gCQlnc3NfbXNnLT5tc2cubGVuICs9IGxlbjsNCj4gPiA+IAl9DQo+ID4gPiAtCWlmIChz
-ZXJ2aWNlX25hbWUgIT0gTlVMTCkgew0KPiA+ID4gLQkJbGVuID0gc2NucHJpbnRmKHAsIGJ1Zmxl
-biwgInNlcnZpY2U9JXMgIiwNCj4gPiA+IHNlcnZpY2VfbmFtZSk7DQo+ID4gPiArCWlmIChzZXJ2
-aWNlX25hbWUpIHsNCj4gPiA+ICsJCWNoYXIgKmMgPSBzdHJjaHIoc2VydmljZV9uYW1lLCAnQCcp
-Ow0KPiA+ID4gKw0KPiA+ID4gKwkJaWYgKCFjKQ0KPiA+ID4gKwkJCWxlbiA9IHNjbnByaW50Zihw
-LCBidWZsZW4sICJzZXJ2aWNlPSVzICIsDQo+ID4gPiArCQkJCQlzZXJ2aWNlX25hbWUpOw0KPiA+
-ID4gKwkJZWxzZQ0KPiA+ID4gKwkJCWxlbiA9IHNjbnByaW50ZihwLCBidWZsZW4sDQo+ID4gPiAr
-CQkJCQkic2VydmljZT0lLipzIHNyY2hvc3Q9JXMgIiwNCj4gPiA+ICsJCQkJCShpbnQpKGMgLSBz
-ZXJ2aWNlX25hbWUpLA0KPiA+ID4gKwkJCQkJc2VydmljZV9uYW1lLCBjICsgMSk7DQo+ID4gPiAJ
-CWJ1ZmxlbiAtPSBsZW47DQo+ID4gPiAJCXAgKz0gbGVuOw0KPiA+ID4gCQlnc3NfbXNnLT5tc2cu
-bGVuICs9IGxlbjsNCj4gPiANCj4gPiBJc24ndCB0aGlzIGp1c3QgZHVwbGljYXRpbmcgdGhlIGZ1
-bmN0aW9uYWxpdHkgb2YgdGhlICd0YXJnZXQnDQo+ID4gYXJndW1lbnQ/DQo+IA0KPiBJIG1pZ2h0
-IG5vdCB1bmRlcnN0YW5kIHlvdXIgcXVlc3Rpb24sIGJ1dCBJIGJlbGlldmUgdGhlIGFuc3dlciBp
-cyBuby4NCj4gDQo+IEkgaGF2ZSBhIG11bHRpLWhvbWVkIGNsaWVudCBhbmQgc2VydmVyLiBUaGUg
-cHJpbWFyeSBob3N0bmFtZSBvZiB0aGUNCj4gY2xpZW50IGlzICJtYW5ldC5leGFtcGxlLm5ldCIg
-YW5kIHRoZSBzZXJ2ZXIgaXMgImtsaW10LmV4YW1wbGUubmV0Ig0KPiBCb3RoIGhhdmUgSUIgaW50
-ZXJmYWNlcywgcmVzcGVjdGl2ZWx5ICJtYW5ldC5pYi5leGFtcGxlLm5ldCIgYW5kDQo+ICJrbGlt
-dC5pYi5leGFtcGxlLm5ldCIuDQo+IA0KPiBOb3cgSSBkbyB0aGlzOg0KPiANCj4gbWFuZXQjIG1v
-dW50IC1vIHZlcnM9NC4wLHNlYz1zeXMga2xpbXQuaWIuZXhhbXBsZS5uZXQ6L2V4cG9ydCAvbW50
-DQo+IA0KPiBUaGUgbW91bnQgaXMgQVVUSF9TWVMsIGJ1dCBsZWFzZSBtYW5hZ2VtZW50IGlzIGRv
-bmUgdXNpbmcga3JiNWkNCj4gYmVjYXVzZQ0KPiBib3RoIHN5c3RlbXMgaGF2ZSBhIGtleXRhYi4g
-Rm9yIHRoZSBjYWxsYmFjayBjaGFubmVsLCBSRkMgNzUzMA0KPiByZXF1aXJlcw0KPiB0aGF0IHRo
-ZSBzZXJ2ZXIgdXNlIHRoZSBjbGllbnQncyBsZWFzZSBtYW5hZ2VtZW50IGF1dGggZmxhdm9yLg0K
-PiBNb3Jlb3ZlciwNCj4gdGhlIHNlcnZlciBpcyByZXF1aXJlZCB0byB1c2UgdGhlIHNhbWUgYWNj
-ZXB0b3IgdGhhdCB0aGUgY2xpZW50DQo+IGF1dGhlbnRpY2F0ZWQgdG8gKGluIHRoaXMgY2FzZSwg
-ImtsaW10LmliLmV4YW1wbGUubmV0IikuDQo+IA0KPiBTbyBub3cgdGhlIHNlcnZlciBlc3RhYmxp
-c2hlcyBhIEdTUyBjb250ZXh0IGZvciBpdCdzIGNhbGxiYWNrDQo+IGNoYW5uZWw6DQo+IA0KPiBB
-dWcgMTYgMTE6MDA6MTcga2xpbXQgcnBjLmdzc2RbMTE4Nl06IGhhbmRsZV9nc3NkX3VwY2FsbDog
-J21lY2g9a3JiNQ0KPiB1aWQ9MCB0YXJnZXQ9aG9zdEBtYW5ldC5leGFtcGxlLm5ldCBzZXJ2aWNl
-PW5mcw0KPiBzcmNob3N0PWtsaW10LmliLmV4YW1wbGUubmV0IGVuY3R5cGVzPTE4LDE3LDE2LDIz
-LDMsMSwyICcNCj4gKG5mc2Q0X2NiL2NsbnQ0KQ0KPiANCj4gVGhlICJ0YXJnZXQiIGlzIHRoZSBw
-cmluY2lwYWwgb2YgdGhlIHJlbW90ZSBzZXJ2aWNlIHRoZSBzZXJ2ZXIgaXMNCj4gYXV0aGVudGlj
-YXRpbmcgdG8uIEluIGZ1bGwsIHRoZSB0YXJnZXQgaXM6DQo+IA0KPiAgICBob3N0L21hbmV0LmV4
-YW1wbGUubmV0QEVYQU1QTEUuTkVUDQo+IA0KPiBUaGUgInNyY2hvc3QiIGlzIHRoZSBob3N0bmFt
-ZSBwYXJ0IG9mIHRoZSBzZXJ2ZXIncyBzZXJ2aWNlIHByaW5jaXBhbC4NCj4gVGhpcw0KPiBoYXMg
-dG8gbWF0Y2ggdGhlIGFjY2VwdG9yIHN0cmluZyBwcm92aWRlZCBieSB0aGUgY2xpZW50LCB0aHVz
-IHRoZQ0KPiBmdWxsDQo+IHNvdXJjZSBwcmluY2lwYWwgaGFzIHRvIGJlOg0KPiANCj4gICAgbmZz
-L2tsaW10LmliLmV4YW1wbGUubmV0QEVYQU1QTEUuTkVUDQo+IA0KPiBnc3NkIHVzZXMgdGhlIHNl
-cnZpY2U9IGFuZCBzcmNob3N0PSB0byBzZWxlY3QgdGhlIGNvcnJlY3Qga2V5IGluIGl0cw0KPiBr
-ZXl0YWIgd2hlbiBpdCBlc3RhYmxpc2hlcyBhIEdTUyBjb250ZXh0IGZvciB0aGUgY2FsbGJhY2sg
-Y2hhbm5lbC4NCj4gV2l0aG91dA0KPiBzcmNob3N0IGl0IHdvdWxkIHNlbGVjdCB0aGUga2V5IGZv
-ciBrbGltdC5leGFtcGxlLm5ldCwgd2hpY2ggaXMgdGhlDQo+IHdyb25nIGtleSBpbiB0aGlzIGNh
-c2UuIFNpbmNlIHRoaXMgY29tbWl0Og0KPiANCj4gY29tbWl0IGYxMWIyYTFjZmJmNWRkNzgzZWI1
-NWNiNDcwNTA5ZDA2ZTIwZDFjNzgNCj4gQXV0aG9yOiAgICAgSmVmZiBMYXl0b24gPGpsYXl0b25A
-cG9vY2hpZXJlZHMubmV0Pg0KPiBBdXRob3JEYXRlOiBTYXQgSnVuIDIxIDIwOjUyOjE3IDIwMTQg
-LTA0MDANCj4gQ29tbWl0OiAgICAgVHJvbmQgTXlrbGVidXN0IDx0cm9uZC5teWtsZWJ1c3RAcHJp
-bWFyeWRhdGEuY29tPg0KPiBDb21taXREYXRlOiBTYXQgSnVsIDEyIDE4OjQxOjI1IDIwMTQgLTA0
-MDANCj4gDQo+ICAgICBuZnM0OiBjb3B5IGFjY2VwdG9yIG5hbWUgZnJvbSBjb250ZXh0IHRvIG5m
-c19jbGllbnQNCj4gDQo+IHRoZSBjbGllbnQgcmVqZWN0cyBORlN2NC4wIGNhbGxiYWNrcyB1c2lu
-ZyBrcmI1IHdpdGggdGhlIHdyb25nDQo+IGFjY2VwdG9yDQo+IHN0cmluZyB3aXRoICJORlN2NCBj
-YWxsYmFjayBjb250YWlucyBpbnZhbGlkIGNyZWQiLiBUaGlzIG9jY3Vycw0KPiBfYWZ0ZXJfDQo+
-IHRoZSBzZXJ2ZXIgaGFzIGVzdGFibGlzaGVkIGEgR1NTIGNvbnRleHQgYW5kIGEgY29ubmVjdGlv
-biB0byB0aGUNCj4gY2xpZW50LA0KPiBzbyBpdCBoYXMgYWxyZWFkeSBncmFudGVkIGRlbGVnYXRp
-b25zIHdoaWNoIGl0IG5vdyBjYW5ub3QgcmVjYWxsLg0KPiANCg0KVGhlIGFib3ZlIHN0b3J5IHJl
-YWxseSBkb2VzIGRlc2VydmUgYW4gZXhwbGFuYXRpb24gaW4gdGhlIGNvZGUgZm9yIHRoZQ0KdXBj
-YWxsLg0KUmlnaHQgbm93LCB5b3UgaGF2ZSB0byBodW50IHRocm91Z2ggbmVzdGVkIGxheWVycyBv
-ZiBzdHJ1Y3QgY29waWVzIHRvDQpmaWd1cmUgb3V0IHRoYXQgJ3RhcmdldCcgcmVmZXJzIHRvIHRo
-ZSBzZXJ2aWNlIG9uIHRoZSBzZXJ2ZXIgc2lkZQ0KY2FsbGJhY2sgY2hhbm5lbCBmb3IgTkZTdjQu
-MCBvbmx5LiBBIHNlY29uZCBob3N0bmFtZSBmaWVsZCBmb3IgdGhlIHNhbWUNCnVzZSBjYXNlIGp1
-c3QgYWRkcyB0byB0aGF0IGNvbmZ1c2lvbi4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4
-IE5GUyBjbGllbnQgbWFpbnRhaW5lciwgSGFtbWVyc3BhY2UNCnRyb25kLm15a2xlYnVzdEBoYW1t
-ZXJzcGFjZS5jb20NCg0KDQo=
+
+
+> On Aug 17, 2018, at 12:54 AM, Trond Myklebust =
+<trondmy@hammerspace.com> wrote:
+>=20
+> On Thu, 2018-08-16 at 15:03 -0400, Chuck Lever wrote:
+>>> On Aug 16, 2018, at 12:27 PM, Trond Myklebust <
+>>> trondmy@hammerspace.com> wrote:
+>>>=20
+>>> On Thu, 2018-08-16 at 12:05 -0400, Chuck Lever wrote:
+>>>> A multi-homed NFS server may have more than one "nfs" key in its
+>>>> keytab. Enable the kernel to pick the key it wants as a machine
+>>>> credential when establishing a GSS context.
+>>>>=20
+>>>> This is useful for GSS-protected NFSv4.0 callbacks, which are
+>>>> required by RFC 7530 S3.3.3 to use the same principal as the
+>>>> service
+>>>> principal the client used when establishing its lease.
+>>>>=20
+>>>> A complementary modification to rpc.gssd is required to fully
+>>>> enable
+>>>> this feature.
+>>>>=20
+>>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>>>> ---
+>>>> net/sunrpc/auth_gss/auth_gss.c |   20 +++++++++++++++++---
+>>>> 1 file changed, 17 insertions(+), 3 deletions(-)
+>>>>=20
+>>>> diff --git a/net/sunrpc/auth_gss/auth_gss.c
+>>>> b/net/sunrpc/auth_gss/auth_gss.c
+>>>> index be8f103..1943e11 100644
+>>>> --- a/net/sunrpc/auth_gss/auth_gss.c
+>>>> +++ b/net/sunrpc/auth_gss/auth_gss.c
+>>>> @@ -284,7 +284,12 @@ struct gss_auth {
+>>>> 	return p;
+>>>> }
+>>>>=20
+>>>> -#define UPCALL_BUF_LEN 128
+>>>> +/* XXX: Need some documentation about why UPCALL_BUF_LEN is so
+>>>> small.
+>>>> + *	Is user space expecting no more than UPCALL_BUF_LEN
+>>>> bytes?
+>>>> + *	Note that there are now _two_ NI_MAXHOST sized data
+>>>> items
+>>>> + *	being passed in this string.
+>>>> + */
+>>>> +#define UPCALL_BUF_LEN	256
+>>>>=20
+>>>=20
+>>> Why? The services are currently "nfs" or "nfsd". Hostnames are
+>>> normally
+>>> < 64 characters.
+>>=20
+>> True, but that's an average. We actually should be accommodating the
+>> largest possible hostname here: /usr/include/netdb.h defines
+>> NI_MAXHOST
+>> as 1024. Thus even 256 is too small, but as you point out it will
+>> work
+>> fine in most real world cases.
+>>=20
+>>=20
+>>>> struct gss_upcall_msg {
+>>>> 	refcount_t count;
+>>>> @@ -462,8 +467,17 @@ static int gss_encode_v1_msg(struct
+>>>> gss_upcall_msg *gss_msg,
+>>>> 		p +=3D len;
+>>>> 		gss_msg->msg.len +=3D len;
+>>>> 	}
+>>>> -	if (service_name !=3D NULL) {
+>>>> -		len =3D scnprintf(p, buflen, "service=3D%s ",
+>>>> service_name);
+>>>> +	if (service_name) {
+>>>> +		char *c =3D strchr(service_name, '@');
+>>>> +
+>>>> +		if (!c)
+>>>> +			len =3D scnprintf(p, buflen, "service=3D%s ",
+>>>> +					service_name);
+>>>> +		else
+>>>> +			len =3D scnprintf(p, buflen,
+>>>> +					"service=3D%.*s srchost=3D%s ",
+>>>> +					(int)(c - service_name),
+>>>> +					service_name, c + 1);
+>>>> 		buflen -=3D len;
+>>>> 		p +=3D len;
+>>>> 		gss_msg->msg.len +=3D len;
+>>>=20
+>>> Isn't this just duplicating the functionality of the 'target'
+>>> argument?
+>>=20
+>> I might not understand your question, but I believe the answer is no.
+>>=20
+>> I have a multi-homed client and server. The primary hostname of the
+>> client is "manet.example.net" and the server is "klimt.example.net"
+>> Both have IB interfaces, respectively "manet.ib.example.net" and
+>> "klimt.ib.example.net".
+>>=20
+>> Now I do this:
+>>=20
+>> manet# mount -o vers=3D4.0,sec=3Dsys klimt.ib.example.net:/export =
+/mnt
+>>=20
+>> The mount is AUTH_SYS, but lease management is done using krb5i
+>> because
+>> both systems have a keytab. For the callback channel, RFC 7530
+>> requires
+>> that the server use the client's lease management auth flavor.
+>> Moreover,
+>> the server is required to use the same acceptor that the client
+>> authenticated to (in this case, "klimt.ib.example.net").
+>>=20
+>> So now the server establishes a GSS context for it's callback
+>> channel:
+>>=20
+>> Aug 16 11:00:17 klimt rpc.gssd[1186]: handle_gssd_upcall: 'mech=3Dkrb5
+>> uid=3D0 target=3Dhost@manet.example.net service=3Dnfs
+>> srchost=3Dklimt.ib.example.net enctypes=3D18,17,16,23,3,1,2 '
+>> (nfsd4_cb/clnt4)
+>>=20
+>> The "target" is the principal of the remote service the server is
+>> authenticating to. In full, the target is:
+>>=20
+>>   host/manet.example.net@EXAMPLE.NET
+>>=20
+>> The "srchost" is the hostname part of the server's service principal.
+>> This
+>> has to match the acceptor string provided by the client, thus the
+>> full
+>> source principal has to be:
+>>=20
+>>   nfs/klimt.ib.example.net@EXAMPLE.NET
+>>=20
+>> gssd uses the service=3D and srchost=3D to select the correct key in =
+its
+>> keytab when it establishes a GSS context for the callback channel.
+>> Without
+>> srchost it would select the key for klimt.example.net, which is the
+>> wrong key in this case. Since this commit:
+>>=20
+>> commit f11b2a1cfbf5dd783eb55cb470509d06e20d1c78
+>> Author:     Jeff Layton <jlayton@poochiereds.net>
+>> AuthorDate: Sat Jun 21 20:52:17 2014 -0400
+>> Commit:     Trond Myklebust <trond.myklebust@primarydata.com>
+>> CommitDate: Sat Jul 12 18:41:25 2014 -0400
+>>=20
+>>    nfs4: copy acceptor name from context to nfs_client
+>>=20
+>> the client rejects NFSv4.0 callbacks using krb5 with the wrong
+>> acceptor
+>> string with "NFSv4 callback contains invalid cred". This occurs
+>> _after_
+>> the server has established a GSS context and a connection to the
+>> client,
+>> so it has already granted delegations which it now cannot recall.
+>>=20
+>=20
+> The above story really does deserve an explanation in the code for the
+> upcall.
+> Right now, you have to hunt through nested layers of struct copies to
+> figure out that 'target' refers to the service on the server side
+> callback channel for NFSv4.0 only. A second hostname field for the =
+same
+> use case just adds to that confusion.
+
+I can send an additional patch that adds one or more comments =
+documenting
+the function of target=3D, service=3D, and srchost=3D.
+
+
+--
+Chuck Lever
