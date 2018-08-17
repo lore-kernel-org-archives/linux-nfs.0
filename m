@@ -1,120 +1,69 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk0-f193.google.com ([209.85.220.193]:44562 "EHLO
-        mail-qk0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727055AbeHRAtM (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Aug 2018 20:49:12 -0400
-Received: by mail-qk0-f193.google.com with SMTP id p15-v6so5434052qke.11
-        for <linux-nfs@vger.kernel.org>; Fri, 17 Aug 2018 14:44:08 -0700 (PDT)
-From: Laura Abbott <labbott@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>,
-        Jeff Layton <jlayton@kernel.org>,
-        Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>
-Cc: Laura Abbott <labbott@redhat.com>,
-        "David S. Miller" <davem@davemloft.net>, linux-nfs@vger.kernel.org,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH] sunrpc: Don't use stack buffer with scatterlist
-Date: Fri, 17 Aug 2018 14:43:54 -0700
-Message-Id: <20180817214354.5780-1-labbott@redhat.com>
+Received: from zeniv.linux.org.uk ([195.92.253.2]:58686 "EHLO
+        ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725825AbeHRCRN (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Aug 2018 22:17:13 -0400
+Date: Sat, 18 Aug 2018 00:11:31 +0100
+From: Al Viro <viro@ZenIV.linux.org.uk>
+To: "Eric W. Biederman" <ebiederm@xmission.com>
+Cc: David Howells <dhowells@redhat.com>,
+        trond.myklebust@hammerspace.com, anna.schumaker@netapp.com,
+        sfrench@samba.org, steved@redhat.com,
+        torvalds@linux-foundation.org,
+        "Eric W. Biederman" <ebiederm@redhat.com>,
+        linux-api@vger.kernel.org, linux-security-module@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
+        linux-afs@lists.infradead.org, ceph-devel@vger.kernel.org,
+        v9fs-developer@lists.sourceforge.net
+Subject: Re: Should we split the network filesystem setup into two phases?
+Message-ID: <20180817231131.GI6515@ZenIV.linux.org.uk>
+References: <153313703562.13253.5766498657900728120.stgit@warthog.procyon.org.uk>
+ <17763.1534350685@warthog.procyon.org.uk>
+ <87pnyiew8x.fsf@xmission.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <87pnyiew8x.fsf@xmission.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Fedora got a bug report from NFS:
+On Thu, Aug 16, 2018 at 12:06:06AM -0500, Eric W. Biederman wrote:
 
-kernel BUG at include/linux/scatterlist.h:143!
-...
-RIP: 0010:sg_init_one+0x7d/0x90
-..
-  make_checksum+0x4e7/0x760 [rpcsec_gss_krb5]
-  gss_get_mic_kerberos+0x26e/0x310 [rpcsec_gss_krb5]
-  gss_marshal+0x126/0x1a0 [auth_rpcgss]
-  ? __local_bh_enable_ip+0x80/0xe0
-  ? call_transmit_status+0x1d0/0x1d0 [sunrpc]
-  call_transmit+0x137/0x230 [sunrpc]
-  __rpc_execute+0x9b/0x490 [sunrpc]
-  rpc_run_task+0x119/0x150 [sunrpc]
-  nfs4_run_exchange_id+0x1bd/0x250 [nfsv4]
-  _nfs4_proc_exchange_id+0x2d/0x490 [nfsv4]
-  nfs41_discover_server_trunking+0x1c/0xa0 [nfsv4]
-  nfs4_discover_server_trunking+0x80/0x270 [nfsv4]
-  nfs4_init_client+0x16e/0x240 [nfsv4]
-  ? nfs_get_client+0x4c9/0x5d0 [nfs]
-  ? _raw_spin_unlock+0x24/0x30
-  ? nfs_get_client+0x4c9/0x5d0 [nfs]
-  nfs4_set_client+0xb2/0x100 [nfsv4]
-  nfs4_create_server+0xff/0x290 [nfsv4]
-  nfs4_remote_mount+0x28/0x50 [nfsv4]
-  mount_fs+0x3b/0x16a
-  vfs_kern_mount.part.35+0x54/0x160
-  nfs_do_root_mount+0x7f/0xc0 [nfsv4]
-  nfs4_try_mount+0x43/0x70 [nfsv4]
-  ? get_nfs_version+0x21/0x80 [nfs]
-  nfs_fs_mount+0x789/0xbf0 [nfs]
-  ? pcpu_alloc+0x6ca/0x7e0
-  ? nfs_clone_super+0x70/0x70 [nfs]
-  ? nfs_parse_mount_options+0xb40/0xb40 [nfs]
-  mount_fs+0x3b/0x16a
-  vfs_kern_mount.part.35+0x54/0x160
-  do_mount+0x1fd/0xd50
-  ksys_mount+0xba/0xd0
-  __x64_sys_mount+0x21/0x30
-  do_syscall_64+0x60/0x1f0
-  entry_SYSCALL_64_after_hwframe+0x49/0xbe
+> So I don't think we can completely abandon the option for filesystems
+> to always create a new filesystem instance when mount(8) is called.
 
-This is BUG_ON(!virt_addr_valid(buf)) triggered by using a stack
-allocated buffer with a scatterlist. Convert the buffer for
-rc4salt to be dynamically allocated instead.
+Huh?  If filesystem wants to create a new instance on each ->mount(),
+it can bloody well do so.  Quite a few do - if that fs can handle
+that, more power to it.
 
-Bugzilla: https://bugzilla.redhat.com/show_bug.cgi?id=1615258
-Signed-off-by: Laura Abbott <labbott@redhat.com>
----
-Compile tested only.
----
- net/sunrpc/auth_gss/gss_krb5_crypto.c | 12 +++++++++---
- 1 file changed, 9 insertions(+), 3 deletions(-)
+The problem is what to do with filesystems that *can't* do that.
+You really, really can't have two ext4 (or xfs, etc.) instances over
+the same device at the same time.  Cache coherency, locking, etc.
+will kill you.
 
-diff --git a/net/sunrpc/auth_gss/gss_krb5_crypto.c b/net/sunrpc/auth_gss/gss_krb5_crypto.c
-index 8654494b4d0a..834eb2b9e41b 100644
---- a/net/sunrpc/auth_gss/gss_krb5_crypto.c
-+++ b/net/sunrpc/auth_gss/gss_krb5_crypto.c
-@@ -169,7 +169,7 @@ make_checksum_hmac_md5(struct krb5_ctx *kctx, char *header, int hdrlen,
- 	struct scatterlist              sg[1];
- 	int err = -1;
- 	u8 *checksumdata;
--	u8 rc4salt[4];
-+	u8 *rc4salt;
- 	struct crypto_ahash *md5;
- 	struct crypto_ahash *hmac_md5;
- 	struct ahash_request *req;
-@@ -183,14 +183,18 @@ make_checksum_hmac_md5(struct krb5_ctx *kctx, char *header, int hdrlen,
- 		return GSS_S_FAILURE;
- 	}
- 
-+	rc4salt = kmalloc_array(4, sizeof(*rc4salt), GFP_NOFS);
-+	if (!rc4salt)
-+		return GSS_S_FAILURE;
-+
- 	if (arcfour_hmac_md5_usage_to_salt(usage, rc4salt)) {
- 		dprintk("%s: invalid usage value %u\n", __func__, usage);
--		return GSS_S_FAILURE;
-+		goto out_free_rc4salt;
- 	}
- 
- 	checksumdata = kmalloc(GSS_KRB5_MAX_CKSUM_LEN, GFP_NOFS);
- 	if (!checksumdata)
--		return GSS_S_FAILURE;
-+		goto out_free_rc4salt;
- 
- 	md5 = crypto_alloc_ahash("md5", 0, CRYPTO_ALG_ASYNC);
- 	if (IS_ERR(md5))
-@@ -258,6 +262,8 @@ make_checksum_hmac_md5(struct krb5_ctx *kctx, char *header, int hdrlen,
- 	crypto_free_ahash(md5);
- out_free_cksum:
- 	kfree(checksumdata);
-+out_free_rc4salt:
-+	kfree(rc4salt);
- 	return err ? GSS_S_FAILURE : 0;
- }
- 
--- 
-2.17.1
+And that's not to mention the joy of defining the semantics of
+having the same ext4 mounted with two logs at the same time ;-)
+
+I've seen "reject unless the options are compatible/identical/whatever",
+but that ignores the real problem with existing policy.  It's *NOT*
+"I've mounted this and got an existing instance with non-matching
+options".  That's a minor annoyance (and back when that decision
+had been made, mount(2) was very definitly root-only).  The real
+problem is different and much worse - it's remount.
+
+I have asked to mount something and it had already been mounted,
+with identical options.  OK, so what happens if I do mount -o remount
+on my instance?  *IF* we are operating in the "only sysadmin can
+mount new filesystems", it's not a big deal - there are already
+lots of ways you can shoot yourself in the foot and mount(2) is
+certainly a powerful one.  But if we get to "Joe R. Luser can do
+it in his container", we have a big problem.
+
+Decision back then had been mostly for usability reasons - it was
+back in 2001 (well before the containermania, userns or anything
+of that sort) and it was more about "how many hoops does one have
+to jump through to get something mounted, assuming the sanity of
+sysadmin doing that?".  If *anything* like userns had been a concern
+back then, it probably would've been different.  However, it's
+17 years too late and if anyone has a functional TARDIS, I can
+easily think of better uses for it...
