@@ -1,48 +1,67 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:43410 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727365AbeHQSAe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 17 Aug 2018 14:00:34 -0400
-From: Steve Dickson <SteveD@RedHat.com>
-Subject: The Fall Bakeathon in Westford, Ma (Today is the Day)
-To: NFSv4 <nfsv4@ietf.org>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Message-ID: <35d66368-17dc-4ad3-df51-3023b5cfce4b@RedHat.com>
-Date: Fri, 17 Aug 2018 10:56:53 -0400
+Received: from mail-it0-f66.google.com ([209.85.214.66]:34333 "EHLO
+        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726544AbeHQSBE (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Aug 2018 14:01:04 -0400
+Received: by mail-it0-f66.google.com with SMTP id d70-v6so1779834ith.1
+        for <linux-nfs@vger.kernel.org>; Fri, 17 Aug 2018 07:57:22 -0700 (PDT)
+Subject: [PATCH RFC] sunrpc: Add comment defining gssd upcall API keywords
+From: Chuck Lever <chuck.lever@oracle.com>
+To: linux-nfs@vger.kernel.org
+Cc: simo@redhat.com
+Date: Fri, 17 Aug 2018 10:57:20 -0400
+Message-ID: <20180817145720.5173.69466.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=windows-1252
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Today is the day the block hotel rooms expire. 
-Cancellation are possible with 24hr of check in
-If you thinking you might be coming, you might
-what to grab a room...  
+During review, it was found that the target, service, and srchost
+keywords are easily conflated. Add an explainer.
 
-steved.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+ net/sunrpc/auth_gss/auth_gss.c |   17 +++++++++++++++++
+ 1 file changed, 17 insertions(+)
 
-
-Red Hat is pleased to announce the Fall NFS Bake-a-ton will be
-hosted by Red Hat in Westford, MA office 
-The Date: *The third week in Sept (17th - 21th)*
-
-Details and registration info:
-    http://nfsv4bat.org/Events/2018/September/BAT/index.html
-
-I'm using the same hotels and the prices are the same
-or lower. The block reservations for the Residence Inn
-and Hampton Inn end on *Fri Aug 18th*
-
-    * Residence Inn Marriott - closest; w/ shuttle; full kitchen; free breakfast 
-    * Westford Regency Inn - w/bar ; w/shuttle 
-    * Hampton Inn - free breakfast 
-
-When registering (i.e. replying to this email) please give me
-   * Company Name
-   * How engineers are coming
-   * T-shirt sizes
-   * Hotel you will be staying in
-
-I hope to see you in September!!!
-
-steved.
+diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+index 1943e11..2460759 100644
+--- a/net/sunrpc/auth_gss/auth_gss.c
++++ b/net/sunrpc/auth_gss/auth_gss.c
+@@ -461,12 +461,28 @@ static int gss_encode_v1_msg(struct gss_upcall_msg *gss_msg,
+ 	buflen -= len;
+ 	p += len;
+ 	gss_msg->msg.len = len;
++
++	/*
++	 * target= is a full service principal that names the remote
++	 * identity that we are authenticating to.
++	 */
+ 	if (target_name) {
+ 		len = scnprintf(p, buflen, "target=%s ", target_name);
+ 		buflen -= len;
+ 		p += len;
+ 		gss_msg->msg.len += len;
+ 	}
++
++	/*
++	 * gssd uses service= and srchost= to select a matching key from
++	 * the system's keytab to use as the source principal.
++	 *
++	 * service= is the service name part of the source principal,
++	 * or "*" (meaning choose any).
++	 *
++	 * srchost= is the hostname part of the source principal. When
++	 * not provided, gssd uses the local hostname.
++	 */
+ 	if (service_name) {
+ 		char *c = strchr(service_name, '@');
+ 
+@@ -482,6 +498,7 @@ static int gss_encode_v1_msg(struct gss_upcall_msg *gss_msg,
+ 		p += len;
+ 		gss_msg->msg.len += len;
+ 	}
++
+ 	if (mech->gm_upcall_enctypes) {
+ 		len = scnprintf(p, buflen, "enctypes=%s ",
+ 				mech->gm_upcall_enctypes);
