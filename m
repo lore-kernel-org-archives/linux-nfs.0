@@ -1,43 +1,120 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mout.perfora.net ([74.208.4.194]:44329 "EHLO mout.perfora.net"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726888AbeHQVHh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 17 Aug 2018 17:07:37 -0400
-Received: from null ([10.72.76.58]) by mrelay.perfora.net (mreueus003
- [74.208.5.2]) with ESMTPSA (Nemesis) id 0MCrWX-1fh8ce22k7-009eNL for
- <linux-nfs@vger.kernel.org>; Fri, 17 Aug 2018 19:58:15 +0200
-Date: Fri, 17 Aug 2018 12:58:15 -0500 (CDT)
-From: Ryan Covietz <ryan.covietz@metakrypt.com>
-Reply-To: Ryan Covietz <ryan.covietz@metakrypt.com>
-To: linux-nfs@vger.kernel.org
-Message-ID: <1377475602.793145.1534528695060@email.1and1.com>
-Subject: Linux NFS Client and NFS v4.1 Session Trunking
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-qk0-f193.google.com ([209.85.220.193]:44562 "EHLO
+        mail-qk0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727055AbeHRAtM (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Aug 2018 20:49:12 -0400
+Received: by mail-qk0-f193.google.com with SMTP id p15-v6so5434052qke.11
+        for <linux-nfs@vger.kernel.org>; Fri, 17 Aug 2018 14:44:08 -0700 (PDT)
+From: Laura Abbott <labbott@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@kernel.org>,
+        Trond Myklebust <trond.myklebust@hammerspace.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>
+Cc: Laura Abbott <labbott@redhat.com>,
+        "David S. Miller" <davem@davemloft.net>, linux-nfs@vger.kernel.org,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: [PATCH] sunrpc: Don't use stack buffer with scatterlist
+Date: Fri, 17 Aug 2018 14:43:54 -0700
+Message-Id: <20180817214354.5780-1-labbott@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Greetings all,
+Fedora got a bug report from NFS:
 
-Apologies in advance if this mailing list is not the correct forum for my
-inquiry.
+kernel BUG at include/linux/scatterlist.h:143!
+...
+RIP: 0010:sg_init_one+0x7d/0x90
+..
+  make_checksum+0x4e7/0x760 [rpcsec_gss_krb5]
+  gss_get_mic_kerberos+0x26e/0x310 [rpcsec_gss_krb5]
+  gss_marshal+0x126/0x1a0 [auth_rpcgss]
+  ? __local_bh_enable_ip+0x80/0xe0
+  ? call_transmit_status+0x1d0/0x1d0 [sunrpc]
+  call_transmit+0x137/0x230 [sunrpc]
+  __rpc_execute+0x9b/0x490 [sunrpc]
+  rpc_run_task+0x119/0x150 [sunrpc]
+  nfs4_run_exchange_id+0x1bd/0x250 [nfsv4]
+  _nfs4_proc_exchange_id+0x2d/0x490 [nfsv4]
+  nfs41_discover_server_trunking+0x1c/0xa0 [nfsv4]
+  nfs4_discover_server_trunking+0x80/0x270 [nfsv4]
+  nfs4_init_client+0x16e/0x240 [nfsv4]
+  ? nfs_get_client+0x4c9/0x5d0 [nfs]
+  ? _raw_spin_unlock+0x24/0x30
+  ? nfs_get_client+0x4c9/0x5d0 [nfs]
+  nfs4_set_client+0xb2/0x100 [nfsv4]
+  nfs4_create_server+0xff/0x290 [nfsv4]
+  nfs4_remote_mount+0x28/0x50 [nfsv4]
+  mount_fs+0x3b/0x16a
+  vfs_kern_mount.part.35+0x54/0x160
+  nfs_do_root_mount+0x7f/0xc0 [nfsv4]
+  nfs4_try_mount+0x43/0x70 [nfsv4]
+  ? get_nfs_version+0x21/0x80 [nfs]
+  nfs_fs_mount+0x789/0xbf0 [nfs]
+  ? pcpu_alloc+0x6ca/0x7e0
+  ? nfs_clone_super+0x70/0x70 [nfs]
+  ? nfs_parse_mount_options+0xb40/0xb40 [nfs]
+  mount_fs+0x3b/0x16a
+  vfs_kern_mount.part.35+0x54/0x160
+  do_mount+0x1fd/0xd50
+  ksys_mount+0xba/0xd0
+  __x64_sys_mount+0x21/0x30
+  do_syscall_64+0x60/0x1f0
+  entry_SYSCALL_64_after_hwframe+0x49/0xbe
 
-Background:
-I've successfully tested NFS session trunking on the server side with Debian
-Stretch and the v4.17.8-1~bpo9+1 backports kernel, nfs-kernel-server v1:1.3.4-2.1, and using VMware ESXi 6.7.0 as a client (session trunking even works with bonded interfaces on the server side!).
-Unfortunately, I've had no luck with getting session trunking to work
-with the Linux NFS client (nfs-common version 1:1.3.4-2.1 on Debian) both on
-Debian Stretch and on Fedora 28 using the "mount -t nfs4 -o minorversion=1"
-options to mount an export multiple times over different interfaces / IPs.
+This is BUG_ON(!virt_addr_valid(buf)) triggered by using a stack
+allocated buffer with a scatterlist. Convert the buffer for
+rc4salt to be dynamically allocated instead.
 
-Documentation on the NFS session trunking feature seems to be sparse to non-existent, and the only tested client configuration I found was by Martin Houry a couple of years ago:
+Bugzilla: https://bugzilla.redhat.com/show_bug.cgi?id=1615258
+Signed-off-by: Laura Abbott <labbott@redhat.com>
+---
+Compile tested only.
+---
+ net/sunrpc/auth_gss/gss_krb5_crypto.c | 12 +++++++++---
+ 1 file changed, 9 insertions(+), 3 deletions(-)
 
-https://marc.info/?l=linux-nfs&m=145570512215071&w=2
-
-...not clear if the patches he tested were ever integrated into the Linux kernel though? I just wanted to inquire if the NFS v4.1 session trunking functionality has been integrated into the Linux NFS client yet?
-
-Any clarification or direction would be greatly appreciated.
-
-Thank you in advance and best regards,
-
-Ryan
+diff --git a/net/sunrpc/auth_gss/gss_krb5_crypto.c b/net/sunrpc/auth_gss/gss_krb5_crypto.c
+index 8654494b4d0a..834eb2b9e41b 100644
+--- a/net/sunrpc/auth_gss/gss_krb5_crypto.c
++++ b/net/sunrpc/auth_gss/gss_krb5_crypto.c
+@@ -169,7 +169,7 @@ make_checksum_hmac_md5(struct krb5_ctx *kctx, char *header, int hdrlen,
+ 	struct scatterlist              sg[1];
+ 	int err = -1;
+ 	u8 *checksumdata;
+-	u8 rc4salt[4];
++	u8 *rc4salt;
+ 	struct crypto_ahash *md5;
+ 	struct crypto_ahash *hmac_md5;
+ 	struct ahash_request *req;
+@@ -183,14 +183,18 @@ make_checksum_hmac_md5(struct krb5_ctx *kctx, char *header, int hdrlen,
+ 		return GSS_S_FAILURE;
+ 	}
+ 
++	rc4salt = kmalloc_array(4, sizeof(*rc4salt), GFP_NOFS);
++	if (!rc4salt)
++		return GSS_S_FAILURE;
++
+ 	if (arcfour_hmac_md5_usage_to_salt(usage, rc4salt)) {
+ 		dprintk("%s: invalid usage value %u\n", __func__, usage);
+-		return GSS_S_FAILURE;
++		goto out_free_rc4salt;
+ 	}
+ 
+ 	checksumdata = kmalloc(GSS_KRB5_MAX_CKSUM_LEN, GFP_NOFS);
+ 	if (!checksumdata)
+-		return GSS_S_FAILURE;
++		goto out_free_rc4salt;
+ 
+ 	md5 = crypto_alloc_ahash("md5", 0, CRYPTO_ALG_ASYNC);
+ 	if (IS_ERR(md5))
+@@ -258,6 +262,8 @@ make_checksum_hmac_md5(struct krb5_ctx *kctx, char *header, int hdrlen,
+ 	crypto_free_ahash(md5);
+ out_free_cksum:
+ 	kfree(checksumdata);
++out_free_rc4salt:
++	kfree(rc4salt);
+ 	return err ? GSS_S_FAILURE : 0;
+ }
+ 
+-- 
+2.17.1
