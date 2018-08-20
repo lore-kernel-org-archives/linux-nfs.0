@@ -1,121 +1,41 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from host55-mail2.servers.prgn.misp.co.uk ([95.142.154.187]:49134
-        "EHLO host55-mail2.servers.prgn.misp.co.uk" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726105AbeHSUiV (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 19 Aug 2018 16:38:21 -0400
-Received: from slartibartfast.improbability.net ([87.127.90.134]:48840)
-        by host55.servers.prgn.misp.co.uk with esmtpsa (TLSv1.2:ECDHE-RSA-AES256-GCM-SHA384:256)
-        (Exim 4.91)
-        (envelope-from <reiver@improbability.net>)
-        id 1frQoB-00Gr9j-IU
-        for linux-nfs@vger.kernel.org; Sun, 19 Aug 2018 17:44:08 +0100
-From: Alan Swanson <reiver@improbability.net>
+Received: from smtp-o-1.desy.de ([131.169.56.154]:45402 "EHLO smtp-o-1.desy.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1725944AbeHTKLL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 20 Aug 2018 06:11:11 -0400
+Received: from smtp-buf-1.desy.de (smtp-buf-1.desy.de [IPv6:2001:638:700:1038::1:a4])
+        by smtp-o-1.desy.de (DESY-O-1) with ESMTP id D29CA2807D6
+        for <linux-nfs@vger.kernel.org>; Mon, 20 Aug 2018 08:56:44 +0200 (CEST)
+From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
 To: linux-nfs@vger.kernel.org
-Cc: Alan Swanson <reiver@improbability.net>
-Subject: [PATCH V3] idmapd: Use inotify instead of dnotify
-Date: Sun, 19 Aug 2018 17:43:42 +0100
-Message-Id: <20180819164342.14900-1-reiver@improbability.net>
-In-Reply-To: <20170621212338.32460-1-reiver@improbability.net>
-References: <20170621212338.32460-1-reiver@improbability.net>
+Cc: trondmy@hammerspace.com, Anna.Schumaker@Netapp.com,
+        Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+Subject: [PATCH] nfs4: flex_file: ignore synthetic uid/gid for tightly coupled DSes
+Date: Mon, 20 Aug 2018 08:56:08 +0200
+Message-Id: <20180820065608.11860-1-tigran.mkrtchyan@desy.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Remove last use of dnotify in nfs-utils by bringing idmapd upto
-date with (required) inotify use by gssd and blkmapd.
+for tightly coupled DSes client must ignore provided synthetic uid and
+gid as stated in draft-ietf-nfsv4-flex-files-19#section-5.1.
+
+Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
 ---
- utils/idmapd/idmapd.c | 32 +++++++++++++++++---------------
- 1 file changed, 17 insertions(+), 15 deletions(-)
+ fs/nfs/flexfilelayout/flexfilelayoutdev.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-Got annoyed by the dnotify kernel requirement. Read the last
-discussion "DNOTIFY to INOTIFY migration" posted in 2014 and while
-still not officially depreciated, dnotify was officially "replaced"
-by inotify in Linux 2.6.13 in 2005. Would be nice to sync this
-requirement across the codebase.
-
-V2: Init wd to -1 not 0
-V3: Remove EV_PERSIST
-
-Have been using V3 patch in production for the last year since a
-few days after last V2 email.
-
-diff --git a/utils/idmapd/idmapd.c b/utils/idmapd/idmapd.c
-index 4811e0f..2dd9c31 100644
---- a/utils/idmapd/idmapd.c
-+++ b/utils/idmapd/idmapd.c
-@@ -36,7 +36,7 @@
+diff --git a/fs/nfs/flexfilelayout/flexfilelayoutdev.c b/fs/nfs/flexfilelayout/flexfilelayoutdev.c
+index d62279d3fc5d..290625cfd369 100644
+--- a/fs/nfs/flexfilelayout/flexfilelayoutdev.c
++++ b/fs/nfs/flexfilelayout/flexfilelayoutdev.c
+@@ -452,7 +452,7 @@ ff_layout_get_ds_cred(struct pnfs_layout_segment *lseg, u32 ds_idx,
+ 	struct nfs4_ff_layout_mirror *mirror = FF_LAYOUT_COMP(lseg, ds_idx);
+ 	struct rpc_cred *cred;
  
- #include <sys/types.h>
- #include <sys/time.h>
--#include <sys/poll.h>
-+#include <sys/inotify.h>
- #include <sys/socket.h>
- #include <sys/stat.h>
- #include <time.h>
-@@ -205,15 +205,16 @@ static void usage(char *progname)
- int
- main(int argc, char **argv)
- {
--	int fd = 0, opt, fg = 0, nfsdret = -1;
-+	int wd = -1, opt, fg = 0, nfsdret = -1;
- 	struct idmap_clientq icq;
--	struct event rootdirev, clntdirev, svrdirev;
-+	struct event rootdirev, clntdirev, svrdirev, inotifyev;
- 	struct event initialize;
- 	struct passwd *pw;
- 	struct group *gr;
- 	struct stat sb;
- 	char *xpipefsdir = NULL;
- 	int serverstart = 1, clientstart = 1;
-+	int inotify_fd;
- 	int ret;
- 	char *progname;
- 	char *conf_path = NULL;
-@@ -373,18 +374,15 @@ main(int argc, char **argv)
- 			}
- 		}
- 
--		if ((fd = open(pipefsdir, O_RDONLY)) == -1)
--			xlog_err("main: open(%s): %s", pipefsdir, strerror(errno));
--
--		if (fcntl(fd, F_SETSIG, SIGUSR1) == -1)
--			xlog_err("main: fcntl(%s): %s", pipefsdir, strerror(errno));
--
--		if (fcntl(fd, F_NOTIFY,
--			DN_CREATE | DN_DELETE | DN_MODIFY | DN_MULTISHOT) == -1) {
--			xlog_err("main: fcntl(%s): %s", pipefsdir, strerror(errno));
--			if (errno == EINVAL)
--				xlog_err("main: Possibly no Dnotify support in kernel.");
-+		inotify_fd = inotify_init1(IN_NONBLOCK);
-+		if (inotify_fd == -1) {
-+			xlog_err("Unable to initialise inotify_init1: %s\n", strerror(errno));
-+		} else {
-+			wd = inotify_add_watch(inotify_fd, pipefsdir, IN_CREATE | IN_DELETE | IN_MODIFY);
-+			if (wd < 0)
-+				xlog_err("Unable to inotify_add_watch(%s): %s\n", pipefsdir, strerror(errno));
- 		}
-+
- 		TAILQ_INIT(&icq);
- 
- 		/* These events are persistent */
-@@ -394,6 +392,10 @@ main(int argc, char **argv)
- 		signal_add(&clntdirev, NULL);
- 		signal_set(&svrdirev, SIGHUP, svrreopen, NULL);
- 		signal_add(&svrdirev, NULL);
-+		if ( wd >= 0) {
-+			event_set(&inotifyev, inotify_fd, EV_READ, dirscancb, &icq);
-+			event_add(&inotifyev, NULL);
-+		}
- 
- 		/* Fetch current state */
- 		/* (Delay till start of event_dispatch to avoid possibly losing
-@@ -402,7 +404,7 @@ main(int argc, char **argv)
- 		evtimer_add(&initialize, &now);
- 	}
- 
--	if (nfsdret != 0 && fd == 0)
-+	if (nfsdret != 0 && wd < 0)
- 		xlog_err("main: Neither NFS client nor NFSd found");
- 
- 	daemon_ready();
+-	if (mirror) {
++	if (mirror && !mirror->mirror_ds->ds_versions[0].tightly_coupled) {
+ 		cred = ff_layout_get_mirror_cred(mirror, lseg->pls_range.iomode);
+ 		if (!cred)
+ 			cred = get_rpccred(mdscred);
 -- 
-2.16.4
+2.17.1
