@@ -1,80 +1,73 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-eopbgr660047.outbound.protection.outlook.com ([40.107.66.47]:34911
-        "EHLO CAN01-QB1-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726651AbeHTQdj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 20 Aug 2018 12:33:39 -0400
-From: Rick Macklem <rmacklem@uoguelph.ca>
-To: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-CC: "trondmy@hammerspace.com" <trondmy@hammerspace.com>,
-        "Anna.Schumaker@Netapp.com" <Anna.Schumaker@Netapp.com>
-Subject: Re: [PATCH] nfs4: flex_file: ignore synthetic uid/gid for tightly
- coupled DSes
-Date: Mon, 20 Aug 2018 13:18:00 +0000
-Message-ID: <YTOPR0101MB18201895B73ED2C4BA3B0840DD320@YTOPR0101MB1820.CANPRD01.PROD.OUTLOOK.COM>
-References: <20180820065608.11860-1-tigran.mkrtchyan@desy.de>,<YTOPR0101MB18202768E081C824A96ECC0ADD320@YTOPR0101MB1820.CANPRD01.PROD.OUTLOOK.COM>
-In-Reply-To: <YTOPR0101MB18202768E081C824A96ECC0ADD320@YTOPR0101MB1820.CANPRD01.PROD.OUTLOOK.COM>
-Content-Type: text/plain; charset="us-ascii"
+Received: from mail-it0-f67.google.com ([209.85.214.67]:33100 "EHLO
+        mail-it0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726646AbeHTRzN (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Aug 2018 13:55:13 -0400
+Received: by mail-it0-f67.google.com with SMTP id d16-v6so8275341itj.0
+        for <linux-nfs@vger.kernel.org>; Mon, 20 Aug 2018 07:39:18 -0700 (PDT)
+Subject: [PATCH] sunrpc: Add comment defining gssd upcall API keywords
+From: Chuck Lever <chuck.lever@oracle.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, simo@redhat.com
+Date: Mon, 20 Aug 2018 10:39:16 -0400
+Message-ID: <20180820143801.10060.61177.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I just put a patch for the stated part (stripped out my version of the cred
-stuff, which I noticed I missed commit in it;) so it might be easier to read.
-It is here:
-http://people.freebsd.org/~rmacklem/flexfilestateid.patch
+During review, it was found that the target, service, and srchost
+keywords are easily conflated. Add an explainer.
 
-Thanks for doing this, rick
-
-________________________________________
-From: linux-nfs-owner@vger.kernel.org <linux-nfs-owner@vger.kernel.org> on behalf of Rick Macklem <rmacklem@uoguelph.ca>
-Sent: Monday, August 20, 2018 8:51:14 AM
-To: Tigran Mkrtchyan; linux-nfs@vger.kernel.org
-Cc: trondmy@hammerspace.com; Anna.Schumaker@Netapp.com
-Subject: Re: [PATCH] nfs4: flex_file: ignore synthetic uid/gid for tightly coupled DSes
-
-Thanks. I'll test this later to-day. (I did a slightly more complex version
-of the fix outside of the ff_layout_get_ds_cred() call, but yours is
-definitely simpler).
-
-There is also the "stateid", which I believe is supposed to be the one in
-the layout for the tightly coupled case (for NFSv4 I/O ops to the DS).
-My patch is here and has the changes for stated as well as cred.
-
-http://people.freebsd.org/~rmacklem/flexfile.patch
-(Sorry, I don't know git;-)
-
-Thanks for doing this and I'll post if my testing finds problems, rick
-
-
-________________________________________
-From: linux-nfs-owner@vger.kernel.org <linux-nfs-owner@vger.kernel.org> on behalf of Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-Sent: Monday, August 20, 2018 2:56:08 AM
-To: linux-nfs@vger.kernel.org
-Cc: trondmy@hammerspace.com; Anna.Schumaker@Netapp.com; Tigran Mkrtchyan
-Subject: [PATCH] nfs4: flex_file: ignore synthetic uid/gid for tightly coupled DSes
-
-for tightly coupled DSes client must ignore provided synthetic uid and
-gid as stated in draft-ietf-nfsv4-flex-files-19#section-5.1.
-
-Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfs/flexfilelayout/flexfilelayoutdev.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ net/sunrpc/auth_gss/auth_gss.c |   17 +++++++++++++++++
+ 1 file changed, 17 insertions(+)
 
-diff --git a/fs/nfs/flexfilelayout/flexfilelayoutdev.c b/fs/nfs/flexfilelayout/flexfilelayoutdev.c
-index d62279d3fc5d..290625cfd369 100644
---- a/fs/nfs/flexfilelayout/flexfilelayoutdev.c
-+++ b/fs/nfs/flexfilelayout/flexfilelayoutdev.c
-@@ -452,7 +452,7 @@ ff_layout_get_ds_cred(struct pnfs_layout_segment *lseg, u32 ds_idx,
-        struct nfs4_ff_layout_mirror *mirror = FF_LAYOUT_COMP(lseg, ds_idx);
-        struct rpc_cred *cred;
+Hi Bruce-
 
--       if (mirror) {
-+       if (mirror && !mirror->mirror_ds->ds_versions[0].tightly_coupled) {
-                cred = ff_layout_get_mirror_cred(mirror, lseg->pls_range.iomode);
-                if (!cred)
-                        cred = get_rpccred(mdscred);
---
-2.17.1
+I've received no objections to this patch. Can you include it in
+v4.19 with the other patches I've already submitted?
+
+
+diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+index 1943e11..2460759 100644
+--- a/net/sunrpc/auth_gss/auth_gss.c
++++ b/net/sunrpc/auth_gss/auth_gss.c
+@@ -461,12 +461,28 @@ static int gss_encode_v1_msg(struct gss_upcall_msg *gss_msg,
+ 	buflen -= len;
+ 	p += len;
+ 	gss_msg->msg.len = len;
++
++	/*
++	 * target= is a full service principal that names the remote
++	 * identity that we are authenticating to.
++	 */
+ 	if (target_name) {
+ 		len = scnprintf(p, buflen, "target=%s ", target_name);
+ 		buflen -= len;
+ 		p += len;
+ 		gss_msg->msg.len += len;
+ 	}
++
++	/*
++	 * gssd uses service= and srchost= to select a matching key from
++	 * the system's keytab to use as the source principal.
++	 *
++	 * service= is the service name part of the source principal,
++	 * or "*" (meaning choose any).
++	 *
++	 * srchost= is the hostname part of the source principal. When
++	 * not provided, gssd uses the local hostname.
++	 */
+ 	if (service_name) {
+ 		char *c = strchr(service_name, '@');
+ 
+@@ -482,6 +498,7 @@ static int gss_encode_v1_msg(struct gss_upcall_msg *gss_msg,
+ 		p += len;
+ 		gss_msg->msg.len += len;
+ 	}
++
+ 	if (mech->gm_upcall_enctypes) {
+ 		len = scnprintf(p, buflen, "enctypes=%s ",
+ 				mech->gm_upcall_enctypes);
