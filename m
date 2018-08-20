@@ -1,127 +1,122 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:44852 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:44868 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726260AbeHTWHg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 20 Aug 2018 18:07:36 -0400
-Date: Mon, 20 Aug 2018 14:50:49 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Laura Abbott <labbott@redhat.com>
-Cc: Jeff Layton <jlayton@kernel.org>,
-        Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        "David S. Miller" <davem@davemloft.net>, linux-nfs@vger.kernel.org,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH] sunrpc: Don't use stack buffer with scatterlist
-Message-ID: <20180820185049.GA5468@fieldses.org>
-References: <20180817214354.5780-1-labbott@redhat.com>
+        id S1726455AbeHTWRJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 20 Aug 2018 18:17:09 -0400
+Date: Mon, 20 Aug 2018 15:00:22 -0400
+To: Alan Swanson <reiver@improbability.net>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH V3] idmapd: Use inotify instead of dnotify
+Message-ID: <20180820190022.GB5468@fieldses.org>
+References: <20170621212338.32460-1-reiver@improbability.net>
+ <20180819164342.14900-1-reiver@improbability.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20180817214354.5780-1-labbott@redhat.com>
+In-Reply-To: <20180819164342.14900-1-reiver@improbability.net>
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Aug 17, 2018 at 02:43:54PM -0700, Laura Abbott wrote:
-> Fedora got a bug report from NFS:
+On Sun, Aug 19, 2018 at 05:43:42PM +0100, Alan Swanson wrote:
+> Remove last use of dnotify in nfs-utils by bringing idmapd upto
+> date with (required) inotify use by gssd and blkmapd.
 
-Thanks, applying (unless Trond or Anna gets it).
+OK by me.--b.
 
---b.
-
-> 
-> kernel BUG at include/linux/scatterlist.h:143!
-> ...
-> RIP: 0010:sg_init_one+0x7d/0x90
-> ..
->   make_checksum+0x4e7/0x760 [rpcsec_gss_krb5]
->   gss_get_mic_kerberos+0x26e/0x310 [rpcsec_gss_krb5]
->   gss_marshal+0x126/0x1a0 [auth_rpcgss]
->   ? __local_bh_enable_ip+0x80/0xe0
->   ? call_transmit_status+0x1d0/0x1d0 [sunrpc]
->   call_transmit+0x137/0x230 [sunrpc]
->   __rpc_execute+0x9b/0x490 [sunrpc]
->   rpc_run_task+0x119/0x150 [sunrpc]
->   nfs4_run_exchange_id+0x1bd/0x250 [nfsv4]
->   _nfs4_proc_exchange_id+0x2d/0x490 [nfsv4]
->   nfs41_discover_server_trunking+0x1c/0xa0 [nfsv4]
->   nfs4_discover_server_trunking+0x80/0x270 [nfsv4]
->   nfs4_init_client+0x16e/0x240 [nfsv4]
->   ? nfs_get_client+0x4c9/0x5d0 [nfs]
->   ? _raw_spin_unlock+0x24/0x30
->   ? nfs_get_client+0x4c9/0x5d0 [nfs]
->   nfs4_set_client+0xb2/0x100 [nfsv4]
->   nfs4_create_server+0xff/0x290 [nfsv4]
->   nfs4_remote_mount+0x28/0x50 [nfsv4]
->   mount_fs+0x3b/0x16a
->   vfs_kern_mount.part.35+0x54/0x160
->   nfs_do_root_mount+0x7f/0xc0 [nfsv4]
->   nfs4_try_mount+0x43/0x70 [nfsv4]
->   ? get_nfs_version+0x21/0x80 [nfs]
->   nfs_fs_mount+0x789/0xbf0 [nfs]
->   ? pcpu_alloc+0x6ca/0x7e0
->   ? nfs_clone_super+0x70/0x70 [nfs]
->   ? nfs_parse_mount_options+0xb40/0xb40 [nfs]
->   mount_fs+0x3b/0x16a
->   vfs_kern_mount.part.35+0x54/0x160
->   do_mount+0x1fd/0xd50
->   ksys_mount+0xba/0xd0
->   __x64_sys_mount+0x21/0x30
->   do_syscall_64+0x60/0x1f0
->   entry_SYSCALL_64_after_hwframe+0x49/0xbe
-> 
-> This is BUG_ON(!virt_addr_valid(buf)) triggered by using a stack
-> allocated buffer with a scatterlist. Convert the buffer for
-> rc4salt to be dynamically allocated instead.
-> 
-> Bugzilla: https://bugzilla.redhat.com/show_bug.cgi?id=1615258
-> Signed-off-by: Laura Abbott <labbott@redhat.com>
 > ---
-> Compile tested only.
-> ---
->  net/sunrpc/auth_gss/gss_krb5_crypto.c | 12 +++++++++---
->  1 file changed, 9 insertions(+), 3 deletions(-)
+>  utils/idmapd/idmapd.c | 32 +++++++++++++++++---------------
+>  1 file changed, 17 insertions(+), 15 deletions(-)
 > 
-> diff --git a/net/sunrpc/auth_gss/gss_krb5_crypto.c b/net/sunrpc/auth_gss/gss_krb5_crypto.c
-> index 8654494b4d0a..834eb2b9e41b 100644
-> --- a/net/sunrpc/auth_gss/gss_krb5_crypto.c
-> +++ b/net/sunrpc/auth_gss/gss_krb5_crypto.c
-> @@ -169,7 +169,7 @@ make_checksum_hmac_md5(struct krb5_ctx *kctx, char *header, int hdrlen,
->  	struct scatterlist              sg[1];
->  	int err = -1;
->  	u8 *checksumdata;
-> -	u8 rc4salt[4];
-> +	u8 *rc4salt;
->  	struct crypto_ahash *md5;
->  	struct crypto_ahash *hmac_md5;
->  	struct ahash_request *req;
-> @@ -183,14 +183,18 @@ make_checksum_hmac_md5(struct krb5_ctx *kctx, char *header, int hdrlen,
->  		return GSS_S_FAILURE;
->  	}
+> Got annoyed by the dnotify kernel requirement. Read the last
+> discussion "DNOTIFY to INOTIFY migration" posted in 2014 and while
+> still not officially depreciated, dnotify was officially "replaced"
+> by inotify in Linux 2.6.13 in 2005. Would be nice to sync this
+> requirement across the codebase.
+> 
+> V2: Init wd to -1 not 0
+> V3: Remove EV_PERSIST
+> 
+> Have been using V3 patch in production for the last year since a
+> few days after last V2 email.
+> 
+> diff --git a/utils/idmapd/idmapd.c b/utils/idmapd/idmapd.c
+> index 4811e0f..2dd9c31 100644
+> --- a/utils/idmapd/idmapd.c
+> +++ b/utils/idmapd/idmapd.c
+> @@ -36,7 +36,7 @@
 >  
-> +	rc4salt = kmalloc_array(4, sizeof(*rc4salt), GFP_NOFS);
-> +	if (!rc4salt)
-> +		return GSS_S_FAILURE;
+>  #include <sys/types.h>
+>  #include <sys/time.h>
+> -#include <sys/poll.h>
+> +#include <sys/inotify.h>
+>  #include <sys/socket.h>
+>  #include <sys/stat.h>
+>  #include <time.h>
+> @@ -205,15 +205,16 @@ static void usage(char *progname)
+>  int
+>  main(int argc, char **argv)
+>  {
+> -	int fd = 0, opt, fg = 0, nfsdret = -1;
+> +	int wd = -1, opt, fg = 0, nfsdret = -1;
+>  	struct idmap_clientq icq;
+> -	struct event rootdirev, clntdirev, svrdirev;
+> +	struct event rootdirev, clntdirev, svrdirev, inotifyev;
+>  	struct event initialize;
+>  	struct passwd *pw;
+>  	struct group *gr;
+>  	struct stat sb;
+>  	char *xpipefsdir = NULL;
+>  	int serverstart = 1, clientstart = 1;
+> +	int inotify_fd;
+>  	int ret;
+>  	char *progname;
+>  	char *conf_path = NULL;
+> @@ -373,18 +374,15 @@ main(int argc, char **argv)
+>  			}
+>  		}
+>  
+> -		if ((fd = open(pipefsdir, O_RDONLY)) == -1)
+> -			xlog_err("main: open(%s): %s", pipefsdir, strerror(errno));
+> -
+> -		if (fcntl(fd, F_SETSIG, SIGUSR1) == -1)
+> -			xlog_err("main: fcntl(%s): %s", pipefsdir, strerror(errno));
+> -
+> -		if (fcntl(fd, F_NOTIFY,
+> -			DN_CREATE | DN_DELETE | DN_MODIFY | DN_MULTISHOT) == -1) {
+> -			xlog_err("main: fcntl(%s): %s", pipefsdir, strerror(errno));
+> -			if (errno == EINVAL)
+> -				xlog_err("main: Possibly no Dnotify support in kernel.");
+> +		inotify_fd = inotify_init1(IN_NONBLOCK);
+> +		if (inotify_fd == -1) {
+> +			xlog_err("Unable to initialise inotify_init1: %s\n", strerror(errno));
+> +		} else {
+> +			wd = inotify_add_watch(inotify_fd, pipefsdir, IN_CREATE | IN_DELETE | IN_MODIFY);
+> +			if (wd < 0)
+> +				xlog_err("Unable to inotify_add_watch(%s): %s\n", pipefsdir, strerror(errno));
+>  		}
 > +
->  	if (arcfour_hmac_md5_usage_to_salt(usage, rc4salt)) {
->  		dprintk("%s: invalid usage value %u\n", __func__, usage);
-> -		return GSS_S_FAILURE;
-> +		goto out_free_rc4salt;
+>  		TAILQ_INIT(&icq);
+>  
+>  		/* These events are persistent */
+> @@ -394,6 +392,10 @@ main(int argc, char **argv)
+>  		signal_add(&clntdirev, NULL);
+>  		signal_set(&svrdirev, SIGHUP, svrreopen, NULL);
+>  		signal_add(&svrdirev, NULL);
+> +		if ( wd >= 0) {
+> +			event_set(&inotifyev, inotify_fd, EV_READ, dirscancb, &icq);
+> +			event_add(&inotifyev, NULL);
+> +		}
+>  
+>  		/* Fetch current state */
+>  		/* (Delay till start of event_dispatch to avoid possibly losing
+> @@ -402,7 +404,7 @@ main(int argc, char **argv)
+>  		evtimer_add(&initialize, &now);
 >  	}
 >  
->  	checksumdata = kmalloc(GSS_KRB5_MAX_CKSUM_LEN, GFP_NOFS);
->  	if (!checksumdata)
-> -		return GSS_S_FAILURE;
-> +		goto out_free_rc4salt;
+> -	if (nfsdret != 0 && fd == 0)
+> +	if (nfsdret != 0 && wd < 0)
+>  		xlog_err("main: Neither NFS client nor NFSd found");
 >  
->  	md5 = crypto_alloc_ahash("md5", 0, CRYPTO_ALG_ASYNC);
->  	if (IS_ERR(md5))
-> @@ -258,6 +262,8 @@ make_checksum_hmac_md5(struct krb5_ctx *kctx, char *header, int hdrlen,
->  	crypto_free_ahash(md5);
->  out_free_cksum:
->  	kfree(checksumdata);
-> +out_free_rc4salt:
-> +	kfree(rc4salt);
->  	return err ? GSS_S_FAILURE : 0;
->  }
->  
+>  	daemon_ready();
 > -- 
-> 2.17.1
+> 2.16.4
