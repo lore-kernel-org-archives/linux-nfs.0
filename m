@@ -1,55 +1,124 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ua1-f68.google.com ([209.85.222.68]:39065 "EHLO
-        mail-ua1-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726077AbeHTWqs (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Aug 2018 18:46:48 -0400
-Received: by mail-ua1-f68.google.com with SMTP id g18-v6so10420630uam.6
-        for <linux-nfs@vger.kernel.org>; Mon, 20 Aug 2018 12:29:56 -0700 (PDT)
+Received: from smtp-o-1.desy.de ([131.169.56.154]:44001 "EHLO smtp-o-1.desy.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726237AbeHTX6M (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 20 Aug 2018 19:58:12 -0400
+Received: from smtp-buf-1.desy.de (smtp-buf-1.desy.de [IPv6:2001:638:700:1038::1:a4])
+        by smtp-o-1.desy.de (DESY-O-1) with ESMTP id F2B6F28084C
+        for <linux-nfs@vger.kernel.org>; Mon, 20 Aug 2018 22:41:03 +0200 (CEST)
+Date: Mon, 20 Aug 2018 22:41:01 +0200 (CEST)
+From: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
+To: Rick Macklem <rmacklem@uoguelph.ca>
+Cc: linux-nfs <linux-nfs@vger.kernel.org>, trondmy@hammerspace.com,
+        Anna Schumaker <Anna.Schumaker@Netapp.com>,
+        Tom Haynes <loghyr@gmail.com>
+Message-ID: <1195851744.36922369.1534797661849.JavaMail.zimbra@desy.de>
+In-Reply-To: <YTOPR0101MB18201895B73ED2C4BA3B0840DD320@YTOPR0101MB1820.CANPRD01.PROD.OUTLOOK.COM>
+References: <20180820065608.11860-1-tigran.mkrtchyan@desy.de> <YTOPR0101MB18202768E081C824A96ECC0ADD320@YTOPR0101MB1820.CANPRD01.PROD.OUTLOOK.COM> <YTOPR0101MB18201895B73ED2C4BA3B0840DD320@YTOPR0101MB1820.CANPRD01.PROD.OUTLOOK.COM>
+Subject: Re: [PATCH] nfs4: flex_file: ignore synthetic uid/gid for tightly
+ coupled DSes
 MIME-Version: 1.0
-In-Reply-To: <1377475602.793145.1534528695060@email.1and1.com>
-References: <1377475602.793145.1534528695060@email.1and1.com>
-From: Olga Kornievskaia <aglo@umich.edu>
-Date: Mon, 20 Aug 2018 15:29:54 -0400
-Message-ID: <CAN-5tyH=CB2KCJ+OEfQj0=AyJ8X1sOuAJhsf5nOaOe+ArL_f7A@mail.gmail.com>
-Subject: Re: Linux NFS Client and NFS v4.1 Session Trunking
-To: Ryan Covietz <ryan.covietz@metakrypt.com>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Ryan,
+Hi Rick,
 
-Session trunking is only done for the pnfs servers. Since there isn't
-an established trunking discovery mechanism for 4.1 meta data server,
-no way to find where all the available IPs to trunk with, there is no
-session trunking now.
+draft-19 says:
 
-How are you doing session trunking on VMware?
+   For tight coupling, ffds_stateid provides the stateid to be used by
+   the client to access the file.  For loose coupling and a NFSv4
+   storage device, the client will have to use an anonymous stateid to
+   perform I/O on the storage device.  With no control protocol, the
+   metadata server stateid can not be used to provide a global stateid
+   model.  Thus the server MUST set the ffds_stateid to be the anonymous
+   stateid.
 
-On Fri, Aug 17, 2018 at 1:58 PM, Ryan Covietz
-<ryan.covietz@metakrypt.com> wrote:
-> Greetings all,
->
-> Apologies in advance if this mailing list is not the correct forum for my
-> inquiry.
->
-> Background:
-> I've successfully tested NFS session trunking on the server side with Debian
-> Stretch and the v4.17.8-1~bpo9+1 backports kernel, nfs-kernel-server v1:1.3.4-2.1, and using VMware ESXi 6.7.0 as a client (session trunking even works with bonded interfaces on the server side!).
-> Unfortunately, I've had no luck with getting session trunking to work
-> with the Linux NFS client (nfs-common version 1:1.3.4-2.1 on Debian) both on
-> Debian Stretch and on Fedora 28 using the "mount -t nfs4 -o minorversion=1"
-> options to mount an export multiple times over different interfaces / IPs.
->
-> Documentation on the NFS session trunking feature seems to be sparse to non-existent, and the only tested client configuration I found was by Martin Houry a couple of years ago:
->
-> https://marc.info/?l=linux-nfs&m=145570512215071&w=2
->
-> ...not clear if the patches he tested were ever integrated into the Linux kernel though? I just wanted to inquire if the NFS v4.1 session trunking functionality has been integrated into the Linux NFS client yet?
->
-> Any clarification or direction would be greatly appreciated.
->
-> Thank you in advance and best regards,
->
-> Ryan
+To me, the last sentence sounds like a clear statement, that it's server
+responsibility to provide either global or anonymous stateid and client
+should just use it as is. IOW,
+
++	stateid = nfs4_ff_layout_select_ds_stateid(lseg, idx);
++	if (stateid)
++		nfs4_stateid_copy(&hdr->args.stateid, stateid);
+
+
+must happen independent from ds being loose or tight coupled. As our DSes
+use the same stateid's as MDS, we did see that provided stateid is not used.
+
+Trond, Tom, can you comment on it?
+
+Thanks,
+    Tigran.
+
+----- Original Message -----
+> From: "Rick Macklem" <rmacklem@uoguelph.ca>
+> To: "Tigran Mkrtchyan" <tigran.mkrtchyan@desy.de>, "linux-nfs" <linux-nfs@vger.kernel.org>
+> Cc: trondmy@hammerspace.com, "Anna Schumaker" <Anna.Schumaker@Netapp.com>
+> Sent: Monday, August 20, 2018 3:18:00 PM
+> Subject: Re: [PATCH] nfs4: flex_file: ignore synthetic uid/gid for tightly coupled DSes
+
+> I just put a patch for the stated part (stripped out my version of the cred
+> stuff, which I noticed I missed commit in it;) so it might be easier to read.
+> It is here:
+> http://people.freebsd.org/~rmacklem/flexfilestateid.patch
+> 
+> Thanks for doing this, rick
+> 
+> ________________________________________
+> From: linux-nfs-owner@vger.kernel.org <linux-nfs-owner@vger.kernel.org> on
+> behalf of Rick Macklem <rmacklem@uoguelph.ca>
+> Sent: Monday, August 20, 2018 8:51:14 AM
+> To: Tigran Mkrtchyan; linux-nfs@vger.kernel.org
+> Cc: trondmy@hammerspace.com; Anna.Schumaker@Netapp.com
+> Subject: Re: [PATCH] nfs4: flex_file: ignore synthetic uid/gid for tightly
+> coupled DSes
+> 
+> Thanks. I'll test this later to-day. (I did a slightly more complex version
+> of the fix outside of the ff_layout_get_ds_cred() call, but yours is
+> definitely simpler).
+> 
+> There is also the "stateid", which I believe is supposed to be the one in
+> the layout for the tightly coupled case (for NFSv4 I/O ops to the DS).
+> My patch is here and has the changes for stated as well as cred.
+> 
+> http://people.freebsd.org/~rmacklem/flexfile.patch
+> (Sorry, I don't know git;-)
+> 
+> Thanks for doing this and I'll post if my testing finds problems, rick
+> 
+> 
+> ________________________________________
+> From: linux-nfs-owner@vger.kernel.org <linux-nfs-owner@vger.kernel.org> on
+> behalf of Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+> Sent: Monday, August 20, 2018 2:56:08 AM
+> To: linux-nfs@vger.kernel.org
+> Cc: trondmy@hammerspace.com; Anna.Schumaker@Netapp.com; Tigran Mkrtchyan
+> Subject: [PATCH] nfs4: flex_file: ignore synthetic uid/gid for tightly coupled
+> DSes
+> 
+> for tightly coupled DSes client must ignore provided synthetic uid and
+> gid as stated in draft-ietf-nfsv4-flex-files-19#section-5.1.
+> 
+> Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+> ---
+> fs/nfs/flexfilelayout/flexfilelayoutdev.c | 2 +-
+> 1 file changed, 1 insertion(+), 1 deletion(-)
+> 
+> diff --git a/fs/nfs/flexfilelayout/flexfilelayoutdev.c
+> b/fs/nfs/flexfilelayout/flexfilelayoutdev.c
+> index d62279d3fc5d..290625cfd369 100644
+> --- a/fs/nfs/flexfilelayout/flexfilelayoutdev.c
+> +++ b/fs/nfs/flexfilelayout/flexfilelayoutdev.c
+> @@ -452,7 +452,7 @@ ff_layout_get_ds_cred(struct pnfs_layout_segment *lseg, u32
+> ds_idx,
+>        struct nfs4_ff_layout_mirror *mirror = FF_LAYOUT_COMP(lseg, ds_idx);
+>        struct rpc_cred *cred;
+> 
+> -       if (mirror) {
+> +       if (mirror && !mirror->mirror_ds->ds_versions[0].tightly_coupled) {
+>                cred = ff_layout_get_mirror_cred(mirror, lseg->pls_range.iomode);
+>                if (!cred)
+>                        cred = get_rpccred(mdscred);
+> --
+> 2.17.1
