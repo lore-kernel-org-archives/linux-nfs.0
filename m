@@ -1,122 +1,80 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:44868 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:44874 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726455AbeHTWRJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 20 Aug 2018 18:17:09 -0400
-Date: Mon, 20 Aug 2018 15:00:22 -0400
-To: Alan Swanson <reiver@improbability.net>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH V3] idmapd: Use inotify instead of dnotify
-Message-ID: <20180820190022.GB5468@fieldses.org>
-References: <20170621212338.32460-1-reiver@improbability.net>
- <20180819164342.14900-1-reiver@improbability.net>
+        id S1726293AbeHTWVt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 20 Aug 2018 18:21:49 -0400
+Date: Mon, 20 Aug 2018 15:05:01 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-nfs@vger.kernel.org, simo@redhat.com
+Subject: Re: [PATCH] sunrpc: Add comment defining gssd upcall API keywords
+Message-ID: <20180820190501.GC5468@fieldses.org>
+References: <20180820143801.10060.61177.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20180819164342.14900-1-reiver@improbability.net>
-From: bfields@fieldses.org (J. Bruce Fields)
+In-Reply-To: <20180820143801.10060.61177.stgit@klimt.1015granger.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Aug 19, 2018 at 05:43:42PM +0100, Alan Swanson wrote:
-> Remove last use of dnotify in nfs-utils by bringing idmapd upto
-> date with (required) inotify use by gssd and blkmapd.
-
-OK by me.--b.
-
+On Mon, Aug 20, 2018 at 10:39:16AM -0400, Chuck Lever wrote:
+> During review, it was found that the target, service, and srchost
+> keywords are easily conflated. Add an explainer.
+> 
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 > ---
->  utils/idmapd/idmapd.c | 32 +++++++++++++++++---------------
->  1 file changed, 17 insertions(+), 15 deletions(-)
+>  net/sunrpc/auth_gss/auth_gss.c |   17 +++++++++++++++++
+>  1 file changed, 17 insertions(+)
 > 
-> Got annoyed by the dnotify kernel requirement. Read the last
-> discussion "DNOTIFY to INOTIFY migration" posted in 2014 and while
-> still not officially depreciated, dnotify was officially "replaced"
-> by inotify in Linux 2.6.13 in 2005. Would be nice to sync this
-> requirement across the codebase.
+> Hi Bruce-
 > 
-> V2: Init wd to -1 not 0
-> V3: Remove EV_PERSIST
+> I've received no objections to this patch. Can you include it in
+> v4.19 with the other patches I've already submitted?
+
+Will do, it'll probably just be another week or so before I publish a
+4.19 branch.
+
+--b.
+
 > 
-> Have been using V3 patch in production for the last year since a
-> few days after last V2 email.
 > 
-> diff --git a/utils/idmapd/idmapd.c b/utils/idmapd/idmapd.c
-> index 4811e0f..2dd9c31 100644
-> --- a/utils/idmapd/idmapd.c
-> +++ b/utils/idmapd/idmapd.c
-> @@ -36,7 +36,7 @@
->  
->  #include <sys/types.h>
->  #include <sys/time.h>
-> -#include <sys/poll.h>
-> +#include <sys/inotify.h>
->  #include <sys/socket.h>
->  #include <sys/stat.h>
->  #include <time.h>
-> @@ -205,15 +205,16 @@ static void usage(char *progname)
->  int
->  main(int argc, char **argv)
->  {
-> -	int fd = 0, opt, fg = 0, nfsdret = -1;
-> +	int wd = -1, opt, fg = 0, nfsdret = -1;
->  	struct idmap_clientq icq;
-> -	struct event rootdirev, clntdirev, svrdirev;
-> +	struct event rootdirev, clntdirev, svrdirev, inotifyev;
->  	struct event initialize;
->  	struct passwd *pw;
->  	struct group *gr;
->  	struct stat sb;
->  	char *xpipefsdir = NULL;
->  	int serverstart = 1, clientstart = 1;
-> +	int inotify_fd;
->  	int ret;
->  	char *progname;
->  	char *conf_path = NULL;
-> @@ -373,18 +374,15 @@ main(int argc, char **argv)
->  			}
->  		}
->  
-> -		if ((fd = open(pipefsdir, O_RDONLY)) == -1)
-> -			xlog_err("main: open(%s): %s", pipefsdir, strerror(errno));
-> -
-> -		if (fcntl(fd, F_SETSIG, SIGUSR1) == -1)
-> -			xlog_err("main: fcntl(%s): %s", pipefsdir, strerror(errno));
-> -
-> -		if (fcntl(fd, F_NOTIFY,
-> -			DN_CREATE | DN_DELETE | DN_MODIFY | DN_MULTISHOT) == -1) {
-> -			xlog_err("main: fcntl(%s): %s", pipefsdir, strerror(errno));
-> -			if (errno == EINVAL)
-> -				xlog_err("main: Possibly no Dnotify support in kernel.");
-> +		inotify_fd = inotify_init1(IN_NONBLOCK);
-> +		if (inotify_fd == -1) {
-> +			xlog_err("Unable to initialise inotify_init1: %s\n", strerror(errno));
-> +		} else {
-> +			wd = inotify_add_watch(inotify_fd, pipefsdir, IN_CREATE | IN_DELETE | IN_MODIFY);
-> +			if (wd < 0)
-> +				xlog_err("Unable to inotify_add_watch(%s): %s\n", pipefsdir, strerror(errno));
->  		}
+> diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+> index 1943e11..2460759 100644
+> --- a/net/sunrpc/auth_gss/auth_gss.c
+> +++ b/net/sunrpc/auth_gss/auth_gss.c
+> @@ -461,12 +461,28 @@ static int gss_encode_v1_msg(struct gss_upcall_msg *gss_msg,
+>  	buflen -= len;
+>  	p += len;
+>  	gss_msg->msg.len = len;
 > +
->  		TAILQ_INIT(&icq);
->  
->  		/* These events are persistent */
-> @@ -394,6 +392,10 @@ main(int argc, char **argv)
->  		signal_add(&clntdirev, NULL);
->  		signal_set(&svrdirev, SIGHUP, svrreopen, NULL);
->  		signal_add(&svrdirev, NULL);
-> +		if ( wd >= 0) {
-> +			event_set(&inotifyev, inotify_fd, EV_READ, dirscancb, &icq);
-> +			event_add(&inotifyev, NULL);
-> +		}
->  
->  		/* Fetch current state */
->  		/* (Delay till start of event_dispatch to avoid possibly losing
-> @@ -402,7 +404,7 @@ main(int argc, char **argv)
->  		evtimer_add(&initialize, &now);
+> +	/*
+> +	 * target= is a full service principal that names the remote
+> +	 * identity that we are authenticating to.
+> +	 */
+>  	if (target_name) {
+>  		len = scnprintf(p, buflen, "target=%s ", target_name);
+>  		buflen -= len;
+>  		p += len;
+>  		gss_msg->msg.len += len;
 >  	}
+> +
+> +	/*
+> +	 * gssd uses service= and srchost= to select a matching key from
+> +	 * the system's keytab to use as the source principal.
+> +	 *
+> +	 * service= is the service name part of the source principal,
+> +	 * or "*" (meaning choose any).
+> +	 *
+> +	 * srchost= is the hostname part of the source principal. When
+> +	 * not provided, gssd uses the local hostname.
+> +	 */
+>  	if (service_name) {
+>  		char *c = strchr(service_name, '@');
 >  
-> -	if (nfsdret != 0 && fd == 0)
-> +	if (nfsdret != 0 && wd < 0)
->  		xlog_err("main: Neither NFS client nor NFSd found");
->  
->  	daemon_ready();
-> -- 
-> 2.16.4
+> @@ -482,6 +498,7 @@ static int gss_encode_v1_msg(struct gss_upcall_msg *gss_msg,
+>  		p += len;
+>  		gss_msg->msg.len += len;
+>  	}
+> +
+>  	if (mech->gm_upcall_enctypes) {
+>  		len = scnprintf(p, buflen, "enctypes=%s ",
+>  				mech->gm_upcall_enctypes);
