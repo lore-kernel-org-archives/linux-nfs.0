@@ -1,87 +1,127 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:41614 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([173.255.197.46]:44852 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726033AbeHTTLs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 20 Aug 2018 15:11:48 -0400
-Subject: Re: [PATCH] sunrpc: Add comment defining gssd upcall API keywords
-To: Chuck Lever <chuck.lever@oracle.com>, bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, simo@redhat.com
-References: <20180820143801.10060.61177.stgit@klimt.1015granger.net>
-From: Steve Dickson <SteveD@RedHat.com>
-Message-ID: <4c37c307-c0c9-f833-45b4-01d6c5d4d1a5@RedHat.com>
-Date: Mon, 20 Aug 2018 11:55:30 -0400
+        id S1726260AbeHTWHg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 20 Aug 2018 18:07:36 -0400
+Date: Mon, 20 Aug 2018 14:50:49 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Laura Abbott <labbott@redhat.com>
+Cc: Jeff Layton <jlayton@kernel.org>,
+        Trond Myklebust <trond.myklebust@hammerspace.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        "David S. Miller" <davem@davemloft.net>, linux-nfs@vger.kernel.org,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] sunrpc: Don't use stack buffer with scatterlist
+Message-ID: <20180820185049.GA5468@fieldses.org>
+References: <20180817214354.5780-1-labbott@redhat.com>
 MIME-Version: 1.0
-In-Reply-To: <20180820143801.10060.61177.stgit@klimt.1015granger.net>
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20180817214354.5780-1-labbott@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello,
+On Fri, Aug 17, 2018 at 02:43:54PM -0700, Laura Abbott wrote:
+> Fedora got a bug report from NFS:
 
-I found your examples in the "Enable the kernel to specify the hostname..."
-thread to be very useful. See below.
+Thanks, applying (unless Trond or Anna gets it).
 
-On 08/20/2018 10:39 AM, Chuck Lever wrote:
-> During review, it was found that the target, service, and srchost
-> keywords are easily conflated. Add an explainer.
+--b.
+
 > 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> kernel BUG at include/linux/scatterlist.h:143!
+> ...
+> RIP: 0010:sg_init_one+0x7d/0x90
+> ..
+>   make_checksum+0x4e7/0x760 [rpcsec_gss_krb5]
+>   gss_get_mic_kerberos+0x26e/0x310 [rpcsec_gss_krb5]
+>   gss_marshal+0x126/0x1a0 [auth_rpcgss]
+>   ? __local_bh_enable_ip+0x80/0xe0
+>   ? call_transmit_status+0x1d0/0x1d0 [sunrpc]
+>   call_transmit+0x137/0x230 [sunrpc]
+>   __rpc_execute+0x9b/0x490 [sunrpc]
+>   rpc_run_task+0x119/0x150 [sunrpc]
+>   nfs4_run_exchange_id+0x1bd/0x250 [nfsv4]
+>   _nfs4_proc_exchange_id+0x2d/0x490 [nfsv4]
+>   nfs41_discover_server_trunking+0x1c/0xa0 [nfsv4]
+>   nfs4_discover_server_trunking+0x80/0x270 [nfsv4]
+>   nfs4_init_client+0x16e/0x240 [nfsv4]
+>   ? nfs_get_client+0x4c9/0x5d0 [nfs]
+>   ? _raw_spin_unlock+0x24/0x30
+>   ? nfs_get_client+0x4c9/0x5d0 [nfs]
+>   nfs4_set_client+0xb2/0x100 [nfsv4]
+>   nfs4_create_server+0xff/0x290 [nfsv4]
+>   nfs4_remote_mount+0x28/0x50 [nfsv4]
+>   mount_fs+0x3b/0x16a
+>   vfs_kern_mount.part.35+0x54/0x160
+>   nfs_do_root_mount+0x7f/0xc0 [nfsv4]
+>   nfs4_try_mount+0x43/0x70 [nfsv4]
+>   ? get_nfs_version+0x21/0x80 [nfs]
+>   nfs_fs_mount+0x789/0xbf0 [nfs]
+>   ? pcpu_alloc+0x6ca/0x7e0
+>   ? nfs_clone_super+0x70/0x70 [nfs]
+>   ? nfs_parse_mount_options+0xb40/0xb40 [nfs]
+>   mount_fs+0x3b/0x16a
+>   vfs_kern_mount.part.35+0x54/0x160
+>   do_mount+0x1fd/0xd50
+>   ksys_mount+0xba/0xd0
+>   __x64_sys_mount+0x21/0x30
+>   do_syscall_64+0x60/0x1f0
+>   entry_SYSCALL_64_after_hwframe+0x49/0xbe
+> 
+> This is BUG_ON(!virt_addr_valid(buf)) triggered by using a stack
+> allocated buffer with a scatterlist. Convert the buffer for
+> rc4salt to be dynamically allocated instead.
+> 
+> Bugzilla: https://bugzilla.redhat.com/show_bug.cgi?id=1615258
+> Signed-off-by: Laura Abbott <labbott@redhat.com>
 > ---
->  net/sunrpc/auth_gss/auth_gss.c |   17 +++++++++++++++++
->  1 file changed, 17 insertions(+)
+> Compile tested only.
+> ---
+>  net/sunrpc/auth_gss/gss_krb5_crypto.c | 12 +++++++++---
+>  1 file changed, 9 insertions(+), 3 deletions(-)
 > 
-> Hi Bruce-
-> 
-> I've received no objections to this patch. Can you include it in
-> v4.19 with the other patches I've already submitted?
-> 
-> 
-> diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-> index 1943e11..2460759 100644
-> --- a/net/sunrpc/auth_gss/auth_gss.c
-> +++ b/net/sunrpc/auth_gss/auth_gss.c
-> @@ -461,12 +461,28 @@ static int gss_encode_v1_msg(struct gss_upcall_msg *gss_msg,
->  	buflen -= len;
->  	p += len;
->  	gss_msg->msg.len = len;
-> +
-> +	/*
-> +	 * target= is a full service principal that names the remote
-> +	 * identity that we are authenticating to.
-         *  In full, the target is:
-         *     host/manet.example.net@EXAMPLE.NET
-> +	 */
->  	if (target_name) {
->  		len = scnprintf(p, buflen, "target=%s ", target_name);
->  		buflen -= len;
->  		p += len;
->  		gss_msg->msg.len += len;
+> diff --git a/net/sunrpc/auth_gss/gss_krb5_crypto.c b/net/sunrpc/auth_gss/gss_krb5_crypto.c
+> index 8654494b4d0a..834eb2b9e41b 100644
+> --- a/net/sunrpc/auth_gss/gss_krb5_crypto.c
+> +++ b/net/sunrpc/auth_gss/gss_krb5_crypto.c
+> @@ -169,7 +169,7 @@ make_checksum_hmac_md5(struct krb5_ctx *kctx, char *header, int hdrlen,
+>  	struct scatterlist              sg[1];
+>  	int err = -1;
+>  	u8 *checksumdata;
+> -	u8 rc4salt[4];
+> +	u8 *rc4salt;
+>  	struct crypto_ahash *md5;
+>  	struct crypto_ahash *hmac_md5;
+>  	struct ahash_request *req;
+> @@ -183,14 +183,18 @@ make_checksum_hmac_md5(struct krb5_ctx *kctx, char *header, int hdrlen,
+>  		return GSS_S_FAILURE;
 >  	}
-> +
-> +	/*
-> +	 * gssd uses service= and srchost= to select a matching key from
-> +	 * the system's keytab to use as the source principal.
-> +	 *
-> +	 * service= is the service name part of the source principal,
-> +	 * or "*" (meaning choose any).
-> +	 *
-> +	 * srchost= is the hostname part of the source principal. When
-> +	 * not provided, gssd uses the local hostname. 
-         * Thus the full source principal has to be:
-         *      nfs/klimt.ib.example.net@EXAMPLE.NET
-> +	 */
-Just a suggestion... 
-
-steved.
->  	if (service_name) {
->  		char *c = strchr(service_name, '@');
 >  
-> @@ -482,6 +498,7 @@ static int gss_encode_v1_msg(struct gss_upcall_msg *gss_msg,
->  		p += len;
->  		gss_msg->msg.len += len;
->  	}
+> +	rc4salt = kmalloc_array(4, sizeof(*rc4salt), GFP_NOFS);
+> +	if (!rc4salt)
+> +		return GSS_S_FAILURE;
 > +
->  	if (mech->gm_upcall_enctypes) {
->  		len = scnprintf(p, buflen, "enctypes=%s ",
->  				mech->gm_upcall_enctypes);
-> 
+>  	if (arcfour_hmac_md5_usage_to_salt(usage, rc4salt)) {
+>  		dprintk("%s: invalid usage value %u\n", __func__, usage);
+> -		return GSS_S_FAILURE;
+> +		goto out_free_rc4salt;
+>  	}
+>  
+>  	checksumdata = kmalloc(GSS_KRB5_MAX_CKSUM_LEN, GFP_NOFS);
+>  	if (!checksumdata)
+> -		return GSS_S_FAILURE;
+> +		goto out_free_rc4salt;
+>  
+>  	md5 = crypto_alloc_ahash("md5", 0, CRYPTO_ALG_ASYNC);
+>  	if (IS_ERR(md5))
+> @@ -258,6 +262,8 @@ make_checksum_hmac_md5(struct krb5_ctx *kctx, char *header, int hdrlen,
+>  	crypto_free_ahash(md5);
+>  out_free_cksum:
+>  	kfree(checksumdata);
+> +out_free_rc4salt:
+> +	kfree(rc4salt);
+>  	return err ? GSS_S_FAILURE : 0;
+>  }
+>  
+> -- 
+> 2.17.1
