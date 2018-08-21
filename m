@@ -1,131 +1,91 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-eopbgr660054.outbound.protection.outlook.com ([40.107.66.54]:37568
-        "EHLO CAN01-QB1-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1725733AbeHUEud (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 21 Aug 2018 00:50:33 -0400
-From: Rick Macklem <rmacklem@uoguelph.ca>
-To: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
-CC: linux-nfs <linux-nfs@vger.kernel.org>,
-        "trondmy@hammerspace.com" <trondmy@hammerspace.com>,
-        Anna Schumaker <Anna.Schumaker@Netapp.com>,
-        Tom Haynes <loghyr@gmail.com>
-Subject: Re: [PATCH] nfs4: flex_file: ignore synthetic uid/gid for tightly
- coupled DSes
-Date: Tue, 21 Aug 2018 01:32:32 +0000
-Message-ID: <YTOPR0101MB182080E07E591E6580C476B3DD310@YTOPR0101MB1820.CANPRD01.PROD.OUTLOOK.COM>
-References: <20180820065608.11860-1-tigran.mkrtchyan@desy.de>
- <YTOPR0101MB18202768E081C824A96ECC0ADD320@YTOPR0101MB1820.CANPRD01.PROD.OUTLOOK.COM>
- <YTOPR0101MB18201895B73ED2C4BA3B0840DD320@YTOPR0101MB1820.CANPRD01.PROD.OUTLOOK.COM>,<1195851744.36922369.1534797661849.JavaMail.zimbra@desy.de>
-In-Reply-To: <1195851744.36922369.1534797661849.JavaMail.zimbra@desy.de>
-Content-Type: text/plain; charset="iso-8859-1"
+Received: from mail-it0-f68.google.com ([209.85.214.68]:36493 "EHLO
+        mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726743AbeHURqT (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Aug 2018 13:46:19 -0400
+Received: by mail-it0-f68.google.com with SMTP id p81-v6so4320723itp.1
+        for <linux-nfs@vger.kernel.org>; Tue, 21 Aug 2018 07:25:57 -0700 (PDT)
+From: Trond Myklebust <trondmy@gmail.com>
+To: Anna Schumaker <Anna.Schumaker@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 1/2] pNFS/flexfiles: ff_layout_pg_init_read should exit on error
+Date: Tue, 21 Aug 2018 10:25:33 -0400
+Message-Id: <20180821142534.32039-1-trond.myklebust@hammerspace.com>
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Mkrtchyan, Tigran wrote:
->draft-19 says:
->
->   For tight coupling, ffds_stateid provides the stateid to be used by
->   the client to access the file.  For loose coupling and a NFSv4
->   storage device, the client will have to use an anonymous stateid to
->   perform I/O on the storage device.  With no control protocol, the
->   metadata server stateid can not be used to provide a global stateid
->   model.  Thus the server MUST set the ffds_stateid to be the anonymous
->   stateid.
->
->To me, the last sentence sounds like a clear statement, that it's server
->responsibility to provide either global or anonymous stateid and client
->should just use it as is. IOW,
->
->+       stateid = nfs4_ff_layout_select_ds_stateid(lseg, idx);
->+       if (stateid)
->+               nfs4_stateid_copy(&hdr->args.stateid, stateid);
->
->
->must happen independent from ds being loose or tight coupled. As our DSes
->use the same stateid's as MDS, we did see that provided stateid is not used.
->
->Trond, Tom, can you comment on it?
-I've updated http://people.freebsd.org/~rmacklem/flexfilestateid.patch
-to do the above for both loose and tightly coupled as you suggested.
-When used with your little cred patch, everything seems ok against the
-FreeBSD server (which is tightly coupled and uses ffds_stateids that are
-different from the open/lock... ones).
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-rick
+If we get an error while retrieving the layout, then we should
+report it rather than falling back to I/O through the MDS.
 
-Thanks,
-    Tigran.
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfs/flexfilelayout/flexfilelayout.c | 28 ++++++++++----------------
+ 1 file changed, 11 insertions(+), 17 deletions(-)
 
------ Original Message -----
-> From: "Rick Macklem" <rmacklem@uoguelph.ca>
-> To: "Tigran Mkrtchyan" <tigran.mkrtchyan@desy.de>, "linux-nfs" <linux-nfs@vger.kernel.org>
-> Cc: trondmy@hammerspace.com, "Anna Schumaker" <Anna.Schumaker@Netapp.com>
-> Sent: Monday, August 20, 2018 3:18:00 PM
-> Subject: Re: [PATCH] nfs4: flex_file: ignore synthetic uid/gid for tightly coupled DSes
-
-> I just put a patch for the stated part (stripped out my version of the cred
-> stuff, which I noticed I missed commit in it;) so it might be easier to read.
-> It is here:
-> http://people.freebsd.org/~rmacklem/flexfilestateid.patch
->
-> Thanks for doing this, rick
->
-> ________________________________________
-> From: linux-nfs-owner@vger.kernel.org <linux-nfs-owner@vger.kernel.org> on
-> behalf of Rick Macklem <rmacklem@uoguelph.ca>
-> Sent: Monday, August 20, 2018 8:51:14 AM
-> To: Tigran Mkrtchyan; linux-nfs@vger.kernel.org
-> Cc: trondmy@hammerspace.com; Anna.Schumaker@Netapp.com
-> Subject: Re: [PATCH] nfs4: flex_file: ignore synthetic uid/gid for tightly
-> coupled DSes
->
-> Thanks. I'll test this later to-day. (I did a slightly more complex version
-> of the fix outside of the ff_layout_get_ds_cred() call, but yours is
-> definitely simpler).
->
-> There is also the "stateid", which I believe is supposed to be the one in
-> the layout for the tightly coupled case (for NFSv4 I/O ops to the DS).
-> My patch is here and has the changes for stated as well as cred.
->
-> http://people.freebsd.org/~rmacklem/flexfile.patch
-> (Sorry, I don't know git;-)
->
-> Thanks for doing this and I'll post if my testing finds problems, rick
->
->
-> ________________________________________
-> From: linux-nfs-owner@vger.kernel.org <linux-nfs-owner@vger.kernel.org> on
-> behalf of Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-> Sent: Monday, August 20, 2018 2:56:08 AM
-> To: linux-nfs@vger.kernel.org
-> Cc: trondmy@hammerspace.com; Anna.Schumaker@Netapp.com; Tigran Mkrtchyan
-> Subject: [PATCH] nfs4: flex_file: ignore synthetic uid/gid for tightly coupled
-> DSes
->
-> for tightly coupled DSes client must ignore provided synthetic uid and
-> gid as stated in draft-ietf-nfsv4-flex-files-19#section-5.1.
->
-> Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-> ---
-> fs/nfs/flexfilelayout/flexfilelayoutdev.c | 2 +-
-> 1 file changed, 1 insertion(+), 1 deletion(-)
->
-> diff --git a/fs/nfs/flexfilelayout/flexfilelayoutdev.c
-> b/fs/nfs/flexfilelayout/flexfilelayoutdev.c
-> index d62279d3fc5d..290625cfd369 100644
-> --- a/fs/nfs/flexfilelayout/flexfilelayoutdev.c
-> +++ b/fs/nfs/flexfilelayout/flexfilelayoutdev.c
-> @@ -452,7 +452,7 @@ ff_layout_get_ds_cred(struct pnfs_layout_segment *lseg, u32
-> ds_idx,
->        struct nfs4_ff_layout_mirror *mirror = FF_LAYOUT_COMP(lseg, ds_idx);
->        struct rpc_cred *cred;
->
-> -       if (mirror) {
-> +       if (mirror && !mirror->mirror_ds->ds_versions[0].tightly_coupled) {
->                cred = ff_layout_get_mirror_cred(mirror, lseg->pls_range.iomode);
->                if (!cred)
->                        cred = get_rpccred(mdscred);
-> --
-> 2.17.1
+diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
+index 280b6b060d53..cae43333ef16 100644
+--- a/fs/nfs/flexfilelayout/flexfilelayout.c
++++ b/fs/nfs/flexfilelayout/flexfilelayout.c
+@@ -812,7 +812,6 @@ ff_layout_pg_get_read(struct nfs_pageio_descriptor *pgio,
+ 		      struct nfs_page *req,
+ 		      bool strict_iomode)
+ {
+-retry_strict:
+ 	pnfs_put_lseg(pgio->pg_lseg);
+ 	pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
+ 					   req->wb_context,
+@@ -825,16 +824,6 @@ ff_layout_pg_get_read(struct nfs_pageio_descriptor *pgio,
+ 		pgio->pg_error = PTR_ERR(pgio->pg_lseg);
+ 		pgio->pg_lseg = NULL;
+ 	}
+-
+-	/* If we don't have checking, do get a IOMODE_RW
+-	 * segment, and the server wants to avoid READs
+-	 * there, then retry!
+-	 */
+-	if (pgio->pg_lseg && !strict_iomode &&
+-	    ff_layout_avoid_read_on_rw(pgio->pg_lseg)) {
+-		strict_iomode = true;
+-		goto retry_strict;
+-	}
+ }
+ 
+ static void
+@@ -849,14 +838,16 @@ ff_layout_pg_init_read(struct nfs_pageio_descriptor *pgio,
+ retry:
+ 	pnfs_generic_pg_check_layout(pgio);
+ 	/* Use full layout for now */
+-	if (!pgio->pg_lseg)
++	if (!pgio->pg_lseg) {
+ 		ff_layout_pg_get_read(pgio, req, false);
+-	else if (ff_layout_avoid_read_on_rw(pgio->pg_lseg))
++		if (!pgio->pg_lseg)
++			goto out_nolseg;
++	}
++	if (ff_layout_avoid_read_on_rw(pgio->pg_lseg)) {
+ 		ff_layout_pg_get_read(pgio, req, true);
+-
+-	/* If no lseg, fall back to read through mds */
+-	if (pgio->pg_lseg == NULL)
+-		goto out_mds;
++		if (!pgio->pg_lseg)
++			goto out_nolseg;
++	}
+ 
+ 	ds = ff_layout_choose_best_ds_for_read(pgio->pg_lseg, 0, &ds_idx);
+ 	if (!ds) {
+@@ -878,6 +869,9 @@ ff_layout_pg_init_read(struct nfs_pageio_descriptor *pgio,
+ 	pgm->pg_bsize = mirror->mirror_ds->ds_versions[0].rsize;
+ 
+ 	return;
++out_nolseg:
++	if (pgio->pg_error < 0)
++		return;
+ out_mds:
+ 	pnfs_put_lseg(pgio->pg_lseg);
+ 	pgio->pg_lseg = NULL;
+-- 
+2.17.1
