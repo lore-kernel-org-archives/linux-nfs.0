@@ -1,48 +1,48 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f65.google.com ([209.85.214.65]:51413 "EHLO
-        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726743AbeHURqU (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Aug 2018 13:46:20 -0400
-Received: by mail-it0-f65.google.com with SMTP id e14-v6so4383927itf.1
-        for <linux-nfs@vger.kernel.org>; Tue, 21 Aug 2018 07:25:58 -0700 (PDT)
-From: Trond Myklebust <trondmy@gmail.com>
-To: Anna Schumaker <Anna.Schumaker@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 2/2] pNFS: Remove unwanted optimisation of layoutget
-Date: Tue, 21 Aug 2018 10:25:34 -0400
-Message-Id: <20180821142534.32039-2-trond.myklebust@hammerspace.com>
-In-Reply-To: <20180821142534.32039-1-trond.myklebust@hammerspace.com>
-References: <20180821142534.32039-1-trond.myklebust@hammerspace.com>
+Received: from fieldses.org ([173.255.197.46]:47478 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726852AbeHUUMZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 21 Aug 2018 16:12:25 -0400
+Date: Tue, 21 Aug 2018 12:51:30 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: linux-nfs@vger.kernel.org
+Cc: steved@redhat.com
+Subject: nfs4-acl-tools 0.3.5
+Message-ID: <20180821165130.GA14413@fieldses.org>
+References: <20180807193736.GA18187@fieldses.org>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20180807193736.GA18187@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If we knew that the file was empty, we wouldn't be asking for a layout.
-Any optimisation here is already done before calling pnfs_update_layout().
-As it stands, we sometimes end up doing an unnecessary inband read to
-the MDS even when holding a layout.
+One more nfs4-acl-tools release.  This removes the GUI, which appears to
+have been unused and unmaintained.  I'm happy to revive it from the git
+history if someone thinks it's worth taking over.  I also did some minor
+tampering with the autotools stuff.
 
-Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
----
- fs/nfs/pnfs.c | 6 ------
- 1 file changed, 6 deletions(-)
+git://linux-nfs.org/~bfields/nfs4-acl-tools.git
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 269b5147d0e3..05efd94f612a 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1823,12 +1823,6 @@ pnfs_update_layout(struct inode *ino,
- 		goto out;
- 	}
- 
--	if (iomode == IOMODE_READ && i_size_read(ino) == 0) {
--		trace_pnfs_update_layout(ino, pos, count, iomode, lo, lseg,
--				 PNFS_UPDATE_LAYOUT_RD_ZEROLEN);
--		goto out;
--	}
--
- 	if (pnfs_within_mdsthreshold(ctx, ino, iomode)) {
- 		trace_pnfs_update_layout(ino, pos, count, iomode, lo, lseg,
- 				 PNFS_UPDATE_LAYOUT_MDSTHRESH);
--- 
-2.17.1
+http://linux-nfs.org/~bfields/nfs4-acl-tools/nfs4-acl-tools-0.3.5.tar.gz
+
+--b.
+
+On Tue, Aug 07, 2018 at 03:37:36PM -0400, bfields wrote:
+> nfs4-acl-tools doesn't get a lot of attention, but it does get a *few*
+> commits, so it seems a little ridiculous to go 10 years without a
+> release.  And it was getting annoying for Steve Dickson, who packages
+> the Fedora version.
+> 
+> So I've tagged 0.3.4 in the git tree at
+> 
+> 	git://linux-nfs.org/~bfields/nfs4-acl-tools.git
+> 
+> and posted a tarball at:
+> 
+> 	http://linux-nfs.org/~bfields/nfs4-acl-tools/nfs4-acl-tools-0.3.4.tar.gz
+> 
+> Mostly bugfixes; aside from those, one of the only new things you're
+> likely to notice is recursive nfs4_getfacl support (thanks to Kenneth
+> Dsouza).
+> 
+> --b.
