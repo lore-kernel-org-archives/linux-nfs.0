@@ -1,91 +1,48 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f68.google.com ([209.85.214.68]:36493 "EHLO
-        mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726743AbeHURqT (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Aug 2018 13:46:19 -0400
-Received: by mail-it0-f68.google.com with SMTP id p81-v6so4320723itp.1
-        for <linux-nfs@vger.kernel.org>; Tue, 21 Aug 2018 07:25:57 -0700 (PDT)
+Received: from mail-it0-f65.google.com ([209.85.214.65]:51413 "EHLO
+        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726743AbeHURqU (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Aug 2018 13:46:20 -0400
+Received: by mail-it0-f65.google.com with SMTP id e14-v6so4383927itf.1
+        for <linux-nfs@vger.kernel.org>; Tue, 21 Aug 2018 07:25:58 -0700 (PDT)
 From: Trond Myklebust <trondmy@gmail.com>
 To: Anna Schumaker <Anna.Schumaker@netapp.com>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 1/2] pNFS/flexfiles: ff_layout_pg_init_read should exit on error
-Date: Tue, 21 Aug 2018 10:25:33 -0400
-Message-Id: <20180821142534.32039-1-trond.myklebust@hammerspace.com>
+Subject: [PATCH 2/2] pNFS: Remove unwanted optimisation of layoutget
+Date: Tue, 21 Aug 2018 10:25:34 -0400
+Message-Id: <20180821142534.32039-2-trond.myklebust@hammerspace.com>
+In-Reply-To: <20180821142534.32039-1-trond.myklebust@hammerspace.com>
+References: <20180821142534.32039-1-trond.myklebust@hammerspace.com>
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+If we knew that the file was empty, we wouldn't be asking for a layout.
+Any optimisation here is already done before calling pnfs_update_layout().
+As it stands, we sometimes end up doing an unnecessary inband read to
+the MDS even when holding a layout.
 
-If we get an error while retrieving the layout, then we should
-report it rather than falling back to I/O through the MDS.
-
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/flexfilelayout/flexfilelayout.c | 28 ++++++++++----------------
- 1 file changed, 11 insertions(+), 17 deletions(-)
+ fs/nfs/pnfs.c | 6 ------
+ 1 file changed, 6 deletions(-)
 
-diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
-index 280b6b060d53..cae43333ef16 100644
---- a/fs/nfs/flexfilelayout/flexfilelayout.c
-+++ b/fs/nfs/flexfilelayout/flexfilelayout.c
-@@ -812,7 +812,6 @@ ff_layout_pg_get_read(struct nfs_pageio_descriptor *pgio,
- 		      struct nfs_page *req,
- 		      bool strict_iomode)
- {
--retry_strict:
- 	pnfs_put_lseg(pgio->pg_lseg);
- 	pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
- 					   req->wb_context,
-@@ -825,16 +824,6 @@ ff_layout_pg_get_read(struct nfs_pageio_descriptor *pgio,
- 		pgio->pg_error = PTR_ERR(pgio->pg_lseg);
- 		pgio->pg_lseg = NULL;
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 269b5147d0e3..05efd94f612a 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1823,12 +1823,6 @@ pnfs_update_layout(struct inode *ino,
+ 		goto out;
  	}
--
--	/* If we don't have checking, do get a IOMODE_RW
--	 * segment, and the server wants to avoid READs
--	 * there, then retry!
--	 */
--	if (pgio->pg_lseg && !strict_iomode &&
--	    ff_layout_avoid_read_on_rw(pgio->pg_lseg)) {
--		strict_iomode = true;
--		goto retry_strict;
+ 
+-	if (iomode == IOMODE_READ && i_size_read(ino) == 0) {
+-		trace_pnfs_update_layout(ino, pos, count, iomode, lo, lseg,
+-				 PNFS_UPDATE_LAYOUT_RD_ZEROLEN);
+-		goto out;
 -	}
- }
- 
- static void
-@@ -849,14 +838,16 @@ ff_layout_pg_init_read(struct nfs_pageio_descriptor *pgio,
- retry:
- 	pnfs_generic_pg_check_layout(pgio);
- 	/* Use full layout for now */
--	if (!pgio->pg_lseg)
-+	if (!pgio->pg_lseg) {
- 		ff_layout_pg_get_read(pgio, req, false);
--	else if (ff_layout_avoid_read_on_rw(pgio->pg_lseg))
-+		if (!pgio->pg_lseg)
-+			goto out_nolseg;
-+	}
-+	if (ff_layout_avoid_read_on_rw(pgio->pg_lseg)) {
- 		ff_layout_pg_get_read(pgio, req, true);
 -
--	/* If no lseg, fall back to read through mds */
--	if (pgio->pg_lseg == NULL)
--		goto out_mds;
-+		if (!pgio->pg_lseg)
-+			goto out_nolseg;
-+	}
- 
- 	ds = ff_layout_choose_best_ds_for_read(pgio->pg_lseg, 0, &ds_idx);
- 	if (!ds) {
-@@ -878,6 +869,9 @@ ff_layout_pg_init_read(struct nfs_pageio_descriptor *pgio,
- 	pgm->pg_bsize = mirror->mirror_ds->ds_versions[0].rsize;
- 
- 	return;
-+out_nolseg:
-+	if (pgio->pg_error < 0)
-+		return;
- out_mds:
- 	pnfs_put_lseg(pgio->pg_lseg);
- 	pgio->pg_lseg = NULL;
+ 	if (pnfs_within_mdsthreshold(ctx, ino, iomode)) {
+ 		trace_pnfs_update_layout(ino, pos, count, iomode, lo, lseg,
+ 				 PNFS_UPDATE_LAYOUT_MDSTHRESH);
 -- 
 2.17.1
