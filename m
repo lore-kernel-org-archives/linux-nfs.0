@@ -1,53 +1,34 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:52812 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727484AbeHWS73 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 23 Aug 2018 14:59:29 -0400
-Date: Thu, 23 Aug 2018 11:29:20 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [GIT PULL] nfsd changes for 4.19
-Message-ID: <20180823152920.GE32415@fieldses.org>
-References: <20180823125810.GC32415@fieldses.org>
+Received: from mail-ua1-f67.google.com ([209.85.222.67]:47039 "EHLO
+        mail-ua1-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726780AbeHWWCJ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Aug 2018 18:02:09 -0400
+Received: by mail-ua1-f67.google.com with SMTP id u11-v6so3807403uan.13
+        for <linux-nfs@vger.kernel.org>; Thu, 23 Aug 2018 11:31:12 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20180823125810.GC32415@fieldses.org>
+References: <20180720221925.50744-1-kolga@netapp.com> <20180809203450.GE14104@parsley.fieldses.org>
+ <20180823014722.GA24441@fieldses.org> <20180823122231.GA32415@fieldses.org> <20180823123216.GB32415@fieldses.org>
+In-Reply-To: <20180823123216.GB32415@fieldses.org>
+From: Olga Kornievskaia <aglo@umich.edu>
+Date: Thu, 23 Aug 2018 14:30:59 -0400
+Message-ID: <CAN-5tyGBov4SZJbG1Gs6_Ujtwc_2g15VR5ZY0y2bXUdb=cwOhQ@mail.gmail.com>
+Subject: Re: [PATCH v10 0/9] NFSD support for async COPY
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: "J. Bruce Fields" <bfields@redhat.com>,
+        Olga Kornievskaia <kolga@netapp.com>,
+        linux-nfs <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Apologies, I messed up my pull request.  The result was just a few
-commits mentioned in the tag description but missing from the tip of the
-branch, and I thought simplest was to make a new tag and a new pull
-request with the additional commits, I hope that works OK.  Thanks to
-Chuck for noticing the problem quickly.  Please pull:
+On Thu, Aug 23, 2018 at 12:18 PM J. Bruce Fields <bfields@fieldses.org> wrote:
+>
+> On Thu, Aug 23, 2018 at 08:22:31AM -0400, J. Bruce Fields wrote:
+> > On Wed, Aug 22, 2018 at 09:47:22PM -0400, bfields wrote:
+> > > Results are in my linux-next branch.
+>
+> Actually, make that
+>
+>         git:///linux-nfs.org/~bfields/linux.git for-4.20-incoming
 
-  git://linux-nfs.org/~bfields/linux.git tags/nfsd-4.19-1
-
---b.
-
-----------------------------------------------------------------
-A mistake on my part caused me to tag my branch 6 commits too early,
-missing Chuck's fixes for the problem with callbacks over GSS from
-multi-homed servers, and a smaller fix from Laura Abbott.
-
-----------------------------------------------------------------
-Chuck Lever (5):
-      sunrpc: Enable the kernel to specify the hostname part of service principals
-      sunrpc: Extract target name into svc_cred
-      nfsd: Use correct credential for NFSv4.0 callback with GSS
-      nfsd: Remove callback_cred
-      sunrpc: Add comment defining gssd upcall API keywords
-
-Laura Abbott (1):
-      sunrpc: Don't use stack buffer with scatterlist
-
- fs/nfsd/nfs4callback.c                | 29 ++++-----------
- fs/nfsd/nfs4state.c                   | 17 ++++-----
- fs/nfsd/state.h                       |  2 -
- include/linux/sunrpc/svcauth.h        |  3 ++
- net/sunrpc/auth_gss/auth_gss.c        | 37 ++++++++++++++++--
- net/sunrpc/auth_gss/gss_krb5_crypto.c | 12 ++++--
- net/sunrpc/auth_gss/gss_rpc_upcall.c  | 70 ++++++++++++++++++++++-------------
- 7 files changed, 106 insertions(+), 64 deletions(-)
+Ok I'll take a look. I'll work on "inter" copy on top of that.
