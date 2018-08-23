@@ -1,74 +1,106 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:50436 "EHLO fieldses.org"
+Received: from lisa.pbhware.com ([96.251.22.156]:34256 "EHLO lisa.pbhware.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727687AbeHVXMd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 22 Aug 2018 19:12:33 -0400
-Date: Wed, 22 Aug 2018 15:46:20 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: "Paul B. Henson" <henson@acm.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: nfs4-acl-tools 0.3.5
-Message-ID: <20180822194620.GA25562@fieldses.org>
-References: <20180807193736.GA18187@fieldses.org>
- <20180821165130.GA14413@fieldses.org>
- <5fa4b700-3d45-cda3-37ed-bdfbd427574d@acm.org>
- <20180822003301.GA17500@fieldses.org>
- <d4649560-ad74-d119-13ba-876af9a4974e@acm.org>
- <20180822151213.GA24172@fieldses.org>
- <c1b05b61-b85e-7dff-8cff-12b85bffb3c6@acm.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <c1b05b61-b85e-7dff-8cff-12b85bffb3c6@acm.org>
+        id S1727322AbeHWD6P (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 22 Aug 2018 23:58:15 -0400
+From: "Paul B. Henson" <henson@acm.org>
+To: bfields@fieldses.org, linux-nfs@vger.kernel.org
+Date: Thu, 23 Aug 2018 00:25:58 +0000
+Subject: [PATCH] Remove invalid flags that aren't part of the NFSv4 ACL spec,
+ will never be received, and should never be sent.
+Message-Id: <4787be845392f04e@lisa.pbhware.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Aug 22, 2018 at 12:28:13PM -0700, Paul B. Henson wrote:
-> On 8/22/2018 8:12 AM, J. Bruce Fields wrote:
-> >
-> >Huh.  Yeah, that does look like a bug.  But I'm surprised the utilities
-> >would work at all in that case--I'd expect both the Solaris and Linux
-> >knfsd to reject an ACL with those extra bits, and certainly neither
-> 
-> Hmm, you're right; trying to include any of them when updating an
-> ACL on an illumos server from the Linux client results in "Failed
-> setxattr operation: Invalid argument".
-> 
-> It looks like those extra flags aren't even documented. Given a
-> server will never actually return them such that a user sees them
-> displayed, and they are not documented, it's most likely no one has
-> ever actually tried to use them 8-/. From a historical perspective,
-> it would be interesting to know why they are there, but that is
-> perhaps lost to antiquity ;).
+---
+ include/libacl_nfs4.h               | 3 ---
+ include/nfs4.h                      | 3 ---
+ libnfs4acl/nfs4_ace_from_string.c   | 9 ---------
+ libnfs4acl/nfs4_get_ace_flags.c     | 6 ------
+ libnfs4acl/nfs4_print_ace_verbose.c | 6 ------
+ 5 files changed, 27 deletions(-)
 
-Oh, I see now, I was assuming they were automatically set on owner ACEs
-or something, but they're only set if you happen to know this bit of
-undocumented UI implemented in get_ace_flags/ace_from_string.  So, yeah,
-we should just remove that code.
-
-> >I suspect they're unnecessary, and I'd happily take a patch to remove
-> >them once we figure out what's going on.
-> 
-> I'll strip them out and send you a patch soon; hopefully it won't
-> take 10 more years to show up in a release :).
-
-OK, great, thanks.
-
-> A side question while I have your attention; once I get the ZFS
-> NFSv4 acl support committed upstream, what is it going to take to
-> have the linux NFSv4 server use them and provide them to clients?
-
-I can't take knfsd patches to support something that only an out-of-tree
-filesystem cares about.
-
-Looks like ZFS has pretty much no chance of going upstream.
-
-You could try to port them to some other filesystem (xfs, ext4).  But
-the attempt to implement rich ACLs (which are pretty similar) seemed to
-get vetoed for reasons I don't completely understand, and I don't see
-why this would fare any better.
-
-So I think you'd be stuck carrying your own out-of-tree patches for it.
-
-Ganesha probably could (may already) do this, for what it's worth.
-
---b.
+diff --git a/include/libacl_nfs4.h b/include/libacl_nfs4.h
+index 654061c..d3786c3 100644
+--- a/include/libacl_nfs4.h
++++ b/include/libacl_nfs4.h
+@@ -54,9 +54,6 @@
+ #define FLAG_SUCCESSFUL_ACCESS		'S'
+ #define FLAG_FAILED_ACCESS		'F'
+ #define FLAG_GROUP			'g'
+-#define FLAG_OWNER_AT			'O'
+-#define FLAG_GROUP_AT			'G'
+-#define FLAG_EVERYONE_AT		'E'
+ 
+ #define PERM_READ_DATA			'r'
+ #define PERM_WRITE_DATA			'w'
+diff --git a/include/nfs4.h b/include/nfs4.h
+index c6d5b62..da6eefb 100644
+--- a/include/nfs4.h
++++ b/include/nfs4.h
+@@ -62,9 +62,6 @@
+ #define NFS4_ACE_SUCCESSFUL_ACCESS_ACE_FLAG   0x00000010
+ #define NFS4_ACE_FAILED_ACCESS_ACE_FLAG       0x00000020
+ #define NFS4_ACE_IDENTIFIER_GROUP             0x00000040
+-#define NFS4_ACE_OWNER                        0x00000080
+-#define NFS4_ACE_GROUP                        0x00000100
+-#define NFS4_ACE_EVERYONE                     0x00000200
+ 
+ #define NFS4_ACE_READ_DATA                    0x00000001
+ #define NFS4_ACE_LIST_DIRECTORY               0x00000001
+diff --git a/libnfs4acl/nfs4_ace_from_string.c b/libnfs4acl/nfs4_ace_from_string.c
+index a7a3036..ab8401a 100644
+--- a/libnfs4acl/nfs4_ace_from_string.c
++++ b/libnfs4acl/nfs4_ace_from_string.c
+@@ -209,15 +209,6 @@ struct nfs4_ace * nfs4_ace_from_string(char *ace_buf, int is_dir)
+ 			case FLAG_GROUP:
+ 				flags |= NFS4_ACE_IDENTIFIER_GROUP;
+ 				break;
+-			case FLAG_OWNER_AT:
+-				flags |= NFS4_ACE_OWNER;
+-				break;
+-			case FLAG_GROUP_AT:
+-				flags |= NFS4_ACE_GROUP;
+-				break;
+-			case FLAG_EVERYONE_AT:
+-				flags |= NFS4_ACE_EVERYONE;
+-				break;
+ 			default:
+ 				fprintf(stderr,"Bad Ace Flag:%c\n", *field);
+ 				goto out_free;
+diff --git a/libnfs4acl/nfs4_get_ace_flags.c b/libnfs4acl/nfs4_get_ace_flags.c
+index 339a838..1d28ed4 100644
+--- a/libnfs4acl/nfs4_get_ace_flags.c
++++ b/libnfs4acl/nfs4_get_ace_flags.c
+@@ -53,12 +53,6 @@ char* nfs4_get_ace_flags(struct nfs4_ace *ace, char *buf)
+ 		*buf++ = FLAG_FAILED_ACCESS;;
+ 	if (flags & NFS4_ACE_IDENTIFIER_GROUP)
+ 		*buf++ = FLAG_GROUP;
+-	if (flags & NFS4_ACE_OWNER)
+-		*buf++ = FLAG_OWNER_AT;
+-	if (flags & NFS4_ACE_GROUP)
+-		*buf++ = FLAG_GROUP_AT;
+-	if (flags & NFS4_ACE_EVERYONE)
+-		*buf++ = FLAG_EVERYONE_AT;
+ 	*buf = '\0';
+ 
+ 	return bp;
+diff --git a/libnfs4acl/nfs4_print_ace_verbose.c b/libnfs4acl/nfs4_print_ace_verbose.c
+index de9b424..96a6573 100644
+--- a/libnfs4acl/nfs4_print_ace_verbose.c
++++ b/libnfs4acl/nfs4_print_ace_verbose.c
+@@ -131,12 +131,6 @@ int nfs4_print_ace_verbose(struct nfs4_ace * ace, u32 is_dir)
+ 		printf("\t\tNFS4_ACE_FAILED_ACCESS_ACE_FLAG\n");
+ 	if (flag & NFS4_ACE_IDENTIFIER_GROUP)
+ 		printf("\t\tNFS4_ACE_IDENTIFIER_GROUP\n");
+-	if (flag & NFS4_ACE_OWNER)
+-		printf("\t\tNFS4_ACE_OWNER\n");
+-	if (flag & NFS4_ACE_GROUP)
+-		printf("\t\tNFS4_ACE_GROUP\n");
+-	if (flag & NFS4_ACE_EVERYONE)
+-		printf("\t\tNFS4_ACE_EVERYONE\n");
+ 
+ 
+ 	mask = ace->access_mask;
+-- 
+2.17.1
