@@ -1,41 +1,53 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f68.google.com ([209.85.214.68]:35310 "EHLO
-        mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1732062AbeHWSdP (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Aug 2018 14:33:15 -0400
-Received: by mail-it0-f68.google.com with SMTP id 139-v6so7976612itf.0
-        for <linux-nfs@vger.kernel.org>; Thu, 23 Aug 2018 08:03:11 -0700 (PDT)
-From: Trond Myklebust <trondmy@gmail.com>
-To: Anna Schumaker <Anna.Schumaker@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] NFSv4: Fix a tracepoint Oops in initiate_file_draining()
-Date: Thu, 23 Aug 2018 11:02:49 -0400
-Message-Id: <20180823150249.124919-1-trond.myklebust@hammerspace.com>
+Received: from fieldses.org ([173.255.197.46]:52812 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1727484AbeHWS73 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 23 Aug 2018 14:59:29 -0400
+Date: Thu, 23 Aug 2018 11:29:20 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [GIT PULL] nfsd changes for 4.19
+Message-ID: <20180823152920.GE32415@fieldses.org>
+References: <20180823125810.GC32415@fieldses.org>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20180823125810.GC32415@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Now that the value of 'ino' can be NULL or an ERR_PTR(), we need to
-change the test in the tracepoint.
+Apologies, I messed up my pull request.  The result was just a few
+commits mentioned in the tag description but missing from the tip of the
+branch, and I thought simplest was to make a new tag and a new pull
+request with the additional commits, I hope that works OK.  Thanks to
+Chuck for noticing the problem quickly.  Please pull:
 
-Fixes: ce5624f7e6675 ("NFSv4: Return NFS4ERR_DELAY when a layout fails...")
-Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
----
- fs/nfs/nfs4trace.h | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+  git://linux-nfs.org/~bfields/linux.git tags/nfsd-4.19-1
 
-diff --git a/fs/nfs/nfs4trace.h b/fs/nfs/nfs4trace.h
-index 9bae014544fd..ed5794c0c818 100644
---- a/fs/nfs/nfs4trace.h
-+++ b/fs/nfs/nfs4trace.h
-@@ -1194,7 +1194,7 @@ DECLARE_EVENT_CLASS(nfs4_inode_stateid_callback_event,
- 		TP_fast_assign(
- 			__entry->error = error;
- 			__entry->fhandle = nfs_fhandle_hash(fhandle);
--			if (inode != NULL) {
-+			if (!IS_ERR_OR_NULL(inode)) {
- 				__entry->fileid = NFS_FILEID(inode);
- 				__entry->dev = inode->i_sb->s_dev;
- 			} else {
--- 
-2.17.1
+--b.
+
+----------------------------------------------------------------
+A mistake on my part caused me to tag my branch 6 commits too early,
+missing Chuck's fixes for the problem with callbacks over GSS from
+multi-homed servers, and a smaller fix from Laura Abbott.
+
+----------------------------------------------------------------
+Chuck Lever (5):
+      sunrpc: Enable the kernel to specify the hostname part of service principals
+      sunrpc: Extract target name into svc_cred
+      nfsd: Use correct credential for NFSv4.0 callback with GSS
+      nfsd: Remove callback_cred
+      sunrpc: Add comment defining gssd upcall API keywords
+
+Laura Abbott (1):
+      sunrpc: Don't use stack buffer with scatterlist
+
+ fs/nfsd/nfs4callback.c                | 29 ++++-----------
+ fs/nfsd/nfs4state.c                   | 17 ++++-----
+ fs/nfsd/state.h                       |  2 -
+ include/linux/sunrpc/svcauth.h        |  3 ++
+ net/sunrpc/auth_gss/auth_gss.c        | 37 ++++++++++++++++--
+ net/sunrpc/auth_gss/gss_krb5_crypto.c | 12 ++++--
+ net/sunrpc/auth_gss/gss_rpc_upcall.c  | 70 ++++++++++++++++++++++-------------
+ 7 files changed, 106 insertions(+), 64 deletions(-)
