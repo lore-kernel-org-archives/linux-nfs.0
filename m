@@ -1,45 +1,41 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:52712 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1730300AbeHWSId (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 23 Aug 2018 14:08:33 -0400
-Date: Thu, 23 Aug 2018 10:38:35 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: "Paul B. Henson" <henson@acm.org>
+Received: from mail-it0-f68.google.com ([209.85.214.68]:35310 "EHLO
+        mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1732062AbeHWSdP (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Aug 2018 14:33:15 -0400
+Received: by mail-it0-f68.google.com with SMTP id 139-v6so7976612itf.0
+        for <linux-nfs@vger.kernel.org>; Thu, 23 Aug 2018 08:03:11 -0700 (PDT)
+From: Trond Myklebust <trondmy@gmail.com>
+To: Anna Schumaker <Anna.Schumaker@netapp.com>
 Cc: linux-nfs@vger.kernel.org
-Subject: Re: nfs4-acl-tools 0.3.5
-Message-ID: <20180823143835.GB1019@fieldses.org>
-References: <20180807193736.GA18187@fieldses.org>
- <20180821165130.GA14413@fieldses.org>
- <5fa4b700-3d45-cda3-37ed-bdfbd427574d@acm.org>
- <20180822003301.GA17500@fieldses.org>
- <d4649560-ad74-d119-13ba-876af9a4974e@acm.org>
- <20180822151213.GA24172@fieldses.org>
- <c1b05b61-b85e-7dff-8cff-12b85bffb3c6@acm.org>
- <20180822194620.GA25562@fieldses.org>
- <2be55f4f-4c9c-9ee1-72f4-b21e37336b6e@acm.org>
+Subject: [PATCH] NFSv4: Fix a tracepoint Oops in initiate_file_draining()
+Date: Thu, 23 Aug 2018 11:02:49 -0400
+Message-Id: <20180823150249.124919-1-trond.myklebust@hammerspace.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <2be55f4f-4c9c-9ee1-72f4-b21e37336b6e@acm.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Aug 22, 2018 at 06:11:20PM -0700, Paul B. Henson wrote:
-> >You could try to port them to some other filesystem (xfs, ext4).
-> 
-> The ZFS on Linux port already supports the standard POSIX ACL. I'm
-> curious, do those work with the NFS server?
+Now that the value of 'ino' can be NULL or an ERR_PTR(), we need to
+change the test in the tracepoint.
 
-Yes.  Sort of.  There's a sideband protocol for NFSv3 that supports them
-pretty much as they are.  NFSv4 only has NFSv4 ACLs, so we support them
-by translating between "posix" and NFSv4 ACLs on the fly, and the
-result can be a pain to use.
+Fixes: ce5624f7e6675 ("NFSv4: Return NFS4ERR_DELAY when a layout fails...")
+Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
+---
+ fs/nfs/nfs4trace.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-> Does something specifically need to be done individually for each file
-> system, or if it supports the standard extended attribute does any
-> file system (including an out of tree file system) automatically
-> function?
-
-Nothing special's required, it should be automatic.
-
---b.
+diff --git a/fs/nfs/nfs4trace.h b/fs/nfs/nfs4trace.h
+index 9bae014544fd..ed5794c0c818 100644
+--- a/fs/nfs/nfs4trace.h
++++ b/fs/nfs/nfs4trace.h
+@@ -1194,7 +1194,7 @@ DECLARE_EVENT_CLASS(nfs4_inode_stateid_callback_event,
+ 		TP_fast_assign(
+ 			__entry->error = error;
+ 			__entry->fhandle = nfs_fhandle_hash(fhandle);
+-			if (inode != NULL) {
++			if (!IS_ERR_OR_NULL(inode)) {
+ 				__entry->fileid = NFS_FILEID(inode);
+ 				__entry->dev = inode->i_sb->s_dev;
+ 			} else {
+-- 
+2.17.1
