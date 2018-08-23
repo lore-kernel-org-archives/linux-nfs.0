@@ -1,114 +1,45 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:52690 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:52712 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1731373AbeHWR4K (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 23 Aug 2018 13:56:10 -0400
-Date: Thu, 23 Aug 2018 10:26:14 -0400
+        id S1730300AbeHWSId (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 23 Aug 2018 14:08:33 -0400
+Date: Thu, 23 Aug 2018 10:38:35 -0400
 From: "J. Bruce Fields" <bfields@fieldses.org>
 To: "Paul B. Henson" <henson@acm.org>
 Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] Remove invalid flags that aren't part of the NFSv4 ACL
- spec, will never be received, and should never be sent.
-Message-ID: <20180823142614.GA1019@fieldses.org>
-References: <4787be845392f04e@lisa.pbhware.com>
+Subject: Re: nfs4-acl-tools 0.3.5
+Message-ID: <20180823143835.GB1019@fieldses.org>
+References: <20180807193736.GA18187@fieldses.org>
+ <20180821165130.GA14413@fieldses.org>
+ <5fa4b700-3d45-cda3-37ed-bdfbd427574d@acm.org>
+ <20180822003301.GA17500@fieldses.org>
+ <d4649560-ad74-d119-13ba-876af9a4974e@acm.org>
+ <20180822151213.GA24172@fieldses.org>
+ <c1b05b61-b85e-7dff-8cff-12b85bffb3c6@acm.org>
+ <20180822194620.GA25562@fieldses.org>
+ <2be55f4f-4c9c-9ee1-72f4-b21e37336b6e@acm.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4787be845392f04e@lisa.pbhware.com>
+In-Reply-To: <2be55f4f-4c9c-9ee1-72f4-b21e37336b6e@acm.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Applied, thanks!--b.
-
-On Thu, Aug 23, 2018 at 12:25:58AM +0000, Paul B. Henson wrote:
-> ---
->  include/libacl_nfs4.h               | 3 ---
->  include/nfs4.h                      | 3 ---
->  libnfs4acl/nfs4_ace_from_string.c   | 9 ---------
->  libnfs4acl/nfs4_get_ace_flags.c     | 6 ------
->  libnfs4acl/nfs4_print_ace_verbose.c | 6 ------
->  5 files changed, 27 deletions(-)
+On Wed, Aug 22, 2018 at 06:11:20PM -0700, Paul B. Henson wrote:
+> >You could try to port them to some other filesystem (xfs, ext4).
 > 
-> diff --git a/include/libacl_nfs4.h b/include/libacl_nfs4.h
-> index 654061c..d3786c3 100644
-> --- a/include/libacl_nfs4.h
-> +++ b/include/libacl_nfs4.h
-> @@ -54,9 +54,6 @@
->  #define FLAG_SUCCESSFUL_ACCESS		'S'
->  #define FLAG_FAILED_ACCESS		'F'
->  #define FLAG_GROUP			'g'
-> -#define FLAG_OWNER_AT			'O'
-> -#define FLAG_GROUP_AT			'G'
-> -#define FLAG_EVERYONE_AT		'E'
->  
->  #define PERM_READ_DATA			'r'
->  #define PERM_WRITE_DATA			'w'
-> diff --git a/include/nfs4.h b/include/nfs4.h
-> index c6d5b62..da6eefb 100644
-> --- a/include/nfs4.h
-> +++ b/include/nfs4.h
-> @@ -62,9 +62,6 @@
->  #define NFS4_ACE_SUCCESSFUL_ACCESS_ACE_FLAG   0x00000010
->  #define NFS4_ACE_FAILED_ACCESS_ACE_FLAG       0x00000020
->  #define NFS4_ACE_IDENTIFIER_GROUP             0x00000040
-> -#define NFS4_ACE_OWNER                        0x00000080
-> -#define NFS4_ACE_GROUP                        0x00000100
-> -#define NFS4_ACE_EVERYONE                     0x00000200
->  
->  #define NFS4_ACE_READ_DATA                    0x00000001
->  #define NFS4_ACE_LIST_DIRECTORY               0x00000001
-> diff --git a/libnfs4acl/nfs4_ace_from_string.c b/libnfs4acl/nfs4_ace_from_string.c
-> index a7a3036..ab8401a 100644
-> --- a/libnfs4acl/nfs4_ace_from_string.c
-> +++ b/libnfs4acl/nfs4_ace_from_string.c
-> @@ -209,15 +209,6 @@ struct nfs4_ace * nfs4_ace_from_string(char *ace_buf, int is_dir)
->  			case FLAG_GROUP:
->  				flags |= NFS4_ACE_IDENTIFIER_GROUP;
->  				break;
-> -			case FLAG_OWNER_AT:
-> -				flags |= NFS4_ACE_OWNER;
-> -				break;
-> -			case FLAG_GROUP_AT:
-> -				flags |= NFS4_ACE_GROUP;
-> -				break;
-> -			case FLAG_EVERYONE_AT:
-> -				flags |= NFS4_ACE_EVERYONE;
-> -				break;
->  			default:
->  				fprintf(stderr,"Bad Ace Flag:%c\n", *field);
->  				goto out_free;
-> diff --git a/libnfs4acl/nfs4_get_ace_flags.c b/libnfs4acl/nfs4_get_ace_flags.c
-> index 339a838..1d28ed4 100644
-> --- a/libnfs4acl/nfs4_get_ace_flags.c
-> +++ b/libnfs4acl/nfs4_get_ace_flags.c
-> @@ -53,12 +53,6 @@ char* nfs4_get_ace_flags(struct nfs4_ace *ace, char *buf)
->  		*buf++ = FLAG_FAILED_ACCESS;;
->  	if (flags & NFS4_ACE_IDENTIFIER_GROUP)
->  		*buf++ = FLAG_GROUP;
-> -	if (flags & NFS4_ACE_OWNER)
-> -		*buf++ = FLAG_OWNER_AT;
-> -	if (flags & NFS4_ACE_GROUP)
-> -		*buf++ = FLAG_GROUP_AT;
-> -	if (flags & NFS4_ACE_EVERYONE)
-> -		*buf++ = FLAG_EVERYONE_AT;
->  	*buf = '\0';
->  
->  	return bp;
-> diff --git a/libnfs4acl/nfs4_print_ace_verbose.c b/libnfs4acl/nfs4_print_ace_verbose.c
-> index de9b424..96a6573 100644
-> --- a/libnfs4acl/nfs4_print_ace_verbose.c
-> +++ b/libnfs4acl/nfs4_print_ace_verbose.c
-> @@ -131,12 +131,6 @@ int nfs4_print_ace_verbose(struct nfs4_ace * ace, u32 is_dir)
->  		printf("\t\tNFS4_ACE_FAILED_ACCESS_ACE_FLAG\n");
->  	if (flag & NFS4_ACE_IDENTIFIER_GROUP)
->  		printf("\t\tNFS4_ACE_IDENTIFIER_GROUP\n");
-> -	if (flag & NFS4_ACE_OWNER)
-> -		printf("\t\tNFS4_ACE_OWNER\n");
-> -	if (flag & NFS4_ACE_GROUP)
-> -		printf("\t\tNFS4_ACE_GROUP\n");
-> -	if (flag & NFS4_ACE_EVERYONE)
-> -		printf("\t\tNFS4_ACE_EVERYONE\n");
->  
->  
->  	mask = ace->access_mask;
-> -- 
-> 2.17.1
+> The ZFS on Linux port already supports the standard POSIX ACL. I'm
+> curious, do those work with the NFS server?
+
+Yes.  Sort of.  There's a sideband protocol for NFSv3 that supports them
+pretty much as they are.  NFSv4 only has NFSv4 ACLs, so we support them
+by translating between "posix" and NFSv4 ACLs on the fly, and the
+result can be a pain to use.
+
+> Does something specifically need to be done individually for each file
+> system, or if it supports the standard extended attribute does any
+> file system (including an out of tree file system) automatically
+> function?
+
+Nothing special's required, it should be automatic.
+
+--b.
