@@ -1,39 +1,44 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:55808 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726268AbeHXTMY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 24 Aug 2018 15:12:24 -0400
-Date: Fri, 24 Aug 2018 11:37:15 -0400
-To: =?utf-8?B?5bC55YmR6Jm5?= <yin-jianhong@163.com>
-Cc: "J. Bruce Fields" <bfields@redhat.com>, jiyin@redhat.com,
-        linux-nfs@vger.kernel.org
-Subject: Re: Re: [PATCH 19/24 v2] pynfs: python3 support plan: fix import
- fail on python3
-Message-ID: <20180824153715.GC15219@fieldses.org>
-References: <20180724103315.11618-1-jiyin@redhat.com>
- <20180823210227.GA22443@parsley.fieldses.org>
- <23d24537.3d15.16569e10094.Coremail.yin-jianhong@163.com>
+Received: from mslow2.mail.gandi.net ([217.70.178.242]:60828 "EHLO
+        mslow2.mail.gandi.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726009AbeHYNea (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 25 Aug 2018 09:34:30 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <23d24537.3d15.16569e10094.Coremail.yin-jianhong@163.com>
-From: bfields@fieldses.org (J. Bruce Fields)
+Content-Type: text/plain; charset=UTF-8;
+ format=flowed
+Date: Sat, 25 Aug 2018 11:41:54 +0200
+From: KELLY ALAN <kellyalan@servicescourrier.club>
+To: kellyalan@servicescourrier.club
+Subject: TRADING  ACCOUNT
+Reply-To: kellyalan@cfmeareongines.com
+Message-ID: <ce0598aac9b8de49615adf8dc7d0af28@servicescourrier.club>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Aug 24, 2018 at 11:01:18AM +0800, 尹剑虹 wrote:
-> No, see  [PATCH 24/24] pynfs: python3 support plan: fix access class var in list comprehension
->     Status:
->     '''
->     all patches works fine on python-2.7
->     and build success on python-3.6
->     but because xdrlib issue https://bugs.python.org/issue9544
->     pynfs has not been able to run on python-3.6 now
->     '''
-> 
-> Todo list:
->   investigate python xdrlib issue on python3 : https://bugs.python.org/issue9544
->   investigate why (python-ply >3.4) can't work with pynfs (on both python2 and python3)
 
-OK, thanks for the explanation.
+Dear sir ,
 
---b.
+I KELLY ALAN  purchasing and sales manager of CFM INTERNATIONAL .Our 
+Company specialised in Supplying computer hardware and Electronic .We 
+want to extend our supplier list because of concurrency in prices on the 
+international market. We are seeking a supplier with whom we can to have 
+  partnered long-term in order to have competitive prices . we are 
+interested to buy the products you sell and want to place an order with 
+you in big quantities.
+Can you give us payment facilities ( 14 , 30 or 60 days payment terms ) 
+?
+What is the procedure for our account opening  and credit line 
+application ?
+
+Cordially
+
+  KELLY ALAN
+
+CFM INTERNATIONAL
+2 BOULEVARD DU GAL MARTIAL VALIN
+75015 PARIS
+REG N° 302 527 700
+VAT N° FR90 302527700
+TEL +33171025367
+FAX +33177759149
+https://www.cfmaeroengines.com
