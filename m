@@ -1,36 +1,46 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f197.google.com ([209.85.223.197]:36291 "EHLO
-        mail-io0-f197.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726966AbeH0Vgy (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 27 Aug 2018 17:36:54 -0400
-Received: by mail-io0-f197.google.com with SMTP id s5-v6so11575393iop.3
-        for <linux-nfs@vger.kernel.org>; Mon, 27 Aug 2018 10:49:20 -0700 (PDT)
+Received: from nuntiux.org ([104.168.144.117]:41232 "EHLO nuntiux.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1727171AbeH1BA2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 27 Aug 2018 21:00:28 -0400
+Message-ID: <4c1620ea55ec64da48f1f44a135675c0.squirrel@nuntiux.org>
+Date: Mon, 27 Aug 2018 13:13:39 -0400
+Subject: YOUR PRODUCT
+From: "Rafaa Esawi" <test@nuntiux.org>
+Reply-To: rafaa.esawi@gmail.com
 MIME-Version: 1.0
-Message-ID: <0000000000004c9d9a05746e58a1@google.com>
-Date: Mon, 27 Aug 2018 17:49:20 +0000
-Subject: Managed Service Providers (MSPs)  
-From: percy.king@callflexnet.com
-To: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"; format=flowed; delsp=yes
+Content-Type: text/plain;charset=utf-8
+To: unlisted-recipients:; (no To-header on input)@mail.corp.redhat.com
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-SGksDQoNCkkganVzdCB3YW50ZWQgdG8gY2hlY2sgaWYgeW91IHdvdWxkIGJlIGludGVyZXN0ZWQg
-aW4gYSBsaXN0IG9mIE1hbmFnZWQgIA0KU2VydmljZSBQcm92aWRlcnMgKE1TUHMpIGFuZCBNYW5h
-Z2VkIFNlY3VyaXR5IFNlcnZpY2UgUHJvdmlkZXJzIChNU1NQcyk/DQoNCldlIGFsc28gaGF2ZSB0
-aGUgZGF0YSBpbnRlbGxpZ2VuY2Ugb2Y6DQoNCuKAoiAgICAgICBNYW5hZ2VkIFNlcnZpY2UgUHJv
-dmlkZXJzIChNU1DigJlzKQ0K4oCiICAgICAgIE1hbmFnZWQgU2VjdXJpdHkgU2VydmljZSBQcm92
-aWRlcnMgKE1TU1DigJlzKQ0K4oCiICAgICAgIElUIERlY2lzaW9uIE1ha2VycyDigJMgNm1pbGxp
-b24gYWNyb3NzIGFsbCBpbmR1c3RyeQ0K4oCiICAgICAgIEJ1c2luZXNzIERlY2lzaW9uIE1ha2Vy
-cyDigJMgMTAgbWlsbGlvbiBhY3Jvc3MgYWxsIGluZHVzdHJ5DQrigKIgICAgICAgVmFsdWUgQWRk
-ZWQgUmVzZWxsZXJzLSBWQVJzDQrigKIgICAgICAgSW5kZXBlbmRlbnQgU29mdHdhcmUgVmVuZG9y
-cy0gSVNWcw0K4oCiICAgICAgIFN5c3RlbSBJbnRlZ3JhdG9ycy0gU0lzDQrigKIgICAgICAgVm9J
-UCBTZXJ2aWNlIFByb3ZpZGVycy4NCuKAoiAgICAgICBUZWxlY29tbXVuaWNhdGlvbnMgU2Vydmlj
-ZSBQcm92aWRlcnMgKFRTUHMpDQrigKIgICAgICAgQXBwbGljYXRpb24gU2VydmljZSBQcm92aWRl
-cnMgKEFTUHMpDQrigKIgICAgICAgSVQgTWFuYWdlZCBTZXJ2aWNlcyBQcm92aWRlcnMgKElUTVNQ
-KQ0K4oCiICAgICAgIFN0b3JhZ2UgU2VydmljZSBQcm92aWRlcnMgKFNTUHMpDQoNCktpbmRseSBy
-ZXZpZXcgYW5kIGxldCBtZSBrbm93IGlmIEkgY2FuIHNoYXJlIG1vcmUgaW5mb3JtYXRpb24gb24g
-dGhpcy4NCg0KSSBsb29rIGZvcndhcmQgdG8gaGVhcmluZyBmcm9tIHlvdS4NCg0KUmVnYXJkcywN
-ClBlcmN5DQpNYXJrZXRpbmcgU3BlY2lhbGlzdA0KDQpJZiB5b3UgZG9uJ3Qgd2FudCB0byBpbmNs
-dWRlIHlvdXJzZWxmIGluIG91ciBtYWlsaW5nIGxpc3QsIHBsZWFzZSByZXBseSAgDQpiYWNrIOKA
-nExlYXZlIE91dCIiIGluIGEgc3ViamVjdCBsaW5lLg0K
+
+
+
+Greetings,
+
+We are rebuilding Iraq after years of conflicts and we are inviting you to
+take up contracts. We are determined to purchase your products in large
+quantities, for use in all over our 18 governorates(provinces) as the task
+of re-building Iraq covers every single sectormand facet of our society.
+We'll submit your products information to
+the Iraqi Project and Contracting Office. They will examine the propriety
+and necessity of your product and approve for bulk supply contracting
+relationship.
+
+I am currently on the board of the Iraqi Project and Contracting Office,
+With my connections in the corridors of power, we are quite confident of
+securing approval. Also of note is the issue of different financial
+regulations between my country Iraq and your country. As such you will be
+paid 100% through the Iraqi ministry of Finance
+before you commence supplies. When you've received payment, we would be
+expecting a monthly supply; as the sum budgeted for product may be quite
+enormous as to outstrip your capacity and capability to supply.
+
+A consideration also is that your quotation must be CIF Port of Umm Qasr.
+Please send response so that I will reveal more procedural information to
+you upon your re-confirmation.
+
+Thany You.
+
+Rafaa Esawi
