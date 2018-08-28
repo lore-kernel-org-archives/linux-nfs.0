@@ -1,86 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.linuxfoundation.org ([140.211.169.12]:55858 "EHLO
-        mail.linuxfoundation.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726669AbeH1JJl (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Aug 2018 05:09:41 -0400
-Date: Tue, 28 Aug 2018 07:19:42 +0200
-From: Greg KH <gregkh@linuxfoundation.org>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: stable@vger.kernel.org, linux-rdma@vger.kernel.org,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] xprtrdma: Fix disconnect regression
-Message-ID: <20180828051942.GE2107@kroah.com>
-References: <20180827232321.12635.40263.stgit@manet.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20180827232321.12635.40263.stgit@manet.1015granger.net>
+Received: from imail.uvensys.de ([37.208.110.138]:36896 "EHLO
+        imail01.uvensys.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727222AbeH1Lfg (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Aug 2018 07:35:36 -0400
+Received: from [192.168.2.103] (p57B6D170.dip0.t-ipconnect.de [87.182.209.112])
+        by imail01.uvensys.de (Postfix) with ESMTPSA id 07C639EE8B
+        for <linux-nfs@vger.kernel.org>; Tue, 28 Aug 2018 09:45:12 +0200 (CEST)
+From: Volker Lieder <v.lieder@uvensys.de>
+Content-Type: text/plain;
+        charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 11.2 \(3445.5.20\))
+Subject: Question about nfs in infiniband environment
+Message-Id: <0D862469-B678-4827-B75D-69557734D34F@uvensys.de>
+Date: Tue, 28 Aug 2018 09:45:11 +0200
+To: linux-nfs@vger.kernel.org
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Aug 27, 2018 at 07:29:27PM -0400, Chuck Lever wrote:
-> I found that injecting disconnects with v4.18-rc resulted in
-> random failures of the multi-threaded git regression test.
-> 
-> The root cause appears to be that, after a reconnect, the
-> RPC/RDMA transport is waking pending RPCs before the transport has
-> posted enough Receive buffers to receive the Replies. If a Reply
-> arrives before enough Receive buffers are posted, the connection
-> is dropped. A few connection drops happen in quick succession as
-> the client and server struggle to regain credit synchronization.
-> 
-> This regression was introduced with commit 7c8d9e7c8863 ("xprtrdma:
-> Move Receive posting to Receive handler"). The client is supposed to
-> post a single Receive when a connection is established because
-> it's not supposed to send more than one RPC Call before it gets
-> a fresh credit grant in the first RPC Reply [RFC 8166, Section
-> 3.3.3].
-> 
-> Unfortunately there appears to be a longstanding bug in the Linux
-> client's credit accounting mechanism. On connect, it simply dumps
-> all pending RPC Calls onto the new connection. It's possible it has
-> done this ever since the RPC/RDMA transport was added to the kernel
-> ten years ago.
-> 
-> Servers have so far been tolerant of this bad behavior. Currently no
-> server implementation ever changes its credit grant over reconnects,
-> and servers always repost enough Receives before connections are
-> fully established.
-> 
-> The Linux client implementation used to post a Receive before each
-> of these Calls. This has covered up the flooding send behavior.
-> 
-> I could try to correct this old bug so that the client sends exactly
-> one RPC Call and waits for a Reply. Since we are so close to the
-> next merge window, I'm going to instead provide a simple patch to
-> post enough Receives before a reconnect completes (based on the
-> number of credits granted to the previous connection).
-> 
-> The spurious disconnects will be gone, but the client will still
-> send multiple RPC Calls immediately after a reconnect.
-> 
-> Addressing the latter problem will wait for a merge window because
-> a) I expect it to be a large change requiring lots of testing, and
-> b) obviously the Linux client has interoperated successfully since
-> day zero while still being broken.
-> 
-> Fixes: 7c8d9e7c8863 ("xprtrdma: Move Receive posting to ... ")
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
->  net/sunrpc/xprtrdma/verbs.c |    5 ++---
->  1 file changed, 2 insertions(+), 3 deletions(-)
-> 
-> Hi stable@ -
-> 
-> This fix has been merged into v4.19 as upstream commit 8d4fb8ff427a
-> ("xprtrdma: Fix disconnect regression"). It addresses a regression
-> in v4.18. I expected it to go into late v4.18-rc, which is why there
-> is no "cc: stable" on the original submission.
-> 
-> Could you please apply it to 4.18.y ? Thank you!
+Hi list,
 
-That commit does have a cc: stable in it, it is in my very large queue
-of patches to apply...
+we have a setup with round about 15 centos 7.5 server.
 
-thanks,
+All are connected via infiniband 56Gbit and installed with new mellanox driver.
+One server (4 Core, 8 threads, 16GB) is nfs server for a disk shelf with round about 500TB data.
 
-greg k-h
+The server exports 4-6 mounts to each client.
+
+Since we added 3 further nodes to the setup, we recieve following messages:
+
+On nfs-server:
+[Tue Aug 28 07:29:33 2018] rpc-srv/tcp: nfsd: sent only 224000 when sending 1048684 bytes - shutting down socket
+[Tue Aug 28 07:30:13 2018] rpc-srv/tcp: nfsd: sent only 209004 when sending 1048684 bytes - shutting down socket
+[Tue Aug 28 07:30:14 2018] rpc-srv/tcp: nfsd: sent only 204908 when sending 630392 bytes - shutting down socket
+[Tue Aug 28 07:32:31 2018] rpc-srv/tcp: nfsd: got error -11 when sending 524396 bytes - shutting down socket
+[Tue Aug 28 07:32:33 2018] rpc-srv/tcp: nfsd: got error -11 when sending 308 bytes - shutting down socket
+[Tue Aug 28 07:32:35 2018] rpc-srv/tcp: nfsd: got error -11 when sending 172 bytes - shutting down socket
+[Tue Aug 28 07:32:53 2018] rpc-srv/tcp: nfsd: got error -11 when sending 164 bytes - shutting down socket
+[Tue Aug 28 07:38:52 2018] rpc-srv/tcp: nfsd: sent only 749452 when sending 1048684 bytes - shutting down socket
+[Tue Aug 28 07:39:29 2018] rpc-srv/tcp: nfsd: got error -11 when sending 244 bytes - shutting down socket
+[Tue Aug 28 07:39:29 2018] rpc-srv/tcp: nfsd: got error -11 when sending 1048684 bytes - shutting down socket
+
+on nfs-clients:
+[229903.273435] nfs: server 172.16.55.221 not responding, still trying
+[229903.523455] nfs: server 172.16.55.221 OK
+[229939.080276] nfs: server 172.16.55.221 OK
+[236527.473064] perf: interrupt took too long (6226 > 6217), lowering kernel.perf_event_max_sample_rate to 32000
+[248874.777322] RPC: Could not send backchannel reply error: -105
+[249484.823793] RPC: Could not send backchannel reply error: -105
+[250382.497448] RPC: Could not send backchannel reply error: -105
+[250671.054112] RPC: Could not send backchannel reply error: -105
+[251284.622707] RPC: Could not send backchannel reply error: -105
+
+Also file requests or "df -h" ended sometimes in a stale nfs status whcih will be good after a minute.
+
+I googled all messages and tried different things without success.
+We are now going on to upgrade cpu power on nfs server. 
+
+Do you also have any hints or points i can look for?
+
+Best regards,
+Volker
