@@ -1,51 +1,52 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.aixigo.de ([5.145.142.10]:42569 "EHLO mail.aixigo.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727245AbeH2NPj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 29 Aug 2018 09:15:39 -0400
-Received: from srvvm01.ac.aixigo.de (mail.ac.aixigo.de [172.19.96.11])
-        by gate5a.ac.aixigo.de (OpenSMTPD) with ESMTPS id f88f5841 (TLSv1.2:ECDHE-RSA-AES256-GCM-SHA384:256:NO)
-        for <linux-nfs@vger.kernel.org>;
-        Wed, 29 Aug 2018 11:13:01 +0200 (CEST)
-Subject: Re: nfs4_reclaim_open_state: Lock reclaim failed!
-From: Harald Dunkel <harald.dunkel@aixigo.de>
-To: linux-nfs@vger.kernel.org
-References: <03f45066-5cc4-b99a-edc4-69dc34592101@aixigo.de>
-Message-ID: <b4c125d6-be59-6953-bfa7-8ada6f8daa01@aixigo.de>
-Date: Wed, 29 Aug 2018 11:13:01 +0200
+Received: from youngberry.canonical.com ([91.189.89.112]:45064 "EHLO
+        youngberry.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727204AbeH2R15 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Aug 2018 13:27:57 -0400
+From: Colin King <colin.king@canonical.com>
+To: "J . Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@kernel.org>, linux-nfs@vger.kernel.org
+Cc: kernel-janitors@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: [PATCH] nfsd: remove redundant pointer dirp
+Date: Wed, 29 Aug 2018 14:30:56 +0100
+Message-Id: <20180829133056.27531-1-colin.king@canonical.com>
 MIME-Version: 1.0
-In-Reply-To: <03f45066-5cc4-b99a-edc4-69dc34592101@aixigo.de>
-Content-Type: text/plain; charset=windows-1252; format=flowed
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-PS:
+From: Colin Ian King <colin.king@canonical.com>
 
-On 8/29/18 11:09 AM, Harald Dunkel wrote:
-> Hi folks,
-> 
-> dmesg -T shows me a large list of messages
-> 
-> :
-> [Wed Aug 29 11:13:02 2018] NFS: nfs4_reclaim_open_state: Lock reclaim failed!
-> [Wed Aug 29 11:13:02 2018] NFS: nfs4_reclaim_open_state: Lock reclaim failed!
-> [Wed Aug 29 11:13:02 2018] NFS: nfs4_reclaim_open_state: Lock reclaim failed!
-> [Wed Aug 29 11:13:03 2018] NFS: nfs4_reclaim_open_state: Lock reclaim failed!
-> [Wed Aug 29 11:13:03 2018] NFS: nfs4_reclaim_open_state: Lock reclaim failed!
-> [Wed Aug 29 11:13:04 2018] NFS: nfs4_reclaim_open_state: Lock reclaim failed!
-> [Wed Aug 29 11:13:05 2018] NFS: nfs4_reclaim_open_state: Lock reclaim failed!
-> :
-> 
-> with a modification date appr 9 minutes in the future. NFS server and
+Pointer dirp is being assigned but is never used hence it is
+redundant and can be removed.
 
-Its a "timestamp", of course. Sorry.
+Cleans up clang warning:
+variable 'dirp' set but not used [-Wunused-but-set-variable]
 
-> client have the correct time and are in sync, afaict. How comes?
-> 
-> 
-> Kernel is 4.9.88-1+deb9u1 on the client, 4.16.5-1~bpo9+1 on the NFS server.
-> 
-> 
-> Every helpful comment is highly appreciated.
-> Harri
-> 
+Signed-off-by: Colin Ian King <colin.king@canonical.com>
+---
+ fs/nfsd/vfs.c | 2 --
+ 1 file changed, 2 deletions(-)
+
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index 55a099e47ba2..ddbac8776bd3 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -1275,7 +1275,6 @@ nfsd_create(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 		int type, dev_t rdev, struct svc_fh *resfhp)
+ {
+ 	struct dentry	*dentry, *dchild = NULL;
+-	struct inode	*dirp;
+ 	__be32		err;
+ 	int		host_err;
+ 
+@@ -1287,7 +1286,6 @@ nfsd_create(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 		return err;
+ 
+ 	dentry = fhp->fh_dentry;
+-	dirp = d_inode(dentry);
+ 
+ 	host_err = fh_want_write(fhp);
+ 	if (host_err)
+-- 
+2.17.1
