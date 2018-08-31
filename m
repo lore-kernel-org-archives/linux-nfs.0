@@ -1,38 +1,94 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from 107-174-235-237-host.colocrossing.com ([107.174.235.237]:40321
-        "EHLO etennisonline.com" rhost-flags-OK-FAIL-OK-FAIL)
-        by vger.kernel.org with ESMTP id S1727085AbeHaXWH (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 31 Aug 2018 19:22:07 -0400
-To: linux-nfs@vger.kernel.org
-Subject: Photo processing
-Message-ID: <687b0d691a7291675d7d3dda8050a913@kohls.com>
-Date: Fri, 31 Aug 2018 13:49:18 +0200
-From: "Jimmy Wilson" <keffdeilarsata@email.jp>
-Reply-To: heztermine@sina.com
+Received: from mail-pl1-f196.google.com ([209.85.214.196]:45121 "EHLO
+        mail-pl1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727417AbeIADGr (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 31 Aug 2018 23:06:47 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; format=flowed; charset="UTF-8"
+References: <20170302160211.30451-1-kolga@netapp.com> <20170302160211.30451-3-kolga@netapp.com>
+ <15e7ebf8-9150-be06-1a8b-ad0e8a70dbbb@redhat.com> <CAN-5tyHa_azgR0hgzv=Jed+Pg7hxH3DUJJHeNH9x4tnzUpzopQ@mail.gmail.com>
+In-Reply-To: <CAN-5tyHa_azgR0hgzv=Jed+Pg7hxH3DUJJHeNH9x4tnzUpzopQ@mail.gmail.com>
+From: Steve French <smfrench@gmail.com>
+Date: Fri, 31 Aug 2018 17:56:56 -0500
+Message-ID: <CAH2r5ms+OWdhBu6oU+5p7cWav8ax+eyC4nEBbhLAEzpa_vLXhQ@mail.gmail.com>
+Subject: Re: [PATCH v1 2/3] VFS permit cross device vfs_copy_file_range
+To: aglo@umich.edu
+Cc: fweimer@redhat.com, kolga@netapp.com,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Christoph Hellwig <hch@lst.de>, linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
+On Fri, Aug 31, 2018 at 11:41 AM Olga Kornievskaia <aglo@umich.edu> wrote:
+>
+> On Fri, Aug 31, 2018 at 12:14 PM Florian Weimer <fweimer@redhat.com> wrote:
+> >
+> > On 03/02/2017 05:02 PM, Olga Kornievskaia wrote:
+> > > Allow nfs_copy_file_range to copy across devices.
+> > > NFSv4.2 inter server to server copy always copies across devices, and
+> > > NFSv4.2 intra server to server copy can copy across devices on the same
+> > > server.
+> > >
+> > > If a file system's fileoperations copy_file_range operation prohibits
+> > > cross-device copies, fall back to do_splice_direct. This is needed for
+> > > nfsd_copy_file_range() which is called by the inter server to server
+> > > destination server acting as an NFS client, and reading the file from
+> > > the source server.
+> > >
+> > > Signed-off-by: Andy Adamson<andros@netapp.com>
+> >
+> > What has happened to the patch?  We unwittingly used copy_file_range in
+> > the glibc test suite, without realizing that it does not support
+> > cross-device copies.
+>
+> I'm still planning to fight for the patch to be included. As per
+> maintainers request, I separated out the async copy patches out and
+> hopefully that will be going into 4.20. I'm working on the "inter"
+> copy offload functionality which does require this patch. I will start
+> submitting and pushing this patch along with the rest of the patches.
+>
+> Are you interested in the copy_file_range() functionality that does
+> support cross-device copies? If so can you tell me how are you using
+> it? It would be also helpful to watch for the submission of the patch
+> and argue in its favor.
 
-Have you received my email from last week?
+SMB3 clients and server (Windows, Macs, Samba and probably most
+every modern NAS out there) support the SMB3 "CopyChunk"
+operation used by the Linux client.
 
-I would like to speak with the person who manage your photos for your
-company?
+I would expect that one of the most useful cases is cross device
+For example you have two mounts to your server or server cluster
+\\server\share1 is mounted to /mnt1
+and
+\\server\backup is mounted to /mnt2
 
-We are here to provide you all kinds of imaging editing.
+and you want to do copy_file or copy_file_range of various
+files from /mnt1 to /mnt2
 
-What we can provide you:
-Cutting out for photos
-Clipping path for photos
-Masking for photos
-Retouching for your photos
-Retouching for the Beauty Model and Portraits.
+As long as they are both the same file system type, why not
+let the file system tell you whether it can do the copy.
 
-We have 20 staffs in house and daily basis 1000 images can be processed.
+Given that this is 10x to 100x faster than the alternative
+and this is a common case (and there are many 100s of millions
+of SMB3 server capable systems out there which already support
+copychunk (and thus would support copy file) - why would we
+want to restrict it.
 
-We give testing for your photos.
+It is much saner to let the file system tell the VFS if it can't
+support the cross device copy.
 
+---- and to make it even more obvious why this patch matters ---
+Virtualization clients (and various Windows and NetApp server)
+support another copy offload mechanism (not just CopyChunk)
+ie via ODX which would support cross server not just cross share
+copy.    Enabling this would be a BIG incentive for finishing up
+ODX copy support in Linux (cifs.ko using SMB3).   This is
+fairly widely supported by servers.
+
+
+
+
+-- 
 Thanks,
-Jimmy Wilson
+
+Steve
