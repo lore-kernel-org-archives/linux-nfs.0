@@ -1,55 +1,39 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-vk0-f42.google.com ([209.85.213.42]:39037 "EHLO
-        mail-vk0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727574AbeHaTtW (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 31 Aug 2018 15:49:22 -0400
-Received: by mail-vk0-f42.google.com with SMTP id e139-v6so5624621vkf.6
-        for <linux-nfs@vger.kernel.org>; Fri, 31 Aug 2018 08:41:18 -0700 (PDT)
+Received: from mx3-rdu2.redhat.com ([66.187.233.73]:44900 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1727973AbeHaUVU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 31 Aug 2018 16:21:20 -0400
+Subject: Re: [PATCH v1 2/3] VFS permit cross device vfs_copy_file_range
+To: Olga Kornievskaia <kolga@netapp.com>, linux-fsdevel@vger.kernel.org
+Cc: hch@lst.de, linux-nfs@vger.kernel.org
+References: <20170302160211.30451-1-kolga@netapp.com>
+ <20170302160211.30451-3-kolga@netapp.com>
+From: Florian Weimer <fweimer@redhat.com>
+Message-ID: <15e7ebf8-9150-be06-1a8b-ad0e8a70dbbb@redhat.com>
+Date: Fri, 31 Aug 2018 18:13:06 +0200
 MIME-Version: 1.0
-References: <03f45066-5cc4-b99a-edc4-69dc34592101@aixigo.de>
-In-Reply-To: <03f45066-5cc4-b99a-edc4-69dc34592101@aixigo.de>
-From: Olga Kornievskaia <aglo@umich.edu>
-Date: Fri, 31 Aug 2018 11:41:05 -0400
-Message-ID: <CAN-5tyGWO0FLZez+iyJ_EeBdmBcj=gA2iWi5TvjY+gh5pMtrXg@mail.gmail.com>
-Subject: Re: nfs4_reclaim_open_state: Lock reclaim failed!
-To: harald.dunkel@aixigo.de
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+In-Reply-To: <20170302160211.30451-3-kolga@netapp.com>
+Content-Type: text/plain; charset=utf-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Aug 29, 2018 at 5:16 AM Harald Dunkel <harald.dunkel@aixigo.de> wrote:
->
-> Hi folks,
->
-> dmesg -T shows me a large list of messages
->
-> :
-> [Wed Aug 29 11:13:02 2018] NFS: nfs4_reclaim_open_state: Lock reclaim failed!
-> [Wed Aug 29 11:13:02 2018] NFS: nfs4_reclaim_open_state: Lock reclaim failed!
-> [Wed Aug 29 11:13:02 2018] NFS: nfs4_reclaim_open_state: Lock reclaim failed!
-> [Wed Aug 29 11:13:03 2018] NFS: nfs4_reclaim_open_state: Lock reclaim failed!
-> [Wed Aug 29 11:13:03 2018] NFS: nfs4_reclaim_open_state: Lock reclaim failed!
-> [Wed Aug 29 11:13:04 2018] NFS: nfs4_reclaim_open_state: Lock reclaim failed!
-> [Wed Aug 29 11:13:05 2018] NFS: nfs4_reclaim_open_state: Lock reclaim failed!
-> :
->
-> with a modification date appr 9 minutes in the future. NFS server and
-> client have the correct time and are in sync, afaict. How comes?
+On 03/02/2017 05:02 PM, Olga Kornievskaia wrote:
+> Allow nfs_copy_file_range to copy across devices.
+> NFSv4.2 inter server to server copy always copies across devices, and
+> NFSv4.2 intra server to server copy can copy across devices on the same
+> server.
+> 
+> If a file system's fileoperations copy_file_range operation prohibits
+> cross-device copies, fall back to do_splice_direct. This is needed for
+> nfsd_copy_file_range() which is called by the inter server to server
+> destination server acting as an NFS client, and reading the file from
+> the source server.
+> 
+> Signed-off-by: Andy Adamson<andros@netapp.com>
 
-Is your question about how come the timestamp is wrong or are you
-asking about the errors being logged. Jeff provided some info about
-the latter piece. However, if you are asking about the timestamps,
-then my guess would be that your hardware clock and your system clock
-might be output sync. Check the "sudo hwclock --show" to what your
-"date" shows. Also check the manual page that say for this option
-"dmesg -T" there is a warming saying that the timestamps might not be
-accurate.
+What has happened to the patch?  We unwittingly used copy_file_range in 
+the glibc test suite, without realizing that it does not support 
+cross-device copies.
 
->
->
-> Kernel is 4.9.88-1+deb9u1 on the client, 4.16.5-1~bpo9+1 on the NFS server.
->
->
-> Every helpful comment is highly appreciated.
-> Harri
+Thanks,
+Florian
