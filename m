@@ -1,42 +1,59 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f194.google.com ([209.85.223.194]:45406 "EHLO
-        mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726044AbeIAKSM (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 1 Sep 2018 06:18:12 -0400
-Received: by mail-io0-f194.google.com with SMTP id e12-v6so12096428iok.12
-        for <linux-nfs@vger.kernel.org>; Fri, 31 Aug 2018 23:07:23 -0700 (PDT)
-Received: from hut.sorensonfamily.com ([2603:300a:2104:9500:4eeb:42ff:fec7:ee1c])
-        by smtp.gmail.com with ESMTPSA id h11-v6sm2902880itf.4.2018.08.31.23.07.22
-        for <linux-nfs@vger.kernel.org>
-        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Fri, 31 Aug 2018 23:07:22 -0700 (PDT)
+Received: from mailsrv.ikr.uni-stuttgart.de ([129.69.170.2]:38510 "EHLO
+        mailsrv.ikr.uni-stuttgart.de" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1726421AbeIBX1b (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 2 Sep 2018 19:27:31 -0400
+Received: from netsrv1.ikr.uni-stuttgart.de (netsrv1-c [10.11.12.12])
+        by mailsrv.ikr.uni-stuttgart.de (Postfix) with ESMTP id 2469719C002D
+        for <linux-nfs@vger.kernel.org>; Sun,  2 Sep 2018 21:01:49 +0200 (CEST)
+Received: from ikr.uni-stuttgart.de (ingress2-c [10.11.14.11])
+        by netsrv1.ikr.uni-stuttgart.de (Postfix) with SMTP id 0F7F81A200AE
+        for <linux-nfs@vger.kernel.org>; Sun,  2 Sep 2018 21:01:49 +0200 (CEST)
+From: Ulrich Gemkow <ulrich.gemkow@ikr.uni-stuttgart.de>
 To: linux-nfs@vger.kernel.org
-From: Frank Sorenson <sorenson@redhat.com>
-Subject: [nfs-utils PATCH] statd: fix use-after-free in monitor list if
- insertion fails
-Message-ID: <d93ed8c0-0f17-4671-a852-8cea6330f5ba@redhat.com>
-Date: Sat, 1 Sep 2018 01:07:21 -0500
+Subject: conflicting requirements betweenn rpc.rquotad and nfs services
+Date: Sun, 2 Sep 2018 21:01:47 +0200
 MIME-Version: 1.0
-Content-Type: text/plain; charset=windows-1252
+Content-Type: Text/Plain;
+  charset="utf-8"
+Message-Id: <201809022101.49019.ulrich.gemkow@ikr.uni-stuttgart.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If nsm_insert_monitored_host() fails while saving the record to
-stable storage, we can't just assume the entry was new. Existing
-records must be removed from the list before being freed.
+Hello,
 
-Signed-off-by: Frank Sorenson <sorenson@redhat.com>
+we updated to Ubuntu 18.04 on our servers and encounter the following
+new problem:
 
-diff --git a/utils/statd/monitor.c b/utils/statd/monitor.c
-index 45c4346..9400048 100644
---- a/utils/statd/monitor.c
-+++ b/utils/statd/monitor.c
-@@ -197,7 +197,7 @@ sm_mon_1_svc(struct mon *argp, struct svc_req *rqstp)
- 
- 	if (!nsm_insert_monitored_host(dnsname,
- 				(struct sockaddr *)(char *)&my_addr, argp)) {
--		nlist_free(NULL, clnt);
-+		nlist_free(existing ? &rtnl : NULL, clnt);
- 		goto failure;
- 	}
- 
+We have no IPv6 interfaces/adresses configured and rpc.rquotad complains
+about this and refuses to start - it seems the libtirpc has IPv6 as
+a requirement when listed in /etc/netconfig.
+
+When commenting out the v6-related lines in /etc/netconfig, rpc.rquotad
+starts.
+
+But without the IPv6 related lines in /etc/netconfig rpcbind no longer
+starts and emits error messages which seems a little bit weired.
+
+The services start when we start rpc.rquotad with the v6-lines in
+/etc/netconfig commented out and using the original version with the
+other services.
+
+Is it intended that rpcbind does not start when /etc/netconfig does
+not contain the IPv6-lines? Is there a reason for this?
+
+rpc.rquotad --version says
+
+Quota utilities version 4.03.
+Compiled with: USE_LDAP_MAIL_LOOKUP EXT2_DIRECT HOSTS_ACCESS RPC RPC_SETQUOTA BSD_BEHAVIOUR
+
+rpcbind seems to emit no version information
+
+Thanks in advance and best regards
+
+-Ulrich
+
+-- 
+Ulrich Gemkow
+University of Stuttgart
+Institute of Communication Networks and Computer Engineering (IKR)
