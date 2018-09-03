@@ -1,142 +1,84 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f193.google.com ([209.85.223.193]:32841 "EHLO
-        mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727079AbeICTun (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Sep 2018 15:50:43 -0400
-Received: by mail-io0-f193.google.com with SMTP id r196-v6so711322iod.0
-        for <linux-nfs@vger.kernel.org>; Mon, 03 Sep 2018 08:30:03 -0700 (PDT)
+Received: from mail-it0-f42.google.com ([209.85.214.42]:38717 "EHLO
+        mail-it0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727389AbeICTux (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Sep 2018 15:50:53 -0400
+Received: by mail-it0-f42.google.com with SMTP id p129-v6so1465847ite.3
+        for <linux-nfs@vger.kernel.org>; Mon, 03 Sep 2018 08:30:13 -0700 (PDT)
 Received: from leira.trondhjem.org.localdomain (c-68-40-195-73.hsd1.mi.comcast.net. [68.40.195.73])
-        by smtp.gmail.com with ESMTPSA id c25-v6sm7040027iob.30.2018.09.03.08.30.02
+        by smtp.gmail.com with ESMTPSA id c25-v6sm7040027iob.30.2018.09.03.08.30.11
         for <linux-nfs@vger.kernel.org>
         (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
-        Mon, 03 Sep 2018 08:30:02 -0700 (PDT)
+        Mon, 03 Sep 2018 08:30:11 -0700 (PDT)
 From: Trond Myklebust <trondmy@gmail.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH 04/27] SUNRPC: Simplify identification of when the message send/receive is complete
-Date: Mon,  3 Sep 2018 11:29:13 -0400
-Message-Id: <20180903152936.24325-5-trond.myklebust@hammerspace.com>
-In-Reply-To: <20180903152936.24325-4-trond.myklebust@hammerspace.com>
+Subject: [PATCH 14/27] SUNRPC: Refactor xprt_transmit() to remove the reply queue code
+Date: Mon,  3 Sep 2018 11:29:23 -0400
+Message-Id: <20180903152936.24325-15-trond.myklebust@hammerspace.com>
+In-Reply-To: <20180903152936.24325-14-trond.myklebust@hammerspace.com>
 References: <20180903152936.24325-1-trond.myklebust@hammerspace.com>
  <20180903152936.24325-2-trond.myklebust@hammerspace.com>
  <20180903152936.24325-3-trond.myklebust@hammerspace.com>
  <20180903152936.24325-4-trond.myklebust@hammerspace.com>
+ <20180903152936.24325-5-trond.myklebust@hammerspace.com>
+ <20180903152936.24325-6-trond.myklebust@hammerspace.com>
+ <20180903152936.24325-7-trond.myklebust@hammerspace.com>
+ <20180903152936.24325-8-trond.myklebust@hammerspace.com>
+ <20180903152936.24325-9-trond.myklebust@hammerspace.com>
+ <20180903152936.24325-10-trond.myklebust@hammerspace.com>
+ <20180903152936.24325-11-trond.myklebust@hammerspace.com>
+ <20180903152936.24325-12-trond.myklebust@hammerspace.com>
+ <20180903152936.24325-13-trond.myklebust@hammerspace.com>
+ <20180903152936.24325-14-trond.myklebust@hammerspace.com>
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Add states to indicate that the message send and receive are not yet
-complete.
+Separate out the action of adding a request to the reply queue so that the
+backchannel code can simply skip calling it altogether.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- include/linux/sunrpc/sched.h |  6 ++++--
- net/sunrpc/clnt.c            | 19 +++++++------------
- net/sunrpc/xprt.c            | 17 ++++++++++++++---
- 3 files changed, 25 insertions(+), 17 deletions(-)
+ include/linux/sunrpc/xprt.h |   1 +
+ net/sunrpc/clnt.c           |   5 ++
+ net/sunrpc/xprt.c           | 100 ++++++++++++++++++++++--------------
+ 3 files changed, 68 insertions(+), 38 deletions(-)
 
-diff --git a/include/linux/sunrpc/sched.h b/include/linux/sunrpc/sched.h
-index 592653becd91..9e655df70131 100644
---- a/include/linux/sunrpc/sched.h
-+++ b/include/linux/sunrpc/sched.h
-@@ -140,8 +140,10 @@ struct rpc_task_setup {
- #define RPC_TASK_RUNNING	0
- #define RPC_TASK_QUEUED		1
- #define RPC_TASK_ACTIVE		2
--#define RPC_TASK_MSG_RECV	3
--#define RPC_TASK_MSG_RECV_WAIT	4
-+#define RPC_TASK_NEED_XMIT	3
-+#define RPC_TASK_NEED_RECV	4
-+#define RPC_TASK_MSG_RECV	5
-+#define RPC_TASK_MSG_RECV_WAIT	6
- 
- #define RPC_IS_RUNNING(t)	test_bit(RPC_TASK_RUNNING, &(t)->tk_runstate)
- #define rpc_set_running(t)	set_bit(RPC_TASK_RUNNING, &(t)->tk_runstate)
+diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
+index c25d0a5fda69..0250294c904a 100644
+--- a/include/linux/sunrpc/xprt.h
++++ b/include/linux/sunrpc/xprt.h
+@@ -334,6 +334,7 @@ void			xprt_free_slot(struct rpc_xprt *xprt,
+ 				       struct rpc_rqst *req);
+ void			xprt_lock_and_alloc_slot(struct rpc_xprt *xprt, struct rpc_task *task);
+ bool			xprt_prepare_transmit(struct rpc_task *task);
++void			xprt_request_enqueue_receive(struct rpc_task *task);
+ void			xprt_transmit(struct rpc_task *task);
+ void			xprt_end_transmit(struct rpc_task *task);
+ int			xprt_adjust_timeout(struct rpc_rqst *req);
 diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index d41b5ac1d4e8..e5ac35e803ad 100644
+index 66ec61347716..3d6d1b5f9e81 100644
 --- a/net/sunrpc/clnt.c
 +++ b/net/sunrpc/clnt.c
-@@ -1156,6 +1156,7 @@ struct rpc_task *rpc_run_bc_task(struct rpc_rqst *req)
- 	 */
- 	xbufp->len = xbufp->head[0].iov_len + xbufp->page_len +
- 			xbufp->tail[0].iov_len;
-+	set_bit(RPC_TASK_NEED_XMIT, &task->tk_runstate);
- 
- 	task->tk_action = call_bc_transmit;
- 	atomic_inc(&task->tk_count);
-@@ -1720,17 +1721,10 @@ call_allocate(struct rpc_task *task)
- 	rpc_exit(task, -ERESTARTSYS);
- }
- 
--static inline int
-+static int
- rpc_task_need_encode(struct rpc_task *task)
- {
--	return task->tk_rqstp->rq_snd_buf.len == 0;
--}
--
--static inline void
--rpc_task_force_reencode(struct rpc_task *task)
--{
--	task->tk_rqstp->rq_snd_buf.len = 0;
--	task->tk_rqstp->rq_bytes_sent = 0;
-+	return test_bit(RPC_TASK_NEED_XMIT, &task->tk_runstate) == 0;
- }
- 
- /*
-@@ -1765,6 +1759,8 @@ rpc_xdr_encode(struct rpc_task *task)
- 
- 	task->tk_status = rpcauth_wrap_req(task, encode, req, p,
- 			task->tk_msg.rpc_argp);
-+	if (task->tk_status == 0)
-+		set_bit(RPC_TASK_NEED_XMIT, &task->tk_runstate);
- }
- 
- /*
-@@ -1999,7 +1995,6 @@ call_transmit_status(struct rpc_task *task)
- 	 */
- 	if (task->tk_status == 0) {
- 		xprt_end_transmit(task);
--		rpc_task_force_reencode(task);
+@@ -1962,6 +1962,11 @@ call_transmit(struct rpc_task *task)
+ 			return;
+ 		}
+ 	}
++
++	/* Add task to reply queue before transmission to avoid races */
++	if (rpc_reply_expected(task))
++		xprt_request_enqueue_receive(task);
++
+ 	if (!xprt_prepare_transmit(task))
  		return;
- 	}
- 
-@@ -2010,7 +2005,6 @@ call_transmit_status(struct rpc_task *task)
- 	default:
- 		dprint_status(task);
- 		xprt_end_transmit(task);
--		rpc_task_force_reencode(task);
- 		break;
- 		/*
- 		 * Special cases: if we've been waiting on the
-@@ -2038,7 +2032,7 @@ call_transmit_status(struct rpc_task *task)
- 	case -EADDRINUSE:
- 	case -ENOTCONN:
- 	case -EPIPE:
--		rpc_task_force_reencode(task);
-+		break;
- 	}
- }
- 
-@@ -2185,6 +2179,7 @@ call_status(struct rpc_task *task)
- 		rpc_exit(task, status);
- 		break;
- 	case -EBADMSG:
-+		clear_bit(RPC_TASK_NEED_XMIT, &task->tk_runstate);
- 		task->tk_action = call_transmit;
- 		break;
- 	default:
+ 	task->tk_action = call_transmit_status;
 diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-index 3973e10ea2bd..45d580cd93ac 100644
+index eda305de9f77..cb3c0f7d5b3d 100644
 --- a/net/sunrpc/xprt.c
 +++ b/net/sunrpc/xprt.c
-@@ -936,10 +936,18 @@ void xprt_complete_rqst(struct rpc_task *task, int copied)
- 	/* req->rq_reply_bytes_recvd */
- 	smp_wmb();
- 	req->rq_reply_bytes_recvd = copied;
-+	clear_bit(RPC_TASK_NEED_RECV, &task->tk_runstate);
- 	rpc_wake_up_queued_task(&xprt->pending, task);
+@@ -884,6 +884,57 @@ static void xprt_wait_on_pinned_rqst(struct rpc_rqst *req)
+ 	wait_var_event(&req->rq_pin, !xprt_is_pinned_rqst(req));
  }
- EXPORT_SYMBOL_GPL(xprt_complete_rqst);
  
 +static bool
 +xprt_request_data_received(struct rpc_task *task)
@@ -145,52 +87,135 @@ index 3973e10ea2bd..45d580cd93ac 100644
 +		task->tk_rqstp->rq_reply_bytes_recvd != 0;
 +}
 +
++/**
++ * xprt_request_enqueue_receive - Add an request to the receive queue
++ * @task: RPC task
++ *
++ */
++void
++xprt_request_enqueue_receive(struct rpc_task *task)
++{
++	struct rpc_rqst *req = task->tk_rqstp;
++	struct rpc_xprt *xprt = req->rq_xprt;
++
++	spin_lock(&xprt->queue_lock);
++	if (xprt_request_data_received(task) || !list_empty(&req->rq_list)) {
++		spin_unlock(&xprt->queue_lock);
++		return;
++	}
++
++	/* Update the softirq receive buffer */
++	memcpy(&req->rq_private_buf, &req->rq_rcv_buf,
++			sizeof(req->rq_private_buf));
++
++	/* Add request to the receive list */
++	list_add_tail(&req->rq_list, &xprt->recv);
++	set_bit(RPC_TASK_NEED_RECV, &task->tk_runstate);
++	spin_unlock(&xprt->queue_lock);
++
++	xprt_reset_majortimeo(req);
++	/* Turn off autodisconnect */
++	del_singleshot_timer_sync(&xprt->timer);
++}
++
++/**
++ * xprt_request_dequeue_receive_locked - Remove a request from the receive queue
++ * @task: RPC task
++ *
++ * Caller must hold xprt->queue_lock.
++ */
++static void
++xprt_request_dequeue_receive_locked(struct rpc_task *task)
++{
++	clear_bit(RPC_TASK_NEED_RECV, &task->tk_runstate);
++	list_del_init(&task->tk_rqstp->rq_list);
++}
++
+ /**
+  * xprt_update_rtt - Update RPC RTT statistics
+  * @task: RPC request that recently completed
+@@ -923,24 +974,16 @@ void xprt_complete_rqst(struct rpc_task *task, int copied)
+ 
+ 	xprt->stat.recvs++;
+ 
+-	list_del_init(&req->rq_list);
+ 	req->rq_private_buf.len = copied;
+ 	/* Ensure all writes are done before we update */
+ 	/* req->rq_reply_bytes_recvd */
+ 	smp_wmb();
+ 	req->rq_reply_bytes_recvd = copied;
+-	clear_bit(RPC_TASK_NEED_RECV, &task->tk_runstate);
++	xprt_request_dequeue_receive_locked(task);
+ 	rpc_wake_up_queued_task(&xprt->pending, task);
+ }
+ EXPORT_SYMBOL_GPL(xprt_complete_rqst);
+ 
+-static bool
+-xprt_request_data_received(struct rpc_task *task)
+-{
+-	return !test_bit(RPC_TASK_NEED_RECV, &task->tk_runstate) &&
+-		task->tk_rqstp->rq_reply_bytes_recvd != 0;
+-}
+-
  static void xprt_timer(struct rpc_task *task)
  {
  	struct rpc_rqst *req = task->tk_rqstp;
-@@ -1031,12 +1039,13 @@ void xprt_transmit(struct rpc_task *task)
- 			/* Add request to the receive list */
- 			spin_lock(&xprt->recv_lock);
- 			list_add_tail(&req->rq_list, &xprt->recv);
-+			set_bit(RPC_TASK_NEED_RECV, &task->tk_runstate);
- 			spin_unlock(&xprt->recv_lock);
- 			xprt_reset_majortimeo(req);
- 			/* Turn off autodisconnect */
- 			del_singleshot_timer_sync(&xprt->timer);
+@@ -1014,32 +1057,15 @@ void xprt_transmit(struct rpc_task *task)
+ 
+ 	dprintk("RPC: %5u xprt_transmit(%u)\n", task->tk_pid, req->rq_slen);
+ 
+-	if (!req->rq_reply_bytes_recvd) {
+-
++	if (!req->rq_bytes_sent) {
++		if (xprt_request_data_received(task))
++			return;
+ 		/* Verify that our message lies in the RPCSEC_GSS window */
+-		if (!req->rq_bytes_sent && rpcauth_xmit_need_reencode(task)) {
++		if (rpcauth_xmit_need_reencode(task)) {
+ 			task->tk_status = -EBADMSG;
+ 			return;
  		}
--	} else if (!req->rq_bytes_sent)
-+	} else if (xprt_request_data_received(task) && !req->rq_bytes_sent)
- 		return;
+-
+-		if (list_empty(&req->rq_list) && rpc_reply_expected(task)) {
+-			/*
+-			 * Add to the list only if we're expecting a reply
+-			 */
+-			/* Update the softirq receive buffer */
+-			memcpy(&req->rq_private_buf, &req->rq_rcv_buf,
+-					sizeof(req->rq_private_buf));
+-			/* Add request to the receive list */
+-			spin_lock(&xprt->queue_lock);
+-			list_add_tail(&req->rq_list, &xprt->recv);
+-			set_bit(RPC_TASK_NEED_RECV, &task->tk_runstate);
+-			spin_unlock(&xprt->queue_lock);
+-			xprt_reset_majortimeo(req);
+-			/* Turn off autodisconnect */
+-			del_singleshot_timer_sync(&xprt->timer);
+-		}
+-	} else if (xprt_request_data_received(task) && !req->rq_bytes_sent)
+-		return;
++	}
  
  	connect_cookie = xprt->connect_cookie;
-@@ -1046,9 +1055,11 @@ void xprt_transmit(struct rpc_task *task)
- 		task->tk_status = status;
- 		return;
+ 	status = xprt->ops->send_request(task);
+@@ -1376,13 +1402,11 @@ void xprt_release(struct rpc_task *task)
+ 	else if (task->tk_client)
+ 		rpc_count_iostats(task, task->tk_client->cl_metrics);
+ 	spin_lock(&xprt->queue_lock);
+-	if (!list_empty(&req->rq_list)) {
+-		list_del_init(&req->rq_list);
+-		if (atomic_read(&req->rq_pin)) {
+-			spin_unlock(&xprt->queue_lock);
+-			xprt_wait_on_pinned_rqst(req);
+-			spin_lock(&xprt->queue_lock);
+-		}
++	xprt_request_dequeue_receive_locked(task);
++	while (xprt_is_pinned_rqst(req)) {
++		spin_unlock(&xprt->queue_lock);
++		xprt_wait_on_pinned_rqst(req);
++		spin_lock(&xprt->queue_lock);
  	}
-+
- 	xprt_inject_disconnect(xprt);
- 
- 	dprintk("RPC: %5u xmit complete\n", task->tk_pid);
-+	clear_bit(RPC_TASK_NEED_XMIT, &task->tk_runstate);
- 	task->tk_flags |= RPC_TASK_SENT;
+ 	spin_unlock(&xprt->queue_lock);
  	spin_lock_bh(&xprt->transport_lock);
- 
-@@ -1062,14 +1073,14 @@ void xprt_transmit(struct rpc_task *task)
- 	spin_unlock_bh(&xprt->transport_lock);
- 
- 	req->rq_connect_cookie = connect_cookie;
--	if (rpc_reply_expected(task) && !READ_ONCE(req->rq_reply_bytes_recvd)) {
-+	if (test_bit(RPC_TASK_NEED_RECV, &task->tk_runstate)) {
- 		/*
- 		 * Sleep on the pending queue if we're expecting a reply.
- 		 * The spinlock ensures atomicity between the test of
- 		 * req->rq_reply_bytes_recvd, and the call to rpc_sleep_on().
- 		 */
- 		spin_lock(&xprt->recv_lock);
--		if (!req->rq_reply_bytes_recvd) {
-+		if (test_bit(RPC_TASK_NEED_RECV, &task->tk_runstate)) {
- 			rpc_sleep_on(&xprt->pending, task, xprt_timer);
- 			/*
- 			 * Send an extra queue wakeup call if the
 -- 
 2.17.1
