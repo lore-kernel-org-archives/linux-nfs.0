@@ -1,21 +1,21 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f193.google.com ([209.85.223.193]:42911 "EHLO
-        mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726314AbeICTuu (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Sep 2018 15:50:50 -0400
-Received: by mail-io0-f193.google.com with SMTP id n18-v6so677054ioa.9
-        for <linux-nfs@vger.kernel.org>; Mon, 03 Sep 2018 08:30:10 -0700 (PDT)
+Received: from mail-it0-f67.google.com ([209.85.214.67]:52927 "EHLO
+        mail-it0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726314AbeICTur (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Sep 2018 15:50:47 -0400
+Received: by mail-it0-f67.google.com with SMTP id h3-v6so1560872ita.2
+        for <linux-nfs@vger.kernel.org>; Mon, 03 Sep 2018 08:30:08 -0700 (PDT)
 Received: from leira.trondhjem.org.localdomain (c-68-40-195-73.hsd1.mi.comcast.net. [68.40.195.73])
-        by smtp.gmail.com with ESMTPSA id c25-v6sm7040027iob.30.2018.09.03.08.30.08
+        by smtp.gmail.com with ESMTPSA id c25-v6sm7040027iob.30.2018.09.03.08.30.06
         for <linux-nfs@vger.kernel.org>
         (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
-        Mon, 03 Sep 2018 08:30:08 -0700 (PDT)
+        Mon, 03 Sep 2018 08:30:06 -0700 (PDT)
 From: Trond Myklebust <trondmy@gmail.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH 11/27] SUNRPC: Add a helper to wake up a sleeping rpc_task and set its status
-Date: Mon,  3 Sep 2018 11:29:20 -0400
-Message-Id: <20180903152936.24325-12-trond.myklebust@hammerspace.com>
-In-Reply-To: <20180903152936.24325-11-trond.myklebust@hammerspace.com>
+Subject: [PATCH 09/27] SUNRPC: Simplify dealing with aborted partially transmitted messages
+Date: Mon,  3 Sep 2018 11:29:18 -0400
+Message-Id: <20180903152936.24325-10-trond.myklebust@hammerspace.com>
+In-Reply-To: <20180903152936.24325-9-trond.myklebust@hammerspace.com>
 References: <20180903152936.24325-1-trond.myklebust@hammerspace.com>
  <20180903152936.24325-2-trond.myklebust@hammerspace.com>
  <20180903152936.24325-3-trond.myklebust@hammerspace.com>
@@ -25,128 +25,119 @@ References: <20180903152936.24325-1-trond.myklebust@hammerspace.com>
  <20180903152936.24325-7-trond.myklebust@hammerspace.com>
  <20180903152936.24325-8-trond.myklebust@hammerspace.com>
  <20180903152936.24325-9-trond.myklebust@hammerspace.com>
- <20180903152936.24325-10-trond.myklebust@hammerspace.com>
- <20180903152936.24325-11-trond.myklebust@hammerspace.com>
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Add a helper that will wake up a task that is sleeping on a specific
-queue, and will set the value of task->tk_status. This is mainly
-intended for use by the transport layer to notify the task of an
-error condition.
+If the previous message was only partially transmitted, we need to close
+the socket in order to avoid corruption of the message stream. To do so,
+we currently hijack the unlocking of the socket in order to schedule
+the close.
+Now that we track the message offset in the socket state, we can move
+that kind of checking out of the socket lock code, which is needed to
+allow messages to remain queued after dropping the socket lock.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- include/linux/sunrpc/sched.h |  3 ++
- net/sunrpc/sched.c           | 63 ++++++++++++++++++++++++++++++------
- 2 files changed, 56 insertions(+), 10 deletions(-)
+ net/sunrpc/xprtsock.c | 51 +++++++++++++++++++++----------------------
+ 1 file changed, 25 insertions(+), 26 deletions(-)
 
-diff --git a/include/linux/sunrpc/sched.h b/include/linux/sunrpc/sched.h
-index a4a42b3a1f03..c5bc779feb00 100644
---- a/include/linux/sunrpc/sched.h
-+++ b/include/linux/sunrpc/sched.h
-@@ -234,6 +234,9 @@ void rpc_wake_up_queued_task_on_wq(struct workqueue_struct *wq,
- 		struct rpc_task *task);
- void		rpc_wake_up_queued_task(struct rpc_wait_queue *,
- 					struct rpc_task *);
-+void		rpc_wake_up_queued_task_set_status(struct rpc_wait_queue *,
-+						   struct rpc_task *,
-+						   int);
- void		rpc_wake_up(struct rpc_wait_queue *);
- struct rpc_task *rpc_wake_up_next(struct rpc_wait_queue *);
- struct rpc_task *rpc_wake_up_first_on_wq(struct workqueue_struct *wq,
-diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
-index 3fe5d60ab0e2..104c056daf83 100644
---- a/net/sunrpc/sched.c
-+++ b/net/sunrpc/sched.c
-@@ -440,14 +440,28 @@ static void __rpc_do_wake_up_task_on_wq(struct workqueue_struct *wq,
- /*
-  * Wake up a queued task while the queue lock is being held
-  */
--static void rpc_wake_up_task_on_wq_queue_locked(struct workqueue_struct *wq,
--		struct rpc_wait_queue *queue, struct rpc_task *task)
-+static struct rpc_task *
-+rpc_wake_up_task_on_wq_queue_action_locked(struct workqueue_struct *wq,
-+		struct rpc_wait_queue *queue, struct rpc_task *task,
-+		bool (*action)(struct rpc_task *, void *), void *data)
- {
- 	if (RPC_IS_QUEUED(task)) {
- 		smp_rmb();
--		if (task->tk_waitqueue == queue)
--			__rpc_do_wake_up_task_on_wq(wq, queue, task);
-+		if (task->tk_waitqueue == queue) {
-+			if (action == NULL || action(task, data)) {
-+				__rpc_do_wake_up_task_on_wq(wq, queue, task);
-+				return task;
-+			}
-+		}
- 	}
-+	return NULL;
-+}
-+
-+static void
-+rpc_wake_up_task_on_wq_queue_locked(struct workqueue_struct *wq,
-+		struct rpc_wait_queue *queue, struct rpc_task *task)
-+{
-+	rpc_wake_up_task_on_wq_queue_action_locked(wq, queue, task, NULL, NULL);
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 629cc45e1e6c..3fbccebd0b10 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -491,6 +491,16 @@ static int xs_nospace(struct rpc_task *task)
+ 	return ret;
  }
  
- /*
-@@ -481,6 +495,38 @@ void rpc_wake_up_queued_task(struct rpc_wait_queue *queue, struct rpc_task *task
- }
- EXPORT_SYMBOL_GPL(rpc_wake_up_queued_task);
- 
-+static bool rpc_task_action_set_status(struct rpc_task *task, void *status)
-+{
-+	task->tk_status = *(int *)status;
-+	return true;
-+}
-+
-+static void
-+rpc_wake_up_task_queue_set_status_locked(struct rpc_wait_queue *queue,
-+		struct rpc_task *task, int status)
-+{
-+	rpc_wake_up_task_on_wq_queue_action_locked(rpciod_workqueue, queue,
-+			task, rpc_task_action_set_status, &status);
-+}
-+
-+/**
-+ * rpc_wake_up_queued_task_set_status - wake up a task and set task->tk_status
-+ * @queue: pointer to rpc_wait_queue
-+ * @task: pointer to rpc_task
-+ * @status: integer error value
-+ *
-+ * If @task is queued on @queue, then it is woken up, and @task->tk_status is
-+ * set to the value of @status.
++/*
++ * Determine if the previous message in the stream was aborted before it
++ * could complete transmission.
 + */
-+void
-+rpc_wake_up_queued_task_set_status(struct rpc_wait_queue *queue,
-+		struct rpc_task *task, int status)
++static bool
++xs_send_request_was_aborted(struct sock_xprt *transport, struct rpc_rqst *req)
 +{
-+	spin_lock_bh(&queue->lock);
-+	rpc_wake_up_task_queue_set_status_locked(queue, task, status);
-+	spin_unlock_bh(&queue->lock);
++	return transport->xmit.offset != 0 && req->rq_bytes_sent == 0;
 +}
 +
  /*
-  * Wake up the next task on a priority queue.
+  * Construct a stream transport record marker in @buf.
   */
-@@ -553,12 +599,9 @@ struct rpc_task *rpc_wake_up_first_on_wq(struct workqueue_struct *wq,
- 			queue, rpc_qname(queue));
- 	spin_lock_bh(&queue->lock);
- 	task = __rpc_find_next_queued(queue);
--	if (task != NULL) {
--		if (func(task, data))
--			rpc_wake_up_task_on_wq_queue_locked(wq, queue, task);
--		else
--			task = NULL;
--	}
-+	if (task != NULL)
-+		task = rpc_wake_up_task_on_wq_queue_action_locked(wq, queue,
-+				task, func, data);
- 	spin_unlock_bh(&queue->lock);
+@@ -522,6 +532,12 @@ static int xs_local_send_request(struct rpc_task *task)
+ 	int status;
+ 	int sent = 0;
  
- 	return task;
++	/* Close the stream if the previous transmission was incomplete */
++	if (xs_send_request_was_aborted(transport, req)) {
++		xs_close(xprt);
++		return -ENOTCONN;
++	}
++
+ 	xs_encode_stream_record_marker(&req->rq_snd_buf);
+ 
+ 	xs_pktdump("packet data:",
+@@ -665,6 +681,13 @@ static int xs_tcp_send_request(struct rpc_task *task)
+ 	int status;
+ 	int sent;
+ 
++	/* Close the stream if the previous transmission was incomplete */
++	if (xs_send_request_was_aborted(transport, req)) {
++		if (transport->sock != NULL)
++			kernel_sock_shutdown(transport->sock, SHUT_RDWR);
++		return -ENOTCONN;
++	}
++
+ 	xs_encode_stream_record_marker(&req->rq_snd_buf);
+ 
+ 	xs_pktdump("packet data:",
+@@ -755,30 +778,6 @@ static int xs_tcp_send_request(struct rpc_task *task)
+ 	return status;
+ }
+ 
+-/**
+- * xs_tcp_release_xprt - clean up after a tcp transmission
+- * @xprt: transport
+- * @task: rpc task
+- *
+- * This cleans up if an error causes us to abort the transmission of a request.
+- * In this case, the socket may need to be reset in order to avoid confusing
+- * the server.
+- */
+-static void xs_tcp_release_xprt(struct rpc_xprt *xprt, struct rpc_task *task)
+-{
+-	struct sock_xprt *transport = container_of(xprt, struct sock_xprt, xprt);
+-
+-	if (task != xprt->snd_task)
+-		return;
+-	if (task == NULL)
+-		goto out_release;
+-	if (transport->xmit.offset == 0 || !xprt_connected(xprt))
+-		goto out_release;
+-	set_bit(XPRT_CLOSE_WAIT, &xprt->state);
+-out_release:
+-	xprt_release_xprt(xprt, task);
+-}
+-
+ static void xs_save_old_callbacks(struct sock_xprt *transport, struct sock *sk)
+ {
+ 	transport->old_data_ready = sk->sk_data_ready;
+@@ -2764,7 +2763,7 @@ static void bc_destroy(struct rpc_xprt *xprt)
+ 
+ static const struct rpc_xprt_ops xs_local_ops = {
+ 	.reserve_xprt		= xprt_reserve_xprt,
+-	.release_xprt		= xs_tcp_release_xprt,
++	.release_xprt		= xprt_release_xprt,
+ 	.alloc_slot		= xprt_alloc_slot,
+ 	.free_slot		= xprt_free_slot,
+ 	.rpcbind		= xs_local_rpcbind,
+@@ -2806,7 +2805,7 @@ static const struct rpc_xprt_ops xs_udp_ops = {
+ 
+ static const struct rpc_xprt_ops xs_tcp_ops = {
+ 	.reserve_xprt		= xprt_reserve_xprt,
+-	.release_xprt		= xs_tcp_release_xprt,
++	.release_xprt		= xprt_release_xprt,
+ 	.alloc_slot		= xprt_lock_and_alloc_slot,
+ 	.free_slot		= xprt_free_slot,
+ 	.rpcbind		= rpcb_getport_async,
 -- 
 2.17.1
