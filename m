@@ -1,327 +1,179 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f67.google.com ([209.85.214.67]:40283 "EHLO
-        mail-it0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727465AbeICWLG (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Sep 2018 18:11:06 -0400
-Received: by mail-it0-f67.google.com with SMTP id h23-v6so1851776ita.5
-        for <linux-nfs@vger.kernel.org>; Mon, 03 Sep 2018 10:49:52 -0700 (PDT)
-Content-Type: text/plain;
-        charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 11.5 \(3445.9.1\))
-Subject: Re: [PATCH 20/27] SUNRPC: Treat the task and request as separate in
- the xprt_ops->send_request()
-From: Chuck Lever <chucklever@gmail.com>
-In-Reply-To: <0b84ef010e4b3e4d156b6b7ac60c5fb0c2a48627.camel@gmail.com>
-Date: Mon, 3 Sep 2018 13:49:50 -0400
+Received: from mail-it0-f66.google.com ([209.85.214.66]:52464 "EHLO
+        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727111AbeICWQ5 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Sep 2018 18:16:57 -0400
+Received: by mail-it0-f66.google.com with SMTP id h3-v6so1972349ita.2
+        for <linux-nfs@vger.kernel.org>; Mon, 03 Sep 2018 10:55:41 -0700 (PDT)
+Message-ID: <892067469ea910b51d0c14abde5246e0acfbbcbf.camel@gmail.com>
+Subject: Re: [PATCH 00/27] Convert RPC client transmission to a queued model
+From: Trond Myklebust <trondmy@gmail.com>
+To: Chuck Lever <chuck.lever@oracle.com>
 Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <4CBB86A7-C070-468C-A36E-2B586BEBD952@gmail.com>
+Date: Mon, 03 Sep 2018 13:55:39 -0400
+In-Reply-To: <7775195B-7882-422A-862E-0E0DEE7171C4@oracle.com>
 References: <20180903152936.24325-1-trond.myklebust@hammerspace.com>
- <20180903152936.24325-2-trond.myklebust@hammerspace.com>
- <20180903152936.24325-3-trond.myklebust@hammerspace.com>
- <20180903152936.24325-4-trond.myklebust@hammerspace.com>
- <20180903152936.24325-5-trond.myklebust@hammerspace.com>
- <20180903152936.24325-6-trond.myklebust@hammerspace.com>
- <20180903152936.24325-7-trond.myklebust@hammerspace.com>
- <20180903152936.24325-8-trond.myklebust@hammerspace.com>
- <20180903152936.24325-9-trond.myklebust@hammerspace.com>
- <20180903152936.24325-10-trond.myklebust@hammerspace.com>
- <20180903152936.24325-11-trond.myklebust@hammerspace.com>
- <20180903152936.24325-12-trond.myklebust@hammerspace.com>
- <20180903152936.24325-13-trond.myklebust@hammerspace.com>
- <20180903152936.24325-14-trond.myklebust@hammerspace.com>
- <20180903152936.24325-15-trond.myklebust@hammerspace.com>
- <20180903152936.24325-16-trond.myklebust@hammerspace.com>
- <20180903152936.24325-17-trond.myklebust@hammerspace.com>
- <20180903152936.24325-18-trond.myklebust@hammerspace.com>
- <20180903152936.24325-19-trond.myklebust@hammerspace.com>
- <20180903152936.24325-20-trond.myklebust@hammerspace.com>
- <20180903152936.24325-21-trond.myklebust@hammerspace.com>
- <C7D44AFD-1BFF-4FB9-A4AB-AF60F836DA34@gmail.com>
- <0b84ef010e4b3e4d156b6b7ac60c5fb0c2a48627.camel@gmail.com>
-To: Trond Myklebust <trondmy@gmail.com>
+         <7775195B-7882-422A-862E-0E0DEE7171C4@oracle.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-> On Sep 3, 2018, at 1:47 PM, Trond Myklebust <trondmy@gmail.com> wrote:
+On Mon, 2018-09-03 at 13:41 -0400, Chuck Lever wrote:
+> > On Sep 3, 2018, at 11:29 AM, Trond Myklebust <trondmy@gmail.com>
+> > wrote:
+> > 
+> > For historical reasons, the RPC client is heavily serialised during
+> > the
+> > process of transmitting a request by the XPRT_LOCK. A request is
+> > required to take that lock before it can start XDR encoding, and it
+> > is
+> > required to hold it until it is done transmitting. In essence the
+> > lock
+> > protects the following functions:
+> > 
+> > - Stream based transport connect/reconnect
+> > - RPCSEC_GSS encoding of the RPC message
+> > - Transmission of a single RPC message
 > 
-> On Mon, 2018-09-03 at 13:28 -0400, Chuck Lever wrote:
->>> On Sep 3, 2018, at 11:29 AM, Trond Myklebust <trondmy@gmail.com>
->>> wrote:
->>> 
->>> When we shift to using the transmit queue, then the task that holds
->>> the
->>> write lock will not necessarily be the same as the one being
->>> transmitted.
->> 
->> Can you pass in just the rpc_rqst? Then @task would be available as
->> xprt->snd_task.
+> It also protects TCP rqst slot allocation:
 > 
-> No. The point is that when we add queueing, @req->rq_task will usually
-> be asleep on xprt->sending. Only the task that holds the XPRT_LOCK is
-> awake, and so it is the one that needs to be put asleep when we hit a
-> socket nospace/EAGAIN error.
+> void xprt_lock_and_alloc_slot(struct rpc_xprt *xprt, struct rpc_task
+> *task)
+> {
+>         /* Note: grabbing the xprt_lock_write() ensures that we
+> throttle
+>          * new slot allocation if the transport is congested (i.e.
+> when
+>          * reconnecting a stream transport or when out of socket
+> write
+>          * buffer space).
+>          */
+>         if (xprt_lock_write(xprt, task)) {
+>                 xprt_alloc_slot(xprt, task);
+>                 xprt_release_write(xprt, task);
+>         }
+> }
 
-Right, that task is rqst->rq_xprt->snd_task, isn't it?
+Ack. That needs some thought.
 
-
-> We _could_ potentially avoid passing in the task at all, and just have
-> xs_nospace() put xprt->snd_task to sleep, but that would skirt the edge
-> of a transport layering violation.
 > 
->> 
->>> Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
->>> ---
->>> include/linux/sunrpc/xprt.h                |  2 +-
->>> net/sunrpc/xprt.c                          |  2 +-
->>> net/sunrpc/xprtrdma/svc_rdma_backchannel.c |  3 +--
->>> net/sunrpc/xprtrdma/transport.c            |  5 ++--
->>> net/sunrpc/xprtsock.c                      | 27 +++++++++++------
->>> -----
->>> 5 files changed, 18 insertions(+), 21 deletions(-)
->>> 
->>> diff --git a/include/linux/sunrpc/xprt.h
->>> b/include/linux/sunrpc/xprt.h
->>> index 81a6c2c8dfc7..6d91acfe0644 100644
->>> --- a/include/linux/sunrpc/xprt.h
->>> +++ b/include/linux/sunrpc/xprt.h
->>> @@ -140,7 +140,7 @@ struct rpc_xprt_ops {
->>> 	void		(*connect)(struct rpc_xprt *xprt, struct
->>> rpc_task *task);
->>> 	int		(*buf_alloc)(struct rpc_task *task);
->>> 	void		(*buf_free)(struct rpc_task *task);
->>> -	int		(*send_request)(struct rpc_task *task);
->>> +	int		(*send_request)(struct rpc_rqst *req, struct
->>> rpc_task *task);
->>> 	void		(*set_retrans_timeout)(struct rpc_task
->>> *task);
->>> 	void		(*timer)(struct rpc_xprt *xprt, struct
->>> rpc_task *task);
->>> 	void		(*release_request)(struct rpc_task *task);
->>> diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
->>> index defc6167570a..3efcb69af526 100644
->>> --- a/net/sunrpc/xprt.c
->>> +++ b/net/sunrpc/xprt.c
->>> @@ -1170,7 +1170,7 @@ void xprt_transmit(struct rpc_task *task)
->>> 	}
->>> 
->>> 	connect_cookie = xprt->connect_cookie;
->>> -	status = xprt->ops->send_request(task);
->>> +	status = xprt->ops->send_request(req, task);
->>> 	trace_xprt_transmit(xprt, req->rq_xid, status);
->>> 	if (status != 0) {
->>> 		task->tk_status = status;
->>> diff --git a/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
->>> b/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
->>> index 09b12b7568fe..d1618c70edb4 100644
->>> --- a/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
->>> +++ b/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
->>> @@ -215,9 +215,8 @@ rpcrdma_bc_send_request(struct svcxprt_rdma
->>> *rdma, struct rpc_rqst *rqst)
->>> * connection.
->>> */
->>> static int
->>> -xprt_rdma_bc_send_request(struct rpc_task *task)
->>> +xprt_rdma_bc_send_request(struct rpc_rqst *rqst, struct rpc_task
->>> *task)
->>> {
->>> -	struct rpc_rqst *rqst = task->tk_rqstp;
->>> 	struct svc_xprt *sxprt = rqst->rq_xprt->bc_xprt;
->>> 	struct svcxprt_rdma *rdma;
->>> 	int ret;
->>> diff --git a/net/sunrpc/xprtrdma/transport.c
->>> b/net/sunrpc/xprtrdma/transport.c
->>> index 143ce2579ba9..fa684bf4d090 100644
->>> --- a/net/sunrpc/xprtrdma/transport.c
->>> +++ b/net/sunrpc/xprtrdma/transport.c
->>> @@ -706,9 +706,8 @@ xprt_rdma_free(struct rpc_task *task)
->>> *		sent. Do not try to send this message again.
->>> */
->>> static int
->>> -xprt_rdma_send_request(struct rpc_task *task)
->>> +xprt_rdma_send_request(struct rpc_rqst *rqst, struct rpc_task
->>> *task)
->> 
->> Nit: The function's documenting comment will need to be updated.
->> 
->> 
->>> {
->>> -	struct rpc_rqst *rqst = task->tk_rqstp;
->>> 	struct rpc_xprt *xprt = rqst->rq_xprt;
->>> 	struct rpcrdma_req *req = rpcr_to_rdmar(rqst);
->>> 	struct rpcrdma_xprt *r_xprt = rpcx_to_rdmax(xprt);
->>> @@ -741,7 +740,7 @@ xprt_rdma_send_request(struct rpc_task *task)
->>> 	/* An RPC with no reply will throw off credit accounting,
->>> 	 * so drop the connection to reset the credit grant.
->>> 	 */
->>> -	if (!rpc_reply_expected(task))
->>> +	if (!rpc_reply_expected(rqst->rq_task))
->>> 		goto drop_connection;
->>> 	return 0;
->>> 
->>> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
->>> index 8d6404259ff9..b8143eded4af 100644
->>> --- a/net/sunrpc/xprtsock.c
->>> +++ b/net/sunrpc/xprtsock.c
->>> @@ -449,12 +449,12 @@ static void xs_nospace_callback(struct
->>> rpc_task *task)
->>> 
->>> /**
->>> * xs_nospace - place task on wait queue if transmit was incomplete
->>> + * @req: pointer to RPC request
->>> * @task: task to put to sleep
->>> *
->>> */
->>> -static int xs_nospace(struct rpc_task *task)
->>> +static int xs_nospace(struct rpc_rqst *req, struct rpc_task *task)
->>> {
->>> -	struct rpc_rqst *req = task->tk_rqstp;
->>> 	struct rpc_xprt *xprt = req->rq_xprt;
->>> 	struct sock_xprt *transport = container_of(xprt, struct
->>> sock_xprt, xprt);
->>> 	struct sock *sk = transport->inet;
->>> @@ -513,6 +513,7 @@ static inline void
->>> xs_encode_stream_record_marker(struct xdr_buf *buf)
->>> 
->>> /**
->>> * xs_local_send_request - write an RPC request to an AF_LOCAL
->>> socket
->>> + * @req: pointer to RPC request
->>> * @task: RPC task that manages the state of an RPC request
->>> *
->>> * Return values:
->>> @@ -522,9 +523,8 @@ static inline void
->>> xs_encode_stream_record_marker(struct xdr_buf *buf)
->>> * ENOTCONN:	Caller needs to invoke connect logic then call
->>> again
->>> *    other:	Some other error occured, the request was not
->>> sent
->>> */
->>> -static int xs_local_send_request(struct rpc_task *task)
->>> +static int xs_local_send_request(struct rpc_rqst *req, struct
->>> rpc_task *task)
->>> {
->>> -	struct rpc_rqst *req = task->tk_rqstp;
->>> 	struct rpc_xprt *xprt = req->rq_xprt;
->>> 	struct sock_xprt *transport =
->>> 				container_of(xprt, struct sock_xprt,
->>> xprt);
->>> @@ -569,7 +569,7 @@ static int xs_local_send_request(struct
->>> rpc_task *task)
->>> 	case -ENOBUFS:
->>> 		break;
->>> 	case -EAGAIN:
->>> -		status = xs_nospace(task);
->>> +		status = xs_nospace(req, task);
->>> 		break;
->>> 	default:
->>> 		dprintk("RPC:       sendmsg returned unrecognized error
->>> %d\n",
->>> @@ -585,6 +585,7 @@ static int xs_local_send_request(struct
->>> rpc_task *task)
->>> 
->>> /**
->>> * xs_udp_send_request - write an RPC request to a UDP socket
->>> + * @req: pointer to RPC request
->>> * @task: address of RPC task that manages the state of an RPC
->>> request
->>> *
->>> * Return values:
->>> @@ -594,9 +595,8 @@ static int xs_local_send_request(struct
->>> rpc_task *task)
->>> * ENOTCONN:	Caller needs to invoke connect logic then call
->>> again
->>> *    other:	Some other error occurred, the request was not
->>> sent
->>> */
->>> -static int xs_udp_send_request(struct rpc_task *task)
->>> +static int xs_udp_send_request(struct rpc_rqst *req, struct
->>> rpc_task *task)
->>> {
->>> -	struct rpc_rqst *req = task->tk_rqstp;
->>> 	struct rpc_xprt *xprt = req->rq_xprt;
->>> 	struct sock_xprt *transport = container_of(xprt, struct
->>> sock_xprt, xprt);
->>> 	struct xdr_buf *xdr = &req->rq_snd_buf;
->>> @@ -638,7 +638,7 @@ static int xs_udp_send_request(struct rpc_task
->>> *task)
->>> 		/* Should we call xs_close() here? */
->>> 		break;
->>> 	case -EAGAIN:
->>> -		status = xs_nospace(task);
->>> +		status = xs_nospace(req, task);
->>> 		break;
->>> 	case -ENETUNREACH:
->>> 	case -ENOBUFS:
->>> @@ -658,6 +658,7 @@ static int xs_udp_send_request(struct rpc_task
->>> *task)
->>> 
->>> /**
->>> * xs_tcp_send_request - write an RPC request to a TCP socket
->>> + * @req: pointer to RPC request
->>> * @task: address of RPC task that manages the state of an RPC
->>> request
->>> *
->>> * Return values:
->>> @@ -670,9 +671,8 @@ static int xs_udp_send_request(struct rpc_task
->>> *task)
->>> * XXX: In the case of soft timeouts, should we eventually give up
->>> *	if sendmsg is not able to make progress?
->>> */
->>> -static int xs_tcp_send_request(struct rpc_task *task)
->>> +static int xs_tcp_send_request(struct rpc_rqst *req, struct
->>> rpc_task *task)
->>> {
->>> -	struct rpc_rqst *req = task->tk_rqstp;
->>> 	struct rpc_xprt *xprt = req->rq_xprt;
->>> 	struct sock_xprt *transport = container_of(xprt, struct
->>> sock_xprt, xprt);
->>> 	struct xdr_buf *xdr = &req->rq_snd_buf;
->>> @@ -697,7 +697,7 @@ static int xs_tcp_send_request(struct rpc_task
->>> *task)
->>> 	 * completes while the socket holds a reference to the pages,
->>> 	 * then we may end up resending corrupted data.
->>> 	 */
->>> -	if (task->tk_flags & RPC_TASK_SENT)
->>> +	if (req->rq_task->tk_flags & RPC_TASK_SENT)
->>> 		zerocopy = false;
->>> 
->>> 	if (test_bit(XPRT_SOCK_UPD_TIMEOUT, &transport->sock_state))
->>> @@ -761,7 +761,7 @@ static int xs_tcp_send_request(struct rpc_task
->>> *task)
->>> 		/* Should we call xs_close() here? */
->>> 		break;
->>> 	case -EAGAIN:
->>> -		status = xs_nospace(task);
->>> +		status = xs_nospace(req, task);
->>> 		break;
->>> 	case -ECONNRESET:
->>> 	case -ECONNREFUSED:
->>> @@ -2706,9 +2706,8 @@ static int bc_sendto(struct rpc_rqst *req)
->>> /*
->>> * The send routine. Borrows from svc_send
->>> */
->>> -static int bc_send_request(struct rpc_task *task)
->>> +static int bc_send_request(struct rpc_rqst *req, struct rpc_task
->>> *task)
->>> {
->>> -	struct rpc_rqst *req = task->tk_rqstp;
->>> 	struct svc_xprt	*xprt;
->>> 	int len;
->>> 
->>> -- 
->>> 2.17.1
->>> 
->> 
->> --
->> Chuck Lever
->> chucklever@gmail.com
->> 
->> 
->> 
+> > The following patch set assumes that we do not need to do much to
+> > improve performance of the connect/reconnect case, as that is
+> > supposed
+> > to be a rare occurrence.
+> > 
+> > The set looks at dealing with RPCSEC_GSS issues by removing
+> > serialisation
+> > while encoding, and simply assuming that if we detect after
+> > grabbing the
+> > XPRT_LOCK that we're about to transmit a message with a sequence
+> > number
+> > that has fallen outside the window allowed by RFC2203, then we can
+> > abort the transmission of that message, and schedule it for re-
+> > encoding.
+> > Since window sizes are typically expected to lie above 100 messages
+> > or
+> > so, we expect these cases where we miss the window to be rare, in
+> > general.
+> > 
+> > Finally, we look at trying to avoid the requirement that every
+> > request
+> > must go through the process of being woken up to grab the XPRT_LOCK
+> > in
+> > order to transmit itself by allowing a request that currently holds
+> > the
+> > XPRT_LOCK to grab other requests from an ordered queue, and to
+> > transmit
+> > them too. The bulk of the changes in this patchset are dedicated to
+> > providing this functionality.
 > 
+> When considering whether this kind of change could work for
+> xprtrdma: the transport send lock mechanism is used to manage
+> the credit grant. The transport send lock prevents the client
+> from sending too many RPC Calls at once.
+> 
+> Congestion- or flow-controlled transports might not be able to
+> adopt this approach, because there needs to be a check before
+> each RPC Call is sent to see if the congestion/credit window
+> has room.
 
---
-Chuck Lever
-chucklever@gmail.com
+That's a good point. We might want to put an additional check for
+congestion overflow in the send request to push back when we hit the
+credit window limit. I'll think about that.
+
+> 
+> > Trond Myklebust (27):
+> >  SUNRPC: Clean up initialisation of the struct rpc_rqst
+> >  SUNRPC: If there is no reply expected, bail early from call_decode
+> >  SUNRPC: The transmitted message must lie in the RPCSEC window of
+> >    validity
+> >  SUNRPC: Simplify identification of when the message send/receive
+> > is
+> >    complete
+> >  SUNRPC: Avoid holding locks across the XDR encoding of the RPC
+> > message
+> >  SUNRPC: Rename TCP receive-specific state variables
+> >  SUNRPC: Move reset of TCP state variables into the reconnect code
+> >  SUNRPC: Add socket transmit queue offset tracking
+> >  SUNRPC: Simplify dealing with aborted partially transmitted
+> > messages
+> >  SUNRPC: Refactor the transport request pinning
+> >  SUNRPC: Add a helper to wake up a sleeping rpc_task and set its
+> > status
+> >  SUNRPC: Don't wake queued RPC calls multiple times in
+> > xprt_transmit
+> >  SUNRPC: Rename xprt->recv_lock to xprt->queue_lock
+> >  SUNRPC: Refactor xprt_transmit() to remove the reply queue code
+> >  SUNRPC: Refactor xprt_transmit() to remove wait for reply code
+> >  SUNRPC: Minor cleanup for call_transmit()
+> >  SUNRPC: Distinguish between the slot allocation list and receive
+> > queue
+> >  NFS: Add a transmission queue for RPC requests
+> >  SUNRPC: Refactor RPC call encoding
+> >  SUNRPC: Treat the task and request as separate in the
+> >    xprt_ops->send_request()
+> >  SUNRPC: Don't reset the request 'bytes_sent' counter when
+> > releasing
+> >    XPRT_LOCK
+> >  SUNRPC: Simplify xprt_prepare_transmit()
+> >  SUNRPC: Move RPC retransmission stat counter to xprt_transmit()
+> >  SUNRPC: Fix up the back channel transmit
+> >  SUNRPC: Allow calls to xprt_transmit() to drain the entire
+> > transmit
+> >    queue
+> >  SUNRPC: Queue the request for transmission immediately after
+> > encoding
+> >  SUNRPC: Convert the xprt->sending queue back to an ordinary wait
+> > queue
+> > 
+> > include/linux/sunrpc/auth.h                |   2 +
+> > include/linux/sunrpc/auth_gss.h            |   1 +
+> > include/linux/sunrpc/sched.h               |   7 +-
+> > include/linux/sunrpc/xprt.h                |  23 +-
+> > include/linux/sunrpc/xprtsock.h            |  23 +-
+> > include/trace/events/sunrpc.h              |  10 +-
+> > net/sunrpc/auth.c                          |  10 +
+> > net/sunrpc/auth_gss/auth_gss.c             |  41 ++
+> > net/sunrpc/backchannel_rqst.c              |   3 +-
+> > net/sunrpc/clnt.c                          | 139 +++---
+> > net/sunrpc/sched.c                         |  63 ++-
+> > net/sunrpc/svcsock.c                       |   6 +-
+> > net/sunrpc/xprt.c                          | 503 +++++++++++++-----
+> > ---
+> > net/sunrpc/xprtrdma/backchannel.c          |   3 +-
+> > net/sunrpc/xprtrdma/rpc_rdma.c             |  10 +-
+> > net/sunrpc/xprtrdma/svc_rdma_backchannel.c |   7 +-
+> > net/sunrpc/xprtrdma/transport.c            |   5 +-
+> > net/sunrpc/xprtsock.c                      | 327 +++++++-------
+> > 18 files changed, 728 insertions(+), 455 deletions(-)
+> > 
+> > -- 
+> > 2.17.1
+> > 
+> 
+> --
+> Chuck Lever
+> 
+> 
+> 
