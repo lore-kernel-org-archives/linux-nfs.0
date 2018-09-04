@@ -1,62 +1,38 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:49124 "EHLO mx1.suse.de"
+Received: from mail-eopbgr690107.outbound.protection.outlook.com ([40.107.69.107]:57520
+        "EHLO NAM04-CO1-obe.outbound.protection.outlook.com"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726520AbeIEDOn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 4 Sep 2018 23:14:43 -0400
-Received: from relay1.suse.de (unknown [195.135.220.254])
-        by mx1.suse.de (Postfix) with ESMTP id 91FD0AE62
-        for <linux-nfs@vger.kernel.org>; Tue,  4 Sep 2018 22:47:28 +0000 (UTC)
-From: NeilBrown <neilb@suse.com>
-To: linux-nfs@vger.kernel.org
-Date: Wed, 05 Sep 2018 08:47:23 +1000
-Subject: NFSv4.1 session reset needs to update ->rsize and ->wsize - how???
-Message-ID: <87r2i8vq10.fsf@notabene.neil.brown.name>
+        id S1725825AbeIEDil (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 4 Sep 2018 23:38:41 -0400
+From: Trond Myklebust <trondmy@hammerspace.com>
+To: "neilb@suse.com" <neilb@suse.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: NFSv4.1 session reset needs to update ->rsize and ->wsize -
+ how???
+Date: Tue, 4 Sep 2018 23:11:20 +0000
+Message-ID: <f7f84aced6ae709b1c66e1475e8d79927fa29132.camel@hammerspace.com>
+References: <87r2i8vq10.fsf@notabene.neil.brown.name>
+In-Reply-To: <87r2i8vq10.fsf@notabene.neil.brown.name>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
-
-
-With NFSv4.1, the server specifies max_rqst_sz and max_resp_sz in the
-reply to CREATE session.
-
-If the client finds it needs to call nfs4_reset_session(), it might get
-smaller sizes back, so any pending read/writes would need to be resized.
-
-However, I cannot see how the retry handling for reads/writes has any
-chance to change the size.  It looks like a request is broken up to
-match the original ->rsize and ->wsize, then those individual IO
-requests can be retried, but the higher level request is never
-re-evaluated in light of a new size.
-
-Am I missing something, or is this not supported at present?
-If it isn't supported, any suggestions on how best to handle a
-reduction of the rsize/wsize ??
-
-Thanks,
-NeilBrown
-
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAluPC3sACgkQOeye3VZi
-gbm8tQ//USYuxvAIIGthdqoMurnk6cA5QAY9FVg4pBlxku6p6j5PEYsPuEEvbf0s
-fpKNZRtYe6Ewv4kvNHwysAHyB6WKdLEfx15/KRZpAnIok/tvRcGmSzW7pfGg3ML9
-TynKq+mhdF8sX7lzlye4XgwOWvaAfR6BO5WjUI4CKqhTnhECF5GLXyXXB7drNXJQ
-99NQu+9bRwgBG8uiRVbha6pwHI7C4cNBZvpuCx02TLDB9IFegojle7NGJQjQLT9q
-L4dZChe5GD0DyYiybGoYKqh5+Rz+JOlWn/JeK6O2YmSH1dKWYLwghPikoclOt5aE
-cigREnEdSnF2YkTyzDFnlVhw54YiP9ztg2Y0I5UnFgQlI9zidtFGvIkKthQLA7AX
-cHLbAIRj3Jqi/G7wTSVYlDDAA2kVQl6M2VDHEH6BNd8pM9IzEEKAkLGTSL6DJCls
-4s6xV9E1iwT+kYwFYzbMn20tmTCM4/Qfr057RJysy3bNjliqO1a/H/clqkFc8joZ
-rXp0NMGSR40HO8LcB8+NXI0ZoL3ikvlMnhXBti/ZV4VTWe0fperope7rH6V4vi8J
-2PmtOA9RVTNjfbtBbyAh10gITrDdJk3pYi5Vn1+86UAuRUXUAO0U5qVzXnG+3Ato
-Vu9QxGGreVhQaY5/VjhVB4YgBw2HBl+9bToIGGrhWz7H9vPDuME=
-=f6RP
------END PGP SIGNATURE-----
---=-=-=--
+T24gV2VkLCAyMDE4LTA5LTA1IGF0IDA4OjQ3ICsxMDAwLCBOZWlsQnJvd24gd3JvdGU6DQo+IFdp
+dGggTkZTdjQuMSwgdGhlIHNlcnZlciBzcGVjaWZpZXMgbWF4X3Jxc3Rfc3ogYW5kIG1heF9yZXNw
+X3N6IGluIHRoZQ0KPiByZXBseSB0byBDUkVBVEUgc2Vzc2lvbi4NCj4gDQo+IElmIHRoZSBjbGll
+bnQgZmluZHMgaXQgbmVlZHMgdG8gY2FsbCBuZnM0X3Jlc2V0X3Nlc3Npb24oKSwgaXQgbWlnaHQN
+Cj4gZ2V0DQo+IHNtYWxsZXIgc2l6ZXMgYmFjaywgc28gYW55IHBlbmRpbmcgcmVhZC93cml0ZXMg
+d291bGQgbmVlZCB0byBiZQ0KPiByZXNpemVkLg0KPiANCj4gSG93ZXZlciwgSSBjYW5ub3Qgc2Vl
+IGhvdyB0aGUgcmV0cnkgaGFuZGxpbmcgZm9yIHJlYWRzL3dyaXRlcyBoYXMgYW55DQo+IGNoYW5j
+ZSB0byBjaGFuZ2UgdGhlIHNpemUuICBJdCBsb29rcyBsaWtlIGEgcmVxdWVzdCBpcyBicm9rZW4g
+dXAgdG8NCj4gbWF0Y2ggdGhlIG9yaWdpbmFsIC0+cnNpemUgYW5kIC0+d3NpemUsIHRoZW4gdGhv
+c2UgaW5kaXZpZHVhbCBJTw0KPiByZXF1ZXN0cyBjYW4gYmUgcmV0cmllZCwgYnV0IHRoZSBoaWdo
+ZXIgbGV2ZWwgcmVxdWVzdCBpcyBuZXZlcg0KPiByZS1ldmFsdWF0ZWQgaW4gbGlnaHQgb2YgYSBu
+ZXcgc2l6ZS4NCj4gDQo+IEFtIEkgbWlzc2luZyBzb21ldGhpbmcsIG9yIGlzIHRoaXMgbm90IHN1
+cHBvcnRlZCBhdCBwcmVzZW50Pw0KPiBJZiBpdCBpc24ndCBzdXBwb3J0ZWQsIGFueSBzdWdnZXN0
+aW9ucyBvbiBob3cgYmVzdCB0byBoYW5kbGUgYQ0KPiByZWR1Y3Rpb24gb2YgdGhlIHJzaXplL3dz
+aXplID8/DQo+IA0KDQpXaHkgd291bGQgYSBzYW5lIHNlcnZlciB3YW50IHRvIGRvIHRoaXM/DQoN
+CkNoZWVycw0KICBUcm9uZA0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQg
+bWFpbnRhaW5lciwgSGFtbWVyc3BhY2UNCnRyb25kLm15a2xlYnVzdEBoYW1tZXJzcGFjZS5jb20N
+Cg0KDQo=
