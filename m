@@ -1,62 +1,172 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f67.google.com ([209.85.214.67]:39532 "EHLO
-        mail-it0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725879AbeIEBdH (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Sep 2018 21:33:07 -0400
-Received: by mail-it0-f67.google.com with SMTP id h1-v6so6697380itj.4
-        for <linux-nfs@vger.kernel.org>; Tue, 04 Sep 2018 14:06:15 -0700 (PDT)
+Received: from mail-it0-f65.google.com ([209.85.214.65]:34822 "EHLO
+        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725879AbeIEBdK (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Sep 2018 21:33:10 -0400
+Received: by mail-it0-f65.google.com with SMTP id 139-v6so6719185itf.0
+        for <linux-nfs@vger.kernel.org>; Tue, 04 Sep 2018 14:06:18 -0700 (PDT)
 Received: from leira.trondhjem.org.localdomain (c-68-40-195-73.hsd1.mi.comcast.net. [68.40.195.73])
-        by smtp.gmail.com with ESMTPSA id t64-v6sm172860ita.13.2018.09.04.14.06.14
+        by smtp.gmail.com with ESMTPSA id t64-v6sm172860ita.13.2018.09.04.14.06.16
         for <linux-nfs@vger.kernel.org>
         (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
-        Tue, 04 Sep 2018 14:06:14 -0700 (PDT)
+        Tue, 04 Sep 2018 14:06:17 -0700 (PDT)
 From: Trond Myklebust <trondmy@gmail.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 05/34] SUNRPC: Avoid holding locks across the XDR encoding of the RPC message
-Date: Tue,  4 Sep 2018 17:05:20 -0400
-Message-Id: <20180904210549.81673-6-trond.myklebust@hammerspace.com>
-In-Reply-To: <20180904210549.81673-5-trond.myklebust@hammerspace.com>
+Subject: [PATCH v2 08/34] SUNRPC: Add socket transmit queue offset tracking
+Date: Tue,  4 Sep 2018 17:05:23 -0400
+Message-Id: <20180904210549.81673-9-trond.myklebust@hammerspace.com>
+In-Reply-To: <20180904210549.81673-8-trond.myklebust@hammerspace.com>
 References: <20180904210549.81673-1-trond.myklebust@hammerspace.com>
  <20180904210549.81673-2-trond.myklebust@hammerspace.com>
  <20180904210549.81673-3-trond.myklebust@hammerspace.com>
  <20180904210549.81673-4-trond.myklebust@hammerspace.com>
  <20180904210549.81673-5-trond.myklebust@hammerspace.com>
+ <20180904210549.81673-6-trond.myklebust@hammerspace.com>
+ <20180904210549.81673-7-trond.myklebust@hammerspace.com>
+ <20180904210549.81673-8-trond.myklebust@hammerspace.com>
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Currently, we grab the socket bit lock before we allow the message
-to be XDR encoded. That significantly slows down the transmission
-rate, since we serialise on a potentially blocking operation.
-
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- net/sunrpc/clnt.c | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+ include/linux/sunrpc/xprtsock.h |  7 ++++++
+ net/sunrpc/xprtsock.c           | 40 ++++++++++++++++++---------------
+ 2 files changed, 29 insertions(+), 18 deletions(-)
 
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index e5ac35e803ad..a858366cd15d 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -1949,9 +1949,6 @@ call_transmit(struct rpc_task *task)
- 	task->tk_action = call_status;
- 	if (task->tk_status < 0)
- 		return;
--	if (!xprt_prepare_transmit(task))
--		return;
--	task->tk_action = call_transmit_status;
- 	/* Encode here so that rpcsec_gss can use correct sequence number. */
- 	if (rpc_task_need_encode(task)) {
- 		rpc_xdr_encode(task);
-@@ -1965,6 +1962,9 @@ call_transmit(struct rpc_task *task)
- 			return;
+diff --git a/include/linux/sunrpc/xprtsock.h b/include/linux/sunrpc/xprtsock.h
+index 90d5ca8e65f4..005cfb6e7238 100644
+--- a/include/linux/sunrpc/xprtsock.h
++++ b/include/linux/sunrpc/xprtsock.h
+@@ -42,6 +42,13 @@ struct sock_xprt {
+ 				flags;
+ 	} recv;
+ 
++	/*
++	 * State of TCP transmit queue
++	 */
++	struct {
++		u32		offset;
++	} xmit;
++
+ 	/*
+ 	 * Connection of transports
+ 	 */
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index ec1e3f93e707..629cc45e1e6c 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -461,7 +461,7 @@ static int xs_nospace(struct rpc_task *task)
+ 	int ret = -EAGAIN;
+ 
+ 	dprintk("RPC: %5u xmit incomplete (%u left of %u)\n",
+-			task->tk_pid, req->rq_slen - req->rq_bytes_sent,
++			task->tk_pid, req->rq_slen - transport->xmit.offset,
+ 			req->rq_slen);
+ 
+ 	/* Protect against races with write_space */
+@@ -528,19 +528,22 @@ static int xs_local_send_request(struct rpc_task *task)
+ 			req->rq_svec->iov_base, req->rq_svec->iov_len);
+ 
+ 	req->rq_xtime = ktime_get();
+-	status = xs_sendpages(transport->sock, NULL, 0, xdr, req->rq_bytes_sent,
++	status = xs_sendpages(transport->sock, NULL, 0, xdr,
++			      transport->xmit.offset,
+ 			      true, &sent);
+ 	dprintk("RPC:       %s(%u) = %d\n",
+-			__func__, xdr->len - req->rq_bytes_sent, status);
++			__func__, xdr->len - transport->xmit.offset, status);
+ 
+ 	if (status == -EAGAIN && sock_writeable(transport->inet))
+ 		status = -ENOBUFS;
+ 
+ 	if (likely(sent > 0) || status == 0) {
+-		req->rq_bytes_sent += sent;
+-		req->rq_xmit_bytes_sent += sent;
++		transport->xmit.offset += sent;
++		req->rq_bytes_sent = transport->xmit.offset;
+ 		if (likely(req->rq_bytes_sent >= req->rq_slen)) {
++			req->rq_xmit_bytes_sent += transport->xmit.offset;
+ 			req->rq_bytes_sent = 0;
++			transport->xmit.offset = 0;
+ 			return 0;
  		}
- 	}
-+	if (!xprt_prepare_transmit(task))
-+		return;
-+	task->tk_action = call_transmit_status;
- 	xprt_transmit(task);
- 	if (task->tk_status < 0)
+ 		status = -EAGAIN;
+@@ -592,10 +595,10 @@ static int xs_udp_send_request(struct rpc_task *task)
+ 		return -ENOTCONN;
+ 	req->rq_xtime = ktime_get();
+ 	status = xs_sendpages(transport->sock, xs_addr(xprt), xprt->addrlen,
+-			      xdr, req->rq_bytes_sent, true, &sent);
++			      xdr, 0, true, &sent);
+ 
+ 	dprintk("RPC:       xs_udp_send_request(%u) = %d\n",
+-			xdr->len - req->rq_bytes_sent, status);
++			xdr->len, status);
+ 
+ 	/* firewall is blocking us, don't return -EAGAIN or we end up looping */
+ 	if (status == -EPERM)
+@@ -684,17 +687,20 @@ static int xs_tcp_send_request(struct rpc_task *task)
+ 	while (1) {
+ 		sent = 0;
+ 		status = xs_sendpages(transport->sock, NULL, 0, xdr,
+-				      req->rq_bytes_sent, zerocopy, &sent);
++				      transport->xmit.offset,
++				      zerocopy, &sent);
+ 
+ 		dprintk("RPC:       xs_tcp_send_request(%u) = %d\n",
+-				xdr->len - req->rq_bytes_sent, status);
++				xdr->len - transport->xmit.offset, status);
+ 
+ 		/* If we've sent the entire packet, immediately
+ 		 * reset the count of bytes sent. */
+-		req->rq_bytes_sent += sent;
+-		req->rq_xmit_bytes_sent += sent;
++		transport->xmit.offset += sent;
++		req->rq_bytes_sent = transport->xmit.offset;
+ 		if (likely(req->rq_bytes_sent >= req->rq_slen)) {
++			req->rq_xmit_bytes_sent += transport->xmit.offset;
+ 			req->rq_bytes_sent = 0;
++			transport->xmit.offset = 0;
+ 			return 0;
+ 		}
+ 
+@@ -760,18 +766,13 @@ static int xs_tcp_send_request(struct rpc_task *task)
+  */
+ static void xs_tcp_release_xprt(struct rpc_xprt *xprt, struct rpc_task *task)
+ {
+-	struct rpc_rqst *req;
++	struct sock_xprt *transport = container_of(xprt, struct sock_xprt, xprt);
+ 
+ 	if (task != xprt->snd_task)
  		return;
+ 	if (task == NULL)
+ 		goto out_release;
+-	req = task->tk_rqstp;
+-	if (req == NULL)
+-		goto out_release;
+-	if (req->rq_bytes_sent == 0)
+-		goto out_release;
+-	if (req->rq_bytes_sent == req->rq_snd_buf.len)
++	if (transport->xmit.offset == 0 || !xprt_connected(xprt))
+ 		goto out_release;
+ 	set_bit(XPRT_CLOSE_WAIT, &xprt->state);
+ out_release:
+@@ -2021,6 +2022,8 @@ static int xs_local_finish_connecting(struct rpc_xprt *xprt,
+ 		write_unlock_bh(&sk->sk_callback_lock);
+ 	}
+ 
++	transport->xmit.offset = 0;
++
+ 	/* Tell the socket layer to start connecting... */
+ 	xprt->stat.connect_count++;
+ 	xprt->stat.connect_start = jiffies;
+@@ -2384,6 +2387,7 @@ static int xs_tcp_finish_connecting(struct rpc_xprt *xprt, struct socket *sock)
+ 	transport->recv.len = 0;
+ 	transport->recv.copied = 0;
+ 	transport->recv.flags = TCP_RCV_COPY_FRAGHDR | TCP_RCV_COPY_XID;
++	transport->xmit.offset = 0;
+ 
+ 	/* Tell the socket layer to start connecting... */
+ 	xprt->stat.connect_count++;
 -- 
 2.17.1
