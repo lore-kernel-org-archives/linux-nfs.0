@@ -1,192 +1,87 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f66.google.com ([209.85.214.66]:51643 "EHLO
-        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725879AbeIEBdF (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Sep 2018 21:33:05 -0400
-Received: by mail-it0-f66.google.com with SMTP id e14-v6so7032162itf.1
-        for <linux-nfs@vger.kernel.org>; Tue, 04 Sep 2018 14:06:14 -0700 (PDT)
+Received: from mail-it0-f67.google.com ([209.85.214.67]:53266 "EHLO
+        mail-it0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726749AbeIEBdV (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Sep 2018 21:33:21 -0400
+Received: by mail-it0-f67.google.com with SMTP id p79-v6so7028928itp.3
+        for <linux-nfs@vger.kernel.org>; Tue, 04 Sep 2018 14:06:30 -0700 (PDT)
 Received: from leira.trondhjem.org.localdomain (c-68-40-195-73.hsd1.mi.comcast.net. [68.40.195.73])
-        by smtp.gmail.com with ESMTPSA id t64-v6sm172860ita.13.2018.09.04.14.06.12
+        by smtp.gmail.com with ESMTPSA id t64-v6sm172860ita.13.2018.09.04.14.06.28
         for <linux-nfs@vger.kernel.org>
         (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
-        Tue, 04 Sep 2018 14:06:12 -0700 (PDT)
+        Tue, 04 Sep 2018 14:06:28 -0700 (PDT)
 From: Trond Myklebust <trondmy@gmail.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 03/34] SUNRPC: The transmitted message must lie in the RPCSEC window of validity
-Date: Tue,  4 Sep 2018 17:05:18 -0400
-Message-Id: <20180904210549.81673-4-trond.myklebust@hammerspace.com>
-In-Reply-To: <20180904210549.81673-3-trond.myklebust@hammerspace.com>
+Subject: [PATCH v2 24/34] SUNRPC: Fix up the back channel transmit
+Date: Tue,  4 Sep 2018 17:05:39 -0400
+Message-Id: <20180904210549.81673-25-trond.myklebust@hammerspace.com>
+In-Reply-To: <20180904210549.81673-24-trond.myklebust@hammerspace.com>
 References: <20180904210549.81673-1-trond.myklebust@hammerspace.com>
  <20180904210549.81673-2-trond.myklebust@hammerspace.com>
  <20180904210549.81673-3-trond.myklebust@hammerspace.com>
+ <20180904210549.81673-4-trond.myklebust@hammerspace.com>
+ <20180904210549.81673-5-trond.myklebust@hammerspace.com>
+ <20180904210549.81673-6-trond.myklebust@hammerspace.com>
+ <20180904210549.81673-7-trond.myklebust@hammerspace.com>
+ <20180904210549.81673-8-trond.myklebust@hammerspace.com>
+ <20180904210549.81673-9-trond.myklebust@hammerspace.com>
+ <20180904210549.81673-10-trond.myklebust@hammerspace.com>
+ <20180904210549.81673-11-trond.myklebust@hammerspace.com>
+ <20180904210549.81673-12-trond.myklebust@hammerspace.com>
+ <20180904210549.81673-13-trond.myklebust@hammerspace.com>
+ <20180904210549.81673-14-trond.myklebust@hammerspace.com>
+ <20180904210549.81673-15-trond.myklebust@hammerspace.com>
+ <20180904210549.81673-16-trond.myklebust@hammerspace.com>
+ <20180904210549.81673-17-trond.myklebust@hammerspace.com>
+ <20180904210549.81673-18-trond.myklebust@hammerspace.com>
+ <20180904210549.81673-19-trond.myklebust@hammerspace.com>
+ <20180904210549.81673-20-trond.myklebust@hammerspace.com>
+ <20180904210549.81673-21-trond.myklebust@hammerspace.com>
+ <20180904210549.81673-22-trond.myklebust@hammerspace.com>
+ <20180904210549.81673-23-trond.myklebust@hammerspace.com>
+ <20180904210549.81673-24-trond.myklebust@hammerspace.com>
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If a message has been encoded using RPCSEC_GSS, the server is
-maintaining a window of sequence numbers that it considers valid.
-The client should normally be tracking that window, and needs to
-verify that the sequence number used by the message being transmitted
-still lies inside the window of validity.
-
-So far, we've been able to assume this condition would be realised
-automatically, since the client has been encoding the message only
-after taking the socket lock. Once we change that condition, we
-will need the explicit check.
+Fix up the back channel code to recognise that it has already been
+transmitted, so does not need to be called again.
+Also ensure that we set req->rq_task.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- include/linux/sunrpc/auth.h     |  2 ++
- include/linux/sunrpc/auth_gss.h |  1 +
- net/sunrpc/auth.c               | 10 ++++++++
- net/sunrpc/auth_gss/auth_gss.c  | 41 +++++++++++++++++++++++++++++++++
- net/sunrpc/clnt.c               |  3 +++
- net/sunrpc/xprt.c               |  7 ++++++
- 6 files changed, 64 insertions(+)
+ net/sunrpc/clnt.c | 5 +++++
+ 1 file changed, 5 insertions(+)
 
-diff --git a/include/linux/sunrpc/auth.h b/include/linux/sunrpc/auth.h
-index 58a6765c1c5e..2c97a3933ef9 100644
---- a/include/linux/sunrpc/auth.h
-+++ b/include/linux/sunrpc/auth.h
-@@ -157,6 +157,7 @@ struct rpc_credops {
- 	int			(*crkey_timeout)(struct rpc_cred *);
- 	bool			(*crkey_to_expire)(struct rpc_cred *);
- 	char *			(*crstringify_acceptor)(struct rpc_cred *);
-+	bool			(*crneed_reencode)(struct rpc_task *);
- };
- 
- extern const struct rpc_authops	authunix_ops;
-@@ -192,6 +193,7 @@ __be32 *		rpcauth_marshcred(struct rpc_task *, __be32 *);
- __be32 *		rpcauth_checkverf(struct rpc_task *, __be32 *);
- int			rpcauth_wrap_req(struct rpc_task *task, kxdreproc_t encode, void *rqstp, __be32 *data, void *obj);
- int			rpcauth_unwrap_resp(struct rpc_task *task, kxdrdproc_t decode, void *rqstp, __be32 *data, void *obj);
-+bool			rpcauth_xmit_need_reencode(struct rpc_task *task);
- int			rpcauth_refreshcred(struct rpc_task *);
- void			rpcauth_invalcred(struct rpc_task *);
- int			rpcauth_uptodatecred(struct rpc_task *);
-diff --git a/include/linux/sunrpc/auth_gss.h b/include/linux/sunrpc/auth_gss.h
-index 0c9eac351aab..30427b729070 100644
---- a/include/linux/sunrpc/auth_gss.h
-+++ b/include/linux/sunrpc/auth_gss.h
-@@ -70,6 +70,7 @@ struct gss_cl_ctx {
- 	refcount_t		count;
- 	enum rpc_gss_proc	gc_proc;
- 	u32			gc_seq;
-+	u32			gc_seq_xmit;
- 	spinlock_t		gc_seq_lock;
- 	struct gss_ctx		*gc_gss_ctx;
- 	struct xdr_netobj	gc_wire_ctx;
-diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
-index 305ecea92170..59df5cdba0ac 100644
---- a/net/sunrpc/auth.c
-+++ b/net/sunrpc/auth.c
-@@ -817,6 +817,16 @@ rpcauth_unwrap_resp(struct rpc_task *task, kxdrdproc_t decode, void *rqstp,
- 	return rpcauth_unwrap_req_decode(decode, rqstp, data, obj);
- }
- 
-+bool
-+rpcauth_xmit_need_reencode(struct rpc_task *task)
-+{
-+	struct rpc_cred *cred = task->tk_rqstp->rq_cred;
-+
-+	if (!cred || !cred->cr_ops->crneed_reencode)
-+		return false;
-+	return cred->cr_ops->crneed_reencode(task);
-+}
-+
- int
- rpcauth_refreshcred(struct rpc_task *task)
- {
-diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-index 21c0aa0a0d1d..c898a7c75e84 100644
---- a/net/sunrpc/auth_gss/auth_gss.c
-+++ b/net/sunrpc/auth_gss/auth_gss.c
-@@ -1984,6 +1984,46 @@ gss_unwrap_req_decode(kxdrdproc_t decode, struct rpc_rqst *rqstp,
- 	return decode(rqstp, &xdr, obj);
- }
- 
-+static bool
-+gss_seq_is_newer(u32 new, u32 old)
-+{
-+	return (s32)(new - old) > 0;
-+}
-+
-+static bool
-+gss_xmit_need_reencode(struct rpc_task *task)
-+{
-+	struct rpc_rqst *req = task->tk_rqstp;
-+	struct rpc_cred *cred = req->rq_cred;
-+	struct gss_cl_ctx *ctx = gss_cred_get_ctx(cred);
-+	u32 win, seq_xmit;
-+	bool ret = true;
-+
-+	if (!ctx)
-+		return true;
-+
-+	if (gss_seq_is_newer(req->rq_seqno, READ_ONCE(ctx->gc_seq)))
-+		goto out;
-+
-+	seq_xmit = READ_ONCE(ctx->gc_seq_xmit);
-+	while (gss_seq_is_newer(req->rq_seqno, seq_xmit)) {
-+		u32 tmp = seq_xmit;
-+
-+		seq_xmit = cmpxchg(&ctx->gc_seq_xmit, tmp, req->rq_seqno);
-+		if (seq_xmit == tmp) {
-+			ret = false;
-+			goto out;
-+		}
-+	}
-+
-+	win = ctx->gc_win;
-+	if (win > 0)
-+		ret = !gss_seq_is_newer(req->rq_seqno, seq_xmit - win);
-+out:
-+	gss_put_ctx(ctx);
-+	return ret;
-+}
-+
- static int
- gss_unwrap_resp(struct rpc_task *task,
- 		kxdrdproc_t decode, void *rqstp, __be32 *p, void *obj)
-@@ -2052,6 +2092,7 @@ static const struct rpc_credops gss_credops = {
- 	.crunwrap_resp		= gss_unwrap_resp,
- 	.crkey_timeout		= gss_key_timeout,
- 	.crstringify_acceptor	= gss_stringify_acceptor,
-+	.crneed_reencode	= gss_xmit_need_reencode,
- };
- 
- static const struct rpc_credops gss_nullops = {
 diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index 4f1ec8013332..d41b5ac1d4e8 100644
+index 21713bed812a..00384bde593e 100644
 --- a/net/sunrpc/clnt.c
 +++ b/net/sunrpc/clnt.c
-@@ -2184,6 +2184,9 @@ call_status(struct rpc_task *task)
- 		/* shutdown or soft timeout */
- 		rpc_exit(task, status);
- 		break;
-+	case -EBADMSG:
-+		task->tk_action = call_transmit;
-+		break;
- 	default:
- 		if (clnt->cl_chatty)
- 			printk("%s: RPC call returned error %d\n",
-diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-index 6aa09edc9567..3973e10ea2bd 100644
---- a/net/sunrpc/xprt.c
-+++ b/net/sunrpc/xprt.c
-@@ -1014,6 +1014,13 @@ void xprt_transmit(struct rpc_task *task)
- 	dprintk("RPC: %5u xprt_transmit(%u)\n", task->tk_pid, req->rq_slen);
+@@ -1150,6 +1150,7 @@ struct rpc_task *rpc_run_bc_task(struct rpc_rqst *req)
+ 	 */
+ 	task = rpc_new_task(&task_setup_data);
+ 	task->tk_rqstp = req;
++	req->rq_task = task;
  
- 	if (!req->rq_reply_bytes_recvd) {
+ 	/*
+ 	 * Set up the xdr_buf length.
+@@ -2054,6 +2055,9 @@ call_bc_transmit(struct rpc_task *task)
+ 	struct rpc_rqst *req = task->tk_rqstp;
+ 
+ 	xprt_request_enqueue_transmit(task);
++	if (!test_bit(RPC_TASK_NEED_XMIT, &task->tk_runstate))
++		goto out_wakeup;
 +
-+		/* Verify that our message lies in the RPCSEC_GSS window */
-+		if (!req->rq_bytes_sent && rpcauth_xmit_need_reencode(task)) {
-+			task->tk_status = -EBADMSG;
-+			return;
-+		}
-+
- 		if (list_empty(&req->rq_list) && rpc_reply_expected(task)) {
- 			/*
- 			 * Add to the list only if we're expecting a reply
+ 	if (!xprt_prepare_transmit(task))
+ 		goto out_retry;
+ 
+@@ -2108,6 +2112,7 @@ call_bc_transmit(struct rpc_task *task)
+ 			"error: %d\n", task->tk_status);
+ 		break;
+ 	}
++out_wakeup:
+ 	rpc_wake_up_queued_task(&req->rq_xprt->pending, task);
+ out_done:
+ 	task->tk_action = rpc_exit_task;
 -- 
 2.17.1
