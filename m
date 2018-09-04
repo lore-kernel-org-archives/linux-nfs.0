@@ -1,195 +1,196 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:56234 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726200AbeIDUMB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 4 Sep 2018 16:12:01 -0400
-Date: Tue, 4 Sep 2018 11:46:20 -0400
-To: Trond Myklebust <trondmy@gmail.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 03/27] SUNRPC: The transmitted message must lie in the
- RPCSEC window of validity
-Message-ID: <20180904154620.GC17478@fieldses.org>
-References: <20180903152936.24325-1-trond.myklebust@hammerspace.com>
- <20180903152936.24325-2-trond.myklebust@hammerspace.com>
- <20180903152936.24325-3-trond.myklebust@hammerspace.com>
- <20180903152936.24325-4-trond.myklebust@hammerspace.com>
+Received: from mail-io0-f196.google.com ([209.85.223.196]:36044 "EHLO
+        mail-io0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726222AbeIEBdG (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Sep 2018 21:33:06 -0400
+Received: by mail-io0-f196.google.com with SMTP id q5-v6so4238542iop.3
+        for <linux-nfs@vger.kernel.org>; Tue, 04 Sep 2018 14:06:14 -0700 (PDT)
+Received: from leira.trondhjem.org.localdomain (c-68-40-195-73.hsd1.mi.comcast.net. [68.40.195.73])
+        by smtp.gmail.com with ESMTPSA id t64-v6sm172860ita.13.2018.09.04.14.06.13
+        for <linux-nfs@vger.kernel.org>
+        (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
+        Tue, 04 Sep 2018 14:06:13 -0700 (PDT)
+From: Trond Myklebust <trondmy@gmail.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 04/34] SUNRPC: Simplify identification of when the message send/receive is complete
+Date: Tue,  4 Sep 2018 17:05:19 -0400
+Message-Id: <20180904210549.81673-5-trond.myklebust@hammerspace.com>
+In-Reply-To: <20180904210549.81673-4-trond.myklebust@hammerspace.com>
+References: <20180904210549.81673-1-trond.myklebust@hammerspace.com>
+ <20180904210549.81673-2-trond.myklebust@hammerspace.com>
+ <20180904210549.81673-3-trond.myklebust@hammerspace.com>
+ <20180904210549.81673-4-trond.myklebust@hammerspace.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20180903152936.24325-4-trond.myklebust@hammerspace.com>
-From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Sep 03, 2018 at 11:29:12AM -0400, Trond Myklebust wrote:
-> If a message has been encoded using RPCSEC_GSS, the server is
-> maintaining a window of sequence numbers that it considers valid.
-> The client should normally be tracking that window, and needs to
-> verify that the sequence number used by the message being transmitted
-> still lies inside the window of validity.
-> 
-> So far, we've been able to assume this condition would be realised
-> automatically, since the server has been encoding the message only
+Add states to indicate that the message send and receive are not yet
+complete.
 
-Do you mean "the client has been encoding..."?
+Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
+---
+ include/linux/sunrpc/sched.h |  6 ++++--
+ net/sunrpc/clnt.c            | 19 +++++++------------
+ net/sunrpc/xprt.c            | 17 ++++++++++++++---
+ 3 files changed, 25 insertions(+), 17 deletions(-)
 
---b.
-
-> after taking the socket lock. Once we change that condition, we
-> will need the explicit check.
-> 
-> Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
-> ---
->  include/linux/sunrpc/auth.h     |  2 ++
->  include/linux/sunrpc/auth_gss.h |  1 +
->  net/sunrpc/auth.c               | 10 ++++++++
->  net/sunrpc/auth_gss/auth_gss.c  | 41 +++++++++++++++++++++++++++++++++
->  net/sunrpc/clnt.c               |  3 +++
->  net/sunrpc/xprt.c               |  7 ++++++
->  6 files changed, 64 insertions(+)
-> 
-> diff --git a/include/linux/sunrpc/auth.h b/include/linux/sunrpc/auth.h
-> index 58a6765c1c5e..2c97a3933ef9 100644
-> --- a/include/linux/sunrpc/auth.h
-> +++ b/include/linux/sunrpc/auth.h
-> @@ -157,6 +157,7 @@ struct rpc_credops {
->  	int			(*crkey_timeout)(struct rpc_cred *);
->  	bool			(*crkey_to_expire)(struct rpc_cred *);
->  	char *			(*crstringify_acceptor)(struct rpc_cred *);
-> +	bool			(*crneed_reencode)(struct rpc_task *);
->  };
->  
->  extern const struct rpc_authops	authunix_ops;
-> @@ -192,6 +193,7 @@ __be32 *		rpcauth_marshcred(struct rpc_task *, __be32 *);
->  __be32 *		rpcauth_checkverf(struct rpc_task *, __be32 *);
->  int			rpcauth_wrap_req(struct rpc_task *task, kxdreproc_t encode, void *rqstp, __be32 *data, void *obj);
->  int			rpcauth_unwrap_resp(struct rpc_task *task, kxdrdproc_t decode, void *rqstp, __be32 *data, void *obj);
-> +bool			rpcauth_xmit_need_reencode(struct rpc_task *task);
->  int			rpcauth_refreshcred(struct rpc_task *);
->  void			rpcauth_invalcred(struct rpc_task *);
->  int			rpcauth_uptodatecred(struct rpc_task *);
-> diff --git a/include/linux/sunrpc/auth_gss.h b/include/linux/sunrpc/auth_gss.h
-> index 0c9eac351aab..30427b729070 100644
-> --- a/include/linux/sunrpc/auth_gss.h
-> +++ b/include/linux/sunrpc/auth_gss.h
-> @@ -70,6 +70,7 @@ struct gss_cl_ctx {
->  	refcount_t		count;
->  	enum rpc_gss_proc	gc_proc;
->  	u32			gc_seq;
-> +	u32			gc_seq_xmit;
->  	spinlock_t		gc_seq_lock;
->  	struct gss_ctx		*gc_gss_ctx;
->  	struct xdr_netobj	gc_wire_ctx;
-> diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
-> index 305ecea92170..59df5cdba0ac 100644
-> --- a/net/sunrpc/auth.c
-> +++ b/net/sunrpc/auth.c
-> @@ -817,6 +817,16 @@ rpcauth_unwrap_resp(struct rpc_task *task, kxdrdproc_t decode, void *rqstp,
->  	return rpcauth_unwrap_req_decode(decode, rqstp, data, obj);
->  }
->  
-> +bool
-> +rpcauth_xmit_need_reencode(struct rpc_task *task)
-> +{
-> +	struct rpc_cred *cred = task->tk_rqstp->rq_cred;
-> +
-> +	if (!cred || !cred->cr_ops->crneed_reencode)
-> +		return false;
-> +	return cred->cr_ops->crneed_reencode(task);
-> +}
-> +
->  int
->  rpcauth_refreshcred(struct rpc_task *task)
->  {
-> diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-> index 21c0aa0a0d1d..c898a7c75e84 100644
-> --- a/net/sunrpc/auth_gss/auth_gss.c
-> +++ b/net/sunrpc/auth_gss/auth_gss.c
-> @@ -1984,6 +1984,46 @@ gss_unwrap_req_decode(kxdrdproc_t decode, struct rpc_rqst *rqstp,
->  	return decode(rqstp, &xdr, obj);
->  }
->  
-> +static bool
-> +gss_seq_is_newer(u32 new, u32 old)
-> +{
-> +	return (s32)(new - old) > 0;
-> +}
-> +
-> +static bool
-> +gss_xmit_need_reencode(struct rpc_task *task)
-> +{
-> +	struct rpc_rqst *req = task->tk_rqstp;
-> +	struct rpc_cred *cred = req->rq_cred;
-> +	struct gss_cl_ctx *ctx = gss_cred_get_ctx(cred);
-> +	u32 win, seq_xmit;
-> +	bool ret = true;
-> +
-> +	if (!ctx)
-> +		return true;
-> +
-> +	if (gss_seq_is_newer(req->rq_seqno, READ_ONCE(ctx->gc_seq)))
-> +		goto out;
-> +
-> +	seq_xmit = READ_ONCE(ctx->gc_seq_xmit);
-> +	while (gss_seq_is_newer(req->rq_seqno, seq_xmit)) {
-> +		u32 tmp = seq_xmit;
-> +
-> +		seq_xmit = cmpxchg(&ctx->gc_seq_xmit, tmp, req->rq_seqno);
-> +		if (seq_xmit == tmp) {
-> +			ret = false;
-> +			goto out;
-> +		}
-> +	}
-> +
-> +	win = ctx->gc_win;
-> +	if (win > 0)
-> +		ret = !gss_seq_is_newer(req->rq_seqno, seq_xmit - win);
-> +out:
-> +	gss_put_ctx(ctx);
-> +	return ret;
-> +}
-> +
->  static int
->  gss_unwrap_resp(struct rpc_task *task,
->  		kxdrdproc_t decode, void *rqstp, __be32 *p, void *obj)
-> @@ -2052,6 +2092,7 @@ static const struct rpc_credops gss_credops = {
->  	.crunwrap_resp		= gss_unwrap_resp,
->  	.crkey_timeout		= gss_key_timeout,
->  	.crstringify_acceptor	= gss_stringify_acceptor,
-> +	.crneed_reencode	= gss_xmit_need_reencode,
->  };
->  
->  static const struct rpc_credops gss_nullops = {
-> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-> index 4f1ec8013332..d41b5ac1d4e8 100644
-> --- a/net/sunrpc/clnt.c
-> +++ b/net/sunrpc/clnt.c
-> @@ -2184,6 +2184,9 @@ call_status(struct rpc_task *task)
->  		/* shutdown or soft timeout */
->  		rpc_exit(task, status);
->  		break;
-> +	case -EBADMSG:
-> +		task->tk_action = call_transmit;
-> +		break;
->  	default:
->  		if (clnt->cl_chatty)
->  			printk("%s: RPC call returned error %d\n",
-> diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-> index 6aa09edc9567..3973e10ea2bd 100644
-> --- a/net/sunrpc/xprt.c
-> +++ b/net/sunrpc/xprt.c
-> @@ -1014,6 +1014,13 @@ void xprt_transmit(struct rpc_task *task)
->  	dprintk("RPC: %5u xprt_transmit(%u)\n", task->tk_pid, req->rq_slen);
->  
->  	if (!req->rq_reply_bytes_recvd) {
-> +
-> +		/* Verify that our message lies in the RPCSEC_GSS window */
-> +		if (!req->rq_bytes_sent && rpcauth_xmit_need_reencode(task)) {
-> +			task->tk_status = -EBADMSG;
-> +			return;
-> +		}
-> +
->  		if (list_empty(&req->rq_list) && rpc_reply_expected(task)) {
->  			/*
->  			 * Add to the list only if we're expecting a reply
-> -- 
-> 2.17.1
+diff --git a/include/linux/sunrpc/sched.h b/include/linux/sunrpc/sched.h
+index 592653becd91..9e655df70131 100644
+--- a/include/linux/sunrpc/sched.h
++++ b/include/linux/sunrpc/sched.h
+@@ -140,8 +140,10 @@ struct rpc_task_setup {
+ #define RPC_TASK_RUNNING	0
+ #define RPC_TASK_QUEUED		1
+ #define RPC_TASK_ACTIVE		2
+-#define RPC_TASK_MSG_RECV	3
+-#define RPC_TASK_MSG_RECV_WAIT	4
++#define RPC_TASK_NEED_XMIT	3
++#define RPC_TASK_NEED_RECV	4
++#define RPC_TASK_MSG_RECV	5
++#define RPC_TASK_MSG_RECV_WAIT	6
+ 
+ #define RPC_IS_RUNNING(t)	test_bit(RPC_TASK_RUNNING, &(t)->tk_runstate)
+ #define rpc_set_running(t)	set_bit(RPC_TASK_RUNNING, &(t)->tk_runstate)
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index d41b5ac1d4e8..e5ac35e803ad 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -1156,6 +1156,7 @@ struct rpc_task *rpc_run_bc_task(struct rpc_rqst *req)
+ 	 */
+ 	xbufp->len = xbufp->head[0].iov_len + xbufp->page_len +
+ 			xbufp->tail[0].iov_len;
++	set_bit(RPC_TASK_NEED_XMIT, &task->tk_runstate);
+ 
+ 	task->tk_action = call_bc_transmit;
+ 	atomic_inc(&task->tk_count);
+@@ -1720,17 +1721,10 @@ call_allocate(struct rpc_task *task)
+ 	rpc_exit(task, -ERESTARTSYS);
+ }
+ 
+-static inline int
++static int
+ rpc_task_need_encode(struct rpc_task *task)
+ {
+-	return task->tk_rqstp->rq_snd_buf.len == 0;
+-}
+-
+-static inline void
+-rpc_task_force_reencode(struct rpc_task *task)
+-{
+-	task->tk_rqstp->rq_snd_buf.len = 0;
+-	task->tk_rqstp->rq_bytes_sent = 0;
++	return test_bit(RPC_TASK_NEED_XMIT, &task->tk_runstate) == 0;
+ }
+ 
+ /*
+@@ -1765,6 +1759,8 @@ rpc_xdr_encode(struct rpc_task *task)
+ 
+ 	task->tk_status = rpcauth_wrap_req(task, encode, req, p,
+ 			task->tk_msg.rpc_argp);
++	if (task->tk_status == 0)
++		set_bit(RPC_TASK_NEED_XMIT, &task->tk_runstate);
+ }
+ 
+ /*
+@@ -1999,7 +1995,6 @@ call_transmit_status(struct rpc_task *task)
+ 	 */
+ 	if (task->tk_status == 0) {
+ 		xprt_end_transmit(task);
+-		rpc_task_force_reencode(task);
+ 		return;
+ 	}
+ 
+@@ -2010,7 +2005,6 @@ call_transmit_status(struct rpc_task *task)
+ 	default:
+ 		dprint_status(task);
+ 		xprt_end_transmit(task);
+-		rpc_task_force_reencode(task);
+ 		break;
+ 		/*
+ 		 * Special cases: if we've been waiting on the
+@@ -2038,7 +2032,7 @@ call_transmit_status(struct rpc_task *task)
+ 	case -EADDRINUSE:
+ 	case -ENOTCONN:
+ 	case -EPIPE:
+-		rpc_task_force_reencode(task);
++		break;
+ 	}
+ }
+ 
+@@ -2185,6 +2179,7 @@ call_status(struct rpc_task *task)
+ 		rpc_exit(task, status);
+ 		break;
+ 	case -EBADMSG:
++		clear_bit(RPC_TASK_NEED_XMIT, &task->tk_runstate);
+ 		task->tk_action = call_transmit;
+ 		break;
+ 	default:
+diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+index 3973e10ea2bd..45d580cd93ac 100644
+--- a/net/sunrpc/xprt.c
++++ b/net/sunrpc/xprt.c
+@@ -936,10 +936,18 @@ void xprt_complete_rqst(struct rpc_task *task, int copied)
+ 	/* req->rq_reply_bytes_recvd */
+ 	smp_wmb();
+ 	req->rq_reply_bytes_recvd = copied;
++	clear_bit(RPC_TASK_NEED_RECV, &task->tk_runstate);
+ 	rpc_wake_up_queued_task(&xprt->pending, task);
+ }
+ EXPORT_SYMBOL_GPL(xprt_complete_rqst);
+ 
++static bool
++xprt_request_data_received(struct rpc_task *task)
++{
++	return !test_bit(RPC_TASK_NEED_RECV, &task->tk_runstate) &&
++		task->tk_rqstp->rq_reply_bytes_recvd != 0;
++}
++
+ static void xprt_timer(struct rpc_task *task)
+ {
+ 	struct rpc_rqst *req = task->tk_rqstp;
+@@ -1031,12 +1039,13 @@ void xprt_transmit(struct rpc_task *task)
+ 			/* Add request to the receive list */
+ 			spin_lock(&xprt->recv_lock);
+ 			list_add_tail(&req->rq_list, &xprt->recv);
++			set_bit(RPC_TASK_NEED_RECV, &task->tk_runstate);
+ 			spin_unlock(&xprt->recv_lock);
+ 			xprt_reset_majortimeo(req);
+ 			/* Turn off autodisconnect */
+ 			del_singleshot_timer_sync(&xprt->timer);
+ 		}
+-	} else if (!req->rq_bytes_sent)
++	} else if (xprt_request_data_received(task) && !req->rq_bytes_sent)
+ 		return;
+ 
+ 	connect_cookie = xprt->connect_cookie;
+@@ -1046,9 +1055,11 @@ void xprt_transmit(struct rpc_task *task)
+ 		task->tk_status = status;
+ 		return;
+ 	}
++
+ 	xprt_inject_disconnect(xprt);
+ 
+ 	dprintk("RPC: %5u xmit complete\n", task->tk_pid);
++	clear_bit(RPC_TASK_NEED_XMIT, &task->tk_runstate);
+ 	task->tk_flags |= RPC_TASK_SENT;
+ 	spin_lock_bh(&xprt->transport_lock);
+ 
+@@ -1062,14 +1073,14 @@ void xprt_transmit(struct rpc_task *task)
+ 	spin_unlock_bh(&xprt->transport_lock);
+ 
+ 	req->rq_connect_cookie = connect_cookie;
+-	if (rpc_reply_expected(task) && !READ_ONCE(req->rq_reply_bytes_recvd)) {
++	if (test_bit(RPC_TASK_NEED_RECV, &task->tk_runstate)) {
+ 		/*
+ 		 * Sleep on the pending queue if we're expecting a reply.
+ 		 * The spinlock ensures atomicity between the test of
+ 		 * req->rq_reply_bytes_recvd, and the call to rpc_sleep_on().
+ 		 */
+ 		spin_lock(&xprt->recv_lock);
+-		if (!req->rq_reply_bytes_recvd) {
++		if (test_bit(RPC_TASK_NEED_RECV, &task->tk_runstate)) {
+ 			rpc_sleep_on(&xprt->pending, task, xprt_timer);
+ 			/*
+ 			 * Send an extra queue wakeup call if the
+-- 
+2.17.1
