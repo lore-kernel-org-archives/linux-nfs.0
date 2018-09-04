@@ -1,81 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f66.google.com ([209.85.214.66]:50337 "EHLO
-        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726749AbeIEBdY (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Sep 2018 21:33:24 -0400
-Received: by mail-it0-f66.google.com with SMTP id j81-v6so7043024ite.0
-        for <linux-nfs@vger.kernel.org>; Tue, 04 Sep 2018 14:06:32 -0700 (PDT)
-Received: from leira.trondhjem.org.localdomain (c-68-40-195-73.hsd1.mi.comcast.net. [68.40.195.73])
-        by smtp.gmail.com with ESMTPSA id t64-v6sm172860ita.13.2018.09.04.14.06.31
-        for <linux-nfs@vger.kernel.org>
-        (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
-        Tue, 04 Sep 2018 14:06:31 -0700 (PDT)
-From: Trond Myklebust <trondmy@gmail.com>
+Received: from mx2.suse.de ([195.135.220.15]:49124 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1726520AbeIEDOn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 4 Sep 2018 23:14:43 -0400
+Received: from relay1.suse.de (unknown [195.135.220.254])
+        by mx1.suse.de (Postfix) with ESMTP id 91FD0AE62
+        for <linux-nfs@vger.kernel.org>; Tue,  4 Sep 2018 22:47:28 +0000 (UTC)
+From: NeilBrown <neilb@suse.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 28/34] SUNRPC: Queue the request for transmission immediately after encoding
-Date: Tue,  4 Sep 2018 17:05:43 -0400
-Message-Id: <20180904210549.81673-29-trond.myklebust@hammerspace.com>
-In-Reply-To: <20180904210549.81673-28-trond.myklebust@hammerspace.com>
-References: <20180904210549.81673-1-trond.myklebust@hammerspace.com>
- <20180904210549.81673-2-trond.myklebust@hammerspace.com>
- <20180904210549.81673-3-trond.myklebust@hammerspace.com>
- <20180904210549.81673-4-trond.myklebust@hammerspace.com>
- <20180904210549.81673-5-trond.myklebust@hammerspace.com>
- <20180904210549.81673-6-trond.myklebust@hammerspace.com>
- <20180904210549.81673-7-trond.myklebust@hammerspace.com>
- <20180904210549.81673-8-trond.myklebust@hammerspace.com>
- <20180904210549.81673-9-trond.myklebust@hammerspace.com>
- <20180904210549.81673-10-trond.myklebust@hammerspace.com>
- <20180904210549.81673-11-trond.myklebust@hammerspace.com>
- <20180904210549.81673-12-trond.myklebust@hammerspace.com>
- <20180904210549.81673-13-trond.myklebust@hammerspace.com>
- <20180904210549.81673-14-trond.myklebust@hammerspace.com>
- <20180904210549.81673-15-trond.myklebust@hammerspace.com>
- <20180904210549.81673-16-trond.myklebust@hammerspace.com>
- <20180904210549.81673-17-trond.myklebust@hammerspace.com>
- <20180904210549.81673-18-trond.myklebust@hammerspace.com>
- <20180904210549.81673-19-trond.myklebust@hammerspace.com>
- <20180904210549.81673-20-trond.myklebust@hammerspace.com>
- <20180904210549.81673-21-trond.myklebust@hammerspace.com>
- <20180904210549.81673-22-trond.myklebust@hammerspace.com>
- <20180904210549.81673-23-trond.myklebust@hammerspace.com>
- <20180904210549.81673-24-trond.myklebust@hammerspace.com>
- <20180904210549.81673-25-trond.myklebust@hammerspace.com>
- <20180904210549.81673-26-trond.myklebust@hammerspace.com>
- <20180904210549.81673-27-trond.myklebust@hammerspace.com>
- <20180904210549.81673-28-trond.myklebust@hammerspace.com>
+Date: Wed, 05 Sep 2018 08:47:23 +1000
+Subject: NFSv4.1 session reset needs to update ->rsize and ->wsize - how???
+Message-ID: <87r2i8vq10.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
+Content-Type: multipart/signed; boundary="=-=-=";
+        micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Move up the call to xprt_request_enqueue_transmit() to call_encode()
-so that the queue order reflects the order in which slots were
-allocated.
+--=-=-=
+Content-Type: text/plain
 
-Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
----
- net/sunrpc/clnt.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index 52494baca7bc..4f8803413499 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -1785,6 +1785,7 @@ call_encode(struct rpc_task *task)
- 	if (rpc_reply_expected(task))
- 		xprt_request_enqueue_receive(task);
- 	set_bit(RPC_TASK_NEED_XMIT, &task->tk_runstate);
-+	xprt_request_enqueue_transmit(task);
- out:
- 	task->tk_action = call_bind;
- }
-@@ -1971,7 +1972,6 @@ call_transmit(struct rpc_task *task)
- 	dprint_status(task);
- 
- 	task->tk_action = call_transmit_status;
--	xprt_request_enqueue_transmit(task);
- 	if (!test_bit(RPC_TASK_NEED_XMIT, &task->tk_runstate))
- 		return;
- 
--- 
-2.17.1
+With NFSv4.1, the server specifies max_rqst_sz and max_resp_sz in the
+reply to CREATE session.
+
+If the client finds it needs to call nfs4_reset_session(), it might get
+smaller sizes back, so any pending read/writes would need to be resized.
+
+However, I cannot see how the retry handling for reads/writes has any
+chance to change the size.  It looks like a request is broken up to
+match the original ->rsize and ->wsize, then those individual IO
+requests can be retried, but the higher level request is never
+re-evaluated in light of a new size.
+
+Am I missing something, or is this not supported at present?
+If it isn't supported, any suggestions on how best to handle a
+reduction of the rsize/wsize ??
+
+Thanks,
+NeilBrown
+
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+
+iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAluPC3sACgkQOeye3VZi
+gbm8tQ//USYuxvAIIGthdqoMurnk6cA5QAY9FVg4pBlxku6p6j5PEYsPuEEvbf0s
+fpKNZRtYe6Ewv4kvNHwysAHyB6WKdLEfx15/KRZpAnIok/tvRcGmSzW7pfGg3ML9
+TynKq+mhdF8sX7lzlye4XgwOWvaAfR6BO5WjUI4CKqhTnhECF5GLXyXXB7drNXJQ
+99NQu+9bRwgBG8uiRVbha6pwHI7C4cNBZvpuCx02TLDB9IFegojle7NGJQjQLT9q
+L4dZChe5GD0DyYiybGoYKqh5+Rz+JOlWn/JeK6O2YmSH1dKWYLwghPikoclOt5aE
+cigREnEdSnF2YkTyzDFnlVhw54YiP9ztg2Y0I5UnFgQlI9zidtFGvIkKthQLA7AX
+cHLbAIRj3Jqi/G7wTSVYlDDAA2kVQl6M2VDHEH6BNd8pM9IzEEKAkLGTSL6DJCls
+4s6xV9E1iwT+kYwFYzbMn20tmTCM4/Qfr057RJysy3bNjliqO1a/H/clqkFc8joZ
+rXp0NMGSR40HO8LcB8+NXI0ZoL3ikvlMnhXBti/ZV4VTWe0fperope7rH6V4vi8J
+2PmtOA9RVTNjfbtBbyAh10gITrDdJk3pYi5Vn1+86UAuRUXUAO0U5qVzXnG+3Ato
+Vu9QxGGreVhQaY5/VjhVB4YgBw2HBl+9bToIGGrhWz7H9vPDuME=
+=f6RP
+-----END PGP SIGNATURE-----
+--=-=-=--
