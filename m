@@ -1,104 +1,173 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-eopbgr700131.outbound.protection.outlook.com ([40.107.70.131]:51584
-        "EHLO NAM04-SN1-obe.outbound.protection.outlook.com"
+Received: from mx2.suse.de ([195.135.220.15]:56118 "EHLO mx1.suse.de"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1727645AbeIFC3H (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 5 Sep 2018 22:29:07 -0400
-From: Trond Myklebust <trondmy@hammerspace.com>
-To: "neilb@suse.com" <neilb@suse.com>,
-        "aglo@umich.edu" <aglo@umich.edu>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: NFSv4.1 session reset needs to update ->rsize and ->wsize -
- how???
-Date: Wed, 5 Sep 2018 21:56:54 +0000
-Message-ID: <b82396db1fa8c2b7141999f23f9dd60ae8fe8efe.camel@hammerspace.com>
-References: <87r2i8vq10.fsf@notabene.neil.brown.name>
-         <f7f84aced6ae709b1c66e1475e8d79927fa29132.camel@hammerspace.com>
-         <87o9dcvmk6.fsf@notabene.neil.brown.name>
-         <CAN-5tyG0DXosk0RUCM6E+pj-EmMWW5tuKfPg4HJChp9snvcQAQ@mail.gmail.com>
-         <87lg8fveb9.fsf@notabene.neil.brown.name>
-In-Reply-To: <87lg8fveb9.fsf@notabene.neil.brown.name>
-Content-Type: text/plain; charset="utf-8"
+        id S1727657AbeIFCnM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 5 Sep 2018 22:43:12 -0400
+From: NeilBrown <neilb@suse.com>
+To: Trond Myklebust <trondmy@hammerspace.com>,
+        "aglo\@umich.edu" <aglo@umich.edu>
+Date: Thu, 06 Sep 2018 08:10:37 +1000
+Cc: "linux-nfs\@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: NFSv4.1 session reset needs to update ->rsize and ->wsize - how???
+In-Reply-To: <b82396db1fa8c2b7141999f23f9dd60ae8fe8efe.camel@hammerspace.com>
+References: <87r2i8vq10.fsf@notabene.neil.brown.name> <f7f84aced6ae709b1c66e1475e8d79927fa29132.camel@hammerspace.com> <87o9dcvmk6.fsf@notabene.neil.brown.name> <CAN-5tyG0DXosk0RUCM6E+pj-EmMWW5tuKfPg4HJChp9snvcQAQ@mail.gmail.com> <87lg8fveb9.fsf@notabene.neil.brown.name> <b82396db1fa8c2b7141999f23f9dd60ae8fe8efe.camel@hammerspace.com>
+Message-ID: <87in3jvbmq.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
+Content-Type: multipart/signed; boundary="=-=-=";
+        micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDE4LTA5LTA2IGF0IDA3OjEyICsxMDAwLCBOZWlsQnJvd24gd3JvdGU6DQo+IE9u
-IFdlZCwgU2VwIDA1IDIwMTgsIE9sZ2EgS29ybmlldnNrYWlhIHdyb3RlOg0KPiANCj4gPiBPbiBU
-dWUsIFNlcCA0LCAyMDE4IGF0IDg6MDQgUE0gTmVpbEJyb3duIDxuZWlsYkBzdXNlLmNvbT4gd3Jv
-dGU6DQo+ID4gPiANCj4gPiA+IE9uIFR1ZSwgU2VwIDA0IDIwMTgsIFRyb25kIE15a2xlYnVzdCB3
-cm90ZToNCj4gPiA+IA0KPiA+ID4gPiBPbiBXZWQsIDIwMTgtMDktMDUgYXQgMDg6NDcgKzEwMDAs
-IE5laWxCcm93biB3cm90ZToNCj4gPiA+ID4gPiBXaXRoIE5GU3Y0LjEsIHRoZSBzZXJ2ZXIgc3Bl
-Y2lmaWVzIG1heF9ycXN0X3N6IGFuZA0KPiA+ID4gPiA+IG1heF9yZXNwX3N6IGluIHRoZQ0KPiA+
-ID4gPiA+IHJlcGx5IHRvIENSRUFURSBzZXNzaW9uLg0KPiA+ID4gPiA+IA0KPiA+ID4gPiA+IElm
-IHRoZSBjbGllbnQgZmluZHMgaXQgbmVlZHMgdG8gY2FsbCBuZnM0X3Jlc2V0X3Nlc3Npb24oKSwg
-aXQNCj4gPiA+ID4gPiBtaWdodA0KPiA+ID4gPiA+IGdldA0KPiA+ID4gPiA+IHNtYWxsZXIgc2l6
-ZXMgYmFjaywgc28gYW55IHBlbmRpbmcgcmVhZC93cml0ZXMgd291bGQgbmVlZCB0bw0KPiA+ID4g
-PiA+IGJlDQo+ID4gPiA+ID4gcmVzaXplZC4NCj4gPiA+ID4gPiANCj4gPiA+ID4gPiBIb3dldmVy
-LCBJIGNhbm5vdCBzZWUgaG93IHRoZSByZXRyeSBoYW5kbGluZyBmb3IgcmVhZHMvd3JpdGVzDQo+
-ID4gPiA+ID4gaGFzIGFueQ0KPiA+ID4gPiA+IGNoYW5jZSB0byBjaGFuZ2UgdGhlIHNpemUuICBJ
-dCBsb29rcyBsaWtlIGEgcmVxdWVzdCBpcyBicm9rZW4NCj4gPiA+ID4gPiB1cCB0bw0KPiA+ID4g
-PiA+IG1hdGNoIHRoZSBvcmlnaW5hbCAtPnJzaXplIGFuZCAtPndzaXplLCB0aGVuIHRob3NlIGlu
-ZGl2aWR1YWwNCj4gPiA+ID4gPiBJTw0KPiA+ID4gPiA+IHJlcXVlc3RzIGNhbiBiZSByZXRyaWVk
-LCBidXQgdGhlIGhpZ2hlciBsZXZlbCByZXF1ZXN0IGlzDQo+ID4gPiA+ID4gbmV2ZXINCj4gPiA+
-ID4gPiByZS1ldmFsdWF0ZWQgaW4gbGlnaHQgb2YgYSBuZXcgc2l6ZS4NCj4gPiA+ID4gPiANCj4g
-PiA+ID4gPiBBbSBJIG1pc3Npbmcgc29tZXRoaW5nLCBvciBpcyB0aGlzIG5vdCBzdXBwb3J0ZWQg
-YXQgcHJlc2VudD8NCj4gPiA+ID4gPiBJZiBpdCBpc24ndCBzdXBwb3J0ZWQsIGFueSBzdWdnZXN0
-aW9ucyBvbiBob3cgYmVzdCB0byBoYW5kbGUNCj4gPiA+ID4gPiBhDQo+ID4gPiA+ID4gcmVkdWN0
-aW9uIG9mIHRoZSByc2l6ZS93c2l6ZSA/Pw0KPiA+ID4gPiA+IA0KPiA+ID4gPiANCj4gPiA+ID4g
-V2h5IHdvdWxkIGEgc2FuZSBzZXJ2ZXIgd2FudCB0byBkbyB0aGlzPw0KPiA+ID4gDQo+ID4gPiBX
-aHkgd291bGQgYSBzYW5lIHByb3RvY29sIHN1cHBvcnQgaXQ/IDotKQ0KPiA+ID4gDQo+ID4gPiBJ
-IGhhdmUgYSBuZXR3b3JrIHRyYWNlIG9mIFNMRTExLVNQNCAoMy4wIGJhc2VkKSB0YWxraW5nIHRv
-ICJhDQo+ID4gPiBOZXRBcHANCj4gPiA+IGFwcGxpYW5jZSIuDQo+ID4gPiBJdCBzZW5kcyBhIDY0
-SyB3cml0ZSBhbmQgZ2V0cyBORlM0RVJSX1JFUV9UT09fQklHLg0KPiA+ID4gSXQgdGhlbiBjbG9z
-ZXMgdGhlIGZpbGUgKGdldHRpbmcgTkZTNEVSUl9TRVFfTUlTT1JERVJFRCBldmVuDQo+ID4gPiB0
-aG91Z2ggaXQNCj4gPiA+IHVzZWQgYSBzZXEgbnVtYmVyIDEgbW9yZSB0aGFuIHRoZSBXUklURSBy
-ZXF1ZXN0KSwgYW5kIHRoZW4NCj4gPiA+IERFU1RST1lfU0VTU0lPTiBhbmQgQ1JFQVRFX1NFU1NJ
-T04uDQo+ID4gPiBUaGUgQ1JFQVRFX1NFU1NJT04gZ2V0cyAibWF4IHJlcSBzaXplIiBvZiAzMzgx
-MiBhbmQgIm1heCByZXNwDQo+ID4gPiBzaXplIiBvZg0KPiA+ID4gMzM2NzIuDQo+ID4gPiBJdCB0
-aGVuIG9wZW5zIHRoZSBmaWxlIGFnYWluIGFuZCByZXRyaWVzIHRoZSA2NEsgd3JpdGUuLi4uDQo+
-ID4gPiANCj4gPiA+IEkgaGF2ZSBhIHNlcGFyYXRlIHRyYWNlIHNob3dpbmcgdGhlIGluaXRpYWwg
-bW91bnQgd2hlcmUgdGhlIHNpemVzDQo+ID4gPiBhcmUgNzE2ODANCj4gPiA+IGFuZCA4MTkyMC4N
-Cj4gPiA+IA0KPiA+ID4gSSBkb24ndCBoYXZlIGEgdHJhY2Ugd2hlcmUgaXQgc3RvcHMgd29ya2lu
-ZywgYnV0IHJlcG9ydGVkbHkNCj4gPiA+IHdyaXRlcyB3b3JrDQo+ID4gPiBzbW9vdGhseSBmb3Ig
-c29tZSBob3VycyBhZnRlciBhIG1vdW50LCBidXQgdGhlbiBzdWRkZW5seSBzdG9wDQo+ID4gPiB3
-b3JraW5nLg0KPiA+ID4gDQo+ID4gPiBUaGUgQ1JFQVRFX1NFU1NJT04gKmNhbGwqIHJlcXVlc3Rz
-IEkgc2VlIGhhdmUgdGhlIHNtYWxsICgzMkspDQo+ID4gPiBzaXplcywgYnV0DQo+ID4gPiBwcmVz
-dW1hYmx5IHRoZXkgYXJlIHRoZSByZXN1bHQgb2YgYSBwcmV2aW91cyBDUkVBVEVfU0VTU0lPTiBy
-ZXBseQ0KPiA+ID4gZ2l2aW5nDQo+ID4gPiBhIHNtYWxsIHZhbHVlLg0KPiA+ID4gDQo+ID4gPiBJ
-IGp1c3QgaGFkIGEgdGhvdWdodC4NCj4gPiA+IElmIG9uZSBzZXNzaW9uIGlzIHNoYXJlZCBieSB0
-d28gInN0cnVjdCBuZnNfc2VydmVyIiB3aXRoDQo+ID4gPiBkaWZmZXJlbnQNCj4gPiA+IC0+cnNp
-emUgb3IgLT53c2l6ZSwgdGhlbiB0aGUgc2Vzc2lvbiBtaWdodCBnZXQgc2V0IHVwIHdpdGggdGhl
-DQo+ID4gPiBzbWFsbGVyDQo+ID4gPiBzaXplLCBhbmQgdGhlIG1vdW50IHVzaW5nIHRoZSBsYXJn
-ZXIgc2l6ZSB3aWxsIGdldCBjb25mdXNlZC4NCj4gPiA+IEluIDMuMCAoYW5kIGV2ZW4gMy4xMCkg
-bmZzNF9pbml0X3Nlc3Npb24oKSBsaW1pdHMgdGhlIHJlcXVlc3RlZA0KPiA+ID4gc2Vzc2lvbg0K
-PiA+ID4gcGFyYW1ldGVycyB0byAtPnJzaXplIGFuZCAtPndzaXplLg0KPiA+ID4gVGhhdCBjaGFu
-Z2VkIGluIDE4YWFkM2Q1NTJjNy4NCj4gPiA+IA0KPiA+ID4gTWF5YmUgSSBqdXN0IG5lZWQgdG8g
-cmVtb3ZlIHRoYXQgY29kZSBmcm9tIG5mczRfaW5pdF9zZXNzaW9uKCkuDQo+ID4gPiBJJ2xsIGdp
-dmUgaXQgYSB0cnkuDQo+ID4gPiANCj4gPiANCj4gPiBOZWlsLCBkb2VzIHRoZSBjb2RlIGhhdmUg
-dGhpcyBjb21taXQ/DQo+ID4gDQo+ID4gY29tbWl0IDAzMzg1MzMyNWZlM2JkYzcwODE5YThiOTc5
-MTViZDNiY2E0MWQzYWYNCj4gPiBBdXRob3I6IE9sZ2EgS29ybmlldnNrYWlhIDxrb2xnYUBuZXRh
-cHAuY29tPg0KPiA+IERhdGU6ICAgV2VkIE1hciA4IDE0OjM5OjE1IDIwMTcgLTA1MDANCj4gPiAN
-Cj4gPiAgICAgTkZTdjQuMSByZXNwZWN0IHNlcnZlcidzIG1heCBzaXplIGluIENSRUFURV9TRVNT
-SU9ODQo+ID4gDQo+ID4gICAgIEN1cnJlbnRseSBjbGllbnQgZG9lc24ndCByZXNwZWN0IG1heCBz
-aXplcyBzZXJ2ZXIgcmV0dXJucyBpbg0KPiA+IENSRUFURV9TRVNTSU9OLg0KPiA+ICAgICBuZnM0
-X3Nlc3Npb25fc2V0X3J3c2l6ZSgpIGdldHMgY2FsbGVkIGFuZCBzZXJ2ZXItPnJzaXplLA0KPiA+
-IHNlcnZlci0+d3NpemUgYXJlIDANCj4gPiAgICAgc28gdGhleSBuZXZlciBnZXQgc2V0IHRvIHRo
-ZSBzaXplcyByZXR1cm5lZCBieSB0aGUgc2VydmVyLg0KPiA+IA0KPiA+ICAgICBTaWduZWQtb2Zm
-LWJ5OiBPbGdhIEtvcm5pZXZza2FpYSA8a29sZ2FAbmV0YXBwLmNvbT4NCj4gPiAgICAgU2lnbmVk
-LW9mZi1ieTogQW5uYSBTY2h1bWFrZXIgPEFubmEuU2NodW1ha2VyQE5ldGFwcC5jb20+DQo+ID4g
-DQo+ID4gPiBUaGFua3MsDQo+ID4gPiBOZWlsQnJvd24NCj4gDQo+IFRoYW5rcyBmb3IgdGhlIHN1
-Z2dlc3Rpb24uDQo+IFRoZSBrZXJuZWwgZG9lc24ndCBoYXZlIHRoYXQgcGF0Y2gsIGJ1dCBJIGRv
-bid0IHRoaW5rIGl0IGlzIHJlbGV2YW50Lg0KPiBUaGUgLT5yc2l6ZSBkb2VzIGhhdmUgYSBzdWl0
-YWJsZSB2YWx1ZSAtIGl0IGlzbid0IHplcm8uDQo+IFRoZSBwcm9ibGVtIGlzIHRoYXQgdGhlIHNl
-c3Npb24gbGltaXQgYXBwZWFycyB0byBjaGFuZ2UsIGFuZCB0aGUNCj4gY2xpZW50DQo+IGRvZXNu
-J3QgYWRqdXN0IHRvIHRoZSBjaGFuZ2UuDQo+IA0KPiBNeSBjdXJyZW50IHRoZW9yeSBpcyB0aGF0
-IHRoZSBjbGllbnQgYWN0dWFsbHkgcmVxdWVzdGVkIHRoZSBjaGFuZ2UsDQo+IHRob3VnaCBvbiBi
-ZWhhbGYgb2YgYSBkaWZmZXJlbnQgZmlsZXN5c3RlbSB1c2luZyB0aGUgc2FtZSBzZXNzaW9uLg0K
-PiANCg0KU28gcGVyaGFwcyB0aGUgcmlnaHQgdGhpbmcgdG8gZG8gdGhlbiwgaXMgdG8gYWR2ZXJ0
-aXNlIGEgc2Vzc2lvbiBtYXgNCnJlc3BvbnNlL3JlcGx5IHNpemUgb2YgTkZTX01BWF9GSUxFX0lP
-X1NJWkUgKw0KbWF4KG5mczQxX21heHJlYWRfb3ZlcmhlYWQsbmZzNDFfbWF4d3JpdGVfb3Zlcmhl
-YWQpIGFuZCBqdXN0IGV4cGVjdCB0aGUNCnNlcnZlciBuZWdvdGlhdGUgdGhhdCB2YWx1ZSBkb3du
-IGlmIGl0IG5lZWRzIHRvPw0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVu
-dCBtYWludGFpbmVyLCBIYW1tZXJzcGFjZQ0KdHJvbmQubXlrbGVidXN0QGhhbW1lcnNwYWNlLmNv
-bQ0KDQoNCg==
+--=-=-=
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
+
+On Wed, Sep 05 2018, Trond Myklebust wrote:
+
+> On Thu, 2018-09-06 at 07:12 +1000, NeilBrown wrote:
+>> On Wed, Sep 05 2018, Olga Kornievskaia wrote:
+>>=20
+>> > On Tue, Sep 4, 2018 at 8:04 PM NeilBrown <neilb@suse.com> wrote:
+>> > >=20
+>> > > On Tue, Sep 04 2018, Trond Myklebust wrote:
+>> > >=20
+>> > > > On Wed, 2018-09-05 at 08:47 +1000, NeilBrown wrote:
+>> > > > > With NFSv4.1, the server specifies max_rqst_sz and
+>> > > > > max_resp_sz in the
+>> > > > > reply to CREATE session.
+>> > > > >=20
+>> > > > > If the client finds it needs to call nfs4_reset_session(), it
+>> > > > > might
+>> > > > > get
+>> > > > > smaller sizes back, so any pending read/writes would need to
+>> > > > > be
+>> > > > > resized.
+>> > > > >=20
+>> > > > > However, I cannot see how the retry handling for reads/writes
+>> > > > > has any
+>> > > > > chance to change the size.  It looks like a request is broken
+>> > > > > up to
+>> > > > > match the original ->rsize and ->wsize, then those individual
+>> > > > > IO
+>> > > > > requests can be retried, but the higher level request is
+>> > > > > never
+>> > > > > re-evaluated in light of a new size.
+>> > > > >=20
+>> > > > > Am I missing something, or is this not supported at present?
+>> > > > > If it isn't supported, any suggestions on how best to handle
+>> > > > > a
+>> > > > > reduction of the rsize/wsize ??
+>> > > > >=20
+>> > > >=20
+>> > > > Why would a sane server want to do this?
+>> > >=20
+>> > > Why would a sane protocol support it? :-)
+>> > >=20
+>> > > I have a network trace of SLE11-SP4 (3.0 based) talking to "a
+>> > > NetApp
+>> > > appliance".
+>> > > It sends a 64K write and gets NFS4ERR_REQ_TOO_BIG.
+>> > > It then closes the file (getting NFS4ERR_SEQ_MISORDERED even
+>> > > though it
+>> > > used a seq number 1 more than the WRITE request), and then
+>> > > DESTROY_SESSION and CREATE_SESSION.
+>> > > The CREATE_SESSION gets "max req size" of 33812 and "max resp
+>> > > size" of
+>> > > 33672.
+>> > > It then opens the file again and retries the 64K write....
+>> > >=20
+>> > > I have a separate trace showing the initial mount where the sizes
+>> > > are 71680
+>> > > and 81920.
+>> > >=20
+>> > > I don't have a trace where it stops working, but reportedly
+>> > > writes work
+>> > > smoothly for some hours after a mount, but then suddenly stop
+>> > > working.
+>> > >=20
+>> > > The CREATE_SESSION *call* requests I see have the small (32K)
+>> > > sizes, but
+>> > > presumably they are the result of a previous CREATE_SESSION reply
+>> > > giving
+>> > > a small value.
+>> > >=20
+>> > > I just had a thought.
+>> > > If one session is shared by two "struct nfs_server" with
+>> > > different
+>> > > ->rsize or ->wsize, then the session might get set up with the
+>> > > smaller
+>> > > size, and the mount using the larger size will get confused.
+>> > > In 3.0 (and even 3.10) nfs4_init_session() limits the requested
+>> > > session
+>> > > parameters to ->rsize and ->wsize.
+>> > > That changed in 18aad3d552c7.
+>> > >=20
+>> > > Maybe I just need to remove that code from nfs4_init_session().
+>> > > I'll give it a try.
+>> > >=20
+>> >=20
+>> > Neil, does the code have this commit?
+>> >=20
+>> > commit 033853325fe3bdc70819a8b97915bd3bca41d3af
+>> > Author: Olga Kornievskaia <kolga@netapp.com>
+>> > Date:   Wed Mar 8 14:39:15 2017 -0500
+>> >=20
+>> >     NFSv4.1 respect server's max size in CREATE_SESSION
+>> >=20
+>> >     Currently client doesn't respect max sizes server returns in
+>> > CREATE_SESSION.
+>> >     nfs4_session_set_rwsize() gets called and server->rsize,
+>> > server->wsize are 0
+>> >     so they never get set to the sizes returned by the server.
+>> >=20
+>> >     Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+>> >     Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+>> >=20
+>> > > Thanks,
+>> > > NeilBrown
+>>=20
+>> Thanks for the suggestion.
+>> The kernel doesn't have that patch, but I don't think it is relevant.
+>> The ->rsize does have a suitable value - it isn't zero.
+>> The problem is that the session limit appears to change, and the
+>> client
+>> doesn't adjust to the change.
+>>=20
+>> My current theory is that the client actually requested the change,
+>> though on behalf of a different filesystem using the same session.
+>>=20
+>
+> So perhaps the right thing to do then, is to advertise a session max
+> response/reply size of NFS_MAX_FILE_IO_SIZE +
+> max(nfs41_maxread_overhead,nfs41_maxwrite_overhead) and just expect the
+> server negotiate that value down if it needs to?
+
+Agreed - and that is exactly what Linux has done since about 3.11.
+My customer is still on 3.0 which advertises ->[wr]size, and this change
+wasn't obvious from the change logs so I didn't find it during my
+initial investigation.
+I've provided a patch and hope to get feedback in about a week.
+
+Thanks,
+NeilBrown
+
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+
+iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAluQVGUACgkQOeye3VZi
+gbmRCA/+NTD3J+Q0YL6yzTHFlctlL4FQWGGqZxtcq6JY1oWu7UXVeoCYGkdJd5hb
+AqtqUJCn7cxCOjLRMZCvRAVmFFZW9onHwLC64XzvHZLhV6AoL5S1xaEWy7piIlyP
+oRKvoXWi9fJ3jCP3br/2xya9IqvLgccaAMkRtpKHpVNBVUNNBp4DfDZj7fdt5o88
+os5WD2QVWkpWDr3UoIDv6j6JimoFdiol4x9CiEPJRRiId33NliuNfvSpyisH5rXQ
+l5DXW1PTEmp85eM4P5XJRYMmfYank6ZYpJFGXhz5SdzjdMLc7VmwvJ47T1fCKcor
+XGW/3vyjmABI7P35PqJvPQxDK8m4G63ptfZ+3wOvQpxEHQvNR631cZ/K5wRvnkBz
+W2BGUnYCeYpCzrD7u7rYybe29fxxbVJaQlApcpyvnR2IV5hbytAMO3VtBFkzSXr7
+Cy6yD83qHmZph1/hIr6/ydaNlj1mUr2r3/GsjOC8DlgcQOCStqFumkJRFEWpKBJR
+QSfV50+epILfdoRd9JCtgw4Mddsr8YHOMqjZS+8fEOrbX0ydqGSmoJV5m2LHk7XB
+Dr7lF68VhKIB3iVHilipkiX9N3Arpwz/JL99WtQpI4OtfZ6F1lqOBh3rp3c6UdXT
+08r/SZIxC+YwpgAtmPhdJL+s4eobhUwUpORow1xVh8lyhkQLaCU=
+=wdti
+-----END PGP SIGNATURE-----
+--=-=-=--
