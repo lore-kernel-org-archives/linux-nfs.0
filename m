@@ -1,32 +1,104 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:58880 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727257AbeIFB65 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 5 Sep 2018 21:58:57 -0400
-Date: Wed, 5 Sep 2018 17:26:55 -0400
-To: Volker Lieder <v.lieder@uvensys.de>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
-Subject: Re: Question about nfs in infiniband environment
-Message-ID: <20180905212655.GC22395@fieldses.org>
-References: <0D862469-B678-4827-B75D-69557734D34F@uvensys.de>
- <93486E63-F27E-4F45-9C43-ECEA66A46183@uvensys.de>
- <D480748B-967F-421C-8749-914CBD38C995@gmail.com>
- <79933889-D7B8-4E8D-989F-297FD411644E@uvensys.de>
- <989D72C4-553B-46CD-AE3F-4EB5BDEDB2BE@oracle.com>
- <CAN-5tyH1B1B_JMVFag9=-uwckt2HYyAfotsjkwksf9bvknqqJw@mail.gmail.com>
- <840C83A0-1411-46D3-9370-431CFEDE0D93@uvensys.de>
+Received: from mail-eopbgr700131.outbound.protection.outlook.com ([40.107.70.131]:51584
+        "EHLO NAM04-SN1-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1727645AbeIFC3H (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 5 Sep 2018 22:29:07 -0400
+From: Trond Myklebust <trondmy@hammerspace.com>
+To: "neilb@suse.com" <neilb@suse.com>,
+        "aglo@umich.edu" <aglo@umich.edu>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: NFSv4.1 session reset needs to update ->rsize and ->wsize -
+ how???
+Date: Wed, 5 Sep 2018 21:56:54 +0000
+Message-ID: <b82396db1fa8c2b7141999f23f9dd60ae8fe8efe.camel@hammerspace.com>
+References: <87r2i8vq10.fsf@notabene.neil.brown.name>
+         <f7f84aced6ae709b1c66e1475e8d79927fa29132.camel@hammerspace.com>
+         <87o9dcvmk6.fsf@notabene.neil.brown.name>
+         <CAN-5tyG0DXosk0RUCM6E+pj-EmMWW5tuKfPg4HJChp9snvcQAQ@mail.gmail.com>
+         <87lg8fveb9.fsf@notabene.neil.brown.name>
+In-Reply-To: <87lg8fveb9.fsf@notabene.neil.brown.name>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <840C83A0-1411-46D3-9370-431CFEDE0D93@uvensys.de>
-From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Aug 29, 2018 at 11:03:22AM +0200, Volker Lieder wrote:
-> i dont have a redhat account.
-
-You should be able to see that bug now:
-
-	https://bugzilla.redhat.com/show_bug.cgi?id=1518006
-
---b.
+T24gVGh1LCAyMDE4LTA5LTA2IGF0IDA3OjEyICsxMDAwLCBOZWlsQnJvd24gd3JvdGU6DQo+IE9u
+IFdlZCwgU2VwIDA1IDIwMTgsIE9sZ2EgS29ybmlldnNrYWlhIHdyb3RlOg0KPiANCj4gPiBPbiBU
+dWUsIFNlcCA0LCAyMDE4IGF0IDg6MDQgUE0gTmVpbEJyb3duIDxuZWlsYkBzdXNlLmNvbT4gd3Jv
+dGU6DQo+ID4gPiANCj4gPiA+IE9uIFR1ZSwgU2VwIDA0IDIwMTgsIFRyb25kIE15a2xlYnVzdCB3
+cm90ZToNCj4gPiA+IA0KPiA+ID4gPiBPbiBXZWQsIDIwMTgtMDktMDUgYXQgMDg6NDcgKzEwMDAs
+IE5laWxCcm93biB3cm90ZToNCj4gPiA+ID4gPiBXaXRoIE5GU3Y0LjEsIHRoZSBzZXJ2ZXIgc3Bl
+Y2lmaWVzIG1heF9ycXN0X3N6IGFuZA0KPiA+ID4gPiA+IG1heF9yZXNwX3N6IGluIHRoZQ0KPiA+
+ID4gPiA+IHJlcGx5IHRvIENSRUFURSBzZXNzaW9uLg0KPiA+ID4gPiA+IA0KPiA+ID4gPiA+IElm
+IHRoZSBjbGllbnQgZmluZHMgaXQgbmVlZHMgdG8gY2FsbCBuZnM0X3Jlc2V0X3Nlc3Npb24oKSwg
+aXQNCj4gPiA+ID4gPiBtaWdodA0KPiA+ID4gPiA+IGdldA0KPiA+ID4gPiA+IHNtYWxsZXIgc2l6
+ZXMgYmFjaywgc28gYW55IHBlbmRpbmcgcmVhZC93cml0ZXMgd291bGQgbmVlZCB0bw0KPiA+ID4g
+PiA+IGJlDQo+ID4gPiA+ID4gcmVzaXplZC4NCj4gPiA+ID4gPiANCj4gPiA+ID4gPiBIb3dldmVy
+LCBJIGNhbm5vdCBzZWUgaG93IHRoZSByZXRyeSBoYW5kbGluZyBmb3IgcmVhZHMvd3JpdGVzDQo+
+ID4gPiA+ID4gaGFzIGFueQ0KPiA+ID4gPiA+IGNoYW5jZSB0byBjaGFuZ2UgdGhlIHNpemUuICBJ
+dCBsb29rcyBsaWtlIGEgcmVxdWVzdCBpcyBicm9rZW4NCj4gPiA+ID4gPiB1cCB0bw0KPiA+ID4g
+PiA+IG1hdGNoIHRoZSBvcmlnaW5hbCAtPnJzaXplIGFuZCAtPndzaXplLCB0aGVuIHRob3NlIGlu
+ZGl2aWR1YWwNCj4gPiA+ID4gPiBJTw0KPiA+ID4gPiA+IHJlcXVlc3RzIGNhbiBiZSByZXRyaWVk
+LCBidXQgdGhlIGhpZ2hlciBsZXZlbCByZXF1ZXN0IGlzDQo+ID4gPiA+ID4gbmV2ZXINCj4gPiA+
+ID4gPiByZS1ldmFsdWF0ZWQgaW4gbGlnaHQgb2YgYSBuZXcgc2l6ZS4NCj4gPiA+ID4gPiANCj4g
+PiA+ID4gPiBBbSBJIG1pc3Npbmcgc29tZXRoaW5nLCBvciBpcyB0aGlzIG5vdCBzdXBwb3J0ZWQg
+YXQgcHJlc2VudD8NCj4gPiA+ID4gPiBJZiBpdCBpc24ndCBzdXBwb3J0ZWQsIGFueSBzdWdnZXN0
+aW9ucyBvbiBob3cgYmVzdCB0byBoYW5kbGUNCj4gPiA+ID4gPiBhDQo+ID4gPiA+ID4gcmVkdWN0
+aW9uIG9mIHRoZSByc2l6ZS93c2l6ZSA/Pw0KPiA+ID4gPiA+IA0KPiA+ID4gPiANCj4gPiA+ID4g
+V2h5IHdvdWxkIGEgc2FuZSBzZXJ2ZXIgd2FudCB0byBkbyB0aGlzPw0KPiA+ID4gDQo+ID4gPiBX
+aHkgd291bGQgYSBzYW5lIHByb3RvY29sIHN1cHBvcnQgaXQ/IDotKQ0KPiA+ID4gDQo+ID4gPiBJ
+IGhhdmUgYSBuZXR3b3JrIHRyYWNlIG9mIFNMRTExLVNQNCAoMy4wIGJhc2VkKSB0YWxraW5nIHRv
+ICJhDQo+ID4gPiBOZXRBcHANCj4gPiA+IGFwcGxpYW5jZSIuDQo+ID4gPiBJdCBzZW5kcyBhIDY0
+SyB3cml0ZSBhbmQgZ2V0cyBORlM0RVJSX1JFUV9UT09fQklHLg0KPiA+ID4gSXQgdGhlbiBjbG9z
+ZXMgdGhlIGZpbGUgKGdldHRpbmcgTkZTNEVSUl9TRVFfTUlTT1JERVJFRCBldmVuDQo+ID4gPiB0
+aG91Z2ggaXQNCj4gPiA+IHVzZWQgYSBzZXEgbnVtYmVyIDEgbW9yZSB0aGFuIHRoZSBXUklURSBy
+ZXF1ZXN0KSwgYW5kIHRoZW4NCj4gPiA+IERFU1RST1lfU0VTU0lPTiBhbmQgQ1JFQVRFX1NFU1NJ
+T04uDQo+ID4gPiBUaGUgQ1JFQVRFX1NFU1NJT04gZ2V0cyAibWF4IHJlcSBzaXplIiBvZiAzMzgx
+MiBhbmQgIm1heCByZXNwDQo+ID4gPiBzaXplIiBvZg0KPiA+ID4gMzM2NzIuDQo+ID4gPiBJdCB0
+aGVuIG9wZW5zIHRoZSBmaWxlIGFnYWluIGFuZCByZXRyaWVzIHRoZSA2NEsgd3JpdGUuLi4uDQo+
+ID4gPiANCj4gPiA+IEkgaGF2ZSBhIHNlcGFyYXRlIHRyYWNlIHNob3dpbmcgdGhlIGluaXRpYWwg
+bW91bnQgd2hlcmUgdGhlIHNpemVzDQo+ID4gPiBhcmUgNzE2ODANCj4gPiA+IGFuZCA4MTkyMC4N
+Cj4gPiA+IA0KPiA+ID4gSSBkb24ndCBoYXZlIGEgdHJhY2Ugd2hlcmUgaXQgc3RvcHMgd29ya2lu
+ZywgYnV0IHJlcG9ydGVkbHkNCj4gPiA+IHdyaXRlcyB3b3JrDQo+ID4gPiBzbW9vdGhseSBmb3Ig
+c29tZSBob3VycyBhZnRlciBhIG1vdW50LCBidXQgdGhlbiBzdWRkZW5seSBzdG9wDQo+ID4gPiB3
+b3JraW5nLg0KPiA+ID4gDQo+ID4gPiBUaGUgQ1JFQVRFX1NFU1NJT04gKmNhbGwqIHJlcXVlc3Rz
+IEkgc2VlIGhhdmUgdGhlIHNtYWxsICgzMkspDQo+ID4gPiBzaXplcywgYnV0DQo+ID4gPiBwcmVz
+dW1hYmx5IHRoZXkgYXJlIHRoZSByZXN1bHQgb2YgYSBwcmV2aW91cyBDUkVBVEVfU0VTU0lPTiBy
+ZXBseQ0KPiA+ID4gZ2l2aW5nDQo+ID4gPiBhIHNtYWxsIHZhbHVlLg0KPiA+ID4gDQo+ID4gPiBJ
+IGp1c3QgaGFkIGEgdGhvdWdodC4NCj4gPiA+IElmIG9uZSBzZXNzaW9uIGlzIHNoYXJlZCBieSB0
+d28gInN0cnVjdCBuZnNfc2VydmVyIiB3aXRoDQo+ID4gPiBkaWZmZXJlbnQNCj4gPiA+IC0+cnNp
+emUgb3IgLT53c2l6ZSwgdGhlbiB0aGUgc2Vzc2lvbiBtaWdodCBnZXQgc2V0IHVwIHdpdGggdGhl
+DQo+ID4gPiBzbWFsbGVyDQo+ID4gPiBzaXplLCBhbmQgdGhlIG1vdW50IHVzaW5nIHRoZSBsYXJn
+ZXIgc2l6ZSB3aWxsIGdldCBjb25mdXNlZC4NCj4gPiA+IEluIDMuMCAoYW5kIGV2ZW4gMy4xMCkg
+bmZzNF9pbml0X3Nlc3Npb24oKSBsaW1pdHMgdGhlIHJlcXVlc3RlZA0KPiA+ID4gc2Vzc2lvbg0K
+PiA+ID4gcGFyYW1ldGVycyB0byAtPnJzaXplIGFuZCAtPndzaXplLg0KPiA+ID4gVGhhdCBjaGFu
+Z2VkIGluIDE4YWFkM2Q1NTJjNy4NCj4gPiA+IA0KPiA+ID4gTWF5YmUgSSBqdXN0IG5lZWQgdG8g
+cmVtb3ZlIHRoYXQgY29kZSBmcm9tIG5mczRfaW5pdF9zZXNzaW9uKCkuDQo+ID4gPiBJJ2xsIGdp
+dmUgaXQgYSB0cnkuDQo+ID4gPiANCj4gPiANCj4gPiBOZWlsLCBkb2VzIHRoZSBjb2RlIGhhdmUg
+dGhpcyBjb21taXQ/DQo+ID4gDQo+ID4gY29tbWl0IDAzMzg1MzMyNWZlM2JkYzcwODE5YThiOTc5
+MTViZDNiY2E0MWQzYWYNCj4gPiBBdXRob3I6IE9sZ2EgS29ybmlldnNrYWlhIDxrb2xnYUBuZXRh
+cHAuY29tPg0KPiA+IERhdGU6ICAgV2VkIE1hciA4IDE0OjM5OjE1IDIwMTcgLTA1MDANCj4gPiAN
+Cj4gPiAgICAgTkZTdjQuMSByZXNwZWN0IHNlcnZlcidzIG1heCBzaXplIGluIENSRUFURV9TRVNT
+SU9ODQo+ID4gDQo+ID4gICAgIEN1cnJlbnRseSBjbGllbnQgZG9lc24ndCByZXNwZWN0IG1heCBz
+aXplcyBzZXJ2ZXIgcmV0dXJucyBpbg0KPiA+IENSRUFURV9TRVNTSU9OLg0KPiA+ICAgICBuZnM0
+X3Nlc3Npb25fc2V0X3J3c2l6ZSgpIGdldHMgY2FsbGVkIGFuZCBzZXJ2ZXItPnJzaXplLA0KPiA+
+IHNlcnZlci0+d3NpemUgYXJlIDANCj4gPiAgICAgc28gdGhleSBuZXZlciBnZXQgc2V0IHRvIHRo
+ZSBzaXplcyByZXR1cm5lZCBieSB0aGUgc2VydmVyLg0KPiA+IA0KPiA+ICAgICBTaWduZWQtb2Zm
+LWJ5OiBPbGdhIEtvcm5pZXZza2FpYSA8a29sZ2FAbmV0YXBwLmNvbT4NCj4gPiAgICAgU2lnbmVk
+LW9mZi1ieTogQW5uYSBTY2h1bWFrZXIgPEFubmEuU2NodW1ha2VyQE5ldGFwcC5jb20+DQo+ID4g
+DQo+ID4gPiBUaGFua3MsDQo+ID4gPiBOZWlsQnJvd24NCj4gDQo+IFRoYW5rcyBmb3IgdGhlIHN1
+Z2dlc3Rpb24uDQo+IFRoZSBrZXJuZWwgZG9lc24ndCBoYXZlIHRoYXQgcGF0Y2gsIGJ1dCBJIGRv
+bid0IHRoaW5rIGl0IGlzIHJlbGV2YW50Lg0KPiBUaGUgLT5yc2l6ZSBkb2VzIGhhdmUgYSBzdWl0
+YWJsZSB2YWx1ZSAtIGl0IGlzbid0IHplcm8uDQo+IFRoZSBwcm9ibGVtIGlzIHRoYXQgdGhlIHNl
+c3Npb24gbGltaXQgYXBwZWFycyB0byBjaGFuZ2UsIGFuZCB0aGUNCj4gY2xpZW50DQo+IGRvZXNu
+J3QgYWRqdXN0IHRvIHRoZSBjaGFuZ2UuDQo+IA0KPiBNeSBjdXJyZW50IHRoZW9yeSBpcyB0aGF0
+IHRoZSBjbGllbnQgYWN0dWFsbHkgcmVxdWVzdGVkIHRoZSBjaGFuZ2UsDQo+IHRob3VnaCBvbiBi
+ZWhhbGYgb2YgYSBkaWZmZXJlbnQgZmlsZXN5c3RlbSB1c2luZyB0aGUgc2FtZSBzZXNzaW9uLg0K
+PiANCg0KU28gcGVyaGFwcyB0aGUgcmlnaHQgdGhpbmcgdG8gZG8gdGhlbiwgaXMgdG8gYWR2ZXJ0
+aXNlIGEgc2Vzc2lvbiBtYXgNCnJlc3BvbnNlL3JlcGx5IHNpemUgb2YgTkZTX01BWF9GSUxFX0lP
+X1NJWkUgKw0KbWF4KG5mczQxX21heHJlYWRfb3ZlcmhlYWQsbmZzNDFfbWF4d3JpdGVfb3Zlcmhl
+YWQpIGFuZCBqdXN0IGV4cGVjdCB0aGUNCnNlcnZlciBuZWdvdGlhdGUgdGhhdCB2YWx1ZSBkb3du
+IGlmIGl0IG5lZWRzIHRvPw0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVu
+dCBtYWludGFpbmVyLCBIYW1tZXJzcGFjZQ0KdHJvbmQubXlrbGVidXN0QGhhbW1lcnNwYWNlLmNv
+bQ0KDQoNCg==
