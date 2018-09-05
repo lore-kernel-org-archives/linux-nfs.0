@@ -1,172 +1,28 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp2130.oracle.com ([156.151.31.86]:46216 "EHLO
-        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726046AbeIEUCG (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Sep 2018 16:02:06 -0400
-Content-Type: text/plain;
-        charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 11.5 \(3445.9.1\))
-Subject: Re: [PATCH v2 23/34] SUNRPC: Move RPC retransmission stat counter to
- xprt_transmit()
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <4165cdf8162f9ca6aa1165c71e880632fda259ec.camel@hammerspace.com>
-Date: Wed, 5 Sep 2018 11:31:10 -0400
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <85D647A8-CD05-4B29-BD69-08F653EEF122@oracle.com>
-References: <20180904210549.81673-1-trond.myklebust@hammerspace.com>
- <20180904210549.81673-2-trond.myklebust@hammerspace.com>
- <20180904210549.81673-3-trond.myklebust@hammerspace.com>
- <20180904210549.81673-4-trond.myklebust@hammerspace.com>
- <20180904210549.81673-5-trond.myklebust@hammerspace.com>
- <20180904210549.81673-6-trond.myklebust@hammerspace.com>
- <20180904210549.81673-7-trond.myklebust@hammerspace.com>
- <20180904210549.81673-8-trond.myklebust@hammerspace.com>
- <20180904210549.81673-9-trond.myklebust@hammerspace.com>
- <20180904210549.81673-10-trond.myklebust@hammerspace.com>
- <20180904210549.81673-11-trond.myklebust@hammerspace.com>
- <20180904210549.81673-12-trond.myklebust@hammerspace.com>
- <20180904210549.81673-13-trond.myklebust@hammerspace.com>
- <20180904210549.81673-14-trond.myklebust@hammerspace.com>
- <20180904210549.81673-15-trond.myklebust@hammerspace.com>
- <20180904210549.81673-16-trond.myklebust@hammerspace.com>
- <20180904210549.81673-17-trond.myklebust@hammerspace.com>
- <20180904210549.81673-18-trond.myklebust@hammerspace.com>
- <20180904210549.81673-19-trond.myklebust@hammerspace.com>
- <20180904210549.81673-20-trond.myklebust@hammerspace.com>
- <20180904210549.81673-21-trond.myklebust@hammerspace.com>
- <20180904210549.81673-22-trond.myklebust@hammerspace.com>
- <20180904210549.81673-23-trond.myklebust@hammerspace.com>
- <20180904210549.81673-24-trond.myklebust@hammerspace.com>
- <0A486690-38DA-4377-8968-DF0008113479@oracle.com>
- <4165cdf8162f9ca6aa1165c71e880632fda259ec.camel@hammerspace.com>
-To: Trond Myklebust <trondmy@hammerspace.com>
+Received: from 107-172-0-11-host.colocrossing.com ([107.172.0.11]:36407 "EHLO
+        denon.com" rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1726046AbeIEUD6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 5 Sep 2018 16:03:58 -0400
+To: linux-nfs@vger.kernel.org
+Subject: Change your photos
+Message-ID: <3144eada7b2521df4b9c7af21b6a08ff@floralsupply.com>
+Date: Wed, 05 Sep 2018 14:52:45 +0200
+From: "Jesse Kurtz" <zoepdeigsadlarsazs@email.jp>
+Reply-To: hongloudo@sina.com
+MIME-Version: 1.0
+Content-Type: text/plain; format=flowed; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Just want to check with you to see if you have any photos for editing?
 
+We are providing below services to you.
+Clipping path for the images.
+Cut out for the photos
+Masking for the images
+All kinds of retouching for the beauty and model.
 
-> On Sep 5, 2018, at 11:28 AM, Trond Myklebust <trondmy@hammerspace.com> =
-wrote:
->=20
-> On Wed, 2018-09-05 at 10:30 -0400, Chuck Lever wrote:
->>> On Sep 4, 2018, at 5:05 PM, Trond Myklebust <trondmy@gmail.com>
->>> wrote:
->>>=20
->>> Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
->>> ---
->>> net/sunrpc/clnt.c |  6 ------
->>> net/sunrpc/xprt.c | 13 ++++++-------
->>> 2 files changed, 6 insertions(+), 13 deletions(-)
->>>=20
->>> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
->>> index 032b7042adb6..21713bed812a 100644
->>> --- a/net/sunrpc/clnt.c
->>> +++ b/net/sunrpc/clnt.c
->>> @@ -1967,8 +1967,6 @@ call_connect_status(struct rpc_task *task)
->>> static void
->>> call_transmit(struct rpc_task *task)
->>> {
->>> -	int is_retrans =3D RPC_WAS_SENT(task);
->>> -
->>> 	dprint_status(task);
->>>=20
->>> 	task->tk_action =3D call_transmit_status;
->>> @@ -1979,10 +1977,6 @@ call_transmit(struct rpc_task *task)
->>> 	if (!xprt_prepare_transmit(task))
->>> 		return;
->>> 	xprt_transmit(task);
->>> -	if (task->tk_status < 0)
->>> -		return;
->>> -	if (is_retrans)
->>> -		task->tk_client->cl_stats->rpcretrans++;
->>> }
->>>=20
->>> /*
->>> diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
->>> index f1301d391399..e2f5b4668a66 100644
->>> --- a/net/sunrpc/xprt.c
->>> +++ b/net/sunrpc/xprt.c
->>> @@ -191,8 +191,6 @@ int xprt_reserve_xprt(struct rpc_xprt *xprt,
->>> struct rpc_task *task)
->>> 		goto out_sleep;
->>> 	}
->>> 	xprt->snd_task =3D task;
->>> -	if (req !=3D NULL)
->>> -		req->rq_ntrans++;
->>>=20
->>> 	return 1;
->>>=20
->>> @@ -247,7 +245,6 @@ int xprt_reserve_xprt_cong(struct rpc_xprt
->>> *xprt, struct rpc_task *task)
->>> 	}
->>> 	if (__xprt_get_cong(xprt, task)) {
->>> 		xprt->snd_task =3D task;
->>> -		req->rq_ntrans++;
->>> 		return 1;
->>> 	}
->>> 	xprt_clear_locked(xprt);
->>> @@ -281,12 +278,8 @@ static inline int xprt_lock_write(struct
->>> rpc_xprt *xprt, struct rpc_task *task)
->>> static bool __xprt_lock_write_func(struct rpc_task *task, void
->>> *data)
->>> {
->>> 	struct rpc_xprt *xprt =3D data;
->>> -	struct rpc_rqst *req;
->>>=20
->>> -	req =3D task->tk_rqstp;
->>> 	xprt->snd_task =3D task;
->>> -	if (req)
->>> -		req->rq_ntrans++;
->>> 	return true;
->>> }
->>>=20
->>> @@ -1126,6 +1119,7 @@ void xprt_transmit(struct rpc_task *task)
->>> 	struct rpc_rqst	*req =3D task->tk_rqstp;
->>> 	struct rpc_xprt	*xprt =3D req->rq_xprt;
->>> 	unsigned int connect_cookie;
->>> +	int is_retrans =3D RPC_WAS_SENT(task);
->>> 	int status;
->>>=20
->>> 	dprintk("RPC: %5u xprt_transmit(%u)\n", task->tk_pid, req-
->>>> rq_slen);
->>> @@ -1140,6 +1134,8 @@ void xprt_transmit(struct rpc_task *task)
->>> 		}
->>> 	}
->>>=20
->>> +	req->rq_ntrans++;
->>> +
->>=20
->> rq_ntrans is used in two places:
->>=20
->> 1. rpc_update_rtt
->> 2. rpc_count_iostats_metrics
->>=20
->> Both of these appear to assume that rq_ntrans is counting
->> full successful transmissions (ie, calls that appear on the
->> wire), not invocations of ->send_request().
->>=20
->> Can this counter be moved down to where rpcretrans is updated?
->>=20
->=20
-> The reason why I don't want to update req->rq_ntrans after =
-transmission
-> is because that would race with the reply from the server (which is =
-not
-> blocked by the XPRT_LOCK). In that race scenario, rpc_update_rtt()
-> could update the RTT value before we've updated the req->rq_ntrans,
-> meaning that we might be measuring the response time against a reply =
-to
-> the original transmission or to the retransmission that was just sent.
-> That would end up breaking Van Jacobsen congestion control, since we
-> risk significantly underestimating the RTT value.
+We provide testing for your photos if you need.
 
-But for transports that don't use xprt_update_rtt, error
-returns from ->send_request() (like -EAGAIN or -ENOBUFS)
-means that rq_ntrans is counted twice, and it shows up as
-false retransmissions.
-
-What if rq_ntrans was bumped in the transport code instead?
-
-
---
-Chuck Lever
+Thanks,
+Jesse
