@@ -1,38 +1,103 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-eopbgr690107.outbound.protection.outlook.com ([40.107.69.107]:57520
-        "EHLO NAM04-CO1-obe.outbound.protection.outlook.com"
+Received: from mx2.suse.de ([195.135.220.15]:60086 "EHLO mx1.suse.de"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1725825AbeIEDil (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 4 Sep 2018 23:38:41 -0400
-From: Trond Myklebust <trondmy@hammerspace.com>
-To: "neilb@suse.com" <neilb@suse.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: NFSv4.1 session reset needs to update ->rsize and ->wsize -
- how???
-Date: Tue, 4 Sep 2018 23:11:20 +0000
-Message-ID: <f7f84aced6ae709b1c66e1475e8d79927fa29132.camel@hammerspace.com>
-References: <87r2i8vq10.fsf@notabene.neil.brown.name>
-In-Reply-To: <87r2i8vq10.fsf@notabene.neil.brown.name>
-Content-Type: text/plain; charset="utf-8"
+        id S1725853AbeIEE3x (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 5 Sep 2018 00:29:53 -0400
+From: NeilBrown <neilb@suse.com>
+To: Trond Myklebust <trondmy@hammerspace.com>,
+        "linux-nfs\@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Date: Wed, 05 Sep 2018 10:02:17 +1000
+Subject: Re: NFSv4.1 session reset needs to update ->rsize and ->wsize - how???
+In-Reply-To: <f7f84aced6ae709b1c66e1475e8d79927fa29132.camel@hammerspace.com>
+References: <87r2i8vq10.fsf@notabene.neil.brown.name> <f7f84aced6ae709b1c66e1475e8d79927fa29132.camel@hammerspace.com>
+Message-ID: <87o9dcvmk6.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
+Content-Type: multipart/signed; boundary="=-=-=";
+        micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDE4LTA5LTA1IGF0IDA4OjQ3ICsxMDAwLCBOZWlsQnJvd24gd3JvdGU6DQo+IFdp
-dGggTkZTdjQuMSwgdGhlIHNlcnZlciBzcGVjaWZpZXMgbWF4X3Jxc3Rfc3ogYW5kIG1heF9yZXNw
-X3N6IGluIHRoZQ0KPiByZXBseSB0byBDUkVBVEUgc2Vzc2lvbi4NCj4gDQo+IElmIHRoZSBjbGll
-bnQgZmluZHMgaXQgbmVlZHMgdG8gY2FsbCBuZnM0X3Jlc2V0X3Nlc3Npb24oKSwgaXQgbWlnaHQN
-Cj4gZ2V0DQo+IHNtYWxsZXIgc2l6ZXMgYmFjaywgc28gYW55IHBlbmRpbmcgcmVhZC93cml0ZXMg
-d291bGQgbmVlZCB0byBiZQ0KPiByZXNpemVkLg0KPiANCj4gSG93ZXZlciwgSSBjYW5ub3Qgc2Vl
-IGhvdyB0aGUgcmV0cnkgaGFuZGxpbmcgZm9yIHJlYWRzL3dyaXRlcyBoYXMgYW55DQo+IGNoYW5j
-ZSB0byBjaGFuZ2UgdGhlIHNpemUuICBJdCBsb29rcyBsaWtlIGEgcmVxdWVzdCBpcyBicm9rZW4g
-dXAgdG8NCj4gbWF0Y2ggdGhlIG9yaWdpbmFsIC0+cnNpemUgYW5kIC0+d3NpemUsIHRoZW4gdGhv
-c2UgaW5kaXZpZHVhbCBJTw0KPiByZXF1ZXN0cyBjYW4gYmUgcmV0cmllZCwgYnV0IHRoZSBoaWdo
-ZXIgbGV2ZWwgcmVxdWVzdCBpcyBuZXZlcg0KPiByZS1ldmFsdWF0ZWQgaW4gbGlnaHQgb2YgYSBu
-ZXcgc2l6ZS4NCj4gDQo+IEFtIEkgbWlzc2luZyBzb21ldGhpbmcsIG9yIGlzIHRoaXMgbm90IHN1
-cHBvcnRlZCBhdCBwcmVzZW50Pw0KPiBJZiBpdCBpc24ndCBzdXBwb3J0ZWQsIGFueSBzdWdnZXN0
-aW9ucyBvbiBob3cgYmVzdCB0byBoYW5kbGUgYQ0KPiByZWR1Y3Rpb24gb2YgdGhlIHJzaXplL3dz
-aXplID8/DQo+IA0KDQpXaHkgd291bGQgYSBzYW5lIHNlcnZlciB3YW50IHRvIGRvIHRoaXM/DQoN
-CkNoZWVycw0KICBUcm9uZA0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQg
-bWFpbnRhaW5lciwgSGFtbWVyc3BhY2UNCnRyb25kLm15a2xlYnVzdEBoYW1tZXJzcGFjZS5jb20N
-Cg0KDQo=
+--=-=-=
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
+
+On Tue, Sep 04 2018, Trond Myklebust wrote:
+
+> On Wed, 2018-09-05 at 08:47 +1000, NeilBrown wrote:
+>> With NFSv4.1, the server specifies max_rqst_sz and max_resp_sz in the
+>> reply to CREATE session.
+>>=20
+>> If the client finds it needs to call nfs4_reset_session(), it might
+>> get
+>> smaller sizes back, so any pending read/writes would need to be
+>> resized.
+>>=20
+>> However, I cannot see how the retry handling for reads/writes has any
+>> chance to change the size.  It looks like a request is broken up to
+>> match the original ->rsize and ->wsize, then those individual IO
+>> requests can be retried, but the higher level request is never
+>> re-evaluated in light of a new size.
+>>=20
+>> Am I missing something, or is this not supported at present?
+>> If it isn't supported, any suggestions on how best to handle a
+>> reduction of the rsize/wsize ??
+>>=20
+>
+> Why would a sane server want to do this?
+
+Why would a sane protocol support it? :-)
+
+I have a network trace of SLE11-SP4 (3.0 based) talking to "a NetApp
+appliance".
+It sends a 64K write and gets NFS4ERR_REQ_TOO_BIG.
+It then closes the file (getting NFS4ERR_SEQ_MISORDERED even though it
+used a seq number 1 more than the WRITE request), and then
+DESTROY_SESSION and CREATE_SESSION.
+The CREATE_SESSION gets "max req size" of 33812 and "max resp size" of
+33672.
+It then opens the file again and retries the 64K write....
+
+I have a separate trace showing the initial mount where the sizes are 71680
+and 81920.
+
+I don't have a trace where it stops working, but reportedly writes work
+smoothly for some hours after a mount, but then suddenly stop working.
+
+The CREATE_SESSION *call* requests I see have the small (32K) sizes, but
+presumably they are the result of a previous CREATE_SESSION reply giving
+a small value.
+
+I just had a thought.
+If one session is shared by two "struct nfs_server" with different
+=2D>rsize or ->wsize, then the session might get set up with the smaller
+size, and the mount using the larger size will get confused.
+In 3.0 (and even 3.10) nfs4_init_session() limits the requested session
+parameters to ->rsize and ->wsize.
+That changed in 18aad3d552c7.
+
+Maybe I just need to remove that code from nfs4_init_session().
+I'll give it a try.
+
+Thanks,
+NeilBrown
+
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+
+iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAluPHQkACgkQOeye3VZi
+gbneLA//fd5U0yChbmIh2/830BAyqqsoW0YvwxExhJlt09VTJQeMOI0A6C6fYWN0
+9nwFcRE1AdNHAFD7/1CBw5ZJic1/Pqe76nb3fmBOYqjlzVxqkCTHa2kIz1No2+NN
+UJPpc9RByAgchdmlWYpqAvt6ALK8Rk1eL9QVGrYjCzTlhk11vFV2M92uq2WpCZ+V
+Z/cyTvM/Z3wkWOGuyAnJNFVvYSpehQAZj6MuDAIleymOOdIO5/FeNc0Sw4TiJdk+
+cp+PVLyx0vC/UGhwhU1z1CdtzN/LiaLgNOPR18jegtrgHL1RKDUK7XkMtJFVS8AG
+dI7d2UU103V9gWNj/O8jWd0T5fBG1YnT9MjCie8X+9DejkFzu3k8mnogzu433cIA
+XVjnntjT/zhbD8RlqlcDztgAS7ypH3hi7Q1mrSbpvF7YivzULqFjSIJUKFuDwpmz
+grXYZYTmFKd0BkgtR/bqkG85Kh5dgBSIVFOAovk3pNlbvXP7YzmRI1D9QUlhqr+p
+BVfaxksdskdGRH4YDAYpeRllXFJq1sumOMe/gcR2HR06HZmdBzfqiZoEI84KgMix
+2NDwCVtUDrLg2OJmMlqRwheb5eps/Ll0beWIaAe/m8Apa4/Gkq41Gpv4A58T2SN1
+pfl0JatXN/9TxJ+xWUOzNFMOJZrEt2ZFCLo+1OyHR9n9oaTiqjE=
+=aHDc
+-----END PGP SIGNATURE-----
+--=-=-=--
