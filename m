@@ -1,173 +1,80 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:56118 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1727657AbeIFCnM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 5 Sep 2018 22:43:12 -0400
-From: NeilBrown <neilb@suse.com>
-To: Trond Myklebust <trondmy@hammerspace.com>,
-        "aglo\@umich.edu" <aglo@umich.edu>
-Date: Thu, 06 Sep 2018 08:10:37 +1000
-Cc: "linux-nfs\@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: NFSv4.1 session reset needs to update ->rsize and ->wsize - how???
-In-Reply-To: <b82396db1fa8c2b7141999f23f9dd60ae8fe8efe.camel@hammerspace.com>
-References: <87r2i8vq10.fsf@notabene.neil.brown.name> <f7f84aced6ae709b1c66e1475e8d79927fa29132.camel@hammerspace.com> <87o9dcvmk6.fsf@notabene.neil.brown.name> <CAN-5tyG0DXosk0RUCM6E+pj-EmMWW5tuKfPg4HJChp9snvcQAQ@mail.gmail.com> <87lg8fveb9.fsf@notabene.neil.brown.name> <b82396db1fa8c2b7141999f23f9dd60ae8fe8efe.camel@hammerspace.com>
-Message-ID: <87in3jvbmq.fsf@notabene.neil.brown.name>
+Received: from mga04.intel.com ([192.55.52.120]:54242 "EHLO mga04.intel.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1727373AbeIFC6j (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 5 Sep 2018 22:58:39 -0400
+Date: Thu, 6 Sep 2018 06:25:21 +0800
+From: kbuild test robot <lkp@intel.com>
+To: Trond Myklebust <trond.myklebust@hammerspace.com>
+Cc: kbuild-all@01.org, linux-nfs@vger.kernel.org
+Subject: [nfs:testing 41/45] include/linux/rculist.h:130:25: sparse: context
+ imbalance in 'nfs_put_lock_context' - unexpected unlock
+Message-ID: <201809060614.OXUdpoYn%fengguang.wu@intel.com>
 MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+tree:   git://git.linux-nfs.org/projects/trondmy/linux-nfs.git testing
+head:   c925dd1e826cb81f1dafef462b1326ec33913b8e
+commit: 9d097c9f0dd73d0e02ddfceb112e3bcdd8915524 [41/45] NFS: Convert lookups of the lock context to RCU
+reproduce:
+        # apt-get install sparse
+        git checkout 9d097c9f0dd73d0e02ddfceb112e3bcdd8915524
+        make ARCH=x86_64 allmodconfig
+        make C=1 CF=-D__CHECK_ENDIAN__
 
-On Wed, Sep 05 2018, Trond Myklebust wrote:
 
-> On Thu, 2018-09-06 at 07:12 +1000, NeilBrown wrote:
->> On Wed, Sep 05 2018, Olga Kornievskaia wrote:
->>=20
->> > On Tue, Sep 4, 2018 at 8:04 PM NeilBrown <neilb@suse.com> wrote:
->> > >=20
->> > > On Tue, Sep 04 2018, Trond Myklebust wrote:
->> > >=20
->> > > > On Wed, 2018-09-05 at 08:47 +1000, NeilBrown wrote:
->> > > > > With NFSv4.1, the server specifies max_rqst_sz and
->> > > > > max_resp_sz in the
->> > > > > reply to CREATE session.
->> > > > >=20
->> > > > > If the client finds it needs to call nfs4_reset_session(), it
->> > > > > might
->> > > > > get
->> > > > > smaller sizes back, so any pending read/writes would need to
->> > > > > be
->> > > > > resized.
->> > > > >=20
->> > > > > However, I cannot see how the retry handling for reads/writes
->> > > > > has any
->> > > > > chance to change the size.  It looks like a request is broken
->> > > > > up to
->> > > > > match the original ->rsize and ->wsize, then those individual
->> > > > > IO
->> > > > > requests can be retried, but the higher level request is
->> > > > > never
->> > > > > re-evaluated in light of a new size.
->> > > > >=20
->> > > > > Am I missing something, or is this not supported at present?
->> > > > > If it isn't supported, any suggestions on how best to handle
->> > > > > a
->> > > > > reduction of the rsize/wsize ??
->> > > > >=20
->> > > >=20
->> > > > Why would a sane server want to do this?
->> > >=20
->> > > Why would a sane protocol support it? :-)
->> > >=20
->> > > I have a network trace of SLE11-SP4 (3.0 based) talking to "a
->> > > NetApp
->> > > appliance".
->> > > It sends a 64K write and gets NFS4ERR_REQ_TOO_BIG.
->> > > It then closes the file (getting NFS4ERR_SEQ_MISORDERED even
->> > > though it
->> > > used a seq number 1 more than the WRITE request), and then
->> > > DESTROY_SESSION and CREATE_SESSION.
->> > > The CREATE_SESSION gets "max req size" of 33812 and "max resp
->> > > size" of
->> > > 33672.
->> > > It then opens the file again and retries the 64K write....
->> > >=20
->> > > I have a separate trace showing the initial mount where the sizes
->> > > are 71680
->> > > and 81920.
->> > >=20
->> > > I don't have a trace where it stops working, but reportedly
->> > > writes work
->> > > smoothly for some hours after a mount, but then suddenly stop
->> > > working.
->> > >=20
->> > > The CREATE_SESSION *call* requests I see have the small (32K)
->> > > sizes, but
->> > > presumably they are the result of a previous CREATE_SESSION reply
->> > > giving
->> > > a small value.
->> > >=20
->> > > I just had a thought.
->> > > If one session is shared by two "struct nfs_server" with
->> > > different
->> > > ->rsize or ->wsize, then the session might get set up with the
->> > > smaller
->> > > size, and the mount using the larger size will get confused.
->> > > In 3.0 (and even 3.10) nfs4_init_session() limits the requested
->> > > session
->> > > parameters to ->rsize and ->wsize.
->> > > That changed in 18aad3d552c7.
->> > >=20
->> > > Maybe I just need to remove that code from nfs4_init_session().
->> > > I'll give it a try.
->> > >=20
->> >=20
->> > Neil, does the code have this commit?
->> >=20
->> > commit 033853325fe3bdc70819a8b97915bd3bca41d3af
->> > Author: Olga Kornievskaia <kolga@netapp.com>
->> > Date:   Wed Mar 8 14:39:15 2017 -0500
->> >=20
->> >     NFSv4.1 respect server's max size in CREATE_SESSION
->> >=20
->> >     Currently client doesn't respect max sizes server returns in
->> > CREATE_SESSION.
->> >     nfs4_session_set_rwsize() gets called and server->rsize,
->> > server->wsize are 0
->> >     so they never get set to the sizes returned by the server.
->> >=20
->> >     Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
->> >     Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
->> >=20
->> > > Thanks,
->> > > NeilBrown
->>=20
->> Thanks for the suggestion.
->> The kernel doesn't have that patch, but I don't think it is relevant.
->> The ->rsize does have a suitable value - it isn't zero.
->> The problem is that the session limit appears to change, and the
->> client
->> doesn't adjust to the change.
->>=20
->> My current theory is that the client actually requested the change,
->> though on behalf of a different filesystem using the same session.
->>=20
->
-> So perhaps the right thing to do then, is to advertise a session max
-> response/reply size of NFS_MAX_FILE_IO_SIZE +
-> max(nfs41_maxread_overhead,nfs41_maxwrite_overhead) and just expect the
-> server negotiate that value down if it needs to?
+sparse warnings: (new ones prefixed by >>)
 
-Agreed - and that is exactly what Linux has done since about 3.11.
-My customer is still on 3.0 which advertises ->[wr]size, and this change
-wasn't obvious from the change logs so I didn't find it during my
-initial investigation.
-I've provided a patch and hope to get feedback in about a week.
+   include/linux/nfs_fs.h:566:16: sparse: expression using sizeof(void)
+   include/linux/nfs_fs.h:566:16: sparse: expression using sizeof(void)
+   include/linux/nfs_fs.h:566:16: sparse: expression using sizeof(void)
+   include/linux/nfs_fs.h:566:16: sparse: expression using sizeof(void)
+   include/linux/nfs_fs.h:566:16: sparse: expression using sizeof(void)
+>> include/linux/rculist.h:130:25: sparse: context imbalance in 'nfs_put_lock_context' - unexpected unlock
+   include/linux/list.h:125:25: sparse: context imbalance in '__put_nfs_open_context' - unexpected unlock
 
-Thanks,
-NeilBrown
+vim +/nfs_put_lock_context +130 include/linux/rculist.h
 
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
+82524746 Franck Bui-Huu 2008-05-12  103  
+82524746 Franck Bui-Huu 2008-05-12  104  /**
+82524746 Franck Bui-Huu 2008-05-12  105   * list_del_rcu - deletes entry from list without re-initialization
+82524746 Franck Bui-Huu 2008-05-12  106   * @entry: the element to delete from the list.
+82524746 Franck Bui-Huu 2008-05-12  107   *
+82524746 Franck Bui-Huu 2008-05-12  108   * Note: list_empty() on entry does not return true after this,
+82524746 Franck Bui-Huu 2008-05-12  109   * the entry is in an undefined state. It is useful for RCU based
+82524746 Franck Bui-Huu 2008-05-12  110   * lockfree traversal.
+82524746 Franck Bui-Huu 2008-05-12  111   *
+82524746 Franck Bui-Huu 2008-05-12  112   * In particular, it means that we can not poison the forward
+82524746 Franck Bui-Huu 2008-05-12  113   * pointers that may still be used for walking the list.
+82524746 Franck Bui-Huu 2008-05-12  114   *
+82524746 Franck Bui-Huu 2008-05-12  115   * The caller must take whatever precautions are necessary
+82524746 Franck Bui-Huu 2008-05-12  116   * (such as holding appropriate locks) to avoid racing
+82524746 Franck Bui-Huu 2008-05-12  117   * with another list-mutation primitive, such as list_del_rcu()
+82524746 Franck Bui-Huu 2008-05-12  118   * or list_add_rcu(), running on this same list.
+82524746 Franck Bui-Huu 2008-05-12  119   * However, it is perfectly legal to run concurrently with
+82524746 Franck Bui-Huu 2008-05-12  120   * the _rcu list-traversal primitives, such as
+82524746 Franck Bui-Huu 2008-05-12  121   * list_for_each_entry_rcu().
+82524746 Franck Bui-Huu 2008-05-12  122   *
+82524746 Franck Bui-Huu 2008-05-12  123   * Note that the caller is not permitted to immediately free
+82524746 Franck Bui-Huu 2008-05-12  124   * the newly deleted entry.  Instead, either synchronize_rcu()
+82524746 Franck Bui-Huu 2008-05-12  125   * or call_rcu() must be used to defer freeing until an RCU
+82524746 Franck Bui-Huu 2008-05-12  126   * grace period has elapsed.
+82524746 Franck Bui-Huu 2008-05-12  127   */
+82524746 Franck Bui-Huu 2008-05-12  128  static inline void list_del_rcu(struct list_head *entry)
+82524746 Franck Bui-Huu 2008-05-12  129  {
+559f9bad Dave Jones     2012-03-14 @130  	__list_del_entry(entry);
+82524746 Franck Bui-Huu 2008-05-12  131  	entry->prev = LIST_POISON2;
+82524746 Franck Bui-Huu 2008-05-12  132  }
+82524746 Franck Bui-Huu 2008-05-12  133  
 
------BEGIN PGP SIGNATURE-----
+:::::: The code at line 130 was first introduced by commit
+:::::: 559f9badd11ddf399f88b18b4c0f110fd511ae53 rcu: List-debug variants of rcu list routines.
 
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAluQVGUACgkQOeye3VZi
-gbmRCA/+NTD3J+Q0YL6yzTHFlctlL4FQWGGqZxtcq6JY1oWu7UXVeoCYGkdJd5hb
-AqtqUJCn7cxCOjLRMZCvRAVmFFZW9onHwLC64XzvHZLhV6AoL5S1xaEWy7piIlyP
-oRKvoXWi9fJ3jCP3br/2xya9IqvLgccaAMkRtpKHpVNBVUNNBp4DfDZj7fdt5o88
-os5WD2QVWkpWDr3UoIDv6j6JimoFdiol4x9CiEPJRRiId33NliuNfvSpyisH5rXQ
-l5DXW1PTEmp85eM4P5XJRYMmfYank6ZYpJFGXhz5SdzjdMLc7VmwvJ47T1fCKcor
-XGW/3vyjmABI7P35PqJvPQxDK8m4G63ptfZ+3wOvQpxEHQvNR631cZ/K5wRvnkBz
-W2BGUnYCeYpCzrD7u7rYybe29fxxbVJaQlApcpyvnR2IV5hbytAMO3VtBFkzSXr7
-Cy6yD83qHmZph1/hIr6/ydaNlj1mUr2r3/GsjOC8DlgcQOCStqFumkJRFEWpKBJR
-QSfV50+epILfdoRd9JCtgw4Mddsr8YHOMqjZS+8fEOrbX0ydqGSmoJV5m2LHk7XB
-Dr7lF68VhKIB3iVHilipkiX9N3Arpwz/JL99WtQpI4OtfZ6F1lqOBh3rp3c6UdXT
-08r/SZIxC+YwpgAtmPhdJL+s4eobhUwUpORow1xVh8lyhkQLaCU=
-=wdti
------END PGP SIGNATURE-----
---=-=-=--
+:::::: TO: Dave Jones <davej@redhat.com>
+:::::: CC: Paul E. McKenney <paulmck@linux.vnet.ibm.com>
+
+---
+0-DAY kernel test infrastructure                Open Source Technology Center
+https://lists.01.org/pipermail/kbuild-all                   Intel Corporation
