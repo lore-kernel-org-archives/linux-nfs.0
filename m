@@ -1,15 +1,18 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx142.netapp.com ([216.240.21.19]:40761 "EHLO mx142.netapp.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727043AbeIFX0o (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 6 Sep 2018 19:26:44 -0400
-From: "Schumaker, Anna" <Anna.Schumaker@netapp.com>
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "trondmy@gmail.com" <trondmy@gmail.com>
+Received: from mail-it0-f67.google.com ([209.85.214.67]:54874 "EHLO
+        mail-it0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726031AbeIFXei (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Sep 2018 19:34:38 -0400
+Received: by mail-it0-f67.google.com with SMTP id f14-v6so16879040ita.4
+        for <linux-nfs@vger.kernel.org>; Thu, 06 Sep 2018 11:57:49 -0700 (PDT)
+Message-ID: <53b44ea582204ab36bb63428a8444def777972a4.camel@gmail.com>
 Subject: Re: [PATCH v2 20/34] SUNRPC: Treat the task and request as separate
  in the xprt_ops->send_request()
-Date: Thu, 6 Sep 2018 18:49:52 +0000
-Message-ID: <7b354356492977b7ff948182907de28f0f67f308.camel@netapp.com>
+From: Trond Myklebust <trondmy@gmail.com>
+To: "Schumaker, Anna" <Anna.Schumaker@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Date: Thu, 06 Sep 2018 14:57:22 -0400
+In-Reply-To: <7b354356492977b7ff948182907de28f0f67f308.camel@netapp.com>
 References: <20180904210549.81673-1-trond.myklebust@hammerspace.com>
          <20180904210549.81673-2-trond.myklebust@hammerspace.com>
          <20180904210549.81673-3-trond.myklebust@hammerspace.com>
@@ -31,214 +34,246 @@ References: <20180904210549.81673-1-trond.myklebust@hammerspace.com>
          <20180904210549.81673-19-trond.myklebust@hammerspace.com>
          <20180904210549.81673-20-trond.myklebust@hammerspace.com>
          <20180904210549.81673-21-trond.myklebust@hammerspace.com>
-In-Reply-To: <20180904210549.81673-21-trond.myklebust@hammerspace.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+         <7b354356492977b7ff948182907de28f0f67f308.camel@netapp.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-SGkgVHJvbmQsDQoNCk9uIFR1ZSwgMjAxOC0wOS0wNCBhdCAxNzowNSAtMDQwMCwgVHJvbmQgTXlr
-bGVidXN0IHdyb3RlOg0KPiBXaGVuIHdlIHNoaWZ0IHRvIHVzaW5nIHRoZSB0cmFuc21pdCBxdWV1
-ZSwgdGhlbiB0aGUgdGFzayB0aGF0IGhvbGRzIHRoZQ0KPiB3cml0ZSBsb2NrIHdpbGwgbm90IG5l
-Y2Vzc2FyaWx5IGJlIHRoZSBzYW1lIGFzIHRoZSBvbmUgYmVpbmcgdHJhbnNtaXR0ZWQuDQo+IA0K
-PiBTaWduZWQtb2ZmLWJ5OiBUcm9uZCBNeWtsZWJ1c3QgPHRyb25kLm15a2xlYnVzdEBoYW1tZXJz
-cGFjZS5jb20+DQo+IC0tLQ0KPiAgaW5jbHVkZS9saW51eC9zdW5ycGMveHBydC5oICAgICAgICAg
-ICAgICAgIHwgIDIgKy0NCj4gIG5ldC9zdW5ycGMveHBydC5jICAgICAgICAgICAgICAgICAgICAg
-ICAgICB8ICAyICstDQo+ICBuZXQvc3VucnBjL3hwcnRyZG1hL3N2Y19yZG1hX2JhY2tjaGFubmVs
-LmMgfCAgMyArLS0NCj4gIG5ldC9zdW5ycGMveHBydHJkbWEvdHJhbnNwb3J0LmMgICAgICAgICAg
-ICB8ICA1ICsrLS0NCj4gIG5ldC9zdW5ycGMveHBydHNvY2suYyAgICAgICAgICAgICAgICAgICAg
-ICB8IDI3ICsrKysrKysrKysrLS0tLS0tLS0tLS0NCj4gIDUgZmlsZXMgY2hhbmdlZCwgMTggaW5z
-ZXJ0aW9ucygrKSwgMjEgZGVsZXRpb25zKC0pDQo+IA0KPiBkaWZmIC0tZ2l0IGEvaW5jbHVkZS9s
-aW51eC9zdW5ycGMveHBydC5oIGIvaW5jbHVkZS9saW51eC9zdW5ycGMveHBydC5oDQo+IGluZGV4
-IDgxYTZjMmM4ZGZjNy4uNmQ5MWFjZmUwNjQ0IDEwMDY0NA0KPiAtLS0gYS9pbmNsdWRlL2xpbnV4
-L3N1bnJwYy94cHJ0LmgNCj4gKysrIGIvaW5jbHVkZS9saW51eC9zdW5ycGMveHBydC5oDQo+IEBA
-IC0xNDAsNyArMTQwLDcgQEAgc3RydWN0IHJwY194cHJ0X29wcyB7DQo+ICAJdm9pZAkJKCpjb25u
-ZWN0KShzdHJ1Y3QgcnBjX3hwcnQgKnhwcnQsIHN0cnVjdCBycGNfdGFzaw0KPiAqdGFzayk7DQo+
-ICAJaW50CQkoKmJ1Zl9hbGxvYykoc3RydWN0IHJwY190YXNrICp0YXNrKTsNCj4gIAl2b2lkCQko
-KmJ1Zl9mcmVlKShzdHJ1Y3QgcnBjX3Rhc2sgKnRhc2spOw0KPiAtCWludAkJKCpzZW5kX3JlcXVl
-c3QpKHN0cnVjdCBycGNfdGFzayAqdGFzayk7DQo+ICsJaW50CQkoKnNlbmRfcmVxdWVzdCkoc3Ry
-dWN0IHJwY19ycXN0ICpyZXEsIHN0cnVjdCBycGNfdGFzaw0KPiAqdGFzayk7DQo+ICAJdm9pZAkJ
-KCpzZXRfcmV0cmFuc190aW1lb3V0KShzdHJ1Y3QgcnBjX3Rhc2sgKnRhc2spOw0KPiAgCXZvaWQJ
-CSgqdGltZXIpKHN0cnVjdCBycGNfeHBydCAqeHBydCwgc3RydWN0IHJwY190YXNrDQo+ICp0YXNr
-KTsNCj4gIAl2b2lkCQkoKnJlbGVhc2VfcmVxdWVzdCkoc3RydWN0IHJwY190YXNrICp0YXNrKTsN
-Cj4gZGlmZiAtLWdpdCBhL25ldC9zdW5ycGMveHBydC5jIGIvbmV0L3N1bnJwYy94cHJ0LmMNCj4g
-aW5kZXggOGU4YzM0NWVlZGY3Li43YzgwZjkzNTYyZTUgMTAwNjQ0DQo+IC0tLSBhL25ldC9zdW5y
-cGMveHBydC5jDQo+ICsrKyBiL25ldC9zdW5ycGMveHBydC5jDQo+IEBAIC0xMTcwLDcgKzExNzAs
-NyBAQCB2b2lkIHhwcnRfdHJhbnNtaXQoc3RydWN0IHJwY190YXNrICp0YXNrKQ0KPiAgCX0NCj4g
-IA0KPiAgCWNvbm5lY3RfY29va2llID0geHBydC0+Y29ubmVjdF9jb29raWU7DQo+IC0Jc3RhdHVz
-ID0geHBydC0+b3BzLT5zZW5kX3JlcXVlc3QodGFzayk7DQo+ICsJc3RhdHVzID0geHBydC0+b3Bz
-LT5zZW5kX3JlcXVlc3QocmVxLCB0YXNrKTsNCj4gIAl0cmFjZV94cHJ0X3RyYW5zbWl0KHhwcnQs
-IHJlcS0+cnFfeGlkLCBzdGF0dXMpOw0KPiAgCWlmIChzdGF0dXMgIT0gMCkgew0KPiAgCQl0YXNr
-LT50a19zdGF0dXMgPSBzdGF0dXM7DQo+IGRpZmYgLS1naXQgYS9uZXQvc3VucnBjL3hwcnRyZG1h
-L3N2Y19yZG1hX2JhY2tjaGFubmVsLmMNCj4gYi9uZXQvc3VucnBjL3hwcnRyZG1hL3N2Y19yZG1h
-X2JhY2tjaGFubmVsLmMNCj4gaW5kZXggMDliMTJiNzU2OGZlLi5kMTYxOGM3MGVkYjQgMTAwNjQ0
-DQo+IC0tLSBhL25ldC9zdW5ycGMveHBydHJkbWEvc3ZjX3JkbWFfYmFja2NoYW5uZWwuYw0KPiAr
-KysgYi9uZXQvc3VucnBjL3hwcnRyZG1hL3N2Y19yZG1hX2JhY2tjaGFubmVsLmMNCj4gQEAgLTIx
-NSw5ICsyMTUsOCBAQCBycGNyZG1hX2JjX3NlbmRfcmVxdWVzdChzdHJ1Y3Qgc3ZjeHBydF9yZG1h
-ICpyZG1hLCBzdHJ1Y3QNCj4gcnBjX3Jxc3QgKnJxc3QpDQo+ICAgKiBjb25uZWN0aW9uLg0KPiAg
-ICovDQo+ICBzdGF0aWMgaW50DQo+IC14cHJ0X3JkbWFfYmNfc2VuZF9yZXF1ZXN0KHN0cnVjdCBy
-cGNfdGFzayAqdGFzaykNCj4gK3hwcnRfcmRtYV9iY19zZW5kX3JlcXVlc3Qoc3RydWN0IHJwY19y
-cXN0ICpycXN0LCBzdHJ1Y3QgcnBjX3Rhc2sgKnRhc2spDQo+ICB7DQo+IC0Jc3RydWN0IHJwY19y
-cXN0ICpycXN0ID0gdGFzay0+dGtfcnFzdHA7DQo+ICAJc3RydWN0IHN2Y194cHJ0ICpzeHBydCA9
-IHJxc3QtPnJxX3hwcnQtPmJjX3hwcnQ7DQo+ICAJc3RydWN0IHN2Y3hwcnRfcmRtYSAqcmRtYTsN
-Cj4gIAlpbnQgcmV0Ow0KPiBkaWZmIC0tZ2l0IGEvbmV0L3N1bnJwYy94cHJ0cmRtYS90cmFuc3Bv
-cnQuYyBiL25ldC9zdW5ycGMveHBydHJkbWEvdHJhbnNwb3J0LmMNCj4gaW5kZXggMTQzY2UyNTc5
-YmE5Li5mYTY4NGJmNGQwOTAgMTAwNjQ0DQo+IC0tLSBhL25ldC9zdW5ycGMveHBydHJkbWEvdHJh
-bnNwb3J0LmMNCj4gKysrIGIvbmV0L3N1bnJwYy94cHJ0cmRtYS90cmFuc3BvcnQuYw0KPiBAQCAt
-NzA2LDkgKzcwNiw4IEBAIHhwcnRfcmRtYV9mcmVlKHN0cnVjdCBycGNfdGFzayAqdGFzaykNCj4g
-ICAqCQlzZW50LiBEbyBub3QgdHJ5IHRvIHNlbmQgdGhpcyBtZXNzYWdlIGFnYWluLg0KPiAgICov
-DQo+ICBzdGF0aWMgaW50DQo+IC14cHJ0X3JkbWFfc2VuZF9yZXF1ZXN0KHN0cnVjdCBycGNfdGFz
-ayAqdGFzaykNCj4gK3hwcnRfcmRtYV9zZW5kX3JlcXVlc3Qoc3RydWN0IHJwY19ycXN0ICpycXN0
-LCBzdHJ1Y3QgcnBjX3Rhc2sgKnRhc2spDQo+ICB7DQo+IC0Jc3RydWN0IHJwY19ycXN0ICpycXN0
-ID0gdGFzay0+dGtfcnFzdHA7DQo+ICAJc3RydWN0IHJwY194cHJ0ICp4cHJ0ID0gcnFzdC0+cnFf
-eHBydDsNCj4gIAlzdHJ1Y3QgcnBjcmRtYV9yZXEgKnJlcSA9IHJwY3JfdG9fcmRtYXIocnFzdCk7
-DQo+ICAJc3RydWN0IHJwY3JkbWFfeHBydCAqcl94cHJ0ID0gcnBjeF90b19yZG1heCh4cHJ0KTsN
-Cj4gQEAgLTc0MSw3ICs3NDAsNyBAQCB4cHJ0X3JkbWFfc2VuZF9yZXF1ZXN0KHN0cnVjdCBycGNf
-dGFzayAqdGFzaykNCj4gIAkvKiBBbiBSUEMgd2l0aCBubyByZXBseSB3aWxsIHRocm93IG9mZiBj
-cmVkaXQgYWNjb3VudGluZywNCj4gIAkgKiBzbyBkcm9wIHRoZSBjb25uZWN0aW9uIHRvIHJlc2V0
-IHRoZSBjcmVkaXQgZ3JhbnQuDQo+ICAJICovDQo+IC0JaWYgKCFycGNfcmVwbHlfZXhwZWN0ZWQo
-dGFzaykpDQo+ICsJaWYgKCFycGNfcmVwbHlfZXhwZWN0ZWQocnFzdC0+cnFfdGFzaykpDQo+ICAJ
-CWdvdG8gZHJvcF9jb25uZWN0aW9uOw0KPiAgCXJldHVybiAwOw0KPiAgDQo+IGRpZmYgLS1naXQg
-YS9uZXQvc3VucnBjL3hwcnRzb2NrLmMgYi9uZXQvc3VucnBjL3hwcnRzb2NrLmMNCj4gaW5kZXgg
-OGQ2NDA0MjU5ZmY5Li5iODE0M2VkZWQ0YWYgMTAwNjQ0DQo+IC0tLSBhL25ldC9zdW5ycGMveHBy
-dHNvY2suYw0KPiArKysgYi9uZXQvc3VucnBjL3hwcnRzb2NrLmMNCj4gQEAgLTQ0OSwxMiArNDQ5
-LDEyIEBAIHN0YXRpYyB2b2lkIHhzX25vc3BhY2VfY2FsbGJhY2soc3RydWN0IHJwY190YXNrICp0
-YXNrKQ0KPiAgDQo+ICAvKioNCj4gICAqIHhzX25vc3BhY2UgLSBwbGFjZSB0YXNrIG9uIHdhaXQg
-cXVldWUgaWYgdHJhbnNtaXQgd2FzIGluY29tcGxldGUNCj4gKyAqIEByZXE6IHBvaW50ZXIgdG8g
-UlBDIHJlcXVlc3QNCj4gICAqIEB0YXNrOiB0YXNrIHRvIHB1dCB0byBzbGVlcA0KPiAgICoNCj4g
-ICAqLw0KPiAtc3RhdGljIGludCB4c19ub3NwYWNlKHN0cnVjdCBycGNfdGFzayAqdGFzaykNCj4g
-K3N0YXRpYyBpbnQgeHNfbm9zcGFjZShzdHJ1Y3QgcnBjX3Jxc3QgKnJlcSwgc3RydWN0IHJwY190
-YXNrICp0YXNrKQ0KPiAgew0KPiAtCXN0cnVjdCBycGNfcnFzdCAqcmVxID0gdGFzay0+dGtfcnFz
-dHA7DQo+ICAJc3RydWN0IHJwY194cHJ0ICp4cHJ0ID0gcmVxLT5ycV94cHJ0Ow0KPiAgCXN0cnVj
-dCBzb2NrX3hwcnQgKnRyYW5zcG9ydCA9IGNvbnRhaW5lcl9vZih4cHJ0LCBzdHJ1Y3Qgc29ja194
-cHJ0LA0KPiB4cHJ0KTsNCj4gIAlzdHJ1Y3Qgc29jayAqc2sgPSB0cmFuc3BvcnQtPmluZXQ7DQo+
-IEBAIC01MTMsNiArNTEzLDcgQEAgc3RhdGljIGlubGluZSB2b2lkIHhzX2VuY29kZV9zdHJlYW1f
-cmVjb3JkX21hcmtlcihzdHJ1Y3QNCj4geGRyX2J1ZiAqYnVmKQ0KPiAgDQo+ICAvKioNCj4gICAq
-IHhzX2xvY2FsX3NlbmRfcmVxdWVzdCAtIHdyaXRlIGFuIFJQQyByZXF1ZXN0IHRvIGFuIEFGX0xP
-Q0FMIHNvY2tldA0KPiArICogQHJlcTogcG9pbnRlciB0byBSUEMgcmVxdWVzdA0KPiAgICogQHRh
-c2s6IFJQQyB0YXNrIHRoYXQgbWFuYWdlcyB0aGUgc3RhdGUgb2YgYW4gUlBDIHJlcXVlc3QNCj4g
-ICAqDQo+ICAgKiBSZXR1cm4gdmFsdWVzOg0KPiBAQCAtNTIyLDkgKzUyMyw4IEBAIHN0YXRpYyBp
-bmxpbmUgdm9pZCB4c19lbmNvZGVfc3RyZWFtX3JlY29yZF9tYXJrZXIoc3RydWN0DQo+IHhkcl9i
-dWYgKmJ1ZikNCj4gICAqIEVOT1RDT05OOglDYWxsZXIgbmVlZHMgdG8gaW52b2tlIGNvbm5lY3Qg
-bG9naWMgdGhlbiBjYWxsIGFnYWluDQo+ICAgKiAgICBvdGhlcjoJU29tZSBvdGhlciBlcnJvciBv
-Y2N1cmVkLCB0aGUgcmVxdWVzdCB3YXMgbm90IHNlbnQNCj4gICAqLw0KPiAtc3RhdGljIGludCB4
-c19sb2NhbF9zZW5kX3JlcXVlc3Qoc3RydWN0IHJwY190YXNrICp0YXNrKQ0KPiArc3RhdGljIGlu
-dCB4c19sb2NhbF9zZW5kX3JlcXVlc3Qoc3RydWN0IHJwY19ycXN0ICpyZXEsIHN0cnVjdCBycGNf
-dGFzayAqdGFzaykNCj4gIHsNCj4gLQlzdHJ1Y3QgcnBjX3Jxc3QgKnJlcSA9IHRhc2stPnRrX3Jx
-c3RwOw0KPiAgCXN0cnVjdCBycGNfeHBydCAqeHBydCA9IHJlcS0+cnFfeHBydDsNCj4gIAlzdHJ1
-Y3Qgc29ja194cHJ0ICp0cmFuc3BvcnQgPQ0KPiAgCQkJCWNvbnRhaW5lcl9vZih4cHJ0LCBzdHJ1
-Y3Qgc29ja194cHJ0LCB4cHJ0KTsNCj4gQEAgLTU2OSw3ICs1NjksNyBAQCBzdGF0aWMgaW50IHhz
-X2xvY2FsX3NlbmRfcmVxdWVzdChzdHJ1Y3QgcnBjX3Rhc2sgKnRhc2spDQo+ICAJY2FzZSAtRU5P
-QlVGUzoNCj4gIAkJYnJlYWs7DQo+ICAJY2FzZSAtRUFHQUlOOg0KPiAtCQlzdGF0dXMgPSB4c19u
-b3NwYWNlKHRhc2spOw0KPiArCQlzdGF0dXMgPSB4c19ub3NwYWNlKHJlcSwgdGFzayk7DQo+ICAJ
-CWJyZWFrOw0KPiAgCWRlZmF1bHQ6DQo+ICAJCWRwcmludGsoIlJQQzogICAgICAgc2VuZG1zZyBy
-ZXR1cm5lZCB1bnJlY29nbml6ZWQgZXJyb3IgJWRcbiIsDQo+IEBAIC01ODUsNiArNTg1LDcgQEAg
-c3RhdGljIGludCB4c19sb2NhbF9zZW5kX3JlcXVlc3Qoc3RydWN0IHJwY190YXNrICp0YXNrKQ0K
-PiAgDQo+ICAvKioNCj4gICAqIHhzX3VkcF9zZW5kX3JlcXVlc3QgLSB3cml0ZSBhbiBSUEMgcmVx
-dWVzdCB0byBhIFVEUCBzb2NrZXQNCj4gKyAqIEByZXE6IHBvaW50ZXIgdG8gUlBDIHJlcXVlc3QN
-Cj4gICAqIEB0YXNrOiBhZGRyZXNzIG9mIFJQQyB0YXNrIHRoYXQgbWFuYWdlcyB0aGUgc3RhdGUg
-b2YgYW4gUlBDIHJlcXVlc3QNCj4gICAqDQo+ICAgKiBSZXR1cm4gdmFsdWVzOg0KPiBAQCAtNTk0
-LDkgKzU5NSw4IEBAIHN0YXRpYyBpbnQgeHNfbG9jYWxfc2VuZF9yZXF1ZXN0KHN0cnVjdCBycGNf
-dGFzayAqdGFzaykNCj4gICAqIEVOT1RDT05OOglDYWxsZXIgbmVlZHMgdG8gaW52b2tlIGNvbm5l
-Y3QgbG9naWMgdGhlbiBjYWxsIGFnYWluDQo+ICAgKiAgICBvdGhlcjoJU29tZSBvdGhlciBlcnJv
-ciBvY2N1cnJlZCwgdGhlIHJlcXVlc3Qgd2FzIG5vdCBzZW50DQo+ICAgKi8NCj4gLXN0YXRpYyBp
-bnQgeHNfdWRwX3NlbmRfcmVxdWVzdChzdHJ1Y3QgcnBjX3Rhc2sgKnRhc2spDQo+ICtzdGF0aWMg
-aW50IHhzX3VkcF9zZW5kX3JlcXVlc3Qoc3RydWN0IHJwY19ycXN0ICpyZXEsIHN0cnVjdCBycGNf
-dGFzayAqdGFzaykNCj4gIHsNCj4gLQlzdHJ1Y3QgcnBjX3Jxc3QgKnJlcSA9IHRhc2stPnRrX3Jx
-c3RwOw0KPiAgCXN0cnVjdCBycGNfeHBydCAqeHBydCA9IHJlcS0+cnFfeHBydDsNCj4gIAlzdHJ1
-Y3Qgc29ja194cHJ0ICp0cmFuc3BvcnQgPSBjb250YWluZXJfb2YoeHBydCwgc3RydWN0IHNvY2tf
-eHBydCwNCj4geHBydCk7DQo+ICAJc3RydWN0IHhkcl9idWYgKnhkciA9ICZyZXEtPnJxX3NuZF9i
-dWY7DQo+IEBAIC02MzgsNyArNjM4LDcgQEAgc3RhdGljIGludCB4c191ZHBfc2VuZF9yZXF1ZXN0
-KHN0cnVjdCBycGNfdGFzayAqdGFzaykNCj4gIAkJLyogU2hvdWxkIHdlIGNhbGwgeHNfY2xvc2Uo
-KSBoZXJlPyAqLw0KPiAgCQlicmVhazsNCj4gIAljYXNlIC1FQUdBSU46DQo+IC0JCXN0YXR1cyA9
-IHhzX25vc3BhY2UodGFzayk7DQo+ICsJCXN0YXR1cyA9IHhzX25vc3BhY2UocmVxLCB0YXNrKTsN
-Cj4gIAkJYnJlYWs7DQo+ICAJY2FzZSAtRU5FVFVOUkVBQ0g6DQo+ICAJY2FzZSAtRU5PQlVGUzoN
-Cj4gQEAgLTY1OCw2ICs2NTgsNyBAQCBzdGF0aWMgaW50IHhzX3VkcF9zZW5kX3JlcXVlc3Qoc3Ry
-dWN0IHJwY190YXNrICp0YXNrKQ0KPiAgDQo+ICAvKioNCj4gICAqIHhzX3RjcF9zZW5kX3JlcXVl
-c3QgLSB3cml0ZSBhbiBSUEMgcmVxdWVzdCB0byBhIFRDUCBzb2NrZXQNCj4gKyAqIEByZXE6IHBv
-aW50ZXIgdG8gUlBDIHJlcXVlc3QNCj4gICAqIEB0YXNrOiBhZGRyZXNzIG9mIFJQQyB0YXNrIHRo
-YXQgbWFuYWdlcyB0aGUgc3RhdGUgb2YgYW4gUlBDIHJlcXVlc3QNCj4gICAqDQo+ICAgKiBSZXR1
-cm4gdmFsdWVzOg0KPiBAQCAtNjcwLDkgKzY3MSw4IEBAIHN0YXRpYyBpbnQgeHNfdWRwX3NlbmRf
-cmVxdWVzdChzdHJ1Y3QgcnBjX3Rhc2sgKnRhc2spDQo+ICAgKiBYWFg6IEluIHRoZSBjYXNlIG9m
-IHNvZnQgdGltZW91dHMsIHNob3VsZCB3ZSBldmVudHVhbGx5IGdpdmUgdXANCj4gICAqCWlmIHNl
-bmRtc2cgaXMgbm90IGFibGUgdG8gbWFrZSBwcm9ncmVzcz8NCj4gICAqLw0KPiAtc3RhdGljIGlu
-dCB4c190Y3Bfc2VuZF9yZXF1ZXN0KHN0cnVjdCBycGNfdGFzayAqdGFzaykNCj4gK3N0YXRpYyBp
-bnQgeHNfdGNwX3NlbmRfcmVxdWVzdChzdHJ1Y3QgcnBjX3Jxc3QgKnJlcSwgc3RydWN0IHJwY190
-YXNrICp0YXNrKQ0KPiAgew0KPiAtCXN0cnVjdCBycGNfcnFzdCAqcmVxID0gdGFzay0+dGtfcnFz
-dHA7DQo+ICAJc3RydWN0IHJwY194cHJ0ICp4cHJ0ID0gcmVxLT5ycV94cHJ0Ow0KPiAgCXN0cnVj
-dCBzb2NrX3hwcnQgKnRyYW5zcG9ydCA9IGNvbnRhaW5lcl9vZih4cHJ0LCBzdHJ1Y3Qgc29ja194
-cHJ0LA0KPiB4cHJ0KTsNCj4gIAlzdHJ1Y3QgeGRyX2J1ZiAqeGRyID0gJnJlcS0+cnFfc25kX2J1
-ZjsNCj4gQEAgLTY5Nyw3ICs2OTcsNyBAQCBzdGF0aWMgaW50IHhzX3RjcF9zZW5kX3JlcXVlc3Qo
-c3RydWN0IHJwY190YXNrICp0YXNrKQ0KPiAgCSAqIGNvbXBsZXRlcyB3aGlsZSB0aGUgc29ja2V0
-IGhvbGRzIGEgcmVmZXJlbmNlIHRvIHRoZSBwYWdlcywNCj4gIAkgKiB0aGVuIHdlIG1heSBlbmQg
-dXAgcmVzZW5kaW5nIGNvcnJ1cHRlZCBkYXRhLg0KPiAgCSAqLw0KPiAtCWlmICh0YXNrLT50a19m
-bGFncyAmIFJQQ19UQVNLX1NFTlQpDQo+ICsJaWYgKHJlcS0+cnFfdGFzay0+dGtfZmxhZ3MgJiBS
-UENfVEFTS19TRU5UKQ0KDQpDYW4gcmVxIG9yIHJxX3Rhc2sgYmUgbnVsbCBjb21pbmcgaW50byB0
-aGlzIGZ1bmN0aW9uPyAgSSdtIHNlZWluZyB0aGUgZm9sbG93aW5nDQpudWxsIHBvaW50ZXIgZGVy
-ZWZlcmVuY2Ugd2hpbGUgcnVubmluZyBjb25uZWN0YXRob24gdGVzdHMgb24gdjQuMSBhZnRlciB0
-aGlzDQpwYXRjaDoNCg0KWyAgIDc3Ljc4MjA0NV0gQlVHOiB1bmFibGUgdG8gaGFuZGxlIGtlcm5l
-bCBOVUxMIHBvaW50ZXIgZGVyZWZlcmVuY2UgYXQNCjAwMDAwMDAwMDAwMDAwZDQNClsgICA3Ny43
-ODIxODRdIFBHRCAwIFA0RCAwIA0KWyAgIDc3Ljc4MjIzMl0gT29wczogMDAwMCBbIzFdIFBSRUVN
-UFQgU01QIFBUSQ0KWyAgIDc3Ljc4MjI4Nl0gQ1BVOiAwIFBJRDogMTc5MCBDb21tOiBORlN2NCBj
-YWxsYmFjayBOb3QgdGFpbnRlZCA0LjE5LjAtcmMyLQ0KQU5OQSsgIzEzNTANClsgICA3Ny43ODIz
-ODJdIEhhcmR3YXJlIG5hbWU6IEJvY2hzIEJvY2hzLCBCSU9TIEJvY2hzIDAxLzAxLzIwMTENClsg
-ICA3Ny43ODI0NjhdIFJJUDogMDAxMDp4c190Y3Bfc2VuZF9yZXF1ZXN0KzB4NWYvMHgyNTAgW3N1
-bnJwY10NClsgICA3Ny43ODI1MzFdIENvZGU6IDc0IDBlIDhiIDk3IDZjIDAxIDAwIDAwIDg1IGQy
-IDBmIDg0IDIxIDAxIDAwIDAwIDhiIDQzIDQwIDQ4DQo4YiA1MyAwOCA4MyBlOCAwNCAwZCAwMCAw
-MCAwMCA4MCAwZiBjOCA4OSAwMiA0OCA4YiA4MyA4OCAwMCAwMCAwMCA8MGY+IGI3IGE4IGQ0DQow
-MCAwMCAwMCA0OSA4YiA4NyA3OCAwNSAwMCAwMCA2NiBjMSBlZCAwYiA4MyBmNSAwMSA4Mw0KWyAg
-IDc3Ljc4MjcxNl0gUlNQOiAwMDE4OmZmZmZjOTAwMDEwYTNkMTggRUZMQUdTOiAwMDAxMDI4Mg0K
-WyAgIDc3Ljc4Mjc3NV0gUkFYOiAwMDAwMDAwMDAwMDAwMDAwIFJCWDogZmZmZjg4MDBiYTQ1MmUw
-MCBSQ1g6IDAwMDAwMDAwMDAwMDAwMDANClsgICA3Ny43ODI4NDNdIFJEWDogZmZmZjg4MDBiODg4
-MzAwMCBSU0k6IGZmZmY4ODAwYmE2YjcxMDAgUkRJOiBmZmZmODgwMGJhNDUyZTAwDQpbICAgNzcu
-NzgyOTExXSBSQlA6IGZmZmY4ODAwYmE0NTJlMDAgUjA4OiAwMDAwMDAxODVlOTc3ZmM5IFIwOTog
-ZmZmZmZmZmY4MjIyOWM5OA0KWyAgIDc3Ljc4Mjk4MF0gUjEwOiBmZmZmZmZmZjgyMjI5Yzk0IFIx
-MTogMDAwMDAwMDAwMDAwMDAwMCBSMTI6IGZmZmY4ODAwYmE0NTJlMDgNClsgICA3Ny43ODMwNDhd
-IFIxMzogZmZmZjg4MDBiYTQ1MmUwMCBSMTQ6IGZmZmZmZmZmYTAzMDM0YjAgUjE1OiBmZmZmODgw
-MGI0YzExODAwDQpbICAgNzcuNzgzMTE4XSBGUzogIDAwMDAwMDAwMDAwMDAwMDAoMDAwMCkgR1M6
-ZmZmZjg4MDBiY2EwMDAwMCgwMDAwKQ0Ka25sR1M6MDAwMDAwMDAwMDAwMDAwMA0KWyAgIDc3Ljc4
-MzIxN10gQ1M6ICAwMDEwIERTOiAwMDAwIEVTOiAwMDAwIENSMDogMDAwMDAwMDA4MDA1MDAzMw0K
-WyAgIDc3Ljc4MzI3OF0gQ1IyOiAwMDAwMDAwMDAwMDAwMGQ0IENSMzogMDAwMDAwMDAwMjAwYTAw
-MSBDUjQ6IDAwMDAwMDAwMDAxNjA2ZjANClsgICA3Ny43ODMzNTFdIENhbGwgVHJhY2U6DQpbICAg
-NzcuNzgzNDE4XSAgPyBycGNfd2FrZV91cF9zdGF0dXMrMHg3MC8weDcwIFtzdW5ycGNdDQpbICAg
-NzcuNzgzNTQyXSAgPyBycGNfY2xudF90ZXN0X2FuZF9hZGRfeHBydCsweGIwLzB4YjAgW3N1bnJw
-Y10NClsgICA3Ny43ODM2MzRdICB4cHJ0X3RyYW5zbWl0KzB4ODIvMHgyMzAgW3N1bnJwY10NClsg
-ICA3Ny43ODM3MTFdICA/IHJwY193YWtlX3VwX3N0YXR1cysweDcwLzB4NzAgW3N1bnJwY10NClsg
-ICA3Ny43ODM3ODZdICA/IHJwY19jbG50X3Rlc3RfYW5kX2FkZF94cHJ0KzB4YjAvMHhiMCBbc3Vu
-cnBjXQ0KWyAgIDc3Ljc4NDc3Ml0gIGNhbGxfYmNfdHJhbnNtaXQrMHg1MC8weGYwIFtzdW5ycGNd
-DQpbICAgNzcuNzg1NzM3XSAgX19ycGNfZXhlY3V0ZSsweDdhLzB4MzcwIFtzdW5ycGNdDQpbICAg
-NzcuNzg2NjI2XSAgPyBrdm1fY2xvY2tfcmVhZCsweDE0LzB4MzANClsgICA3Ny43ODc1NDZdICA/
-IGt0aW1lX2dldCsweDMxLzB4OTANClsgICA3Ny43ODgzOTNdICBycGNfcnVuX2JjX3Rhc2srMHg4
-NS8weGMwIFtzdW5ycGNdDQpbICAgNzcuNzg5MjYwXSAgYmNfc3ZjX3Byb2Nlc3MrMHgyNzUvMHgy
-ZjAgW3N1bnJwY10NClsgICA3Ny43OTAyMTZdICBuZnM0MV9jYWxsYmFja19zdmMrMHgxMjAvMHgx
-OTAgW25mc3Y0XQ0KWyAgIDc3Ljc5MDYzMV0gID8gd2FpdF93b2tlbisweDgwLzB4ODANClsgICA3
-Ny43OTA5OThdICA/IG5mc19tYXBfZ2lkX3RvX2dyb3VwKzB4MTEwLzB4MTEwIFtuZnN2NF0NClsg
-ICA3Ny43OTEzNTZdICBrdGhyZWFkKzB4MTBkLzB4MTMwDQpbICAgNzcuNzkxNzA4XSAgPyBrdGhy
-ZWFkX3BhcmsrMHg4MC8weDgwDQpbICAgNzcuNzkyMDQ3XSAgcmV0X2Zyb21fZm9yaysweDM1LzB4
-NDANClsgICA3Ny43OTIyNzJdIE1vZHVsZXMgbGlua2VkIGluOiBuZnN2MyBycGNzZWNfZ3NzX2ty
-YjUgbmZzdjQgbmZzIGZzY2FjaGUNCmNmZzgwMjExIHJwY3JkbWEgcmZraWxsIGNyY3QxMGRpZl9w
-Y2xtdWwgY3JjMzJfcGNsbXVsIGNyYzMyY19pbnRlbA0KZ2hhc2hfY2xtdWxuaV9pbnRlbCBwY2Jj
-IGpveWRldiBtb3VzZWRldiBhZXNuaV9pbnRlbCBldmRldiBhZXNfeDg2XzY0DQpjcnlwdG9fc2lt
-ZCBpbnB1dF9sZWRzIGNyeXB0ZCBsZWRfY2xhc3MgbWFjX2hpZCBnbHVlX2hlbHBlciBwc21vdXNl
-IHBjc3Brcg0KaW50ZWxfYWdwIG5mc2QgaW50ZWxfZ3R0IGkyY19waWl4NCBidXR0b24gYXV0aF9y
-cGNnc3MgbmZzX2FjbCBsb2NrZCBncmFjZSBzdW5ycGMNCnNjaF9mcV9jb2RlbCBpcF90YWJsZXMg
-eF90YWJsZXMgYXRhX2dlbmVyaWMgcGF0YV9hY3BpIHNlcmlvX3JhdyBhdGtiZCBsaWJwczINCmF0
-YV9waWl4IGxpYmF0YSBpODA0MiBmbG9wcHkgc2VyaW8gdWhjaV9oY2Qgc2NzaV9tb2QgZWhjaV9w
-Y2kgZWhjaV9oY2QgdXNiY29yZQ0KdXNiX2NvbW1vbiB4ZnMgdmlydGlvX2JhbGxvb24gdmlydGlv
-X25ldCBuZXRfZmFpbG92ZXIgZmFpbG92ZXIgdmlydGlvX3BjaQ0KdmlydGlvX2JsayB2aXJ0aW9f
-cmluZyB2aXJ0aW8NClsgICA3Ny43OTQzOTddIENSMjogMDAwMDAwMDAwMDAwMDBkNA0KWyAgIDc3
-Ljc5NDY1MF0gLS0tWyBlbmQgdHJhY2UgOGQ4ODg4YjZiZGU4NGQzMyBdLS0tDQoNCg0KVGhhbmtz
-LA0KQW5uYQ0KPiAgCQl6ZXJvY29weSA9IGZhbHNlOw0KPiAgDQo+ICAJaWYgKHRlc3RfYml0KFhQ
-UlRfU09DS19VUERfVElNRU9VVCwgJnRyYW5zcG9ydC0+c29ja19zdGF0ZSkpDQo+IEBAIC03NjEs
-NyArNzYxLDcgQEAgc3RhdGljIGludCB4c190Y3Bfc2VuZF9yZXF1ZXN0KHN0cnVjdCBycGNfdGFz
-ayAqdGFzaykNCj4gIAkJLyogU2hvdWxkIHdlIGNhbGwgeHNfY2xvc2UoKSBoZXJlPyAqLw0KPiAg
-CQlicmVhazsNCj4gIAljYXNlIC1FQUdBSU46DQo+IC0JCXN0YXR1cyA9IHhzX25vc3BhY2UodGFz
-ayk7DQo+ICsJCXN0YXR1cyA9IHhzX25vc3BhY2UocmVxLCB0YXNrKTsNCj4gIAkJYnJlYWs7DQo+
-ICAJY2FzZSAtRUNPTk5SRVNFVDoNCj4gIAljYXNlIC1FQ09OTlJFRlVTRUQ6DQo+IEBAIC0yNzA2
-LDkgKzI3MDYsOCBAQCBzdGF0aWMgaW50IGJjX3NlbmR0byhzdHJ1Y3QgcnBjX3Jxc3QgKnJlcSkN
-Cj4gIC8qDQo+ICAgKiBUaGUgc2VuZCByb3V0aW5lLiBCb3Jyb3dzIGZyb20gc3ZjX3NlbmQNCj4g
-ICAqLw0KPiAtc3RhdGljIGludCBiY19zZW5kX3JlcXVlc3Qoc3RydWN0IHJwY190YXNrICp0YXNr
-KQ0KPiArc3RhdGljIGludCBiY19zZW5kX3JlcXVlc3Qoc3RydWN0IHJwY19ycXN0ICpyZXEsIHN0
-cnVjdCBycGNfdGFzayAqdGFzaykNCj4gIHsNCj4gLQlzdHJ1Y3QgcnBjX3Jxc3QgKnJlcSA9IHRh
-c2stPnRrX3Jxc3RwOw0KPiAgCXN0cnVjdCBzdmNfeHBydAkqeHBydDsNCj4gIAlpbnQgbGVuOw0K
-PiAgDQo=
+On Thu, 2018-09-06 at 18:49 +0000, Schumaker, Anna wrote:
+> Hi Trond,
+> 
+> On Tue, 2018-09-04 at 17:05 -0400, Trond Myklebust wrote:
+> > When we shift to using the transmit queue, then the task that holds
+> > the
+> > write lock will not necessarily be the same as the one being
+> > transmitted.
+> > 
+> > Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
+> > ---
+> >  include/linux/sunrpc/xprt.h                |  2 +-
+> >  net/sunrpc/xprt.c                          |  2 +-
+> >  net/sunrpc/xprtrdma/svc_rdma_backchannel.c |  3 +--
+> >  net/sunrpc/xprtrdma/transport.c            |  5 ++--
+> >  net/sunrpc/xprtsock.c                      | 27 +++++++++++-------
+> > ----
+> >  5 files changed, 18 insertions(+), 21 deletions(-)
+> > 
+> > diff --git a/include/linux/sunrpc/xprt.h
+> > b/include/linux/sunrpc/xprt.h
+> > index 81a6c2c8dfc7..6d91acfe0644 100644
+> > --- a/include/linux/sunrpc/xprt.h
+> > +++ b/include/linux/sunrpc/xprt.h
+> > @@ -140,7 +140,7 @@ struct rpc_xprt_ops {
+> >  	void		(*connect)(struct rpc_xprt *xprt, struct
+> > rpc_task
+> > *task);
+> >  	int		(*buf_alloc)(struct rpc_task *task);
+> >  	void		(*buf_free)(struct rpc_task *task);
+> > -	int		(*send_request)(struct rpc_task *task);
+> > +	int		(*send_request)(struct rpc_rqst *req, struct
+> > rpc_task
+> > *task);
+> >  	void		(*set_retrans_timeout)(struct rpc_task
+> > *task);
+> >  	void		(*timer)(struct rpc_xprt *xprt, struct
+> > rpc_task
+> > *task);
+> >  	void		(*release_request)(struct rpc_task *task);
+> > diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+> > index 8e8c345eedf7..7c80f93562e5 100644
+> > --- a/net/sunrpc/xprt.c
+> > +++ b/net/sunrpc/xprt.c
+> > @@ -1170,7 +1170,7 @@ void xprt_transmit(struct rpc_task *task)
+> >  	}
+> >  
+> >  	connect_cookie = xprt->connect_cookie;
+> > -	status = xprt->ops->send_request(task);
+> > +	status = xprt->ops->send_request(req, task);
+> >  	trace_xprt_transmit(xprt, req->rq_xid, status);
+> >  	if (status != 0) {
+> >  		task->tk_status = status;
+> > diff --git a/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
+> > b/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
+> > index 09b12b7568fe..d1618c70edb4 100644
+> > --- a/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
+> > +++ b/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
+> > @@ -215,9 +215,8 @@ rpcrdma_bc_send_request(struct svcxprt_rdma
+> > *rdma, struct
+> > rpc_rqst *rqst)
+> >   * connection.
+> >   */
+> >  static int
+> > -xprt_rdma_bc_send_request(struct rpc_task *task)
+> > +xprt_rdma_bc_send_request(struct rpc_rqst *rqst, struct rpc_task
+> > *task)
+> >  {
+> > -	struct rpc_rqst *rqst = task->tk_rqstp;
+> >  	struct svc_xprt *sxprt = rqst->rq_xprt->bc_xprt;
+> >  	struct svcxprt_rdma *rdma;
+> >  	int ret;
+> > diff --git a/net/sunrpc/xprtrdma/transport.c
+> > b/net/sunrpc/xprtrdma/transport.c
+> > index 143ce2579ba9..fa684bf4d090 100644
+> > --- a/net/sunrpc/xprtrdma/transport.c
+> > +++ b/net/sunrpc/xprtrdma/transport.c
+> > @@ -706,9 +706,8 @@ xprt_rdma_free(struct rpc_task *task)
+> >   *		sent. Do not try to send this message again.
+> >   */
+> >  static int
+> > -xprt_rdma_send_request(struct rpc_task *task)
+> > +xprt_rdma_send_request(struct rpc_rqst *rqst, struct rpc_task
+> > *task)
+> >  {
+> > -	struct rpc_rqst *rqst = task->tk_rqstp;
+> >  	struct rpc_xprt *xprt = rqst->rq_xprt;
+> >  	struct rpcrdma_req *req = rpcr_to_rdmar(rqst);
+> >  	struct rpcrdma_xprt *r_xprt = rpcx_to_rdmax(xprt);
+> > @@ -741,7 +740,7 @@ xprt_rdma_send_request(struct rpc_task *task)
+> >  	/* An RPC with no reply will throw off credit accounting,
+> >  	 * so drop the connection to reset the credit grant.
+> >  	 */
+> > -	if (!rpc_reply_expected(task))
+> > +	if (!rpc_reply_expected(rqst->rq_task))
+> >  		goto drop_connection;
+> >  	return 0;
+> >  
+> > diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+> > index 8d6404259ff9..b8143eded4af 100644
+> > --- a/net/sunrpc/xprtsock.c
+> > +++ b/net/sunrpc/xprtsock.c
+> > @@ -449,12 +449,12 @@ static void xs_nospace_callback(struct
+> > rpc_task *task)
+> >  
+> >  /**
+> >   * xs_nospace - place task on wait queue if transmit was
+> > incomplete
+> > + * @req: pointer to RPC request
+> >   * @task: task to put to sleep
+> >   *
+> >   */
+> > -static int xs_nospace(struct rpc_task *task)
+> > +static int xs_nospace(struct rpc_rqst *req, struct rpc_task *task)
+> >  {
+> > -	struct rpc_rqst *req = task->tk_rqstp;
+> >  	struct rpc_xprt *xprt = req->rq_xprt;
+> >  	struct sock_xprt *transport = container_of(xprt, struct
+> > sock_xprt,
+> > xprt);
+> >  	struct sock *sk = transport->inet;
+> > @@ -513,6 +513,7 @@ static inline void
+> > xs_encode_stream_record_marker(struct
+> > xdr_buf *buf)
+> >  
+> >  /**
+> >   * xs_local_send_request - write an RPC request to an AF_LOCAL
+> > socket
+> > + * @req: pointer to RPC request
+> >   * @task: RPC task that manages the state of an RPC request
+> >   *
+> >   * Return values:
+> > @@ -522,9 +523,8 @@ static inline void
+> > xs_encode_stream_record_marker(struct
+> > xdr_buf *buf)
+> >   * ENOTCONN:	Caller needs to invoke connect logic then call
+> > again
+> >   *    other:	Some other error occured, the request was not
+> > sent
+> >   */
+> > -static int xs_local_send_request(struct rpc_task *task)
+> > +static int xs_local_send_request(struct rpc_rqst *req, struct
+> > rpc_task *task)
+> >  {
+> > -	struct rpc_rqst *req = task->tk_rqstp;
+> >  	struct rpc_xprt *xprt = req->rq_xprt;
+> >  	struct sock_xprt *transport =
+> >  				container_of(xprt, struct sock_xprt,
+> > xprt);
+> > @@ -569,7 +569,7 @@ static int xs_local_send_request(struct
+> > rpc_task *task)
+> >  	case -ENOBUFS:
+> >  		break;
+> >  	case -EAGAIN:
+> > -		status = xs_nospace(task);
+> > +		status = xs_nospace(req, task);
+> >  		break;
+> >  	default:
+> >  		dprintk("RPC:       sendmsg returned unrecognized error
+> > %d\n",
+> > @@ -585,6 +585,7 @@ static int xs_local_send_request(struct
+> > rpc_task *task)
+> >  
+> >  /**
+> >   * xs_udp_send_request - write an RPC request to a UDP socket
+> > + * @req: pointer to RPC request
+> >   * @task: address of RPC task that manages the state of an RPC
+> > request
+> >   *
+> >   * Return values:
+> > @@ -594,9 +595,8 @@ static int xs_local_send_request(struct
+> > rpc_task *task)
+> >   * ENOTCONN:	Caller needs to invoke connect logic then call
+> > again
+> >   *    other:	Some other error occurred, the request was not
+> > sent
+> >   */
+> > -static int xs_udp_send_request(struct rpc_task *task)
+> > +static int xs_udp_send_request(struct rpc_rqst *req, struct
+> > rpc_task *task)
+> >  {
+> > -	struct rpc_rqst *req = task->tk_rqstp;
+> >  	struct rpc_xprt *xprt = req->rq_xprt;
+> >  	struct sock_xprt *transport = container_of(xprt, struct
+> > sock_xprt,
+> > xprt);
+> >  	struct xdr_buf *xdr = &req->rq_snd_buf;
+> > @@ -638,7 +638,7 @@ static int xs_udp_send_request(struct rpc_task
+> > *task)
+> >  		/* Should we call xs_close() here? */
+> >  		break;
+> >  	case -EAGAIN:
+> > -		status = xs_nospace(task);
+> > +		status = xs_nospace(req, task);
+> >  		break;
+> >  	case -ENETUNREACH:
+> >  	case -ENOBUFS:
+> > @@ -658,6 +658,7 @@ static int xs_udp_send_request(struct rpc_task
+> > *task)
+> >  
+> >  /**
+> >   * xs_tcp_send_request - write an RPC request to a TCP socket
+> > + * @req: pointer to RPC request
+> >   * @task: address of RPC task that manages the state of an RPC
+> > request
+> >   *
+> >   * Return values:
+> > @@ -670,9 +671,8 @@ static int xs_udp_send_request(struct rpc_task
+> > *task)
+> >   * XXX: In the case of soft timeouts, should we eventually give up
+> >   *	if sendmsg is not able to make progress?
+> >   */
+> > -static int xs_tcp_send_request(struct rpc_task *task)
+> > +static int xs_tcp_send_request(struct rpc_rqst *req, struct
+> > rpc_task *task)
+> >  {
+> > -	struct rpc_rqst *req = task->tk_rqstp;
+> >  	struct rpc_xprt *xprt = req->rq_xprt;
+> >  	struct sock_xprt *transport = container_of(xprt, struct
+> > sock_xprt,
+> > xprt);
+> >  	struct xdr_buf *xdr = &req->rq_snd_buf;
+> > @@ -697,7 +697,7 @@ static int xs_tcp_send_request(struct rpc_task
+> > *task)
+> >  	 * completes while the socket holds a reference to the pages,
+> >  	 * then we may end up resending corrupted data.
+> >  	 */
+> > -	if (task->tk_flags & RPC_TASK_SENT)
+> > +	if (req->rq_task->tk_flags & RPC_TASK_SENT)
+> 
+> Can req or rq_task be null coming into this function?  I'm seeing the
+> following
+> null pointer dereference while running connectathon tests on v4.1
+> after this
+> patch:
+
+The backchannels do need PATCH 24/34
