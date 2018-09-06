@@ -1,52 +1,43 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mga07.intel.com ([134.134.136.100]:53965 "EHLO mga07.intel.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727501AbeIFDw3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 5 Sep 2018 23:52:29 -0400
-Date: Thu, 6 Sep 2018 07:15:55 +0800
-From: kbuild test robot <lkp@intel.com>
-To: Trond Myklebust <trond.myklebust@hammerspace.com>
-Cc: kbuild-all@01.org, linux-nfs@vger.kernel.org
-Subject: [nfs:testing 45/45] include/linux/list.h:125:25: sparse: context
- imbalance in 'nfs4_put_open_state' - unexpected unlock
-Message-ID: <201809060746.zghfLfFA%fengguang.wu@intel.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Received: from imail.uvensys.de ([37.208.110.138]:45806 "EHLO
+        imail01.uvensys.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725851AbeIFLRv (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Sep 2018 07:17:51 -0400
+Content-Type: text/plain;
+        charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 11.2 \(3445.5.20\))
+Subject: Re: Question about nfs in infiniband environment
+From: Volker Lieder <v.lieder@uvensys.de>
+In-Reply-To: <20180905212655.GC22395@fieldses.org>
+Date: Thu, 6 Sep 2018 08:42:56 +0200
+Cc: linux-nfs <linux-nfs@vger.kernel.org>
+Message-Id: <A7032C7D-F3E5-4248-83B3-467C97D61C0B@uvensys.de>
+References: <0D862469-B678-4827-B75D-69557734D34F@uvensys.de>
+ <93486E63-F27E-4F45-9C43-ECEA66A46183@uvensys.de>
+ <D480748B-967F-421C-8749-914CBD38C995@gmail.com>
+ <79933889-D7B8-4E8D-989F-297FD411644E@uvensys.de>
+ <989D72C4-553B-46CD-AE3F-4EB5BDEDB2BE@oracle.com>
+ <CAN-5tyH1B1B_JMVFag9=-uwckt2HYyAfotsjkwksf9bvknqqJw@mail.gmail.com>
+ <840C83A0-1411-46D3-9370-431CFEDE0D93@uvensys.de>
+ <20180905212655.GC22395@fieldses.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-tree:   git://git.linux-nfs.org/projects/trondmy/linux-nfs.git testing
-head:   c925dd1e826cb81f1dafef462b1326ec33913b8e
-commit: c925dd1e826cb81f1dafef462b1326ec33913b8e [45/45] NFSv4: Convert struct nfs4_state to use refcount_t
-reproduce:
-        # apt-get install sparse
-        git checkout c925dd1e826cb81f1dafef462b1326ec33913b8e
-        make ARCH=x86_64 allmodconfig
-        make C=1 CF=-D__CHECK_ENDIAN__
+Am 05.09.2018 um 23:26 schrieb J. Bruce Fields <bfields@fieldses.org>:
+> 
+> On Wed, Aug 29, 2018 at 11:03:22AM +0200, Volker Lieder wrote:
+>> i dont have a redhat account.
+> 
+> You should be able to see that bug now:
+> 
+> 	https://bugzilla.redhat.com/show_bug.cgi?id=1518006
+> 
+> --b.
 
+Hi Bruce,
 
-sparse warnings: (new ones prefixed by >>)
+thank you.
 
->> include/linux/list.h:125:25: sparse: context imbalance in 'nfs4_put_open_state' - unexpected unlock
-   fs/nfs/nfs4state.c:930:20: sparse: context imbalance in 'nfs4_put_lock_state' - unexpected unlock
-
-vim +/nfs4_put_open_state +125 include/linux/list.h
-
-3c18d4de Linus Torvalds 2011-02-18  122  
-^1da177e Linus Torvalds 2005-04-16  123  static inline void list_del(struct list_head *entry)
-^1da177e Linus Torvalds 2005-04-16  124  {
-0cd340dc Kees Cook      2016-08-17 @125  	__list_del_entry(entry);
-^1da177e Linus Torvalds 2005-04-16  126  	entry->next = LIST_POISON1;
-^1da177e Linus Torvalds 2005-04-16  127  	entry->prev = LIST_POISON2;
-^1da177e Linus Torvalds 2005-04-16  128  }
-^1da177e Linus Torvalds 2005-04-16  129  
-
-:::::: The code at line 125 was first introduced by commit
-:::::: 0cd340dcb05c4a43742fe156f36737bb2a321bfd list: Split list_del() debug checking into separate function
-
-:::::: TO: Kees Cook <keescook@chromium.org>
-:::::: CC: Paul E. McKenney <paulmck@linux.vnet.ibm.com>
-
----
-0-DAY kernel test infrastructure                Open Source Technology Center
-https://lists.01.org/pipermail/kbuild-all                   Intel Corporation
+Best regards,
+Volker
