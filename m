@@ -1,49 +1,46 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:46814 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:51908 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1729073AbeIFTAF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 6 Sep 2018 15:00:05 -0400
-Received: from smtp.corp.redhat.com (int-mx05.intmail.prod.int.phx2.redhat.com [10.5.11.15])
+        id S1730254AbeIFUea (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 6 Sep 2018 16:34:30 -0400
+Received: from smtp.corp.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.26])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id D09DF8666D
-        for <linux-nfs@vger.kernel.org>; Thu,  6 Sep 2018 14:24:18 +0000 (UTC)
-Subject: Re: [nfs-utils PATCH] statd: fix use-after-free in monitor list if
- insertion fails
-To: Frank Sorenson <sorenson@redhat.com>, linux-nfs@vger.kernel.org
-References: <d93ed8c0-0f17-4671-a852-8cea6330f5ba@redhat.com>
-From: Steve Dickson <SteveD@RedHat.com>
-Message-ID: <7d2ce33d-8f08-6a15-b47f-824554477eb7@RedHat.com>
-Date: Thu, 6 Sep 2018 10:24:16 -0400
-MIME-Version: 1.0
-In-Reply-To: <d93ed8c0-0f17-4671-a852-8cea6330f5ba@redhat.com>
-Content-Type: text/plain; charset=windows-1252
+        by mx1.redhat.com (Postfix) with ESMTPS id 2F7A9308FBA1
+        for <linux-nfs@vger.kernel.org>; Thu,  6 Sep 2018 15:58:22 +0000 (UTC)
+Received: from steved.boston.devel.redhat.com (ovpn-116-194.phx2.redhat.com [10.3.116.194])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id DE7D23091384
+        for <linux-nfs@vger.kernel.org>; Thu,  6 Sep 2018 15:58:21 +0000 (UTC)
+From: Steve Dickson <steved@redhat.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH] tcp-wrappers.m4: Only look for TCP wrappers lib when requested
+Date: Thu,  6 Sep 2018 11:58:20 -0400
+Message-Id: <20180906155820.59424-1-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+TCP wrappers is a pretty old and obsolete technology.  The
+support has be terminated in current distro release, so
+only require the library to exist when asked for via the
+--with-tcp-wrappers
 
+Signed-off-by: Steve Dickson <steved@redhat.com>
+---
+ aclocal/tcp-wrappers.m4 | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-On 09/01/2018 02:07 AM, Frank Sorenson wrote:
-> If nsm_insert_monitored_host() fails while saving the record to
-> stable storage, we can't just assume the entry was new. Existing
-> records must be removed from the list before being freed.
-> 
-> Signed-off-by: Frank Sorenson <sorenson@redhat.com>
-Committed.... 
-
-steved.
-> 
-> diff --git a/utils/statd/monitor.c b/utils/statd/monitor.c
-> index 45c4346..9400048 100644
-> --- a/utils/statd/monitor.c
-> +++ b/utils/statd/monitor.c
-> @@ -197,7 +197,7 @@ sm_mon_1_svc(struct mon *argp, struct svc_req *rqstp)
->  
->  	if (!nsm_insert_monitored_host(dnsname,
->  				(struct sockaddr *)(char *)&my_addr, argp)) {
-> -		nlist_free(NULL, clnt);
-> +		nlist_free(existing ? &rtnl : NULL, clnt);
->  		goto failure;
->  	}
->  
-> 
+diff --git a/aclocal/tcp-wrappers.m4 b/aclocal/tcp-wrappers.m4
+index 35ac8e0..f5de8bc 100644
+--- a/aclocal/tcp-wrappers.m4
++++ b/aclocal/tcp-wrappers.m4
+@@ -4,7 +4,7 @@ AC_DEFUN([AC_TCP_WRAPPERS],[
+   AC_ARG_WITH(tcp-wrappers,
+     [  --with-tcp-wrappers[[=PATH]]      Enable tcpwrappers support
+                  (optionally in PATH)],
+-    with_tcpw=$withval, with_tcpw=yes)
++    with_tcpw=$withval, with_tcpw=no)
+         if test "x$with_tcpw" != "xno" ; then
+             saved_LIBS="$LIBS"
+             saved_LDFLAGS="$LDFLAGS"
+-- 
+2.17.1
