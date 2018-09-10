@@ -1,13 +1,13 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f52.google.com ([209.85.214.52]:54111 "EHLO
-        mail-it0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727411AbeIJUDu (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Sep 2018 16:03:50 -0400
-Subject: [PATCH v1 04/22] xprtrdma: Name MR trace events consistently
+Received: from mail-io0-f194.google.com ([209.85.223.194]:37022 "EHLO
+        mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1728072AbeIJUD4 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Sep 2018 16:03:56 -0400
+Subject: [PATCH v1 05/22] xprtrdma: Refactor chunk encoding
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Mon, 10 Sep 2018 11:09:16 -0400
-Message-ID: <20180910150916.10564.6099.stgit@manet.1015granger.net>
+Date: Mon, 10 Sep 2018 11:09:22 -0400
+Message-ID: <20180910150922.10564.50999.stgit@manet.1015granger.net>
 In-Reply-To: <20180910150040.10564.97487.stgit@manet.1015granger.net>
 References: <20180910150040.10564.97487.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -15,128 +15,105 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up the names of trace events related to MRs so that it's
-easy to enable these with a glob.
+Move the "not present" case into the individual chunk encoders. This
+improves code organization and readability, and prepares the marsh-
+aling code path for handling cases like "Write + Reply".
+
+The reason for the original organization was to optimize this code
+path for the case where there there are no chunks. The optimization
+was inconsequential.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- include/trace/events/rpcrdma.h |   12 ++++++------
- net/sunrpc/xprtrdma/fmr_ops.c  |    6 +++---
- net/sunrpc/xprtrdma/frwr_ops.c |    8 ++++----
- net/sunrpc/xprtrdma/verbs.c    |    2 +-
- 4 files changed, 14 insertions(+), 14 deletions(-)
+ net/sunrpc/xprtrdma/rpc_rdma.c |   37 ++++++++++++++++---------------------
+ 1 file changed, 16 insertions(+), 21 deletions(-)
 
-diff --git a/include/trace/events/rpcrdma.h b/include/trace/events/rpcrdma.h
-index 9906f4d..89e017b 100644
---- a/include/trace/events/rpcrdma.h
-+++ b/include/trace/events/rpcrdma.h
-@@ -263,7 +263,7 @@
- );
+diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
+index ec4b1f9..39996df 100644
+--- a/net/sunrpc/xprtrdma/rpc_rdma.c
++++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+@@ -346,6 +346,9 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
+ 	unsigned int pos;
+ 	int nsegs;
  
- #define DEFINE_MR_EVENT(name) \
--		DEFINE_EVENT(xprtrdma_mr, name, \
-+		DEFINE_EVENT(xprtrdma_mr, xprtrdma_mr_##name, \
- 				TP_PROTO( \
- 					const struct rpcrdma_mr *mr \
- 				), \
-@@ -651,11 +651,11 @@
- DEFINE_FRWR_DONE_EVENT(xprtrdma_wc_li);
- DEFINE_FRWR_DONE_EVENT(xprtrdma_wc_li_wake);
++	if (rtype == rpcrdma_noch)
++		goto done;
++
+ 	pos = rqst->rq_snd_buf.head[0].iov_len;
+ 	if (rtype == rpcrdma_areadch)
+ 		pos = 0;
+@@ -370,7 +373,8 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
+ 		nsegs -= mr->mr_nents;
+ 	} while (nsegs);
  
--DEFINE_MR_EVENT(xprtrdma_localinv);
--DEFINE_MR_EVENT(xprtrdma_dma_map);
--DEFINE_MR_EVENT(xprtrdma_dma_unmap);
--DEFINE_MR_EVENT(xprtrdma_remoteinv);
--DEFINE_MR_EVENT(xprtrdma_mr_recycle);
-+DEFINE_MR_EVENT(localinv);
-+DEFINE_MR_EVENT(map);
-+DEFINE_MR_EVENT(unmap);
-+DEFINE_MR_EVENT(remoteinv);
-+DEFINE_MR_EVENT(recycle);
+-	return 0;
++done:
++	return encode_item_not_present(xdr);
+ }
  
- /**
-  ** Reply events
-diff --git a/net/sunrpc/xprtrdma/fmr_ops.c b/net/sunrpc/xprtrdma/fmr_ops.c
-index f1cf3a3..7f5632c 100644
---- a/net/sunrpc/xprtrdma/fmr_ops.c
-+++ b/net/sunrpc/xprtrdma/fmr_ops.c
-@@ -97,7 +97,7 @@ enum {
+ /* Register and XDR encode the Write list. Supports encoding a list
+@@ -398,6 +402,9 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
+ 	int nsegs, nchunks;
+ 	__be32 *segcount;
  
- 	trace_xprtrdma_mr_recycle(mr);
++	if (wtype != rpcrdma_writech)
++		goto done;
++
+ 	seg = req->rl_segments;
+ 	nsegs = rpcrdma_convert_iovs(r_xprt, &rqst->rq_rcv_buf,
+ 				     rqst->rq_rcv_buf.head[0].iov_len,
+@@ -433,7 +440,8 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
+ 	/* Update count of segments in this Write chunk */
+ 	*segcount = cpu_to_be32(nchunks);
  
--	trace_xprtrdma_dma_unmap(mr);
-+	trace_xprtrdma_mr_unmap(mr);
- 	ib_dma_unmap_sg(r_xprt->rx_ia.ri_device,
- 			mr->mr_sg, mr->mr_nents, mr->mr_dir);
+-	return 0;
++done:
++	return encode_item_not_present(xdr);
+ }
  
-@@ -234,7 +234,7 @@ enum {
- 				     mr->mr_sg, i, mr->mr_dir);
- 	if (!mr->mr_nents)
- 		goto out_dmamap_err;
--	trace_xprtrdma_dma_map(mr);
-+	trace_xprtrdma_mr_map(mr);
+ /* Register and XDR encode the Reply chunk. Supports encoding an array
+@@ -458,6 +466,9 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
+ 	int nsegs, nchunks;
+ 	__be32 *segcount;
  
- 	for (i = 0, dma_pages = mr->fmr.fm_physaddrs; i < mr->mr_nents; i++)
- 		dma_pages[i] = sg_dma_address(&mr->mr_sg[i]);
-@@ -295,7 +295,7 @@ enum {
- 	list_for_each_entry(mr, mrs, mr_list) {
- 		dprintk("RPC:       %s: unmapping fmr %p\n",
- 			__func__, &mr->fmr);
--		trace_xprtrdma_localinv(mr);
-+		trace_xprtrdma_mr_localinv(mr);
- 		list_add_tail(&mr->fmr.fm_mr->list, &unmap_list);
- 	}
- 	r_xprt->rx_stats.local_inv_needed++;
-diff --git a/net/sunrpc/xprtrdma/frwr_ops.c b/net/sunrpc/xprtrdma/frwr_ops.c
-index 6594627..fc6378cc 100644
---- a/net/sunrpc/xprtrdma/frwr_ops.c
-+++ b/net/sunrpc/xprtrdma/frwr_ops.c
-@@ -123,7 +123,7 @@
- 	trace_xprtrdma_mr_recycle(mr);
++	if (wtype != rpcrdma_replych)
++		return encode_item_not_present(xdr);
++
+ 	seg = req->rl_segments;
+ 	nsegs = rpcrdma_convert_iovs(r_xprt, &rqst->rq_rcv_buf, 0, wtype, seg);
+ 	if (nsegs < 0)
+@@ -828,31 +839,15 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
+ 	 * send a Call message with a Position Zero Read chunk and a
+ 	 * regular Read chunk at the same time.
+ 	 */
+-	if (rtype != rpcrdma_noch) {
+-		ret = rpcrdma_encode_read_list(r_xprt, req, rqst, rtype);
+-		if (ret)
+-			goto out_err;
+-	}
+-	ret = encode_item_not_present(xdr);
++	ret = rpcrdma_encode_read_list(r_xprt, req, rqst, rtype);
+ 	if (ret)
+ 		goto out_err;
+-
+-	if (wtype == rpcrdma_writech) {
+-		ret = rpcrdma_encode_write_list(r_xprt, req, rqst, wtype);
+-		if (ret)
+-			goto out_err;
+-	}
+-	ret = encode_item_not_present(xdr);
++	ret = rpcrdma_encode_write_list(r_xprt, req, rqst, wtype);
+ 	if (ret)
+ 		goto out_err;
+-
+-	if (wtype != rpcrdma_replych)
+-		ret = encode_item_not_present(xdr);
+-	else
+-		ret = rpcrdma_encode_reply_chunk(r_xprt, req, rqst, wtype);
++	ret = rpcrdma_encode_reply_chunk(r_xprt, req, rqst, wtype);
+ 	if (ret)
+ 		goto out_err;
+-
+ 	trace_xprtrdma_marshal(rqst, xdr_stream_pos(xdr), rtype, wtype);
  
- 	if (state != FRWR_FLUSHED_LI) {
--		trace_xprtrdma_dma_unmap(mr);
-+		trace_xprtrdma_mr_unmap(mr);
- 		ib_dma_unmap_sg(r_xprt->rx_ia.ri_device,
- 				mr->mr_sg, mr->mr_nents, mr->mr_dir);
- 	}
-@@ -384,7 +384,7 @@
- 	mr->mr_nents = ib_dma_map_sg(ia->ri_device, mr->mr_sg, i, mr->mr_dir);
- 	if (!mr->mr_nents)
- 		goto out_dmamap_err;
--	trace_xprtrdma_dma_map(mr);
-+	trace_xprtrdma_mr_map(mr);
- 
- 	ibmr = frwr->fr_mr;
- 	n = ib_map_mr_sg(ibmr, mr->mr_sg, mr->mr_nents, NULL, PAGE_SIZE);
-@@ -466,7 +466,7 @@
- 	list_for_each_entry(mr, mrs, mr_list)
- 		if (mr->mr_handle == rep->rr_inv_rkey) {
- 			list_del_init(&mr->mr_list);
--			trace_xprtrdma_remoteinv(mr);
-+			trace_xprtrdma_mr_remoteinv(mr);
- 			mr->frwr.fr_state = FRWR_IS_INVALID;
- 			rpcrdma_mr_unmap_and_put(mr);
- 			break;	/* only one invalidated MR per RPC */
-@@ -503,7 +503,7 @@
- 		mr->frwr.fr_state = FRWR_IS_INVALID;
- 
- 		frwr = &mr->frwr;
--		trace_xprtrdma_localinv(mr);
-+		trace_xprtrdma_mr_localinv(mr);
- 
- 		frwr->fr_cqe.done = frwr_wc_localinv;
- 		last = &frwr->fr_invwr;
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 88fe75e..3a9a62d 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -1288,7 +1288,7 @@ struct rpcrdma_mr *
- {
- 	struct rpcrdma_xprt *r_xprt = mr->mr_xprt;
- 
--	trace_xprtrdma_dma_unmap(mr);
-+	trace_xprtrdma_mr_unmap(mr);
- 	ib_dma_unmap_sg(r_xprt->rx_ia.ri_device,
- 			mr->mr_sg, mr->mr_nents, mr->mr_dir);
- 	__rpcrdma_mr_put(&r_xprt->rx_buf, mr);
+ 	ret = rpcrdma_prepare_send_sges(r_xprt, req, xdr_stream_pos(xdr),
