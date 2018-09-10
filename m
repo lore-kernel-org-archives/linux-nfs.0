@@ -1,13 +1,13 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f68.google.com ([209.85.214.68]:37047 "EHLO
-        mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727940AbeIJUFA (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Sep 2018 16:05:00 -0400
-Subject: [PATCH v1 17/22] svcrdma: Don't disable BH's in backchannel
+Received: from mail-it0-f44.google.com ([209.85.214.44]:51659 "EHLO
+        mail-it0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727940AbeIJUFP (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Sep 2018 16:05:15 -0400
+Subject: [PATCH v1 20/22] xprtrdma: Add documenting comments
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Mon, 10 Sep 2018 11:10:26 -0400
-Message-ID: <20180910151026.10564.57237.stgit@manet.1015granger.net>
+Date: Mon, 10 Sep 2018 11:10:41 -0400
+Message-ID: <20180910151041.10564.22475.stgit@manet.1015granger.net>
 In-Reply-To: <20180910150040.10564.97487.stgit@manet.1015granger.net>
 References: <20180910150040.10564.97487.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -15,61 +15,81 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: This code was copied from xprtsock.c and
-backchannel_rqst.c. For rpcrdma, the backchannel runs exclusively in
-process context, thus disabling bottom-halves is unnecessary.
+Clean up: fill in or update documenting comments for transport
+switch entry points.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/backchannel.c |   16 ++++++++--------
- 1 file changed, 8 insertions(+), 8 deletions(-)
+ net/sunrpc/xprtrdma/transport.c |   36 +++++++++++++++++++++++-------------
+ 1 file changed, 23 insertions(+), 13 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/backchannel.c b/net/sunrpc/xprtrdma/backchannel.c
-index 90adeff..675b530 100644
---- a/net/sunrpc/xprtrdma/backchannel.c
-+++ b/net/sunrpc/xprtrdma/backchannel.c
-@@ -54,9 +54,9 @@ static int rpcrdma_bc_setup_reqs(struct rpcrdma_xprt *r_xprt,
- 		INIT_LIST_HEAD(&rqst->rq_list);
- 		INIT_LIST_HEAD(&rqst->rq_bc_list);
- 		__set_bit(RPC_BC_PA_IN_USE, &rqst->rq_bc_pa_state);
--		spin_lock_bh(&xprt->bc_pa_lock);
-+		spin_lock(&xprt->bc_pa_lock);
- 		list_add(&rqst->rq_bc_pa_list, &xprt->bc_pa_list);
--		spin_unlock_bh(&xprt->bc_pa_lock);
-+		spin_unlock(&xprt->bc_pa_lock);
- 
- 		size = r_xprt->rx_data.inline_rsize;
- 		rb = rpcrdma_alloc_regbuf(size, DMA_TO_DEVICE, GFP_KERNEL);
-@@ -228,16 +228,16 @@ void xprt_rdma_bc_destroy(struct rpc_xprt *xprt, unsigned int reqs)
- 	struct rpcrdma_xprt *r_xprt = rpcx_to_rdmax(xprt);
- 	struct rpc_rqst *rqst, *tmp;
- 
--	spin_lock_bh(&xprt->bc_pa_lock);
-+	spin_lock(&xprt->bc_pa_lock);
- 	list_for_each_entry_safe(rqst, tmp, &xprt->bc_pa_list, rq_bc_pa_list) {
- 		list_del(&rqst->rq_bc_pa_list);
--		spin_unlock_bh(&xprt->bc_pa_lock);
-+		spin_unlock(&xprt->bc_pa_lock);
- 
- 		rpcrdma_bc_free_rqst(r_xprt, rqst);
- 
--		spin_lock_bh(&xprt->bc_pa_lock);
-+		spin_lock(&xprt->bc_pa_lock);
+diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
+index d7c4255..67eb900 100644
+--- a/net/sunrpc/xprtrdma/transport.c
++++ b/net/sunrpc/xprtrdma/transport.c
+@@ -256,6 +256,13 @@
  	}
--	spin_unlock_bh(&xprt->bc_pa_lock);
-+	spin_unlock(&xprt->bc_pa_lock);
+ }
+ 
++/**
++ * xprt_rdma_inject_disconnect - inject a connection fault
++ * @xprt: transport context
++ *
++ * If @xprt is connected, disconnect it to simulate spurious connection
++ * loss.
++ */
+ static void
+ xprt_rdma_inject_disconnect(struct rpc_xprt *xprt)
+ {
+@@ -266,16 +273,12 @@
+ 	rdma_disconnect(r_xprt->rx_ia.ri_id);
+ }
+ 
+-/*
+- * xprt_rdma_destroy
++/**
++ * xprt_rdma_destroy - Full tear down of transport
++ * @xprt: doomed transport context
+  *
+- * Destroy the xprt.
+- * Free all memory associated with the object, including its own.
+- * NOTE: none of the *destroy methods free memory for their top-level
+- * objects, even though they may have allocated it (they do free
+- * private memory). It's up to the caller to handle it. In this
+- * case (RDMA transport), all structure memory is inlined with the
+- * struct rpcrdma_xprt.
++ * Caller guarantees there will be no more calls to us with
++ * this @xprt.
+  */
+ static void
+ xprt_rdma_destroy(struct rpc_xprt *xprt)
+@@ -428,11 +431,12 @@
  }
  
  /**
-@@ -255,9 +255,9 @@ void xprt_rdma_bc_free_rqst(struct rpc_rqst *rqst)
- 	rpcrdma_recv_buffer_put(req->rl_reply);
- 	req->rl_reply = NULL;
- 
--	spin_lock_bh(&xprt->bc_pa_lock);
-+	spin_lock(&xprt->bc_pa_lock);
- 	list_add_tail(&rqst->rq_bc_pa_list, &xprt->bc_pa_list);
--	spin_unlock_bh(&xprt->bc_pa_lock);
-+	spin_unlock(&xprt->bc_pa_lock);
+- * xprt_rdma_close - Close down RDMA connection
+- * @xprt: generic transport to be closed
++ * xprt_rdma_close - close a transport connection
++ * @xprt: transport context
+  *
+- * Called during transport shutdown reconnect, or device
+- * removal. Caller holds the transport's write lock.
++ * Called during transport shutdown, reconnect, or device removal.
++ * Caller holds @xprt's send lock to prevent activity on this
++ * transport while the connection is torn down.
+  */
+ static void
+ xprt_rdma_close(struct rpc_xprt *xprt)
+@@ -511,6 +515,12 @@
+ 	xprt_force_disconnect(xprt);
  }
  
- /**
++/**
++ * xprt_rdma_connect - try to establish a transport connection
++ * @xprt: transport state
++ * @task: RPC scheduler context
++ *
++ */
+ static void
+ xprt_rdma_connect(struct rpc_xprt *xprt, struct rpc_task *task)
+ {
