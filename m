@@ -1,14 +1,13 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f41.google.com ([209.85.214.41]:40446 "EHLO
-        mail-it0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727940AbeIJUEe (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Sep 2018 16:04:34 -0400
-Subject: [PATCH v1 12/22] xprtrdma: Eliminate "connstate" variable from
- rpcrdma_conn_upcall()
+Received: from mail-it0-f68.google.com ([209.85.214.68]:37047 "EHLO
+        mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727940AbeIJUFA (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Sep 2018 16:05:00 -0400
+Subject: [PATCH v1 17/22] svcrdma: Don't disable BH's in backchannel
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Mon, 10 Sep 2018 11:09:59 -0400
-Message-ID: <20180910150959.10564.83078.stgit@manet.1015granger.net>
+Date: Mon, 10 Sep 2018 11:10:26 -0400
+Message-ID: <20180910151026.10564.57237.stgit@manet.1015granger.net>
 In-Reply-To: <20180910150040.10564.97487.stgit@manet.1015granger.net>
 References: <20180910150040.10564.97487.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -16,62 +15,61 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up.
-
-Since commit 173b8f49b3af ("xprtrdma: Demote "connect" log messages")
-there has been no need to initialize connstat to zero. In fact, in
-this code path there's now no reason not to set rep_connected
-directly.
+Clean up: This code was copied from xprtsock.c and
+backchannel_rqst.c. For rpcrdma, the backchannel runs exclusively in
+process context, thus disabling bottom-halves is unnecessary.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/verbs.c |   14 ++++++--------
- 1 file changed, 6 insertions(+), 8 deletions(-)
+ net/sunrpc/xprtrdma/backchannel.c |   16 ++++++++--------
+ 1 file changed, 8 insertions(+), 8 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index f2c8c3c..422d3db 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -234,7 +234,6 @@
- 	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
- 	struct rpcrdma_ep *ep = &r_xprt->rx_ep;
- 	struct rpc_xprt *xprt = &r_xprt->rx_xprt;
--	int connstate = 0;
+diff --git a/net/sunrpc/xprtrdma/backchannel.c b/net/sunrpc/xprtrdma/backchannel.c
+index 90adeff..675b530 100644
+--- a/net/sunrpc/xprtrdma/backchannel.c
++++ b/net/sunrpc/xprtrdma/backchannel.c
+@@ -54,9 +54,9 @@ static int rpcrdma_bc_setup_reqs(struct rpcrdma_xprt *r_xprt,
+ 		INIT_LIST_HEAD(&rqst->rq_list);
+ 		INIT_LIST_HEAD(&rqst->rq_bc_list);
+ 		__set_bit(RPC_BC_PA_IN_USE, &rqst->rq_bc_pa_state);
+-		spin_lock_bh(&xprt->bc_pa_lock);
++		spin_lock(&xprt->bc_pa_lock);
+ 		list_add(&rqst->rq_bc_pa_list, &xprt->bc_pa_list);
+-		spin_unlock_bh(&xprt->bc_pa_lock);
++		spin_unlock(&xprt->bc_pa_lock);
  
- 	might_sleep();
+ 		size = r_xprt->rx_data.inline_rsize;
+ 		rb = rpcrdma_alloc_regbuf(size, DMA_TO_DEVICE, GFP_KERNEL);
+@@ -228,16 +228,16 @@ void xprt_rdma_bc_destroy(struct rpc_xprt *xprt, unsigned int reqs)
+ 	struct rpcrdma_xprt *r_xprt = rpcx_to_rdmax(xprt);
+ 	struct rpc_rqst *rqst, *tmp;
  
-@@ -270,28 +269,27 @@
- 		return 1;
- 	case RDMA_CM_EVENT_ESTABLISHED:
- 		++xprt->connect_cookie;
--		connstate = 1;
-+		ep->rep_connected = 1;
- 		rpcrdma_update_connect_private(r_xprt, &event->param.conn);
- 		goto connected;
- 	case RDMA_CM_EVENT_CONNECT_ERROR:
--		connstate = -ENOTCONN;
-+		ep->rep_connected = -ENOTCONN;
- 		goto connected;
- 	case RDMA_CM_EVENT_UNREACHABLE:
--		connstate = -ENETUNREACH;
-+		ep->rep_connected = -ENETUNREACH;
- 		goto connected;
- 	case RDMA_CM_EVENT_REJECTED:
- 		dprintk("rpcrdma: connection to %s:%s rejected: %s\n",
- 			rpcrdma_addrstr(r_xprt), rpcrdma_portstr(r_xprt),
- 			rdma_reject_msg(id, event->status));
--		connstate = -ECONNREFUSED;
-+		ep->rep_connected = -ECONNREFUSED;
- 		if (event->status == IB_CM_REJ_STALE_CONN)
--			connstate = -EAGAIN;
-+			ep->rep_connected = -EAGAIN;
- 		goto connected;
- 	case RDMA_CM_EVENT_DISCONNECTED:
- 		++xprt->connect_cookie;
--		connstate = -ECONNABORTED;
-+		ep->rep_connected = -ECONNABORTED;
- connected:
--		ep->rep_connected = connstate;
- 		rpcrdma_conn_func(ep);
- 		wake_up_all(&ep->rep_connect_wait);
- 		/*FALLTHROUGH*/
+-	spin_lock_bh(&xprt->bc_pa_lock);
++	spin_lock(&xprt->bc_pa_lock);
+ 	list_for_each_entry_safe(rqst, tmp, &xprt->bc_pa_list, rq_bc_pa_list) {
+ 		list_del(&rqst->rq_bc_pa_list);
+-		spin_unlock_bh(&xprt->bc_pa_lock);
++		spin_unlock(&xprt->bc_pa_lock);
+ 
+ 		rpcrdma_bc_free_rqst(r_xprt, rqst);
+ 
+-		spin_lock_bh(&xprt->bc_pa_lock);
++		spin_lock(&xprt->bc_pa_lock);
+ 	}
+-	spin_unlock_bh(&xprt->bc_pa_lock);
++	spin_unlock(&xprt->bc_pa_lock);
+ }
+ 
+ /**
+@@ -255,9 +255,9 @@ void xprt_rdma_bc_free_rqst(struct rpc_rqst *rqst)
+ 	rpcrdma_recv_buffer_put(req->rl_reply);
+ 	req->rl_reply = NULL;
+ 
+-	spin_lock_bh(&xprt->bc_pa_lock);
++	spin_lock(&xprt->bc_pa_lock);
+ 	list_add_tail(&rqst->rq_bc_pa_list, &xprt->bc_pa_list);
+-	spin_unlock_bh(&xprt->bc_pa_lock);
++	spin_unlock(&xprt->bc_pa_lock);
+ }
+ 
+ /**
