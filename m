@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f65.google.com ([209.85.214.65]:39224 "EHLO
-        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727940AbeIJUEi (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Sep 2018 16:04:38 -0400
-Subject: [PATCH v1 13/22] xprtrdma: Re-organize the switch() in
- rpcrdma_conn_upcall
+Received: from mail-it0-f68.google.com ([209.85.214.68]:53607 "EHLO
+        mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727772AbeIJUFK (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Sep 2018 16:05:10 -0400
+Subject: [PATCH v1 19/22] xprtrdma: Report when there were zero posted
+ Receives
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Mon, 10 Sep 2018 11:10:04 -0400
-Message-ID: <20180910151004.10564.66689.stgit@manet.1015granger.net>
+Date: Mon, 10 Sep 2018 11:10:36 -0400
+Message-ID: <20180910151036.10564.44123.stgit@manet.1015granger.net>
 In-Reply-To: <20180910150040.10564.97487.stgit@manet.1015granger.net>
 References: <20180910150040.10564.97487.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -16,59 +16,46 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: Eliminate the FALLTHROUGH into the default arm to make the
-switch easier to read.
-
-Also, as long as I'm here, do not display the memory address of the
-target rpcrdma_ep. A hashed memory address is of marginal use here.
+To show that a caller did attempt to allocate and post more Receive
+buffers, the trace point in rpcrdma_post_recvs() should report when
+rpcrdma_post_recvs() was invoked but no new Receive buffers were
+posted.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/verbs.c |   17 ++++++++---------
- 1 file changed, 8 insertions(+), 9 deletions(-)
+ net/sunrpc/xprtrdma/verbs.c |    7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
 
 diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 422d3db..c60172f 100644
+index 74f6de3..0c56fe5 100644
 --- a/net/sunrpc/xprtrdma/verbs.c
 +++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -243,15 +243,15 @@
- 	case RDMA_CM_EVENT_ROUTE_RESOLVED:
- 		ia->ri_async_rc = 0;
- 		complete(&ia->ri_done);
--		break;
-+		return 0;
- 	case RDMA_CM_EVENT_ADDR_ERROR:
- 		ia->ri_async_rc = -EPROTO;
- 		complete(&ia->ri_done);
--		break;
-+		return 0;
- 	case RDMA_CM_EVENT_ROUTE_ERROR:
- 		ia->ri_async_rc = -ENETUNREACH;
- 		complete(&ia->ri_done);
--		break;
-+		return 0;
- 	case RDMA_CM_EVENT_DEVICE_REMOVAL:
- #if IS_ENABLED(CONFIG_SUNRPC_DEBUG)
- 		pr_info("rpcrdma: removing device %s for %s:%s\n",
-@@ -292,16 +292,15 @@
- connected:
- 		rpcrdma_conn_func(ep);
- 		wake_up_all(&ep->rep_connect_wait);
--		/*FALLTHROUGH*/
-+		break;
- 	default:
--		dprintk("RPC:       %s: %s:%s on %s/%s (ep 0x%p): %s\n",
--			__func__,
--			rpcrdma_addrstr(r_xprt), rpcrdma_portstr(r_xprt),
--			ia->ri_device->name, ia->ri_ops->ro_displayname,
--			ep, rdma_event_msg(event->event));
- 		break;
+@@ -1521,9 +1521,11 @@ struct rpcrdma_regbuf *
+ 	struct ib_recv_wr *wr, *bad_wr;
+ 	int needed, count, rc;
+ 
++	rc = 0;
++	count = 0;
+ 	needed = buf->rb_credits + (buf->rb_bc_srv_max_requests << 1);
+ 	if (buf->rb_posted_receives > needed)
+-		return;
++		goto out;
+ 	needed -= buf->rb_posted_receives;
+ 
+ 	count = 0;
+@@ -1559,7 +1561,7 @@ struct rpcrdma_regbuf *
+ 		--needed;
  	}
+ 	if (!count)
+-		return;
++		goto out;
  
-+	dprintk("RPC:       %s: %s:%s on %s/%s: %s\n", __func__,
-+		rpcrdma_addrstr(r_xprt), rpcrdma_portstr(r_xprt),
-+		ia->ri_device->name, ia->ri_ops->ro_displayname,
-+		rdma_event_msg(event->event));
- 	return 0;
+ 	rc = ib_post_recv(r_xprt->rx_ia.ri_id->qp, wr,
+ 			  (const struct ib_recv_wr **)&bad_wr);
+@@ -1573,5 +1575,6 @@ struct rpcrdma_regbuf *
+ 		}
+ 	}
+ 	buf->rb_posted_receives += count;
++out:
+ 	trace_xprtrdma_post_recvs(r_xprt, count, rc);
  }
- 
