@@ -1,13 +1,13 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f193.google.com ([209.85.223.193]:35029 "EHLO
-        mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728357AbeIJUER (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Sep 2018 16:04:17 -0400
-Subject: [PATCH v1 09/22] sunrpc: Report connect_time in seconds
+Received: from mail-it0-f65.google.com ([209.85.214.65]:55822 "EHLO
+        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1728072AbeIJUEM (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Sep 2018 16:04:12 -0400
+Subject: [PATCH v1 08/22] sunrpc: Fix connect metrics
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Mon, 10 Sep 2018 11:09:43 -0400
-Message-ID: <20180910150943.10564.48685.stgit@manet.1015granger.net>
+Date: Mon, 10 Sep 2018 11:09:38 -0400
+Message-ID: <20180910150937.10564.26277.stgit@manet.1015granger.net>
 In-Reply-To: <20180910150040.10564.97487.stgit@manet.1015granger.net>
 References: <20180910150040.10564.97487.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -15,47 +15,101 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The way connection-oriented transports report connect_time is wrong:
-it's supposed to be in seconds, not in jiffies.
+For TCP, the logic in xprt_connect_status is currently never invoked
+to record a successful connection. Commit 2a4919919a97 ("SUNRPC:
+Return EAGAIN instead of ENOTCONN when waking up xprt->pending")
+changed the way TCP xprt's are awoken after a connect succeeds.
+
+Instead, change connection-oriented transports to bump connect_count
+and compute connect_time the moment that XPRT_CONNECTED is set.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/transport.c |    2 +-
- net/sunrpc/xprtsock.c           |    4 ++--
- 2 files changed, 3 insertions(+), 3 deletions(-)
+ net/sunrpc/xprt.c               |   10 +++-------
+ net/sunrpc/xprtrdma/transport.c |    6 +++++-
+ net/sunrpc/xprtsock.c           |   10 ++++++----
+ 3 files changed, 14 insertions(+), 12 deletions(-)
 
+diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+index a8db2e3f..f03ffa2 100644
+--- a/net/sunrpc/xprt.c
++++ b/net/sunrpc/xprt.c
+@@ -791,15 +791,11 @@ static void xprt_connect_status(struct rpc_task *task)
+ {
+ 	struct rpc_xprt	*xprt = task->tk_rqstp->rq_xprt;
+ 
+-	if (task->tk_status == 0) {
+-		xprt->stat.connect_count++;
+-		xprt->stat.connect_time += (long)jiffies - xprt->stat.connect_start;
++	switch (task->tk_status) {
++	case 0:
+ 		dprintk("RPC: %5u xprt_connect_status: connection established\n",
+ 				task->tk_pid);
+-		return;
+-	}
+-
+-	switch (task->tk_status) {
++		break;
+ 	case -ECONNREFUSED:
+ 	case -ECONNRESET:
+ 	case -ECONNABORTED:
 diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index 087acfc..289d13c 100644
+index 3ae73e6..087acfc 100644
 --- a/net/sunrpc/xprtrdma/transport.c
 +++ b/net/sunrpc/xprtrdma/transport.c
-@@ -776,7 +776,7 @@ void xprt_rdma_print_stats(struct rpc_xprt *xprt, struct seq_file *seq)
- 		   0,	/* need a local port? */
- 		   xprt->stat.bind_count,
- 		   xprt->stat.connect_count,
--		   xprt->stat.connect_time,
-+		   xprt->stat.connect_time / HZ,
- 		   idle_time,
- 		   xprt->stat.sends,
- 		   xprt->stat.recvs,
+@@ -242,8 +242,12 @@
+ 
+ 	spin_lock_bh(&xprt->transport_lock);
+ 	if (ep->rep_connected > 0) {
+-		if (!xprt_test_and_set_connected(xprt))
++		if (!xprt_test_and_set_connected(xprt)) {
++			xprt->stat.connect_count++;
++			xprt->stat.connect_time += (long)jiffies -
++						   xprt->stat.connect_start;
+ 			xprt_wake_pending_tasks(xprt, 0);
++		}
+ 	} else {
+ 		if (xprt_test_and_clear_connected(xprt))
+ 			xprt_wake_pending_tasks(xprt, -ENOTCONN);
 diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index e146caa..9bbc395 100644
+index 6b7539c..e146caa 100644
 --- a/net/sunrpc/xprtsock.c
 +++ b/net/sunrpc/xprtsock.c
-@@ -2563,7 +2563,7 @@ static void xs_local_print_stats(struct rpc_xprt *xprt, struct seq_file *seq)
- 			"%llu %llu %lu %llu %llu\n",
- 			xprt->stat.bind_count,
- 			xprt->stat.connect_count,
--			xprt->stat.connect_time,
-+			xprt->stat.connect_time / HZ,
- 			idle_time,
- 			xprt->stat.sends,
- 			xprt->stat.recvs,
-@@ -2618,7 +2618,7 @@ static void xs_tcp_print_stats(struct rpc_xprt *xprt, struct seq_file *seq)
- 			transport->srcport,
- 			xprt->stat.bind_count,
- 			xprt->stat.connect_count,
--			xprt->stat.connect_time,
-+			xprt->stat.connect_time / HZ,
- 			idle_time,
- 			xprt->stat.sends,
- 			xprt->stat.recvs,
+@@ -1611,6 +1611,9 @@ static void xs_tcp_state_change(struct sock *sk)
+ 			clear_bit(XPRT_SOCK_CONNECTING, &transport->sock_state);
+ 			xprt_clear_connecting(xprt);
+ 
++			xprt->stat.connect_count++;
++			xprt->stat.connect_time += (long)jiffies -
++						   xprt->stat.connect_start;
+ 			xprt_wake_pending_tasks(xprt, -EAGAIN);
+ 		}
+ 		spin_unlock(&xprt->transport_lock);
+@@ -2029,8 +2032,6 @@ static int xs_local_finish_connecting(struct rpc_xprt *xprt,
+ 	}
+ 
+ 	/* Tell the socket layer to start connecting... */
+-	xprt->stat.connect_count++;
+-	xprt->stat.connect_start = jiffies;
+ 	return kernel_connect(sock, xs_addr(xprt), xprt->addrlen, 0);
+ }
+ 
+@@ -2062,6 +2063,9 @@ static int xs_local_setup_socket(struct sock_xprt *transport)
+ 	case 0:
+ 		dprintk("RPC:       xprt %p connected to %s\n",
+ 				xprt, xprt->address_strings[RPC_DISPLAY_ADDR]);
++		xprt->stat.connect_count++;
++		xprt->stat.connect_time += (long)jiffies -
++					   xprt->stat.connect_start;
+ 		xprt_set_connected(xprt);
+ 	case -ENOBUFS:
+ 		break;
+@@ -2387,8 +2391,6 @@ static int xs_tcp_finish_connecting(struct rpc_xprt *xprt, struct socket *sock)
+ 	xs_set_memalloc(xprt);
+ 
+ 	/* Tell the socket layer to start connecting... */
+-	xprt->stat.connect_count++;
+-	xprt->stat.connect_start = jiffies;
+ 	set_bit(XPRT_SOCK_CONNECTING, &transport->sock_state);
+ 	ret = kernel_connect(sock, xs_addr(xprt), xprt->addrlen, O_NONBLOCK);
+ 	switch (ret) {
