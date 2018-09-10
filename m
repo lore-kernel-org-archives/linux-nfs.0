@@ -1,65 +1,59 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f51.google.com ([209.85.214.51]:52378 "EHLO
-        mail-it0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727411AbeIJUD3 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Sep 2018 16:03:29 -0400
-Subject: [PATCH v1 00/22] NFS/RDMA client patches for v4.20
+Received: from mail-it0-f65.google.com ([209.85.214.65]:51200 "EHLO
+        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727411AbeIJUDe (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Sep 2018 16:03:34 -0400
+Subject: [PATCH v1 01/22] xprtrdma: Reset credit grant properly after a
+ disconnect
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Mon, 10 Sep 2018 11:08:55 -0400
-Message-ID: <20180910150040.10564.97487.stgit@manet.1015granger.net>
+Date: Mon, 10 Sep 2018 11:09:00 -0400
+Message-ID: <20180910150900.10564.91528.stgit@manet.1015granger.net>
+In-Reply-To: <20180910150040.10564.97487.stgit@manet.1015granger.net>
+References: <20180910150040.10564.97487.stgit@manet.1015granger.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-A mixed bag of fixes and clean ups, the important ones being:
+On a fresh connection, an RPC/RDMA client is supposed to send only
+one RPC Call until it gets a credit grant in the first RPC Reply
+from the server [RFC 8166, Section 3.3.3].
 
-- Ensure credit grant is reduced to 1 after a reconnect
-- Delete MRs instead of recovering them
-- Support sending RPCs with both Write and Reply chunks
-- Modernize the connect logic
+There is a bug in the Linux client's credit accounting mechanism
+introduced by commit e7ce710a8802 ("xprtrdma: Avoid deadlock when
+credit window is reset"). On connect, it simply dumps all pending
+RPC Calls onto the new connection.
 
-Details can be found in the patch descriptions.
+Servers have been tolerant of this bad behavior. Currently no server
+implementation ever changes its credit grant over reconnects, and
+servers always repost enough Receives before connections are fully
+established.
 
+To correct this issue, ensure that the client resets both the credit
+grant _and_ the congestion window when handling a reconnect.
+
+Fixes: e7ce710a8802 ("xprtrdma: Avoid deadlock when credit ... ")
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Cc: stable@kernel.org
 ---
+ net/sunrpc/xprtrdma/transport.c |    6 ++++++
+ 1 file changed, 6 insertions(+)
 
-Chuck Lever (22):
-      xprtrdma: Reset credit grant properly after a disconnect
-      xprtrdma: Create more MRs at a time
-      xprtrdma: Explicitly resetting MRs is no longer necessary
-      xprtrdma: Name MR trace events consistently
-      xprtrdma: Refactor chunk encoding
-      xprtrdma: Refactor chunktype handling
-      xprtrdma: Support Write+Reply Replies
-      sunrpc: Fix connect metrics
-      sunrpc: Report connect_time in seconds
-      xprtrdma: Rename rpcrdma_conn_upcall
-      xprtrdma: Conventional variable names in rpcrdma_conn_upcall
-      xprtrdma: Eliminate "connstate" variable from rpcrdma_conn_upcall()
-      xprtrdma: Re-organize the switch() in rpcrdma_conn_upcall
-      xprtrdma: Simplify RPC wake-ups on connect
-      xprtrdma: Rename rpcrdma_qp_async_error_upcall
-      xprtrdma: Remove memory address of "ep" from an error message
-      svcrdma: Don't disable BH's in backchannel
-      xprtrdma: Move rb_flags initialization
-      xprtrdma: Report when there were zero posted Receives
-      xprtrdma: Add documenting comments
-      xprtrdma: Clean up xprt_rdma_disconnect_inject
-      xprtrdma: Squelch a sparse warning
-
-
- include/trace/events/rpcrdma.h    |   40 ++++----
- net/sunrpc/xprt.c                 |   10 +-
- net/sunrpc/xprtrdma/backchannel.c |   16 ++-
- net/sunrpc/xprtrdma/fmr_ops.c     |  131 ++++++++++++---------------
- net/sunrpc/xprtrdma/frwr_ops.c    |  137 +++++++++++-----------------
- net/sunrpc/xprtrdma/rpc_rdma.c    |  168 +++++++++++++++++++----------------
- net/sunrpc/xprtrdma/transport.c   |  103 +++++++++++----------
- net/sunrpc/xprtrdma/verbs.c       |  178 +++++++++++++++++++------------------
- net/sunrpc/xprtrdma/xprt_rdma.h   |   23 ++---
- net/sunrpc/xprtsock.c             |   14 ++-
- 10 files changed, 400 insertions(+), 420 deletions(-)
-
---
-Chuck Lever
+diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
+index 143ce25..98cbc7b 100644
+--- a/net/sunrpc/xprtrdma/transport.c
++++ b/net/sunrpc/xprtrdma/transport.c
+@@ -468,6 +468,12 @@
+ 		xprt->reestablish_timeout = 0;
+ 	xprt_disconnect_done(xprt);
+ 	rpcrdma_ep_disconnect(ep, ia);
++
++	/* Prepare @xprt for the next connection by reinitializing
++	 * its credit grant to one (see RFC 8166, Section 3.3.3).
++	 */
++	r_xprt->rx_buf.rb_credits = 1;
++	xprt->cwnd = RPC_CWNDSHIFT;
+ }
+ 
+ /**
