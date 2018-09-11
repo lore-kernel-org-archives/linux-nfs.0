@@ -1,43 +1,86 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cliff.cs.toronto.edu ([128.100.3.120]:41976 "EHLO
-        cliff.cs.toronto.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726866AbeILBsR (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 11 Sep 2018 21:48:17 -0400
-From: Chris Siebenmann <cks@cs.toronto.edu>
-To: Chuck Lever <chuck.lever@oracle.com>
-cc: Trond Myklebust <trondmy@hammerspace.com>,
-        "cks@cs.toronto.edu" <cks@cs.toronto.edu>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: A NFS client partial file corruption problem in recent/current kernels
-In-reply-to: chuck.lever's message of Tue, 11 Sep 2018 16:40:20 -0400.
-             <E2172838-41D5-46E5-B8C7-D5CFD9459DBF@oracle.com>
+Received: from mail-eopbgr700135.outbound.protection.outlook.com ([40.107.70.135]:41024
+        "EHLO NAM04-SN1-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1726850AbeILB5s (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 11 Sep 2018 21:57:48 -0400
+From: Trond Myklebust <trondmy@hammerspace.com>
+To: "chuck.lever@oracle.com" <chuck.lever@oracle.com>
+CC: "cks@cs.toronto.edu" <cks@cs.toronto.edu>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: A NFS client partial file corruption problem in recent/current
+ kernels
+Date: Tue, 11 Sep 2018 20:56:39 +0000
+Message-ID: <c4d737511f245e39d429ce82d34fac5e7ff3eb6f.camel@hammerspace.com>
+References: <20180911180218.9A66C322562@apps1.cs.toronto.edu>
+         <78ca0a56d72cda910b38a37cadd4780e112c7906.camel@hammerspace.com>
+         <E2172838-41D5-46E5-B8C7-D5CFD9459DBF@oracle.com>
+In-Reply-To: <E2172838-41D5-46E5-B8C7-D5CFD9459DBF@oracle.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Date: Tue, 11 Sep 2018 16:47:14 -0400
-Message-Id: <20180911204714.1FDBA322562@apps1.cs.toronto.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> >> Pragmatically, Alpine used to work with NFS mounted filesystems where
-> >> email was appended to them from other machines and it no longer does,
-> >> and the only difference is the kernel version involved on the client.
-> >> This breakage is actively dangerous.
-> > 
-> > Sure, but unless you are locking the file, or you are explicitly using
-> > O_DIRECT to do uncached I/O, then you are in violation of the close-to-
-> > open consistency model, and the client is going to behave as you
-> > describe above. NFS uses a distributed filesystem model, not a
-> > clustered one.
-> 
-> I would expect Alpine to work if "vers=3,noac" is in use.
-
- We're setting noac (and vers=3) for our /var/mail NFS mount, but
-perhaps we've got some additional option that is wrong here and
-should be changed? According to /proc/mounts, our mount settings
-for /var/mail are:
-
-	fs0.cs.toronto.edu:/cs/mail /var/mail nfs rw,sync,nosuid,nodev,relatime,vers=3,rsize=1048576,wsize=1048576,namlen=255,acregmin=0,acregmax=0,acdirmin=0,acdirmax=0,hard,noac,noacl,proto=tcp,timeo=11,retrans=4,sec=sys,mountaddr=128.100.3.130,mountvers=3,mountport=34630,mountproto=udp,local_lock=none,addr=128.100.3.130
-
-(To an OmniOS fileserver with ZFS.)
-
-	- cks
+T24gVHVlLCAyMDE4LTA5LTExIGF0IDE2OjQwIC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
+PiBPbiBTZXAgMTEsIDIwMTgsIGF0IDQ6MDAgUE0sIFRyb25kIE15a2xlYnVzdCA8DQo+ID4gdHJv
+bmRteUBoYW1tZXJzcGFjZS5jb20+IHdyb3RlOg0KPiA+IA0KPiA+IE9uIFR1ZSwgMjAxOC0wOS0x
+MSBhdCAxNDowMiAtMDQwMCwgQ2hyaXMgU2llYmVubWFubiB3cm90ZToNCj4gPiA+ID4gPiBXZSd2
+ZSBmb3VuZCBhIHJlYWRpbHkgcmVwcm9kdWNhYmxlIHNpdHVhdGlvbiB3aGVyZSB0aGUNCj4gPiA+
+ID4gPiBjdXJyZW50DQo+ID4gPiA+ID4gTkZTIGNsaWVudCBjb2RlIHdpbGwgcHJvdmlkZSB6ZXJv
+IGJ5dGVzIGluc3RlYWQgb2YgYWN0dWFsDQo+ID4gPiA+ID4gZGF0YSBhdA0KPiA+ID4gPiA+IHRo
+ZSBlbmQgb2YgdGhlIGZpbGUgKHNvcnQgb2YpIHRvIHVzZXIgcHJvZ3JhbXMuIFRoaXMgY2FuDQo+
+ID4gPiA+ID4gcmVzdWx0DQo+ID4gPiA+ID4gaW4gcHJvZ3JhbSBmYWlsdXJlLCBvciBwZXJtYW5l
+bnQgZmlsZSBjb3JydXB0aW9uIGlmIHRoZQ0KPiA+ID4gPiA+IHByb2dyYW0NCj4gPiA+ID4gPiBy
+ZWFkaW5nIHRoZSBmaWxlIHdyaXRlcyB0aGUgYmFkIGRhdGEgYmFjayB0byB0aGUgZmlsZTsNCj4g
+PiA+ID4gPiBvdGhlcndpc2UsDQo+ID4gPiA+ID4gdGhlIGNvcnJ1cHRpb24gZ29lcyBhd2F5IHdo
+ZW4gdGhlIGNsaWVudCdzIGNhY2hlZCBkYXRhIGlzDQo+ID4gPiA+ID4gcHVzaGVkDQo+ID4gPiA+
+ID4gb3V0DQo+ID4gPiA+ID4gb2YgbWVtb3J5IChvciBleHBsaWNpdGx5IGRyb3BwZWQgYnkgZHJv
+cHBpbmcgdGhlIHBhZ2VjYWNoZQ0KPiA+ID4gPiA+IHRocm91Z2gNCj4gPiA+ID4gPiAvcHJvYy9z
+eXMvdm0vZHJvcF9jYWNoZXMpLg0KPiA+ID4gDQo+ID4gPiBbLi4uXQ0KPiA+ID4gPiBQbGVhc2Ug
+c2VlIGh0dHA6Ly9uZnMuc291cmNlZm9yZ2UubmV0LyNmYXFfYTgNCj4gPiA+IA0KPiA+ID4gSSBk
+b24ndCB0aGluayB0aGlzIGlzIGEgY2xvc2UgdG8gb3BlbiBjb25zaXN0ZW5jeSBpc3N1ZSwgb3Ig
+aWYgaXQNCj4gPiA+IGlzDQo+ID4gPiBJIHdvdWxkIGFyZ3VlIHRoYXQgaXQgaXMgYSBjbGVhciBi
+dWcgb24gdGhlIExpbnV4IE5GUyBjbGllbnQuIEkNCj4gPiA+IGhhdmUNCj4gPiA+IGEgbnVtYmVy
+IG9mIHJlYXNvbnMgZm9yIHNheWluZyB0aGlzOg0KPiA+ID4gDQo+ID4gPiAtIHRoZSBjbGllbnQg
+Y2xlYXJseSBzZWVzIHRoZSBuZXcgYXR0cmlidXRlczsgaXQga25vd3MgdGhhdCB0aGUNCj4gPiA+
+IGZpbGUNCj4gPiA+ICBoYXMgYmVlbiBleHRlbmRlZCBmcm9tIHRoZSBwcmV2aW91cyBzdGF0ZSB0
+aGF0IGl0IGtuZXcgb2YuIE15DQo+ID4gPiBkZW1vDQo+ID4gPiAgcHJvZ3JhbSBzcGVjaWZpY2Fs
+bHkgd2FpdHMgdW50aWwgdXNlci1sZXZlbCBmc3RhdCgpIHJldHVybnMgYQ0KPiA+ID4gZGlmZmVy
+ZW50DQo+ID4gPiAgcmVzdWx0LCB3aGljaCBJIGJlbGlldmUgbWVhbnMgdGhhdCB0aGUgY2xpZW50
+IGtlcm5lbCBoYXMgc2VlbiBhDQo+ID4gPiBkaWZmZXJlbnQNCj4gPiA+ICBHRVRBVFRSIHJlc3Vs
+dCBhbmQgc28gc2hvdWxkIGhhdmUgcHVyZ2VkIGl0cyBjYWNoZSAoYmFzZWQgb24NCj4gPiA+IHdo
+YXQNCj4gPiA+IHRoZQ0KPiA+ID4gIEZBUSBzYXlzKS4NCj4gPiA+IA0KPiA+ID4gIChVbmxlc3Mg
+dGhlIEZBUSBtZWFucyB0aGF0IHRoZSBrZXJuZWwgYWJzb2x1dGVseSByZWZ1c2VzIHRvDQo+ID4g
+PiBndWFyYW50ZWUNCj4gPiA+ICBhbnl0aGluZyBhYm91dCBmaWxlIGNvbnNpc3RlbmN5IHVubGVz
+cyB5b3UgY2xvc2UgYW5kIHRoZW4gcmVvcGVuDQo+ID4gPiB0aGUNCj4gPiA+ICBmaWxlLCBldmVu
+IGlmIGl0ICprbm93cyogdGhhdCB0aGUgZmlsZSBoYXMgY2hhbmdlZCBvbiB0aGUNCj4gPiA+IHNl
+cnZlciwNCj4gPiA+ICB3aGljaCBpc24ndCBjbGVhciBmcm9tIGhvdyB0aGUgRkFRIGlzIGN1cnJl
+bnRseSB3cml0dGVuLikNCj4gPiA+IA0KPiA+ID4gLSB0aGUgY2xpZW50IGlzIGZldGNoaW5nIHNv
+bWUgbmV3IGRhdGEgZnJvbSB0aGUgZmlsZXNlcnZlciAoZGF0YQ0KPiA+ID4gYWZ0ZXINCj4gPiA+
+ICB0aGUgcGFydGlhbCA0IEtCIHBhZ2UgYXQgdGhlIG9sZCBlbmQgb2YgdGhlIGZpbGUpLg0KPiA+
+ID4gDQo+ID4gPiAtIHRoZSBjbGllbnQgaXNuJ3Qgd3JpdGluZyB0byB0aGUgZmlsZSBpbiBteSBk
+ZW1vbnN0cmF0aW9uDQo+ID4gPiBwcm9ncmFtOw0KPiA+ID4gaXQncw0KPiA+ID4gIG9ubHkgb3Bl
+bmluZyBpdCBpbiByZWFkLXdyaXRlIG1vZGUgYW5kIHRoZW4gcmVhZGluZyBpdC4gQWxzbywNCj4g
+PiA+IHRoaXMNCj4gPiA+ICBkb2Vzbid0IGhhcHBlbiBpZiB0aGUgY2xpZW50IGRvZXMgZXhhY3Rs
+eSB0aGUgc2FtZSBzZXQgb2YNCj4gPiA+IG9wZXJhdGlvbnMNCj4gPiA+ICBidXQgaGFzIHRoZSBm
+aWxlIG9wZW4gcmVhZC1vbmx5ICh3aXRoIGl0IHN0YXlpbmcgb3Blbg0KPiA+ID4gdGhyb3VnaG91
+dCkuDQo+ID4gPiANCj4gPiA+IC0gdGhpcyBkaWRuJ3QgaGFwcGVuIGluIG9sZGVyIGtlcm5lbHMu
+DQo+ID4gPiANCj4gPiA+IEluIGFkZGl0aW9uLCBhbHRob3VnaCBJIGRpZG4ndCBtZW50aW9uIGl0
+IGluIG15IG9yaWdpbmFsIGVtYWlsLA0KPiA+ID4gdGhpcw0KPiA+ID4gaGFwcGVucyBvbiBhIE5G
+UyBmaWxlc3lzdGVtIG1vdW50ZWQgJ25vYWMnLg0KPiA+ID4gDQo+ID4gPiBQcmFnbWF0aWNhbGx5
+LCBBbHBpbmUgdXNlZCB0byB3b3JrIHdpdGggTkZTIG1vdW50ZWQgZmlsZXN5c3RlbXMNCj4gPiA+
+IHdoZXJlDQo+ID4gPiBlbWFpbCB3YXMgYXBwZW5kZWQgdG8gdGhlbSBmcm9tIG90aGVyIG1hY2hp
+bmVzIGFuZCBpdCBubyBsb25nZXINCj4gPiA+IGRvZXMsDQo+ID4gPiBhbmQgdGhlIG9ubHkgZGlm
+ZmVyZW5jZSBpcyB0aGUga2VybmVsIHZlcnNpb24gaW52b2x2ZWQgb24gdGhlDQo+ID4gPiBjbGll
+bnQuDQo+ID4gPiBUaGlzIGJyZWFrYWdlIGlzIGFjdGl2ZWx5IGRhbmdlcm91cy4NCj4gPiANCj4g
+PiBTdXJlLCBidXQgdW5sZXNzIHlvdSBhcmUgbG9ja2luZyB0aGUgZmlsZSwgb3IgeW91IGFyZSBl
+eHBsaWNpdGx5DQo+ID4gdXNpbmcNCj4gPiBPX0RJUkVDVCB0byBkbyB1bmNhY2hlZCBJL08sIHRo
+ZW4geW91IGFyZSBpbiB2aW9sYXRpb24gb2YgdGhlDQo+ID4gY2xvc2UtdG8tDQo+ID4gb3BlbiBj
+b25zaXN0ZW5jeSBtb2RlbCwgYW5kIHRoZSBjbGllbnQgaXMgZ29pbmcgdG8gYmVoYXZlIGFzIHlv
+dQ0KPiA+IGRlc2NyaWJlIGFib3ZlLiBORlMgdXNlcyBhIGRpc3RyaWJ1dGVkIGZpbGVzeXN0ZW0g
+bW9kZWwsIG5vdCBhDQo+ID4gY2x1c3RlcmVkIG9uZS4NCj4gDQo+IEkgd291bGQgZXhwZWN0IEFs
+cGluZSB0byB3b3JrIGlmICJ2ZXJzPTMsbm9hYyIgaXMgaW4gdXNlLg0KPiANCg0Kbm9hYyBoYXMg
+bm90aGluZyBhdCBhbGwgdG8gZG8gd2l0aCBkYXRhIGNhY2hlIGNvbnNpc3RlbmN5Lg0KDQotLSAN
+ClRyb25kIE15a2xlYnVzdA0KQ1RPLCBIYW1tZXJzcGFjZSBJbmMNCjQzMDAgRWwgQ2FtaW5vIFJl
+YWwsIFN1aXRlIDEwNQ0KTG9zIEFsdG9zLCBDQSA5NDAyMg0Kd3d3LmhhbW1lci5zcGFjZQ0KDQoN
+Cg==
