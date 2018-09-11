@@ -1,70 +1,115 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-eopbgr710105.outbound.protection.outlook.com ([40.107.71.105]:35529
-        "EHLO NAM05-BY2-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726720AbeILBBo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 11 Sep 2018 21:01:44 -0400
-From: Trond Myklebust <trondmy@hammerspace.com>
-To: "cks@cs.toronto.edu" <cks@cs.toronto.edu>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: A NFS client partial file corruption problem in recent/current
- kernels
-Date: Tue, 11 Sep 2018 20:00:48 +0000
-Message-ID: <78ca0a56d72cda910b38a37cadd4780e112c7906.camel@hammerspace.com>
-References: <20180911180218.9A66C322562@apps1.cs.toronto.edu>
-In-Reply-To: <20180911180218.9A66C322562@apps1.cs.toronto.edu>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from mail-qt0-f193.google.com ([209.85.216.193]:36562 "EHLO
+        mail-qt0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726762AbeILBYt (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 11 Sep 2018 21:24:49 -0400
+Received: by mail-qt0-f193.google.com with SMTP id t5-v6so29734982qtn.3
+        for <linux-nfs@vger.kernel.org>; Tue, 11 Sep 2018 13:23:52 -0700 (PDT)
+From: schumaker.anna@gmail.com
+To: Trond.Myklebust@hammerspace.com, linux-nfs@vger.kernel.org
+Subject: [PATCH 2/3] NFS: Reduce indentation of the switch statement in nfs4_reclaim_open_state()
+Date: Tue, 11 Sep 2018 16:23:47 -0400
+Message-Id: <20180911202348.23160-2-Anna.Schumaker@Netapp.com>
+In-Reply-To: <20180911202348.23160-1-Anna.Schumaker@Netapp.com>
+References: <20180911202348.23160-1-Anna.Schumaker@Netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDE4LTA5LTExIGF0IDE0OjAyIC0wNDAwLCBDaHJpcyBTaWViZW5tYW5uIHdyb3Rl
-Og0KPiA+ID4gIFdlJ3ZlIGZvdW5kIGEgcmVhZGlseSByZXByb2R1Y2FibGUgc2l0dWF0aW9uIHdo
-ZXJlIHRoZSBjdXJyZW50DQo+ID4gPiBORlMgY2xpZW50IGNvZGUgd2lsbCBwcm92aWRlIHplcm8g
-Ynl0ZXMgaW5zdGVhZCBvZiBhY3R1YWwgZGF0YSBhdA0KPiA+ID4gdGhlIGVuZCBvZiB0aGUgZmls
-ZSAoc29ydCBvZikgdG8gdXNlciBwcm9ncmFtcy4gVGhpcyBjYW4gcmVzdWx0DQo+ID4gPiBpbiBw
-cm9ncmFtIGZhaWx1cmUsIG9yIHBlcm1hbmVudCBmaWxlIGNvcnJ1cHRpb24gaWYgdGhlIHByb2dy
-YW0NCj4gPiA+IHJlYWRpbmcgdGhlIGZpbGUgd3JpdGVzIHRoZSBiYWQgZGF0YSBiYWNrIHRvIHRo
-ZSBmaWxlOyBvdGhlcndpc2UsDQo+ID4gPiB0aGUgY29ycnVwdGlvbiBnb2VzIGF3YXkgd2hlbiB0
-aGUgY2xpZW50J3MgY2FjaGVkIGRhdGEgaXMgcHVzaGVkDQo+ID4gPiBvdXQNCj4gPiA+IG9mIG1l
-bW9yeSAob3IgZXhwbGljaXRseSBkcm9wcGVkIGJ5IGRyb3BwaW5nIHRoZSBwYWdlY2FjaGUNCj4g
-PiA+IHRocm91Z2gNCj4gPiA+IC9wcm9jL3N5cy92bS9kcm9wX2NhY2hlcykuDQo+IA0KPiBbLi4u
-XQ0KPiA+IFBsZWFzZSBzZWUgaHR0cDovL25mcy5zb3VyY2Vmb3JnZS5uZXQvI2ZhcV9hOA0KPiAN
-Cj4gIEkgZG9uJ3QgdGhpbmsgdGhpcyBpcyBhIGNsb3NlIHRvIG9wZW4gY29uc2lzdGVuY3kgaXNz
-dWUsIG9yIGlmIGl0IGlzDQo+IEkgd291bGQgYXJndWUgdGhhdCBpdCBpcyBhIGNsZWFyIGJ1ZyBv
-biB0aGUgTGludXggTkZTIGNsaWVudC4gSSBoYXZlDQo+IGEgbnVtYmVyIG9mIHJlYXNvbnMgZm9y
-IHNheWluZyB0aGlzOg0KPiANCj4gLSB0aGUgY2xpZW50IGNsZWFybHkgc2VlcyB0aGUgbmV3IGF0
-dHJpYnV0ZXM7IGl0IGtub3dzIHRoYXQgdGhlIGZpbGUNCj4gICBoYXMgYmVlbiBleHRlbmRlZCBm
-cm9tIHRoZSBwcmV2aW91cyBzdGF0ZSB0aGF0IGl0IGtuZXcgb2YuIE15IGRlbW8NCj4gICBwcm9n
-cmFtIHNwZWNpZmljYWxseSB3YWl0cyB1bnRpbCB1c2VyLWxldmVsIGZzdGF0KCkgcmV0dXJucyBh
-DQo+IGRpZmZlcmVudA0KPiAgIHJlc3VsdCwgd2hpY2ggSSBiZWxpZXZlIG1lYW5zIHRoYXQgdGhl
-IGNsaWVudCBrZXJuZWwgaGFzIHNlZW4gYQ0KPiBkaWZmZXJlbnQNCj4gICBHRVRBVFRSIHJlc3Vs
-dCBhbmQgc28gc2hvdWxkIGhhdmUgcHVyZ2VkIGl0cyBjYWNoZSAoYmFzZWQgb24gd2hhdA0KPiB0
-aGUNCj4gICBGQVEgc2F5cykuDQo+IA0KPiAgIChVbmxlc3MgdGhlIEZBUSBtZWFucyB0aGF0IHRo
-ZSBrZXJuZWwgYWJzb2x1dGVseSByZWZ1c2VzIHRvDQo+IGd1YXJhbnRlZQ0KPiAgIGFueXRoaW5n
-IGFib3V0IGZpbGUgY29uc2lzdGVuY3kgdW5sZXNzIHlvdSBjbG9zZSBhbmQgdGhlbiByZW9wZW4N
-Cj4gdGhlDQo+ICAgZmlsZSwgZXZlbiBpZiBpdCAqa25vd3MqIHRoYXQgdGhlIGZpbGUgaGFzIGNo
-YW5nZWQgb24gdGhlIHNlcnZlciwNCj4gICB3aGljaCBpc24ndCBjbGVhciBmcm9tIGhvdyB0aGUg
-RkFRIGlzIGN1cnJlbnRseSB3cml0dGVuLikNCj4gDQo+IC0gdGhlIGNsaWVudCBpcyBmZXRjaGlu
-ZyBzb21lIG5ldyBkYXRhIGZyb20gdGhlIGZpbGVzZXJ2ZXIgKGRhdGENCj4gYWZ0ZXINCj4gICB0
-aGUgcGFydGlhbCA0IEtCIHBhZ2UgYXQgdGhlIG9sZCBlbmQgb2YgdGhlIGZpbGUpLg0KPiANCj4g
-LSB0aGUgY2xpZW50IGlzbid0IHdyaXRpbmcgdG8gdGhlIGZpbGUgaW4gbXkgZGVtb25zdHJhdGlv
-biBwcm9ncmFtOw0KPiBpdCdzDQo+ICAgb25seSBvcGVuaW5nIGl0IGluIHJlYWQtd3JpdGUgbW9k
-ZSBhbmQgdGhlbiByZWFkaW5nIGl0LiBBbHNvLCB0aGlzDQo+ICAgZG9lc24ndCBoYXBwZW4gaWYg
-dGhlIGNsaWVudCBkb2VzIGV4YWN0bHkgdGhlIHNhbWUgc2V0IG9mDQo+IG9wZXJhdGlvbnMNCj4g
-ICBidXQgaGFzIHRoZSBmaWxlIG9wZW4gcmVhZC1vbmx5ICh3aXRoIGl0IHN0YXlpbmcgb3BlbiB0
-aHJvdWdob3V0KS4NCj4gDQo+IC0gdGhpcyBkaWRuJ3QgaGFwcGVuIGluIG9sZGVyIGtlcm5lbHMu
-DQo+IA0KPiBJbiBhZGRpdGlvbiwgYWx0aG91Z2ggSSBkaWRuJ3QgbWVudGlvbiBpdCBpbiBteSBv
-cmlnaW5hbCBlbWFpbCwgdGhpcw0KPiBoYXBwZW5zIG9uIGEgTkZTIGZpbGVzeXN0ZW0gbW91bnRl
-ZCAnbm9hYycuDQo+IA0KPiBQcmFnbWF0aWNhbGx5LCBBbHBpbmUgdXNlZCB0byB3b3JrIHdpdGgg
-TkZTIG1vdW50ZWQgZmlsZXN5c3RlbXMgd2hlcmUNCj4gZW1haWwgd2FzIGFwcGVuZGVkIHRvIHRo
-ZW0gZnJvbSBvdGhlciBtYWNoaW5lcyBhbmQgaXQgbm8gbG9uZ2VyIGRvZXMsDQo+IGFuZCB0aGUg
-b25seSBkaWZmZXJlbmNlIGlzIHRoZSBrZXJuZWwgdmVyc2lvbiBpbnZvbHZlZCBvbiB0aGUgY2xp
-ZW50Lg0KPiBUaGlzIGJyZWFrYWdlIGlzIGFjdGl2ZWx5IGRhbmdlcm91cy4NCg0KU3VyZSwgYnV0
-IHVubGVzcyB5b3UgYXJlIGxvY2tpbmcgdGhlIGZpbGUsIG9yIHlvdSBhcmUgZXhwbGljaXRseSB1
-c2luZw0KT19ESVJFQ1QgdG8gZG8gdW5jYWNoZWQgSS9PLCB0aGVuIHlvdSBhcmUgaW4gdmlvbGF0
-aW9uIG9mIHRoZSBjbG9zZS10by0NCm9wZW4gY29uc2lzdGVuY3kgbW9kZWwsIGFuZCB0aGUgY2xp
-ZW50IGlzIGdvaW5nIHRvIGJlaGF2ZSBhcyB5b3UNCmRlc2NyaWJlIGFib3ZlLiBORlMgdXNlcyBh
-IGRpc3RyaWJ1dGVkIGZpbGVzeXN0ZW0gbW9kZWwsIG5vdCBhDQpjbHVzdGVyZWQgb25lLg0KDQot
-LSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBIYW1tZXJz
-cGFjZQ0KdHJvbmQubXlrbGVidXN0QGhhbW1lcnNwYWNlLmNvbQ0KDQoNCg==
+From: Anna Schumaker <Anna.Schumaker@Netapp.com>
+
+Most places in the kernel tend to line up cases with the switch to
+reduce indentation, so move this over to match that style.
+Additionally, I handle the (status >= 0) case in the switch so that we
+only "goto restart" from a single place after error handling.
+
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+---
+ fs/nfs/nfs4state.c | 70 ++++++++++++++++++++++------------------------
+ 1 file changed, 33 insertions(+), 37 deletions(-)
+
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index aa46a3216d60..8a399dc17e19 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -1615,46 +1615,42 @@ static int nfs4_reclaim_open_state(struct nfs4_state_owner *sp, const struct nfs
+ 		atomic_inc(&state->count);
+ 		spin_unlock(&sp->so_lock);
+ 		status = __nfs4_reclaim_open_state(sp, state, ops);
+-		if (status >= 0) {
+-			nfs4_put_open_state(state);
+-			spin_lock(&sp->so_lock);
+-			goto restart;
+-		}
+ 
+ 		switch (status) {
+-			default:
+-				printk(KERN_ERR "NFS: %s: unhandled error %d\n",
+-					__func__, status);
+-				/* Fall through */
+-			case -ENOENT:
+-			case -ENOMEM:
+-			case -EACCES:
+-			case -EROFS:
+-			case -EIO:
+-			case -ESTALE:
+-				/* Open state on this file cannot be recovered */
+-				nfs4_state_mark_recovery_failed(state, status);
+-				break;
+-			case -EAGAIN:
+-				ssleep(1);
+-				/* Fall through */
+-			case -NFS4ERR_ADMIN_REVOKED:
+-			case -NFS4ERR_STALE_STATEID:
+-			case -NFS4ERR_OLD_STATEID:
+-			case -NFS4ERR_BAD_STATEID:
+-			case -NFS4ERR_RECLAIM_BAD:
+-			case -NFS4ERR_RECLAIM_CONFLICT:
+-				nfs4_state_mark_reclaim_nograce(sp->so_server->nfs_client, state);
++		default:
++			if (status >= 0)
+ 				break;
+-			case -NFS4ERR_EXPIRED:
+-			case -NFS4ERR_NO_GRACE:
+-				nfs4_state_mark_reclaim_nograce(sp->so_server->nfs_client, state);
+-			case -NFS4ERR_STALE_CLIENTID:
+-			case -NFS4ERR_BADSESSION:
+-			case -NFS4ERR_BADSLOT:
+-			case -NFS4ERR_BAD_HIGH_SLOT:
+-			case -NFS4ERR_CONN_NOT_BOUND_TO_SESSION:
+-				goto out_err;
++			printk(KERN_ERR "NFS: %s: unhandled error %d\n", __func__, status);
++			/* Fall through */
++		case -ENOENT:
++		case -ENOMEM:
++		case -EACCES:
++		case -EROFS:
++		case -EIO:
++		case -ESTALE:
++			/* Open state on this file cannot be recovered */
++			nfs4_state_mark_recovery_failed(state, status);
++			break;
++		case -EAGAIN:
++			ssleep(1);
++			/* Fall through */
++		case -NFS4ERR_ADMIN_REVOKED:
++		case -NFS4ERR_STALE_STATEID:
++		case -NFS4ERR_OLD_STATEID:
++		case -NFS4ERR_BAD_STATEID:
++		case -NFS4ERR_RECLAIM_BAD:
++		case -NFS4ERR_RECLAIM_CONFLICT:
++			nfs4_state_mark_reclaim_nograce(sp->so_server->nfs_client, state);
++			break;
++		case -NFS4ERR_EXPIRED:
++		case -NFS4ERR_NO_GRACE:
++			nfs4_state_mark_reclaim_nograce(sp->so_server->nfs_client, state);
++		case -NFS4ERR_STALE_CLIENTID:
++		case -NFS4ERR_BADSESSION:
++		case -NFS4ERR_BADSLOT:
++		case -NFS4ERR_BAD_HIGH_SLOT:
++		case -NFS4ERR_CONN_NOT_BOUND_TO_SESSION:
++			goto out_err;
+ 		}
+ 		nfs4_put_open_state(state);
+ 		spin_lock(&sp->so_lock);
+-- 
+2.18.0
