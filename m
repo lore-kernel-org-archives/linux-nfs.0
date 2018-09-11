@@ -1,54 +1,65 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mga02.intel.com ([134.134.136.20]:18513 "EHLO mga02.intel.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726603AbeIJXpR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 10 Sep 2018 19:45:17 -0400
-Date: Tue, 11 Sep 2018 02:48:40 +0800
-From: kbuild test robot <lkp@intel.com>
-To: Trond Myklebust <trond.myklebust@hammerspace.com>
-Cc: kbuild-all@01.org, linux-nfs@vger.kernel.org
-Subject: [nfs:testing 39/48] net/sunrpc/xprt.c:893:17: sparse: cast from
- restricted __be32
-Message-ID: <201809110235.FqzSq75A%fengguang.wu@intel.com>
+Received: from mail-pf1-f172.google.com ([209.85.210.172]:43246 "EHLO
+        mail-pf1-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726563AbeIKR2v (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 11 Sep 2018 13:28:51 -0400
+Received: by mail-pf1-f172.google.com with SMTP id j26-v6so12153943pfi.10
+        for <linux-nfs@vger.kernel.org>; Tue, 11 Sep 2018 05:29:44 -0700 (PDT)
+From: Kinglong Mee <kinglongmee@gmail.com>
+Subject: lseek gets bad offset from nfs client with ganesha/gluster which
+ supports SEEK
+To: devel@lists.nfs-ganesha.org, linux-nfs@vger.kernel.org
+Cc: kinglongmee@gmail.com
+Message-ID: <182fecd3-66c3-0cbd-fbc0-cf1a88b7f165@gmail.com>
+Date: Tue, 11 Sep 2018 20:29:34 +0800
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-tree:   git://git.linux-nfs.org/projects/trondmy/linux-nfs.git testing
-head:   11dddfd20094d3d05af7aa2ac8ef0c9435a11856
-commit: 19568b491e9a59b2e5a07ce18e3194625e59aa6c [39/48] SUNRPC: Convert xprt receive queue to use an rbtree
-reproduce:
-        # apt-get install sparse
-        git checkout 19568b491e9a59b2e5a07ce18e3194625e59aa6c
-        make ARCH=x86_64 allmodconfig
-        make C=1 CF=-D__CHECK_ENDIAN__
+The latest ganesha/gluster supports seek according to,
 
+https://tools.ietf.org/html/draft-ietf-nfsv4-minorversion2-41#section-15.11
 
-sparse warnings: (new ones prefixed by >>)
+   From the given sa_offset, find the next data_content4 of type sa_what
+   in the file.  If the server can not find a corresponding sa_what,
+   then the status will still be NFS4_OK, but sr_eof would be TRUE.  If
+   the server can find the sa_what, then the sr_offset is the start of
+   that content.  If the sa_offset is beyond the end of the file, then
+   SEEK MUST return NFS4ERR_NXIO.
 
->> net/sunrpc/xprt.c:893:17: sparse: cast from restricted __be32
-   net/sunrpc/xprt.c:893:29: sparse: cast from restricted __be32
-   net/sunrpc/xprt.c:1512:32: sparse: expression using sizeof(void)
-   net/sunrpc/xprt.c:1512:32: sparse: expression using sizeof(void)
+For a file's filemap as,
 
-vim +893 net/sunrpc/xprt.c
+Part    1: HOLE 0x0000000000000000 ---> 0x0000000000600000
+Part    2: DATA 0x0000000000600000 ---> 0x0000000000700000
+Part    3: HOLE 0x0000000000700000 ---> 0x0000000001000000
 
-   882	
-   883	enum xprt_xid_rb_cmp {
-   884		XID_RB_EQUAL,
-   885		XID_RB_LEFT,
-   886		XID_RB_RIGHT,
-   887	};
-   888	static enum xprt_xid_rb_cmp
-   889	xprt_xid_cmp(__be32 xid1, __be32 xid2)
-   890	{
-   891		if (xid1 == xid2)
-   892			return XID_RB_EQUAL;
- > 893		return (u32)xid1 < (u32)xid2 ? XID_RB_LEFT : XID_RB_RIGHT;
-   894	}
-   895	
+SEEK(0x700000, SEEK_DATA) gets result (sr_eof:1, sr_offset:0x70000) from ganesha/gluster;
+SEEK(0x700000, SEEK_HOLE) gets result (sr_eof:0, sr_offset:0x70000) from ganesha/gluster.
 
----
-0-DAY kernel test infrastructure                Open Source Technology Center
-https://lists.01.org/pipermail/kbuild-all                   Intel Corporation
+If an application depends the lseek result for data searching, it may enter infinite loop.
+
+        while (1) {
+                next_pos = lseek(fd, cur_pos, seek_type);
+                if (seek_type == SEEK_DATA) {
+                        seek_type = SEEK_HOLE;
+                } else {
+                        seek_type = SEEK_DATA;
+                }
+
+                if (next_pos == -1) {
+                        return ;
+
+                cur_pos = next_pos;
+        }
+
+The lseek syscall always gets 0x70000 from nfs client for those two cases, 
+but, if underlying filesystem is ext4/f2fs, or the nfs server is knfsd,
+the lseek(0x700000, SEEK_DATA) gets ENXIO.
+
+I wanna to know,
+should I fix the ganesha/gluster as knfsd return ENXIO for the first case?
+or should I fix the nfs client to return ENXIO for the first case?
+
+thanks,
+Kinglong Mee
