@@ -1,103 +1,60 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk1-f195.google.com ([209.85.222.195]:33402 "EHLO
-        mail-qk1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726762AbeILBYv (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 11 Sep 2018 21:24:51 -0400
-Received: by mail-qk1-f195.google.com with SMTP id z78-v6so17657278qka.0
-        for <linux-nfs@vger.kernel.org>; Tue, 11 Sep 2018 13:23:53 -0700 (PDT)
-From: schumaker.anna@gmail.com
-To: Trond.Myklebust@hammerspace.com, linux-nfs@vger.kernel.org
-Subject: [PATCH 3/3] NFS: Reduce indentation of nfs4_recovery_handle_error()
-Date: Tue, 11 Sep 2018 16:23:48 -0400
-Message-Id: <20180911202348.23160-3-Anna.Schumaker@Netapp.com>
-In-Reply-To: <20180911202348.23160-1-Anna.Schumaker@Netapp.com>
-References: <20180911202348.23160-1-Anna.Schumaker@Netapp.com>
+Received: from cliff.cs.toronto.edu ([128.100.3.120]:41916 "EHLO
+        cliff.cs.toronto.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726836AbeILBj5 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 11 Sep 2018 21:39:57 -0400
+From: Chris Siebenmann <cks@cs.toronto.edu>
+To: Trond Myklebust <trondmy@hammerspace.com>
+cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        cks@cs.toronto.edu
+Subject: Re: A NFS client partial file corruption problem in recent/current kernels
+In-reply-to: trondmy's message of Tue, 11 Sep 2018 20:00:48 -0000.
+             <78ca0a56d72cda910b38a37cadd4780e112c7906.camel@hammerspace.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Date: Tue, 11 Sep 2018 16:38:55 -0400
+Message-Id: <20180911203856.01574322562@apps1.cs.toronto.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Anna Schumaker <Anna.Schumaker@Netapp.com>
+> > Pragmatically, Alpine used to work with NFS mounted filesystems where
+> > email was appended to them from other machines and it no longer does,
+> > and the only difference is the kernel version involved on the client.
+> > This breakage is actively dangerous.
+> 
+> Sure, but unless you are locking the file, or you are explicitly using
+> O_DIRECT to do uncached I/O, then you are in violation of the close-to-
+> open consistency model, and the client is going to behave as you
+> describe above. NFS uses a distributed filesystem model, not a
+> clustered one.
 
-This is to match kernel coding style for switch statements.
+ In the close to open consistency model, is it legal and proper to
+do the following sequence:
 
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
----
- fs/nfs/nfs4state.c | 64 +++++++++++++++++++++++-----------------------
- 1 file changed, 32 insertions(+), 32 deletions(-)
+- open a file read-write
+- fstat() the file until the reported file size changes
+- close the file; open it again read-write
+- read new data from the file
 
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 8a399dc17e19..816f526bbcb3 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -1800,38 +1800,38 @@ static void nfs4_state_start_reclaim_nograce(struct nfs_client *clp)
- static int nfs4_recovery_handle_error(struct nfs_client *clp, int error)
- {
- 	switch (error) {
--		case 0:
--			break;
--		case -NFS4ERR_CB_PATH_DOWN:
--			nfs40_handle_cb_pathdown(clp);
--			break;
--		case -NFS4ERR_NO_GRACE:
--			nfs4_state_end_reclaim_reboot(clp);
--			break;
--		case -NFS4ERR_STALE_CLIENTID:
--			set_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state);
--			nfs4_state_start_reclaim_reboot(clp);
--			break;
--		case -NFS4ERR_EXPIRED:
--			set_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state);
--			nfs4_state_start_reclaim_nograce(clp);
--			break;
--		case -NFS4ERR_BADSESSION:
--		case -NFS4ERR_BADSLOT:
--		case -NFS4ERR_BAD_HIGH_SLOT:
--		case -NFS4ERR_DEADSESSION:
--		case -NFS4ERR_SEQ_FALSE_RETRY:
--		case -NFS4ERR_SEQ_MISORDERED:
--			set_bit(NFS4CLNT_SESSION_RESET, &clp->cl_state);
--			/* Zero session reset errors */
--			break;
--		case -NFS4ERR_CONN_NOT_BOUND_TO_SESSION:
--			set_bit(NFS4CLNT_BIND_CONN_TO_SESSION, &clp->cl_state);
--			break;
--		default:
--			dprintk("%s: failed to handle error %d for server %s\n",
--					__func__, error, clp->cl_hostname);
--			return error;
-+	case 0:
-+		break;
-+	case -NFS4ERR_CB_PATH_DOWN:
-+		nfs40_handle_cb_pathdown(clp);
-+		break;
-+	case -NFS4ERR_NO_GRACE:
-+		nfs4_state_end_reclaim_reboot(clp);
-+		break;
-+	case -NFS4ERR_STALE_CLIENTID:
-+		set_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state);
-+		nfs4_state_start_reclaim_reboot(clp);
-+		break;
-+	case -NFS4ERR_EXPIRED:
-+		set_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state);
-+		nfs4_state_start_reclaim_nograce(clp);
-+		break;
-+	case -NFS4ERR_BADSESSION:
-+	case -NFS4ERR_BADSLOT:
-+	case -NFS4ERR_BAD_HIGH_SLOT:
-+	case -NFS4ERR_DEADSESSION:
-+	case -NFS4ERR_SEQ_FALSE_RETRY:
-+	case -NFS4ERR_SEQ_MISORDERED:
-+		set_bit(NFS4CLNT_SESSION_RESET, &clp->cl_state);
-+		/* Zero session reset errors */
-+		break;
-+	case -NFS4ERR_CONN_NOT_BOUND_TO_SESSION:
-+		set_bit(NFS4CLNT_BIND_CONN_TO_SESSION, &clp->cl_state);
-+		break;
-+	default:
-+		dprintk("%s: failed to handle error %d for server %s\n",
-+				__func__, error, clp->cl_hostname);
-+		return error;
- 	}
- 	dprintk("%s: handled error %d for server %s\n", __func__, error,
- 			clp->cl_hostname);
--- 
-2.18.0
+If this sequence is legal, then I think there is a bug, because I can
+make the zero bytes appear even with this sequence. I've updated my
+reproduction program, in
+
+	https://www.cs.toronto.edu/~cks/vendors/linux-nfs/
+
+to have a '--reopen' option that does this.
+
+If this sequence is not legal and can legally result in corrupted
+data in the file, then I think there is a potential problem, because
+it creates a situation where one program (opening the file read-write
+and holding it open) could cause corruption for another program (which
+properly opens and closes the file). I can reproduce this with two
+running instances of my test program. Perhaps this is considered
+invalid because it is a violation of close to open across the entire
+client kernel, but if so I feel this is dangerous; it puts all programs
+reading NFS mounted files at the mercy of everything else on the
+system, no matter how much they try to do the right thing. They can
+open it read only and close it while they wait for changes and then
+reopen it read only afterward, and they will still get corrupted data.
+
+	- cks
