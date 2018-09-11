@@ -1,44 +1,59 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cliff.cs.toronto.edu ([128.100.3.120]:42194 "EHLO
-        cliff.cs.toronto.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727419AbeILCk3 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 11 Sep 2018 22:40:29 -0400
-From: Chris Siebenmann <cks@cs.toronto.edu>
-To: Trond Myklebust <trondmy@hammerspace.com>
-cc: "chuck.lever@oracle.com" <chuck.lever@oracle.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        cks@cs.toronto.edu
-Subject: Re: A NFS client partial file corruption problem in recent/current kernels
-In-reply-to: trondmy's message of Tue, 11 Sep 2018 21:25:48 -0000.
-             <d5ffaf3fa306a6af744d9dfb67c7d13480446039.camel@hammerspace.com>
+Received: from mail-bn3nam01on0097.outbound.protection.outlook.com ([104.47.33.97]:10944
+        "EHLO NAM01-BN3-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1727796AbeILDNu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 11 Sep 2018 23:13:50 -0400
+From: Trond Myklebust <trondmy@hammerspace.com>
+To: "cks@cs.toronto.edu" <cks@cs.toronto.edu>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "chuck.lever@oracle.com" <chuck.lever@oracle.com>
+Subject: Re: A NFS client partial file corruption problem in recent/current
+ kernels
+Date: Tue, 11 Sep 2018 22:12:26 +0000
+Message-ID: <624981c3fe62c3df744f769d46dc9921cc2826ce.camel@hammerspace.com>
+References: <20180911213913.ABE8B322562@apps1.cs.toronto.edu>
+In-Reply-To: <20180911213913.ABE8B322562@apps1.cs.toronto.edu>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Date: Tue, 11 Sep 2018 17:39:13 -0400
-Message-Id: <20180911213913.ABE8B322562@apps1.cs.toronto.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> This has nothing to do with mount options. Buffered reads of a file
-> that is being written to over NFS without using locking is inherently
-> unsafe. That always has been the case...
->
-> Both writes and reads can be reordered by the RPC layer on both the
-> client and the server, and they can be further reordered by the
-> NFS layer on the server. In practice, this means that you can find
-> yourself reading parts of the file that have not yet completed being
-> written to, because, for example, a write that extended the file from
-> offset 4096- 8191 completed before the write that was supposed to
-> extend it from offset 0-4095 was processed by the server.
-
- Our issue also happens when the writes are done on the fileserver,
-though, and they occur even if you allow plenty of time for the writes
-to settle. I can run my test program in a mode where it explicitly waits
-for me to tell it to continue, do the appending to the file on the
-fileserver, 'sync' on the fileserver, wait five minutes, and the NFS
-client will still see those zero bytes when it tries to read the new
-data.
-
-(To make sure the 'five minutes' bit wasn't hyperbole, I just tested
-it.)
-
-	- cks
+T24gVHVlLCAyMDE4LTA5LTExIGF0IDE3OjM5IC0wNDAwLCBDaHJpcyBTaWViZW5tYW5uIHdyb3Rl
+Og0KPiA+IFRoaXMgaGFzIG5vdGhpbmcgdG8gZG8gd2l0aCBtb3VudCBvcHRpb25zLiBCdWZmZXJl
+ZCByZWFkcyBvZiBhIGZpbGUNCj4gPiB0aGF0IGlzIGJlaW5nIHdyaXR0ZW4gdG8gb3ZlciBORlMg
+d2l0aG91dCB1c2luZyBsb2NraW5nIGlzDQo+ID4gaW5oZXJlbnRseQ0KPiA+IHVuc2FmZS4gVGhh
+dCBhbHdheXMgaGFzIGJlZW4gdGhlIGNhc2UuLi4NCj4gPiANCj4gPiBCb3RoIHdyaXRlcyBhbmQg
+cmVhZHMgY2FuIGJlIHJlb3JkZXJlZCBieSB0aGUgUlBDIGxheWVyIG9uIGJvdGggdGhlDQo+ID4g
+Y2xpZW50IGFuZCB0aGUgc2VydmVyLCBhbmQgdGhleSBjYW4gYmUgZnVydGhlciByZW9yZGVyZWQg
+YnkgdGhlDQo+ID4gTkZTIGxheWVyIG9uIHRoZSBzZXJ2ZXIuIEluIHByYWN0aWNlLCB0aGlzIG1l
+YW5zIHRoYXQgeW91IGNhbiBmaW5kDQo+ID4geW91cnNlbGYgcmVhZGluZyBwYXJ0cyBvZiB0aGUg
+ZmlsZSB0aGF0IGhhdmUgbm90IHlldCBjb21wbGV0ZWQNCj4gPiBiZWluZw0KPiA+IHdyaXR0ZW4g
+dG8sIGJlY2F1c2UsIGZvciBleGFtcGxlLCBhIHdyaXRlIHRoYXQgZXh0ZW5kZWQgdGhlIGZpbGUN
+Cj4gPiBmcm9tDQo+ID4gb2Zmc2V0IDQwOTYtIDgxOTEgY29tcGxldGVkIGJlZm9yZSB0aGUgd3Jp
+dGUgdGhhdCB3YXMgc3VwcG9zZWQgdG8NCj4gPiBleHRlbmQgaXQgZnJvbSBvZmZzZXQgMC00MDk1
+IHdhcyBwcm9jZXNzZWQgYnkgdGhlIHNlcnZlci4NCj4gDQo+ICBPdXIgaXNzdWUgYWxzbyBoYXBw
+ZW5zIHdoZW4gdGhlIHdyaXRlcyBhcmUgZG9uZSBvbiB0aGUgZmlsZXNlcnZlciwNCj4gdGhvdWdo
+LCBhbmQgdGhleSBvY2N1ciBldmVuIGlmIHlvdSBhbGxvdyBwbGVudHkgb2YgdGltZSBmb3IgdGhl
+DQo+IHdyaXRlcw0KPiB0byBzZXR0bGUuIEkgY2FuIHJ1biBteSB0ZXN0IHByb2dyYW0gaW4gYSBt
+b2RlIHdoZXJlIGl0IGV4cGxpY2l0bHkNCj4gd2FpdHMNCj4gZm9yIG1lIHRvIHRlbGwgaXQgdG8g
+Y29udGludWUsIGRvIHRoZSBhcHBlbmRpbmcgdG8gdGhlIGZpbGUgb24gdGhlDQo+IGZpbGVzZXJ2
+ZXIsICdzeW5jJyBvbiB0aGUgZmlsZXNlcnZlciwgd2FpdCBmaXZlIG1pbnV0ZXMsIGFuZCB0aGUg
+TkZTDQo+IGNsaWVudCB3aWxsIHN0aWxsIHNlZSB0aG9zZSB6ZXJvIGJ5dGVzIHdoZW4gaXQgdHJp
+ZXMgdG8gcmVhZCB0aGUgbmV3DQo+IGRhdGEuDQo+IA0KPiAoVG8gbWFrZSBzdXJlIHRoZSAnZml2
+ZSBtaW51dGVzJyBiaXQgd2Fzbid0IGh5cGVyYm9sZSwgSSBqdXN0IHRlc3RlZA0KPiBpdC4pDQo+
+IA0KDQpUaGF0J3MgaGFwcGVuaW5nIGJlY2F1c2Ugd2UncmUgbm90IG9wdGltaXNpbmcgZm9yIHRo
+ZSBicm9rZW4gY2FzZSwgYW5kDQppbnN0ZWFkIHdlIGFzc3VtZSB0aGF0IHdlIGNhbiBjYWNoZSBk
+YXRhIGZvciBhcyBsb25nIGFzIHRoZSBmaWxlIGlzDQpvcGVuIGFuZCB1bmxvY2tlZCBhcyBpbmRl
+ZWQgdGhlIGNsb3NlLXRvLW9wZW4gY2FjaGUgY29uc2lzdGVuY3kgbW9kZWwNCmhhcyBhbHdheXMg
+c3RhdGVkIHRoYXQgd2UgY2FuIGRvLg0KDQpUcnlpbmcgdG8gaW52YWxpZGF0ZSB0aGUgY2FjaGUg
+b24gZXZlcnkgdW5leHBlY3RlZCBhdHRyaWJ1dGUgY2hhbmdlDQpsZWFkcyB0byBhIGxvdCBvZiB1
+bm5lY2Vzc2FyeSBtaXNzZWQgY2FjaGVkIGhpdHMgd2hlbiBkb2luZyBvcmRpbmFyeQ0KSS9PIGJl
+Y2F1c2UgaXQgbWVhbnMgd2UgdG9zcyBvdXQgdGhlIGNhY2hlIG9uIGV2ZXJ5IHJlb3JkZXJlZCB3
+cml0ZSwNCmV2ZXJ5IGxpbmssIHVubGluaywgcmVuYW1lLCBldGMgb2YgdGhlIGZpbGUuDQpJT1cg
+aXQgaGFzIGEgbGFyZ2UgcGVyZm9ybWFuY2UgaW1wYWN0IGZvbGxvd2luZyBhIG51bWJlciBvZiBv
+cGVyYXRpb25zDQp0aGF0IGFyZSBwZXJmZWN0bHkgbGVnYWwgYW5kIGluZGVlZCBjb21tb24gdW5k
+ZXIgdGhlIGNsb3NlLXRvLW9wZW4NCm1vZGVsIHdoaWxlIGZhaWxpbmcgdG8gZml4IHRoZSBwcm9i
+bGVtcyBvZiB0aGUgY2xvc2UtdG8tb3BlbiB2aW9sYXRpbmcNCm1vZGVsLg0KDQotLSANClRyb25k
+IE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBIYW1tZXJzcGFjZQ0KdHJv
+bmQubXlrbGVidXN0QGhhbW1lcnNwYWNlLmNvbQ0KDQoNCg==
