@@ -1,65 +1,123 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-bl2nam02on0127.outbound.protection.outlook.com ([104.47.38.127]:20944
-        "EHLO NAM02-BL2-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726761AbeIKR4V (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 11 Sep 2018 13:56:21 -0400
-From: Trond Myklebust <trondmy@hammerspace.com>
-To: "kinglongmee@gmail.com" <kinglongmee@gmail.com>,
-        "devel@lists.nfs-ganesha.org" <devel@lists.nfs-ganesha.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Received: from mail-pg1-f176.google.com ([209.85.215.176]:46859 "EHLO
+        mail-pg1-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726761AbeIKTrG (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 11 Sep 2018 15:47:06 -0400
+Received: by mail-pg1-f176.google.com with SMTP id b129-v6so12366166pga.13
+        for <linux-nfs@vger.kernel.org>; Tue, 11 Sep 2018 07:47:28 -0700 (PDT)
+From: Kinglong Mee <kinglongmee@gmail.com>
 Subject: Re: lseek gets bad offset from nfs client with ganesha/gluster which
  supports SEEK
-Date: Tue, 11 Sep 2018 12:57:01 +0000
-Message-ID: <182a9c6a29690fc00789768bdfe03affbac0db9e.camel@hammerspace.com>
+To: Trond Myklebust <trondmy@hammerspace.com>,
+        "devel@lists.nfs-ganesha.org" <devel@lists.nfs-ganesha.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
 References: <182fecd3-66c3-0cbd-fbc0-cf1a88b7f165@gmail.com>
-In-Reply-To: <182fecd3-66c3-0cbd-fbc0-cf1a88b7f165@gmail.com>
-Content-Type: text/plain; charset="utf-8"
+ <182a9c6a29690fc00789768bdfe03affbac0db9e.camel@hammerspace.com>
+Message-ID: <53f12a27-e1f5-936f-23e9-58d3cbf7a00f@gmail.com>
+Date: Tue, 11 Sep 2018 22:47:16 +0800
 MIME-Version: 1.0
+In-Reply-To: <182a9c6a29690fc00789768bdfe03affbac0db9e.camel@hammerspace.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDE4LTA5LTExIGF0IDIwOjI5ICswODAwLCBLaW5nbG9uZyBNZWUgd3JvdGU6DQo+
-IFRoZSBsYXRlc3QgZ2FuZXNoYS9nbHVzdGVyIHN1cHBvcnRzIHNlZWsgYWNjb3JkaW5nIHRvLA0K
-PiANCj4gDQpodHRwczovL3Rvb2xzLmlldGYub3JnL2h0bWwvZHJhZnQtaWV0Zi1uZnN2NC1taW5v
-cnZlcnNpb24yLTQxI3NlY3Rpb24tMTUuMTENCj4gDQo+ICAgIEZyb20gdGhlIGdpdmVuIHNhX29m
-ZnNldCwgZmluZCB0aGUgbmV4dCBkYXRhX2NvbnRlbnQ0IG9mIHR5cGUNCj4gc2Ffd2hhdA0KPiAg
-ICBpbiB0aGUgZmlsZS4gIElmIHRoZSBzZXJ2ZXIgY2FuIG5vdCBmaW5kIGEgY29ycmVzcG9uZGlu
-ZyBzYV93aGF0LA0KPiAgICB0aGVuIHRoZSBzdGF0dXMgd2lsbCBzdGlsbCBiZSBORlM0X09LLCBi
-dXQgc3JfZW9mIHdvdWxkIGJlDQo+IFRSVUUuICBJZg0KPiAgICB0aGUgc2VydmVyIGNhbiBmaW5k
-IHRoZSBzYV93aGF0LCB0aGVuIHRoZSBzcl9vZmZzZXQgaXMgdGhlIHN0YXJ0DQo+IG9mDQo+ICAg
-IHRoYXQgY29udGVudC4gIElmIHRoZSBzYV9vZmZzZXQgaXMgYmV5b25kIHRoZSBlbmQgb2YgdGhl
-IGZpbGUsDQo+IHRoZW4NCj4gICAgU0VFSyBNVVNUIHJldHVybiBORlM0RVJSX05YSU8uDQo+IA0K
-PiBGb3IgYSBmaWxlJ3MgZmlsZW1hcCBhcywNCj4gDQo+IFBhcnQgICAgMTogSE9MRSAweDAwMDAw
-MDAwMDAwMDAwMDAgLS0tPiAweDAwMDAwMDAwMDA2MDAwMDANCj4gUGFydCAgICAyOiBEQVRBIDB4
-MDAwMDAwMDAwMDYwMDAwMCAtLS0+IDB4MDAwMDAwMDAwMDcwMDAwMA0KPiBQYXJ0ICAgIDM6IEhP
-TEUgMHgwMDAwMDAwMDAwNzAwMDAwIC0tLT4gMHgwMDAwMDAwMDAxMDAwMDAwDQo+IA0KPiBTRUVL
-KDB4NzAwMDAwLCBTRUVLX0RBVEEpIGdldHMgcmVzdWx0IChzcl9lb2Y6MSwgc3Jfb2Zmc2V0OjB4
-NzAwMDApDQo+IGZyb20gZ2FuZXNoYS9nbHVzdGVyOw0KPiBTRUVLKDB4NzAwMDAwLCBTRUVLX0hP
-TEUpIGdldHMgcmVzdWx0IChzcl9lb2Y6MCwgc3Jfb2Zmc2V0OjB4NzAwMDApDQo+IGZyb20gZ2Fu
-ZXNoYS9nbHVzdGVyLg0KPiANCj4gSWYgYW4gYXBwbGljYXRpb24gZGVwZW5kcyB0aGUgbHNlZWsg
-cmVzdWx0IGZvciBkYXRhIHNlYXJjaGluZywgaXQgbWF5DQo+IGVudGVyIGluZmluaXRlIGxvb3Au
-DQo+IA0KPiAgICAgICAgIHdoaWxlICgxKSB7DQo+ICAgICAgICAgICAgICAgICBuZXh0X3BvcyA9
-IGxzZWVrKGZkLCBjdXJfcG9zLCBzZWVrX3R5cGUpOw0KPiAgICAgICAgICAgICAgICAgaWYgKHNl
-ZWtfdHlwZSA9PSBTRUVLX0RBVEEpIHsNCj4gICAgICAgICAgICAgICAgICAgICAgICAgc2Vla190
-eXBlID0gU0VFS19IT0xFOw0KPiAgICAgICAgICAgICAgICAgfSBlbHNlIHsNCj4gICAgICAgICAg
-ICAgICAgICAgICAgICAgc2Vla190eXBlID0gU0VFS19EQVRBOw0KPiAgICAgICAgICAgICAgICAg
-fQ0KPiANCj4gICAgICAgICAgICAgICAgIGlmIChuZXh0X3BvcyA9PSAtMSkgew0KPiAgICAgICAg
-ICAgICAgICAgICAgICAgICByZXR1cm4gOw0KPiANCj4gICAgICAgICAgICAgICAgIGN1cl9wb3Mg
-PSBuZXh0X3BvczsNCj4gICAgICAgICB9DQo+IA0KPiBUaGUgbHNlZWsgc3lzY2FsbCBhbHdheXMg
-Z2V0cyAweDcwMDAwIGZyb20gbmZzIGNsaWVudCBmb3IgdGhvc2UgdHdvDQo+IGNhc2VzLCANCj4g
-YnV0LCBpZiB1bmRlcmx5aW5nIGZpbGVzeXN0ZW0gaXMgZXh0NC9mMmZzLCBvciB0aGUgbmZzIHNl
-cnZlciBpcw0KPiBrbmZzZCwNCj4gdGhlIGxzZWVrKDB4NzAwMDAwLCBTRUVLX0RBVEEpIGdldHMg
-RU5YSU8uDQo+IA0KPiBJIHdhbm5hIHRvIGtub3csDQo+IHNob3VsZCBJIGZpeCB0aGUgZ2FuZXNo
-YS9nbHVzdGVyIGFzIGtuZnNkIHJldHVybiBFTlhJTyBmb3IgdGhlIGZpcnN0DQo+IGNhc2U/DQo+
-IG9yIHNob3VsZCBJIGZpeCB0aGUgbmZzIGNsaWVudCB0byByZXR1cm4gRU5YSU8gZm9yIHRoZSBm
-aXJzdCBjYXNlPw0KPiANCg0KSXQgdGhhdCB0ZXN0IGNvcnJlY3Q/IFRoZSBmYWxsYmFjayBpbXBs
-ZW1lbnRhdGlvbiBvZiBTRUVLX0RBVEEgYXNzdW1lcw0KdGhhdCB0aGUgZW50aXJlIGZpbGUgaXMg
-ZGF0YSwgc28gbHNlZWsoU0VFS19EQVRBKSBvbiBhbnkgb2Zmc2V0IHRoYXQgaXMNCjw9IGVvZiB3
-aWxsIGJlIGEgbm8tb3AuIFRoZSBmYWxsYmFjayBpbXBsZW1lbnRhdGlvbiBvZiBTRUVLX0hPTEUN
-CmFzc3VtZXMgdGhhdCB0aGUgZmlyc3QgaG9sZSBpcyBhdCBlb2YuDQoNCklPVzogdW5sZXNzIHRo
-ZSBpbml0aWFsIHZhbHVlIGZvciBjdXJfcG9zIGlzID4gZW9mLCBpdCBsb29rcyB0byBtZSBhcw0K
-aWYgdGhlIGFib3ZlIHRlc3Qgd2lsbCBsb29wIGluZmluaXRlbHkgZ2l2ZW4gYW55IGZpbGVzeXN0
-ZW0gdGhhdA0KZG9lc24ndCBpbXBsZW1lbnQgbmF0aXZlIHN1cHBvcnQgZm9yIFNFRUtfREFUQS9T
-RUVLX0hPTEUuDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50
-YWluZXIsIEhhbW1lcnNwYWNlDQp0cm9uZC5teWtsZWJ1c3RAaGFtbWVyc3BhY2UuY29tDQoNCg0K
+
+On 2018/9/11 20:57, Trond Myklebust wrote:
+> On Tue, 2018-09-11 at 20:29 +0800, Kinglong Mee wrote:
+>> The latest ganesha/gluster supports seek according to,
+>>
+>>
+> https://tools.ietf.org/html/draft-ietf-nfsv4-minorversion2-41#section-15.11
+>>
+>>    From the given sa_offset, find the next data_content4 of type
+>> sa_what
+>>    in the file.  If the server can not find a corresponding sa_what,
+>>    then the status will still be NFS4_OK, but sr_eof would be
+>> TRUE.  If
+>>    the server can find the sa_what, then the sr_offset is the start
+>> of
+>>    that content.  If the sa_offset is beyond the end of the file,
+>> then
+>>    SEEK MUST return NFS4ERR_NXIO.
+>>
+>> For a file's filemap as,
+>>
+>> Part    1: HOLE 0x0000000000000000 ---> 0x0000000000600000
+>> Part    2: DATA 0x0000000000600000 ---> 0x0000000000700000
+>> Part    3: HOLE 0x0000000000700000 ---> 0x0000000001000000>>
+>> SEEK(0x700000, SEEK_DATA) gets result (sr_eof:1, sr_offset:0x70000)
+>> from ganesha/gluster;
+>> SEEK(0x700000, SEEK_HOLE) gets result (sr_eof:0, sr_offset:0x70000)
+>> from ganesha/gluster.
+>>
+>> If an application depends the lseek result for data searching, it may
+>> enter infinite loop.
+>>
+>>         while (1) {
+>>                 next_pos = lseek(fd, cur_pos, seek_type);
+>>                 if (seek_type == SEEK_DATA) {
+>>                         seek_type = SEEK_HOLE;
+>>                 } else {
+>>                         seek_type = SEEK_DATA;
+>>                 }
+>>
+>>                 if (next_pos == -1) {
+>>                         return ;
+>>
+>>                 cur_pos = next_pos;
+>>         }
+>>
+>> The lseek syscall always gets 0x70000 from nfs client for those two
+>> cases, 
+>> but, if underlying filesystem is ext4/f2fs, or the nfs server is
+>> knfsd,
+>> the lseek(0x700000, SEEK_DATA) gets ENXIO.
+>>
+>> I wanna to know,
+>> should I fix the ganesha/gluster as knfsd return ENXIO for the first
+>> case?
+>> or should I fix the nfs client to return ENXIO for the first case?
+>>
+> 
+> It that test correct? The fallback implementation of SEEK_DATA assumes
+> that the entire file is data, so lseek(SEEK_DATA) on any offset that is
+> <= eof will be a no-op. The fallback implementation of SEEK_HOLE
+> assumes that the first hole is at eof.
+
+I think that's non-nfsv4.2's logical.
+
+> 
+> IOW: unless the initial value for cur_pos is > eof, it looks to me as
+> if the above test will loop infinitely given any filesystem that
+> doesn't implement native support for SEEK_DATA/SEEK_HOLE.
+> 
+
+No, if underlying filesystem is ext4/f2fs, or the nfs server is knfsd,
+the last lseek syscall always return ENXIO no matter the cur_pos is > eof or not.
+
+A file ends with a hole as,
+Part   22: DATA 0x0000000006a00000 ---> 0x0000000006afffff
+Part   23: HOLE 0x0000000006b00000 ---> 0x000000000c7fffff
+
+# stat testfile
+  File: testfile
+  Size: 209715200       Blocks: 22640      IO Block: 4096   regular file
+Device: 807h/2055d      Inode: 843122      Links: 2
+Access: (0600/-rw-------)  Uid: (    0/    root)   Gid: (    0/    root)
+Access: 2018-09-11 20:01:41.881227061 +0800
+Modify: 2018-09-11 20:01:41.976478311 +0800
+Change: 2018-09-11 20:01:41.976478311 +0800
+ Birth: -
+
+# strace filemap testfile
+... ...
+lseek(3, 111149056, SEEK_HOLE)          = 112197632
+lseek(3, 112197632, SEEK_DATA)          = -1 ENXIO (No such device or address)
+
+Right now, when knfsd gets the ENXIO error, it returns the error to client directly,
+and return to syscall.
+But, ganesha set the sr_eof to true and return NFS4_OK to client as RFC description,
+nfs client skips the sr_eof and return a bad offset to syscall.
+
+thanks,
+Kinglong Mee
