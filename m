@@ -1,59 +1,26 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-bn3nam01on0097.outbound.protection.outlook.com ([104.47.33.97]:10944
-        "EHLO NAM01-BN3-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1727796AbeILDNu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 11 Sep 2018 23:13:50 -0400
-From: Trond Myklebust <trondmy@hammerspace.com>
-To: "cks@cs.toronto.edu" <cks@cs.toronto.edu>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "chuck.lever@oracle.com" <chuck.lever@oracle.com>
-Subject: Re: A NFS client partial file corruption problem in recent/current
- kernels
-Date: Tue, 11 Sep 2018 22:12:26 +0000
-Message-ID: <624981c3fe62c3df744f769d46dc9921cc2826ce.camel@hammerspace.com>
-References: <20180911213913.ABE8B322562@apps1.cs.toronto.edu>
-In-Reply-To: <20180911213913.ABE8B322562@apps1.cs.toronto.edu>
-Content-Type: text/plain; charset="utf-8"
+Received: from [167.99.178.92] ([167.99.178.92]:57398 "EHLO mail.smygo.gq"
+        rhost-flags-FAIL-FAIL-OK-OK) by vger.kernel.org with ESMTP
+        id S1726885AbeILDXY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 11 Sep 2018 23:23:24 -0400
+To: linux-nfs@vger.kernel.org
+Subject: Inquiry
+From: Sinara Group <sinara-group@bk.ru>
+Reply-To: sinara-group@list.ru
 MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
+Message-Id: <20180911211621.159EE592A9A@mail.smygo.gq>
+Date: Tue, 11 Sep 2018 21:07:39 +0000 (UTC)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDE4LTA5LTExIGF0IDE3OjM5IC0wNDAwLCBDaHJpcyBTaWViZW5tYW5uIHdyb3Rl
-Og0KPiA+IFRoaXMgaGFzIG5vdGhpbmcgdG8gZG8gd2l0aCBtb3VudCBvcHRpb25zLiBCdWZmZXJl
-ZCByZWFkcyBvZiBhIGZpbGUNCj4gPiB0aGF0IGlzIGJlaW5nIHdyaXR0ZW4gdG8gb3ZlciBORlMg
-d2l0aG91dCB1c2luZyBsb2NraW5nIGlzDQo+ID4gaW5oZXJlbnRseQ0KPiA+IHVuc2FmZS4gVGhh
-dCBhbHdheXMgaGFzIGJlZW4gdGhlIGNhc2UuLi4NCj4gPiANCj4gPiBCb3RoIHdyaXRlcyBhbmQg
-cmVhZHMgY2FuIGJlIHJlb3JkZXJlZCBieSB0aGUgUlBDIGxheWVyIG9uIGJvdGggdGhlDQo+ID4g
-Y2xpZW50IGFuZCB0aGUgc2VydmVyLCBhbmQgdGhleSBjYW4gYmUgZnVydGhlciByZW9yZGVyZWQg
-YnkgdGhlDQo+ID4gTkZTIGxheWVyIG9uIHRoZSBzZXJ2ZXIuIEluIHByYWN0aWNlLCB0aGlzIG1l
-YW5zIHRoYXQgeW91IGNhbiBmaW5kDQo+ID4geW91cnNlbGYgcmVhZGluZyBwYXJ0cyBvZiB0aGUg
-ZmlsZSB0aGF0IGhhdmUgbm90IHlldCBjb21wbGV0ZWQNCj4gPiBiZWluZw0KPiA+IHdyaXR0ZW4g
-dG8sIGJlY2F1c2UsIGZvciBleGFtcGxlLCBhIHdyaXRlIHRoYXQgZXh0ZW5kZWQgdGhlIGZpbGUN
-Cj4gPiBmcm9tDQo+ID4gb2Zmc2V0IDQwOTYtIDgxOTEgY29tcGxldGVkIGJlZm9yZSB0aGUgd3Jp
-dGUgdGhhdCB3YXMgc3VwcG9zZWQgdG8NCj4gPiBleHRlbmQgaXQgZnJvbSBvZmZzZXQgMC00MDk1
-IHdhcyBwcm9jZXNzZWQgYnkgdGhlIHNlcnZlci4NCj4gDQo+ICBPdXIgaXNzdWUgYWxzbyBoYXBw
-ZW5zIHdoZW4gdGhlIHdyaXRlcyBhcmUgZG9uZSBvbiB0aGUgZmlsZXNlcnZlciwNCj4gdGhvdWdo
-LCBhbmQgdGhleSBvY2N1ciBldmVuIGlmIHlvdSBhbGxvdyBwbGVudHkgb2YgdGltZSBmb3IgdGhl
-DQo+IHdyaXRlcw0KPiB0byBzZXR0bGUuIEkgY2FuIHJ1biBteSB0ZXN0IHByb2dyYW0gaW4gYSBt
-b2RlIHdoZXJlIGl0IGV4cGxpY2l0bHkNCj4gd2FpdHMNCj4gZm9yIG1lIHRvIHRlbGwgaXQgdG8g
-Y29udGludWUsIGRvIHRoZSBhcHBlbmRpbmcgdG8gdGhlIGZpbGUgb24gdGhlDQo+IGZpbGVzZXJ2
-ZXIsICdzeW5jJyBvbiB0aGUgZmlsZXNlcnZlciwgd2FpdCBmaXZlIG1pbnV0ZXMsIGFuZCB0aGUg
-TkZTDQo+IGNsaWVudCB3aWxsIHN0aWxsIHNlZSB0aG9zZSB6ZXJvIGJ5dGVzIHdoZW4gaXQgdHJp
-ZXMgdG8gcmVhZCB0aGUgbmV3DQo+IGRhdGEuDQo+IA0KPiAoVG8gbWFrZSBzdXJlIHRoZSAnZml2
-ZSBtaW51dGVzJyBiaXQgd2Fzbid0IGh5cGVyYm9sZSwgSSBqdXN0IHRlc3RlZA0KPiBpdC4pDQo+
-IA0KDQpUaGF0J3MgaGFwcGVuaW5nIGJlY2F1c2Ugd2UncmUgbm90IG9wdGltaXNpbmcgZm9yIHRo
-ZSBicm9rZW4gY2FzZSwgYW5kDQppbnN0ZWFkIHdlIGFzc3VtZSB0aGF0IHdlIGNhbiBjYWNoZSBk
-YXRhIGZvciBhcyBsb25nIGFzIHRoZSBmaWxlIGlzDQpvcGVuIGFuZCB1bmxvY2tlZCBhcyBpbmRl
-ZWQgdGhlIGNsb3NlLXRvLW9wZW4gY2FjaGUgY29uc2lzdGVuY3kgbW9kZWwNCmhhcyBhbHdheXMg
-c3RhdGVkIHRoYXQgd2UgY2FuIGRvLg0KDQpUcnlpbmcgdG8gaW52YWxpZGF0ZSB0aGUgY2FjaGUg
-b24gZXZlcnkgdW5leHBlY3RlZCBhdHRyaWJ1dGUgY2hhbmdlDQpsZWFkcyB0byBhIGxvdCBvZiB1
-bm5lY2Vzc2FyeSBtaXNzZWQgY2FjaGVkIGhpdHMgd2hlbiBkb2luZyBvcmRpbmFyeQ0KSS9PIGJl
-Y2F1c2UgaXQgbWVhbnMgd2UgdG9zcyBvdXQgdGhlIGNhY2hlIG9uIGV2ZXJ5IHJlb3JkZXJlZCB3
-cml0ZSwNCmV2ZXJ5IGxpbmssIHVubGluaywgcmVuYW1lLCBldGMgb2YgdGhlIGZpbGUuDQpJT1cg
-aXQgaGFzIGEgbGFyZ2UgcGVyZm9ybWFuY2UgaW1wYWN0IGZvbGxvd2luZyBhIG51bWJlciBvZiBv
-cGVyYXRpb25zDQp0aGF0IGFyZSBwZXJmZWN0bHkgbGVnYWwgYW5kIGluZGVlZCBjb21tb24gdW5k
-ZXIgdGhlIGNsb3NlLXRvLW9wZW4NCm1vZGVsIHdoaWxlIGZhaWxpbmcgdG8gZml4IHRoZSBwcm9i
-bGVtcyBvZiB0aGUgY2xvc2UtdG8tb3BlbiB2aW9sYXRpbmcNCm1vZGVsLg0KDQotLSANClRyb25k
-IE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBIYW1tZXJzcGFjZQ0KdHJv
-bmQubXlrbGVidXN0QGhhbW1lcnNwYWNlLmNvbQ0KDQoNCg==
+Hello,
+
+This is Daniel Murray and i am from Sinara Group Co.Ltd Group Co.,LTD in Russia.
+We are glad to know about your company from the web and we are interested in your products.
+Could you kindly send us your Latest catalog and price list for our trial order.
+
+Best Regards,
+
+Daniel Murray
+Purchasing Manager
