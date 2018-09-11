@@ -1,65 +1,70 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cliff.cs.toronto.edu ([128.100.3.120]:41098 "EHLO
-        cliff.cs.toronto.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727754AbeIKXCq (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 11 Sep 2018 19:02:46 -0400
-From: Chris Siebenmann <cks@cs.toronto.edu>
-To: Trond Myklebust <trondmy@hammerspace.com>
-cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        cks@cs.toronto.edu
-Subject: Re: A NFS client partial file corruption problem in recent/current kernels
-In-reply-to: Your message of Tue, 11 Sep 2018 17:12:26 -0000.
-             <0bccf484c9b4e0949f767f96265756e5732f91ac.camel@hammerspace.com>
+Received: from mail-eopbgr710105.outbound.protection.outlook.com ([40.107.71.105]:35529
+        "EHLO NAM05-BY2-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1726720AbeILBBo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 11 Sep 2018 21:01:44 -0400
+From: Trond Myklebust <trondmy@hammerspace.com>
+To: "cks@cs.toronto.edu" <cks@cs.toronto.edu>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: A NFS client partial file corruption problem in recent/current
+ kernels
+Date: Tue, 11 Sep 2018 20:00:48 +0000
+Message-ID: <78ca0a56d72cda910b38a37cadd4780e112c7906.camel@hammerspace.com>
+References: <20180911180218.9A66C322562@apps1.cs.toronto.edu>
+In-Reply-To: <20180911180218.9A66C322562@apps1.cs.toronto.edu>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Date: Tue, 11 Sep 2018 14:02:18 -0400
-Message-Id: <20180911180218.9A66C322562@apps1.cs.toronto.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> >  We've found a readily reproducable situation where the current
-> > NFS client code will provide zero bytes instead of actual data at
-> > the end of the file (sort of) to user programs. This can result
-> > in program failure, or permanent file corruption if the program
-> > reading the file writes the bad data back to the file; otherwise,
-> > the corruption goes away when the client's cached data is pushed out
-> > of memory (or explicitly dropped by dropping the pagecache through
-> > /proc/sys/vm/drop_caches).
-[...]
-> Please see http://nfs.sourceforge.net/#faq_a8
-
- I don't think this is a close to open consistency issue, or if it is
-I would argue that it is a clear bug on the Linux NFS client. I have
-a number of reasons for saying this:
-
-- the client clearly sees the new attributes; it knows that the file
-  has been extended from the previous state that it knew of. My demo
-  program specifically waits until user-level fstat() returns a different
-  result, which I believe means that the client kernel has seen a different
-  GETATTR result and so should have purged its cache (based on what the
-  FAQ says).
-
-  (Unless the FAQ means that the kernel absolutely refuses to guarantee
-  anything about file consistency unless you close and then reopen the
-  file, even if it *knows* that the file has changed on the server,
-  which isn't clear from how the FAQ is currently written.)
-
-- the client is fetching some new data from the fileserver (data after
-  the partial 4 KB page at the old end of the file).
-
-- the client isn't writing to the file in my demonstration program; it's
-  only opening it in read-write mode and then reading it. Also, this
-  doesn't happen if the client does exactly the same set of operations
-  but has the file open read-only (with it staying open throughout).
-
-- this didn't happen in older kernels.
-
-In addition, although I didn't mention it in my original email, this
-happens on a NFS filesystem mounted 'noac'.
-
-Pragmatically, Alpine used to work with NFS mounted filesystems where
-email was appended to them from other machines and it no longer does,
-and the only difference is the kernel version involved on the client.
-This breakage is actively dangerous.
-
-	- cks
+T24gVHVlLCAyMDE4LTA5LTExIGF0IDE0OjAyIC0wNDAwLCBDaHJpcyBTaWViZW5tYW5uIHdyb3Rl
+Og0KPiA+ID4gIFdlJ3ZlIGZvdW5kIGEgcmVhZGlseSByZXByb2R1Y2FibGUgc2l0dWF0aW9uIHdo
+ZXJlIHRoZSBjdXJyZW50DQo+ID4gPiBORlMgY2xpZW50IGNvZGUgd2lsbCBwcm92aWRlIHplcm8g
+Ynl0ZXMgaW5zdGVhZCBvZiBhY3R1YWwgZGF0YSBhdA0KPiA+ID4gdGhlIGVuZCBvZiB0aGUgZmls
+ZSAoc29ydCBvZikgdG8gdXNlciBwcm9ncmFtcy4gVGhpcyBjYW4gcmVzdWx0DQo+ID4gPiBpbiBw
+cm9ncmFtIGZhaWx1cmUsIG9yIHBlcm1hbmVudCBmaWxlIGNvcnJ1cHRpb24gaWYgdGhlIHByb2dy
+YW0NCj4gPiA+IHJlYWRpbmcgdGhlIGZpbGUgd3JpdGVzIHRoZSBiYWQgZGF0YSBiYWNrIHRvIHRo
+ZSBmaWxlOyBvdGhlcndpc2UsDQo+ID4gPiB0aGUgY29ycnVwdGlvbiBnb2VzIGF3YXkgd2hlbiB0
+aGUgY2xpZW50J3MgY2FjaGVkIGRhdGEgaXMgcHVzaGVkDQo+ID4gPiBvdXQNCj4gPiA+IG9mIG1l
+bW9yeSAob3IgZXhwbGljaXRseSBkcm9wcGVkIGJ5IGRyb3BwaW5nIHRoZSBwYWdlY2FjaGUNCj4g
+PiA+IHRocm91Z2gNCj4gPiA+IC9wcm9jL3N5cy92bS9kcm9wX2NhY2hlcykuDQo+IA0KPiBbLi4u
+XQ0KPiA+IFBsZWFzZSBzZWUgaHR0cDovL25mcy5zb3VyY2Vmb3JnZS5uZXQvI2ZhcV9hOA0KPiAN
+Cj4gIEkgZG9uJ3QgdGhpbmsgdGhpcyBpcyBhIGNsb3NlIHRvIG9wZW4gY29uc2lzdGVuY3kgaXNz
+dWUsIG9yIGlmIGl0IGlzDQo+IEkgd291bGQgYXJndWUgdGhhdCBpdCBpcyBhIGNsZWFyIGJ1ZyBv
+biB0aGUgTGludXggTkZTIGNsaWVudC4gSSBoYXZlDQo+IGEgbnVtYmVyIG9mIHJlYXNvbnMgZm9y
+IHNheWluZyB0aGlzOg0KPiANCj4gLSB0aGUgY2xpZW50IGNsZWFybHkgc2VlcyB0aGUgbmV3IGF0
+dHJpYnV0ZXM7IGl0IGtub3dzIHRoYXQgdGhlIGZpbGUNCj4gICBoYXMgYmVlbiBleHRlbmRlZCBm
+cm9tIHRoZSBwcmV2aW91cyBzdGF0ZSB0aGF0IGl0IGtuZXcgb2YuIE15IGRlbW8NCj4gICBwcm9n
+cmFtIHNwZWNpZmljYWxseSB3YWl0cyB1bnRpbCB1c2VyLWxldmVsIGZzdGF0KCkgcmV0dXJucyBh
+DQo+IGRpZmZlcmVudA0KPiAgIHJlc3VsdCwgd2hpY2ggSSBiZWxpZXZlIG1lYW5zIHRoYXQgdGhl
+IGNsaWVudCBrZXJuZWwgaGFzIHNlZW4gYQ0KPiBkaWZmZXJlbnQNCj4gICBHRVRBVFRSIHJlc3Vs
+dCBhbmQgc28gc2hvdWxkIGhhdmUgcHVyZ2VkIGl0cyBjYWNoZSAoYmFzZWQgb24gd2hhdA0KPiB0
+aGUNCj4gICBGQVEgc2F5cykuDQo+IA0KPiAgIChVbmxlc3MgdGhlIEZBUSBtZWFucyB0aGF0IHRo
+ZSBrZXJuZWwgYWJzb2x1dGVseSByZWZ1c2VzIHRvDQo+IGd1YXJhbnRlZQ0KPiAgIGFueXRoaW5n
+IGFib3V0IGZpbGUgY29uc2lzdGVuY3kgdW5sZXNzIHlvdSBjbG9zZSBhbmQgdGhlbiByZW9wZW4N
+Cj4gdGhlDQo+ICAgZmlsZSwgZXZlbiBpZiBpdCAqa25vd3MqIHRoYXQgdGhlIGZpbGUgaGFzIGNo
+YW5nZWQgb24gdGhlIHNlcnZlciwNCj4gICB3aGljaCBpc24ndCBjbGVhciBmcm9tIGhvdyB0aGUg
+RkFRIGlzIGN1cnJlbnRseSB3cml0dGVuLikNCj4gDQo+IC0gdGhlIGNsaWVudCBpcyBmZXRjaGlu
+ZyBzb21lIG5ldyBkYXRhIGZyb20gdGhlIGZpbGVzZXJ2ZXIgKGRhdGENCj4gYWZ0ZXINCj4gICB0
+aGUgcGFydGlhbCA0IEtCIHBhZ2UgYXQgdGhlIG9sZCBlbmQgb2YgdGhlIGZpbGUpLg0KPiANCj4g
+LSB0aGUgY2xpZW50IGlzbid0IHdyaXRpbmcgdG8gdGhlIGZpbGUgaW4gbXkgZGVtb25zdHJhdGlv
+biBwcm9ncmFtOw0KPiBpdCdzDQo+ICAgb25seSBvcGVuaW5nIGl0IGluIHJlYWQtd3JpdGUgbW9k
+ZSBhbmQgdGhlbiByZWFkaW5nIGl0LiBBbHNvLCB0aGlzDQo+ICAgZG9lc24ndCBoYXBwZW4gaWYg
+dGhlIGNsaWVudCBkb2VzIGV4YWN0bHkgdGhlIHNhbWUgc2V0IG9mDQo+IG9wZXJhdGlvbnMNCj4g
+ICBidXQgaGFzIHRoZSBmaWxlIG9wZW4gcmVhZC1vbmx5ICh3aXRoIGl0IHN0YXlpbmcgb3BlbiB0
+aHJvdWdob3V0KS4NCj4gDQo+IC0gdGhpcyBkaWRuJ3QgaGFwcGVuIGluIG9sZGVyIGtlcm5lbHMu
+DQo+IA0KPiBJbiBhZGRpdGlvbiwgYWx0aG91Z2ggSSBkaWRuJ3QgbWVudGlvbiBpdCBpbiBteSBv
+cmlnaW5hbCBlbWFpbCwgdGhpcw0KPiBoYXBwZW5zIG9uIGEgTkZTIGZpbGVzeXN0ZW0gbW91bnRl
+ZCAnbm9hYycuDQo+IA0KPiBQcmFnbWF0aWNhbGx5LCBBbHBpbmUgdXNlZCB0byB3b3JrIHdpdGgg
+TkZTIG1vdW50ZWQgZmlsZXN5c3RlbXMgd2hlcmUNCj4gZW1haWwgd2FzIGFwcGVuZGVkIHRvIHRo
+ZW0gZnJvbSBvdGhlciBtYWNoaW5lcyBhbmQgaXQgbm8gbG9uZ2VyIGRvZXMsDQo+IGFuZCB0aGUg
+b25seSBkaWZmZXJlbmNlIGlzIHRoZSBrZXJuZWwgdmVyc2lvbiBpbnZvbHZlZCBvbiB0aGUgY2xp
+ZW50Lg0KPiBUaGlzIGJyZWFrYWdlIGlzIGFjdGl2ZWx5IGRhbmdlcm91cy4NCg0KU3VyZSwgYnV0
+IHVubGVzcyB5b3UgYXJlIGxvY2tpbmcgdGhlIGZpbGUsIG9yIHlvdSBhcmUgZXhwbGljaXRseSB1
+c2luZw0KT19ESVJFQ1QgdG8gZG8gdW5jYWNoZWQgSS9PLCB0aGVuIHlvdSBhcmUgaW4gdmlvbGF0
+aW9uIG9mIHRoZSBjbG9zZS10by0NCm9wZW4gY29uc2lzdGVuY3kgbW9kZWwsIGFuZCB0aGUgY2xp
+ZW50IGlzIGdvaW5nIHRvIGJlaGF2ZSBhcyB5b3UNCmRlc2NyaWJlIGFib3ZlLiBORlMgdXNlcyBh
+IGRpc3RyaWJ1dGVkIGZpbGVzeXN0ZW0gbW9kZWwsIG5vdCBhDQpjbHVzdGVyZWQgb25lLg0KDQot
+LSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBIYW1tZXJz
+cGFjZQ0KdHJvbmQubXlrbGVidXN0QGhhbW1lcnNwYWNlLmNvbQ0KDQoNCg==
