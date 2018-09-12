@@ -1,78 +1,57 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-by2nam01on0097.outbound.protection.outlook.com ([104.47.34.97]:61343
-        "EHLO NAM01-BY2-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726686AbeILHVq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 12 Sep 2018 03:21:46 -0400
-From: Trond Myklebust <trondmy@hammerspace.com>
-To: "cks@cs.toronto.edu" <cks@cs.toronto.edu>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "chuck.lever@oracle.com" <chuck.lever@oracle.com>
-Subject: Re: A NFS client partial file corruption problem in recent/current
- kernels
-Date: Wed, 12 Sep 2018 02:19:34 +0000
-Message-ID: <a4bff5838b478038b6fa0122d37aee7895c4dc7d.camel@hammerspace.com>
-References: <20180911234547.6D0E2322562@apps1.cs.toronto.edu>
-In-Reply-To: <20180911234547.6D0E2322562@apps1.cs.toronto.edu>
-Content-Type: text/plain; charset="utf-8"
+Received: from cliff.cs.toronto.edu ([128.100.3.120]:43700 "EHLO
+        cliff.cs.toronto.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726278AbeILIFS (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 12 Sep 2018 04:05:18 -0400
+From: Chris Siebenmann <cks@cs.toronto.edu>
+To: Trond Myklebust <trondmy@hammerspace.com>
+cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "chuck.lever@oracle.com" <chuck.lever@oracle.com>,
+        cks@cs.toronto.edu
+Subject: Re: A NFS client partial file corruption problem in recent/current kernels
+In-reply-to: trondmy's message of Wed, 12 Sep 2018 02:19:34 -0000.
+             <a4bff5838b478038b6fa0122d37aee7895c4dc7d.camel@hammerspace.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Date: Tue, 11 Sep 2018 23:03:00 -0400
+Message-Id: <20180912030300.696D4322562@apps1.cs.toronto.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDE4LTA5LTExIGF0IDE5OjQ1IC0wNDAwLCBDaHJpcyBTaWViZW5tYW5uIHdyb3Rl
-Og0KPiA+ID4gIE91ciBpc3N1ZSBhbHNvIGhhcHBlbnMgd2hlbiB0aGUgd3JpdGVzIGFyZSBkb25l
-IG9uIHRoZQ0KPiA+ID4gZmlsZXNlcnZlciwNCj4gPiA+IHRob3VnaCwgYW5kIHRoZXkgb2NjdXIg
-ZXZlbiBpZiB5b3UgYWxsb3cgcGxlbnR5IG9mIHRpbWUgZm9yIHRoZQ0KPiA+ID4gd3JpdGVzIHRv
-IHNldHRsZS4gSSBjYW4gcnVuIG15IHRlc3QgcHJvZ3JhbSBpbiBhIG1vZGUgd2hlcmUgaXQNCj4g
-PiA+IGV4cGxpY2l0bHkgd2FpdHMgZm9yIG1lIHRvIHRlbGwgaXQgdG8gY29udGludWUsIGRvIHRo
-ZSBhcHBlbmRpbmcNCj4gPiA+IHRvIHRoZSBmaWxlIG9uIHRoZSBmaWxlc2VydmVyLCAnc3luYycg
-b24gdGhlIGZpbGVzZXJ2ZXIsIHdhaXQNCj4gPiA+IGZpdmUNCj4gPiA+IG1pbnV0ZXMsIGFuZCB0
-aGUgTkZTIGNsaWVudCB3aWxsIHN0aWxsIHNlZSB0aG9zZSB6ZXJvIGJ5dGVzIHdoZW4NCj4gPiA+
-IGl0DQo+ID4gPiB0cmllcyB0byByZWFkIHRoZSBuZXcgZGF0YS4NCj4gPiANCj4gPiBUaGF0J3Mg
-aGFwcGVuaW5nIGJlY2F1c2Ugd2UncmUgbm90IG9wdGltaXNpbmcgZm9yIHRoZSBicm9rZW4gY2Fz
-ZSwNCj4gPiBhbmQNCj4gPiBpbnN0ZWFkIHdlIGFzc3VtZSB0aGF0IHdlIGNhbiBjYWNoZSBkYXRh
-IGZvciBhcyBsb25nIGFzIHRoZSBmaWxlIGlzDQo+ID4gb3BlbiBhbmQgdW5sb2NrZWQgYXMgaW5k
-ZWVkIHRoZSBjbG9zZS10by1vcGVuIGNhY2hlIGNvbnNpc3RlbmN5DQo+ID4gbW9kZWwNCj4gPiBo
-YXMgYWx3YXlzIHN0YXRlZCB0aGF0IHdlIGNhbiBkby4NCj4gDQo+ICBJZiBJJ20gdW5kZXJzdGFu
-ZGluZyBhbGwgb2YgdGhpcyByaWdodCwgaXMgd2hhdCB0aGUga2VybmVsIGRvZXMgbW9yZQ0KPiBv
-ciBsZXNzIGxpa2UgdGhpczogd2hlbiBhIE5GUyBjbGllbnQgcHJvZ3JhbSBjbG9zZXMgYSB3cml0
-ZWFibGUgZmlsZQ0KPiAoZGVzY3JpcHRvciksIHRoZSBrZXJuZWwgZmx1c2hlcyBhbnkgcGVuZGlu
-ZyB3cml0ZXMsIGRvZXMgYSBHRVRBVFRSDQo+IGFmdGVyd2FyZCwgYW5kIGRlY2xhcmVzIGFsbCBj
-dXJyZW50IGNhY2hlZCBwYWdlcyBmdWxseSB2YWxpZCAnYXMgb2YnDQo+IHRoYXQgR0VUQVRUUiBy
-ZXN1bHQuIFdoZW4gdGhlIGZpbGUgaXMgcmVvcGVuZWQgKGluIGFueSBtb2RlKSwgdGhlDQo+IGtl
-cm5lbA0KPiBHRVRBVFRScyB0aGUgZmlsZSBhZ2FpbjsgaWYgdGhlIEdFVEFUVFIgaGFzbid0IGNo
-YW5nZWQsIHRoZSBjYWNoZWQNCj4gcGFnZXMNCj4gYW5kIHRoZWlyIGNvbnRlbnRzIHJlbWFpbiB2
-YWxpZC4NCj4gDQo+ICBBcyBhIHJlc3VsdCwgaWYgeW91IHdyaXRlIHRvIHRoZSBmaWxlIGZyb20g
-YW5vdGhlciBtYWNoaW5lDQo+IChpbmNsdWRpbmcNCj4gdGhlIGZpbGVzZXJ2ZXIpIGJlZm9yZSB0
-aGUgd3JpdGVhYmxlIGZpbGUgaXMgY2xvc2VkLCBvbiBjbG9zZSB0aGUNCj4gY2xpZW50IHVzZXMg
-dGhlIHVwZGF0ZWQgR0VUQVRUUiBmcm9tIHRoZSBzZXJ2ZXIgYnV0IGl0cyBjdXJyZW50DQo+IGNh
-Y2hlZA0KPiBwYWdlcy4gVGhlc2UgY2FjaGVkIHBhZ2VzIG1heSBiZSBvdXQgb2YgZGF0ZSwgYnV0
-IGlmIHNvIGl0IGlzIGJlY2F1c2UNCj4gb25lIHZpb2xhdGVkIGNsb3NlLXRvLW9wZW47IHlvdSBt
-dXN0IGFsd2F5cyBjbG9zZSBhbnkgd3JpdGVhYmxlIGZpbGUNCj4gZGVzY3JpcHRvcnMgb24gbWFj
-aGluZSBBIGJlZm9yZSB3cml0aW5nIHRvIHRoZSBmaWxlIG9uIG1hY2hpbmUgQiAob3INCj4gb2J0
-YWluIGFuZCB0aGVuIHJlbGVhc2UgbG9ja3M/KS4NCj4gDQo+ICBJZiBhIGNsaWVudCBrZXJuZWwg
-aGFzIGNhY2hlZCBwYWdlcyB0aGlzIHdheSwgaXMgdGhlcmUgYW55IHNpbXBsZQ0KPiBzZXF1ZW5j
-ZSBvZiBzeXN0ZW0gY2FsbHMgb24gdGhlIGNsaWVudCB0aGF0IHdpbGwgY2F1c2UgaXQgdG8gZGlz
-Y2FyZA0KPiB0aGVzZSBjYWNoZWQgcGFnZXM/IE9yIGRvIHlvdSBuZWVkIHRoZSBmaWxlJ3MgR0VU
-QVRUUiB0byBjaGFuZ2UNCj4gYWdhaW4sDQo+IGltcGxpY2l0bHkgZnJvbSBhbm90aGVyIG1hY2hp
-bmU/IChJIGFzc3VtZSB0aGF0IGNoYW5naW5nIHRoZSBmaWxlJ3MNCj4gYXR0cmlidXRlcyBmcm9t
-IHRoZSBjbGllbnQgd2l0aCB0aGUgY2FjaGVkIHBhZ2VzIGRvZXNuJ3QgY2F1c2UgaXQgdG8NCj4g
-aW52YWxpZGF0ZSB0aGVtLCBhbmQgY2VydGFpbmx5IGVnIGEgJ3RvdWNoJyBkb2Vzbid0IGRvIGl0
-IGZyb20gdGhlDQo+IGNsaWVudCB3aGVyZSBpdCBkb2VzIGRvIGl0IGZyb20gYW5vdGhlciBtYWNo
-aW5lLikNCg0KVGhlcmUgYXJlIDIgd2F5cyB0byBtYW5pcHVsYXRlIHRoZSBwYWdlIGNhY2hlIGRp
-cmVjdGx5IG9uIHRoZSBjbGllbnQ6DQogICAxLiBZb3UgY2FuIGNsZWFyIG91dCB0aGUgZW50aXJl
-IHBhZ2UgY2FjaGUgYXMgdGhlICdyb290JyB1c2VyLCB3aXRoIHRoZQ0KICAgICAgL3Byb2Mvc3lz
-L3ZtL2Ryb3BfY2FjaGVzIGludGVyZmFjZSAoc2VlICdtYW4gNSBwcm9jJykuDQogICAyLiBBbHRl
-cm5hdGl2ZWx5LCB5b3UgY2FuIHVzZSBwb3NpeF9mYWR2aXNlKCkgd2l0aCB0aGUNCiAgICAgIFBP
-U0lYX0ZBRFZfRE9OVE5FRUQgZmxhZyB0byBjbGVhciBvdXQgb25seSB0aGUgcGFnZXMgdGhhdCB5
-b3UgdGhpbmsNCiAgICAgIGFyZSBiYWQuIE1ha2Ugc3VyZSB0byBmaXJzdCBmc3luYygpIHNvIHRo
-YXQgdGhlIHBhZ2VzIGRvbid0IGdldA0KICAgICAgcGlubmVkIGluIG1lbW9yeSBieSB2aXJ0dWUg
-b2YgYmVpbmcgZGlydHkgKHNlZSAnbWFuIDIgZmFkdmlzZTY0JykuDQoNCllvdSBhbHNvIGhhdmUg
-dGhlIG9wdGlvbiBvZiB1c2luZyBORlMgaXRzZWxmIHRvIGltcGxpY2l0bHkgY2hhbmdlIHRoZQ0K
-Y2FjaGU6DQogICAxLiBBcyB5b3Ugc2FpZCBhYm92ZSwgeW91IGNhbiBhbHNvIGNoYW5nZSB0aGUg
-ZmlsZSBvbiB0aGUgc2VydmVyIHdoaWxlDQogICAgICBpdCBpcyBjbG9zZWQgb24geW91ciBjbGll
-bnQsIGFuZCB0aGVuIHJlb3BlbiBpdC4NCiAgIDIuIFlvdSBjYW4gcGVyZm9ybSBhbiBPX0RJUkVD
-VCB3cml0ZSBmcm9tIHRoZSBjbGllbnQgaXRzZWxmLiBCb3RoIHRob3NlDQogICAgICBvcGVyYXRp
-b25zIHdpbGwgYWxzbyBpbXBseSBhIGNhY2hlIGludmFsaWRhdGlvbi4NCg0KLS0gDQpUcm9uZCBN
-eWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lciwgSGFtbWVyc3BhY2UNCnRyb25k
-Lm15a2xlYnVzdEBoYW1tZXJzcGFjZS5jb20NCg0KDQo=
+> >  If a client kernel has cached pages this way, is there any simple
+> > sequence of system calls on the client that will cause it to discard
+> > these cached pages? Or do you need the file's GETATTR to change again,
+> > implicitly from another machine? (I assume that changing the file's
+> > attributes from the client with the cached pages doesn't cause it to
+> > invalidate them, and certainly eg a 'touch' doesn't do it from the
+> > client where it does do it from another machine.)
+> 
+> There are 2 ways to manipulate the page cache directly on the client:
+>    1. You can clear out the entire page cache as the 'root' user, with the
+>       /proc/sys/vm/drop_caches interface (see 'man 5 proc').
+>    2. Alternatively, you can use posix_fadvise() with the
+>       POSIX_FADV_DONTNEED flag to clear out only the pages that you think
+>       are bad. Make sure to first fsync() so that the pages don't get
+>       pinned in memory by virtue of being dirty (see 'man 2 fadvise64').
+
+ I just did some experiments, and on the Ubuntu 18.04 LTS version of
+4.15.0, it appears that flock()'ing the file before re-reading it will
+cause the kernel to not manifest the problem. I don't seem to have to
+flock() the file initially when I read it before the change, and it's
+sufficient to use LOCK_SH instead of LOCK_EX. (And I do have to flock()
+after the change, otherwise I still see the problem even if I flock()
+before.)
+
+ Is this a supported/guaranteed behavior, or is it just lucky coincidence
+that things currently work this way, much like it was happenstance
+instead of design that things worked back in the 4.4.x era?
+
+ It would be very convenient for us if flock() works around this,
+because it turns out that the only reason Alpine is not flock()'ing
+files is that it has an ancient 'do not use flock on Linux NFS' piece of
+code deep inside it that was apparently there to work around a bug that
+seems to have been fixed a decade or so ago:
+
+   http://repo.or.cz/alpine.git/blob/HEAD:/imap/src/osdep/unix/flocklnx.c
+
+	- cks
