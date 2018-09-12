@@ -1,225 +1,70 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from elasmtp-masked.atl.sa.earthlink.net ([209.86.89.68]:46444 "EHLO
-        elasmtp-masked.atl.sa.earthlink.net" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726879AbeILVfy (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 12 Sep 2018 17:35:54 -0400
-From: "Frank Filz" <ffilzlnx@mindspring.com>
-To: "'Anna Schumaker'" <schumaker.anna@gmail.com>,
-        "'Kinglong Mee'" <kinglongmee@gmail.com>,
-        "'Trond Myklebust'" <trondmy@hammerspace.com>,
-        <devel@lists.nfs-ganesha.org>, <linux-nfs@vger.kernel.org>
-References: <182fecd3-66c3-0cbd-fbc0-cf1a88b7f165@gmail.com>     <182a9c6a29690fc00789768bdfe03affbac0db9e.camel@hammerspace.com>        <53f12a27-e1f5-936f-23e9-58d3cbf7a00f@gmail.com> <6f906850076c15aedff11d721fe91d3279935224.camel@gmail.com>
-In-Reply-To: <6f906850076c15aedff11d721fe91d3279935224.camel@gmail.com>
-Subject: RE: [NFS-Ganesha-Devel] Re: lseek gets bad offset from nfs client with ganesha/gluster which supports SEEK
-Date: Tue, 11 Sep 2018 16:20:47 -0700
-Message-ID: <00e301d44a26$12cd63d0$38682b70$@mindspring.com>
+Received: from mail-bn3nam01on0130.outbound.protection.outlook.com ([104.47.33.130]:28109
+        "EHLO NAM01-BN3-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1726428AbeILWQ4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 12 Sep 2018 18:16:56 -0400
+From: Trond Myklebust <trondmy@hammerspace.com>
+To: "cks@cs.toronto.edu" <cks@cs.toronto.edu>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "chuck.lever@oracle.com" <chuck.lever@oracle.com>
+Subject: Re: A NFS client partial file corruption problem in recent/current
+ kernels
+Date: Wed, 12 Sep 2018 17:11:24 +0000
+Message-ID: <901bb9f08b4a675cb8c20b4dff5c405995e4f894.camel@hammerspace.com>
+References: <20180912030300.696D4322562@apps1.cs.toronto.edu>
+In-Reply-To: <20180912030300.696D4322562@apps1.cs.toronto.edu>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain;
-        charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> On Tue, 2018-09-11 at 22:47 +0800, Kinglong Mee wrote:
-> > On 2018/9/11 20:57, Trond Myklebust wrote:
-> > > On Tue, 2018-09-11 at 20:29 +0800, Kinglong Mee wrote:
-> > > > The latest ganesha/gluster supports seek according to,
-> > > >
-> > > >
-> > >
-> > > =
-https://tools.ietf.org/html/draft-ietf-nfsv4-minorversion2-41#sectio
-> > > n-15.11
-> > > >
-> > > >    From the given sa_offset, find the next data_content4 of type
-> > > > sa_what
-> > > >    in the file.  If the server can not find a corresponding =
-sa_what,
-> > > >    then the status will still be NFS4_OK, but sr_eof would be
-> > > > TRUE.  If
-> > > >    the server can find the sa_what, then the sr_offset is the
-> > > > start of
-> > > >    that content.  If the sa_offset is beyond the end of the =
-file,
-> > > > then
-> > > >    SEEK MUST return NFS4ERR_NXIO.
-> > > >
-> > > > For a file's filemap as,
-> > > >
-> > > > Part    1: HOLE 0x0000000000000000 ---> 0x0000000000600000
-> > > > Part    2: DATA 0x0000000000600000 ---> 0x0000000000700000
-> > > > Part    3: HOLE 0x0000000000700000 ---> 0x0000000001000000>>
-> > > > SEEK(0x700000, SEEK_DATA) gets result (sr_eof:1,
-> > > > sr_offset:0x70000) from ganesha/gluster; SEEK(0x700000, =
-SEEK_HOLE)
-> > > > gets result (sr_eof:0, sr_offset:0x70000) from ganesha/gluster.
-> > > >
-> > > > If an application depends the lseek result for data searching, =
-it
-> > > > may enter infinite loop.
-> > > >
-> > > >         while (1) {
-> > > >                 next_pos =3D lseek(fd, cur_pos, seek_type);
-> > > >                 if (seek_type =3D=3D SEEK_DATA) {
-> > > >                         seek_type =3D SEEK_HOLE;
-> > > >                 } else {
-> > > >                         seek_type =3D SEEK_DATA;
-> > > >                 }
-> > > >
-> > > >                 if (next_pos =3D=3D -1) {
-> > > >                         return ;
-> > > >
-> > > >                 cur_pos =3D next_pos;
-> > > >         }
-> > > >
-> > > > The lseek syscall always gets 0x70000 from nfs client for those
-> > > > two cases, but, if underlying filesystem is ext4/f2fs, or the =
-nfs
-> > > > server is knfsd, the lseek(0x700000, SEEK_DATA) gets ENXIO.
-> > > >
-> > > > I wanna to know,
-> > > > should I fix the ganesha/gluster as knfsd return ENXIO for the
-> > > > first case?
-> > > > or should I fix the nfs client to return ENXIO for the first =
-case?
-> > > >
-> > >
-> > > It that test correct? The fallback implementation of SEEK_DATA
-> > > assumes that the entire file is data, so lseek(SEEK_DATA) on any
-> > > offset that is <=3D eof will be a no-op. The fallback =
-implementation
-> > > of SEEK_HOLE assumes that the first hole is at eof.
-> >
-> > I think that's non-nfsv4.2's logical.
-> >
-> > >
-> > > IOW: unless the initial value for cur_pos is > eof, it looks to me
-> > > as if the above test will loop infinitely given any filesystem =
-that
-> > > doesn't implement native support for SEEK_DATA/SEEK_HOLE.
-> > >
-> >
-> > No, if underlying filesystem is ext4/f2fs, or the nfs server is =
-knfsd,
-> > the last lseek syscall always return ENXIO no matter the cur_pos is =
->
-> > eof or not.
-> >
-> > A file ends with a hole as,
-> > Part   22: DATA 0x0000000006a00000 ---> 0x0000000006afffff
-> > Part   23: HOLE 0x0000000006b00000 ---> 0x000000000c7fffff
-> >
-> > # stat testfile
-> >   File: testfile
-> >   Size: 209715200       Blocks: 22640      IO Block: 4096   regular =
-file
-> > Device: 807h/2055d      Inode: 843122      Links: 2
-> > Access: (0600/-rw-------)  Uid: (    0/    root)   Gid: (    0/    =
-root)
-> > Access: 2018-09-11 20:01:41.881227061 +0800
-> > Modify: 2018-09-11 20:01:41.976478311 +0800
-> > Change: 2018-09-11 20:01:41.976478311 +0800
-> >  Birth: -
-> >
-> > # strace filemap testfile
-> > ... ...
-> > lseek(3, 111149056, SEEK_HOLE)          =3D 112197632
-> > lseek(3, 112197632, SEEK_DATA)          =3D -1 ENXIO (No such device =
-or address)
-> >
-> > Right now, when knfsd gets the ENXIO error, it returns the error to
-> > client directly, and return to syscall.
-> > But, ganesha set the sr_eof to true and return NFS4_OK to client as
-> > RFC description, nfs client skips the sr_eof and return a bad offset
-> > to syscall.
->=20
-> Would it make more sense to change Knfsd instead of the client?  I =
-think I was
-> trying to keep things simple when I wrote the code, so I just passed =
-the result of
-> the lseek system call back to the client.
-
-Looking at the lseek(2) man page, it's not clear to me what should be =
-returned if as in this example, there is a HOLE at the end of the file =
-(i.e. filesize is larger than the range of the last DATA in the file). =
-It sounds like ext4 returns ENXIO if a SEEK_DATA is done past the last =
-data in the file.
-
-       SEEK_DATA
-              Adjust the file offset to the next location in the file =
-greater than or equal to offset containing data.  If offset points to =
-data, then the file offset  is  set
-              to offset.
-
-       SEEK_HOLE
-              Adjust  the file offset to the next hole in the file =
-greater than or equal to offset.  If offset points into the middle of a =
-hole, then the file offset is set to
-              offset.  If there is no hole past offset, then the file =
-offset is adjusted to the end of the file (i.e., there is an implicit =
-hole at the end of any file).
-
-       In both of the above cases, lseek() fails if offset points past =
-the end of the file.
-
-       These operations allow applications to map holes in a sparsely =
-allocated file.  This can be useful for applications such as file backup =
-tools, which can save space when
-       creating backups and preserve holes, if they have a mechanism for =
-discovering holes.
-
-       For the purposes of these operations, a hole is a sequence of =
-zeros that (normally) has not been allocated in the underlying file =
-storage.  However, a filesystem is not
-       obliged to report holes, so these operations are not a guaranteed =
-mechanism for mapping the storage space actually allocated to a file.   =
-(Furthermore,  a  sequence  of
-       zeros  that actually has been written to the underlying storage =
-may not be reported as a hole.)  In the simplest implementation, a =
-filesystem can support the operations
-       by making SEEK_HOLE always return the offset of the end of the =
-file, and making SEEK_DATA always return offset (i.e., even if the =
-location referred to by  offset  is  a
-       hole, it can be considered to consist of data that is a sequence =
-of zeros).
-
-The RFC text is pretty clear:
-
-   SEEK is an operation that allows a client to determine the location
-   of the next data_content4 in a file.  It allows an implementation of
-   the emerging extension to lseek(2) to allow clients to determine the
-   next hole whilst in data or the next data whilst in a hole.
-
-   From the given sa_offset, find the next data_content4 of type sa_what
-   in the file.  If the server can not find a corresponding sa_what,
-   then the status will still be NFS4_OK, but sr_eof would be TRUE.  If
-   the server can find the sa_what, then the sr_offset is the start of
-   that content.  If the sa_offset is beyond the end of the file, then
-   SEEK MUST return NFS4ERR_NXIO.
-
-   All files MUST have a virtual hole at the end of the file.  I.e., if
-   a filesystem does not support sparse files, then a compound with
-   {SEEK 0 NFS4_CONTENT_HOLE;} would return a result of {SEEK 1 X;}
-   where 'X' was the size of the file.
-
-Sa_offset is not past the end of the file, but there is no more DATA, so =
-a seek DATA from 0x70000 (original file) should return sr_eof TRUE.
-
-In either RFC or lseek(2), a seek HOLE for 0x70000 will return 0x70000.
-
-It certainly makes sense that you should be able to have a hole at the =
-end of a file (pre-allocated disk blocks but no data written yet), and =
-is in fact what fallocate(2) will do.
-
-An NFS server could check the filesize and if sa_offset is < filesize =
-and a SEEK_DATA returns ENXIO, it could translate that to NFS4_OK and =
-set sr_eof to TRUE.
-
-The Ganesha code in FSAL_GLUSTER I believe is wrong. It changes any =
-ENXIO result to NFS4_OK with sr_eof TRUE. It would be better for it to =
-do the simple thing knfsd does of always passing along the ENXIO (this =
-may be best if it is not possible to safely verify sa_offset really is < =
-filesize).
-
-So Anna, I think your knfsd implementation is ok.
-
-Frank
+T24gVHVlLCAyMDE4LTA5LTExIGF0IDIzOjAzIC0wNDAwLCBDaHJpcyBTaWViZW5tYW5uIHdyb3Rl
+Og0KPiA+ID4gIElmIGEgY2xpZW50IGtlcm5lbCBoYXMgY2FjaGVkIHBhZ2VzIHRoaXMgd2F5LCBp
+cyB0aGVyZSBhbnkNCj4gPiA+IHNpbXBsZQ0KPiA+ID4gc2VxdWVuY2Ugb2Ygc3lzdGVtIGNhbGxz
+IG9uIHRoZSBjbGllbnQgdGhhdCB3aWxsIGNhdXNlIGl0IHRvDQo+ID4gPiBkaXNjYXJkDQo+ID4g
+PiB0aGVzZSBjYWNoZWQgcGFnZXM/IE9yIGRvIHlvdSBuZWVkIHRoZSBmaWxlJ3MgR0VUQVRUUiB0
+byBjaGFuZ2UNCj4gPiA+IGFnYWluLA0KPiA+ID4gaW1wbGljaXRseSBmcm9tIGFub3RoZXIgbWFj
+aGluZT8gKEkgYXNzdW1lIHRoYXQgY2hhbmdpbmcgdGhlDQo+ID4gPiBmaWxlJ3MNCj4gPiA+IGF0
+dHJpYnV0ZXMgZnJvbSB0aGUgY2xpZW50IHdpdGggdGhlIGNhY2hlZCBwYWdlcyBkb2Vzbid0IGNh
+dXNlIGl0DQo+ID4gPiB0bw0KPiA+ID4gaW52YWxpZGF0ZSB0aGVtLCBhbmQgY2VydGFpbmx5IGVn
+IGEgJ3RvdWNoJyBkb2Vzbid0IGRvIGl0IGZyb20NCj4gPiA+IHRoZQ0KPiA+ID4gY2xpZW50IHdo
+ZXJlIGl0IGRvZXMgZG8gaXQgZnJvbSBhbm90aGVyIG1hY2hpbmUuKQ0KPiA+IA0KPiA+IFRoZXJl
+IGFyZSAyIHdheXMgdG8gbWFuaXB1bGF0ZSB0aGUgcGFnZSBjYWNoZSBkaXJlY3RseSBvbiB0aGUN
+Cj4gPiBjbGllbnQ6DQo+ID4gICAgMS4gWW91IGNhbiBjbGVhciBvdXQgdGhlIGVudGlyZSBwYWdl
+IGNhY2hlIGFzIHRoZSAncm9vdCcgdXNlciwNCj4gPiB3aXRoIHRoZQ0KPiA+ICAgICAgIC9wcm9j
+L3N5cy92bS9kcm9wX2NhY2hlcyBpbnRlcmZhY2UgKHNlZSAnbWFuIDUgcHJvYycpLg0KPiA+ICAg
+IDIuIEFsdGVybmF0aXZlbHksIHlvdSBjYW4gdXNlIHBvc2l4X2ZhZHZpc2UoKSB3aXRoIHRoZQ0K
+PiA+ICAgICAgIFBPU0lYX0ZBRFZfRE9OVE5FRUQgZmxhZyB0byBjbGVhciBvdXQgb25seSB0aGUg
+cGFnZXMgdGhhdCB5b3UNCj4gPiB0aGluaw0KPiA+ICAgICAgIGFyZSBiYWQuIE1ha2Ugc3VyZSB0
+byBmaXJzdCBmc3luYygpIHNvIHRoYXQgdGhlIHBhZ2VzIGRvbid0DQo+ID4gZ2V0DQo+ID4gICAg
+ICAgcGlubmVkIGluIG1lbW9yeSBieSB2aXJ0dWUgb2YgYmVpbmcgZGlydHkgKHNlZSAnbWFuIDIN
+Cj4gPiBmYWR2aXNlNjQnKS4NCj4gDQo+ICBJIGp1c3QgZGlkIHNvbWUgZXhwZXJpbWVudHMsIGFu
+ZCBvbiB0aGUgVWJ1bnR1IDE4LjA0IExUUyB2ZXJzaW9uIG9mDQo+IDQuMTUuMCwgaXQgYXBwZWFy
+cyB0aGF0IGZsb2NrKCknaW5nIHRoZSBmaWxlIGJlZm9yZSByZS1yZWFkaW5nIGl0DQo+IHdpbGwN
+Cj4gY2F1c2UgdGhlIGtlcm5lbCB0byBub3QgbWFuaWZlc3QgdGhlIHByb2JsZW0uIEkgZG9uJ3Qg
+c2VlbSB0byBoYXZlIHRvDQo+IGZsb2NrKCkgdGhlIGZpbGUgaW5pdGlhbGx5IHdoZW4gSSByZWFk
+IGl0IGJlZm9yZSB0aGUgY2hhbmdlLCBhbmQgaXQncw0KPiBzdWZmaWNpZW50IHRvIHVzZSBMT0NL
+X1NIIGluc3RlYWQgb2YgTE9DS19FWC4gKEFuZCBJIGRvIGhhdmUgdG8NCj4gZmxvY2soKQ0KPiBh
+ZnRlciB0aGUgY2hhbmdlLCBvdGhlcndpc2UgSSBzdGlsbCBzZWUgdGhlIHByb2JsZW0gZXZlbiBp
+ZiBJIGZsb2NrKCkNCj4gYmVmb3JlLikNCj4gDQo+ICBJcyB0aGlzIGEgc3VwcG9ydGVkL2d1YXJh
+bnRlZWQgYmVoYXZpb3IsIG9yIGlzIGl0IGp1c3QgbHVja3kNCj4gY29pbmNpZGVuY2UNCj4gdGhh
+dCB0aGluZ3MgY3VycmVudGx5IHdvcmsgdGhpcyB3YXksIG11Y2ggbGlrZSBpdCB3YXMgaGFwcGVu
+c3RhbmNlDQo+IGluc3RlYWQgb2YgZGVzaWduIHRoYXQgdGhpbmdzIHdvcmtlZCBiYWNrIGluIHRo
+ZSA0LjQueCBlcmE/DQo+IA0KPiAgSXQgd291bGQgYmUgdmVyeSBjb252ZW5pZW50IGZvciB1cyBp
+ZiBmbG9jaygpIHdvcmtzIGFyb3VuZCB0aGlzLA0KPiBiZWNhdXNlIGl0IHR1cm5zIG91dCB0aGF0
+IHRoZSBvbmx5IHJlYXNvbiBBbHBpbmUgaXMgbm90IGZsb2NrKCknaW5nDQo+IGZpbGVzIGlzIHRo
+YXQgaXQgaGFzIGFuIGFuY2llbnQgJ2RvIG5vdCB1c2UgZmxvY2sgb24gTGludXggTkZTJyBwaWVj
+ZQ0KPiBvZg0KPiBjb2RlIGRlZXAgaW5zaWRlIGl0IHRoYXQgd2FzIGFwcGFyZW50bHkgdGhlcmUg
+dG8gd29yayBhcm91bmQgYSBidWcNCj4gdGhhdA0KPiBzZWVtcyB0byBoYXZlIGJlZW4gZml4ZWQg
+YSBkZWNhZGUgb3Igc28gYWdvOg0KPiANCj4gICAgDQo+IGh0dHA6Ly9yZXBvLm9yLmN6L2FscGlu
+ZS5naXQvYmxvYi9IRUFEOi9pbWFwL3NyYy9vc2RlcC91bml4L2Zsb2NrbG54LmMNCj4gDQoNCk5v
+dGhpbmcgc2hvdWxkIGJlIHN0b3BwaW5nIHlvdSBmcm9tIHVzaW5nIGVpdGhlciBmbG9jaygpIG9y
+IFBPU0lYIGxvY2tzDQpvdmVyIE5GUy4gVGhlIG9uZSBkaWZmZXJlbmNlIHRoYXQgeW91IHdpbGwg
+YmV0d2VlbiBORlMgYW5kIGxvY2FsDQpmaWxlc3lzdGVtcyBpcyB0aGF0IGZsb2NrKCkgbG9ja3Mg
+Y2FuIGNvbmZsaWN0IHdpdGggUE9TSVggbG9ja3Mgd2hlbg0KcGVyZm9ybWVkIG92ZXIgTkZTLg0K
+DQpJT1c6IElmIHlvdSBlbmFibGUgZmxvY2soKSBsb2NrcywgdGhlbiBlbnN1cmUgdGhhdCB5b3Ug
+ZG8gbm90IGVuYWJsZQ0KUE9TSVggbG9ja3MgKGEuay5hLiBmY250bCgpIGxvY2tzLCBhLmsuYS4g
+bG9ja2YoKSBsb2NrcykuDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50
+IG1haW50YWluZXIsIEhhbW1lcnNwYWNlDQp0cm9uZC5teWtsZWJ1c3RAaGFtbWVyc3BhY2UuY29t
+DQoNCg0K
