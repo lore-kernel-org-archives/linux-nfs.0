@@ -1,70 +1,136 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-bn3nam01on0130.outbound.protection.outlook.com ([104.47.33.130]:28109
-        "EHLO NAM01-BN3-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726428AbeILWQ4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 12 Sep 2018 18:16:56 -0400
-From: Trond Myklebust <trondmy@hammerspace.com>
-To: "cks@cs.toronto.edu" <cks@cs.toronto.edu>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "chuck.lever@oracle.com" <chuck.lever@oracle.com>
-Subject: Re: A NFS client partial file corruption problem in recent/current
- kernels
-Date: Wed, 12 Sep 2018 17:11:24 +0000
-Message-ID: <901bb9f08b4a675cb8c20b4dff5c405995e4f894.camel@hammerspace.com>
-References: <20180912030300.696D4322562@apps1.cs.toronto.edu>
-In-Reply-To: <20180912030300.696D4322562@apps1.cs.toronto.edu>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from mail-it0-f66.google.com ([209.85.214.66]:36994 "EHLO
+        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727809AbeILXrQ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 12 Sep 2018 19:47:16 -0400
+Message-ID: <4f47a70d21594d80d01c85747e6dcb3a0b9bc0d0.camel@gmail.com>
+Subject: Re: [PATCH v1 08/22] sunrpc: Fix connect metrics
+From: Anna Schumaker <schumaker.anna@gmail.com>
+To: Chuck Lever <chuck.lever@oracle.com>, linux-rdma@vger.kernel.org,
+        linux-nfs@vger.kernel.org
+Date: Wed, 12 Sep 2018 14:41:25 -0400
+In-Reply-To: <20180910150937.10564.26277.stgit@manet.1015granger.net>
+References: <20180910150040.10564.97487.stgit@manet.1015granger.net>
+         <20180910150937.10564.26277.stgit@manet.1015granger.net>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDE4LTA5LTExIGF0IDIzOjAzIC0wNDAwLCBDaHJpcyBTaWViZW5tYW5uIHdyb3Rl
-Og0KPiA+ID4gIElmIGEgY2xpZW50IGtlcm5lbCBoYXMgY2FjaGVkIHBhZ2VzIHRoaXMgd2F5LCBp
-cyB0aGVyZSBhbnkNCj4gPiA+IHNpbXBsZQ0KPiA+ID4gc2VxdWVuY2Ugb2Ygc3lzdGVtIGNhbGxz
-IG9uIHRoZSBjbGllbnQgdGhhdCB3aWxsIGNhdXNlIGl0IHRvDQo+ID4gPiBkaXNjYXJkDQo+ID4g
-PiB0aGVzZSBjYWNoZWQgcGFnZXM/IE9yIGRvIHlvdSBuZWVkIHRoZSBmaWxlJ3MgR0VUQVRUUiB0
-byBjaGFuZ2UNCj4gPiA+IGFnYWluLA0KPiA+ID4gaW1wbGljaXRseSBmcm9tIGFub3RoZXIgbWFj
-aGluZT8gKEkgYXNzdW1lIHRoYXQgY2hhbmdpbmcgdGhlDQo+ID4gPiBmaWxlJ3MNCj4gPiA+IGF0
-dHJpYnV0ZXMgZnJvbSB0aGUgY2xpZW50IHdpdGggdGhlIGNhY2hlZCBwYWdlcyBkb2Vzbid0IGNh
-dXNlIGl0DQo+ID4gPiB0bw0KPiA+ID4gaW52YWxpZGF0ZSB0aGVtLCBhbmQgY2VydGFpbmx5IGVn
-IGEgJ3RvdWNoJyBkb2Vzbid0IGRvIGl0IGZyb20NCj4gPiA+IHRoZQ0KPiA+ID4gY2xpZW50IHdo
-ZXJlIGl0IGRvZXMgZG8gaXQgZnJvbSBhbm90aGVyIG1hY2hpbmUuKQ0KPiA+IA0KPiA+IFRoZXJl
-IGFyZSAyIHdheXMgdG8gbWFuaXB1bGF0ZSB0aGUgcGFnZSBjYWNoZSBkaXJlY3RseSBvbiB0aGUN
-Cj4gPiBjbGllbnQ6DQo+ID4gICAgMS4gWW91IGNhbiBjbGVhciBvdXQgdGhlIGVudGlyZSBwYWdl
-IGNhY2hlIGFzIHRoZSAncm9vdCcgdXNlciwNCj4gPiB3aXRoIHRoZQ0KPiA+ICAgICAgIC9wcm9j
-L3N5cy92bS9kcm9wX2NhY2hlcyBpbnRlcmZhY2UgKHNlZSAnbWFuIDUgcHJvYycpLg0KPiA+ICAg
-IDIuIEFsdGVybmF0aXZlbHksIHlvdSBjYW4gdXNlIHBvc2l4X2ZhZHZpc2UoKSB3aXRoIHRoZQ0K
-PiA+ICAgICAgIFBPU0lYX0ZBRFZfRE9OVE5FRUQgZmxhZyB0byBjbGVhciBvdXQgb25seSB0aGUg
-cGFnZXMgdGhhdCB5b3UNCj4gPiB0aGluaw0KPiA+ICAgICAgIGFyZSBiYWQuIE1ha2Ugc3VyZSB0
-byBmaXJzdCBmc3luYygpIHNvIHRoYXQgdGhlIHBhZ2VzIGRvbid0DQo+ID4gZ2V0DQo+ID4gICAg
-ICAgcGlubmVkIGluIG1lbW9yeSBieSB2aXJ0dWUgb2YgYmVpbmcgZGlydHkgKHNlZSAnbWFuIDIN
-Cj4gPiBmYWR2aXNlNjQnKS4NCj4gDQo+ICBJIGp1c3QgZGlkIHNvbWUgZXhwZXJpbWVudHMsIGFu
-ZCBvbiB0aGUgVWJ1bnR1IDE4LjA0IExUUyB2ZXJzaW9uIG9mDQo+IDQuMTUuMCwgaXQgYXBwZWFy
-cyB0aGF0IGZsb2NrKCknaW5nIHRoZSBmaWxlIGJlZm9yZSByZS1yZWFkaW5nIGl0DQo+IHdpbGwN
-Cj4gY2F1c2UgdGhlIGtlcm5lbCB0byBub3QgbWFuaWZlc3QgdGhlIHByb2JsZW0uIEkgZG9uJ3Qg
-c2VlbSB0byBoYXZlIHRvDQo+IGZsb2NrKCkgdGhlIGZpbGUgaW5pdGlhbGx5IHdoZW4gSSByZWFk
-IGl0IGJlZm9yZSB0aGUgY2hhbmdlLCBhbmQgaXQncw0KPiBzdWZmaWNpZW50IHRvIHVzZSBMT0NL
-X1NIIGluc3RlYWQgb2YgTE9DS19FWC4gKEFuZCBJIGRvIGhhdmUgdG8NCj4gZmxvY2soKQ0KPiBh
-ZnRlciB0aGUgY2hhbmdlLCBvdGhlcndpc2UgSSBzdGlsbCBzZWUgdGhlIHByb2JsZW0gZXZlbiBp
-ZiBJIGZsb2NrKCkNCj4gYmVmb3JlLikNCj4gDQo+ICBJcyB0aGlzIGEgc3VwcG9ydGVkL2d1YXJh
-bnRlZWQgYmVoYXZpb3IsIG9yIGlzIGl0IGp1c3QgbHVja3kNCj4gY29pbmNpZGVuY2UNCj4gdGhh
-dCB0aGluZ3MgY3VycmVudGx5IHdvcmsgdGhpcyB3YXksIG11Y2ggbGlrZSBpdCB3YXMgaGFwcGVu
-c3RhbmNlDQo+IGluc3RlYWQgb2YgZGVzaWduIHRoYXQgdGhpbmdzIHdvcmtlZCBiYWNrIGluIHRo
-ZSA0LjQueCBlcmE/DQo+IA0KPiAgSXQgd291bGQgYmUgdmVyeSBjb252ZW5pZW50IGZvciB1cyBp
-ZiBmbG9jaygpIHdvcmtzIGFyb3VuZCB0aGlzLA0KPiBiZWNhdXNlIGl0IHR1cm5zIG91dCB0aGF0
-IHRoZSBvbmx5IHJlYXNvbiBBbHBpbmUgaXMgbm90IGZsb2NrKCknaW5nDQo+IGZpbGVzIGlzIHRo
-YXQgaXQgaGFzIGFuIGFuY2llbnQgJ2RvIG5vdCB1c2UgZmxvY2sgb24gTGludXggTkZTJyBwaWVj
-ZQ0KPiBvZg0KPiBjb2RlIGRlZXAgaW5zaWRlIGl0IHRoYXQgd2FzIGFwcGFyZW50bHkgdGhlcmUg
-dG8gd29yayBhcm91bmQgYSBidWcNCj4gdGhhdA0KPiBzZWVtcyB0byBoYXZlIGJlZW4gZml4ZWQg
-YSBkZWNhZGUgb3Igc28gYWdvOg0KPiANCj4gICAgDQo+IGh0dHA6Ly9yZXBvLm9yLmN6L2FscGlu
-ZS5naXQvYmxvYi9IRUFEOi9pbWFwL3NyYy9vc2RlcC91bml4L2Zsb2NrbG54LmMNCj4gDQoNCk5v
-dGhpbmcgc2hvdWxkIGJlIHN0b3BwaW5nIHlvdSBmcm9tIHVzaW5nIGVpdGhlciBmbG9jaygpIG9y
-IFBPU0lYIGxvY2tzDQpvdmVyIE5GUy4gVGhlIG9uZSBkaWZmZXJlbmNlIHRoYXQgeW91IHdpbGwg
-YmV0d2VlbiBORlMgYW5kIGxvY2FsDQpmaWxlc3lzdGVtcyBpcyB0aGF0IGZsb2NrKCkgbG9ja3Mg
-Y2FuIGNvbmZsaWN0IHdpdGggUE9TSVggbG9ja3Mgd2hlbg0KcGVyZm9ybWVkIG92ZXIgTkZTLg0K
-DQpJT1c6IElmIHlvdSBlbmFibGUgZmxvY2soKSBsb2NrcywgdGhlbiBlbnN1cmUgdGhhdCB5b3Ug
-ZG8gbm90IGVuYWJsZQ0KUE9TSVggbG9ja3MgKGEuay5hLiBmY250bCgpIGxvY2tzLCBhLmsuYS4g
-bG9ja2YoKSBsb2NrcykuDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50
-IG1haW50YWluZXIsIEhhbW1lcnNwYWNlDQp0cm9uZC5teWtsZWJ1c3RAaGFtbWVyc3BhY2UuY29t
-DQoNCg0K
+Hi Chuck,
+
+On Mon, 2018-09-10 at 11:09 -0400, Chuck Lever wrote:
+> For TCP, the logic in xprt_connect_status is currently never invoked
+> to record a successful connection. Commit 2a4919919a97 ("SUNRPC:
+> Return EAGAIN instead of ENOTCONN when waking up xprt->pending")
+> changed the way TCP xprt's are awoken after a connect succeeds.
+> 
+> Instead, change connection-oriented transports to bump connect_count
+> and compute connect_time the moment that XPRT_CONNECTED is set.
+> 
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+>  net/sunrpc/xprt.c               |   10 +++-------
+>  net/sunrpc/xprtrdma/transport.c |    6 +++++-
+>  net/sunrpc/xprtsock.c           |   10 ++++++----
+>  3 files changed, 14 insertions(+), 12 deletions(-)
+> 
+> diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+> index a8db2e3f..f03ffa2 100644
+> --- a/net/sunrpc/xprt.c
+> +++ b/net/sunrpc/xprt.c
+> @@ -791,15 +791,11 @@ static void xprt_connect_status(struct rpc_task *task)
+>  {
+>  	struct rpc_xprt	*xprt = task->tk_rqstp->rq_xprt;
+
+Looks like the only remaining user of the xprt is in a dprintk() towards the
+bottom of this function to get the servername.  This is giving me an unused
+variable warning when CONFIG_SUNRPC_DEBUG=n, so I'm wondering if you can take
+out the variable and just access the server name the long way (task->tk_rqstp-
+>rq_xprt->servername)?
+
+Thanks,
+Anna
+
+>  
+> -	if (task->tk_status == 0) {
+> -		xprt->stat.connect_count++;
+> -		xprt->stat.connect_time += (long)jiffies - xprt-
+> >stat.connect_start;
+> +	switch (task->tk_status) {
+> +	case 0:
+>  		dprintk("RPC: %5u xprt_connect_status: connection
+> established\n",
+>  				task->tk_pid);
+> -		return;
+> -	}
+> -
+> -	switch (task->tk_status) {
+> +		break;
+>  	case -ECONNREFUSED:
+>  	case -ECONNRESET:
+>  	case -ECONNABORTED:
+> diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
+> index 3ae73e6..087acfc 100644
+> --- a/net/sunrpc/xprtrdma/transport.c
+> +++ b/net/sunrpc/xprtrdma/transport.c
+> @@ -242,8 +242,12 @@
+>  
+>  	spin_lock_bh(&xprt->transport_lock);
+>  	if (ep->rep_connected > 0) {
+> -		if (!xprt_test_and_set_connected(xprt))
+> +		if (!xprt_test_and_set_connected(xprt)) {
+> +			xprt->stat.connect_count++;
+> +			xprt->stat.connect_time += (long)jiffies -
+> +						   xprt->stat.connect_start;
+>  			xprt_wake_pending_tasks(xprt, 0);
+> +		}
+>  	} else {
+>  		if (xprt_test_and_clear_connected(xprt))
+>  			xprt_wake_pending_tasks(xprt, -ENOTCONN);
+> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+> index 6b7539c..e146caa 100644
+> --- a/net/sunrpc/xprtsock.c
+> +++ b/net/sunrpc/xprtsock.c
+> @@ -1611,6 +1611,9 @@ static void xs_tcp_state_change(struct sock *sk)
+>  			clear_bit(XPRT_SOCK_CONNECTING, &transport->sock_state);
+>  			xprt_clear_connecting(xprt);
+>  
+> +			xprt->stat.connect_count++;
+> +			xprt->stat.connect_time += (long)jiffies -
+> +						   xprt->stat.connect_start;
+>  			xprt_wake_pending_tasks(xprt, -EAGAIN);
+>  		}
+>  		spin_unlock(&xprt->transport_lock);
+> @@ -2029,8 +2032,6 @@ static int xs_local_finish_connecting(struct rpc_xprt
+> *xprt,
+>  	}
+>  
+>  	/* Tell the socket layer to start connecting... */
+> -	xprt->stat.connect_count++;
+> -	xprt->stat.connect_start = jiffies;
+>  	return kernel_connect(sock, xs_addr(xprt), xprt->addrlen, 0);
+>  }
+>  
+> @@ -2062,6 +2063,9 @@ static int xs_local_setup_socket(struct sock_xprt
+> *transport)
+>  	case 0:
+>  		dprintk("RPC:       xprt %p connected to %s\n",
+>  				xprt, xprt->address_strings[RPC_DISPLAY_ADDR]);
+> +		xprt->stat.connect_count++;
+> +		xprt->stat.connect_time += (long)jiffies -
+> +					   xprt->stat.connect_start;
+>  		xprt_set_connected(xprt);
+>  	case -ENOBUFS:
+>  		break;
+> @@ -2387,8 +2391,6 @@ static int xs_tcp_finish_connecting(struct rpc_xprt
+> *xprt, struct socket *sock)
+>  	xs_set_memalloc(xprt);
+>  
+>  	/* Tell the socket layer to start connecting... */
+> -	xprt->stat.connect_count++;
+> -	xprt->stat.connect_start = jiffies;
+>  	set_bit(XPRT_SOCK_CONNECTING, &transport->sock_state);
+>  	ret = kernel_connect(sock, xs_addr(xprt), xprt->addrlen, O_NONBLOCK);
+>  	switch (ret) {
+> 
