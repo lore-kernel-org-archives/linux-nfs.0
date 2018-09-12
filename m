@@ -1,136 +1,38 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f66.google.com ([209.85.214.66]:36994 "EHLO
-        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727809AbeILXrQ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 12 Sep 2018 19:47:16 -0400
-Message-ID: <4f47a70d21594d80d01c85747e6dcb3a0b9bc0d0.camel@gmail.com>
-Subject: Re: [PATCH v1 08/22] sunrpc: Fix connect metrics
-From: Anna Schumaker <schumaker.anna@gmail.com>
-To: Chuck Lever <chuck.lever@oracle.com>, linux-rdma@vger.kernel.org,
-        linux-nfs@vger.kernel.org
-Date: Wed, 12 Sep 2018 14:41:25 -0400
-In-Reply-To: <20180910150937.10564.26277.stgit@manet.1015granger.net>
-References: <20180910150040.10564.97487.stgit@manet.1015granger.net>
-         <20180910150937.10564.26277.stgit@manet.1015granger.net>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from tau.solarneutrino.net ([66.199.224.231]:44360 "EHLO
+        tau.solarneutrino.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727839AbeILXtf (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 12 Sep 2018 19:49:35 -0400
+Received: from ryan by tau.solarneutrino.net with local (Exim 4.80)
+        (envelope-from <ryan@tau.solarneutrino.net>)
+        id 1g09hz-0001yi-Ls
+        for linux-nfs@vger.kernel.org; Wed, 12 Sep 2018 14:17:47 -0400
+Date: Wed, 12 Sep 2018 14:17:47 -0400
+From: Ryan Richter <ryan@tau.solarneutrino.net>
+To: linux-nfs@vger.kernel.org
+Subject: mkdir disregards umask
+Message-ID: <20180912181747.GQ31400@tau.solarneutrino.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Chuck,
+All directories created over nfs have 777 permissions.
 
-On Mon, 2018-09-10 at 11:09 -0400, Chuck Lever wrote:
-> For TCP, the logic in xprt_connect_status is currently never invoked
-> to record a successful connection. Commit 2a4919919a97 ("SUNRPC:
-> Return EAGAIN instead of ENOTCONN when waking up xprt->pending")
-> changed the way TCP xprt's are awoken after a connect succeeds.
-> 
-> Instead, change connection-oriented transports to bump connect_count
-> and compute connect_time the moment that XPRT_CONNECTED is set.
-> 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
->  net/sunrpc/xprt.c               |   10 +++-------
->  net/sunrpc/xprtrdma/transport.c |    6 +++++-
->  net/sunrpc/xprtsock.c           |   10 ++++++----
->  3 files changed, 14 insertions(+), 12 deletions(-)
-> 
-> diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-> index a8db2e3f..f03ffa2 100644
-> --- a/net/sunrpc/xprt.c
-> +++ b/net/sunrpc/xprt.c
-> @@ -791,15 +791,11 @@ static void xprt_connect_status(struct rpc_task *task)
->  {
->  	struct rpc_xprt	*xprt = task->tk_rqstp->rq_xprt;
+# umask
+022
+# mkdir aaaa
+# ls -ld aaaa
+drwxrwxrwx 2 root root 2 Sep 12 13:45 aaaa
+# rmdir aaaa
+# mount|grep /mnt
+mazuelo:/home/sbio/ryan on /mnt type nfs (rw,relatime,vers=3,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=132.204.84.95,mountvers=3,mountport=38634,mountproto=udp,local_lock=none,addr=132.204.84.95)
 
-Looks like the only remaining user of the xprt is in a dprintk() towards the
-bottom of this function to get the servername.  This is giving me an unused
-variable warning when CONFIG_SUNRPC_DEBUG=n, so I'm wondering if you can take
-out the variable and just access the server name the long way (task->tk_rqstp-
->rq_xprt->servername)?
+The same happens for regular users.
+
+This is a very serious bug.  The server is runnig the debian stretch 4.9
+kernel, and the client is running a vanilla 4.4.155.  Is there anything
+in the configuration causing this, or is it a kernel bug?
 
 Thanks,
-Anna
-
->  
-> -	if (task->tk_status == 0) {
-> -		xprt->stat.connect_count++;
-> -		xprt->stat.connect_time += (long)jiffies - xprt-
-> >stat.connect_start;
-> +	switch (task->tk_status) {
-> +	case 0:
->  		dprintk("RPC: %5u xprt_connect_status: connection
-> established\n",
->  				task->tk_pid);
-> -		return;
-> -	}
-> -
-> -	switch (task->tk_status) {
-> +		break;
->  	case -ECONNREFUSED:
->  	case -ECONNRESET:
->  	case -ECONNABORTED:
-> diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-> index 3ae73e6..087acfc 100644
-> --- a/net/sunrpc/xprtrdma/transport.c
-> +++ b/net/sunrpc/xprtrdma/transport.c
-> @@ -242,8 +242,12 @@
->  
->  	spin_lock_bh(&xprt->transport_lock);
->  	if (ep->rep_connected > 0) {
-> -		if (!xprt_test_and_set_connected(xprt))
-> +		if (!xprt_test_and_set_connected(xprt)) {
-> +			xprt->stat.connect_count++;
-> +			xprt->stat.connect_time += (long)jiffies -
-> +						   xprt->stat.connect_start;
->  			xprt_wake_pending_tasks(xprt, 0);
-> +		}
->  	} else {
->  		if (xprt_test_and_clear_connected(xprt))
->  			xprt_wake_pending_tasks(xprt, -ENOTCONN);
-> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-> index 6b7539c..e146caa 100644
-> --- a/net/sunrpc/xprtsock.c
-> +++ b/net/sunrpc/xprtsock.c
-> @@ -1611,6 +1611,9 @@ static void xs_tcp_state_change(struct sock *sk)
->  			clear_bit(XPRT_SOCK_CONNECTING, &transport->sock_state);
->  			xprt_clear_connecting(xprt);
->  
-> +			xprt->stat.connect_count++;
-> +			xprt->stat.connect_time += (long)jiffies -
-> +						   xprt->stat.connect_start;
->  			xprt_wake_pending_tasks(xprt, -EAGAIN);
->  		}
->  		spin_unlock(&xprt->transport_lock);
-> @@ -2029,8 +2032,6 @@ static int xs_local_finish_connecting(struct rpc_xprt
-> *xprt,
->  	}
->  
->  	/* Tell the socket layer to start connecting... */
-> -	xprt->stat.connect_count++;
-> -	xprt->stat.connect_start = jiffies;
->  	return kernel_connect(sock, xs_addr(xprt), xprt->addrlen, 0);
->  }
->  
-> @@ -2062,6 +2063,9 @@ static int xs_local_setup_socket(struct sock_xprt
-> *transport)
->  	case 0:
->  		dprintk("RPC:       xprt %p connected to %s\n",
->  				xprt, xprt->address_strings[RPC_DISPLAY_ADDR]);
-> +		xprt->stat.connect_count++;
-> +		xprt->stat.connect_time += (long)jiffies -
-> +					   xprt->stat.connect_start;
->  		xprt_set_connected(xprt);
->  	case -ENOBUFS:
->  		break;
-> @@ -2387,8 +2391,6 @@ static int xs_tcp_finish_connecting(struct rpc_xprt
-> *xprt, struct socket *sock)
->  	xs_set_memalloc(xprt);
->  
->  	/* Tell the socket layer to start connecting... */
-> -	xprt->stat.connect_count++;
-> -	xprt->stat.connect_start = jiffies;
->  	set_bit(XPRT_SOCK_CONNECTING, &transport->sock_state);
->  	ret = kernel_connect(sock, xs_addr(xprt), xprt->addrlen, O_NONBLOCK);
->  	switch (ret) {
-> 
+-ryan
