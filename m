@@ -1,36 +1,70 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:49584 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:46122 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726832AbeIMOXP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 13 Sep 2018 10:23:15 -0400
+        id S1728071AbeIMTST (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 13 Sep 2018 15:18:19 -0400
+Subject: [PATCH 0/3] keyutils: request_key and DNS resolver changes
 From: David Howells <dhowells@redhat.com>
-In-Reply-To: <87lg854ws2.fsf@suse.com>
-References: <87lg854ws2.fsf@suse.com> <17451.1536750676@warthog.procyon.org.uk>
-To: =?us-ascii?Q?=3D=3Futf-8=3FQ=3FAur=3DC3=3DA9lien=3F=3D?= Aptel
-        <aaptel@suse.com>
-Cc: dhowells@redhat.com, trond.myklebust@hammerspace.com,
-        anna.schumaker@netapp.com, sfrench@samba.org,
-        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
-        linux-afs@lists.infradead.org, linux-fsdevel@vger.kernel.org
-Subject: Re: Making the in-kernel DNS resolver handle server lists
+To: keyrings@vger.kernel.org
+Cc: dhowells@redhat.com, linux-nfs@vger.kernel.org,
+        linux-cifs@vger.kernel.org, linux-security-module@vger.kernel.org
+Date: Thu, 13 Sep 2018 15:08:37 +0100
+Message-ID: <153684771698.10049.12488548190876920608.stgit@warthog.procyon.org.uk>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Date: Thu, 13 Sep 2018 10:14:37 +0100
-Message-ID: <26010.1536830077@warthog.procyon.org.uk>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Aurélien Aptel <aaptel@suse.com> wrote:
 
-> > The payload handed to the kernel currently looks like something assembled
-> > from the data obtained from a bunch of SRV records that have been further
-> > looked up to A or AAAA.
-> 
-> I was wondering recently if the current kernel API lets you to access
-> all A/AAAA records in case a same domain uses multiple ones. It seems
-> not, is this correct?
+Here's a set of keyutils patches that makes it possible to override the DNS
+resolver (or any other upcall target).  This allows the kafs-utils package to
+override requests to the dns resolver and make use of static configuration in
+addition to DNS lookups.  This allows this function to be moved out of
+keyutils and allows the dependency on krb5 to be removed.
 
-It does permit this.  kAFS currently uses it.  Just don't pass "ipv4" or
-"ipv6" in the callout info as those impose restrictions.
+The following changes are made:
 
+ (1) request-key now has better command-line option support for debugging the
+     configuration.
+
+ (2) request-key now reads all its config files and searches for the best
+     match rather than the first match.
+
+     'Best match' is defined as the match with the least number of characters
+     skipped by a wildcard, first in the left most column, then in the next
+     column and so on.
+
+     So in the following two config lines:
+
+    	create  dns_resolver *		*	/sbin/key.dns_resolver %k
+	create  dns_resolver afsdb:*	*	/sbin/dns_afsdb %k
+
+     For dns_resolver keys, the second line is preferred if the description
+     matches "afsdb:*" - no matter the order in which they're encountered -
+     but the first line will be used otherwise.
+
+ (3) The AFS cellservdb config file parsing is removed from key.dns_resolver
+     and the dependencies for the krb5 profile functions are dropped.
+    
+The patches can also be found here:
+
+	https://git.kernel.org/pub/scm/linux/kernel/git/dhowells/keyutils.git
+
+on branch next (bottom 3 patches).
+
+Thanks,
 David
+---
+David Howells (3):
+      request-key: Provide a command line option to suppress execution
+      request-key: Find best match rather than first match
+      Remove the dependency on MIT Kerberos
+
+
+ Makefile               |    2 
+ dns.afsdb.c            |  268 ++++---------------------------
+ keyutils.spec          |    2 
+ man/request-key.8      |   31 +++-
+ man/request-key.conf.5 |   36 ++--
+ request-key.c          |  419 +++++++++++++++++++++++++++++-------------------
+ 6 files changed, 336 insertions(+), 422 deletions(-)
