@@ -1,54 +1,51 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pl1-f195.google.com ([209.85.214.195]:37634 "EHLO
-        mail-pl1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726950AbeIMXlS (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 13 Sep 2018 19:41:18 -0400
-MIME-Version: 1.0
-References: <17451.1536750676@warthog.procyon.org.uk> <87lg854ws2.fsf@suse.com>
+Received: from mx1.redhat.com ([209.132.183.28]:37992 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726824AbeINBM2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 13 Sep 2018 21:12:28 -0400
+From: David Howells <dhowells@redhat.com>
 In-Reply-To: <87lg854ws2.fsf@suse.com>
-From: Steve French <smfrench@gmail.com>
-Date: Thu, 13 Sep 2018 11:30:26 -0700
-Message-ID: <CAH2r5mu72XVSBp48BYWcg_tmioC8feHmwzNM8UnzaZ=g3g9UZw@mail.gmail.com>
+References: <87lg854ws2.fsf@suse.com> <17451.1536750676@warthog.procyon.org.uk>
+To: =?us-ascii?Q?=3D=3Futf-8=3FQ=3FAur=3DC3=3DA9lien=3F=3D?= Aptel
+        <aaptel@suse.com>
+Cc: dhowells@redhat.com, trond.myklebust@hammerspace.com,
+        anna.schumaker@netapp.com, sfrench@samba.org,
+        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
+        linux-afs@lists.infradead.org, linux-fsdevel@vger.kernel.org
 Subject: Re: Making the in-kernel DNS resolver handle server lists
-To: =?UTF-8?Q?Aur=C3=A9lien_Aptel?= <aaptel@suse.com>
-Cc: David Howells <dhowells@redhat.com>,
-        trond.myklebust@hammerspace.com,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Steve French <sfrench@samba.org>, linux-nfs@vger.kernel.org,
-        CIFS <linux-cifs@vger.kernel.org>, linux-afs@lists.infradead.org,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Date: Thu, 13 Sep 2018 21:01:26 +0100
+Message-ID: <5805.1536868886@warthog.procyon.org.uk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Sep 13, 2018 at 1:39 AM Aur=C3=A9lien Aptel <aaptel@suse.com> wrote=
-:
->
-> David Howells <dhowells@redhat.com> writes:
-> > Is this something that NFS or CIFS (or anything else for that matter) c=
-ould
-> > find useful?
->
-> That sounds useful indeed. I'm currently thinking about a failover
-> mechanism for DFS (symbolic links across servers in cifs). The protocol
-> supports multiple possible targets for the link in case one is down. The
-> targets are usually using hostnames so with your change we could have a
-> second layer of failover at the DNS level.
->
-> > I also have this loading information from a configuration file as a
-> > backup/override of the DNS.  Could that also be useful to NFS/CIFS?
->
-> Cheers,
-> --
-> Aur=C3=A9lien Aptel / SUSE Labs Samba Team
+Aurélien Aptel <aaptel@suse.com> wrote:
 
-Yes - the idea that Aurelien notes above is VERY important for some
-improving some recovery scenarios, and if this helps us get there
-faster it will greatly improve reliability of some common user scenarios.
+> > 	struct address {
+> > 		union {
+> > 			struct sockaddr_in	sin;
+> > 			struct sockaddr_in6	sin6;
+> > 		};
+> > 	};
+> 
+> You probably want struct sockaddr_storage here.
 
+It's actually now:
 
+	struct address {
+		u8 family;
+		union {
+			struct sockaddr_in	sin;
+			struct sockaddr_in6	sin6;
+		};
+	};
 
---=20
-Thanks,
+And note that this is schematic not actual.  It's not actually a C union.
+ipv4 and ipv6 addresses take up different amounts of space in the binary blob.
 
-Steve
+One of the criteria is that the blob should be as small as possible since it
+gets cached by the kernel as is (as the payload of a key) and only gets looked
+at when it gets parsed.
+
+David
