@@ -1,32 +1,54 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:40486 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726930AbeIMU5Q (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 13 Sep 2018 16:57:16 -0400
-Received: from smtp.corp.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.27])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id BDFFEC047B94
-        for <linux-nfs@vger.kernel.org>; Thu, 13 Sep 2018 15:47:12 +0000 (UTC)
-Received: from steved.boston.devel.redhat.com (ovpn-116-67.phx2.redhat.com [10.3.116.67])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 8503A86B8D
-        for <linux-nfs@vger.kernel.org>; Thu, 13 Sep 2018 15:47:12 +0000 (UTC)
-To: linux-nfs@vger.kernel.org
-From: Steve Dickson <SteveD@RedHat.com>
-Subject: osd_login
-Message-ID: <114a207b-9fb8-0216-1ad5-e49f7f4500ad@RedHat.com>
-Date: Thu, 13 Sep 2018 11:47:12 -0400
+Received: from mail-pl1-f195.google.com ([209.85.214.195]:37634 "EHLO
+        mail-pl1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726950AbeIMXlS (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 13 Sep 2018 19:41:18 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+References: <17451.1536750676@warthog.procyon.org.uk> <87lg854ws2.fsf@suse.com>
+In-Reply-To: <87lg854ws2.fsf@suse.com>
+From: Steve French <smfrench@gmail.com>
+Date: Thu, 13 Sep 2018 11:30:26 -0700
+Message-ID: <CAH2r5mu72XVSBp48BYWcg_tmioC8feHmwzNM8UnzaZ=g3g9UZw@mail.gmail.com>
+Subject: Re: Making the in-kernel DNS resolver handle server lists
+To: =?UTF-8?Q?Aur=C3=A9lien_Aptel?= <aaptel@suse.com>
+Cc: David Howells <dhowells@redhat.com>,
+        trond.myklebust@hammerspace.com,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Steve French <sfrench@samba.org>, linux-nfs@vger.kernel.org,
+        CIFS <linux-cifs@vger.kernel.org>, linux-afs@lists.infradead.org,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello,
+On Thu, Sep 13, 2018 at 1:39 AM Aur=C3=A9lien Aptel <aaptel@suse.com> wrote=
+:
+>
+> David Howells <dhowells@redhat.com> writes:
+> > Is this something that NFS or CIFS (or anything else for that matter) c=
+ould
+> > find useful?
+>
+> That sounds useful indeed. I'm currently thinking about a failover
+> mechanism for DFS (symbolic links across servers in cifs). The protocol
+> supports multiple possible targets for the link in case one is down. The
+> targets are usually using hostnames so with your change we could have a
+> second layer of failover at the DNS level.
+>
+> > I also have this loading information from a configuration file as a
+> > backup/override of the DNS.  Could that also be useful to NFS/CIFS?
+>
+> Cheers,
+> --
+> Aur=C3=A9lien Aptel / SUSE Labs Samba Team
 
-Is the osd_login shell script use anymore?
+Yes - the idea that Aurelien notes above is VERY important for some
+improving some recovery scenarios, and if this helps us get there
+faster it will greatly improve reliability of some common user scenarios.
 
-Would it be a problem if it goes away?
 
-tia,
 
-steved.
+--=20
+Thanks,
+
+Steve
