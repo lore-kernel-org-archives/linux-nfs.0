@@ -1,21 +1,21 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk1-f193.google.com ([209.85.222.193]:43475 "EHLO
-        mail-qk1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728269AbeIQSbk (ORCPT
+Received: from mail-qt0-f178.google.com ([209.85.216.178]:33918 "EHLO
+        mail-qt0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1728229AbeIQSbk (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Sep 2018 14:31:40 -0400
-Received: by mail-qk1-f193.google.com with SMTP id 130-v6so8903611qkd.10
-        for <linux-nfs@vger.kernel.org>; Mon, 17 Sep 2018 06:04:25 -0700 (PDT)
+Received: by mail-qt0-f178.google.com with SMTP id m13-v6so15171350qth.1
+        for <linux-nfs@vger.kernel.org>; Mon, 17 Sep 2018 06:04:24 -0700 (PDT)
 Received: from leira.trondhjem.org.localdomain ([66.187.232.65])
-        by smtp.gmail.com with ESMTPSA id q1-v6sm10499607qkl.31.2018.09.17.06.04.23
+        by smtp.gmail.com with ESMTPSA id q1-v6sm10499607qkl.31.2018.09.17.06.04.22
         for <linux-nfs@vger.kernel.org>
         (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
-        Mon, 17 Sep 2018 06:04:23 -0700 (PDT)
+        Mon, 17 Sep 2018 06:04:22 -0700 (PDT)
 From: Trond Myklebust <trondmy@gmail.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH v3 23/44] SUNRPC: Don't reset the request 'bytes_sent' counter when releasing XPRT_LOCK
-Date: Mon, 17 Sep 2018 09:03:14 -0400
-Message-Id: <20180917130335.112832-24-trond.myklebust@hammerspace.com>
-In-Reply-To: <20180917130335.112832-23-trond.myklebust@hammerspace.com>
+Subject: [PATCH v3 22/44] SUNRPC: Treat the task and request as separate in the xprt_ops->send_request()
+Date: Mon, 17 Sep 2018 09:03:13 -0400
+Message-Id: <20180917130335.112832-23-trond.myklebust@hammerspace.com>
+In-Reply-To: <20180917130335.112832-22-trond.myklebust@hammerspace.com>
 References: <20180917130335.112832-1-trond.myklebust@hammerspace.com>
  <20180917130335.112832-2-trond.myklebust@hammerspace.com>
  <20180917130335.112832-3-trond.myklebust@hammerspace.com>
@@ -38,98 +38,209 @@ References: <20180917130335.112832-1-trond.myklebust@hammerspace.com>
  <20180917130335.112832-20-trond.myklebust@hammerspace.com>
  <20180917130335.112832-21-trond.myklebust@hammerspace.com>
  <20180917130335.112832-22-trond.myklebust@hammerspace.com>
- <20180917130335.112832-23-trond.myklebust@hammerspace.com>
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If the request is still on the queue, this will be incorrect behaviour.
+When we shift to using the transmit queue, then the task that holds the
+write lock will not necessarily be the same as the one being transmitted.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- net/sunrpc/clnt.c |  4 ----
- net/sunrpc/xprt.c | 14 --------------
- 2 files changed, 18 deletions(-)
+ include/linux/sunrpc/xprt.h                |  2 +-
+ net/sunrpc/xprt.c                          |  2 +-
+ net/sunrpc/xprtrdma/svc_rdma_backchannel.c |  3 +--
+ net/sunrpc/xprtrdma/transport.c            |  5 ++--
+ net/sunrpc/xprtsock.c                      | 27 +++++++++++-----------
+ 5 files changed, 18 insertions(+), 21 deletions(-)
 
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index dcefbf406482..4ca23a6607ba 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -2128,15 +2128,11 @@ static void
- call_status(struct rpc_task *task)
- {
- 	struct rpc_clnt	*clnt = task->tk_client;
--	struct rpc_rqst	*req = task->tk_rqstp;
- 	int		status;
- 
- 	if (!task->tk_msg.rpc_proc->p_proc)
- 		trace_xprt_ping(task->tk_xprt, task->tk_status);
- 
--	if (req->rq_reply_bytes_recvd > 0 && !req->rq_bytes_sent)
--		task->tk_status = req->rq_reply_bytes_recvd;
--
- 	dprint_status(task);
- 
- 	status = task->tk_status;
+diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
+index b8a7de161f67..8c2bb078f00c 100644
+--- a/include/linux/sunrpc/xprt.h
++++ b/include/linux/sunrpc/xprt.h
+@@ -140,7 +140,7 @@ struct rpc_xprt_ops {
+ 	void		(*connect)(struct rpc_xprt *xprt, struct rpc_task *task);
+ 	int		(*buf_alloc)(struct rpc_task *task);
+ 	void		(*buf_free)(struct rpc_task *task);
+-	int		(*send_request)(struct rpc_task *task);
++	int		(*send_request)(struct rpc_rqst *req, struct rpc_task *task);
+ 	void		(*set_retrans_timeout)(struct rpc_task *task);
+ 	void		(*timer)(struct rpc_xprt *xprt, struct rpc_task *task);
+ 	void		(*release_request)(struct rpc_task *task);
 diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-index 00b17cb49910..3b31830ef851 100644
+index d418bd4db7ff..00b17cb49910 100644
 --- a/net/sunrpc/xprt.c
 +++ b/net/sunrpc/xprt.c
-@@ -332,15 +332,6 @@ static void __xprt_lock_write_next_cong(struct rpc_xprt *xprt)
- 	xprt_clear_locked(xprt);
- }
+@@ -1190,7 +1190,7 @@ void xprt_transmit(struct rpc_task *task)
+ 	}
  
--static void xprt_task_clear_bytes_sent(struct rpc_task *task)
--{
--	if (task != NULL) {
--		struct rpc_rqst *req = task->tk_rqstp;
--		if (req != NULL)
--			req->rq_bytes_sent = 0;
--	}
--}
--
+ 	connect_cookie = xprt->connect_cookie;
+-	status = xprt->ops->send_request(task);
++	status = xprt->ops->send_request(req, task);
+ 	trace_xprt_transmit(xprt, req->rq_xid, status);
+ 	if (status != 0) {
+ 		task->tk_status = status;
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_backchannel.c b/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
+index 09b12b7568fe..d1618c70edb4 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
+@@ -215,9 +215,8 @@ rpcrdma_bc_send_request(struct svcxprt_rdma *rdma, struct rpc_rqst *rqst)
+  * connection.
+  */
+ static int
+-xprt_rdma_bc_send_request(struct rpc_task *task)
++xprt_rdma_bc_send_request(struct rpc_rqst *rqst, struct rpc_task *task)
+ {
+-	struct rpc_rqst *rqst = task->tk_rqstp;
+ 	struct svc_xprt *sxprt = rqst->rq_xprt->bc_xprt;
+ 	struct svcxprt_rdma *rdma;
+ 	int ret;
+diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
+index 143ce2579ba9..fa684bf4d090 100644
+--- a/net/sunrpc/xprtrdma/transport.c
++++ b/net/sunrpc/xprtrdma/transport.c
+@@ -706,9 +706,8 @@ xprt_rdma_free(struct rpc_task *task)
+  *		sent. Do not try to send this message again.
+  */
+ static int
+-xprt_rdma_send_request(struct rpc_task *task)
++xprt_rdma_send_request(struct rpc_rqst *rqst, struct rpc_task *task)
+ {
+-	struct rpc_rqst *rqst = task->tk_rqstp;
+ 	struct rpc_xprt *xprt = rqst->rq_xprt;
+ 	struct rpcrdma_req *req = rpcr_to_rdmar(rqst);
+ 	struct rpcrdma_xprt *r_xprt = rpcx_to_rdmax(xprt);
+@@ -741,7 +740,7 @@ xprt_rdma_send_request(struct rpc_task *task)
+ 	/* An RPC with no reply will throw off credit accounting,
+ 	 * so drop the connection to reset the credit grant.
+ 	 */
+-	if (!rpc_reply_expected(task))
++	if (!rpc_reply_expected(rqst->rq_task))
+ 		goto drop_connection;
+ 	return 0;
+ 
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 8d6404259ff9..b8143eded4af 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -449,12 +449,12 @@ static void xs_nospace_callback(struct rpc_task *task)
+ 
  /**
-  * xprt_release_xprt - allow other requests to use a transport
-  * @xprt: transport with other tasks potentially waiting
-@@ -351,7 +342,6 @@ static void xprt_task_clear_bytes_sent(struct rpc_task *task)
- void xprt_release_xprt(struct rpc_xprt *xprt, struct rpc_task *task)
+  * xs_nospace - place task on wait queue if transmit was incomplete
++ * @req: pointer to RPC request
+  * @task: task to put to sleep
+  *
+  */
+-static int xs_nospace(struct rpc_task *task)
++static int xs_nospace(struct rpc_rqst *req, struct rpc_task *task)
  {
- 	if (xprt->snd_task == task) {
--		xprt_task_clear_bytes_sent(task);
- 		xprt_clear_locked(xprt);
- 		__xprt_lock_write_next(xprt);
- 	}
-@@ -369,7 +359,6 @@ EXPORT_SYMBOL_GPL(xprt_release_xprt);
- void xprt_release_xprt_cong(struct rpc_xprt *xprt, struct rpc_task *task)
- {
- 	if (xprt->snd_task == task) {
--		xprt_task_clear_bytes_sent(task);
- 		xprt_clear_locked(xprt);
- 		__xprt_lock_write_next_cong(xprt);
- 	}
-@@ -742,7 +731,6 @@ bool xprt_lock_connect(struct rpc_xprt *xprt,
- 		goto out;
- 	if (xprt->snd_task != task)
- 		goto out;
--	xprt_task_clear_bytes_sent(task);
- 	xprt->snd_task = cookie;
- 	ret = true;
- out:
-@@ -788,7 +776,6 @@ void xprt_connect(struct rpc_task *task)
- 		xprt->ops->close(xprt);
+-	struct rpc_rqst *req = task->tk_rqstp;
+ 	struct rpc_xprt *xprt = req->rq_xprt;
+ 	struct sock_xprt *transport = container_of(xprt, struct sock_xprt, xprt);
+ 	struct sock *sk = transport->inet;
+@@ -513,6 +513,7 @@ static inline void xs_encode_stream_record_marker(struct xdr_buf *buf)
  
- 	if (!xprt_connected(xprt)) {
--		task->tk_rqstp->rq_bytes_sent = 0;
- 		task->tk_timeout = task->tk_rqstp->rq_timeout;
- 		task->tk_rqstp->rq_connect_cookie = xprt->connect_cookie;
- 		rpc_sleep_on(&xprt->pending, task, xprt_connect_status);
-@@ -1093,7 +1080,6 @@ xprt_request_enqueue_transmit(struct rpc_task *task)
- static void
- xprt_request_dequeue_transmit_locked(struct rpc_task *task)
+ /**
+  * xs_local_send_request - write an RPC request to an AF_LOCAL socket
++ * @req: pointer to RPC request
+  * @task: RPC task that manages the state of an RPC request
+  *
+  * Return values:
+@@ -522,9 +523,8 @@ static inline void xs_encode_stream_record_marker(struct xdr_buf *buf)
+  * ENOTCONN:	Caller needs to invoke connect logic then call again
+  *    other:	Some other error occured, the request was not sent
+  */
+-static int xs_local_send_request(struct rpc_task *task)
++static int xs_local_send_request(struct rpc_rqst *req, struct rpc_task *task)
  {
--	xprt_task_clear_bytes_sent(task);
- 	if (test_and_clear_bit(RPC_TASK_NEED_XMIT, &task->tk_runstate))
- 		list_del(&task->tk_rqstp->rq_xmit);
- }
+-	struct rpc_rqst *req = task->tk_rqstp;
+ 	struct rpc_xprt *xprt = req->rq_xprt;
+ 	struct sock_xprt *transport =
+ 				container_of(xprt, struct sock_xprt, xprt);
+@@ -569,7 +569,7 @@ static int xs_local_send_request(struct rpc_task *task)
+ 	case -ENOBUFS:
+ 		break;
+ 	case -EAGAIN:
+-		status = xs_nospace(task);
++		status = xs_nospace(req, task);
+ 		break;
+ 	default:
+ 		dprintk("RPC:       sendmsg returned unrecognized error %d\n",
+@@ -585,6 +585,7 @@ static int xs_local_send_request(struct rpc_task *task)
+ 
+ /**
+  * xs_udp_send_request - write an RPC request to a UDP socket
++ * @req: pointer to RPC request
+  * @task: address of RPC task that manages the state of an RPC request
+  *
+  * Return values:
+@@ -594,9 +595,8 @@ static int xs_local_send_request(struct rpc_task *task)
+  * ENOTCONN:	Caller needs to invoke connect logic then call again
+  *    other:	Some other error occurred, the request was not sent
+  */
+-static int xs_udp_send_request(struct rpc_task *task)
++static int xs_udp_send_request(struct rpc_rqst *req, struct rpc_task *task)
+ {
+-	struct rpc_rqst *req = task->tk_rqstp;
+ 	struct rpc_xprt *xprt = req->rq_xprt;
+ 	struct sock_xprt *transport = container_of(xprt, struct sock_xprt, xprt);
+ 	struct xdr_buf *xdr = &req->rq_snd_buf;
+@@ -638,7 +638,7 @@ static int xs_udp_send_request(struct rpc_task *task)
+ 		/* Should we call xs_close() here? */
+ 		break;
+ 	case -EAGAIN:
+-		status = xs_nospace(task);
++		status = xs_nospace(req, task);
+ 		break;
+ 	case -ENETUNREACH:
+ 	case -ENOBUFS:
+@@ -658,6 +658,7 @@ static int xs_udp_send_request(struct rpc_task *task)
+ 
+ /**
+  * xs_tcp_send_request - write an RPC request to a TCP socket
++ * @req: pointer to RPC request
+  * @task: address of RPC task that manages the state of an RPC request
+  *
+  * Return values:
+@@ -670,9 +671,8 @@ static int xs_udp_send_request(struct rpc_task *task)
+  * XXX: In the case of soft timeouts, should we eventually give up
+  *	if sendmsg is not able to make progress?
+  */
+-static int xs_tcp_send_request(struct rpc_task *task)
++static int xs_tcp_send_request(struct rpc_rqst *req, struct rpc_task *task)
+ {
+-	struct rpc_rqst *req = task->tk_rqstp;
+ 	struct rpc_xprt *xprt = req->rq_xprt;
+ 	struct sock_xprt *transport = container_of(xprt, struct sock_xprt, xprt);
+ 	struct xdr_buf *xdr = &req->rq_snd_buf;
+@@ -697,7 +697,7 @@ static int xs_tcp_send_request(struct rpc_task *task)
+ 	 * completes while the socket holds a reference to the pages,
+ 	 * then we may end up resending corrupted data.
+ 	 */
+-	if (task->tk_flags & RPC_TASK_SENT)
++	if (req->rq_task->tk_flags & RPC_TASK_SENT)
+ 		zerocopy = false;
+ 
+ 	if (test_bit(XPRT_SOCK_UPD_TIMEOUT, &transport->sock_state))
+@@ -761,7 +761,7 @@ static int xs_tcp_send_request(struct rpc_task *task)
+ 		/* Should we call xs_close() here? */
+ 		break;
+ 	case -EAGAIN:
+-		status = xs_nospace(task);
++		status = xs_nospace(req, task);
+ 		break;
+ 	case -ECONNRESET:
+ 	case -ECONNREFUSED:
+@@ -2706,9 +2706,8 @@ static int bc_sendto(struct rpc_rqst *req)
+ /*
+  * The send routine. Borrows from svc_send
+  */
+-static int bc_send_request(struct rpc_task *task)
++static int bc_send_request(struct rpc_rqst *req, struct rpc_task *task)
+ {
+-	struct rpc_rqst *req = task->tk_rqstp;
+ 	struct svc_xprt	*xprt;
+ 	int len;
+ 
 -- 
 2.17.1
