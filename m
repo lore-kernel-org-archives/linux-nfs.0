@@ -1,80 +1,89 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-eopbgr710112.outbound.protection.outlook.com ([40.107.71.112]:44137
-        "EHLO NAM05-BY2-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726840AbeIPVgM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sun, 16 Sep 2018 17:36:12 -0400
-From: Trond Myklebust <trondmy@hammerspace.com>
-To: "cks@cs.toronto.edu" <cks@cs.toronto.edu>,
-        "jlayton@redhat.com" <jlayton@redhat.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Received: from cliff.cs.toronto.edu ([128.100.3.120]:46648 "EHLO
+        cliff.cs.toronto.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725996AbeIQFnW (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Sep 2018 01:43:22 -0400
+From: Chris Siebenmann <cks@cs.toronto.edu>
+To: Trond Myklebust <trondmy@hammerspace.com>
+cc: "cks@cs.toronto.edu" <cks@cs.toronto.edu>,
+        "jlayton@redhat.com" <jlayton@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
 Subject: Re: Correctly understanding Linux's close-to-open consistency
-Date: Sun, 16 Sep 2018 16:12:43 +0000
-Message-ID: <2e145c9d46e2fbec262d0bc67d6b14b75b41bea6.camel@hammerspace.com>
-References: <20180915191102.EC92232257C@apps1.cs.toronto.edu>
-         <9401a43633d469bde6e4f842fd6175a9dcef9c7e.camel@redhat.com>
-In-Reply-To: <9401a43633d469bde6e4f842fd6175a9dcef9c7e.camel@redhat.com>
-Content-Type: text/plain; charset="utf-8"
+In-reply-to: trondmy's message of Sun, 16 Sep 2018 16:12:43 -0000.
+             <2e145c9d46e2fbec262d0bc67d6b14b75b41bea6.camel@hammerspace.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Date: Sun, 16 Sep 2018 20:18:35 -0400
+Message-Id: <20180917001835.23C7232257C@apps1.cs.toronto.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gU3VuLCAyMDE4LTA5LTE2IGF0IDA3OjAxIC0wNDAwLCBKZWZmIExheXRvbiB3cm90ZToNCj4g
-T24gU2F0LCAyMDE4LTA5LTE1IGF0IDE1OjExIC0wNDAwLCBDaHJpcyBTaWViZW5tYW5uIHdyb3Rl
-Og0KPiA+ID4gT24gV2VkLCAyMDE4LTA5LTEyIGF0IDIxOjI0IC0wNDAwLCBDaHJpcyBTaWViZW5t
-YW5uIHdyb3RlOg0KPiA+ID4gPiAgSXMgaXQgY29ycmVjdCB0byBzYXkgdGhhdCB3aGVuIHdyaXRp
-bmcgZGF0YSB0byBORlMgZmlsZXMsIHRoZQ0KPiA+ID4gPiBvbmx5DQo+ID4gPiA+IHNlcXVlbmNl
-IG9mIG9wZXJhdGlvbnMgdGhhdCBMaW51eCBORlMgY2xpZW50cyBvZmZpY2lhbGx5DQo+ID4gPiA+
-IHN1cHBvcnQgaXMNCj4gPiA+ID4gdGhlIGZvbGxvd2luZzoNCj4gPiA+ID4gDQo+ID4gPiA+IC0g
-YWxsIHByb2Nlc3NlcyBvbiBhbGwgY2xpZW50IG1hY2hpbmVzIGNsb3NlKCkgdGhlIGZpbGUNCj4g
-PiA+ID4gLSBvbmUgbWFjaGluZSAoYSBjbGllbnQgb3IgdGhlIGZpbGVzZXJ2ZXIpIG9wZW5zKCkg
-dGhlIGZpbGUsDQo+ID4gPiA+IHdyaXRlcw0KPiA+ID4gPiAgIHRvIGl0LCBhbmQgY2xvc2UoKXMg
-YWdhaW4NCj4gPiA+ID4gLSBwcm9jZXNzZXMgb24gY2xpZW50IG1hY2hpbmVzIGNhbiBub3cgb3Bl
-bigpIHRoZSBmaWxlIGFnYWluDQo+ID4gPiA+IGZvcg0KPiA+ID4gPiAgIHJlYWRpbmcNCj4gPiA+
-IA0KPiA+ID4gTm8uDQo+ID4gPiANCj4gPiA+IE9uZSBjYW4gYWx3YXlzIGNhbGwgZnN5bmMoKSB0
-byBmb3JjZSBkYXRhIHRvIGJlIGZsdXNoZWQgdG8gYXZvaWQNCj4gPiA+IHRoZQ0KPiA+ID4gY2xv
-c2Ugb2YgdGhlIHdyaXRlIGZkIGluIHRoaXMgc2l0dWF0aW9uLiBUaGF0J3MgcmVhbGx5IGEgbW9y
-ZQ0KPiA+ID4gcG9ydGFibGUNCj4gPiA+IHNvbHV0aW9uIGFueXdheS4gQSBsb2NhbCBmaWxlc3lz
-dGVtIG1heSBub3QgZmx1c2ggZGF0YSB0byBkaXNrLA0KPiA+ID4gb24gY2xvc2UNCj4gPiA+IChm
-b3IgaW5zdGFuY2UpIHNvIGNhbGxpbmcgZnN5bmMgd2lsbCBlbnN1cmUgeW91IHJlbHkgbGVzcyBv
-bg0KPiA+ID4gZmlsZXN5c3RlbQ0KPiA+ID4gaW1wbGVtZW50YXRpb24gZGV0YWlscy4NCj4gPiA+
-IA0KPiA+ID4gVGhlIHNlcGFyYXRlIG9wZW4gYnkgdGhlIHJlYWRlciBqdXN0IGhlbHBzIGVuc3Vy
-ZSB0aGF0IHRoZSBmaWxlJ3MNCj4gPiA+IGF0dHJpYnV0ZXMgYXJlIHJldmFsaWRhdGVkIChzbyB5
-b3UgY2FuIHRlbGwgd2hldGhlciBjYWNoZWQgZGF0YQ0KPiA+ID4geW91DQo+ID4gPiBob2xkIGlz
-IHN0aWxsIHZhbGlkKS4NCj4gPiANCj4gPiAgVGhpcyBiaXQgYWJvdXQgdGhlIHNlcGFyYXRlIG9w
-ZW4gZG9lc24ndCBzZWVtIHRvIGJlIHRoZSBjYXNlDQo+ID4gY3VycmVudGx5LCBhbmQgcGVvcGxl
-IGhlcmUgaGF2ZSBhc3NlcnRlZCB0aGF0IGl0J3Mgbm90IHRydWUgaW4NCj4gPiBnZW5lcmFsLiBT
-cGVjaWZpY2FsbHksIHVuZGVyIHNvbWUgY29uZGl0aW9ucyAqbm90IGludm9sdmluZyB5b3UNCj4g
-PiB3cml0aW5nKiwgaWYgeW91IGRvIG5vdCBjbG9zZSgpIHRoZSBmaWxlIGJlZm9yZSBhbm90aGVy
-IG1hY2hpbmUNCj4gPiB3cml0ZXMNCj4gPiB0byBpdCBhbmQgdGhlbiBvcGVuKCkgaXQgYWZ0ZXJ3
-YXJkLCB0aGUga2VybmVsIG1heSByZXRhaW4gY2FjaGVkDQo+ID4gZGF0YQ0KPiA+IHRoYXQgaXQg
-aXMgaW4gYSBwb3NpdGlvbiB0byBrbm93IChmb3Igc3VyZSkgaXMgaW52YWxpZCBiZWNhdXNlIGl0
-DQo+ID4gZGlkbid0DQo+ID4gZXhpc3QgaW4gdGhlIHByZXZpb3VzIHZlcnNpb24gb2YgdGhlIGZp
-bGUgKGFzIGl0IHdhcyBwYXN0IHRoZSBlbmQNCj4gPiBvZg0KPiA+IGZpbGUgcG9zaXRpb24pLg0K
-PiA+IA0KPiA+ICBTaW5jZSBmYWlsaW5nIHRvIGNsb3NlKCkgYmVmb3JlIGFub3RoZXIgbWFjaGlu
-ZSBvcGVuKClzIHB1dHMgeW91DQo+ID4gb3V0c2lkZSB0aGlzIG91dGxpbmUgb2YgY2xvc2UtdG8t
-b3BlbiwgdGhpcyBrZXJuZWwgYmVoYXZpb3IgaXMgbm90DQo+ID4gYQ0KPiA+IGJ1ZyBhcyBzdWNo
-IChvciBzbyBpdCdzIGJlZW4gZXhwbGFpbmVkIHRvIG1lIGhlcmUpLiAgSWYgeW91IGdvDQo+ID4g
-b3V0c2lkZQ0KPiA+IGMtdC1vLCB0aGUga2VybmVsIGlzIGZyZWUgdG8gZG8gd2hhdGV2ZXIgaXQg
-ZmluZHMgbW9zdCBjb252ZW5pZW50LA0KPiA+IGFuZA0KPiA+IHdoYXQgaXQgZm91bmQgbW9zdCBj
-b252ZW5pZW50IHdhcyB0byBub3QgYm90aGVyIGludmFsaWRhdGluZyBzb21lDQo+ID4gY2FjaGVk
-DQo+ID4gcGFnZSBkYXRhIGV2ZW4gdGhvdWdoIGl0IHNhdyBhIEdFVEFUVFIgY2hhbmdlLg0KPiA+
-IA0KPiANCj4gVGhhdCB3b3VsZCBiZSBhIGJ1Zy4gSWYgd2UgaGF2ZSByZWFzb24gdG8gYmVsaWV2
-ZSB0aGUgZmlsZSBoYXMNCj4gY2hhbmdlZCwNCj4gdGhlbiB3ZSBtdXN0IGludmFsaWRhdGUgdGhl
-IGNhY2hlIG9uIHRoZSBmaWxlIHByaW9yIHRvIGFsbG93aW5nIGENCj4gcmVhZA0KPiB0byBwcm9j
-ZWVkLg0KDQpUaGUgcG9pbnQgaGVyZSBpcyB0aGF0IHdoZW4gdGhlIGZpbGUgaXMgb3BlbiBmb3Ig
-d3JpdGluZyAob3IgZm9yDQpyZWFkK3dyaXRlKSwgYW5kIHlvdXIgYXBwbGljYXRpb25zIGFyZSBu
-b3QgdXNpbmcgbG9ja2luZywgdGhlbiB3ZSBoYXZlDQpubyByZWFzb24gdG8gYmVsaWV2ZSB0aGUg
-ZmlsZSBpcyBiZWluZyBjaGFuZ2VkIG9uIHRoZSBzZXJ2ZXIsIGFuZCB3ZQ0KZGVsaWJlcmF0ZWx5
-IG9wdGltaXNlIGZvciB0aGUgY2FzZSB3aGVyZSB0aGUgY2FjaGUgY29uc2lzdGVuY3kgcnVsZXMN
-CmFyZSBiZWluZyBvYnNlcnZlZC4NCg0KSWYgdGhlIGZpbGUgaXMgb3BlbiBmb3IgcmVhZGluZyBv
-bmx5LCB0aGVuIHdlIG1heSBkZXRlY3QgY2hhbmdlcyBvbiB0aGUNCnNlcnZlci4gSG93ZXZlciB3
-ZSBjZXJ0YWlubHkgY2Fubm90IGd1YXJhbnRlZSB0aGF0IHRoZSBkYXRhIGlzDQpjb25zaXN0ZW50
-IGR1ZSB0byB0aGUgcG90ZW50aWFsIGZvciB3cml0ZSByZW9yZGVyaW5nIGFzIGRpc2N1c3NlZA0K
-ZWFybGllciBpbiB0aGlzIHRocmVhZCwgYW5kIGR1ZSB0byB0aGUgZmFjdCB0aGF0IGF0dHJpYnV0
-ZSByZXZhbGlkYXRpb24NCmlzIG5vdCBhdG9taWMgd2l0aCByZWFkcy4NCg0KQWdhaW4sIHRoZXNl
-IGFyZSB0aGUgY2FzZXMgd2hlcmUgeW91IGFyZSBfbm90XyB1c2luZyBsb2NraW5nIHRvDQptZWRp
-YXRlLiBJZiB5b3UgYXJlIHVzaW5nIGxvY2tpbmcsIHRoZW4gSSBhZ3JlZSB0aGF0IGNoYW5nZXMg
-bmVlZCB0byBiZQ0Kc2VlbiBieSB0aGUgY2xpZW50Lg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxp
-bnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lciwgSGFtbWVyc3BhY2UNCnRyb25kLm15a2xlYnVzdEBo
-YW1tZXJzcGFjZS5jb20NCg0KDQo=
+> > >  Since failing to close() before another machine open()s puts you
+> > > outside this outline of close-to-open, this kernel behavior is
+> > > not a bug as such (or so it's been explained to me here).  If you
+> > > go outside c-t-o, the kernel is free to do whatever it finds most
+> > > convenient, and what it found most convenient was to not bother
+> > > invalidating some cached page data even though it saw a GETATTR
+> > > change.
+> >
+> > That would be a bug. If we have reason to believe the file has
+> > changed, then we must invalidate the cache on the file prior to
+> > allowing a read to proceed.
+>
+> The point here is that when the file is open for writing (or for
+> read+write), and your applications are not using locking, then we have
+> no reason to believe the file is being changed on the server, and we
+> deliberately optimise for the case where the cache consistency rules
+> are being observed.
+
+ In this case the user level can be completely sure that the client
+kernel has issued a GETATTR and received a different answer from the
+NFS server, because the fstat() results it sees have changed from the
+values it has seen before (and remembered). This may not count as the
+NFS client kernel code '[having] reason to believe' that the file has
+changed on the server from its perspective, but if so it's not because
+the information is not available and a GETATTR would have to be explicitly
+issued to find it out. The client code has made the GETATTR and received
+different results, which it has passed to user level; it has just not
+used those results to do things to its cached data.
+
+ Today, if you do a flock(), the NFS client code in the kernel will
+do things that invalidate the cached data, despite the GETATTR result
+from the fileserver not changing. From my outside perspective, as someone
+writing code or dealing with programs that must work over NFS, this is a
+little bit magical, and as a result I would like to understand if it is
+guaranteed that the magic works or if this is not officially supported
+magic, merely 'it happens to work' magic in the way that having the
+file open read-write without the flock() used to work in kernel 4.4.x
+but doesn't now (and this is simply considered to be the kernel using
+CTO more strongly, not a bug).
+
+(Looking at a tcpdump trace, the flock() call appears to cause the kernel
+to issue another GETATTR to the fileserver. The results are the same as
+the GETATTR results that were passed to the client program.)
+
+> Again, these are the cases where you are _not_ using locking to
+> mediate. If you are using locking, then I agree that changes need to
+> be seen by the client.
+
+ The original code (Alpine) *is* using locking in the broad sense,
+but it is not flock() locking; instead it is locking (in this case)
+through .lock files. The current kernel behavior and what I've been
+told about it implies that it is not sufficient for your application to
+perfectly coordinate locking, writes, fsync(), and fstat() visibility
+of the resulting changes through its own mechanism; you must do your
+locking through the officially approved kernel channels (and it is not
+clear what they are) or see potentially incorrect results.
+
+ Consider a system where reads and writes to a shared file are
+coordinated by a central process that everyone communicates with through
+TCP connections. The central process pauses readers before it allows
+a writer to start, the writer always fsync()s before it releases its
+write permissions, and then no reader is permitted to proceed until the
+entire cluster sees the same updated fstat() result. This is perfectly
+coordinated but currently could see incorrect read() results, and I've
+been told that this is allowed under Linux's CTO rules because all of
+the processes hold the file open read-write through this entire process
+(and no one flock()s).
+
+	- cks
