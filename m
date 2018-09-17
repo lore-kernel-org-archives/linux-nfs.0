@@ -1,89 +1,101 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cliff.cs.toronto.edu ([128.100.3.120]:46648 "EHLO
-        cliff.cs.toronto.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725996AbeIQFnW (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Sep 2018 01:43:22 -0400
-From: Chris Siebenmann <cks@cs.toronto.edu>
-To: Trond Myklebust <trondmy@hammerspace.com>
-cc: "cks@cs.toronto.edu" <cks@cs.toronto.edu>,
-        "jlayton@redhat.com" <jlayton@redhat.com>,
+Received: from mail-by2nam01on0109.outbound.protection.outlook.com ([104.47.34.109]:30923
+        "EHLO NAM01-BY2-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1725997AbeIQHoU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 17 Sep 2018 03:44:20 -0400
+From: Trond Myklebust <trondmy@hammerspace.com>
+To: "cks@cs.toronto.edu" <cks@cs.toronto.edu>
+CC: "jlayton@redhat.com" <jlayton@redhat.com>,
         "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
 Subject: Re: Correctly understanding Linux's close-to-open consistency
-In-reply-to: trondmy's message of Sun, 16 Sep 2018 16:12:43 -0000.
-             <2e145c9d46e2fbec262d0bc67d6b14b75b41bea6.camel@hammerspace.com>
+Date: Mon, 17 Sep 2018 02:19:09 +0000
+Message-ID: <e019144a44a4138ba2fdfe813ab563dcf4487681.camel@hammerspace.com>
+References: <20180917001835.23C7232257C@apps1.cs.toronto.edu>
+In-Reply-To: <20180917001835.23C7232257C@apps1.cs.toronto.edu>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Date: Sun, 16 Sep 2018 20:18:35 -0400
-Message-Id: <20180917001835.23C7232257C@apps1.cs.toronto.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> > >  Since failing to close() before another machine open()s puts you
-> > > outside this outline of close-to-open, this kernel behavior is
-> > > not a bug as such (or so it's been explained to me here).  If you
-> > > go outside c-t-o, the kernel is free to do whatever it finds most
-> > > convenient, and what it found most convenient was to not bother
-> > > invalidating some cached page data even though it saw a GETATTR
-> > > change.
-> >
-> > That would be a bug. If we have reason to believe the file has
-> > changed, then we must invalidate the cache on the file prior to
-> > allowing a read to proceed.
->
-> The point here is that when the file is open for writing (or for
-> read+write), and your applications are not using locking, then we have
-> no reason to believe the file is being changed on the server, and we
-> deliberately optimise for the case where the cache consistency rules
-> are being observed.
-
- In this case the user level can be completely sure that the client
-kernel has issued a GETATTR and received a different answer from the
-NFS server, because the fstat() results it sees have changed from the
-values it has seen before (and remembered). This may not count as the
-NFS client kernel code '[having] reason to believe' that the file has
-changed on the server from its perspective, but if so it's not because
-the information is not available and a GETATTR would have to be explicitly
-issued to find it out. The client code has made the GETATTR and received
-different results, which it has passed to user level; it has just not
-used those results to do things to its cached data.
-
- Today, if you do a flock(), the NFS client code in the kernel will
-do things that invalidate the cached data, despite the GETATTR result
-from the fileserver not changing. From my outside perspective, as someone
-writing code or dealing with programs that must work over NFS, this is a
-little bit magical, and as a result I would like to understand if it is
-guaranteed that the magic works or if this is not officially supported
-magic, merely 'it happens to work' magic in the way that having the
-file open read-write without the flock() used to work in kernel 4.4.x
-but doesn't now (and this is simply considered to be the kernel using
-CTO more strongly, not a bug).
-
-(Looking at a tcpdump trace, the flock() call appears to cause the kernel
-to issue another GETATTR to the fileserver. The results are the same as
-the GETATTR results that were passed to the client program.)
-
-> Again, these are the cases where you are _not_ using locking to
-> mediate. If you are using locking, then I agree that changes need to
-> be seen by the client.
-
- The original code (Alpine) *is* using locking in the broad sense,
-but it is not flock() locking; instead it is locking (in this case)
-through .lock files. The current kernel behavior and what I've been
-told about it implies that it is not sufficient for your application to
-perfectly coordinate locking, writes, fsync(), and fstat() visibility
-of the resulting changes through its own mechanism; you must do your
-locking through the officially approved kernel channels (and it is not
-clear what they are) or see potentially incorrect results.
-
- Consider a system where reads and writes to a shared file are
-coordinated by a central process that everyone communicates with through
-TCP connections. The central process pauses readers before it allows
-a writer to start, the writer always fsync()s before it releases its
-write permissions, and then no reader is permitted to proceed until the
-entire cluster sees the same updated fstat() result. This is perfectly
-coordinated but currently could see incorrect read() results, and I've
-been told that this is allowed under Linux's CTO rules because all of
-the processes hold the file open read-write through this entire process
-(and no one flock()s).
-
-	- cks
+T24gU3VuLCAyMDE4LTA5LTE2IGF0IDIwOjE4IC0wNDAwLCBDaHJpcyBTaWViZW5tYW5uIHdyb3Rl
+Og0KPiA+ID4gPiAgU2luY2UgZmFpbGluZyB0byBjbG9zZSgpIGJlZm9yZSBhbm90aGVyIG1hY2hp
+bmUgb3BlbigpcyBwdXRzDQo+ID4gPiA+IHlvdQ0KPiA+ID4gPiBvdXRzaWRlIHRoaXMgb3V0bGlu
+ZSBvZiBjbG9zZS10by1vcGVuLCB0aGlzIGtlcm5lbCBiZWhhdmlvciBpcw0KPiA+ID4gPiBub3Qg
+YSBidWcgYXMgc3VjaCAob3Igc28gaXQncyBiZWVuIGV4cGxhaW5lZCB0byBtZSBoZXJlKS4gIElm
+DQo+ID4gPiA+IHlvdQ0KPiA+ID4gPiBnbyBvdXRzaWRlIGMtdC1vLCB0aGUga2VybmVsIGlzIGZy
+ZWUgdG8gZG8gd2hhdGV2ZXIgaXQgZmluZHMNCj4gPiA+ID4gbW9zdA0KPiA+ID4gPiBjb252ZW5p
+ZW50LCBhbmQgd2hhdCBpdCBmb3VuZCBtb3N0IGNvbnZlbmllbnQgd2FzIHRvIG5vdCBib3RoZXIN
+Cj4gPiA+ID4gaW52YWxpZGF0aW5nIHNvbWUgY2FjaGVkIHBhZ2UgZGF0YSBldmVuIHRob3VnaCBp
+dCBzYXcgYSBHRVRBVFRSDQo+ID4gPiA+IGNoYW5nZS4NCj4gPiA+IA0KPiA+ID4gVGhhdCB3b3Vs
+ZCBiZSBhIGJ1Zy4gSWYgd2UgaGF2ZSByZWFzb24gdG8gYmVsaWV2ZSB0aGUgZmlsZSBoYXMNCj4g
+PiA+IGNoYW5nZWQsIHRoZW4gd2UgbXVzdCBpbnZhbGlkYXRlIHRoZSBjYWNoZSBvbiB0aGUgZmls
+ZSBwcmlvciB0bw0KPiA+ID4gYWxsb3dpbmcgYSByZWFkIHRvIHByb2NlZWQuDQo+ID4gDQo+ID4g
+VGhlIHBvaW50IGhlcmUgaXMgdGhhdCB3aGVuIHRoZSBmaWxlIGlzIG9wZW4gZm9yIHdyaXRpbmcg
+KG9yIGZvcg0KPiA+IHJlYWQrd3JpdGUpLCBhbmQgeW91ciBhcHBsaWNhdGlvbnMgYXJlIG5vdCB1
+c2luZyBsb2NraW5nLCB0aGVuIHdlDQo+ID4gaGF2ZQ0KPiA+IG5vIHJlYXNvbiB0byBiZWxpZXZl
+IHRoZSBmaWxlIGlzIGJlaW5nIGNoYW5nZWQgb24gdGhlIHNlcnZlciwgYW5kDQo+ID4gd2UNCj4g
+PiBkZWxpYmVyYXRlbHkgb3B0aW1pc2UgZm9yIHRoZSBjYXNlIHdoZXJlIHRoZSBjYWNoZSBjb25z
+aXN0ZW5jeQ0KPiA+IHJ1bGVzDQo+ID4gYXJlIGJlaW5nIG9ic2VydmVkLg0KPiANCj4gIEluIHRo
+aXMgY2FzZSB0aGUgdXNlciBsZXZlbCBjYW4gYmUgY29tcGxldGVseSBzdXJlIHRoYXQgdGhlIGNs
+aWVudA0KPiBrZXJuZWwgaGFzIGlzc3VlZCBhIEdFVEFUVFIgYW5kIHJlY2VpdmVkIGEgZGlmZmVy
+ZW50IGFuc3dlciBmcm9tIHRoZQ0KPiBORlMgc2VydmVyLCBiZWNhdXNlIHRoZSBmc3RhdCgpIHJl
+c3VsdHMgaXQgc2VlcyBoYXZlIGNoYW5nZWQgZnJvbSB0aGUNCj4gdmFsdWVzIGl0IGhhcyBzZWVu
+IGJlZm9yZSAoYW5kIHJlbWVtYmVyZWQpLiBUaGlzIG1heSBub3QgY291bnQgYXMgdGhlDQo+IE5G
+UyBjbGllbnQga2VybmVsIGNvZGUgJ1toYXZpbmddIHJlYXNvbiB0byBiZWxpZXZlJyB0aGF0IHRo
+ZSBmaWxlIGhhcw0KPiBjaGFuZ2VkIG9uIHRoZSBzZXJ2ZXIgZnJvbSBpdHMgcGVyc3BlY3RpdmUs
+IGJ1dCBpZiBzbyBpdCdzIG5vdA0KPiBiZWNhdXNlDQo+IHRoZSBpbmZvcm1hdGlvbiBpcyBub3Qg
+YXZhaWxhYmxlIGFuZCBhIEdFVEFUVFIgd291bGQgaGF2ZSB0byBiZQ0KPiBleHBsaWNpdGx5DQo+
+IGlzc3VlZCB0byBmaW5kIGl0IG91dC4gVGhlIGNsaWVudCBjb2RlIGhhcyBtYWRlIHRoZSBHRVRB
+VFRSIGFuZA0KPiByZWNlaXZlZA0KPiBkaWZmZXJlbnQgcmVzdWx0cywgd2hpY2ggaXQgaGFzIHBh
+c3NlZCB0byB1c2VyIGxldmVsOyBpdCBoYXMganVzdCBub3QNCj4gdXNlZCB0aG9zZSByZXN1bHRz
+IHRvIGRvIHRoaW5ncyB0byBpdHMgY2FjaGVkIGRhdGEuDQo+IA0KPiAgVG9kYXksIGlmIHlvdSBk
+byBhIGZsb2NrKCksIHRoZSBORlMgY2xpZW50IGNvZGUgaW4gdGhlIGtlcm5lbCB3aWxsDQo+IGRv
+IHRoaW5ncyB0aGF0IGludmFsaWRhdGUgdGhlIGNhY2hlZCBkYXRhLCBkZXNwaXRlIHRoZSBHRVRB
+VFRSIHJlc3VsdA0KPiBmcm9tIHRoZSBmaWxlc2VydmVyIG5vdCBjaGFuZ2luZy4gRnJvbSBteSBv
+dXRzaWRlIHBlcnNwZWN0aXZlLCBhcw0KPiBzb21lb25lDQo+IHdyaXRpbmcgY29kZSBvciBkZWFs
+aW5nIHdpdGggcHJvZ3JhbXMgdGhhdCBtdXN0IHdvcmsgb3ZlciBORlMsIHRoaXMNCj4gaXMgYQ0K
+PiBsaXR0bGUgYml0IG1hZ2ljYWwsIGFuZCBhcyBhIHJlc3VsdCBJIHdvdWxkIGxpa2UgdG8gdW5k
+ZXJzdGFuZCBpZiBpdA0KPiBpcw0KPiBndWFyYW50ZWVkIHRoYXQgdGhlIG1hZ2ljIHdvcmtzIG9y
+IGlmIHRoaXMgaXMgbm90IG9mZmljaWFsbHkNCj4gc3VwcG9ydGVkDQo+IG1hZ2ljLCBtZXJlbHkg
+J2l0IGhhcHBlbnMgdG8gd29yaycgbWFnaWMgaW4gdGhlIHdheSB0aGF0IGhhdmluZyB0aGUNCj4g
+ZmlsZSBvcGVuIHJlYWQtd3JpdGUgd2l0aG91dCB0aGUgZmxvY2soKSB1c2VkIHRvIHdvcmsgaW4g
+a2VybmVsIDQuNC54DQo+IGJ1dCBkb2Vzbid0IG5vdyAoYW5kIHRoaXMgaXMgc2ltcGx5IGNvbnNp
+ZGVyZWQgdG8gYmUgdGhlIGtlcm5lbCB1c2luZw0KPiBDVE8gbW9yZSBzdHJvbmdseSwgbm90IGEg
+YnVnKS4NCj4gDQo+IChMb29raW5nIGF0IGEgdGNwZHVtcCB0cmFjZSwgdGhlIGZsb2NrKCkgY2Fs
+bCBhcHBlYXJzIHRvIGNhdXNlIHRoZQ0KPiBrZXJuZWwNCj4gdG8gaXNzdWUgYW5vdGhlciBHRVRB
+VFRSIHRvIHRoZSBmaWxlc2VydmVyLiBUaGUgcmVzdWx0cyBhcmUgdGhlIHNhbWUNCj4gYXMNCj4g
+dGhlIEdFVEFUVFIgcmVzdWx0cyB0aGF0IHdlcmUgcGFzc2VkIHRvIHRoZSBjbGllbnQgcHJvZ3Jh
+bS4pDQoNCg0KVGhpcyBpcyBhbHNvIGRvY3VtZW50ZWQgaW4gdGhlIE5GUyBGQVEgdG8gd2hpY2gg
+SSBwb2ludGVkIHlvdSBlYXJsaWVyLg0KDQo+ID4gQWdhaW4sIHRoZXNlIGFyZSB0aGUgY2FzZXMg
+d2hlcmUgeW91IGFyZSBfbm90XyB1c2luZyBsb2NraW5nIHRvDQo+ID4gbWVkaWF0ZS4gSWYgeW91
+IGFyZSB1c2luZyBsb2NraW5nLCB0aGVuIEkgYWdyZWUgdGhhdCBjaGFuZ2VzIG5lZWQNCj4gPiB0
+bw0KPiA+IGJlIHNlZW4gYnkgdGhlIGNsaWVudC4NCj4gDQo+ICBUaGUgb3JpZ2luYWwgY29kZSAo
+QWxwaW5lKSAqaXMqIHVzaW5nIGxvY2tpbmcgaW4gdGhlIGJyb2FkIHNlbnNlLA0KPiBidXQgaXQg
+aXMgbm90IGZsb2NrKCkgbG9ja2luZzsgaW5zdGVhZCBpdCBpcyBsb2NraW5nIChpbiB0aGlzIGNh
+c2UpDQo+IHRocm91Z2ggLmxvY2sgZmlsZXMuIFRoZSBjdXJyZW50IGtlcm5lbCBiZWhhdmlvciBh
+bmQgd2hhdCBJJ3ZlIGJlZW4NCj4gdG9sZCBhYm91dCBpdCBpbXBsaWVzIHRoYXQgaXQgaXMgbm90
+IHN1ZmZpY2llbnQgZm9yIHlvdXIgYXBwbGljYXRpb24NCj4gdG8NCj4gcGVyZmVjdGx5IGNvb3Jk
+aW5hdGUgbG9ja2luZywgd3JpdGVzLCBmc3luYygpLCBhbmQgZnN0YXQoKSB2aXNpYmlsaXR5DQo+
+IG9mIHRoZSByZXN1bHRpbmcgY2hhbmdlcyB0aHJvdWdoIGl0cyBvd24gbWVjaGFuaXNtOyB5b3Ug
+bXVzdCBkbyB5b3VyDQo+IGxvY2tpbmcgdGhyb3VnaCB0aGUgb2ZmaWNpYWxseSBhcHByb3ZlZCBr
+ZXJuZWwgY2hhbm5lbHMgKGFuZCBpdCBpcw0KPiBub3QNCj4gY2xlYXIgd2hhdCB0aGV5IGFyZSkg
+b3Igc2VlIHBvdGVudGlhbGx5IGluY29ycmVjdCByZXN1bHRzLg0KPiANCj4gIENvbnNpZGVyIGEg
+c3lzdGVtIHdoZXJlIHJlYWRzIGFuZCB3cml0ZXMgdG8gYSBzaGFyZWQgZmlsZSBhcmUNCj4gY29v
+cmRpbmF0ZWQgYnkgYSBjZW50cmFsIHByb2Nlc3MgdGhhdCBldmVyeW9uZSBjb21tdW5pY2F0ZXMg
+d2l0aA0KPiB0aHJvdWdoDQo+IFRDUCBjb25uZWN0aW9ucy4gVGhlIGNlbnRyYWwgcHJvY2VzcyBw
+YXVzZXMgcmVhZGVycyBiZWZvcmUgaXQgYWxsb3dzDQo+IGEgd3JpdGVyIHRvIHN0YXJ0LCB0aGUg
+d3JpdGVyIGFsd2F5cyBmc3luYygpcyBiZWZvcmUgaXQgcmVsZWFzZXMgaXRzDQo+IHdyaXRlIHBl
+cm1pc3Npb25zLCBhbmQgdGhlbiBubyByZWFkZXIgaXMgcGVybWl0dGVkIHRvIHByb2NlZWQgdW50
+aWwNCj4gdGhlDQo+IGVudGlyZSBjbHVzdGVyIHNlZXMgdGhlIHNhbWUgdXBkYXRlZCBmc3RhdCgp
+IHJlc3VsdC4gVGhpcyBpcw0KPiBwZXJmZWN0bHkNCj4gY29vcmRpbmF0ZWQgYnV0IGN1cnJlbnRs
+eSBjb3VsZCBzZWUgaW5jb3JyZWN0IHJlYWQoKSByZXN1bHRzLCBhbmQNCj4gSSd2ZQ0KPiBiZWVu
+IHRvbGQgdGhhdCB0aGlzIGlzIGFsbG93ZWQgdW5kZXIgTGludXgncyBDVE8gcnVsZXMgYmVjYXVz
+ZSBhbGwgb2YNCj4gdGhlIHByb2Nlc3NlcyBob2xkIHRoZSBmaWxlIG9wZW4gcmVhZC13cml0ZSB0
+aHJvdWdoIHRoaXMgZW50aXJlDQo+IHByb2Nlc3MNCj4gKGFuZCBubyBvbmUgZmxvY2soKXMpLg0K
+PiANCg0KV2h5IHdvdWxkIHN1Y2ggYSBzeXN0ZW0gbmVlZCB0byB1c2UgYnVmZmVyZWQgSS9PIGlu
+c3RlYWQgb2YgdW5jYWNoZWQNCkkvTyAoaS5lLiBPX0RJUkVDVCk/IFdoYXQgd291bGQgYmUgdGhl
+IHBvaW50IG9mIG9wdGltaXNpbmcgdGhlIGJ1ZmZlcmVkDQpJL08gY2xpZW50IGZvciB0aGlzIHVz
+ZSBjYXNlIHJhdGhlciB0aGFuIHRoZSBjbG9zZSB0byBvcGVuIGNhY2hlDQpjb25zaXN0ZW50IGNh
+c2U/DQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIs
+IEhhbW1lcnNwYWNlDQp0cm9uZC5teWtsZWJ1c3RAaGFtbWVyc3BhY2UuY29tDQoNCg0K
