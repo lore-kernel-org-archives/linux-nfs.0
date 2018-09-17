@@ -1,21 +1,21 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qt0-f194.google.com ([209.85.216.194]:40219 "EHLO
-        mail-qt0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728095AbeIQSbZ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Sep 2018 14:31:25 -0400
-Received: by mail-qt0-f194.google.com with SMTP id h4-v6so15112231qtj.7
-        for <linux-nfs@vger.kernel.org>; Mon, 17 Sep 2018 06:04:10 -0700 (PDT)
+Received: from mail-qk1-f193.google.com ([209.85.222.193]:37383 "EHLO
+        mail-qk1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1728229AbeIQSbe (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Sep 2018 14:31:34 -0400
+Received: by mail-qk1-f193.google.com with SMTP id f17-v6so8912083qkh.4
+        for <linux-nfs@vger.kernel.org>; Mon, 17 Sep 2018 06:04:19 -0700 (PDT)
 Received: from leira.trondhjem.org.localdomain ([66.187.232.65])
-        by smtp.gmail.com with ESMTPSA id q1-v6sm10499607qkl.31.2018.09.17.06.04.08
+        by smtp.gmail.com with ESMTPSA id q1-v6sm10499607qkl.31.2018.09.17.06.04.17
         for <linux-nfs@vger.kernel.org>
         (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
-        Mon, 17 Sep 2018 06:04:08 -0700 (PDT)
+        Mon, 17 Sep 2018 06:04:17 -0700 (PDT)
 From: Trond Myklebust <trondmy@gmail.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH v3 11/44] SUNRPC: Add a helper to wake up a sleeping rpc_task and set its status
-Date: Mon, 17 Sep 2018 09:03:02 -0400
-Message-Id: <20180917130335.112832-12-trond.myklebust@hammerspace.com>
-In-Reply-To: <20180917130335.112832-11-trond.myklebust@hammerspace.com>
+Subject: [PATCH v3 18/44] SUNRPC: Distinguish between the slot allocation list and receive queue
+Date: Mon, 17 Sep 2018 09:03:09 -0400
+Message-Id: <20180917130335.112832-19-trond.myklebust@hammerspace.com>
+In-Reply-To: <20180917130335.112832-18-trond.myklebust@hammerspace.com>
 References: <20180917130335.112832-1-trond.myklebust@hammerspace.com>
  <20180917130335.112832-2-trond.myklebust@hammerspace.com>
  <20180917130335.112832-3-trond.myklebust@hammerspace.com>
@@ -27,128 +27,115 @@ References: <20180917130335.112832-1-trond.myklebust@hammerspace.com>
  <20180917130335.112832-9-trond.myklebust@hammerspace.com>
  <20180917130335.112832-10-trond.myklebust@hammerspace.com>
  <20180917130335.112832-11-trond.myklebust@hammerspace.com>
+ <20180917130335.112832-12-trond.myklebust@hammerspace.com>
+ <20180917130335.112832-13-trond.myklebust@hammerspace.com>
+ <20180917130335.112832-14-trond.myklebust@hammerspace.com>
+ <20180917130335.112832-15-trond.myklebust@hammerspace.com>
+ <20180917130335.112832-16-trond.myklebust@hammerspace.com>
+ <20180917130335.112832-17-trond.myklebust@hammerspace.com>
+ <20180917130335.112832-18-trond.myklebust@hammerspace.com>
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Add a helper that will wake up a task that is sleeping on a specific
-queue, and will set the value of task->tk_status. This is mainly
-intended for use by the transport layer to notify the task of an
-error condition.
+When storing a struct rpc_rqst on the slot allocation list, we currently
+use the same field 'rq_list' as we use to store the request on the
+receive queue. Since the structure is never on both lists at the same
+time, this is OK.
+However, for clarity, let's make that a union with different names for
+the different lists so that we can more easily distinguish between
+the two states.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- include/linux/sunrpc/sched.h |  3 ++
- net/sunrpc/sched.c           | 65 ++++++++++++++++++++++++++++++------
- 2 files changed, 58 insertions(+), 10 deletions(-)
+ include/linux/sunrpc/xprt.h |  9 +++++++--
+ net/sunrpc/xprt.c           | 12 ++++++------
+ 2 files changed, 13 insertions(+), 8 deletions(-)
 
-diff --git a/include/linux/sunrpc/sched.h b/include/linux/sunrpc/sched.h
-index 8062ce6b18e5..8840a420cf4c 100644
---- a/include/linux/sunrpc/sched.h
-+++ b/include/linux/sunrpc/sched.h
-@@ -235,6 +235,9 @@ void rpc_wake_up_queued_task_on_wq(struct workqueue_struct *wq,
- 		struct rpc_task *task);
- void		rpc_wake_up_queued_task(struct rpc_wait_queue *,
- 					struct rpc_task *);
-+void		rpc_wake_up_queued_task_set_status(struct rpc_wait_queue *,
-+						   struct rpc_task *,
-+						   int);
- void		rpc_wake_up(struct rpc_wait_queue *);
- struct rpc_task *rpc_wake_up_next(struct rpc_wait_queue *);
- struct rpc_task *rpc_wake_up_first_on_wq(struct workqueue_struct *wq,
-diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
-index 3fe5d60ab0e2..dec01bd1b71c 100644
---- a/net/sunrpc/sched.c
-+++ b/net/sunrpc/sched.c
-@@ -440,14 +440,28 @@ static void __rpc_do_wake_up_task_on_wq(struct workqueue_struct *wq,
- /*
-  * Wake up a queued task while the queue lock is being held
-  */
--static void rpc_wake_up_task_on_wq_queue_locked(struct workqueue_struct *wq,
--		struct rpc_wait_queue *queue, struct rpc_task *task)
-+static struct rpc_task *
-+rpc_wake_up_task_on_wq_queue_action_locked(struct workqueue_struct *wq,
-+		struct rpc_wait_queue *queue, struct rpc_task *task,
-+		bool (*action)(struct rpc_task *, void *), void *data)
+diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
+index 4fa2af087cff..9cec2d0811f2 100644
+--- a/include/linux/sunrpc/xprt.h
++++ b/include/linux/sunrpc/xprt.h
+@@ -82,7 +82,11 @@ struct rpc_rqst {
+ 	struct page		**rq_enc_pages;	/* scratch pages for use by
+ 						   gss privacy code */
+ 	void (*rq_release_snd_buf)(struct rpc_rqst *); /* release rq_enc_pages */
+-	struct list_head	rq_list;
++
++	union {
++		struct list_head	rq_list;	/* Slot allocation list */
++		struct list_head	rq_recv;	/* Receive queue */
++	};
+ 
+ 	void			*rq_buffer;	/* Call XDR encode buffer */
+ 	size_t			rq_callsize;
+@@ -249,7 +253,8 @@ struct rpc_xprt {
+ 	struct list_head	bc_pa_list;	/* List of preallocated
+ 						 * backchannel rpc_rqst's */
+ #endif /* CONFIG_SUNRPC_BACKCHANNEL */
+-	struct list_head	recv;
++
++	struct list_head	recv_queue;	/* Receive queue */
+ 
+ 	struct {
+ 		unsigned long		bind_count,	/* total number of binds */
+diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+index fe857ab18ee2..b242a1c78f8a 100644
+--- a/net/sunrpc/xprt.c
++++ b/net/sunrpc/xprt.c
+@@ -708,7 +708,7 @@ static void
+ xprt_schedule_autodisconnect(struct rpc_xprt *xprt)
+ 	__must_hold(&xprt->transport_lock)
  {
- 	if (RPC_IS_QUEUED(task)) {
- 		smp_rmb();
--		if (task->tk_waitqueue == queue)
--			__rpc_do_wake_up_task_on_wq(wq, queue, task);
-+		if (task->tk_waitqueue == queue) {
-+			if (action == NULL || action(task, data)) {
-+				__rpc_do_wake_up_task_on_wq(wq, queue, task);
-+				return task;
-+			}
-+		}
- 	}
-+	return NULL;
-+}
-+
-+static void
-+rpc_wake_up_task_on_wq_queue_locked(struct workqueue_struct *wq,
-+		struct rpc_wait_queue *queue, struct rpc_task *task)
-+{
-+	rpc_wake_up_task_on_wq_queue_action_locked(wq, queue, task, NULL, NULL);
+-	if (list_empty(&xprt->recv) && xprt_has_timer(xprt))
++	if (list_empty(&xprt->recv_queue) && xprt_has_timer(xprt))
+ 		mod_timer(&xprt->timer, xprt->last_used + xprt->idle_timeout);
  }
  
- /*
-@@ -481,6 +495,40 @@ void rpc_wake_up_queued_task(struct rpc_wait_queue *queue, struct rpc_task *task
+@@ -718,7 +718,7 @@ xprt_init_autodisconnect(struct timer_list *t)
+ 	struct rpc_xprt *xprt = from_timer(xprt, t, timer);
+ 
+ 	spin_lock(&xprt->transport_lock);
+-	if (!list_empty(&xprt->recv))
++	if (!list_empty(&xprt->recv_queue))
+ 		goto out_abort;
+ 	/* Reset xprt->last_used to avoid connect/autodisconnect cycling */
+ 	xprt->last_used = jiffies;
+@@ -848,7 +848,7 @@ struct rpc_rqst *xprt_lookup_rqst(struct rpc_xprt *xprt, __be32 xid)
+ {
+ 	struct rpc_rqst *entry;
+ 
+-	list_for_each_entry(entry, &xprt->recv, rq_list)
++	list_for_each_entry(entry, &xprt->recv_queue, rq_recv)
+ 		if (entry->rq_xid == xid) {
+ 			trace_xprt_lookup_rqst(xprt, xid, 0);
+ 			entry->rq_rtt = ktime_sub(ktime_get(), entry->rq_xtime);
+@@ -937,7 +937,7 @@ xprt_request_enqueue_receive(struct rpc_task *task)
+ 			sizeof(req->rq_private_buf));
+ 
+ 	/* Add request to the receive list */
+-	list_add_tail(&req->rq_list, &xprt->recv);
++	list_add_tail(&req->rq_recv, &xprt->recv_queue);
+ 	set_bit(RPC_TASK_NEED_RECV, &task->tk_runstate);
+ 	spin_unlock(&xprt->queue_lock);
+ 
+@@ -956,7 +956,7 @@ static void
+ xprt_request_dequeue_receive_locked(struct rpc_task *task)
+ {
+ 	if (test_and_clear_bit(RPC_TASK_NEED_RECV, &task->tk_runstate))
+-		list_del(&task->tk_rqstp->rq_list);
++		list_del(&task->tk_rqstp->rq_recv);
  }
- EXPORT_SYMBOL_GPL(rpc_wake_up_queued_task);
  
-+static bool rpc_task_action_set_status(struct rpc_task *task, void *status)
-+{
-+	task->tk_status = *(int *)status;
-+	return true;
-+}
-+
-+static void
-+rpc_wake_up_task_queue_set_status_locked(struct rpc_wait_queue *queue,
-+		struct rpc_task *task, int status)
-+{
-+	rpc_wake_up_task_on_wq_queue_action_locked(rpciod_workqueue, queue,
-+			task, rpc_task_action_set_status, &status);
-+}
-+
-+/**
-+ * rpc_wake_up_queued_task_set_status - wake up a task and set task->tk_status
-+ * @queue: pointer to rpc_wait_queue
-+ * @task: pointer to rpc_task
-+ * @status: integer error value
-+ *
-+ * If @task is queued on @queue, then it is woken up, and @task->tk_status is
-+ * set to the value of @status.
-+ */
-+void
-+rpc_wake_up_queued_task_set_status(struct rpc_wait_queue *queue,
-+		struct rpc_task *task, int status)
-+{
-+	if (!RPC_IS_QUEUED(task))
-+		return;
-+	spin_lock_bh(&queue->lock);
-+	rpc_wake_up_task_queue_set_status_locked(queue, task, status);
-+	spin_unlock_bh(&queue->lock);
-+}
-+
- /*
-  * Wake up the next task on a priority queue.
-  */
-@@ -553,12 +601,9 @@ struct rpc_task *rpc_wake_up_first_on_wq(struct workqueue_struct *wq,
- 			queue, rpc_qname(queue));
- 	spin_lock_bh(&queue->lock);
- 	task = __rpc_find_next_queued(queue);
--	if (task != NULL) {
--		if (func(task, data))
--			rpc_wake_up_task_on_wq_queue_locked(wq, queue, task);
--		else
--			task = NULL;
--	}
-+	if (task != NULL)
-+		task = rpc_wake_up_task_on_wq_queue_action_locked(wq, queue,
-+				task, func, data);
- 	spin_unlock_bh(&queue->lock);
+ /**
+@@ -1491,7 +1491,7 @@ static void xprt_init(struct rpc_xprt *xprt, struct net *net)
+ 	spin_lock_init(&xprt->queue_lock);
  
- 	return task;
+ 	INIT_LIST_HEAD(&xprt->free);
+-	INIT_LIST_HEAD(&xprt->recv);
++	INIT_LIST_HEAD(&xprt->recv_queue);
+ #if defined(CONFIG_SUNRPC_BACKCHANNEL)
+ 	spin_lock_init(&xprt->bc_pa_lock);
+ 	INIT_LIST_HEAD(&xprt->bc_pa_list);
 -- 
 2.17.1
