@@ -1,101 +1,53 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-by2nam01on0109.outbound.protection.outlook.com ([104.47.34.109]:30923
-        "EHLO NAM01-BY2-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1725997AbeIQHoU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 17 Sep 2018 03:44:20 -0400
-From: Trond Myklebust <trondmy@hammerspace.com>
-To: "cks@cs.toronto.edu" <cks@cs.toronto.edu>
-CC: "jlayton@redhat.com" <jlayton@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: Correctly understanding Linux's close-to-open consistency
-Date: Mon, 17 Sep 2018 02:19:09 +0000
-Message-ID: <e019144a44a4138ba2fdfe813ab563dcf4487681.camel@hammerspace.com>
-References: <20180917001835.23C7232257C@apps1.cs.toronto.edu>
-In-Reply-To: <20180917001835.23C7232257C@apps1.cs.toronto.edu>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from mx1.redhat.com ([209.132.183.28]:39000 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726824AbeIQRFm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 17 Sep 2018 13:05:42 -0400
+From: jiyin@redhat.com
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org, "Jianhong.Yin" <yin-jianhong@163.com>
+Subject: [PATCH] nfs-utils mount: recover the lost EBUSY
+Date: Mon, 17 Sep 2018 19:38:38 +0800
+Message-Id: <20180917113838.31952-1-jiyin@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gU3VuLCAyMDE4LTA5LTE2IGF0IDIwOjE4IC0wNDAwLCBDaHJpcyBTaWViZW5tYW5uIHdyb3Rl
-Og0KPiA+ID4gPiAgU2luY2UgZmFpbGluZyB0byBjbG9zZSgpIGJlZm9yZSBhbm90aGVyIG1hY2hp
-bmUgb3BlbigpcyBwdXRzDQo+ID4gPiA+IHlvdQ0KPiA+ID4gPiBvdXRzaWRlIHRoaXMgb3V0bGlu
-ZSBvZiBjbG9zZS10by1vcGVuLCB0aGlzIGtlcm5lbCBiZWhhdmlvciBpcw0KPiA+ID4gPiBub3Qg
-YSBidWcgYXMgc3VjaCAob3Igc28gaXQncyBiZWVuIGV4cGxhaW5lZCB0byBtZSBoZXJlKS4gIElm
-DQo+ID4gPiA+IHlvdQ0KPiA+ID4gPiBnbyBvdXRzaWRlIGMtdC1vLCB0aGUga2VybmVsIGlzIGZy
-ZWUgdG8gZG8gd2hhdGV2ZXIgaXQgZmluZHMNCj4gPiA+ID4gbW9zdA0KPiA+ID4gPiBjb252ZW5p
-ZW50LCBhbmQgd2hhdCBpdCBmb3VuZCBtb3N0IGNvbnZlbmllbnQgd2FzIHRvIG5vdCBib3RoZXIN
-Cj4gPiA+ID4gaW52YWxpZGF0aW5nIHNvbWUgY2FjaGVkIHBhZ2UgZGF0YSBldmVuIHRob3VnaCBp
-dCBzYXcgYSBHRVRBVFRSDQo+ID4gPiA+IGNoYW5nZS4NCj4gPiA+IA0KPiA+ID4gVGhhdCB3b3Vs
-ZCBiZSBhIGJ1Zy4gSWYgd2UgaGF2ZSByZWFzb24gdG8gYmVsaWV2ZSB0aGUgZmlsZSBoYXMNCj4g
-PiA+IGNoYW5nZWQsIHRoZW4gd2UgbXVzdCBpbnZhbGlkYXRlIHRoZSBjYWNoZSBvbiB0aGUgZmls
-ZSBwcmlvciB0bw0KPiA+ID4gYWxsb3dpbmcgYSByZWFkIHRvIHByb2NlZWQuDQo+ID4gDQo+ID4g
-VGhlIHBvaW50IGhlcmUgaXMgdGhhdCB3aGVuIHRoZSBmaWxlIGlzIG9wZW4gZm9yIHdyaXRpbmcg
-KG9yIGZvcg0KPiA+IHJlYWQrd3JpdGUpLCBhbmQgeW91ciBhcHBsaWNhdGlvbnMgYXJlIG5vdCB1
-c2luZyBsb2NraW5nLCB0aGVuIHdlDQo+ID4gaGF2ZQ0KPiA+IG5vIHJlYXNvbiB0byBiZWxpZXZl
-IHRoZSBmaWxlIGlzIGJlaW5nIGNoYW5nZWQgb24gdGhlIHNlcnZlciwgYW5kDQo+ID4gd2UNCj4g
-PiBkZWxpYmVyYXRlbHkgb3B0aW1pc2UgZm9yIHRoZSBjYXNlIHdoZXJlIHRoZSBjYWNoZSBjb25z
-aXN0ZW5jeQ0KPiA+IHJ1bGVzDQo+ID4gYXJlIGJlaW5nIG9ic2VydmVkLg0KPiANCj4gIEluIHRo
-aXMgY2FzZSB0aGUgdXNlciBsZXZlbCBjYW4gYmUgY29tcGxldGVseSBzdXJlIHRoYXQgdGhlIGNs
-aWVudA0KPiBrZXJuZWwgaGFzIGlzc3VlZCBhIEdFVEFUVFIgYW5kIHJlY2VpdmVkIGEgZGlmZmVy
-ZW50IGFuc3dlciBmcm9tIHRoZQ0KPiBORlMgc2VydmVyLCBiZWNhdXNlIHRoZSBmc3RhdCgpIHJl
-c3VsdHMgaXQgc2VlcyBoYXZlIGNoYW5nZWQgZnJvbSB0aGUNCj4gdmFsdWVzIGl0IGhhcyBzZWVu
-IGJlZm9yZSAoYW5kIHJlbWVtYmVyZWQpLiBUaGlzIG1heSBub3QgY291bnQgYXMgdGhlDQo+IE5G
-UyBjbGllbnQga2VybmVsIGNvZGUgJ1toYXZpbmddIHJlYXNvbiB0byBiZWxpZXZlJyB0aGF0IHRo
-ZSBmaWxlIGhhcw0KPiBjaGFuZ2VkIG9uIHRoZSBzZXJ2ZXIgZnJvbSBpdHMgcGVyc3BlY3RpdmUs
-IGJ1dCBpZiBzbyBpdCdzIG5vdA0KPiBiZWNhdXNlDQo+IHRoZSBpbmZvcm1hdGlvbiBpcyBub3Qg
-YXZhaWxhYmxlIGFuZCBhIEdFVEFUVFIgd291bGQgaGF2ZSB0byBiZQ0KPiBleHBsaWNpdGx5DQo+
-IGlzc3VlZCB0byBmaW5kIGl0IG91dC4gVGhlIGNsaWVudCBjb2RlIGhhcyBtYWRlIHRoZSBHRVRB
-VFRSIGFuZA0KPiByZWNlaXZlZA0KPiBkaWZmZXJlbnQgcmVzdWx0cywgd2hpY2ggaXQgaGFzIHBh
-c3NlZCB0byB1c2VyIGxldmVsOyBpdCBoYXMganVzdCBub3QNCj4gdXNlZCB0aG9zZSByZXN1bHRz
-IHRvIGRvIHRoaW5ncyB0byBpdHMgY2FjaGVkIGRhdGEuDQo+IA0KPiAgVG9kYXksIGlmIHlvdSBk
-byBhIGZsb2NrKCksIHRoZSBORlMgY2xpZW50IGNvZGUgaW4gdGhlIGtlcm5lbCB3aWxsDQo+IGRv
-IHRoaW5ncyB0aGF0IGludmFsaWRhdGUgdGhlIGNhY2hlZCBkYXRhLCBkZXNwaXRlIHRoZSBHRVRB
-VFRSIHJlc3VsdA0KPiBmcm9tIHRoZSBmaWxlc2VydmVyIG5vdCBjaGFuZ2luZy4gRnJvbSBteSBv
-dXRzaWRlIHBlcnNwZWN0aXZlLCBhcw0KPiBzb21lb25lDQo+IHdyaXRpbmcgY29kZSBvciBkZWFs
-aW5nIHdpdGggcHJvZ3JhbXMgdGhhdCBtdXN0IHdvcmsgb3ZlciBORlMsIHRoaXMNCj4gaXMgYQ0K
-PiBsaXR0bGUgYml0IG1hZ2ljYWwsIGFuZCBhcyBhIHJlc3VsdCBJIHdvdWxkIGxpa2UgdG8gdW5k
-ZXJzdGFuZCBpZiBpdA0KPiBpcw0KPiBndWFyYW50ZWVkIHRoYXQgdGhlIG1hZ2ljIHdvcmtzIG9y
-IGlmIHRoaXMgaXMgbm90IG9mZmljaWFsbHkNCj4gc3VwcG9ydGVkDQo+IG1hZ2ljLCBtZXJlbHkg
-J2l0IGhhcHBlbnMgdG8gd29yaycgbWFnaWMgaW4gdGhlIHdheSB0aGF0IGhhdmluZyB0aGUNCj4g
-ZmlsZSBvcGVuIHJlYWQtd3JpdGUgd2l0aG91dCB0aGUgZmxvY2soKSB1c2VkIHRvIHdvcmsgaW4g
-a2VybmVsIDQuNC54DQo+IGJ1dCBkb2Vzbid0IG5vdyAoYW5kIHRoaXMgaXMgc2ltcGx5IGNvbnNp
-ZGVyZWQgdG8gYmUgdGhlIGtlcm5lbCB1c2luZw0KPiBDVE8gbW9yZSBzdHJvbmdseSwgbm90IGEg
-YnVnKS4NCj4gDQo+IChMb29raW5nIGF0IGEgdGNwZHVtcCB0cmFjZSwgdGhlIGZsb2NrKCkgY2Fs
-bCBhcHBlYXJzIHRvIGNhdXNlIHRoZQ0KPiBrZXJuZWwNCj4gdG8gaXNzdWUgYW5vdGhlciBHRVRB
-VFRSIHRvIHRoZSBmaWxlc2VydmVyLiBUaGUgcmVzdWx0cyBhcmUgdGhlIHNhbWUNCj4gYXMNCj4g
-dGhlIEdFVEFUVFIgcmVzdWx0cyB0aGF0IHdlcmUgcGFzc2VkIHRvIHRoZSBjbGllbnQgcHJvZ3Jh
-bS4pDQoNCg0KVGhpcyBpcyBhbHNvIGRvY3VtZW50ZWQgaW4gdGhlIE5GUyBGQVEgdG8gd2hpY2gg
-SSBwb2ludGVkIHlvdSBlYXJsaWVyLg0KDQo+ID4gQWdhaW4sIHRoZXNlIGFyZSB0aGUgY2FzZXMg
-d2hlcmUgeW91IGFyZSBfbm90XyB1c2luZyBsb2NraW5nIHRvDQo+ID4gbWVkaWF0ZS4gSWYgeW91
-IGFyZSB1c2luZyBsb2NraW5nLCB0aGVuIEkgYWdyZWUgdGhhdCBjaGFuZ2VzIG5lZWQNCj4gPiB0
-bw0KPiA+IGJlIHNlZW4gYnkgdGhlIGNsaWVudC4NCj4gDQo+ICBUaGUgb3JpZ2luYWwgY29kZSAo
-QWxwaW5lKSAqaXMqIHVzaW5nIGxvY2tpbmcgaW4gdGhlIGJyb2FkIHNlbnNlLA0KPiBidXQgaXQg
-aXMgbm90IGZsb2NrKCkgbG9ja2luZzsgaW5zdGVhZCBpdCBpcyBsb2NraW5nIChpbiB0aGlzIGNh
-c2UpDQo+IHRocm91Z2ggLmxvY2sgZmlsZXMuIFRoZSBjdXJyZW50IGtlcm5lbCBiZWhhdmlvciBh
-bmQgd2hhdCBJJ3ZlIGJlZW4NCj4gdG9sZCBhYm91dCBpdCBpbXBsaWVzIHRoYXQgaXQgaXMgbm90
-IHN1ZmZpY2llbnQgZm9yIHlvdXIgYXBwbGljYXRpb24NCj4gdG8NCj4gcGVyZmVjdGx5IGNvb3Jk
-aW5hdGUgbG9ja2luZywgd3JpdGVzLCBmc3luYygpLCBhbmQgZnN0YXQoKSB2aXNpYmlsaXR5DQo+
-IG9mIHRoZSByZXN1bHRpbmcgY2hhbmdlcyB0aHJvdWdoIGl0cyBvd24gbWVjaGFuaXNtOyB5b3Ug
-bXVzdCBkbyB5b3VyDQo+IGxvY2tpbmcgdGhyb3VnaCB0aGUgb2ZmaWNpYWxseSBhcHByb3ZlZCBr
-ZXJuZWwgY2hhbm5lbHMgKGFuZCBpdCBpcw0KPiBub3QNCj4gY2xlYXIgd2hhdCB0aGV5IGFyZSkg
-b3Igc2VlIHBvdGVudGlhbGx5IGluY29ycmVjdCByZXN1bHRzLg0KPiANCj4gIENvbnNpZGVyIGEg
-c3lzdGVtIHdoZXJlIHJlYWRzIGFuZCB3cml0ZXMgdG8gYSBzaGFyZWQgZmlsZSBhcmUNCj4gY29v
-cmRpbmF0ZWQgYnkgYSBjZW50cmFsIHByb2Nlc3MgdGhhdCBldmVyeW9uZSBjb21tdW5pY2F0ZXMg
-d2l0aA0KPiB0aHJvdWdoDQo+IFRDUCBjb25uZWN0aW9ucy4gVGhlIGNlbnRyYWwgcHJvY2VzcyBw
-YXVzZXMgcmVhZGVycyBiZWZvcmUgaXQgYWxsb3dzDQo+IGEgd3JpdGVyIHRvIHN0YXJ0LCB0aGUg
-d3JpdGVyIGFsd2F5cyBmc3luYygpcyBiZWZvcmUgaXQgcmVsZWFzZXMgaXRzDQo+IHdyaXRlIHBl
-cm1pc3Npb25zLCBhbmQgdGhlbiBubyByZWFkZXIgaXMgcGVybWl0dGVkIHRvIHByb2NlZWQgdW50
-aWwNCj4gdGhlDQo+IGVudGlyZSBjbHVzdGVyIHNlZXMgdGhlIHNhbWUgdXBkYXRlZCBmc3RhdCgp
-IHJlc3VsdC4gVGhpcyBpcw0KPiBwZXJmZWN0bHkNCj4gY29vcmRpbmF0ZWQgYnV0IGN1cnJlbnRs
-eSBjb3VsZCBzZWUgaW5jb3JyZWN0IHJlYWQoKSByZXN1bHRzLCBhbmQNCj4gSSd2ZQ0KPiBiZWVu
-IHRvbGQgdGhhdCB0aGlzIGlzIGFsbG93ZWQgdW5kZXIgTGludXgncyBDVE8gcnVsZXMgYmVjYXVz
-ZSBhbGwgb2YNCj4gdGhlIHByb2Nlc3NlcyBob2xkIHRoZSBmaWxlIG9wZW4gcmVhZC13cml0ZSB0
-aHJvdWdoIHRoaXMgZW50aXJlDQo+IHByb2Nlc3MNCj4gKGFuZCBubyBvbmUgZmxvY2soKXMpLg0K
-PiANCg0KV2h5IHdvdWxkIHN1Y2ggYSBzeXN0ZW0gbmVlZCB0byB1c2UgYnVmZmVyZWQgSS9PIGlu
-c3RlYWQgb2YgdW5jYWNoZWQNCkkvTyAoaS5lLiBPX0RJUkVDVCk/IFdoYXQgd291bGQgYmUgdGhl
-IHBvaW50IG9mIG9wdGltaXNpbmcgdGhlIGJ1ZmZlcmVkDQpJL08gY2xpZW50IGZvciB0aGlzIHVz
-ZSBjYXNlIHJhdGhlciB0aGFuIHRoZSBjbG9zZSB0byBvcGVuIGNhY2hlDQpjb25zaXN0ZW50IGNh
-c2U/DQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIs
-IEhhbW1lcnNwYWNlDQp0cm9uZC5teWtsZWJ1c3RAaGFtbWVyc3BhY2UuY29tDQoNCg0K
+From: "Jianhong.Yin" <yin-jianhong@163.com>
+
+see: https://bugzilla.redhat.com/show_bug.cgi?id=1629705
+[nfs-utils] mount -osharecache failure but return 'true'
+
+mount.nfs4 -o context=system_u:object_r:user_home_dir_t:s0,sharecache $serv:$expdir $nfsmp
+mount.nfs4 -o context=system_u:object_r:xferlog_t:s0,sharecache $serv:$expdir $nfsmp2
+^^^ here mount fail, but return true. it confuse user!
+
+Anyway, we should not hide the failure and pretend that it
+does not exist.
+
+Signed-off-by: Jianhong Yin <yin-jianhong@163.com>
+---
+ utils/mount/stropts.c | 9 ---------
+ 1 file changed, 9 deletions(-)
+
+diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+index 4d2e37e..ca5bc7f 100644
+--- a/utils/mount/stropts.c
++++ b/utils/mount/stropts.c
+@@ -1078,15 +1078,6 @@ static int nfsmount_fg(struct nfsmount_info *mi)
+ 		if (nfs_try_mount(mi))
+ 			return EX_SUCCESS;
+ 
+-		if (errno == EBUSY)
+-			/* The only cause of EBUSY is if exactly the desired
+-			 * filesystem is already mounted.  That can arguably
+-			 * be seen as success.  "mount -a" tries to optimise
+-			 * out this case but sometimes fails.  Help it out
+-			 * by pretending everything is rosy
+-			 */
+-			return EX_SUCCESS;
+-
+ 		if (nfs_is_permanent_error(errno))
+ 			break;
+ 
+-- 
+2.17.1
