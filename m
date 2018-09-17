@@ -1,163 +1,196 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qt0-f173.google.com ([209.85.216.173]:40848 "EHLO
-        mail-qt0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727460AbeIQSbN (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Sep 2018 14:31:13 -0400
-Received: by mail-qt0-f173.google.com with SMTP id h4-v6so15111487qtj.7
-        for <linux-nfs@vger.kernel.org>; Mon, 17 Sep 2018 06:03:58 -0700 (PDT)
+Received: from mail-qk1-f194.google.com ([209.85.222.194]:32937 "EHLO
+        mail-qk1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727864AbeIQSbR (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Sep 2018 14:31:17 -0400
+Received: by mail-qk1-f194.google.com with SMTP id z78-v6so8931399qka.0
+        for <linux-nfs@vger.kernel.org>; Mon, 17 Sep 2018 06:04:02 -0700 (PDT)
 Received: from leira.trondhjem.org.localdomain ([66.187.232.65])
-        by smtp.gmail.com with ESMTPSA id q1-v6sm10499607qkl.31.2018.09.17.06.03.56
+        by smtp.gmail.com with ESMTPSA id q1-v6sm10499607qkl.31.2018.09.17.06.04.00
         for <linux-nfs@vger.kernel.org>
         (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
-        Mon, 17 Sep 2018 06:03:57 -0700 (PDT)
+        Mon, 17 Sep 2018 06:04:00 -0700 (PDT)
 From: Trond Myklebust <trondmy@gmail.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH v3 00/44] Convert RPC client transmission to a queued model
-Date: Mon, 17 Sep 2018 09:02:51 -0400
-Message-Id: <20180917130335.112832-1-trond.myklebust@hammerspace.com>
+Subject: [PATCH v3 04/44] SUNRPC: Simplify identification of when the message send/receive is complete
+Date: Mon, 17 Sep 2018 09:02:55 -0400
+Message-Id: <20180917130335.112832-5-trond.myklebust@hammerspace.com>
+In-Reply-To: <20180917130335.112832-4-trond.myklebust@hammerspace.com>
+References: <20180917130335.112832-1-trond.myklebust@hammerspace.com>
+ <20180917130335.112832-2-trond.myklebust@hammerspace.com>
+ <20180917130335.112832-3-trond.myklebust@hammerspace.com>
+ <20180917130335.112832-4-trond.myklebust@hammerspace.com>
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-For historical reasons, the RPC client is heavily serialised during the
-process of transmitting a request by the XPRT_LOCK. A request is
-required to take that lock before it can start XDR encoding, and it is
-required to hold it until it is done transmitting. In essence the lock
-protects the following functions:
+Add states to indicate that the message send and receive are not yet
+complete.
 
-- Stream based transport connect/reconnect
-- RPCSEC_GSS encoding of the RPC message
-- Transmission of a single RPC message
-
-The following patch set assumes that we do not need to do much to
-improve performance of the connect/reconnect case, as that is supposed
-to be a rare occurrence.
-
-The set looks at dealing with RPCSEC_GSS issues by removing serialisation
-while encoding, and simply assuming that if we detect after grabbing the
-XPRT_LOCK that we're about to transmit a message with a sequence number
-that has fallen outside the window allowed by RFC2203, then we can
-abort the transmission of that message, and schedule it for re-encoding.
-Since window sizes are typically expected to lie above 100 messages or
-so, we expect these cases where we miss the window to be rare, in
-general.
-
-We try to avoid the requirement that every request must go through the
-process of being woken up to grab the XPRT_LOCK in order to transmit itself
-by allowing a request that currently holds the XPRT_LOCK to grab other
-requests from an ordered queue, and to transmit them too. The bulk of
-the changes in this patchset are dedicated to providing this functionality.
-
-In addition, the XPRT_LOCK queue provides some extra functionality:
-- Throttling of the TCP slot allocation (as Chuck pointed out)
-- Fair queuing, to ensure batch jobs don't crowd out interactive ones
-
-The patchset does add functionality to ensure that the resulting
-transmission queue is fair, and also fixes up the RPC wait queues to
-ensure that they don't compromise fairness.
-For now, this patchset discards the TCP slot throttling. We may still
-want to throttle in the case where the connection is lost, but if we
-do so, we should ensure we do not serialise all requests when in the
-connected state.
-
-
-The last few patches also take a new look at the client receive code
-now that we have the iterator method for reading socket data into page
-buffers. It converts the TCP and the UNIX stream code to using the
-iterator method and performs some cleanups.
-
+Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
-v2: - Address feedback by Chuck.
-      - Handle UDP/RDMA credits correctly
-      - Remove throttling of TCP slot allocations
-      - Minor nits
-    - Clean up the write_space handling
-    - Fair queueing
-v3: - Performance improvements, bugfixes and cleanups
-    - Socket stream receive queue improvements
+ include/linux/sunrpc/sched.h |  6 ++++--
+ net/sunrpc/clnt.c            | 19 +++++++------------
+ net/sunrpc/xprt.c            | 17 ++++++++++++++---
+ 3 files changed, 25 insertions(+), 17 deletions(-)
 
-Trond Myklebust (44):
-  SUNRPC: Clean up initialisation of the struct rpc_rqst
-  SUNRPC: If there is no reply expected, bail early from call_decode
-  SUNRPC: The transmitted message must lie in the RPCSEC window of
-    validity
-  SUNRPC: Simplify identification of when the message send/receive is
-    complete
-  SUNRPC: Avoid holding locks across the XDR encoding of the RPC message
-  SUNRPC: Rename TCP receive-specific state variables
-  SUNRPC: Move reset of TCP state variables into the reconnect code
-  SUNRPC: Add socket transmit queue offset tracking
-  SUNRPC: Simplify dealing with aborted partially transmitted messages
-  SUNRPC: Refactor the transport request pinning
-  SUNRPC: Add a helper to wake up a sleeping rpc_task and set its status
-  SUNRPC: Test whether the task is queued before grabbing the queue
-    spinlocks
-  SUNRPC: Don't wake queued RPC calls multiple times in xprt_transmit
-  SUNRPC: Rename xprt->recv_lock to xprt->queue_lock
-  SUNRPC: Refactor xprt_transmit() to remove the reply queue code
-  SUNRPC: Refactor xprt_transmit() to remove wait for reply code
-  SUNRPC: Minor cleanup for call_transmit()
-  SUNRPC: Distinguish between the slot allocation list and receive queue
-  SUNRPC: Add a transmission queue for RPC requests
-  SUNRPC: Refactor RPC call encoding
-  SUNRPC: Fix up the back channel transmit
-  SUNRPC: Treat the task and request as separate in the
-    xprt_ops->send_request()
-  SUNRPC: Don't reset the request 'bytes_sent' counter when releasing
-    XPRT_LOCK
-  SUNRPC: Simplify xprt_prepare_transmit()
-  SUNRPC: Move RPC retransmission stat counter to xprt_transmit()
-  SUNRPC: Improve latency for interactive tasks
-  SUNRPC: Support for congestion control when queuing is enabled
-  SUNRPC: Enqueue swapper tagged RPCs at the head of the transmit queue
-  SUNRPC: Allow calls to xprt_transmit() to drain the entire transmit
-    queue
-  SUNRPC: Allow soft RPC calls to time out when waiting for the
-    XPRT_LOCK
-  SUNRPC: Turn off throttling of RPC slots for TCP sockets
-  SUNRPC: Clean up transport write space handling
-  SUNRPC: Cleanup: remove the unused 'task' argument from the
-    request_send()
-  SUNRPC: Don't take transport->lock unnecessarily when taking XPRT_LOCK
-  SUNRPC: Convert xprt receive queue to use an rbtree
-  SUNRPC: Fix priority queue fairness
-  SUNRPC: Convert the xprt->sending queue back to an ordinary wait queue
-  SUNRPC: Add a label for RPC calls that require allocation on receive
-  SUNRPC: Add a bvec array to struct xdr_buf for use with iovec_iter()
-  SUNRPC: Simplify TCP receive code by switching to using iterators
-  SUNRPC: Clean up - rename xs_tcp_data_receive() to
-    xs_stream_data_receive()
-  SUNRPC: Allow AF_LOCAL sockets to use the generic stream receive
-  SUNRPC: Clean up xs_udp_data_receive()
-  SUNRPC: Unexport xdr_partial_copy_from_skb()
-
- fs/nfs/nfs3xdr.c                           |    4 +-
- include/linux/sunrpc/auth.h                |    2 +
- include/linux/sunrpc/auth_gss.h            |    1 +
- include/linux/sunrpc/bc_xprt.h             |    1 +
- include/linux/sunrpc/sched.h               |   10 +-
- include/linux/sunrpc/svc_xprt.h            |    1 -
- include/linux/sunrpc/xdr.h                 |   11 +-
- include/linux/sunrpc/xprt.h                |   35 +-
- include/linux/sunrpc/xprtsock.h            |   36 +-
- include/trace/events/sunrpc.h              |   37 +-
- net/sunrpc/auth.c                          |   10 +
- net/sunrpc/auth_gss/auth_gss.c             |   41 +
- net/sunrpc/auth_gss/gss_rpc_xdr.c          |    1 +
- net/sunrpc/backchannel_rqst.c              |    1 -
- net/sunrpc/clnt.c                          |  174 ++--
- net/sunrpc/sched.c                         |  178 ++--
- net/sunrpc/socklib.c                       |   10 +-
- net/sunrpc/svc_xprt.c                      |    2 -
- net/sunrpc/svcsock.c                       |    6 +-
- net/sunrpc/xdr.c                           |   34 +
- net/sunrpc/xprt.c                          |  893 ++++++++++++-----
- net/sunrpc/xprtrdma/backchannel.c          |    4 +-
- net/sunrpc/xprtrdma/rpc_rdma.c             |   12 +-
- net/sunrpc/xprtrdma/svc_rdma_backchannel.c |   14 +-
- net/sunrpc/xprtrdma/transport.c            |   10 +-
- net/sunrpc/xprtsock.c                      | 1060 +++++++++-----------
- 26 files changed, 1474 insertions(+), 1114 deletions(-)
-
+diff --git a/include/linux/sunrpc/sched.h b/include/linux/sunrpc/sched.h
+index 592653becd91..9e655df70131 100644
+--- a/include/linux/sunrpc/sched.h
++++ b/include/linux/sunrpc/sched.h
+@@ -140,8 +140,10 @@ struct rpc_task_setup {
+ #define RPC_TASK_RUNNING	0
+ #define RPC_TASK_QUEUED		1
+ #define RPC_TASK_ACTIVE		2
+-#define RPC_TASK_MSG_RECV	3
+-#define RPC_TASK_MSG_RECV_WAIT	4
++#define RPC_TASK_NEED_XMIT	3
++#define RPC_TASK_NEED_RECV	4
++#define RPC_TASK_MSG_RECV	5
++#define RPC_TASK_MSG_RECV_WAIT	6
+ 
+ #define RPC_IS_RUNNING(t)	test_bit(RPC_TASK_RUNNING, &(t)->tk_runstate)
+ #define rpc_set_running(t)	set_bit(RPC_TASK_RUNNING, &(t)->tk_runstate)
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index d41b5ac1d4e8..e5ac35e803ad 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -1156,6 +1156,7 @@ struct rpc_task *rpc_run_bc_task(struct rpc_rqst *req)
+ 	 */
+ 	xbufp->len = xbufp->head[0].iov_len + xbufp->page_len +
+ 			xbufp->tail[0].iov_len;
++	set_bit(RPC_TASK_NEED_XMIT, &task->tk_runstate);
+ 
+ 	task->tk_action = call_bc_transmit;
+ 	atomic_inc(&task->tk_count);
+@@ -1720,17 +1721,10 @@ call_allocate(struct rpc_task *task)
+ 	rpc_exit(task, -ERESTARTSYS);
+ }
+ 
+-static inline int
++static int
+ rpc_task_need_encode(struct rpc_task *task)
+ {
+-	return task->tk_rqstp->rq_snd_buf.len == 0;
+-}
+-
+-static inline void
+-rpc_task_force_reencode(struct rpc_task *task)
+-{
+-	task->tk_rqstp->rq_snd_buf.len = 0;
+-	task->tk_rqstp->rq_bytes_sent = 0;
++	return test_bit(RPC_TASK_NEED_XMIT, &task->tk_runstate) == 0;
+ }
+ 
+ /*
+@@ -1765,6 +1759,8 @@ rpc_xdr_encode(struct rpc_task *task)
+ 
+ 	task->tk_status = rpcauth_wrap_req(task, encode, req, p,
+ 			task->tk_msg.rpc_argp);
++	if (task->tk_status == 0)
++		set_bit(RPC_TASK_NEED_XMIT, &task->tk_runstate);
+ }
+ 
+ /*
+@@ -1999,7 +1995,6 @@ call_transmit_status(struct rpc_task *task)
+ 	 */
+ 	if (task->tk_status == 0) {
+ 		xprt_end_transmit(task);
+-		rpc_task_force_reencode(task);
+ 		return;
+ 	}
+ 
+@@ -2010,7 +2005,6 @@ call_transmit_status(struct rpc_task *task)
+ 	default:
+ 		dprint_status(task);
+ 		xprt_end_transmit(task);
+-		rpc_task_force_reencode(task);
+ 		break;
+ 		/*
+ 		 * Special cases: if we've been waiting on the
+@@ -2038,7 +2032,7 @@ call_transmit_status(struct rpc_task *task)
+ 	case -EADDRINUSE:
+ 	case -ENOTCONN:
+ 	case -EPIPE:
+-		rpc_task_force_reencode(task);
++		break;
+ 	}
+ }
+ 
+@@ -2185,6 +2179,7 @@ call_status(struct rpc_task *task)
+ 		rpc_exit(task, status);
+ 		break;
+ 	case -EBADMSG:
++		clear_bit(RPC_TASK_NEED_XMIT, &task->tk_runstate);
+ 		task->tk_action = call_transmit;
+ 		break;
+ 	default:
+diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+index 3973e10ea2bd..45d580cd93ac 100644
+--- a/net/sunrpc/xprt.c
++++ b/net/sunrpc/xprt.c
+@@ -936,10 +936,18 @@ void xprt_complete_rqst(struct rpc_task *task, int copied)
+ 	/* req->rq_reply_bytes_recvd */
+ 	smp_wmb();
+ 	req->rq_reply_bytes_recvd = copied;
++	clear_bit(RPC_TASK_NEED_RECV, &task->tk_runstate);
+ 	rpc_wake_up_queued_task(&xprt->pending, task);
+ }
+ EXPORT_SYMBOL_GPL(xprt_complete_rqst);
+ 
++static bool
++xprt_request_data_received(struct rpc_task *task)
++{
++	return !test_bit(RPC_TASK_NEED_RECV, &task->tk_runstate) &&
++		task->tk_rqstp->rq_reply_bytes_recvd != 0;
++}
++
+ static void xprt_timer(struct rpc_task *task)
+ {
+ 	struct rpc_rqst *req = task->tk_rqstp;
+@@ -1031,12 +1039,13 @@ void xprt_transmit(struct rpc_task *task)
+ 			/* Add request to the receive list */
+ 			spin_lock(&xprt->recv_lock);
+ 			list_add_tail(&req->rq_list, &xprt->recv);
++			set_bit(RPC_TASK_NEED_RECV, &task->tk_runstate);
+ 			spin_unlock(&xprt->recv_lock);
+ 			xprt_reset_majortimeo(req);
+ 			/* Turn off autodisconnect */
+ 			del_singleshot_timer_sync(&xprt->timer);
+ 		}
+-	} else if (!req->rq_bytes_sent)
++	} else if (xprt_request_data_received(task) && !req->rq_bytes_sent)
+ 		return;
+ 
+ 	connect_cookie = xprt->connect_cookie;
+@@ -1046,9 +1055,11 @@ void xprt_transmit(struct rpc_task *task)
+ 		task->tk_status = status;
+ 		return;
+ 	}
++
+ 	xprt_inject_disconnect(xprt);
+ 
+ 	dprintk("RPC: %5u xmit complete\n", task->tk_pid);
++	clear_bit(RPC_TASK_NEED_XMIT, &task->tk_runstate);
+ 	task->tk_flags |= RPC_TASK_SENT;
+ 	spin_lock_bh(&xprt->transport_lock);
+ 
+@@ -1062,14 +1073,14 @@ void xprt_transmit(struct rpc_task *task)
+ 	spin_unlock_bh(&xprt->transport_lock);
+ 
+ 	req->rq_connect_cookie = connect_cookie;
+-	if (rpc_reply_expected(task) && !READ_ONCE(req->rq_reply_bytes_recvd)) {
++	if (test_bit(RPC_TASK_NEED_RECV, &task->tk_runstate)) {
+ 		/*
+ 		 * Sleep on the pending queue if we're expecting a reply.
+ 		 * The spinlock ensures atomicity between the test of
+ 		 * req->rq_reply_bytes_recvd, and the call to rpc_sleep_on().
+ 		 */
+ 		spin_lock(&xprt->recv_lock);
+-		if (!req->rq_reply_bytes_recvd) {
++		if (test_bit(RPC_TASK_NEED_RECV, &task->tk_runstate)) {
+ 			rpc_sleep_on(&xprt->pending, task, xprt_timer);
+ 			/*
+ 			 * Send an extra queue wakeup call if the
 -- 
 2.17.1
