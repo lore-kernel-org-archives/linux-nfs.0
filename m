@@ -1,21 +1,21 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qt0-f195.google.com ([209.85.216.195]:33518 "EHLO
-        mail-qt0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728229AbeIQSbl (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Sep 2018 14:31:41 -0400
-Received: by mail-qt0-f195.google.com with SMTP id r37-v6so15164216qtc.0
-        for <linux-nfs@vger.kernel.org>; Mon, 17 Sep 2018 06:04:26 -0700 (PDT)
+Received: from mail-qk1-f193.google.com ([209.85.222.193]:43475 "EHLO
+        mail-qk1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1728269AbeIQSbk (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Sep 2018 14:31:40 -0400
+Received: by mail-qk1-f193.google.com with SMTP id 130-v6so8903611qkd.10
+        for <linux-nfs@vger.kernel.org>; Mon, 17 Sep 2018 06:04:25 -0700 (PDT)
 Received: from leira.trondhjem.org.localdomain ([66.187.232.65])
-        by smtp.gmail.com with ESMTPSA id q1-v6sm10499607qkl.31.2018.09.17.06.04.24
+        by smtp.gmail.com with ESMTPSA id q1-v6sm10499607qkl.31.2018.09.17.06.04.23
         for <linux-nfs@vger.kernel.org>
         (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
-        Mon, 17 Sep 2018 06:04:24 -0700 (PDT)
+        Mon, 17 Sep 2018 06:04:23 -0700 (PDT)
 From: Trond Myklebust <trondmy@gmail.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH v3 24/44] SUNRPC: Simplify xprt_prepare_transmit()
-Date: Mon, 17 Sep 2018 09:03:15 -0400
-Message-Id: <20180917130335.112832-25-trond.myklebust@hammerspace.com>
-In-Reply-To: <20180917130335.112832-24-trond.myklebust@hammerspace.com>
+Subject: [PATCH v3 23/44] SUNRPC: Don't reset the request 'bytes_sent' counter when releasing XPRT_LOCK
+Date: Mon, 17 Sep 2018 09:03:14 -0400
+Message-Id: <20180917130335.112832-24-trond.myklebust@hammerspace.com>
+In-Reply-To: <20180917130335.112832-23-trond.myklebust@hammerspace.com>
 References: <20180917130335.112832-1-trond.myklebust@hammerspace.com>
  <20180917130335.112832-2-trond.myklebust@hammerspace.com>
  <20180917130335.112832-3-trond.myklebust@hammerspace.com>
@@ -39,58 +39,97 @@ References: <20180917130335.112832-1-trond.myklebust@hammerspace.com>
  <20180917130335.112832-21-trond.myklebust@hammerspace.com>
  <20180917130335.112832-22-trond.myklebust@hammerspace.com>
  <20180917130335.112832-23-trond.myklebust@hammerspace.com>
- <20180917130335.112832-24-trond.myklebust@hammerspace.com>
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Remove the checks for whether or not we need to transmit, and whether
-or not a reply has been received. Those are already handled in
-call_transmit() itself.
+If the request is still on the queue, this will be incorrect behaviour.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- net/sunrpc/xprt.c | 23 +++++++----------------
- 1 file changed, 7 insertions(+), 16 deletions(-)
+ net/sunrpc/clnt.c |  4 ----
+ net/sunrpc/xprt.c | 14 --------------
+ 2 files changed, 18 deletions(-)
 
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index dcefbf406482..4ca23a6607ba 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -2128,15 +2128,11 @@ static void
+ call_status(struct rpc_task *task)
+ {
+ 	struct rpc_clnt	*clnt = task->tk_client;
+-	struct rpc_rqst	*req = task->tk_rqstp;
+ 	int		status;
+ 
+ 	if (!task->tk_msg.rpc_proc->p_proc)
+ 		trace_xprt_ping(task->tk_xprt, task->tk_status);
+ 
+-	if (req->rq_reply_bytes_recvd > 0 && !req->rq_bytes_sent)
+-		task->tk_status = req->rq_reply_bytes_recvd;
+-
+ 	dprint_status(task);
+ 
+ 	status = task->tk_status;
 diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-index 3b31830ef851..385ee9f64353 100644
+index 00b17cb49910..3b31830ef851 100644
 --- a/net/sunrpc/xprt.c
 +++ b/net/sunrpc/xprt.c
-@@ -1122,27 +1122,18 @@ bool xprt_prepare_transmit(struct rpc_task *task)
- {
- 	struct rpc_rqst	*req = task->tk_rqstp;
- 	struct rpc_xprt	*xprt = req->rq_xprt;
--	bool ret = false;
- 
- 	dprintk("RPC: %5u xprt_prepare_transmit\n", task->tk_pid);
- 
--	spin_lock_bh(&xprt->transport_lock);
--	if (!req->rq_bytes_sent) {
--		if (req->rq_reply_bytes_recvd) {
--			task->tk_status = req->rq_reply_bytes_recvd;
--			goto out_unlock;
--		}
-+	if (!xprt_lock_write(xprt, task)) {
-+		/* Race breaker: someone may have transmitted us */
- 		if (!test_bit(RPC_TASK_NEED_XMIT, &task->tk_runstate))
--			goto out_unlock;
--	}
--	if (!xprt->ops->reserve_xprt(xprt, task)) {
--		task->tk_status = -EAGAIN;
--		goto out_unlock;
-+			rpc_wake_up_queued_task_set_status(&xprt->sending,
-+					task, 0);
-+		return false;
-+
- 	}
--	ret = true;
--out_unlock:
--	spin_unlock_bh(&xprt->transport_lock);
--	return ret;
-+	return true;
+@@ -332,15 +332,6 @@ static void __xprt_lock_write_next_cong(struct rpc_xprt *xprt)
+ 	xprt_clear_locked(xprt);
  }
  
- void xprt_end_transmit(struct rpc_task *task)
+-static void xprt_task_clear_bytes_sent(struct rpc_task *task)
+-{
+-	if (task != NULL) {
+-		struct rpc_rqst *req = task->tk_rqstp;
+-		if (req != NULL)
+-			req->rq_bytes_sent = 0;
+-	}
+-}
+-
+ /**
+  * xprt_release_xprt - allow other requests to use a transport
+  * @xprt: transport with other tasks potentially waiting
+@@ -351,7 +342,6 @@ static void xprt_task_clear_bytes_sent(struct rpc_task *task)
+ void xprt_release_xprt(struct rpc_xprt *xprt, struct rpc_task *task)
+ {
+ 	if (xprt->snd_task == task) {
+-		xprt_task_clear_bytes_sent(task);
+ 		xprt_clear_locked(xprt);
+ 		__xprt_lock_write_next(xprt);
+ 	}
+@@ -369,7 +359,6 @@ EXPORT_SYMBOL_GPL(xprt_release_xprt);
+ void xprt_release_xprt_cong(struct rpc_xprt *xprt, struct rpc_task *task)
+ {
+ 	if (xprt->snd_task == task) {
+-		xprt_task_clear_bytes_sent(task);
+ 		xprt_clear_locked(xprt);
+ 		__xprt_lock_write_next_cong(xprt);
+ 	}
+@@ -742,7 +731,6 @@ bool xprt_lock_connect(struct rpc_xprt *xprt,
+ 		goto out;
+ 	if (xprt->snd_task != task)
+ 		goto out;
+-	xprt_task_clear_bytes_sent(task);
+ 	xprt->snd_task = cookie;
+ 	ret = true;
+ out:
+@@ -788,7 +776,6 @@ void xprt_connect(struct rpc_task *task)
+ 		xprt->ops->close(xprt);
+ 
+ 	if (!xprt_connected(xprt)) {
+-		task->tk_rqstp->rq_bytes_sent = 0;
+ 		task->tk_timeout = task->tk_rqstp->rq_timeout;
+ 		task->tk_rqstp->rq_connect_cookie = xprt->connect_cookie;
+ 		rpc_sleep_on(&xprt->pending, task, xprt_connect_status);
+@@ -1093,7 +1080,6 @@ xprt_request_enqueue_transmit(struct rpc_task *task)
+ static void
+ xprt_request_dequeue_transmit_locked(struct rpc_task *task)
+ {
+-	xprt_task_clear_bytes_sent(task);
+ 	if (test_and_clear_bit(RPC_TASK_NEED_XMIT, &task->tk_runstate))
+ 		list_del(&task->tk_rqstp->rq_xmit);
+ }
 -- 
 2.17.1
