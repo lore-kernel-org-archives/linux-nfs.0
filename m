@@ -1,174 +1,369 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qt0-f194.google.com ([209.85.216.194]:33922 "EHLO
-        mail-qt0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726889AbeIQSbO (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Sep 2018 14:31:14 -0400
-Received: by mail-qt0-f194.google.com with SMTP id m13-v6so15169864qth.1
-        for <linux-nfs@vger.kernel.org>; Mon, 17 Sep 2018 06:03:59 -0700 (PDT)
+Received: from mail-qk1-f194.google.com ([209.85.222.194]:38785 "EHLO
+        mail-qk1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1728187AbeIQSb3 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Sep 2018 14:31:29 -0400
+Received: by mail-qk1-f194.google.com with SMTP id g197-v6so8901067qke.5
+        for <linux-nfs@vger.kernel.org>; Mon, 17 Sep 2018 06:04:14 -0700 (PDT)
 Received: from leira.trondhjem.org.localdomain ([66.187.232.65])
-        by smtp.gmail.com with ESMTPSA id q1-v6sm10499607qkl.31.2018.09.17.06.03.57
+        by smtp.gmail.com with ESMTPSA id q1-v6sm10499607qkl.31.2018.09.17.06.04.12
         for <linux-nfs@vger.kernel.org>
         (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
-        Mon, 17 Sep 2018 06:03:57 -0700 (PDT)
+        Mon, 17 Sep 2018 06:04:12 -0700 (PDT)
 From: Trond Myklebust <trondmy@gmail.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH v3 01/44] SUNRPC: Clean up initialisation of the struct rpc_rqst
-Date: Mon, 17 Sep 2018 09:02:52 -0400
-Message-Id: <20180917130335.112832-2-trond.myklebust@hammerspace.com>
-In-Reply-To: <20180917130335.112832-1-trond.myklebust@hammerspace.com>
+Subject: [PATCH v3 14/44] SUNRPC: Rename xprt->recv_lock to xprt->queue_lock
+Date: Mon, 17 Sep 2018 09:03:05 -0400
+Message-Id: <20180917130335.112832-15-trond.myklebust@hammerspace.com>
+In-Reply-To: <20180917130335.112832-14-trond.myklebust@hammerspace.com>
 References: <20180917130335.112832-1-trond.myklebust@hammerspace.com>
+ <20180917130335.112832-2-trond.myklebust@hammerspace.com>
+ <20180917130335.112832-3-trond.myklebust@hammerspace.com>
+ <20180917130335.112832-4-trond.myklebust@hammerspace.com>
+ <20180917130335.112832-5-trond.myklebust@hammerspace.com>
+ <20180917130335.112832-6-trond.myklebust@hammerspace.com>
+ <20180917130335.112832-7-trond.myklebust@hammerspace.com>
+ <20180917130335.112832-8-trond.myklebust@hammerspace.com>
+ <20180917130335.112832-9-trond.myklebust@hammerspace.com>
+ <20180917130335.112832-10-trond.myklebust@hammerspace.com>
+ <20180917130335.112832-11-trond.myklebust@hammerspace.com>
+ <20180917130335.112832-12-trond.myklebust@hammerspace.com>
+ <20180917130335.112832-13-trond.myklebust@hammerspace.com>
+ <20180917130335.112832-14-trond.myklebust@hammerspace.com>
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Move the initialisation back into xprt.c.
+We will use the same lock to protect both the transmit and receive queues.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- include/linux/sunrpc/xprt.h |  1 -
- net/sunrpc/clnt.c           |  1 -
- net/sunrpc/xprt.c           | 91 +++++++++++++++++++++----------------
- 3 files changed, 51 insertions(+), 42 deletions(-)
+ include/linux/sunrpc/xprt.h                |  2 +-
+ net/sunrpc/svcsock.c                       |  6 ++---
+ net/sunrpc/xprt.c                          | 24 ++++++++---------
+ net/sunrpc/xprtrdma/rpc_rdma.c             | 10 ++++----
+ net/sunrpc/xprtrdma/svc_rdma_backchannel.c |  4 +--
+ net/sunrpc/xprtsock.c                      | 30 +++++++++++-----------
+ 6 files changed, 38 insertions(+), 38 deletions(-)
 
 diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
-index 336fd1a19cca..3d80524e92d6 100644
+index bd743c51a865..c25d0a5fda69 100644
 --- a/include/linux/sunrpc/xprt.h
 +++ b/include/linux/sunrpc/xprt.h
-@@ -325,7 +325,6 @@ struct xprt_class {
- struct rpc_xprt		*xprt_create_transport(struct xprt_create *args);
- void			xprt_connect(struct rpc_task *task);
- void			xprt_reserve(struct rpc_task *task);
--void			xprt_request_init(struct rpc_task *task);
- void			xprt_retry_reserve(struct rpc_task *task);
- int			xprt_reserve_xprt(struct rpc_xprt *xprt, struct rpc_task *task);
- int			xprt_reserve_xprt_cong(struct rpc_xprt *xprt, struct rpc_task *task);
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index 8ea2f5fadd96..bc9d020bf71f 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -1558,7 +1558,6 @@ call_reserveresult(struct rpc_task *task)
- 	task->tk_status = 0;
- 	if (status >= 0) {
- 		if (task->tk_rqstp) {
--			xprt_request_init(task);
- 			task->tk_action = call_refresh;
- 			return;
- 		}
+@@ -235,7 +235,7 @@ struct rpc_xprt {
+ 	 */
+ 	spinlock_t		transport_lock;	/* lock transport info */
+ 	spinlock_t		reserve_lock;	/* lock slot table */
+-	spinlock_t		recv_lock;	/* lock receive list */
++	spinlock_t		queue_lock;	/* send/receive queue lock */
+ 	u32			xid;		/* Next XID value to use */
+ 	struct rpc_task *	snd_task;	/* Task blocked in send */
+ 	struct svc_xprt		*bc_xprt;	/* NFSv4.1 backchannel */
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index 5445145e639c..db8bb6b3a2b0 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -1004,7 +1004,7 @@ static int receive_cb_reply(struct svc_sock *svsk, struct svc_rqst *rqstp)
+ 
+ 	if (!bc_xprt)
+ 		return -EAGAIN;
+-	spin_lock(&bc_xprt->recv_lock);
++	spin_lock(&bc_xprt->queue_lock);
+ 	req = xprt_lookup_rqst(bc_xprt, xid);
+ 	if (!req)
+ 		goto unlock_notfound;
+@@ -1022,7 +1022,7 @@ static int receive_cb_reply(struct svc_sock *svsk, struct svc_rqst *rqstp)
+ 	memcpy(dst->iov_base, src->iov_base, src->iov_len);
+ 	xprt_complete_rqst(req->rq_task, rqstp->rq_arg.len);
+ 	rqstp->rq_arg.len = 0;
+-	spin_unlock(&bc_xprt->recv_lock);
++	spin_unlock(&bc_xprt->queue_lock);
+ 	return 0;
+ unlock_notfound:
+ 	printk(KERN_NOTICE
+@@ -1031,7 +1031,7 @@ static int receive_cb_reply(struct svc_sock *svsk, struct svc_rqst *rqstp)
+ 		__func__, ntohl(calldir),
+ 		bc_xprt, ntohl(xid));
+ unlock_eagain:
+-	spin_unlock(&bc_xprt->recv_lock);
++	spin_unlock(&bc_xprt->queue_lock);
+ 	return -EAGAIN;
+ }
+ 
 diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-index a8db2e3f8904..6aa09edc9567 100644
+index 3a3b3445a7c0..6e3d4b4ee79e 100644
 --- a/net/sunrpc/xprt.c
 +++ b/net/sunrpc/xprt.c
-@@ -1250,6 +1250,55 @@ void xprt_free(struct rpc_xprt *xprt)
- }
- EXPORT_SYMBOL_GPL(xprt_free);
- 
-+static __be32
-+xprt_alloc_xid(struct rpc_xprt *xprt)
-+{
-+	__be32 xid;
-+
-+	spin_lock(&xprt->reserve_lock);
-+	xid = (__force __be32)xprt->xid++;
-+	spin_unlock(&xprt->reserve_lock);
-+	return xid;
-+}
-+
-+static void
-+xprt_init_xid(struct rpc_xprt *xprt)
-+{
-+	xprt->xid = prandom_u32();
-+}
-+
-+static void
-+xprt_request_init(struct rpc_task *task)
-+{
-+	struct rpc_xprt *xprt = task->tk_xprt;
-+	struct rpc_rqst	*req = task->tk_rqstp;
-+
-+	INIT_LIST_HEAD(&req->rq_list);
-+	req->rq_timeout = task->tk_client->cl_timeout->to_initval;
-+	req->rq_task	= task;
-+	req->rq_xprt    = xprt;
-+	req->rq_buffer  = NULL;
-+	req->rq_xid	= xprt_alloc_xid(xprt);
-+	req->rq_connect_cookie = xprt->connect_cookie - 1;
-+	req->rq_bytes_sent = 0;
-+	req->rq_snd_buf.len = 0;
-+	req->rq_snd_buf.buflen = 0;
-+	req->rq_rcv_buf.len = 0;
-+	req->rq_rcv_buf.buflen = 0;
-+	req->rq_release_snd_buf = NULL;
-+	xprt_reset_majortimeo(req);
-+	dprintk("RPC: %5u reserved req %p xid %08x\n", task->tk_pid,
-+			req, ntohl(req->rq_xid));
-+}
-+
-+static void
-+xprt_do_reserve(struct rpc_xprt *xprt, struct rpc_task *task)
-+{
-+	xprt->ops->alloc_slot(xprt, task);
-+	if (task->tk_rqstp != NULL)
-+		xprt_request_init(task);
-+}
-+
- /**
-  * xprt_reserve - allocate an RPC request slot
-  * @task: RPC task requesting a slot allocation
-@@ -1269,7 +1318,7 @@ void xprt_reserve(struct rpc_task *task)
- 	task->tk_timeout = 0;
- 	task->tk_status = -EAGAIN;
- 	if (!xprt_throttle_congested(xprt, task))
--		xprt->ops->alloc_slot(xprt, task);
-+		xprt_do_reserve(xprt, task);
+@@ -826,7 +826,7 @@ static void xprt_connect_status(struct rpc_task *task)
+  * @xprt: transport on which the original request was transmitted
+  * @xid: RPC XID of incoming reply
+  *
+- * Caller holds xprt->recv_lock.
++ * Caller holds xprt->queue_lock.
+  */
+ struct rpc_rqst *xprt_lookup_rqst(struct rpc_xprt *xprt, __be32 xid)
+ {
+@@ -892,7 +892,7 @@ static void xprt_wait_on_pinned_rqst(struct rpc_rqst *req)
+  * xprt_update_rtt - Update RPC RTT statistics
+  * @task: RPC request that recently completed
+  *
+- * Caller holds xprt->recv_lock.
++ * Caller holds xprt->queue_lock.
+  */
+ void xprt_update_rtt(struct rpc_task *task)
+ {
+@@ -914,7 +914,7 @@ EXPORT_SYMBOL_GPL(xprt_update_rtt);
+  * @task: RPC request that recently completed
+  * @copied: actual number of bytes received from the transport
+  *
+- * Caller holds xprt->recv_lock.
++ * Caller holds xprt->queue_lock.
+  */
+ void xprt_complete_rqst(struct rpc_task *task, int copied)
+ {
+@@ -1034,10 +1034,10 @@ void xprt_transmit(struct rpc_task *task)
+ 			memcpy(&req->rq_private_buf, &req->rq_rcv_buf,
+ 					sizeof(req->rq_private_buf));
+ 			/* Add request to the receive list */
+-			spin_lock(&xprt->recv_lock);
++			spin_lock(&xprt->queue_lock);
+ 			list_add_tail(&req->rq_list, &xprt->recv);
+ 			set_bit(RPC_TASK_NEED_RECV, &task->tk_runstate);
+-			spin_unlock(&xprt->recv_lock);
++			spin_unlock(&xprt->queue_lock);
+ 			xprt_reset_majortimeo(req);
+ 			/* Turn off autodisconnect */
+ 			del_singleshot_timer_sync(&xprt->timer);
+@@ -1076,7 +1076,7 @@ void xprt_transmit(struct rpc_task *task)
+ 		 * The spinlock ensures atomicity between the test of
+ 		 * req->rq_reply_bytes_recvd, and the call to rpc_sleep_on().
+ 		 */
+-		spin_lock(&xprt->recv_lock);
++		spin_lock(&xprt->queue_lock);
+ 		if (test_bit(RPC_TASK_NEED_RECV, &task->tk_runstate)) {
+ 			rpc_sleep_on(&xprt->pending, task, xprt_timer);
+ 			/* Wake up immediately if the connection was dropped */
+@@ -1084,7 +1084,7 @@ void xprt_transmit(struct rpc_task *task)
+ 				rpc_wake_up_queued_task_set_status(&xprt->pending,
+ 						task, -ENOTCONN);
+ 		}
+-		spin_unlock(&xprt->recv_lock);
++		spin_unlock(&xprt->queue_lock);
+ 	}
  }
  
- /**
-@@ -1291,45 +1340,7 @@ void xprt_retry_reserve(struct rpc_task *task)
+@@ -1379,18 +1379,18 @@ void xprt_release(struct rpc_task *task)
+ 		task->tk_ops->rpc_count_stats(task, task->tk_calldata);
+ 	else if (task->tk_client)
+ 		rpc_count_iostats(task, task->tk_client->cl_metrics);
+-	spin_lock(&xprt->recv_lock);
++	spin_lock(&xprt->queue_lock);
+ 	if (!list_empty(&req->rq_list)) {
+ 		list_del_init(&req->rq_list);
+ 		if (xprt_is_pinned_rqst(req)) {
+ 			set_bit(RPC_TASK_MSG_PIN_WAIT, &req->rq_task->tk_runstate);
+-			spin_unlock(&xprt->recv_lock);
++			spin_unlock(&xprt->queue_lock);
+ 			xprt_wait_on_pinned_rqst(req);
+-			spin_lock(&xprt->recv_lock);
++			spin_lock(&xprt->queue_lock);
+ 			clear_bit(RPC_TASK_MSG_PIN_WAIT, &req->rq_task->tk_runstate);
+ 		}
+ 	}
+-	spin_unlock(&xprt->recv_lock);
++	spin_unlock(&xprt->queue_lock);
+ 	spin_lock_bh(&xprt->transport_lock);
+ 	xprt->ops->release_xprt(xprt, task);
+ 	if (xprt->ops->release_request)
+@@ -1420,7 +1420,7 @@ static void xprt_init(struct rpc_xprt *xprt, struct net *net)
  
- 	task->tk_timeout = 0;
- 	task->tk_status = -EAGAIN;
--	xprt->ops->alloc_slot(xprt, task);
--}
--
--static inline __be32 xprt_alloc_xid(struct rpc_xprt *xprt)
--{
--	__be32 xid;
--
--	spin_lock(&xprt->reserve_lock);
--	xid = (__force __be32)xprt->xid++;
--	spin_unlock(&xprt->reserve_lock);
--	return xid;
--}
--
--static inline void xprt_init_xid(struct rpc_xprt *xprt)
--{
--	xprt->xid = prandom_u32();
--}
--
--void xprt_request_init(struct rpc_task *task)
--{
--	struct rpc_xprt *xprt = task->tk_xprt;
--	struct rpc_rqst	*req = task->tk_rqstp;
--
--	INIT_LIST_HEAD(&req->rq_list);
--	req->rq_timeout = task->tk_client->cl_timeout->to_initval;
--	req->rq_task	= task;
--	req->rq_xprt    = xprt;
--	req->rq_buffer  = NULL;
--	req->rq_xid	= xprt_alloc_xid(xprt);
--	req->rq_connect_cookie = xprt->connect_cookie - 1;
--	req->rq_bytes_sent = 0;
--	req->rq_snd_buf.len = 0;
--	req->rq_snd_buf.buflen = 0;
--	req->rq_rcv_buf.len = 0;
--	req->rq_rcv_buf.buflen = 0;
--	req->rq_release_snd_buf = NULL;
--	xprt_reset_majortimeo(req);
--	dprintk("RPC: %5u reserved req %p xid %08x\n", task->tk_pid,
--			req, ntohl(req->rq_xid));
-+	xprt_do_reserve(xprt, task);
+ 	spin_lock_init(&xprt->transport_lock);
+ 	spin_lock_init(&xprt->reserve_lock);
+-	spin_lock_init(&xprt->recv_lock);
++	spin_lock_init(&xprt->queue_lock);
+ 
+ 	INIT_LIST_HEAD(&xprt->free);
+ 	INIT_LIST_HEAD(&xprt->recv);
+diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
+index c8ae983c6cc0..0020dc401215 100644
+--- a/net/sunrpc/xprtrdma/rpc_rdma.c
++++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+@@ -1238,7 +1238,7 @@ void rpcrdma_complete_rqst(struct rpcrdma_rep *rep)
+ 		goto out_badheader;
+ 
+ out:
+-	spin_lock(&xprt->recv_lock);
++	spin_lock(&xprt->queue_lock);
+ 	cwnd = xprt->cwnd;
+ 	xprt->cwnd = r_xprt->rx_buf.rb_credits << RPC_CWNDSHIFT;
+ 	if (xprt->cwnd > cwnd)
+@@ -1246,7 +1246,7 @@ void rpcrdma_complete_rqst(struct rpcrdma_rep *rep)
+ 
+ 	xprt_complete_rqst(rqst->rq_task, status);
+ 	xprt_unpin_rqst(rqst);
+-	spin_unlock(&xprt->recv_lock);
++	spin_unlock(&xprt->queue_lock);
+ 	return;
+ 
+ /* If the incoming reply terminated a pending RPC, the next
+@@ -1345,7 +1345,7 @@ void rpcrdma_reply_handler(struct rpcrdma_rep *rep)
+ 	/* Match incoming rpcrdma_rep to an rpcrdma_req to
+ 	 * get context for handling any incoming chunks.
+ 	 */
+-	spin_lock(&xprt->recv_lock);
++	spin_lock(&xprt->queue_lock);
+ 	rqst = xprt_lookup_rqst(xprt, rep->rr_xid);
+ 	if (!rqst)
+ 		goto out_norqst;
+@@ -1357,7 +1357,7 @@ void rpcrdma_reply_handler(struct rpcrdma_rep *rep)
+ 		credits = buf->rb_max_requests;
+ 	buf->rb_credits = credits;
+ 
+-	spin_unlock(&xprt->recv_lock);
++	spin_unlock(&xprt->queue_lock);
+ 
+ 	req = rpcr_to_rdmar(rqst);
+ 	req->rl_reply = rep;
+@@ -1378,7 +1378,7 @@ void rpcrdma_reply_handler(struct rpcrdma_rep *rep)
+  * is corrupt.
+  */
+ out_norqst:
+-	spin_unlock(&xprt->recv_lock);
++	spin_unlock(&xprt->queue_lock);
+ 	trace_xprtrdma_reply_rqst(rep);
+ 	goto repost;
+ 
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_backchannel.c b/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
+index a68180090554..09b12b7568fe 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
+@@ -56,7 +56,7 @@ int svc_rdma_handle_bc_reply(struct rpc_xprt *xprt, __be32 *rdma_resp,
+ 	if (src->iov_len < 24)
+ 		goto out_shortreply;
+ 
+-	spin_lock(&xprt->recv_lock);
++	spin_lock(&xprt->queue_lock);
+ 	req = xprt_lookup_rqst(xprt, xid);
+ 	if (!req)
+ 		goto out_notfound;
+@@ -86,7 +86,7 @@ int svc_rdma_handle_bc_reply(struct rpc_xprt *xprt, __be32 *rdma_resp,
+ 	rcvbuf->len = 0;
+ 
+ out_unlock:
+-	spin_unlock(&xprt->recv_lock);
++	spin_unlock(&xprt->queue_lock);
+ out:
+ 	return ret;
+ 
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 3fbccebd0b10..8d6404259ff9 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -966,12 +966,12 @@ static void xs_local_data_read_skb(struct rpc_xprt *xprt,
+ 		return;
+ 
+ 	/* Look up and lock the request corresponding to the given XID */
+-	spin_lock(&xprt->recv_lock);
++	spin_lock(&xprt->queue_lock);
+ 	rovr = xprt_lookup_rqst(xprt, *xp);
+ 	if (!rovr)
+ 		goto out_unlock;
+ 	xprt_pin_rqst(rovr);
+-	spin_unlock(&xprt->recv_lock);
++	spin_unlock(&xprt->queue_lock);
+ 	task = rovr->rq_task;
+ 
+ 	copied = rovr->rq_private_buf.buflen;
+@@ -980,16 +980,16 @@ static void xs_local_data_read_skb(struct rpc_xprt *xprt,
+ 
+ 	if (xs_local_copy_to_xdr(&rovr->rq_private_buf, skb)) {
+ 		dprintk("RPC:       sk_buff copy failed\n");
+-		spin_lock(&xprt->recv_lock);
++		spin_lock(&xprt->queue_lock);
+ 		goto out_unpin;
+ 	}
+ 
+-	spin_lock(&xprt->recv_lock);
++	spin_lock(&xprt->queue_lock);
+ 	xprt_complete_rqst(task, copied);
+ out_unpin:
+ 	xprt_unpin_rqst(rovr);
+  out_unlock:
+-	spin_unlock(&xprt->recv_lock);
++	spin_unlock(&xprt->queue_lock);
  }
  
- /**
+ static void xs_local_data_receive(struct sock_xprt *transport)
+@@ -1058,13 +1058,13 @@ static void xs_udp_data_read_skb(struct rpc_xprt *xprt,
+ 		return;
+ 
+ 	/* Look up and lock the request corresponding to the given XID */
+-	spin_lock(&xprt->recv_lock);
++	spin_lock(&xprt->queue_lock);
+ 	rovr = xprt_lookup_rqst(xprt, *xp);
+ 	if (!rovr)
+ 		goto out_unlock;
+ 	xprt_pin_rqst(rovr);
+ 	xprt_update_rtt(rovr->rq_task);
+-	spin_unlock(&xprt->recv_lock);
++	spin_unlock(&xprt->queue_lock);
+ 	task = rovr->rq_task;
+ 
+ 	if ((copied = rovr->rq_private_buf.buflen) > repsize)
+@@ -1072,7 +1072,7 @@ static void xs_udp_data_read_skb(struct rpc_xprt *xprt,
+ 
+ 	/* Suck it into the iovec, verify checksum if not done by hw. */
+ 	if (csum_partial_copy_to_xdr(&rovr->rq_private_buf, skb)) {
+-		spin_lock(&xprt->recv_lock);
++		spin_lock(&xprt->queue_lock);
+ 		__UDPX_INC_STATS(sk, UDP_MIB_INERRORS);
+ 		goto out_unpin;
+ 	}
+@@ -1081,13 +1081,13 @@ static void xs_udp_data_read_skb(struct rpc_xprt *xprt,
+ 	spin_lock_bh(&xprt->transport_lock);
+ 	xprt_adjust_cwnd(xprt, task, copied);
+ 	spin_unlock_bh(&xprt->transport_lock);
+-	spin_lock(&xprt->recv_lock);
++	spin_lock(&xprt->queue_lock);
+ 	xprt_complete_rqst(task, copied);
+ 	__UDPX_INC_STATS(sk, UDP_MIB_INDATAGRAMS);
+ out_unpin:
+ 	xprt_unpin_rqst(rovr);
+  out_unlock:
+-	spin_unlock(&xprt->recv_lock);
++	spin_unlock(&xprt->queue_lock);
+ }
+ 
+ static void xs_udp_data_receive(struct sock_xprt *transport)
+@@ -1356,24 +1356,24 @@ static inline int xs_tcp_read_reply(struct rpc_xprt *xprt,
+ 	dprintk("RPC:       read reply XID %08x\n", ntohl(transport->recv.xid));
+ 
+ 	/* Find and lock the request corresponding to this xid */
+-	spin_lock(&xprt->recv_lock);
++	spin_lock(&xprt->queue_lock);
+ 	req = xprt_lookup_rqst(xprt, transport->recv.xid);
+ 	if (!req) {
+ 		dprintk("RPC:       XID %08x request not found!\n",
+ 				ntohl(transport->recv.xid));
+-		spin_unlock(&xprt->recv_lock);
++		spin_unlock(&xprt->queue_lock);
+ 		return -1;
+ 	}
+ 	xprt_pin_rqst(req);
+-	spin_unlock(&xprt->recv_lock);
++	spin_unlock(&xprt->queue_lock);
+ 
+ 	xs_tcp_read_common(xprt, desc, req);
+ 
+-	spin_lock(&xprt->recv_lock);
++	spin_lock(&xprt->queue_lock);
+ 	if (!(transport->recv.flags & TCP_RCV_COPY_DATA))
+ 		xprt_complete_rqst(req->rq_task, transport->recv.copied);
+ 	xprt_unpin_rqst(req);
+-	spin_unlock(&xprt->recv_lock);
++	spin_unlock(&xprt->queue_lock);
+ 	return 0;
+ }
+ 
 -- 
 2.17.1
