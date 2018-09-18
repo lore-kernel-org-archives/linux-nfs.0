@@ -1,347 +1,105 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io1-f66.google.com ([209.85.166.66]:46749 "EHLO
-        mail-io1-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1729859AbeISCft (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Sep 2018 22:35:49 -0400
-Received: by mail-io1-f66.google.com with SMTP id y12-v6so2724866ioj.13
-        for <linux-nfs@vger.kernel.org>; Tue, 18 Sep 2018 14:01:25 -0700 (PDT)
-Message-ID: <3df56a33b30660b7e4492c0c1b01c6b5b729b4fb.camel@gmail.com>
-Subject: Re: [PATCH v3 15/44] SUNRPC: Refactor xprt_transmit() to remove the
- reply queue code
-From: Anna Schumaker <schumaker.anna@gmail.com>
-To: Trond Myklebust <trondmy@gmail.com>, linux-nfs@vger.kernel.org
-Date: Tue, 18 Sep 2018 17:01:22 -0400
-In-Reply-To: <20180917130335.112832-16-trond.myklebust@hammerspace.com>
-References: <20180917130335.112832-1-trond.myklebust@hammerspace.com>
-         <20180917130335.112832-2-trond.myklebust@hammerspace.com>
-         <20180917130335.112832-3-trond.myklebust@hammerspace.com>
-         <20180917130335.112832-4-trond.myklebust@hammerspace.com>
-         <20180917130335.112832-5-trond.myklebust@hammerspace.com>
-         <20180917130335.112832-6-trond.myklebust@hammerspace.com>
-         <20180917130335.112832-7-trond.myklebust@hammerspace.com>
-         <20180917130335.112832-8-trond.myklebust@hammerspace.com>
-         <20180917130335.112832-9-trond.myklebust@hammerspace.com>
-         <20180917130335.112832-10-trond.myklebust@hammerspace.com>
-         <20180917130335.112832-11-trond.myklebust@hammerspace.com>
-         <20180917130335.112832-12-trond.myklebust@hammerspace.com>
-         <20180917130335.112832-13-trond.myklebust@hammerspace.com>
-         <20180917130335.112832-14-trond.myklebust@hammerspace.com>
-         <20180917130335.112832-15-trond.myklebust@hammerspace.com>
-         <20180917130335.112832-16-trond.myklebust@hammerspace.com>
+Received: from mx1.redhat.com ([209.132.183.28]:42200 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1729200AbeISCtp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 18 Sep 2018 22:49:45 -0400
+Received: from smtp.corp.redhat.com (int-mx06.intmail.prod.int.phx2.redhat.com [10.5.11.16])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id A471E31500A4
+        for <linux-nfs@vger.kernel.org>; Tue, 18 Sep 2018 21:15:19 +0000 (UTC)
+Message-ID: <1537305318.8639.2.camel@redhat.com>
+Subject: [PATCH] nfs-utils: Add missing nfs.conf entries for various cmdline
+ options
+From: Justin Mitchell <jumitche@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: Steve Dickson <steved@redhat.com>
+Date: Tue, 18 Sep 2018 17:15:18 -0400
 Content-Type: text/plain; charset="UTF-8"
 Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Trond,
+Add nfs.conf entries for various cmdline options
 
-I'm seeing this crash while running cthon tests (on any NFS version) after
-applying this patch:
-
-[   50.780104] general protection fault: 0000 [#1] PREEMPT SMP PTI
-[   50.780796] CPU: 0 PID: 384 Comm: kworker/u5:1 Not tainted 4.19.0-rc4-ANNA+
-#7455
-[   50.781601] Hardware name: Bochs Bochs, BIOS Bochs 01/01/2011
-[   50.782232] Workqueue: xprtiod xs_tcp_data_receive_workfn [sunrpc]
-[   50.782911] RIP: 0010:xprt_lookup_rqst+0x2c/0x150 [sunrpc]
-[   50.783510] Code: 48 8d 97 58 04 00 00 41 54 49 89 fc 55 89 f5 53 48 8b 87 58
-04 00 00 48 39 c2 74 26 48 8d 98 48 ff ff ff 3b 70 e0 75 07 eb 3f <39> 68 e0 74
-3a 48 8b 83 b8 00 00 00 48 8d 98 48 ff ff ff 48 39 c2
-[   50.785501] RSP: 0018:ffffc90000bebd60 EFLAGS: 00010202
-[   50.786090] RAX: dead000000000100 RBX: dead000000000048 RCX: 0000000000000051
-[   50.786853] RDX: ffff8800b915dc58 RSI: 000000005a1c5631 RDI: ffff8800b915d800
-[   50.787616] RBP: 000000005a1c5631 R08: 0000000000000000 R09: 00646f6974727078
-[   50.788380] R10: 8080808080808080 R11: 00000000000ee5f3 R12: ffff8800b915d800
-[   50.789153] R13: ffff8800b915dc18 R14: ffff8800b915d800 R15: ffffffffa03265b4
-[   50.789930] FS:  0000000000000000(0000) GS:ffff8800bca00000(0000)
-knlGS:0000000000000000
-[   50.790797] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-[   50.791416] CR2: 00007f9b670538b0 CR3: 000000000200a001 CR4: 00000000001606f0
-[   50.792182] Call Trace:
-[   50.792471]  xs_tcp_data_recv+0x3a6/0x780 [sunrpc]
-[   50.792993]  ? __switch_to_asm+0x34/0x70
-[   50.793426]  ? xs_tcp_check_fraghdr.part.1+0x40/0x40 [sunrpc]
-[   50.794047]  tcp_read_sock+0x93/0x1b0
-[   50.794447]  ? __switch_to_asm+0x40/0x70
-[   50.794879]  xs_tcp_data_receive_workfn+0xb2/0x190 [sunrpc]
-[   50.795482]  process_one_work+0x1e6/0x3c0
-[   50.795928]  worker_thread+0x28/0x3c0
-[   50.796337]  ? process_one_work+0x3c0/0x3c0
-[   50.796814]  kthread+0x10d/0x130
-[   50.797170]  ? kthread_park+0x80/0x80
-[   50.797570]  ret_from_fork+0x35/0x40
-[   50.797961] Modules linked in: nfsv3 rpcsec_gss_krb5 nfsv4 nfs fscache
-cfg80211 rpcrdma rfkill crct10dif_pclmul crc32_pclmul crc32c_intel
-ghash_clmulni_intel joydev pcbc mousedev aesni_intel psmouse aes_x86_64 evdev
-crypto_simd cryptd input_leds glue_helper led_class mac_hid pcspkr intel_agp
-intel_gtt i2c_piix4 nfsd button auth_rpcgss nfs_acl lockd grace sunrpc
-sch_fq_codel ip_tables x_tables ata_generic pata_acpi ata_piix serio_raw
-uhci_hcd atkbd ehci_pci libps2 ehci_hcd libata usbcore usb_common i8042 floppy
-serio scsi_mod xfs virtio_balloon virtio_net net_failover failover virtio_pci
-virtio_blk virtio_ring virtio
+These options did not have a corresponding nfs.conf entry which is
+currently forcing use of cmdline flags
 
 
-Cheers,
-Anna
+Signed-off-by: Justin Mitchell <jumitche@redhat.com>
+---
+ utils/gssd/gssd.c       | 3 +++
+ utils/gssd/svcgssd.c    | 4 ++++
+ utils/idmapd/idmapd.c   | 8 ++++++++
+ utils/statd/sm-notify.c | 1 +
+ 4 files changed, 16 insertions(+)
 
-On Mon, 2018-09-17 at 09:03 -0400, Trond Myklebust wrote:
-> Separate out the action of adding a request to the reply queue so that the
-> backchannel code can simply skip calling it altogether.
-> 
-> Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
-> ---
->  include/linux/sunrpc/xprt.h       |   1 +
->  net/sunrpc/backchannel_rqst.c     |   1 -
->  net/sunrpc/clnt.c                 |   5 ++
->  net/sunrpc/xprt.c                 | 126 +++++++++++++++++++-----------
->  net/sunrpc/xprtrdma/backchannel.c |   1 -
->  5 files changed, 88 insertions(+), 46 deletions(-)
-> 
-> diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
-> index c25d0a5fda69..0250294c904a 100644
-> --- a/include/linux/sunrpc/xprt.h
-> +++ b/include/linux/sunrpc/xprt.h
-> @@ -334,6 +334,7 @@ void			xprt_free_slot(struct rpc_xprt
-> *xprt,
->  				       struct rpc_rqst *req);
->  void			xprt_lock_and_alloc_slot(struct rpc_xprt *xprt, struct
-> rpc_task *task);
->  bool			xprt_prepare_transmit(struct rpc_task *task);
-> +void			xprt_request_enqueue_receive(struct rpc_task *task);
->  void			xprt_transmit(struct rpc_task *task);
->  void			xprt_end_transmit(struct rpc_task *task);
->  int			xprt_adjust_timeout(struct rpc_rqst *req);
-> diff --git a/net/sunrpc/backchannel_rqst.c b/net/sunrpc/backchannel_rqst.c
-> index 3c15a99b9700..fa5ba6ed3197 100644
-> --- a/net/sunrpc/backchannel_rqst.c
-> +++ b/net/sunrpc/backchannel_rqst.c
-> @@ -91,7 +91,6 @@ struct rpc_rqst *xprt_alloc_bc_req(struct rpc_xprt *xprt,
-> gfp_t gfp_flags)
->  		return NULL;
->  
->  	req->rq_xprt = xprt;
-> -	INIT_LIST_HEAD(&req->rq_list);
->  	INIT_LIST_HEAD(&req->rq_bc_list);
->  
->  	/* Preallocate one XDR receive buffer */
-> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-> index a858366cd15d..414966273a3f 100644
-> --- a/net/sunrpc/clnt.c
-> +++ b/net/sunrpc/clnt.c
-> @@ -1962,6 +1962,11 @@ call_transmit(struct rpc_task *task)
->  			return;
->  		}
->  	}
-> +
-> +	/* Add task to reply queue before transmission to avoid races */
-> +	if (rpc_reply_expected(task))
-> +		xprt_request_enqueue_receive(task);
-> +
->  	if (!xprt_prepare_transmit(task))
->  		return;
->  	task->tk_action = call_transmit_status;
-> diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-> index 6e3d4b4ee79e..d8f870b5dd46 100644
-> --- a/net/sunrpc/xprt.c
-> +++ b/net/sunrpc/xprt.c
-> @@ -888,6 +888,61 @@ static void xprt_wait_on_pinned_rqst(struct rpc_rqst
-> *req)
->  	wait_var_event(&req->rq_pin, !xprt_is_pinned_rqst(req));
->  }
->  
-> +static bool
-> +xprt_request_data_received(struct rpc_task *task)
-> +{
-> +	return !test_bit(RPC_TASK_NEED_RECV, &task->tk_runstate) &&
-> +		READ_ONCE(task->tk_rqstp->rq_reply_bytes_recvd) != 0;
-> +}
-> +
-> +static bool
-> +xprt_request_need_enqueue_receive(struct rpc_task *task, struct rpc_rqst
-> *req)
-> +{
-> +	return !xprt_request_data_received(task);
-> +}
-> +
-> +/**
-> + * xprt_request_enqueue_receive - Add an request to the receive queue
-> + * @task: RPC task
-> + *
-> + */
-> +void
-> +xprt_request_enqueue_receive(struct rpc_task *task)
-> +{
-> +	struct rpc_rqst *req = task->tk_rqstp;
-> +	struct rpc_xprt *xprt = req->rq_xprt;
-> +
-> +	if (!xprt_request_need_enqueue_receive(task, req))
-> +		return;
-> +	spin_lock(&xprt->queue_lock);
-> +
-> +	/* Update the softirq receive buffer */
-> +	memcpy(&req->rq_private_buf, &req->rq_rcv_buf,
-> +			sizeof(req->rq_private_buf));
-> +
-> +	/* Add request to the receive list */
-> +	list_add_tail(&req->rq_list, &xprt->recv);
-> +	set_bit(RPC_TASK_NEED_RECV, &task->tk_runstate);
-> +	spin_unlock(&xprt->queue_lock);
-> +
-> +	xprt_reset_majortimeo(req);
-> +	/* Turn off autodisconnect */
-> +	del_singleshot_timer_sync(&xprt->timer);
-> +}
-> +
-> +/**
-> + * xprt_request_dequeue_receive_locked - Remove a request from the receive
-> queue
-> + * @task: RPC task
-> + *
-> + * Caller must hold xprt->queue_lock.
-> + */
-> +static void
-> +xprt_request_dequeue_receive_locked(struct rpc_task *task)
-> +{
-> +	if (test_and_clear_bit(RPC_TASK_NEED_RECV, &task->tk_runstate))
-> +		list_del(&task->tk_rqstp->rq_list);
-> +}
-> +
->  /**
->   * xprt_update_rtt - Update RPC RTT statistics
->   * @task: RPC request that recently completed
-> @@ -927,24 +982,16 @@ void xprt_complete_rqst(struct rpc_task *task, int
-> copied)
->  
->  	xprt->stat.recvs++;
->  
-> -	list_del_init(&req->rq_list);
->  	req->rq_private_buf.len = copied;
->  	/* Ensure all writes are done before we update */
->  	/* req->rq_reply_bytes_recvd */
->  	smp_wmb();
->  	req->rq_reply_bytes_recvd = copied;
-> -	clear_bit(RPC_TASK_NEED_RECV, &task->tk_runstate);
-> +	xprt_request_dequeue_receive_locked(task);
->  	rpc_wake_up_queued_task(&xprt->pending, task);
->  }
->  EXPORT_SYMBOL_GPL(xprt_complete_rqst);
->  
-> -static bool
-> -xprt_request_data_received(struct rpc_task *task)
-> -{
-> -	return !test_bit(RPC_TASK_NEED_RECV, &task->tk_runstate) &&
-> -		task->tk_rqstp->rq_reply_bytes_recvd != 0;
-> -}
-> -
->  static void xprt_timer(struct rpc_task *task)
->  {
->  	struct rpc_rqst *req = task->tk_rqstp;
-> @@ -1018,32 +1065,15 @@ void xprt_transmit(struct rpc_task *task)
->  
->  	dprintk("RPC: %5u xprt_transmit(%u)\n", task->tk_pid, req->rq_slen);
->  
-> -	if (!req->rq_reply_bytes_recvd) {
-> -
-> +	if (!req->rq_bytes_sent) {
-> +		if (xprt_request_data_received(task))
-> +			return;
->  		/* Verify that our message lies in the RPCSEC_GSS window */
-> -		if (!req->rq_bytes_sent && rpcauth_xmit_need_reencode(task)) {
-> +		if (rpcauth_xmit_need_reencode(task)) {
->  			task->tk_status = -EBADMSG;
->  			return;
->  		}
-> -
-> -		if (list_empty(&req->rq_list) && rpc_reply_expected(task)) {
-> -			/*
-> -			 * Add to the list only if we're expecting a reply
-> -			 */
-> -			/* Update the softirq receive buffer */
-> -			memcpy(&req->rq_private_buf, &req->rq_rcv_buf,
-> -					sizeof(req->rq_private_buf));
-> -			/* Add request to the receive list */
-> -			spin_lock(&xprt->queue_lock);
-> -			list_add_tail(&req->rq_list, &xprt->recv);
-> -			set_bit(RPC_TASK_NEED_RECV, &task->tk_runstate);
-> -			spin_unlock(&xprt->queue_lock);
-> -			xprt_reset_majortimeo(req);
-> -			/* Turn off autodisconnect */
-> -			del_singleshot_timer_sync(&xprt->timer);
-> -		}
-> -	} else if (xprt_request_data_received(task) && !req->rq_bytes_sent)
-> -		return;
-> +	}
->  
->  	connect_cookie = xprt->connect_cookie;
->  	status = xprt->ops->send_request(task);
-> @@ -1285,7 +1315,6 @@ xprt_request_init(struct rpc_task *task)
->  	struct rpc_xprt *xprt = task->tk_xprt;
->  	struct rpc_rqst	*req = task->tk_rqstp;
->  
-> -	INIT_LIST_HEAD(&req->rq_list);
->  	req->rq_timeout = task->tk_client->cl_timeout->to_initval;
->  	req->rq_task	= task;
->  	req->rq_xprt    = xprt;
-> @@ -1355,6 +1384,26 @@ void xprt_retry_reserve(struct rpc_task *task)
->  	xprt_do_reserve(xprt, task);
->  }
->  
-> +static void
-> +xprt_request_dequeue_all(struct rpc_task *task, struct rpc_rqst *req)
-> +{
-> +	struct rpc_xprt *xprt = req->rq_xprt;
-> +
-> +	if (test_bit(RPC_TASK_NEED_RECV, &task->tk_runstate) ||
-> +	    xprt_is_pinned_rqst(req)) {
-> +		spin_lock(&xprt->queue_lock);
-> +		xprt_request_dequeue_receive_locked(task);
-> +		while (xprt_is_pinned_rqst(req)) {
-> +			set_bit(RPC_TASK_MSG_PIN_WAIT, &task->tk_runstate);
-> +			spin_unlock(&xprt->queue_lock);
-> +			xprt_wait_on_pinned_rqst(req);
-> +			spin_lock(&xprt->queue_lock);
-> +			clear_bit(RPC_TASK_MSG_PIN_WAIT, &task->tk_runstate);
-> +		}
-> +		spin_unlock(&xprt->queue_lock);
-> +	}
-> +}
-> +
->  /**
->   * xprt_release - release an RPC request slot
->   * @task: task which is finished with the slot
-> @@ -1379,18 +1428,7 @@ void xprt_release(struct rpc_task *task)
->  		task->tk_ops->rpc_count_stats(task, task->tk_calldata);
->  	else if (task->tk_client)
->  		rpc_count_iostats(task, task->tk_client->cl_metrics);
-> -	spin_lock(&xprt->queue_lock);
-> -	if (!list_empty(&req->rq_list)) {
-> -		list_del_init(&req->rq_list);
-> -		if (xprt_is_pinned_rqst(req)) {
-> -			set_bit(RPC_TASK_MSG_PIN_WAIT, &req->rq_task-
-> >tk_runstate);
-> -			spin_unlock(&xprt->queue_lock);
-> -			xprt_wait_on_pinned_rqst(req);
-> -			spin_lock(&xprt->queue_lock);
-> -			clear_bit(RPC_TASK_MSG_PIN_WAIT, &req->rq_task-
-> >tk_runstate);
-> -		}
-> -	}
-> -	spin_unlock(&xprt->queue_lock);
-> +	xprt_request_dequeue_all(task, req);
->  	spin_lock_bh(&xprt->transport_lock);
->  	xprt->ops->release_xprt(xprt, task);
->  	if (xprt->ops->release_request)
-> diff --git a/net/sunrpc/xprtrdma/backchannel.c
-> b/net/sunrpc/xprtrdma/backchannel.c
-> index 90adeff4c06b..ed58761e6b23 100644
-> --- a/net/sunrpc/xprtrdma/backchannel.c
-> +++ b/net/sunrpc/xprtrdma/backchannel.c
-> @@ -51,7 +51,6 @@ static int rpcrdma_bc_setup_reqs(struct rpcrdma_xprt
-> *r_xprt,
->  		rqst = &req->rl_slot;
->  
->  		rqst->rq_xprt = xprt;
-> -		INIT_LIST_HEAD(&rqst->rq_list);
->  		INIT_LIST_HEAD(&rqst->rq_bc_list);
->  		__set_bit(RPC_BC_PA_IN_USE, &rqst->rq_bc_pa_state);
->  		spin_lock_bh(&xprt->bc_pa_lock);
+diff --git a/utils/gssd/gssd.c b/utils/gssd/gssd.c
+index 2c14e5f..00df2fc 100644
+--- a/utils/gssd/gssd.c
++++ b/utils/gssd/gssd.c
+@@ -888,6 +888,9 @@ main(int argc, char *argv[])
+ 
+ 	read_gss_conf();
+ 
++	verbosity = conf_get_num("gssd", "Verbosity", verbosity);
++	rpc_verbosity = conf_get_num("gssd", "RPC-Verbosity", rpc_verbosity);
++
+ 	while ((opt = getopt(argc, argv, "DfvrlmnMp:k:d:t:T:R:")) != -1) {
+ 		switch (opt) {
+ 			case 'f':
+diff --git a/utils/gssd/svcgssd.c b/utils/gssd/svcgssd.c
+index 8e918cc..ec49b61 100644
+--- a/utils/gssd/svcgssd.c
++++ b/utils/gssd/svcgssd.c
+@@ -113,6 +113,10 @@ main(int argc, char *argv[])
+ 	else
+ 		principal = s;
+ 
++	verbosity = conf_get_num("svcgssd", "Verbosity", verbosity);
++	rpc_verbosity = conf_get_num("svcgssd", "RPC-Verbosity", rpc_verbosity);
++	idmap_verbosity = conf_get_num("svcgssd", "IDMAP-Verbosity", idmap_verbosity);
++
+ 	while ((opt = getopt(argc, argv, "fivrnp:")) != -1) {
+ 		switch (opt) {
+ 			case 'f':
+diff --git a/utils/idmapd/idmapd.c b/utils/idmapd/idmapd.c
+index 4811e0f..d14eef7 100644
+--- a/utils/idmapd/idmapd.c
++++ b/utils/idmapd/idmapd.c
+@@ -261,6 +261,10 @@ main(int argc, char **argv)
+ 				strlcpy(pipefsdir, xpipefsdir, sizeof(pipefsdir));
+ 			CONF_SAVE(nobodyuser, conf_get_str("Mapping", "Nobody-User"));
+ 			CONF_SAVE(nobodygroup, conf_get_str("Mapping", "Nobody-Group"));
++			if (conf_get_bool("General", "server-only", false))
++				clientstart = 0;
++			if (conf_get_bool("General", "client-only", false))
++				serverstart = 0;
+ 		}
+ 	} else {
+ 		conf_path = NFS_CONFFILE;
+@@ -276,6 +280,10 @@ main(int argc, char **argv)
+ 				"cache-expiration", DEFAULT_IDMAP_CACHE_EXPIRY);
+ 		CONF_SAVE(nobodyuser, conf_get_str("Mapping", "Nobody-User"));
+ 		CONF_SAVE(nobodygroup, conf_get_str("Mapping", "Nobody-Group"));
++		if (conf_get_bool("General", "server-only", false))
++			clientstart = 0;
++		if (conf_get_bool("General", "client-only", false))
++			serverstart = 0;
+ 	}
+ 
+ 	while ((opt = getopt(argc, argv, GETOPTSTR)) != -1)
+diff --git a/utils/statd/sm-notify.c b/utils/statd/sm-notify.c
+index 7a48473..29dad38 100644
+--- a/utils/statd/sm-notify.c
++++ b/utils/statd/sm-notify.c
+@@ -503,6 +503,7 @@ main(int argc, char **argv)
+ 	s = conf_get_str("statd", "state-directory-path");
+ 	if (s && !nsm_setup_pathnames(argv[0], s))
+ 		exit(1);
++	opt_update_state = conf_get_bool("sm-notify", "update-state", opt_update_state);
+ 
+ 	while ((c = getopt(argc, argv, "dm:np:v:P:f")) != -1) {
+ 		switch (c) {
+-- 
+1.8.3.1
