@@ -1,61 +1,126 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qt0-f179.google.com ([209.85.216.179]:37455 "EHLO
-        mail-qt0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728403AbeIRX0t (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Sep 2018 19:26:49 -0400
-Received: by mail-qt0-f179.google.com with SMTP id n6-v6so2550098qtl.4
-        for <linux-nfs@vger.kernel.org>; Tue, 18 Sep 2018 10:53:07 -0700 (PDT)
-Message-ID: <754e4e356fb1083444756caf81515ff81c3b36f9.camel@redhat.com>
-Subject: Re: [NFS-Ganesha-Devel] [NFS-Ganesha-Devel]ceph_fsal_setattr2
- returned Operation not permitted
-From: Jeff Layton <jlayton@redhat.com>
-To: zhu.shangzhong@zte.com.cn, devel@lists.nfs-ganesha.org,
-        linux-nfs@vger.kernel.org
-Date: Tue, 18 Sep 2018 13:53:03 -0400
-In-Reply-To: <201809171939042772224@zte.com.cn>
-References: <201809171939042772224@zte.com.cn>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from fieldses.org ([173.255.197.46]:34210 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1729618AbeIRXwu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 18 Sep 2018 19:52:50 -0400
+Date: Tue, 18 Sep 2018 14:19:01 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Stan Hu <stanhu@gmail.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: Stale data after file is renamed while another process has an
+ open file handle
+Message-ID: <20180918181901.GC1218@fieldses.org>
+References: <CAMBWrQ=xMMsHxSP8uw_H3KkMK9tUQWLYjt8yAQmFm8NDLD7pyQ@mail.gmail.com>
+ <20180917211504.GA21269@fieldses.org>
+ <CAMBWrQm2QRKNARwUf7pG_fG_ROcwXmT1PLfw5Y0ewhXzB9EqYA@mail.gmail.com>
+ <20180917220107.GB21269@fieldses.org>
+ <CAMBWrQmRtPHOFbiMsz2YAn-yQXCYjRBqq0zLJUB7snPg2MQ+tA@mail.gmail.com>
+ <CAMBWrQmipZs4rwOUMhH59nHiWqyAcX7qsBG51ZWMYxWKzFZ47Q@mail.gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CAMBWrQmipZs4rwOUMhH59nHiWqyAcX7qsBG51ZWMYxWKzFZ47Q@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2018-09-17 at 19:39 +0800, zhu.shangzhong@zte.com.cn wrote:
-> How to reproduce:
-> 1. mount the nfs-ganesha export directory with NFSV3
-> 2. create new users: user1 and user2, there is the same user group for user1 and user2
->     uid=9998(user1) gid=100(users) groups=100(users)
->     uid=9997(user2) gid=100(users) groups=100(users)
-> 3. log in using user1 and create new file named abc.txt
-> 4. chmod 664 abc.txt
-> 5. log in using user2, and write new content to abc.txt
->     echo 'Hello' > abc.txt
-> 6. The error "Operation not permitted" will be output
+On Mon, Sep 17, 2018 at 03:48:12PM -0700, Stan Hu wrote:
+> I'm not sure if the binary pcap made it on the list, but here's s a
+> publicly available link:
+> https://s3.amazonaws.com/gitlab-support/nfs/nfs-rename-test1.pcap.gz
 > 
-> Expected result:
-> user2 may write data to file abc.txt successfully.
+> Some things to note:
 > 
-> The more detailed info could be found in http://tracker.ceph.com/issues/35961
-> The issue may be fixed by changing the following code, is it appropriate changes for fixing the issue?
+> * 10.138.0.14 is the NFS server.
+> * 10.138.0.12 is Node A (the NFS client where the RENAME happened).
+> * 10.138.0.13 is Node B (the NFS client that has test.txt open and the cat loop)
 > 
-> src\FSAL\FSAL_CEPH\handle.c
-> fsal_status_t ceph_setattr2(struct fsal_obj_handle *obj_hdl, bool bypass, struct state_t *state, struct attrlist *attrib_set)
-> {
-> ...
-> 	if (FSAL_TEST_MASK(attrib_set->valid_mask, ATTR_ATIME_SERVER)) {
-> 		struct timespec timestamp;
-> mask |= CEPH_SETATTR_ATIME;  // s/CEPH_SETATTR_ATIME/CEPH_SETATTR_ATIME_NOW
-> ...
-> if (FSAL_TEST_MASK(attrib_set->valid_mask, ATTR_MTIME_SERVER)) {
-> 		struct timespec timestamp;
-> mask |= CEPH_SETATTR_MTIME; // s/CEPH_SETATTR_MTIME/CEPH_SETATTR_MTIME_NOW
-> ...
-> }]
+> * Packet 13762 shows the first RENAME request, which the server
+> responds with an NFS4ERR_DELAY
+> * Packet 13769 shows an OPEN request for "test.txt"
+> * Packet 14564 shows the RENAME retry
+> * Packet 14569 the server responded with a RENAME NFS4_OK
+> 
+> I don't see a subsequent OPEN request after that. Should there be one?
 
-If I'm reading the ceph code right, then we need to do:
+Yes.
 
-    mask |= CEPH_SETATTR_MTIME|CEPH_SETATTR_MTIME_NOW;
+We know node B has that cat loop that will keep reopening the file.
 
-The *_NOW fields just override how permissions are checked.
+The only way node B could avoid translating those open syscalls into
+on-the-wire OPENs is if the client holds a delegation.
 
--- 
-Jeff Layton <jlayton@redhat.com>
+But it can't hold a delegation on the file that was newly renamed to
+test.txt--delegations are revoked on rename, and it would need to do
+another OPEN after the rename to get a new delegation.  Similarly the
+file that gets renamed over should have its delegation revoked--and we
+can see that the client does return that delegation.  The OPEN here is
+actually part of that delegation return process--the CLAIM_DELEGATE_CUR
+value on "claim type" is telling the server that this is an open that
+the client had cached locally under the delegation it is about to
+return.
+
+Looks like a client bug to me, possibly some sort of race handling the
+delegation return and the new open.
+
+It might help if it were possible to confirm that this is still
+reproduceable on the latest upstream kernel.
+
+--b.
+
+> 
+> On Mon, Sep 17, 2018 at 3:16 PM Stan Hu <stanhu@gmail.com> wrote:
+> >
+> > Attached is the compressed pcap of port 2049 traffic. The file is
+> > pretty large because the while loop generated a fair amount of
+> > traffic.
+> >
+> > On Mon, Sep 17, 2018 at 3:01 PM J. Bruce Fields <bfields@fieldses.org> wrote:
+> > >
+> > > On Mon, Sep 17, 2018 at 02:37:16PM -0700, Stan Hu wrote:
+> > > > On Mon, Sep 17, 2018 at 2:15 PM J. Bruce Fields <bfields@fieldses.org> wrote:
+> > > >
+> > > > > Sounds like a bug to me, but I'm not sure where.  What filesystem are
+> > > > > you exporting?  How much time do you think passes between steps 1 and 4?
+> > > > > (I *think* it's possible you could hit a bug caused by low ctime
+> > > > > granularity if you could get from step 1 to step 4 in less than a
+> > > > > millisecond.)
+> > > >
+> > > > For CentOS, I am exporting xfs. In Ubuntu, I think I was using ext4.
+> > > >
+> > > > Steps 1 through 4 are all done by hand, so I don't think we're hitting
+> > > > a millisecond issue. Just for good measure, I've done experiments
+> > > > where I waited a few minutes between steps 1 and 4.
+> > > >
+> > > > > Those kernel versions--are those the client (node A and B) versions, or
+> > > > > the server versions?
+> > > >
+> > > > The client and server kernel versions are the same across the board. I
+> > > > didn't mix and match kernels.
+> > > >
+> > > > > > Note that with an Isilon NFS server, instead of seeing stale content,
+> > > > > > I see "Stale file handle" errors indefinitely unless I perform one of
+> > > > > > the corrective steps.
+> > > > >
+> > > > > You see "stale file handle" errors from the "cat test1.txt"?  That's
+> > > > > also weird.
+> > > >
+> > > > Yes, this is the problem I'm actually more concerned about, which led
+> > > > to this investigation in the first place.
+> > >
+> > > It might be useful to look at the packets on the wire.  So, run
+> > > something on the server like:
+> > >
+> > >         tcpdump -wtmp.pcap -s0 -ieth0
+> > >
+> > > (replace eth0 by the relevant interface), then run the test, then kill
+> > > the tcpdump and take a look at tmp.pcap in wireshark, or send tmp.pcap
+> > > to the list (as long as there's no sensitive info in there).
+> > >
+> > > What we'd be looking for:
+> > >         - does the rename cause the directory's change attribute to
+> > >           change?
+> > >         - does the server give out a delegation, and, if so, does it
+> > >           return it before allowing the rename?
+> > >         - does the client do an open by filehandle or an open by name
+> > >           after the rename?
+> > >
+> > > --b.
