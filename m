@@ -1,102 +1,41 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-eopbgr690092.outbound.protection.outlook.com ([40.107.69.92]:23279
-        "EHLO NAM04-CO1-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1729732AbeISBx0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 18 Sep 2018 21:53:26 -0400
-From: Trond Myklebust <trondmy@hammerspace.com>
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "schumaker.anna@gmail.com" <schumaker.anna@gmail.com>
-Subject: Re: [PATCH 1/3] NFS: Split out the body of nfs4_reclaim_open_state()
-Date: Tue, 18 Sep 2018 20:19:09 +0000
-Message-ID: <29df938ffcdb141596ae468eaa725397cf273027.camel@hammerspace.com>
-References: <20180911202348.23160-1-Anna.Schumaker@Netapp.com>
-In-Reply-To: <20180911202348.23160-1-Anna.Schumaker@Netapp.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from fieldses.org ([173.255.197.46]:34420 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1730017AbeISCNK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 18 Sep 2018 22:13:10 -0400
+Date: Tue, 18 Sep 2018 16:38:52 -0400
+To: Ryan Richter <ryan@tau.solarneutrino.net>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: mkdir disregards umask
+Message-ID: <20180918203852.GG1218@fieldses.org>
+References: <20180912181747.GQ31400@tau.solarneutrino.net>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20180912181747.GQ31400@tau.solarneutrino.net>
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDE4LTA5LTExIGF0IDE2OjIzIC0wNDAwLCBzY2h1bWFrZXIuYW5uYUBnbWFpbC5j
-b20gd3JvdGU6DQo+IEZyb206IEFubmEgU2NodW1ha2VyIDxBbm5hLlNjaHVtYWtlckBOZXRhcHAu
-Y29tPg0KPiANCj4gTW92aW5nIGFsbCBvZiB0aGlzIGludG8gYSBuZXcgZnVuY3Rpb24gcmVtb3Zl
-cyB0aGUgbmVlZCBmb3IgY3JhbXBlZA0KPiBpbmRlbnRhdGlvbiwgbWFraW5nIHRoZSBjb2RlIG92
-ZXJhbGwgZWFzaWVyIHRvIGxvb2sgYXQuICAgSSBhbHNvIHRha2UNCj4gdGhpcyBjaGFuY2UgdG8g
-c3dpdGNoIGNvcHkgcmVjb3Zlcnkgb3ZlciB0byB1c2luZw0KPiBuZnM0X3N0YXRlaWRfbWF0Y2hf
-b3RoZXIoKQ0KPiANCj4gU2lnbmVkLW9mZi1ieTogQW5uYSBTY2h1bWFrZXIgPEFubmEuU2NodW1h
-a2VyQE5ldGFwcC5jb20+DQo+IC0tLQ0KPiAgZnMvbmZzL25mczRzdGF0ZS5jIHwgODMgKysrKysr
-KysrKysrKysrKysrKysrKysrKystLS0tLS0tLS0tLS0tLS0tDQo+IC0tLS0NCj4gIDEgZmlsZSBj
-aGFuZ2VkLCA0NyBpbnNlcnRpb25zKCspLCAzNiBkZWxldGlvbnMoLSkNCj4gDQo+IGRpZmYgLS1n
-aXQgYS9mcy9uZnMvbmZzNHN0YXRlLmMgYi9mcy9uZnMvbmZzNHN0YXRlLmMNCj4gaW5kZXggM2Rm
-MGViNTJkYTFjLi5hYTQ2YTMyMTZkNjAgMTAwNjQ0DQo+IC0tLSBhL2ZzL25mcy9uZnM0c3RhdGUu
-Yw0KPiArKysgYi9mcy9uZnMvbmZzNHN0YXRlLmMNCj4gQEAgLTE1NDcsMTAgKzE1NDcsNTEgQEAg
-c3RhdGljIGludCBuZnM0X3JlY2xhaW1fbG9ja3Moc3RydWN0DQo+IG5mczRfc3RhdGUgKnN0YXRl
-LCBjb25zdCBzdHJ1Y3QgbmZzNF9zdGF0ZV8NCj4gIAlyZXR1cm4gc3RhdHVzOw0KPiAgfQ0KPiAg
-DQo+ICtzdGF0aWMgaW50IF9fbmZzNF9yZWNsYWltX29wZW5fc3RhdGUoc3RydWN0IG5mczRfc3Rh
-dGVfb3duZXIgKnNwLA0KPiBzdHJ1Y3QgbmZzNF9zdGF0ZSAqc3RhdGUsDQo+ICsJCQkJICAgICBj
-b25zdCBzdHJ1Y3QNCj4gbmZzNF9zdGF0ZV9yZWNvdmVyeV9vcHMgKm9wcykNCj4gK3sNCj4gKwlz
-dHJ1Y3QgbmZzNF9sb2NrX3N0YXRlICpsb2NrOw0KPiArCWludCBzdGF0dXM7DQo+ICsNCj4gKwlz
-dGF0dXMgPSBvcHMtPnJlY292ZXJfb3BlbihzcCwgc3RhdGUpOw0KPiArCWlmIChzdGF0dXMgPCAw
-KQ0KPiArCQlyZXR1cm4gc3RhdHVzOw0KPiArDQo+ICsJc3RhdHVzID0gbmZzNF9yZWNsYWltX2xv
-Y2tzKHN0YXRlLCBvcHMpOw0KPiArCWlmIChzdGF0dXMgPCAwKQ0KPiArCQlyZXR1cm4gc3RhdHVz
-Ow0KPiArDQo+ICsJaWYgKCF0ZXN0X2JpdChORlNfREVMRUdBVEVEX1NUQVRFLCAmc3RhdGUtPmZs
-YWdzKSkgew0KPiArCQlzcGluX2xvY2soJnN0YXRlLT5zdGF0ZV9sb2NrKTsNCj4gKwkJbGlzdF9m
-b3JfZWFjaF9lbnRyeShsb2NrLCAmc3RhdGUtPmxvY2tfc3RhdGVzLA0KPiBsc19sb2Nrcykgew0K
-PiArCQkJaWYgKCF0ZXN0X2JpdChORlNfTE9DS19JTklUSUFMSVpFRCwgJmxvY2stDQo+ID5sc19m
-bGFncykpDQo+ICsJCQkJcHJfd2Fybl9yYXRlbGltaXRlZCgiTkZTOiAlczogTG9jaw0KPiByZWNs
-YWltIGZhaWxlZCFcbiIsIF9fZnVuY19fKTsNCj4gKwkJfQ0KPiArCQlzcGluX3VubG9jaygmc3Rh
-dGUtPnN0YXRlX2xvY2spOw0KPiArCX0NCj4gKw0KPiArI2lmZGVmIENPTkZJR19ORlNfVjRfMg0K
-PiArCWlmICh0ZXN0X2JpdChORlNfQ0xOVF9EU1RfU1NDX0NPUFlfU1RBVEUsICZzdGF0ZS0+Zmxh
-Z3MpKSB7DQo+ICsJCXN0cnVjdCBuZnM0X2NvcHlfc3RhdGUgKmNvcHk7DQo+ICsJCXNwaW5fbG9j
-aygmc3AtPnNvX3NlcnZlci0+bmZzX2NsaWVudC0+Y2xfbG9jayk7DQo+ICsJCWxpc3RfZm9yX2Vh
-Y2hfZW50cnkoY29weSwgJnNwLT5zb19zZXJ2ZXItPnNzX2NvcGllcywNCj4gY29waWVzKSB7DQo+
-ICsJCQlpZiAobmZzNF9zdGF0ZWlkX21hdGNoX290aGVyKCZzdGF0ZS0+c3RhdGVpZCwNCj4gJmNv
-cHktPnBhcmVudF9zdGF0ZS0+c3RhdGVpZCkpDQo+ICsJCQkJY29udGludWU7DQo+ICsJCQljb3B5
-LT5mbGFncyA9IDE7DQo+ICsJCQljb21wbGV0ZSgmY29weS0+Y29tcGxldGlvbik7DQo+ICsJCQli
-cmVhazsNCj4gKwkJfQ0KPiArCQlzcGluX3VubG9jaygmc3AtPnNvX3NlcnZlci0+bmZzX2NsaWVu
-dC0+Y2xfbG9jayk7DQo+ICsJfQ0KPiArI2VuZGlmIC8qIENPTkZJR19ORlNfVjRfMiAqLw0KDQpB
-cHBsaWVkLCBidXQgY291bGQgeW91IHBsZWFzZSBmb2xsb3cgdXAgd2l0aCBhIHNlcGFyYXRlIHBh
-dGNoIHRoYXQNCm1vdmVzIHRoaXMgI2lmZGVmIHNlY3Rpb24gaW50byBhIHNlcGFyYXRlIGZ1bmN0
-aW9uPyBUaGF0IHdvdWxkIGhlbHANCndpdGggcmVhZGFiaWxpdHkgb2YgdGhlIGNvZGUuDQoNCj4g
-Kw0KPiArCWNsZWFyX2JpdChORlNfU1RBVEVfUkVDTEFJTV9OT0dSQUNFLCAmc3RhdGUtPmZsYWdz
-KTsNCj4gKwlyZXR1cm4gc3RhdHVzOw0KPiArfQ0KPiArDQo+ICBzdGF0aWMgaW50IG5mczRfcmVj
-bGFpbV9vcGVuX3N0YXRlKHN0cnVjdCBuZnM0X3N0YXRlX293bmVyICpzcCwNCj4gY29uc3Qgc3Ry
-dWN0IG5mczRfc3RhdGVfcmVjb3Zlcnlfb3BzICpvcHMpDQo+ICB7DQo+ICAJc3RydWN0IG5mczRf
-c3RhdGUgKnN0YXRlOw0KPiAtCXN0cnVjdCBuZnM0X2xvY2tfc3RhdGUgKmxvY2s7DQo+ICAJaW50
-IHN0YXR1cyA9IDA7DQo+ICANCj4gIAkvKiBOb3RlOiB3ZSByZWx5IG9uIHRoZSBzcC0+c29fc3Rh
-dGVzIGxpc3QgYmVpbmcgb3JkZXJlZCANCj4gQEAgLTE1NzMsNDMgKzE2MTQsMTMgQEAgc3RhdGlj
-IGludCBuZnM0X3JlY2xhaW1fb3Blbl9zdGF0ZShzdHJ1Y3QNCj4gbmZzNF9zdGF0ZV9vd25lciAq
-c3AsIGNvbnN0IHN0cnVjdCBuZnMNCj4gIAkJCWNvbnRpbnVlOw0KPiAgCQlhdG9taWNfaW5jKCZz
-dGF0ZS0+Y291bnQpOw0KPiAgCQlzcGluX3VubG9jaygmc3AtPnNvX2xvY2spOw0KPiAtCQlzdGF0
-dXMgPSBvcHMtPnJlY292ZXJfb3BlbihzcCwgc3RhdGUpOw0KPiArCQlzdGF0dXMgPSBfX25mczRf
-cmVjbGFpbV9vcGVuX3N0YXRlKHNwLCBzdGF0ZSwgb3BzKTsNCj4gIAkJaWYgKHN0YXR1cyA+PSAw
-KSB7DQo+IC0JCQlzdGF0dXMgPSBuZnM0X3JlY2xhaW1fbG9ja3Moc3RhdGUsIG9wcyk7DQo+IC0J
-CQlpZiAoc3RhdHVzID49IDApIHsNCj4gLQkJCQlpZiAoIXRlc3RfYml0KE5GU19ERUxFR0FURURf
-U1RBVEUsDQo+ICZzdGF0ZS0+ZmxhZ3MpKSB7DQo+IC0JCQkJCXNwaW5fbG9jaygmc3RhdGUtPnN0
-YXRlX2xvY2spOw0KPiAtCQkJCQlsaXN0X2Zvcl9lYWNoX2VudHJ5KGxvY2ssDQo+ICZzdGF0ZS0+
-bG9ja19zdGF0ZXMsIGxzX2xvY2tzKSB7DQo+IC0JCQkJCQlpZg0KPiAoIXRlc3RfYml0KE5GU19M
-T0NLX0lOSVRJQUxJWkVELCAmbG9jay0+bHNfZmxhZ3MpKQ0KPiAtCQkJCQkJCXByX3dhcm5fcmF0
-ZWxpbQ0KPiBpdGVkKCJORlM6ICINCj4gLQkJCQkJCQkJCQ0KPiAgICAgIiVzOiBMb2NrIHJlY2xh
-aW0gIg0KPiAtCQkJCQkJCQkJDQo+ICAgICAiZmFpbGVkIVxuIiwgX19mdW5jX18pOw0KPiAtCQkJ
-CQl9DQo+IC0JCQkJCXNwaW5fdW5sb2NrKCZzdGF0ZS0NCj4gPnN0YXRlX2xvY2spOw0KPiAtCQkJ
-CX0NCj4gLQkJCQljbGVhcl9iaXQoTkZTX1NUQVRFX1JFQ0xBSU1fTk9HUkFDRSwNCj4gLQkJCQkJ
-JnN0YXRlLT5mbGFncyk7DQo+IC0jaWZkZWYgQ09ORklHX05GU19WNF8yDQo+IC0JCQkJaWYNCj4g
-KHRlc3RfYml0KE5GU19DTE5UX0RTVF9TU0NfQ09QWV9TVEFURSwgJnN0YXRlLT5mbGFncykpIHsN
-Cj4gLQkJCQkJc3RydWN0IG5mczRfY29weV9zdGF0ZSAqY29weTsNCj4gLQ0KPiAtCQkJCQlzcGlu
-X2xvY2soJnNwLT5zb19zZXJ2ZXItDQo+ID5uZnNfY2xpZW50LT5jbF9sb2NrKTsNCj4gLQkJCQkJ
-bGlzdF9mb3JfZWFjaF9lbnRyeShjb3B5LCAmc3AtDQo+ID5zb19zZXJ2ZXItPnNzX2NvcGllcywg
-Y29waWVzKSB7DQo+IC0JCQkJCQlpZiAobWVtY21wKCZzdGF0ZS0NCj4gPnN0YXRlaWQub3RoZXIs
-ICZjb3B5LT5wYXJlbnRfc3RhdGUtPnN0YXRlaWQub3RoZXIsDQo+IE5GUzRfU1RBVEVJRF9TSVpF
-KSkNCj4gLQkJCQkJCQljb250aW51ZTsNCj4gLQkJCQkJCWNvcHktPmZsYWdzID0gMTsNCj4gLQkJ
-CQkJCWNvbXBsZXRlKCZjb3B5LQ0KPiA+Y29tcGxldGlvbik7DQo+IC0JCQkJCQlwcmludGsoIkFH
-TE86IHNlcnZlcg0KPiByZWJvb3RlZCB3YWtpbmcgdXAgdGhlIGNvcHlcbiIpOw0KPiAtCQkJCQkJ
-YnJlYWs7DQo+IC0JCQkJCX0NCj4gLQkJCQkJc3Bpbl91bmxvY2soJnNwLT5zb19zZXJ2ZXItDQo+
-ID5uZnNfY2xpZW50LT5jbF9sb2NrKTsNCj4gLQkJCQl9DQo+IC0jZW5kaWYgLyogQ09ORklHX05G
-U19WNF8yICovDQo+IC0JCQkJbmZzNF9wdXRfb3Blbl9zdGF0ZShzdGF0ZSk7DQo+IC0JCQkJc3Bp
-bl9sb2NrKCZzcC0+c29fbG9jayk7DQo+IC0JCQkJZ290byByZXN0YXJ0Ow0KPiAtCQkJfQ0KPiAr
-CQkJbmZzNF9wdXRfb3Blbl9zdGF0ZShzdGF0ZSk7DQo+ICsJCQlzcGluX2xvY2soJnNwLT5zb19s
-b2NrKTsNCj4gKwkJCWdvdG8gcmVzdGFydDsNCj4gIAkJfQ0KPiArDQo+ICAJCXN3aXRjaCAoc3Rh
-dHVzKSB7DQo+ICAJCQlkZWZhdWx0Og0KPiAgCQkJCXByaW50ayhLRVJOX0VSUiAiTkZTOiAlczog
-dW5oYW5kbGVkDQo+IGVycm9yICVkXG4iLA0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkNUTywgSGFt
-bWVyc3BhY2UgSW5jDQo0MzAwIEVsIENhbWlubyBSZWFsLCBTdWl0ZSAxMDUNCkxvcyBBbHRvcywg
-Q0EgOTQwMjINCnd3dy5oYW1tZXIuc3BhY2UNCg0KDQo=
+On Wed, Sep 12, 2018 at 02:17:47PM -0400, Ryan Richter wrote:
+> All directories created over nfs have 777 permissions.
+> 
+> # umask
+> 022
+> # mkdir aaaa
+> # ls -ld aaaa
+> drwxrwxrwx 2 root root 2 Sep 12 13:45 aaaa
+> # rmdir aaaa
+> # mount|grep /mnt
+> mazuelo:/home/sbio/ryan on /mnt type nfs (rw,relatime,vers=3,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=132.204.84.95,mountvers=3,mountport=38634,mountproto=udp,local_lock=none,addr=132.204.84.95)
+> 
+> The same happens for regular users.
+> 
+> This is a very serious bug.  The server is runnig the debian stretch 4.9
+> kernel, and the client is running a vanilla 4.4.155.  Is there anything
+> in the configuration causing this, or is it a kernel bug?
+
+Beats me, I can't reproduce that on a recent kernel.
+
+Does it look the same if you run the "ls -l" on the server itself?
+
+--b.
