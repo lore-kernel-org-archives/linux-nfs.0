@@ -1,16 +1,18 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-cys01nam02on0138.outbound.protection.outlook.com ([104.47.37.138]:2878
-        "EHLO NAM02-CY1-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1731957AbeISV0s (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 19 Sep 2018 17:26:48 -0400
-From: Trond Myklebust <trondmy@hammerspace.com>
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "schumaker.anna@gmail.com" <schumaker.anna@gmail.com>
+Received: from mail-it0-f66.google.com ([209.85.214.66]:36186 "EHLO
+        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1732813AbeISXJ0 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Sep 2018 19:09:26 -0400
+Received: by mail-it0-f66.google.com with SMTP id u13-v6so8802677iti.1
+        for <linux-nfs@vger.kernel.org>; Wed, 19 Sep 2018 10:30:30 -0700 (PDT)
+Message-ID: <159056b120aa0202aa87920c18f73cc016cafcee.camel@gmail.com>
 Subject: Re: [PATCH v3 15/44] SUNRPC: Refactor xprt_transmit() to remove the
  reply queue code
-Date: Wed, 19 Sep 2018 15:48:12 +0000
-Message-ID: <40dfd3e0a0ca056150d7ca8c23a3197abb73df67.camel@hammerspace.com>
+From: Anna Schumaker <schumaker.anna@gmail.com>
+To: Trond Myklebust <trondmy@hammerspace.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Date: Wed, 19 Sep 2018 13:30:27 -0400
+In-Reply-To: <40dfd3e0a0ca056150d7ca8c23a3197abb73df67.camel@hammerspace.com>
 References: <20180917130335.112832-1-trond.myklebust@hammerspace.com>
          <20180917130335.112832-2-trond.myklebust@hammerspace.com>
          <20180917130335.112832-3-trond.myklebust@hammerspace.com>
@@ -28,64 +30,91 @@ References: <20180917130335.112832-1-trond.myklebust@hammerspace.com>
          <20180917130335.112832-15-trond.myklebust@hammerspace.com>
          <20180917130335.112832-16-trond.myklebust@hammerspace.com>
          <3df56a33b30660b7e4492c0c1b01c6b5b729b4fb.camel@gmail.com>
-In-Reply-To: <3df56a33b30660b7e4492c0c1b01c6b5b729b4fb.camel@gmail.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+         <40dfd3e0a0ca056150d7ca8c23a3197abb73df67.camel@hammerspace.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDE4LTA5LTE4IGF0IDE3OjAxIC0wNDAwLCBBbm5hIFNjaHVtYWtlciB3cm90ZToN
-Cj4gSGkgVHJvbmQsDQo+IA0KPiBJJ20gc2VlaW5nIHRoaXMgY3Jhc2ggd2hpbGUgcnVubmluZyBj
-dGhvbiB0ZXN0cyAob24gYW55IE5GUyB2ZXJzaW9uKQ0KPiBhZnRlcg0KPiBhcHBseWluZyB0aGlz
-IHBhdGNoOg0KPiANCj4gWyAgIDUwLjc4MDEwNF0gZ2VuZXJhbCBwcm90ZWN0aW9uIGZhdWx0OiAw
-MDAwIFsjMV0gUFJFRU1QVCBTTVAgUFRJDQo+IFsgICA1MC43ODA3OTZdIENQVTogMCBQSUQ6IDM4
-NCBDb21tOiBrd29ya2VyL3U1OjEgTm90IHRhaW50ZWQgNC4xOS4wLQ0KPiByYzQtQU5OQSsNCj4g
-Izc0NTUNCj4gWyAgIDUwLjc4MTYwMV0gSGFyZHdhcmUgbmFtZTogQm9jaHMgQm9jaHMsIEJJT1Mg
-Qm9jaHMgMDEvMDEvMjAxMQ0KPiBbICAgNTAuNzgyMjMyXSBXb3JrcXVldWU6IHhwcnRpb2QgeHNf
-dGNwX2RhdGFfcmVjZWl2ZV93b3JrZm4gW3N1bnJwY10NCj4gWyAgIDUwLjc4MjkxMV0gUklQOiAw
-MDEwOnhwcnRfbG9va3VwX3Jxc3QrMHgyYy8weDE1MCBbc3VucnBjXQ0KPiBbICAgNTAuNzgzNTEw
-XSBDb2RlOiA0OCA4ZCA5NyA1OCAwNCAwMCAwMCA0MSA1NCA0OSA4OSBmYyA1NSA4OSBmNSA1Mw0K
-PiA0OCA4YiA4NyA1OA0KPiAwNCAwMCAwMCA0OCAzOSBjMiA3NCAyNiA0OCA4ZCA5OCA0OCBmZiBm
-ZiBmZiAzYiA3MCBlMCA3NSAwNyBlYiAzZg0KPiA8Mzk+IDY4IGUwIDc0DQo+IDNhIDQ4IDhiIDgz
-IGI4IDAwIDAwIDAwIDQ4IDhkIDk4IDQ4IGZmIGZmIGZmIDQ4IDM5IGMyDQo+IFsgICA1MC43ODU1
-MDFdIFJTUDogMDAxODpmZmZmYzkwMDAwYmViZDYwIEVGTEFHUzogMDAwMTAyMDINCj4gWyAgIDUw
-Ljc4NjA5MF0gUkFYOiBkZWFkMDAwMDAwMDAwMTAwIFJCWDogZGVhZDAwMDAwMDAwMDA0OCBSQ1g6
-DQo+IDAwMDAwMDAwMDAwMDAwNTENCj4gWyAgIDUwLjc4Njg1M10gUkRYOiBmZmZmODgwMGI5MTVk
-YzU4IFJTSTogMDAwMDAwMDA1YTFjNTYzMSBSREk6DQo+IGZmZmY4ODAwYjkxNWQ4MDANCj4gWyAg
-IDUwLjc4NzYxNl0gUkJQOiAwMDAwMDAwMDVhMWM1NjMxIFIwODogMDAwMDAwMDAwMDAwMDAwMCBS
-MDk6DQo+IDAwNjQ2ZjY5NzQ3MjcwNzgNCj4gWyAgIDUwLjc4ODM4MF0gUjEwOiA4MDgwODA4MDgw
-ODA4MDgwIFIxMTogMDAwMDAwMDAwMDBlZTVmMyBSMTI6DQo+IGZmZmY4ODAwYjkxNWQ4MDANCj4g
-WyAgIDUwLjc4OTE1M10gUjEzOiBmZmZmODgwMGI5MTVkYzE4IFIxNDogZmZmZjg4MDBiOTE1ZDgw
-MCBSMTU6DQo+IGZmZmZmZmZmYTAzMjY1YjQNCj4gWyAgIDUwLjc4OTkzMF0gRlM6ICAwMDAwMDAw
-MDAwMDAwMDAwKDAwMDApIEdTOmZmZmY4ODAwYmNhMDAwMDAoMDAwMCkNCj4ga25sR1M6MDAwMDAw
-MDAwMDAwMDAwMA0KPiBbICAgNTAuNzkwNzk3XSBDUzogIDAwMTAgRFM6IDAwMDAgRVM6IDAwMDAg
-Q1IwOiAwMDAwMDAwMDgwMDUwMDMzDQo+IFsgICA1MC43OTE0MTZdIENSMjogMDAwMDdmOWI2NzA1
-MzhiMCBDUjM6IDAwMDAwMDAwMDIwMGEwMDEgQ1I0Og0KPiAwMDAwMDAwMDAwMTYwNmYwDQo+IFsg
-ICA1MC43OTIxODJdIENhbGwgVHJhY2U6DQo+IFsgICA1MC43OTI0NzFdICB4c190Y3BfZGF0YV9y
-ZWN2KzB4M2E2LzB4NzgwIFtzdW5ycGNdDQo+IFsgICA1MC43OTI5OTNdICA/IF9fc3dpdGNoX3Rv
-X2FzbSsweDM0LzB4NzANCj4gWyAgIDUwLjc5MzQyNl0gID8geHNfdGNwX2NoZWNrX2ZyYWdoZHIu
-cGFydC4xKzB4NDAvMHg0MCBbc3VucnBjXQ0KPiBbICAgNTAuNzk0MDQ3XSAgdGNwX3JlYWRfc29j
-aysweDkzLzB4MWIwDQo+IFsgICA1MC43OTQ0NDddICA/IF9fc3dpdGNoX3RvX2FzbSsweDQwLzB4
-NzANCj4gWyAgIDUwLjc5NDg3OV0gIHhzX3RjcF9kYXRhX3JlY2VpdmVfd29ya2ZuKzB4YjIvMHgx
-OTAgW3N1bnJwY10NCj4gWyAgIDUwLjc5NTQ4Ml0gIHByb2Nlc3Nfb25lX3dvcmsrMHgxZTYvMHgz
-YzANCj4gWyAgIDUwLjc5NTkyOF0gIHdvcmtlcl90aHJlYWQrMHgyOC8weDNjMA0KPiBbICAgNTAu
-Nzk2MzM3XSAgPyBwcm9jZXNzX29uZV93b3JrKzB4M2MwLzB4M2MwDQo+IFsgICA1MC43OTY4MTRd
-ICBrdGhyZWFkKzB4MTBkLzB4MTMwDQo+IFsgICA1MC43OTcxNzBdICA/IGt0aHJlYWRfcGFyaysw
-eDgwLzB4ODANCj4gWyAgIDUwLjc5NzU3MF0gIHJldF9mcm9tX2ZvcmsrMHgzNS8weDQwDQo+IFsg
-ICA1MC43OTc5NjFdIE1vZHVsZXMgbGlua2VkIGluOiBuZnN2MyBycGNzZWNfZ3NzX2tyYjUgbmZz
-djQgbmZzDQo+IGZzY2FjaGUNCj4gY2ZnODAyMTEgcnBjcmRtYSByZmtpbGwgY3JjdDEwZGlmX3Bj
-bG11bCBjcmMzMl9wY2xtdWwgY3JjMzJjX2ludGVsDQo+IGdoYXNoX2NsbXVsbmlfaW50ZWwgam95
-ZGV2IHBjYmMgbW91c2VkZXYgYWVzbmlfaW50ZWwgcHNtb3VzZQ0KPiBhZXNfeDg2XzY0IGV2ZGV2
-DQo+IGNyeXB0b19zaW1kIGNyeXB0ZCBpbnB1dF9sZWRzIGdsdWVfaGVscGVyIGxlZF9jbGFzcyBt
-YWNfaGlkIHBjc3Brcg0KPiBpbnRlbF9hZ3ANCj4gaW50ZWxfZ3R0IGkyY19waWl4NCBuZnNkIGJ1
-dHRvbiBhdXRoX3JwY2dzcyBuZnNfYWNsIGxvY2tkIGdyYWNlDQo+IHN1bnJwYw0KPiBzY2hfZnFf
-Y29kZWwgaXBfdGFibGVzIHhfdGFibGVzIGF0YV9nZW5lcmljIHBhdGFfYWNwaSBhdGFfcGlpeA0K
-PiBzZXJpb19yYXcNCj4gdWhjaV9oY2QgYXRrYmQgZWhjaV9wY2kgbGlicHMyIGVoY2lfaGNkIGxp
-YmF0YSB1c2Jjb3JlIHVzYl9jb21tb24NCj4gaTgwNDIgZmxvcHB5DQo+IHNlcmlvIHNjc2lfbW9k
-IHhmcyB2aXJ0aW9fYmFsbG9vbiB2aXJ0aW9fbmV0IG5ldF9mYWlsb3ZlciBmYWlsb3Zlcg0KPiB2
-aXJ0aW9fcGNpDQo+IHZpcnRpb19ibGsgdmlydGlvX3JpbmcgdmlydGlvDQo+IA0KDQpUaGFua3Mg
-Zm9yIGZpbmRpbmcgdGhhdCEgSXQgbG9va3MgbGlrZSB0aGUgZGVmaW5pdGlvbiBvZg0KeHBydF9y
-ZXF1ZXN0X25lZWRfZW5xdWV1ZV9yZWNlaXZlKCkgd2FzIGluY29ycmVjdCBzbyBJJ3ZlIHB1c2hl
-ZCBvdXQgYQ0KZml4ZWQgdmVyc2lvbiB0byB0aGUgJ3Rlc3RpbmcnIGJyYW5jaC4NCg0KLS0gDQpU
-cm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lciwgSGFtbWVyc3BhY2UN
-CnRyb25kLm15a2xlYnVzdEBoYW1tZXJzcGFjZS5jb20NCg0KDQo=
+On Wed, 2018-09-19 at 15:48 +0000, Trond Myklebust wrote:
+> On Tue, 2018-09-18 at 17:01 -0400, Anna Schumaker wrote:
+> > Hi Trond,
+> > 
+> > I'm seeing this crash while running cthon tests (on any NFS version)
+> > after
+> > applying this patch:
+> > 
+> > [   50.780104] general protection fault: 0000 [#1] PREEMPT SMP PTI
+> > [   50.780796] CPU: 0 PID: 384 Comm: kworker/u5:1 Not tainted 4.19.0-
+> > rc4-ANNA+
+> > #7455
+> > [   50.781601] Hardware name: Bochs Bochs, BIOS Bochs 01/01/2011
+> > [   50.782232] Workqueue: xprtiod xs_tcp_data_receive_workfn [sunrpc]
+> > [   50.782911] RIP: 0010:xprt_lookup_rqst+0x2c/0x150 [sunrpc]
+> > [   50.783510] Code: 48 8d 97 58 04 00 00 41 54 49 89 fc 55 89 f5 53
+> > 48 8b 87 58
+> > 04 00 00 48 39 c2 74 26 48 8d 98 48 ff ff ff 3b 70 e0 75 07 eb 3f
+> > <39> 68 e0 74
+> > 3a 48 8b 83 b8 00 00 00 48 8d 98 48 ff ff ff 48 39 c2
+> > [   50.785501] RSP: 0018:ffffc90000bebd60 EFLAGS: 00010202
+> > [   50.786090] RAX: dead000000000100 RBX: dead000000000048 RCX:
+> > 0000000000000051
+> > [   50.786853] RDX: ffff8800b915dc58 RSI: 000000005a1c5631 RDI:
+> > ffff8800b915d800
+> > [   50.787616] RBP: 000000005a1c5631 R08: 0000000000000000 R09:
+> > 00646f6974727078
+> > [   50.788380] R10: 8080808080808080 R11: 00000000000ee5f3 R12:
+> > ffff8800b915d800
+> > [   50.789153] R13: ffff8800b915dc18 R14: ffff8800b915d800 R15:
+> > ffffffffa03265b4
+> > [   50.789930] FS:  0000000000000000(0000) GS:ffff8800bca00000(0000)
+> > knlGS:0000000000000000
+> > [   50.790797] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+> > [   50.791416] CR2: 00007f9b670538b0 CR3: 000000000200a001 CR4:
+> > 00000000001606f0
+> > [   50.792182] Call Trace:
+> > [   50.792471]  xs_tcp_data_recv+0x3a6/0x780 [sunrpc]
+> > [   50.792993]  ? __switch_to_asm+0x34/0x70
+> > [   50.793426]  ? xs_tcp_check_fraghdr.part.1+0x40/0x40 [sunrpc]
+> > [   50.794047]  tcp_read_sock+0x93/0x1b0
+> > [   50.794447]  ? __switch_to_asm+0x40/0x70
+> > [   50.794879]  xs_tcp_data_receive_workfn+0xb2/0x190 [sunrpc]
+> > [   50.795482]  process_one_work+0x1e6/0x3c0
+> > [   50.795928]  worker_thread+0x28/0x3c0
+> > [   50.796337]  ? process_one_work+0x3c0/0x3c0
+> > [   50.796814]  kthread+0x10d/0x130
+> > [   50.797170]  ? kthread_park+0x80/0x80
+> > [   50.797570]  ret_from_fork+0x35/0x40
+> > [   50.797961] Modules linked in: nfsv3 rpcsec_gss_krb5 nfsv4 nfs
+> > fscache
+> > cfg80211 rpcrdma rfkill crct10dif_pclmul crc32_pclmul crc32c_intel
+> > ghash_clmulni_intel joydev pcbc mousedev aesni_intel psmouse
+> > aes_x86_64 evdev
+> > crypto_simd cryptd input_leds glue_helper led_class mac_hid pcspkr
+> > intel_agp
+> > intel_gtt i2c_piix4 nfsd button auth_rpcgss nfs_acl lockd grace
+> > sunrpc
+> > sch_fq_codel ip_tables x_tables ata_generic pata_acpi ata_piix
+> > serio_raw
+> > uhci_hcd atkbd ehci_pci libps2 ehci_hcd libata usbcore usb_common
+> > i8042 floppy
+> > serio scsi_mod xfs virtio_balloon virtio_net net_failover failover
+> > virtio_pci
+> > virtio_blk virtio_ring virtio
+> > 
+> 
+> Thanks for finding that! It looks like the definition of
+> xprt_request_need_enqueue_receive() was incorrect so I've pushed out a
+> fixed version to the 'testing' branch.
+
+The new version works for me, thanks!
+
+Anna
+
+> 
+> -- 
+> Trond Myklebust
+> Linux NFS client maintainer, Hammerspace
+> trond.myklebust@hammerspace.com
+> 
+> 
