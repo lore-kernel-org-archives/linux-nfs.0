@@ -1,120 +1,154 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f66.google.com ([209.85.214.66]:36186 "EHLO
-        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1732813AbeISXJ0 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Sep 2018 19:09:26 -0400
-Received: by mail-it0-f66.google.com with SMTP id u13-v6so8802677iti.1
-        for <linux-nfs@vger.kernel.org>; Wed, 19 Sep 2018 10:30:30 -0700 (PDT)
-Message-ID: <159056b120aa0202aa87920c18f73cc016cafcee.camel@gmail.com>
-Subject: Re: [PATCH v3 15/44] SUNRPC: Refactor xprt_transmit() to remove the
- reply queue code
-From: Anna Schumaker <schumaker.anna@gmail.com>
-To: Trond Myklebust <trondmy@hammerspace.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Date: Wed, 19 Sep 2018 13:30:27 -0400
-In-Reply-To: <40dfd3e0a0ca056150d7ca8c23a3197abb73df67.camel@hammerspace.com>
-References: <20180917130335.112832-1-trond.myklebust@hammerspace.com>
-         <20180917130335.112832-2-trond.myklebust@hammerspace.com>
-         <20180917130335.112832-3-trond.myklebust@hammerspace.com>
-         <20180917130335.112832-4-trond.myklebust@hammerspace.com>
-         <20180917130335.112832-5-trond.myklebust@hammerspace.com>
-         <20180917130335.112832-6-trond.myklebust@hammerspace.com>
-         <20180917130335.112832-7-trond.myklebust@hammerspace.com>
-         <20180917130335.112832-8-trond.myklebust@hammerspace.com>
-         <20180917130335.112832-9-trond.myklebust@hammerspace.com>
-         <20180917130335.112832-10-trond.myklebust@hammerspace.com>
-         <20180917130335.112832-11-trond.myklebust@hammerspace.com>
-         <20180917130335.112832-12-trond.myklebust@hammerspace.com>
-         <20180917130335.112832-13-trond.myklebust@hammerspace.com>
-         <20180917130335.112832-14-trond.myklebust@hammerspace.com>
-         <20180917130335.112832-15-trond.myklebust@hammerspace.com>
-         <20180917130335.112832-16-trond.myklebust@hammerspace.com>
-         <3df56a33b30660b7e4492c0c1b01c6b5b729b4fb.camel@gmail.com>
-         <40dfd3e0a0ca056150d7ca8c23a3197abb73df67.camel@hammerspace.com>
+Received: from mail-it0-f41.google.com ([209.85.214.41]:33192 "EHLO
+        mail-it0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727371AbeISXSa (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Sep 2018 19:18:30 -0400
+Received: by mail-it0-f41.google.com with SMTP id j198-v6so17828865ita.0
+        for <linux-nfs@vger.kernel.org>; Wed, 19 Sep 2018 10:39:32 -0700 (PDT)
+MIME-Version: 1.0
+References: <CAMBWrQ=xMMsHxSP8uw_H3KkMK9tUQWLYjt8yAQmFm8NDLD7pyQ@mail.gmail.com>
+ <20180917211504.GA21269@fieldses.org> <CAMBWrQm2QRKNARwUf7pG_fG_ROcwXmT1PLfw5Y0ewhXzB9EqYA@mail.gmail.com>
+ <20180917220107.GB21269@fieldses.org> <CAMBWrQmRtPHOFbiMsz2YAn-yQXCYjRBqq0zLJUB7snPg2MQ+tA@mail.gmail.com>
+ <CAMBWrQmipZs4rwOUMhH59nHiWqyAcX7qsBG51ZWMYxWKzFZ47Q@mail.gmail.com> <20180918181901.GC1218@fieldses.org>
+In-Reply-To: <20180918181901.GC1218@fieldses.org>
+From: Stan Hu <stanhu@gmail.com>
+Date: Wed, 19 Sep 2018 10:39:19 -0700
+Message-ID: <CAMBWrQmLDwhESALcH2kamrRr4VhRsgVP0kAMeiE2J0uubcfNNw@mail.gmail.com>
+Subject: Re: Stale data after file is renamed while another process has an
+ open file handle
+To: Bruce Fields <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
 Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2018-09-19 at 15:48 +0000, Trond Myklebust wrote:
-> On Tue, 2018-09-18 at 17:01 -0400, Anna Schumaker wrote:
-> > Hi Trond,
-> > 
-> > I'm seeing this crash while running cthon tests (on any NFS version)
-> > after
-> > applying this patch:
-> > 
-> > [   50.780104] general protection fault: 0000 [#1] PREEMPT SMP PTI
-> > [   50.780796] CPU: 0 PID: 384 Comm: kworker/u5:1 Not tainted 4.19.0-
-> > rc4-ANNA+
-> > #7455
-> > [   50.781601] Hardware name: Bochs Bochs, BIOS Bochs 01/01/2011
-> > [   50.782232] Workqueue: xprtiod xs_tcp_data_receive_workfn [sunrpc]
-> > [   50.782911] RIP: 0010:xprt_lookup_rqst+0x2c/0x150 [sunrpc]
-> > [   50.783510] Code: 48 8d 97 58 04 00 00 41 54 49 89 fc 55 89 f5 53
-> > 48 8b 87 58
-> > 04 00 00 48 39 c2 74 26 48 8d 98 48 ff ff ff 3b 70 e0 75 07 eb 3f
-> > <39> 68 e0 74
-> > 3a 48 8b 83 b8 00 00 00 48 8d 98 48 ff ff ff 48 39 c2
-> > [   50.785501] RSP: 0018:ffffc90000bebd60 EFLAGS: 00010202
-> > [   50.786090] RAX: dead000000000100 RBX: dead000000000048 RCX:
-> > 0000000000000051
-> > [   50.786853] RDX: ffff8800b915dc58 RSI: 000000005a1c5631 RDI:
-> > ffff8800b915d800
-> > [   50.787616] RBP: 000000005a1c5631 R08: 0000000000000000 R09:
-> > 00646f6974727078
-> > [   50.788380] R10: 8080808080808080 R11: 00000000000ee5f3 R12:
-> > ffff8800b915d800
-> > [   50.789153] R13: ffff8800b915dc18 R14: ffff8800b915d800 R15:
-> > ffffffffa03265b4
-> > [   50.789930] FS:  0000000000000000(0000) GS:ffff8800bca00000(0000)
-> > knlGS:0000000000000000
-> > [   50.790797] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-> > [   50.791416] CR2: 00007f9b670538b0 CR3: 000000000200a001 CR4:
-> > 00000000001606f0
-> > [   50.792182] Call Trace:
-> > [   50.792471]  xs_tcp_data_recv+0x3a6/0x780 [sunrpc]
-> > [   50.792993]  ? __switch_to_asm+0x34/0x70
-> > [   50.793426]  ? xs_tcp_check_fraghdr.part.1+0x40/0x40 [sunrpc]
-> > [   50.794047]  tcp_read_sock+0x93/0x1b0
-> > [   50.794447]  ? __switch_to_asm+0x40/0x70
-> > [   50.794879]  xs_tcp_data_receive_workfn+0xb2/0x190 [sunrpc]
-> > [   50.795482]  process_one_work+0x1e6/0x3c0
-> > [   50.795928]  worker_thread+0x28/0x3c0
-> > [   50.796337]  ? process_one_work+0x3c0/0x3c0
-> > [   50.796814]  kthread+0x10d/0x130
-> > [   50.797170]  ? kthread_park+0x80/0x80
-> > [   50.797570]  ret_from_fork+0x35/0x40
-> > [   50.797961] Modules linked in: nfsv3 rpcsec_gss_krb5 nfsv4 nfs
-> > fscache
-> > cfg80211 rpcrdma rfkill crct10dif_pclmul crc32_pclmul crc32c_intel
-> > ghash_clmulni_intel joydev pcbc mousedev aesni_intel psmouse
-> > aes_x86_64 evdev
-> > crypto_simd cryptd input_leds glue_helper led_class mac_hid pcspkr
-> > intel_agp
-> > intel_gtt i2c_piix4 nfsd button auth_rpcgss nfs_acl lockd grace
-> > sunrpc
-> > sch_fq_codel ip_tables x_tables ata_generic pata_acpi ata_piix
-> > serio_raw
-> > uhci_hcd atkbd ehci_pci libps2 ehci_hcd libata usbcore usb_common
-> > i8042 floppy
-> > serio scsi_mod xfs virtio_balloon virtio_net net_failover failover
-> > virtio_pci
-> > virtio_blk virtio_ring virtio
-> > 
-> 
-> Thanks for finding that! It looks like the definition of
-> xprt_request_need_enqueue_receive() was incorrect so I've pushed out a
-> fixed version to the 'testing' branch.
+On Tue, Sep 18, 2018 at 11:19 AM J. Bruce Fields <bfields@fieldses.org> wrote:
 
-The new version works for me, thanks!
+> We know node B has that cat loop that will keep reopening the file.
+>
+> The only way node B could avoid translating those open syscalls into
+> on-the-wire OPENs is if the client holds a delegation.
+>
+> But it can't hold a delegation on the file that was newly renamed to
+> test.txt--delegations are revoked on rename, and it would need to do
+> another OPEN after the rename to get a new delegation.  Similarly the
+> file that gets renamed over should have its delegation revoked--and we
+> can see that the client does return that delegation.  The OPEN here is
+> actually part of that delegation return process--the CLAIM_DELEGATE_CUR
+> value on "claim type" is telling the server that this is an open that
+> the client had cached locally under the delegation it is about to
+> return.
+>
+> Looks like a client bug to me, possibly some sort of race handling the
+> delegation return and the new open.
+>
+> It might help if it were possible to confirm that this is still
+> reproduceable on the latest upstream kernel.
 
-Anna
+Thanks for that information. I did more testing, and it looks like
+this stale file problem only appears to happen when the NFS client
+protocol is 4.0 (via the vers=4.0 mount option). 4.1 doesn't appear to
+have the problem.
 
-> 
-> -- 
-> Trond Myklebust
-> Linux NFS client maintainer, Hammerspace
-> trond.myklebust@hammerspace.com
-> 
-> 
+I've also confirmed this problem happens on the mainline kernel
+version (4.19.0-rc4). Do you have any idea why 4.1 would be working
+but 4.0 has this bug?
+
+https://s3.amazonaws.com/gitlab-support/nfs/nfs-4.0-kernel-4.19-0-rc4-rename.pcap
+is the latest capture that also includes the NFS callbacks. Here's
+what I see after the first RENAME from Node A:
+
+Node B: DELEGRETURN StateId: 0xa93
+NFS server: DELEGRETURN
+Node A: RENAME From: test2.txt To: test.txt
+NFS server: RENAME
+Node B: GETATTR
+NFS Server: GETATTR (with old inode)
+Node B: READ StateId: 0xa93
+NFS Server: READ
+
+In comparison, if I don't have a process with an open file to
+test.txt, things work and the trace looks like:
+
+Node B: DELEGRETURN StateId: 0xa93
+NFS server: DELEGRETURN
+Node A: RENAME From: test2.txt To: test.txt
+NFS server: RENAME
+Node B: OPEN test.txt
+NFS Server: OPEN StateID: 0xa93
+Node B: CLOSE StateID: 0xa93
+NFS Server: CLOSE
+Node B: OPEN test.txt
+NFS Server: OPEN StateId: 0xa93
+Node B: READ StateID: 0xa93
+NFS Server: READ
+
+In the first case, since the client reused the StateId that it should
+have released in DELEGRETURN, does this suggest that perhaps the
+client isn't properly releasing that delegation? How might the open
+file affect this behavior? Any pointers to where things might be going
+awry in the code base would be appreciated here.
+
+
+
+>
+> --b.
+>
+> >
+> > On Mon, Sep 17, 2018 at 3:16 PM Stan Hu <stanhu@gmail.com> wrote:
+> > >
+> > > Attached is the compressed pcap of port 2049 traffic. The file is
+> > > pretty large because the while loop generated a fair amount of
+> > > traffic.
+> > >
+> > > On Mon, Sep 17, 2018 at 3:01 PM J. Bruce Fields <bfields@fieldses.org> wrote:
+> > > >
+> > > > On Mon, Sep 17, 2018 at 02:37:16PM -0700, Stan Hu wrote:
+> > > > > On Mon, Sep 17, 2018 at 2:15 PM J. Bruce Fields <bfields@fieldses.org> wrote:
+> > > > >
+> > > > > > Sounds like a bug to me, but I'm not sure where.  What filesystem are
+> > > > > > you exporting?  How much time do you think passes between steps 1 and 4?
+> > > > > > (I *think* it's possible you could hit a bug caused by low ctime
+> > > > > > granularity if you could get from step 1 to step 4 in less than a
+> > > > > > millisecond.)
+> > > > >
+> > > > > For CentOS, I am exporting xfs. In Ubuntu, I think I was using ext4.
+> > > > >
+> > > > > Steps 1 through 4 are all done by hand, so I don't think we're hitting
+> > > > > a millisecond issue. Just for good measure, I've done experiments
+> > > > > where I waited a few minutes between steps 1 and 4.
+> > > > >
+> > > > > > Those kernel versions--are those the client (node A and B) versions, or
+> > > > > > the server versions?
+> > > > >
+> > > > > The client and server kernel versions are the same across the board. I
+> > > > > didn't mix and match kernels.
+> > > > >
+> > > > > > > Note that with an Isilon NFS server, instead of seeing stale content,
+> > > > > > > I see "Stale file handle" errors indefinitely unless I perform one of
+> > > > > > > the corrective steps.
+> > > > > >
+> > > > > > You see "stale file handle" errors from the "cat test1.txt"?  That's
+> > > > > > also weird.
+> > > > >
+> > > > > Yes, this is the problem I'm actually more concerned about, which led
+> > > > > to this investigation in the first place.
+> > > >
+> > > > It might be useful to look at the packets on the wire.  So, run
+> > > > something on the server like:
+> > > >
+> > > >         tcpdump -wtmp.pcap -s0 -ieth0
+> > > >
+> > > > (replace eth0 by the relevant interface), then run the test, then kill
+> > > > the tcpdump and take a look at tmp.pcap in wireshark, or send tmp.pcap
+> > > > to the list (as long as there's no sensitive info in there).
+> > > >
+> > > > What we'd be looking for:
+> > > >         - does the rename cause the directory's change attribute to
+> > > >           change?
+> > > >         - does the server give out a delegation, and, if so, does it
+> > > >           return it before allowing the rename?
+> > > >         - does the client do an open by filehandle or an open by name
+> > > >           after the rename?
+> > > >
+> > > > --b.
