@@ -1,176 +1,59 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:37040 "EHLO fieldses.org"
+Received: from prodfix-out0.dnb.de ([193.175.100.144]:39663 "EHLO mail.dnb.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725941AbeITF6o (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 20 Sep 2018 01:58:44 -0400
-Date: Wed, 19 Sep 2018 20:18:18 -0400
-From: Bruce Fields <bfields@fieldses.org>
-To: Stan Hu <stanhu@gmail.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: Stale data after file is renamed while another process has an
- open file handle
-Message-ID: <20180920001818.GA17294@fieldses.org>
-References: <CAMBWrQ=xMMsHxSP8uw_H3KkMK9tUQWLYjt8yAQmFm8NDLD7pyQ@mail.gmail.com>
- <20180917211504.GA21269@fieldses.org>
- <CAMBWrQm2QRKNARwUf7pG_fG_ROcwXmT1PLfw5Y0ewhXzB9EqYA@mail.gmail.com>
- <20180917220107.GB21269@fieldses.org>
- <CAMBWrQmRtPHOFbiMsz2YAn-yQXCYjRBqq0zLJUB7snPg2MQ+tA@mail.gmail.com>
- <CAMBWrQmipZs4rwOUMhH59nHiWqyAcX7qsBG51ZWMYxWKzFZ47Q@mail.gmail.com>
- <20180918181901.GC1218@fieldses.org>
- <CAMBWrQmLDwhESALcH2kamrRr4VhRsgVP0kAMeiE2J0uubcfNNw@mail.gmail.com>
- <20180919200214.GB14422@fieldses.org>
+        id S1726295AbeITLan (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 20 Sep 2018 07:30:43 -0400
+Subject: Re: Bump: NFS3 subsystem hung, Kernel alive
+To: "'J. Bruce Fields'" <bfields@fieldses.org>
+Cc: 'Jeff Layton' <jlayton@kernel.org>,
+        "'linux-nfs@vger.kernel.org'" <linux-nfs@vger.kernel.org>
+References: <069801bdc6004814ba33d69eb888c575@dnb.de>
+ <20180919191326.GA14422@fieldses.org>
+From: =?UTF-8?Q?Guido_J=c3=a4kel?= <G.Jaekel@DNB.DE>
+Message-ID: <47c116c0-1ef5-7beb-1482-c1c6851e85a2@DNB.DE>
+Date: Thu, 20 Sep 2018 07:49:00 +0200
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20180919200214.GB14422@fieldses.org>
+In-Reply-To: <20180919191326.GA14422@fieldses.org>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Sep 19, 2018 at 04:02:14PM -0400, Bruce Fields wrote:
-> On Wed, Sep 19, 2018 at 10:39:19AM -0700, Stan Hu wrote:
-> > https://s3.amazonaws.com/gitlab-support/nfs/nfs-4.0-kernel-4.19-0-rc4-rename.pcap
-> > is the latest capture that also includes the NFS callbacks. Here's
-> > what I see after the first RENAME from Node A:
-> > 
-> > Node B: DELEGRETURN StateId: 0xa93
-> > NFS server: DELEGRETURN
-> > Node A: RENAME From: test2.txt To: test.txt
-> > NFS server: RENAME
-> > Node B: GETATTR
-> > NFS Server: GETATTR (with old inode)
-> > Node B: READ StateId: 0xa93
-> > NFS Server: READ
-> 
-> Presumably the GETATTR and READ use a filehandle for the old file (the
-> one that was renamed over)?
-> 
-> That's what's weird, and indicates a possible client bug.  It should be
-> doing a new OPEN("test.txt").
+Dear Bruce,
 
-Or, maybe that part's expected behavior.
+thank you for quick response. And yes - it's no an easy one for sure, therefore i really need your kernel gurus expertise!
 
-I'd assumed that the every open syscall would result in an on-the-wire
-open or lookup, or at least a getattr to verify of the directory change
-attribute to verify that the directory hasn't been modified.
+We have no contract for Linux, it's based on Gentoo Linux at all: We are totaly free to try out anything you ask for. This "datacenter design" now is working for about 8 years using a whole bunch of kernel versions without any problem. The issue *may* have start to appear in 2018Q1, maybe with with changing to LTS 4.14 or with changes concerning the Spectre theme. It have happended two/tree times on different other container hosts this year acting in Test and Approval stage. Because of the shared NFS infrastructure, all using exactly the same kernel image and (template-sourced copies of) the same root image. 
 
-Trond tells me that's guaranteed only on the first open (of a set of
-overlapping opens) from that client.  You've already got another open in
-your test case (if I remember correctly), so you may have to wait for
-the client's cache of the parent directory to time out (could be a few
-minutes).  There are some mount options to control this--see the nfs man
-page.
+This also some older rackservers (for Evaluation stage) with comparable smaller hardware. They just have "1GB"-NICs and there might be a clue that the issue may be forced there by heavy file IO workload. I have to re-check this.
 
-(And Trond reminds me the same is true of data revalidation for the
-purpose of open-to-close cache consistency; if you have a set of
-overlapping opens from one client, only the first one is guaranteed to
-revalidate the cache.  This is contrary to my understanding (and every
-definition of close-to-open that I can find online), but I take it there
-are some good reasons for it.  But this should be better documented, it
-causes way too much confusion (see another ongoing thread on this
-list).)
+Unfortunately, the Apache email infrastructure is problematic (don't accept some mail encodings), but in the end I was able to create an account and open an issue (https://bugzilla.linux-nfs.org/show_bug.cgi?id=328). But I still can't attach things to this, i just got some "internal error". Therefore, please ask and I'll send it via email. I have a photo of the "SysRq" console showing a locked task and a tcpdump of "port nfs" taken at the last event. I'm may send kernel config file, kernel image or whatever you need. 
 
-Anyway, that doesn't explain the 4.0/4.1 difference.
+thank you all in advance
 
---b.
+Guido
 
+Kernel history:
 
+root@bladerunner14 ~ # ll /boot{,/_save}/kernel* -t | grep -v old
+lrwxrwxrwx 1 root root   38 Sep 18 11:46 /boot/kernel -> kernel-genkernel-x86_64-4.14.65-gentoo
+-rw-r--r-- 1 root root 5.3M Sep 18 11:46 /boot/kernel-genkernel-x86_64-4.14.65-gentoo
+-rw-r--r-- 1 root root 5.3M Aug  8 12:31 /boot/kernel-genkernel-x86_64-4.14.61-gentoo
+-rw-r--r-- 1 root root 5.3M May 24 12:58 /boot/kernel-genkernel-x86_64-4.14.43-gentoo
+-rw-r--r-- 1 root root 5.3M Apr  9 12:20 /boot/kernel-genkernel-x86_64-4.14.32-gentoo
+-rw-r--r-- 1 root root 4.5M Feb 27  2018 /boot/_save/kernel-genkernel-x86_64-4.9.84-gentoo
+-rw-r--r-- 1 root root 4.5M Jan 23  2018 /boot/_save/kernel-genkernel-x86_64-4.9.76-gentoo-r1
+-rw-r--r-- 1 root root 4.5M Nov 16  2017 /boot/_save/kernel-genkernel-x86_64-4.9.61-gentoo
+-rw-r--r-- 1 root root 4.2M Jan  3  2017 /boot/_save/kernel-genkernel-x86_64-4.4.39-gentoo
+-rw-r--r-- 1 root root 4.0M Oct  6  2015 /boot/_save/kernel-genkernel-x86_64-3.14.51-gentoo
+-rw-r--r-- 1 root root 4.0M Aug 28  2015 /boot/_save/kernel-genkernel-x86_64-3.14.9-gentoo
+-rw-r--r-- 1 root root 3.7M Jul 14  2014 /boot/_save/kernel-genkernel-x86_64-3.10.20-gentoo
+-rw-r--r-- 1 root root 3.5M Oct 10  2013 /boot/_save/kernel-genkernel-x86_64-3.8.13-gentoo
+-rw-r--r-- 1 root root 3.4M Apr 23  2013 /boot/_save/kernel-genkernel-x86_64-3.3.5-gentoo
+-rw-r--r-- 1 root root 3.3M May 16  2012 /boot/_save/kernel-genkernel-x86_64-3.3.4-gentoo
+-rw-r--r-- 1 root root 2.7M Dec  1  2010 /boot/_save/kernel-genkernel-x86_64-2.6.34-gentoo-r6
+
+On 19.09.2018 21:13, 'J. Bruce Fields' wrote:
+> That just looks hard to debug, unfortunately.  Have you tried asking
+> Netapp, or do you have a support contract for your Linux clients?  Was
+> there an older kernel that worked OK?
 > 
-> Also, READ shouldn't be using the stateid that was returned in
-> DELEGRETURN.  And the server should reject any attempt to use that
-> stateid.  I wonder if you misread the stateids--may be worth taking a
-> closer look to see if they're really bit-for-bit identical.  (They're
-> 128 bits, so that 0xa93 is either a hash or just some subset of the
-> stateid.)
-> 
-> (Apologies, I haven't gotten a chance to look at it myself.)
-> 
-> > In comparison, if I don't have a process with an open file to
-> > test.txt, things work and the trace looks like:
-> > 
-> > Node B: DELEGRETURN StateId: 0xa93
-> > NFS server: DELEGRETURN
-> > Node A: RENAME From: test2.txt To: test.txt
-> > NFS server: RENAME
-> > Node B: OPEN test.txt
-> > NFS Server: OPEN StateID: 0xa93
-> > Node B: CLOSE StateID: 0xa93
-> > NFS Server: CLOSE
-> > Node B: OPEN test.txt
-> > NFS Server: OPEN StateId: 0xa93
-> > Node B: READ StateID: 0xa93
-> > NFS Server: READ
-> > 
-> > In the first case, since the client reused the StateId that it should
-> > have released in DELEGRETURN, does this suggest that perhaps the
-> > client isn't properly releasing that delegation? How might the open
-> > file affect this behavior? Any pointers to where things might be going
-> > awry in the code base would be appreciated here.
-> 
-> I'd expect the first trace to look more like this one, with new OPENs
-> and CLOSEs after the rename.
-> 
-> --b.
-> 
-> > 
-> > 
-> > 
-> > >
-> > > --b.
-> > >
-> > > >
-> > > > On Mon, Sep 17, 2018 at 3:16 PM Stan Hu <stanhu@gmail.com> wrote:
-> > > > >
-> > > > > Attached is the compressed pcap of port 2049 traffic. The file is
-> > > > > pretty large because the while loop generated a fair amount of
-> > > > > traffic.
-> > > > >
-> > > > > On Mon, Sep 17, 2018 at 3:01 PM J. Bruce Fields <bfields@fieldses.org> wrote:
-> > > > > >
-> > > > > > On Mon, Sep 17, 2018 at 02:37:16PM -0700, Stan Hu wrote:
-> > > > > > > On Mon, Sep 17, 2018 at 2:15 PM J. Bruce Fields <bfields@fieldses.org> wrote:
-> > > > > > >
-> > > > > > > > Sounds like a bug to me, but I'm not sure where.  What filesystem are
-> > > > > > > > you exporting?  How much time do you think passes between steps 1 and 4?
-> > > > > > > > (I *think* it's possible you could hit a bug caused by low ctime
-> > > > > > > > granularity if you could get from step 1 to step 4 in less than a
-> > > > > > > > millisecond.)
-> > > > > > >
-> > > > > > > For CentOS, I am exporting xfs. In Ubuntu, I think I was using ext4.
-> > > > > > >
-> > > > > > > Steps 1 through 4 are all done by hand, so I don't think we're hitting
-> > > > > > > a millisecond issue. Just for good measure, I've done experiments
-> > > > > > > where I waited a few minutes between steps 1 and 4.
-> > > > > > >
-> > > > > > > > Those kernel versions--are those the client (node A and B) versions, or
-> > > > > > > > the server versions?
-> > > > > > >
-> > > > > > > The client and server kernel versions are the same across the board. I
-> > > > > > > didn't mix and match kernels.
-> > > > > > >
-> > > > > > > > > Note that with an Isilon NFS server, instead of seeing stale content,
-> > > > > > > > > I see "Stale file handle" errors indefinitely unless I perform one of
-> > > > > > > > > the corrective steps.
-> > > > > > > >
-> > > > > > > > You see "stale file handle" errors from the "cat test1.txt"?  That's
-> > > > > > > > also weird.
-> > > > > > >
-> > > > > > > Yes, this is the problem I'm actually more concerned about, which led
-> > > > > > > to this investigation in the first place.
-> > > > > >
-> > > > > > It might be useful to look at the packets on the wire.  So, run
-> > > > > > something on the server like:
-> > > > > >
-> > > > > >         tcpdump -wtmp.pcap -s0 -ieth0
-> > > > > >
-> > > > > > (replace eth0 by the relevant interface), then run the test, then kill
-> > > > > > the tcpdump and take a look at tmp.pcap in wireshark, or send tmp.pcap
-> > > > > > to the list (as long as there's no sensitive info in there).
-> > > > > >
-> > > > > > What we'd be looking for:
-> > > > > >         - does the rename cause the directory's change attribute to
-> > > > > >           change?
-> > > > > >         - does the server give out a delegation, and, if so, does it
-> > > > > >           return it before allowing the rename?
-> > > > > >         - does the client do an open by filehandle or an open by name
-> > > > > >           after the rename?
-> > > > > >
-> > > > > > --b.
