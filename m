@@ -1,78 +1,141 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.dnb.de ([193.175.100.144]:50837 "EHLO mail.dnb.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726607AbeITQfO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 20 Sep 2018 12:35:14 -0400
-From: =?utf-8?B?SsOka2VsLCBHdWlkbw==?= <G.Jaekel@dnb.de>
-To: "'J. Bruce Fields'" <bfields@fieldses.org>
-CC: 'Jeff Layton' <jlayton@kernel.org>,
-        "'linux-nfs@vger.kernel.org'" <linux-nfs@vger.kernel.org>
-Subject: RE: NFS3 subsystem hung, Kernel alive
-Date: Thu, 20 Sep 2018 10:52:17 +0000
-Message-ID: <d4da0e3ad43b4a4da7a6a6d2c0615939@dnb.de>
-References: <01105607924f4f9ea0dbf14f9ae45268@dnb.de>
- <74259d8dda7b4753b0d49e7e60c293e5@dnb.de>
-In-Reply-To: <74259d8dda7b4753b0d49e7e60c293e5@dnb.de>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-io1-f68.google.com ([209.85.166.68]:42209 "EHLO
+        mail-io1-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727518AbeIUAIV (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 20 Sep 2018 20:08:21 -0400
+Received: by mail-io1-f68.google.com with SMTP id n18-v6so8805619ioa.9
+        for <linux-nfs@vger.kernel.org>; Thu, 20 Sep 2018 11:23:34 -0700 (PDT)
 MIME-Version: 1.0
+References: <CAMBWrQ=xMMsHxSP8uw_H3KkMK9tUQWLYjt8yAQmFm8NDLD7pyQ@mail.gmail.com>
+ <20180917211504.GA21269@fieldses.org> <CAMBWrQm2QRKNARwUf7pG_fG_ROcwXmT1PLfw5Y0ewhXzB9EqYA@mail.gmail.com>
+ <20180917220107.GB21269@fieldses.org> <CAMBWrQmRtPHOFbiMsz2YAn-yQXCYjRBqq0zLJUB7snPg2MQ+tA@mail.gmail.com>
+ <CAMBWrQmipZs4rwOUMhH59nHiWqyAcX7qsBG51ZWMYxWKzFZ47Q@mail.gmail.com>
+ <20180918181901.GC1218@fieldses.org> <CAMBWrQmLDwhESALcH2kamrRr4VhRsgVP0kAMeiE2J0uubcfNNw@mail.gmail.com>
+ <20180919200214.GB14422@fieldses.org>
+In-Reply-To: <20180919200214.GB14422@fieldses.org>
+From: Stan Hu <stanhu@gmail.com>
+Date: Thu, 20 Sep 2018 11:23:22 -0700
+Message-ID: <CAMBWrQkQTzRj5RtqDWRen2YYKzaU_cewTu5UkUMD2Ysmd9wHkA@mail.gmail.com>
+Subject: Re: Stale data after file is renamed while another process has an
+ open file handle
+To: Bruce Fields <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-SGkgYWxsLA0KDQpUb2RheSBhdCBhYm91dCAidGhlIGV2ZW50IHRpbWUiIHByb2R1Y3Rpb24ga2Vl
-cHMgcnVubmluZyBidXQgSSBkaXNjb3ZlciB0aGF0IG9uZSBvZiB0aGUgaG9zdHMgaW4gdGhlIFRl
-c3Qgc3RhZ2UgKGJsYWRlcnVubmVyMTApIGJlY29tZSB2ZXJ5ICJzdHV0dGVyaW5nIiB0byByZWFj
-dCBvbiBjb21tYW5kcy4NCg0KRnJvbSAgaHR0cHM6Ly91dGNjLnV0b3JvbnRvLmNhL35ja3Mvc3Bh
-Y2UvYmxvZy9saW51eC9ORlNNb3VudHN0YXRzWHBydCAgSSBnb3Qgc29tZSBpbmZvcm1hdGlvbiBh
-Ym91dC4gQW5kIEkgc3RhcnRlZCB0bw0KDQoJd2F0Y2ggLW4gMSAic2VkIC1uICcvXmRldmljZSAu
-KiBvbiBcLyB3aXRoLywvXiQvIHAnICAvcHJvYy9zZWxmL21vdW50c3RhdHMiDQoNCm9uIHRoZSBo
-b3N0cyB0byB3YXRjaCB0aGUgcm9vdCBtb3VudC4gT24gIGJsYWRlcnVubmVyMTAgIEkgbm90aWNl
-IGEgdmVyeSBoaWdoIHZhbHVlIG9mIHRoZSA4dGggZmllbGQgb2YgeHBydCAoJ2JhZCBYSURzJyks
-IHdoaWNoIGlzIGlkZW50aWNhbCB0byB0aGUgZGlmZmVyZW5jZSBiZXR3ZWVuIGZpbGVkIDYgYW5k
-IDcgKFRYLVJYKS4gRG9lcyB0aGF0IG1lYW4sIHRoYXQgdGhlcmUgd2VyZSBhIGhpZ2ggbnVtYmVy
-IG9mIGJhZCBhbnN3ZXJzIHRvIHF1ZXN0aW9ucz8gT3IgaXMgdGhpcyB0aGUgbnVtYmVyIG9mIHJl
-cGxpZXMgdGhhdCBhcmUgb3V0IG9mIHRpbWU/IA0KDQpJZiBJIHdhdGNoIFRYLVJYLUJBRCwgdGhp
-cyBpcyBuZWFyIHplcm8gb24gYWxsIGhvc3RzLiBCdXQgb24gYmxhZGVydW5uZXIxMCwgaXQgc29t
-ZXRpbWUgcmlzZXMgdG8gZW5vcm1vdXMgdmFsdWVzICg+MTAwMDAwKSBhbmQgaW4gdGhpcyBtb21l
-bnQsIGFsbCBGaWxlLUlPIGlzIGZyb3plbiAtIEUuZy4gSSBkb24ndCBnZXQgYSBuZXcgcHJvbXB0
-IGlmIEkgc2ltcGx5IGhpdCBlbnRlciBvbiBhbiBiYXNoIGNvbW1hbmQgbGluZS4NCg0KDQoNCmRl
-dmljZSAxMC42OS42My4xOTY6LzAyL3EvZGlza2xlc3Mvcm9vdHMvYmxhZGVydW5uZXIxMCBtb3Vu
-dGVkIG9uIC8gd2l0aCBmc3R5cGUgbmZzIHN0YXR2ZXJzPTEuMQ0KICAgICAgICBvcHRzOiAgIHJ3
-LHZlcnM9Myxyc2l6ZT0xMDI0LHdzaXplPTEwMjQsbmFtbGVuPTI1NSxhY3JlZ21pbj0zLGFjcmVn
-bWF4PTYwLGFjZGlybWluPTMwLGFjZGlybWF4PTYwLGhhcmQsbm9sb2NrLHByb3RvPXRjcCx0aW1l
-bz02MDAscmV0cmFucz0yLHNlYz1zeXMsbW91bnRhZGRyPTEwLjY5LjYzLjE5Nixtb3VudHZlcnM9
-Myxtb3VudHBvcnQ9MCxtb3VudHByb3RvPXRjcCxsb2NhbF9sb2NrPWFsbA0KICAgICAgICBhZ2U6
-ICAgIDk5Mzk3MDINCiAgICAgICAgY2FwczogICBjYXBzPTB4M2ZjNyx3dG11bHQ9NTEyLGR0c2l6
-ZT0xMDI0LGJzaXplPTAsbmFtbGVuPTI1NQ0KICAgICAgICBzZWM6ICAgIGZsYXZvcj0xLHBzZXVk
-b2ZsYXZvcj0xDQogICAgICAgIGV2ZW50czogMjY5MzQzOTI0IDEzNDczOTA4NzMwOCAyMDczNCAx
-NDA5MTUgMjMyMTk1NTI0IDc5MjYyIDEzNDg4NjUzODE0OCAyMTgwNDcyMiAxMDQgMTYwNjcgMCAy
-OTMzNDE3ODYgMjIyMTkwIDc1MzU2IDE3NzA2Nzk2OSAzNTc5NiAyODI2IDIzMTkwODAyNyAwIDQx
-MSAyMTc4MzkwMiAxOTkgMCAwIDAgMCAwIA0KICAgICAgICBieXRlczogIDEyODY1NDgzMDY5NiAy
-MDMyMDk1Mzc1OSAwIDAgMjE5NTE3Njc5IDIwNDE1MjI4OTU1IDYzNzcyIDUwMDg4MjEgDQogICAg
-ICAgIFJQQyBpb3N0YXRzIHZlcnNpb246IDEuMCAgcC92OiAxMDAwMDMvMyAobmZzKQ0KICAgICAg
-ICB4cHJ0OiAgIHRjcCA4MzcgMSAxIDAgMCAyMTQ0ODIyMDM1MCAyMTQ0ODE2NTA2NiA1NTI4NCA1
-NzYyODc2NTQ2MzAxMjEgMCAzNDcxMiA4NDUyMjAzMjMwNDEgNTE0MjU2OTE0MDM1DQogICAgICAg
-IHBlci1vcCBzdGF0aXN0aWNzDQogICAgICAgICAgICAgICAgTlVMTDogMCAwIDAgMCAwIDAgMCAw
-DQogICAgICAgICAgICAgR0VUQVRUUjogMjY5MzQzODk5IDI2OTM0Mzg5OSAwIDM2ODA5MDcxOTE2
-IDMwMTY2NTEzNTUyIDMwMzQ0OTggNzE1NzgzNTAgNzgwODA0OTINCiAgICAgICAgICAgICBTRVRB
-VFRSOiA3NTcyMSA3NTcyMSAwIDE1OTcyNjI4IDEwOTAzODI0IDE4NTUgNzAyODQgNzM3MjANCiAg
-ICAgICAgICAgICAgTE9PS1VQOiA4MDI5NiA4MDI5NiAwIDE1ODI1NDg0IDE4ODE0MzYwIDczMTIg
-MTM1OTUxIDE0NDY3OA0KICAgICAgICAgICAgICBBQ0NFU1M6IDM5Mjc0IDM5Mjc0IDAgNzA0ODA1
-MiA0NzEyODgwIDQyNDEgMjY0ODUgMzEyNzQNCiAgICAgICAgICAgIFJFQURMSU5LOiA5OTUgOTk1
-IDAgMTcwNzk2IDEzOTU2NCA3MiA0NzkgNTY3DQogICAgICAgICAgICAgICAgUkVBRDogMjIzOTQ1
-IDIyMzk0NSAwIDQwMzI3MjI4IDI0ODE5ODExNiAxMzAyMjUgMTQzNzgxMCAxNTgzMTcyDQogICAg
-ICAgICAgICAgICBXUklURTogMTk5NTg5ODUgMTk5NTg5ODUgMCAyNDQwNjc4Mzg0OCAzMTkzNDM3
-NjAwIDE2NzQyMTQ1ODQwNCAyNzA4NjU4NjY3OSAxOTQ1MTEwMTI5OTINCiAgICAgICAgICAgICAg
-Q1JFQVRFOiA1MjgxIDUyODEgMCAxMTI2MDYwIDE1NDIwNTIgMTMyIDIxNjk4IDIxOTg5DQogICAg
-ICAgICAgICAgICBNS0RJUjogMTI3IDEyNyAwIDI5MTYwIDM2NzQwIDEwIDEyMzA3IDEyMzIxDQog
-ICAgICAgICAgICAgU1lNTElOSzogMyAzIDAgNzE2IDg3NiAwIDEgMQ0KICAgICAgICAgICAgICAg
-TUtOT0Q6IDMgMyAwIDYzNiA4NzYgMCAyIDINCiAgICAgICAgICAgICAgUkVNT1ZFOiAzNDAwIDM0
-MDAgMCA2NjM2MDQgNDg5NjAwIDUyIDEyMTY0IDEyMzEyDQogICAgICAgICAgICAgICBSTURJUjog
-MTIyIDEyMiAwIDI0NjI0IDE3NTIwIDE1IDQ2MyA0ODMNCiAgICAgICAgICAgICAgUkVOQU1FOiAy
-MDc0IDIwNzQgMCA0OTEzNTIgNTM5MjQwIDY3IDExNDMzIDExNTI5DQogICAgICAgICAgICAgICAg
-TElOSzogMCAwIDAgMCAwIDAgMCAwDQogICAgICAgICAgICAgUkVBRERJUjogMzE4ODIgMzE4ODIg
-MCA2Mzc2NDAwIDMyMzExMDM2IDI3MDcgNjQ4MDYgNjgzNzkNCiAgICAgICAgIFJFQURESVJQTFVT
-OiAyNzM4ODIgMjczODgyIDAgNTU4MDc4NzYgMTQwODg0MzYwIDE0MjU3IDUwOTgyNiA1MzA4OTQN
-CiAgICAgICAgICAgICAgRlNTVEFUOiA1MzggNTM4IDAgOTUyMTIgOTAzODQgNjEgNDQ1IDUxOQ0K
-ICAgICAgICAgICAgICBGU0lORk86IDIgMiAwIDI3MiAzMjggMCAwIDANCiAgICAgICAgICAgIFBB
-VEhDT05GOiAxIDEgMCAxMzYgMTQwIDAgMCAwDQogICAgICAgICAgICAgIENPTU1JVDogMCAwIDAg
-MCAwIDAgMCAwDQoNCg0K
+On Wed, Sep 19, 2018 at 1:02 PM Bruce Fields <bfields@fieldses.org> wrote:
+>
+> On Wed, Sep 19, 2018 at 10:39:19AM -0700, Stan Hu wrote:
+> > On Tue, Sep 18, 2018 at 11:19 AM J. Bruce Fields <bfields@fieldses.org> wrote:
+> >
+> > > We know node B has that cat loop that will keep reopening the file.
+> > >
+> > > The only way node B could avoid translating those open syscalls into
+> > > on-the-wire OPENs is if the client holds a delegation.
+> > >
+> > > But it can't hold a delegation on the file that was newly renamed to
+> > > test.txt--delegations are revoked on rename, and it would need to do
+> > > another OPEN after the rename to get a new delegation.  Similarly the
+> > > file that gets renamed over should have its delegation revoked--and we
+> > > can see that the client does return that delegation.  The OPEN here is
+> > > actually part of that delegation return process--the CLAIM_DELEGATE_CUR
+> > > value on "claim type" is telling the server that this is an open that
+> > > the client had cached locally under the delegation it is about to
+> > > return.
+> > >
+> > > Looks like a client bug to me, possibly some sort of race handling the
+> > > delegation return and the new open.
+> > >
+> > > It might help if it were possible to confirm that this is still
+> > > reproduceable on the latest upstream kernel.
+> >
+> > Thanks for that information. I did more testing, and it looks like
+> > this stale file problem only appears to happen when the NFS client
+> > protocol is 4.0 (via the vers=4.0 mount option). 4.1 doesn't appear to
+> > have the problem.
+> >
+> > I've also confirmed this problem happens on the mainline kernel
+> > version (4.19.0-rc4). Do you have any idea why 4.1 would be working
+> > but 4.0 has this bug?
+>
+> No.  I mean, the 4.1/4.0 differences are complicated, so it's not too
+> surprising a bug could hit one and not the other, but I don't have an
+> explanation for this one off the top of my head.
+>
+> > https://s3.amazonaws.com/gitlab-support/nfs/nfs-4.0-kernel-4.19-0-rc4-rename.pcap
+> > is the latest capture that also includes the NFS callbacks. Here's
+> > what I see after the first RENAME from Node A:
+> >
+> > Node B: DELEGRETURN StateId: 0xa93
+> > NFS server: DELEGRETURN
+> > Node A: RENAME From: test2.txt To: test.txt
+> > NFS server: RENAME
+> > Node B: GETATTR
+> > NFS Server: GETATTR (with old inode)
+> > Node B: READ StateId: 0xa93
+> > NFS Server: READ
+>
+> Presumably the GETATTR and READ use a filehandle for the old file (the
+> one that was renamed over)?
+>
+> That's what's weird, and indicates a possible client bug.  It should be
+> doing a new OPEN("test.txt").
+>
+> Also, READ shouldn't be using the stateid that was returned in
+> DELEGRETURN.  And the server should reject any attempt to use that
+> stateid.  I wonder if you misread the stateids--may be worth taking a
+> closer look to see if they're really bit-for-bit identical.  (They're
+> 128 bits, so that 0xa93 is either a hash or just some subset of the
+> stateid.)
+>
+> (Apologies, I haven't gotten a chance to look at it myself.)
+
+Thanks again for the information.
+
+It looks like Wireshark is showing the CRC-16 hash of both the
+sequence ID and the other state ID, which makes things a little
+confusing. Here's the abbreviated flow with the 12-byte StateId
+(excludes the sequence number) and hashed values:
+
+Node B: OPEN test.txt
+NFS server: OPEN StateId: 96:49:9c:5b:e0:41:30:32:27:00:00:00 (0x7cd5)
+--- 5 seconds later, presumably when I start the while loop ---
+Node B: READ StateId: 96:49:9c:5b:e0:41:30:32:28:00:00:00 (0xec2c)
+Node B: DELEGRETURN StateId: 96:49:9c:5b:e0:41:30:32:28:00:00:00 (0xce2c)
+NFS server: DELEGRETURN
+Node A: RENAME From: test2.txt To: test.txt
+NFS server: RENAME
+Node B: GETATTR
+NFS Server: GETATTR (with old inode)
+Node B: READ StateId: 96:49:9c:5b:e0:41:30:32:27:00:00:00 (0x7cd5)
+NFS Server: READ
+
+I'm a bit confused why the READ call would be using a StateId that
+looks like it's one bit off (27 vs 28). It's possible I'm not seeing a
+message in the trace, but is the NFS client doing something behind the
+scenes?
+
+Note the DELEGRETURN returned the StateId with the 28, and the last
+READ request used 27.
+
+I repeated the same test using NFS 4.1
+(https://s3.amazonaws.com/gitlab-support/nfs/nfs-4.1-kernel-4.19-0-rc4-rename-test1.pcap).
+The behavior looks quite similar here with the DELEGRETURN and StateId
+values that appear to me as off-by-1. But in this case the NFS client
+requests a new OPEN and READ.
+
+> I'd assumed that the every open syscall would result in an on-the-wire
+> open or lookup, or at least a getattr to verify of the directory change
+> attribute to verify that the directory hasn't been modified.
+>
+> Trond tells me that's guaranteed only on the first open (of a set of
+> overlapping opens) from that client.  You've already got another open in
+> your test case (if I remember correctly), so you may have to wait for
+> the client's cache of the parent directory to time out (could be a few
+> minutes).  There are some mount options to control this--see the nfs man
+> page.
+
+Last night I left my test running on for more than 30 minutes, and the
+while loop still showed the stale data. I think I even turned off
+attribute caching entirely to see if this would help, and it did not.
