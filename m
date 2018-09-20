@@ -1,88 +1,71 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io1-f67.google.com ([209.85.166.67]:41678 "EHLO
-        mail-io1-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726128AbeIUB51 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 20 Sep 2018 21:57:27 -0400
-Received: by mail-io1-f67.google.com with SMTP id q4-v6so9466119iob.8
-        for <linux-nfs@vger.kernel.org>; Thu, 20 Sep 2018 13:12:16 -0700 (PDT)
-From: schumaker.anna@gmail.com
-To: Trond.Myklebust@hammerspace.com, linux-nfs@vger.kernel.org
-Cc: Anna.Schumaker@Netapp.com
-Subject: [PATCH] NFSv4: Split out NFS v4.2 copy completion functions
-Date: Thu, 20 Sep 2018 16:12:13 -0400
-Message-Id: <20180920201213.31267-1-Anna.Schumaker@Netapp.com>
-MIME-Version: 1.0
+Received: from mx1.redhat.com ([209.132.183.28]:34170 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726128AbeIUCaN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 20 Sep 2018 22:30:13 -0400
+Received: from smtp.corp.redhat.com (int-mx08.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id A9E12C049E3A
+        for <linux-nfs@vger.kernel.org>; Thu, 20 Sep 2018 20:44:55 +0000 (UTC)
+Received: from wlan-196-148.bos.redhat.com (wlan-196-148.bos.redhat.com [10.16.196.148])
+        by smtp.corp.redhat.com (Postfix) with ESMTPS id 624153DB8
+        for <linux-nfs@vger.kernel.org>; Thu, 20 Sep 2018 20:44:55 +0000 (UTC)
+Message-ID: <1537476294.8924.12.camel@redhat.com>
+Subject: [PATCH] nfs-utils: Fix version setting by config for vers4
+From: Justin Mitchell <jumitche@redhat.com>
+To: linux-nfs@vger.kernel.org
+Date: Thu, 20 Sep 2018 16:44:54 -0400
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Anna Schumaker <Anna.Schumaker@Netapp.com>
+The code path for setting major versions via nfs.conf was not
+the same as setting it by cli option, resulting in vers4=n not
+working unless vers4.0=n was also set
 
-The convention in the rest of the code is to have a separate function
-for anything that might be ifdef-ed out.
-
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+Signed-off-by: Justin Mitchell <jumitche@redhat.com>
 ---
- fs/nfs/nfs4state.c | 41 ++++++++++++++++++++++++++---------------
- 1 file changed, 26 insertions(+), 15 deletions(-)
+ utils/nfsd/nfsd.c | 15 ++++++++++++---
+ 1 file changed, 12 insertions(+), 3 deletions(-)
 
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 91fd4049cafc..62ae0fd345ad 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -1549,6 +1549,31 @@ static int nfs4_reclaim_locks(struct nfs4_state *state, const struct nfs4_state_
- 	return status;
- }
+diff --git a/utils/nfsd/nfsd.c b/utils/nfsd/nfsd.c
+index 6b57e2b..b256bd9 100644
+--- a/utils/nfsd/nfsd.c
++++ b/utils/nfsd/nfsd.c
+@@ -83,6 +83,9 @@ main(int argc, char **argv)
  
-+#ifdef CONFIG_NFS_V4_2
-+static void nfs42_complete_copies(struct nfs4_state_owner *sp, struct nfs4_state *state)
-+{
-+	struct nfs4_copy_state *copy;
+ 	conf_init_file(NFS_CONFFILE); 
+ 	xlog_from_conffile("nfsd");
 +
-+	if (!test_bit(NFS_CLNT_DST_SSC_COPY_STATE, &state->flags))
-+		return;
++	nfssvc_get_minormask(&minormask);
 +
-+	spin_lock(&sp->so_server->nfs_client->cl_lock);
-+	list_for_each_entry(copy, &sp->so_server->ss_copies, copies) {
-+		if (nfs4_stateid_match_other(&state->stateid, &copy->parent_state->stateid))
-+			continue;
-+		copy->flags = 1;
-+		complete(&copy->completion);
-+		break;
-+	}
-+	spin_unlock(&sp->so_server->nfs_client->cl_lock);
-+}
-+#else /* !CONFIG_NFS_V4_2 */
-+static inline void nfs42_complete_copies(struct nfs4_state_owner *sp,
-+					 struct nfs4_state *state)
-+{
-+}
-+#endif /* CONFIG_NFS_V4_2 */
-+
- static int __nfs4_reclaim_open_state(struct nfs4_state_owner *sp, struct nfs4_state *state,
- 				     const struct nfs4_state_recovery_ops *ops)
- {
-@@ -1572,21 +1597,7 @@ static int __nfs4_reclaim_open_state(struct nfs4_state_owner *sp, struct nfs4_st
- 		spin_unlock(&state->state_lock);
+ 	count = conf_get_num("nfsd", "threads", count);
+ 	grace = conf_get_num("nfsd", "grace-time", grace);
+ 	lease = conf_get_num("nfsd", "lease-time", lease);
+@@ -101,13 +104,19 @@ main(int argc, char **argv)
+ 	for (i = 2; i <= 4; i++) {
+ 		char tag[20];
+ 		sprintf(tag, "vers%d", i);
+-		if (conf_get_bool("nfsd", tag, NFSCTL_VERISSET(versbits, i)))
++		if (conf_get_bool("nfsd", tag, NFSCTL_VERISSET(versbits, i))) {
+ 			NFSCTL_VERSET(versbits, i);
+-		else
++			if (i == 4)
++				minorvers = minorversset = minormask;
++		} else {
+ 			NFSCTL_VERUNSET(versbits, i);
++			if (i == 4) {
++				minorvers = 0;
++				minorversset = minormask;
++			}
++		}
  	}
  
--#ifdef CONFIG_NFS_V4_2
--	if (test_bit(NFS_CLNT_DST_SSC_COPY_STATE, &state->flags)) {
--		struct nfs4_copy_state *copy;
--		spin_lock(&sp->so_server->nfs_client->cl_lock);
--		list_for_each_entry(copy, &sp->so_server->ss_copies, copies) {
--			if (nfs4_stateid_match_other(&state->stateid, &copy->parent_state->stateid))
--				continue;
--			copy->flags = 1;
--			complete(&copy->completion);
--			break;
--		}
--		spin_unlock(&sp->so_server->nfs_client->cl_lock);
--	}
--#endif /* CONFIG_NFS_V4_2 */
--
-+	nfs42_complete_copies(sp, state);
- 	clear_bit(NFS_STATE_RECLAIM_NOGRACE, &state->flags);
- 	return status;
- }
+-	nfssvc_get_minormask(&minormask);
+ 	/* We assume the kernel will default all minor versions to 'on',
+ 	 * and allow the config file to disable some.
+ 	 */
 -- 
-2.19.0
+1.8.3.1
