@@ -1,64 +1,28 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:35555 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1729890AbeIYVsI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 25 Sep 2018 17:48:08 -0400
-Subject: Re: [PATCH] nfs-utils mount: recover the lost EBUSY
-To: jiyin@redhat.com
-Cc: linux-nfs@vger.kernel.org, "Jianhong.Yin" <yin-jianhong@163.com>
-References: <20180917113838.31952-1-jiyin@redhat.com>
-From: Steve Dickson <SteveD@RedHat.com>
-Message-ID: <a9f8b089-b701-f9cd-5ec0-9afa02997c6f@RedHat.com>
-Date: Tue, 25 Sep 2018 11:40:03 -0400
+Received: from nl103.nixwebsolutions.com ([185.216.140.103]:35799 "EHLO
+        turbosaw.com" rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org
+        with ESMTP id S1729898AbeIYVsE (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Sep 2018 17:48:04 -0400
+To: linux-nfs@vger.kernel.org
+Subject: Editing for 4
+Message-ID: <a1169d2f4a340fd9dcc3774078431e84@tripsavvy.com>
+Date: Tue, 25 Sep 2018 14:54:15 +0200
+From: "Heather" <dteinteverpxanloz@verizon.net>
+Reply-To: tavlanten@aliyun.com
 MIME-Version: 1.0
-In-Reply-To: <20180917113838.31952-1-jiyin@redhat.com>
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; format=flowed; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Want editing for your photos? We can help you for this.
 
+We can do cutting out and retouching for your ecommerce photos, jewelry
+photos retouching,
+portrait photos or wedding photos.
 
-On 9/17/18 7:38 AM, jiyin@redhat.com wrote:
-> From: "Jianhong.Yin" <yin-jianhong@163.com>
-> 
-> see: https://bugzilla.redhat.com/show_bug.cgi?id=1629705
-> [nfs-utils] mount -osharecache failure but return 'true'
-> 
-> mount.nfs4 -o context=system_u:object_r:user_home_dir_t:s0,sharecache $serv:$expdir $nfsmp
-> mount.nfs4 -o context=system_u:object_r:xferlog_t:s0,sharecache $serv:$expdir $nfsmp2
-> ^^^ here mount fail, but return true. it confuse user!
-> 
-> Anyway, we should not hide the failure and pretend that it
-> does not exist.
-> 
-> Signed-off-by: Jianhong Yin <yin-jianhong@163.com>
-> ---
->  utils/mount/stropts.c | 9 ---------
->  1 file changed, 9 deletions(-)
-> 
-> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-> index 4d2e37e..ca5bc7f 100644
-> --- a/utils/mount/stropts.c
-> +++ b/utils/mount/stropts.c
-> @@ -1078,15 +1078,6 @@ static int nfsmount_fg(struct nfsmount_info *mi)
->  		if (nfs_try_mount(mi))
->  			return EX_SUCCESS;
->  
-> -		if (errno == EBUSY)
-> -			/* The only cause of EBUSY is if exactly the desired
-> -			 * filesystem is already mounted.  That can arguably
-> -			 * be seen as success.  "mount -a" tries to optimise
-> -			 * out this case but sometimes fails.  Help it out
-> -			 * by pretending everything is rosy
-> -			 */
-> -			return EX_SUCCESS;
-> -
->  		if (nfs_is_permanent_error(errno))
->  			break;
->  
-> 
-It code is here because of commit 3904d8102 which argues 
-the re-mounting of a filesystem that is already mounted
-is not an error... which I tend to agree with... 
+Turnaround time is fast
 
-steved.
+Send us one photo, we wil do testing for you.
+
+Thanks,
+Heather
