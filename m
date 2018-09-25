@@ -1,73 +1,71 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from prodfix-out0.dnb.de ([193.175.100.144]:39437 "EHLO mail.dnb.de"
+Received: from mx1.redhat.com ([209.132.183.28]:55462 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726030AbeIYNCb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 25 Sep 2018 09:02:31 -0400
-From: =?utf-8?B?SsOka2VsLCBHdWlkbw==?= <G.Jaekel@dnb.de>
-To: "'J. Bruce Fields'" <bfields@fieldses.org>
-CC: 'Jeff Layton' <jlayton@kernel.org>,
-        "'linux-nfs@vger.kernel.org'" <linux-nfs@vger.kernel.org>
-Subject: RE: NFS3 subsystem hung, Kernel alive
-Date: Tue, 25 Sep 2018 06:56:22 +0000
-Message-ID: <f0b197ad05fe47b3841266b31282b0e6@dnb.de>
-References: <01105607924f4f9ea0dbf14f9ae45268@dnb.de>
- <74259d8dda7b4753b0d49e7e60c293e5@dnb.de>
- <d4da0e3ad43b4a4da7a6a6d2c0615939@dnb.de>
- <20180924215854.GA9559@fieldses.org>
-In-Reply-To: <20180924215854.GA9559@fieldses.org>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+        id S1727114AbeIYOT4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 25 Sep 2018 10:19:56 -0400
+Received: from smtp.corp.redhat.com (int-mx05.intmail.prod.int.phx2.redhat.com [10.5.11.15])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id DEB79C015C37
+        for <linux-nfs@vger.kernel.org>; Tue, 25 Sep 2018 08:13:34 +0000 (UTC)
+From: Zhi Li <yieli@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: steved@redhat.com, Zhi Li <yieli@redhat.com>
+Subject: [PATCH] getnetconfig.c: fix a BAD_FREE (CWE-763)
+Date: Tue, 25 Sep 2018 16:13:32 +0800
+Message-Id: <1537863212-1389-1-git-send-email-yieli@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-RGVhciBCcnVjZSwNCg0KSSB3cm90ZSB0aGUgc2NyaXB0IHJwYy1zdGF0DQoNCglyb290QGJsYWRl
-cnVubmVyMTAgfiAjIGNhdCAvb3B0L2Jpbi9ycGMtc3RhdCANCglzZWQgLW4gJy9eZGV2aWNlIC4q
-IG9uIFwvIHdpdGgvLC9eJC8gey94cHJ0Oi8gIWQ7IHB9JyAgL3Byb2Mvc2VsZi9tb3VudHN0YXRz
-IHwgY3V0IC1kICIgIiAtZiA3LDgsOSwxMSwxMiB8IFwNCiggcmVhZCBUWCBSWCBCQUQgQlEgTUFY
-U0xPVFMgJiYgcHJpbnRmICJydW5uaW5nOiUtM2QgdGltZW91dDolLTNkLCBxdWV1ZWQ6JS0zZCwg
-bWF4OiUtNWRcbiIgICQoKFRYLVJYLUJBRCkpICRCQUQgJEJRICRNQVhTTE9UUyApDQoNCnRvIGxl
-dCBpdCBydW4gb24gdGVybWluYWxzIHZpYQ0KDQoJd2F0Y2ggLWQgLW4gLjEgcnBjLXN0YXQNCg0K
-VGhpcyBvdXRwdXQgc29tZXRoaW5nIGxpa2UNCg0KCUV2ZXJ5IDAuMXM6IHJwYy1zdGF0ICAgICAg
-ICAgICAgICBibGFkZXJ1bm5lcjEwOiBUdWUgU2VwIDI1IDA4OjQzOjAyIDIwMTgNCg0KCXJ1bm5p
-bmc6MCAgIHRpbWVvdXQ6NTYxNDYsIHF1ZXVlZDowICAsIG1heDozODYzMg0KDQoNClRoZSB2YWx1
-ZSBvZiAicnVubmluZyIgKFRYLVJYLUJBRCkgaXMgbW9zdGx5IHplcm8sIGl0IHNlZW0gdG8gY29y
-cmVzcG9uZCB3ZWxsIHRvIGFjdGl2aXR5LiBJIHdvbmRlciBhYm91dCB0aGUgInRpbWVvdXQiIChi
-YWQgWElEcykgdmFsdWUgLSBpdCBzZWVtIG11Y2ggdG9vIGhpZ2ggZm9yIG1lLiBUaGUgcmVjZW50
-bHkgYm9vdGVkICBibGFkZXJ1bm5lcjE0ICBzaG93cyBhIHVub2J0cnVzaXZlIHZhbHVlLCBidXQg
-dGhlIG9uZSBvZiB0aGUgc3RydWdnbGluZyAgYmxhZGVydW5uZXIxMCAgc2VlbSB2ZXJ5IGhpZ2gg
-dG8gbWUuDQoNCg0KCXJvb3RAYmxhZGVydW5uZXIxNCB+ICMgcnBjLXN0YXQgDQoJcnVubmluZzow
-ICAgdGltZW91dDoyNyAsIHF1ZXVlZDowICAsIG1heDoxMDI0Mg0KDQoJcm9vdEBibGFkZXJ1bm5l
-cjE0IH4gIyB1cHRpbWUNCgkgMDg6NDg6MzkgdXAgNSBkYXlzLCAyMToyNSwgIDcgdXNlcnMsICBs
-b2FkIGF2ZXJhZ2U6IDEwLjk2LCAxMi4xOCwgMTIuNDcNCgkJXi0tKDYgdXNlcnMgZnJvbSB0aGUg
-c3RpbGwgcnVubmluZyBjb25zb2xlcyB3aXRoIHRoZSBidXN5Ym94IHNoZWxscykNCg0KDQpIZXJl
-J3MgdGhlIHZhbHVlcyBvZiB0aGUgb3RoZXIgYmxhZGUgaG9zdCB1c2VkIGZvciBQcm9kdWN0aW9u
-IHN0YWdlLCAgYmxhZGVydW5uZXIxNSAgOg0KDQoJcm9vdEBibGFkZXJ1bm5lcjE1IH4gIyBycGMt
-c3RhdA0KCXJ1bm5pbmc6MSAgIHRpbWVvdXQ6MTggLCBxdWV1ZWQ6MCAgLCBtYXg6NzQ0MA0KDQoJ
-cm9vdEBibGFkZXJ1bm5lcjE1IH4gIyB1cHRpbWUNCgkgMDg6NTM6MDUgdXAgMTExIGRheXMsIDI2
-IG1pbiwgIDEgdXNlciwgIGxvYWQgYXZlcmFnZTogMjAuMzgsIDE5LjI3LCAxOS40MCAgDQoNCg0K
-DQo+LS0tLS1PcmlnaW5hbCBNZXNzYWdlLS0tLS0NCj5Gcm9tOiAnSi4gQnJ1Y2UgRmllbGRzJyBb
-bWFpbHRvOmJmaWVsZHNAZmllbGRzZXMub3JnXQ0KPlNlbnQ6IE1vbmRheSwgU2VwdGVtYmVyIDI0
-LCAyMDE4IDExOjU5IFBNDQo+VG86IErDpGtlbCwgR3VpZG8gPEcuSmFla2VsQGRuYi5kZT4NCj5D
-YzogJ0plZmYgTGF5dG9uJyA8amxheXRvbkBrZXJuZWwub3JnPjsgJ2xpbnV4LW5mc0B2Z2VyLmtl
-cm5lbC5vcmcnIDxsaW51eC1uZnNAdmdlci5rZXJuZWwub3JnPg0KPlN1YmplY3Q6IFJlOiBORlMz
-IHN1YnN5c3RlbSBodW5nLCBLZXJuZWwgYWxpdmUNCj4NCj5PbiBUaHUsIFNlcCAyMCwgMjAxOCBh
-dCAxMDo1MjoxN0FNICswMDAwLCBKw6RrZWwsIEd1aWRvIHdyb3RlOg0KPj4gSGkgYWxsLA0KPj4N
-Cj4+IFRvZGF5IGF0IGFib3V0ICJ0aGUgZXZlbnQgdGltZSIgcHJvZHVjdGlvbiBrZWVwcyBydW5u
-aW5nIGJ1dCBJIGRpc2NvdmVyIHRoYXQgb25lIG9mIHRoZSBob3N0cyBpbiB0aGUgVGVzdCBzdGFn
-ZQ0KPihibGFkZXJ1bm5lcjEwKSBiZWNvbWUgdmVyeSAic3R1dHRlcmluZyIgdG8gcmVhY3Qgb24g
-Y29tbWFuZHMuDQo+Pg0KPj4gRnJvbSAgaHR0cHM6Ly91dGNjLnV0b3JvbnRvLmNhL35ja3Mvc3Bh
-Y2UvYmxvZy9saW51eC9ORlNNb3VudHN0YXRzWHBydCAgSSBnb3Qgc29tZSBpbmZvcm1hdGlvbiBh
-Ym91dC4gQW5kIEkgc3RhcnRlZCB0bw0KPj4NCj4+IAl3YXRjaCAtbiAxICJzZWQgLW4gJy9eZGV2
-aWNlIC4qIG9uIFwvIHdpdGgvLC9eJC8gcCcgIC9wcm9jL3NlbGYvbW91bnRzdGF0cyINCj4+DQo+
-PiBvbiB0aGUgaG9zdHMgdG8gd2F0Y2ggdGhlIHJvb3QgbW91bnQuIE9uICBibGFkZXJ1bm5lcjEw
-ICBJIG5vdGljZSBhIHZlcnkgaGlnaCB2YWx1ZSBvZiB0aGUgOHRoIGZpZWxkIG9mIHhwcnQgKCdi
-YWQgWElEcycpLA0KPndoaWNoIGlzIGlkZW50aWNhbCB0byB0aGUgZGlmZmVyZW5jZSBiZXR3ZWVu
-IGZpbGVkIDYgYW5kIDcgKFRYLVJYKS4gRG9lcyB0aGF0IG1lYW4sIHRoYXQgdGhlcmUgd2VyZSBh
-IGhpZ2ggbnVtYmVyIG9mIGJhZCBhbnN3ZXJzDQo+dG8gcXVlc3Rpb25zPyBPciBpcyB0aGlzIHRo
-ZSBudW1iZXIgb2YgcmVwbGllcyB0aGF0IGFyZSBvdXQgb2YgdGltZT8NCj4NCj5JIGRvbid0IGtu
-b3cgd2hhdCB5b3UgbWVhbiBieSAiZmlsZWQgNiBhbmQgNyIuICBPaCwgd2FpdCwgSSBndWVzcyB5
-b3UncmUNCj50YWxraW5nIGFib3V0IHRoZSA2dGggYW5kIDd0aCBmaWxlZHMgb2YgdGhlICJ4cHJ0
-IiBsaW5lIGluIG1vdW50c3RhdHMuDQo+DQo+YmFkX3hpZHMgbWVhbnMgdGhlIGNsaWVudCBnb3Qg
-YSByZXNwb25zZSBidXQgY291bGRuJ3QgZmluZCBhIG1hdGNoaW5nDQo+cmVwbHkuICBJJ20gbm90
-IHN1cmUgd2h5IHRoYXQgd291bGQgaGFwcGVuLS1tYXliZSBhIHJlc3BvbnNlIGNhbWUgYWZ0ZXIN
-Cj50aGUgY2xpZW50IGdhdmUgdXAgd2FpdGluZyBmb3IgaXQ/DQo+DQo=
+Signed-off-by: Zhi Li <yieli@redhat.com>
+---
+
+https://bugzilla.redhat.com/show_bug.cgi?id=1631614
+
+ src/getnetconfig.c | 17 +++++++++--------
+ 1 file changed, 9 insertions(+), 8 deletions(-)
+
+diff --git a/src/getnetconfig.c b/src/getnetconfig.c
+index d67d97d..869556d 100644
+--- a/src/getnetconfig.c
++++ b/src/getnetconfig.c
+@@ -681,6 +681,7 @@ struct netconfig	*ncp;
+ {
+     struct netconfig	*p;
+     char	*tmp;
++    char	*t;
+     u_int	i;
+ 
+     if ((tmp=malloc(MAXNETCONFIGLINE)) == NULL)
+@@ -700,12 +701,12 @@ struct netconfig	*ncp;
+      */
+     *p = *ncp;
+     p->nc_netid = (char *)strcpy(tmp,ncp->nc_netid);
+-    tmp = strchr(tmp, 0) + 1;
+-    p->nc_protofmly = (char *)strcpy(tmp,ncp->nc_protofmly);
+-    tmp = strchr(tmp, 0) + 1;
+-    p->nc_proto = (char *)strcpy(tmp,ncp->nc_proto);
+-    tmp = strchr(tmp, 0) + 1;
+-    p->nc_device = (char *)strcpy(tmp,ncp->nc_device);
++    t = strchr(tmp, 0) + 1;
++    p->nc_protofmly = (char *)strcpy(t,ncp->nc_protofmly);
++    t = strchr(t, 0) + 1;
++    p->nc_proto = (char *)strcpy(t,ncp->nc_proto);
++    t = strchr(t, 0) + 1;
++    p->nc_device = (char *)strcpy(t,ncp->nc_device);
+     p->nc_lookups = (char **)malloc((size_t)(p->nc_nlookups+1) * sizeof(char *));
+     if (p->nc_lookups == NULL) {
+ 	free(p->nc_netid);
+@@ -714,8 +715,8 @@ struct netconfig	*ncp;
+ 	return(NULL);
+     }
+     for (i=0; i < p->nc_nlookups; i++) {
+-    	tmp = strchr(tmp, 0) + 1;
+-    	p->nc_lookups[i] = (char *)strcpy(tmp,ncp->nc_lookups[i]);
++	t = strchr(t, 0) + 1;
++	p->nc_lookups[i] = (char *)strcpy(t,ncp->nc_lookups[i]);
+     }
+     return(p);
+ }
+-- 
+2.7.5
