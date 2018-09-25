@@ -1,71 +1,49 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:55462 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727114AbeIYOT4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 25 Sep 2018 10:19:56 -0400
-Received: from smtp.corp.redhat.com (int-mx05.intmail.prod.int.phx2.redhat.com [10.5.11.15])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id DEB79C015C37
-        for <linux-nfs@vger.kernel.org>; Tue, 25 Sep 2018 08:13:34 +0000 (UTC)
-From: Zhi Li <yieli@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: steved@redhat.com, Zhi Li <yieli@redhat.com>
-Subject: [PATCH] getnetconfig.c: fix a BAD_FREE (CWE-763)
-Date: Tue, 25 Sep 2018 16:13:32 +0800
-Message-Id: <1537863212-1389-1-git-send-email-yieli@redhat.com>
+Received: from szxga04-in.huawei.com ([45.249.212.190]:13114 "EHLO huawei.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1727114AbeIYRUs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 25 Sep 2018 13:20:48 -0400
+From: YueHaibing <yuehaibing@huawei.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@kernel.org>
+CC: YueHaibing <yuehaibing@huawei.com>, <linux-nfs@vger.kernel.org>,
+        <kernel-janitors@vger.kernel.org>, <linux-kernel@vger.kernel.org>
+Subject: [PATCH -next] nfsd: remove set but not used variable 'dirp'
+Date: Tue, 25 Sep 2018 11:22:53 +0000
+Message-ID: <1537874573-182553-1-git-send-email-yuehaibing@huawei.com>
+Content-Type: text/plain; charset="ISO-8859-1"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Zhi Li <yieli@redhat.com>
+Fixes gcc '-Wunused-but-set-variable' warning:
+
+fs/nfsd/vfs.c: In function 'nfsd_create':
+fs/nfsd/vfs.c:1279:16: warning:
+ variable 'dirp' set but not used [-Wunused-but-set-variable]
+
+Signed-off-by: YueHaibing <yuehaibing@huawei.com>
 ---
+ fs/nfsd/vfs.c | 2 --
+ 1 file changed, 2 deletions(-)
 
-https://bugzilla.redhat.com/show_bug.cgi?id=1631614
-
- src/getnetconfig.c | 17 +++++++++--------
- 1 file changed, 9 insertions(+), 8 deletions(-)
-
-diff --git a/src/getnetconfig.c b/src/getnetconfig.c
-index d67d97d..869556d 100644
---- a/src/getnetconfig.c
-+++ b/src/getnetconfig.c
-@@ -681,6 +681,7 @@ struct netconfig	*ncp;
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index b53e763..d74583f 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -1276,7 +1276,6 @@ __be32 nfsd_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 		int type, dev_t rdev, struct svc_fh *resfhp)
  {
-     struct netconfig	*p;
-     char	*tmp;
-+    char	*t;
-     u_int	i;
+ 	struct dentry	*dentry, *dchild = NULL;
+-	struct inode	*dirp;
+ 	__be32		err;
+ 	int		host_err;
  
-     if ((tmp=malloc(MAXNETCONFIGLINE)) == NULL)
-@@ -700,12 +701,12 @@ struct netconfig	*ncp;
-      */
-     *p = *ncp;
-     p->nc_netid = (char *)strcpy(tmp,ncp->nc_netid);
--    tmp = strchr(tmp, 0) + 1;
--    p->nc_protofmly = (char *)strcpy(tmp,ncp->nc_protofmly);
--    tmp = strchr(tmp, 0) + 1;
--    p->nc_proto = (char *)strcpy(tmp,ncp->nc_proto);
--    tmp = strchr(tmp, 0) + 1;
--    p->nc_device = (char *)strcpy(tmp,ncp->nc_device);
-+    t = strchr(tmp, 0) + 1;
-+    p->nc_protofmly = (char *)strcpy(t,ncp->nc_protofmly);
-+    t = strchr(t, 0) + 1;
-+    p->nc_proto = (char *)strcpy(t,ncp->nc_proto);
-+    t = strchr(t, 0) + 1;
-+    p->nc_device = (char *)strcpy(t,ncp->nc_device);
-     p->nc_lookups = (char **)malloc((size_t)(p->nc_nlookups+1) * sizeof(char *));
-     if (p->nc_lookups == NULL) {
- 	free(p->nc_netid);
-@@ -714,8 +715,8 @@ struct netconfig	*ncp;
- 	return(NULL);
-     }
-     for (i=0; i < p->nc_nlookups; i++) {
--    	tmp = strchr(tmp, 0) + 1;
--    	p->nc_lookups[i] = (char *)strcpy(tmp,ncp->nc_lookups[i]);
-+	t = strchr(t, 0) + 1;
-+	p->nc_lookups[i] = (char *)strcpy(t,ncp->nc_lookups[i]);
-     }
-     return(p);
- }
--- 
-2.7.5
+@@ -1288,7 +1287,6 @@ __be32 nfsd_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 		return err;
+ 
+ 	dentry = fhp->fh_dentry;
+-	dirp = d_inode(dentry);
+ 
+ 	host_err = fh_want_write(fhp);
+ 	if (host_err)
