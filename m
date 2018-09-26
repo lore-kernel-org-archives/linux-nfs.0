@@ -1,53 +1,79 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:48870 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:36055 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726228AbeIZGpo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 26 Sep 2018 02:45:44 -0400
-Date: Tue, 25 Sep 2018 20:35:35 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: YueHaibing <yuehaibing@huawei.com>
-Cc: Jeff Layton <jlayton@kernel.org>, linux-nfs@vger.kernel.org,
-        kernel-janitors@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH -next] nfsd: remove set but not used variable 'dirp'
-Message-ID: <20180926003535.GC9559@fieldses.org>
-References: <1537874573-182553-1-git-send-email-yuehaibing@huawei.com>
+        id S1726565AbeIZIb7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 26 Sep 2018 04:31:59 -0400
+Date: Tue, 25 Sep 2018 22:21:26 -0400 (EDT)
+From: Jianhong Yin <jiyin@redhat.com>
+To: Steve Dickson <SteveD@RedHat.com>
+Cc: linux-nfs@vger.kernel.org, "Jianhong.Yin" <yin-jianhong@163.com>
+Message-ID: <1823792730.16120317.1537928486853.JavaMail.zimbra@redhat.com>
+In-Reply-To: <a9f8b089-b701-f9cd-5ec0-9afa02997c6f@RedHat.com>
+References: <20180917113838.31952-1-jiyin@redhat.com> <a9f8b089-b701-f9cd-5ec0-9afa02997c6f@RedHat.com>
+Subject: Re: [PATCH] nfs-utils mount: recover the lost EBUSY
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1537874573-182553-1-git-send-email-yuehaibing@huawei.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Thanks, applying for 4.20.--b.
 
-On Tue, Sep 25, 2018 at 11:22:53AM +0000, YueHaibing wrote:
-> Fixes gcc '-Wunused-but-set-variable' warning:
+----- 原始邮件 -----
+> 发件人: "Steve Dickson" <SteveD@RedHat.com>
+> 收件人: jiyin@redhat.com
+> 抄送: linux-nfs@vger.kernel.org, "Jianhong.Yin" <yin-jianhong@163.com>
+> 发送时间: 星期二, 2018年 9 月 25日 下午 11:40:03
+> 主题: Re: [PATCH] nfs-utils mount: recover the lost EBUSY
 > 
-> fs/nfsd/vfs.c: In function 'nfsd_create':
-> fs/nfsd/vfs.c:1279:16: warning:
->  variable 'dirp' set but not used [-Wunused-but-set-variable]
 > 
-> Signed-off-by: YueHaibing <yuehaibing@huawei.com>
-> ---
->  fs/nfsd/vfs.c | 2 --
->  1 file changed, 2 deletions(-)
 > 
-> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-> index b53e763..d74583f 100644
-> --- a/fs/nfsd/vfs.c
-> +++ b/fs/nfsd/vfs.c
-> @@ -1276,7 +1276,6 @@ __be32 nfsd_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
->  		int type, dev_t rdev, struct svc_fh *resfhp)
->  {
->  	struct dentry	*dentry, *dchild = NULL;
-> -	struct inode	*dirp;
->  	__be32		err;
->  	int		host_err;
->  
-> @@ -1288,7 +1287,6 @@ __be32 nfsd_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
->  		return err;
->  
->  	dentry = fhp->fh_dentry;
-> -	dirp = d_inode(dentry);
->  
->  	host_err = fh_want_write(fhp);
->  	if (host_err)
+> On 9/17/18 7:38 AM, jiyin@redhat.com wrote:
+> > From: "Jianhong.Yin" <yin-jianhong@163.com>
+> > 
+> > see: https://bugzilla.redhat.com/show_bug.cgi?id=1629705
+> > [nfs-utils] mount -osharecache failure but return 'true'
+> > 
+> > mount.nfs4 -o context=system_u:object_r:user_home_dir_t:s0,sharecache
+> > $serv:$expdir $nfsmp
+> > mount.nfs4 -o context=system_u:object_r:xferlog_t:s0,sharecache
+> > $serv:$expdir $nfsmp2
+> > ^^^ here mount fail, but return true. it confuse user!
+> > 
+> > Anyway, we should not hide the failure and pretend that it
+> > does not exist.
+> > 
+> > Signed-off-by: Jianhong Yin <yin-jianhong@163.com>
+> > ---
+> >  utils/mount/stropts.c | 9 ---------
+> >  1 file changed, 9 deletions(-)
+> > 
+> > diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+> > index 4d2e37e..ca5bc7f 100644
+> > --- a/utils/mount/stropts.c
+> > +++ b/utils/mount/stropts.c
+> > @@ -1078,15 +1078,6 @@ static int nfsmount_fg(struct nfsmount_info *mi)
+> >  		if (nfs_try_mount(mi))
+> >  			return EX_SUCCESS;
+> >  
+> > -		if (errno == EBUSY)
+> > -			/* The only cause of EBUSY is if exactly the desired
+> > -			 * filesystem is already mounted.  That can arguably
+> > -			 * be seen as success.  "mount -a" tries to optimise
+> > -			 * out this case but sometimes fails.  Help it out
+> > -			 * by pretending everything is rosy
+> > -			 */
+> > -			return EX_SUCCESS;
+> > -
+> >  		if (nfs_is_permanent_error(errno))
+> >  			break;
+> >  
+> > 
+> It code is here because of commit 3904d8102 which argues
+> the re-mounting of a filesystem that is already mounted
+> is not an error... which I tend to agree with...
+Got it.
+
+how about : change in kernel  if (re-mounting && busy)  return TRUE from syscall->mount
+
+> 
+> steved.
+> 
