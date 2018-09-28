@@ -1,43 +1,43 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:48110 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1729091AbeI1TnL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 28 Sep 2018 15:43:11 -0400
-Received: from smtp.corp.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.27])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 302593001244
-        for <linux-nfs@vger.kernel.org>; Fri, 28 Sep 2018 13:19:27 +0000 (UTC)
-Received: from steved.boston.devel.redhat.com (ovpn-116-239.phx2.redhat.com [10.3.116.239])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id F24E9DBA92
-        for <linux-nfs@vger.kernel.org>; Fri, 28 Sep 2018 13:19:26 +0000 (UTC)
+Received: from mail-io1-f65.google.com ([209.85.166.65]:46280 "EHLO
+        mail-io1-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726665AbeI1U6R (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 28 Sep 2018 16:58:17 -0400
+Received: by mail-io1-f65.google.com with SMTP id y12-v6so4268198ioj.13
+        for <linux-nfs@vger.kernel.org>; Fri, 28 Sep 2018 07:34:12 -0700 (PDT)
+From: Trond Myklebust <trondmy@gmail.com>
+Message-ID: <99a34fd0ef40f5bdfe61b1ec25b210239224066c.camel@hammerspace.com>
 Subject: Re: osd_login
-From: Steve Dickson <SteveD@RedHat.com>
-To: linux-nfs@vger.kernel.org
+To: Steve Dickson <SteveD@RedHat.com>, linux-nfs@vger.kernel.org
+In-Reply-To: <ca5c1a1d-9d8b-b1c8-3882-7f6b09ad1487@RedHat.com>
 References: <114a207b-9fb8-0216-1ad5-e49f7f4500ad@RedHat.com>
-Message-ID: <ca5c1a1d-9d8b-b1c8-3882-7f6b09ad1487@RedHat.com>
-Date: Fri, 28 Sep 2018 09:19:21 -0400
-MIME-Version: 1.0
-In-Reply-To: <114a207b-9fb8-0216-1ad5-e49f7f4500ad@RedHat.com>
-Content-Type: text/plain; charset=utf-8
+         <ca5c1a1d-9d8b-b1c8-3882-7f6b09ad1487@RedHat.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
+Date: Fri, 28 Sep 2018 10:33:04 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-On 9/13/18 11:47 AM, Steve Dickson wrote:
-> Hello,
+On Fri, 2018-09-28 at 09:19 -0400, Steve Dickson wrote:
 > 
-> Is the osd_login shell script use anymore?
+> On 9/13/18 11:47 AM, Steve Dickson wrote:
+> > Hello,
+> > 
+> > Is the osd_login shell script use anymore?
+> > 
+> > Would it be a problem if it goes away?
 > 
-> Would it be a problem if it goes away?
-I'm going to assume remove this will not be a problem... 
+> I'm going to assume remove this will not be a problem... 
+> 
 
+The OSD code has already been removed from the kernel, so anyone who
+may be using it (nobody has admitted to doing so yet) is already using
+legacy systems.
 
-steved.
+Cheers
+  Trond
 
-> 
-> tia,
-> 
-> steved.
-> 
+-- 
+Trond Myklebust
+Linux NFS client maintainer, Hammerspace
+trond.myklebust@hammerspace.com
