@@ -1,69 +1,89 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-bn3nam01on0090.outbound.protection.outlook.com ([104.47.33.90]:61920
-        "EHLO NAM01-BN3-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726152AbeI2BTG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 28 Sep 2018 21:19:06 -0400
-From: Trond Myklebust <trondmy@hammerspace.com>
-To: "aglo@umich.edu" <aglo@umich.edu>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 5/7] NFS: Convert lookups of the open context to RCU
-Date: Fri, 28 Sep 2018 18:53:55 +0000
-Message-ID: <cf7ee206ca825e243f671ccc3a0f3c332e144174.camel@hammerspace.com>
-References: <20180905192400.107485-1-trond.myklebust@hammerspace.com>
-         <20180905192400.107485-2-trond.myklebust@hammerspace.com>
-         <20180905192400.107485-3-trond.myklebust@hammerspace.com>
-         <20180905192400.107485-4-trond.myklebust@hammerspace.com>
-         <20180905192400.107485-5-trond.myklebust@hammerspace.com>
-         <20180905192400.107485-6-trond.myklebust@hammerspace.com>
-         <CAN-5tyG_qr7P8-2_yXAqDvQps0C06AQUuNuBBbYpUcWUsXEVYg@mail.gmail.com>
-         <CAN-5tyGoywV9_cqv9jwHS7s58sX49baG4HXLn85ka-jHySxT0g@mail.gmail.com>
-         <9dbc1442dd1e7bba1903a5ecf2855054ffcd0ee4.camel@gmail.com>
-         <CAN-5tyH=YKiTb4ZWUeJgZg+TDJP9W2yP8acapKSs=km5RTU_6Q@mail.gmail.com>
-In-Reply-To: <CAN-5tyH=YKiTb4ZWUeJgZg+TDJP9W2yP8acapKSs=km5RTU_6Q@mail.gmail.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-ua1-f66.google.com ([209.85.222.66]:39638 "EHLO
+        mail-ua1-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726335AbeI2BgG (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 28 Sep 2018 21:36:06 -0400
+Received: by mail-ua1-f66.google.com with SMTP id g18-v6so2697219uam.6
+        for <linux-nfs@vger.kernel.org>; Fri, 28 Sep 2018 12:10:56 -0700 (PDT)
 MIME-Version: 1.0
+References: <20180905192400.107485-1-trond.myklebust@hammerspace.com>
+ <20180905192400.107485-2-trond.myklebust@hammerspace.com> <20180905192400.107485-3-trond.myklebust@hammerspace.com>
+ <20180905192400.107485-4-trond.myklebust@hammerspace.com> <20180905192400.107485-5-trond.myklebust@hammerspace.com>
+ <20180905192400.107485-6-trond.myklebust@hammerspace.com> <CAN-5tyG_qr7P8-2_yXAqDvQps0C06AQUuNuBBbYpUcWUsXEVYg@mail.gmail.com>
+ <CAN-5tyGoywV9_cqv9jwHS7s58sX49baG4HXLn85ka-jHySxT0g@mail.gmail.com>
+ <9dbc1442dd1e7bba1903a5ecf2855054ffcd0ee4.camel@gmail.com>
+ <CAN-5tyH=YKiTb4ZWUeJgZg+TDJP9W2yP8acapKSs=km5RTU_6Q@mail.gmail.com> <cf7ee206ca825e243f671ccc3a0f3c332e144174.camel@hammerspace.com>
+In-Reply-To: <cf7ee206ca825e243f671ccc3a0f3c332e144174.camel@hammerspace.com>
+From: Olga Kornievskaia <aglo@umich.edu>
+Date: Fri, 28 Sep 2018 15:10:44 -0400
+Message-ID: <CAN-5tyGBufKA6Bn1AsB7yLviVGr5SHGyRc4z4hrKF-hScTrQXg@mail.gmail.com>
+Subject: Re: [PATCH 5/7] NFS: Convert lookups of the open context to RCU
+To: Trond Myklebust <trondmy@hammerspace.com>
+Cc: linux-nfs <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDE4LTA5LTI4IGF0IDE0OjMxIC0wNDAwLCBPbGdhIEtvcm5pZXZza2FpYSB3cm90
-ZToNCj4gT24gRnJpLCBTZXAgMjgsIDIwMTggYXQgMTo1MCBQTSBUcm9uZCBNeWtsZWJ1c3QgPHRy
-b25kbXlAZ21haWwuY29tPg0KPiB3cm90ZToNCj4gPiANCj4gPiBPbiBGcmksIDIwMTgtMDktMjgg
-YXQgMTI6NTQgLTA0MDAsIE9sZ2EgS29ybmlldnNrYWlhIHdyb3RlOg0KPiA+ID4gQWxzbyBzaG91
-bGRuJ3QgdGhpcyBiZSBhIGJ1ZyBmaXggZm9yIDQuMTkgYW5kIGFsc28gZ28gdG8gc3RhYmxlPw0K
-PiA+IA0KPiA+IEl0IHdhc24ndCByZWFsbHkgaW50ZW5kZWQgYXMgYSBidWdmaXggYmVjYXVzZSBJ
-IHdhc24ndCBhd2FyZSB0aGF0DQo+ID4gdGhlcmUNCj4gPiB3YXMgYSBidWcgdG8gZml4IGluIHRo
-ZSBmaXJzdCBwbGFjZS4gSSBhc3N1bWUgdGhlIG1vZGlmaWNhdGlvbiB0bw0KPiA+IG5mczRfc3Rh
-dGVfZmluZF9vcGVuX2NvbnRleHQoKSB0byBjYXVzZSBpdCB0byBsb29rIGZvciBhbiBvcGVuDQo+
-ID4gY29udGV4dA0KPiA+IHdpdGggYSBSRUFEL1dSSVRFIG9wZW4gbW9kZSBmaXJzdCBpcyB3aGF0
-IGZpeGVzIHRoZSBidWcuIElzIHRoYXQNCj4gPiB0aGUNCj4gPiBjYXNlPw0KPiANCj4gSSBkb24n
-dCB0aGluayBzby4gbmZzNF9zdGF0ZV9maW5kX29wZW5fY29udGV4dCgpIG5ldmVyIGdldHMgY2Fs
-bHMNCj4gZHVyaW5nIHRoZSBydW4gb2YgdGhpcyB0ZXN0IGNhc2UuIFRoaXMgZnVuY3Rpb24gaXMg
-Y2FsbGVkIGR1cmluZyB0aGUNCj4gcmVjbGFpbSBvbiBhbiBvcGVuLiBJbiBkZWxlZ2F0aW9uIHJl
-Y2FsbCB0aGUgb3BlbnMgYXJlIG5vdCByZWNsYWltZWQsDQo+IGl0IGlzIGp1c3QgcmVjbGFpbWlu
-ZyB0aGUgbG9ja3MuDQo+IA0KPiBBY3R1YWxseSwgd2hlbiBJIHVuZG8gdGhpcyBwaWVjZSBvZiB0
-aGUgcGF0Y2gsIEkgY2FuIG1ha2UgaXQgZmFpbA0KPiBhZ2Fpbi4NCj4gDQo+IEBAIC0xMDI3LDEw
-ICsxMDI3LDcgQEAgdm9pZCBuZnNfaW5vZGVfYXR0YWNoX29wZW5fY29udGV4dChzdHJ1Y3QNCj4g
-bmZzX29wZW5fY29udGV4dCAqY3R4KQ0KPiAgICAgICAgIHN0cnVjdCBuZnNfaW5vZGUgKm5mc2kg
-PSBORlNfSShpbm9kZSk7DQo+IA0KPiAgICAgICAgIHNwaW5fbG9jaygmaW5vZGUtPmlfbG9jayk7
-DQo+IC0gICAgICAgaWYgKGN0eC0+bW9kZSAmIEZNT0RFX1dSSVRFKQ0KPiAtICAgICAgICAgICAg
-ICAgbGlzdF9hZGQoJmN0eC0+bGlzdCwgJm5mc2ktPm9wZW5fZmlsZXMpOw0KPiAtICAgICAgIGVs
-c2UNCj4gLSAgICAgICAgICAgICAgIGxpc3RfYWRkX3RhaWwoJmN0eC0+bGlzdCwgJm5mc2ktPm9w
-ZW5fZmlsZXMpOw0KPiArICAgICAgIGxpc3RfYWRkX3RhaWxfcmN1KCZjdHgtPmxpc3QsICZuZnNp
-LT5vcGVuX2ZpbGVzKTsNCj4gICAgICAgICBzcGluX3VubG9jaygmaW5vZGUtPmlfbG9jayk7DQo+
-ICB9DQo+ICBFWFBPUlRfU1lNQk9MX0dQTChuZnNfaW5vZGVfYXR0YWNoX29wZW5fY29udGV4dCk7
-DQo+IA0KPiBJdCBsb29rcyBsaWtlIHRoZSBwbGFjZW1lbnQgaW4gdGhlIGxpc3QgbWF0dGVycz8g
-QW55IGlkZWFzIHdoeT8NCg0KQ3VycmVudGx5LCB0aGUgbGlzdCBpcyBvcmRlcmVkIHNvIHRoYXQg
-d3JpdGVhYmxlIG9wZW4gY29udGV4dHMgYXJlDQphbHdheXMgZm91bmQgZmlyc3QuIFRoZSByZWFz
-b24gaXMgdGhhdCB3aGVuIHRyYXZlcnNpbmcgdGhlIGxpc3QgZHVyaW5nDQpzZXJ2ZXIgcmVib290
-IHJlY292ZXJ5LCB3ZSB3YW50IHRvIGVuc3VyZSB0aGF0IHdlIHJlY2xhaW0gYW55IHdyaXRlDQpk
-ZWxlZ2F0aW9ucyBvbiB0aGUgZmlsZSBmaXJzdCBzbyB0aGF0IHdlIGNhbiBjYWNoZSBhbGwgc3Vi
-c2VxdWVudCBvcGVucw0KYW5kIGxvY2tzIG9mIHRoYXQgZmlsZS4NCg0KQSBkZWxlZ2F0aW9uIHJl
-dHVybiByZXF1aXJlcyB1cyB0byByZWNvdmVyIGFsbCBjYWNoZWQgc3RhdGUsIHNvIGl0IG11c3QN
-CnJlY2xhaW0gYm90aCBPUEVOIGFuZCBMT0NLIHN0YXRlLiBJdCBpcyBub3QsIGhvd2V2ZXIsIGV4
-cGVjdGVkIHRvDQpkZXBlbmQgb24gdGhlIG9wZW4gY29udGV4dCBsaXN0IG9yZGVyaW5nLCBzaW5j
-ZSB0aGVyZSBjYW4gYmUgbm8gZnVydGhlcg0KY2FjaGluZy4NCklPVzogbm8sIEkgZG9uJ3Qgc2Vl
-IHdoeSB5b3VyIGJ1ZyB3b3VsZCBkZXBlbmQgb24gdGhlIGxpc3Qgb3JkZXIgdW5sZXNzDQpzb21l
-IHBhcnQgb2YgdGhlIHJlY292ZXJ5IGlzIGFjdHVhbGx5IGZhaWxpbmcuDQoNCi0tIA0KVHJvbmQg
-TXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIsIEhhbW1lcnNwYWNlDQp0cm9u
-ZC5teWtsZWJ1c3RAaGFtbWVyc3BhY2UuY29tDQoNCg0K
+On Fri, Sep 28, 2018 at 2:54 PM Trond Myklebust <trondmy@hammerspace.com> wrote:
+>
+> On Fri, 2018-09-28 at 14:31 -0400, Olga Kornievskaia wrote:
+> > On Fri, Sep 28, 2018 at 1:50 PM Trond Myklebust <trondmy@gmail.com>
+> > wrote:
+> > >
+> > > On Fri, 2018-09-28 at 12:54 -0400, Olga Kornievskaia wrote:
+> > > > Also shouldn't this be a bug fix for 4.19 and also go to stable?
+> > >
+> > > It wasn't really intended as a bugfix because I wasn't aware that
+> > > there
+> > > was a bug to fix in the first place. I assume the modification to
+> > > nfs4_state_find_open_context() to cause it to look for an open
+> > > context
+> > > with a READ/WRITE open mode first is what fixes the bug. Is that
+> > > the
+> > > case?
+> >
+> > I don't think so. nfs4_state_find_open_context() never gets calls
+> > during the run of this test case. This function is called during the
+> > reclaim on an open. In delegation recall the opens are not reclaimed,
+> > it is just reclaiming the locks.
+> >
+> > Actually, when I undo this piece of the patch, I can make it fail
+> > again.
+> >
+> > @@ -1027,10 +1027,7 @@ void nfs_inode_attach_open_context(struct
+> > nfs_open_context *ctx)
+> >         struct nfs_inode *nfsi = NFS_I(inode);
+> >
+> >         spin_lock(&inode->i_lock);
+> > -       if (ctx->mode & FMODE_WRITE)
+> > -               list_add(&ctx->list, &nfsi->open_files);
+> > -       else
+> > -               list_add_tail(&ctx->list, &nfsi->open_files);
+> > +       list_add_tail_rcu(&ctx->list, &nfsi->open_files);
+> >         spin_unlock(&inode->i_lock);
+> >  }
+> >  EXPORT_SYMBOL_GPL(nfs_inode_attach_open_context);
+> >
+> > It looks like the placement in the list matters? Any ideas why?
+>
+> Currently, the list is ordered so that writeable open contexts are
+> always found first. The reason is that when traversing the list during
+> server reboot recovery, we want to ensure that we reclaim any write
+> delegations on the file first so that we can cache all subsequent opens
+> and locks of that file.
+>
+> A delegation return requires us to recover all cached state, so it must
+> reclaim both OPEN and LOCK state. It is not, however, expected to
+> depend on the open context list ordering, since there can be no further
+> caching.
+> IOW: no, I don't see why your bug would depend on the list order unless
+> some part of the recovery is actually failing.
+
+Ok thanks. Need to fix the lack of OPEN reclaim.
+
+> --
+> Trond Myklebust
+> Linux NFS client maintainer, Hammerspace
+> trond.myklebust@hammerspace.com
+>
+>
