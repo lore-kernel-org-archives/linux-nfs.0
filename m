@@ -1,164 +1,98 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qt1-f194.google.com ([209.85.160.194]:34908 "EHLO
-        mail-qt1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726405AbeI2C2q (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 28 Sep 2018 22:28:46 -0400
-Received: by mail-qt1-f194.google.com with SMTP id z14-v6so8043058qtn.2
-        for <linux-nfs@vger.kernel.org>; Fri, 28 Sep 2018 13:03:26 -0700 (PDT)
-From: Trond Myklebust <trondmy@gmail.com>
-To: Stan Hu <stanhu@gmail.com>
-Cc: Bruce Fields <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-Subject: [PATCH 3/3] NFSv4: Fix lookup revalidate of regular files
-Date: Fri, 28 Sep 2018 16:02:58 -0400
-Message-Id: <20180928200258.68552-4-trond.myklebust@hammerspace.com>
-In-Reply-To: <20180928200258.68552-3-trond.myklebust@hammerspace.com>
-References: <20180928200258.68552-1-trond.myklebust@hammerspace.com>
- <20180928200258.68552-2-trond.myklebust@hammerspace.com>
- <20180928200258.68552-3-trond.myklebust@hammerspace.com>
+Received: from mail-eopbgr700134.outbound.protection.outlook.com ([40.107.70.134]:26592
+        "EHLO NAM04-SN1-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1726451AbeI2Ccw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 28 Sep 2018 22:32:52 -0400
+From: Trond Myklebust <trondmy@hammerspace.com>
+To: "aglo@umich.edu" <aglo@umich.edu>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 5/7] NFS: Convert lookups of the open context to RCU
+Date: Fri, 28 Sep 2018 20:07:27 +0000
+Message-ID: <983c9970070f98ac54526742e6c4de4b0ff7ad63.camel@hammerspace.com>
+References: <20180905192400.107485-1-trond.myklebust@hammerspace.com>
+         <20180905192400.107485-2-trond.myklebust@hammerspace.com>
+         <20180905192400.107485-3-trond.myklebust@hammerspace.com>
+         <20180905192400.107485-4-trond.myklebust@hammerspace.com>
+         <20180905192400.107485-5-trond.myklebust@hammerspace.com>
+         <20180905192400.107485-6-trond.myklebust@hammerspace.com>
+         <CAN-5tyG_qr7P8-2_yXAqDvQps0C06AQUuNuBBbYpUcWUsXEVYg@mail.gmail.com>
+         <CAN-5tyGoywV9_cqv9jwHS7s58sX49baG4HXLn85ka-jHySxT0g@mail.gmail.com>
+         <9dbc1442dd1e7bba1903a5ecf2855054ffcd0ee4.camel@gmail.com>
+         <CAN-5tyH=YKiTb4ZWUeJgZg+TDJP9W2yP8acapKSs=km5RTU_6Q@mail.gmail.com>
+         <cf7ee206ca825e243f671ccc3a0f3c332e144174.camel@hammerspace.com>
+         <CAN-5tyGBufKA6Bn1AsB7yLviVGr5SHGyRc4z4hrKF-hScTrQXg@mail.gmail.com>
+         <CAN-5tyGrjjGKG5KoDAgzLrnnzjGUqmf1iUD_AM=wbX8bD5Jk-g@mail.gmail.com>
+In-Reply-To: <CAN-5tyGrjjGKG5KoDAgzLrnnzjGUqmf1iUD_AM=wbX8bD5Jk-g@mail.gmail.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If we're revalidating an existing dentry in order to open a file, we need
-to ensure that we check the directory has not changed before we optimise
-away the lookup.
-
-Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
----
- fs/nfs/dir.c | 79 ++++++++++++++++++++++++++--------------------------
- 1 file changed, 39 insertions(+), 40 deletions(-)
-
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 2e6a253e4104..71b2e390becf 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -1231,7 +1231,8 @@ nfs_do_lookup_revalidate(struct inode *dir, struct dentry *dentry,
- }
- 
- static int
--nfs_lookup_revalidate(struct dentry *dentry, unsigned int flags)
-+__nfs_lookup_revalidate(struct dentry *dentry, unsigned int flags,
-+			int (*reval)(struct inode *, struct dentry *, unsigned int))
- {
- 	struct dentry *parent;
- 	struct inode *dir;
-@@ -1242,17 +1243,22 @@ nfs_lookup_revalidate(struct dentry *dentry, unsigned int flags)
- 		dir = d_inode_rcu(parent);
- 		if (!dir)
- 			return -ECHILD;
--		ret = nfs_do_lookup_revalidate(dir, dentry, flags);
-+		ret = reval(dir, dentry, flags);
- 		if (parent != READ_ONCE(dentry->d_parent))
- 			return -ECHILD;
- 	} else {
- 		parent = dget_parent(dentry);
--		ret = nfs_do_lookup_revalidate(d_inode(parent), dentry, flags);
-+		ret = reval(d_inode(parent), dentry, flags);
- 		dput(parent);
- 	}
- 	return ret;
- }
- 
-+static int nfs_lookup_revalidate(struct dentry *dentry, unsigned int flags)
-+{
-+	return __nfs_lookup_revalidate(dentry, flags, nfs_do_lookup_revalidate);
-+}
-+
- /*
-  * A weaker form of d_revalidate for revalidating just the d_inode(dentry)
-  * when we don't really care about the dentry name. This is called when a
-@@ -1609,62 +1615,55 @@ int nfs_atomic_open(struct inode *dir, struct dentry *dentry,
- }
- EXPORT_SYMBOL_GPL(nfs_atomic_open);
- 
--static int nfs4_lookup_revalidate(struct dentry *dentry, unsigned int flags)
-+static int
-+nfs4_do_lookup_revalidate(struct inode *dir, struct dentry *dentry,
-+			  unsigned int flags)
- {
- 	struct inode *inode;
--	int ret = 0;
- 
- 	if (!(flags & LOOKUP_OPEN) || (flags & LOOKUP_DIRECTORY))
--		goto no_open;
-+		goto full_reval;
- 	if (d_mountpoint(dentry))
--		goto no_open;
--	if (NFS_SB(dentry->d_sb)->caps & NFS_CAP_ATOMIC_OPEN_V1)
--		goto no_open;
-+		goto full_reval;
- 
- 	inode = d_inode(dentry);
- 
- 	/* We can't create new files in nfs_open_revalidate(), so we
- 	 * optimize away revalidation of negative dentries.
- 	 */
--	if (inode == NULL) {
--		struct dentry *parent;
--		struct inode *dir;
--
--		if (flags & LOOKUP_RCU) {
--			parent = READ_ONCE(dentry->d_parent);
--			dir = d_inode_rcu(parent);
--			if (!dir)
--				return -ECHILD;
--		} else {
--			parent = dget_parent(dentry);
--			dir = d_inode(parent);
--		}
--		if (!nfs_neg_need_reval(dir, dentry, flags))
--			ret = 1;
--		else if (flags & LOOKUP_RCU)
--			ret = -ECHILD;
--		if (!(flags & LOOKUP_RCU))
--			dput(parent);
--		else if (parent != READ_ONCE(dentry->d_parent))
--			return -ECHILD;
--		goto out;
--	}
-+	if (inode == NULL)
-+		goto full_reval;
-+
-+	if (NFS_PROTO(dir)->have_delegation(inode, FMODE_READ))
-+		return nfs_lookup_revalidate_delegated(dir, dentry, inode);
- 
- 	/* NFS only supports OPEN on regular files */
- 	if (!S_ISREG(inode->i_mode))
--		goto no_open;
-+		goto full_reval;
-+
- 	/* We cannot do exclusive creation on a positive dentry */
--	if (flags & LOOKUP_EXCL)
--		goto no_open;
-+	if (flags & (LOOKUP_EXCL | LOOKUP_REVAL))
-+		goto reval_dentry;
-+
-+	/* Check if the directory changed */
-+	if (!nfs_check_verifier(dir, dentry, flags & LOOKUP_RCU))
-+		goto reval_dentry;
- 
- 	/* Let f_op->open() actually open (and revalidate) the file */
--	ret = 1;
-+	return 1;
-+reval_dentry:
-+	if (flags & LOOKUP_RCU)
-+		return -ECHILD;
-+	return nfs_lookup_revalidate_dentry(dir, dentry, inode);;
- 
--out:
--	return ret;
-+full_reval:
-+	return nfs_do_lookup_revalidate(dir, dentry, flags);
-+}
- 
--no_open:
--	return nfs_lookup_revalidate(dentry, flags);
-+static int nfs4_lookup_revalidate(struct dentry *dentry, unsigned int flags)
-+{
-+	return __nfs_lookup_revalidate(dentry, flags,
-+			nfs4_do_lookup_revalidate);
- }
- 
- #endif /* CONFIG_NFSV4 */
--- 
-2.17.1
+T24gRnJpLCAyMDE4LTA5LTI4IGF0IDE1OjU1IC0wNDAwLCBPbGdhIEtvcm5pZXZza2FpYSB3cm90
+ZToNCj4gT24gRnJpLCBTZXAgMjgsIDIwMTggYXQgMzoxMCBQTSBPbGdhIEtvcm5pZXZza2FpYSA8
+YWdsb0B1bWljaC5lZHU+DQo+IHdyb3RlOg0KPiA+IA0KPiA+IE9uIEZyaSwgU2VwIDI4LCAyMDE4
+IGF0IDI6NTQgUE0gVHJvbmQgTXlrbGVidXN0IDwNCj4gPiB0cm9uZG15QGhhbW1lcnNwYWNlLmNv
+bT4gd3JvdGU6DQo+ID4gPiANCj4gPiA+IE9uIEZyaSwgMjAxOC0wOS0yOCBhdCAxNDozMSAtMDQw
+MCwgT2xnYSBLb3JuaWV2c2thaWEgd3JvdGU6DQo+ID4gPiA+IE9uIEZyaSwgU2VwIDI4LCAyMDE4
+IGF0IDE6NTAgUE0gVHJvbmQgTXlrbGVidXN0IDwNCj4gPiA+ID4gdHJvbmRteUBnbWFpbC5jb20+
+DQo+ID4gPiA+IHdyb3RlOg0KPiA+ID4gPiA+IA0KPiA+ID4gPiA+IE9uIEZyaSwgMjAxOC0wOS0y
+OCBhdCAxMjo1NCAtMDQwMCwgT2xnYSBLb3JuaWV2c2thaWEgd3JvdGU6DQo+ID4gPiA+ID4gPiBB
+bHNvIHNob3VsZG4ndCB0aGlzIGJlIGEgYnVnIGZpeCBmb3IgNC4xOSBhbmQgYWxzbyBnbyB0bw0K
+PiA+ID4gPiA+ID4gc3RhYmxlPw0KPiA+ID4gPiA+IA0KPiA+ID4gPiA+IEl0IHdhc24ndCByZWFs
+bHkgaW50ZW5kZWQgYXMgYSBidWdmaXggYmVjYXVzZSBJIHdhc24ndCBhd2FyZQ0KPiA+ID4gPiA+
+IHRoYXQNCj4gPiA+ID4gPiB0aGVyZQ0KPiA+ID4gPiA+IHdhcyBhIGJ1ZyB0byBmaXggaW4gdGhl
+IGZpcnN0IHBsYWNlLiBJIGFzc3VtZSB0aGUNCj4gPiA+ID4gPiBtb2RpZmljYXRpb24gdG8NCj4g
+PiA+ID4gPiBuZnM0X3N0YXRlX2ZpbmRfb3Blbl9jb250ZXh0KCkgdG8gY2F1c2UgaXQgdG8gbG9v
+ayBmb3IgYW4NCj4gPiA+ID4gPiBvcGVuDQo+ID4gPiA+ID4gY29udGV4dA0KPiA+ID4gPiA+IHdp
+dGggYSBSRUFEL1dSSVRFIG9wZW4gbW9kZSBmaXJzdCBpcyB3aGF0IGZpeGVzIHRoZSBidWcuIElz
+DQo+ID4gPiA+ID4gdGhhdA0KPiA+ID4gPiA+IHRoZQ0KPiA+ID4gPiA+IGNhc2U/DQo+ID4gPiA+
+IA0KPiA+ID4gPiBJIGRvbid0IHRoaW5rIHNvLiBuZnM0X3N0YXRlX2ZpbmRfb3Blbl9jb250ZXh0
+KCkgbmV2ZXIgZ2V0cw0KPiA+ID4gPiBjYWxscw0KPiA+ID4gPiBkdXJpbmcgdGhlIHJ1biBvZiB0
+aGlzIHRlc3QgY2FzZS4gVGhpcyBmdW5jdGlvbiBpcyBjYWxsZWQNCj4gPiA+ID4gZHVyaW5nIHRo
+ZQ0KPiA+ID4gPiByZWNsYWltIG9uIGFuIG9wZW4uIEluIGRlbGVnYXRpb24gcmVjYWxsIHRoZSBv
+cGVucyBhcmUgbm90DQo+ID4gPiA+IHJlY2xhaW1lZCwNCj4gPiA+ID4gaXQgaXMganVzdCByZWNs
+YWltaW5nIHRoZSBsb2Nrcy4NCj4gPiA+ID4gDQo+ID4gPiA+IEFjdHVhbGx5LCB3aGVuIEkgdW5k
+byB0aGlzIHBpZWNlIG9mIHRoZSBwYXRjaCwgSSBjYW4gbWFrZSBpdA0KPiA+ID4gPiBmYWlsDQo+
+ID4gPiA+IGFnYWluLg0KPiA+ID4gPiANCj4gPiA+ID4gQEAgLTEwMjcsMTAgKzEwMjcsNyBAQCB2
+b2lkDQo+ID4gPiA+IG5mc19pbm9kZV9hdHRhY2hfb3Blbl9jb250ZXh0KHN0cnVjdA0KPiA+ID4g
+PiBuZnNfb3Blbl9jb250ZXh0ICpjdHgpDQo+ID4gPiA+ICAgICAgICAgc3RydWN0IG5mc19pbm9k
+ZSAqbmZzaSA9IE5GU19JKGlub2RlKTsNCj4gPiA+ID4gDQo+ID4gPiA+ICAgICAgICAgc3Bpbl9s
+b2NrKCZpbm9kZS0+aV9sb2NrKTsNCj4gPiA+ID4gLSAgICAgICBpZiAoY3R4LT5tb2RlICYgRk1P
+REVfV1JJVEUpDQo+ID4gPiA+IC0gICAgICAgICAgICAgICBsaXN0X2FkZCgmY3R4LT5saXN0LCAm
+bmZzaS0+b3Blbl9maWxlcyk7DQo+ID4gPiA+IC0gICAgICAgZWxzZQ0KPiA+ID4gPiAtICAgICAg
+ICAgICAgICAgbGlzdF9hZGRfdGFpbCgmY3R4LT5saXN0LCAmbmZzaS0+b3Blbl9maWxlcyk7DQo+
+ID4gPiA+ICsgICAgICAgbGlzdF9hZGRfdGFpbF9yY3UoJmN0eC0+bGlzdCwgJm5mc2ktPm9wZW5f
+ZmlsZXMpOw0KPiA+ID4gPiAgICAgICAgIHNwaW5fdW5sb2NrKCZpbm9kZS0+aV9sb2NrKTsNCj4g
+PiA+ID4gIH0NCj4gPiA+ID4gIEVYUE9SVF9TWU1CT0xfR1BMKG5mc19pbm9kZV9hdHRhY2hfb3Bl
+bl9jb250ZXh0KTsNCj4gPiA+ID4gDQo+ID4gPiA+IEl0IGxvb2tzIGxpa2UgdGhlIHBsYWNlbWVu
+dCBpbiB0aGUgbGlzdCBtYXR0ZXJzPyBBbnkgaWRlYXMgd2h5Pw0KPiA+ID4gDQo+ID4gPiBDdXJy
+ZW50bHksIHRoZSBsaXN0IGlzIG9yZGVyZWQgc28gdGhhdCB3cml0ZWFibGUgb3BlbiBjb250ZXh0
+cw0KPiA+ID4gYXJlDQo+ID4gPiBhbHdheXMgZm91bmQgZmlyc3QuIFRoZSByZWFzb24gaXMgdGhh
+dCB3aGVuIHRyYXZlcnNpbmcgdGhlIGxpc3QNCj4gPiA+IGR1cmluZw0KPiA+ID4gc2VydmVyIHJl
+Ym9vdCByZWNvdmVyeSwgd2Ugd2FudCB0byBlbnN1cmUgdGhhdCB3ZSByZWNsYWltIGFueQ0KPiA+
+ID4gd3JpdGUNCj4gPiA+IGRlbGVnYXRpb25zIG9uIHRoZSBmaWxlIGZpcnN0IHNvIHRoYXQgd2Ug
+Y2FuIGNhY2hlIGFsbCBzdWJzZXF1ZW50DQo+ID4gPiBvcGVucw0KPiA+ID4gYW5kIGxvY2tzIG9m
+IHRoYXQgZmlsZS4NCj4gPiA+IA0KPiA+ID4gQSBkZWxlZ2F0aW9uIHJldHVybiByZXF1aXJlcyB1
+cyB0byByZWNvdmVyIGFsbCBjYWNoZWQgc3RhdGUsIHNvDQo+ID4gPiBpdCBtdXN0DQo+ID4gPiBy
+ZWNsYWltIGJvdGggT1BFTiBhbmQgTE9DSyBzdGF0ZS4gSXQgaXMgbm90LCBob3dldmVyLCBleHBl
+Y3RlZCB0bw0KPiA+ID4gZGVwZW5kIG9uIHRoZSBvcGVuIGNvbnRleHQgbGlzdCBvcmRlcmluZywg
+c2luY2UgdGhlcmUgY2FuIGJlIG5vDQo+ID4gPiBmdXJ0aGVyDQo+ID4gPiBjYWNoaW5nLg0KPiA+
+ID4gSU9XOiBubywgSSBkb24ndCBzZWUgd2h5IHlvdXIgYnVnIHdvdWxkIGRlcGVuZCBvbiB0aGUg
+bGlzdCBvcmRlcg0KPiA+ID4gdW5sZXNzDQo+ID4gPiBzb21lIHBhcnQgb2YgdGhlIHJlY292ZXJ5
+IGlzIGFjdHVhbGx5IGZhaWxpbmcuDQo+ID4gDQo+ID4gT2sgdGhhbmtzLiBOZWVkIHRvIGZpeCB0
+aGUgbGFjayBvZiBPUEVOIHJlY2xhaW0uDQo+IA0KPiBXYWl0LCB3aHkgYXJlIHdlIHN1cHBvc2Ug
+dG8gcmVjbGFpbSB0aGUgb3BlbiBzdGF0ZSB3aGVuIHdlIGhhdmUgYQ0KPiB2YWxpZCBvcGVuIHN0
+YXRlaWQ/IFdlIGRvbid0IGhhdmUgYW55IGNhY2hlZCBvcGVucyB0aGF0IHNlcnZlcg0KPiBkb2Vz
+bid0DQo+IGtub3cgYWJvdXQuIFJGQzc1MzAgc2F5cyAiaWYgdGhlIGZpbGUgaGFzIG90aGVyIG9w
+ZW4gcmVmZXJlbmNlIiwgSQ0KPiB0aGluayB0aGUgZW1waGFzaXMgaXMgb24gIm90aGVyIi4gSSBk
+b24ndCBiZWxpZXZlIHdlIG5lZWQgdG8gYmUNCj4gc2VuZGluZyBhbnl0aGluZyBiZXNpZGVzIHRo
+ZSBsb2NrcyB0byB0aGUgc2VydmVyLiBUaGVuIEknbSBiYWNrIHRvDQo+IHNxdWFyZSBvbmUuDQoN
+CkhvbGRpbmcgYSBkZWxlZ2F0aW9uIGRvZXMgbm90IGltcGx5IHRoYXQgd2UgaG9sZCBhbiBvcGVu
+IHN0YXRlaWQuIFVuZGVyDQpMaW51eCwgdGhlIG9wZW4gc3RhdGVpZCBnZXRzIGNsb3NlZCBhcyBz
+b29uIGFzIHRoZSBhcHBsaWNhdGlvbiBjbG9zZXMNCnRoZSBmaWxlLg0KDQpUaGUgZGVsZWdhdGlv
+biwgb24gdGhlIG90aGVyIGhhbmQsIGlzIHJldGFpbmVkIHVudGlsIGVpdGhlciBpdCBpcw0KcmVj
+YWxsZWQsIG9yIHdlIHNlZSB0aGF0IHRoZSBmaWxlIGhhcyBub3QgYmVlbiB1c2VkIGZvciAyIGxl
+YXNlDQpwZXJpb2RzLg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBt
+YWludGFpbmVyLCBIYW1tZXJzcGFjZQ0KdHJvbmQubXlrbGVidXN0QGhhbW1lcnNwYWNlLmNvbQ0K
+DQoNCg==
