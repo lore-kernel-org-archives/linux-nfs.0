@@ -1,45 +1,43 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pf1-f196.google.com ([209.85.210.196]:44400 "EHLO
-        mail-pf1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727307AbeI1AeR (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 27 Sep 2018 20:34:17 -0400
-Received: by mail-pf1-f196.google.com with SMTP id k21-v6so2450788pff.11
-        for <linux-nfs@vger.kernel.org>; Thu, 27 Sep 2018 11:14:47 -0700 (PDT)
-From: Stan Hu <stanhu@gmail.com>
+Received: from mx1.redhat.com ([209.132.183.28]:48110 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1729091AbeI1TnL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 28 Sep 2018 15:43:11 -0400
+Received: from smtp.corp.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.27])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id 302593001244
+        for <linux-nfs@vger.kernel.org>; Fri, 28 Sep 2018 13:19:27 +0000 (UTC)
+Received: from steved.boston.devel.redhat.com (ovpn-116-239.phx2.redhat.com [10.3.116.239])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id F24E9DBA92
+        for <linux-nfs@vger.kernel.org>; Fri, 28 Sep 2018 13:19:26 +0000 (UTC)
+Subject: Re: osd_login
+From: Steve Dickson <SteveD@RedHat.com>
 To: linux-nfs@vger.kernel.org
-Cc: Stan Hu <stanhu@gmail.com>
-Subject: [PATCH] NFSv4: Revalidate inode if any of its cache flags are dirty
-Date: Thu, 27 Sep 2018 18:14:37 +0000
-Message-Id: <20180927181437.26284-1-stanhu@gmail.com>
+References: <114a207b-9fb8-0216-1ad5-e49f7f4500ad@RedHat.com>
+Message-ID: <ca5c1a1d-9d8b-b1c8-3882-7f6b09ad1487@RedHat.com>
+Date: Fri, 28 Sep 2018 09:19:21 -0400
 MIME-Version: 1.0
+In-Reply-To: <114a207b-9fb8-0216-1ad5-e49f7f4500ad@RedHat.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If a file is opened on one host before it is renamed or unlinked on another,
-an NFS 4.0 client will continue to use the original file handle. On some NFS
-servers (e.g. Isilon), this can cause "Stale file errors" until the original
-file is closed or the directory cache is refreshed.
 
-Note that this problem does not occur with an NFS 4.1 client since the
-revalidation will always occur because the NFS_CAP_ATOMIC_OPEN_V1 flag is
-enabled.
----
- fs/nfs/dir.c | 3 +++
- 1 file changed, 3 insertions(+)
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 8bfaa658b2c1..25259b0b41f9 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -1626,6 +1626,9 @@ static int nfs4_lookup_revalidate(struct dentry *dentry, unsigned int flags)
- 	/* We cannot do exclusive creation on a positive dentry */
- 	if (flags & LOOKUP_EXCL)
- 		goto no_open;
-+	/* Revalidate if any cache flags are dirty */
-+	if (NFS_I(inode)->cache_validity)
-+		goto no_open;
- 
- 	/* Let f_op->open() actually open (and revalidate) the file */
- 	ret = 1;
--- 
-2.16.2
+On 9/13/18 11:47 AM, Steve Dickson wrote:
+> Hello,
+> 
+> Is the osd_login shell script use anymore?
+> 
+> Would it be a problem if it goes away?
+I'm going to assume remove this will not be a problem... 
+
+
+steved.
+
+> 
+> tia,
+> 
+> steved.
+> 
