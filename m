@@ -1,100 +1,37 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ua1-f65.google.com ([209.85.222.65]:42532 "EHLO
-        mail-ua1-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726496AbeI2CVR (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 28 Sep 2018 22:21:17 -0400
-Received: by mail-ua1-f65.google.com with SMTP id w7-v6so2729941uan.9
-        for <linux-nfs@vger.kernel.org>; Fri, 28 Sep 2018 12:55:58 -0700 (PDT)
+Received: from mail-qk1-f193.google.com ([209.85.222.193]:47028 "EHLO
+        mail-qk1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726405AbeI2C2n (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 28 Sep 2018 22:28:43 -0400
+Received: by mail-qk1-f193.google.com with SMTP id q12-v6so4594501qkl.13
+        for <linux-nfs@vger.kernel.org>; Fri, 28 Sep 2018 13:03:23 -0700 (PDT)
+From: Trond Myklebust <trondmy@gmail.com>
+To: Stan Hu <stanhu@gmail.com>
+Cc: Bruce Fields <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+Subject: [PATCH 0/3] Fix NFSv4 lookup revalidation
+Date: Fri, 28 Sep 2018 16:02:55 -0400
+Message-Id: <20180928200258.68552-1-trond.myklebust@hammerspace.com>
 MIME-Version: 1.0
-References: <20180905192400.107485-1-trond.myklebust@hammerspace.com>
- <20180905192400.107485-2-trond.myklebust@hammerspace.com> <20180905192400.107485-3-trond.myklebust@hammerspace.com>
- <20180905192400.107485-4-trond.myklebust@hammerspace.com> <20180905192400.107485-5-trond.myklebust@hammerspace.com>
- <20180905192400.107485-6-trond.myklebust@hammerspace.com> <CAN-5tyG_qr7P8-2_yXAqDvQps0C06AQUuNuBBbYpUcWUsXEVYg@mail.gmail.com>
- <CAN-5tyGoywV9_cqv9jwHS7s58sX49baG4HXLn85ka-jHySxT0g@mail.gmail.com>
- <9dbc1442dd1e7bba1903a5ecf2855054ffcd0ee4.camel@gmail.com>
- <CAN-5tyH=YKiTb4ZWUeJgZg+TDJP9W2yP8acapKSs=km5RTU_6Q@mail.gmail.com>
- <cf7ee206ca825e243f671ccc3a0f3c332e144174.camel@hammerspace.com> <CAN-5tyGBufKA6Bn1AsB7yLviVGr5SHGyRc4z4hrKF-hScTrQXg@mail.gmail.com>
-In-Reply-To: <CAN-5tyGBufKA6Bn1AsB7yLviVGr5SHGyRc4z4hrKF-hScTrQXg@mail.gmail.com>
-From: Olga Kornievskaia <aglo@umich.edu>
-Date: Fri, 28 Sep 2018 15:55:46 -0400
-Message-ID: <CAN-5tyGrjjGKG5KoDAgzLrnnzjGUqmf1iUD_AM=wbX8bD5Jk-g@mail.gmail.com>
-Subject: Re: [PATCH 5/7] NFS: Convert lookups of the open context to RCU
-To: Trond Myklebust <trondmy@hammerspace.com>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Sep 28, 2018 at 3:10 PM Olga Kornievskaia <aglo@umich.edu> wrote:
->
-> On Fri, Sep 28, 2018 at 2:54 PM Trond Myklebust <trondmy@hammerspace.com> wrote:
-> >
-> > On Fri, 2018-09-28 at 14:31 -0400, Olga Kornievskaia wrote:
-> > > On Fri, Sep 28, 2018 at 1:50 PM Trond Myklebust <trondmy@gmail.com>
-> > > wrote:
-> > > >
-> > > > On Fri, 2018-09-28 at 12:54 -0400, Olga Kornievskaia wrote:
-> > > > > Also shouldn't this be a bug fix for 4.19 and also go to stable?
-> > > >
-> > > > It wasn't really intended as a bugfix because I wasn't aware that
-> > > > there
-> > > > was a bug to fix in the first place. I assume the modification to
-> > > > nfs4_state_find_open_context() to cause it to look for an open
-> > > > context
-> > > > with a READ/WRITE open mode first is what fixes the bug. Is that
-> > > > the
-> > > > case?
-> > >
-> > > I don't think so. nfs4_state_find_open_context() never gets calls
-> > > during the run of this test case. This function is called during the
-> > > reclaim on an open. In delegation recall the opens are not reclaimed,
-> > > it is just reclaiming the locks.
-> > >
-> > > Actually, when I undo this piece of the patch, I can make it fail
-> > > again.
-> > >
-> > > @@ -1027,10 +1027,7 @@ void nfs_inode_attach_open_context(struct
-> > > nfs_open_context *ctx)
-> > >         struct nfs_inode *nfsi = NFS_I(inode);
-> > >
-> > >         spin_lock(&inode->i_lock);
-> > > -       if (ctx->mode & FMODE_WRITE)
-> > > -               list_add(&ctx->list, &nfsi->open_files);
-> > > -       else
-> > > -               list_add_tail(&ctx->list, &nfsi->open_files);
-> > > +       list_add_tail_rcu(&ctx->list, &nfsi->open_files);
-> > >         spin_unlock(&inode->i_lock);
-> > >  }
-> > >  EXPORT_SYMBOL_GPL(nfs_inode_attach_open_context);
-> > >
-> > > It looks like the placement in the list matters? Any ideas why?
-> >
-> > Currently, the list is ordered so that writeable open contexts are
-> > always found first. The reason is that when traversing the list during
-> > server reboot recovery, we want to ensure that we reclaim any write
-> > delegations on the file first so that we can cache all subsequent opens
-> > and locks of that file.
-> >
-> > A delegation return requires us to recover all cached state, so it must
-> > reclaim both OPEN and LOCK state. It is not, however, expected to
-> > depend on the open context list ordering, since there can be no further
-> > caching.
-> > IOW: no, I don't see why your bug would depend on the list order unless
-> > some part of the recovery is actually failing.
->
-> Ok thanks. Need to fix the lack of OPEN reclaim.
+The following patch series attempts to address the issues raised by
+Stan Hu around NFSv4 lookup revalidation.
 
-Wait, why are we suppose to reclaim the open state when we have a
-valid open stateid? We don't have any cached opens that server doesn't
-know about. RFC7530 says "if the file has other open reference", I
-think the emphasis is on "other". I don't believe we need to be
-sending anything besides the locks to the server. Then I'm back to
-square one.
+The first patch in the series should, in principle suffice to address
+the exact issue raised by Stan, however when looking at the
+implementation of nfs4_lookup_revalidate(), it becomes clear that we're
+not doing enough to revalidate the dentry itself when performing NFSv4.1
+opens either.
 
->
-> > --
-> > Trond Myklebust
-> > Linux NFS client maintainer, Hammerspace
-> > trond.myklebust@hammerspace.com
-> >
-> >
+Trond Myklebust (3):
+  NFS: Fix dentry revalidation on NFSv4 lookup
+  NFS: Refactor nfs_lookup_revalidate()
+  NFSv4: Fix lookup revalidate of regular files
+
+ fs/nfs/dir.c      | 295 +++++++++++++++++++++++++---------------------
+ fs/nfs/nfs4proc.c |  15 ++-
+ 2 files changed, 174 insertions(+), 136 deletions(-)
+
+-- 
+2.17.1
