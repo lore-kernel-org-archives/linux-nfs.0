@@ -1,73 +1,251 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-cys01nam02on0127.outbound.protection.outlook.com ([104.47.37.127]:61423
-        "EHLO NAM02-CY1-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726451AbeI2DEU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 28 Sep 2018 23:04:20 -0400
-From: Trond Myklebust <trondmy@hammerspace.com>
-To: "aglo@umich.edu" <aglo@umich.edu>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 5/7] NFS: Convert lookups of the open context to RCU
-Date: Fri, 28 Sep 2018 20:38:47 +0000
-Message-ID: <6caf095d3bf43494d25dfe854f2cd87f8eab5adf.camel@hammerspace.com>
-References: <20180905192400.107485-1-trond.myklebust@hammerspace.com>
-         <20180905192400.107485-2-trond.myklebust@hammerspace.com>
-         <20180905192400.107485-3-trond.myklebust@hammerspace.com>
-         <20180905192400.107485-4-trond.myklebust@hammerspace.com>
-         <20180905192400.107485-5-trond.myklebust@hammerspace.com>
-         <20180905192400.107485-6-trond.myklebust@hammerspace.com>
-         <CAN-5tyG_qr7P8-2_yXAqDvQps0C06AQUuNuBBbYpUcWUsXEVYg@mail.gmail.com>
-         <CAN-5tyGoywV9_cqv9jwHS7s58sX49baG4HXLn85ka-jHySxT0g@mail.gmail.com>
-         <9dbc1442dd1e7bba1903a5ecf2855054ffcd0ee4.camel@gmail.com>
-         <CAN-5tyH=YKiTb4ZWUeJgZg+TDJP9W2yP8acapKSs=km5RTU_6Q@mail.gmail.com>
-         <cf7ee206ca825e243f671ccc3a0f3c332e144174.camel@hammerspace.com>
-         <CAN-5tyGBufKA6Bn1AsB7yLviVGr5SHGyRc4z4hrKF-hScTrQXg@mail.gmail.com>
-         <CAN-5tyGrjjGKG5KoDAgzLrnnzjGUqmf1iUD_AM=wbX8bD5Jk-g@mail.gmail.com>
-         <983c9970070f98ac54526742e6c4de4b0ff7ad63.camel@hammerspace.com>
-         <CAN-5tyGt+J=irZQgByH_nXOtXkztsyjjzLwEfrXHs2UzOZXEHA@mail.gmail.com>
-In-Reply-To: <CAN-5tyGt+J=irZQgByH_nXOtXkztsyjjzLwEfrXHs2UzOZXEHA@mail.gmail.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-it1-f196.google.com ([209.85.166.196]:52689 "EHLO
+        mail-it1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726325AbeI2Jgi (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 29 Sep 2018 05:36:38 -0400
+Received: by mail-it1-f196.google.com with SMTP id 134-v6so4992506itz.2
+        for <linux-nfs@vger.kernel.org>; Fri, 28 Sep 2018 20:09:56 -0700 (PDT)
+Received: from leira.trondhjem.org.localdomain (c-68-40-195-73.hsd1.mi.comcast.net. [68.40.195.73])
+        by smtp.gmail.com with ESMTPSA id x13-v6sm2454479ioa.27.2018.09.28.20.09.54
+        for <linux-nfs@vger.kernel.org>
+        (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
+        Fri, 28 Sep 2018 20:09:54 -0700 (PDT)
+From: Trond Myklebust <trondmy@gmail.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH] SUNRPC: Remove rpc_authflavor_lock in favour of RCU locking
+Date: Fri, 28 Sep 2018 23:09:31 -0400
+Message-Id: <20180929030931.71942-1-trond.myklebust@hammerspace.com>
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDE4LTA5LTI4IGF0IDE2OjE5IC0wNDAwLCBPbGdhIEtvcm5pZXZza2FpYSB3cm90
-ZToNCj4gT24gRnJpLCBTZXAgMjgsIDIwMTggYXQgNDowNyBQTSBUcm9uZCBNeWtsZWJ1c3QgPA0K
-PiB0cm9uZG15QGhhbW1lcnNwYWNlLmNvbT4gd3JvdGU6DQo+ID4gDQo+ID4gT24gRnJpLCAyMDE4
-LTA5LTI4IGF0IDE1OjU1IC0wNDAwLCBPbGdhIEtvcm5pZXZza2FpYSB3cm90ZToNCj4gPiA+IE9u
-IEZyaSwgU2VwIDI4LCAyMDE4IGF0IDM6MTAgUE0gT2xnYSBLb3JuaWV2c2thaWEgPGFnbG9AdW1p
-Y2guZWR1DQo+ID4gPiA+DQo+ID4gPiB3cm90ZToNCj4gPiA+ID4gDQo+ID4gPiBXYWl0LCB3aHkg
-YXJlIHdlIHN1cHBvc2UgdG8gcmVjbGFpbSB0aGUgb3BlbiBzdGF0ZSB3aGVuIHdlIGhhdmUgYQ0K
-PiA+ID4gdmFsaWQgb3BlbiBzdGF0ZWlkPyBXZSBkb24ndCBoYXZlIGFueSBjYWNoZWQgb3BlbnMg
-dGhhdCBzZXJ2ZXINCj4gPiA+IGRvZXNuJ3QNCj4gPiA+IGtub3cgYWJvdXQuIFJGQzc1MzAgc2F5
-cyAiaWYgdGhlIGZpbGUgaGFzIG90aGVyIG9wZW4gcmVmZXJlbmNlIiwNCj4gPiA+IEkNCj4gPiA+
-IHRoaW5rIHRoZSBlbXBoYXNpcyBpcyBvbiAib3RoZXIiLiBJIGRvbid0IGJlbGlldmUgd2UgbmVl
-ZCB0byBiZQ0KPiA+ID4gc2VuZGluZyBhbnl0aGluZyBiZXNpZGVzIHRoZSBsb2NrcyB0byB0aGUg
-c2VydmVyLiBUaGVuIEknbSBiYWNrDQo+ID4gPiB0bw0KPiA+ID4gc3F1YXJlIG9uZS4NCj4gPiAN
-Cj4gPiBIb2xkaW5nIGEgZGVsZWdhdGlvbiBkb2VzIG5vdCBpbXBseSB0aGF0IHdlIGhvbGQgYW4g
-b3BlbiBzdGF0ZWlkLg0KPiA+IFVuZGVyDQo+ID4gTGludXgsIHRoZSBvcGVuIHN0YXRlaWQgZ2V0
-cyBjbG9zZWQgYXMgc29vbiBhcyB0aGUgYXBwbGljYXRpb24NCj4gPiBjbG9zZXMNCj4gPiB0aGUg
-ZmlsZS4NCj4gPiANCj4gPiBUaGUgZGVsZWdhdGlvbiwgb24gdGhlIG90aGVyIGhhbmQsIGlzIHJl
-dGFpbmVkIHVudGlsIGVpdGhlciBpdCBpcw0KPiA+IHJlY2FsbGVkLCBvciB3ZSBzZWUgdGhhdCB0
-aGUgZmlsZSBoYXMgbm90IGJlZW4gdXNlZCBmb3IgMiBsZWFzZQ0KPiA+IHBlcmlvZHMuDQo+IA0K
-PiBPayBJIGFncmVlIHdpdGggYWxsIG9mIGl0IGJ1dCBJJ20gc2F5aW5nIGl0IGRvZXNuJ3QgbmVl
-ZCB0byBiZQ0KPiByZWNsYWltZWQgdW5jb25kaXRpb25hbGx5IG9yIGFyZSB5b3Ugc2F5aW5nIHRo
-YXQncyB3aGF0IHRoZSBsaW51eA0KPiBjbGllbnQgZG9lcz8gSW4gdGhpcyB0ZXN0IGNhc2UsIHRo
-ZSBmaWxlIGhhc24ndCBiZWVuIGNsb3NlZCBvcg0KPiBleHBpcmVkLiBJJ20gc3RhdGluZyB0aGF0
-IHRoZSBjbGllbnQgaGFzIGEgdmFsaWQgb3BlbiBzdGF0ZWlkIGFuZA0KPiBzaG91bGQgb25seSBi
-ZSByZXF1aXJlZCB0byByZWNsYWltIHRoZSBsb2NrcyAod2hpY2ggd2l0aCB0aGlzIHBhdGNoDQo+
-IGl0DQo+IGRvZXMpLg0KDQpBcyBJIHNhaWQgZWFybGllciwgdGhlIGNsaWVudCBpcyByZXF1aXJl
-ZCB0byByZWNvdmVyIGFsbCBfY2FjaGVkXyBvcGVuDQphbmQgbG9jayBzdGF0ZS4gSWYgaXQgYWxy
-ZWFkeSBob2xkcyBhbiBvcGVuIHN0YXRlaWQsIHRoZW4gaXQgc2hvdWxkIG5vdA0KbmVlZCB0byBy
-ZWNsYWltIHRoZSBvcGVuIG1vZGVzIHRoYXQgYXJlIGNvdmVyZWQgYnkgdGhhdCBzdGF0ZWlkLA0K
-aG93ZXZlciBpdCBtYXkgc3RpbGwgbmVlZCB0byByZWNsYWltIHRob3NlIG9wZW4gbW9kZXMgdGhh
-dCB3ZXJlIG5vdA0KYWxyZWFkeSBzdWJqZWN0IHRvIGFuIGV4cGxpY2l0IE9QRU4gY2FsbC4NCg0K
-SU9XOiBJZiB0aGUgZmlsZSB3YXMgZmlyc3Qgb3BlbmVkIHdpdGggYW4gb3BlbihPX1JEUlcpIGNh
-bGwgYnkgdGhlDQphcHBsaWNhdGlvbiwgYnV0IGEgc2Vjb25kIGFwcGxpY2F0aW9uIHRoZW4gb3Bl
-bmVkIGl0IHVzaW5nDQpvcGVuKE9fV1JPTkxZKSwgdGhlbiB3ZSBtYXkgYWxyZWFkeSBob2xkIGEg
-c3RhdGVpZCB3aXRoIGENCiJTSEFSRV9BQ0NFU1NfQk9USCIgb3BlbiBtb2RlLCBob3dldmVyIHdl
-IHdpbGwgc3RpbGwgbmVlZCB0byBzZW5kIGENCnJlY2xhaW0gZm9yIHRoZSBjYWNoZWQgU0hBUkVf
-QUNDRVNTX1dSSVRFIG1vZGUsIHNvIHRoYXQgYSBsYXRlcg0KT1BFTl9ET1dOR1JBREUoU0hBUkVf
-QUNDRVNTX1dSSVRFKSBjYW4gc3VjY2VlZC4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4
-IE5GUyBjbGllbnQgbWFpbnRhaW5lciwgSGFtbWVyc3BhY2UNCnRyb25kLm15a2xlYnVzdEBoYW1t
-ZXJzcGFjZS5jb20NCg0KDQo=
+Module removal is RCU safe by design, so we really have no need to
+lock the auth_flavors[] array. Substitute a lockless scheme to
+add/remove entries in the array, and then use rcu.
+
+Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
+---
+ net/sunrpc/auth.c | 128 ++++++++++++++++++++++------------------------
+ 1 file changed, 62 insertions(+), 66 deletions(-)
+
+diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
+index 59df5cdba0ac..32985aa515be 100644
+--- a/net/sunrpc/auth.c
++++ b/net/sunrpc/auth.c
+@@ -30,10 +30,9 @@ struct rpc_cred_cache {
+ 
+ static unsigned int auth_hashbits = RPC_CREDCACHE_DEFAULT_HASHBITS;
+ 
+-static DEFINE_SPINLOCK(rpc_authflavor_lock);
+-static const struct rpc_authops *auth_flavors[RPC_AUTH_MAXFLAVOR] = {
+-	&authnull_ops,		/* AUTH_NULL */
+-	&authunix_ops,		/* AUTH_UNIX */
++static const struct rpc_authops __rcu *auth_flavors[RPC_AUTH_MAXFLAVOR] = {
++	[RPC_AUTH_NULL] = (const struct rpc_authops __force __rcu *)&authnull_ops,
++	[RPC_AUTH_UNIX] = (const struct rpc_authops __force __rcu *)&authunix_ops,
+ 	NULL,			/* others can be loadable modules */
+ };
+ 
+@@ -93,39 +92,65 @@ pseudoflavor_to_flavor(u32 flavor) {
+ int
+ rpcauth_register(const struct rpc_authops *ops)
+ {
++	const struct rpc_authops *old;
+ 	rpc_authflavor_t flavor;
+-	int ret = -EPERM;
+ 
+ 	if ((flavor = ops->au_flavor) >= RPC_AUTH_MAXFLAVOR)
+ 		return -EINVAL;
+-	spin_lock(&rpc_authflavor_lock);
+-	if (auth_flavors[flavor] == NULL) {
+-		auth_flavors[flavor] = ops;
+-		ret = 0;
+-	}
+-	spin_unlock(&rpc_authflavor_lock);
+-	return ret;
++	old = cmpxchg((const struct rpc_authops ** __force)&auth_flavors[flavor], NULL, ops);
++	if (old == NULL || old == ops)
++		return 0;
++	return -EPERM;
+ }
+ EXPORT_SYMBOL_GPL(rpcauth_register);
+ 
+ int
+ rpcauth_unregister(const struct rpc_authops *ops)
+ {
++	const struct rpc_authops *old;
+ 	rpc_authflavor_t flavor;
+-	int ret = -EPERM;
+ 
+ 	if ((flavor = ops->au_flavor) >= RPC_AUTH_MAXFLAVOR)
+ 		return -EINVAL;
+-	spin_lock(&rpc_authflavor_lock);
+-	if (auth_flavors[flavor] == ops) {
+-		auth_flavors[flavor] = NULL;
+-		ret = 0;
+-	}
+-	spin_unlock(&rpc_authflavor_lock);
+-	return ret;
++
++	old = cmpxchg((const struct rpc_authops ** __force)&auth_flavors[flavor], ops, NULL);
++	if (old == ops || old == NULL)
++		return 0;
++	return -EPERM;
+ }
+ EXPORT_SYMBOL_GPL(rpcauth_unregister);
+ 
++static const struct rpc_authops *
++rpcauth_get_authops(rpc_authflavor_t flavor)
++{
++	const struct rpc_authops *ops;
++
++	if (flavor >= RPC_AUTH_MAXFLAVOR)
++		return NULL;
++
++	rcu_read_lock();
++	ops = rcu_dereference(auth_flavors[flavor]);
++	if (ops == NULL) {
++		rcu_read_unlock();
++		request_module("rpc-auth-%u", flavor);
++		rcu_read_lock();
++		ops = rcu_dereference(auth_flavors[flavor]);
++		if (ops == NULL)
++			goto out;
++	}
++	if (!try_module_get(ops->owner))
++		ops = NULL;
++out:
++	rcu_read_unlock();
++	return ops;
++}
++
++static void
++rpcauth_put_authops(const struct rpc_authops *ops)
++{
++	module_put(ops->owner);
++}
++
+ /**
+  * rpcauth_get_pseudoflavor - check if security flavor is supported
+  * @flavor: a security flavor
+@@ -138,25 +163,16 @@ EXPORT_SYMBOL_GPL(rpcauth_unregister);
+ rpc_authflavor_t
+ rpcauth_get_pseudoflavor(rpc_authflavor_t flavor, struct rpcsec_gss_info *info)
+ {
+-	const struct rpc_authops *ops;
++	const struct rpc_authops *ops = rpcauth_get_authops(flavor);
+ 	rpc_authflavor_t pseudoflavor;
+ 
+-	ops = auth_flavors[flavor];
+-	if (ops == NULL)
+-		request_module("rpc-auth-%u", flavor);
+-	spin_lock(&rpc_authflavor_lock);
+-	ops = auth_flavors[flavor];
+-	if (ops == NULL || !try_module_get(ops->owner)) {
+-		spin_unlock(&rpc_authflavor_lock);
++	if (!ops)
+ 		return RPC_AUTH_MAXFLAVOR;
+-	}
+-	spin_unlock(&rpc_authflavor_lock);
+-
+ 	pseudoflavor = flavor;
+ 	if (ops->info2flavor != NULL)
+ 		pseudoflavor = ops->info2flavor(info);
+ 
+-	module_put(ops->owner);
++	rpcauth_put_authops(ops);
+ 	return pseudoflavor;
+ }
+ EXPORT_SYMBOL_GPL(rpcauth_get_pseudoflavor);
+@@ -176,25 +192,15 @@ rpcauth_get_gssinfo(rpc_authflavor_t pseudoflavor, struct rpcsec_gss_info *info)
+ 	const struct rpc_authops *ops;
+ 	int result;
+ 
+-	if (flavor >= RPC_AUTH_MAXFLAVOR)
+-		return -EINVAL;
+-
+-	ops = auth_flavors[flavor];
++	ops = rpcauth_get_authops(flavor);
+ 	if (ops == NULL)
+-		request_module("rpc-auth-%u", flavor);
+-	spin_lock(&rpc_authflavor_lock);
+-	ops = auth_flavors[flavor];
+-	if (ops == NULL || !try_module_get(ops->owner)) {
+-		spin_unlock(&rpc_authflavor_lock);
+ 		return -ENOENT;
+-	}
+-	spin_unlock(&rpc_authflavor_lock);
+ 
+ 	result = -ENOENT;
+ 	if (ops->flavor2info != NULL)
+ 		result = ops->flavor2info(pseudoflavor, info);
+ 
+-	module_put(ops->owner);
++	rpcauth_put_authops(ops);
+ 	return result;
+ }
+ EXPORT_SYMBOL_GPL(rpcauth_get_gssinfo);
+@@ -212,15 +218,13 @@ EXPORT_SYMBOL_GPL(rpcauth_get_gssinfo);
+ int
+ rpcauth_list_flavors(rpc_authflavor_t *array, int size)
+ {
+-	rpc_authflavor_t flavor;
+-	int result = 0;
++	const struct rpc_authops *ops;
++	rpc_authflavor_t flavor, pseudos[4];
++	int i, len, result = 0;
+ 
+-	spin_lock(&rpc_authflavor_lock);
++	rcu_read_lock();
+ 	for (flavor = 0; flavor < RPC_AUTH_MAXFLAVOR; flavor++) {
+-		const struct rpc_authops *ops = auth_flavors[flavor];
+-		rpc_authflavor_t pseudos[4];
+-		int i, len;
+-
++		ops = rcu_dereference(auth_flavors[flavor]);
+ 		if (result >= size) {
+ 			result = -ENOMEM;
+ 			break;
+@@ -245,7 +249,7 @@ rpcauth_list_flavors(rpc_authflavor_t *array, int size)
+ 			array[result++] = pseudos[i];
+ 		}
+ 	}
+-	spin_unlock(&rpc_authflavor_lock);
++	rcu_read_unlock();
+ 
+ 	dprintk("RPC:       %s returns %d\n", __func__, result);
+ 	return result;
+@@ -255,25 +259,17 @@ EXPORT_SYMBOL_GPL(rpcauth_list_flavors);
+ struct rpc_auth *
+ rpcauth_create(const struct rpc_auth_create_args *args, struct rpc_clnt *clnt)
+ {
+-	struct rpc_auth		*auth;
++	struct rpc_auth	*auth = ERR_PTR(-EINVAL);
+ 	const struct rpc_authops *ops;
+-	u32			flavor = pseudoflavor_to_flavor(args->pseudoflavor);
++	u32 flavor = pseudoflavor_to_flavor(args->pseudoflavor);
+ 
+-	auth = ERR_PTR(-EINVAL);
+-	if (flavor >= RPC_AUTH_MAXFLAVOR)
++	ops = rpcauth_get_authops(flavor);
++	if (ops == NULL)
+ 		goto out;
+ 
+-	if ((ops = auth_flavors[flavor]) == NULL)
+-		request_module("rpc-auth-%u", flavor);
+-	spin_lock(&rpc_authflavor_lock);
+-	ops = auth_flavors[flavor];
+-	if (ops == NULL || !try_module_get(ops->owner)) {
+-		spin_unlock(&rpc_authflavor_lock);
+-		goto out;
+-	}
+-	spin_unlock(&rpc_authflavor_lock);
+ 	auth = ops->create(args, clnt);
+-	module_put(ops->owner);
++
++	rpcauth_put_authops(ops);
+ 	if (IS_ERR(auth))
+ 		return auth;
+ 	if (clnt->cl_auth)
+-- 
+2.17.1
