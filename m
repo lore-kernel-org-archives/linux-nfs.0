@@ -1,17 +1,17 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it1-f195.google.com ([209.85.166.195]:35002 "EHLO
-        mail-it1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1729497AbeJAVUm (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Oct 2018 17:20:42 -0400
-Received: by mail-it1-f195.google.com with SMTP id p64-v6so4681425itp.0
-        for <linux-nfs@vger.kernel.org>; Mon, 01 Oct 2018 07:42:33 -0700 (PDT)
+Received: from mail-it1-f193.google.com ([209.85.166.193]:55577 "EHLO
+        mail-it1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1729497AbeJAVUh (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Oct 2018 17:20:37 -0400
+Received: by mail-it1-f193.google.com with SMTP id c23-v6so11592901itd.5
+        for <linux-nfs@vger.kernel.org>; Mon, 01 Oct 2018 07:42:28 -0700 (PDT)
 From: Trond Myklebust <trondmy@gmail.com>
 To: "J . Bruce Fields" <bfields@fieldses.org>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 15/15] knfsd: Improve lookup performance in the duplicate reply cache using an rbtree
-Date: Mon,  1 Oct 2018 10:41:57 -0400
-Message-Id: <20181001144157.3515-16-trond.myklebust@hammerspace.com>
-In-Reply-To: <20181001144157.3515-15-trond.myklebust@hammerspace.com>
+Subject: [PATCH 09/15] SUNRPC: Remove non-RCU protected lookup
+Date: Mon,  1 Oct 2018 10:41:51 -0400
+Message-Id: <20181001144157.3515-10-trond.myklebust@hammerspace.com>
+In-Reply-To: <20181001144157.3515-9-trond.myklebust@hammerspace.com>
 References: <20181001144157.3515-1-trond.myklebust@hammerspace.com>
  <20181001144157.3515-2-trond.myklebust@hammerspace.com>
  <20181001144157.3515-3-trond.myklebust@hammerspace.com>
@@ -21,152 +21,173 @@ References: <20181001144157.3515-1-trond.myklebust@hammerspace.com>
  <20181001144157.3515-7-trond.myklebust@hammerspace.com>
  <20181001144157.3515-8-trond.myklebust@hammerspace.com>
  <20181001144157.3515-9-trond.myklebust@hammerspace.com>
- <20181001144157.3515-10-trond.myklebust@hammerspace.com>
- <20181001144157.3515-11-trond.myklebust@hammerspace.com>
- <20181001144157.3515-12-trond.myklebust@hammerspace.com>
- <20181001144157.3515-13-trond.myklebust@hammerspace.com>
- <20181001144157.3515-14-trond.myklebust@hammerspace.com>
- <20181001144157.3515-15-trond.myklebust@hammerspace.com>
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Use an rbtree to ensure the lookup/insert of an entry in a DRC bucket is
-O(log(N)).
+Clean up the cache code by removing the non-RCU protected lookup.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfsd/cache.h    |  1 +
- fs/nfsd/nfscache.c | 37 ++++++++++++++++++++++++++-----------
- 2 files changed, 27 insertions(+), 11 deletions(-)
+ Documentation/filesystems/nfs/rpc-cache.txt |  6 +-
+ include/linux/sunrpc/cache.h                |  6 --
+ net/sunrpc/cache.c                          | 61 ++-------------------
+ 3 files changed, 7 insertions(+), 66 deletions(-)
 
-diff --git a/fs/nfsd/cache.h b/fs/nfsd/cache.h
-index cbcdc15753b7..ef1c8aa89ca4 100644
---- a/fs/nfsd/cache.h
-+++ b/fs/nfsd/cache.h
-@@ -29,6 +29,7 @@ struct svc_cacherep {
- 		struct sockaddr_in6	k_addr;
- 	} c_key;
+diff --git a/Documentation/filesystems/nfs/rpc-cache.txt b/Documentation/filesystems/nfs/rpc-cache.txt
+index ebcaaee21616..c4dac829db0f 100644
+--- a/Documentation/filesystems/nfs/rpc-cache.txt
++++ b/Documentation/filesystems/nfs/rpc-cache.txt
+@@ -84,7 +84,7 @@ Creating a Cache
+ 		A message from user space has arrived to fill out a
+ 		cache entry.  It is in 'buf' of length 'len'.
+ 		cache_parse should parse this, find the item in the
+-		cache with sunrpc_cache_lookup, and update the item
++		cache with sunrpc_cache_lookup_rcu, and update the item
+ 		with sunrpc_cache_update.
  
-+	struct rb_node		c_node;
- 	struct list_head	c_lru;
- 	unsigned char		c_state,	/* unused, inprog, done */
- 				c_type,		/* status, buffer */
-diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
-index 230cc83921ad..e2fe0e9ce0df 100644
---- a/fs/nfsd/nfscache.c
-+++ b/fs/nfsd/nfscache.c
-@@ -30,6 +30,7 @@
- #define TARGET_BUCKET_SIZE	64
  
- struct nfsd_drc_bucket {
-+	struct rb_root rb_head;
- 	struct list_head lru_head;
- 	spinlock_t cache_lock;
- };
-@@ -129,6 +130,7 @@ nfsd_reply_cache_alloc(struct svc_rqst *rqstp, __wsum csum)
- 	if (rp) {
- 		rp->c_state = RC_UNUSED;
- 		rp->c_type = RC_NOCACHE;
-+		RB_CLEAR_NODE(&rp->c_node);
- 		INIT_LIST_HEAD(&rp->c_lru);
+@@ -95,7 +95,7 @@ Creating a Cache
+ Using a cache
+ -------------
  
- 		memset(&rp->c_key, 0, sizeof(rp->c_key));
-@@ -145,13 +147,14 @@ nfsd_reply_cache_alloc(struct svc_rqst *rqstp, __wsum csum)
+-To find a value in a cache, call sunrpc_cache_lookup passing a pointer
++To find a value in a cache, call sunrpc_cache_lookup_rcu passing a pointer
+ to the cache_head in a sample item with the 'key' fields filled in.
+ This will be passed to ->match to identify the target entry.  If no
+ entry is found, a new entry will be create, added to the cache, and
+@@ -116,7 +116,7 @@ item does become valid, the deferred copy of the request will be
+ revisited (->revisit).  It is expected that this method will
+ reschedule the request for processing.
+ 
+-The value returned by sunrpc_cache_lookup can also be passed to
++The value returned by sunrpc_cache_lookup_rcu can also be passed to
+ sunrpc_cache_update to set the content for the item.  A second item is
+ passed which should hold the content.  If the item found by _lookup
+ has valid data, then it is discarded and a new item is created.  This
+diff --git a/include/linux/sunrpc/cache.h b/include/linux/sunrpc/cache.h
+index cf3e17ee2786..c3d67e893430 100644
+--- a/include/linux/sunrpc/cache.h
++++ b/include/linux/sunrpc/cache.h
+@@ -171,9 +171,6 @@ extern struct cache_head *
+ sunrpc_cache_lookup_rcu(struct cache_detail *detail,
+ 			struct cache_head *key, int hash);
+ extern struct cache_head *
+-sunrpc_cache_lookup(struct cache_detail *detail,
+-		    struct cache_head *key, int hash);
+-extern struct cache_head *
+ sunrpc_cache_update(struct cache_detail *detail,
+ 		    struct cache_head *new, struct cache_head *old, int hash);
+ 
+@@ -233,9 +230,6 @@ extern void sunrpc_cache_unregister_pipefs(struct cache_detail *);
+ extern void sunrpc_cache_unhash(struct cache_detail *, struct cache_head *);
+ 
+ /* Must store cache_detail in seq_file->private if using next three functions */
+-extern void *cache_seq_start(struct seq_file *file, loff_t *pos);
+-extern void *cache_seq_next(struct seq_file *file, void *p, loff_t *pos);
+-extern void cache_seq_stop(struct seq_file *file, void *p);
+ extern void *cache_seq_start_rcu(struct seq_file *file, loff_t *pos);
+ extern void *cache_seq_next_rcu(struct seq_file *file, void *p, loff_t *pos);
+ extern void cache_seq_stop_rcu(struct seq_file *file, void *p);
+diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
+index 7593afed9036..593cf8607414 100644
+--- a/net/sunrpc/cache.c
++++ b/net/sunrpc/cache.c
+@@ -75,27 +75,6 @@ static struct cache_head *sunrpc_cache_find_rcu(struct cache_detail *detail,
+ 	return NULL;
  }
  
- static void
--nfsd_reply_cache_free_locked(struct svc_cacherep *rp)
-+nfsd_reply_cache_free_locked(struct nfsd_drc_bucket *b, struct svc_cacherep *rp)
- {
- 	if (rp->c_type == RC_REPLBUFF && rp->c_replvec.iov_base) {
- 		drc_mem_usage -= rp->c_replvec.iov_len;
- 		kfree(rp->c_replvec.iov_base);
- 	}
- 	if (rp->c_state != RC_UNUSED) {
-+		rb_erase(&rp->c_node, &b->rb_head);
- 		list_del(&rp->c_lru);
- 		atomic_dec(&num_drc_entries);
- 		drc_mem_usage -= sizeof(*rp);
-@@ -163,7 +166,7 @@ static void
- nfsd_reply_cache_free(struct nfsd_drc_bucket *b, struct svc_cacherep *rp)
- {
- 	spin_lock(&b->cache_lock);
--	nfsd_reply_cache_free_locked(rp);
-+	nfsd_reply_cache_free_locked(b, rp);
- 	spin_unlock(&b->cache_lock);
- }
- 
-@@ -219,7 +222,7 @@ void nfsd_reply_cache_shutdown(void)
- 		struct list_head *head = &drc_hashtbl[i].lru_head;
- 		while (!list_empty(head)) {
- 			rp = list_first_entry(head, struct svc_cacherep, c_lru);
--			nfsd_reply_cache_free_locked(rp);
-+			nfsd_reply_cache_free_locked(&drc_hashtbl[i], rp);
- 		}
- 	}
- 
-@@ -258,7 +261,7 @@ prune_bucket(struct nfsd_drc_bucket *b)
- 		if (atomic_read(&num_drc_entries) <= max_drc_entries &&
- 		    time_before(jiffies, rp->c_timestamp + RC_EXPIRE))
- 			break;
--		nfsd_reply_cache_free_locked(rp);
-+		nfsd_reply_cache_free_locked(b, rp);
- 		freed++;
- 	}
- 	return freed;
-@@ -349,17 +352,29 @@ static struct svc_cacherep *
- nfsd_cache_insert(struct nfsd_drc_bucket *b, struct svc_cacherep *key)
- {
- 	struct svc_cacherep	*rp, *ret = key;
--	struct list_head 	*rh = &b->lru_head;
-+	struct rb_node		**p = &b->rb_head.rb_node,
-+				*parent = NULL;
- 	unsigned int		entries = 0;
-+	int cmp;
- 
--	list_for_each_entry(rp, rh, c_lru) {
-+	while (*p != NULL) {
- 		++entries;
--		if (nfsd_cache_key_cmp(key, rp) == 0) {
-+		parent = *p;
-+		rp = rb_entry(parent, struct svc_cacherep, c_node);
-+
-+		cmp = nfsd_cache_key_cmp(key, rp);
-+		if (cmp < 0)
-+			p = &parent->rb_left;
-+		else if (cmp > 0)
-+			p = &parent->rb_right;
-+		else {
- 			ret = rp;
--			break;
-+			goto out;
- 		}
- 	}
+-static struct cache_head *sunrpc_cache_find(struct cache_detail *detail,
+-					    struct cache_head *key, int hash)
+-{
+-	struct hlist_head *head = &detail->hash_table[hash];
+-	struct cache_head *tmp;
 -
-+	rb_link_node(&key->c_node, parent, p);
-+	rb_insert_color(&key->c_node, &b->rb_head);
-+out:
- 	/* tally hash chain length stats */
- 	if (entries > longest_chain) {
- 		longest_chain = entries;
-@@ -414,7 +429,7 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
- 	spin_lock(&b->cache_lock);
- 	found = nfsd_cache_insert(b, rp);
- 	if (found != rp) {
--		nfsd_reply_cache_free_locked(rp);
-+		nfsd_reply_cache_free_locked(NULL, rp);
- 		rp = found;
- 		goto found_entry;
- 	}
-@@ -462,7 +477,7 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
- 		break;
- 	default:
- 		printk(KERN_WARNING "nfsd: bad repcache type %d\n", rp->c_type);
--		nfsd_reply_cache_free_locked(rp);
-+		nfsd_reply_cache_free_locked(b, rp);
- 	}
+-	read_lock(&detail->hash_lock);
+-	hlist_for_each_entry(tmp, head, cache_list) {
+-		if (detail->match(tmp, key)) {
+-			if (cache_is_expired(detail, tmp))
+-				/* This entry is expired, we will discard it. */
+-				break;
+-			cache_get(tmp);
+-			read_unlock(&detail->hash_lock);
+-			return tmp;
+-		}
+-	}
+-	read_unlock(&detail->hash_lock);
+-	return NULL;
+-}
+-
+ static struct cache_head *sunrpc_cache_add_entry(struct cache_detail *detail,
+ 						 struct cache_head *key,
+ 						 int hash)
+@@ -154,20 +133,6 @@ struct cache_head *sunrpc_cache_lookup_rcu(struct cache_detail *detail,
+ }
+ EXPORT_SYMBOL_GPL(sunrpc_cache_lookup_rcu);
  
- 	goto out;
+-struct cache_head *sunrpc_cache_lookup(struct cache_detail *detail,
+-				       struct cache_head *key, int hash)
+-{
+-	struct cache_head *ret;
+-
+-	ret = sunrpc_cache_find(detail, key, hash);
+-	if (ret)
+-		return ret;
+-	/* Didn't find anything, insert an empty entry */
+-	return sunrpc_cache_add_entry(detail, key, hash);
+-}
+-EXPORT_SYMBOL_GPL(sunrpc_cache_lookup);
+-
+-
+ static void cache_dequeue(struct cache_detail *detail, struct cache_head *ch);
+ 
+ static void cache_fresh_locked(struct cache_head *head, time_t expiry,
+@@ -1369,17 +1334,7 @@ static void *__cache_seq_start(struct seq_file *m, loff_t *pos)
+ 				struct cache_head, cache_list);
+ }
+ 
+-void *cache_seq_start(struct seq_file *m, loff_t *pos)
+-	__acquires(cd->hash_lock)
+-{
+-	struct cache_detail *cd = m->private;
+-
+-	read_lock(&cd->hash_lock);
+-	return __cache_seq_start(m, pos);
+-}
+-EXPORT_SYMBOL_GPL(cache_seq_start);
+-
+-void *cache_seq_next(struct seq_file *m, void *p, loff_t *pos)
++static void *cache_seq_next(struct seq_file *m, void *p, loff_t *pos)
+ {
+ 	struct cache_head *ch = p;
+ 	int hash = (*pos >> 32);
+@@ -1411,14 +1366,6 @@ void *cache_seq_next(struct seq_file *m, void *p, loff_t *pos)
+ }
+ EXPORT_SYMBOL_GPL(cache_seq_next);
+ 
+-void cache_seq_stop(struct seq_file *m, void *p)
+-	__releases(cd->hash_lock)
+-{
+-	struct cache_detail *cd = m->private;
+-	read_unlock(&cd->hash_lock);
+-}
+-EXPORT_SYMBOL_GPL(cache_seq_stop);
+-
+ void *cache_seq_start_rcu(struct seq_file *m, loff_t *pos)
+ 	__acquires(RCU)
+ {
+@@ -1466,9 +1413,9 @@ static int c_show(struct seq_file *m, void *p)
+ }
+ 
+ static const struct seq_operations cache_content_op = {
+-	.start	= cache_seq_start,
+-	.next	= cache_seq_next,
+-	.stop	= cache_seq_stop,
++	.start	= cache_seq_start_rcu,
++	.next	= cache_seq_next_rcu,
++	.stop	= cache_seq_stop_rcu,
+ 	.show	= c_show,
+ };
+ 
 -- 
 2.17.1
