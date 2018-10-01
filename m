@@ -1,17 +1,17 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it1-f196.google.com ([209.85.166.196]:50904 "EHLO
-        mail-it1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1729479AbeJAVUi (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Oct 2018 17:20:38 -0400
-Received: by mail-it1-f196.google.com with SMTP id j81-v6so11614404ite.0
-        for <linux-nfs@vger.kernel.org>; Mon, 01 Oct 2018 07:42:29 -0700 (PDT)
+Received: from mail-it1-f194.google.com ([209.85.166.194]:38772 "EHLO
+        mail-it1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1729528AbeJAVUl (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Oct 2018 17:20:41 -0400
+Received: by mail-it1-f194.google.com with SMTP id i76-v6so6171739ita.3
+        for <linux-nfs@vger.kernel.org>; Mon, 01 Oct 2018 07:42:32 -0700 (PDT)
 From: Trond Myklebust <trondmy@gmail.com>
 To: "J . Bruce Fields" <bfields@fieldses.org>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 10/15] SUNRPC: Replace the cache_detail->hash_lock with a regular spinlock
-Date: Mon,  1 Oct 2018 10:41:52 -0400
-Message-Id: <20181001144157.3515-11-trond.myklebust@hammerspace.com>
-In-Reply-To: <20181001144157.3515-10-trond.myklebust@hammerspace.com>
+Subject: [PATCH 14/15] knfsd: Further simplify the cache lookup
+Date: Mon,  1 Oct 2018 10:41:56 -0400
+Message-Id: <20181001144157.3515-15-trond.myklebust@hammerspace.com>
+In-Reply-To: <20181001144157.3515-14-trond.myklebust@hammerspace.com>
 References: <20181001144157.3515-1-trond.myklebust@hammerspace.com>
  <20181001144157.3515-2-trond.myklebust@hammerspace.com>
  <20181001144157.3515-3-trond.myklebust@hammerspace.com>
@@ -22,207 +22,134 @@ References: <20181001144157.3515-1-trond.myklebust@hammerspace.com>
  <20181001144157.3515-8-trond.myklebust@hammerspace.com>
  <20181001144157.3515-9-trond.myklebust@hammerspace.com>
  <20181001144157.3515-10-trond.myklebust@hammerspace.com>
+ <20181001144157.3515-11-trond.myklebust@hammerspace.com>
+ <20181001144157.3515-12-trond.myklebust@hammerspace.com>
+ <20181001144157.3515-13-trond.myklebust@hammerspace.com>
+ <20181001144157.3515-14-trond.myklebust@hammerspace.com>
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Now that the reader functions are all RCU protected, use a regular
-spinlock rather than a reader/writer lock.
+Order the structure so that the key can be compared using memcmp().
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- include/linux/sunrpc/cache.h |  2 +-
- net/sunrpc/cache.c           | 46 ++++++++++++++++++------------------
- 2 files changed, 24 insertions(+), 24 deletions(-)
+ fs/nfsd/cache.h    | 18 ++++++++++--------
+ fs/nfsd/nfscache.c | 45 ++++++++++++++++-----------------------------
+ 2 files changed, 26 insertions(+), 37 deletions(-)
 
-diff --git a/include/linux/sunrpc/cache.h b/include/linux/sunrpc/cache.h
-index c3d67e893430..5a3e95017fc6 100644
---- a/include/linux/sunrpc/cache.h
-+++ b/include/linux/sunrpc/cache.h
-@@ -67,7 +67,7 @@ struct cache_detail {
- 	struct module *		owner;
- 	int			hash_size;
- 	struct hlist_head *	hash_table;
--	rwlock_t		hash_lock;
-+	spinlock_t		hash_lock;
+diff --git a/fs/nfsd/cache.h b/fs/nfsd/cache.h
+index bd77d5f6fe53..cbcdc15753b7 100644
+--- a/fs/nfsd/cache.h
++++ b/fs/nfsd/cache.h
+@@ -19,18 +19,20 @@
+  * is much larger than a sockaddr_in6.
+  */
+ struct svc_cacherep {
+-	struct list_head	c_lru;
++	struct {
++		__be32			k_xid;
++		__wsum			k_csum;
++		u32			k_proc;
++		u32			k_prot;
++		u32			k_vers;
++		unsigned int		k_len;
++		struct sockaddr_in6	k_addr;
++	} c_key;
  
- 	char			*name;
- 	void			(*cache_put)(struct kref *);
-diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
-index 593cf8607414..f96345b1180e 100644
---- a/net/sunrpc/cache.c
-+++ b/net/sunrpc/cache.c
-@@ -92,7 +92,7 @@ static struct cache_head *sunrpc_cache_add_entry(struct cache_detail *detail,
- 	cache_init(new, detail);
- 	detail->init(new, key);
++	struct list_head	c_lru;
+ 	unsigned char		c_state,	/* unused, inprog, done */
+ 				c_type,		/* status, buffer */
+ 				c_secure : 1;	/* req came from port < 1024 */
+-	__be32			c_xid;
+-	__wsum			c_csum;
+-	u32			c_proc;
+-	u32			c_prot;
+-	u32			c_vers;
+-	unsigned int		c_len;
+-	struct sockaddr_in6	c_addr;
+ 	unsigned long		c_timestamp;
+ 	union {
+ 		struct kvec	u_vec;
+diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
+index 527ce4c65765..230cc83921ad 100644
+--- a/fs/nfsd/nfscache.c
++++ b/fs/nfsd/nfscache.c
+@@ -131,15 +131,15 @@ nfsd_reply_cache_alloc(struct svc_rqst *rqstp, __wsum csum)
+ 		rp->c_type = RC_NOCACHE;
+ 		INIT_LIST_HEAD(&rp->c_lru);
  
--	write_lock(&detail->hash_lock);
-+	spin_lock(&detail->hash_lock);
- 
- 	/* check if entry appeared while we slept */
- 	hlist_for_each_entry_rcu(tmp, head, cache_list) {
-@@ -104,7 +104,7 @@ static struct cache_head *sunrpc_cache_add_entry(struct cache_detail *detail,
- 				break;
- 			}
- 			cache_get(tmp);
--			write_unlock(&detail->hash_lock);
-+			spin_unlock(&detail->hash_lock);
- 			cache_put(new, detail);
- 			return tmp;
- 		}
-@@ -113,7 +113,7 @@ static struct cache_head *sunrpc_cache_add_entry(struct cache_detail *detail,
- 	hlist_add_head_rcu(&new->cache_list, head);
- 	detail->entries++;
- 	cache_get(new);
--	write_unlock(&detail->hash_lock);
-+	spin_unlock(&detail->hash_lock);
- 
- 	if (freeme)
- 		cache_put(freeme, detail);
-@@ -167,18 +167,18 @@ struct cache_head *sunrpc_cache_update(struct cache_detail *detail,
- 	struct cache_head *tmp;
- 
- 	if (!test_bit(CACHE_VALID, &old->flags)) {
--		write_lock(&detail->hash_lock);
-+		spin_lock(&detail->hash_lock);
- 		if (!test_bit(CACHE_VALID, &old->flags)) {
- 			if (test_bit(CACHE_NEGATIVE, &new->flags))
- 				set_bit(CACHE_NEGATIVE, &old->flags);
- 			else
- 				detail->update(old, new);
- 			cache_fresh_locked(old, new->expiry_time, detail);
--			write_unlock(&detail->hash_lock);
-+			spin_unlock(&detail->hash_lock);
- 			cache_fresh_unlocked(old, detail);
- 			return old;
- 		}
--		write_unlock(&detail->hash_lock);
-+		spin_unlock(&detail->hash_lock);
+-		rp->c_xid = rqstp->rq_xid;
+-		rp->c_proc = rqstp->rq_proc;
+-		memset(&rp->c_addr, 0, sizeof(rp->c_addr));
+-		rpc_copy_addr((struct sockaddr *)&rp->c_addr, svc_addr(rqstp));
+-		rpc_set_port((struct sockaddr *)&rp->c_addr, rpc_get_port(svc_addr(rqstp)));
+-		rp->c_prot = rqstp->rq_prot;
+-		rp->c_vers = rqstp->rq_vers;
+-		rp->c_len = rqstp->rq_arg.len;
+-		rp->c_csum = csum;
++		memset(&rp->c_key, 0, sizeof(rp->c_key));
++		rp->c_key.k_xid = rqstp->rq_xid;
++		rp->c_key.k_proc = rqstp->rq_proc;
++		rpc_copy_addr((struct sockaddr *)&rp->c_key.k_addr, svc_addr(rqstp));
++		rpc_set_port((struct sockaddr *)&rp->c_key.k_addr, rpc_get_port(svc_addr(rqstp)));
++		rp->c_key.k_prot = rqstp->rq_prot;
++		rp->c_key.k_vers = rqstp->rq_vers;
++		rp->c_key.k_len = rqstp->rq_arg.len;
++		rp->c_key.k_csum = csum;
  	}
- 	/* We need to insert a new entry */
- 	tmp = detail->alloc();
-@@ -189,7 +189,7 @@ struct cache_head *sunrpc_cache_update(struct cache_detail *detail,
- 	cache_init(tmp, detail);
- 	detail->init(tmp, old);
- 
--	write_lock(&detail->hash_lock);
-+	spin_lock(&detail->hash_lock);
- 	if (test_bit(CACHE_NEGATIVE, &new->flags))
- 		set_bit(CACHE_NEGATIVE, &tmp->flags);
- 	else
-@@ -199,7 +199,7 @@ struct cache_head *sunrpc_cache_update(struct cache_detail *detail,
- 	cache_get(tmp);
- 	cache_fresh_locked(tmp, new->expiry_time, detail);
- 	cache_fresh_locked(old, 0, detail);
--	write_unlock(&detail->hash_lock);
-+	spin_unlock(&detail->hash_lock);
- 	cache_fresh_unlocked(tmp, detail);
- 	cache_fresh_unlocked(old, detail);
- 	cache_put(old, detail);
-@@ -239,7 +239,7 @@ static int try_to_negate_entry(struct cache_detail *detail, struct cache_head *h
- {
- 	int rv;
- 
--	write_lock(&detail->hash_lock);
-+	spin_lock(&detail->hash_lock);
- 	rv = cache_is_valid(h);
- 	if (rv == -EAGAIN) {
- 		set_bit(CACHE_NEGATIVE, &h->flags);
-@@ -247,7 +247,7 @@ static int try_to_negate_entry(struct cache_detail *detail, struct cache_head *h
- 				   detail);
- 		rv = -ENOENT;
- 	}
--	write_unlock(&detail->hash_lock);
-+	spin_unlock(&detail->hash_lock);
- 	cache_fresh_unlocked(h, detail);
- 	return rv;
+ 	return rp;
  }
-@@ -357,7 +357,7 @@ static struct delayed_work cache_cleaner;
+@@ -330,27 +330,14 @@ nfsd_cache_csum(struct svc_rqst *rqstp)
+ 	return csum;
+ }
  
- void sunrpc_init_cache_detail(struct cache_detail *cd)
+-static bool
+-nfsd_cache_match(const struct svc_cacherep *key, const struct svc_cacherep *rp)
++static int
++nfsd_cache_key_cmp(const struct svc_cacherep *key, const struct svc_cacherep *rp)
  {
--	rwlock_init(&cd->hash_lock);
-+	spin_lock_init(&cd->hash_lock);
- 	INIT_LIST_HEAD(&cd->queue);
- 	spin_lock(&cache_list_lock);
- 	cd->nextcheck = 0;
-@@ -377,11 +377,11 @@ void sunrpc_destroy_cache_detail(struct cache_detail *cd)
- {
- 	cache_purge(cd);
- 	spin_lock(&cache_list_lock);
--	write_lock(&cd->hash_lock);
-+	spin_lock(&cd->hash_lock);
- 	if (current_detail == cd)
- 		current_detail = NULL;
- 	list_del_init(&cd->others);
--	write_unlock(&cd->hash_lock);
-+	spin_unlock(&cd->hash_lock);
- 	spin_unlock(&cache_list_lock);
- 	if (list_empty(&cache_list)) {
- 		/* module must be being unloaded so its safe to kill the worker */
-@@ -438,7 +438,7 @@ static int cache_clean(void)
- 		struct hlist_head *head;
- 		struct hlist_node *tmp;
+-	/* Check RPC XID first */
+-	if (key->c_xid != rp->c_xid)
+-		return false;
+-	/* compare checksum of NFS data */
+-	if (key->c_csum != rp->c_csum) {
++	if (key->c_key.k_xid == rp->c_key.k_xid &&
++	    key->c_key.k_csum != rp->c_key.k_csum)
+ 		++payload_misses;
+-		return false;
+-	}
+-
+-	/* Other discriminators */
+-	if (key->c_proc != rp->c_proc ||
+-	    key->c_prot != rp->c_prot ||
+-	    key->c_vers != rp->c_vers ||
+-	    key->c_len != rp->c_len ||
+-	    memcmp(&key->c_addr, &rp->c_addr, sizeof(key->c_addr)) != 0)
+-		return false;
  
--		write_lock(&current_detail->hash_lock);
-+		spin_lock(&current_detail->hash_lock);
+-	return true;
++	return memcmp(&key->c_key, &rp->c_key, sizeof(key->c_key));
+ }
  
- 		/* Ok, now to clean this strand */
+ /*
+@@ -367,7 +354,7 @@ nfsd_cache_insert(struct nfsd_drc_bucket *b, struct svc_cacherep *key)
  
-@@ -455,7 +455,7 @@ static int cache_clean(void)
+ 	list_for_each_entry(rp, rh, c_lru) {
+ 		++entries;
+-		if (nfsd_cache_match(key, rp)) {
++		if (nfsd_cache_key_cmp(key, rp) == 0) {
+ 			ret = rp;
  			break;
  		}
- 
--		write_unlock(&current_detail->hash_lock);
-+		spin_unlock(&current_detail->hash_lock);
- 		d = current_detail;
- 		if (!ch)
- 			current_index ++;
-@@ -510,9 +510,9 @@ void cache_purge(struct cache_detail *detail)
- 	struct hlist_node *tmp = NULL;
- 	int i = 0;
- 
--	write_lock(&detail->hash_lock);
-+	spin_lock(&detail->hash_lock);
- 	if (!detail->entries) {
--		write_unlock(&detail->hash_lock);
-+		spin_unlock(&detail->hash_lock);
+@@ -510,7 +497,7 @@ nfsd_cache_update(struct svc_rqst *rqstp, int cachetype, __be32 *statp)
+ 	if (!rp)
  		return;
- 	}
  
-@@ -524,13 +524,13 @@ void cache_purge(struct cache_detail *detail)
- 			detail->entries--;
+-	hash = nfsd_cache_hash(rp->c_xid);
++	hash = nfsd_cache_hash(rp->c_key.k_xid);
+ 	b = &drc_hashtbl[hash];
  
- 			set_bit(CACHE_CLEANED, &ch->flags);
--			write_unlock(&detail->hash_lock);
-+			spin_unlock(&detail->hash_lock);
- 			cache_fresh_unlocked(ch, detail);
- 			cache_put(ch, detail);
--			write_lock(&detail->hash_lock);
-+			spin_lock(&detail->hash_lock);
- 		}
- 	}
--	write_unlock(&detail->hash_lock);
-+	spin_unlock(&detail->hash_lock);
- }
- EXPORT_SYMBOL_GPL(cache_purge);
- 
-@@ -1873,13 +1873,13 @@ EXPORT_SYMBOL_GPL(sunrpc_cache_unregister_pipefs);
- 
- void sunrpc_cache_unhash(struct cache_detail *cd, struct cache_head *h)
- {
--	write_lock(&cd->hash_lock);
-+	spin_lock(&cd->hash_lock);
- 	if (!hlist_unhashed(&h->cache_list)){
- 		hlist_del_init_rcu(&h->cache_list);
- 		cd->entries--;
--		write_unlock(&cd->hash_lock);
-+		spin_unlock(&cd->hash_lock);
- 		cache_put(h, cd);
- 	} else
--		write_unlock(&cd->hash_lock);
-+		spin_unlock(&cd->hash_lock);
- }
- EXPORT_SYMBOL_GPL(sunrpc_cache_unhash);
+ 	len = resv->iov_len - ((char*)statp - (char*)resv->iov_base);
 -- 
 2.17.1
