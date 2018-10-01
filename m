@@ -1,77 +1,47 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-sn1nam02on0112.outbound.protection.outlook.com ([104.47.36.112]:56480
-        "EHLO NAM02-SN1-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1729439AbeJAWHX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 1 Oct 2018 18:07:23 -0400
-From: Trond Myklebust <trondmy@hammerspace.com>
-To: "bfields@fieldses.org" <bfields@fieldses.org>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 00/15] Performance improvements for knfsd
-Date: Mon, 1 Oct 2018 15:29:00 +0000
-Message-ID: <eb6effaef3ae7f12846f0ecfc0876d3cd6cd83e4.camel@hammerspace.com>
-References: <20181001144157.3515-1-trond.myklebust@hammerspace.com>
-In-Reply-To: <20181001144157.3515-1-trond.myklebust@hammerspace.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-io1-f68.google.com ([209.85.166.68]:37717 "EHLO
+        mail-io1-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725975AbeJBAzA (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Oct 2018 20:55:00 -0400
+Subject: [PATCH v1 1/4] svcrdma: Reduce max_send_sges
+From: Chuck Lever <chuck.lever@oracle.com>
+To: bfields@fieldses.org
+Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Date: Mon, 01 Oct 2018 14:15:56 -0400
+Message-ID: <20181001181556.2305.66320.stgit@klimt.1015granger.net>
+In-Reply-To: <20181001181414.2305.94635.stgit@klimt.1015granger.net>
+References: <20181001181414.2305.94635.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDE4LTEwLTAxIGF0IDEwOjQxIC0wNDAwLCBUcm9uZCBNeWtsZWJ1c3Qgd3JvdGU6
-DQo+IFRoZSBmb2xsb3dpbmcgc2V0IG9mIHBhdGNoZXMgYWltIHRvIHJlbW92ZSBzb21lIG9mIHRo
-ZSBnbG9iYWwNCj4gc3BpbmxvY2tzDQo+IHRoYXQgYXJlIGN1cnJlbnRseSBiZWluZyB0YWtlbiBk
-dXJpbmcgdGhlIHByb2Nlc3Npbmcgb2YgZXZlcnkNCj4gaW5jb21pbmcNCj4gUlBDIGNhbGwuIE1v
-c3Qgb2YgdGhlc2Ugc3BpbmxvY2tzIGFyZSBwcm90ZWN0aW5nIHJlYWQtbW9zdGx5DQo+IHN0cnVj
-dHVyZXMsDQo+IGFuZCBzbyBjYW4gYmUgcmVwbGFjZWQgd2l0aCB0YWtpbmcgYW4gUkNVIHJlYWQg
-bG9jay4NCj4gDQo+IFRoZSBwYXRjaHNldCBhbHNvIHJlcGxhY2VzIHRoZSBjdXJyZW50IHJlYWRl
-ci93cml0ZXIgc3BpbmxvY2sgaW4gdGhlDQo+IHNlcnZlciBjYWNoZSBpbXBsZW1lbnRhdGlvbiB3
-aXRoIGFuIFJDVSByZWFkIGxvY2sgKyBhIHJlZ3VsYXINCj4gc3BpbmxvY2suDQo+IFRoaXMgZ2l2
-ZXMgYSBzbGlnaHQgc2NhbGFiaWxpdHkgaW1wcm92ZW1lbnQgYnkgYWxsb3dpbmcgbG9va3VwcyB0
-byBiZQ0KPiBjb25jdXJyZW50IHdpdGggdXBkYXRlcyByYXRoZXIgdGhhbiBleGNsdWRpbmcgdGhl
-bS4NCj4gDQo+IEZpbmFsbHksIHRoZXJlIGlzIGEgc2V0IG9mIGNoYW5nZXMgdG8gdGhlIE5GU3Yy
-L3YzL3Y0LjAgZHVwbGljYXRlDQo+IHJlcGx5DQo+IGNhY2hlIHRvIGZ1cnRoZXIgb3B0aW1pc2Ug
-aXQgZm9yIHRoZSBjb21tb24gY2FzZSB3aGVyZSB3ZSdyZSBvbmx5DQo+IGluc2VydGluZyBuZXcg
-ZW50cmllcy4gQnkgdXNpbmcgYSByZWQtYmxhY2sgdHJlZSByYXRoZXIgdGhhbiBhIHNpbXBsZQ0K
-PiBsaW5rZWQgbGlzdCwgd2UgcmVkdWNlIHRoZSB0eXBpY2FsIG51bWJlciBvZiBlbnRyaWVzIHdl
-IG5lZWQgdG8gY2hlY2sNCj4gKGEuay5hLiAiY2hhaW4gbGVuZ3RoIiBpbiAvcHJvYy9mcy9uZnNk
-L3JlcGx5X2NhY2hlX3N0YXRzKSBmcm9tDQo+IHJvdWdobHkgODAgdG8gOSBwZXIgaW5jb21pbmcg
-UlBDIHJlcXVlc3QuIFRoaXMgc2lnbmlmaWNhbnRseSByZWR1Y2VzDQo+IHRoZQ0KPiB0b3RhbCBh
-bW91bnQgb2YgdGltZSBzcGVudCBpbiBuZnNkX2NhY2hlX2xvb2t1cCgpIGFjY29yZGluZyB0bw0K
-PiAncGVyZicuDQo+IA0KPiBUcm9uZCBNeWtsZWJ1c3QgKDE1KToNCj4gICBTVU5SUEM6IFJlbW92
-ZSB0aGUgc2VydmVyICdhdXRodGFiX2xvY2snIGFuZCBqdXN0IHVzZSBSQ1UNCj4gICBTVU5SUEM6
-IEFkZCBsb2NrbGVzcyBsb29rdXAgb2YgdGhlIHNlcnZlcidzIGF1dGggZG9tYWluDQo+ICAgU1VO
-UlBDOiBBbGxvdyBjYWNoZSBsb29rdXBzIHRvIHVzZSBSQ1UgcHJvdGVjdGlvbiByYXRoZXIgdGhh
-biB0aGUNCj4gci93DQo+ICAgICBzcGlubG9jaw0KPiAgIFNVTlJQQzogTWFrZSBzZXJ2ZXIgc2lk
-ZSBBVVRIX1VOSVggdXNlIGxvY2tsZXNzIGxvb2t1cHMNCj4gICBrbmZzZDogQWxsb3cgbG9ja2xl
-c3MgbG9va3VwcyBvZiB0aGUgZXhwb3J0cw0KPiAgIFNVTlJQQzogTG9ja2xlc3Mgc2VydmVyIFJQ
-Q1NFQ19HU1MgY29udGV4dCBsb29rdXANCj4gICBrbmZzZDogTG9ja2xlc3MgbG9va3VwIG9mIE5G
-U3Y0IGlkZW50aXRpZXMuDQo+ICAgTkZTOiBMb2NrbGVzcyBETlMgbG9va3Vwcw0KPiAgIFNVTlJQ
-QzogUmVtb3ZlIG5vbi1SQ1UgcHJvdGVjdGVkIGxvb2t1cA0KPiAgIFNVTlJQQzogUmVwbGFjZSB0
-aGUgY2FjaGVfZGV0YWlsLT5oYXNoX2xvY2sgd2l0aCBhIHJlZ3VsYXIgc3BpbmxvY2sNCj4gICBT
-VU5SUEM6IFNpbXBsaWZ5IFRDUCByZWNlaXZlIGNvZGUNCj4gICBrbmZzZDogUmVtb3ZlIGRlYWQg
-Y29kZSBmcm9tIG5mc2RfY2FjaGVfbG9va3VwDQo+ICAga25mc2Q6IFNpbXBsaWZ5IE5GUyBkdXBs
-aWNhdGUgcmVwbGF5IGNhY2hlDQo+ICAga25mc2Q6IEZ1cnRoZXIgc2ltcGxpZnkgdGhlIGNhY2hl
-IGxvb2t1cA0KPiAgIGtuZnNkOiBJbXByb3ZlIGxvb2t1cCBwZXJmb3JtYW5jZSBpbiB0aGUgZHVw
-bGljYXRlIHJlcGx5IGNhY2hlDQo+IHVzaW5nDQo+ICAgICBhbiByYnRyZWUNCj4gDQo+ICBEb2N1
-bWVudGF0aW9uL2ZpbGVzeXN0ZW1zL25mcy9ycGMtY2FjaGUudHh0IHwgICA2ICstDQo+ICBmcy9u
-ZnMvZG5zX3Jlc29sdmUuYyAgICAgICAgICAgICAgICAgICAgICAgIHwgIDE1ICstDQo+ICBmcy9u
-ZnNkL2NhY2hlLmggICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgIDE5ICsrLQ0KPiAgZnMv
-bmZzZC9leHBvcnQuYyAgICAgICAgICAgICAgICAgICAgICAgICAgICB8ICAxNCArLQ0KPiAgZnMv
-bmZzZC9leHBvcnQuaCAgICAgICAgICAgICAgICAgICAgICAgICAgICB8ICAgMiArDQo+ICBmcy9u
-ZnNkL25mczRpZG1hcC5jICAgICAgICAgICAgICAgICAgICAgICAgIHwgIDExICstDQo+ICBmcy9u
-ZnNkL25mc2NhY2hlLmMgICAgICAgICAgICAgICAgICAgICAgICAgIHwgMTQyICsrKysrKysrKy0t
-LS0tLS0tLQ0KPiAgaW5jbHVkZS9saW51eC9zdW5ycGMvY2FjaGUuaCAgICAgICAgICAgICAgICB8
-ICAxOCArKy0NCj4gIGluY2x1ZGUvbGludXgvc3VucnBjL3N2Y2F1dGguaCAgICAgICAgICAgICAg
-fCAgIDEgKw0KPiAgbmV0L3N1bnJwYy9hdXRoX2dzcy9zdmNhdXRoX2dzcy5jICAgICAgICAgICB8
-ICA0MSArKysrKy0NCj4gIG5ldC9zdW5ycGMvY2FjaGUuYyAgICAgICAgICAgICAgICAgICAgICAg
-ICAgfCAxNTMgKysrKysrKysrKysrLS0tLQ0KPiAtLS0tDQo+ICBuZXQvc3VucnBjL3N2Y2F1dGgu
-YyAgICAgICAgICAgICAgICAgICAgICAgIHwgIDc0ICsrKysrKystLS0NCj4gIG5ldC9zdW5ycGMv
-c3ZjYXV0aF91bml4LmMgICAgICAgICAgICAgICAgICAgfCAgMjQgKystDQo+ICBuZXQvc3VucnBj
-L3N2Y3NvY2suYyAgICAgICAgICAgICAgICAgICAgICAgIHwgIDUzICsrLS0tLS0NCj4gIDE0IGZp
-bGVzIGNoYW5nZWQsIDMyNyBpbnNlcnRpb25zKCspLCAyNDYgZGVsZXRpb25zKC0pDQo+IA0KDQpJ
-IGZvcmdvdCB0byBhZGQuIFRoZSBmdWxsIHBhdGNoc2V0IGlzIGFsc28gaG9zdGVkIG9uIGdpdDov
-L2dpdC5saW51eC0NCm5mcy5vcmcvcHJvamVjdHMvdHJvbmRteS9saW51eC1uZnMuZ2l0IGluIHRo
-ZSAna25mc2QtZGV2ZWwnIGJyYW5jaDoNCg0KZ2l0IHB1bGwgZ2l0Oi8vZ2l0LmxpbnV4LW5mcy5v
-cmcvcHJvamVjdHMvdHJvbmRteS9saW51eC1uZnMuZ2l0IGtuZnNkLQ0KZGV2ZWwNCg0KLS0gDQpU
-cm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lciwgSGFtbWVyc3BhY2UN
-CnRyb25kLm15a2xlYnVzdEBoYW1tZXJzcGFjZS5jb20NCg0KDQo=
+There's no need to request a large number of send SGEs because the
+inline threshold already constrains the number of SGEs per Send.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+ net/sunrpc/xprtrdma/svc_rdma_transport.c |   10 ++++++----
+ 1 file changed, 6 insertions(+), 4 deletions(-)
+
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+index 2848caf..2f7ec89 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+@@ -475,10 +475,12 @@ static struct svc_xprt *svc_rdma_accept(struct svc_xprt *xprt)
+ 
+ 	/* Qualify the transport resource defaults with the
+ 	 * capabilities of this particular device */
+-	newxprt->sc_max_send_sges = dev->attrs.max_send_sge;
+-	/* transport hdr, head iovec, one page list entry, tail iovec */
+-	if (newxprt->sc_max_send_sges < 4) {
+-		pr_err("svcrdma: too few Send SGEs available (%d)\n",
++	/* Transport header, head iovec, tail iovec */
++	newxprt->sc_max_send_sges = 3;
++	/* Add one SGE per page list entry */
++	newxprt->sc_max_send_sges += svcrdma_max_req_size / PAGE_SIZE;
++	if (newxprt->sc_max_send_sges > dev->attrs.max_send_sge) {
++		pr_err("svcrdma: too few Send SGEs available (%d needed)\n",
+ 		       newxprt->sc_max_send_sges);
+ 		goto errout;
+ 	}
