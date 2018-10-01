@@ -1,17 +1,17 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it1-f194.google.com ([209.85.166.194]:38772 "EHLO
-        mail-it1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1729528AbeJAVUl (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Oct 2018 17:20:41 -0400
-Received: by mail-it1-f194.google.com with SMTP id i76-v6so6171739ita.3
-        for <linux-nfs@vger.kernel.org>; Mon, 01 Oct 2018 07:42:32 -0700 (PDT)
+Received: from mail-it1-f195.google.com ([209.85.166.195]:35002 "EHLO
+        mail-it1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1729497AbeJAVUm (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Oct 2018 17:20:42 -0400
+Received: by mail-it1-f195.google.com with SMTP id p64-v6so4681425itp.0
+        for <linux-nfs@vger.kernel.org>; Mon, 01 Oct 2018 07:42:33 -0700 (PDT)
 From: Trond Myklebust <trondmy@gmail.com>
 To: "J . Bruce Fields" <bfields@fieldses.org>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 14/15] knfsd: Further simplify the cache lookup
-Date: Mon,  1 Oct 2018 10:41:56 -0400
-Message-Id: <20181001144157.3515-15-trond.myklebust@hammerspace.com>
-In-Reply-To: <20181001144157.3515-14-trond.myklebust@hammerspace.com>
+Subject: [PATCH 15/15] knfsd: Improve lookup performance in the duplicate reply cache using an rbtree
+Date: Mon,  1 Oct 2018 10:41:57 -0400
+Message-Id: <20181001144157.3515-16-trond.myklebust@hammerspace.com>
+In-Reply-To: <20181001144157.3515-15-trond.myklebust@hammerspace.com>
 References: <20181001144157.3515-1-trond.myklebust@hammerspace.com>
  <20181001144157.3515-2-trond.myklebust@hammerspace.com>
  <20181001144157.3515-3-trond.myklebust@hammerspace.com>
@@ -26,130 +26,147 @@ References: <20181001144157.3515-1-trond.myklebust@hammerspace.com>
  <20181001144157.3515-12-trond.myklebust@hammerspace.com>
  <20181001144157.3515-13-trond.myklebust@hammerspace.com>
  <20181001144157.3515-14-trond.myklebust@hammerspace.com>
+ <20181001144157.3515-15-trond.myklebust@hammerspace.com>
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Order the structure so that the key can be compared using memcmp().
+Use an rbtree to ensure the lookup/insert of an entry in a DRC bucket is
+O(log(N)).
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfsd/cache.h    | 18 ++++++++++--------
- fs/nfsd/nfscache.c | 45 ++++++++++++++++-----------------------------
- 2 files changed, 26 insertions(+), 37 deletions(-)
+ fs/nfsd/cache.h    |  1 +
+ fs/nfsd/nfscache.c | 37 ++++++++++++++++++++++++++-----------
+ 2 files changed, 27 insertions(+), 11 deletions(-)
 
 diff --git a/fs/nfsd/cache.h b/fs/nfsd/cache.h
-index bd77d5f6fe53..cbcdc15753b7 100644
+index cbcdc15753b7..ef1c8aa89ca4 100644
 --- a/fs/nfsd/cache.h
 +++ b/fs/nfsd/cache.h
-@@ -19,18 +19,20 @@
-  * is much larger than a sockaddr_in6.
-  */
- struct svc_cacherep {
--	struct list_head	c_lru;
-+	struct {
-+		__be32			k_xid;
-+		__wsum			k_csum;
-+		u32			k_proc;
-+		u32			k_prot;
-+		u32			k_vers;
-+		unsigned int		k_len;
-+		struct sockaddr_in6	k_addr;
-+	} c_key;
+@@ -29,6 +29,7 @@ struct svc_cacherep {
+ 		struct sockaddr_in6	k_addr;
+ 	} c_key;
  
-+	struct list_head	c_lru;
++	struct rb_node		c_node;
+ 	struct list_head	c_lru;
  	unsigned char		c_state,	/* unused, inprog, done */
  				c_type,		/* status, buffer */
- 				c_secure : 1;	/* req came from port < 1024 */
--	__be32			c_xid;
--	__wsum			c_csum;
--	u32			c_proc;
--	u32			c_prot;
--	u32			c_vers;
--	unsigned int		c_len;
--	struct sockaddr_in6	c_addr;
- 	unsigned long		c_timestamp;
- 	union {
- 		struct kvec	u_vec;
 diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
-index 527ce4c65765..230cc83921ad 100644
+index 230cc83921ad..e2fe0e9ce0df 100644
 --- a/fs/nfsd/nfscache.c
 +++ b/fs/nfsd/nfscache.c
-@@ -131,15 +131,15 @@ nfsd_reply_cache_alloc(struct svc_rqst *rqstp, __wsum csum)
+@@ -30,6 +30,7 @@
+ #define TARGET_BUCKET_SIZE	64
+ 
+ struct nfsd_drc_bucket {
++	struct rb_root rb_head;
+ 	struct list_head lru_head;
+ 	spinlock_t cache_lock;
+ };
+@@ -129,6 +130,7 @@ nfsd_reply_cache_alloc(struct svc_rqst *rqstp, __wsum csum)
+ 	if (rp) {
+ 		rp->c_state = RC_UNUSED;
  		rp->c_type = RC_NOCACHE;
++		RB_CLEAR_NODE(&rp->c_node);
  		INIT_LIST_HEAD(&rp->c_lru);
  
--		rp->c_xid = rqstp->rq_xid;
--		rp->c_proc = rqstp->rq_proc;
--		memset(&rp->c_addr, 0, sizeof(rp->c_addr));
--		rpc_copy_addr((struct sockaddr *)&rp->c_addr, svc_addr(rqstp));
--		rpc_set_port((struct sockaddr *)&rp->c_addr, rpc_get_port(svc_addr(rqstp)));
--		rp->c_prot = rqstp->rq_prot;
--		rp->c_vers = rqstp->rq_vers;
--		rp->c_len = rqstp->rq_arg.len;
--		rp->c_csum = csum;
-+		memset(&rp->c_key, 0, sizeof(rp->c_key));
-+		rp->c_key.k_xid = rqstp->rq_xid;
-+		rp->c_key.k_proc = rqstp->rq_proc;
-+		rpc_copy_addr((struct sockaddr *)&rp->c_key.k_addr, svc_addr(rqstp));
-+		rpc_set_port((struct sockaddr *)&rp->c_key.k_addr, rpc_get_port(svc_addr(rqstp)));
-+		rp->c_key.k_prot = rqstp->rq_prot;
-+		rp->c_key.k_vers = rqstp->rq_vers;
-+		rp->c_key.k_len = rqstp->rq_arg.len;
-+		rp->c_key.k_csum = csum;
- 	}
- 	return rp;
- }
-@@ -330,27 +330,14 @@ nfsd_cache_csum(struct svc_rqst *rqstp)
- 	return csum;
+ 		memset(&rp->c_key, 0, sizeof(rp->c_key));
+@@ -145,13 +147,14 @@ nfsd_reply_cache_alloc(struct svc_rqst *rqstp, __wsum csum)
  }
  
--static bool
--nfsd_cache_match(const struct svc_cacherep *key, const struct svc_cacherep *rp)
-+static int
-+nfsd_cache_key_cmp(const struct svc_cacherep *key, const struct svc_cacherep *rp)
+ static void
+-nfsd_reply_cache_free_locked(struct svc_cacherep *rp)
++nfsd_reply_cache_free_locked(struct nfsd_drc_bucket *b, struct svc_cacherep *rp)
  {
--	/* Check RPC XID first */
--	if (key->c_xid != rp->c_xid)
--		return false;
--	/* compare checksum of NFS data */
--	if (key->c_csum != rp->c_csum) {
-+	if (key->c_key.k_xid == rp->c_key.k_xid &&
-+	    key->c_key.k_csum != rp->c_key.k_csum)
- 		++payload_misses;
--		return false;
--	}
--
--	/* Other discriminators */
--	if (key->c_proc != rp->c_proc ||
--	    key->c_prot != rp->c_prot ||
--	    key->c_vers != rp->c_vers ||
--	    key->c_len != rp->c_len ||
--	    memcmp(&key->c_addr, &rp->c_addr, sizeof(key->c_addr)) != 0)
--		return false;
- 
--	return true;
-+	return memcmp(&key->c_key, &rp->c_key, sizeof(key->c_key));
+ 	if (rp->c_type == RC_REPLBUFF && rp->c_replvec.iov_base) {
+ 		drc_mem_usage -= rp->c_replvec.iov_len;
+ 		kfree(rp->c_replvec.iov_base);
+ 	}
+ 	if (rp->c_state != RC_UNUSED) {
++		rb_erase(&rp->c_node, &b->rb_head);
+ 		list_del(&rp->c_lru);
+ 		atomic_dec(&num_drc_entries);
+ 		drc_mem_usage -= sizeof(*rp);
+@@ -163,7 +166,7 @@ static void
+ nfsd_reply_cache_free(struct nfsd_drc_bucket *b, struct svc_cacherep *rp)
+ {
+ 	spin_lock(&b->cache_lock);
+-	nfsd_reply_cache_free_locked(rp);
++	nfsd_reply_cache_free_locked(b, rp);
+ 	spin_unlock(&b->cache_lock);
  }
  
- /*
-@@ -367,7 +354,7 @@ nfsd_cache_insert(struct nfsd_drc_bucket *b, struct svc_cacherep *key)
- 
- 	list_for_each_entry(rp, rh, c_lru) {
- 		++entries;
--		if (nfsd_cache_match(key, rp)) {
-+		if (nfsd_cache_key_cmp(key, rp) == 0) {
- 			ret = rp;
- 			break;
+@@ -219,7 +222,7 @@ void nfsd_reply_cache_shutdown(void)
+ 		struct list_head *head = &drc_hashtbl[i].lru_head;
+ 		while (!list_empty(head)) {
+ 			rp = list_first_entry(head, struct svc_cacherep, c_lru);
+-			nfsd_reply_cache_free_locked(rp);
++			nfsd_reply_cache_free_locked(&drc_hashtbl[i], rp);
  		}
-@@ -510,7 +497,7 @@ nfsd_cache_update(struct svc_rqst *rqstp, int cachetype, __be32 *statp)
- 	if (!rp)
- 		return;
+ 	}
  
--	hash = nfsd_cache_hash(rp->c_xid);
-+	hash = nfsd_cache_hash(rp->c_key.k_xid);
- 	b = &drc_hashtbl[hash];
+@@ -258,7 +261,7 @@ prune_bucket(struct nfsd_drc_bucket *b)
+ 		if (atomic_read(&num_drc_entries) <= max_drc_entries &&
+ 		    time_before(jiffies, rp->c_timestamp + RC_EXPIRE))
+ 			break;
+-		nfsd_reply_cache_free_locked(rp);
++		nfsd_reply_cache_free_locked(b, rp);
+ 		freed++;
+ 	}
+ 	return freed;
+@@ -349,17 +352,29 @@ static struct svc_cacherep *
+ nfsd_cache_insert(struct nfsd_drc_bucket *b, struct svc_cacherep *key)
+ {
+ 	struct svc_cacherep	*rp, *ret = key;
+-	struct list_head 	*rh = &b->lru_head;
++	struct rb_node		**p = &b->rb_head.rb_node,
++				*parent = NULL;
+ 	unsigned int		entries = 0;
++	int cmp;
  
- 	len = resv->iov_len - ((char*)statp - (char*)resv->iov_base);
+-	list_for_each_entry(rp, rh, c_lru) {
++	while (*p != NULL) {
+ 		++entries;
+-		if (nfsd_cache_key_cmp(key, rp) == 0) {
++		parent = *p;
++		rp = rb_entry(parent, struct svc_cacherep, c_node);
++
++		cmp = nfsd_cache_key_cmp(key, rp);
++		if (cmp < 0)
++			p = &parent->rb_left;
++		else if (cmp > 0)
++			p = &parent->rb_right;
++		else {
+ 			ret = rp;
+-			break;
++			goto out;
+ 		}
+ 	}
+-
++	rb_link_node(&key->c_node, parent, p);
++	rb_insert_color(&key->c_node, &b->rb_head);
++out:
+ 	/* tally hash chain length stats */
+ 	if (entries > longest_chain) {
+ 		longest_chain = entries;
+@@ -414,7 +429,7 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
+ 	spin_lock(&b->cache_lock);
+ 	found = nfsd_cache_insert(b, rp);
+ 	if (found != rp) {
+-		nfsd_reply_cache_free_locked(rp);
++		nfsd_reply_cache_free_locked(NULL, rp);
+ 		rp = found;
+ 		goto found_entry;
+ 	}
+@@ -462,7 +477,7 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
+ 		break;
+ 	default:
+ 		printk(KERN_WARNING "nfsd: bad repcache type %d\n", rp->c_type);
+-		nfsd_reply_cache_free_locked(rp);
++		nfsd_reply_cache_free_locked(b, rp);
+ 	}
+ 
+ 	goto out;
 -- 
 2.17.1
