@@ -1,140 +1,77 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it1-f171.google.com ([209.85.166.171]:40293 "EHLO
-        mail-it1-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1729499AbeJAVUi (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Oct 2018 17:20:38 -0400
-Received: by mail-it1-f171.google.com with SMTP id i191-v6so5961278iti.5
-        for <linux-nfs@vger.kernel.org>; Mon, 01 Oct 2018 07:42:30 -0700 (PDT)
-From: Trond Myklebust <trondmy@gmail.com>
-To: "J . Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 11/15] SUNRPC: Simplify TCP receive code
-Date: Mon,  1 Oct 2018 10:41:53 -0400
-Message-Id: <20181001144157.3515-12-trond.myklebust@hammerspace.com>
-In-Reply-To: <20181001144157.3515-11-trond.myklebust@hammerspace.com>
+Received: from mail-sn1nam02on0112.outbound.protection.outlook.com ([104.47.36.112]:56480
+        "EHLO NAM02-SN1-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1729439AbeJAWHX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 1 Oct 2018 18:07:23 -0400
+From: Trond Myklebust <trondmy@hammerspace.com>
+To: "bfields@fieldses.org" <bfields@fieldses.org>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 00/15] Performance improvements for knfsd
+Date: Mon, 1 Oct 2018 15:29:00 +0000
+Message-ID: <eb6effaef3ae7f12846f0ecfc0876d3cd6cd83e4.camel@hammerspace.com>
 References: <20181001144157.3515-1-trond.myklebust@hammerspace.com>
- <20181001144157.3515-2-trond.myklebust@hammerspace.com>
- <20181001144157.3515-3-trond.myklebust@hammerspace.com>
- <20181001144157.3515-4-trond.myklebust@hammerspace.com>
- <20181001144157.3515-5-trond.myklebust@hammerspace.com>
- <20181001144157.3515-6-trond.myklebust@hammerspace.com>
- <20181001144157.3515-7-trond.myklebust@hammerspace.com>
- <20181001144157.3515-8-trond.myklebust@hammerspace.com>
- <20181001144157.3515-9-trond.myklebust@hammerspace.com>
- <20181001144157.3515-10-trond.myklebust@hammerspace.com>
- <20181001144157.3515-11-trond.myklebust@hammerspace.com>
+In-Reply-To: <20181001144157.3515-1-trond.myklebust@hammerspace.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Use the fact that the iov iterators already have functionality for
-skipping a base offset.
-
-Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
----
- net/sunrpc/svcsock.c | 53 ++++++++++++--------------------------------
- 1 file changed, 14 insertions(+), 39 deletions(-)
-
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 5445145e639c..64765f08ae07 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -325,59 +325,34 @@ static int svc_one_sock_name(struct svc_sock *svsk, char *buf, int remaining)
- /*
-  * Generic recvfrom routine.
-  */
--static int svc_recvfrom(struct svc_rqst *rqstp, struct kvec *iov, int nr,
--			int buflen)
-+static ssize_t svc_recvfrom(struct svc_rqst *rqstp, struct kvec *iov,
-+			    unsigned int nr, size_t buflen, unsigned int base)
- {
- 	struct svc_sock *svsk =
- 		container_of(rqstp->rq_xprt, struct svc_sock, sk_xprt);
--	struct msghdr msg = {
--		.msg_flags	= MSG_DONTWAIT,
--	};
--	int len;
-+	struct msghdr msg = { NULL };
-+	ssize_t len;
- 
- 	rqstp->rq_xprt_hlen = 0;
- 
- 	clear_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags);
- 	iov_iter_kvec(&msg.msg_iter, READ | ITER_KVEC, iov, nr, buflen);
--	len = sock_recvmsg(svsk->sk_sock, &msg, msg.msg_flags);
-+	if (base != 0) {
-+		iov_iter_advance(&msg.msg_iter, base);
-+		buflen -= base;
-+	}
-+	len = sock_recvmsg(svsk->sk_sock, &msg, MSG_DONTWAIT);
- 	/* If we read a full record, then assume there may be more
- 	 * data to read (stream based sockets only!)
- 	 */
- 	if (len == buflen)
- 		set_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags);
- 
--	dprintk("svc: socket %p recvfrom(%p, %zu) = %d\n",
-+	dprintk("svc: socket %p recvfrom(%p, %zu) = %zd\n",
- 		svsk, iov[0].iov_base, iov[0].iov_len, len);
- 	return len;
- }
- 
--static int svc_partial_recvfrom(struct svc_rqst *rqstp,
--				struct kvec *iov, int nr,
--				int buflen, unsigned int base)
--{
--	size_t save_iovlen;
--	void *save_iovbase;
--	unsigned int i;
--	int ret;
--
--	if (base == 0)
--		return svc_recvfrom(rqstp, iov, nr, buflen);
--
--	for (i = 0; i < nr; i++) {
--		if (iov[i].iov_len > base)
--			break;
--		base -= iov[i].iov_len;
--	}
--	save_iovlen = iov[i].iov_len;
--	save_iovbase = iov[i].iov_base;
--	iov[i].iov_len -= base;
--	iov[i].iov_base += base;
--	ret = svc_recvfrom(rqstp, &iov[i], nr - i, buflen);
--	iov[i].iov_len = save_iovlen;
--	iov[i].iov_base = save_iovbase;
--	return ret;
--}
--
- /*
-  * Set socket snd and rcv buffer lengths
-  */
-@@ -962,7 +937,8 @@ static int svc_tcp_recv_record(struct svc_sock *svsk, struct svc_rqst *rqstp)
- 		want = sizeof(rpc_fraghdr) - svsk->sk_tcplen;
- 		iov.iov_base = ((char *) &svsk->sk_reclen) + svsk->sk_tcplen;
- 		iov.iov_len  = want;
--		if ((len = svc_recvfrom(rqstp, &iov, 1, want)) < 0)
-+		len = svc_recvfrom(rqstp, &iov, 1, want, 0);
-+		if (len < 0)
- 			goto error;
- 		svsk->sk_tcplen += len;
- 
-@@ -1088,14 +1064,13 @@ static int svc_tcp_recvfrom(struct svc_rqst *rqstp)
- 
- 	vec = rqstp->rq_vec;
- 
--	pnum = copy_pages_to_kvecs(&vec[0], &rqstp->rq_pages[0],
--						svsk->sk_datalen + want);
-+	pnum = copy_pages_to_kvecs(&vec[0], &rqstp->rq_pages[0], base + want);
- 
- 	rqstp->rq_respages = &rqstp->rq_pages[pnum];
- 	rqstp->rq_next_page = rqstp->rq_respages + 1;
- 
- 	/* Now receive data */
--	len = svc_partial_recvfrom(rqstp, vec, pnum, want, base);
-+	len = svc_recvfrom(rqstp, vec, pnum, base + want, base);
- 	if (len >= 0) {
- 		svsk->sk_tcplen += len;
- 		svsk->sk_datalen += len;
--- 
-2.17.1
+T24gTW9uLCAyMDE4LTEwLTAxIGF0IDEwOjQxIC0wNDAwLCBUcm9uZCBNeWtsZWJ1c3Qgd3JvdGU6
+DQo+IFRoZSBmb2xsb3dpbmcgc2V0IG9mIHBhdGNoZXMgYWltIHRvIHJlbW92ZSBzb21lIG9mIHRo
+ZSBnbG9iYWwNCj4gc3BpbmxvY2tzDQo+IHRoYXQgYXJlIGN1cnJlbnRseSBiZWluZyB0YWtlbiBk
+dXJpbmcgdGhlIHByb2Nlc3Npbmcgb2YgZXZlcnkNCj4gaW5jb21pbmcNCj4gUlBDIGNhbGwuIE1v
+c3Qgb2YgdGhlc2Ugc3BpbmxvY2tzIGFyZSBwcm90ZWN0aW5nIHJlYWQtbW9zdGx5DQo+IHN0cnVj
+dHVyZXMsDQo+IGFuZCBzbyBjYW4gYmUgcmVwbGFjZWQgd2l0aCB0YWtpbmcgYW4gUkNVIHJlYWQg
+bG9jay4NCj4gDQo+IFRoZSBwYXRjaHNldCBhbHNvIHJlcGxhY2VzIHRoZSBjdXJyZW50IHJlYWRl
+ci93cml0ZXIgc3BpbmxvY2sgaW4gdGhlDQo+IHNlcnZlciBjYWNoZSBpbXBsZW1lbnRhdGlvbiB3
+aXRoIGFuIFJDVSByZWFkIGxvY2sgKyBhIHJlZ3VsYXINCj4gc3BpbmxvY2suDQo+IFRoaXMgZ2l2
+ZXMgYSBzbGlnaHQgc2NhbGFiaWxpdHkgaW1wcm92ZW1lbnQgYnkgYWxsb3dpbmcgbG9va3VwcyB0
+byBiZQ0KPiBjb25jdXJyZW50IHdpdGggdXBkYXRlcyByYXRoZXIgdGhhbiBleGNsdWRpbmcgdGhl
+bS4NCj4gDQo+IEZpbmFsbHksIHRoZXJlIGlzIGEgc2V0IG9mIGNoYW5nZXMgdG8gdGhlIE5GU3Yy
+L3YzL3Y0LjAgZHVwbGljYXRlDQo+IHJlcGx5DQo+IGNhY2hlIHRvIGZ1cnRoZXIgb3B0aW1pc2Ug
+aXQgZm9yIHRoZSBjb21tb24gY2FzZSB3aGVyZSB3ZSdyZSBvbmx5DQo+IGluc2VydGluZyBuZXcg
+ZW50cmllcy4gQnkgdXNpbmcgYSByZWQtYmxhY2sgdHJlZSByYXRoZXIgdGhhbiBhIHNpbXBsZQ0K
+PiBsaW5rZWQgbGlzdCwgd2UgcmVkdWNlIHRoZSB0eXBpY2FsIG51bWJlciBvZiBlbnRyaWVzIHdl
+IG5lZWQgdG8gY2hlY2sNCj4gKGEuay5hLiAiY2hhaW4gbGVuZ3RoIiBpbiAvcHJvYy9mcy9uZnNk
+L3JlcGx5X2NhY2hlX3N0YXRzKSBmcm9tDQo+IHJvdWdobHkgODAgdG8gOSBwZXIgaW5jb21pbmcg
+UlBDIHJlcXVlc3QuIFRoaXMgc2lnbmlmaWNhbnRseSByZWR1Y2VzDQo+IHRoZQ0KPiB0b3RhbCBh
+bW91bnQgb2YgdGltZSBzcGVudCBpbiBuZnNkX2NhY2hlX2xvb2t1cCgpIGFjY29yZGluZyB0bw0K
+PiAncGVyZicuDQo+IA0KPiBUcm9uZCBNeWtsZWJ1c3QgKDE1KToNCj4gICBTVU5SUEM6IFJlbW92
+ZSB0aGUgc2VydmVyICdhdXRodGFiX2xvY2snIGFuZCBqdXN0IHVzZSBSQ1UNCj4gICBTVU5SUEM6
+IEFkZCBsb2NrbGVzcyBsb29rdXAgb2YgdGhlIHNlcnZlcidzIGF1dGggZG9tYWluDQo+ICAgU1VO
+UlBDOiBBbGxvdyBjYWNoZSBsb29rdXBzIHRvIHVzZSBSQ1UgcHJvdGVjdGlvbiByYXRoZXIgdGhh
+biB0aGUNCj4gci93DQo+ICAgICBzcGlubG9jaw0KPiAgIFNVTlJQQzogTWFrZSBzZXJ2ZXIgc2lk
+ZSBBVVRIX1VOSVggdXNlIGxvY2tsZXNzIGxvb2t1cHMNCj4gICBrbmZzZDogQWxsb3cgbG9ja2xl
+c3MgbG9va3VwcyBvZiB0aGUgZXhwb3J0cw0KPiAgIFNVTlJQQzogTG9ja2xlc3Mgc2VydmVyIFJQ
+Q1NFQ19HU1MgY29udGV4dCBsb29rdXANCj4gICBrbmZzZDogTG9ja2xlc3MgbG9va3VwIG9mIE5G
+U3Y0IGlkZW50aXRpZXMuDQo+ICAgTkZTOiBMb2NrbGVzcyBETlMgbG9va3Vwcw0KPiAgIFNVTlJQ
+QzogUmVtb3ZlIG5vbi1SQ1UgcHJvdGVjdGVkIGxvb2t1cA0KPiAgIFNVTlJQQzogUmVwbGFjZSB0
+aGUgY2FjaGVfZGV0YWlsLT5oYXNoX2xvY2sgd2l0aCBhIHJlZ3VsYXIgc3BpbmxvY2sNCj4gICBT
+VU5SUEM6IFNpbXBsaWZ5IFRDUCByZWNlaXZlIGNvZGUNCj4gICBrbmZzZDogUmVtb3ZlIGRlYWQg
+Y29kZSBmcm9tIG5mc2RfY2FjaGVfbG9va3VwDQo+ICAga25mc2Q6IFNpbXBsaWZ5IE5GUyBkdXBs
+aWNhdGUgcmVwbGF5IGNhY2hlDQo+ICAga25mc2Q6IEZ1cnRoZXIgc2ltcGxpZnkgdGhlIGNhY2hl
+IGxvb2t1cA0KPiAgIGtuZnNkOiBJbXByb3ZlIGxvb2t1cCBwZXJmb3JtYW5jZSBpbiB0aGUgZHVw
+bGljYXRlIHJlcGx5IGNhY2hlDQo+IHVzaW5nDQo+ICAgICBhbiByYnRyZWUNCj4gDQo+ICBEb2N1
+bWVudGF0aW9uL2ZpbGVzeXN0ZW1zL25mcy9ycGMtY2FjaGUudHh0IHwgICA2ICstDQo+ICBmcy9u
+ZnMvZG5zX3Jlc29sdmUuYyAgICAgICAgICAgICAgICAgICAgICAgIHwgIDE1ICstDQo+ICBmcy9u
+ZnNkL2NhY2hlLmggICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgIDE5ICsrLQ0KPiAgZnMv
+bmZzZC9leHBvcnQuYyAgICAgICAgICAgICAgICAgICAgICAgICAgICB8ICAxNCArLQ0KPiAgZnMv
+bmZzZC9leHBvcnQuaCAgICAgICAgICAgICAgICAgICAgICAgICAgICB8ICAgMiArDQo+ICBmcy9u
+ZnNkL25mczRpZG1hcC5jICAgICAgICAgICAgICAgICAgICAgICAgIHwgIDExICstDQo+ICBmcy9u
+ZnNkL25mc2NhY2hlLmMgICAgICAgICAgICAgICAgICAgICAgICAgIHwgMTQyICsrKysrKysrKy0t
+LS0tLS0tLQ0KPiAgaW5jbHVkZS9saW51eC9zdW5ycGMvY2FjaGUuaCAgICAgICAgICAgICAgICB8
+ICAxOCArKy0NCj4gIGluY2x1ZGUvbGludXgvc3VucnBjL3N2Y2F1dGguaCAgICAgICAgICAgICAg
+fCAgIDEgKw0KPiAgbmV0L3N1bnJwYy9hdXRoX2dzcy9zdmNhdXRoX2dzcy5jICAgICAgICAgICB8
+ICA0MSArKysrKy0NCj4gIG5ldC9zdW5ycGMvY2FjaGUuYyAgICAgICAgICAgICAgICAgICAgICAg
+ICAgfCAxNTMgKysrKysrKysrKysrLS0tLQ0KPiAtLS0tDQo+ICBuZXQvc3VucnBjL3N2Y2F1dGgu
+YyAgICAgICAgICAgICAgICAgICAgICAgIHwgIDc0ICsrKysrKystLS0NCj4gIG5ldC9zdW5ycGMv
+c3ZjYXV0aF91bml4LmMgICAgICAgICAgICAgICAgICAgfCAgMjQgKystDQo+ICBuZXQvc3VucnBj
+L3N2Y3NvY2suYyAgICAgICAgICAgICAgICAgICAgICAgIHwgIDUzICsrLS0tLS0NCj4gIDE0IGZp
+bGVzIGNoYW5nZWQsIDMyNyBpbnNlcnRpb25zKCspLCAyNDYgZGVsZXRpb25zKC0pDQo+IA0KDQpJ
+IGZvcmdvdCB0byBhZGQuIFRoZSBmdWxsIHBhdGNoc2V0IGlzIGFsc28gaG9zdGVkIG9uIGdpdDov
+L2dpdC5saW51eC0NCm5mcy5vcmcvcHJvamVjdHMvdHJvbmRteS9saW51eC1uZnMuZ2l0IGluIHRo
+ZSAna25mc2QtZGV2ZWwnIGJyYW5jaDoNCg0KZ2l0IHB1bGwgZ2l0Oi8vZ2l0LmxpbnV4LW5mcy5v
+cmcvcHJvamVjdHMvdHJvbmRteS9saW51eC1uZnMuZ2l0IGtuZnNkLQ0KZGV2ZWwNCg0KLS0gDQpU
+cm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lciwgSGFtbWVyc3BhY2UN
+CnRyb25kLm15a2xlYnVzdEBoYW1tZXJzcGFjZS5jb20NCg0KDQo=
