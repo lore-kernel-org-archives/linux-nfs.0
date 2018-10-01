@@ -1,154 +1,77 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it1-f194.google.com ([209.85.166.194]:34964 "EHLO
-        mail-it1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1729439AbeJAVUb (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Oct 2018 17:20:31 -0400
-Received: by mail-it1-f194.google.com with SMTP id p64-v6so4680427itp.0
-        for <linux-nfs@vger.kernel.org>; Mon, 01 Oct 2018 07:42:22 -0700 (PDT)
+Received: from mail-it1-f195.google.com ([209.85.166.195]:37266 "EHLO
+        mail-it1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1729489AbeJAVUe (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Oct 2018 17:20:34 -0400
+Received: by mail-it1-f195.google.com with SMTP id m9-v6so11757022ita.2
+        for <linux-nfs@vger.kernel.org>; Mon, 01 Oct 2018 07:42:26 -0700 (PDT)
 From: Trond Myklebust <trondmy@gmail.com>
 To: "J . Bruce Fields" <bfields@fieldses.org>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 02/15] SUNRPC: Add lockless lookup of the server's auth domain
-Date: Mon,  1 Oct 2018 10:41:44 -0400
-Message-Id: <20181001144157.3515-3-trond.myklebust@hammerspace.com>
-In-Reply-To: <20181001144157.3515-2-trond.myklebust@hammerspace.com>
+Subject: [PATCH 07/15] knfsd: Lockless lookup of NFSv4 identities.
+Date: Mon,  1 Oct 2018 10:41:49 -0400
+Message-Id: <20181001144157.3515-8-trond.myklebust@hammerspace.com>
+In-Reply-To: <20181001144157.3515-7-trond.myklebust@hammerspace.com>
 References: <20181001144157.3515-1-trond.myklebust@hammerspace.com>
  <20181001144157.3515-2-trond.myklebust@hammerspace.com>
+ <20181001144157.3515-3-trond.myklebust@hammerspace.com>
+ <20181001144157.3515-4-trond.myklebust@hammerspace.com>
+ <20181001144157.3515-5-trond.myklebust@hammerspace.com>
+ <20181001144157.3515-6-trond.myklebust@hammerspace.com>
+ <20181001144157.3515-7-trond.myklebust@hammerspace.com>
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Avoid taking the global auth_domain_lock in most lookups of the auth domain
-by adding an RCU protected lookup.
+Enable RCU protected lookups of the NFSv4 idmap.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- include/linux/sunrpc/svcauth.h    |  1 +
- net/sunrpc/auth_gss/svcauth_gss.c |  9 ++++++++-
- net/sunrpc/svcauth.c              | 22 +++++++++++++++++++---
- net/sunrpc/svcauth_unix.c         | 10 ++++++++--
- 4 files changed, 36 insertions(+), 6 deletions(-)
+ fs/nfsd/nfs4idmap.c | 11 ++++++-----
+ 1 file changed, 6 insertions(+), 5 deletions(-)
 
-diff --git a/include/linux/sunrpc/svcauth.h b/include/linux/sunrpc/svcauth.h
-index 04e404a07882..3e53a6e2ada7 100644
---- a/include/linux/sunrpc/svcauth.h
-+++ b/include/linux/sunrpc/svcauth.h
-@@ -82,6 +82,7 @@ struct auth_domain {
- 	struct hlist_node	hash;
- 	char			*name;
- 	struct auth_ops		*flavour;
-+	struct rcu_head		rcu_head;
+diff --git a/fs/nfsd/nfs4idmap.c b/fs/nfsd/nfs4idmap.c
+index a5bb76593ce7..bf137fec33ff 100644
+--- a/fs/nfsd/nfs4idmap.c
++++ b/fs/nfsd/nfs4idmap.c
+@@ -65,6 +65,7 @@ struct ent {
+ 	u32               id;
+ 	char              name[IDMAP_NAMESZ];
+ 	char              authname[IDMAP_NAMESZ];
++	struct rcu_head	  rcu_head;
  };
  
- /*
-diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
-index 860f2a1bbb67..87c71fb0f0ea 100644
---- a/net/sunrpc/auth_gss/svcauth_gss.c
-+++ b/net/sunrpc/auth_gss/svcauth_gss.c
-@@ -1764,14 +1764,21 @@ svcauth_gss_release(struct svc_rqst *rqstp)
- }
- 
- static void
--svcauth_gss_domain_release(struct auth_domain *dom)
-+svcauth_gss_domain_release_rcu(struct rcu_head *head)
+ /* Common entry handling */
+@@ -89,7 +90,7 @@ static void
+ ent_put(struct kref *ref)
  {
-+	struct auth_domain *dom = container_of(head, struct auth_domain, rcu_head);
- 	struct gss_domain *gd = container_of(dom, struct gss_domain, h);
- 
- 	kfree(dom->name);
- 	kfree(gd);
+ 	struct ent *map = container_of(ref, struct ent, h.ref);
+-	kfree(map);
++	kfree_rcu(map, rcu_head);
  }
  
-+static void
-+svcauth_gss_domain_release(struct auth_domain *dom)
-+{
-+	call_rcu(&dom->rcu_head, svcauth_gss_domain_release_rcu);
-+}
-+
- static struct auth_ops svcauthops_gss = {
- 	.name		= "rpcsec_gss",
- 	.owner		= THIS_MODULE,
-diff --git a/net/sunrpc/svcauth.c b/net/sunrpc/svcauth.c
-index f83443856cd1..775b8c94265b 100644
---- a/net/sunrpc/svcauth.c
-+++ b/net/sunrpc/svcauth.c
-@@ -143,10 +143,11 @@ static struct hlist_head	auth_domain_table[DN_HASHMAX];
- static DEFINE_SPINLOCK(auth_domain_lock);
- 
- static void auth_domain_release(struct kref *kref)
-+	__releases(&auth_domain_lock)
+ static struct cache_head *
+@@ -264,8 +265,8 @@ idtoname_parse(struct cache_detail *cd, char *buf, int buflen)
+ static struct ent *
+ idtoname_lookup(struct cache_detail *cd, struct ent *item)
  {
- 	struct auth_domain *dom = container_of(kref, struct auth_domain, ref);
- 
--	hlist_del(&dom->hash);
-+	hlist_del_rcu(&dom->hash);
- 	dom->flavour->domain_release(dom);
- 	spin_unlock(&auth_domain_lock);
- }
-@@ -175,7 +176,7 @@ auth_domain_lookup(char *name, struct auth_domain *new)
- 		}
- 	}
- 	if (new)
--		hlist_add_head(&new->hash, head);
-+		hlist_add_head_rcu(&new->hash, head);
- 	spin_unlock(&auth_domain_lock);
- 	return new;
- }
-@@ -183,6 +184,21 @@ EXPORT_SYMBOL_GPL(auth_domain_lookup);
- 
- struct auth_domain *auth_domain_find(char *name)
+-	struct cache_head *ch = sunrpc_cache_lookup(cd, &item->h,
+-						    idtoname_hash(item));
++	struct cache_head *ch = sunrpc_cache_lookup_rcu(cd, &item->h,
++							idtoname_hash(item));
+ 	if (ch)
+ 		return container_of(ch, struct ent, h);
+ 	else
+@@ -422,8 +423,8 @@ nametoid_parse(struct cache_detail *cd, char *buf, int buflen)
+ static struct ent *
+ nametoid_lookup(struct cache_detail *cd, struct ent *item)
  {
--	return auth_domain_lookup(name, NULL);
-+	struct auth_domain *hp;
-+	struct hlist_head *head;
-+
-+	head = &auth_domain_table[hash_str(name, DN_HASHBITS)];
-+
-+	rcu_read_lock();
-+	hlist_for_each_entry_rcu(hp, head, hash) {
-+		if (strcmp(hp->name, name)==0) {
-+			if (!kref_get_unless_zero(&hp->ref))
-+				hp = NULL;
-+			rcu_read_unlock();
-+			return hp;
-+		}
-+	}
-+	rcu_read_unlock();
-+	return NULL;
- }
- EXPORT_SYMBOL_GPL(auth_domain_find);
-diff --git a/net/sunrpc/svcauth_unix.c b/net/sunrpc/svcauth_unix.c
-index af7f28fb8102..84cf39021a03 100644
---- a/net/sunrpc/svcauth_unix.c
-+++ b/net/sunrpc/svcauth_unix.c
-@@ -37,20 +37,26 @@ struct unix_domain {
- extern struct auth_ops svcauth_null;
- extern struct auth_ops svcauth_unix;
- 
--static void svcauth_unix_domain_release(struct auth_domain *dom)
-+static void svcauth_unix_domain_release_rcu(struct rcu_head *head)
- {
-+	struct auth_domain *dom = container_of(head, struct auth_domain, rcu_head);
- 	struct unix_domain *ud = container_of(dom, struct unix_domain, h);
- 
- 	kfree(dom->name);
- 	kfree(ud);
- }
- 
-+static void svcauth_unix_domain_release(struct auth_domain *dom)
-+{
-+	call_rcu(&dom->rcu_head, svcauth_unix_domain_release_rcu);
-+}
-+
- struct auth_domain *unix_domain_find(char *name)
- {
- 	struct auth_domain *rv;
- 	struct unix_domain *new = NULL;
- 
--	rv = auth_domain_lookup(name, NULL);
-+	rv = auth_domain_find(name);
- 	while(1) {
- 		if (rv) {
- 			if (new && rv != &new->h)
+-	struct cache_head *ch = sunrpc_cache_lookup(cd, &item->h,
+-						    nametoid_hash(item));
++	struct cache_head *ch = sunrpc_cache_lookup_rcu(cd, &item->h,
++							nametoid_hash(item));
+ 	if (ch)
+ 		return container_of(ch, struct ent, h);
+ 	else
 -- 
 2.17.1
