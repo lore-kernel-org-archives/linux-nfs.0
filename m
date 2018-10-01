@@ -1,17 +1,17 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it1-f193.google.com ([209.85.166.193]:55577 "EHLO
-        mail-it1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1729497AbeJAVUh (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Oct 2018 17:20:37 -0400
-Received: by mail-it1-f193.google.com with SMTP id c23-v6so11592901itd.5
-        for <linux-nfs@vger.kernel.org>; Mon, 01 Oct 2018 07:42:28 -0700 (PDT)
+Received: from mail-it1-f171.google.com ([209.85.166.171]:40293 "EHLO
+        mail-it1-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1729499AbeJAVUi (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Oct 2018 17:20:38 -0400
+Received: by mail-it1-f171.google.com with SMTP id i191-v6so5961278iti.5
+        for <linux-nfs@vger.kernel.org>; Mon, 01 Oct 2018 07:42:30 -0700 (PDT)
 From: Trond Myklebust <trondmy@gmail.com>
 To: "J . Bruce Fields" <bfields@fieldses.org>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 09/15] SUNRPC: Remove non-RCU protected lookup
-Date: Mon,  1 Oct 2018 10:41:51 -0400
-Message-Id: <20181001144157.3515-10-trond.myklebust@hammerspace.com>
-In-Reply-To: <20181001144157.3515-9-trond.myklebust@hammerspace.com>
+Subject: [PATCH 11/15] SUNRPC: Simplify TCP receive code
+Date: Mon,  1 Oct 2018 10:41:53 -0400
+Message-Id: <20181001144157.3515-12-trond.myklebust@hammerspace.com>
+In-Reply-To: <20181001144157.3515-11-trond.myklebust@hammerspace.com>
 References: <20181001144157.3515-1-trond.myklebust@hammerspace.com>
  <20181001144157.3515-2-trond.myklebust@hammerspace.com>
  <20181001144157.3515-3-trond.myklebust@hammerspace.com>
@@ -21,173 +21,120 @@ References: <20181001144157.3515-1-trond.myklebust@hammerspace.com>
  <20181001144157.3515-7-trond.myklebust@hammerspace.com>
  <20181001144157.3515-8-trond.myklebust@hammerspace.com>
  <20181001144157.3515-9-trond.myklebust@hammerspace.com>
+ <20181001144157.3515-10-trond.myklebust@hammerspace.com>
+ <20181001144157.3515-11-trond.myklebust@hammerspace.com>
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up the cache code by removing the non-RCU protected lookup.
+Use the fact that the iov iterators already have functionality for
+skipping a base offset.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- Documentation/filesystems/nfs/rpc-cache.txt |  6 +-
- include/linux/sunrpc/cache.h                |  6 --
- net/sunrpc/cache.c                          | 61 ++-------------------
- 3 files changed, 7 insertions(+), 66 deletions(-)
+ net/sunrpc/svcsock.c | 53 ++++++++++++--------------------------------
+ 1 file changed, 14 insertions(+), 39 deletions(-)
 
-diff --git a/Documentation/filesystems/nfs/rpc-cache.txt b/Documentation/filesystems/nfs/rpc-cache.txt
-index ebcaaee21616..c4dac829db0f 100644
---- a/Documentation/filesystems/nfs/rpc-cache.txt
-+++ b/Documentation/filesystems/nfs/rpc-cache.txt
-@@ -84,7 +84,7 @@ Creating a Cache
- 		A message from user space has arrived to fill out a
- 		cache entry.  It is in 'buf' of length 'len'.
- 		cache_parse should parse this, find the item in the
--		cache with sunrpc_cache_lookup, and update the item
-+		cache with sunrpc_cache_lookup_rcu, and update the item
- 		with sunrpc_cache_update.
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index 5445145e639c..64765f08ae07 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -325,59 +325,34 @@ static int svc_one_sock_name(struct svc_sock *svsk, char *buf, int remaining)
+ /*
+  * Generic recvfrom routine.
+  */
+-static int svc_recvfrom(struct svc_rqst *rqstp, struct kvec *iov, int nr,
+-			int buflen)
++static ssize_t svc_recvfrom(struct svc_rqst *rqstp, struct kvec *iov,
++			    unsigned int nr, size_t buflen, unsigned int base)
+ {
+ 	struct svc_sock *svsk =
+ 		container_of(rqstp->rq_xprt, struct svc_sock, sk_xprt);
+-	struct msghdr msg = {
+-		.msg_flags	= MSG_DONTWAIT,
+-	};
+-	int len;
++	struct msghdr msg = { NULL };
++	ssize_t len;
  
+ 	rqstp->rq_xprt_hlen = 0;
  
-@@ -95,7 +95,7 @@ Creating a Cache
- Using a cache
- -------------
+ 	clear_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags);
+ 	iov_iter_kvec(&msg.msg_iter, READ | ITER_KVEC, iov, nr, buflen);
+-	len = sock_recvmsg(svsk->sk_sock, &msg, msg.msg_flags);
++	if (base != 0) {
++		iov_iter_advance(&msg.msg_iter, base);
++		buflen -= base;
++	}
++	len = sock_recvmsg(svsk->sk_sock, &msg, MSG_DONTWAIT);
+ 	/* If we read a full record, then assume there may be more
+ 	 * data to read (stream based sockets only!)
+ 	 */
+ 	if (len == buflen)
+ 		set_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags);
  
--To find a value in a cache, call sunrpc_cache_lookup passing a pointer
-+To find a value in a cache, call sunrpc_cache_lookup_rcu passing a pointer
- to the cache_head in a sample item with the 'key' fields filled in.
- This will be passed to ->match to identify the target entry.  If no
- entry is found, a new entry will be create, added to the cache, and
-@@ -116,7 +116,7 @@ item does become valid, the deferred copy of the request will be
- revisited (->revisit).  It is expected that this method will
- reschedule the request for processing.
- 
--The value returned by sunrpc_cache_lookup can also be passed to
-+The value returned by sunrpc_cache_lookup_rcu can also be passed to
- sunrpc_cache_update to set the content for the item.  A second item is
- passed which should hold the content.  If the item found by _lookup
- has valid data, then it is discarded and a new item is created.  This
-diff --git a/include/linux/sunrpc/cache.h b/include/linux/sunrpc/cache.h
-index cf3e17ee2786..c3d67e893430 100644
---- a/include/linux/sunrpc/cache.h
-+++ b/include/linux/sunrpc/cache.h
-@@ -171,9 +171,6 @@ extern struct cache_head *
- sunrpc_cache_lookup_rcu(struct cache_detail *detail,
- 			struct cache_head *key, int hash);
- extern struct cache_head *
--sunrpc_cache_lookup(struct cache_detail *detail,
--		    struct cache_head *key, int hash);
--extern struct cache_head *
- sunrpc_cache_update(struct cache_detail *detail,
- 		    struct cache_head *new, struct cache_head *old, int hash);
- 
-@@ -233,9 +230,6 @@ extern void sunrpc_cache_unregister_pipefs(struct cache_detail *);
- extern void sunrpc_cache_unhash(struct cache_detail *, struct cache_head *);
- 
- /* Must store cache_detail in seq_file->private if using next three functions */
--extern void *cache_seq_start(struct seq_file *file, loff_t *pos);
--extern void *cache_seq_next(struct seq_file *file, void *p, loff_t *pos);
--extern void cache_seq_stop(struct seq_file *file, void *p);
- extern void *cache_seq_start_rcu(struct seq_file *file, loff_t *pos);
- extern void *cache_seq_next_rcu(struct seq_file *file, void *p, loff_t *pos);
- extern void cache_seq_stop_rcu(struct seq_file *file, void *p);
-diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
-index 7593afed9036..593cf8607414 100644
---- a/net/sunrpc/cache.c
-+++ b/net/sunrpc/cache.c
-@@ -75,27 +75,6 @@ static struct cache_head *sunrpc_cache_find_rcu(struct cache_detail *detail,
- 	return NULL;
+-	dprintk("svc: socket %p recvfrom(%p, %zu) = %d\n",
++	dprintk("svc: socket %p recvfrom(%p, %zu) = %zd\n",
+ 		svsk, iov[0].iov_base, iov[0].iov_len, len);
+ 	return len;
  }
  
--static struct cache_head *sunrpc_cache_find(struct cache_detail *detail,
--					    struct cache_head *key, int hash)
+-static int svc_partial_recvfrom(struct svc_rqst *rqstp,
+-				struct kvec *iov, int nr,
+-				int buflen, unsigned int base)
 -{
--	struct hlist_head *head = &detail->hash_table[hash];
--	struct cache_head *tmp;
+-	size_t save_iovlen;
+-	void *save_iovbase;
+-	unsigned int i;
+-	int ret;
 -
--	read_lock(&detail->hash_lock);
--	hlist_for_each_entry(tmp, head, cache_list) {
--		if (detail->match(tmp, key)) {
--			if (cache_is_expired(detail, tmp))
--				/* This entry is expired, we will discard it. */
--				break;
--			cache_get(tmp);
--			read_unlock(&detail->hash_lock);
--			return tmp;
--		}
+-	if (base == 0)
+-		return svc_recvfrom(rqstp, iov, nr, buflen);
+-
+-	for (i = 0; i < nr; i++) {
+-		if (iov[i].iov_len > base)
+-			break;
+-		base -= iov[i].iov_len;
 -	}
--	read_unlock(&detail->hash_lock);
--	return NULL;
+-	save_iovlen = iov[i].iov_len;
+-	save_iovbase = iov[i].iov_base;
+-	iov[i].iov_len -= base;
+-	iov[i].iov_base += base;
+-	ret = svc_recvfrom(rqstp, &iov[i], nr - i, buflen);
+-	iov[i].iov_len = save_iovlen;
+-	iov[i].iov_base = save_iovbase;
+-	return ret;
 -}
 -
- static struct cache_head *sunrpc_cache_add_entry(struct cache_detail *detail,
- 						 struct cache_head *key,
- 						 int hash)
-@@ -154,20 +133,6 @@ struct cache_head *sunrpc_cache_lookup_rcu(struct cache_detail *detail,
- }
- EXPORT_SYMBOL_GPL(sunrpc_cache_lookup_rcu);
+ /*
+  * Set socket snd and rcv buffer lengths
+  */
+@@ -962,7 +937,8 @@ static int svc_tcp_recv_record(struct svc_sock *svsk, struct svc_rqst *rqstp)
+ 		want = sizeof(rpc_fraghdr) - svsk->sk_tcplen;
+ 		iov.iov_base = ((char *) &svsk->sk_reclen) + svsk->sk_tcplen;
+ 		iov.iov_len  = want;
+-		if ((len = svc_recvfrom(rqstp, &iov, 1, want)) < 0)
++		len = svc_recvfrom(rqstp, &iov, 1, want, 0);
++		if (len < 0)
+ 			goto error;
+ 		svsk->sk_tcplen += len;
  
--struct cache_head *sunrpc_cache_lookup(struct cache_detail *detail,
--				       struct cache_head *key, int hash)
--{
--	struct cache_head *ret;
--
--	ret = sunrpc_cache_find(detail, key, hash);
--	if (ret)
--		return ret;
--	/* Didn't find anything, insert an empty entry */
--	return sunrpc_cache_add_entry(detail, key, hash);
--}
--EXPORT_SYMBOL_GPL(sunrpc_cache_lookup);
--
--
- static void cache_dequeue(struct cache_detail *detail, struct cache_head *ch);
+@@ -1088,14 +1064,13 @@ static int svc_tcp_recvfrom(struct svc_rqst *rqstp)
  
- static void cache_fresh_locked(struct cache_head *head, time_t expiry,
-@@ -1369,17 +1334,7 @@ static void *__cache_seq_start(struct seq_file *m, loff_t *pos)
- 				struct cache_head, cache_list);
- }
+ 	vec = rqstp->rq_vec;
  
--void *cache_seq_start(struct seq_file *m, loff_t *pos)
--	__acquires(cd->hash_lock)
--{
--	struct cache_detail *cd = m->private;
--
--	read_lock(&cd->hash_lock);
--	return __cache_seq_start(m, pos);
--}
--EXPORT_SYMBOL_GPL(cache_seq_start);
--
--void *cache_seq_next(struct seq_file *m, void *p, loff_t *pos)
-+static void *cache_seq_next(struct seq_file *m, void *p, loff_t *pos)
- {
- 	struct cache_head *ch = p;
- 	int hash = (*pos >> 32);
-@@ -1411,14 +1366,6 @@ void *cache_seq_next(struct seq_file *m, void *p, loff_t *pos)
- }
- EXPORT_SYMBOL_GPL(cache_seq_next);
+-	pnum = copy_pages_to_kvecs(&vec[0], &rqstp->rq_pages[0],
+-						svsk->sk_datalen + want);
++	pnum = copy_pages_to_kvecs(&vec[0], &rqstp->rq_pages[0], base + want);
  
--void cache_seq_stop(struct seq_file *m, void *p)
--	__releases(cd->hash_lock)
--{
--	struct cache_detail *cd = m->private;
--	read_unlock(&cd->hash_lock);
--}
--EXPORT_SYMBOL_GPL(cache_seq_stop);
--
- void *cache_seq_start_rcu(struct seq_file *m, loff_t *pos)
- 	__acquires(RCU)
- {
-@@ -1466,9 +1413,9 @@ static int c_show(struct seq_file *m, void *p)
- }
+ 	rqstp->rq_respages = &rqstp->rq_pages[pnum];
+ 	rqstp->rq_next_page = rqstp->rq_respages + 1;
  
- static const struct seq_operations cache_content_op = {
--	.start	= cache_seq_start,
--	.next	= cache_seq_next,
--	.stop	= cache_seq_stop,
-+	.start	= cache_seq_start_rcu,
-+	.next	= cache_seq_next_rcu,
-+	.stop	= cache_seq_stop_rcu,
- 	.show	= c_show,
- };
- 
+ 	/* Now receive data */
+-	len = svc_partial_recvfrom(rqstp, vec, pnum, want, base);
++	len = svc_recvfrom(rqstp, vec, pnum, base + want, base);
+ 	if (len >= 0) {
+ 		svsk->sk_tcplen += len;
+ 		svsk->sk_datalen += len;
 -- 
 2.17.1
