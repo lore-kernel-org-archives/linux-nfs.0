@@ -1,91 +1,154 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it1-f175.google.com ([209.85.166.175]:33194 "EHLO
-        mail-it1-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1729439AbeJAVUc (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Oct 2018 17:20:32 -0400
-Received: by mail-it1-f175.google.com with SMTP id h6-v6so6420234ith.0
-        for <linux-nfs@vger.kernel.org>; Mon, 01 Oct 2018 07:42:23 -0700 (PDT)
+Received: from mail-it1-f194.google.com ([209.85.166.194]:34964 "EHLO
+        mail-it1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1729439AbeJAVUb (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Oct 2018 17:20:31 -0400
+Received: by mail-it1-f194.google.com with SMTP id p64-v6so4680427itp.0
+        for <linux-nfs@vger.kernel.org>; Mon, 01 Oct 2018 07:42:22 -0700 (PDT)
 From: Trond Myklebust <trondmy@gmail.com>
 To: "J . Bruce Fields" <bfields@fieldses.org>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 04/15] SUNRPC: Make server side AUTH_UNIX use lockless lookups
-Date: Mon,  1 Oct 2018 10:41:46 -0400
-Message-Id: <20181001144157.3515-5-trond.myklebust@hammerspace.com>
-In-Reply-To: <20181001144157.3515-4-trond.myklebust@hammerspace.com>
+Subject: [PATCH 02/15] SUNRPC: Add lockless lookup of the server's auth domain
+Date: Mon,  1 Oct 2018 10:41:44 -0400
+Message-Id: <20181001144157.3515-3-trond.myklebust@hammerspace.com>
+In-Reply-To: <20181001144157.3515-2-trond.myklebust@hammerspace.com>
 References: <20181001144157.3515-1-trond.myklebust@hammerspace.com>
  <20181001144157.3515-2-trond.myklebust@hammerspace.com>
- <20181001144157.3515-3-trond.myklebust@hammerspace.com>
- <20181001144157.3515-4-trond.myklebust@hammerspace.com>
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Convert structs ip_map and unix_gid to use RCU protected lookups.
+Avoid taking the global auth_domain_lock in most lookups of the auth domain
+by adding an RCU protected lookup.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- net/sunrpc/svcauth_unix.c | 14 ++++++++------
- 1 file changed, 8 insertions(+), 6 deletions(-)
+ include/linux/sunrpc/svcauth.h    |  1 +
+ net/sunrpc/auth_gss/svcauth_gss.c |  9 ++++++++-
+ net/sunrpc/svcauth.c              | 22 +++++++++++++++++++---
+ net/sunrpc/svcauth_unix.c         | 10 ++++++++--
+ 4 files changed, 36 insertions(+), 6 deletions(-)
 
+diff --git a/include/linux/sunrpc/svcauth.h b/include/linux/sunrpc/svcauth.h
+index 04e404a07882..3e53a6e2ada7 100644
+--- a/include/linux/sunrpc/svcauth.h
++++ b/include/linux/sunrpc/svcauth.h
+@@ -82,6 +82,7 @@ struct auth_domain {
+ 	struct hlist_node	hash;
+ 	char			*name;
+ 	struct auth_ops		*flavour;
++	struct rcu_head		rcu_head;
+ };
+ 
+ /*
+diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
+index 860f2a1bbb67..87c71fb0f0ea 100644
+--- a/net/sunrpc/auth_gss/svcauth_gss.c
++++ b/net/sunrpc/auth_gss/svcauth_gss.c
+@@ -1764,14 +1764,21 @@ svcauth_gss_release(struct svc_rqst *rqstp)
+ }
+ 
+ static void
+-svcauth_gss_domain_release(struct auth_domain *dom)
++svcauth_gss_domain_release_rcu(struct rcu_head *head)
+ {
++	struct auth_domain *dom = container_of(head, struct auth_domain, rcu_head);
+ 	struct gss_domain *gd = container_of(dom, struct gss_domain, h);
+ 
+ 	kfree(dom->name);
+ 	kfree(gd);
+ }
+ 
++static void
++svcauth_gss_domain_release(struct auth_domain *dom)
++{
++	call_rcu(&dom->rcu_head, svcauth_gss_domain_release_rcu);
++}
++
+ static struct auth_ops svcauthops_gss = {
+ 	.name		= "rpcsec_gss",
+ 	.owner		= THIS_MODULE,
+diff --git a/net/sunrpc/svcauth.c b/net/sunrpc/svcauth.c
+index f83443856cd1..775b8c94265b 100644
+--- a/net/sunrpc/svcauth.c
++++ b/net/sunrpc/svcauth.c
+@@ -143,10 +143,11 @@ static struct hlist_head	auth_domain_table[DN_HASHMAX];
+ static DEFINE_SPINLOCK(auth_domain_lock);
+ 
+ static void auth_domain_release(struct kref *kref)
++	__releases(&auth_domain_lock)
+ {
+ 	struct auth_domain *dom = container_of(kref, struct auth_domain, ref);
+ 
+-	hlist_del(&dom->hash);
++	hlist_del_rcu(&dom->hash);
+ 	dom->flavour->domain_release(dom);
+ 	spin_unlock(&auth_domain_lock);
+ }
+@@ -175,7 +176,7 @@ auth_domain_lookup(char *name, struct auth_domain *new)
+ 		}
+ 	}
+ 	if (new)
+-		hlist_add_head(&new->hash, head);
++		hlist_add_head_rcu(&new->hash, head);
+ 	spin_unlock(&auth_domain_lock);
+ 	return new;
+ }
+@@ -183,6 +184,21 @@ EXPORT_SYMBOL_GPL(auth_domain_lookup);
+ 
+ struct auth_domain *auth_domain_find(char *name)
+ {
+-	return auth_domain_lookup(name, NULL);
++	struct auth_domain *hp;
++	struct hlist_head *head;
++
++	head = &auth_domain_table[hash_str(name, DN_HASHBITS)];
++
++	rcu_read_lock();
++	hlist_for_each_entry_rcu(hp, head, hash) {
++		if (strcmp(hp->name, name)==0) {
++			if (!kref_get_unless_zero(&hp->ref))
++				hp = NULL;
++			rcu_read_unlock();
++			return hp;
++		}
++	}
++	rcu_read_unlock();
++	return NULL;
+ }
+ EXPORT_SYMBOL_GPL(auth_domain_find);
 diff --git a/net/sunrpc/svcauth_unix.c b/net/sunrpc/svcauth_unix.c
-index 84cf39021a03..fb9041b92f72 100644
+index af7f28fb8102..84cf39021a03 100644
 --- a/net/sunrpc/svcauth_unix.c
 +++ b/net/sunrpc/svcauth_unix.c
-@@ -97,6 +97,7 @@ struct ip_map {
- 	char			m_class[8]; /* e.g. "nfsd" */
- 	struct in6_addr		m_addr;
- 	struct unix_domain	*m_client;
-+	struct rcu_head		m_rcu;
- };
+@@ -37,20 +37,26 @@ struct unix_domain {
+ extern struct auth_ops svcauth_null;
+ extern struct auth_ops svcauth_unix;
  
- static void ip_map_put(struct kref *kref)
-@@ -107,7 +108,7 @@ static void ip_map_put(struct kref *kref)
- 	if (test_bit(CACHE_VALID, &item->flags) &&
- 	    !test_bit(CACHE_NEGATIVE, &item->flags))
- 		auth_domain_put(&im->m_client->h);
--	kfree(im);
-+	kfree_rcu(im, m_rcu);
+-static void svcauth_unix_domain_release(struct auth_domain *dom)
++static void svcauth_unix_domain_release_rcu(struct rcu_head *head)
+ {
++	struct auth_domain *dom = container_of(head, struct auth_domain, rcu_head);
+ 	struct unix_domain *ud = container_of(dom, struct unix_domain, h);
+ 
+ 	kfree(dom->name);
+ 	kfree(ud);
  }
  
- static inline int hash_ip6(const struct in6_addr *ip)
-@@ -286,9 +287,9 @@ static struct ip_map *__ip_map_lookup(struct cache_detail *cd, char *class,
++static void svcauth_unix_domain_release(struct auth_domain *dom)
++{
++	call_rcu(&dom->rcu_head, svcauth_unix_domain_release_rcu);
++}
++
+ struct auth_domain *unix_domain_find(char *name)
+ {
+ 	struct auth_domain *rv;
+ 	struct unix_domain *new = NULL;
  
- 	strcpy(ip.m_class, class);
- 	ip.m_addr = *addr;
--	ch = sunrpc_cache_lookup(cd, &ip.h,
--				 hash_str(class, IP_HASHBITS) ^
--				 hash_ip6(addr));
-+	ch = sunrpc_cache_lookup_rcu(cd, &ip.h,
-+				     hash_str(class, IP_HASHBITS) ^
-+				     hash_ip6(addr));
- 
- 	if (ch)
- 		return container_of(ch, struct ip_map, h);
-@@ -418,6 +419,7 @@ struct unix_gid {
- 	struct cache_head	h;
- 	kuid_t			uid;
- 	struct group_info	*gi;
-+	struct rcu_head		rcu;
- };
- 
- static int unix_gid_hash(kuid_t uid)
-@@ -432,7 +434,7 @@ static void unix_gid_put(struct kref *kref)
- 	if (test_bit(CACHE_VALID, &item->flags) &&
- 	    !test_bit(CACHE_NEGATIVE, &item->flags))
- 		put_group_info(ug->gi);
--	kfree(ug);
-+	kfree_rcu(ug, rcu);
- }
- 
- static int unix_gid_match(struct cache_head *corig, struct cache_head *cnew)
-@@ -625,7 +627,7 @@ static struct unix_gid *unix_gid_lookup(struct cache_detail *cd, kuid_t uid)
- 	struct cache_head *ch;
- 
- 	ug.uid = uid;
--	ch = sunrpc_cache_lookup(cd, &ug.h, unix_gid_hash(uid));
-+	ch = sunrpc_cache_lookup_rcu(cd, &ug.h, unix_gid_hash(uid));
- 	if (ch)
- 		return container_of(ch, struct unix_gid, h);
- 	else
+-	rv = auth_domain_lookup(name, NULL);
++	rv = auth_domain_find(name);
+ 	while(1) {
+ 		if (rv) {
+ 			if (new && rv != &new->h)
 -- 
 2.17.1
