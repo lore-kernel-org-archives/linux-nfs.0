@@ -1,14 +1,15 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io1-f68.google.com ([209.85.166.68]:37598 "EHLO
-        mail-io1-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726178AbeJBBEw (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Oct 2018 21:04:52 -0400
-Subject: [PATCH v2 08/20] xprtrdma: Rename rpcrdma_conn_upcall
+Received: from mail-io1-f43.google.com ([209.85.166.43]:42790 "EHLO
+        mail-io1-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726349AbeJBBFD (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Oct 2018 21:05:03 -0400
+Subject: [PATCH v2 10/20] xprtrdma: Eliminate "connstate" variable from
+ rpcrdma_conn_upcall()
 From: Chuck Lever <chuck.lever@oracle.com>
 To: anna.schumaker@netapp.com
 Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Mon, 01 Oct 2018 14:25:47 -0400
-Message-ID: <20181001182547.18578.68821.stgit@manet.1015granger.net>
+Date: Mon, 01 Oct 2018 14:25:57 -0400
+Message-ID: <20181001182557.18578.19009.stgit@manet.1015granger.net>
 In-Reply-To: <20181001182005.18578.57544.stgit@manet.1015granger.net>
 References: <20181001182005.18578.57544.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -16,68 +17,62 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: Use a function name that is consistent with the RDMA core
-API and with other consumers. Because this is a function that is
-invoked from outside the rpcrdma.ko module, add an appropriate
-documenting comment.
+Clean up.
+
+Since commit 173b8f49b3af ("xprtrdma: Demote "connect" log messages")
+there has been no need to initialize connstat to zero. In fact, in
+this code path there's now no reason not to set rep_connected
+directly.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- include/trace/events/rpcrdma.h |    2 +-
- net/sunrpc/xprtrdma/verbs.c    |   16 +++++++++++++---
- 2 files changed, 14 insertions(+), 4 deletions(-)
+ net/sunrpc/xprtrdma/verbs.c |   14 ++++++--------
+ 1 file changed, 6 insertions(+), 8 deletions(-)
 
-diff --git a/include/trace/events/rpcrdma.h b/include/trace/events/rpcrdma.h
-index 89e017b..3b9de5b 100644
---- a/include/trace/events/rpcrdma.h
-+++ b/include/trace/events/rpcrdma.h
-@@ -306,7 +306,7 @@
-  ** Connection events
-  **/
- 
--TRACE_EVENT(xprtrdma_conn_upcall,
-+TRACE_EVENT(xprtrdma_cm_event,
- 	TP_PROTO(
- 		const struct rpcrdma_xprt *r_xprt,
- 		struct rdma_cm_event *event
 diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 3a9a62d..7bf0e65 100644
+index f2c8c3c..422d3db 100644
 --- a/net/sunrpc/xprtrdma/verbs.c
 +++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -219,15 +219,25 @@
- 	rpcrdma_set_max_header_sizes(r_xprt);
- }
+@@ -234,7 +234,6 @@
+ 	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
+ 	struct rpcrdma_ep *ep = &r_xprt->rx_ep;
+ 	struct rpc_xprt *xprt = &r_xprt->rx_xprt;
+-	int connstate = 0;
  
-+/**
-+ * rpcrdma_cm_event_handler - Handle RDMA CM events
-+ * @id: rdma_cm_id on which an event has occurred
-+ * @event: details of the event
-+ *
-+ * Called with @id's mutex held. Returns 1 if caller should
-+ * destroy @id, otherwise 0.
-+ */
- static int
--rpcrdma_conn_upcall(struct rdma_cm_id *id, struct rdma_cm_event *event)
-+rpcrdma_cm_event_handler(struct rdma_cm_id *id, struct rdma_cm_event *event)
- {
- 	struct rpcrdma_xprt *xprt = id->context;
- 	struct rpcrdma_ia *ia = &xprt->rx_ia;
- 	struct rpcrdma_ep *ep = &xprt->rx_ep;
- 	int connstate = 0;
+ 	might_sleep();
  
--	trace_xprtrdma_conn_upcall(xprt, event);
-+	might_sleep();
-+
-+	trace_xprtrdma_cm_event(xprt, event);
- 	switch (event->event) {
- 	case RDMA_CM_EVENT_ADDR_RESOLVED:
- 	case RDMA_CM_EVENT_ROUTE_RESOLVED:
-@@ -308,7 +318,7 @@
- 	init_completion(&ia->ri_done);
- 	init_completion(&ia->ri_remove_done);
- 
--	id = rdma_create_id(xprt->rx_xprt.xprt_net, rpcrdma_conn_upcall,
-+	id = rdma_create_id(xprt->rx_xprt.xprt_net, rpcrdma_cm_event_handler,
- 			    xprt, RDMA_PS_TCP, IB_QPT_RC);
- 	if (IS_ERR(id)) {
- 		rc = PTR_ERR(id);
+@@ -270,28 +269,27 @@
+ 		return 1;
+ 	case RDMA_CM_EVENT_ESTABLISHED:
+ 		++xprt->connect_cookie;
+-		connstate = 1;
++		ep->rep_connected = 1;
+ 		rpcrdma_update_connect_private(r_xprt, &event->param.conn);
+ 		goto connected;
+ 	case RDMA_CM_EVENT_CONNECT_ERROR:
+-		connstate = -ENOTCONN;
++		ep->rep_connected = -ENOTCONN;
+ 		goto connected;
+ 	case RDMA_CM_EVENT_UNREACHABLE:
+-		connstate = -ENETUNREACH;
++		ep->rep_connected = -ENETUNREACH;
+ 		goto connected;
+ 	case RDMA_CM_EVENT_REJECTED:
+ 		dprintk("rpcrdma: connection to %s:%s rejected: %s\n",
+ 			rpcrdma_addrstr(r_xprt), rpcrdma_portstr(r_xprt),
+ 			rdma_reject_msg(id, event->status));
+-		connstate = -ECONNREFUSED;
++		ep->rep_connected = -ECONNREFUSED;
+ 		if (event->status == IB_CM_REJ_STALE_CONN)
+-			connstate = -EAGAIN;
++			ep->rep_connected = -EAGAIN;
+ 		goto connected;
+ 	case RDMA_CM_EVENT_DISCONNECTED:
+ 		++xprt->connect_cookie;
+-		connstate = -ECONNABORTED;
++		ep->rep_connected = -ECONNABORTED;
+ connected:
+-		ep->rep_connected = connstate;
+ 		rpcrdma_conn_func(ep);
+ 		wake_up_all(&ep->rep_connect_wait);
+ 		/*FALLTHROUGH*/
