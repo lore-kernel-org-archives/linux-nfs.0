@@ -1,17 +1,17 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it1-f194.google.com ([209.85.166.194]:54897 "EHLO
-        mail-it1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1729497AbeJAVUj (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Oct 2018 17:20:39 -0400
-Received: by mail-it1-f194.google.com with SMTP id l191-v6so6018553ita.4
-        for <linux-nfs@vger.kernel.org>; Mon, 01 Oct 2018 07:42:30 -0700 (PDT)
+Received: from mail-it1-f193.google.com ([209.85.166.193]:39210 "EHLO
+        mail-it1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1729479AbeJAVUk (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Oct 2018 17:20:40 -0400
+Received: by mail-it1-f193.google.com with SMTP id w200-v6so11735680itc.4
+        for <linux-nfs@vger.kernel.org>; Mon, 01 Oct 2018 07:42:31 -0700 (PDT)
 From: Trond Myklebust <trondmy@gmail.com>
 To: "J . Bruce Fields" <bfields@fieldses.org>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 12/15] knfsd: Remove dead code from nfsd_cache_lookup
-Date: Mon,  1 Oct 2018 10:41:54 -0400
-Message-Id: <20181001144157.3515-13-trond.myklebust@hammerspace.com>
-In-Reply-To: <20181001144157.3515-12-trond.myklebust@hammerspace.com>
+Subject: [PATCH 13/15] knfsd: Simplify NFS duplicate replay cache
+Date: Mon,  1 Oct 2018 10:41:55 -0400
+Message-Id: <20181001144157.3515-14-trond.myklebust@hammerspace.com>
+In-Reply-To: <20181001144157.3515-13-trond.myklebust@hammerspace.com>
 References: <20181001144157.3515-1-trond.myklebust@hammerspace.com>
  <20181001144157.3515-2-trond.myklebust@hammerspace.com>
  <20181001144157.3515-3-trond.myklebust@hammerspace.com>
@@ -24,36 +24,232 @@ References: <20181001144157.3515-1-trond.myklebust@hammerspace.com>
  <20181001144157.3515-10-trond.myklebust@hammerspace.com>
  <20181001144157.3515-11-trond.myklebust@hammerspace.com>
  <20181001144157.3515-12-trond.myklebust@hammerspace.com>
+ <20181001144157.3515-13-trond.myklebust@hammerspace.com>
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The preallocated cache entry is always set to type RC_NOCACHE, and that
-type isn't changed until we later call nfsd_cache_update().
+Simplify the duplicate replay cache by initialising the preallocated
+cache entry, so that we can use it as a key for the cache lookup.
+
+Note that the 99.999% case we want to optimise for is still the one
+where the lookup fails, and we have to add this entry to the cache,
+so preinitialising should not cause a performance penalty.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfsd/nfscache.c | 8 --------
- 1 file changed, 8 deletions(-)
+ fs/nfsd/cache.h    |  6 +--
+ fs/nfsd/nfscache.c | 94 ++++++++++++++++++++++------------------------
+ 2 files changed, 47 insertions(+), 53 deletions(-)
 
+diff --git a/fs/nfsd/cache.h b/fs/nfsd/cache.h
+index b7559c6f2b97..bd77d5f6fe53 100644
+--- a/fs/nfsd/cache.h
++++ b/fs/nfsd/cache.h
+@@ -24,13 +24,13 @@ struct svc_cacherep {
+ 	unsigned char		c_state,	/* unused, inprog, done */
+ 				c_type,		/* status, buffer */
+ 				c_secure : 1;	/* req came from port < 1024 */
+-	struct sockaddr_in6	c_addr;
+ 	__be32			c_xid;
+-	u32			c_prot;
++	__wsum			c_csum;
+ 	u32			c_proc;
++	u32			c_prot;
+ 	u32			c_vers;
+ 	unsigned int		c_len;
+-	__wsum			c_csum;
++	struct sockaddr_in6	c_addr;
+ 	unsigned long		c_timestamp;
+ 	union {
+ 		struct kvec	u_vec;
 diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
-index dbdeb9d6af03..cef4686f87ef 100644
+index cef4686f87ef..527ce4c65765 100644
 --- a/fs/nfsd/nfscache.c
 +++ b/fs/nfsd/nfscache.c
-@@ -446,14 +446,6 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
- 	rp->c_csum = csum;
+@@ -121,7 +121,7 @@ nfsd_cache_hash(__be32 xid)
+ }
  
- 	lru_put_end(b, rp);
+ static struct svc_cacherep *
+-nfsd_reply_cache_alloc(void)
++nfsd_reply_cache_alloc(struct svc_rqst *rqstp, __wsum csum)
+ {
+ 	struct svc_cacherep	*rp;
+ 
+@@ -130,6 +130,16 @@ nfsd_reply_cache_alloc(void)
+ 		rp->c_state = RC_UNUSED;
+ 		rp->c_type = RC_NOCACHE;
+ 		INIT_LIST_HEAD(&rp->c_lru);
++
++		rp->c_xid = rqstp->rq_xid;
++		rp->c_proc = rqstp->rq_proc;
++		memset(&rp->c_addr, 0, sizeof(rp->c_addr));
++		rpc_copy_addr((struct sockaddr *)&rp->c_addr, svc_addr(rqstp));
++		rpc_set_port((struct sockaddr *)&rp->c_addr, rpc_get_port(svc_addr(rqstp)));
++		rp->c_prot = rqstp->rq_prot;
++		rp->c_vers = rqstp->rq_vers;
++		rp->c_len = rqstp->rq_arg.len;
++		rp->c_csum = csum;
+ 	}
+ 	return rp;
+ }
+@@ -141,9 +151,11 @@ nfsd_reply_cache_free_locked(struct svc_cacherep *rp)
+ 		drc_mem_usage -= rp->c_replvec.iov_len;
+ 		kfree(rp->c_replvec.iov_base);
+ 	}
+-	list_del(&rp->c_lru);
+-	atomic_dec(&num_drc_entries);
+-	drc_mem_usage -= sizeof(*rp);
++	if (rp->c_state != RC_UNUSED) {
++		list_del(&rp->c_lru);
++		atomic_dec(&num_drc_entries);
++		drc_mem_usage -= sizeof(*rp);
++	}
+ 	kmem_cache_free(drc_slab, rp);
+ }
+ 
+@@ -319,24 +331,23 @@ nfsd_cache_csum(struct svc_rqst *rqstp)
+ }
+ 
+ static bool
+-nfsd_cache_match(struct svc_rqst *rqstp, __wsum csum, struct svc_cacherep *rp)
++nfsd_cache_match(const struct svc_cacherep *key, const struct svc_cacherep *rp)
+ {
+ 	/* Check RPC XID first */
+-	if (rqstp->rq_xid != rp->c_xid)
++	if (key->c_xid != rp->c_xid)
+ 		return false;
+ 	/* compare checksum of NFS data */
+-	if (csum != rp->c_csum) {
++	if (key->c_csum != rp->c_csum) {
+ 		++payload_misses;
+ 		return false;
+ 	}
+ 
+ 	/* Other discriminators */
+-	if (rqstp->rq_proc != rp->c_proc ||
+-	    rqstp->rq_prot != rp->c_prot ||
+-	    rqstp->rq_vers != rp->c_vers ||
+-	    rqstp->rq_arg.len != rp->c_len ||
+-	    !rpc_cmp_addr(svc_addr(rqstp), (struct sockaddr *)&rp->c_addr) ||
+-	    rpc_get_port(svc_addr(rqstp)) != rpc_get_port((struct sockaddr *)&rp->c_addr))
++	if (key->c_proc != rp->c_proc ||
++	    key->c_prot != rp->c_prot ||
++	    key->c_vers != rp->c_vers ||
++	    key->c_len != rp->c_len ||
++	    memcmp(&key->c_addr, &rp->c_addr, sizeof(key->c_addr)) != 0)
+ 		return false;
+ 
+ 	return true;
+@@ -345,19 +356,18 @@ nfsd_cache_match(struct svc_rqst *rqstp, __wsum csum, struct svc_cacherep *rp)
+ /*
+  * Search the request hash for an entry that matches the given rqstp.
+  * Must be called with cache_lock held. Returns the found entry or
+- * NULL on failure.
++ * inserts an empty key on failure.
+  */
+ static struct svc_cacherep *
+-nfsd_cache_search(struct nfsd_drc_bucket *b, struct svc_rqst *rqstp,
+-		__wsum csum)
++nfsd_cache_insert(struct nfsd_drc_bucket *b, struct svc_cacherep *key)
+ {
+-	struct svc_cacherep	*rp, *ret = NULL;
++	struct svc_cacherep	*rp, *ret = key;
+ 	struct list_head 	*rh = &b->lru_head;
+ 	unsigned int		entries = 0;
+ 
+ 	list_for_each_entry(rp, rh, c_lru) {
+ 		++entries;
+-		if (nfsd_cache_match(rqstp, csum, rp)) {
++		if (nfsd_cache_match(key, rp)) {
+ 			ret = rp;
+ 			break;
+ 		}
+@@ -374,6 +384,7 @@ nfsd_cache_search(struct nfsd_drc_bucket *b, struct svc_rqst *rqstp,
+ 				atomic_read(&num_drc_entries));
+ 	}
+ 
++	lru_put_end(b, ret);
+ 	return ret;
+ }
+ 
+@@ -389,9 +400,6 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
+ {
+ 	struct svc_cacherep	*rp, *found;
+ 	__be32			xid = rqstp->rq_xid;
+-	u32			proto =  rqstp->rq_prot,
+-				vers = rqstp->rq_vers,
+-				proc = rqstp->rq_proc;
+ 	__wsum			csum;
+ 	u32 hash = nfsd_cache_hash(xid);
+ 	struct nfsd_drc_bucket *b = &drc_hashtbl[hash];
+@@ -410,52 +418,38 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
+ 	 * Since the common case is a cache miss followed by an insert,
+ 	 * preallocate an entry.
+ 	 */
+-	rp = nfsd_reply_cache_alloc();
+-	spin_lock(&b->cache_lock);
+-	if (likely(rp)) {
+-		atomic_inc(&num_drc_entries);
+-		drc_mem_usage += sizeof(*rp);
++	rp = nfsd_reply_cache_alloc(rqstp, csum);
++	if (!rp) {
++		dprintk("nfsd: unable to allocate DRC entry!\n");
++		return rtn;
+ 	}
+ 
+-	/* go ahead and prune the cache */
+-	prune_bucket(b);
 -
--	/* release any buffer */
--	if (rp->c_type == RC_REPLBUFF) {
--		drc_mem_usage -= rp->c_replvec.iov_len;
--		kfree(rp->c_replvec.iov_base);
--		rp->c_replvec.iov_base = NULL;
+-	found = nfsd_cache_search(b, rqstp, csum);
+-	if (found) {
+-		if (likely(rp))
+-			nfsd_reply_cache_free_locked(rp);
++	spin_lock(&b->cache_lock);
++	found = nfsd_cache_insert(b, rp);
++	if (found != rp) {
++		nfsd_reply_cache_free_locked(rp);
+ 		rp = found;
+ 		goto found_entry;
+ 	}
+ 
+-	if (!rp) {
+-		dprintk("nfsd: unable to allocate DRC entry!\n");
+-		goto out;
 -	}
--	rp->c_type = RC_NOCACHE;
+-
+ 	nfsdstats.rcmisses++;
+ 	rqstp->rq_cacherep = rp;
+ 	rp->c_state = RC_INPROG;
+-	rp->c_xid = xid;
+-	rp->c_proc = proc;
+-	rpc_copy_addr((struct sockaddr *)&rp->c_addr, svc_addr(rqstp));
+-	rpc_set_port((struct sockaddr *)&rp->c_addr, rpc_get_port(svc_addr(rqstp)));
+-	rp->c_prot = proto;
+-	rp->c_vers = vers;
+-	rp->c_len = rqstp->rq_arg.len;
+-	rp->c_csum = csum;
+ 
+-	lru_put_end(b, rp);
++	atomic_inc(&num_drc_entries);
++	drc_mem_usage += sizeof(*rp);
++
++	/* go ahead and prune the cache */
++	prune_bucket(b);
   out:
  	spin_unlock(&b->cache_lock);
  	return rtn;
+ 
+ found_entry:
+-	nfsdstats.rchits++;
+ 	/* We found a matching entry which is either in progress or done. */
+-	lru_put_end(b, rp);
+-
++	nfsdstats.rchits++;
+ 	rtn = RC_DROPIT;
++
+ 	/* Request being processed */
+ 	if (rp->c_state == RC_INPROG)
+ 		goto out;
 -- 
 2.17.1
