@@ -1,34 +1,31 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp2120.oracle.com ([141.146.126.78]:58124 "EHLO
-        aserp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726149AbeJBCe0 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Oct 2018 22:34:26 -0400
-From: Chuck Lever <chuck.lever@oracle.com>
-Content-Type: text/plain;
-        charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 11.5 \(3445.9.1\))
-Subject: refresh of git://git.linux-nfs.org/projects/trondmy/linux-nfs.git
+Received: from mail-eopbgr730109.outbound.protection.outlook.com ([40.107.73.109]:35557
+        "EHLO NAM05-DM3-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1726274AbeJBCwz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 1 Oct 2018 22:52:55 -0400
+From: Trond Myklebust <trondmy@hammerspace.com>
+To: "chuck.lever@oracle.com" <chuck.lever@oracle.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: refresh of git://git.linux-nfs.org/projects/trondmy/linux-nfs.git
  testing
-Message-Id: <2EF3FAED-A930-4813-9C70-D7190189BA87@oracle.com>
-Date: Mon, 1 Oct 2018 15:54:54 -0400
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-To: Trond Myklebust <trondmy@hammerspace.com>
+Date: Mon, 1 Oct 2018 20:13:23 +0000
+Message-ID: <53dff6b9177173775249f8a79c6fa72d4d6f29ad.camel@hammerspace.com>
+References: <2EF3FAED-A930-4813-9C70-D7190189BA87@oracle.com>
+In-Reply-To: <2EF3FAED-A930-4813-9C70-D7190189BA87@oracle.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Trond-
-
-I pulled your testing branch this afternoon, and did some basic
-testing:
-
-- 9 different iozone read and write tests
-- fio 8KB 70% read / 30% write
-- fio 4KB 100% read
-- multi-threaded git regression
-- xfstests
-
-with both NFSv3 and NFSv4.1. I found no regressions.
-
-
---
-Chuck Lever
+T24gTW9uLCAyMDE4LTEwLTAxIGF0IDE1OjU0IC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
+SGkgVHJvbmQtDQo+IA0KPiBJIHB1bGxlZCB5b3VyIHRlc3RpbmcgYnJhbmNoIHRoaXMgYWZ0ZXJu
+b29uLCBhbmQgZGlkIHNvbWUgYmFzaWMNCj4gdGVzdGluZzoNCj4gDQo+IC0gOSBkaWZmZXJlbnQg
+aW96b25lIHJlYWQgYW5kIHdyaXRlIHRlc3RzDQo+IC0gZmlvIDhLQiA3MCUgcmVhZCAvIDMwJSB3
+cml0ZQ0KPiAtIGZpbyA0S0IgMTAwJSByZWFkDQo+IC0gbXVsdGktdGhyZWFkZWQgZ2l0IHJlZ3Jl
+c3Npb24NCj4gLSB4ZnN0ZXN0cw0KPiANCj4gd2l0aCBib3RoIE5GU3YzIGFuZCBORlN2NC4xLiBJ
+IGZvdW5kIG5vIHJlZ3Jlc3Npb25zLg0KDQpUaGFua3MhIEkgdmVyeSBtdWNoIGFwcHJlY2lhdGUg
+eW91ciBoZWxwIHdpdGggdGhpcy4gU28gaXQgc291bmRzIGFzIGlmDQppdCBpcyBzYWZlIHRvIG1v
+dmUgdGhpcyBpbnRvIGxpbnV4LW5leHQgZm9yIG1lcmdpbmcgaW4gNC4yMC81LjAuDQoNCi0tIA0K
+VHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIsIEhhbW1lcnNwYWNl
+DQp0cm9uZC5teWtsZWJ1c3RAaGFtbWVyc3BhY2UuY29tDQoNCg0K
