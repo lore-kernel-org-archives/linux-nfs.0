@@ -1,70 +1,79 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it1-f196.google.com ([209.85.166.196]:54916 "EHLO
-        mail-it1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726362AbeJBAzK (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Oct 2018 20:55:10 -0400
-Subject: [PATCH v1 3/4] svcrdma: Remove try_module_get from backchannel
+Received: from mail-it1-f171.google.com ([209.85.166.171]:40428 "EHLO
+        mail-it1-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726178AbeJBBEK (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Oct 2018 21:04:10 -0400
+Subject: [PATCH v2 00/20] NFS/RDMA client patches for v4.20
 From: Chuck Lever <chuck.lever@oracle.com>
-To: bfields@fieldses.org
+To: anna.schumaker@netapp.com
 Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Mon, 01 Oct 2018 14:16:06 -0400
-Message-ID: <20181001181606.2305.48044.stgit@klimt.1015granger.net>
-In-Reply-To: <20181001181414.2305.94635.stgit@klimt.1015granger.net>
-References: <20181001181414.2305.94635.stgit@klimt.1015granger.net>
+Date: Mon, 01 Oct 2018 14:25:03 -0400
+Message-ID: <20181001182005.18578.57544.stgit@manet.1015granger.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Since commit ffe1f0df5862 ("rpcrdma: Merge svcrdma and xprtrdma
-modules into one"), the forward and backchannel components are part
-of the same kernel module. A separate try_module_get() call in the
-backchannel code is no longer necessary.
+Hi Anna-
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+These are ready for you to consider for the next merge window.
+The series is a mixed bag of fixes and clean ups, the important
+ones being:
+
+- Ensure credit grant is reduced to 1 after a reconnect
+- Delete MRs instead of recovering them
+- Modernize the connect logic
+
+Details can be found in the patch descriptions.
+
+Support for sending RPCs with both Write and Reply chunks has
+been dropped after some server-side issues were discovered
+during NFS bake-a-thon testing. I plan to revisit these.
+
+
+Changes since v1:
+- rebased on v4.19-rc6
+- write + reply patches dropped
+- tested at NFS bake-a-thon
+- comments and patch descriptions clarified
+
 ---
- net/sunrpc/xprtrdma/svc_rdma_backchannel.c |   14 --------------
- 1 file changed, 14 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_backchannel.c b/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
-index 642f031..7e188bc 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
-@@ -5,8 +5,6 @@
-  * Support for backward direction RPCs on RPC/RDMA (server-side).
-  */
- 
--#include <linux/module.h>
--
- #include <linux/sunrpc/svc_rdma.h>
- 
- #include "xprt_rdma.h"
-@@ -255,7 +253,6 @@ static int svc_rdma_bc_sendto(struct svcxprt_rdma *rdma,
- 	dprintk("svcrdma: %s: xprt %p\n", __func__, xprt);
- 
- 	xprt_free(xprt);
--	module_put(THIS_MODULE);
- }
- 
- static const struct rpc_xprt_ops xprt_rdma_bc_procs = {
-@@ -327,20 +324,9 @@ static int svc_rdma_bc_sendto(struct svcxprt_rdma *rdma,
- 	args->bc_xprt->xpt_bc_xprt = xprt;
- 	xprt->bc_xprt = args->bc_xprt;
- 
--	if (!try_module_get(THIS_MODULE))
--		goto out_fail;
--
- 	/* Final put for backchannel xprt is in __svc_rdma_free */
- 	xprt_get(xprt);
- 	return xprt;
--
--out_fail:
--	xprt_rdma_free_addresses(xprt);
--	args->bc_xprt->xpt_bc_xprt = NULL;
--	args->bc_xprt->xpt_bc_xps = NULL;
--	xprt_put(xprt);
--	xprt_free(xprt);
--	return ERR_PTR(-EINVAL);
- }
- 
- struct xprt_class xprt_rdma_bc = {
+Chuck Lever (20):
+      xprtrdma: xprt_release_rqst_cong is called outside of transport_lock
+      xprtrdma: Reset credit grant properly after a disconnect
+      xprtrdma: Create more MRs at a time
+      xprtrdma: Explicitly resetting MRs is no longer necessary
+      xprtrdma: Name MR trace events consistently
+      sunrpc: Fix connect metrics
+      sunrpc: Report connect_time in seconds
+      xprtrdma: Rename rpcrdma_conn_upcall
+      xprtrdma: Conventional variable names in rpcrdma_conn_upcall
+      xprtrdma: Eliminate "connstate" variable from rpcrdma_conn_upcall()
+      xprtrdma: Re-organize the switch() in rpcrdma_conn_upcall
+      xprtrdma: Simplify RPC wake-ups on connect
+      xprtrdma: Rename rpcrdma_qp_async_error_upcall
+      xprtrdma: Remove memory address of "ep" from an error message
+      xprtrdma: Don't disable BH's in backchannel server
+      xprtrdma: Move rb_flags initialization
+      xprtrdma: Report when there were zero posted Receives
+      xprtrdma: Add documenting comments
+      xprtrdma: Clean up xprt_rdma_disconnect_inject
+      xprtrdma: Squelch a sparse warning
+
+
+ include/trace/events/rpcrdma.h             |   18 +--
+ net/sunrpc/xprt.c                          |   14 +-
+ net/sunrpc/xprtrdma/backchannel.c          |   16 +--
+ net/sunrpc/xprtrdma/fmr_ops.c              |  131 +++++++++------------
+ net/sunrpc/xprtrdma/frwr_ops.c             |  137 ++++++++--------------
+ net/sunrpc/xprtrdma/rpc_rdma.c             |   20 +--
+ net/sunrpc/xprtrdma/svc_rdma_backchannel.c |    1 
+ net/sunrpc/xprtrdma/transport.c            |  110 ++++++++---------
+ net/sunrpc/xprtrdma/verbs.c                |  178 ++++++++++++++--------------
+ net/sunrpc/xprtrdma/xprt_rdma.h            |   18 +--
+ net/sunrpc/xprtsock.c                      |   14 +-
+ 11 files changed, 302 insertions(+), 355 deletions(-)
+
+--
+Chuck Lever
