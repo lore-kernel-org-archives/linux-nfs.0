@@ -1,47 +1,135 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp2120.oracle.com ([141.146.126.78]:41524 "EHLO
-        aserp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726118AbeJBVSG (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 2 Oct 2018 17:18:06 -0400
-Content-Type: text/plain;
-        charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 11.5 \(3445.9.1\))
-Subject: Re: [PATCH v1 4/4] svcrdma: Increase the default connection credit
- limit
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <a31d401b-bf12-fd44-5e0c-540b0cd4a9ba@grimberg.me>
-Date: Tue, 2 Oct 2018 10:34:11 -0400
-Cc: Bruce Fields <bfields@fieldses.org>,
-        linux-rdma <linux-rdma@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <5F196CB9-ABF7-4660-A4B1-E536F564A717@oracle.com>
-References: <20181001181414.2305.94635.stgit@klimt.1015granger.net>
- <20181001181611.2305.48362.stgit@klimt.1015granger.net>
- <a31d401b-bf12-fd44-5e0c-540b0cd4a9ba@grimberg.me>
-To: Sagi Grimberg <sagi@grimberg.me>
+Received: from fieldses.org ([173.255.197.46]:56518 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726194AbeJCCYG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 2 Oct 2018 22:24:06 -0400
+Date: Tue, 2 Oct 2018 15:39:08 -0400
+From: "J . Bruce Fields" <bfields@fieldses.org>
+To: Trond Myklebust <trondmy@gmail.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 01/15] SUNRPC: Remove the server 'authtab_lock' and just
+ use RCU
+Message-ID: <20181002193908.GB9073@fieldses.org>
+References: <20181001144157.3515-1-trond.myklebust@hammerspace.com>
+ <20181001144157.3515-2-trond.myklebust@hammerspace.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20181001144157.3515-2-trond.myklebust@hammerspace.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-> On Oct 1, 2018, at 6:33 PM, Sagi Grimberg <sagi@grimberg.me> wrote:
+On Mon, Oct 01, 2018 at 10:41:43AM -0400, Trond Myklebust wrote:
+> Module removal is RCU safe by design, so we really have no need to
+> lock the 'authtab[]' array.
 > 
+> Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
+> ---
+>  net/sunrpc/svcauth.c | 52 +++++++++++++++++++++++++++++---------------
+>  1 file changed, 34 insertions(+), 18 deletions(-)
 > 
->> Reduce queuing on clients by allowing more credits by default.
->> 64 is the default NFSv4.1 slot table size on Linux clients. This
->> size prevents the credit limit from putting RPC requests to sleep
->> again after they have already slept waiting for a session slot.
-> 
-> Would it make sense to have it in a shared header with the client?
-> 
-> Otherwise,
-> Reviewed-by: Sagi Grimberg <sagi@grimberg.me>
+> diff --git a/net/sunrpc/svcauth.c b/net/sunrpc/svcauth.c
+> index bb8db3cb8032..f83443856cd1 100644
+> --- a/net/sunrpc/svcauth.c
+> +++ b/net/sunrpc/svcauth.c
+> @@ -27,12 +27,32 @@
+>  extern struct auth_ops svcauth_null;
+>  extern struct auth_ops svcauth_unix;
+>  
+> -static DEFINE_SPINLOCK(authtab_lock);
+> -static struct auth_ops	*authtab[RPC_AUTH_MAXFLAVOR] = {
+> -	[0] = &svcauth_null,
+> -	[1] = &svcauth_unix,
+> +static struct auth_ops __rcu *authtab[RPC_AUTH_MAXFLAVOR] = {
+> +	[RPC_AUTH_NULL] = (struct auth_ops __force __rcu *)&svcauth_null,
+> +	[RPC_AUTH_UNIX] = (struct auth_ops __force __rcu *)&svcauth_unix,
 
-Thanks for the review!
+I didn't know about "__rcu" and "__force __rcu".  Grepping turns up
+relevant documentation for RCU_INIT_POINTER in include/linux/rcupdate.h,
+OK, I think I get it.--b.
 
-Typically all the server-side stuff is kept in separate headers,
-I guess that's historical and matches the generic layer (..) .
-
-
---
-Chuck Lever
+>  };
+>  
+> +static struct auth_ops *
+> +svc_get_auth_ops(rpc_authflavor_t flavor)
+> +{
+> +	struct auth_ops		*aops;
+> +
+> +	if (flavor >= RPC_AUTH_MAXFLAVOR)
+> +		return NULL;
+> +	rcu_read_lock();
+> +	aops = rcu_dereference(authtab[flavor]);
+> +	if (aops != NULL && !try_module_get(aops->owner))
+> +		aops = NULL;
+> +	rcu_read_unlock();
+> +	return aops;
+> +}
+> +
+> +static void
+> +svc_put_auth_ops(struct auth_ops *aops)
+> +{
+> +	module_put(aops->owner);
+> +}
+> +
+>  int
+>  svc_authenticate(struct svc_rqst *rqstp, __be32 *authp)
+>  {
+> @@ -45,14 +65,11 @@ svc_authenticate(struct svc_rqst *rqstp, __be32 *authp)
+>  
+>  	dprintk("svc: svc_authenticate (%d)\n", flavor);
+>  
+> -	spin_lock(&authtab_lock);
+> -	if (flavor >= RPC_AUTH_MAXFLAVOR || !(aops = authtab[flavor]) ||
+> -	    !try_module_get(aops->owner)) {
+> -		spin_unlock(&authtab_lock);
+> +	aops = svc_get_auth_ops(flavor);
+> +	if (aops == NULL) {
+>  		*authp = rpc_autherr_badcred;
+>  		return SVC_DENIED;
+>  	}
+> -	spin_unlock(&authtab_lock);
+>  
+>  	rqstp->rq_auth_slack = 0;
+>  	init_svc_cred(&rqstp->rq_cred);
+> @@ -82,7 +99,7 @@ int svc_authorise(struct svc_rqst *rqstp)
+>  
+>  	if (aops) {
+>  		rv = aops->release(rqstp);
+> -		module_put(aops->owner);
+> +		svc_put_auth_ops(aops);
+>  	}
+>  	return rv;
+>  }
+> @@ -90,13 +107,14 @@ int svc_authorise(struct svc_rqst *rqstp)
+>  int
+>  svc_auth_register(rpc_authflavor_t flavor, struct auth_ops *aops)
+>  {
+> +	struct auth_ops *old;
+>  	int rv = -EINVAL;
+> -	spin_lock(&authtab_lock);
+> -	if (flavor < RPC_AUTH_MAXFLAVOR && authtab[flavor] == NULL) {
+> -		authtab[flavor] = aops;
+> -		rv = 0;
+> +
+> +	if (flavor < RPC_AUTH_MAXFLAVOR) {
+> +		old = cmpxchg((struct auth_ops ** __force)&authtab[flavor], NULL, aops);
+> +		if (old == NULL || old == aops)
+> +			rv = 0;
+>  	}
+> -	spin_unlock(&authtab_lock);
+>  	return rv;
+>  }
+>  EXPORT_SYMBOL_GPL(svc_auth_register);
+> @@ -104,10 +122,8 @@ EXPORT_SYMBOL_GPL(svc_auth_register);
+>  void
+>  svc_auth_unregister(rpc_authflavor_t flavor)
+>  {
+> -	spin_lock(&authtab_lock);
+>  	if (flavor < RPC_AUTH_MAXFLAVOR)
+> -		authtab[flavor] = NULL;
+> -	spin_unlock(&authtab_lock);
+> +		rcu_assign_pointer(authtab[flavor], NULL);
+>  }
+>  EXPORT_SYMBOL_GPL(svc_auth_unregister);
+>  
+> -- 
+> 2.17.1
