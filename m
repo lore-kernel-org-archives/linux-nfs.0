@@ -1,101 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it1-f194.google.com ([209.85.166.194]:50636 "EHLO
-        mail-it1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726851AbeJDAo4 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 3 Oct 2018 20:44:56 -0400
-Received: by mail-it1-f194.google.com with SMTP id j81-v6so9548925ite.0
-        for <linux-nfs@vger.kernel.org>; Wed, 03 Oct 2018 10:55:30 -0700 (PDT)
-Message-ID: <363f1a9b29ebbd5ca77a1c9f21b656744e8e62c8.camel@gmail.com>
-Subject: Re: [PATCH 08/15] NFS: Lockless DNS lookups
-From: Trond Myklebust <trondmy@gmail.com>
-To: "J . Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Date: Wed, 03 Oct 2018 13:55:28 -0400
-In-Reply-To: <20181003161055.GF17517@fieldses.org>
-References: <20181001144157.3515-1-trond.myklebust@hammerspace.com>
-         <20181001144157.3515-2-trond.myklebust@hammerspace.com>
-         <20181001144157.3515-3-trond.myklebust@hammerspace.com>
-         <20181001144157.3515-4-trond.myklebust@hammerspace.com>
-         <20181001144157.3515-5-trond.myklebust@hammerspace.com>
+Received: from mail-cys01nam02on0102.outbound.protection.outlook.com ([104.47.37.102]:19840
+        "EHLO NAM02-CY1-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1726884AbeJDAvq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 3 Oct 2018 20:51:46 -0400
+From: Trond Myklebust <trondmy@hammerspace.com>
+To: "bfields@fieldses.org" <bfields@fieldses.org>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 13/15] knfsd: Simplify NFS duplicate replay cache
+Date: Wed, 3 Oct 2018 18:01:36 +0000
+Message-ID: <15f0759d1fd9b6442d8634b1cb46fb59cbdf8c95.camel@hammerspace.com>
+References: <20181001144157.3515-5-trond.myklebust@hammerspace.com>
          <20181001144157.3515-6-trond.myklebust@hammerspace.com>
          <20181001144157.3515-7-trond.myklebust@hammerspace.com>
          <20181001144157.3515-8-trond.myklebust@hammerspace.com>
          <20181001144157.3515-9-trond.myklebust@hammerspace.com>
-         <20181003161055.GF17517@fieldses.org>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+         <20181001144157.3515-10-trond.myklebust@hammerspace.com>
+         <20181001144157.3515-11-trond.myklebust@hammerspace.com>
+         <20181001144157.3515-12-trond.myklebust@hammerspace.com>
+         <20181001144157.3515-13-trond.myklebust@hammerspace.com>
+         <20181001144157.3515-14-trond.myklebust@hammerspace.com>
+         <20181003171424.GG17517@fieldses.org>
+In-Reply-To: <20181003171424.GG17517@fieldses.org>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2018-10-03 at 12:10 -0400, J . Bruce Fields wrote:
-> The individual conversions of these caches looks straightforward to
-> me.
-> Thanks for doing this in these small steps.  I'm assuming you're OK
-> with
-> these nfs/ changes going through the nfsd tree.
-> 
-
-Yes please. With the bulk of the changes being nfsd specific, that
-makes more sense to me.
-
-> --b.
-> 
-> On Mon, Oct 01, 2018 at 10:41:50AM -0400, Trond Myklebust wrote:
-> > Enable RCU protected lookup in the legacy DNS resolver.
-> > 
-> > Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
-> > ---
-> >  fs/nfs/dns_resolve.c | 15 ++++++++++++---
-> >  1 file changed, 12 insertions(+), 3 deletions(-)
-> > 
-> > diff --git a/fs/nfs/dns_resolve.c b/fs/nfs/dns_resolve.c
-> > index 060c658eab66..e93a5dc07c8c 100644
-> > --- a/fs/nfs/dns_resolve.c
-> > +++ b/fs/nfs/dns_resolve.c
-> > @@ -65,6 +65,7 @@ struct nfs_dns_ent {
-> >  
-> >  	struct sockaddr_storage addr;
-> >  	size_t addrlen;
-> > +	struct rcu_head rcu_head;
-> >  };
-> >  
-> >  
-> > @@ -101,15 +102,23 @@ static void nfs_dns_ent_init(struct
-> > cache_head *cnew,
-> >  	}
-> >  }
-> >  
-> > -static void nfs_dns_ent_put(struct kref *ref)
-> > +static void nfs_dns_ent_free_rcu(struct rcu_head *head)
-> >  {
-> >  	struct nfs_dns_ent *item;
-> >  
-> > -	item = container_of(ref, struct nfs_dns_ent, h.ref);
-> > +	item = container_of(head, struct nfs_dns_ent, rcu_head);
-> >  	kfree(item->hostname);
-> >  	kfree(item);
-> >  }
-> >  
-> > +static void nfs_dns_ent_put(struct kref *ref)
-> > +{
-> > +	struct nfs_dns_ent *item;
-> > +
-> > +	item = container_of(ref, struct nfs_dns_ent, h.ref);
-> > +	call_rcu(item, nfs_dns_ent_free_rcu);
-> > +}
-> > +
-> >  static struct cache_head *nfs_dns_ent_alloc(void)
-> >  {
-> >  	struct nfs_dns_ent *item = kmalloc(sizeof(*item), GFP_KERNEL);
-> > @@ -195,7 +204,7 @@ static struct nfs_dns_ent
-> > *nfs_dns_lookup(struct cache_detail *cd,
-> >  {
-> >  	struct cache_head *ch;
-> >  
-> > -	ch = sunrpc_cache_lookup(cd,
-> > +	ch = sunrpc_cache_lookup_rcu(cd,
-> >  			&key->h,
-> >  			nfs_dns_hash(key));
-> >  	if (!ch)
-> > -- 
-> > 2.17.1
+T24gV2VkLCAyMDE4LTEwLTAzIGF0IDEzOjE0IC0wNDAwLCBKIC4gQnJ1Y2UgRmllbGRzIHdyb3Rl
+Og0KPiBPbiBNb24sIE9jdCAwMSwgMjAxOCBhdCAxMDo0MTo1NUFNIC0wNDAwLCBUcm9uZCBNeWts
+ZWJ1c3Qgd3JvdGU6DQo+ID4gU2ltcGxpZnkgdGhlIGR1cGxpY2F0ZSByZXBsYXkgY2FjaGUgYnkg
+aW5pdGlhbGlzaW5nIHRoZQ0KPiA+IHByZWFsbG9jYXRlZA0KPiA+IGNhY2hlIGVudHJ5LCBzbyB0
+aGF0IHdlIGNhbiB1c2UgaXQgYXMgYSBrZXkgZm9yIHRoZSBjYWNoZSBsb29rdXAuDQo+ID4gDQo+
+ID4gTm90ZSB0aGF0IHRoZSA5OS45OTklIGNhc2Ugd2Ugd2FudCB0byBvcHRpbWlzZSBmb3IgaXMg
+c3RpbGwgdGhlIG9uZQ0KPiA+IHdoZXJlIHRoZSBsb29rdXAgZmFpbHMsIGFuZCB3ZSBoYXZlIHRv
+IGFkZCB0aGlzIGVudHJ5IHRvIHRoZSBjYWNoZSwNCj4gPiBzbyBwcmVpbml0aWFsaXNpbmcgc2hv
+dWxkIG5vdCBjYXVzZSBhIHBlcmZvcm1hbmNlIHBlbmFsdHkuDQo+ID4gDQo+ID4gU2lnbmVkLW9m
+Zi1ieTogVHJvbmQgTXlrbGVidXN0IDx0cm9uZC5teWtsZWJ1c3RAaGFtbWVyc3BhY2UuY29tPg0K
+PiA+IC0tLQ0KPiA+ICBmcy9uZnNkL2NhY2hlLmggICAgfCAgNiArLS0NCj4gPiAgZnMvbmZzZC9u
+ZnNjYWNoZS5jIHwgOTQgKysrKysrKysrKysrKysrKysrKysrKy0tLS0tLS0tLS0tLS0tLS0tLQ0K
+PiA+IC0tLS0tLQ0KPiA+ICAyIGZpbGVzIGNoYW5nZWQsIDQ3IGluc2VydGlvbnMoKyksIDUzIGRl
+bGV0aW9ucygtKQ0KPiA+IA0KPiA+IGRpZmYgLS1naXQgYS9mcy9uZnNkL2NhY2hlLmggYi9mcy9u
+ZnNkL2NhY2hlLmgNCj4gPiBpbmRleCBiNzU1OWM2ZjJiOTcuLmJkNzdkNWY2ZmU1MyAxMDA2NDQN
+Cj4gPiAtLS0gYS9mcy9uZnNkL2NhY2hlLmgNCj4gPiArKysgYi9mcy9uZnNkL2NhY2hlLmgNCj4g
+PiBAQCAtMjQsMTMgKzI0LDEzIEBAIHN0cnVjdCBzdmNfY2FjaGVyZXAgew0KPiA+ICAJdW5zaWdu
+ZWQgY2hhcgkJY19zdGF0ZSwJLyogdW51c2VkLCBpbnByb2csDQo+ID4gZG9uZSAqLw0KPiA+ICAJ
+CQkJY190eXBlLAkJLyogc3RhdHVzLCBidWZmZXINCj4gPiAqLw0KPiA+ICAJCQkJY19zZWN1cmUg
+OiAxOwkvKiByZXEgY2FtZSBmcm9tDQo+ID4gcG9ydCA8IDEwMjQgKi8NCj4gPiAtCXN0cnVjdCBz
+b2NrYWRkcl9pbjYJY19hZGRyOw0KPiA+ICAJX19iZTMyCQkJY194aWQ7DQo+ID4gLQl1MzIJCQlj
+X3Byb3Q7DQo+ID4gKwlfX3dzdW0JCQljX2NzdW07DQo+ID4gIAl1MzIJCQljX3Byb2M7DQo+ID4g
+Kwl1MzIJCQljX3Byb3Q7DQo+ID4gIAl1MzIJCQljX3ZlcnM7DQo+ID4gIAl1bnNpZ25lZCBpbnQJ
+CWNfbGVuOw0KPiA+IC0JX193c3VtCQkJY19jc3VtOw0KPiA+ICsJc3RydWN0IHNvY2thZGRyX2lu
+NgljX2FkZHI7DQo+ID4gIAl1bnNpZ25lZCBsb25nCQljX3RpbWVzdGFtcDsNCj4gPiAgCXVuaW9u
+IHsNCj4gPiAgCQlzdHJ1Y3Qga3ZlYwl1X3ZlYzsNCj4gDQo+IFVubGVzcyBJJ3ZlIG1pc3NlZCBz
+b21ldGhpbmcgc3VidGxlLS1JJ2xsIG1vdmUgdGhpcyBjaHVuayBpbnRvIHRoZQ0KPiBuZXh0DQo+
+IHBhdGNoLi0tYi4NCg0KTm90aGluZyB0b28gc3VidGxlLiBUaGUgb25seSByZWFzb24gZm9yIGtl
+ZXBpbmcgaXQgaW4gdGhpcyBwYXRjaCBpcw0KYmVjYXVzZSBldmVuIHdpdGggdGhlIGN1cnJlbnQg
+Y29kZSwgbW9zdCBvZiB0aGUgY29tcGFyaXNvbnMgaGl0IHRoZQ0KY194aWQgYW5kIHBvc3NpYmx5
+IHNvbWV0aW1lcyB0aGUgY19jc3VtLCBzbyB0aG9zZSBhcmUgdGhlIG1haW4gZmllbGRzDQp0aGF0
+IHlvdSB3YW50IHRvIHRyeSB0byBrZWVwIGluIHRoZSBzYW1lIGNhY2hlIGxpbmUuDQoNCg0KLS0g
+DQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lciwgSGFtbWVyc3Bh
+Y2UNCnRyb25kLm15a2xlYnVzdEBoYW1tZXJzcGFjZS5jb20NCg0KDQo=
