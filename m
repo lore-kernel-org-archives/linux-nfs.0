@@ -1,123 +1,181 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-eopbgr710135.outbound.protection.outlook.com ([40.107.71.135]:37172
-        "EHLO NAM05-BY2-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1727454AbeJDWQV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 4 Oct 2018 18:16:21 -0400
-From: Trond Myklebust <trondmy@hammerspace.com>
-To: "aglo@umich.edu" <aglo@umich.edu>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 5/7] NFS: Convert lookups of the open context to RCU
-Date: Thu, 4 Oct 2018 15:22:33 +0000
-Message-ID: <012393cb0b1bcb0a2a95650f2929f8d439c8913c.camel@hammerspace.com>
-References: <20180905192400.107485-1-trond.myklebust@hammerspace.com>
-         <20180905192400.107485-2-trond.myklebust@hammerspace.com>
-         <20180905192400.107485-3-trond.myklebust@hammerspace.com>
-         <20180905192400.107485-4-trond.myklebust@hammerspace.com>
-         <20180905192400.107485-5-trond.myklebust@hammerspace.com>
-         <20180905192400.107485-6-trond.myklebust@hammerspace.com>
-         <CAN-5tyG_qr7P8-2_yXAqDvQps0C06AQUuNuBBbYpUcWUsXEVYg@mail.gmail.com>
-         <CAN-5tyGoywV9_cqv9jwHS7s58sX49baG4HXLn85ka-jHySxT0g@mail.gmail.com>
-         <9dbc1442dd1e7bba1903a5ecf2855054ffcd0ee4.camel@gmail.com>
-         <CAN-5tyH=YKiTb4ZWUeJgZg+TDJP9W2yP8acapKSs=km5RTU_6Q@mail.gmail.com>
-         <cf7ee206ca825e243f671ccc3a0f3c332e144174.camel@hammerspace.com>
-         <CAN-5tyGBufKA6Bn1AsB7yLviVGr5SHGyRc4z4hrKF-hScTrQXg@mail.gmail.com>
-         <CAN-5tyGrjjGKG5KoDAgzLrnnzjGUqmf1iUD_AM=wbX8bD5Jk-g@mail.gmail.com>
-         <983c9970070f98ac54526742e6c4de4b0ff7ad63.camel@hammerspace.com>
-         <CAN-5tyGt+J=irZQgByH_nXOtXkztsyjjzLwEfrXHs2UzOZXEHA@mail.gmail.com>
-         <6caf095d3bf43494d25dfe854f2cd87f8eab5adf.camel@hammerspace.com>
-         <CAN-5tyFG41UaAkFyLxFVx308r7r1DsCG2_QqDtw5gvUr0ryfLg@mail.gmail.com>
-In-Reply-To: <CAN-5tyFG41UaAkFyLxFVx308r7r1DsCG2_QqDtw5gvUr0ryfLg@mail.gmail.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-vs1-f68.google.com ([209.85.217.68]:44726 "EHLO
+        mail-vs1-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727540AbeJDWnQ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Oct 2018 18:43:16 -0400
+Received: by mail-vs1-f68.google.com with SMTP id v18-v6so5651539vsl.11
+        for <linux-nfs@vger.kernel.org>; Thu, 04 Oct 2018 08:49:24 -0700 (PDT)
 MIME-Version: 1.0
+References: <20180905192400.107485-1-trond.myklebust@hammerspace.com>
+ <20180905192400.107485-2-trond.myklebust@hammerspace.com> <20180905192400.107485-3-trond.myklebust@hammerspace.com>
+ <20180905192400.107485-4-trond.myklebust@hammerspace.com> <20180905192400.107485-5-trond.myklebust@hammerspace.com>
+ <20180905192400.107485-6-trond.myklebust@hammerspace.com> <CAN-5tyG_qr7P8-2_yXAqDvQps0C06AQUuNuBBbYpUcWUsXEVYg@mail.gmail.com>
+ <CAN-5tyGoywV9_cqv9jwHS7s58sX49baG4HXLn85ka-jHySxT0g@mail.gmail.com>
+ <9dbc1442dd1e7bba1903a5ecf2855054ffcd0ee4.camel@gmail.com>
+ <CAN-5tyH=YKiTb4ZWUeJgZg+TDJP9W2yP8acapKSs=km5RTU_6Q@mail.gmail.com>
+ <cf7ee206ca825e243f671ccc3a0f3c332e144174.camel@hammerspace.com>
+ <CAN-5tyGBufKA6Bn1AsB7yLviVGr5SHGyRc4z4hrKF-hScTrQXg@mail.gmail.com>
+ <CAN-5tyGrjjGKG5KoDAgzLrnnzjGUqmf1iUD_AM=wbX8bD5Jk-g@mail.gmail.com>
+ <983c9970070f98ac54526742e6c4de4b0ff7ad63.camel@hammerspace.com>
+ <CAN-5tyGt+J=irZQgByH_nXOtXkztsyjjzLwEfrXHs2UzOZXEHA@mail.gmail.com>
+ <6caf095d3bf43494d25dfe854f2cd87f8eab5adf.camel@hammerspace.com>
+ <CAN-5tyFG41UaAkFyLxFVx308r7r1DsCG2_QqDtw5gvUr0ryfLg@mail.gmail.com> <012393cb0b1bcb0a2a95650f2929f8d439c8913c.camel@hammerspace.com>
+In-Reply-To: <012393cb0b1bcb0a2a95650f2929f8d439c8913c.camel@hammerspace.com>
+From: Olga Kornievskaia <aglo@umich.edu>
+Date: Thu, 4 Oct 2018 11:49:12 -0400
+Message-ID: <CAN-5tyF0XefktaY0moUvVagbs6DOLD8b0t0S34BH6FXKkFbJxQ@mail.gmail.com>
+Subject: Re: [PATCH 5/7] NFS: Convert lookups of the open context to RCU
+To: Trond Myklebust <trondmy@hammerspace.com>
+Cc: linux-nfs <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-SGkgT2xnYSwNCg0KT24gV2VkLCAyMDE4LTEwLTAzIGF0IDE0OjM4IC0wNDAwLCBPbGdhIEtvcm5p
-ZXZza2FpYSB3cm90ZToNCj4gSGkgVHJvbmQsDQo+IA0KPiBIZXJlJ3Mgd2h5IHRoZSBvcmRlcmlu
-ZyBvZiB0aGUgIm9wZW5fZmlsZXMiIGxpc3QgbWF0dGVycyBhbmQNCj4gY2hhbmdlcy9maXhlcyB0
-aGUgZXhpc3RpbmcgcHJvYmxlbS4NCj4gDQo+IFdoZW4gd2UgZmlyc3Qgb3BlbiB0aGUgZmlsZSBm
-b3Igd3JpdGluZyBhbmQgZ2V0IGEgZGVsZWdhdGlvbiwgaXQncw0KPiB0aGUNCj4gZmlyc3Qgb25l
-IG9uIHRoZSBsaXN0LiBXaGVuIHdlIG9wZW5lZCB0aGUgZmlsZSBhZ2FpbiBmb3IgdGhlIHNhbWUN
-Cj4gbW9kZQ0KPiB0eXBlLCB0aGVuIGJlZm9yZSB0aGUgcGF0Y2gsIHRoZSBuZXcgZW50cnkgaXMg
-aW5zZXJ0ZWQgYmVmb3JlIHdoYXQncw0KPiBhbHJlYWR5IG9uIHRoZSBsaXN0LiBCb3RoIG9mIHRo
-ZXNlIGZpbGVzIHNoYXJlIHRoZSBzYW1lIG5mczRfc3RhdGUNCj4gdGhhdCdzIG1hcmtlZCBkZWxl
-Z2F0ZWQuDQo+IA0KPiBPbmNlIHdlIHJlY2VpdmUgYSBkZWxlZ2F0aW9uIHJlY2FsbCwgaW4gZGVs
-ZWdhdGlvbl9jbGFpbV9vcGVucygpIHdlDQo+IHdhbGsgdGhlIGxpc3QuIEZpcnN0IG9uZSB3aWxs
-IGJlIHRoZSAybmQgb3Blbi4gSXQncyBtYXJrZWQgZGVsZWdhdGVkDQo+IGJ1dCBhZnRlciBjYWxs
-aW5nIG5mczRfb3Blbl9kZWxlZ2F0aW9uX3JlY2FsbCgpIHRoZSBkZWxlZ2F0aW9uIGZsYWcNCj4g
-aXMNCj4gY2xlYXJlZC4gVGhlIDJuZCBvcGVuIGRvZXNuJ3QgaGF2ZSB0aGUgbG9jayBhc3NvY2lh
-dGVkIHdpdGggaXQuIFNvIG5vDQo+IGxvY2sgaXMgcmVjbGFpbWVkLiBXZSBub3cgZ28gdG8gdGhl
-IDJuZCBlbnRyeSBpbiB0aGUgb3Blbl9maWxlIGxpc3QNCj4gd2hpY2ggaXMgdGhlIDFzdCBvcGVu
-IGJ1dCBub3cgdGhlIGRlbGVnYXRpb24gZmxhZyBpcyBjbGVhcmVkIHNvIHdlDQo+IG5ldmVyIHJl
-Y292ZXIgdGhlIGxvY2suDQo+IA0KPiBBbnkgb2YgdGhlIG9wZW5zIG9uIHRoZSBvcGVuX2xpc3Qg
-Y2FuIGJlIHRoZSBsb2NrIGhvbGRlciBhbmQgd2UgY2FuJ3QNCj4gY2xlYXIgdGhlIGRlbGVnYXRp
-b24gZmxhZyBvbiB0aGUgZmlyc3QgdHJlYXRtZW50IG9mIHRoZSBkZWxlZ2F0ZWQNCj4gb3Blbg0K
-PiBiZWNhdXNlIGl0IG1pZ2h0IG5vdCBiZSB0aGUgb3duZXIgb2YgdGhlIGxvY2suDQo+IA0KPiBJ
-J20gdHJ5aW5nIHRvIGZpZ3VyZSBvdXQgaG93IEkgd291bGQgZml4IGl0IGJ1dCBJIHRob3VnaHQg
-SSdkIHNlbmQNCj4gdGhpcyBmb3IgeW91ciBjb21tZW50cy4NCg0KVGhlIGV4cGVjdGF0aW9uIGhl
-cmUgaXMgdGhhdCBvbmNlIHdlIGZpbmQgYW4gb3BlbiBjb250ZXh0IHdpdGggYQ0Kc3RhdGVpZCB0
-aGF0IG5lZWRzIHRvIGJlIHJlY2xhaW1lZCBvciByZWNvdmVyZWQsIHdlIHJlY292ZXIgX2FsbF8g
-dGhlDQpzdGF0ZSBhc3NvY2lhdGVkIHdpdGggdGhhdCBzdGF0ZWlkLg0KSU9XOiB0aGUgZXhwZWN0
-YXRpb24gaXMgdGhhdCB3ZSBmaXJzdCBsb29rIGF0IHRoZSBvcGVuIHN0YXRlLCBhbmQNCihkZXBl
-bmRpbmcgb24gd2hldGhlciB0aGlzIGlzIGEgd3JpdGUgZGVsZWdhdGlvbiBvciBhIHJlYWQgZGVs
-ZWdhdGlvbikNCnJ1biB0aHJvdWdoIGEgc2V0IG9mIGNhbGxzIHRvIG5mczRfb3Blbl9yZWNvdmVy
-X2hlbHBlcigpIHRoYXQgd2lsbA0KcmVjb3ZlciBhbGwgb3V0c3RhbmRpbmcgb3BlbiBzdGF0ZSBm
-b3IgdGhpcyBmaWxlLg0KV2UgdGhlbiBpdGVyYXRlIHRocm91Z2ggYWxsIHRoZSBsb2NrIHN0YXRl
-aWRzIGZvciB0aGUgZmlsZSBhbmQgcmVjb3Zlcg0KdGhvc2UuDQoNClNvIHdoeSBhcmUgd2UgaG9s
-ZGluZyB0aGUgb3BlbiBjb250ZXh0LCBhbmQgbm90IGp1c3QgcGlubmluZyB0aGUNCnN0YXRlaWQg
-d2hpbGUgd2UgcGVyZm9ybSB0aGUgcmVjb3Zlcnk/IFRoZSBtYWluIHJlYXNvbiBpcyB0byBlbnN1
-cmUNCnRoYXQgd2UgYWxzbyBwaW4gdGhlIHBhdGguIFRoZSBzdGF0ZWlkIGhvbGRzIGEgcmVmZXJl
-bmNlIHRvIHRoZSBpbm9kZSwNCmJ1dCByZWNvdmVyeSBjYW4gcmVxdWlyZSB1cyB0byBwZXJmb3Jt
-IGFuIE9QRU4gYmFzZWQgb24gcGF0aCAoZS5nLiB3aGVuDQp1c2luZyBORlM0X09QRU5fQ0xBSU1f
-REVMRUdBVEVfQ1VSKS4gSGVuY2UgdGhlIHV0aWxpdHkgb2YgdGhlIG9wZW4NCmNvbnRleHQsIHdo
-aWNoIGNhcnJpZXMgYSByZWZlcmVuY2UgdG8gYSBzdHJ1Y3QgZGVudHJ5Lg0KDQo+IA0KPiBPbiBG
-cmksIFNlcCAyOCwgMjAxOCBhdCA0OjM4IFBNIFRyb25kIE15a2xlYnVzdCA8DQo+IHRyb25kbXlA
-aGFtbWVyc3BhY2UuY29tPiB3cm90ZToNCj4gPiANCj4gPiBPbiBGcmksIDIwMTgtMDktMjggYXQg
-MTY6MTkgLTA0MDAsIE9sZ2EgS29ybmlldnNrYWlhIHdyb3RlOg0KPiA+ID4gT24gRnJpLCBTZXAg
-MjgsIDIwMTggYXQgNDowNyBQTSBUcm9uZCBNeWtsZWJ1c3QgPA0KPiA+ID4gdHJvbmRteUBoYW1t
-ZXJzcGFjZS5jb20+IHdyb3RlOg0KPiA+ID4gPiANCj4gPiA+ID4gT24gRnJpLCAyMDE4LTA5LTI4
-IGF0IDE1OjU1IC0wNDAwLCBPbGdhIEtvcm5pZXZza2FpYSB3cm90ZToNCj4gPiA+ID4gPiBPbiBG
-cmksIFNlcCAyOCwgMjAxOCBhdCAzOjEwIFBNIE9sZ2EgS29ybmlldnNrYWlhIDwNCj4gPiA+ID4g
-PiBhZ2xvQHVtaWNoLmVkdQ0KPiA+ID4gPiA+ID4gDQo+ID4gPiA+ID4gDQo+ID4gPiA+ID4gd3Jv
-dGU6DQo+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiANCj4gPiA+ID4gPiBXYWl0LCB3aHkgYXJlIHdl
-IHN1cHBvc2UgdG8gcmVjbGFpbSB0aGUgb3BlbiBzdGF0ZSB3aGVuIHdlDQo+ID4gPiA+ID4gaGF2
-ZSBhDQo+ID4gPiA+ID4gdmFsaWQgb3BlbiBzdGF0ZWlkPyBXZSBkb24ndCBoYXZlIGFueSBjYWNo
-ZWQgb3BlbnMgdGhhdA0KPiA+ID4gPiA+IHNlcnZlcg0KPiA+ID4gPiA+IGRvZXNuJ3QNCj4gPiA+
-ID4gPiBrbm93IGFib3V0LiBSRkM3NTMwIHNheXMgImlmIHRoZSBmaWxlIGhhcyBvdGhlciBvcGVu
-DQo+ID4gPiA+ID4gcmVmZXJlbmNlIiwNCj4gPiA+ID4gPiBJDQo+ID4gPiA+ID4gdGhpbmsgdGhl
-IGVtcGhhc2lzIGlzIG9uICJvdGhlciIuIEkgZG9uJ3QgYmVsaWV2ZSB3ZSBuZWVkIHRvDQo+ID4g
-PiA+ID4gYmUNCj4gPiA+ID4gPiBzZW5kaW5nIGFueXRoaW5nIGJlc2lkZXMgdGhlIGxvY2tzIHRv
-IHRoZSBzZXJ2ZXIuIFRoZW4gSSdtDQo+ID4gPiA+ID4gYmFjaw0KPiA+ID4gPiA+IHRvDQo+ID4g
-PiA+ID4gc3F1YXJlIG9uZS4NCj4gPiA+ID4gDQo+ID4gPiA+IEhvbGRpbmcgYSBkZWxlZ2F0aW9u
-IGRvZXMgbm90IGltcGx5IHRoYXQgd2UgaG9sZCBhbiBvcGVuDQo+ID4gPiA+IHN0YXRlaWQuDQo+
-ID4gPiA+IFVuZGVyDQo+ID4gPiA+IExpbnV4LCB0aGUgb3BlbiBzdGF0ZWlkIGdldHMgY2xvc2Vk
-IGFzIHNvb24gYXMgdGhlIGFwcGxpY2F0aW9uDQo+ID4gPiA+IGNsb3Nlcw0KPiA+ID4gPiB0aGUg
-ZmlsZS4NCj4gPiA+ID4gDQo+ID4gPiA+IFRoZSBkZWxlZ2F0aW9uLCBvbiB0aGUgb3RoZXIgaGFu
-ZCwgaXMgcmV0YWluZWQgdW50aWwgZWl0aGVyIGl0DQo+ID4gPiA+IGlzDQo+ID4gPiA+IHJlY2Fs
-bGVkLCBvciB3ZSBzZWUgdGhhdCB0aGUgZmlsZSBoYXMgbm90IGJlZW4gdXNlZCBmb3IgMiBsZWFz
-ZQ0KPiA+ID4gPiBwZXJpb2RzLg0KPiA+ID4gDQo+ID4gPiBPayBJIGFncmVlIHdpdGggYWxsIG9m
-IGl0IGJ1dCBJJ20gc2F5aW5nIGl0IGRvZXNuJ3QgbmVlZCB0byBiZQ0KPiA+ID4gcmVjbGFpbWVk
-IHVuY29uZGl0aW9uYWxseSBvciBhcmUgeW91IHNheWluZyB0aGF0J3Mgd2hhdCB0aGUgbGludXgN
-Cj4gPiA+IGNsaWVudCBkb2VzPyBJbiB0aGlzIHRlc3QgY2FzZSwgdGhlIGZpbGUgaGFzbid0IGJl
-ZW4gY2xvc2VkIG9yDQo+ID4gPiBleHBpcmVkLiBJJ20gc3RhdGluZyB0aGF0IHRoZSBjbGllbnQg
-aGFzIGEgdmFsaWQgb3BlbiBzdGF0ZWlkIGFuZA0KPiA+ID4gc2hvdWxkIG9ubHkgYmUgcmVxdWly
-ZWQgdG8gcmVjbGFpbSB0aGUgbG9ja3MgKHdoaWNoIHdpdGggdGhpcw0KPiA+ID4gcGF0Y2gNCj4g
-PiA+IGl0DQo+ID4gPiBkb2VzKS4NCj4gPiANCj4gPiBBcyBJIHNhaWQgZWFybGllciwgdGhlIGNs
-aWVudCBpcyByZXF1aXJlZCB0byByZWNvdmVyIGFsbCBfY2FjaGVkXw0KPiA+IG9wZW4NCj4gPiBh
-bmQgbG9jayBzdGF0ZS4gSWYgaXQgYWxyZWFkeSBob2xkcyBhbiBvcGVuIHN0YXRlaWQsIHRoZW4g
-aXQgc2hvdWxkDQo+ID4gbm90DQo+ID4gbmVlZCB0byByZWNsYWltIHRoZSBvcGVuIG1vZGVzIHRo
-YXQgYXJlIGNvdmVyZWQgYnkgdGhhdCBzdGF0ZWlkLA0KPiA+IGhvd2V2ZXIgaXQgbWF5IHN0aWxs
-IG5lZWQgdG8gcmVjbGFpbSB0aG9zZSBvcGVuIG1vZGVzIHRoYXQgd2VyZSBub3QNCj4gPiBhbHJl
-YWR5IHN1YmplY3QgdG8gYW4gZXhwbGljaXQgT1BFTiBjYWxsLg0KPiA+IA0KPiA+IElPVzogSWYg
-dGhlIGZpbGUgd2FzIGZpcnN0IG9wZW5lZCB3aXRoIGFuIG9wZW4oT19SRFJXKSBjYWxsIGJ5IHRo
-ZQ0KPiA+IGFwcGxpY2F0aW9uLCBidXQgYSBzZWNvbmQgYXBwbGljYXRpb24gdGhlbiBvcGVuZWQg
-aXQgdXNpbmcNCj4gPiBvcGVuKE9fV1JPTkxZKSwgdGhlbiB3ZSBtYXkgYWxyZWFkeSBob2xkIGEg
-c3RhdGVpZCB3aXRoIGENCj4gPiAiU0hBUkVfQUNDRVNTX0JPVEgiIG9wZW4gbW9kZSwgaG93ZXZl
-ciB3ZSB3aWxsIHN0aWxsIG5lZWQgdG8gc2VuZCBhDQo+ID4gcmVjbGFpbSBmb3IgdGhlIGNhY2hl
-ZCBTSEFSRV9BQ0NFU1NfV1JJVEUgbW9kZSwgc28gdGhhdCBhIGxhdGVyDQo+ID4gT1BFTl9ET1dO
-R1JBREUoU0hBUkVfQUNDRVNTX1dSSVRFKSBjYW4gc3VjY2VlZC4NCj4gPiANCj4gPiAtLQ0KPiA+
-IFRyb25kIE15a2xlYnVzdA0KPiA+IExpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lciwgSGFtbWVy
-c3BhY2UNCj4gPiB0cm9uZC5teWtsZWJ1c3RAaGFtbWVyc3BhY2UuY29tDQo+ID4gDQo+ID4gDQot
-LSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBIYW1tZXJz
-cGFjZQ0KdHJvbmQubXlrbGVidXN0QGhhbW1lcnNwYWNlLmNvbQ0KDQoNCg==
+On Thu, Oct 4, 2018 at 11:22 AM Trond Myklebust <trondmy@hammerspace.com> wrote:
+>
+> Hi Olga,
+>
+> On Wed, 2018-10-03 at 14:38 -0400, Olga Kornievskaia wrote:
+> > Hi Trond,
+> >
+> > Here's why the ordering of the "open_files" list matters and
+> > changes/fixes the existing problem.
+> >
+> > When we first open the file for writing and get a delegation, it's
+> > the
+> > first one on the list. When we opened the file again for the same
+> > mode
+> > type, then before the patch, the new entry is inserted before what's
+> > already on the list. Both of these files share the same nfs4_state
+> > that's marked delegated.
+> >
+> > Once we receive a delegation recall, in delegation_claim_opens() we
+> > walk the list. First one will be the 2nd open. It's marked delegated
+> > but after calling nfs4_open_delegation_recall() the delegation flag
+> > is
+> > cleared. The 2nd open doesn't have the lock associated with it. So no
+> > lock is reclaimed. We now go to the 2nd entry in the open_file list
+> > which is the 1st open but now the delegation flag is cleared so we
+> > never recover the lock.
+> >
+> > Any of the opens on the open_list can be the lock holder and we can't
+> > clear the delegation flag on the first treatment of the delegated
+> > open
+> > because it might not be the owner of the lock.
+> >
+> > I'm trying to figure out how I would fix it but I thought I'd send
+> > this for your comments.
+>
+> The expectation here is that once we find an open context with a
+> stateid that needs to be reclaimed or recovered, we recover _all_ the
+> state associated with that stateid.
+> IOW: the expectation is that we first look at the open state, and
+> (depending on whether this is a write delegation or a read delegation)
+> run through a set of calls to nfs4_open_recover_helper() that will
+> recover all outstanding open state for this file.
+
+That's true. I see that it will recover all the outstanding opens for this file.
+
+> We then iterate through all the lock stateids for the file and recover
+> those.
+
+However this is not true. Because we pass in a specific
+nfs_open_context into the nfs_delegation_claim_locks() and while
+looping thru the list of locks for the file we compare if the open
+context associated with the file lock is same as the passed in
+context. The passed in context is that of the first nfs_open_context
+that was marked delegated and not necessarily the context that hold
+the locks. That's the problem.
+
+While we are looping thru the locks for the file, we need to be
+checking against any and all the nfs_open_context that are associated
+with the file and recovering those locks. I'm still not sure how to do
+it.
+
+>
+> So why are we holding the open context, and not just pinning the
+> stateid while we perform the recovery? The main reason is to ensure
+> that we also pin the path. The stateid holds a reference to the inode,
+> but recovery can require us to perform an OPEN based on path (e.g. when
+> using NFS4_OPEN_CLAIM_DELEGATE_CUR). Hence the utility of the open
+> context, which carries a reference to a struct dentry.
+>
+> >
+> > On Fri, Sep 28, 2018 at 4:38 PM Trond Myklebust <
+> > trondmy@hammerspace.com> wrote:
+> > >
+> > > On Fri, 2018-09-28 at 16:19 -0400, Olga Kornievskaia wrote:
+> > > > On Fri, Sep 28, 2018 at 4:07 PM Trond Myklebust <
+> > > > trondmy@hammerspace.com> wrote:
+> > > > >
+> > > > > On Fri, 2018-09-28 at 15:55 -0400, Olga Kornievskaia wrote:
+> > > > > > On Fri, Sep 28, 2018 at 3:10 PM Olga Kornievskaia <
+> > > > > > aglo@umich.edu
+> > > > > > >
+> > > > > >
+> > > > > > wrote:
+> > > > > > >
+> > > > > >
+> > > > > > Wait, why are we suppose to reclaim the open state when we
+> > > > > > have a
+> > > > > > valid open stateid? We don't have any cached opens that
+> > > > > > server
+> > > > > > doesn't
+> > > > > > know about. RFC7530 says "if the file has other open
+> > > > > > reference",
+> > > > > > I
+> > > > > > think the emphasis is on "other". I don't believe we need to
+> > > > > > be
+> > > > > > sending anything besides the locks to the server. Then I'm
+> > > > > > back
+> > > > > > to
+> > > > > > square one.
+> > > > >
+> > > > > Holding a delegation does not imply that we hold an open
+> > > > > stateid.
+> > > > > Under
+> > > > > Linux, the open stateid gets closed as soon as the application
+> > > > > closes
+> > > > > the file.
+> > > > >
+> > > > > The delegation, on the other hand, is retained until either it
+> > > > > is
+> > > > > recalled, or we see that the file has not been used for 2 lease
+> > > > > periods.
+> > > >
+> > > > Ok I agree with all of it but I'm saying it doesn't need to be
+> > > > reclaimed unconditionally or are you saying that's what the linux
+> > > > client does? In this test case, the file hasn't been closed or
+> > > > expired. I'm stating that the client has a valid open stateid and
+> > > > should only be required to reclaim the locks (which with this
+> > > > patch
+> > > > it
+> > > > does).
+> > >
+> > > As I said earlier, the client is required to recover all _cached_
+> > > open
+> > > and lock state. If it already holds an open stateid, then it should
+> > > not
+> > > need to reclaim the open modes that are covered by that stateid,
+> > > however it may still need to reclaim those open modes that were not
+> > > already subject to an explicit OPEN call.
+> > >
+> > > IOW: If the file was first opened with an open(O_RDRW) call by the
+> > > application, but a second application then opened it using
+> > > open(O_WRONLY), then we may already hold a stateid with a
+> > > "SHARE_ACCESS_BOTH" open mode, however we will still need to send a
+> > > reclaim for the cached SHARE_ACCESS_WRITE mode, so that a later
+> > > OPEN_DOWNGRADE(SHARE_ACCESS_WRITE) can succeed.
+> > >
+> > > --
+> > > Trond Myklebust
+> > > Linux NFS client maintainer, Hammerspace
+> > > trond.myklebust@hammerspace.com
+> > >
+> > >
+> --
+> Trond Myklebust
+> Linux NFS client maintainer, Hammerspace
+> trond.myklebust@hammerspace.com
+>
+>
