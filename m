@@ -1,64 +1,123 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from hurricane.elijah.cs.cmu.edu ([128.2.209.191]:59020 "EHLO
-        hurricane.elijah.cs.cmu.edu" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1727354AbeJDV7p (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Oct 2018 17:59:45 -0400
-Date: Thu, 04 Oct 2018 10:42:07 -0400
-In-Reply-To: <28763.1538662213@warthog.procyon.org.uk>
-References: <153861496327.30373.10501882399296347125.stgit@noble> <153861471803.30373.6184444014227748848.stgit@noble> <28763.1538662213@warthog.procyon.org.uk>
+Received: from mail-eopbgr710135.outbound.protection.outlook.com ([40.107.71.135]:37172
+        "EHLO NAM05-BY2-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1727454AbeJDWQV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 4 Oct 2018 18:16:21 -0400
+From: Trond Myklebust <trondmy@hammerspace.com>
+To: "aglo@umich.edu" <aglo@umich.edu>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 5/7] NFS: Convert lookups of the open context to RCU
+Date: Thu, 4 Oct 2018 15:22:33 +0000
+Message-ID: <012393cb0b1bcb0a2a95650f2929f8d439c8913c.camel@hammerspace.com>
+References: <20180905192400.107485-1-trond.myklebust@hammerspace.com>
+         <20180905192400.107485-2-trond.myklebust@hammerspace.com>
+         <20180905192400.107485-3-trond.myklebust@hammerspace.com>
+         <20180905192400.107485-4-trond.myklebust@hammerspace.com>
+         <20180905192400.107485-5-trond.myklebust@hammerspace.com>
+         <20180905192400.107485-6-trond.myklebust@hammerspace.com>
+         <CAN-5tyG_qr7P8-2_yXAqDvQps0C06AQUuNuBBbYpUcWUsXEVYg@mail.gmail.com>
+         <CAN-5tyGoywV9_cqv9jwHS7s58sX49baG4HXLn85ka-jHySxT0g@mail.gmail.com>
+         <9dbc1442dd1e7bba1903a5ecf2855054ffcd0ee4.camel@gmail.com>
+         <CAN-5tyH=YKiTb4ZWUeJgZg+TDJP9W2yP8acapKSs=km5RTU_6Q@mail.gmail.com>
+         <cf7ee206ca825e243f671ccc3a0f3c332e144174.camel@hammerspace.com>
+         <CAN-5tyGBufKA6Bn1AsB7yLviVGr5SHGyRc4z4hrKF-hScTrQXg@mail.gmail.com>
+         <CAN-5tyGrjjGKG5KoDAgzLrnnzjGUqmf1iUD_AM=wbX8bD5Jk-g@mail.gmail.com>
+         <983c9970070f98ac54526742e6c4de4b0ff7ad63.camel@hammerspace.com>
+         <CAN-5tyGt+J=irZQgByH_nXOtXkztsyjjzLwEfrXHs2UzOZXEHA@mail.gmail.com>
+         <6caf095d3bf43494d25dfe854f2cd87f8eab5adf.camel@hammerspace.com>
+         <CAN-5tyFG41UaAkFyLxFVx308r7r1DsCG2_QqDtw5gvUr0ryfLg@mail.gmail.com>
+In-Reply-To: <CAN-5tyFG41UaAkFyLxFVx308r7r1DsCG2_QqDtw5gvUr0ryfLg@mail.gmail.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain;
- charset=utf-8
-Subject: Re: [PATCH 1/3] VFS: introduce MAY_ACT_AS_OWNER
-To: David Howells <dhowells@redhat.com>, NeilBrown <neilb@suse.com>
-CC: dhowells@redhat.com, "J. Bruce Fields" <bfields@fieldses.org>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Trond Myklebust <trond.myklebust@hammerspace.com>,
-        linux-nfs@vger.kernel.org, Miklos Szeredi <miklos@szeredi.hu>,
-        Jeff Layton <jlayton@kernel.org>, linux-kernel@vger.kernel.org,
-        linux-afs@lists.infradead.org, coda@cs.cmu.edu,
-        linux-fsdevel@vger.kernel.org, Christoph Hellwig <hch@lst.de>
-From: Jan Harkes <jaharkes@cs.cmu.edu>
-Message-ID: <3D5BB0E9-E43C-43D1-86E9-96E409A17D54@cs.cmu.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Same for Coda.
-
-uid/gid/mode don't mean anything, access is based on the directory ACL and the authentication token that is held by the userspace cache manager and ultimately decided by the servers.
-
-Unless someone broke this recently and made permission checks uid based I would expect no change. If this is broken by a recent commit I expect something similar to what NFS is trying to do by allowing the actual check to be passed down.
-
-Jan
-
-On October 4, 2018 10:10:13 AM EDT, David Howells <dhowells@redhat.com> wrote:
->NeilBrown <neilb@suse.com> wrote:
->
->> diff --git a/fs/afs/security.c b/fs/afs/security.c
->> index 81dfedb7879f..ac2e39de8bff 100644
->> --- a/fs/afs/security.c
->> +++ b/fs/afs/security.c
->> @@ -349,6 +349,16 @@ int afs_permission(struct inode *inode, int
->mask)
->>  	if (mask & MAY_NOT_BLOCK)
->>  		return -ECHILD;
->>  
->> +	/* Short-circuit for owner */
->> +	if (mask & MAY_ACT_AS_OWNER) {
->> +		if (inode_owner_or_capable(inode))
->
->You don't know that inode->i_uid in meaningful.  You may have noticed
->that
->afs_permission() ignores i_uid and i_gid entirely.  It queries the
->server (if
->this information is not otherwise cached) to ask what permits the user
->is
->granted - where the user identity is defined by the key returned from
->afs_request_key()[*].
->
->So, NAK for the afs piece.
->
->David
->
->[*] If there's no appropriate key, anonymous permits will be used.
+SGkgT2xnYSwNCg0KT24gV2VkLCAyMDE4LTEwLTAzIGF0IDE0OjM4IC0wNDAwLCBPbGdhIEtvcm5p
+ZXZza2FpYSB3cm90ZToNCj4gSGkgVHJvbmQsDQo+IA0KPiBIZXJlJ3Mgd2h5IHRoZSBvcmRlcmlu
+ZyBvZiB0aGUgIm9wZW5fZmlsZXMiIGxpc3QgbWF0dGVycyBhbmQNCj4gY2hhbmdlcy9maXhlcyB0
+aGUgZXhpc3RpbmcgcHJvYmxlbS4NCj4gDQo+IFdoZW4gd2UgZmlyc3Qgb3BlbiB0aGUgZmlsZSBm
+b3Igd3JpdGluZyBhbmQgZ2V0IGEgZGVsZWdhdGlvbiwgaXQncw0KPiB0aGUNCj4gZmlyc3Qgb25l
+IG9uIHRoZSBsaXN0LiBXaGVuIHdlIG9wZW5lZCB0aGUgZmlsZSBhZ2FpbiBmb3IgdGhlIHNhbWUN
+Cj4gbW9kZQ0KPiB0eXBlLCB0aGVuIGJlZm9yZSB0aGUgcGF0Y2gsIHRoZSBuZXcgZW50cnkgaXMg
+aW5zZXJ0ZWQgYmVmb3JlIHdoYXQncw0KPiBhbHJlYWR5IG9uIHRoZSBsaXN0LiBCb3RoIG9mIHRo
+ZXNlIGZpbGVzIHNoYXJlIHRoZSBzYW1lIG5mczRfc3RhdGUNCj4gdGhhdCdzIG1hcmtlZCBkZWxl
+Z2F0ZWQuDQo+IA0KPiBPbmNlIHdlIHJlY2VpdmUgYSBkZWxlZ2F0aW9uIHJlY2FsbCwgaW4gZGVs
+ZWdhdGlvbl9jbGFpbV9vcGVucygpIHdlDQo+IHdhbGsgdGhlIGxpc3QuIEZpcnN0IG9uZSB3aWxs
+IGJlIHRoZSAybmQgb3Blbi4gSXQncyBtYXJrZWQgZGVsZWdhdGVkDQo+IGJ1dCBhZnRlciBjYWxs
+aW5nIG5mczRfb3Blbl9kZWxlZ2F0aW9uX3JlY2FsbCgpIHRoZSBkZWxlZ2F0aW9uIGZsYWcNCj4g
+aXMNCj4gY2xlYXJlZC4gVGhlIDJuZCBvcGVuIGRvZXNuJ3QgaGF2ZSB0aGUgbG9jayBhc3NvY2lh
+dGVkIHdpdGggaXQuIFNvIG5vDQo+IGxvY2sgaXMgcmVjbGFpbWVkLiBXZSBub3cgZ28gdG8gdGhl
+IDJuZCBlbnRyeSBpbiB0aGUgb3Blbl9maWxlIGxpc3QNCj4gd2hpY2ggaXMgdGhlIDFzdCBvcGVu
+IGJ1dCBub3cgdGhlIGRlbGVnYXRpb24gZmxhZyBpcyBjbGVhcmVkIHNvIHdlDQo+IG5ldmVyIHJl
+Y292ZXIgdGhlIGxvY2suDQo+IA0KPiBBbnkgb2YgdGhlIG9wZW5zIG9uIHRoZSBvcGVuX2xpc3Qg
+Y2FuIGJlIHRoZSBsb2NrIGhvbGRlciBhbmQgd2UgY2FuJ3QNCj4gY2xlYXIgdGhlIGRlbGVnYXRp
+b24gZmxhZyBvbiB0aGUgZmlyc3QgdHJlYXRtZW50IG9mIHRoZSBkZWxlZ2F0ZWQNCj4gb3Blbg0K
+PiBiZWNhdXNlIGl0IG1pZ2h0IG5vdCBiZSB0aGUgb3duZXIgb2YgdGhlIGxvY2suDQo+IA0KPiBJ
+J20gdHJ5aW5nIHRvIGZpZ3VyZSBvdXQgaG93IEkgd291bGQgZml4IGl0IGJ1dCBJIHRob3VnaHQg
+SSdkIHNlbmQNCj4gdGhpcyBmb3IgeW91ciBjb21tZW50cy4NCg0KVGhlIGV4cGVjdGF0aW9uIGhl
+cmUgaXMgdGhhdCBvbmNlIHdlIGZpbmQgYW4gb3BlbiBjb250ZXh0IHdpdGggYQ0Kc3RhdGVpZCB0
+aGF0IG5lZWRzIHRvIGJlIHJlY2xhaW1lZCBvciByZWNvdmVyZWQsIHdlIHJlY292ZXIgX2FsbF8g
+dGhlDQpzdGF0ZSBhc3NvY2lhdGVkIHdpdGggdGhhdCBzdGF0ZWlkLg0KSU9XOiB0aGUgZXhwZWN0
+YXRpb24gaXMgdGhhdCB3ZSBmaXJzdCBsb29rIGF0IHRoZSBvcGVuIHN0YXRlLCBhbmQNCihkZXBl
+bmRpbmcgb24gd2hldGhlciB0aGlzIGlzIGEgd3JpdGUgZGVsZWdhdGlvbiBvciBhIHJlYWQgZGVs
+ZWdhdGlvbikNCnJ1biB0aHJvdWdoIGEgc2V0IG9mIGNhbGxzIHRvIG5mczRfb3Blbl9yZWNvdmVy
+X2hlbHBlcigpIHRoYXQgd2lsbA0KcmVjb3ZlciBhbGwgb3V0c3RhbmRpbmcgb3BlbiBzdGF0ZSBm
+b3IgdGhpcyBmaWxlLg0KV2UgdGhlbiBpdGVyYXRlIHRocm91Z2ggYWxsIHRoZSBsb2NrIHN0YXRl
+aWRzIGZvciB0aGUgZmlsZSBhbmQgcmVjb3Zlcg0KdGhvc2UuDQoNClNvIHdoeSBhcmUgd2UgaG9s
+ZGluZyB0aGUgb3BlbiBjb250ZXh0LCBhbmQgbm90IGp1c3QgcGlubmluZyB0aGUNCnN0YXRlaWQg
+d2hpbGUgd2UgcGVyZm9ybSB0aGUgcmVjb3Zlcnk/IFRoZSBtYWluIHJlYXNvbiBpcyB0byBlbnN1
+cmUNCnRoYXQgd2UgYWxzbyBwaW4gdGhlIHBhdGguIFRoZSBzdGF0ZWlkIGhvbGRzIGEgcmVmZXJl
+bmNlIHRvIHRoZSBpbm9kZSwNCmJ1dCByZWNvdmVyeSBjYW4gcmVxdWlyZSB1cyB0byBwZXJmb3Jt
+IGFuIE9QRU4gYmFzZWQgb24gcGF0aCAoZS5nLiB3aGVuDQp1c2luZyBORlM0X09QRU5fQ0xBSU1f
+REVMRUdBVEVfQ1VSKS4gSGVuY2UgdGhlIHV0aWxpdHkgb2YgdGhlIG9wZW4NCmNvbnRleHQsIHdo
+aWNoIGNhcnJpZXMgYSByZWZlcmVuY2UgdG8gYSBzdHJ1Y3QgZGVudHJ5Lg0KDQo+IA0KPiBPbiBG
+cmksIFNlcCAyOCwgMjAxOCBhdCA0OjM4IFBNIFRyb25kIE15a2xlYnVzdCA8DQo+IHRyb25kbXlA
+aGFtbWVyc3BhY2UuY29tPiB3cm90ZToNCj4gPiANCj4gPiBPbiBGcmksIDIwMTgtMDktMjggYXQg
+MTY6MTkgLTA0MDAsIE9sZ2EgS29ybmlldnNrYWlhIHdyb3RlOg0KPiA+ID4gT24gRnJpLCBTZXAg
+MjgsIDIwMTggYXQgNDowNyBQTSBUcm9uZCBNeWtsZWJ1c3QgPA0KPiA+ID4gdHJvbmRteUBoYW1t
+ZXJzcGFjZS5jb20+IHdyb3RlOg0KPiA+ID4gPiANCj4gPiA+ID4gT24gRnJpLCAyMDE4LTA5LTI4
+IGF0IDE1OjU1IC0wNDAwLCBPbGdhIEtvcm5pZXZza2FpYSB3cm90ZToNCj4gPiA+ID4gPiBPbiBG
+cmksIFNlcCAyOCwgMjAxOCBhdCAzOjEwIFBNIE9sZ2EgS29ybmlldnNrYWlhIDwNCj4gPiA+ID4g
+PiBhZ2xvQHVtaWNoLmVkdQ0KPiA+ID4gPiA+ID4gDQo+ID4gPiA+ID4gDQo+ID4gPiA+ID4gd3Jv
+dGU6DQo+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiANCj4gPiA+ID4gPiBXYWl0LCB3aHkgYXJlIHdl
+IHN1cHBvc2UgdG8gcmVjbGFpbSB0aGUgb3BlbiBzdGF0ZSB3aGVuIHdlDQo+ID4gPiA+ID4gaGF2
+ZSBhDQo+ID4gPiA+ID4gdmFsaWQgb3BlbiBzdGF0ZWlkPyBXZSBkb24ndCBoYXZlIGFueSBjYWNo
+ZWQgb3BlbnMgdGhhdA0KPiA+ID4gPiA+IHNlcnZlcg0KPiA+ID4gPiA+IGRvZXNuJ3QNCj4gPiA+
+ID4gPiBrbm93IGFib3V0LiBSRkM3NTMwIHNheXMgImlmIHRoZSBmaWxlIGhhcyBvdGhlciBvcGVu
+DQo+ID4gPiA+ID4gcmVmZXJlbmNlIiwNCj4gPiA+ID4gPiBJDQo+ID4gPiA+ID4gdGhpbmsgdGhl
+IGVtcGhhc2lzIGlzIG9uICJvdGhlciIuIEkgZG9uJ3QgYmVsaWV2ZSB3ZSBuZWVkIHRvDQo+ID4g
+PiA+ID4gYmUNCj4gPiA+ID4gPiBzZW5kaW5nIGFueXRoaW5nIGJlc2lkZXMgdGhlIGxvY2tzIHRv
+IHRoZSBzZXJ2ZXIuIFRoZW4gSSdtDQo+ID4gPiA+ID4gYmFjaw0KPiA+ID4gPiA+IHRvDQo+ID4g
+PiA+ID4gc3F1YXJlIG9uZS4NCj4gPiA+ID4gDQo+ID4gPiA+IEhvbGRpbmcgYSBkZWxlZ2F0aW9u
+IGRvZXMgbm90IGltcGx5IHRoYXQgd2UgaG9sZCBhbiBvcGVuDQo+ID4gPiA+IHN0YXRlaWQuDQo+
+ID4gPiA+IFVuZGVyDQo+ID4gPiA+IExpbnV4LCB0aGUgb3BlbiBzdGF0ZWlkIGdldHMgY2xvc2Vk
+IGFzIHNvb24gYXMgdGhlIGFwcGxpY2F0aW9uDQo+ID4gPiA+IGNsb3Nlcw0KPiA+ID4gPiB0aGUg
+ZmlsZS4NCj4gPiA+ID4gDQo+ID4gPiA+IFRoZSBkZWxlZ2F0aW9uLCBvbiB0aGUgb3RoZXIgaGFu
+ZCwgaXMgcmV0YWluZWQgdW50aWwgZWl0aGVyIGl0DQo+ID4gPiA+IGlzDQo+ID4gPiA+IHJlY2Fs
+bGVkLCBvciB3ZSBzZWUgdGhhdCB0aGUgZmlsZSBoYXMgbm90IGJlZW4gdXNlZCBmb3IgMiBsZWFz
+ZQ0KPiA+ID4gPiBwZXJpb2RzLg0KPiA+ID4gDQo+ID4gPiBPayBJIGFncmVlIHdpdGggYWxsIG9m
+IGl0IGJ1dCBJJ20gc2F5aW5nIGl0IGRvZXNuJ3QgbmVlZCB0byBiZQ0KPiA+ID4gcmVjbGFpbWVk
+IHVuY29uZGl0aW9uYWxseSBvciBhcmUgeW91IHNheWluZyB0aGF0J3Mgd2hhdCB0aGUgbGludXgN
+Cj4gPiA+IGNsaWVudCBkb2VzPyBJbiB0aGlzIHRlc3QgY2FzZSwgdGhlIGZpbGUgaGFzbid0IGJl
+ZW4gY2xvc2VkIG9yDQo+ID4gPiBleHBpcmVkLiBJJ20gc3RhdGluZyB0aGF0IHRoZSBjbGllbnQg
+aGFzIGEgdmFsaWQgb3BlbiBzdGF0ZWlkIGFuZA0KPiA+ID4gc2hvdWxkIG9ubHkgYmUgcmVxdWly
+ZWQgdG8gcmVjbGFpbSB0aGUgbG9ja3MgKHdoaWNoIHdpdGggdGhpcw0KPiA+ID4gcGF0Y2gNCj4g
+PiA+IGl0DQo+ID4gPiBkb2VzKS4NCj4gPiANCj4gPiBBcyBJIHNhaWQgZWFybGllciwgdGhlIGNs
+aWVudCBpcyByZXF1aXJlZCB0byByZWNvdmVyIGFsbCBfY2FjaGVkXw0KPiA+IG9wZW4NCj4gPiBh
+bmQgbG9jayBzdGF0ZS4gSWYgaXQgYWxyZWFkeSBob2xkcyBhbiBvcGVuIHN0YXRlaWQsIHRoZW4g
+aXQgc2hvdWxkDQo+ID4gbm90DQo+ID4gbmVlZCB0byByZWNsYWltIHRoZSBvcGVuIG1vZGVzIHRo
+YXQgYXJlIGNvdmVyZWQgYnkgdGhhdCBzdGF0ZWlkLA0KPiA+IGhvd2V2ZXIgaXQgbWF5IHN0aWxs
+IG5lZWQgdG8gcmVjbGFpbSB0aG9zZSBvcGVuIG1vZGVzIHRoYXQgd2VyZSBub3QNCj4gPiBhbHJl
+YWR5IHN1YmplY3QgdG8gYW4gZXhwbGljaXQgT1BFTiBjYWxsLg0KPiA+IA0KPiA+IElPVzogSWYg
+dGhlIGZpbGUgd2FzIGZpcnN0IG9wZW5lZCB3aXRoIGFuIG9wZW4oT19SRFJXKSBjYWxsIGJ5IHRo
+ZQ0KPiA+IGFwcGxpY2F0aW9uLCBidXQgYSBzZWNvbmQgYXBwbGljYXRpb24gdGhlbiBvcGVuZWQg
+aXQgdXNpbmcNCj4gPiBvcGVuKE9fV1JPTkxZKSwgdGhlbiB3ZSBtYXkgYWxyZWFkeSBob2xkIGEg
+c3RhdGVpZCB3aXRoIGENCj4gPiAiU0hBUkVfQUNDRVNTX0JPVEgiIG9wZW4gbW9kZSwgaG93ZXZl
+ciB3ZSB3aWxsIHN0aWxsIG5lZWQgdG8gc2VuZCBhDQo+ID4gcmVjbGFpbSBmb3IgdGhlIGNhY2hl
+ZCBTSEFSRV9BQ0NFU1NfV1JJVEUgbW9kZSwgc28gdGhhdCBhIGxhdGVyDQo+ID4gT1BFTl9ET1dO
+R1JBREUoU0hBUkVfQUNDRVNTX1dSSVRFKSBjYW4gc3VjY2VlZC4NCj4gPiANCj4gPiAtLQ0KPiA+
+IFRyb25kIE15a2xlYnVzdA0KPiA+IExpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lciwgSGFtbWVy
+c3BhY2UNCj4gPiB0cm9uZC5teWtsZWJ1c3RAaGFtbWVyc3BhY2UuY29tDQo+ID4gDQo+ID4gDQot
+LSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBIYW1tZXJz
+cGFjZQ0KdHJvbmQubXlrbGVidXN0QGhhbW1lcnNwYWNlLmNvbQ0KDQoNCg==
