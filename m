@@ -1,251 +1,33 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-vk1-f195.google.com ([209.85.221.195]:34100 "EHLO
-        mail-vk1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727415AbeJDXZm (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Oct 2018 19:25:42 -0400
-Received: by mail-vk1-f195.google.com with SMTP id s10-v6so2314629vkh.1
-        for <linux-nfs@vger.kernel.org>; Thu, 04 Oct 2018 09:31:39 -0700 (PDT)
-MIME-Version: 1.0
-References: <20180905192400.107485-1-trond.myklebust@hammerspace.com>
- <20180905192400.107485-2-trond.myklebust@hammerspace.com> <20180905192400.107485-3-trond.myklebust@hammerspace.com>
- <20180905192400.107485-4-trond.myklebust@hammerspace.com> <20180905192400.107485-5-trond.myklebust@hammerspace.com>
- <20180905192400.107485-6-trond.myklebust@hammerspace.com> <CAN-5tyG_qr7P8-2_yXAqDvQps0C06AQUuNuBBbYpUcWUsXEVYg@mail.gmail.com>
- <CAN-5tyGoywV9_cqv9jwHS7s58sX49baG4HXLn85ka-jHySxT0g@mail.gmail.com>
- <9dbc1442dd1e7bba1903a5ecf2855054ffcd0ee4.camel@gmail.com>
- <CAN-5tyH=YKiTb4ZWUeJgZg+TDJP9W2yP8acapKSs=km5RTU_6Q@mail.gmail.com>
- <cf7ee206ca825e243f671ccc3a0f3c332e144174.camel@hammerspace.com>
- <CAN-5tyGBufKA6Bn1AsB7yLviVGr5SHGyRc4z4hrKF-hScTrQXg@mail.gmail.com>
- <CAN-5tyGrjjGKG5KoDAgzLrnnzjGUqmf1iUD_AM=wbX8bD5Jk-g@mail.gmail.com>
- <983c9970070f98ac54526742e6c4de4b0ff7ad63.camel@hammerspace.com>
- <CAN-5tyGt+J=irZQgByH_nXOtXkztsyjjzLwEfrXHs2UzOZXEHA@mail.gmail.com>
- <6caf095d3bf43494d25dfe854f2cd87f8eab5adf.camel@hammerspace.com>
- <CAN-5tyFG41UaAkFyLxFVx308r7r1DsCG2_QqDtw5gvUr0ryfLg@mail.gmail.com>
- <012393cb0b1bcb0a2a95650f2929f8d439c8913c.camel@hammerspace.com>
- <CAN-5tyF0XefktaY0moUvVagbs6DOLD8b0t0S34BH6FXKkFbJxQ@mail.gmail.com> <81e98d8bd299449b600ebbedcf53fdffa59d3cca.camel@hammerspace.com>
-In-Reply-To: <81e98d8bd299449b600ebbedcf53fdffa59d3cca.camel@hammerspace.com>
-From: Olga Kornievskaia <aglo@umich.edu>
-Date: Thu, 4 Oct 2018 12:31:26 -0400
-Message-ID: <CAN-5tyFW9+04uqtSAqq=J+uD3d5TdGNZs_1RL-_W7+iNLEE99A@mail.gmail.com>
-Subject: Re: [PATCH 5/7] NFS: Convert lookups of the open context to RCU
-To: Trond Myklebust <trondmy@hammerspace.com>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+Received: from shards.monkeyblade.net ([23.128.96.9]:51550 "EHLO
+        shards.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727415AbeJDXg2 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Oct 2018 19:36:28 -0400
+Date: Thu, 04 Oct 2018 09:42:24 -0700 (PDT)
+Message-Id: <20181004.094224.1068745934757143781.davem@davemloft.net>
+To: dhowells@redhat.com
+Cc: netdev@vger.kernel.org, linux-afs@lists.infradead.org,
+        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-cifs@vger.kernel.org
+Subject: Re: [PATCH net-next] dns: Allow the dns resolver to retrieve a
+ server set
+From: David Miller <davem@davemloft.net>
+In-Reply-To: <153865967530.25761.13226347009462917363.stgit@warthog.procyon.org.uk>
+References: <153865967530.25761.13226347009462917363.stgit@warthog.procyon.org.uk>
+Mime-Version: 1.0
+Content-Type: Text/Plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Oct 4, 2018 at 12:13 PM Trond Myklebust <trondmy@hammerspace.com> wrote:
->
-> On Thu, 2018-10-04 at 11:49 -0400, Olga Kornievskaia wrote:
-> > On Thu, Oct 4, 2018 at 11:22 AM Trond Myklebust <
-> > trondmy@hammerspace.com> wrote:
-> > >
-> > > Hi Olga,
-> > >
-> > > On Wed, 2018-10-03 at 14:38 -0400, Olga Kornievskaia wrote:
-> > > > Hi Trond,
-> > > >
-> > > > Here's why the ordering of the "open_files" list matters and
-> > > > changes/fixes the existing problem.
-> > > >
-> > > > When we first open the file for writing and get a delegation,
-> > > > it's
-> > > > the
-> > > > first one on the list. When we opened the file again for the same
-> > > > mode
-> > > > type, then before the patch, the new entry is inserted before
-> > > > what's
-> > > > already on the list. Both of these files share the same
-> > > > nfs4_state
-> > > > that's marked delegated.
-> > > >
-> > > > Once we receive a delegation recall, in delegation_claim_opens()
-> > > > we
-> > > > walk the list. First one will be the 2nd open. It's marked
-> > > > delegated
-> > > > but after calling nfs4_open_delegation_recall() the delegation
-> > > > flag
-> > > > is
-> > > > cleared. The 2nd open doesn't have the lock associated with it.
-> > > > So no
-> > > > lock is reclaimed. We now go to the 2nd entry in the open_file
-> > > > list
-> > > > which is the 1st open but now the delegation flag is cleared so
-> > > > we
-> > > > never recover the lock.
-> > > >
-> > > > Any of the opens on the open_list can be the lock holder and we
-> > > > can't
-> > > > clear the delegation flag on the first treatment of the delegated
-> > > > open
-> > > > because it might not be the owner of the lock.
-> > > >
-> > > > I'm trying to figure out how I would fix it but I thought I'd
-> > > > send
-> > > > this for your comments.
-> > >
-> > > The expectation here is that once we find an open context with a
-> > > stateid that needs to be reclaimed or recovered, we recover _all_
-> > > the
-> > > state associated with that stateid.
-> > > IOW: the expectation is that we first look at the open state, and
-> > > (depending on whether this is a write delegation or a read
-> > > delegation)
-> > > run through a set of calls to nfs4_open_recover_helper() that will
-> > > recover all outstanding open state for this file.
-> >
-> > That's true. I see that it will recover all the outstanding opens for
-> > this file.
-> >
-> > > We then iterate through all the lock stateids for the file and
-> > > recover
-> > > those.
-> >
-> > However this is not true. Because we pass in a specific
-> > nfs_open_context into the nfs_delegation_claim_locks() and while
-> > looping thru the list of locks for the file we compare if the open
-> > context associated with the file lock is same as the passed in
-> > context. The passed in context is that of the first nfs_open_context
-> > that was marked delegated and not necessarily the context that hold
-> > the locks. That's the problem.
-> >
-> > While we are looping thru the locks for the file, we need to be
-> > checking against any and all the nfs_open_context that are associated
-> > with the file and recovering those locks. I'm still not sure how to
-> > do
-> > it.
-> >
->
-> Interesting. Why are we checking that open context? I can't see any
-> reason why we would want to do that.
+From: David Howells <dhowells@redhat.com>
+Date: Thu, 04 Oct 2018 14:27:55 +0100
 
-I'm thinking it's probably because we might have open context
-(non-delegated) on this file that holds a lock (say we opened with
-O_DIRECT and got a lock; that lock was sent to the server so doesn't
-need to recovered). Then we opened a file again and got a delegation
-and got a different lock. When we are looping thru the locks for the
-file, we only need to recover the 2nd one.
+> Allow the DNS resolver to retrieve a set of servers and their associated
+> addresses, ports, preference and weight ratings.
+ ...
+> This can then be used to fetch a whole cell's VL-server configuration for
+> AFS, for example.
+> 
+> Signed-off-by: David Howells <dhowells@redhat.com>
 
-I'm thinking can't we check that the passed in state is the same that
-is what we get nfs_file_open_context(fl->fl_file)->state ? I'm testing
-it now...
-
-
->
-> > >
-> > > So why are we holding the open context, and not just pinning the
-> > > stateid while we perform the recovery? The main reason is to ensure
-> > > that we also pin the path. The stateid holds a reference to the
-> > > inode,
-> > > but recovery can require us to perform an OPEN based on path (e.g.
-> > > when
-> > > using NFS4_OPEN_CLAIM_DELEGATE_CUR). Hence the utility of the open
-> > > context, which carries a reference to a struct dentry.
-> > >
-> > > >
-> > > > On Fri, Sep 28, 2018 at 4:38 PM Trond Myklebust <
-> > > > trondmy@hammerspace.com> wrote:
-> > > > >
-> > > > > On Fri, 2018-09-28 at 16:19 -0400, Olga Kornievskaia wrote:
-> > > > > > On Fri, Sep 28, 2018 at 4:07 PM Trond Myklebust <
-> > > > > > trondmy@hammerspace.com> wrote:
-> > > > > > >
-> > > > > > > On Fri, 2018-09-28 at 15:55 -0400, Olga Kornievskaia wrote:
-> > > > > > > > On Fri, Sep 28, 2018 at 3:10 PM Olga Kornievskaia <
-> > > > > > > > aglo@umich.edu
-> > > > > > > > >
-> > > > > > > >
-> > > > > > > > wrote:
-> > > > > > > > >
-> > > > > > > >
-> > > > > > > > Wait, why are we suppose to reclaim the open state when
-> > > > > > > > we
-> > > > > > > > have a
-> > > > > > > > valid open stateid? We don't have any cached opens that
-> > > > > > > > server
-> > > > > > > > doesn't
-> > > > > > > > know about. RFC7530 says "if the file has other open
-> > > > > > > > reference",
-> > > > > > > > I
-> > > > > > > > think the emphasis is on "other". I don't believe we need
-> > > > > > > > to
-> > > > > > > > be
-> > > > > > > > sending anything besides the locks to the server. Then
-> > > > > > > > I'm
-> > > > > > > > back
-> > > > > > > > to
-> > > > > > > > square one.
-> > > > > > >
-> > > > > > > Holding a delegation does not imply that we hold an open
-> > > > > > > stateid.
-> > > > > > > Under
-> > > > > > > Linux, the open stateid gets closed as soon as the
-> > > > > > > application
-> > > > > > > closes
-> > > > > > > the file.
-> > > > > > >
-> > > > > > > The delegation, on the other hand, is retained until either
-> > > > > > > it
-> > > > > > > is
-> > > > > > > recalled, or we see that the file has not been used for 2
-> > > > > > > lease
-> > > > > > > periods.
-> > > > > >
-> > > > > > Ok I agree with all of it but I'm saying it doesn't need to
-> > > > > > be
-> > > > > > reclaimed unconditionally or are you saying that's what the
-> > > > > > linux
-> > > > > > client does? In this test case, the file hasn't been closed
-> > > > > > or
-> > > > > > expired. I'm stating that the client has a valid open stateid
-> > > > > > and
-> > > > > > should only be required to reclaim the locks (which with this
-> > > > > > patch
-> > > > > > it
-> > > > > > does).
-> > > > >
-> > > > > As I said earlier, the client is required to recover all
-> > > > > _cached_
-> > > > > open
-> > > > > and lock state. If it already holds an open stateid, then it
-> > > > > should
-> > > > > not
-> > > > > need to reclaim the open modes that are covered by that
-> > > > > stateid,
-> > > > > however it may still need to reclaim those open modes that were
-> > > > > not
-> > > > > already subject to an explicit OPEN call.
-> > > > >
-> > > > > IOW: If the file was first opened with an open(O_RDRW) call by
-> > > > > the
-> > > > > application, but a second application then opened it using
-> > > > > open(O_WRONLY), then we may already hold a stateid with a
-> > > > > "SHARE_ACCESS_BOTH" open mode, however we will still need to
-> > > > > send a
-> > > > > reclaim for the cached SHARE_ACCESS_WRITE mode, so that a later
-> > > > > OPEN_DOWNGRADE(SHARE_ACCESS_WRITE) can succeed.
-> > > > >
-> > > > > --
-> > > > > Trond Myklebust
-> > > > > Linux NFS client maintainer, Hammerspace
-> > > > > trond.myklebust@hammerspace.com
-> > > > >
-> > > > >
-> > >
-> > > --
-> > > Trond Myklebust
-> > > Linux NFS client maintainer, Hammerspace
-> > > trond.myklebust@hammerspace.com
-> > >
-> > >
-> Trond Myklebust
-> CTO, Hammerspace Inc
-> 4300 El Camino Real, Suite 105
-> Los Altos, CA 94022
-> www.hammer.space
->
-> --
-> Trond Myklebust
-> Linux NFS client maintainer, Hammerspace
-> trond.myklebust@hammerspace.com
->
->
+Applied, thanks David.
