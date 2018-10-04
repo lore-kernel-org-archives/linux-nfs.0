@@ -1,178 +1,91 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ua1-f65.google.com ([209.85.222.65]:45296 "EHLO
-        mail-ua1-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727615AbeJEBqC (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Oct 2018 21:46:02 -0400
-Received: by mail-ua1-f65.google.com with SMTP id c10so2262785uao.12
-        for <linux-nfs@vger.kernel.org>; Thu, 04 Oct 2018 11:51:28 -0700 (PDT)
+Received: from mx2.suse.de ([195.135.220.15]:41800 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1726773AbeJEEr5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 5 Oct 2018 00:47:57 -0400
+From: NeilBrown <neilb@suse.com>
+To: David Howells <dhowells@redhat.com>
+Date: Fri, 05 Oct 2018 07:52:19 +1000
+Cc: dhowells@redhat.com, "J. Bruce Fields" <bfields@fieldses.org>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        Trond Myklebust <trond.myklebust@hammerspace.com>,
+        Jan Harkes <jaharkes@cs.cmu.edu>, linux-nfs@vger.kernel.org,
+        Miklos Szeredi <miklos@szeredi.hu>,
+        Jeff Layton <jlayton@kernel.org>, linux-kernel@vger.kernel.org,
+        linux-afs@lists.infradead.org, coda@cs.cmu.edu,
+        linux-fsdevel@vger.kernel.org, Christoph Hellwig <hch@lst.de>
+Subject: Re: [PATCH 1/3] VFS: introduce MAY_ACT_AS_OWNER
+In-Reply-To: <28763.1538662213@warthog.procyon.org.uk>
+References: <153861496327.30373.10501882399296347125.stgit@noble> <153861471803.30373.6184444014227748848.stgit@noble> <28763.1538662213@warthog.procyon.org.uk>
+Message-ID: <87a7nttm5o.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-References: <20180905192400.107485-1-trond.myklebust@hammerspace.com>
- <20180905192400.107485-2-trond.myklebust@hammerspace.com> <20180905192400.107485-3-trond.myklebust@hammerspace.com>
- <20180905192400.107485-4-trond.myklebust@hammerspace.com> <20180905192400.107485-5-trond.myklebust@hammerspace.com>
- <20180905192400.107485-6-trond.myklebust@hammerspace.com> <CAN-5tyG_qr7P8-2_yXAqDvQps0C06AQUuNuBBbYpUcWUsXEVYg@mail.gmail.com>
- <CAN-5tyGoywV9_cqv9jwHS7s58sX49baG4HXLn85ka-jHySxT0g@mail.gmail.com>
- <9dbc1442dd1e7bba1903a5ecf2855054ffcd0ee4.camel@gmail.com>
- <CAN-5tyH=YKiTb4ZWUeJgZg+TDJP9W2yP8acapKSs=km5RTU_6Q@mail.gmail.com>
- <cf7ee206ca825e243f671ccc3a0f3c332e144174.camel@hammerspace.com>
- <CAN-5tyGBufKA6Bn1AsB7yLviVGr5SHGyRc4z4hrKF-hScTrQXg@mail.gmail.com>
- <CAN-5tyGrjjGKG5KoDAgzLrnnzjGUqmf1iUD_AM=wbX8bD5Jk-g@mail.gmail.com>
- <983c9970070f98ac54526742e6c4de4b0ff7ad63.camel@hammerspace.com>
- <CAN-5tyGt+J=irZQgByH_nXOtXkztsyjjzLwEfrXHs2UzOZXEHA@mail.gmail.com>
- <6caf095d3bf43494d25dfe854f2cd87f8eab5adf.camel@hammerspace.com>
- <CAN-5tyFG41UaAkFyLxFVx308r7r1DsCG2_QqDtw5gvUr0ryfLg@mail.gmail.com>
- <012393cb0b1bcb0a2a95650f2929f8d439c8913c.camel@hammerspace.com>
- <CAN-5tyF0XefktaY0moUvVagbs6DOLD8b0t0S34BH6FXKkFbJxQ@mail.gmail.com>
- <81e98d8bd299449b600ebbedcf53fdffa59d3cca.camel@hammerspace.com>
- <CAN-5tyFW9+04uqtSAqq=J+uD3d5TdGNZs_1RL-_W7+iNLEE99A@mail.gmail.com> <f085fa2a4f26c1b0a73a33ee55900e7dc7220859.camel@hammerspace.com>
-In-Reply-To: <f085fa2a4f26c1b0a73a33ee55900e7dc7220859.camel@hammerspace.com>
-From: Olga Kornievskaia <aglo@umich.edu>
-Date: Thu, 4 Oct 2018 14:51:16 -0400
-Message-ID: <CAN-5tyFh6U_=VhBwRTsD261WbJmsJesYrXr9fPMNvt1MQ7ZwZg@mail.gmail.com>
-Subject: Re: [PATCH 5/7] NFS: Convert lookups of the open context to RCU
-To: Trond Myklebust <trondmy@hammerspace.com>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: multipart/signed; boundary="=-=-=";
+        micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Oct 4, 2018 at 12:42 PM Trond Myklebust <trondmy@hammerspace.com> wrote:
->
-> On Thu, 2018-10-04 at 12:31 -0400, Olga Kornievskaia wrote:
-> > On Thu, Oct 4, 2018 at 12:13 PM Trond Myklebust <
-> > trondmy@hammerspace.com> wrote:
-> > >
-> > > On Thu, 2018-10-04 at 11:49 -0400, Olga Kornievskaia wrote:
-> > > > On Thu, Oct 4, 2018 at 11:22 AM Trond Myklebust <
-> > > > trondmy@hammerspace.com> wrote:
-> > > > >
-> > > > > Hi Olga,
-> > > > >
-> > > > > On Wed, 2018-10-03 at 14:38 -0400, Olga Kornievskaia wrote:
-> > > > > > Hi Trond,
-> > > > > >
-> > > > > > Here's why the ordering of the "open_files" list matters and
-> > > > > > changes/fixes the existing problem.
-> > > > > >
-> > > > > > When we first open the file for writing and get a delegation,
-> > > > > > it's
-> > > > > > the
-> > > > > > first one on the list. When we opened the file again for the
-> > > > > > same
-> > > > > > mode
-> > > > > > type, then before the patch, the new entry is inserted before
-> > > > > > what's
-> > > > > > already on the list. Both of these files share the same
-> > > > > > nfs4_state
-> > > > > > that's marked delegated.
-> > > > > >
-> > > > > > Once we receive a delegation recall, in
-> > > > > > delegation_claim_opens()
-> > > > > > we
-> > > > > > walk the list. First one will be the 2nd open. It's marked
-> > > > > > delegated
-> > > > > > but after calling nfs4_open_delegation_recall() the
-> > > > > > delegation
-> > > > > > flag
-> > > > > > is
-> > > > > > cleared. The 2nd open doesn't have the lock associated with
-> > > > > > it.
-> > > > > > So no
-> > > > > > lock is reclaimed. We now go to the 2nd entry in the
-> > > > > > open_file
-> > > > > > list
-> > > > > > which is the 1st open but now the delegation flag is cleared
-> > > > > > so
-> > > > > > we
-> > > > > > never recover the lock.
-> > > > > >
-> > > > > > Any of the opens on the open_list can be the lock holder and
-> > > > > > we
-> > > > > > can't
-> > > > > > clear the delegation flag on the first treatment of the
-> > > > > > delegated
-> > > > > > open
-> > > > > > because it might not be the owner of the lock.
-> > > > > >
-> > > > > > I'm trying to figure out how I would fix it but I thought I'd
-> > > > > > send
-> > > > > > this for your comments.
-> > > > >
-> > > > > The expectation here is that once we find an open context with
-> > > > > a
-> > > > > stateid that needs to be reclaimed or recovered, we recover
-> > > > > _all_
-> > > > > the
-> > > > > state associated with that stateid.
-> > > > > IOW: the expectation is that we first look at the open state,
-> > > > > and
-> > > > > (depending on whether this is a write delegation or a read
-> > > > > delegation)
-> > > > > run through a set of calls to nfs4_open_recover_helper() that
-> > > > > will
-> > > > > recover all outstanding open state for this file.
-> > > >
-> > > > That's true. I see that it will recover all the outstanding opens
-> > > > for
-> > > > this file.
-> > > >
-> > > > > We then iterate through all the lock stateids for the file and
-> > > > > recover
-> > > > > those.
-> > > >
-> > > > However this is not true. Because we pass in a specific
-> > > > nfs_open_context into the nfs_delegation_claim_locks() and while
-> > > > looping thru the list of locks for the file we compare if the
-> > > > open
-> > > > context associated with the file lock is same as the passed in
-> > > > context. The passed in context is that of the first
-> > > > nfs_open_context
-> > > > that was marked delegated and not necessarily the context that
-> > > > hold
-> > > > the locks. That's the problem.
-> > > >
-> > > > While we are looping thru the locks for the file, we need to be
-> > > > checking against any and all the nfs_open_context that are
-> > > > associated
-> > > > with the file and recovering those locks. I'm still not sure how
-> > > > to
-> > > > do
-> > > > it.
-> > > >
-> > >
-> > > Interesting. Why are we checking that open context? I can't see any
-> > > reason why we would want to do that.
-> >
-> > I'm thinking it's probably because we might have open context
-> > (non-delegated) on this file that holds a lock (say we opened with
-> > O_DIRECT and got a lock; that lock was sent to the server so doesn't
-> > need to recovered). Then we opened a file again and got a delegation
-> > and got a different lock. When we are looping thru the locks for the
-> > file, we only need to recover the 2nd one.
-> >
-> > I'm thinking can't we check that the passed in state is the same that
-> > is what we get nfs_file_open_context(fl->fl_file)->state ? I'm
-> > testing
-> > it now...
->
-> There is nothing in the protocol that stops you from recovering a lock
-> twice (unless the server does Microsoft stacked locks, which our client
-> doesn't support). I'd prefer to just go for simplicity here, and
-> recover everything.
->
-> ...and yes, I agree that we should select the locks to recover based on
-> the state. As I said, that was the expectation in the first place.
+--=-=-=
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
-Ok. I sent out a patch but not sure if you want something that just
-removes the check all together.
+On Thu, Oct 04 2018, David Howells wrote:
 
-
-
-
-
+> NeilBrown <neilb@suse.com> wrote:
 >
-> --
-> Trond Myklebust
-> Linux NFS client maintainer, Hammerspace
-> trond.myklebust@hammerspace.com
+>> diff --git a/fs/afs/security.c b/fs/afs/security.c
+>> index 81dfedb7879f..ac2e39de8bff 100644
+>> --- a/fs/afs/security.c
+>> +++ b/fs/afs/security.c
+>> @@ -349,6 +349,16 @@ int afs_permission(struct inode *inode, int mask)
+>>  	if (mask & MAY_NOT_BLOCK)
+>>  		return -ECHILD;
+>>=20=20
+>> +	/* Short-circuit for owner */
+>> +	if (mask & MAY_ACT_AS_OWNER) {
+>> +		if (inode_owner_or_capable(inode))
 >
+> You don't know that inode->i_uid in meaningful.  You may have noticed that
+> afs_permission() ignores i_uid and i_gid entirely.  It queries the server=
+ (if
+> this information is not otherwise cached) to ask what permits the user is
+> granted - where the user identity is defined by the key returned from
+> afs_request_key()[*].
 >
+> So, NAK for the afs piece.
+
+Thanks for the review.
+As afs doesn't use the generic xattr code and doesn't call
+setattr_prepare(), this is all largely irrelevant for afs.
+
+afs_permission() will probably only get MAY_ACT_AS_OWNER passed when
+someone uses fcntl(F_SETFL) to set the O_NOATIME flag.
+Currently a permission test based on UID is performed which, as you say,
+is wrong.  My patch simply preserved this current (wrong) behaviour.
+Shall I change it to always allow access, like with NFS?
+Probably O_NOATIME is ignored, in which case f_op->check_flags should
+probably report -EINVAL (???) ... or might that cause a regression?
+
+Thanks,
+NeilBrown
+
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+
+iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlu2i5QACgkQOeye3VZi
+gbktMg/+OWLKA0/pjxbunAjnI0yn4NYbPgmQ9qFOBmgsH/z8ScYaU+ITYvbQ9EXD
+QgNg2w87lj9pf2caztQRBl7nmFbpiHOHh+6pKJdKy32qziNxxQHwulo0n7nhsjCJ
+Lx4Tr4rqQXDRY/y/gPZQyT2Vo0VkGg9AxQ9wwOWAT9j3ujEydCT1N/ED+qgezZdX
+HEG2Fn3yFuo20qurR6ObRwaZnHXZJA22nZ9X9WCHBZxQgXTQBmq1Qlszg8aaKF3w
++0dAht+CYUEmjpKTx1UEMwkYR1ARLUnDqRvXovIlUGQjcGlAbv2c1YriOkOXDOz/
+t0FWHkKDdSXHldl51fCJeLHjX58BGLiIB5Sq/o90yV0Fz9DVQcN0H5+OoLLM4qh2
+lWD2aLd37tsPqsyisOxDxHiQd1E9eqr09+fiq15WDx4XUxtkZzl0FtkYPS3f4Xnd
+h9sZFqfP8NpSmBaS1sfCKaQyjEmH0JE5GzGik7dXH9GPOiq6TF9Yey/LTLWUOrMr
+znzzPdweIXANofG4PohccGdxI2MMP2vs/7ZxaslHq0raF+hG28pwdR78B1/Rl2F0
+7GuXOgsB9aJV/b4h35x20pAOOQMcbtgiBwS7pk9j+k7BXFqAw0U+2cumZhMxE25n
+wRQiQ2hSaTnlrgOuU8VCNoxbu2ExZvZRBqjRMnSp28BWjS/pjBo=
+=33XB
+-----END PGP SIGNATURE-----
+--=-=-=--
