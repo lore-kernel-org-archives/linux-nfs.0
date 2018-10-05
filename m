@@ -1,148 +1,60 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from discipline.rit.edu ([129.21.6.207]:28921 "HELO
-        discipline.rit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with SMTP id S1727558AbeJETX4 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Oct 2018 15:23:56 -0400
-From: Andrew W Elble <aweits@rit.edu>
-To: Stan Hu <stanhu@gmail.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: High network traffic from repeated TEST_STATEID messages
-References: <CAMBWrQnS4MyrgyGUqr5rhOTm+ss2AYy-vNXjj4+fzqY+cuE=tw@mail.gmail.com>
-Date: Fri, 05 Oct 2018 08:18:43 -0400
-In-Reply-To: <CAMBWrQnS4MyrgyGUqr5rhOTm+ss2AYy-vNXjj4+fzqY+cuE=tw@mail.gmail.com>
-        (Stan Hu's message of "Thu, 4 Oct 2018 23:35:02 -0700")
-Message-ID: <m2y3bcbn8c.fsf@discipline.rit.edu>
+Received: from mail-eopbgr720130.outbound.protection.outlook.com ([40.107.72.130]:1384
+        "EHLO NAM05-CO1-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1727701AbeJEUek (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 5 Oct 2018 16:34:40 -0400
+From: Trond Myklebust <trondmy@hammerspace.com>
+To: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+        "olga.kornievskaia@gmail.com" <olga.kornievskaia@gmail.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/1] NFSv4.x: fix lock recovery during delegation recall
+Date: Fri, 5 Oct 2018 13:35:39 +0000
+Message-ID: <c69066ae4ff1538740e2cda49968b6affa32cd61.camel@hammerspace.com>
+References: <20181004184500.14403-1-olga.kornievskaia@gmail.com>
+In-Reply-To: <20181004184500.14403-1-olga.kornievskaia@gmail.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-Stan,
-
-   I've seen this before, in my case it was indicative of a delegation
-  being "lost". You might want to try newer upstream kernels to attempt to
-  rectify this. There is no "easy" way to see the actual delegations
-  that the client and server have (although /proc/locks will indicate
-  their presence on the server).
-
-  The server is asking for something back that the client no
-  longer has for some reason. Finding that reason can be difficult :-(
-
-  Are you able to use tracing on the nfs client side? This helped me
-  locate some of the issues:
-
-echo "error != 0" | tee /sys/kernel/debug/tracing/events/nfs4/nfs4_delegreturn_exit/filter
-
-Thanks,
-
-Andy
-
-Stan Hu <stanhu@gmail.com> writes:
-
-> I've been working with two different customers, one running RedHat
-> Enterprise Linux 7.3 (3.10.06-693.21.1) and another on Amazon Linux
-> (based off CentOS). Independently they hit a problem that may be
-> induced by our application where NFS v4.1 gets into a state where the
-> network is flooded with TEST_STATEID messages (e.g. 2000+ packets/s)
-> with the SEQ4_STATUS_RECALLABLE_STATE_REVOKED bit enabled on all
-> server replies. When this happens, NFS is incredibly slow and
-> unusable. It doesn't appear to get out of this state without manual
-> intervention.
->
-> The server appears to return each of these TEST_STATEIDs with NFS4_OK messages.
->
-> In a 17-second network trace on one of the NFS client machines, I see
-> 18,411 TEST_STATEID requests with 1,362 unique stateid values (based
-> off Wireshark's dissected "StateID Other" field).
->
-> In another 82-second trace, I see 308,877 TEST_STATEID requests with
-> 769 unique stateid values.
->
-> A sample except from the NFS client kernel logs shows:
->
-> Oct  4 22:05:40 gitlab-cff6b07b kernel: NFS call  test_stateid ffff8807697efe14
-> Oct  4 22:05:40 gitlab-cff6b07b kernel: --> nfs41_call_sync_prepare
-> data->seq_server ffff880795748800
-> Oct  4 22:05:40 gitlab-cff6b07b kernel: --> nfs41_setup_sequence
-> Oct  4 22:05:40 gitlab-cff6b07b kernel: --> nfs4_alloc_slot
-> used_slots=0000 highest_used=4294967295 max_slots=31
-> Oct  4 22:05:40 gitlab-cff6b07b kernel: <-- nfs4_alloc_slot
-> used_slots=0001 highest_used=0 slotid=0
-> Oct  4 22:05:40 gitlab-cff6b07b kernel: <-- nfs41_setup_sequence
-> slotid=0 seqid=150890619
-> Oct  4 22:05:40 gitlab-cff6b07b kernel: encode_sequence:
-> sessionid=1536619925:3417519922:3:0 seqid=150890619 slotid=0
-> max_slotid=0 cache_this=0
-> Oct  4 22:05:40 gitlab-cff6b07b kernel:
-> nfs41_handle_sequence_flag_errors: "10.44.1.54" (client ID
-> 95f5965b3237b3cb) flags=0x00000040
-> Oct  4 22:05:40 gitlab-cff6b07b kernel: --> nfs4_alloc_slot
-> used_slots=0001 highest_used=0 max_slots=31
-> Oct  4 22:05:40 gitlab-cff6b07b kernel: <-- nfs4_alloc_slot
-> used_slots=0003 highest_used=1 slotid=1
-> Oct  4 22:05:40 gitlab-cff6b07b kernel: nfs4_free_slot: slotid 1
-> highest_used_slotid 0
-> Oct  4 22:05:40 gitlab-cff6b07b kernel: nfs41_sequence_process: Error
-> 0 free the slot
-> Oct  4 22:05:40 gitlab-cff6b07b kernel: nfs4_free_slot: slotid 0
-> highest_used_slotid 4294967295
-> Oct  4 22:05:40 gitlab-cff6b07b kernel: NFS reply test_stateid: succeeded, 0
-> Oct  4 22:05:40 gitlab-cff6b07b kernel: NFS call  test_stateid ffff8807697efe14
-> <snip>
->
-> Then a few minutes later, these -10052 (NFS4ERR_BADSESSION) errors show up:
->
-> Oct  4 22:07:42 gitlab-cff6b07b kernel: nfs41_sequence_process: Error
-> -10052 free the slot
-> Oct  4 22:07:42 gitlab-cff6b07b kernel: nfs4_free_slot: slotid 20
-> highest_used_slotid 30
-> Oct  4 22:07:42 gitlab-cff6b07b kernel: nfs4_do_handle_exception
-> ERROR: -10052 Reset session
-> Oct  4 22:07:42 gitlab-cff6b07b kernel: nfs4_schedule_lease_recovery:
-> scheduling lease recovery for server 10.44.1.54
-> Oct  4 22:07:42 gitlab-cff6b07b kernel: nfs41_sequence_process: Error
-> -10052 free the slot
-> Oct  4 22:07:42 gitlab-cff6b07b kernel: nfs4_free_slot: slotid 18
-> highest_used_slotid 30
-> Oct  4 22:07:42 gitlab-cff6b07b kernel: nfs4_do_handle_exception
-> ERROR: -10052 Reset session
-> Oct  4 22:07:42 gitlab-cff6b07b kernel: nfs4_schedule_lease_recovery:
-> scheduling lease recovery for server 10.44.1.54
-> Oct  4 22:07:42 gitlab-cff6b07b kernel: nfs41_sequence_process: Error
-> -10052 free the slot
-> Oct  4 22:07:42 gitlab-cff6b07b kernel: nfs4_free_slot: slotid 4
-> highest_used_slotid 30
-> Oct  4 22:07:42 gitlab-cff6b07b kernel: nfs4_do_handle_exception
-> ERROR: -10052 Reset session
-> Oct  4 22:07:42 gitlab-cff6b07b kernel: nfs4_schedule_lease_recovery:
-> scheduling lease recovery for server 10.44.1.54
-> Oct  4 22:07:42 gitlab-cff6b07b rsyslogd-2177: imjournal: begin to
-> drop messages due to rate-limiting
->
-> I see some discussion in
-> https://www.spinics.net/lists/linux-nfs/msg59800.html perhaps for a
-> similar issue.
->
-> I'd expect that after some time, the client and server would reconcile
-> the proper delegation state, but this doesn't seem to be happening.
-> The only way to recover seems to be to stop the application, unmount
-> the NFS mount, remount it again, and start the application back up.
->
-> I'm wondering a number of things:
->
-> 1. Has anyone seen this behavior before?
-> 2. Does anyone have any idea what might induce this behavior? I'm
-> going to see if I can reproduce this by having a process that has
-> 1,000+ open NFS files, blocking network traffic momentarily with
-> iptables, and then seeing how the system performs.
-> 3. Is there a way to see what open delegations are on the client and the server?
->
-
--- 
-Andrew W. Elble
-Infrastructure Engineer
-Information and Technology Services
-Rochester Institute of Technology
-tel: (585)-475-2411 | aweits@rit.edu
-PGP: BFAD 8461 4CCF DC95 DA2C B0EB 965B 082E 863E C912
+T24gVGh1LCAyMDE4LTEwLTA0IGF0IDE0OjQ1IC0wNDAwLCBPbGdhIEtvcm5pZXZza2FpYSB3cm90
+ZToNCj4gRnJvbTogT2xnYSBLb3JuaWV2c2thaWEgPGtvbGdhQG5ldGFwcC5jb20+DQo+IA0KPiBS
+dW5uaW5nICIuL25mc3Rlc3RfZGVsZWdhdGlvbiAtLXJ1bnRlc3QgcmVjYWxsMjYiIHVuY292ZXJz
+IHRoYXQNCj4gY2xpZW50IGRvZXNuJ3QgcmVjb3ZlciB0aGUgbG9jayB3aGVuIHdlIGhhdmUgYW4g
+YXBwZW5kaW5nIG9wZW4sDQo+IHdoZXJlIHRoZSBpbml0aWFsIG9wZW4gZ290IGEgd3JpdGUgZGVs
+ZWdhdGlvbi4NCj4gDQo+IEluc3RlYWQgb2YgY2hlY2tpbmcgZm9yIHRoZSBwYXNzZWQgaW4gb3Bl
+biBjb250ZXh0IGFnYWluc3QNCj4gdGhlIGZpbGUgbG9jaydzIG9wZW4gY29udGV4dC4gQ2hlY2sg
+dGhhdCB0aGUgc3RhdGUgaXMgdGhlIHNhbWUuDQo+IA0KPiBTaWduZWQtb2ZmLWJ5OiBPbGdhIEtv
+cm5pZXZza2FpYSA8a29sZ2FAbmV0YXBwLmNvbT4NCj4gLS0tDQo+ICBmcy9uZnMvZGVsZWdhdGlv
+bi5jIHwgNiArKystLS0NCj4gIDEgZmlsZSBjaGFuZ2VkLCAzIGluc2VydGlvbnMoKyksIDMgZGVs
+ZXRpb25zKC0pDQo+IA0KPiBkaWZmIC0tZ2l0IGEvZnMvbmZzL2RlbGVnYXRpb24uYyBiL2ZzL25m
+cy9kZWxlZ2F0aW9uLmMNCj4gaW5kZXggNzZkMjA1ZC4uMDdiODM5NSAxMDA2NDQNCj4gLS0tIGEv
+ZnMvbmZzL2RlbGVnYXRpb24uYw0KPiArKysgYi9mcy9uZnMvZGVsZWdhdGlvbi5jDQo+IEBAIC05
+Myw3ICs5Myw3IEBAIGludCBuZnM0X2NoZWNrX2RlbGVnYXRpb24oc3RydWN0IGlub2RlICppbm9k
+ZSwNCj4gZm1vZGVfdCBmbGFncykNCj4gIAlyZXR1cm4gbmZzNF9kb19jaGVja19kZWxlZ2F0aW9u
+KGlub2RlLCBmbGFncywgZmFsc2UpOw0KPiAgfQ0KPiAgDQo+IC1zdGF0aWMgaW50IG5mc19kZWxl
+Z2F0aW9uX2NsYWltX2xvY2tzKHN0cnVjdCBuZnNfb3Blbl9jb250ZXh0ICpjdHgsDQo+IHN0cnVj
+dCBuZnM0X3N0YXRlICpzdGF0ZSwgY29uc3QgbmZzNF9zdGF0ZWlkICpzdGF0ZWlkKQ0KPiArc3Rh
+dGljIGludCBuZnNfZGVsZWdhdGlvbl9jbGFpbV9sb2NrcyhzdHJ1Y3QgbmZzNF9zdGF0ZSAqc3Rh
+dGUsDQo+IGNvbnN0IG5mczRfc3RhdGVpZCAqc3RhdGVpZCkNCj4gIHsNCj4gIAlzdHJ1Y3QgaW5v
+ZGUgKmlub2RlID0gc3RhdGUtPmlub2RlOw0KPiAgCXN0cnVjdCBmaWxlX2xvY2sgKmZsOw0KPiBA
+QCAtMTA4LDcgKzEwOCw3IEBAIHN0YXRpYyBpbnQgbmZzX2RlbGVnYXRpb25fY2xhaW1fbG9ja3Mo
+c3RydWN0DQo+IG5mc19vcGVuX2NvbnRleHQgKmN0eCwgc3RydWN0IG5mczRfDQo+ICAJc3Bpbl9s
+b2NrKCZmbGN0eC0+ZmxjX2xvY2spOw0KPiAgcmVzdGFydDoNCj4gIAlsaXN0X2Zvcl9lYWNoX2Vu
+dHJ5KGZsLCBsaXN0LCBmbF9saXN0KSB7DQo+IC0JCWlmIChuZnNfZmlsZV9vcGVuX2NvbnRleHQo
+ZmwtPmZsX2ZpbGUpICE9IGN0eCkNCj4gKwkJaWYgKG5mc19maWxlX29wZW5fY29udGV4dChmbC0+
+ZmxfZmlsZSktPnN0YXRlICE9IHN0YXRlKQ0KPiAgCQkJY29udGludWU7DQo+ICAJCXNwaW5fdW5s
+b2NrKCZmbGN0eC0+ZmxjX2xvY2spOw0KPiAgCQlzdGF0dXMgPSBuZnM0X2xvY2tfZGVsZWdhdGlv
+bl9yZWNhbGwoZmwsIHN0YXRlLA0KPiBzdGF0ZWlkKTsNCj4gQEAgLTE1Niw3ICsxNTYsNyBAQCBz
+dGF0aWMgaW50IG5mc19kZWxlZ2F0aW9uX2NsYWltX29wZW5zKHN0cnVjdA0KPiBpbm9kZSAqaW5v
+ZGUsDQo+ICAJCXNlcSA9IHJhd19zZXFjb3VudF9iZWdpbigmc3AtPnNvX3JlY2xhaW1fc2VxY291
+bnQpOw0KPiAgCQllcnIgPSBuZnM0X29wZW5fZGVsZWdhdGlvbl9yZWNhbGwoY3R4LCBzdGF0ZSwg
+c3RhdGVpZCwNCj4gdHlwZSk7DQo+ICAJCWlmICghZXJyKQ0KPiAtCQkJZXJyID0gbmZzX2RlbGVn
+YXRpb25fY2xhaW1fbG9ja3MoY3R4LCBzdGF0ZSwNCj4gc3RhdGVpZCk7DQo+ICsJCQllcnIgPSBu
+ZnNfZGVsZWdhdGlvbl9jbGFpbV9sb2NrcyhzdGF0ZSwNCj4gc3RhdGVpZCk7DQo+ICAJCWlmICgh
+ZXJyICYmIHJlYWRfc2VxY291bnRfcmV0cnkoJnNwLQ0KPiA+c29fcmVjbGFpbV9zZXFjb3VudCwg
+c2VxKSkNCj4gIAkJCWVyciA9IC1FQUdBSU47DQo+ICAJCW11dGV4X3VubG9jaygmc3AtPnNvX2Rl
+bGVncmV0dXJuX211dGV4KTsNCg0KVGhhbmtzISBUaGF0IGxvb2tzIGdvb2QgdG8gbWUuDQoNCi0t
+IA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIsIEhhbW1lcnNw
+YWNlDQp0cm9uZC5teWtsZWJ1c3RAaGFtbWVyc3BhY2UuY29tDQoNCg0K
