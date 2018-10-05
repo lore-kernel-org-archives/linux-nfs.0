@@ -1,55 +1,114 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:57382 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725997AbeJEFqQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 5 Oct 2018 01:46:16 -0400
-From: David Howells <dhowells@redhat.com>
-In-Reply-To: <87a7nttm5o.fsf@notabene.neil.brown.name>
-References: <87a7nttm5o.fsf@notabene.neil.brown.name> <153861496327.30373.10501882399296347125.stgit@noble> <153861471803.30373.6184444014227748848.stgit@noble> <28763.1538662213@warthog.procyon.org.uk>
-To: NeilBrown <neilb@suse.com>
-Cc: dhowells@redhat.com, "J. Bruce Fields" <bfields@fieldses.org>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Jan Harkes <jaharkes@cs.cmu.edu>, linux-nfs@vger.kernel.org,
-        Miklos Szeredi <miklos@szeredi.hu>,
-        Jeff Layton <jlayton@kernel.org>, linux-kernel@vger.kernel.org,
-        linux-afs@lists.infradead.org, coda@cs.cmu.edu,
-        linux-fsdevel@vger.kernel.org, Christoph Hellwig <hch@lst.de>
-Subject: Re: [PATCH 1/3] VFS: introduce MAY_ACT_AS_OWNER
+Received: from mail-it1-f172.google.com ([209.85.166.172]:53845 "EHLO
+        mail-it1-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726732AbeJENcb (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Oct 2018 09:32:31 -0400
+Received: by mail-it1-f172.google.com with SMTP id q70-v6so1272737itb.3
+        for <linux-nfs@vger.kernel.org>; Thu, 04 Oct 2018 23:35:16 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Date: Thu, 04 Oct 2018 23:50:34 +0100
-Message-ID: <2793.1538693434@warthog.procyon.org.uk>
+From: Stan Hu <stanhu@gmail.com>
+Date: Thu, 4 Oct 2018 23:35:02 -0700
+Message-ID: <CAMBWrQnS4MyrgyGUqr5rhOTm+ss2AYy-vNXjj4+fzqY+cuE=tw@mail.gmail.com>
+Subject: High network traffic from repeated TEST_STATEID messages
+To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-NeilBrown <neilb@suse.com> wrote:
+I've been working with two different customers, one running RedHat
+Enterprise Linux 7.3 (3.10.06-693.21.1) and another on Amazon Linux
+(based off CentOS). Independently they hit a problem that may be
+induced by our application where NFS v4.1 gets into a state where the
+network is flooded with TEST_STATEID messages (e.g. 2000+ packets/s)
+with the SEQ4_STATUS_RECALLABLE_STATE_REVOKED bit enabled on all
+server replies. When this happens, NFS is incredibly slow and
+unusable. It doesn't appear to get out of this state without manual
+intervention.
 
-> Thanks for the review.
-> As afs doesn't use the generic xattr code and doesn't call
-> setattr_prepare(), this is all largely irrelevant for afs.
+The server appears to return each of these TEST_STATEIDs with NFS4_OK messages.
 
-Yeah - there's no xattr support yet.
+In a 17-second network trace on one of the NFS client machines, I see
+18,411 TEST_STATEID requests with 1,362 unique stateid values (based
+off Wireshark's dissected "StateID Other" field).
 
-> afs_permission() will probably only get MAY_ACT_AS_OWNER passed when
-> someone uses fcntl(F_SETFL) to set the O_NOATIME flag.
+In another 82-second trace, I see 308,877 TEST_STATEID requests with
+769 unique stateid values.
 
-There's no atime in AFS.
+A sample except from the NFS client kernel logs shows:
 
-> Currently a permission test based on UID is performed which, as you say,
-> is wrong.  My patch simply preserved this current (wrong) behaviour.
-> Shall I change it to always allow access, like with NFS?
+Oct  4 22:05:40 gitlab-cff6b07b kernel: NFS call  test_stateid ffff8807697efe14
+Oct  4 22:05:40 gitlab-cff6b07b kernel: --> nfs41_call_sync_prepare
+data->seq_server ffff880795748800
+Oct  4 22:05:40 gitlab-cff6b07b kernel: --> nfs41_setup_sequence
+Oct  4 22:05:40 gitlab-cff6b07b kernel: --> nfs4_alloc_slot
+used_slots=0000 highest_used=4294967295 max_slots=31
+Oct  4 22:05:40 gitlab-cff6b07b kernel: <-- nfs4_alloc_slot
+used_slots=0001 highest_used=0 slotid=0
+Oct  4 22:05:40 gitlab-cff6b07b kernel: <-- nfs41_setup_sequence
+slotid=0 seqid=150890619
+Oct  4 22:05:40 gitlab-cff6b07b kernel: encode_sequence:
+sessionid=1536619925:3417519922:3:0 seqid=150890619 slotid=0
+max_slotid=0 cache_this=0
+Oct  4 22:05:40 gitlab-cff6b07b kernel:
+nfs41_handle_sequence_flag_errors: "10.44.1.54" (client ID
+95f5965b3237b3cb) flags=0x00000040
+Oct  4 22:05:40 gitlab-cff6b07b kernel: --> nfs4_alloc_slot
+used_slots=0001 highest_used=0 max_slots=31
+Oct  4 22:05:40 gitlab-cff6b07b kernel: <-- nfs4_alloc_slot
+used_slots=0003 highest_used=1 slotid=1
+Oct  4 22:05:40 gitlab-cff6b07b kernel: nfs4_free_slot: slotid 1
+highest_used_slotid 0
+Oct  4 22:05:40 gitlab-cff6b07b kernel: nfs41_sequence_process: Error
+0 free the slot
+Oct  4 22:05:40 gitlab-cff6b07b kernel: nfs4_free_slot: slotid 0
+highest_used_slotid 4294967295
+Oct  4 22:05:40 gitlab-cff6b07b kernel: NFS reply test_stateid: succeeded, 0
+Oct  4 22:05:40 gitlab-cff6b07b kernel: NFS call  test_stateid ffff8807697efe14
+<snip>
 
-You have to have an appropriate key to be able to do anything not granted to
-anonymous with the server.  If the server says your key (or lack thereof) is
-allowed to do something, you can do it; if it does not, you can't.
+Then a few minutes later, these -10052 (NFS4ERR_BADSESSION) errors show up:
 
-> Probably O_NOATIME is ignored, in which case f_op->check_flags should
-> probably report -EINVAL (???) ... or might that cause a regression?
+Oct  4 22:07:42 gitlab-cff6b07b kernel: nfs41_sequence_process: Error
+-10052 free the slot
+Oct  4 22:07:42 gitlab-cff6b07b kernel: nfs4_free_slot: slotid 20
+highest_used_slotid 30
+Oct  4 22:07:42 gitlab-cff6b07b kernel: nfs4_do_handle_exception
+ERROR: -10052 Reset session
+Oct  4 22:07:42 gitlab-cff6b07b kernel: nfs4_schedule_lease_recovery:
+scheduling lease recovery for server 10.44.1.54
+Oct  4 22:07:42 gitlab-cff6b07b kernel: nfs41_sequence_process: Error
+-10052 free the slot
+Oct  4 22:07:42 gitlab-cff6b07b kernel: nfs4_free_slot: slotid 18
+highest_used_slotid 30
+Oct  4 22:07:42 gitlab-cff6b07b kernel: nfs4_do_handle_exception
+ERROR: -10052 Reset session
+Oct  4 22:07:42 gitlab-cff6b07b kernel: nfs4_schedule_lease_recovery:
+scheduling lease recovery for server 10.44.1.54
+Oct  4 22:07:42 gitlab-cff6b07b kernel: nfs41_sequence_process: Error
+-10052 free the slot
+Oct  4 22:07:42 gitlab-cff6b07b kernel: nfs4_free_slot: slotid 4
+highest_used_slotid 30
+Oct  4 22:07:42 gitlab-cff6b07b kernel: nfs4_do_handle_exception
+ERROR: -10052 Reset session
+Oct  4 22:07:42 gitlab-cff6b07b kernel: nfs4_schedule_lease_recovery:
+scheduling lease recovery for server 10.44.1.54
+Oct  4 22:07:42 gitlab-cff6b07b rsyslogd-2177: imjournal: begin to
+drop messages due to rate-limiting
 
-No atime.  I just ignore things like O_NOATIME.  You will be able to query the
-filesystem with fsinfo() hopefully soon to find out if there is an atime and
-if you can disable it.
+I see some discussion in
+https://www.spinics.net/lists/linux-nfs/msg59800.html perhaps for a
+similar issue.
 
-Davod
+I'd expect that after some time, the client and server would reconcile
+the proper delegation state, but this doesn't seem to be happening.
+The only way to recover seems to be to stop the application, unmount
+the NFS mount, remount it again, and start the application back up.
+
+I'm wondering a number of things:
+
+1. Has anyone seen this behavior before?
+2. Does anyone have any idea what might induce this behavior? I'm
+going to see if I can reproduce this by having a process that has
+1,000+ open NFS files, blocking network traffic momentarily with
+iptables, and then seeing how the system performs.
+3. Is there a way to see what open delegations are on the client and the server?
