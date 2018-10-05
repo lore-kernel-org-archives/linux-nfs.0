@@ -1,34 +1,44 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:50622 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1728003AbeJESpp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 5 Oct 2018 14:45:45 -0400
-From: "Benjamin Coddington" <bcodding@redhat.com>
-To: "Stan Hu" <stanhu@gmail.com>
+Received: from discipline.rit.edu ([129.21.6.207]:28921 "HELO
+        discipline.rit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with SMTP id S1727558AbeJETX4 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Oct 2018 15:23:56 -0400
+From: Andrew W Elble <aweits@rit.edu>
+To: Stan Hu <stanhu@gmail.com>
 Cc: linux-nfs@vger.kernel.org
 Subject: Re: High network traffic from repeated TEST_STATEID messages
-Date: Fri, 05 Oct 2018 07:47:20 -0400
-Message-ID: <4AEBA335-FFA9-4124-8FE7-5A8C28134E2C@redhat.com>
-In-Reply-To: <CAMBWrQnS4MyrgyGUqr5rhOTm+ss2AYy-vNXjj4+fzqY+cuE=tw@mail.gmail.com>
 References: <CAMBWrQnS4MyrgyGUqr5rhOTm+ss2AYy-vNXjj4+fzqY+cuE=tw@mail.gmail.com>
+Date: Fri, 05 Oct 2018 08:18:43 -0400
+In-Reply-To: <CAMBWrQnS4MyrgyGUqr5rhOTm+ss2AYy-vNXjj4+fzqY+cuE=tw@mail.gmail.com>
+        (Stan Hu's message of "Thu, 4 Oct 2018 23:35:02 -0700")
+Message-ID: <m2y3bcbn8c.fsf@discipline.rit.edu>
 MIME-Version: 1.0
-Content-Type: text/plain; format=flowed
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Stan,
 
-RedHat has a bz for what seems like the same problem:
-https://bugzilla.redhat.com/show_bug.cgi?id=1552203
+Stan,
 
-.. though there's only mixed reports of success after applying
-95da1b3a5aded124dd1bda1e3cdb876184813140 to the server.  Is this a linux
-server, and what vintage?  I suspect there's may be a client bug here as
-well.
+   I've seen this before, in my case it was indicative of a delegation
+  being "lost". You might want to try newer upstream kernels to attempt to
+  rectify this. There is no "easy" way to see the actual delegations
+  that the client and server have (although /proc/locks will indicate
+  their presence on the server).
 
-Ben
+  The server is asking for something back that the client no
+  longer has for some reason. Finding that reason can be difficult :-(
 
-On 5 Oct 2018, at 2:35, Stan Hu wrote:
+  Are you able to use tracing on the nfs client side? This helped me
+  locate some of the issues:
+
+echo "error != 0" | tee /sys/kernel/debug/tracing/events/nfs4/nfs4_delegreturn_exit/filter
+
+Thanks,
+
+Andy
+
+Stan Hu <stanhu@gmail.com> writes:
 
 > I've been working with two different customers, one running RedHat
 > Enterprise Linux 7.3 (3.10.06-693.21.1) and another on Amazon Linux
@@ -40,8 +50,7 @@ On 5 Oct 2018, at 2:35, Stan Hu wrote:
 > unusable. It doesn't appear to get out of this state without manual
 > intervention.
 >
-> The server appears to return each of these TEST_STATEIDs with NFS4_OK 
-> messages.
+> The server appears to return each of these TEST_STATEIDs with NFS4_OK messages.
 >
 > In a 17-second network trace on one of the NFS client machines, I see
 > 18,411 TEST_STATEID requests with 1,362 unique stateid values (based
@@ -52,8 +61,7 @@ On 5 Oct 2018, at 2:35, Stan Hu wrote:
 >
 > A sample except from the NFS client kernel logs shows:
 >
-> Oct  4 22:05:40 gitlab-cff6b07b kernel: NFS call  test_stateid 
-> ffff8807697efe14
+> Oct  4 22:05:40 gitlab-cff6b07b kernel: NFS call  test_stateid ffff8807697efe14
 > Oct  4 22:05:40 gitlab-cff6b07b kernel: --> nfs41_call_sync_prepare
 > data->seq_server ffff880795748800
 > Oct  4 22:05:40 gitlab-cff6b07b kernel: --> nfs41_setup_sequence
@@ -79,14 +87,11 @@ On 5 Oct 2018, at 2:35, Stan Hu wrote:
 > 0 free the slot
 > Oct  4 22:05:40 gitlab-cff6b07b kernel: nfs4_free_slot: slotid 0
 > highest_used_slotid 4294967295
-> Oct  4 22:05:40 gitlab-cff6b07b kernel: NFS reply test_stateid: 
-> succeeded, 0
-> Oct  4 22:05:40 gitlab-cff6b07b kernel: NFS call  test_stateid 
-> ffff8807697efe14
+> Oct  4 22:05:40 gitlab-cff6b07b kernel: NFS reply test_stateid: succeeded, 0
+> Oct  4 22:05:40 gitlab-cff6b07b kernel: NFS call  test_stateid ffff8807697efe14
 > <snip>
 >
-> Then a few minutes later, these -10052 (NFS4ERR_BADSESSION) errors 
-> show up:
+> Then a few minutes later, these -10052 (NFS4ERR_BADSESSION) errors show up:
 >
 > Oct  4 22:07:42 gitlab-cff6b07b kernel: nfs41_sequence_process: Error
 > -10052 free the slot
@@ -131,5 +136,13 @@ On 5 Oct 2018, at 2:35, Stan Hu wrote:
 > going to see if I can reproduce this by having a process that has
 > 1,000+ open NFS files, blocking network traffic momentarily with
 > iptables, and then seeing how the system performs.
-> 3. Is there a way to see what open delegations are on the client and 
-> the server?
+> 3. Is there a way to see what open delegations are on the client and the server?
+>
+
+-- 
+Andrew W. Elble
+Infrastructure Engineer
+Information and Technology Services
+Rochester Institute of Technology
+tel: (585)-475-2411 | aweits@rit.edu
+PGP: BFAD 8461 4CCF DC95 DA2C B0EB 965B 082E 863E C912
