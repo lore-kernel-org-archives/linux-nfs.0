@@ -1,42 +1,59 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it1-f194.google.com ([209.85.166.194]:37831 "EHLO
-        mail-it1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728619AbeJEV10 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Oct 2018 17:27:26 -0400
-Received: by mail-it1-f194.google.com with SMTP id e74-v6so2980325ita.2
-        for <linux-nfs@vger.kernel.org>; Fri, 05 Oct 2018 07:28:29 -0700 (PDT)
-From: Trond Myklebust <trondmy@gmail.com>
-To: J Bruce Fields <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] NFS: Fix up a typo in nfs_dns_ent_put
-Date: Fri,  5 Oct 2018 10:27:20 -0400
-Message-Id: <20181005142720.25280-1-trond.myklebust@hammerspace.com>
+Received: from discipline.rit.edu ([129.21.6.207]:49197 "HELO
+        discipline.rit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with SMTP id S1727733AbeJEWYv (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Oct 2018 18:24:51 -0400
+From: Andrew W Elble <aweits@rit.edu>
+To: Trond Myklebust <trondmy@hammerspace.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH RFC] nfs: make DELEGRETURN try harder to determine if a delegation has been revoked
+References: <20181005133429.79332-1-aweits@rit.edu>
+        <04588fc1ef331c111185cb2f940d20a2e183e598.camel@hammerspace.com>
+        <8b5d00b03e9a2fc20ebb3c6e3e040f3225beed22.camel@hammerspace.com>
+Date: Fri, 05 Oct 2018 11:25:40 -0400
+In-Reply-To: <8b5d00b03e9a2fc20ebb3c6e3e040f3225beed22.camel@hammerspace.com>
+        (Trond Myklebust's message of "Fri, 5 Oct 2018 14:05:09 +0000")
+Message-ID: <m2sh1kbekr.fsf@discipline.rit.edu>
 MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-call_rcu() needs to take a first argument of type (struct rcu_head *).
 
-Fixes: fd497f1e40d9 ("NFS: Lockless DNS lookups")
-Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
----
-- Apologies for the screwup
+>> NACK. We don't ever want to run synchronous RPC calls from inside an
+>> rpciod context. There be deadlocks...
 
- fs/nfs/dns_resolve.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ahhh yes, I missed the fact that nfs4_free_revoked_stateid() is
+safe in calling nfs4_test_and_free_stateid() because it is bypassing the
+TEST_STATEID by setting stateid->type = NFS4_REVOKED_STATEID_TYPE.
 
-diff --git a/fs/nfs/dns_resolve.c b/fs/nfs/dns_resolve.c
-index e93a5dc07c8c..a7d3df85736d 100644
---- a/fs/nfs/dns_resolve.c
-+++ b/fs/nfs/dns_resolve.c
-@@ -116,7 +116,7 @@ static void nfs_dns_ent_put(struct kref *ref)
- 	struct nfs_dns_ent *item;
- 
- 	item = container_of(ref, struct nfs_dns_ent, h.ref);
--	call_rcu(item, nfs_dns_ent_free_rcu);
-+	call_rcu(&item->rcu_head, nfs_dns_ent_free_rcu);
- }
- 
- static struct cache_head *nfs_dns_ent_alloc(void)
+> So, my question is why would we need to change nfs4_delegreturn_done at
+> all? It should already be sending a FREE_STATEID when the server
+> returns NFS4ERR_EXPIRED or NFS4ERR_DELEG_REVOKED thanks to the call to
+> nfs4_free_revoked_stateid().
+>
+> If the server is returning anything other than those 2 errors for a
+> stateid that is pending a FREE_STATEID from the client, then that
+> server is broken.
+
+My intent (with the BAD/STALE_STATEID part at least)
+was to fail safe even in the presence of a broken server.
+
+As to the other bit, the hypothesis is a bad response to PUTFH. (I
+cannot prove that I or others have seen this, BTW)
+
+What is the appropriate client/server response(s) if the delegation is
+revoked and the PUTFH fails? The server should send the error on the
+PUTFH before evaluating the DELEGRETURN, correct?
+
+Thanks,
+
+Andy
+
 -- 
-2.17.1
+Andrew W. Elble
+Infrastructure Engineer
+Information and Technology Services
+Rochester Institute of Technology
+tel: (585)-475-2411 | aweits@rit.edu
+PGP: BFAD 8461 4CCF DC95 DA2C B0EB 965B 082E 863E C912
