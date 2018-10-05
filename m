@@ -1,74 +1,61 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from discipline.rit.edu ([129.21.6.207]:58050 "HELO
-        discipline.rit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with SMTP id S1728341AbeJEUkF (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Oct 2018 16:40:05 -0400
-From: Andrew Elble <aweits@rit.edu>
-To: linux-nfs@vger.kernel.org
-Cc: Andrew Elble <aweits@rit.edu>
-Subject: [PATCH RFC] nfs: make DELEGRETURN try harder to determine if a delegation has been revoked
-Date: Fri,  5 Oct 2018 09:34:29 -0400
-Message-Id: <20181005133429.79332-1-aweits@rit.edu>
+Received: from mail-sn1nam02on0108.outbound.protection.outlook.com ([104.47.36.108]:18664
+        "EHLO NAM02-SN1-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1727775AbeJEUnz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 5 Oct 2018 16:43:55 -0400
+From: Trond Myklebust <trondmy@hammerspace.com>
+To: "aweits@rit.edu" <aweits@rit.edu>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH RFC] nfs: make DELEGRETURN try harder to determine if a
+ delegation has been revoked
+Date: Fri, 5 Oct 2018 13:44:25 +0000
+Message-ID: <04588fc1ef331c111185cb2f940d20a2e183e598.camel@hammerspace.com>
+References: <20181005133429.79332-1-aweits@rit.edu>
+In-Reply-To: <20181005133429.79332-1-aweits@rit.edu>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-It's possible for DELEGRETURN to run into corner cases where a
-delegation has been revoked by the server, but that fact is being
-hidden by an error on the PUTFH/DELEGRETURN. So, in all error
-cases where revoked status isn't immediately obvious, do a
-TEST_STATEID to see if it is indeed revoked.
-
-Signed-off-by: Andrew Elble <aweits@rit.edu>
----
- fs/nfs/nfs4proc.c | 20 +++++++++++++++++++-
- 1 file changed, 19 insertions(+), 1 deletion(-)
-
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 8220a168282e..3f38d281a814 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -386,6 +386,16 @@ static void nfs4_free_revoked_stateid(struct nfs_server *server,
- 	__nfs4_free_revoked_stateid(server, &tmp, cred);
- }
- 
-+static void nfs4_free_possibly_revoked_stateid(struct nfs_server *server,
-+					const nfs4_stateid *stateid,
-+					struct rpc_cred *cred)
-+{
-+	nfs4_stateid tmp;
-+
-+	nfs4_stateid_copy(&tmp, stateid);
-+	nfs4_test_and_free_stateid(server, &tmp, cred);
-+}
-+
- static long nfs4_update_delay(long *timeout)
- {
- 	long ret;
-@@ -6035,9 +6045,13 @@ static void nfs4_delegreturn_done(struct rpc_task *task, void *calldata)
- 		nfs4_free_revoked_stateid(data->res.server,
- 				data->args.stateid,
- 				task->tk_msg.rpc_cred);
--		/* Fallthrough */
-+		task->tk_status = 0;
-+		break;
- 	case -NFS4ERR_BAD_STATEID:
- 	case -NFS4ERR_STALE_STATEID:
-+		nfs4_free_possibly_revoked_stateid(data->res.server,
-+						data->args.stateid,
-+						task->tk_msg.rpc_cred);
- 		task->tk_status = 0;
- 		break;
- 	case -NFS4ERR_OLD_STATEID:
-@@ -6058,6 +6072,10 @@ static void nfs4_delegreturn_done(struct rpc_task *task, void *calldata)
- 				&exception);
- 		if (exception.retry)
- 			goto out_restart;
-+
-+		nfs4_free_possibly_revoked_stateid(data->res.server,
-+						data->args.stateid,
-+						task->tk_msg.rpc_cred);
- 	}
- 	data->rpc_status = task->tk_status;
- 	return;
--- 
-1.8.3.1
+T24gRnJpLCAyMDE4LTEwLTA1IGF0IDA5OjM0IC0wNDAwLCBBbmRyZXcgRWxibGUgd3JvdGU6DQo+
+IEl0J3MgcG9zc2libGUgZm9yIERFTEVHUkVUVVJOIHRvIHJ1biBpbnRvIGNvcm5lciBjYXNlcyB3
+aGVyZSBhDQo+IGRlbGVnYXRpb24gaGFzIGJlZW4gcmV2b2tlZCBieSB0aGUgc2VydmVyLCBidXQg
+dGhhdCBmYWN0IGlzIGJlaW5nDQo+IGhpZGRlbiBieSBhbiBlcnJvciBvbiB0aGUgUFVURkgvREVM
+RUdSRVRVUk4uIFNvLCBpbiBhbGwgZXJyb3INCj4gY2FzZXMgd2hlcmUgcmV2b2tlZCBzdGF0dXMg
+aXNuJ3QgaW1tZWRpYXRlbHkgb2J2aW91cywgZG8gYQ0KPiBURVNUX1NUQVRFSUQgdG8gc2VlIGlm
+IGl0IGlzIGluZGVlZCByZXZva2VkLg0KPiANCj4gU2lnbmVkLW9mZi1ieTogQW5kcmV3IEVsYmxl
+IDxhd2VpdHNAcml0LmVkdT4NCj4gLS0tDQo+ICBmcy9uZnMvbmZzNHByb2MuYyB8IDIwICsrKysr
+KysrKysrKysrKysrKystDQo+ICAxIGZpbGUgY2hhbmdlZCwgMTkgaW5zZXJ0aW9ucygrKSwgMSBk
+ZWxldGlvbigtKQ0KPiANCj4gZGlmZiAtLWdpdCBhL2ZzL25mcy9uZnM0cHJvYy5jIGIvZnMvbmZz
+L25mczRwcm9jLmMNCj4gaW5kZXggODIyMGExNjgyODJlLi4zZjM4ZDI4MWE4MTQgMTAwNjQ0DQo+
+IC0tLSBhL2ZzL25mcy9uZnM0cHJvYy5jDQo+ICsrKyBiL2ZzL25mcy9uZnM0cHJvYy5jDQo+IEBA
+IC0zODYsNiArMzg2LDE2IEBAIHN0YXRpYyB2b2lkIG5mczRfZnJlZV9yZXZva2VkX3N0YXRlaWQo
+c3RydWN0DQo+IG5mc19zZXJ2ZXIgKnNlcnZlciwNCj4gIAlfX25mczRfZnJlZV9yZXZva2VkX3N0
+YXRlaWQoc2VydmVyLCAmdG1wLCBjcmVkKTsNCj4gIH0NCj4gIA0KPiArc3RhdGljIHZvaWQgbmZz
+NF9mcmVlX3Bvc3NpYmx5X3Jldm9rZWRfc3RhdGVpZChzdHJ1Y3QgbmZzX3NlcnZlcg0KPiAqc2Vy
+dmVyLA0KPiArCQkJCQljb25zdCBuZnM0X3N0YXRlaWQgKnN0YXRlaWQsDQo+ICsJCQkJCXN0cnVj
+dCBycGNfY3JlZCAqY3JlZCkNCj4gK3sNCj4gKwluZnM0X3N0YXRlaWQgdG1wOw0KPiArDQo+ICsJ
+bmZzNF9zdGF0ZWlkX2NvcHkoJnRtcCwgc3RhdGVpZCk7DQo+ICsJbmZzNF90ZXN0X2FuZF9mcmVl
+X3N0YXRlaWQoc2VydmVyLCAmdG1wLCBjcmVkKTsNCj4gK30NCj4gKw0KPiAgc3RhdGljIGxvbmcg
+bmZzNF91cGRhdGVfZGVsYXkobG9uZyAqdGltZW91dCkNCj4gIHsNCj4gIAlsb25nIHJldDsNCj4g
+QEAgLTYwMzUsOSArNjA0NSwxMyBAQCBzdGF0aWMgdm9pZCBuZnM0X2RlbGVncmV0dXJuX2RvbmUo
+c3RydWN0DQo+IHJwY190YXNrICp0YXNrLCB2b2lkICpjYWxsZGF0YSkNCj4gIAkJbmZzNF9mcmVl
+X3Jldm9rZWRfc3RhdGVpZChkYXRhLT5yZXMuc2VydmVyLA0KPiAgCQkJCWRhdGEtPmFyZ3Muc3Rh
+dGVpZCwNCj4gIAkJCQl0YXNrLT50a19tc2cucnBjX2NyZWQpOw0KPiAtCQkvKiBGYWxsdGhyb3Vn
+aCAqLw0KPiArCQl0YXNrLT50a19zdGF0dXMgPSAwOw0KPiArCQlicmVhazsNCj4gIAljYXNlIC1O
+RlM0RVJSX0JBRF9TVEFURUlEOg0KPiAgCWNhc2UgLU5GUzRFUlJfU1RBTEVfU1RBVEVJRDoNCj4g
+KwkJbmZzNF9mcmVlX3Bvc3NpYmx5X3Jldm9rZWRfc3RhdGVpZChkYXRhLT5yZXMuc2VydmVyLA0K
+PiArCQkJCQkJZGF0YS0+YXJncy5zdGF0ZWlkLA0KPiArCQkJCQkJdGFzay0+dGtfbXNnLnJwY19j
+cmVkKTsNCj4gIAkJdGFzay0+dGtfc3RhdHVzID0gMDsNCj4gIAkJYnJlYWs7DQo+ICAJY2FzZSAt
+TkZTNEVSUl9PTERfU1RBVEVJRDoNCj4gQEAgLTYwNTgsNiArNjA3MiwxMCBAQCBzdGF0aWMgdm9p
+ZCBuZnM0X2RlbGVncmV0dXJuX2RvbmUoc3RydWN0DQo+IHJwY190YXNrICp0YXNrLCB2b2lkICpj
+YWxsZGF0YSkNCj4gIAkJCQkmZXhjZXB0aW9uKTsNCj4gIAkJaWYgKGV4Y2VwdGlvbi5yZXRyeSkN
+Cj4gIAkJCWdvdG8gb3V0X3Jlc3RhcnQ7DQo+ICsNCj4gKwkJbmZzNF9mcmVlX3Bvc3NpYmx5X3Jl
+dm9rZWRfc3RhdGVpZChkYXRhLT5yZXMuc2VydmVyLA0KPiArCQkJCQkJZGF0YS0+YXJncy5zdGF0
+ZWlkLA0KPiArCQkJCQkJdGFzay0+dGtfbXNnLnJwY19jcmVkKTsNCj4gIAl9DQo+ICAJZGF0YS0+
+cnBjX3N0YXR1cyA9IHRhc2stPnRrX3N0YXR1czsNCj4gIAlyZXR1cm47DQoNCk5BQ0suIFdlIGRv
+bid0IGV2ZXIgd2FudCB0byBydW4gc3luY2hyb25vdXMgUlBDIGNhbGxzIGZyb20gaW5zaWRlIGFu
+DQpycGNpb2QgY29udGV4dC4gVGhlcmUgYmUgZGVhZGxvY2tzLi4uDQoNCi0tIA0KVHJvbmQgTXlr
+bGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIsIEhhbW1lcnNwYWNlDQp0cm9uZC5t
+eWtsZWJ1c3RAaGFtbWVyc3BhY2UuY29tDQoNCg0K
