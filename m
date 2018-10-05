@@ -1,114 +1,127 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it1-f172.google.com ([209.85.166.172]:53845 "EHLO
-        mail-it1-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726732AbeJENcb (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Oct 2018 09:32:31 -0400
-Received: by mail-it1-f172.google.com with SMTP id q70-v6so1272737itb.3
-        for <linux-nfs@vger.kernel.org>; Thu, 04 Oct 2018 23:35:16 -0700 (PDT)
+Received: from mx1.redhat.com ([209.132.183.28]:45820 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1727581AbeJESFn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 5 Oct 2018 14:05:43 -0400
+Subject: Re: [PATCH V3] idmapd: Use inotify instead of dnotify
+To: Alan Swanson <reiver@improbability.net>, linux-nfs@vger.kernel.org
+References: <20170621212338.32460-1-reiver@improbability.net>
+ <20180819164342.14900-1-reiver@improbability.net>
+From: Steve Dickson <SteveD@RedHat.com>
+Message-ID: <a188205f-caa5-741a-30af-bc24183a22de@RedHat.com>
+Date: Fri, 5 Oct 2018 07:07:24 -0400
 MIME-Version: 1.0
-From: Stan Hu <stanhu@gmail.com>
-Date: Thu, 4 Oct 2018 23:35:02 -0700
-Message-ID: <CAMBWrQnS4MyrgyGUqr5rhOTm+ss2AYy-vNXjj4+fzqY+cuE=tw@mail.gmail.com>
-Subject: High network traffic from repeated TEST_STATEID messages
-To: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
+In-Reply-To: <20180819164342.14900-1-reiver@improbability.net>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I've been working with two different customers, one running RedHat
-Enterprise Linux 7.3 (3.10.06-693.21.1) and another on Amazon Linux
-(based off CentOS). Independently they hit a problem that may be
-induced by our application where NFS v4.1 gets into a state where the
-network is flooded with TEST_STATEID messages (e.g. 2000+ packets/s)
-with the SEQ4_STATUS_RECALLABLE_STATE_REVOKED bit enabled on all
-server replies. When this happens, NFS is incredibly slow and
-unusable. It doesn't appear to get out of this state without manual
-intervention.
+Hello,
 
-The server appears to return each of these TEST_STATEIDs with NFS4_OK messages.
+On 8/19/18 12:43 PM, Alan Swanson wrote:
+> Remove last use of dnotify in nfs-utils by bringing idmapd upto
+> date with (required) inotify use by gssd and blkmapd.
+Let me apologies for taking so long to get to this... 
+Unfortunately it fell off my radar... In the future
+please feel free to ping me directly. 
 
-In a 17-second network trace on one of the NFS client machines, I see
-18,411 TEST_STATEID requests with 1,362 unique stateid values (based
-off Wireshark's dissected "StateID Other" field).
+Committed... 
 
-In another 82-second trace, I see 308,877 TEST_STATEID requests with
-769 unique stateid values.
+steved.
 
-A sample except from the NFS client kernel logs shows:
-
-Oct  4 22:05:40 gitlab-cff6b07b kernel: NFS call  test_stateid ffff8807697efe14
-Oct  4 22:05:40 gitlab-cff6b07b kernel: --> nfs41_call_sync_prepare
-data->seq_server ffff880795748800
-Oct  4 22:05:40 gitlab-cff6b07b kernel: --> nfs41_setup_sequence
-Oct  4 22:05:40 gitlab-cff6b07b kernel: --> nfs4_alloc_slot
-used_slots=0000 highest_used=4294967295 max_slots=31
-Oct  4 22:05:40 gitlab-cff6b07b kernel: <-- nfs4_alloc_slot
-used_slots=0001 highest_used=0 slotid=0
-Oct  4 22:05:40 gitlab-cff6b07b kernel: <-- nfs41_setup_sequence
-slotid=0 seqid=150890619
-Oct  4 22:05:40 gitlab-cff6b07b kernel: encode_sequence:
-sessionid=1536619925:3417519922:3:0 seqid=150890619 slotid=0
-max_slotid=0 cache_this=0
-Oct  4 22:05:40 gitlab-cff6b07b kernel:
-nfs41_handle_sequence_flag_errors: "10.44.1.54" (client ID
-95f5965b3237b3cb) flags=0x00000040
-Oct  4 22:05:40 gitlab-cff6b07b kernel: --> nfs4_alloc_slot
-used_slots=0001 highest_used=0 max_slots=31
-Oct  4 22:05:40 gitlab-cff6b07b kernel: <-- nfs4_alloc_slot
-used_slots=0003 highest_used=1 slotid=1
-Oct  4 22:05:40 gitlab-cff6b07b kernel: nfs4_free_slot: slotid 1
-highest_used_slotid 0
-Oct  4 22:05:40 gitlab-cff6b07b kernel: nfs41_sequence_process: Error
-0 free the slot
-Oct  4 22:05:40 gitlab-cff6b07b kernel: nfs4_free_slot: slotid 0
-highest_used_slotid 4294967295
-Oct  4 22:05:40 gitlab-cff6b07b kernel: NFS reply test_stateid: succeeded, 0
-Oct  4 22:05:40 gitlab-cff6b07b kernel: NFS call  test_stateid ffff8807697efe14
-<snip>
-
-Then a few minutes later, these -10052 (NFS4ERR_BADSESSION) errors show up:
-
-Oct  4 22:07:42 gitlab-cff6b07b kernel: nfs41_sequence_process: Error
--10052 free the slot
-Oct  4 22:07:42 gitlab-cff6b07b kernel: nfs4_free_slot: slotid 20
-highest_used_slotid 30
-Oct  4 22:07:42 gitlab-cff6b07b kernel: nfs4_do_handle_exception
-ERROR: -10052 Reset session
-Oct  4 22:07:42 gitlab-cff6b07b kernel: nfs4_schedule_lease_recovery:
-scheduling lease recovery for server 10.44.1.54
-Oct  4 22:07:42 gitlab-cff6b07b kernel: nfs41_sequence_process: Error
--10052 free the slot
-Oct  4 22:07:42 gitlab-cff6b07b kernel: nfs4_free_slot: slotid 18
-highest_used_slotid 30
-Oct  4 22:07:42 gitlab-cff6b07b kernel: nfs4_do_handle_exception
-ERROR: -10052 Reset session
-Oct  4 22:07:42 gitlab-cff6b07b kernel: nfs4_schedule_lease_recovery:
-scheduling lease recovery for server 10.44.1.54
-Oct  4 22:07:42 gitlab-cff6b07b kernel: nfs41_sequence_process: Error
--10052 free the slot
-Oct  4 22:07:42 gitlab-cff6b07b kernel: nfs4_free_slot: slotid 4
-highest_used_slotid 30
-Oct  4 22:07:42 gitlab-cff6b07b kernel: nfs4_do_handle_exception
-ERROR: -10052 Reset session
-Oct  4 22:07:42 gitlab-cff6b07b kernel: nfs4_schedule_lease_recovery:
-scheduling lease recovery for server 10.44.1.54
-Oct  4 22:07:42 gitlab-cff6b07b rsyslogd-2177: imjournal: begin to
-drop messages due to rate-limiting
-
-I see some discussion in
-https://www.spinics.net/lists/linux-nfs/msg59800.html perhaps for a
-similar issue.
-
-I'd expect that after some time, the client and server would reconcile
-the proper delegation state, but this doesn't seem to be happening.
-The only way to recover seems to be to stop the application, unmount
-the NFS mount, remount it again, and start the application back up.
-
-I'm wondering a number of things:
-
-1. Has anyone seen this behavior before?
-2. Does anyone have any idea what might induce this behavior? I'm
-going to see if I can reproduce this by having a process that has
-1,000+ open NFS files, blocking network traffic momentarily with
-iptables, and then seeing how the system performs.
-3. Is there a way to see what open delegations are on the client and the server?
+> ---
+>  utils/idmapd/idmapd.c | 32 +++++++++++++++++---------------
+>  1 file changed, 17 insertions(+), 15 deletions(-)
+> 
+> Got annoyed by the dnotify kernel requirement. Read the last
+> discussion "DNOTIFY to INOTIFY migration" posted in 2014 and while
+> still not officially depreciated, dnotify was officially "replaced"
+> by inotify in Linux 2.6.13 in 2005. Would be nice to sync this
+> requirement across the codebase.
+> 
+> V2: Init wd to -1 not 0
+> V3: Remove EV_PERSIST
+> 
+> Have been using V3 patch in production for the last year since a
+> few days after last V2 email.
+> 
+> diff --git a/utils/idmapd/idmapd.c b/utils/idmapd/idmapd.c
+> index 4811e0f..2dd9c31 100644
+> --- a/utils/idmapd/idmapd.c
+> +++ b/utils/idmapd/idmapd.c
+> @@ -36,7 +36,7 @@
+>  
+>  #include <sys/types.h>
+>  #include <sys/time.h>
+> -#include <sys/poll.h>
+> +#include <sys/inotify.h>
+>  #include <sys/socket.h>
+>  #include <sys/stat.h>
+>  #include <time.h>
+> @@ -205,15 +205,16 @@ static void usage(char *progname)
+>  int
+>  main(int argc, char **argv)
+>  {
+> -	int fd = 0, opt, fg = 0, nfsdret = -1;
+> +	int wd = -1, opt, fg = 0, nfsdret = -1;
+>  	struct idmap_clientq icq;
+> -	struct event rootdirev, clntdirev, svrdirev;
+> +	struct event rootdirev, clntdirev, svrdirev, inotifyev;
+>  	struct event initialize;
+>  	struct passwd *pw;
+>  	struct group *gr;
+>  	struct stat sb;
+>  	char *xpipefsdir = NULL;
+>  	int serverstart = 1, clientstart = 1;
+> +	int inotify_fd;
+>  	int ret;
+>  	char *progname;
+>  	char *conf_path = NULL;
+> @@ -373,18 +374,15 @@ main(int argc, char **argv)
+>  			}
+>  		}
+>  
+> -		if ((fd = open(pipefsdir, O_RDONLY)) == -1)
+> -			xlog_err("main: open(%s): %s", pipefsdir, strerror(errno));
+> -
+> -		if (fcntl(fd, F_SETSIG, SIGUSR1) == -1)
+> -			xlog_err("main: fcntl(%s): %s", pipefsdir, strerror(errno));
+> -
+> -		if (fcntl(fd, F_NOTIFY,
+> -			DN_CREATE | DN_DELETE | DN_MODIFY | DN_MULTISHOT) == -1) {
+> -			xlog_err("main: fcntl(%s): %s", pipefsdir, strerror(errno));
+> -			if (errno == EINVAL)
+> -				xlog_err("main: Possibly no Dnotify support in kernel.");
+> +		inotify_fd = inotify_init1(IN_NONBLOCK);
+> +		if (inotify_fd == -1) {
+> +			xlog_err("Unable to initialise inotify_init1: %s\n", strerror(errno));
+> +		} else {
+> +			wd = inotify_add_watch(inotify_fd, pipefsdir, IN_CREATE | IN_DELETE | IN_MODIFY);
+> +			if (wd < 0)
+> +				xlog_err("Unable to inotify_add_watch(%s): %s\n", pipefsdir, strerror(errno));
+>  		}
+> +
+>  		TAILQ_INIT(&icq);
+>  
+>  		/* These events are persistent */
+> @@ -394,6 +392,10 @@ main(int argc, char **argv)
+>  		signal_add(&clntdirev, NULL);
+>  		signal_set(&svrdirev, SIGHUP, svrreopen, NULL);
+>  		signal_add(&svrdirev, NULL);
+> +		if ( wd >= 0) {
+> +			event_set(&inotifyev, inotify_fd, EV_READ, dirscancb, &icq);
+> +			event_add(&inotifyev, NULL);
+> +		}
+>  
+>  		/* Fetch current state */
+>  		/* (Delay till start of event_dispatch to avoid possibly losing
+> @@ -402,7 +404,7 @@ main(int argc, char **argv)
+>  		evtimer_add(&initialize, &now);
+>  	}
+>  
+> -	if (nfsdret != 0 && fd == 0)
+> +	if (nfsdret != 0 && wd < 0)
+>  		xlog_err("main: Neither NFS client nor NFSd found");
+>  
+>  	daemon_ready();
+> 
