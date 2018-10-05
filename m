@@ -1,72 +1,42 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-dm3nam03on0101.outbound.protection.outlook.com ([104.47.41.101]:46016
-        "EHLO NAM03-DM3-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1727581AbeJEVEG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 5 Oct 2018 17:04:06 -0400
-From: Trond Myklebust <trondmy@hammerspace.com>
-To: "aweits@rit.edu" <aweits@rit.edu>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH RFC] nfs: make DELEGRETURN try harder to determine if a
- delegation has been revoked
-Date: Fri, 5 Oct 2018 14:05:09 +0000
-Message-ID: <8b5d00b03e9a2fc20ebb3c6e3e040f3225beed22.camel@hammerspace.com>
-References: <20181005133429.79332-1-aweits@rit.edu>
-         <04588fc1ef331c111185cb2f940d20a2e183e598.camel@hammerspace.com>
-In-Reply-To: <04588fc1ef331c111185cb2f940d20a2e183e598.camel@hammerspace.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-it1-f194.google.com ([209.85.166.194]:37831 "EHLO
+        mail-it1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1728619AbeJEV10 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Oct 2018 17:27:26 -0400
+Received: by mail-it1-f194.google.com with SMTP id e74-v6so2980325ita.2
+        for <linux-nfs@vger.kernel.org>; Fri, 05 Oct 2018 07:28:29 -0700 (PDT)
+From: Trond Myklebust <trondmy@gmail.com>
+To: J Bruce Fields <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH] NFS: Fix up a typo in nfs_dns_ent_put
+Date: Fri,  5 Oct 2018 10:27:20 -0400
+Message-Id: <20181005142720.25280-1-trond.myklebust@hammerspace.com>
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDE4LTEwLTA1IGF0IDEzOjQ0ICswMDAwLCBUcm9uZCBNeWtsZWJ1c3Qgd3JvdGU6
-DQo+IE9uIEZyaSwgMjAxOC0xMC0wNSBhdCAwOTozNCAtMDQwMCwgQW5kcmV3IEVsYmxlIHdyb3Rl
-Og0KPiA+IEl0J3MgcG9zc2libGUgZm9yIERFTEVHUkVUVVJOIHRvIHJ1biBpbnRvIGNvcm5lciBj
-YXNlcyB3aGVyZSBhDQo+ID4gZGVsZWdhdGlvbiBoYXMgYmVlbiByZXZva2VkIGJ5IHRoZSBzZXJ2
-ZXIsIGJ1dCB0aGF0IGZhY3QgaXMgYmVpbmcNCj4gPiBoaWRkZW4gYnkgYW4gZXJyb3Igb24gdGhl
-IFBVVEZIL0RFTEVHUkVUVVJOLiBTbywgaW4gYWxsIGVycm9yDQo+ID4gY2FzZXMgd2hlcmUgcmV2
-b2tlZCBzdGF0dXMgaXNuJ3QgaW1tZWRpYXRlbHkgb2J2aW91cywgZG8gYQ0KPiA+IFRFU1RfU1RB
-VEVJRCB0byBzZWUgaWYgaXQgaXMgaW5kZWVkIHJldm9rZWQuDQo+ID4gDQo+ID4gU2lnbmVkLW9m
-Zi1ieTogQW5kcmV3IEVsYmxlIDxhd2VpdHNAcml0LmVkdT4NCj4gPiAtLS0NCj4gPiAgZnMvbmZz
-L25mczRwcm9jLmMgfCAyMCArKysrKysrKysrKysrKysrKysrLQ0KPiA+ICAxIGZpbGUgY2hhbmdl
-ZCwgMTkgaW5zZXJ0aW9ucygrKSwgMSBkZWxldGlvbigtKQ0KPiA+IA0KPiA+IGRpZmYgLS1naXQg
-YS9mcy9uZnMvbmZzNHByb2MuYyBiL2ZzL25mcy9uZnM0cHJvYy5jDQo+ID4gaW5kZXggODIyMGEx
-NjgyODJlLi4zZjM4ZDI4MWE4MTQgMTAwNjQ0DQo+ID4gLS0tIGEvZnMvbmZzL25mczRwcm9jLmMN
-Cj4gPiArKysgYi9mcy9uZnMvbmZzNHByb2MuYw0KPiA+IEBAIC0zODYsNiArMzg2LDE2IEBAIHN0
-YXRpYyB2b2lkIG5mczRfZnJlZV9yZXZva2VkX3N0YXRlaWQoc3RydWN0DQo+ID4gbmZzX3NlcnZl
-ciAqc2VydmVyLA0KPiA+ICAJX19uZnM0X2ZyZWVfcmV2b2tlZF9zdGF0ZWlkKHNlcnZlciwgJnRt
-cCwgY3JlZCk7DQo+ID4gIH0NCj4gPiAgDQo+ID4gK3N0YXRpYyB2b2lkIG5mczRfZnJlZV9wb3Nz
-aWJseV9yZXZva2VkX3N0YXRlaWQoc3RydWN0IG5mc19zZXJ2ZXINCj4gPiAqc2VydmVyLA0KPiA+
-ICsJCQkJCWNvbnN0IG5mczRfc3RhdGVpZCAqc3RhdGVpZCwNCj4gPiArCQkJCQlzdHJ1Y3QgcnBj
-X2NyZWQgKmNyZWQpDQo+ID4gK3sNCj4gPiArCW5mczRfc3RhdGVpZCB0bXA7DQo+ID4gKw0KPiA+
-ICsJbmZzNF9zdGF0ZWlkX2NvcHkoJnRtcCwgc3RhdGVpZCk7DQo+ID4gKwluZnM0X3Rlc3RfYW5k
-X2ZyZWVfc3RhdGVpZChzZXJ2ZXIsICZ0bXAsIGNyZWQpOw0KPiA+ICt9DQo+ID4gKw0KPiA+ICBz
-dGF0aWMgbG9uZyBuZnM0X3VwZGF0ZV9kZWxheShsb25nICp0aW1lb3V0KQ0KPiA+ICB7DQo+ID4g
-IAlsb25nIHJldDsNCj4gPiBAQCAtNjAzNSw5ICs2MDQ1LDEzIEBAIHN0YXRpYyB2b2lkIG5mczRf
-ZGVsZWdyZXR1cm5fZG9uZShzdHJ1Y3QNCj4gPiBycGNfdGFzayAqdGFzaywgdm9pZCAqY2FsbGRh
-dGEpDQo+ID4gIAkJbmZzNF9mcmVlX3Jldm9rZWRfc3RhdGVpZChkYXRhLT5yZXMuc2VydmVyLA0K
-PiA+ICAJCQkJZGF0YS0+YXJncy5zdGF0ZWlkLA0KPiA+ICAJCQkJdGFzay0+dGtfbXNnLnJwY19j
-cmVkKTsNCj4gPiAtCQkvKiBGYWxsdGhyb3VnaCAqLw0KPiA+ICsJCXRhc2stPnRrX3N0YXR1cyA9
-IDA7DQo+ID4gKwkJYnJlYWs7DQo+ID4gIAljYXNlIC1ORlM0RVJSX0JBRF9TVEFURUlEOg0KPiA+
-ICAJY2FzZSAtTkZTNEVSUl9TVEFMRV9TVEFURUlEOg0KPiA+ICsJCW5mczRfZnJlZV9wb3NzaWJs
-eV9yZXZva2VkX3N0YXRlaWQoZGF0YS0+cmVzLnNlcnZlciwNCj4gPiArCQkJCQkJZGF0YS0+YXJn
-cy5zdGF0ZWlkLA0KPiA+ICsJCQkJCQl0YXNrLT50a19tc2cucnBjX2NyZWQpOw0KPiA+ICAJCXRh
-c2stPnRrX3N0YXR1cyA9IDA7DQo+ID4gIAkJYnJlYWs7DQo+ID4gIAljYXNlIC1ORlM0RVJSX09M
-RF9TVEFURUlEOg0KPiA+IEBAIC02MDU4LDYgKzYwNzIsMTAgQEAgc3RhdGljIHZvaWQgbmZzNF9k
-ZWxlZ3JldHVybl9kb25lKHN0cnVjdA0KPiA+IHJwY190YXNrICp0YXNrLCB2b2lkICpjYWxsZGF0
-YSkNCj4gPiAgCQkJCSZleGNlcHRpb24pOw0KPiA+ICAJCWlmIChleGNlcHRpb24ucmV0cnkpDQo+
-ID4gIAkJCWdvdG8gb3V0X3Jlc3RhcnQ7DQo+ID4gKw0KPiA+ICsJCW5mczRfZnJlZV9wb3NzaWJs
-eV9yZXZva2VkX3N0YXRlaWQoZGF0YS0+cmVzLnNlcnZlciwNCj4gPiArCQkJCQkJZGF0YS0+YXJn
-cy5zdGF0ZWlkLA0KPiA+ICsJCQkJCQl0YXNrLT50a19tc2cucnBjX2NyZWQpOw0KPiA+ICAJfQ0K
-PiA+ICAJZGF0YS0+cnBjX3N0YXR1cyA9IHRhc2stPnRrX3N0YXR1czsNCj4gPiAgCXJldHVybjsN
-Cj4gDQo+IE5BQ0suIFdlIGRvbid0IGV2ZXIgd2FudCB0byBydW4gc3luY2hyb25vdXMgUlBDIGNh
-bGxzIGZyb20gaW5zaWRlIGFuDQo+IHJwY2lvZCBjb250ZXh0LiBUaGVyZSBiZSBkZWFkbG9ja3Mu
-Li4NCg0KU28sIG15IHF1ZXN0aW9uIGlzIHdoeSB3b3VsZCB3ZSBuZWVkIHRvIGNoYW5nZSBuZnM0
-X2RlbGVncmV0dXJuX2RvbmUgYXQNCmFsbD8gSXQgc2hvdWxkIGFscmVhZHkgYmUgc2VuZGluZyBh
-IEZSRUVfU1RBVEVJRCB3aGVuIHRoZSBzZXJ2ZXINCnJldHVybnMgTkZTNEVSUl9FWFBJUkVEIG9y
-IE5GUzRFUlJfREVMRUdfUkVWT0tFRCB0aGFua3MgdG8gdGhlIGNhbGwgdG8NCm5mczRfZnJlZV9y
-ZXZva2VkX3N0YXRlaWQoKS4NCg0KSWYgdGhlIHNlcnZlciBpcyByZXR1cm5pbmcgYW55dGhpbmcg
-b3RoZXIgdGhhbiB0aG9zZSAyIGVycm9ycyBmb3IgYQ0Kc3RhdGVpZCB0aGF0IGlzIHBlbmRpbmcg
-YSBGUkVFX1NUQVRFSUQgZnJvbSB0aGUgY2xpZW50LCB0aGVuIHRoYXQNCnNlcnZlciBpcyBicm9r
-ZW4uDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIs
-IEhhbW1lcnNwYWNlDQp0cm9uZC5teWtsZWJ1c3RAaGFtbWVyc3BhY2UuY29tDQoNCg0K
+call_rcu() needs to take a first argument of type (struct rcu_head *).
+
+Fixes: fd497f1e40d9 ("NFS: Lockless DNS lookups")
+Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
+---
+- Apologies for the screwup
+
+ fs/nfs/dns_resolve.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/fs/nfs/dns_resolve.c b/fs/nfs/dns_resolve.c
+index e93a5dc07c8c..a7d3df85736d 100644
+--- a/fs/nfs/dns_resolve.c
++++ b/fs/nfs/dns_resolve.c
+@@ -116,7 +116,7 @@ static void nfs_dns_ent_put(struct kref *ref)
+ 	struct nfs_dns_ent *item;
+ 
+ 	item = container_of(ref, struct nfs_dns_ent, h.ref);
+-	call_rcu(item, nfs_dns_ent_free_rcu);
++	call_rcu(&item->rcu_head, nfs_dns_ent_free_rcu);
+ }
+ 
+ static struct cache_head *nfs_dns_ent_alloc(void)
+-- 
+2.17.1
