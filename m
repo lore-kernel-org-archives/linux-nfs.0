@@ -1,75 +1,86 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it1-f195.google.com ([209.85.166.195]:54702 "EHLO
-        mail-it1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727941AbeJEXKV (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Oct 2018 19:10:21 -0400
-Received: by mail-it1-f195.google.com with SMTP id l191-v6so3275932ita.4
-        for <linux-nfs@vger.kernel.org>; Fri, 05 Oct 2018 09:11:00 -0700 (PDT)
-From: Trond Myklebust <trondmy@gmail.com>
-Message-ID: <10dee831d3ce0041115f3e33b2df17fdff2b26a7.camel@hammerspace.com>
-Subject: Re: [PATCH RFC] nfs: make DELEGRETURN try harder to determine if a
- delegation has been revoked
-To: Andrew W Elble <aweits@rit.edu>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-In-Reply-To: <m2sh1kbekr.fsf@discipline.rit.edu>
-References: <20181005133429.79332-1-aweits@rit.edu>
-         <04588fc1ef331c111185cb2f940d20a2e183e598.camel@hammerspace.com>
-         <8b5d00b03e9a2fc20ebb3c6e3e040f3225beed22.camel@hammerspace.com>
-         <m2sh1kbekr.fsf@discipline.rit.edu>
+Received: from mail-it1-f193.google.com ([209.85.166.193]:40324 "EHLO
+        mail-it1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727726AbeJFUcX (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 6 Oct 2018 16:32:23 -0400
+Received: by mail-it1-f193.google.com with SMTP id i191-v6so6468100iti.5
+        for <linux-nfs@vger.kernel.org>; Sat, 06 Oct 2018 06:29:04 -0700 (PDT)
+MIME-Version: 1.0
+References: <20180928200258.68552-1-trond.myklebust@hammerspace.com> <20180928200258.68552-2-trond.myklebust@hammerspace.com>
+In-Reply-To: <20180928200258.68552-2-trond.myklebust@hammerspace.com>
+From: Stan Hu <stanhu@gmail.com>
+Date: Sat, 6 Oct 2018 06:28:52 -0700
+Message-ID: <CAMBWrQ=Ef7R8_wrK7v89Za0LdFZf-S6sRL7qy8A-d44JZEsQVw@mail.gmail.com>
+Subject: Re: [PATCH 1/3] NFS: Fix dentry revalidation on NFSv4 lookup
+To: trondmy@gmail.com
+Cc: Bruce Fields <bfields@fieldses.org>, linux-nfs@vger.kernel.org
 Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
-Date: Fri, 05 Oct 2018 12:10:51 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2018-10-05 at 11:25 -0400, Andrew W Elble wrote:
-> > > NACK. We don't ever want to run synchronous RPC calls from inside
-> > > an
-> > > rpciod context. There be deadlocks...
-> 
-> ahhh yes, I missed the fact that nfs4_free_revoked_stateid() is
-> safe in calling nfs4_test_and_free_stateid() because it is bypassing
-> the
-> TEST_STATEID by setting stateid->type = NFS4_REVOKED_STATEID_TYPE.
-> 
-> > So, my question is why would we need to change
-> > nfs4_delegreturn_done at
-> > all? It should already be sending a FREE_STATEID when the server
-> > returns NFS4ERR_EXPIRED or NFS4ERR_DELEG_REVOKED thanks to the call
-> > to
-> > nfs4_free_revoked_stateid().
-> > 
-> > If the server is returning anything other than those 2 errors for a
-> > stateid that is pending a FREE_STATEID from the client, then that
-> > server is broken.
-> 
-> My intent (with the BAD/STALE_STATEID part at least)
-> was to fail safe even in the presence of a broken server.
+Thanks, Trond! I applied this patch on 4.19rc4 and ran my test, and
+this seemed to have solved the problem!
 
-I don't see how that would be useful. If the server is so broken that
-it is returning NFS4ERR_BAD_STATEID in a situation where it expects the
-client to send a FREE_STATEID, then it can't be trusted to do the right
-thing for calls to TEST_STATEID either.
-
-IOW: This isn't a fixable situation on the client.
-
-> As to the other bit, the hypothesis is a bad response to PUTFH. (I
-> cannot prove that I or others have seen this, BTW)
-> 
-> What is the appropriate client/server response(s) if the delegation
-> is
-> revoked and the PUTFH fails? The server should send the error on the
-> PUTFH before evaluating the DELEGRETURN, correct?
-> 
-
-You're talking about the case where PUTFH returns NFS4ERR_STALE? Why
-should the client be required free state for a file that has been
-removed? There is nothing in RFC5661 that says that it has to, and it
-wouldn't make any sense to impose such a requirement either. Once the
-filehandle is stale, any locks protecting the file contents are a moot
-point.
-
--- 
-Trond Myklebust
-Linux NFS client maintainer, Hammerspace
-trond.myklebust@hammerspace.com
+On Fri, Sep 28, 2018 at 1:03 PM Trond Myklebust <trondmy@gmail.com> wrote:
+>
+> We need to ensure that inode and dentry revalidation occurs correctly
+> on reopen of a file that is already open. Currently, we can end up
+> not revalidating either in the case of NFSv4.0, due to the 'cached open'
+> path.
+> Let's fix that by ensuring that we only do cached open for the special
+> cases of open recovery and delegation return.
+>
+> Reported-by: Stan Hu <stanhu@gmail.com>
+> Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
+> ---
+>  fs/nfs/nfs4proc.c | 15 ++++++++++++---
+>  1 file changed, 12 insertions(+), 3 deletions(-)
+>
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index 4da59bd53f98..db84b4adbc49 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -1349,12 +1349,20 @@ static bool nfs4_mode_match_open_stateid(struct nfs4_state *state,
+>         return false;
+>  }
+>
+> -static int can_open_cached(struct nfs4_state *state, fmode_t mode, int open_mode)
+> +static int can_open_cached(struct nfs4_state *state, fmode_t mode,
+> +               int open_mode, enum open_claim_type4 claim)
+>  {
+>         int ret = 0;
+>
+>         if (open_mode & (O_EXCL|O_TRUNC))
+>                 goto out;
+> +       switch (claim) {
+> +       case NFS4_OPEN_CLAIM_NULL:
+> +       case NFS4_OPEN_CLAIM_FH:
+> +               goto out;
+> +       default:
+> +               break;
+> +       }
+>         switch (mode & (FMODE_READ|FMODE_WRITE)) {
+>                 case FMODE_READ:
+>                         ret |= test_bit(NFS_O_RDONLY_STATE, &state->flags) != 0
+> @@ -1747,7 +1755,7 @@ static struct nfs4_state *nfs4_try_open_cached(struct nfs4_opendata *opendata)
+>
+>         for (;;) {
+>                 spin_lock(&state->owner->so_lock);
+> -               if (can_open_cached(state, fmode, open_mode)) {
+> +               if (can_open_cached(state, fmode, open_mode, claim)) {
+>                         update_open_stateflags(state, fmode);
+>                         spin_unlock(&state->owner->so_lock);
+>                         goto out_return_state;
+> @@ -2294,7 +2302,8 @@ static void nfs4_open_prepare(struct rpc_task *task, void *calldata)
+>         if (data->state != NULL) {
+>                 struct nfs_delegation *delegation;
+>
+> -               if (can_open_cached(data->state, data->o_arg.fmode, data->o_arg.open_flags))
+> +               if (can_open_cached(data->state, data->o_arg.fmode,
+> +                                       data->o_arg.open_flags, claim))
+>                         goto out_no_action;
+>                 rcu_read_lock();
+>                 delegation = rcu_dereference(NFS_I(data->state->inode)->delegation);
+> --
+> 2.17.1
+>
