@@ -1,63 +1,26 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp2120.oracle.com ([156.151.31.85]:34514 "EHLO
-        userp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726483AbeJIAcC (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Oct 2018 20:32:02 -0400
-Subject: Re: The Fall Bakeathon in Westford, Ma
-To: NFSv4 <nfsv4@ietf.org>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-References: <45adbe8e-24f4-1318-7a19-69cd2ed1fdb9@RedHat.com>
-From: Bill Baker <Bill.Baker@Oracle.com>
-Message-ID: <01026b61-1b9a-2cdc-8ee8-c0cbd4476b9b@Oracle.com>
-Date: Mon, 8 Oct 2018 12:19:19 -0500
+Received: from mail-lj1-f181.google.com ([209.85.208.181]:40785 "EHLO
+        mail-lj1-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726418AbeJIC7c (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Oct 2018 22:59:32 -0400
+Received: by mail-lj1-f181.google.com with SMTP id r83-v6so18960361ljr.7
+        for <linux-nfs@vger.kernel.org>; Mon, 08 Oct 2018 12:46:09 -0700 (PDT)
+Received: from [192.168.0.104] ([217.197.11.36])
+        by smtp.gmail.com with ESMTPSA id s76-v6sm4211725lje.94.2018.10.08.12.46.07
+        for <linux-nfs@vger.kernel.org>
+        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Mon, 08 Oct 2018 12:46:07 -0700 (PDT)
+To: linux-nfs@vger.kernel.org
+From: Language Lawyer <language.lawyer@gmail.com>
+Subject: Kernel NFS client and Kerberos delegation
+Message-ID: <6369655a-a0b0-5c3c-7c68-b623a4270668@gmail.com>
+Date: Mon, 8 Oct 2018 22:46:06 +0300
 MIME-Version: 1.0
-In-Reply-To: <45adbe8e-24f4-1318-7a19-69cd2ed1fdb9@RedHat.com>
-Content-Type: text/plain; charset=windows-1252; format=flowed
+Content-Type: text/plain; charset=utf-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hi,
 
-Greetings,
-
-I've posted the presentation materials for the Fall 2018 BAT
-on the nfsv4bat website:
-
-http://nfsv4bat.org/Documents/BakeAThon/2018/index.html
-
-Thanks to all who participated.
-
-B
-
-On 06/13/2018 12:37 PM, Steve Dickson wrote:
-> Red Hat is pleased to announce the Fall NFS Bake-a-ton will be
-> hosted by Red Hat in Westford, MA office
-> The Date: *The third week in Sept (17th - 21th)*
-> 
-> Details and registration info:
->      http://nfsv4bat.org/Events/2018/September/BAT/index.html
-> 
-> I'm using the same hotels and the prices are the same
-> or lower. The block reservations for the Residence Inn
-> and Hampton Inn end on *Fri Aug 18th*
-> 
->      * Residence Inn Marriott - closest; w/ shuttle; full kitchen; free breakfast
->      * Westford Regency Inn - w/bar ; w/shuttle
->      * Hampton Inn - free breakfast
-> 
-> When registering (i.e. replying to this email) please give me
->     * Company Name
->     * How engineers are coming
->     * T-shirt sizes
->     * Hotel you will be staying in
-> 
-> I hope to see you in September!!!
-> 
-> steved.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-
--- 
-Bill Baker - Oracle Linux NFS
+AFAIU kernel NFS client keeps ID -> Name mapping in the "id_resolver" keyring.
+Do I understand it correctly that with this hard mapping it is not possible for a service to access a kerberized NFS storage on behalf of some user using user's delegated (for example, with S4U2Self+S4U2Proxy) credentials?
