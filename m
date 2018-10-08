@@ -1,47 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:35822 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726078AbeJHVfd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 8 Oct 2018 17:35:33 -0400
-Date: Mon, 8 Oct 2018 10:23:35 -0400
-From: J Bruce Fields <bfields@fieldses.org>
-To: Trond Myklebust <trondmy@gmail.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] NFS: Fix up a typo in nfs_dns_ent_put
-Message-ID: <20181008142335.GA5567@fieldses.org>
-References: <20181005142720.25280-1-trond.myklebust@hammerspace.com>
+Received: from userp2120.oracle.com ([156.151.31.85]:34514 "EHLO
+        userp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726483AbeJIAcC (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Oct 2018 20:32:02 -0400
+Subject: Re: The Fall Bakeathon in Westford, Ma
+To: NFSv4 <nfsv4@ietf.org>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+References: <45adbe8e-24f4-1318-7a19-69cd2ed1fdb9@RedHat.com>
+From: Bill Baker <Bill.Baker@Oracle.com>
+Message-ID: <01026b61-1b9a-2cdc-8ee8-c0cbd4476b9b@Oracle.com>
+Date: Mon, 8 Oct 2018 12:19:19 -0500
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20181005142720.25280-1-trond.myklebust@hammerspace.com>
+In-Reply-To: <45adbe8e-24f4-1318-7a19-69cd2ed1fdb9@RedHat.com>
+Content-Type: text/plain; charset=windows-1252; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Oct 05, 2018 at 10:27:20AM -0400, Trond Myklebust wrote:
-> call_rcu() needs to take a first argument of type (struct rcu_head *).
-> 
-> Fixes: fd497f1e40d9 ("NFS: Lockless DNS lookups")
-> Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-Thanks!  Applying.--b.
+Greetings,
 
-> ---
-> - Apologies for the screwup
+I've posted the presentation materials for the Fall 2018 BAT
+on the nfsv4bat website:
+
+http://nfsv4bat.org/Documents/BakeAThon/2018/index.html
+
+Thanks to all who participated.
+
+B
+
+On 06/13/2018 12:37 PM, Steve Dickson wrote:
+> Red Hat is pleased to announce the Fall NFS Bake-a-ton will be
+> hosted by Red Hat in Westford, MA office
+> The Date: *The third week in Sept (17th - 21th)*
 > 
->  fs/nfs/dns_resolve.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
+> Details and registration info:
+>      http://nfsv4bat.org/Events/2018/September/BAT/index.html
 > 
-> diff --git a/fs/nfs/dns_resolve.c b/fs/nfs/dns_resolve.c
-> index e93a5dc07c8c..a7d3df85736d 100644
-> --- a/fs/nfs/dns_resolve.c
-> +++ b/fs/nfs/dns_resolve.c
-> @@ -116,7 +116,7 @@ static void nfs_dns_ent_put(struct kref *ref)
->  	struct nfs_dns_ent *item;
->  
->  	item = container_of(ref, struct nfs_dns_ent, h.ref);
-> -	call_rcu(item, nfs_dns_ent_free_rcu);
-> +	call_rcu(&item->rcu_head, nfs_dns_ent_free_rcu);
->  }
->  
->  static struct cache_head *nfs_dns_ent_alloc(void)
-> -- 
-> 2.17.1
+> I'm using the same hotels and the prices are the same
+> or lower. The block reservations for the Residence Inn
+> and Hampton Inn end on *Fri Aug 18th*
+> 
+>      * Residence Inn Marriott - closest; w/ shuttle; full kitchen; free breakfast
+>      * Westford Regency Inn - w/bar ; w/shuttle
+>      * Hampton Inn - free breakfast
+> 
+> When registering (i.e. replying to this email) please give me
+>     * Company Name
+>     * How engineers are coming
+>     * T-shirt sizes
+>     * Hotel you will be staying in
+> 
+> I hope to see you in September!!!
+> 
+> steved.
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+
+-- 
+Bill Baker - Oracle Linux NFS
