@@ -1,10 +1,9 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp2130.oracle.com ([156.151.31.86]:53578 "EHLO
-        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725800AbeJJHdW (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Oct 2018 03:33:22 -0400
-Subject: [PATCH 16/25] vfs: plumb RFR_* remap flags through the vfs dedupe
- functions
+Received: from userp2120.oracle.com ([156.151.31.85]:60094 "EHLO
+        userp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725800AbeJJHdj (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Oct 2018 03:33:39 -0400
+Subject: [PATCH 10/25] vfs: rename clone_verify_area to remap_verify_area
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
 To: david@fromorbit.com, darrick.wong@oracle.com
 Cc: sandeen@redhat.com, linux-nfs@vger.kernel.org,
@@ -12,8 +11,8 @@ Cc: sandeen@redhat.com, linux-nfs@vger.kernel.org,
         linux-xfs@vger.kernel.org, linux-mm@kvack.org,
         linux-btrfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         ocfs2-devel@oss.oracle.com
-Date: Tue, 09 Oct 2018 17:13:50 -0700
-Message-ID: <153913043056.32295.889586450104360207.stgit@magnolia>
+Date: Tue, 09 Oct 2018 17:11:52 -0700
+Message-ID: <153913031261.32295.9177776550062804985.stgit@magnolia>
 In-Reply-To: <153913023835.32295.13962696655740190941.stgit@magnolia>
 References: <153913023835.32295.13962696655740190941.stgit@magnolia>
 MIME-Version: 1.0
@@ -23,78 +22,57 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 From: Darrick J. Wong <darrick.wong@oracle.com>
 
-Plumb a remap_flags argument through the vfs_dedupe_file_range_one
-functions so that dedupe can take advantage of it.
+Since we use clone_verify_area for both clone and dedupe range checks,
+rename the function to make it clear that it's for both.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- fs/overlayfs/file.c |    3 ++-
- fs/read_write.c     |    9 ++++++---
- include/linux/fs.h  |    2 +-
- 3 files changed, 9 insertions(+), 5 deletions(-)
+ fs/read_write.c |   10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
 
 
-diff --git a/fs/overlayfs/file.c b/fs/overlayfs/file.c
-index 8b22035af4d7..8b804e86ed4d 100644
---- a/fs/overlayfs/file.c
-+++ b/fs/overlayfs/file.c
-@@ -467,7 +467,8 @@ static loff_t ovl_copyfile(struct file *file_in, loff_t pos_in,
- 
- 	case OVL_DEDUPE:
- 		ret = vfs_dedupe_file_range_one(real_in.file, pos_in,
--						real_out.file, pos_out, len);
-+						real_out.file, pos_out, len,
-+						flags);
- 		break;
- 	}
- 	revert_creds(old_cred);
 diff --git a/fs/read_write.c b/fs/read_write.c
-index cf81d1f68b69..479eb810c8e6 100644
+index 4ea81ea7d78d..b4acfb45d916 100644
 --- a/fs/read_write.c
 +++ b/fs/read_write.c
-@@ -1983,10 +1983,12 @@ EXPORT_SYMBOL(vfs_dedupe_file_range_compare);
+@@ -1686,7 +1686,7 @@ SYSCALL_DEFINE6(copy_file_range, int, fd_in, loff_t __user *, off_in,
+ 	return ret;
+ }
  
- loff_t vfs_dedupe_file_range_one(struct file *src_file, loff_t src_pos,
- 				 struct file *dst_file, loff_t dst_pos,
--				 loff_t len)
-+				 loff_t len, unsigned int remap_flags)
+-static int clone_verify_area(struct file *file, loff_t pos, u64 len, bool write)
++static int remap_verify_area(struct file *file, loff_t pos, u64 len, bool write)
  {
- 	loff_t ret;
+ 	struct inode *inode = file_inode(file);
  
-+	WARN_ON_ONCE(remap_flags & ~(RFR_IDENTICAL_DATA));
-+
- 	ret = mnt_want_write_file(dst_file);
+@@ -1818,11 +1818,11 @@ int do_clone_file_range(struct file *file_in, loff_t pos_in,
+ 	if (!file_in->f_op->remap_file_range)
+ 		return -EOPNOTSUPP;
+ 
+-	ret = clone_verify_area(file_in, pos_in, len, false);
++	ret = remap_verify_area(file_in, pos_in, len, false);
  	if (ret)
  		return ret;
-@@ -2017,7 +2019,7 @@ loff_t vfs_dedupe_file_range_one(struct file *src_file, loff_t src_pos,
- 	}
  
- 	ret = dst_file->f_op->remap_file_range(src_file, src_pos, dst_file,
--			dst_pos, len, RFR_IDENTICAL_DATA);
-+			dst_pos, len, remap_flags | RFR_IDENTICAL_DATA);
- out_drop_write:
- 	mnt_drop_write_file(dst_file);
+-	ret = clone_verify_area(file_out, pos_out, len, true);
++	ret = remap_verify_area(file_out, pos_out, len, true);
+ 	if (ret)
+ 		return ret;
  
-@@ -2085,7 +2087,8 @@ int vfs_dedupe_file_range(struct file *file, struct file_dedupe_range *same)
- 		}
+@@ -1955,7 +1955,7 @@ int vfs_dedupe_file_range_one(struct file *src_file, loff_t src_pos,
+ 	if (ret)
+ 		return ret;
  
- 		deduped = vfs_dedupe_file_range_one(file, off, dst_file,
--						    info->dest_offset, len);
-+						    info->dest_offset, len,
-+						    0);
- 		if (deduped == -EBADE)
- 			info->status = FILE_DEDUPE_RANGE_DIFFERS;
- 		else if (deduped < 0)
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 21f947b20f37..5c1bf1c35bc6 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1849,7 +1849,7 @@ extern int vfs_dedupe_file_range(struct file *file,
- 				 struct file_dedupe_range *same);
- extern loff_t vfs_dedupe_file_range_one(struct file *src_file, loff_t src_pos,
- 					struct file *dst_file, loff_t dst_pos,
--					loff_t len);
-+					loff_t len, unsigned int remap_flags);
+-	ret = clone_verify_area(dst_file, dst_pos, len, true);
++	ret = remap_verify_area(dst_file, dst_pos, len, true);
+ 	if (ret < 0)
+ 		goto out_drop_write;
  
+@@ -2017,7 +2017,7 @@ int vfs_dedupe_file_range(struct file *file, struct file_dedupe_range *same)
+ 	if (!S_ISREG(src->i_mode))
+ 		goto out;
  
- struct super_operations {
+-	ret = clone_verify_area(file, off, len, false);
++	ret = remap_verify_area(file, off, len, false);
+ 	if (ret < 0)
+ 		goto out;
+ 	ret = 0;
