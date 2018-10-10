@@ -1,95 +1,75 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp2120.oracle.com ([141.146.126.78]:60392 "EHLO
-        aserp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726908AbeJKB4M (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Oct 2018 21:56:12 -0400
-Date: Wed, 10 Oct 2018 11:32:36 -0700
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-To: Amir Goldstein <amir73il@gmail.com>
-Cc: Dave Chinner <david@fromorbit.com>,
-        Eric Sandeen <sandeen@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-cifs@vger.kernel.org,
-        overlayfs <linux-unionfs@vger.kernel.org>,
-        linux-xfs <linux-xfs@vger.kernel.org>,
-        Linux MM <linux-mm@kvack.org>,
-        Linux Btrfs <linux-btrfs@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        ocfs2-devel@oss.oracle.com
-Subject: Re: [PATCH 14/25] vfs: make remap_file_range functions take and
- return bytes completed
-Message-ID: <20181010183236.GU28243@magnolia>
+Received: from ipmail03.adl2.internode.on.net ([150.101.137.141]:27415 "EHLO
+        ipmail03.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1726035AbeJKGgl (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Oct 2018 02:36:41 -0400
+Date: Thu, 11 Oct 2018 10:06:39 +1100
+From: Dave Chinner <david@fromorbit.com>
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Cc: sandeen@redhat.com, linux-nfs@vger.kernel.org,
+        linux-cifs@vger.kernel.org, linux-unionfs@vger.kernel.org,
+        linux-xfs@vger.kernel.org, linux-mm@kvack.org,
+        linux-btrfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        Christoph Hellwig <hch@lst.de>, ocfs2-devel@oss.oracle.com
+Subject: Re: [PATCH 05/25] vfs: check file ranges before cloning files
+Message-ID: <20181010230639.GN6311@dastard>
 References: <153913023835.32295.13962696655740190941.stgit@magnolia>
- <153913040858.32295.9474188640729118153.stgit@magnolia>
- <CAOQ4uxg0=EJp1WJXmUeHT05yF1txRKKhPHVTWeG+rdtRD5FfHA@mail.gmail.com>
- <20181010155055.GS28243@magnolia>
- <CAOQ4uxjsKZHxoYqbnJTxQ1SPGn7o_2QhYseuETHnvZxvgCV5vg@mail.gmail.com>
+ <153913027326.32295.7601238218404639876.stgit@magnolia>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAOQ4uxjsKZHxoYqbnJTxQ1SPGn7o_2QhYseuETHnvZxvgCV5vg@mail.gmail.com>
+In-Reply-To: <153913027326.32295.7601238218404639876.stgit@magnolia>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Oct 10, 2018 at 09:28:34PM +0300, Amir Goldstein wrote:
-> On Wed, Oct 10, 2018 at 6:51 PM Darrick J. Wong <darrick.wong@oracle.com> wrote:
-> >
-> > On Wed, Oct 10, 2018 at 09:47:00AM +0300, Amir Goldstein wrote:
-> > > On Wed, Oct 10, 2018 at 3:14 AM Darrick J. Wong <darrick.wong@oracle.com> wrote:
-> > > >
-> > > > From: Darrick J. Wong <darrick.wong@oracle.com>
-> > > >
-> > > > Change the remap_file_range functions to take a number of bytes to
-> > > > operate upon and return the number of bytes they operated on.  This is a
-> > > > requirement for allowing fs implementations to return short clone/dedupe
-> > > > results to the user, which will enable us to obey resource limits in a
-> > > > graceful manner.
-> > > >
-> > > > A subsequent patch will enable copy_file_range to signal to the
-> > > > ->clone_file_range implementation that it can handle a short length,
-> > > > which will be returned in the function's return value.  Neither clone
-> > > > ioctl can take advantage of this, alas.
-> > > >
-> > > > Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
-> > > > ---
-> [...]
-> > > Commit message wasn't clear enough on the behavior of copy_file_range()
-> > > before and after the patch IMO. Maybe it would be better to pospone this
-> > > semantic change to the RFR_SHORTEN patch and keep if (cloned == len)
-> > > in this patch?
-> >
-> > There shouldn't be any behavior change here -- all implementations
-> > return a negative error code or the length that was passed in.  I'll
-> > clarify that in the commit message.
-> >
+On Tue, Oct 09, 2018 at 05:11:13PM -0700, Darrick J. Wong wrote:
+> From: Darrick J. Wong <darrick.wong@oracle.com>
 > 
-> OK. BTW, you forgot to update Documentation/filesystems/vfs.txt.
-
-Yeah, I noticed that and updated it too.
-
-> Also since this series has a potential to break clone/dedup on
-> overlayfs, it would be great if you could run some of the clone/dedupe
-> xfstests with overlay over xfs.
+> Move the file range checks from vfs_clone_file_prep into a separate
+> generic_remap_checks function so that all the checks are collected in a
+> central location.  This forms the basis for adding more checks from
+> generic_write_checks that will make cloning's input checking more
+> consistent with write input checking.
 > 
-> For the simple case of running ./check with a local.config file that is
-> not multi section, this just means running ./check -overlay after the
-> first ./check run (-overlay doesn't mkfs the base fs).
+> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+> Reviewed-by: Christoph Hellwig <hch@lst.de>
+....
+> --- a/fs/read_write.c
+> +++ b/fs/read_write.c
+> @@ -1717,12 +1717,12 @@ static int clone_verify_area(struct file *file, loff_t pos, u64 len, bool write)
+>   * Returns: 0 for "nothing to clone", 1 for "something to clone", or
+>   * the usual negative error code.
+>   */
+> -int vfs_clone_file_prep_inodes(struct inode *inode_in, loff_t pos_in,
+> -			       struct inode *inode_out, loff_t pos_out,
+> -			       u64 *len, bool is_dedupe)
+> +int vfs_clone_file_prep(struct file *file_in, loff_t pos_in,
+> +			struct file *file_out, loff_t pos_out,
+> +			u64 *len, bool is_dedupe)
+>  {
+> -	loff_t bs = inode_out->i_sb->s_blocksize;
+> -	loff_t blen;
+> +	struct inode *inode_in = file_inode(file_in);
+> +	struct inode *inode_out = file_inode(file_out);
+>  	loff_t isize;
+>  	bool same_inode = (inode_in == inode_out);
+>  	int ret;
+> @@ -1740,10 +1740,7 @@ int vfs_clone_file_prep_inodes(struct inode *inode_in, loff_t pos_in,
+>  	if (!S_ISREG(inode_in->i_mode) || !S_ISREG(inode_out->i_mode))
+>  		return -EINVAL;
+>  
+> -	/* Are we going all the way to the end? */
+>  	isize = i_size_read(inode_in);
+> -	if (isize == 0)
+> -		return 0;
 
-I'll give it a try, though we should probably both run '-g clone' just
-to make sure everything is working...
+This looks like a change of behaviour. Instead of skipping zero
+legnth source files and returning success, this will now return
+-EINVAL as other checks fail? That needs to be documented in the
+commit message if it's intentional and a valid change to make...
 
-> If this is a problem, let me know once new devel branch is ready
+Cheers,
 
-Yeah, Dave asked me to merge the xfs for-next branch so I'm working on
-that too.
-
-> and I'll pull it for testing. If I need to pull in extra xfstests, please
-> mention that as well.
-
-You'll probably want "generic: test creation time recovery after power
-failure" that I sent to the fstests lists a few days ago.
-
---D
-
-> 
-> Thanks,
-> Amir.
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
