@@ -1,10 +1,9 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp2120.oracle.com ([156.151.31.85]:60170 "EHLO
-        userp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725800AbeJJHdn (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Oct 2018 03:33:43 -0400
-Subject: [PATCH 18/25] vfs: enable remap callers that can handle short
- operations
+Received: from userp2130.oracle.com ([156.151.31.86]:54350 "EHLO
+        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725955AbeJJHdz (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Oct 2018 03:33:55 -0400
+Subject: [PATCH 20/25] vfs: implement opportunistic short dedupe
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
 To: david@fromorbit.com, darrick.wong@oracle.com
 Cc: sandeen@redhat.com, linux-nfs@vger.kernel.org,
@@ -12,8 +11,8 @@ Cc: sandeen@redhat.com, linux-nfs@vger.kernel.org,
         linux-xfs@vger.kernel.org, linux-mm@kvack.org,
         linux-btrfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         ocfs2-devel@oss.oracle.com
-Date: Tue, 09 Oct 2018 17:14:04 -0700
-Message-ID: <153913044431.32295.9717425324455762449.stgit@magnolia>
+Date: Tue, 09 Oct 2018 17:14:17 -0700
+Message-ID: <153913045787.32295.7018909865132108315.stgit@magnolia>
 In-Reply-To: <153913023835.32295.13962696655740190941.stgit@magnolia>
 References: <153913023835.32295.13962696655740190941.stgit@magnolia>
 MIME-Version: 1.0
@@ -23,82 +22,159 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 From: Darrick J. Wong <darrick.wong@oracle.com>
 
-Plumb in a remap flag that enables the filesystem remap handler to
-shorten remapping requests for callers that can handle it.  Now
-copy_file_range can report partial success (in case we run up against
-alignment problems, resource limits, etc.).
+For a given dedupe request, the bytes_deduped field in the control
+structure tells userspace if we managed to deduplicate some, but not all
+of, the requested regions starting from the file offsets supplied.
+However, due to sloppy coding, the current dedupe code returns
+FILE_DEDUPE_RANGE_DIFFERS if any part of the range is different.
+Fix this so that we can actually support partial request completion.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- fs/read_write.c    |    3 ++-
- include/linux/fs.h |    2 ++
- mm/filemap.c       |   16 ++++++++++++----
- 3 files changed, 16 insertions(+), 5 deletions(-)
+ fs/read_write.c |   59 +++++++++++++++++++++++++++++++++++++++++++++----------
+ 1 file changed, 48 insertions(+), 11 deletions(-)
 
 
 diff --git a/fs/read_write.c b/fs/read_write.c
-index a628fd9a47cf..8ed0aed81649 100644
+index 57627202bd50..8be3c3add030 100644
 --- a/fs/read_write.c
 +++ b/fs/read_write.c
-@@ -1593,7 +1593,8 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
- 
- 		cloned = file_in->f_op->remap_file_range(file_in, pos_in,
- 				file_out, pos_out,
--				min_t(loff_t, MAX_RW_COUNT, len), 0);
-+				min_t(loff_t, MAX_RW_COUNT, len),
-+				RFR_CAN_SHORTEN);
- 		if (cloned >= 0) {
- 			ret = cloned;
- 			goto done;
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 9f90dcd4df3b..e0494d719ebc 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1726,9 +1726,11 @@ struct block_device_operations;
-  *
-  * RFR_IDENTICAL_DATA: only remap if contents identical (i.e. deduplicate)
-  * RFR_TO_SRC_EOF: remap to the end of the source file
-+ * RFR_CAN_SHORTEN: caller can handle a shortened request
-  */
- #define RFR_IDENTICAL_DATA	(1 << 0)
- #define RFR_TO_SRC_EOF		(1 << 1)
-+#define RFR_CAN_SHORTEN		(1 << 2)
- 
- struct iov_iter;
- 
-diff --git a/mm/filemap.c b/mm/filemap.c
-index 2522737483de..2179d0204ee6 100644
---- a/mm/filemap.c
-+++ b/mm/filemap.c
-@@ -3064,8 +3064,12 @@ int generic_remap_checks(struct file *file_in, loff_t pos_in,
- 	if (pos_in + count == size_in) {
- 		bcount = ALIGN(size_in, bs) - pos_in;
- 	} else {
--		if (!IS_ALIGNED(count, bs))
--			return -EINVAL;
-+		if (!IS_ALIGNED(count, bs)) {
-+			if (remap_flags & RFR_CAN_SHORTEN)
-+				count = ALIGN_DOWN(count, bs);
-+			else
-+				return -EINVAL;
-+		}
- 
- 		bcount = count;
- 	}
-@@ -3076,10 +3080,14 @@ int generic_remap_checks(struct file *file_in, loff_t pos_in,
- 	    pos_out < pos_in + bcount)
- 		return -EINVAL;
- 
--	/* For now we don't support changing the length. */
--	if (*req_count != count)
-+	/*
-+	 * We shortened the request but the caller can't deal with that, so
-+	 * bounce the request back to userspace.
-+	 */
-+	if (*req_count != count && !(remap_flags & RFR_CAN_SHORTEN))
- 		return -EINVAL;
- 
-+	*req_count = count;
- 	return 0;
+@@ -1737,13 +1737,26 @@ static struct page *vfs_dedupe_get_page(struct inode *inode, loff_t offset)
+ 	return page;
  }
  
++static unsigned int vfs_dedupe_memcmp(const char *s1, const char *s2,
++				      unsigned int len)
++{
++	const char *orig_s1;
++
++	for (orig_s1 = s1; len > 0; s1++, s2++, len--)
++		if (*s1 != *s2)
++			break;
++
++	return s1 - orig_s1;
++}
++
+ /*
+  * Compare extents of two files to see if they are the same.
+  * Caller must have locked both inodes to prevent write races.
+  */
+ static int vfs_dedupe_file_range_compare(struct inode *src, loff_t srcoff,
+ 					 struct inode *dest, loff_t destoff,
+-					 loff_t len, bool *is_same)
++					 loff_t *req_len,
++					 unsigned int remap_flags)
+ {
+ 	loff_t src_poff;
+ 	loff_t dest_poff;
+@@ -1751,8 +1764,11 @@ static int vfs_dedupe_file_range_compare(struct inode *src, loff_t srcoff,
+ 	void *dest_addr;
+ 	struct page *src_page;
+ 	struct page *dest_page;
+-	loff_t cmp_len;
++	loff_t len = *req_len;
++	loff_t same_len = 0;
+ 	bool same;
++	unsigned int cmp_len;
++	unsigned int cmp_same;
+ 	int error;
+ 
+ 	error = -EINVAL;
+@@ -1762,7 +1778,7 @@ static int vfs_dedupe_file_range_compare(struct inode *src, loff_t srcoff,
+ 		dest_poff = destoff & (PAGE_SIZE - 1);
+ 		cmp_len = min(PAGE_SIZE - src_poff,
+ 			      PAGE_SIZE - dest_poff);
+-		cmp_len = min(cmp_len, len);
++		cmp_len = min_t(loff_t, cmp_len, len);
+ 		if (cmp_len <= 0)
+ 			goto out_error;
+ 
+@@ -1784,7 +1800,10 @@ static int vfs_dedupe_file_range_compare(struct inode *src, loff_t srcoff,
+ 		flush_dcache_page(src_page);
+ 		flush_dcache_page(dest_page);
+ 
+-		if (memcmp(src_addr + src_poff, dest_addr + dest_poff, cmp_len))
++		cmp_same = vfs_dedupe_memcmp(src_addr + src_poff,
++					     dest_addr + dest_poff, cmp_len);
++		same_len += cmp_same;
++		if (cmp_same != cmp_len)
+ 			same = false;
+ 
+ 		kunmap_atomic(dest_addr);
+@@ -1802,7 +1821,17 @@ static int vfs_dedupe_file_range_compare(struct inode *src, loff_t srcoff,
+ 		len -= cmp_len;
+ 	}
+ 
+-	*is_same = same;
++	/*
++	 * If less than the whole range matched, we have to back down to the
++	 * nearest block boundary.
++	 */
++	if (*req_len != same_len) {
++		if (!(remap_flags & RFR_CAN_SHORTEN))
++			return -EINVAL;
++
++		*req_len = ALIGN_DOWN(same_len, dest->i_sb->s_blocksize);
++	}
++
+ 	return 0;
+ 
+ out_error:
+@@ -1879,13 +1908,11 @@ int generic_remap_file_range_prep(struct file *file_in, loff_t pos_in,
+ 	 * Check that the extents are the same.
+ 	 */
+ 	if (is_dedupe) {
+-		bool		is_same = false;
+-
+ 		ret = vfs_dedupe_file_range_compare(inode_in, pos_in,
+-				inode_out, pos_out, *len, &is_same);
++				inode_out, pos_out, len, remap_flags);
+ 		if (ret)
+ 			return ret;
+-		if (!is_same)
++		if (*len == 0)
+ 			return -EBADE;
+ 	}
+ 
+@@ -1988,7 +2015,7 @@ loff_t vfs_dedupe_file_range_one(struct file *src_file, loff_t src_pos,
+ {
+ 	loff_t ret;
+ 
+-	WARN_ON_ONCE(remap_flags & ~(RFR_IDENTICAL_DATA));
++	WARN_ON_ONCE(remap_flags & ~(RFR_IDENTICAL_DATA | RFR_CAN_SHORTEN));
+ 
+ 	ret = mnt_want_write_file(dst_file);
+ 	if (ret)
+@@ -2037,6 +2064,7 @@ int vfs_dedupe_file_range(struct file *file, struct file_dedupe_range *same)
+ 	int i;
+ 	int ret;
+ 	u16 count = same->dest_count;
++	unsigned int remap_flags = 0;
+ 	loff_t deduped;
+ 
+ 	if (!(file->f_mode & FMODE_READ))
+@@ -2073,6 +2101,15 @@ int vfs_dedupe_file_range(struct file *file, struct file_dedupe_range *same)
+ 		same->info[i].status = FILE_DEDUPE_RANGE_SAME;
+ 	}
+ 
++	/*
++	 * We can't allow the dedupe implementation to shorten the request if
++	 * there are multiple dedupe candidates because each candidate might
++	 * shorten the request by a different amount due to EOF and allocation
++	 * block size mismatches.
++	 */
++	if (count == 1)
++		remap_flags |= RFR_CAN_SHORTEN;
++
+ 	for (i = 0, info = same->info; i < count; i++, info++) {
+ 		struct fd dst_fd = fdget(info->dest_fd);
+ 		struct file *dst_file = dst_fd.file;
+@@ -2089,7 +2126,7 @@ int vfs_dedupe_file_range(struct file *file, struct file_dedupe_range *same)
+ 
+ 		deduped = vfs_dedupe_file_range_one(file, off, dst_file,
+ 						    info->dest_offset, len,
+-						    0);
++						    remap_flags);
+ 		if (deduped == -EBADE)
+ 			info->status = FILE_DEDUPE_RANGE_DIFFERS;
+ 		else if (deduped < 0)
