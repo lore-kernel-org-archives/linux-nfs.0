@@ -1,18 +1,11 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yw1-f68.google.com ([209.85.161.68]:46147 "EHLO
-        mail-yw1-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726503AbeJJWqf (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Oct 2018 18:46:35 -0400
-MIME-Version: 1.0
-References: <153913023835.32295.13962696655740190941.stgit@magnolia>
- <153913029885.32295.7399525233513945673.stgit@magnolia> <CAOQ4uxj_wftoGvub9n_6X3Qc64LKxs+8TB-opUiq59sGQ=YoKw@mail.gmail.com>
- <20181010151321.GR28243@magnolia>
-In-Reply-To: <20181010151321.GR28243@magnolia>
-From: Amir Goldstein <amir73il@gmail.com>
-Date: Wed, 10 Oct 2018 18:23:43 +0300
-Message-ID: <CAOQ4uxjrkgiKXTYP8d93kLvU2zaKO14Wx3ZL7-7TnDd95CHnOA@mail.gmail.com>
-Subject: Re: [PATCH 08/25] vfs: combine the clone and dedupe into a single remap_file_range
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Received: from userp2120.oracle.com ([156.151.31.85]:42408 "EHLO
+        userp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726479AbeJJXNv (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Oct 2018 19:13:51 -0400
+Date: Wed, 10 Oct 2018 08:50:55 -0700
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+To: Amir Goldstein <amir73il@gmail.com>
 Cc: Dave Chinner <david@fromorbit.com>,
         Eric Sandeen <sandeen@redhat.com>,
         Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
@@ -23,36 +16,126 @@ Cc: Dave Chinner <david@fromorbit.com>,
         Linux Btrfs <linux-btrfs@vger.kernel.org>,
         linux-fsdevel <linux-fsdevel@vger.kernel.org>,
         ocfs2-devel@oss.oracle.com
-Content-Type: text/plain; charset="UTF-8"
+Subject: Re: [PATCH 14/25] vfs: make remap_file_range functions take and
+ return bytes completed
+Message-ID: <20181010155055.GS28243@magnolia>
+References: <153913023835.32295.13962696655740190941.stgit@magnolia>
+ <153913040858.32295.9474188640729118153.stgit@magnolia>
+ <CAOQ4uxg0=EJp1WJXmUeHT05yF1txRKKhPHVTWeG+rdtRD5FfHA@mail.gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CAOQ4uxg0=EJp1WJXmUeHT05yF1txRKKhPHVTWeG+rdtRD5FfHA@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Oct 10, 2018 at 6:13 PM Darrick J. Wong <darrick.wong@oracle.com> wrote:
->
-> On Wed, Oct 10, 2018 at 08:54:44AM +0300, Amir Goldstein wrote:
-> > On Wed, Oct 10, 2018 at 3:12 AM Darrick J. Wong <darrick.wong@oracle.com> wrote:
-> > >
-> > > From: Darrick J. Wong <darrick.wong@oracle.com>
-> > >
-> > > Combine the clone_file_range and dedupe_file_range operations into a
-> > > single remap_file_range file operation dispatch since they're
-> > > fundamentally the same operation.  The differences between the two can
-> > > be made in the prep functions.
-> > >
-> > > Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
-> > > ---
+On Wed, Oct 10, 2018 at 09:47:00AM +0300, Amir Goldstein wrote:
+> On Wed, Oct 10, 2018 at 3:14 AM Darrick J. Wong <darrick.wong@oracle.com> wrote:
 > >
-
+> > From: Darrick J. Wong <darrick.wong@oracle.com>
 > >
-> > Apart from the generic check invalid flags comment - ACK on ovl part.
->
-> Thanks for the review!  Is that an official Acked-by to add to the
-> commit message, or an informal ACK?
->
+> > Change the remap_file_range functions to take a number of bytes to
+> > operate upon and return the number of bytes they operated on.  This is a
+> > requirement for allowing fs implementations to return short clone/dedupe
+> > results to the user, which will enable us to obey resource limits in a
+> > graceful manner.
+> >
+> > A subsequent patch will enable copy_file_range to signal to the
+> > ->clone_file_range implementation that it can handle a short length,
+> > which will be returned in the function's return value.  Neither clone
+> > ioctl can take advantage of this, alas.
+> >
+> > Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+> > ---
+> [...]
+> > @@ -141,8 +142,8 @@ static int ovl_copy_up_data(struct path *old, struct path *new, loff_t len)
+> >         }
+> >
+> >         /* Try to use clone_file_range to clone up within the same fs */
+> > -       error = do_clone_file_range(old_file, 0, new_file, 0, len);
+> > -       if (!error)
+> > +       cloned = do_clone_file_range(old_file, 0, new_file, 0, len);
+> > +       if (cloned == len)
+> >                 goto out;
+> >         /* Couldn't clone, so now we try to copy the data */
+> >         error = 0;
+> 
+> This error = 0 not needed anymore, but not a big deal...
 
-I would offer my Acked-by for whole of the vfs patches
-if we agree on the correct way to handle invalid flags
-(see more comments up the series regarding the "advisory" flags).
+Fixed.
 
-Thanks,
-Amir.
+> > diff --git a/fs/overlayfs/file.c b/fs/overlayfs/file.c
+> > index 693bd0620a81..c8c890c22898 100644
+> > --- a/fs/overlayfs/file.c
+> > +++ b/fs/overlayfs/file.c
+> > @@ -434,14 +434,14 @@ enum ovl_copyop {
+> >         OVL_DEDUPE,
+> >  };
+> >
+> > -static ssize_t ovl_copyfile(struct file *file_in, loff_t pos_in,
+> > +static loff_t ovl_copyfile(struct file *file_in, loff_t pos_in,
+> >                             struct file *file_out, loff_t pos_out,
+> > -                           u64 len, unsigned int flags, enum ovl_copyop op)
+> > +                           loff_t len, unsigned int flags, enum ovl_copyop op)
+> >  {
+> >         struct inode *inode_out = file_inode(file_out);
+> >         struct fd real_in, real_out;
+> >         const struct cred *old_cred;
+> > -       ssize_t ret;
+> > +       loff_t ret;
+> >
+> >         ret = ovl_real_fdget(file_out, &real_out);
+> >         if (ret)
+> > @@ -489,9 +489,9 @@ static ssize_t ovl_copy_file_range(struct file *file_in, loff_t pos_in,
+> >                             OVL_COPY);
+> >  }
+> >
+> > -static int ovl_remap_file_range(struct file *file_in, loff_t pos_in,
+> > -                               struct file *file_out, loff_t pos_out,
+> > -                               u64 len, unsigned int flags)
+> > +static loff_t ovl_remap_file_range(struct file *file_in, loff_t pos_in,
+> > +                                  struct file *file_out, loff_t pos_out,
+> > +                                  loff_t len, unsigned int flags)
+> >  {
+> >         enum ovl_copyop op;
+> >
+> > diff --git a/fs/read_write.c b/fs/read_write.c
+> > index 917934770b08..f43b0620afd4 100644
+> > --- a/fs/read_write.c
+> > +++ b/fs/read_write.c
+> > @@ -1589,10 +1589,13 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
+> >          * more efficient if both clone and copy are supported (e.g. NFS).
+> >          */
+> >         if (file_in->f_op->remap_file_range) {
+> > -               ret = file_in->f_op->remap_file_range(file_in, pos_in,
+> > -                               file_out, pos_out, len, 0);
+> > -               if (ret == 0) {
+> > -                       ret = len;
+> > +               s64 cloned;
+> 
+> loff_t?
+
+Fixed.
+
+> > +
+> > +               cloned = file_in->f_op->remap_file_range(file_in, pos_in,
+> > +                               file_out, pos_out,
+> > +                               min_t(loff_t, MAX_RW_COUNT, len), 0);
+> > +               if (cloned >= 0) {
+> > +                       ret = cloned;
+> >                         goto done;
+> >                 }
+> >         }
+> 
+> Commit message wasn't clear enough on the behavior of copy_file_range()
+> before and after the patch IMO. Maybe it would be better to pospone this
+> semantic change to the RFR_SHORTEN patch and keep if (cloned == len)
+> in this patch?
+
+There shouldn't be any behavior change here -- all implementations
+return a negative error code or the length that was passed in.  I'll
+clarify that in the commit message.
+
+--D
+
+> Thanks,
+> Amir.
