@@ -1,128 +1,66 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yb1-f195.google.com ([209.85.219.195]:35944 "EHLO
-        mail-yb1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726004AbeJJOHy (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Oct 2018 10:07:54 -0400
+Return-Path: <language.lawyer@gmail.com>
+Subject: Re: Kernel NFS client and Kerberos delegation
+To: Benjamin Coddington <bcodding@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+References: <6369655a-a0b0-5c3c-7c68-b623a4270668@gmail.com>
+ <A418C8F8-0189-4959-9E29-862095728028@redhat.com>
+ <54608c44-a30b-8e16-9a22-e7e1183a0feb@gmail.com>
+ <6671E6BA-6F31-410A-BECC-012DC3E8110E@redhat.com>
+From: Language Lawyer <language.lawyer@gmail.com>
+Message-ID: <55501f63-bc1f-eea7-21cd-a76a0aea2632@gmail.com>
+Date: Wed, 10 Oct 2018 13:45:03 +0300
 MIME-Version: 1.0
-References: <153913023835.32295.13962696655740190941.stgit@magnolia> <153913040858.32295.9474188640729118153.stgit@magnolia>
-In-Reply-To: <153913040858.32295.9474188640729118153.stgit@magnolia>
-From: Amir Goldstein <amir73il@gmail.com>
-Date: Wed, 10 Oct 2018 09:47:00 +0300
-Message-ID: <CAOQ4uxg0=EJp1WJXmUeHT05yF1txRKKhPHVTWeG+rdtRD5FfHA@mail.gmail.com>
-Subject: Re: [PATCH 14/25] vfs: make remap_file_range functions take and
- return bytes completed
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
-Cc: Dave Chinner <david@fromorbit.com>,
-        Eric Sandeen <sandeen@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-cifs@vger.kernel.org,
-        overlayfs <linux-unionfs@vger.kernel.org>,
-        linux-xfs <linux-xfs@vger.kernel.org>,
-        Linux MM <linux-mm@kvack.org>,
-        Linux Btrfs <linux-btrfs@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        ocfs2-devel@oss.oracle.com
-Content-Type: text/plain; charset="UTF-8"
-Sender: linux-nfs-owner@vger.kernel.org
+In-Reply-To: <6671E6BA-6F31-410A-BECC-012DC3E8110E@redhat.com>
+Content-Type: text/plain; charset=utf-8; format=flowed
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Oct 10, 2018 at 3:14 AM Darrick J. Wong <darrick.wong@oracle.com> wrote:
->
-> From: Darrick J. Wong <darrick.wong@oracle.com>
->
-> Change the remap_file_range functions to take a number of bytes to
-> operate upon and return the number of bytes they operated on.  This is a
-> requirement for allowing fs implementations to return short clone/dedupe
-> results to the user, which will enable us to obey resource limits in a
-> graceful manner.
->
-> A subsequent patch will enable copy_file_range to signal to the
-> ->clone_file_range implementation that it can handle a short length,
-> which will be returned in the function's return value.  Neither clone
-> ioctl can take advantage of this, alas.
->
-> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
-> ---
-[...]
-> @@ -141,8 +142,8 @@ static int ovl_copy_up_data(struct path *old, struct path *new, loff_t len)
->         }
->
->         /* Try to use clone_file_range to clone up within the same fs */
-> -       error = do_clone_file_range(old_file, 0, new_file, 0, len);
-> -       if (!error)
-> +       cloned = do_clone_file_range(old_file, 0, new_file, 0, len);
-> +       if (cloned == len)
->                 goto out;
->         /* Couldn't clone, so now we try to copy the data */
->         error = 0;
+On 09/10/18 17:34, Benjamin Coddington wrote:
+> On 9 Oct 2018, at 9:44, Language Lawyer wrote: 
+>> On 09/10/18 16:11, Benjamin Coddington wrote:
+>>> On 8 Oct 2018, at 15:46, Language Lawyer wrote:
+>>>
+>>>> Hi,
+>>>>
+>>>> AFAIU kernel NFS client keeps ID -> Name mapping in the "id_resolver"
+>>>> keyring.  Do I understand it correctly that with this hard mapping it is
+>>>> not possible for a service to access a kerberized NFS storage on behalf of
+>>>> some user using user's delegated (for example, with S4U2Self+S4U2Proxy)
+>>>> credentials?
+>>>
+>>> The id_resolver keyring exists to translate kerberos principles to UID and
+>>> the reverse, but it doesn't really play in the mechanisms that you're
+>>> interested in.
+>>>
+>>> I assume you want a particular process, like httpd, to have the kernel chose
+>>> which kerberos principle and thus which GSS context to use when sending RPC
+>>> to the NFS server.
+>>>
+>>> The NFS client will choose the appropriate GSS context based on the fsuid of
+>>> the calling process, and then as long as the gssd daemon can find an
+>>> appropriate kerberos cache and establish a context everything will work
+>>> fine.  So, as long as your service changes its fsuid (like smbd does),
+>>> everything generally works.
+>>
+>> Yes, currently one has to grant CAP_SETUID capability to a service and
+>> setup a way to obtain appropriate ticket, for example, by giving gssproxy
+>> permission to impersonate users, instead of just granting a service
+>> permission to impersonate users.
+>>
+>>> If you want a process that doesn't change its fsuid to use a different GSS
+>>> context, you have to find a way to communicate which context, or credential
+>>> you want the kernel to choose.
+>> Are there plans to support this in the kernel NFS client?
+> 
+> No plans that I know of.  I have been involved in projects doing this in the
+> past, but the implementation details were so specific to the use case that
+> they didn't make sense to mainline.
+> 
+> The linux keyrings are very useful here because the userspace process can
+> "tack on" extra information to communicate to the kernel which context to
+> use, or even provide the context itself
 
-This error = 0 not needed anymore, but not a big deal...
-
-> diff --git a/fs/overlayfs/file.c b/fs/overlayfs/file.c
-> index 693bd0620a81..c8c890c22898 100644
-> --- a/fs/overlayfs/file.c
-> +++ b/fs/overlayfs/file.c
-> @@ -434,14 +434,14 @@ enum ovl_copyop {
->         OVL_DEDUPE,
->  };
->
-> -static ssize_t ovl_copyfile(struct file *file_in, loff_t pos_in,
-> +static loff_t ovl_copyfile(struct file *file_in, loff_t pos_in,
->                             struct file *file_out, loff_t pos_out,
-> -                           u64 len, unsigned int flags, enum ovl_copyop op)
-> +                           loff_t len, unsigned int flags, enum ovl_copyop op)
->  {
->         struct inode *inode_out = file_inode(file_out);
->         struct fd real_in, real_out;
->         const struct cred *old_cred;
-> -       ssize_t ret;
-> +       loff_t ret;
->
->         ret = ovl_real_fdget(file_out, &real_out);
->         if (ret)
-> @@ -489,9 +489,9 @@ static ssize_t ovl_copy_file_range(struct file *file_in, loff_t pos_in,
->                             OVL_COPY);
->  }
->
-> -static int ovl_remap_file_range(struct file *file_in, loff_t pos_in,
-> -                               struct file *file_out, loff_t pos_out,
-> -                               u64 len, unsigned int flags)
-> +static loff_t ovl_remap_file_range(struct file *file_in, loff_t pos_in,
-> +                                  struct file *file_out, loff_t pos_out,
-> +                                  loff_t len, unsigned int flags)
->  {
->         enum ovl_copyop op;
->
-> diff --git a/fs/read_write.c b/fs/read_write.c
-> index 917934770b08..f43b0620afd4 100644
-> --- a/fs/read_write.c
-> +++ b/fs/read_write.c
-> @@ -1589,10 +1589,13 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
->          * more efficient if both clone and copy are supported (e.g. NFS).
->          */
->         if (file_in->f_op->remap_file_range) {
-> -               ret = file_in->f_op->remap_file_range(file_in, pos_in,
-> -                               file_out, pos_out, len, 0);
-> -               if (ret == 0) {
-> -                       ret = len;
-> +               s64 cloned;
-
-loff_t?
-
-> +
-> +               cloned = file_in->f_op->remap_file_range(file_in, pos_in,
-> +                               file_out, pos_out,
-> +                               min_t(loff_t, MAX_RW_COUNT, len), 0);
-> +               if (cloned >= 0) {
-> +                       ret = cloned;
->                         goto done;
->                 }
->         }
-
-Commit message wasn't clear enough on the behavior of copy_file_range()
-before and after the patch IMO. Maybe it would be better to pospone this
-semantic change to the RFR_SHORTEN patch and keep if (cloned == len)
-in this patch?
-
-Thanks,
-Amir.
+That's why I've mentioned "id_resolver" keyring.
+My naïve idea was to provide ID -> Name mapping in the session keyring,
+which is replaceable by keyctl_join_session_keyring, to override "id_resolver"
+mapping.
+Of course, such a naïve implementation would be very unsecure.
