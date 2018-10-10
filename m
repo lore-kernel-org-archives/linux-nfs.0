@@ -1,41 +1,51 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io1-f68.google.com ([209.85.166.68]:43450 "EHLO
-        mail-io1-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727729AbeJJDN7 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Oct 2018 23:13:59 -0400
-Received: by mail-io1-f68.google.com with SMTP id y10-v6so2137112ioa.10
-        for <linux-nfs@vger.kernel.org>; Tue, 09 Oct 2018 12:55:25 -0700 (PDT)
-From: Trond Myklebust <trondmy@gmail.com>
-To: J Bruce Fields <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] nfsd: Fix an Oops in free_session()
-Date: Tue,  9 Oct 2018 15:54:15 -0400
-Message-Id: <20181009195415.8741-1-trond.myklebust@hammerspace.com>
+Received: from userp2130.oracle.com ([156.151.31.86]:50650 "EHLO
+        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725811AbeJJHaM (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Oct 2018 03:30:12 -0400
+Subject: [PATCH v2 00/25] fs: fixes for serious clone/dedupe problems
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+To: david@fromorbit.com, darrick.wong@oracle.com
+Cc: sandeen@redhat.com, linux-nfs@vger.kernel.org,
+        linux-cifs@vger.kernel.org, linux-unionfs@vger.kernel.org,
+        linux-xfs@vger.kernel.org, linux-mm@kvack.org,
+        linux-btrfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        ocfs2-devel@oss.oracle.com
+Date: Tue, 09 Oct 2018 17:10:38 -0700
+Message-ID: <153913023835.32295.13962696655740190941.stgit@magnolia>
 MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In call_xpt_users(), we delete the entry from the list, but we
-do not reinitialise it. This triggers the list poisoning when
-we later call unregister_xpt_user() in nfsd4_del_conns().
+Hi all,
 
-Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
----
- net/sunrpc/svc_xprt.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Dave, Eric, and I have been chasing a stale data exposure bug in the XFS
+reflink implementation, and tracked it down to reflink forgetting to do
+some of the file-extending activities that must happen for regular
+writes.
 
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index 4af77b660fca..d34fea564945 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -1089,7 +1089,7 @@ static void call_xpt_users(struct svc_xprt *xprt)
- 	spin_lock(&xprt->xpt_lock);
- 	while (!list_empty(&xprt->xpt_users)) {
- 		u = list_first_entry(&xprt->xpt_users, struct svc_xpt_user, list);
--		list_del(&u->list);
-+		list_del_init(&u->list);
- 		u->callback(u);
- 	}
- 	spin_unlock(&xprt->xpt_lock);
--- 
-2.17.1
+We then started auditing the clone, dedupe, and copyfile code and
+realized that from a file contents perspective, clonerange isn't any
+different from a regular file write.  Unfortunately, we also noticed
+that *unlike* a regular write, clonerange skips a ton of overflow
+checks, such as validating the ranges against s_maxbytes, MAX_NON_LFS,
+and RLIMIT_FSIZE.  We also observed that cloning into a file did not
+strip security privileges (suid, capabilities) like a regular write
+would.  I also noticed that xfs and ocfs2 need to dump the page cache
+before remapping blocks, not after.
+
+In fixing the range checking problems I also realized that both dedupe
+and copyfile tell userspace how much of the requested operation was
+acted upon.  Since the range validation can shorten a clone request (or
+we can ENOSPC midway through), we might as well plumb the short
+operation reporting back through the VFS indirection code to userspace.
+
+So, here's the whole giant pile of patches[1] that fix all the problems.
+The patch "generic: test reflink side effects" recently sent to fstests
+exercises the fixes in this series.  Tests are in [2].
+
+--D
+
+[1] https://git.kernel.org/pub/scm/linux/kernel/git/djwong/xfs-linux.git/log/?h=djwong-devel
+[2] https://git.kernel.org/pub/scm/linux/kernel/git/djwong/xfstests-dev.git/log/?h=djwong-devel
