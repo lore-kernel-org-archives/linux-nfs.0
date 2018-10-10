@@ -1,18 +1,19 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp2130.oracle.com ([156.151.31.86]:51008 "EHLO
-        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725811AbeJJHai (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Oct 2018 03:30:38 -0400
-Subject: [PATCH 04/25] xfs: update ctime and remove suid before cloning files
+Received: from aserp2120.oracle.com ([141.146.126.78]:56092 "EHLO
+        aserp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726226AbeJJHax (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Oct 2018 03:30:53 -0400
+Subject: [PATCH 06/25] vfs: strengthen checking of file range inputs to
+ generic_remap_checks
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
 To: david@fromorbit.com, darrick.wong@oracle.com
 Cc: sandeen@redhat.com, linux-nfs@vger.kernel.org,
         linux-cifs@vger.kernel.org, linux-unionfs@vger.kernel.org,
         linux-xfs@vger.kernel.org, linux-mm@kvack.org,
-        linux-btrfs@vger.kernel.org, Dave Chinner <dchinner@redhat.com>,
-        linux-fsdevel@vger.kernel.org, ocfs2-devel@oss.oracle.com
-Date: Tue, 09 Oct 2018 17:11:06 -0700
-Message-ID: <153913026644.32295.612141018276176517.stgit@magnolia>
+        linux-btrfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        ocfs2-devel@oss.oracle.com
+Date: Tue, 09 Oct 2018 17:11:20 -0700
+Message-ID: <153913028015.32295.15993665528948323051.stgit@magnolia>
 In-Reply-To: <153913023835.32295.13962696655740190941.stgit@magnolia>
 References: <153913023835.32295.13962696655740190941.stgit@magnolia>
 MIME-Version: 1.0
@@ -22,56 +23,86 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 From: Darrick J. Wong <darrick.wong@oracle.com>
 
-Before cloning into a file, update the ctime and remove sensitive
-attributes like suid, just like we'd do for a regular file write.
+File range remapping, if allowed to run past the destination file's EOF,
+is an optimization on a regular file write.  Regular file writes that
+extend the file length are subject to various constraints which are not
+checked by range cloning.
+
+This is a correctness problem because we're never allowed to touch
+ranges that the page cache can't support (s_maxbytes); we're not
+supposed to deal with large offsets (MAX_NON_LFS) if O_LARGEFILE isn't
+set; and we must obey resource limits (RLIMIT_FSIZE).
+
+Therefore, add these checks to the new generic_remap_checks function so
+that we curtail unexpected behavior.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
-Reviewed-by: Dave Chinner <dchinner@redhat.com>
 ---
- fs/xfs/xfs_reflink.c |   25 +++++++++++++++++++++++++
- 1 file changed, 25 insertions(+)
+ mm/filemap.c |   39 +++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 39 insertions(+)
 
 
-diff --git a/fs/xfs/xfs_reflink.c b/fs/xfs/xfs_reflink.c
-index cbb359e68a72..d4feaeba8542 100644
---- a/fs/xfs/xfs_reflink.c
-+++ b/fs/xfs/xfs_reflink.c
-@@ -1264,6 +1264,7 @@ xfs_reflink_zero_posteof(
-  * Prepare two files for range cloning.  Upon a successful return both inodes
-  * will have the iolock and mmaplock held, the page cache of the out file
-  * will be truncated, and any leases on the out file will have been broken.
-+ * This function borrows heavily from xfs_file_aio_write_checks.
-  * Returns negative for error, 0 for nothing to do, and 1 for success.
-  */
- STATIC int
-@@ -1328,6 +1329,30 @@ xfs_reflink_remap_prep(
- 	/* Zap any page cache for the destination file's range. */
- 	truncate_inode_pages_range(&inode_out->i_data, pos_out,
- 				   PAGE_ALIGN(pos_out + *len) - 1);
+diff --git a/mm/filemap.c b/mm/filemap.c
+index 14041a8468ba..59056bd9c58a 100644
+--- a/mm/filemap.c
++++ b/mm/filemap.c
+@@ -2974,6 +2974,27 @@ inline ssize_t generic_write_checks(struct kiocb *iocb, struct iov_iter *from)
+ }
+ EXPORT_SYMBOL(generic_write_checks);
+ 
++static int
++generic_remap_check_limits(struct file *file, loff_t pos, uint64_t *count)
++{
++	struct inode *inode = file->f_mapping->host;
 +
-+	/* If we're altering the file contents... */
-+	if (!is_dedupe) {
-+		/*
-+		 * ...update the timestamps (which will grab the ilock again
-+		 * from xfs_fs_dirty_inode, so we have to call it before we
-+		 * take the ilock).
-+		 */
-+		if (!(file_out->f_mode & FMODE_NOCMTIME)) {
-+			ret = file_update_time(file_out);
-+			if (ret)
-+				goto out_unlock;
-+		}
-+
-+		/*
-+		 * ...clear the security bits if the process is not being run
-+		 * by root.  This keeps people from modifying setuid and setgid
-+		 * binaries.
-+		 */
-+		ret = file_remove_privs(file_out);
-+		if (ret)
-+			goto out_unlock;
++	/* Don't exceed the LFS limits. */
++	if (unlikely(pos + *count > MAX_NON_LFS &&
++				!(file->f_flags & O_LARGEFILE))) {
++		if (pos >= MAX_NON_LFS)
++			return -EFBIG;
++		*count = min(*count, MAX_NON_LFS - (uint64_t)pos);
 +	}
 +
- 	return 1;
- out_unlock:
- 	xfs_reflink_remap_unlock(file_in, file_out);
++	/* Don't operate on ranges the page cache doesn't support. */
++	if (unlikely(pos >= inode->i_sb->s_maxbytes))
++		return -EFBIG;
++
++	*count = min(*count, inode->i_sb->s_maxbytes - (uint64_t)pos);
++	return 0;
++}
++
+ /*
+  * Performs necessary checks before doing a clone.
+  *
+@@ -2992,6 +3013,7 @@ int generic_remap_checks(struct file *file_in, loff_t pos_in,
+ 	uint64_t bcount;
+ 	loff_t size_in, size_out;
+ 	loff_t bs = inode_out->i_sb->s_blocksize;
++	int ret;
+ 
+ 	/* The start of both ranges must be aligned to an fs block. */
+ 	if (!IS_ALIGNED(pos_in, bs) || !IS_ALIGNED(pos_out, bs))
+@@ -3015,6 +3037,23 @@ int generic_remap_checks(struct file *file_in, loff_t pos_in,
+ 		return -EINVAL;
+ 	count = min(count, size_in - (uint64_t)pos_in);
+ 
++	/* Don't exceed RLMIT_FSIZE in the file we're writing into. */
++	if (limit != RLIM_INFINITY) {
++		if (pos_out >= limit) {
++			send_sig(SIGXFSZ, current, 0);
++			return -EFBIG;
++		}
++		count = min(count, limit - (uint64_t)pos_out);
++	}
++
++	ret = generic_remap_check_limits(file_in, pos_in, &count);
++	if (ret)
++		return ret;
++
++	ret = generic_remap_check_limits(file_out, pos_out, &count);
++	if (ret)
++		return ret;
++
+ 	/*
+ 	 * If the user wanted us to link to the infile's EOF, round up to the
+ 	 * next block boundary for this check.
