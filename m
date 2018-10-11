@@ -1,88 +1,52 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp2120.oracle.com ([141.146.126.78]:38294 "EHLO
+Received: from aserp2120.oracle.com ([141.146.126.78]:59460 "EHLO
         aserp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727693AbeJKGiL (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Oct 2018 02:38:11 -0400
-Date: Wed, 10 Oct 2018 16:13:39 -0700
+        with ESMTP id S1726047AbeJKLhs (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Oct 2018 07:37:48 -0400
+Subject: [PATCH v3 00/25] fs: fixes for serious clone/dedupe problems
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-To: Dave Chinner <david@fromorbit.com>
+To: david@fromorbit.com, darrick.wong@oracle.com
 Cc: sandeen@redhat.com, linux-nfs@vger.kernel.org,
         linux-cifs@vger.kernel.org, linux-unionfs@vger.kernel.org,
         linux-xfs@vger.kernel.org, linux-mm@kvack.org,
         linux-btrfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        Christoph Hellwig <hch@lst.de>, ocfs2-devel@oss.oracle.com
-Subject: Re: [PATCH 05/25] vfs: check file ranges before cloning files
-Message-ID: <20181010231339.GA6701@magnolia>
-References: <153913023835.32295.13962696655740190941.stgit@magnolia>
- <153913027326.32295.7601238218404639876.stgit@magnolia>
- <20181010230639.GN6311@dastard>
+        ocfs2-devel@oss.oracle.com
+Date: Wed, 10 Oct 2018 21:12:16 -0700
+Message-ID: <153923113649.5546.9840926895953408273.stgit@magnolia>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20181010230639.GN6311@dastard>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Oct 11, 2018 at 10:06:39AM +1100, Dave Chinner wrote:
-> On Tue, Oct 09, 2018 at 05:11:13PM -0700, Darrick J. Wong wrote:
-> > From: Darrick J. Wong <darrick.wong@oracle.com>
-> > 
-> > Move the file range checks from vfs_clone_file_prep into a separate
-> > generic_remap_checks function so that all the checks are collected in a
-> > central location.  This forms the basis for adding more checks from
-> > generic_write_checks that will make cloning's input checking more
-> > consistent with write input checking.
-> > 
-> > Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
-> > Reviewed-by: Christoph Hellwig <hch@lst.de>
-> ....
-> > --- a/fs/read_write.c
-> > +++ b/fs/read_write.c
-> > @@ -1717,12 +1717,12 @@ static int clone_verify_area(struct file *file, loff_t pos, u64 len, bool write)
-> >   * Returns: 0 for "nothing to clone", 1 for "something to clone", or
-> >   * the usual negative error code.
-> >   */
-> > -int vfs_clone_file_prep_inodes(struct inode *inode_in, loff_t pos_in,
-> > -			       struct inode *inode_out, loff_t pos_out,
-> > -			       u64 *len, bool is_dedupe)
-> > +int vfs_clone_file_prep(struct file *file_in, loff_t pos_in,
-> > +			struct file *file_out, loff_t pos_out,
-> > +			u64 *len, bool is_dedupe)
-> >  {
-> > -	loff_t bs = inode_out->i_sb->s_blocksize;
-> > -	loff_t blen;
-> > +	struct inode *inode_in = file_inode(file_in);
-> > +	struct inode *inode_out = file_inode(file_out);
-> >  	loff_t isize;
-> >  	bool same_inode = (inode_in == inode_out);
-> >  	int ret;
-> > @@ -1740,10 +1740,7 @@ int vfs_clone_file_prep_inodes(struct inode *inode_in, loff_t pos_in,
-> >  	if (!S_ISREG(inode_in->i_mode) || !S_ISREG(inode_out->i_mode))
-> >  		return -EINVAL;
-> >  
-> > -	/* Are we going all the way to the end? */
-> >  	isize = i_size_read(inode_in);
-> > -	if (isize == 0)
-> > -		return 0;
-> 
-> This looks like a change of behaviour. Instead of skipping zero
-> legnth source files and returning success, this will now return
-> -EINVAL as other checks fail? That needs to be documented in the
-> commit message if it's intentional and a valid change to make...
+Hi all,
 
-Meh, I'll make another patch.  btrfs has never had this behavior.
+Dave, Eric, and I have been chasing a stale data exposure bug in the XFS
+reflink implementation, and tracked it down to reflink forgetting to do
+some of the file-extending activities that must happen for regular
+writes.
 
-$ ls /mnt/a
--rw-r--r-- 1 root root 0 Oct 10 16:10 /mnt/a
-$ xfs_io -f -c 'reflink /mnt/a 1000000 0 4096' /mnt/b
-XFS_IOC_CLONE_RANGE: Invalid argument
+We then started auditing the clone, dedupe, and copyfile code and
+realized that from a file contents perspective, clonerange isn't any
+different from a regular file write.  Unfortunately, we also noticed
+that *unlike* a regular write, clonerange skips a ton of overflow
+checks, such as validating the ranges against s_maxbytes, MAX_NON_LFS,
+and RLIMIT_FSIZE.  We also observed that cloning into a file did not
+strip security privileges (suid, capabilities) like a regular write
+would.  I also noticed that xfs and ocfs2 need to dump the page cache
+before remapping blocks, not after.
 
-So it's a bug in the vfs prep functions.
+In fixing the range checking problems I also realized that both dedupe
+and copyfile tell userspace how much of the requested operation was
+acted upon.  Since the range validation can shorten a clone request (or
+we can ENOSPC midway through), we might as well plumb the short
+operation reporting back through the VFS indirection code to userspace.
+
+So, here's the whole giant pile of patches[1] that fix all the problems.
+This branch is against 4.19-rc7 with Dave Chinner's XFS for-next branch.
+The patch "generic: test reflink side effects" recently sent to fstests
+exercises the fixes in this series.  Tests are in [2].
 
 --D
 
-> Cheers,
-> 
-> Dave.
-> -- 
-> Dave Chinner
-> david@fromorbit.com
+[1] https://git.kernel.org/pub/scm/linux/kernel/git/djwong/xfs-linux.git/log/?h=djwong-devel
+[2] https://git.kernel.org/pub/scm/linux/kernel/git/djwong/xfstests-dev.git/log/?h=djwong-devel
