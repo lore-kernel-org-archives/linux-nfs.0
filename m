@@ -1,71 +1,97 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp2120.oracle.com ([156.151.31.85]:44368 "EHLO
-        userp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726047AbeJKLk5 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Oct 2018 07:40:57 -0400
-Subject: [PATCH 25/25] xfs: remove redundant remap partial EOF block checks
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-To: david@fromorbit.com, darrick.wong@oracle.com
-Cc: sandeen@redhat.com, linux-nfs@vger.kernel.org,
-        linux-cifs@vger.kernel.org, linux-unionfs@vger.kernel.org,
-        linux-xfs@vger.kernel.org, linux-mm@kvack.org,
-        linux-btrfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        ocfs2-devel@oss.oracle.com
-Date: Wed, 10 Oct 2018 21:15:26 -0700
-Message-ID: <153923132645.5546.97372209609060021.stgit@magnolia>
-In-Reply-To: <153923113649.5546.9840926895953408273.stgit@magnolia>
-References: <153923113649.5546.9840926895953408273.stgit@magnolia>
+Received: from mail-yw1-f66.google.com ([209.85.161.66]:43152 "EHLO
+        mail-yw1-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726087AbeJKMl2 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Oct 2018 08:41:28 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+References: <153923113649.5546.9840926895953408273.stgit@magnolia> <153923126628.5546.3484461137192547927.stgit@magnolia>
+In-Reply-To: <153923126628.5546.3484461137192547927.stgit@magnolia>
+From: Amir Goldstein <amir73il@gmail.com>
+Date: Thu, 11 Oct 2018 08:15:42 +0300
+Message-ID: <CAOQ4uxgbTf0Po3stK4YZWqYPWTmwfqsSLGwV4p4be6gBrdLP+g@mail.gmail.com>
+Subject: Re: [PATCH 17/25] vfs: enable remap callers that can handle short operations
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Cc: Dave Chinner <david@fromorbit.com>,
+        Eric Sandeen <sandeen@redhat.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        linux-cifs@vger.kernel.org,
+        overlayfs <linux-unionfs@vger.kernel.org>,
+        linux-xfs <linux-xfs@vger.kernel.org>,
+        Linux MM <linux-mm@kvack.org>,
+        Linux Btrfs <linux-btrfs@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        ocfs2-devel@oss.oracle.com
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Darrick J. Wong <darrick.wong@oracle.com>
+On Thu, Oct 11, 2018 at 7:14 AM Darrick J. Wong <darrick.wong@oracle.com> wrote:
+>
+> From: Darrick J. Wong <darrick.wong@oracle.com>
+>
+> Plumb in a remap flag that enables the filesystem remap handler to
+> shorten remapping requests for callers that can handle it.  Now
+> copy_file_range can report partial success (in case we run up against
+> alignment problems, resource limits, etc.).
+>
+> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+> Reviewed-by: Amir Goldstein <amir73il@gmail.com>
+> ---
+>  fs/read_write.c    |   15 +++++++++------
+>  include/linux/fs.h |    7 +++++--
+>  mm/filemap.c       |   16 ++++++++++++----
+>  3 files changed, 26 insertions(+), 12 deletions(-)
+>
+>
+> diff --git a/fs/read_write.c b/fs/read_write.c
+> index 6ec908f9a69b..3713893b7e38 100644
+> --- a/fs/read_write.c
+> +++ b/fs/read_write.c
+> @@ -1593,7 +1593,8 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
+>
+>                 cloned = file_in->f_op->remap_file_range(file_in, pos_in,
+>                                 file_out, pos_out,
+> -                               min_t(loff_t, MAX_RW_COUNT, len), 0);
+> +                               min_t(loff_t, MAX_RW_COUNT, len),
+> +                               RFR_CAN_SHORTEN);
+>                 if (cloned > 0) {
+>                         ret = cloned;
+>                         goto done;
+> @@ -1804,16 +1805,18 @@ int generic_remap_file_range_prep(struct file *file_in, loff_t pos_in,
+>                  * If the user is attempting to remap a partial EOF block and
+>                  * it's inside the destination EOF then reject it.
+>                  *
+> -                * We don't support shortening requests, so we can only reject
+> -                * them.
+> +                * If possible, shorten the request instead of rejecting it.
+>                  */
+>                 if (is_dedupe)
+>                         ret = -EBADE;
+>                 else if (pos_out + *len < i_size_read(inode_out))
+>                         ret = -EINVAL;
+>
+> -               if (ret)
+> -                       return ret;
+> +               if (ret) {
+> +                       if (!(remap_flags & RFR_CAN_SHORTEN))
+> +                               return ret;
+> +                       *len &= ~blkmask;
+> +               }
+>         }
+>
+>         return 1;
+> @@ -2112,7 +2115,7 @@ int vfs_dedupe_file_range(struct file *file, struct file_dedupe_range *same)
+>
+>                 deduped = vfs_dedupe_file_range_one(file, off, dst_file,
+>                                                     info->dest_offset, len,
+> -                                                   0);
+> +                                                   RFR_CAN_SHORTEN);
 
-Now that we've moved the partial EOF block checks to the VFS helpers, we
-can remove the redundantn functionality from XFS.
+You did not update WARN_ON_ONCE in vfs_dedupe_file_range_one()
+to allow this flag and did not mention dedupe in commit message.
+Was that change intentional in this patch?
 
-Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
----
- fs/xfs/xfs_reflink.c |   20 --------------------
- 1 file changed, 20 deletions(-)
+After RFR_SHORT_DEDUPE patch the end result in fine.
 
-
-diff --git a/fs/xfs/xfs_reflink.c b/fs/xfs/xfs_reflink.c
-index 12a1fe92454e..4450443f1148 100644
---- a/fs/xfs/xfs_reflink.c
-+++ b/fs/xfs/xfs_reflink.c
-@@ -1307,8 +1307,6 @@ xfs_reflink_remap_prep(
- 	struct inode		*inode_out = file_inode(file_out);
- 	struct xfs_inode	*dest = XFS_I(inode_out);
- 	bool			same_inode = (inode_in == inode_out);
--	bool			is_dedupe = (remap_flags & RFR_SAME_DATA);
--	u64			blkmask = i_blocksize(inode_in) - 1;
- 	ssize_t			ret;
- 
- 	/* Lock both files against IO */
-@@ -1336,24 +1334,6 @@ xfs_reflink_remap_prep(
- 	if (ret <= 0)
- 		goto out_unlock;
- 
--	/*
--	 * If the dedupe data matches, chop off the partial EOF block
--	 * from the source file so we don't try to dedupe the partial
--	 * EOF block.
--	 */
--	if (is_dedupe) {
--		*len &= ~blkmask;
--	} else if (*len & blkmask) {
--		/*
--		 * The user is attempting to share a partial EOF block,
--		 * if it's inside the destination EOF then reject it.
--		 */
--		if (pos_out + *len < i_size_read(inode_out)) {
--			ret = -EINVAL;
--			goto out_unlock;
--		}
--	}
--
- 	/* Attach dquots to dest inode before changing block map */
- 	ret = xfs_qm_dqattach(dest);
- 	if (ret)
+Thanks,
+Amir.
