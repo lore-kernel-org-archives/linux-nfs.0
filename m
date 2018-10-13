@@ -1,127 +1,52 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ua1-f66.google.com ([209.85.222.66]:42108 "EHLO
-        mail-ua1-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726227AbeJMD4m (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Oct 2018 23:56:42 -0400
-MIME-Version: 1.0
-References: <153923113649.5546.9840926895953408273.stgit@magnolia> <153923117420.5546.13317703807467393934.stgit@magnolia>
-In-Reply-To: <153923117420.5546.13317703807467393934.stgit@magnolia>
-Reply-To: fdmanana@gmail.com
-From: Filipe Manana <fdmanana@gmail.com>
-Date: Fri, 12 Oct 2018 21:22:18 +0100
-Message-ID: <CAL3q7H7mLvCGpyitJhQ=To-aDvG9k9rxSVi2jSpcALQVj3myzg@mail.gmail.com>
-Subject: Re: [PATCH 05/25] vfs: avoid problematic remapping requests into
- partial EOF block
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
-Cc: Dave Chinner <david@fromorbit.com>,
-        Eric Sandeen <sandeen@redhat.com>, linux-nfs@vger.kernel.org,
+Received: from userp2130.oracle.com ([156.151.31.86]:60568 "EHLO
+        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725812AbeJMHkc (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 13 Oct 2018 03:40:32 -0400
+Subject: [PATCH v4 00/25] fs: fixes for serious clone/dedupe problems
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+To: david@fromorbit.com, darrick.wong@oracle.com
+Cc: sandeen@redhat.com, linux-nfs@vger.kernel.org,
         linux-cifs@vger.kernel.org, linux-unionfs@vger.kernel.org,
         linux-xfs@vger.kernel.org, linux-mm@kvack.org,
-        linux-btrfs <linux-btrfs@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        linux-btrfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         ocfs2-devel@oss.oracle.com
-Content-Type: text/plain; charset="UTF-8"
+Date: Fri, 12 Oct 2018 17:05:29 -0700
+Message-ID: <153938912912.8361.13446310416406388958.stgit@magnolia>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Oct 11, 2018 at 5:13 AM Darrick J. Wong <darrick.wong@oracle.com> w=
-rote:
->
-> From: Darrick J. Wong <darrick.wong@oracle.com>
->
-> A deduplication data corruption is exposed by fstests generic/505 on
-> XFS.
+Hi all,
 
-(and btrfs)
+Dave, Eric, and I have been chasing a stale data exposure bug in the XFS
+reflink implementation, and tracked it down to reflink forgetting to do
+some of the file-extending activities that must happen for regular
+writes.
 
-Btw, the generic test I wrote was indeed numbered 505, however it was
-never committed and there's now a generic/505 which has nothing to do
-with deduplication.
-So you should update the changelog to avoid confusion.
+We then started auditing the clone, dedupe, and copyfile code and
+realized that from a file contents perspective, clonerange isn't any
+different from a regular file write.  Unfortunately, we also noticed
+that *unlike* a regular write, clonerange skips a ton of overflow
+checks, such as validating the ranges against s_maxbytes, MAX_NON_LFS,
+and RLIMIT_FSIZE.  We also observed that cloning into a file did not
+strip security privileges (suid, capabilities) like a regular write
+would.  I also noticed that xfs and ocfs2 need to dump the page cache
+before remapping blocks, not after.
 
-thanks
+In fixing the range checking problems I also realized that both dedupe
+and copyfile tell userspace how much of the requested operation was
+acted upon.  Since the range validation can shorten a clone request (or
+we can ENOSPC midway through), we might as well plumb the short
+operation reporting back through the VFS indirection code to userspace.
 
-> It is caused by extending the block match range to include the
-> partial EOF block, but then allowing unknown data beyond EOF to be
-> considered a "match" to data in the destination file because the
-> comparison is only made to the end of the source file. This corrupts the
-> destination file when the source extent is shared with it.
->
-> The VFS remapping prep functions  only support whole block dedupe, but
-> we still need to appear to support whole file dedupe correctly.  Hence
-> if the dedupe request includes the last block of the souce file, don't
-> include it in the actual dedupe operation. If the rest of the range
-> dedupes successfully, then reject the entire request.  A subsequent
-> patch will enable us to shorten dedupe requests correctly.
->
-> When reflinking sub-file ranges, a data corruption can occur when the
-> source file range includes a partial EOF block. This shares the unknown
-> data beyond EOF into the second file at a position inside EOF, exposing
-> stale data in the second file.
->
-> If the reflink request includes the last block of the souce file, only
-> proceed with the reflink operation if it lands at or past the
-> destination file's current EOF. If it lands within the destination file
-> EOF, reject the entire request with -EINVAL and make the caller go the
-> hard way.  A subsequent patch will enable us to shorten reflink requests
-> correctly.
->
-> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
-> ---
->  fs/read_write.c |   22 ++++++++++++++++++++++
->  1 file changed, 22 insertions(+)
->
->
-> diff --git a/fs/read_write.c b/fs/read_write.c
-> index d6e8e242a15f..8498991e2f33 100644
-> --- a/fs/read_write.c
-> +++ b/fs/read_write.c
-> @@ -1723,6 +1723,7 @@ int vfs_clone_file_prep(struct file *file_in, loff_=
-t pos_in,
->  {
->         struct inode *inode_in =3D file_inode(file_in);
->         struct inode *inode_out =3D file_inode(file_out);
-> +       u64 blkmask =3D i_blocksize(inode_in) - 1;
->         bool same_inode =3D (inode_in =3D=3D inode_out);
->         int ret;
->
-> @@ -1785,6 +1786,27 @@ int vfs_clone_file_prep(struct file *file_in, loff=
-_t pos_in,
->                         return -EBADE;
->         }
->
-> +       /* Are we doing a partial EOF block remapping of some kind? */
-> +       if (*len & blkmask) {
-> +               /*
-> +                * If the dedupe data matches, don't try to dedupe the pa=
-rtial
-> +                * EOF block.
-> +                *
-> +                * If the user is attempting to remap a partial EOF block=
- and
-> +                * it's inside the destination EOF then reject it.
-> +                *
-> +                * We don't support shortening requests, so we can only r=
-eject
-> +                * them.
-> +                */
-> +               if (is_dedupe)
-> +                       ret =3D -EBADE;
-> +               else if (pos_out + *len < i_size_read(inode_out))
-> +                       ret =3D -EINVAL;
-> +
-> +               if (ret)
-> +                       return ret;
-> +       }
-> +
->         return 1;
->  }
->  EXPORT_SYMBOL(vfs_clone_file_prep);
->
+So, here's the whole giant pile of patches[1] that fix all the problems.
+This branch is against current upstream (4.19-rc7+).  The patch
+"generic: test reflink side effects" recently sent to fstests exercises
+the fixes in this series.  Tests are in [2].
 
+--D
 
---=20
-Filipe David Manana,
-
-=E2=80=9CWhether you think you can, or you think you can't =E2=80=94 you're=
- right.=E2=80=9D
+[1] https://git.kernel.org/pub/scm/linux/kernel/git/djwong/xfs-linux.git/log/?h=djwong-devel
+[2] https://git.kernel.org/pub/scm/linux/kernel/git/djwong/xfstests-dev.git/log/?h=djwong-devel
