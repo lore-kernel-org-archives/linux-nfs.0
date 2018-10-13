@@ -1,10 +1,10 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp2120.oracle.com ([141.146.126.78]:38356 "EHLO
-        aserp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726001AbeJMHma (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 13 Oct 2018 03:42:30 -0400
-Subject: [PATCH 15/25] vfs: plumb RFR_* remap flags through the vfs dedupe
- functions
+Received: from userp2130.oracle.com ([156.151.31.86]:34626 "EHLO
+        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726167AbeJMHml (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 13 Oct 2018 03:42:41 -0400
+Subject: [PATCH 17/25] vfs: enable remap callers that can handle short
+ operations
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
 To: david@fromorbit.com, darrick.wong@oracle.com
 Cc: sandeen@redhat.com, linux-nfs@vger.kernel.org,
@@ -12,8 +12,8 @@ Cc: sandeen@redhat.com, linux-nfs@vger.kernel.org,
         linux-unionfs@vger.kernel.org, linux-xfs@vger.kernel.org,
         linux-mm@kvack.org, linux-btrfs@vger.kernel.org,
         linux-fsdevel@vger.kernel.org, ocfs2-devel@oss.oracle.com
-Date: Fri, 12 Oct 2018 17:07:30 -0700
-Message-ID: <153938925037.8361.16126790489559826169.stgit@magnolia>
+Date: Fri, 12 Oct 2018 17:07:44 -0700
+Message-ID: <153938926421.8361.13101766265446494393.stgit@magnolia>
 In-Reply-To: <153938912912.8361.13446310416406388958.stgit@magnolia>
 References: <153938912912.8361.13446310416406388958.stgit@magnolia>
 MIME-Version: 1.0
@@ -23,79 +23,143 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 From: Darrick J. Wong <darrick.wong@oracle.com>
 
-Plumb a remap_flags argument through the vfs_dedupe_file_range_one
-functions so that dedupe can take advantage of it.
+Plumb in a remap flag that enables the filesystem remap handler to
+shorten remapping requests for callers that can handle it.  Now
+copy_file_range can report partial success (in case we run up against
+alignment problems, resource limits, etc.).
+
+We also enable CAN_SHORTEN for fideduperange to maintain existing
+userspace-visible behavior where xfs/btrfs shorten the dedupe range to
+avoid stale post-eof data exposure.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 Reviewed-by: Amir Goldstein <amir73il@gmail.com>
 ---
- fs/overlayfs/file.c |    3 ++-
- fs/read_write.c     |    9 ++++++---
- include/linux/fs.h  |    2 +-
- 3 files changed, 9 insertions(+), 5 deletions(-)
+ fs/read_write.c    |   22 +++++++++++++++-------
+ include/linux/fs.h |    7 +++++--
+ mm/filemap.c       |   16 ++++++++++++----
+ 3 files changed, 32 insertions(+), 13 deletions(-)
 
 
-diff --git a/fs/overlayfs/file.c b/fs/overlayfs/file.c
-index e5cc17281d0b..8f7a162768f2 100644
---- a/fs/overlayfs/file.c
-+++ b/fs/overlayfs/file.c
-@@ -467,7 +467,8 @@ static loff_t ovl_copyfile(struct file *file_in, loff_t pos_in,
- 
- 	case OVL_DEDUPE:
- 		ret = vfs_dedupe_file_range_one(real_in.file, pos_in,
--						real_out.file, pos_out, len);
-+						real_out.file, pos_out, len,
-+						flags);
- 		break;
- 	}
- 	revert_creds(old_cred);
 diff --git a/fs/read_write.c b/fs/read_write.c
-index 30076ed38091..81e0f969da59 100644
+index c02fc5144d15..86a8c2557d18 100644
 --- a/fs/read_write.c
 +++ b/fs/read_write.c
-@@ -1999,10 +1999,12 @@ EXPORT_SYMBOL(vfs_dedupe_file_range_compare);
+@@ -1593,7 +1593,8 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
  
- loff_t vfs_dedupe_file_range_one(struct file *src_file, loff_t src_pos,
- 				 struct file *dst_file, loff_t dst_pos,
--				 loff_t len)
-+				 loff_t len, unsigned int remap_flags)
+ 		cloned = file_in->f_op->remap_file_range(file_in, pos_in,
+ 				file_out, pos_out,
+-				min_t(loff_t, MAX_RW_COUNT, len), 0);
++				min_t(loff_t, MAX_RW_COUNT, len),
++				RFR_CAN_SHORTEN);
+ 		if (cloned > 0) {
+ 			ret = cloned;
+ 			goto done;
+@@ -1797,6 +1798,8 @@ int generic_remap_file_range_prep(struct file *file_in, loff_t pos_in,
+ 
+ 	/* Are we doing a partial EOF block remapping of some kind? */
+ 	if (*len & blkmask) {
++		loff_t	new_len = *len;
++
+ 		/*
+ 		 * If the dedupe data matches, chop off the partial EOF block
+ 		 * from the source file so we don't try to dedupe the partial
+@@ -1804,11 +1807,16 @@ int generic_remap_file_range_prep(struct file *file_in, loff_t pos_in,
+ 		 *
+ 		 * If the user is attempting to remap a partial EOF block and
+ 		 * it's inside the destination EOF then reject it.
++		 *
++		 * If possible, shorten the request instead of rejecting it.
+ 		 */
+-		if (is_dedupe)
+-			*len &= ~blkmask;
+-		else if (pos_out + *len < i_size_read(inode_out))
+-			return -EINVAL;
++		if (is_dedupe || pos_out + *len < i_size_read(inode_out))
++			new_len &= ~blkmask;
++
++		if (new_len != *len && !(remap_flags & RFR_CAN_SHORTEN))
++			return is_dedupe ? -EBADE : -EINVAL;
++
++		*len = new_len;
+ 	}
+ 
+ 	return 1;
+@@ -2006,7 +2014,7 @@ loff_t vfs_dedupe_file_range_one(struct file *src_file, loff_t src_pos,
  {
  	loff_t ret;
  
-+	WARN_ON_ONCE(remap_flags & ~(RFR_SAME_DATA));
-+
+-	WARN_ON_ONCE(remap_flags & ~(RFR_SAME_DATA));
++	WARN_ON_ONCE(remap_flags & ~(RFR_SAME_DATA | RFR_CAN_SHORTEN));
+ 
  	ret = mnt_want_write_file(dst_file);
  	if (ret)
- 		return ret;
-@@ -2033,7 +2035,7 @@ loff_t vfs_dedupe_file_range_one(struct file *src_file, loff_t src_pos,
- 	}
- 
- 	ret = dst_file->f_op->remap_file_range(src_file, src_pos, dst_file,
--			dst_pos, len, RFR_SAME_DATA);
-+			dst_pos, len, remap_flags | RFR_SAME_DATA);
- out_drop_write:
- 	mnt_drop_write_file(dst_file);
- 
-@@ -2101,7 +2103,8 @@ int vfs_dedupe_file_range(struct file *file, struct file_dedupe_range *same)
- 		}
+@@ -2107,7 +2115,7 @@ int vfs_dedupe_file_range(struct file *file, struct file_dedupe_range *same)
  
  		deduped = vfs_dedupe_file_range_one(file, off, dst_file,
--						    info->dest_offset, len);
-+						    info->dest_offset, len,
-+						    0);
+ 						    info->dest_offset, len,
+-						    0);
++						    RFR_CAN_SHORTEN);
  		if (deduped == -EBADE)
  			info->status = FILE_DEDUPE_RANGE_DIFFERS;
  		else if (deduped < 0)
 diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 4acda4809027..d77b8d90d65e 100644
+index b9c314f9d5a4..57cb56bbc30a 100644
 --- a/include/linux/fs.h
 +++ b/include/linux/fs.h
-@@ -1863,7 +1863,7 @@ extern int vfs_dedupe_file_range(struct file *file,
- 				 struct file_dedupe_range *same);
- extern loff_t vfs_dedupe_file_range_one(struct file *src_file, loff_t src_pos,
- 					struct file *dst_file, loff_t dst_pos,
--					loff_t len);
-+					loff_t len, unsigned int remap_flags);
+@@ -1726,14 +1726,17 @@ struct block_device_operations;
+  *
+  * RFR_SAME_DATA: only remap if contents identical (i.e. deduplicate)
+  * RFR_TO_SRC_EOF: remap to the end of the source file
++ * RFR_CAN_SHORTEN: caller can handle a shortened request
+  */
+ #define RFR_SAME_DATA		(1 << 0)
+ #define RFR_TO_SRC_EOF		(1 << 1)
++#define RFR_CAN_SHORTEN		(1 << 2)
  
+-#define RFR_VALID_FLAGS		(RFR_SAME_DATA | RFR_TO_SRC_EOF)
++#define RFR_VALID_FLAGS		(RFR_SAME_DATA | RFR_TO_SRC_EOF | \
++				 RFR_CAN_SHORTEN)
  
- struct super_operations {
+ /* Implemented by the VFS, so these are advisory. */
+-#define RFR_VFS_FLAGS		(RFR_TO_SRC_EOF)
++#define RFR_VFS_FLAGS		(RFR_TO_SRC_EOF | RFR_CAN_SHORTEN)
+ 
+ /*
+  * Filesystem remapping implementations should call this helper on their
+diff --git a/mm/filemap.c b/mm/filemap.c
+index 369cfd164e90..bccbd3621238 100644
+--- a/mm/filemap.c
++++ b/mm/filemap.c
+@@ -3051,8 +3051,12 @@ int generic_remap_checks(struct file *file_in, loff_t pos_in,
+ 	if (pos_in + count == size_in) {
+ 		bcount = ALIGN(size_in, bs) - pos_in;
+ 	} else {
+-		if (!IS_ALIGNED(count, bs))
+-			return -EINVAL;
++		if (!IS_ALIGNED(count, bs)) {
++			if (remap_flags & RFR_CAN_SHORTEN)
++				count = ALIGN_DOWN(count, bs);
++			else
++				return -EINVAL;
++		}
+ 
+ 		bcount = count;
+ 	}
+@@ -3063,10 +3067,14 @@ int generic_remap_checks(struct file *file_in, loff_t pos_in,
+ 	    pos_out < pos_in + bcount)
+ 		return -EINVAL;
+ 
+-	/* For now we don't support changing the length. */
+-	if (*req_count != count)
++	/*
++	 * We shortened the request but the caller can't deal with that, so
++	 * bounce the request back to userspace.
++	 */
++	if (*req_count != count && !(remap_flags & RFR_CAN_SHORTEN))
+ 		return -EINVAL;
+ 
++	*req_count = count;
+ 	return 0;
+ }
+ 
