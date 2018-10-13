@@ -1,9 +1,9 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp2130.oracle.com ([156.151.31.86]:60568 "EHLO
-        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725812AbeJMHkc (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 13 Oct 2018 03:40:32 -0400
-Subject: [PATCH v4 00/25] fs: fixes for serious clone/dedupe problems
+Received: from aserp2120.oracle.com ([141.146.126.78]:36066 "EHLO
+        aserp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725812AbeJMHkl (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 13 Oct 2018 03:40:41 -0400
+Subject: [PATCH 01/25] xfs: add a per-xfs trace_printk macro
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
 To: david@fromorbit.com, darrick.wong@oracle.com
 Cc: sandeen@redhat.com, linux-nfs@vger.kernel.org,
@@ -11,42 +11,48 @@ Cc: sandeen@redhat.com, linux-nfs@vger.kernel.org,
         linux-xfs@vger.kernel.org, linux-mm@kvack.org,
         linux-btrfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         ocfs2-devel@oss.oracle.com
-Date: Fri, 12 Oct 2018 17:05:29 -0700
-Message-ID: <153938912912.8361.13446310416406388958.stgit@magnolia>
+Date: Fri, 12 Oct 2018 17:05:36 -0700
+Message-ID: <153938913665.8361.8967777059460905975.stgit@magnolia>
+In-Reply-To: <153938912912.8361.13446310416406388958.stgit@magnolia>
+References: <153938912912.8361.13446310416406388958.stgit@magnolia>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi all,
+From: Darrick J. Wong <darrick.wong@oracle.com>
 
-Dave, Eric, and I have been chasing a stale data exposure bug in the XFS
-reflink implementation, and tracked it down to reflink forgetting to do
-some of the file-extending activities that must happen for regular
-writes.
+Add a "xfs_tprintk" macro so that developers can use trace_printk to
+print out arbitrary debugging information with the XFS device name
+attached to the trace output.
 
-We then started auditing the clone, dedupe, and copyfile code and
-realized that from a file contents perspective, clonerange isn't any
-different from a regular file write.  Unfortunately, we also noticed
-that *unlike* a regular write, clonerange skips a ton of overflow
-checks, such as validating the ranges against s_maxbytes, MAX_NON_LFS,
-and RLIMIT_FSIZE.  We also observed that cloning into a file did not
-strip security privileges (suid, capabilities) like a regular write
-would.  I also noticed that xfs and ocfs2 need to dump the page cache
-before remapping blocks, not after.
+Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+---
+ fs/xfs/xfs_error.h |    6 ++++++
+ 1 file changed, 6 insertions(+)
 
-In fixing the range checking problems I also realized that both dedupe
-and copyfile tell userspace how much of the requested operation was
-acted upon.  Since the range validation can shorten a clone request (or
-we can ENOSPC midway through), we might as well plumb the short
-operation reporting back through the VFS indirection code to userspace.
 
-So, here's the whole giant pile of patches[1] that fix all the problems.
-This branch is against current upstream (4.19-rc7+).  The patch
-"generic: test reflink side effects" recently sent to fstests exercises
-the fixes in this series.  Tests are in [2].
-
---D
-
-[1] https://git.kernel.org/pub/scm/linux/kernel/git/djwong/xfs-linux.git/log/?h=djwong-devel
-[2] https://git.kernel.org/pub/scm/linux/kernel/git/djwong/xfstests-dev.git/log/?h=djwong-devel
+diff --git a/fs/xfs/xfs_error.h b/fs/xfs/xfs_error.h
+index 246d3e989c6c..5caa8bdf6c38 100644
+--- a/fs/xfs/xfs_error.h
++++ b/fs/xfs/xfs_error.h
+@@ -76,6 +76,11 @@ extern int xfs_errortag_set(struct xfs_mount *mp, unsigned int error_tag,
+ 		unsigned int tag_value);
+ extern int xfs_errortag_add(struct xfs_mount *mp, unsigned int error_tag);
+ extern int xfs_errortag_clearall(struct xfs_mount *mp);
++
++/* trace printk version of xfs_err and friends */
++#define xfs_tprintk(mp, fmt, args...) \
++	trace_printk("dev %d:%d " fmt, MAJOR((mp)->m_super->s_dev), \
++			MINOR((mp)->m_super->s_dev), ##args)
+ #else
+ #define xfs_errortag_init(mp)			(0)
+ #define xfs_errortag_del(mp)
+@@ -83,6 +88,7 @@ extern int xfs_errortag_clearall(struct xfs_mount *mp);
+ #define xfs_errortag_set(mp, tag, val)		(ENOSYS)
+ #define xfs_errortag_add(mp, tag)		(ENOSYS)
+ #define xfs_errortag_clearall(mp)		(ENOSYS)
++#define xfs_tprintk(mp, fmt, args...)		do { } while (0)
+ #endif /* DEBUG */
+ 
+ /*
