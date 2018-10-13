@@ -1,18 +1,19 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp2120.oracle.com ([141.146.126.78]:36066 "EHLO
-        aserp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725812AbeJMHkl (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 13 Oct 2018 03:40:41 -0400
-Subject: [PATCH 01/25] xfs: add a per-xfs trace_printk macro
+Received: from userp2130.oracle.com ([156.151.31.86]:60864 "EHLO
+        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725812AbeJMHkz (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 13 Oct 2018 03:40:55 -0400
+Subject: [PATCH 02/25] vfs: vfs_clone_file_prep_inodes should return EINVAL
+ for a clone from beyond EOF
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
 To: david@fromorbit.com, darrick.wong@oracle.com
 Cc: sandeen@redhat.com, linux-nfs@vger.kernel.org,
         linux-cifs@vger.kernel.org, linux-unionfs@vger.kernel.org,
         linux-xfs@vger.kernel.org, linux-mm@kvack.org,
         linux-btrfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        ocfs2-devel@oss.oracle.com
-Date: Fri, 12 Oct 2018 17:05:36 -0700
-Message-ID: <153938913665.8361.8967777059460905975.stgit@magnolia>
+        Christoph Hellwig <hch@lst.de>, ocfs2-devel@oss.oracle.com
+Date: Fri, 12 Oct 2018 17:05:50 -0700
+Message-ID: <153938915033.8361.8568201027937509597.stgit@magnolia>
 In-Reply-To: <153938912912.8361.13446310416406388958.stgit@magnolia>
 References: <153938912912.8361.13446310416406388958.stgit@magnolia>
 MIME-Version: 1.0
@@ -22,37 +23,28 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 From: Darrick J. Wong <darrick.wong@oracle.com>
 
-Add a "xfs_tprintk" macro so that developers can use trace_printk to
-print out arbitrary debugging information with the XFS device name
-attached to the trace output.
+vfs_clone_file_prep_inodes cannot return 0 if it is asked to remap from
+a zero byte file because that's what btrfs does.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
 ---
- fs/xfs/xfs_error.h |    6 ++++++
- 1 file changed, 6 insertions(+)
+ fs/read_write.c |    3 ---
+ 1 file changed, 3 deletions(-)
 
 
-diff --git a/fs/xfs/xfs_error.h b/fs/xfs/xfs_error.h
-index 246d3e989c6c..5caa8bdf6c38 100644
---- a/fs/xfs/xfs_error.h
-+++ b/fs/xfs/xfs_error.h
-@@ -76,6 +76,11 @@ extern int xfs_errortag_set(struct xfs_mount *mp, unsigned int error_tag,
- 		unsigned int tag_value);
- extern int xfs_errortag_add(struct xfs_mount *mp, unsigned int error_tag);
- extern int xfs_errortag_clearall(struct xfs_mount *mp);
-+
-+/* trace printk version of xfs_err and friends */
-+#define xfs_tprintk(mp, fmt, args...) \
-+	trace_printk("dev %d:%d " fmt, MAJOR((mp)->m_super->s_dev), \
-+			MINOR((mp)->m_super->s_dev), ##args)
- #else
- #define xfs_errortag_init(mp)			(0)
- #define xfs_errortag_del(mp)
-@@ -83,6 +88,7 @@ extern int xfs_errortag_clearall(struct xfs_mount *mp);
- #define xfs_errortag_set(mp, tag, val)		(ENOSYS)
- #define xfs_errortag_add(mp, tag)		(ENOSYS)
- #define xfs_errortag_clearall(mp)		(ENOSYS)
-+#define xfs_tprintk(mp, fmt, args...)		do { } while (0)
- #endif /* DEBUG */
+diff --git a/fs/read_write.c b/fs/read_write.c
+index 8a2737f0d61d..260797b01851 100644
+--- a/fs/read_write.c
++++ b/fs/read_write.c
+@@ -1740,10 +1740,7 @@ int vfs_clone_file_prep_inodes(struct inode *inode_in, loff_t pos_in,
+ 	if (!S_ISREG(inode_in->i_mode) || !S_ISREG(inode_out->i_mode))
+ 		return -EINVAL;
  
- /*
+-	/* Are we going all the way to the end? */
+ 	isize = i_size_read(inode_in);
+-	if (isize == 0)
+-		return 0;
+ 
+ 	/* Zero length dedupe exits immediately; reflink goes to EOF. */
+ 	if (*len == 0) {
