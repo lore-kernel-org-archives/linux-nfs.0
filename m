@@ -1,40 +1,54 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([198.137.202.133]:53226 "EHLO
+Received: from bombadil.infradead.org ([198.137.202.133]:53296 "EHLO
         bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726327AbeJOBWz (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 14 Oct 2018 21:22:55 -0400
-Date: Sun, 14 Oct 2018 10:41:08 -0700
+        with ESMTP id S1726327AbeJOBZM (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 14 Oct 2018 21:25:12 -0400
+Date: Sun, 14 Oct 2018 10:43:24 -0700
 From: Christoph Hellwig <hch@infradead.org>
 To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Cc: david@fromorbit.com, sandeen@redhat.com, linux-nfs@vger.kernel.org,
-        linux-cifs@vger.kernel.org, linux-unionfs@vger.kernel.org,
-        linux-xfs@vger.kernel.org, linux-mm@kvack.org,
-        linux-btrfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        ocfs2-devel@oss.oracle.com
-Subject: Re: [PATCH 22/25] ocfs2: support partial clone range and dedupe range
-Message-ID: <20181014174108.GB6400@infradead.org>
+        linux-cifs@vger.kernel.org, Amir Goldstein <amir73il@gmail.com>,
+        linux-unionfs@vger.kernel.org, linux-xfs@vger.kernel.org,
+        linux-mm@kvack.org, linux-btrfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, ocfs2-devel@oss.oracle.com
+Subject: Re: [PATCH 18/25] vfs: hide file range comparison function
+Message-ID: <20181014174324.GC6400@infradead.org>
 References: <153938912912.8361.13446310416406388958.stgit@magnolia>
- <153938929813.8361.16702022670128567518.stgit@magnolia>
+ <153938927103.8361.6327676425188043040.stgit@magnolia>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <153938929813.8361.16702022670128567518.stgit@magnolia>
+In-Reply-To: <153938927103.8361.6327676425188043040.stgit@magnolia>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> @@ -2531,14 +2531,11 @@ static loff_t ocfs2_remap_file_range(struct file *file_in, loff_t pos_in,
->  				     struct file *file_out, loff_t pos_out,
->  				     loff_t len, unsigned int remap_flags)
->  {
-> -	int ret;
-> -
->  	if (!remap_check_flags(remap_flags, RFR_SAME_DATA))
->  		return -EINVAL;
->  
-> -	ret = ocfs2_reflink_remap_range(file_in, pos_in, file_out, pos_out,
-> -					len, remap_flags);
-> -	return ret < 0 ? ret : len;
-> +	return ocfs2_reflink_remap_range(file_in, pos_in, file_out, pos_out,
-> +			len, remap_flags);
+> +static struct page *vfs_dedupe_get_page(struct inode *inode, loff_t offset)
+> +{
+> +	struct address_space *mapping;
+> +	struct page *page;
+> +	pgoff_t n;
+> +
+> +	n = offset >> PAGE_SHIFT;
+> +	mapping = inode->i_mapping;
+> +	page = read_mapping_page(mapping, n, NULL);
+> +	if (IS_ERR(page))
+> +		return page;
+> +	if (!PageUptodate(page)) {
+> +		put_page(page);
+> +		return ERR_PTR(-EIO);
+> +	}
+> +	lock_page(page);
+> +	return page;
+> +}
 
-Seems like ocfs2_remap_file_range and ocfs2_reflink_remap_range should
-be merged now.
+Might be worth to clean ths up a bit while you are at it:
+
++static struct page *vfs_dedupe_get_page(struct inode *inode, loff_t offset)
+{
+	struct page *page;
+
+	page = read_mapping_page(inode->i_mapping, offset >> PAGE_SHIFT, NULL);
+	...
+
+Otherwise looks fine:
+
+Reviewed-by: Christoph Hellwig <hch@lst.de>
