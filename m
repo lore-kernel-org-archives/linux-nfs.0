@@ -1,51 +1,75 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from ipmail06.adl6.internode.on.net ([150.101.137.145]:16730 "EHLO
-        ipmail06.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726343AbeJOIOe (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Oct 2018 04:14:34 -0400
-Date: Mon, 15 Oct 2018 11:31:39 +1100
-From: Dave Chinner <david@fromorbit.com>
-To: Filipe Manana <fdmanana@gmail.com>
+Received: from mail-yb1-f196.google.com ([209.85.219.196]:38505 "EHLO
+        mail-yb1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725887AbeJONsL (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Oct 2018 09:48:11 -0400
+MIME-Version: 1.0
+References: <153938912912.8361.13446310416406388958.stgit@magnolia>
+ <153938919123.8361.13059492965161549195.stgit@magnolia> <20181014171927.GD30673@infradead.org>
+In-Reply-To: <20181014171927.GD30673@infradead.org>
+From: Amir Goldstein <amir73il@gmail.com>
+Date: Mon, 15 Oct 2018 09:04:13 +0300
+Message-ID: <CAOQ4uxiReFJRxKJbsoUgWWNP75_Qsoh1fWC_dLYV_zBU_jaGbA@mail.gmail.com>
+Subject: Re: [PATCH 07/25] vfs: combine the clone and dedupe into a single remap_file_range
+To: Christoph Hellwig <hch@infradead.org>
 Cc: "Darrick J. Wong" <darrick.wong@oracle.com>,
-        Eric Sandeen <sandeen@redhat.com>, linux-nfs@vger.kernel.org,
-        linux-cifs@vger.kernel.org, linux-unionfs@vger.kernel.org,
-        linux-xfs@vger.kernel.org, linux-mm@kvack.org,
-        linux-btrfs <linux-btrfs@vger.kernel.org>,
+        Dave Chinner <david@fromorbit.com>,
+        Eric Sandeen <sandeen@redhat.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        linux-cifs@vger.kernel.org,
+        overlayfs <linux-unionfs@vger.kernel.org>,
+        linux-xfs <linux-xfs@vger.kernel.org>,
+        Linux MM <linux-mm@kvack.org>,
+        Linux Btrfs <linux-btrfs@vger.kernel.org>,
         linux-fsdevel <linux-fsdevel@vger.kernel.org>,
         ocfs2-devel@oss.oracle.com
-Subject: Re: [PATCH 05/25] vfs: avoid problematic remapping requests into
- partial EOF block
-Message-ID: <20181015003139.GZ6311@dastard>
-References: <153923113649.5546.9840926895953408273.stgit@magnolia>
- <153923117420.5546.13317703807467393934.stgit@magnolia>
- <CAL3q7H7mLvCGpyitJhQ=To-aDvG9k9rxSVi2jSpcALQVj3myzg@mail.gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAL3q7H7mLvCGpyitJhQ=To-aDvG9k9rxSVi2jSpcALQVj3myzg@mail.gmail.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Oct 12, 2018 at 09:22:18PM +0100, Filipe Manana wrote:
-> On Thu, Oct 11, 2018 at 5:13 AM Darrick J. Wong <darrick.wong@oracle.com> wrote:
-> >
-> > From: Darrick J. Wong <darrick.wong@oracle.com>
-> >
-> > A deduplication data corruption is exposed by fstests generic/505 on
-> > XFS.
-> 
-> (and btrfs)
-> 
-> Btw, the generic test I wrote was indeed numbered 505, however it was
-> never committed and there's now a generic/505 which has nothing to do
-> with deduplication.
-> So you should update the changelog to avoid confusion.
+> > +/*
+> > + * These flags control the behavior of the remap_file_range function pointer.
+> > + *
+> > + * RFR_SAME_DATA: only remap if contents identical (i.e. deduplicate)
+> > + */
+> > +#define RFR_SAME_DATA                (1 << 0)
+> > +
+> > +#define RFR_VALID_FLAGS              (RFR_SAME_DATA)
+>
+> RFR?  Why not REMAP_FILE_*  Also why not the well understood
+> REMAP_FILE_DEDUP instead of the odd SAME_DATA?
+>
+> > +
+> > +/*
+> > + * Filesystem remapping implementations should call this helper on their
+> > + * remap flags to filter out flags that the implementation doesn't support.
+> > + *
+> > + * Returns true if the flags are ok, false otherwise.
+> > + */
+> > +static inline bool remap_check_flags(unsigned int remap_flags,
+> > +                                  unsigned int supported_flags)
+> > +{
+> > +     return (remap_flags & ~(supported_flags & RFR_VALID_FLAGS)) == 0;
+> > +}
+>
+> Any reason to even bother with a helper for this?  ->fallocate
+> seems to be doing fine without the helper, and the resulting code
+> seems a lot easier to understand to me.
 
-What test is it now? And if it hasn't been committed, are you going
-to update it and repost as it clearly had value....
+I supposed you figured out the reason already.
+It makes it appearance in patch 16/25 as RFR_VFS_FLAGS.
+All those "advisory" flags, we want to pass them in to filesystem as FYI,
+but we don't want to explicitly add support for e.g. RFR_CAN_SHORTEN
+to every filesystem, when vfs has already taken care of the advice.
 
-Cheers,
+The reason a similar helper doesn't make sense for ->fallocate()
+is because vfs does not take any action on behalf of filesystem
+nor does vfs pass any internal flags to filesystem.
 
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+I argued that fiemap_check_flags() should similarly mask out
+FIEMAP_FLAG_SYNC before checking supported fs_flags,
+because ioctl_fiemap() respects this flag regardless if filesystem
+(or generic helper) declares support for FIEMAP_FLAG_SYNC.
+
+Thanks,
+Amir.
