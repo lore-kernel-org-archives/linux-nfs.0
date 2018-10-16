@@ -1,27 +1,52 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from tiaoe.net ([185.216.140.105]:37115 "EHLO menards.com"
-        rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726962AbeJPKdw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 16 Oct 2018 06:33:52 -0400
-To: linux-nfs@vger.kernel.org
-Subject: Working test 5
-Message-ID: <92f7510cf604e8b4ea2f2a8c06568582@bplampsupply.com>
-Date: Mon, 15 Oct 2018 15:19:27 +0200
-From: "Judy" <atedeeisnwsuitke@aol.jp>
-Reply-To: dusimtane@aliyun.com
+Received: from aserp2120.oracle.com ([141.146.126.78]:48272 "EHLO
+        aserp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726944AbeJPK6Q (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Oct 2018 06:58:16 -0400
+Subject: [PATCH v5 00/26] fs: fixes for serious clone/dedupe problems
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+To: david@fromorbit.com, darrick.wong@oracle.com
+Cc: sandeen@redhat.com, linux-nfs@vger.kernel.org,
+        linux-cifs@vger.kernel.org, linux-unionfs@vger.kernel.org,
+        linux-xfs@vger.kernel.org, linux-mm@kvack.org,
+        linux-btrfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        ocfs2-devel@oss.oracle.com
+Date: Mon, 15 Oct 2018 20:09:55 -0700
+Message-ID: <153965939489.1256.7400115244528045860.stgit@magnolia>
 MIME-Version: 1.0
-Content-Type: text/plain; format=flowed; charset="UTF-8"
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Did you get my email from last week?
-Let me know if you have photos for cutting out or retouching?
+Hi all,
 
-We are an image team who can do editing for your the web store photos,
-industry photos or portrait photos.
+Dave, Eric, and I have been chasing a stale data exposure bug in the XFS
+reflink implementation, and tracked it down to reflink forgetting to do
+some of the file-extending activities that must happen for regular
+writes.
 
-Send photos, we will do testing for you to check quality.
-Waiting for your reply soon.
+We then started auditing the clone, dedupe, and copyfile code and
+realized that from a file contents perspective, clonerange isn't any
+different from a regular file write.  Unfortunately, we also noticed
+that *unlike* a regular write, clonerange skips a ton of overflow
+checks, such as validating the ranges against s_maxbytes, MAX_NON_LFS,
+and RLIMIT_FSIZE.  We also observed that cloning into a file did not
+strip security privileges (suid, capabilities) like a regular write
+would.  I also noticed that xfs and ocfs2 need to dump the page cache
+before remapping blocks, not after.
 
-Thanks,
-Judy
+In fixing the range checking problems I also realized that both dedupe
+and copyfile tell userspace how much of the requested operation was
+acted upon.  Since the range validation can shorten a clone request (or
+we can ENOSPC midway through), we might as well plumb the short
+operation reporting back through the VFS indirection code to userspace.
+
+So, here's the whole giant pile of patches[1] that fix all the problems.
+This branch is against current upstream (4.19-rc8).  The patch
+"generic: test reflink side effects" recently sent to fstests exercises
+the fixes in this series.  Tests are in [2].
+
+--D
+
+[1] https://git.kernel.org/pub/scm/linux/kernel/git/djwong/xfs-linux.git/log/?h=djwong-devel
+[2] https://git.kernel.org/pub/scm/linux/kernel/git/djwong/xfstests-dev.git/log/?h=djwong-devel
