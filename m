@@ -1,9 +1,9 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp2120.oracle.com ([141.146.126.78]:48610 "EHLO
-        aserp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727007AbeJPK6k (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Oct 2018 06:58:40 -0400
-Subject: [PATCH 04/26] vfs: exit early from zero length remap operations
+Received: from userp2130.oracle.com ([156.151.31.86]:51726 "EHLO
+        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726944AbeJPK60 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Oct 2018 06:58:26 -0400
+Subject: [PATCH 01/26] xfs: add a per-xfs trace_printk macro
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
 To: david@fromorbit.com, darrick.wong@oracle.com
 Cc: sandeen@redhat.com, linux-nfs@vger.kernel.org,
@@ -11,8 +11,8 @@ Cc: sandeen@redhat.com, linux-nfs@vger.kernel.org,
         linux-xfs@vger.kernel.org, linux-mm@kvack.org,
         linux-btrfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         ocfs2-devel@oss.oracle.com
-Date: Mon, 15 Oct 2018 20:10:23 -0700
-Message-ID: <153965942391.1256.1491987046439132016.stgit@magnolia>
+Date: Mon, 15 Oct 2018 20:10:03 -0700
+Message-ID: <153965940329.1256.12407610006092032283.stgit@magnolia>
 In-Reply-To: <153965939489.1256.7400115244528045860.stgit@magnolia>
 References: <153965939489.1256.7400115244528045860.stgit@magnolia>
 MIME-Version: 1.0
@@ -22,25 +22,37 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 From: Darrick J. Wong <darrick.wong@oracle.com>
 
-If a remap caller asks us to remap to the source file's EOF and the
-source file has zero bytes, exit early.
+Add a "xfs_tprintk" macro so that developers can use trace_printk to
+print out arbitrary debugging information with the XFS device name
+attached to the trace output.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- fs/read_write.c |    2 ++
- 1 file changed, 2 insertions(+)
+ fs/xfs/xfs_error.h |    6 ++++++
+ 1 file changed, 6 insertions(+)
 
 
-diff --git a/fs/read_write.c b/fs/read_write.c
-index d6e8e242a15f..2456da3f8a41 100644
---- a/fs/read_write.c
-+++ b/fs/read_write.c
-@@ -1748,6 +1748,8 @@ int vfs_clone_file_prep(struct file *file_in, loff_t pos_in,
- 		if (pos_in > isize)
- 			return -EINVAL;
- 		*len = isize - pos_in;
-+		if (*len == 0)
-+			return 0;
- 	}
+diff --git a/fs/xfs/xfs_error.h b/fs/xfs/xfs_error.h
+index 246d3e989c6c..5caa8bdf6c38 100644
+--- a/fs/xfs/xfs_error.h
++++ b/fs/xfs/xfs_error.h
+@@ -76,6 +76,11 @@ extern int xfs_errortag_set(struct xfs_mount *mp, unsigned int error_tag,
+ 		unsigned int tag_value);
+ extern int xfs_errortag_add(struct xfs_mount *mp, unsigned int error_tag);
+ extern int xfs_errortag_clearall(struct xfs_mount *mp);
++
++/* trace printk version of xfs_err and friends */
++#define xfs_tprintk(mp, fmt, args...) \
++	trace_printk("dev %d:%d " fmt, MAJOR((mp)->m_super->s_dev), \
++			MINOR((mp)->m_super->s_dev), ##args)
+ #else
+ #define xfs_errortag_init(mp)			(0)
+ #define xfs_errortag_del(mp)
+@@ -83,6 +88,7 @@ extern int xfs_errortag_clearall(struct xfs_mount *mp);
+ #define xfs_errortag_set(mp, tag, val)		(ENOSYS)
+ #define xfs_errortag_add(mp, tag)		(ENOSYS)
+ #define xfs_errortag_clearall(mp)		(ENOSYS)
++#define xfs_tprintk(mp, fmt, args...)		do { } while (0)
+ #endif /* DEBUG */
  
- 	/* Check that we don't violate system file offset limits. */
+ /*
