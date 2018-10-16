@@ -1,19 +1,19 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp2130.oracle.com ([156.151.31.86]:59526 "EHLO
+Received: from userp2130.oracle.com ([156.151.31.86]:60038 "EHLO
         userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727082AbeJPLIG (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Oct 2018 07:08:06 -0400
-Subject: [PATCH 16/26] vfs: plumb remap flags through the vfs dedupe
- functions
+        with ESMTP id S1727082AbeJPLIf (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Oct 2018 07:08:35 -0400
+Subject: [PATCH 19/26] vfs: clean up generic_remap_file_range_prep return
+ value
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
 To: david@fromorbit.com, darrick.wong@oracle.com
 Cc: sandeen@redhat.com, linux-nfs@vger.kernel.org,
-        linux-cifs@vger.kernel.org, Amir Goldstein <amir73il@gmail.com>,
-        linux-unionfs@vger.kernel.org, linux-xfs@vger.kernel.org,
-        linux-mm@kvack.org, linux-btrfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, ocfs2-devel@oss.oracle.com
-Date: Mon, 15 Oct 2018 20:19:47 -0700
-Message-ID: <153965998743.3607.1661657709759570842.stgit@magnolia>
+        linux-cifs@vger.kernel.org, linux-unionfs@vger.kernel.org,
+        linux-xfs@vger.kernel.org, linux-mm@kvack.org,
+        linux-btrfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        ocfs2-devel@oss.oracle.com
+Date: Mon, 15 Oct 2018 20:20:14 -0700
+Message-ID: <153966001458.3607.5940191707393894977.stgit@magnolia>
 In-Reply-To: <153965939489.1256.7400115244528045860.stgit@magnolia>
 References: <153965939489.1256.7400115244528045860.stgit@magnolia>
 MIME-Version: 1.0
@@ -23,79 +23,74 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 From: Darrick J. Wong <darrick.wong@oracle.com>
 
-Plumb a remap_flags argument through the vfs_dedupe_file_range_one
-functions so that dedupe can take advantage of it.
+Since the remap prep function can update the length of the remap
+request, we can change this function to return the usual return status
+instead of the odd behavior it has now.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
-Reviewed-by: Amir Goldstein <amir73il@gmail.com>
 ---
- fs/overlayfs/file.c |    3 ++-
- fs/read_write.c     |    9 ++++++---
- include/linux/fs.h  |    2 +-
- 3 files changed, 9 insertions(+), 5 deletions(-)
+ fs/ocfs2/refcounttree.c |    2 +-
+ fs/read_write.c         |    6 +++---
+ fs/xfs/xfs_reflink.c    |    4 ++--
+ 3 files changed, 6 insertions(+), 6 deletions(-)
 
 
-diff --git a/fs/overlayfs/file.c b/fs/overlayfs/file.c
-index 0393815c8971..84dd957efa24 100644
---- a/fs/overlayfs/file.c
-+++ b/fs/overlayfs/file.c
-@@ -467,7 +467,8 @@ static loff_t ovl_copyfile(struct file *file_in, loff_t pos_in,
+diff --git a/fs/ocfs2/refcounttree.c b/fs/ocfs2/refcounttree.c
+index 6a42c04ac0ab..46bbd315c39f 100644
+--- a/fs/ocfs2/refcounttree.c
++++ b/fs/ocfs2/refcounttree.c
+@@ -4852,7 +4852,7 @@ int ocfs2_reflink_remap_range(struct file *file_in,
  
- 	case OVL_DEDUPE:
- 		ret = vfs_dedupe_file_range_one(real_in.file, pos_in,
--						real_out.file, pos_out, len);
-+						real_out.file, pos_out, len,
-+						flags);
- 		break;
- 	}
- 	revert_creds(old_cred);
+ 	ret = generic_remap_file_range_prep(file_in, pos_in, file_out, pos_out,
+ 			&len, remap_flags);
+-	if (ret <= 0)
++	if (ret < 0 || len == 0)
+ 		goto out_unlock;
+ 
+ 	/* Lock out changes to the allocation maps and remap. */
 diff --git a/fs/read_write.c b/fs/read_write.c
-index 791b406e8264..f6ab5beb935a 100644
+index 450e038e8617..37a7d3fe35d8 100644
 --- a/fs/read_write.c
 +++ b/fs/read_write.c
-@@ -2019,10 +2019,12 @@ EXPORT_SYMBOL(vfs_dedupe_file_range_compare);
- 
- loff_t vfs_dedupe_file_range_one(struct file *src_file, loff_t src_pos,
- 				 struct file *dst_file, loff_t dst_pos,
--				 loff_t len)
-+				 loff_t len, unsigned int remap_flags)
- {
- 	loff_t ret;
- 
-+	WARN_ON_ONCE(remap_flags & ~(REMAP_FILE_DEDUP));
-+
- 	ret = mnt_want_write_file(dst_file);
+@@ -1872,8 +1872,8 @@ static int vfs_dedupe_file_range_compare(struct inode *src, loff_t srcoff,
+  * sense, and then flush all dirty data.  Caller must ensure that the
+  * inodes have been locked against any other modifications.
+  *
+- * Returns: 0 for "nothing to clone", 1 for "something to clone", or
+- * the usual negative error code.
++ * If there's an error, then the usual negative error code is returned.
++ * Otherwise returns 0 with *len set to the request length.
+  */
+ int generic_remap_file_range_prep(struct file *file_in, loff_t pos_in,
+ 				  struct file *file_out, loff_t pos_out,
+@@ -1954,7 +1954,7 @@ int generic_remap_file_range_prep(struct file *file_in, loff_t pos_in,
  	if (ret)
  		return ret;
-@@ -2053,7 +2055,7 @@ loff_t vfs_dedupe_file_range_one(struct file *src_file, loff_t src_pos,
- 	}
  
- 	ret = dst_file->f_op->remap_file_range(src_file, src_pos, dst_file,
--			dst_pos, len, REMAP_FILE_DEDUP);
-+			dst_pos, len, remap_flags | REMAP_FILE_DEDUP);
- out_drop_write:
- 	mnt_drop_write_file(dst_file);
+-	return 1;
++	return 0;
+ }
+ EXPORT_SYMBOL(generic_remap_file_range_prep);
  
-@@ -2121,7 +2123,8 @@ int vfs_dedupe_file_range(struct file *file, struct file_dedupe_range *same)
- 		}
+diff --git a/fs/xfs/xfs_reflink.c b/fs/xfs/xfs_reflink.c
+index 3dbe5fb7e9c0..9b1ea42c81d1 100644
+--- a/fs/xfs/xfs_reflink.c
++++ b/fs/xfs/xfs_reflink.c
+@@ -1329,7 +1329,7 @@ xfs_reflink_remap_prep(
  
- 		deduped = vfs_dedupe_file_range_one(file, off, dst_file,
--						    info->dest_offset, len);
-+						    info->dest_offset, len,
-+						    0);
- 		if (deduped == -EBADE)
- 			info->status = FILE_DEDUPE_RANGE_DIFFERS;
- 		else if (deduped < 0)
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index bc353a5224a4..c0ae85a7bd9d 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1854,7 +1854,7 @@ extern int vfs_dedupe_file_range(struct file *file,
- 				 struct file_dedupe_range *same);
- extern loff_t vfs_dedupe_file_range_one(struct file *src_file, loff_t src_pos,
- 					struct file *dst_file, loff_t dst_pos,
--					loff_t len);
-+					loff_t len, unsigned int remap_flags);
+ 	ret = generic_remap_file_range_prep(file_in, pos_in, file_out, pos_out,
+ 			len, remap_flags);
+-	if (ret <= 0)
++	if (ret < 0 || *len == 0)
+ 		goto out_unlock;
  
+ 	/*
+@@ -1409,7 +1409,7 @@ xfs_reflink_remap_range(
+ 	/* Prepare and then clone file data. */
+ 	ret = xfs_reflink_remap_prep(file_in, pos_in, file_out, pos_out,
+ 			&len, remap_flags);
+-	if (ret <= 0)
++	if (ret < 0 || len == 0)
+ 		return ret;
  
- struct super_operations {
+ 	trace_xfs_reflink_remap_range(src, pos_in, len, dest, pos_out);
