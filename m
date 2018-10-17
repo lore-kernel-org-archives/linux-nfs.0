@@ -1,10 +1,10 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp2120.oracle.com ([141.146.126.78]:44832 "EHLO
+Received: from aserp2120.oracle.com ([141.146.126.78]:45466 "EHLO
         aserp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727735AbeJRGnh (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Oct 2018 02:43:37 -0400
-Subject: [PATCH 12/29] vfs: remap helper should update destination inode
- metadata
+        with ESMTP id S1725918AbeJRGoD (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Oct 2018 02:44:03 -0400
+Subject: [PATCH 15/29] vfs: plumb remap flags through the vfs dedupe
+ functions
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
 To: david@fromorbit.com, darrick.wong@oracle.com
 Cc: sandeen@redhat.com, linux-nfs@vger.kernel.org,
@@ -12,8 +12,8 @@ Cc: sandeen@redhat.com, linux-nfs@vger.kernel.org,
         linux-unionfs@vger.kernel.org, linux-xfs@vger.kernel.org,
         linux-mm@kvack.org, linux-btrfs@vger.kernel.org,
         linux-fsdevel@vger.kernel.org, ocfs2-devel@oss.oracle.com
-Date: Wed, 17 Oct 2018 15:45:38 -0700
-Message-ID: <153981633799.5568.10992236383232225210.stgit@magnolia>
+Date: Wed, 17 Oct 2018 15:46:05 -0700
+Message-ID: <153981636536.5568.11691478301880924161.stgit@magnolia>
 In-Reply-To: <153981625504.5568.2708520119290577378.stgit@magnolia>
 References: <153981625504.5568.2708520119290577378.stgit@magnolia>
 MIME-Version: 1.0
@@ -23,80 +23,79 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 From: Darrick J. Wong <darrick.wong@oracle.com>
 
-Extend generic_remap_file_range_prep to handle inode metadata updates
-when remapping into a file.  If the operation can possibly alter the
-file contents, we must update the ctime and mtime and remove security
-privileges, just like we do for regular file writes.
+Plumb a remap_flags argument through the vfs_dedupe_file_range_one
+functions so that dedupe can take advantage of it.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 Reviewed-by: Amir Goldstein <amir73il@gmail.com>
 ---
- fs/read_write.c      |   19 +++++++++++++++++++
- fs/xfs/xfs_reflink.c |   23 -----------------------
- 2 files changed, 19 insertions(+), 23 deletions(-)
+ fs/overlayfs/file.c |    3 ++-
+ fs/read_write.c     |    9 ++++++---
+ include/linux/fs.h  |    2 +-
+ 3 files changed, 9 insertions(+), 5 deletions(-)
 
 
+diff --git a/fs/overlayfs/file.c b/fs/overlayfs/file.c
+index 0393815c8971..84dd957efa24 100644
+--- a/fs/overlayfs/file.c
++++ b/fs/overlayfs/file.c
+@@ -467,7 +467,8 @@ static loff_t ovl_copyfile(struct file *file_in, loff_t pos_in,
+ 
+ 	case OVL_DEDUPE:
+ 		ret = vfs_dedupe_file_range_one(real_in.file, pos_in,
+-						real_out.file, pos_out, len);
++						real_out.file, pos_out, len,
++						flags);
+ 		break;
+ 	}
+ 	revert_creds(old_cred);
 diff --git a/fs/read_write.c b/fs/read_write.c
-index ebcbfc4f2907..b61bd3fc7154 100644
+index 0d1ac1b9bc22..ea30666013b0 100644
 --- a/fs/read_write.c
 +++ b/fs/read_write.c
-@@ -1820,6 +1820,25 @@ int generic_remap_file_range_prep(struct file *file_in, loff_t pos_in,
+@@ -2010,10 +2010,12 @@ EXPORT_SYMBOL(vfs_dedupe_file_range_compare);
+ 
+ loff_t vfs_dedupe_file_range_one(struct file *src_file, loff_t src_pos,
+ 				 struct file *dst_file, loff_t dst_pos,
+-				 loff_t len)
++				 loff_t len, unsigned int remap_flags)
+ {
+ 	loff_t ret;
+ 
++	WARN_ON_ONCE(remap_flags & ~(REMAP_FILE_DEDUP));
++
+ 	ret = mnt_want_write_file(dst_file);
  	if (ret)
  		return ret;
+@@ -2044,7 +2046,7 @@ loff_t vfs_dedupe_file_range_one(struct file *src_file, loff_t src_pos,
+ 	}
  
-+	/* If can't alter the file contents, we're done. */
-+	if (!(remap_flags & REMAP_FILE_DEDUP)) {
-+		/* Update the timestamps, since we can alter file contents. */
-+		if (!(file_out->f_mode & FMODE_NOCMTIME)) {
-+			ret = file_update_time(file_out);
-+			if (ret)
-+				return ret;
-+		}
-+
-+		/*
-+		 * Clear the security bits if the process is not being run by
-+		 * root.  This keeps people from modifying setuid and setgid
-+		 * binaries.
-+		 */
-+		ret = file_remove_privs(file_out);
-+		if (ret)
-+			return ret;
-+	}
-+
- 	return 1;
- }
- EXPORT_SYMBOL(generic_remap_file_range_prep);
-diff --git a/fs/xfs/xfs_reflink.c b/fs/xfs/xfs_reflink.c
-index 29aab196ce7e..2d7dd8b28d7c 100644
---- a/fs/xfs/xfs_reflink.c
-+++ b/fs/xfs/xfs_reflink.c
-@@ -1372,29 +1372,6 @@ xfs_reflink_remap_prep(
- 	truncate_inode_pages_range(&inode_out->i_data, pos_out,
- 				   PAGE_ALIGN(pos_out + *len) - 1);
+ 	ret = dst_file->f_op->remap_file_range(src_file, src_pos, dst_file,
+-			dst_pos, len, REMAP_FILE_DEDUP);
++			dst_pos, len, remap_flags | REMAP_FILE_DEDUP);
+ out_drop_write:
+ 	mnt_drop_write_file(dst_file);
  
--	/* If we're altering the file contents... */
--	if (!(remap_flags & REMAP_FILE_DEDUP)) {
--		/*
--		 * ...update the timestamps (which will grab the ilock again
--		 * from xfs_fs_dirty_inode, so we have to call it before we
--		 * take the ilock).
--		 */
--		if (!(file_out->f_mode & FMODE_NOCMTIME)) {
--			ret = file_update_time(file_out);
--			if (ret)
--				goto out_unlock;
--		}
--
--		/*
--		 * ...clear the security bits if the process is not being run
--		 * by root.  This keeps people from modifying setuid and setgid
--		 * binaries.
--		 */
--		ret = file_remove_privs(file_out);
--		if (ret)
--			goto out_unlock;
--	}
--
- 	return 1;
- out_unlock:
- 	xfs_reflink_remap_unlock(file_in, file_out);
+@@ -2112,7 +2114,8 @@ int vfs_dedupe_file_range(struct file *file, struct file_dedupe_range *same)
+ 		}
+ 
+ 		deduped = vfs_dedupe_file_range_one(file, off, dst_file,
+-						    info->dest_offset, len);
++						    info->dest_offset, len,
++						    0);
+ 		if (deduped == -EBADE)
+ 			info->status = FILE_DEDUPE_RANGE_DIFFERS;
+ 		else if (deduped < 0)
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index bc78ad7e21b2..ea2c2f673ecb 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -1854,7 +1854,7 @@ extern int vfs_dedupe_file_range(struct file *file,
+ 				 struct file_dedupe_range *same);
+ extern loff_t vfs_dedupe_file_range_one(struct file *src_file, loff_t src_pos,
+ 					struct file *dst_file, loff_t dst_pos,
+-					loff_t len);
++					loff_t len, unsigned int remap_flags);
+ 
+ 
+ struct super_operations {
