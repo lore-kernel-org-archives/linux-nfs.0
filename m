@@ -1,53 +1,50 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp2120.oracle.com ([156.151.31.85]:54406 "EHLO
+Received: from userp2120.oracle.com ([156.151.31.85]:54624 "EHLO
         userp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727175AbeJRGmO (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Oct 2018 02:42:14 -0400
-Subject: [PATCH v6 00/29] fs: fixes for serious clone/dedupe problems
+        with ESMTP id S1726853AbeJRGm1 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Oct 2018 02:42:27 -0400
+Subject: [PATCH 01/29] vfs: vfs_clone_file_prep_inodes should return EINVAL
+ for a clone from beyond EOF
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
 To: david@fromorbit.com, darrick.wong@oracle.com
 Cc: sandeen@redhat.com, linux-nfs@vger.kernel.org,
         linux-cifs@vger.kernel.org, linux-unionfs@vger.kernel.org,
         linux-xfs@vger.kernel.org, linux-mm@kvack.org,
         linux-btrfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        ocfs2-devel@oss.oracle.com
-Date: Wed, 17 Oct 2018 15:44:15 -0700
-Message-ID: <153981625504.5568.2708520119290577378.stgit@magnolia>
+        Christoph Hellwig <hch@lst.de>, ocfs2-devel@oss.oracle.com
+Date: Wed, 17 Oct 2018 15:44:22 -0700
+Message-ID: <153981626223.5568.3466392756612301245.stgit@magnolia>
+In-Reply-To: <153981625504.5568.2708520119290577378.stgit@magnolia>
+References: <153981625504.5568.2708520119290577378.stgit@magnolia>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi all,
+From: Darrick J. Wong <darrick.wong@oracle.com>
 
-Dave, Eric, and I have been chasing a stale data exposure bug in the XFS
-reflink implementation, and tracked it down to reflink forgetting to do
-some of the file-extending activities that must happen for regular
-writes.
+vfs_clone_file_prep_inodes cannot return 0 if it is asked to remap from
+a zero byte file because that's what btrfs does.
 
-We then started auditing the clone, dedupe, and copyfile code and
-realized that from a file contents perspective, clonerange isn't any
-different from a regular file write.  Unfortunately, we also noticed
-that *unlike* a regular write, clonerange skips a ton of overflow
-checks, such as validating the ranges against s_maxbytes, MAX_NON_LFS,
-and RLIMIT_FSIZE.  We also observed that cloning into a file did not
-strip security privileges (suid, capabilities) like a regular write
-would.  I also noticed that xfs and ocfs2 need to dump the page cache
-before remapping blocks, not after.
+Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+---
+ fs/read_write.c |    3 ---
+ 1 file changed, 3 deletions(-)
 
-In fixing the range checking problems I also realized that both dedupe
-and copyfile tell userspace how much of the requested operation was
-acted upon.  Since the range validation can shorten a clone request (or
-we can ENOSPC midway through), we might as well plumb the short
-operation reporting back through the VFS indirection code to userspace.
-I added a few more cleanups to the xfs code per reviewer suggestions.
 
-So, here's the whole giant pile of patches[1] that fix all the problems.
-This branch is against current upstream (4.19-rc8).  The patch
-"generic: test reflink side effects" recently sent to fstests exercises
-the fixes in this series.  Tests are in [2].
-
---D
-
-[1] https://git.kernel.org/pub/scm/linux/kernel/git/djwong/xfs-linux.git/log/?h=djwong-devel
-[2] https://git.kernel.org/pub/scm/linux/kernel/git/djwong/xfstests-dev.git/log/?h=djwong-devel
+diff --git a/fs/read_write.c b/fs/read_write.c
+index 8a2737f0d61d..260797b01851 100644
+--- a/fs/read_write.c
++++ b/fs/read_write.c
+@@ -1740,10 +1740,7 @@ int vfs_clone_file_prep_inodes(struct inode *inode_in, loff_t pos_in,
+ 	if (!S_ISREG(inode_in->i_mode) || !S_ISREG(inode_out->i_mode))
+ 		return -EINVAL;
+ 
+-	/* Are we going all the way to the end? */
+ 	isize = i_size_read(inode_in);
+-	if (isize == 0)
+-		return 0;
+ 
+ 	/* Zero length dedupe exits immediately; reflink goes to EOF. */
+ 	if (*len == 0) {
