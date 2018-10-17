@@ -1,54 +1,53 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:41150 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1728095AbeJRCfh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 17 Oct 2018 22:35:37 -0400
-From: "Benjamin Coddington" <bcodding@redhat.com>
-To: "Trond Myklebust" <trondmy@hammerspace.com>
-Cc: anna.schumaker@netapp.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 2/2] nfs: Fix a missed page unlock after pg_doio()
-Date: Wed, 17 Oct 2018 14:38:38 -0400
-Message-ID: <96415678-FC6B-4821-A1F3-50C00D55DE6E@redhat.com>
-In-Reply-To: <505bf79503b80ffa16740c4d5fb40732f4d790b9.camel@hammerspace.com>
-References: <da793f7920f4d263d4a4f47f7f524f3c1eaf59b4.1539792123.git.bcodding@redhat.com>
- <63d8e14cfc732a5224bfd7ecb662f2da4d708ad0.1539792123.git.bcodding@redhat.com>
- <505bf79503b80ffa16740c4d5fb40732f4d790b9.camel@hammerspace.com>
+Received: from userp2120.oracle.com ([156.151.31.85]:54406 "EHLO
+        userp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727175AbeJRGmO (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Oct 2018 02:42:14 -0400
+Subject: [PATCH v6 00/29] fs: fixes for serious clone/dedupe problems
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+To: david@fromorbit.com, darrick.wong@oracle.com
+Cc: sandeen@redhat.com, linux-nfs@vger.kernel.org,
+        linux-cifs@vger.kernel.org, linux-unionfs@vger.kernel.org,
+        linux-xfs@vger.kernel.org, linux-mm@kvack.org,
+        linux-btrfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        ocfs2-devel@oss.oracle.com
+Date: Wed, 17 Oct 2018 15:44:15 -0700
+Message-ID: <153981625504.5568.2708520119290577378.stgit@magnolia>
 MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 17 Oct 2018, at 13:34, Trond Myklebust wrote:
+Hi all,
 
-> On Wed, 2018-10-17 at 12:05 -0400, Benjamin Coddington wrote:
->> @@ -1245,7 +1246,9 @@ void nfs_pageio_complete(struct
->> nfs_pageio_descriptor *desc)
->>  	for (midx = 0; midx < desc->pg_mirror_count; midx++)
->>  		nfs_pageio_complete_mirror(desc, midx);
->>
->> -	if (desc->pg_ops->pg_cleanup)
->> +	if (desc->pg_error < 0)
->> +		nfs_pageio_error_cleanup(desc);
->> +	else if (desc->pg_ops->pg_cleanup)
->>  		desc->pg_ops->pg_cleanup(desc);
->
-> Nice catch, but shouldn't we be calling both nfs_pageio_error_cleanup()
-> and pg_cleanup()? The former would appear to be cleaning up the page
-> stuff, while the latter is mainly cleaning up the layout.
+Dave, Eric, and I have been chasing a stale data exposure bug in the XFS
+reflink implementation, and tracked it down to reflink forgetting to do
+some of the file-extending activities that must happen for regular
+writes.
 
-Ah, yes .. I got pg_cleanup mixed up with pg_completion_ops->completion.
-Hmm, pg_cleanup seems unnecessary at the moment.  They all point to
-pnfs_generic_pg_cleanup.
+We then started auditing the clone, dedupe, and copyfile code and
+realized that from a file contents perspective, clonerange isn't any
+different from a regular file write.  Unfortunately, we also noticed
+that *unlike* a regular write, clonerange skips a ton of overflow
+checks, such as validating the ranges against s_maxbytes, MAX_NON_LFS,
+and RLIMIT_FSIZE.  We also observed that cloning into a file did not
+strip security privileges (suid, capabilities) like a regular write
+would.  I also noticed that xfs and ocfs2 need to dump the page cache
+before remapping blocks, not after.
 
-I'll send a v2 after testing with some pNFS..
+In fixing the range checking problems I also realized that both dedupe
+and copyfile tell userspace how much of the requested operation was
+acted upon.  Since the range validation can shorten a clone request (or
+we can ENOSPC midway through), we might as well plumb the short
+operation reporting back through the VFS indirection code to userspace.
+I added a few more cleanups to the xfs code per reviewer suggestions.
 
->
->>  	nfs_pageio_cleanup_mirroring(desc);
->>  }
->
-> Should this perhaps be a stable fix?
+So, here's the whole giant pile of patches[1] that fix all the problems.
+This branch is against current upstream (4.19-rc8).  The patch
+"generic: test reflink side effects" recently sent to fstests exercises
+the fixes in this series.  Tests are in [2].
 
-There's a lot of churn in there so I gave up looking for a Fixes: tag.  I'll
-take another look and see if I can figure out how far back to go.
+--D
 
-Thanks for the look,
-Ben
+[1] https://git.kernel.org/pub/scm/linux/kernel/git/djwong/xfs-linux.git/log/?h=djwong-devel
+[2] https://git.kernel.org/pub/scm/linux/kernel/git/djwong/xfstests-dev.git/log/?h=djwong-devel
