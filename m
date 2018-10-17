@@ -1,36 +1,25 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([198.137.202.133]:48674 "EHLO
-        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726112AbeJQQe7 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Oct 2018 12:34:59 -0400
-Date: Wed, 17 Oct 2018 01:40:20 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
-Cc: david@fromorbit.com, sandeen@redhat.com, linux-nfs@vger.kernel.org,
-        linux-cifs@vger.kernel.org, linux-unionfs@vger.kernel.org,
-        linux-xfs@vger.kernel.org, linux-mm@kvack.org,
-        linux-btrfs@vger.kernel.org, Dave Chinner <dchinner@redhat.com>,
-        linux-fsdevel@vger.kernel.org, ocfs2-devel@oss.oracle.com
-Subject: Re: [PATCH 26/26] xfs: remove redundant remap partial EOF block
- checks
-Message-ID: <20181017084020.GJ16896@infradead.org>
-References: <153965939489.1256.7400115244528045860.stgit@magnolia>
- <153966006214.3607.15131077363912605792.stgit@magnolia>
+Received: from mail.octours.com.ec ([138.122.109.190]:56568 "EHLO
+        octours.com.ec" rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org
+        with ESMTP id S1727186AbeJQVsk (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Oct 2018 17:48:40 -0400
+Content-Type: text/plain; charset="iso-8859-1"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <153966006214.3607.15131077363912605792.stgit@magnolia>
+Subject: my subject
+To: Recipients <test@comstar.ru>
+From: test@comstar.ru
+Date: Wed, 17 Oct 2018 04:28:34 -0700
+Reply-To: peterwong20177@qq.com
+Message-Id: <20181017035458.19D01E151391@octours.com.ec>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Oct 15, 2018 at 08:21:02PM -0700, Darrick J. Wong wrote:
-> From: Darrick J. Wong <darrick.wong@oracle.com>
-> 
-> Now that we've moved the partial EOF block checks to the VFS helpers, we
-> can remove the redundant functionality from XFS.
-> 
-> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
-> Reviewed-by: Dave Chinner <dchinner@redhat.com>
+I am Peter Wong director of operations, Hong Kong and Shanghai Banking
+Corporation Limited Hong Kong. I have a very confidential business
+proposition involving transfer of $18.350.000.00 that will be of great
+benefit for both of us. Reply for more details as regards this
+transaction
 
-Looks fine,
-
-Reviewed-by: Christoph Hellwig <hch@lst.de>
+Best Regards
+Peter Wong
+ec
