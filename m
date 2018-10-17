@@ -1,9 +1,10 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp2130.oracle.com ([156.151.31.86]:38174 "EHLO
-        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725918AbeJRGn5 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Oct 2018 02:43:57 -0400
-Subject: [PATCH 14/29] vfs: plumb remap flags through the vfs clone functions
+Received: from aserp2120.oracle.com ([141.146.126.78]:45618 "EHLO
+        aserp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725918AbeJRGoL (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Oct 2018 02:44:11 -0400
+Subject: [PATCH 16/29] vfs: enable remap callers that can handle short
+ operations
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
 To: david@fromorbit.com, darrick.wong@oracle.com
 Cc: sandeen@redhat.com, linux-nfs@vger.kernel.org,
@@ -11,8 +12,8 @@ Cc: sandeen@redhat.com, linux-nfs@vger.kernel.org,
         linux-unionfs@vger.kernel.org, linux-xfs@vger.kernel.org,
         linux-mm@kvack.org, linux-btrfs@vger.kernel.org,
         linux-fsdevel@vger.kernel.org, ocfs2-devel@oss.oracle.com
-Date: Wed, 17 Oct 2018 15:45:51 -0700
-Message-ID: <153981635183.5568.14122129836747881883.stgit@magnolia>
+Date: Wed, 17 Oct 2018 15:46:12 -0700
+Message-ID: <153981637217.5568.7500888859511338974.stgit@magnolia>
 In-Reply-To: <153981625504.5568.2708520119290577378.stgit@magnolia>
 References: <153981625504.5568.2708520119290577378.stgit@magnolia>
 MIME-Version: 1.0
@@ -22,145 +23,146 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 From: Darrick J. Wong <darrick.wong@oracle.com>
 
-Plumb a remap_flags argument through the {do,vfs}_clone_file_range
-functions so that clone can take advantage of it.
+Plumb in a remap flag that enables the filesystem remap handler to
+shorten remapping requests for callers that can handle it.  Now
+copy_file_range can report partial success (in case we run up against
+alignment problems, resource limits, etc.).
+
+We also enable CAN_SHORTEN for fideduperange to maintain existing
+userspace-visible behavior where xfs/btrfs shorten the dedupe range to
+avoid stale post-eof data exposure.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 Reviewed-by: Amir Goldstein <amir73il@gmail.com>
 ---
- fs/ioctl.c             |    2 +-
- fs/nfsd/vfs.c          |    2 +-
- fs/overlayfs/copy_up.c |    2 +-
- fs/overlayfs/file.c    |    6 +++---
- fs/read_write.c        |   13 +++++++++----
- include/linux/fs.h     |    4 ++--
- 6 files changed, 17 insertions(+), 12 deletions(-)
+ fs/read_write.c    |   28 ++++++++++++++++++++--------
+ include/linux/fs.h |    4 +++-
+ mm/filemap.c       |   11 +++++++----
+ 3 files changed, 30 insertions(+), 13 deletions(-)
 
 
-diff --git a/fs/ioctl.c b/fs/ioctl.c
-index 72537b68c272..505275ec5596 100644
---- a/fs/ioctl.c
-+++ b/fs/ioctl.c
-@@ -232,7 +232,7 @@ static long ioctl_file_clone(struct file *dst_file, unsigned long srcfd,
- 	if (src_file.file->f_path.mnt != dst_file->f_path.mnt)
- 		goto fdput;
- 	cloned = vfs_clone_file_range(src_file.file, off, dst_file, destoff,
--				      olen);
-+				      olen, 0);
- 	if (cloned < 0)
- 		ret = cloned;
- 	else if (olen && cloned != olen)
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index ac6cb6101cbe..726fc5b2b27a 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -543,7 +543,7 @@ __be32 nfsd4_clone_file_range(struct file *src, u64 src_pos, struct file *dst,
- {
- 	loff_t cloned;
- 
--	cloned = vfs_clone_file_range(src, src_pos, dst, dst_pos, count);
-+	cloned = vfs_clone_file_range(src, src_pos, dst, dst_pos, count, 0);
- 	if (count && cloned != count)
- 		cloned = -EINVAL;
- 	return nfserrno(cloned < 0 ? cloned : 0);
-diff --git a/fs/overlayfs/copy_up.c b/fs/overlayfs/copy_up.c
-index 8750b7235516..5f82fece64a0 100644
---- a/fs/overlayfs/copy_up.c
-+++ b/fs/overlayfs/copy_up.c
-@@ -142,7 +142,7 @@ static int ovl_copy_up_data(struct path *old, struct path *new, loff_t len)
- 	}
- 
- 	/* Try to use clone_file_range to clone up within the same fs */
--	cloned = do_clone_file_range(old_file, 0, new_file, 0, len);
-+	cloned = do_clone_file_range(old_file, 0, new_file, 0, len, 0);
- 	if (cloned == len)
- 		goto out;
- 	/* Couldn't clone, so now we try to copy the data */
-diff --git a/fs/overlayfs/file.c b/fs/overlayfs/file.c
-index 6c3fec6168e9..0393815c8971 100644
---- a/fs/overlayfs/file.c
-+++ b/fs/overlayfs/file.c
-@@ -462,7 +462,7 @@ static loff_t ovl_copyfile(struct file *file_in, loff_t pos_in,
- 
- 	case OVL_CLONE:
- 		ret = vfs_clone_file_range(real_in.file, pos_in,
--					   real_out.file, pos_out, len);
-+					   real_out.file, pos_out, len, flags);
- 		break;
- 
- 	case OVL_DEDUPE:
-@@ -512,8 +512,8 @@ static loff_t ovl_remap_file_range(struct file *file_in, loff_t pos_in,
- 	     !ovl_inode_upper(file_inode(file_out))))
- 		return -EPERM;
- 
--	return ovl_copyfile(file_in, pos_in, file_out, pos_out, len, 0,
--			    op);
-+	return ovl_copyfile(file_in, pos_in, file_out, pos_out, len,
-+			    remap_flags, op);
- }
- 
- const struct file_operations ovl_file_operations = {
 diff --git a/fs/read_write.c b/fs/read_write.c
-index 356641afa487..0d1ac1b9bc22 100644
+index ea30666013b0..c0bcc1a20650 100644
 --- a/fs/read_write.c
 +++ b/fs/read_write.c
-@@ -1848,12 +1848,15 @@ int generic_remap_file_range_prep(struct file *file_in, loff_t pos_in,
- EXPORT_SYMBOL(generic_remap_file_range_prep);
+@@ -1593,7 +1593,8 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
  
- loff_t do_clone_file_range(struct file *file_in, loff_t pos_in,
--			   struct file *file_out, loff_t pos_out, loff_t len)
-+			   struct file *file_out, loff_t pos_out,
-+			   loff_t len, unsigned int remap_flags)
+ 		cloned = file_in->f_op->remap_file_range(file_in, pos_in,
+ 				file_out, pos_out,
+-				min_t(loff_t, MAX_RW_COUNT, len), 0);
++				min_t(loff_t, MAX_RW_COUNT, len),
++				REMAP_FILE_CAN_SHORTEN);
+ 		if (cloned > 0) {
+ 			ret = cloned;
+ 			goto done;
+@@ -1721,6 +1722,8 @@ static int remap_verify_area(struct file *file, loff_t pos, loff_t len,
+  * can't meaningfully compare post-EOF contents.
+  *
+  * For clone we only link a partial EOF block above the destination file's EOF.
++ *
++ * Shorten the request if possible.
+  */
+ static int generic_remap_check_len(struct inode *inode_in,
+ 				   struct inode *inode_out,
+@@ -1729,16 +1732,24 @@ static int generic_remap_check_len(struct inode *inode_in,
+ 				   unsigned int remap_flags)
  {
- 	struct inode *inode_in = file_inode(file_in);
- 	struct inode *inode_out = file_inode(file_out);
- 	loff_t ret;
+ 	u64 blkmask = i_blocksize(inode_in) - 1;
++	loff_t new_len = *len;
  
-+	WARN_ON_ONCE(remap_flags);
+ 	if ((*len & blkmask) == 0)
+ 		return 0;
+ 
+-	if (remap_flags & REMAP_FILE_DEDUP)
+-		*len &= ~blkmask;
+-	else if (pos_out + *len < i_size_read(inode_out))
+-		return -EINVAL;
++	if ((remap_flags & REMAP_FILE_DEDUP) ||
++	    pos_out + *len < i_size_read(inode_out))
++		new_len &= ~blkmask;
+ 
+-	return 0;
++	if (new_len == *len)
++		return 0;
 +
- 	if (S_ISDIR(inode_in->i_mode) || S_ISDIR(inode_out->i_mode))
- 		return -EISDIR;
- 	if (!S_ISREG(inode_in->i_mode) || !S_ISREG(inode_out->i_mode))
-@@ -1884,7 +1887,7 @@ loff_t do_clone_file_range(struct file *file_in, loff_t pos_in,
- 		return ret;
++	if (remap_flags & REMAP_FILE_CAN_SHORTEN) {
++		*len = new_len;
++		return 0;
++	}
++
++	return (remap_flags & REMAP_FILE_DEDUP) ? -EBADE : -EINVAL;
+ }
  
- 	ret = file_in->f_op->remap_file_range(file_in, pos_in,
--			file_out, pos_out, len, 0);
-+			file_out, pos_out, len, remap_flags);
- 	if (ret < 0)
- 		return ret;
- 
-@@ -1895,12 +1898,14 @@ loff_t do_clone_file_range(struct file *file_in, loff_t pos_in,
- EXPORT_SYMBOL(do_clone_file_range);
- 
- loff_t vfs_clone_file_range(struct file *file_in, loff_t pos_in,
--			    struct file *file_out, loff_t pos_out, loff_t len)
-+			    struct file *file_out, loff_t pos_out,
-+			    loff_t len, unsigned int remap_flags)
+ /*
+@@ -2014,7 +2025,8 @@ loff_t vfs_dedupe_file_range_one(struct file *src_file, loff_t src_pos,
  {
  	loff_t ret;
  
- 	file_start_write(file_out);
--	ret = do_clone_file_range(file_in, pos_in, file_out, pos_out, len);
-+	ret = do_clone_file_range(file_in, pos_in, file_out, pos_out, len,
-+				  remap_flags);
- 	file_end_write(file_out);
+-	WARN_ON_ONCE(remap_flags & ~(REMAP_FILE_DEDUP));
++	WARN_ON_ONCE(remap_flags & ~(REMAP_FILE_DEDUP |
++				     REMAP_FILE_CAN_SHORTEN));
  
- 	return ret;
+ 	ret = mnt_want_write_file(dst_file);
+ 	if (ret)
+@@ -2115,7 +2127,7 @@ int vfs_dedupe_file_range(struct file *file, struct file_dedupe_range *same)
+ 
+ 		deduped = vfs_dedupe_file_range_one(file, off, dst_file,
+ 						    info->dest_offset, len,
+-						    0);
++						    REMAP_FILE_CAN_SHORTEN);
+ 		if (deduped == -EBADE)
+ 			info->status = FILE_DEDUPE_RANGE_DIFFERS;
+ 		else if (deduped < 0)
 diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 80485efad457..bc78ad7e21b2 100644
+index ea2c2f673ecb..0b750e3f8f20 100644
 --- a/include/linux/fs.h
 +++ b/include/linux/fs.h
-@@ -1843,10 +1843,10 @@ extern int generic_remap_file_range_prep(struct file *file_in, loff_t pos_in,
- 					 unsigned int remap_flags);
- extern loff_t do_clone_file_range(struct file *file_in, loff_t pos_in,
- 				  struct file *file_out, loff_t pos_out,
--				  loff_t len);
-+				  loff_t len, unsigned int remap_flags);
- extern loff_t vfs_clone_file_range(struct file *file_in, loff_t pos_in,
- 				   struct file *file_out, loff_t pos_out,
--				   loff_t len);
-+				   loff_t len, unsigned int remap_flags);
- extern int vfs_dedupe_file_range_compare(struct inode *src, loff_t srcoff,
- 					 struct inode *dest, loff_t destoff,
- 					 loff_t len, bool *is_same);
+@@ -1726,14 +1726,16 @@ struct block_device_operations;
+  * If it is called with len == 0 that means "remap to end of source file".
+  *
+  * REMAP_FILE_DEDUP: only remap if contents identical (i.e. deduplicate)
++ * REMAP_FILE_CAN_SHORTEN: caller can handle a shortened request
+  */
+ #define REMAP_FILE_DEDUP		(1 << 0)
++#define REMAP_FILE_CAN_SHORTEN		(1 << 1)
+ 
+ /*
+  * These flags should be taken care of by the implementation (possibly using
+  * vfs helpers) but can be ignored by the implementation.
+  */
+-#define REMAP_FILE_ADVISORY		(0)
++#define REMAP_FILE_ADVISORY		(REMAP_FILE_CAN_SHORTEN)
+ 
+ struct iov_iter;
+ 
+diff --git a/mm/filemap.c b/mm/filemap.c
+index 1e93269efafe..0731869541ce 100644
+--- a/mm/filemap.c
++++ b/mm/filemap.c
+@@ -3052,8 +3052,7 @@ int generic_remap_checks(struct file *file_in, loff_t pos_in,
+ 		bcount = ALIGN(size_in, bs) - pos_in;
+ 	} else {
+ 		if (!IS_ALIGNED(count, bs))
+-			return -EINVAL;
+-
++			count = ALIGN_DOWN(count, bs);
+ 		bcount = count;
+ 	}
+ 
+@@ -3063,10 +3062,14 @@ int generic_remap_checks(struct file *file_in, loff_t pos_in,
+ 	    pos_out < pos_in + bcount)
+ 		return -EINVAL;
+ 
+-	/* For now we don't support changing the length. */
+-	if (*req_count != count)
++	/*
++	 * We shortened the request but the caller can't deal with that, so
++	 * bounce the request back to userspace.
++	 */
++	if (*req_count != count && !(remap_flags & REMAP_FILE_CAN_SHORTEN))
+ 		return -EINVAL;
+ 
++	*req_count = count;
+ 	return 0;
+ }
+ 
