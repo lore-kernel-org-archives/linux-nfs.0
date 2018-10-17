@@ -1,69 +1,55 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp2130.oracle.com ([156.151.31.86]:54272 "EHLO
-        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727061AbeJRAci (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Oct 2018 20:32:38 -0400
-Date: Wed, 17 Oct 2018 09:35:37 -0700
+Received: from userp2120.oracle.com ([156.151.31.85]:55596 "EHLO
+        userp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727175AbeJRAhb (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Oct 2018 20:37:31 -0400
+Date: Wed, 17 Oct 2018 09:40:39 -0700
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
 To: Christoph Hellwig <hch@infradead.org>
 Cc: david@fromorbit.com, sandeen@redhat.com, linux-nfs@vger.kernel.org,
-        linux-cifs@vger.kernel.org, Amir Goldstein <amir73il@gmail.com>,
-        linux-unionfs@vger.kernel.org, linux-xfs@vger.kernel.org,
-        linux-mm@kvack.org, linux-btrfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, ocfs2-devel@oss.oracle.com
-Subject: Re: [PATCH 17/26] vfs: enable remap callers that can handle short
- operations
-Message-ID: <20181017163537.GO28243@magnolia>
+        linux-cifs@vger.kernel.org, linux-unionfs@vger.kernel.org,
+        linux-xfs@vger.kernel.org, linux-mm@kvack.org,
+        linux-btrfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        ocfs2-devel@oss.oracle.com
+Subject: Re: [PATCH 25/26] xfs: support returning partial reflink results
+Message-ID: <20181017164039.GP28243@magnolia>
 References: <153965939489.1256.7400115244528045860.stgit@magnolia>
- <153965999426.3607.3221368918901209000.stgit@magnolia>
- <20181017083652.GF16896@infradead.org>
+ <153966005536.3607.787445581785795364.stgit@magnolia>
+ <20181017084002.GI16896@infradead.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20181017083652.GF16896@infradead.org>
+In-Reply-To: <20181017084002.GI16896@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Oct 17, 2018 at 01:36:52AM -0700, Christoph Hellwig wrote:
-> >  /* Update inode timestamps and remove security privileges when remapping. */
-> > @@ -2023,7 +2034,8 @@ loff_t vfs_dedupe_file_range_one(struct file *src_file, loff_t src_pos,
-> >  {
-> >  	loff_t ret;
+On Wed, Oct 17, 2018 at 01:40:02AM -0700, Christoph Hellwig wrote:
+> > @@ -1415,11 +1419,17 @@ xfs_reflink_remap_range(
 > >  
-> > -	WARN_ON_ONCE(remap_flags & ~(REMAP_FILE_DEDUP));
-> > +	WARN_ON_ONCE(remap_flags & ~(REMAP_FILE_DEDUP |
-> > +				     REMAP_FILE_CAN_SHORTEN));
+> >  	trace_xfs_reflink_remap_range(src, pos_in, len, dest, pos_out);
+> >  
+> > +	if (len == 0) {
+> > +		ret = 0;
+> > +		goto out_unlock;
+> > +	}
+> > +
 > 
-> I guess this is where you could actually use REMAP_FILE_VALID_FLAGS..
+> As pointed out last time this check is superflous, right above we have
+> this check:
 > 
-> >  /* REMAP_FILE flags taken care of by the vfs. */
-> > -#define REMAP_FILE_ADVISORY		(0)
-> > +#define REMAP_FILE_ADVISORY		(REMAP_FILE_CAN_SHORTEN)
+> 	if (ret < 0 || len == 0)
+> 		return ret;
+
+Oops, sorry I missed that, will fix now.
+
+> >  	ret = xfs_reflink_remap_blocks(src, sfsbno, dest, dfsbno, fsblen,
+> > -			pos_out + len);
+> > +			&remappedfsb, pos_out + len);
+> > +	remapped_bytes = min_t(loff_t, len, XFS_FSB_TO_B(mp, remappedfsb));
 > 
-> And btw, they are not 'taken care of by the VFS', they need to be
-> taken care of by the fs (possibly using helpers) to take affect,
-> but they can be safely ignored.
+> I still think returning the bytes from the function would be saner,
+> but maybe that's just me.
 
-Ok, I'll update the comment.
-
-> > +		if (!IS_ALIGNED(count, bs)) {
-> > +			if (remap_flags & REMAP_FILE_CAN_SHORTEN)
-> > +				count = ALIGN_DOWN(count, bs);
-> > +			else
-> > +				return -EINVAL;
-> 
-> 			if (!(remap_flags & REMAP_FILE_CAN_SHORTEN))
-> 				return -EINVAL;
-> 			count = ALIGN_DOWN(count, bs);
-
-Seeing as we return EINVAL on shortened count and !CAN_SHORTEN below
-this, I think this can be simplified further:
-
-	if (pos_in + count == size_in) {
-		bcount = ALIGN(size_in, bs) - pos_in;
-	} else {
-		if (!IS_ALIGNED(count, bs))
-			count = ALIGN_DOWN(count, bs);
-		bcount = count;
-	}
+Hmmm, this call site is getting messy; I'll tack on another patch to
+clean that up too.
 
 --D
