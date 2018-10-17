@@ -1,55 +1,64 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp2120.oracle.com ([156.151.31.85]:55596 "EHLO
-        userp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727175AbeJRAhb (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Oct 2018 20:37:31 -0400
-Date: Wed, 17 Oct 2018 09:40:39 -0700
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: david@fromorbit.com, sandeen@redhat.com, linux-nfs@vger.kernel.org,
-        linux-cifs@vger.kernel.org, linux-unionfs@vger.kernel.org,
-        linux-xfs@vger.kernel.org, linux-mm@kvack.org,
-        linux-btrfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        ocfs2-devel@oss.oracle.com
-Subject: Re: [PATCH 25/26] xfs: support returning partial reflink results
-Message-ID: <20181017164039.GP28243@magnolia>
-References: <153965939489.1256.7400115244528045860.stgit@magnolia>
- <153966005536.3607.787445581785795364.stgit@magnolia>
- <20181017084002.GI16896@infradead.org>
+Return-Path: <trondmy@hammerspace.com>
+From: Trond Myklebust <trondmy@hammerspace.com>
+To: "bcodding@redhat.com" <bcodding@redhat.com>, "anna.schumaker@netapp.com"
+	<anna.schumaker@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 2/2] nfs: Fix a missed page unlock after pg_doio()
+Date: Wed, 17 Oct 2018 17:34:48 +0000
+Message-ID: <505bf79503b80ffa16740c4d5fb40732f4d790b9.camel@hammerspace.com>
+References: 
+ <da793f7920f4d263d4a4f47f7f524f3c1eaf59b4.1539792123.git.bcodding@redhat.com>
+	 <63d8e14cfc732a5224bfd7ecb662f2da4d708ad0.1539792123.git.bcodding@redhat.com>
+In-Reply-To: 
+ <63d8e14cfc732a5224bfd7ecb662f2da4d708ad0.1539792123.git.bcodding@redhat.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20181017084002.GI16896@infradead.org>
-Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Oct 17, 2018 at 01:40:02AM -0700, Christoph Hellwig wrote:
-> > @@ -1415,11 +1419,17 @@ xfs_reflink_remap_range(
-> >  
-> >  	trace_xfs_reflink_remap_range(src, pos_in, len, dest, pos_out);
-> >  
-> > +	if (len == 0) {
-> > +		ret = 0;
-> > +		goto out_unlock;
-> > +	}
-> > +
-> 
-> As pointed out last time this check is superflous, right above we have
-> this check:
-> 
-> 	if (ret < 0 || len == 0)
-> 		return ret;
-
-Oops, sorry I missed that, will fix now.
-
-> >  	ret = xfs_reflink_remap_blocks(src, sfsbno, dest, dfsbno, fsblen,
-> > -			pos_out + len);
-> > +			&remappedfsb, pos_out + len);
-> > +	remapped_bytes = min_t(loff_t, len, XFS_FSB_TO_B(mp, remappedfsb));
-> 
-> I still think returning the bytes from the function would be saner,
-> but maybe that's just me.
-
-Hmmm, this call site is getting messy; I'll tack on another patch to
-clean that up too.
-
---D
+T24gV2VkLCAyMDE4LTEwLTE3IGF0IDEyOjA1IC0wNDAwLCBCZW5qYW1pbiBDb2RkaW5ndG9uIHdy
+b3RlOg0KPiBXZSBtdXN0IGNoZWNrIHBnX2Vycm9yIGFuZCBjYWxsIGVycm9yX2NsZWFudXAgYWZ0
+ZXIgYW55IGNhbGwgdG8NCj4gcGdfZG9pby4NCj4gQ3VycmVudGx5LCB3ZSBhcmUgc2tpcHBpbmcg
+dGhlIHVubG9jayBvZiBhIHBhZ2UgaWYgd2UgZW5jb3VudGVyIGFuDQo+IGVycm9yIGluDQo+IG5m
+c19wYWdlaW9fY29tcGxldGUoKSBiZWZvcmUgaGFuZGluZyBvZmYgdGhlIHdvcmsgdG8gdGhlIFJQ
+QyBsYXllci4NCj4gDQo+IFNpZ25lZC1vZmYtYnk6IEJlbmphbWluIENvZGRpbmd0b24gPGJjb2Rk
+aW5nQHJlZGhhdC5jb20+DQo+IC0tLQ0KPiAgZnMvbmZzL3BhZ2VsaXN0LmMgfCAzMyArKysrKysr
+KysrKysrKysrKystLS0tLS0tLS0tLS0tLS0NCj4gIDEgZmlsZSBjaGFuZ2VkLCAxOCBpbnNlcnRp
+b25zKCspLCAxNSBkZWxldGlvbnMoLSkNCj4gDQo+IGRpZmYgLS1naXQgYS9mcy9uZnMvcGFnZWxp
+c3QuYyBiL2ZzL25mcy9wYWdlbGlzdC5jDQo+IGluZGV4IGNkM2JjNDFhYjY4ZC4uNTRjMmJmYzQ1
+YTU3IDEwMDY0NA0KPiAtLS0gYS9mcy9uZnMvcGFnZWxpc3QuYw0KPiArKysgYi9mcy9uZnMvcGFn
+ZWxpc3QuYw0KPiBAQCAtMTExMCw2ICsxMTEwLDIwIEBAIHN0YXRpYyBpbnQNCj4gbmZzX3BhZ2Vp
+b19hZGRfcmVxdWVzdF9taXJyb3Ioc3RydWN0IG5mc19wYWdlaW9fZGVzY3JpcHRvciAqZGVzYywN
+Cj4gIAlyZXR1cm4gcmV0Ow0KPiAgfQ0KPiAgDQo+ICtzdGF0aWMgdm9pZCBuZnNfcGFnZWlvX2Vy
+cm9yX2NsZWFudXAoc3RydWN0IG5mc19wYWdlaW9fZGVzY3JpcHRvcg0KPiAqZGVzYykNCj4gK3sN
+Cj4gKwl1MzIgbWlkeDsNCj4gKwlzdHJ1Y3QgbmZzX3BnaW9fbWlycm9yICptaXJyb3I7DQo+ICsN
+Cj4gKwlpZiAoIWRlc2MtPnBnX2Vycm9yKQ0KPiArCQlyZXR1cm47DQo+ICsNCj4gKwlmb3IgKG1p
+ZHggPSAwOyBtaWR4IDwgZGVzYy0+cGdfbWlycm9yX2NvdW50OyBtaWR4KyspIHsNCj4gKwkJbWly
+cm9yID0gJmRlc2MtPnBnX21pcnJvcnNbbWlkeF07DQo+ICsJCWRlc2MtPnBnX2NvbXBsZXRpb25f
+b3BzLT5lcnJvcl9jbGVhbnVwKCZtaXJyb3ItDQo+ID5wZ19saXN0KTsNCj4gKwl9DQo+ICt9DQo+
+ICsNCj4gIGludCBuZnNfcGFnZWlvX2FkZF9yZXF1ZXN0KHN0cnVjdCBuZnNfcGFnZWlvX2Rlc2Ny
+aXB0b3IgKmRlc2MsDQo+ICAJCQkgICBzdHJ1Y3QgbmZzX3BhZ2UgKnJlcSkNCj4gIHsNCj4gQEAg
+LTExNjAsMjAgKzExNzQsNyBAQCBpbnQgbmZzX3BhZ2Vpb19hZGRfcmVxdWVzdChzdHJ1Y3QNCj4g
+bmZzX3BhZ2Vpb19kZXNjcmlwdG9yICpkZXNjLA0KPiAgCXJldHVybiAxOw0KPiAgDQo+ICBvdXRf
+ZmFpbGVkOg0KPiAtCS8qDQo+IC0JICogV2UgbWlnaHQgaGF2ZSBmYWlsZWQgYmVmb3JlIHNlbmRp
+bmcgYW55IHJlcXMgb3ZlciB3aXJlLg0KPiAtCSAqIENsZWFuIHVwIHJlc3Qgb2YgdGhlIHJlcXMg
+aW4gbWlycm9yIHBnX2xpc3QuDQo+IC0JICovDQo+IC0JaWYgKGRlc2MtPnBnX2Vycm9yKSB7DQo+
+IC0JCXN0cnVjdCBuZnNfcGdpb19taXJyb3IgKm1pcnJvcjsNCj4gLQkJdm9pZCAoKmZ1bmMpKHN0
+cnVjdCBsaXN0X2hlYWQgKik7DQo+IC0NCj4gLQkJZnVuYyA9IGRlc2MtPnBnX2NvbXBsZXRpb25f
+b3BzLT5lcnJvcl9jbGVhbnVwOw0KPiAtCQlmb3IgKG1pZHggPSAwOyBtaWR4IDwgZGVzYy0+cGdf
+bWlycm9yX2NvdW50OyBtaWR4KyspIHsNCj4gLQkJCW1pcnJvciA9ICZkZXNjLT5wZ19taXJyb3Jz
+W21pZHhdOw0KPiAtCQkJZnVuYygmbWlycm9yLT5wZ19saXN0KTsNCj4gLQkJfQ0KPiAtCX0NCj4g
+KwluZnNfcGFnZWlvX2Vycm9yX2NsZWFudXAoZGVzYyk7DQo+ICAJcmV0dXJuIDA7DQo+ICB9DQo+
+ICANCj4gQEAgLTEyNDUsNyArMTI0Niw5IEBAIHZvaWQgbmZzX3BhZ2Vpb19jb21wbGV0ZShzdHJ1
+Y3QNCj4gbmZzX3BhZ2Vpb19kZXNjcmlwdG9yICpkZXNjKQ0KPiAgCWZvciAobWlkeCA9IDA7IG1p
+ZHggPCBkZXNjLT5wZ19taXJyb3JfY291bnQ7IG1pZHgrKykNCj4gIAkJbmZzX3BhZ2Vpb19jb21w
+bGV0ZV9taXJyb3IoZGVzYywgbWlkeCk7DQo+ICANCj4gLQlpZiAoZGVzYy0+cGdfb3BzLT5wZ19j
+bGVhbnVwKQ0KPiArCWlmIChkZXNjLT5wZ19lcnJvciA8IDApDQo+ICsJCW5mc19wYWdlaW9fZXJy
+b3JfY2xlYW51cChkZXNjKTsNCj4gKwllbHNlIGlmIChkZXNjLT5wZ19vcHMtPnBnX2NsZWFudXAp
+DQo+ICAJCWRlc2MtPnBnX29wcy0+cGdfY2xlYW51cChkZXNjKTsNCg0KTmljZSBjYXRjaCwgYnV0
+IHNob3VsZG4ndCB3ZSBiZSBjYWxsaW5nIGJvdGggbmZzX3BhZ2Vpb19lcnJvcl9jbGVhbnVwKCkN
+CmFuZCBwZ19jbGVhbnVwKCk/IFRoZSBmb3JtZXIgd291bGQgYXBwZWFyIHRvIGJlIGNsZWFuaW5n
+IHVwIHRoZSBwYWdlDQpzdHVmZiwgd2hpbGUgdGhlIGxhdHRlciBpcyBtYWlubHkgY2xlYW5pbmcg
+dXAgdGhlIGxheW91dC4NCg0KPiAgCW5mc19wYWdlaW9fY2xlYW51cF9taXJyb3JpbmcoZGVzYyk7
+DQo+ICB9DQoNClNob3VsZCB0aGlzIHBlcmhhcHMgYmUgYSBzdGFibGUgZml4Pw0KDQotLSANClRy
+b25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBIYW1tZXJzcGFjZQ0K
+dHJvbmQubXlrbGVidXN0QGhhbW1lcnNwYWNlLmNvbQ0KDQoNCg==
