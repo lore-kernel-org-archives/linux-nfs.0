@@ -1,188 +1,45 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp2130.oracle.com ([156.151.31.86]:42810 "EHLO
-        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726599AbeJSDAn (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Oct 2018 23:00:43 -0400
-Date: Thu, 18 Oct 2018 11:58:11 -0700
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-To: david@fromorbit.com
-Cc: sandeen@redhat.com, linux-nfs@vger.kernel.org,
-        linux-cifs@vger.kernel.org, Amir Goldstein <amir73il@gmail.com>,
-        linux-unionfs@vger.kernel.org, linux-xfs@vger.kernel.org,
-        linux-mm@kvack.org, linux-btrfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, ocfs2-devel@oss.oracle.com
-Subject: [PATCH v2 16/29] vfs: enable remap callers that can handle short
- operations
-Message-ID: <20181018185811.GY28243@magnolia>
-References: <153981625504.5568.2708520119290577378.stgit@magnolia>
- <153981637217.5568.7500888859511338974.stgit@magnolia>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <153981637217.5568.7500888859511338974.stgit@magnolia>
+Received: from mx1.redhat.com ([209.132.183.28]:51026 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726843AbeJSDEN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 18 Oct 2018 23:04:13 -0400
+From: Benjamin Coddington <bcodding@redhat.com>
+To: Anna Schumaker <anna.schumaker@netapp.com>,
+        Trond Myklebust <trond.myklebust@hammerspace.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 2/2 v2] nfs: remove redundant call to nfs_context_set_write_error()
+Date: Thu, 18 Oct 2018 15:01:49 -0400
+Message-Id: <0963d6fa00685c2810cd1d5996eb4853a2949057.1539889215.git.bcodding@redhat.com>
+In-Reply-To: <1da7a5e6280feaf3fe24673cbcf8138571e26fa4.1539889215.git.bcodding@redhat.com>
+References: <1da7a5e6280feaf3fe24673cbcf8138571e26fa4.1539889215.git.bcodding@redhat.com>
+In-Reply-To: <1da7a5e6280feaf3fe24673cbcf8138571e26fa4.1539889215.git.bcodding@redhat.com>
+References: <1da7a5e6280feaf3fe24673cbcf8138571e26fa4.1539889215.git.bcodding@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Darrick J. Wong <darrick.wong@oracle.com>
+We don't need to call this in the direct, read, or pnfs resend paths and
+the only other caller is the write path in nfs_page_async_flush() which
+already checks and sets the pg_error on the context.
 
-Plumb in a remap flag that enables the filesystem remap handler to
-shorten remapping requests for callers that can handle it.  Now
-copy_file_range can report partial success (in case we run up against
-alignment problems, resource limits, etc.).
-
-We also enable CAN_SHORTEN for fideduperange to maintain existing
-userspace-visible behavior where xfs/btrfs shorten the dedupe range to
-avoid stale post-eof data exposure.
-
-Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
-Reviewed-by: Amir Goldstein <amir73il@gmail.com>
+Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
 ---
- Documentation/filesystems/vfs.txt |    4 +++-
- fs/read_write.c                   |   28 ++++++++++++++++++++--------
- include/linux/fs.h                |    5 +++--
- mm/filemap.c                      |   11 +++++++----
- 4 files changed, 33 insertions(+), 15 deletions(-)
+ fs/nfs/pagelist.c | 4 ----
+ 1 file changed, 4 deletions(-)
 
-diff --git a/Documentation/filesystems/vfs.txt b/Documentation/filesystems/vfs.txt
-index 1bd2919deaca..5f71a252e2e0 100644
---- a/Documentation/filesystems/vfs.txt
-+++ b/Documentation/filesystems/vfs.txt
-@@ -970,7 +970,9 @@ otherwise noted.
- 	negative error code if errors occurred before any bytes were remapped.
- 	The remap_flags parameter accepts REMAP_FILE_* flags.  If
- 	REMAP_FILE_DEDUP is set then the implementation must only remap if the
--	requested file ranges have identical contents.
-+	requested file ranges have identical contents.  If REMAP_CAN_SHORTEN is
-+	set, the caller is ok with the implementation shortening the request
-+	length to satisfy alignment or EOF requirements (or any other reason).
+diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+index 7e6425791388..a592abb62873 100644
+--- a/fs/nfs/pagelist.c
++++ b/fs/nfs/pagelist.c
+@@ -1174,10 +1174,6 @@ int nfs_pageio_add_request(struct nfs_pageio_descriptor *desc,
+ 	return 1;
  
-   fadvise: possibly called by the fadvise64() system call.
- 
-diff --git a/fs/read_write.c b/fs/read_write.c
-index ea30666013b0..c0bcc1a20650 100644
---- a/fs/read_write.c
-+++ b/fs/read_write.c
-@@ -1593,7 +1593,8 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
- 
- 		cloned = file_in->f_op->remap_file_range(file_in, pos_in,
- 				file_out, pos_out,
--				min_t(loff_t, MAX_RW_COUNT, len), 0);
-+				min_t(loff_t, MAX_RW_COUNT, len),
-+				REMAP_FILE_CAN_SHORTEN);
- 		if (cloned > 0) {
- 			ret = cloned;
- 			goto done;
-@@ -1721,6 +1722,8 @@ static int remap_verify_area(struct file *file, loff_t pos, loff_t len,
-  * can't meaningfully compare post-EOF contents.
-  *
-  * For clone we only link a partial EOF block above the destination file's EOF.
-+ *
-+ * Shorten the request if possible.
-  */
- static int generic_remap_check_len(struct inode *inode_in,
- 				   struct inode *inode_out,
-@@ -1729,16 +1732,24 @@ static int generic_remap_check_len(struct inode *inode_in,
- 				   unsigned int remap_flags)
- {
- 	u64 blkmask = i_blocksize(inode_in) - 1;
-+	loff_t new_len = *len;
- 
- 	if ((*len & blkmask) == 0)
- 		return 0;
- 
--	if (remap_flags & REMAP_FILE_DEDUP)
--		*len &= ~blkmask;
--	else if (pos_out + *len < i_size_read(inode_out))
--		return -EINVAL;
-+	if ((remap_flags & REMAP_FILE_DEDUP) ||
-+	    pos_out + *len < i_size_read(inode_out))
-+		new_len &= ~blkmask;
- 
--	return 0;
-+	if (new_len == *len)
-+		return 0;
-+
-+	if (remap_flags & REMAP_FILE_CAN_SHORTEN) {
-+		*len = new_len;
-+		return 0;
-+	}
-+
-+	return (remap_flags & REMAP_FILE_DEDUP) ? -EBADE : -EINVAL;
- }
- 
- /*
-@@ -2014,7 +2025,8 @@ loff_t vfs_dedupe_file_range_one(struct file *src_file, loff_t src_pos,
- {
- 	loff_t ret;
- 
--	WARN_ON_ONCE(remap_flags & ~(REMAP_FILE_DEDUP));
-+	WARN_ON_ONCE(remap_flags & ~(REMAP_FILE_DEDUP |
-+				     REMAP_FILE_CAN_SHORTEN));
- 
- 	ret = mnt_want_write_file(dst_file);
- 	if (ret)
-@@ -2115,7 +2127,7 @@ int vfs_dedupe_file_range(struct file *file, struct file_dedupe_range *same)
- 
- 		deduped = vfs_dedupe_file_range_one(file, off, dst_file,
- 						    info->dest_offset, len,
--						    0);
-+						    REMAP_FILE_CAN_SHORTEN);
- 		if (deduped == -EBADE)
- 			info->status = FILE_DEDUPE_RANGE_DIFFERS;
- 		else if (deduped < 0)
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 544ab5083b48..34c22d695011 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1727,8 +1727,10 @@ struct block_device_operations;
-  * See Documentation/filesystems/vfs.txt for more details about this call.
-  *
-  * REMAP_FILE_DEDUP: only remap if contents identical (i.e. deduplicate)
-+ * REMAP_FILE_CAN_SHORTEN: caller can handle a shortened request
-  */
- #define REMAP_FILE_DEDUP		(1 << 0)
-+#define REMAP_FILE_CAN_SHORTEN		(1 << 1)
- 
- /*
-  * These flags signal that the caller is ok with altering various aspects of
-@@ -1736,9 +1738,8 @@ struct block_device_operations;
-  * implementation; the vfs remap helper functions can take advantage of them.
-  * Flags in this category exist to preserve the quirky behavior of the hoisted
-  * btrfs clone/dedupe ioctls.
-- * There are no flags yet, but subsequent commits will add some.
-  */
--#define REMAP_FILE_ADVISORY		(0)
-+#define REMAP_FILE_ADVISORY		(REMAP_FILE_CAN_SHORTEN)
- 
- struct iov_iter;
- 
-diff --git a/mm/filemap.c b/mm/filemap.c
-index 2e4dcebe7253..4b69b6a5d0bf 100644
---- a/mm/filemap.c
-+++ b/mm/filemap.c
-@@ -3045,8 +3045,7 @@ int generic_remap_checks(struct file *file_in, loff_t pos_in,
- 		bcount = ALIGN(size_in, bs) - pos_in;
- 	} else {
- 		if (!IS_ALIGNED(count, bs))
--			return -EINVAL;
--
-+			count = ALIGN_DOWN(count, bs);
- 		bcount = count;
- 	}
- 
-@@ -3056,10 +3055,14 @@ int generic_remap_checks(struct file *file_in, loff_t pos_in,
- 	    pos_out < pos_in + bcount)
- 		return -EINVAL;
- 
--	/* For now we don't support changing the length. */
--	if (*req_count != count)
-+	/*
-+	 * We shortened the request but the caller can't deal with that, so
-+	 * bounce the request back to userspace.
-+	 */
-+	if (*req_count != count && !(remap_flags & REMAP_FILE_CAN_SHORTEN))
- 		return -EINVAL;
- 
-+	*req_count = count;
+ out_failed:
+-	/* remember fatal errors */
+-	if (nfs_error_is_fatal(desc->pg_error))
+-		nfs_context_set_write_error(req->wb_context,
+-						desc->pg_error);
+ 	nfs_pageio_error_cleanup(desc);
  	return 0;
  }
- 
+-- 
+2.14.3
