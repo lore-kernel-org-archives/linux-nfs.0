@@ -1,16 +1,16 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qt1-f193.google.com ([209.85.160.193]:45461 "EHLO
-        mail-qt1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726837AbeJSXfr (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Oct 2018 19:35:47 -0400
-Received: by mail-qt1-f193.google.com with SMTP id e10-v6so38706209qtq.12
-        for <linux-nfs@vger.kernel.org>; Fri, 19 Oct 2018 08:29:12 -0700 (PDT)
+Received: from mail-qt1-f195.google.com ([209.85.160.195]:39200 "EHLO
+        mail-qt1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727050AbeJSXf6 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Oct 2018 19:35:58 -0400
+Received: by mail-qt1-f195.google.com with SMTP id e21-v6so2520742qtp.6
+        for <linux-nfs@vger.kernel.org>; Fri, 19 Oct 2018 08:29:23 -0700 (PDT)
 From: Olga Kornievskaia <olga.kornievskaia@gmail.com>
 To: bfields@redhat.com
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v1 02/13] VFS permit cross device vfs_copy_file_range
-Date: Fri, 19 Oct 2018 11:28:54 -0400
-Message-Id: <20181019152905.32418-3-olga.kornievskaia@gmail.com>
+Subject: [PATCH v1 10/13] NFSD check stateids against copy stateids
+Date: Fri, 19 Oct 2018 11:29:02 -0400
+Message-Id: <20181019152905.32418-11-olga.kornievskaia@gmail.com>
 In-Reply-To: <20181019152905.32418-1-olga.kornievskaia@gmail.com>
 References: <20181019152905.32418-1-olga.kornievskaia@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -18,89 +18,75 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 From: Olga Kornievskaia <kolga@netapp.com>
 
-Allow copy_file_range to copy between different superblocks but only
-of the same file system types. This feature was of interest to CIFS
-as well as NFS.
-
-This feature is needed by NFSv4.2 to perform file copy operation on
-the same server or file copy between different NFSv4.2 servers.
-
-If a file system's fileoperations copy_file_range operation prohibits
-cross-device copies, fall back to do_splice_direct. This would be
-needed for the NFS (destination) server side implementation of the
-file copy and currently for CIFS.
-
-Besides NFS, there is only 1 implementor of the copy_file_range FS
-operation -- CIFS. CIFS assumes incoming file descriptors are both
-CIFS but it will check if they are coming from different servers and
-return error code to fall back to do_splice_direct.
-
-NFS will allow for copies between different NFS servers.
-
-Adding to the vfs.txt documentation to explicitly warn about allowing
-for different superblocks of the same file type to be passed into the
-copy_file_range for the future users of copy_file_range method.
+Incoming stateid (used by a READ) could be a saved copy stateid.
+On first use make it active and check that the copy has started
+within the allowable lease time.
 
 Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
 ---
- Documentation/filesystems/vfs.txt |  4 +++-
- fs/read_write.c                   | 13 ++++++-------
- 2 files changed, 9 insertions(+), 8 deletions(-)
+ fs/nfsd/nfs4state.c | 43 +++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 43 insertions(+)
 
-diff --git a/Documentation/filesystems/vfs.txt b/Documentation/filesystems/vfs.txt
-index a6c6a8a..5e520de 100644
---- a/Documentation/filesystems/vfs.txt
-+++ b/Documentation/filesystems/vfs.txt
-@@ -958,7 +958,9 @@ otherwise noted.
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 7764a8b..16359de 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -5206,6 +5206,47 @@ static __be32 nfsd4_validate_stateid(struct nfs4_client *cl, stateid_t *stateid)
  
-   fallocate: called by the VFS to preallocate blocks or punch a hole.
+ 	return 0;
+ }
++/*
++ * A READ from an inter server to server COPY will have a
++ * copy stateid. Return the parent nfs4_stid.
++ */
++static __be32 _find_cpntf_state(struct nfsd_net *nn, stateid_t *st,
++		     struct nfs4_cpntf_state **cps)
++{
++	struct nfs4_cpntf_state *state = NULL;
++
++	if (st->si_opaque.so_clid.cl_id != nn->s2s_cp_cl_id)
++		return nfserr_bad_stateid;
++	spin_lock(&nn->s2s_cp_lock);
++	state = idr_find(&nn->s2s_cp_stateids, st->si_opaque.so_id);
++	spin_unlock(&nn->s2s_cp_lock);
++	if (!state)
++		return nfserr_bad_stateid;
++	*cps = state;
++	return 0;
++}
++
++static __be32 find_cpntf_state(struct nfsd_net *nn, stateid_t *st,
++			       struct nfs4_stid **stid)
++{
++	__be32 status;
++	struct nfs4_cpntf_state *cps = NULL;
++
++	status = _find_cpntf_state(nn, st, &cps);
++	if (status)
++		return status;
++
++	/* Did the inter server to server copy start in time? */
++	if (cps->cp_active == false && !time_after(cps->cp_timeout, jiffies))
++		return nfserr_partner_no_auth;
++	else
++		cps->cp_active = true;
++
++	*stid = cps->cp_p_stid;
++	refcount_inc(&cps->cp_p_stid->sc_count);
++
++	return nfs_ok;
++}
  
--  copy_file_range: called by the copy_file_range(2) system call.
-+  copy_file_range: called by copy_file_range(2) system call. This method
-+		   works on two file descriptors that might reside on
-+		   different superblocks of the same type of file system.
- 
-   clone_file_range: called by the ioctl(2) system call for FICLONERANGE and
- 	FICLONE commands.
-diff --git a/fs/read_write.c b/fs/read_write.c
-index c60790f..474e740 100644
---- a/fs/read_write.c
-+++ b/fs/read_write.c
-@@ -1578,10 +1578,6 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
- 	    (file_out->f_flags & O_APPEND))
- 		return -EBADF;
- 
--	/* this could be relaxed once a method supports cross-fs copies */
--	if (inode_in->i_sb != inode_out->i_sb)
--		return -EXDEV;
--
- 	if (len == 0)
- 		return 0;
- 
-@@ -1591,7 +1587,8 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
- 	 * Try cloning first, this is supported by more file systems, and
- 	 * more efficient if both clone and copy are supported (e.g. NFS).
- 	 */
--	if (file_in->f_op->clone_file_range) {
-+	if (inode_in->i_sb == inode_out->i_sb &&
-+			file_in->f_op->clone_file_range) {
- 		ret = file_in->f_op->clone_file_range(file_in, pos_in,
- 				file_out, pos_out, len);
- 		if (ret == 0) {
-@@ -1600,10 +1597,12 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
- 		}
- 	}
- 
--	if (file_out->f_op->copy_file_range) {
-+	if (file_out->f_op->copy_file_range &&
-+			(file_in->f_op->copy_file_range ==
-+				file_out->f_op->copy_file_range)) {
- 		ret = file_out->f_op->copy_file_range(file_in, pos_in, file_out,
- 						      pos_out, len, flags);
--		if (ret != -EOPNOTSUPP)
-+		if (ret != -EOPNOTSUPP && ret != -EXDEV)
- 			goto done;
- 	}
- 
+ /*
+  * Checks for stateid operations
+@@ -5238,6 +5279,8 @@ static __be32 nfsd4_validate_stateid(struct nfs4_client *cl, stateid_t *stateid)
+ 	status = nfsd4_lookup_stateid(cstate, stateid,
+ 				NFS4_DELEG_STID|NFS4_OPEN_STID|NFS4_LOCK_STID,
+ 				&s, nn);
++	if (status == nfserr_bad_stateid)
++		status = find_cpntf_state(nn, stateid, &s);
+ 	if (status)
+ 		return status;
+ 	status = nfsd4_stid_check_stateid_generation(stateid, s,
 -- 
 1.8.3.1
