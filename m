@@ -1,150 +1,88 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qt1-f196.google.com ([209.85.160.196]:38499 "EHLO
-        mail-qt1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726860AbeJSXfy (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Oct 2018 19:35:54 -0400
-Received: by mail-qt1-f196.google.com with SMTP id r22-v6so2160861qtm.5
-        for <linux-nfs@vger.kernel.org>; Fri, 19 Oct 2018 08:29:18 -0700 (PDT)
+Received: from mail-qt1-f193.google.com ([209.85.160.193]:45456 "EHLO
+        mail-qt1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726465AbeJSXfp (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Oct 2018 19:35:45 -0400
+Received: by mail-qt1-f193.google.com with SMTP id e10-v6so38706066qtq.12
+        for <linux-nfs@vger.kernel.org>; Fri, 19 Oct 2018 08:29:10 -0700 (PDT)
 From: Olga Kornievskaia <olga.kornievskaia@gmail.com>
 To: bfields@redhat.com
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v1 07/13] NFSD add ca_source_server<> to COPY
-Date: Fri, 19 Oct 2018 11:28:59 -0400
-Message-Id: <20181019152905.32418-8-olga.kornievskaia@gmail.com>
-In-Reply-To: <20181019152905.32418-1-olga.kornievskaia@gmail.com>
-References: <20181019152905.32418-1-olga.kornievskaia@gmail.com>
+Subject: [PATCH v1 00/13] server-side support for "inter" SSC copy
+Date: Fri, 19 Oct 2018 11:28:52 -0400
+Message-Id: <20181019152905.32418-1-olga.kornievskaia@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Note: followed conventions and have struct nfsd4_compoundargs pointer as a
-parameter even though it is unused.
+This patch series adds support for NFSv4.2 copy offload feature
+allowing copy between two different NFS servers.
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
-Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
----
- fs/nfsd/nfs4xdr.c | 71 +++++++++++++++++++++++++++++++++++++++++++++++++++++--
- fs/nfsd/xdr4.h    |  1 +
- 2 files changed, 70 insertions(+), 2 deletions(-)
+This feature is enabled by the kernel module parameter --
+inter_copy_offload_enable -- and by default is disabled. There is
+also a kernel compile configuration of NFSD_V4_2_INTER_SSC that
+adds dependency on the NFS client side functions called from the
+server.
 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 3de42a7..9f6886f 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -40,6 +40,7 @@
- #include <linux/utsname.h>
- #include <linux/pagemap.h>
- #include <linux/sunrpc/svcauth_gss.h>
-+#include <linux/sunrpc/addr.h>
- 
- #include "idmap.h"
- #include "acl.h"
-@@ -1743,11 +1744,58 @@ static __be32 nfsd4_decode_reclaim_complete(struct nfsd4_compoundargs *argp, str
- 	DECODE_TAIL;
- }
- 
-+static __be32 nfsd4_decode_nl4_server(struct nfsd4_compoundargs *argp,
-+				      struct nl4_server *ns)
-+{
-+	DECODE_HEAD;
-+	struct nfs42_netaddr *naddr;
-+
-+	READ_BUF(4);
-+	ns->nl4_type = be32_to_cpup(p++);
-+
-+	/* currently support for 1 inter-server source server */
-+	switch (ns->nl4_type) {
-+	case NL4_NAME:
-+	case NL4_URL:
-+		READ_BUF(4);
-+		ns->u.nl4_str_sz = be32_to_cpup(p++);
-+		if (ns->u.nl4_str_sz > NFS4_OPAQUE_LIMIT)
-+			goto xdr_error;
-+
-+		READ_BUF(ns->u.nl4_str_sz);
-+		COPYMEM(ns->u.nl4_str,
-+			ns->u.nl4_str_sz);
-+		break;
-+	case NL4_NETADDR:
-+		naddr = &ns->u.nl4_addr;
-+
-+		READ_BUF(4);
-+		naddr->netid_len = be32_to_cpup(p++);
-+		if (naddr->netid_len > RPCBIND_MAXNETIDLEN)
-+			goto xdr_error;
-+
-+		READ_BUF(naddr->netid_len + 4); /* 4 for uaddr len */
-+		COPYMEM(naddr->netid, naddr->netid_len);
-+
-+		naddr->addr_len = be32_to_cpup(p++);
-+		if (naddr->addr_len > RPCBIND_MAXUADDRLEN)
-+			goto xdr_error;
-+
-+		READ_BUF(naddr->addr_len);
-+		COPYMEM(naddr->addr, naddr->addr_len);
-+		break;
-+	default:
-+		goto xdr_error;
-+	}
-+	DECODE_TAIL;
-+}
-+
- static __be32
- nfsd4_decode_copy(struct nfsd4_compoundargs *argp, struct nfsd4_copy *copy)
- {
- 	DECODE_HEAD;
--	unsigned int tmp;
-+	struct nl4_server *ns;
-+	int i, count;
- 
- 	status = nfsd4_decode_stateid(argp, &copy->cp_src_stateid);
- 	if (status)
-@@ -1762,8 +1810,24 @@ static __be32 nfsd4_decode_reclaim_complete(struct nfsd4_compoundargs *argp, str
- 	p = xdr_decode_hyper(p, &copy->cp_count);
- 	p++; /* ca_consecutive: we always do consecutive copies */
- 	copy->cp_synchronous = be32_to_cpup(p++);
--	tmp = be32_to_cpup(p); /* Source server list not supported */
-+	count = be32_to_cpup(p++);
-+
-+	if (count == 0) /* intra-server copy */
-+		goto intra;
- 
-+	/* decode all the supplied server addresses but use first */
-+	copy->cp_src = kmalloc(count * sizeof(struct nl4_server), GFP_KERNEL);
-+	if (copy->cp_src == NULL)
-+		return nfserrno(-ENOMEM);
-+
-+	ns = copy->cp_src;
-+	for (i = 0; i < count; i++) {
-+		status = nfsd4_decode_nl4_server(argp, ns);
-+		if (status)
-+			return status;
-+		ns++;
-+	}
-+intra:
- 	DECODE_TAIL;
- }
- 
-@@ -4273,6 +4337,9 @@ static __be32 nfsd4_encode_readv(struct nfsd4_compoundres *resp,
- 	p = xdr_reserve_space(&resp->xdr, 4 + 4);
- 	*p++ = xdr_one; /* cr_consecutive */
- 	*p++ = cpu_to_be32(copy->cp_synchronous);
-+
-+	/* allocated in nfsd4_decode_copy */
-+	kfree(copy->cp_src);
- 	return 0;
- }
- 
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index feeb6d4..b4d1140 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -521,6 +521,7 @@ struct nfsd4_copy {
- 	u64		cp_src_pos;
- 	u64		cp_dst_pos;
- 	u64		cp_count;
-+	struct nl4_server *cp_src;
- 
- 	/* both */
- 	bool		cp_synchronous;
+These patches work on top of 4 existing async intra copy offload
+patches. For the "inter" SSC, the implementation only supports
+asynchronous inter copy.
+
+On the source server, upon receiving a COPY_NOTIFY, it generate a
+unique stateid that's kept in the global list. Upon receiving a READ
+with a stateid, the code checks the normal list of open stateid and
+now additionally, it'll check the copy state list as well before
+deciding to either fail with BAD_STATEID or find one that matches.
+The stored stateid is only valid to be used for the first time
+with a choosen lease period (90s currently). When the source server
+received an OFFLOAD_CANCEL, it will remove the stateid from the
+global list. Otherwise, the copy stateid is removed upon the removal
+of its "parent" stateid (open/lock/delegation stateid).
+
+On the destination server, upon receiving a COPY request, the server
+establishes the necessary clientid/session with the source server.
+It calls into the NFS client code to establish the necessary
+open stateid, filehandle, file description (without doing an NFS open).
+Then the server calls into the copy_file_range() to preform the copy
+where the source file will issue NFS READs and then do local file
+system writes (this depends on the VFS ability to do cross device
+copy_file_range().
+
+Client-side patches are included for the ease of testing.
+
+Anna Schumaker (1):
+  fs: Don't copy beyond the end of the file
+
+Olga Kornievskaia (12):
+  VFS permit cross device vfs_copy_file_range
+  NFS NFSD defining nl4_servers structure needed by both
+  NFS inter ssc open
+  NFS skip recovery of copy open on dest server
+  NFSD fill-in netloc4 structure
+  NFSD add ca_source_server<> to COPY
+  NFSD return nfs4_stid in nfs4_preprocess_stateid_op
+  NFSD add COPY_NOTIFY operation
+  NFSD check stateids against copy stateids
+  NFSD generalize nfsd4_compound_state flag names
+  NFSD: allow inter server COPY to have a STALE source server fh
+  NFSD add nfs4 inter ssc to nfsd4_copy
+
+ Documentation/filesystems/vfs.txt |   4 +-
+ fs/nfs/nfs4_fs.h                  |   8 +
+ fs/nfs/nfs4file.c                 |  99 +++++++++
+ fs/nfs/nfs4proc.c                 |   5 +-
+ fs/nfs/nfs4state.c                |  14 ++
+ fs/nfsd/Kconfig                   |  10 +
+ fs/nfsd/nfs4proc.c                | 433 +++++++++++++++++++++++++++++++++++---
+ fs/nfsd/nfs4state.c               | 128 +++++++++--
+ fs/nfsd/nfs4xdr.c                 | 168 ++++++++++++++-
+ fs/nfsd/nfsd.h                    |  31 ++-
+ fs/nfsd/nfsfh.h                   |   5 +-
+ fs/nfsd/nfssvc.c                  |   6 +
+ fs/nfsd/state.h                   |  18 +-
+ fs/nfsd/xdr4.h                    |  26 ++-
+ fs/read_write.c                   |  16 +-
+ include/linux/nfs4.h              |  25 +++
+ 16 files changed, 929 insertions(+), 67 deletions(-)
+
 -- 
 1.8.3.1
