@@ -1,16 +1,16 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk1-f195.google.com ([209.85.222.195]:43035 "EHLO
+Received: from mail-qk1-f195.google.com ([209.85.222.195]:38058 "EHLO
         mail-qk1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727050AbeJSXgI (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Oct 2018 19:36:08 -0400
-Received: by mail-qk1-f195.google.com with SMTP id 12-v6so21211226qkj.10
-        for <linux-nfs@vger.kernel.org>; Fri, 19 Oct 2018 08:29:33 -0700 (PDT)
+        with ESMTP id S1727265AbeJSXgQ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Oct 2018 19:36:16 -0400
+Received: by mail-qk1-f195.google.com with SMTP id p3-v6so859472qkb.5
+        for <linux-nfs@vger.kernel.org>; Fri, 19 Oct 2018 08:29:41 -0700 (PDT)
 From: Olga Kornievskaia <olga.kornievskaia@gmail.com>
 To: trondmy@hammerspace.com, anna.schumaker@netapp.com
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v1 02/11] VFS permit cross device vfs_copy_file_range
-Date: Fri, 19 Oct 2018 11:29:23 -0400
-Message-Id: <20181019152932.32462-3-olga.kornievskaia@gmail.com>
+Subject: [PATCH v1 09/11] NFS skip recovery of copy open on dest server
+Date: Fri, 19 Oct 2018 11:29:30 -0400
+Message-Id: <20181019152932.32462-10-olga.kornievskaia@gmail.com>
 In-Reply-To: <20181019152932.32462-1-olga.kornievskaia@gmail.com>
 References: <20181019152932.32462-1-olga.kornievskaia@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -18,89 +18,80 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 From: Olga Kornievskaia <kolga@netapp.com>
 
-Allow copy_file_range to copy between different superblocks but only
-of the same file system types. This feature was of interest to CIFS
-as well as NFS.
-
-This feature is needed by NFSv4.2 to perform file copy operation on
-the same server or file copy between different NFSv4.2 servers.
-
-If a file system's fileoperations copy_file_range operation prohibits
-cross-device copies, fall back to do_splice_direct. This would be
-needed for the NFS (destination) server side implementation of the
-file copy and currently for CIFS.
-
-Besides NFS, there is only 1 implementor of the copy_file_range FS
-operation -- CIFS. CIFS assumes incoming file descriptors are both
-CIFS but it will check if they are coming from different servers and
-return error code to fall back to do_splice_direct.
-
-NFS will allow for copies between different NFS servers.
-
-Adding to the vfs.txt documentation to explicitly warn about allowing
-for different superblocks of the same file type to be passed into the
-copy_file_range for the future users of copy_file_range method.
+Mark the open created for the source file on the destination
+server. Then if this open is going thru a recovery, then fail
+the recovery as we don't need to be recoving a "fake" open.
+We need to fail the ongoing READs and vfs_copy_file_range().
 
 Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
 ---
- Documentation/filesystems/vfs.txt |  4 +++-
- fs/read_write.c                   | 13 ++++++-------
- 2 files changed, 9 insertions(+), 8 deletions(-)
+ fs/nfs/nfs4_fs.h   |  1 +
+ fs/nfs/nfs4file.c  |  1 +
+ fs/nfs/nfs4state.c | 14 ++++++++++++++
+ 3 files changed, 16 insertions(+)
 
-diff --git a/Documentation/filesystems/vfs.txt b/Documentation/filesystems/vfs.txt
-index a6c6a8a..5e520de 100644
---- a/Documentation/filesystems/vfs.txt
-+++ b/Documentation/filesystems/vfs.txt
-@@ -958,7 +958,9 @@ otherwise noted.
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index f229864..8b00c90 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -165,6 +165,7 @@ enum {
+ 	NFS_STATE_CHANGE_WAIT,		/* A state changing operation is outstanding */
+ #ifdef CONFIG_NFS_V4_2
+ 	NFS_CLNT_DST_SSC_COPY_STATE,    /* dst server open state on client*/
++	NFS_SRV_SSC_COPY_STATE,		/* ssc state on the dst server */
+ #endif /* CONFIG_NFS_V4_2 */
+ };
  
-   fallocate: called by the VFS to preallocate blocks or punch a hole.
+diff --git a/fs/nfs/nfs4file.c b/fs/nfs/nfs4file.c
+index 7f226f4..6cc4ae4 100644
+--- a/fs/nfs/nfs4file.c
++++ b/fs/nfs/nfs4file.c
+@@ -331,6 +331,7 @@ struct file *
+ 	if (ctx->state == NULL)
+ 		goto out_stateowner;
  
--  copy_file_range: called by the copy_file_range(2) system call.
-+  copy_file_range: called by copy_file_range(2) system call. This method
-+		   works on two file descriptors that might reside on
-+		   different superblocks of the same type of file system.
++	set_bit(NFS_SRV_SSC_COPY_STATE, &ctx->state->flags);
+ 	set_bit(NFS_OPEN_STATE, &ctx->state->flags);
+ 	memcpy(&ctx->state->open_stateid.other, &stateid->other,
+ 	       NFS4_STATEID_OTHER_SIZE);
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index 62ae0fd..b0b82c6 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -1606,6 +1606,9 @@ static int nfs4_reclaim_open_state(struct nfs4_state_owner *sp, const struct nfs
+ {
+ 	struct nfs4_state *state;
+ 	int status = 0;
++#ifdef CONFIG_NFS_V4_2
++	bool found_ssc_copy_state = false;
++#endif /* CONFIG_NFS_V4_2 */
  
-   clone_file_range: called by the ioctl(2) system call for FICLONERANGE and
- 	FICLONE commands.
-diff --git a/fs/read_write.c b/fs/read_write.c
-index c60790f..474e740 100644
---- a/fs/read_write.c
-+++ b/fs/read_write.c
-@@ -1578,10 +1578,6 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
- 	    (file_out->f_flags & O_APPEND))
- 		return -EBADF;
- 
--	/* this could be relaxed once a method supports cross-fs copies */
--	if (inode_in->i_sb != inode_out->i_sb)
--		return -EXDEV;
--
- 	if (len == 0)
- 		return 0;
- 
-@@ -1591,7 +1587,8 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
- 	 * Try cloning first, this is supported by more file systems, and
- 	 * more efficient if both clone and copy are supported (e.g. NFS).
- 	 */
--	if (file_in->f_op->clone_file_range) {
-+	if (inode_in->i_sb == inode_out->i_sb &&
-+			file_in->f_op->clone_file_range) {
- 		ret = file_in->f_op->clone_file_range(file_in, pos_in,
- 				file_out, pos_out, len);
- 		if (ret == 0) {
-@@ -1600,10 +1597,12 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
- 		}
+ 	/* Note: we rely on the sp->so_states list being ordered 
+ 	 * so that we always reclaim open(O_RDWR) and/or open(O_WRITE)
+@@ -1625,6 +1628,13 @@ static int nfs4_reclaim_open_state(struct nfs4_state_owner *sp, const struct nfs
+ 			continue;
+ 		if (state->state == 0)
+ 			continue;
++#ifdef CONFIG_NFS_V4_2
++		if (test_bit(NFS_SRV_SSC_COPY_STATE, &state->flags)) {
++			nfs4_state_mark_recovery_failed(state, -EIO);
++			found_ssc_copy_state = true;
++			continue;
++		}
++#endif /* CONFIG_NFS_V4_2 */
+ 		refcount_inc(&state->count);
+ 		spin_unlock(&sp->so_lock);
+ 		status = __nfs4_reclaim_open_state(sp, state, ops);
+@@ -1671,6 +1681,10 @@ static int nfs4_reclaim_open_state(struct nfs4_state_owner *sp, const struct nfs
  	}
- 
--	if (file_out->f_op->copy_file_range) {
-+	if (file_out->f_op->copy_file_range &&
-+			(file_in->f_op->copy_file_range ==
-+				file_out->f_op->copy_file_range)) {
- 		ret = file_out->f_op->copy_file_range(file_in, pos_in, file_out,
- 						      pos_out, len, flags);
--		if (ret != -EOPNOTSUPP)
-+		if (ret != -EOPNOTSUPP && ret != -EXDEV)
- 			goto done;
- 	}
- 
+ 	raw_write_seqcount_end(&sp->so_reclaim_seqcount);
+ 	spin_unlock(&sp->so_lock);
++#ifdef CONFIG_NFS_V4_2
++	if (found_ssc_copy_state)
++		return -EIO;
++#endif /* CONFIG_NFS_V4_2 */
+ 	return 0;
+ out_err:
+ 	nfs4_put_open_state(state);
 -- 
 1.8.3.1
