@@ -1,18 +1,18 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk1-f194.google.com ([209.85.222.194]:37814 "EHLO
-        mail-qk1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727181AbeJSXgQ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Oct 2018 19:36:16 -0400
-Received: by mail-qk1-f194.google.com with SMTP id x8-v6so21232697qka.4
-        for <linux-nfs@vger.kernel.org>; Fri, 19 Oct 2018 08:29:40 -0700 (PDT)
+Received: from mail-qt1-f196.google.com ([209.85.160.196]:35184 "EHLO
+        mail-qt1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726860AbeJSXfu (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Oct 2018 19:35:50 -0400
+Received: by mail-qt1-f196.google.com with SMTP id k3-v6so2851133qth.2
+        for <linux-nfs@vger.kernel.org>; Fri, 19 Oct 2018 08:29:15 -0700 (PDT)
 From: Olga Kornievskaia <olga.kornievskaia@gmail.com>
-To: trondmy@hammerspace.com, anna.schumaker@netapp.com
+To: bfields@redhat.com
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v1 08/11] NFS inter ssc open
-Date: Fri, 19 Oct 2018 11:29:29 -0400
-Message-Id: <20181019152932.32462-9-olga.kornievskaia@gmail.com>
-In-Reply-To: <20181019152932.32462-1-olga.kornievskaia@gmail.com>
-References: <20181019152932.32462-1-olga.kornievskaia@gmail.com>
+Subject: [PATCH v1 04/13] NFS inter ssc open
+Date: Fri, 19 Oct 2018 11:28:56 -0400
+Message-Id: <20181019152905.32418-5-olga.kornievskaia@gmail.com>
+In-Reply-To: <20181019152905.32418-1-olga.kornievskaia@gmail.com>
+References: <20181019152905.32418-1-olga.kornievskaia@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
@@ -53,7 +53,7 @@ index 8d59c96..f229864 100644
  #if defined(CONFIG_NFS_V4_1)
  extern int nfs41_sequence_done(struct rpc_task *, struct nfs4_sequence_res *);
 diff --git a/fs/nfs/nfs4file.c b/fs/nfs/nfs4file.c
-index 005862e..7f226f4 100644
+index 4288a6e..f82cb05 100644
 --- a/fs/nfs/nfs4file.c
 +++ b/fs/nfs/nfs4file.c
 @@ -8,6 +8,7 @@
@@ -64,7 +64,7 @@ index 005862e..7f226f4 100644
  #include "delegation.h"
  #include "internal.h"
  #include "iostat.h"
-@@ -264,6 +265,103 @@ static int nfs42_clone_file_range(struct file *src_file, loff_t src_off,
+@@ -242,6 +243,103 @@ static int nfs42_clone_file_range(struct file *src_file, loff_t src_off,
  out:
  	return ret;
  }
@@ -169,7 +169,7 @@ index 005862e..7f226f4 100644
  
  const struct file_operations nfs4_file_operations = {
 diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index fec6e6b..e5178b2f 100644
+index db84b4a..1876456 100644
 --- a/fs/nfs/nfs4proc.c
 +++ b/fs/nfs/nfs4proc.c
 @@ -91,7 +91,6 @@
