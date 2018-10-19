@@ -1,82 +1,106 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk1-f194.google.com ([209.85.222.194]:34558 "EHLO
-        mail-qk1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726860AbeJSXfx (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Oct 2018 19:35:53 -0400
-Received: by mail-qk1-f194.google.com with SMTP id p6-v6so21260959qkg.1
-        for <linux-nfs@vger.kernel.org>; Fri, 19 Oct 2018 08:29:17 -0700 (PDT)
+Received: from mail-qk1-f195.google.com ([209.85.222.195]:43035 "EHLO
+        mail-qk1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727050AbeJSXgI (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Oct 2018 19:36:08 -0400
+Received: by mail-qk1-f195.google.com with SMTP id 12-v6so21211226qkj.10
+        for <linux-nfs@vger.kernel.org>; Fri, 19 Oct 2018 08:29:33 -0700 (PDT)
 From: Olga Kornievskaia <olga.kornievskaia@gmail.com>
-To: bfields@redhat.com
+To: trondmy@hammerspace.com, anna.schumaker@netapp.com
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v1 06/13] NFSD fill-in netloc4 structure
-Date: Fri, 19 Oct 2018 11:28:58 -0400
-Message-Id: <20181019152905.32418-7-olga.kornievskaia@gmail.com>
-In-Reply-To: <20181019152905.32418-1-olga.kornievskaia@gmail.com>
-References: <20181019152905.32418-1-olga.kornievskaia@gmail.com>
+Subject: [PATCH v1 02/11] VFS permit cross device vfs_copy_file_range
+Date: Fri, 19 Oct 2018 11:29:23 -0400
+Message-Id: <20181019152932.32462-3-olga.kornievskaia@gmail.com>
+In-Reply-To: <20181019152932.32462-1-olga.kornievskaia@gmail.com>
+References: <20181019152932.32462-1-olga.kornievskaia@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Olga Kornievskaia <kolga@netapp.com>
 
-nfs.4 defines nfs42_netaddr structure that represents netloc4.
+Allow copy_file_range to copy between different superblocks but only
+of the same file system types. This feature was of interest to CIFS
+as well as NFS.
 
-Populate needed fields from the sockaddr structure.
+This feature is needed by NFSv4.2 to perform file copy operation on
+the same server or file copy between different NFSv4.2 servers.
 
-This will be used by flexfiles and 4.2 inter copy
+If a file system's fileoperations copy_file_range operation prohibits
+cross-device copies, fall back to do_splice_direct. This would be
+needed for the NFS (destination) server side implementation of the
+file copy and currently for CIFS.
+
+Besides NFS, there is only 1 implementor of the copy_file_range FS
+operation -- CIFS. CIFS assumes incoming file descriptors are both
+CIFS but it will check if they are coming from different servers and
+return error code to fall back to do_splice_direct.
+
+NFS will allow for copies between different NFS servers.
+
+Adding to the vfs.txt documentation to explicitly warn about allowing
+for different superblocks of the same file type to be passed into the
+copy_file_range for the future users of copy_file_range method.
 
 Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
 ---
- fs/nfsd/nfsd.h | 31 ++++++++++++++++++++++++++++++-
- 1 file changed, 30 insertions(+), 1 deletion(-)
+ Documentation/filesystems/vfs.txt |  4 +++-
+ fs/read_write.c                   | 13 ++++++-------
+ 2 files changed, 9 insertions(+), 8 deletions(-)
 
-diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
-index 0668999..030fccb 100644
---- a/fs/nfsd/nfsd.h
-+++ b/fs/nfsd/nfsd.h
-@@ -18,7 +18,7 @@
- #include <linux/nfs4.h>
- #include <linux/sunrpc/svc.h>
- #include <linux/sunrpc/msg_prot.h>
+diff --git a/Documentation/filesystems/vfs.txt b/Documentation/filesystems/vfs.txt
+index a6c6a8a..5e520de 100644
+--- a/Documentation/filesystems/vfs.txt
++++ b/Documentation/filesystems/vfs.txt
+@@ -958,7 +958,9 @@ otherwise noted.
+ 
+   fallocate: called by the VFS to preallocate blocks or punch a hole.
+ 
+-  copy_file_range: called by the copy_file_range(2) system call.
++  copy_file_range: called by copy_file_range(2) system call. This method
++		   works on two file descriptors that might reside on
++		   different superblocks of the same type of file system.
+ 
+   clone_file_range: called by the ioctl(2) system call for FICLONERANGE and
+ 	FICLONE commands.
+diff --git a/fs/read_write.c b/fs/read_write.c
+index c60790f..474e740 100644
+--- a/fs/read_write.c
++++ b/fs/read_write.c
+@@ -1578,10 +1578,6 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
+ 	    (file_out->f_flags & O_APPEND))
+ 		return -EBADF;
+ 
+-	/* this could be relaxed once a method supports cross-fs copies */
+-	if (inode_in->i_sb != inode_out->i_sb)
+-		return -EXDEV;
 -
-+#include <linux/sunrpc/addr.h>
- #include <uapi/linux/nfsd/debug.h>
+ 	if (len == 0)
+ 		return 0;
  
- #include "stats.h"
-@@ -366,6 +366,35 @@ static inline bool nfsd4_spo_must_allow(struct svc_rqst *rqstp)
+@@ -1591,7 +1587,8 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
+ 	 * Try cloning first, this is supported by more file systems, and
+ 	 * more efficient if both clone and copy are supported (e.g. NFS).
+ 	 */
+-	if (file_in->f_op->clone_file_range) {
++	if (inode_in->i_sb == inode_out->i_sb &&
++			file_in->f_op->clone_file_range) {
+ 		ret = file_in->f_op->clone_file_range(file_in, pos_in,
+ 				file_out, pos_out, len);
+ 		if (ret == 0) {
+@@ -1600,10 +1597,12 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
+ 		}
+ 	}
  
- extern const u32 nfsd_suppattrs[3][3];
+-	if (file_out->f_op->copy_file_range) {
++	if (file_out->f_op->copy_file_range &&
++			(file_in->f_op->copy_file_range ==
++				file_out->f_op->copy_file_range)) {
+ 		ret = file_out->f_op->copy_file_range(file_in, pos_in, file_out,
+ 						      pos_out, len, flags);
+-		if (ret != -EOPNOTSUPP)
++		if (ret != -EOPNOTSUPP && ret != -EXDEV)
+ 			goto done;
+ 	}
  
-+static inline u32 nfsd4_set_netaddr(struct sockaddr *addr, struct nfs42_netaddr *netaddr)
-+{
-+	struct sockaddr_in *sin = (struct sockaddr_in *)addr;
-+	struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)addr;
-+	unsigned int port;
-+	size_t ret;
-+
-+	switch (addr->sa_family) {
-+	case AF_INET:
-+		port = ntohs(sin->sin_port);
-+		sprintf(netaddr->netid, "tcp");
-+		netaddr->netid_len = 3;
-+		break;
-+	case AF_INET6:
-+		port = ntohs(sin6->sin6_port);
-+		sprintf(netaddr->netid, "tcp6");
-+		netaddr->netid_len = 4;
-+		break;
-+	default:
-+		return nfserrno(-EINVAL);
-+	}
-+	ret = rpc_ntop(addr, netaddr->addr, sizeof(netaddr->addr));
-+	netaddr->addr_len = ret + snprintf(netaddr->addr + ret,
-+				     RPCBIND_MAXUADDRLEN + 1,
-+				     ".%u.%u", port >> 8, port & 0xff);
-+
-+	return 0;
-+}
-+
- static inline bool bmval_is_subset(const u32 *bm1, const u32 *bm2)
- {
- 	return !((bm1[0] & ~bm2[0]) ||
 -- 
 1.8.3.1
