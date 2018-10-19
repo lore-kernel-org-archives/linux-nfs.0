@@ -1,91 +1,53 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([198.137.202.133]:47530 "EHLO
-        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727616AbeJTDNx (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Oct 2018 23:13:53 -0400
-Date: Fri, 19 Oct 2018 12:06:30 -0700
-From: Matthew Wilcox <willy@infradead.org>
-To: Olga Kornievskaia <olga.kornievskaia@gmail.com>
-Cc: linux-fsdevel@vger.kernel.org,
-        linux-nfs <linux-nfs@vger.kernel.org>, fweimer@redhat.com,
-        Steve French <smfrench@gmail.com>
-Subject: Re: [PATCH v1 02/11] VFS permit cross device vfs_copy_file_range
-Message-ID: <20181019190630.GC28891@bombadil.infradead.org>
-References: <20181019153018.32507-1-olga.kornievskaia@gmail.com>
- <20181019153018.32507-2-olga.kornievskaia@gmail.com>
- <20181019175822.GB28891@bombadil.infradead.org>
- <CAN-5tyHvJQc+mPSvgX09F71otoZEoxRXdKLB=F=bGTzmEnt_eA@mail.gmail.com>
+Received: from smtp-o-3.desy.de ([131.169.56.156]:33585 "EHLO smtp-o-3.desy.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726194AbeJTG3H (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sat, 20 Oct 2018 02:29:07 -0400
+Received: from smtp-buf-3.desy.de (smtp-buf-3.desy.de [131.169.56.166])
+        by smtp-o-3.desy.de (DESY-O-3) with ESMTP id 12EFE2801FB
+        for <linux-nfs@vger.kernel.org>; Sat, 20 Oct 2018 00:11:36 +0200 (CEST)
+Received: from smtp-m-3.desy.de (smtp-m-3.desy.de [IPv6:2001:638:700:1038::1:83])
+        by smtp-buf-3.desy.de (Postfix) with ESMTP id 0F3D6A0040
+        for <linux-nfs@vger.kernel.org>; Sat, 20 Oct 2018 00:11:36 +0200 (CEST)
+Received: from z-mbx-2.desy.de (z-mbx-2.desy.de [131.169.55.140])
+        by smtp-intra-3.desy.de (DESY-INTRA-3) with ESMTP id D93D11029
+        for <linux-nfs@vger.kernel.org>; Sat, 20 Oct 2018 00:11:35 +0200 (MEST)
+Date: Sat, 20 Oct 2018 00:11:35 +0200 (CEST)
+From: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
+To: linux-nfs <linux-nfs@vger.kernel.org>
+Message-ID: <174380207.12564567.1539987095714.JavaMail.zimbra@desy.de>
+Subject: readdir request re-requests entries
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAN-5tyHvJQc+mPSvgX09F71otoZEoxRXdKLB=F=bGTzmEnt_eA@mail.gmail.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Oct 19, 2018 at 02:47:42PM -0400, Olga Kornievskaia wrote:
-> On Fri, Oct 19, 2018 at 1:58 PM Matthew Wilcox <willy@infradead.org> wrote:
-> >
-> > On Fri, Oct 19, 2018 at 11:30:18AM -0400, Olga Kornievskaia wrote:
-> > > +++ b/Documentation/filesystems/vfs.txt
-> > > @@ -958,7 +958,9 @@ otherwise noted.
-> > >
-> > >    fallocate: called by the VFS to preallocate blocks or punch a hole.
-> > >
-> > > -  copy_file_range: called by the copy_file_range(2) system call.
-> > > +  copy_file_range: called by copy_file_range(2) system call. This method
-> > > +                works on two file descriptors that might reside on
-> > > +                different superblocks of the same type of file system.
-> >
-> > I don't think this text is explicit enough about what has changed,
-> 
-> Can you suggest a different wording that would be stronger? I can't
-> say any more clear that copy is allowed between different superblock
-> which wasn't the case before.
 
-I would leave this file alone.
+Dear NFS fellows,
 
-> > and I
-> > think this is the wrong place for it.  I think there should be a paragraph
-> > in Documentation/filesystems/porting and it should follow the current style
-> > in there.
-> 
-> I have looked at the "porting" file and it's cryptic. I don't
-> understand what [mandatory] [recommended] stanzas are. There is
-> currently no copy_file_range. Is this just a "changelog" and you are
-> looking for something like
-> [mandatory]
-> copy_file_range() now allows copying between different superblocks.
-> 
-> I can add this wording to the "porting" file.
+we have notice a behavior of nfs client when iterating over a big
+directory. The client re-requests entries that already has been. For
+example, a client issues READDIR on a directory with 1k files. Initial cookie
+is 0, maxcount 32768.
 
-The porting file is written from the point of view of someone who's trying
-to port an old filesystem to current Linux.
+c -> s cookie 0
+s -> c last cookie 159
+c -> s cookie 105
+s -> c last cookie 259
+c -> s cookie 207
 
-Maybe something like
+...
 
-[mandatory]
-	->copy_file_range() may now be passed files which belong to two
-	different filesystems.  The destination's copy_file_range() is the
-	function which is called.  If it cannot copy ranges from the source,
-	it should return -EXDEV.
+and so on. The interesting thing is, if I mount with rsize 8192 (maxcount 8192), then first couple
+or requests are asking for correct cookies - 0, 43, 81, 105. Again 105 as with maxcount 32678. To
+me it looks like that there is some kind of internal page (actually NFS_MAX_READDIR_PAGES) alignment
+and entries which do not fit into initially allocated PAGE_SIZE * NFS_MAX_READDIR_PAGES memory
+just get dropped.
 
-> > > -     if (file_out->f_op->copy_file_range) {
-> > > +     if (file_out->f_op->copy_file_range &&
-> > > +                     (file_in->f_op->copy_file_range ==
-> > > +                             file_out->f_op->copy_file_range)) {
-> >
-> > Can we avoid this extra test here?  I know the various stamdards groups
-> > including T10 and the IETF have been trying to define a universal
-> > identifier for the same blob of storage, no matter how it's accessed;
-> > potentially allowing access to the same storage across iSCSI, CIFS
-> > and NFS.  If we ever get to a point where we support that (and I am
-> > dubious), we'd want to remove this test again, and have to revalidate
-> > all the filesystems.
-> 
-> Well from previous submissions I was explicitly asked to add this check.
+As 30% of each reply is thrown away, listing of large directories may produce much more requests
+than required.
 
-I'm not sure that's exactly what Jeff was asking for.  Or maybe it was
-and my argument above will change his mind.  Jeff, what do you think?
+Is it an expected behavior?
 
-If we do do this, cifs will need a modification as part of this patch to
-reject non-CIFS files as it currently assumes that src_file->private_data
-is a pointer to a struct cifsFileInfo.
+Thanks in advance,
+   Tigran.
