@@ -1,77 +1,107 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk1-f176.google.com ([209.85.222.176]:36041 "EHLO
-        mail-qk1-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727050AbeJSXgG (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Oct 2018 19:36:06 -0400
-Received: by mail-qk1-f176.google.com with SMTP id q184-v6so3172469qkd.3
-        for <linux-nfs@vger.kernel.org>; Fri, 19 Oct 2018 08:29:31 -0700 (PDT)
+Received: from mail-qk1-f195.google.com ([209.85.222.195]:38032 "EHLO
+        mail-qk1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727050AbeJSXf7 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Oct 2018 19:35:59 -0400
+Received: by mail-qk1-f195.google.com with SMTP id p3-v6so858822qkb.5
+        for <linux-nfs@vger.kernel.org>; Fri, 19 Oct 2018 08:29:24 -0700 (PDT)
 From: Olga Kornievskaia <olga.kornievskaia@gmail.com>
-To: trondmy@hammerspace.com, anna.schumaker@netapp.com
+To: bfields@redhat.com
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v1 00/11] client-side support for "inter" SSC copy 
-Date: Fri, 19 Oct 2018 11:29:21 -0400
-Message-Id: <20181019152932.32462-1-olga.kornievskaia@gmail.com>
+Subject: [PATCH v1 11/13] NFSD generalize nfsd4_compound_state flag names
+Date: Fri, 19 Oct 2018 11:29:03 -0400
+Message-Id: <20181019152905.32418-12-olga.kornievskaia@gmail.com>
+In-Reply-To: <20181019152905.32418-1-olga.kornievskaia@gmail.com>
+References: <20181019152905.32418-1-olga.kornievskaia@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Olga Kornievskaia <kolga@netapp.com>
 
-This patch series adds client-side support for doing NFSv4.2 "inter"
-copy offload between different NFS servers.
+Allow for sid_flag field non-stateid use.
 
-In case of the "inter" SSC copy files reside on different servers and
-thus under different superblocks and require that VFS removes the
-restriction that src and dst files must be on the same superblock.
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfsd/nfs4proc.c  | 8 ++++----
+ fs/nfsd/nfs4state.c | 7 ++++---
+ fs/nfsd/xdr4.h      | 6 +++---
+ 3 files changed, 11 insertions(+), 10 deletions(-)
 
-NFS's copy_file_range() determines if the copy is "intra" or "inter"
-and for "inter" it sends the COPY_NOTIFY to the source server. Then,
-it would send of an asynchronous COPY to the destination server. If 
-an application cancels an in-flight COPY, OFFLOAD_CANCEL is sent to
-both of the servers.
-
-This patch series also include necessary client-side additions that
-are performed by the destination server. The server needs an NFS
-open that represents a source file without doing an actual open.
-Two function nfs42_ssc_open/nfs42_ssc_close() are introduced to
-accomplish it that make use of the VFS's alloc_file_pseudo() to
-represent an open.
-
-Also this particular open is marked (NFS_SVC_SSC_COPY_STATE) so
-that if the destination server ever to receive stateid errors on
-this stateid, it knows not to initiate state recovery (in case
-when source server reboots). The recovery must be done by the
-client and a new copy must be initiated. Therefore, in this case
-the recovery needs to fail with EIO. 
-
-Anna Schumaker (1):
-  fs: Don't copy beyond the end of the file
-
-Olga Kornievskaia (10):
-  VFS permit cross device vfs_copy_file_range
-  NFS test for intra vs inter COPY
-  NFS NFSD defining nl4_servers structure needed by both
-  NFS add COPY_NOTIFY operation
-  NFS add ca_source_server<> to COPY
-  NFS also send OFFLOAD_CANCEL to source server
-  NFS inter ssc open
-  NFS skip recovery of copy open on dest server
-  NFS for "inter" copy treat ESTALE as ENOTSUPP
-  NFS COPY handle ERR_OFFLOAD_DENIED
-
- Documentation/filesystems/vfs.txt |   4 +-
- fs/nfs/nfs42.h                    |  15 ++-
- fs/nfs/nfs42proc.c                | 129 ++++++++++++++++++++++---
- fs/nfs/nfs42xdr.c                 | 193 +++++++++++++++++++++++++++++++++++++-
- fs/nfs/nfs4_fs.h                  |   8 ++
- fs/nfs/nfs4file.c                 | 123 +++++++++++++++++++++++-
- fs/nfs/nfs4proc.c                 |   6 +-
- fs/nfs/nfs4state.c                |  14 +++
- fs/nfs/nfs4xdr.c                  |   1 +
- fs/read_write.c                   |  16 ++--
- include/linux/nfs4.h              |  25 +++++
- include/linux/nfs_fs_sb.h         |   1 +
- include/linux/nfs_xdr.h           |  17 ++++
- 13 files changed, 526 insertions(+), 26 deletions(-)
-
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 999c8cb..43a83c7 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -530,9 +530,9 @@ static __be32 nfsd4_open_omfg(struct svc_rqst *rqstp, struct nfsd4_compound_stat
+ 		return nfserr_restorefh;
+ 
+ 	fh_dup2(&cstate->current_fh, &cstate->save_fh);
+-	if (HAS_STATE_ID(cstate, SAVED_STATE_ID_FLAG)) {
++	if (HAS_CSTATE_FLAG(cstate, SAVED_STATE_ID_FLAG)) {
+ 		memcpy(&cstate->current_stateid, &cstate->save_stateid, sizeof(stateid_t));
+-		SET_STATE_ID(cstate, CURRENT_STATE_ID_FLAG);
++		SET_CSTATE_FLAG(cstate, CURRENT_STATE_ID_FLAG);
+ 	}
+ 	return nfs_ok;
+ }
+@@ -542,9 +542,9 @@ static __be32 nfsd4_open_omfg(struct svc_rqst *rqstp, struct nfsd4_compound_stat
+ 	     union nfsd4_op_u *u)
+ {
+ 	fh_dup2(&cstate->save_fh, &cstate->current_fh);
+-	if (HAS_STATE_ID(cstate, CURRENT_STATE_ID_FLAG)) {
++	if (HAS_CSTATE_FLAG(cstate, CURRENT_STATE_ID_FLAG)) {
+ 		memcpy(&cstate->save_stateid, &cstate->current_stateid, sizeof(stateid_t));
+-		SET_STATE_ID(cstate, SAVED_STATE_ID_FLAG);
++		SET_CSTATE_FLAG(cstate, SAVED_STATE_ID_FLAG);
+ 	}
+ 	return nfs_ok;
+ }
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 16359de..a39a581 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -7424,7 +7424,8 @@ static int nfs4_state_create_net(struct net *net)
+ static void
+ get_stateid(struct nfsd4_compound_state *cstate, stateid_t *stateid)
+ {
+-	if (HAS_STATE_ID(cstate, CURRENT_STATE_ID_FLAG) && CURRENT_STATEID(stateid))
++	if (HAS_CSTATE_FLAG(cstate, CURRENT_STATE_ID_FLAG) &&
++	    CURRENT_STATEID(stateid))
+ 		memcpy(stateid, &cstate->current_stateid, sizeof(stateid_t));
+ }
+ 
+@@ -7433,14 +7434,14 @@ static int nfs4_state_create_net(struct net *net)
+ {
+ 	if (cstate->minorversion) {
+ 		memcpy(&cstate->current_stateid, stateid, sizeof(stateid_t));
+-		SET_STATE_ID(cstate, CURRENT_STATE_ID_FLAG);
++		SET_CSTATE_FLAG(cstate, CURRENT_STATE_ID_FLAG);
+ 	}
+ }
+ 
+ void
+ clear_current_stateid(struct nfsd4_compound_state *cstate)
+ {
+-	CLEAR_STATE_ID(cstate, CURRENT_STATE_ID_FLAG);
++	CLEAR_CSTATE_FLAG(cstate, CURRENT_STATE_ID_FLAG);
+ }
+ 
+ /*
+diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+index 4557f15..4a1e53d 100644
+--- a/fs/nfsd/xdr4.h
++++ b/fs/nfsd/xdr4.h
+@@ -46,9 +46,9 @@
+ #define CURRENT_STATE_ID_FLAG (1<<0)
+ #define SAVED_STATE_ID_FLAG (1<<1)
+ 
+-#define SET_STATE_ID(c, f) ((c)->sid_flags |= (f))
+-#define HAS_STATE_ID(c, f) ((c)->sid_flags & (f))
+-#define CLEAR_STATE_ID(c, f) ((c)->sid_flags &= ~(f))
++#define SET_CSTATE_FLAG(c, f) ((c)->sid_flags |= (f))
++#define HAS_CSTATE_FLAG(c, f) ((c)->sid_flags & (f))
++#define CLEAR_CSTATE_FLAG(c, f) ((c)->sid_flags &= ~(f))
+ 
+ struct nfsd4_compound_state {
+ 	struct svc_fh		current_fh;
 -- 
 1.8.3.1
