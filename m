@@ -1,37 +1,104 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk1-f193.google.com ([209.85.222.193]:36269 "EHLO
-        mail-qk1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726667AbeJSXgw (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Oct 2018 19:36:52 -0400
+Received: from mail-qt1-f196.google.com ([209.85.160.196]:38689 "EHLO
+        mail-qt1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726667AbeJSXgy (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Oct 2018 19:36:54 -0400
 From: Olga Kornievskaia <olga.kornievskaia@gmail.com>
 To: linux-fsdevel@vger.kernel.org
 Cc: linux-nfs@vger.kernel.org, fweimer@redhat.com, smfrench@gmail.com
-Subject: [PATCH v1 01/11] fs: Don't copy beyond the end of the file
-Date: Fri, 19 Oct 2018 11:30:17 -0400
-Message-Id: <20181019153018.32507-1-olga.kornievskaia@gmail.com>
+Subject: [PATCH v1 02/11] VFS permit cross device vfs_copy_file_range
+Date: Fri, 19 Oct 2018 11:30:18 -0400
+Message-Id: <20181019153018.32507-2-olga.kornievskaia@gmail.com>
+In-Reply-To: <20181019153018.32507-1-olga.kornievskaia@gmail.com>
+References: <20181019153018.32507-1-olga.kornievskaia@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Anna Schumaker <Anna.Schumaker@Netapp.com>
+From: Olga Kornievskaia <kolga@netapp.com>
 
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+Allow copy_file_range to copy between different superblocks but only
+of the same file system types. This feature was of interest to CIFS
+as well as NFS.
+
+This feature is needed by NFSv4.2 to perform file copy operation on
+the same server or file copy between different NFSv4.2 servers.
+
+If a file system's fileoperations copy_file_range operation prohibits
+cross-device copies, fall back to do_splice_direct. This would be
+needed for the NFS (destination) server side implementation of the
+file copy and currently for CIFS.
+
+Besides NFS, there is only 1 implementor of the copy_file_range FS
+operation -- CIFS. CIFS assumes incoming file descriptors are both
+CIFS but it will check if they are coming from different servers and
+return error code to fall back to do_splice_direct.
+
+NFS will allow for copies between different NFS servers.
+
+Adding to the vfs.txt documentation to explicitly warn about allowing
+for different superblocks of the same file type to be passed into the
+copy_file_range for the future users of copy_file_range method.
+
+Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
 ---
- fs/read_write.c | 3 +++
- 1 file changed, 3 insertions(+)
+ Documentation/filesystems/vfs.txt |  4 +++-
+ fs/read_write.c                   | 13 ++++++-------
+ 2 files changed, 9 insertions(+), 8 deletions(-)
 
+diff --git a/Documentation/filesystems/vfs.txt b/Documentation/filesystems/vfs.txt
+index a6c6a8a..5e520de 100644
+--- a/Documentation/filesystems/vfs.txt
++++ b/Documentation/filesystems/vfs.txt
+@@ -958,7 +958,9 @@ otherwise noted.
+ 
+   fallocate: called by the VFS to preallocate blocks or punch a hole.
+ 
+-  copy_file_range: called by the copy_file_range(2) system call.
++  copy_file_range: called by copy_file_range(2) system call. This method
++		   works on two file descriptors that might reside on
++		   different superblocks of the same type of file system.
+ 
+   clone_file_range: called by the ioctl(2) system call for FICLONERANGE and
+ 	FICLONE commands.
 diff --git a/fs/read_write.c b/fs/read_write.c
-index 39b4a21..c60790f 100644
+index c60790f..474e740 100644
 --- a/fs/read_write.c
 +++ b/fs/read_write.c
-@@ -1570,6 +1570,9 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
- 	if (unlikely(ret))
- 		return ret;
- 
-+	if (pos_in >= i_size_read(inode_in))
-+		return -EINVAL;
-+
- 	if (!(file_in->f_mode & FMODE_READ) ||
- 	    !(file_out->f_mode & FMODE_WRITE) ||
+@@ -1578,10 +1578,6 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
  	    (file_out->f_flags & O_APPEND))
+ 		return -EBADF;
+ 
+-	/* this could be relaxed once a method supports cross-fs copies */
+-	if (inode_in->i_sb != inode_out->i_sb)
+-		return -EXDEV;
+-
+ 	if (len == 0)
+ 		return 0;
+ 
+@@ -1591,7 +1587,8 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
+ 	 * Try cloning first, this is supported by more file systems, and
+ 	 * more efficient if both clone and copy are supported (e.g. NFS).
+ 	 */
+-	if (file_in->f_op->clone_file_range) {
++	if (inode_in->i_sb == inode_out->i_sb &&
++			file_in->f_op->clone_file_range) {
+ 		ret = file_in->f_op->clone_file_range(file_in, pos_in,
+ 				file_out, pos_out, len);
+ 		if (ret == 0) {
+@@ -1600,10 +1597,12 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
+ 		}
+ 	}
+ 
+-	if (file_out->f_op->copy_file_range) {
++	if (file_out->f_op->copy_file_range &&
++			(file_in->f_op->copy_file_range ==
++				file_out->f_op->copy_file_range)) {
+ 		ret = file_out->f_op->copy_file_range(file_in, pos_in, file_out,
+ 						      pos_out, len, flags);
+-		if (ret != -EOPNOTSUPP)
++		if (ret != -EOPNOTSUPP && ret != -EXDEV)
+ 			goto done;
+ 	}
+ 
 -- 
 1.8.3.1
