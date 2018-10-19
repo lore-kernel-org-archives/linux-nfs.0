@@ -1,137 +1,90 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:35690 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:9962 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726340AbeJSD3b (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 18 Oct 2018 23:29:31 -0400
-Date: Thu, 18 Oct 2018 15:27:02 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <schumakeranna@gmail.com>
-Cc: Frank Sorenson <sorenson@redhat.com>, steved@redhat.com,
-        linux-nfs@vger.kernel.org, David Howells <dhowells@redhat.com>
-Subject: [PATCH] sunrpc: safely reallow resvport min/max inversion
-Message-ID: <20181018192702.GC28076@fieldses.org>
-References: <20180904190632.GA22395@fieldses.org>
- <20180917152834.GD18600@fieldses.org>
- <20180917153306.GE18600@fieldses.org>
- <20181018192454.GB28076@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20181018192454.GB28076@fieldses.org>
+        id S1726758AbeJSQI7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 19 Oct 2018 12:08:59 -0400
+From: jiyin@redhat.com
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org, "Jianhong.Yin" <yin-jianhong@163.com>
+Subject: [PATCH] [nfs-utils] fix issue: mount -osharecache failure but return 'true'
+Date: Fri, 19 Oct 2018 16:03:54 +0800
+Message-Id: <20181019080354.26141-1-jiyin@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+From: "Jianhong.Yin" <yin-jianhong@163.com>
 
-Commits ffb6ca33b04b and e08ea3a96fc7 prevent setting xprt_min_resvport
-greater than xprt_max_resvport, but may also break simple code that sets
-one parameter then the other, if the new range does not overlap the old.
+see: https://bugzilla.redhat.com/show_bug.cgi?id=1629705
+mount.nfs4 -o context=system_u:object_r:user_home_dir_t:s0,sharecache $serv:$expdir $nfsmp
+mount.nfs4 -o context=system_u:object_r:xferlog_t:s0,sharecache $serv:$expdir $nfsmp2
+^^^ here mount fail, but return true. it confuse user!
 
-Also it looks racy to me, unless there's some serialization I'm not
-seeing.  Granted it would probably require malicious privileged processes
-(unless there's a chance these might eventually be settable in unprivileged
-containers), but still it seems better not to let userspace panic the
-kernel.
+according: https://patchwork.kernel.org/patch/10602607/#22234047
+add function is_mounted_already()
+-		if (errno == EBUSY)
++		if (errno == EBUSY && is_mounted_already(mi->spec, mi->node))
+			return EX_SUCCESS;
 
-Simpler seems to be to allow setting the parameters to whatever you want
-but interpret xprt_min_resvport > xprt_max_resvport as the empty range.
-
-Fixes: ffb6ca33b04b "sunrpc: Prevent resvport min/max inversion..."
-Fixes: e08ea3a96fc7 "sunrpc: Prevent rexvport min/max inversion..."
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Signed-off-by: Jianhong Yin <yin-jianhong@163.com>
 ---
- net/sunrpc/xprtsock.c | 34 ++++++++++++++++++----------------
- 1 file changed, 18 insertions(+), 16 deletions(-)
+ utils/mount/stropts.c | 31 ++++++++++++++++++++++++-------
+ 1 file changed, 24 insertions(+), 7 deletions(-)
 
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 6b7539c0466e..58219d7de91f 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -129,7 +129,7 @@ static struct ctl_table xs_tunables_table[] = {
- 		.mode		= 0644,
- 		.proc_handler	= proc_dointvec_minmax,
- 		.extra1		= &xprt_min_resvport_limit,
--		.extra2		= &xprt_max_resvport
-+		.extra2		= &xprt_max_resvport_limit
- 	},
- 	{
- 		.procname	= "max_resvport",
-@@ -137,7 +137,7 @@ static struct ctl_table xs_tunables_table[] = {
- 		.maxlen		= sizeof(unsigned int),
- 		.mode		= 0644,
- 		.proc_handler	= proc_dointvec_minmax,
--		.extra1		= &xprt_min_resvport,
-+		.extra1		= &xprt_min_resvport_limit,
- 		.extra2		= &xprt_max_resvport_limit
- 	},
- 	{
-@@ -1773,11 +1773,17 @@ static void xs_udp_timer(struct rpc_xprt *xprt, struct rpc_task *task)
- 	spin_unlock_bh(&xprt->transport_lock);
+diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+index 4d2e37e..4be7e61 100644
+--- a/utils/mount/stropts.c
++++ b/utils/mount/stropts.c
+@@ -48,6 +48,7 @@
+ #include "version.h"
+ #include "parse_dev.h"
+ #include "conffile.h"
++#include <mntent.h>
+ 
+ #ifndef NFS_PROGRAM
+ #define NFS_PROGRAM	(100003)
+@@ -1056,6 +1057,27 @@ static int nfs_is_permanent_error(int error)
+ 	}
  }
  
--static unsigned short xs_get_random_port(void)
-+static int xs_get_random_port(void)
- {
--	unsigned short range = xprt_max_resvport - xprt_min_resvport + 1;
--	unsigned short rand = (unsigned short) prandom_u32() % range;
--	return rand + xprt_min_resvport;
-+	unsigned short min = xprt_min_resvport, max = xprt_max_resvport;
-+	unsigned short range;
-+	unsigned short rand;
++static int is_mounted_already(const char *fsname, const char *dir)
++{
++	struct mntent *ent;
++	FILE *fp;
++	int ret = 0;
 +
-+	if (max < min)
-+		return -EADDRINUSE;
-+	range = max - min + 1;
-+	rand = (unsigned short) prandom_u32() % range;
-+	return rand + min;
- }
++	fp = setmntent("/proc/mounts", "r");
++	if (fp == NULL) {
++		perror("[unlikely] setmntent(3) fail");
++		exit(1);
++	}
++	while (NULL != (ent = getmntent(fp))) {
++		if (!strcmp(ent->mnt_fsname, fsname) && !strcmp(ent->mnt_dir, dir)) {
++			ret = 1;
++			break;
++		}
++	}
++	endmntent(fp);
++	return ret;
++}
++
+ /*
+  * Handle "foreground" NFS mounts.
+  *
+@@ -1078,13 +1100,8 @@ static int nfsmount_fg(struct nfsmount_info *mi)
+ 		if (nfs_try_mount(mi))
+ 			return EX_SUCCESS;
  
- /**
-@@ -1833,9 +1839,9 @@ static void xs_set_srcport(struct sock_xprt *transport, struct socket *sock)
- 		transport->srcport = xs_sock_getport(sock);
- }
+-		if (errno == EBUSY)
+-			/* The only cause of EBUSY is if exactly the desired
+-			 * filesystem is already mounted.  That can arguably
+-			 * be seen as success.  "mount -a" tries to optimise
+-			 * out this case but sometimes fails.  Help it out
+-			 * by pretending everything is rosy
+-			 */
++		/* if EBUSY is caused by re-mount, ignore the error */
++		if (errno == EBUSY && is_mounted_already(mi->spec, mi->node))
+ 			return EX_SUCCESS;
  
--static unsigned short xs_get_srcport(struct sock_xprt *transport)
-+static int xs_get_srcport(struct sock_xprt *transport)
- {
--	unsigned short port = transport->srcport;
-+	int port = transport->srcport;
- 
- 	if (port == 0 && transport->xprt.resvport)
- 		port = xs_get_random_port();
-@@ -1856,7 +1862,7 @@ static int xs_bind(struct sock_xprt *transport, struct socket *sock)
- {
- 	struct sockaddr_storage myaddr;
- 	int err, nloop = 0;
--	unsigned short port = xs_get_srcport(transport);
-+	int port = xs_get_srcport(transport);
- 	unsigned short last;
- 
- 	/*
-@@ -1874,8 +1880,8 @@ static int xs_bind(struct sock_xprt *transport, struct socket *sock)
- 	 * transport->xprt.resvport == 1) xs_get_srcport above will
- 	 * ensure that port is non-zero and we will bind as needed.
- 	 */
--	if (port == 0)
--		return 0;
-+	if (port <= 0)
-+		return port;
- 
- 	memcpy(&myaddr, &transport->srcaddr, transport->xprt.addrlen);
- 	do {
-@@ -3317,12 +3323,8 @@ static int param_set_uint_minmax(const char *val,
- 
- static int param_set_portnr(const char *val, const struct kernel_param *kp)
- {
--	if (kp->arg == &xprt_min_resvport)
--		return param_set_uint_minmax(val, kp,
--			RPC_MIN_RESVPORT,
--			xprt_max_resvport);
- 	return param_set_uint_minmax(val, kp,
--			xprt_min_resvport,
-+			RPC_MIN_RESVPORT,
- 			RPC_MAX_RESVPORT);
- }
- 
+ 		if (nfs_is_permanent_error(errno))
 -- 
-2.17.2
+2.17.1
