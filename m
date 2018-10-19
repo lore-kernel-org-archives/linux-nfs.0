@@ -1,29 +1,28 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-vs1-f68.google.com ([209.85.217.68]:46780 "EHLO
-        mail-vs1-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727038AbeJTAbm (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Oct 2018 20:31:42 -0400
+Received: from mail-vk1-f193.google.com ([209.85.221.193]:37920 "EHLO
+        mail-vk1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727038AbeJTAds (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Oct 2018 20:33:48 -0400
 MIME-Version: 1.0
-References: <20181019153018.32507-1-olga.kornievskaia@gmail.com>
- <20181019153018.32507-2-olga.kornievskaia@gmail.com> <CAOQ4uxjN8-SsGN6M0fL-NM1X5EmxXPD7UEYjimiAOh95WoT5oA@mail.gmail.com>
-In-Reply-To: <CAOQ4uxjN8-SsGN6M0fL-NM1X5EmxXPD7UEYjimiAOh95WoT5oA@mail.gmail.com>
+References: <20181019152932.32462-1-olga.kornievskaia@gmail.com>
+ <20181019152932.32462-3-olga.kornievskaia@gmail.com> <ae9364411979f663117def86a1c7df5319b376d1.camel@hammerspace.com>
+In-Reply-To: <ae9364411979f663117def86a1c7df5319b376d1.camel@hammerspace.com>
 From: Olga Kornievskaia <olga.kornievskaia@gmail.com>
-Date: Fri, 19 Oct 2018 12:24:41 -0400
-Message-ID: <CAN-5tyEbLSHxj=9xdba1CTai9Vu7hyrf9-EpW0gKQqJ1Z1m-3Q@mail.gmail.com>
+Date: Fri, 19 Oct 2018 12:26:47 -0400
+Message-ID: <CAN-5tyEfK6_cksDApTbQ2e+M94LqaAjy63q0_fhSBsB81XspVQ@mail.gmail.com>
 Subject: Re: [PATCH v1 02/11] VFS permit cross device vfs_copy_file_range
-To: Amir Goldstein <amir73il@gmail.com>
-Cc: linux-fsdevel@vger.kernel.org,
-        linux-nfs <linux-nfs@vger.kernel.org>, fweimer@redhat.com,
-        Steve French <smfrench@gmail.com>
+To: Trond Myklebust <trondmy@hammerspace.com>
+Cc: Anna Schumaker <anna.schumaker@netapp.com>,
+        viro@zeniv.linux.org.uk, linux-nfs <linux-nfs@vger.kernel.org>,
+        linux-fsdevel@vger.kernel.org
 Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Oct 19, 2018 at 11:55 AM Amir Goldstein <amir73il@gmail.com> wrote:
+On Fri, Oct 19, 2018 at 12:14 PM Trond Myklebust
+<trondmy@hammerspace.com> wrote:
 >
-> On Fri, Oct 19, 2018 at 6:30 PM Olga Kornievskaia
-> <olga.kornievskaia@gmail.com> wrote:
-> >
+> On Fri, 2018-10-19 at 11:29 -0400, Olga Kornievskaia wrote:
 > > From: Olga Kornievskaia <kolga@netapp.com>
 > >
 > > Allow copy_file_range to copy between different superblocks but only
@@ -55,46 +54,87 @@ On Fri, Oct 19, 2018 at 11:55 AM Amir Goldstein <amir73il@gmail.com> wrote:
 > >  fs/read_write.c                   | 13 ++++++-------
 > >  2 files changed, 9 insertions(+), 8 deletions(-)
 > >
-> > diff --git a/Documentation/filesystems/vfs.txt b/Documentation/filesystems/vfs.txt
+> > diff --git a/Documentation/filesystems/vfs.txt
+> > b/Documentation/filesystems/vfs.txt
 > > index a6c6a8a..5e520de 100644
 > > --- a/Documentation/filesystems/vfs.txt
 > > +++ b/Documentation/filesystems/vfs.txt
 > > @@ -958,7 +958,9 @@ otherwise noted.
 > >
-> >    fallocate: called by the VFS to preallocate blocks or punch a hole.
+> >    fallocate: called by the VFS to preallocate blocks or punch a
+> > hole.
 > >
 > > -  copy_file_range: called by the copy_file_range(2) system call.
-> > +  copy_file_range: called by copy_file_range(2) system call. This method
-> > +                  works on two file descriptors that might reside on
-> > +                  different superblocks of the same type of file system.
+> > +  copy_file_range: called by copy_file_range(2) system call. This
+> > method
+> > +                works on two file descriptors that might reside on
+> > +                different superblocks of the same type of file
+> > system.
 > >
-> >    clone_file_range: called by the ioctl(2) system call for FICLONERANGE and
-> >         FICLONE commands.
+> >    clone_file_range: called by the ioctl(2) system call for
+> > FICLONERANGE and
+> >       FICLONE commands.
 > > diff --git a/fs/read_write.c b/fs/read_write.c
 > > index c60790f..474e740 100644
 > > --- a/fs/read_write.c
 > > +++ b/fs/read_write.c
-> > @@ -1578,10 +1578,6 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
-> >             (file_out->f_flags & O_APPEND))
-> >                 return -EBADF;
+> > @@ -1578,10 +1578,6 @@ ssize_t vfs_copy_file_range(struct file
+> > *file_in, loff_t pos_in,
+> >           (file_out->f_flags & O_APPEND))
+> >               return -EBADF;
 > >
-> > -       /* this could be relaxed once a method supports cross-fs copies */
-> > -       if (inode_in->i_sb != inode_out->i_sb)
-> > -               return -EXDEV;
+> > -     /* this could be relaxed once a method supports cross-fs copies
+> > */
+> > -     if (inode_in->i_sb != inode_out->i_sb)
+> > -             return -EXDEV;
 > > -
+> >       if (len == 0)
+> >               return 0;
+> >
+> > @@ -1591,7 +1587,8 @@ ssize_t vfs_copy_file_range(struct file
+> > *file_in, loff_t pos_in,
+> >        * Try cloning first, this is supported by more file systems,
+> > and
+> >        * more efficient if both clone and copy are supported (e.g.
+> > NFS).
+> >        */
+> > -     if (file_in->f_op->clone_file_range) {
+> > +     if (inode_in->i_sb == inode_out->i_sb &&
+> > +                     file_in->f_op->clone_file_range) {
+> >               ret = file_in->f_op->clone_file_range(file_in, pos_in,
+> >                               file_out, pos_out, len);
+> >               if (ret == 0) {
+> > @@ -1600,10 +1597,12 @@ ssize_t vfs_copy_file_range(struct file
+> > *file_in, loff_t pos_in,
+> >               }
+> >       }
+> >
+> > -     if (file_out->f_op->copy_file_range) {
+> > +     if (file_out->f_op->copy_file_range &&
+> > +                     (file_in->f_op->copy_file_range ==
+> > +                             file_out->f_op->copy_file_range)) {
+> >               ret = file_out->f_op->copy_file_range(file_in, pos_in,
+> > file_out,
+> >                                                     pos_out, len,
+> > flags);
+> > -             if (ret != -EOPNOTSUPP)
+> > +             if (ret != -EOPNOTSUPP && ret != -EXDEV)
+> >                       goto done;
+> >       }
+> >
 >
-> You need to hoist this limitation to  clone_file_range() syscall, because
-> you are not allowed to change user facing behavior.
-> Maybe you can later add a uapi flag for copy_file_range() to explicitly allow
-> for cross-sb copy?
-
-Sure I can do that.
-
-> Maybe you can add the flag now for internal use  - only nfsv4 will pass that
-> flag to the vfs helper and system call will verify that flags == 0.
-
-Not only NFS wants it CIFS want it too.
-
+> Ditto.  This also needs an ACK from the VFS maintainers.
 >
-> Thanks,
-> Amir.
+> Cc: Al and linux-fsdevel
+
+Yeah I sent VFS as separate patches to the linux-fsdevel and included
+other folks (glibc/CIFS?) that were interested in this functionality.
+Apologizes for double sent. It was easier to send this as a patch
+series to just linux-nfs first.
+
+> --
+> Trond Myklebust
+> Linux NFS client maintainer, Hammerspace
+> trond.myklebust@hammerspace.com
+>
+>
