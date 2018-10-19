@@ -1,54 +1,82 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk1-f194.google.com ([209.85.222.194]:44694 "EHLO
+Received: from mail-qk1-f194.google.com ([209.85.222.194]:34558 "EHLO
         mail-qk1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727050AbeJSXgJ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Oct 2018 19:36:09 -0400
-Received: by mail-qk1-f194.google.com with SMTP id y8-v6so21195498qka.11
-        for <linux-nfs@vger.kernel.org>; Fri, 19 Oct 2018 08:29:34 -0700 (PDT)
+        with ESMTP id S1726860AbeJSXfx (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Oct 2018 19:35:53 -0400
+Received: by mail-qk1-f194.google.com with SMTP id p6-v6so21260959qkg.1
+        for <linux-nfs@vger.kernel.org>; Fri, 19 Oct 2018 08:29:17 -0700 (PDT)
 From: Olga Kornievskaia <olga.kornievskaia@gmail.com>
-To: trondmy@hammerspace.com, anna.schumaker@netapp.com
+To: bfields@redhat.com
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v1 03/11] NFS test for intra vs inter COPY
-Date: Fri, 19 Oct 2018 11:29:24 -0400
-Message-Id: <20181019152932.32462-4-olga.kornievskaia@gmail.com>
-In-Reply-To: <20181019152932.32462-1-olga.kornievskaia@gmail.com>
-References: <20181019152932.32462-1-olga.kornievskaia@gmail.com>
+Subject: [PATCH v1 06/13] NFSD fill-in netloc4 structure
+Date: Fri, 19 Oct 2018 11:28:58 -0400
+Message-Id: <20181019152905.32418-7-olga.kornievskaia@gmail.com>
+In-Reply-To: <20181019152905.32418-1-olga.kornievskaia@gmail.com>
+References: <20181019152905.32418-1-olga.kornievskaia@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Olga Kornievskaia <kolga@netapp.com>
 
+nfs.4 defines nfs42_netaddr structure that represents netloc4.
+
+Populate needed fields from the sockaddr structure.
+
+This will be used by flexfiles and 4.2 inter copy
+
 Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
 ---
- fs/nfs/nfs42.h | 11 +++++++++++
- 1 file changed, 11 insertions(+)
+ fs/nfsd/nfsd.h | 31 ++++++++++++++++++++++++++++++-
+ 1 file changed, 30 insertions(+), 1 deletion(-)
 
-diff --git a/fs/nfs/nfs42.h b/fs/nfs/nfs42.h
-index 19ec38f8..5abff4d 100644
---- a/fs/nfs/nfs42.h
-+++ b/fs/nfs/nfs42.h
-@@ -6,6 +6,7 @@
- #ifndef __LINUX_FS_NFS_NFS4_2_H
- #define __LINUX_FS_NFS_NFS4_2_H
- 
+diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
+index 0668999..030fccb 100644
+--- a/fs/nfsd/nfsd.h
++++ b/fs/nfsd/nfsd.h
+@@ -18,7 +18,7 @@
+ #include <linux/nfs4.h>
+ #include <linux/sunrpc/svc.h>
+ #include <linux/sunrpc/msg_prot.h>
+-
 +#include <linux/sunrpc/addr.h>
- /*
-  * FIXME:  four LAYOUTSTATS calls per compound at most! Do we need to support
-  * more? Need to consider not to pre-alloc too much for a compound.
-@@ -21,4 +22,14 @@ int nfs42_proc_layoutstats_generic(struct nfs_server *,
- 				   struct nfs42_layoutstat_data *);
- int nfs42_proc_clone(struct file *, struct file *, loff_t, loff_t, loff_t);
+ #include <uapi/linux/nfsd/debug.h>
  
-+static inline bool nfs42_files_from_same_server(struct file *in,
-+						struct file *out)
+ #include "stats.h"
+@@ -366,6 +366,35 @@ static inline bool nfsd4_spo_must_allow(struct svc_rqst *rqstp)
+ 
+ extern const u32 nfsd_suppattrs[3][3];
+ 
++static inline u32 nfsd4_set_netaddr(struct sockaddr *addr, struct nfs42_netaddr *netaddr)
 +{
-+	struct nfs_client *c_in = (NFS_SERVER(file_inode(in)))->nfs_client;
-+	struct nfs_client *c_out = (NFS_SERVER(file_inode(out)))->nfs_client;
++	struct sockaddr_in *sin = (struct sockaddr_in *)addr;
++	struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)addr;
++	unsigned int port;
++	size_t ret;
 +
-+	return rpc_cmp_addr((struct sockaddr *)&c_in->cl_addr,
-+				(struct sockaddr *)&c_out->cl_addr);
++	switch (addr->sa_family) {
++	case AF_INET:
++		port = ntohs(sin->sin_port);
++		sprintf(netaddr->netid, "tcp");
++		netaddr->netid_len = 3;
++		break;
++	case AF_INET6:
++		port = ntohs(sin6->sin6_port);
++		sprintf(netaddr->netid, "tcp6");
++		netaddr->netid_len = 4;
++		break;
++	default:
++		return nfserrno(-EINVAL);
++	}
++	ret = rpc_ntop(addr, netaddr->addr, sizeof(netaddr->addr));
++	netaddr->addr_len = ret + snprintf(netaddr->addr + ret,
++				     RPCBIND_MAXUADDRLEN + 1,
++				     ".%u.%u", port >> 8, port & 0xff);
++
++	return 0;
 +}
 +
- #endif /* __LINUX_FS_NFS_NFS4_2_H */
+ static inline bool bmval_is_subset(const u32 *bm1, const u32 *bm2)
+ {
+ 	return !((bm1[0] & ~bm2[0]) ||
 -- 
 1.8.3.1
