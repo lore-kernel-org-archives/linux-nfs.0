@@ -1,90 +1,25 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:9962 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726758AbeJSQI7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 19 Oct 2018 12:08:59 -0400
-From: jiyin@redhat.com
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org, "Jianhong.Yin" <yin-jianhong@163.com>
-Subject: [PATCH] [nfs-utils] fix issue: mount -osharecache failure but return 'true'
-Date: Fri, 19 Oct 2018 16:03:54 +0800
-Message-Id: <20181019080354.26141-1-jiyin@redhat.com>
+Received: from aserp2120.oracle.com ([141.146.126.78]:37516 "EHLO
+        aserp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727413AbeJSW16 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Oct 2018 18:27:58 -0400
+From: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain;
+        charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 11.5 \(3445.9.1\))
+Subject: review of v4.20 linux-next merge commit
+Message-Id: <2177F9CF-E9E8-4E10-AD14-E53F0F5F9574@oracle.com>
+Date: Fri, 19 Oct 2018 10:21:30 -0400
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+To: Trond Myklebust <trond.myklebust@hammerspace.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "Jianhong.Yin" <yin-jianhong@163.com>
+h=
+ttp://git.linux-nfs.org/?p=3Dtrondmy/linux-nfs.git;a=3Dcommitdiff;h=3D93bd=
+cf9fdb89646e9446fab25aec76a754969619
 
-see: https://bugzilla.redhat.com/show_bug.cgi?id=1629705
-mount.nfs4 -o context=system_u:object_r:user_home_dir_t:s0,sharecache $serv:$expdir $nfsmp
-mount.nfs4 -o context=system_u:object_r:xferlog_t:s0,sharecache $serv:$expdir $nfsmp2
-^^^ here mount fail, but return true. it confuse user!
+I don't see a problem.
 
-according: https://patchwork.kernel.org/patch/10602607/#22234047
-add function is_mounted_already()
--		if (errno == EBUSY)
-+		if (errno == EBUSY && is_mounted_already(mi->spec, mi->node))
-			return EX_SUCCESS;
-
-Signed-off-by: Jianhong Yin <yin-jianhong@163.com>
----
- utils/mount/stropts.c | 31 ++++++++++++++++++++++++-------
- 1 file changed, 24 insertions(+), 7 deletions(-)
-
-diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-index 4d2e37e..4be7e61 100644
---- a/utils/mount/stropts.c
-+++ b/utils/mount/stropts.c
-@@ -48,6 +48,7 @@
- #include "version.h"
- #include "parse_dev.h"
- #include "conffile.h"
-+#include <mntent.h>
- 
- #ifndef NFS_PROGRAM
- #define NFS_PROGRAM	(100003)
-@@ -1056,6 +1057,27 @@ static int nfs_is_permanent_error(int error)
- 	}
- }
- 
-+static int is_mounted_already(const char *fsname, const char *dir)
-+{
-+	struct mntent *ent;
-+	FILE *fp;
-+	int ret = 0;
-+
-+	fp = setmntent("/proc/mounts", "r");
-+	if (fp == NULL) {
-+		perror("[unlikely] setmntent(3) fail");
-+		exit(1);
-+	}
-+	while (NULL != (ent = getmntent(fp))) {
-+		if (!strcmp(ent->mnt_fsname, fsname) && !strcmp(ent->mnt_dir, dir)) {
-+			ret = 1;
-+			break;
-+		}
-+	}
-+	endmntent(fp);
-+	return ret;
-+}
-+
- /*
-  * Handle "foreground" NFS mounts.
-  *
-@@ -1078,13 +1100,8 @@ static int nfsmount_fg(struct nfsmount_info *mi)
- 		if (nfs_try_mount(mi))
- 			return EX_SUCCESS;
- 
--		if (errno == EBUSY)
--			/* The only cause of EBUSY is if exactly the desired
--			 * filesystem is already mounted.  That can arguably
--			 * be seen as success.  "mount -a" tries to optimise
--			 * out this case but sometimes fails.  Help it out
--			 * by pretending everything is rosy
--			 */
-+		/* if EBUSY is caused by re-mount, ignore the error */
-+		if (errno == EBUSY && is_mounted_already(mi->spec, mi->node))
- 			return EX_SUCCESS;
- 
- 		if (nfs_is_permanent_error(errno))
--- 
-2.17.1
+--
+Chuck Lever
