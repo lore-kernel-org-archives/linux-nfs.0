@@ -1,82 +1,92 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:45800 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:33160 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727353AbeJTXEe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sat, 20 Oct 2018 19:04:34 -0400
-Received: from smtp.corp.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+        id S1727413AbeJUAO0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sat, 20 Oct 2018 20:14:26 -0400
+Received: from smtp.corp.redhat.com (int-mx05.intmail.prod.int.phx2.redhat.com [10.5.11.15])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 269FD81DE5
-        for <linux-nfs@vger.kernel.org>; Sat, 20 Oct 2018 14:53:49 +0000 (UTC)
+        by mx1.redhat.com (Postfix) with ESMTPS id 544A03001A52
+        for <linux-nfs@vger.kernel.org>; Sat, 20 Oct 2018 16:03:31 +0000 (UTC)
 Received: from steved.boston.devel.redhat.com (ovpn-120-63.rdu2.redhat.com [10.10.120.63])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id BC9A170465
-        for <linux-nfs@vger.kernel.org>; Sat, 20 Oct 2018 14:53:48 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 01C745D6A6
+        for <linux-nfs@vger.kernel.org>; Sat, 20 Oct 2018 16:03:30 +0000 (UTC)
 From: Steve Dickson <steved@redhat.com>
 To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH] mount.nfs: Only ignore EBUSY when a filesystem is already mount
-Date: Sat, 20 Oct 2018 10:53:47 -0400
-Message-Id: <20181020145347.134233-1-steved@redhat.com>
+Subject: [PATCH] gssd: Introduce use-gss-proxy boolean to nfs.conf
+Date: Sat, 20 Oct 2018 12:03:29 -0400
+Message-Id: <20181020160329.135824-1-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-EBUSY errors can be caused by using the -o sharecache
-flag and different context= values. So make sure
-the filesytem is mounted before ignoring the EBUSY error.
+Allow the used of the gssprox-mech(8) through a the
+boolean variable in the [gssd] section of nfs.conf
 
-Fixes: https://bugzilla.redhat.com/show_bug.cgi?id=1629705
-
-Found-by: Jianhong.Yin <yin-jianhong@163.com>
 Signed-off-by: Steve Dickson <steved@redhat.com>
 ---
- utils/mount/Makefile.am |  1 +
- utils/mount/stropts.c   | 16 ++++++++++------
- 2 files changed, 11 insertions(+), 6 deletions(-)
+ nfs.conf             |  1 +
+ systemd/nfs.conf.man |  1 +
+ utils/gssd/gssd.c    | 10 ++++++++++
+ 3 files changed, 12 insertions(+)
 
-diff --git a/utils/mount/Makefile.am b/utils/mount/Makefile.am
-index 7b97c31..ad0be93 100644
---- a/utils/mount/Makefile.am
-+++ b/utils/mount/Makefile.am
-@@ -27,6 +27,7 @@ endif
+diff --git a/nfs.conf b/nfs.conf
+index 0d0ec9b..5546109 100644
+--- a/nfs.conf
++++ b/nfs.conf
+@@ -11,6 +11,7 @@
+ #[gssd]
+ # use-memcache=0
+ # use-machine-creds=1
++# use-gss-proxy=0
+ # avoid-dns=1
+ # limit-to-legacy-enctypes=0
+ # context-timeout=0
+diff --git a/systemd/nfs.conf.man b/systemd/nfs.conf.man
+index 189b052..699db3f 100644
+--- a/systemd/nfs.conf.man
++++ b/systemd/nfs.conf.man
+@@ -213,6 +213,7 @@ for details.
+ Recognized values:
+ .BR use-memcache ,
+ .BR use-machine-creds ,
++.BR use-gss-proxy ,
+ .BR avoid-dns ,
+ .BR limit-to-legacy-enctypes ,
+ .BR context-timeout ,
+diff --git a/utils/gssd/gssd.c b/utils/gssd/gssd.c
+index 00df2fc..2e92f28 100644
+--- a/utils/gssd/gssd.c
++++ b/utils/gssd/gssd.c
+@@ -89,6 +89,7 @@ char *preferred_realm = NULL;
+ char *ccachedir = NULL;
+ /* Avoid DNS reverse lookups on server names */
+ static bool avoid_dns = true;
++static bool use_gssproxy = false;
+ int thread_started = false;
+ pthread_mutex_t pmutex = PTHREAD_MUTEX_INITIALIZER;
+ pthread_cond_t pcond = PTHREAD_COND_INITIALIZER;
+@@ -872,6 +873,7 @@ read_gss_conf(void)
+ 	if (s)
+ 		preferred_realm = s;
  
- mount_nfs_LDADD = ../../support/nfs/libnfs.la \
- 		  ../../support/export/libexport.a \
-+		  ../../support/misc/libmisc.a \
- 		  $(LIBTIRPC)
++	use_gssproxy = conf_get_bool("gssd", "use-gss-proxy", use_gssproxy);
+ }
  
- mount_nfs_SOURCES = $(mount_common)
-diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-index 4d2e37e..eed0356 100644
---- a/utils/mount/stropts.c
-+++ b/utils/mount/stropts.c
-@@ -48,6 +48,7 @@
- #include "version.h"
- #include "parse_dev.h"
- #include "conffile.h"
-+#include "misc.h"
+ int
+@@ -957,6 +959,14 @@ main(int argc, char *argv[])
+ 		exit(1);
+ 	}
  
- #ifndef NFS_PROGRAM
- #define NFS_PROGRAM	(100003)
-@@ -1078,12 +1079,15 @@ static int nfsmount_fg(struct nfsmount_info *mi)
- 		if (nfs_try_mount(mi))
- 			return EX_SUCCESS;
- 
--		if (errno == EBUSY)
--			/* The only cause of EBUSY is if exactly the desired
--			 * filesystem is already mounted.  That can arguably
--			 * be seen as success.  "mount -a" tries to optimise
--			 * out this case but sometimes fails.  Help it out
--			 * by pretending everything is rosy
-+#pragma GCC diagnostic ignored "-Wdiscarded-qualifiers"
-+		if (errno == EBUSY && is_mountpoint(mi->node))
-+#pragma GCC diagnostic warning "-Wdiscarded-qualifiers"
-+			/*
-+			 * EBUSY can happen when mounting a filesystem that
-+			 * is already mounted or when the context= are
-+			 * different when using the -o sharecache
-+			 *
-+			 * Only error out in the latter case.
- 			 */
- 			return EX_SUCCESS;
- 
++	if (use_gssproxy) {
++		if (setenv("GSS_USE_PROXY", "yes", 1) < 0) {
++			printerr(0, "gssd: Unable to set $GSS_USE_PROXY: %s\n", 
++				strerror(errno));
++			exit(EXIT_FAILURE);
++		}
++	}
++
+ 	if (ccachedir) {
+ 		char *ccachedir_copy;
+ 		char *ptr;
 -- 
 2.17.2
