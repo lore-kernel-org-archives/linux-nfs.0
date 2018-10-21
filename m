@@ -7,60 +7,60 @@ X-Spam-Status: No, score=-7.3 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,UNPARSEABLE_RELAY,URIBL_BLOCKED
 	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id BA5E8ECDE44
-	for <linux-nfs@archiver.kernel.org>; Sun, 21 Oct 2018 16:19:19 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6739AECDE43
+	for <linux-nfs@archiver.kernel.org>; Sun, 21 Oct 2018 16:19:33 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 7469B2083A
-	for <linux-nfs@archiver.kernel.org>; Sun, 21 Oct 2018 16:19:19 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 1BCF12083A
+	for <linux-nfs@archiver.kernel.org>; Sun, 21 Oct 2018 16:19:33 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="tqZ0KXwx"
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 7469B2083A
+	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="Ci372zLd"
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 1BCF12083A
 Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=oracle.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728149AbeJVAeI (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 21 Oct 2018 20:34:08 -0400
-Received: from aserp2120.oracle.com ([141.146.126.78]:43920 "EHLO
-        aserp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728077AbeJVAeH (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 21 Oct 2018 20:34:07 -0400
-Received: from pps.filterd (aserp2120.oracle.com [127.0.0.1])
-        by aserp2120.oracle.com (8.16.0.22/8.16.0.22) with SMTP id w9LGEeZE155152;
-        Sun, 21 Oct 2018 16:17:11 GMT
+        id S1728020AbeJVAeU (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sun, 21 Oct 2018 20:34:20 -0400
+Received: from userp2120.oracle.com ([156.151.31.85]:46726 "EHLO
+        userp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727998AbeJVAeT (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 21 Oct 2018 20:34:19 -0400
+Received: from pps.filterd (userp2120.oracle.com [127.0.0.1])
+        by userp2120.oracle.com (8.16.0.22/8.16.0.22) with SMTP id w9LGDwSl106540;
+        Sun, 21 Oct 2018 16:17:13 GMT
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=subject : from : to :
  cc : date : message-id : in-reply-to : references : mime-version :
  content-type : content-transfer-encoding; s=corp-2018-07-02;
- bh=GRemaJYZtZ/0EvXQ39fgMVri7M34w7UuM2Qe8+dF1M8=;
- b=tqZ0KXwxlZOcyc4jGQ0h7zHr0h0LbZtr7aWpdq3jSJYFwqj0Pw2AhG2EQKCu082kqXIm
- KRTZ6rw6wjT9soSRP2n1yoNeQsY3BlmnjmMazk09IJif1sJ+arRJVcraTzq9TK2YN3Vn
- Zvh6zyVClv9cgGHfzTDYPSwraQxMxKcvQ2fEX7FTXNLTCC3fQgb9rRR97BocuKCEfQTj
- 5gBEEBqH0e91xkhw68XmX/CgYSUCj0k247kXQURXGGylEbkpeCKesqK8cYQ7dPjafRQM
- AyVRl7xqhqcSCE/ILyDpaELzSWCEvUh2xvn0FgkefVgvtUXSxYe/rmgjcuNsnjlQUS1S ZA== 
-Received: from aserv0022.oracle.com (aserv0022.oracle.com [141.146.126.234])
-        by aserp2120.oracle.com with ESMTP id 2n7vapjyrq-1
+ bh=A4sDFXPvAlL63/6+A19QlnFZhnOxuaNlawZcJx8i2yQ=;
+ b=Ci372zLd/zDuX20WsEMatrVemjJBmWvfmWAVw3fGsomqTRphZkyBH4vr5R1srJIGkyYT
+ Do9VZ15gmExU4LQaIZKAuJraOAD52rtt4ZrTRemLeOUE4Z3JKweSsbadLWnFw5bDkv+X
+ m1bWKEoXPjnkrnEDRo8xA4DRPrXTouuAsOGX/cfsjGLBrA2JBw1EHTMKTecdO3KdXix9
+ ZX7kcxSbCpF1f+jmGfK+SwjJTwyjfAwmpf6jfIO6xt+46YX+7zco6IULR7Be2y25dK7S
+ I/G+x/xF1lVJ/iJMO4bpStU8d05PoyNlnpRF/+gwJP1Er4HsnYt0nttN1Jb/jMOf6JAS oA== 
+Received: from aserv0021.oracle.com (aserv0021.oracle.com [141.146.126.233])
+        by userp2120.oracle.com with ESMTP id 2n7w0qaxkm-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Sun, 21 Oct 2018 16:17:11 +0000
+        Sun, 21 Oct 2018 16:17:13 +0000
 Received: from userv0121.oracle.com (userv0121.oracle.com [156.151.31.72])
-        by aserv0022.oracle.com (8.14.4/8.14.4) with ESMTP id w9LGH58p013336
+        by aserv0021.oracle.com (8.14.4/8.14.4) with ESMTP id w9LGHC4l010087
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Sun, 21 Oct 2018 16:17:05 GMT
-Received: from abhmp0004.oracle.com (abhmp0004.oracle.com [141.146.116.10])
-        by userv0121.oracle.com (8.14.4/8.13.8) with ESMTP id w9LGH4r2019187;
-        Sun, 21 Oct 2018 16:17:04 GMT
+        Sun, 21 Oct 2018 16:17:12 GMT
+Received: from abhmp0002.oracle.com (abhmp0002.oracle.com [141.146.116.8])
+        by userv0121.oracle.com (8.14.4/8.13.8) with ESMTP id w9LGHBuj019294;
+        Sun, 21 Oct 2018 16:17:11 GMT
 Received: from localhost (/10.159.225.70)
         by default (Oracle Beehive Gateway v4.0)
-        with ESMTP ; Sun, 21 Oct 2018 09:17:04 -0700
-Subject: [PATCH 17/28] vfs: hide file range comparison function
+        with ESMTP ; Sun, 21 Oct 2018 09:17:11 -0700
+Subject: [PATCH 18/28] vfs: clean up generic_remap_file_range_prep return
+ value
 From:   "Darrick J. Wong" <darrick.wong@oracle.com>
 To:     david@fromorbit.com, darrick.wong@oracle.com
 Cc:     sandeen@redhat.com, linux-nfs@vger.kernel.org,
-        linux-cifs@vger.kernel.org, Amir Goldstein <amir73il@gmail.com>,
-        linux-unionfs@vger.kernel.org, linux-xfs@vger.kernel.org,
-        linux-mm@kvack.org, linux-btrfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, Christoph Hellwig <hch@lst.de>,
-        ocfs2-devel@oss.oracle.com
-Date:   Sun, 21 Oct 2018 09:17:02 -0700
-Message-ID: <154013862267.29026.2582062504282772214.stgit@magnolia>
+        linux-cifs@vger.kernel.org, linux-unionfs@vger.kernel.org,
+        linux-xfs@vger.kernel.org, linux-mm@kvack.org,
+        linux-btrfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        Christoph Hellwig <hch@lst.de>, ocfs2-devel@oss.oracle.com
+Date:   Sun, 21 Oct 2018 09:17:09 -0700
+Message-ID: <154013862952.29026.12371941728048413604.stgit@magnolia>
 In-Reply-To: <154013850285.29026.16168387526580596209.stgit@magnolia>
 References: <154013850285.29026.16168387526580596209.stgit@magnolia>
 User-Agent: StGit/0.17.1-dirty
@@ -69,7 +69,7 @@ Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
 X-Proofpoint-Virus-Version: vendor=nai engine=5900 definitions=9053 signatures=668683
 X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 suspectscore=0 malwarescore=0
- phishscore=0 bulkscore=0 spamscore=0 mlxscore=0 mlxlogscore=636
+ phishscore=0 bulkscore=0 spamscore=0 mlxscore=0 mlxlogscore=872
  adultscore=0 classifier=spam adjust=0 reason=mlx scancount=1
  engine=8.0.1-1807170000 definitions=main-1810210151
 Sender: linux-nfs-owner@vger.kernel.org
@@ -79,235 +79,76 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Darrick J. Wong <darrick.wong@oracle.com>
 
-There are no callers of vfs_dedupe_file_range_compare, so we might as
-well make it a static helper and remove the export.
+Since the remap prep function can update the length of the remap
+request, we can change this function to return the usual return status
+instead of the odd behavior it has now.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
-Reviewed-by: Amir Goldstein <amir73il@gmail.com>
 Reviewed-by: Christoph Hellwig <hch@lst.de>
 ---
- fs/read_write.c    |  187 +++++++++++++++++++++++++---------------------------
- include/linux/fs.h |    3 -
- 2 files changed, 91 insertions(+), 99 deletions(-)
+ fs/ocfs2/refcounttree.c |    2 +-
+ fs/read_write.c         |    6 +++---
+ fs/xfs/xfs_reflink.c    |    4 ++--
+ 3 files changed, 6 insertions(+), 6 deletions(-)
 
 
+diff --git a/fs/ocfs2/refcounttree.c b/fs/ocfs2/refcounttree.c
+index 6a42c04ac0ab..46bbd315c39f 100644
+--- a/fs/ocfs2/refcounttree.c
++++ b/fs/ocfs2/refcounttree.c
+@@ -4852,7 +4852,7 @@ int ocfs2_reflink_remap_range(struct file *file_in,
+ 
+ 	ret = generic_remap_file_range_prep(file_in, pos_in, file_out, pos_out,
+ 			&len, remap_flags);
+-	if (ret <= 0)
++	if (ret < 0 || len == 0)
+ 		goto out_unlock;
+ 
+ 	/* Lock out changes to the allocation maps and remap. */
 diff --git a/fs/read_write.c b/fs/read_write.c
-index c0bcc1a20650..e4d295d0d236 100644
+index e4d295d0d236..6b40a43edf18 100644
 --- a/fs/read_write.c
 +++ b/fs/read_write.c
-@@ -1752,6 +1752,97 @@ static int generic_remap_check_len(struct inode *inode_in,
- 	return (remap_flags & REMAP_FILE_DEDUP) ? -EBADE : -EINVAL;
- }
- 
-+/*
-+ * Read a page's worth of file data into the page cache.  Return the page
-+ * locked.
-+ */
-+static struct page *vfs_dedupe_get_page(struct inode *inode, loff_t offset)
-+{
-+	struct page *page;
-+
-+	page = read_mapping_page(inode->i_mapping, offset >> PAGE_SHIFT, NULL);
-+	if (IS_ERR(page))
-+		return page;
-+	if (!PageUptodate(page)) {
-+		put_page(page);
-+		return ERR_PTR(-EIO);
-+	}
-+	lock_page(page);
-+	return page;
-+}
-+
-+/*
-+ * Compare extents of two files to see if they are the same.
-+ * Caller must have locked both inodes to prevent write races.
-+ */
-+static int vfs_dedupe_file_range_compare(struct inode *src, loff_t srcoff,
-+					 struct inode *dest, loff_t destoff,
-+					 loff_t len, bool *is_same)
-+{
-+	loff_t src_poff;
-+	loff_t dest_poff;
-+	void *src_addr;
-+	void *dest_addr;
-+	struct page *src_page;
-+	struct page *dest_page;
-+	loff_t cmp_len;
-+	bool same;
-+	int error;
-+
-+	error = -EINVAL;
-+	same = true;
-+	while (len) {
-+		src_poff = srcoff & (PAGE_SIZE - 1);
-+		dest_poff = destoff & (PAGE_SIZE - 1);
-+		cmp_len = min(PAGE_SIZE - src_poff,
-+			      PAGE_SIZE - dest_poff);
-+		cmp_len = min(cmp_len, len);
-+		if (cmp_len <= 0)
-+			goto out_error;
-+
-+		src_page = vfs_dedupe_get_page(src, srcoff);
-+		if (IS_ERR(src_page)) {
-+			error = PTR_ERR(src_page);
-+			goto out_error;
-+		}
-+		dest_page = vfs_dedupe_get_page(dest, destoff);
-+		if (IS_ERR(dest_page)) {
-+			error = PTR_ERR(dest_page);
-+			unlock_page(src_page);
-+			put_page(src_page);
-+			goto out_error;
-+		}
-+		src_addr = kmap_atomic(src_page);
-+		dest_addr = kmap_atomic(dest_page);
-+
-+		flush_dcache_page(src_page);
-+		flush_dcache_page(dest_page);
-+
-+		if (memcmp(src_addr + src_poff, dest_addr + dest_poff, cmp_len))
-+			same = false;
-+
-+		kunmap_atomic(dest_addr);
-+		kunmap_atomic(src_addr);
-+		unlock_page(dest_page);
-+		unlock_page(src_page);
-+		put_page(dest_page);
-+		put_page(src_page);
-+
-+		if (!same)
-+			break;
-+
-+		srcoff += cmp_len;
-+		destoff += cmp_len;
-+		len -= cmp_len;
-+	}
-+
-+	*is_same = same;
-+	return 0;
-+
-+out_error:
-+	return error;
-+}
-+
- /*
-  * Check that the two inodes are eligible for cloning, the ranges make
+@@ -1848,8 +1848,8 @@ static int vfs_dedupe_file_range_compare(struct inode *src, loff_t srcoff,
   * sense, and then flush all dirty data.  Caller must ensure that the
-@@ -1923,102 +2014,6 @@ loff_t vfs_clone_file_range(struct file *file_in, loff_t pos_in,
- }
- EXPORT_SYMBOL(vfs_clone_file_range);
+  * inodes have been locked against any other modifications.
+  *
+- * Returns: 0 for "nothing to clone", 1 for "something to clone", or
+- * the usual negative error code.
++ * If there's an error, then the usual negative error code is returned.
++ * Otherwise returns 0 with *len set to the request length.
+  */
+ int generic_remap_file_range_prep(struct file *file_in, loff_t pos_in,
+ 				  struct file *file_out, loff_t pos_out,
+@@ -1945,7 +1945,7 @@ int generic_remap_file_range_prep(struct file *file_in, loff_t pos_in,
+ 			return ret;
+ 	}
  
--/*
-- * Read a page's worth of file data into the page cache.  Return the page
-- * locked.
-- */
--static struct page *vfs_dedupe_get_page(struct inode *inode, loff_t offset)
--{
--	struct address_space *mapping;
--	struct page *page;
--	pgoff_t n;
--
--	n = offset >> PAGE_SHIFT;
--	mapping = inode->i_mapping;
--	page = read_mapping_page(mapping, n, NULL);
--	if (IS_ERR(page))
--		return page;
--	if (!PageUptodate(page)) {
--		put_page(page);
--		return ERR_PTR(-EIO);
--	}
--	lock_page(page);
--	return page;
--}
--
--/*
-- * Compare extents of two files to see if they are the same.
-- * Caller must have locked both inodes to prevent write races.
-- */
--int vfs_dedupe_file_range_compare(struct inode *src, loff_t srcoff,
--				  struct inode *dest, loff_t destoff,
--				  loff_t len, bool *is_same)
--{
--	loff_t src_poff;
--	loff_t dest_poff;
--	void *src_addr;
--	void *dest_addr;
--	struct page *src_page;
--	struct page *dest_page;
--	loff_t cmp_len;
--	bool same;
--	int error;
--
--	error = -EINVAL;
--	same = true;
--	while (len) {
--		src_poff = srcoff & (PAGE_SIZE - 1);
--		dest_poff = destoff & (PAGE_SIZE - 1);
--		cmp_len = min(PAGE_SIZE - src_poff,
--			      PAGE_SIZE - dest_poff);
--		cmp_len = min(cmp_len, len);
--		if (cmp_len <= 0)
--			goto out_error;
--
--		src_page = vfs_dedupe_get_page(src, srcoff);
--		if (IS_ERR(src_page)) {
--			error = PTR_ERR(src_page);
--			goto out_error;
--		}
--		dest_page = vfs_dedupe_get_page(dest, destoff);
--		if (IS_ERR(dest_page)) {
--			error = PTR_ERR(dest_page);
--			unlock_page(src_page);
--			put_page(src_page);
--			goto out_error;
--		}
--		src_addr = kmap_atomic(src_page);
--		dest_addr = kmap_atomic(dest_page);
--
--		flush_dcache_page(src_page);
--		flush_dcache_page(dest_page);
--
--		if (memcmp(src_addr + src_poff, dest_addr + dest_poff, cmp_len))
--			same = false;
--
--		kunmap_atomic(dest_addr);
--		kunmap_atomic(src_addr);
--		unlock_page(dest_page);
--		unlock_page(src_page);
--		put_page(dest_page);
--		put_page(src_page);
--
--		if (!same)
--			break;
--
--		srcoff += cmp_len;
--		destoff += cmp_len;
--		len -= cmp_len;
--	}
--
--	*is_same = same;
--	return 0;
--
--out_error:
--	return error;
--}
--EXPORT_SYMBOL(vfs_dedupe_file_range_compare);
--
- loff_t vfs_dedupe_file_range_one(struct file *src_file, loff_t src_pos,
- 				 struct file *dst_file, loff_t dst_pos,
- 				 loff_t len, unsigned int remap_flags)
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 34c22d695011..346036a84f18 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1853,9 +1853,6 @@ extern loff_t do_clone_file_range(struct file *file_in, loff_t pos_in,
- extern loff_t vfs_clone_file_range(struct file *file_in, loff_t pos_in,
- 				   struct file *file_out, loff_t pos_out,
- 				   loff_t len, unsigned int remap_flags);
--extern int vfs_dedupe_file_range_compare(struct inode *src, loff_t srcoff,
--					 struct inode *dest, loff_t destoff,
--					 loff_t len, bool *is_same);
- extern int vfs_dedupe_file_range(struct file *file,
- 				 struct file_dedupe_range *same);
- extern loff_t vfs_dedupe_file_range_one(struct file *src_file, loff_t src_pos,
+-	return 1;
++	return 0;
+ }
+ EXPORT_SYMBOL(generic_remap_file_range_prep);
+ 
+diff --git a/fs/xfs/xfs_reflink.c b/fs/xfs/xfs_reflink.c
+index 3dbe5fb7e9c0..9b1ea42c81d1 100644
+--- a/fs/xfs/xfs_reflink.c
++++ b/fs/xfs/xfs_reflink.c
+@@ -1329,7 +1329,7 @@ xfs_reflink_remap_prep(
+ 
+ 	ret = generic_remap_file_range_prep(file_in, pos_in, file_out, pos_out,
+ 			len, remap_flags);
+-	if (ret <= 0)
++	if (ret < 0 || *len == 0)
+ 		goto out_unlock;
+ 
+ 	/*
+@@ -1409,7 +1409,7 @@ xfs_reflink_remap_range(
+ 	/* Prepare and then clone file data. */
+ 	ret = xfs_reflink_remap_prep(file_in, pos_in, file_out, pos_out,
+ 			&len, remap_flags);
+-	if (ret <= 0)
++	if (ret < 0 || len == 0)
+ 		return ret;
+ 
+ 	trace_xfs_reflink_remap_range(src, pos_in, len, dest, pos_out);
 
