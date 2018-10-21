@@ -2,100 +2,108 @@ Return-Path: <SRS0=BUwe=NB=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.5 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-1.3 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
+	SPF_PASS,UNPARSEABLE_RELAY autolearn=unavailable autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E27FCECDE44
-	for <linux-nfs@archiver.kernel.org>; Sun, 21 Oct 2018 14:44:30 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5A638ECDE45
+	for <linux-nfs@archiver.kernel.org>; Sun, 21 Oct 2018 16:15:16 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 89B7E20869
-	for <linux-nfs@archiver.kernel.org>; Sun, 21 Oct 2018 14:44:30 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 2227E2083A
+	for <linux-nfs@archiver.kernel.org>; Sun, 21 Oct 2018 16:15:16 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=kernel.org header.i=@kernel.org header.b="GiMAchLI"
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 89B7E20869
-Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=kernel.org
+	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="UIlaj9Rm"
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 2227E2083A
+Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=oracle.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727676AbeJUW7C (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 21 Oct 2018 18:59:02 -0400
-Received: from mail.kernel.org ([198.145.29.99]:55334 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727266AbeJUW7C (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sun, 21 Oct 2018 18:59:02 -0400
-Received: from tleilax.poochiereds.net (cpe-71-70-156-158.nc.res.rr.com [71.70.156.158])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 618E820843;
-        Sun, 21 Oct 2018 14:44:16 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1540133068;
-        bh=0/KzAKI71vuXcVtUpA5uNUrTn9R2O59xxTcb8OwdtRw=;
-        h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
-        b=GiMAchLIcjFohAJTjISw337IkrIpe/qvv7XSED4zoeivT2ZfE2lQnjt8Yr1QvJlkA
-         ta8CRy2+oMVDKkOB5H8HjNEhK2P6wqtAxwuuMrwhLzDtQVitFLZ4dObLIf09QCpX2V
-         zZQ0jp6bCHHUD3KKwoyzxZiNrnQjh7Or9eDnegzc=
-Message-ID: <4e5c759108926983cdbbdedf24995db84779ef2e.camel@kernel.org>
-Subject: Re: [PATCH v1 03/11] NFS test for intra vs inter COPY
-From:   Jeff Layton <jlayton@kernel.org>
-To:     Olga Kornievskaia <olga.kornievskaia@gmail.com>,
-        trondmy@hammerspace.com, anna.schumaker@netapp.com
-Cc:     linux-nfs@vger.kernel.org
-Date:   Sun, 21 Oct 2018 10:44:14 -0400
-In-Reply-To: <20181019152932.32462-4-olga.kornievskaia@gmail.com>
-References: <20181019152932.32462-1-olga.kornievskaia@gmail.com>
-         <20181019152932.32462-4-olga.kornievskaia@gmail.com>
-Content-Type: text/plain; charset="UTF-8"
-X-Mailer: Evolution 3.28.5 (3.28.5-1.fc28) 
-Mime-Version: 1.0
+        id S1727813AbeJVAaC (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sun, 21 Oct 2018 20:30:02 -0400
+Received: from userp2130.oracle.com ([156.151.31.86]:39268 "EHLO
+        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727724AbeJVAaC (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 21 Oct 2018 20:30:02 -0400
+Received: from pps.filterd (userp2130.oracle.com [127.0.0.1])
+        by userp2130.oracle.com (8.16.0.22/8.16.0.22) with SMTP id w9LGEI3o154168;
+        Sun, 21 Oct 2018 16:15:08 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=subject : from : to :
+ cc : date : message-id : mime-version : content-type :
+ content-transfer-encoding; s=corp-2018-07-02;
+ bh=zQALILQr9U+7OIPR4EjpK3HtCxxS0f5CSoa6TXZMX6o=;
+ b=UIlaj9RmecaEACAKA6O2uap6uo2Z3jO8sksLpNKRiuxLHDZ1Xk5L+gMfDTza5/ra2wSg
+ VJtRXDQ3RhOI2QNHjuy7vIgm6EgYTGGY3RhOzmPwtmN1UxWQjKoQmHgcCOSg5eaPh2aT
+ iDmlTM+2tWZf193L5DtJsf9kz7SILzkb40DCIoeBAqSLA28PtCjmLL3/kq+PJgnmPoDe
+ Ms6m+TG1NDUnDe0JP2OJjbUmyFKO00l+m6Aj7GnW0Ud4A7elXm9WXc7yc8BUXcjzjjcV
+ 2iIbqyejfb7Y1ENqajXqZlRae/6V5lCOoJGW1Ff3V0gGoLI09It/f2R6W50DdvcEHfRp Fw== 
+Received: from aserv0021.oracle.com (aserv0021.oracle.com [141.146.126.233])
+        by userp2130.oracle.com with ESMTP id 2n7ustu1rk-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Sun, 21 Oct 2018 16:15:08 +0000
+Received: from userv0122.oracle.com (userv0122.oracle.com [156.151.31.75])
+        by aserv0021.oracle.com (8.14.4/8.14.4) with ESMTP id w9LGF6oi007281
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Sun, 21 Oct 2018 16:15:06 GMT
+Received: from abhmp0002.oracle.com (abhmp0002.oracle.com [141.146.116.8])
+        by userv0122.oracle.com (8.14.4/8.14.4) with ESMTP id w9LGF5Fk020887;
+        Sun, 21 Oct 2018 16:15:05 GMT
+Received: from localhost (/10.159.225.70)
+        by default (Oracle Beehive Gateway v4.0)
+        with ESMTP ; Sun, 21 Oct 2018 09:15:04 -0700
+Subject: [PATCH v6 00/28] fs: fixes for serious clone/dedupe problems
+From:   "Darrick J. Wong" <darrick.wong@oracle.com>
+To:     david@fromorbit.com, darrick.wong@oracle.com
+Cc:     sandeen@redhat.com, linux-nfs@vger.kernel.org,
+        linux-cifs@vger.kernel.org, linux-unionfs@vger.kernel.org,
+        linux-xfs@vger.kernel.org, linux-mm@kvack.org,
+        linux-btrfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        ocfs2-devel@oss.oracle.com
+Date:   Sun, 21 Oct 2018 09:15:03 -0700
+Message-ID: <154013850285.29026.16168387526580596209.stgit@magnolia>
+User-Agent: StGit/0.17.1-dirty
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
+X-Proofpoint-Virus-Version: vendor=nai engine=5900 definitions=9053 signatures=668683
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 suspectscore=0 malwarescore=0
+ phishscore=0 bulkscore=0 spamscore=0 mlxscore=0 mlxlogscore=913
+ adultscore=0 classifier=spam adjust=0 reason=mlx scancount=1
+ engine=8.0.1-1807170000 definitions=main-1810210151
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Fri, 2018-10-19 at 11:29 -0400, Olga Kornievskaia wrote:
-> From: Olga Kornievskaia <kolga@netapp.com>
-> 
-> Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
-> ---
->  fs/nfs/nfs42.h | 11 +++++++++++
->  1 file changed, 11 insertions(+)
-> 
-> diff --git a/fs/nfs/nfs42.h b/fs/nfs/nfs42.h
-> index 19ec38f8..5abff4d 100644
-> --- a/fs/nfs/nfs42.h
-> +++ b/fs/nfs/nfs42.h
-> @@ -6,6 +6,7 @@
->  #ifndef __LINUX_FS_NFS_NFS4_2_H
->  #define __LINUX_FS_NFS_NFS4_2_H
->  
-> +#include <linux/sunrpc/addr.h>
->  /*
->   * FIXME:  four LAYOUTSTATS calls per compound at most! Do we need to support
->   * more? Need to consider not to pre-alloc too much for a compound.
-> @@ -21,4 +22,14 @@ int nfs42_proc_layoutstats_generic(struct nfs_server *,
->  				   struct nfs42_layoutstat_data *);
->  int nfs42_proc_clone(struct file *, struct file *, loff_t, loff_t, loff_t);
->  
-> +static inline bool nfs42_files_from_same_server(struct file *in,
-> +						struct file *out)
-> +{
-> +	struct nfs_client *c_in = (NFS_SERVER(file_inode(in)))->nfs_client;
-> +	struct nfs_client *c_out = (NFS_SERVER(file_inode(out)))->nfs_client;
-> +
-> +	return rpc_cmp_addr((struct sockaddr *)&c_in->cl_addr,
-> +				(struct sockaddr *)&c_out->cl_addr);
-> +}
-> +
->  #endif /* __LINUX_FS_NFS_NFS4_2_H */
+Hi all,
 
-What about trunking? If the addresses don't match, should you compare
-cl_serverowner or something too? Or maybe just do that instead of
-testing addresses?
+Dave, Eric, and I have been chasing a stale data exposure bug in the XFS
+reflink implementation, and tracked it down to reflink forgetting to do
+some of the file-extending activities that must happen for regular
+writes.
 
-It's usually best to add infrastructure like this in the same patch with
-an initial caller so we can see how it's intended to be used. 
--- 
-Jeff Layton <jlayton@kernel.org>
+We then started auditing the clone, dedupe, and copyfile code and
+realized that from a file contents perspective, clonerange isn't any
+different from a regular file write.  Unfortunately, we also noticed
+that *unlike* a regular write, clonerange skips a ton of overflow
+checks, such as validating the ranges against s_maxbytes, MAX_NON_LFS,
+and RLIMIT_FSIZE.  We also observed that cloning into a file did not
+strip security privileges (suid, capabilities) like a regular write
+would.  I also noticed that xfs and ocfs2 need to dump the page cache
+before remapping blocks, not after.
 
+In fixing the range checking problems I also realized that both dedupe
+and copyfile tell userspace how much of the requested operation was
+acted upon.  Since the range validation can shorten a clone request (or
+we can ENOSPC midway through), we might as well plumb the short
+operation reporting back through the VFS indirection code to userspace.
+I added a few more cleanups to the xfs code per reviewer suggestions.
+
+So, here's the whole giant pile of patches[1] that fix all the problems.
+This branch is against current upstream (4.19-rc8).  The patch
+"generic: test reflink side effects" recently sent to fstests exercises
+the fixes in this series.  Tests are in [2].
+
+--D
+
+[1] https://git.kernel.org/pub/scm/linux/kernel/git/djwong/xfs-linux.git/log/?h=djwong-devel
+[2] https://git.kernel.org/pub/scm/linux/kernel/git/djwong/xfstests-dev.git/log/?h=djwong-devel
