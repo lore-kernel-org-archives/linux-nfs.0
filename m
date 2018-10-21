@@ -6,45 +6,45 @@ X-Spam-Status: No, score=-7.5 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
 	SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3B9F1ECDE43
-	for <linux-nfs@archiver.kernel.org>; Sun, 21 Oct 2018 14:29:14 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E27FCECDE44
+	for <linux-nfs@archiver.kernel.org>; Sun, 21 Oct 2018 14:44:30 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 026AA20869
-	for <linux-nfs@archiver.kernel.org>; Sun, 21 Oct 2018 14:29:13 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 89B7E20869
+	for <linux-nfs@archiver.kernel.org>; Sun, 21 Oct 2018 14:44:30 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=kernel.org header.i=@kernel.org header.b="inrbdeYH"
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 026AA20869
+	dkim=pass (1024-bit key) header.d=kernel.org header.i=@kernel.org header.b="GiMAchLI"
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 89B7E20869
 Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=kernel.org
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727771AbeJUWno (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 21 Oct 2018 18:43:44 -0400
-Received: from mail.kernel.org ([198.145.29.99]:50776 "EHLO mail.kernel.org"
+        id S1727676AbeJUW7C (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sun, 21 Oct 2018 18:59:02 -0400
+Received: from mail.kernel.org ([198.145.29.99]:55334 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727266AbeJUWno (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sun, 21 Oct 2018 18:43:44 -0400
+        id S1727266AbeJUW7C (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sun, 21 Oct 2018 18:59:02 -0400
 Received: from tleilax.poochiereds.net (cpe-71-70-156-158.nc.res.rr.com [71.70.156.158])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id EE6812083E;
-        Sun, 21 Oct 2018 14:29:11 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 618E820843;
+        Sun, 21 Oct 2018 14:44:16 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1540132152;
-        bh=De7qwRsOQMzN/kMaIR/7qJ79FiRsni1Ch/gdwVrlZ5c=;
+        s=default; t=1540133068;
+        bh=0/KzAKI71vuXcVtUpA5uNUrTn9R2O59xxTcb8OwdtRw=;
         h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
-        b=inrbdeYHCNm1834RLGnfoLkQzsiYOdOznkvQg03cAB4+TUGuwwNKTWV3CDD8h7uNw
-         HzXJVfqQ5cGgrE/wQeXze008CqHz90KMJrsmlxqwVwHPoHYpR2/M4wG2qmC/zi9M9J
-         Ces5GxInPww4AWxoeaMe5+XXpgPlzl8rWNNd9gmM=
-Message-ID: <fc9619bee3e27d6756ecff9ae143c646d2567b62.camel@kernel.org>
-Subject: Re: [PATCH v1 01/11] fs: Don't copy beyond the end of the file
+        b=GiMAchLIcjFohAJTjISw337IkrIpe/qvv7XSED4zoeivT2ZfE2lQnjt8Yr1QvJlkA
+         ta8CRy2+oMVDKkOB5H8HjNEhK2P6wqtAxwuuMrwhLzDtQVitFLZ4dObLIf09QCpX2V
+         zZQ0jp6bCHHUD3KKwoyzxZiNrnQjh7Or9eDnegzc=
+Message-ID: <4e5c759108926983cdbbdedf24995db84779ef2e.camel@kernel.org>
+Subject: Re: [PATCH v1 03/11] NFS test for intra vs inter COPY
 From:   Jeff Layton <jlayton@kernel.org>
 To:     Olga Kornievskaia <olga.kornievskaia@gmail.com>,
         trondmy@hammerspace.com, anna.schumaker@netapp.com
 Cc:     linux-nfs@vger.kernel.org
-Date:   Sun, 21 Oct 2018 10:29:10 -0400
-In-Reply-To: <20181019152932.32462-2-olga.kornievskaia@gmail.com>
+Date:   Sun, 21 Oct 2018 10:44:14 -0400
+In-Reply-To: <20181019152932.32462-4-olga.kornievskaia@gmail.com>
 References: <20181019152932.32462-1-olga.kornievskaia@gmail.com>
-         <20181019152932.32462-2-olga.kornievskaia@gmail.com>
+         <20181019152932.32462-4-olga.kornievskaia@gmail.com>
 Content-Type: text/plain; charset="UTF-8"
 X-Mailer: Evolution 3.28.5 (3.28.5-1.fc28) 
 Mime-Version: 1.0
@@ -55,43 +55,47 @@ List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
 On Fri, 2018-10-19 at 11:29 -0400, Olga Kornievskaia wrote:
-> From: Anna Schumaker <Anna.Schumaker@Netapp.com>
+> From: Olga Kornievskaia <kolga@netapp.com>
 > 
-> Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+> Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
 > ---
->  fs/read_write.c | 3 +++
->  1 file changed, 3 insertions(+)
+>  fs/nfs/nfs42.h | 11 +++++++++++
+>  1 file changed, 11 insertions(+)
 > 
-> diff --git a/fs/read_write.c b/fs/read_write.c
-> index 39b4a21..c60790f 100644
-> --- a/fs/read_write.c
-> +++ b/fs/read_write.c
-> @@ -1570,6 +1570,9 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
->  	if (unlikely(ret))
->  		return ret;
+> diff --git a/fs/nfs/nfs42.h b/fs/nfs/nfs42.h
+> index 19ec38f8..5abff4d 100644
+> --- a/fs/nfs/nfs42.h
+> +++ b/fs/nfs/nfs42.h
+> @@ -6,6 +6,7 @@
+>  #ifndef __LINUX_FS_NFS_NFS4_2_H
+>  #define __LINUX_FS_NFS_NFS4_2_H
 >  
-> +	if (pos_in >= i_size_read(inode_in))
-> +		return -EINVAL;
+> +#include <linux/sunrpc/addr.h>
+>  /*
+>   * FIXME:  four LAYOUTSTATS calls per compound at most! Do we need to support
+>   * more? Need to consider not to pre-alloc too much for a compound.
+> @@ -21,4 +22,14 @@ int nfs42_proc_layoutstats_generic(struct nfs_server *,
+>  				   struct nfs42_layoutstat_data *);
+>  int nfs42_proc_clone(struct file *, struct file *, loff_t, loff_t, loff_t);
+>  
+> +static inline bool nfs42_files_from_same_server(struct file *in,
+> +						struct file *out)
+> +{
+> +	struct nfs_client *c_in = (NFS_SERVER(file_inode(in)))->nfs_client;
+> +	struct nfs_client *c_out = (NFS_SERVER(file_inode(out)))->nfs_client;
 > +
->  	if (!(file_in->f_mode & FMODE_READ) ||
->  	    !(file_out->f_mode & FMODE_WRITE) ||
->  	    (file_out->f_flags & O_APPEND))
+> +	return rpc_cmp_addr((struct sockaddr *)&c_in->cl_addr,
+> +				(struct sockaddr *)&c_out->cl_addr);
+> +}
+> +
+>  #endif /* __LINUX_FS_NFS_NFS4_2_H */
 
-The patch description could use a bit more fleshing-out. The
-copy_file_range manpage says:
+What about trunking? If the addresses don't match, should you compare
+cl_serverowner or something too? Or maybe just do that instead of
+testing addresses?
 
-       EINVAL Requested range extends beyond the end of the source file; or the flags argument is not 0.
-
-So I guess this is intended to satisfy that requirement? If so,
-i_size_read is just going to return whatever is in inode->isize. 
-
-Could a copy_file_range call end up getting issued to copy from a file
-that is already open on a range that it doesn't know about yet? i.e.
-where the inode cache has not yet been updated.
-
-It seems like that could on network filesystems (like NFS). Would this
-be better handled in ->copy_file_range instead, where the driver could
-make a better determination of the file size?
+It's usually best to add infrastructure like this in the same patch with
+an initial caller so we can see how it's intended to be used. 
 -- 
 Jeff Layton <jlayton@kernel.org>
 
