@@ -2,165 +2,133 @@ Return-Path: <SRS0=k5hI=NC=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.5 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-0.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id CCD5DC004D3
-	for <linux-nfs@archiver.kernel.org>; Mon, 22 Oct 2018 23:23:35 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DC27FC004D3
+	for <linux-nfs@archiver.kernel.org>; Mon, 22 Oct 2018 23:39:05 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id CFAF0205F4
-	for <linux-nfs@archiver.kernel.org>; Mon, 22 Oct 2018 23:23:35 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=kernel.org header.i=@kernel.org header.b="bSE0GySH"
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org CFAF0205F4
-Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=kernel.org
+	by mail.kernel.org (Postfix) with ESMTP id 0D8D220674
+	for <linux-nfs@archiver.kernel.org>; Mon, 22 Oct 2018 23:39:06 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 0D8D220674
+Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=redhat.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726073AbeJWHoL (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 23 Oct 2018 03:44:11 -0400
-Received: from mail.kernel.org ([198.145.29.99]:52294 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725998AbeJWHoL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 23 Oct 2018 03:44:11 -0400
-Received: from tleilax.poochiereds.net (cpe-71-70-156-158.nc.res.rr.com [71.70.156.158])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 08168205F4;
-        Mon, 22 Oct 2018 23:23:32 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1540250613;
-        bh=1Yg9l2Lmmcp4TuT0gJXLUFaraL1vUBe+5ilPp/KJ70o=;
-        h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
-        b=bSE0GySHfSvEb58LUcpvJVHydYPM7wMMYBT62qGueV7Sjw/hngjGyiMrHZvLUzv/v
-         tyKdpEP8qRVnlk2eBFWF90MFmrNK8F740kYVWULb9k8kzRlxckzeavZqAemR+GitYZ
-         7VtwbrIhnqdi/cevSpJXhacoJKXTRd++T34IwFno=
-Message-ID: <1c269f7a09c24638ed3105b1fc934ca2c25383c9.camel@kernel.org>
-Subject: Re: [PATCH v1 01/11] fs: Don't copy beyond the end of the file
-From:   Jeff Layton <jlayton@kernel.org>
-To:     Olga Kornievskaia <olga.kornievskaia@gmail.com>
-Cc:     Trond Myklebust <trondmy@hammerspace.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        linux-nfs <linux-nfs@vger.kernel.org>
-Date:   Mon, 22 Oct 2018 19:23:31 -0400
-In-Reply-To: <CAN-5tyEbGmujqD5Q1FBH9uBWR0YYbW_ojBhdbcD_7TYV9dqMag@mail.gmail.com>
-References: <20181019152932.32462-1-olga.kornievskaia@gmail.com>
-         <20181019152932.32462-2-olga.kornievskaia@gmail.com>
-         <fc9619bee3e27d6756ecff9ae143c646d2567b62.camel@kernel.org>
-         <CAN-5tyEbGmujqD5Q1FBH9uBWR0YYbW_ojBhdbcD_7TYV9dqMag@mail.gmail.com>
+        id S1726819AbeJWH7o (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 23 Oct 2018 03:59:44 -0400
+Received: from mail-qt1-f194.google.com ([209.85.160.194]:41145 "EHLO
+        mail-qt1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726804AbeJWH7o (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Oct 2018 03:59:44 -0400
+Received: by mail-qt1-f194.google.com with SMTP id l41-v6so48485408qtl.8
+        for <linux-nfs@vger.kernel.org>; Mon, 22 Oct 2018 16:39:03 -0700 (PDT)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:message-id:subject:from:to:cc:date:in-reply-to
+         :references:mime-version:content-transfer-encoding;
+        bh=XotdFdVk73hvMQmfL42APXxnKTqdLawi1M4laqBx2jw=;
+        b=sdMpaL5YQEMnslGqGbl3OgEVRnooqO/lcXMGOpUDRTAWtwyGGjE4eO+9bC9vVNlsfF
+         GG6xJw42ze0XYv7DM1Or5vmP4rRF0L8nNupSGdLKaIFFuTuuEOhf6T+Bvl5m2KSq6DZB
+         Qoa6Zg2MCHMlbBcXnfAHgZhyXlPpez4AdfbJoty2CaosNbBLftsV1I7gB2cWFV/aYoKb
+         CkVGMk41SUCk5mjtAHZsO0lydM57OuZYqFH2XYN0WqnV4Lh3SRHlKoqYQ0lKSTCGzjpQ
+         MejhbV/eg/HyAlDCb9OxgW8yFgfiASV/IiYAVznPkCzXngrRpYNxJqxhVzPWEdyA/iZb
+         wIfA==
+X-Gm-Message-State: AGRZ1gLyZFBiKkHVdL16Zfz1j8eHbVLA3GVUoKG2dzZPPmB0Wjy1AFp6
+        LoYxnB11xVEY8GYv9x7c5U5N/Q==
+X-Google-Smtp-Source: AJdET5ea9ELhfBJqWhJkUUAKwWU/YwC7menbeVzkfZkFC/k14sI3PIEaIuMWudrTEbtlTcqkCzKccg==
+X-Received: by 2002:a0c:bd9e:: with SMTP id n30mr123533qvg.196.1540251542838;
+        Mon, 22 Oct 2018 16:39:02 -0700 (PDT)
+Received: from tleilax.poochiereds.net (cpe-2606-A000-1100-DB-0-0-0-C3D.dyn6.twc.com. [2606:a000:1100:db::c3d])
+        by smtp.gmail.com with ESMTPSA id t22-v6sm38965014qtt.1.2018.10.22.16.39.01
+        (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
+        Mon, 22 Oct 2018 16:39:02 -0700 (PDT)
+Message-ID: <a4a3ac1e840444871f3bc87606b111668c66618b.camel@redhat.com>
+Subject: Re: [PATCH v1 02/11] VFS permit cross device vfs_copy_file_range
+From:   Jeff Layton <jlayton@redhat.com>
+To:     Olga Kornievskaia <olga.kornievskaia@gmail.com>,
+        willy@infradead.org
+Cc:     Amir Goldstein <amir73il@gmail.com>, viro@zeniv.linux.org.uk,
+        linux-fsdevel@vger.kernel.org,
+        linux-nfs <linux-nfs@vger.kernel.org>, fweimer@redhat.com,
+        Steve French <smfrench@gmail.com>,
+        "Darrick J. Wong" <darrick.wong@oracle.com>,
+        Christoph Hellwig <hch@lst.de>,
+        Linux API <linux-api@vger.kernel.org>
+Date:   Mon, 22 Oct 2018 19:39:01 -0400
+In-Reply-To: <CAN-5tyF=voE2=DBLKvJCHZc9+zMzysqD8REYYb-z5jwq2BLqGQ@mail.gmail.com>
+References: <20181019153018.32507-1-olga.kornievskaia@gmail.com>
+         <20181019153018.32507-2-olga.kornievskaia@gmail.com>
+         <20181020040530.GG32577@ZenIV.linux.org.uk>
+         <CAOQ4uxhAvypEvGap02CkH_bHtFt7tUVxTWeZUL5OV_V8xwWjDA@mail.gmail.com>
+         <CAN-5tyHqtV7YhfK7DY4rY643bbfV=8MOE6=mxHYJufCsdcN9Jw@mail.gmail.com>
+         <20181022190620.GA8863@bombadil.infradead.org>
+         <CAN-5tyF=voE2=DBLKvJCHZc9+zMzysqD8REYYb-z5jwq2BLqGQ@mail.gmail.com>
 Content-Type: text/plain; charset="UTF-8"
 X-Mailer: Evolution 3.28.5 (3.28.5-1.fc28) 
 Mime-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Transfer-Encoding: 7bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Mon, 2018-10-22 at 14:32 -0400, Olga Kornievskaia wrote:
-> On Sun, Oct 21, 2018 at 10:29 AM Jeff Layton <jlayton@kernel.org> wrote:
+On Mon, 2018-10-22 at 15:34 -0400, Olga Kornievskaia wrote:
+> On Mon, Oct 22, 2018 at 3:06 PM Matthew Wilcox <willy@infradead.org> wrote:
 > > 
-> > On Fri, 2018-10-19 at 11:29 -0400, Olga Kornievskaia wrote:
-> > > From: Anna Schumaker <Anna.Schumaker@Netapp.com>
+> > On Mon, Oct 22, 2018 at 02:45:04PM -0400, Olga Kornievskaia wrote:
+> > > On Sat, Oct 20, 2018 at 4:54 AM Amir Goldstein <amir73il@gmail.com> wrote:
+> > > > Another thing is the commit message claims to:
+> > > > "Allow copy_file_range to copy between different superblocks but only
+> > > > of the same file system types"
+> > > > 
+> > > > But what the patch actually does is:
+> > > > "Allow copy_file_range() syscall to copy between different filesystems
+> > > > AND allow calling the filesystems' copy_file_range() method
+> > > > between different superblocks but only of the same file system types"
+> > > > 
+> > > > It's probably OK and quite useful to do the former, but maybe man page
+> > > > should be fixed to explicitly mention that the copy is expected to work
+> > > > across filesystems since kernel version XXX (?)
+> > > > 
+> > > > If you don't wish to change cross filesystem type behavior and only
+> > > > relax cross super block limitation, then you should replace the
+> > > > same inode->i_sb check above with same inode->i_sb->s_type
+> > > > check instead of doing the check only for calling the filesystem
+> > > > copy_file_range() method.
 > > > 
-> > > Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
-> > > ---
-> > >  fs/read_write.c | 3 +++
-> > >  1 file changed, 3 insertions(+)
-> > > 
-> > > diff --git a/fs/read_write.c b/fs/read_write.c
-> > > index 39b4a21..c60790f 100644
-> > > --- a/fs/read_write.c
-> > > +++ b/fs/read_write.c
-> > > @@ -1570,6 +1570,9 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
-> > >       if (unlikely(ret))
-> > >               return ret;
-> > > 
-> > > +     if (pos_in >= i_size_read(inode_in))
-> > > +             return -EINVAL;
-> > > +
-> > >       if (!(file_in->f_mode & FMODE_READ) ||
-> > >           !(file_out->f_mode & FMODE_WRITE) ||
-> > >           (file_out->f_flags & O_APPEND))
+> > > Thank you for the feedback. In the next version, I will remove the
+> > > check for the functions and instead check for the same file system
+> > > types.
 > > 
-> > The patch description could use a bit more fleshing-out. The
-> > copy_file_range manpage says:
-> > 
-> >        EINVAL Requested range extends beyond the end of the source file; or the flags argument is not 0.
-> > 
-> > So I guess this is intended to satisfy that requirement?
+> > Jeff and I agree that this is the wrong way to go.  Instead, the
+> > cross-device check should be in the individual instances, not the top
+> > level code.
 > 
-> I agree the description of the patch is poor. It sort of falls under
-> the the man page's description of range beyond the end of the source
-> file. But in NFSv4.2, there is an explicit wording for the validity of
-> the input parameters and having an input source offset that's beyond
-> the end of the file is what this patch is attempting to check.
-> 
+> So remove the check all together for the VFS (that was my original
+> patch to begin with (like #1 not this one). So am I missing the point
+> again, I keep getting different corrections every time.
 
-Side note:
+Sorry if I wasn't clear before:
 
-One has to wonder why they decided to make that an -EINVAL condition?
-The system call returns ssize_t. Why not just return a fewer number of
-bytes in that situation?
+Basically, I think Willy and I are both envisioning that some
+copy_file_range implementations may eventually not be subject to the
+limitations of the checks you're adding.
 
-In fact, the RETURN VALUE section of the manpage says:
+All of the current and currently proposed ones are however, so we need
+these checks in place. We have two options. We can either do them
+globally at the vfs layer or in the individual filesystem "drivers".
 
-       Upon successful completion, copy_file_range() will return the number of
-       bytes copied between files.  This could be less than the length  origi‐
-       nally requested.
+I argue that it's better to do it at the driver level, because if we
+ever want to implement one that is not subject to these limitations,
+you'll effectively have to push these checks down into the drivers
+later.
 
-Under what conditions would that occur that do not include the file
-being shorter than the range you wanted to copy?
-
-I wonder if we ought to lobby to get that changed.
-
-> > If so,
-> > i_size_read is just going to return whatever is in inode->isize.
-> > Could a copy_file_range call end up getting issued to copy from a file
-> > that is already open on a range that it doesn't know about yet? i.e.
-> > where the inode cache has not yet been updated.
-> 
-> I thought that with NFSv4 cache consistency, the inode->isize is
-> accurate. If previous open had a read delegation, any modification on
-> a server would trigger a CB_RECALL and the open for the copy offload
-> would retrieve the latest size. In case of no delegations, the open
-> retrieves the latest size and the call to copy_file_range() would have
-> an update size.
-> 
-
-> It seems like that could on network filesystems (like NFS). Would this
-> > be better handled in ->copy_file_range instead, where the driver could
-> > make a better determination of the file size?
-> 
-> I'm not opposed to moving the size check into the NFS's copy_file_size
-> (again in my opinion NFS attribute cache has the same file size as the
-> inode's size). I think the thought was that such check should be done
-> at the VFS layer as oppose to doing it by each of the file systems.
-> 
-> 
-
-The attribute cache is not revalidated before the i_size is fetched with
-i_size_read. You're just reading what happens to be in the in-memory
-inode structure. So both clients have the file open already, and neither
-has a delegation:
-
-client 1: fetches attributes from file and sees a size of 1000
-client 2: writes 20 bytes at offset 1000
-client 1: calls copy file range to copy 1020 bytes starting at offset 0
-
-If client1 didn't get an attribute update before the copy_file_range
-call came in, then it would still think the size was 1000 and fail the
-operation. It may even be many seconds before client1 sees the updated
-size.
-
-You could argue that we're not using locking here so you're just subject
-to normal open-to-close cache coherency behavior, but that's rather "not
-nice".
-
-I think we probably ought to also push this check down into the
-filesystem operations as well, and have copy_file_range ensure that the
-attribute cache is updated. We're dealing with copy offload here so
-doing an extra GETATTR beforehand shouldn't be terribly costly.
+That's where things become ugly for backports and such. You'll basically
+be changing a subtle expectation in the driver interface, which could be
+a source of bugs later. If we set the expectation now that the drivers
+need to do this checking then we can (hopefully) ensure that they all do
+before they're ever merged.
 -- 
-Jeff Layton <jlayton@kernel.org>
+Jeff Layton <jlayton@redhat.com>
 
