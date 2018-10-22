@@ -2,199 +2,229 @@ Return-Path: <SRS0=k5hI=NC=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.3 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_PASS,URIBL_BLOCKED,USER_AGENT_MUTT
-	autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-6.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6A8C8C67863
-	for <linux-nfs@archiver.kernel.org>; Mon, 22 Oct 2018 06:55:51 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5E1D6C004D3
+	for <linux-nfs@archiver.kernel.org>; Mon, 22 Oct 2018 14:11:01 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 3219F20779
-	for <linux-nfs@archiver.kernel.org>; Mon, 22 Oct 2018 06:55:51 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 3219F20779
-Authentication-Results: mail.kernel.org; dmarc=none (p=none dis=none) header.from=fromorbit.com
+	by mail.kernel.org (Postfix) with ESMTP id 056B520651
+	for <linux-nfs@archiver.kernel.org>; Mon, 22 Oct 2018 14:11:00 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 056B520651
+Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=RedHat.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727256AbeJVPND (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 22 Oct 2018 11:13:03 -0400
-Received: from ipmail07.adl2.internode.on.net ([150.101.137.131]:59671 "EHLO
-        ipmail07.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726784AbeJVPND (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 22 Oct 2018 11:13:03 -0400
-Received: from ppp59-167-129-252.static.internode.on.net (HELO dastard) ([59.167.129.252])
-  by ipmail07.adl2.internode.on.net with ESMTP; 22 Oct 2018 17:25:45 +1030
-Received: from dave by dastard with local (Exim 4.80)
-        (envelope-from <david@fromorbit.com>)
-        id 1gEU7q-0002UC-Ir; Mon, 22 Oct 2018 17:55:42 +1100
-Date:   Mon, 22 Oct 2018 17:55:42 +1100
-From:   Dave Chinner <david@fromorbit.com>
-To:     Amir Goldstein <amir73il@gmail.com>
-Cc:     Al Viro <viro@zeniv.linux.org.uk>,
-        "Darrick J. Wong" <darrick.wong@oracle.com>,
-        Eric Sandeen <sandeen@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-cifs@vger.kernel.org,
-        overlayfs <linux-unionfs@vger.kernel.org>,
-        linux-xfs <linux-xfs@vger.kernel.org>,
-        Linux MM <linux-mm@kvack.org>,
-        Linux Btrfs <linux-btrfs@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        ocfs2-devel@oss.oracle.com
-Subject: Re: [PATCH v6 00/28] fs: fixes for serious clone/dedupe problems
-Message-ID: <20181022065542.GZ6311@dastard>
-References: <154013850285.29026.16168387526580596209.stgit@magnolia>
- <20181022022112.GW6311@dastard>
- <20181022043741.GX6311@dastard>
- <20181022045249.GP32577@ZenIV.linux.org.uk>
- <20181022050851.GY6311@dastard>
- <CAOQ4uxhjpieVdDfrATStT8YQZZwX=rrWtiMX=FSXFdHdqsUaDg@mail.gmail.com>
+        id S1728446AbeJVW3o (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 22 Oct 2018 18:29:44 -0400
+Received: from mx1.redhat.com ([209.132.183.28]:57572 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1728368AbeJVW3o (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 22 Oct 2018 18:29:44 -0400
+Received: from smtp.corp.redhat.com (int-mx05.intmail.prod.int.phx2.redhat.com [10.5.11.15])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id B8E5A81F01;
+        Mon, 22 Oct 2018 14:10:59 +0000 (UTC)
+Received: from steved.boston.devel.redhat.com (ovpn-120-63.rdu2.redhat.com [10.10.120.63])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 88F705D777;
+        Mon, 22 Oct 2018 14:10:58 +0000 (UTC)
+Subject: Re: [PATCH] [nfs-utils] fix issue: mount -osharecache failure but
+ return 'true'
+To:     Jianhong Yin <jiyin@redhat.com>
+Cc:     =?UTF-8?B?5bC55YmR6Jm5?= <yin-jianhong@163.com>,
+        linux-nfs@vger.kernel.org
+References: <20181019080354.26141-1-jiyin@redhat.com>
+ <907dd179-13d7-071e-8c60-eb9915762299@RedHat.com>
+ <17c11e3b.5987.1668f873fb0.Coremail.yin-jianhong@163.com>
+ <b6880ebf-80ca-e101-b40c-847a81f7f17f@RedHat.com>
+ <1130807003.22494855.1540176991895.JavaMail.zimbra@redhat.com>
+ <397071301.22496063.1540178057085.JavaMail.zimbra@redhat.com>
+From:   Steve Dickson <SteveD@RedHat.com>
+Message-ID: <ab0b498f-16a8-28a4-7bb4-f9478f865e48@RedHat.com>
+Date:   Mon, 22 Oct 2018 10:10:57 -0400
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101
+ Thunderbird/60.2.1
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <CAOQ4uxhjpieVdDfrATStT8YQZZwX=rrWtiMX=FSXFdHdqsUaDg@mail.gmail.com>
-User-Agent: Mutt/1.5.21 (2010-09-15)
+In-Reply-To: <397071301.22496063.1540178057085.JavaMail.zimbra@redhat.com>
+Content-Type: text/plain; charset=utf-8
+Content-Language: en-US
+Content-Transfer-Encoding: 8bit
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.15
+X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.27]); Mon, 22 Oct 2018 14:10:59 +0000 (UTC)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Mon, Oct 22, 2018 at 08:42:29AM +0300, Amir Goldstein wrote:
-> On Mon, Oct 22, 2018 at 8:09 AM Dave Chinner <david@fromorbit.com> wrote:
-> >
-> > On Mon, Oct 22, 2018 at 05:52:49AM +0100, Al Viro wrote:
-> > > On Mon, Oct 22, 2018 at 03:37:41PM +1100, Dave Chinner wrote:
-> > >
-> > > > Ok, this is a bit of a mess. the patches do not merge cleanly to a
-> > > > 4.19-rc1 base kernel because of all the changes to
-> > > > include/linux/fs.h that have hit the tree after this. There's also
-> > > > failures against Documentation/filesystems/fs.h
-> > > >
-> > > > IOWs, it's not going to get merged through the main XFS tree because
-> > > > I don't have the patience to resolve all the patch application
-> > > > failures, then when it comes to merge make sure all the merge
-> > > > failures end up being resolved correctly.
-> > > >
-> > > > So if I take it through the XFS tree, it will being a standalone
-> > > > branch based on 4.19-rc8 and won't hit linux-next until after the
-> > > > first XFS merge when I can rebase the for-next branch...
-> > >
-> > > How many conflicts does it have with XFS tree?  I can take it via
-> > > vfs.git...
-> >
-> > I gave up after 4 of the first 6 or 7 patches had conflicts in vfs
-> > and documentation code.
-> >
-> > There were changes that went into 4.19-rc7 that changed
-> > {do|vfs}_clone_file_range() prototypes and this patchset hits
-> > prototypes adjacent to that multiple times. There's also a conflicts
-> > against a new f_ops->fadvise method. These all appear to be direct
-> > fallout of fixes needed for all the overlay f_ops changes.
-> >
-> > The XFS changes at the end of the patchset are based on
-> > commits that were merged into -rc7 and -rc8, so if you are using
-> > -rc8 as your base, then it all merges cleanly. There are no
-> > conflicts with the current xfs/for-next branch.
-> >
-> > I've just merged and built it into my test tree (-rc8, xfs/for-next,
-> > djwong/devel) so I can test it properly, but if it merges cleanly
-> > with the vfs tree you are building then that's probably the easiest
-> > way to merge it all...
-> >
+
+
+On 10/21/18 11:14 PM, Jianhong Yin wrote:
 > 
-> Dave,
+> ----- 原始邮件 -----
+>> 发件人: "Jianhong Yin" <jiyin@redhat.com>
+>> 收件人: "Steve Dickson" <SteveD@RedHat.com>
+>> 抄送: "尹剑虹" <yin-jianhong@163.com>, linux-nfs@vger.kernel.org
+>> 发送时间: 星期一, 2018年 10 月 22日 上午 10:56:31
+>> 主题: Re: [PATCH] [nfs-utils] fix issue: mount -osharecache failure but return 'true'
+>>
+>>
+>> ----- 原始邮件 -----
+>>> 发件人: "Steve Dickson" <SteveD@RedHat.com>
+>>> 收件人: "尹剑虹" <yin-jianhong@163.com>
+>>> 抄送: jiyin@redhat.com, linux-nfs@vger.kernel.org
+>>> 发送时间: 星期六, 2018年 10 月 20日 下午 10:35:48
+>>> 主题: Re: [PATCH] [nfs-utils] fix issue: mount -osharecache failure but
+>>> return 'true'
+>>>
+>>> Hello,
+>>>
+>>> On 10/19/18 11:31 PM, 尹剑虹 wrote:
+>>>>
+>>>> Hi Steved
+>>>>
+>>>> The scenario is: these two mountings use different "context=" and
+>>>> sharecache option, in this case mount(2) return fail with EBUSY.
+>>> Fair enough.... I did miss the different contexts...
+>>>
+>>> But we already have a routine that check mount points
+>>> is_mountpoint() used my mountd. I would rather use that.
 > 
-> Pardon my ignorance, but its an opportunity for me to learn a thing
-> or two about kernel development process.
+> Hi Sir
 > 
-> First, I asked Darrick to base his patches on top of -rc8 intentionally
-> to avoid the conflict with "swap names of {do|vfs}_clone_file_range()" (*).
-> My change pre dates his changes so it makes sense.
+>   I reviewed function is_mountpoint(), seems it just check if the mountpoint is a root-fs，
+>   our goal is check if special dev has been mounted on specail path.
+No. It check to see if the directory above the path (aka /..) 
+is on the same device (or filesystem) as path is. When the 
+device numbers are the same, both paths are on the same filesystem.
+When they are not the same, the paths are on different filesystems
 
-Actually, I asked him to do that because the critical clone/dedupe
-data corruption bug fixes for XFS that were merged into -rc8. They
-created substantial conflicts with the XFS code being
-rearranged in the patch set, and that wasn't something easy to
-resolve.
+steved.
 
-But because those XFS commits in 4.19-rc8 are from a stable in a
-topic branch in the xfs tree (xfs-4.19-fixes-1) which is merged into
-the for-next tree before anything else, the XFS changes in Darrick's
-patchset merge cleanly with the XFS for-next branch.
-
-What doesn't merge cleanly is all the VFS API and prototype stuff
-that got changed after -rc1 because it's not in the master branch of
-the xfs dev tree.
-
-> What I don't get is why does it need to create a problem?
-> Can you not back merge -rc8 into xfs/for-next (or into vfs/for-next for
-> that matter) and then merge Darrick's patches?
-
-Because it forces everyone to move their base kernel forward to test
-the latest fixes. i.e. i forces everyone to rebase their local dev
-trees to -rc8 regardless of whether they want to or not.
-
-If you're doing work outside the XFS tree, then that forces you to
-rebase everything you are working on, not just modify your XFS
-patches that are affected by the new XFS changes. it also breaks the
-concept of having a baseline for regression tests - force upgrading
-to -rc8 breaks the baseline for comparing just XFS changes.
-
-The other reason is topic branches. They need to have a stable base.
-i.e. all your topic branches that get merged in need to be on the
-same base commit so they can be merged and rearranged without
-problems or having to rewrite commits. The for-next tree can move
-forward on a rebase with topic branches if necessary, but  it has
-downsides for downstream developers.
-
-For example, I can do:
-
-git reset --hard v4.19-rc8
-git am djw-clone-dedupe-rework
-
-and have it apply cleanly. But I can't turn that into a topic branch
-for merge into linux-xfs/for-next because it's not based on the
-correct branch.  i.e. I need to do this to create a topic branch for
-for-next merge:
-
-git reset --hard linux-xfs/master
-git merge linux-xfs/xfs-4.19-fixes-1
-git am djw-clone-dedupe-rework
-{rejects galore}
-
-I can fix all the rejectsi (boring, tedious, time consuming), but
-then when I go to merge it back into a 4.19-rc8 kernel like so:
-
-git reset --hard v4.19-rc8
-git merge linux-xfs/vfs-4.20-clone-dedupe-rework
-[conflicts!]
-
-I essentially have to revert all of the conflict resolution I just
-did to get it into ithe XFS topic branch. And those conflicts will
-need to be resolved in the upstream merge, too, and by every XFS
-developer who changes their base kernel to >=4.19-rc7.
-
-IOWs, there's downsides everywhere. Yes, we could rebase the entire
-tree on 4.19-rc8, but Linus *really* didn't like dev trees to be
-rebased to a late -rcX just to clean up merge issues like this. He
-wanted to see the development history of the code he was asked to
-pull and wanted to see merge conflicts and resolve them himself so
-he knew who and what was causing problems when merging code. That
-way he nkew in future what changes to allow late in -rcX releases
-and what to defer to after the next merge window.
-
-Co-ordination between tree is important - high level API changes are
-exactly the sort of thing that causes dev tree merge pain late in a
-dev cycle. Hence this sort of thing is best done immediately after
--rc1 when everyone is getting ready to rebase and start their next
-dev cycle and nobody is really affected by the API change.
-
-So, historically speaking, I've done things this way because that's
-how Linus wanted them done to make life easier for both himself and
-everyone who manages a dev tree.
-
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+> 
+>   WDYT?
+> 
+>> Got it, good to know.
+>>
+>>>
+>>> I'll resend the patch...
+>>>
+>>> Thanks!!
+>>>
+>>> steved.
+>>>
+>>>>
+>>>> Jianhong
+>>>>
+>>>>
+>>>> 	
+>>>> 尹剑虹
+>>>> 邮箱：yin-jianhong@163.com
+>>>>
+>>>> <https://maas.mail.163.com/dashi-web-extend/html/proSignature.html?iconUrl=https%3A%2F%2Fmail-online.nosdn.127.net%2Fqiyelogo%2FdefaultAvatar.png&name=%E5%B0%B9%E5%89%91%E8%99%B9&uid=yin-jianhong%40163.com&ftlId=1&items=%5B%22%E9%82%AE%E7%AE%B1%EF%BC%9Ayin-jianhong%40163.com%22%5D>
+>>>>
+>>>> 签名由 网易邮箱大师 <https://mail.163.com/dashi/dlpro.html?from=mail88> 定制
+>>>>
+>>>>         On 10/20/2018 01:36, Steve Dickson <mailto:SteveD@RedHat.com>
+>>>>         wrote:
+>>>>
+>>>>
+>>>>         On 10/19/18 4:03 AM, jiyin@redhat.com wrote:
+>>>>         > From: "Jianhong.Yin" <yin-jianhong@163.com>
+>>>>         >
+>>>>         > see: https://bugzilla.redhat.com/show_bug.cgi?id=1629705
+>>>>         > mount.nfs4 -o
+>>>>         > context=system_u:object_r:user_home_dir_t:s0,sharecache
+>>>>         > $serv:$expdir $nfsmp
+>>>>         > mount.nfs4 -o context=system_u:object_r:xferlog_t:s0,sharecache
+>>>>         > $serv:$expdir $nfsmp2
+>>>>         > ^^^ here mount fail, but return true. it confuse user!
+>>>>         Why should it fail? Two different mounts are being used and using
+>>>>         -o sharecache
+>>>>         which is the default the way...
+>>>>
+>>>>         steved.
+>>>>         >
+>>>>         > according:
+>>>>         > https://patchwork.kernel.org/patch/10602607/#22234047
+>>>>         > add function is_mounted_already()
+>>>>         > -          if (errno == EBUSY)
+>>>>         > +          if (errno == EBUSY && is_mounted_already(mi->spec,
+>>>>         > mi->node))
+>>>>         >                return EX_SUCCESS;
+>>>>         >
+>>>>         > Signed-off-by: Jianhong Yin <yin-jianhong@163.com>
+>>>>         > ---
+>>>>         >  utils/mount/stropts.c | 31 ++++++++++++++++++++++++-------
+>>>>         >  1 file changed, 24 insertions(+), 7 deletions(-)
+>>>>         >
+>>>>         > diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+>>>>         > index 4d2e37e..4be7e61 100644
+>>>>         > --- a/utils/mount/stropts.c
+>>>>         > +++ b/utils/mount/stropts.c
+>>>>         > @@ -48,6 +48,7 @@
+>>>>         >  #include "version.h"
+>>>>         >  #include "parse_dev.h"
+>>>>         >  #include "conffile.h"
+>>>>         > +#include <mntent.h>
+>>>>         >  
+>>>>         >  #ifndef NFS_PROGRAM
+>>>>         >  #define NFS_PROGRAM     (100003)
+>>>>         > @@ -1056,6 +1057,27 @@ static int nfs_is_permanent_error(int
+>>>>         > error)
+>>>>         >       }
+>>>>         >  }
+>>>>         >  
+>>>>         > +static int is_mounted_already(const char *fsname, const char
+>>>>         > *dir)
+>>>>         > +{
+>>>>         > +     struct mntent *ent;
+>>>>         > +     FILE *fp;
+>>>>         > +     int ret = 0;
+>>>>         > +
+>>>>         > +     fp = setmntent("/proc/mounts", "r");
+>>>>         > +     if (fp == NULL) {
+>>>>         > +          perror("[unlikely] setmntent(3) fail");
+>>>>         > +          exit(1);
+>>>>         > +     }
+>>>>         > +     while (NULL != (ent = getmntent(fp))) {
+>>>>         > +          if (!strcmp(ent->mnt_fsname, fsname) &&
+>>>>         > !strcmp(ent->mnt_dir, dir)) {
+>>>>         > +               ret = 1;
+>>>>         > +               break;
+>>>>         > +          }
+>>>>         > +     }
+>>>>         > +     endmntent(fp);
+>>>>         > +     return ret;
+>>>>         > +}
+>>>>         > +
+>>>>         >  /*
+>>>>         >   * Handle "foreground" NFS mounts.
+>>>>         >   *
+>>>>         > @@ -1078,13 +1100,8 @@ static int nfsmount_fg(struct
+>>>>         > nfsmount_info *mi)
+>>>>         >            if (nfs_try_mount(mi))
+>>>>         >                 return EX_SUCCESS;
+>>>>         >  
+>>>>         > -          if (errno == EBUSY)
+>>>>         > -               /* The only cause of EBUSY is if exactly the
+>>>>         > desired
+>>>>         > -                * filesystem is already mounted.  That can
+>>>>         > arguably
+>>>>         > -                * be seen as success.  "mount -a" tries to
+>>>>         > optimise
+>>>>         > -                * out this case but sometimes fails.  Help it
+>>>>         > out
+>>>>         > -                * by pretending everything is rosy
+>>>>         > -                */
+>>>>         > +          /* if EBUSY is caused by re-mount, ignore the error
+>>>>         > */
+>>>>         > +          if (errno == EBUSY && is_mounted_already(mi->spec,
+>>>>         > mi->node))
+>>>>         >                 return EX_SUCCESS;
+>>>>         >  
+>>>>         >            if (nfs_is_permanent_error(errno))
+>>>>         >
+>>>>
+>>>
+>>
