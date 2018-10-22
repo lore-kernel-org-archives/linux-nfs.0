@@ -7,107 +7,131 @@ X-Spam-Status: No, score=-0.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS,URIBL_BLOCKED
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3068AC004D3
-	for <linux-nfs@archiver.kernel.org>; Mon, 22 Oct 2018 19:35:08 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4B226C004D3
+	for <linux-nfs@archiver.kernel.org>; Mon, 22 Oct 2018 19:48:26 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id E56A820663
-	for <linux-nfs@archiver.kernel.org>; Mon, 22 Oct 2018 19:35:08 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 0B04D2064C
+	for <linux-nfs@archiver.kernel.org>; Mon, 22 Oct 2018 19:48:27 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="LYZUdH3J"
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org E56A820663
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="Gac6uBHn"
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 0B04D2064C
 Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=gmail.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728360AbeJWDy4 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 22 Oct 2018 23:54:56 -0400
-Received: from mail-ua1-f65.google.com ([209.85.222.65]:33237 "EHLO
-        mail-ua1-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728435AbeJWDy4 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 22 Oct 2018 23:54:56 -0400
-Received: by mail-ua1-f65.google.com with SMTP id j13so10421207ual.0;
-        Mon, 22 Oct 2018 12:35:05 -0700 (PDT)
+        id S1726863AbeJWEIQ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 23 Oct 2018 00:08:16 -0400
+Received: from mail-yb1-f194.google.com ([209.85.219.194]:41943 "EHLO
+        mail-yb1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726457AbeJWEIQ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Oct 2018 00:08:16 -0400
+Received: by mail-yb1-f194.google.com with SMTP id e16-v6so16686324ybk.8;
+        Mon, 22 Oct 2018 12:48:23 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=mime-version:references:in-reply-to:from:date:message-id:subject:to
          :cc;
-        bh=KTv6+0V6q9mnXVoM4Ff+n7UzMsGxuryepPkAG7b5aks=;
-        b=LYZUdH3JcLCX8BeXKB3J6c5zsft1YRG+w5TQgwhdZVeWsQOtc1q1GqJZ8lknlhq9j4
-         4I1i1BROAZ9pfzs6xM1U5zJiEPadVKmPbYFUgeC5NlSOaGgdhdGHjqjp4wwL4rcBTjtR
-         GK9m+FUP5vs6Ltqdj7MjS8FvA9OZUepyUGr6op2QiYihwPrLuZjzeXe8Y7tmzmX0kX92
-         JSqTLiIn2tN7NTZzN0RCz+SZRdcWSCf2z+NiXfw8oj0FTU8GpLAo8Z5116vD2g/nAY8T
-         tLP/LPgHwYtaxUw79sQVDjd02GUC9rY9/fTWKPFBcDmg6HjfqZb3Uj9Qn3aRf14tvBPN
-         QYNQ==
+        bh=+OBcrsWB5o8C33bR+eKjTiYPpRpJfv3MgT9Nt30oq0Q=;
+        b=Gac6uBHn4d2oiES9Y15vzCTkCP3U6fj/+zqU+DLO3whPaM2hNS+TXIagi80bU4mNVE
+         KlBmikndZqYhkTPBEth+0DE0OHWeTLrYQK/3zSC5+g3JZRqpts1r4Uu+ZlMGG1yX3zgH
+         LgqhWJ+YYjqiuVigwrVGnIX01XvmQusAODPwJvTkRlWIR/bVb3u22eVPUosUz/tXZ/Dt
+         AZkpP81E9t24dHmrb85eb3jJPw1HEdkM78MxXz+wPB7SlEtnFFuEXOCiTpKQfrKhy54W
+         AXRWk4hSDWgp51y8UtJAeW/bsxnmTAvqjToAvm/VJHw19jO9HIT7uzpXMbwqk9myIVO9
+         jbqg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:mime-version:references:in-reply-to:from:date
          :message-id:subject:to:cc;
-        bh=KTv6+0V6q9mnXVoM4Ff+n7UzMsGxuryepPkAG7b5aks=;
-        b=mWgaBfz1jEZQFirdGsN9bGog71gf1UYW0YwT+6yeezLPnSFThhAZHQD0PMY783BNAo
-         Dz9q2/is4mW4M/BRh882R6Ei6POkpDyov8TdB+g0O9/Yb6LDrYBumrfiB0oUe047ZQVH
-         eqX6GI7oyjZ2sAq4Q78cPIUpcqVWqI7J/oYPENM1g6GUnen8wr4mZYHTn1Ro4xFYJ2I6
-         Ym52uB+w7IK3LBdAux3uCn1qduGp0//mR5/gkPRovMpZ12D/dkezlY4Abbt2PJCVi6z2
-         Ja1YMpV6+MrHhgM2kjUwYdcxkg6LEf809+N3139oIY1FRLtOxjM3Sa9t4K2OYO9RO5Bq
-         SsMA==
-X-Gm-Message-State: AGRZ1gK5eoks1+H3CGM+ivWOaYElBay0oTsC5lN9T5gD/1K+m/AI/DZd
-        +OFNqYcOZzhqv/2O4l1RmD+VWaH/9tAPe4DGyy6Jkg==
-X-Google-Smtp-Source: AJdET5dEk4edKrUpVmQ94QzAYf6uibDhVR+sgcQ+oMKYe1DmQhBnhLwPypkdOT8S9TFtk6Xr80UjdSMCMlXmOi6wshg=
-X-Received: by 2002:ab0:24cb:: with SMTP id k11mr19158uan.104.1540236904492;
- Mon, 22 Oct 2018 12:35:04 -0700 (PDT)
+        bh=+OBcrsWB5o8C33bR+eKjTiYPpRpJfv3MgT9Nt30oq0Q=;
+        b=GMZaOTwQddr7bJWPRy0sL8oNn/EZfxuhGukpv8G5eOHlOG05/fM3UJmPA+3MTO//hR
+         j67gLxcZAYDYOLzENeX/XQMJjupvzRRQn1+Wy8Og6o+NnGa0QjJ9SM7AO/Hw7BxBSXxd
+         CJC1XxkuqzrbFKLWgSmieSGKQruSMkN4d2TwDv1sYDAnJOePxKbP9UMR9U1nxnSAB3k5
+         vePcT1/WTvYrKisqatAgkbOG1sqgFOhWnQTDf9fYgGK4jR2+VIEqU4cxEbTStq0KlpIY
+         WF137B5X40/dF+r/F6/LLPYVSy4/ebMBIM3md8O97Fe0RUR3ksempPNG4YyirdFmEk0l
+         PuuA==
+X-Gm-Message-State: ABuFfogm/U+q1nPb8AbiTih3h/EcdwnPxhElnasZmZCFyG0orZ3fFAZt
+        O/fJAYePgLEF+vGN84+h+nEhtZbDi9Uv3IWfg64=
+X-Google-Smtp-Source: ACcGV613t92/obW8aE0qqxFrqp6ZzsUPWPXGKqUFqksmrkpIr1+eIk9tQcbNfQzw8EtSwdSfnIRPNZqQG3bksQYfWf8=
+X-Received: by 2002:a25:198a:: with SMTP id 132-v6mr33911916ybz.325.1540237702618;
+ Mon, 22 Oct 2018 12:48:22 -0700 (PDT)
 MIME-Version: 1.0
 References: <20181019153018.32507-1-olga.kornievskaia@gmail.com>
  <20181019153018.32507-2-olga.kornievskaia@gmail.com> <20181020040530.GG32577@ZenIV.linux.org.uk>
  <CAOQ4uxhAvypEvGap02CkH_bHtFt7tUVxTWeZUL5OV_V8xwWjDA@mail.gmail.com>
- <CAN-5tyHqtV7YhfK7DY4rY643bbfV=8MOE6=mxHYJufCsdcN9Jw@mail.gmail.com> <20181022190620.GA8863@bombadil.infradead.org>
-In-Reply-To: <20181022190620.GA8863@bombadil.infradead.org>
-From:   Olga Kornievskaia <olga.kornievskaia@gmail.com>
-Date:   Mon, 22 Oct 2018 15:34:52 -0400
-Message-ID: <CAN-5tyF=voE2=DBLKvJCHZc9+zMzysqD8REYYb-z5jwq2BLqGQ@mail.gmail.com>
+ <CAN-5tyHqtV7YhfK7DY4rY643bbfV=8MOE6=mxHYJufCsdcN9Jw@mail.gmail.com>
+ <20181022190620.GA8863@bombadil.infradead.org> <CAN-5tyF=voE2=DBLKvJCHZc9+zMzysqD8REYYb-z5jwq2BLqGQ@mail.gmail.com>
+In-Reply-To: <CAN-5tyF=voE2=DBLKvJCHZc9+zMzysqD8REYYb-z5jwq2BLqGQ@mail.gmail.com>
+From:   Amir Goldstein <amir73il@gmail.com>
+Date:   Mon, 22 Oct 2018 22:48:10 +0300
+Message-ID: <CAOQ4uxjJgghh48LUsqCofS0uiuA35CQT-zEMvMESkqniLfv2fA@mail.gmail.com>
 Subject: Re: [PATCH v1 02/11] VFS permit cross device vfs_copy_file_range
-To:     willy@infradead.org
-Cc:     Amir Goldstein <amir73il@gmail.com>, viro@zeniv.linux.org.uk,
-        linux-fsdevel@vger.kernel.org,
-        linux-nfs <linux-nfs@vger.kernel.org>, fweimer@redhat.com,
-        Steve French <smfrench@gmail.com>,
+To:     Olga Kornievskaia <olga.kornievskaia@gmail.com>
+Cc:     Matthew Wilcox <willy@infradead.org>,
+        Al Viro <viro@zeniv.linux.org.uk>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        fweimer@redhat.com, Steve French <smfrench@gmail.com>,
         "Darrick J. Wong" <darrick.wong@oracle.com>,
-        Christoph Hellwig <hch@lst.de>,
-        Linux API <linux-api@vger.kernel.org>
+        Christoph Hellwig <hch@lst.de>, linux-api@vger.kernel.org
 Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Mon, Oct 22, 2018 at 3:06 PM Matthew Wilcox <willy@infradead.org> wrote:
+On Mon, Oct 22, 2018 at 10:35 PM Olga Kornievskaia
+<olga.kornievskaia@gmail.com> wrote:
 >
-> On Mon, Oct 22, 2018 at 02:45:04PM -0400, Olga Kornievskaia wrote:
-> > On Sat, Oct 20, 2018 at 4:54 AM Amir Goldstein <amir73il@gmail.com> wrote:
-> > > Another thing is the commit message claims to:
-> > > "Allow copy_file_range to copy between different superblocks but only
-> > > of the same file system types"
-> > >
-> > > But what the patch actually does is:
-> > > "Allow copy_file_range() syscall to copy between different filesystems
-> > > AND allow calling the filesystems' copy_file_range() method
-> > > between different superblocks but only of the same file system types"
-> > >
-> > > It's probably OK and quite useful to do the former, but maybe man page
-> > > should be fixed to explicitly mention that the copy is expected to work
-> > > across filesystems since kernel version XXX (?)
-> > >
-> > > If you don't wish to change cross filesystem type behavior and only
-> > > relax cross super block limitation, then you should replace the
-> > > same inode->i_sb check above with same inode->i_sb->s_type
-> > > check instead of doing the check only for calling the filesystem
-> > > copy_file_range() method.
+> On Mon, Oct 22, 2018 at 3:06 PM Matthew Wilcox <willy@infradead.org> wrote:
 > >
-> > Thank you for the feedback. In the next version, I will remove the
-> > check for the functions and instead check for the same file system
-> > types.
+> > On Mon, Oct 22, 2018 at 02:45:04PM -0400, Olga Kornievskaia wrote:
+> > > On Sat, Oct 20, 2018 at 4:54 AM Amir Goldstein <amir73il@gmail.com> wrote:
+> > > > Another thing is the commit message claims to:
+> > > > "Allow copy_file_range to copy between different superblocks but only
+> > > > of the same file system types"
+> > > >
+> > > > But what the patch actually does is:
+> > > > "Allow copy_file_range() syscall to copy between different filesystems
+> > > > AND allow calling the filesystems' copy_file_range() method
+> > > > between different superblocks but only of the same file system types"
+> > > >
+> > > > It's probably OK and quite useful to do the former, but maybe man page
+> > > > should be fixed to explicitly mention that the copy is expected to work
+> > > > across filesystems since kernel version XXX (?)
+> > > >
+> > > > If you don't wish to change cross filesystem type behavior and only
+> > > > relax cross super block limitation, then you should replace the
+> > > > same inode->i_sb check above with same inode->i_sb->s_type
+> > > > check instead of doing the check only for calling the filesystem
+> > > > copy_file_range() method.
+> > >
+> > > Thank you for the feedback. In the next version, I will remove the
+> > > check for the functions and instead check for the same file system
+> > > types.
+> >
+> > Jeff and I agree that this is the wrong way to go.  Instead, the
+> > cross-device check should be in the individual instances, not the top
+> > level code.
 >
-> Jeff and I agree that this is the wrong way to go.  Instead, the
-> cross-device check should be in the individual instances, not the top
-> level code.
+> So remove the check all together for the VFS (that was my original
+> patch to begin with (like #1 not this one). So am I missing the point
+> again, I keep getting different corrections every time.
 
-So remove the check all together for the VFS (that was my original
-patch to begin with (like #1 not this one). So am I missing the point
-again, I keep getting different corrections every time.
+Because there are different opinions... although you did get the opinion
+of the VFS maintainer, which was: compare i_sb->s_type.
+
+Jeff, Matthew, really, what's the use of "allowing" cross fs type copy inside
+filesystem code? and which method is going to be called?
+file_out->f_op->copy_file_range()?
+file_in->f_op->copy_file_range()?
+Do we need to check if both are implemented? either?
+This is just confusing Olga and gives no real value to anyone.
+If we ever have a filesystem copy_file_range() method that can deal
+with cross fs type copy, we can change it then when we know the
+required semantics of that future call.
+
+That is not to say that we cannot relax same fs type from copy_file_range()
+syscall. That has already been done with the current patch, just not officially
+declared in commit message.
+
+Thanks,
+Amir.
