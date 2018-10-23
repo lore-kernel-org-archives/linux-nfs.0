@@ -2,111 +2,160 @@ Return-Path: <SRS0=j1eS=ND=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.9 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-8.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E0D23C46475
-	for <linux-nfs@archiver.kernel.org>; Tue, 23 Oct 2018 16:09:45 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9E0F0C67863
+	for <linux-nfs@archiver.kernel.org>; Tue, 23 Oct 2018 16:35:16 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 6970720665
-	for <linux-nfs@archiver.kernel.org>; Tue, 23 Oct 2018 16:09:45 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 6689220652
+	for <linux-nfs@archiver.kernel.org>; Tue, 23 Oct 2018 16:35:16 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="s83N2hoI"
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 6970720665
-Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=hammerspace.com
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="A+eHMo7o"
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 6689220652
+Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=gmail.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728270AbeJXAdp (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 23 Oct 2018 20:33:45 -0400
-Received: from mail-bl2nam02on0118.outbound.protection.outlook.com ([104.47.38.118]:6328
-        "EHLO NAM02-BL2-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1728259AbeJXAdp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 23 Oct 2018 20:33:45 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=hammerspace.com;
- s=selector1;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=NROsU0lCZkCQvxdJd7NXGRu3TMbPc4NLyp18wr8ZJ0A=;
- b=s83N2hoI+V1p1uk7KmFPacukakonjL4IInQN2Q27UVlqBl1ni/9VgKWFN5L8VWMfb1j2qf/jGYwBNeHyl2ThMsMHcvNk2kGD4Hw6I5PWtQlFW6yDP8/cCsiUdUsy3DyEI5hURq7zhPRaBl/mpO1macm/0/sjTHnET+vedKAobsc=
-Received: from SN6PR13MB2494.namprd13.prod.outlook.com (52.135.95.148) by
- SN6PR13MB2430.namprd13.prod.outlook.com (52.135.95.22) with Microsoft SMTP
- Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- 15.20.1273.12; Tue, 23 Oct 2018 16:09:40 +0000
-Received: from SN6PR13MB2494.namprd13.prod.outlook.com
- ([fe80::205a:69c2:1cf5:b475]) by SN6PR13MB2494.namprd13.prod.outlook.com
- ([fe80::205a:69c2:1cf5:b475%3]) with mapi id 15.20.1273.014; Tue, 23 Oct 2018
- 16:09:40 +0000
-From:   Trond Myklebust <trondmy@hammerspace.com>
-To:     "willy@infradead.org" <willy@infradead.org>,
-        "sorenson@redhat.com" <sorenson@redhat.com>
-CC:     "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
-Subject: Re: [PATCH] NFS: change sign of nfs_fh length
-Thread-Topic: [PATCH] NFS: change sign of nfs_fh length
-Thread-Index: AQHUauX4bhEJTM61gkqya12/tWgrhKUs96mAgAAIIoA=
-Date:   Tue, 23 Oct 2018 16:09:39 +0000
-Message-ID: <c3ecb78f39487792cf01f868f2ee8521237b3a33.camel@hammerspace.com>
-References: <85517ec3-e3d4-1bf3-8eea-cb274face1a7@redhat.com>
-         <20181023154031.GF20085@bombadil.infradead.org>
-In-Reply-To: <20181023154031.GF20085@bombadil.infradead.org>
-Accept-Language: en-US, en-GB
-Content-Language: en-US
-X-MS-Has-Attach: 
-X-MS-TNEF-Correlator: 
-x-originating-ip: [68.40.195.73]
-x-ms-publictraffictype: Email
-x-microsoft-exchange-diagnostics: 1;SN6PR13MB2430;6:UzDAyLVlTG7pgaOOukwqpr8b1xokwPRbaJuTtoi4OPvqnsgBpLQe/7QgLwmPuUsLLt8XRw18J/Ru5Wxhc3NHUSWbZzVw7zk5sOgOroZwCseygXlbZJAXbPuGTPC/PEpxELNI+88xBzTbATAGQE//tUjapXTfxthWl7ZKeKE49O85jfw1+43MqcP4KcasWgkhb3vwD2186KXdJ05UpdKwCQBP35pZyd8ZZ1eIHJE21YoxtSON9BXpRyNYItt48/9mLOkz7VGsT3EA/2uky16WzgpDG+cuzLSbZuArPuwenPR5EOGkIIV9a+9r7tzp0b6SkP1BaQbIW+7Q37sXyzEFMb354iKcmC16L3u6BtxbOBrcQkIQxhLjbjdDKg4BiNy/OvBxZtSGk6/dkdn1ppuWMhaJ4WMoszkF7iJnZSjNU7fzNuRqo5AaTe52wSl3T1s4AjYhgiiY/MyNFyQLWh+lug==;5:0TkYlYA5C+3CW91s37yqAdlTFS/VODXSufPPsXV6DWRFYUCkMUz6GM9bmM/ZvtRTybBgeVekiV1oxo5+lkK0KYgybLkIAuLYuLInCYFXk6GrmNWtu6QW+/2BvmrklZGlfTDHNgHV9etm31rNMbVh1USpgIbY3JDGCc0RIlEamxA=;7:yLq0FXcwOsHNtowLPF18ox5qkStRZODfpk1Pnp4laZAd56Y9H1Pbdob30sheNYqrgdeprtg2t34+c1GWIDH89o13hPIO51fyyILCZWntD7emUxuSsofn06twtpKg7mY+4rwF5aRYKu9z6nO58RRl0g==
-x-ms-exchange-antispam-srfa-diagnostics: SOS;
-x-ms-office365-filtering-correlation-id: a5c87356-5c59-4f7a-a14c-08d63901efcb
-x-microsoft-antispam: BCL:0;PCL:0;RULEID:(7020095)(4652040)(8989299)(4534185)(4627221)(201703031133081)(201702281549075)(8990200)(5600074)(711020)(2017052603328)(7153060)(7193020);SRVR:SN6PR13MB2430;
-x-ms-traffictypediagnostic: SN6PR13MB2430:
-authentication-results: spf=none (sender IP is )
- smtp.mailfrom=trondmy@hammerspace.com; 
-x-microsoft-antispam-prvs: <SN6PR13MB2430365D55D53E9A96607540B8F50@SN6PR13MB2430.namprd13.prod.outlook.com>
-x-exchange-antispam-report-test: UriScan:;
-x-ms-exchange-senderadcheck: 1
-x-exchange-antispam-report-cfa-test: BCL:0;PCL:0;RULEID:(6040522)(2401047)(8121501046)(5005006)(3002001)(3231355)(944501410)(52105095)(10201501046)(93006095)(93001095)(148016)(149066)(150057)(6041310)(201703131423095)(20161123555045)(201703061421075)(20161123562045)(20161123560045)(20161123558120)(20161123564045)(201708071742011)(7699051)(76991095);SRVR:SN6PR13MB2430;BCL:0;PCL:0;RULEID:;SRVR:SN6PR13MB2430;
-x-forefront-prvs: 0834BAF534
-x-forefront-antispam-report: SFV:NSPM;SFS:(10019020)(376002)(366004)(346002)(136003)(189003)(199004)(14454004)(486006)(2616005)(3846002)(6512007)(6116002)(256004)(476003)(186003)(102836004)(11346002)(86362001)(446003)(6246003)(53936002)(8676002)(2501003)(36756003)(26005)(99286004)(5250100002)(6436002)(118296001)(7736002)(305945005)(2900100001)(6486002)(6506007)(71200400001)(71190400001)(8936002)(97736004)(25786009)(76176011)(4001150100001)(81156014)(81166006)(229853002)(68736007)(5660300001)(508600001)(110136005)(105586002)(54906003)(2906002)(4326008)(66066001)(106356001);DIR:OUT;SFP:1102;SCL:1;SRVR:SN6PR13MB2430;H:SN6PR13MB2494.namprd13.prod.outlook.com;FPR:;SPF:None;LANG:en;PTR:InfoNoRecords;MX:1;A:1;
-received-spf: None (protection.outlook.com: hammerspace.com does not designate
- permitted sender hosts)
-x-microsoft-antispam-message-info: Fqj/HnSfhqAp6RvAFJQlZMOlIZbvbY9nEEc7P1AmIzCaPp3ISk3RlkE8fKZran5dm7ZtTk6jaAWcOS3hBEpYwVsTX9mBmDyZxee67LbbIKatce+jyEHsSYvU9xaxZxUtauNWWorXvU2yeiHi6+RCXUmUfXFjZt+oAAyM8fdBI0vPRlqyCzf0WjNdkNVSuFZj+UyN4sL6MJEC818uLqp7tWAYUghZJ+Pks4kkWMlXx6vnIN2LpJXPovrx7TWPO+/kJB9uy+6x9Hav6LMI66A2lb4DWQv9wnUfhtiksBC3FP9GNnOIpS26N7h6xHS6Z9j5eDe9DW4Id+Z8FVRjN7dP15ksdjMLJC895Gz+EvZ5YJ4=
-spamdiagnosticoutput: 1:99
-spamdiagnosticmetadata: NSPM
-Content-Type: text/plain; charset="utf-8"
-Content-ID: <C91A95B7B6DF5E4FAFE236BD5886EE12@namprd13.prod.outlook.com>
-Content-Transfer-Encoding: base64
+        id S1728225AbeJXA7W (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 23 Oct 2018 20:59:22 -0400
+Received: from mail-it1-f196.google.com ([209.85.166.196]:50831 "EHLO
+        mail-it1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727402AbeJXA7W (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Oct 2018 20:59:22 -0400
+Received: by mail-it1-f196.google.com with SMTP id k206-v6so2652079ite.0
+        for <linux-nfs@vger.kernel.org>; Tue, 23 Oct 2018 09:35:15 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=from:to:subject:date:message-id:in-reply-to:references:mime-version
+         :content-transfer-encoding;
+        bh=8Z3o4QM1IxOGWHcDKPR0hMPuASNpttKTaXdBXsxzMn0=;
+        b=A+eHMo7ojTfVFdEZaSBeb21u4l87+aXjnJf1EfRSrobOj0HhfEoQ/+zC0L40t0s3Ud
+         valWQAervBomD1BIhWfa4RPWVw3WnHvjYqhXkyojEDkFyXBwi++5cay7PBK8OuWnymTm
+         tv5b+lyd0HJD//IFCWg4xoS1ff1RnJMRRZpgSmwVZpi4mns9Eo/S0yIo7f32LNIhvxd8
+         lhHcxrq1WbGrLgfzilxp3+UnltGapUybJNQ12WLtnXIDkEKBBlrJDmvNQanXFhbBbu/9
+         dvFruFhaOqX208j9a3Dvw31s8MlQspAl1GpCFgiDpm0vbX0JP8jn19dmHAgywO0pALK5
+         dZWg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:from:to:subject:date:message-id:in-reply-to
+         :references:mime-version:content-transfer-encoding;
+        bh=8Z3o4QM1IxOGWHcDKPR0hMPuASNpttKTaXdBXsxzMn0=;
+        b=gB8vCglh1ASnde33DOlokWvDjnwD89Ocb3ZkglyHIKCJNeiN5wTj5wdnnFjFRu69W5
+         DipsS1bZxRx/jrUu5t34u8Pxkwo2D5dSxMmZychwNXibXQU6mB1zOt30iZ9wsm9vg8lN
+         xS7Ma5I7/vGePGAfWaqeyzdXCRaR9LECx5fr51/IiPKp9HqGHC3llgPlCAAj408t5IRb
+         Ub3/FxS+2/aX3wZyuExBHcHr8epi3raComg9nVqYlEnTjg9WSfKRbDklyDm9shbhRIBa
+         jA97Q7Ht3RkuzlKQWQBYE6WOmHpJi0NZYoohgejuuzf5eJN7EiBvA7bqX6TLOJJSooIr
+         gdqQ==
+X-Gm-Message-State: ABuFfohQgndFcfXB4tUOlqlJo+9im6I0pwa06J78Q0we41N/zYeq1305
+        ZpCOwIkZ96rl4uA7GMwdE18Lui0=
+X-Google-Smtp-Source: ACcGV62rBOXL7D+/kg4G6mUVNmXdc6ndVXI8JnLb5Y2qfpixrF8qt6zaAaZ/SXsWtKTRyf2fBlWzeA==
+X-Received: by 2002:a02:764c:: with SMTP id z73-v6mr4231401jab.73.1540312514179;
+        Tue, 23 Oct 2018 09:35:14 -0700 (PDT)
+Received: from localhost.localdomain (c-68-40-195-73.hsd1.mi.comcast.net. [68.40.195.73])
+        by smtp.gmail.com with ESMTPSA id w20-v6sm573065ioa.82.2018.10.23.09.35.13
+        for <linux-nfs@vger.kernel.org>
+        (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
+        Tue, 23 Oct 2018 09:35:13 -0700 (PDT)
+From:   Trond Myklebust <trondmy@gmail.com>
+X-Google-Original-From: Trond Myklebust <trond.myklebust@hammerspace.com>
+To:     linux-nfs@vger.kernel.org
+Subject: [PATCH 2/4] SUNRPC: Simplify lookup code
+Date:   Tue, 23 Oct 2018 12:34:02 -0400
+Message-Id: <20181023163404.27777-2-trond.myklebust@hammerspace.com>
+X-Mailer: git-send-email 2.17.2
+In-Reply-To: <20181023163404.27777-1-trond.myklebust@hammerspace.com>
+References: <20181023163404.27777-1-trond.myklebust@hammerspace.com>
 MIME-Version: 1.0
-X-OriginatorOrg: hammerspace.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: a5c87356-5c59-4f7a-a14c-08d63901efcb
-X-MS-Exchange-CrossTenant-originalarrivaltime: 23 Oct 2018 16:09:39.8947
- (UTC)
-X-MS-Exchange-CrossTenant-fromentityheader: Hosted
-X-MS-Exchange-CrossTenant-id: 0d4fed5c-3a70-46fe-9430-ece41741f59e
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: SN6PR13MB2430
+Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-T24gVHVlLCAyMDE4LTEwLTIzIGF0IDA4OjQwIC0wNzAwLCBNYXR0aGV3IFdpbGNveCB3cm90ZToN
-Cj4gT24gVHVlLCBPY3QgMjMsIDIwMTggYXQgMTA6MzQ6NTdBTSAtMDUwMCwgRnJhbmsgU29yZW5z
-b24gd3JvdGU6DQo+ID4gDQo+ID4gVGhlIGZpbGVoYW5kbGUgaGFzIGEgbGVuZ3RoIHdoaWNoIGlz
-IGRlZmluZWQgYXMgYSAzMi1iaXQNCj4gPiAidW5zaWduZWQgaW50ZWdlciIuICBDaGFuZ2Ugc2ln
-biBvZiB0aGUgbGVuZ3RoIGFwcHJvcHJpYXRlbHkuDQo+ID4gDQo+ID4gU2lnbmVkLW9mZi1ieTog
-RnJhbmsgU29yZW5zb24gPHNvcmVuc29uQHJlZGhhdC5jb20+DQo+IA0KPiBJcyB0aGlzIGEgY2xl
-YW51cCBvciBkb2VzIGl0IGZpeCBhIHVzZXItdmlzaWJsZSBidWc/DQoNCkl0IGZpeGVzIHRoZSBm
-b2xsb3dpbmcgY29tcGFyaXNvbjoNCg0KICAgICAgICAgICAgICAgIGlmIChsZW4gPiBORlM0X0ZI
-U0laRSkNCiAgICAgICAgICAgICAgICAgICAgICAgIHJldHVybiAtRUlPOw0KDQpidXQgaW4gcHJh
-Y3RpY2UsIHRoZSBuZXh0IGxpbmUgc2hvdWxkIGFsd2F5cyBjYXRjaCB0aGUgYnVmZmVyIG92ZXJm
-bG93DQp3aGVuIGxlbiBpcyBuZWdhdGl2ZToNCg0KICAgICAgICAgICAgICAgIHAgPSB4ZHJfaW5s
-aW5lX2RlY29kZSh4ZHIsIGxlbik7DQogICAgICAgICAgICAgICAgaWYgKHVubGlrZWx5KCFwKSkN
-CiAgICAgICAgICAgICAgICAgICAgICAgIGdvdG8gb3V0X292ZXJmbG93Ow0KDQpUaGF0IHNhaWQs
-IGl0IGlzIG5pY2UgdG8gYmUgcmVkdW5kYW50LCBzbyBJJ20gaGFwcHkgdG8gdGFrZSB0aGUgcGF0
-Y2guDQoNCkZyYW5rLCBpbiAgdGhlIGZ1dHVyZSBjYW4geW91IHBsZWFzZSBDYzogdGhlIG1haW50
-YWluZXJzIGRpcmVjdGx5IG9uDQp5b3VyIHBhdGNoZXM/IEkgbWlzc2VkIHRoaXMgb25lIGNvbXBs
-ZXRlbHkgYmVjYXVzZSBteSBtYWlsIGZpbHRlcg0KZGlyZWN0ZWQgaXQgdG8gbXkgJ2xpbnV4LWZz
-ZGV2ZWwnIGluYm94IHJhdGhlciB0aGFuICdsaW51eC1uZnMnLi4uDQoNClRoYW5rcywNCiAgVHJv
-bmQNCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lciwg
-SGFtbWVyc3BhY2UNCnRyb25kLm15a2xlYnVzdEBoYW1tZXJzcGFjZS5jb20NCg0KDQo=
+We no longer need to worry about whether or not the entry is hashed in
+order to figure out if the contents are valid. We only care whether or
+not the refcount is non-zero.
+
+Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
+---
+ include/linux/sunrpc/auth.h | 12 +++++-------
+ net/sunrpc/auth.c           | 19 ++++++++-----------
+ 2 files changed, 13 insertions(+), 18 deletions(-)
+
+diff --git a/include/linux/sunrpc/auth.h b/include/linux/sunrpc/auth.h
+index 2c97a3933ef9..a7fc8f5a2dad 100644
+--- a/include/linux/sunrpc/auth.h
++++ b/include/linux/sunrpc/auth.h
+@@ -206,11 +206,11 @@ bool			rpcauth_cred_key_to_expire(struct rpc_auth *, struct rpc_cred *);
+ char *			rpcauth_stringify_acceptor(struct rpc_cred *);
+ 
+ static inline
+-struct rpc_cred *	get_rpccred(struct rpc_cred *cred)
++struct rpc_cred *get_rpccred(struct rpc_cred *cred)
+ {
+-	if (cred != NULL)
+-		atomic_inc(&cred->cr_count);
+-	return cred;
++	if (cred != NULL && atomic_inc_not_zero(&cred->cr_count))
++		return cred;
++	return NULL;
+ }
+ 
+ /**
+@@ -226,9 +226,7 @@ struct rpc_cred *	get_rpccred(struct rpc_cred *cred)
+ static inline struct rpc_cred *
+ get_rpccred_rcu(struct rpc_cred *cred)
+ {
+-	if (atomic_inc_not_zero(&cred->cr_count))
+-		return cred;
+-	return NULL;
++	return get_rpccred(cred);
+ }
+ 
+ #endif /* __KERNEL__ */
+diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
+index c1576b110974..77748e572686 100644
+--- a/net/sunrpc/auth.c
++++ b/net/sunrpc/auth.c
+@@ -588,19 +588,15 @@ rpcauth_lookup_credcache(struct rpc_auth *auth, struct auth_cred * acred,
+ 		if (!entry->cr_ops->crmatch(acred, entry, flags))
+ 			continue;
+ 		if (flags & RPCAUTH_LOOKUP_RCU) {
+-			if (test_bit(RPCAUTH_CRED_HASHED, &entry->cr_flags) &&
+-			    !test_bit(RPCAUTH_CRED_NEW, &entry->cr_flags))
+-				cred = entry;
++			if (test_bit(RPCAUTH_CRED_NEW, &entry->cr_flags) ||
++			    atomic_read(&entry->cr_count) == 0)
++				continue;
++			cred = entry;
+ 			break;
+ 		}
+-		spin_lock(&cache->lock);
+-		if (test_bit(RPCAUTH_CRED_HASHED, &entry->cr_flags) == 0) {
+-			spin_unlock(&cache->lock);
+-			continue;
+-		}
+ 		cred = get_rpccred(entry);
+-		spin_unlock(&cache->lock);
+-		break;
++		if (cred)
++			break;
+ 	}
+ 	rcu_read_unlock();
+ 
+@@ -621,7 +617,8 @@ rpcauth_lookup_credcache(struct rpc_auth *auth, struct auth_cred * acred,
+ 		if (!entry->cr_ops->crmatch(acred, entry, flags))
+ 			continue;
+ 		cred = get_rpccred(entry);
+-		break;
++		if (cred)
++			break;
+ 	}
+ 	if (cred == NULL) {
+ 		cred = new;
+-- 
+2.17.2
+
