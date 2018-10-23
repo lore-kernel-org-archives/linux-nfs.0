@@ -8,64 +8,67 @@ X-Spam-Status: No, score=-8.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0CA97C46475
-	for <linux-nfs@archiver.kernel.org>; Tue, 23 Oct 2018 16:35:16 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8F07BC46475
+	for <linux-nfs@archiver.kernel.org>; Tue, 23 Oct 2018 16:35:17 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id AA5E220652
-	for <linux-nfs@archiver.kernel.org>; Tue, 23 Oct 2018 16:35:15 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 54C3020652
+	for <linux-nfs@archiver.kernel.org>; Tue, 23 Oct 2018 16:35:17 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="N7MWQyBw"
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org AA5E220652
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="ChntdTfZ"
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 54C3020652
 Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=gmail.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727612AbeJXA7V (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 23 Oct 2018 20:59:21 -0400
-Received: from mail-it1-f195.google.com ([209.85.166.195]:56101 "EHLO
-        mail-it1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727402AbeJXA7V (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Oct 2018 20:59:21 -0400
-Received: by mail-it1-f195.google.com with SMTP id c23-v6so2630010itd.5
-        for <linux-nfs@vger.kernel.org>; Tue, 23 Oct 2018 09:35:13 -0700 (PDT)
+        id S1728259AbeJXA7X (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 23 Oct 2018 20:59:23 -0400
+Received: from mail-it1-f196.google.com ([209.85.166.196]:53029 "EHLO
+        mail-it1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727402AbeJXA7X (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Oct 2018 20:59:23 -0400
+Received: by mail-it1-f196.google.com with SMTP id 134-v6so2647745itz.2
+        for <linux-nfs@vger.kernel.org>; Tue, 23 Oct 2018 09:35:15 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
-        h=from:to:subject:date:message-id:mime-version
+        h=from:to:subject:date:message-id:in-reply-to:references:mime-version
          :content-transfer-encoding;
-        bh=YU3gbjUyPDvjsXqDm9aNeApsNYewl+FJT20atCmnH5M=;
-        b=N7MWQyBwubfxX2m0WXYyr+TAfVnDm2tsxHPMOvGSICgvh6mVd16K/NCcxmZCX/Re8g
-         6D7adE38JBO5O8Fvbwg3b+K+o3xBTNWwK6Fdcrggpurh6vXSqbHWs9jR9n5PcDaxSHt8
-         FJxaE7UiQNaXcN6oxfDdh25Uuy3G+ri8BFhPerJ4hkKGNUSGwSBggWuA3MqspP5r8oWD
-         Tl+vboFmNG2Yspz/BqzfK5IEg/6AmP8tmbcsBO6bUrdz478VspFd3NcUKQjcr72PBshU
-         QfdinXlgxt0pMcfgnBBBbZlZ0IVg/QfcweR0WoxHctMScsQuDuDXcYj7j8kthQXsB0Ad
-         cikg==
+        bh=AGzVrNyvQxT4e0ShzHAkd+qHSRExjetCeA7b4UwYbFg=;
+        b=ChntdTfZEBSY6WGZFG6ss2EWLMIpn9rz4Hauerh6QVplSRzCUZxOPBoR1SyI7+I4wf
+         sxTTaOfLUwi0oY1waStwd2kuxq5tKtKKLxs2+GFfoM5bL1VKLz46YjooG+Y8Qrd/4RxK
+         Rzi+Jv5DuHpNmeSRHQoygxXAwZ68+dAzK9GGxKac9WQkEgHSvAFVxFLdFPjLfDNIJYt1
+         7S0mtc1L6B3aLWbCA/6sniZuKkfZpjHYw9FFYn1IHK9q+ejp6Vu0UPYRJkxRMoV7+1QD
+         +YyJw5+6drLpl+7p8ZddxrM77PdaFNv6keP6bUJZDlLEtKRMlAR62Gh9iVwxw2UdFKNj
+         1t8w==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:to:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=YU3gbjUyPDvjsXqDm9aNeApsNYewl+FJT20atCmnH5M=;
-        b=hBDg8xCSnh5a/4iG9IAIho4h7AFMPa9CX8IiKRK+cukumEfb8nu0UbqNt3J04ExdFn
-         F53mHc4YIFr4sFZjdOT1t/Lmwp/Mdui/YhdheB2XzPWb0OZNTJhwgWkMCbRU5udy0Dr3
-         LKF+cN9wH0s5mOM6mVT2sDH6DN0tKSscISoBtFuXjvG9ChSmPGKXJvIQVrA6/f4HV7I1
-         ZUNg7WO63/PQLJGVxDgap0PJwW7mrK4xhCMR8vuff/oehRjWUy0YtGtNTSz3vtypMOXI
-         TO2iex54jpsSzmtx1YhJjFZ5jwixiL1gBy1Zy9dJdmab8aC1g7C6VzjDYUAgF/O3L3Kn
-         7EDQ==
-X-Gm-Message-State: ABuFfojnJjEl7gb6pCprN8NRYrnZ+/pg+YkcZT2K77rv8ULf3EGGNCqq
-        DQGLkDHnjWP/utua0WLyT8AIdo0=
-X-Google-Smtp-Source: ACcGV62DsM6yNX2Bva4sObUZuJZW2nqR6JvcDHHXdPG7gt8v80Ga2gdqqdQLQ+kLZ97EeUv3uFq8AQ==
-X-Received: by 2002:a02:5f5a:: with SMTP id r87-v6mr38720411jab.22.1540312512909;
-        Tue, 23 Oct 2018 09:35:12 -0700 (PDT)
+        h=x-gm-message-state:from:to:subject:date:message-id:in-reply-to
+         :references:mime-version:content-transfer-encoding;
+        bh=AGzVrNyvQxT4e0ShzHAkd+qHSRExjetCeA7b4UwYbFg=;
+        b=SUrIS+3PlRzOBlU3ChVLtqi7tR8BCVjR4/DBWL/NZyuWbsPbB/AhMr+/ehNyT4M6JB
+         ETFgysrF0B2j3fXqvNkhTa4mZrvoJkwa3O98rgBcZ8BzDp6ekGPAZO6thsp9EmPxmluf
+         hNr4UljnENyCAf210car8bu3pu16hMGuZSqUkkjmFHWewnwFZqBRfp8+FvirQkEDZfHV
+         tcbz77uEJxZlugB/JsvovFwfRaRn9HklYVTt1aIsHVfRpqITj579f0mJoEvpOUBb1tG4
+         9ZillelNbStadqdvs6mkWpmyXllaPio4bwALj/2aYHq0zZyxWZSWHDfUCL1kAZcQRnT/
+         9DYQ==
+X-Gm-Message-State: ABuFfojx5CRWp1WmvdXnx8952UO+YOluPT7rUS8dfHbkGfpnzSvQspHe
+        b5LE1UQItUzP+1mzZQK1mKQahTo=
+X-Google-Smtp-Source: ACcGV62Mb+014WVeY5QKxEqdiPS0cxA9302yFRh0hnVpWZKs7+98C/ekxtwaSsr/ZWoWwzyW/8L9cQ==
+X-Received: by 2002:a24:9b83:: with SMTP id o125-v6mr6741755itd.66.1540312514968;
+        Tue, 23 Oct 2018 09:35:14 -0700 (PDT)
 Received: from localhost.localdomain (c-68-40-195-73.hsd1.mi.comcast.net. [68.40.195.73])
-        by smtp.gmail.com with ESMTPSA id w20-v6sm573065ioa.82.2018.10.23.09.35.11
+        by smtp.gmail.com with ESMTPSA id w20-v6sm573065ioa.82.2018.10.23.09.35.14
         for <linux-nfs@vger.kernel.org>
         (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
-        Tue, 23 Oct 2018 09:35:12 -0700 (PDT)
+        Tue, 23 Oct 2018 09:35:14 -0700 (PDT)
 From:   Trond Myklebust <trondmy@gmail.com>
 X-Google-Original-From: Trond Myklebust <trond.myklebust@hammerspace.com>
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH 1/4] SUNRPC: Clean up the AUTH cache code
-Date:   Tue, 23 Oct 2018 12:34:01 -0400
-Message-Id: <20181023163404.27777-1-trond.myklebust@hammerspace.com>
+Subject: [PATCH 3/4] SUNRPC: Convert auth creds to use refcount_t
+Date:   Tue, 23 Oct 2018 12:34:03 -0400
+Message-Id: <20181023163404.27777-3-trond.myklebust@hammerspace.com>
 X-Mailer: git-send-email 2.17.2
+In-Reply-To: <20181023163404.27777-2-trond.myklebust@hammerspace.com>
+References: <20181023163404.27777-1-trond.myklebust@hammerspace.com>
+ <20181023163404.27777-2-trond.myklebust@hammerspace.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
@@ -75,242 +78,104 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- net/sunrpc/auth.c      | 147 ++++++++++++++++++++++++-----------------
- net/sunrpc/auth_null.c |   2 +-
- 2 files changed, 87 insertions(+), 62 deletions(-)
+ include/linux/sunrpc/auth.h |  4 ++--
+ net/sunrpc/auth.c           | 14 +++++++-------
+ net/sunrpc/auth_null.c      |  2 +-
+ 3 files changed, 10 insertions(+), 10 deletions(-)
 
+diff --git a/include/linux/sunrpc/auth.h b/include/linux/sunrpc/auth.h
+index a7fc8f5a2dad..a71d4bd191e7 100644
+--- a/include/linux/sunrpc/auth.h
++++ b/include/linux/sunrpc/auth.h
+@@ -67,7 +67,7 @@ struct rpc_cred {
+ 	const struct rpc_credops *cr_ops;
+ 	unsigned long		cr_expire;	/* when to gc */
+ 	unsigned long		cr_flags;	/* various flags */
+-	atomic_t		cr_count;	/* ref count */
++	refcount_t		cr_count;	/* ref count */
+ 
+ 	kuid_t			cr_uid;
+ 
+@@ -208,7 +208,7 @@ char *			rpcauth_stringify_acceptor(struct rpc_cred *);
+ static inline
+ struct rpc_cred *get_rpccred(struct rpc_cred *cred)
+ {
+-	if (cred != NULL && atomic_inc_not_zero(&cred->cr_count))
++	if (cred != NULL && refcount_inc_not_zero(&cred->cr_count))
+ 		return cred;
+ 	return NULL;
+ }
 diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
-index 32985aa515be..c1576b110974 100644
+index 77748e572686..4903eda5dd61 100644
 --- a/net/sunrpc/auth.c
 +++ b/net/sunrpc/auth.c
-@@ -291,25 +291,30 @@ rpcauth_release(struct rpc_auth *auth)
- 
- static DEFINE_SPINLOCK(rpc_credcache_lock);
- 
--static void
-+/*
-+ * On success, the caller is responsible for freeing the reference
-+ * held by the hashtable
-+ */
-+static bool
- rpcauth_unhash_cred_locked(struct rpc_cred *cred)
- {
-+	if (!test_and_clear_bit(RPCAUTH_CRED_HASHED, &cred->cr_flags))
-+		return false;
- 	hlist_del_rcu(&cred->cr_hash);
--	smp_mb__before_atomic();
--	clear_bit(RPCAUTH_CRED_HASHED, &cred->cr_flags);
-+	return true;
- }
- 
--static int
-+static bool
- rpcauth_unhash_cred(struct rpc_cred *cred)
- {
- 	spinlock_t *cache_lock;
--	int ret;
-+	bool ret;
- 
-+	if (!test_bit(RPCAUTH_CRED_HASHED, &cred->cr_flags))
-+		return false;
- 	cache_lock = &cred->cr_auth->au_credcache->lock;
- 	spin_lock(cache_lock);
--	ret = atomic_read(&cred->cr_count) == 0;
--	if (ret)
--		rpcauth_unhash_cred_locked(cred);
-+	ret = rpcauth_unhash_cred_locked(cred);
- 	spin_unlock(cache_lock);
- 	return ret;
- }
-@@ -388,6 +393,44 @@ void rpcauth_destroy_credlist(struct list_head *head)
- 	}
- }
- 
-+static void
-+rpcauth_lru_add_locked(struct rpc_cred *cred)
-+{
-+	if (!list_empty(&cred->cr_lru))
-+		return;
-+	number_cred_unused++;
-+	list_add_tail(&cred->cr_lru, &cred_unused);
-+}
-+
-+static void
-+rpcauth_lru_add(struct rpc_cred *cred)
-+{
-+	if (!list_empty(&cred->cr_lru))
-+		return;
-+	spin_lock(&rpc_credcache_lock);
-+	rpcauth_lru_add_locked(cred);
-+	spin_unlock(&rpc_credcache_lock);
-+}
-+
-+static void
-+rpcauth_lru_remove_locked(struct rpc_cred *cred)
-+{
-+	if (list_empty(&cred->cr_lru))
-+		return;
-+	number_cred_unused--;
-+	list_del_init(&cred->cr_lru);
-+}
-+
-+static void
-+rpcauth_lru_remove(struct rpc_cred *cred)
-+{
-+	if (list_empty(&cred->cr_lru))
-+		return;
-+	spin_lock(&rpc_credcache_lock);
-+	rpcauth_lru_remove_locked(cred);
-+	spin_unlock(&rpc_credcache_lock);
-+}
-+
- /*
-  * Clear the RPC credential cache, and delete those credentials
-  * that are not referenced.
-@@ -407,13 +450,10 @@ rpcauth_clear_credcache(struct rpc_cred_cache *cache)
- 		head = &cache->hashtable[i];
- 		while (!hlist_empty(head)) {
- 			cred = hlist_entry(head->first, struct rpc_cred, cr_hash);
--			get_rpccred(cred);
--			if (!list_empty(&cred->cr_lru)) {
--				list_del(&cred->cr_lru);
--				number_cred_unused--;
--			}
--			list_add_tail(&cred->cr_lru, &free);
- 			rpcauth_unhash_cred_locked(cred);
-+			/* Note: We now hold a reference to cred */
-+			rpcauth_lru_remove_locked(cred);
-+			list_add_tail(&cred->cr_lru, &free);
- 		}
- 	}
- 	spin_unlock(&cache->lock);
-@@ -447,7 +487,6 @@ EXPORT_SYMBOL_GPL(rpcauth_destroy_credcache);
- static long
- rpcauth_prune_expired(struct list_head *free, int nr_to_scan)
- {
--	spinlock_t *cache_lock;
- 	struct rpc_cred *cred, *next;
- 	unsigned long expired = jiffies - RPC_AUTH_EXPIRY_MORATORIUM;
- 	long freed = 0;
-@@ -456,32 +495,24 @@ rpcauth_prune_expired(struct list_head *free, int nr_to_scan)
+@@ -495,7 +495,7 @@ rpcauth_prune_expired(struct list_head *free, int nr_to_scan)
  
  		if (nr_to_scan-- == 0)
  			break;
-+		if (atomic_read(&cred->cr_count) > 1) {
-+			rpcauth_lru_remove_locked(cred);
-+			continue;
-+		}
- 		/*
- 		 * Enforce a 60 second garbage collection moratorium
- 		 * Note that the cred_unused list must be time-ordered.
- 		 */
--		if (time_in_range(cred->cr_expire, expired, jiffies) &&
--		    test_bit(RPCAUTH_CRED_HASHED, &cred->cr_flags) != 0) {
--			freed = SHRINK_STOP;
--			break;
--		}
--
--		list_del_init(&cred->cr_lru);
--		number_cred_unused--;
--		freed++;
--		if (atomic_read(&cred->cr_count) != 0)
-+		if (!time_in_range(cred->cr_expire, expired, jiffies))
-+			continue;
-+		if (!rpcauth_unhash_cred(cred))
+-		if (atomic_read(&cred->cr_count) > 1) {
++		if (refcount_read(&cred->cr_count) > 1) {
+ 			rpcauth_lru_remove_locked(cred);
  			continue;
- 
--		cache_lock = &cred->cr_auth->au_credcache->lock;
--		spin_lock(cache_lock);
--		if (atomic_read(&cred->cr_count) == 0) {
--			get_rpccred(cred);
--			list_add_tail(&cred->cr_lru, free);
--			rpcauth_unhash_cred_locked(cred);
--		}
--		spin_unlock(cache_lock);
-+		rpcauth_lru_remove_locked(cred);
-+		freed++;
-+		list_add_tail(&cred->cr_lru, free);
- 	}
--	return freed;
-+	return freed ? freed : SHRINK_STOP;
- }
- 
- static unsigned long
-@@ -595,6 +626,7 @@ rpcauth_lookup_credcache(struct rpc_auth *auth, struct auth_cred * acred,
+ 		}
+@@ -589,7 +589,7 @@ rpcauth_lookup_credcache(struct rpc_auth *auth, struct auth_cred * acred,
+ 			continue;
+ 		if (flags & RPCAUTH_LOOKUP_RCU) {
+ 			if (test_bit(RPCAUTH_CRED_NEW, &entry->cr_flags) ||
+-			    atomic_read(&entry->cr_count) == 0)
++			    refcount_read(&entry->cr_count) == 0)
+ 				continue;
+ 			cred = entry;
+ 			break;
+@@ -623,7 +623,7 @@ rpcauth_lookup_credcache(struct rpc_auth *auth, struct auth_cred * acred,
  	if (cred == NULL) {
  		cred = new;
  		set_bit(RPCAUTH_CRED_HASHED, &cred->cr_flags);
-+		atomic_inc(&cred->cr_count);
+-		atomic_inc(&cred->cr_count);
++		refcount_inc(&cred->cr_count);
  		hlist_add_head_rcu(&cred->cr_hash, &cache->hashtable[nr]);
  	} else
  		list_add_tail(&new->cr_lru, &free);
-@@ -709,36 +741,29 @@ put_rpccred(struct rpc_cred *cred)
+@@ -670,7 +670,7 @@ rpcauth_init_cred(struct rpc_cred *cred, const struct auth_cred *acred,
  {
+ 	INIT_HLIST_NODE(&cred->cr_hash);
+ 	INIT_LIST_HEAD(&cred->cr_lru);
+-	atomic_set(&cred->cr_count, 1);
++	refcount_set(&cred->cr_count, 1);
+ 	cred->cr_auth = auth;
+ 	cred->cr_ops = ops;
+ 	cred->cr_expire = jiffies;
+@@ -739,9 +739,9 @@ put_rpccred(struct rpc_cred *cred)
  	if (cred == NULL)
  		return;
--	/* Fast path for unhashed credentials */
--	if (test_bit(RPCAUTH_CRED_HASHED, &cred->cr_flags) == 0) {
-+	rcu_read_lock();
-+	if (atomic_dec_and_test(&cred->cr_count))
-+		goto destroy;
-+	if (atomic_read(&cred->cr_count) != 1 ||
-+	    !test_bit(RPCAUTH_CRED_HASHED, &cred->cr_flags))
-+		goto out;
-+	if (test_bit(RPCAUTH_CRED_UPTODATE, &cred->cr_flags) != 0) {
-+		cred->cr_expire = jiffies;
-+		rpcauth_lru_add(cred);
-+		/* Race breaker */
-+		if (unlikely(!test_bit(RPCAUTH_CRED_HASHED, &cred->cr_flags)))
-+			rpcauth_lru_remove(cred);
-+	} else if (rpcauth_unhash_cred(cred)) {
-+		rpcauth_lru_remove(cred);
- 		if (atomic_dec_and_test(&cred->cr_count))
--			cred->cr_ops->crdestroy(cred);
--		return;
--	}
--
--	if (!atomic_dec_and_lock(&cred->cr_count, &rpc_credcache_lock))
--		return;
--	if (!list_empty(&cred->cr_lru)) {
--		number_cred_unused--;
--		list_del_init(&cred->cr_lru);
--	}
--	if (test_bit(RPCAUTH_CRED_HASHED, &cred->cr_flags) != 0) {
--		if (test_bit(RPCAUTH_CRED_UPTODATE, &cred->cr_flags) != 0) {
--			cred->cr_expire = jiffies;
--			list_add_tail(&cred->cr_lru, &cred_unused);
--			number_cred_unused++;
--			goto out_nodestroy;
--		}
--		if (!rpcauth_unhash_cred(cred)) {
--			/* We were hashed and someone looked us up... */
--			goto out_nodestroy;
--		}
-+			goto destroy;
+ 	rcu_read_lock();
+-	if (atomic_dec_and_test(&cred->cr_count))
++	if (refcount_dec_and_test(&cred->cr_count))
+ 		goto destroy;
+-	if (atomic_read(&cred->cr_count) != 1 ||
++	if (refcount_read(&cred->cr_count) != 1 ||
+ 	    !test_bit(RPCAUTH_CRED_HASHED, &cred->cr_flags))
+ 		goto out;
+ 	if (test_bit(RPCAUTH_CRED_UPTODATE, &cred->cr_flags) != 0) {
+@@ -752,7 +752,7 @@ put_rpccred(struct rpc_cred *cred)
+ 			rpcauth_lru_remove(cred);
+ 	} else if (rpcauth_unhash_cred(cred)) {
+ 		rpcauth_lru_remove(cred);
+-		if (atomic_dec_and_test(&cred->cr_count))
++		if (refcount_dec_and_test(&cred->cr_count))
+ 			goto destroy;
  	}
--	spin_unlock(&rpc_credcache_lock);
--	cred->cr_ops->crdestroy(cred);
-+out:
-+	rcu_read_unlock();
- 	return;
--out_nodestroy:
--	spin_unlock(&rpc_credcache_lock);
-+destroy:
-+	rcu_read_unlock();
-+	cred->cr_ops->crdestroy(cred);
- }
- EXPORT_SYMBOL_GPL(put_rpccred);
- 
+ out:
 diff --git a/net/sunrpc/auth_null.c b/net/sunrpc/auth_null.c
-index 4b48228ee8c7..a7c00b4959f3 100644
+index a7c00b4959f3..ea816d7000a4 100644
 --- a/net/sunrpc/auth_null.c
 +++ b/net/sunrpc/auth_null.c
 @@ -138,6 +138,6 @@ struct rpc_cred null_cred = {
  	.cr_lru		= LIST_HEAD_INIT(null_cred.cr_lru),
  	.cr_auth	= &null_auth,
  	.cr_ops		= &null_credops,
--	.cr_count	= ATOMIC_INIT(1),
-+	.cr_count	= ATOMIC_INIT(2),
+-	.cr_count	= ATOMIC_INIT(2),
++	.cr_count	= REFCOUNT_INIT(2),
  	.cr_flags	= 1UL << RPCAUTH_CRED_UPTODATE,
  };
 -- 
