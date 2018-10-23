@@ -2,215 +2,211 @@ Return-Path: <SRS0=j1eS=ND=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-0.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS,URIBL_BLOCKED
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-6.8 required=3.0 tests=DKIMWL_WL_MED,DKIM_SIGNED,
+	DKIM_VALID,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
+	SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D3A3DC46475
-	for <linux-nfs@archiver.kernel.org>; Tue, 23 Oct 2018 17:16:19 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E6C47C46475
+	for <linux-nfs@archiver.kernel.org>; Tue, 23 Oct 2018 20:23:07 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 70A6820813
-	for <linux-nfs@archiver.kernel.org>; Tue, 23 Oct 2018 17:16:19 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 9C58A205F4
+	for <linux-nfs@archiver.kernel.org>; Tue, 23 Oct 2018 20:23:07 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="uZ19OC2Y"
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 70A6820813
-Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=gmail.com
+	dkim=pass (1024-bit key) header.d=netapp.onmicrosoft.com header.i=@netapp.onmicrosoft.com header.b="cj06v//a"
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 9C58A205F4
+Authentication-Results: mail.kernel.org; dmarc=none (p=none dis=none) header.from=netapp.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728270AbeJXBke (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 23 Oct 2018 21:40:34 -0400
-Received: from mail-vk1-f193.google.com ([209.85.221.193]:44965 "EHLO
-        mail-vk1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727612AbeJXBke (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Oct 2018 21:40:34 -0400
-Received: by mail-vk1-f193.google.com with SMTP id x78-v6so530103vke.11;
-        Tue, 23 Oct 2018 10:16:16 -0700 (PDT)
+        id S1725948AbeJXEsE (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 24 Oct 2018 00:48:04 -0400
+Received: from mail-cys01nam02on0068.outbound.protection.outlook.com ([104.47.37.68]:27968
+        "EHLO NAM02-CY1-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1725859AbeJXEsE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 24 Oct 2018 00:48:04 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
-         :cc;
-        bh=mJ3gBh4N1ZXy3/FDEouLTVZ2ilMP84gkn9MklmWUjzU=;
-        b=uZ19OC2YGs+JJpVdQhpqsT24JISgzdM3wsC9Ibfr5RXKbikjJsfMNsLZUZEjBqi5Ah
-         pyTV0MR+eRJNmLl7olfZJY2+UbkKUqF23UzTCFahilU19od3yCHCnIzmJ6vQiKoJMkOY
-         Swd4MGSM4lCQ4hDQ93K5h9V+tNqIi3mx45jx7p7NBso2Gwi6Qz1p1SIMt0pSfBpSlmBT
-         4f0ASyHGRoYZPyaFxoTJC7/OBpCUiDOaLOw4HDl3nezB8sDEEmh6vCtd1O/MOoIB1R2R
-         3ZWVe4hZw/hVr5nD4lhRnepjcLNBuT9vwtWDea5oQiTL/mwGK5wpfaevB47ZJhsTVvr9
-         /4vg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
-         :message-id:subject:to:cc;
-        bh=mJ3gBh4N1ZXy3/FDEouLTVZ2ilMP84gkn9MklmWUjzU=;
-        b=c+eMYmiM88iSc6OHM7keJSVLil49NNzfWg4HvIB4sGrtuJ4HoGyArjjj/ZLBkM1Zdy
-         TCa2ABNuRkui1nlvADMAsy3Ayq4bqCHJvkbMjucTtzZxzadWECnb/RkcxhZ7S6BI9Lrz
-         G0EZj0fa0+AVD2BwPJfzqueGX2WOJc0/s3zkG/HjH7J4G1dmufV4t6gLV6loRThoEJrU
-         a7Pqa2m+MYxfI6LgxUTcJXExX/7nMUwbnuPDwRwPQD6EmrPqoA2wYEHiKNTPS0/CjQTe
-         fVHWsAbGrvL4huFp3I4+uqp2Kv+VtS1QTYtrWN1xmFEWP8BerBhq3dKHlbbqg5IKw32t
-         MFqg==
-X-Gm-Message-State: ABuFfoiMeBhx6A/L5JVcJsPZrzPCziUZ3fYjkx490YGXOsAXKPBb7KQp
-        eTgQR7WbC87engkN+EEYBtZ5rXZ5GvZtRYuwX/E=
-X-Google-Smtp-Source: ACcGV63nKTjHcytlvlTRRJn4nRPryU5Ii+PcEB9vZx50ThrRNmHr1GUrtAemMVHH8Y/YeTQLkijhR7J7YfI2VPrQ1hI=
-X-Received: by 2002:a1f:fca:: with SMTP id 193mr21114443vkp.87.1540314976101;
- Tue, 23 Oct 2018 10:16:16 -0700 (PDT)
+ d=netapp.onmicrosoft.com; s=selector1-netapp-com;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=M7GAgVGvOK+O/z9Io8aTLC5knC9uejFk2jumb1ilFxI=;
+ b=cj06v//aSr8+J1lnSg9fyquAqbjf7SqJLOBsTCBFMdTmDlm0i+0xyupkhPua9oeKIVX6yJnzLBAoN/RT7pWvN8rGNXJW4MIy31QWYm+qa6UC4GxVoGQp/zG5iTaAIteDnkOsV2HHxawQVJAkdsGev25IM8kAauZJgZa3WkHh0LU=
+Received: from DM5PR06MB3161.namprd06.prod.outlook.com (10.174.240.148) by
+ DM5PR06MB2329.namprd06.prod.outlook.com (10.168.177.137) with Microsoft SMTP
+ Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ 15.20.1250.29; Tue, 23 Oct 2018 20:23:02 +0000
+Received: from DM5PR06MB3161.namprd06.prod.outlook.com
+ ([fe80::7424:c9ab:4c37:ece0]) by DM5PR06MB3161.namprd06.prod.outlook.com
+ ([fe80::7424:c9ab:4c37:ece0%4]) with mapi id 15.20.1228.035; Tue, 23 Oct 2018
+ 20:23:02 +0000
+From:   "Schumaker, Anna" <Anna.Schumaker@netapp.com>
+To:     "olga.kornievskaia@gmail.com" <olga.kornievskaia@gmail.com>,
+        "trondmy@hammerspace.com" <trondmy@hammerspace.com>
+CC:     "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v1 08/11] NFS inter ssc open
+Thread-Topic: [PATCH v1 08/11] NFS inter ssc open
+Thread-Index: AQHUZ8C7sCbIyg8au0291tgMU/pZxaUtTOAA
+Date:   Tue, 23 Oct 2018 20:23:02 +0000
+Message-ID: <ee6447e40382045f094789026ce2264001ab89b4.camel@netapp.com>
+References: <20181019152932.32462-1-olga.kornievskaia@gmail.com>
+         <20181019152932.32462-9-olga.kornievskaia@gmail.com>
+In-Reply-To: <20181019152932.32462-9-olga.kornievskaia@gmail.com>
+Accept-Language: en-US
+Content-Language: en-US
+X-MS-Has-Attach: 
+X-MS-TNEF-Correlator: 
+user-agent: Evolution 3.30.2 
+authentication-results: spf=none (sender IP is )
+ smtp.mailfrom=Anna.Schumaker@netapp.com; 
+x-originating-ip: [99.9.112.69]
+x-ms-publictraffictype: Email
+x-microsoft-exchange-diagnostics: 1;DM5PR06MB2329;6:6SSq78y6FEljaKeqUf1hMTNdF8PbTNTDdoX5HgDwxjdDEqexQw+y5tjObKZok4udGZvGv+MLW1ei5fNXn9KmUZqoXTtgLxWGenV3+PWMvlqEo+APz6M/LjhFPD6edJVyk+xyW3BKzycH479tiCvGyJ+r67hpz/4jhinT83kk45AzxXyaS7KhXAUP8CZ2kXUZdBtuQz0NKewrWdXJFeKkZLtsduM0a/WldqIR9Agcm5J2zaHXYzeD5SM0a/jvTTzYe2R8GCWaakLNfdt7Ugs4DBBZ/ac82F8H1I4t1KJAkDSprLMVNQB+qFvjhEEVkdLD0G32+Rr5kBdvzpl6k5txJ9Ae6wgaOIE2dPfBsYmesjuLwo7VohSiN3WIQaFRcBeeMCak4tEqcuuc4Byqcu7FDofYupewtGXYs46dXjS8pHiUegFWhPQ6ttXgRRJFsZUyRZs43wluETokBaru5ORhtw==;5:+kM0t836YAk7kd0MSeFirWtZf7gzq5QITVeRIJ6Fg0Ppb1pBwg25PzVgsbgYxuv5C8e8MyRuWtZ2EnCJpRBiLepc0u8lmtfVS2k3vGb9pLeb7XU8jnplGv6KHQE8i5UtLJPwKe9PJSKn+mG4GfmGdFKOk+1kjZcRMyD89TCice0=;7:MeJDeoLTf45zMwmMaTdoR/svLoFX32B9W29tNw7XDTnzbv31MVvEfE0rhQW2G9VJlFk5qyWAv4xvkxukoBHZgpov+jvMjNB4N/tTJqTVkirNb27LQQM5zlaE/JF21dV5O8iylv3YTSeghpovEXxsMhS13L82x62S0qniT9sQOjPG4L9HQccsmX9wbFVKBw3mHYD08ytRVzu3+Nj86BH7E1mFPTUVxCU1msLNm/PqCpHVXvdTBOpkMn/8CBBR78vL
+x-ms-exchange-antispam-srfa-diagnostics: SOS;
+x-ms-office365-filtering-correlation-id: 55d5ebe4-bd98-4668-1370-08d639255547
+x-microsoft-antispam: BCL:0;PCL:0;RULEID:(7020095)(4652040)(8989299)(5600074)(711020)(4534185)(4627221)(201703031133081)(201702281549075)(8990200)(2017052603328)(7193020);SRVR:DM5PR06MB2329;
+x-ms-traffictypediagnostic: DM5PR06MB2329:
+x-microsoft-antispam-prvs: <DM5PR06MB23295B8940ED1147BD47B2ECF8F50@DM5PR06MB2329.namprd06.prod.outlook.com>
+x-exchange-antispam-report-test: UriScan:(158342451672863);
+x-ms-exchange-senderadcheck: 1
+x-exchange-antispam-report-cfa-test: BCL:0;PCL:0;RULEID:(8211001083)(6040522)(2401047)(5005006)(8121501046)(3002001)(93006095)(93001095)(3231355)(944501410)(52105095)(10201501046)(6055026)(148016)(149066)(150057)(6041310)(20161123558120)(20161123560045)(20161123562045)(20161123564045)(201703131423095)(201702281528075)(20161123555045)(201703061421075)(201703061406153)(201708071742011)(7699051)(76991095);SRVR:DM5PR06MB2329;BCL:0;PCL:0;RULEID:;SRVR:DM5PR06MB2329;
+x-forefront-prvs: 0834BAF534
+x-forefront-antispam-report: SFV:NSPM;SFS:(10009020)(366004)(376002)(396003)(346002)(39860400002)(136003)(189003)(199004)(76176011)(72206003)(106356001)(478600001)(68736007)(2900100001)(81156014)(5660300001)(11346002)(6436002)(105586002)(25786009)(7736002)(186003)(66066001)(446003)(305945005)(486006)(58126008)(110136005)(53936002)(316002)(2616005)(14454004)(6116002)(6486002)(99286004)(256004)(26005)(4001150100001)(118296001)(6512007)(71200400001)(6246003)(102836004)(39060400002)(4326008)(476003)(2906002)(71190400001)(14444005)(6506007)(81166006)(86362001)(3846002)(2501003)(229853002)(8936002)(5250100002)(8676002)(97736004)(36756003);DIR:OUT;SFP:1101;SCL:1;SRVR:DM5PR06MB2329;H:DM5PR06MB3161.namprd06.prod.outlook.com;FPR:;SPF:None;LANG:en;PTR:InfoNoRecords;MX:1;A:1;
+received-spf: None (protection.outlook.com: netapp.com does not designate
+ permitted sender hosts)
+x-microsoft-antispam-message-info: cJVzKrvKilv7C5GBdbxrvZy6LGlosinWfJjFn7bfaMWEYb9IhvfYVnZuBAVxhoCzzZRVjd6GXIZRMVz4WF9I22pvcsZrkZFZ1v8jukYR9HHDKKCiP1JcRR+2teIW4awt7HvxR5JwSVa6oT94xMjYeG+TDBuvRaO8Opl4vpN32NkP89B00gpocNVaCSeQ9nnDE3J0Q1H1EjpOp8mxm+osD99s5FQDTTJexQchyJ03I/7A8gAjxmpLDzJSXCXzJ5A6WHotroUJdSAmZVpyY017eCIpH7tDOgFmZ0+OYunez2eNJfFtBahXqLHOUpo1sPVc7i33lNIF9HH0vKOv9r0XkPi9aoraZlwHleuks0MSADc=
+spamdiagnosticoutput: 1:99
+spamdiagnosticmetadata: NSPM
+Content-Type: text/plain; charset="utf-8"
+Content-ID: <2ED5F9E9FC726441AFE38C1AF45730A0@namprd06.prod.outlook.com>
+Content-Transfer-Encoding: base64
 MIME-Version: 1.0
-References: <20181019153018.32507-1-olga.kornievskaia@gmail.com>
- <20181019153018.32507-2-olga.kornievskaia@gmail.com> <20181020040530.GG32577@ZenIV.linux.org.uk>
- <CAOQ4uxhAvypEvGap02CkH_bHtFt7tUVxTWeZUL5OV_V8xwWjDA@mail.gmail.com>
- <CAN-5tyHqtV7YhfK7DY4rY643bbfV=8MOE6=mxHYJufCsdcN9Jw@mail.gmail.com>
- <20181022190620.GA8863@bombadil.infradead.org> <CAN-5tyF=voE2=DBLKvJCHZc9+zMzysqD8REYYb-z5jwq2BLqGQ@mail.gmail.com>
- <a4a3ac1e840444871f3bc87606b111668c66618b.camel@redhat.com>
- <CAOQ4uxiRnyxtOXBrdCvUcTa8GkTb2OyaJYJ58Ddoik0=3Y9pyA@mail.gmail.com>
- <CAN-5tyHQc3M2YprFJm35XUxJdAx11a85o1NygE5FQFyHq3SQew@mail.gmail.com> <CAN-5tyEtRSQMS-u0gbheFn5f2siOy8Qva2vnXW6rwb7pr_GDkA@mail.gmail.com>
-In-Reply-To: <CAN-5tyEtRSQMS-u0gbheFn5f2siOy8Qva2vnXW6rwb7pr_GDkA@mail.gmail.com>
-From:   Olga Kornievskaia <olga.kornievskaia@gmail.com>
-Date:   Tue, 23 Oct 2018 13:16:04 -0400
-Message-ID: <CAN-5tyEXvnekZJpOhNBkCBCLTpXjM5PghJxDSeo0dwn94_7wDw@mail.gmail.com>
-Subject: Re: [PATCH v1 02/11] VFS permit cross device vfs_copy_file_range
-To:     Amir Goldstein <amir73il@gmail.com>
-Cc:     Jeff Layton <jlayton@redhat.com>, willy@infradead.org,
-        viro@zeniv.linux.org.uk, linux-fsdevel@vger.kernel.org,
-        linux-nfs <linux-nfs@vger.kernel.org>, fweimer@redhat.com,
-        Steve French <smfrench@gmail.com>,
-        "Darrick J. Wong" <darrick.wong@oracle.com>,
-        Christoph Hellwig <hch@lst.de>,
-        Linux API <linux-api@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+X-OriginatorOrg: netapp.com
+X-MS-Exchange-CrossTenant-Network-Message-Id: 55d5ebe4-bd98-4668-1370-08d639255547
+X-MS-Exchange-CrossTenant-originalarrivaltime: 23 Oct 2018 20:23:02.5377
+ (UTC)
+X-MS-Exchange-CrossTenant-fromentityheader: Hosted
+X-MS-Exchange-CrossTenant-id: 4b0911a0-929b-4715-944b-c03745165b3a
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: DM5PR06MB2329
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Tue, Oct 23, 2018 at 11:30 AM Olga Kornievskaia
-<olga.kornievskaia@gmail.com> wrote:
->
-> On Tue, Oct 23, 2018 at 11:03 AM Olga Kornievskaia
-> <olga.kornievskaia@gmail.com> wrote:
-> >
-> > On Tue, Oct 23, 2018 at 2:05 AM Amir Goldstein <amir73il@gmail.com> wrote:
-> > >
-> > > On Tue, Oct 23, 2018 at 2:39 AM Jeff Layton <jlayton@redhat.com> wrote:
-> > > >
-> > > > On Mon, 2018-10-22 at 15:34 -0400, Olga Kornievskaia wrote:
-> > > > > On Mon, Oct 22, 2018 at 3:06 PM Matthew Wilcox <willy@infradead.org> wrote:
-> > > > > >
-> > > > > > On Mon, Oct 22, 2018 at 02:45:04PM -0400, Olga Kornievskaia wrote:
-> > > > > > > On Sat, Oct 20, 2018 at 4:54 AM Amir Goldstein <amir73il@gmail.com> wrote:
-> > > > > > > > Another thing is the commit message claims to:
-> > > > > > > > "Allow copy_file_range to copy between different superblocks but only
-> > > > > > > > of the same file system types"
-> > > > > > > >
-> > > > > > > > But what the patch actually does is:
-> > > > > > > > "Allow copy_file_range() syscall to copy between different filesystems
-> > > > > > > > AND allow calling the filesystems' copy_file_range() method
-> > > > > > > > between different superblocks but only of the same file system types"
-> > > > > > > >
-> > > > > > > > It's probably OK and quite useful to do the former, but maybe man page
-> > > > > > > > should be fixed to explicitly mention that the copy is expected to work
-> > > > > > > > across filesystems since kernel version XXX (?)
-> > > > > > > >
-> > > > > > > > If you don't wish to change cross filesystem type behavior and only
-> > > > > > > > relax cross super block limitation, then you should replace the
-> > > > > > > > same inode->i_sb check above with same inode->i_sb->s_type
-> > > > > > > > check instead of doing the check only for calling the filesystem
-> > > > > > > > copy_file_range() method.
-> > > > > > >
-> > > > > > > Thank you for the feedback. In the next version, I will remove the
-> > > > > > > check for the functions and instead check for the same file system
-> > > > > > > types.
-> > > > > >
-> > > > > > Jeff and I agree that this is the wrong way to go.  Instead, the
-> > > > > > cross-device check should be in the individual instances, not the top
-> > > > > > level code.
-> > > > >
-> > > > > So remove the check all together for the VFS (that was my original
-> > > > > patch to begin with (like #1 not this one). So am I missing the point
-> > > > > again, I keep getting different corrections every time.
-> > > >
-> > > > Sorry if I wasn't clear before:
-> > > >
-> > > > Basically, I think Willy and I are both envisioning that some
-> > > > copy_file_range implementations may eventually not be subject to the
-> > > > limitations of the checks you're adding.
-> > > >
-> > >
-> > > Yes. Eventually. And even Matthew is (quote) "dubious" about that ever
-> > > happening. Changing the interface as Matthew proposed has a price
-> > > and we need to compare this price to the alleged backporting price
-> > > that nobody may ever need to pay.
-> > >
-> > > As far as I can tell, passing a struct file * on a file_operations method
-> > > that does not belong to that filesystem in unprecedented (*) and is a far
-> > > more lethal landmine than the alleged backporting landmine.
-> > >
-> > > (*) prior to v4.19-rc1, filesystems could get an overlayfs file, but
-> > >      file_inode(file) has always belonged to the filesystem.
-> > >
-> > > Olga,
-> > >
-> > > I do not strongly object to Matthew's proposal, so don't feel
-> > > obligated to choose my side of the argument. I am just trying
-> > > to offer a different perspective.
-> > >
-> > > In any case, my outstanding concerns with the patch are:
-> > >
-> > > 1. If you change syscall to support cross fs type copy (which is
-> > >     good IMO) need to document that in commit message
-> > >     and possibly follow up later with a note in man page
-> > >
-> > > 2. Commit message says:
-> > >     "This feature was of interest of ... NFS"
-> > >     "This feature is needed by NFSv4.2..."
-> > >     "NFS will allow for copies between different NFS servers."
-> > >     It is not clear to me if we are talking about present of future
-> > >     NFSv4.2 code. If NFSv4.2 currently does not support cross
-> > >     sb copy (??) than your patch need to enforce same sb
-> > >     in nfs4_copy_file_range(). If it does support cross sb copy
-> > >     than please edit the commit message to make that clear.
-> >
-> > I personally agree with Amir. I think it's far fetched that a file
-> > system would know how to handle something that's not of its type. When
-> > the copy_file_range() was checked in, there was a comment above the
-> > superblock check saying "we might want to relax this in the future".
-> > It deemed appropriate then to enforce the check since none of the file
-> > systems used it. Now, the future is here, and we are removing the
-> > check but proposing a different once because again the future isn't
-> > here and having a single check simplifies the code.
->
-> Sorry Ok I wrote this too fast. I think I'm changing my mind and
-> siding with the check by the file system.
-
-The reason I think we should remove the check all together is we'd
-allow the callers of copy_file_range() to utilize the
-do_splice_direct() between file system types even when
-copy_file_range() doesn't support cross fs copy. Isn't that
-beneficial?
-
-> > But I don't feel strongly about the check (or rather the location of
-> > it VFS vs each FS) and what I ultimately need is to removed same sb
-> > check. It sounds like if Amir isn't objecting, then the check for same
-> > file system type should be removed from VFS. And, for each of the file
-> > systems that currently support copy_file_range() -- CIFS, NFS, and
-> > overlayfs -- I need to modify them and add a check for the same
-> > fs_type.
-> >
-> > Amir to answer your question, only NFSv4.2 has copy_offload
-> > functionality (not earlier NFS versions). Furthermore, existing
-> > upstream only supports same sb copy offload. What this patch series
-> > adds is support for copy offload across different superblocks but NFS
-> > will not support (and would need a check) for copy offload across
-> > different file system types. Also I kinda stand behind the ideas
-> > stated: 1) this is of interest to NFS (where NFS here is to represent
-> > a community, and CIFS is used to represent the other community). 2)
-> > NFSv4.2 copy offload a specific feature that needs this functionality.
-> > 3rd statement is bad. Only NFSv4.2 will allow copies between different
-> > NFS servers (ie., after this patch +series), the emphasis was on "will
-> > allow" meaning what this patch will allow to be done (ie, patch's
-> > purpose). Or also, if the NFS server exports different exports, then a
-> > copy between them (assuming exports of the same file system type).
-> >
-> > In the next version of the patch, I'll do my best to specified what
-> > changed as the consequence of removing the cross sb check (ie, file
-> > system types of the passed in file can be from different file
-> > systems). I will add wording to the man page and add the suggested
-> > wording to the "porting" file.
+SGkgT2xnYSwNCg0KT24gRnJpLCAyMDE4LTEwLTE5IGF0IDExOjI5IC0wNDAwLCBPbGdhIEtvcm5p
+ZXZza2FpYSB3cm90ZToNCj4gRnJvbTogT2xnYSBLb3JuaWV2c2thaWEgPGtvbGdhQG5ldGFwcC5j
+b20+DQo+IA0KPiBORlN2NC4yIGludGVyIHNlcnZlciB0byBzZXJ2ZXIgY29weSByZXF1aXJlcyB0
+aGUgZGVzdGluYXRpb24gc2VydmVyIHRvDQo+IFJFQUQgdGhlIGRhdGEgZnJvbSB0aGUgc291cmNl
+IHNlcnZlciB1c2luZyB0aGUgcHJvdmlkZWQgc3RhdGVpZCBhbmQNCj4gZmlsZSBoYW5kbGUuDQo+
+IA0KPiBHaXZlbiBhbiBORlN2NCBzdGF0ZWlkIGFuZCBmaWxlaGFuZGxlIGZyb20gdGhlIENPUFkg
+b3BlcmFpb24sIHByb3ZpZGUgdGhlDQo+IGRlc3RpbmF0aW9uIHNlcnZlciB3aXRoIGFuIE5GUyBj
+bGllbnQgZnVuY3Rpb24gdG8gY3JlYXRlIGEgc3RydWN0IGZpbGUNCj4gc3VpdGFibGUgZm9yIHRo
+ZSBkZXN0aW5pYXRpb24gc2VydmVyIHRvIFJFQUQgdGhlIGRhdGEgdG8gYmUgY29waWVkLg0KPiAN
+Cj4gU2lnbmVkLW9mZi1ieTogQW5keSBBZGFtc29uIDxhbmRyb3NAbmV0YXBwLmNvbT4NCj4gU2ln
+bmVkLW9mZi1ieTogT2xnYSBLb3JuaWV2c2thaWEgPGtvbGdhQG5ldGFwcC5jb20+DQo+IC0tLQ0K
+PiAgZnMvbmZzL25mczRfZnMuaCAgfCAgNyArKysrDQo+ICBmcy9uZnMvbmZzNGZpbGUuYyB8IDk4
+DQo+ICsrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysr
+KysNCj4gIGZzL25mcy9uZnM0cHJvYy5jIHwgIDUgKystDQo+ICAzIGZpbGVzIGNoYW5nZWQsIDEw
+NyBpbnNlcnRpb25zKCspLCAzIGRlbGV0aW9ucygtKQ0KPiANCj4gZGlmZiAtLWdpdCBhL2ZzL25m
+cy9uZnM0X2ZzLmggYi9mcy9uZnMvbmZzNF9mcy5oDQo+IGluZGV4IDhkNTljOTYuLmYyMjk4NjQg
+MTAwNjQ0DQo+IC0tLSBhL2ZzL25mcy9uZnM0X2ZzLmgNCj4gKysrIGIvZnMvbmZzL25mczRfZnMu
+aA0KPiBAQCAtMzA3LDYgKzMwNywxMyBAQCBleHRlcm4gaW50IG5mczRfc2V0X3J3X3N0YXRlaWQo
+bmZzNF9zdGF0ZWlkICpzdGF0ZWlkLA0KPiAgCQljb25zdCBzdHJ1Y3QgbmZzX29wZW5fY29udGV4
+dCAqY3R4LA0KPiAgCQljb25zdCBzdHJ1Y3QgbmZzX2xvY2tfY29udGV4dCAqbF9jdHgsDQo+ICAJ
+CWZtb2RlX3QgZm1vZGUpOw0KPiArZXh0ZXJuIGludCBuZnM0X3Byb2NfZ2V0YXR0cihzdHJ1Y3Qg
+bmZzX3NlcnZlciAqc2VydmVyLCBzdHJ1Y3QgbmZzX2ZoDQo+ICpmaGFuZGxlLA0KPiArCQkJICAg
+ICBzdHJ1Y3QgbmZzX2ZhdHRyICpmYXR0ciwgc3RydWN0IG5mczRfbGFiZWwgKmxhYmVsLA0KPiAr
+CQkJICAgICBzdHJ1Y3QgaW5vZGUgKmlub2RlKTsNCj4gK2V4dGVybiBpbnQgdXBkYXRlX29wZW5f
+c3RhdGVpZChzdHJ1Y3QgbmZzNF9zdGF0ZSAqc3RhdGUsDQo+ICsJCQkJY29uc3QgbmZzNF9zdGF0
+ZWlkICpvcGVuX3N0YXRlaWQsDQo+ICsJCQkJY29uc3QgbmZzNF9zdGF0ZWlkICpkZWxlZ19zdGF0
+ZWlkLA0KPiArCQkJCWZtb2RlX3QgZm1vZGUpOw0KPiAgDQo+ICAjaWYgZGVmaW5lZChDT05GSUdf
+TkZTX1Y0XzEpDQo+ICBleHRlcm4gaW50IG5mczQxX3NlcXVlbmNlX2RvbmUoc3RydWN0IHJwY190
+YXNrICosIHN0cnVjdCBuZnM0X3NlcXVlbmNlX3Jlcw0KPiAqKTsNCj4gZGlmZiAtLWdpdCBhL2Zz
+L25mcy9uZnM0ZmlsZS5jIGIvZnMvbmZzL25mczRmaWxlLmMNCj4gaW5kZXggMDA1ODYyZS4uN2Yy
+MjZmNCAxMDA2NDQNCj4gLS0tIGEvZnMvbmZzL25mczRmaWxlLmMNCj4gKysrIGIvZnMvbmZzL25m
+czRmaWxlLmMNCj4gQEAgLTgsNiArOCw3IEBADQo+ICAjaW5jbHVkZSA8bGludXgvZmlsZS5oPg0K
+PiAgI2luY2x1ZGUgPGxpbnV4L2ZhbGxvYy5oPg0KPiAgI2luY2x1ZGUgPGxpbnV4L25mc19mcy5o
+Pg0KPiArI2luY2x1ZGUgPGxpbnV4L2ZpbGUuaD4NCj4gICNpbmNsdWRlICJkZWxlZ2F0aW9uLmgi
+DQo+ICAjaW5jbHVkZSAiaW50ZXJuYWwuaCINCj4gICNpbmNsdWRlICJpb3N0YXQuaCINCj4gQEAg
+LTI2NCw2ICsyNjUsMTAzIEBAIHN0YXRpYyBpbnQgbmZzNDJfY2xvbmVfZmlsZV9yYW5nZShzdHJ1
+Y3QgZmlsZSAqc3JjX2ZpbGUsDQo+IGxvZmZfdCBzcmNfb2ZmLA0KPiAgb3V0Og0KPiAgCXJldHVy
+biByZXQ7DQo+ICB9DQo+ICsNCj4gK3N0YXRpYyBpbnQgcmVhZF9uYW1lX2dlbiA9IDE7DQo+ICsj
+ZGVmaW5lIFNTQ19SRUFEX05BTUVfQk9EWSAic3NjX3JlYWRfJWQiDQo+ICsNCj4gK3N0cnVjdCBm
+aWxlICoNCj4gK25mczQyX3NzY19vcGVuKHN0cnVjdCB2ZnNtb3VudCAqc3NfbW50LCBzdHJ1Y3Qg
+bmZzX2ZoICpzcmNfZmgsDQo+ICsJCW5mczRfc3RhdGVpZCAqc3RhdGVpZCkNCj4gK3sNCj4gKwlz
+dHJ1Y3QgbmZzX2ZhdHRyIGZhdHRyOw0KPiArCXN0cnVjdCBmaWxlICpmaWxlcCwgKnJlczsNCj4g
+KwlzdHJ1Y3QgbmZzX3NlcnZlciAqc2VydmVyOw0KPiArCXN0cnVjdCBpbm9kZSAqcl9pbm8gPSBO
+VUxMOw0KPiArCXN0cnVjdCBuZnNfb3Blbl9jb250ZXh0ICpjdHg7DQo+ICsJc3RydWN0IG5mczRf
+c3RhdGVfb3duZXIgKnNwOw0KPiArCWNoYXIgKnJlYWRfbmFtZTsNCj4gKwlpbnQgbGVuLCBzdGF0
+dXMgPSAwOw0KPiArDQo+ICsJc2VydmVyID0gTkZTX1NFUlZFUihzc19tbnQtPm1udF9yb290LT5k
+X2lub2RlKTsNCj4gKw0KPiArCW5mc19mYXR0cl9pbml0KCZmYXR0cik7DQo+ICsNCj4gKwlzdGF0
+dXMgPSBuZnM0X3Byb2NfZ2V0YXR0cihzZXJ2ZXIsIHNyY19maCwgJmZhdHRyLCBOVUxMLCBOVUxM
+KTsNCj4gKwlpZiAoc3RhdHVzIDwgMCkgew0KPiArCQlyZXMgPSBFUlJfUFRSKHN0YXR1cyk7DQo+
+ICsJCWdvdG8gb3V0Ow0KPiArCX0NCj4gKw0KPiArCXJlcyA9IEVSUl9QVFIoLUVOT01FTSk7DQo+
+ICsJbGVuID0gc3RybGVuKFNTQ19SRUFEX05BTUVfQk9EWSkgKyAxNjsNCj4gKwlyZWFkX25hbWUg
+PSBremFsbG9jKGxlbiwgR0ZQX05PRlMpOw0KPiArCWlmIChyZWFkX25hbWUgPT0gTlVMTCkNCj4g
+KwkJZ290byBvdXQ7DQo+ICsJc25wcmludGYocmVhZF9uYW1lLCBsZW4sIFNTQ19SRUFEX05BTUVf
+Qk9EWSwgcmVhZF9uYW1lX2dlbisrKTsNCj4gKwlkcHJpbnRrKCIlcyByZWFkX25hbWUgJXNcbiIs
+IF9fZnVuY19fLCByZWFkX25hbWUpOw0KDQpEb2VzIHRoaXMgZHByaW50aygpIG5lZWQgdG8gYmUg
+aGVyZT8gIEknbSB3b25kZXJpbmcgaWYgaXQgd291bGQgd29yayBiZXR0ZXIgYXMgYQ0KdHJhY2Vw
+b2ludCAob3IgaWYgaXQgc2hvdWxkIGp1c3QgYmUgcmVtb3ZlZCBhbHRvZ2V0aGVyKS4NCg0KVGhh
+bmtzLA0KQW5uYQ0KDQo+ICsNCj4gKwlyX2lubyA9IG5mc19maGdldChzc19tbnQtPm1udF9yb290
+LT5kX2lub2RlLT5pX3NiLCBzcmNfZmgsICZmYXR0ciwNCj4gKwkJCU5VTEwpOw0KPiArCWlmIChJ
+U19FUlIocl9pbm8pKSB7DQo+ICsJCXJlcyA9IEVSUl9DQVNUKHJfaW5vKTsNCj4gKwkJZ290byBv
+dXQ7DQo+ICsJfQ0KPiArDQo+ICsJZmlsZXAgPSBhbGxvY19maWxlX3BzZXVkbyhyX2lubywgc3Nf
+bW50LCByZWFkX25hbWUsIEZNT0RFX1JFQUQsDQo+ICsJCQkJICAgICByX2luby0+aV9mb3ApOw0K
+PiArCWlmIChJU19FUlIoZmlsZXApKSB7DQo+ICsJCXJlcyA9IEVSUl9DQVNUKGZpbGVwKTsNCj4g
+KwkJZ290byBvdXQ7DQo+ICsJfQ0KPiArCWZpbGVwLT5mX21vZGUgfD0gRk1PREVfUkVBRDsNCj4g
+Kw0KPiArCWN0eCA9IGFsbG9jX25mc19vcGVuX2NvbnRleHQoZmlsZXAtPmZfcGF0aC5kZW50cnks
+IGZpbGVwLT5mX21vZGUsDQo+ICsJCQkJCWZpbGVwKTsNCj4gKwlpZiAoSVNfRVJSKGN0eCkpIHsN
+Cj4gKwkJcmVzID0gRVJSX0NBU1QoY3R4KTsNCj4gKwkJZ290byBvdXRfZmlsZXA7DQo+ICsJfQ0K
+PiArDQo+ICsJcmVzID0gRVJSX1BUUigtRUlOVkFMKTsNCj4gKwlzcCA9IG5mczRfZ2V0X3N0YXRl
+X293bmVyKHNlcnZlciwgY3R4LT5jcmVkLCBHRlBfS0VSTkVMKTsNCj4gKwlpZiAoc3AgPT0gTlVM
+TCkNCj4gKwkJZ290byBvdXRfY3R4Ow0KPiArDQo+ICsJY3R4LT5zdGF0ZSA9IG5mczRfZ2V0X29w
+ZW5fc3RhdGUocl9pbm8sIHNwKTsNCj4gKwlpZiAoY3R4LT5zdGF0ZSA9PSBOVUxMKQ0KPiArCQln
+b3RvIG91dF9zdGF0ZW93bmVyOw0KPiArDQo+ICsJc2V0X2JpdChORlNfT1BFTl9TVEFURSwgJmN0
+eC0+c3RhdGUtPmZsYWdzKTsNCj4gKwltZW1jcHkoJmN0eC0+c3RhdGUtPm9wZW5fc3RhdGVpZC5v
+dGhlciwgJnN0YXRlaWQtPm90aGVyLA0KPiArCSAgICAgICBORlM0X1NUQVRFSURfT1RIRVJfU0la
+RSk7DQo+ICsJdXBkYXRlX29wZW5fc3RhdGVpZChjdHgtPnN0YXRlLCBzdGF0ZWlkLCBOVUxMLCBm
+aWxlcC0+Zl9tb2RlKTsNCj4gKw0KPiArCW5mc19maWxlX3NldF9vcGVuX2NvbnRleHQoZmlsZXAs
+IGN0eCk7DQo+ICsJcHV0X25mc19vcGVuX2NvbnRleHQoY3R4KTsNCj4gKw0KPiArCWZpbGVfcmFf
+c3RhdGVfaW5pdCgmZmlsZXAtPmZfcmEsIGZpbGVwLT5mX21hcHBpbmctPmhvc3QtPmlfbWFwcGlu
+Zyk7DQo+ICsJcmVzID0gZmlsZXA7DQo+ICtvdXQ6DQo+ICsJZHByaW50aygiPC0tICVzIGVycm9y
+ICVsZCBmaWxlcCAlcCByX2lubyAlcFxuIiwNCj4gKwkJX19mdW5jX18sIElTX0VSUihyZXMpID8g
+UFRSX0VSUihyZXMpIDogMCwgcmVzLCByX2lubyk7DQo+ICsNCj4gKwlyZXR1cm4gcmVzOw0KPiAr
+b3V0X3N0YXRlb3duZXI6DQo+ICsJbmZzNF9wdXRfc3RhdGVfb3duZXIoc3ApOw0KPiArb3V0X2N0
+eDoNCj4gKwlwdXRfbmZzX29wZW5fY29udGV4dChjdHgpOw0KPiArb3V0X2ZpbGVwOg0KPiArCWZw
+dXQoZmlsZXApOw0KPiArCWdvdG8gb3V0Ow0KPiArfQ0KPiArRVhQT1JUX1NZTUJPTF9HUEwobmZz
+NDJfc3NjX29wZW4pOw0KPiArdm9pZCBuZnM0Ml9zc2NfY2xvc2Uoc3RydWN0IGZpbGUgKmZpbGVw
+KQ0KPiArew0KPiArCXN0cnVjdCBuZnNfb3Blbl9jb250ZXh0ICpjdHggPSBuZnNfZmlsZV9vcGVu
+X2NvbnRleHQoZmlsZXApOw0KPiArDQo+ICsJY3R4LT5zdGF0ZS0+ZmxhZ3MgPSAwOw0KPiArfQ0K
+PiArRVhQT1JUX1NZTUJPTF9HUEwobmZzNDJfc3NjX2Nsb3NlKTsNCj4gICNlbmRpZiAvKiBDT05G
+SUdfTkZTX1Y0XzIgKi8NCj4gIA0KPiAgY29uc3Qgc3RydWN0IGZpbGVfb3BlcmF0aW9ucyBuZnM0
+X2ZpbGVfb3BlcmF0aW9ucyA9IHsNCj4gZGlmZiAtLWdpdCBhL2ZzL25mcy9uZnM0cHJvYy5jIGIv
+ZnMvbmZzL25mczRwcm9jLmMNCj4gaW5kZXggZmVjNmU2Yi4uZTUxNzhiMmYgMTAwNjQ0DQo+IC0t
+LSBhL2ZzL25mcy9uZnM0cHJvYy5jDQo+ICsrKyBiL2ZzL25mcy9uZnM0cHJvYy5jDQo+IEBAIC05
+MSw3ICs5MSw2IEBADQo+ICBzdGF0aWMgaW50IF9uZnM0X3JlY292ZXJfcHJvY19vcGVuKHN0cnVj
+dCBuZnM0X29wZW5kYXRhICpkYXRhKTsNCj4gIHN0YXRpYyBpbnQgbmZzNF9kb19mc2luZm8oc3Ry
+dWN0IG5mc19zZXJ2ZXIgKiwgc3RydWN0IG5mc19maCAqLCBzdHJ1Y3QNCj4gbmZzX2ZzaW5mbyAq
+KTsNCj4gIHN0YXRpYyB2b2lkIG5mc19maXh1cF9yZWZlcnJhbF9hdHRyaWJ1dGVzKHN0cnVjdCBu
+ZnNfZmF0dHIgKmZhdHRyKTsNCj4gLXN0YXRpYyBpbnQgbmZzNF9wcm9jX2dldGF0dHIoc3RydWN0
+IG5mc19zZXJ2ZXIgKiwgc3RydWN0IG5mc19maCAqLCBzdHJ1Y3QNCj4gbmZzX2ZhdHRyICosIHN0
+cnVjdCBuZnM0X2xhYmVsICpsYWJlbCwgc3RydWN0IGlub2RlICppbm9kZSk7DQo+ICBzdGF0aWMg
+aW50IF9uZnM0X3Byb2NfZ2V0YXR0cihzdHJ1Y3QgbmZzX3NlcnZlciAqc2VydmVyLCBzdHJ1Y3Qg
+bmZzX2ZoDQo+ICpmaGFuZGxlLCBzdHJ1Y3QgbmZzX2ZhdHRyICpmYXR0ciwgc3RydWN0IG5mczRf
+bGFiZWwgKmxhYmVsLCBzdHJ1Y3QgaW5vZGUNCj4gKmlub2RlKTsNCj4gIHN0YXRpYyBpbnQgbmZz
+NF9kb19zZXRhdHRyKHN0cnVjdCBpbm9kZSAqaW5vZGUsIHN0cnVjdCBycGNfY3JlZCAqY3JlZCwN
+Cj4gIAkJCSAgICBzdHJ1Y3QgbmZzX2ZhdHRyICpmYXR0ciwgc3RydWN0IGlhdHRyICpzYXR0ciwN
+Cj4gQEAgLTE2NTMsNyArMTY1Miw3IEBAIHN0YXRpYyB2b2lkIG5mc19zdGF0ZV9jbGVhcl9kZWxl
+Z2F0aW9uKHN0cnVjdCBuZnM0X3N0YXRlDQo+ICpzdGF0ZSkNCj4gIAl3cml0ZV9zZXF1bmxvY2so
+JnN0YXRlLT5zZXFsb2NrKTsNCj4gIH0NCj4gIA0KPiAtc3RhdGljIGludCB1cGRhdGVfb3Blbl9z
+dGF0ZWlkKHN0cnVjdCBuZnM0X3N0YXRlICpzdGF0ZSwNCj4gK2ludCB1cGRhdGVfb3Blbl9zdGF0
+ZWlkKHN0cnVjdCBuZnM0X3N0YXRlICpzdGF0ZSwNCj4gIAkJY29uc3QgbmZzNF9zdGF0ZWlkICpv
+cGVuX3N0YXRlaWQsDQo+ICAJCWNvbnN0IG5mczRfc3RhdGVpZCAqZGVsZWdhdGlvbiwNCj4gIAkJ
+Zm1vZGVfdCBmbW9kZSkNCj4gQEAgLTM5MzYsNyArMzkzNSw3IEBAIHN0YXRpYyBpbnQgX25mczRf
+cHJvY19nZXRhdHRyKHN0cnVjdCBuZnNfc2VydmVyICpzZXJ2ZXIsDQo+IHN0cnVjdCBuZnNfZmgg
+KmZoYW5kbGUsDQo+ICAJcmV0dXJuIG5mczRfY2FsbF9zeW5jKHNlcnZlci0+Y2xpZW50LCBzZXJ2
+ZXIsICZtc2csICZhcmdzLnNlcV9hcmdzLA0KPiAmcmVzLnNlcV9yZXMsIDApOw0KPiAgfQ0KPiAg
+DQo+IC1zdGF0aWMgaW50IG5mczRfcHJvY19nZXRhdHRyKHN0cnVjdCBuZnNfc2VydmVyICpzZXJ2
+ZXIsIHN0cnVjdCBuZnNfZmgNCj4gKmZoYW5kbGUsDQo+ICtpbnQgbmZzNF9wcm9jX2dldGF0dHIo
+c3RydWN0IG5mc19zZXJ2ZXIgKnNlcnZlciwgc3RydWN0IG5mc19maCAqZmhhbmRsZSwNCj4gIAkJ
+CQlzdHJ1Y3QgbmZzX2ZhdHRyICpmYXR0ciwgc3RydWN0IG5mczRfbGFiZWwNCj4gKmxhYmVsLA0K
+PiAgCQkJCXN0cnVjdCBpbm9kZSAqaW5vZGUpDQo+ICB7DQo=
