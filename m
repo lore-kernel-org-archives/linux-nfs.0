@@ -8,64 +8,64 @@ X-Spam-Status: No, score=-8.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 89725ECDE44
-	for <linux-nfs@archiver.kernel.org>; Wed, 24 Oct 2018 19:59:03 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A6C5CECDE46
+	for <linux-nfs@archiver.kernel.org>; Wed, 24 Oct 2018 19:59:04 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 4B6C020832
-	for <linux-nfs@archiver.kernel.org>; Wed, 24 Oct 2018 19:59:03 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 67EBB20834
+	for <linux-nfs@archiver.kernel.org>; Wed, 24 Oct 2018 19:59:04 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="dFOerZNw"
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 4B6C020832
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="jfufODN7"
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 67EBB20834
 Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=gmail.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727535AbeJYE21 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 25 Oct 2018 00:28:27 -0400
-Received: from mail-qk1-f195.google.com ([209.85.222.195]:33191 "EHLO
-        mail-qk1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727502AbeJYE20 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Oct 2018 00:28:26 -0400
-Received: by mail-qk1-f195.google.com with SMTP id o89so4245104qko.0;
-        Wed, 24 Oct 2018 12:59:00 -0700 (PDT)
+        id S1726264AbeJYE2Y (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 25 Oct 2018 00:28:24 -0400
+Received: from mail-qt1-f194.google.com ([209.85.160.194]:40190 "EHLO
+        mail-qt1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727502AbeJYE2X (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Oct 2018 00:28:23 -0400
+Received: by mail-qt1-f194.google.com with SMTP id z9-v6so7097732qto.7;
+        Wed, 24 Oct 2018 12:58:57 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references;
-        bh=fwlJnXfUGTRII/SW0YspOWGhfPFdbZ3Rgyeu7Z/VErM=;
-        b=dFOerZNwKxzWjYWepyVme3Fh9Q3k55q5/TxJq/G9IV0dpPWWmMo45lS6MkgkyggYyh
-         ol63X1kCOUowfnx2WPGuu8VIvkKZfZeQOGl9LgXvTIyLerV3h3cAufKFMQrmz+zwb6QV
-         s3ArQBrzmPK30QRYN/XdABVj0XQxn0Uk6mGWCJUj1O+7Dz4D36TTKf4Xi4lGTJJHHkLe
-         GbGlvev0QSyYut7kR1o9/c4MzEobfLEev1T5YV8ty6C81+UMSPGqRytwl4ORlRDpX7Sn
-         9W9sM8LfmrfQCqiTWXXGZChl1oUs4pOX2wi5TwOmrT/BnkaUvNbK5fCnQinTJnnbOOkr
-         x1qA==
+        bh=Phkx7dtRxIh0Q2t3XHkNvjFUnOOqS0aUwmfPKMDFh7E=;
+        b=jfufODN7HFoGMI0Ah4Xn1flPfv/4ZYEr0lOjAjNX1zay6Iv76v5zPewzoJAi+sjzLs
+         JR5ih4U07Z9mN1gVQCnpNAiXzxMxGwMcQDHk+DIA5i/dX3LEjPHfoh2KJffglGDumvlo
+         YGNbteW/BxGmCQxiW4L68g7GHuljM16oF/LzqVOGlYQBuKAoj16Gfwms6Y/emV7WmO0I
+         wZt430mmXY17n/WmYDVXDviIDPVtwKCuOqgo+yPPIGRjbiWHuU1dJd31SM9Uef0E1xuI
+         BBi9dlE9xBPyNjidCiLz/DaFPbXVOwcaZcxl+gZwB/OuULpKFtQnKzk4QM4h6AH9dr+W
+         pMHA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references;
-        bh=fwlJnXfUGTRII/SW0YspOWGhfPFdbZ3Rgyeu7Z/VErM=;
-        b=rM9cczdSD7oo6JR4uUFyYK7Cy2OwQtFQT6O8YETL+gHhZZfMKE7y2R2cSuJlhF14Y8
-         vpibYnejg+h9WsEyWpo7f1b3YOnVkdxYzspjbKclaQYfGBC4BHkrP2gGNY2lJcJLK208
-         rQ9kgqnJUzlzhr+9RAaiunGkFdUg0bhLomVHoVzAK9/TIl+YuKauTHOuKLsfAS2ag5eu
-         2A1jvgD8uJ2GJHf/Xt1zcPEv2B04xHV3430C5qnY6ZqkJLPtC2Lw+uXlbtUjgXV/WIlX
-         mrUWKFNLLhn6wVRp7Fli8/1w4mVWyImye3hoAe7qtH4r652a4hRQAA60deUTn6Xev/5C
-         fdWg==
-X-Gm-Message-State: AGRZ1gK41R5djaFN1CbzqfC78MMrj//YKRm+Org/sZVWsgOyqYLpiKth
-        A6mOouIFzCSg9RH/+HjgTNcim1lZ
-X-Google-Smtp-Source: AJdET5f3q2pM5N014v9sq0oZkZuTaJ+CoqOz3wvAeKsFUHXj4ne0G6PTwZbyoqi8jNHw/gy46folyQ==
-X-Received: by 2002:a37:ae06:: with SMTP id x6-v6mr3756794qke.238.1540411139695;
-        Wed, 24 Oct 2018 12:58:59 -0700 (PDT)
+        bh=Phkx7dtRxIh0Q2t3XHkNvjFUnOOqS0aUwmfPKMDFh7E=;
+        b=R0sfwhNAapvhVzjt/58RQvu0Svcv0nNJUFDgYMCiO63GIRwIVITMALCuDBqg9kNH94
+         64kQDQFGT/dCB6GFCIpRr+K/BJilMlWvDuvNIO5bf7iT3G0vg2ne/4/lYcr4V1Z4CLKn
+         ivG6JqKxZZZ6LMuJkgLPtKQCYBoZwLs40X4gFPRFGVieyAY00DhZySOs80zZSIqXhbMH
+         L51bu+C0hnwvAoOMgzjZfSVB+0+Wh62L4vsRqxMIK2gfLRbihnV4EUjbL+w4WRLsxCAV
+         JuHeUt6qly/wtFv/UmI3yydpgNuS+/NyTptLRx9XuMCyN39WR/z/5VLGUve0hfeQ8BTL
+         D3Zg==
+X-Gm-Message-State: AGRZ1gJsji1b35gnnDfGj5r3R3VPCPVkBa4a3PVNJ95EN++Rgy1xshKt
+        Qbj9q2Q2WdBxCjB+VGrdbgc=
+X-Google-Smtp-Source: AJdET5cnvKbPVW+OjcXOjpsVLrqpPidLX7FfKRWfsX1xWp1QiLB8JkCgZoDUgGLY33LY7YZ7xvlU1A==
+X-Received: by 2002:ad4:408c:: with SMTP id l12mr3730114qvp.231.1540411136982;
+        Wed, 24 Oct 2018 12:58:56 -0700 (PDT)
 Received: from Olgas-MBP-195.attlocal.net (172-10-226-31.lightspeed.livnmi.sbcglobal.net. [172.10.226.31])
-        by smtp.gmail.com with ESMTPSA id d124-v6sm3872380qkf.85.2018.10.24.12.58.58
+        by smtp.gmail.com with ESMTPSA id d124-v6sm3872380qkf.85.2018.10.24.12.58.55
         (version=TLS1 cipher=AES128-SHA bits=128/128);
-        Wed, 24 Oct 2018 12:58:59 -0700 (PDT)
+        Wed, 24 Oct 2018 12:58:56 -0700 (PDT)
 From:   Olga Kornievskaia <olga.kornievskaia@gmail.com>
 To:     trond.myklebust@hammerspace.com, anna.schumaker@netapp.com,
         viro@zeniv.linux.org.uk, smfrench@gmail.com, miklos@szeredi.hu
 Cc:     linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         linux-cifs@vger.kernel.org, linux-unionfs@vger.kernel.org,
         linux-man@vger.kernel.org
-Subject: [PATCH v2 13/13] NFS COPY handle ERR_OFFLOAD_DENIED
-Date:   Wed, 24 Oct 2018 15:58:37 -0400
-Message-Id: <20181024195837.35532-15-olga.kornievskaia@gmail.com>
+Subject: [PATCH v2 11/13] NFS skip recovery of copy open on dest server
+Date:   Wed, 24 Oct 2018 15:58:35 -0400
+Message-Id: <20181024195837.35532-13-olga.kornievskaia@gmail.com>
 X-Mailer: git-send-email 2.10.1 (Apple Git-78)
 In-Reply-To: <20181024195837.35532-1-olga.kornievskaia@gmail.com>
 References: <20181024195837.35532-1-olga.kornievskaia@gmail.com>
@@ -76,29 +76,81 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Olga Kornievskaia <kolga@netapp.com>
 
-If server sends ERR_OFFLOAD_DENIED error, the client must fall
-back on doing copy the normal way. Return ENOTSUPP to the vfs and
-fallback to regular copy.
+Mark the open created for the source file on the destination
+server. Then if this open is going thru a recovery, then fail
+the recovery as we don't need to be recoving a "fake" open.
+We need to fail the ongoing READs and vfs_copy_file_range().
 
 Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
 ---
- fs/nfs/nfs42proc.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+ fs/nfs/nfs4_fs.h   |  1 +
+ fs/nfs/nfs4file.c  |  1 +
+ fs/nfs/nfs4state.c | 14 ++++++++++++++
+ 3 files changed, 16 insertions(+)
 
-diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
-index 00809b3..c7c2ffa 100644
---- a/fs/nfs/nfs42proc.c
-+++ b/fs/nfs/nfs42proc.c
-@@ -395,7 +395,8 @@ ssize_t nfs42_proc_copy(struct file *src, loff_t pos_src,
- 			args.sync = true;
- 			dst_exception.retry = 1;
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index 9c566a4..482754d 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -165,6 +165,7 @@ enum {
+ 	NFS_STATE_CHANGE_WAIT,		/* A state changing operation is outstanding */
+ #ifdef CONFIG_NFS_V4_2
+ 	NFS_CLNT_DST_SSC_COPY_STATE,    /* dst server open state on client*/
++	NFS_SRV_SSC_COPY_STATE,		/* ssc state on the dst server */
+ #endif /* CONFIG_NFS_V4_2 */
+ };
+ 
+diff --git a/fs/nfs/nfs4file.c b/fs/nfs/nfs4file.c
+index 300880f..480b384 100644
+--- a/fs/nfs/nfs4file.c
++++ b/fs/nfs/nfs4file.c
+@@ -330,6 +330,7 @@ struct file *
+ 	if (ctx->state == NULL)
+ 		goto out_stateowner;
+ 
++	set_bit(NFS_SRV_SSC_COPY_STATE, &ctx->state->flags);
+ 	set_bit(NFS_OPEN_STATE, &ctx->state->flags);
+ 	memcpy(&ctx->state->open_stateid.other, &stateid->other,
+ 	       NFS4_STATEID_OTHER_SIZE);
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index 62ae0fd..b0b82c6 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -1606,6 +1606,9 @@ static int nfs4_reclaim_open_state(struct nfs4_state_owner *sp, const struct nfs
+ {
+ 	struct nfs4_state *state;
+ 	int status = 0;
++#ifdef CONFIG_NFS_V4_2
++	bool found_ssc_copy_state = false;
++#endif /* CONFIG_NFS_V4_2 */
+ 
+ 	/* Note: we rely on the sp->so_states list being ordered 
+ 	 * so that we always reclaim open(O_RDWR) and/or open(O_WRITE)
+@@ -1625,6 +1628,13 @@ static int nfs4_reclaim_open_state(struct nfs4_state_owner *sp, const struct nfs
  			continue;
--		} else if (err == -ESTALE &&
-+		} else if ((err == -ESTALE ||
-+				err == -NFS4ERR_OFFLOAD_DENIED) &&
- 				!nfs42_files_from_same_server(src, dst)) {
- 			nfs42_do_offload_cancel_async(src, &args.src_stateid);
- 			err = -EOPNOTSUPP;
+ 		if (state->state == 0)
+ 			continue;
++#ifdef CONFIG_NFS_V4_2
++		if (test_bit(NFS_SRV_SSC_COPY_STATE, &state->flags)) {
++			nfs4_state_mark_recovery_failed(state, -EIO);
++			found_ssc_copy_state = true;
++			continue;
++		}
++#endif /* CONFIG_NFS_V4_2 */
+ 		refcount_inc(&state->count);
+ 		spin_unlock(&sp->so_lock);
+ 		status = __nfs4_reclaim_open_state(sp, state, ops);
+@@ -1671,6 +1681,10 @@ static int nfs4_reclaim_open_state(struct nfs4_state_owner *sp, const struct nfs
+ 	}
+ 	raw_write_seqcount_end(&sp->so_reclaim_seqcount);
+ 	spin_unlock(&sp->so_lock);
++#ifdef CONFIG_NFS_V4_2
++	if (found_ssc_copy_state)
++		return -EIO;
++#endif /* CONFIG_NFS_V4_2 */
+ 	return 0;
+ out_err:
+ 	nfs4_put_open_state(state);
 -- 
 1.8.3.1
 
