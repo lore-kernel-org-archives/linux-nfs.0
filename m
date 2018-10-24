@@ -2,184 +2,247 @@ Return-Path: <SRS0=9d91=NE=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+X-Spam-Status: No, score=-0.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no
-	version=3.4.0
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS,URIBL_BLOCKED
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E7867ECDE46
-	for <linux-nfs@archiver.kernel.org>; Wed, 24 Oct 2018 19:59:19 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 964AFECDE44
+	for <linux-nfs@archiver.kernel.org>; Wed, 24 Oct 2018 19:59:51 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id A907920832
-	for <linux-nfs@archiver.kernel.org>; Wed, 24 Oct 2018 19:59:19 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 317B620833
+	for <linux-nfs@archiver.kernel.org>; Wed, 24 Oct 2018 19:59:51 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="UfClAvfD"
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org A907920832
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="FD7hMgDA"
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 317B620833
 Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=gmail.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727167AbeJYE2J (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 25 Oct 2018 00:28:09 -0400
-Received: from mail-qt1-f196.google.com ([209.85.160.196]:37674 "EHLO
-        mail-qt1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726264AbeJYE2I (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Oct 2018 00:28:08 -0400
-Received: by mail-qt1-f196.google.com with SMTP id d14-v6so7108031qto.4;
-        Wed, 24 Oct 2018 12:58:42 -0700 (PDT)
+        id S1726310AbeJYE3Q (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 25 Oct 2018 00:29:16 -0400
+Received: from mail-ua1-f67.google.com ([209.85.222.67]:35055 "EHLO
+        mail-ua1-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726221AbeJYE3P (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Oct 2018 00:29:15 -0400
+Received: by mail-ua1-f67.google.com with SMTP id m18so2359159uaq.2;
+        Wed, 24 Oct 2018 12:59:48 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
-        h=from:to:cc:subject:date:message-id:in-reply-to:references;
-        bh=dlFL4npXT0g1RppdgdYI/CystWwtpVfsVcBHdAcJOKA=;
-        b=UfClAvfD/Z/UQ27zoXkMd0a+JVVxVwpSCS3DYNx99Z3z31ieNt38rx/PFl6IO0VD5z
-         10sXnoM7l38C13ZIBcypmMoFFDozSwVub7y2rvCBYxs98pVWbf7uyA3PXTkevhVTtrwJ
-         efhXiCLBFrnw6R8sdmQjA1MXkpLu37SWMQPYgVGjCV+4jNa+kM9Hi+14O+l3mp2TJGQR
-         oekdDBfJhAdYxeaPHxnxNHgV7XC081FA0cqnJ8iGrBBezzQeivVcCruYCNCptYelYGnS
-         lmpUbDs0j4CvveDnhvaP6oil7uuoMsj1AdB/umQ/JM/Ywez1KVSsaiovcHwVIJK5EeIW
-         5reQ==
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc;
+        bh=NBjgUA5FmyXzPhqOSj6U/1sZasxHF+7TZKsVmTjSsEk=;
+        b=FD7hMgDAlcbaAhGhAmKhrNpN9kqvABHpuPvWwLY/hBBiSj1tUIGZ1E3nIYlkM/u3En
+         B+oMb0Xm6iVAMQ9YuCV0We3iObFVb5I+udPE7ZGmQgeLqHNm+u3YLnyyiBcpXHICpJSn
+         VqaHXU4L40xxXMezeMrJTWTSLpG8q3zPr0yH+6Z2qiyUYohUK07ocBIHeLcUWnKZhA9B
+         gLLSmzyqUDIoCHF1S/7wyKthRmC7wrxmYi46/KnSnHHt1cL8ztWqfSv3L+ie5zvafCMa
+         lsiIkY5fX8+i9J0ETzJ6+D33QrM2C4o5qRS/mzZMtHaaiPmZzr/+jtRqBWjN9XJy9LsH
+         P2nA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
-         :references;
-        bh=dlFL4npXT0g1RppdgdYI/CystWwtpVfsVcBHdAcJOKA=;
-        b=nHRUbn/nDEQCwh/n8iY/lYIIkEiyrtdtw+gmROxf9v8ThmYad3B4Ii34Yl3iRBIfTR
-         BRVXKYdWGO104z8/qQD8HpoOZgoMLe7Y9SaEH69NyGi/vDuGUwcBxkgo3LK3yRRAwiJ2
-         MAOdhkDyaRehRg+cuyjkdQhHaYr369K7A8pMiz54E5UkZyOUMb9lKH2OMfe18J4+3IJc
-         hMF2Joc8wmj8EquZdCGHvTWH4np+DDE2g26OhZZkuRDS49nzlCZgb//wS1GJBLfBqhFj
-         0bglobUdjgV4v8ULZKCb3N8Ca4Mn4o5pfuz7fn7Xx8L8JkiY+B75imUGOt2+plPfGL38
-         lQaA==
-X-Gm-Message-State: AGRZ1gK22QcXjdqD9/oCcnUelySKqc+R8phdY8IcIq4aR9AKoSU80NL8
-        HY4TTvTJZNVpnRsCp9nvvUg=
-X-Google-Smtp-Source: AJdET5dnc7L3vszQz8CSbJWRBJw6F09QZz3ZTHPuXHl09N/H8drGK6gbNvwS88jbf53sIhanhZLp8A==
-X-Received: by 2002:a0c:b211:: with SMTP id x17mr3758304qvd.153.1540411121739;
-        Wed, 24 Oct 2018 12:58:41 -0700 (PDT)
-Received: from Olgas-MBP-195.attlocal.net (172-10-226-31.lightspeed.livnmi.sbcglobal.net. [172.10.226.31])
-        by smtp.gmail.com with ESMTPSA id d124-v6sm3872380qkf.85.2018.10.24.12.58.40
-        (version=TLS1 cipher=AES128-SHA bits=128/128);
-        Wed, 24 Oct 2018 12:58:41 -0700 (PDT)
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=NBjgUA5FmyXzPhqOSj6U/1sZasxHF+7TZKsVmTjSsEk=;
+        b=UAsQ5bhBUrMauoMlG5mpJTFm/FN+yOsk9o1h/5ukw+ZVlkJCOWtnT6wsA7v69vEnHC
+         zwOUW70Zbw8JEMFwqNB3O0k+Vg9damjqSVsDNQ9Nzre3ht8KC3erD1WTwWeMumNk+IY8
+         fzkMaH3tHLSBxzquhzrB513ycjTYNlForVHA2t2hcOKyQ1pdWO2yUwOjCq9x2qMsaVXf
+         I2ibfmaBiWtWkAMVs9uQCqvtHcVHAjaX7BQCy2/A0ZAuasZIE/4idDuqxhzF2rPFbkdt
+         C9oTuOvW0so6AoWLHiN6CmoyoINAKf7iZ6eZYQlbdKEKPVu2GAuuCGDpAwuvToJwtZpo
+         X7Jw==
+X-Gm-Message-State: AGRZ1gJwgHxZ6lMtDAKkcHwKLu5MDzeA6STrcfc2Ne87nsJDLZJ81UW4
+        vdzTZc8FRrOl731qhxkUkvW08tsms3zxExA+klM=
+X-Google-Smtp-Source: AJdET5cAlQEnoREkEZN3fnjj4dWxh/uCrQoSNpcwe3frAkOtUF9t7K604Do69fgUZzkbdhtNdoXlobN5VUn5uvWa5qQ=
+X-Received: by 2002:ab0:2101:: with SMTP id d1mr1768913ual.108.1540411188260;
+ Wed, 24 Oct 2018 12:59:48 -0700 (PDT)
+MIME-Version: 1.0
+References: <20181019153018.32507-1-olga.kornievskaia@gmail.com>
+ <20181019153018.32507-2-olga.kornievskaia@gmail.com> <20181020040530.GG32577@ZenIV.linux.org.uk>
+ <CAOQ4uxhAvypEvGap02CkH_bHtFt7tUVxTWeZUL5OV_V8xwWjDA@mail.gmail.com>
+ <CAN-5tyHqtV7YhfK7DY4rY643bbfV=8MOE6=mxHYJufCsdcN9Jw@mail.gmail.com>
+ <20181022190620.GA8863@bombadil.infradead.org> <CAN-5tyF=voE2=DBLKvJCHZc9+zMzysqD8REYYb-z5jwq2BLqGQ@mail.gmail.com>
+ <a4a3ac1e840444871f3bc87606b111668c66618b.camel@redhat.com>
+ <CAOQ4uxiRnyxtOXBrdCvUcTa8GkTb2OyaJYJ58Ddoik0=3Y9pyA@mail.gmail.com>
+ <CAN-5tyHQc3M2YprFJm35XUxJdAx11a85o1NygE5FQFyHq3SQew@mail.gmail.com>
+ <CAN-5tyEtRSQMS-u0gbheFn5f2siOy8Qva2vnXW6rwb7pr_GDkA@mail.gmail.com>
+ <CAN-5tyEXvnekZJpOhNBkCBCLTpXjM5PghJxDSeo0dwn94_7wDw@mail.gmail.com> <4f35382683c96f03a88c90f0a1fcced36f290d72.camel@redhat.com>
+In-Reply-To: <4f35382683c96f03a88c90f0a1fcced36f290d72.camel@redhat.com>
 From:   Olga Kornievskaia <olga.kornievskaia@gmail.com>
-To:     trond.myklebust@hammerspace.com, anna.schumaker@netapp.com,
-        viro@zeniv.linux.org.uk, smfrench@gmail.com, miklos@szeredi.hu
-Cc:     linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-cifs@vger.kernel.org, linux-unionfs@vger.kernel.org,
-        linux-man@vger.kernel.org
-Subject: [PATCH v2 01/13] VFS permit cross device vfs_copy_file_range
-Date:   Wed, 24 Oct 2018 15:58:24 -0400
-Message-Id: <20181024195837.35532-2-olga.kornievskaia@gmail.com>
-X-Mailer: git-send-email 2.10.1 (Apple Git-78)
-In-Reply-To: <20181024195837.35532-1-olga.kornievskaia@gmail.com>
-References: <20181024195837.35532-1-olga.kornievskaia@gmail.com>
+Date:   Wed, 24 Oct 2018 15:59:36 -0400
+Message-ID: <CAN-5tyEQMtWepkhr8m4HjR0pkbbF1a3_-bL4iFJs2xjKervD2A@mail.gmail.com>
+Subject: Re: [PATCH v1 02/11] VFS permit cross device vfs_copy_file_range
+To:     Jeff Layton <jlayton@redhat.com>
+Cc:     Amir Goldstein <amir73il@gmail.com>, willy@infradead.org,
+        viro@zeniv.linux.org.uk, linux-fsdevel@vger.kernel.org,
+        linux-nfs <linux-nfs@vger.kernel.org>, fweimer@redhat.com,
+        Steve French <smfrench@gmail.com>,
+        "Darrick J. Wong" <darrick.wong@oracle.com>,
+        Christoph Hellwig <hch@lst.de>,
+        Linux API <linux-api@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Olga Kornievskaia <kolga@netapp.com>
+On Wed, Oct 24, 2018 at 7:17 AM Jeff Layton <jlayton@redhat.com> wrote:
+>
+> On Tue, 2018-10-23 at 13:16 -0400, Olga Kornievskaia wrote:
+> > On Tue, Oct 23, 2018 at 11:30 AM Olga Kornievskaia
+> > <olga.kornievskaia@gmail.com> wrote:
+> > >
+> > > On Tue, Oct 23, 2018 at 11:03 AM Olga Kornievskaia
+> > > <olga.kornievskaia@gmail.com> wrote:
+> > > >
+> > > > On Tue, Oct 23, 2018 at 2:05 AM Amir Goldstein <amir73il@gmail.com> wrote:
+> > > > >
+> > > > > On Tue, Oct 23, 2018 at 2:39 AM Jeff Layton <jlayton@redhat.com> wrote:
+> > > > > >
+> > > > > > On Mon, 2018-10-22 at 15:34 -0400, Olga Kornievskaia wrote:
+> > > > > > > On Mon, Oct 22, 2018 at 3:06 PM Matthew Wilcox <willy@infradead.org> wrote:
+> > > > > > > >
+> > > > > > > > On Mon, Oct 22, 2018 at 02:45:04PM -0400, Olga Kornievskaia wrote:
+> > > > > > > > > On Sat, Oct 20, 2018 at 4:54 AM Amir Goldstein <amir73il@gmail.com> wrote:
+> > > > > > > > > > Another thing is the commit message claims to:
+> > > > > > > > > > "Allow copy_file_range to copy between different superblocks but only
+> > > > > > > > > > of the same file system types"
+> > > > > > > > > >
+> > > > > > > > > > But what the patch actually does is:
+> > > > > > > > > > "Allow copy_file_range() syscall to copy between different filesystems
+> > > > > > > > > > AND allow calling the filesystems' copy_file_range() method
+> > > > > > > > > > between different superblocks but only of the same file system types"
+> > > > > > > > > >
+> > > > > > > > > > It's probably OK and quite useful to do the former, but maybe man page
+> > > > > > > > > > should be fixed to explicitly mention that the copy is expected to work
+> > > > > > > > > > across filesystems since kernel version XXX (?)
+> > > > > > > > > >
+> > > > > > > > > > If you don't wish to change cross filesystem type behavior and only
+> > > > > > > > > > relax cross super block limitation, then you should replace the
+> > > > > > > > > > same inode->i_sb check above with same inode->i_sb->s_type
+> > > > > > > > > > check instead of doing the check only for calling the filesystem
+> > > > > > > > > > copy_file_range() method.
+> > > > > > > > >
+> > > > > > > > > Thank you for the feedback. In the next version, I will remove the
+> > > > > > > > > check for the functions and instead check for the same file system
+> > > > > > > > > types.
+> > > > > > > >
+> > > > > > > > Jeff and I agree that this is the wrong way to go.  Instead, the
+> > > > > > > > cross-device check should be in the individual instances, not the top
+> > > > > > > > level code.
+> > > > > > >
+> > > > > > > So remove the check all together for the VFS (that was my original
+> > > > > > > patch to begin with (like #1 not this one). So am I missing the point
+> > > > > > > again, I keep getting different corrections every time.
+> > > > > >
+> > > > > > Sorry if I wasn't clear before:
+> > > > > >
+> > > > > > Basically, I think Willy and I are both envisioning that some
+> > > > > > copy_file_range implementations may eventually not be subject to the
+> > > > > > limitations of the checks you're adding.
+> > > > > >
+> > > > >
+> > > > > Yes. Eventually. And even Matthew is (quote) "dubious" about that ever
+> > > > > happening. Changing the interface as Matthew proposed has a price
+> > > > > and we need to compare this price to the alleged backporting price
+> > > > > that nobody may ever need to pay.
+> > > > >
+> > > > > As far as I can tell, passing a struct file * on a file_operations method
+> > > > > that does not belong to that filesystem in unprecedented (*) and is a far
+> > > > > more lethal landmine than the alleged backporting landmine.
+> > > > >
+> > > > > (*) prior to v4.19-rc1, filesystems could get an overlayfs file, but
+> > > > >      file_inode(file) has always belonged to the filesystem.
+> > > > >
+> > > > > Olga,
+> > > > >
+> > > > > I do not strongly object to Matthew's proposal, so don't feel
+> > > > > obligated to choose my side of the argument. I am just trying
+> > > > > to offer a different perspective.
+> > > > >
+> > > > > In any case, my outstanding concerns with the patch are:
+> > > > >
+> > > > > 1. If you change syscall to support cross fs type copy (which is
+> > > > >     good IMO) need to document that in commit message
+> > > > >     and possibly follow up later with a note in man page
+> > > > >
+> > > > > 2. Commit message says:
+> > > > >     "This feature was of interest of ... NFS"
+> > > > >     "This feature is needed by NFSv4.2..."
+> > > > >     "NFS will allow for copies between different NFS servers."
+> > > > >     It is not clear to me if we are talking about present of future
+> > > > >     NFSv4.2 code. If NFSv4.2 currently does not support cross
+> > > > >     sb copy (??) than your patch need to enforce same sb
+> > > > >     in nfs4_copy_file_range(). If it does support cross sb copy
+> > > > >     than please edit the commit message to make that clear.
+> > > >
+> > > > I personally agree with Amir. I think it's far fetched that a file
+> > > > system would know how to handle something that's not of its type. When
+> > > > the copy_file_range() was checked in, there was a comment above the
+> > > > superblock check saying "we might want to relax this in the future".
+> > > > It deemed appropriate then to enforce the check since none of the file
+> > > > systems used it. Now, the future is here, and we are removing the
+> > > > check but proposing a different once because again the future isn't
+> > > > here and having a single check simplifies the code.
+> > >
+> > > Sorry Ok I wrote this too fast. I think I'm changing my mind and
+> > > siding with the check by the file system.
+> >
+> > The reason I think we should remove the check all together is we'd
+> > allow the callers of copy_file_range() to utilize the
+> > do_splice_direct() between file system types even when
+> > copy_file_range() doesn't support cross fs copy. Isn't that
+> > beneficial?
+>
+> Others might argue no, but I think it's good to have that option open.
+>
+> If the consensus is that we do need a check at the vfs layer to validate
+> that the struct files come from the same fstype (as Amir suggests), then
+> I can live with that. We've dealt with internal API changes before so we
+> can do it again.
+>
+> Al is quite correct though that we really do want to compare fstypes
+> rather than op pointers in that case however.
 
-This patch removes the check for source and destination files to
-come from the same superblock. This feature was of interest to
-NFS as well as CIFS communities.
+It feels like folks are now ok with either the check being in the
+drivers or doing the check in the VFS layer.
 
-Specifically, this feature is needed to allow for NFSv4.2 copy offload
-to be done between different NFSv4.2 servers. SMBv3 copy offload between
-different servers would be able to use this as well.
+I'm picking the choice of not doing the check in the VFS layer because
+it allows for do_splice_direct() by any caller. I'm about to submit
+the new version of the patches (this time I will include the NFS patch
+series). We can continue with the discussion on the new version.
 
-Removal of the check implies that passed in source and destination
-files can come from different superblocks of the same file system
-type or different. It is upto each individual copy_file_range()
-file system implementation to decide what type of copy it is
-capable of doing and return -EXDEV in cases support is lacking.
+I have added checks for the CIFS and OverlayFS to be consistent with
+the previous behavior -- no cross-device copy_offload, I assume if and
+when those file systems are ready to make use of it they'll remove the
+check.
 
-There are 3 known implementator of copy_file_range() f_op: NFS,
-CIFS, OverlayFS. NFS and CIFS are interested to support cross-device
-copy offload but do not support cross file system types copy offload.
-Following patches will add appropriate checks in each of the drivers.
-
-If the copy_file_range() errors with EXDEV, the code would fallback
-on doing do_splice_direct() copying which in itself is beneficial.
-
-Adding wording to the vfs.txt and porting documentation about the
-new support for cross-device copy offload.
-
-Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
----
- Documentation/filesystems/porting | 7 +++++++
- Documentation/filesystems/vfs.txt | 6 +++++-
- fs/read_write.c                   | 9 +++------
- 3 files changed, 15 insertions(+), 7 deletions(-)
-
-diff --git a/Documentation/filesystems/porting b/Documentation/filesystems/porting
-index 7b7b845..ebb4954 100644
---- a/Documentation/filesystems/porting
-+++ b/Documentation/filesystems/porting
-@@ -622,3 +622,10 @@ in your dentry operations instead.
- 	alloc_file_clone(file, flags, ops) does not affect any caller's references.
- 	On success you get a new struct file sharing the mount/dentry with the
- 	original, on failure - ERR_PTR().
-+--
-+[mandatory]
-+	->copy_file_range() may now be passed files which belong to two
-+	different superblocks of the same file system type or which belong
-+	to two different filesystems types all together. As before, the
-+        destination's copy_file_range() is the function which is called.
-+	If it cannot copy ranges from the source, it should return -EXDEV.
-diff --git a/Documentation/filesystems/vfs.txt b/Documentation/filesystems/vfs.txt
-index a6c6a8a..34c0e8c 100644
---- a/Documentation/filesystems/vfs.txt
-+++ b/Documentation/filesystems/vfs.txt
-@@ -1,5 +1,6 @@
- 
- 	      Overview of the Linux Virtual File System
-+- [fs] nfs: Don't let readdirplus revalidate an inode that was marked as stale (Benjamin Coddington) [1429514 1416532]
- 
- 	Original author: Richard Gooch <rgooch@atnf.csiro.au>
- 
-@@ -958,7 +959,10 @@ otherwise noted.
- 
-   fallocate: called by the VFS to preallocate blocks or punch a hole.
- 
--  copy_file_range: called by the copy_file_range(2) system call.
-+  copy_file_range: called by copy_file_range(2) system call. This method
-+		   works on two file descriptors that might reside on
-+		   different superblocks which might belong to file systems
-+		   of different types.
- 
-   clone_file_range: called by the ioctl(2) system call for FICLONERANGE and
- 	FICLONE commands.
-diff --git a/fs/read_write.c b/fs/read_write.c
-index 39b4a21..fb4ffca 100644
---- a/fs/read_write.c
-+++ b/fs/read_write.c
-@@ -1575,10 +1575,6 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
- 	    (file_out->f_flags & O_APPEND))
- 		return -EBADF;
- 
--	/* this could be relaxed once a method supports cross-fs copies */
--	if (inode_in->i_sb != inode_out->i_sb)
--		return -EXDEV;
--
- 	if (len == 0)
- 		return 0;
- 
-@@ -1588,7 +1584,8 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
- 	 * Try cloning first, this is supported by more file systems, and
- 	 * more efficient if both clone and copy are supported (e.g. NFS).
- 	 */
--	if (file_in->f_op->clone_file_range) {
-+	if (inode_in->i_sb == inode_out->i_sb &&
-+			file_in->f_op->clone_file_range) {
- 		ret = file_in->f_op->clone_file_range(file_in, pos_in,
- 				file_out, pos_out, len);
- 		if (ret == 0) {
-@@ -1600,7 +1597,7 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
- 	if (file_out->f_op->copy_file_range) {
- 		ret = file_out->f_op->copy_file_range(file_in, pos_in, file_out,
- 						      pos_out, len, flags);
--		if (ret != -EOPNOTSUPP)
-+		if (ret != -EOPNOTSUPP && ret != -EXDEV)
- 			goto done;
- 	}
- 
--- 
-1.8.3.1
-
+> > > > But I don't feel strongly about the check (or rather the location of
+> > > > it VFS vs each FS) and what I ultimately need is to removed same sb
+> > > > check. It sounds like if Amir isn't objecting, then the check for same
+> > > > file system type should be removed from VFS. And, for each of the file
+> > > > systems that currently support copy_file_range() -- CIFS, NFS, and
+> > > > overlayfs -- I need to modify them and add a check for the same
+> > > > fs_type.
+> > > >
+> > > > Amir to answer your question, only NFSv4.2 has copy_offload
+> > > > functionality (not earlier NFS versions). Furthermore, existing
+> > > > upstream only supports same sb copy offload. What this patch series
+> > > > adds is support for copy offload across different superblocks but NFS
+> > > > will not support (and would need a check) for copy offload across
+> > > > different file system types. Also I kinda stand behind the ideas
+> > > > stated: 1) this is of interest to NFS (where NFS here is to represent
+> > > > a community, and CIFS is used to represent the other community). 2)
+> > > > NFSv4.2 copy offload a specific feature that needs this functionality.
+> > > > 3rd statement is bad. Only NFSv4.2 will allow copies between different
+> > > > NFS servers (ie., after this patch +series), the emphasis was on "will
+> > > > allow" meaning what this patch will allow to be done (ie, patch's
+> > > > purpose). Or also, if the NFS server exports different exports, then a
+> > > > copy between them (assuming exports of the same file system type).
+> > > >
+> > > > In the next version of the patch, I'll do my best to specified what
+> > > > changed as the consequence of removing the cross sb check (ie, file
+> > > > system types of the passed in file can be from different file
+> > > > systems). I will add wording to the man page and add the suggested
+> > > > wording to the "porting" file.
+>
+> --
+> Jeff Layton <jlayton@redhat.com>
+>
