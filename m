@@ -7,60 +7,60 @@ X-Spam-Status: No, score=-6.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
 	SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3F83FC46475
-	for <linux-nfs@archiver.kernel.org>; Wed, 24 Oct 2018 02:58:07 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B6412C46475
+	for <linux-nfs@archiver.kernel.org>; Wed, 24 Oct 2018 03:00:14 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id D24D12082F
-	for <linux-nfs@archiver.kernel.org>; Wed, 24 Oct 2018 02:58:06 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 5FCB82082F
+	for <linux-nfs@archiver.kernel.org>; Wed, 24 Oct 2018 03:00:14 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="lyRyEqTX"
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org D24D12082F
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="FfKmeY2H"
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 5FCB82082F
 Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=gmail.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726082AbeJXLYH (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 24 Oct 2018 07:24:07 -0400
-Received: from mail-vs1-f67.google.com ([209.85.217.67]:36539 "EHLO
-        mail-vs1-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725979AbeJXLYH (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Oct 2018 07:24:07 -0400
-Received: by mail-vs1-f67.google.com with SMTP id c205so2243158vsd.3
-        for <linux-nfs@vger.kernel.org>; Tue, 23 Oct 2018 19:58:04 -0700 (PDT)
+        id S1726240AbeJXL0P (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 24 Oct 2018 07:26:15 -0400
+Received: from mail-ua1-f66.google.com ([209.85.222.66]:43274 "EHLO
+        mail-ua1-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725998AbeJXL0P (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Oct 2018 07:26:15 -0400
+Received: by mail-ua1-f66.google.com with SMTP id c89so1308038uac.10
+        for <linux-nfs@vger.kernel.org>; Tue, 23 Oct 2018 20:00:12 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=mime-version:references:in-reply-to:from:date:message-id:subject:to
          :cc;
-        bh=Pj66CcUa9KE1jkTdN1i6xWH6nAbNVSBtbYQsG6hU5Ic=;
-        b=lyRyEqTX+0ATOyBX5/LKDxqA8zO/Ez69q1bBf9zb/c2oqhqzl1AyD/Fq6/ppDds3qQ
-         cSuOAF0Wl3a1w+cd6NqtahrjXkPqurdIeZZLiBc6nH5m45j7p/dywAYfA+JtGztK2s/c
-         kcdLrhABInmdRNtazapacp5LcCNtHt2c12uyBk76JSDWwZyZvH50tnFmror+f3y1oYzF
-         +FvX+eMbDecZLTMAcXksS3+Z3ssEdWZUZqnkzlVLsl3ABimvCEfNFZ3d3l11WV5IRQkk
-         V+Y071OYIQpCHBYzbaIhMXddKQZxJo6c2ZpQo6ldbZUgaOA4e6v5dXaVoB8FVa301ahW
-         wI2g==
+        bh=5SdVu7y37Gg53tvjobDrpQs9G5DZEokRS39pCtOFeGs=;
+        b=FfKmeY2H2epzdXLaaaQ1jwr9RMxhOOZNxUKmESgQVnNRTZwXbHKH5xlSZ8CohklHe4
+         LBjg86wJVwM2MIvxL92TzSkOCBoKsRhPYKLoexhxjZyLmf6JejwfEoMnJMFn5rPmfpnZ
+         Adu+8fXkidSUyzcuoL3zNKd5eQI9QWQVrqua3dtmUjWqQwP7pAjbfy+4qGKvbuCpIBPJ
+         KBawdUNOAS3U7AnHGlMKio5xZw7kLoNL6A4BpHbzF8bMw/oP5SUQnMwCiUw/lfgEa40L
+         86jMmvzbuc+6LoEOrkD2l9f+j2/k22AIBaFO84TB+R6aXa3ybsBfWEo+O8/Xol12q1TV
+         ON5g==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:mime-version:references:in-reply-to:from:date
          :message-id:subject:to:cc;
-        bh=Pj66CcUa9KE1jkTdN1i6xWH6nAbNVSBtbYQsG6hU5Ic=;
-        b=EY45FwPbDXrSxBmmQPXvTmt90Jy0Eox3YVmTm8LUTYcXgsRjAC4UeKhFfpQ1k6worm
-         i+VcDSZnS3sHBd5yZ+O09Xc8iQZvgOVEKJqJd2A7MZjb00BA90QJe/rMJSfHjXk7mLgH
-         IhgV+M8jcLBIrJj0LgLjAZv8zuwm0nir0drA/sF1x732fDvdmvPA50WSGjT4k1V2QhGQ
-         AhnSgiRj47Xr+nV7/wLgmdnAIufcyUgwJ//gJteN1tZ2QrlbU99HaZ8SFSrpA+c6SbCq
-         uNsRi34ANBdwN818ql43ite32dO07Y413Q22ZEWTC+HPU+NIUDr0OoJAQZPvh+qtWCD4
-         A4IA==
-X-Gm-Message-State: AGRZ1gL8lhyqRlA6skav2dgc8N+bmOHj+Wt0GkNYSEsUt04AcesOnAP2
-        a7+g8DykEXuP7Lo1u/r+qsswnrisBTOyXxZibuMu0A==
-X-Google-Smtp-Source: AJdET5eRKCIImzX0IMrd5N2NSE5OBsQ5eCnangzP3yi7xmnx42c/05yjoyNi2me5BEMmglOIBQFKzxMiV41FkdRvueU=
-X-Received: by 2002:a67:3793:: with SMTP id j19mr240324vsi.215.1540343792658;
- Tue, 23 Oct 2018 18:16:32 -0700 (PDT)
+        bh=5SdVu7y37Gg53tvjobDrpQs9G5DZEokRS39pCtOFeGs=;
+        b=mYZx8IVqAQN0hcO/qkYBWj/s/2Qd9oga0Z6oXhLgRzRElAmEdE3EAV+GGzHiGAPzqm
+         pnBomXwfHEZbEp7MLFYCqoNhG3WfkKM+PJofWGmkLn3XKhhK1XDPYxCit4l8usYePS5o
+         5xXCz14ctd0SjSwRO5wOYUYqIYFL31fhZbhjUG8ZmnbqY/NlLHxHteD44WLDjN8QWj6p
+         J1A0sRkMQ2rQ5jLAkdKAsMKtT5SBJZ2o9tzzQY2mUmB45zYLv7w1L+/IBvgAXsTbn5nS
+         idmwbsmUNOFUnEvrv19YGdzgW7TFPSSQOp+noilLBtiYGU7lOaYQfzlMTA+nx9R8UKdW
+         TNog==
+X-Gm-Message-State: AGRZ1gL1gdORtbwHjWbiX58twSfUC0LSUEfxscdkqT1Ew1xSsEua4HWz
+        vD+foHK3QZAJOmKpdxhAvz1VT3u83Xy2a0z4zuMeJQ==
+X-Google-Smtp-Source: AJdET5e1zE7W/3Jar+KFTnAW9Uk3rrLtNFnX57Sdzd8KXA3q3QiS3Fu8oIenmN/TnUT1wI/NHq9+cNh/c78d2G63ppQ=
+X-Received: by 2002:ab0:24cb:: with SMTP id k11mr252372uan.104.1540343827021;
+ Tue, 23 Oct 2018 18:17:07 -0700 (PDT)
 MIME-Version: 1.0
 References: <20181019152932.32462-1-olga.kornievskaia@gmail.com>
- <20181019152932.32462-9-olga.kornievskaia@gmail.com> <ee6447e40382045f094789026ce2264001ab89b4.camel@netapp.com>
-In-Reply-To: <ee6447e40382045f094789026ce2264001ab89b4.camel@netapp.com>
+ <20181019152932.32462-6-olga.kornievskaia@gmail.com> <f3e8b4a81ceb25d89456f5fb7ffbe82a5c097b57.camel@netapp.com>
+In-Reply-To: <f3e8b4a81ceb25d89456f5fb7ffbe82a5c097b57.camel@netapp.com>
 From:   Olga Kornievskaia <olga.kornievskaia@gmail.com>
-Date:   Tue, 23 Oct 2018 21:16:20 -0400
-Message-ID: <CAN-5tyEZU0A153h_oPU+ruPqp3Vh0On9T-GDFYxyqCti6u=hpA@mail.gmail.com>
-Subject: Re: [PATCH v1 08/11] NFS inter ssc open
+Date:   Tue, 23 Oct 2018 21:16:55 -0400
+Message-ID: <CAN-5tyGc-W0yxT8gYGquYWzPygSmO0ORU2V5eTWM4CdS4MD5hQ@mail.gmail.com>
+Subject: Re: [PATCH v1 05/11] NFS add COPY_NOTIFY operation
 To:     Anna Schumaker <Anna.Schumaker@netapp.com>
 Cc:     Trond Myklebust <trondmy@hammerspace.com>,
         linux-nfs <linux-nfs@vger.kernel.org>
@@ -70,7 +70,7 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Tue, Oct 23, 2018 at 4:23 PM Schumaker, Anna
+On Tue, Oct 23, 2018 at 11:50 AM Schumaker, Anna
 <Anna.Schumaker@netapp.com> wrote:
 >
 > Hi Olga,
@@ -78,207 +78,525 @@ On Tue, Oct 23, 2018 at 4:23 PM Schumaker, Anna
 > On Fri, 2018-10-19 at 11:29 -0400, Olga Kornievskaia wrote:
 > > From: Olga Kornievskaia <kolga@netapp.com>
 > >
-> > NFSv4.2 inter server to server copy requires the destination server to
-> > READ the data from the source server using the provided stateid and
-> > file handle.
+> > Try using the delegation stateid, then the open stateid.
 > >
-> > Given an NFSv4 stateid and filehandle from the COPY operaion, provide the
-> > destination server with an NFS client function to create a struct file
-> > suitable for the destiniation server to READ the data to be copied.
+> > Only NL4_NETATTR, No support for NL4_NAME and NL4_URL.
+> > Allow only one source server address to be returned for now.
 > >
 > > Signed-off-by: Andy Adamson <andros@netapp.com>
 > > Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
 > > ---
-> >  fs/nfs/nfs4_fs.h  |  7 ++++
-> >  fs/nfs/nfs4file.c | 98
-> > +++++++++++++++++++++++++++++++++++++++++++++++++++++++
-> >  fs/nfs/nfs4proc.c |  5 ++-
-> >  3 files changed, 107 insertions(+), 3 deletions(-)
+> >  fs/nfs/nfs42.h            |   3 +-
+> >  fs/nfs/nfs42proc.c        |  91 +++++++++++++++++++++++
+> >  fs/nfs/nfs42xdr.c         | 181
+> > ++++++++++++++++++++++++++++++++++++++++++++++
+> >  fs/nfs/nfs4file.c         |  17 +++++
+> >  fs/nfs/nfs4proc.c         |   1 +
+> >  fs/nfs/nfs4xdr.c          |   1 +
+> >  include/linux/nfs4.h      |   1 +
+> >  include/linux/nfs_fs_sb.h |   1 +
+> >  include/linux/nfs_xdr.h   |  16 ++++
+> >  9 files changed, 311 insertions(+), 1 deletion(-)
 > >
-> > diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-> > index 8d59c96..f229864 100644
-> > --- a/fs/nfs/nfs4_fs.h
-> > +++ b/fs/nfs/nfs4_fs.h
-> > @@ -307,6 +307,13 @@ extern int nfs4_set_rw_stateid(nfs4_stateid *stateid,
-> >               const struct nfs_open_context *ctx,
-> >               const struct nfs_lock_context *l_ctx,
-> >               fmode_t fmode);
-> > +extern int nfs4_proc_getattr(struct nfs_server *server, struct nfs_fh
-> > *fhandle,
-> > +                          struct nfs_fattr *fattr, struct nfs4_label *label,
-> > +                          struct inode *inode);
-> > +extern int update_open_stateid(struct nfs4_state *state,
-> > +                             const nfs4_stateid *open_stateid,
-> > +                             const nfs4_stateid *deleg_stateid,
-> > +                             fmode_t fmode);
-> >
-> >  #if defined(CONFIG_NFS_V4_1)
-> >  extern int nfs41_sequence_done(struct rpc_task *, struct nfs4_sequence_res
-> > *);
-> > diff --git a/fs/nfs/nfs4file.c b/fs/nfs/nfs4file.c
-> > index 005862e..7f226f4 100644
-> > --- a/fs/nfs/nfs4file.c
-> > +++ b/fs/nfs/nfs4file.c
-> > @@ -8,6 +8,7 @@
-> >  #include <linux/file.h>
-> >  #include <linux/falloc.h>
-> >  #include <linux/nfs_fs.h>
-> > +#include <linux/file.h>
-> >  #include "delegation.h"
-> >  #include "internal.h"
-> >  #include "iostat.h"
-> > @@ -264,6 +265,103 @@ static int nfs42_clone_file_range(struct file *src_file,
-> > loff_t src_off,
-> >  out:
-> >       return ret;
-> >  }
-> > +
-> > +static int read_name_gen = 1;
-> > +#define SSC_READ_NAME_BODY "ssc_read_%d"
-> > +
-> > +struct file *
-> > +nfs42_ssc_open(struct vfsmount *ss_mnt, struct nfs_fh *src_fh,
-> > +             nfs4_stateid *stateid)
-> > +{
-> > +     struct nfs_fattr fattr;
-> > +     struct file *filep, *res;
-> > +     struct nfs_server *server;
-> > +     struct inode *r_ino = NULL;
-> > +     struct nfs_open_context *ctx;
-> > +     struct nfs4_state_owner *sp;
-> > +     char *read_name;
-> > +     int len, status = 0;
-> > +
-> > +     server = NFS_SERVER(ss_mnt->mnt_root->d_inode);
-> > +
-> > +     nfs_fattr_init(&fattr);
-> > +
-> > +     status = nfs4_proc_getattr(server, src_fh, &fattr, NULL, NULL);
-> > +     if (status < 0) {
-> > +             res = ERR_PTR(status);
-> > +             goto out;
-> > +     }
-> > +
-> > +     res = ERR_PTR(-ENOMEM);
-> > +     len = strlen(SSC_READ_NAME_BODY) + 16;
-> > +     read_name = kzalloc(len, GFP_NOFS);
-> > +     if (read_name == NULL)
-> > +             goto out;
-> > +     snprintf(read_name, len, SSC_READ_NAME_BODY, read_name_gen++);
-> > +     dprintk("%s read_name %s\n", __func__, read_name);
+> > diff --git a/fs/nfs/nfs42.h b/fs/nfs/nfs42.h
+> > index 5abff4d..bcd0222 100644
+> > --- a/fs/nfs/nfs42.h
+> > +++ b/fs/nfs/nfs42.h
+> > @@ -21,7 +21,8 @@
+> >  int nfs42_proc_layoutstats_generic(struct nfs_server *,
+> >                                  struct nfs42_layoutstat_data *);
+> >  int nfs42_proc_clone(struct file *, struct file *, loff_t, loff_t, loff_t);
+> > -
+> > +int nfs42_proc_copy_notify(struct file *, struct file *,
+> > +                        struct nfs42_copy_notify_res *);
 >
-> Does this dprintk() need to be here?
+> Can you wrap this in a CONFIG_NFS_V4_2 check?  Otherwise the compiler will
+> complain that nfs42_copy_notify_res doesn't exist.
 
-Nope, doesn't need to be here, a left over debugging. I'll remove it.
+Will take care of it. Thank you.
 
-> I'm wondering if it would work better as a
-> tracepoint (or if it should just be removed altogether).
 >
 > Thanks,
 > Anna
 >
-> > +
-> > +     r_ino = nfs_fhget(ss_mnt->mnt_root->d_inode->i_sb, src_fh, &fattr,
-> > +                     NULL);
-> > +     if (IS_ERR(r_ino)) {
-> > +             res = ERR_CAST(r_ino);
-> > +             goto out;
-> > +     }
-> > +
-> > +     filep = alloc_file_pseudo(r_ino, ss_mnt, read_name, FMODE_READ,
-> > +                                  r_ino->i_fop);
-> > +     if (IS_ERR(filep)) {
-> > +             res = ERR_CAST(filep);
-> > +             goto out;
-> > +     }
-> > +     filep->f_mode |= FMODE_READ;
-> > +
-> > +     ctx = alloc_nfs_open_context(filep->f_path.dentry, filep->f_mode,
-> > +                                     filep);
-> > +     if (IS_ERR(ctx)) {
-> > +             res = ERR_CAST(ctx);
-> > +             goto out_filep;
-> > +     }
-> > +
-> > +     res = ERR_PTR(-EINVAL);
-> > +     sp = nfs4_get_state_owner(server, ctx->cred, GFP_KERNEL);
-> > +     if (sp == NULL)
-> > +             goto out_ctx;
-> > +
-> > +     ctx->state = nfs4_get_open_state(r_ino, sp);
-> > +     if (ctx->state == NULL)
-> > +             goto out_stateowner;
-> > +
-> > +     set_bit(NFS_OPEN_STATE, &ctx->state->flags);
-> > +     memcpy(&ctx->state->open_stateid.other, &stateid->other,
-> > +            NFS4_STATEID_OTHER_SIZE);
-> > +     update_open_stateid(ctx->state, stateid, NULL, filep->f_mode);
-> > +
-> > +     nfs_file_set_open_context(filep, ctx);
-> > +     put_nfs_open_context(ctx);
-> > +
-> > +     file_ra_state_init(&filep->f_ra, filep->f_mapping->host->i_mapping);
-> > +     res = filep;
-> > +out:
-> > +     dprintk("<-- %s error %ld filep %p r_ino %p\n",
-> > +             __func__, IS_ERR(res) ? PTR_ERR(res) : 0, res, r_ino);
-> > +
-> > +     return res;
-> > +out_stateowner:
-> > +     nfs4_put_state_owner(sp);
-> > +out_ctx:
-> > +     put_nfs_open_context(ctx);
-> > +out_filep:
-> > +     fput(filep);
-> > +     goto out;
-> > +}
-> > +EXPORT_SYMBOL_GPL(nfs42_ssc_open);
-> > +void nfs42_ssc_close(struct file *filep)
-> > +{
-> > +     struct nfs_open_context *ctx = nfs_file_open_context(filep);
-> > +
-> > +     ctx->state->flags = 0;
-> > +}
-> > +EXPORT_SYMBOL_GPL(nfs42_ssc_close);
-> >  #endif /* CONFIG_NFS_V4_2 */
+> >  static inline bool nfs42_files_from_same_server(struct file *in,
+> >                                               struct file *out)
+> >  {
+> > diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
+> > index ac5b784..b1c57a4 100644
+> > --- a/fs/nfs/nfs42proc.c
+> > +++ b/fs/nfs/nfs42proc.c
+> > @@ -3,6 +3,7 @@
+> >   * Copyright (c) 2014 Anna Schumaker <Anna.Schumaker@Netapp.com>
+> >   */
+> >  #include <linux/fs.h>
+> > +#include <linux/sunrpc/addr.h>
+> >  #include <linux/sunrpc/sched.h>
+> >  #include <linux/nfs.h>
+> >  #include <linux/nfs3.h>
+> > @@ -15,10 +16,30 @@
+> >  #include "pnfs.h"
+> >  #include "nfs4session.h"
+> >  #include "internal.h"
+> > +#include "delegation.h"
 > >
-> >  const struct file_operations nfs4_file_operations = {
+> >  #define NFSDBG_FACILITY NFSDBG_PROC
+> >  static int nfs42_do_offload_cancel_async(struct file *dst, nfs4_stateid
+> > *std);
+> >
+> > +static void nfs42_set_netaddr(struct file *filep, struct nfs42_netaddr
+> > *naddr)
+> > +{
+> > +     struct nfs_client *clp = (NFS_SERVER(file_inode(filep)))->nfs_client;
+> > +     unsigned short port = 2049;
+> > +
+> > +     rcu_read_lock();
+> > +     naddr->netid_len = scnprintf(naddr->netid,
+> > +                                     sizeof(naddr->netid), "%s",
+> > +                                     rpc_peeraddr2str(clp->cl_rpcclient,
+> > +                                     RPC_DISPLAY_NETID));
+> > +     naddr->addr_len = scnprintf(naddr->addr,
+> > +                                     sizeof(naddr->addr),
+> > +                                     "%s.%u.%u",
+> > +                                     rpc_peeraddr2str(clp->cl_rpcclient,
+> > +                                     RPC_DISPLAY_ADDR),
+> > +                                     port >> 8, port & 255);
+> > +     rcu_read_unlock();
+> > +}
+> > +
+> >  static int _nfs42_proc_fallocate(struct rpc_message *msg, struct file *filep,
+> >               struct nfs_lock_context *lock, loff_t offset, loff_t len)
+> >  {
+> > @@ -461,6 +482,76 @@ static int nfs42_do_offload_cancel_async(struct file
+> > *dst,
+> >       return status;
+> >  }
+> >
+> > +int _nfs42_proc_copy_notify(struct file *src, struct file *dst,
+> > +                         struct nfs42_copy_notify_args *args,
+> > +                         struct nfs42_copy_notify_res *res)
+> > +{
+> > +     struct nfs_server *src_server = NFS_SERVER(file_inode(src));
+> > +     struct rpc_message msg = {
+> > +             .rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_COPY_NOTIFY],
+> > +             .rpc_argp = args,
+> > +             .rpc_resp = res,
+> > +     };
+> > +     int status;
+> > +     struct nfs_open_context *ctx;
+> > +     struct nfs_lock_context *l_ctx;
+> > +
+> > +     ctx = get_nfs_open_context(nfs_file_open_context(src));
+> > +     l_ctx = nfs_get_lock_context(ctx);
+> > +     if (IS_ERR(l_ctx))
+> > +             return PTR_ERR(l_ctx);
+> > +
+> > +     status = nfs4_set_rw_stateid(&args->cna_src_stateid, ctx, l_ctx,
+> > +                                  FMODE_READ);
+> > +     nfs_put_lock_context(l_ctx);
+> > +     if (status)
+> > +             return status;
+> > +
+> > +     status = nfs4_call_sync(src_server->client, src_server, &msg,
+> > +                             &args->cna_seq_args, &res->cnr_seq_res, 0);
+> > +     if (status == -ENOTSUPP)
+> > +             src_server->caps &= ~NFS_CAP_COPY_NOTIFY;
+> > +
+> > +     put_nfs_open_context(nfs_file_open_context(src));
+> > +     return status;
+> > +}
+> > +
+> > +int nfs42_proc_copy_notify(struct file *src, struct file *dst,
+> > +                             struct nfs42_copy_notify_res *res)
+> > +{
+> > +     struct nfs_server *src_server = NFS_SERVER(file_inode(src));
+> > +     struct nfs42_copy_notify_args *args;
+> > +     struct nfs4_exception exception = {
+> > +             .inode = file_inode(src),
+> > +     };
+> > +     int status;
+> > +
+> > +     if (!(src_server->caps & NFS_CAP_COPY_NOTIFY))
+> > +             return -EOPNOTSUPP;
+> > +
+> > +     args = kzalloc(sizeof(struct nfs42_copy_notify_args), GFP_NOFS);
+> > +     if (args == NULL)
+> > +             return -ENOMEM;
+> > +
+> > +     args->cna_src_fh  = NFS_FH(file_inode(src)),
+> > +     args->cna_dst.nl4_type = NL4_NETADDR;
+> > +     nfs42_set_netaddr(dst, &args->cna_dst.u.nl4_addr);
+> > +     exception.stateid = &args->cna_src_stateid;
+> > +
+> > +     do {
+> > +             status = _nfs42_proc_copy_notify(src, dst, args, res);
+> > +             if (status == -ENOTSUPP) {
+> > +                     status = -EOPNOTSUPP;
+> > +                     goto out;
+> > +             }
+> > +             status = nfs4_handle_exception(src_server, status, &exception);
+> > +     } while (exception.retry);
+> > +
+> > +out:
+> > +     kfree(args);
+> > +     return status;
+> > +}
+> > +
+> >  static loff_t _nfs42_proc_llseek(struct file *filep,
+> >               struct nfs_lock_context *lock, loff_t offset, int whence)
+> >  {
+> > diff --git a/fs/nfs/nfs42xdr.c b/fs/nfs/nfs42xdr.c
+> > index 69f72ed..e6e7cbf 100644
+> > --- a/fs/nfs/nfs42xdr.c
+> > +++ b/fs/nfs/nfs42xdr.c
+> > @@ -29,6 +29,16 @@
+> >  #define encode_offload_cancel_maxsz  (op_encode_hdr_maxsz + \
+> >                                        XDR_QUADLEN(NFS4_STATEID_SIZE))
+> >  #define decode_offload_cancel_maxsz  (op_decode_hdr_maxsz)
+> > +#define encode_copy_notify_maxsz     (op_encode_hdr_maxsz + \
+> > +                                      XDR_QUADLEN(NFS4_STATEID_SIZE) + \
+> > +                                      1 + /* nl4_type */ \
+> > +                                      1 + XDR_QUADLEN(NFS4_OPAQUE_LIMIT))
+> > +#define decode_copy_notify_maxsz     (op_decode_hdr_maxsz + \
+> > +                                      3 + /* cnr_lease_time */\
+> > +                                      XDR_QUADLEN(NFS4_STATEID_SIZE) + \
+> > +                                      1 + /* Support 1 cnr_source_server */\
+> > +                                      1 + /* nl4_type */ \
+> > +                                      1 + XDR_QUADLEN(NFS4_OPAQUE_LIMIT))
+> >  #define encode_deallocate_maxsz              (op_encode_hdr_maxsz + \
+> >                                        encode_fallocate_maxsz)
+> >  #define decode_deallocate_maxsz              (op_decode_hdr_maxsz)
+> > @@ -84,6 +94,12 @@
+> >  #define NFS4_dec_offload_cancel_sz   (compound_decode_hdr_maxsz + \
+> >                                        decode_putfh_maxsz + \
+> >                                        decode_offload_cancel_maxsz)
+> > +#define NFS4_enc_copy_notify_sz              (compound_encode_hdr_maxsz + \
+> > +                                      encode_putfh_maxsz + \
+> > +                                      encode_copy_notify_maxsz)
+> > +#define NFS4_dec_copy_notify_sz              (compound_decode_hdr_maxsz + \
+> > +                                      decode_putfh_maxsz + \
+> > +                                      decode_copy_notify_maxsz)
+> >  #define NFS4_enc_deallocate_sz               (compound_encode_hdr_maxsz + \
+> >                                        encode_putfh_maxsz + \
+> >                                        encode_deallocate_maxsz + \
+> > @@ -137,6 +153,25 @@ static void encode_allocate(struct xdr_stream *xdr,
+> >       encode_fallocate(xdr, args);
+> >  }
+> >
+> > +static void encode_nl4_server(struct xdr_stream *xdr, const struct nl4_server
+> > *ns)
+> > +{
+> > +     encode_uint32(xdr, ns->nl4_type);
+> > +     switch (ns->nl4_type) {
+> > +     case NL4_NAME:
+> > +     case NL4_URL:
+> > +             encode_string(xdr, ns->u.nl4_str_sz, ns->u.nl4_str);
+> > +             break;
+> > +     case NL4_NETADDR:
+> > +             encode_string(xdr, ns->u.nl4_addr.netid_len,
+> > +                           ns->u.nl4_addr.netid);
+> > +             encode_string(xdr, ns->u.nl4_addr.addr_len,
+> > +                           ns->u.nl4_addr.addr);
+> > +             break;
+> > +     default:
+> > +             WARN_ON_ONCE(1);
+> > +     }
+> > +}
+> > +
+> >  static void encode_copy(struct xdr_stream *xdr,
+> >                       const struct nfs42_copy_args *args,
+> >                       struct compound_hdr *hdr)
+> > @@ -162,6 +197,15 @@ static void encode_offload_cancel(struct xdr_stream *xdr,
+> >       encode_nfs4_stateid(xdr, &args->osa_stateid);
+> >  }
+> >
+> > +static void encode_copy_notify(struct xdr_stream *xdr,
+> > +                            const struct nfs42_copy_notify_args *args,
+> > +                            struct compound_hdr *hdr)
+> > +{
+> > +     encode_op_hdr(xdr, OP_COPY_NOTIFY, decode_copy_notify_maxsz, hdr);
+> > +     encode_nfs4_stateid(xdr, &args->cna_src_stateid);
+> > +     encode_nl4_server(xdr, &args->cna_dst);
+> > +}
+> > +
+> >  static void encode_deallocate(struct xdr_stream *xdr,
+> >                             const struct nfs42_falloc_args *args,
+> >                             struct compound_hdr *hdr)
+> > @@ -298,6 +342,25 @@ static void nfs4_xdr_enc_offload_cancel(struct rpc_rqst
+> > *req,
+> >  }
+> >
+> >  /*
+> > + * Encode COPY_NOTIFY request
+> > + */
+> > +static void nfs4_xdr_enc_copy_notify(struct rpc_rqst *req,
+> > +                                  struct xdr_stream *xdr,
+> > +                                  const void *data)
+> > +{
+> > +     const struct nfs42_copy_notify_args *args = data;
+> > +     struct compound_hdr hdr = {
+> > +             .minorversion = nfs4_xdr_minorversion(&args->cna_seq_args),
+> > +     };
+> > +
+> > +     encode_compound_hdr(xdr, req, &hdr);
+> > +     encode_sequence(xdr, &args->cna_seq_args, &hdr);
+> > +     encode_putfh(xdr, args->cna_src_fh, &hdr);
+> > +     encode_copy_notify(xdr, args, &hdr);
+> > +     encode_nops(&hdr);
+> > +}
+> > +
+> > +/*
+> >   * Encode DEALLOCATE request
+> >   */
+> >  static void nfs4_xdr_enc_deallocate(struct rpc_rqst *req,
+> > @@ -416,6 +479,58 @@ static int decode_write_response(struct xdr_stream *xdr,
+> >       return -EIO;
+> >  }
+> >
+> > +static int decode_nl4_server(struct xdr_stream *xdr, struct nl4_server *ns)
+> > +{
+> > +     struct nfs42_netaddr *naddr;
+> > +     uint32_t dummy;
+> > +     char *dummy_str;
+> > +     __be32 *p;
+> > +     int status;
+> > +
+> > +     /* nl_type */
+> > +     p = xdr_inline_decode(xdr, 4);
+> > +     if (unlikely(!p))
+> > +             return -EIO;
+> > +     ns->nl4_type = be32_to_cpup(p);
+> > +     switch (ns->nl4_type) {
+> > +     case NL4_NAME:
+> > +     case NL4_URL:
+> > +             status = decode_opaque_inline(xdr, &dummy, &dummy_str);
+> > +             if (unlikely(status))
+> > +                     return status;
+> > +             if (unlikely(dummy > NFS4_OPAQUE_LIMIT))
+> > +                     return -EIO;
+> > +             memcpy(&ns->u.nl4_str, dummy_str, dummy);
+> > +             ns->u.nl4_str_sz = dummy;
+> > +             break;
+> > +     case NL4_NETADDR:
+> > +             naddr = &ns->u.nl4_addr;
+> > +
+> > +             /* netid string */
+> > +             status = decode_opaque_inline(xdr, &dummy, &dummy_str);
+> > +             if (unlikely(status))
+> > +                     return status;
+> > +             if (unlikely(dummy > RPCBIND_MAXNETIDLEN))
+> > +                     return -EIO;
+> > +             naddr->netid_len = dummy;
+> > +             memcpy(naddr->netid, dummy_str, naddr->netid_len);
+> > +
+> > +             /* uaddr string */
+> > +             status = decode_opaque_inline(xdr, &dummy, &dummy_str);
+> > +             if (unlikely(status))
+> > +                     return status;
+> > +             if (unlikely(dummy > RPCBIND_MAXUADDRLEN))
+> > +                     return -EIO;
+> > +             naddr->addr_len = dummy;
+> > +             memcpy(naddr->addr, dummy_str, naddr->addr_len);
+> > +             break;
+> > +     default:
+> > +             WARN_ON_ONCE(1);
+> > +             return -EIO;
+> > +     }
+> > +     return 0;
+> > +}
+> > +
+> >  static int decode_copy_requirements(struct xdr_stream *xdr,
+> >                                   struct nfs42_copy_res *res) {
+> >       __be32 *p;
+> > @@ -458,6 +573,46 @@ static int decode_offload_cancel(struct xdr_stream *xdr,
+> >       return decode_op_hdr(xdr, OP_OFFLOAD_CANCEL);
+> >  }
+> >
+> > +static int decode_copy_notify(struct xdr_stream *xdr,
+> > +                           struct nfs42_copy_notify_res *res)
+> > +{
+> > +     __be32 *p;
+> > +     int status, count;
+> > +
+> > +     status = decode_op_hdr(xdr, OP_COPY_NOTIFY);
+> > +     if (status)
+> > +             return status;
+> > +     /* cnr_lease_time */
+> > +     p = xdr_inline_decode(xdr, 12);
+> > +     if (unlikely(!p))
+> > +             goto out_overflow;
+> > +     p = xdr_decode_hyper(p, &res->cnr_lease_time.seconds);
+> > +     res->cnr_lease_time.nseconds = be32_to_cpup(p);
+> > +
+> > +     status = decode_opaque_fixed(xdr, &res->cnr_stateid, NFS4_STATEID_SIZE);
+> > +     if (unlikely(status))
+> > +             goto out_overflow;
+> > +
+> > +     /* number of source addresses */
+> > +     p = xdr_inline_decode(xdr, 4);
+> > +     if (unlikely(!p))
+> > +             goto out_overflow;
+> > +
+> > +     count = be32_to_cpup(p);
+> > +     if (count > 1)
+> > +             pr_warn("NFS: %s: nsvr %d > Supported. Use first servers\n",
+> > +                      __func__, count);
+> > +
+> > +     status = decode_nl4_server(xdr, &res->cnr_src);
+> > +     if (unlikely(status))
+> > +             goto out_overflow;
+> > +     return 0;
+> > +
+> > +out_overflow:
+> > +     print_overflow_msg(__func__, xdr);
+> > +     return -EIO;
+> > +}
+> > +
+> >  static int decode_deallocate(struct xdr_stream *xdr, struct nfs42_falloc_res
+> > *res)
+> >  {
+> >       return decode_op_hdr(xdr, OP_DEALLOCATE);
+> > @@ -585,6 +740,32 @@ static int nfs4_xdr_dec_offload_cancel(struct rpc_rqst
+> > *rqstp,
+> >  }
+> >
+> >  /*
+> > + * Decode COPY_NOTIFY response
+> > + */
+> > +static int nfs4_xdr_dec_copy_notify(struct rpc_rqst *rqstp,
+> > +                                 struct xdr_stream *xdr,
+> > +                                 void *data)
+> > +{
+> > +     struct nfs42_copy_notify_res *res = data;
+> > +     struct compound_hdr hdr;
+> > +     int status;
+> > +
+> > +     status = decode_compound_hdr(xdr, &hdr);
+> > +     if (status)
+> > +             goto out;
+> > +     status = decode_sequence(xdr, &res->cnr_seq_res, rqstp);
+> > +     if (status)
+> > +             goto out;
+> > +     status = decode_putfh(xdr);
+> > +     if (status)
+> > +             goto out;
+> > +     status = decode_copy_notify(xdr, res);
+> > +
+> > +out:
+> > +     return status;
+> > +}
+> > +
+> > +/*
+> >   * Decode DEALLOCATE request
+> >   */
+> >  static int nfs4_xdr_dec_deallocate(struct rpc_rqst *rqstp,
+> > diff --git a/fs/nfs/nfs4file.c b/fs/nfs/nfs4file.c
+> > index 4288a6e..3a888f4 100644
+> > --- a/fs/nfs/nfs4file.c
+> > +++ b/fs/nfs/nfs4file.c
+> > @@ -133,12 +133,29 @@ static ssize_t nfs4_copy_file_range(struct file
+> > *file_in, loff_t pos_in,
+> >                                   struct file *file_out, loff_t pos_out,
+> >                                   size_t count, unsigned int flags)
+> >  {
+> > +     struct nfs42_copy_notify_res *cn_resp = NULL;
+> >       ssize_t ret;
+> >
+> >       if (file_inode(file_in) == file_inode(file_out))
+> >               return -EINVAL;
+> >  retry:
+> > +     if (nfs42_files_from_same_server(file_in, file_out)) {  /* Intra-ssc */
+> > +             if (file_in->f_op != file_out->f_op)
+> > +                     return -EXDEV;
+> > +     } else {  /* Inter-ssc */
+> > +             cn_resp = kzalloc(sizeof(struct nfs42_copy_notify_res),
+> > +                               GFP_NOFS);
+> > +             if (unlikely(cn_resp == NULL))
+> > +                     return -ENOMEM;
+> > +
+> > +             ret = nfs42_proc_copy_notify(file_in, file_out, cn_resp);
+> > +             if (ret)
+> > +                     goto out;
+> > +     }
+> >       ret = nfs42_proc_copy(file_in, pos_in, file_out, pos_out, count);
+> > +
+> > +out:
+> > +     kfree(cn_resp);
+> >       if (ret == -EAGAIN)
+> >               goto retry;
+> >       return ret;
 > > diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> > index fec6e6b..e5178b2f 100644
+> > index db84b4a..fec6e6b 100644
 > > --- a/fs/nfs/nfs4proc.c
 > > +++ b/fs/nfs/nfs4proc.c
-> > @@ -91,7 +91,6 @@
-> >  static int _nfs4_recover_proc_open(struct nfs4_opendata *data);
-> >  static int nfs4_do_fsinfo(struct nfs_server *, struct nfs_fh *, struct
-> > nfs_fsinfo *);
-> >  static void nfs_fixup_referral_attributes(struct nfs_fattr *fattr);
-> > -static int nfs4_proc_getattr(struct nfs_server *, struct nfs_fh *, struct
-> > nfs_fattr *, struct nfs4_label *label, struct inode *inode);
-> >  static int _nfs4_proc_getattr(struct nfs_server *server, struct nfs_fh
-> > *fhandle, struct nfs_fattr *fattr, struct nfs4_label *label, struct inode
-> > *inode);
-> >  static int nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
-> >                           struct nfs_fattr *fattr, struct iattr *sattr,
-> > @@ -1653,7 +1652,7 @@ static void nfs_state_clear_delegation(struct nfs4_state
-> > *state)
-> >       write_sequnlock(&state->seqlock);
-> >  }
+> > @@ -9692,6 +9692,7 @@ static bool nfs4_match_stateid(const nfs4_stateid *s1,
+> >               | NFS_CAP_ALLOCATE
+> >               | NFS_CAP_COPY
+> >               | NFS_CAP_OFFLOAD_CANCEL
+> > +             | NFS_CAP_COPY_NOTIFY
+> >               | NFS_CAP_DEALLOCATE
+> >               | NFS_CAP_SEEK
+> >               | NFS_CAP_LAYOUTSTATS
+> > diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+> > index b7bde12..2163900 100644
+> > --- a/fs/nfs/nfs4xdr.c
+> > +++ b/fs/nfs/nfs4xdr.c
+> > @@ -7790,6 +7790,7 @@ int nfs4_decode_dirent(struct xdr_stream *xdr, struct
+> > nfs_entry *entry,
+> >       PROC42(CLONE,           enc_clone,              dec_clone),
+> >       PROC42(COPY,            enc_copy,               dec_copy),
+> >       PROC42(OFFLOAD_CANCEL,  enc_offload_cancel,     dec_offload_cancel),
+> > +     PROC42(COPY_NOTIFY,     enc_copy_notify,        dec_copy_notify),
+> >       PROC(LOOKUPP,           enc_lookupp,            dec_lookupp),
+> >  };
 > >
-> > -static int update_open_stateid(struct nfs4_state *state,
-> > +int update_open_stateid(struct nfs4_state *state,
-> >               const nfs4_stateid *open_stateid,
-> >               const nfs4_stateid *delegation,
-> >               fmode_t fmode)
-> > @@ -3936,7 +3935,7 @@ static int _nfs4_proc_getattr(struct nfs_server *server,
-> > struct nfs_fh *fhandle,
-> >       return nfs4_call_sync(server->client, server, &msg, &args.seq_args,
-> > &res.seq_res, 0);
-> >  }
+> > diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+> > index 4d76f87..d80b25e 100644
+> > --- a/include/linux/nfs4.h
+> > +++ b/include/linux/nfs4.h
+> > @@ -537,6 +537,7 @@ enum {
+> >       NFSPROC4_CLNT_CLONE,
+> >       NFSPROC4_CLNT_COPY,
+> >       NFSPROC4_CLNT_OFFLOAD_CANCEL,
+> > +     NFSPROC4_CLNT_COPY_NOTIFY,
 > >
-> > -static int nfs4_proc_getattr(struct nfs_server *server, struct nfs_fh
-> > *fhandle,
-> > +int nfs4_proc_getattr(struct nfs_server *server, struct nfs_fh *fhandle,
-> >                               struct nfs_fattr *fattr, struct nfs4_label
-> > *label,
-> >                               struct inode *inode)
-> >  {
+> >       NFSPROC4_CLNT_LOOKUPP,
+> >  };
+> > diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+> > index 0fc0b91..e5d89ff 100644
+> > --- a/include/linux/nfs_fs_sb.h
+> > +++ b/include/linux/nfs_fs_sb.h
+> > @@ -261,5 +261,6 @@ struct nfs_server {
+> >  #define NFS_CAP_CLONE                (1U << 23)
+> >  #define NFS_CAP_COPY         (1U << 24)
+> >  #define NFS_CAP_OFFLOAD_CANCEL       (1U << 25)
+> > +#define NFS_CAP_COPY_NOTIFY  (1U << 26)
+> >
+> >  #endif
+> > diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+> > index 0e01625..dfc59bc 100644
+> > --- a/include/linux/nfs_xdr.h
+> > +++ b/include/linux/nfs_xdr.h
+> > @@ -1428,6 +1428,22 @@ struct nfs42_offload_status_res {
+> >       int                             osr_status;
+> >  };
+> >
+> > +struct nfs42_copy_notify_args {
+> > +     struct nfs4_sequence_args       cna_seq_args;
+> > +
+> > +     struct nfs_fh           *cna_src_fh;
+> > +     nfs4_stateid            cna_src_stateid;
+> > +     struct nl4_server       cna_dst;
+> > +};
+> > +
+> > +struct nfs42_copy_notify_res {
+> > +     struct nfs4_sequence_res        cnr_seq_res;
+> > +
+> > +     struct nfstime4         cnr_lease_time;
+> > +     nfs4_stateid            cnr_stateid;
+> > +     struct nl4_server       cnr_src;
+> > +};
+> > +
+> >  struct nfs42_seek_args {
+> >       struct nfs4_sequence_args       seq_args;
+> >
