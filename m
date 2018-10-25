@@ -2,78 +2,140 @@ Return-Path: <SRS0=HHNt=NF=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.3 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_PASS,URIBL_BLOCKED,USER_AGENT_MUTT autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-6.5 required=3.0 tests=FREEMAIL_FORGED_FROMDOMAIN,
+	FREEMAIL_FROM,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
+	SIGNED_OFF_BY,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 57D51ECDE44
-	for <linux-nfs@archiver.kernel.org>; Thu, 25 Oct 2018 01:31:14 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 70DF7ECDE46
+	for <linux-nfs@archiver.kernel.org>; Thu, 25 Oct 2018 04:15:29 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 1F30420832
-	for <linux-nfs@archiver.kernel.org>; Thu, 25 Oct 2018 01:31:14 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 1F30420832
-Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=intel.com
+	by mail.kernel.org (Postfix) with ESMTP id 0EA442064C
+	for <linux-nfs@archiver.kernel.org>; Thu, 25 Oct 2018 04:15:28 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 0EA442064C
+Authentication-Results: mail.kernel.org; dmarc=none (p=none dis=none) header.from=163.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726308AbeJYKBj (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 25 Oct 2018 06:01:39 -0400
-Received: from mga17.intel.com ([192.55.52.151]:43390 "EHLO mga17.intel.com"
+        id S1726652AbeJYMqX (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 25 Oct 2018 08:46:23 -0400
+Received: from mx1.redhat.com ([209.132.183.28]:58530 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726236AbeJYKBj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 25 Oct 2018 06:01:39 -0400
-X-Amp-Result: UNKNOWN
-X-Amp-Original-Verdict: FILE UNKNOWN
-X-Amp-File-Uploaded: False
-Received: from orsmga008.jf.intel.com ([10.7.209.65])
-  by fmsmga107.fm.intel.com with ESMTP/TLS/DHE-RSA-AES256-GCM-SHA384; 24 Oct 2018 18:31:10 -0700
-X-ExtLoop1: 1
-X-IronPort-AV: E=Sophos;i="5.54,422,1534834800"; 
-   d="scan'208";a="84243570"
-Received: from lkp-server01.sh.intel.com (HELO lkp-server01) ([10.239.97.150])
-  by orsmga008.jf.intel.com with ESMTP; 24 Oct 2018 18:31:07 -0700
-Received: from kbuild by lkp-server01 with local (Exim 4.89)
-        (envelope-from <lkp@intel.com>)
-        id 1gFUUM-0008Gw-Ox; Thu, 25 Oct 2018 09:31:06 +0800
-Date:   Thu, 25 Oct 2018 09:31:00 +0800
-From:   kbuild test robot <lkp@intel.com>
-To:     Olga Kornievskaia <olga.kornievskaia@gmail.com>
-Cc:     kbuild-all@01.org, trond.myklebust@hammerspace.com,
-        anna.schumaker@netapp.com, viro@zeniv.linux.org.uk,
-        smfrench@gmail.com, miklos@szeredi.hu, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-cifs@vger.kernel.org,
-        linux-unionfs@vger.kernel.org, linux-man@vger.kernel.org
-Subject: Re: [PATCH v2 10/13] NFS inter ssc open
-Message-ID: <201810250954.PciQTirJ%fengguang.wu@intel.com>
-References: <20181024195837.35532-12-olga.kornievskaia@gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20181024195837.35532-12-olga.kornievskaia@gmail.com>
-User-Agent: Mutt/1.5.23 (2014-03-12)
+        id S1726308AbeJYMqX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 25 Oct 2018 08:46:23 -0400
+Received: from smtp.corp.redhat.com (int-mx07.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id BF92EE3E14;
+        Thu, 25 Oct 2018 04:15:27 +0000 (UTC)
+Received: from dhcp-12-115.nay.redhat.com (dhcp-12-115.nay.redhat.com [10.66.12.115])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 688281054FBA;
+        Thu, 25 Oct 2018 04:15:26 +0000 (UTC)
+From:   "Jianhong.Yin" <yin-jianhong@163.com>
+To:     steved@redhat.com
+Cc:     linux-nfs@vger.kernel.org, "Jianhong.Yin" <yin-jianhong@163.com>
+Subject: [PATCH] [nfs-utils] fix method to check if mounted already
+Date:   Thu, 25 Oct 2018 12:15:18 +0800
+Message-Id: <20181025041518.24465-1-yin-jianhong@163.com>
+X-Scanned-By: MIMEDefang 2.84 on 10.5.11.22
+X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.38]); Thu, 25 Oct 2018 04:15:27 +0000 (UTC)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hi Olga,
+reproducer:
+'''
+mkdir /expdir /mnt/nfsmp /mnt/tmpfs
+echo "/expdir *(rw,no_root_squash)" >/etc/exports
+service nfs restart
+mount -t tmpfs tmpfs /mnt/tmpfs
+mount -osharecache localhost:/expdir /mnt/nfsmp #success
+mount -osharecache localhost:/expdir /mnt/nfsmp #mounted already, return 0(pass)
+mount -osharecache localhost:/expdir /mnt/tmpfs #success
+mount -osharecache localhost:/expdir /mnt/tmpfs #mounted already, return 0(pass)
+umount /mnt/nfsmp
+umount /mnt/tmpfs
 
-Thank you for the patch! Perhaps something to improve:
+mount -ocontext=system_u:object_r:xferlog_t:s0,sharecache localhost:/expdir /mnt/nfsmp
+mount -ocontext=system_u:object_r:user_home_dir_t:s0,sharecache localhost:/expdir /mnt/tmpfs
+[[ $? = 0 ]] && echo "***test fail: hasn't mounted, should return fail ***"
+'''
 
-[auto build test WARNING on nfs/linux-next]
-[also build test WARNING on v4.19]
-[cannot apply to next-20181019]
-[if your patch is applied to the wrong git tree, please drop us a note to help improve the system]
-
-url:    https://github.com/0day-ci/linux/commits/Olga-Kornievskaia/client-side-support-for-inter-SSC-copy/20181025-043859
-base:   git://git.linux-nfs.org/projects/trondmy/linux-nfs.git linux-next
-
-
-coccinelle warnings: (new ones prefixed by >>)
-
->> fs/nfs/nfs4file.c:345:12-18: WARNING: PTR_ERR_OR_ZERO can be used
-
-Please review and possibly fold the followup patch.
-
+Signed-off-by: Jianhong Yin <yin-jianhong@163.com>
 ---
-0-DAY kernel test infrastructure                Open Source Technology Center
-https://lists.01.org/pipermail/kbuild-all                   Intel Corporation
+ support/include/misc.h    |  1 +
+ support/misc/mountpoint.c | 26 +++++++++++++++++++++++++-
+ utils/mount/stropts.c     |  4 +---
+ 3 files changed, 27 insertions(+), 4 deletions(-)
+
+diff --git a/support/include/misc.h b/support/include/misc.h
+index 06e2a0c..6a146e4 100644
+--- a/support/include/misc.h
++++ b/support/include/misc.h
+@@ -19,6 +19,7 @@ char *generic_make_pathname(const char *, const char *);
+ _Bool generic_setup_basedir(const char *, const char *, char *, const size_t);
+ 
+ extern int is_mountpoint(char *path);
++extern int is_mounted_already(const char *fsname, const char *dir);
+ 
+ /* size of the file pointer buffers for rpc procfs files */
+ #define RPC_CHAN_BUF_SIZE 32768
+diff --git a/support/misc/mountpoint.c b/support/misc/mountpoint.c
+index 9f9ce44..e21d529 100644
+--- a/support/misc/mountpoint.c
++++ b/support/misc/mountpoint.c
+@@ -4,8 +4,10 @@
+  */
+ 
+ #include <string.h>
+-#include "xcommon.h"
+ #include <sys/stat.h>
++#include <stdio.h>
++#include <mntent.h>
++#include "xcommon.h"
+ #include "misc.h"
+ 
+ int
+@@ -38,3 +40,25 @@ is_mountpoint(char *path)
+ 	free(dotdot);
+ 	return rv;
+ }
++
++int
++is_mounted_already(const char *fsname, const char *dir)
++{
++	struct mntent *ent;
++	FILE *fp;
++	int ret = 0;
++
++	fp = setmntent("/proc/mounts", "r");
++	if (fp == NULL) {
++		perror("[unlikely] setmntent(3) fail");
++		exit(1);
++	}
++	while (NULL != (ent = getmntent(fp))) {
++		if (!strcmp(ent->mnt_fsname, fsname) && !strcmp(ent->mnt_dir, dir)) {
++			ret = 1;
++			break;
++		}
++	}
++	endmntent(fp);
++	return ret;
++}
+diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+index eed0356..0ee13bc 100644
+--- a/utils/mount/stropts.c
++++ b/utils/mount/stropts.c
+@@ -1079,9 +1079,7 @@ static int nfsmount_fg(struct nfsmount_info *mi)
+ 		if (nfs_try_mount(mi))
+ 			return EX_SUCCESS;
+ 
+-#pragma GCC diagnostic ignored "-Wdiscarded-qualifiers"
+-		if (errno == EBUSY && is_mountpoint(mi->node))
+-#pragma GCC diagnostic warning "-Wdiscarded-qualifiers"
++		if (errno == EBUSY && is_mounted_already(mi->spec, mi->node))
+ 			/*
+ 			 * EBUSY can happen when mounting a filesystem that
+ 			 * is already mounted or when the context= are
+-- 
+2.17.2
+
