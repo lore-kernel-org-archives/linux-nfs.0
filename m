@@ -7,59 +7,59 @@ X-Spam-Status: No, score=-6.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
 	SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1ED6FC46475
-	for <linux-nfs@archiver.kernel.org>; Thu, 25 Oct 2018 04:34:46 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id EE561C46475
+	for <linux-nfs@archiver.kernel.org>; Thu, 25 Oct 2018 04:38:32 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id B633A20831
-	for <linux-nfs@archiver.kernel.org>; Thu, 25 Oct 2018 04:34:45 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 7D66220838
+	for <linux-nfs@archiver.kernel.org>; Thu, 25 Oct 2018 04:38:32 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="vUcU2Kft"
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org B633A20831
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="l+EytUjA"
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 7D66220838
 Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=gmail.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726527AbeJYNFl (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 25 Oct 2018 09:05:41 -0400
-Received: from mail-yw1-f65.google.com ([209.85.161.65]:37202 "EHLO
-        mail-yw1-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726308AbeJYNFl (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Oct 2018 09:05:41 -0400
-Received: by mail-yw1-f65.google.com with SMTP id v77-v6so3056781ywc.4;
-        Wed, 24 Oct 2018 21:34:42 -0700 (PDT)
+        id S1727125AbeJYNJ3 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 25 Oct 2018 09:09:29 -0400
+Received: from mail-yb1-f196.google.com ([209.85.219.196]:39497 "EHLO
+        mail-yb1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726803AbeJYNJ3 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Oct 2018 09:09:29 -0400
+Received: by mail-yb1-f196.google.com with SMTP id j9-v6so3133403ybj.6;
+        Wed, 24 Oct 2018 21:38:30 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=mime-version:references:in-reply-to:from:date:message-id:subject:to
          :cc;
-        bh=yy02/UOO2b/ai8yPT60D0XprJT5yKJRsDa53CQ+ZfqA=;
-        b=vUcU2KftOOMlK8weSNBVrGX9W4MwTJAAQ0GAYQvJEZ0lyBU8d4gMaH5hXey9KwqP3u
-         fKRgjufWfuFuT5RatOO1eJAuQqsE8uDW9VHkBra03zlSz1g9zluJ1GsYumqi0TlXaCBg
-         32ui8YSu7FAM8FTXfOFBva78xKwBnOnanHwfP83vdYZGKU/3Viicy9vDIFqcuWgi/Cmr
-         JFlykqac7snL+j6F06dIdRN24+Xg0uThRMX4H4ruxdKwGpkspCqxibYr0uMjC2nWY2of
-         BTaoF8SiRjv7fQck5ZHlkMHvLbB5mP+meAIyV2uTHWAKeCV3bTtYJKGG/Y0HRaAV+ErO
-         mMdg==
+        bh=aLV1P1iB5gtdabbjEWdvTSnZflZW7TgZIDzURFzZdu4=;
+        b=l+EytUjAFOR4t5fFl4xQZcgIUikyD3CKWDB1eaW+6HW3MJ21L1BwQJj7cqQYJGEFe5
+         QV5AI+iVWVNsnpBzgeOrAx0m6FsOXfRwprVBTabHR+9+16TgsAGWYAUcaU0/+FuFo0PV
+         h9quf9snE6Gcm5U5pLIBaU4sVrPPU+q7AKqq0FrluvzI/sU+a/xeKOgzlI4OPtNE/hCM
+         jr+o/DkfXsa66B6L4Uvygpr/wzjC1spjJjd6dkZOUDdp6J7rr7qDP4sdLPzPe187yv6d
+         /YMvH2gc1RkDx5y8PqKtgkd/HieJMZ5Np+FppHK0cbDoZDlzEyiQcnnCD5CxO9GBX+l3
+         et9Q==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:mime-version:references:in-reply-to:from:date
          :message-id:subject:to:cc;
-        bh=yy02/UOO2b/ai8yPT60D0XprJT5yKJRsDa53CQ+ZfqA=;
-        b=tywzXkIxpkTPIRpCbhtBUSGK1KGdUIIHaJDB5YpjjOLxQriSUFBsnNDCQshsxW6dLt
-         AgpB+xwgb3KQVH9NutvVoXNeg2Kk5ray/R9iMFUtxuff5Azt2WNI3tO2qufwuXQ1emAS
-         OgSi2iTZjljtxCY7dLUMzg9b3IMAiis6gxE1BbLClHEniWeZoDJs254eA0VHWBNc3AHh
-         xqaERimpSWl85soSw9xnemsKxtP/YMqX+WQt2liz0Kh4OVdSjHNVdNa/83JQJhqvymiE
-         C120gr3hOXg0JmbVLJTYuHmUhLBX4z12W1MqIa8SkBtPDqwIa/QDEO5SyaCaPIaSqZEL
-         x7mQ==
-X-Gm-Message-State: AGRZ1gLgtgnzcIMyqGsSYx2dRkXJ2s9sX4/RXfHN++wvnv9XVdZiLUNi
-        Mh0NE92cJpBkIIeRcpqluVqGsS7Fr4KzIJIjxKw=
-X-Google-Smtp-Source: AJdET5fcshj5FokeZ6BQnqNz1hYerf9CxxcH8XUr8FRn7XcHhSaO0n44CqfPPoi3NaPJiA2WD/xuyvc9gPlx9RchNoQ=
-X-Received: by 2002:a81:6505:: with SMTP id z5-v6mr27550ywb.34.1540442082156;
- Wed, 24 Oct 2018 21:34:42 -0700 (PDT)
+        bh=aLV1P1iB5gtdabbjEWdvTSnZflZW7TgZIDzURFzZdu4=;
+        b=qolZ+0yPbbpuI6Nb/T+tDK78T7qO5QckIxtp7vCENdJ0KlOhNogq0Q4qXscYmHJQ9P
+         3YnK2xk5GT+OztzM4ihg2nzHjqNOBK5KYVKC0NB9/7iUAM2SBizpcuJxx92Y/vkF/sYp
+         6QhmOJR2fi5IsOWtG7BzEM2nLOa2ClWecmZ1V3GCj26d9hodT0jkQoyh2V2Q9PXzAcsK
+         Hi+z7bAu84ti4QZ3VUYRh0FB0znxzi3Z2DNDIHIdhAH2ZM44u3NBaY/XMNFczbsbSUri
+         zuWKS5Lw+U1tY26QB9oTBq+AGWjIVo/I4RMgPKSEhW+deK1GBZI6Na1LRh5VqaSSTcGa
+         hAkA==
+X-Gm-Message-State: AGRZ1gJ+9MLkqV2KwmI8XnC6Q1mjWdGf/s2df3RHNOoAAmQSZUID0QwY
+        lB7ubmhIXa7VQebDX0DAtHTgvt26ad/+nj4pKkI=
+X-Google-Smtp-Source: AJdET5cFMIqlN2qZ/LsEaZI1iwXL7MY0ZXuoJv6k9Br/1Kyfpi0FMI6hoI1S3Emjjxhh9rt1G368Weq8FPml+1honug=
+X-Received: by 2002:a25:bdd0:: with SMTP id g16-v6mr3627ybk.397.1540442309930;
+ Wed, 24 Oct 2018 21:38:29 -0700 (PDT)
 MIME-Version: 1.0
-References: <20181024195837.35532-1-olga.kornievskaia@gmail.com> <20181024195837.35532-2-olga.kornievskaia@gmail.com>
-In-Reply-To: <20181024195837.35532-2-olga.kornievskaia@gmail.com>
+References: <20181024195837.35532-1-olga.kornievskaia@gmail.com> <20181024195837.35532-6-olga.kornievskaia@gmail.com>
+In-Reply-To: <20181024195837.35532-6-olga.kornievskaia@gmail.com>
 From:   Amir Goldstein <amir73il@gmail.com>
-Date:   Thu, 25 Oct 2018 07:34:31 +0300
-Message-ID: <CAOQ4uxgx1YZfn2GsTQhGzxgZ4AMxMocCOrKOEo8StVVfr=2cyQ@mail.gmail.com>
-Subject: Re: [PATCH v2 01/13] VFS permit cross device vfs_copy_file_range
+Date:   Thu, 25 Oct 2018 07:38:20 +0300
+Message-ID: <CAOQ4uxg4_eF2_uur7-S=SCc5QzyVUfqRBjr9yYDGLsq5Ai4GXA@mail.gmail.com>
+Subject: Re: [PATCH v2 04/13] NFS: add cross file system check for copy_file_range
 To:     Olga Kornievskaia <olga.kornievskaia@gmail.com>
 Cc:     trond.myklebust@hammerspace.com,
         Anna Schumaker <anna.schumaker@netapp.com>,
@@ -77,73 +77,37 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Wed, Oct 24, 2018 at 10:58 PM Olga Kornievskaia
+On Wed, Oct 24, 2018 at 10:59 PM Olga Kornievskaia
 <olga.kornievskaia@gmail.com> wrote:
 >
 > From: Olga Kornievskaia <kolga@netapp.com>
 >
-> This patch removes the check for source and destination files to
-> come from the same superblock. This feature was of interest to
-> NFS as well as CIFS communities.
->
-> Specifically, this feature is needed to allow for NFSv4.2 copy offload
-> to be done between different NFSv4.2 servers. SMBv3 copy offload between
-> different servers would be able to use this as well.
->
-> Removal of the check implies that passed in source and destination
-> files can come from different superblocks of the same file system
-> type or different. It is upto each individual copy_file_range()
-> file system implementation to decide what type of copy it is
-> capable of doing and return -EXDEV in cases support is lacking.
->
-> There are 3 known implementator of copy_file_range() f_op: NFS,
-> CIFS, OverlayFS. NFS and CIFS are interested to support cross-device
-> copy offload but do not support cross file system types copy offload.
-> Following patches will add appropriate checks in each of the drivers.
->
-
-That should be the other way around - first add limitation inside filesystems
-then relax vfs check. otherwise you leave a bug in the middle of bisect.
-
-> If the copy_file_range() errors with EXDEV, the code would fallback
-> on doing do_splice_direct() copying which in itself is beneficial.
->
-> Adding wording to the vfs.txt and porting documentation about the
-> new support for cross-device copy offload.
+> VFS copy_file_range was relaxed to allow for cross-device copy.
+> Add a check to disallow cross file systems copy offload, both
+> files are expected to be of NFS type.
 >
 > Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
 > ---
->  Documentation/filesystems/porting | 7 +++++++
->  Documentation/filesystems/vfs.txt | 6 +++++-
->  fs/read_write.c                   | 9 +++------
->  3 files changed, 15 insertions(+), 7 deletions(-)
+>  fs/nfs/nfs4file.c | 3 +++
+>  1 file changed, 3 insertions(+)
 >
-> diff --git a/Documentation/filesystems/porting b/Documentation/filesystems/porting
-> index 7b7b845..ebb4954 100644
-> --- a/Documentation/filesystems/porting
-> +++ b/Documentation/filesystems/porting
-> @@ -622,3 +622,10 @@ in your dentry operations instead.
->         alloc_file_clone(file, flags, ops) does not affect any caller's references.
->         On success you get a new struct file sharing the mount/dentry with the
->         original, on failure - ERR_PTR().
-> +--
-> +[mandatory]
-> +       ->copy_file_range() may now be passed files which belong to two
-> +       different superblocks of the same file system type or which belong
-> +       to two different filesystems types all together. As before, the
-> +        destination's copy_file_range() is the function which is called.
-> +       If it cannot copy ranges from the source, it should return -EXDEV.
-> diff --git a/Documentation/filesystems/vfs.txt b/Documentation/filesystems/vfs.txt
-> index a6c6a8a..34c0e8c 100644
-> --- a/Documentation/filesystems/vfs.txt
-> +++ b/Documentation/filesystems/vfs.txt
-> @@ -1,5 +1,6 @@
+> diff --git a/fs/nfs/nfs4file.c b/fs/nfs/nfs4file.c
+> index 4288a6e..7137e7b 100644
+> --- a/fs/nfs/nfs4file.c
+> +++ b/fs/nfs/nfs4file.c
+> @@ -135,6 +135,9 @@ static ssize_t nfs4_copy_file_range(struct file *file_in, loff_t pos_in,
+>  {
+>         ssize_t ret;
 >
->               Overview of the Linux Virtual File System
-> +- [fs] nfs: Don't let readdirplus revalidate an inode that was marked as stale (Benjamin Coddington) [1429514 1416532]
->
+> +       if (file_in->f_inode->i_sb->s_type != file_out->f_inode->i_sb->s_type)
+> +               return -EXDEV;
+> +
 
-???
+You would need to doo  the patches in following order:
+1. add same sb check in nfs
+2. relax same sb check in vfs
+3. implement cross fs copy in nfs
+4. relax same sb to same sb type in nfs
 
 Thanks,
 Amir.
