@@ -2,88 +2,142 @@ Return-Path: <SRS0=VOvP=NG=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-0.9 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS,
-	URIBL_BLOCKED autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-2.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS,USER_AGENT_GIT
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id ECE9BECDE46
-	for <linux-nfs@archiver.kernel.org>; Fri, 26 Oct 2018 20:10:38 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9E753ECDE44
+	for <linux-nfs@archiver.kernel.org>; Fri, 26 Oct 2018 20:11:02 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id B173B20824
-	for <linux-nfs@archiver.kernel.org>; Fri, 26 Oct 2018 20:10:38 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 4FEA720824
+	for <linux-nfs@archiver.kernel.org>; Fri, 26 Oct 2018 20:11:02 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=linux-foundation.org header.i=@linux-foundation.org header.b="HyLFPSe6"
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org B173B20824
-Authentication-Results: mail.kernel.org; dmarc=none (p=none dis=none) header.from=linux-foundation.org
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="Wd68WZTO"
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 4FEA720824
+Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=gmail.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1725861AbeJ0Es7 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sat, 27 Oct 2018 00:48:59 -0400
-Received: from mail-lj1-f194.google.com ([209.85.208.194]:45277 "EHLO
-        mail-lj1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725965AbeJ0Es6 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 27 Oct 2018 00:48:58 -0400
-Received: by mail-lj1-f194.google.com with SMTP id j4-v6so2256890ljc.12
-        for <linux-nfs@vger.kernel.org>; Fri, 26 Oct 2018 13:10:34 -0700 (PDT)
+        id S1727745AbeJ0EtX (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sat, 27 Oct 2018 00:49:23 -0400
+Received: from mail-qt1-f179.google.com ([209.85.160.179]:34353 "EHLO
+        mail-qt1-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725965AbeJ0EtX (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 27 Oct 2018 00:49:23 -0400
+Received: by mail-qt1-f179.google.com with SMTP id z2-v6so2705652qts.1;
+        Fri, 26 Oct 2018 13:10:59 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=linux-foundation.org; s=google;
-        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
-         :cc;
-        bh=QLkHV6pWJe+d2iTOq9CFVVNca99PLFJdKWtysCVEe2U=;
-        b=HyLFPSe6bZrKzK27B3sfl4VlIuDEB/OWrWL1/IUP5YVYi+ad6/Kio3/O3XFlqHoglC
-         ImG9EuqzH+7mi2hbOJBYaN/MdHCAQ/E4dW2x/F6OqP8/NSqnWexP7zwGQTvywAMRWc7Y
-         VhdWmAS8kEw/YJlhO35lPHD3M6LJLsCIj9ikM=
+        d=gmail.com; s=20161025;
+        h=from:to:cc:subject:date:message-id;
+        bh=iZq+igXtd7B7yRB3A6SANShc1bYgK910waS8/hRhgtU=;
+        b=Wd68WZTOTzgFiFmEnkY4kwgNkxYgfuTx9BjMA9KApR5QN5l3KonIP2QPHIj9eL/Bcf
+         GOaeH2hQWfxMcbGjoDo1JmcwqzOjJnecgqITo6vj0y9xjDLQnHKBk5hsJYUiUBfuz8U1
+         VGEqs30NIy+NynIoDtHRTcD8FNofYXA22jEcabcnCzRoNp82XpOJRgv9q1YHJ+tE3AAt
+         6Ub4XR37N5tWwev9CQRNvTTKmb50hxtrwLnO6xvcX+hQG/2BKytTLg9q7uwqR5GrOJFA
+         9GiutOtcbvmNKKp1revvF/0uz0gq5nhVeMHEZQ5FVJQ5MLtUKk+8kDrQMbH5mQpVxlAO
+         vYIQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
-         :message-id:subject:to:cc;
-        bh=QLkHV6pWJe+d2iTOq9CFVVNca99PLFJdKWtysCVEe2U=;
-        b=alJNJ2+stK8n8Cs5Qn7sH/ZPhgCR5LFFXfXob1NNrDb5pC1hgMHG+qStw3Zbh6/dEf
-         YPo8zi0sIHcTAEgpYp3IZKfLn/EJpjjb0kouGsKltg0qt0lEZVpGQuVEWZMqWQkkuvTx
-         vqk/pk4NDaMIDsPBQNifDBJczpCPN9jYafzDSygycZiI/qrCicx4e2zyP2Nd9cNholM/
-         rpOi+QcyYh8vCtdhfAgZSqXxr0y8YbhiIUk/uJoQayjNXcqpzC8TiA09kHKyvhXpric0
-         6lg2pe6hvdzPfnZEsnscwBC2NiydpKtL01M/UD3yF++ZPmZpgMT0hyP0vzmNKRMG+nZM
-         8jkA==
-X-Gm-Message-State: AGRZ1gJUlVh6V4lxnbuJXkiwcSxdVXyM6ijE7TrCNR0twCqv/zPPUEr/
-        UMlsfT9egWul6w9mt6O1uhpq5Dd1YPD88w==
-X-Google-Smtp-Source: AJdET5dueCMnBVnpT4wOB5+XxwcA2SuPUrqLC7vT6rKuIOt01rHQ2tf9JahyYdApRgRsVF+eHzklyQ==
-X-Received: by 2002:a2e:924b:: with SMTP id v11-v6mr3120571ljg.9.1540584633729;
-        Fri, 26 Oct 2018 13:10:33 -0700 (PDT)
-Received: from mail-lf1-f51.google.com (mail-lf1-f51.google.com. [209.85.167.51])
-        by smtp.gmail.com with ESMTPSA id s22-v6sm1291207lfb.12.2018.10.26.13.10.32
-        for <linux-nfs@vger.kernel.org>
-        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Fri, 26 Oct 2018 13:10:32 -0700 (PDT)
-Received: by mail-lf1-f51.google.com with SMTP id x24-v6so1833968lfe.5
-        for <linux-nfs@vger.kernel.org>; Fri, 26 Oct 2018 13:10:32 -0700 (PDT)
-X-Received: by 2002:a19:7019:: with SMTP id h25-v6mr3223752lfc.147.1540584632204;
- Fri, 26 Oct 2018 13:10:32 -0700 (PDT)
-MIME-Version: 1.0
-References: <6bbed95d83465dde644c6f66acc73e3cd94f123e.camel@hammerspace.com>
-In-Reply-To: <6bbed95d83465dde644c6f66acc73e3cd94f123e.camel@hammerspace.com>
-From:   Linus Torvalds <torvalds@linux-foundation.org>
-Date:   Fri, 26 Oct 2018 13:10:16 -0700
-X-Gmail-Original-Message-ID: <CAHk-=wheW3hFQ8Jy5YYnNL1V+ZqA_qQoA63q2uK9ngz4=pXCqw@mail.gmail.com>
-Message-ID: <CAHk-=wheW3hFQ8Jy5YYnNL1V+ZqA_qQoA63q2uK9ngz4=pXCqw@mail.gmail.com>
-Subject: Re: [GIT PULL] Please pull NFS client changes for Linux 4.20.
-To:     trondmy@hammerspace.com
-Cc:     Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
+        h=x-gm-message-state:from:to:cc:subject:date:message-id;
+        bh=iZq+igXtd7B7yRB3A6SANShc1bYgK910waS8/hRhgtU=;
+        b=P1mPr6YsxR0Oeqw/rA60SRZHv2X1vMxk3IvK1pyqCyu9cMtyUFy5tZI0Veb/mtNS17
+         CU7aDu73xZpCBqb2zmQgYkSbX+VqnDF8xMmrF/7u3/zpIAw5ZKui7BCsaHbr1g1a6gUp
+         FBessXLaAyLewxgsPmjLZ+ZJuiMHS1Q3hk0p1GyQwpIXZBxEFWYqxymMk9jGCSc5Flus
+         dAxPiscjggEw2ym2uVl+/Exwlyn6ML7HkHtZGMHvNfl9aPW2QQEfnzLfe8Nwr9Ql5mvH
+         xhCezOAd0Ju2OfLx/1H67ZLZwPMpqTRi6AW2Ym9vMJfKPb69tWXDiYQ2A4Z7O5piHcp6
+         nw5Q==
+X-Gm-Message-State: AGRZ1gLCkzxNgE7f2J1n+tXS4Ft4QQKzLV7ScxmlWge+DTeVgxIuwb+2
+        TC0VVXbqYQc4gShdjkKwf4U=
+X-Google-Smtp-Source: AJdET5ceju7o+YGSh5H33h81Zd4BLv2Czky6Hhtkq9Ms04dOr7Nzb/nrrahCtDhegM0mfqdvwrVUgw==
+X-Received: by 2002:aed:39a9:: with SMTP id m38-v6mr4701551qte.222.1540584659501;
+        Fri, 26 Oct 2018 13:10:59 -0700 (PDT)
+Received: from Olgas-MBP-195.attlocal.net (172-10-226-31.lightspeed.livnmi.sbcglobal.net. [172.10.226.31])
+        by smtp.gmail.com with ESMTPSA id p64-v6sm8037667qkc.96.2018.10.26.13.10.58
+        (version=TLS1 cipher=AES128-SHA bits=128/128);
+        Fri, 26 Oct 2018 13:10:58 -0700 (PDT)
+From:   Olga Kornievskaia <olga.kornievskaia@gmail.com>
+To:     trond.myklebust@hammerspace.com, anna.schumaker@netapp.com,
+        viro@zeniv.linux.org.uk, smfrench@gmail.com, miklos@szeredi.hu
+Cc:     linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-cifs@vger.kernel.org, linux-unionfs@vger.kernel.org,
+        linux-man@vger.kernel.org
+Subject: [PATCH v4 00/11] client-side support for "inter" SSC copy
+Date:   Fri, 26 Oct 2018 16:10:45 -0400
+Message-Id: <20181026201057.36899-1-olga.kornievskaia@gmail.com>
+X-Mailer: git-send-email 2.10.1 (Apple Git-78)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Fri, Oct 26, 2018 at 8:45 AM Trond Myklebust <trondmy@hammerspace.com> wrote:
->
-> NFS client updates for Linux 4.20
+From: Olga Kornievskaia <kolga@netapp.com>
 
-Pulled.
+This patch series adds client-side support for doing NFSv4.2 "inter"
+copy offload between different NFS servers.
 
-Btw, just out of curiosity - is there some pattern to when I get the
-pull requests from you vs Anna? Or is it just "whoever happens to have
-the baton"? Not that it matters, but I was wondering if there was some
-logic to it that I've missed..
+In case of the "inter" SSC copy files reside on different servers and
+thus under different superblocks and require that VFS removes the
+restriction that src and dst files must be on the same superblock.
 
-                Linus
+NFS's copy_file_range() determines if the copy is "intra" or "inter"
+and for "inter" it sends the COPY_NOTIFY to the source server. Then,
+it would send of an asynchronous COPY to the destination server. If
+an application cancels an in-flight COPY, OFFLOAD_CANCEL is sent to
+both of the servers.
+
+This patch series also include necessary client-side additions that
+are performed by the destination server. The server needs an NFS
+open that represents a source file without doing an actual open.
+Two function nfs42_ssc_open/nfs42_ssc_close() are introduced to
+accomplish it that make use of the VFS's alloc_file_pseudo() to
+represent an open.
+
+Also this particular open is marked (NFS_SVC_SSC_COPY_STATE) so
+that if the destination server ever to receive stateid errors on
+this stateid, it knows not to initiate state recovery (in case
+when source server reboots). The recovery must be done by the
+client and a new copy must be initiated. Therefore, in this case
+the recovery needs to fail with EIO.
+
+v4:
+-- in the VFS patches: 1. removed the accidental text in vfs.txt,
+2. removed additions to vfs.txt, and 3. Anna provided help with 
+wording the commit message and 4. changed the offset check to
+include the boundry just like it was before.
+-- removed dprintk from the nfs42_ssc_open
+-- changed the cross filesystem check in NFS's copy_file_range
+
+Olga Kornievskaia (11):
+  VFS move cross device copy_file_range() check into filesystems
+  VFS copy_file_range check validity of input source offset
+  NFS NFSD defining nl4_servers structure needed by both
+  NFS add COPY_NOTIFY operation
+  NFS add ca_source_server<> to COPY
+  NFS also send OFFLOAD_CANCEL to source server
+  NFS inter ssc open
+  NFS skip recovery of copy open on dest server
+  NFS for "inter" copy treat ESTALE as ENOTSUPP
+  NFS COPY handle ERR_OFFLOAD_DENIED
+  NFS replace cross device check in copy_file_range
+
+ Documentation/filesystems/porting |   7 ++
+ fs/cifs/cifsfs.c                  |   3 +
+ fs/nfs/nfs42.h                    |  15 ++-
+ fs/nfs/nfs42proc.c                | 129 ++++++++++++++++++++++---
+ fs/nfs/nfs42xdr.c                 | 193 +++++++++++++++++++++++++++++++++++++-
+ fs/nfs/nfs4_fs.h                  |  10 ++
+ fs/nfs/nfs4client.c               |   2 +-
+ fs/nfs/nfs4file.c                 | 125 +++++++++++++++++++++++-
+ fs/nfs/nfs4proc.c                 |   6 +-
+ fs/nfs/nfs4state.c                |  14 +++
+ fs/nfs/nfs4xdr.c                  |   1 +
+ fs/overlayfs/file.c               |   3 +
+ fs/read_write.c                   |  12 +--
+ include/linux/nfs4.h              |  25 +++++
+ include/linux/nfs_fs_sb.h         |   1 +
+ include/linux/nfs_xdr.h           |  17 ++++
+ 16 files changed, 538 insertions(+), 25 deletions(-)
+
+-- 
+1.8.3.1
+
