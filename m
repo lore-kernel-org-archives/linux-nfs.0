@@ -2,184 +2,122 @@ Return-Path: <SRS0=VOvP=NG=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-6.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 14E49C6786E
-	for <linux-nfs@archiver.kernel.org>; Fri, 26 Oct 2018 12:07:39 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3976BC6786E
+	for <linux-nfs@archiver.kernel.org>; Fri, 26 Oct 2018 12:12:31 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id D8FB72064C
-	for <linux-nfs@archiver.kernel.org>; Fri, 26 Oct 2018 12:07:38 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org D8FB72064C
-Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=RedHat.com
+	by mail.kernel.org (Postfix) with ESMTP id D586F20868
+	for <linux-nfs@archiver.kernel.org>; Fri, 26 Oct 2018 12:12:30 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="uB2E3jA+"
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org D586F20868
+Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=gmail.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727566AbeJZUo2 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 26 Oct 2018 16:44:28 -0400
-Received: from mx1.redhat.com ([209.132.183.28]:10143 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727491AbeJZUo2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 26 Oct 2018 16:44:28 -0400
-Received: from smtp.corp.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id E776730023B3;
-        Fri, 26 Oct 2018 12:07:36 +0000 (UTC)
-Received: from steved.boston.devel.redhat.com (ovpn-116-201.phx2.redhat.com [10.3.116.201])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 828CC60CD8;
-        Fri, 26 Oct 2018 12:07:36 +0000 (UTC)
-Subject: Re: [PATCH] [nfs-utils] fix method to check if mounted already
-To:     =?UTF-8?B?5bC55YmR6Jm5?= <yin-jianhong@163.com>
-Cc:     "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-References: <20181025041518.24465-1-yin-jianhong@163.com>
- <81f5caf3-c802-4563-7924-53259e875369@RedHat.com>
- <252a171e.6801.166ae43c6af.Coremail.yin-jianhong@163.com>
-From:   Steve Dickson <SteveD@RedHat.com>
-Message-ID: <b5662fac-247a-2f42-c062-ac1c3eb7b526@RedHat.com>
-Date:   Fri, 26 Oct 2018 08:07:36 -0400
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101
- Thunderbird/60.2.1
+        id S1727660AbeJZUtV (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 26 Oct 2018 16:49:21 -0400
+Received: from mail-ua1-f65.google.com ([209.85.222.65]:38964 "EHLO
+        mail-ua1-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727507AbeJZUtV (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 26 Oct 2018 16:49:21 -0400
+Received: by mail-ua1-f65.google.com with SMTP id j38so315735uae.6;
+        Fri, 26 Oct 2018 05:12:28 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc;
+        bh=9lVv5pZSk5R9KBHyeay/lxnKoE2GtNMtn9Q5ZrjSeIQ=;
+        b=uB2E3jA+Lyzjvcahp5FsnFVvMnNpchslcqMdxA8lalv2kIG6lyOGtRs35l2mXnE1us
+         a2ps3LhUQyScf+or1YaGezwds6orw9ZVDU8yEQOOOJQfHd/rH8KRZHFmbp0rxrnFwDBm
+         2uX7MrLjpt1E5Vg2A79WbdObdnupHQ4GZx1gGr+muFnOlfyH8gHaDDlqvr8fgc98sNyf
+         et6fioWTIoVtXkCXzAAJK6nEo7z9KmiKl2YvGxtVkpPiePrVq84c1yD5yGHRvbXdoyRt
+         CMv0HG9hn7JFwZIyQtn080Xa5+A7Yq9i/NENMM290qMwdLZE+cJljkMfhF89v2AoTcRz
+         q0HQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=9lVv5pZSk5R9KBHyeay/lxnKoE2GtNMtn9Q5ZrjSeIQ=;
+        b=U5tyEtq7RXLF1MHrlTb9epAG4HlJ30gZy/FQ4qDsVOU/KGitMEzkjl/C0TbjRUZIl4
+         ztD0yQN/btxOWOiWsc1UC3SS0k4hVSXUVGXBo2LBgep3kK9SUQ1b1mA8fFoK7V0mgZ25
+         vBDfvHAFso3EQRmlDdhlh1eoEsNEotonweciD8YVtD6F1YRJEtry8KNaKab4gAhoESmD
+         nC8b6v1FyQblVkANJCc3AvM/XltFEWrchuPUXekRw58gd/pxcTJarX5Y9KpMYLvUDHDI
+         T5+/lpUaX6SEEa/jl3jolQpSI38kvu6yq31Mak5yZu1aT+5XZkkfQvwFs75llckG4cnO
+         NHkw==
+X-Gm-Message-State: AGRZ1gLkLd5CnMuk8GN23U9SLfD2EVw8kU6mO9BwBc7rp2/H/GJUkf52
+        7WRXshpY45i1bCo6PfKIDIgxZIiVwMJgAgTUIAROHL8p
+X-Google-Smtp-Source: AJdET5egqThhmfLmjLxcVqyAvn8t3YVK0c3N7JkpvP4qIi4p5kkqWoELwysj4E1SQR5Yb2Jl5stalFAauMWDGWW74Go=
+X-Received: by 2002:a9f:35cd:: with SMTP id u13mr1456988uad.5.1540555947840;
+ Fri, 26 Oct 2018 05:12:27 -0700 (PDT)
 MIME-Version: 1.0
-In-Reply-To: <252a171e.6801.166ae43c6af.Coremail.yin-jianhong@163.com>
-Content-Type: text/plain; charset=utf-8
-Content-Language: en-US
-Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.12
-X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.47]); Fri, 26 Oct 2018 12:07:36 +0000 (UTC)
+References: <20181024195837.35532-1-olga.kornievskaia@gmail.com>
+ <20181024195837.35532-5-olga.kornievskaia@gmail.com> <CAOQ4uxiB5PLd9QjAp7pQerXOJdtkLbGAENhsGsAQehYWdK91PQ@mail.gmail.com>
+In-Reply-To: <CAOQ4uxiB5PLd9QjAp7pQerXOJdtkLbGAENhsGsAQehYWdK91PQ@mail.gmail.com>
+From:   Olga Kornievskaia <olga.kornievskaia@gmail.com>
+Date:   Fri, 26 Oct 2018 08:12:15 -0400
+Message-ID: <CAN-5tyFHiYufamwJEPf9TFG6eQMVCoTkMz8ini9RyKuAW+RuTQ@mail.gmail.com>
+Subject: Re: [PATCH v2 03/13] OverlayFS: add cross-device check for copy_file_range
+To:     Amir Goldstein <amir73il@gmail.com>
+Cc:     trond.myklebust@hammerspace.com,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        viro@zeniv.linux.org.uk, Steve French <smfrench@gmail.com>,
+        Miklos Szeredi <miklos@szeredi.hu>,
+        linux-nfs <linux-nfs@vger.kernel.org>,
+        linux-fsdevel@vger.kernel.org, linux-cifs@vger.kernel.org,
+        linux-unionfs@vger.kernel.org, linux-man@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
+On Thu, Oct 25, 2018 at 1:54 AM Amir Goldstein <amir73il@gmail.com> wrote:
+>
+> On Wed, Oct 24, 2018 at 10:59 PM Olga Kornievskaia
+> <olga.kornievskaia@gmail.com> wrote:
+> >
+> > From: Olga Kornievskaia <kolga@netapp.com>
+> >
+> > VFS copy_file_range was relaxed to allow for cross-device copy.
+> > Add a check for now, to disallow cross-device copy offload until
+> > appropriate support is added.
+> >
+> > Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+> > `
+> > ---
+> >  fs/overlayfs/file.c | 3 +++
+> >  1 file changed, 3 insertions(+)
+> >
+> > diff --git a/fs/overlayfs/file.c b/fs/overlayfs/file.c
+> > index aeaefd2..5282853 100644
+> > --- a/fs/overlayfs/file.c
+> > +++ b/fs/overlayfs/file.c
+> > @@ -483,6 +483,9 @@ static ssize_t ovl_copy_file_range(struct file *file_in, loff_t pos_in,
+> >                                    struct file *file_out, loff_t pos_out,
+> >                                    size_t len, unsigned int flags)
+> >  {
+> > +       if (file_in->f_inode->i_sb != file_out->f_inode->i_sb)
+> > +               return -EXDEV;
+> >
+>
+> Note that this could be relaxed later on to same fs type
+> allowing for cross container copy_file_range() to be performced
+> as clone_file_range() when upper is a shared fs with clone support.
+>
+> Don't worry about it though, I can make this change later after testing
+> the use case.
+>
+> As long as this patch comes in the series *before* relaxing the VFS check,
+> You may add:
+> Reviewed-by: Amir Goldstein <amir73il@gmail.com>
 
+Given that this patch was merged I didn't add "reviewed-by" line.
+Please let me know I need to add this line to the main VFS patch.
 
-On 10/25/18 10:46 PM, 尹剑虹 wrote:
-> Hi
-> 
-> commit 2e5533976c76c1 still test fail
-> please see the reproducer.
-It works for me... 
-
-# mount -ocontext=system_u:object_r:xferlog_t:s0,sharecache localhost:/tmp /mnt/nfsmp
-# mount -ocontext=system_u:object_r:user_home_dir_t:s0,sharecache localhost:/tmp /mnt/tmpfs
-mount.nfs: /mnt/tmpfs is busy or already mounted
-
-steved.
-> 
-> 
-> 	
-> 尹剑虹
-> 邮箱：yin-jianhong@163.com
-> 
-> <https://maas.mail.163.com/dashi-web-extend/html/proSignature.html?iconUrl=https%3A%2F%2Fmail-online.nosdn.127.net%2Fqiyelogo%2FdefaultAvatar.png&name=%E5%B0%B9%E5%89%91%E8%99%B9&uid=yin-jianhong%40163.com&ftlId=1&items=%5B%22%E9%82%AE%E7%AE%B1%EF%BC%9Ayin-jianhong%40163.com%22%5D>
-> 
-> 签名由 网易邮箱大师 <https://mail.163.com/dashi/dlpro.html?from=mail88> 定制
-> 
->         On 10/25/2018 23:38, Steve Dickson <mailto:SteveD@RedHat.com> wrote:
->         Hello,
-> 
->         On 10/25/18 12:15 AM, Jianhong.Yin wrote:
->         > reproducer:
->         > '''
->         > mkdir /expdir /mnt/nfsmp /mnt/tmpfs
->         > echo "/expdir *(rw,no_root_squash)" >/etc/exports
->         > service nfs restart
->         > mount -t tmpfs tmpfs /mnt/tmpfs
->         > mount -osharecache localhost:/expdir /mnt/nfsmp #success
->         > mount -osharecache localhost:/expdir /mnt/nfsmp #mounted already, return 0(pass)
->         > mount -osharecache localhost:/expdir /mnt/tmpfs #success
->         > mount -osharecache localhost:/expdir /mnt/tmpfs #mounted already, return 0(pass)
->         > umount /mnt/nfsmp
->         > umount /mnt/tmpfs
->         >
->         > mount -ocontext=system_u:object_r:xferlog_t:s0,sharecache localhost:/expdir /mnt/nfsmp
->         > mount -ocontext=system_u:object_r:user_home_dir_t:s0,sharecache localhost:/expdir /mnt/tmpfs
->         > [[ $? = 0 ]] && echo "***test fail: hasn't mounted, should return fail ***"
->         > '''
->         >
->         > Signed-off-by: Jianhong Yin <yin-jianhong@163.com>
->         > ---
->         >  support/include/misc.h    |  1 +
->         >  support/misc/mountpoint.c | 26 +++++++++++++++++++++++++-
->         >  utils/mount/stropts.c     |  4 +---
->         >  3 files changed, 27 insertions(+), 4 deletions(-)
->         >
->         > diff --git a/support/include/misc.h b/support/include/misc.h
->         > index 06e2a0c..6a146e4 100644
->         > --- a/support/include/misc.h
->         > +++ b/support/include/misc.h
->         > @@ -19,6 +19,7 @@ char *generic_make_pathname(const char *, const char *);
->         >  _Bool generic_setup_basedir(const char *, const char *, char *, const size_t);
->         >  
->         >  extern int is_mountpoint(char *path);
->         > +extern int is_mounted_already(const char *fsname, const char *dir);
->         >  
->         >  /* size of the file pointer buffers for rpc procfs files */
->         >  #define RPC_CHAN_BUF_SIZE 32768
->         > diff --git a/support/misc/mountpoint.c b/support/misc/mountpoint.c
->         > index 9f9ce44..e21d529 100644
->         > --- a/support/misc/mountpoint.c
->         > +++ b/support/misc/mountpoint.c
->         > @@ -4,8 +4,10 @@
->         >   */
->         >  
->         >  #include <string.h>
->         > -#include "xcommon.h"
->         >  #include <sys/stat.h>
->         > +#include <stdio.h>
->         > +#include <mntent.h>
->         > +#include "xcommon.h"
->         >  #include "misc.h"
->         >  
->         >  int
->         > @@ -38,3 +40,25 @@ is_mountpoint(char *path)
->         >       free(dotdot);
->         >       return rv;
->         >  }
->         > +
->         > +int
->         > +is_mounted_already(const char *fsname, const char *dir)
->         > +{
->         > +     struct mntent *ent;
->         > +     FILE *fp;
->         > +     int ret = 0;
->         > +
->         > +     fp = setmntent("/proc/mounts", "r");
->         > +     if (fp == NULL) {
->         > +          perror("[unlikely] setmntent(3) fail");
->         > +          exit(1);
->         > +     }
->         > +     while (NULL != (ent = getmntent(fp))) {
->         > +          if (!strcmp(ent->mnt_fsname, fsname) && !strcmp(ent->mnt_dir, dir)) {
->         > +               ret = 1;
->         > +               break;
->         > +          }
->         > +     }
->         > +     endmntent(fp);
->         > +     return ret;
->         > +}
->         This does not scale on a large machines, especially when all that
->         is needed is two stat()s... one on the directory and one on the
->         parent directory.
-> 
->         > diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
->         > index eed0356..0ee13bc 100644
->         > --- a/utils/mount/stropts.c
->         > +++ b/utils/mount/stropts.c
->         > @@ -1079,9 +1079,7 @@ static int nfsmount_fg(struct nfsmount_info *mi)
->         >            if (nfs_try_mount(mi))
->         >                 return EX_SUCCESS;
->         >  
->         > -#pragma GCC diagnostic ignored "-Wdiscarded-qualifiers"
->         > -          if (errno == EBUSY && is_mountpoint(mi->node))
->         > -#pragma GCC diagnostic warning "-Wdiscarded-qualifiers"
->         > +          if (errno == EBUSY && is_mounted_already(mi->spec, mi->node))
->         >                 /*
->         >                  * EBUSY can happen when mounting a filesystem that
->         >                  * is already mounted or when the context= are
->         >
->         This has been fixed with commit 2e5533976c76c1
-> 
->         steved.
-> 
+>
+> Thanks,
+> Amir.
