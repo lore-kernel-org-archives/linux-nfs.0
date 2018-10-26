@@ -2,69 +2,72 @@ Return-Path: <SRS0=VOvP=NG=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+X-Spam-Status: No, score=-8.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS,USER_AGENT_GIT
-	autolearn=ham autolearn_force=no version=3.4.0
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9E753ECDE44
-	for <linux-nfs@archiver.kernel.org>; Fri, 26 Oct 2018 20:11:02 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 674D0ECDE46
+	for <linux-nfs@archiver.kernel.org>; Fri, 26 Oct 2018 20:11:04 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 4FEA720824
-	for <linux-nfs@archiver.kernel.org>; Fri, 26 Oct 2018 20:11:02 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 29E0420824
+	for <linux-nfs@archiver.kernel.org>; Fri, 26 Oct 2018 20:11:04 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="Wd68WZTO"
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 4FEA720824
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="my/jK8gJ"
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 29E0420824
 Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=gmail.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727745AbeJ0EtX (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sat, 27 Oct 2018 00:49:23 -0400
-Received: from mail-qt1-f179.google.com ([209.85.160.179]:34353 "EHLO
-        mail-qt1-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725965AbeJ0EtX (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 27 Oct 2018 00:49:23 -0400
-Received: by mail-qt1-f179.google.com with SMTP id z2-v6so2705652qts.1;
-        Fri, 26 Oct 2018 13:10:59 -0700 (PDT)
+        id S1727764AbeJ0EtZ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sat, 27 Oct 2018 00:49:25 -0400
+Received: from mail-qt1-f195.google.com ([209.85.160.195]:35992 "EHLO
+        mail-qt1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726672AbeJ0EtZ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 27 Oct 2018 00:49:25 -0400
+Received: by mail-qt1-f195.google.com with SMTP id u34-v6so2692925qth.3;
+        Fri, 26 Oct 2018 13:11:01 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
-        h=from:to:cc:subject:date:message-id;
-        bh=iZq+igXtd7B7yRB3A6SANShc1bYgK910waS8/hRhgtU=;
-        b=Wd68WZTOTzgFiFmEnkY4kwgNkxYgfuTx9BjMA9KApR5QN5l3KonIP2QPHIj9eL/Bcf
-         GOaeH2hQWfxMcbGjoDo1JmcwqzOjJnecgqITo6vj0y9xjDLQnHKBk5hsJYUiUBfuz8U1
-         VGEqs30NIy+NynIoDtHRTcD8FNofYXA22jEcabcnCzRoNp82XpOJRgv9q1YHJ+tE3AAt
-         6Ub4XR37N5tWwev9CQRNvTTKmb50hxtrwLnO6xvcX+hQG/2BKytTLg9q7uwqR5GrOJFA
-         9GiutOtcbvmNKKp1revvF/0uz0gq5nhVeMHEZQ5FVJQ5MLtUKk+8kDrQMbH5mQpVxlAO
-         vYIQ==
+        h=from:to:cc:subject:date:message-id:in-reply-to:references;
+        bh=JiUuu4yV/pzkBhnLczriTu4tikK4WzXAeZJ8xxEpL8g=;
+        b=my/jK8gJVzFOreePzdy4OreKCrhiChiOz66gsfNz8oxl5SIWB6CpCH1vfXQliAw3K5
+         bD+Bs2lZK0U5rnJYOctQZIelkM9/iyl0ETrrHAcmw64XwJMgK8MTBFuBY3fabrXBHaAN
+         i3uNH/UHjMpR29c83YcYKYO8Ko0oOJRhRmG0X+tZVlKuwIcEcoTghY5NxB7chM8cqyLD
+         UCwHnUjaCeTHJmQHar5xMAFPpGyTnqnEuGj2G/a0PKNhiDZ+SJtXy9KSyeGCG59sKiS8
+         tE2RKysasXZLnuqbUOyt6lg18t7sM3fQylGLo5wZ6RoP+y/aek+ABB7xf/HoUAjG7dy2
+         kQ5A==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id;
-        bh=iZq+igXtd7B7yRB3A6SANShc1bYgK910waS8/hRhgtU=;
-        b=P1mPr6YsxR0Oeqw/rA60SRZHv2X1vMxk3IvK1pyqCyu9cMtyUFy5tZI0Veb/mtNS17
-         CU7aDu73xZpCBqb2zmQgYkSbX+VqnDF8xMmrF/7u3/zpIAw5ZKui7BCsaHbr1g1a6gUp
-         FBessXLaAyLewxgsPmjLZ+ZJuiMHS1Q3hk0p1GyQwpIXZBxEFWYqxymMk9jGCSc5Flus
-         dAxPiscjggEw2ym2uVl+/Exwlyn6ML7HkHtZGMHvNfl9aPW2QQEfnzLfe8Nwr9Ql5mvH
-         xhCezOAd0Ju2OfLx/1H67ZLZwPMpqTRi6AW2Ym9vMJfKPb69tWXDiYQ2A4Z7O5piHcp6
-         nw5Q==
-X-Gm-Message-State: AGRZ1gLCkzxNgE7f2J1n+tXS4Ft4QQKzLV7ScxmlWge+DTeVgxIuwb+2
-        TC0VVXbqYQc4gShdjkKwf4U=
-X-Google-Smtp-Source: AJdET5ceju7o+YGSh5H33h81Zd4BLv2Czky6Hhtkq9Ms04dOr7Nzb/nrrahCtDhegM0mfqdvwrVUgw==
-X-Received: by 2002:aed:39a9:: with SMTP id m38-v6mr4701551qte.222.1540584659501;
-        Fri, 26 Oct 2018 13:10:59 -0700 (PDT)
+        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
+         :references;
+        bh=JiUuu4yV/pzkBhnLczriTu4tikK4WzXAeZJ8xxEpL8g=;
+        b=n+VaJlaq/uvnyGILSzKWhLNTgqtZQqcHkG9oSZW99vL4bjmezM7BiPexCgYTEJYYsi
+         yGL0IGe84eixzzoWMR6u5Xf51QQawRqvKHcO9W16HeEiFsmVgRp2wMivySXZSsU2kfJ2
+         EIzgwVZapL56hRKHLUtNCRijAKcg2S3Wvr5HOjgGV7HHqL/Q+j5VoAmSyYn2seX+FMbL
+         IDkRumskmPu8c+9JyE5zwDNILSXiZZi29zrj5yIDN6y6ugrpFwEbFPs4VC9lxGsiRMFj
+         5AbIF+c0DT5JVVdKS+3/BVYrIzxmAMYUS+4dGSrYIB/M0eFIJx6AO7Tax0F/6zmVa52p
+         LiLg==
+X-Gm-Message-State: AGRZ1gII1N9zRd2waZgA5mWWBgv+1JE9xxJJL6mm9Rci8IxIChE2OPN0
+        XPXN6GgyXW4UUAPivNhbbac=
+X-Google-Smtp-Source: AJdET5fGTm8fnzoPFzfvks69JjfaNTtIAkguJTrU277z3z/4MfkafZCktGrQ0ufb+jiKzsXKGqeOXA==
+X-Received: by 2002:a0c:98d1:: with SMTP id g17-v6mr4606124qvd.13.1540584660961;
+        Fri, 26 Oct 2018 13:11:00 -0700 (PDT)
 Received: from Olgas-MBP-195.attlocal.net (172-10-226-31.lightspeed.livnmi.sbcglobal.net. [172.10.226.31])
-        by smtp.gmail.com with ESMTPSA id p64-v6sm8037667qkc.96.2018.10.26.13.10.58
+        by smtp.gmail.com with ESMTPSA id p64-v6sm8037667qkc.96.2018.10.26.13.10.59
         (version=TLS1 cipher=AES128-SHA bits=128/128);
-        Fri, 26 Oct 2018 13:10:58 -0700 (PDT)
+        Fri, 26 Oct 2018 13:11:00 -0700 (PDT)
 From:   Olga Kornievskaia <olga.kornievskaia@gmail.com>
 To:     trond.myklebust@hammerspace.com, anna.schumaker@netapp.com,
         viro@zeniv.linux.org.uk, smfrench@gmail.com, miklos@szeredi.hu
 Cc:     linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         linux-cifs@vger.kernel.org, linux-unionfs@vger.kernel.org,
         linux-man@vger.kernel.org
-Subject: [PATCH v4 00/11] client-side support for "inter" SSC copy
-Date:   Fri, 26 Oct 2018 16:10:45 -0400
-Message-Id: <20181026201057.36899-1-olga.kornievskaia@gmail.com>
+Subject: [PATCH v4 01/11] VFS: move cross device copy_file_range() check into filesystems
+Date:   Fri, 26 Oct 2018 16:10:46 -0400
+Message-Id: <20181026201057.36899-2-olga.kornievskaia@gmail.com>
 X-Mailer: git-send-email 2.10.1 (Apple Git-78)
+In-Reply-To: <20181026201057.36899-1-olga.kornievskaia@gmail.com>
+References: <20181026201057.36899-1-olga.kornievskaia@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
@@ -72,72 +75,115 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Olga Kornievskaia <kolga@netapp.com>
 
-This patch series adds client-side support for doing NFSv4.2 "inter"
-copy offload between different NFS servers.
+This patch makes it the responsibility of individual filesystems to
+allow or deny cross device copies.  Both NFS and CIFS have operations
+for cross-server copies, and later patches will implement this feature.
 
-In case of the "inter" SSC copy files reside on different servers and
-thus under different superblocks and require that VFS removes the
-restriction that src and dst files must be on the same superblock.
+Note that as of this patch, the copy_file_range() function might be passed
+superblocks from different filesystem types. -EXDEV should be returned
+if cross device copies aren't supported, causing the VFS to fall back
+on using do_splice_direct().
 
-NFS's copy_file_range() determines if the copy is "intra" or "inter"
-and for "inter" it sends the COPY_NOTIFY to the source server. Then,
-it would send of an asynchronous COPY to the destination server. If
-an application cancels an in-flight COPY, OFFLOAD_CANCEL is sent to
-both of the servers.
+Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+---
+ Documentation/filesystems/porting | 7 +++++++
+ fs/cifs/cifsfs.c                  | 3 +++
+ fs/nfs/nfs4file.c                 | 3 +++
+ fs/overlayfs/file.c               | 3 +++
+ fs/read_write.c                   | 9 +++------
+ 5 files changed, 19 insertions(+), 6 deletions(-)
 
-This patch series also include necessary client-side additions that
-are performed by the destination server. The server needs an NFS
-open that represents a source file without doing an actual open.
-Two function nfs42_ssc_open/nfs42_ssc_close() are introduced to
-accomplish it that make use of the VFS's alloc_file_pseudo() to
-represent an open.
-
-Also this particular open is marked (NFS_SVC_SSC_COPY_STATE) so
-that if the destination server ever to receive stateid errors on
-this stateid, it knows not to initiate state recovery (in case
-when source server reboots). The recovery must be done by the
-client and a new copy must be initiated. Therefore, in this case
-the recovery needs to fail with EIO.
-
-v4:
--- in the VFS patches: 1. removed the accidental text in vfs.txt,
-2. removed additions to vfs.txt, and 3. Anna provided help with 
-wording the commit message and 4. changed the offset check to
-include the boundry just like it was before.
--- removed dprintk from the nfs42_ssc_open
--- changed the cross filesystem check in NFS's copy_file_range
-
-Olga Kornievskaia (11):
-  VFS move cross device copy_file_range() check into filesystems
-  VFS copy_file_range check validity of input source offset
-  NFS NFSD defining nl4_servers structure needed by both
-  NFS add COPY_NOTIFY operation
-  NFS add ca_source_server<> to COPY
-  NFS also send OFFLOAD_CANCEL to source server
-  NFS inter ssc open
-  NFS skip recovery of copy open on dest server
-  NFS for "inter" copy treat ESTALE as ENOTSUPP
-  NFS COPY handle ERR_OFFLOAD_DENIED
-  NFS replace cross device check in copy_file_range
-
- Documentation/filesystems/porting |   7 ++
- fs/cifs/cifsfs.c                  |   3 +
- fs/nfs/nfs42.h                    |  15 ++-
- fs/nfs/nfs42proc.c                | 129 ++++++++++++++++++++++---
- fs/nfs/nfs42xdr.c                 | 193 +++++++++++++++++++++++++++++++++++++-
- fs/nfs/nfs4_fs.h                  |  10 ++
- fs/nfs/nfs4client.c               |   2 +-
- fs/nfs/nfs4file.c                 | 125 +++++++++++++++++++++++-
- fs/nfs/nfs4proc.c                 |   6 +-
- fs/nfs/nfs4state.c                |  14 +++
- fs/nfs/nfs4xdr.c                  |   1 +
- fs/overlayfs/file.c               |   3 +
- fs/read_write.c                   |  12 +--
- include/linux/nfs4.h              |  25 +++++
- include/linux/nfs_fs_sb.h         |   1 +
- include/linux/nfs_xdr.h           |  17 ++++
- 16 files changed, 538 insertions(+), 25 deletions(-)
-
+diff --git a/Documentation/filesystems/porting b/Documentation/filesystems/porting
+index 7b7b845..897e1e7 100644
+--- a/Documentation/filesystems/porting
++++ b/Documentation/filesystems/porting
+@@ -622,3 +622,10 @@ in your dentry operations instead.
+ 	alloc_file_clone(file, flags, ops) does not affect any caller's references.
+ 	On success you get a new struct file sharing the mount/dentry with the
+ 	original, on failure - ERR_PTR().
++--
++[mandatory]
++	->copy_file_range() may now be passed files which belong to two
++	different superblocks of the same file system type or which belong
++	to two different filesystems types all together. As before, the
++	destination's copy_file_range() is the function which is called.
++	If it cannot copy ranges from the source, it should return -EXDEV.
+diff --git a/fs/cifs/cifsfs.c b/fs/cifs/cifsfs.c
+index 7065426..f2d7f4f 100644
+--- a/fs/cifs/cifsfs.c
++++ b/fs/cifs/cifsfs.c
+@@ -1114,6 +1114,9 @@ static ssize_t cifs_copy_file_range(struct file *src_file, loff_t off,
+ 	unsigned int xid = get_xid();
+ 	ssize_t rc;
+ 
++	if (src_file->f_inode->i_sb != dst_file->f_inode->i_sb)
++		return -EXDEV;
++
+ 	rc = cifs_file_copychunk_range(xid, src_file, off, dst_file, destoff,
+ 					len, flags);
+ 	free_xid(xid);
+diff --git a/fs/nfs/nfs4file.c b/fs/nfs/nfs4file.c
+index 4288a6e..09df688 100644
+--- a/fs/nfs/nfs4file.c
++++ b/fs/nfs/nfs4file.c
+@@ -135,6 +135,9 @@ static ssize_t nfs4_copy_file_range(struct file *file_in, loff_t pos_in,
+ {
+ 	ssize_t ret;
+ 
++	if (file_in->f_inode->i_sb != file_out->f_inode->i_sb)
++		return -EXDEV;
++
+ 	if (file_inode(file_in) == file_inode(file_out))
+ 		return -EINVAL;
+ retry:
+diff --git a/fs/overlayfs/file.c b/fs/overlayfs/file.c
+index aeaefd2..5282853 100644
+--- a/fs/overlayfs/file.c
++++ b/fs/overlayfs/file.c
+@@ -483,6 +483,9 @@ static ssize_t ovl_copy_file_range(struct file *file_in, loff_t pos_in,
+ 				   struct file *file_out, loff_t pos_out,
+ 				   size_t len, unsigned int flags)
+ {
++	if (file_in->f_inode->i_sb != file_out->f_inode->i_sb)
++		return -EXDEV;
++
+ 	return ovl_copyfile(file_in, pos_in, file_out, pos_out, len, flags,
+ 			    OVL_COPY);
+ }
+diff --git a/fs/read_write.c b/fs/read_write.c
+index 39b4a21..fb4ffca 100644
+--- a/fs/read_write.c
++++ b/fs/read_write.c
+@@ -1575,10 +1575,6 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
+ 	    (file_out->f_flags & O_APPEND))
+ 		return -EBADF;
+ 
+-	/* this could be relaxed once a method supports cross-fs copies */
+-	if (inode_in->i_sb != inode_out->i_sb)
+-		return -EXDEV;
+-
+ 	if (len == 0)
+ 		return 0;
+ 
+@@ -1588,7 +1584,8 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
+ 	 * Try cloning first, this is supported by more file systems, and
+ 	 * more efficient if both clone and copy are supported (e.g. NFS).
+ 	 */
+-	if (file_in->f_op->clone_file_range) {
++	if (inode_in->i_sb == inode_out->i_sb &&
++			file_in->f_op->clone_file_range) {
+ 		ret = file_in->f_op->clone_file_range(file_in, pos_in,
+ 				file_out, pos_out, len);
+ 		if (ret == 0) {
+@@ -1600,7 +1597,7 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
+ 	if (file_out->f_op->copy_file_range) {
+ 		ret = file_out->f_op->copy_file_range(file_in, pos_in, file_out,
+ 						      pos_out, len, flags);
+-		if (ret != -EOPNOTSUPP)
++		if (ret != -EOPNOTSUPP && ret != -EXDEV)
+ 			goto done;
+ 	}
+ 
 -- 
 1.8.3.1
 
