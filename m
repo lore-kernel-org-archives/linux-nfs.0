@@ -1,108 +1,138 @@
-Return-Path: <SRS0=VOvP=NG=vger.kernel.org=linux-nfs-owner@kernel.org>
+Return-Path: <SRS0=aRlV=NH=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.9 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
-	SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-8.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED,
+	USER_AGENT_MUTT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1326CECDE44
-	for <linux-nfs@archiver.kernel.org>; Fri, 26 Oct 2018 23:24:33 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DCE6FC46475
+	for <linux-nfs@archiver.kernel.org>; Sat, 27 Oct 2018 09:09:40 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id CAE9020834
-	for <linux-nfs@archiver.kernel.org>; Fri, 26 Oct 2018 23:24:32 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=rasmusvillemoes.dk header.i=@rasmusvillemoes.dk header.b="gpMOQnDo"
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org CAE9020834
-Authentication-Results: mail.kernel.org; dmarc=none (p=none dis=none) header.from=rasmusvillemoes.dk
+	by mail.kernel.org (Postfix) with ESMTP id 922E120665
+	for <linux-nfs@archiver.kernel.org>; Sat, 27 Oct 2018 09:09:40 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 922E120665
+Authentication-Results: mail.kernel.org; dmarc=none (p=none dis=none) header.from=fromorbit.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728937AbeJ0IDU (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sat, 27 Oct 2018 04:03:20 -0400
-Received: from mail-ed1-f66.google.com ([209.85.208.66]:46915 "EHLO
-        mail-ed1-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728923AbeJ0IDU (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 27 Oct 2018 04:03:20 -0400
-Received: by mail-ed1-f66.google.com with SMTP id v18-v6so2635364edq.13
-        for <linux-nfs@vger.kernel.org>; Fri, 26 Oct 2018 16:24:19 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=rasmusvillemoes.dk; s=google;
-        h=from:to:cc:subject:date:message-id:in-reply-to:references
-         :mime-version:content-transfer-encoding;
-        bh=i+E/PSGhpII+gSHX5M/fv1bX1dhF7uVIKEiKrt5mVV8=;
-        b=gpMOQnDoB52MBcmWplNQFoZB2fbbbu+eDRVqSQQmP9NjnObm1sQy53DGZSGLJfMgT2
-         FqPdb3DXS6ocD7zX8qyO1F6/ZlQoLNAwynCnXP2nWb3NQ9g4StwOGiV+HK55ARRbkBuZ
-         dWcW3F0hW1aY1w1nLR8VAzaDesx9fVl68Y5A4=
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
-         :references:mime-version:content-transfer-encoding;
-        bh=i+E/PSGhpII+gSHX5M/fv1bX1dhF7uVIKEiKrt5mVV8=;
-        b=tUJEHfum5olm07geOXWJC6+4cTBQ0mvArLrTz9ac/2PagpWN2mzXmFinKerwTRdTzA
-         SXV8LsC32vWOqdFSfAn2Cbe/zaCJ9O4aPgpPWO8b6+toCvSK6X4yeV+96NK2UjVvkThn
-         ZTvMB/HHhrw0UKVa04hK761GJKudjmJ7QUoRit8xq6eogRghUZQqbqGEwCzmdI6YVA5S
-         T3GuZhNykf/uSdWj9rnVqZLvGlvrqbxuMuQSIdKSLjFQ7KtvhwzhG5wRJpiIeok/MHNk
-         MQTZ0SjbpUS2bPVKQTvM1USfGx8LvJJDTkVNhvfKVJ2aDA+FOGNEAWTFhRYZ/dtyKbBZ
-         kjiw==
-X-Gm-Message-State: AGRZ1gIachvQXy0/MwwN1Fj0Z4xYjlcdw4hyfVzVrXAeTCYVqc/eu1hn
-        L+qpj27ts6AHBP/1d3T9NCCZNg==
-X-Google-Smtp-Source: AJdET5dNogwnAzUAURno/NURjVdv2H1zlyj6zuNlPodjuDNzAciHKwQXqk2LYu2gXA3hamcRwHRPFA==
-X-Received: by 2002:a17:906:4ed9:: with SMTP id i25-v6mr585893ejv.75.1540596259125;
-        Fri, 26 Oct 2018 16:24:19 -0700 (PDT)
-Received: from prevas-ravi.waoo.dk (dhcp-5-186-114-252.cgn.ip.fibianet.dk. [5.186.114.252])
-        by smtp.gmail.com with ESMTPSA id o13-v6sm3986746edc.95.2018.10.26.16.24.18
-        (version=TLS1_2 cipher=ECDHE-RSA-AES128-SHA bits=128/128);
-        Fri, 26 Oct 2018 16:24:18 -0700 (PDT)
-From:   Rasmus Villemoes <linux@rasmusvillemoes.dk>
-To:     Kees Cook <keescook@chromium.org>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        linux-nfs@vger.kernel.org
-Cc:     linux-kernel@vger.kernel.org,
-        Rasmus Villemoes <linux@rasmusvillemoes.dk>,
-        Trond Myklebust <trond.myklebust@hammerspace.com>
-Subject: [RFC PATCH 6/7] nfs: use fmtcheck() in root_nfs_data
-Date:   Sat, 27 Oct 2018 01:24:08 +0200
-Message-Id: <20181026232409.16100-7-linux@rasmusvillemoes.dk>
-X-Mailer: git-send-email 2.19.1.6.gbde171bbf5
-In-Reply-To: <20181026232409.16100-1-linux@rasmusvillemoes.dk>
-References: <20171108223020.24487-1-linux@rasmusvillemoes.dk>
- <20181026232409.16100-1-linux@rasmusvillemoes.dk>
+        id S1727685AbeJ0Rtp (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sat, 27 Oct 2018 13:49:45 -0400
+Received: from ipmail07.adl2.internode.on.net ([150.101.137.131]:59558 "EHLO
+        ipmail07.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1726193AbeJ0Rtp (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 27 Oct 2018 13:49:45 -0400
+Received: from ppp59-167-129-252.static.internode.on.net (HELO dastard) ([59.167.129.252])
+  by ipmail07.adl2.internode.on.net with ESMTP; 27 Oct 2018 19:39:25 +1030
+Received: from dave by dastard with local (Exim 4.80)
+        (envelope-from <david@fromorbit.com>)
+        id 1gGKax-0001JM-HI; Sat, 27 Oct 2018 20:09:23 +1100
+Date:   Sat, 27 Oct 2018 20:09:23 +1100
+From:   Dave Chinner <david@fromorbit.com>
+To:     Olga Kornievskaia <olga.kornievskaia@gmail.com>
+Cc:     trond.myklebust@hammerspace.com, anna.schumaker@netapp.com,
+        viro@zeniv.linux.org.uk, smfrench@gmail.com, miklos@szeredi.hu,
+        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-cifs@vger.kernel.org, linux-unionfs@vger.kernel.org,
+        linux-man@vger.kernel.org
+Subject: Re: [PATCH v4 01/11] VFS: move cross device copy_file_range() check
+ into filesystems
+Message-ID: <20181027090923.GJ6311@dastard>
+References: <20181026201057.36899-1-olga.kornievskaia@gmail.com>
+ <20181026201057.36899-2-olga.kornievskaia@gmail.com>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20181026201057.36899-2-olga.kornievskaia@gmail.com>
+User-Agent: Mutt/1.5.21 (2010-09-15)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-tmp is initially the string "/tftpboot/%s", but it may be changed from
-the calls to root_nfs_parse_options. While an nfsroot= command line
-option can probably be trusted (or the user gets to keep both pieces),
-it's also possible for contents to come via a BOOTP option.
+On Fri, Oct 26, 2018 at 04:10:46PM -0400, Olga Kornievskaia wrote:
+> From: Olga Kornievskaia <kolga@netapp.com>
+> 
+> This patch makes it the responsibility of individual filesystems to
+> allow or deny cross device copies.  Both NFS and CIFS have operations
+> for cross-server copies, and later patches will implement this feature.
+> 
+> Note that as of this patch, the copy_file_range() function might be passed
+> superblocks from different filesystem types. -EXDEV should be returned
+> if cross device copies aren't supported, causing the VFS to fall back
+> on using do_splice_direct().
+> 
+> Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+> ---
+>  Documentation/filesystems/porting | 7 +++++++
+>  fs/cifs/cifsfs.c                  | 3 +++
+>  fs/nfs/nfs4file.c                 | 3 +++
+>  fs/overlayfs/file.c               | 3 +++
+>  fs/read_write.c                   | 9 +++------
+>  5 files changed, 19 insertions(+), 6 deletions(-)
+> 
+> diff --git a/Documentation/filesystems/porting b/Documentation/filesystems/porting
+> index 7b7b845..897e1e7 100644
+> --- a/Documentation/filesystems/porting
+> +++ b/Documentation/filesystems/porting
+> @@ -622,3 +622,10 @@ in your dentry operations instead.
+>  	alloc_file_clone(file, flags, ops) does not affect any caller's references.
+>  	On success you get a new struct file sharing the mount/dentry with the
+>  	original, on failure - ERR_PTR().
+> +--
+> +[mandatory]
+> +	->copy_file_range() may now be passed files which belong to two
+> +	different superblocks of the same file system type or which belong
+> +	to two different filesystems types all together. As before, the
+> +	destination's copy_file_range() is the function which is called.
+> +	If it cannot copy ranges from the source, it should return -EXDEV.
+> diff --git a/fs/cifs/cifsfs.c b/fs/cifs/cifsfs.c
+> index 7065426..f2d7f4f 100644
+> --- a/fs/cifs/cifsfs.c
+> +++ b/fs/cifs/cifsfs.c
+> @@ -1114,6 +1114,9 @@ static ssize_t cifs_copy_file_range(struct file *src_file, loff_t off,
+>  	unsigned int xid = get_xid();
+>  	ssize_t rc;
+>  
+> +	if (src_file->f_inode->i_sb != dst_file->f_inode->i_sb)
 
-Do a sanity check of fmt to ensure it doesn't contain odd printf
-specifiers that would make snprintf go off into the weeds. The lack of
-the FMTCHECK_NO_EXTRA_ARGS flag (i.e., the last 0 argument) means we
-allow either no specifiers or precisely one occurrence of %s in tmp.
+file_inode(file)->i_sb, please.
 
-Signed-off-by: Rasmus Villemoes <linux@rasmusvillemoes.dk>
----
- fs/nfs/nfsroot.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+> +		return -EXDEV;
+> +
+>  	rc = cifs_file_copychunk_range(xid, src_file, off, dst_file, destoff,
+>  					len, flags);
+>  	free_xid(xid);
+> diff --git a/fs/nfs/nfs4file.c b/fs/nfs/nfs4file.c
+> index 4288a6e..09df688 100644
+> --- a/fs/nfs/nfs4file.c
+> +++ b/fs/nfs/nfs4file.c
+> @@ -135,6 +135,9 @@ static ssize_t nfs4_copy_file_range(struct file *file_in, loff_t pos_in,
+>  {
+>  	ssize_t ret;
+>  
+> +	if (file_in->f_inode->i_sb != file_out->f_inode->i_sb)
+> +		return -EXDEV;
+> +
+>  	if (file_inode(file_in) == file_inode(file_out))
+>  		return -EINVAL;
 
-diff --git a/fs/nfs/nfsroot.c b/fs/nfs/nfsroot.c
-index effaa4247b91..71db0149eb49 100644
---- a/fs/nfs/nfsroot.c
-+++ b/fs/nfs/nfsroot.c
-@@ -261,7 +261,7 @@ static int __init root_nfs_data(char *cmdline)
- 	 * mess into nfs_root_device.
- 	 */
- 	len = snprintf(nfs_export_path, sizeof(nfs_export_path),
--				tmp, utsname()->nodename);
-+				fmtcheck(tmp, "%s", 0), utsname()->nodename);
- 	if (len >= (int)sizeof(nfs_export_path))
- 		goto out_devnametoolong;
- 	len = snprintf(nfs_root_device, sizeof(nfs_root_device),
+Please look at the code around your modifications and make sure your
+additions are consistent with it.
+
+> @@ -1588,7 +1584,8 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
+>  	 * Try cloning first, this is supported by more file systems, and
+>  	 * more efficient if both clone and copy are supported (e.g. NFS).
+>  	 */
+> -	if (file_in->f_op->clone_file_range) {
+> +	if (inode_in->i_sb == inode_out->i_sb &&
+> +			file_in->f_op->clone_file_range) {
+
+	if (inode_in->i_sb == inode_out->i_sb &&
+	    file_in->f_op->clone_file_range) {
+
+Cheers,
+
+Dave.
 -- 
-2.19.1.6.gbde171bbf5
-
+Dave Chinner
+david@fromorbit.com
