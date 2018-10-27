@@ -2,126 +2,83 @@ Return-Path: <SRS0=aRlV=NH=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED
+X-Spam-Status: No, score=-2.1 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS,USER_AGENT_MUTT
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 08A16C46475
-	for <linux-nfs@archiver.kernel.org>; Sat, 27 Oct 2018 11:14:30 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 48A6DC46475
+	for <linux-nfs@archiver.kernel.org>; Sat, 27 Oct 2018 13:23:49 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id B0F0020856
-	for <linux-nfs@archiver.kernel.org>; Sat, 27 Oct 2018 11:14:29 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org B0F0020856
-Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=redhat.com
+	by mail.kernel.org (Postfix) with ESMTP id E697120828
+	for <linux-nfs@archiver.kernel.org>; Sat, 27 Oct 2018 13:23:48 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="qboySBrY"
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org E697120828
+Authentication-Results: mail.kernel.org; dmarc=none (p=none dis=none) header.from=infradead.org
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728547AbeJ0TzF (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sat, 27 Oct 2018 15:55:05 -0400
-Received: from mail-qt1-f196.google.com ([209.85.160.196]:45206 "EHLO
-        mail-qt1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728503AbeJ0TzF (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 27 Oct 2018 15:55:05 -0400
-Received: by mail-qt1-f196.google.com with SMTP id l9-v6so4149409qtj.12
-        for <linux-nfs@vger.kernel.org>; Sat, 27 Oct 2018 04:14:28 -0700 (PDT)
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:message-id:subject:from:to:cc:date:in-reply-to
-         :references:mime-version:content-transfer-encoding;
-        bh=CQ4cPHjJhatxs6BoRVMLlK5V67AqofR868n39hGAWvc=;
-        b=IaglutVijaxvpslKK9IPW7mjNJ3q/ICr2tuilFQ/O3q1T83qh91qHXoY7mXHJ/LNT/
-         x50unYUP36dgPBg2xU7/7MuDLT8HbGogGjOsIIYU5Wvo0adwFBAkmqr1CGv19beuTSbQ
-         +SlarWQX+O6x46lYIL2mSuZh4BfHGfRZeu9SSuOevibZS8ONjg3Taa+gqU7F30BtIIWx
-         koUse5N4y+GrV/DJP4wmc9ShIx1XmXMTY7JXgzSkz2Uaw/mJR+LmeS9pzLNAe25EwmO2
-         zl+90STsk+y9U60NsIOzusPCsLBp8WL5ZCGutXzx9Qbylll192CrlIbDxo7R5H5VBBda
-         QEMA==
-X-Gm-Message-State: AGRZ1gJRp4eP9415OUDx6POZtaWKsZtEv30mQP7DhNjRmLBkv9ZwP9v5
-        wU5gqUn18nZOz4C61msX4wZ86A==
-X-Google-Smtp-Source: AJdET5dd1bvNK7EInRA+8YKJSuQnt3t0Zoh0G3ZyQpc2jHN8uC+6I54XqLW7E9stbbEvXjRwsTPPoA==
-X-Received: by 2002:a0c:f905:: with SMTP id v5mr6547232qvn.240.1540638868029;
-        Sat, 27 Oct 2018 04:14:28 -0700 (PDT)
-Received: from tleilax.poochiereds.net (cpe-2606-A000-1100-DB-0-0-0-43E.dyn6.twc.com. [2606:a000:1100:db::43e])
-        by smtp.gmail.com with ESMTPSA id y33-v6sm11988434qth.3.2018.10.27.04.14.27
-        (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
-        Sat, 27 Oct 2018 04:14:27 -0700 (PDT)
-Message-ID: <b40f7fda3213c3f0c317386bb357d12ffb6d926a.camel@redhat.com>
-Subject: Re: [PATCH v4 03/11] NFS: NFSD defining nl4_servers structure
- needed by both
-From:   Jeff Layton <jlayton@redhat.com>
-To:     Olga Kornievskaia <olga.kornievskaia@gmail.com>,
+        id S1728576AbeJ0WEq (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sat, 27 Oct 2018 18:04:46 -0400
+Received: from bombadil.infradead.org ([198.137.202.133]:48518 "EHLO
+        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1728320AbeJ0WEq (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 27 Oct 2018 18:04:46 -0400
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+        d=infradead.org; s=bombadil.20170209; h=In-Reply-To:Content-Type:MIME-Version
+        :References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
+        Content-Transfer-Encoding:Content-ID:Content-Description:Resent-Date:
+        Resent-From:Resent-Sender:Resent-To:Resent-Cc:Resent-Message-ID:List-Id:
+        List-Help:List-Unsubscribe:List-Subscribe:List-Post:List-Owner:List-Archive;
+         bh=8ahizoSDIQuEqUoKaCICOj6n7evKYCMP/g+23S5bwyY=; b=qboySBrYB4SHdt5EU7AIsstkb
+        aG0RwbS7QIj7vfeTNzHvJmu/VZ+hDHw6XeKels9ve3EUHTE9SHIEP0yU8V+FYBxf4ErrHJY0NWbWZ
+        7z7yTRvrPRW2zgdtNo3vkfZ40WtIJBTxAkPE9SpzngzcOQwPiseT16PTo5j5u/ZLzLdyjulTzdTjV
+        rlPUcQCJJgb9R3a8gjJxP6i8W9BmTn1inTLDkiAFhJpZ1l2hJrxp2Lz/cIz4Tzjy1fjMkZGledWvs
+        4FakimVWcEGYb5AMxiWu/L42j8YrfF7B8cizX0KwFPq0pB9dGK0J1STB4Gk+OyXdl+XnOLlVXugSh
+        LFpxa6C8A==;
+Received: from willy by bombadil.infradead.org with local (Exim 4.90_1 #2 (Red Hat Linux))
+        id 1gGOZ1-0004SF-FP; Sat, 27 Oct 2018 13:23:39 +0000
+Date:   Sat, 27 Oct 2018 06:23:39 -0700
+From:   Matthew Wilcox <willy@infradead.org>
+To:     Dave Chinner <david@fromorbit.com>
+Cc:     Olga Kornievskaia <olga.kornievskaia@gmail.com>,
         trond.myklebust@hammerspace.com, anna.schumaker@netapp.com,
-        viro@zeniv.linux.org.uk, smfrench@gmail.com, miklos@szeredi.hu
-Cc:     linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        viro@zeniv.linux.org.uk, smfrench@gmail.com, miklos@szeredi.hu,
+        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         linux-cifs@vger.kernel.org, linux-unionfs@vger.kernel.org,
         linux-man@vger.kernel.org
-Date:   Sat, 27 Oct 2018 07:14:26 -0400
-In-Reply-To: <20181026201057.36899-5-olga.kornievskaia@gmail.com>
+Subject: Re: [PATCH 1/1] man-page: copy_file_range(2) allow for cross-device
+ copies
+Message-ID: <20181027132339.GZ25444@bombadil.infradead.org>
 References: <20181026201057.36899-1-olga.kornievskaia@gmail.com>
-         <20181026201057.36899-5-olga.kornievskaia@gmail.com>
-Content-Type: text/plain; charset="UTF-8"
-X-Mailer: Evolution 3.28.5 (3.28.5-1.fc28) 
-Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
+ <20181026201057.36899-3-olga.kornievskaia@gmail.com>
+ <20181027091240.GK6311@dastard>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20181027091240.GK6311@dastard>
+User-Agent: Mutt/1.9.2 (2017-12-15)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Fri, 2018-10-26 at 16:10 -0400, Olga Kornievskaia wrote:
-> From: Olga Kornievskaia <kolga@netapp.com>
+On Sat, Oct 27, 2018 at 08:12:40PM +1100, Dave Chinner wrote:
+> > @@ -131,7 +132,8 @@ There is not enough space on the target filesystem to complete the copy.
+> >  .B EXDEV
+> >  The files referred to by
+> >  .IR file_in " and " file_out
+> > -are not on the same mounted filesystem.
+> > +are not on the same mounted filesystem when the kernel does not support
+> > +cross device file copy.
 > 
-> These structures are needed by COPY_NOTIFY on the client and needed
-> by the nfsd as well
+> Kernel can support cross device file copy, the filesystem may not.
 > 
-> Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
-> ---
->  include/linux/nfs4.h | 24 ++++++++++++++++++++++++
->  1 file changed, 24 insertions(+)
-> 
-> diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-> index 1b06f0b..4d76f87 100644
-> --- a/include/linux/nfs4.h
-> +++ b/include/linux/nfs4.h
-> @@ -16,6 +16,7 @@
->  #include <linux/list.h>
->  #include <linux/uidgid.h>
->  #include <uapi/linux/nfs4.h>
-> +#include <linux/sunrpc/msg_prot.h>
->  
->  enum nfs4_acl_whotype {
->  	NFS4_ACL_WHO_NAMED = 0,
-> @@ -672,4 +673,27 @@ struct nfs4_op_map {
->  	} u;
->  };
->  
-> +struct nfs42_netaddr {
-> +	char		netid[RPCBIND_MAXNETIDLEN];
-> +	char		addr[RPCBIND_MAXUADDRLEN + 1];
-> +	u32		netid_len;
-> +	u32 addr_len;
+> EXDEV
+> 	One of the files specified by file_in and file_out are on a
+> 	filesystem that does not support cross device copies.
 
-Could you fix the indentation above?
-
-> +};
-> +
-> +enum netloc_type4 {
-> +	NL4_NAME		= 1,
-> +	NL4_URL			= 2,
-> +	NL4_NETADDR		= 3,
-> +};
-> +
-> +struct nl4_server {
-> +	enum netloc_type4	nl4_type;
-> +	union {
-> +		struct { /* NL4_NAME, NL4_URL */
-> +			int	nl4_str_sz;
-> +			char	nl4_str[NFS4_OPAQUE_LIMIT + 1];
-> +		};
-> +		struct nfs42_netaddr	nl4_addr; /* NL4_NETADDR */
-> +	} u;
-> +};
->  #endif
-
-Otherwise, looks fine.
-
-Reviewed-by: Jeff Layton <jlayton@redhat.com>
-
+I mentioned this in my last review, and Olga pointed out that one of
+the changes in this patch means the kernel will do the copy using
+do_splice_direct if the filesystem doesn't support cross-device copying.
+We should keep this error documented for those on old kernels, but the
+kernel will never return -EXDEV any more.
