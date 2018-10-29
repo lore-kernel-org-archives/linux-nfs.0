@@ -2,130 +2,107 @@ Return-Path: <SRS0=jHeB=NJ=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED,
-	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-0.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS,URIBL_BLOCKED
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 95159C2BC61
-	for <linux-nfs@archiver.kernel.org>; Mon, 29 Oct 2018 17:55:09 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7D7BAC0044C
+	for <linux-nfs@archiver.kernel.org>; Mon, 29 Oct 2018 17:57:00 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 64885204FD
-	for <linux-nfs@archiver.kernel.org>; Mon, 29 Oct 2018 17:55:09 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 64885204FD
-Authentication-Results: mail.kernel.org; dmarc=none (p=none dis=none) header.from=arm.com
+	by mail.kernel.org (Postfix) with ESMTP id 46D7D204FD
+	for <linux-nfs@archiver.kernel.org>; Mon, 29 Oct 2018 17:57:00 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="HLhehdRW"
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 46D7D204FD
+Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=gmail.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727834AbeJ3Cos (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 29 Oct 2018 22:44:48 -0400
-Received: from usa-sjc-mx-foss1.foss.arm.com ([217.140.101.70]:43992 "EHLO
-        foss.arm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726998AbeJ3Cos (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 29 Oct 2018 22:44:48 -0400
-Received: from usa-sjc-imap-foss1.foss.arm.com (unknown [10.72.51.249])
-        by usa-sjc-mx-foss1.foss.arm.com (Postfix) with ESMTP id 3889A80D;
-        Mon, 29 Oct 2018 10:55:08 -0700 (PDT)
-Received: from e112298-lin.cambridge.arm.com (usa-sjc-imap-foss1.foss.arm.com [10.72.51.249])
-        by usa-sjc-imap-foss1.foss.arm.com (Postfix) with ESMTPA id 901743F6A8;
-        Mon, 29 Oct 2018 10:55:06 -0700 (PDT)
-From:   Julien Thierry <julien.thierry@arm.com>
-To:     linux-nfs@vger.kernel.org
-Cc:     Julien Thierry <julien.thierry@arm.com>,
-        Trond Myklebust <trond.myklebust@hammerspace.com>,
+        id S1727955AbeJ3Cqj (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 29 Oct 2018 22:46:39 -0400
+Received: from mail-ua1-f67.google.com ([209.85.222.67]:46861 "EHLO
+        mail-ua1-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726919AbeJ3Cqi (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Oct 2018 22:46:38 -0400
+Received: by mail-ua1-f67.google.com with SMTP id z8so3372557uap.13;
+        Mon, 29 Oct 2018 10:56:58 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc;
+        bh=o8ZGdB3Xc1cDSZGC7sOLE+3utzZVnGDazwW6kv6MSA0=;
+        b=HLhehdRWpp2RP/YxzDlAovbrMlgiy+qYd+dk7o/LX42MiN5rf8yHmt+pVSiyXIGJ13
+         jmEBnq+S4JB0sTLlarhSXnimTNnkEbLWFPgo/kJfMCfLA8K0eTv7cZk8qvStWZGZKtIa
+         BDVdIejL7HKTy6b6gGM3ObsZkiWxHcdzYU1GMGcUWwn8KQXz2srPH94Gl+ivyw8yg+b2
+         PYPYwoSiz9AetoaLlgVN1eXziP3xlrPe6oBgxFsd3ynKNVTlXB0AR1M3nlc2OBqfAZvy
+         TzNMiEGfRNiaB9RT9SwK8VFQ4Yy5slNflRWEI7rs9wxcp6U4NzBR6KaB9OL11T2dIdvc
+         iYrA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=o8ZGdB3Xc1cDSZGC7sOLE+3utzZVnGDazwW6kv6MSA0=;
+        b=dDah6CcN6Mv60Uog8EvTbA9oksOvc4PYXdlY3ORaXZUhTLsyNnzLlkQhNIlblTTu70
+         n8JA3e1SoeXFPNYpcDKFD65NWUkv+xZqI6wZi/2d2diDcFLxxtaDBrKy8ELCwsp1lai+
+         a/DI3q55JVZfLrM57eMC0LwZPhVEBCxfIf6ohX7mkOfu4cHZRPIWuVaM1tmEtFWTPzGG
+         GXT1aKyp2qbLLxGnVCl1tisyWZl4YwuivYoSPeL7oQHZaCKS6ggOYaHwpArmYelclcGd
+         2d1MS3s+xFPEAlgLRFxPV236ykr+hIafX4GYUk5si5/RAS3zL16a2DnpP92Csyymfrr/
+         wp9g==
+X-Gm-Message-State: AGRZ1gKvZz2FDs2bwDxBq3szEXcpHy74y0CkmRZH/JKpK7IK5vUElMHR
+        Nd6LKsx3iawqyE3QbBkcWjV8spbe/5RUHul9DZo=
+X-Google-Smtp-Source: AJdET5dOdmZhlDFa4dmTPLPUELyoFokreW9OUrU8tNO/zGcdhMOMljWwMO01E1sazrfAimpZytP6HU6sl1XAuuKqu4U=
+X-Received: by 2002:a9f:3250:: with SMTP id y16mr6479601uad.120.1540835817615;
+ Mon, 29 Oct 2018 10:56:57 -0700 (PDT)
+MIME-Version: 1.0
+References: <20181029174059.38326-1-olga.kornievskaia@gmail.com>
+ <20181029174059.38326-14-olga.kornievskaia@gmail.com> <20181029175114.GJ28520@bombadil.infradead.org>
+ <20181029175239.GK28520@bombadil.infradead.org>
+In-Reply-To: <20181029175239.GK28520@bombadil.infradead.org>
+From:   Olga Kornievskaia <olga.kornievskaia@gmail.com>
+Date:   Mon, 29 Oct 2018 13:56:46 -0400
+Message-ID: <CAN-5tyF+TGjYw3S1VkBUfNFyJgQrdT8DCnE6T0Puh=LbqX5nhA@mail.gmail.com>
+Subject: Re: [PATCH v5 12/12] NFS: replace cross device check in copy_file_range
+To:     willy@infradead.org
+Cc:     trond.myklebust@hammerspace.com,
         Anna Schumaker <anna.schumaker@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Jeff Layton <jlayton@kernel.org>,
-        "David S. Miller" <davem@davemloft.net>, netdev@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: [PATCH] SUNRPC: Fix iter_iov_*vec warnings
-Date:   Mon, 29 Oct 2018 17:55:01 +0000
-Message-Id: <1540835701-23176-1-git-send-email-julien.thierry@arm.com>
-X-Mailer: git-send-email 1.9.1
+        viro@zeniv.linux.org.uk, Steve French <smfrench@gmail.com>,
+        Miklos Szeredi <miklos@szeredi.hu>,
+        linux-nfs <linux-nfs@vger.kernel.org>,
+        linux-fsdevel@vger.kernel.org, linux-cifs@vger.kernel.org,
+        linux-unionfs@vger.kernel.org, linux-man@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-While booting linux-next on Juno with rootfs over NFS, the following
-warning is spammed on kernel log:
+On Mon, Oct 29, 2018 at 1:52 PM Matthew Wilcox <willy@infradead.org> wrote:
+>
+> On Mon, Oct 29, 2018 at 10:51:14AM -0700, Matthew Wilcox wrote:
+> > On Mon, Oct 29, 2018 at 01:40:59PM -0400, Olga Kornievskaia wrote:
+> > > +   c_in = (NFS_SERVER(file_inode(file_in)))->nfs_client;
+> >
+> > Seems to be an unnecessary pair of brackets there, given existing code:
+> >
+> > fs/nfs/delegation.c:    struct nfs_client *clp = NFS_SERVER(inode)->nfs_client;
+> > fs/nfs/dir.c:                                     NFS_SERVER(inode)->dtsize, desc->plus);
+> > fs/nfs/file.c:  if (NFS_SERVER(inode)->flags & NFS_MOUNT_LOCAL_FCNTL)
+> > (etc)
+> >
+> > > +   if (c_in->cl_minorversion < 2)
+> >
+> > in fact, can't you make this even simpler ...
+> >
+> >       if (NFS_SERVER(inode)->nfs_client->cl_minorversion < 2)
+>
+> Oops.  Typed too fast:
+>
+>         if (NFS_SERVER(file_inode(file_in)))->nfs_client->cl_minorversion < 2)
+>
+> > I thought you needed to cast it, but code like this:
+> >
+> > fs/nfs/nfs4proc.c: NFS_SERVER(dir)->nfs_client->cl_hostname);
+> >
+> > would indicate not.
 
-[   16.988190] WARNING: CPU: 1 PID: 680 at lib/iov_iter.c:1082 iov_iter_kvec+0x20/0x40
-[   16.995776] Modules linked in:
-[   16.998801] CPU: 1 PID: 680 Comm: kworker/u13:0 Not tainted 4.19.0-next-20181029 #2238
-[   17.006640] Hardware name: ARM Juno development board (r0) (DT)
-[   17.012505] Workqueue: xprtiod xs_stream_data_receive_workfn
-[   17.018108] pstate: 00000005 (nzcv daif -PAN -UAO)
-[   17.022851] pc : iov_iter_kvec+0x20/0x40
-[   17.026733] lr : xs_stream_data_receive+0x194/0x378
-[   17.031559] sp : ffff00000b033ce0
-[   17.034836] x29: ffff00000b033ce0 x28: 0000000000000000
-[   17.040095] x27: ffff8009760b9870 x26: ffff00000917e1c8
-[   17.045352] x25: 0000000000000000 x24: ffff800976a91598
-[   17.050610] x23: ffff000009169000 x22: ffff8009775f0000
-[   17.055867] x21: 000000000000000c x20: ffff800976a91578
-[   17.061124] x19: ffff800976a91000 x18: 0000000000000000
-[   17.066381] x17: 0000000000000000 x16: 0000000000000000
-[   17.071639] x15: 0000000000000400 x14: 0000000000000400
-[   17.076896] x13: 0000000000000400 x12: 0000000000002f28
-[   17.082153] x11: 0000000000000000 x10: 0000000000000960
-[   17.087410] x9 : ffff00000b033d50 x8 : fefefefefefefeff
-[   17.092667] x7 : ffff80097ff9d380 x6 : 0000000000000000
-[   17.097924] x5 : 00646f6974727078 x4 : 000000000000000c
-[   17.103181] x3 : 0000000000000001 x2 : ffff00000b033d30
-[   17.108438] x1 : 0000000000000002 x0 : ffff00000b033d50
-[   17.113695] Call trace:
-[   17.116115]  iov_iter_kvec+0x20/0x40
-[   17.119652]  xs_stream_data_receive_workfn+0x10/0x18
-[   17.124568]  process_one_work+0x1c8/0x318
-[   17.128535]  worker_thread+0x48/0x428
-[   17.132158]  kthread+0xf8/0x128
-[   17.135266]  ret_from_fork+0x10/0x18
-[   17.138801] ---[ end trace 65cbcd2ddaeef59e ]---
-
-This is likely a clash between the recent addition of vector iterators to
-SUNRPC and the recent
-commit aa563d7bca6e882ec2bdae24603c8f016401a144 ("iov_iter: Separate
-type from direction and use accessor functions") which slightly changes
-the usage of those iterators by splitting type and direction.
-
-Fix this by not including type in the direction of the operation.
-
-Fixes: 277e4ab7d530bf287e02b65cfcd3ea8f489784f6 ("SUNRPC: Simplify TCP
-receive code by switching to using iterators")
-
-Signed-off-by: Julien Thierry <julien.thierry@arm.com>
-Cc: Trond Myklebust <trond.myklebust@hammerspace.com>
-Cc: Anna Schumaker <anna.schumaker@netapp.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Jeff Layton <jlayton@kernel.org>
-Cc: "David S. Miller" <davem@davemloft.net>
-Cc: netdev@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org
----
- net/sunrpc/xprtsock.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
-
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 1b51e04..ae77c71 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -361,7 +361,7 @@ static void xs_free_peer_addresses(struct rpc_xprt *xprt)
- xs_read_kvec(struct socket *sock, struct msghdr *msg, int flags,
- 		struct kvec *kvec, size_t count, size_t seek)
- {
--	iov_iter_kvec(&msg->msg_iter, READ | ITER_KVEC, kvec, 1, count);
-+	iov_iter_kvec(&msg->msg_iter, READ, kvec, 1, count);
- 	return xs_sock_recvmsg(sock, msg, flags, seek);
- }
- 
-@@ -370,7 +370,7 @@ static void xs_free_peer_addresses(struct rpc_xprt *xprt)
- 		struct bio_vec *bvec, unsigned long nr, size_t count,
- 		size_t seek)
- {
--	iov_iter_bvec(&msg->msg_iter, READ | ITER_BVEC, bvec, nr, count);
-+	iov_iter_bvec(&msg->msg_iter, READ, bvec, nr, count);
- 	return xs_sock_recvmsg(sock, msg, flags, seek);
- }
- 
--- 
-1.9.1
-
+You are right. Then no declaration is needed. I'll change it. Thank you.
