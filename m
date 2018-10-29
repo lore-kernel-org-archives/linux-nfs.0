@@ -5,66 +5,67 @@ X-Spam-Level:
 X-Spam-Status: No, score=-8.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+	SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3879EC2BC61
-	for <linux-nfs@archiver.kernel.org>; Mon, 29 Oct 2018 19:04:17 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C7527C0044C
+	for <linux-nfs@archiver.kernel.org>; Mon, 29 Oct 2018 19:04:18 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id EC8152082D
-	for <linux-nfs@archiver.kernel.org>; Mon, 29 Oct 2018 19:04:16 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 904662082D
+	for <linux-nfs@archiver.kernel.org>; Mon, 29 Oct 2018 19:04:18 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="Zobboxoi"
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org EC8152082D
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="FXoZ44PX"
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 904662082D
 Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=gmail.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729463AbeJ3DyN (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 29 Oct 2018 23:54:13 -0400
-Received: from mail-qt1-f194.google.com ([209.85.160.194]:36581 "EHLO
+        id S1729471AbeJ3DyO (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 29 Oct 2018 23:54:14 -0400
+Received: from mail-qt1-f194.google.com ([209.85.160.194]:33331 "EHLO
         mail-qt1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725923AbeJ3DyN (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Oct 2018 23:54:13 -0400
-Received: by mail-qt1-f194.google.com with SMTP id u34-v6so10587030qth.3;
-        Mon, 29 Oct 2018 12:04:13 -0700 (PDT)
+        with ESMTP id S1725969AbeJ3DyO (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Oct 2018 23:54:14 -0400
+Received: by mail-qt1-f194.google.com with SMTP id i15-v6so10613396qtr.0;
+        Mon, 29 Oct 2018 12:04:15 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references;
-        bh=L/lyESnrT7eI5UkekwLVWgapYd9jVCBDfyygHzXaoSk=;
-        b=Zobboxoi3rIHLzjq5cGCEFtypv86Xv/IGeKN8d0b/pMziuwT3VhH50N5oQUG+fRHaw
-         0L24LgoMJpc0UZ1AAY4rWJ9DI2uPTRTDw8pH+sUM54DrGQ66X00YJ8f4T6JWRzGpmgeI
-         GLaJUS7LK65dGRdNtf/BQ8VSLOjOb0NRyWsLeH6wY2ElcQ12vkBD2mD0oNlnVurkeN5t
-         4dC1LjnbABkQx4tB2+a0Z3WUXsxZCeAHQ0nQPegB2MfJF0W0NDBioChn6JPFOQJND5hf
-         iiwm7GJ8vR0HpMuwOtuJyCtJiM0CsZLECFG7Qw47Ifl5PwzVv4GNGQWeQcRZU8hsAuLe
-         uNGg==
+        bh=DqnHnZrMSvA0or48b6pnWzyYDz4iWYc8+TMTuA2+K94=;
+        b=FXoZ44PXZaoiI5U/LlShSfMtLHpKwDvZEDri1ITE0YaMbnkGD1XLdLHUC9ppdaNp16
+         hT0IrrpcbCqNK13NJLpZQJFlRqgrynw+TXt/2vrgNFiZsn/vlIMnNHGphVU9Bk7VHDdP
+         wTUXZ0qTejBsJ3+j4+R1a3Lp3TOybON2i/hUrVmhRJOU8EvbEMPA3KBzU114eHuDRW96
+         1R4HeDR96bYr2boI+ykW9SN1QdPWqFrKeWZgQNNT0JHyiB8nejF40fNE+D1Z8FbMy5aq
+         Ndn5TnXl/74Fm1MQcvMQbaPAGXDPEFFXtKmo5oby3jjN5dXXFGD2M+6kWgWK+i8cikHn
+         /4NQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references;
-        bh=L/lyESnrT7eI5UkekwLVWgapYd9jVCBDfyygHzXaoSk=;
-        b=QjitRo12kaTcUs+TQ+O5AY+ay8mM6lEhvVW7X3aEEGPba86V/35RP3pX1or0rnp/kG
-         enaZbaqIeY5Jktk5+XPhIiAg5WO/DlYuQdIKW9Aa6YYYpAJ/i/7i9bwaotu0MSeoEPV9
-         S/8Cnxz7HyZGooe6LmxiSAbR24w63SC5LMC1adlkah7vJj+7wypOgfUs3I6HjJ0xgzuu
-         rmigQYmBnRQN1MJlruVTZmMxFu3KZMlX9FMaj8lLWCNrve1Qh0AMIVfPDsFgnO6B0lnm
-         zC0SEWB2snaLUAC3H1KdY3qZFp/vwGV2ZeZ2uFadd9qZN91KShoe/kJEJdtaaE1y0lE1
-         W+5Q==
-X-Gm-Message-State: AGRZ1gKBbWbfH8C40byqJe/suwxBm9R9I8Jf4+PSzSlXnJnGrEAH499z
-        hkmNgmMctoz2qdv4/CUbhY8=
-X-Google-Smtp-Source: AJdET5d7e8cu+pNjkadlnIuYManbEADxkKfkh6r1slOVmkYEMdaHR2Dw8Sc/Oxv6idX2WPm65dXeLg==
-X-Received: by 2002:ac8:3a81:: with SMTP id x1-v6mr14557542qte.370.1540839853437;
-        Mon, 29 Oct 2018 12:04:13 -0700 (PDT)
+        bh=DqnHnZrMSvA0or48b6pnWzyYDz4iWYc8+TMTuA2+K94=;
+        b=FowflJdxMOhbiHGlv9L5RPG9LIcdCjy+RKZ1hUXNm5u1MjT2tamYsMhXpx2zLfG+TF
+         MRj9ahYF3s7nsKfNwZ1muY8zmYmEDV3chpdA+QaEIIjcFwCPAVFAtekQKYWh7VYsWb3+
+         0OPnr78hCxRCDHL/hucEvrsSzWq38jNA0gyxxsHqQJMxXC22qB3zdo+6lfJcqpbqE9Dd
+         gSdx60Ex/7suu9gSEsQpfatGafbYUYwSVxk3Ot24XFcvqZmbVAtZxvO6bW9HDCjE3aQe
+         V0P1DJ24ZLrHNhAYj0L7M8ek/Z7Sd6YHjn8lb6qEMnhEcejgaX9MAJ7Dd9GhBgK31vTg
+         i2Mw==
+X-Gm-Message-State: AGRZ1gIiYWSppxjoCYhSgvNNBBcIJlzrlf/UqlDT9kdNSqlOBz94T69e
+        gvU/THKh25wkc0wipvvu/r0=
+X-Google-Smtp-Source: AJdET5f/kGKaYiahxprOoOnVYpdRB3PtFuUyLNGUcOLZnvHYogiFOoWqKbw3aIN3Y+3wkS7fr2FvCA==
+X-Received: by 2002:ac8:191a:: with SMTP id t26-v6mr13444924qtj.327.1540839855192;
+        Mon, 29 Oct 2018 12:04:15 -0700 (PDT)
 Received: from Olgas-MBP-195.attlocal.net (172-10-226-31.lightspeed.livnmi.sbcglobal.net. [172.10.226.31])
-        by smtp.gmail.com with ESMTPSA id c5-v6sm2714373qtj.55.2018.10.29.12.04.11
+        by smtp.gmail.com with ESMTPSA id c5-v6sm2714373qtj.55.2018.10.29.12.04.13
         (version=TLS1 cipher=AES128-SHA bits=128/128);
-        Mon, 29 Oct 2018 12:04:12 -0700 (PDT)
+        Mon, 29 Oct 2018 12:04:14 -0700 (PDT)
 From:   Olga Kornievskaia <olga.kornievskaia@gmail.com>
 To:     trond.myklebust@hammerspace.com, anna.schumaker@netapp.com,
         viro@zeniv.linux.org.uk, smfrench@gmail.com, miklos@szeredi.hu
 Cc:     linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         linux-cifs@vger.kernel.org, linux-unionfs@vger.kernel.org,
         linux-man@vger.kernel.org
-Subject: [PATCH v6 06/12] NFS: add ca_source_server<> to COPY
-Date:   Mon, 29 Oct 2018 15:03:51 -0400
-Message-Id: <20181029190357.38439-8-olga.kornievskaia@gmail.com>
+Subject: [PATCH v6 07/12] NFS: also send OFFLOAD_CANCEL to source server
+Date:   Mon, 29 Oct 2018 15:03:52 -0400
+Message-Id: <20181029190357.38439-9-olga.kornievskaia@gmail.com>
 X-Mailer: git-send-email 2.10.1 (Apple Git-78)
 In-Reply-To: <20181029190357.38439-1-olga.kornievskaia@gmail.com>
 References: <20181029190357.38439-1-olga.kornievskaia@gmail.com>
@@ -75,160 +76,35 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Olga Kornievskaia <kolga@netapp.com>
 
-Support only one source server address: the same address that
-the client and source server use.
+In case of copy is cancelled, also send OFFLOAD_CANCEL to the source
+server.
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
 Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
 ---
- fs/nfs/nfs42.h          |  3 ++-
- fs/nfs/nfs42proc.c      | 26 +++++++++++++++++---------
- fs/nfs/nfs42xdr.c       | 12 ++++++++++--
- fs/nfs/nfs4file.c       |  7 ++++++-
- include/linux/nfs_xdr.h |  1 +
- 5 files changed, 36 insertions(+), 13 deletions(-)
+ fs/nfs/nfs42proc.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfs/nfs42.h b/fs/nfs/nfs42.h
-index bbe49a3..28dcee5 100644
---- a/fs/nfs/nfs42.h
-+++ b/fs/nfs/nfs42.h
-@@ -15,7 +15,8 @@
- /* nfs4.2proc.c */
- #ifdef CONFIG_NFS_V4_2
- int nfs42_proc_allocate(struct file *, loff_t, loff_t);
--ssize_t nfs42_proc_copy(struct file *, loff_t, struct file *, loff_t, size_t);
-+ssize_t nfs42_proc_copy(struct file *, loff_t, struct file *, loff_t, size_t,
-+			struct nl4_server *, nfs4_stateid *);
- int nfs42_proc_deallocate(struct file *, loff_t, loff_t);
- loff_t nfs42_proc_llseek(struct file *, loff_t, int);
- int nfs42_proc_layoutstats_generic(struct nfs_server *,
 diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
-index b1c57a4..bb9e799 100644
+index bb9e799..98fe00b 100644
 --- a/fs/nfs/nfs42proc.c
 +++ b/fs/nfs/nfs42proc.c
-@@ -242,7 +242,9 @@ static ssize_t _nfs42_proc_copy(struct file *src,
- 				struct file *dst,
- 				struct nfs_lock_context *dst_lock,
- 				struct nfs42_copy_args *args,
--				struct nfs42_copy_res *res)
-+				struct nfs42_copy_res *res,
-+				struct nl4_server *nss,
-+				nfs4_stateid *cnr_stateid)
- {
- 	struct rpc_message msg = {
- 		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_COPY],
-@@ -256,11 +258,15 @@ static ssize_t _nfs42_proc_copy(struct file *src,
- 	size_t count = args->count;
- 	ssize_t status;
+@@ -205,12 +205,14 @@ static int handle_async_copy(struct nfs42_copy_res *res,
+ 	memcpy(&res->write_res.verifier, &copy->verf, sizeof(copy->verf));
+ 	status = -copy->error;
  
--	status = nfs4_set_rw_stateid(&args->src_stateid, src_lock->open_context,
--				     src_lock, FMODE_READ);
--	if (status)
--		return status;
--
-+	if (nss) {
-+		args->cp_src = nss;
-+		nfs4_stateid_copy(&args->src_stateid, cnr_stateid);
-+	} else {
-+		status = nfs4_set_rw_stateid(&args->src_stateid,
-+				src_lock->open_context, src_lock, FMODE_READ);
-+		if (status)
-+			return status;
-+	}
- 	status = nfs_filemap_write_and_wait_range(file_inode(src)->i_mapping,
- 			pos_src, pos_src + (loff_t)count - 1);
- 	if (status)
-@@ -324,8 +330,9 @@ static ssize_t _nfs42_proc_copy(struct file *src,
++out_free:
+ 	kfree(copy);
+ 	return status;
+ out_cancel:
+ 	nfs42_do_offload_cancel_async(dst, &copy->stateid);
+-	kfree(copy);
+-	return status;
++	if (!nfs42_files_from_same_server(src, dst))
++		nfs42_do_offload_cancel_async(src, src_stateid);
++	goto out_free;
  }
  
- ssize_t nfs42_proc_copy(struct file *src, loff_t pos_src,
--			struct file *dst, loff_t pos_dst,
--			size_t count)
-+			struct file *dst, loff_t pos_dst, size_t count,
-+			struct nl4_server *nss,
-+			nfs4_stateid *cnr_stateid)
- {
- 	struct nfs_server *server = NFS_SERVER(file_inode(dst));
- 	struct nfs_lock_context *src_lock;
-@@ -370,7 +377,8 @@ ssize_t nfs42_proc_copy(struct file *src, loff_t pos_src,
- 		inode_lock(file_inode(dst));
- 		err = _nfs42_proc_copy(src, src_lock,
- 				dst, dst_lock,
--				&args, &res);
-+				&args, &res,
-+				nss, cnr_stateid);
- 		inode_unlock(file_inode(dst));
- 
- 		if (err >= 0)
-diff --git a/fs/nfs/nfs42xdr.c b/fs/nfs/nfs42xdr.c
-index e6e7cbf..c96c3f8 100644
---- a/fs/nfs/nfs42xdr.c
-+++ b/fs/nfs/nfs42xdr.c
-@@ -21,7 +21,10 @@
- #define encode_copy_maxsz		(op_encode_hdr_maxsz +          \
- 					 XDR_QUADLEN(NFS4_STATEID_SIZE) + \
- 					 XDR_QUADLEN(NFS4_STATEID_SIZE) + \
--					 2 + 2 + 2 + 1 + 1 + 1)
-+					 2 + 2 + 2 + 1 + 1 + 1 +\
-+					 1 + /* One cnr_source_server */\
-+					 1 + /* nl4_type */ \
-+					 1 + XDR_QUADLEN(NFS4_OPAQUE_LIMIT))
- #define decode_copy_maxsz		(op_decode_hdr_maxsz + \
- 					 NFS42_WRITE_RES_SIZE + \
- 					 1 /* cr_consecutive */ + \
-@@ -186,7 +189,12 @@ static void encode_copy(struct xdr_stream *xdr,
- 
- 	encode_uint32(xdr, 1); /* consecutive = true */
- 	encode_uint32(xdr, args->sync);
--	encode_uint32(xdr, 0); /* src server list */
-+	if (args->cp_src == NULL) { /* intra-ssc */
-+		encode_uint32(xdr, 0); /* no src server list */
-+		return;
-+	}
-+	encode_uint32(xdr, 1); /* supporting 1 server */
-+	encode_nl4_server(xdr, args->cp_src);
- }
- 
- static void encode_offload_cancel(struct xdr_stream *xdr,
-diff --git a/fs/nfs/nfs4file.c b/fs/nfs/nfs4file.c
-index beda4b3..e5c1a68 100644
---- a/fs/nfs/nfs4file.c
-+++ b/fs/nfs/nfs4file.c
-@@ -134,6 +134,8 @@ static ssize_t nfs4_copy_file_range(struct file *file_in, loff_t pos_in,
- 				    size_t count, unsigned int flags)
- {
- 	struct nfs42_copy_notify_res *cn_resp = NULL;
-+	struct nl4_server *nss = NULL;
-+	nfs4_stateid *cnrs = NULL;
- 	ssize_t ret;
- 
- 	if (pos_in >= i_size_read(file_inode(file_in)))
-@@ -154,9 +156,12 @@ static ssize_t nfs4_copy_file_range(struct file *file_in, loff_t pos_in,
- 		ret = nfs42_proc_copy_notify(file_in, file_out, cn_resp);
- 		if (ret)
- 			goto out;
-+		nss = &cn_resp->cnr_src;
-+		cnrs = &cn_resp->cnr_stateid;
- 	}
- 
--	ret = nfs42_proc_copy(file_in, pos_in, file_out, pos_out, count);
-+	ret = nfs42_proc_copy(file_in, pos_in, file_out, pos_out, count, nss,
-+				cnrs);
- out:
- 	kfree(cn_resp);
- 	if (ret == -EAGAIN)
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index dfc59bc..3a40b17 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1400,6 +1400,7 @@ struct nfs42_copy_args {
- 
- 	u64				count;
- 	bool				sync;
-+	struct nl4_server		*cp_src;
- };
- 
- struct nfs42_write_res {
+ static int process_copy_commit(struct file *dst, loff_t pos_dst,
 -- 
 1.8.3.1
 
