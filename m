@@ -8,64 +8,64 @@ X-Spam-Status: No, score=-8.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1804EC0044C
-	for <linux-nfs@archiver.kernel.org>; Mon, 29 Oct 2018 19:04:07 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id AB415C2BC61
+	for <linux-nfs@archiver.kernel.org>; Mon, 29 Oct 2018 19:04:09 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id D5AE92082D
-	for <linux-nfs@archiver.kernel.org>; Mon, 29 Oct 2018 19:04:06 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 6D7982082D
+	for <linux-nfs@archiver.kernel.org>; Mon, 29 Oct 2018 19:04:09 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="FX3waPfP"
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org D5AE92082D
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="sQo6XU2y"
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 6D7982082D
 Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=gmail.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729186AbeJ3DyD (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 29 Oct 2018 23:54:03 -0400
-Received: from mail-qk1-f193.google.com ([209.85.222.193]:34159 "EHLO
-        mail-qk1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725923AbeJ3DyD (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Oct 2018 23:54:03 -0400
-Received: by mail-qk1-f193.google.com with SMTP id a132so5674850qkg.1;
-        Mon, 29 Oct 2018 12:04:05 -0700 (PDT)
+        id S1729405AbeJ3DyG (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 29 Oct 2018 23:54:06 -0400
+Received: from mail-qt1-f195.google.com ([209.85.160.195]:44027 "EHLO
+        mail-qt1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725923AbeJ3DyG (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Oct 2018 23:54:06 -0400
+Received: by mail-qt1-f195.google.com with SMTP id q41-v6so10562061qtq.10;
+        Mon, 29 Oct 2018 12:04:07 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references;
-        bh=yD4MhSbMio4ftRoJ1EkJw3YdZdnXrh21EJt6A2edN1A=;
-        b=FX3waPfPDuOYGENDfxhDsua8gK80fufYRdM8XB7vca2dyg8CVZvT4Q7qkk1zwBtxWZ
-         j1IoYIP0/GGmp7VJViibe7j43uNe+yEFOolPwlWasYA6w/1bQJ8NZlJj2q+TRkLzAiPM
-         vsM6YEMIDwjCajPoOR8tM45VmVkXabcZkHayQWt3+IoFcVlGfHKZa1qV4nAKAtsdW4oJ
-         gcLozG5TR7MGkjVsWLNA02MU+2msKEIL+8FBXxdLZ09lLSI72CO//HIhVrOD+mAiTyUQ
-         AFkx1QxdqtJw3sJrRiBY7DXWdoCJndwZ/LLCsjDSIfz239FkcXtHui+LxAXELeglxH1t
-         VUrA==
+        bh=VV4M/cnS3hlXxtfqYU3EINln0tSbPvkrsIvgg+rY9zg=;
+        b=sQo6XU2y5z0GSR+MhXF9q4GJTy/GWyIaBH1ljb3hGh5DWAuh0LLFCLeWiNYC4dVwXg
+         flUQQad9Ik5JDuHMfQ29T5FxeZ2CrFrXgpmjIFD1rBztnbN35eBJcWcNHspzQCUME4m4
+         MSAe99xkXtWTDzAyCmm8OjG0wo1QMQuPikcvpXe5i9k51Gibf0/jKvwjbMWO96fACip3
+         /JLaPqsalwMLRS55kJcsnLTbougrqtXMpOroHWkECpflHMrPfK6KS2KBE98ik3l7PVMv
+         yzK+ZisGxG+OIgOM/9+/n0Du/AEEeIpF7Ve1BO1WzHhHhUf3VZxoON274VggEl00Yngq
+         cXtQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references;
-        bh=yD4MhSbMio4ftRoJ1EkJw3YdZdnXrh21EJt6A2edN1A=;
-        b=RiGieWJZgFZH8d5JdLevoJ5y1fY3QsuOlKOgKdIp9LpBguV0flUhqOlZ+Kihx5wgGv
-         owMw23CVdKNNKBGTUvOlJh6Kh1oX9y6HKisFGSsLua808QHlZOecLjJRpH+BBCRjH851
-         liVp7cpnly89md+IYbCDLE7ld2HXOWJIO9eL8Iflke4vRLP5kbdOXwvtnlTuyJZzaF2+
-         CJZlnpS3O+mY71Hfz8UEHtJrVif6NNBLGxPuCMq4e5CHqllf0Ow1iXxnIrfRsyQc3fWx
-         3nuQOgpn3ZBU5nBxqApX1CcXKspbLATazLTj8FUj9/jZnJ/sjfycMLa4P24vSIzmryLP
-         Vnew==
-X-Gm-Message-State: AGRZ1gLPashlbm3cIxv4jq1HdRcIXZrVth4RwMs2/pwPnECYAArUX7CW
-        ebSdzzyMnLp0Vf+1H99kwJM=
-X-Google-Smtp-Source: AJdET5f/YHf7E0x8WFVW5XwomSeR5gUwl58s0d76GbHjZNA5rDl28niSBBF+SqcqjH0klyL/Dncmlg==
-X-Received: by 2002:a37:7d86:: with SMTP id y128-v6mr12739918qkc.310.1540839844323;
-        Mon, 29 Oct 2018 12:04:04 -0700 (PDT)
+        bh=VV4M/cnS3hlXxtfqYU3EINln0tSbPvkrsIvgg+rY9zg=;
+        b=hIvgrJuUW5xVv+adYiXZjSICSVCumZCzETGnO46azezWv3ElFoT5x7wA+JEXvQXDuS
+         yBlxFDmfgsDG/tL32TgoiBh6+rcurj4NDo2S4HW8BYlqtxkxm9hSy2VwgO6dt3nbFP3M
+         RYmRFbEsg+8kL8/1dkkhpBm/qLy8QzebIdCP4WgE3fTfMPMrFNC6RVhUkfNTHEsGZXR6
+         zVCKeiDYWyuljvW+6frafXBLz8VsFsd4+AJfsSHu1+eMAjt77eev2bCKZFGt4TuLerrW
+         Yq1o7n0c5xEmHKT/+Mrq0JcN9o+U09QlySwgpPOIxQP9Gdx74SoAAUNtvHIZjnXP7zIr
+         pCxQ==
+X-Gm-Message-State: AGRZ1gI8DIVQn9NjInDB97F4oFxWC6zk5fpcCtNu+nQ308uxfk/W/bfP
+        HBPu+VpBO6ZC3c0SnAYvyQo=
+X-Google-Smtp-Source: AJdET5dTxJl/I0yHj2Q+jRYmUXASNnuvPHcwDmcaD3T5lxxbvzovrkPu2FkV0yM+9PtDXA9AQQhF6A==
+X-Received: by 2002:aed:2429:: with SMTP id r38-v6mr3975681qtc.128.1540839846651;
+        Mon, 29 Oct 2018 12:04:06 -0700 (PDT)
 Received: from Olgas-MBP-195.attlocal.net (172-10-226-31.lightspeed.livnmi.sbcglobal.net. [172.10.226.31])
-        by smtp.gmail.com with ESMTPSA id c5-v6sm2714373qtj.55.2018.10.29.12.04.02
+        by smtp.gmail.com with ESMTPSA id c5-v6sm2714373qtj.55.2018.10.29.12.04.04
         (version=TLS1 cipher=AES128-SHA bits=128/128);
-        Mon, 29 Oct 2018 12:04:03 -0700 (PDT)
+        Mon, 29 Oct 2018 12:04:05 -0700 (PDT)
 From:   Olga Kornievskaia <olga.kornievskaia@gmail.com>
 To:     trond.myklebust@hammerspace.com, anna.schumaker@netapp.com,
         viro@zeniv.linux.org.uk, smfrench@gmail.com, miklos@szeredi.hu
 Cc:     linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         linux-cifs@vger.kernel.org, linux-unionfs@vger.kernel.org,
         linux-man@vger.kernel.org
-Subject: [PATCH 1/1] man-page: copy_file_range(2) allow for cross-device copies
-Date:   Mon, 29 Oct 2018 15:03:46 -0400
-Message-Id: <20181029190357.38439-3-olga.kornievskaia@gmail.com>
+Subject: [PATCH v6 02/12] VFS: move cross device copy_file_range() check into filesystems
+Date:   Mon, 29 Oct 2018 15:03:47 -0400
+Message-Id: <20181029190357.38439-4-olga.kornievskaia@gmail.com>
 X-Mailer: git-send-email 2.10.1 (Apple Git-78)
 In-Reply-To: <20181029190357.38439-1-olga.kornievskaia@gmail.com>
 References: <20181029190357.38439-1-olga.kornievskaia@gmail.com>
@@ -76,42 +76,102 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Olga Kornievskaia <kolga@netapp.com>
 
-Proposed VFS changes remove the check for the files to reside
-under the same file system. Instead, a file system driver implementation
-is allowed to perform a cross-device copy_file_range() and if
-the file system fails to support it instead fallback to doing
-a do_splice copy. Therefore, EXDEV error code only applies to
-kernel version prior to such support.
+This patch makes it the responsibility of individual filesystems to
+allow or deny cross device copies.  Both NFS and CIFS have operations
+for cross-server copies, and later patches will implement this feature.
 
+Note that as of this patch, the copy_file_range() function might be passed
+superblocks from different filesystem types. -EXDEV should be returned
+if cross device copies aren't supported.
+
+Reviewed-by: Amir Goldstein <amir73il@gmail.com>
+Reviewed-by: Matthew Wilcox <willy@infradead.org>
+Reviewed-by: Steve French <stfrench@microsoft.com>
+Reviewed-by: Jeff Layton <jlayton@kernel.org>
 Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
 ---
- man2/copy_file_range.2 | 6 ++++--
- 1 file changed, 4 insertions(+), 2 deletions(-)
+ Documentation/filesystems/porting | 7 +++++++
+ fs/cifs/cifsfs.c                  | 3 +++
+ fs/nfs/nfs4file.c                 | 3 +++
+ fs/overlayfs/file.c               | 3 +++
+ fs/read_write.c                   | 5 ++---
+ 5 files changed, 18 insertions(+), 3 deletions(-)
 
-diff --git a/man2/copy_file_range.2 b/man2/copy_file_range.2
-index 20374ab..88b40bb 100644
---- a/man2/copy_file_range.2
-+++ b/man2/copy_file_range.2
-@@ -39,7 +39,8 @@ The
- .BR copy_file_range ()
- system call performs an in-kernel copy between two file descriptors
- without the additional cost of transferring data from the kernel to user space
--and then back into the kernel.
-+and then back into the kernel. Starting kernel version 4.21 passed in
-+file descriptors are not required to be under the same mounted file system.
- It copies up to
- .I len
- bytes of data from file descriptor
-@@ -131,7 +132,8 @@ There is not enough space on the target filesystem to complete the copy.
- .B EXDEV
- The files referred to by
- .IR file_in " and " file_out
--are not on the same mounted filesystem.
-+are not on the same mounted filesystem when the kernel does not support
-+cross device file copy.
- .SH VERSIONS
- The
- .BR copy_file_range ()
+diff --git a/Documentation/filesystems/porting b/Documentation/filesystems/porting
+index 7b7b845..897e1e7 100644
+--- a/Documentation/filesystems/porting
++++ b/Documentation/filesystems/porting
+@@ -622,3 +622,10 @@ in your dentry operations instead.
+ 	alloc_file_clone(file, flags, ops) does not affect any caller's references.
+ 	On success you get a new struct file sharing the mount/dentry with the
+ 	original, on failure - ERR_PTR().
++--
++[mandatory]
++	->copy_file_range() may now be passed files which belong to two
++	different superblocks of the same file system type or which belong
++	to two different filesystems types all together. As before, the
++	destination's copy_file_range() is the function which is called.
++	If it cannot copy ranges from the source, it should return -EXDEV.
+diff --git a/fs/cifs/cifsfs.c b/fs/cifs/cifsfs.c
+index 7065426..ca8fc87 100644
+--- a/fs/cifs/cifsfs.c
++++ b/fs/cifs/cifsfs.c
+@@ -1114,6 +1114,9 @@ static ssize_t cifs_copy_file_range(struct file *src_file, loff_t off,
+ 	unsigned int xid = get_xid();
+ 	ssize_t rc;
+ 
++	if (file_inode(src_file)->i_sb != file_inode(dst_file)->i_sb)
++		return -EXDEV;
++
+ 	rc = cifs_file_copychunk_range(xid, src_file, off, dst_file, destoff,
+ 					len, flags);
+ 	free_xid(xid);
+diff --git a/fs/nfs/nfs4file.c b/fs/nfs/nfs4file.c
+index 4288a6e..5a73c90 100644
+--- a/fs/nfs/nfs4file.c
++++ b/fs/nfs/nfs4file.c
+@@ -135,6 +135,9 @@ static ssize_t nfs4_copy_file_range(struct file *file_in, loff_t pos_in,
+ {
+ 	ssize_t ret;
+ 
++	if (file_inode(file_in)->i_sb != file_inode(file_out)->i_sb)
++		return -EXDEV;
++
+ 	if (file_inode(file_in) == file_inode(file_out))
+ 		return -EINVAL;
+ retry:
+diff --git a/fs/overlayfs/file.c b/fs/overlayfs/file.c
+index aeaefd2..0331e33 100644
+--- a/fs/overlayfs/file.c
++++ b/fs/overlayfs/file.c
+@@ -483,6 +483,9 @@ static ssize_t ovl_copy_file_range(struct file *file_in, loff_t pos_in,
+ 				   struct file *file_out, loff_t pos_out,
+ 				   size_t len, unsigned int flags)
+ {
++	if (file_inode(file_in)->i_sb != file_inode(file_out)->i_sb)
++		return -EXDEV;
++
+ 	return ovl_copyfile(file_in, pos_in, file_out, pos_out, len, flags,
+ 			    OVL_COPY);
+ }
+diff --git a/fs/read_write.c b/fs/read_write.c
+index 70f6939..cff59bd 100644
+--- a/fs/read_write.c
++++ b/fs/read_write.c
+@@ -1594,11 +1594,10 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
+ 		}
+ 	}
+ 
+-	if (inode_in->i_sb == inode_out->i_sb &&
+-	    file_out->f_op->copy_file_range) {
++	if (file_out->f_op->copy_file_range) {
+ 		ret = file_out->f_op->copy_file_range(file_in, pos_in, file_out,
+ 						      pos_out, len, flags);
+-		if (ret != -EOPNOTSUPP)
++		if (ret != -EOPNOTSUPP && ret != -EXDEV)
+ 			goto done;
+ 	}
+ 
 -- 
 1.8.3.1
 
