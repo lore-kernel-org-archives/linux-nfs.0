@@ -8,64 +8,64 @@ X-Spam-Status: No, score=-8.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id DF28AC0044C
-	for <linux-nfs@archiver.kernel.org>; Mon, 29 Oct 2018 17:41:17 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8C8B9C0044C
+	for <linux-nfs@archiver.kernel.org>; Mon, 29 Oct 2018 17:41:19 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id AD27D2082B
-	for <linux-nfs@archiver.kernel.org>; Mon, 29 Oct 2018 17:41:17 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 4447D2082D
+	for <linux-nfs@archiver.kernel.org>; Mon, 29 Oct 2018 17:41:19 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="iO16EAq2"
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org AD27D2082B
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="cDq2wNUo"
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 4447D2082D
 Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=gmail.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728077AbeJ3Cav (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 29 Oct 2018 22:30:51 -0400
-Received: from mail-qk1-f196.google.com ([209.85.222.196]:44777 "EHLO
-        mail-qk1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726330AbeJ3Cav (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Oct 2018 22:30:51 -0400
-Received: by mail-qk1-f196.google.com with SMTP id n12so5450868qkh.11;
-        Mon, 29 Oct 2018 10:41:14 -0700 (PDT)
+        id S1728096AbeJ3Cax (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 29 Oct 2018 22:30:53 -0400
+Received: from mail-qk1-f194.google.com ([209.85.222.194]:42840 "EHLO
+        mail-qk1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726330AbeJ3Cax (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Oct 2018 22:30:53 -0400
+Received: by mail-qk1-f194.google.com with SMTP id u68so1509252qkg.9;
+        Mon, 29 Oct 2018 10:41:16 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references;
-        bh=DqnHnZrMSvA0or48b6pnWzyYDz4iWYc8+TMTuA2+K94=;
-        b=iO16EAq2S7E91Xfvz1LSANX2tqNBqF8MoSzDlFFR35GPdq/Mvc3O79TnChN8wbpA3G
-         FV7um+XuaFsp5oXe++8xBsfnegv7JlN5HRSpu4flZ4aSHikLS0aEWZBd/C1iLJdeOgw7
-         hgmNjnSkzG4P9JyJ8eTGgXypf+MRWDHXwHH2OCYVbLcW0DE9rZmjR6opzQZ8BGqtuRXz
-         /9A6qVqfv3lZlmAADwLezzwjjObS+l1lH2R1LUh03ArA/Jtw8jI9Rp4lZKYbt9UBPf/R
-         gSnq8CklBX0A+kvZLYX20Gf0e45dZrE6/m0LRfGdOSrQT1YiJKpFegRl/KcPhzUmSIl5
-         S4og==
+        bh=qWc4e/0MmfBIIgJWWnXm9U9/kkhvubDK4oN4lTXjqm4=;
+        b=cDq2wNUomZKfqnxrqq3JuBCzIpBhFFrEs+Mvn9dcO9KF4Ho1AmhxedNh5rowmmCc5C
+         28dRR0XbVIdzlKnu1KkVwdgwdxttWM85sSIgCjiprJJwZ5qyin3FrjKi/DArrkYhHlcH
+         Nm2i0ru1+0156Sg+cdgSkkyctASgGztGx5nwrDyHJd6XGOHYUBN0rqwlhq48oDgq3auD
+         M6eL1NPz+lEba7HkyzS5cTubrLOJAQT6eWavmyUQeLbQM9+kWwKWDilQ+CmYbjMhv3ID
+         J1WAFBM6kGXR+Tvvf50wQ/SVUI2RXVqgIrprIghfJXtn3UVvK5frHiL0QOHmbx+BBjjr
+         SbOw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references;
-        bh=DqnHnZrMSvA0or48b6pnWzyYDz4iWYc8+TMTuA2+K94=;
-        b=sXF1LmrhFuUuIz1ZL0AB5f8JOL6bBLa66Bgut2FOllKUGnVd0gGyWB3s7hOhrqnHCf
-         o7U0su7Hin7ePYQEHRV43Xah0AmFC8gePU0T2Md+JlWpWy0FSCPycTgksviBTdyKVu2j
-         F41olLBGTnOuJnG6nKYApYmpg2kQCb1HGlbLI7TxC/qqWdX4iNcNHifcXZsA5RCd73Zh
-         Q0Pa0Zdcgj2ZnKs2tk9UuoP/NlYCBypSqyfl12xJYB/LbeGGilxJ5CXekUyQZWx1ROhC
-         2EcZONn8WzyoA7MOBTY0Rd0xHX6URK/y5GYtXu6tRBlJkaPvgbfIQ+3I2WYF37puQkHc
-         eEnQ==
-X-Gm-Message-State: AGRZ1gKcBgTqxy4X6kYT/N1C2hThtQJsEns2zW1bC9ce3J++6UwebxFT
-        KD9Tkcka5P58/1BSCkN7ucg=
-X-Google-Smtp-Source: AJdET5fLJjUJmGOLPCRByX/hJz2+Y4l5MrziZgizEnsBxSPnJmLlIG71509QUz2ksx3bEc21MoSBug==
-X-Received: by 2002:a37:c68c:: with SMTP id s12mr13295318qkl.66.1540834873886;
-        Mon, 29 Oct 2018 10:41:13 -0700 (PDT)
+        bh=qWc4e/0MmfBIIgJWWnXm9U9/kkhvubDK4oN4lTXjqm4=;
+        b=PWZU7SluLefD6ahD7Gdd8i9GKeOQ+0g8QMy5CidcP6LjF426iLl5VPSGnyvrtzHLu1
+         f9AxUJxyAWG+Lzf+yY5fxBGLlVjBrJn3GpRGA2Jd25mUnh1EzMTDaEzKfPYodx91fzot
+         zMZMyC1xrJDb9chUVJ7HOuaRxU/0/FQ9ZgLtPXV4jrOmMQY1X8ETHTPUfZfgZZAXOa56
+         n/EkoZaP4Bt55W+3RRIzS8VB9uopay6M2iYXxqk+vdg0w1s9/8nGi5OeBViQJ+D5PCGw
+         dj1sLjTA5YNV45uyDAzJGVlLBAEFPPMvSKxPo6bzhcmiG/e4yuv8tDulyibTxOkOTrUE
+         2AQA==
+X-Gm-Message-State: AGRZ1gKrvMRA09ZZU4BIOBr/ymQuDxYkXDbMXdQS3ZHqiiUuu8vriWQj
+        xWhBOQ1FUvvospXKa0zYYWA=
+X-Google-Smtp-Source: AJdET5cQmlWWq1FZtfa+eYWTJJagfenJPBs7kBFyWWTnEdMibTH2w1OQTWcmtPAXpzNCR64aIqjpGA==
+X-Received: by 2002:a37:5288:: with SMTP id g130-v6mr13606490qkb.124.1540834875876;
+        Mon, 29 Oct 2018 10:41:15 -0700 (PDT)
 Received: from Olgas-MBP-195.attlocal.net (172-10-226-31.lightspeed.livnmi.sbcglobal.net. [172.10.226.31])
-        by smtp.gmail.com with ESMTPSA id n190-v6sm13148929qkb.29.2018.10.29.10.41.12
+        by smtp.gmail.com with ESMTPSA id n190-v6sm13148929qkb.29.2018.10.29.10.41.13
         (version=TLS1 cipher=AES128-SHA bits=128/128);
-        Mon, 29 Oct 2018 10:41:13 -0700 (PDT)
+        Mon, 29 Oct 2018 10:41:14 -0700 (PDT)
 From:   Olga Kornievskaia <olga.kornievskaia@gmail.com>
 To:     trond.myklebust@hammerspace.com, anna.schumaker@netapp.com,
         viro@zeniv.linux.org.uk, smfrench@gmail.com, miklos@szeredi.hu
 Cc:     linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         linux-cifs@vger.kernel.org, linux-unionfs@vger.kernel.org,
         linux-man@vger.kernel.org
-Subject: [PATCH v5 07/12] NFS: also send OFFLOAD_CANCEL to source server
-Date:   Mon, 29 Oct 2018 13:40:54 -0400
-Message-Id: <20181029174059.38326-9-olga.kornievskaia@gmail.com>
+Subject: [PATCH v5 08/12] NFS: inter ssc open
+Date:   Mon, 29 Oct 2018 13:40:55 -0400
+Message-Id: <20181029174059.38326-10-olga.kornievskaia@gmail.com>
 X-Mailer: git-send-email 2.10.1 (Apple Git-78)
 In-Reply-To: <20181029174059.38326-1-olga.kornievskaia@gmail.com>
 References: <20181029174059.38326-1-olga.kornievskaia@gmail.com>
@@ -76,35 +76,182 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Olga Kornievskaia <kolga@netapp.com>
 
-In case of copy is cancelled, also send OFFLOAD_CANCEL to the source
-server.
+NFSv4.2 inter server to server copy requires the destination server to
+READ the data from the source server using the provided stateid and
+file handle.
+
+Given an NFSv4 stateid and filehandle from the COPY operaion, provide the
+destination server with an NFS client function to create a struct file
+suitable for the destiniation server to READ the data to be copied.
 
 Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- fs/nfs/nfs42proc.c | 6 ++++--
- 1 file changed, 4 insertions(+), 2 deletions(-)
+ fs/nfs/nfs4_fs.h  |  7 +++++
+ fs/nfs/nfs4file.c | 94 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/nfs/nfs4proc.c |  5 ++-
+ 3 files changed, 103 insertions(+), 3 deletions(-)
 
-diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
-index bb9e799..98fe00b 100644
---- a/fs/nfs/nfs42proc.c
-+++ b/fs/nfs/nfs42proc.c
-@@ -205,12 +205,14 @@ static int handle_async_copy(struct nfs42_copy_res *res,
- 	memcpy(&res->write_res.verifier, &copy->verf, sizeof(copy->verf));
- 	status = -copy->error;
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index 7d17b31..9c566a4 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -307,6 +307,13 @@ extern int nfs4_set_rw_stateid(nfs4_stateid *stateid,
+ 		const struct nfs_open_context *ctx,
+ 		const struct nfs_lock_context *l_ctx,
+ 		fmode_t fmode);
++extern int nfs4_proc_getattr(struct nfs_server *server, struct nfs_fh *fhandle,
++			     struct nfs_fattr *fattr, struct nfs4_label *label,
++			     struct inode *inode);
++extern int update_open_stateid(struct nfs4_state *state,
++				const nfs4_stateid *open_stateid,
++				const nfs4_stateid *deleg_stateid,
++				fmode_t fmode);
  
-+out_free:
- 	kfree(copy);
- 	return status;
- out_cancel:
- 	nfs42_do_offload_cancel_async(dst, &copy->stateid);
--	kfree(copy);
--	return status;
-+	if (!nfs42_files_from_same_server(src, dst))
-+		nfs42_do_offload_cancel_async(src, src_stateid);
-+	goto out_free;
+ #if defined(CONFIG_NFS_V4_1)
+ extern int nfs41_sequence_done(struct rpc_task *, struct nfs4_sequence_res *);
+diff --git a/fs/nfs/nfs4file.c b/fs/nfs/nfs4file.c
+index e5c1a68..0b1dcf9 100644
+--- a/fs/nfs/nfs4file.c
++++ b/fs/nfs/nfs4file.c
+@@ -8,6 +8,7 @@
+ #include <linux/file.h>
+ #include <linux/falloc.h>
+ #include <linux/nfs_fs.h>
++#include <linux/file.h>
+ #include "delegation.h"
+ #include "internal.h"
+ #include "iostat.h"
+@@ -267,6 +268,99 @@ static int nfs42_clone_file_range(struct file *src_file, loff_t src_off,
+ out:
+ 	return ret;
+ }
++
++static int read_name_gen = 1;
++#define SSC_READ_NAME_BODY "ssc_read_%d"
++
++struct file *
++nfs42_ssc_open(struct vfsmount *ss_mnt, struct nfs_fh *src_fh,
++		nfs4_stateid *stateid)
++{
++	struct nfs_fattr fattr;
++	struct file *filep, *res;
++	struct nfs_server *server;
++	struct inode *r_ino = NULL;
++	struct nfs_open_context *ctx;
++	struct nfs4_state_owner *sp;
++	char *read_name;
++	int len, status = 0;
++
++	server = NFS_SERVER(ss_mnt->mnt_root->d_inode);
++
++	nfs_fattr_init(&fattr);
++
++	status = nfs4_proc_getattr(server, src_fh, &fattr, NULL, NULL);
++	if (status < 0) {
++		res = ERR_PTR(status);
++		goto out;
++	}
++
++	res = ERR_PTR(-ENOMEM);
++	len = strlen(SSC_READ_NAME_BODY) + 16;
++	read_name = kzalloc(len, GFP_NOFS);
++	if (read_name == NULL)
++		goto out;
++	snprintf(read_name, len, SSC_READ_NAME_BODY, read_name_gen++);
++
++	r_ino = nfs_fhget(ss_mnt->mnt_root->d_inode->i_sb, src_fh, &fattr,
++			NULL);
++	if (IS_ERR(r_ino)) {
++		res = ERR_CAST(r_ino);
++		goto out;
++	}
++
++	filep = alloc_file_pseudo(r_ino, ss_mnt, read_name, FMODE_READ,
++				     r_ino->i_fop);
++	if (IS_ERR(filep)) {
++		res = ERR_CAST(filep);
++		goto out;
++	}
++	filep->f_mode |= FMODE_READ;
++
++	ctx = alloc_nfs_open_context(filep->f_path.dentry, filep->f_mode,
++					filep);
++	if (IS_ERR(ctx)) {
++		res = ERR_CAST(ctx);
++		goto out_filep;
++	}
++
++	res = ERR_PTR(-EINVAL);
++	sp = nfs4_get_state_owner(server, ctx->cred, GFP_KERNEL);
++	if (sp == NULL)
++		goto out_ctx;
++
++	ctx->state = nfs4_get_open_state(r_ino, sp);
++	if (ctx->state == NULL)
++		goto out_stateowner;
++
++	set_bit(NFS_OPEN_STATE, &ctx->state->flags);
++	memcpy(&ctx->state->open_stateid.other, &stateid->other,
++	       NFS4_STATEID_OTHER_SIZE);
++	update_open_stateid(ctx->state, stateid, NULL, filep->f_mode);
++
++	nfs_file_set_open_context(filep, ctx);
++	put_nfs_open_context(ctx);
++
++	file_ra_state_init(&filep->f_ra, filep->f_mapping->host->i_mapping);
++	res = filep;
++out:
++	return res;
++out_stateowner:
++	nfs4_put_state_owner(sp);
++out_ctx:
++	put_nfs_open_context(ctx);
++out_filep:
++	fput(filep);
++	goto out;
++}
++EXPORT_SYMBOL_GPL(nfs42_ssc_open);
++void nfs42_ssc_close(struct file *filep)
++{
++	struct nfs_open_context *ctx = nfs_file_open_context(filep);
++
++	ctx->state->flags = 0;
++}
++EXPORT_SYMBOL_GPL(nfs42_ssc_close);
+ #endif /* CONFIG_NFS_V4_2 */
+ 
+ const struct file_operations nfs4_file_operations = {
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index fec6e6b..e5178b2f 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -91,7 +91,6 @@
+ static int _nfs4_recover_proc_open(struct nfs4_opendata *data);
+ static int nfs4_do_fsinfo(struct nfs_server *, struct nfs_fh *, struct nfs_fsinfo *);
+ static void nfs_fixup_referral_attributes(struct nfs_fattr *fattr);
+-static int nfs4_proc_getattr(struct nfs_server *, struct nfs_fh *, struct nfs_fattr *, struct nfs4_label *label, struct inode *inode);
+ static int _nfs4_proc_getattr(struct nfs_server *server, struct nfs_fh *fhandle, struct nfs_fattr *fattr, struct nfs4_label *label, struct inode *inode);
+ static int nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
+ 			    struct nfs_fattr *fattr, struct iattr *sattr,
+@@ -1653,7 +1652,7 @@ static void nfs_state_clear_delegation(struct nfs4_state *state)
+ 	write_sequnlock(&state->seqlock);
  }
  
- static int process_copy_commit(struct file *dst, loff_t pos_dst,
+-static int update_open_stateid(struct nfs4_state *state,
++int update_open_stateid(struct nfs4_state *state,
+ 		const nfs4_stateid *open_stateid,
+ 		const nfs4_stateid *delegation,
+ 		fmode_t fmode)
+@@ -3936,7 +3935,7 @@ static int _nfs4_proc_getattr(struct nfs_server *server, struct nfs_fh *fhandle,
+ 	return nfs4_call_sync(server->client, server, &msg, &args.seq_args, &res.seq_res, 0);
+ }
+ 
+-static int nfs4_proc_getattr(struct nfs_server *server, struct nfs_fh *fhandle,
++int nfs4_proc_getattr(struct nfs_server *server, struct nfs_fh *fhandle,
+ 				struct nfs_fattr *fattr, struct nfs4_label *label,
+ 				struct inode *inode)
+ {
 -- 
 1.8.3.1
 
