@@ -2,92 +2,132 @@ Return-Path: <SRS0=cX4g=NK=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-0.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-2.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_PASS,URIBL_BLOCKED,USER_AGENT_MUTT autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E9F17C6786F
-	for <linux-nfs@archiver.kernel.org>; Tue, 30 Oct 2018 14:29:46 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id BEE11C2BC61
+	for <linux-nfs@archiver.kernel.org>; Tue, 30 Oct 2018 19:17:12 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id B28392064C
-	for <linux-nfs@archiver.kernel.org>; Tue, 30 Oct 2018 14:29:46 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org B28392064C
-Authentication-Results: mail.kernel.org; dmarc=none (p=none dis=none) header.from=huawei.com
+	by mail.kernel.org (Postfix) with ESMTP id 64B2F20664
+	for <linux-nfs@archiver.kernel.org>; Tue, 30 Oct 2018 19:17:12 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 64B2F20664
+Authentication-Results: mail.kernel.org; dmarc=none (p=none dis=none) header.from=fieldses.org
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728135AbeJ3XX1 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 30 Oct 2018 19:23:27 -0400
-Received: from szxga06-in.huawei.com ([45.249.212.32]:59098 "EHLO huawei.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1728071AbeJ3XX0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 30 Oct 2018 19:23:26 -0400
-Received: from DGGEMS403-HUB.china.huawei.com (unknown [172.30.72.58])
-        by Forcepoint Email with ESMTP id CBEBAE0A75DE9;
-        Tue, 30 Oct 2018 22:29:41 +0800 (CST)
-Received: from [127.0.0.1] (10.177.29.68) by DGGEMS403-HUB.china.huawei.com
- (10.3.19.203) with Microsoft SMTP Server id 14.3.408.0; Tue, 30 Oct 2018
- 22:29:40 +0800
-Message-ID: <5BD86AD3.1070102@huawei.com>
-Date:   Tue, 30 Oct 2018 22:29:39 +0800
-From:   zhong jiang <zhongjiang@huawei.com>
-User-Agent: Mozilla/5.0 (Windows NT 6.1; WOW64; rv:12.0) Gecko/20120428 Thunderbird/12.0.1
+        id S1726532AbeJaELz (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 31 Oct 2018 00:11:55 -0400
+Received: from fieldses.org ([173.255.197.46]:53490 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726235AbeJaELz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 31 Oct 2018 00:11:55 -0400
+Received: by fieldses.org (Postfix, from userid 2815)
+        id 815F82056; Tue, 30 Oct 2018 15:17:10 -0400 (EDT)
+Date:   Tue, 30 Oct 2018 15:17:10 -0400
+To:     Linus Torvalds <torvalds@linux-foundation.org>
+Cc:     linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        Jeff Layton <jlayton@redhat.com>
+Subject: [GIT PULL] nfsd changes for 4.20
+Message-ID: <20181030191710.GA23042@fieldses.org>
 MIME-Version: 1.0
-To:     Benjamin Coddington <bcodding@redhat.com>
-CC:     <herbert@gondor.apana.org.au>, <trond.myklebust@hammerspace.com>,
-        <bfields@redhat.com>, <linux-crypto@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>, <linux-nfs@vger.kernel.org>
-Subject: Re: [Qestion] Lots of memory leaks when mounting and unmounting nfs
- client to server continuously.
-References: <5BD85266.6000301@huawei.com> <1DEE371C-69EB-4D92-8F78-535AA5203007@redhat.com> <5BD86392.7070200@huawei.com> <8975EA60-7C42-426A-ADA3-DEE0E2CEE964@redhat.com>
-In-Reply-To: <8975EA60-7C42-426A-ADA3-DEE0E2CEE964@redhat.com>
-Content-Type: text/plain; charset="ISO-8859-1"
-Content-Transfer-Encoding: 7bit
-X-Originating-IP: [10.177.29.68]
-X-CFilter-Loop: Reflected
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+User-Agent: Mutt/1.5.21 (2010-09-15)
+From:   bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On 2018/10/30 22:03, Benjamin Coddington wrote:
-> On 30 Oct 2018, at 9:58, zhong jiang wrote:
->
->> On 2018/10/30 21:06, Benjamin Coddington wrote:
->>> Hi zhong jiang,
->>>
->>> Try asking in linux-nfs.. but I'll also note that 3.10-stable may be
->>> missing a number of fixes to leaks in the NFS GSS code.
->>>
->>> I can see a more than a few fixes to memory leaks with: git log
->>> --grep=leak --oneline net/sunrpc/auth_gss/
->>>
->> Thanks for your reply.  I has tested some of them in the upsteam as you
->> have said.  but It fails to solve the issue completely.
-> What have you tested?  It is hard to help without specifics.
-In the latest mainline.  we can filter the following result by the key word "leak"
-in net/sunrpc/auth_gss.
+Please pull nfsd changes for 4.20:
 
-0070ed3 Fix 16-byte memory leak in gssp_accept_sec_context_upcall   (has been tested,  Fail to work)
-78794d1 svcrpc: don't leak contexts on PROC_DESTROY     (has been tested,  Fail to work)
-a1d1e9b svcrpc: fix memory leak in gssp_accept_sec_context_upcall  (Not yet)
-e9776d0 SUNRPC: Fix a pipe_version reference leak   (Not yet)
-cdead7c SUNRPC: Fix a potential memory leak in auth_gss (Not yet)
-980e5a4 nfsd: fix rsi_cache reference count leak  (Not yet)
-07a2bf1 SUNRPC: Fix a memory leak in gss_create()  (Not yet)
-3ab9bb7 SUNRPC: Fix a memory leak in the auth credcache code (existed)
-54f9247 knfsd: fix resource leak resulting in module refcount leak for rpcsec_gss_krb5.ko  (existed)
-b797b5b [PATCH] knfsd: svcrpc: fix gss krb5i memory leak  (existed)
-d4a30e7 RPCSEC_GSS: fix leak in krb5 code caused by superfluous kmalloc (Not yet)
+  git://linux-nfs.org/~bfields/linux.git tags/nfsd-4.20
 
+Olga added support for the NFSv4.2 asynchronous copy protocol.  We
+already supported COPY, by copying a limited amount of data and then
+returning a short result, letting the client resend.  The asynchronous
+protocol should offer better performance at the expense of some
+complexity.
 
-I suspect that  commit d4a30e7 ("RPCSEC_GSS: fix leak in krb5 code caused by superfluous kmalloc")  will solve
-the issue.  Further,  I will adjust the patch  to 3.10.  and see what it will happen.  Actually I am not sure. :-[
+The other highlight is Trond's work to convert the duplicate reply cache
+to a red-black tree, and to move it and some other server caches to RCU.
+(Previously these have meant taking global spinlocks on every RPC.)
 
-Thanks,
-zhong jiang.
+Otherwise, some RDMA work and miscellaneous bugfixes.
 
+--b.
 
+Amir Goldstein (1):
+      lockd: fix access beyond unterminated strings in prints
 
+Andrew Elble (1):
+      nfsd: correctly decrement odstate refcount in error path
 
+Chuck Lever (4):
+      svcrdma: Reduce max_send_sges
+      svcrdma: Remove ->release_rqst call in bc reply handler
+      svcrdma: Remove try_module_get from backchannel
+      svcrdma: Increase the default connection credit limit
 
+Gustavo A. R. Silva (1):
+      nfsd: fix fall-through annotations
 
+Olga Kornievskaia (4):
+      NFSD CB_OFFLOAD xdr
+      NFSD OFFLOAD_STATUS xdr
+      NFSD OFFLOAD_CANCEL xdr
+      NFSD introduce async copy feature
 
+Trond Myklebust (18):
+      SUNRPC: Remove the server 'authtab_lock' and just use RCU
+      SUNRPC: Add lockless lookup of the server's auth domain
+      SUNRPC: Refactor sunrpc_cache_lookup
+      SUNRPC: Allow cache lookups to use RCU protection rather than the r/w spinlock
+      SUNRPC: Make server side AUTH_UNIX use lockless lookups
+      knfsd: Allow lockless lookups of the exports
+      SUNRPC: Lockless server RPCSEC_GSS context lookup
+      knfsd: Lockless lookup of NFSv4 identities.
+      NFS: Lockless DNS lookups
+      NFS: Fix up a typo in nfs_dns_ent_put
+      SUNRPC: Remove non-RCU protected lookup
+      SUNRPC: Replace the cache_detail->hash_lock with a regular spinlock
+      SUNRPC: Simplify TCP receive code
+      knfsd: Remove dead code from nfsd_cache_lookup
+      knfsd: Simplify NFS duplicate replay cache
+      knfsd: Further simplify the cache lookup
+      knfsd: Improve lookup performance in the duplicate reply cache using an rbtree
+      nfsd: Fix an Oops in free_session()
+
+YueHaibing (1):
+      nfsd: remove set but not used variable 'dirp'
+
+ Documentation/filesystems/nfs/rpc-cache.txt |   6 +-
+ fs/lockd/host.c                             |   2 +-
+ fs/nfs/dns_resolve.c                        |  15 +-
+ fs/nfsd/cache.h                             |  20 +-
+ fs/nfsd/export.c                            |  14 +-
+ fs/nfsd/export.h                            |   2 +
+ fs/nfsd/netns.h                             |   8 +
+ fs/nfsd/nfs4callback.c                      |  98 ++++++++++
+ fs/nfsd/nfs4idmap.c                         |  11 +-
+ fs/nfsd/nfs4proc.c                          | 289 ++++++++++++++++++++++++++--
+ fs/nfsd/nfs4state.c                         |  41 +++-
+ fs/nfsd/nfs4xdr.c                           |  50 ++++-
+ fs/nfsd/nfscache.c                          | 142 +++++++-------
+ fs/nfsd/nfsctl.c                            |   1 +
+ fs/nfsd/state.h                             |  10 +
+ fs/nfsd/vfs.c                               |   5 +-
+ fs/nfsd/xdr4.h                              |  28 +++
+ fs/nfsd/xdr4cb.h                            |  10 +
+ include/linux/sunrpc/cache.h                |  18 +-
+ include/linux/sunrpc/svc_rdma.h             |  13 +-
+ include/linux/sunrpc/svcauth.h              |   1 +
+ net/sunrpc/auth_gss/svcauth_gss.c           |  41 +++-
+ net/sunrpc/cache.c                          | 153 +++++++++------
+ net/sunrpc/svc_xprt.c                       |   2 +-
+ net/sunrpc/svcauth.c                        |  74 +++++--
+ net/sunrpc/svcauth_unix.c                   |  24 ++-
+ net/sunrpc/svcsock.c                        |  53 ++---
+ net/sunrpc/xprtrdma/svc_rdma_backchannel.c  |  23 +--
+ net/sunrpc/xprtrdma/svc_rdma_transport.c    |  10 +-
+ 29 files changed, 858 insertions(+), 306 deletions(-)
