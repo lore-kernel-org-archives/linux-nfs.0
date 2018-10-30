@@ -7,64 +7,64 @@ X-Spam-Status: No, score=-8.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
 	SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B7D24C6786F
-	for <linux-nfs@archiver.kernel.org>; Tue, 30 Oct 2018 20:56:34 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C1AEBC6786F
+	for <linux-nfs@archiver.kernel.org>; Tue, 30 Oct 2018 20:56:43 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 574C82082B
-	for <linux-nfs@archiver.kernel.org>; Tue, 30 Oct 2018 20:56:34 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 70D3A2080A
+	for <linux-nfs@archiver.kernel.org>; Tue, 30 Oct 2018 20:56:41 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="kBeMOwfV"
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 574C82082B
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="NUZ/hVL0"
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 70D3A2080A
 Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=gmail.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727969AbeJaFvh (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 31 Oct 2018 01:51:37 -0400
-Received: from mail-qt1-f194.google.com ([209.85.160.194]:43936 "EHLO
-        mail-qt1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727879AbeJaFvg (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 31 Oct 2018 01:51:36 -0400
-Received: by mail-qt1-f194.google.com with SMTP id q41-v6so15245743qtq.10;
-        Tue, 30 Oct 2018 13:56:31 -0700 (PDT)
+        id S1728043AbeJaFvn (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 31 Oct 2018 01:51:43 -0400
+Received: from mail-qk1-f194.google.com ([209.85.222.194]:38037 "EHLO
+        mail-qk1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1728030AbeJaFvm (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 31 Oct 2018 01:51:42 -0400
+Received: by mail-qk1-f194.google.com with SMTP id p3-v6so8212892qkb.5;
+        Tue, 30 Oct 2018 13:56:38 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references;
-        bh=zRRMAOPAYc5adc3KLz9Q0Nr5H4iqpq1Ya3zwGX5y5X0=;
-        b=kBeMOwfVjJDJ2G4yxy6MlhSkT9V+kbN4ckRjkCcw1HvYo55q4vLqYD2/S7++1O0hoq
-         2VXX21gul3qJUYNpTJEM8tiNKE0E1cFPDntq1aCpFIH3YaqzFOy1OmBK2Hu+/AJrT8HL
-         TuzuJ/btQsYotNNawcU+Ui71aBx8MTmdHtlNft+lUqHZePpgVUg5m7T4QD1f7spb59FD
-         /hWeecQw03IWqaZhRf1CddWyCrPAjhxo9LlSpoMEgb2oJSDducUTQI8D4Ags5qsNKhsd
-         Rcn+8jhyn7BYKk8HJhm/PFb5G52JEMdqcM6VGtwzD+SQBfyy7lHsnFhsgGBV4OTWMpWo
-         BuZw==
+        bh=4PksShieLrh4Cf0smwQQ0hWXC8t13fGxowZ1fcGZ/Dw=;
+        b=NUZ/hVL0rdhHoPrCqxoePsrXZ47FbpMwrTIO9a6khMsFtE9Y07hcbr3IaHJqeUppOh
+         M6HA6e4l8ZLw27LhmCwSzE5mhjh7XJQCVStxATiWiONhxHbx/pDZguoxtQx9RVqhgyMh
+         ppear2qDXeemm9Nz3GYyHCJoKfmPp+GDs/Jl50OLsKGPCuHlh9b7SPg/AV1S4KeL2nrQ
+         6iAgeyPyfVeb1yLZ1oLcKsSJ5wsPbh5hO5k+hF/++Rj6KTKCQntgaPH2BP9cy0XO7C2U
+         KHG6EaYJ0bzVn0aHtB+QD4BWO2/5Yb7egZT5vZtNMqabZ0E4vcf5UmQMnKDCcrKrWTLu
+         wvRg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references;
-        bh=zRRMAOPAYc5adc3KLz9Q0Nr5H4iqpq1Ya3zwGX5y5X0=;
-        b=auVdvQlI/s37xnkWxul0KyHh1XcuTzMhzxN7U8TQkNEd3colrsVniLW0rZLZHNfY9N
-         b2uNz0QMKNUnpAD2wm6hRW/WrVCe8z7AnDBY61m6ToxM6L7o2EKppXI4iYxHG1wBlu6k
-         HL4kRmvzuHS/zgdt9U1uvYR07eJA+waDHTaSqsOO4ZuKb7dSbzQ7gWydxIDo1Cs3QR2z
-         S1kMKPOvt3dte3I2ib040kla7Y/ZMY5+Wm1EqW7zcSSpiY2aeBF8gyGH3ifACjAR7Ktt
-         /u/0Bl/6q7wdfJOnEHEqJRjESijYYrma0bzuTUSidNs9fn0i69JSFagLlL3N5aZUH7Ct
-         s4WQ==
-X-Gm-Message-State: AGRZ1gI2hPhHJAkekpAs4vMOQlmN3/eB+k/ohsp1MvZDPN2daPdXq2xY
-        UPuD+0DL6nyxw+DjfSrXFkNYuzMT
-X-Google-Smtp-Source: AJdET5deN+PBs64Pt3+cjwdysSh6meD6SNCWVdSJKRRZ0UelJkZuOmsAufu1TTSFyd49X7v+xs8d4Q==
-X-Received: by 2002:a0c:98a6:: with SMTP id f35mr278059qvd.224.1540932987336;
-        Tue, 30 Oct 2018 13:56:27 -0700 (PDT)
+        bh=4PksShieLrh4Cf0smwQQ0hWXC8t13fGxowZ1fcGZ/Dw=;
+        b=HlQVTlzQArbSoGDZJS6j1mHz/gN1M2IoHjQm1BNrqWYuO5hAoNsqxIvNB/DDr3G9dZ
+         6PExqfNx3K0G9CKaeyBsEY3ZDjqGIcum64A2d855LNh0Obc67DFfet5ldMyLs5DFg4pl
+         M2Cza9wGl7P2bROjADs929ZFcWgBhCNRuEJl/7ToTYy/H3YoD9qCI/lx9O6YdNDQStDw
+         eyl98a3dFuspFYoXozRC56vBkaGJMN1g3JSkZljsZ0BkIlCMDQrwaGpr4AXoyUapf5+C
+         HjePwnahDdNtJ+ZIHcfaQkXzNwgAnF+gpVeSdEaKtR0AhYAz171RaZ92MmSSIMzoHw1a
+         Cy4w==
+X-Gm-Message-State: AGRZ1gLQ66ii+ACTvVk9Cd0XTM7h12Udq5P3mxTut0Mdp7Q7B4cn1V7E
+        SpytHKnBVAEtOeQfgtqnr3o=
+X-Google-Smtp-Source: AJdET5dzh3xpbNKXR2zXHiqQJu1S4R+dOUzTBPLEvoIr2gLYsUCgDDo868BLmKwGtj5RMrOEADV7fQ==
+X-Received: by 2002:ae9:ee02:: with SMTP id i2-v6mr313391qkg.0.1540932997892;
+        Tue, 30 Oct 2018 13:56:37 -0700 (PDT)
 Received: from Olgas-MBP-195.attlocal.net (172-10-226-31.lightspeed.livnmi.sbcglobal.net. [172.10.226.31])
-        by smtp.gmail.com with ESMTPSA id i11-v6sm23478157qtc.96.2018.10.30.13.56.25
+        by smtp.gmail.com with ESMTPSA id i11-v6sm23478157qtc.96.2018.10.30.13.56.36
         (version=TLS1 cipher=AES128-SHA bits=128/128);
-        Tue, 30 Oct 2018 13:56:26 -0700 (PDT)
+        Tue, 30 Oct 2018 13:56:36 -0700 (PDT)
 From:   Olga Kornievskaia <olga.kornievskaia@gmail.com>
 To:     trond.myklebust@hammerspace.com, anna.schumaker@netapp.com,
         viro@zeniv.linux.org.uk, smfrench@gmail.com, miklos@szeredi.hu
 Cc:     linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         linux-cifs@vger.kernel.org, linux-unionfs@vger.kernel.org,
         linux-man@vger.kernel.org
-Subject: [PATCH 1/1] man-page: copy_file_range(2) allow for cross-device copies
-Date:   Tue, 30 Oct 2018 16:56:04 -0400
-Message-Id: <20181030205614.40754-3-olga.kornievskaia@gmail.com>
+Subject: [PATCH v7 08/11] NFS: skip recovery of copy open on dest server
+Date:   Tue, 30 Oct 2018 16:56:11 -0400
+Message-Id: <20181030205614.40754-10-olga.kornievskaia@gmail.com>
 X-Mailer: git-send-email 2.10.1 (Apple Git-78)
 In-Reply-To: <20181030205614.40754-1-olga.kornievskaia@gmail.com>
 References: <20181030205614.40754-1-olga.kornievskaia@gmail.com>
@@ -75,45 +75,81 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Olga Kornievskaia <kolga@netapp.com>
 
-A proposed VFS change removes the check for the files to reside
-under the same file system prior to attempting a copy. Instead,
-a file system driver implementation of the destination file
-is allowed to perform a cross-device copy_file_range(). If
-that filesystem does not support cross device copy, it returns
--EXDEV.
+Mark the open created for the source file on the destination
+server. Then if this open is going thru a recovery, then fail
+the recovery as we don't need to be recoving a "fake" open.
+We need to fail the ongoing READs and vfs_copy_file_range().
 
 Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
 ---
- man2/copy_file_range.2 | 9 +++++----
- 1 file changed, 5 insertions(+), 4 deletions(-)
+ fs/nfs/nfs4_fs.h   |  1 +
+ fs/nfs/nfs4file.c  |  1 +
+ fs/nfs/nfs4state.c | 14 ++++++++++++++
+ 3 files changed, 16 insertions(+)
 
-diff --git a/man2/copy_file_range.2 b/man2/copy_file_range.2
-index 20374ab..03750c5 100644
---- a/man2/copy_file_range.2
-+++ b/man2/copy_file_range.2
-@@ -39,7 +39,8 @@ The
- .BR copy_file_range ()
- system call performs an in-kernel copy between two file descriptors
- without the additional cost of transferring data from the kernel to user space
--and then back into the kernel.
-+and then back into the kernel. Starting kernel version 4.21 passed in
-+file descriptors are not required to be under the same mounted file system.
- It copies up to
- .I len
- bytes of data from file descriptor
-@@ -129,9 +130,9 @@ Out of memory.
- There is not enough space on the target filesystem to complete the copy.
- .TP
- .B EXDEV
--The files referred to by
--.IR file_in " and " file_out
--are not on the same mounted filesystem.
-+The file system of the 
-+.I file_out
-+does not support cross device file copy.
- .SH VERSIONS
- The
- .BR copy_file_range ()
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index 9c566a4..482754d 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -165,6 +165,7 @@ enum {
+ 	NFS_STATE_CHANGE_WAIT,		/* A state changing operation is outstanding */
+ #ifdef CONFIG_NFS_V4_2
+ 	NFS_CLNT_DST_SSC_COPY_STATE,    /* dst server open state on client*/
++	NFS_SRV_SSC_COPY_STATE,		/* ssc state on the dst server */
+ #endif /* CONFIG_NFS_V4_2 */
+ };
+ 
+diff --git a/fs/nfs/nfs4file.c b/fs/nfs/nfs4file.c
+index 0b1dcf9..989f174 100644
+--- a/fs/nfs/nfs4file.c
++++ b/fs/nfs/nfs4file.c
+@@ -333,6 +333,7 @@ struct file *
+ 	if (ctx->state == NULL)
+ 		goto out_stateowner;
+ 
++	set_bit(NFS_SRV_SSC_COPY_STATE, &ctx->state->flags);
+ 	set_bit(NFS_OPEN_STATE, &ctx->state->flags);
+ 	memcpy(&ctx->state->open_stateid.other, &stateid->other,
+ 	       NFS4_STATEID_OTHER_SIZE);
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index 62ae0fd..b0b82c6 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -1606,6 +1606,9 @@ static int nfs4_reclaim_open_state(struct nfs4_state_owner *sp, const struct nfs
+ {
+ 	struct nfs4_state *state;
+ 	int status = 0;
++#ifdef CONFIG_NFS_V4_2
++	bool found_ssc_copy_state = false;
++#endif /* CONFIG_NFS_V4_2 */
+ 
+ 	/* Note: we rely on the sp->so_states list being ordered 
+ 	 * so that we always reclaim open(O_RDWR) and/or open(O_WRITE)
+@@ -1625,6 +1628,13 @@ static int nfs4_reclaim_open_state(struct nfs4_state_owner *sp, const struct nfs
+ 			continue;
+ 		if (state->state == 0)
+ 			continue;
++#ifdef CONFIG_NFS_V4_2
++		if (test_bit(NFS_SRV_SSC_COPY_STATE, &state->flags)) {
++			nfs4_state_mark_recovery_failed(state, -EIO);
++			found_ssc_copy_state = true;
++			continue;
++		}
++#endif /* CONFIG_NFS_V4_2 */
+ 		refcount_inc(&state->count);
+ 		spin_unlock(&sp->so_lock);
+ 		status = __nfs4_reclaim_open_state(sp, state, ops);
+@@ -1671,6 +1681,10 @@ static int nfs4_reclaim_open_state(struct nfs4_state_owner *sp, const struct nfs
+ 	}
+ 	raw_write_seqcount_end(&sp->so_reclaim_seqcount);
+ 	spin_unlock(&sp->so_lock);
++#ifdef CONFIG_NFS_V4_2
++	if (found_ssc_copy_state)
++		return -EIO;
++#endif /* CONFIG_NFS_V4_2 */
+ 	return 0;
+ out_err:
+ 	nfs4_put_open_state(state);
 -- 
 1.8.3.1
 
