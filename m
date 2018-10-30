@@ -5,184 +5,206 @@ X-Spam-Level:
 X-Spam-Status: No, score=-6.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
+	SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1DBC6C2BC61
-	for <linux-nfs@archiver.kernel.org>; Tue, 30 Oct 2018 21:13:06 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D2ED6C2BC61
+	for <linux-nfs@archiver.kernel.org>; Tue, 30 Oct 2018 21:26:58 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id B562520664
-	for <linux-nfs@archiver.kernel.org>; Tue, 30 Oct 2018 21:13:05 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 7CF9C2081B
+	for <linux-nfs@archiver.kernel.org>; Tue, 30 Oct 2018 21:26:58 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="Kh44ae9S"
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org B562520664
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="XHm+LGgE"
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 7CF9C2081B
 Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=gmail.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726717AbeJaGIJ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 31 Oct 2018 02:08:09 -0400
-Received: from mail-vs1-f67.google.com ([209.85.217.67]:46416 "EHLO
-        mail-vs1-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726005AbeJaGIJ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 31 Oct 2018 02:08:09 -0400
-Received: by mail-vs1-f67.google.com with SMTP id l6so8674402vsj.13;
-        Tue, 30 Oct 2018 14:13:02 -0700 (PDT)
+        id S1726134AbeJaGWD (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 31 Oct 2018 02:22:03 -0400
+Received: from mail-yb1-f195.google.com ([209.85.219.195]:36853 "EHLO
+        mail-yb1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725743AbeJaGWD (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 31 Oct 2018 02:22:03 -0400
+Received: by mail-yb1-f195.google.com with SMTP id w16-v6so5705915ybp.3;
+        Tue, 30 Oct 2018 14:26:55 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=mime-version:references:in-reply-to:from:date:message-id:subject:to
          :cc;
-        bh=juf07GdAORaxmTu0blxFTyM+2ReH3BKOPu5vVP58mPc=;
-        b=Kh44ae9S2t/bmBMgihrTqLAoCOt/8GufnHwLAHVwjIR/IS982o3py+Y4pWR+JGWUZg
-         OTNlkvRHqe50DCqjLc48BB8l5KYrTq35kxyO0CIBAex7GrPS4jZpeIbS2CVpoisS+3wr
-         yi145ISWj5YbWgbtglP1X8y+abrjBEG27IVDhyc6DfgI1qSkj1JCtahIITBG7XwCe52V
-         +4Dr/KAki+LAQrWQ7Oo+jjr3OKppPyQOvGPLFbBkYlUNwUcDWIg9jdQqsCBpOTo0V8It
-         nFHbYV+2P8JWU2/dBO4owfBWEe3iiZSIzhmAWDZak6YIPelf8XQJyD0wEuQwmtVU6tTq
-         Aqjg==
+        bh=awXz5s1qjpOo7a42F5ZM7gVvr1+s0leq5BL9hVQvnpI=;
+        b=XHm+LGgE/9zEDPxqeiwofb32ycLAdOcOgzOQFcyZqCNqPuoRRm7859ZuT/rgY4enuw
+         A51NG1EiQ7bC2RjOEO7p9wOrxPhJaSAGDi1Z10BCfK63A60cgYQvfkJ5nVH5ZbAPNz6L
+         pCAQ6MS9ZozBAQumi4uVKUq8vjm5CeG2b3KTYw+ldqBZxuH+2Ts+50DuMB33UxJU0nh/
+         h0KeWORDnWcC+7fQMealve3kFpd8i/pX6QG639+w27hQiBRD9vSKUqGQNvK1E4z029hn
+         rB+3nh8fDNVg/7rwk7rjtRF39Asxd+WqEFWEm2tOxBIpXBCMq8IimMT9Qp2Lq2xiCvGx
+         itvA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:mime-version:references:in-reply-to:from:date
          :message-id:subject:to:cc;
-        bh=juf07GdAORaxmTu0blxFTyM+2ReH3BKOPu5vVP58mPc=;
-        b=hj1BlCkAiqRDM1G9WeYMbeNjlke2U4ko/yLsfFXudY3U1L8aEQi1eZzitQekEto99z
-         6MF51rLUvLSFHm3NNrYrTExFJWjHAUp94kUVAT/7NGpgwfR8YOiK2WK/zIIcLNMOi2Al
-         EK0Tmshi5k5wregU/KvoBccVfoud7H1luKKrLaXe/d1FOERhWgXQ3Lg6kDJJFuJpUf9U
-         sd3okBzR2L4SuNTjrHzm1r9gFI5bMqVQmdbwOGPc5+lRIH3DrgQJu+axgM13knCaY1vx
-         t1h2s4bKc60d5U4dIV1Iysn/P+uV5vdz/tcc4GRpUrdSz7PSmWzvAfReLZROHjmSzM0j
-         dBgg==
-X-Gm-Message-State: AGRZ1gJSagpqfIyMApGo7VGuJke2BlGskGr59Kb+rPsShHyOG1VmR1l7
-        yh8oVvXYfM5QKRvYenZzvHUa+9FKkSvm+sQHEWfTgg==
-X-Google-Smtp-Source: AJdET5dNeFjphM2w9jK1mq7QFaNoxo3G5JhG/jskLh+VrqINBobH2VFEULv2S74Q5K2qrJnDXnuVMdgyOOBAkUf2Ux8=
-X-Received: by 2002:a67:ca9d:: with SMTP id a29mr180122vsl.194.1540933982017;
- Tue, 30 Oct 2018 14:13:02 -0700 (PDT)
+        bh=awXz5s1qjpOo7a42F5ZM7gVvr1+s0leq5BL9hVQvnpI=;
+        b=YB491gcsINDz8w4AQ6o2zEWZhpVuBsXtz0JeXPq9X5vD6AG4KQOypWv0JOfT4PoUCP
+         zfXWXwEJj7FDJjywGap/XK11wUxSNXsi3Velgg9/UR3HfOsBoLlVwffHLhTQNkB7teqV
+         VC+X8AgfSvX6c1HRl2NTUmdpx9trXFjyyd5vRwPKBZeKNX5H0eVuuCTIl0KFgJxo6Ntv
+         osFxyMvH6WoytqCqf096gLk+JNhoIT0sCXHQuzv8307x3EL3LIqtdwhd5+zaa6fjPrkp
+         sw1DxpgKZsicXLjmwZTfOhdtLETo0F4DDRGPpAW6p0CuzSleIjgxQ6h/u4e8wkLHWOvW
+         u5IA==
+X-Gm-Message-State: AGRZ1gKC42VKtt24QdOpSYo0larakmT8dxuBIai8w255/7x6KK1s4fBr
+        Hw9RiO8EC7X5YwMVsRfRJGBz8ZqRYw8eyzDCGxo=
+X-Google-Smtp-Source: AJdET5e2GDWH26bc6mxCsOK9RAFJHUsO8ydQxDts2kXsgfJZTKNSQnlPvfmC9B0VT18NjFYmOO480pEM4T9NQqa0zcs=
+X-Received: by 2002:a25:4e03:: with SMTP id c3-v6mr438411ybb.325.1540934815156;
+ Tue, 30 Oct 2018 14:26:55 -0700 (PDT)
 MIME-Version: 1.0
-References: <20181026201057.36899-1-olga.kornievskaia@gmail.com>
- <20181026201057.36899-4-olga.kornievskaia@gmail.com> <20181027092750.GL6311@dastard>
- <CAN-5tyEeMrRVUyP61Vv-dwFUvm7q55Q3=NVJkeZN+XoCcAOCDQ@mail.gmail.com>
- <20181030090344.GN6311@dastard> <CAN-5tyHhTQ8bZk+DUrU0o1ZK3k9uhipiLPeOA3dYuXUG542mNw@mail.gmail.com>
-In-Reply-To: <CAN-5tyHhTQ8bZk+DUrU0o1ZK3k9uhipiLPeOA3dYuXUG542mNw@mail.gmail.com>
-From:   Olga Kornievskaia <olga.kornievskaia@gmail.com>
-Date:   Tue, 30 Oct 2018 17:12:50 -0400
-Message-ID: <CAN-5tyH-Fn0nU3FE_hG_YpjL08kQgVbJBOxwxKY74aRBg3Hxag@mail.gmail.com>
-Subject: Re: [PATCH v4 02/11] VFS: copy_file_range check validity of input
- source offset
-To:     david@fromorbit.com
+References: <20181030205614.40754-1-olga.kornievskaia@gmail.com> <20181030205614.40754-2-olga.kornievskaia@gmail.com>
+In-Reply-To: <20181030205614.40754-2-olga.kornievskaia@gmail.com>
+From:   Amir Goldstein <amir73il@gmail.com>
+Date:   Tue, 30 Oct 2018 23:26:44 +0200
+Message-ID: <CAOQ4uxhDdm4vmbcPeqnJkZF8U5Qygk4KT36JLejhkJU382z2KQ@mail.gmail.com>
+Subject: Re: [PATCH v7 01/11] VFS: move cross device copy_file_range() check
+ into filesystems
+To:     Olga Kornievskaia <olga.kornievskaia@gmail.com>
 Cc:     trond.myklebust@hammerspace.com,
         Anna Schumaker <anna.schumaker@netapp.com>,
-        viro@zeniv.linux.org.uk, Steve French <smfrench@gmail.com>,
+        Al Viro <viro@zeniv.linux.org.uk>,
+        Steve French <smfrench@gmail.com>,
         Miklos Szeredi <miklos@szeredi.hu>,
-        linux-nfs <linux-nfs@vger.kernel.org>,
-        linux-fsdevel@vger.kernel.org, linux-cifs@vger.kernel.org,
-        linux-unionfs@vger.kernel.org, linux-man@vger.kernel.org
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        linux-cifs@vger.kernel.org,
+        overlayfs <linux-unionfs@vger.kernel.org>,
+        linux-man@vger.kernel.org
 Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Tue, Oct 30, 2018 at 5:10 PM Olga Kornievskaia
+On Tue, Oct 30, 2018 at 10:56 PM Olga Kornievskaia
 <olga.kornievskaia@gmail.com> wrote:
 >
-> On Tue, Oct 30, 2018 at 5:03 AM Dave Chinner <david@fromorbit.com> wrote:
-> >
-> > On Mon, Oct 29, 2018 at 10:41:22AM -0400, Olga Kornievskaia wrote:
-> > > On Sat, Oct 27, 2018 at 5:27 AM Dave Chinner <david@fromorbit.com> wrote:
-> > > >
-> > > > On Fri, Oct 26, 2018 at 04:10:48PM -0400, Olga Kornievskaia wrote:
-> > > > > From: Olga Kornievskaia <kolga@netapp.com>
-> > > > >
-> > > > > Input source offset can't be beyond the end of the file.
-> > > > >
-> > > > > Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
-> > > > > ---
-> > > > >  fs/read_write.c | 3 +++
-> > > > >  1 file changed, 3 insertions(+)
-> > > > >
-> > > > > diff --git a/fs/read_write.c b/fs/read_write.c
-> > > > > index fb4ffca..b3b304e 100644
-> > > > > --- a/fs/read_write.c
-> > > > > +++ b/fs/read_write.c
-> > > > > @@ -1594,6 +1594,9 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
-> > > > >               }
-> > > > >       }
-> > > > >
-> > > > > +     if (pos_in >= i_size_read(inode_in))
-> > > > > +             return -EINVAL;
-> > > > > +
-> > > >
-> > > > vfs_copy_file_range seems ot be missing a wide range of checks.
-> > > > rlimit, s_maxbytes, LFS file sizes, etc. This is a write, so all the
-> > > > checks in generic_write_checks() apply, right? And the same security
-> > > > issues like stripping setuid bits, etc? And we need to touch
-> > > > atime on the source file, too?
-> > >
-> > > Yes sound like needed checks.
-> > >
-> > > > We've just merged 5 or so patches in 4.19-rc8 and we're ready to
-> > > > merge another ~30 patch series to fix all the stuff missing from the
-> > > > clone/dedupe file range operations that make them safe and robust.
-> > > > It seems like copy_file_range is all the checks it needs, too?
-> > >
-> > > Are you proposing to not do this check now in favor of the proper work
-> > > that will do all of those checks you listed above?
-> >
-> > No, I'm saying that if you're adding one check, there's a whole heap
-> > of checks that still need to be added, *especially* if this is going
-> > to fall back to page cache copy between superblocks that may have
-> > different limits and constraints.
-> >
-> > There's security issues in this API. They need to be fixed before we
-> > allow it to do more and potentially expose more problems due to it's
-> > wider capability.
+> From: Olga Kornievskaia <kolga@netapp.com>
 >
-> Before I totally give up on this feature, can you help me understand
-> your concerns with allowing the generic copy_file_range via
-> do_splice().
+> This patch makes it the responsibility of individual filesystems to
+> allow or deny cross device copies.  Both NFS and CIFS have operations
+> for cross-server copies, and later patches will implement this feature.
 >
-> I have mentioned I'm not a VFS expert thus I come from just looking at
-> the available documentation and the code.
+> Note that as of this patch, the copy_file_range() function might be passed
+> superblocks from different filesystem types. -EXDEV should be returned
+> if cross device copies aren't supported.
 >
-> I don't see any restrictions on the files being passed in the
-> do_splice_direct(). There are no restrictions that they must be from
-> the same filesystem or file system type. But perhaps this not the
-> concern you had but more about checking validity of arguments?
+> Reviewed-by: Amir Goldstein <amir73il@gmail.com>
+> Reviewed-by: Matthew Wilcox <willy@infradead.org>
+> Reviewed-by: Steve French <stfrench@microsoft.com>
+> Reviewed-by: Jeff Layton <jlayton@kernel.org>
+> Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+> ---
+>  Documentation/filesystems/porting |  7 +++++++
+>  fs/cifs/cifsfs.c                  |  3 +++
+>  fs/nfs/nfs4file.c                 |  3 +++
+>  fs/overlayfs/file.c               |  3 +++
+>  fs/read_write.c                   | 12 +++++++-----
+>  5 files changed, 23 insertions(+), 5 deletions(-)
 >
-> I have looked at Dave Wong's, if I'm not mistaken these 2 are the
+> diff --git a/Documentation/filesystems/porting b/Documentation/filesystems/porting
+> index 7b7b845..897e1e7 100644
+> --- a/Documentation/filesystems/porting
+> +++ b/Documentation/filesystems/porting
+> @@ -622,3 +622,10 @@ in your dentry operations instead.
+>         alloc_file_clone(file, flags, ops) does not affect any caller's references.
+>         On success you get a new struct file sharing the mount/dentry with the
+>         original, on failure - ERR_PTR().
+> +--
+> +[mandatory]
+> +       ->copy_file_range() may now be passed files which belong to two
+> +       different superblocks of the same file system type or which belong
+> +       to two different filesystems types all together. As before, the
+> +       destination's copy_file_range() is the function which is called.
+> +       If it cannot copy ranges from the source, it should return -EXDEV.
+> diff --git a/fs/cifs/cifsfs.c b/fs/cifs/cifsfs.c
+> index 7065426..ca8fc87 100644
+> --- a/fs/cifs/cifsfs.c
+> +++ b/fs/cifs/cifsfs.c
+> @@ -1114,6 +1114,9 @@ static ssize_t cifs_copy_file_range(struct file *src_file, loff_t off,
+>         unsigned int xid = get_xid();
+>         ssize_t rc;
+>
+> +       if (file_inode(src_file)->i_sb != file_inode(dst_file)->i_sb)
+> +               return -EXDEV;
+> +
+>         rc = cifs_file_copychunk_range(xid, src_file, off, dst_file, destoff,
+>                                         len, flags);
+>         free_xid(xid);
+> diff --git a/fs/nfs/nfs4file.c b/fs/nfs/nfs4file.c
+> index 4288a6e..5a73c90 100644
+> --- a/fs/nfs/nfs4file.c
+> +++ b/fs/nfs/nfs4file.c
+> @@ -135,6 +135,9 @@ static ssize_t nfs4_copy_file_range(struct file *file_in, loff_t pos_in,
+>  {
+>         ssize_t ret;
+>
+> +       if (file_inode(file_in)->i_sb != file_inode(file_out)->i_sb)
+> +               return -EXDEV;
+> +
+>         if (file_inode(file_in) == file_inode(file_out))
+>                 return -EINVAL;
+>  retry:
+> diff --git a/fs/overlayfs/file.c b/fs/overlayfs/file.c
+> index aeaefd2..0331e33 100644
+> --- a/fs/overlayfs/file.c
+> +++ b/fs/overlayfs/file.c
+> @@ -483,6 +483,9 @@ static ssize_t ovl_copy_file_range(struct file *file_in, loff_t pos_in,
+>                                    struct file *file_out, loff_t pos_out,
+>                                    size_t len, unsigned int flags)
+>  {
+> +       if (file_inode(file_in)->i_sb != file_inode(file_out)->i_sb)
+> +               return -EXDEV;
+> +
+>         return ovl_copyfile(file_in, pos_in, file_out, pos_out, len, flags,
+>                             OVL_COPY);
+>  }
+> diff --git a/fs/read_write.c b/fs/read_write.c
+> index 39b4a21..c5bed2e 100644
+> --- a/fs/read_write.c
+> +++ b/fs/read_write.c
+> @@ -1575,10 +1575,6 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
+>             (file_out->f_flags & O_APPEND))
+>                 return -EBADF;
+>
+> -       /* this could be relaxed once a method supports cross-fs copies */
+> -       if (inode_in->i_sb != inode_out->i_sb)
+> -               return -EXDEV;
+> -
+>         if (len == 0)
+>                 return 0;
+>
+> @@ -1588,7 +1584,8 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
+>          * Try cloning first, this is supported by more file systems, and
+>          * more efficient if both clone and copy are supported (e.g. NFS).
+>          */
+> -       if (file_in->f_op->clone_file_range) {
+> +       if (inode_in->i_sb == inode_out->i_sb &&
+> +           file_in->f_op->clone_file_range) {
+>                 ret = file_in->f_op->clone_file_range(file_in, pos_in,
+>                                 file_out, pos_out, len);
+>                 if (ret == 0) {
+> @@ -1604,6 +1601,11 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
+>                         goto done;
+>         }
+>
+> +       if (inode_in->i_sb != inode_out->i_sb) {
+> +               ret = -EXDEV;
+> +               goto done;
+> +       }
+> +
+>         ret = do_splice_direct(file_in, &pos_in, file_out, &pos_out,
+>                         len > MAX_RW_COUNT ? MAX_RW_COUNT : len, 0);
+>
 
-apologizes Darrick Wong's patches.
+If this check would stay here for long I would say it needs a TODO comment
+of some sort, similar to the one that was removed, but I expect
+someone, if not Olga,
+will pick this up shorty after merge. If nobody else, I probably will.
 
-> relevant patches:
-> [PATCH 02/28] vfs: check file ranges before cloning files
->  -- a couple but not all checks apply to copy_file_range() .
-> specifically, the offsets don't wrap and offset isn't past eof (as my
-> patch suggests). Other checks have to do with aligned memory which I
-> don't believe is needed or other dedup requirement that don't apply.
->
-> [PATCH 04/28] vfs: strengthen checking of file range inputs to
-> generic_remap_checks
->  -- these checks apply to the code once we fall back to the
-> do_splice(). it looks to me that perhaps exporting
-> generic_access_check_limits()/generic_write_check_limits so that they
-> can be used by the copy_file_range when it get pulled in.
->
-> Also, can you elaborate one what "security issues" are present in this
-> API? Is it "stripping setuid bits" and so something like calling
-> file_remove_priv() that should be done when the fallback to the
-> do_splice_direct() happens?
->
-> As for the atime, wouldn't the ->copy_file_range() be updating the
-> file attributes? I guess for the fallback case, the attributes need to
-> be updated.
->
-> If those are checks/issues needed to be addressed and would then get
-> the generic copy_file_range() in, I could give a go at a patch (or 2).
-> >
-> > > I can not volunteer
-> > > to provide this comprehensive check.
-> >
-> > Why not?
-> >
-> > Cheers,
-> >
-> > Dave.
-> > --
-> > Dave Chinner
-> > david@fromorbit.com
+So I re-affirm my Reviewed-by.
+
+Thanks,
+Amir.
