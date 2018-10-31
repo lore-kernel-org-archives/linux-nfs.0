@@ -2,177 +2,93 @@ Return-Path: <SRS0=WZcR=NL=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,USER_AGENT_NEOMUTT
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-0.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id AEC83C0044C
-	for <linux-nfs@archiver.kernel.org>; Wed, 31 Oct 2018 18:54:33 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 41A49ECDE44
+	for <linux-nfs@archiver.kernel.org>; Wed, 31 Oct 2018 18:55:05 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 61ECA20664
-	for <linux-nfs@archiver.kernel.org>; Wed, 31 Oct 2018 18:54:33 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 61ECA20664
-Authentication-Results: mail.kernel.org; dmarc=none (p=none dis=none) header.from=suse.com
+	by mail.kernel.org (Postfix) with ESMTP id ECACE20664
+	for <linux-nfs@archiver.kernel.org>; Wed, 31 Oct 2018 18:55:04 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="ub2HqRIL"
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org ECACE20664
+Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=gmail.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1730241AbeKADxt (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 31 Oct 2018 23:53:49 -0400
-Received: from mx2.suse.de ([195.135.220.15]:48216 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1730097AbeKADxt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 31 Oct 2018 23:53:49 -0400
-X-Virus-Scanned: by amavisd-new at test-mx.suse.de
-Received: from relay2.suse.de (unknown [195.135.220.254])
-        by mx1.suse.de (Postfix) with ESMTP id 5F338B166;
-        Wed, 31 Oct 2018 18:54:28 +0000 (UTC)
-Date:   Wed, 31 Oct 2018 13:54:25 -0500
-From:   Goldwyn Rodrigues <rgoldwyn@suse.com>
-To:     Olga Kornievskaia <olga.kornievskaia@gmail.com>
-Cc:     trond.myklebust@hammerspace.com, anna.schumaker@netapp.com,
-        viro@zeniv.linux.org.uk, smfrench@gmail.com, miklos@szeredi.hu,
-        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-cifs@vger.kernel.org, linux-unionfs@vger.kernel.org,
-        linux-man@vger.kernel.org
-Subject: Re: [PATCH v7 01/11] VFS: move cross device copy_file_range() check
- into filesystems
-Message-ID: <20181031185425.lkw7fuoxbls6yam3@merlin>
-References: <20181030205614.40754-1-olga.kornievskaia@gmail.com>
- <20181030205614.40754-2-olga.kornievskaia@gmail.com>
+        id S1730675AbeKADyW (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 31 Oct 2018 23:54:22 -0400
+Received: from mail-vs1-f67.google.com ([209.85.217.67]:42762 "EHLO
+        mail-vs1-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1730097AbeKADyV (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 31 Oct 2018 23:54:21 -0400
+Received: by mail-vs1-f67.google.com with SMTP id e126so10691425vsc.9
+        for <linux-nfs@vger.kernel.org>; Wed, 31 Oct 2018 11:55:03 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc;
+        bh=Z2bd/t0CKMRyVHfOY/xof4u0BYbqNdKFnoBYt1Zr4tc=;
+        b=ub2HqRILdR0ic+Smsq/Kwoa2mUzUEWT56mh8GX5T3P2q8KWrH987cAnZNU2UlGTbWZ
+         fHno0qahR5e5xJiUkk87C9cn6lp4z7bsS3v0fD+cySjrmFKf668Wy5nypQXe+R1L71oM
+         EckA/sH3fTGB1Wy9GEcD+jBwn5c8YrUDkNXAW7ZzjjD9EPiFhzPCWSrojT29wF/1fO6F
+         uXncLULGh9wag/rCJvYbxOmT0Hl8pZ0d1JaeNuN2UDGihW4E2lhC9sW0chNvwslV/BJo
+         MclyVZ/S6YZcDlQ8U9GRy2kb+3gqphXJ9Hmuf+lhS5EZbL/t6PsoKuvU4ptjhrEq+CPH
+         1CZw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=Z2bd/t0CKMRyVHfOY/xof4u0BYbqNdKFnoBYt1Zr4tc=;
+        b=ECGNOva02D4HSlYdnykwh42IC2eLBz/NL/8GoBBUVGq5rpClylU/GAzjF+/TGxsbio
+         mqm3X7d4S1YJVgghoCYMnFOq7NFjt5o6Kvjqofjr2RLTsFvAD0GdRBcrBH9Vj0TfJXpm
+         6E+WNdbUAAm8Q0Le4ryXVS0GpR6G+beEPeYgNPcgQZP9mVAi3a644R6bPrUAdQ3ITGsL
+         OqgaWGr3ijXSBHK3BpwN2hiHynH1hLixVdBal2kqA7tn2enX0EDJXsmk+bxnY1urAy2L
+         xZlHaboecHd7ycwamT39X3dACxcfaZNlSTs5k4tEtXqeqNwa3Z1soVGNlCR8lcd92/iF
+         1eBQ==
+X-Gm-Message-State: AGRZ1gKYZ14OBHiee+2xObfUUEd2h6V2+kPAlQ3ONLzGMVa7zaPvzDWA
+        Eot3QmNTxuETM+PFHr0BWeao9r8KcrFwdcVNtXX+iA==
+X-Google-Smtp-Source: AJdET5d4OoFwl12DMDeJiRU9nzbbH3YbeH8iu3gkjSGsd+QT9675LHIjx0diZ19Y2TsQUuOlsNYQ9A5PY7fTGxZSTNU=
+X-Received: by 2002:a67:4285:: with SMTP id p127mr1865705vsa.134.1541012102760;
+ Wed, 31 Oct 2018 11:55:02 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20181030205614.40754-2-olga.kornievskaia@gmail.com>
-User-Agent: NeoMutt/20180323
+References: <20181019152905.32418-1-olga.kornievskaia@gmail.com>
+ <20181019152905.32418-5-olga.kornievskaia@gmail.com> <20181031184042.GD3377@fieldses.org>
+In-Reply-To: <20181031184042.GD3377@fieldses.org>
+From:   Olga Kornievskaia <olga.kornievskaia@gmail.com>
+Date:   Wed, 31 Oct 2018 14:54:51 -0400
+Message-ID: <CAN-5tyGuVF30ynxYj_EaWDjJJyJTXLXWb=O516XJsThk9AsUvQ@mail.gmail.com>
+Subject: Re: [PATCH v1 04/13] NFS inter ssc open
+To:     "J. Bruce Fields" <bfields@fieldses.org>
+Cc:     "J. Bruce Fields" <bfields@redhat.com>,
+        linux-nfs <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On 16:56 30/10, Olga Kornievskaia wrote:
-> From: Olga Kornievskaia <kolga@netapp.com>
-> 
-> This patch makes it the responsibility of individual filesystems to
-> allow or deny cross device copies.  Both NFS and CIFS have operations
-> for cross-server copies, and later patches will implement this feature.
-> 
-> Note that as of this patch, the copy_file_range() function might be passed
-> superblocks from different filesystem types. -EXDEV should be returned
-> if cross device copies aren't supported.
-> 
-> Reviewed-by: Amir Goldstein <amir73il@gmail.com>
-> Reviewed-by: Matthew Wilcox <willy@infradead.org>
-> Reviewed-by: Steve French <stfrench@microsoft.com>
-> Reviewed-by: Jeff Layton <jlayton@kernel.org>
-> Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
-> ---
->  Documentation/filesystems/porting |  7 +++++++
->  fs/cifs/cifsfs.c                  |  3 +++
->  fs/nfs/nfs4file.c                 |  3 +++
->  fs/overlayfs/file.c               |  3 +++
->  fs/read_write.c                   | 12 +++++++-----
->  5 files changed, 23 insertions(+), 5 deletions(-)
-> 
-> diff --git a/Documentation/filesystems/porting b/Documentation/filesystems/porting
-> index 7b7b845..897e1e7 100644
-> --- a/Documentation/filesystems/porting
-> +++ b/Documentation/filesystems/porting
-> @@ -622,3 +622,10 @@ in your dentry operations instead.
->  	alloc_file_clone(file, flags, ops) does not affect any caller's references.
->  	On success you get a new struct file sharing the mount/dentry with the
->  	original, on failure - ERR_PTR().
-> +--
-> +[mandatory]
-> +	->copy_file_range() may now be passed files which belong to two
-> +	different superblocks of the same file system type or which belong
-> +	to two different filesystems types all together. As before, the
-> +	destination's copy_file_range() is the function which is called.
-> +	If it cannot copy ranges from the source, it should return -EXDEV.
-> diff --git a/fs/cifs/cifsfs.c b/fs/cifs/cifsfs.c
-> index 7065426..ca8fc87 100644
-> --- a/fs/cifs/cifsfs.c
-> +++ b/fs/cifs/cifsfs.c
-> @@ -1114,6 +1114,9 @@ static ssize_t cifs_copy_file_range(struct file *src_file, loff_t off,
->  	unsigned int xid = get_xid();
->  	ssize_t rc;
->  
-> +	if (file_inode(src_file)->i_sb != file_inode(dst_file)->i_sb)
-> +		return -EXDEV;
-> +
->  	rc = cifs_file_copychunk_range(xid, src_file, off, dst_file, destoff,
->  					len, flags);
->  	free_xid(xid);
-> diff --git a/fs/nfs/nfs4file.c b/fs/nfs/nfs4file.c
-> index 4288a6e..5a73c90 100644
-> --- a/fs/nfs/nfs4file.c
-> +++ b/fs/nfs/nfs4file.c
-> @@ -135,6 +135,9 @@ static ssize_t nfs4_copy_file_range(struct file *file_in, loff_t pos_in,
->  {
->  	ssize_t ret;
->  
-> +	if (file_inode(file_in)->i_sb != file_inode(file_out)->i_sb)
-> +		return -EXDEV;
-> +
->  	if (file_inode(file_in) == file_inode(file_out))
->  		return -EINVAL;
->  retry:
-> diff --git a/fs/overlayfs/file.c b/fs/overlayfs/file.c
-> index aeaefd2..0331e33 100644
-> --- a/fs/overlayfs/file.c
-> +++ b/fs/overlayfs/file.c
-> @@ -483,6 +483,9 @@ static ssize_t ovl_copy_file_range(struct file *file_in, loff_t pos_in,
->  				   struct file *file_out, loff_t pos_out,
->  				   size_t len, unsigned int flags)
->  {
-> +	if (file_inode(file_in)->i_sb != file_inode(file_out)->i_sb)
-> +		return -EXDEV;
-> +
->  	return ovl_copyfile(file_in, pos_in, file_out, pos_out, len, flags,
->  			    OVL_COPY);
->  }
-> diff --git a/fs/read_write.c b/fs/read_write.c
-> index 39b4a21..c5bed2e 100644
-> --- a/fs/read_write.c
-> +++ b/fs/read_write.c
-> @@ -1575,10 +1575,6 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
->  	    (file_out->f_flags & O_APPEND))
->  		return -EBADF;
->  
-> -	/* this could be relaxed once a method supports cross-fs copies */
-> -	if (inode_in->i_sb != inode_out->i_sb)
-> -		return -EXDEV;
-> -
->  	if (len == 0)
->  		return 0;
->  
-> @@ -1588,7 +1584,8 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
->  	 * Try cloning first, this is supported by more file systems, and
->  	 * more efficient if both clone and copy are supported (e.g. NFS).
->  	 */
-> -	if (file_in->f_op->clone_file_range) {
-> +	if (inode_in->i_sb == inode_out->i_sb &&
-> +	    file_in->f_op->clone_file_range) {
->  		ret = file_in->f_op->clone_file_range(file_in, pos_in,
->  				file_out, pos_out, len);
->  		if (ret == 0) {
-> @@ -1604,6 +1601,11 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
->  			goto done;
->  	}
->  
-> +	if (inode_in->i_sb != inode_out->i_sb) {
-> +		ret = -EXDEV;
-> +		goto done;
-> +	}
-> +
+On Wed, Oct 31, 2018 at 2:40 PM J. Bruce Fields <bfields@fieldses.org> wrote:
+>
+> Just to pick one thing that I don't understand yet:
+>
+> On Fri, Oct 19, 2018 at 11:28:56AM -0400, Olga Kornievskaia wrote:
+> > +EXPORT_SYMBOL_GPL(nfs42_ssc_open);
+> > +void nfs42_ssc_close(struct file *filep)
+> > +{
+> > +     struct nfs_open_context *ctx = nfs_file_open_context(filep);
+> > +
+> > +     ctx->state->flags = 0;
+>
+> Why is this needed?
 
-Can we just do away with this check and let it perform splice()? The splice()
-call does not need to have file_in and file_out as the same sb.
+This is needed so that CLOSE isn't going on the wire but closed internally.
 
->  	ret = do_splice_direct(file_in, &pos_in, file_out, &pos_out,
->  			len > MAX_RW_COUNT ? MAX_RW_COUNT : len, 0);
->  
-> -- 
-> 1.8.3.1
-> 
+> Also, given the name and the pairing with nfs42_ssc_open(), would it be
+> more logical for it to do the fput() as well?
 
--- 
-Goldwyn
+I'd like to keep that fput() in the nfsd to make it consistent with
+the "intra". There are fput()s for intra but intra doesn't call into
+nfs42_ssc_close().
