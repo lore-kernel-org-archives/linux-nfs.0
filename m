@@ -1,264 +1,253 @@
-Return-Path: <SRS0=WZcR=NL=vger.kernel.org=linux-nfs-owner@kernel.org>
+Return-Path: <SRS0=Ohau=NM=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.3 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,USER_AGENT_MUTT
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-3.9 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
+	SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 64EDDC0044C
-	for <linux-nfs@archiver.kernel.org>; Wed, 31 Oct 2018 23:33:20 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 40BE1C0044C
+	for <linux-nfs@archiver.kernel.org>; Thu,  1 Nov 2018 00:17:41 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 0E81E20664
-	for <linux-nfs@archiver.kernel.org>; Wed, 31 Oct 2018 23:33:20 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 0E81E20664
-Authentication-Results: mail.kernel.org; dmarc=none (p=none dis=none) header.from=fromorbit.com
+	by mail.kernel.org (Postfix) with ESMTP id B93F920664
+	for <linux-nfs@archiver.kernel.org>; Thu,  1 Nov 2018 00:17:40 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (1024-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="L8jj/f7e"
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org B93F920664
+Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=hammerspace.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1730713AbeKAIdg (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 1 Nov 2018 04:33:36 -0400
-Received: from ipmail06.adl6.internode.on.net ([150.101.137.145]:11837 "EHLO
-        ipmail06.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1728437AbeKAIdd (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Nov 2018 04:33:33 -0400
-Received: from ppp59-167-129-252.static.internode.on.net (HELO dastard) ([59.167.129.252])
-  by ipmail06.adl6.internode.on.net with ESMTP; 01 Nov 2018 10:03:09 +1030
-Received: from dave by dastard with local (Exim 4.80)
-        (envelope-from <david@fromorbit.com>)
-        id 1gHzz2-0007sQ-B4; Thu, 01 Nov 2018 10:33:08 +1100
-Date:   Thu, 1 Nov 2018 10:33:08 +1100
-From:   Dave Chinner <david@fromorbit.com>
-To:     Olga Kornievskaia <olga.kornievskaia@gmail.com>
-Cc:     trond.myklebust@hammerspace.com,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        viro@zeniv.linux.org.uk, Steve French <smfrench@gmail.com>,
-        Miklos Szeredi <miklos@szeredi.hu>,
-        linux-nfs <linux-nfs@vger.kernel.org>,
-        linux-fsdevel@vger.kernel.org, linux-cifs@vger.kernel.org,
-        linux-unionfs@vger.kernel.org, linux-man@vger.kernel.org
-Subject: Re: [PATCH v4 02/11] VFS: copy_file_range check validity of input
- source offset
-Message-ID: <20181031233308.GR6311@dastard>
-References: <20181026201057.36899-1-olga.kornievskaia@gmail.com>
- <20181026201057.36899-4-olga.kornievskaia@gmail.com>
- <20181027092750.GL6311@dastard>
- <CAN-5tyEeMrRVUyP61Vv-dwFUvm7q55Q3=NVJkeZN+XoCcAOCDQ@mail.gmail.com>
- <20181030090344.GN6311@dastard>
- <CAN-5tyHhTQ8bZk+DUrU0o1ZK3k9uhipiLPeOA3dYuXUG542mNw@mail.gmail.com>
- <20181031001437.GQ6311@dastard>
- <CAN-5tyEHAUadnxuGmxC_KJzwUT7JO=-VSyioAQM0GTUR6+WY_Q@mail.gmail.com>
+        id S1726021AbeKAJSK (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 1 Nov 2018 05:18:10 -0400
+Received: from mail-eopbgr720131.outbound.protection.outlook.com ([40.107.72.131]:18578
+        "EHLO NAM05-CO1-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1725970AbeKAJSK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 1 Nov 2018 05:18:10 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=hammerspace.com;
+ s=selector1;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=SA/kaxRjXr5BaWEe02Uq60tzOEPUY/KvDbehGtrBqlg=;
+ b=L8jj/f7euq8//tVFk6kjSCZHT15rB7KZlCltmTEMLQ6+JYTt3vgzzNyV9XeMbfjYjYGOh01+4r22uCOLm2/lbi6X4mFfU9OELN/xhFAZhq7XFu2tbyJa9c4BxPtPBrcDs+wcM322rTrw7haluBQCoSH5wdxJ2D8Lzt8/CAVkTDM=
+Received: from SN6PR13MB2494.namprd13.prod.outlook.com (52.135.95.148) by
+ SN6PR13MB2240.namprd13.prod.outlook.com (52.135.93.153) with Microsoft SMTP
+ Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ 15.20.1294.13; Thu, 1 Nov 2018 00:17:32 +0000
+Received: from SN6PR13MB2494.namprd13.prod.outlook.com
+ ([fe80::205a:69c2:1cf5:b475]) by SN6PR13MB2494.namprd13.prod.outlook.com
+ ([fe80::205a:69c2:1cf5:b475%3]) with mapi id 15.20.1294.021; Thu, 1 Nov 2018
+ 00:17:32 +0000
+From:   Trond Myklebust <trondmy@hammerspace.com>
+To:     "linux@roeck-us.net" <linux@roeck-us.net>,
+        "paul.burton@mips.com" <paul.burton@mips.com>
+CC:     "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "ralf@linux-mips.org" <ralf@linux-mips.org>,
+        "jlayton@kernel.org" <jlayton@kernel.org>,
+        "linuxppc-dev@lists.ozlabs.org" <linuxppc-dev@lists.ozlabs.org>,
+        "bfields@fieldses.org" <bfields@fieldses.org>,
+        "linux-mips@linux-mips.org" <linux-mips@linux-mips.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "akpm@linux-foundation.org" <akpm@linux-foundation.org>,
+        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+        "jhogan@kernel.org" <jhogan@kernel.org>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+        "davem@davemloft.net" <davem@davemloft.net>,
+        "arnd@arndb.de" <arnd@arndb.de>,
+        "paulus@samba.org" <paulus@samba.org>,
+        "mpe@ellerman.id.au" <mpe@ellerman.id.au>,
+        "benh@kernel.crashing.org" <benh@kernel.crashing.org>
+Subject: Re: [RFC PATCH] lib: Introduce generic __cmpxchg_u64() and use it
+ where needed
+Thread-Topic: [RFC PATCH] lib: Introduce generic __cmpxchg_u64() and use it
+ where needed
+Thread-Index: AQHUcVNDmGGj0g6AA0y1ofQdOo8K7KU5392AgAAIbYCAABkRAIAADIkA
+Date:   Thu, 1 Nov 2018 00:17:31 +0000
+Message-ID: <4e2438a23d2edf03368950a72ec058d1d299c32e.camel@hammerspace.com>
+References: <1541015538-11382-1-git-send-email-linux@roeck-us.net>
+         <20181031213240.zhh7dfcm47ucuyfl@pburton-laptop>
+         <20181031220253.GA15505@roeck-us.net>
+         <20181031233235.qbedw3pinxcuk7me@pburton-laptop>
+In-Reply-To: <20181031233235.qbedw3pinxcuk7me@pburton-laptop>
+Accept-Language: en-US, en-GB
+Content-Language: en-US
+X-MS-Has-Attach: 
+X-MS-TNEF-Correlator: 
+authentication-results: spf=none (sender IP is )
+ smtp.mailfrom=trondmy@hammerspace.com; 
+x-originating-ip: [68.40.195.73]
+x-ms-publictraffictype: Email
+x-microsoft-exchange-diagnostics: 1;SN6PR13MB2240;6:ZdIxH/NNyq4Sx4mS9KcyQ9bb4l7/mJ99NBhsN3z/Qaiuw0LaxFQYc7H/aulkw3NRHiYTycIfqVTRa3Pcy/k6ODsLUKzkW6vx9fk43utO7sUJzTzai6b0q0Ue1IsZvkQpdLBew3kGBG2DWYqPL1BhkKDl2uG2AmKh3eu5AWw6adFXakmUsPbhFlLCJNipcre7BgP1Ql2jcLkuhvGGDGx8HRPsjI1i6Rth6pH+ZUIONyGKr1F3uZEDpXYYopVG/QE3ZX77XzDypPXpVrx9+e8sr86M/r8lB5+wF7tzNnrKlFCVbtFh7/tyLgryiz72mpG0d5hm7hBrvSdoRjyJ6mwMpZiY0WkN73ItlTF32DoVTCPAdNmSR6h5rJ1zYM8Xf9Lzu0AlSpF3MunBb6Q2+84BbfFv+HPpe/xyDCAsRdHCqGMUNV4tVp2KtL/FG3D4CcUKLUZ2r9GUEndO1ZXWVfg2hw==;5:7bMKekBVet5oRl/h5DWw/zj/+8tgbhdvjv8TLuyYZ9mjWcIBXEsAuc4z2932rq+WBj4LYr70mKCs/eQUrbEj5WHtosN47LaBHEj+UHSELGN1fyORRiM6iaIMKPAyDt45J6QLOmawdXxIZ34l6ruphnwlTvq3oaQp/jPqGREObCQ=;7:fhqPtZreLeSiWpaySsqv6YAgBC0El9qET4KOvm99XnC+Ae5AymJOMaIBoRUR/SEbSZc21O5Hz138KhVEkRCFVixGR103qgsExYokHVGhgtNpQHuFzhrISlUgDOW9NpzeRBOlvLXKa3oFGUvvB6LPAQ==
+x-ms-exchange-antispam-srfa-diagnostics: SOS;
+x-ms-office365-filtering-correlation-id: f3a8f48b-fa4a-4a14-e4c4-08d63f8f6aa4
+x-microsoft-antispam: BCL:0;PCL:0;RULEID:(7020095)(4652040)(8989299)(4534185)(4627221)(201703031133081)(201702281549075)(8990200)(5600074)(711020)(2017052603328)(7153060)(7193020);SRVR:SN6PR13MB2240;
+x-ms-traffictypediagnostic: SN6PR13MB2240:
+x-microsoft-antispam-prvs: <SN6PR13MB224013FD8CB16AC25442A0D2B8CE0@SN6PR13MB2240.namprd13.prod.outlook.com>
+x-exchange-antispam-report-test: UriScan:;
+x-ms-exchange-senderadcheck: 1
+x-exchange-antispam-report-cfa-test: BCL:0;PCL:0;RULEID:(6040522)(2401047)(8121501046)(5005006)(10201501046)(3002001)(93006095)(93001095)(3231382)(944501410)(52105095)(148016)(149066)(150057)(6041310)(20161123560045)(20161123564045)(20161123558120)(20161123562045)(201703131423095)(201702281528075)(20161123555045)(201703061421075)(201703061406153)(201708071742011)(7699051)(76991095);SRVR:SN6PR13MB2240;BCL:0;PCL:0;RULEID:;SRVR:SN6PR13MB2240;
+x-forefront-prvs: 0843C17679
+x-forefront-antispam-report: SFV:NSPM;SFS:(10019020)(979002)(346002)(136003)(376002)(39830400003)(366004)(396003)(199004)(189003)(4001150100001)(81166006)(81156014)(6486002)(478600001)(53936002)(68736007)(105586002)(6436002)(4326008)(102836004)(6306002)(76176011)(99286004)(6512007)(8676002)(8936002)(66066001)(7416002)(6506007)(86362001)(5250100002)(305945005)(7736002)(6246003)(36756003)(2501003)(5660300001)(26005)(14444005)(106356001)(93886005)(15974865002)(2906002)(446003)(71190400001)(2616005)(11346002)(186003)(110136005)(71200400001)(316002)(25786009)(476003)(2900100001)(118296001)(256004)(966005)(6116002)(486006)(54906003)(14454004)(97736004)(3846002)(229853002)(41533002)(21314003)(969003)(989001)(999001)(1009001)(1019001);DIR:OUT;SFP:1102;SCL:1;SRVR:SN6PR13MB2240;H:SN6PR13MB2494.namprd13.prod.outlook.com;FPR:;SPF:None;LANG:en;PTR:InfoNoRecords;A:1;MX:1;
+received-spf: None (protection.outlook.com: hammerspace.com does not designate
+ permitted sender hosts)
+x-microsoft-antispam-message-info: 4QHe6B6LWWJdwfL3trInNxCaUcbebzVK8SVy0RiKPmAGpnvoGdBoVzPxo2GO/uA2OP1KzDlfwySWR6fA8rK9+FDeWp3DxVSuHz4al6JTVVZeS372r1HuACCuQ61MKy5V0cL8lRHSpf5F2RinbkYJUT+TXwAXm/Qygy4W+G7x6zoSn3dTLumEDzXKeFP9VxK1vxxBEHp1OMJMtA8YgS7XwOiHsZZcnk0tPkvjXVDDXckPS5aDEGt0PqIMt8vQJ7gtgvD1hoGejdGzVBXfvyY6wQPCfbaprTT2uEHe7AmNR+QVsiQTfG4I8F1nhzjE1qQx4DdBwuMuO8AaF/mgNLp7diy9iTLPamx0FgPXuEhI9YA=
+spamdiagnosticoutput: 1:99
+spamdiagnosticmetadata: NSPM
+Content-Type: text/plain; charset="utf-8"
+Content-ID: <2DC2E59D54857A4C9E6FD81F927F5E22@namprd13.prod.outlook.com>
+Content-Transfer-Encoding: base64
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <CAN-5tyEHAUadnxuGmxC_KJzwUT7JO=-VSyioAQM0GTUR6+WY_Q@mail.gmail.com>
-User-Agent: Mutt/1.5.21 (2010-09-15)
+X-OriginatorOrg: hammerspace.com
+X-MS-Exchange-CrossTenant-Network-Message-Id: f3a8f48b-fa4a-4a14-e4c4-08d63f8f6aa4
+X-MS-Exchange-CrossTenant-originalarrivaltime: 01 Nov 2018 00:17:31.9767
+ (UTC)
+X-MS-Exchange-CrossTenant-fromentityheader: Hosted
+X-MS-Exchange-CrossTenant-id: 0d4fed5c-3a70-46fe-9430-ece41741f59e
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: SN6PR13MB2240
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Wed, Oct 31, 2018 at 10:51:48AM -0400, Olga Kornievskaia wrote:
-> On Tue, Oct 30, 2018 at 8:15 PM Dave Chinner <david@fromorbit.com> wrote:
-> >
-> > On Tue, Oct 30, 2018 at 05:10:58PM -0400, Olga Kornievskaia wrote:
-> > > On Tue, Oct 30, 2018 at 5:03 AM Dave Chinner <david@fromorbit.com> wrote:
-> > > >
-> > > > On Mon, Oct 29, 2018 at 10:41:22AM -0400, Olga Kornievskaia wrote:
-> > > > > On Sat, Oct 27, 2018 at 5:27 AM Dave Chinner <david@fromorbit.com> wrote:
-> > > > > >
-> > > > > > On Fri, Oct 26, 2018 at 04:10:48PM -0400, Olga Kornievskaia wrote:
-> > > > > > > From: Olga Kornievskaia <kolga@netapp.com>
-> > > > > > >
-> > > > > > > Input source offset can't be beyond the end of the file.
-> > > > > > >
-> > > > > > > Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
-> > > > > > > ---
-> > > > > > >  fs/read_write.c | 3 +++
-> > > > > > >  1 file changed, 3 insertions(+)
-> > > > > > >
-> > > > > > > diff --git a/fs/read_write.c b/fs/read_write.c
-> > > > > > > index fb4ffca..b3b304e 100644
-> > > > > > > --- a/fs/read_write.c
-> > > > > > > +++ b/fs/read_write.c
-> > > > > > > @@ -1594,6 +1594,9 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
-> > > > > > >               }
-> > > > > > >       }
-> > > > > > >
-> > > > > > > +     if (pos_in >= i_size_read(inode_in))
-> > > > > > > +             return -EINVAL;
-> > > > > > > +
-> > > > > >
-> > > > > > vfs_copy_file_range seems ot be missing a wide range of checks.
-> > > > > > rlimit, s_maxbytes, LFS file sizes, etc. This is a write, so all the
-> > > > > > checks in generic_write_checks() apply, right? And the same security
-> > > > > > issues like stripping setuid bits, etc? And we need to touch
-> > > > > > atime on the source file, too?
-> > > > >
-> > > > > Yes sound like needed checks.
-> > > > >
-> > > > > > We've just merged 5 or so patches in 4.19-rc8 and we're ready to
-> > > > > > merge another ~30 patch series to fix all the stuff missing from the
-> > > > > > clone/dedupe file range operations that make them safe and robust.
-> > > > > > It seems like copy_file_range is all the checks it needs, too?
-> > > > >
-> > > > > Are you proposing to not do this check now in favor of the proper work
-> > > > > that will do all of those checks you listed above?
-> > > >
-> > > > No, I'm saying that if you're adding one check, there's a whole heap
-> > > > of checks that still need to be added, *especially* if this is going
-> > > > to fall back to page cache copy between superblocks that may have
-> > > > different limits and constraints.
-> > > >
-> > > > There's security issues in this API. They need to be fixed before we
-> > > > allow it to do more and potentially expose more problems due to it's
-> > > > wider capability.
-> > >
-> > > Before I totally give up on this feature, can you help me understand
-> > > your concerns with allowing the generic copy_file_range via
-> > > do_splice().
-> >
-> > it's not do_splice_direct() i'm concerned about. It's /writing data
-> > without adequate checks/ that I'm concerned about.
-> > ->copy_file_range() also writes data, so it needs to undergo the
-> > same safety checks as well.
-> 
-> Thank you Dave for clarifying and elaborating on the points. As you
-> pointed out this concerns apply to the current code the same way as to
-> the patch series. Those concerns should be address however I feel like
-> they shouldn't be the responsibility of this particular patch series.
-> Therefore, I ask for the community to either make any final comments
-> for any changes that are needed to "version 7" patches and if no more
-> comments arise I would like to ask for this to be added to the queue
-> for the next kernel version.
-> 
-> Then the next patch series would be just VFS and would add appropriate
-> checks and then allow for the generic copy_file_range() via do_splice.
-
-That's fine by me.
-
-> 
-> > > I have mentioned I'm not a VFS expert thus I come from just looking at
-> > > the available documentation and the code.
-> > >
-> > > I don't see any restrictions on the files being passed in the
-> > > do_splice_direct(). There are no restrictions that they must be from
-> > > the same filesystem or file system type. But perhaps this not the
-> > > concern you had but more about checking validity of arguments?
-> > >
-> > > I have looked at Dave Wong's, if I'm not mistaken these 2 are the
-> > > relevant patches:
-> > > [PATCH 02/28] vfs: check file ranges before cloning files
-> > >  -- a couple but not all checks apply to copy_file_range() .
-> >
-> > Yes, of course - clone/dedupe have different constraints, but the
-> > core checks are still needed for copy_file_range().
-> >
-> > For example, the man page says:
-> >
-> > EINVAL
-> >         Requested range extends beyond the end of the source
-> >         file; or the flags argument is not 0.
-> >
-> > Your patch above doesn't actually check that - it only checks if the
-> > pos_in is beyond EOF. It needs to check if pos_in + len is beyond
-> > EOF. After checking for wraps, of course.
-> 
-> There was a reason why I didn't include the "pos_in + len" check. It
-> sparked the conversation why should "pos_in + len" be an error, when a
-> "read" system call would just return a "short" read and EOF. So I
-> dropped the check for "pst_in + len" to be an error.
-
-So man page patches will be required, too. :)
-
-Basically, we need to nail down the expected semantics, make sure
-they are correctly documented and /enforced consistently/ across all
-filesystems.
-
-
-> > >  -- these checks apply to the code once we fall back to the
-> > > do_splice().
-> >
-> > man page says:
-> >
-> > EFBIG
-> >        An  attempt  was made to write a file that exceeds the
-> >        implementation-defined maximum file size or the process's
-> >        file size limit, or to write at a position past the maximum
-> >        allowed offset.
-> >
-> > These conditions apply to the destination file regards of the method
-> > used to copy the data. That's what the generic methods now check for
-> > clone/dedupe, and need to be used here, too.
-> 
-> Agreed and once Darrek patches are in, copy_file_range() can use them too.
-
-Should be in the next couple of days.
-
-> > 7debbf015f58 xfs: update ctime and remove suid before cloning files
-> >
-> > Which then got moved into the generic remap_file_range code in
-> > Darrick's "vfs: remap helper should update destination inode
-> > metadata" patch:
-> >
-> > https://git.kernel.org/pub/scm/fs/xfs/xfs-linux.git/commit/?h=for-next&id=8dde90bca6fca3736ea20109654bcf6dcf2ecf1d
-> >
-> > We can't assume that a server side copy is going to strip setuid
-> > bits or even update target files c/mtimes.
-> 
-> I would like to discuss your concerns about updating attributes
-> (c/m/atimes), why shouldn't it be a ->copy_file_range()
-> responsibility. copy_file_rage is basically a read+write. As far as I
-> can tell, vfs_read and vfs_write (in VFS) don't deal with updating
-> attributes.
-
-You're looking at the wrong level. The VFS layer is the first
-multiplexing layer, allowing filesystems to select a method of
-handling functionality. They then make use of "generic helpers"
-to implement the required functionality, and they contain the
-required updates.
-
-ie.g. A list of generic helpers with atime update callers from my
-cscope index:
-
-f fs/pipe.c          pipe_read                   343 file_accessed(filp);
-h fs/readdir.c       iterate_dir                  56 file_accessed(file);
-i fs/splice.c        generic_file_splice_read    311 file_accessed(in);
-j fs/splice.c        splice_direct_to_actor      992 file_accessed(in);
-p mm/filemap.c       generic_file_buffered_read 2299 file_accessed(filp);
-q mm/filemap.c       generic_file_read_iter     2339 file_accessed(file);
-r mm/filemap.c       generic_file_mmap          2736 file_accessed(file);
-
-These are effectively reference implementations of the file reading
-infrastructure. Filesystems often have customised implementations
-but they all must contain the same functioanlity and behaviour as
-the reference implementation.
-
-> I'm guessing it's assumed that underlying file systems are
-> going to take care of it (unless of course I misread the code).
-
-Only the ones that don't specifically call the generic helper to do
-the work.
-
-IOWs, what I'd like to see is a generic_copy_file_range() as the
-reference implemenation using a page cache copy. This contains all
-the required checks, timestamp updates, etc. If the filesystem does
-not supply ->copy_file_range, then generic_copy_file_range() is
-called, not do_splice_direct(). Indeed, a filesystem should be able
-to do:
-
-	.copy_file_range = xfs_copy_file_range,
-
-xfs_copy_file_range(...)
-{
-	trace_xfs_copy_file_range(...)
-	return generic_copy_file_range(....);
-}
-
-and have everything work correctly.
-
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+SGkgUGF1bCwNCg0KT24gV2VkLCAyMDE4LTEwLTMxIGF0IDIzOjMyICswMDAwLCBQYXVsIEJ1cnRv
+biB3cm90ZToNCj4gKENvcHlpbmcgU3VuUlBDICYgbmV0IG1haW50YWluZXJzLikNCj4gDQo+IEhp
+IEd1ZW50ZXIsDQo+IA0KPiBPbiBXZWQsIE9jdCAzMSwgMjAxOCBhdCAwMzowMjo1M1BNIC0wNzAw
+LCBHdWVudGVyIFJvZWNrIHdyb3RlOg0KPiA+IFRoZSBhbHRlcm5hdGl2ZXMgSSBjYW4gc2VlIGFy
+ZQ0KPiA+IC0gRG8gbm90IHVzZSBjbXB4Y2hnNjQoKSBvdXRzaWRlIGFyY2hpdGVjdHVyZSBjb2Rl
+IChpZSBkcm9wIGl0cyB1c2UNCj4gPiBmcm9tDQo+ID4gICB0aGUgb2ZmZW5kaW5nIGRyaXZlciwg
+YW5kIGtlZXAgZG9pbmcgdGhlIHNhbWUgd2hlbmV2ZXIgdGhlDQo+ID4gcHJvYmxlbSBjb21lcw0K
+PiA+ICAgdXAgYWdhaW4pLg0KPiA+IG9yDQo+ID4gLSBJbnRyb2R1Y2Ugc29tZXRoaW5nIGxpa2Ug
+QVJDSF9IQVNfQ01QWENIRzY0IGFuZCB1c2UgaXQgdG8NCj4gPiBkZXRlcm1pbmUNCj4gPiAgIGlm
+IGNtcHhjaGc2NCBpcyBzdXBwb3J0ZWQgb3Igbm90Lg0KPiA+IA0KPiA+IEFueSBwcmVmZXJlbmNl
+ID8NCj4gDQo+IE15IHByZWZlcmVuY2Ugd291bGQgYmUgb3B0aW9uIDEgLSBhdm9pZGluZyBjbXB4
+Y2hnNjQoKSB3aGVyZSBwb3NzaWJsZQ0KPiBpbg0KPiBnZW5lcmljIGNvZGUuIEkgd291bGRuJ3Qg
+YmUgb3Bwb3NlZCB0byB0aGUgS2NvbmZpZyBvcHRpb24gaWYgdGhlcmUNCj4gYXJlDQo+IGNhc2Vz
+IHdoZXJlIGNtcHhjaGc2NCgpIGNhbiByZWFsbHkgaGVscCBwZXJmb3JtYW5jZSB0aG91Z2guDQo+
+IA0KPiBUaGUgbGFzdCB0aW1lIEknbSBhd2FyZSBvZiB0aGlzIGNvbWluZyB1cCB0aGUgYWZmZWN0
+ZWQgZHJpdmVyIHdhcw0KPiBtb2RpZmllZCB0byBhdm9pZCBjbXB4Y2hnNjQoKSBbMV0uDQo+IA0K
+PiBJbiB0aGlzIHBhcnRpY3VsYXIgY2FzZSBJIGhhdmUgbm8gaWRlYSB3aHkNCj4gbmV0L3N1bnJw
+Yy9hdXRoX2dzcy9nc3Nfa3JiNV9zZWFsLmMgaXMgdXNpbmcgY21weGNoZzY0KCkgYXQgYWxsLiBJ
+dCdzDQo+IGVzc2VudGlhbGx5IHJlaW52ZW50aW5nIGF0b21pYzY0X2ZldGNoX2luYygpIHdoaWNo
+IGlzIGFscmVhZHkNCj4gcHJvdmlkZWQNCj4gZXZlcnl3aGVyZSB2aWEgQ09ORklHX0dFTkVSSUNf
+QVRPTUlDNjQgJiB0aGUgc3BpbmxvY2sgYXBwcm9hY2guIEF0DQo+IGxlYXN0DQo+IGZvciBhdG9t
+aWM2NF8qIGZ1bmN0aW9ucyB0aGUgYXNzdW1wdGlvbiB0aGF0IGFsbCBhY2Nlc3Mgd2lsbCBiZQ0K
+PiBwZXJmb3JtZWQgdXNpbmcgdGhvc2Ugc2FtZSBmdW5jdGlvbnMgc2VlbXMgc29tZXdoYXQgcmVh
+c29uYWJsZS4NCj4gDQo+IFNvIGhvdyBkb2VzIHRoZSBiZWxvdyBsb29rPyBUcm9uZD8NCj4gDQoN
+Ck15IG9uZSBxdWVzdGlvbiAoYW5kIHRoZSByZWFzb24gd2h5IEkgd2VudCB3aXRoIGNtcHhjaGco
+KSBpbiB0aGUgZmlyc3QNCnBsYWNlKSB3b3VsZCBiZSBhYm91dCB0aGUgb3ZlcmZsb3cgYmVoYXZp
+b3VyIGZvciBhdG9taWNfZmV0Y2hfaW5jKCkgYW5kDQpmcmllbmRzLiBJIGJlbGlldmUgdGhvc2Ug
+ZnVuY3Rpb25zIHNob3VsZCBiZSBPSyBvbiB4ODYsIHNvIHRoYXQgd2hlbiB3ZQ0Kb3ZlcmZsb3cg
+dGhlIGNvdW50ZXIsIGl0IGJlaGF2ZXMgbGlrZSBhbiB1bnNpZ25lZCB2YWx1ZSBhbmQgd3JhcHMg
+YmFjaw0KYXJvdW5kLiAgSXMgdGhhdCB0aGUgY2FzZSBmb3IgYWxsIGFyY2hpdGVjdHVyZXM/DQoN
+CmkuZS4gYXJlIGF0b21pY190L2F0b21pYzY0X3QgYWx3YXlzIGd1YXJhbnRlZWQgdG8gYmVoYXZl
+IGxpa2UgdTMyL3U2NA0Kb24gaW5jcmVtZW50Pw0KDQpJIGNvdWxkIG5vdCBmaW5kIGFueSBkb2N1
+bWVudGF0aW9uIHRoYXQgZXhwbGljaXRseSBzdGF0ZWQgdGhhdCB0aGV5DQpzaG91bGQuDQoNCkNo
+ZWVycw0KICBUcm9uZA0KDQo+IFRoYW5rcywNCj4gICAgIFBhdWwNCj4gDQo+IFsxXSBodHRwczov
+L3BhdGNod29yay5vemxhYnMub3JnL2NvdmVyLzg5MTI4NC8NCj4gDQo+IC0tLQ0KPiBkaWZmIC0t
+Z2l0IGEvaW5jbHVkZS9saW51eC9zdW5ycGMvZ3NzX2tyYjUuaA0KPiBiL2luY2x1ZGUvbGludXgv
+c3VucnBjL2dzc19rcmI1LmgNCj4gaW5kZXggMTMxNDI0Y2VmYzZhLi4wMmMwNDEyZTM2OGMgMTAw
+NjQ0DQo+IC0tLSBhL2luY2x1ZGUvbGludXgvc3VucnBjL2dzc19rcmI1LmgNCj4gKysrIGIvaW5j
+bHVkZS9saW51eC9zdW5ycGMvZ3NzX2tyYjUuaA0KPiBAQCAtMTA3LDggKzEwNyw4IEBAIHN0cnVj
+dCBrcmI1X2N0eCB7DQo+ICAJdTgJCQlLc2Vzc1tHU1NfS1JCNV9NQVhfS0VZTEVOXTsgLyoNCj4g
+c2Vzc2lvbiBrZXkgKi8NCj4gIAl1OAkJCWNrc3VtW0dTU19LUkI1X01BWF9LRVlMRU5dOw0KPiAg
+CXMzMgkJCWVuZHRpbWU7DQo+IC0JdTMyCQkJc2VxX3NlbmQ7DQo+IC0JdTY0CQkJc2VxX3NlbmQ2
+NDsNCj4gKwlhdG9taWNfdAkJc2VxX3NlbmQ7DQo+ICsJYXRvbWljNjRfdAkJc2VxX3NlbmQ2NDsN
+Cj4gIAlzdHJ1Y3QgeGRyX25ldG9iagltZWNoX3VzZWQ7DQo+ICAJdTgJCQlpbml0aWF0b3Jfc2ln
+bltHU1NfS1JCNV9NQVhfS0VZTEVOXTsNCj4gIAl1OAkJCWFjY2VwdG9yX3NpZ25bR1NTX0tSQjVf
+TUFYX0tFWUxFTl07DQo+IEBAIC0xMTgsOSArMTE4LDYgQEAgc3RydWN0IGtyYjVfY3R4IHsNCj4g
+IAl1OAkJCWFjY2VwdG9yX2ludGVnW0dTU19LUkI1X01BWF9LRVlMRU5dOw0KPiAgfTsNCj4gIA0K
+PiAtZXh0ZXJuIHUzMiBnc3Nfc2VxX3NlbmRfZmV0Y2hfYW5kX2luYyhzdHJ1Y3Qga3JiNV9jdHgg
+KmN0eCk7DQo+IC1leHRlcm4gdTY0IGdzc19zZXFfc2VuZDY0X2ZldGNoX2FuZF9pbmMoc3RydWN0
+IGtyYjVfY3R4ICpjdHgpOw0KPiAtDQo+ICAvKiBUaGUgbGVuZ3RoIG9mIHRoZSBLZXJiZXJvcyBH
+U1MgdG9rZW4gaGVhZGVyICovDQo+ICAjZGVmaW5lIEdTU19LUkI1X1RPS19IRFJfTEVOCSgxNikN
+Cj4gIA0KPiBkaWZmIC0tZ2l0IGEvbmV0L3N1bnJwYy9hdXRoX2dzcy9nc3Nfa3JiNV9tZWNoLmMN
+Cj4gYi9uZXQvc3VucnBjL2F1dGhfZ3NzL2dzc19rcmI1X21lY2guYw0KPiBpbmRleCA3ZjA0MjRk
+ZmE4ZjYuLmVhYjcxZmM3YWYzZSAxMDA2NDQNCj4gLS0tIGEvbmV0L3N1bnJwYy9hdXRoX2dzcy9n
+c3Nfa3JiNV9tZWNoLmMNCj4gKysrIGIvbmV0L3N1bnJwYy9hdXRoX2dzcy9nc3Nfa3JiNV9tZWNo
+LmMNCj4gQEAgLTI3NCw2ICsyNzQsNyBAQCBnZXRfa2V5KGNvbnN0IHZvaWQgKnAsIGNvbnN0IHZv
+aWQgKmVuZCwNCj4gIHN0YXRpYyBpbnQNCj4gIGdzc19pbXBvcnRfdjFfY29udGV4dChjb25zdCB2
+b2lkICpwLCBjb25zdCB2b2lkICplbmQsIHN0cnVjdA0KPiBrcmI1X2N0eCAqY3R4KQ0KPiAgew0K
+PiArCXUzMiBzZXFfc2VuZDsNCj4gIAlpbnQgdG1wOw0KPiAgDQo+ICAJcCA9IHNpbXBsZV9nZXRf
+Ynl0ZXMocCwgZW5kLCAmY3R4LT5pbml0aWF0ZSwgc2l6ZW9mKGN0eC0NCj4gPmluaXRpYXRlKSk7
+DQo+IEBAIC0zMTUsOSArMzE2LDEwIEBAIGdzc19pbXBvcnRfdjFfY29udGV4dChjb25zdCB2b2lk
+ICpwLCBjb25zdCB2b2lkDQo+ICplbmQsIHN0cnVjdCBrcmI1X2N0eCAqY3R4KQ0KPiAgCXAgPSBz
+aW1wbGVfZ2V0X2J5dGVzKHAsIGVuZCwgJmN0eC0+ZW5kdGltZSwgc2l6ZW9mKGN0eC0NCj4gPmVu
+ZHRpbWUpKTsNCj4gIAlpZiAoSVNfRVJSKHApKQ0KPiAgCQlnb3RvIG91dF9lcnI7DQo+IC0JcCA9
+IHNpbXBsZV9nZXRfYnl0ZXMocCwgZW5kLCAmY3R4LT5zZXFfc2VuZCwgc2l6ZW9mKGN0eC0NCj4g
+PnNlcV9zZW5kKSk7DQo+ICsJcCA9IHNpbXBsZV9nZXRfYnl0ZXMocCwgZW5kLCAmc2VxX3NlbmQs
+IHNpemVvZihzZXFfc2VuZCkpOw0KPiAgCWlmIChJU19FUlIocCkpDQo+ICAJCWdvdG8gb3V0X2Vy
+cjsNCj4gKwlhdG9taWNfc2V0KCZjdHgtPnNlcV9zZW5kLCBzZXFfc2VuZCk7DQo+ICAJcCA9IHNp
+bXBsZV9nZXRfbmV0b2JqKHAsIGVuZCwgJmN0eC0+bWVjaF91c2VkKTsNCj4gIAlpZiAoSVNfRVJS
+KHApKQ0KPiAgCQlnb3RvIG91dF9lcnI7DQo+IEBAIC02MDcsNiArNjA5LDcgQEAgc3RhdGljIGlu
+dA0KPiAgZ3NzX2ltcG9ydF92Ml9jb250ZXh0KGNvbnN0IHZvaWQgKnAsIGNvbnN0IHZvaWQgKmVu
+ZCwgc3RydWN0DQo+IGtyYjVfY3R4ICpjdHgsDQo+ICAJCWdmcF90IGdmcF9tYXNrKQ0KPiAgew0K
+PiArCXU2NCBzZXFfc2VuZDY0Ow0KPiAgCWludCBrZXlsZW47DQo+ICANCj4gIAlwID0gc2ltcGxl
+X2dldF9ieXRlcyhwLCBlbmQsICZjdHgtPmZsYWdzLCBzaXplb2YoY3R4LT5mbGFncykpOw0KPiBA
+QCAtNjE3LDE0ICs2MjAsMTUgQEAgZ3NzX2ltcG9ydF92Ml9jb250ZXh0KGNvbnN0IHZvaWQgKnAs
+IGNvbnN0IHZvaWQNCj4gKmVuZCwgc3RydWN0IGtyYjVfY3R4ICpjdHgsDQo+ICAJcCA9IHNpbXBs
+ZV9nZXRfYnl0ZXMocCwgZW5kLCAmY3R4LT5lbmR0aW1lLCBzaXplb2YoY3R4LQ0KPiA+ZW5kdGlt
+ZSkpOw0KPiAgCWlmIChJU19FUlIocCkpDQo+ICAJCWdvdG8gb3V0X2VycjsNCj4gLQlwID0gc2lt
+cGxlX2dldF9ieXRlcyhwLCBlbmQsICZjdHgtPnNlcV9zZW5kNjQsIHNpemVvZihjdHgtDQo+ID5z
+ZXFfc2VuZDY0KSk7DQo+ICsJcCA9IHNpbXBsZV9nZXRfYnl0ZXMocCwgZW5kLCAmc2VxX3NlbmQ2
+NCwgc2l6ZW9mKHNlcV9zZW5kNjQpKTsNCj4gIAlpZiAoSVNfRVJSKHApKQ0KPiAgCQlnb3RvIG91
+dF9lcnI7DQo+ICsJYXRvbWljNjRfc2V0KCZjdHgtPnNlcV9zZW5kNjQsIHNlcV9zZW5kNjQpOw0K
+PiAgCS8qIHNldCBzZXFfc2VuZCBmb3IgdXNlIGJ5ICJvbGRlciIgZW5jdHlwZXMgKi8NCj4gLQlj
+dHgtPnNlcV9zZW5kID0gY3R4LT5zZXFfc2VuZDY0Ow0KPiAtCWlmIChjdHgtPnNlcV9zZW5kNjQg
+IT0gY3R4LT5zZXFfc2VuZCkgew0KPiAtCQlkcHJpbnRrKCIlczogc2VxX3NlbmQ2NCAlbHgsIHNl
+cV9zZW5kICV4IG92ZXJmbG93P1xuIiwNCj4gX19mdW5jX18sDQo+IC0JCQkodW5zaWduZWQgbG9u
+ZyljdHgtPnNlcV9zZW5kNjQsIGN0eC0+c2VxX3NlbmQpOw0KPiArCWF0b21pY19zZXQoJmN0eC0+
+c2VxX3NlbmQsIHNlcV9zZW5kNjQpOw0KPiArCWlmIChzZXFfc2VuZDY0ICE9IGF0b21pY19yZWFk
+KCZjdHgtPnNlcV9zZW5kKSkgew0KPiArCQlkcHJpbnRrKCIlczogc2VxX3NlbmQ2NCAlbGx4LCBz
+ZXFfc2VuZCAleCBvdmVyZmxvdz9cbiIsDQo+IF9fZnVuY19fLA0KPiArCQkJc2VxX3NlbmQ2NCwg
+YXRvbWljX3JlYWQoJmN0eC0+c2VxX3NlbmQpKTsNCj4gIAkJcCA9IEVSUl9QVFIoLUVJTlZBTCk7
+DQo+ICAJCWdvdG8gb3V0X2VycjsNCj4gIAl9DQo+IGRpZmYgLS1naXQgYS9uZXQvc3VucnBjL2F1
+dGhfZ3NzL2dzc19rcmI1X3NlYWwuYw0KPiBiL25ldC9zdW5ycGMvYXV0aF9nc3MvZ3NzX2tyYjVf
+c2VhbC5jDQo+IGluZGV4IGI0YWRlYjA2NjYwYi4uNDhmZTRhNTkxYjU0IDEwMDY0NA0KPiAtLS0g
+YS9uZXQvc3VucnBjL2F1dGhfZ3NzL2dzc19rcmI1X3NlYWwuYw0KPiArKysgYi9uZXQvc3VucnBj
+L2F1dGhfZ3NzL2dzc19rcmI1X3NlYWwuYw0KPiBAQCAtMTIzLDMwICsxMjMsNiBAQCBzZXR1cF90
+b2tlbl92MihzdHJ1Y3Qga3JiNV9jdHggKmN0eCwgc3RydWN0DQo+IHhkcl9uZXRvYmogKnRva2Vu
+KQ0KPiAgCXJldHVybiBrcmI1X2hkcjsNCj4gIH0NCj4gIA0KPiAtdTMyDQo+IC1nc3Nfc2VxX3Nl
+bmRfZmV0Y2hfYW5kX2luYyhzdHJ1Y3Qga3JiNV9jdHggKmN0eCkNCj4gLXsNCj4gLQl1MzIgb2xk
+LCBzZXFfc2VuZCA9IFJFQURfT05DRShjdHgtPnNlcV9zZW5kKTsNCj4gLQ0KPiAtCWRvIHsNCj4g
+LQkJb2xkID0gc2VxX3NlbmQ7DQo+IC0JCXNlcV9zZW5kID0gY21weGNoZygmY3R4LT5zZXFfc2Vu
+ZCwgb2xkLCBvbGQgKyAxKTsNCj4gLQl9IHdoaWxlIChvbGQgIT0gc2VxX3NlbmQpOw0KPiAtCXJl
+dHVybiBzZXFfc2VuZDsNCj4gLX0NCj4gLQ0KPiAtdTY0DQo+IC1nc3Nfc2VxX3NlbmQ2NF9mZXRj
+aF9hbmRfaW5jKHN0cnVjdCBrcmI1X2N0eCAqY3R4KQ0KPiAtew0KPiAtCXU2NCBvbGQsIHNlcV9z
+ZW5kID0gUkVBRF9PTkNFKGN0eC0+c2VxX3NlbmQpOw0KPiAtDQo+IC0JZG8gew0KPiAtCQlvbGQg
+PSBzZXFfc2VuZDsNCj4gLQkJc2VxX3NlbmQgPSBjbXB4Y2hnNjQoJmN0eC0+c2VxX3NlbmQ2NCwg
+b2xkLCBvbGQgKyAxKTsNCj4gLQl9IHdoaWxlIChvbGQgIT0gc2VxX3NlbmQpOw0KPiAtCXJldHVy
+biBzZXFfc2VuZDsNCj4gLX0NCj4gLQ0KPiAgc3RhdGljIHUzMg0KPiAgZ3NzX2dldF9taWNfdjEo
+c3RydWN0IGtyYjVfY3R4ICpjdHgsIHN0cnVjdCB4ZHJfYnVmICp0ZXh0LA0KPiAgCQlzdHJ1Y3Qg
+eGRyX25ldG9iaiAqdG9rZW4pDQo+IEBAIC0xNzcsNyArMTUzLDcgQEAgZ3NzX2dldF9taWNfdjEo
+c3RydWN0IGtyYjVfY3R4ICpjdHgsIHN0cnVjdA0KPiB4ZHJfYnVmICp0ZXh0LA0KPiAgDQo+ICAJ
+bWVtY3B5KHB0ciArIEdTU19LUkI1X1RPS19IRFJfTEVOLCBtZDVja3N1bS5kYXRhLA0KPiBtZDVj
+a3N1bS5sZW4pOw0KPiAgDQo+IC0Jc2VxX3NlbmQgPSBnc3Nfc2VxX3NlbmRfZmV0Y2hfYW5kX2lu
+YyhjdHgpOw0KPiArCXNlcV9zZW5kID0gYXRvbWljX2ZldGNoX2luYygmY3R4LT5zZXFfc2VuZCk7
+DQo+ICANCj4gIAlpZiAoa3JiNV9tYWtlX3NlcV9udW0oY3R4LCBjdHgtPnNlcSwgY3R4LT5pbml0
+aWF0ZSA/IDAgOiAweGZmLA0KPiAgCQkJICAgICAgc2VxX3NlbmQsIHB0ciArIEdTU19LUkI1X1RP
+S19IRFJfTEVOLCBwdHINCj4gKyA4KSkNCj4gQEAgLTIwNSw3ICsxODEsNyBAQCBnc3NfZ2V0X21p
+Y192MihzdHJ1Y3Qga3JiNV9jdHggKmN0eCwgc3RydWN0DQo+IHhkcl9idWYgKnRleHQsDQo+ICAN
+Cj4gIAkvKiBTZXQgdXAgdGhlIHNlcXVlbmNlIG51bWJlci4gTm93IDY0LWJpdHMgaW4gY2xlYXIN
+Cj4gIAkgKiB0ZXh0IGFuZCB3L28gZGlyZWN0aW9uIGluZGljYXRvciAqLw0KPiAtCXNlcV9zZW5k
+X2JlNjQgPSBjcHVfdG9fYmU2NChnc3Nfc2VxX3NlbmQ2NF9mZXRjaF9hbmRfaW5jKGN0eCkpOw0K
+PiArCXNlcV9zZW5kX2JlNjQgPSBjcHVfdG9fYmU2NChhdG9taWM2NF9mZXRjaF9pbmMoJmN0eC0N
+Cj4gPnNlcV9zZW5kNjQpKTsNCj4gIAltZW1jcHkoa3JiNV9oZHIgKyA4LCAoY2hhciAqKSAmc2Vx
+X3NlbmRfYmU2NCwgOCk7DQo+ICANCj4gIAlpZiAoY3R4LT5pbml0aWF0ZSkgew0KPiBkaWZmIC0t
+Z2l0IGEvbmV0L3N1bnJwYy9hdXRoX2dzcy9nc3Nfa3JiNV93cmFwLmMNCj4gYi9uZXQvc3VucnBj
+L2F1dGhfZ3NzL2dzc19rcmI1X3dyYXAuYw0KPiBpbmRleCA5NjJmYTg0ZTZkYjEuLjVjZGRlNmNi
+NzAzYSAxMDA2NDQNCj4gLS0tIGEvbmV0L3N1bnJwYy9hdXRoX2dzcy9nc3Nfa3JiNV93cmFwLmMN
+Cj4gKysrIGIvbmV0L3N1bnJwYy9hdXRoX2dzcy9nc3Nfa3JiNV93cmFwLmMNCj4gQEAgLTIyOCw3
+ICsyMjgsNyBAQCBnc3Nfd3JhcF9rZXJiZXJvc192MShzdHJ1Y3Qga3JiNV9jdHggKmtjdHgsIGlu
+dA0KPiBvZmZzZXQsDQo+ICANCj4gIAltZW1jcHkocHRyICsgR1NTX0tSQjVfVE9LX0hEUl9MRU4s
+IG1kNWNrc3VtLmRhdGEsDQo+IG1kNWNrc3VtLmxlbik7DQo+ICANCj4gLQlzZXFfc2VuZCA9IGdz
+c19zZXFfc2VuZF9mZXRjaF9hbmRfaW5jKGtjdHgpOw0KPiArCXNlcV9zZW5kID0gYXRvbWljX2Zl
+dGNoX2luYygma2N0eC0+c2VxX3NlbmQpOw0KPiAgDQo+ICAJLyogWFhYIHdvdWxkIHByb2JhYmx5
+IGJlIG1vcmUgZWZmaWNpZW50IHRvIGNvbXB1dGUgY2hlY2tzdW0NCj4gIAkgKiBhbmQgZW5jcnlw
+dCBhdCB0aGUgc2FtZSB0aW1lOiAqLw0KPiBAQCAtNDc1LDcgKzQ3NSw3IEBAIGdzc193cmFwX2tl
+cmJlcm9zX3YyKHN0cnVjdCBrcmI1X2N0eCAqa2N0eCwgdTMyDQo+IG9mZnNldCwNCj4gIAkqYmUx
+NnB0cisrID0gMDsNCj4gIA0KPiAgCWJlNjRwdHIgPSAoX19iZTY0ICopYmUxNnB0cjsNCj4gLQkq
+YmU2NHB0ciA9IGNwdV90b19iZTY0KGdzc19zZXFfc2VuZDY0X2ZldGNoX2FuZF9pbmMoa2N0eCkp
+Ow0KPiArCSpiZTY0cHRyID0gY3B1X3RvX2JlNjQoYXRvbWljNjRfZmV0Y2hfaW5jKCZrY3R4LT5z
+ZXFfc2VuZDY0KSk7DQo+ICANCj4gIAllcnIgPSAoKmtjdHgtPmdrNWUtPmVuY3J5cHRfdjIpKGtj
+dHgsIG9mZnNldCwgYnVmLCBwYWdlcyk7DQo+ICAJaWYgKGVycikNCi0tIA0KVHJvbmQgTXlrbGVi
+dXN0DQpDVE8sIEhhbW1lcnNwYWNlIEluYw0KNDMwMCBFbCBDYW1pbm8gUmVhbCwgU3VpdGUgMTA1
+DQpMb3MgQWx0b3MsIENBIDk0MDIyDQp3d3cuaGFtbWVyLnNwYWNlDQoNCg0K
