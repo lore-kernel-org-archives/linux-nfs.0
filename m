@@ -8,63 +8,63 @@ X-Spam-Status: No, score=-8.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id DA208C0044C
-	for <linux-nfs@archiver.kernel.org>; Thu,  1 Nov 2018 16:45:32 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 10B25C6786F
+	for <linux-nfs@archiver.kernel.org>; Thu,  1 Nov 2018 16:45:35 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id A2BB7205F4
-	for <linux-nfs@archiver.kernel.org>; Thu,  1 Nov 2018 16:45:32 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id C68C3205F4
+	for <linux-nfs@archiver.kernel.org>; Thu,  1 Nov 2018 16:45:34 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="u22ejWd2"
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org A2BB7205F4
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="K2780E84"
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org C68C3205F4
 Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=gmail.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726299AbeKBBtP (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 1 Nov 2018 21:49:15 -0400
-Received: from mail-ot1-f68.google.com ([209.85.210.68]:46466 "EHLO
-        mail-ot1-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725959AbeKBBtP (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Nov 2018 21:49:15 -0400
-Received: by mail-ot1-f68.google.com with SMTP id q5so12884727otl.13;
-        Thu, 01 Nov 2018 09:45:30 -0700 (PDT)
+        id S1726388AbeKBBtR (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 1 Nov 2018 21:49:17 -0400
+Received: from mail-oi1-f194.google.com ([209.85.167.194]:37200 "EHLO
+        mail-oi1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726375AbeKBBtQ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Nov 2018 21:49:16 -0400
+Received: by mail-oi1-f194.google.com with SMTP id w66-v6so12838270oiw.4;
+        Thu, 01 Nov 2018 09:45:31 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references;
-        bh=Cqmt+GWWK9Zf9XynZ4EBj5J0CQZ2wW9XW6OcUaOzM2A=;
-        b=u22ejWd2czfdVJMd7jlXKDxweqKqIWJhs6Y5oEI1d6GuOhQrYSS8GueptwnQxcH7Ap
-         1VqBIxMuhAxBPMj3VMDKyD4xg/blu3gdUPliG60X6bzt4RaHXKSqe1Q5wC4426Z6GDZ6
-         fuB2kaP26E1VE8u7OCyggXK+mqxe3kMZcO3XjCXye2PhiyBcNOdB2exhnOFOMIpwSJ5A
-         12h9YGakqXiB4NhvCA7def0Kvwf8BOcPivrHNp6k+fDr66tCAFfqyPhWos9Sq/Wzbwl8
-         naJZ+0i3WmbsiV4+CJp0uAxATRJIcYD8nuwlVTbsG+4jrT5KIwxiOXCeD3XXca57EXGd
-         3lcw==
+        bh=CNj2pCMxPlcH1fEKnenx/QqOVUgHVEB5Ekmf2YUbfVA=;
+        b=K2780E84GyIin7wKGPVIzmorV99lwPhcc6X8CR40li/69a/Vj32gDdrqtWq4IIn/AK
+         aXoGKTM8M7jQaS2oDqWEWMg2Ok33P0pYBOdTPad4Bkxy3ADJDnhWqNi3LIQ7JGNeBnr4
+         npfWXatpDUCKUmk+IbyOAkRak9Gl+p9aOSM0MnbtnkwjfrBBmMkm+0rpk95/MwGlJy6M
+         85CB7nTxGdSMKSfSNp5IknTgQ0KEmT23GbA65uBwGY5NSFnnbbqW+GYaFS7P7QmvPzWx
+         ntFR+L4b48NvKQxUkepdJ/rgcw13j72KoBz8bgLd1GIbW47fvoryicX6jUcn/sh9pGGh
+         AyZA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references;
-        bh=Cqmt+GWWK9Zf9XynZ4EBj5J0CQZ2wW9XW6OcUaOzM2A=;
-        b=uhsPJceUgI0EO7DMvX1EunYDgQ8jBsXIPpFVnmGeeQ3D+D7BpZh6anaBB72rA2wbjW
-         yGDLXMBRx4NKc2i0WbQS2b0BEYvzHZ1hMtmHZYsYskQ5Ex8s2JXmOUkcWefidRfMRo+8
-         bla8avXufCZcixdeYgTecQgJ44P9nKJ7eJ/l3SrlC/OJ5vqz3QynGRzmdC5Z5vaf6rAe
-         xe9E0+7WviFYmvUsyorHIKSmB0GC1mDzSX/YqJdUo2C1rcaPgkLEDpGsj+p354mde+mr
-         t5BN0UIxeOmB95xE2mNYbfdAJ5kcVxtBTHTEu3OCsGHUmeGvm6vKa7LOBwN/iZ5RtKQ7
-         9PPA==
-X-Gm-Message-State: AGRZ1gIDZ9dfg9B1l1GMrzH/d6yHRNFqTm3r+fyYt9jl26DQ0bKzZl08
-        SOpLhkbDeDer5mqXWMkgUDc=
-X-Google-Smtp-Source: AJdET5cGypp/AfQBgxRJXWl68EMqmUg8aUfCbQ7vTYJpC83x6ycyoKUr39X+SKsBQbriJYvjk0Q9LA==
-X-Received: by 2002:a9d:7101:: with SMTP id n1mr4802680otj.236.1541090729888;
-        Thu, 01 Nov 2018 09:45:29 -0700 (PDT)
+        bh=CNj2pCMxPlcH1fEKnenx/QqOVUgHVEB5Ekmf2YUbfVA=;
+        b=JYme/3SvTsls23r7MfNoWEP8uK54Om1Okes31UQGdaoM2tzxum7C/mcpXglUVJC52t
+         q39pk5nLFRLjKf6sMnJAmjFMdzj8M+qhkZS1LX6KoI/rN486eJ+ctCbCmSNNCQA8HJOO
+         3nM9j9oZ6kHNwaUMGkGodyD74/Bo7rqILucENje7j8C5bL3edIsuJ1AP9jy5Vs1Ll0Zm
+         ntGyHm5KpD0uT50RHOLQjzhcjKzVONA+L+8s4i2LdmSmyGz9jiw/fxcGt77Ca64XlnGG
+         AN+oPISfaYtlgrzoqarG53y7qz6082xP2DEbbsl2pslohb4U8ssXEW0DONF24HrxgkD6
+         5xmw==
+X-Gm-Message-State: AGRZ1gJKSBlUsXJMePpbFlcw3cQdkt8sD3medNcuvVKg+0AzijrNQ10x
+        yM+9HgQ7+uEv5qswF5+tGHOP4D9d
+X-Google-Smtp-Source: AJdET5f4ej7T0B3ZL73gYGzXleAQdv/CYNREp3bZ35qvy6eE6Pz1si1TRMvC92lB6d0zpXSLSc3PKg==
+X-Received: by 2002:a54:4188:: with SMTP id 8-v6mr5055357oiy.105.1541090731257;
+        Thu, 01 Nov 2018 09:45:31 -0700 (PDT)
 Received: from Olgas-MBP-195.attlocal.net (172-10-226-31.lightspeed.livnmi.sbcglobal.net. [172.10.226.31])
-        by smtp.gmail.com with ESMTPSA id r62-v6sm1834301oig.14.2018.11.01.09.45.28
+        by smtp.gmail.com with ESMTPSA id r62-v6sm1834301oig.14.2018.11.01.09.45.29
         (version=TLS1 cipher=AES128-SHA bits=128/128);
-        Thu, 01 Nov 2018 09:45:29 -0700 (PDT)
+        Thu, 01 Nov 2018 09:45:30 -0700 (PDT)
 From:   Olga Kornievskaia <olga.kornievskaia@gmail.com>
 To:     trond.myklebust@hammerspace.com, anna.schumaker@netapp.com,
         viro@zeniv.linux.org.uk, smfrench@gmail.com, miklos@szeredi.hu
 Cc:     linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         linux-cifs@vger.kernel.org, linux-unionfs@vger.kernel.org
-Subject: [PATCH v8 02/11] NFS: validity check for source offset in copy_file_range
-Date:   Thu,  1 Nov 2018 12:45:14 -0400
-Message-Id: <20181101164523.41812-3-olga.kornievskaia@gmail.com>
+Subject: [PATCH v8 03/11] NFS NFSD: defining nl4_servers structure needed by both
+Date:   Thu,  1 Nov 2018 12:45:15 -0400
+Message-Id: <20181101164523.41812-4-olga.kornievskaia@gmail.com>
 X-Mailer: git-send-email 2.10.1 (Apple Git-78)
 In-Reply-To: <20181101164523.41812-1-olga.kornievskaia@gmail.com>
 References: <20181101164523.41812-1-olga.kornievskaia@gmail.com>
@@ -75,44 +75,55 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Olga Kornievskaia <kolga@netapp.com>
 
-copy_file_range() man page mandates that EINVAL is returned
-if the specified range is beyond the end of the file but
-currently does not enforce it.
+These structures are needed by COPY_NOTIFY on the client and needed
+by the nfsd as well
 
-NFS RFC 7832 states that "if the source offset or the source
-offset plus count is greater than the size of the source file,
-the operation MUST fail with NFS4ERR_INVAL."
-
-From the NFS community discussion from earlier on
-https://www.spinics.net/lists/linux-nfs/msg62627.html
-in was thought that offset plus count should instead be a
-short read.
-
-In this patch only proposing to enforce the offset check:
-Input source offset can not be beyond the end of the file.
-
-Future work in VFS might perform the arguments checks and
-we can remove this check.
-
+Reviewed-by: Jeff Layton <jlayton@redhat.com>
 Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
 ---
- fs/nfs/nfs4file.c | 3 +++
- 1 file changed, 3 insertions(+)
+ include/linux/nfs4.h | 24 ++++++++++++++++++++++++
+ 1 file changed, 24 insertions(+)
 
-diff --git a/fs/nfs/nfs4file.c b/fs/nfs/nfs4file.c
-index 5a73c90..7838bdf 100644
---- a/fs/nfs/nfs4file.c
-+++ b/fs/nfs/nfs4file.c
-@@ -135,6 +135,9 @@ static ssize_t nfs4_copy_file_range(struct file *file_in, loff_t pos_in,
- {
- 	ssize_t ret;
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index 1b06f0b..4803507 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -16,6 +16,7 @@
+ #include <linux/list.h>
+ #include <linux/uidgid.h>
+ #include <uapi/linux/nfs4.h>
++#include <linux/sunrpc/msg_prot.h>
  
-+	if (pos_in >= i_size_read(file_inode(file_in)))
-+		return -EINVAL;
+ enum nfs4_acl_whotype {
+ 	NFS4_ACL_WHO_NAMED = 0,
+@@ -672,4 +673,27 @@ struct nfs4_op_map {
+ 	} u;
+ };
+ 
++struct nfs42_netaddr {
++	char		netid[RPCBIND_MAXNETIDLEN];
++	char		addr[RPCBIND_MAXUADDRLEN + 1];
++	u32		netid_len;
++	u32		addr_len;
++};
 +
- 	if (file_inode(file_in)->i_sb != file_inode(file_out)->i_sb)
- 		return -EXDEV;
- 
++enum netloc_type4 {
++	NL4_NAME		= 1,
++	NL4_URL			= 2,
++	NL4_NETADDR		= 3,
++};
++
++struct nl4_server {
++	enum netloc_type4	nl4_type;
++	union {
++		struct { /* NL4_NAME, NL4_URL */
++			int	nl4_str_sz;
++			char	nl4_str[NFS4_OPAQUE_LIMIT + 1];
++		};
++		struct nfs42_netaddr	nl4_addr; /* NL4_NETADDR */
++	} u;
++};
+ #endif
 -- 
 1.8.3.1
 
