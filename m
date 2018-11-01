@@ -2,135 +2,135 @@ Return-Path: <SRS0=Ohau=NM=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.1 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS,USER_AGENT_MUTT
-	autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-2.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS,URIBL_BLOCKED,
+	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id EF309C6786F
-	for <linux-nfs@archiver.kernel.org>; Thu,  1 Nov 2018 16:35:24 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2BFEBC0044C
+	for <linux-nfs@archiver.kernel.org>; Thu,  1 Nov 2018 16:45:30 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id B61462064C
-	for <linux-nfs@archiver.kernel.org>; Thu,  1 Nov 2018 16:35:24 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id E7424205F4
+	for <linux-nfs@archiver.kernel.org>; Thu,  1 Nov 2018 16:45:29 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="EjDVk916"
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org B61462064C
-Authentication-Results: mail.kernel.org; dmarc=none (p=none dis=none) header.from=infradead.org
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="XToKnxWd"
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org E7424205F4
+Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=gmail.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726094AbeKBBi6 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 1 Nov 2018 21:38:58 -0400
-Received: from bombadil.infradead.org ([198.137.202.133]:41986 "EHLO
-        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726042AbeKBBi5 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Nov 2018 21:38:57 -0400
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-        d=infradead.org; s=bombadil.20170209; h=In-Reply-To:Content-Type:MIME-Version
-        :References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
-        Content-Transfer-Encoding:Content-ID:Content-Description:Resent-Date:
-        Resent-From:Resent-Sender:Resent-To:Resent-Cc:Resent-Message-ID:List-Id:
-        List-Help:List-Unsubscribe:List-Subscribe:List-Post:List-Owner:List-Archive;
-         bh=72R9GSVv7q61E8s94sqJXn1GeQMfmrRmyrChueXaE7o=; b=EjDVk916koSID/y6g6cHYn2U0
-        H0Dp44Xq9Z4gsV937jqvr0H8/OvdnyAJrPM4MSc0DghXIXDQYKRd7XszAq73m8jiPtcLDA3RaNcF6
-        s8jDzxwGB42zer9eDKYQt23SthtpPQlMYaFTagbfYWlXx3pkhZD6gWoS4l77j4T3ez0XXgBh4mvw5
-        pU3DqmA8ykYhW06wZLT+Vx+KEzEdOLoM+E/BtFiW1AejvhVkSTK7xo8ryt7EnpoyDHSb/MArxg/rG
-        rkuf7fCmBhGO3jJy0j1x25iy9pwUK0V1tTxDAIvfGEuqOcV+Rv+HVv4Fct2rw8aPBmQOKRKlQ7IsW
-        UFvIJi2NA==;
-Received: from j217100.upc-j.chello.nl ([24.132.217.100] helo=hirez.programming.kicks-ass.net)
-        by bombadil.infradead.org with esmtpsa (Exim 4.90_1 #2 (Red Hat Linux))
-        id 1gIFtH-0002L3-Pg; Thu, 01 Nov 2018 16:32:16 +0000
-Received: by hirez.programming.kicks-ass.net (Postfix, from userid 1000)
-        id 7CAE020297B7F; Thu,  1 Nov 2018 17:32:12 +0100 (CET)
-Date:   Thu, 1 Nov 2018 17:32:12 +0100
-From:   Peter Zijlstra <peterz@infradead.org>
-To:     Trond Myklebust <trondmy@hammerspace.com>
-Cc:     "mark.rutland@arm.com" <mark.rutland@arm.com>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "ralf@linux-mips.org" <ralf@linux-mips.org>,
-        "jlayton@kernel.org" <jlayton@kernel.org>,
-        "linuxppc-dev@lists.ozlabs.org" <linuxppc-dev@lists.ozlabs.org>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "linux-mips@linux-mips.org" <linux-mips@linux-mips.org>,
-        "linux@roeck-us.net" <linux@roeck-us.net>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "akpm@linux-foundation.org" <akpm@linux-foundation.org>,
-        "will.deacon@arm.com" <will.deacon@arm.com>,
-        "boqun.feng@gmail.com" <boqun.feng@gmail.com>,
-        "paul.burton@mips.com" <paul.burton@mips.com>,
-        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        "jhogan@kernel.org" <jhogan@kernel.org>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        "davem@davemloft.net" <davem@davemloft.net>,
-        "arnd@arndb.de" <arnd@arndb.de>,
-        "paulus@samba.org" <paulus@samba.org>,
-        "mpe@ellerman.id.au" <mpe@ellerman.id.au>,
-        "benh@kernel.crashing.org" <benh@kernel.crashing.org>,
-        Paul McKenney <paulmck@linux.vnet.ibm.com>,
-        aryabinin@virtuozzo.com, dvyukov@google.com
-Subject: Re: [RFC PATCH] lib: Introduce generic __cmpxchg_u64() and use it
- where needed
-Message-ID: <20181101163212.GF3159@hirez.programming.kicks-ass.net>
-References: <1541015538-11382-1-git-send-email-linux@roeck-us.net>
- <20181031213240.zhh7dfcm47ucuyfl@pburton-laptop>
- <20181031220253.GA15505@roeck-us.net>
- <20181031233235.qbedw3pinxcuk7me@pburton-laptop>
- <4e2438a23d2edf03368950a72ec058d1d299c32e.camel@hammerspace.com>
- <20181101131846.biyilr2msonljmij@lakrids.cambridge.arm.com>
- <20181101145926.GE3178@hirez.programming.kicks-ass.net>
- <f38e272f7a96e983549e4281aa9fd02833a4277a.camel@hammerspace.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <f38e272f7a96e983549e4281aa9fd02833a4277a.camel@hammerspace.com>
-User-Agent: Mutt/1.10.1 (2018-07-13)
+        id S1726318AbeKBBtM (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 1 Nov 2018 21:49:12 -0400
+Received: from mail-oi1-f174.google.com ([209.85.167.174]:36663 "EHLO
+        mail-oi1-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725959AbeKBBtM (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Nov 2018 21:49:12 -0400
+Received: by mail-oi1-f174.google.com with SMTP id r127-v6so15412716oie.3;
+        Thu, 01 Nov 2018 09:45:27 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=from:to:cc:subject:date:message-id;
+        bh=XxnJuC4seBqE3SitWnE6J99mpR7VK8QhZfW7nenLvkY=;
+        b=XToKnxWd/HZk/Hmeps1G+99axXuUXDELyh5VS98gNfq9m8Hue87Gdr8RJ9d2iP7mks
+         QJjFSTUrtx68Dd7I1oh5W3ycOKgyyvAi8RhuMydaPHV5t20AzS9srn/8apmf0uoR3K+8
+         2Las9/w+uIsH4Wn/XgXIT/I7ClG+6ZAfh+pEKfn8aDUAMUgTAuDgJmhuVo+XGFmCTllS
+         m/SBBHd2LqGcyZ2OsBq/wONdZg8h1bnr9IL7yI3Noms7e/O3aFcDS583NsD1kMYPl/bh
+         /eBT+n8kpgaxafJQXxFBQRXcwQRbo+5y9OceAhaX8C7XR91a0lmTrSJUgtD5jLUnrpqo
+         XY/w==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:from:to:cc:subject:date:message-id;
+        bh=XxnJuC4seBqE3SitWnE6J99mpR7VK8QhZfW7nenLvkY=;
+        b=JxfTZdzSqIqjB2RiDzOgpLeuf1/w5kpjowhY2Nep5aVlYrKWpmBHEYS+53TTiMUXPk
+         nmWRwhtVY+Trxw15OsYWzbxVWHhTCv8a0bh9WE/Aph4TalDhpqbD0xtiqOICUgqGOvAm
+         3AF2hiKqMqscsHQ7Gx9KiaaTSFhugPNiQprtGFU6fAMQlb2DLqlhNkZHSyDTv7NYBNdL
+         rIHrycfdJeQ5j7xpnkimTkeBqcceiPjrL8JdN5QANRn9FIVVtj/NEspEgEtViV7d0g+O
+         FtHnq//G6Okb+/mBBRwSZdWhJ/lqhmzK0kCSHvVNES2VWRhGbW4wB4CNKjOT0XXDJ3Ed
+         gV3A==
+X-Gm-Message-State: AGRZ1gIlop42u9f9g9iFFKhRvJgSR3v9rHlcBpQPtjxH2jqZqtUaU5R8
+        c2ppbCnVhuvc4dAyu+g3W4U=
+X-Google-Smtp-Source: AJdET5dZb3MFxb0/W9vyn6l+vMrTB6J9x3HBy0bwB/reQYAk5G8s1ttrugYqKWR+1++32vOLSZGr4g==
+X-Received: by 2002:aca:dfc3:: with SMTP id w186-v6mr4991796oig.331.1541090726965;
+        Thu, 01 Nov 2018 09:45:26 -0700 (PDT)
+Received: from Olgas-MBP-195.attlocal.net (172-10-226-31.lightspeed.livnmi.sbcglobal.net. [172.10.226.31])
+        by smtp.gmail.com with ESMTPSA id r62-v6sm1834301oig.14.2018.11.01.09.45.25
+        (version=TLS1 cipher=AES128-SHA bits=128/128);
+        Thu, 01 Nov 2018 09:45:25 -0700 (PDT)
+From:   Olga Kornievskaia <olga.kornievskaia@gmail.com>
+To:     trond.myklebust@hammerspace.com, anna.schumaker@netapp.com,
+        viro@zeniv.linux.org.uk, smfrench@gmail.com, miklos@szeredi.hu
+Cc:     linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-cifs@vger.kernel.org, linux-unionfs@vger.kernel.org
+Subject: [PATCH v8 00/11] client-side support for "inter" SSC copy
+Date:   Thu,  1 Nov 2018 12:45:12 -0400
+Message-Id: <20181101164523.41812-1-olga.kornievskaia@gmail.com>
+X-Mailer: git-send-email 2.10.1 (Apple Git-78)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Thu, Nov 01, 2018 at 03:22:15PM +0000, Trond Myklebust wrote:
-> On Thu, 2018-11-01 at 15:59 +0100, Peter Zijlstra wrote:
-> > On Thu, Nov 01, 2018 at 01:18:46PM +0000, Mark Rutland wrote:
+From: Olga Kornievskaia <kolga@netapp.com>
 
-> > > > My one question (and the reason why I went with cmpxchg() in the
-> > > > first place) would be about the overflow behaviour for
-> > > > atomic_fetch_inc() and friends. I believe those functions should
-> > > > be OK on x86, so that when we overflow the counter, it behaves
-> > > > like an unsigned value and wraps back around.  Is that the case
-> > > > for all architectures?
-> > > > 
-> > > > i.e. are atomic_t/atomic64_t always guaranteed to behave like
-> > > > u32/u64 on increment?
-> > > > 
-> > > > I could not find any documentation that explicitly stated that
-> > > > they should.
-> > > 
-> > > Peter, Will, I understand that the atomic_t/atomic64_t ops are
-> > > required to wrap per 2's-complement. IIUC the refcount code relies
-> > > on this.
-> > > 
-> > > Can you confirm?
-> > 
-> > There is quite a bit of core code that hard assumes 2s-complement.
-> > Not only for atomics but for any signed integer type. Also see the
-> > kernel using -fno-strict-overflow which implies -fwrapv, which
-> > defines signed overflow to behave like 2s-complement (and rids us of
-> > that particular UB).
-> 
-> Fair enough, but there have also been bugfixes to explicitly fix unsafe
-> C standards assumptions for signed integers. See, for instance commit
-> 5a581b367b5d "jiffies: Avoid undefined behavior from signed overflow"
-> from Paul McKenney.
+This patch series adds client-side support for doing NFSv4.2 "inter"
+copy offload between different NFS servers.
 
-Yes, I feel Paul has been to too many C/C++ committee meetings and got
-properly paranoid. Which isn't always a bad thing :-)
+In case of the "inter" SSC copy files reside on different servers and
+thus under different superblocks and require that VFS removes the
+restriction that src and dst files must be on the same superblock.
 
-But for us using -fno-strict-overflow which actually defines signed
-overflow, I myself am really not worried. I'm also not sure if KASAN has
-been taught about this, or if it will still (incorrectly) warn about UB
-for signed types.
+NFS's copy_file_range() determines if the copy is "intra" or "inter"
+and for "inter" it sends the COPY_NOTIFY to the source server. Then,
+it would send of an asynchronous COPY to the destination server. If
+an application cancels an in-flight COPY, OFFLOAD_CANCEL is sent to
+both of the servers.
 
-> Anyhow, if the atomic maintainers are willing to stand up and state for
-> the record that the atomic counters are guaranteed to wrap modulo 2^n
-> just like unsigned integers, then I'm happy to take Paul's patch.
+This patch series also include necessary client-side additions that
+are performed by the destination server. The server needs an NFS
+open that represents a source file without doing an actual open.
+Two function nfs42_ssc_open/nfs42_ssc_close() are introduced to
+accomplish it that make use of the VFS's alloc_file_pseudo() to
 
-I myself am certainly relying on it.
+v8:
+--- in VFS added a comment about the superblock check to be removed
+once the future VFS work in copy_file_range happens
+--- Fixing copy_notify patch to check that server is capable of
+doing copy_offload, preventing an oops on an 4.0 mount trying to
+use copy offload. As the result, the last patch that replaces
+cross device check for NFS, only needs to check for the fs type.
+--- modified the commit message for the NFS source offet validity check
+to document why we are doing the check as per Bruce's comments.
+
+Olga Kornievskaia (11):
+  VFS: move cross device copy_file_range() check into filesystems
+  NFS: validity check for source offset in copy_file_range
+  NFS NFSD: defining nl4_servers structure needed by both
+  NFS: add COPY_NOTIFY operation
+  NFS: add ca_source_server<> to COPY
+  NFS: also send OFFLOAD_CANCEL to source server
+  NFS: inter ssc open
+  NFS: skip recovery of copy open on dest server
+  NFS: for "inter" copy treat ESTALE as ENOTSUPP
+  NFS: COPY handle ERR_OFFLOAD_DENIED
+  NFS: replace cross device check in copy_file_range
+
+ Documentation/filesystems/porting |   7 ++
+ fs/cifs/cifsfs.c                  |   3 +
+ fs/nfs/nfs42.h                    |  15 ++-
+ fs/nfs/nfs42proc.c                | 129 ++++++++++++++++++++++---
+ fs/nfs/nfs42xdr.c                 | 193 +++++++++++++++++++++++++++++++++++++-
+ fs/nfs/nfs4_fs.h                  |  10 ++
+ fs/nfs/nfs4client.c               |   2 +-
+ fs/nfs/nfs4file.c                 | 125 +++++++++++++++++++++++-
+ fs/nfs/nfs4proc.c                 |   6 +-
+ fs/nfs/nfs4state.c                |  14 +++
+ fs/nfs/nfs4xdr.c                  |   1 +
+ fs/overlayfs/file.c               |   3 +
+ fs/read_write.c                   |  13 ++-
+ include/linux/nfs4.h              |  25 +++++
+ include/linux/nfs_fs_sb.h         |   1 +
+ include/linux/nfs_xdr.h           |  17 ++++
+ 16 files changed, 540 insertions(+), 24 deletions(-)
+
+-- 
+1.8.3.1
+
