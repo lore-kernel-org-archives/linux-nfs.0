@@ -8,63 +8,63 @@ X-Spam-Status: No, score=-8.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B3C79C0044C
-	for <linux-nfs@archiver.kernel.org>; Thu,  1 Nov 2018 16:45:43 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8734DC6786F
+	for <linux-nfs@archiver.kernel.org>; Thu,  1 Nov 2018 16:45:44 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 7DC03205F4
-	for <linux-nfs@archiver.kernel.org>; Thu,  1 Nov 2018 16:45:43 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 474A020820
+	for <linux-nfs@archiver.kernel.org>; Thu,  1 Nov 2018 16:45:44 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="syGNnlih"
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 7DC03205F4
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="WgjdqWRZ"
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 474A020820
 Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=gmail.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726750AbeKBBt0 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 1 Nov 2018 21:49:26 -0400
-Received: from mail-oi1-f196.google.com ([209.85.167.196]:46389 "EHLO
-        mail-oi1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726712AbeKBBtZ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Nov 2018 21:49:25 -0400
-Received: by mail-oi1-f196.google.com with SMTP id k64-v6so17122310oia.13;
-        Thu, 01 Nov 2018 09:45:41 -0700 (PDT)
+        id S1726700AbeKBBtZ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 1 Nov 2018 21:49:25 -0400
+Received: from mail-ot1-f68.google.com ([209.85.210.68]:39716 "EHLO
+        mail-ot1-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726580AbeKBBtY (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Nov 2018 21:49:24 -0400
+Received: by mail-ot1-f68.google.com with SMTP id g27so5448469oth.6;
+        Thu, 01 Nov 2018 09:45:40 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references;
-        bh=fwlJnXfUGTRII/SW0YspOWGhfPFdbZ3Rgyeu7Z/VErM=;
-        b=syGNnlihDkFdEtO/6CTLrG9vXXYlNGx2N4uhly/4Ghj/EHrih9UXpFOqLQLWcqjp4D
-         dbdfQzqfC/1j2nAwtek4muoyBVGJ7uNt5cQiHYY/d/5CSVxMqgISR7pgE3PIl9red4j3
-         IWCMVwpecTHZMymAfvJoDCab3P8xSSczuUcX5vxkoLuFZj9fVQCa36PZr3Wvd3LAFaDL
-         KtkFOxDIoJ55K5BezOGh2wUWwpgJezROWkXQDvcbARFMh2wy8lLCLXgdMvorkWjv0sST
-         OD/yts9RZxeSNBav/aJBrc8USdABG1PVmoCOPeNpSAiK4gbH0RhKUok22ZQXmeVBRDr8
-         hznw==
+        bh=7UYm6KwHepkUcFRejYDPg8EOERI1MmALOURzx0oOqU8=;
+        b=WgjdqWRZSBCk+y5XNGR0Oxbe9YV13LTKQ1xpaqzswAD4/Y3/ffLJHwVDUjjngUKOGy
+         e1Rdno1U9cCxOqgcTjMQ4qOS68CblAF0t4zqMk+a3n801BKXGq5iI94o5EeyLJ0co3JZ
+         nPC44N5V0hDoDrs5K1Io1F+oBCPfmvqiTrEdOfCHwHr40qKcFGPDeLts5y3UDTGc8DiV
+         WLF5K9itYHe/LcdhtjYRUSuSG8Hoda9e41Die3jrcbXvfvCzJ3SZS9Il7DLhs4HuqK6n
+         HGIs5/IKrzbw1zqRRu3SJpvu8o0MkRqalTztr5V8ReQTrFiv1N95Yq3iGCuqiQgO8IGI
+         +ixA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references;
-        bh=fwlJnXfUGTRII/SW0YspOWGhfPFdbZ3Rgyeu7Z/VErM=;
-        b=FZu1b5hT0n9NzOwmlUhtOSaecY9kFtoCOFkbx4gz7CfTKS9CUc4ZUZuRsEyYn7Rr2R
-         /aEGP6W9s+9JsfHXtEU3oYFoJFrW9ed1Nv++f1yJOAL4zMbfBQ88ZsspSkfAVbsnvVGm
-         Y13Pbu7cYxr0m1Z63gqwf2yGz8oHk8ugzYXG0Afdp0uv/FpAM8TVl3XYT4XPhKxnnzAr
-         6rCMRqrvRBWz+DxOmEq+noWvVQsPWR1c8CEaztZcJgOHKd6I8VGSjABaA4rx4BW0Zm+V
-         g6f6e3D83U2HWVGPpe598VgqvroasJh+EAVxHv0N686iBGeSf9hbZtzma++0qP0swCQG
-         qCTQ==
-X-Gm-Message-State: AGRZ1gKN/cPbQamwhOEFTPZj6AOhwjVDAoVvACHnKyWzSh0HYHcZ7r1t
-        V/Llnk8ClzIFfMRxCxyJywI=
-X-Google-Smtp-Source: AJdET5fT7X56DvGCN8sqGPN5x6DPIu0vcuwt9W1iQSSq4/4UYd+sfH6adVV8Hx4AdQVWA35Y1fqzAA==
-X-Received: by 2002:aca:f084:: with SMTP id o126-v6mr4919459oih.21.1541090740939;
-        Thu, 01 Nov 2018 09:45:40 -0700 (PDT)
+        bh=7UYm6KwHepkUcFRejYDPg8EOERI1MmALOURzx0oOqU8=;
+        b=RD/zMhdITBznT48KXJrEhHW0zJuM0b2StVzJxUuvd6x15NMN2Z0uM3A3vpI37ZNhzf
+         tiEjWDv1kWqbZpyZURTHgsgfNxdSQRUP7v6MOa7uK/5X9ZQKt5MxzXH7AFHDqSZtsgbb
+         aKcd610HjY8/CRCoftuwZQJ4zs96DIJfDYWaY8O2G0sLwE2E555QwKTdXyFb2Bx6V368
+         YgLBdWx/b2kzKHe+AVxYYOLY5dE1nQBuoWlkWY3oJwyRiE4mfJRrUWz7NYjtPLB5QA3r
+         2btw2u5T5uXd9lS4u61Da6nviiA2MR2TrGhIRZRPFtV6lyCQjDjZUAr7GUxlAeLFqto0
+         9UcA==
+X-Gm-Message-State: AGRZ1gKKn1BhQnOPfebVy7B3OOHtVddQXwV4C3+pF9bFvpCoNUFFzfWM
+        1j1xc8oTyexB9qvVq6n09Nc=
+X-Google-Smtp-Source: AJdET5eI5m7Br4MHgBECKZMotd5GHotg+IJd2r7J3teZ1Qshkz8UYwxDnva7SXXf+QcpHEK1F4u2Vw==
+X-Received: by 2002:a9d:17e9:: with SMTP id j96mr5323937otj.34.1541090739670;
+        Thu, 01 Nov 2018 09:45:39 -0700 (PDT)
 Received: from Olgas-MBP-195.attlocal.net (172-10-226-31.lightspeed.livnmi.sbcglobal.net. [172.10.226.31])
-        by smtp.gmail.com with ESMTPSA id r62-v6sm1834301oig.14.2018.11.01.09.45.39
+        by smtp.gmail.com with ESMTPSA id r62-v6sm1834301oig.14.2018.11.01.09.45.38
         (version=TLS1 cipher=AES128-SHA bits=128/128);
-        Thu, 01 Nov 2018 09:45:40 -0700 (PDT)
+        Thu, 01 Nov 2018 09:45:39 -0700 (PDT)
 From:   Olga Kornievskaia <olga.kornievskaia@gmail.com>
 To:     trond.myklebust@hammerspace.com, anna.schumaker@netapp.com,
         viro@zeniv.linux.org.uk, smfrench@gmail.com, miklos@szeredi.hu
 Cc:     linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         linux-cifs@vger.kernel.org, linux-unionfs@vger.kernel.org
-Subject: [PATCH v8 10/11] NFS: COPY handle ERR_OFFLOAD_DENIED
-Date:   Thu,  1 Nov 2018 12:45:22 -0400
-Message-Id: <20181101164523.41812-11-olga.kornievskaia@gmail.com>
+Subject: [PATCH v8 09/11] NFS: for "inter" copy treat ESTALE as ENOTSUPP
+Date:   Thu,  1 Nov 2018 12:45:21 -0400
+Message-Id: <20181101164523.41812-10-olga.kornievskaia@gmail.com>
 X-Mailer: git-send-email 2.10.1 (Apple Git-78)
 In-Reply-To: <20181101164523.41812-1-olga.kornievskaia@gmail.com>
 References: <20181101164523.41812-1-olga.kornievskaia@gmail.com>
@@ -75,29 +75,34 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Olga Kornievskaia <kolga@netapp.com>
 
-If server sends ERR_OFFLOAD_DENIED error, the client must fall
-back on doing copy the normal way. Return ENOTSUPP to the vfs and
-fallback to regular copy.
+If the client sends an "inter" copy to the destination server but
+it only supports "intra" copy, it can return ESTALE (since it
+doesn't know anything about the file handle from the other server
+and does not recognize the special case of "inter" copy). Translate
+this error as ENOTSUPP and also send OFFLOAD_CANCEL to the source
+server so that it can clean up state.
 
 Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
 ---
- fs/nfs/nfs42proc.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+ fs/nfs/nfs42proc.c | 5 +++++
+ 1 file changed, 5 insertions(+)
 
 diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
-index 00809b3..c7c2ffa 100644
+index 98fe00b..00809b3 100644
 --- a/fs/nfs/nfs42proc.c
 +++ b/fs/nfs/nfs42proc.c
-@@ -395,7 +395,8 @@ ssize_t nfs42_proc_copy(struct file *src, loff_t pos_src,
+@@ -395,6 +395,11 @@ ssize_t nfs42_proc_copy(struct file *src, loff_t pos_src,
  			args.sync = true;
  			dst_exception.retry = 1;
  			continue;
--		} else if (err == -ESTALE &&
-+		} else if ((err == -ESTALE ||
-+				err == -NFS4ERR_OFFLOAD_DENIED) &&
- 				!nfs42_files_from_same_server(src, dst)) {
- 			nfs42_do_offload_cancel_async(src, &args.src_stateid);
- 			err = -EOPNOTSUPP;
++		} else if (err == -ESTALE &&
++				!nfs42_files_from_same_server(src, dst)) {
++			nfs42_do_offload_cancel_async(src, &args.src_stateid);
++			err = -EOPNOTSUPP;
++			break;
+ 		}
+ 
+ 		err2 = nfs4_handle_exception(server, err, &src_exception);
 -- 
 1.8.3.1
 
