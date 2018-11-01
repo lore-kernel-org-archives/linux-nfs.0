@@ -2,160 +2,149 @@ Return-Path: <SRS0=Ohau=NM=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.8 required=3.0 tests=DKIMWL_WL_MED,DKIM_SIGNED,
-	DKIM_VALID,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS,
-	USER_AGENT_NEOMUTT autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-3.9 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 38BB8C6786F
-	for <linux-nfs@archiver.kernel.org>; Thu,  1 Nov 2018 17:55:02 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 74E34C0044C
+	for <linux-nfs@archiver.kernel.org>; Thu,  1 Nov 2018 17:57:49 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id F1F9E2064C
-	for <linux-nfs@archiver.kernel.org>; Thu,  1 Nov 2018 17:55:01 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 3362D2064C
+	for <linux-nfs@archiver.kernel.org>; Thu,  1 Nov 2018 17:57:49 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=wavesemi.onmicrosoft.com header.i=@wavesemi.onmicrosoft.com header.b="f/a6uHcT"
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org F1F9E2064C
-Authentication-Results: mail.kernel.org; dmarc=none (p=none dis=none) header.from=mips.com
+	dkim=pass (1024-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="rvWmNey7"
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 3362D2064C
+Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=hammerspace.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728007AbeKBC6w (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 1 Nov 2018 22:58:52 -0400
-Received: from mail-eopbgr810117.outbound.protection.outlook.com ([40.107.81.117]:33239
-        "EHLO NAM01-BY2-obe.outbound.protection.outlook.com"
+        id S1727872AbeKBDBs (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 1 Nov 2018 23:01:48 -0400
+Received: from mail-eopbgr700136.outbound.protection.outlook.com ([40.107.70.136]:58719
+        "EHLO NAM04-SN1-obe.outbound.protection.outlook.com"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1727417AbeKBC6v (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 1 Nov 2018 22:58:51 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
- d=wavesemi.onmicrosoft.com; s=selector1-wavecomp-com;
+        id S1725908AbeKBDBs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 1 Nov 2018 23:01:48 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=hammerspace.com;
+ s=selector1;
  h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=hcYtdtReI1luzarTOcV7r9lYj2mt5hItlg686A8e6Ik=;
- b=f/a6uHcT7hw0LMehsmd9xa7A4EWCO+FSN7TFm3GlIOEA6ijVV3ShbaF/Ke8mfdtOWhCkkQjHoEhy9occ8FAXPI2DOxI5UdpJeWr/bNE9peJEIRI45RBGF79nFPrSPGQKa85gUUiy7SrIl1N8NK5XY4en0zUv3MQ9yoXt56Shq1s=
-Received: from MWHSPR00MB117.namprd22.prod.outlook.com (10.175.52.23) by
- MWHPR2201MB1325.namprd22.prod.outlook.com (10.174.162.140) with Microsoft
- SMTP Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- 15.20.1273.25; Thu, 1 Nov 2018 17:54:50 +0000
-Received: from MWHSPR00MB117.namprd22.prod.outlook.com
- ([fe80::b95a:a3f9:be06:b045]) by MWHSPR00MB117.namprd22.prod.outlook.com
- ([fe80::b95a:a3f9:be06:b045%2]) with mapi id 15.20.1294.024; Thu, 1 Nov 2018
- 17:54:50 +0000
-From:   Paul Burton <paul.burton@mips.com>
-To:     Trond Myklebust <trondmy@hammerspace.com>
-CC:     "linux@roeck-us.net" <linux@roeck-us.net>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "ralf@linux-mips.org" <ralf@linux-mips.org>,
-        "jlayton@kernel.org" <jlayton@kernel.org>,
-        "linuxppc-dev@lists.ozlabs.org" <linuxppc-dev@lists.ozlabs.org>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "linux-mips@linux-mips.org" <linux-mips@linux-mips.org>,
+ bh=A2Shu1VWgmkYF4Wi+oivRpkwfE62ff9Wm+y8EgawmZg=;
+ b=rvWmNey7haM8ELGYHNLvSKU1DwUqCjKCMk150zUcKSE1xx3RU9nf9BM7e93OThqYetyLLljjTynta3eZBxssyBxtPxH0gxhDZrY6whhsJkYVlUOluWyrNOzYmT2ZDUBH1QjPty1lWzCmE3Ltitf4AS0sIP3cg9wrMEn73XbvnHs=
+Received: from SN6PR13MB2494.namprd13.prod.outlook.com (52.135.95.148) by
+ SN6PR13MB2255.namprd13.prod.outlook.com (52.135.93.156) with Microsoft SMTP
+ Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ 15.20.1294.8; Thu, 1 Nov 2018 17:57:43 +0000
+Received: from SN6PR13MB2494.namprd13.prod.outlook.com
+ ([fe80::205a:69c2:1cf5:b475]) by SN6PR13MB2494.namprd13.prod.outlook.com
+ ([fe80::205a:69c2:1cf5:b475%3]) with mapi id 15.20.1294.021; Thu, 1 Nov 2018
+ 17:57:43 +0000
+From:   Trond Myklebust <trondmy@hammerspace.com>
+To:     "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
         "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "akpm@linux-foundation.org" <akpm@linux-foundation.org>,
-        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        "jhogan@kernel.org" <jhogan@kernel.org>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+        "paul.burton@mips.com" <paul.burton@mips.com>
+CC:     "bfields@fieldses.org" <bfields@fieldses.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "pburton@wavecomp.com" <pburton@wavecomp.com>,
         "davem@davemloft.net" <davem@davemloft.net>,
-        "arnd@arndb.de" <arnd@arndb.de>,
-        "paulus@samba.org" <paulus@samba.org>,
-        "mpe@ellerman.id.au" <mpe@ellerman.id.au>,
-        "benh@kernel.crashing.org" <benh@kernel.crashing.org>
-Subject: Re: [RFC PATCH] lib: Introduce generic __cmpxchg_u64() and use it
- where needed
-Thread-Topic: [RFC PATCH] lib: Introduce generic __cmpxchg_u64() and use it
- where needed
-Thread-Index: AQHUcVNC5jTXGaDPOkOnkxlkE4DPdqU539kAgAAIcYCAABkQgIAADI6AgAEnZwA=
-Date:   Thu, 1 Nov 2018 17:54:50 +0000
-Message-ID: <20181101175448.sld6krwbs5n7ovak@pburton-laptop>
-References: <1541015538-11382-1-git-send-email-linux@roeck-us.net>
- <20181031213240.zhh7dfcm47ucuyfl@pburton-laptop>
- <20181031220253.GA15505@roeck-us.net>
- <20181031233235.qbedw3pinxcuk7me@pburton-laptop>
- <4e2438a23d2edf03368950a72ec058d1d299c32e.camel@hammerspace.com>
-In-Reply-To: <4e2438a23d2edf03368950a72ec058d1d299c32e.camel@hammerspace.com>
-Accept-Language: en-US
+        "jlayton@kernel.org" <jlayton@kernel.org>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>
+Subject: Re: [PATCH] SUNRPC: Use atomic(64)_t for seq_send(64)
+Thread-Topic: [PATCH] SUNRPC: Use atomic(64)_t for seq_send(64)
+Thread-Index: AQHUcguNmR07OSEUt0GCXDr8h1+WPqU7NKyA
+Date:   Thu, 1 Nov 2018 17:57:43 +0000
+Message-ID: <65bc05f9685faf5a29f47805e4675f229f32531c.camel@hammerspace.com>
+References: <20181101145926.GE3178@hirez.programming.kicks-ass.net>
+         <20181101175109.8621-1-paul.burton@mips.com>
+In-Reply-To: <20181101175109.8621-1-paul.burton@mips.com>
+Accept-Language: en-US, en-GB
 Content-Language: en-US
 X-MS-Has-Attach: 
 X-MS-TNEF-Correlator: 
-x-clientproxiedby: MWHPR2201CA0004.namprd22.prod.outlook.com
- (2603:10b6:301:28::17) To MWHSPR00MB117.namprd22.prod.outlook.com
- (2603:10b6:300:10c::23)
-user-agent: NeoMutt/20180716
-x-ms-exchange-messagesentrepresentingtype: 1
-x-originating-ip: [4.16.204.77]
+x-originating-ip: [68.40.195.73]
 x-ms-publictraffictype: Email
-x-microsoft-exchange-diagnostics: 1;MWHPR2201MB1325;6:sphfPo3E+yvokQfm9L2JT3epAssx6+GoXoQWVmEbJD3eBNrmHRsFlnWHazxO+E5LpdSB95ZSSkS24tR/AYsasqpVMBmIiDBhY+LoeX60WeMWt4YxDxFAWFFRGiRw55tn8SFB4oz6fOsKcmZhxcsFm3hZiANwbZMVulNvrenq3PwTLyFeko7lT83MMQAIWB0BBiG20DY/7Np1HWBi5ILPgPfZbtNEkPx1M7mjCPedEdO959+w1MGBr2PXdYQILrsOVEupbTyTN++q/5DLf6ooIH91G7iohCuH32wxvnwp2qZnXCKoST/dAp1VKlYBPczPKyvWOhpYRmqRuDZuvHIsQrNXudEFbFOEMHBrmia0YuQjxhM9zN2isNERpSl/20fzPuM9ZesSRUYPh9/SCV6KfanFbFAtHp8k0AyZIcIIzjKvc3bgHTIRe4JUYaNeBLJk03Wq/NFsg+JQvho0G5So2g==;5:pX81+2CTXr0knMg7/GAKVat6rOf7MeiEXAtIUdos7DW2JIEfeiEJqXMimQaKxaU0pLKst25NNNHtqloI5gz/56VrJxnnT5HeRCwsH9wYiMNuRIQG8d/rMyzVFQ1lyPjKRyjS/CP9DBd4WRt1i/osRUdFe9G6h2m9ySPM9yxIN3U=;7:GwDWVbnHeMnZEl5cUT6d06GDgBeMJFK0t0ANuc7Xc7b2eP4aZN+bOzOhbxqCptfFHJ072IC1prbQ6vBD6Uk1QbNqVbWgX9ZagcbFzY2gHIbNGiA2SyiciBx6XnIUoZnlYyMASFxTnx50PndXiKg+xQ==
-x-ms-office365-filtering-correlation-id: 7a65a882-fdfd-4f18-4240-08d640231e54
-x-microsoft-antispam: BCL:0;PCL:0;RULEID:(7020095)(4652040)(7021145)(8989299)(4534185)(7022145)(4603075)(4627221)(201702281549075)(8990200)(7048125)(7024125)(7027125)(7023125)(5600074)(711020)(2017052603328)(7153060)(7193020);SRVR:MWHPR2201MB1325;
-x-ms-traffictypediagnostic: MWHPR2201MB1325:
-x-microsoft-antispam-prvs: <MWHPR2201MB132540D6ADEFB43DCA55BA61C1CE0@MWHPR2201MB1325.namprd22.prod.outlook.com>
-x-exchange-antispam-report-test: UriScan:;
-x-ms-exchange-senderadcheck: 1
-x-exchange-antispam-report-cfa-test: BCL:0;PCL:0;RULEID:(6040522)(2401047)(5005006)(8121501046)(93006095)(10201501046)(3002001)(3231382)(944501410)(52105095)(148016)(149066)(150057)(6041310)(20161123560045)(20161123564045)(20161123562045)(20161123558120)(2016111802025)(6043046)(201708071742011)(7699051)(76991095);SRVR:MWHPR2201MB1325;BCL:0;PCL:0;RULEID:;SRVR:MWHPR2201MB1325;
-x-forefront-prvs: 0843C17679
-x-forefront-antispam-report: SFV:NSPM;SFS:(10019020)(7916004)(136003)(366004)(39840400004)(346002)(376002)(396003)(199004)(189003)(52254002)(66066001)(42882007)(54906003)(256004)(58126008)(53936002)(93886005)(316002)(446003)(14454004)(6246003)(11346002)(14444005)(6306002)(9686003)(2900100001)(6512007)(186003)(6486002)(476003)(6436002)(305945005)(6346003)(7736002)(26005)(4326008)(44832011)(2906002)(71200400001)(71190400001)(5250100002)(76176011)(8676002)(25786009)(102836004)(6916009)(229853002)(4001150100001)(6116002)(508600001)(3846002)(386003)(486006)(33896004)(6506007)(1076002)(33716001)(99286004)(5660300001)(81156014)(68736007)(52116002)(966005)(8936002)(106356001)(81166006)(97736004)(105586002)(7416002)(41533002);DIR:OUT;SFP:1102;SCL:1;SRVR:MWHPR2201MB1325;H:MWHSPR00MB117.namprd22.prod.outlook.com;FPR:;SPF:None;LANG:en;PTR:InfoNoRecords;A:1;MX:1;
-received-spf: None (protection.outlook.com: wavecomp.com does not designate
- permitted sender hosts)
+x-microsoft-exchange-diagnostics: 1;SN6PR13MB2255;6:orDkr1peMgsaPlSTO1knFgqRQLEA/CewjVDLvFZClI1bUts/qiNAPAcgb52r5uptA+8BsX5z0n/021wHb9spP1BbhgtbT+VTMAotWiLHrM1jPChnnR7mRwV1WU7EfECW3TNJY5jdLz99j6iizpZMoJQJkPZyf+utuWeHmu4vi6aeNqUNtBW+fOziEZpZ3Mhts8TeUCgjfkDtPel8F8Afj6frs5Ml4PXRl3niYqODOoqzOVY7MvCCpQc5cQTtl3xzhXgdP4TRCX+o0knH92Q8BaAVNIE3llxViKG14hFdLj1NgaHaK8uQ8OzJQR4KSWdNSr54jMVH/5nR576cxvGxaRluk3J0Ne6OE8glOty4G3QQbIX8lIGdUpOfNfmP+GvhEDwsTiDZ2aviedHoh5xZHUbW4QFaGPS+bOfOqmCrmd0U2FEhDIQaO4AxENmsyqyYoIpedEb6CTSTdb/ZtqhUCQ==;5:lqMvPxWJu32CPzQnbPIjOMJ72Uq92Xh8W2x5iPm3Kxz4Wmj/EsEikAllwn14TqTQ2ZOb1SdBZP9pADosEbA3Td1VuK6m2wyqSZJhwEgJuqj2SBXYfZsJ5bIoGlaY44PVrn15yRoWWroveZXfN0gJQu5IWrU3Ph6ynZ5lN9bsS14=;7:i4OB9UJ0WYa747Y4ThyxKYrBD22fGO0vQPoAlV8M78bX1SiFbHkD65jsTxmAtaa69+UYOZ6dBcGvVDqXIoegobqSL98Yi0puiqX+WT9BAQy4L30Y2gnZgvmJNTXrsYvOiuNqJuPTwOxttpN5TGSNgQ==
+x-ms-exchange-antispam-srfa-diagnostics: SOS;
+x-ms-office365-filtering-correlation-id: 42f2dd52-d3ca-4005-ca3b-08d640238608
+x-microsoft-antispam: BCL:0;PCL:0;RULEID:(7020095)(4652040)(8989299)(4534185)(4627221)(201703031133081)(201702281549075)(8990200)(5600074)(711020)(2017052603328)(7153060)(7193020);SRVR:SN6PR13MB2255;
+x-ms-traffictypediagnostic: SN6PR13MB2255:
 authentication-results: spf=none (sender IP is )
- smtp.mailfrom=pburton@wavecomp.com; 
-x-microsoft-antispam-message-info: yrmdLIYXw8fwji91kNi00DoE/ToNlDTRAU1dGF7Vgjvh8mXJ3Cjr+w9mC/zaoFTMnEu8AbVwFmE/C1Xq1gB09qk9ykJVWcFPDmeqpoHwB6vXELqHgh/+kYoBHEAAy2WgVvDGb0m5QT39jwNcTD9DzYOwIqhMOw4vQ79eDmaG6TfbhLOXJQkAq2lFajTXC6M46tqksQ4UzTSvyD/7Yh/GwZxcNJeAHcQFzs8RvIjog1f9z/O93hLVFaoJ+CnbTSKWjlqMN4Cqg8xex30KdWlUTWpI9iurUNdznwxcGlAf7Ro5x9PvZ0f5Paq/dLrBvnIKOF6ZBC98++UUurjzrLMf9uVDaWB/r00sl7sojs/Tyhs=
+ smtp.mailfrom=trondmy@hammerspace.com; 
+x-microsoft-antispam-prvs: <SN6PR13MB22556636DA931BECA23C0E6EB8CE0@SN6PR13MB2255.namprd13.prod.outlook.com>
+x-exchange-antispam-report-test: UriScan:(788757137089)(9452136761055);
+x-ms-exchange-senderadcheck: 1
+x-exchange-antispam-report-cfa-test: BCL:0;PCL:0;RULEID:(6040522)(2401047)(5005006)(8121501046)(93006095)(93001095)(3231382)(944501410)(52105095)(10201501046)(3002001)(148016)(149066)(150057)(6041310)(20161123562045)(20161123564045)(20161123558120)(20161123560045)(201703131423095)(201702281528075)(20161123555045)(201703061421075)(201703061406153)(201708071742011)(7699051)(76991095);SRVR:SN6PR13MB2255;BCL:0;PCL:0;RULEID:;SRVR:SN6PR13MB2255;
+x-forefront-prvs: 0843C17679
+x-forefront-antispam-report: SFV:NSPM;SFS:(10019020)(39830400003)(376002)(396003)(346002)(366004)(136003)(189003)(199004)(71190400001)(81166006)(2900100001)(5660300001)(99286004)(14444005)(76176011)(105586002)(118296001)(8676002)(2201001)(6246003)(71200400001)(256004)(186003)(8936002)(102836004)(81156014)(6116002)(66066001)(4326008)(486006)(26005)(6506007)(106356001)(7736002)(86362001)(476003)(6486002)(446003)(2906002)(68736007)(6436002)(5250100002)(229853002)(316002)(11346002)(110136005)(2501003)(3846002)(36756003)(25786009)(305945005)(6512007)(54906003)(97736004)(53936002)(14454004)(478600001)(2616005);DIR:OUT;SFP:1102;SCL:1;SRVR:SN6PR13MB2255;H:SN6PR13MB2494.namprd13.prod.outlook.com;FPR:;SPF:None;LANG:en;PTR:InfoNoRecords;MX:1;A:1;
+received-spf: None (protection.outlook.com: hammerspace.com does not designate
+ permitted sender hosts)
+x-microsoft-antispam-message-info: 1+fzBq2m5SKKXLdXhRJkXA/gEVG7fOGNbBejwx7yzWmqy1wqcI+qYd2yQNID1POOeC3t0pNQNsSICn57DcUqpJ61yLUGhhynjS9hmWXU006azm650PAKQR2b1LWtNrXfEnmSevWDMLJ3BWZAV1S7lVxj4L6mZIZM6qJxhL+GcN44zWflUcuPc+bVq2UaOP8R1pC2nZ7OzMIPNc9kfrUlCJeeQFiajEA6Lq8AsCHCaXnld2Z+DfLIbTgYueHLPdYNY+flB0TYg2TuhWlHoZmUMRKFiZ9JdcFf0S53yFFRnUWs4cW6BKk0l/o1ZOKmXI8zwZ4ed/xROV8Nbznq7xCmk87+fTCMOKwFXhn6Ax9XIMw=
 spamdiagnosticoutput: 1:99
 spamdiagnosticmetadata: NSPM
-Content-Type: text/plain; charset="us-ascii"
-Content-ID: <CF3B98CF3394B54E933F2B98E3776DB7@namprd22.prod.outlook.com>
-Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain; charset="utf-8"
+Content-ID: <C4C2EFCF2AE9AA4F903F89D781443335@namprd13.prod.outlook.com>
+Content-Transfer-Encoding: base64
 MIME-Version: 1.0
-X-OriginatorOrg: mips.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: 7a65a882-fdfd-4f18-4240-08d640231e54
-X-MS-Exchange-CrossTenant-originalarrivaltime: 01 Nov 2018 17:54:50.0518
+X-OriginatorOrg: hammerspace.com
+X-MS-Exchange-CrossTenant-Network-Message-Id: 42f2dd52-d3ca-4005-ca3b-08d640238608
+X-MS-Exchange-CrossTenant-originalarrivaltime: 01 Nov 2018 17:57:43.5079
  (UTC)
 X-MS-Exchange-CrossTenant-fromentityheader: Hosted
-X-MS-Exchange-CrossTenant-id: 463607d3-1db3-40a0-8a29-970c56230104
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: MWHPR2201MB1325
+X-MS-Exchange-CrossTenant-id: 0d4fed5c-3a70-46fe-9430-ece41741f59e
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: SN6PR13MB2255
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hi Trond,
-
-On Thu, Nov 01, 2018 at 12:17:31AM +0000, Trond Myklebust wrote:
-> On Wed, 2018-10-31 at 23:32 +0000, Paul Burton wrote:
-> > In this particular case I have no idea why
-> > net/sunrpc/auth_gss/gss_krb5_seal.c is using cmpxchg64() at all. It's
-> > essentially reinventing atomic64_fetch_inc() which is already
-> > provided
-> > everywhere via CONFIG_GENERIC_ATOMIC64 & the spinlock approach. At
-> > least
-> > for atomic64_* functions the assumption that all access will be
-> > performed using those same functions seems somewhat reasonable.
-> >=20
-> > So how does the below look? Trond?
->=20
-> My one question (and the reason why I went with cmpxchg() in the first
-> place) would be about the overflow behaviour for atomic_fetch_inc() and
-> friends. I believe those functions should be OK on x86, so that when we
-> overflow the counter, it behaves like an unsigned value and wraps back
-> around.  Is that the case for all architectures?
->=20
-> i.e. are atomic_t/atomic64_t always guaranteed to behave like u32/u64
-> on increment?
->=20
-> I could not find any documentation that explicitly stated that they
-> should.
-
-Based on other replies it seems like it's at least implicitly assumed by
-other code, even if not explicitly stated.
-
-From a MIPS perspective where atomics are implemented using load-linked
-& store-conditional instructions the actual addition will be performed
-using the same addu instruction that a plain integer addition would
-generate (regardless of signedness), so there'll be absolutely no
-difference in arithmetic between your gss_seq_send64_fetch_and_inc()
-function and atomic64_fetch_inc(). I'd expect the same to be true for
-other architectures with load-linked & store-conditional style atomics.
-
-In any case, for the benefit of anyone interested who I didn't copy on
-the patch submission, here it is:
-
-    https://lore.kernel.org/lkml/20181101175109.8621-1-paul.burton@mips.com=
-/
-
-Thanks,
-    Paul
+T24gVGh1LCAyMDE4LTExLTAxIGF0IDE3OjUxICswMDAwLCBQYXVsIEJ1cnRvbiB3cm90ZToNCj4g
+VGhlIHNlcV9zZW5kICYgc2VxX3NlbmQ2NCBmaWVsZHMgaW4gc3RydWN0IGtyYjVfY3R4IGFyZSB1
+c2VkIGFzDQo+IGF0b21pY2FsbHkgaW5jcmVtZW50aW5nIGNvdW50ZXJzLiBUaGlzIGlzIGltcGxl
+bWVudGVkIHVzaW5nIGNtcHhjaGcoKQ0KPiAmDQo+IGNtcHhjaGc2NCgpIHRvIGltcGxlbWVudCB3
+aGF0IGFtb3VudCB0byBjdXN0b20gdmVyc2lvbnMgb2YNCj4gYXRvbWljX2ZldGNoX2luYygpICYg
+YXRvbWljNjRfZmV0Y2hfaW5jKCkuDQo+IA0KPiBCZXNpZGVzIHRoZSBkdXBsaWNhdGlvbiwgdXNp
+bmcgY21weGNoZzY0KCkgaGFzIGFub3RoZXIgbWFqb3IgZHJhd2JhY2sNCj4gaW4NCj4gdGhhdCBz
+b21lIDMyIGJpdCBhcmNoaXRlY3R1cmVzIGRvbid0IHByb3ZpZGUgaXQuIEFzIHN1Y2ggY29tbWl0
+DQo+IDU3MWVkMWZkMjM5MCAoIlNVTlJQQzogUmVwbGFjZSBrcmI1X3NlcV9sb2NrIHdpdGggYSBs
+b2NrbGVzcyBzY2hlbWUiKQ0KPiByZXN1bHRlZCBpbiBidWlsZCBmYWlsdXJlcyBmb3Igc29tZSBh
+cmNoaXRlY3R1cmVzLg0KPiANCj4gQ2hhbmdlIHNlcV9zZW5kIHRvIGJlIGFuIGF0b21pY190IGFu
+ZCBzZXFfc2VuZDY0IHRvIGJlIGFuIGF0b21pYzY0X3QsDQo+IHRoZW4gdXNlIGF0b21pYyg2NClf
+KiBmdW5jdGlvbnMgdG8gbWFuaXB1bGF0ZSB0aGUgdmFsdWVzLiBUaGUNCj4gYXRvbWljNjRfdA0K
+PiB0eXBlICYgYXNzb2NpYXRlZCBmdW5jdGlvbnMgYXJlIHByb3ZpZGVkIGV2ZW4gb24gYXJjaGl0
+ZWN0dXJlcyB3aGljaA0KPiBsYWNrIHJlYWwgNjQgYml0IGF0b21pYyBtZW1vcnkgYWNjZXNzIHZp
+YSBDT05GSUdfR0VORVJJQ19BVE9NSUM2NA0KPiB3aGljaA0KPiB1c2VzIHNwaW5sb2NrcyB0byBz
+ZXJpYWxpemUgYWNjZXNzLiBUaGlzIGZpeGVzIHRoZSBidWlsZCBmYWlsdXJlcyBmb3INCj4gYXJj
+aGl0ZWN0dXJlcyBsYWNraW5nIGNtcHhjaGc2NCgpLg0KPiANCj4gQSBwb3RlbnRpYWwgYWx0ZXJu
+YXRpdmUgdGhhdCB3YXMgcmFpc2VkIHdvdWxkIGJlIHRvIHByb3ZpZGUNCj4gY21weGNoZzY0KCkN
+Cj4gb24gdGhlIDMyIGJpdCBhcmNoaXRlY3R1cmVzIHRoYXQgY3VycmVudGx5IGxhY2sgaXQsIHVz
+aW5nIHNwaW5sb2Nrcy4NCj4gSG93ZXZlciB0aGlzIHdvdWxkIHByb3ZpZGUgYSB2ZXJzaW9uIG9m
+IGNtcHhjaGc2NCgpIHdpdGggc2VtYW50aWNzIGENCj4gbGl0dGxlIGRpZmZlcmVudCB0byB0aGUg
+aW1wbGVtZW50YXRpb25zIG9uIGFyY2hpdGVjdHVyZXMgd2l0aCByZWFsIDY0DQo+IGJpdCBhdG9t
+aWNzIC0gdGhlIHNwaW5sb2NrLWJhc2VkIGltcGxlbWVudGF0aW9uIHdvdWxkIG9ubHkgd29yayBp
+Zg0KPiBhbGwNCj4gYWNjZXNzIHRvIHRoZSBtZW1vcnkgdXNlZCB3aXRoIGNtcHhjaGc2NCgpIGlz
+ICphbHdheXMqIHBlcmZvcm1lZA0KPiB1c2luZw0KPiBjbXB4Y2hnNjQoKS4gVGhhdCBpcyBub3Qg
+Y3VycmVudGx5IGEgcmVxdWlyZW1lbnQgZm9yIHVzZXJzIG9mDQo+IGNtcHhjaGc2NCgpLCBhbmQg
+bWFraW5nIGl0IG9uZSBzZWVtcyBxdWVzdGlvbmFibGUuIEFzIHN1Y2ggYXZvaWRpbmcNCj4gY21w
+eGNoZzY0KCkgb3V0c2lkZSBvZiBhcmNoaXRlY3R1cmUtc3BlY2lmaWMgY29kZSBzZWVtcyBiZXN0
+LA0KPiBwYXJ0aWN1bGFybHkgaW4gY2FzZXMgd2hlcmUgYXRvbWljNjRfdCBzZWVtcyBsaWtlIGEg
+YmV0dGVyIGZpdA0KPiBhbnl3YXkuDQo+IA0KPiBUaGUgQ09ORklHX0dFTkVSSUNfQVRPTUlDNjQg
+aW1wbGVtZW50YXRpb24gb2YgYXRvbWljNjRfKiBmdW5jdGlvbnMNCj4gd2lsbA0KPiB1c2Ugc3Bp
+bmxvY2tzICYgc28gZmFjZXMgdGhlIHNhbWUgaXNzdWUsIGJ1dCB3aXRoIHRoZSBrZXkgZGlmZmVy
+ZW5jZQ0KPiB0aGF0IHRoZSBtZW1vcnkgYmFja2luZyBhbiBhdG9taWM2NF90IG91Z2h0IHRvIGFs
+d2F5cyBiZSBhY2Nlc3NlZCB2aWENCj4gdGhlIGF0b21pYzY0XyogZnVuY3Rpb25zIGFueXdheSBt
+YWtpbmcgdGhlIGlzc3VlIG1vb3QuDQo+IA0KPiBTaWduZWQtb2ZmLWJ5OiBQYXVsIEJ1cnRvbiA8
+cGF1bC5idXJ0b25AbWlwcy5jb20+DQo+IEZpeGVzOiA1NzFlZDFmZDIzOTAgKCJTVU5SUEM6IFJl
+cGxhY2Uga3JiNV9zZXFfbG9jayB3aXRoIGEgbG9ja2xlc3MNCj4gc2NoZW1lIikNCj4gQ2M6IFRy
+b25kIE15a2xlYnVzdCA8dHJvbmQubXlrbGVidXN0QGhhbW1lcnNwYWNlLmNvbT4NCj4gQ2M6IEFu
+bmEgU2NodW1ha2VyIDxhbm5hLnNjaHVtYWtlckBuZXRhcHAuY29tPg0KPiBDYzogSi4gQnJ1Y2Ug
+RmllbGRzIDxiZmllbGRzQGZpZWxkc2VzLm9yZz4NCj4gQ2M6IEplZmYgTGF5dG9uIDxqbGF5dG9u
+QGtlcm5lbC5vcmc+DQo+IENjOiBEYXZpZCBTLiBNaWxsZXIgPGRhdmVtQGRhdmVtbG9mdC5uZXQ+
+DQo+IENjOiBsaW51eC1uZnNAdmdlci5rZXJuZWwub3JnDQo+IENjOiBuZXRkZXZAdmdlci5rZXJu
+ZWwub3JnDQo+IC0tLQ0KPiAgaW5jbHVkZS9saW51eC9zdW5ycGMvZ3NzX2tyYjUuaCAgICAgfCAg
+NyArKy0tLS0tDQo+ICBuZXQvc3VucnBjL2F1dGhfZ3NzL2dzc19rcmI1X21lY2guYyB8IDE2ICsr
+KysrKysrKystLS0tLS0NCj4gIG5ldC9zdW5ycGMvYXV0aF9nc3MvZ3NzX2tyYjVfc2VhbC5jIHwg
+MjggKystLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tDQo+IC0NCj4gIG5ldC9zdW5ycGMvYXV0aF9n
+c3MvZ3NzX2tyYjVfd3JhcC5jIHwgIDQgKystLQ0KPiAgNCBmaWxlcyBjaGFuZ2VkLCAxNiBpbnNl
+cnRpb25zKCspLCAzOSBkZWxldGlvbnMoLSkNCj4gDQoNClRoYW5rcyBQYXVsISAuLi5hbmQgdGhh
+bmtzIGZvciB5b3VyIHBhdGllbmNlIGluIHdvcmtpbmcgb3V0IHRoZQ0KYXRvbWljaXR5IHdyYXBh
+cm91bmQgaXNzdWVzLiBBcHBsaWVkLi4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5G
+UyBjbGllbnQgbWFpbnRhaW5lciwgSGFtbWVyc3BhY2UNCnRyb25kLm15a2xlYnVzdEBoYW1tZXJz
+cGFjZS5jb20NCg0KDQo=
