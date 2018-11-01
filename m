@@ -2,132 +2,322 @@ Return-Path: <SRS0=Ohau=NM=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.2 required=3.0 tests=BIGNUM_EMAILS,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_PASS,UNPARSEABLE_RELAY,USER_AGENT_NEOMUTT
+X-Spam-Status: No, score=-5.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_PASS,URIBL_BLOCKED,USER_AGENT_NEOMUTT
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 26E51C0044C
-	for <linux-nfs@archiver.kernel.org>; Thu,  1 Nov 2018 08:51:18 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 42175C0044C
+	for <linux-nfs@archiver.kernel.org>; Thu,  1 Nov 2018 13:18:55 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id C070D20657
-	for <linux-nfs@archiver.kernel.org>; Thu,  1 Nov 2018 08:51:17 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="qTc04UF5"
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org C070D20657
-Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=oracle.com
+	by mail.kernel.org (Postfix) with ESMTP id E1FA3204FD
+	for <linux-nfs@archiver.kernel.org>; Thu,  1 Nov 2018 13:18:54 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org E1FA3204FD
+Authentication-Results: mail.kernel.org; dmarc=none (p=none dis=none) header.from=arm.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727953AbeKARxU (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 1 Nov 2018 13:53:20 -0400
-Received: from userp2120.oracle.com ([156.151.31.85]:60928 "EHLO
-        userp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727704AbeKARxU (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Nov 2018 13:53:20 -0400
-Received: from pps.filterd (userp2120.oracle.com [127.0.0.1])
-        by userp2120.oracle.com (8.16.0.22/8.16.0.22) with SMTP id wA18iQJW147699;
-        Thu, 1 Nov 2018 08:51:13 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=date : from : to : cc
- : subject : message-id : mime-version : content-type; s=corp-2018-07-02;
- bh=b+OnfMYORWGmWWasosb9vox0LbkiX2grcrJnF5y2vX4=;
- b=qTc04UF5c1/RLdHhCCFS0wh6UJMpsCSppMorv0TfiHzx5RTY6uanjJdGn8+FGBshT5G0
- auL2VNGiHjNP0a9TudFHwPB+he5zOaM/70zx/sRIFP/MgRoti+uurb933QI5uJCHEfIZ
- /3ULBF06tkX7CfgEcjSAQS/8J8Cjl0anocZjNmySyvLVzg63HIu69PnS/3ln0exquc0E
- SHF7cCzCUp+VijW0S+u5wmyGOD3hzoavXrKqbFucBOwsGBzhfjX6OTLSCHQtOm87pcdy
- x7+P+YM+krLXvRHoeaVc0gMHGaxGXHaGMnzluTaaGR5kTc06iV6GzA3PUeBw+/FIZIOf 7g== 
-Received: from userv0021.oracle.com (userv0021.oracle.com [156.151.31.71])
-        by userp2120.oracle.com with ESMTP id 2ncgnr7kyh-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Thu, 01 Nov 2018 08:51:13 +0000
-Received: from userv0121.oracle.com (userv0121.oracle.com [156.151.31.72])
-        by userv0021.oracle.com (8.14.4/8.14.4) with ESMTP id wA18pDXF006497
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Thu, 1 Nov 2018 08:51:13 GMT
-Received: from abhmp0017.oracle.com (abhmp0017.oracle.com [141.146.116.23])
-        by userv0121.oracle.com (8.14.4/8.13.8) with ESMTP id wA18pC9t003382;
-        Thu, 1 Nov 2018 08:51:12 GMT
-Received: from kili.mountain (/129.205.6.86)
-        by default (Oracle Beehive Gateway v4.0)
-        with ESMTP ; Thu, 01 Nov 2018 01:51:12 -0700
-Date:   Thu, 1 Nov 2018 11:51:04 +0300
-From:   Dan Carpenter <dan.carpenter@oracle.com>
-To:     trond.myklebust@primarydata.com
-Cc:     linux-nfs@vger.kernel.org
-Subject: [bug report] SUNRPC: Ensure get_rpccred() and put_rpccred() can take
- NULL arguments
-Message-ID: <20181101085104.ahh3fqnflsryfflf@kili.mountain>
+        id S1728282AbeKAWVt (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 1 Nov 2018 18:21:49 -0400
+Received: from foss.arm.com ([217.140.101.70]:56414 "EHLO foss.arm.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1727644AbeKAWVt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 1 Nov 2018 18:21:49 -0400
+Received: from usa-sjc-imap-foss1.foss.arm.com (unknown [10.72.51.249])
+        by usa-sjc-mx-foss1.foss.arm.com (Postfix) with ESMTP id AB75EA78;
+        Thu,  1 Nov 2018 06:18:52 -0700 (PDT)
+Received: from lakrids.cambridge.arm.com (usa-sjc-imap-foss1.foss.arm.com [10.72.51.249])
+        by usa-sjc-imap-foss1.foss.arm.com (Postfix) with ESMTPSA id 073A63F6A8;
+        Thu,  1 Nov 2018 06:18:48 -0700 (PDT)
+Date:   Thu, 1 Nov 2018 13:18:46 +0000
+From:   Mark Rutland <mark.rutland@arm.com>
+To:     Trond Myklebust <trondmy@hammerspace.com>
+Cc:     "linux@roeck-us.net" <linux@roeck-us.net>,
+        "paul.burton@mips.com" <paul.burton@mips.com>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "ralf@linux-mips.org" <ralf@linux-mips.org>,
+        "jlayton@kernel.org" <jlayton@kernel.org>,
+        "linuxppc-dev@lists.ozlabs.org" <linuxppc-dev@lists.ozlabs.org>,
+        "bfields@fieldses.org" <bfields@fieldses.org>,
+        "linux-mips@linux-mips.org" <linux-mips@linux-mips.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "akpm@linux-foundation.org" <akpm@linux-foundation.org>,
+        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+        "jhogan@kernel.org" <jhogan@kernel.org>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+        "davem@davemloft.net" <davem@davemloft.net>,
+        "arnd@arndb.de" <arnd@arndb.de>,
+        "paulus@samba.org" <paulus@samba.org>,
+        "mpe@ellerman.id.au" <mpe@ellerman.id.au>,
+        "benh@kernel.crashing.org" <benh@kernel.crashing.org>,
+        Will Deacon <will.deacon@arm.com>,
+        Peter Zijlstra <peterz@infradead.org>,
+        Boqun Feng <boqun.feng@gmail.com>
+Subject: Re: [RFC PATCH] lib: Introduce generic __cmpxchg_u64() and use it
+ where needed
+Message-ID: <20181101131846.biyilr2msonljmij@lakrids.cambridge.arm.com>
+References: <1541015538-11382-1-git-send-email-linux@roeck-us.net>
+ <20181031213240.zhh7dfcm47ucuyfl@pburton-laptop>
+ <20181031220253.GA15505@roeck-us.net>
+ <20181031233235.qbedw3pinxcuk7me@pburton-laptop>
+ <4e2438a23d2edf03368950a72ec058d1d299c32e.camel@hammerspace.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
+In-Reply-To: <4e2438a23d2edf03368950a72ec058d1d299c32e.camel@hammerspace.com>
 User-Agent: NeoMutt/20170113 (1.7.2)
-X-Proofpoint-Virus-Version: vendor=nai engine=5900 definitions=9063 signatures=668683
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 suspectscore=1 malwarescore=0
- phishscore=0 bulkscore=0 spamscore=0 mlxscore=0 mlxlogscore=548
- adultscore=0 classifier=spam adjust=0 reason=mlx scancount=1
- engine=8.0.1-1807170000 definitions=main-1811010078
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hello Trond Myklebust,
+[adding the atomic maintainers]
 
-The patch 9a8f6b5ea275: "SUNRPC: Ensure get_rpccred() and
-put_rpccred() can take NULL arguments" from May 16, 2016, leads to
-the following static checker warning:
+On Thu, Nov 01, 2018 at 12:17:31AM +0000, Trond Myklebust wrote:
+> On Wed, 2018-10-31 at 23:32 +0000, Paul Burton wrote:
+> > (Copying SunRPC & net maintainers.)
+> > 
+> > Hi Guenter,
+> > 
+> > On Wed, Oct 31, 2018 at 03:02:53PM -0700, Guenter Roeck wrote:
+> > > The alternatives I can see are
+> > > - Do not use cmpxchg64() outside architecture code (ie drop its use
+> > > from the offending driver, and keep doing the same whenever the
+> > > problem comes up again).
+> > > or
+> > > - Introduce something like ARCH_HAS_CMPXCHG64 and use it to
+> > > determine if cmpxchg64 is supported or not.
+> > > 
+> > > Any preference ?
+> > 
+> > My preference would be option 1 - avoiding cmpxchg64() where
+> > possible in generic code. I wouldn't be opposed to the Kconfig
+> > option if there are cases where cmpxchg64() can really help
+> > performance though.
+> > 
+> > The last time I'm aware of this coming up the affected driver was
+> > modified to avoid cmpxchg64() [1].
+> > 
+> > In this particular case I have no idea why
+> > net/sunrpc/auth_gss/gss_krb5_seal.c is using cmpxchg64() at all.
+> > It's essentially reinventing atomic64_fetch_inc() which is already
+> > provided everywhere via CONFIG_GENERIC_ATOMIC64 & the spinlock
+> > approach. At least for atomic64_* functions the assumption that all
+> > access will be performed using those same functions seems somewhat
+> > reasonable.
+> > 
+> > So how does the below look? Trond?
+> 
+> My one question (and the reason why I went with cmpxchg() in the first
+> place) would be about the overflow behaviour for atomic_fetch_inc() and
+> friends. I believe those functions should be OK on x86, so that when we
+> overflow the counter, it behaves like an unsigned value and wraps back
+> around.  Is that the case for all architectures?
+> 
+> i.e. are atomic_t/atomic64_t always guaranteed to behave like u32/u64
+> on increment?
+> 
+> I could not find any documentation that explicitly stated that they
+> should.
 
-	net/sunrpc/auth_generic.c:248 generic_key_timeout()
-	warn: 'tcred' can also be NULL
+Peter, Will, I understand that the atomic_t/atomic64_t ops are required
+to wrap per 2's-complement. IIUC the refcount code relies on this.
 
-net/sunrpc/auth_generic.c
-   225  static int
-   226  generic_key_timeout(struct rpc_auth *auth, struct rpc_cred *cred)
-   227  {
-   228          struct auth_cred *acred = &container_of(cred, struct generic_cred,
-   229                                                  gc_base)->acred;
-   230          struct rpc_cred *tcred;
-   231          int ret = 0;
-   232  
-   233  
-   234          /* Fast track for non crkey_timeout (no key) underlying credentials */
-   235          if (auth->au_flags & RPCAUTH_AUTH_NO_CRKEY_TIMEOUT)
-   236                  return 0;
-   237  
-   238          /* Fast track for the normal case */
-   239          if (test_bit(RPC_CRED_NOTIFY_TIMEOUT, &acred->ac_flags))
-   240                  return 0;
-   241  
-   242          /* lookup_cred either returns a valid referenced rpc_cred, or PTR_ERR */
-   243          tcred = auth->au_ops->lookup_cred(auth, acred, 0);
+Can you confirm?
 
-It used to be that nul_lookup_cred() would always return valid pointers
-but then we modified get_rpccred() to return NULL pointers.  If it
-happened here, then it leads to a NULL pointer dereference.
+Thanks,
+Mark.
 
-   244          if (IS_ERR(tcred))
-   245                  return -EACCES;
-   246  
-   247          /* Test for the almost error case */
-   248          ret = tcred->cr_ops->crkey_timeout(tcred);
-                      ^^^^^^^^^^^^^
-Here.
-
-   249          if (ret != 0) {
-   250                  set_bit(RPC_CRED_KEY_EXPIRE_SOON, &acred->ac_flags);
-   251                  ret = 0;
-   252          } else {
-   253                  /* In case underlying cred key has been reset */
-   254                  if (test_and_clear_bit(RPC_CRED_KEY_EXPIRE_SOON,
-   255                                          &acred->ac_flags))
-   256                          dprintk("RPC:        UID %d Credential key reset\n",
-   257                                  from_kuid(&init_user_ns, tcred->cr_uid));
-   258                  /* set up fasttrack for the normal case */
-   259                  set_bit(RPC_CRED_NOTIFY_TIMEOUT, &acred->ac_flags);
-   260          }
-   261  
-   262          put_rpccred(tcred);
-   263          return ret;
-   264  }
-
-regards,
-dan carpenter
+> Cheers
+>   Trond
+> 
+> > Thanks,
+> >     Paul
+> > 
+> > [1] https://patchwork.ozlabs.org/cover/891284/
+> > 
+> > ---
+> > diff --git a/include/linux/sunrpc/gss_krb5.h
+> > b/include/linux/sunrpc/gss_krb5.h
+> > index 131424cefc6a..02c0412e368c 100644
+> > --- a/include/linux/sunrpc/gss_krb5.h
+> > +++ b/include/linux/sunrpc/gss_krb5.h
+> > @@ -107,8 +107,8 @@ struct krb5_ctx {
+> >  	u8			Ksess[GSS_KRB5_MAX_KEYLEN]; /*
+> > session key */
+> >  	u8			cksum[GSS_KRB5_MAX_KEYLEN];
+> >  	s32			endtime;
+> > -	u32			seq_send;
+> > -	u64			seq_send64;
+> > +	atomic_t		seq_send;
+> > +	atomic64_t		seq_send64;
+> >  	struct xdr_netobj	mech_used;
+> >  	u8			initiator_sign[GSS_KRB5_MAX_KEYLEN];
+> >  	u8			acceptor_sign[GSS_KRB5_MAX_KEYLEN];
+> > @@ -118,9 +118,6 @@ struct krb5_ctx {
+> >  	u8			acceptor_integ[GSS_KRB5_MAX_KEYLEN];
+> >  };
+> >  
+> > -extern u32 gss_seq_send_fetch_and_inc(struct krb5_ctx *ctx);
+> > -extern u64 gss_seq_send64_fetch_and_inc(struct krb5_ctx *ctx);
+> > -
+> >  /* The length of the Kerberos GSS token header */
+> >  #define GSS_KRB5_TOK_HDR_LEN	(16)
+> >  
+> > diff --git a/net/sunrpc/auth_gss/gss_krb5_mech.c
+> > b/net/sunrpc/auth_gss/gss_krb5_mech.c
+> > index 7f0424dfa8f6..eab71fc7af3e 100644
+> > --- a/net/sunrpc/auth_gss/gss_krb5_mech.c
+> > +++ b/net/sunrpc/auth_gss/gss_krb5_mech.c
+> > @@ -274,6 +274,7 @@ get_key(const void *p, const void *end,
+> >  static int
+> >  gss_import_v1_context(const void *p, const void *end, struct
+> > krb5_ctx *ctx)
+> >  {
+> > +	u32 seq_send;
+> >  	int tmp;
+> >  
+> >  	p = simple_get_bytes(p, end, &ctx->initiate, sizeof(ctx-
+> > >initiate));
+> > @@ -315,9 +316,10 @@ gss_import_v1_context(const void *p, const void
+> > *end, struct krb5_ctx *ctx)
+> >  	p = simple_get_bytes(p, end, &ctx->endtime, sizeof(ctx-
+> > >endtime));
+> >  	if (IS_ERR(p))
+> >  		goto out_err;
+> > -	p = simple_get_bytes(p, end, &ctx->seq_send, sizeof(ctx-
+> > >seq_send));
+> > +	p = simple_get_bytes(p, end, &seq_send, sizeof(seq_send));
+> >  	if (IS_ERR(p))
+> >  		goto out_err;
+> > +	atomic_set(&ctx->seq_send, seq_send);
+> >  	p = simple_get_netobj(p, end, &ctx->mech_used);
+> >  	if (IS_ERR(p))
+> >  		goto out_err;
+> > @@ -607,6 +609,7 @@ static int
+> >  gss_import_v2_context(const void *p, const void *end, struct
+> > krb5_ctx *ctx,
+> >  		gfp_t gfp_mask)
+> >  {
+> > +	u64 seq_send64;
+> >  	int keylen;
+> >  
+> >  	p = simple_get_bytes(p, end, &ctx->flags, sizeof(ctx->flags));
+> > @@ -617,14 +620,15 @@ gss_import_v2_context(const void *p, const void
+> > *end, struct krb5_ctx *ctx,
+> >  	p = simple_get_bytes(p, end, &ctx->endtime, sizeof(ctx-
+> > >endtime));
+> >  	if (IS_ERR(p))
+> >  		goto out_err;
+> > -	p = simple_get_bytes(p, end, &ctx->seq_send64, sizeof(ctx-
+> > >seq_send64));
+> > +	p = simple_get_bytes(p, end, &seq_send64, sizeof(seq_send64));
+> >  	if (IS_ERR(p))
+> >  		goto out_err;
+> > +	atomic64_set(&ctx->seq_send64, seq_send64);
+> >  	/* set seq_send for use by "older" enctypes */
+> > -	ctx->seq_send = ctx->seq_send64;
+> > -	if (ctx->seq_send64 != ctx->seq_send) {
+> > -		dprintk("%s: seq_send64 %lx, seq_send %x overflow?\n",
+> > __func__,
+> > -			(unsigned long)ctx->seq_send64, ctx->seq_send);
+> > +	atomic_set(&ctx->seq_send, seq_send64);
+> > +	if (seq_send64 != atomic_read(&ctx->seq_send)) {
+> > +		dprintk("%s: seq_send64 %llx, seq_send %x overflow?\n",
+> > __func__,
+> > +			seq_send64, atomic_read(&ctx->seq_send));
+> >  		p = ERR_PTR(-EINVAL);
+> >  		goto out_err;
+> >  	}
+> > diff --git a/net/sunrpc/auth_gss/gss_krb5_seal.c
+> > b/net/sunrpc/auth_gss/gss_krb5_seal.c
+> > index b4adeb06660b..48fe4a591b54 100644
+> > --- a/net/sunrpc/auth_gss/gss_krb5_seal.c
+> > +++ b/net/sunrpc/auth_gss/gss_krb5_seal.c
+> > @@ -123,30 +123,6 @@ setup_token_v2(struct krb5_ctx *ctx, struct
+> > xdr_netobj *token)
+> >  	return krb5_hdr;
+> >  }
+> >  
+> > -u32
+> > -gss_seq_send_fetch_and_inc(struct krb5_ctx *ctx)
+> > -{
+> > -	u32 old, seq_send = READ_ONCE(ctx->seq_send);
+> > -
+> > -	do {
+> > -		old = seq_send;
+> > -		seq_send = cmpxchg(&ctx->seq_send, old, old + 1);
+> > -	} while (old != seq_send);
+> > -	return seq_send;
+> > -}
+> > -
+> > -u64
+> > -gss_seq_send64_fetch_and_inc(struct krb5_ctx *ctx)
+> > -{
+> > -	u64 old, seq_send = READ_ONCE(ctx->seq_send);
+> > -
+> > -	do {
+> > -		old = seq_send;
+> > -		seq_send = cmpxchg64(&ctx->seq_send64, old, old + 1);
+> > -	} while (old != seq_send);
+> > -	return seq_send;
+> > -}
+> > -
+> >  static u32
+> >  gss_get_mic_v1(struct krb5_ctx *ctx, struct xdr_buf *text,
+> >  		struct xdr_netobj *token)
+> > @@ -177,7 +153,7 @@ gss_get_mic_v1(struct krb5_ctx *ctx, struct
+> > xdr_buf *text,
+> >  
+> >  	memcpy(ptr + GSS_KRB5_TOK_HDR_LEN, md5cksum.data,
+> > md5cksum.len);
+> >  
+> > -	seq_send = gss_seq_send_fetch_and_inc(ctx);
+> > +	seq_send = atomic_fetch_inc(&ctx->seq_send);
+> >  
+> >  	if (krb5_make_seq_num(ctx, ctx->seq, ctx->initiate ? 0 : 0xff,
+> >  			      seq_send, ptr + GSS_KRB5_TOK_HDR_LEN, ptr
+> > + 8))
+> > @@ -205,7 +181,7 @@ gss_get_mic_v2(struct krb5_ctx *ctx, struct
+> > xdr_buf *text,
+> >  
+> >  	/* Set up the sequence number. Now 64-bits in clear
+> >  	 * text and w/o direction indicator */
+> > -	seq_send_be64 = cpu_to_be64(gss_seq_send64_fetch_and_inc(ctx));
+> > +	seq_send_be64 = cpu_to_be64(atomic64_fetch_inc(&ctx-
+> > >seq_send64));
+> >  	memcpy(krb5_hdr + 8, (char *) &seq_send_be64, 8);
+> >  
+> >  	if (ctx->initiate) {
+> > diff --git a/net/sunrpc/auth_gss/gss_krb5_wrap.c
+> > b/net/sunrpc/auth_gss/gss_krb5_wrap.c
+> > index 962fa84e6db1..5cdde6cb703a 100644
+> > --- a/net/sunrpc/auth_gss/gss_krb5_wrap.c
+> > +++ b/net/sunrpc/auth_gss/gss_krb5_wrap.c
+> > @@ -228,7 +228,7 @@ gss_wrap_kerberos_v1(struct krb5_ctx *kctx, int
+> > offset,
+> >  
+> >  	memcpy(ptr + GSS_KRB5_TOK_HDR_LEN, md5cksum.data,
+> > md5cksum.len);
+> >  
+> > -	seq_send = gss_seq_send_fetch_and_inc(kctx);
+> > +	seq_send = atomic_fetch_inc(&kctx->seq_send);
+> >  
+> >  	/* XXX would probably be more efficient to compute checksum
+> >  	 * and encrypt at the same time: */
+> > @@ -475,7 +475,7 @@ gss_wrap_kerberos_v2(struct krb5_ctx *kctx, u32
+> > offset,
+> >  	*be16ptr++ = 0;
+> >  
+> >  	be64ptr = (__be64 *)be16ptr;
+> > -	*be64ptr = cpu_to_be64(gss_seq_send64_fetch_and_inc(kctx));
+> > +	*be64ptr = cpu_to_be64(atomic64_fetch_inc(&kctx->seq_send64));
+> >  
+> >  	err = (*kctx->gk5e->encrypt_v2)(kctx, offset, buf, pages);
+> >  	if (err)
+> -- 
+> Trond Myklebust
+> CTO, Hammerspace Inc
+> 4300 El Camino Real, Suite 105
+> Los Altos, CA 94022
+> www.hammer.space
+> 
+> 
