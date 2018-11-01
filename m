@@ -2,154 +2,127 @@ Return-Path: <SRS0=Ohau=NM=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+X-Spam-Status: No, score=-0.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no
-	version=3.4.0
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 157FCC0044C
-	for <linux-nfs@archiver.kernel.org>; Thu,  1 Nov 2018 16:45:47 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 78B9BC0044C
+	for <linux-nfs@archiver.kernel.org>; Thu,  1 Nov 2018 16:59:42 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id CD02A205F4
-	for <linux-nfs@archiver.kernel.org>; Thu,  1 Nov 2018 16:45:46 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 2729C2081B
+	for <linux-nfs@archiver.kernel.org>; Thu,  1 Nov 2018 16:59:42 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="WBbuc9jA"
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org CD02A205F4
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="CsL5aqC3"
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 2729C2081B
 Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=gmail.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726830AbeKBBt3 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 1 Nov 2018 21:49:29 -0400
-Received: from mail-ot1-f65.google.com ([209.85.210.65]:46479 "EHLO
-        mail-ot1-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726375AbeKBBtX (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Nov 2018 21:49:23 -0400
-Received: by mail-ot1-f65.google.com with SMTP id q5so12885153otl.13;
-        Thu, 01 Nov 2018 09:45:38 -0700 (PDT)
+        id S1726225AbeKBCD2 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 1 Nov 2018 22:03:28 -0400
+Received: from mail-pg1-f196.google.com ([209.85.215.196]:41439 "EHLO
+        mail-pg1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726042AbeKBCD2 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Nov 2018 22:03:28 -0400
+Received: by mail-pg1-f196.google.com with SMTP id k13so978408pga.8;
+        Thu, 01 Nov 2018 09:59:40 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
-        h=from:to:cc:subject:date:message-id:in-reply-to:references;
-        bh=0Ld/1Zld8R8avZQSZVI4eRsvqLOCfV8kYBvr9LN+UEk=;
-        b=WBbuc9jAU3zoI9kkwxv83TsMqaucABDyHmqySUvUN0dpMGJw/FN5EycieSMHxL3rkR
-         Ml032JCGhLsjK3KhYNTaZxH5ZbIWf/zhPB0i7Wz9V6Epfj8l54ueYgg8gkDbkE92rcoj
-         CdWffRqkygejcKUYXN+y/JYLDflkmLF2JDuGeMLbE3h7uuBX3Sn2FICGWWwGv84mQvQV
-         UZItT5iT81X7JicZJVYWgsX1T4p9P74GCiZAJ4/UKtr9WG9lVpDfjg81h6dz8mcCBZF+
-         Bm8csGEKhxgToddnYnm+8vy3wtOY4fvAnTVzzAXQahwq4W6p+6bxT7Jx/h7bqyh9LmsL
-         xAUA==
+        h=subject:to:cc:references:from:message-id:date:user-agent
+         :mime-version:in-reply-to:content-language:content-transfer-encoding;
+        bh=uiasgtM/p2VjObQyowWTRMYBJV4UN1vpzjydvWmpilw=;
+        b=CsL5aqC3fgiWUT/vnO3c3Iz6dowQUJGH0LtWvq37CQkceZVg7q9lfb2nJokjeut3eg
+         uutEzFXPiRF2SuEDNe2tOGJKEA0GpbIi8xfgI3bb5neR91zQr0opxUxOoe0FdWE849nL
+         ThYqgTV7KEg6hDd0vXnCAUXj/zZbx3bwxlwqUd8G9+1mw8Hrepwn695WW+cHC11z6UTk
+         B/sCZmZHaElfOybrgyjSqI/jzdQLygz8ed7V5A1XiKETD/2kKExaQPTlAuirLMj7Ucv8
+         +8bGff0edSwtGLkq56+AGyWh5lVKRWshTvFVXf5FSn1hQOog04TCVgw+d04fvk5y51bK
+         PsdQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
-         :references;
-        bh=0Ld/1Zld8R8avZQSZVI4eRsvqLOCfV8kYBvr9LN+UEk=;
-        b=uLl0IzCtZvk01EjdROqefIO3SW9iOgODd6Y0XuqYKAWvkbKd0N9X7cq+rT+i5Wqhcn
-         Nv9QWjH/DqZwFm4mJXmTk8rs7aDtpqQqU3ihnEjtZGCmvnpdzbP1XFuWGUKKBsM14OR7
-         CxOW8XKLZNOh2NDUW/os7uaBiZfTvC9XMu2SkVX3OhBgejS1Lrxsl8HZmFCqAqRZULHE
-         5BrqqNS4i6XGllNnDQPkoLx5kXKcfomgeFRsqF0fsZg72Y9dxEC+FoT47WyJYTgSEbgX
-         QGf4iLjpwhzE3L7vtdQiuAQxk87B/xfHo7b15NP/f3eaN3lgzqGtrJfI8DOUFi4iTb3j
-         IgBQ==
-X-Gm-Message-State: AGRZ1gKqRMxPtuUYpw/GY7SIniiGy3pJOgM72kXvCoYJo1k8T33mIzIJ
-        w5brSHRsz6+0Pfl4z8JEdYyDZVc7
-X-Google-Smtp-Source: AJdET5eczrCIL6ile6u1lPdq/OP7hdZbDjlORERi4VS35oN6Qo37XIDMZuP99yDtWIPNmKoGY5CI6g==
-X-Received: by 2002:a9d:30c2:: with SMTP id r2mr5173899otg.53.1541090738435;
-        Thu, 01 Nov 2018 09:45:38 -0700 (PDT)
-Received: from Olgas-MBP-195.attlocal.net (172-10-226-31.lightspeed.livnmi.sbcglobal.net. [172.10.226.31])
-        by smtp.gmail.com with ESMTPSA id r62-v6sm1834301oig.14.2018.11.01.09.45.36
-        (version=TLS1 cipher=AES128-SHA bits=128/128);
-        Thu, 01 Nov 2018 09:45:37 -0700 (PDT)
-From:   Olga Kornievskaia <olga.kornievskaia@gmail.com>
-To:     trond.myklebust@hammerspace.com, anna.schumaker@netapp.com,
-        viro@zeniv.linux.org.uk, smfrench@gmail.com, miklos@szeredi.hu
-Cc:     linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-cifs@vger.kernel.org, linux-unionfs@vger.kernel.org
-Subject: [PATCH v8 08/11] NFS: skip recovery of copy open on dest server
-Date:   Thu,  1 Nov 2018 12:45:20 -0400
-Message-Id: <20181101164523.41812-9-olga.kornievskaia@gmail.com>
-X-Mailer: git-send-email 2.10.1 (Apple Git-78)
-In-Reply-To: <20181101164523.41812-1-olga.kornievskaia@gmail.com>
-References: <20181101164523.41812-1-olga.kornievskaia@gmail.com>
+        h=x-gm-message-state:subject:to:cc:references:from:message-id:date
+         :user-agent:mime-version:in-reply-to:content-language
+         :content-transfer-encoding;
+        bh=uiasgtM/p2VjObQyowWTRMYBJV4UN1vpzjydvWmpilw=;
+        b=cjmnfm3f8re4hmvA0J2BlGBDAV82aK+fGS79Dx0d0Y24pQab48pwyQwdcnJRnAnxnd
+         4oSJcpbsNCOPKy4ct20oO0uByYuoi1OsOvv7rFce2GAsaYop2c7Hrw8TuwMnCEPHgfvE
+         DIzH4PxQSZ1ppFz+oZ952gWNzV18YbWLcks3ODuBV0bojM9lhS5CcZL618tWSPtN1Jmr
+         LQ/6xvLcHkqdvpCMD1Fx/N3ji2gpe2lxFVDayryca4eyYJwHvy04W+TYsqIPlwug/tjG
+         niH+1a7G+4lDNslqE+iXwXfKwF9zGDFfWiIi/tOdjSypjUOwvBDp9q+iYdoyuMUNDTWY
+         RRKg==
+X-Gm-Message-State: AGRZ1gK04vvZFzhLu2WzHUaOUteE+0kWsFGa40qsl4CDfXdH2WnIQ4gK
+        rW7VyRXsrOxsbX0EhYrBUp4=
+X-Google-Smtp-Source: AJdET5dZ17VY146v8M8MAXofuxvt+4Be+sC26ENz/XUmO6FhZfoX1HeV6Bo7f7nv+PI/WAq9YyKzJQ==
+X-Received: by 2002:a62:9f90:: with SMTP id v16-v6mr8498448pfk.207.1541091580382;
+        Thu, 01 Nov 2018 09:59:40 -0700 (PDT)
+Received: from ?IPv6:2620:15c:2c1:200:55c7:81e6:c7d8:94b? ([2620:15c:2c1:200:55c7:81e6:c7d8:94b])
+        by smtp.gmail.com with ESMTPSA id u62-v6sm53459766pfu.69.2018.11.01.09.59.38
+        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Thu, 01 Nov 2018 09:59:39 -0700 (PDT)
+Subject: Re: [RFC PATCH] lib: Introduce generic __cmpxchg_u64() and use it
+ where needed
+To:     Peter Zijlstra <peterz@infradead.org>,
+        Trond Myklebust <trondmy@hammerspace.com>
+Cc:     "mark.rutland@arm.com" <mark.rutland@arm.com>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "ralf@linux-mips.org" <ralf@linux-mips.org>,
+        "jlayton@kernel.org" <jlayton@kernel.org>,
+        "linuxppc-dev@lists.ozlabs.org" <linuxppc-dev@lists.ozlabs.org>,
+        "bfields@fieldses.org" <bfields@fieldses.org>,
+        "linux-mips@linux-mips.org" <linux-mips@linux-mips.org>,
+        "linux@roeck-us.net" <linux@roeck-us.net>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "akpm@linux-foundation.org" <akpm@linux-foundation.org>,
+        "will.deacon@arm.com" <will.deacon@arm.com>,
+        "boqun.feng@gmail.com" <boqun.feng@gmail.com>,
+        "paul.burton@mips.com" <paul.burton@mips.com>,
+        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+        "jhogan@kernel.org" <jhogan@kernel.org>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+        "davem@davemloft.net" <davem@davemloft.net>,
+        "arnd@arndb.de" <arnd@arndb.de>,
+        "paulus@samba.org" <paulus@samba.org>,
+        "mpe@ellerman.id.au" <mpe@ellerman.id.au>,
+        "benh@kernel.crashing.org" <benh@kernel.crashing.org>,
+        Paul McKenney <paulmck@linux.vnet.ibm.com>,
+        aryabinin@virtuozzo.com, dvyukov@google.com
+References: <1541015538-11382-1-git-send-email-linux@roeck-us.net>
+ <20181031213240.zhh7dfcm47ucuyfl@pburton-laptop>
+ <20181031220253.GA15505@roeck-us.net>
+ <20181031233235.qbedw3pinxcuk7me@pburton-laptop>
+ <4e2438a23d2edf03368950a72ec058d1d299c32e.camel@hammerspace.com>
+ <20181101131846.biyilr2msonljmij@lakrids.cambridge.arm.com>
+ <20181101145926.GE3178@hirez.programming.kicks-ass.net>
+ <f38e272f7a96e983549e4281aa9fd02833a4277a.camel@hammerspace.com>
+ <20181101163212.GF3159@hirez.programming.kicks-ass.net>
+From:   Eric Dumazet <eric.dumazet@gmail.com>
+Message-ID: <b0160f4b-b996-b0ee-405a-3d5f1866272e@gmail.com>
+Date:   Thu, 1 Nov 2018 09:59:38 -0700
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:52.0) Gecko/20100101
+ Thunderbird/52.9.1
+MIME-Version: 1.0
+In-Reply-To: <20181101163212.GF3159@hirez.programming.kicks-ass.net>
+Content-Type: text/plain; charset=utf-8
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Olga Kornievskaia <kolga@netapp.com>
 
-Mark the open created for the source file on the destination
-server. Then if this open is going thru a recovery, then fail
-the recovery as we don't need to be recoving a "fake" open.
-We need to fail the ongoing READs and vfs_copy_file_range().
 
-Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
----
- fs/nfs/nfs4_fs.h   |  1 +
- fs/nfs/nfs4file.c  |  1 +
- fs/nfs/nfs4state.c | 14 ++++++++++++++
- 3 files changed, 16 insertions(+)
+On 11/01/2018 09:32 AM, Peter Zijlstra wrote:
 
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index 9c566a4..482754d 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -165,6 +165,7 @@ enum {
- 	NFS_STATE_CHANGE_WAIT,		/* A state changing operation is outstanding */
- #ifdef CONFIG_NFS_V4_2
- 	NFS_CLNT_DST_SSC_COPY_STATE,    /* dst server open state on client*/
-+	NFS_SRV_SSC_COPY_STATE,		/* ssc state on the dst server */
- #endif /* CONFIG_NFS_V4_2 */
- };
- 
-diff --git a/fs/nfs/nfs4file.c b/fs/nfs/nfs4file.c
-index df468a2..12c34b3 100644
---- a/fs/nfs/nfs4file.c
-+++ b/fs/nfs/nfs4file.c
-@@ -336,6 +336,7 @@ struct file *
- 	if (ctx->state == NULL)
- 		goto out_stateowner;
- 
-+	set_bit(NFS_SRV_SSC_COPY_STATE, &ctx->state->flags);
- 	set_bit(NFS_OPEN_STATE, &ctx->state->flags);
- 	memcpy(&ctx->state->open_stateid.other, &stateid->other,
- 	       NFS4_STATEID_OTHER_SIZE);
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 62ae0fd..b0b82c6 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -1606,6 +1606,9 @@ static int nfs4_reclaim_open_state(struct nfs4_state_owner *sp, const struct nfs
- {
- 	struct nfs4_state *state;
- 	int status = 0;
-+#ifdef CONFIG_NFS_V4_2
-+	bool found_ssc_copy_state = false;
-+#endif /* CONFIG_NFS_V4_2 */
- 
- 	/* Note: we rely on the sp->so_states list being ordered 
- 	 * so that we always reclaim open(O_RDWR) and/or open(O_WRITE)
-@@ -1625,6 +1628,13 @@ static int nfs4_reclaim_open_state(struct nfs4_state_owner *sp, const struct nfs
- 			continue;
- 		if (state->state == 0)
- 			continue;
-+#ifdef CONFIG_NFS_V4_2
-+		if (test_bit(NFS_SRV_SSC_COPY_STATE, &state->flags)) {
-+			nfs4_state_mark_recovery_failed(state, -EIO);
-+			found_ssc_copy_state = true;
-+			continue;
-+		}
-+#endif /* CONFIG_NFS_V4_2 */
- 		refcount_inc(&state->count);
- 		spin_unlock(&sp->so_lock);
- 		status = __nfs4_reclaim_open_state(sp, state, ops);
-@@ -1671,6 +1681,10 @@ static int nfs4_reclaim_open_state(struct nfs4_state_owner *sp, const struct nfs
- 	}
- 	raw_write_seqcount_end(&sp->so_reclaim_seqcount);
- 	spin_unlock(&sp->so_lock);
-+#ifdef CONFIG_NFS_V4_2
-+	if (found_ssc_copy_state)
-+		return -EIO;
-+#endif /* CONFIG_NFS_V4_2 */
- 	return 0;
- out_err:
- 	nfs4_put_open_state(state);
--- 
-1.8.3.1
+>> Anyhow, if the atomic maintainers are willing to stand up and state for
+>> the record that the atomic counters are guaranteed to wrap modulo 2^n
+>> just like unsigned integers, then I'm happy to take Paul's patch.
+> 
+> I myself am certainly relying on it.
+
+
+Could we get uatomic_t support maybe ?
+
+This reminds me of this sooooo silly patch :/
+
+https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=adb03115f4590baa280ddc440a8eff08a6be0cb7
 
