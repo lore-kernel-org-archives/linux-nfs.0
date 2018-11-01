@@ -2,132 +2,158 @@ Return-Path: <SRS0=Ohau=NM=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED,
-	USER_AGENT_MUTT autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-5.3 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_PASS,USER_AGENT_MUTT
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id DA66EC0044C
-	for <linux-nfs@archiver.kernel.org>; Thu,  1 Nov 2018 20:19:56 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id EB6DCC6786F
+	for <linux-nfs@archiver.kernel.org>; Thu,  1 Nov 2018 20:29:29 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 971F52064C
-	for <linux-nfs@archiver.kernel.org>; Thu,  1 Nov 2018 20:19:56 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 971F52064C
-Authentication-Results: mail.kernel.org; dmarc=none (p=none dis=none) header.from=fieldses.org
+	by mail.kernel.org (Postfix) with ESMTP id BC115205F4
+	for <linux-nfs@archiver.kernel.org>; Thu,  1 Nov 2018 20:29:29 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org BC115205F4
+Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=linux.ibm.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726888AbeKBFYY (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 2 Nov 2018 01:24:24 -0400
-Received: from fieldses.org ([173.255.197.46]:56516 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726594AbeKBFYY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 2 Nov 2018 01:24:24 -0400
-Received: by fieldses.org (Postfix, from userid 2815)
-        id 33E70242F; Thu,  1 Nov 2018 16:19:55 -0400 (EDT)
-Date:   Thu, 1 Nov 2018 16:19:55 -0400
-To:     Olga Kornievskaia <olga.kornievskaia@gmail.com>
-Cc:     bfields@redhat.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v1 05/13] NFS skip recovery of copy open on dest server
-Message-ID: <20181101201955.GB12930@fieldses.org>
-References: <20181019152905.32418-1-olga.kornievskaia@gmail.com>
- <20181019152905.32418-6-olga.kornievskaia@gmail.com>
+        id S1727722AbeKBFd6 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 2 Nov 2018 01:33:58 -0400
+Received: from mx0a-001b2d01.pphosted.com ([148.163.156.1]:34976 "EHLO
+        mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1727734AbeKBFdw (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Nov 2018 01:33:52 -0400
+Received: from pps.filterd (m0098399.ppops.net [127.0.0.1])
+        by mx0a-001b2d01.pphosted.com (8.16.0.22/8.16.0.22) with SMTP id wA1KT6Y5107342
+        for <linux-nfs@vger.kernel.org>; Thu, 1 Nov 2018 16:29:21 -0400
+Received: from e17.ny.us.ibm.com (e17.ny.us.ibm.com [129.33.205.207])
+        by mx0a-001b2d01.pphosted.com with ESMTP id 2ng7d5tymf-1
+        (version=TLSv1.2 cipher=AES256-GCM-SHA384 bits=256 verify=NOT)
+        for <linux-nfs@vger.kernel.org>; Thu, 01 Nov 2018 16:29:20 -0400
+Received: from localhost
+        by e17.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+        for <linux-nfs@vger.kernel.org> from <paulmck@linux.vnet.ibm.com>;
+        Thu, 1 Nov 2018 20:29:19 -0000
+Received: from b01cxnp22033.gho.pok.ibm.com (9.57.198.23)
+        by e17.ny.us.ibm.com (146.89.104.204) with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted;
+        (version=TLSv1/SSLv3 cipher=AES256-GCM-SHA384 bits=256/256)
+        Thu, 1 Nov 2018 20:29:11 -0000
+Received: from b01ledav003.gho.pok.ibm.com (b01ledav003.gho.pok.ibm.com [9.57.199.108])
+        by b01cxnp22033.gho.pok.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id wA1KTAJJ46071974
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL);
+        Thu, 1 Nov 2018 20:29:10 GMT
+Received: from b01ledav003.gho.pok.ibm.com (unknown [127.0.0.1])
+        by IMSVA (Postfix) with ESMTP id AE47AB2067;
+        Thu,  1 Nov 2018 20:29:10 +0000 (GMT)
+Received: from b01ledav003.gho.pok.ibm.com (unknown [127.0.0.1])
+        by IMSVA (Postfix) with ESMTP id 8B88EB205F;
+        Thu,  1 Nov 2018 20:29:10 +0000 (GMT)
+Received: from paulmck-ThinkPad-W541 (unknown [9.70.82.141])
+        by b01ledav003.gho.pok.ibm.com (Postfix) with ESMTP;
+        Thu,  1 Nov 2018 20:29:10 +0000 (GMT)
+Received: by paulmck-ThinkPad-W541 (Postfix, from userid 1000)
+        id 02B6B16C3799; Thu,  1 Nov 2018 13:29:10 -0700 (PDT)
+Date:   Thu, 1 Nov 2018 13:29:10 -0700
+From:   "Paul E. McKenney" <paulmck@linux.ibm.com>
+To:     Peter Zijlstra <peterz@infradead.org>
+Cc:     Eric Dumazet <eric.dumazet@gmail.com>,
+        Trond Myklebust <trondmy@hammerspace.com>,
+        "mark.rutland@arm.com" <mark.rutland@arm.com>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "ralf@linux-mips.org" <ralf@linux-mips.org>,
+        "jlayton@kernel.org" <jlayton@kernel.org>,
+        "linuxppc-dev@lists.ozlabs.org" <linuxppc-dev@lists.ozlabs.org>,
+        "bfields@fieldses.org" <bfields@fieldses.org>,
+        "linux-mips@linux-mips.org" <linux-mips@linux-mips.org>,
+        "linux@roeck-us.net" <linux@roeck-us.net>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "akpm@linux-foundation.org" <akpm@linux-foundation.org>,
+        "will.deacon@arm.com" <will.deacon@arm.com>,
+        "boqun.feng@gmail.com" <boqun.feng@gmail.com>,
+        "paul.burton@mips.com" <paul.burton@mips.com>,
+        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+        "jhogan@kernel.org" <jhogan@kernel.org>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+        "davem@davemloft.net" <davem@davemloft.net>,
+        "arnd@arndb.de" <arnd@arndb.de>,
+        "paulus@samba.org" <paulus@samba.org>,
+        "mpe@ellerman.id.au" <mpe@ellerman.id.au>,
+        "benh@kernel.crashing.org" <benh@kernel.crashing.org>,
+        aryabinin@virtuozzo.com, dvyukov@google.com
+Subject: Re: [RFC PATCH] lib: Introduce generic __cmpxchg_u64() and use it
+ where needed
+Reply-To: paulmck@linux.ibm.com
+References: <20181031220253.GA15505@roeck-us.net>
+ <20181031233235.qbedw3pinxcuk7me@pburton-laptop>
+ <4e2438a23d2edf03368950a72ec058d1d299c32e.camel@hammerspace.com>
+ <20181101131846.biyilr2msonljmij@lakrids.cambridge.arm.com>
+ <20181101145926.GE3178@hirez.programming.kicks-ass.net>
+ <f38e272f7a96e983549e4281aa9fd02833a4277a.camel@hammerspace.com>
+ <20181101163212.GF3159@hirez.programming.kicks-ass.net>
+ <b0160f4b-b996-b0ee-405a-3d5f1866272e@gmail.com>
+ <20181101171432.GH3178@hirez.programming.kicks-ass.net>
+ <20181101172739.GA3196@hirez.programming.kicks-ass.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20181019152905.32418-6-olga.kornievskaia@gmail.com>
+In-Reply-To: <20181101172739.GA3196@hirez.programming.kicks-ass.net>
 User-Agent: Mutt/1.5.21 (2010-09-15)
-From:   bfields@fieldses.org (J. Bruce Fields)
+X-TM-AS-GCONF: 00
+x-cbid: 18110120-0040-0000-0000-0000048AF53A
+X-IBM-SpamModules-Scores: 
+X-IBM-SpamModules-Versions: BY=3.00009967; HX=3.00000242; KW=3.00000007;
+ PH=3.00000004; SC=3.00000268; SDB=6.01111247; UDB=6.00575865; IPR=6.00891339;
+ MB=3.00023995; MTD=3.00000008; XFM=3.00000015; UTC=2018-11-01 20:29:17
+X-IBM-AV-DETECTION: SAVI=unused REMOTE=unused XFE=unused
+x-cbparentid: 18110120-0041-0000-0000-00000893F604
+Message-Id: <20181101202910.GB4170@linux.ibm.com>
+X-Proofpoint-Virus-Version: vendor=fsecure engine=2.50.10434:,, definitions=2018-11-01_14:,,
+ signatures=0
+X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 priorityscore=1501
+ malwarescore=0 suspectscore=0 phishscore=0 bulkscore=0 spamscore=0
+ clxscore=1015 lowpriorityscore=0 mlxscore=0 impostorscore=0
+ mlxlogscore=795 adultscore=0 classifier=spam adjust=0 reason=mlx
+ scancount=1 engine=8.0.1-1807170000 definitions=main-1811010171
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Fri, Oct 19, 2018 at 11:28:57AM -0400, Olga Kornievskaia wrote:
-> From: Olga Kornievskaia <kolga@netapp.com>
+On Thu, Nov 01, 2018 at 06:27:39PM +0100, Peter Zijlstra wrote:
+> On Thu, Nov 01, 2018 at 06:14:32PM +0100, Peter Zijlstra wrote:
+> > > This reminds me of this sooooo silly patch :/
+> > > 
+> > > https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=adb03115f4590baa280ddc440a8eff08a6be0cb7
 > 
-> Mark the open created for the source file on the destination
-> server. Then if this open is going thru a recovery, then fail
-> the recovery as we don't need to be recoving a "fake" open.
-> We need to fail the ongoing READs and vfs_copy_file_range().
+> You'd probably want to write it like so; +- some ordering stuff, that
+> code didn't look like it really needs the memory barriers implied by
+> these, but I didn't look too hard.
 
-Nothing to do with this patch, really, but:
+The atomic_fetch_add() API would need to be propagated out to the other
+architectures, correct?
 
-I'm not always a stickler about the 80-character-column rule, but, man,
-nfs4_reclaim_open_state is deeply nested, could that be broken up a
-little?  Also I notice there's a printk("AGLO: ...") in there that you
-probably didn't mean to leave upstream?
+							Thanx, Paul
 
---b.
-
+> diff --git a/net/ipv4/route.c b/net/ipv4/route.c
+> index c0a9d26c06ce..11deb1d7e96b 100644
+> --- a/net/ipv4/route.c
+> +++ b/net/ipv4/route.c
+> @@ -485,16 +485,10 @@ u32 ip_idents_reserve(u32 hash, int segs)
+>  	u32 now = (u32)jiffies;
+>  	u32 new, delta = 0;
 > 
-> Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
-> ---
->  fs/nfs/nfs4_fs.h   |  1 +
->  fs/nfs/nfs4file.c  |  1 +
->  fs/nfs/nfs4state.c | 14 ++++++++++++++
->  3 files changed, 16 insertions(+)
+> -	if (old != now && cmpxchg(p_tstamp, old, now) == old)
+> +	if (old != now && try_cmpxchg(p_tstamp, &old, now))
+>  		delta = prandom_u32_max(now - old);
 > 
-> diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-> index f229864..8b00c90 100644
-> --- a/fs/nfs/nfs4_fs.h
-> +++ b/fs/nfs/nfs4_fs.h
-> @@ -165,6 +165,7 @@ enum {
->  	NFS_STATE_CHANGE_WAIT,		/* A state changing operation is outstanding */
->  #ifdef CONFIG_NFS_V4_2
->  	NFS_CLNT_DST_SSC_COPY_STATE,    /* dst server open state on client*/
-> +	NFS_SRV_SSC_COPY_STATE,		/* ssc state on the dst server */
->  #endif /* CONFIG_NFS_V4_2 */
->  };
->  
-> diff --git a/fs/nfs/nfs4file.c b/fs/nfs/nfs4file.c
-> index f82cb05..7909cd4 100644
-> --- a/fs/nfs/nfs4file.c
-> +++ b/fs/nfs/nfs4file.c
-> @@ -309,6 +309,7 @@ struct file *
->  	if (ctx->state == NULL)
->  		goto out_stateowner;
->  
-> +	set_bit(NFS_SRV_SSC_COPY_STATE, &ctx->state->flags);
->  	set_bit(NFS_OPEN_STATE, &ctx->state->flags);
->  	memcpy(&ctx->state->open_stateid.other, &stateid->other,
->  	       NFS4_STATEID_OTHER_SIZE);
-> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-> index 62ae0fd..b0b82c6 100644
-> --- a/fs/nfs/nfs4state.c
-> +++ b/fs/nfs/nfs4state.c
-> @@ -1606,6 +1606,9 @@ static int nfs4_reclaim_open_state(struct nfs4_state_owner *sp, const struct nfs
->  {
->  	struct nfs4_state *state;
->  	int status = 0;
-> +#ifdef CONFIG_NFS_V4_2
-> +	bool found_ssc_copy_state = false;
-> +#endif /* CONFIG_NFS_V4_2 */
->  
->  	/* Note: we rely on the sp->so_states list being ordered 
->  	 * so that we always reclaim open(O_RDWR) and/or open(O_WRITE)
-> @@ -1625,6 +1628,13 @@ static int nfs4_reclaim_open_state(struct nfs4_state_owner *sp, const struct nfs
->  			continue;
->  		if (state->state == 0)
->  			continue;
-> +#ifdef CONFIG_NFS_V4_2
-> +		if (test_bit(NFS_SRV_SSC_COPY_STATE, &state->flags)) {
-> +			nfs4_state_mark_recovery_failed(state, -EIO);
-> +			found_ssc_copy_state = true;
-> +			continue;
-> +		}
-> +#endif /* CONFIG_NFS_V4_2 */
->  		refcount_inc(&state->count);
->  		spin_unlock(&sp->so_lock);
->  		status = __nfs4_reclaim_open_state(sp, state, ops);
-> @@ -1671,6 +1681,10 @@ static int nfs4_reclaim_open_state(struct nfs4_state_owner *sp, const struct nfs
->  	}
->  	raw_write_seqcount_end(&sp->so_reclaim_seqcount);
->  	spin_unlock(&sp->so_lock);
-> +#ifdef CONFIG_NFS_V4_2
-> +	if (found_ssc_copy_state)
-> +		return -EIO;
-> +#endif /* CONFIG_NFS_V4_2 */
->  	return 0;
->  out_err:
->  	nfs4_put_open_state(state);
-> -- 
-> 1.8.3.1
+> -	/* Do not use atomic_add_return() as it makes UBSAN unhappy */
+> -	do {
+> -		old = (u32)atomic_read(p_id);
+> -		new = old + delta + segs;
+> -	} while (atomic_cmpxchg(p_id, old, new) != old);
+> -
+> -	return new - segs;
+> +	return atomic_fetch_add(segs + delta, p_id) + delta;
+>  }
+>  EXPORT_SYMBOL(ip_idents_reserve);
+> 
+> 
+
