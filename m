@@ -2,151 +2,138 @@ Return-Path: <SRS0=leyo=NN=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_PASS,
-	URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-2.4 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS,
+	T_DKIMWL_WL_HIGH,UNPARSEABLE_RELAY,URIBL_BLOCKED,USER_AGENT_MUTT
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5E433C32789
-	for <linux-nfs@archiver.kernel.org>; Fri,  2 Nov 2018 17:05:09 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A6309C65C22
+	for <linux-nfs@archiver.kernel.org>; Fri,  2 Nov 2018 17:42:46 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 0CBEC2081B
-	for <linux-nfs@archiver.kernel.org>; Fri,  2 Nov 2018 17:05:09 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 6FF822082E
+	for <linux-nfs@archiver.kernel.org>; Fri,  2 Nov 2018 17:42:46 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="fIBo/3lQ"
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 0CBEC2081B
-Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=gmail.com
+	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="vnGS0hx5"
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 6FF822082E
+Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=oracle.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726828AbeKCCM4 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 2 Nov 2018 22:12:56 -0400
-Received: from mail-vk1-f196.google.com ([209.85.221.196]:33870 "EHLO
-        mail-vk1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726700AbeKCCM4 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Nov 2018 22:12:56 -0400
-Received: by mail-vk1-f196.google.com with SMTP id y14so585293vkd.1
-        for <linux-nfs@vger.kernel.org>; Fri, 02 Nov 2018 10:05:06 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
-         :cc;
-        bh=tniKusJZ8iX7sEBks2ZQF/bT3G3N+tZd4RjGWYYgYps=;
-        b=fIBo/3lQa4d+AhXP8JZLqMGis63nHPmzIbAMtvG/mi+LpA1tsBmlOpuqsHnEHJ7rCP
-         fNKCfICEhlGeLxhI3edWrAL76yJGTals4MGtQsQ+9tnm2It6uO6PcyJ/PzXXnwPX2iSo
-         j170T4yXTeG2dtpYbKeA23P8tC0MnYnBrrOL0Q/ZP+3DZ7+gWnlObhY6hIE5SSdtbxh0
-         R2+tisQ44RAlp5q4pDRhoAOztf2cpjm1mDfVyiVHbzCyLvHcVrUt5bitG2s5vD/HjvG9
-         Xdz/Sbsl8fDqsBhSz9z7HavnQBYC9ir/wWrKb7/DzAye63rbrFMnvuu/+qLUlMldBfhc
-         zU6w==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
-         :message-id:subject:to:cc;
-        bh=tniKusJZ8iX7sEBks2ZQF/bT3G3N+tZd4RjGWYYgYps=;
-        b=D37tsoUvx6y46FYL9u+8bfAlNT/7x9b8vKhXrhwQVDLCSKZcGoqEVInJo9XjZk2t/8
-         pqy5uESVOWakv3St8mcdJS0PwP/o8RXn5WNmRxoCTQ+PtBEZjkDsM2vxbGHZik3WADMJ
-         ceHIknVx91HG0IIay3QaiFfrWQ0vltC7v+DS8fYHnfpVUt/qLBXjojvH5w8YdaaDHUD+
-         S4eSthuUzmtENMoKkh9rPp5ovQydusOpDHCaNqhSNN1FBg58h/zXwNZK4po6gtsQoQ79
-         XIXo/BYeHLYkRoL+lXBbW0n5pBZy+NB7gjKMtAtMzZPIHrdxeKb9XXYp4DmD29eMHIcc
-         5x0Q==
-X-Gm-Message-State: AGRZ1gLyYg6F85vcF7aYpO/yxNk24UaVHgGWf3NrXuUTaBnNTl2oGRap
-        BvZeeUmMsS3Oy/o5k6KvWMV27FfpRYKj9KE7g34=
-X-Google-Smtp-Source: AJdET5c7zS1hFm7vkSjVeDJ0XfqbZVnz9Vm/i/AG0zWVUIxBqglEEOJFNO9GRCX24uS0ejWANlZF3uJsXI9m33Jxhbk=
-X-Received: by 2002:a1f:ac4:: with SMTP id 187mr5369446vkk.31.1541178306149;
- Fri, 02 Nov 2018 10:05:06 -0700 (PDT)
+        id S1726707AbeKCCuk (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 2 Nov 2018 22:50:40 -0400
+Received: from aserp2120.oracle.com ([141.146.126.78]:42644 "EHLO
+        aserp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726700AbeKCCuj (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Nov 2018 22:50:39 -0400
+Received: from pps.filterd (aserp2120.oracle.com [127.0.0.1])
+        by aserp2120.oracle.com (8.16.0.22/8.16.0.22) with SMTP id wA2Hddkn190831;
+        Fri, 2 Nov 2018 17:42:37 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=date : from : to : cc
+ : subject : message-id : references : mime-version : content-type :
+ content-transfer-encoding : in-reply-to; s=corp-2018-07-02;
+ bh=dx/++gzJdspSUvNHaN5Vmj/odzlQqUqOQMuM8bcPyyE=;
+ b=vnGS0hx5nG6MCMM/2w1QA7u+WHsRpux3ad7HGHsgCMf7wO4DuIq7lLbYq7dXHOq0zcFy
+ qzn6LNY5BjfsX3KhgNzXOKs0LCLWcmXHvEV3HbAIfZhLygEJRQ04kd/kN4i70cOEYCLI
+ /qRpBZgWghFE5yeGTBM21mmQUUhfzgGV+WsKUkYKSGgtfDi9M+h4t8q0tQNQTsBMzJSL
+ 9bGIH4naY/r/Op9G61XZvgsfgc5DA/ah27w6T8pfTFb/ylyEzElh8XA7lnOXmc9pbeWZ
+ AXcFCJNiv3W+BKR1lm8m/CiHgR+ZIDxyuNO6LtYxLTQrlANX1dBfbwAI1FcjWeT8Oon1 9Q== 
+Received: from aserv0022.oracle.com (aserv0022.oracle.com [141.146.126.234])
+        by aserp2120.oracle.com with ESMTP id 2ncfyqfw2f-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Fri, 02 Nov 2018 17:42:37 +0000
+Received: from aserv0121.oracle.com (aserv0121.oracle.com [141.146.126.235])
+        by aserv0022.oracle.com (8.14.4/8.14.4) with ESMTP id wA2HgV1U021236
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Fri, 2 Nov 2018 17:42:31 GMT
+Received: from abhmp0018.oracle.com (abhmp0018.oracle.com [141.146.116.24])
+        by aserv0121.oracle.com (8.14.4/8.13.8) with ESMTP id wA2HgVdb003626;
+        Fri, 2 Nov 2018 17:42:31 GMT
+Received: from localhost (/67.169.218.210)
+        by default (Oracle Beehive Gateway v4.0)
+        with ESMTP ; Fri, 02 Nov 2018 10:42:31 -0700
+Date:   Fri, 2 Nov 2018 10:42:29 -0700
+From:   "Darrick J. Wong" <darrick.wong@oracle.com>
+To:     Filipe Manana <fdmanana@gmail.com>
+Cc:     Dave Chinner <david@fromorbit.com>,
+        Eric Sandeen <sandeen@redhat.com>, linux-nfs@vger.kernel.org,
+        linux-cifs@vger.kernel.org, linux-unionfs@vger.kernel.org,
+        linux-xfs@vger.kernel.org, linux-mm@kvack.org,
+        linux-btrfs <linux-btrfs@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        ocfs2-devel@oss.oracle.com
+Subject: Re: [PATCH 05/25] vfs: avoid problematic remapping requests into
+ partial EOF block
+Message-ID: <20181102174229.GA4127@magnolia>
+References: <153923113649.5546.9840926895953408273.stgit@magnolia>
+ <153923117420.5546.13317703807467393934.stgit@magnolia>
+ <CAL3q7H7mLvCGpyitJhQ=To-aDvG9k9rxSVi2jSpcALQVj3myzg@mail.gmail.com>
+ <20181015003139.GZ6311@dastard>
+ <CAL3q7H5ofBmjh0DmbPH6Rmm523JV9byuBiYj=Jxpc44Kbh+Haw@mail.gmail.com>
 MIME-Version: 1.0
-References: <20181019152905.32418-1-olga.kornievskaia@gmail.com>
- <20181019152905.32418-8-olga.kornievskaia@gmail.com> <20181102154623.GA20367@fieldses.org>
- <CAN-5tyGkz=hHJzQRwBZQgAuGTWq9KLdDreoBoyvWVYQPRLTM0w@mail.gmail.com> <20181102164924.GB20367@fieldses.org>
-In-Reply-To: <20181102164924.GB20367@fieldses.org>
-From:   Olga Kornievskaia <olga.kornievskaia@gmail.com>
-Date:   Fri, 2 Nov 2018 13:04:54 -0400
-Message-ID: <CAN-5tyELP7O-F4CTsQMzia0pL4iQpACGyMBqpEn3K7wFBzE17A@mail.gmail.com>
-Subject: Re: [PATCH v1 07/13] NFSD add ca_source_server<> to COPY
-To:     "J. Bruce Fields" <bfields@fieldses.org>
-Cc:     "J. Bruce Fields" <bfields@redhat.com>,
-        linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: inline
+Content-Transfer-Encoding: 8bit
+In-Reply-To: <CAL3q7H5ofBmjh0DmbPH6Rmm523JV9byuBiYj=Jxpc44Kbh+Haw@mail.gmail.com>
+User-Agent: Mutt/1.9.4 (2018-02-28)
+X-Proofpoint-Virus-Version: vendor=nai engine=5900 definitions=9065 signatures=668683
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 suspectscore=0 malwarescore=0
+ phishscore=0 bulkscore=0 spamscore=0 mlxscore=0 mlxlogscore=999
+ adultscore=0 classifier=spam adjust=0 reason=mlx scancount=1
+ engine=8.0.1-1807170000 definitions=main-1811020156
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Fri, Nov 2, 2018 at 12:49 PM J. Bruce Fields <bfields@fieldses.org> wrote:
->
-> On Fri, Nov 02, 2018 at 12:35:26PM -0400, Olga Kornievskaia wrote:
-> > On Fri, Nov 2, 2018 at 11:46 AM J. Bruce Fields <bfields@fieldses.org> wrote:
-> > >
-> > > On Fri, Oct 19, 2018 at 11:28:59AM -0400, Olga Kornievskaia wrote:
-> > > > @@ -4273,6 +4337,9 @@ static __be32 nfsd4_encode_readv(struct nfsd4_compoundres *resp,
-> > > >       p = xdr_reserve_space(&resp->xdr, 4 + 4);
-> > > >       *p++ = xdr_one; /* cr_consecutive */
-> > > >       *p++ = cpu_to_be32(copy->cp_synchronous);
-> > > > +
-> > > > +     /* allocated in nfsd4_decode_copy */
-> > > > +     kfree(copy->cp_src);
-> > >
-> > > This can result in a leak--for example, if we decode the compound
-> > > succesfully, but processing fails before we could to this op, then we'll
-> > > never call this encoder, so we'll allocate without freeing.
-> > >
-> > > I think simplest would be to replace this:
-> > >
-> > > > diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-> > > > index feeb6d4..b4d1140 100644
-> > > > --- a/fs/nfsd/xdr4.h
-> > > > +++ b/fs/nfsd/xdr4.h
-> > > > @@ -521,6 +521,7 @@ struct nfsd4_copy {
-> > > >       u64             cp_src_pos;
-> > > >       u64             cp_dst_pos;
-> > > >       u64             cp_count;
-> > > > +     struct nl4_server *cp_src;
-> > >
-> > > by just a
-> > >
-> > >         struct nl4_server cp_src;
-> > >
-> > > since it sounds like you really only need one of them, not a whole array
-> > > (at least for now).
+On Fri, Nov 02, 2018 at 12:04:39PM +0000, Filipe Manana wrote:
+> On Mon, Oct 15, 2018 at 1:31 AM Dave Chinner <david@fromorbit.com> wrote:
 > >
-> > So this is problematic as the presence of this memory is what is used
-> > to distinguish "inter" from "intra".
->
-> It would be easy enough to add a new bit for that.
->
-> > Can things really fail between the xdr and calling of the operation?
->
-> Yes.  Consider a PUTFH+SAVEFH+COPY compound.  We decode the whole thing
-> before starting any processing.  Then we call nfsd4_putfh() and
-> fh_verify fails (maybe the filehandle is stale or something).  Then
-> neither nfsd4_copy() nor nfsd4_encode_copy() will be called.
->
-> If you absolutely have to do this, you can look at SAVEMEM.
-
-Using a new bit is good enough for me.
-
->
-> --b.
->
-> > What gets freed in the encoder is the "copy" of the what was decoded
-> > in the decoder. But really freeing in the encoder is the wrong place.
-> > Encoder doesn't need to free. I already free the "copy" of the
-> > copy->cp_src in the cleanup_async_copy(). However, what is missing is
-> > freeing the original copy->cp_src which needs to be freed in the
-> > dup_copy_fields().
-> >
-> > To clarify:
-> > copy->cp_src gets allocated in the decoder
-> > during the process of the copy:
-> > 1. it gets copied to the kthread and the original copy->cp_src needs
-> > to be freed. Or during any error it will be freed.
-> > 2. cleanup_async_copy frees the copy of the copy->cp_src.
-> > (need to remove the kfree from the encoder).
-> >
-> > >
-> > > --b.
-> > >
+> > On Fri, Oct 12, 2018 at 09:22:18PM +0100, Filipe Manana wrote:
+> > > On Thu, Oct 11, 2018 at 5:13 AM Darrick J. Wong <darrick.wong@oracle.com> wrote:
 > > > >
-> > > >       /* both */
-> > > >       bool            cp_synchronous;
-> > > > --
-> > > > 1.8.3.1
+> > > > From: Darrick J. Wong <darrick.wong@oracle.com>
+> > > >
+> > > > A deduplication data corruption is exposed by fstests generic/505 on
+> > > > XFS.
+> > >
+> > > (and btrfs)
+> > >
+> > > Btw, the generic test I wrote was indeed numbered 505, however it was
+> > > never committed and there's now a generic/505 which has nothing to do
+> > > with deduplication.
+> > > So you should update the changelog to avoid confusion.
+> >
+> > What test is it now? And if it hasn't been committed, are you going
+> > to update it and repost as it clearly had value....
+> 
+> Sorry, I lost track of this.
+> 
+> So what was the conclusion of the thread where discussion about this
+> problem started?
+> It wasn't clear to me if a consensus was reached and got lost on that
+> long user space dedupe tools discussion between you and Zygo.
+> 
+> The test assumed a fix of rounding down the range and deduping less
+> bytes then requested (which ended up included in 4.19 for btrfs).
+> 
+> From this vfs patch it seems it was decided to return errno -EDADE instead.
+> Is this the final decision?
+
+No, I reworked the whole mess to match btrfs-4.19 behavior of deduping
+fewer bytes than requested.
+
+--D
+
+> >
+> > Cheers,
+> >
+> > Dave.
+> > --
+> > Dave Chinner
+> > david@fromorbit.com
+> 
+> 
+> 
+> -- 
+> Filipe David Manana,
+> 
+> “Whether you think you can, or you think you can't — you're right.”
