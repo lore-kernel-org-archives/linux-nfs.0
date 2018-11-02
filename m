@@ -2,129 +2,126 @@ Return-Path: <SRS0=leyo=NN=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-0.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS,URIBL_BLOCKED
+X-Spam-Status: No, score=-2.1 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS,USER_AGENT_MUTT
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3BE9AC32789
-	for <linux-nfs@archiver.kernel.org>; Fri,  2 Nov 2018 12:04:55 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3E6DDC32789
+	for <linux-nfs@archiver.kernel.org>; Fri,  2 Nov 2018 12:24:51 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 03FFE2082E
-	for <linux-nfs@archiver.kernel.org>; Fri,  2 Nov 2018 12:04:55 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id CE91E2081F
+	for <linux-nfs@archiver.kernel.org>; Fri,  2 Nov 2018 12:24:50 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="QL7W1Og+"
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 03FFE2082E
-Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=gmail.com
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="Xhph0d9i"
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org CE91E2081F
+Authentication-Results: mail.kernel.org; dmarc=none (p=none dis=none) header.from=infradead.org
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726098AbeKBVLu (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 2 Nov 2018 17:11:50 -0400
-Received: from mail-vs1-f67.google.com ([209.85.217.67]:36227 "EHLO
-        mail-vs1-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725935AbeKBVLu (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Nov 2018 17:11:50 -0400
-Received: by mail-vs1-f67.google.com with SMTP id v205so929200vsc.3;
-        Fri, 02 Nov 2018 05:04:51 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=mime-version:references:in-reply-to:reply-to:from:date:message-id
-         :subject:to:cc:content-transfer-encoding;
-        bh=exsf4J2IdnPBu9EzWzOn+Ws8qCUEdq1mZpt8NhI1Z2Y=;
-        b=QL7W1Og+HjQPVXIkZzZk2I3cmepdAQ9WNaJrvwJzKBGOUzhSFW6Zw57F8DNmEDK97O
-         Cza2evNCKdPZ8F1FmYaoyWfPNtzyL4Rs79aZ6tu/CSqzePkXmCW3aujQ9jziv5Sr3MqX
-         KFWWQnEydnwSlWtz2LRbUAIS4wivLi/LvdHCEWos7si9H0vJugU09h0p5Jvs0tPXOxO4
-         xlN2S0D4mkq2kqpF+FSHXerCdcCv/py9ZFG0PuN8XijZg8ZGUhcU+a73rmq2cmo5QkJ4
-         MVSNDwahV5IQ2Qhyp6f3CkCxZwTmYscXXXiievyk6YotGTngSvqsYG7c0OxaNsyH/if4
-         mYNg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:mime-version:references:in-reply-to:reply-to
-         :from:date:message-id:subject:to:cc:content-transfer-encoding;
-        bh=exsf4J2IdnPBu9EzWzOn+Ws8qCUEdq1mZpt8NhI1Z2Y=;
-        b=Oke5P7GUQn//1VXX/hQS5AIE3KAr8TMwg7KZQ/+rAaiyQSn/Qq7qobO4grT9FeN+h+
-         exHDatMiARd4ule9YF28RGPsoEymjiiDhUpzV/eemiEh7KFYFfMl+5YDm6GZ0ON0OOAv
-         6MLQLykg2rwqRhin7aynpK1pJuPGT4T839uK/eslq0KsUaQlM8u9amyMxjdF+X3CTrC0
-         eecqexGAez39Y9/5axRJCNjZGNZuoBNBZZ5iKfSg8m53RTRsu66ZY5RBjsgH5EIZCuyd
-         o1CdH3J3l6zF0huVOLGLBD/GjheLVem1dsrA0uZ6DVWYuL6/p86/wE5HmAedO3SLhCPq
-         xRHQ==
-X-Gm-Message-State: AGRZ1gKbUwhnfGnFP9libXd/7XexPMMsssSU6BtLCKWfazMnL5uCf7oz
-        IZFx/Jk02Ar66n4BCJZHrgidAAd5t5nqyesAx/0=
-X-Google-Smtp-Source: AJdET5dHia7UZgsKC08fMvKUb7NEmxMVdLQ0NdXmUajYqRhCNXJAmYM3ArKGyjir4+24tPC7KAdsPBNj74Y/oxMicxI=
-X-Received: by 2002:a67:f114:: with SMTP id n20mr4757624vsk.90.1541160290700;
- Fri, 02 Nov 2018 05:04:50 -0700 (PDT)
+        id S1726129AbeKBVbu (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 2 Nov 2018 17:31:50 -0400
+Received: from merlin.infradead.org ([205.233.59.134]:33810 "EHLO
+        merlin.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726099AbeKBVbt (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Nov 2018 17:31:49 -0400
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+        d=infradead.org; s=merlin.20170209; h=In-Reply-To:Content-Type:MIME-Version:
+        References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
+        Content-Transfer-Encoding:Content-ID:Content-Description:Resent-Date:
+        Resent-From:Resent-Sender:Resent-To:Resent-Cc:Resent-Message-ID:List-Id:
+        List-Help:List-Unsubscribe:List-Subscribe:List-Post:List-Owner:List-Archive;
+         bh=79c9zmPcOUUU1UAuRc5HBkl7+igHKIgqc4mNscycBvg=; b=Xhph0d9iIiViyCbG/1IQdhNuj
+        JIDUhhsu8Ds6cMIOM1jhZNaYInzAUorTwaE4ZgckudtUAdJGWLYaTXzRVLHAlCH66hj7fIGLHr4B4
+        iArpJcMU4Vd/DCDPt0CpAPCDej9RZl4cF+24YTKlElJQefk46wfcjrUg2xdw7YewesKJB4ESTgYAu
+        c0nWrEqFXzsoD0RBH1dMRMGsqs6ezr2VB7k2vfmx/UGUgVmW9p+/9OKaJywqEKGBsV9/gzSsgwzHG
+        hVmhudiVVKXdS9y5lEmchzijVbrdLS/7oPqGG9KXJj7mqbQh8yE3JWhAiWPh/pwasFFsq7biCe3oI
+        JmEE1iwhw==;
+Received: from j217100.upc-j.chello.nl ([24.132.217.100] helo=hirez.programming.kicks-ass.net)
+        by merlin.infradead.org with esmtpsa (Exim 4.90_1 #2 (Red Hat Linux))
+        id 1gIYU7-0002oa-2E; Fri, 02 Nov 2018 12:23:31 +0000
+Received: by hirez.programming.kicks-ass.net (Postfix, from userid 1000)
+        id 32E3F2029F9FF; Fri,  2 Nov 2018 13:23:28 +0100 (CET)
+Date:   Fri, 2 Nov 2018 13:23:28 +0100
+From:   Peter Zijlstra <peterz@infradead.org>
+To:     David Laight <David.Laight@ACULAB.COM>
+Cc:     "'paulmck@linux.ibm.com'" <paulmck@linux.ibm.com>,
+        Trond Myklebust <trondmy@hammerspace.com>,
+        "mark.rutland@arm.com" <mark.rutland@arm.com>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "ralf@linux-mips.org" <ralf@linux-mips.org>,
+        "jlayton@kernel.org" <jlayton@kernel.org>,
+        "linuxppc-dev@lists.ozlabs.org" <linuxppc-dev@lists.ozlabs.org>,
+        "bfields@fieldses.org" <bfields@fieldses.org>,
+        "linux-mips@linux-mips.org" <linux-mips@linux-mips.org>,
+        "linux@roeck-us.net" <linux@roeck-us.net>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "akpm@linux-foundation.org" <akpm@linux-foundation.org>,
+        "will.deacon@arm.com" <will.deacon@arm.com>,
+        "boqun.feng@gmail.com" <boqun.feng@gmail.com>,
+        "paul.burton@mips.com" <paul.burton@mips.com>,
+        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+        "jhogan@kernel.org" <jhogan@kernel.org>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+        "davem@davemloft.net" <davem@davemloft.net>,
+        "arnd@arndb.de" <arnd@arndb.de>,
+        "paulus@samba.org" <paulus@samba.org>,
+        "mpe@ellerman.id.au" <mpe@ellerman.id.au>,
+        "benh@kernel.crashing.org" <benh@kernel.crashing.org>,
+        "aryabinin@virtuozzo.com" <aryabinin@virtuozzo.com>,
+        "dvyukov@google.com" <dvyukov@google.com>
+Subject: Re: [RFC PATCH] lib: Introduce generic __cmpxchg_u64() and use it
+ where needed
+Message-ID: <20181102122328.GM3178@hirez.programming.kicks-ass.net>
+References: <20181031213240.zhh7dfcm47ucuyfl@pburton-laptop>
+ <20181031220253.GA15505@roeck-us.net>
+ <20181031233235.qbedw3pinxcuk7me@pburton-laptop>
+ <4e2438a23d2edf03368950a72ec058d1d299c32e.camel@hammerspace.com>
+ <20181101131846.biyilr2msonljmij@lakrids.cambridge.arm.com>
+ <20181101145926.GE3178@hirez.programming.kicks-ass.net>
+ <f38e272f7a96e983549e4281aa9fd02833a4277a.camel@hammerspace.com>
+ <20181101163212.GF3159@hirez.programming.kicks-ass.net>
+ <20181101170146.GQ4170@linux.ibm.com>
+ <7d1ecd21c4c249138dfdd42b9aaa1cea@AcuMS.aculab.com>
 MIME-Version: 1.0
-References: <153923113649.5546.9840926895953408273.stgit@magnolia>
- <153923117420.5546.13317703807467393934.stgit@magnolia> <CAL3q7H7mLvCGpyitJhQ=To-aDvG9k9rxSVi2jSpcALQVj3myzg@mail.gmail.com>
- <20181015003139.GZ6311@dastard>
-In-Reply-To: <20181015003139.GZ6311@dastard>
-Reply-To: fdmanana@gmail.com
-From:   Filipe Manana <fdmanana@gmail.com>
-Date:   Fri, 2 Nov 2018 12:04:39 +0000
-Message-ID: <CAL3q7H5ofBmjh0DmbPH6Rmm523JV9byuBiYj=Jxpc44Kbh+Haw@mail.gmail.com>
-Subject: Re: [PATCH 05/25] vfs: avoid problematic remapping requests into
- partial EOF block
-To:     Dave Chinner <david@fromorbit.com>
-Cc:     "Darrick J. Wong" <darrick.wong@oracle.com>,
-        Eric Sandeen <sandeen@redhat.com>, linux-nfs@vger.kernel.org,
-        linux-cifs@vger.kernel.org, linux-unionfs@vger.kernel.org,
-        linux-xfs@vger.kernel.org, linux-mm@kvack.org,
-        linux-btrfs <linux-btrfs@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        ocfs2-devel@oss.oracle.com
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <7d1ecd21c4c249138dfdd42b9aaa1cea@AcuMS.aculab.com>
+User-Agent: Mutt/1.10.1 (2018-07-13)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Mon, Oct 15, 2018 at 1:31 AM Dave Chinner <david@fromorbit.com> wrote:
->
-> On Fri, Oct 12, 2018 at 09:22:18PM +0100, Filipe Manana wrote:
-> > On Thu, Oct 11, 2018 at 5:13 AM Darrick J. Wong <darrick.wong@oracle.co=
-m> wrote:
-> > >
-> > > From: Darrick J. Wong <darrick.wong@oracle.com>
-> > >
-> > > A deduplication data corruption is exposed by fstests generic/505 on
-> > > XFS.
-> >
-> > (and btrfs)
-> >
-> > Btw, the generic test I wrote was indeed numbered 505, however it was
-> > never committed and there's now a generic/505 which has nothing to do
-> > with deduplication.
-> > So you should update the changelog to avoid confusion.
->
-> What test is it now? And if it hasn't been committed, are you going
-> to update it and repost as it clearly had value....
+On Fri, Nov 02, 2018 at 10:56:31AM +0000, David Laight wrote:
+> From: Paul E. McKenney
+> > Sent: 01 November 2018 17:02
+> ...
+> > And there is a push to define C++ signed arithmetic as 2s complement,
+> > but there are still 1s complement systems with C compilers.  Just not
+> > C++ compilers.  Legacy...
+> 
+> Hmmm... I've used C compilers for DSPs where signed integer arithmetic
+> used the 'data registers' and would saturate, unsigned used the 'address
+> registers' and wrapped.
+> That was deliberate because it is much better to clip analogue values.
 
-Sorry, I lost track of this.
+Seems a dodgy heuristic if you ask me.
 
-So what was the conclusion of the thread where discussion about this
-problem started?
-It wasn't clear to me if a consensus was reached and got lost on that
-long user space dedupe tools discussion between you and Zygo.
+> Then there was the annoying cobol run time that didn't update the
+> result variable if the result wouldn't fit.
+> Took a while to notice that the sum of a list of values was even wrong!
+> That would be perfectly valid for C - if unexpected.
 
-The test assumed a fix of rounding down the range and deduping less
-bytes then requested (which ended up included in 4.19 for btrfs).
+That's just insane ;-)
 
-From this vfs patch it seems it was decided to return errno -EDADE instead.
-Is this the final decision?
+> > > But for us using -fno-strict-overflow which actually defines signed
+> > > overflow
+> 
+> I wonder how much real code 'strict-overflow' gets rid of?
+> IIRC gcc silently turns loops like:
+> 	int i; for (i = 1; i != 0; i *= 2) ...
+> into infinite ones.
+> Which is never what is required.
 
->
-> Cheers,
->
-> Dave.
-> --
-> Dave Chinner
-> david@fromorbit.com
-
-
-
---=20
-Filipe David Manana,
-
-=E2=80=9CWhether you think you can, or you think you can't =E2=80=94 you're=
- right.=E2=80=9D
+Nobody said C was a 'safe' language. But less UB makes a better language
+IMO. Ideally we'd get all UBs filled in -- but I realise C has a few
+very 'interesting' ones that might be hard to get rid of.
