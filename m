@@ -3,123 +3,87 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
 X-Spam-Status: No, score=-0.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_PASS autolearn=unavailable autolearn_force=no
+	MAILING_LIST_MULTI,SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A03E2C32789
-	for <linux-nfs@archiver.kernel.org>; Fri,  2 Nov 2018 10:56:33 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A7F7BC65C22
+	for <linux-nfs@archiver.kernel.org>; Fri,  2 Nov 2018 11:05:21 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 69C3C2081F
-	for <linux-nfs@archiver.kernel.org>; Fri,  2 Nov 2018 10:56:33 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 69C3C2081F
-Authentication-Results: mail.kernel.org; dmarc=none (p=none dis=none) header.from=ACULAB.COM
+	by mail.kernel.org (Postfix) with ESMTP id 79CBF2082E
+	for <linux-nfs@archiver.kernel.org>; Fri,  2 Nov 2018 11:05:21 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 79CBF2082E
+Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=redhat.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726995AbeKBUDP convert rfc822-to-8bit (ORCPT
-        <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 2 Nov 2018 16:03:15 -0400
-Received: from eu-smtp-delivery-151.mimecast.com ([146.101.78.151]:39375 "EHLO
-        eu-smtp-delivery-151.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726318AbeKBUDO (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Nov 2018 16:03:14 -0400
-Received: from AcuMS.aculab.com (156.67.243.126 [156.67.243.126]) (Using
- TLS) by dkim.mimecast.com with ESMTP id uk-mta-11-qeGiSSCyMQiGTbbZCdWzuA-1;
- Fri, 02 Nov 2018 10:56:27 +0000
-Received: from AcuMS.Aculab.com (fd9f:af1c:a25b:0:43c:695e:880f:8750) by
- AcuMS.aculab.com (fd9f:af1c:a25b:0:43c:695e:880f:8750) with Microsoft SMTP
- Server (TLS) id 15.0.1347.2; Fri, 2 Nov 2018 10:56:31 +0000
-Received: from AcuMS.Aculab.com ([fe80::43c:695e:880f:8750]) by
- AcuMS.aculab.com ([fe80::43c:695e:880f:8750%12]) with mapi id 15.00.1347.000;
- Fri, 2 Nov 2018 10:56:31 +0000
-From:   David Laight <David.Laight@ACULAB.COM>
-To:     "'paulmck@linux.ibm.com'" <paulmck@linux.ibm.com>,
-        Peter Zijlstra <peterz@infradead.org>
-CC:     Trond Myklebust <trondmy@hammerspace.com>,
-        "mark.rutland@arm.com" <mark.rutland@arm.com>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "ralf@linux-mips.org" <ralf@linux-mips.org>,
-        "jlayton@kernel.org" <jlayton@kernel.org>,
-        "linuxppc-dev@lists.ozlabs.org" <linuxppc-dev@lists.ozlabs.org>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "linux-mips@linux-mips.org" <linux-mips@linux-mips.org>,
-        "linux@roeck-us.net" <linux@roeck-us.net>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "akpm@linux-foundation.org" <akpm@linux-foundation.org>,
-        "will.deacon@arm.com" <will.deacon@arm.com>,
-        "boqun.feng@gmail.com" <boqun.feng@gmail.com>,
-        "paul.burton@mips.com" <paul.burton@mips.com>,
-        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        "jhogan@kernel.org" <jhogan@kernel.org>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        "davem@davemloft.net" <davem@davemloft.net>,
-        "arnd@arndb.de" <arnd@arndb.de>,
-        "paulus@samba.org" <paulus@samba.org>,
-        "mpe@ellerman.id.au" <mpe@ellerman.id.au>,
-        "benh@kernel.crashing.org" <benh@kernel.crashing.org>,
-        "aryabinin@virtuozzo.com" <aryabinin@virtuozzo.com>,
-        "dvyukov@google.com" <dvyukov@google.com>
-Subject: RE: [RFC PATCH] lib: Introduce generic __cmpxchg_u64() and use it
- where needed
-Thread-Topic: [RFC PATCH] lib: Introduce generic __cmpxchg_u64() and use it
- where needed
-Thread-Index: AQHUcgSe+q6XzYqX/USdRpIoZo81C6U8TfVQ
-Date:   Fri, 2 Nov 2018 10:56:31 +0000
-Message-ID: <7d1ecd21c4c249138dfdd42b9aaa1cea@AcuMS.aculab.com>
-References: <1541015538-11382-1-git-send-email-linux@roeck-us.net>
- <20181031213240.zhh7dfcm47ucuyfl@pburton-laptop>
- <20181031220253.GA15505@roeck-us.net>
- <20181031233235.qbedw3pinxcuk7me@pburton-laptop>
- <4e2438a23d2edf03368950a72ec058d1d299c32e.camel@hammerspace.com>
- <20181101131846.biyilr2msonljmij@lakrids.cambridge.arm.com>
- <20181101145926.GE3178@hirez.programming.kicks-ass.net>
- <f38e272f7a96e983549e4281aa9fd02833a4277a.camel@hammerspace.com>
- <20181101163212.GF3159@hirez.programming.kicks-ass.net>
- <20181101170146.GQ4170@linux.ibm.com>
-In-Reply-To: <20181101170146.GQ4170@linux.ibm.com>
-Accept-Language: en-GB, en-US
-Content-Language: en-US
-X-MS-Has-Attach: 
-X-MS-TNEF-Correlator: 
-x-ms-exchange-transport-fromentityheader: Hosted
-x-originating-ip: [10.202.205.107]
+        id S1727521AbeKBUME (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 2 Nov 2018 16:12:04 -0400
+Received: from mx1.redhat.com ([209.132.183.28]:44518 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726319AbeKBUME (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 2 Nov 2018 16:12:04 -0400
+Received: from smtp.corp.redhat.com (int-mx04.intmail.prod.int.phx2.redhat.com [10.5.11.14])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id 1DF75308213B;
+        Fri,  2 Nov 2018 11:05:19 +0000 (UTC)
+Received: from [172.16.176.1] (ovpn-122-158.rdu2.redhat.com [10.10.122.158])
+        by smtp.corp.redhat.com (Postfix) with ESMTPS id C433A18667;
+        Fri,  2 Nov 2018 11:05:18 +0000 (UTC)
+From:   "Benjamin Coddington" <bcodding@redhat.com>
+To:     "Malahal Naineni" <malahal@gmail.com>
+Cc:     linux-nfs@vger.kernel.org
+Subject: Re: "(deleted)" directories
+Date:   Fri, 02 Nov 2018 07:05:18 -0400
+Message-ID: <24BEBD2F-BCC2-4AE0-81D7-185D6CAB8CD7@redhat.com>
+In-Reply-To: <CAGD+tkyTyOb-iiykQLYMoa1h5cmizbe_0M0_HS=9cQC1NDznSw@mail.gmail.com>
+References: <CAGD+tkyTyOb-iiykQLYMoa1h5cmizbe_0M0_HS=9cQC1NDznSw@mail.gmail.com>
 MIME-Version: 1.0
-X-MC-Unique: qeGiSSCyMQiGTbbZCdWzuA-1
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 8BIT
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.14
+X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.42]); Fri, 02 Nov 2018 11:05:19 +0000 (UTC)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Paul E. McKenney
-> Sent: 01 November 2018 17:02
-...
-> And there is a push to define C++ signed arithmetic as 2s complement,
-> but there are still 1s complement systems with C compilers.  Just not
-> C++ compilers.  Legacy...
+On 2 Nov 2018, at 1:26, Malahal Naineni wrote:
 
-Hmmm... I've used C compilers for DSPs where signed integer arithmetic
-used the 'data registers' and would saturate, unsigned used the 'address
-registers' and wrapped.
-That was deliberate because it is much better to clip analogue values.
+> Hi All, we are using NFS-Ganesha with Linux NFS clients. The client's
+> shell reports the following. Based on lsof, the directory is marked
+> deleted. "cd to ROOT and cd to the same home directory fixes the
+> issue. The client behaves as though the directory is deleted and
+> recreated! Our NFS-Ganesha server implementation uses multiple file
+> handles that point to the same object. NFS spec says this should be
+> fine, but Linux NFS seems to be broken in this regard. tcpdump does
+> indicate file handle change (note that all file handles are permanent,
+> meaning they are valid at the server any time) around this issue time.
+>
+> "shell-init: error retrieving current directory: getcwd: cannot access
+> parent directories: No such file or directory"
+> sh        112544            malahal  cwd       DIR               0,67
+>      65536   45605209 /home/malahal (deleted)
+> (10.120.154.42:/nfs/malahal-export/)
+>
+> Function nfs_prime_dcache() seems to invalidate the dcache entry if
+> nfs_same_file() returns false. nfs_same_file() does seem to return
+> false with the following change, if I read it correctly, if there is a
+> file handle change. Can this be the source of my issue? It seems that
+> the client should do this only if the file handle is NOT valid (e.g.
+> if it gets ESTALE), right?
+>
+> The following commit seems to assume that the objects are different if
+> they have different file handles!
+> commit 7dc72d5f7a0ec97a53e126c46e2cbd2560757955
+> Author: Trond Myklebust <trond.myklebust@primarydata.com>
+> Date:   Thu Sep 22 13:38:52 2016 -0400
+>
+>     NFS: Fix inode corruption in nfs_prime_dcache()
 
-Then there was the annoying cobol run time that didn't update the
-result variable if the result wouldn't fit.
-Took a while to notice that the sum of a list of values was even wrong!
-That would be perfectly valid for C - if unexpected.
+My understanding is that for NFSv3 we have to assume that distinct
+filehandles are distinct objects, but maybe I'm wrong about this.
 
-> > But for us using -fno-strict-overflow which actually defines signed
-> > overflow
+For NFSv4.x, we can follow the guidance in RFCs 5661 or 7530 section 10.3.4
+to determine if the differing filehandles are the same object, specifically
+the fileid recommended attribute needs to be implemented.  Is Ganesha
+returning the same fileid for both filehandles?
 
-I wonder how much real code 'strict-overflow' gets rid of?
-IIRC gcc silently turns loops like:
-	int i; for (i = 1; i != 0; i *= 2) ...
-into infinite ones.
-Which is never what is required.
-
-	David
-
--
-Registered Address Lakeside, Bramley Road, Mount Farm, Milton Keynes, MK1 1PT, UK
-Registration No: 1397386 (Wales)
-
+Ben
