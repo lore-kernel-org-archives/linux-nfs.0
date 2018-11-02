@@ -2,166 +2,119 @@ Return-Path: <SRS0=leyo=NN=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-0.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_PASS autolearn=unavailable autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-5.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_PASS,URIBL_BLOCKED,USER_AGENT_MUTT
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7A450C65C22
-	for <linux-nfs@archiver.kernel.org>; Fri,  2 Nov 2018 16:47:38 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 61CE1C32789
+	for <linux-nfs@archiver.kernel.org>; Fri,  2 Nov 2018 16:49:26 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 4CC6E2082D
-	for <linux-nfs@archiver.kernel.org>; Fri,  2 Nov 2018 16:47:38 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 4CC6E2082D
-Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=virtuozzo.com
+	by mail.kernel.org (Postfix) with ESMTP id 0017D2082D
+	for <linux-nfs@archiver.kernel.org>; Fri,  2 Nov 2018 16:49:25 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 0017D2082D
+Authentication-Results: mail.kernel.org; dmarc=none (p=none dis=none) header.from=fieldses.org
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727946AbeKCBzV (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 2 Nov 2018 21:55:21 -0400
-Received: from relay.sw.ru ([185.231.240.75]:47642 "EHLO relay.sw.ru"
+        id S1726831AbeKCB5K (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 2 Nov 2018 21:57:10 -0400
+Received: from fieldses.org ([173.255.197.46]:57674 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727805AbeKCBzV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 2 Nov 2018 21:55:21 -0400
-X-Greylist: delayed 1715 seconds by postgrey-1.27 at vger.kernel.org; Fri, 02 Nov 2018 21:55:20 EDT
-Received: from [172.16.25.12]
-        by relay.sw.ru with esmtp (Exim 4.90_1)
-        (envelope-from <aryabinin@virtuozzo.com>)
-        id 1gIc9V-0006r7-Q8; Fri, 02 Nov 2018 19:18:30 +0300
-Subject: Re: [RFC PATCH] lib: Introduce generic __cmpxchg_u64() and use it
- where needed
-To:     Peter Zijlstra <peterz@infradead.org>,
-        Trond Myklebust <trondmy@hammerspace.com>
-Cc:     "mark.rutland@arm.com" <mark.rutland@arm.com>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "ralf@linux-mips.org" <ralf@linux-mips.org>,
-        "jlayton@kernel.org" <jlayton@kernel.org>,
-        "linuxppc-dev@lists.ozlabs.org" <linuxppc-dev@lists.ozlabs.org>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "linux-mips@linux-mips.org" <linux-mips@linux-mips.org>,
-        "linux@roeck-us.net" <linux@roeck-us.net>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "akpm@linux-foundation.org" <akpm@linux-foundation.org>,
-        "will.deacon@arm.com" <will.deacon@arm.com>,
-        "boqun.feng@gmail.com" <boqun.feng@gmail.com>,
-        "paul.burton@mips.com" <paul.burton@mips.com>,
-        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        "jhogan@kernel.org" <jhogan@kernel.org>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        "davem@davemloft.net" <davem@davemloft.net>,
-        "arnd@arndb.de" <arnd@arndb.de>,
-        "paulus@samba.org" <paulus@samba.org>,
-        "mpe@ellerman.id.au" <mpe@ellerman.id.au>,
-        "benh@kernel.crashing.org" <benh@kernel.crashing.org>,
-        Paul McKenney <paulmck@linux.vnet.ibm.com>, dvyukov@google.com
-References: <1541015538-11382-1-git-send-email-linux@roeck-us.net>
- <20181031213240.zhh7dfcm47ucuyfl@pburton-laptop>
- <20181031220253.GA15505@roeck-us.net>
- <20181031233235.qbedw3pinxcuk7me@pburton-laptop>
- <4e2438a23d2edf03368950a72ec058d1d299c32e.camel@hammerspace.com>
- <20181101131846.biyilr2msonljmij@lakrids.cambridge.arm.com>
- <20181101145926.GE3178@hirez.programming.kicks-ass.net>
- <f38e272f7a96e983549e4281aa9fd02833a4277a.camel@hammerspace.com>
- <20181101163212.GF3159@hirez.programming.kicks-ass.net>
-From:   Andrey Ryabinin <aryabinin@virtuozzo.com>
-Message-ID: <5a846924-e642-d9d1-4e0e-810bd4d01c26@virtuozzo.com>
-Date:   Fri, 2 Nov 2018 19:19:15 +0300
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:52.0) Gecko/20100101
- Thunderbird/52.9.1
+        id S1726700AbeKCB5K (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 2 Nov 2018 21:57:10 -0400
+Received: by fieldses.org (Postfix, from userid 2815)
+        id 004322430; Fri,  2 Nov 2018 12:49:24 -0400 (EDT)
+Date:   Fri, 2 Nov 2018 12:49:24 -0400
+From:   "J. Bruce Fields" <bfields@fieldses.org>
+To:     Olga Kornievskaia <olga.kornievskaia@gmail.com>
+Cc:     "J. Bruce Fields" <bfields@redhat.com>,
+        linux-nfs <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v1 07/13] NFSD add ca_source_server<> to COPY
+Message-ID: <20181102164924.GB20367@fieldses.org>
+References: <20181019152905.32418-1-olga.kornievskaia@gmail.com>
+ <20181019152905.32418-8-olga.kornievskaia@gmail.com>
+ <20181102154623.GA20367@fieldses.org>
+ <CAN-5tyGkz=hHJzQRwBZQgAuGTWq9KLdDreoBoyvWVYQPRLTM0w@mail.gmail.com>
 MIME-Version: 1.0
-In-Reply-To: <20181101163212.GF3159@hirez.programming.kicks-ass.net>
-Content-Type: text/plain; charset=utf-8
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <CAN-5tyGkz=hHJzQRwBZQgAuGTWq9KLdDreoBoyvWVYQPRLTM0w@mail.gmail.com>
+User-Agent: Mutt/1.5.21 (2010-09-15)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-
-
-On 11/01/2018 07:32 PM, Peter Zijlstra wrote:
-> On Thu, Nov 01, 2018 at 03:22:15PM +0000, Trond Myklebust wrote:
->> On Thu, 2018-11-01 at 15:59 +0100, Peter Zijlstra wrote:
->>> On Thu, Nov 01, 2018 at 01:18:46PM +0000, Mark Rutland wrote:
+On Fri, Nov 02, 2018 at 12:35:26PM -0400, Olga Kornievskaia wrote:
+> On Fri, Nov 2, 2018 at 11:46 AM J. Bruce Fields <bfields@fieldses.org> wrote:
+> >
+> > On Fri, Oct 19, 2018 at 11:28:59AM -0400, Olga Kornievskaia wrote:
+> > > @@ -4273,6 +4337,9 @@ static __be32 nfsd4_encode_readv(struct nfsd4_compoundres *resp,
+> > >       p = xdr_reserve_space(&resp->xdr, 4 + 4);
+> > >       *p++ = xdr_one; /* cr_consecutive */
+> > >       *p++ = cpu_to_be32(copy->cp_synchronous);
+> > > +
+> > > +     /* allocated in nfsd4_decode_copy */
+> > > +     kfree(copy->cp_src);
+> >
+> > This can result in a leak--for example, if we decode the compound
+> > succesfully, but processing fails before we could to this op, then we'll
+> > never call this encoder, so we'll allocate without freeing.
+> >
+> > I think simplest would be to replace this:
+> >
+> > > diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+> > > index feeb6d4..b4d1140 100644
+> > > --- a/fs/nfsd/xdr4.h
+> > > +++ b/fs/nfsd/xdr4.h
+> > > @@ -521,6 +521,7 @@ struct nfsd4_copy {
+> > >       u64             cp_src_pos;
+> > >       u64             cp_dst_pos;
+> > >       u64             cp_count;
+> > > +     struct nl4_server *cp_src;
+> >
+> > by just a
+> >
+> >         struct nl4_server cp_src;
+> >
+> > since it sounds like you really only need one of them, not a whole array
+> > (at least for now).
 > 
->>>>> My one question (and the reason why I went with cmpxchg() in the
->>>>> first place) would be about the overflow behaviour for
->>>>> atomic_fetch_inc() and friends. I believe those functions should
->>>>> be OK on x86, so that when we overflow the counter, it behaves
->>>>> like an unsigned value and wraps back around.  Is that the case
->>>>> for all architectures?
->>>>>
->>>>> i.e. are atomic_t/atomic64_t always guaranteed to behave like
->>>>> u32/u64 on increment?
->>>>>
->>>>> I could not find any documentation that explicitly stated that
->>>>> they should.
->>>>
->>>> Peter, Will, I understand that the atomic_t/atomic64_t ops are
->>>> required to wrap per 2's-complement. IIUC the refcount code relies
->>>> on this.
->>>>
->>>> Can you confirm?
->>>
->>> There is quite a bit of core code that hard assumes 2s-complement.
->>> Not only for atomics but for any signed integer type. Also see the
->>> kernel using -fno-strict-overflow which implies -fwrapv, which
->>> defines signed overflow to behave like 2s-complement (and rids us of
->>> that particular UB).
->>
->> Fair enough, but there have also been bugfixes to explicitly fix unsafe
->> C standards assumptions for signed integers. See, for instance commit
->> 5a581b367b5d "jiffies: Avoid undefined behavior from signed overflow"
->> from Paul McKenney.
+> So this is problematic as the presence of this memory is what is used
+> to distinguish "inter" from "intra".
+
+It would be easy enough to add a new bit for that.
+
+> Can things really fail between the xdr and calling of the operation?
+
+Yes.  Consider a PUTFH+SAVEFH+COPY compound.  We decode the whole thing
+before starting any processing.  Then we call nfsd4_putfh() and
+fh_verify fails (maybe the filehandle is stale or something).  Then
+neither nfsd4_copy() nor nfsd4_encode_copy() will be called.
+
+If you absolutely have to do this, you can look at SAVEMEM.
+
+--b.
+
+> What gets freed in the encoder is the "copy" of the what was decoded
+> in the decoder. But really freeing in the encoder is the wrong place.
+> Encoder doesn't need to free. I already free the "copy" of the
+> copy->cp_src in the cleanup_async_copy(). However, what is missing is
+> freeing the original copy->cp_src which needs to be freed in the
+> dup_copy_fields().
 > 
-> Yes, I feel Paul has been to too many C/C++ committee meetings and got
-> properly paranoid. Which isn't always a bad thing :-)
+> To clarify:
+> copy->cp_src gets allocated in the decoder
+> during the process of the copy:
+> 1. it gets copied to the kthread and the original copy->cp_src needs
+> to be freed. Or during any error it will be freed.
+> 2. cleanup_async_copy frees the copy of the copy->cp_src.
+> (need to remove the kfree from the encoder).
 > 
-> But for us using -fno-strict-overflow which actually defines signed
-> overflow, I myself am really not worried. I'm also not sure if KASAN has
-> been taught about this, or if it will still (incorrectly) warn about UB
-> for signed types.
-> 
-
-UBSAN warns about signed overflows despite -fno-strict-overflow if gcc version is < 8.
-I have learned recently that UBSAN in GCC 8 ignores signed overflows if -fno-strict-overflow of fwrapv is used.
-
-$ cat signed_overflow.c 
-#include <stdio.h>
-
-__attribute__((noinline))
-int foo(int a, int b)
-{
-        return a+b;
-}
-
-int main(void)
-{
-        int a = 0x7fffffff;
-        int b = 2;
-        printf("%d\n", foo(a,b));
-        return 0;
-}
-
-$ gcc-8.2.0 -fsanitize=signed-integer-overflow signed_overflow.c && ./a.out 
-signed_overflow.c:6:10: runtime error: signed integer overflow: 2147483647 + 2 cannot be represented in type 'int'
--2147483647
-$ gcc-8.2.0 -fno-strict-overflow -fsanitize=signed-integer-overflow signed_overflow.c && ./a.out 
--2147483647
-$ gcc-7.3.0 -fsanitize=signed-integer-overflow signed_overflow.c && ./a.out
-signed_overflow.c:6:10: runtime error: signed integer overflow: 2147483647 + 2 cannot be represented in type 'int'
--2147483647
-$ gcc-7.3.0 -fno-strict-overflow -fsanitize=signed-integer-overflow signed_overflow.c && ./a.out
-signed_overflow.c:6:10: runtime error: signed integer overflow: 2147483647 + 2 cannot be represented in type 'int'
--2147483647
-
-
-clang behaves the same way as GCC 8:
-$ clang -fsanitize=signed-integer-overflow signed_overflow.c && ./a.out 
-signed_overflow.c:6:10: runtime error: signed integer overflow: 2147483647 + 2 cannot be represented in type 'int'
--2147483647
-$ clang -fno-strict-overflow -fsanitize=signed-integer-overflow signed_overflow.c && ./a.out 
--2147483647
-
-
-We can always just drop -fsanitize=signed-integer-overflow if it considered too noisy.
-Although it did catch some real bugs.
+> >
+> > --b.
+> >
+> > >
+> > >       /* both */
+> > >       bool            cp_synchronous;
+> > > --
+> > > 1.8.3.1
