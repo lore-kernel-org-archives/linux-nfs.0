@@ -2,122 +2,231 @@ Return-Path: <SRS0=wnB3=NQ=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.3 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS,USER_AGENT_MUTT
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-5.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_PASS,USER_AGENT_MUTT autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B9A4AC0044C
-	for <linux-nfs@archiver.kernel.org>; Mon,  5 Nov 2018 14:26:16 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9D5B2C0044C
+	for <linux-nfs@archiver.kernel.org>; Mon,  5 Nov 2018 17:50:08 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 70CB02085A
-	for <linux-nfs@archiver.kernel.org>; Mon,  5 Nov 2018 14:26:16 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="rykwNpJ5"
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 70CB02085A
-Authentication-Results: mail.kernel.org; dmarc=none (p=none dis=none) header.from=infradead.org
+	by mail.kernel.org (Postfix) with ESMTP id 4F18520700
+	for <linux-nfs@archiver.kernel.org>; Mon,  5 Nov 2018 17:50:08 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 4F18520700
+Authentication-Results: mail.kernel.org; dmarc=none (p=none dis=none) header.from=fieldses.org
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727575AbeKEXqN (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 5 Nov 2018 18:46:13 -0500
-Received: from merlin.infradead.org ([205.233.59.134]:38728 "EHLO
-        merlin.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726173AbeKEXqM (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Nov 2018 18:46:12 -0500
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-        d=infradead.org; s=merlin.20170209; h=In-Reply-To:Content-Type:MIME-Version:
-        References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
-        Content-Transfer-Encoding:Content-ID:Content-Description:Resent-Date:
-        Resent-From:Resent-Sender:Resent-To:Resent-Cc:Resent-Message-ID:List-Id:
-        List-Help:List-Unsubscribe:List-Subscribe:List-Post:List-Owner:List-Archive;
-         bh=bDIKyuSp9LLH9BqGVqhJP/hbXdOmufd3UQW+85NbV+8=; b=rykwNpJ5nCzznn4Jucrx26gsq
-        +JH4MPOXMJ+pyWb4JU6Gj3AHUuigkLWXl9uB/Dn7tVxRF87Ptd16aKHV8RQW0nrfm1DqdeIboPOpJ
-        w2ytLOtAu3dVg33KI46V7z703S+T8XnZkGmRqV7gYgNLAL7GqHnE5WapNvgfRsWGdMSJ3gMnO0cyk
-        gZVOd/rhM4BbpGP6BT2UJhVvVWmX/HGnTnK8eZWbA8bXiFbqStjSfBDyJ0iWJjwae4/JjrmnjZYSd
-        F2LwaakSwVKD/wKt8d3+feCrExhqyR6midZcsGLi3jSKyovhcXMJjIGoqUavssAC/YMHmpKsUr2NC
-        QLv2vSwLQ==;
-Received: from j217100.upc-j.chello.nl ([24.132.217.100] helo=hirez.programming.kicks-ass.net)
-        by merlin.infradead.org with esmtpsa (Exim 4.90_1 #2 (Red Hat Linux))
-        id 1gJfoG-0006kE-Li; Mon, 05 Nov 2018 14:24:57 +0000
-Received: by hirez.programming.kicks-ass.net (Postfix, from userid 1000)
-        id 3223A2029F9FF; Mon,  5 Nov 2018 15:24:53 +0100 (CET)
-Date:   Mon, 5 Nov 2018 15:24:53 +0100
-From:   Peter Zijlstra <peterz@infradead.org>
-To:     Andrey Ryabinin <aryabinin@virtuozzo.com>
-Cc:     Trond Myklebust <trondmy@hammerspace.com>,
-        "mark.rutland@arm.com" <mark.rutland@arm.com>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "ralf@linux-mips.org" <ralf@linux-mips.org>,
-        "jlayton@kernel.org" <jlayton@kernel.org>,
-        "linuxppc-dev@lists.ozlabs.org" <linuxppc-dev@lists.ozlabs.org>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "linux-mips@linux-mips.org" <linux-mips@linux-mips.org>,
-        "linux@roeck-us.net" <linux@roeck-us.net>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "akpm@linux-foundation.org" <akpm@linux-foundation.org>,
-        "will.deacon@arm.com" <will.deacon@arm.com>,
-        "boqun.feng@gmail.com" <boqun.feng@gmail.com>,
-        "paul.burton@mips.com" <paul.burton@mips.com>,
-        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        "jhogan@kernel.org" <jhogan@kernel.org>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        "davem@davemloft.net" <davem@davemloft.net>,
-        "arnd@arndb.de" <arnd@arndb.de>,
-        "paulus@samba.org" <paulus@samba.org>,
-        "mpe@ellerman.id.au" <mpe@ellerman.id.au>,
-        "benh@kernel.crashing.org" <benh@kernel.crashing.org>,
-        Paul McKenney <paulmck@linux.vnet.ibm.com>, dvyukov@google.com,
-        willy@infradead.org
-Subject: Re: [RFC PATCH] lib: Introduce generic __cmpxchg_u64() and use it
- where needed
-Message-ID: <20181105142453.GA22449@hirez.programming.kicks-ass.net>
-References: <1541015538-11382-1-git-send-email-linux@roeck-us.net>
- <20181031213240.zhh7dfcm47ucuyfl@pburton-laptop>
- <20181031220253.GA15505@roeck-us.net>
- <20181031233235.qbedw3pinxcuk7me@pburton-laptop>
- <4e2438a23d2edf03368950a72ec058d1d299c32e.camel@hammerspace.com>
- <20181101131846.biyilr2msonljmij@lakrids.cambridge.arm.com>
- <20181101145926.GE3178@hirez.programming.kicks-ass.net>
- <f38e272f7a96e983549e4281aa9fd02833a4277a.camel@hammerspace.com>
- <20181101163212.GF3159@hirez.programming.kicks-ass.net>
- <5a846924-e642-d9d1-4e0e-810bd4d01c26@virtuozzo.com>
+        id S2387656AbeKFDKx (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 5 Nov 2018 22:10:53 -0500
+Received: from fieldses.org ([173.255.197.46]:33608 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S2387590AbeKFDKx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 5 Nov 2018 22:10:53 -0500
+Received: by fieldses.org (Postfix, from userid 2815)
+        id 7B6EF1E31; Mon,  5 Nov 2018 12:50:06 -0500 (EST)
+Date:   Mon, 5 Nov 2018 12:50:06 -0500
+To:     Olga Kornievskaia <olga.kornievskaia@gmail.com>
+Cc:     bfields@redhat.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v1 09/13] NFSD add COPY_NOTIFY operation
+Message-ID: <20181105175006.GA9111@fieldses.org>
+References: <20181019152905.32418-1-olga.kornievskaia@gmail.com>
+ <20181019152905.32418-10-olga.kornievskaia@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <5a846924-e642-d9d1-4e0e-810bd4d01c26@virtuozzo.com>
-User-Agent: Mutt/1.10.1 (2018-07-13)
+In-Reply-To: <20181019152905.32418-10-olga.kornievskaia@gmail.com>
+User-Agent: Mutt/1.5.21 (2010-09-15)
+From:   bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Fri, Nov 02, 2018 at 07:19:15PM +0300, Andrey Ryabinin wrote:
-> UBSAN warns about signed overflows despite -fno-strict-overflow if gcc version is < 8.
-> I have learned recently that UBSAN in GCC 8 ignores signed overflows if -fno-strict-overflow of fwrapv is used.
-> 
-> $ cat signed_overflow.c 
-> #include <stdio.h>
-> 
-> __attribute__((noinline))
-> int foo(int a, int b)
-> {
->         return a+b;
+On Fri, Oct 19, 2018 at 11:29:01AM -0400, Olga Kornievskaia wrote:
+> @@ -1345,6 +1347,44 @@ struct nfsd4_copy *
+>  }
+>  
+>  static __be32
+> +nfsd4_copy_notify(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+> +		  union nfsd4_op_u *u)
+> +{
+> +	struct nfsd4_copy_notify *cn = &u->copy_notify;
+> +	__be32 status;
+> +	struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
+> +	struct nfs4_stid *stid;
+> +	struct nfs4_cpntf_state *cps;
+> +
+> +	status = nfs4_preprocess_stateid_op(rqstp, cstate, &cstate->current_fh,
+> +					&cn->cpn_src_stateid, RD_STATE, NULL,
+> +					NULL, &stid);
+> +	if (status)
+> +		return status;
+> +
+> +	cn->cpn_sec = nn->nfsd4_lease;
+> +	cn->cpn_nsec = 0;
+> +
+> +	status = nfserrno(-ENOMEM);
+> +	cps = nfs4_alloc_init_cpntf_state(nn, stid);
+> +	if (!cps)
+> +		return status;
+> +	memcpy(&cn->cpn_cnr_stateid, &cps->cp_stateid, sizeof(stateid_t));
+> +
+> +	/**
+> +	 * For now, only return one server address in cpn_src, the
+> +	 * address used by the client to connect to this server.
+> +	 */
+> +	cn->cpn_src.nl4_type = NL4_NETADDR;
+> +	status = nfsd4_set_netaddr((struct sockaddr *)&rqstp->rq_daddr,
+> +				 &cn->cpn_src.u.nl4_addr);
+> +	if (status != 0)
+> +		nfs4_free_cpntf_state(cps);
 
- s/+/<</
+It looks like this would free cps while it was still on the parent's
+sc_cp_list.
 
-> }
-> 
-> int main(void)
-> {
->         int a = 0x7fffffff;
->         int b = 2;
->         printf("%d\n", foo(a,b));
->         return 0;
-> }
+Is an error actually possible here? If not, just remove this check or
+replace it by WARN_ON_ONCE(status).
 
-It also seem to affect 'shift':
+> +
+> +	return status;
+> +}
+...
+> @@ -2720,6 +2775,12 @@ static inline u32 nfsd4_seek_rsize(struct svc_rqst *rqstp, struct nfsd4_op *op)
+>  		.op_name = "OP_OFFLOAD_CANCEL",
+>  		.op_rsize_bop = nfsd4_only_status_rsize,
+>  	},
+> +	[OP_COPY_NOTIFY] = {
+> +		.op_func = nfsd4_copy_notify,
+> +		.op_flags = OP_MODIFIES_SOMETHING | OP_CACHEME,
 
-peterz@hirez:~/tmp$ gcc -fsanitize=signed-integer-overflow,shift overflow.c ; ./a.out
-overflow.c:6:11: runtime error: left shift of 2147483647 by 2 places cannot be represented in type 'int'
--4
-peterz@hirez:~/tmp$ gcc -fsanitize=signed-integer-overflow,shift -fwrapv overflow.c ; ./a.out
--4
+CACHEME is actually only used for 4.0, let's drop it from
+nfs4.1/4.2-only operations.
+
+> +		.op_name = "OP_COPY_NOTIFY",
+> +		.op_rsize_bop = nfsd4_copy_notify_rsize,
+> +	},
+>  };
+>  
+>  /**
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index e263fd0..7764a8b 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -697,6 +697,7 @@ struct nfs4_stid *nfs4_alloc_stid(struct nfs4_client *cl, struct kmem_cache *sla
+>  	/* Will be incremented before return to client: */
+>  	refcount_set(&stid->sc_count, 1);
+>  	spin_lock_init(&stid->sc_lock);
+> +	INIT_LIST_HEAD(&stid->sc_cp_list);
+>  
+>  	/*
+>  	 * It shouldn't be a problem to reuse an opaque stateid value.
+> @@ -716,33 +717,85 @@ struct nfs4_stid *nfs4_alloc_stid(struct nfs4_client *cl, struct kmem_cache *sla
+>  /*
+>   * Create a unique stateid_t to represent each COPY.
+>   */
+> -int nfs4_init_cp_state(struct nfsd_net *nn, struct nfsd4_copy *copy)
+> +int _nfs4_init_state(struct nfsd_net *nn, void *ptr, stateid_t *stid)
+
+This is still copy-specific code, so the names might be more
+helpful if they left that in.  Maybe:
+
+	_nfs4_init_state -> nfs4_init_cp_state
+	nfs4_init_cp_state -> nfs4_init_copy_state
+	nfs4_init_cp_state -> nfs4_init_cpnotify_state
+
+?  Unless you can think of something better.
+
+>  {
+>  	int new_id;
+>  
+>  	idr_preload(GFP_KERNEL);
+>  	spin_lock(&nn->s2s_cp_lock);
+> -	new_id = idr_alloc_cyclic(&nn->s2s_cp_stateids, copy, 0, 0, GFP_NOWAIT);
+> +	new_id = idr_alloc_cyclic(&nn->s2s_cp_stateids, ptr, 0, 0, GFP_NOWAIT);
+>  	spin_unlock(&nn->s2s_cp_lock);
+>  	idr_preload_end();
+>  	if (new_id < 0)
+>  		return 0;
+> -	copy->cp_stateid.si_opaque.so_id = new_id;
+> -	copy->cp_stateid.si_opaque.so_clid.cl_boot = nn->boot_time;
+> -	copy->cp_stateid.si_opaque.so_clid.cl_id = nn->s2s_cp_cl_id;
+> +	stid->si_opaque.so_id = new_id;
+> +	stid->si_opaque.so_clid.cl_boot = nn->boot_time;
+> +	stid->si_opaque.so_clid.cl_id = nn->s2s_cp_cl_id;
+>  	return 1;
+>  }
+>  
+> -void nfs4_free_cp_state(struct nfsd4_copy *copy)
+> +int nfs4_init_cp_state(struct nfsd_net *nn, struct nfsd4_copy *copy)
+> +{
+> +	return _nfs4_init_state(nn, copy, &copy->cp_stateid);
+> +}
+> +
+> +struct nfs4_cpntf_state *nfs4_alloc_init_cpntf_state(struct nfsd_net *nn,
+> +						     struct nfs4_stid *p_stid)
+> +{
+> +	struct nfs4_cpntf_state *cps;
+> +
+> +	cps = kzalloc(sizeof(struct nfs4_cpntf_state), GFP_KERNEL);
+> +	if (!cps)
+> +		return NULL;
+> +	if (!_nfs4_init_state(nn, cps, &cps->cp_stateid))
+> +		goto out_free;
+> +	cps->cp_p_stid = p_stid;
+> +	cps->cp_active = false;
+> +	cps->cp_timeout = jiffies + (nn->nfsd4_lease * HZ);
+> +	INIT_LIST_HEAD(&cps->cp_list);
+> +	list_add(&cps->cp_list, &p_stid->sc_cp_list);
+
+What prevents concurrent nfs4_alloc_init_cpntf_state()s from running and
+corrupting this list?
+
+> +
+> +	return cps;
+> +out_free:
+> +	kfree(cps);
+> +	return NULL;
+> +}
+> +
+> +void _nfs4_free_state(struct net *n, stateid_t *stid)
+
+Ditto on the naming.
+
+>  {
+>  	struct nfsd_net *nn;
+>  
+> -	nn = net_generic(copy->cp_clp->net, nfsd_net_id);
+> +	nn = net_generic(n, nfsd_net_id);
+>  	spin_lock(&nn->s2s_cp_lock);
+> -	idr_remove(&nn->s2s_cp_stateids, copy->cp_stateid.si_opaque.so_id);
+> +	idr_remove(&nn->s2s_cp_stateids, stid->si_opaque.so_id);
+>  	spin_unlock(&nn->s2s_cp_lock);
+>  }
+>  
+> +void nfs4_free_cp_state(struct nfsd4_copy *copy)
+> +{
+> +	_nfs4_free_state(copy->cp_clp->net, &copy->cp_stateid);
+> +}
+> +
+> +void nfs4_free_cpntf_state(struct nfs4_cpntf_state *cps)
+> +{
+> +	_nfs4_free_state(cps->cp_p_stid->sc_client->net, &cps->cp_stateid);
+> +	kfree(cps);
+> +}
+> +
+> +static void nfs4_free_cpntf_statelist(struct nfs4_stid *stid)
+> +{
+> +	struct nfs4_cpntf_state *cps;
+> +
+> +	might_sleep();
+> +
+> +	while (!list_empty(&stid->sc_cp_list)) {
+> +		cps = list_first_entry(&stid->sc_cp_list,
+> +				       struct nfs4_cpntf_state, cp_list);
+> +		list_del(&cps->cp_list);
+> +		nfs4_free_cpntf_state(cps);
+> +	}
+
+Same question on concurrent modifications of this lock--do we need some
+more locking?
+
+--b.
