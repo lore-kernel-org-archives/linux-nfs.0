@@ -2,67 +2,67 @@ Return-Path: <SRS0=ZVvz=NR=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+X-Spam-Status: No, score=-6.9 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
+	SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 928B7C32789
-	for <linux-nfs@archiver.kernel.org>; Tue,  6 Nov 2018 07:41:23 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 37FD0C32789
+	for <linux-nfs@archiver.kernel.org>; Tue,  6 Nov 2018 07:53:43 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 4D72E20827
-	for <linux-nfs@archiver.kernel.org>; Tue,  6 Nov 2018 07:41:23 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id F28D22085B
+	for <linux-nfs@archiver.kernel.org>; Tue,  6 Nov 2018 07:53:42 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="NGAaCm8w"
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 4D72E20827
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="gonf+HP1"
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org F28D22085B
 Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=gmail.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729021AbeKFRFQ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 6 Nov 2018 12:05:16 -0500
-Received: from mail-vk1-f194.google.com ([209.85.221.194]:46304 "EHLO
-        mail-vk1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726863AbeKFRFQ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Nov 2018 12:05:16 -0500
-Received: by mail-vk1-f194.google.com with SMTP id 185so2639378vkv.13
-        for <linux-nfs@vger.kernel.org>; Mon, 05 Nov 2018 23:41:21 -0800 (PST)
+        id S1729272AbeKFRRj (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 6 Nov 2018 12:17:39 -0500
+Received: from mail-vs1-f66.google.com ([209.85.217.66]:43221 "EHLO
+        mail-vs1-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1729241AbeKFRRi (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Nov 2018 12:17:38 -0500
+Received: by mail-vs1-f66.google.com with SMTP id x1so401290vsc.10
+        for <linux-nfs@vger.kernel.org>; Mon, 05 Nov 2018 23:53:41 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=message-id:date:from:to:subject:mime-version:content-disposition;
-        bh=USpk16/hgQY2QW07FjMrjuRp9Xt0It09e1n7CF9yBg0=;
-        b=NGAaCm8wSEE72ptPDAdg1sNNT8vSPpgLX0YKURuNvUP7qavNAdKxR28m97qvEijpPA
-         veX21k7dFSZmqM/3nBvEVG4Mpinzx1YwGczmUuA8gocCZJZC2VSvZlXrMlpRP9b6PAyQ
-         hC4p/LQvJRmVLBbyMh/obBEiLkyt5mtI1JaEfEEsTTQAen+XTUS3umxK8lHf5BFCXQm0
-         U47PAMVR+4rEIT2zbkRKURdxsjc69WhLjU6fFfEieEt8L6k/ZKfHrMEGONKu9wEdGo+H
-         H5D/ZxSb4CsGEXaqmR4woPCrZkrpYx0p7Q4EXr7TNkyvPGPai877Hk6c4jZ9EVUNajyj
-         0tqQ==
+        bh=Ks/qF2bhU0LX3N10K5y/ZtuZQbOsyfs3YEL8uHVRrSU=;
+        b=gonf+HP1B8UM7s6Vlk+8sunMPFCirPL5046x0hIk/jmznNGUucdKxlmHiYZlAA23BV
+         vK7MIJKFQtE+w+t031xO/YG+HvW4RnDgBjAjiQII02UlyrA2ici0j6grayfirynpAHlF
+         ATprcHRMbQ+lJq/oKXKQD8gg++XKQdbYbycjVtBw5RAcEKd5JhLnThXSTSZTw9d1vzhJ
+         WBGrbEBi6VDCEimNCOvfYTpenTThHbZuqvs5us31RdI/hk12cUjyKfxI78odj60xowl8
+         Xn94RJxgfTo4kjn9WAV80fupd41XpRAeXyly+sNnrQkAs1qm4GSt5NWDN5SwAG9EhYUA
+         pX7w==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:message-id:date:from:to:subject:mime-version
          :content-disposition;
-        bh=USpk16/hgQY2QW07FjMrjuRp9Xt0It09e1n7CF9yBg0=;
-        b=Dn2e6d9vPswRl1a2EITwdmocr0CgX9srEBhMGUmq1b7qK8FaG/C0lHHI7cwFbpq2oL
-         SfBzaNA42u2+tuRX98O6jVKQ6JRvaupG9spsxzAj/xElLMcGLHiUXzV0oFLnOIii0EvR
-         r+Jdt1zc0I3HM673CTnRH24g345GB2FUO2KC2fJV1XPR3aXj2My80onh+inX/BT6qxQg
-         U7h3c6Nh2Ty02p09vQ7IfbyDifRK8bXfbtvwjDAqer+6Xjf+SafIFs/HWG91nmZMZ60z
-         JhNkRcg0CT7TgpeveYerNq95oUPX5eqvfLb43uxeEEFzCaSj8eR8dLbH7nRow5D/smG8
-         pXmw==
-X-Gm-Message-State: AGRZ1gLucZ3OXf8Ley75L2eMoDmAWLyIbkovwOXlykHXmtZqSedQNIru
-        sF/PJK0Xwf2oa8gYTv3YAgTA3Odz
-X-Google-Smtp-Source: AJdET5ejahiPRdeTipSAZi4HERCSYoHQOOoLvUdn0we2bBDq6O3yB0f5fzF3KdVYILdJYCkHpGirnA==
-X-Received: by 2002:a1f:b406:: with SMTP id d6mr10520853vkf.63.1541490081163;
-        Mon, 05 Nov 2018 23:41:21 -0800 (PST)
+        bh=Ks/qF2bhU0LX3N10K5y/ZtuZQbOsyfs3YEL8uHVRrSU=;
+        b=GRbz1UDQOx8cPUA0mAlxZctTzg4XFB6kDnN4U0tuU8cO32PNgtjl9c9+rlQIeAPq0o
+         +9bA2kRvoz9zDjkMdJRYhsa94YQe2alwHSxh1Y1k0f+DP2/WEtjxbaSaYUA9G8N/7Qr3
+         wGVe7CmbzSefZhb97H1u5S06BPI3V69p7+/hnryS42PKL65s0eLBKwJhF3H40FZjWyig
+         jQgkzgD3jKbthpyAz8Z1AT0djE/+OpPgBI7vgLyAXrcKziIaIg5bRudO2aA04+1RJySp
+         PBX1me2HKhhfrbFD4HFnfZtyePRU7gxYlaoh8f08SpTbN/dxHWeuTZSJuuFUAGIjTlaA
+         8dLg==
+X-Gm-Message-State: AGRZ1gKStc6gMIH55X3dOQ+9RnQiIyuDGzg18ZGSalsGBJCxnJLIKKLi
+        Q/JxSVCITqErGo3DUfi0nABNh3cs
+X-Google-Smtp-Source: AJdET5eb/UESB8tnoWAS7qIOdFzOWNvh5IBWKuzGNkQTWxbXVb+ctUxnB/Xtpzi2tvOYHWVrmxER9g==
+X-Received: by 2002:a67:1383:: with SMTP id 125mr9339939vst.31.1541490820845;
+        Mon, 05 Nov 2018 23:53:40 -0800 (PST)
 Received: from localhost ([207.246.116.136])
-        by smtp.gmail.com with ESMTPSA id k22-v6sm12679340vkk.29.2018.11.05.23.41.17
+        by smtp.gmail.com with ESMTPSA id l21sm8087193vke.9.2018.11.05.23.53.37
         for <linux-nfs@vger.kernel.org>
         (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Mon, 05 Nov 2018 23:41:20 -0800 (PST)
-Message-ID: <5be145a0.1c69fb81.9f722.e02a@mx.google.com>
-Date:   Mon, 05 Nov 2018 23:41:20 -0800 (PST)
+        Mon, 05 Nov 2018 23:53:40 -0800 (PST)
+Message-ID: <5be14884.1c69fb81.a6fae.51d4@mx.google.com>
+Date:   Mon, 05 Nov 2018 23:53:40 -0800 (PST)
 From:   Yang Bo <phoooyb@gmail.com>
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH 1/2] nfs-utils: configure.ac: Fix --with-rpcgen=internal
- nottaking effect.
+Subject: [PATCH 2/2] nfs-utils: configure.ac: Do not fatalize
+ -Wstrict-prototypes with internal rpcgen.
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
@@ -71,24 +71,46 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
+The internal rpcgen is not able to generate -Wstrict-prototypes free code,
+the problematic files are:
+
+./tests/nsm_client/nlm_sm_inter_svc.c
+./support/nsm/sm_inter_svc.c
+
 Signed-off-by: Yang Bo <rslovers@yandex.com>
 ---
- configure.ac | 2 ++
- 1 file changed, 2 insertions(+)
+ configure.ac | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
 diff --git a/configure.ac b/configure.ac
-index cf1c4b9..3caeebc 100644
+index 3caeebc..ad2985c 100644
 --- a/configure.ac
 +++ b/configure.ac
-@@ -155,6 +155,8 @@ AC_ARG_WITH(rpcgen,
- 	    do if test -f $p ; then RPCGEN_PATH=$p ; break; fi ; done
- 	elif test "$rpcgen_path" != "internal"; then
+@@ -149,6 +149,7 @@ AC_ARG_WITH(rpcgen,
+ 	[AC_HELP_STRING([--with-rpcgen=internal], [use internal rpcgen instead of system one])],
+ 	rpcgen_path=$withval,
+ 	rpcgen_path=yes )
++	rpcgen_cflags=-Werror=strict-prototypes
+ 	RPCGEN_PATH=
+ 	if test "$rpcgen_path" = "yes"; then
+ 	    for p in /usr/local/bin/rpcgen /usr/bin/rpcgen /bin/rpcgen
+@@ -157,6 +158,7 @@ AC_ARG_WITH(rpcgen,
  	    RPCGEN_PATH=$rpcgen_path
-+	else
-+	    RPCGEN_PATH=internal
+ 	else
+ 	    RPCGEN_PATH=internal
++	    rpcgen_cflags=-Wstrict-prototypes
  	fi
  	AC_SUBST(RPCGEN_PATH)
  	AM_CONDITIONAL(CONFIG_RPCGEN, [test "$RPCGEN_PATH" = "internal"])
+@@ -542,7 +544,7 @@ my_am_cflags="\
+  -pipe \
+  -Wall \
+  -Wextra \
+- -Werror=strict-prototypes \
++ $rpcgen_cflags \
+  -Werror=missing-prototypes \
+  -Werror=missing-declarations \
+  -Werror=format=2 \
 -- 
 2.16.3
 
