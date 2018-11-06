@@ -2,85 +2,225 @@ Return-Path: <SRS0=ZVvz=NR=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C7D12C46464
-	for <linux-nfs@archiver.kernel.org>; Tue,  6 Nov 2018 18:35:13 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3A5A4C46465
+	for <linux-nfs@archiver.kernel.org>; Tue,  6 Nov 2018 18:35:14 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 9615320827
-	for <linux-nfs@archiver.kernel.org>; Tue,  6 Nov 2018 18:35:13 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 9615320827
+	by mail.kernel.org (Postfix) with ESMTP id 1185F20827
+	for <linux-nfs@archiver.kernel.org>; Tue,  6 Nov 2018 18:35:14 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 1185F20827
 Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=redhat.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2387848AbeKGEBp (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S2388141AbeKGEBp (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Tue, 6 Nov 2018 23:01:45 -0500
-Received: from mx1.redhat.com ([209.132.183.28]:60922 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:44608 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2387905AbeKGEBp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        id S2388067AbeKGEBp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
         Tue, 6 Nov 2018 23:01:45 -0500
-Received: from smtp.corp.redhat.com (int-mx08.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+Received: from smtp.corp.redhat.com (int-mx04.intmail.prod.int.phx2.redhat.com [10.5.11.14])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 129123082A31;
+        by mx1.redhat.com (Postfix) with ESMTPS id 1758C83F44;
         Tue,  6 Nov 2018 18:35:12 +0000 (UTC)
 Received: from coeurl.usersys.redhat.com (ovpn-123-119.rdu2.redhat.com [10.10.123.119])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id E15541948B;
+        by smtp.corp.redhat.com (Postfix) with ESMTP id E082D5D979;
         Tue,  6 Nov 2018 18:35:11 +0000 (UTC)
 Received: by coeurl.usersys.redhat.com (Postfix, from userid 1000)
-        id 6789F20BE2; Tue,  6 Nov 2018 13:35:11 -0500 (EST)
+        id 7A9FA2293A; Tue,  6 Nov 2018 13:35:11 -0500 (EST)
 From:   Scott Mayhew <smayhew@redhat.com>
 To:     bfields@fieldses.org, jlayton@kernel.org
 Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH RFC 0/4] un-deprecate nfsdcld
-Date:   Tue,  6 Nov 2018 13:35:07 -0500
-Message-Id: <20181106183511.17836-1-smayhew@redhat.com>
-X-Scanned-By: MIMEDefang 2.84 on 10.5.11.23
-X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.45]); Tue, 06 Nov 2018 18:35:12 +0000 (UTC)
+Subject: [PATCH RFC 4/4] nfsd: keep a tally of RECLAIM_COMPLETE operations when using nfsdcld
+Date:   Tue,  6 Nov 2018 13:35:11 -0500
+Message-Id: <20181106183511.17836-5-smayhew@redhat.com>
+In-Reply-To: <20181106183511.17836-1-smayhew@redhat.com>
+References: <20181106183511.17836-1-smayhew@redhat.com>
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.14
+X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.27]); Tue, 06 Nov 2018 18:35:12 +0000 (UTC)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-When nfsdcld was released, it was quickly deprecated in favor of the
-nfsdcltrack usermodehelper, so as to not require another running daemon.
-That prevents NFSv4 clients from reclaiming locks from nfsd's running in
-containers, since neither nfsdcltrack nor the legacy client tracking
-code work in containers.  These patches un-deprecate the use of nfsdcld
-for NFSv4 client tracking.
+When using nfsdcld for NFSv4 client tracking, track the number of
+RECLAIM_COMPLETE operations we receive from "known" clients to help in
+deciding if we can lift the grace period early (or whether we need to
+start a v4 grace period at all).
 
-These patches are intended to go alongside some nfs-utils patches that
-introduce an enhancement that allows nfsd to "slurp" up the client
-records during client tracking initialization and store them internally
-in hash table.  This enables nfsd to check whether an NFSv4 client is 
-allowed to reclaim without having to do an upcall to nfsdcld.  It also
-allows nfsd to decide to end the v4 grace period early if the number of
-RECLAIM_COMPLETE operations it has received from "known" clients is
-equal to the number of entries in the hash table.  It also allows nfsd
-to skip the v4 grace period altogether if it knows there are no clients
-allowed to reclaim.
+Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+---
+ fs/nfsd/netns.h       |  3 +++
+ fs/nfsd/nfs4recover.c |  5 +++++
+ fs/nfsd/nfs4state.c   | 52 +++++++++++++++++++++++++++++++++++++++++++
+ fs/nfsd/nfsctl.c      |  1 +
+ 4 files changed, 61 insertions(+)
 
-There is a fallback to allow nfsd to continue to work with older nfsdcld
-daemons in the event that any are out in the wild (unlikely).
-Everything should work fine except nfsd will not be able to exit the
-grace period early or skip the grace period altogether.
-
-Scott Mayhew (4):
-  nfsd: fix a warning in __cld_pipe_upcall()
-  nfsd: make nfs4_client_reclaim use an xdr_netobj instead of a fixed
-    char array
-  nfsd: un-deprecate nfsdcld
-  nfsd: keep a tally of RECLAIM_COMPLETE operations when using nfsdcld
-
- fs/nfsd/netns.h               |   3 +
- fs/nfsd/nfs4recover.c         | 326 ++++++++++++++++++++++++++++++----
- fs/nfsd/nfs4state.c           |  82 +++++++--
- fs/nfsd/nfsctl.c              |   1 +
- fs/nfsd/state.h               |   8 +-
- include/uapi/linux/nfsd/cld.h |   1 +
- 6 files changed, 372 insertions(+), 49 deletions(-)
-
+diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
+index 32cb8c027483..b42aaa22fba2 100644
+--- a/fs/nfsd/netns.h
++++ b/fs/nfsd/netns.h
+@@ -104,6 +104,9 @@ struct nfsd_net {
+ 	time_t nfsd4_grace;
+ 	bool somebody_reclaimed;
+ 
++	bool track_reclaim_completes;
++	atomic_t nr_reclaim_complete;
++
+ 	bool nfsd_net_up;
+ 	bool lockd_up;
+ 
+diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
+index 10887fdce8c2..171c013d63ba 100644
+--- a/fs/nfsd/nfs4recover.c
++++ b/fs/nfsd/nfs4recover.c
+@@ -1235,6 +1235,7 @@ nfsd4_cld_grace_done(struct nfsd_net *nn)
+ 	free_cld_upcall(cup);
+ out_err:
+ 	nfs4_release_reclaim(nn);
++	atomic_set(&nn->nr_reclaim_complete, 0);
+ 	if (ret)
+ 		printk(KERN_ERR "NFSD: Unable to end grace period: %d\n", ret);
+ }
+@@ -1254,6 +1255,8 @@ nfs4_cld_state_init(struct net *net)
+ 	for (i = 0; i < CLIENT_HASH_SIZE; i++)
+ 		INIT_LIST_HEAD(&nn->reclaim_str_hashtbl[i]);
+ 	nn->reclaim_str_hashtbl_size = 0;
++	nn->track_reclaim_completes = true;
++	atomic_set(&nn->nr_reclaim_complete, 0);
+ 
+ 	return 0;
+ }
+@@ -1263,6 +1266,7 @@ nfs4_cld_state_shutdown(struct net *net)
+ {
+ 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
+ 
++	nn->track_reclaim_completes = false;
+ 	kfree(nn->reclaim_str_hashtbl);
+ }
+ 
+@@ -1302,6 +1306,7 @@ nfsd4_cld_tracking_exit(struct net *net)
+ 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
+ 
+ 	nfs4_release_reclaim(nn);
++	atomic_set(&nn->nr_reclaim_complete, 0);
+ 	nfsd4_remove_cld_pipe(net);
+ 	nfs4_cld_state_shutdown(net);
+ }
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 777fbb0d2761..5dfc3cd51d08 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -77,6 +77,7 @@ static u64 current_sessionid = 1;
+ /* forward declarations */
+ static bool check_for_locks(struct nfs4_file *fp, struct nfs4_lockowner *lowner);
+ static void nfs4_free_ol_stateid(struct nfs4_stid *stid);
++void nfsd4_end_grace(struct nfsd_net *nn);
+ 
+ /* Locking: */
+ 
+@@ -1988,10 +1989,41 @@ destroy_client(struct nfs4_client *clp)
+ 	__destroy_client(clp);
+ }
+ 
++static void inc_reclaim_complete(struct nfs4_client *clp)
++{
++	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
++
++	if (!nn->track_reclaim_completes)
++		return;
++	if (!test_bit(NFSD4_CLIENT_RECLAIM_COMPLETE, &clp->cl_flags))
++		return;
++	if (!nfsd4_find_reclaim_client(clp->cl_name, nn))
++		return;
++	if (atomic_inc_return(&nn->nr_reclaim_complete) ==
++			nn->reclaim_str_hashtbl_size) {
++		printk(KERN_INFO "NFSD: all clients done reclaiming, ending NFSv4 grace period (net %x)\n",
++				clp->net->ns.inum);
++		nfsd4_end_grace(nn);
++	}
++}
++
++static void dec_reclaim_complete(struct nfs4_client *clp)
++{
++	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
++
++	if (!nn->track_reclaim_completes)
++		return;
++	if (!test_bit(NFSD4_CLIENT_RECLAIM_COMPLETE, &clp->cl_flags))
++		return;
++	if (nfsd4_find_reclaim_client(clp->cl_name, nn))
++		atomic_dec(&nn->nr_reclaim_complete);
++}
++
+ static void expire_client(struct nfs4_client *clp)
+ {
+ 	unhash_client(clp);
+ 	nfsd4_client_record_remove(clp);
++	dec_reclaim_complete(clp);
+ 	__destroy_client(clp);
+ }
+ 
+@@ -3339,6 +3371,7 @@ nfsd4_reclaim_complete(struct svc_rqst *rqstp,
+ 
+ 	status = nfs_ok;
+ 	nfsd4_client_record_create(cstate->session->se_client);
++	inc_reclaim_complete(cstate->session->se_client);
+ out:
+ 	return status;
+ }
+@@ -4734,6 +4767,10 @@ static bool clients_still_reclaiming(struct nfsd_net *nn)
+ 	unsigned long double_grace_period_end = nn->boot_time +
+ 						2 * nn->nfsd4_lease;
+ 
++	if (nn->track_reclaim_completes &&
++			atomic_read(&nn->nr_reclaim_complete) ==
++			nn->reclaim_str_hashtbl_size)
++		return false;
+ 	if (!nn->somebody_reclaimed)
+ 		return false;
+ 	nn->somebody_reclaimed = false;
+@@ -7253,10 +7290,25 @@ nfs4_state_start_net(struct net *net)
+ 		return ret;
+ 	locks_start_grace(net, &nn->nfsd4_manager);
+ 	nfsd4_client_tracking_init(net);
++	if (nn->track_reclaim_completes && nn->reclaim_str_hashtbl_size == 0)
++		goto skip_grace;
+ 	printk(KERN_INFO "NFSD: starting %ld-second grace period (net %x)\n",
+ 	       nn->nfsd4_grace, net->ns.inum);
+ 	queue_delayed_work(laundry_wq, &nn->laundromat_work, nn->nfsd4_grace * HZ);
+ 	return 0;
++
++skip_grace:
++	printk(KERN_INFO "NFSD: no clients to reclaim, skipping NFSv4 grace period (net %x)\n",
++			net->ns.inum);
++	queue_delayed_work(laundry_wq, &nn->laundromat_work, nn->nfsd4_lease * HZ);
++	/*
++	 * we could call nfsd4_end_grace() here, but it has a dprintk()
++	 * that would be confusing if debug logging is enabled
++	 */
++	nn->grace_ended = true;
++	nfsd4_record_grace_done(nn);
++	locks_end_grace(&nn->nfsd4_manager);
++	return 0;
+ }
+ 
+ /* initialization to perform when the nfsd service is started: */
+diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+index 6384c9b94898..950ac6683be9 100644
+--- a/fs/nfsd/nfsctl.c
++++ b/fs/nfsd/nfsctl.c
+@@ -1240,6 +1240,7 @@ static __net_init int nfsd_init_net(struct net *net)
+ 	nn->nfsd4_lease = 45;	/* default lease time */
+ 	nn->nfsd4_grace = 45;
+ 	nn->somebody_reclaimed = false;
++	nn->track_reclaim_completes = false;
+ 	nn->clverifier_counter = prandom_u32();
+ 	nn->clientid_counter = prandom_u32();
+ 	nn->s2s_cp_cl_id = nn->clientid_counter++;
 -- 
 2.17.1
 
