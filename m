@@ -2,28 +2,29 @@ Return-Path: <SRS0=4cvb=NS=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 29B8FC0044C
-	for <linux-nfs@archiver.kernel.org>; Wed,  7 Nov 2018 04:13:33 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 92B6AC0044C
+	for <linux-nfs@archiver.kernel.org>; Wed,  7 Nov 2018 04:13:43 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id D8EE22081D
-	for <linux-nfs@archiver.kernel.org>; Wed,  7 Nov 2018 04:13:32 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org D8EE22081D
+	by mail.kernel.org (Postfix) with ESMTP id 646CF2081D
+	for <linux-nfs@archiver.kernel.org>; Wed,  7 Nov 2018 04:13:43 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 646CF2081D
 Authentication-Results: mail.kernel.org; dmarc=none (p=none dis=none) header.from=suse.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727076AbeKGNmH (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 7 Nov 2018 08:42:07 -0500
-Received: from mx2.suse.de ([195.135.220.15]:56176 "EHLO mx1.suse.de"
+        id S1726558AbeKGNmM (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 7 Nov 2018 08:42:12 -0500
+Received: from mx2.suse.de ([195.135.220.15]:56198 "EHLO mx1.suse.de"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726671AbeKGNmH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 7 Nov 2018 08:42:07 -0500
+        id S1726552AbeKGNmM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 7 Nov 2018 08:42:12 -0500
 X-Virus-Scanned: by amavisd-new at test-mx.suse.de
-Received: from relay1.suse.de (unknown [195.135.220.254])
-        by mx1.suse.de (Postfix) with ESMTP id 7D2F0B176;
-        Wed,  7 Nov 2018 04:13:29 +0000 (UTC)
+Received: from relay2.suse.de (unknown [195.135.220.254])
+        by mx1.suse.de (Postfix) with ESMTP id 4F58EB176;
+        Wed,  7 Nov 2018 04:13:35 +0000 (UTC)
 From:   NeilBrown <neilb@suse.com>
 To:     "J. Bruce Fields" <bfields@fieldses.org>,
         Chuck Lever <chuck.lever@oracle.com>,
@@ -31,10 +32,12 @@ To:     "J. Bruce Fields" <bfields@fieldses.org>,
         Trond Myklebust <trond.myklebust@hammerspace.com>,
         Anna Schumaker <anna.schumaker@netapp.com>
 Date:   Wed, 07 Nov 2018 15:12:30 +1100
-Subject: [PATCH 00/23 - V4] NFS: Remove generic RPC credentials.
+Subject: [PATCH 01/23] cred: add cred_fscmp() for comparing creds.
 Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
         linux-kernel@vger.kernel.org
-Message-ID: <154156285766.24086.14262073575778354276.stgit@noble>
+Message-ID: <154156395073.24086.13167286538519045802.stgit@noble>
+In-Reply-To: <154156285766.24086.14262073575778354276.stgit@noble>
+References: <154156285766.24086.14262073575778354276.stgit@noble>
 User-Agent: StGit/0.17.1-dirty
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -44,120 +47,105 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-This is an updated version of a series I sent in Feb of this year.
-Since then there have only been minor improvement and updates to sync
-with the changing kernel.
+NFS needs to compare to credentials, to see if they can
+be treated the same w.r.t. filesystem access.  Sometimes
+an ordering is needed when credentials are used as a key
+to an rbtree.
+NFS currently has its own private credential management from
+before 'struct cred' existed.  To move it over to more consistent
+use of 'struct cred' we need a comparison function.
+This patch adds that function.
 
-There doesn't seem to be a maintainer for the 'cred' code, so I don't
-know who to ask to approve the first 4 patches.  Maybe if the NFS
-team like them, they can just go to Linus with a note for him to look
-at them if he wants to.
-
-The original motivation for this was performance.  In some
-circumstances the cred caches can get big and particularly can get
-long chains.  The hash function has been changed at least once to
-improve the hashing and it still isn't perfect.
-Rather than improving pruning of the cache, or resizing the hashtable
-etc, it is easiest to just get rid of it.
-
-As well as discarding generic credentials completely (using 'struct
-cred' instead), we also stop storing AUTH_UNIX credentials in a hash
-table - that brings no value.  Just allocate as needed and discard
-when finished with.
-So the only hash table will still have is for AUTH_GSS.
-One of the main triggers for hashtable problems was users changing
-groups a lot, so there would be many entries for the one user, each
-with a different set of groups.  That doesn't apply for
-AUTH_GSS as the groupids on the client are ignored.
-
-That was the original motivation, but as I worked on it, I realized
-that it was making a log of code simpler.
-
- 44 files changed, 550 insertions(+), 925 deletions(-)
-
-That is sufficient motivation in itself I think.
-
-Review comments most welcome.
-
-Thanks,
-NeilBrown
-
-
+Signed-off-by: NeilBrown <neilb@suse.com>
 ---
+ include/linux/cred.h |    1 +
+ kernel/cred.c        |   55 ++++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 56 insertions(+)
 
-NeilBrown (23):
-      cred: add cred_fscmp() for comparing creds.
-      cred: add get_cred_rcu()
-      cred: export get_task_cred().
-      cred: allow get_cred() and put_cred() to be given NULL.
-      SUNRPC: add 'struct cred *' to auth_cred and rpc_cred
-      SUNRPC: remove groupinfo from struct auth_cred.
-      SUNRPC: remove uid and gid from struct auth_cred
-      SUNRPC: remove machine_cred field from struct auth_cred
-      NFSv4: add cl_root_cred for use when machine cred is not available.
-      NFSv4: don't require lock for get_renew_cred or get_machine_cred
-      SUNRPC: discard RPC_DO_ROOTOVERRIDE()
-      NFS/SUNRPC: don't lookup machine credential until rpcauth_bindcred().
-      SUNRPC: introduce RPC_TASK_NULLCREDS to request auth_none
-      SUNRPC: add side channel to use non-generic cred for rpc call.
-      NFS: move credential expiry tracking out of SUNRPC into NFS.
-      SUNRPC: remove RPCAUTH_AUTH_NO_CRKEY_TIMEOUT
-      NFS: change access cache to use 'struct cred'.
-      NFS: struct nfs_open_dir_context: convert rpc_cred pointer to cred.
-      NFS/NFSD/SUNRPC: replace generic creds with 'struct cred'.
-      SUNRPC: remove generic cred code.
-      SUNRPC: remove crbind rpc_cred operation
-      SUNRPC: simplify auth_unix.
-      SUNRPC discard cr_uid from struct rpc_cred.
+diff --git a/include/linux/cred.h b/include/linux/cred.h
+index 7eed6101c791..f1085767e1b3 100644
+--- a/include/linux/cred.h
++++ b/include/linux/cred.h
+@@ -169,6 +169,7 @@ extern int change_create_files_as(struct cred *, struct inode *);
+ extern int set_security_override(struct cred *, u32);
+ extern int set_security_override_from_ctx(struct cred *, const char *);
+ extern int set_create_files_as(struct cred *, struct inode *);
++extern int cred_fscmp(const struct cred *, const struct cred *);
+ extern void __init cred_init(void);
+ 
+ /*
+diff --git a/kernel/cred.c b/kernel/cred.c
+index ecf03657e71c..0b3ac72bd717 100644
+--- a/kernel/cred.c
++++ b/kernel/cred.c
+@@ -19,6 +19,7 @@
+ #include <linux/security.h>
+ #include <linux/binfmts.h>
+ #include <linux/cn_proc.h>
++#include <linux/uidgid.h>
+ 
+ #if 0
+ #define kdebug(FMT, ...)						\
+@@ -564,6 +565,60 @@ void revert_creds(const struct cred *old)
+ }
+ EXPORT_SYMBOL(revert_creds);
+ 
++/**
++ * cred_fscmp - Compare two credentials with respect to filesystem access.
++ * @a: The first credential
++ * @b: The second credential
++ *
++ * cred_cmp() will return zero if both credentials have the same
++ * fsuid, fsgid, and supplementary groups.  That is, if they will both
++ * provide the same access to files based on mode/uid/gid.
++ * If the credentials are different, then either -1 or 1 will
++ * be returned depending on whether @a comes before or after @b
++ * respectively in an arbitrary, but stable, ordering of credentials.
++ *
++ * Return: -1, 0, or 1 depending on comparison
++ */
++int cred_fscmp(const struct cred *a, const struct cred *b)
++{
++	struct group_info *ga, *gb;
++	int g;
++
++	if (a == b)
++		return 0;
++	if (uid_lt(a->fsuid, b->fsuid))
++		return -1;
++	if (uid_gt(a->fsuid, b->fsuid))
++		return 1;
++
++	if (gid_lt(a->fsgid, b->fsgid))
++		return -1;
++	if (gid_gt(a->fsgid, b->fsgid))
++		return 1;
++
++	ga = a->group_info;
++	gb = b->group_info;
++	if (ga == gb)
++		return 0;
++	if (ga == NULL)
++		return -1;
++	if (gb == NULL)
++		return 1;
++	if (ga->ngroups < gb->ngroups)
++		return -1;
++	if (ga->ngroups > gb->ngroups)
++		return 1;
++
++	for (g = 0; g < ga->ngroups; g++) {
++		if (gid_lt(ga->gid[g], gb->gid[g]))
++			return -1;
++		if (gid_gt(ga->gid[g], gb->gid[g]))
++			return 1;
++	}
++	return 0;
++}
++EXPORT_SYMBOL(cred_fscmp);
++
+ /*
+  * initialise the credentials stuff
+  */
 
-
- fs/lockd/clntproc.c                       |    6 -
- fs/nfs/blocklayout/blocklayout.c          |    2 
- fs/nfs/client.c                           |    9 -
- fs/nfs/delegation.c                       |   28 +--
- fs/nfs/delegation.h                       |   10 -
- fs/nfs/dir.c                              |   59 ++----
- fs/nfs/flexfilelayout/flexfilelayout.c    |   64 +++---
- fs/nfs/flexfilelayout/flexfilelayout.h    |    8 -
- fs/nfs/flexfilelayout/flexfilelayoutdev.c |   16 +-
- fs/nfs/inode.c                            |   13 +
- fs/nfs/internal.h                         |    8 -
- fs/nfs/nfs3proc.c                         |    4 
- fs/nfs/nfs4_fs.h                          |   65 +++---
- fs/nfs/nfs4client.c                       |    4 
- fs/nfs/nfs4proc.c                         |  150 +++++++--------
- fs/nfs/nfs4renewd.c                       |    9 -
- fs/nfs/nfs4session.c                      |    5 
- fs/nfs/nfs4state.c                        |  129 ++++++-------
- fs/nfs/pagelist.c                         |    2 
- fs/nfs/pnfs.c                             |   14 +
- fs/nfs/pnfs.h                             |   10 -
- fs/nfs/pnfs_dev.c                         |    4 
- fs/nfs/pnfs_nfs.c                         |    2 
- fs/nfs/proc.c                             |    2 
- fs/nfs/unlink.c                           |   15 -
- fs/nfs/write.c                            |   24 ++
- fs/nfsd/nfs4callback.c                    |   31 +--
- fs/nfsd/state.h                           |    2 
- include/linux/cred.h                      |   26 ++-
- include/linux/nfs_fs.h                    |   13 +
- include/linux/nfs_fs_sb.h                 |    2 
- include/linux/nfs_xdr.h                   |   16 +-
- include/linux/sunrpc/auth.h               |   51 -----
- include/linux/sunrpc/clnt.h               |    1 
- include/linux/sunrpc/sched.h              |    6 -
- kernel/cred.c                             |   58 ++++++
- net/sunrpc/Makefile                       |    2 
- net/sunrpc/auth.c                         |  116 ++++++-----
- net/sunrpc/auth_generic.c                 |  299 -----------------------------
- net/sunrpc/auth_gss/auth_gss.c            |   45 +---
- net/sunrpc/auth_null.c                    |    4 
- net/sunrpc/auth_unix.c                    |  110 +++--------
- net/sunrpc/clnt.c                         |   26 +--
- net/sunrpc/sched.c                        |    5 
- 44 files changed, 550 insertions(+), 925 deletions(-)
- delete mode 100644 net/sunrpc/auth_generic.c
-
---
-Signature
 
