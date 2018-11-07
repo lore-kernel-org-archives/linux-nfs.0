@@ -6,25 +6,25 @@ X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED
 	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E434AC46464
-	for <linux-nfs@archiver.kernel.org>; Wed,  7 Nov 2018 04:15:57 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5E03CC0044C
+	for <linux-nfs@archiver.kernel.org>; Wed,  7 Nov 2018 04:16:09 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id B50522081D
-	for <linux-nfs@archiver.kernel.org>; Wed,  7 Nov 2018 04:15:57 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org B50522081D
+	by mail.kernel.org (Postfix) with ESMTP id 2F4F32081D
+	for <linux-nfs@archiver.kernel.org>; Wed,  7 Nov 2018 04:16:09 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 2F4F32081D
 Authentication-Results: mail.kernel.org; dmarc=none (p=none dis=none) header.from=suse.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2388596AbeKGNo0 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 7 Nov 2018 08:44:26 -0500
-Received: from mx2.suse.de ([195.135.220.15]:57028 "EHLO mx1.suse.de"
+        id S2388846AbeKGNoi (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 7 Nov 2018 08:44:38 -0500
+Received: from mx2.suse.de ([195.135.220.15]:57170 "EHLO mx1.suse.de"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S2388667AbeKGNoZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 7 Nov 2018 08:44:25 -0500
+        id S2388667AbeKGNoh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 7 Nov 2018 08:44:37 -0500
 X-Virus-Scanned: by amavisd-new at test-mx.suse.de
 Received: from relay2.suse.de (unknown [195.135.220.254])
-        by mx1.suse.de (Postfix) with ESMTP id 442C0B687;
-        Wed,  7 Nov 2018 04:15:47 +0000 (UTC)
+        by mx1.suse.de (Postfix) with ESMTP id 2C106B659;
+        Wed,  7 Nov 2018 04:16:00 +0000 (UTC)
 From:   NeilBrown <neilb@suse.com>
 To:     "J. Bruce Fields" <bfields@fieldses.org>,
         Chuck Lever <chuck.lever@oracle.com>,
@@ -32,10 +32,10 @@ To:     "J. Bruce Fields" <bfields@fieldses.org>,
         Trond Myklebust <trond.myklebust@hammerspace.com>,
         Anna Schumaker <anna.schumaker@netapp.com>
 Date:   Wed, 07 Nov 2018 15:12:31 +1100
-Subject: [PATCH 21/23] SUNRPC: remove crbind rpc_cred operation
+Subject: [PATCH 23/23] SUNRPC discard cr_uid from struct rpc_cred.
 Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
         linux-kernel@vger.kernel.org
-Message-ID: <154156395157.24086.18081127267571403841.stgit@noble>
+Message-ID: <154156395166.24086.4433778895891818320.stgit@noble>
 In-Reply-To: <154156285766.24086.14262073575778354276.stgit@noble>
 References: <154156285766.24086.14262073575778354276.stgit@noble>
 User-Agent: StGit/0.17.1-dirty
@@ -47,111 +47,97 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-This now always just does get_rpccred(), so we
-don't need an operation pointer to know to do that.
+Just use ->cr_cred->fsuid directly.
 
 Signed-off-by: NeilBrown <neilb@suse.com>
 ---
  include/linux/sunrpc/auth.h    |    2 --
- net/sunrpc/auth.c              |   12 +-----------
- net/sunrpc/auth_gss/auth_gss.c |    2 --
- net/sunrpc/auth_null.c         |    1 -
- net/sunrpc/auth_unix.c         |    1 -
- 5 files changed, 1 insertion(+), 17 deletions(-)
+ net/sunrpc/auth.c              |    1 -
+ net/sunrpc/auth_gss/auth_gss.c |   12 ++++++------
+ 3 files changed, 6 insertions(+), 9 deletions(-)
 
 diff --git a/include/linux/sunrpc/auth.h b/include/linux/sunrpc/auth.h
-index b9449aa27fed..5486082d3d63 100644
+index 5486082d3d63..eed3cb16ccf1 100644
 --- a/include/linux/sunrpc/auth.h
 +++ b/include/linux/sunrpc/auth.h
-@@ -133,7 +133,6 @@ struct rpc_credops {
- 	void			(*crdestroy)(struct rpc_cred *);
+@@ -58,8 +58,6 @@ struct rpc_cred {
+ 	refcount_t		cr_count;	/* ref count */
+ 	const struct cred	*cr_cred;
  
- 	int			(*crmatch)(struct auth_cred *, struct rpc_cred *, int);
--	struct rpc_cred *	(*crbind)(struct rpc_task *, struct rpc_cred *, int);
- 	__be32 *		(*crmarshal)(struct rpc_task *, __be32 *);
- 	int			(*crrefresh)(struct rpc_task *);
- 	__be32 *		(*crvalidate)(struct rpc_task *, __be32 *);
-@@ -167,7 +166,6 @@ int			rpcauth_list_flavors(rpc_authflavor_t *, int);
- struct rpc_cred *	rpcauth_lookup_credcache(struct rpc_auth *, struct auth_cred *, int, gfp_t);
- void			rpcauth_init_cred(struct rpc_cred *, const struct auth_cred *, struct rpc_auth *, const struct rpc_credops *);
- struct rpc_cred *	rpcauth_lookupcred(struct rpc_auth *, int);
--struct rpc_cred *	rpcauth_generic_bind_cred(struct rpc_task *, struct rpc_cred *, int);
- void			put_rpccred(struct rpc_cred *);
- __be32 *		rpcauth_marshcred(struct rpc_task *, __be32 *);
- __be32 *		rpcauth_checkverf(struct rpc_task *, __be32 *);
+-	kuid_t			cr_uid;
+-
+ 	/* per-flavor data */
+ };
+ #define RPCAUTH_CRED_NEW	0
 diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
-index 2debbaba7809..867ea9834bde 100644
+index a07a7c59d3a4..1ff9768f5456 100644
 --- a/net/sunrpc/auth.c
 +++ b/net/sunrpc/auth.c
-@@ -658,15 +658,6 @@ rpcauth_init_cred(struct rpc_cred *cred, const struct auth_cred *acred,
+@@ -655,7 +655,6 @@ rpcauth_init_cred(struct rpc_cred *cred, const struct auth_cred *acred,
+ 	cred->cr_ops = ops;
+ 	cred->cr_expire = jiffies;
+ 	cred->cr_cred = get_cred(acred->cred);
+-	cred->cr_uid = acred->cred->fsuid;
  }
  EXPORT_SYMBOL_GPL(rpcauth_init_cred);
  
--struct rpc_cred *
--rpcauth_generic_bind_cred(struct rpc_task *task, struct rpc_cred *cred, int lookupflags)
--{
--	dprintk("RPC: %5u holding %s cred %p\n", task->tk_pid,
--			cred->cr_auth->au_ops->au_name, cred);
--	return get_rpccred(cred);
--}
--EXPORT_SYMBOL_GPL(rpcauth_generic_bind_cred);
--
- static struct rpc_cred *
- rpcauth_bind_root_cred(struct rpc_task *task, int lookupflags)
- {
-@@ -724,8 +715,7 @@ rpcauth_bindcred(struct rpc_task *task, const struct cred *cred, int flags)
- 		lookupflags |= RPCAUTH_LOOKUP_NEW;
- 	if (task->tk_op_cred)
- 		/* Task must use exactly this rpc_cred */
--		new = task->tk_op_cred->cr_ops->crbind(task, task->tk_op_cred,
--						       lookupflags);
-+		new = get_rpccred(task->tk_op_cred);
- 	else if (cred != NULL && cred != &machine_cred)
- 		new = auth->au_ops->lookup_cred(auth, &acred, lookupflags);
- 	else if (cred == &machine_cred)
 diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-index 7c5311c2f524..4fa1881d31ca 100644
+index 4fa1881d31ca..9ab100e3346a 100644
 --- a/net/sunrpc/auth_gss/auth_gss.c
 +++ b/net/sunrpc/auth_gss/auth_gss.c
-@@ -2068,7 +2068,6 @@ static const struct rpc_credops gss_credops = {
- 	.cr_name		= "AUTH_GSS",
- 	.crdestroy		= gss_destroy_cred,
- 	.cr_init		= gss_cred_init,
--	.crbind			= rpcauth_generic_bind_cred,
- 	.crmatch		= gss_match,
- 	.crmarshal		= gss_marshal,
- 	.crrefresh		= gss_refresh,
-@@ -2083,7 +2082,6 @@ static const struct rpc_credops gss_credops = {
- static const struct rpc_credops gss_nullops = {
- 	.cr_name		= "AUTH_GSS",
- 	.crdestroy		= gss_destroy_nullcred,
--	.crbind			= rpcauth_generic_bind_cred,
- 	.crmatch		= gss_match,
- 	.crmarshal		= gss_marshal,
- 	.crrefresh		= gss_refresh_null,
-diff --git a/net/sunrpc/auth_null.c b/net/sunrpc/auth_null.c
-index 830686e80bed..d0ceac57c06e 100644
---- a/net/sunrpc/auth_null.c
-+++ b/net/sunrpc/auth_null.c
-@@ -123,7 +123,6 @@ static
- const struct rpc_credops null_credops = {
- 	.cr_name	= "AUTH_NULL",
- 	.crdestroy	= nul_destroy_cred,
--	.crbind		= rpcauth_generic_bind_cred,
- 	.crmatch	= nul_match,
- 	.crmarshal	= nul_marshal,
- 	.crrefresh	= nul_refresh,
-diff --git a/net/sunrpc/auth_unix.c b/net/sunrpc/auth_unix.c
-index 6ee43bfbfb4b..bff113a411e0 100644
---- a/net/sunrpc/auth_unix.c
-+++ b/net/sunrpc/auth_unix.c
-@@ -246,7 +246,6 @@ static
- const struct rpc_credops unix_credops = {
- 	.cr_name	= "AUTH_UNIX",
- 	.crdestroy	= unx_destroy_cred,
--	.crbind		= rpcauth_generic_bind_cred,
- 	.crmatch	= unx_match,
- 	.crmarshal	= unx_marshal,
- 	.crrefresh	= unx_refresh,
+@@ -565,7 +565,7 @@ gss_setup_upcall(struct gss_auth *gss_auth, struct rpc_cred *cred)
+ 	struct gss_cred *gss_cred = container_of(cred,
+ 			struct gss_cred, gc_base);
+ 	struct gss_upcall_msg *gss_new, *gss_msg;
+-	kuid_t uid = cred->cr_uid;
++	kuid_t uid = cred->cr_cred->fsuid;
+ 
+ 	gss_new = gss_alloc_msg(gss_auth, uid, gss_cred->gc_principal);
+ 	if (IS_ERR(gss_new))
+@@ -604,7 +604,7 @@ gss_refresh_upcall(struct rpc_task *task)
+ 	int err = 0;
+ 
+ 	dprintk("RPC: %5u %s for uid %u\n",
+-		task->tk_pid, __func__, from_kuid(&init_user_ns, cred->cr_uid));
++		task->tk_pid, __func__, from_kuid(&init_user_ns, cred->cr_cred->fsuid));
+ 	gss_msg = gss_setup_upcall(gss_auth, cred);
+ 	if (PTR_ERR(gss_msg) == -EAGAIN) {
+ 		/* XXX: warning on the first, under the assumption we
+@@ -637,7 +637,7 @@ gss_refresh_upcall(struct rpc_task *task)
+ out:
+ 	dprintk("RPC: %5u %s for uid %u result %d\n",
+ 		task->tk_pid, __func__,
+-		from_kuid(&init_user_ns, cred->cr_uid),	err);
++		from_kuid(&init_user_ns, cred->cr_cred->fsuid),	err);
+ 	return err;
+ }
+ 
+@@ -653,7 +653,7 @@ gss_create_upcall(struct gss_auth *gss_auth, struct gss_cred *gss_cred)
+ 	int err;
+ 
+ 	dprintk("RPC:       %s for uid %u\n",
+-		__func__, from_kuid(&init_user_ns, cred->cr_uid));
++		__func__, from_kuid(&init_user_ns, cred->cr_cred->fsuid));
+ retry:
+ 	err = 0;
+ 	/* if gssd is down, just skip upcalling altogether */
+@@ -701,7 +701,7 @@ gss_create_upcall(struct gss_auth *gss_auth, struct gss_cred *gss_cred)
+ 	gss_release_msg(gss_msg);
+ out:
+ 	dprintk("RPC:       %s for uid %u result %d\n",
+-		__func__, from_kuid(&init_user_ns, cred->cr_uid), err);
++		__func__, from_kuid(&init_user_ns, cred->cr_cred->fsuid), err);
+ 	return err;
+ }
+ 
+@@ -1497,7 +1497,7 @@ gss_match(struct auth_cred *acred, struct rpc_cred *rc, int flags)
+ 	} else {
+ 		if (gss_cred->gc_principal != NULL)
+ 			return 0;
+-		ret = uid_eq(rc->cr_uid, acred->cred->fsuid);
++		ret = uid_eq(rc->cr_cred->fsuid, acred->cred->fsuid);
+ 	}
+ 	return ret;
+ }
 
 
