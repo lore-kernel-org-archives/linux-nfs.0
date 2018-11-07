@@ -3,28 +3,28 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
 X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS
-	autolearn=unavailable autolearn_force=no version=3.4.0
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5AD99C0044C
-	for <linux-nfs@archiver.kernel.org>; Wed,  7 Nov 2018 04:14:36 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 42A94C0044C
+	for <linux-nfs@archiver.kernel.org>; Wed,  7 Nov 2018 04:14:38 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 2910B2086B
-	for <linux-nfs@archiver.kernel.org>; Wed,  7 Nov 2018 04:14:36 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 2910B2086B
+	by mail.kernel.org (Postfix) with ESMTP id 0AA532081D
+	for <linux-nfs@archiver.kernel.org>; Wed,  7 Nov 2018 04:14:38 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 0AA532081D
 Authentication-Results: mail.kernel.org; dmarc=none (p=none dis=none) header.from=suse.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2388931AbeKGNnF (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 7 Nov 2018 08:43:05 -0500
-Received: from mx2.suse.de ([195.135.220.15]:56630 "EHLO mx1.suse.de"
+        id S2388587AbeKGNnM (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 7 Nov 2018 08:43:12 -0500
+Received: from mx2.suse.de ([195.135.220.15]:56658 "EHLO mx1.suse.de"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S2388530AbeKGNnF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 7 Nov 2018 08:43:05 -0500
+        id S2388530AbeKGNnM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 7 Nov 2018 08:43:12 -0500
 X-Virus-Scanned: by amavisd-new at test-mx.suse.de
 Received: from relay2.suse.de (unknown [195.135.220.254])
-        by mx1.suse.de (Postfix) with ESMTP id E6261B6A2;
-        Wed,  7 Nov 2018 04:14:27 +0000 (UTC)
+        by mx1.suse.de (Postfix) with ESMTP id 5EFB9B6A3;
+        Wed,  7 Nov 2018 04:14:34 +0000 (UTC)
 From:   NeilBrown <neilb@suse.com>
 To:     "J. Bruce Fields" <bfields@fieldses.org>,
         Chuck Lever <chuck.lever@oracle.com>,
@@ -32,11 +32,11 @@ To:     "J. Bruce Fields" <bfields@fieldses.org>,
         Trond Myklebust <trond.myklebust@hammerspace.com>,
         Anna Schumaker <anna.schumaker@netapp.com>
 Date:   Wed, 07 Nov 2018 15:12:31 +1100
-Subject: [PATCH 09/23] NFSv4: add cl_root_cred for use when machine cred is
- not available.
+Subject: [PATCH 10/23] NFSv4: don't require lock for get_renew_cred or
+ get_machine_cred
 Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
         linux-kernel@vger.kernel.org
-Message-ID: <154156395104.24086.17023670588890588198.stgit@noble>
+Message-ID: <154156395108.24086.10463547105269385122.stgit@noble>
 In-Reply-To: <154156285766.24086.14262073575778354276.stgit@noble>
 References: <154156285766.24086.14262073575778354276.stgit@noble>
 User-Agent: StGit/0.17.1-dirty
@@ -48,93 +48,190 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-NFSv4 state management tries a root credential when no machine
-credential is available, as can happen with kerberos.
-It does this by replacing the cl_machine_cred with a root credential.
-This means that any user of the machine credential needs to take
-a lock while getting a reference to the machine credential, which is
-a little cumbersome.
+This lock is no longer necessary.
 
-So introduce an explicit cl_root_cred, and never free either
-credential until client shutdown.  This means that no locking
-is needed to reference these credentials.  Future patches
-will make use of this.
+If nfs4_get_renew_cred() needs to hunt through the open-state
+creds for a user cred, it still takes the lock to stablize
+the rbtree, but otherwise there are no races.
 
-This is only a temporary addition.  both cl_machine_cred and
-cl_root_cred will disappear later in the series.
+Note that this completely removes the lock from nfs4_renew_state().
+It appears that the original need for the locking here was removed
+long ago, and there is no longer anything to protect.
 
 Signed-off-by: NeilBrown <neilb@suse.com>
 ---
- fs/nfs/client.c           |    2 ++
- fs/nfs/nfs4state.c        |   20 ++++++++++++--------
- include/linux/nfs_fs_sb.h |    1 +
- 3 files changed, 15 insertions(+), 8 deletions(-)
+ fs/nfs/nfs4_fs.h    |    6 +++---
+ fs/nfs/nfs4proc.c   |    4 ++--
+ fs/nfs/nfs4renewd.c |    5 +----
+ fs/nfs/nfs4state.c  |   26 ++++++++++----------------
+ 4 files changed, 16 insertions(+), 25 deletions(-)
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 96d5f8135eb9..cce151776709 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -248,6 +248,8 @@ void nfs_free_client(struct nfs_client *clp)
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index 8d59c9655ec4..0f393eb6b4e4 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -248,7 +248,7 @@ struct nfs4_add_xprt_data {
  
- 	if (clp->cl_machine_cred != NULL)
- 		put_rpccred(clp->cl_machine_cred);
-+	if (clp->cl_root_cred != NULL)
-+		put_rpccred(clp->cl_root_cred);
+ struct nfs4_state_maintenance_ops {
+ 	int (*sched_state_renewal)(struct nfs_client *, struct rpc_cred *, unsigned);
+-	struct rpc_cred * (*get_state_renewal_cred_locked)(struct nfs_client *);
++	struct rpc_cred * (*get_state_renewal_cred)(struct nfs_client *);
+ 	int (*renew_lease)(struct nfs_client *, struct rpc_cred *);
+ };
  
- 	put_net(clp->cl_net);
- 	put_nfs_version(clp->cl_nfs_mod);
+@@ -449,8 +449,8 @@ extern void nfs4_set_lease_period(struct nfs_client *clp,
+ 
+ /* nfs4state.c */
+ struct rpc_cred *nfs4_get_clid_cred(struct nfs_client *clp);
+-struct rpc_cred *nfs4_get_machine_cred_locked(struct nfs_client *clp);
+-struct rpc_cred *nfs4_get_renew_cred_locked(struct nfs_client *clp);
++struct rpc_cred *nfs4_get_machine_cred(struct nfs_client *clp);
++struct rpc_cred *nfs4_get_renew_cred(struct nfs_client *clp);
+ int nfs4_discover_server_trunking(struct nfs_client *clp,
+ 			struct nfs_client **);
+ int nfs40_discover_server_trunking(struct nfs_client *clp,
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 867457d6dfbe..cafa155a053e 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -9606,14 +9606,14 @@ static const struct nfs4_state_recovery_ops nfs41_nograce_recovery_ops = {
+ 
+ static const struct nfs4_state_maintenance_ops nfs40_state_renewal_ops = {
+ 	.sched_state_renewal = nfs4_proc_async_renew,
+-	.get_state_renewal_cred_locked = nfs4_get_renew_cred_locked,
++	.get_state_renewal_cred = nfs4_get_renew_cred,
+ 	.renew_lease = nfs4_proc_renew,
+ };
+ 
+ #if defined(CONFIG_NFS_V4_1)
+ static const struct nfs4_state_maintenance_ops nfs41_state_renewal_ops = {
+ 	.sched_state_renewal = nfs41_proc_async_sequence,
+-	.get_state_renewal_cred_locked = nfs4_get_machine_cred_locked,
++	.get_state_renewal_cred = nfs4_get_machine_cred,
+ 	.renew_lease = nfs4_proc_sequence,
+ };
+ #endif
+diff --git a/fs/nfs/nfs4renewd.c b/fs/nfs/nfs4renewd.c
+index 1f8c2ae43a8d..8880cd958210 100644
+--- a/fs/nfs/nfs4renewd.c
++++ b/fs/nfs/nfs4renewd.c
+@@ -68,7 +68,6 @@ nfs4_renew_state(struct work_struct *work)
+ 	if (test_bit(NFS_CS_STOP_RENEW, &clp->cl_res_state))
+ 		goto out;
+ 
+-	spin_lock(&clp->cl_lock);
+ 	lease = clp->cl_lease_time;
+ 	last = clp->cl_last_renewal;
+ 	now = jiffies;
+@@ -79,8 +78,7 @@ nfs4_renew_state(struct work_struct *work)
+ 		renew_flags |= NFS4_RENEW_DELEGATION_CB;
+ 
+ 	if (renew_flags != 0) {
+-		cred = ops->get_state_renewal_cred_locked(clp);
+-		spin_unlock(&clp->cl_lock);
++		cred = ops->get_state_renewal_cred(clp);
+ 		if (cred == NULL) {
+ 			if (!(renew_flags & NFS4_RENEW_DELEGATION_CB)) {
+ 				set_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state);
+@@ -104,7 +102,6 @@ nfs4_renew_state(struct work_struct *work)
+ 	} else {
+ 		dprintk("%s: failed to call renewd. Reason: lease not expired \n",
+ 				__func__);
+-		spin_unlock(&clp->cl_lock);
+ 	}
+ 	nfs4_schedule_state_renewal(clp);
+ out_exp:
 diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 62ae0fd345ad..032d3ec929f3 100644
+index 032d3ec929f3..dde17424c4f4 100644
 --- a/fs/nfs/nfs4state.c
 +++ b/fs/nfs/nfs4state.c
-@@ -166,24 +166,28 @@ int nfs40_discover_server_trunking(struct nfs_client *clp,
+@@ -164,7 +164,7 @@ int nfs40_discover_server_trunking(struct nfs_client *clp,
+ 	return status;
+ }
  
- struct rpc_cred *nfs4_get_machine_cred_locked(struct nfs_client *clp)
+-struct rpc_cred *nfs4_get_machine_cred_locked(struct nfs_client *clp)
++struct rpc_cred *nfs4_get_machine_cred(struct nfs_client *clp)
  {
--	struct rpc_cred *cred = NULL;
-+	struct rpc_cred *cred = clp->cl_root_cred;
+ 	struct rpc_cred *cred = clp->cl_root_cred;
  
--	if (clp->cl_machine_cred != NULL)
--		cred = get_rpccred(clp->cl_machine_cred);
-+	if (!cred)
-+		cred = clp->cl_machine_cred;
-+	if (cred)
-+		return get_rpccred(cred);
+@@ -210,22 +210,23 @@ nfs4_get_renew_cred_server_locked(struct nfs_server *server)
+ }
+ 
+ /**
+- * nfs4_get_renew_cred_locked - Acquire credential for a renew operation
++ * nfs4_get_renew_cred - Acquire credential for a renew operation
+  * @clp: client state handle
+  *
+  * Returns an rpc_cred with reference count bumped, or NULL.
+  * Caller must hold clp->cl_lock.
+  */
+-struct rpc_cred *nfs4_get_renew_cred_locked(struct nfs_client *clp)
++struct rpc_cred *nfs4_get_renew_cred(struct nfs_client *clp)
+ {
+ 	struct rpc_cred *cred = NULL;
+ 	struct nfs_server *server;
+ 
+ 	/* Use machine credentials if available */
+-	cred = nfs4_get_machine_cred_locked(clp);
++	cred = nfs4_get_machine_cred(clp);
+ 	if (cred != NULL)
+ 		goto out;
+ 
++	spin_lock(&clp->cl_lock);
+ 	rcu_read_lock();
+ 	list_for_each_entry_rcu(server, &clp->cl_superblocks, client_link) {
+ 		cred = nfs4_get_renew_cred_server_locked(server);
+@@ -233,6 +234,7 @@ struct rpc_cred *nfs4_get_renew_cred_locked(struct nfs_client *clp)
+ 			break;
+ 	}
+ 	rcu_read_unlock();
++	spin_unlock(&clp->cl_lock);
+ 
+ out:
+ 	return cred;
+@@ -402,9 +404,7 @@ struct rpc_cred *nfs4_get_clid_cred(struct nfs_client *clp)
+ {
+ 	struct rpc_cred *cred;
+ 
+-	spin_lock(&clp->cl_lock);
+-	cred = nfs4_get_machine_cred_locked(clp);
+-	spin_unlock(&clp->cl_lock);
++	cred = nfs4_get_machine_cred(clp);
  	return cred;
  }
  
- static void nfs4_root_machine_cred(struct nfs_client *clp)
- {
--	struct rpc_cred *cred, *new;
-+	struct rpc_cred *new;
+@@ -1907,9 +1907,7 @@ static int nfs4_check_lease(struct nfs_client *clp)
+ 	/* Is the client already known to have an expired lease? */
+ 	if (test_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state))
+ 		return 0;
+-	spin_lock(&clp->cl_lock);
+-	cred = ops->get_state_renewal_cred_locked(clp);
+-	spin_unlock(&clp->cl_lock);
++	cred = ops->get_state_renewal_cred(clp);
+ 	if (cred == NULL) {
+ 		cred = nfs4_get_clid_cred(clp);
+ 		status = -ENOKEY;
+@@ -2111,9 +2109,7 @@ static int nfs4_handle_migration(struct nfs_client *clp)
+ 	dprintk("%s: migration reported on \"%s\"\n", __func__,
+ 			clp->cl_hostname);
  
- 	new = rpc_lookup_machine_cred(NULL);
- 	spin_lock(&clp->cl_lock);
--	cred = clp->cl_machine_cred;
--	clp->cl_machine_cred = new;
-+	if (clp->cl_root_cred == NULL) {
-+		clp->cl_root_cred = new;
-+		new = NULL;
-+	}
- 	spin_unlock(&clp->cl_lock);
--	if (cred != NULL)
--		put_rpccred(cred);
-+	if (new != NULL)
-+		put_rpccred(new);
- }
+-	spin_lock(&clp->cl_lock);
+-	cred = ops->get_state_renewal_cred_locked(clp);
+-	spin_unlock(&clp->cl_lock);
++	cred = ops->get_state_renewal_cred(clp);
+ 	if (cred == NULL)
+ 		return -NFS4ERR_NOENT;
  
- static struct rpc_cred *
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index 0fc0b9135d46..fea51b44fe50 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -59,6 +59,7 @@ struct nfs_client {
+@@ -2159,9 +2155,7 @@ static int nfs4_handle_lease_moved(struct nfs_client *clp)
+ 	dprintk("%s: lease moved reported on \"%s\"\n", __func__,
+ 			clp->cl_hostname);
  
- 	u32			cl_minorversion;/* NFSv4 minorversion */
- 	struct rpc_cred		*cl_machine_cred;
-+	struct rpc_cred		*cl_root_cred;	/* Use when machine_cred is ineffective */
+-	spin_lock(&clp->cl_lock);
+-	cred = ops->get_state_renewal_cred_locked(clp);
+-	spin_unlock(&clp->cl_lock);
++	cred = ops->get_state_renewal_cred(clp);
+ 	if (cred == NULL)
+ 		return -NFS4ERR_NOENT;
  
- #if IS_ENABLED(CONFIG_NFS_V4)
- 	struct list_head	cl_ds_clients; /* auth flavor data servers */
 
 
