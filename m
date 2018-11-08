@@ -4,55 +4,55 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-0.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS autolearn=ham
-	autolearn_force=no version=3.4.0
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS,URIBL_BLOCKED
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id CCAD6ECDE47
-	for <linux-nfs@archiver.kernel.org>; Thu,  8 Nov 2018 19:31:51 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1EF6AECDE4B
+	for <linux-nfs@archiver.kernel.org>; Thu,  8 Nov 2018 19:32:19 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 85A8A204FD
-	for <linux-nfs@archiver.kernel.org>; Thu,  8 Nov 2018 19:31:51 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id D9F00204FD
+	for <linux-nfs@archiver.kernel.org>; Thu,  8 Nov 2018 19:32:18 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="EmaqjSX5"
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 85A8A204FD
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="ZM89Hh2t"
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org D9F00204FD
 Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=gmail.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1725922AbeKIFIo (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 9 Nov 2018 00:08:44 -0500
-Received: from mail-vk1-f195.google.com ([209.85.221.195]:33446 "EHLO
-        mail-vk1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725884AbeKIFIn (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Nov 2018 00:08:43 -0500
-Received: by mail-vk1-f195.google.com with SMTP id d201so2251823vka.0
-        for <linux-nfs@vger.kernel.org>; Thu, 08 Nov 2018 11:31:49 -0800 (PST)
+        id S1726140AbeKIFJM (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 9 Nov 2018 00:09:12 -0500
+Received: from mail-vs1-f65.google.com ([209.85.217.65]:36486 "EHLO
+        mail-vs1-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725884AbeKIFJL (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Nov 2018 00:09:11 -0500
+Received: by mail-vs1-f65.google.com with SMTP id v205so12312303vsc.3
+        for <linux-nfs@vger.kernel.org>; Thu, 08 Nov 2018 11:32:17 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=mime-version:references:in-reply-to:from:date:message-id:subject:to
          :cc;
-        bh=U+vUQz3sdViQPd4M0GDhdcoDnWOR3JjJhwO5gd90yfo=;
-        b=EmaqjSX5+JGY4dgk8CkTY++TxGqff153zw0BJyN9OgtfyJoOtkbGvSzVL06IygHYIr
-         ImaDSUFstWrUE/1NBqqbkhwB/lfjacrdtFi1JIioTmupTSoW4Gai8Q5cfusombqFmABC
-         W1e1uSVt2hCGqU2VgzlzE+bwBLmrtbXkcDik0P8i4SszLJyTLo9Y+KBBZEEDi2MmU6LH
-         dhD5QmT9WwbFHQN0TwDi9U527b95D9WA8txVZgJcuaX5CZ9PInizaMS68pvYt/M968wQ
-         QFcftZ7qvX73nYWVo4CgyfhkraPnys8jyfRCzgqQzP/B49XgeHA6cfnFQHDNLt5abNTO
-         b59Q==
+        bh=JDvT6NrE4mY7odF9izgWrLoTA/FObaJzTviUBYkU7hQ=;
+        b=ZM89Hh2tC/3WN+euXFzHG+M6HgxdRK8PVar+RWl7IfaX2ArVC7PIJwOXV9Vx4d+5Ay
+         fpA0bhzWZLzvntjLITfL0f/MyflkuW986U0jnlksCUfpZ/JqUjIiI7Pq5JdoX/35FjUc
+         cO9JdQJzroQXXE5cSean8LwxsoTG7lPRCXN+QLg2OAdHQYBMDxz5BkuN/fQ06bx826Fm
+         sPYj3qSz9qxDU8KIdGOkG9JgMax6rmGBFWwC6ruryEeGdkmsT2Z3L0pLXmjUa/bIn/wp
+         n1TGmYWEYpe09PzQNxA0jm7VVfyRQhxnq/WCfKsewP6oDgntLgoDL3XIyAui/A4ANw3q
+         rM0Q==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:mime-version:references:in-reply-to:from:date
          :message-id:subject:to:cc;
-        bh=U+vUQz3sdViQPd4M0GDhdcoDnWOR3JjJhwO5gd90yfo=;
-        b=bFQt5o/wAOLwrUqrut4EVtfVZuTe0lsTbQbOfItULqdfYLxWMW6la2+DITv6F59FBR
-         UD8zWgwJfJ5/8snnNQlLDTNRCUMLr0sVzrNSxTWk41YOpZ1LbBhFAyHgPi+MSu7iPbNk
-         EPX8oItbDwy40V0+u+6EbPhy3rCDru1GmBJy9m+0v7RbQ3+yjx0kDYe++pG13hCJ/gxV
-         rjGvGTjX52SLfrOtcMYAWVqtAVj2AItdXcdpBDMYtk7hvLqM/cU1E6euT5EQ5ppVVZs6
-         jMBAO9VpJ0KO2HHtLMyGd/ozko6LZZOE22e7XGIydmGmLuEpd5mb3ent3BRtQTpZpB3S
-         wAjw==
-X-Gm-Message-State: AGRZ1gKNNUcdNvW9HdGfMuv4BFK6liviEK48/oQR9Okx0940nl5GG+wO
-        aAfoNNVkrlLDwz+AXQePWS8hLM/ZKH5gaWr/af8=
-X-Google-Smtp-Source: AJdET5ePWwkPZzXJzQspu71aWCFXGCdSlzbVrJxFLUjQc+NBRUKkkiwMcM/3Tsa+lSTL40x5uruSYLRINWR687PCf3E=
-X-Received: by 2002:a1f:ac4:: with SMTP id 187mr2589528vkk.31.1541705509184;
- Thu, 08 Nov 2018 11:31:49 -0800 (PST)
+        bh=JDvT6NrE4mY7odF9izgWrLoTA/FObaJzTviUBYkU7hQ=;
+        b=ngmVMaEBPCjN4733KjTE1R8vhcGaXL4PnhfeqIkt14qMZSmmDBNTb1OpWh7GURfE9n
+         6AnO3wyTIlb0Bp1vWXlwSUesUS6lBuVIZGqFBox1ezPz/YqQShcIciEHkKQD4G1rnOjY
+         ONZ4dYUEAf6VU1Q+Q2c+4YNW+6kGDMkpxXBI4zbS2Jk/bU2B2OnCH8fYtbbHsPfsIGow
+         hA8SPaKfceunZOTJ2PfylrCDo0JcNNIcarJqD8gKvo2CAeX+QbpnaHuy/WvSU7IoDBux
+         /TW0AqYZ5+zAzom3vZhwa8GlYx4+s2X3iSTrgxuBRmqHmfqkrCvie3SZregChtpFORca
+         PXdA==
+X-Gm-Message-State: AGRZ1gLUCgTNLhB3zed5j6Xfn9jwpWHPjCf8Jm7nWK1d8HoHq9KhU/hg
+        L53zcgF4g+03x3KLuQxWWrHWW+t2YAOgqkKzIWY=
+X-Google-Smtp-Source: AJdET5cdpBUqOyv5wjr+zU8rpw29yW8/ourGUpubQsMZu/jCdrtv+SBbNDsmjZY8yg2KsRmjaV0vHuILMkG3RhAJx1g=
+X-Received: by 2002:a67:f453:: with SMTP id r19mr2585627vsn.164.1541705536603;
+ Thu, 08 Nov 2018 11:32:16 -0800 (PST)
 MIME-Version: 1.0
 References: <20181019152905.32418-1-olga.kornievskaia@gmail.com>
  <20181019152905.32418-13-olga.kornievskaia@gmail.com> <20181107185753.GB19588@fieldses.org>
@@ -60,8 +60,8 @@ References: <20181019152905.32418-1-olga.kornievskaia@gmail.com>
  <20181108192502.GB6090@fieldses.org> <20181108192759.GC6090@fieldses.org>
 In-Reply-To: <20181108192759.GC6090@fieldses.org>
 From:   Olga Kornievskaia <olga.kornievskaia@gmail.com>
-Date:   Thu, 8 Nov 2018 14:31:37 -0500
-Message-ID: <CAN-5tyG9+-O+htFXiZ-PSj16QkVPQmWsDNNXbFmusK1Yd4-RwQ@mail.gmail.com>
+Date:   Thu, 8 Nov 2018 14:32:04 -0500
+Message-ID: <CAN-5tyHuv_UbCVppP_gcsKBoU-a=u26nA1kw3QAgtyL1+xV1bQ@mail.gmail.com>
 Subject: Re: [PATCH v1 12/13] NFSD: allow inter server COPY to have a STALE
  source server fh
 To:     "J. Bruce Fields" <bfields@fieldses.org>
@@ -144,7 +144,9 @@ On Thu, Nov 8, 2018 at 2:28 PM J. Bruce Fields <bfields@fieldses.org> wrote:
 > > a big deal.
 >
 > So, yes, could you try the second approach?
->
+
+Yes of course.
+
 > I've been working on the 1st approach--I have a patch here and I may
 > experiment with it some more.  But I'm starting to think that the
 > separate scan will work better.
