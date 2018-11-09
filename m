@@ -2,116 +2,127 @@ Return-Path: <SRS0=AoDj=NU=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-1.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2967FC43610
-	for <linux-nfs@archiver.kernel.org>; Fri,  9 Nov 2018 09:08:48 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D47A5C43441
+	for <linux-nfs@archiver.kernel.org>; Fri,  9 Nov 2018 09:59:08 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id E74A420855
-	for <linux-nfs@archiver.kernel.org>; Fri,  9 Nov 2018 09:08:47 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org E74A420855
-Authentication-Results: mail.kernel.org; dmarc=none (p=none dis=none) header.from=janestreet.com
+	by mail.kernel.org (Postfix) with ESMTP id 8480F20855
+	for <linux-nfs@archiver.kernel.org>; Fri,  9 Nov 2018 09:59:08 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 8480F20855
+Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=redhat.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727995AbeKISsZ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 9 Nov 2018 13:48:25 -0500
-Received: from mxout3.mail.janestreet.com ([38.105.200.229]:52094 "EHLO
-        mxout3.mail.janestreet.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1727827AbeKISsZ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Nov 2018 13:48:25 -0500
-X-JS-Received: from [30.40.81.8] (helo=tot-qpr-mailcore1)
-        by mxout3.mail.janestreet.com with esmtps (TLSv1.2:ECDHE-RSA-AES256-GCM-SHA384:256)
-        (Exim 4.90_1)
-        (envelope-from <cperl@janestreet.com>)
-        id 1gL2gu-0001IB-Ja
-        for linux-nfs@vger.kernel.org; Fri, 09 Nov 2018 04:03:00 -0500
-X-JS-Flow: external
-X-JS-Scanner-attachment: No attachments
-X-JS-Scanner-esets: Not scanned (internal mail)
-X-JS-Received: by tot-qpr-mailcore1 with ocaml/mailcore/main_production (0b106697a407)
-        (envelope-from <cperl@janestreet.com>)
-        id Bb5U1E-bIN7YA-R-; 2018-11-09 04:03:00.586534-05:00
-X-JS-Received: by igm-qpr-mailgw1 with ocaml/mailcore/main_gateway (4c95f7dcd125)
-        (envelope-from <cperl@janestreet.com>)
-        id Bb5U1E-xj-hwA-Re; 2018-11-09 04:03:00.561918-05:00
-X-JS-Received: from cperl by igm-qws-u12114b.delacy.com with local (Exim 4.90_1)
-        (envelope-from <cperl@janestreet.com>)
-        id 1gL2gu-0003hG-Gs; Fri, 09 Nov 2018 04:03:00 -0500
-From:   Chris Perl <cperl@janestreet.com>
-To:     linux-nfs@vger.kernel.org
-Cc:     Chris Perl <cperl@janestreet.com>
-Subject: [PATCH 0/1] Fix incorrect sharing of AUTH_SYS and AUTH_GSS_KRB5 data structures
-Date:   Fri,  9 Nov 2018 04:02:50 -0500
-Message-Id: <20181109090251.14145-1-cperl@janestreet.com>
-X-Mailer: git-send-email 2.17.1
+        id S1727781AbeKITi5 convert rfc822-to-8bit (ORCPT
+        <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 9 Nov 2018 14:38:57 -0500
+Received: from mx1.redhat.com ([209.132.183.28]:51268 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1727532AbeKITi5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 9 Nov 2018 14:38:57 -0500
+Received: from smtp.corp.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id 3ADA1C067C37;
+        Fri,  9 Nov 2018 09:59:07 +0000 (UTC)
+Received: from 117.195.187.81.in-addr.arpa (unknown [10.33.36.27])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id D47E7601A2;
+        Fri,  9 Nov 2018 09:59:05 +0000 (UTC)
+Subject: Re: Support for VRF in NFS?
+To:     Ben Greear <greearb@candelatech.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>
+Cc:     "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        David Windsor <dwindsor@redhat.com>
+References: <b608aeda-358d-18c9-ebcd-753b698580e9@candelatech.com>
+ <20181108011429.GC30776@fieldses.org>
+ <efe334ad-4905-fc24-1b36-3c4129b72888@candelatech.com>
+ <20181108153136.GA4947@fieldses.org>
+ <90f8e9ba-3953-e2d1-56f4-421a4991cef8@candelatech.com>
+From:   Steven Whitehouse <swhiteho@redhat.com>
+Message-ID: <74f0a2e8-f631-8d8d-5b98-8248dadf5aa6@redhat.com>
+Date:   Fri, 9 Nov 2018 09:59:04 +0000
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:52.0) Gecko/20100101
+ Thunderbird/52.5.2
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 8bit
-X-JS-Region: Americas
-X-JS-Processed-by: mailcore
-X-Sender-Copy: hkg-copy
+In-Reply-To: <90f8e9ba-3953-e2d1-56f4-421a4991cef8@candelatech.com>
+Content-Type: text/plain; charset=windows-1252; format=flowed
+Content-Transfer-Encoding: 8BIT
+Content-Language: en-US
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.11
+X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.32]); Fri, 09 Nov 2018 09:59:07 +0000 (UTC)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hi!
+Hi,
 
-I explained most of the details in the commit, but the gist is that
-mounts that don't have an explicit `sec' option passed will never get
-through the first part of the if statement I removed, meaning a mount
-which has its auth flavor discovered at mount time (e.g. in
-`nfs_try_mount_request') cannot pass that test.
 
-This means auth flavors are not compared and can lead to incorrect
-sharing of data structures via `nfs_fs_mount_common'.
+On 08/11/18 16:35, Ben Greear wrote:
+>
+>
+> On 11/08/2018 07:31 AM, J. Bruce Fields wrote:
+>> On Wed, Nov 07, 2018 at 09:08:16PM -0800, Ben Greear wrote:
+>>>
+>>>
+>>> On 11/07/2018 05:14 PM, J. Bruce Fields wrote:
+>>>> On Tue, Nov 06, 2018 at 01:03:54PM -0800, Ben Greear wrote:
+>>>>> Hello,
+>>>>>
+>>>>> I made a stab at implementing VRF support in NFS, but it appears
+>>>>> fairly complicated and I ended up reverting my changes....
+>>>>>
+>>>>> Is anyone working on this?
+>>>>>
+>>>>> And, if not, if anyone would like to be sponsored to work on this, 
+>>>>> please
+>>>>> let me know.
+>>>>
+>>>> Um, sorry--what's VRF?
+>>>
+>>> Virtual Router logic.  It is sort of like network stack containers,
+>>> and has been solid and fully featured in the kernel since 4.16 or so.
+>>>
+>>> In the end, you effectively need to call the logic that SO_BINDTODEVICE
+>>> calls on the socket before binding to an IP.
+>>>
+>>> The NFS and RPC logic is a giant tangled mess to my eyes, so
+>>> hoping I could bribe someone else to do it :)
+>>
+>> So it's not enough to support network namespaces?
+>>
+>> What's your motivation for this?
+>
+> Network namespaces are difficult to uses for lots of use cases, and 
+> thus VRF
+> was born.
+>
+> My own motivation is that it allows me to make hundreds or thousands
+> of individual NFS mounts from local mac-vlan (or other 
+> virtual/physical interfaces),
+> for testing purposes.
+>
+> Similar to my patch set that binds to local IP address, which gives 
+> similar feature
+> set for non-VRF configurations.  These bind-local-IP patches are not 
+> upstream and were rejected in
+> the past as un-wanted.  I'm hoping VRF support would be more acceptable.
+>
+> Thanks,
+> Ben
+>
 
-I am not the most familiar with all this code, so I might be missing
-something about why that check is needed.  Please correct me if it
-needs to remain.
+For similar reasons David Windsor has been looking at some extensions 
+for DLM along these lines. Improving our ability to test seems to me 
+like it should be a good thing to do - in both cases. Likewise VRF 
+support seems also like it should be useful in a number of contexts.
 
-In addition to testing this patch on a real system I tested something
-almost equivalent to this patch by using systemtap to force
-`b->auth_info.flavor_len' to 1 on every invocation if it was 0 (so the
-if would always succeed) and back to 0 on exit.  Doing both of these
-things caused my issues to go away and helped to reinforce my notion
-that this was the right fix.
+Do you have a reference to your past work? I think it would be 
+interesting to get some discussion going here - maybe it would be 
+possible to have some common approach between kernel-side socket users, 
+and/or bounce some ideas around,
 
-In case you're interested, that script is below.  Note that it hooks
-onto `nfs_compare_super' and not `nfs_compare_mount_options' because
-the latter is inlined.
+Steve.
 
-Please copy me directly on any replies, as I'm not a member of the
-list.
-
-global revert;
-
-probe module("nfs").function("nfs_compare_super").call
-{
-	server = @cast($data, "struct nfs_sb_mountdata")->server;
-	if (server->auth_info->flavor_len == 0) {
-		server->auth_info->flavor_len = 1;
-		revert = 1;
-	}
-}
-
-probe module("nfs").function("nfs_compare_super").return
-{
-	server = @cast($data, "struct nfs_sb_mountdata")->server;
-	if (revert) {
-		revert = 0;
-		server->auth_info->flavor_len = 0;
-	}
-}
-
-Chris Perl (1):
-  NFS: nfs_compare_mount_options always compare auth flavors.
-
- fs/nfs/super.c | 3 +--
- 1 file changed, 1 insertion(+), 2 deletions(-)
-
--- 
-2.17.1
 
