@@ -2,132 +2,171 @@ Return-Path: <SRS0=AoDj=NU=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,SPF_PASS,URIBL_BLOCKED autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-8.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,USER_AGENT_MUTT
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6E213C43441
-	for <linux-nfs@archiver.kernel.org>; Fri,  9 Nov 2018 14:48:52 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8949CC43441
+	for <linux-nfs@archiver.kernel.org>; Fri,  9 Nov 2018 16:23:11 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 3E14620883
-	for <linux-nfs@archiver.kernel.org>; Fri,  9 Nov 2018 14:48:52 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 3E14620883
-Authentication-Results: mail.kernel.org; dmarc=none (p=none dis=none) header.from=candelatech.com
+	by mail.kernel.org (Postfix) with ESMTP id 50C4620825
+	for <linux-nfs@archiver.kernel.org>; Fri,  9 Nov 2018 16:23:11 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 50C4620825
+Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=redhat.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727784AbeKJA3p (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 9 Nov 2018 19:29:45 -0500
-Received: from mail2.candelatech.com ([208.74.158.173]:53958 "EHLO
-        mail2.candelatech.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727735AbeKJA3p (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Nov 2018 19:29:45 -0500
-Received: from [192.168.1.47] (unknown [50.34.223.145])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+        id S1727828AbeKJCEZ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 9 Nov 2018 21:04:25 -0500
+Received: from mx1.redhat.com ([209.132.183.28]:9743 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1728026AbeKJCEZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 9 Nov 2018 21:04:25 -0500
+Received: from smtp.corp.redhat.com (int-mx04.intmail.prod.int.phx2.redhat.com [10.5.11.14])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mail2.candelatech.com (Postfix) with ESMTPSA id 38EAE40A626;
-        Fri,  9 Nov 2018 06:48:43 -0800 (PST)
-Subject: Re: Support for VRF in NFS?
-To:     Steven Whitehouse <swhiteho@redhat.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>
-References: <b608aeda-358d-18c9-ebcd-753b698580e9@candelatech.com>
- <20181108011429.GC30776@fieldses.org>
- <efe334ad-4905-fc24-1b36-3c4129b72888@candelatech.com>
- <20181108153136.GA4947@fieldses.org>
- <90f8e9ba-3953-e2d1-56f4-421a4991cef8@candelatech.com>
- <74f0a2e8-f631-8d8d-5b98-8248dadf5aa6@redhat.com>
-Cc:     "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        David Windsor <dwindsor@redhat.com>
-From:   Ben Greear <greearb@candelatech.com>
-Message-ID: <d0a3a3fd-4952-db37-4ca7-54391edc3c48@candelatech.com>
-Date:   Fri, 9 Nov 2018 06:48:41 -0800
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:45.0) Gecko/20100101
- Thunderbird/45.8.0
+        by mx1.redhat.com (Postfix) with ESMTPS id DEE97307D91C;
+        Fri,  9 Nov 2018 16:23:09 +0000 (UTC)
+Received: from parsley.fieldses.org (ovpn-117-179.phx2.redhat.com [10.3.117.179])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 871C65D9CA;
+        Fri,  9 Nov 2018 16:23:09 +0000 (UTC)
+Received: by parsley.fieldses.org (Postfix, from userid 2815)
+        id C56C018019C; Fri,  9 Nov 2018 11:23:08 -0500 (EST)
+Date:   Fri, 9 Nov 2018 11:23:08 -0500
+From:   "J. Bruce Fields" <bfields@redhat.com>
+To:     Olga Kornievskaia <olga.kornievskaia@gmail.com>
+Cc:     "J. Bruce Fields" <bfields@fieldses.org>,
+        linux-nfs <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v1 13/13] NFSD add nfs4 inter ssc to nfsd4_copy
+Message-ID: <20181109162308.GB2293@parsley.fieldses.org>
+References: <20181019152905.32418-1-olga.kornievskaia@gmail.com>
+ <20181019152905.32418-14-olga.kornievskaia@gmail.com>
+ <20181107214850.GC19588@fieldses.org>
+ <CAN-5tyFQHCgvtyp1Or3-y4qeKvAYVJCj5NtLiDrDN4vwNY8f_w@mail.gmail.com>
 MIME-Version: 1.0
-In-Reply-To: <74f0a2e8-f631-8d8d-5b98-8248dadf5aa6@redhat.com>
-Content-Type: text/plain; charset=windows-1252; format=flowed
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <CAN-5tyFQHCgvtyp1Or3-y4qeKvAYVJCj5NtLiDrDN4vwNY8f_w@mail.gmail.com>
+User-Agent: Mutt/1.10.1 (2018-07-13)
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.14
+X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.48]); Fri, 09 Nov 2018 16:23:09 +0000 (UTC)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
+On Thu, Nov 08, 2018 at 02:16:04PM -0500, Olga Kornievskaia wrote:
+> On Wed, Nov 7, 2018 at 4:49 PM J. Bruce Fields <bfields@fieldses.org> wrote:
+> >
+> > On Fri, Oct 19, 2018 at 11:29:05AM -0400, Olga Kornievskaia wrote:
+> > > From: Olga Kornievskaia <kolga@netapp.com>
+> > >
+> > > Given a universal address, mount the source server from the destination
+> > > server.  Use an internal mount. Call the NFS client nfs42_ssc_open to
+> > > obtain the NFS struct file suitable for nfsd_copy_range.
+> > >
+> > > Ability to do "inter" server-to-server depends on the an nfsd kernel
+> > > parameter "inter_copy_offload_enabled".
+> > >
+> > > Signed-off-by: Andy Adamson <andros@netapp.com>
+> > > Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+> > > ---
+> > >  fs/nfsd/nfs4proc.c   | 298 ++++++++++++++++++++++++++++++++++++++++++++++++---
+> > >  fs/nfsd/nfssvc.c     |   6 ++
+> > >  fs/nfsd/xdr4.h       |   5 +
+> > >  include/linux/nfs4.h |   1 +
+> > >  4 files changed, 293 insertions(+), 17 deletions(-)
+> > >
+> > > diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> > > index 59e9d0c..6dcd80c 100644
+> > > --- a/fs/nfsd/nfs4proc.c
+> > > +++ b/fs/nfsd/nfs4proc.c
+> > > @@ -1153,6 +1153,229 @@ void nfsd4_shutdown_copy(struct nfs4_client *clp)
+> > >       while ((copy = nfsd4_get_copy(clp)) != NULL)
+> > >               nfsd4_stop_copy(copy);
+> > >  }
+> > > +#ifdef CONFIG_NFSD_V4_2_INTER_SSC
+> > > +
+> > > +extern struct file *nfs42_ssc_open(struct vfsmount *ss_mnt,
+> > > +                                struct nfs_fh *src_fh,
+> > > +                                nfs4_stateid *stateid);
+> > > +extern void nfs42_ssc_close(struct file *filep);
+> > > +
+> > > +extern void nfs_sb_deactive(struct super_block *sb);
+> > > +
+> > > +#define NFSD42_INTERSSC_MOUNTOPS "minorversion=2,vers=4,addr=%s,clientaddr=%s"
+> >
+> > The nfs man page says "clientaddr=" has no effect on 4.2 mounts.
+> 
+> I only have nfs man page from RHEL7.5 and I don't see that.
 
+From nfs-utils/utils/mount/nfs.man:
 
-On 11/09/2018 01:59 AM, Steven Whitehouse wrote:
-> Hi,
->
->
-> On 08/11/18 16:35, Ben Greear wrote:
->>
->>
->> On 11/08/2018 07:31 AM, J. Bruce Fields wrote:
->>> On Wed, Nov 07, 2018 at 09:08:16PM -0800, Ben Greear wrote:
->>>>
->>>>
->>>> On 11/07/2018 05:14 PM, J. Bruce Fields wrote:
->>>>> On Tue, Nov 06, 2018 at 01:03:54PM -0800, Ben Greear wrote:
->>>>>> Hello,
->>>>>>
->>>>>> I made a stab at implementing VRF support in NFS, but it appears
->>>>>> fairly complicated and I ended up reverting my changes....
->>>>>>
->>>>>> Is anyone working on this?
->>>>>>
->>>>>> And, if not, if anyone would like to be sponsored to work on this, please
->>>>>> let me know.
->>>>>
->>>>> Um, sorry--what's VRF?
->>>>
->>>> Virtual Router logic.  It is sort of like network stack containers,
->>>> and has been solid and fully featured in the kernel since 4.16 or so.
->>>>
->>>> In the end, you effectively need to call the logic that SO_BINDTODEVICE
->>>> calls on the socket before binding to an IP.
->>>>
->>>> The NFS and RPC logic is a giant tangled mess to my eyes, so
->>>> hoping I could bribe someone else to do it :)
->>>
->>> So it's not enough to support network namespaces?
->>>
->>> What's your motivation for this?
->>
->> Network namespaces are difficult to uses for lots of use cases, and thus VRF
->> was born.
->>
->> My own motivation is that it allows me to make hundreds or thousands
->> of individual NFS mounts from local mac-vlan (or other virtual/physical interfaces),
->> for testing purposes.
->>
->> Similar to my patch set that binds to local IP address, which gives similar feature
->> set for non-VRF configurations.  These bind-local-IP patches are not upstream and were rejected in
->> the past as un-wanted.  I'm hoping VRF support would be more acceptable.
->>
->> Thanks,
->> Ben
->>
->
-> For similar reasons David Windsor has been looking at some extensions for DLM along these lines. Improving our ability to test seems to me like it should be a good thing to do - in both cases. Likewise VRF support seems also like it should be useful in a number of contexts.
->
-> Do you have a reference to your past work? I think it would be interesting to get some discussion going here - maybe it would be possible to have some common approach between kernel-side socket users, and/or bounce some ideas around,
->
-> Steve.
+	NFS protocol versions 4.1 and 4.2 use the client-established TCP
+	connection for callback requests, so do not require the server
+	to connect to the client.  This option is therefore only affect
+	NFS version 4.0 mounts.
 
-Here is an old thread on the topic.
+(Maybe I should send a patch for that "is therefore" typo.)
 
-https://www.spinics.net/lists/linux-nfs/msg34811.html
+> > Also, what's the "addr=" option for, isn't the server address already
+> > given in the mount string?  (Honest question, I may be wrong here.)
+> 
+> I believe going thru the kernel vfs_kern_mount() we need to specify
+> "addr=" otherwise it doesn't know which server to mount.
 
-My patches are in all my 'ct' kernels, and the needed patches are also in my nfs-utils repo.
+Yeah, now that I think of it I guess the kernel hasn't traditionally
+done DNS resolution so of course there'd have to be something like this.
+OK.
 
-My 4.19 tree has just been ported, so no idea if it works or not.
+> > > +
+> > > +/**
+> > > + * Support one copy source server for now.
+> > > + */
+> > > +static struct vfsmount *
+> > > +nfsd4_interssc_connect(struct nl4_server *nss, struct svc_rqst *rqstp)
+> > > +{
+> > > +     struct file_system_type *type;
+> > > +     struct vfsmount *ss_mnt;
+> > > +     struct nfs42_netaddr *naddr;
+> > > +     struct sockaddr_storage tmp_addr;
+> > > +     size_t tmp_addrlen, match_netid_len = 3;
+> > > +     char *startsep = "", *endsep = "", *match_netid = "tcp";
+> > > +     char *ipaddr, *ipaddr2, *raw_data;
+> > > +     int len, raw_len, status = -EINVAL;
+> > > +
+> > > +     /* Currently support only NL4_NETADDR source server */
+> > > +     if (nss->nl4_type != NL4_NETADDR) {
+> > > +             WARN(nss->nl4_type != NL4_NETADDR,
+> > > +                     "nfsd4_copy src server not NL4_NETADDR\n");
+> >
+> > Won't nfsd4_decode_nl4_server actually let through NL4_NAME and NL4_URL?
+> 
+> Yes. I think the logic would be not to limit the xdr functionality
+> from not parsing it as if the support in the main code the xdr code
+> doesn't change.
 
-https://github.com/greearb?tab=repositories
+I think it would be simplest just to return the right error from
+nfsd4_decode_nl4_server() in the NL4_NAME/NL4_URL cases.
 
-My patch work fine using routing table rules without VRF, but they will not work with VRF.
+> > That would make this WARN() triggerable by a client--that's bad.
+> 
+> Why? Would you rather it silently failed?
 
+Returning an error would be fine.
 
-Thanks,
-Ben
+But it should never be possible for an ordinary user or somebody on the
+network to trigger a WARN() or a BUG().  Those should be reserved for
+things that we assume never happen (so they indicate that our
+assumptions are wrong, hence we have a possible kernel bug).
 
--- 
-Ben Greear <greearb@candelatech.com>
-Candela Technologies Inc  http://www.candelatech.com
+> Thank you for the reviews. I'm working on the next version. But in
+> addition to this, I need the VFS piece with this patch series now
+> because server piece needs the generic cross filesystem
+> copy_file_range() support via do_splice because the server reads out
+> of NFS and writes into the local file system.
+
+OK.  In addition to mailing the patches it might also be useful if you
+could point me to a git branch somewhere just to make sure I've got all
+the right prerequisites.
+
+--b.
