@@ -3,96 +3,131 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
 X-Spam-Status: No, score=-6.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED,USER_AGENT_NEOMUTT
-	autolearn=ham autolearn_force=no version=3.4.0
+	MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,SPF_PASS,URIBL_BLOCKED autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E13A2C43441
-	for <linux-nfs@archiver.kernel.org>; Fri,  9 Nov 2018 11:19:34 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6E213C43441
+	for <linux-nfs@archiver.kernel.org>; Fri,  9 Nov 2018 14:48:52 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id ABA8520818
-	for <linux-nfs@archiver.kernel.org>; Fri,  9 Nov 2018 11:19:34 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org ABA8520818
-Authentication-Results: mail.kernel.org; dmarc=none (p=none dis=none) header.from=arm.com
+	by mail.kernel.org (Postfix) with ESMTP id 3E14620883
+	for <linux-nfs@archiver.kernel.org>; Fri,  9 Nov 2018 14:48:52 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 3E14620883
+Authentication-Results: mail.kernel.org; dmarc=none (p=none dis=none) header.from=candelatech.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727700AbeKIU7o (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 9 Nov 2018 15:59:44 -0500
-Received: from usa-sjc-mx-foss1.foss.arm.com ([217.140.101.70]:57562 "EHLO
-        foss.arm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727653AbeKIU7n (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 9 Nov 2018 15:59:43 -0500
-Received: from usa-sjc-imap-foss1.foss.arm.com (unknown [10.72.51.249])
-        by usa-sjc-mx-foss1.foss.arm.com (Postfix) with ESMTP id 85C95A78;
-        Fri,  9 Nov 2018 03:19:33 -0800 (PST)
-Received: from localhost (unknown [10.1.35.69])
-        by usa-sjc-imap-foss1.foss.arm.com (Postfix) with ESMTPSA id 42C263F718;
-        Fri,  9 Nov 2018 03:19:33 -0800 (PST)
-Received: from cmarinas by localhost with local (Exim 4.89)
-        (envelope-from <catalin.marinas@arm.com>)
-        id 1gL4p0-0005Br-FR; Fri, 09 Nov 2018 11:19:30 +0000
-Date:   Fri, 9 Nov 2018 11:19:30 +0000
-From:   Catalin Marinas <catalin.marinas@arm.com>
-To:     Trond Myklebust <trondmy@gmail.com>
-Cc:     linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v3 40/44] SUNRPC: Simplify TCP receive code by switching
- to using iterators
-Message-ID: <20181109111930.idve77thgcnsg5u3@localhost>
-References: <20180917130335.112832-32-trond.myklebust@hammerspace.com>
- <20180917130335.112832-33-trond.myklebust@hammerspace.com>
- <20180917130335.112832-34-trond.myklebust@hammerspace.com>
- <20180917130335.112832-35-trond.myklebust@hammerspace.com>
- <20180917130335.112832-36-trond.myklebust@hammerspace.com>
- <20180917130335.112832-37-trond.myklebust@hammerspace.com>
- <20180917130335.112832-38-trond.myklebust@hammerspace.com>
- <20180917130335.112832-39-trond.myklebust@hammerspace.com>
- <20180917130335.112832-40-trond.myklebust@hammerspace.com>
- <20180917130335.112832-41-trond.myklebust@hammerspace.com>
+        id S1727784AbeKJA3p (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 9 Nov 2018 19:29:45 -0500
+Received: from mail2.candelatech.com ([208.74.158.173]:53958 "EHLO
+        mail2.candelatech.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727735AbeKJA3p (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Nov 2018 19:29:45 -0500
+Received: from [192.168.1.47] (unknown [50.34.223.145])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+        (No client certificate requested)
+        by mail2.candelatech.com (Postfix) with ESMTPSA id 38EAE40A626;
+        Fri,  9 Nov 2018 06:48:43 -0800 (PST)
+Subject: Re: Support for VRF in NFS?
+To:     Steven Whitehouse <swhiteho@redhat.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>
+References: <b608aeda-358d-18c9-ebcd-753b698580e9@candelatech.com>
+ <20181108011429.GC30776@fieldses.org>
+ <efe334ad-4905-fc24-1b36-3c4129b72888@candelatech.com>
+ <20181108153136.GA4947@fieldses.org>
+ <90f8e9ba-3953-e2d1-56f4-421a4991cef8@candelatech.com>
+ <74f0a2e8-f631-8d8d-5b98-8248dadf5aa6@redhat.com>
+Cc:     "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        David Windsor <dwindsor@redhat.com>
+From:   Ben Greear <greearb@candelatech.com>
+Message-ID: <d0a3a3fd-4952-db37-4ca7-54391edc3c48@candelatech.com>
+Date:   Fri, 9 Nov 2018 06:48:41 -0800
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:45.0) Gecko/20100101
+ Thunderbird/45.8.0
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20180917130335.112832-41-trond.myklebust@hammerspace.com>
-User-Agent: NeoMutt/20170113 (1.7.2)
+In-Reply-To: <74f0a2e8-f631-8d8d-5b98-8248dadf5aa6@redhat.com>
+Content-Type: text/plain; charset=windows-1252; format=flowed
+Content-Transfer-Encoding: 7bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hi Trond,
 
-On Mon, Sep 17, 2018 at 09:03:31AM -0400, Trond Myklebust wrote:
-> Most of this code should also be reusable with other socket types.
-> 
-> Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
-> ---
->  include/linux/sunrpc/xprtsock.h |  19 +-
->  include/trace/events/sunrpc.h   |  15 +-
->  net/sunrpc/xprtsock.c           | 694 +++++++++++++++-----------------
->  3 files changed, 335 insertions(+), 393 deletions(-)
 
-With latest mainline (24ccea7e102d, it includes Al Viro's iov_iter
-fixup) I started hitting some severe slowdown and systemd timeouts with
-nfsroot on arm64 machines (physical or guests under KVM). Interestingly,
-it only happens when the client kernel is configured with 64K pages, the
-4K pages configuration runs fine. It also runs fine if I add rsize=65536
-to the nfsroot= argument.
+On 11/09/2018 01:59 AM, Steven Whitehouse wrote:
+> Hi,
+>
+>
+> On 08/11/18 16:35, Ben Greear wrote:
+>>
+>>
+>> On 11/08/2018 07:31 AM, J. Bruce Fields wrote:
+>>> On Wed, Nov 07, 2018 at 09:08:16PM -0800, Ben Greear wrote:
+>>>>
+>>>>
+>>>> On 11/07/2018 05:14 PM, J. Bruce Fields wrote:
+>>>>> On Tue, Nov 06, 2018 at 01:03:54PM -0800, Ben Greear wrote:
+>>>>>> Hello,
+>>>>>>
+>>>>>> I made a stab at implementing VRF support in NFS, but it appears
+>>>>>> fairly complicated and I ended up reverting my changes....
+>>>>>>
+>>>>>> Is anyone working on this?
+>>>>>>
+>>>>>> And, if not, if anyone would like to be sponsored to work on this, please
+>>>>>> let me know.
+>>>>>
+>>>>> Um, sorry--what's VRF?
+>>>>
+>>>> Virtual Router logic.  It is sort of like network stack containers,
+>>>> and has been solid and fully featured in the kernel since 4.16 or so.
+>>>>
+>>>> In the end, you effectively need to call the logic that SO_BINDTODEVICE
+>>>> calls on the socket before binding to an IP.
+>>>>
+>>>> The NFS and RPC logic is a giant tangled mess to my eyes, so
+>>>> hoping I could bribe someone else to do it :)
+>>>
+>>> So it's not enough to support network namespaces?
+>>>
+>>> What's your motivation for this?
+>>
+>> Network namespaces are difficult to uses for lots of use cases, and thus VRF
+>> was born.
+>>
+>> My own motivation is that it allows me to make hundreds or thousands
+>> of individual NFS mounts from local mac-vlan (or other virtual/physical interfaces),
+>> for testing purposes.
+>>
+>> Similar to my patch set that binds to local IP address, which gives similar feature
+>> set for non-VRF configurations.  These bind-local-IP patches are not upstream and were rejected in
+>> the past as un-wanted.  I'm hoping VRF support would be more acceptable.
+>>
+>> Thanks,
+>> Ben
+>>
+>
+> For similar reasons David Windsor has been looking at some extensions for DLM along these lines. Improving our ability to test seems to me like it should be a good thing to do - in both cases. Likewise VRF support seems also like it should be useful in a number of contexts.
+>
+> Do you have a reference to your past work? I think it would be interesting to get some discussion going here - maybe it would be possible to have some common approach between kernel-side socket users, and/or bounce some ideas around,
+>
+> Steve.
 
-Bisecting led me to commit 277e4ab7d530 ("SUNRPC: Simplify TCP receive
-code by switching to using iterators"). Prior to this commit, it works
-fine.
+Here is an old thread on the topic.
 
-Some more info:
+https://www.spinics.net/lists/linux-nfs/msg34811.html
 
-- defconfig with CONFIG_ARM64_64K_PAGES enabled
+My patches are in all my 'ct' kernels, and the needed patches are also in my nfs-utils repo.
 
-- kernel cmdline arg: nfsroot=<some-server>:/srv/nfs/debian-arm64,tcp,v4
+My 4.19 tree has just been ported, so no idea if it works or not.
 
-- if it matters, the server is also an arm64 machine running 4.19 with
-  4K pages configuration
+https://github.com/greearb?tab=repositories
 
-I haven't figured out what's wrong or even how to debug this as I'm not
-familiar with the sunrpc code. Any suggestion?
+My patch work fine using routing table rules without VRF, but they will not work with VRF.
 
-Thanks.
+
+Thanks,
+Ben
 
 -- 
-Catalin
+Ben Greear <greearb@candelatech.com>
+Candela Technologies Inc  http://www.candelatech.com
