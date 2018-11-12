@@ -2,196 +2,180 @@ Return-Path: <SRS0=lcGf=NX=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-0.9 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS,URIBL_BLOCKED
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-1.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS,
+	URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0BE83C43610
-	for <linux-nfs@archiver.kernel.org>; Mon, 12 Nov 2018 18:16:51 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id EB19AC43441
+	for <linux-nfs@archiver.kernel.org>; Mon, 12 Nov 2018 18:19:38 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id C085522419
-	for <linux-nfs@archiver.kernel.org>; Mon, 12 Nov 2018 18:16:50 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 8F55A22419
+	for <linux-nfs@archiver.kernel.org>; Mon, 12 Nov 2018 18:19:38 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="GOa8lbVV"
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org C085522419
-Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=gmail.com
+	dkim=pass (1024-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="jB1l8jTX"
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 8F55A22419
+Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=hammerspace.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728119AbeKMELL (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 12 Nov 2018 23:11:11 -0500
-Received: from mail-pg1-f194.google.com ([209.85.215.194]:44156 "EHLO
-        mail-pg1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727247AbeKMELL (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Nov 2018 23:11:11 -0500
-Received: by mail-pg1-f194.google.com with SMTP id w3-v6so4403454pgs.11
-        for <linux-nfs@vger.kernel.org>; Mon, 12 Nov 2018 10:16:49 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=mime-version:subject:from:in-reply-to:date:cc
-         :content-transfer-encoding:message-id:references:to;
-        bh=Q3hmI8GtyQRKzT88fft5l6niFcNW7BfLkbwuvhwkMeE=;
-        b=GOa8lbVVPhZhi7x1OIcQ+6txe/3/EyAMJxC9FH7dE7UCsfbBC7yIfJuoiTpGtjRZZf
-         oVDCIJHfgNw0MchPr+UmS2uZtgv7cDjc2WYczW7tqvyuD0NJ4XNxsesrK1gTJkymKfPJ
-         2kHKrMBwkYR/2ddwVMPszO0h2CpTQaJ5K5RJFuXO3LdB4R3Y+XT9BSXGqTGBoKehawlr
-         RkfKAVEJDPcmIiHH9QS25/Yz29nRsFeqxD7uTTBwjkRVvmUkph+3nfagnwN226u6zXm/
-         J9NVbIba9OFvkHJpseQPHiiA8qk+xkzkEO8Yus+PcV+8O2cGp1/0jdka756fltbLN4WB
-         7PSQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:mime-version:subject:from:in-reply-to:date:cc
-         :content-transfer-encoding:message-id:references:to;
-        bh=Q3hmI8GtyQRKzT88fft5l6niFcNW7BfLkbwuvhwkMeE=;
-        b=rrCCouFnnfOvV7mpB0S+C4wOQsVqnsC7FJDJ3SCfXrjVLmQPM3okPrRpnWf5up34DX
-         KdTYUfLG5YzfcjwKI0E0sbZv35YMtpbnaYODVJDvPSyZ913gXoVE2DeAsgwssLLGVcAa
-         VB3i+XDcxk6AWwqUfUlOFaIHmsWwd2KMRYqGU5TUU3bJWez/yx9dxXeX0i+CCx2E40sc
-         k2lSX02mDJvrEIs8Z38N2f/nrVPl1oKBPAyOdhnV92btz93V8uq+boIBbE44EL1KVz3Y
-         jBRX3oKkgD+vKBL6dlIINiBjOIIW/kn3sZjw8uDu0YPLyToXRUtudPVwWz+ugBHiIjr1
-         rfjA==
-X-Gm-Message-State: AGRZ1gIyIaMbFTzeaJOQHX5mfVFRSDy5nOqovXsk3hn9jm6NVVMuFkQi
-        WF2idR8Yx7MPof/JywHqTPs=
-X-Google-Smtp-Source: AJdET5cjc1wf0N7Sh5SK/+75LhUV4WRuzuHKqZy8Zy3EZ68VoXHh9O2/IBOrkd7DdDQFyB7szThjWg==
-X-Received: by 2002:a62:401:: with SMTP id 1-v6mr1838321pfe.156.1542046608629;
-        Mon, 12 Nov 2018 10:16:48 -0800 (PST)
-Received: from [192.168.32.39] ([64.114.255.114])
-        by smtp.gmail.com with ESMTPSA id 128-v6sm18641043pfd.64.2018.11.12.10.16.47
-        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Mon, 12 Nov 2018 10:16:47 -0800 (PST)
-Content-Type: text/plain;
-        charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 11.5 \(3445.9.1\))
-Subject: Re: NULL dereference in rpcauth_lookup_credcache
-From:   Chuck Lever <chucklever@gmail.com>
-In-Reply-To: <c986450a2d19fa796078ed51b9d0fb8a79eda696.camel@hammerspace.com>
-Date:   Mon, 12 Nov 2018 10:16:46 -0800
-Cc:     Bruce Fields <bfields@fieldses.org>,
+        id S1727354AbeKMEOA (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 12 Nov 2018 23:14:00 -0500
+Received: from mail-eopbgr740129.outbound.protection.outlook.com ([40.107.74.129]:45643
+        "EHLO NAM01-BN3-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1727247AbeKMEOA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 12 Nov 2018 23:14:00 -0500
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=hammerspace.com;
+ s=selector1;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=QXcMynkiByTX7sxcPCYbful602ErGSAKKUOI+ixhWrA=;
+ b=jB1l8jTXoVRAfC+RNfFwVo/PcQFkKgS2LgMG44dMESO7aykp27nzF3DNv1Yhd/V+r2PojGkui96abQELi19+gnNIyefrXE1cWdNfVfpfamJyvLZGLl1C6Fj84zgSP4ztzdvP4NFbLAx+7YHMj+CFA2sbW8Oxd3zrP7j87mbTjrc=
+Received: from SN6PR13MB2494.namprd13.prod.outlook.com (52.135.95.148) by
+ SN6PR13MB2317.namprd13.prod.outlook.com (52.135.94.24) with Microsoft SMTP
+ Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ 15.20.1339.11; Mon, 12 Nov 2018 18:18:41 +0000
+Received: from SN6PR13MB2494.namprd13.prod.outlook.com
+ ([fe80::205a:69c2:1cf5:b475]) by SN6PR13MB2494.namprd13.prod.outlook.com
+ ([fe80::205a:69c2:1cf5:b475%3]) with mapi id 15.20.1339.019; Mon, 12 Nov 2018
+ 18:18:41 +0000
+From:   Trond Myklebust <trondmy@hammerspace.com>
+To:     "chucklever@gmail.com" <chucklever@gmail.com>
+CC:     "bfields@fieldses.org" <bfields@fieldses.org>,
         "schumakeranna@gmail.com" <schumakeranna@gmail.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Transfer-Encoding: quoted-printable
-Message-Id: <BA9BDDF8-DC35-4D6D-9424-6A3BBF2799D9@gmail.com>
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: NULL dereference in rpcauth_lookup_credcache
+Thread-Topic: NULL dereference in rpcauth_lookup_credcache
+Thread-Index: AQHUd6xJVdpNrPMTaUWtaTxXqXNyo6VHvSMAgAHSE4CAAuRdgIAABNIAgAAAh4A=
+Date:   Mon, 12 Nov 2018 18:18:41 +0000
+Message-ID: <cdfbad0fecd2a799d8b25aebfd624a8badb93694.camel@hammerspace.com>
 References: <20181108214452.GH6090@fieldses.org>
- <04114B00-B5A8-4F8A-B052-A266AED7725D@gmail.com>
- <20181110214939.GA16755@fieldses.org>
- <c986450a2d19fa796078ed51b9d0fb8a79eda696.camel@hammerspace.com>
-To:     Trond Myklebust <trondmy@hammerspace.com>
-X-Mailer: Apple Mail (2.3445.9.1)
+         <04114B00-B5A8-4F8A-B052-A266AED7725D@gmail.com>
+         <20181110214939.GA16755@fieldses.org>
+         <c986450a2d19fa796078ed51b9d0fb8a79eda696.camel@hammerspace.com>
+         <BA9BDDF8-DC35-4D6D-9424-6A3BBF2799D9@gmail.com>
+In-Reply-To: <BA9BDDF8-DC35-4D6D-9424-6A3BBF2799D9@gmail.com>
+Accept-Language: en-US, en-GB
+Content-Language: en-US
+X-MS-Has-Attach: 
+X-MS-TNEF-Correlator: 
+authentication-results: spf=none (sender IP is )
+ smtp.mailfrom=trondmy@hammerspace.com; 
+x-originating-ip: [68.40.195.73]
+x-ms-publictraffictype: Email
+x-microsoft-exchange-diagnostics: 1;SN6PR13MB2317;6:uvF/oqe5/syTX7/Veylo8xLvaUx4wtyv0PGrv030NCjOiGXnyY8UdykLpPCsuCvcSz3I9NbGycFnmD2REwkJgjlNvWX+m42L2pjHZ74MKaX5nB6Kz1ZBXYcxOSAru0Cqa2/C1YAduWENE4VvemkJU+/CpvxMmGqwOEl1J0cFHos+SJGop+2rucmh5ceYCt4VhDPPqT6QS/3ZoJZVpvLb0RuvicGxoyqnvQTv/MVCZYQ6kynEMji+iqRn6L3giDJRFv5gFh08gUSwXDaNasP4EmI7MArYgDfrETiltFHK/3Q5P1sCx3SbP8/0KYtNyA2/MfVG6bQKfDD2KDkhwOVi50S0BgasluDAsqd8gYW6G8iUrvL+MeJC10MFbUCwgyXWRAfcOthx60MVgpPAEAXRhqV+hAmMhgnB0to5/FMspJarQFKyIKQ1oWC2t4cO377tTsT9GyvuuPFJLL/EHYls9Q==;5:88uFQ9EBnkPPmIqdMi59kl+dPHkvGUqiIDEay9kZhkTMyidhKhk1paKBfs9meibjXxYbChZqRp7i22xSmB9XjfTAE1K6mZSN7gOv8+49zxhmqXRveohknQz0TO5iQn6K5oN+zd3BPdPOOL8uI3bVSzJJABugyxwrDjzfF/VCRys=;7:84I6aPtAPMx/T3NPLQiC3ow6RTKx2fv2hwfDRDDNaHp9crC794yivRo5nq6Q2UAksYwWWygjV0K6XlNxBpMTb+16GkR61AXie46oD6OSODZ1HqyXo5sFHMq8f32C2LKlaCuEIe1zrzBeCEC21WoRPg==
+x-ms-exchange-antispam-srfa-diagnostics: SOS;
+x-ms-office365-filtering-correlation-id: 5faa5488-396a-4d5c-2acf-08d648cb462b
+x-microsoft-antispam: BCL:0;PCL:0;RULEID:(2390040)(7020095)(4652040)(8989299)(4534185)(4627221)(201703031133081)(201702281549075)(8990200)(5600074)(711020)(2017052603328)(7153060)(7193020);SRVR:SN6PR13MB2317;
+x-ms-traffictypediagnostic: SN6PR13MB2317:
+x-microsoft-antispam-prvs: <SN6PR13MB231744CD571D4EB3D0358F53B8C10@SN6PR13MB2317.namprd13.prod.outlook.com>
+x-ms-exchange-senderadcheck: 1
+x-exchange-antispam-report-cfa-test: BCL:0;PCL:0;RULEID:(6040522)(2401047)(8121501046)(5005006)(3231382)(944501410)(52105112)(3002001)(10201501046)(93006095)(93001095)(148016)(149066)(150057)(6041310)(20161123558120)(20161123564045)(20161123560045)(201703131423095)(201702281528075)(20161123555045)(201703061421075)(201703061406153)(20161123562045)(201708071742011)(7699051)(76991095);SRVR:SN6PR13MB2317;BCL:0;PCL:0;RULEID:;SRVR:SN6PR13MB2317;
+x-forefront-prvs: 0854128AF0
+x-forefront-antispam-report: SFV:NSPM;SFS:(10019020)(136003)(366004)(346002)(39830400003)(376002)(396003)(189003)(199004)(51234002)(478600001)(2616005)(45080400002)(2900100001)(476003)(4326008)(186003)(25786009)(5640700003)(6916009)(4001150100001)(97736004)(76176011)(86362001)(102836004)(6512007)(6506007)(53546011)(54906003)(26005)(2501003)(11346002)(14454004)(5660300001)(81156014)(81166006)(2351001)(99286004)(446003)(6116002)(106356001)(105586002)(15974865002)(3846002)(256004)(36756003)(1361003)(93886005)(7736002)(305945005)(6486002)(229853002)(1730700003)(6246003)(8936002)(68736007)(8676002)(6436002)(118296001)(316002)(71190400001)(1411001)(39060400002)(486006)(71200400001)(66066001)(2906002)(53936002);DIR:OUT;SFP:1102;SCL:1;SRVR:SN6PR13MB2317;H:SN6PR13MB2494.namprd13.prod.outlook.com;FPR:;SPF:None;LANG:en;PTR:InfoNoRecords;MX:1;A:1;
+received-spf: None (protection.outlook.com: hammerspace.com does not designate
+ permitted sender hosts)
+x-microsoft-antispam-message-info: N7aymchD5Cs71SZiYs1zraqASJHv7ue15vaAfx6m6912EPQsW418L4JLkn8dSVz1nXlbowYPNEg1I9QuWacxBcee3qHtb6mcwzE3t54XKqrrSzZNhh7vx+Gl5BMNDzEjrm1cRZM/aD+O9l2FgDg6mndKBrHrJQ6Q6TmTIBwGBbcpFOQBghFr7CIbB3guqCtTFiBGUxDfjYtYmqUvdWwABPPShTLxcpBwH3GlJdeOn4hxf1LvW0yz7Jd32IFYBR88BA+QPwvkIXJfOC3JKWP4SKDeXlyugIZXBhCQ697V6OqeUw0cbK2r0wlbZOFL7e2VWO8pfPa9MppIYm+PDQqYkj3ve4cG2NB3tJxDKSMiAC0=
+spamdiagnosticoutput: 1:99
+spamdiagnosticmetadata: NSPM
+Content-Type: text/plain; charset="utf-8"
+Content-ID: <E918C208156C844998A0FC1CD7EB9EF5@namprd13.prod.outlook.com>
+Content-Transfer-Encoding: base64
+MIME-Version: 1.0
+X-OriginatorOrg: hammerspace.com
+X-MS-Exchange-CrossTenant-Network-Message-Id: 5faa5488-396a-4d5c-2acf-08d648cb462b
+X-MS-Exchange-CrossTenant-originalarrivaltime: 12 Nov 2018 18:18:41.1198
+ (UTC)
+X-MS-Exchange-CrossTenant-fromentityheader: Hosted
+X-MS-Exchange-CrossTenant-id: 0d4fed5c-3a70-46fe-9430-ece41741f59e
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: SN6PR13MB2317
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-
-
-> On Nov 12, 2018, at 9:59 AM, Trond Myklebust <trondmy@hammerspace.com> =
-wrote:
->=20
-> On Sat, 2018-11-10 at 16:49 -0500, Bruce Fields wrote:
->> Looks like it's the fault of
->>=20
->> 07d02a67b7faae "SUNRPC: Simplify lookup code"
->=20
-> I'm having trouble reproducing this bug. I've tried both cthon and
-> xfstests in a loop, so far without success (both NFSv3 and v4.1, but
-> only sec=3Dsys). Is there anything else you're doing that I might try?
->=20
-> e.g. Are you running multiple workloads in parallel? Different =
-users?..
-
-Some observations, for what they are worth:
-
-Single user test running with no other NFS workload.
-
-I see the BUG fire at umount time, not during the test.
-
-My client is a two-node NUMA system with 12 cores, which
-could be more likely to trigger races.
-
-Export is tmpfs.
-
-
->> --b.
->>=20
->> On Fri, Nov 09, 2018 at 01:01:30PM -0500, Chuck Lever wrote:
->>>=20
->>>> On Nov 8, 2018, at 4:44 PM, J. Bruce Fields <bfields@fieldses.org
->>>>> wrote:
->>>>=20
->>>> Since -rc1 my regression tests crash my client.  Is this a known
->>>> problem?  I'll investigate some more, I haven't even looked at
->>>> the code
->>>> yet or checked which test exactly is hitting this.
->>>>=20
->>>> --b.
->>>>=20
->>>> [  164.109570] BUG: unable to handle kernel NULL pointer
->>>> dereference at 0000000000000008
->>>> [  164.111207] PGD 0 P4D 0=20
->>>> [  164.111528] Oops: 0000 [#1] PREEMPT SMP PTI
->>>> [  164.112303] CPU: 2 PID: 2947 Comm: kworker/u8:5 Not tainted
->>>> 4.20.0-rc1-13223-gafb6d1c474ef #1898
->>>> [  164.113487] Hardware name: QEMU Standard PC (i440FX + PIIX,
->>>> 1996), BIOS ?-20180531_142017-buildhw-08.phx2.fedoraproject.org-
->>>> 1.fc28 04/01/2014
->>>> [  164.115301] Workqueue: rpciod rpc_async_schedule [sunrpc]
->>>> [  164.115920] RIP: 0010:rpcauth_lookup_credcache+0x3d/0x450
->>>> [sunrpc]
->>>> [  164.116700] Code: 89 f5 41 54 41 89 d4 53 48 83 ec 38 89 4d b0
->>>> 4c 8b 7f 20 65 48 8b 04 25 28 00 00 00 48 89 45 d0 31 c0 48 8d 45
->>>> c0 48 89 45 c8 <41> 8b 77 08 48 89 45 c0 48 8b 47 10 4c 89 ef 48
->>>> 8b 40 28 e8 cb d2
->>>> [  164.119299] RSP: 0018:ffffc90001ee3cf0 EFLAGS: 00010246
->>>> [  164.119872] RAX: ffffc90001ee3d10 RBX: ffff88007cc18180 RCX:
->>>> 0000000000600040
->>>> [  164.120800] RDX: 0000000000000001 RSI: ffffc90001ee3d60 RDI:
->>>> ffff88007cafb198
->>>> [  164.121643] RBP: ffffc90001ee3d50 R08: 0000000000000000 R09:
->>>> 0000000000000000
->>>> [  164.122464] R10: 0000000000000000 R11: 0000000000000000 R12:
->>>> 0000000000000001
->>>> [  164.123373] R13: ffffc90001ee3d60 R14: ffff88007cafb198 R15:
->>>> 0000000000000000
->>>> [  164.124296] FS:  0000000000000000(0000)
->>>> GS:ffff88007fd00000(0000) knlGS:0000000000000000
->>>> [  164.125322] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
->>>> [  164.126006] CR2: 0000000000000008 CR3: 000000007829c003 CR4:
->>>> 00000000001606e0
->>>> [  164.126860] Call Trace:
->>>> [  164.127045]  ? call_retry_reserve+0x30/0x30 [sunrpc]
->>>> [  164.127622]  rpcauth_lookupcred+0xa0/0xc0 [sunrpc]
->>>> [  164.128200]  rpcauth_refreshcred+0x15f/0x170 [sunrpc]
->>>> [  164.128807]  __rpc_execute+0xa9/0x460 [sunrpc]
->>>> [  164.129281]  process_one_work+0x227/0x630
->>>> [  164.129684]  worker_thread+0x3c/0x390
->>>> [  164.130062]  ? process_one_work+0x630/0x630
->>>> [  164.130609]  kthread+0x11d/0x140
->>>> [  164.130936]  ? kthread_park+0x80/0x80
->>>> [  164.131339]  ret_from_fork+0x3a/0x50
->>>> [  164.131676] Modules linked in: rpcsec_gss_krb5 nfsv4 nfs lockd
->>>> grace auth_rpcgss sunrpc
->>>> [  164.132719] CR2: 0000000000000008
->>>> [  164.133050] ---[ end trace b4028a6781a696ad ]---
->>>>=20
->>>=20
->>> I just encountered this repeatedly with cthon04 general tests.
->>>=20
->>> MNTOPTIONS=3D"rw,proto=3Dtcp,vers=3D4.1,sec=3Dsys"
->>>=20
->>>=20
->>> --
->>> Chuck Lever
->>> chucklever@gmail.com
->>>=20
->>>=20
-> --=20
-> Trond Myklebust
-> CTO, Hammerspace Inc
-> 4300 El Camino Real, Suite 105
-> Los Altos, CA 94022
-> www.hammer.space
-
---
-Chuck Lever
-chucklever@gmail.com
-
-
-
+T24gTW9uLCAyMDE4LTExLTEyIGF0IDEwOjE2IC0wODAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
+PiBPbiBOb3YgMTIsIDIwMTgsIGF0IDk6NTkgQU0sIFRyb25kIE15a2xlYnVzdCA8DQo+ID4gdHJv
+bmRteUBoYW1tZXJzcGFjZS5jb20+IHdyb3RlOg0KPiA+IA0KPiA+IE9uIFNhdCwgMjAxOC0xMS0x
+MCBhdCAxNjo0OSAtMDUwMCwgQnJ1Y2UgRmllbGRzIHdyb3RlOg0KPiA+ID4gTG9va3MgbGlrZSBp
+dCdzIHRoZSBmYXVsdCBvZg0KPiA+ID4gDQo+ID4gPiAwN2QwMmE2N2I3ZmFhZSAiU1VOUlBDOiBT
+aW1wbGlmeSBsb29rdXAgY29kZSINCj4gPiANCj4gPiBJJ20gaGF2aW5nIHRyb3VibGUgcmVwcm9k
+dWNpbmcgdGhpcyBidWcuIEkndmUgdHJpZWQgYm90aCBjdGhvbiBhbmQNCj4gPiB4ZnN0ZXN0cyBp
+biBhIGxvb3AsIHNvIGZhciB3aXRob3V0IHN1Y2Nlc3MgKGJvdGggTkZTdjMgYW5kIHY0LjEsDQo+
+ID4gYnV0DQo+ID4gb25seSBzZWM9c3lzKS4gSXMgdGhlcmUgYW55dGhpbmcgZWxzZSB5b3UncmUg
+ZG9pbmcgdGhhdCBJIG1pZ2h0DQo+ID4gdHJ5Pw0KPiA+IA0KPiA+IGUuZy4gQXJlIHlvdSBydW5u
+aW5nIG11bHRpcGxlIHdvcmtsb2FkcyBpbiBwYXJhbGxlbD8gRGlmZmVyZW50DQo+ID4gdXNlcnM/
+Li4NCj4gDQo+IFNvbWUgb2JzZXJ2YXRpb25zLCBmb3Igd2hhdCB0aGV5IGFyZSB3b3J0aDoNCj4g
+DQo+IFNpbmdsZSB1c2VyIHRlc3QgcnVubmluZyB3aXRoIG5vIG90aGVyIE5GUyB3b3JrbG9hZC4N
+Cj4gDQo+IEkgc2VlIHRoZSBCVUcgZmlyZSBhdCB1bW91bnQgdGltZSwgbm90IGR1cmluZyB0aGUg
+dGVzdC4NCj4gDQo+IE15IGNsaWVudCBpcyBhIHR3by1ub2RlIE5VTUEgc3lzdGVtIHdpdGggMTIg
+Y29yZXMsIHdoaWNoDQo+IGNvdWxkIGJlIG1vcmUgbGlrZWx5IHRvIHRyaWdnZXIgcmFjZXMuDQo+
+IA0KPiBFeHBvcnQgaXMgdG1wZnMuDQo+IA0KDQpUaGFua3MhIFRoYXQncyB1c2VmdWwgaW5mby4g
+UGFydGljdWxhcmx5IHRoZSBvYnNlcnZhdGlvbiB0aGF0IHlvdSdyZQ0Kc2VlaW5nIGl0IGF0IHVt
+b3VudCB0aW1lLi4uDQoNCj4gDQo+ID4gPiAtLWIuDQo+ID4gPiANCj4gPiA+IE9uIEZyaSwgTm92
+IDA5LCAyMDE4IGF0IDAxOjAxOjMwUE0gLTA1MDAsIENodWNrIExldmVyIHdyb3RlOg0KPiA+ID4g
+PiA+IE9uIE5vdiA4LCAyMDE4LCBhdCA0OjQ0IFBNLCBKLiBCcnVjZSBGaWVsZHMgPA0KPiA+ID4g
+PiA+IGJmaWVsZHNAZmllbGRzZXMub3JnDQo+ID4gPiA+ID4gPiB3cm90ZToNCj4gPiA+ID4gPiAN
+Cj4gPiA+ID4gPiBTaW5jZSAtcmMxIG15IHJlZ3Jlc3Npb24gdGVzdHMgY3Jhc2ggbXkgY2xpZW50
+LiAgSXMgdGhpcyBhDQo+ID4gPiA+ID4ga25vd24NCj4gPiA+ID4gPiBwcm9ibGVtPyAgSSdsbCBp
+bnZlc3RpZ2F0ZSBzb21lIG1vcmUsIEkgaGF2ZW4ndCBldmVuIGxvb2tlZA0KPiA+ID4gPiA+IGF0
+DQo+ID4gPiA+ID4gdGhlIGNvZGUNCj4gPiA+ID4gPiB5ZXQgb3IgY2hlY2tlZCB3aGljaCB0ZXN0
+IGV4YWN0bHkgaXMgaGl0dGluZyB0aGlzLg0KPiA+ID4gPiA+IA0KPiA+ID4gPiA+IC0tYi4NCj4g
+PiA+ID4gPiANCj4gPiA+ID4gPiBbICAxNjQuMTA5NTcwXSBCVUc6IHVuYWJsZSB0byBoYW5kbGUg
+a2VybmVsIE5VTEwgcG9pbnRlcg0KPiA+ID4gPiA+IGRlcmVmZXJlbmNlIGF0IDAwMDAwMDAwMDAw
+MDAwMDgNCj4gPiA+ID4gPiBbICAxNjQuMTExMjA3XSBQR0QgMCBQNEQgMCANCj4gPiA+ID4gPiBb
+ICAxNjQuMTExNTI4XSBPb3BzOiAwMDAwIFsjMV0gUFJFRU1QVCBTTVAgUFRJDQo+ID4gPiA+ID4g
+WyAgMTY0LjExMjMwM10gQ1BVOiAyIFBJRDogMjk0NyBDb21tOiBrd29ya2VyL3U4OjUgTm90DQo+
+ID4gPiA+ID4gdGFpbnRlZA0KPiA+ID4gPiA+IDQuMjAuMC1yYzEtMTMyMjMtZ2FmYjZkMWM0NzRl
+ZiAjMTg5OA0KPiA+ID4gPiA+IFsgIDE2NC4xMTM0ODddIEhhcmR3YXJlIG5hbWU6IFFFTVUgU3Rh
+bmRhcmQgUEMgKGk0NDBGWCArDQo+ID4gPiA+ID4gUElJWCwNCj4gPiA+ID4gPiAxOTk2KSwgQklP
+UyA/LTIwMTgwNTMxXzE0MjAxNy1idWlsZGh3LQ0KPiA+ID4gPiA+IDA4LnBoeDIuZmVkb3JhcHJv
+amVjdC5vcmctDQo+ID4gPiA+ID4gMS5mYzI4IDA0LzAxLzIwMTQNCj4gPiA+ID4gPiBbICAxNjQu
+MTE1MzAxXSBXb3JrcXVldWU6IHJwY2lvZCBycGNfYXN5bmNfc2NoZWR1bGUgW3N1bnJwY10NCj4g
+PiA+ID4gPiBbICAxNjQuMTE1OTIwXSBSSVA6IDAwMTA6cnBjYXV0aF9sb29rdXBfY3JlZGNhY2hl
+KzB4M2QvMHg0NTANCj4gPiA+ID4gPiBbc3VucnBjXQ0KPiA+ID4gPiA+IFsgIDE2NC4xMTY3MDBd
+IENvZGU6IDg5IGY1IDQxIDU0IDQxIDg5IGQ0IDUzIDQ4IDgzIGVjIDM4IDg5DQo+ID4gPiA+ID4g
+NGQgYjANCj4gPiA+ID4gPiA0YyA4YiA3ZiAyMCA2NSA0OCA4YiAwNCAyNSAyOCAwMCAwMCAwMCA0
+OCA4OSA0NSBkMCAzMSBjMCA0OA0KPiA+ID4gPiA+IDhkIDQ1DQo+ID4gPiA+ID4gYzAgNDggODkg
+NDUgYzggPDQxPiA4YiA3NyAwOCA0OCA4OSA0NSBjMCA0OCA4YiA0NyAxMCA0YyA4OSBlZg0KPiA+
+ID4gPiA+IDQ4DQo+ID4gPiA+ID4gOGIgNDAgMjggZTggY2IgZDINCj4gPiA+ID4gPiBbICAxNjQu
+MTE5Mjk5XSBSU1A6IDAwMTg6ZmZmZmM5MDAwMWVlM2NmMCBFRkxBR1M6IDAwMDEwMjQ2DQo+ID4g
+PiA+ID4gWyAgMTY0LjExOTg3Ml0gUkFYOiBmZmZmYzkwMDAxZWUzZDEwIFJCWDogZmZmZjg4MDA3
+Y2MxODE4MA0KPiA+ID4gPiA+IFJDWDoNCj4gPiA+ID4gPiAwMDAwMDAwMDAwNjAwMDQwDQo+ID4g
+PiA+ID4gWyAgMTY0LjEyMDgwMF0gUkRYOiAwMDAwMDAwMDAwMDAwMDAxIFJTSTogZmZmZmM5MDAw
+MWVlM2Q2MA0KPiA+ID4gPiA+IFJESToNCj4gPiA+ID4gPiBmZmZmODgwMDdjYWZiMTk4DQo+ID4g
+PiA+ID4gWyAgMTY0LjEyMTY0M10gUkJQOiBmZmZmYzkwMDAxZWUzZDUwIFIwODogMDAwMDAwMDAw
+MDAwMDAwMA0KPiA+ID4gPiA+IFIwOToNCj4gPiA+ID4gPiAwMDAwMDAwMDAwMDAwMDAwDQo+ID4g
+PiA+ID4gWyAgMTY0LjEyMjQ2NF0gUjEwOiAwMDAwMDAwMDAwMDAwMDAwIFIxMTogMDAwMDAwMDAw
+MDAwMDAwMA0KPiA+ID4gPiA+IFIxMjoNCj4gPiA+ID4gPiAwMDAwMDAwMDAwMDAwMDAxDQo+ID4g
+PiA+ID4gWyAgMTY0LjEyMzM3M10gUjEzOiBmZmZmYzkwMDAxZWUzZDYwIFIxNDogZmZmZjg4MDA3
+Y2FmYjE5OA0KPiA+ID4gPiA+IFIxNToNCj4gPiA+ID4gPiAwMDAwMDAwMDAwMDAwMDAwDQo+ID4g
+PiA+ID4gWyAgMTY0LjEyNDI5Nl0gRlM6ICAwMDAwMDAwMDAwMDAwMDAwKDAwMDApDQo+ID4gPiA+
+ID4gR1M6ZmZmZjg4MDA3ZmQwMDAwMCgwMDAwKSBrbmxHUzowMDAwMDAwMDAwMDAwMDAwDQo+ID4g
+PiA+ID4gWyAgMTY0LjEyNTMyMl0gQ1M6ICAwMDEwIERTOiAwMDAwIEVTOiAwMDAwIENSMDoNCj4g
+PiA+ID4gPiAwMDAwMDAwMDgwMDUwMDMzDQo+ID4gPiA+ID4gWyAgMTY0LjEyNjAwNl0gQ1IyOiAw
+MDAwMDAwMDAwMDAwMDA4IENSMzogMDAwMDAwMDA3ODI5YzAwMw0KPiA+ID4gPiA+IENSNDoNCj4g
+PiA+ID4gPiAwMDAwMDAwMDAwMTYwNmUwDQo+ID4gPiA+ID4gWyAgMTY0LjEyNjg2MF0gQ2FsbCBU
+cmFjZToNCj4gPiA+ID4gPiBbICAxNjQuMTI3MDQ1XSAgPyBjYWxsX3JldHJ5X3Jlc2VydmUrMHgz
+MC8weDMwIFtzdW5ycGNdDQo+ID4gPiA+ID4gWyAgMTY0LjEyNzYyMl0gIHJwY2F1dGhfbG9va3Vw
+Y3JlZCsweGEwLzB4YzAgW3N1bnJwY10NCj4gPiA+ID4gPiBbICAxNjQuMTI4MjAwXSAgcnBjYXV0
+aF9yZWZyZXNoY3JlZCsweDE1Zi8weDE3MCBbc3VucnBjXQ0KPiA+ID4gPiA+IFsgIDE2NC4xMjg4
+MDddICBfX3JwY19leGVjdXRlKzB4YTkvMHg0NjAgW3N1bnJwY10NCj4gPiA+ID4gPiBbICAxNjQu
+MTI5MjgxXSAgcHJvY2Vzc19vbmVfd29yaysweDIyNy8weDYzMA0KPiA+ID4gPiA+IFsgIDE2NC4x
+Mjk2ODRdICB3b3JrZXJfdGhyZWFkKzB4M2MvMHgzOTANCj4gPiA+ID4gPiBbICAxNjQuMTMwMDYy
+XSAgPyBwcm9jZXNzX29uZV93b3JrKzB4NjMwLzB4NjMwDQo+ID4gPiA+ID4gWyAgMTY0LjEzMDYw
+OV0gIGt0aHJlYWQrMHgxMWQvMHgxNDANCj4gPiA+ID4gPiBbICAxNjQuMTMwOTM2XSAgPyBrdGhy
+ZWFkX3BhcmsrMHg4MC8weDgwDQo+ID4gPiA+ID4gWyAgMTY0LjEzMTMzOV0gIHJldF9mcm9tX2Zv
+cmsrMHgzYS8weDUwDQo+ID4gPiA+ID4gWyAgMTY0LjEzMTY3Nl0gTW9kdWxlcyBsaW5rZWQgaW46
+IHJwY3NlY19nc3Nfa3JiNSBuZnN2NCBuZnMNCj4gPiA+ID4gPiBsb2NrZA0KPiA+ID4gPiA+IGdy
+YWNlIGF1dGhfcnBjZ3NzIHN1bnJwYw0KPiA+ID4gPiA+IFsgIDE2NC4xMzI3MTldIENSMjogMDAw
+MDAwMDAwMDAwMDAwOA0KPiA+ID4gPiA+IFsgIDE2NC4xMzMwNTBdIC0tLVsgZW5kIHRyYWNlIGI0
+MDI4YTY3ODFhNjk2YWQgXS0tLQ0KPiA+ID4gPiA+IA0KPiA+ID4gPiANCj4gPiA+ID4gSSBqdXN0
+IGVuY291bnRlcmVkIHRoaXMgcmVwZWF0ZWRseSB3aXRoIGN0aG9uMDQgZ2VuZXJhbCB0ZXN0cy4N
+Cj4gPiA+ID4gDQo+ID4gPiA+IE1OVE9QVElPTlM9InJ3LHByb3RvPXRjcCx2ZXJzPTQuMSxzZWM9
+c3lzIg0KPiA+ID4gPiANCj4gPiA+ID4gDQo+ID4gPiA+IC0tDQo+ID4gPiA+IENodWNrIExldmVy
+DQo+ID4gPiA+IGNodWNrbGV2ZXJAZ21haWwuY29tDQo+ID4gPiA+IA0KPiA+ID4gPiANCj4gPiAt
+LSANCj4gPiBUcm9uZCBNeWtsZWJ1c3QNCj4gPiBDVE8sIEhhbW1lcnNwYWNlIEluYw0KPiA+IDQz
+MDAgRWwgQ2FtaW5vIFJlYWwsIFN1aXRlIDEwNQ0KPiA+IExvcyBBbHRvcywgQ0EgOTQwMjINCj4g
+PiB3d3cuaGFtbWVyLnNwYWNlDQo+IA0KPiAtLQ0KPiBDaHVjayBMZXZlcg0KPiBjaHVja2xldmVy
+QGdtYWlsLmNvbQ0KPiANCj4gDQo+IA0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkNUTywgSGFtbWVy
+c3BhY2UgSW5jDQo0MzAwIEVsIENhbWlubyBSZWFsLCBTdWl0ZSAxMDUNCkxvcyBBbHRvcywgQ0Eg
+OTQwMjINCnd3dy5oYW1tZXIuc3BhY2UNCg0KDQo=
