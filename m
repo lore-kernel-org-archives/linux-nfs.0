@@ -2,186 +2,174 @@ Return-Path: <SRS0=lcGf=NX=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,HK_RANDOM_FROM,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,USER_AGENT_GIT autolearn=ham
+X-Spam-Status: No, score=-6.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,SPF_PASS,URIBL_BLOCKED autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id AE771C43441
-	for <linux-nfs@archiver.kernel.org>; Mon, 12 Nov 2018 13:59:36 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B46A1C43441
+	for <linux-nfs@archiver.kernel.org>; Mon, 12 Nov 2018 14:21:16 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 28DDC223D0
-	for <linux-nfs@archiver.kernel.org>; Mon, 12 Nov 2018 13:59:36 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=desy.de header.i=@desy.de header.b="qGieO4m6"
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 28DDC223D0
-Authentication-Results: mail.kernel.org; dmarc=none (p=none dis=none) header.from=desy.de
+	by mail.kernel.org (Postfix) with ESMTP id 809002241E
+	for <linux-nfs@archiver.kernel.org>; Mon, 12 Nov 2018 14:21:16 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 809002241E
+Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=redhat.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728120AbeKLXw6 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 12 Nov 2018 18:52:58 -0500
-Received: from smtp-o-3.desy.de ([131.169.56.156]:53109 "EHLO smtp-o-3.desy.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727530AbeKLXw6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 12 Nov 2018 18:52:58 -0500
-Received: from smtp-buf-2.desy.de (smtp-buf-2.desy.de [131.169.56.165])
-        by smtp-o-3.desy.de (DESY-O-3) with ESMTP id C327B2808D1
-        for <linux-nfs@vger.kernel.org>; Mon, 12 Nov 2018 14:59:31 +0100 (CET)
-DKIM-Filter: OpenDKIM Filter v2.11.0 smtp-o-3.desy.de C327B2808D1
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=desy.de; s=default;
-        t=1542031171; bh=FcjHSwcedUkHT5lqnbzSPhT2JDk3pKnVVHDKpCm2G5E=;
-        h=From:To:Cc:Subject:Date:From;
-        b=qGieO4m6uITVXMY8UKu/dsRWFYxTcgQNmjYkgQ6xzryUslo9JGy3PLjz9+d6V6Blg
-         WipWiJBc0hwt3wnx8a8O5mx5wmk8XisNN7cM+CneWiq2qD2m6Hi7tiiWtDK/OaeY0w
-         cxQXyB2GpTSgJLBVqBaxwErvh7cO795k/6pygaxQ=
-Received: from smtp-m-2.desy.de (smtp-m-2.desy.de [131.169.56.130])
-        by smtp-buf-2.desy.de (Postfix) with ESMTP id BB9691A00E9;
-        Mon, 12 Nov 2018 14:59:31 +0100 (CET)
-X-Virus-Scanned: amavisd-new at desy.de
-Received: from anahit.desy.de (anahit.desy.de [131.169.185.68])
-        by smtp-intra-3.desy.de (DESY-INTRA-3) with ESMTP id 79CE91029;
-        Mon, 12 Nov 2018 14:59:31 +0100 (MET)
-From:   Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-To:     trondmy@hammerspace.com, Anna.Schumaker@Netapp.com
-Cc:     linux-nfs@vger.kernel.org,
-        Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>,
-        Rick Macklem <rmacklem@uoguelph.ca>
-Subject: [PATCH] flexfiles: use per-mirror specified stateid for IO
-Date:   Mon, 12 Nov 2018 14:59:18 +0100
-Message-Id: <20181112135918.12011-1-tigran.mkrtchyan@desy.de>
-X-Mailer: git-send-email 2.17.2
+        id S1729426AbeKMAOo convert rfc822-to-8bit (ORCPT
+        <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 12 Nov 2018 19:14:44 -0500
+Received: from mail-wr1-f49.google.com ([209.85.221.49]:43471 "EHLO
+        mail-wr1-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1729380AbeKMAOn (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Nov 2018 19:14:43 -0500
+Received: by mail-wr1-f49.google.com with SMTP id y3-v6so9532507wrh.10
+        for <linux-nfs@vger.kernel.org>; Mon, 12 Nov 2018 06:21:14 -0800 (PST)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:content-transfer-encoding;
+        bh=B27Ah6bSDzRruukuizb1uenXUbyS3LwDSBnkfOtwzvA=;
+        b=cKnnGFJIlItmWKXGnT7XeP5BPiIpGmabHi+ZR5nVVzpoGTe9f+rKH9TRIBre/hhWEL
+         RxzFiWa1aUN8AD7OWcg7HVEOraIpw5wqBJ+3jxUiwrmud1OtKNLatf6l1X6YcwANjVl9
+         juJLtUNRY0DA5SX8UT81oRRQKfgcawMivDfGd8iqYAgWerUmWOK6UTi4GvuNiHrxGwTo
+         mjVVzdu6tofvpNSimW3qOGBRreSB2xZeLnmMHxPSS8nHxYNDJMiJxYoca+DSUk31X/8H
+         4pGcCYcKHm3fGnDacn9htDiaP2VJJNZ5fn1PmMj3gB3TwGunCfAR7o8osmyyELDnJ/lQ
+         LCgQ==
+X-Gm-Message-State: AGRZ1gKSocUn+JSvJxsMB3nLE4XXEVm4InEkHhFTGV/pobV6Vbrt1DCg
+        /44c+iX/TuHf8l6hOVJNzhy3YSq8yIQ6QTir+Po1f9KE
+X-Google-Smtp-Source: AJdET5eINoS9b67d1c5OjS/kTeEn+l36Xlfoffjgz3ZccBlE6lZ0N3Va4p7FcsxHPD/ZbJeM6Jhx67CkhIjXPlxyDYw=
+X-Received: by 2002:adf:80c8:: with SMTP id 66-v6mr1147774wrl.57.1542032473746;
+ Mon, 12 Nov 2018 06:21:13 -0800 (PST)
+MIME-Version: 1.0
+References: <b608aeda-358d-18c9-ebcd-753b698580e9@candelatech.com>
+ <20181108011429.GC30776@fieldses.org> <efe334ad-4905-fc24-1b36-3c4129b72888@candelatech.com>
+ <20181108153136.GA4947@fieldses.org> <90f8e9ba-3953-e2d1-56f4-421a4991cef8@candelatech.com>
+ <74f0a2e8-f631-8d8d-5b98-8248dadf5aa6@redhat.com> <d0a3a3fd-4952-db37-4ca7-54391edc3c48@candelatech.com>
+ <CAGKpdE9YMQNisieoOUbenwA8a7PhTngLTX=v8Bkznfqc2816dQ@mail.gmail.com>
+In-Reply-To: <CAGKpdE9YMQNisieoOUbenwA8a7PhTngLTX=v8Bkznfqc2816dQ@mail.gmail.com>
+From:   David Windsor <dwindsor@redhat.com>
+Date:   Mon, 12 Nov 2018 09:21:02 -0500
+Message-ID: <CAGKpdE-UEG1ax_cDwXbnkXvm4J07QOgO6S8AV4N1Qm9aqH9ASA@mail.gmail.com>
+Subject: Fwd: Support for VRF in NFS?
+To:     linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-rfc8435 says:
+Forwarding to linux-nfs because I forgot to disable HTML formatting
+when originally replying.
 
-  For tight coupling, ffds_stateid provides the stateid to be used by
-  the client to access the file.
+---------- Forwarded message ---------
+From: David Windsor <dwindsor@redhat.com>
+Date: Mon, Nov 12, 2018 at 9:13 AM
+Subject: Re: Support for VRF in NFS?
+To: <greearb@candelatech.com>
+Cc: swhiteho <swhiteho@redhat.com>, <bfields@fieldses.org>,
+<linux-nfs@vger.kernel.org>
 
-However current implementation replaces per-mirror provided stateid with
-by open or lock stateid.
 
-Ensure that per-mirror stateid is used by ff_layout_write_prepare_v4 and
-nfs4_ff_layout_prepare_ds.
+Hi,
 
-Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-Signed-off-by: Rick Macklem <rmacklem@uoguelph.ca>
----
- fs/nfs/flexfilelayout/flexfilelayout.c    | 21 +++++++++++++--------
- fs/nfs/flexfilelayout/flexfilelayout.h    |  2 ++
- fs/nfs/flexfilelayout/flexfilelayoutdev.c | 17 +++++++++++++++++
- 3 files changed, 32 insertions(+), 8 deletions(-)
+On Fri, Nov 9, 2018 at 9:48 AM Ben Greear <greearb@candelatech.com> wrote:
+>
+>
+>
+> On 11/09/2018 01:59 AM, Steven Whitehouse wrote:
+> > Hi,
+> >
+> >
+> > On 08/11/18 16:35, Ben Greear wrote:
+> >>
+> >>
+> >> On 11/08/2018 07:31 AM, J. Bruce Fields wrote:
+> >>> On Wed, Nov 07, 2018 at 09:08:16PM -0800, Ben Greear wrote:
+> >>>>
+> >>>>
+> >>>> On 11/07/2018 05:14 PM, J. Bruce Fields wrote:
+> >>>>> On Tue, Nov 06, 2018 at 01:03:54PM -0800, Ben Greear wrote:
+> >>>>>> Hello,
+> >>>>>>
+> >>>>>> I made a stab at implementing VRF support in NFS, but it appears
+> >>>>>> fairly complicated and I ended up reverting my changes....
+> >>>>>>
+> >>>>>> Is anyone working on this?
+> >>>>>>
+> >>>>>> And, if not, if anyone would like to be sponsored to work on this, please
+> >>>>>> let me know.
+> >>>>>
+> >>>>> Um, sorry--what's VRF?
+> >>>>
+> >>>> Virtual Router logic.  It is sort of like network stack containers,
+> >>>> and has been solid and fully featured in the kernel since 4.16 or so.
+> >>>>
+> >>>> In the end, you effectively need to call the logic that SO_BINDTODEVICE
+> >>>> calls on the socket before binding to an IP.
+> >>>>
+> >>>> The NFS and RPC logic is a giant tangled mess to my eyes, so
+> >>>> hoping I could bribe someone else to do it :)
+> >>>
+> >>> So it's not enough to support network namespaces?
+> >>>
+> >>> What's your motivation for this?
+> >>
+> >> Network namespaces are difficult to uses for lots of use cases, and thus VRF
+> >> was born.
+> >>
+> >> My own motivation is that it allows me to make hundreds or thousands
+> >> of individual NFS mounts from local mac-vlan (or other virtual/physical interfaces),
+> >> for testing purposes.
+> >>
+> >> Similar to my patch set that binds to local IP address, which gives similar feature
+> >> set for non-VRF configurations.  These bind-local-IP patches are not upstream and were rejected in
+> >> the past as un-wanted.  I'm hoping VRF support would be more acceptable.
+> >>
+> >> Thanks,
+> >> Ben
+> >>
+> >
+> > For similar reasons David Windsor has been looking at some extensions for DLM along these lines. Improving our ability to test seems to me like it should be a good thing to do - in both cases. Likewise VRF support seems also like it should be useful in a number of contexts.
+> >
+> > Do you have a reference to your past work? I think it would be interesting to get some discussion going here - maybe it would be possible to have some common approach between kernel-side socket users, and/or bounce some ideas around,
+> >
 
-diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
-index 86bcba40ca61..4c7f042db9c4 100644
---- a/fs/nfs/flexfilelayout/flexfilelayout.c
-+++ b/fs/nfs/flexfilelayout/flexfilelayout.c
-@@ -1363,10 +1363,6 @@ static void ff_layout_read_prepare_v4(struct rpc_task *task, void *data)
- 
- 	if (ff_layout_read_prepare_common(task, hdr))
- 		return;
--
--	if (nfs4_set_rw_stateid(&hdr->args.stateid, hdr->args.context,
--			hdr->args.lock_context, FMODE_READ) == -EIO)
--		rpc_exit(task, -EIO); /* lost lock, terminate I/O */
- }
- 
- static void ff_layout_read_call_done(struct rpc_task *task, void *data)
-@@ -1544,10 +1540,6 @@ static void ff_layout_write_prepare_v4(struct rpc_task *task, void *data)
- 
- 	if (ff_layout_write_prepare_common(task, hdr))
- 		return;
--
--	if (nfs4_set_rw_stateid(&hdr->args.stateid, hdr->args.context,
--			hdr->args.lock_context, FMODE_WRITE) == -EIO)
--		rpc_exit(task, -EIO); /* lost lock, terminate I/O */
- }
- 
- static void ff_layout_write_call_done(struct rpc_task *task, void *data)
-@@ -1713,6 +1705,7 @@ ff_layout_read_pagelist(struct nfs_pgio_header *hdr)
- 	u32 idx = hdr->pgio_mirror_idx;
- 	int vers;
- 	struct nfs_fh *fh;
-+	nfs4_stateid *stateid;
- 
- 	dprintk("--> %s ino %lu pgbase %u req %zu@%llu\n",
- 		__func__, hdr->inode->i_ino,
-@@ -1742,6 +1735,12 @@ ff_layout_read_pagelist(struct nfs_pgio_header *hdr)
- 	fh = nfs4_ff_layout_select_ds_fh(lseg, idx);
- 	if (fh)
- 		hdr->args.fh = fh;
-+
-+	stateid = nfs4_ff_layout_select_ds_stateid(lseg, idx);
-+	if (!stateid)
-+		goto out_failed;
-+	nfs4_stateid_copy(&hdr->args.stateid, stateid);
-+
- 	/*
- 	 * Note that if we ever decide to split across DSes,
- 	 * then we may need to handle dense-like offsets.
-@@ -1774,6 +1773,7 @@ ff_layout_write_pagelist(struct nfs_pgio_header *hdr, int sync)
- 	loff_t offset = hdr->args.offset;
- 	int vers;
- 	struct nfs_fh *fh;
-+	nfs4_stateid *stateid;
- 	int idx = hdr->pgio_mirror_idx;
- 
- 	ds = nfs4_ff_layout_prepare_ds(lseg, idx, true);
-@@ -1804,6 +1804,11 @@ ff_layout_write_pagelist(struct nfs_pgio_header *hdr, int sync)
- 	if (fh)
- 		hdr->args.fh = fh;
- 
-+	stateid = nfs4_ff_layout_select_ds_stateid(lseg, idx);
-+	if (!stateid)
-+		goto out_failed;
-+	nfs4_stateid_copy(&hdr->args.stateid, stateid);
-+
- 	/*
- 	 * Note that if we ever decide to split across DSes,
- 	 * then we may need to handle dense-like offsets.
-diff --git a/fs/nfs/flexfilelayout/flexfilelayout.h b/fs/nfs/flexfilelayout/flexfilelayout.h
-index 411798346e48..fdfbcb471999 100644
---- a/fs/nfs/flexfilelayout/flexfilelayout.h
-+++ b/fs/nfs/flexfilelayout/flexfilelayout.h
-@@ -215,6 +215,8 @@ unsigned int ff_layout_fetch_ds_ioerr(struct pnfs_layout_hdr *lo,
- 		unsigned int maxnum);
- struct nfs_fh *
- nfs4_ff_layout_select_ds_fh(struct pnfs_layout_segment *lseg, u32 mirror_idx);
-+nfs4_stateid *
-+nfs4_ff_layout_select_ds_stateid(struct pnfs_layout_segment *lseg, u32 mirror_idx);
- 
- struct nfs4_pnfs_ds *
- nfs4_ff_layout_prepare_ds(struct pnfs_layout_segment *lseg, u32 ds_idx,
-diff --git a/fs/nfs/flexfilelayout/flexfilelayoutdev.c b/fs/nfs/flexfilelayout/flexfilelayoutdev.c
-index 74d8d5352438..91787cf68057 100644
---- a/fs/nfs/flexfilelayout/flexfilelayoutdev.c
-+++ b/fs/nfs/flexfilelayout/flexfilelayoutdev.c
-@@ -370,6 +370,23 @@ nfs4_ff_layout_select_ds_fh(struct pnfs_layout_segment *lseg, u32 mirror_idx)
- 	return fh;
- }
- 
-+nfs4_stateid *
-+nfs4_ff_layout_select_ds_stateid(struct pnfs_layout_segment *lseg, u32 mirror_idx)
-+{
-+	struct nfs4_ff_layout_mirror *mirror = FF_LAYOUT_COMP(lseg, mirror_idx);
-+	nfs4_stateid *stateid = NULL;
-+
-+	if (!ff_layout_mirror_valid(lseg, mirror, false)) {
-+		pr_err_ratelimited("NFS: %s: No data server for mirror offset index %d\n",
-+			__func__, mirror_idx);
-+		goto out;
-+	}
-+
-+	stateid = &mirror->stateid;
-+out:
-+	return stateid;
-+}
-+
- /**
-  * nfs4_ff_layout_prepare_ds - prepare a DS connection for an RPC call
-  * @lseg: the layout segment we're operating on
--- 
-2.17.2
 
+Did you have anything specific in mind here?  AFAICT, the separation
+provided by VRF wouldn't buy us much over using SO_MARK/iptables with
+DLM.
+
+With respect to a common approach between kernel-side socket users, I
+would be interested in seeing if we could come up with something here.
+In the case of DLM, the changes needed to support *just* multihoming
+could perhaps be abstracted into some sort of higher layer, but the
+bits required to support failover to other interfaces are fairly
+specific to the DLM protocol itself (i.e. adding sequence numbers to
+DLM messages, etc.).
+
+Thanks,
+David
+
+>
+> > Steve.
+>
+> Here is an old thread on the topic.
+>
+> https://www.spinics.net/lists/linux-nfs/msg34811.html
+>
+> My patches are in all my 'ct' kernels, and the needed patches are also in my nfs-utils repo.
+>
+> My 4.19 tree has just been ported, so no idea if it works or not.
+>
+> https://github.com/greearb?tab=repositories
+>
+> My patch work fine using routing table rules without VRF, but they will not work with VRF.
+>
+>
+> Thanks,
+> Ben
+>
+> --
+> Ben Greear <greearb@candelatech.com>
+> Candela Technologies Inc  http://www.candelatech.com
