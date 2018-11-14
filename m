@@ -2,67 +2,58 @@ Return-Path: <SRS0=mSH2=NZ=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,USER_AGENT_GIT
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-6.0 required=3.0 tests=MAILING_LIST_MULTI,
+	MENTIONS_GIT_HOSTING,SPF_PASS,URIBL_BLOCKED autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id DAD91C43441
-	for <linux-nfs@archiver.kernel.org>; Wed, 14 Nov 2018 08:12:35 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 60396C43441
+	for <linux-nfs@archiver.kernel.org>; Wed, 14 Nov 2018 22:55:11 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id A9DCA214F1
-	for <linux-nfs@archiver.kernel.org>; Wed, 14 Nov 2018 08:12:35 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org A9DCA214F1
-Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=virtuozzo.com
+	by mail.kernel.org (Postfix) with ESMTP id 31A412175B
+	for <linux-nfs@archiver.kernel.org>; Wed, 14 Nov 2018 22:55:11 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 31A412175B
+Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=kernel.org
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728823AbeKNSOo (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 14 Nov 2018 13:14:44 -0500
-Received: from relay.sw.ru ([185.231.240.75]:43540 "EHLO relay.sw.ru"
+        id S1726427AbeKOJAR (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 15 Nov 2018 04:00:17 -0500
+Received: from mail.kernel.org ([198.145.29.99]:51600 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1728462AbeKNSOn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 14 Nov 2018 13:14:43 -0500
-Received: from [172.16.24.163] (helo=snorch.sw.ru)
-        by relay.sw.ru with esmtp (Exim 4.90_1)
-        (envelope-from <ptikhomirov@virtuozzo.com>)
-        id 1gMqHh-00089v-3k; Wed, 14 Nov 2018 11:12:25 +0300
-From:   Pavel Tikhomirov <ptikhomirov@virtuozzo.com>
-To:     Trond Myklebust <trond.myklebust@hammerspace.com>
-Cc:     Pavel Tikhomirov <ptikhomirov@virtuozzo.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
+        id S1727321AbeKOJAQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 15 Nov 2018 04:00:16 -0500
+Subject: Re: [GIT PULL] nfsd bugfixes
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org C84072243E
+Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=kernel.org
+Authentication-Results: mail.kernel.org; spf=fail smtp.mailfrom=pr-tracker-bot@kernel.org
+From:   pr-tracker-bot@kernel.org
+In-Reply-To: <20181113210635.GA23676@fieldses.org>
+References: <20181113210635.GA23676@fieldses.org>
+X-PR-Tracked-List-Id: <linux-kernel.vger.kernel.org>
+X-PR-Tracked-Message-Id: <20181113210635.GA23676@fieldses.org>
+X-PR-Tracked-Remote: git://linux-nfs.org/~bfields/linux.git tags/nfsd-4.20-1
+X-PR-Tracked-Commit-Id: 025911a5f4e36955498ed50806ad1b02f0f76288
+X-PR-Merge-Tree: torvalds/linux.git
+X-PR-Merge-Refname: refs/heads/master
+X-PR-Merge-Commit-Id: 4e4490d438a1c84411e3ebd0b850b46dd2e752cf
+Message-Id: <20181114225502.6609.82210.pr-tracker-bot@pdx-korg-gitolite-1.ci.codeaurora.org>
+Date:   Wed, 14 Nov 2018 22:55:02 +0000
+To:     bfields@fieldses.org (J. Bruce Fields)
+Cc:     Linus Torvalds <torvalds@linux-foundation.org>,
         linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH] nfs: fix comment to nfs_generic_pg_test which does the opposite
-Date:   Wed, 14 Nov 2018 11:12:05 +0300
-Message-Id: <20181114081205.14821-1-ptikhomirov@virtuozzo.com>
-X-Mailer: git-send-email 2.17.1
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Please see comment to filelayout_pg_test for reference.
+The pull request you sent on Tue, 13 Nov 2018 16:06:35 -0500:
 
-To: Trond Myklebust <trond.myklebust@hammerspace.com>
-Cc: Anna Schumaker <anna.schumaker@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org
-Signed-off-by: Pavel Tikhomirov <ptikhomirov@virtuozzo.com>
----
- fs/nfs/pagelist.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+> git://linux-nfs.org/~bfields/linux.git tags/nfsd-4.20-1
 
-diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-index 5c4568a0804b..87f3da1fd850 100644
---- a/fs/nfs/pagelist.c
-+++ b/fs/nfs/pagelist.c
-@@ -461,7 +461,7 @@ EXPORT_SYMBOL_GPL(nfs_wait_on_request);
-  * @prev: previous request in desc, or NULL
-  * @req: this request
-  *
-- * Returns zero if @req can be coalesced into @desc, otherwise it returns
-+ * Returns zero if @req cannot be coalesced into @desc, otherwise it returns
-  * the size of the request.
-  */
- size_t nfs_generic_pg_test(struct nfs_pageio_descriptor *desc,
+has been merged into torvalds/linux.git:
+https://git.kernel.org/torvalds/c/4e4490d438a1c84411e3ebd0b850b46dd2e752cf
+
+Thank you!
+
 -- 
-2.17.1
-
+Deet-doot-dot, I am a bot.
+https://korg.wiki.kernel.org/userdoc/prtracker
