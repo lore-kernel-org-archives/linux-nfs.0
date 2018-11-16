@@ -2,131 +2,183 @@ Return-Path: <SRS0=G+EE=N3=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS,
-	URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-8.9 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5FB87C43441
-	for <linux-nfs@archiver.kernel.org>; Fri, 16 Nov 2018 18:30:14 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 71378C43441
+	for <linux-nfs@archiver.kernel.org>; Fri, 16 Nov 2018 19:01:52 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 0B8942087A
-	for <linux-nfs@archiver.kernel.org>; Fri, 16 Nov 2018 18:30:14 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 348CE20854
+	for <linux-nfs@archiver.kernel.org>; Fri, 16 Nov 2018 19:01:52 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=umich.edu header.i=@umich.edu header.b="GtRoCqDD"
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 0B8942087A
-Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=umich.edu
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="ex+GnK0L"
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 348CE20854
+Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=gmail.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2390196AbeKQEnl (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 16 Nov 2018 23:43:41 -0500
-Received: from mail-vs1-f54.google.com ([209.85.217.54]:45256 "EHLO
-        mail-vs1-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727462AbeKQEnl (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Nov 2018 23:43:41 -0500
-Received: by mail-vs1-f54.google.com with SMTP id v10so6888044vsv.12
-        for <linux-nfs@vger.kernel.org>; Fri, 16 Nov 2018 10:30:12 -0800 (PST)
+        id S1725763AbeKQFP0 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sat, 17 Nov 2018 00:15:26 -0500
+Received: from mail-oi1-f194.google.com ([209.85.167.194]:32903 "EHLO
+        mail-oi1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725729AbeKQFP0 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 17 Nov 2018 00:15:26 -0500
+Received: by mail-oi1-f194.google.com with SMTP id c206so14953972oib.0
+        for <linux-nfs@vger.kernel.org>; Fri, 16 Nov 2018 11:01:50 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=umich.edu; s=google-2016-06-03;
-        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
-         :cc;
-        bh=5bTMQfX3/vD0IRs6kx2NjsISxanVrQVR721uw1bB2vo=;
-        b=GtRoCqDDrp3osbeUaWlDgC6i2gEXOhDpOVw6xj4pHbSGIcK41rS1lZBGFNjqQjh8Gn
-         DSZWVNjlZQxulWsjR7J8Ca35GMUXlEPMBNnPoaWwy40GBRbDmnSo86mnCFro3fTchFzE
-         veYKmA7TJRM6WsIi+6jtR/ulJsocEoQ36uiMbSoHdPJMJxtkRJ7q1hpe+N47mjLN38+a
-         vkwXmOF3K+PBXEoqkaBOqRpp9TbE1Tj+UtdjDPWAeFNYujm160Zm7pA4waX+aQ2RtlA2
-         Rs1iJSnroESN9FCPSEhycpjbsEMUmOafcA46faQYQPCiNuaM+EHvmpRKzTh7mYGFdRsz
-         ddEw==
+        d=gmail.com; s=20161025;
+        h=from:to:cc:subject:date:message-id;
+        bh=1ntAgzpY8U0isj0TMIULGtlBvDsXUKhuUqU3yIlu7RA=;
+        b=ex+GnK0L4C7jSdTbD3nYWC+T9rPMJ0Domti+MLMJxMdiW3gNzzvjmPacaaKLPaV8O8
+         5J+Np7dWHgJTHH0ONqQdcbiOukP3MiiPGNt+TWTH7nDwW8cReeG20wDrJRE9gdJze8sk
+         +BLjUJribL6vBZ5kQrQviF8t5o2+w8Ov5RHWX3TMvxOqPgPILGzkLmGQ5YnnHX3wNGp8
+         GfqFr6mEtTBmWDyq3kjZT8v8ilN6cQ/gyxhL4hmhRKCqfy6Zx3qcJxLQmU/5ApiLbWk2
+         PIc7DAi8Nl9rvIVLpEWrPLRmTo9C5BLCxcXwI4AagLEwhs5nEVyhG0IRYIALCp0dHNsO
+         usCQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
-         :message-id:subject:to:cc;
-        bh=5bTMQfX3/vD0IRs6kx2NjsISxanVrQVR721uw1bB2vo=;
-        b=MEXGTSxEqlgrQklzpBwBZf1m+WRDMJVbzXSE8gidcL8rFHjtBMkYza5LY14KRHk7wH
-         NwbrJK+YkZyY3/N+I5tjADScFmFPKNGK4j4GTg7tAo6F+0rrODHBOXgtB8C20WzzsuMB
-         /eAHPkol9gkE8OL6Jex841u1gdsWDNkcl0Wuu1Z7SMqCJ6LZka9JWh1EL5oWZJ1mH28t
-         NbUid5UshymqJ8VzwAjwMgjrZ68ZqQgV72Q0ZjYoo5ipxBJ9ZWWWxJgXu5q15aSZuMFE
-         ubF+6bZIoGxw+ttP11S1Qkod0g96TC7ghSu+E+/Z47J0PO+62ot6Pjusd6S5pyT3p8gk
-         bPHA==
-X-Gm-Message-State: AGRZ1gImWmsVr79IHjpIsuRGGEQDMJAFESPdSqGQWTbM8JGl1RQQSEYf
-        mtcOq+wpHQvdjxCAyDgfbYn/Sgn29yx8hUwBdQw=
-X-Google-Smtp-Source: AJdET5dvRAJtQJZxencFs6hP0gpRYBcaq7W7tgk2jo3NwCghYphKJE7PpdzBpHGCbrFQIJcG0XhpGs5ZSKPgdK1nxkM=
-X-Received: by 2002:a67:a858:: with SMTP id r85mr4895523vse.215.1542393012005;
- Fri, 16 Nov 2018 10:30:12 -0800 (PST)
-MIME-Version: 1.0
-References: <20181116142627.GA19946@fieldses.org> <CAN-5tyGsDAd2hkaw5nONdS2TzRy1qK7xyFDpNeT7Jsd9ZrH7+g@mail.gmail.com>
- <20181116175645.GA21852@fieldses.org> <20181116180118.GB21852@fieldses.org>
-In-Reply-To: <20181116180118.GB21852@fieldses.org>
-From:   Olga Kornievskaia <aglo@umich.edu>
-Date:   Fri, 16 Nov 2018 13:30:00 -0500
-Message-ID: <CAN-5tyGRy5vi4P-jMTmV7cto8b_6s5Cuop7dTN0Y7witpzr2pQ@mail.gmail.com>
-Subject: Re: handle_async_copy calling kzalloc under spinlock
-To:     "J. Bruce Fields" <bfields@fieldses.org>
-Cc:     Olga Kornievskaia <kolga@netapp.com>,
-        linux-nfs <linux-nfs@vger.kernel.org>,
-        Anna Schumaker <Anna.Schumaker@netapp.com>
-Content-Type: text/plain; charset="UTF-8"
+        h=x-gm-message-state:from:to:cc:subject:date:message-id;
+        bh=1ntAgzpY8U0isj0TMIULGtlBvDsXUKhuUqU3yIlu7RA=;
+        b=gAmGZJ13vTunHUL4bre2fv9PJ40xIrX9+08THkgI6jZd1gBT5avTEr5UQxVbnro4eh
+         /Ego/HTziOuKfoRulRBAbT3yF/+Ddbi6wJrJEAnaiSr1Xpk/wytB5oW2oVnR3ZaOslYA
+         pRJOfmnD3k3bu3SjidBJ1AUBcyikIh4PFxq8aELAFcXdAN1lLSlPAElTwbH3cE80WNeS
+         h9rBNTce77yy+77gLzsDfq3uHIl1Wk/teYu7u2hHzMBgmEuT+UnO+KvF5RSbJ+pddS+f
+         lHnnW/7m7WweiJ4qBDHmRijZmpEq8JNEOKU5J/1qeRkYzVKNmAsjIehZcP3MW8lL3fgf
+         A+yg==
+X-Gm-Message-State: AGRZ1gJS5Uriotyj4UQzFIG4PSPCASRNCrX8brxtcEmG4QWzgBxXrOp8
+        PEJjub8F54lGHC1l2fw9YQsAwDyM
+X-Google-Smtp-Source: AJdET5c0S5TNZObe0eYyw3yOz99X7nX1KZ7kKM1oEAE1a7ud1NHAh355kN2NLxV3swzwI2Brd9PGSw==
+X-Received: by 2002:aca:ea57:: with SMTP id i84-v6mr1548091oih.133.1542394910153;
+        Fri, 16 Nov 2018 11:01:50 -0800 (PST)
+Received: from Olgas-MBP-195.attlocal.net (172-10-226-31.lightspeed.livnmi.sbcglobal.net. [172.10.226.31])
+        by smtp.gmail.com with ESMTPSA id r1sm1005430oie.44.2018.11.16.11.01.48
+        (version=TLS1 cipher=AES128-SHA bits=128/128);
+        Fri, 16 Nov 2018 11:01:49 -0800 (PST)
+From:   Olga Kornievskaia <olga.kornievskaia@gmail.com>
+To:     trond.myklebust@hammerspace.com, anna.schumaker@netapp.com
+Cc:     linux-nfs@vger.kernel.org
+Subject: [PATCH v3 1/1] NFSv4.2 COPY do not allocate memory under the lock
+Date:   Fri, 16 Nov 2018 14:01:51 -0500
+Message-Id: <20181116190151.50707-1-olga.kornievskaia@gmail.com>
+X-Mailer: git-send-email 2.10.1 (Apple Git-78)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Fri, Nov 16, 2018 at 1:01 PM J. Bruce Fields <bfields@fieldses.org> wrote:
->
-> On Fri, Nov 16, 2018 at 12:56:45PM -0500, J. Bruce Fields wrote:
-> > On Fri, Nov 16, 2018 at 11:25:50AM -0500, Olga Kornievskaia wrote:
-> > > On Fri, Nov 16, 2018 at 9:27 AM J. Bruce Fields <bfields@fieldses.org>
-> > > wrote:
-> > >
-> > > > From bc0c9079b48d "NFS handle COPY reply CB_OFFLOAD call race":
-> > > >
-> > > > +       spin_lock(&server->nfs_client->cl_lock);
-> > > > +       list_for_each_entry(copy, &server->nfs_client->pending_cb_stateids,
-> > > > +                               copies) {
-> > > > +               if (memcmp(&res->write_res.stateid, &copy->stateid,
-> > > > +                               NFS4_STATEID_SIZE))
-> > > > +                       continue;
-> > > > +               found_pending = true;
-> > > > +               list_del(&copy->copies);
-> > > > +               break;
-> > > > +       }
-> > > > +       if (found_pending) {
-> > > > +               spin_unlock(&server->nfs_client->cl_lock);
-> > > > +               goto out;
-> > > > +       }
-> > > >
-> > > >         copy = kzalloc(sizeof(struct nfs4_copy_state), GFP_NOFS);
-> > > >
-> > > > At this point we're still holding cl_lock.
-> > > >
-> > > > Best might be to allocate "copy" before taking the lock, then free it on
-> > > > any
-> > > > paths where we don't end up needing it.
-> > > >
-> > > >
-> > > Thanks. I'll do that.
-> >
-> > Thanks.  And, I just noticed--nfs4_callback_offload has the same
-> > problem.
+From: Olga Kornievskaia <kolga@netapp.com>
 
-nfs4_callback_offload is where I changed it. I see now,
-handle_async_copy() in nfs42proc.c also has it.
+Bruce pointed out that we shouldn't allocate memory while holding
+a lock in the nfs4_callback_offload() and handle_async_copy()
+that deal with a racing CB_OFFLOAD and reply to COPY case.
 
+Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+---
+ fs/nfs/callback_proc.c | 22 +++++++++++-----------
+ fs/nfs/nfs42proc.c     | 21 ++++++++++++---------
+ 2 files changed, 23 insertions(+), 20 deletions(-)
 
-> By the way, I don't understand the create case in that code--if you get
-> a CB_OFFLOAD without already having a matching copy stateid, shouldn't
-> you just return an error and forget about it?
+diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+index fa515d5..48b2e90 100644
+--- a/fs/nfs/callback_proc.c
++++ b/fs/nfs/callback_proc.c
+@@ -686,20 +686,24 @@ __be32 nfs4_callback_offload(void *data, void *dummy,
+ {
+ 	struct cb_offloadargs *args = data;
+ 	struct nfs_server *server;
+-	struct nfs4_copy_state *copy;
++	struct nfs4_copy_state *copy, *tmp_copy;
+ 	bool found = false;
+ 
++	copy = kzalloc(sizeof(struct nfs4_copy_state), GFP_NOFS);
++	if (!copy)
++		return htonl(NFS4ERR_SERVERFAULT);
++
+ 	spin_lock(&cps->clp->cl_lock);
+ 	rcu_read_lock();
+ 	list_for_each_entry_rcu(server, &cps->clp->cl_superblocks,
+ 				client_link) {
+-		list_for_each_entry(copy, &server->ss_copies, copies) {
++		list_for_each_entry(tmp_copy, &server->ss_copies, copies) {
+ 			if (memcmp(args->coa_stateid.other,
+-					copy->stateid.other,
++					tmp_copy->stateid.other,
+ 					sizeof(args->coa_stateid.other)))
+ 				continue;
+-			nfs4_copy_cb_args(copy, args);
+-			complete(&copy->completion);
++			nfs4_copy_cb_args(tmp_copy, args);
++			complete(&tmp_copy->completion);
+ 			found = true;
+ 			goto out;
+ 		}
+@@ -707,15 +711,11 @@ __be32 nfs4_callback_offload(void *data, void *dummy,
+ out:
+ 	rcu_read_unlock();
+ 	if (!found) {
+-		copy = kzalloc(sizeof(struct nfs4_copy_state), GFP_NOFS);
+-		if (!copy) {
+-			spin_unlock(&cps->clp->cl_lock);
+-			return htonl(NFS4ERR_SERVERFAULT);
+-		}
+ 		memcpy(&copy->stateid, &args->coa_stateid, NFS4_STATEID_SIZE);
+ 		nfs4_copy_cb_args(copy, args);
+ 		list_add_tail(&copy->copies, &cps->clp->pending_cb_stateids);
+-	}
++	} else
++		kfree(copy);
+ 	spin_unlock(&cps->clp->cl_lock);
+ 
+ 	return 0;
+diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
+index c7c2ffa..7f2b716 100644
+--- a/fs/nfs/nfs42proc.c
++++ b/fs/nfs/nfs42proc.c
+@@ -158,31 +158,34 @@ static int handle_async_copy(struct nfs42_copy_res *res,
+ 			     struct file *dst,
+ 			     nfs4_stateid *src_stateid)
+ {
+-	struct nfs4_copy_state *copy;
++	struct nfs4_copy_state *copy, *tmp_copy;
+ 	int status = NFS4_OK;
+ 	bool found_pending = false;
+ 	struct nfs_open_context *ctx = nfs_file_open_context(dst);
+ 
++	copy = kzalloc(sizeof(struct nfs4_copy_state), GFP_NOFS);
++	if (!copy) {
++		spin_unlock(&server->nfs_client->cl_lock);
++		return -ENOMEM;
++	}
++
+ 	spin_lock(&server->nfs_client->cl_lock);
+-	list_for_each_entry(copy, &server->nfs_client->pending_cb_stateids,
++	list_for_each_entry(tmp_copy, &server->nfs_client->pending_cb_stateids,
+ 				copies) {
+-		if (memcmp(&res->write_res.stateid, &copy->stateid,
++		if (memcmp(&res->write_res.stateid, &tmp_copy->stateid,
+ 				NFS4_STATEID_SIZE))
+ 			continue;
+ 		found_pending = true;
+-		list_del(&copy->copies);
++		list_del(&tmp_copy->copies);
+ 		break;
+ 	}
+ 	if (found_pending) {
+ 		spin_unlock(&server->nfs_client->cl_lock);
++		kfree(copy);
++		copy = tmp_copy;
+ 		goto out;
+ 	}
+ 
+-	copy = kzalloc(sizeof(struct nfs4_copy_state), GFP_NOFS);
+-	if (!copy) {
+-		spin_unlock(&server->nfs_client->cl_lock);
+-		return -ENOMEM;
+-	}
+ 	memcpy(&copy->stateid, &res->write_res.stateid, NFS4_STATEID_SIZE);
+ 	init_completion(&copy->completion);
+ 	copy->parent_state = ctx->state;
+-- 
+1.8.3.1
 
-Then how does the copy knows not to go wait for the callback? Copy
-checks the pending_callback list to see if received a callback. If
-not, it puts itself on the copy list and goes to sleep. The callback,
-checks the copy list and if it finds a copy signals it, if not it puts
-itself on the pending_callback list. a lock is held over checking one
-list and putting yourself on the other.
-
-> I also wonder if SERVERFAULT is really the best error for a memory
-> allocation failure there.
-
-I guess EIO or ENOMEM might be better. But I don't think this error
-gets returned anywhere to the main process.
->
-> --b.
