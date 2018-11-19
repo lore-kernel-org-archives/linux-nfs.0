@@ -2,66 +2,53 @@ Return-Path: <SRS0=xyvj=N6=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.6 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
-	SPF_PASS,UNPARSEABLE_RELAY,URIBL_BLOCKED autolearn=ham autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-2.5 required=3.0 tests=DKIMWL_WL_MED,DKIM_SIGNED,
+	DKIM_VALID,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS,
+	URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6A2F6C43441
-	for <linux-nfs@archiver.kernel.org>; Mon, 19 Nov 2018 21:32:56 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 0FDB0C43441
+	for <linux-nfs@archiver.kernel.org>; Mon, 19 Nov 2018 21:43:06 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 10CBD2080C
-	for <linux-nfs@archiver.kernel.org>; Mon, 19 Nov 2018 21:32:56 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 7B9E62086A
+	for <linux-nfs@archiver.kernel.org>; Mon, 19 Nov 2018 21:43:05 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="li7GDK/W"
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 10CBD2080C
-Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=oracle.com
+	dkim=pass (1024-bit key) header.d=netapp.onmicrosoft.com header.i=@netapp.onmicrosoft.com header.b="cCfzV5+y"
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 7B9E62086A
+Authentication-Results: mail.kernel.org; dmarc=none (p=none dis=none) header.from=netapp.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1731042AbeKTH63 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 20 Nov 2018 02:58:29 -0500
-Received: from userp2120.oracle.com ([156.151.31.85]:45782 "EHLO
-        userp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725898AbeKTH62 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Nov 2018 02:58:28 -0500
-Received: from pps.filterd (userp2120.oracle.com [127.0.0.1])
-        by userp2120.oracle.com (8.16.0.22/8.16.0.22) with SMTP id wAJLSriT171248;
-        Mon, 19 Nov 2018 21:32:49 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=content-type :
- mime-version : subject : from : in-reply-to : date : cc :
- content-transfer-encoding : message-id : references : to;
- s=corp-2018-07-02; bh=usRv1BhEUO6QiWXD6k+sGiRdYIxsG6W/bjP4ezWs95c=;
- b=li7GDK/WUIP1lbum75LQLFdBWMDKxhwGI3kf4zSdbU4+tIXL6mUdg6mx/5WCWd7Ub+l7
- x5nE7wTpPkW2qqM+JxLfQkzisi8hjxn75gqcVzgDnNcJozSJ8iy2fBHyQuRjSlVXqwhK
- PhNhJ4o2JtPdZE3plCJktGQtTibUWzYD8K7J00K0HnBNZeRBtcS4kF+bEZa+uZHVMFJ3
- R0KoI9iWkxXYvC0vF0zmd2/WRDzDNNaN1KjcPLdh90Ml/zM2uT9IW4VQ0fwXOK6T5fda
- YP8dNA2YV3+F6l+g1C2b1Jp7UWc1eYz6/y6o7N+6sIB8ywpvOfIWiCyRP+BNWz0tlf8b Jw== 
-Received: from aserv0021.oracle.com (aserv0021.oracle.com [141.146.126.233])
-        by userp2120.oracle.com with ESMTP id 2ntbmqgdff-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Mon, 19 Nov 2018 21:32:49 +0000
-Received: from userv0121.oracle.com (userv0121.oracle.com [156.151.31.72])
-        by aserv0021.oracle.com (8.14.4/8.14.4) with ESMTP id wAJLWmYt011436
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Mon, 19 Nov 2018 21:32:48 GMT
-Received: from abhmp0014.oracle.com (abhmp0014.oracle.com [141.146.116.20])
-        by userv0121.oracle.com (8.14.4/8.13.8) with ESMTP id wAJLWlxE029411;
-        Mon, 19 Nov 2018 21:32:47 GMT
-Received: from anon-dhcp-171.1015granger.net (/68.61.232.219)
-        by default (Oracle Beehive Gateway v4.0)
-        with ESMTP ; Mon, 19 Nov 2018 13:32:47 -0800
-Content-Type: text/plain;
-        charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 11.5 \(3445.9.1\))
+        id S1731131AbeKTIIl (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 20 Nov 2018 03:08:41 -0500
+Received: from mail-eopbgr720045.outbound.protection.outlook.com ([40.107.72.45]:25395
+        "EHLO NAM05-CO1-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1731054AbeKTIIl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 20 Nov 2018 03:08:41 -0500
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+ d=netapp.onmicrosoft.com; s=selector1-netapp-com;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=FYykmvJP73UdhWFws2ThNoFVtij23duFLtHix2T22T8=;
+ b=cCfzV5+yL+dA5hxkPS0L7Y5f/LyC0srSXORMfBAap32FE2MEcA9MdT7yv+ZIz4/MKwRf/o4HYIQ2YaAAVKIId5wsWPLBmb8CfGG/wlUj+TdbCaaYX4tURo1urAoN+2zLxTV0w3S2Lw0nvXVB4Unop6yIM6U+vLJGqM1P/cDwcOQ=
+Received: from SN6PR06MB4941.namprd06.prod.outlook.com (52.135.109.148) by
+ SN6PR06MB4864.namprd06.prod.outlook.com (52.135.111.11) with Microsoft SMTP
+ Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ 15.20.1339.21; Mon, 19 Nov 2018 21:42:56 +0000
+Received: from SN6PR06MB4941.namprd06.prod.outlook.com
+ ([fe80::18b1:4101:7430:49b1]) by SN6PR06MB4941.namprd06.prod.outlook.com
+ ([fe80::18b1:4101:7430:49b1%3]) with mapi id 15.20.1339.026; Mon, 19 Nov 2018
+ 21:42:56 +0000
+From:   "Mora, Jorge" <Jorge.Mora@netapp.com>
+To:     Chuck Lever <chuck.lever@oracle.com>,
+        Olga Kornievskaia <aglo@umich.edu>
+CC:     linux-rdma <linux-rdma@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
 Subject: Re: [PATCH v1 4/4] xprtrdma: Plant XID in on-the-wire RDMA offset
  (FRWR)
-From:   Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <CAN-5tyELSi-Vtf1W3CSFzynbgVW7rcyJnfHmcb6Ehs0NEUiy4A@mail.gmail.com>
-Date:   Mon, 19 Nov 2018 16:32:46 -0500
-Cc:     linux-rdma <linux-rdma@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Transfer-Encoding: quoted-printable
-Message-Id: <4EE34B64-0BEB-439A-B2A2-D77673D4CF70@oracle.com>
+Thread-Topic: [PATCH v1 4/4] xprtrdma: Plant XID in on-the-wire RDMA offset
+ (FRWR)
+Thread-Index: AQHUgB8eK9y8/GZfB06u3ZChS+uSMqVXX5uAgAADOYCAAAKqgIAAAuOAgAAH+YCAAAM0gIAAKCmAgAAC3QD//419gA==
+Date:   Mon, 19 Nov 2018 21:42:56 +0000
+Message-ID: <5EA42399-05C2-40D3-A5CA-7B40971AEC33@netapp.com>
 References: <20181119153707.10832.42881.stgit@manet.1015granger.net>
  <20181119154607.10832.92558.stgit@manet.1015granger.net>
  <CAN-5tyG26W+TjTsjpTVvF3RJOGCnD8L79dCbRqKTm5F1V3fuxw@mail.gmail.com>
@@ -71,224 +58,202 @@ References: <20181119153707.10832.42881.stgit@manet.1015granger.net>
  <CAN-5tyGU85PJe4Uoocw5NkT8YiYSF8wTWTgg4HycAgKpyHSfiw@mail.gmail.com>
  <9BD3F7C9-96BF-4555-A901-5E82E2CF9E28@oracle.com>
  <CAN-5tyELSi-Vtf1W3CSFzynbgVW7rcyJnfHmcb6Ehs0NEUiy4A@mail.gmail.com>
-To:     Olga Kornievskaia <aglo@umich.edu>
-X-Mailer: Apple Mail (2.3445.9.1)
-X-Proofpoint-Virus-Version: vendor=nai engine=5900 definitions=9082 signatures=668683
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 suspectscore=0 malwarescore=0
- phishscore=0 bulkscore=0 spamscore=0 mlxscore=0 mlxlogscore=999
- adultscore=0 classifier=spam adjust=0 reason=mlx scancount=1
- engine=8.0.1-1810050000 definitions=main-1811190191
+ <4EE34B64-0BEB-439A-B2A2-D77673D4CF70@oracle.com>
+In-Reply-To: <4EE34B64-0BEB-439A-B2A2-D77673D4CF70@oracle.com>
+Accept-Language: en-US
+Content-Language: en-US
+X-MS-Has-Attach: 
+X-MS-TNEF-Correlator: 
+user-agent: Microsoft-MacOutlook/10.13.0.181109
+authentication-results: spf=none (sender IP is )
+ smtp.mailfrom=Jorge.Mora@netapp.com; 
+x-originating-ip: [24.28.171.170]
+x-ms-publictraffictype: Email
+x-microsoft-exchange-diagnostics: 1;SN6PR06MB4864;6:oTmHHDzXcPqgVgmJrjrNIURysujIKpe4BYj98lyH9vhCJzdeFbH+VFwlZvSwSyAeHXUQHnLcrUhREYcYXQznr7GcxqxJmqAQK//9KQxPiTMMnY37r891m6kTbf2WxB0bVrAHZAKYT83DEE3YcI1IQRulv1nU6MlBrarQ8KeIg1yX/8k/e5tJmcOyeA3g9Kw2AEX5qmtceBGAz944qaI/aLR+Zn/mIad1u5ftmjDRLppCGzykcyJj2kRDA0b0ZkG9K9DpQRhUlaIstREal02hZT+rbEl2M/NT6mwEXduYugxyIjrsl/OsvvTJODU/ZsW2iE/YSKLx432uOqE95TzbWtG1kSC/AgwrNsoRPrJ45LaUUfto0mRAJnb25nf0P/n7ZfBwSJMAQ31b9zhq6bKhK+fN4XAw2zeirYKako0+4yBseGGDhIyMmrWIKvBWexs1UiZbTwzMxJQzL28VcIiSjQ==;5:i2rFWKKoAVeD7UOAaVNbM95Pw5EQ2E6uY3RlMhFG73F3Mhucu5HHJZxmb3pd7w/BhpghB5sxKf+ogmt/k18xdAZ80d0Ml2/xTmsSqQ20/ywgLuuRQgf9a/PyDm/76LRofzVh14eN6cJjc8ATrhtI3mJEa1UTetiSCj0fOEEYaOc=;7:G+VNNwPDTWCvXSqMzYa0/E6g/OuVhnArlcqZEMXEpT8v/IxGqMQS8gLgFGbmki+at0DHjelOjZWS5D0jsekRc1jGAXOROwZRhwZPWQes4kcPOMYoeNKk2UsyDq3c0JYfWJB+sCnNCIgFnPM1GpbSKQ==
+x-ms-exchange-antispam-srfa-diagnostics: SOS;
+x-ms-office365-filtering-correlation-id: c29d734c-c240-4497-0df4-08d64e67f7e2
+x-microsoft-antispam: BCL:0;PCL:0;RULEID:(2390098)(7020095)(4652040)(8989299)(5600074)(711020)(4534185)(4627221)(201703031133081)(201702281549075)(8990200)(2017052603328)(7193020);SRVR:SN6PR06MB4864;
+x-ms-traffictypediagnostic: SN6PR06MB4864:
+x-microsoft-antispam-prvs: <SN6PR06MB4864003FA41551F69AFC3CA5E1D80@SN6PR06MB4864.namprd06.prod.outlook.com>
+x-ms-exchange-senderadcheck: 1
+x-exchange-antispam-report-cfa-test: BCL:0;PCL:0;RULEID:(8211001083)(6040522)(2401047)(5005006)(8121501046)(10201501046)(3002001)(93006095)(93001095)(3231439)(944501410)(52105112)(6055026)(148016)(149066)(150057)(6041310)(20161123562045)(20161123558120)(20161123560045)(20161123564045)(201703131423095)(201702281528075)(20161123555045)(201703061421075)(201703061406153)(201708071742011)(7699051)(76991095);SRVR:SN6PR06MB4864;BCL:0;PCL:0;RULEID:;SRVR:SN6PR06MB4864;
+x-forefront-prvs: 08617F610C
+x-forefront-antispam-report: SFV:NSPM;SFS:(10009020)(346002)(396003)(136003)(376002)(39860400002)(366004)(199004)(189003)(102836004)(53546011)(97736004)(66066001)(6506007)(36756003)(186003)(14454004)(26005)(5660300001)(345774005)(8676002)(6486002)(316002)(5024004)(86362001)(3846002)(81166006)(81156014)(256004)(14444005)(8936002)(110136005)(54906003)(76176011)(6436002)(58126008)(6116002)(82746002)(53936002)(99286004)(105586002)(4326008)(68736007)(106356001)(71200400001)(71190400001)(72206003)(93886005)(7736002)(6246003)(6512007)(486006)(11346002)(2906002)(476003)(305945005)(229853002)(2616005)(2900100001)(33656002)(25786009)(446003)(478600001)(2171002)(83716004)(561944003)(551934003)(505234006);DIR:OUT;SFP:1101;SCL:1;SRVR:SN6PR06MB4864;H:SN6PR06MB4941.namprd06.prod.outlook.com;FPR:;SPF:None;LANG:en;PTR:InfoNoRecords;A:1;MX:1;
+received-spf: None (protection.outlook.com: netapp.com does not designate
+ permitted sender hosts)
+x-microsoft-antispam-message-info: zxnTZlXdwx4onHLCKXieSTPJ03fJaKuUDNTuQJYmGq7gygYRknATwCSvFLCS5sAPawbX4v2RwrlWO+rAXlxcNqfEz1hUIEQRhxrqji/qaLMIkLcP9WgtoCxL801NDds+jFkne8No2floBL8kVzhRYjKZ+osTN7Q82lFFdALFvAG64I1NGFCLMc4PynbOOpPn0zP2HJtaKiU0nGoj/ndJGFSNZ6M3RyR43PH91ta/UrUwqKW86xzTRztseUjVoD9XPvkrB6+vSN/n53/25bC/2M3UIrhPlLdQkGrj4ocgBQ7QqhFqtRM+UsJPxsPYeUjG9FYoKEtrqzZ9s6zfgermm3P4dJVJvl2T0t1kdPLGiY4=
+spamdiagnosticoutput: 1:99
+spamdiagnosticmetadata: NSPM
+Content-Type: text/plain; charset="utf-8"
+Content-ID: <6BEBE0E230CBB740BC67FFE1B1C59C5A@namprd06.prod.outlook.com>
+Content-Transfer-Encoding: base64
+MIME-Version: 1.0
+X-OriginatorOrg: netapp.com
+X-MS-Exchange-CrossTenant-Network-Message-Id: c29d734c-c240-4497-0df4-08d64e67f7e2
+X-MS-Exchange-CrossTenant-originalarrivaltime: 19 Nov 2018 21:42:56.5482
+ (UTC)
+X-MS-Exchange-CrossTenant-fromentityheader: Hosted
+X-MS-Exchange-CrossTenant-id: 4b0911a0-929b-4715-944b-c03745165b3a
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: SN6PR06MB4864
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-
-
-> On Nov 19, 2018, at 4:22 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
->=20
-> On Mon, Nov 19, 2018 at 1:59 PM Chuck Lever <chuck.lever@oracle.com> =
-wrote:
->>=20
->>=20
->>=20
->>> On Nov 19, 2018, at 1:47 PM, Olga Kornievskaia <aglo@umich.edu> =
-wrote:
->>>=20
->>> On Mon, Nov 19, 2018 at 1:19 PM Chuck Lever <chuck.lever@oracle.com> =
-wrote:
->>>>=20
->>>>=20
->>>>=20
->>>>> On Nov 19, 2018, at 1:08 PM, Olga Kornievskaia <aglo@umich.edu> =
-wrote:
->>>>>=20
->>>>> On Mon, Nov 19, 2018 at 12:59 PM Chuck Lever =
-<chuck.lever@oracle.com> wrote:
->>>>>>=20
->>>>>>=20
->>>>>>=20
->>>>>>> On Nov 19, 2018, at 12:47 PM, Olga Kornievskaia <aglo@umich.edu> =
-wrote:
->>>>>>>=20
->>>>>>> On Mon, Nov 19, 2018 at 10:46 AM Chuck Lever =
-<chuck.lever@oracle.com> wrote:
->>>>>>>>=20
->>>>>>>> Place the associated RPC transaction's XID in the upper 32 bits =
-of
->>>>>>>> each RDMA segment's rdma_offset field. These bits are currently
->>>>>>>> always zero.
->>>>>>>>=20
->>>>>>>> There are two reasons to do this:
->>>>>>>>=20
->>>>>>>> - The R_key only has 8 bits that are different from =
-registration to
->>>>>>>> registration. The XID adds more uniqueness to each RDMA segment =
-to
->>>>>>>> reduce the likelihood of a software bug on the server reading =
-from
->>>>>>>> or writing into memory it's not supposed to.
->>>>>>>>=20
->>>>>>>> - On-the-wire RDMA Read and Write operations do not otherwise =
-carry
->>>>>>>> any identifier that matches them up to an RPC. The XID in the
->>>>>>>> upper 32 bits will act as an eye-catcher in network captures.
->>>>>>>=20
->>>>>>> Is this just an "eye-catcher" or do you have plans to use it in
->>>>>>> wireshark? If the latter, then can we really do that? while a =
-linux
->>>>>>> implementation may do that, other (or even possibly future =
-linux)
->>>>>>> implementation might not do this. Can we justify changing the
->>>>>>> wireshark logic for it?
->>>>>>=20
->>>>>> No plans to change the wireshark RPC-over-RDMA dissector.
->>>>>> That would only be a valid thing to do if adding the XID
->>>>>> were made part of the RPC-over-RDMA protocol via an RFC.
->>>>>=20
->>>>> Agreed. Can you also help me understand the proposal (as I'm still
->>>>> trying to figure why it is useful).
->>>>>=20
->>>>> You are proposing to modify the RDMA segments's RDMA offset field =
-(I
->>>>> see top 6bits are indeed always 0). I don't see how adding that =
-helps
->>>>> an RDMA read/write message which does not have an "offset" field =
-in it
->>>>> be matched to a particular RPC. I don't believe we have (had) any
->>>>> issues matching the initial RC Send only that contains the =
-RDMA_MSG to
->>>>> the RPC.
->>>>=20
->>>> The ULP has access to only the low order 8 bits of the R_key. The
->>>> upper 24 bits are fixed for each MR. So for any given MR, there are
->>>> only 256 unique R_key values. That means the same R_key will appear
->>>> again quickly on the wire.
->>>>=20
->>>> The 64-bit offset field is set by the ULP, and can be essentially
->>>> any arbitrary value. Most kernel ULPs use the iova of the =
-registered
->>>> memory. We only need the lower 32 bits for that.
->>>>=20
->>>> The purpose of adding junk to the offset is to make the offset
->>>> unique to that RPC transaction, just like the R_key is. This helps
->>>> make the RDMA segment co-ordinates (handle, length, offset) more
->>>> unique and thus harder to spoof.
->>>=20
->>> Thank you for the explanation that makes sense.
->>>=20
->>>> We could use random numbers in that upper 32 bits, but we have
->>>> something more handy: the RPC's XID.
->>>>=20
->>>> Now when you look at an RDMA Read or Write, the top 32 bits in each
->>>> RDMA segment's offset match the XID of the RPC transaction that the
->>>> RDMA operations go with. This is really a secondary benefit to the
->>>> uniquifying effect above.
->>>=20
->>> I find the wording "no the wire RDMA read or write" misleading. Did
->>> you really mean it as "RDMA read or write" or do you mean "RDMA_MSG"
->>> or do you mean "NFS RDMA read or write"? Because RDMA offset is not =
-a
->>> part of the RDMA read/write (first/middle/last) packet. That's what
->>> I'm hanged up on.
->>=20
->> Here's an RDMA Read request in a network capture I had at hand:
->>=20
->> No.     Time               Source                Destination          =
- Protocol Length Info
->>    228 22:31:06.203637    LID: 5                LID: 11               =
-InfiniBand 42     RC RDMA Read Request QP=3D0x000240
->>=20
->> Frame 228: 42 bytes on wire (336 bits), 42 bytes captured (336 bits) =
-on interface 1
->> Extensible Record Format
->> InfiniBand
->>    Local Route Header
->>    Base Transport Header
->>    RETH - RDMA Extended Transport Header
->>        Virtual Address: 11104011393315758080   <<<<<<
->>        Remote Key: 1879114618
->>        DMA Length: 4015
->>    Invariant CRC: 0xd492a3e1
->>    Variant CRC: 0x8736
->>=20
->> The value of the Virtual Address field is what the RPC-over-RDMA
->> protocol calls the Offset. The Read responses are matched to this
->> request by their message sequence numbers, and this Read request is
->> matched to the RPC Call by the XID in the top 32 bits of the
->> Virtual Address.
->>=20
->> Likewise for an RDMA Write Only request:
->>=20
->>    188 22:31:06.201350    LID: 5                LID: 11               =
-InfiniBand 162    RC RDMA Write Only QP=3D0x000240
->>=20
->> Frame 188: 162 bytes on wire (1296 bits), 162 bytes captured (1296 =
-bits) on interface 1
->> Extensible Record Format
->> InfiniBand
->>    Local Route Header
->>    Base Transport Header
->>    RETH - RDMA Extended Transport Header
->>        Virtual Address: 10455493047213809920   <<<<<<
->>        Remote Key: 1879115386
->>        DMA Length: 120
->>    Invariant CRC: 0xe2e1b2cd
->>    Variant CRC: 0x676f
->> Data (120 bytes)
->>=20
->> 0000  91 19 5f 87 00 00 00 01 00 00 00 00 00 00 00 00   =
-.._.............
->> 0010  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01   =
-................
->> 0020  00 00 00 02 00 00 01 ed 00 00 00 02 00 00 04 16   =
-................
->> 0030  00 00 00 64 00 00 00 00 00 00 00 28 00 00 00 00   =
-...d.......(....
->> 0040  00 00 00 00 00 00 00 00 00 00 00 00 54 9e e5 9d   =
-............T...
->> 0050  c6 d3 1a d2 00 00 00 00 00 00 63 1f 5b f2 2e 7a   =
-..........c.[..z
->> 0060  0b ae f9 ec 5b f2 2e 7a 0b 53 6c ef 5b f2 2e 7a   =
-....[..z.Sl.[..z
->> 0070  0b 53 6c ef 00 00 00 0c                           .Sl.....
->>=20
->>=20
->> I believe RDMA Write First also has an RETH. The sender does not
->> interleave RDMA Writes, so subsequent Middle and Last packets go
->> with this RDMA Write First.
->=20
-> Ok I see now where I was confused, in RDMA_MSG in the wireshark it's
-> labeled "RDMA offset" and the in the RDMA write first message it's
-> labeled "Virtual address". Thank you for explanation.
->=20
-> Here's the next question (coming from Jorge)? Is it reasonable to
-> assume that top 32bits are always zero? I have an network trace (from
-> 4.18-rc2 kernel) where they are not.
->=20
-> RPC over RDMA
->    XID: 0xa347cfa2
->    Version: 1
->    Flow Control: 128
->    Message Type: RDMA_MSG (0)
->    Read list (count: 0)
->    Write list (count: 1)
->        Write chunk (1 segment)
->            Write chunk segment count: 1
->            RDMA segment 0
->                RDMA handle: 0x4000076f
->                RDMA length: 65676
->                RDMA offset: 0x0000001049973000
->=20
-> I don't believe 0xa347cfa2 can fit?
-
-I've been told by three independent RDMA experts that using the top
-32 bits of the offset, even if they are not zero, should be OK to do.
-If it doesn't work, it's a device driver bug that needs to be fixed.
-
-
---
-Chuck Lever
-
-
-
+SGVsbG8gQ2h1Y2ssDQoNCkkgYW0gY29uZnVzZWQsIGlzIGl0IHRoZSB3aG9sZSBwdXJwb3NlIG9m
+IFJETUEgaXMgdG8gcGxhY2UgdGhlIGRhdGEgZGlyZWN0bHkgaW50byB0aGUgbWVtb3J5IGxvY2F0
+aW9uIGdpdmVuIGJ5IHRoZSB2aXJ0dWFsIGFkZHJlc3Mgb3Igb2Zmc2V0PyBXaGF0IHlvdSBhcmUg
+c2F5aW5nIGlzIHRoYXQgdGhpcyBvZmZzZXQgaXMgbm90IHRoZSBhY3R1YWwgbWVtb3J5IGFkZHJl
+c3MgYW5kIHNvIHRoZSBkcml2ZXIgbXVzdCBtYXAgdGhpcyBvZmZzZXQgdG8gdGhlIGFjdHVhbCBh
+ZGRyZXNzPw0KDQoNCi0tSm9yZ2UNCg0K77u/T24gMTEvMTkvMTgsIDI6MzMgUE0sICJsaW51eC1u
+ZnMtb3duZXJAdmdlci5rZXJuZWwub3JnIG9uIGJlaGFsZiBvZiBDaHVjayBMZXZlciIgPGxpbnV4
+LW5mcy1vd25lckB2Z2VyLmtlcm5lbC5vcmcgb24gYmVoYWxmIG9mIGNodWNrLmxldmVyQG9yYWNs
+ZS5jb20+IHdyb3RlOg0KDQogICAgTmV0QXBwIFNlY3VyaXR5IFdBUk5JTkc6IFRoaXMgaXMgYW4g
+ZXh0ZXJuYWwgZW1haWwuIERvIG5vdCBjbGljayBsaW5rcyBvciBvcGVuIGF0dGFjaG1lbnRzIHVu
+bGVzcyB5b3UgcmVjb2duaXplIHRoZSBzZW5kZXIgYW5kIGtub3cgdGhlIGNvbnRlbnQgaXMgc2Fm
+ZS4NCiAgICANCiAgICANCiAgICANCiAgICANCiAgICA+IE9uIE5vdiAxOSwgMjAxOCwgYXQgNDoy
+MiBQTSwgT2xnYSBLb3JuaWV2c2thaWEgPGFnbG9AdW1pY2guZWR1PiB3cm90ZToNCiAgICA+DQog
+ICAgPiBPbiBNb24sIE5vdiAxOSwgMjAxOCBhdCAxOjU5IFBNIENodWNrIExldmVyIDxjaHVjay5s
+ZXZlckBvcmFjbGUuY29tPiB3cm90ZToNCiAgICA+Pg0KICAgID4+DQogICAgPj4NCiAgICA+Pj4g
+T24gTm92IDE5LCAyMDE4LCBhdCAxOjQ3IFBNLCBPbGdhIEtvcm5pZXZza2FpYSA8YWdsb0B1bWlj
+aC5lZHU+IHdyb3RlOg0KICAgID4+Pg0KICAgID4+PiBPbiBNb24sIE5vdiAxOSwgMjAxOCBhdCAx
+OjE5IFBNIENodWNrIExldmVyIDxjaHVjay5sZXZlckBvcmFjbGUuY29tPiB3cm90ZToNCiAgICA+
+Pj4+DQogICAgPj4+Pg0KICAgID4+Pj4NCiAgICA+Pj4+PiBPbiBOb3YgMTksIDIwMTgsIGF0IDE6
+MDggUE0sIE9sZ2EgS29ybmlldnNrYWlhIDxhZ2xvQHVtaWNoLmVkdT4gd3JvdGU6DQogICAgPj4+
+Pj4NCiAgICA+Pj4+PiBPbiBNb24sIE5vdiAxOSwgMjAxOCBhdCAxMjo1OSBQTSBDaHVjayBMZXZl
+ciA8Y2h1Y2subGV2ZXJAb3JhY2xlLmNvbT4gd3JvdGU6DQogICAgPj4+Pj4+DQogICAgPj4+Pj4+
+DQogICAgPj4+Pj4+DQogICAgPj4+Pj4+PiBPbiBOb3YgMTksIDIwMTgsIGF0IDEyOjQ3IFBNLCBP
+bGdhIEtvcm5pZXZza2FpYSA8YWdsb0B1bWljaC5lZHU+IHdyb3RlOg0KICAgID4+Pj4+Pj4NCiAg
+ICA+Pj4+Pj4+IE9uIE1vbiwgTm92IDE5LCAyMDE4IGF0IDEwOjQ2IEFNIENodWNrIExldmVyIDxj
+aHVjay5sZXZlckBvcmFjbGUuY29tPiB3cm90ZToNCiAgICA+Pj4+Pj4+Pg0KICAgID4+Pj4+Pj4+
+IFBsYWNlIHRoZSBhc3NvY2lhdGVkIFJQQyB0cmFuc2FjdGlvbidzIFhJRCBpbiB0aGUgdXBwZXIg
+MzIgYml0cyBvZg0KICAgID4+Pj4+Pj4+IGVhY2ggUkRNQSBzZWdtZW50J3MgcmRtYV9vZmZzZXQg
+ZmllbGQuIFRoZXNlIGJpdHMgYXJlIGN1cnJlbnRseQ0KICAgID4+Pj4+Pj4+IGFsd2F5cyB6ZXJv
+Lg0KICAgID4+Pj4+Pj4+DQogICAgPj4+Pj4+Pj4gVGhlcmUgYXJlIHR3byByZWFzb25zIHRvIGRv
+IHRoaXM6DQogICAgPj4+Pj4+Pj4NCiAgICA+Pj4+Pj4+PiAtIFRoZSBSX2tleSBvbmx5IGhhcyA4
+IGJpdHMgdGhhdCBhcmUgZGlmZmVyZW50IGZyb20gcmVnaXN0cmF0aW9uIHRvDQogICAgPj4+Pj4+
+Pj4gcmVnaXN0cmF0aW9uLiBUaGUgWElEIGFkZHMgbW9yZSB1bmlxdWVuZXNzIHRvIGVhY2ggUkRN
+QSBzZWdtZW50IHRvDQogICAgPj4+Pj4+Pj4gcmVkdWNlIHRoZSBsaWtlbGlob29kIG9mIGEgc29m
+dHdhcmUgYnVnIG9uIHRoZSBzZXJ2ZXIgcmVhZGluZyBmcm9tDQogICAgPj4+Pj4+Pj4gb3Igd3Jp
+dGluZyBpbnRvIG1lbW9yeSBpdCdzIG5vdCBzdXBwb3NlZCB0by4NCiAgICA+Pj4+Pj4+Pg0KICAg
+ID4+Pj4+Pj4+IC0gT24tdGhlLXdpcmUgUkRNQSBSZWFkIGFuZCBXcml0ZSBvcGVyYXRpb25zIGRv
+IG5vdCBvdGhlcndpc2UgY2FycnkNCiAgICA+Pj4+Pj4+PiBhbnkgaWRlbnRpZmllciB0aGF0IG1h
+dGNoZXMgdGhlbSB1cCB0byBhbiBSUEMuIFRoZSBYSUQgaW4gdGhlDQogICAgPj4+Pj4+Pj4gdXBw
+ZXIgMzIgYml0cyB3aWxsIGFjdCBhcyBhbiBleWUtY2F0Y2hlciBpbiBuZXR3b3JrIGNhcHR1cmVz
+Lg0KICAgID4+Pj4+Pj4NCiAgICA+Pj4+Pj4+IElzIHRoaXMganVzdCBhbiAiZXllLWNhdGNoZXIi
+IG9yIGRvIHlvdSBoYXZlIHBsYW5zIHRvIHVzZSBpdCBpbg0KICAgID4+Pj4+Pj4gd2lyZXNoYXJr
+PyBJZiB0aGUgbGF0dGVyLCB0aGVuIGNhbiB3ZSByZWFsbHkgZG8gdGhhdD8gd2hpbGUgYSBsaW51
+eA0KICAgID4+Pj4+Pj4gaW1wbGVtZW50YXRpb24gbWF5IGRvIHRoYXQsIG90aGVyIChvciBldmVu
+IHBvc3NpYmx5IGZ1dHVyZSBsaW51eCkNCiAgICA+Pj4+Pj4+IGltcGxlbWVudGF0aW9uIG1pZ2h0
+IG5vdCBkbyB0aGlzLiBDYW4gd2UganVzdGlmeSBjaGFuZ2luZyB0aGUNCiAgICA+Pj4+Pj4+IHdp
+cmVzaGFyayBsb2dpYyBmb3IgaXQ/DQogICAgPj4+Pj4+DQogICAgPj4+Pj4+IE5vIHBsYW5zIHRv
+IGNoYW5nZSB0aGUgd2lyZXNoYXJrIFJQQy1vdmVyLVJETUEgZGlzc2VjdG9yLg0KICAgID4+Pj4+
+PiBUaGF0IHdvdWxkIG9ubHkgYmUgYSB2YWxpZCB0aGluZyB0byBkbyBpZiBhZGRpbmcgdGhlIFhJ
+RA0KICAgID4+Pj4+PiB3ZXJlIG1hZGUgcGFydCBvZiB0aGUgUlBDLW92ZXItUkRNQSBwcm90b2Nv
+bCB2aWEgYW4gUkZDLg0KICAgID4+Pj4+DQogICAgPj4+Pj4gQWdyZWVkLiBDYW4geW91IGFsc28g
+aGVscCBtZSB1bmRlcnN0YW5kIHRoZSBwcm9wb3NhbCAoYXMgSSdtIHN0aWxsDQogICAgPj4+Pj4g
+dHJ5aW5nIHRvIGZpZ3VyZSB3aHkgaXQgaXMgdXNlZnVsKS4NCiAgICA+Pj4+Pg0KICAgID4+Pj4+
+IFlvdSBhcmUgcHJvcG9zaW5nIHRvIG1vZGlmeSB0aGUgUkRNQSBzZWdtZW50cydzIFJETUEgb2Zm
+c2V0IGZpZWxkIChJDQogICAgPj4+Pj4gc2VlIHRvcCA2Yml0cyBhcmUgaW5kZWVkIGFsd2F5cyAw
+KS4gSSBkb24ndCBzZWUgaG93IGFkZGluZyB0aGF0IGhlbHBzDQogICAgPj4+Pj4gYW4gUkRNQSBy
+ZWFkL3dyaXRlIG1lc3NhZ2Ugd2hpY2ggZG9lcyBub3QgaGF2ZSBhbiAib2Zmc2V0IiBmaWVsZCBp
+biBpdA0KICAgID4+Pj4+IGJlIG1hdGNoZWQgdG8gYSBwYXJ0aWN1bGFyIFJQQy4gSSBkb24ndCBi
+ZWxpZXZlIHdlIGhhdmUgKGhhZCkgYW55DQogICAgPj4+Pj4gaXNzdWVzIG1hdGNoaW5nIHRoZSBp
+bml0aWFsIFJDIFNlbmQgb25seSB0aGF0IGNvbnRhaW5zIHRoZSBSRE1BX01TRyB0bw0KICAgID4+
+Pj4+IHRoZSBSUEMuDQogICAgPj4+Pg0KICAgID4+Pj4gVGhlIFVMUCBoYXMgYWNjZXNzIHRvIG9u
+bHkgdGhlIGxvdyBvcmRlciA4IGJpdHMgb2YgdGhlIFJfa2V5LiBUaGUNCiAgICA+Pj4+IHVwcGVy
+IDI0IGJpdHMgYXJlIGZpeGVkIGZvciBlYWNoIE1SLiBTbyBmb3IgYW55IGdpdmVuIE1SLCB0aGVy
+ZSBhcmUNCiAgICA+Pj4+IG9ubHkgMjU2IHVuaXF1ZSBSX2tleSB2YWx1ZXMuIFRoYXQgbWVhbnMg
+dGhlIHNhbWUgUl9rZXkgd2lsbCBhcHBlYXINCiAgICA+Pj4+IGFnYWluIHF1aWNrbHkgb24gdGhl
+IHdpcmUuDQogICAgPj4+Pg0KICAgID4+Pj4gVGhlIDY0LWJpdCBvZmZzZXQgZmllbGQgaXMgc2V0
+IGJ5IHRoZSBVTFAsIGFuZCBjYW4gYmUgZXNzZW50aWFsbHkNCiAgICA+Pj4+IGFueSBhcmJpdHJh
+cnkgdmFsdWUuIE1vc3Qga2VybmVsIFVMUHMgdXNlIHRoZSBpb3ZhIG9mIHRoZSByZWdpc3RlcmVk
+DQogICAgPj4+PiBtZW1vcnkuIFdlIG9ubHkgbmVlZCB0aGUgbG93ZXIgMzIgYml0cyBmb3IgdGhh
+dC4NCiAgICA+Pj4+DQogICAgPj4+PiBUaGUgcHVycG9zZSBvZiBhZGRpbmcganVuayB0byB0aGUg
+b2Zmc2V0IGlzIHRvIG1ha2UgdGhlIG9mZnNldA0KICAgID4+Pj4gdW5pcXVlIHRvIHRoYXQgUlBD
+IHRyYW5zYWN0aW9uLCBqdXN0IGxpa2UgdGhlIFJfa2V5IGlzLiBUaGlzIGhlbHBzDQogICAgPj4+
+PiBtYWtlIHRoZSBSRE1BIHNlZ21lbnQgY28tb3JkaW5hdGVzIChoYW5kbGUsIGxlbmd0aCwgb2Zm
+c2V0KSBtb3JlDQogICAgPj4+PiB1bmlxdWUgYW5kIHRodXMgaGFyZGVyIHRvIHNwb29mLg0KICAg
+ID4+Pg0KICAgID4+PiBUaGFuayB5b3UgZm9yIHRoZSBleHBsYW5hdGlvbiB0aGF0IG1ha2VzIHNl
+bnNlLg0KICAgID4+Pg0KICAgID4+Pj4gV2UgY291bGQgdXNlIHJhbmRvbSBudW1iZXJzIGluIHRo
+YXQgdXBwZXIgMzIgYml0cywgYnV0IHdlIGhhdmUNCiAgICA+Pj4+IHNvbWV0aGluZyBtb3JlIGhh
+bmR5OiB0aGUgUlBDJ3MgWElELg0KICAgID4+Pj4NCiAgICA+Pj4+IE5vdyB3aGVuIHlvdSBsb29r
+IGF0IGFuIFJETUEgUmVhZCBvciBXcml0ZSwgdGhlIHRvcCAzMiBiaXRzIGluIGVhY2gNCiAgICA+
+Pj4+IFJETUEgc2VnbWVudCdzIG9mZnNldCBtYXRjaCB0aGUgWElEIG9mIHRoZSBSUEMgdHJhbnNh
+Y3Rpb24gdGhhdCB0aGUNCiAgICA+Pj4+IFJETUEgb3BlcmF0aW9ucyBnbyB3aXRoLiBUaGlzIGlz
+IHJlYWxseSBhIHNlY29uZGFyeSBiZW5lZml0IHRvIHRoZQ0KICAgID4+Pj4gdW5pcXVpZnlpbmcg
+ZWZmZWN0IGFib3ZlLg0KICAgID4+Pg0KICAgID4+PiBJIGZpbmQgdGhlIHdvcmRpbmcgIm5vIHRo
+ZSB3aXJlIFJETUEgcmVhZCBvciB3cml0ZSIgbWlzbGVhZGluZy4gRGlkDQogICAgPj4+IHlvdSBy
+ZWFsbHkgbWVhbiBpdCBhcyAiUkRNQSByZWFkIG9yIHdyaXRlIiBvciBkbyB5b3UgbWVhbiAiUkRN
+QV9NU0ciDQogICAgPj4+IG9yIGRvIHlvdSBtZWFuICJORlMgUkRNQSByZWFkIG9yIHdyaXRlIj8g
+QmVjYXVzZSBSRE1BIG9mZnNldCBpcyBub3QgYQ0KICAgID4+PiBwYXJ0IG9mIHRoZSBSRE1BIHJl
+YWQvd3JpdGUgKGZpcnN0L21pZGRsZS9sYXN0KSBwYWNrZXQuIFRoYXQncyB3aGF0DQogICAgPj4+
+IEknbSBoYW5nZWQgdXAgb24uDQogICAgPj4NCiAgICA+PiBIZXJlJ3MgYW4gUkRNQSBSZWFkIHJl
+cXVlc3QgaW4gYSBuZXR3b3JrIGNhcHR1cmUgSSBoYWQgYXQgaGFuZDoNCiAgICA+Pg0KICAgID4+
+IE5vLiAgICAgVGltZSAgICAgICAgICAgICAgIFNvdXJjZSAgICAgICAgICAgICAgICBEZXN0aW5h
+dGlvbiAgICAgICAgICAgUHJvdG9jb2wgTGVuZ3RoIEluZm8NCiAgICA+PiAgICAyMjggMjI6MzE6
+MDYuMjAzNjM3ICAgIExJRDogNSAgICAgICAgICAgICAgICBMSUQ6IDExICAgICAgICAgICAgICAg
+SW5maW5pQmFuZCA0MiAgICAgUkMgUkRNQSBSZWFkIFJlcXVlc3QgUVA9MHgwMDAyNDANCiAgICA+
+Pg0KICAgID4+IEZyYW1lIDIyODogNDIgYnl0ZXMgb24gd2lyZSAoMzM2IGJpdHMpLCA0MiBieXRl
+cyBjYXB0dXJlZCAoMzM2IGJpdHMpIG9uIGludGVyZmFjZSAxDQogICAgPj4gRXh0ZW5zaWJsZSBS
+ZWNvcmQgRm9ybWF0DQogICAgPj4gSW5maW5pQmFuZA0KICAgID4+ICAgIExvY2FsIFJvdXRlIEhl
+YWRlcg0KICAgID4+ICAgIEJhc2UgVHJhbnNwb3J0IEhlYWRlcg0KICAgID4+ICAgIFJFVEggLSBS
+RE1BIEV4dGVuZGVkIFRyYW5zcG9ydCBIZWFkZXINCiAgICA+PiAgICAgICAgVmlydHVhbCBBZGRy
+ZXNzOiAxMTEwNDAxMTM5MzMxNTc1ODA4MCAgIDw8PDw8PA0KICAgID4+ICAgICAgICBSZW1vdGUg
+S2V5OiAxODc5MTE0NjE4DQogICAgPj4gICAgICAgIERNQSBMZW5ndGg6IDQwMTUNCiAgICA+PiAg
+ICBJbnZhcmlhbnQgQ1JDOiAweGQ0OTJhM2UxDQogICAgPj4gICAgVmFyaWFudCBDUkM6IDB4ODcz
+Ng0KICAgID4+DQogICAgPj4gVGhlIHZhbHVlIG9mIHRoZSBWaXJ0dWFsIEFkZHJlc3MgZmllbGQg
+aXMgd2hhdCB0aGUgUlBDLW92ZXItUkRNQQ0KICAgID4+IHByb3RvY29sIGNhbGxzIHRoZSBPZmZz
+ZXQuIFRoZSBSZWFkIHJlc3BvbnNlcyBhcmUgbWF0Y2hlZCB0byB0aGlzDQogICAgPj4gcmVxdWVz
+dCBieSB0aGVpciBtZXNzYWdlIHNlcXVlbmNlIG51bWJlcnMsIGFuZCB0aGlzIFJlYWQgcmVxdWVz
+dCBpcw0KICAgID4+IG1hdGNoZWQgdG8gdGhlIFJQQyBDYWxsIGJ5IHRoZSBYSUQgaW4gdGhlIHRv
+cCAzMiBiaXRzIG9mIHRoZQ0KICAgID4+IFZpcnR1YWwgQWRkcmVzcy4NCiAgICA+Pg0KICAgID4+
+IExpa2V3aXNlIGZvciBhbiBSRE1BIFdyaXRlIE9ubHkgcmVxdWVzdDoNCiAgICA+Pg0KICAgID4+
+ICAgIDE4OCAyMjozMTowNi4yMDEzNTAgICAgTElEOiA1ICAgICAgICAgICAgICAgIExJRDogMTEg
+ICAgICAgICAgICAgICBJbmZpbmlCYW5kIDE2MiAgICBSQyBSRE1BIFdyaXRlIE9ubHkgUVA9MHgw
+MDAyNDANCiAgICA+Pg0KICAgID4+IEZyYW1lIDE4ODogMTYyIGJ5dGVzIG9uIHdpcmUgKDEyOTYg
+Yml0cyksIDE2MiBieXRlcyBjYXB0dXJlZCAoMTI5NiBiaXRzKSBvbiBpbnRlcmZhY2UgMQ0KICAg
+ID4+IEV4dGVuc2libGUgUmVjb3JkIEZvcm1hdA0KICAgID4+IEluZmluaUJhbmQNCiAgICA+PiAg
+ICBMb2NhbCBSb3V0ZSBIZWFkZXINCiAgICA+PiAgICBCYXNlIFRyYW5zcG9ydCBIZWFkZXINCiAg
+ICA+PiAgICBSRVRIIC0gUkRNQSBFeHRlbmRlZCBUcmFuc3BvcnQgSGVhZGVyDQogICAgPj4gICAg
+ICAgIFZpcnR1YWwgQWRkcmVzczogMTA0NTU0OTMwNDcyMTM4MDk5MjAgICA8PDw8PDwNCiAgICA+
+PiAgICAgICAgUmVtb3RlIEtleTogMTg3OTExNTM4Ng0KICAgID4+ICAgICAgICBETUEgTGVuZ3Ro
+OiAxMjANCiAgICA+PiAgICBJbnZhcmlhbnQgQ1JDOiAweGUyZTFiMmNkDQogICAgPj4gICAgVmFy
+aWFudCBDUkM6IDB4Njc2Zg0KICAgID4+IERhdGEgKDEyMCBieXRlcykNCiAgICA+Pg0KICAgID4+
+IDAwMDAgIDkxIDE5IDVmIDg3IDAwIDAwIDAwIDAxIDAwIDAwIDAwIDAwIDAwIDAwIDAwIDAwICAg
+Li5fLi4uLi4uLi4uLi4uLg0KICAgID4+IDAwMTAgIDAwIDAwIDAwIDAwIDAwIDAwIDAwIDAwIDAw
+IDAwIDAwIDAwIDAwIDAwIDAwIDAxICAgLi4uLi4uLi4uLi4uLi4uLg0KICAgID4+IDAwMjAgIDAw
+IDAwIDAwIDAyIDAwIDAwIDAxIGVkIDAwIDAwIDAwIDAyIDAwIDAwIDA0IDE2ICAgLi4uLi4uLi4u
+Li4uLi4uLg0KICAgID4+IDAwMzAgIDAwIDAwIDAwIDY0IDAwIDAwIDAwIDAwIDAwIDAwIDAwIDI4
+IDAwIDAwIDAwIDAwICAgLi4uZC4uLi4uLi4oLi4uLg0KICAgID4+IDAwNDAgIDAwIDAwIDAwIDAw
+IDAwIDAwIDAwIDAwIDAwIDAwIDAwIDAwIDU0IDllIGU1IDlkICAgLi4uLi4uLi4uLi4uVC4uLg0K
+ICAgID4+IDAwNTAgIGM2IGQzIDFhIGQyIDAwIDAwIDAwIDAwIDAwIDAwIDYzIDFmIDViIGYyIDJl
+IDdhICAgLi4uLi4uLi4uLmMuWy4ueg0KICAgID4+IDAwNjAgIDBiIGFlIGY5IGVjIDViIGYyIDJl
+IDdhIDBiIDUzIDZjIGVmIDViIGYyIDJlIDdhICAgLi4uLlsuLnouU2wuWy4ueg0KICAgID4+IDAw
+NzAgIDBiIDUzIDZjIGVmIDAwIDAwIDAwIDBjICAgICAgICAgICAgICAgICAgICAgICAgICAgLlNs
+Li4uLi4NCiAgICA+Pg0KICAgID4+DQogICAgPj4gSSBiZWxpZXZlIFJETUEgV3JpdGUgRmlyc3Qg
+YWxzbyBoYXMgYW4gUkVUSC4gVGhlIHNlbmRlciBkb2VzIG5vdA0KICAgID4+IGludGVybGVhdmUg
+UkRNQSBXcml0ZXMsIHNvIHN1YnNlcXVlbnQgTWlkZGxlIGFuZCBMYXN0IHBhY2tldHMgZ28NCiAg
+ICA+PiB3aXRoIHRoaXMgUkRNQSBXcml0ZSBGaXJzdC4NCiAgICA+DQogICAgPiBPayBJIHNlZSBu
+b3cgd2hlcmUgSSB3YXMgY29uZnVzZWQsIGluIFJETUFfTVNHIGluIHRoZSB3aXJlc2hhcmsgaXQn
+cw0KICAgID4gbGFiZWxlZCAiUkRNQSBvZmZzZXQiIGFuZCB0aGUgaW4gdGhlIFJETUEgd3JpdGUg
+Zmlyc3QgbWVzc2FnZSBpdCdzDQogICAgPiBsYWJlbGVkICJWaXJ0dWFsIGFkZHJlc3MiLiBUaGFu
+ayB5b3UgZm9yIGV4cGxhbmF0aW9uLg0KICAgID4NCiAgICA+IEhlcmUncyB0aGUgbmV4dCBxdWVz
+dGlvbiAoY29taW5nIGZyb20gSm9yZ2UpPyBJcyBpdCByZWFzb25hYmxlIHRvDQogICAgPiBhc3N1
+bWUgdGhhdCB0b3AgMzJiaXRzIGFyZSBhbHdheXMgemVybz8gSSBoYXZlIGFuIG5ldHdvcmsgdHJh
+Y2UgKGZyb20NCiAgICA+IDQuMTgtcmMyIGtlcm5lbCkgd2hlcmUgdGhleSBhcmUgbm90Lg0KICAg
+ID4NCiAgICA+IFJQQyBvdmVyIFJETUENCiAgICA+ICAgIFhJRDogMHhhMzQ3Y2ZhMg0KICAgID4g
+ICAgVmVyc2lvbjogMQ0KICAgID4gICAgRmxvdyBDb250cm9sOiAxMjgNCiAgICA+ICAgIE1lc3Nh
+Z2UgVHlwZTogUkRNQV9NU0cgKDApDQogICAgPiAgICBSZWFkIGxpc3QgKGNvdW50OiAwKQ0KICAg
+ID4gICAgV3JpdGUgbGlzdCAoY291bnQ6IDEpDQogICAgPiAgICAgICAgV3JpdGUgY2h1bmsgKDEg
+c2VnbWVudCkNCiAgICA+ICAgICAgICAgICAgV3JpdGUgY2h1bmsgc2VnbWVudCBjb3VudDogMQ0K
+ICAgID4gICAgICAgICAgICBSRE1BIHNlZ21lbnQgMA0KICAgID4gICAgICAgICAgICAgICAgUkRN
+QSBoYW5kbGU6IDB4NDAwMDA3NmYNCiAgICA+ICAgICAgICAgICAgICAgIFJETUEgbGVuZ3RoOiA2
+NTY3Ng0KICAgID4gICAgICAgICAgICAgICAgUkRNQSBvZmZzZXQ6IDB4MDAwMDAwMTA0OTk3MzAw
+MA0KICAgID4NCiAgICA+IEkgZG9uJ3QgYmVsaWV2ZSAweGEzNDdjZmEyIGNhbiBmaXQ/DQogICAg
+DQogICAgSSd2ZSBiZWVuIHRvbGQgYnkgdGhyZWUgaW5kZXBlbmRlbnQgUkRNQSBleHBlcnRzIHRo
+YXQgdXNpbmcgdGhlIHRvcA0KICAgIDMyIGJpdHMgb2YgdGhlIG9mZnNldCwgZXZlbiBpZiB0aGV5
+IGFyZSBub3QgemVybywgc2hvdWxkIGJlIE9LIHRvIGRvLg0KICAgIElmIGl0IGRvZXNuJ3Qgd29y
+aywgaXQncyBhIGRldmljZSBkcml2ZXIgYnVnIHRoYXQgbmVlZHMgdG8gYmUgZml4ZWQuDQogICAg
+DQogICAgDQogICAgLS0NCiAgICBDaHVjayBMZXZlcg0KICAgIA0KICAgIA0KICAgIA0KICAgIA0K
+DQo=
