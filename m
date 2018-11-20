@@ -2,185 +2,266 @@ Return-Path: <SRS0=9Ter=N7=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
-	SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-8.6 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,UNPARSEABLE_RELAY autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 63C6EC46475
-	for <linux-nfs@archiver.kernel.org>; Tue, 20 Nov 2018 21:19:00 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 803AFC5ACBA
+	for <linux-nfs@archiver.kernel.org>; Tue, 20 Nov 2018 21:31:40 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id EAD892080F
-	for <linux-nfs@archiver.kernel.org>; Tue, 20 Nov 2018 21:18:59 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 41E0F20C01
+	for <linux-nfs@archiver.kernel.org>; Tue, 20 Nov 2018 21:31:40 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="dDIF8yDi"
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org EAD892080F
-Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=hammerspace.com
+	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="SNY+64rt"
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 41E0F20C01
+Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=oracle.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1725926AbeKUHuH (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 21 Nov 2018 02:50:07 -0500
-Received: from mail-eopbgr680134.outbound.protection.outlook.com ([40.107.68.134]:12352
-        "EHLO NAM04-BN3-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1725887AbeKUHuH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 21 Nov 2018 02:50:07 -0500
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=hammerspace.com;
- s=selector1;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=hDERy+xGImHMRijYCiQHZUw+Xagt0WT8H5imjv1l7oE=;
- b=dDIF8yDiirtc6NIS5go/eyJ7jGkMc3Uvhwcrea42aWgKWBfJ0Pl2/RVRgsYzLoVZ/QW/CNU4K9FDAiDoOeEQC1d+UGZV4r2EzNXUvEZZAWa0nA9Ed5Vrbt50gos1kYyzSAOtMQRCPeM53BxH8z4rI9mPllj3f/6WXirSyy2Yeuk=
-Received: from SN6PR13MB2494.namprd13.prod.outlook.com (52.135.95.148) by
- SN6PR13MB2415.namprd13.prod.outlook.com (52.135.94.159) with Microsoft SMTP
- Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- 15.20.1361.14; Tue, 20 Nov 2018 21:18:46 +0000
-Received: from SN6PR13MB2494.namprd13.prod.outlook.com
- ([fe80::205a:69c2:1cf5:b475]) by SN6PR13MB2494.namprd13.prod.outlook.com
- ([fe80::205a:69c2:1cf5:b475%3]) with mapi id 15.20.1361.013; Tue, 20 Nov 2018
- 21:18:46 +0000
-From:   Trond Myklebust <trondmy@hammerspace.com>
-To:     "Anna.Schumaker@Netapp.com" <Anna.Schumaker@Netapp.com>,
-        "tigran.mkrtchyan@desy.de" <tigran.mkrtchyan@desy.de>
-CC:     "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "rmacklem@uoguelph.ca" <rmacklem@uoguelph.ca>
-Subject: Re: [PATCH] flexfiles: use per-mirror specified stateid for IO
-Thread-Topic: [PATCH] flexfiles: use per-mirror specified stateid for IO
-Thread-Index: AQHUeo/z5hiJo6+OSUSLioLVoqpV/6VZOBkA
-Date:   Tue, 20 Nov 2018 21:18:46 +0000
-Message-ID: <20dd91f5c12ce9312e5c955c3a94008c8315d478.camel@hammerspace.com>
-References: <20181112135918.12011-1-tigran.mkrtchyan@desy.de>
-In-Reply-To: <20181112135918.12011-1-tigran.mkrtchyan@desy.de>
-Accept-Language: en-US, en-GB
-Content-Language: en-US
-X-MS-Has-Attach: 
-X-MS-TNEF-Correlator: 
-x-originating-ip: [68.40.195.73]
-x-ms-publictraffictype: Email
-x-microsoft-exchange-diagnostics: 1;SN6PR13MB2415;6:84i+2HihEVSpJh4LU6b+ZH1+SZORsmhne7CvWqW7pPUMtbPh7yF7b460yjXDq1qSD41f8rePmYFA6Mpik/yJCpodUFuj/LX1uShKFgpEfo/rsLFnHSdN0r8ciN+wIq9beYQuDCQECYHE1dEKVLi2e1X2KoBt1XkhOLzWYHC0bQiudw402pfvCj8cfvepJOvApt1vaUgLHAYctc9pMRlTsFo8KgDGFRiXYsIShP/ml74aQ4TOQN4TJO0XiMD4UWVhKSwY1RjRgzXFLneF0AgC00splBXRw4YxTuGsBzCmV3dw09zhszTL8dJXiXGX1DeJ4fRDn3nOe7UhhUQgMoXvJOppuDElk81KIMEXdpOk4MF6aQ9Qf6eEu7DJ8nWHujMiq622UNnF+iqZjqoNS5uiYM9HW1Vkc4Mpe67B0G8ELc+0X5Z7CepgBrGGZFnAowUefJkYVoBtsUVIDEyfu0vTcw==;5:DMeZXAxclmwdrRZ6kHcvA3YhMRdrDAZfU9CLKheHkibkjdNk6WZdFY+qSyp+yNwTLLvpZgmWsvxIDgmV3bqSnONzFir4/ebVNVPGlL4ArSNfmvNleUGKsK9+7kwb8jL+0yNtUTT4sp3KJ9tYCs+DkBaMi8byQe9+sEclY8qgnlI=;7:RmkZT98ZzBgvBzz/gvoaIEu68d0rlqmcd5mkMKcS5zd902EBYIH5unnilEb+Yx67+6nkNDKCBaUf00oeuCaER3Jk6HhHJ1HagfJ+hX0FAcHVk4CgaFxjzcPrkKrUnA0BqbvJMJoseak1QuIrmAC4mg==
-x-ms-exchange-antispam-srfa-diagnostics: SOS;
-x-ms-office365-filtering-correlation-id: e245868e-9fb5-468a-5267-08d64f2dc1ec
-x-microsoft-antispam: BCL:0;PCL:0;RULEID:(2390098)(7020095)(4652040)(8989299)(4534185)(4627221)(201703031133081)(201702281549075)(8990200)(5600074)(711020)(2017052603328)(7153060)(7193020);SRVR:SN6PR13MB2415;
-x-ms-traffictypediagnostic: SN6PR13MB2415:
-authentication-results: spf=none (sender IP is )
- smtp.mailfrom=trondmy@hammerspace.com; 
-x-microsoft-antispam-prvs: <SN6PR13MB2415C8CBD5D27E0B43D50025B8D90@SN6PR13MB2415.namprd13.prod.outlook.com>
-x-ms-exchange-senderadcheck: 1
-x-exchange-antispam-report-cfa-test: BCL:0;PCL:0;RULEID:(6040522)(2401047)(8121501046)(5005006)(10201501046)(3231442)(944501410)(52105112)(3002001)(93006095)(93001095)(148016)(149066)(150057)(6041310)(201703131423095)(201702281528075)(20161123555045)(201703061421075)(201703061406153)(20161123558120)(20161123560045)(20161123564045)(20161123562045)(201708071742011)(7699051)(76991095);SRVR:SN6PR13MB2415;BCL:0;PCL:0;RULEID:;SRVR:SN6PR13MB2415;
-x-forefront-prvs: 08626BE3A5
-x-forefront-antispam-report: SFV:NSPM;SFS:(10019020)(346002)(396003)(376002)(136003)(39830400003)(366004)(189003)(199004)(4001150100001)(102836004)(26005)(6506007)(229853002)(186003)(71200400001)(2616005)(476003)(71190400001)(8676002)(99286004)(81156014)(14454004)(446003)(110136005)(11346002)(6486002)(118296001)(81166006)(2906002)(54906003)(36756003)(8936002)(316002)(6246003)(478600001)(5660300001)(66066001)(86362001)(2501003)(105586002)(4326008)(3846002)(305945005)(6116002)(97736004)(256004)(6436002)(53936002)(106356001)(76176011)(7736002)(6512007)(486006)(2900100001)(25786009)(68736007)(14444005);DIR:OUT;SFP:1102;SCL:1;SRVR:SN6PR13MB2415;H:SN6PR13MB2494.namprd13.prod.outlook.com;FPR:;SPF:None;LANG:en;PTR:InfoNoRecords;MX:1;A:1;
-received-spf: None (protection.outlook.com: hammerspace.com does not designate
- permitted sender hosts)
-x-microsoft-antispam-message-info: 1ivhfJgSCrr2kbdQ5eeyzUR6GBhZTQ453zwnaf5v3wHZBqG9CGEhpsnIQG0VUhL6a92TrVykDrMGUx3+0jespgeX5qFMiMLG0sIHrlEGpFIOG9Ed/2YVO9cADVWFthRJwSY4QLnuVpBL21Rfu1vB16jbaeFu8n43th7Mw9CaKKQWHQspS+EGFjJw42s6xOcTxGTu4rxezwTHLRBJcEH632QKWUr4PuUblK/jHlpr5qmESxCn3cQHXK5gNkOX4DY6BRVRoYOEYYzpKH40X4AYF3FtJxUJHKpN/sK9FV/uHLT14rtyQX3B2y9/7XGwjy9NSxiVFEf4DK4nck16ynhTmYrBNvr+gnR1wag+EEaVIK4=
-spamdiagnosticoutput: 1:99
-spamdiagnosticmetadata: NSPM
-Content-Type: text/plain; charset="utf-8"
-Content-ID: <0F6DCC1D4C0F78499FD6F52209C977C1@namprd13.prod.outlook.com>
-Content-Transfer-Encoding: base64
-MIME-Version: 1.0
-X-OriginatorOrg: hammerspace.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: e245868e-9fb5-468a-5267-08d64f2dc1ec
-X-MS-Exchange-CrossTenant-originalarrivaltime: 20 Nov 2018 21:18:46.3455
- (UTC)
-X-MS-Exchange-CrossTenant-fromentityheader: Hosted
-X-MS-Exchange-CrossTenant-id: 0d4fed5c-3a70-46fe-9430-ece41741f59e
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: SN6PR13MB2415
+        id S1726420AbeKUICu (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 21 Nov 2018 03:02:50 -0500
+Received: from userp2130.oracle.com ([156.151.31.86]:53020 "EHLO
+        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726393AbeKUICu (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Nov 2018 03:02:50 -0500
+Received: from pps.filterd (userp2130.oracle.com [127.0.0.1])
+        by userp2130.oracle.com (8.16.0.22/8.16.0.22) with SMTP id wAKLTAJq135553;
+        Tue, 20 Nov 2018 21:31:36 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=content-type :
+ mime-version : subject : from : in-reply-to : date : cc :
+ content-transfer-encoding : message-id : references : to;
+ s=corp-2018-07-02; bh=6EmMZBEWhV/NRqxEeErDRDjTTNoucmuH9gKdjrURt7E=;
+ b=SNY+64rtffZYVQ+3knHh0vS9SWnk8kiNkW/Yh6Q5jcdFBzUcoi0RVuW6HfRNNcRprSdS
+ fzkEO3rSsn6Cb028e7RGegT9mzBiTSEZK4rM2g4FRORtGxD/iI0T0OT0XxLo6zsRiloP
+ aUcXzoeAltosN3uv7BTOSakENHBahsntCFvazJzMiUZJ8GwhWb5bNZlK9yNlQQ/NH4nX
+ d/w/cNZ9uQfqHWpz6HfO9QviXFv+J9snJo3SDGubxczCjC6Iman5L2ox4qBQyEb1PBOA
+ yg50sBKUzimwqEH2aLG5kHKRnHGJv7LbaS/Q/hiAE+udZey0K0w5IljgGNhQy3wL5vTp bA== 
+Received: from aserv0022.oracle.com (aserv0022.oracle.com [141.146.126.234])
+        by userp2130.oracle.com with ESMTP id 2ntadtxajj-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Tue, 20 Nov 2018 21:31:36 +0000
+Received: from aserv0121.oracle.com (aserv0121.oracle.com [141.146.126.235])
+        by aserv0022.oracle.com (8.14.4/8.14.4) with ESMTP id wAKLVZ4C010129
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Tue, 20 Nov 2018 21:31:35 GMT
+Received: from abhmp0016.oracle.com (abhmp0016.oracle.com [141.146.116.22])
+        by aserv0121.oracle.com (8.14.4/8.13.8) with ESMTP id wAKLVZmQ013768;
+        Tue, 20 Nov 2018 21:31:35 GMT
+Received: from anon-dhcp-171.1015granger.net (/68.61.232.219)
+        by default (Oracle Beehive Gateway v4.0)
+        with ESMTP ; Tue, 20 Nov 2018 13:31:35 -0800
+Content-Type: text/plain;
+        charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 11.5 \(3445.9.1\))
+Subject: Re: [PATCH v1 4/4] xprtrdma: Plant XID in on-the-wire RDMA offset
+ (FRWR)
+From:   Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <94ff7ec712e086bfdd9c217a5f97c293a07151b9.camel@gmail.com>
+Date:   Tue, 20 Nov 2018 16:31:34 -0500
+Cc:     linux-rdma <linux-rdma@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Transfer-Encoding: quoted-printable
+Message-Id: <2EE2C659-4E85-4041-9006-FF3C68508847@oracle.com>
+References: <20181119153707.10832.42881.stgit@manet.1015granger.net>
+ <20181119154607.10832.92558.stgit@manet.1015granger.net>
+ <f1d83adeef9acf690c523df43c2f542b97a0bc33.camel@gmail.com>
+ <08D50748-8C07-4EF1-B2BB-3DA30A3598BF@oracle.com>
+ <94ff7ec712e086bfdd9c217a5f97c293a07151b9.camel@gmail.com>
+To:     Anna Schumaker <schumaker.anna@gmail.com>
+X-Mailer: Apple Mail (2.3445.9.1)
+X-Proofpoint-Virus-Version: vendor=nai engine=5900 definitions=9083 signatures=668683
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 suspectscore=0 malwarescore=0
+ phishscore=0 bulkscore=0 spamscore=0 mlxscore=0 mlxlogscore=999
+ adultscore=0 classifier=spam adjust=0 reason=mlx scancount=1
+ engine=8.0.1-1810050000 definitions=main-1811200188
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-SGkgVGlncmFuLA0KDQpPbiBNb24sIDIwMTgtMTEtMTIgYXQgMTQ6NTkgKzAxMDAsIFRpZ3JhbiBN
-a3J0Y2h5YW4gd3JvdGU6DQo+IHJmYzg0MzUgc2F5czoNCj4gDQo+ICAgRm9yIHRpZ2h0IGNvdXBs
-aW5nLCBmZmRzX3N0YXRlaWQgcHJvdmlkZXMgdGhlIHN0YXRlaWQgdG8gYmUgdXNlZCBieQ0KPiAg
-IHRoZSBjbGllbnQgdG8gYWNjZXNzIHRoZSBmaWxlLg0KPiANCj4gSG93ZXZlciBjdXJyZW50IGlt
-cGxlbWVudGF0aW9uIHJlcGxhY2VzIHBlci1taXJyb3IgcHJvdmlkZWQgc3RhdGVpZA0KPiB3aXRo
-DQo+IGJ5IG9wZW4gb3IgbG9jayBzdGF0ZWlkLg0KPiANCj4gRW5zdXJlIHRoYXQgcGVyLW1pcnJv
-ciBzdGF0ZWlkIGlzIHVzZWQgYnkgZmZfbGF5b3V0X3dyaXRlX3ByZXBhcmVfdjQNCj4gYW5kDQo+
-IG5mczRfZmZfbGF5b3V0X3ByZXBhcmVfZHMuDQo+IA0KPiBTaWduZWQtb2ZmLWJ5OiBUaWdyYW4g
-TWtydGNoeWFuIDx0aWdyYW4ubWtydGNoeWFuQGRlc3kuZGU+DQo+IFNpZ25lZC1vZmYtYnk6IFJp
-Y2sgTWFja2xlbSA8cm1hY2tsZW1AdW9ndWVscGguY2E+DQo+IC0tLQ0KPiAgZnMvbmZzL2ZsZXhm
-aWxlbGF5b3V0L2ZsZXhmaWxlbGF5b3V0LmMgICAgfCAyMSArKysrKysrKysrKysrLS0tLS0tLS0N
-Cj4gIGZzL25mcy9mbGV4ZmlsZWxheW91dC9mbGV4ZmlsZWxheW91dC5oICAgIHwgIDIgKysNCj4g
-IGZzL25mcy9mbGV4ZmlsZWxheW91dC9mbGV4ZmlsZWxheW91dGRldi5jIHwgMTcgKysrKysrKysr
-KysrKysrKysNCj4gIDMgZmlsZXMgY2hhbmdlZCwgMzIgaW5zZXJ0aW9ucygrKSwgOCBkZWxldGlv
-bnMoLSkNCj4gDQo+IGRpZmYgLS1naXQgYS9mcy9uZnMvZmxleGZpbGVsYXlvdXQvZmxleGZpbGVs
-YXlvdXQuYw0KPiBiL2ZzL25mcy9mbGV4ZmlsZWxheW91dC9mbGV4ZmlsZWxheW91dC5jDQo+IGlu
-ZGV4IDg2YmNiYTQwY2E2MS4uNGM3ZjA0MmRiOWM0IDEwMDY0NA0KPiAtLS0gYS9mcy9uZnMvZmxl
-eGZpbGVsYXlvdXQvZmxleGZpbGVsYXlvdXQuYw0KPiArKysgYi9mcy9uZnMvZmxleGZpbGVsYXlv
-dXQvZmxleGZpbGVsYXlvdXQuYw0KPiBAQCAtMTM2MywxMCArMTM2Myw2IEBAIHN0YXRpYyB2b2lk
-IGZmX2xheW91dF9yZWFkX3ByZXBhcmVfdjQoc3RydWN0DQo+IHJwY190YXNrICp0YXNrLCB2b2lk
-ICpkYXRhKQ0KPiAgDQo+ICAJaWYgKGZmX2xheW91dF9yZWFkX3ByZXBhcmVfY29tbW9uKHRhc2ss
-IGhkcikpDQo+ICAJCXJldHVybjsNCj4gLQ0KPiAtCWlmIChuZnM0X3NldF9yd19zdGF0ZWlkKCZo
-ZHItPmFyZ3Muc3RhdGVpZCwgaGRyLT5hcmdzLmNvbnRleHQsDQo+IC0JCQloZHItPmFyZ3MubG9j
-a19jb250ZXh0LCBGTU9ERV9SRUFEKSA9PSAtRUlPKQ0KPiAtCQlycGNfZXhpdCh0YXNrLCAtRUlP
-KTsgLyogbG9zdCBsb2NrLCB0ZXJtaW5hdGUgSS9PICovDQo+ICB9DQo+ICANCj4gIHN0YXRpYyB2
-b2lkIGZmX2xheW91dF9yZWFkX2NhbGxfZG9uZShzdHJ1Y3QgcnBjX3Rhc2sgKnRhc2ssIHZvaWQN
-Cj4gKmRhdGEpDQo+IEBAIC0xNTQ0LDEwICsxNTQwLDYgQEAgc3RhdGljIHZvaWQgZmZfbGF5b3V0
-X3dyaXRlX3ByZXBhcmVfdjQoc3RydWN0DQo+IHJwY190YXNrICp0YXNrLCB2b2lkICpkYXRhKQ0K
-PiAgDQo+ICAJaWYgKGZmX2xheW91dF93cml0ZV9wcmVwYXJlX2NvbW1vbih0YXNrLCBoZHIpKQ0K
-PiAgCQlyZXR1cm47DQo+IC0NCj4gLQlpZiAobmZzNF9zZXRfcndfc3RhdGVpZCgmaGRyLT5hcmdz
-LnN0YXRlaWQsIGhkci0+YXJncy5jb250ZXh0LA0KPiAtCQkJaGRyLT5hcmdzLmxvY2tfY29udGV4
-dCwgRk1PREVfV1JJVEUpID09IC1FSU8pDQo+IC0JCXJwY19leGl0KHRhc2ssIC1FSU8pOyAvKiBs
-b3N0IGxvY2ssIHRlcm1pbmF0ZSBJL08gKi8NCj4gIH0NCj4gIA0KPiAgc3RhdGljIHZvaWQgZmZf
-bGF5b3V0X3dyaXRlX2NhbGxfZG9uZShzdHJ1Y3QgcnBjX3Rhc2sgKnRhc2ssIHZvaWQNCj4gKmRh
-dGEpDQo+IEBAIC0xNzEzLDYgKzE3MDUsNyBAQCBmZl9sYXlvdXRfcmVhZF9wYWdlbGlzdChzdHJ1
-Y3QgbmZzX3BnaW9faGVhZGVyDQo+ICpoZHIpDQo+ICAJdTMyIGlkeCA9IGhkci0+cGdpb19taXJy
-b3JfaWR4Ow0KPiAgCWludCB2ZXJzOw0KPiAgCXN0cnVjdCBuZnNfZmggKmZoOw0KPiArCW5mczRf
-c3RhdGVpZCAqc3RhdGVpZDsNCj4gIA0KPiAgCWRwcmludGsoIi0tPiAlcyBpbm8gJWx1IHBnYmFz
-ZSAldSByZXEgJXp1QCVsbHVcbiIsDQo+ICAJCV9fZnVuY19fLCBoZHItPmlub2RlLT5pX2lubywN
-Cj4gQEAgLTE3NDIsNiArMTczNSwxMiBAQCBmZl9sYXlvdXRfcmVhZF9wYWdlbGlzdChzdHJ1Y3Qg
-bmZzX3BnaW9faGVhZGVyDQo+ICpoZHIpDQo+ICAJZmggPSBuZnM0X2ZmX2xheW91dF9zZWxlY3Rf
-ZHNfZmgobHNlZywgaWR4KTsNCj4gIAlpZiAoZmgpDQo+ICAJCWhkci0+YXJncy5maCA9IGZoOw0K
-PiArDQo+ICsJc3RhdGVpZCA9IG5mczRfZmZfbGF5b3V0X3NlbGVjdF9kc19zdGF0ZWlkKGxzZWcs
-IGlkeCk7DQo+ICsJaWYgKCFzdGF0ZWlkKQ0KPiArCQlnb3RvIG91dF9mYWlsZWQ7DQo+ICsJbmZz
-NF9zdGF0ZWlkX2NvcHkoJmhkci0+YXJncy5zdGF0ZWlkLCBzdGF0ZWlkKTsNCj4gKw0KPiAgCS8q
-DQo+ICAJICogTm90ZSB0aGF0IGlmIHdlIGV2ZXIgZGVjaWRlIHRvIHNwbGl0IGFjcm9zcyBEU2Vz
-LA0KPiAgCSAqIHRoZW4gd2UgbWF5IG5lZWQgdG8gaGFuZGxlIGRlbnNlLWxpa2Ugb2Zmc2V0cy4N
-Cj4gQEAgLTE3NzQsNiArMTc3Myw3IEBAIGZmX2xheW91dF93cml0ZV9wYWdlbGlzdChzdHJ1Y3Qg
-bmZzX3BnaW9faGVhZGVyDQo+ICpoZHIsIGludCBzeW5jKQ0KPiAgCWxvZmZfdCBvZmZzZXQgPSBo
-ZHItPmFyZ3Mub2Zmc2V0Ow0KPiAgCWludCB2ZXJzOw0KPiAgCXN0cnVjdCBuZnNfZmggKmZoOw0K
-PiArCW5mczRfc3RhdGVpZCAqc3RhdGVpZDsNCj4gIAlpbnQgaWR4ID0gaGRyLT5wZ2lvX21pcnJv
-cl9pZHg7DQo+ICANCj4gIAlkcyA9IG5mczRfZmZfbGF5b3V0X3ByZXBhcmVfZHMobHNlZywgaWR4
-LCB0cnVlKTsNCj4gQEAgLTE4MDQsNiArMTgwNCwxMSBAQCBmZl9sYXlvdXRfd3JpdGVfcGFnZWxp
-c3Qoc3RydWN0DQo+IG5mc19wZ2lvX2hlYWRlciAqaGRyLCBpbnQgc3luYykNCj4gIAlpZiAoZmgp
-DQo+ICAJCWhkci0+YXJncy5maCA9IGZoOw0KPiAgDQo+ICsJc3RhdGVpZCA9IG5mczRfZmZfbGF5
-b3V0X3NlbGVjdF9kc19zdGF0ZWlkKGxzZWcsIGlkeCk7DQo+ICsJaWYgKCFzdGF0ZWlkKQ0KPiAr
-CQlnb3RvIG91dF9mYWlsZWQ7DQo+ICsJbmZzNF9zdGF0ZWlkX2NvcHkoJmhkci0+YXJncy5zdGF0
-ZWlkLCBzdGF0ZWlkKTsNCg0KU2luY2UgdGhlIGFib3ZlIDMgbGluZXMgYXJlIHJlcGVhdGVkIGZv
-ciBib3RoIGZ1bmN0aW9ucywgYW5kIGFsc28gZm9yY2UNCnRoZSBzdGFjayBhbGxvY2F0aW9uIG9m
-IGEgdGVtcG9yYXJ5IHBvaW50ZXIsIHdoeSBub3QganVzdCBoYXZlIHRoZQ0KbmZzNF9mZl9sYXlv
-dXRfc2VsZWN0X2RzX3N0YXRlaWQoKSBjb3B5IHRoZSBzdGF0ZWlkPw0KDQo+ICsNCj4gIAkvKg0K
-PiAgCSAqIE5vdGUgdGhhdCBpZiB3ZSBldmVyIGRlY2lkZSB0byBzcGxpdCBhY3Jvc3MgRFNlcywN
-Cj4gIAkgKiB0aGVuIHdlIG1heSBuZWVkIHRvIGhhbmRsZSBkZW5zZS1saWtlIG9mZnNldHMuDQo+
-IGRpZmYgLS1naXQgYS9mcy9uZnMvZmxleGZpbGVsYXlvdXQvZmxleGZpbGVsYXlvdXQuaA0KPiBi
-L2ZzL25mcy9mbGV4ZmlsZWxheW91dC9mbGV4ZmlsZWxheW91dC5oDQo+IGluZGV4IDQxMTc5ODM0
-NmU0OC4uZmRmYmNiNDcxOTk5IDEwMDY0NA0KPiAtLS0gYS9mcy9uZnMvZmxleGZpbGVsYXlvdXQv
-ZmxleGZpbGVsYXlvdXQuaA0KPiArKysgYi9mcy9uZnMvZmxleGZpbGVsYXlvdXQvZmxleGZpbGVs
-YXlvdXQuaA0KPiBAQCAtMjE1LDYgKzIxNSw4IEBAIHVuc2lnbmVkIGludCBmZl9sYXlvdXRfZmV0
-Y2hfZHNfaW9lcnIoc3RydWN0DQo+IHBuZnNfbGF5b3V0X2hkciAqbG8sDQo+ICAJCXVuc2lnbmVk
-IGludCBtYXhudW0pOw0KPiAgc3RydWN0IG5mc19maCAqDQo+ICBuZnM0X2ZmX2xheW91dF9zZWxl
-Y3RfZHNfZmgoc3RydWN0IHBuZnNfbGF5b3V0X3NlZ21lbnQgKmxzZWcsIHUzMg0KPiBtaXJyb3Jf
-aWR4KTsNCj4gK25mczRfc3RhdGVpZCAqDQo+ICtuZnM0X2ZmX2xheW91dF9zZWxlY3RfZHNfc3Rh
-dGVpZChzdHJ1Y3QgcG5mc19sYXlvdXRfc2VnbWVudCAqbHNlZywNCj4gdTMyIG1pcnJvcl9pZHgp
-Ow0KPiAgDQo+ICBzdHJ1Y3QgbmZzNF9wbmZzX2RzICoNCj4gIG5mczRfZmZfbGF5b3V0X3ByZXBh
-cmVfZHMoc3RydWN0IHBuZnNfbGF5b3V0X3NlZ21lbnQgKmxzZWcsIHUzMg0KPiBkc19pZHgsDQo+
-IGRpZmYgLS1naXQgYS9mcy9uZnMvZmxleGZpbGVsYXlvdXQvZmxleGZpbGVsYXlvdXRkZXYuYw0K
-PiBiL2ZzL25mcy9mbGV4ZmlsZWxheW91dC9mbGV4ZmlsZWxheW91dGRldi5jDQo+IGluZGV4IDc0
-ZDhkNTM1MjQzOC4uOTE3ODdjZjY4MDU3IDEwMDY0NA0KPiAtLS0gYS9mcy9uZnMvZmxleGZpbGVs
-YXlvdXQvZmxleGZpbGVsYXlvdXRkZXYuYw0KPiArKysgYi9mcy9uZnMvZmxleGZpbGVsYXlvdXQv
-ZmxleGZpbGVsYXlvdXRkZXYuYw0KPiBAQCAtMzcwLDYgKzM3MCwyMyBAQCBuZnM0X2ZmX2xheW91
-dF9zZWxlY3RfZHNfZmgoc3RydWN0DQo+IHBuZnNfbGF5b3V0X3NlZ21lbnQgKmxzZWcsIHUzMiBt
-aXJyb3JfaWR4KQ0KPiAgCXJldHVybiBmaDsNCj4gIH0NCj4gIA0KPiArbmZzNF9zdGF0ZWlkICoN
-Cj4gK25mczRfZmZfbGF5b3V0X3NlbGVjdF9kc19zdGF0ZWlkKHN0cnVjdCBwbmZzX2xheW91dF9z
-ZWdtZW50ICpsc2VnLA0KPiB1MzIgbWlycm9yX2lkeCkNCj4gK3sNCj4gKwlzdHJ1Y3QgbmZzNF9m
-Zl9sYXlvdXRfbWlycm9yICptaXJyb3IgPSBGRl9MQVlPVVRfQ09NUChsc2VnLA0KPiBtaXJyb3Jf
-aWR4KTsNCj4gKwluZnM0X3N0YXRlaWQgKnN0YXRlaWQgPSBOVUxMOw0KPiArDQo+ICsJaWYgKCFm
-Zl9sYXlvdXRfbWlycm9yX3ZhbGlkKGxzZWcsIG1pcnJvciwgZmFsc2UpKSB7DQo+ICsJCXByX2Vy
-cl9yYXRlbGltaXRlZCgiTkZTOiAlczogTm8gZGF0YSBzZXJ2ZXIgZm9yIG1pcnJvcg0KPiBvZmZz
-ZXQgaW5kZXggJWRcbiIsDQo+ICsJCQlfX2Z1bmNfXywgbWlycm9yX2lkeCk7DQo+ICsJCWdvdG8g
-b3V0Ow0KPiArCX0NCj4gKw0KPiArCXN0YXRlaWQgPSAmbWlycm9yLT5zdGF0ZWlkOw0KPiArb3V0
-Og0KPiArCXJldHVybiBzdGF0ZWlkOw0KPiArfQ0KPiArDQo+ICAvKioNCj4gICAqIG5mczRfZmZf
-bGF5b3V0X3ByZXBhcmVfZHMgLSBwcmVwYXJlIGEgRFMgY29ubmVjdGlvbiBmb3IgYW4gUlBDDQo+
-IGNhbGwNCj4gICAqIEBsc2VnOiB0aGUgbGF5b3V0IHNlZ21lbnQgd2UncmUgb3BlcmF0aW5nIG9u
-DQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBIYW1t
-ZXJzcGFjZQ0KdHJvbmQubXlrbGVidXN0QGhhbW1lcnNwYWNlLmNvbQ0KDQoNCg==
+
+
+> On Nov 20, 2018, at 4:01 PM, Anna Schumaker <schumaker.anna@gmail.com> =
+wrote:
+>=20
+> On Tue, 2018-11-20 at 13:07 -0500, Chuck Lever wrote:
+>>> On Nov 20, 2018, at 1:02 PM, Anna Schumaker =
+<schumaker.anna@gmail.com>
+>>> wrote:
+>>>=20
+>>> Hi Chuck,
+>>>=20
+>>> On Mon, 2018-11-19 at 10:46 -0500, Chuck Lever wrote:
+>>>> Place the associated RPC transaction's XID in the upper 32 bits of
+>>>> each RDMA segment's rdma_offset field. These bits are currently
+>>>> always zero.
+>>>>=20
+>>>> There are two reasons to do this:
+>>>>=20
+>>>> - The R_key only has 8 bits that are different from registration to
+>>>> registration. The XID adds more uniqueness to each RDMA segment to
+>>>> reduce the likelihood of a software bug on the server reading from
+>>>> or writing into memory it's not supposed to.
+>>>>=20
+>>>> - On-the-wire RDMA Read and Write operations do not otherwise carry
+>>>> any identifier that matches them up to an RPC. The XID in the
+>>>> upper 32 bits will act as an eye-catcher in network captures.
+>>>>=20
+>>>> Suggested-by: Tom Talpey <ttalpey@microsoft.com>
+>>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>>>> ---
+>>>> net/sunrpc/xprtrdma/frwr_ops.c  |    3 ++-
+>>>> net/sunrpc/xprtrdma/rpc_rdma.c  |    6 +++---
+>>>> net/sunrpc/xprtrdma/xprt_rdma.h |    2 +-
+>>>> 3 files changed, 6 insertions(+), 5 deletions(-)
+>>>>=20
+>>>> diff --git a/net/sunrpc/xprtrdma/frwr_ops.c
+>>>> b/net/sunrpc/xprtrdma/frwr_ops.c
+>>>> index 49b314d..3b260d2 100644
+>>>> --- a/net/sunrpc/xprtrdma/frwr_ops.c
+>>>> +++ b/net/sunrpc/xprtrdma/frwr_ops.c
+>>>> @@ -344,7 +344,7 @@
+>>>> */
+>>>> static struct rpcrdma_mr_seg *
+>>>> frwr_op_map(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg =
+*seg,
+>>>> -	    int nsegs, bool writing, struct rpcrdma_mr **out)
+>>>> +	    int nsegs, bool writing, u32 xid, struct rpcrdma_mr **out)
+>>>> {
+>>>> 	struct rpcrdma_ia *ia =3D &r_xprt->rx_ia;
+>>>> 	bool holes_ok =3D ia->ri_mrtype =3D=3D IB_MR_TYPE_SG_GAPS;
+>>>> @@ -398,6 +398,7 @@
+>>>> 	if (unlikely(n !=3D mr->mr_nents))
+>>>> 		goto out_mapmr_err;
+>>>>=20
+>>>> +	ibmr->iova |=3D ((u64)cpu_to_be32(xid)) << 32;
+>>>=20
+>>> My mount command hangs once we make this change (I got bored and =
+killed it
+>>> after
+>>> about 5 minutes).  This is with NFS over soft-RoCE in a kvm virtual =
+machine,
+>>> and
+>>> I see the behavior with all NFS versions.
+>>>=20
+>>> I hope this helps!
+>>=20
+>> OK. Can you capture ftrace output to show us where the hang occurs?
+>> I use this on the NFS client:
+>>=20
+>> # trace-cmd record -e sunrpc -e rpcrdma
+>> ^C
+>> # trace-cmd report | less      (or > /tmp/trace.log)
+>=20
+> The trace is attached!  I started the mount and walked away for a =
+while.  When I
+> came back, it reported "mount.nfs: Connection timed out".
+
+The first operation is EXCHANGE_ID, and the client expects a
+large Reply so it registers a Reply chunk.
+
+       mount.nfs-1325  [001]   450.674910: xprtrdma_reply_chunk: =
+task:16530@10 mr=3D0xffff93643876cb00 4380@0xffffd37d38bec100:0x00001a61 =
+(last)
+       mount.nfs-1325  [001]   450.674912: xprtrdma_marshal:     =
+task:16530@10 xid=3D0x09c9d05d: hdr=3D48 xdr=3D232/0/0 inline/reply =
+chunk
+       mount.nfs-1325  [001]   450.674914: xprtrdma_post_send:   =
+req=3D0xffff936438a80000, 2 SGEs, status=3D0
+       mount.nfs-1325  [001]   450.674928: xprt_transmit:        =
+peer=3D[192.168.100.215]:20049 xid=3D0x09c9d05d status=3D0
+       mount.nfs-1325  [001]   450.674929: rpc_task_run_action:  =
+task:16530@10 flags=3D5a80 state=3D0015 status=3D0 =
+action=3Dcall_transmit_status
+       mount.nfs-1325  [001]   450.674930: rpc_task_sleep:       =
+task:16530@10 flags=3D5a80 state=3D0015 status=3D0 timeout=3D18000 =
+queue=3Dxprt_pending
+    kworker/1:1H-177   [001]   450.676094: xprtrdma_wc_receive:  =
+cqe=3D0xffff936438d66600 0 bytes: WR_FLUSH_ERR (5/0x0)
+    kworker/1:1H-177   [001]   450.676095: xprtrdma_wc_receive:  =
+cqe=3D0xffff936438d66400 0 bytes: WR_FLUSH_ERR (5/0x0)
+
+The XID is 09c9d0f3, but I don't see it in the offset, which
+is ffffd37d38bec100. Are you sure the patch is applied?
+
+
+> I hope this helps!
+> Anna
+>=20
+>>=20
+>> Thanks!
+>>=20
+>>=20
+>>> Anna
+>>>=20
+>>>> 	key =3D (u8)(ibmr->rkey & 0x000000FF);
+>>>> 	ib_update_fast_reg_key(ibmr, ++key);
+>>>>=20
+>>>> diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c
+>>>> b/net/sunrpc/xprtrdma/rpc_rdma.c
+>>>> index 9f53e02..89a2db2 100644
+>>>> --- a/net/sunrpc/xprtrdma/rpc_rdma.c
+>>>> +++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+>>>> @@ -357,7 +357,7 @@ static bool rpcrdma_results_inline(struct =
+rpcrdma_xprt
+>>>> *r_xprt,
+>>>>=20
+>>>> 	do {
+>>>> 		seg =3D r_xprt->rx_ia.ri_ops->ro_map(r_xprt, seg, nsegs,
+>>>> -						   false, &mr);
+>>>> +						   false, rqst->rq_xid, =
+&mr);
+>>>> 		if (IS_ERR(seg))
+>>>> 			return PTR_ERR(seg);
+>>>> 		rpcrdma_mr_push(mr, &req->rl_registered);
+>>>> @@ -415,7 +415,7 @@ static bool rpcrdma_results_inline(struct =
+rpcrdma_xprt
+>>>> *r_xprt,
+>>>> 	nchunks =3D 0;
+>>>> 	do {
+>>>> 		seg =3D r_xprt->rx_ia.ri_ops->ro_map(r_xprt, seg, nsegs,
+>>>> -						   true, &mr);
+>>>> +						   true, rqst->rq_xid, =
+&mr);
+>>>> 		if (IS_ERR(seg))
+>>>> 			return PTR_ERR(seg);
+>>>> 		rpcrdma_mr_push(mr, &req->rl_registered);
+>>>> @@ -473,7 +473,7 @@ static bool rpcrdma_results_inline(struct =
+rpcrdma_xprt
+>>>> *r_xprt,
+>>>> 	nchunks =3D 0;
+>>>> 	do {
+>>>> 		seg =3D r_xprt->rx_ia.ri_ops->ro_map(r_xprt, seg, nsegs,
+>>>> -						   true, &mr);
+>>>> +						   true, rqst->rq_xid, =
+&mr);
+>>>> 		if (IS_ERR(seg))
+>>>> 			return PTR_ERR(seg);
+>>>> 		rpcrdma_mr_push(mr, &req->rl_registered);
+>>>> diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h
+>>>> b/net/sunrpc/xprtrdma/xprt_rdma.h
+>>>> index a13ccb6..2ae1ee2 100644
+>>>> --- a/net/sunrpc/xprtrdma/xprt_rdma.h
+>>>> +++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+>>>> @@ -472,7 +472,7 @@ struct rpcrdma_memreg_ops {
+>>>> 	struct rpcrdma_mr_seg *
+>>>> 			(*ro_map)(struct rpcrdma_xprt *,
+>>>> 				  struct rpcrdma_mr_seg *, int, bool,
+>>>> -				  struct rpcrdma_mr **);
+>>>> +				  u32, struct rpcrdma_mr **);
+>>>> 	int		(*ro_send)(struct rpcrdma_ia *ia,
+>>>> 				   struct rpcrdma_req *req);
+>>>> 	void		(*ro_reminv)(struct rpcrdma_rep *rep,
+>>=20
+>> --
+>> Chuck Lever
+>>=20
+>>=20
+>>=20
+> <trace.log>
+
+--
+Chuck Lever
+
+
+
