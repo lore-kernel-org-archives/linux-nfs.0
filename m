@@ -1,267 +1,179 @@
-Return-Path: <SRS0=9Ter=N7=vger.kernel.org=linux-nfs-owner@kernel.org>
+Return-Path: <SRS0=rzd8=OA=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.6 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,UNPARSEABLE_RELAY autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-8.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,HK_RANDOM_FROM,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 803AFC5ACBA
-	for <linux-nfs@archiver.kernel.org>; Tue, 20 Nov 2018 21:31:40 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E26F1C43441
+	for <linux-nfs@archiver.kernel.org>; Wed, 21 Nov 2018 11:26:10 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 41E0F20C01
-	for <linux-nfs@archiver.kernel.org>; Tue, 20 Nov 2018 21:31:40 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 48D5B2146F
+	for <linux-nfs@archiver.kernel.org>; Wed, 21 Nov 2018 11:26:10 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="SNY+64rt"
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 41E0F20C01
-Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=oracle.com
+	dkim=pass (1024-bit key) header.d=desy.de header.i=@desy.de header.b="vVmhwnXF"
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 48D5B2146F
+Authentication-Results: mail.kernel.org; dmarc=none (p=none dis=none) header.from=desy.de
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726420AbeKUICu (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 21 Nov 2018 03:02:50 -0500
-Received: from userp2130.oracle.com ([156.151.31.86]:53020 "EHLO
-        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726393AbeKUICu (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Nov 2018 03:02:50 -0500
-Received: from pps.filterd (userp2130.oracle.com [127.0.0.1])
-        by userp2130.oracle.com (8.16.0.22/8.16.0.22) with SMTP id wAKLTAJq135553;
-        Tue, 20 Nov 2018 21:31:36 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=content-type :
- mime-version : subject : from : in-reply-to : date : cc :
- content-transfer-encoding : message-id : references : to;
- s=corp-2018-07-02; bh=6EmMZBEWhV/NRqxEeErDRDjTTNoucmuH9gKdjrURt7E=;
- b=SNY+64rtffZYVQ+3knHh0vS9SWnk8kiNkW/Yh6Q5jcdFBzUcoi0RVuW6HfRNNcRprSdS
- fzkEO3rSsn6Cb028e7RGegT9mzBiTSEZK4rM2g4FRORtGxD/iI0T0OT0XxLo6zsRiloP
- aUcXzoeAltosN3uv7BTOSakENHBahsntCFvazJzMiUZJ8GwhWb5bNZlK9yNlQQ/NH4nX
- d/w/cNZ9uQfqHWpz6HfO9QviXFv+J9snJo3SDGubxczCjC6Iman5L2ox4qBQyEb1PBOA
- yg50sBKUzimwqEH2aLG5kHKRnHGJv7LbaS/Q/hiAE+udZey0K0w5IljgGNhQy3wL5vTp bA== 
-Received: from aserv0022.oracle.com (aserv0022.oracle.com [141.146.126.234])
-        by userp2130.oracle.com with ESMTP id 2ntadtxajj-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Tue, 20 Nov 2018 21:31:36 +0000
-Received: from aserv0121.oracle.com (aserv0121.oracle.com [141.146.126.235])
-        by aserv0022.oracle.com (8.14.4/8.14.4) with ESMTP id wAKLVZ4C010129
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Tue, 20 Nov 2018 21:31:35 GMT
-Received: from abhmp0016.oracle.com (abhmp0016.oracle.com [141.146.116.22])
-        by aserv0121.oracle.com (8.14.4/8.13.8) with ESMTP id wAKLVZmQ013768;
-        Tue, 20 Nov 2018 21:31:35 GMT
-Received: from anon-dhcp-171.1015granger.net (/68.61.232.219)
-        by default (Oracle Beehive Gateway v4.0)
-        with ESMTP ; Tue, 20 Nov 2018 13:31:35 -0800
-Content-Type: text/plain;
-        charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 11.5 \(3445.9.1\))
-Subject: Re: [PATCH v1 4/4] xprtrdma: Plant XID in on-the-wire RDMA offset
- (FRWR)
-From:   Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <94ff7ec712e086bfdd9c217a5f97c293a07151b9.camel@gmail.com>
-Date:   Tue, 20 Nov 2018 16:31:34 -0500
-Cc:     linux-rdma <linux-rdma@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Transfer-Encoding: quoted-printable
-Message-Id: <2EE2C659-4E85-4041-9006-FF3C68508847@oracle.com>
-References: <20181119153707.10832.42881.stgit@manet.1015granger.net>
- <20181119154607.10832.92558.stgit@manet.1015granger.net>
- <f1d83adeef9acf690c523df43c2f542b97a0bc33.camel@gmail.com>
- <08D50748-8C07-4EF1-B2BB-3DA30A3598BF@oracle.com>
- <94ff7ec712e086bfdd9c217a5f97c293a07151b9.camel@gmail.com>
-To:     Anna Schumaker <schumaker.anna@gmail.com>
-X-Mailer: Apple Mail (2.3445.9.1)
-X-Proofpoint-Virus-Version: vendor=nai engine=5900 definitions=9083 signatures=668683
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 suspectscore=0 malwarescore=0
- phishscore=0 bulkscore=0 spamscore=0 mlxscore=0 mlxlogscore=999
- adultscore=0 classifier=spam adjust=0 reason=mlx scancount=1
- engine=8.0.1-1810050000 definitions=main-1811200188
+        id S1728587AbeKUWAK (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 21 Nov 2018 17:00:10 -0500
+Received: from smtp-o-3.desy.de ([131.169.56.156]:50972 "EHLO smtp-o-3.desy.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1727874AbeKUWAK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 21 Nov 2018 17:00:10 -0500
+Received: from smtp-buf-3.desy.de (smtp-buf-3.desy.de [131.169.56.166])
+        by smtp-o-3.desy.de (DESY-O-3) with ESMTP id A009D280B4A
+        for <linux-nfs@vger.kernel.org>; Wed, 21 Nov 2018 12:26:05 +0100 (CET)
+DKIM-Filter: OpenDKIM Filter v2.11.0 smtp-o-3.desy.de A009D280B4A
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=desy.de; s=default;
+        t=1542799565; bh=+oeFM/pHg/Sfu1jcLXvO1dWoSgTu8v8A0LfuZCzuEdY=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=vVmhwnXFqhRbk9kU1ISTUYaYsSQ2fI3xmcF1hepbtwvL3GGjWuv8I0VrOR0aR4PqJ
+         xa3ambV6UPdQqexBkOQfzD5ql2M/KaSm0Q85qGfpVTgItzKM5d6mKt5CxtEFGk/TLt
+         Sn/4GcbuclIVlXXqj25NRiwC79aebA3e+JsoT8Cw=
+Received: from smtp-m-3.desy.de (smtp-m-3.desy.de [IPv6:2001:638:700:1038::1:83])
+        by smtp-buf-3.desy.de (Postfix) with ESMTP id 9676BA0056;
+        Wed, 21 Nov 2018 12:26:05 +0100 (CET)
+X-Virus-Scanned: amavisd-new at desy.de
+Received: from anahit.desy.de (anahit.desy.de [131.169.185.68])
+        by smtp-intra-3.desy.de (DESY-INTRA-3) with ESMTP id 57B501029;
+        Wed, 21 Nov 2018 12:26:05 +0100 (MET)
+From:   Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+To:     trondmy@hammerspace.com, Anna.Schumaker@Netapp.com
+Cc:     linux-nfs@vger.kernel.org,
+        Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>,
+        Rick Macklem <rmacklem@uoguelph.ca>
+Subject: [PATCH v2] flexfiles: use per-mirror specified stateid for IO
+Date:   Wed, 21 Nov 2018 12:25:41 +0100
+Message-Id: <20181121112541.14224-1-tigran.mkrtchyan@desy.de>
+X-Mailer: git-send-email 2.17.2
+In-Reply-To: <20dd91f5c12ce9312e5c955c3a94008c8315d478.camel@hammerspace.com>
+References: <20dd91f5c12ce9312e5c955c3a94008c8315d478.camel@hammerspace.com>
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
+rfc8435 says:
 
+  For tight coupling, ffds_stateid provides the stateid to be used by
+  the client to access the file.
 
-> On Nov 20, 2018, at 4:01 PM, Anna Schumaker <schumaker.anna@gmail.com> =
-wrote:
->=20
-> On Tue, 2018-11-20 at 13:07 -0500, Chuck Lever wrote:
->>> On Nov 20, 2018, at 1:02 PM, Anna Schumaker =
-<schumaker.anna@gmail.com>
->>> wrote:
->>>=20
->>> Hi Chuck,
->>>=20
->>> On Mon, 2018-11-19 at 10:46 -0500, Chuck Lever wrote:
->>>> Place the associated RPC transaction's XID in the upper 32 bits of
->>>> each RDMA segment's rdma_offset field. These bits are currently
->>>> always zero.
->>>>=20
->>>> There are two reasons to do this:
->>>>=20
->>>> - The R_key only has 8 bits that are different from registration to
->>>> registration. The XID adds more uniqueness to each RDMA segment to
->>>> reduce the likelihood of a software bug on the server reading from
->>>> or writing into memory it's not supposed to.
->>>>=20
->>>> - On-the-wire RDMA Read and Write operations do not otherwise carry
->>>> any identifier that matches them up to an RPC. The XID in the
->>>> upper 32 bits will act as an eye-catcher in network captures.
->>>>=20
->>>> Suggested-by: Tom Talpey <ttalpey@microsoft.com>
->>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->>>> ---
->>>> net/sunrpc/xprtrdma/frwr_ops.c  |    3 ++-
->>>> net/sunrpc/xprtrdma/rpc_rdma.c  |    6 +++---
->>>> net/sunrpc/xprtrdma/xprt_rdma.h |    2 +-
->>>> 3 files changed, 6 insertions(+), 5 deletions(-)
->>>>=20
->>>> diff --git a/net/sunrpc/xprtrdma/frwr_ops.c
->>>> b/net/sunrpc/xprtrdma/frwr_ops.c
->>>> index 49b314d..3b260d2 100644
->>>> --- a/net/sunrpc/xprtrdma/frwr_ops.c
->>>> +++ b/net/sunrpc/xprtrdma/frwr_ops.c
->>>> @@ -344,7 +344,7 @@
->>>> */
->>>> static struct rpcrdma_mr_seg *
->>>> frwr_op_map(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg =
-*seg,
->>>> -	    int nsegs, bool writing, struct rpcrdma_mr **out)
->>>> +	    int nsegs, bool writing, u32 xid, struct rpcrdma_mr **out)
->>>> {
->>>> 	struct rpcrdma_ia *ia =3D &r_xprt->rx_ia;
->>>> 	bool holes_ok =3D ia->ri_mrtype =3D=3D IB_MR_TYPE_SG_GAPS;
->>>> @@ -398,6 +398,7 @@
->>>> 	if (unlikely(n !=3D mr->mr_nents))
->>>> 		goto out_mapmr_err;
->>>>=20
->>>> +	ibmr->iova |=3D ((u64)cpu_to_be32(xid)) << 32;
->>>=20
->>> My mount command hangs once we make this change (I got bored and =
-killed it
->>> after
->>> about 5 minutes).  This is with NFS over soft-RoCE in a kvm virtual =
-machine,
->>> and
->>> I see the behavior with all NFS versions.
->>>=20
->>> I hope this helps!
->>=20
->> OK. Can you capture ftrace output to show us where the hang occurs?
->> I use this on the NFS client:
->>=20
->> # trace-cmd record -e sunrpc -e rpcrdma
->> ^C
->> # trace-cmd report | less      (or > /tmp/trace.log)
->=20
-> The trace is attached!  I started the mount and walked away for a =
-while.  When I
-> came back, it reported "mount.nfs: Connection timed out".
+However current implementation replaces per-mirror provided stateid with
+by open or lock stateid.
 
-The first operation is EXCHANGE_ID, and the client expects a
-large Reply so it registers a Reply chunk.
+Ensure that per-mirror stateid is used by ff_layout_write_prepare_v4 and
+nfs4_ff_layout_prepare_ds.
 
-       mount.nfs-1325  [001]   450.674910: xprtrdma_reply_chunk: =
-task:16530@10 mr=3D0xffff93643876cb00 4380@0xffffd37d38bec100:0x00001a61 =
-(last)
-       mount.nfs-1325  [001]   450.674912: xprtrdma_marshal:     =
-task:16530@10 xid=3D0x09c9d05d: hdr=3D48 xdr=3D232/0/0 inline/reply =
-chunk
-       mount.nfs-1325  [001]   450.674914: xprtrdma_post_send:   =
-req=3D0xffff936438a80000, 2 SGEs, status=3D0
-       mount.nfs-1325  [001]   450.674928: xprt_transmit:        =
-peer=3D[192.168.100.215]:20049 xid=3D0x09c9d05d status=3D0
-       mount.nfs-1325  [001]   450.674929: rpc_task_run_action:  =
-task:16530@10 flags=3D5a80 state=3D0015 status=3D0 =
-action=3Dcall_transmit_status
-       mount.nfs-1325  [001]   450.674930: rpc_task_sleep:       =
-task:16530@10 flags=3D5a80 state=3D0015 status=3D0 timeout=3D18000 =
-queue=3Dxprt_pending
-    kworker/1:1H-177   [001]   450.676094: xprtrdma_wc_receive:  =
-cqe=3D0xffff936438d66600 0 bytes: WR_FLUSH_ERR (5/0x0)
-    kworker/1:1H-177   [001]   450.676095: xprtrdma_wc_receive:  =
-cqe=3D0xffff936438d66400 0 bytes: WR_FLUSH_ERR (5/0x0)
+Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+Signed-off-by: Rick Macklem <rmacklem@uoguelph.ca>
+---
+ fs/nfs/flexfilelayout/flexfilelayout.c    | 21 +++++++++------------
+ fs/nfs/flexfilelayout/flexfilelayout.h    |  4 ++++
+ fs/nfs/flexfilelayout/flexfilelayoutdev.c | 19 +++++++++++++++++++
+ 3 files changed, 32 insertions(+), 12 deletions(-)
 
-The XID is 09c9d0f3, but I don't see it in the offset, which
-is ffffd37d38bec100. Are you sure the patch is applied?
-
-
-> I hope this helps!
-> Anna
->=20
->>=20
->> Thanks!
->>=20
->>=20
->>> Anna
->>>=20
->>>> 	key =3D (u8)(ibmr->rkey & 0x000000FF);
->>>> 	ib_update_fast_reg_key(ibmr, ++key);
->>>>=20
->>>> diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c
->>>> b/net/sunrpc/xprtrdma/rpc_rdma.c
->>>> index 9f53e02..89a2db2 100644
->>>> --- a/net/sunrpc/xprtrdma/rpc_rdma.c
->>>> +++ b/net/sunrpc/xprtrdma/rpc_rdma.c
->>>> @@ -357,7 +357,7 @@ static bool rpcrdma_results_inline(struct =
-rpcrdma_xprt
->>>> *r_xprt,
->>>>=20
->>>> 	do {
->>>> 		seg =3D r_xprt->rx_ia.ri_ops->ro_map(r_xprt, seg, nsegs,
->>>> -						   false, &mr);
->>>> +						   false, rqst->rq_xid, =
-&mr);
->>>> 		if (IS_ERR(seg))
->>>> 			return PTR_ERR(seg);
->>>> 		rpcrdma_mr_push(mr, &req->rl_registered);
->>>> @@ -415,7 +415,7 @@ static bool rpcrdma_results_inline(struct =
-rpcrdma_xprt
->>>> *r_xprt,
->>>> 	nchunks =3D 0;
->>>> 	do {
->>>> 		seg =3D r_xprt->rx_ia.ri_ops->ro_map(r_xprt, seg, nsegs,
->>>> -						   true, &mr);
->>>> +						   true, rqst->rq_xid, =
-&mr);
->>>> 		if (IS_ERR(seg))
->>>> 			return PTR_ERR(seg);
->>>> 		rpcrdma_mr_push(mr, &req->rl_registered);
->>>> @@ -473,7 +473,7 @@ static bool rpcrdma_results_inline(struct =
-rpcrdma_xprt
->>>> *r_xprt,
->>>> 	nchunks =3D 0;
->>>> 	do {
->>>> 		seg =3D r_xprt->rx_ia.ri_ops->ro_map(r_xprt, seg, nsegs,
->>>> -						   true, &mr);
->>>> +						   true, rqst->rq_xid, =
-&mr);
->>>> 		if (IS_ERR(seg))
->>>> 			return PTR_ERR(seg);
->>>> 		rpcrdma_mr_push(mr, &req->rl_registered);
->>>> diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h
->>>> b/net/sunrpc/xprtrdma/xprt_rdma.h
->>>> index a13ccb6..2ae1ee2 100644
->>>> --- a/net/sunrpc/xprtrdma/xprt_rdma.h
->>>> +++ b/net/sunrpc/xprtrdma/xprt_rdma.h
->>>> @@ -472,7 +472,7 @@ struct rpcrdma_memreg_ops {
->>>> 	struct rpcrdma_mr_seg *
->>>> 			(*ro_map)(struct rpcrdma_xprt *,
->>>> 				  struct rpcrdma_mr_seg *, int, bool,
->>>> -				  struct rpcrdma_mr **);
->>>> +				  u32, struct rpcrdma_mr **);
->>>> 	int		(*ro_send)(struct rpcrdma_ia *ia,
->>>> 				   struct rpcrdma_req *req);
->>>> 	void		(*ro_reminv)(struct rpcrdma_rep *rep,
->>=20
->> --
->> Chuck Lever
->>=20
->>=20
->>=20
-> <trace.log>
-
---
-Chuck Lever
-
-
+diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
+index 86bcba40ca61..74b36ed883ca 100644
+--- a/fs/nfs/flexfilelayout/flexfilelayout.c
++++ b/fs/nfs/flexfilelayout/flexfilelayout.c
+@@ -1361,12 +1361,7 @@ static void ff_layout_read_prepare_v4(struct rpc_task *task, void *data)
+ 				task))
+ 		return;
+ 
+-	if (ff_layout_read_prepare_common(task, hdr))
+-		return;
+-
+-	if (nfs4_set_rw_stateid(&hdr->args.stateid, hdr->args.context,
+-			hdr->args.lock_context, FMODE_READ) == -EIO)
+-		rpc_exit(task, -EIO); /* lost lock, terminate I/O */
++	ff_layout_read_prepare_common(task, hdr);
+ }
+ 
+ static void ff_layout_read_call_done(struct rpc_task *task, void *data)
+@@ -1542,12 +1537,7 @@ static void ff_layout_write_prepare_v4(struct rpc_task *task, void *data)
+ 				task))
+ 		return;
+ 
+-	if (ff_layout_write_prepare_common(task, hdr))
+-		return;
+-
+-	if (nfs4_set_rw_stateid(&hdr->args.stateid, hdr->args.context,
+-			hdr->args.lock_context, FMODE_WRITE) == -EIO)
+-		rpc_exit(task, -EIO); /* lost lock, terminate I/O */
++	ff_layout_write_prepare_common(task, hdr);
+ }
+ 
+ static void ff_layout_write_call_done(struct rpc_task *task, void *data)
+@@ -1742,6 +1732,10 @@ ff_layout_read_pagelist(struct nfs_pgio_header *hdr)
+ 	fh = nfs4_ff_layout_select_ds_fh(lseg, idx);
+ 	if (fh)
+ 		hdr->args.fh = fh;
++
++	if (!nfs4_ff_layout_select_ds_stateid(lseg, idx, &hdr->args.stateid))
++		goto out_failed;
++
+ 	/*
+ 	 * Note that if we ever decide to split across DSes,
+ 	 * then we may need to handle dense-like offsets.
+@@ -1804,6 +1798,9 @@ ff_layout_write_pagelist(struct nfs_pgio_header *hdr, int sync)
+ 	if (fh)
+ 		hdr->args.fh = fh;
+ 
++	if (!nfs4_ff_layout_select_ds_stateid(lseg, idx, &hdr->args.stateid))
++		goto out_failed;
++
+ 	/*
+ 	 * Note that if we ever decide to split across DSes,
+ 	 * then we may need to handle dense-like offsets.
+diff --git a/fs/nfs/flexfilelayout/flexfilelayout.h b/fs/nfs/flexfilelayout/flexfilelayout.h
+index 411798346e48..de50a342d5a5 100644
+--- a/fs/nfs/flexfilelayout/flexfilelayout.h
++++ b/fs/nfs/flexfilelayout/flexfilelayout.h
+@@ -215,6 +215,10 @@ unsigned int ff_layout_fetch_ds_ioerr(struct pnfs_layout_hdr *lo,
+ 		unsigned int maxnum);
+ struct nfs_fh *
+ nfs4_ff_layout_select_ds_fh(struct pnfs_layout_segment *lseg, u32 mirror_idx);
++int
++nfs4_ff_layout_select_ds_stateid(struct pnfs_layout_segment *lseg,
++				u32 mirror_idx,
++				nfs4_stateid *stateid);
+ 
+ struct nfs4_pnfs_ds *
+ nfs4_ff_layout_prepare_ds(struct pnfs_layout_segment *lseg, u32 ds_idx,
+diff --git a/fs/nfs/flexfilelayout/flexfilelayoutdev.c b/fs/nfs/flexfilelayout/flexfilelayoutdev.c
+index 74d8d5352438..d23347389626 100644
+--- a/fs/nfs/flexfilelayout/flexfilelayoutdev.c
++++ b/fs/nfs/flexfilelayout/flexfilelayoutdev.c
+@@ -370,6 +370,25 @@ nfs4_ff_layout_select_ds_fh(struct pnfs_layout_segment *lseg, u32 mirror_idx)
+ 	return fh;
+ }
+ 
++int
++nfs4_ff_layout_select_ds_stateid(struct pnfs_layout_segment *lseg,
++				u32 mirror_idx,
++				nfs4_stateid *stateid)
++{
++	struct nfs4_ff_layout_mirror *mirror = FF_LAYOUT_COMP(lseg, mirror_idx);
++
++	if (!ff_layout_mirror_valid(lseg, mirror, false)) {
++		pr_err_ratelimited("NFS: %s: No data server for mirror offset index %d\n",
++			__func__, mirror_idx);
++		goto out;
++	}
++
++	nfs4_stateid_copy(stateid, &mirror->stateid);
++	return 1;
++out:
++	return 0;
++}
++
+ /**
+  * nfs4_ff_layout_prepare_ds - prepare a DS connection for an RPC call
+  * @lseg: the layout segment we're operating on
+-- 
+2.17.2
 
