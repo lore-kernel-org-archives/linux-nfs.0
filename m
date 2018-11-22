@@ -4,48 +4,49 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-10.6 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_PASS,USER_AGENT_GIT autolearn=unavailable autolearn_force=no version=3.4.0
+	SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 998ACC43441
-	for <linux-nfs@archiver.kernel.org>; Thu, 22 Nov 2018 19:57:02 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5FA01C43441
+	for <linux-nfs@archiver.kernel.org>; Thu, 22 Nov 2018 19:58:32 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 4FC7E2087E
-	for <linux-nfs@archiver.kernel.org>; Thu, 22 Nov 2018 19:57:02 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 19F7420892
+	for <linux-nfs@archiver.kernel.org>; Thu, 22 Nov 2018 19:58:32 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=kernel.org header.i=@kernel.org header.b="RGaBQqb/"
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 4FC7E2087E
+	dkim=pass (1024-bit key) header.d=kernel.org header.i=@kernel.org header.b="aZEl7Crz"
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 19F7420892
 Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=kernel.org
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2438768AbeKWGhv (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 23 Nov 2018 01:37:51 -0500
-Received: from mail.kernel.org ([198.145.29.99]:36430 "EHLO mail.kernel.org"
+        id S2407422AbeKWGi6 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 23 Nov 2018 01:38:58 -0500
+Received: from mail.kernel.org ([198.145.29.99]:37320 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1728657AbeKWGhu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 23 Nov 2018 01:37:50 -0500
+        id S2389557AbeKWGi5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 23 Nov 2018 01:38:57 -0500
 Received: from sasha-vm.mshome.net (unknown [37.142.5.207])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 26C0120864;
-        Thu, 22 Nov 2018 19:56:55 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id CCAE0208A3;
+        Thu, 22 Nov 2018 19:58:02 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1542916618;
-        bh=XTV9/j21EpeL8uJr8Ft0rDOANnR47N0I4SGgBEiodJE=;
+        s=default; t=1542916684;
+        bh=7tjggu2800kXYyV67neQIVm/EF1lJGY/yPjKJU+jlKE=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=RGaBQqb/VslEZo7w3fIAce9++RGfB/P6s9ii/rfRsC7/BLe0KiI2oIA3AHxbYd/sx
-         0TW00Z11LN97w/eMy2r9pq1tkqttdHxU+rV3lpneFchcRwlEpFKEfoRLm0A/lIU+js
-         WT0vmR1f8X+ddQ3+QJjwIlUZsu21c1Z0nWgLoqLA=
+        b=aZEl7CrzY73Sf+sh/is0j40jjY8YSGxzH5FgHIHXT7xP+velf2QlAmC3dFgIScBdt
+         BfL7MCjJj6TgzhH7gjfDyrVdhq3Srgc0HrOUFF0j4XyFFOFWouVz1A6qBw0BNFvTLV
+         QIPBfajUQwD1e5slsdpZaHg3M0Pn48yDjRN9iDdk=
 From:   Sasha Levin <sashal@kernel.org>
 To:     stable@vger.kernel.org, linux-kernel@vger.kernel.org
 Cc:     Trond Myklebust <trond.myklebust@hammerspace.com>,
         Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org,
         netdev@vger.kernel.org
-Subject: [PATCH AUTOSEL 4.9 11/15] SUNRPC: Fix a bogus get/put in generic_key_to_expire()
-Date:   Thu, 22 Nov 2018 14:56:17 -0500
-Message-Id: <20181122195621.13776-11-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 3.18 4/7] SUNRPC: Fix a bogus get/put in generic_key_to_expire()
+Date:   Thu, 22 Nov 2018 14:57:46 -0500
+Message-Id: <20181122195749.14086-4-sashal@kernel.org>
 X-Mailer: git-send-email 2.17.1
-In-Reply-To: <20181122195621.13776-1-sashal@kernel.org>
-References: <20181122195621.13776-1-sashal@kernel.org>
+In-Reply-To: <20181122195749.14086-1-sashal@kernel.org>
+References: <20181122195749.14086-1-sashal@kernel.org>
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
@@ -62,10 +63,10 @@ Signed-off-by: Sasha Levin <sashal@kernel.org>
  1 file changed, 1 insertion(+), 7 deletions(-)
 
 diff --git a/net/sunrpc/auth_generic.c b/net/sunrpc/auth_generic.c
-index f1df9837f1ac..1ac08dcbf85d 100644
+index 6f6b829c9e8e..42e93bf496e7 100644
 --- a/net/sunrpc/auth_generic.c
 +++ b/net/sunrpc/auth_generic.c
-@@ -281,13 +281,7 @@ static bool generic_key_to_expire(struct rpc_cred *cred)
+@@ -272,13 +272,7 @@ static bool generic_key_to_expire(struct rpc_cred *cred)
  {
  	struct auth_cred *acred = &container_of(cred, struct generic_cred,
  						gc_base)->acred;
