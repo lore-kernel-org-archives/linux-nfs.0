@@ -2,69 +2,69 @@ Return-Path: <SRS0=idK9=OF=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.8 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
+X-Spam-Status: No, score=-5.6 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
+	SPF_PASS,UPPERCASE_75_100 autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 83B03C43441
-	for <linux-nfs@archiver.kernel.org>; Mon, 26 Nov 2018 20:07:30 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A8C91C43441
+	for <linux-nfs@archiver.kernel.org>; Mon, 26 Nov 2018 20:07:35 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 46094205C9
-	for <linux-nfs@archiver.kernel.org>; Mon, 26 Nov 2018 20:07:30 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 4C9A320855
+	for <linux-nfs@archiver.kernel.org>; Mon, 26 Nov 2018 20:07:35 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="HsODZUul"
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 46094205C9
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="RLwKdWwk"
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 4C9A320855
 Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=oracle.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727001AbeK0HCl (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 27 Nov 2018 02:02:41 -0500
-Received: from mail-it1-f193.google.com ([209.85.166.193]:56174 "EHLO
-        mail-it1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727234AbeK0HCk (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 27 Nov 2018 02:02:40 -0500
-Received: by mail-it1-f193.google.com with SMTP id o19so30355729itg.5;
-        Mon, 26 Nov 2018 12:07:26 -0800 (PST)
+        id S1727290AbeK0HCr (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 27 Nov 2018 02:02:47 -0500
+Received: from mail-it1-f196.google.com ([209.85.166.196]:53360 "EHLO
+        mail-it1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727016AbeK0HCq (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 27 Nov 2018 02:02:46 -0500
+Received: by mail-it1-f196.google.com with SMTP id g85so30396868ita.3;
+        Mon, 26 Nov 2018 12:07:31 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=sender:subject:from:to:date:message-id:in-reply-to:references
          :user-agent:mime-version:content-transfer-encoding;
-        bh=o4T/kuXT2AXq22bdG8oX+0KaLdFcDFx3nH7CktLNld8=;
-        b=HsODZUulZjIMyiinTRvI3T6tPM9UKeuBkQM/WYr/2H9K5dT3szzQXwMZsTfahg6XaC
-         5ywEu1MikdXowm8dXwAyIJCv/+2Ji+bcNjzl+ATwu8PC53i9zz1v8E9aiWJAPjJ0hJnN
-         Fdplel9GgaaqE5vTxMZ6j/w+cuZrM6TcAcVUcB5MMvxpUjpka91XzNlTkBgj6MOolxl/
-         4lvfmbsjQHLZCeJO9KAq5CyJHuIv6IQvP6YsoKF8H9lXk28SOSMGg6O7OFPJLI3/IJvE
-         Dxml/Ldq1zxQuixR+mumL8e7TBixt87ALB5Ocjz6qxkavzds1xvIcgLB07bZwSxBBRZi
-         UI1Q==
+        bh=CCPcumpyrEb13HdZVJhbWBkhDi+3D288rBWg0AQ4Nxo=;
+        b=RLwKdWwkrrnV4u61sUf1kyFldJ58YSPiEjP2u45h/z+99PlUBRbBc0DD1Px/JNzTUA
+         ZxzBJ+sJyONV+ArpKO5vh0nrUls1tYe/axGJUpgVBj/dukBysB1AWEyCON93KDZTyu9f
+         N064Ne40DkGxNMcAEmIpbsbaj0bM728watXWz6TaDTUYqUYp0tNgyKulBSqFGQxHxMJZ
+         WZpR6HnjmuKXQNjCgyJAGrp+fAR2670e1dthG3ifbY4pWcB3swrMyGCLqeAlOGy1MxRy
+         5daw8JVRH0XRosIjJhwa9760KK0qlACZmD2vwhBD93F9gj+CONFZLjXELJCgTHKdTZMs
+         QepA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:sender:subject:from:to:date:message-id
          :in-reply-to:references:user-agent:mime-version
          :content-transfer-encoding;
-        bh=o4T/kuXT2AXq22bdG8oX+0KaLdFcDFx3nH7CktLNld8=;
-        b=XiUJt8S5bIePyDIWceNa1EMeDZCzCLgrGM2pXfgBQ57u2t2dqO7SACsu+rZ4DOaAGP
-         yvefFcm6DlU5J9TxSCR/1jzH4Hu28xeiVJ5HQSfnHtJDdTkWnUxAPi31es1xWPlTNRZh
-         aTG28LFJcCD4k2CAWhkM/ICfw4e/ucA+AtzK4pfzGhG3JfoADGb+KuJTdw5s/Cj38nRN
-         PVNaU+QySd8kSYbW79M2xhUMjdcdDcjGfU1Rmc1Y61LN39mg1hWLb7+uFfM5gatsvwor
-         eY9rLS6EbN+XPPBAlU4mxUHsi54qJBk5VnBeBLpxgIpFi4DE1tEmZTnGJyhC2rG58rkH
-         CKmw==
-X-Gm-Message-State: AA+aEWa2BjUjNyBkAekSpBaNyhhz88f/Keod+EdtLvNSykywoKh/H3bK
-        +436Ggvtp461oIWPc3Xkq/QGAfd/
-X-Google-Smtp-Source: AJdET5dArYNXvU9D6TrTQpa0B2aQOhixquivOCQR1FUQ23FWlTSp1uEd34a9S6R1LBG45RKbKcBhDg==
-X-Received: by 2002:a24:940f:: with SMTP id j15-v6mr24865738ite.12.1543262844950;
-        Mon, 26 Nov 2018 12:07:24 -0800 (PST)
+        bh=CCPcumpyrEb13HdZVJhbWBkhDi+3D288rBWg0AQ4Nxo=;
+        b=UB0eMKJq+rMCFd2DGAeUlDK6yZ7bSDupKjPdyE1PBYn5xvc0W8QmGD2iZRJ8otabE5
+         CTOcRvTUb+In67H+2aY12c9uqSnrI62zEb70KABGI3Ld2oQL38geQBIcVGBpvqr87BAd
+         MCCIfGOB9hvOtzaMuAvaK2SsCiuZ7fzILpQGWnzTwgY6ol+X0Rbdoxg2YgGxDBIiFPwS
+         HhGQ5zppuiEOju6Qdr3varP9P19xqFs3tc2iXX3ixFuIX6k+58hXJJw7t5u4aOtSuiWA
+         kbsZ6Zs0e+K1niiP+nes9dFoIhwLrpYeOPH0QIgLsY7P7ODv/aCbIJWQ7sFNg292r1/M
+         13xg==
+X-Gm-Message-State: AGRZ1gKi5jCjB30ODL/gjAqJ6Lnqt1bki8BbEEW+ESzX6tKZxBzlyfFE
+        dLCYvzslmPxP12OvTtPCnMBx/K6H
+X-Google-Smtp-Source: AFSGD/VUxnkw/QoQzKsPO0wYGBSOcVS1McUq7y2S827wx0dVQjkz5HoziHc8D+jyEwM9FCfsK3D4VQ==
+X-Received: by 2002:a05:660c:742:: with SMTP id a2mr21191173itl.121.1543262850635;
+        Mon, 26 Nov 2018 12:07:30 -0800 (PST)
 Received: from gateway.1015granger.net (c-68-61-232-219.hsd1.mi.comcast.net. [68.61.232.219])
-        by smtp.gmail.com with ESMTPSA id 15sm991015itv.11.2018.11.26.12.07.24
+        by smtp.gmail.com with ESMTPSA id k2sm543228itk.35.2018.11.26.12.07.29
         (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Mon, 26 Nov 2018 12:07:24 -0800 (PST)
+        Mon, 26 Nov 2018 12:07:29 -0800 (PST)
 Received: from manet.1015granger.net (manet.1015granger.net [192.168.1.51])
-        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id wAQK7NPr010698;
-        Mon, 26 Nov 2018 20:07:23 GMT
-Subject: [PATCH v2 18/20] SUNRPC: Fix some kernel doc complaints
+        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id wAQK7S57010701;
+        Mon, 26 Nov 2018 20:07:28 GMT
+Subject: [PATCH v2 19/20] NFS: Fix NFSv4 symbolic trace point output
 From:   Chuck Lever <chuck.lever@oracle.com>
 To:     linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date:   Mon, 26 Nov 2018 15:07:23 -0500
-Message-ID: <20181126200723.10321.28175.stgit@manet.1015granger.net>
+Date:   Mon, 26 Nov 2018 15:07:28 -0500
+Message-ID: <20181126200728.10321.40433.stgit@manet.1015granger.net>
 In-Reply-To: <20181126194611.10321.71714.stgit@manet.1015granger.net>
 References: <20181126194611.10321.71714.stgit@manet.1015granger.net>
 User-Agent: StGit/0.17.1-dirty
@@ -76,82 +76,509 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Clean up.
+These symbolic values were not being displayed in string form.
+TRACE_ENUM_DEFINE was missing in many cases. It also turns out that
+__print_symbolic wants an unsigned long in the first field...
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/auth_gss/gss_mech_switch.c |    2 +-
- net/sunrpc/backchannel_rqst.c         |    2 +-
- net/sunrpc/xprtmultipath.c            |    4 ++--
- net/sunrpc/xprtsock.c                 |    2 ++
- 4 files changed, 6 insertions(+), 4 deletions(-)
+ fs/nfs/nfs4trace.h |  456 ++++++++++++++++++++++++++++++++++++----------------
+ 1 file changed, 313 insertions(+), 143 deletions(-)
 
-diff --git a/net/sunrpc/auth_gss/gss_mech_switch.c b/net/sunrpc/auth_gss/gss_mech_switch.c
-index 16ac0f4..379318d 100644
---- a/net/sunrpc/auth_gss/gss_mech_switch.c
-+++ b/net/sunrpc/auth_gss/gss_mech_switch.c
-@@ -244,7 +244,7 @@ struct gss_api_mech *
+diff --git a/fs/nfs/nfs4trace.h b/fs/nfs/nfs4trace.h
+index b1483b3..b4557cf 100644
+--- a/fs/nfs/nfs4trace.h
++++ b/fs/nfs/nfs4trace.h
+@@ -10,157 +10,302 @@
  
- /**
-  * gss_mech_list_pseudoflavors - Discover registered GSS pseudoflavors
-- * @array: array to fill in
-+ * @array_ptr: array to fill in
-  * @size: size of "array"
-  *
-  * Returns the number of array items filled in, or a negative errno.
-diff --git a/net/sunrpc/backchannel_rqst.c b/net/sunrpc/backchannel_rqst.c
-index fa5ba6e..ec451b8 100644
---- a/net/sunrpc/backchannel_rqst.c
-+++ b/net/sunrpc/backchannel_rqst.c
-@@ -197,7 +197,7 @@ int xprt_setup_bc(struct rpc_xprt *xprt, unsigned int min_reqs)
- /**
-  * xprt_destroy_backchannel - Destroys the backchannel preallocated structures.
-  * @xprt:	the transport holding the preallocated strucures
-- * @max_reqs	the maximum number of preallocated structures to destroy
-+ * @max_reqs:	the maximum number of preallocated structures to destroy
-  *
-  * Since these structures may have been allocated by multiple calls
-  * to xprt_setup_backchannel, we only destroy up to the maximum number
-diff --git a/net/sunrpc/xprtmultipath.c b/net/sunrpc/xprtmultipath.c
-index e2d64c7..8394124 100644
---- a/net/sunrpc/xprtmultipath.c
-+++ b/net/sunrpc/xprtmultipath.c
-@@ -383,7 +383,7 @@ void xprt_iter_init_listall(struct rpc_xprt_iter *xpi,
- /**
-  * xprt_iter_xchg_switch - Atomically swap out the rpc_xprt_switch
-  * @xpi: pointer to rpc_xprt_iter
-- * @xps: pointer to a new rpc_xprt_switch or NULL
-+ * @newswitch: pointer to a new rpc_xprt_switch or NULL
-  *
-  * Swaps out the existing xpi->xpi_xpswitch with a new value.
-  */
-@@ -401,7 +401,7 @@ struct rpc_xprt_switch *xprt_iter_xchg_switch(struct rpc_xprt_iter *xpi,
+ #include <linux/tracepoint.h>
  
- /**
-  * xprt_iter_destroy - Destroys the xprt iterator
-- * @xpi pointer to rpc_xprt_iter
-+ * @xpi: pointer to rpc_xprt_iter
-  */
- void xprt_iter_destroy(struct rpc_xprt_iter *xpi)
- {
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index ae77c71..4ef19c0 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -1607,6 +1607,7 @@ static void xs_udp_set_buffer_size(struct rpc_xprt *xprt, size_t sndsize, size_t
++TRACE_DEFINE_ENUM(EPERM);
++TRACE_DEFINE_ENUM(ENOENT);
++TRACE_DEFINE_ENUM(EIO);
++TRACE_DEFINE_ENUM(ENXIO);
++TRACE_DEFINE_ENUM(EACCES);
++TRACE_DEFINE_ENUM(EEXIST);
++TRACE_DEFINE_ENUM(EXDEV);
++TRACE_DEFINE_ENUM(ENOTDIR);
++TRACE_DEFINE_ENUM(EISDIR);
++TRACE_DEFINE_ENUM(EFBIG);
++TRACE_DEFINE_ENUM(ENOSPC);
++TRACE_DEFINE_ENUM(EROFS);
++TRACE_DEFINE_ENUM(EMLINK);
++TRACE_DEFINE_ENUM(ENAMETOOLONG);
++TRACE_DEFINE_ENUM(ENOTEMPTY);
++TRACE_DEFINE_ENUM(EDQUOT);
++TRACE_DEFINE_ENUM(ESTALE);
++TRACE_DEFINE_ENUM(EBADHANDLE);
++TRACE_DEFINE_ENUM(EBADCOOKIE);
++TRACE_DEFINE_ENUM(ENOTSUPP);
++TRACE_DEFINE_ENUM(ETOOSMALL);
++TRACE_DEFINE_ENUM(EREMOTEIO);
++TRACE_DEFINE_ENUM(EBADTYPE);
++TRACE_DEFINE_ENUM(EAGAIN);
++TRACE_DEFINE_ENUM(ELOOP);
++TRACE_DEFINE_ENUM(EOPNOTSUPP);
++TRACE_DEFINE_ENUM(EDEADLK);
++TRACE_DEFINE_ENUM(ENOMEM);
++TRACE_DEFINE_ENUM(EKEYEXPIRED);
++TRACE_DEFINE_ENUM(ETIMEDOUT);
++TRACE_DEFINE_ENUM(ERESTARTSYS);
++TRACE_DEFINE_ENUM(ECONNREFUSED);
++TRACE_DEFINE_ENUM(ECONNRESET);
++TRACE_DEFINE_ENUM(ENETUNREACH);
++TRACE_DEFINE_ENUM(EHOSTUNREACH);
++TRACE_DEFINE_ENUM(EHOSTDOWN);
++TRACE_DEFINE_ENUM(EPIPE);
++TRACE_DEFINE_ENUM(EPFNOSUPPORT);
++TRACE_DEFINE_ENUM(EPROTONOSUPPORT);
++
++TRACE_DEFINE_ENUM(NFS4_OK);
++TRACE_DEFINE_ENUM(NFS4ERR_ACCESS);
++TRACE_DEFINE_ENUM(NFS4ERR_ATTRNOTSUPP);
++TRACE_DEFINE_ENUM(NFS4ERR_ADMIN_REVOKED);
++TRACE_DEFINE_ENUM(NFS4ERR_BACK_CHAN_BUSY);
++TRACE_DEFINE_ENUM(NFS4ERR_BADCHAR);
++TRACE_DEFINE_ENUM(NFS4ERR_BADHANDLE);
++TRACE_DEFINE_ENUM(NFS4ERR_BADIOMODE);
++TRACE_DEFINE_ENUM(NFS4ERR_BADLAYOUT);
++TRACE_DEFINE_ENUM(NFS4ERR_BADLABEL);
++TRACE_DEFINE_ENUM(NFS4ERR_BADNAME);
++TRACE_DEFINE_ENUM(NFS4ERR_BADOWNER);
++TRACE_DEFINE_ENUM(NFS4ERR_BADSESSION);
++TRACE_DEFINE_ENUM(NFS4ERR_BADSLOT);
++TRACE_DEFINE_ENUM(NFS4ERR_BADTYPE);
++TRACE_DEFINE_ENUM(NFS4ERR_BADXDR);
++TRACE_DEFINE_ENUM(NFS4ERR_BAD_COOKIE);
++TRACE_DEFINE_ENUM(NFS4ERR_BAD_HIGH_SLOT);
++TRACE_DEFINE_ENUM(NFS4ERR_BAD_RANGE);
++TRACE_DEFINE_ENUM(NFS4ERR_BAD_SEQID);
++TRACE_DEFINE_ENUM(NFS4ERR_BAD_SESSION_DIGEST);
++TRACE_DEFINE_ENUM(NFS4ERR_BAD_STATEID);
++TRACE_DEFINE_ENUM(NFS4ERR_CB_PATH_DOWN);
++TRACE_DEFINE_ENUM(NFS4ERR_CLID_INUSE);
++TRACE_DEFINE_ENUM(NFS4ERR_CLIENTID_BUSY);
++TRACE_DEFINE_ENUM(NFS4ERR_COMPLETE_ALREADY);
++TRACE_DEFINE_ENUM(NFS4ERR_CONN_NOT_BOUND_TO_SESSION);
++TRACE_DEFINE_ENUM(NFS4ERR_DEADLOCK);
++TRACE_DEFINE_ENUM(NFS4ERR_DEADSESSION);
++TRACE_DEFINE_ENUM(NFS4ERR_DELAY);
++TRACE_DEFINE_ENUM(NFS4ERR_DELEG_ALREADY_WANTED);
++TRACE_DEFINE_ENUM(NFS4ERR_DELEG_REVOKED);
++TRACE_DEFINE_ENUM(NFS4ERR_DENIED);
++TRACE_DEFINE_ENUM(NFS4ERR_DIRDELEG_UNAVAIL);
++TRACE_DEFINE_ENUM(NFS4ERR_DQUOT);
++TRACE_DEFINE_ENUM(NFS4ERR_ENCR_ALG_UNSUPP);
++TRACE_DEFINE_ENUM(NFS4ERR_EXIST);
++TRACE_DEFINE_ENUM(NFS4ERR_EXPIRED);
++TRACE_DEFINE_ENUM(NFS4ERR_FBIG);
++TRACE_DEFINE_ENUM(NFS4ERR_FHEXPIRED);
++TRACE_DEFINE_ENUM(NFS4ERR_FILE_OPEN);
++TRACE_DEFINE_ENUM(NFS4ERR_GRACE);
++TRACE_DEFINE_ENUM(NFS4ERR_HASH_ALG_UNSUPP);
++TRACE_DEFINE_ENUM(NFS4ERR_INVAL);
++TRACE_DEFINE_ENUM(NFS4ERR_IO);
++TRACE_DEFINE_ENUM(NFS4ERR_ISDIR);
++TRACE_DEFINE_ENUM(NFS4ERR_LAYOUTTRYLATER);
++TRACE_DEFINE_ENUM(NFS4ERR_LAYOUTUNAVAILABLE);
++TRACE_DEFINE_ENUM(NFS4ERR_LEASE_MOVED);
++TRACE_DEFINE_ENUM(NFS4ERR_LOCKED);
++TRACE_DEFINE_ENUM(NFS4ERR_LOCKS_HELD);
++TRACE_DEFINE_ENUM(NFS4ERR_LOCK_RANGE);
++TRACE_DEFINE_ENUM(NFS4ERR_MINOR_VERS_MISMATCH);
++TRACE_DEFINE_ENUM(NFS4ERR_MLINK);
++TRACE_DEFINE_ENUM(NFS4ERR_MOVED);
++TRACE_DEFINE_ENUM(NFS4ERR_NAMETOOLONG);
++TRACE_DEFINE_ENUM(NFS4ERR_NOENT);
++TRACE_DEFINE_ENUM(NFS4ERR_NOFILEHANDLE);
++TRACE_DEFINE_ENUM(NFS4ERR_NOMATCHING_LAYOUT);
++TRACE_DEFINE_ENUM(NFS4ERR_NOSPC);
++TRACE_DEFINE_ENUM(NFS4ERR_NOTDIR);
++TRACE_DEFINE_ENUM(NFS4ERR_NOTEMPTY);
++TRACE_DEFINE_ENUM(NFS4ERR_NOTSUPP);
++TRACE_DEFINE_ENUM(NFS4ERR_NOT_ONLY_OP);
++TRACE_DEFINE_ENUM(NFS4ERR_NOT_SAME);
++TRACE_DEFINE_ENUM(NFS4ERR_NO_GRACE);
++TRACE_DEFINE_ENUM(NFS4ERR_NXIO);
++TRACE_DEFINE_ENUM(NFS4ERR_OLD_STATEID);
++TRACE_DEFINE_ENUM(NFS4ERR_OPENMODE);
++TRACE_DEFINE_ENUM(NFS4ERR_OP_ILLEGAL);
++TRACE_DEFINE_ENUM(NFS4ERR_OP_NOT_IN_SESSION);
++TRACE_DEFINE_ENUM(NFS4ERR_PERM);
++TRACE_DEFINE_ENUM(NFS4ERR_PNFS_IO_HOLE);
++TRACE_DEFINE_ENUM(NFS4ERR_PNFS_NO_LAYOUT);
++TRACE_DEFINE_ENUM(NFS4ERR_RECALLCONFLICT);
++TRACE_DEFINE_ENUM(NFS4ERR_RECLAIM_BAD);
++TRACE_DEFINE_ENUM(NFS4ERR_RECLAIM_CONFLICT);
++TRACE_DEFINE_ENUM(NFS4ERR_REJECT_DELEG);
++TRACE_DEFINE_ENUM(NFS4ERR_REP_TOO_BIG);
++TRACE_DEFINE_ENUM(NFS4ERR_REP_TOO_BIG_TO_CACHE);
++TRACE_DEFINE_ENUM(NFS4ERR_REQ_TOO_BIG);
++TRACE_DEFINE_ENUM(NFS4ERR_RESOURCE);
++TRACE_DEFINE_ENUM(NFS4ERR_RESTOREFH);
++TRACE_DEFINE_ENUM(NFS4ERR_RETRY_UNCACHED_REP);
++TRACE_DEFINE_ENUM(NFS4ERR_RETURNCONFLICT);
++TRACE_DEFINE_ENUM(NFS4ERR_ROFS);
++TRACE_DEFINE_ENUM(NFS4ERR_SAME);
++TRACE_DEFINE_ENUM(NFS4ERR_SHARE_DENIED);
++TRACE_DEFINE_ENUM(NFS4ERR_SEQUENCE_POS);
++TRACE_DEFINE_ENUM(NFS4ERR_SEQ_FALSE_RETRY);
++TRACE_DEFINE_ENUM(NFS4ERR_SEQ_MISORDERED);
++TRACE_DEFINE_ENUM(NFS4ERR_SERVERFAULT);
++TRACE_DEFINE_ENUM(NFS4ERR_STALE);
++TRACE_DEFINE_ENUM(NFS4ERR_STALE_CLIENTID);
++TRACE_DEFINE_ENUM(NFS4ERR_STALE_STATEID);
++TRACE_DEFINE_ENUM(NFS4ERR_SYMLINK);
++TRACE_DEFINE_ENUM(NFS4ERR_TOOSMALL);
++TRACE_DEFINE_ENUM(NFS4ERR_TOO_MANY_OPS);
++TRACE_DEFINE_ENUM(NFS4ERR_UNKNOWN_LAYOUTTYPE);
++TRACE_DEFINE_ENUM(NFS4ERR_UNSAFE_COMPOUND);
++TRACE_DEFINE_ENUM(NFS4ERR_WRONGSEC);
++TRACE_DEFINE_ENUM(NFS4ERR_WRONG_CRED);
++TRACE_DEFINE_ENUM(NFS4ERR_WRONG_TYPE);
++TRACE_DEFINE_ENUM(NFS4ERR_XDEV);
++
+ #define show_nfsv4_errors(error) \
+-	__print_symbolic(error, \
++	__print_symbolic(-(error), \
+ 		{ NFS4_OK, "OK" }, \
+ 		/* Mapped by nfs4_stat_to_errno() */ \
+-		{ -EPERM, "EPERM" }, \
+-		{ -ENOENT, "ENOENT" }, \
+-		{ -EIO, "EIO" }, \
+-		{ -ENXIO, "ENXIO" }, \
+-		{ -EACCES, "EACCES" }, \
+-		{ -EEXIST, "EEXIST" }, \
+-		{ -EXDEV, "EXDEV" }, \
+-		{ -ENOTDIR, "ENOTDIR" }, \
+-		{ -EISDIR, "EISDIR" }, \
+-		{ -EFBIG, "EFBIG" }, \
+-		{ -ENOSPC, "ENOSPC" }, \
+-		{ -EROFS, "EROFS" }, \
+-		{ -EMLINK, "EMLINK" }, \
+-		{ -ENAMETOOLONG, "ENAMETOOLONG" }, \
+-		{ -ENOTEMPTY, "ENOTEMPTY" }, \
+-		{ -EDQUOT, "EDQUOT" }, \
+-		{ -ESTALE, "ESTALE" }, \
+-		{ -EBADHANDLE, "EBADHANDLE" }, \
+-		{ -EBADCOOKIE, "EBADCOOKIE" }, \
+-		{ -ENOTSUPP, "ENOTSUPP" }, \
+-		{ -ETOOSMALL, "ETOOSMALL" }, \
+-		{ -EREMOTEIO, "EREMOTEIO" }, \
+-		{ -EBADTYPE, "EBADTYPE" }, \
+-		{ -EAGAIN, "EAGAIN" }, \
+-		{ -ELOOP, "ELOOP" }, \
+-		{ -EOPNOTSUPP, "EOPNOTSUPP" }, \
+-		{ -EDEADLK, "EDEADLK" }, \
++		{ EPERM, "EPERM" }, \
++		{ ENOENT, "ENOENT" }, \
++		{ EIO, "EIO" }, \
++		{ ENXIO, "ENXIO" }, \
++		{ EACCES, "EACCES" }, \
++		{ EEXIST, "EEXIST" }, \
++		{ EXDEV, "EXDEV" }, \
++		{ ENOTDIR, "ENOTDIR" }, \
++		{ EISDIR, "EISDIR" }, \
++		{ EFBIG, "EFBIG" }, \
++		{ ENOSPC, "ENOSPC" }, \
++		{ EROFS, "EROFS" }, \
++		{ EMLINK, "EMLINK" }, \
++		{ ENAMETOOLONG, "ENAMETOOLONG" }, \
++		{ ENOTEMPTY, "ENOTEMPTY" }, \
++		{ EDQUOT, "EDQUOT" }, \
++		{ ESTALE, "ESTALE" }, \
++		{ EBADHANDLE, "EBADHANDLE" }, \
++		{ EBADCOOKIE, "EBADCOOKIE" }, \
++		{ ENOTSUPP, "ENOTSUPP" }, \
++		{ ETOOSMALL, "ETOOSMALL" }, \
++		{ EREMOTEIO, "EREMOTEIO" }, \
++		{ EBADTYPE, "EBADTYPE" }, \
++		{ EAGAIN, "EAGAIN" }, \
++		{ ELOOP, "ELOOP" }, \
++		{ EOPNOTSUPP, "EOPNOTSUPP" }, \
++		{ EDEADLK, "EDEADLK" }, \
+ 		/* RPC errors */ \
+-		{ -ENOMEM, "ENOMEM" }, \
+-		{ -EKEYEXPIRED, "EKEYEXPIRED" }, \
+-		{ -ETIMEDOUT, "ETIMEDOUT" }, \
+-		{ -ERESTARTSYS, "ERESTARTSYS" }, \
+-		{ -ECONNREFUSED, "ECONNREFUSED" }, \
+-		{ -ECONNRESET, "ECONNRESET" }, \
+-		{ -ENETUNREACH, "ENETUNREACH" }, \
+-		{ -EHOSTUNREACH, "EHOSTUNREACH" }, \
+-		{ -EHOSTDOWN, "EHOSTDOWN" }, \
+-		{ -EPIPE, "EPIPE" }, \
+-		{ -EPFNOSUPPORT, "EPFNOSUPPORT" }, \
+-		{ -EPROTONOSUPPORT, "EPROTONOSUPPORT" }, \
++		{ ENOMEM, "ENOMEM" }, \
++		{ EKEYEXPIRED, "EKEYEXPIRED" }, \
++		{ ETIMEDOUT, "ETIMEDOUT" }, \
++		{ ERESTARTSYS, "ERESTARTSYS" }, \
++		{ ECONNREFUSED, "ECONNREFUSED" }, \
++		{ ECONNRESET, "ECONNRESET" }, \
++		{ ENETUNREACH, "ENETUNREACH" }, \
++		{ EHOSTUNREACH, "EHOSTUNREACH" }, \
++		{ EHOSTDOWN, "EHOSTDOWN" }, \
++		{ EPIPE, "EPIPE" }, \
++		{ EPFNOSUPPORT, "EPFNOSUPPORT" }, \
++		{ EPROTONOSUPPORT, "EPROTONOSUPPORT" }, \
+ 		/* NFSv4 native errors */ \
+-		{ -NFS4ERR_ACCESS, "ACCESS" }, \
+-		{ -NFS4ERR_ATTRNOTSUPP, "ATTRNOTSUPP" }, \
+-		{ -NFS4ERR_ADMIN_REVOKED, "ADMIN_REVOKED" }, \
+-		{ -NFS4ERR_BACK_CHAN_BUSY, "BACK_CHAN_BUSY" }, \
+-		{ -NFS4ERR_BADCHAR, "BADCHAR" }, \
+-		{ -NFS4ERR_BADHANDLE, "BADHANDLE" }, \
+-		{ -NFS4ERR_BADIOMODE, "BADIOMODE" }, \
+-		{ -NFS4ERR_BADLAYOUT, "BADLAYOUT" }, \
+-		{ -NFS4ERR_BADLABEL, "BADLABEL" }, \
+-		{ -NFS4ERR_BADNAME, "BADNAME" }, \
+-		{ -NFS4ERR_BADOWNER, "BADOWNER" }, \
+-		{ -NFS4ERR_BADSESSION, "BADSESSION" }, \
+-		{ -NFS4ERR_BADSLOT, "BADSLOT" }, \
+-		{ -NFS4ERR_BADTYPE, "BADTYPE" }, \
+-		{ -NFS4ERR_BADXDR, "BADXDR" }, \
+-		{ -NFS4ERR_BAD_COOKIE, "BAD_COOKIE" }, \
+-		{ -NFS4ERR_BAD_HIGH_SLOT, "BAD_HIGH_SLOT" }, \
+-		{ -NFS4ERR_BAD_RANGE, "BAD_RANGE" }, \
+-		{ -NFS4ERR_BAD_SEQID, "BAD_SEQID" }, \
+-		{ -NFS4ERR_BAD_SESSION_DIGEST, "BAD_SESSION_DIGEST" }, \
+-		{ -NFS4ERR_BAD_STATEID, "BAD_STATEID" }, \
+-		{ -NFS4ERR_CB_PATH_DOWN, "CB_PATH_DOWN" }, \
+-		{ -NFS4ERR_CLID_INUSE, "CLID_INUSE" }, \
+-		{ -NFS4ERR_CLIENTID_BUSY, "CLIENTID_BUSY" }, \
+-		{ -NFS4ERR_COMPLETE_ALREADY, "COMPLETE_ALREADY" }, \
+-		{ -NFS4ERR_CONN_NOT_BOUND_TO_SESSION, \
++		{ NFS4ERR_ACCESS, "ACCESS" }, \
++		{ NFS4ERR_ATTRNOTSUPP, "ATTRNOTSUPP" }, \
++		{ NFS4ERR_ADMIN_REVOKED, "ADMIN_REVOKED" }, \
++		{ NFS4ERR_BACK_CHAN_BUSY, "BACK_CHAN_BUSY" }, \
++		{ NFS4ERR_BADCHAR, "BADCHAR" }, \
++		{ NFS4ERR_BADHANDLE, "BADHANDLE" }, \
++		{ NFS4ERR_BADIOMODE, "BADIOMODE" }, \
++		{ NFS4ERR_BADLAYOUT, "BADLAYOUT" }, \
++		{ NFS4ERR_BADLABEL, "BADLABEL" }, \
++		{ NFS4ERR_BADNAME, "BADNAME" }, \
++		{ NFS4ERR_BADOWNER, "BADOWNER" }, \
++		{ NFS4ERR_BADSESSION, "BADSESSION" }, \
++		{ NFS4ERR_BADSLOT, "BADSLOT" }, \
++		{ NFS4ERR_BADTYPE, "BADTYPE" }, \
++		{ NFS4ERR_BADXDR, "BADXDR" }, \
++		{ NFS4ERR_BAD_COOKIE, "BAD_COOKIE" }, \
++		{ NFS4ERR_BAD_HIGH_SLOT, "BAD_HIGH_SLOT" }, \
++		{ NFS4ERR_BAD_RANGE, "BAD_RANGE" }, \
++		{ NFS4ERR_BAD_SEQID, "BAD_SEQID" }, \
++		{ NFS4ERR_BAD_SESSION_DIGEST, "BAD_SESSION_DIGEST" }, \
++		{ NFS4ERR_BAD_STATEID, "BAD_STATEID" }, \
++		{ NFS4ERR_CB_PATH_DOWN, "CB_PATH_DOWN" }, \
++		{ NFS4ERR_CLID_INUSE, "CLID_INUSE" }, \
++		{ NFS4ERR_CLIENTID_BUSY, "CLIENTID_BUSY" }, \
++		{ NFS4ERR_COMPLETE_ALREADY, "COMPLETE_ALREADY" }, \
++		{ NFS4ERR_CONN_NOT_BOUND_TO_SESSION, \
+ 			"CONN_NOT_BOUND_TO_SESSION" }, \
+-		{ -NFS4ERR_DEADLOCK, "DEADLOCK" }, \
+-		{ -NFS4ERR_DEADSESSION, "DEAD_SESSION" }, \
+-		{ -NFS4ERR_DELAY, "DELAY" }, \
+-		{ -NFS4ERR_DELEG_ALREADY_WANTED, \
++		{ NFS4ERR_DEADLOCK, "DEADLOCK" }, \
++		{ NFS4ERR_DEADSESSION, "DEAD_SESSION" }, \
++		{ NFS4ERR_DELAY, "DELAY" }, \
++		{ NFS4ERR_DELEG_ALREADY_WANTED, \
+ 			"DELEG_ALREADY_WANTED" }, \
+-		{ -NFS4ERR_DELEG_REVOKED, "DELEG_REVOKED" }, \
+-		{ -NFS4ERR_DENIED, "DENIED" }, \
+-		{ -NFS4ERR_DIRDELEG_UNAVAIL, "DIRDELEG_UNAVAIL" }, \
+-		{ -NFS4ERR_DQUOT, "DQUOT" }, \
+-		{ -NFS4ERR_ENCR_ALG_UNSUPP, "ENCR_ALG_UNSUPP" }, \
+-		{ -NFS4ERR_EXIST, "EXIST" }, \
+-		{ -NFS4ERR_EXPIRED, "EXPIRED" }, \
+-		{ -NFS4ERR_FBIG, "FBIG" }, \
+-		{ -NFS4ERR_FHEXPIRED, "FHEXPIRED" }, \
+-		{ -NFS4ERR_FILE_OPEN, "FILE_OPEN" }, \
+-		{ -NFS4ERR_GRACE, "GRACE" }, \
+-		{ -NFS4ERR_HASH_ALG_UNSUPP, "HASH_ALG_UNSUPP" }, \
+-		{ -NFS4ERR_INVAL, "INVAL" }, \
+-		{ -NFS4ERR_IO, "IO" }, \
+-		{ -NFS4ERR_ISDIR, "ISDIR" }, \
+-		{ -NFS4ERR_LAYOUTTRYLATER, "LAYOUTTRYLATER" }, \
+-		{ -NFS4ERR_LAYOUTUNAVAILABLE, "LAYOUTUNAVAILABLE" }, \
+-		{ -NFS4ERR_LEASE_MOVED, "LEASE_MOVED" }, \
+-		{ -NFS4ERR_LOCKED, "LOCKED" }, \
+-		{ -NFS4ERR_LOCKS_HELD, "LOCKS_HELD" }, \
+-		{ -NFS4ERR_LOCK_RANGE, "LOCK_RANGE" }, \
+-		{ -NFS4ERR_MINOR_VERS_MISMATCH, "MINOR_VERS_MISMATCH" }, \
+-		{ -NFS4ERR_MLINK, "MLINK" }, \
+-		{ -NFS4ERR_MOVED, "MOVED" }, \
+-		{ -NFS4ERR_NAMETOOLONG, "NAMETOOLONG" }, \
+-		{ -NFS4ERR_NOENT, "NOENT" }, \
+-		{ -NFS4ERR_NOFILEHANDLE, "NOFILEHANDLE" }, \
+-		{ -NFS4ERR_NOMATCHING_LAYOUT, "NOMATCHING_LAYOUT" }, \
+-		{ -NFS4ERR_NOSPC, "NOSPC" }, \
+-		{ -NFS4ERR_NOTDIR, "NOTDIR" }, \
+-		{ -NFS4ERR_NOTEMPTY, "NOTEMPTY" }, \
+-		{ -NFS4ERR_NOTSUPP, "NOTSUPP" }, \
+-		{ -NFS4ERR_NOT_ONLY_OP, "NOT_ONLY_OP" }, \
+-		{ -NFS4ERR_NOT_SAME, "NOT_SAME" }, \
+-		{ -NFS4ERR_NO_GRACE, "NO_GRACE" }, \
+-		{ -NFS4ERR_NXIO, "NXIO" }, \
+-		{ -NFS4ERR_OLD_STATEID, "OLD_STATEID" }, \
+-		{ -NFS4ERR_OPENMODE, "OPENMODE" }, \
+-		{ -NFS4ERR_OP_ILLEGAL, "OP_ILLEGAL" }, \
+-		{ -NFS4ERR_OP_NOT_IN_SESSION, "OP_NOT_IN_SESSION" }, \
+-		{ -NFS4ERR_PERM, "PERM" }, \
+-		{ -NFS4ERR_PNFS_IO_HOLE, "PNFS_IO_HOLE" }, \
+-		{ -NFS4ERR_PNFS_NO_LAYOUT, "PNFS_NO_LAYOUT" }, \
+-		{ -NFS4ERR_RECALLCONFLICT, "RECALLCONFLICT" }, \
+-		{ -NFS4ERR_RECLAIM_BAD, "RECLAIM_BAD" }, \
+-		{ -NFS4ERR_RECLAIM_CONFLICT, "RECLAIM_CONFLICT" }, \
+-		{ -NFS4ERR_REJECT_DELEG, "REJECT_DELEG" }, \
+-		{ -NFS4ERR_REP_TOO_BIG, "REP_TOO_BIG" }, \
+-		{ -NFS4ERR_REP_TOO_BIG_TO_CACHE, \
++		{ NFS4ERR_DELEG_REVOKED, "DELEG_REVOKED" }, \
++		{ NFS4ERR_DENIED, "DENIED" }, \
++		{ NFS4ERR_DIRDELEG_UNAVAIL, "DIRDELEG_UNAVAIL" }, \
++		{ NFS4ERR_DQUOT, "DQUOT" }, \
++		{ NFS4ERR_ENCR_ALG_UNSUPP, "ENCR_ALG_UNSUPP" }, \
++		{ NFS4ERR_EXIST, "EXIST" }, \
++		{ NFS4ERR_EXPIRED, "EXPIRED" }, \
++		{ NFS4ERR_FBIG, "FBIG" }, \
++		{ NFS4ERR_FHEXPIRED, "FHEXPIRED" }, \
++		{ NFS4ERR_FILE_OPEN, "FILE_OPEN" }, \
++		{ NFS4ERR_GRACE, "GRACE" }, \
++		{ NFS4ERR_HASH_ALG_UNSUPP, "HASH_ALG_UNSUPP" }, \
++		{ NFS4ERR_INVAL, "INVAL" }, \
++		{ NFS4ERR_IO, "IO" }, \
++		{ NFS4ERR_ISDIR, "ISDIR" }, \
++		{ NFS4ERR_LAYOUTTRYLATER, "LAYOUTTRYLATER" }, \
++		{ NFS4ERR_LAYOUTUNAVAILABLE, "LAYOUTUNAVAILABLE" }, \
++		{ NFS4ERR_LEASE_MOVED, "LEASE_MOVED" }, \
++		{ NFS4ERR_LOCKED, "LOCKED" }, \
++		{ NFS4ERR_LOCKS_HELD, "LOCKS_HELD" }, \
++		{ NFS4ERR_LOCK_RANGE, "LOCK_RANGE" }, \
++		{ NFS4ERR_MINOR_VERS_MISMATCH, "MINOR_VERS_MISMATCH" }, \
++		{ NFS4ERR_MLINK, "MLINK" }, \
++		{ NFS4ERR_MOVED, "MOVED" }, \
++		{ NFS4ERR_NAMETOOLONG, "NAMETOOLONG" }, \
++		{ NFS4ERR_NOENT, "NOENT" }, \
++		{ NFS4ERR_NOFILEHANDLE, "NOFILEHANDLE" }, \
++		{ NFS4ERR_NOMATCHING_LAYOUT, "NOMATCHING_LAYOUT" }, \
++		{ NFS4ERR_NOSPC, "NOSPC" }, \
++		{ NFS4ERR_NOTDIR, "NOTDIR" }, \
++		{ NFS4ERR_NOTEMPTY, "NOTEMPTY" }, \
++		{ NFS4ERR_NOTSUPP, "NOTSUPP" }, \
++		{ NFS4ERR_NOT_ONLY_OP, "NOT_ONLY_OP" }, \
++		{ NFS4ERR_NOT_SAME, "NOT_SAME" }, \
++		{ NFS4ERR_NO_GRACE, "NO_GRACE" }, \
++		{ NFS4ERR_NXIO, "NXIO" }, \
++		{ NFS4ERR_OLD_STATEID, "OLD_STATEID" }, \
++		{ NFS4ERR_OPENMODE, "OPENMODE" }, \
++		{ NFS4ERR_OP_ILLEGAL, "OP_ILLEGAL" }, \
++		{ NFS4ERR_OP_NOT_IN_SESSION, "OP_NOT_IN_SESSION" }, \
++		{ NFS4ERR_PERM, "PERM" }, \
++		{ NFS4ERR_PNFS_IO_HOLE, "PNFS_IO_HOLE" }, \
++		{ NFS4ERR_PNFS_NO_LAYOUT, "PNFS_NO_LAYOUT" }, \
++		{ NFS4ERR_RECALLCONFLICT, "RECALLCONFLICT" }, \
++		{ NFS4ERR_RECLAIM_BAD, "RECLAIM_BAD" }, \
++		{ NFS4ERR_RECLAIM_CONFLICT, "RECLAIM_CONFLICT" }, \
++		{ NFS4ERR_REJECT_DELEG, "REJECT_DELEG" }, \
++		{ NFS4ERR_REP_TOO_BIG, "REP_TOO_BIG" }, \
++		{ NFS4ERR_REP_TOO_BIG_TO_CACHE, \
+ 			"REP_TOO_BIG_TO_CACHE" }, \
+-		{ -NFS4ERR_REQ_TOO_BIG, "REQ_TOO_BIG" }, \
+-		{ -NFS4ERR_RESOURCE, "RESOURCE" }, \
+-		{ -NFS4ERR_RESTOREFH, "RESTOREFH" }, \
+-		{ -NFS4ERR_RETRY_UNCACHED_REP, "RETRY_UNCACHED_REP" }, \
+-		{ -NFS4ERR_RETURNCONFLICT, "RETURNCONFLICT" }, \
+-		{ -NFS4ERR_ROFS, "ROFS" }, \
+-		{ -NFS4ERR_SAME, "SAME" }, \
+-		{ -NFS4ERR_SHARE_DENIED, "SHARE_DENIED" }, \
+-		{ -NFS4ERR_SEQUENCE_POS, "SEQUENCE_POS" }, \
+-		{ -NFS4ERR_SEQ_FALSE_RETRY, "SEQ_FALSE_RETRY" }, \
+-		{ -NFS4ERR_SEQ_MISORDERED, "SEQ_MISORDERED" }, \
+-		{ -NFS4ERR_SERVERFAULT, "SERVERFAULT" }, \
+-		{ -NFS4ERR_STALE, "STALE" }, \
+-		{ -NFS4ERR_STALE_CLIENTID, "STALE_CLIENTID" }, \
+-		{ -NFS4ERR_STALE_STATEID, "STALE_STATEID" }, \
+-		{ -NFS4ERR_SYMLINK, "SYMLINK" }, \
+-		{ -NFS4ERR_TOOSMALL, "TOOSMALL" }, \
+-		{ -NFS4ERR_TOO_MANY_OPS, "TOO_MANY_OPS" }, \
+-		{ -NFS4ERR_UNKNOWN_LAYOUTTYPE, "UNKNOWN_LAYOUTTYPE" }, \
+-		{ -NFS4ERR_UNSAFE_COMPOUND, "UNSAFE_COMPOUND" }, \
+-		{ -NFS4ERR_WRONGSEC, "WRONGSEC" }, \
+-		{ -NFS4ERR_WRONG_CRED, "WRONG_CRED" }, \
+-		{ -NFS4ERR_WRONG_TYPE, "WRONG_TYPE" }, \
+-		{ -NFS4ERR_XDEV, "XDEV" })
++		{ NFS4ERR_REQ_TOO_BIG, "REQ_TOO_BIG" }, \
++		{ NFS4ERR_RESOURCE, "RESOURCE" }, \
++		{ NFS4ERR_RESTOREFH, "RESTOREFH" }, \
++		{ NFS4ERR_RETRY_UNCACHED_REP, "RETRY_UNCACHED_REP" }, \
++		{ NFS4ERR_RETURNCONFLICT, "RETURNCONFLICT" }, \
++		{ NFS4ERR_ROFS, "ROFS" }, \
++		{ NFS4ERR_SAME, "SAME" }, \
++		{ NFS4ERR_SHARE_DENIED, "SHARE_DENIED" }, \
++		{ NFS4ERR_SEQUENCE_POS, "SEQUENCE_POS" }, \
++		{ NFS4ERR_SEQ_FALSE_RETRY, "SEQ_FALSE_RETRY" }, \
++		{ NFS4ERR_SEQ_MISORDERED, "SEQ_MISORDERED" }, \
++		{ NFS4ERR_SERVERFAULT, "SERVERFAULT" }, \
++		{ NFS4ERR_STALE, "STALE" }, \
++		{ NFS4ERR_STALE_CLIENTID, "STALE_CLIENTID" }, \
++		{ NFS4ERR_STALE_STATEID, "STALE_STATEID" }, \
++		{ NFS4ERR_SYMLINK, "SYMLINK" }, \
++		{ NFS4ERR_TOOSMALL, "TOOSMALL" }, \
++		{ NFS4ERR_TOO_MANY_OPS, "TOO_MANY_OPS" }, \
++		{ NFS4ERR_UNKNOWN_LAYOUTTYPE, "UNKNOWN_LAYOUTTYPE" }, \
++		{ NFS4ERR_UNSAFE_COMPOUND, "UNSAFE_COMPOUND" }, \
++		{ NFS4ERR_WRONGSEC, "WRONGSEC" }, \
++		{ NFS4ERR_WRONG_CRED, "WRONG_CRED" }, \
++		{ NFS4ERR_WRONG_TYPE, "WRONG_TYPE" }, \
++		{ NFS4ERR_XDEV, "XDEV" })
  
- /**
-  * xs_udp_timer - called when a retransmit timeout occurs on a UDP transport
-+ * @xprt: controlling transport
-  * @task: task that timed out
-  *
-  * Adjust the congestion window after a retransmit timeout has occurred.
-@@ -2264,6 +2265,7 @@ static int xs_tcp_finish_connecting(struct rpc_xprt *xprt, struct socket *sock)
+ #define show_open_flags(flags) \
+ 	__print_flags(flags, "|", \
+@@ -558,6 +703,13 @@
+ 		)
+ );
  
- /**
-  * xs_tcp_setup_socket - create a TCP socket and connect to a remote endpoint
-+ * @work: queued work item
-  *
-  * Invoked by a work queue tasklet.
-  */
++TRACE_DEFINE_ENUM(F_GETLK);
++TRACE_DEFINE_ENUM(F_SETLK);
++TRACE_DEFINE_ENUM(F_SETLKW);
++TRACE_DEFINE_ENUM(F_RDLCK);
++TRACE_DEFINE_ENUM(F_WRLCK);
++TRACE_DEFINE_ENUM(F_UNLCK);
++
+ #define show_lock_cmd(type) \
+ 	__print_symbolic((int)type, \
+ 		{ F_GETLK, "GETLK" }, \
+@@ -1451,6 +1603,10 @@
+ #ifdef CONFIG_NFS_V4_1
+ DEFINE_NFS4_COMMIT_EVENT(nfs4_pnfs_commit_ds);
+ 
++TRACE_DEFINE_ENUM(IOMODE_READ);
++TRACE_DEFINE_ENUM(IOMODE_RW);
++TRACE_DEFINE_ENUM(IOMODE_ANY);
++
+ #define show_pnfs_iomode(iomode) \
+ 	__print_symbolic(iomode, \
+ 		{ IOMODE_READ, "READ" }, \
+@@ -1528,6 +1684,20 @@
+ DEFINE_NFS4_INODE_STATEID_EVENT(nfs4_layoutreturn);
+ DEFINE_NFS4_INODE_EVENT(nfs4_layoutreturn_on_close);
+ 
++TRACE_DEFINE_ENUM(PNFS_UPDATE_LAYOUT_UNKNOWN);
++TRACE_DEFINE_ENUM(PNFS_UPDATE_LAYOUT_NO_PNFS);
++TRACE_DEFINE_ENUM(PNFS_UPDATE_LAYOUT_RD_ZEROLEN);
++TRACE_DEFINE_ENUM(PNFS_UPDATE_LAYOUT_MDSTHRESH);
++TRACE_DEFINE_ENUM(PNFS_UPDATE_LAYOUT_NOMEM);
++TRACE_DEFINE_ENUM(PNFS_UPDATE_LAYOUT_BULK_RECALL);
++TRACE_DEFINE_ENUM(PNFS_UPDATE_LAYOUT_IO_TEST_FAIL);
++TRACE_DEFINE_ENUM(PNFS_UPDATE_LAYOUT_FOUND_CACHED);
++TRACE_DEFINE_ENUM(PNFS_UPDATE_LAYOUT_RETURN);
++TRACE_DEFINE_ENUM(PNFS_UPDATE_LAYOUT_BLOCKED);
++TRACE_DEFINE_ENUM(PNFS_UPDATE_LAYOUT_INVALID_OPEN);
++TRACE_DEFINE_ENUM(PNFS_UPDATE_LAYOUT_RETRY);
++TRACE_DEFINE_ENUM(PNFS_UPDATE_LAYOUT_SEND_LAYOUTGET);
++
+ #define show_pnfs_update_layout_reason(reason)				\
+ 	__print_symbolic(reason,					\
+ 		{ PNFS_UPDATE_LAYOUT_UNKNOWN, "unknown" },		\
 
