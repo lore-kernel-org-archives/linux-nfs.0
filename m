@@ -6,65 +6,65 @@ X-Spam-Status: No, score=-6.8 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
 	SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id BD071C43441
-	for <linux-nfs@archiver.kernel.org>; Mon, 26 Nov 2018 20:07:02 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6CD30C43441
+	for <linux-nfs@archiver.kernel.org>; Mon, 26 Nov 2018 20:07:07 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 765E6205C9
-	for <linux-nfs@archiver.kernel.org>; Mon, 26 Nov 2018 20:07:02 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 250FE205C9
+	for <linux-nfs@archiver.kernel.org>; Mon, 26 Nov 2018 20:07:07 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="HD2Gl6xD"
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 765E6205C9
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="YbHbantp"
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 250FE205C9
 Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=oracle.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726414AbeK0HCP (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 27 Nov 2018 02:02:15 -0500
-Received: from mail-io1-f66.google.com ([209.85.166.66]:39292 "EHLO
-        mail-io1-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726296AbeK0HCP (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 27 Nov 2018 02:02:15 -0500
-Received: by mail-io1-f66.google.com with SMTP id k7so5156325iob.6;
-        Mon, 26 Nov 2018 12:07:00 -0800 (PST)
+        id S1727193AbeK0HCU (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 27 Nov 2018 02:02:20 -0500
+Received: from mail-it1-f195.google.com ([209.85.166.195]:36930 "EHLO
+        mail-it1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726296AbeK0HCT (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 27 Nov 2018 02:02:19 -0500
+Received: by mail-it1-f195.google.com with SMTP id b5so29972111iti.2;
+        Mon, 26 Nov 2018 12:07:05 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=sender:subject:from:to:date:message-id:in-reply-to:references
          :user-agent:mime-version:content-transfer-encoding;
-        bh=7skte31iUDuXNUaXXBGsmJB1N8WStTli/vQHdTmez+k=;
-        b=HD2Gl6xDnFpYfxKY44sykymPJQdAV7Coiq2AGm7ShWIAVH9pp8bpNG8WKMgdZPpKcD
-         uKw9Pjcy1+3SmScBD3jgTpj6Dc9lymEXRDSYSEasIl7TmqHEMUOnG8q/eYQMv7hW+gEh
-         LEOBx3hqQgehGrsUHc6WJM0q4HNnHVMnSgtTDPrUb+hZP6X5Q4L7ZO2gFejbKO6BQfuw
-         npv+7gMwwZxxbJFpT6JbsHCMfyWhJvo7XdW1rbhAzhyIogX0tJ/AOAHH+80WTxA3baHK
-         eMgdP3EetC47OF7reyrdKtSMUqZNVc1UW7Yo32lcUWYZLXXSqDvgN9qFwYpKLsgIC1Pn
-         Z/ag==
+        bh=gnZ7Fn3UK+YumxXMTtFfK3L4ui4A38YmzMXBLRNL9OM=;
+        b=YbHbantpsXU4h/Z1w2ELsgP5vvq/YapbvEPJGS0XPxxqKgUgAsGzl17dw/i7VmKdq+
+         Fx+yLqZbTmifui7g3/4hKOs1DGFvBZzH+wixSutv4aY8SipOdXUwnr/TYM5QO0aVIteb
+         AD/oukVaboK2o2kX/jemxs/F563ni0jjEcRAmYo9ICXeedcLlIEhv6xugZC0tzyOZIk6
+         Z2Lm0xWL4HZ3U0WUf9/rxt9rpH0ByopiH9mg0ukUKUSwWNI6JwH0IJz1J55mKMtF5jHM
+         /EXghOclq8sv3elTkcndblzL+qIN4CYJigAO7wrkc91Tp38F+AGD1AclxtVx4dOskdVG
+         /Sug==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:sender:subject:from:to:date:message-id
          :in-reply-to:references:user-agent:mime-version
          :content-transfer-encoding;
-        bh=7skte31iUDuXNUaXXBGsmJB1N8WStTli/vQHdTmez+k=;
-        b=ueu9gur9s+7Mf6jaUCDwKg19q4Jn10tachL0ed1THrFoE+RRGKXIdbNIWuDQf/6Spb
-         feJOIVCTZYm2rRm0R69KYev8UBi+OWj48WnD5n1S2ya4Yvoc4qOLLLu3plFTc62k8yBg
-         mECWKg+h3xhc1VAu5/ka7nIk6liL0TwKxh44SQn0kVbgAueN5fZEKwpMCTd75DKxfdLy
-         m7AISjTwwAM+X5khR5hLhkF0MDiwaJ/buCK+f27LW4Pxl7Z6sDlw4gYJEpYZzFGfbx5P
-         mm2mTjCuwOqF6FbPt/CMqJuP4qLPrLcC0iY6eOeAFf1WsKRLYyLLEtMWJ+FoRueUhjWY
-         8Mug==
-X-Gm-Message-State: AA+aEWZkqpbQO6D/Z2HK5L01czwCnri1QW/t0GPFUGTT/dpP/1xWp74d
-        ymMUtoeoQTH2vWk0CdQ1KcAbNWH6
-X-Google-Smtp-Source: AFSGD/WIsESnFZN3Cz68DyxwuroQXH0e/g/CO32RP0542OQzyhk2yjzM6zC2ljXRwCVTvNNC4aybug==
-X-Received: by 2002:a5e:da48:: with SMTP id o8mr24835482iop.165.1543262819285;
-        Mon, 26 Nov 2018 12:06:59 -0800 (PST)
+        bh=gnZ7Fn3UK+YumxXMTtFfK3L4ui4A38YmzMXBLRNL9OM=;
+        b=YsqpcSmi4wzJ8Wsfz15rHddYLuu7SI323HdRC2EwTtyfZITX63HuhUCadvTh66DT12
+         gs9Hl8TXTc8WGmpHwRgYmRh0E0PXGXe8UUmXafeC3mq0zwRzlciZ9t5KwlDLb888mNDM
+         HvozDeb9LAmEgS2+1NRefUznOr5KQGvxgGWLA3CwjwEFJ4T4dE9fUue9SPjKR2riUY8s
+         GVnfOaAsYHEzQOtMAxQF35k37PtXHd5qgoO6uBAj84WHlUbBFljJlLZOU+wmc/vYljyq
+         cg0KDMAccuMm1obPMI6+64fXw7cEs+XCw6FlhoicUytN08ZWY5f+NndcvrTeTKd5Wri7
+         ilNA==
+X-Gm-Message-State: AGRZ1gL+r4HyYy3KQAMcRiN1AHyIFW7d+ZBs3K2kxdQ5UJ+uzUuFD7yW
+        /lckIGufj8To3L2rnq43LHS+XZpj
+X-Google-Smtp-Source: AFSGD/Vm90OMlCCtoN2Sv39cl7+6eyq+zOR3rsrN2oEErsYSQpIbb0LwHKEm/rq+tR6cwjzQY/jaww==
+X-Received: by 2002:a02:a15e:: with SMTP id m30mr26088467jah.143.1543262824441;
+        Mon, 26 Nov 2018 12:07:04 -0800 (PST)
 Received: from gateway.1015granger.net (c-68-61-232-219.hsd1.mi.comcast.net. [68.61.232.219])
-        by smtp.gmail.com with ESMTPSA id l11sm474515iob.24.2018.11.26.12.06.57
+        by smtp.gmail.com with ESMTPSA id b5sm442016ioc.21.2018.11.26.12.07.02
         (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Mon, 26 Nov 2018 12:06:57 -0800 (PST)
+        Mon, 26 Nov 2018 12:07:03 -0800 (PST)
 Received: from manet.1015granger.net (manet.1015granger.net [192.168.1.51])
-        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id wAQK6uDo010681;
-        Mon, 26 Nov 2018 20:06:56 GMT
-Subject: [PATCH v2 13/20] xprtrdma: Cull dprintk() call sites
+        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id wAQK721t010684;
+        Mon, 26 Nov 2018 20:07:02 GMT
+Subject: [PATCH v2 14/20] xprtrdma: Clean up of xprtrdma chunk trace points
 From:   Chuck Lever <chuck.lever@oracle.com>
 To:     linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date:   Mon, 26 Nov 2018 15:06:56 -0500
-Message-ID: <20181126200656.10321.66947.stgit@manet.1015granger.net>
+Date:   Mon, 26 Nov 2018 15:07:02 -0500
+Message-ID: <20181126200702.10321.5316.stgit@manet.1015granger.net>
 In-Reply-To: <20181126194611.10321.71714.stgit@manet.1015granger.net>
 References: <20181126194611.10321.71714.stgit@manet.1015granger.net>
 User-Agent: StGit/0.17.1-dirty
@@ -76,244 +76,180 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Clean up: Remove dprintk() call sites that report rare or impossible
-errors. Leave a few that display high-value low noise status
-information.
+The chunk-related trace points capture nearly the same information
+as the MR-related trace points.
+
+Also, rename them so globbing can be used to enable or disable
+these trace points more easily.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/backchannel.c |    3 ---
- net/sunrpc/xprtrdma/rpc_rdma.c    |   17 ++++++++++-------
- net/sunrpc/xprtrdma/transport.c   |   34 ++++------------------------------
- net/sunrpc/xprtrdma/verbs.c       |   34 +++++-----------------------------
- 4 files changed, 19 insertions(+), 69 deletions(-)
+ include/trace/events/rpcrdma.h |   42 +++++++++++++++++++++++++---------------
+ net/sunrpc/xprtrdma/rpc_rdma.c |    6 +++---
+ 2 files changed, 29 insertions(+), 19 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/backchannel.c b/net/sunrpc/xprtrdma/backchannel.c
-index c8a3d45..556975f 100644
---- a/net/sunrpc/xprtrdma/backchannel.c
-+++ b/net/sunrpc/xprtrdma/backchannel.c
-@@ -235,9 +235,6 @@ void xprt_rdma_bc_free_rqst(struct rpc_rqst *rqst)
- 	struct rpcrdma_req *req = rpcr_to_rdmar(rqst);
- 	struct rpc_xprt *xprt = rqst->rq_xprt;
+diff --git a/include/trace/events/rpcrdma.h b/include/trace/events/rpcrdma.h
+index b093058..f42d89b 100644
+--- a/include/trace/events/rpcrdma.h
++++ b/include/trace/events/rpcrdma.h
+@@ -97,7 +97,6 @@
+ 	TP_STRUCT__entry(
+ 		__field(unsigned int, task_id)
+ 		__field(unsigned int, client_id)
+-		__field(const void *, mr)
+ 		__field(unsigned int, pos)
+ 		__field(int, nents)
+ 		__field(u32, handle)
+@@ -109,7 +108,6 @@
+ 	TP_fast_assign(
+ 		__entry->task_id = task->tk_pid;
+ 		__entry->client_id = task->tk_client->cl_clid;
+-		__entry->mr = mr;
+ 		__entry->pos = pos;
+ 		__entry->nents = mr->mr_nents;
+ 		__entry->handle = mr->mr_handle;
+@@ -118,8 +116,8 @@
+ 		__entry->nsegs = nsegs;
+ 	),
  
--	dprintk("RPC:       %s: freeing rqst %p (req %p)\n",
--		__func__, rqst, req);
--
- 	rpcrdma_recv_buffer_put(req->rl_reply);
- 	req->rl_reply = NULL;
+-	TP_printk("task:%u@%u mr=%p pos=%u %u@0x%016llx:0x%08x (%s)",
+-		__entry->task_id, __entry->client_id, __entry->mr,
++	TP_printk("task:%u@%u pos=%u %u@0x%016llx:0x%08x (%s)",
++		__entry->task_id, __entry->client_id,
+ 		__entry->pos, __entry->length,
+ 		(unsigned long long)__entry->offset, __entry->handle,
+ 		__entry->nents < __entry->nsegs ? "more" : "last"
+@@ -127,7 +125,7 @@
+ );
  
+ #define DEFINE_RDCH_EVENT(name)						\
+-		DEFINE_EVENT(xprtrdma_rdch_event, name,			\
++		DEFINE_EVENT(xprtrdma_rdch_event, xprtrdma_chunk_##name,\
+ 				TP_PROTO(				\
+ 					const struct rpc_task *task,	\
+ 					unsigned int pos,		\
+@@ -148,7 +146,6 @@
+ 	TP_STRUCT__entry(
+ 		__field(unsigned int, task_id)
+ 		__field(unsigned int, client_id)
+-		__field(const void *, mr)
+ 		__field(int, nents)
+ 		__field(u32, handle)
+ 		__field(u32, length)
+@@ -159,7 +156,6 @@
+ 	TP_fast_assign(
+ 		__entry->task_id = task->tk_pid;
+ 		__entry->client_id = task->tk_client->cl_clid;
+-		__entry->mr = mr;
+ 		__entry->nents = mr->mr_nents;
+ 		__entry->handle = mr->mr_handle;
+ 		__entry->length = mr->mr_length;
+@@ -167,8 +163,8 @@
+ 		__entry->nsegs = nsegs;
+ 	),
+ 
+-	TP_printk("task:%u@%u mr=%p %u@0x%016llx:0x%08x (%s)",
+-		__entry->task_id, __entry->client_id, __entry->mr,
++	TP_printk("task:%u@%u %u@0x%016llx:0x%08x (%s)",
++		__entry->task_id, __entry->client_id,
+ 		__entry->length, (unsigned long long)__entry->offset,
+ 		__entry->handle,
+ 		__entry->nents < __entry->nsegs ? "more" : "last"
+@@ -176,7 +172,7 @@
+ );
+ 
+ #define DEFINE_WRCH_EVENT(name)						\
+-		DEFINE_EVENT(xprtrdma_wrch_event, name,			\
++		DEFINE_EVENT(xprtrdma_wrch_event, xprtrdma_chunk_##name,\
+ 				TP_PROTO(				\
+ 					const struct rpc_task *task,	\
+ 					struct rpcrdma_mr *mr,		\
+@@ -234,6 +230,18 @@
+ 				),					\
+ 				TP_ARGS(wc, frwr))
+ 
++TRACE_DEFINE_ENUM(DMA_BIDIRECTIONAL);
++TRACE_DEFINE_ENUM(DMA_TO_DEVICE);
++TRACE_DEFINE_ENUM(DMA_FROM_DEVICE);
++TRACE_DEFINE_ENUM(DMA_NONE);
++
++#define xprtrdma_show_direction(x)					\
++		__print_symbolic(x,					\
++				{ DMA_BIDIRECTIONAL, "BIDIR" },		\
++				{ DMA_TO_DEVICE, "TO_DEVICE" },		\
++				{ DMA_FROM_DEVICE, "FROM_DEVICE" },	\
++				{ DMA_NONE, "NONE" })
++
+ DECLARE_EVENT_CLASS(xprtrdma_mr,
+ 	TP_PROTO(
+ 		const struct rpcrdma_mr *mr
+@@ -246,6 +254,7 @@
+ 		__field(u32, handle)
+ 		__field(u32, length)
+ 		__field(u64, offset)
++		__field(u32, dir)
+ 	),
+ 
+ 	TP_fast_assign(
+@@ -253,12 +262,13 @@
+ 		__entry->handle = mr->mr_handle;
+ 		__entry->length = mr->mr_length;
+ 		__entry->offset = mr->mr_offset;
++		__entry->dir    = mr->mr_dir;
+ 	),
+ 
+-	TP_printk("mr=%p %u@0x%016llx:0x%08x",
++	TP_printk("mr=%p %u@0x%016llx:0x%08x (%s)",
+ 		__entry->mr, __entry->length,
+-		(unsigned long long)__entry->offset,
+-		__entry->handle
++		(unsigned long long)__entry->offset, __entry->handle,
++		xprtrdma_show_direction(__entry->dir)
+ 	)
+ );
+ 
+@@ -437,9 +447,9 @@
+ 
+ DEFINE_RXPRT_EVENT(xprtrdma_nomrs);
+ 
+-DEFINE_RDCH_EVENT(xprtrdma_read_chunk);
+-DEFINE_WRCH_EVENT(xprtrdma_write_chunk);
+-DEFINE_WRCH_EVENT(xprtrdma_reply_chunk);
++DEFINE_RDCH_EVENT(read);
++DEFINE_WRCH_EVENT(write);
++DEFINE_WRCH_EVENT(reply);
+ 
+ TRACE_DEFINE_ENUM(rpcrdma_noch);
+ TRACE_DEFINE_ENUM(rpcrdma_readch);
 diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index 9993654..89c10f2 100644
+index 89c10f2..69989c4 100644
 --- a/net/sunrpc/xprtrdma/rpc_rdma.c
 +++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -1189,17 +1189,20 @@ static int decode_reply_chunk(struct xdr_stream *xdr, u32 *length)
- 		p = xdr_inline_decode(xdr, 2 * sizeof(*p));
- 		if (!p)
- 			break;
--		dprintk("RPC: %5u: %s: server reports version error (%u-%u)\n",
--			rqst->rq_task->tk_pid, __func__,
--			be32_to_cpup(p), be32_to_cpu(*(p + 1)));
-+		dprintk("RPC:       %s: server reports "
-+			"version error (%u-%u), xid %08x\n", __func__,
-+			be32_to_cpup(p), be32_to_cpu(*(p + 1)),
-+			be32_to_cpu(rep->rr_xid));
- 		break;
- 	case err_chunk:
--		dprintk("RPC: %5u: %s: server reports header decoding error\n",
--			rqst->rq_task->tk_pid, __func__);
-+		dprintk("RPC:       %s: server reports "
-+			"header decoding error, xid %08x\n", __func__,
-+			be32_to_cpu(rep->rr_xid));
- 		break;
- 	default:
--		dprintk("RPC: %5u: %s: server reports unrecognized error %d\n",
--			rqst->rq_task->tk_pid, __func__, be32_to_cpup(p));
-+		dprintk("RPC:       %s: server reports "
-+			"unrecognized error %d, xid %08x\n", __func__,
-+			be32_to_cpup(p), be32_to_cpu(rep->rr_xid));
- 	}
+@@ -366,7 +366,7 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
+ 		if (encode_read_segment(xdr, mr, pos) < 0)
+ 			return -EMSGSIZE;
  
- 	r_xprt->rx_stats.bad_reply_count++;
-diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index 254cb8c..45b2f53 100644
---- a/net/sunrpc/xprtrdma/transport.c
-+++ b/net/sunrpc/xprtrdma/transport.c
-@@ -318,17 +318,12 @@
- 	struct sockaddr *sap;
- 	int rc;
+-		trace_xprtrdma_read_chunk(rqst->rq_task, pos, mr, nsegs);
++		trace_xprtrdma_chunk_read(rqst->rq_task, pos, mr, nsegs);
+ 		r_xprt->rx_stats.read_chunk_count++;
+ 		nsegs -= mr->mr_nents;
+ 	} while (nsegs);
+@@ -424,7 +424,7 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
+ 		if (encode_rdma_segment(xdr, mr) < 0)
+ 			return -EMSGSIZE;
  
--	if (args->addrlen > sizeof(xprt->addr)) {
--		dprintk("RPC:       %s: address too large\n", __func__);
-+	if (args->addrlen > sizeof(xprt->addr))
- 		return ERR_PTR(-EBADF);
--	}
+-		trace_xprtrdma_write_chunk(rqst->rq_task, mr, nsegs);
++		trace_xprtrdma_chunk_write(rqst->rq_task, mr, nsegs);
+ 		r_xprt->rx_stats.write_chunk_count++;
+ 		r_xprt->rx_stats.total_rdma_request += mr->mr_length;
+ 		nchunks++;
+@@ -482,7 +482,7 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
+ 		if (encode_rdma_segment(xdr, mr) < 0)
+ 			return -EMSGSIZE;
  
- 	xprt = xprt_alloc(args->net, sizeof(struct rpcrdma_xprt), 0, 0);
--	if (xprt == NULL) {
--		dprintk("RPC:       %s: couldn't allocate rpcrdma_xprt\n",
--			__func__);
-+	if (!xprt)
- 		return ERR_PTR(-ENOMEM);
--	}
- 
- 	/* 60 second timeout, no retries */
- 	xprt->timeout = &xprt_rdma_default_timeout;
-@@ -444,8 +439,6 @@
- 	struct rpcrdma_ep *ep = &r_xprt->rx_ep;
- 	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
- 
--	dprintk("RPC:       %s: closing xprt %p\n", __func__, xprt);
--
- 	if (test_bit(RPCRDMA_IAF_REMOVING, &ia->ri_flags)) {
- 		xprt_clear_connected(xprt);
- 		rpcrdma_ia_remove(ia);
-@@ -848,26 +841,16 @@ void xprt_rdma_print_stats(struct rpc_xprt *xprt, struct seq_file *seq)
- 
- void xprt_rdma_cleanup(void)
- {
--	int rc;
--
--	dprintk("RPCRDMA Module Removed, deregister RPC RDMA transport\n");
- #if IS_ENABLED(CONFIG_SUNRPC_DEBUG)
- 	if (sunrpc_table_header) {
- 		unregister_sysctl_table(sunrpc_table_header);
- 		sunrpc_table_header = NULL;
- 	}
- #endif
--	rc = xprt_unregister_transport(&xprt_rdma);
--	if (rc)
--		dprintk("RPC:       %s: xprt_unregister returned %i\n",
--			__func__, rc);
- 
-+	xprt_unregister_transport(&xprt_rdma);
- 	rpcrdma_destroy_wq();
--
--	rc = xprt_unregister_transport(&xprt_rdma_bc);
--	if (rc)
--		dprintk("RPC:       %s: xprt_unregister(bc) returned %i\n",
--			__func__, rc);
-+	xprt_unregister_transport(&xprt_rdma_bc);
- }
- 
- int xprt_rdma_init(void)
-@@ -891,15 +874,6 @@ int xprt_rdma_init(void)
- 		return rc;
- 	}
- 
--	dprintk("RPCRDMA Module Init, register RPC RDMA transport\n");
--
--	dprintk("Defaults:\n");
--	dprintk("\tSlots %d\n"
--		"\tMaxInlineRead %d\n\tMaxInlineWrite %d\n",
--		xprt_rdma_slot_table_entries,
--		xprt_rdma_max_inline_read, xprt_rdma_max_inline_write);
--	dprintk("\tPadding 0\n\tMemreg %d\n", xprt_rdma_memreg_strategy);
--
- #if IS_ENABLED(CONFIG_SUNRPC_DEBUG)
- 	if (!sunrpc_table_header)
- 		sunrpc_table_header = register_sysctl_table(sunrpc_table);
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 73d5247..1a1402f 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -347,22 +347,15 @@
- 
- 	id = rdma_create_id(xprt->rx_xprt.xprt_net, rpcrdma_cm_event_handler,
- 			    xprt, RDMA_PS_TCP, IB_QPT_RC);
--	if (IS_ERR(id)) {
--		rc = PTR_ERR(id);
--		dprintk("RPC:       %s: rdma_create_id() failed %i\n",
--			__func__, rc);
-+	if (IS_ERR(id))
- 		return id;
--	}
- 
- 	ia->ri_async_rc = -ETIMEDOUT;
- 	rc = rdma_resolve_addr(id, NULL,
- 			       (struct sockaddr *)&xprt->rx_xprt.addr,
- 			       RDMA_RESOLVE_TIMEOUT);
--	if (rc) {
--		dprintk("RPC:       %s: rdma_resolve_addr() failed %i\n",
--			__func__, rc);
-+	if (rc)
- 		goto out;
--	}
- 	rc = wait_for_completion_interruptible_timeout(&ia->ri_done, wtimeout);
- 	if (rc < 0) {
- 		trace_xprtrdma_conn_tout(xprt);
-@@ -375,11 +368,8 @@
- 
- 	ia->ri_async_rc = -ETIMEDOUT;
- 	rc = rdma_resolve_route(id, RDMA_RESOLVE_TIMEOUT);
--	if (rc) {
--		dprintk("RPC:       %s: rdma_resolve_route() failed %i\n",
--			__func__, rc);
-+	if (rc)
- 		goto out;
--	}
- 	rc = wait_for_completion_interruptible_timeout(&ia->ri_done, wtimeout);
- 	if (rc < 0) {
- 		trace_xprtrdma_conn_tout(xprt);
-@@ -587,8 +577,6 @@
- 			     1, IB_POLL_WORKQUEUE);
- 	if (IS_ERR(sendcq)) {
- 		rc = PTR_ERR(sendcq);
--		dprintk("RPC:       %s: failed to create send CQ: %i\n",
--			__func__, rc);
- 		goto out1;
- 	}
- 
-@@ -597,8 +585,6 @@
- 			     0, IB_POLL_WORKQUEUE);
- 	if (IS_ERR(recvcq)) {
- 		rc = PTR_ERR(recvcq);
--		dprintk("RPC:       %s: failed to create recv CQ: %i\n",
--			__func__, rc);
- 		goto out2;
- 	}
- 
-@@ -740,11 +726,8 @@
- 	}
- 
- 	err = rdma_create_qp(id, ia->ri_pd, &ep->rep_attr);
--	if (err) {
--		dprintk("RPC:       %s: rdma_create_qp returned %d\n",
--			__func__, err);
-+	if (err)
- 		goto out_destroy;
--	}
- 
- 	/* Atomically replace the transport's ID and QP. */
- 	rc = 0;
-@@ -775,8 +758,6 @@
- 		dprintk("RPC:       %s: connecting...\n", __func__);
- 		rc = rdma_create_qp(ia->ri_id, ia->ri_pd, &ep->rep_attr);
- 		if (rc) {
--			dprintk("RPC:       %s: rdma_create_qp failed %i\n",
--				__func__, rc);
- 			rc = -ENETUNREACH;
- 			goto out_noupdate;
- 		}
-@@ -798,11 +779,8 @@
- 	rpcrdma_post_recvs(r_xprt, true);
- 
- 	rc = rdma_connect(ia->ri_id, &ep->rep_remote_cma);
--	if (rc) {
--		dprintk("RPC:       %s: rdma_connect() failed with %i\n",
--				__func__, rc);
-+	if (rc)
- 		goto out;
--	}
- 
- 	wait_event_interruptible(ep->rep_connect_wait, ep->rep_connected != 0);
- 	if (ep->rep_connected <= 0) {
-@@ -1144,8 +1122,6 @@ struct rpcrdma_req *
- out_free:
- 	kfree(rep);
- out:
--	dprintk("RPC:       %s: reply buffer %d alloc failed\n",
--		__func__, rc);
- 	return rc;
- }
- 
+-		trace_xprtrdma_reply_chunk(rqst->rq_task, mr, nsegs);
++		trace_xprtrdma_chunk_reply(rqst->rq_task, mr, nsegs);
+ 		r_xprt->rx_stats.reply_chunk_count++;
+ 		r_xprt->rx_stats.total_rdma_request += mr->mr_length;
+ 		nchunks++;
 
