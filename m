@@ -6,65 +6,66 @@ X-Spam-Status: No, score=-6.8 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
 	SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0B45DC43441
-	for <linux-nfs@archiver.kernel.org>; Mon, 26 Nov 2018 20:06:14 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 39437C43441
+	for <linux-nfs@archiver.kernel.org>; Mon, 26 Nov 2018 20:06:19 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id C584A20672
-	for <linux-nfs@archiver.kernel.org>; Mon, 26 Nov 2018 20:06:13 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id F04B820672
+	for <linux-nfs@archiver.kernel.org>; Mon, 26 Nov 2018 20:06:18 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="IDU42A5H"
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org C584A20672
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="D+RBMfSA"
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org F04B820672
 Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=oracle.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727114AbeK0HB0 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 27 Nov 2018 02:01:26 -0500
-Received: from mail-it1-f196.google.com ([209.85.166.196]:38634 "EHLO
-        mail-it1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726296AbeK0HB0 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 27 Nov 2018 02:01:26 -0500
-Received: by mail-it1-f196.google.com with SMTP id h65so29944373ith.3;
-        Mon, 26 Nov 2018 12:06:12 -0800 (PST)
+        id S1727131AbeK0HBb (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 27 Nov 2018 02:01:31 -0500
+Received: from mail-io1-f68.google.com ([209.85.166.68]:38043 "EHLO
+        mail-io1-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726296AbeK0HBb (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 27 Nov 2018 02:01:31 -0500
+Received: by mail-io1-f68.google.com with SMTP id l14so14879104ioj.5;
+        Mon, 26 Nov 2018 12:06:17 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=sender:subject:from:to:date:message-id:in-reply-to:references
          :user-agent:mime-version:content-transfer-encoding;
-        bh=Im06Smg/oOSgSAOJJVFfR0OiJ6nn5vpSYwuHFHeZSUo=;
-        b=IDU42A5H/98m0eGlUHnAgo5FPQsjBWaqjrA0cK36h4CsvSOavHnLWHSTzbQfSejvCk
-         4fSVhVUAyf73Nk7+qH8phbAiSZ+MnA1uU1z0h0V6W1YSfVjDMGf6c4u98W5TJJN2wxHc
-         cO8Kf0K9KyFa27RfhXtZKtD6+8+URUhtiRWpJ6Z4lNuRMW23TpeePZJuxK7OR2zs50Cq
-         +ZFjdrtIRscGgEIP5nVpjGoBn/6ZE6gECF9gr0Yu1gp7KN8uHS/x4wxUSv0xClH3y+qt
-         rz8ph6DbRM3JVGaORKG/LYR5nu+ziMhaSDD9MjaFReG8yA7t51axrH8GB5BeygqAHjnH
-         ZhKg==
+        bh=r5ygAM681JsqssJ4hf6Fh9W4EaTbQDpvms7g5AbWWQI=;
+        b=D+RBMfSAXPhxLLUMdblgm2e9XErl9M8ws2Y+r2Imk4hOnspUWGKaiHAFdcMW5My8qf
+         mQbJhSt+UEiWHTKxwLr9NbpcfFkTsFzGh7iNNpl3HmyfQ/QjkhPp7saHbRNL3jC6mGOn
+         TjZbjZqt7Q9BQ2VOGmlw5y0fXu7E4Eilc+4pdvqECWcnY/YbMwhe3CJloEpBWEv/D2HD
+         0HvS+djJJRqhh+SfTi1TXrbrONFt/chqRm1wcmwmp2KWj4hiXjVW1ZLEDzWE5DmM7YpV
+         iLcRVZiis0GLKAiijOxjkVDwB8aK66KEXhIX/oyhvukRjcaTrDF6NiydvumA4EdAW3j7
+         OTTA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:sender:subject:from:to:date:message-id
          :in-reply-to:references:user-agent:mime-version
          :content-transfer-encoding;
-        bh=Im06Smg/oOSgSAOJJVFfR0OiJ6nn5vpSYwuHFHeZSUo=;
-        b=SSW+PLcSL03NvNJjbKvTuiJG8Uz4mD3ejHKvKLBhGNFmPSlo0owc0clFZDNwy+BkK7
-         FyU8HuIBdeZwlltQA/6BrSaCkWgh8dD3gv3gKfSHmmMep8FyC/iqFYw2c7puo1mvE8aB
-         NfGeNJ1oJ94ztwN49gAJaeuxfaxwKxvMq/bege+HXhmUsfpnhXRPgf+eD61jFGns6luu
-         9ncNjifXreBYK85gr+sH3om/mr1yt5b2pbie9x5O8KnBDQA6lhYv5kfdJSToC02lKpOI
-         xm+aDXY5l4r+JiTgs5OWi6m6s5wk1eQ1OeZEiFyMxR0HvlKuAqYvdgRlsnReG83SeMR9
-         HlYg==
-X-Gm-Message-State: AA+aEWbqVFts1jruWnKv+iqwwtsg2nghL5Wlj30xd/XIhKVemml3Z/4q
-        EUQMmhXHRvPKYIKpvdJeza0M5KA5
-X-Google-Smtp-Source: AFSGD/V4jOcAcYBcK4sbchcwMTocVWislyKWtzRkAinetyqw5/ik6Zyh2HB1sC5oLGmuQgDNGrKhuw==
-X-Received: by 2002:a24:7094:: with SMTP id f142mr2525780itc.90.1543262771352;
-        Mon, 26 Nov 2018 12:06:11 -0800 (PST)
+        bh=r5ygAM681JsqssJ4hf6Fh9W4EaTbQDpvms7g5AbWWQI=;
+        b=OBQ2xJgvjwUFQRKxWP0doGbWknJc8XOMfJ3IWKUkPXR15EZ/q5fQW2NjXbOir7+gIP
+         DdZxhqPFG005YOkww78pZL8rP3P28LYddJQL2CZi2oZ0LaBLFEyJafYiSLRQRRHpkMRX
+         V52qjK1UCP1Ionsy7jt87ZhYEAPlWmuM1p55raVWI4e7jBj9Z8RsXsi8pIGM7AL8yDUt
+         r3DrNZGe/eL7F4jPO2KAc3Hf9MmiEdgjAUPJ9W8SVr+l1qiKqxJnlMItQtCbWJJXlwLX
+         jFywBBII9kw9O6BRbenPG5e9eLw9jUAauD4WpxVoKofiSKpzLCICMUV7XoGv1A/pCs7o
+         iysQ==
+X-Gm-Message-State: AA+aEWbWJMCkOrIBtY3NvhWGP76mfTwqfSxHN7TjUar/5TeCuJkgsQcv
+        f6Al1SEda0QwTeo9F82Iku1oDPFN
+X-Google-Smtp-Source: AFSGD/V0V7C3WBvvFhnV/JfVoOCSx0wCGLy+Mg9khCLSdnZE9ZX1FIofgsgrq3+cI+Y50tqS50iEIA==
+X-Received: by 2002:a5e:834d:: with SMTP id y13mr23611308iom.298.1543262776561;
+        Mon, 26 Nov 2018 12:06:16 -0800 (PST)
 Received: from gateway.1015granger.net (c-68-61-232-219.hsd1.mi.comcast.net. [68.61.232.219])
-        by smtp.gmail.com with ESMTPSA id l2sm449408iop.26.2018.11.26.12.06.09
+        by smtp.gmail.com with ESMTPSA id v24sm460437ioj.78.2018.11.26.12.06.14
         (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Mon, 26 Nov 2018 12:06:09 -0800 (PST)
+        Mon, 26 Nov 2018 12:06:15 -0800 (PST)
 Received: from manet.1015granger.net (manet.1015granger.net [192.168.1.51])
-        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id wAQK68oJ010654;
-        Mon, 26 Nov 2018 20:06:08 GMT
-Subject: [PATCH v2 04/20] xprtrdma: Reduce max_frwr_depth
+        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id wAQK6EOT010657;
+        Mon, 26 Nov 2018 20:06:14 GMT
+Subject: [PATCH v2 05/20] xprtrdma: Plant XID in on-the-wire RDMA offset
+ (FRWR)
 From:   Chuck Lever <chuck.lever@oracle.com>
 To:     linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date:   Mon, 26 Nov 2018 15:06:08 -0500
-Message-ID: <20181126200608.10321.50608.stgit@manet.1015granger.net>
+Date:   Mon, 26 Nov 2018 15:06:14 -0500
+Message-ID: <20181126200614.10321.58476.stgit@manet.1015granger.net>
 In-Reply-To: <20181126194611.10321.71714.stgit@manet.1015granger.net>
 References: <20181126194611.10321.71714.stgit@manet.1015granger.net>
 User-Agent: StGit/0.17.1-dirty
@@ -76,49 +77,91 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Some devices advertise a large max_fast_reg_page_list_len
-capability, but perform optimally when MRs are significantly smaller
-than that depth -- probably when the MR itself is no larger than a
-page.
+Place the associated RPC transaction's XID in the upper 32 bits of
+each RDMA segment's rdma_offset field. There are two reasons to do
+this:
 
-By default, the RDMA R/W core API uses max_sge_rd as the maximum
-page depth for MRs. For some devices, the value of max_sge_rd is
-1, which is also not optimal. Thus, when max_sge_rd is larger than
-1, use that value. Otherwise use the value of the
-max_fast_reg_page_list_len attribute.
+- The R_key only has 8 bits that are different from registration to
+  registration. The XID adds more uniqueness to each RDMA segment to
+  reduce the likelihood of a software bug on the server reading from
+  or writing into memory it's not supposed to.
 
-I've tested this with a couple of devices, and it reproducibly
-improves the throughput of large I/Os by several percent.
+- On-the-wire RDMA Read and Write requests do not otherwise carry
+  any identifier that matches them up to an RPC. The XID in the
+  upper 32 bits will act as an eye-catcher in network captures.
 
+Suggested-by: Tom Talpey <ttalpey@microsoft.com>
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/frwr_ops.c |   15 +++++++++++----
- 1 file changed, 11 insertions(+), 4 deletions(-)
+ net/sunrpc/xprtrdma/frwr_ops.c  |    4 +++-
+ net/sunrpc/xprtrdma/rpc_rdma.c  |    6 +++---
+ net/sunrpc/xprtrdma/xprt_rdma.h |    2 +-
+ 3 files changed, 7 insertions(+), 5 deletions(-)
 
 diff --git a/net/sunrpc/xprtrdma/frwr_ops.c b/net/sunrpc/xprtrdma/frwr_ops.c
-index ae94de9..72c6d32 100644
+index 72c6d32..e758c0d 100644
 --- a/net/sunrpc/xprtrdma/frwr_ops.c
 +++ b/net/sunrpc/xprtrdma/frwr_ops.c
-@@ -191,10 +191,17 @@
- 	if (attrs->device_cap_flags & IB_DEVICE_SG_GAPS_REG)
- 		ia->ri_mrtype = IB_MR_TYPE_SG_GAPS;
+@@ -347,7 +347,7 @@
+  */
+ static struct rpcrdma_mr_seg *
+ frwr_op_map(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg,
+-	    int nsegs, bool writing, struct rpcrdma_mr **out)
++	    int nsegs, bool writing, u32 xid, struct rpcrdma_mr **out)
+ {
+ 	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
+ 	bool holes_ok = ia->ri_mrtype == IB_MR_TYPE_SG_GAPS;
+@@ -401,6 +401,8 @@
+ 	if (unlikely(n != mr->mr_nents))
+ 		goto out_mapmr_err;
  
--	ia->ri_max_frwr_depth =
--			min_t(unsigned int, RPCRDMA_MAX_DATA_SEGS,
--			      attrs->max_fast_reg_page_list_len);
--	dprintk("RPC:       %s: device's max FR page list len = %u\n",
-+	/* Quirk: Some devices advertise a large max_fast_reg_page_list_len
-+	 * capability, but perform optimally when the MRs are not larger
-+	 * than a page.
-+	 */
-+	if (attrs->max_sge_rd > 1)
-+		ia->ri_max_frwr_depth = attrs->max_sge_rd;
-+	else
-+		ia->ri_max_frwr_depth = attrs->max_fast_reg_page_list_len;
-+	if (ia->ri_max_frwr_depth > RPCRDMA_MAX_DATA_SEGS)
-+		ia->ri_max_frwr_depth = RPCRDMA_MAX_DATA_SEGS;
-+	dprintk("RPC:       %s: max FR page list depth = %u\n",
- 		__func__, ia->ri_max_frwr_depth);
++	ibmr->iova &= 0x00000000ffffffff;
++	ibmr->iova |= ((u64)cpu_to_be32(xid)) << 32;
+ 	key = (u8)(ibmr->rkey & 0x000000FF);
+ 	ib_update_fast_reg_key(ibmr, ++key);
  
- 	/* Add room for frwr register and invalidate WRs.
+diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
+index 9f53e02..89a2db2 100644
+--- a/net/sunrpc/xprtrdma/rpc_rdma.c
++++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+@@ -357,7 +357,7 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
+ 
+ 	do {
+ 		seg = r_xprt->rx_ia.ri_ops->ro_map(r_xprt, seg, nsegs,
+-						   false, &mr);
++						   false, rqst->rq_xid, &mr);
+ 		if (IS_ERR(seg))
+ 			return PTR_ERR(seg);
+ 		rpcrdma_mr_push(mr, &req->rl_registered);
+@@ -415,7 +415,7 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
+ 	nchunks = 0;
+ 	do {
+ 		seg = r_xprt->rx_ia.ri_ops->ro_map(r_xprt, seg, nsegs,
+-						   true, &mr);
++						   true, rqst->rq_xid, &mr);
+ 		if (IS_ERR(seg))
+ 			return PTR_ERR(seg);
+ 		rpcrdma_mr_push(mr, &req->rl_registered);
+@@ -473,7 +473,7 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
+ 	nchunks = 0;
+ 	do {
+ 		seg = r_xprt->rx_ia.ri_ops->ro_map(r_xprt, seg, nsegs,
+-						   true, &mr);
++						   true, rqst->rq_xid, &mr);
+ 		if (IS_ERR(seg))
+ 			return PTR_ERR(seg);
+ 		rpcrdma_mr_push(mr, &req->rl_registered);
+diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+index a13ccb6..2ae1ee2 100644
+--- a/net/sunrpc/xprtrdma/xprt_rdma.h
++++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+@@ -472,7 +472,7 @@ struct rpcrdma_memreg_ops {
+ 	struct rpcrdma_mr_seg *
+ 			(*ro_map)(struct rpcrdma_xprt *,
+ 				  struct rpcrdma_mr_seg *, int, bool,
+-				  struct rpcrdma_mr **);
++				  u32, struct rpcrdma_mr **);
+ 	int		(*ro_send)(struct rpcrdma_ia *ia,
+ 				   struct rpcrdma_req *req);
+ 	void		(*ro_reminv)(struct rpcrdma_rep *rep,
 
