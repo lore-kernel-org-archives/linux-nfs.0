@@ -2,288 +2,162 @@ Return-Path: <SRS0=Htud=OG=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED,
-	USER_AGENT_MUTT autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-7.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,SPF_PASS,USER_AGENT_MUTT
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9290DC43441
-	for <linux-nfs@archiver.kernel.org>; Tue, 27 Nov 2018 17:21:41 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DA195C43441
+	for <linux-nfs@archiver.kernel.org>; Tue, 27 Nov 2018 17:43:19 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 5547D2086B
-	for <linux-nfs@archiver.kernel.org>; Tue, 27 Nov 2018 17:21:41 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 5547D2086B
-Authentication-Results: mail.kernel.org; dmarc=none (p=none dis=none) header.from=fieldses.org
+	by mail.kernel.org (Postfix) with ESMTP id A8C9A2082F
+	for <linux-nfs@archiver.kernel.org>; Tue, 27 Nov 2018 17:43:19 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org A8C9A2082F
+Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=redhat.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1731510AbeK1EUP (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 27 Nov 2018 23:20:15 -0500
-Received: from fieldses.org ([173.255.197.46]:43100 "EHLO fieldses.org"
+        id S1731529AbeK1El5 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 27 Nov 2018 23:41:57 -0500
+Received: from mx1.redhat.com ([209.132.183.28]:34944 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1731325AbeK1EUP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 27 Nov 2018 23:20:15 -0500
-Received: by fieldses.org (Postfix, from userid 2815)
-        id 9F1721EF5; Tue, 27 Nov 2018 12:21:38 -0500 (EST)
-Date:   Tue, 27 Nov 2018 12:21:38 -0500
-From:   Bruce Fields <bfields@fieldses.org>
-To:     Chuck Lever <chuck.lever@oracle.com>
-Cc:     linux-rdma@vger.kernel.org,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v1] svcrdma: Optimize the logic that selects the R_key to
- invalidate
-Message-ID: <20181127172138.GC9128@fieldses.org>
-References: <20181127161016.6997.69002.stgit@klimt.1015granger.net>
- <20181127162925.GB9128@fieldses.org>
- <9D487050-1565-4471-8BC0-D0F37F3C1362@oracle.com>
+        id S1726288AbeK1El5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 27 Nov 2018 23:41:57 -0500
+Received: from smtp.corp.redhat.com (int-mx08.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id 02EF7811D3;
+        Tue, 27 Nov 2018 17:43:18 +0000 (UTC)
+Received: from parsley.fieldses.org (ovpn-124-225.rdu2.redhat.com [10.10.124.225])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 900E219747;
+        Tue, 27 Nov 2018 17:43:17 +0000 (UTC)
+Received: by parsley.fieldses.org (Postfix, from userid 2815)
+        id 77FB1180365; Tue, 27 Nov 2018 12:43:16 -0500 (EST)
+Date:   Tue, 27 Nov 2018 12:43:16 -0500
+From:   "J. Bruce Fields" <bfields@redhat.com>
+To:     kernel test robot <rong.a.chen@intel.com>
+Cc:     NeilBrown <neilb@suse.com>, Jeff Layton <jlayton@kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>,
+        Jeff Layton <jlayton@redhat.com>, lkp@01.org,
+        linux-nfs@vger.kernel.org
+Subject: Re: [LKP] [fs/locks]  83b381078b:  will-it-scale.per_thread_ops
+ -62.5% regression
+Message-ID: <20181127174315.GA29963@parsley.fieldses.org>
+References: <20181127060102.GF6163@shao2-debian>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <9D487050-1565-4471-8BC0-D0F37F3C1362@oracle.com>
-User-Agent: Mutt/1.5.21 (2010-09-15)
+In-Reply-To: <20181127060102.GF6163@shao2-debian>
+User-Agent: Mutt/1.10.1 (2018-07-13)
+X-Scanned-By: MIMEDefang 2.84 on 10.5.11.23
+X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.27]); Tue, 27 Nov 2018 17:43:18 +0000 (UTC)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Tue, Nov 27, 2018 at 11:31:23AM -0500, Chuck Lever wrote:
-> 
-> 
-> > On Nov 27, 2018, at 11:29 AM, bfields@fieldses.org wrote:
-> > 
-> > On Tue, Nov 27, 2018 at 11:11:35AM -0500, Chuck Lever wrote:
-> >> o Select the R_key to invalidate while the CPU cache still contains
-> >>  the received RPC Call transport header, rather than waiting until
-> >>  we're about to send the RPC Reply.
-> >> 
-> >> o Choose Send With Invalidate if there is exactly one distinct R_key
-> >>  in the received transport header. If there's more than one, the
-> >>  client will have to perform local invalidation after it has
-> >>  already waited for remote invalidation.
-> >> 
-> >> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> >> ---
-> >> Hi-
-> >> 
-> >> Please consider this NFS server-side patch for v4.21.
-> > 
-> > OK, thanks, applying.
-> > 
-> > (By the way, I appreciate it if patch submissions have
-> > bfields@fieldses.org on the To: line, my filters handle that a little
-> > differently than mailing list traffic.)
-> 
-> I've been told not to include To: when the patch is being
-> presented for review.  This is a v1. If you feel it is ready
-> to go in, great! But I purposely did not include To: Bruce
-> because it has not had any review yet.
+Thanks for the report!
 
-Oh.  The "Please consider this..." made it sound like you wanted it in
-now.  I can wait.
+On Tue, Nov 27, 2018 at 02:01:02PM +0800, kernel test robot wrote:
+> FYI, we noticed a -62.5% regression of will-it-scale.per_thread_ops due to commit:
+> 
+> 
+> commit: 83b381078b5ecab098ebf6bc9548bb32af1dbf31 ("fs/locks: always delete_block after waiting.")
+> https://git.kernel.org/cgit/linux/kernel/git/jlayton/linux.git locks-next
+> 
+> in testcase: will-it-scale
+> on test machine: 88 threads Intel(R) Xeon(R) CPU E5-2699 v4 @ 2.20GHz with 64G memory
+> with following parameters:
+> 
+> 	nr_task: 16
+> 	mode: thread
+> 	test: lock1
+
+So I guess it's doing this, uncontended file lock/unlock?:
+
+	https://github.com/antonblanchard/will-it-scale/blob/master/tests/lock1.c
+
+Each thread is repeatedly locking and unlocking a file that is only used
+by that thread.
+
+By the way, what's the X-axis on these graphs?  (Or the y-axis, for that
+matter?)
 
 --b.
 
-> > --b.
-> > 
-> >> 
-> >> 
-> >> include/linux/sunrpc/svc_rdma.h         |    1 
-> >> net/sunrpc/xprtrdma/svc_rdma_recvfrom.c |   63 +++++++++++++++++++++++++++++++
-> >> net/sunrpc/xprtrdma/svc_rdma_sendto.c   |   53 ++++++--------------------
-> >> 3 files changed, 77 insertions(+), 40 deletions(-)
-> >> 
-> >> diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
-> >> index e6e2691..7e22681 100644
-> >> --- a/include/linux/sunrpc/svc_rdma.h
-> >> +++ b/include/linux/sunrpc/svc_rdma.h
-> >> @@ -135,6 +135,7 @@ struct svc_rdma_recv_ctxt {
-> >> 	u32			rc_byte_len;
-> >> 	unsigned int		rc_page_count;
-> >> 	unsigned int		rc_hdr_count;
-> >> +	u32			rc_inv_rkey;
-> >> 	struct page		*rc_pages[RPCSVC_MAXPAGES];
-> >> };
-> >> 
-> >> diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-> >> index b24d5b8..828b149 100644
-> >> --- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-> >> +++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-> >> @@ -485,6 +485,68 @@ static __be32 *xdr_check_reply_chunk(__be32 *p, const __be32 *end)
-> >> 	return p;
-> >> }
-> >> 
-> >> +/* RPC-over-RDMA Version One private extension: Remote Invalidation.
-> >> + * Responder's choice: requester signals it can handle Send With
-> >> + * Invalidate, and responder chooses one R_key to invalidate.
-> >> + *
-> >> + * If there is exactly one distinct R_key in the received transport
-> >> + * header, set rc_inv_rkey to that R_key. Otherwise, set it to zero.
-> >> + *
-> >> + * Perform this operation while the received transport header is
-> >> + * still in the CPU cache.
-> >> + */
-> >> +static void svc_rdma_get_inv_rkey(struct svcxprt_rdma *rdma,
-> >> +				  struct svc_rdma_recv_ctxt *ctxt)
-> >> +{
-> >> +	__be32 inv_rkey, *p;
-> >> +	u32 i, segcount;
-> >> +
-> >> +	ctxt->rc_inv_rkey = 0;
-> >> +
-> >> +	if (!rdma->sc_snd_w_inv)
-> >> +		return;
-> >> +
-> >> +	inv_rkey = xdr_zero;
-> >> +	p = ctxt->rc_recv_buf;
-> >> +	p += rpcrdma_fixed_maxsz;
-> >> +
-> >> +	/* Read list */
-> >> +	while (*p++ != xdr_zero) {
-> >> +		p++;	/* position */
-> >> +		if (inv_rkey == xdr_zero)
-> >> +			inv_rkey = *p;
-> >> +		else if (inv_rkey != *p)
-> >> +			return;
-> >> +		p += 4;
-> >> +	}
-> >> +
-> >> +	/* Write list */
-> >> +	while (*p++ != xdr_zero) {
-> >> +		segcount = be32_to_cpup(p++);
-> >> +		for (i = 0; i < segcount; i++) {
-> >> +			if (inv_rkey == xdr_zero)
-> >> +				inv_rkey = *p;
-> >> +			else if (inv_rkey != *p)
-> >> +				return;
-> >> +			p += 4;
-> >> +		}
-> >> +	}
-> >> +
-> >> +	/* Reply chunk */
-> >> +	if (*p++ != xdr_zero) {
-> >> +		segcount = be32_to_cpup(p++);
-> >> +		for (i = 0; i < segcount; i++) {
-> >> +			if (inv_rkey == xdr_zero)
-> >> +				inv_rkey = *p;
-> >> +			else if (inv_rkey != *p)
-> >> +				return;
-> >> +			p += 4;
-> >> +		}
-> >> +	}
-> >> +
-> >> +	ctxt->rc_inv_rkey = be32_to_cpu(inv_rkey);
-> >> +}
-> >> +
-> >> /* On entry, xdr->head[0].iov_base points to first byte in the
-> >>  * RPC-over-RDMA header.
-> >>  *
-> >> @@ -746,6 +808,7 @@ int svc_rdma_recvfrom(struct svc_rqst *rqstp)
-> >> 		svc_rdma_recv_ctxt_put(rdma_xprt, ctxt);
-> >> 		return ret;
-> >> 	}
-> >> +	svc_rdma_get_inv_rkey(rdma_xprt, ctxt);
-> >> 
-> >> 	p += rpcrdma_fixed_maxsz;
-> >> 	if (*p != xdr_zero)
-> >> diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-> >> index 8602a5f..d48bc6d 100644
-> >> --- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-> >> +++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-> >> @@ -484,32 +484,6 @@ static void svc_rdma_get_write_arrays(__be32 *rdma_argp,
-> >> 		*reply = NULL;
-> >> }
-> >> 
-> >> -/* RPC-over-RDMA Version One private extension: Remote Invalidation.
-> >> - * Responder's choice: requester signals it can handle Send With
-> >> - * Invalidate, and responder chooses one rkey to invalidate.
-> >> - *
-> >> - * Find a candidate rkey to invalidate when sending a reply.  Picks the
-> >> - * first R_key it finds in the chunk lists.
-> >> - *
-> >> - * Returns zero if RPC's chunk lists are empty.
-> >> - */
-> >> -static u32 svc_rdma_get_inv_rkey(__be32 *rdma_argp,
-> >> -				 __be32 *wr_lst, __be32 *rp_ch)
-> >> -{
-> >> -	__be32 *p;
-> >> -
-> >> -	p = rdma_argp + rpcrdma_fixed_maxsz;
-> >> -	if (*p != xdr_zero)
-> >> -		p += 2;
-> >> -	else if (wr_lst && be32_to_cpup(wr_lst + 1))
-> >> -		p = wr_lst + 2;
-> >> -	else if (rp_ch && be32_to_cpup(rp_ch + 1))
-> >> -		p = rp_ch + 2;
-> >> -	else
-> >> -		return 0;
-> >> -	return be32_to_cpup(p);
-> >> -}
-> >> -
-> >> static int svc_rdma_dma_map_page(struct svcxprt_rdma *rdma,
-> >> 				 struct svc_rdma_send_ctxt *ctxt,
-> >> 				 struct page *page,
-> >> @@ -672,7 +646,7 @@ static void svc_rdma_save_io_pages(struct svc_rqst *rqstp,
-> >>  *
-> >>  * RDMA Send is the last step of transmitting an RPC reply. Pages
-> >>  * involved in the earlier RDMA Writes are here transferred out
-> >> - * of the rqstp and into the ctxt's page array. These pages are
-> >> + * of the rqstp and into the sctxt's page array. These pages are
-> >>  * DMA unmapped by each Write completion, but the subsequent Send
-> >>  * completion finally releases these pages.
-> >>  *
-> >> @@ -680,32 +654,31 @@ static void svc_rdma_save_io_pages(struct svc_rqst *rqstp,
-> >>  * - The Reply's transport header will never be larger than a page.
-> >>  */
-> >> static int svc_rdma_send_reply_msg(struct svcxprt_rdma *rdma,
-> >> -				   struct svc_rdma_send_ctxt *ctxt,
-> >> -				   __be32 *rdma_argp,
-> >> +				   struct svc_rdma_send_ctxt *sctxt,
-> >> +				   struct svc_rdma_recv_ctxt *rctxt,
-> >> 				   struct svc_rqst *rqstp,
-> >> 				   __be32 *wr_lst, __be32 *rp_ch)
-> >> {
-> >> 	int ret;
-> >> 
-> >> 	if (!rp_ch) {
-> >> -		ret = svc_rdma_map_reply_msg(rdma, ctxt,
-> >> +		ret = svc_rdma_map_reply_msg(rdma, sctxt,
-> >> 					     &rqstp->rq_res, wr_lst);
-> >> 		if (ret < 0)
-> >> 			return ret;
-> >> 	}
-> >> 
-> >> -	svc_rdma_save_io_pages(rqstp, ctxt);
-> >> +	svc_rdma_save_io_pages(rqstp, sctxt);
-> >> 
-> >> -	ctxt->sc_send_wr.opcode = IB_WR_SEND;
-> >> -	if (rdma->sc_snd_w_inv) {
-> >> -		ctxt->sc_send_wr.ex.invalidate_rkey =
-> >> -			svc_rdma_get_inv_rkey(rdma_argp, wr_lst, rp_ch);
-> >> -		if (ctxt->sc_send_wr.ex.invalidate_rkey)
-> >> -			ctxt->sc_send_wr.opcode = IB_WR_SEND_WITH_INV;
-> >> +	if (rctxt->rc_inv_rkey) {
-> >> +		sctxt->sc_send_wr.opcode = IB_WR_SEND_WITH_INV;
-> >> +		sctxt->sc_send_wr.ex.invalidate_rkey = rctxt->rc_inv_rkey;
-> >> +	} else {
-> >> +		sctxt->sc_send_wr.opcode = IB_WR_SEND;
-> >> 	}
-> >> 	dprintk("svcrdma: posting Send WR with %u sge(s)\n",
-> >> -		ctxt->sc_send_wr.num_sge);
-> >> -	return svc_rdma_send(rdma, &ctxt->sc_send_wr);
-> >> +		sctxt->sc_send_wr.num_sge);
-> >> +	return svc_rdma_send(rdma, &sctxt->sc_send_wr);
-> >> }
-> >> 
-> >> /* Given the client-provided Write and Reply chunks, the server was not
-> >> @@ -809,7 +782,7 @@ int svc_rdma_sendto(struct svc_rqst *rqstp)
-> >> 	}
-> >> 
-> >> 	svc_rdma_sync_reply_hdr(rdma, sctxt, svc_rdma_reply_hdr_len(rdma_resp));
-> >> -	ret = svc_rdma_send_reply_msg(rdma, sctxt, rdma_argp, rqstp,
-> >> +	ret = svc_rdma_send_reply_msg(rdma, sctxt, rctxt, rqstp,
-> >> 				      wr_lst, rp_ch);
-> >> 	if (ret < 0)
-> >> 		goto err1;
-> 
-> --
-> Chuck Lever
-> 
-> 
+>                             will-it-scale.per_thread_ops                        
+>                                                                                 
+>   450000 +-+----------------------------------------------------------------+   
+>          |                                                                  |   
+>   400000 +-+   +..+..  .+..+..  .+..+..+...+..+..+..   +..        .+..    ..|   
+>   350000 +-+ ..      +.       +.                     ..         +.    +..+  |   
+>          |  +                                       +     +     :           |   
+>   300000 +-+                                              :    :            |   
+>   250000 +-+                                               :   :            |   
+>          |                                                 :   :            |   
+>   200000 +-+                                               :   :            |   
+>   150000 +-+                                                : :             |   
+>          O  O  O  O  O  O  O  O  O  O  O   O  O  O  O  O  O :O: O  O  O  O  O   
+>   100000 +-+                                                : :             |   
+>    50000 +-+                                                : :             |   
+>          |                                                   :              |   
+>        0 +-+----------------------------------------------------------------+   
+>                                                                                 
+>                                                                                                                                                                 
+>                                will-it-scale.workload                           
+>                                                                                 
+>   7e+06 +-+-----------------------------------------------------------------+   
+>         |              +...+..           .+..+..+     +            +..      |   
+>   6e+06 +-+   +..+.. ..         .+..+..+.        +   + +         ..       ..|   
+>         |   ..      +         +.                  + +   +       +     +..+  |   
+>   5e+06 +-++                                       +     +      :           |   
+>         |                                                :     :            |   
+>   4e+06 +-+                                               :    :            |   
+>         |                                                 :    :            |   
+>   3e+06 +-+                                                :   :            |   
+>         |                                       O     O    :  : O  O        |   
+>   2e+06 O-+O  O  O  O  O   O  O  O  O  O  O  O     O     O : O:       O  O  O   
+>         |                                                   : :             |   
+>   1e+06 +-+                                                 : :             |   
+>         |                                                    :              |   
+>       0 +-+-----------------------------------------------------------------+   
+>                                                                                 
+>                                                                                                                                                                 
+>                            will-it-scale.time.user_time                         
+>                                                                                 
+>   250 +-+-------------------------------------------------------------------+   
+>       |                 .+..               .+..                   +..       |   
+>       |..   +...+..  .+.      .+...+..+..+.    +..    +..       ..   .    ..|   
+>   200 +-+ ..       +.       +.                    . ..         +      +..+  |   
+>       |  +                                         +     +     :            |   
+>       |                                                  :    :             |   
+>   150 +-+                                                 :   :             |   
+>       |                                                   :   :             |   
+>   100 +-+                                                 :   :             |   
+>       |  O      O                                          : :              |   
+>       O     O      O  O  O  O  O   O  O  O  O  O   O  O  O :O: O  O   O  O  O   
+>    50 +-+                                                  : :              |   
+>       |                                                    : :              |   
+>       |                                                     :               |   
+>     0 +-+-------------------------------------------------------------------+   
+>                                                                                 
+>                                                                                                                                                                 
+>                           will-it-scale.time.system_time                        
+>                                                                                 
+>   5000 +-+------------------------------------------------------------------+   
+>   4500 O-+O..O..O...O..O..O..O..O..O..O...O..O..O..O..O..O  O  O...O..O..O..O   
+>        |                                                 :     :            |   
+>   4000 +-+                                               :     :            |   
+>   3500 +-+                                                :   :             |   
+>        |                                                  :   :             |   
+>   3000 +-+                                                :   :             |   
+>   2500 +-+                                                :   :             |   
+>   2000 +-+                                                 : :              |   
+>        |                                                   : :              |   
+>   1500 +-+                                                 : :              |   
+>   1000 +-+                                                 : :              |   
+>        |                                                    :               |   
+>    500 +-+                                                  :               |   
+>      0 +-+------------------------------------------------------------------+   
+>                                                                                 
+>                                                                                 
+> [*] bisect-good sample
+> [O] bisect-bad  sample
