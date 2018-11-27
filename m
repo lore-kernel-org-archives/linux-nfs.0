@@ -2,150 +2,300 @@ Return-Path: <SRS0=Htud=OG=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.0 required=3.0 tests=DKIMWL_WL_MED,DKIM_SIGNED,
-	DKIM_VALID,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
-	SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 81EEBC43441
-	for <linux-nfs@archiver.kernel.org>; Tue, 27 Nov 2018 21:29:13 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 84EB7C43441
+	for <linux-nfs@archiver.kernel.org>; Tue, 27 Nov 2018 21:30:10 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 1A83D20989
-	for <linux-nfs@archiver.kernel.org>; Tue, 27 Nov 2018 21:29:13 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=netapp.onmicrosoft.com header.i=@netapp.onmicrosoft.com header.b="j2da/1kM"
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 1A83D20989
-Authentication-Results: mail.kernel.org; dmarc=none (p=none dis=none) header.from=netapp.com
+	by mail.kernel.org (Postfix) with ESMTP id 43CDD21104
+	for <linux-nfs@archiver.kernel.org>; Tue, 27 Nov 2018 21:30:10 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 43CDD21104
+Authentication-Results: mail.kernel.org; dmarc=none (p=none dis=none) header.from=talpey.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726299AbeK1I20 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 28 Nov 2018 03:28:26 -0500
-Received: from mail-eopbgr730040.outbound.protection.outlook.com ([40.107.73.40]:20000
-        "EHLO NAM05-DM3-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726038AbeK1I2Z (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 28 Nov 2018 03:28:25 -0500
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
- d=netapp.onmicrosoft.com; s=selector1-netapp-com;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=QqEzRJ5E3WEf13b+omcRX3QhNLrYf222y+2vigcfF5A=;
- b=j2da/1kMGFfvknaiof4u+tcVfBbO+5nYO5i40zATaEA998NQliP/5d8jogn2Hx7eHu4/DzjwQwSU187dw9BIOrJk4BttD2eOd1bvgYTRllxES33XlYNi6XwTWf2c78h1kgMCN6889vgRJ/1YdNvbngi+5SFK5R6CpoyKaAITMbw=
-Received: from DM5PR06MB3161.namprd06.prod.outlook.com (10.174.240.148) by
- DM5PR06MB2668.namprd06.prod.outlook.com (10.168.199.17) with Microsoft SMTP
- Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- 15.20.1361.15; Tue, 27 Nov 2018 21:29:06 +0000
-Received: from DM5PR06MB3161.namprd06.prod.outlook.com
- ([fe80::d40a:85bd:7b8a:7420]) by DM5PR06MB3161.namprd06.prod.outlook.com
- ([fe80::d40a:85bd:7b8a:7420%2]) with mapi id 15.20.1361.019; Tue, 27 Nov 2018
- 21:29:06 +0000
-From:   "Schumaker, Anna" <Anna.Schumaker@netapp.com>
-To:     "bfields@fieldses.org" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "thomas.preston@codethink.co.uk" <thomas.preston@codethink.co.uk>,
-        "jlayton@kernel.org" <jlayton@kernel.org>
-CC:     "ts001-upstream@lists.codethink.co.uk" 
-        <ts001-upstream@lists.codethink.co.uk>,
-        "ben.dooks@codethink.co.uk" <ben.dooks@codethink.co.uk>
-Subject: Re: [PATCH 1/1] SUNRPC: allow /proc entries without
- CONFIG_SUNRPC_DEBUG
-Thread-Topic: [PATCH 1/1] SUNRPC: allow /proc entries without
- CONFIG_SUNRPC_DEBUG
-Thread-Index: AQHUgP3+wOq0LZnRbE2Gt6+cmTOCJ6VkLnaA
-Date:   Tue, 27 Nov 2018 21:29:06 +0000
-Message-ID: <599fef6feb5a87e5864f5cda35997d46fcfe7e10.camel@netapp.com>
-References: <20181120175930.27853-1-thomas.preston@codethink.co.uk>
-         <20181120175930.27853-2-thomas.preston@codethink.co.uk>
-In-Reply-To: <20181120175930.27853-2-thomas.preston@codethink.co.uk>
-Accept-Language: en-US
-Content-Language: en-US
-X-MS-Has-Attach: 
-X-MS-TNEF-Correlator: 
-user-agent: Evolution 3.30.2 
-authentication-results: spf=none (sender IP is )
- smtp.mailfrom=Anna.Schumaker@netapp.com; 
-x-originating-ip: [68.40.188.1]
-x-ms-publictraffictype: Email
-x-microsoft-exchange-diagnostics: 1;DM5PR06MB2668;6:P3W4kwwLCsgQpPXgjAzZi4WhRb7N8EUigcjKIft0W3BbK1y/wU9v20mrJgTNbnn139SR8VaWBd6Wv1H7N++7n9vfn/slBuaq60uQxnTVHBIpMInNdbKpCViK+X/o+204HGL6WGJLRpTuQc4AntC2Pl9liPuEkveV7Hox9tJlouzEQru7DCcoWFGeUYotz7x4f5cOML16kB8R/ab8ov239A6PukXJGCQXTnoLdKwPqksPmL8DezCQB43mD3ER3+r4r//kjkRL40z3DmbDzckqmZ8PveVVK+GFscg18p0fDdA+ianJfA/mi65del6S9oC8+GwhvDuBY/dI28h6K+lc4SwbwlhV/aC/GdLKZhGjLqzjEG0ylAmZqquLuforMm5C9oeFOBjD/kPkarWmSEhrqrXX8xPxsTJMFlUljsZMDMDaPu9arR9ovsRyRxTWMCzxvD4R1nBw8aJ6HYbRXgrW6g==;5:eVAso+iwez+4hOE67xUlfYrwjbYjd3K+3euEerYEsUZjupDwLrnQ1auxgXpAQYddSm3+s8gLbC4HZ0KUxykivwWAbYticdO7qX8kA+TRR3vKIbVcNciDvmlzOOcbjembZDCUSNgwzFxbVaTXCKSNegu6N+i+0kaAJFMXh5zYY+U=;7:VxcmEEeGVQUy50mNOUlvWfHFU27DTIdhovBSFrpj6Eg9Z8ZEjChroGrdSB1/g0A1PDOrAA2f9jwGHcq1kBVYh8NIlZf2fU5UEqJ+BMZ7Nj5kLuFip/Dq0ELefF547kXK48k1BdS1/H7j8yvkVQbdnQ==
-x-ms-exchange-antispam-srfa-diagnostics: SOS;
-x-ms-office365-filtering-correlation-id: b133a221-75b9-4623-f386-08d654af5c64
-x-microsoft-antispam: BCL:0;PCL:0;RULEID:(2390098)(7020095)(4652040)(8989299)(5600074)(711020)(4534185)(4627221)(201703031133081)(201702281549075)(8990200)(2017052603328)(7193020);SRVR:DM5PR06MB2668;
-x-ms-traffictypediagnostic: DM5PR06MB2668:
-x-microsoft-antispam-prvs: <DM5PR06MB26684A67F9197E97F6BB646FF8D00@DM5PR06MB2668.namprd06.prod.outlook.com>
-x-ms-exchange-senderadcheck: 1
-x-exchange-antispam-report-cfa-test: BCL:0;PCL:0;RULEID:(8211001083)(6040522)(2401047)(5005006)(8121501046)(93006095)(93001095)(3231443)(944501410)(52105112)(3002001)(10201501046)(6055026)(148016)(149066)(150057)(6041310)(20161123562045)(20161123558120)(201703131423095)(201702281528075)(20161123555045)(201703061421075)(201703061406153)(20161123560045)(20161123564045)(201708071742011)(7699051)(76991095);SRVR:DM5PR06MB2668;BCL:0;PCL:0;RULEID:;SRVR:DM5PR06MB2668;
-x-forefront-prvs: 086943A159
-x-forefront-antispam-report: SFV:NSPM;SFS:(10009020)(39860400002)(376002)(136003)(346002)(366004)(396003)(189003)(199004)(4326008)(2201001)(53936002)(2906002)(6246003)(6436002)(7736002)(11346002)(6486002)(229853002)(476003)(26005)(58126008)(86362001)(54906003)(110136005)(14454004)(186003)(486006)(71200400001)(71190400001)(2616005)(316002)(478600001)(99286004)(66066001)(6512007)(81156014)(6506007)(102836004)(3846002)(76176011)(6116002)(256004)(2501003)(68736007)(72206003)(25786009)(97736004)(4001150100001)(8676002)(36756003)(81166006)(106356001)(305945005)(8936002)(118296001)(446003)(5660300001)(105586002);DIR:OUT;SFP:1101;SCL:1;SRVR:DM5PR06MB2668;H:DM5PR06MB3161.namprd06.prod.outlook.com;FPR:;SPF:None;LANG:en;PTR:InfoNoRecords;MX:1;A:1;
-received-spf: None (protection.outlook.com: netapp.com does not designate
- permitted sender hosts)
-x-microsoft-antispam-message-info: 9mkv9MKNJ3sjvQ1NlERHsWKwt7CurQObtj+lw6nr9stJmaO9YJSSSS+qz272LIVaevELPLfwneuabZLLXrnWg7UIUSfCkUcwZbhTNvGAvNiR7nbRg2lbO94PeupT9VOyA3XH4I/5gBtHEBs2uB4X/tfxcolfr139AW8mIeHxUKshOBG9NZ49UbEs+iEdEbubEXtWRR3JUHNTrrjA/bwIvCeEX99moGzLgCMy3YPhGJ6Vaz3WYVs5QKSeYLvmrbnSo5QyVRp1z3fwrmvqVuqx2FMxGwLHBbO9lEe6dYewm8CrCXvirzVdNEH9SQgaTo8LzRXgWQTXGvyoGyBbSS4GdlK37hZ492mYl4nHFOB7k4c=
-spamdiagnosticoutput: 1:99
-spamdiagnosticmetadata: NSPM
-Content-Type: text/plain; charset="utf-8"
-Content-ID: <09B362A4C8DA58409A2D3ABD15573579@namprd06.prod.outlook.com>
-Content-Transfer-Encoding: base64
+        id S1726038AbeK1I3X (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 28 Nov 2018 03:29:23 -0500
+Received: from p3plsmtpa08-03.prod.phx3.secureserver.net ([173.201.193.104]:46972
+        "EHLO p3plsmtpa08-03.prod.phx3.secureserver.net" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1726368AbeK1I3X (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 28 Nov 2018 03:29:23 -0500
+Received: from [192.168.0.55] ([24.218.182.144])
+        by :SMTPAUTH: with ESMTPSA
+        id Rkvngow4CnLFTRkvngmWv0; Tue, 27 Nov 2018 14:30:08 -0700
+Subject: Re: [PATCH v1] svcrdma: Optimize the logic that selects the R_key to
+ invalidate
+To:     Chuck Lever <chuck.lever@oracle.com>
+Cc:     linux-rdma@vger.kernel.org,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+References: <20181127161016.6997.69002.stgit@klimt.1015granger.net>
+ <14c5a1e8-115b-a58b-7c65-4e207caf3d33@talpey.com>
+ <0E1C5F18-C0E8-43D2-AF21-B6DCC84E302C@oracle.com>
+From:   Tom Talpey <tom@talpey.com>
+Message-ID: <45f70f31-997b-ab1e-9430-57f2e0d78318@talpey.com>
+Date:   Tue, 27 Nov 2018 16:30:07 -0500
+User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64; rv:52.0) Gecko/20100101
+ Thunderbird/52.9.1
 MIME-Version: 1.0
-X-OriginatorOrg: netapp.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: b133a221-75b9-4623-f386-08d654af5c64
-X-MS-Exchange-CrossTenant-originalarrivaltime: 27 Nov 2018 21:29:06.4202
- (UTC)
-X-MS-Exchange-CrossTenant-fromentityheader: Hosted
-X-MS-Exchange-CrossTenant-id: 4b0911a0-929b-4715-944b-c03745165b3a
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: DM5PR06MB2668
+In-Reply-To: <0E1C5F18-C0E8-43D2-AF21-B6DCC84E302C@oracle.com>
+Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
+X-CMAE-Envelope: MS4wfK34eJAwu7XzF+/Vc3n8u33dfdUxpVa1rBM9PvFK3UrC2AVTyRW/SwvJQNTkqGJE2c+GlrHpZkGwZZ5KCOweg0hmjU+glmLIAKOTrlL3KV08jYaeMS96
+ uEiCFKWFyMXYsta7xWd9sX8L4LptljudkaPm7TE0yMT8sew1XpPYnwso9jvpaGWX/YX7SBYJwNcJqWz/oF3zFbZC21cf+EgO2qv4WyMYX/e5d0sxuxYHBPcQ
+ BV9EGahpl2Jq8PZtOlz96A==
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-SGkgVGhvbWFzLA0KDQpPbiBUdWUsIDIwMTgtMTEtMjAgYXQgMTc6NTkgKzAwMDAsIFRob21hcyBQ
-cmVzdG9uIHdyb3RlOg0KPiBGcm9tOiBCZW4gRG9va3MgPGJlbi5kb29rc0Bjb2RldGhpbmsuY28u
-dWs+DQo+IA0KPiBJZiB3ZSB3YW50IC9wcm9jL3N5cy9zdW5ycGMgdGhlIGN1cnJlbnQga2VybmVs
-IGFsc28gZHJhZ3MNCj4gaW4gb3RoZXIgZGVidWcgZmVhdHVyZXMgd2hpY2ggd2UgZG9uJ3QgcmVh
-bGx5IHdhbnQuIEFkZCB0aGUNCj4gb3B0aW9uIGZvciB0aGUgZW50cmllcyBieSBhZGRpbmcgQ09O
-RklHX1NVTlJQQ19ERUJVRy4NCj4gDQo+IC9wcm9jL3N5cy9zdW5ycGMvbWF4X3Jlc3Zwb3J0DQo+
-IC9wcm9jL3N5cy9zdW5ycGMvbWluX3Jlc3Zwb3J0DQo+IC9wcm9jL3N5cy9zdW5ycGMvbmZzZF9k
-ZWJ1Zw0KPiAvcHJvYy9zeXMvc3VucnBjL25mc19kZWJ1Zw0KPiAvcHJvYy9zeXMvc3VucnBjL25s
-bV9kZWJ1Zw0KPiAvcHJvYy9zeXMvc3VucnBjL3JwY19kZWJ1Zw0KDQpDYW4gd2UgaGlkZSB0aGUg
-bmZzZF9kZWJ1ZywgbmZzX2RlYnVnLCBubG1fZGVidWcsIGFuZCBycGNfZGVidWcgZW50cmllcyB1
-bmRlcg0KQ09ORklHX1NVTlJQQ19ERUJVRywgYnV0IHN0aWxsIHNob3cgZXZlcnl0aGluZyBlbHNl
-Pw0KDQo+IC9wcm9jL3N5cy9zdW5ycGMvdGNwX2Zpbl90aW1lb3V0DQo+IA0KPiBTaWduZWQtb2Zm
-LWJ5OiBCZW4gRG9va3MgPGJlbi5kb29rc0Bjb2RldGhpbmsuY28udWs+DQo+IFNpZ25lZC1vZmYt
-Ynk6IFRob21hcyBQcmVzdG9uIDx0aG9tYXMucHJlc3RvbkBjb2RldGhpbmsuY28udWs+DQo+IC0t
-LQ0KPiAgbmV0L3N1bnJwYy9LY29uZmlnICAgIHwgNyArKysrKysrDQo+ICBuZXQvc3VucnBjL3hw
-cnRzb2NrLmMgfCA2ICsrKy0tLQ0KPiAgMiBmaWxlcyBjaGFuZ2VkLCAxMCBpbnNlcnRpb25zKCsp
-LCAzIGRlbGV0aW9ucygtKQ0KPiANCj4gZGlmZiAtLWdpdCBhL25ldC9zdW5ycGMvS2NvbmZpZyBi
-L25ldC9zdW5ycGMvS2NvbmZpZw0KPiBpbmRleCBhYzA5Y2E4MDMyOTYuLjBlMjNhN2E2Y2NlOCAx
-MDA2NDQNCj4gLS0tIGEvbmV0L3N1bnJwYy9LY29uZmlnDQo+ICsrKyBiL25ldC9zdW5ycGMvS2Nv
-bmZpZw0KPiBAQCAtNDgsNiArNDgsMTMgQEAgY29uZmlnIFNVTlJQQ19ERUJVRw0KPiAgDQo+ICAJ
-ICBJZiB1bnN1cmUsIHNheSBZLg0KPiAgDQo+ICtjb25maWcgU1VOUlBDX1BST0MNCj4gKwlib29s
-ICJSUEM6IEVuYWJsZSAvcHJvYy9zeXMvc3VucnBjIGVudHJpZXMiDQo+ICsJZGVwZW5kcyBvbiBT
-VU5SUEMgJiYgU1lTQ1RMDQo+ICsJaGVscA0KPiArCSAgRW5hYmxlIC9wcm9jIGVudGlyZXMgZm9y
-IHR1bmluZyAvcHJvYy9zeXMvc3VucnBjIGluZm9ybWF0aW9uDQo+ICsJICB3aXRob3V0IGVuYWJs
-aW5nIGFsbCB0aGUgZGVidWcgZmVhdHVyZXMgZm9yIHRoZSBTVU5SUEMgc3lzdGVtLg0KDQpJIGRv
-bid0IHRoaW5rIHdlIG5lZWQgYSBuZXcgS2NvbmZpZyBvcHRpb24gZm9yIHRoaXMsIGRvIHdlPyAg
-TGV0J3MganVzdCBzaG93IHRoZQ0KcHJvYyBlbnRyaWVzIHVuY29uZGl0aW9uYWxseS4NCg0KVGhh
-bmtzLA0KQW5uYQ0KDQo+ICsNCj4gIGNvbmZpZyBTVU5SUENfWFBSVF9SRE1BDQo+ICAJdHJpc3Rh
-dGUgIlJQQy1vdmVyLVJETUEgdHJhbnNwb3J0Ig0KPiAgCWRlcGVuZHMgb24gU1VOUlBDICYmIElO
-RklOSUJBTkQgJiYgSU5GSU5JQkFORF9BRERSX1RSQU5TDQo+IGRpZmYgLS1naXQgYS9uZXQvc3Vu
-cnBjL3hwcnRzb2NrLmMgYi9uZXQvc3VucnBjL3hwcnRzb2NrLmMNCj4gaW5kZXggYWU3N2M3MWMx
-ZjY0Li43MWI2NDQwMmMwNzAgMTAwNjQ0DQo+IC0tLSBhL25ldC9zdW5ycGMveHBydHNvY2suYw0K
-PiArKysgYi9uZXQvc3VucnBjL3hwcnRzb2NrLmMNCj4gQEAgLTY4LDcgKzY4LDcgQEAgc3RhdGlj
-IHVuc2lnbmVkIGludCB4cHJ0X21heF90Y3Bfc2xvdF90YWJsZV9lbnRyaWVzID0NCj4gUlBDX01B
-WF9TTE9UX1RBQkxFOw0KPiAgc3RhdGljIHVuc2lnbmVkIGludCB4cHJ0X21pbl9yZXN2cG9ydCA9
-IFJQQ19ERUZfTUlOX1JFU1ZQT1JUOw0KPiAgc3RhdGljIHVuc2lnbmVkIGludCB4cHJ0X21heF9y
-ZXN2cG9ydCA9IFJQQ19ERUZfTUFYX1JFU1ZQT1JUOw0KPiAgDQo+IC0jaWYgSVNfRU5BQkxFRChD
-T05GSUdfU1VOUlBDX0RFQlVHKQ0KPiArI2lmIElTX0VOQUJMRUQoQ09ORklHX1NVTlJQQ19ERUJV
-RykgfHwgSVNfRU5BQkxFRChDT05GSUdfU1VOUlBDX1BST0MpDQo+ICANCj4gICNkZWZpbmUgWFNf
-VENQX0xJTkdFUl9UTwkoMTVVICogSFopDQo+ICBzdGF0aWMgdW5zaWduZWQgaW50IHhzX3RjcF9m
-aW5fdGltZW91dCBfX3JlYWRfbW9zdGx5ID0gWFNfVENQX0xJTkdFUl9UTzsNCj4gQEAgLTMxMTQs
-NyArMzExNCw3IEBAIHN0YXRpYyBzdHJ1Y3QgeHBydF9jbGFzcwl4c19iY190Y3BfdHJhbnNwb3J0
-ID0gew0KPiAgICovDQo+ICBpbnQgaW5pdF9zb2NrZXRfeHBydCh2b2lkKQ0KPiAgew0KPiAtI2lm
-IElTX0VOQUJMRUQoQ09ORklHX1NVTlJQQ19ERUJVRykNCj4gKyNpZiBJU19FTkFCTEVEKENPTkZJ
-R19TVU5SUENfREVCVUcpIHx8IElTX0VOQUJMRUQoQ09ORklHX1NVTlJQQ19QUk9DKQ0KPiAgCWlm
-ICghc3VucnBjX3RhYmxlX2hlYWRlcikNCj4gIAkJc3VucnBjX3RhYmxlX2hlYWRlciA9IHJlZ2lz
-dGVyX3N5c2N0bF90YWJsZShzdW5ycGNfdGFibGUpOw0KPiAgI2VuZGlmDQo+IEBAIC0zMTMzLDcg
-KzMxMzMsNyBAQCBpbnQgaW5pdF9zb2NrZXRfeHBydCh2b2lkKQ0KPiAgICovDQo+ICB2b2lkIGNs
-ZWFudXBfc29ja2V0X3hwcnQodm9pZCkNCj4gIHsNCj4gLSNpZiBJU19FTkFCTEVEKENPTkZJR19T
-VU5SUENfREVCVUcpDQo+ICsjaWYgSVNfRU5BQkxFRChDT05GSUdfU1VOUlBDX0RFQlVHKSB8fCBJ
-U19FTkFCTEVEKENPTkZJR19TVU5SUENfUFJPQykNCj4gIAlpZiAoc3VucnBjX3RhYmxlX2hlYWRl
-cikgew0KPiAgCQl1bnJlZ2lzdGVyX3N5c2N0bF90YWJsZShzdW5ycGNfdGFibGVfaGVhZGVyKTsN
-Cj4gIAkJc3VucnBjX3RhYmxlX2hlYWRlciA9IE5VTEw7DQo=
+On 11/27/2018 4:21 PM, Chuck Lever wrote:
+> 
+> 
+>> On Nov 27, 2018, at 4:16 PM, Tom Talpey <tom@talpey.com> wrote:
+>>
+>> On 11/27/2018 11:11 AM, Chuck Lever wrote:
+>>> o Select the R_key to invalidate while the CPU cache still contains
+>>>    the received RPC Call transport header, rather than waiting until
+>>>    we're about to send the RPC Reply.
+>>> o Choose Send With Invalidate if there is exactly one distinct R_key
+>>>    in the received transport header. If there's more than one, the
+>>>    client will have to perform local invalidation after it has
+>>>    already waited for remote invalidation.
+>>
+>> What's the reason for remote-invalidating only if exactly one
+>> region is targeted? It seems valuable to save the client the work,
+>> no matter how many regions are used.
+> 
+> Because remote invalidation delays the Receive completion.
+
+Well yes, but the invalidations have to happen before the reply is
+processed, and remote invalidation saves a local work request plus
+its completion.
+
+> If the client has to do local invalidation as well, that
+> means two delays, and the client already has to do a context
+> switch for the local invalidation.
+
+Have you measured the difference?
+
+> Also, some cards are not especially efficient at remote
+> invalidation. If the server requests it less frequently (for
+> example, when it's not actually going to be beneficial),
+> that's good for those cards.
+
+Hmm. I'd say get a better card and don't hobble the rpcrdma
+protocol design. Maybe that's just me.
+
+I think it would be best to capture some or all of this
+explanation in the commit message, in any case.
+
+Tom.
+
+
+> 
+> 
+>> Put another way, why the change?
+>>
+>> Tom.
+>>
+>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>>> ---
+>>> Hi-
+>>> Please consider this NFS server-side patch for v4.21.
+>>>   include/linux/sunrpc/svc_rdma.h         |    1
+>>>   net/sunrpc/xprtrdma/svc_rdma_recvfrom.c |   63 +++++++++++++++++++++++++++++++
+>>>   net/sunrpc/xprtrdma/svc_rdma_sendto.c   |   53 ++++++--------------------
+>>>   3 files changed, 77 insertions(+), 40 deletions(-)
+>>> diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
+>>> index e6e2691..7e22681 100644
+>>> --- a/include/linux/sunrpc/svc_rdma.h
+>>> +++ b/include/linux/sunrpc/svc_rdma.h
+>>> @@ -135,6 +135,7 @@ struct svc_rdma_recv_ctxt {
+>>>   	u32			rc_byte_len;
+>>>   	unsigned int		rc_page_count;
+>>>   	unsigned int		rc_hdr_count;
+>>> +	u32			rc_inv_rkey;
+>>>   	struct page		*rc_pages[RPCSVC_MAXPAGES];
+>>>   };
+>>>   diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+>>> index b24d5b8..828b149 100644
+>>> --- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+>>> +++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+>>> @@ -485,6 +485,68 @@ static __be32 *xdr_check_reply_chunk(__be32 *p, const __be32 *end)
+>>>   	return p;
+>>>   }
+>>>   +/* RPC-over-RDMA Version One private extension: Remote Invalidation.
+>>> + * Responder's choice: requester signals it can handle Send With
+>>> + * Invalidate, and responder chooses one R_key to invalidate.
+>>> + *
+>>> + * If there is exactly one distinct R_key in the received transport
+>>> + * header, set rc_inv_rkey to that R_key. Otherwise, set it to zero.
+>>> + *
+>>> + * Perform this operation while the received transport header is
+>>> + * still in the CPU cache.
+>>> + */
+>>> +static void svc_rdma_get_inv_rkey(struct svcxprt_rdma *rdma,
+>>> +				  struct svc_rdma_recv_ctxt *ctxt)
+>>> +{
+>>> +	__be32 inv_rkey, *p;
+>>> +	u32 i, segcount;
+>>> +
+>>> +	ctxt->rc_inv_rkey = 0;
+>>> +
+>>> +	if (!rdma->sc_snd_w_inv)
+>>> +		return;
+>>> +
+>>> +	inv_rkey = xdr_zero;
+>>> +	p = ctxt->rc_recv_buf;
+>>> +	p += rpcrdma_fixed_maxsz;
+>>> +
+>>> +	/* Read list */
+>>> +	while (*p++ != xdr_zero) {
+>>> +		p++;	/* position */
+>>> +		if (inv_rkey == xdr_zero)
+>>> +			inv_rkey = *p;
+>>> +		else if (inv_rkey != *p)
+>>> +			return;
+>>> +		p += 4;
+>>> +	}
+>>> +
+>>> +	/* Write list */
+>>> +	while (*p++ != xdr_zero) {
+>>> +		segcount = be32_to_cpup(p++);
+>>> +		for (i = 0; i < segcount; i++) {
+>>> +			if (inv_rkey == xdr_zero)
+>>> +				inv_rkey = *p;
+>>> +			else if (inv_rkey != *p)
+>>> +				return;
+>>> +			p += 4;
+>>> +		}
+>>> +	}
+>>> +
+>>> +	/* Reply chunk */
+>>> +	if (*p++ != xdr_zero) {
+>>> +		segcount = be32_to_cpup(p++);
+>>> +		for (i = 0; i < segcount; i++) {
+>>> +			if (inv_rkey == xdr_zero)
+>>> +				inv_rkey = *p;
+>>> +			else if (inv_rkey != *p)
+>>> +				return;
+>>> +			p += 4;
+>>> +		}
+>>> +	}
+>>> +
+>>> +	ctxt->rc_inv_rkey = be32_to_cpu(inv_rkey);
+>>> +}
+>>> +
+>>>   /* On entry, xdr->head[0].iov_base points to first byte in the
+>>>    * RPC-over-RDMA header.
+>>>    *
+>>> @@ -746,6 +808,7 @@ int svc_rdma_recvfrom(struct svc_rqst *rqstp)
+>>>   		svc_rdma_recv_ctxt_put(rdma_xprt, ctxt);
+>>>   		return ret;
+>>>   	}
+>>> +	svc_rdma_get_inv_rkey(rdma_xprt, ctxt);
+>>>     	p += rpcrdma_fixed_maxsz;
+>>>   	if (*p != xdr_zero)
+>>> diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+>>> index 8602a5f..d48bc6d 100644
+>>> --- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+>>> +++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+>>> @@ -484,32 +484,6 @@ static void svc_rdma_get_write_arrays(__be32 *rdma_argp,
+>>>   		*reply = NULL;
+>>>   }
+>>>   -/* RPC-over-RDMA Version One private extension: Remote Invalidation.
+>>> - * Responder's choice: requester signals it can handle Send With
+>>> - * Invalidate, and responder chooses one rkey to invalidate.
+>>> - *
+>>> - * Find a candidate rkey to invalidate when sending a reply.  Picks the
+>>> - * first R_key it finds in the chunk lists.
+>>> - *
+>>> - * Returns zero if RPC's chunk lists are empty.
+>>> - */
+>>> -static u32 svc_rdma_get_inv_rkey(__be32 *rdma_argp,
+>>> -				 __be32 *wr_lst, __be32 *rp_ch)
+>>> -{
+>>> -	__be32 *p;
+>>> -
+>>> -	p = rdma_argp + rpcrdma_fixed_maxsz;
+>>> -	if (*p != xdr_zero)
+>>> -		p += 2;
+>>> -	else if (wr_lst && be32_to_cpup(wr_lst + 1))
+>>> -		p = wr_lst + 2;
+>>> -	else if (rp_ch && be32_to_cpup(rp_ch + 1))
+>>> -		p = rp_ch + 2;
+>>> -	else
+>>> -		return 0;
+>>> -	return be32_to_cpup(p);
+>>> -}
+>>> -
+>>>   static int svc_rdma_dma_map_page(struct svcxprt_rdma *rdma,
+>>>   				 struct svc_rdma_send_ctxt *ctxt,
+>>>   				 struct page *page,
+>>> @@ -672,7 +646,7 @@ static void svc_rdma_save_io_pages(struct svc_rqst *rqstp,
+>>>    *
+>>>    * RDMA Send is the last step of transmitting an RPC reply. Pages
+>>>    * involved in the earlier RDMA Writes are here transferred out
+>>> - * of the rqstp and into the ctxt's page array. These pages are
+>>> + * of the rqstp and into the sctxt's page array. These pages are
+>>>    * DMA unmapped by each Write completion, but the subsequent Send
+>>>    * completion finally releases these pages.
+>>>    *
+>>> @@ -680,32 +654,31 @@ static void svc_rdma_save_io_pages(struct svc_rqst *rqstp,
+>>>    * - The Reply's transport header will never be larger than a page.
+>>>    */
+>>>   static int svc_rdma_send_reply_msg(struct svcxprt_rdma *rdma,
+>>> -				   struct svc_rdma_send_ctxt *ctxt,
+>>> -				   __be32 *rdma_argp,
+>>> +				   struct svc_rdma_send_ctxt *sctxt,
+>>> +				   struct svc_rdma_recv_ctxt *rctxt,
+>>>   				   struct svc_rqst *rqstp,
+>>>   				   __be32 *wr_lst, __be32 *rp_ch)
+>>>   {
+>>>   	int ret;
+>>>     	if (!rp_ch) {
+>>> -		ret = svc_rdma_map_reply_msg(rdma, ctxt,
+>>> +		ret = svc_rdma_map_reply_msg(rdma, sctxt,
+>>>   					     &rqstp->rq_res, wr_lst);
+>>>   		if (ret < 0)
+>>>   			return ret;
+>>>   	}
+>>>   -	svc_rdma_save_io_pages(rqstp, ctxt);
+>>> +	svc_rdma_save_io_pages(rqstp, sctxt);
+>>>   -	ctxt->sc_send_wr.opcode = IB_WR_SEND;
+>>> -	if (rdma->sc_snd_w_inv) {
+>>> -		ctxt->sc_send_wr.ex.invalidate_rkey =
+>>> -			svc_rdma_get_inv_rkey(rdma_argp, wr_lst, rp_ch);
+>>> -		if (ctxt->sc_send_wr.ex.invalidate_rkey)
+>>> -			ctxt->sc_send_wr.opcode = IB_WR_SEND_WITH_INV;
+>>> +	if (rctxt->rc_inv_rkey) {
+>>> +		sctxt->sc_send_wr.opcode = IB_WR_SEND_WITH_INV;
+>>> +		sctxt->sc_send_wr.ex.invalidate_rkey = rctxt->rc_inv_rkey;
+>>> +	} else {
+>>> +		sctxt->sc_send_wr.opcode = IB_WR_SEND;
+>>>   	}
+>>>   	dprintk("svcrdma: posting Send WR with %u sge(s)\n",
+>>> -		ctxt->sc_send_wr.num_sge);
+>>> -	return svc_rdma_send(rdma, &ctxt->sc_send_wr);
+>>> +		sctxt->sc_send_wr.num_sge);
+>>> +	return svc_rdma_send(rdma, &sctxt->sc_send_wr);
+>>>   }
+>>>     /* Given the client-provided Write and Reply chunks, the server was not
+>>> @@ -809,7 +782,7 @@ int svc_rdma_sendto(struct svc_rqst *rqstp)
+>>>   	}
+>>>     	svc_rdma_sync_reply_hdr(rdma, sctxt, svc_rdma_reply_hdr_len(rdma_resp));
+>>> -	ret = svc_rdma_send_reply_msg(rdma, sctxt, rdma_argp, rqstp,
+>>> +	ret = svc_rdma_send_reply_msg(rdma, sctxt, rctxt, rqstp,
+>>>   				      wr_lst, rp_ch);
+>>>   	if (ret < 0)
+>>>   		goto err1;
+> 
+> --
+> Chuck Lever
+> 
+> 
+> 
+> 
+> 
