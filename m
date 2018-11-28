@@ -1,42 +1,43 @@
-Return-Path: <SRS0=Htud=OG=vger.kernel.org=linux-nfs-owner@kernel.org>
+Return-Path: <SRS0=zHXY=OH=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,SPF_PASS autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 45C76C43441
-	for <linux-nfs@archiver.kernel.org>; Tue, 27 Nov 2018 23:20:44 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 961FEC43441
+	for <linux-nfs@archiver.kernel.org>; Wed, 28 Nov 2018 00:54:00 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 0F25320873
-	for <linux-nfs@archiver.kernel.org>; Tue, 27 Nov 2018 23:20:44 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 0F25320873
+	by mail.kernel.org (Postfix) with ESMTP id 60D7E2082F
+	for <linux-nfs@archiver.kernel.org>; Wed, 28 Nov 2018 00:54:00 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 60D7E2082F
 Authentication-Results: mail.kernel.org; dmarc=none (p=none dis=none) header.from=suse.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726354AbeK1KUM (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 28 Nov 2018 05:20:12 -0500
-Received: from mx2.suse.de ([195.135.220.15]:35994 "EHLO mx1.suse.de"
+        id S1726457AbeK1Lxl (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 28 Nov 2018 06:53:41 -0500
+Received: from mx2.suse.de ([195.135.220.15]:48402 "EHLO mx1.suse.de"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726068AbeK1KUM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 28 Nov 2018 05:20:12 -0500
+        id S1726418AbeK1Lxl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 28 Nov 2018 06:53:41 -0500
 X-Virus-Scanned: by amavisd-new at test-mx.suse.de
+X-Amavis-Alert: BAD HEADER SECTION, Duplicate header field: "To"
 Received: from relay1.suse.de (unknown [195.135.220.254])
-        by mx1.suse.de (Postfix) with ESMTP id E13E4B05E;
-        Tue, 27 Nov 2018 23:20:40 +0000 (UTC)
+        by mx1.suse.de (Postfix) with ESMTP id E143AAC38;
+        Wed, 28 Nov 2018 00:53:56 +0000 (UTC)
 From:   NeilBrown <neilb@suse.com>
 To:     "J. Bruce Fields" <bfields@redhat.com>,
         kernel test robot <rong.a.chen@intel.com>
-Date:   Wed, 28 Nov 2018 10:20:34 +1100
-Cc:     Jeff Layton <jlayton@kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>,
+To:     Jeff Layton <jlayton@kernel.org>
+Date:   Wed, 28 Nov 2018 11:53:48 +1100
+Cc:     LKML <linux-kernel@vger.kernel.org>,
         Jeff Layton <jlayton@redhat.com>, lkp@01.org,
         linux-nfs@vger.kernel.org
-Subject: Re: [LKP] [fs/locks]  83b381078b:  will-it-scale.per_thread_ops -62.5% regression
-In-Reply-To: <20181127174315.GA29963@parsley.fieldses.org>
-References: <20181127060102.GF6163@shao2-debian> <20181127174315.GA29963@parsley.fieldses.org>
-Message-ID: <87mupup0ot.fsf@notabene.neil.brown.name>
+Subject: [PATCH] locks: fix performance regressions.
+In-Reply-To: <87mupup0ot.fsf@notabene.neil.brown.name>
+References: <20181127060102.GF6163@shao2-debian> <20181127174315.GA29963@parsley.fieldses.org> <87mupup0ot.fsf@notabene.neil.brown.name>
+Message-ID: <87k1kyowdf.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
 Content-Type: multipart/signed; boundary="=-=-=";
         micalg=pgp-sha256; protocol="application/pgp-signature"
@@ -49,279 +50,93 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 Content-Type: text/plain
 Content-Transfer-Encoding: quoted-printable
 
-On Tue, Nov 27 2018, J. Bruce Fields wrote:
 
-> Thanks for the report!
+The kernel test robot reported two performance regressions
+caused by recent patches.
+Both appear to related to the global spinlock blocked_lock_lock
+being taken more often.
 
-Yes, thanks.  I thought I had replied to the previous report of a similar
-problem, but I didn't actually send that email - oops.
-Though the test is the same and the regression similar, this is a
-different patch.  The previous report identified=20
- fs/locks: allow a lock request to block other requests
-this one identifies
-  fs/locks: always delete_block after waiting.
+This patch avoids taking that lock in the cases tested.
 
-Both cause blocked_lock_lock to be taken more often.
+Reported-by: kernel test robot <rong.a.chen@intel.com>
+Signed-off-by: NeilBrown <neilb@suse.com>
+=2D--
 
-In one case is it due to locks_move_blocks().  That can probably be
-optimised to skip the lock if list_empty(&fl->fl_blocked_requests).
-I'd need to double-check, but I think that is safe to check without
-locking.
+Hi Jeff,
+ you might like to merge these back into the patches that introduced
+ the problem.
+ Or you might like me to re-send the series with these merged in,
+ in which case, please ask.
 
-This one causes locks_delete_blocks() to be called more often.  We now
-call it even if no waiting happened at all.  I suspect we can test for
-that and avoid it.  I'll have a look.
-
->
-> On Tue, Nov 27, 2018 at 02:01:02PM +0800, kernel test robot wrote:
->> FYI, we noticed a -62.5% regression of will-it-scale.per_thread_ops due =
-to commit:
->>=20
->>=20
->> commit: 83b381078b5ecab098ebf6bc9548bb32af1dbf31 ("fs/locks: always dele=
-te_block after waiting.")
->> https://git.kernel.org/cgit/linux/kernel/git/jlayton/linux.git locks-next
->>=20
->> in testcase: will-it-scale
->> on test machine: 88 threads Intel(R) Xeon(R) CPU E5-2699 v4 @ 2.20GHz wi=
-th 64G memory
->> with following parameters:
->>=20
->> 	nr_task: 16
->> 	mode: thread
->> 	test: lock1
->
-> So I guess it's doing this, uncontended file lock/unlock?:
->
-> 	https://github.com/antonblanchard/will-it-scale/blob/master/tests/lock1.c
->
-> Each thread is repeatedly locking and unlocking a file that is only used
-> by that thread.
-
-Thanks for identifying that Bruce.
-This would certainly be a case where locks_delete_block() is now being
-called when it wasn't before.
-
-
->
-> By the way, what's the X-axis on these graphs?  (Or the y-axis, for that
-> matter?)
-
-A key would help.  I think the X-axis is number-of-threads.  y-axis
-might be ops-per-second ??.
+ And a BIG thank-you to the kernel-test-robot team!!
 
 Thanks,
 NeilBrown
 
+ fs/locks.c | 21 +++++++++++++++++++++
+ 1 file changed, 21 insertions(+)
 
->
-> --b.
->
->>                             will-it-scale.per_thread_ops=20=20=20=20=20=
-=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20
->>=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=
-=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=
-=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=
-=20=20=20=20=20=20=20
->>   450000 +-+------------------------------------------------------------=
-----+=20=20=20
->>          |                                                              =
-    |=20=20=20
->>   400000 +-+   +..+..  .+..+..  .+..+..+...+..+..+..   +..        .+..  =
-  ..|=20=20=20
->>   350000 +-+ ..      +.       +.                     ..         +.    +.=
-.+  |=20=20=20
->>          |  +                                       +     +     :       =
-    |=20=20=20
->>   300000 +-+                                              :    :        =
-    |=20=20=20
->>   250000 +-+                                               :   :        =
-    |=20=20=20
->>          |                                                 :   :        =
-    |=20=20=20
->>   200000 +-+                                               :   :        =
-    |=20=20=20
->>   150000 +-+                                                : :         =
-    |=20=20=20
->>          O  O  O  O  O  O  O  O  O  O  O   O  O  O  O  O  O :O: O  O  O =
- O  O=20=20=20
->>   100000 +-+                                                : :         =
-    |=20=20=20
->>    50000 +-+                                                : :         =
-    |=20=20=20
->>          |                                                   :          =
-    |=20=20=20
->>        0 +-+------------------------------------------------------------=
-----+=20=20=20
->>=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=
-=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=
-=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=
-=20=20=20=20=20=20=20
->>=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=
-=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=
-=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=
-=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=
-=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=
-=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=
-=20=20=20=20=20=20=20=20=20=20=20=20
->>                                will-it-scale.workload=20=20=20=20=20=20=
-=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20
->>=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=
-=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=
-=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=
-=20=20=20=20=20=20=20
->>   7e+06 +-+-------------------------------------------------------------=
-----+=20=20=20
->>         |              +...+..           .+..+..+     +            +..  =
-    |=20=20=20
->>   6e+06 +-+   +..+.. ..         .+..+..+.        +   + +         ..     =
-  ..|=20=20=20
->>         |   ..      +         +.                  + +   +       +     +.=
-.+  |=20=20=20
->>   5e+06 +-++                                       +     +      :       =
-    |=20=20=20
->>         |                                                :     :        =
-    |=20=20=20
->>   4e+06 +-+                                               :    :        =
-    |=20=20=20
->>         |                                                 :    :        =
-    |=20=20=20
->>   3e+06 +-+                                                :   :        =
-    |=20=20=20
->>         |                                       O     O    :  : O  O    =
-    |=20=20=20
->>   2e+06 O-+O  O  O  O  O   O  O  O  O  O  O  O     O     O : O:       O =
- O  O=20=20=20
->>         |                                                   : :         =
-    |=20=20=20
->>   1e+06 +-+                                                 : :         =
-    |=20=20=20
->>         |                                                    :          =
-    |=20=20=20
->>       0 +-+-------------------------------------------------------------=
-----+=20=20=20
->>=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=
-=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=
-=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=
-=20=20=20=20=20=20=20
->>=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=
-=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=
-=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=
-=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=
-=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=
-=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=
-=20=20=20=20=20=20=20=20=20=20=20=20
->>                            will-it-scale.time.user_time=20=20=20=20=20=
-=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20
->>=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=
-=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=
-=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=
-=20=20=20=20=20=20=20
->>   250 +-+---------------------------------------------------------------=
-----+=20=20=20
->>       |                 .+..               .+..                   +..   =
-    |=20=20=20
->>       |..   +...+..  .+.      .+...+..+..+.    +..    +..       ..   .  =
-  ..|=20=20=20
->>   200 +-+ ..       +.       +.                    . ..         +      +.=
-.+  |=20=20=20
->>       |  +                                         +     +     :        =
-    |=20=20=20
->>       |                                                  :    :         =
-    |=20=20=20
->>   150 +-+                                                 :   :         =
-    |=20=20=20
->>       |                                                   :   :         =
-    |=20=20=20
->>   100 +-+                                                 :   :         =
-    |=20=20=20
->>       |  O      O                                          : :          =
-    |=20=20=20
->>       O     O      O  O  O  O  O   O  O  O  O  O   O  O  O :O: O  O   O =
- O  O=20=20=20
->>    50 +-+                                                  : :          =
-    |=20=20=20
->>       |                                                    : :          =
-    |=20=20=20
->>       |                                                     :           =
-    |=20=20=20
->>     0 +-+---------------------------------------------------------------=
-----+=20=20=20
->>=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=
-=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=
-=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=
-=20=20=20=20=20=20=20
->>=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=
-=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=
-=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=
-=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=
-=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=
-=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=
-=20=20=20=20=20=20=20=20=20=20=20=20
->>                           will-it-scale.time.system_time=20=20=20=20=20=
-=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20
->>=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=
-=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=
-=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=
-=20=20=20=20=20=20=20
->>   5000 +-+--------------------------------------------------------------=
-----+=20=20=20
->>   4500 O-+O..O..O...O..O..O..O..O..O..O...O..O..O..O..O..O  O  O...O..O.=
-.O..O=20=20=20
->>        |                                                 :     :        =
-    |=20=20=20
->>   4000 +-+                                               :     :        =
-    |=20=20=20
->>   3500 +-+                                                :   :         =
-    |=20=20=20
->>        |                                                  :   :         =
-    |=20=20=20
->>   3000 +-+                                                :   :         =
-    |=20=20=20
->>   2500 +-+                                                :   :         =
-    |=20=20=20
->>   2000 +-+                                                 : :          =
-    |=20=20=20
->>        |                                                   : :          =
-    |=20=20=20
->>   1500 +-+                                                 : :          =
-    |=20=20=20
->>   1000 +-+                                                 : :          =
-    |=20=20=20
->>        |                                                    :           =
-    |=20=20=20
->>    500 +-+                                                  :           =
-    |=20=20=20
->>      0 +-+--------------------------------------------------------------=
-----+=20=20=20
->>=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=
-=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=
-=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=
-=20=20=20=20=20=20=20
->>=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=
-=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=
-=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=20=
-=20=20=20=20=20=20=20
->> [*] bisect-good sample
->> [O] bisect-bad  sample
+diff --git a/fs/locks.c b/fs/locks.c
+index f456cd3d9d50..67519a43e27a 100644
+=2D-- a/fs/locks.c
++++ b/fs/locks.c
+@@ -444,6 +444,13 @@ static void locks_move_blocks(struct file_lock *new, s=
+truct file_lock *fl)
+ {
+ 	struct file_lock *f;
+=20
++	/*
++	 * As ctx->flc_lock is held, new requests cannot be added to
++	 * ->fl_blocked_requests, so we don't need a lock to check if it
++	 * is empty.
++	 */
++	if (list_empty(&fl->fl_blocked_requests))
++		return;
+ 	spin_lock(&blocked_lock_lock);
+ 	list_splice_init(&fl->fl_blocked_requests, &new->fl_blocked_requests);
+ 	list_for_each_entry(f, &fl->fl_blocked_requests, fl_blocked_member)
+@@ -749,6 +756,20 @@ int locks_delete_block(struct file_lock *waiter)
+ {
+ 	int status =3D -ENOENT;
+=20
++	/*
++	 * If fl_blocker is NULL, it won't be set again as this thread
++	 * "owns" the lock and is the only one that might try to claim
++	 * the lock.  So it is safe to test fl_blocker locklessly.
++	 * Also if fl_blocker is NULL, this waiter is not listed on
++	 * fl_blocked_requests for some lock, so no other request can
++	 * be added to the list of fl_blocked_requests for this
++	 * request.  So if fl_blocker is NULL, it is safe to
++	 * locklessly check if fl_blocked_requests is empty.  If both
++	 * of these checks succeed, there is no need to take the lock.
++	 */
++	if (waiter->fl_blocker =3D=3D NULL &&
++	    list_empty(&waiter->fl_blocked_requests))
++		return status;
+ 	spin_lock(&blocked_lock_lock);
+ 	if (waiter->fl_blocker)
+ 		status =3D 0;
+=2D-=20
+2.14.0.rc0.dirty
+
 
 --=-=-=
 Content-Type: application/pgp-signature; name="signature.asc"
 
 -----BEGIN PGP SIGNATURE-----
 
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlv90UIACgkQOeye3VZi
-gbnQiw//dlZQTtoolVqtfDTeStauX3I/+zJGPFjBd80aha39eeFhrDrYnPK0FEXA
-HihxxOMWFfDbGccXXmeDKcuGu4+TZbfXquGOVwKFz9cF9OKbUbQj/6vdk7MMBtEK
-q7/SBJ+CvEittcOXaC5GWbszTnO9PH01/9ebIkNOOyo/Lx0lALqmgmGCRUTLmoyS
-/pHqsVULokqfBycpY4qvEuH8vsfNHxEYAm4nHEkDfBzawsNWGXWGwc/wsdyzd/QD
-FLIA9M9aqq6grzJE/4FThu89kCe1jNiVce/m3FLo9MjvK2xnqFQ8Y7auslMpzz9U
-m827k+EhQOF1erkz9LCOeIT4LPOTUxF/JwiazEWts4UlnB3yacPnnji2ZSe+qi2r
-11+NRCzQLPLym3rErox0BKBDYIfFCyASMM8xY/DTYAt/x1IVwaloImhyHTRTCrTO
-8FqcXbU8Q0HTCmJxVoe98/IRIdQgDZm/u6VxAmLU5P6mq78NtVBRMtSi2Mt1RqXB
-WHyv4mmfiZUCbnjFk1+wNbqL2XQndBGrk/R29PAEF7zA7xvabvFiTmUTyH3SFtDB
-5xUiZCRbbHPPDOgUC7NUzJmVaHCuYeRKiVXL5ruqXkNvyFjcgLUqwDWm2QwIc4ex
-IPX3eI3sR5IKIRgvGkPiJ7x/GJop5BtxRTuA6haLHqXBtFL/ph8=
-=jf//
+iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlv95xwACgkQOeye3VZi
+gbk0jBAAjDCBtfHca0W64cD2SH8WRTmbw4F0oGVbrS63g96xW8ap6IkKDQYIV2d2
+D2yHOyySmAhmQqKhG2sfcz5W3Mtib5FiauzVES7iz+o5cAvBErCzALfq3B76mBlY
+Q3MnSGLge46xOpENsfUxkuboH/v3fYBIBdB/c7lK45XU32c8CJ6fRZzrBhn9lVI4
+Ege1P1rpJiXMALuN/Csc0Lr9uX9PO7fQd9mvX/79noV2L02hzu7VytZ8XEoXnzFM
+o/2gdSLmlSeCijH/t2loq8A6DPvuAhKTOHfkO4QNZFLQ9N6n9EizdpRhDbQtXlfZ
+d3Hp3p3mf9/BtrNcYiNW85LEbffLhPH8mWTzt6aT5owd3Xx0KExQXQjakr7Rj2fp
+EDXCpnilzSuh5Ia55nWGmBAA/hMeJYtKqp6mpErVkElFf/1qh3LbH7ixhlDJu+sp
+AmOQm+E26V8nbTUWst4j8wIEq/ux4uzkRGlLqLGHbA0T9TZlyslGBrIl4/edJbZz
++ucFrjlzy1RSm7P86UvzV1s0cAgh9VS8Yto5/Ou26ZXrHIf+IjnAKPtF1q7lb+co
+sGDxbLvHABmkTmaNs0NS6DFM3P2nIOgEb4pGCcYI8hJtu+KcuTZlKRwMP4PlALzc
+frcFONJYdcwl5Ad1ZY32hi2v8q/LfnEX6OA38n/XJxR5KtFz7YY=
+=R6to
 -----END PGP SIGNATURE-----
 --=-=-=--
