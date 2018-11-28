@@ -2,63 +2,70 @@ Return-Path: <SRS0=zHXY=OH=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED,
-	USER_AGENT_MUTT autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E6FD8C43441
-	for <linux-nfs@archiver.kernel.org>; Wed, 28 Nov 2018 09:17:17 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B18EFC04EB8
+	for <linux-nfs@archiver.kernel.org>; Wed, 28 Nov 2018 11:37:11 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id AFCB52081C
-	for <linux-nfs@archiver.kernel.org>; Wed, 28 Nov 2018 09:17:17 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org AFCB52081C
-Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=intel.com
+	by mail.kernel.org (Postfix) with ESMTP id 7F4712086B
+	for <linux-nfs@archiver.kernel.org>; Wed, 28 Nov 2018 11:37:11 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 7F4712086B
+Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=redhat.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727382AbeK1USM (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 28 Nov 2018 15:18:12 -0500
-Received: from mga18.intel.com ([134.134.136.126]:34274 "EHLO mga18.intel.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727341AbeK1USM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 28 Nov 2018 15:18:12 -0500
-X-Amp-Result: UNSCANNABLE
-X-Amp-File-Uploaded: False
-Received: from orsmga002.jf.intel.com ([10.7.209.21])
-  by orsmga106.jf.intel.com with ESMTP/TLS/DHE-RSA-AES256-GCM-SHA384; 28 Nov 2018 01:17:15 -0800
-X-ExtLoop1: 1
-X-IronPort-AV: E=Sophos;i="5.56,290,1539673200"; 
-   d="scan'208";a="112866993"
-Received: from shao2-debian.sh.intel.com (HELO localhost) ([10.239.13.6])
-  by orsmga002.jf.intel.com with ESMTP; 28 Nov 2018 01:17:14 -0800
-Date:   Wed, 28 Nov 2018 17:17:30 +0800
-From:   kernel test robot <rong.a.chen@intel.com>
-To:     NeilBrown <neilb@suse.com>
-Cc:     "J. Bruce Fields" <bfields@redhat.com>,
-        Jeff Layton <jlayton@kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        Jeff Layton <jlayton@redhat.com>, lkp@01.org,
-        linux-nfs@vger.kernel.org
+        id S1727841AbeK1Wi3 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 28 Nov 2018 17:38:29 -0500
+Received: from mail-yb1-f193.google.com ([209.85.219.193]:43708 "EHLO
+        mail-yb1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727491AbeK1Wi3 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 28 Nov 2018 17:38:29 -0500
+Received: by mail-yb1-f193.google.com with SMTP id h187-v6so10450970ybg.10
+        for <linux-nfs@vger.kernel.org>; Wed, 28 Nov 2018 03:37:08 -0800 (PST)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:message-id:subject:from:to:cc:date:in-reply-to
+         :references:user-agent:mime-version:content-transfer-encoding;
+        bh=0HhLMdEBbTxDO26usXtQVGyF5x4TUjha7ZofvYd8GOo=;
+        b=XMI3ZlC/oAVI8Tu2RvW8vRRjd6JPQM6Xr6LJUVFcUbMO4T65yftNqHFa5yEkoEZEiy
+         VYGAA70nmCDDmgMXtphq0dRl9Ann+Y6RV7wO/g6C3YeIKH2uTNzMZlAx1XxIfrTpTL9w
+         Ziq+CyU5LAPeZhKh/Tal3Y0zrbNQIJhq5hPpaU2Go0uDD0FN6kgBZJbb7Y5ivYMkfB+O
+         sYR7cdfdZfBR8S8TPV3x8L4SlY0QMq1cBHLE5jaRmvKxuMH+Ug1pGJJzmWcGJ0L4gZM2
+         ZuQVc6qLY3Y26gdZYWdXTo88TLcZdUO/5nWXoRyrono02eF0IZn/PI/TS6q1sXtf3vQE
+         1zsg==
+X-Gm-Message-State: AA+aEWah7+RT/y7xNDMR4XKnqO1DVXkPy+aF6mrhUpxRSI+LPhG6Qj1F
+        gUFmJvoT7E/tRurdKShDBSuTug==
+X-Google-Smtp-Source: AFSGD/V+EcjiwFrJD3tJTIzW9/l+bF3ZfjZrpJyrPDzcynX6KuDoCQZpvFImFnSzuVKN4qwGGVKxeg==
+X-Received: by 2002:a5b:7c6:: with SMTP id t6-v6mr23403666ybq.406.1543405027478;
+        Wed, 28 Nov 2018 03:37:07 -0800 (PST)
+Received: from tleilax.poochiereds.net (cpe-71-70-156-158.nc.res.rr.com. [71.70.156.158])
+        by smtp.gmail.com with ESMTPSA id h75sm4713340ywa.50.2018.11.28.03.37.06
+        (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
+        Wed, 28 Nov 2018 03:37:06 -0800 (PST)
+Message-ID: <9bba46b3f9b67a3a52c3a1f22caa9cd7cdabfca7.camel@redhat.com>
 Subject: Re: [PATCH] locks: fix performance regressions.
-Message-ID: <20181128091730.GD21676@shao2-debian>
-References: <20181127060102.GF6163@shao2-debian>
- <20181127174315.GA29963@parsley.fieldses.org>
- <87mupup0ot.fsf@notabene.neil.brown.name>
- <87k1kyowdf.fsf@notabene.neil.brown.name>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Disposition: inline
-Content-Transfer-Encoding: 8bit
+From:   Jeff Layton <jlayton@redhat.com>
+To:     NeilBrown <neilb@suse.com>, "J. Bruce Fields" <bfields@redhat.com>,
+        kernel test robot <rong.a.chen@intel.com>
+Cc:     LKML <linux-kernel@vger.kernel.org>, lkp@01.org,
+        linux-nfs@vger.kernel.org
+Date:   Wed, 28 Nov 2018 06:37:05 -0500
 In-Reply-To: <87k1kyowdf.fsf@notabene.neil.brown.name>
-User-Agent: Mutt/1.10.0 (2018-05-17)
+References: <20181127060102.GF6163@shao2-debian>
+         <20181127174315.GA29963@parsley.fieldses.org>
+         <87mupup0ot.fsf@notabene.neil.brown.name>
+         <87k1kyowdf.fsf@notabene.neil.brown.name>
+Content-Type: text/plain; charset="UTF-8"
+User-Agent: Evolution 3.30.2 (3.30.2-2.fc29) 
+Mime-Version: 1.0
+Content-Transfer-Encoding: 7bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hi,
-
-On Wed, Nov 28, 2018 at 11:53:48AM +1100, NeilBrown wrote:
-> 
+On Wed, 2018-11-28 at 11:53 +1100, NeilBrown wrote:
 > The kernel test robot reported two performance regressions
 > caused by recent patches.
 > Both appear to related to the global spinlock blocked_lock_lock
@@ -76,8 +83,24 @@ On Wed, Nov 28, 2018 at 11:53:48AM +1100, NeilBrown wrote:
 >  Or you might like me to re-send the series with these merged in,
 >  in which case, please ask.
 > 
->  And a BIG thank-you to the kernel-test-robot team!!
+
+Thanks Neil,
+
+This looks great. I'll go ahead and toss this patch on top of the pile
+in linux-next for now.
+
+Would you mind resending the series with this patch merged in? I took a
+quick stab at squashing it into the earlier patch, but there is some
+churn in this area.
+
+Maybe you can also turn that Reported-by: into a Tested-by: in the
+changelog afterward?
+
+> And a BIG thank-you to the kernel-test-robot team!!
 > 
+
+Absolutely! We love you guys!
+
 > Thanks,
 > NeilBrown
 > 
@@ -123,44 +146,7 @@ On Wed, Nov 28, 2018 at 11:53:48AM +1100, NeilBrown wrote:
 >  	spin_lock(&blocked_lock_lock);
 >  	if (waiter->fl_blocker)
 >  		status = 0;
-> -- 
-> 2.14.0.rc0.dirty
-> 
 
-FYI, the performance recovered back, we didn't find any regression between the two commits.
+-- 
+Jeff Layton <jlayton@redhat.com>
 
-commit: 
-  48a7a13ff3 ("locks: use properly initialized file_lock when unlocking.")
-  8f64e497be ("locks: fix performance regressions.")
-
-48a7a13ff31f0728  8f64e497be9929a2d5904c39c4  
-----------------  --------------------------  
-         %stddev      change         %stddev
-             \          |                \  
-     33.56 ±  3%         5%      35.30        boot-time.boot
-     10497 ±  3%        12%      11733 ±  4%  proc-vmstat.nr_shmem
-     67392                       68449        proc-vmstat.nr_zone_active_anon
-     67392                       68449        proc-vmstat.nr_active_anon
-     16303                       16206        proc-vmstat.nr_slab_reclaimable
-     30602                       29921        proc-vmstat.nr_slab_unreclaimable
-         0            9e+03       9009 ± 80%  latency_stats.avg.rpc_wait_bit_killable.__rpc_execute.rpc_run_task.rpc_call_sync.nfs3_rpc_wrapper.nfs3_do_create.nfs3_proc_create.nfs_create.path_openat.do_filp_open.do_sys_open.do_syscall_64
-         0            6e+03       5837 ±139%  latency_stats.avg.rpc_wait_bit_killable.__rpc_execute.rpc_run_task.rpc_call_sync.nfs3_rpc_wrapper.nfs3_proc_lookup.nfs_lookup.path_openat.do_filp_open.do_sys_open.do_syscall_64.entry_SYSCALL_64_after_hwframe
-       149 ± 17%      5e+03       5457 ±137%  latency_stats.avg.rpc_wait_bit_killable.__rpc_execute.rpc_run_task.rpc_call_sync.nfs3_rpc_wrapper.nfs3_proc_getattr.__nfs_revalidate_inode.nfs_do_access.nfs_permission.inode_permission.link_path_walk.path_lookupat
-       175 ± 29%      4e+03       3807 ±136%  latency_stats.avg.rpc_wait_bit_killable.__rpc_execute.rpc_run_task.rpc_call_sync.nfs3_rpc_wrapper.nfs3_proc_lookup.nfs_lookup.__lookup_slow.lookup_slow.walk_component.path_lookupat.filename_lookup
-     52868 ±110%     -4e+04      17482 ±  4%  latency_stats.avg.max
-     45055 ±141%     -5e+04          0        latency_stats.avg.io_schedule.nfs_lock_and_join_requests.nfs_updatepage.nfs_write_end.generic_perform_write.nfs_file_write.__vfs_write.vfs_write.ksys_write.do_syscall_64.entry_SYSCALL_64_after_hwframe
-       227 ± 10%      1e+04       9907 ±136%  latency_stats.max.rpc_wait_bit_killable.__rpc_execute.rpc_run_task.rpc_call_sync.nfs3_rpc_wrapper.nfs3_proc_getattr.__nfs_revalidate_inode.nfs_do_access.nfs_permission.inode_permission.link_path_walk.path_lookupat
-         0            9e+03       9367 ± 78%  latency_stats.max.rpc_wait_bit_killable.__rpc_execute.rpc_run_task.rpc_call_sync.nfs3_rpc_wrapper.nfs3_do_create.nfs3_proc_create.nfs_create.path_openat.do_filp_open.do_sys_open.do_syscall_64
-         0            6e+03       5837 ±139%  latency_stats.max.rpc_wait_bit_killable.__rpc_execute.rpc_run_task.rpc_call_sync.nfs3_rpc_wrapper.nfs3_proc_lookup.nfs_lookup.path_openat.do_filp_open.do_sys_open.do_syscall_64.entry_SYSCALL_64_after_hwframe
-       175 ± 29%      4e+03       3807 ±136%  latency_stats.max.rpc_wait_bit_killable.__rpc_execute.rpc_run_task.rpc_call_sync.nfs3_rpc_wrapper.nfs3_proc_lookup.nfs_lookup.__lookup_slow.lookup_slow.walk_component.path_lookupat.filename_lookup
-     98043 ±124%     -8e+04      20999 ± 27%  latency_stats.max.max
-     90059 ±141%     -9e+04          0        latency_stats.max.io_schedule.nfs_lock_and_join_requests.nfs_updatepage.nfs_write_end.generic_perform_write.nfs_file_write.__vfs_write.vfs_write.ksys_write.do_syscall_64.entry_SYSCALL_64_after_hwframe
-      1251 ± 23%      5e+04      49005 ±137%  latency_stats.sum.rpc_wait_bit_killable.__rpc_execute.rpc_run_task.rpc_call_sync.nfs3_rpc_wrapper.nfs3_proc_getattr.__nfs_revalidate_inode.nfs_do_access.nfs_permission.inode_permission.link_path_walk.path_lookupat
-         0            1e+04      12061 ± 70%  latency_stats.sum.rpc_wait_bit_killable.__rpc_execute.rpc_run_task.rpc_call_sync.nfs3_rpc_wrapper.nfs3_do_create.nfs3_proc_create.nfs_create.path_openat.do_filp_open.do_sys_open.do_syscall_64
-         0            6e+03       5837 ±139%  latency_stats.sum.rpc_wait_bit_killable.__rpc_execute.rpc_run_task.rpc_call_sync.nfs3_rpc_wrapper.nfs3_proc_lookup.nfs_lookup.path_openat.do_filp_open.do_sys_open.do_syscall_64.entry_SYSCALL_64_after_hwframe
-       175 ± 29%      4e+03       3807 ±136%  latency_stats.sum.rpc_wait_bit_killable.__rpc_execute.rpc_run_task.rpc_call_sync.nfs3_rpc_wrapper.nfs3_proc_lookup.nfs_lookup.__lookup_slow.lookup_slow.walk_component.path_lookupat.filename_lookup
-     90111 ±141%     -9e+04          0        latency_stats.sum.io_schedule.nfs_lock_and_join_requests.nfs_updatepage.nfs_write_end.generic_perform_write.nfs_file_write.__vfs_write.vfs_write.ksys_write.do_syscall_64.entry_SYSCALL_64_after_hwframe
-
-
-Best Regards,
-Rong Chen
