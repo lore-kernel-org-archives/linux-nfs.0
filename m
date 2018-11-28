@@ -2,98 +2,105 @@ Return-Path: <SRS0=zHXY=OH=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,USER_AGENT_MUTT
+X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C36C1C43441
-	for <linux-nfs@archiver.kernel.org>; Wed, 28 Nov 2018 01:19:24 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2BF5EC43441
+	for <linux-nfs@archiver.kernel.org>; Wed, 28 Nov 2018 03:52:14 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 9368320873
-	for <linux-nfs@archiver.kernel.org>; Wed, 28 Nov 2018 01:19:24 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 9368320873
-Authentication-Results: mail.kernel.org; dmarc=none (p=none dis=none) header.from=fieldses.org
+	by mail.kernel.org (Postfix) with ESMTP id E7DF62082F
+	for <linux-nfs@archiver.kernel.org>; Wed, 28 Nov 2018 03:52:13 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org E7DF62082F
+Authentication-Results: mail.kernel.org; dmarc=none (p=none dis=none) header.from=suse.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726847AbeK1MTJ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 28 Nov 2018 07:19:09 -0500
-Received: from fieldses.org ([173.255.197.46]:43818 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726539AbeK1MTJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 28 Nov 2018 07:19:09 -0500
-Received: by fieldses.org (Postfix, from userid 2815)
-        id 3FF4A1E68; Tue, 27 Nov 2018 20:19:23 -0500 (EST)
-Date:   Tue, 27 Nov 2018 20:19:23 -0500
-From:   "J. Bruce Fields" <bfields@fieldses.org>
-To:     Anatoly Trosinenko <anatoly.trosinenko@gmail.com>
-Cc:     Jeff Layton <jlayton@kernel.org>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: NFSd: NULL-dereference when writing to v4_end_grace when server
- is not yet started
-Message-ID: <20181128011923.GB15237@fieldses.org>
-References: <CAE5jQCcNCcLX_UvhHFe7BmxE010ULbchd1WN7pDbE2enK-pDZg@mail.gmail.com>
- <20181127205849.GB12810@fieldses.org>
+        id S1726972AbeK1OwU (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 28 Nov 2018 09:52:20 -0500
+Received: from mx2.suse.de ([195.135.220.15]:38328 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1726894AbeK1OwT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 28 Nov 2018 09:52:19 -0500
+X-Virus-Scanned: by amavisd-new at test-mx.suse.de
+Received: from relay1.suse.de (unknown [195.135.220.254])
+        by mx1.suse.de (Postfix) with ESMTP id 85326AF70;
+        Wed, 28 Nov 2018 03:52:11 +0000 (UTC)
+From:   NeilBrown <neilb@suse.com>
+To:     Steve Dickson <SteveD@RedHat.com>
+Date:   Wed, 28 Nov 2018 14:52:03 +1100
+Subject: [PATCH nfs-utils] systemd/rpc-statd.service - add IgnoreOnIsolate=yes
+cc:     linux-nfs@vger.kernel.org
+Message-ID: <87bm69q2os.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20181127205849.GB12810@fieldses.org>
-User-Agent: Mutt/1.5.21 (2010-09-15)
+Content-Type: multipart/signed; boundary="=-=-=";
+        micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Tue, Nov 27, 2018 at 03:58:49PM -0500, J. Bruce Fields wrote:
-> On Sun, Nov 25, 2018 at 09:17:10AM +0300, Anatoly Trosinenko wrote:
-> > When manually exploring the kernel NFSd feature, I have stumbled upon
-> > a NULL-dereference when writing to v4_end_grace when server is not yet
-> > started.
-> 
-> Thanks for the report!
-> 
-> I think this is what we want--it's what a lot of the other nfsctl
-> methods do.
+--=-=-=
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
-Hm, no, I'm getting a hang.  It looks like in the nfsd4 state startup we
-call a cltrack upcall while holding the nfsd_mutex, then nfsdcltrack
-tries to write to end_grace.  That's kind of ugly.
 
---b.
+If you run
+  systemctl isolate multi-user.target
+then all services not needed by multi-user.target are stopped.
+This currently includes rpc-statd, which is a problem.
 
-> commit ad5fdf47b4e3
-> Author: J. Bruce Fields <bfields@redhat.com>
-> Date:   Tue Nov 27 15:54:17 2018 -0500
-> 
->     nfsd4: fix crash on writing v4_end_grace before nfsd startup
->     
->     Anatoly Trosinenko reports that this:
->     
->     1) Checkout fresh master Linux branch (tested with commit e195ca6cb)
->     2) Copy x84_64-config-4.14 to .config, then enable NFS server v4 and build
->     3) From `kvm-xfstests shell`:
->     
->     results in NULL dereference in locks_end_grace.
->     
->     Check that nfsd has been started before trying to end the grace period.
->     
->     Reported-by: Anatoly Trosinenko <anatoly.trosinenko@gmail.com>
->     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> 
-> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-> index 6384c9b94898..38b223c1378e 100644
-> --- a/fs/nfsd/nfsctl.c
-> +++ b/fs/nfsd/nfsctl.c
-> @@ -1126,7 +1126,13 @@ static ssize_t write_v4_end_grace(struct file *file, char *buf, size_t size)
->  		case 'Y':
->  		case 'y':
->  		case '1':
-> +			mutex_lock(&nfsd_mutex);
-> +			if (nn->nfsd_serv) {
-> +				mutex_unlock(&nfsd_mutex);
-> +				return -EBUSY;
-> +			}
->  			nfsd4_end_grace(nn);
-> +			mutex_unlock(&nfsd_mutex);
->  			break;
->  		default:
->  			return -EINVAL;
+Systemd doesn't know that rpc-statd.service is needed by
+multi-user.target, or more accurately nfs-client.target, because
+sometimes it isn't.
+It is started dynamically by mount.nfs when a v3 or v2 filesystem
+is mounted (not when v4 is mounted) - so systemd doesn't see the connection.
+
+mount units default to IgnoreOnIsolate=3Dyes, as mounts are expected to be
+left mounted when you run "systemctl isolate ....".  As rpc-statd.service
+is started by a mount, and needed for some mounts, it makes sense for it
+to declare IgnoreOnIsolate=3Dyes too.
+With this declaration in place rpc.statd remains running when
+  systemctl isolate multi-user.target
+is run.
+
+Signed-off-by: NeilBrown <neilb@suse.com>
+=2D--
+ systemd/rpc-statd.service | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/systemd/rpc-statd.service b/systemd/rpc-statd.service
+index f41ae2084f3c..1f4e6a8b92ab 100644
+=2D-- a/systemd/rpc-statd.service
++++ b/systemd/rpc-statd.service
+@@ -7,6 +7,7 @@ Wants=3Dnetwork-online.target
+ After=3Dnetwork-online.target nss-lookup.target rpcbind.socket
+=20
+ PartOf=3Dnfs-utils.service
++IgnoreOnIsolate=3Dyes
+=20
+ [Service]
+ Environment=3DRPC_STATD_NO_NOTIFY=3D1
+=2D-=20
+2.14.0.rc0.dirty
+
+
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+
+iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlv+EOQACgkQOeye3VZi
+gbmllA/+OjRxTn6uDkdTFucc+N6zzfXmNQj9k+ijRR90YmLeg6ro2FjfTzpb51CC
+Nzxegc47xsXZIbUEgCbCkMBFGralv/83k/JXmBU+ivb/UgPi3nuVECwGhNOEfgku
+bir2JJyUMH6VyffoWVzznlwIoCQ+/vdkOEm3U8o1m4ja0cit/0P982dgq9LFsCNt
+jKTEp+Sj8ren8QN3NNbuyS0rOaIzhuTLURqsBHrZUvlYun6JBgaAVQfLB8rfrW98
+DmPOGlawV5dkI1TQgt2qX0rHHmym/Gb+57j9IvoU+5neSSncsH862T2+itfNm8td
+8pn6Jdk6o6GDB1phusH+JHJV7S4cInajJLAGapRtqBhFS3C4ZjHEBfc5lyf1m3zc
+/Tvoa2obKpSBxLU/RTAHU+zyDYPAIzItHYa1Xcph2r0oadBOuZMpN5oUkJTNOO38
+dUXSeFb8z6EfbHz4Gf5g6O0vYwFYGvH65lCgMu8NJLyyBbiYVasegzQX1dHq6+Mq
+6GyBXGdEaWODYca6hPw+aytZtXuFONikqoa/J6qIwNt7scEwKVRJn5zuQdislSt/
+CF8wUr5G6+5U9goKnDNjokKURRY1fY4rn4nYe+9ZBXohpzW5w7EXg12OYDBzrr7g
++j92jgl+1Bj0vVNB8o9CSA+R8jxEcVuXULkYBEQTSbm2PChIMQw=
+=Cprp
+-----END PGP SIGNATURE-----
+--=-=-=--
