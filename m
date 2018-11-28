@@ -2,132 +2,98 @@ Return-Path: <SRS0=zHXY=OH=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-8.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,USER_AGENT_MUTT
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4144DC43441
-	for <linux-nfs@archiver.kernel.org>; Wed, 28 Nov 2018 01:13:17 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C36C1C43441
+	for <linux-nfs@archiver.kernel.org>; Wed, 28 Nov 2018 01:19:24 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 0D28B20851
-	for <linux-nfs@archiver.kernel.org>; Wed, 28 Nov 2018 01:13:17 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 0D28B20851
-Authentication-Results: mail.kernel.org; dmarc=none (p=none dis=none) header.from=talpey.com
+	by mail.kernel.org (Postfix) with ESMTP id 9368320873
+	for <linux-nfs@archiver.kernel.org>; Wed, 28 Nov 2018 01:19:24 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 9368320873
+Authentication-Results: mail.kernel.org; dmarc=none (p=none dis=none) header.from=fieldses.org
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726539AbeK1MNA (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 28 Nov 2018 07:13:00 -0500
-Received: from p3plsmtpa08-10.prod.phx3.secureserver.net ([173.201.193.111]:42853
-        "EHLO p3plsmtpa08-10.prod.phx3.secureserver.net" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726567AbeK1MNA (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 28 Nov 2018 07:13:00 -0500
-Received: from [192.168.0.55] ([24.218.182.144])
-        by :SMTPAUTH: with ESMTPSA
-        id RoPigkD5CSuJQRoPigkqMu; Tue, 27 Nov 2018 18:13:14 -0700
-Subject: Re: [PATCH v1] svcrdma: Optimize the logic that selects the R_key to
- invalidate
-To:     Chuck Lever <chuck.lever@oracle.com>
-Cc:     linux-rdma@vger.kernel.org,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-References: <20181127161016.6997.69002.stgit@klimt.1015granger.net>
- <14c5a1e8-115b-a58b-7c65-4e207caf3d33@talpey.com>
- <0E1C5F18-C0E8-43D2-AF21-B6DCC84E302C@oracle.com>
- <45f70f31-997b-ab1e-9430-57f2e0d78318@talpey.com>
- <79BDA67D-4B6E-423F-BAF3-ADE5E703B5BC@oracle.com>
-From:   Tom Talpey <tom@talpey.com>
-Message-ID: <85f9cad6-9833-a193-44d0-b0397cafbcd7@talpey.com>
-Date:   Tue, 27 Nov 2018 20:13:14 -0500
-User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64; rv:52.0) Gecko/20100101
- Thunderbird/52.9.1
+        id S1726847AbeK1MTJ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 28 Nov 2018 07:19:09 -0500
+Received: from fieldses.org ([173.255.197.46]:43818 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726539AbeK1MTJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 28 Nov 2018 07:19:09 -0500
+Received: by fieldses.org (Postfix, from userid 2815)
+        id 3FF4A1E68; Tue, 27 Nov 2018 20:19:23 -0500 (EST)
+Date:   Tue, 27 Nov 2018 20:19:23 -0500
+From:   "J. Bruce Fields" <bfields@fieldses.org>
+To:     Anatoly Trosinenko <anatoly.trosinenko@gmail.com>
+Cc:     Jeff Layton <jlayton@kernel.org>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: NFSd: NULL-dereference when writing to v4_end_grace when server
+ is not yet started
+Message-ID: <20181128011923.GB15237@fieldses.org>
+References: <CAE5jQCcNCcLX_UvhHFe7BmxE010ULbchd1WN7pDbE2enK-pDZg@mail.gmail.com>
+ <20181127205849.GB12810@fieldses.org>
 MIME-Version: 1.0
-In-Reply-To: <79BDA67D-4B6E-423F-BAF3-ADE5E703B5BC@oracle.com>
-Content-Type: text/plain; charset=utf-8; format=flowed
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
-X-CMAE-Envelope: MS4wfIBj4izDIPcvupN4d8hXVdNLsWZGd93EtfwfvINLqQ61b1B8rSB/qpz05jWT/YH9pQqcnPCtSxderquRgITc7+XBrml4qg+rE2HOJ8GOVNuCFQwVq3Q4
- HCfJUHrFe0nsw9VSg27NElB/1Syh4wepwmh1aiYbhDV4JXumsy7OSeUhBrRIffdOBmQu050nS7UV3judMy/0kGIES/s9EYOGcwl3cT7kor+/MFEmc6XlPOP/
- PDqdIXREo5W68BpPXjLS2Q==
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20181127205849.GB12810@fieldses.org>
+User-Agent: Mutt/1.5.21 (2010-09-15)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On 11/27/2018 5:23 PM, Chuck Lever wrote:
+On Tue, Nov 27, 2018 at 03:58:49PM -0500, J. Bruce Fields wrote:
+> On Sun, Nov 25, 2018 at 09:17:10AM +0300, Anatoly Trosinenko wrote:
+> > When manually exploring the kernel NFSd feature, I have stumbled upon
+> > a NULL-dereference when writing to v4_end_grace when server is not yet
+> > started.
 > 
+> Thanks for the report!
 > 
->> On Nov 27, 2018, at 4:30 PM, Tom Talpey <tom@talpey.com> wrote:
->>
->> On 11/27/2018 4:21 PM, Chuck Lever wrote:
->>>> On Nov 27, 2018, at 4:16 PM, Tom Talpey <tom@talpey.com> wrote:
->>>>
->>>> On 11/27/2018 11:11 AM, Chuck Lever wrote:
->>>>> o Select the R_key to invalidate while the CPU cache still contains
->>>>>    the received RPC Call transport header, rather than waiting until
->>>>>    we're about to send the RPC Reply.
->>>>> o Choose Send With Invalidate if there is exactly one distinct R_key
->>>>>    in the received transport header. If there's more than one, the
->>>>>    client will have to perform local invalidation after it has
->>>>>    already waited for remote invalidation.
->>>>
->>>> What's the reason for remote-invalidating only if exactly one
->>>> region is targeted? It seems valuable to save the client the work,
->>>> no matter how many regions are used.
->>> Because remote invalidation delays the Receive completion.
->>
->> Well yes, but the invalidations have to happen before the reply is
->> processed, and remote invalidation saves a local work request plus
->> its completion.
+> I think this is what we want--it's what a lot of the other nfsctl
+> methods do.
+
+Hm, no, I'm getting a hang.  It looks like in the nfsd4 state startup we
+call a cltrack upcall while holding the nfsd_mutex, then nfsdcltrack
+tries to write to end_grace.  That's kind of ugly.
+
+--b.
+
+> commit ad5fdf47b4e3
+> Author: J. Bruce Fields <bfields@redhat.com>
+> Date:   Tue Nov 27 15:54:17 2018 -0500
 > 
-> That is true only if remote invalidation can knock down all the
-> R_keys for that RPC. If there's more than one R_key for that RPC,
-> a local invalidation is needed anyway, and there's no savings but
-> rather there is a cost of the extra latency of waiting twice.
+>     nfsd4: fix crash on writing v4_end_grace before nfsd startup
+>     
+>     Anatoly Trosinenko reports that this:
+>     
+>     1) Checkout fresh master Linux branch (tested with commit e195ca6cb)
+>     2) Copy x84_64-config-4.14 to .config, then enable NFS server v4 and build
+>     3) From `kvm-xfstests shell`:
+>     
+>     results in NULL dereference in locks_end_grace.
+>     
+>     Check that nfsd has been started before trying to end the grace period.
+>     
+>     Reported-by: Anatoly Trosinenko <anatoly.trosinenko@gmail.com>
+>     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 > 
-> A couple of details to note:
-> - remote invalidation is only available with FRWR, which
->    invalidates asynchronously
-> - a smart FRWR client implementation will post a chain of LOCAL
->    INV WRs, then wait for the last one to signal completion. That's
->    just one doorbell, one interrupt, and one context switch no
->    matter how many LOCAL INV WRs are needed.
-> 
-> So if the client still has to do even one local invalidation, it's
-> not worth the trouble to remotely invalidate.
-
-I still don't agree about "not worth" it, but it's a choice.
-
-Just a couple of other notes:
-
->> Have you measured the difference?
-> 
-> Yes, as reported in the patch description. Perhaps I can include
-> some interesting iozone results.
-
-I didn't see anything about this in the patch description, but I was
-not arguing for including this kind of detail, just whether you had
-actually measured it. I'm interested in that, btw.
-
-> This behavior seems to be a typical feature of most recent hardware.
-> I suspect there's some locking of the hardware Send queue to handle
-> RI that contends with actual posted WRs from the host.
-
-That would be really bad. Have you reported this to the vendors?
-
-> With cards that have a shallow FR depth, multiple MRs/R_keys are
-> required to register a single 1MB NFS READ or WRITE. Here's where
-> squelching remote invalidation really pays off.
-
-Sure, but such a bandwidth-dominated workload isn't very interesting
-performance-wise. With 1MB ops I would expect you to be wire-limited,
-right?
-
->> I think it would be best to capture some or all of this
->> explanation in the commit message, in any case.
-> 
-> You mean you want my patch description to explain _why_ ? ;-)
-
-Sort of. My belief is that this decision represents a micro-optimization
-and is unlikely to be forever true. More significantly, it's not a
-bug fix or correctness issue. So, capturing the reasoning behind
-it is useful for the future, in case someone thinks to unwind it.
-
-Tom.
+> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+> index 6384c9b94898..38b223c1378e 100644
+> --- a/fs/nfsd/nfsctl.c
+> +++ b/fs/nfsd/nfsctl.c
+> @@ -1126,7 +1126,13 @@ static ssize_t write_v4_end_grace(struct file *file, char *buf, size_t size)
+>  		case 'Y':
+>  		case 'y':
+>  		case '1':
+> +			mutex_lock(&nfsd_mutex);
+> +			if (nn->nfsd_serv) {
+> +				mutex_unlock(&nfsd_mutex);
+> +				return -EBUSY;
+> +			}
+>  			nfsd4_end_grace(nn);
+> +			mutex_unlock(&nfsd_mutex);
+>  			break;
+>  		default:
+>  			return -EINVAL;
