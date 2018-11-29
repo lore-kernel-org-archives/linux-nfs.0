@@ -4,178 +4,126 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-10.6 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
-	autolearn_force=no version=3.4.0
+	SPF_PASS,USER_AGENT_GIT autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 68F9AC43441
-	for <linux-nfs@archiver.kernel.org>; Thu, 29 Nov 2018 06:09:15 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id EACCDC43441
+	for <linux-nfs@archiver.kernel.org>; Thu, 29 Nov 2018 06:12:16 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 302322081C
-	for <linux-nfs@archiver.kernel.org>; Thu, 29 Nov 2018 06:09:15 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id AF2C02081C
+	for <linux-nfs@archiver.kernel.org>; Thu, 29 Nov 2018 06:12:16 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=kernel.org header.i=@kernel.org header.b="roFNxxmo"
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 302322081C
+	dkim=pass (1024-bit key) header.d=kernel.org header.i=@kernel.org header.b="HrYHqPnv"
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org AF2C02081C
 Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=kernel.org
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729001AbeK2RHR (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 29 Nov 2018 12:07:17 -0500
-Received: from mail.kernel.org ([198.145.29.99]:44378 "EHLO mail.kernel.org"
+        id S1727535AbeK2RDw (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 29 Nov 2018 12:03:52 -0500
+Received: from mail.kernel.org ([198.145.29.99]:38210 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1728459AbeK2RHQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 29 Nov 2018 12:07:16 -0500
+        id S1728107AbeK2RDw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 29 Nov 2018 12:03:52 -0500
 Received: from sasha-vm.mshome.net (unknown [37.142.5.207])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id E967A208E7;
-        Thu, 29 Nov 2018 06:03:00 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 05708208E7;
+        Thu, 29 Nov 2018 05:59:38 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1543471383;
-        bh=xWX2XVqyBN6rIKrS65DcPz4kXVH7PA1oms9zBC1Vtgs=;
+        s=default; t=1543471181;
+        bh=XZIMpldLM58zbtDq4L6xLhMKLPBlcBIuG/V0QQiwxFY=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=roFNxxmo8iW9I2JujUWvlsMTPUHwRPlvQci2z+6ApcfTfzoYSTxGYQrZjp/pwwWzY
-         KShXUHsxZPbWzsaU1S/Zxn2kDfp5qDoEbHD2dfMGcfix5ALK6KcPM+wX/0AlUikae8
-         JakGh7x1D4U734OSIqO69up8j6JJXeGOXwdTsFvk=
+        b=HrYHqPnvgZjDTqMkWU2e7SYBevvDgvipGP/lz6Ue+rrM3fiRFOOxbI53xc21em+ug
+         pyTzb5wUKcCU0LwnRtjKPyV+mj1ELkrl53SNctb+pG4b6ZEPiOYqrjhahBhkTq+2Mt
+         a2QzYbuoTJ/d328JonSpunUIGfINvs8y3jWoIj1c=
 From:   Sasha Levin <sashal@kernel.org>
 To:     stable@vger.kernel.org, linux-kernel@vger.kernel.org
-Cc:     Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>,
-        Rick Macklem <rmacklem@uoguelph.ca>,
-        Trond Myklebust <trond.myklebust@hammerspace.com>,
+Cc:     Trond Myklebust <trond.myklebust@hammerspace.com>,
         Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org
-Subject: [PATCH AUTOSEL 4.14 28/35] flexfiles: use per-mirror specified stateid for IO
-Date:   Thu, 29 Nov 2018 01:01:02 -0500
-Message-Id: <20181129060110.159878-28-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 4.19 46/68] NFSv4: Fix a NFSv4 state manager deadlock
+Date:   Thu, 29 Nov 2018 00:55:37 -0500
+Message-Id: <20181129055559.159228-46-sashal@kernel.org>
 X-Mailer: git-send-email 2.17.1
-In-Reply-To: <20181129060110.159878-1-sashal@kernel.org>
-References: <20181129060110.159878-1-sashal@kernel.org>
+In-Reply-To: <20181129055559.159228-1-sashal@kernel.org>
+References: <20181129055559.159228-1-sashal@kernel.org>
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-[ Upstream commit bb21ce0ad227b69ec0f83279297ee44232105d96 ]
+[ Upstream commit aeabb3c96186a0f944fc2b1f25c84d5eb3a93fa9 ]
 
-rfc8435 says:
+Fix a deadlock whereby the NFSv4 state manager can get stuck in the
+delegation return code, waiting for a layout return to complete in
+another thread. If the server reboots before that other thread
+completes, then we need to be able to start a second state
+manager thread in order to perform recovery.
 
-  For tight coupling, ffds_stateid provides the stateid to be used by
-  the client to access the file.
-
-However current implementation replaces per-mirror provided stateid with
-by open or lock stateid.
-
-Ensure that per-mirror stateid is used by ff_layout_write_prepare_v4 and
-nfs4_ff_layout_prepare_ds.
-
-Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-Signed-off-by: Rick Macklem <rmacklem@uoguelph.ca>
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- fs/nfs/flexfilelayout/flexfilelayout.c    | 21 +++++++++------------
- fs/nfs/flexfilelayout/flexfilelayout.h    |  4 ++++
- fs/nfs/flexfilelayout/flexfilelayoutdev.c | 19 +++++++++++++++++++
- 3 files changed, 32 insertions(+), 12 deletions(-)
+ fs/nfs/nfs4_fs.h   |  2 ++
+ fs/nfs/nfs4state.c | 16 +++++++++++-----
+ 2 files changed, 13 insertions(+), 5 deletions(-)
 
-diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
-index b0fa83a60754..13612a848378 100644
---- a/fs/nfs/flexfilelayout/flexfilelayout.c
-+++ b/fs/nfs/flexfilelayout/flexfilelayout.c
-@@ -1365,12 +1365,7 @@ static void ff_layout_read_prepare_v4(struct rpc_task *task, void *data)
- 				task))
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index 3a6904173214..63287d911c08 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -41,6 +41,8 @@ enum nfs4_client_state {
+ 	NFS4CLNT_MOVED,
+ 	NFS4CLNT_LEASE_MOVED,
+ 	NFS4CLNT_DELEGATION_EXPIRED,
++	NFS4CLNT_RUN_MANAGER,
++	NFS4CLNT_DELEGRETURN_RUNNING,
+ };
+ 
+ #define NFS4_RENEW_TIMEOUT		0x01
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index 18920152da14..d2f645d34eb1 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -1210,6 +1210,7 @@ void nfs4_schedule_state_manager(struct nfs_client *clp)
+ 	struct task_struct *task;
+ 	char buf[INET6_ADDRSTRLEN + sizeof("-manager") + 1];
+ 
++	set_bit(NFS4CLNT_RUN_MANAGER, &clp->cl_state);
+ 	if (test_and_set_bit(NFS4CLNT_MANAGER_RUNNING, &clp->cl_state) != 0)
  		return;
+ 	__module_get(THIS_MODULE);
+@@ -2485,6 +2486,7 @@ static void nfs4_state_manager(struct nfs_client *clp)
  
--	if (ff_layout_read_prepare_common(task, hdr))
--		return;
--
--	if (nfs4_set_rw_stateid(&hdr->args.stateid, hdr->args.context,
--			hdr->args.lock_context, FMODE_READ) == -EIO)
--		rpc_exit(task, -EIO); /* lost lock, terminate I/O */
-+	ff_layout_read_prepare_common(task, hdr);
- }
+ 	/* Ensure exclusive access to NFSv4 state */
+ 	do {
++		clear_bit(NFS4CLNT_RUN_MANAGER, &clp->cl_state);
+ 		if (test_bit(NFS4CLNT_PURGE_STATE, &clp->cl_state)) {
+ 			section = "purge state";
+ 			status = nfs4_purge_lease(clp);
+@@ -2575,14 +2577,18 @@ static void nfs4_state_manager(struct nfs_client *clp)
+ 		}
  
- static void ff_layout_read_call_done(struct rpc_task *task, void *data)
-@@ -1539,12 +1534,7 @@ static void ff_layout_write_prepare_v4(struct rpc_task *task, void *data)
- 				task))
- 		return;
- 
--	if (ff_layout_write_prepare_common(task, hdr))
--		return;
--
--	if (nfs4_set_rw_stateid(&hdr->args.stateid, hdr->args.context,
--			hdr->args.lock_context, FMODE_WRITE) == -EIO)
--		rpc_exit(task, -EIO); /* lost lock, terminate I/O */
-+	ff_layout_write_prepare_common(task, hdr);
- }
- 
- static void ff_layout_write_call_done(struct rpc_task *task, void *data)
-@@ -1734,6 +1724,10 @@ ff_layout_read_pagelist(struct nfs_pgio_header *hdr)
- 	fh = nfs4_ff_layout_select_ds_fh(lseg, idx);
- 	if (fh)
- 		hdr->args.fh = fh;
+ 		nfs4_end_drain_session(clp);
+-		if (test_and_clear_bit(NFS4CLNT_DELEGRETURN, &clp->cl_state)) {
+-			nfs_client_return_marked_delegations(clp);
+-			continue;
++		nfs4_clear_state_manager_bit(clp);
 +
-+	if (!nfs4_ff_layout_select_ds_stateid(lseg, idx, &hdr->args.stateid))
-+		goto out_failed;
-+
- 	/*
- 	 * Note that if we ever decide to split across DSes,
- 	 * then we may need to handle dense-like offsets.
-@@ -1796,6 +1790,9 @@ ff_layout_write_pagelist(struct nfs_pgio_header *hdr, int sync)
- 	if (fh)
- 		hdr->args.fh = fh;
++		if (!test_and_set_bit(NFS4CLNT_DELEGRETURN_RUNNING, &clp->cl_state)) {
++			if (test_and_clear_bit(NFS4CLNT_DELEGRETURN, &clp->cl_state)) {
++				nfs_client_return_marked_delegations(clp);
++				set_bit(NFS4CLNT_RUN_MANAGER, &clp->cl_state);
++			}
++			clear_bit(NFS4CLNT_DELEGRETURN_RUNNING, &clp->cl_state);
+ 		}
  
-+	if (!nfs4_ff_layout_select_ds_stateid(lseg, idx, &hdr->args.stateid))
-+		goto out_failed;
-+
- 	/*
- 	 * Note that if we ever decide to split across DSes,
- 	 * then we may need to handle dense-like offsets.
-diff --git a/fs/nfs/flexfilelayout/flexfilelayout.h b/fs/nfs/flexfilelayout/flexfilelayout.h
-index 679cb087ef3f..d6515f1584f3 100644
---- a/fs/nfs/flexfilelayout/flexfilelayout.h
-+++ b/fs/nfs/flexfilelayout/flexfilelayout.h
-@@ -214,6 +214,10 @@ unsigned int ff_layout_fetch_ds_ioerr(struct pnfs_layout_hdr *lo,
- 		unsigned int maxnum);
- struct nfs_fh *
- nfs4_ff_layout_select_ds_fh(struct pnfs_layout_segment *lseg, u32 mirror_idx);
-+int
-+nfs4_ff_layout_select_ds_stateid(struct pnfs_layout_segment *lseg,
-+				u32 mirror_idx,
-+				nfs4_stateid *stateid);
- 
- struct nfs4_pnfs_ds *
- nfs4_ff_layout_prepare_ds(struct pnfs_layout_segment *lseg, u32 ds_idx,
-diff --git a/fs/nfs/flexfilelayout/flexfilelayoutdev.c b/fs/nfs/flexfilelayout/flexfilelayoutdev.c
-index d62279d3fc5d..9f69e83810ca 100644
---- a/fs/nfs/flexfilelayout/flexfilelayoutdev.c
-+++ b/fs/nfs/flexfilelayout/flexfilelayoutdev.c
-@@ -369,6 +369,25 @@ nfs4_ff_layout_select_ds_fh(struct pnfs_layout_segment *lseg, u32 mirror_idx)
- 	return fh;
- }
- 
-+int
-+nfs4_ff_layout_select_ds_stateid(struct pnfs_layout_segment *lseg,
-+				u32 mirror_idx,
-+				nfs4_stateid *stateid)
-+{
-+	struct nfs4_ff_layout_mirror *mirror = FF_LAYOUT_COMP(lseg, mirror_idx);
-+
-+	if (!ff_layout_mirror_valid(lseg, mirror, false)) {
-+		pr_err_ratelimited("NFS: %s: No data server for mirror offset index %d\n",
-+			__func__, mirror_idx);
-+		goto out;
-+	}
-+
-+	nfs4_stateid_copy(stateid, &mirror->stateid);
-+	return 1;
-+out:
-+	return 0;
-+}
-+
- /**
-  * nfs4_ff_layout_prepare_ds - prepare a DS connection for an RPC call
-  * @lseg: the layout segment we're operating on
+-		nfs4_clear_state_manager_bit(clp);
+ 		/* Did we race with an attempt to give us more work? */
+-		if (clp->cl_state == 0)
++		if (!test_bit(NFS4CLNT_RUN_MANAGER, &clp->cl_state))
+ 			return;
+ 		if (test_and_set_bit(NFS4CLNT_MANAGER_RUNNING, &clp->cl_state) != 0)
+ 			return;
 -- 
 2.17.1
 
