@@ -2,165 +2,108 @@ Return-Path: <SRS0=T1LL=OJ=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.6 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,UNPARSEABLE_RELAY,URIBL_BLOCKED
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-6.8 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 28B02C04EB8
-	for <linux-nfs@archiver.kernel.org>; Fri, 30 Nov 2018 20:36:51 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A9343C04EB8
+	for <linux-nfs@archiver.kernel.org>; Fri, 30 Nov 2018 20:46:15 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id E1CBF2146D
-	for <linux-nfs@archiver.kernel.org>; Fri, 30 Nov 2018 20:36:50 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 6D0482080A
+	for <linux-nfs@archiver.kernel.org>; Fri, 30 Nov 2018 20:46:15 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="Jdznf/il"
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org E1CBF2146D
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="k0ydvM6J"
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 6D0482080A
 Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=oracle.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726028AbeLAHrT (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sat, 1 Dec 2018 02:47:19 -0500
-Received: from aserp2120.oracle.com ([141.146.126.78]:39862 "EHLO
-        aserp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725847AbeLAHrT (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 1 Dec 2018 02:47:19 -0500
-Received: from pps.filterd (aserp2120.oracle.com [127.0.0.1])
-        by aserp2120.oracle.com (8.16.0.22/8.16.0.22) with SMTP id wAUKYaW6085505;
-        Fri, 30 Nov 2018 20:36:45 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=content-type :
- mime-version : subject : from : in-reply-to : date : cc :
- content-transfer-encoding : message-id : references : to;
- s=corp-2018-07-02; bh=FjPj+9IreXQA7lB5bi4xcmGwYACEnxqILm1mPFIcK0g=;
- b=Jdznf/ilvaerlHjCQyzm+oUyYVFSdSfjZm7wcGczIDJUZvzXZ6x5JxY12kPTc28WxyW0
- AK98vAmlkUQq7fPP991LJoUs/AYAjx2SUT+4FHXXyIFWPqchpK7arD1t7AIsLe2Bmddo
- NxEalLLcwwhitU6F+v+nSP8uI8HcYHpmiSPtm6h+Y2JtrW4kYwXZBSAm6BnegVciV7Lg
- rDQqZiIFN5K5hYlUI048H2YIdnbS78y2+OTsWR6uA/TwYrlhBptClQZXMxDHlcUWGWlH
- wkAqEPJRTNbU4dBXEdjUVKGA1fPmXDerRdUpDW3TbAgYHd01uPWZOQNzjnCo7873Ua7H 6g== 
-Received: from aserv0021.oracle.com (aserv0021.oracle.com [141.146.126.233])
-        by aserp2120.oracle.com with ESMTP id 2nxxkr09wb-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Fri, 30 Nov 2018 20:36:45 +0000
-Received: from aserv0122.oracle.com (aserv0122.oracle.com [141.146.126.236])
-        by aserv0021.oracle.com (8.14.4/8.14.4) with ESMTP id wAUKaeq2022868
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Fri, 30 Nov 2018 20:36:40 GMT
-Received: from abhmp0013.oracle.com (abhmp0013.oracle.com [141.146.116.19])
-        by aserv0122.oracle.com (8.14.4/8.14.4) with ESMTP id wAUKacsM018389;
-        Fri, 30 Nov 2018 20:36:39 GMT
-Received: from anon-dhcp-171.1015granger.net (/68.61.232.219)
-        by default (Oracle Beehive Gateway v4.0)
-        with ESMTP ; Fri, 30 Nov 2018 12:36:38 -0800
-Content-Type: text/plain;
-        charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 11.5 \(3445.9.1\))
-Subject: Re: kerberos with v4.20-rc4 heads up
+        id S1726593AbeLAH4p (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sat, 1 Dec 2018 02:56:45 -0500
+Received: from mail-qt1-f193.google.com ([209.85.160.193]:39412 "EHLO
+        mail-qt1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725867AbeLAH4p (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 1 Dec 2018 02:56:45 -0500
+Received: by mail-qt1-f193.google.com with SMTP id n21so7413000qtl.6
+        for <linux-nfs@vger.kernel.org>; Fri, 30 Nov 2018 12:46:13 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=sender:subject:from:to:cc:date:message-id:user-agent:mime-version
+         :content-transfer-encoding;
+        bh=0ijSQQXfVbJbBhgTwJQm08iG9zW4J0IaoqxGu6N1F14=;
+        b=k0ydvM6JOak6Mb5bGBqr4U2TunuYT235vTL/lqd8a1UtUWJQxxrovicnZDnOQCQo9Q
+         5/Ttdpz+l1I05UQC4hqO3loBD8VFbkDXkr8L+iQm1QAKmHEbYzsgnyg8+uBMVTgr6QRA
+         klaxG0LeUAgEj3jylMEBWbwdyu4Au8OOX99dxZ/ZeRtOUVD8jUzEEUZYyCjqwo7plSBU
+         JMQOaafL0PoczZto0g3djkk8YnoSbDUkgnOcEYdasPj8HMNyWK4NsybJjCgz9eWW2IgF
+         gvSNAZjgRi/73bUse/NIxJswj9j31/uyZ+LBmmoEtFhAfXIFU/d3T91JzO80KbaWNLMg
+         Vrdg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:sender:subject:from:to:cc:date:message-id
+         :user-agent:mime-version:content-transfer-encoding;
+        bh=0ijSQQXfVbJbBhgTwJQm08iG9zW4J0IaoqxGu6N1F14=;
+        b=a/RVIh0F6IMYlT39Nwy8CREi/IiqArYb3izb35pDik3goHoKUrVeRTpZODES8V8iRd
+         qqhWinN9Vzsr4QLqpHHbq+IaGvI5viROTRp7CJnndcl0IZQyd3n2rKdv3YTUEacSPpyH
+         aFiVWAU100nPRz93M2lzxn02cUCqD6T9bgvcoppgoSP7XyFZzErhG+5wS29LKEprtygu
+         G4jfQQ8XoNZRz5lUU2syLU4qGAFeQ4RmyC/adJLtBSQBcFu5uYfjFLYgNUYqZNVO/ERC
+         85TNv8N8PzoJSEKhFQgPthe7128F0+xPRHnw6MG4aa/oIej9arQQzsDsLjhuukNDPfh9
+         KMRA==
+X-Gm-Message-State: AA+aEWYX3G5BORei1f5rCQy3rekHFd9aVfT4qhjQPZrZNfckeXcbloFR
+        Ap1JvzXKFnEiMVzg70Px0iw=
+X-Google-Smtp-Source: AFSGD/Wbfj9dAin0f+fDy/PA75pD33GZUV/yorwFrxiVmheb7oa+0bqTg9AK4AaAjpVF/C30JbLnuA==
+X-Received: by 2002:ac8:4901:: with SMTP id e1mr6787573qtq.244.1543610399962;
+        Fri, 30 Nov 2018 12:39:59 -0800 (PST)
+Received: from gateway.1015granger.net (c-68-61-232-219.hsd1.mi.comcast.net. [68.61.232.219])
+        by smtp.gmail.com with ESMTPSA id v10sm3093929qkb.57.2018.11.30.12.39.58
+        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Fri, 30 Nov 2018 12:39:58 -0800 (PST)
+Received: from manet.1015granger.net (manet.1015granger.net [192.168.1.51])
+        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id wAUKdvFe021915;
+        Fri, 30 Nov 2018 20:39:57 GMT
+Subject: [PATCH] SUNRPC: Fix leak of krb5p encode pages
 From:   Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <d1f07dd56fff6ee1888ca51b1b263825c3a9fd04.camel@hammerspace.com>
-Date:   Fri, 30 Nov 2018 15:36:37 -0500
-Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Transfer-Encoding: quoted-printable
-Message-Id: <AD8370DF-74BF-45D5-A9AD-41FBE2794779@oracle.com>
-References: <028A9DC5-4136-413C-8A79-F32F997A8AB1@oracle.com>
- <d1f07dd56fff6ee1888ca51b1b263825c3a9fd04.camel@hammerspace.com>
-To:     Trond Myklebust <trondmy@hammerspace.com>
-X-Mailer: Apple Mail (2.3445.9.1)
-X-Proofpoint-Virus-Version: vendor=nai engine=5900 definitions=9093 signatures=668686
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 suspectscore=0 malwarescore=0
- phishscore=0 bulkscore=0 spamscore=0 mlxscore=0 mlxlogscore=999
- adultscore=0 classifier=spam adjust=0 reason=mlx scancount=1
- engine=8.0.1-1810050000 definitions=main-1811300175
+To:     trond.myklebust@primarydata.com
+Cc:     linux-nfs@vger.kernel.org
+Date:   Fri, 30 Nov 2018 15:39:57 -0500
+Message-ID: <20181130203957.2378.23724.stgit@manet.1015granger.net>
+User-Agent: StGit/0.17.1-dirty
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
+call_encode can be invoked more than once per RPC call. Ensure that
+each call to gss_wrap_req_priv does not overwrite pointers to
+previously allocated memory.
 
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Cc: stable@kernel.org
+---
+ net/sunrpc/auth_gss/auth_gss.c |    4 ++++
+ 1 file changed, 4 insertions(+)
 
-> On Nov 30, 2018, at 1:40 PM, Trond Myklebust <trondmy@hammerspace.com> =
-wrote:
->=20
-> On Fri, 2018-11-30 at 12:08 -0500, Chuck Lever wrote:
->> Hi-
->>=20
->> I'm testing krb5/krb5i/krb5p with stock v4.20-rc4 and NFS/TCP.
->> The workload is synthetic:
->>=20
->> /home/cel/bin/iozone -M -+u -i0 -i1 -s1g -r8k -t16 -c
->>=20
->> The client is a 12-core Xeon system.
->>=20
->>=20
->> I'm seeing all kinds of symptoms:
->>=20
->> - memory leaks: bvec and enc_pages are leaking
->>=20
->> - EBADMSG is reported to user space
->>=20
->> - data corruption
->>=20
->> - connect deadlocks resulting in a mount hang
->>=20
->> - invalid soft IRQ receive buffer warnings
->>=20
->=20
-> Does the following patch help?
-
-With this patch applied I am able to reproduce at least the
-soft IRQ warnings and the connect deadlock. There is possibly
-more than one bug.
-
-I've found and fixed the enc_pages leak. Patch forthcoming.
-
-
-> 8<----------------------------------------------
-> =46rom 8ff4cd9f0f6912e14f657371b6b7eecf6d2091ee Mon Sep 17 00:00:00 =
-2001
-> From: Trond Myklebust <trond.myklebust@hammerspace.com>
-> Date: Fri, 30 Nov 2018 12:48:47 -0500
-> Subject: [PATCH] SUNRPC: call_connect_status() must handle tasks that =
-got
-> transmitted
->=20
-> If a task failed to get the write lock in the call to xprt_connect(), =
-then
-> it will be queued on xprt->sending. In that case, it is possible for =
-it
-> to get transmitted before the call to call_connect_status(), in which
-> case it needs to be handled by call_transmit_status() instead.
->=20
-> Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
-> ---
-> net/sunrpc/clnt.c | 7 +++++++
-> 1 file changed, 7 insertions(+)
->=20
-> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-> index ae3b8145da35..e35d642558e7 100644
-> --- a/net/sunrpc/clnt.c
-> +++ b/net/sunrpc/clnt.c
-> @@ -1915,6 +1915,13 @@ call_connect_status(struct rpc_task *task)
-> 	struct rpc_clnt *clnt =3D task->tk_client;
-> 	int status =3D task->tk_status;
->=20
-> +	/* Check if the task was already transmitted */
-> +	if (!test_bit(RPC_TASK_NEED_XMIT, &task->tk_runstate)) {
-> +		xprt_end_transmit(task);
-> +		task->tk_action =3D call_transmit_status;
-> +		return;
-> +	}
-> +
-> 	dprint_status(task);
->=20
-> 	trace_rpc_connect_status(task);
-> --=20
-> 2.19.2
->=20
-> --=20
-> Trond Myklebust
-> Linux NFS client maintainer, Hammerspace
-> trond.myklebust@hammerspace.com
-
---
-Chuck Lever
-
-
+diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+index 5d3f252..ba76547 100644
+--- a/net/sunrpc/auth_gss/auth_gss.c
++++ b/net/sunrpc/auth_gss/auth_gss.c
+@@ -1791,6 +1791,7 @@ static void gss_wrap_req_encode(kxdreproc_t encode, struct rpc_rqst *rqstp,
+ 	for (i=0; i < rqstp->rq_enc_pages_num; i++)
+ 		__free_page(rqstp->rq_enc_pages[i]);
+ 	kfree(rqstp->rq_enc_pages);
++	rqstp->rq_release_snd_buf = NULL;
+ }
+ 
+ static int
+@@ -1799,6 +1800,9 @@ static void gss_wrap_req_encode(kxdreproc_t encode, struct rpc_rqst *rqstp,
+ 	struct xdr_buf *snd_buf = &rqstp->rq_snd_buf;
+ 	int first, last, i;
+ 
++	if (rqstp->rq_release_snd_buf)
++		rqstp->rq_release_snd_buf(rqstp);
++
+ 	if (snd_buf->page_len == 0) {
+ 		rqstp->rq_enc_pages_num = 0;
+ 		return 0;
 
