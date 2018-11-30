@@ -2,92 +2,118 @@ Return-Path: <SRS0=T1LL=OJ=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED,
-	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E16E2C04EB8
-	for <linux-nfs@archiver.kernel.org>; Fri, 30 Nov 2018 08:01:34 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6F10FC04EB8
+	for <linux-nfs@archiver.kernel.org>; Fri, 30 Nov 2018 14:44:05 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id B25E72082F
-	for <linux-nfs@archiver.kernel.org>; Fri, 30 Nov 2018 08:01:34 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org B25E72082F
-Authentication-Results: mail.kernel.org; dmarc=none (p=none dis=none) header.from=huawei.com
+	by mail.kernel.org (Postfix) with ESMTP id 4098C20863
+	for <linux-nfs@archiver.kernel.org>; Fri, 30 Nov 2018 14:44:05 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 4098C20863
+Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=redhat.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726653AbeK3TKA (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 30 Nov 2018 14:10:00 -0500
-Received: from szxga05-in.huawei.com ([45.249.212.191]:15177 "EHLO huawei.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726633AbeK3TKA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 30 Nov 2018 14:10:00 -0500
-Received: from DGGEMS404-HUB.china.huawei.com (unknown [172.30.72.59])
-        by Forcepoint Email with ESMTP id 76887C69DCE8A;
-        Fri, 30 Nov 2018 16:01:29 +0800 (CST)
-Received: from huawei.com (10.90.53.225) by DGGEMS404-HUB.china.huawei.com
- (10.3.19.204) with Microsoft SMTP Server id 14.3.408.0; Fri, 30 Nov 2018
- 16:01:21 +0800
-From:   zhengbin <zhengbin13@huawei.com>
-To:     <bfields@fieldses.org>, <jlayton@kernel.org>,
-        <linux-nfs@vger.kernel.org>
-CC:     <zhengbin13@huawei.com>, <houtao1@huawei.com>,
-        <zhaohongjiang@huawei.com>
-Subject: [PATCH] nfsd: Return EPERM on utime/utimes/lutimes calls instead of EACCESS in some cases
-Date:   Fri, 30 Nov 2018 16:04:25 +0800
-Message-ID: <1543565065-45503-1-git-send-email-zhengbin13@huawei.com>
-X-Mailer: git-send-email 2.7.4
-MIME-Version: 1.0
-Content-Type: text/plain
-X-Originating-IP: [10.90.53.225]
-X-CFilter-Loop: Reflected
+        id S1726803AbeLABxg (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 30 Nov 2018 20:53:36 -0500
+Received: from mx1.redhat.com ([209.132.183.28]:53008 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726615AbeLABxg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 30 Nov 2018 20:53:36 -0500
+Received: from smtp.corp.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id 096B63082E23;
+        Fri, 30 Nov 2018 14:44:04 +0000 (UTC)
+Received: from coeurl.usersys.redhat.com (ovpn-120-28.rdu2.redhat.com [10.10.120.28])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id AF3C8649DD;
+        Fri, 30 Nov 2018 14:44:03 +0000 (UTC)
+Received: by coeurl.usersys.redhat.com (Postfix, from userid 1000)
+        id 35A9E20272; Fri, 30 Nov 2018 09:44:03 -0500 (EST)
+From:   Scott Mayhew <smayhew@redhat.com>
+To:     trond.myklebust@hammerspace.com, anna.schumaker@netapp.com
+Cc:     linux-nfs@vger.kernel.org
+Subject: [PATCH 1/1] NFSv4: fix "Lock reclaim failed" false positives
+Date:   Fri, 30 Nov 2018 09:44:03 -0500
+Message-Id: <20181130144403.31621-2-smayhew@redhat.com>
+In-Reply-To: <20181130144403.31621-1-smayhew@redhat.com>
+References: <20181130144403.31621-1-smayhew@redhat.com>
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.11
+X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.46]); Fri, 30 Nov 2018 14:44:04 +0000 (UTC)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-As the man(3) page for utime/utimes/lutimes, EPERM is returned
-when the second parameter of utime/utimes/lutimes is not NULL,
-the caller's effective UID does not match the owner of the file,
-and the caller is not privileged.
+During NFSv4 state recovery, the client attempts to reclaim locks that
+are on the flc_posix and flc_flock lists of the file_lock_context of the
+inode associated with an nfs4_state.  Then the client walks the
+nfs4_state's lock_states list, looking for nfs4_lock_state's that do not
+have NFS_LOCK_INITIALIZED set in their ls_flags.  If any are found, a
+"Lock reclaim failed!" warning is issued.
 
-However, in a NFS directory, it will return EACCESS(nfsd_setattr->
-fh_verify->nfsd_permission), This patch fix this.
+Since nfs4_lock_state's are created before the corresponding file_lock
+is in place at the vfs layer and removed after the file_lock is released
+at the vfs layer, there is the possibility of false-positive warnings if
+the client was in the process of acquiring or releasing locks when state
+recovery was started.
 
-Signed-off-by: zhengbin <zhengbin13@huawei.com>
+Add a new nfs4_lock_state->ls_flag called "NFS_LOCK_TRY_RECLAIM" to
+indicate the states that the client actually tried to reclaim, and
+ignore nfs4_lock_states that do not have that flag when deciding whether
+or not to log the "Lock reclaim failed!" warning.
+
+Signed-off-by: Scott Mayhew <smayhew@redhat.com>
 ---
- fs/nfsd/vfs.c | 17 +++++++++++++++--
- 1 file changed, 15 insertions(+), 2 deletions(-)
+ fs/nfs/nfs4_fs.h   | 1 +
+ fs/nfs/nfs4state.c | 7 ++++++-
+ 2 files changed, 7 insertions(+), 1 deletion(-)
 
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index eb67098..9824e32 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -396,10 +396,23 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc_fh *fhp, struct iattr *iap,
- 	bool		get_write_count;
- 	bool		size_change = (iap->ia_valid & ATTR_SIZE);
-
--	if (iap->ia_valid & (ATTR_ATIME | ATTR_MTIME | ATTR_SIZE))
-+	if (iap->ia_valid & ATTR_SIZE) {
- 		accmode |= NFSD_MAY_WRITE|NFSD_MAY_OWNER_OVERRIDE;
--	if (iap->ia_valid & ATTR_SIZE)
- 		ftype = S_IFREG;
-+	}
-+
-+	/*
-+	 * If utimes(2) and friends are called with times not NULL, we should
-+	 * not set NFSD_MAY_WRITE bit. Otherwise fh_verify->nfsd_permission
-+	 * will return EACCESS, when the caller's effective UID does not match
-+	 * the owner of the file, and the caller is not privileged. In this
-+	 * situation, we should return EPERM(notify_change will return this).
-+	 */
-+	if (iap->ia_valid & (ATTR_ATIME | ATTR_MTIME)) {
-+		accmode |= NFSD_MAY_OWNER_OVERRIDE;
-+		if (!(iap->ia_valid & (ATTR_ATIME_SET | ATTR_MTIME_SET)))
-+			accmode |= NFSD_MAY_WRITE;
-+	}
-
- 	/* Callers that do fh_verify should do the fh_want_write: */
- 	get_write_count = !fhp->fh_dentry;
---
-2.7.4
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index 1b994b527518..6ed04e8f8953 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -144,6 +144,7 @@ struct nfs4_lock_state {
+ 	struct nfs4_state *	ls_state;	/* Pointer to open state */
+ #define NFS_LOCK_INITIALIZED 0
+ #define NFS_LOCK_LOST        1
++#define NFS_LOCK_TRY_RECLAIM 2
+ 	unsigned long		ls_flags;
+ 	struct nfs_seqid_counter	ls_seqid;
+ 	nfs4_stateid		ls_stateid;
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index d8decf2ec48f..bd7a07641bd7 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -1509,6 +1509,9 @@ static int nfs4_reclaim_locks(struct nfs4_state *state, const struct nfs4_state_
+ 		if (nfs_file_open_context(fl->fl_file)->state != state)
+ 			continue;
+ 		spin_unlock(&flctx->flc_lock);
++		lsp = fl->fl_u.nfs4_fl.owner;
++		if (lsp)
++			set_bit(NFS_LOCK_TRY_RECLAIM, &lsp->ls_flags);
+ 		status = ops->recover_lock(state, fl);
+ 		switch (status) {
+ 		case 0:
+@@ -1592,7 +1595,8 @@ static int __nfs4_reclaim_open_state(struct nfs4_state_owner *sp, struct nfs4_st
+ 	if (!test_bit(NFS_DELEGATED_STATE, &state->flags)) {
+ 		spin_lock(&state->state_lock);
+ 		list_for_each_entry(lock, &state->lock_states, ls_locks) {
+-			if (!test_bit(NFS_LOCK_INITIALIZED, &lock->ls_flags))
++			if (test_bit(NFS_LOCK_TRY_RECLAIM, &lock->ls_flags) &&
++			    !test_bit(NFS_LOCK_INITIALIZED, &lock->ls_flags))
+ 				pr_warn_ratelimited("NFS: %s: Lock reclaim failed!\n", __func__);
+ 		}
+ 		spin_unlock(&state->state_lock);
+@@ -1693,6 +1697,7 @@ static void nfs4_clear_open_state(struct nfs4_state *state)
+ 	list_for_each_entry(lock, &state->lock_states, ls_locks) {
+ 		lock->ls_seqid.flags = 0;
+ 		clear_bit(NFS_LOCK_INITIALIZED, &lock->ls_flags);
++		clear_bit(NFS_LOCK_TRY_RECLAIM, &lock->ls_flags);
+ 	}
+ 	spin_unlock(&state->state_lock);
+ }
+-- 
+2.17.1
 
