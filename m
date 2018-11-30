@@ -6,35 +6,35 @@ X-Spam-Status: No, score=-9.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED,
 	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A8C39C04EB8
-	for <linux-nfs@archiver.kernel.org>; Fri, 30 Nov 2018 07:49:58 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E16E2C04EB8
+	for <linux-nfs@archiver.kernel.org>; Fri, 30 Nov 2018 08:01:34 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 5284A2146D
-	for <linux-nfs@archiver.kernel.org>; Fri, 30 Nov 2018 07:49:58 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 5284A2146D
+	by mail.kernel.org (Postfix) with ESMTP id B25E72082F
+	for <linux-nfs@archiver.kernel.org>; Fri, 30 Nov 2018 08:01:34 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org B25E72082F
 Authentication-Results: mail.kernel.org; dmarc=none (p=none dis=none) header.from=huawei.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726562AbeK3S6V (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 30 Nov 2018 13:58:21 -0500
-Received: from szxga06-in.huawei.com ([45.249.212.32]:45130 "EHLO huawei.com"
+        id S1726653AbeK3TKA (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 30 Nov 2018 14:10:00 -0500
+Received: from szxga05-in.huawei.com ([45.249.212.191]:15177 "EHLO huawei.com"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726551AbeK3S6V (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 30 Nov 2018 13:58:21 -0500
-Received: from DGGEMS413-HUB.china.huawei.com (unknown [172.30.72.59])
-        by Forcepoint Email with ESMTP id 858B2F3A521B4;
-        Fri, 30 Nov 2018 15:49:54 +0800 (CST)
-Received: from huawei.com (10.90.53.225) by DGGEMS413-HUB.china.huawei.com
- (10.3.19.213) with Microsoft SMTP Server id 14.3.408.0; Fri, 30 Nov 2018
- 15:49:46 +0800
+        id S1726633AbeK3TKA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 30 Nov 2018 14:10:00 -0500
+Received: from DGGEMS404-HUB.china.huawei.com (unknown [172.30.72.59])
+        by Forcepoint Email with ESMTP id 76887C69DCE8A;
+        Fri, 30 Nov 2018 16:01:29 +0800 (CST)
+Received: from huawei.com (10.90.53.225) by DGGEMS404-HUB.china.huawei.com
+ (10.3.19.204) with Microsoft SMTP Server id 14.3.408.0; Fri, 30 Nov 2018
+ 16:01:21 +0800
 From:   zhengbin <zhengbin13@huawei.com>
 To:     <bfields@fieldses.org>, <jlayton@kernel.org>,
         <linux-nfs@vger.kernel.org>
 CC:     <zhengbin13@huawei.com>, <houtao1@huawei.com>,
         <zhaohongjiang@huawei.com>
 Subject: [PATCH] nfsd: Return EPERM on utime/utimes/lutimes calls instead of EACCESS in some cases
-Date:   Fri, 30 Nov 2018 15:51:30 +0800
-Message-ID: <1543564290-147370-1-git-send-email-zhengbin13@huawei.com>
+Date:   Fri, 30 Nov 2018 16:04:25 +0800
+Message-ID: <1543565065-45503-1-git-send-email-zhengbin13@huawei.com>
 X-Mailer: git-send-email 2.7.4
 MIME-Version: 1.0
 Content-Type: text/plain
