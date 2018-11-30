@@ -2,99 +2,103 @@ Return-Path: <SRS0=T1LL=OJ=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.6 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
-	SPF_PASS,UNPARSEABLE_RELAY autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 19E4BC04EB8
-	for <linux-nfs@archiver.kernel.org>; Fri, 30 Nov 2018 17:08:51 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 07E75C04EB8
+	for <linux-nfs@archiver.kernel.org>; Fri, 30 Nov 2018 17:41:53 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id C4E5D20834
-	for <linux-nfs@archiver.kernel.org>; Fri, 30 Nov 2018 17:08:50 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="U4w690Cy"
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org C4E5D20834
-Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=oracle.com
+	by mail.kernel.org (Postfix) with ESMTP id CDBB620673
+	for <linux-nfs@archiver.kernel.org>; Fri, 30 Nov 2018 17:41:52 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org CDBB620673
+Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=redhat.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727343AbeLAESr (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 30 Nov 2018 23:18:47 -0500
-Received: from aserp2120.oracle.com ([141.146.126.78]:34598 "EHLO
-        aserp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726732AbeLAESr (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 30 Nov 2018 23:18:47 -0500
-Received: from pps.filterd (aserp2120.oracle.com [127.0.0.1])
-        by aserp2120.oracle.com (8.16.0.22/8.16.0.22) with SMTP id wAUH4Znq117676;
-        Fri, 30 Nov 2018 17:08:46 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=from : content-type :
- content-transfer-encoding : mime-version : subject : message-id : date :
- cc : to; s=corp-2018-07-02;
- bh=rzpi4D+q8BJ/yiafZbv12JXHAIZEqjv00bP0KKWxZLk=;
- b=U4w690CyEJHArsvBquRp1xPC1soNKYq6OUoQugPfzegdJVdWBpJcxCTfY0tB0w65T8EW
- a32aJ7AsYd54RU6sjmd+U+v+4ekwV8640DIz5DpVIMln3japWGecJIdBeMkcnQnL4rfo
- a61co7osH3MT9QeIHpcH8g9lPFPshx7DMcwXCiVDsfN0Zc3N1s4g2Nak4zAPH19Zy7vK
- hRjTFXmCzzGPMyFWaJWlNcazZEoArN7ehyorkEZBBBlpQIGOHcBZQkhn0zCMWuoHMxef
- Jbrcrit/N1R9RPJFnW541Hbf/NjWQ9ibpTjawKbywP0Pa9wp2TZUtU9izui3rL4y0XL6 eg== 
-Received: from aserv0022.oracle.com (aserv0022.oracle.com [141.146.126.234])
-        by aserp2120.oracle.com with ESMTP id 2nxxkqydx1-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Fri, 30 Nov 2018 17:08:46 +0000
-Received: from userv0121.oracle.com (userv0121.oracle.com [156.151.31.72])
-        by aserv0022.oracle.com (8.14.4/8.14.4) with ESMTP id wAUH8jg7027969
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Fri, 30 Nov 2018 17:08:45 GMT
-Received: from abhmp0002.oracle.com (abhmp0002.oracle.com [141.146.116.8])
-        by userv0121.oracle.com (8.14.4/8.13.8) with ESMTP id wAUH8jdl009106;
-        Fri, 30 Nov 2018 17:08:45 GMT
-Received: from anon-dhcp-171.1015granger.net (/68.61.232.219)
-        by default (Oracle Beehive Gateway v4.0)
-        with ESMTP ; Fri, 30 Nov 2018 09:08:44 -0800
-From:   Chuck Lever <chuck.lever@oracle.com>
-Content-Type: text/plain;
-        charset=us-ascii
-Content-Transfer-Encoding: 7bit
-Mime-Version: 1.0 (Mac OS X Mail 11.5 \(3445.9.1\))
-Subject: kerberos with v4.20-rc4 heads up
-Message-Id: <028A9DC5-4136-413C-8A79-F32F997A8AB1@oracle.com>
-Date:   Fri, 30 Nov 2018 12:08:43 -0500
-Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-To:     Trond Myklebust <trondmy@hammerspace.com>
-X-Mailer: Apple Mail (2.3445.9.1)
-X-Proofpoint-Virus-Version: vendor=nai engine=5900 definitions=9093 signatures=668686
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 suspectscore=0 malwarescore=0
- phishscore=0 bulkscore=0 spamscore=0 mlxscore=0 mlxlogscore=772
- adultscore=0 classifier=spam adjust=0 reason=mlx scancount=1
- engine=8.0.1-1810050000 definitions=main-1811300146
+        id S1727047AbeLAEvx (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 30 Nov 2018 23:51:53 -0500
+Received: from mx1.redhat.com ([209.132.183.28]:32804 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726650AbeLAEvx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 30 Nov 2018 23:51:53 -0500
+Received: from smtp.corp.redhat.com (int-mx05.intmail.prod.int.phx2.redhat.com [10.5.11.15])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id DD87C30CFF45;
+        Fri, 30 Nov 2018 17:41:51 +0000 (UTC)
+Received: from coeurl.usersys.redhat.com (ovpn-120-28.rdu2.redhat.com [10.10.120.28])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 9282161F2E;
+        Fri, 30 Nov 2018 17:41:51 +0000 (UTC)
+Received: by coeurl.usersys.redhat.com (Postfix, from userid 1000)
+        id 1B2642076C; Fri, 30 Nov 2018 12:41:51 -0500 (EST)
+From:   Scott Mayhew <smayhew@redhat.com>
+To:     trond.myklebust@hammerspace.com, anna.schumaker@netapp.com
+Cc:     linux-nfs@vger.kernel.org
+Subject: [PATCH] NFSv4: deal with v4.0 servers that request confirmation on reclaim-type opens
+Date:   Fri, 30 Nov 2018 12:41:51 -0500
+Message-Id: <20181130174151.19448-2-smayhew@redhat.com>
+In-Reply-To: <20181130174151.19448-1-smayhew@redhat.com>
+References: <20181130174151.19448-1-smayhew@redhat.com>
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.15
+X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.47]); Fri, 30 Nov 2018 17:41:51 +0000 (UTC)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hi-
+There are some NFS v4.0 servers that request confirmation on
+reclaim-type opens even though it is disallowed by RFC 7530.
 
-I'm testing krb5/krb5i/krb5p with stock v4.20-rc4 and NFS/TCP.
-The workload is synthetic:
+The Linux NFS client used to cope with those okay due to
+1) nfs4_opendata_alloc() setting the filehandle in the args for the
+OPEN_CONFIRM to point to the filehandle in the OPEN results, and
+2) nfs4_open_prepare() copying the filehandle from the OPEN args to the
+OPEN results when doing an open by filehandle
 
- /home/cel/bin/iozone -M -+u -i0 -i1 -s1g -r8k -t16 -c
+The latter part was removed by commit 4e2fcac77390 ("nfsv4: Use correct
+inode in _nfs4_opendata_to_nfs4_state()")... and since there's no GETFH
+in the OPEN compound when doing a reclaim-type open, if one of these
+servers does request confirmation we wind up sending a zero filehandle
+in the PUTFH of the OPEN_CONFIRM compound and the OPEN_CONFIRM fails
+with NFS4ERR_BADHANDLE, causing the reclaim to fail.
 
-The client is a 12-core Xeon system.
+Add the copying of the filehandle back to nfs4_open_prepare() and
+log a warning in the event that the client does get a reply to
+OPEN(CLAIM_PREVIOUS) that has NFS4_OPEN_RESULT_CONFIRM set.
 
+Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+---
+ fs/nfs/nfs4proc.c | 9 ++++++++-
+ 1 file changed, 8 insertions(+), 1 deletion(-)
 
-I'm seeing all kinds of symptoms:
-
- - memory leaks: bvec and enc_pages are leaking
-
- - EBADMSG is reported to user space
-
- - data corruption
-
- - connect deadlocks resulting in a mount hang
-
- - invalid soft IRQ receive buffer warnings
-
-
---
-Chuck Lever
-
-
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 867457d6dfbe..5e521a506da3 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2323,6 +2323,7 @@ static void nfs4_open_prepare(struct rpc_task *task, void *calldata)
+ 		/* Fall through */
+ 	case NFS4_OPEN_CLAIM_FH:
+ 		task->tk_msg.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_OPEN_NOATTR];
++		nfs_copy_fh(&data->o_res.fh, data->o_arg.fh);
+ 	}
+ 	data->timestamp = jiffies;
+ 	if (nfs4_setup_sequence(data->o_arg.server->nfs_client,
+@@ -2470,8 +2471,14 @@ static int _nfs4_recover_proc_open(struct nfs4_opendata *data)
+ 
+ 	nfs_fattr_map_and_free_names(NFS_SERVER(dir), &data->f_attr);
+ 
+-	if (o_res->rflags & NFS4_OPEN_RESULT_CONFIRM)
++	if (o_res->rflags & NFS4_OPEN_RESULT_CONFIRM) {
++		if (data->o_arg.claim == NFS4_OPEN_CLAIM_PREVIOUS)
++			pr_err_ratelimited("NFS: Broken NFSv4 server %s is "
++					"requesting open confirmation for "
++					"OPEN(CLAIM_PREVIOUS)\n",
++					NFS_SERVER(dir)->nfs_client->cl_hostname);
+ 		status = _nfs4_proc_open_confirm(data);
++	}
+ 
+ 	return status;
+ }
+-- 
+2.17.1
 
