@@ -2,105 +2,105 @@ Return-Path: <SRS0=T1LL=OJ=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.6 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
-	SPF_PASS,UNPARSEABLE_RELAY,URIBL_BLOCKED autolearn=ham autolearn_force=no
+X-Spam-Status: No, score=-8.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3D9FFC04EB8
-	for <linux-nfs@archiver.kernel.org>; Fri, 30 Nov 2018 21:39:01 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A7891C04EB8
+	for <linux-nfs@archiver.kernel.org>; Fri, 30 Nov 2018 21:57:05 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id F2848206B7
-	for <linux-nfs@archiver.kernel.org>; Fri, 30 Nov 2018 21:39:00 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 5E0BB20660
+	for <linux-nfs@archiver.kernel.org>; Fri, 30 Nov 2018 21:57:05 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="VEQWSwAm"
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org F2848206B7
-Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=oracle.com
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="BlkYpza8"
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 5E0BB20660
+Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=gmail.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726512AbeLAItj (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sat, 1 Dec 2018 03:49:39 -0500
-Received: from userp2130.oracle.com ([156.151.31.86]:55764 "EHLO
-        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725941AbeLAItj (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 1 Dec 2018 03:49:39 -0500
-Received: from pps.filterd (userp2130.oracle.com [127.0.0.1])
-        by userp2130.oracle.com (8.16.0.22/8.16.0.22) with SMTP id wAULXtPY162474;
-        Fri, 30 Nov 2018 21:38:57 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=content-type :
- mime-version : subject : from : in-reply-to : date : cc :
- content-transfer-encoding : message-id : references : to;
- s=corp-2018-07-02; bh=yCbuYREvZTrIrB45cgPvEzfe/fcv9/wLAdY4DdO519A=;
- b=VEQWSwAmWtk5yknYdSkLyK8MvAmDt9RqiFXySiRqNbXlwNOZI9xKEvqsGn09VHIww5M9
- ASv8ictWD+6p05N0Pcr/lqjCBY/QoE91QGBh2HXYuGkfP2pBdePB0M/aE7mWK/6jXtge
- 7mcAtlW+r6lgtIPg+/jaFU1JLMKpS4act/ok2of1aX+8HtQ7cyqOxK302LRZV3FHyNh7
- rn4PtIg2sZznzYPBSngQDJvk2nuLyR+9KGhEEcyRYAWdGJb56cjnONY0PTkyInNjWm1w
- jbZ4Y1lbuvx3ejooOpIPQQfFbDBoas92+WmbmvgKD/y5VNZqn4C+j7yiHEWHYJG9PWcI tw== 
-Received: from aserv0022.oracle.com (aserv0022.oracle.com [141.146.126.234])
-        by userp2130.oracle.com with ESMTP id 2p2jf0qt13-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Fri, 30 Nov 2018 21:38:57 +0000
-Received: from userv0121.oracle.com (userv0121.oracle.com [156.151.31.72])
-        by aserv0022.oracle.com (8.14.4/8.14.4) with ESMTP id wAULcoR7021420
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Fri, 30 Nov 2018 21:38:51 GMT
-Received: from abhmp0007.oracle.com (abhmp0007.oracle.com [141.146.116.13])
-        by userv0121.oracle.com (8.14.4/8.13.8) with ESMTP id wAULcogK004876;
-        Fri, 30 Nov 2018 21:38:50 GMT
-Received: from anon-dhcp-171.1015granger.net (/68.61.232.219)
-        by default (Oracle Beehive Gateway v4.0)
-        with ESMTP ; Fri, 30 Nov 2018 13:38:50 -0800
-Content-Type: text/plain;
-        charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 11.5 \(3445.9.1\))
-Subject: Re: [PATCH v2 3/3] SUNRPC: Ensure we refresh the bvec after
- RPCSEC_GSS encoding
-From:   Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <14e5c2ae4982304c17df6903e9829289d0f44c93.camel@hammerspace.com>
-Date:   Fri, 30 Nov 2018 16:38:49 -0500
-Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Transfer-Encoding: quoted-printable
-Message-Id: <81D0C171-A020-4135-9633-BBB8E8DC33BB@oracle.com>
-References: <20181130211846.89000-1-trond.myklebust@hammerspace.com>
- <20181130211846.89000-2-trond.myklebust@hammerspace.com>
- <20181130211846.89000-3-trond.myklebust@hammerspace.com>
- <9D04832A-FC88-409C-8742-CBF742B6CB4A@oracle.com>
- <eaa3259a1aa12e29b8bd824f7cd417d6346239f9.camel@gmail.com>
- <93C4273C-DBBD-4B75-9F1F-EB103F2F430A@oracle.com>
- <14e5c2ae4982304c17df6903e9829289d0f44c93.camel@hammerspace.com>
-To:     Trond Myklebust <trondmy@hammerspace.com>
-X-Mailer: Apple Mail (2.3445.9.1)
-X-Proofpoint-Virus-Version: vendor=nai engine=5900 definitions=9093 signatures=668686
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 suspectscore=0 malwarescore=0
- phishscore=0 bulkscore=0 spamscore=0 mlxscore=0 mlxlogscore=563
- adultscore=0 classifier=spam adjust=0 reason=mlx scancount=1
- engine=8.0.1-1810050000 definitions=main-1811300183
+        id S1726078AbeLAJHq (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sat, 1 Dec 2018 04:07:46 -0500
+Received: from mail-it1-f194.google.com ([209.85.166.194]:36299 "EHLO
+        mail-it1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725749AbeLAJHq (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 1 Dec 2018 04:07:46 -0500
+Received: by mail-it1-f194.google.com with SMTP id c9so699199itj.1
+        for <linux-nfs@vger.kernel.org>; Fri, 30 Nov 2018 13:57:04 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=from:to:cc:subject:date:message-id:mime-version
+         :content-transfer-encoding;
+        bh=JnxyFvxY5NN6SQ0hgqhztaoWxo1cZSXYFICA/458MKw=;
+        b=BlkYpza8CS1/h4wAi8JoRGG5FyM0HbDi0501RZHvp2ODNuKDfuvk8SAr8C2FQ28mWY
+         ASvPMypTg+ilropuDV8fT3+3ZHOPJvgOIN3cPiu3doz12fZrHxCp6Unr/ATkwV5FvVvO
+         2FVomdSEUUoP/khusHhXAHV9aj14X0yPZR0obnEqDUN4v/1YnMzerVE8yz0NJVX3dmFw
+         JHlgsplEuckry2l7CIpi5JflS/y35TmC7X7+OSo7jy+Zh7htsgNFsQPVeCe1wJBmisfa
+         o4xcdpXNCSjs44hRBF3WH+AYLCK6q707D/2812Tptbjl81bZHJdJYiAMX5cYpe/Ugmtv
+         kQWA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:from:to:cc:subject:date:message-id:mime-version
+         :content-transfer-encoding;
+        bh=JnxyFvxY5NN6SQ0hgqhztaoWxo1cZSXYFICA/458MKw=;
+        b=QDhr+GCsnCzkP2Vks75ji0GTGgNCypahBFur0LgvDfT5ARpYS86dYlcAIJdH7Lwh9+
+         mKbv4Ivlbw0xn7xWETeEF8jYbY01i9u/CwFmGWrHwVTis7qoMdqL0wEj+jMZD7GwaTGr
+         ScBb7771MYitR7mmBI3t2FAp/45BAgoX0jghmbkQS2sAXdNHP+2CBxlxkblgtcUlb2XI
+         SyyuHzMgZ7UxuKvBo0we2wDXMoh8AHvPBNaekRKLjLUileGAe1crAWbyAKemrMH/lzu1
+         U7xrAJQEen+ofkJHSEt7TsmHTdHppYIetWR6IJEB5eTTm8iI8pKO8JNUhnZtfvC2Lk4v
+         TaMA==
+X-Gm-Message-State: AA+aEWZ3Xxd0lOA6niHCV8uG6dlcPvF4KJfl9Qj+sh6ewgGVOpGMnmRs
+        +aztbI28gu6ZmGqiAIS1NG07YpA=
+X-Google-Smtp-Source: AFSGD/UVxupUjLc9VH6pGOh9qJPFa+/M14yZcES0xei+R3lcBCmjqH4DyI9HkicFapaMuMMbPaeMmA==
+X-Received: by 2002:a24:2c1:: with SMTP id 184-v6mr464662itu.100.1543615023503;
+        Fri, 30 Nov 2018 13:57:03 -0800 (PST)
+Received: from localhost.localdomain (c-68-40-195-73.hsd1.mi.comcast.net. [68.40.195.73])
+        by smtp.gmail.com with ESMTPSA id z23sm2659119iob.19.2018.11.30.13.57.02
+        (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
+        Fri, 30 Nov 2018 13:57:02 -0800 (PST)
+From:   Trond Myklebust <trondmy@gmail.com>
+X-Google-Original-From: Trond Myklebust <trond.myklebust@hammerspace.com>
+To:     Chuck Lever <chuck.lever@oracle.com>
+Cc:     linux-nfs@vger.kernel.org
+Subject: [PATCH v3 1/3] SUNRPC: call_connect_status() must handle tasks that got transmitted
+Date:   Fri, 30 Nov 2018 16:55:53 -0500
+Message-Id: <20181130215555.91107-1-trond.myklebust@hammerspace.com>
+X-Mailer: git-send-email 2.19.2
+MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
+If a task failed to get the write lock in the call to xprt_connect(), then
+it will be queued on xprt->sending. In that case, it is possible for it
+to get transmitted before the call to call_connect_status(), in which
+case it needs to be handled by call_transmit_status() instead.
 
+Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
+---
+ net/sunrpc/clnt.c | 7 +++++++
+ 1 file changed, 7 insertions(+)
 
-> On Nov 30, 2018, at 4:37 PM, Trond Myklebust <trondmy@hammerspace.com> =
-wrote:
->=20
-> On Fri, 2018-11-30 at 16:32 -0500, Chuck Lever wrote:
->>>=20
->> I actually had a patch that looked exactly like yours (except for the
->> description text). It didn't seem to do anything. So there may be an
->> issue here, but I don't believe I'm seeing it with my reproducer.
->>=20
->=20
-> Argh... Yes, I was too quick off the trigger. The call to
-> xdr_buf_init() in rpc_xdr_encode() will actually clobber the ->bvec
-> array...
-
-Duh. That sounds very plausible!
-
-
---
-Chuck Lever
-
-
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index ae3b8145da35..e35d642558e7 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -1915,6 +1915,13 @@ call_connect_status(struct rpc_task *task)
+ 	struct rpc_clnt *clnt = task->tk_client;
+ 	int status = task->tk_status;
+ 
++	/* Check if the task was already transmitted */
++	if (!test_bit(RPC_TASK_NEED_XMIT, &task->tk_runstate)) {
++		xprt_end_transmit(task);
++		task->tk_action = call_transmit_status;
++		return;
++	}
++
+ 	dprint_status(task);
+ 
+ 	trace_rpc_connect_status(task);
+-- 
+2.19.2
 
