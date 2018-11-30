@@ -8,66 +8,67 @@ X-Spam-Status: No, score=-8.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8F9E9C65BAE
-	for <linux-nfs@archiver.kernel.org>; Fri, 30 Nov 2018 22:50:26 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id CFFFFC64EB4
+	for <linux-nfs@archiver.kernel.org>; Fri, 30 Nov 2018 22:50:27 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 509702082F
-	for <linux-nfs@archiver.kernel.org>; Fri, 30 Nov 2018 22:50:26 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 91E922082F
+	for <linux-nfs@archiver.kernel.org>; Fri, 30 Nov 2018 22:50:27 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="g1O4fj5g"
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 509702082F
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="Y7lpDtr7"
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 91E922082F
 Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=gmail.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726600AbeLAKBQ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sat, 1 Dec 2018 05:01:16 -0500
-Received: from mail-io1-f65.google.com ([209.85.166.65]:44800 "EHLO
-        mail-io1-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726474AbeLAKBQ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 1 Dec 2018 05:01:16 -0500
-Received: by mail-io1-f65.google.com with SMTP id r200so5826978iod.11
-        for <linux-nfs@vger.kernel.org>; Fri, 30 Nov 2018 14:50:25 -0800 (PST)
+        id S1726641AbeLAKBR (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sat, 1 Dec 2018 05:01:17 -0500
+Received: from mail-io1-f68.google.com ([209.85.166.68]:46501 "EHLO
+        mail-io1-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726474AbeLAKBR (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 1 Dec 2018 05:01:17 -0500
+Received: by mail-io1-f68.google.com with SMTP id v10so5824296ios.13
+        for <linux-nfs@vger.kernel.org>; Fri, 30 Nov 2018 14:50:26 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references
          :mime-version:content-transfer-encoding;
-        bh=01dPSorkMzYoAkW8cLBYQTAhpw9QBeR18qNhoOAgQ3Y=;
-        b=g1O4fj5gfqqOSUWHZQhrrVLAPo/ZlGshxneSxLcW1h7y0MLHgs7VAyuWSqZ2kfjYgZ
-         v4aN/cNNPYpDIaVt8FLoo0v+c/+Ua4eu1nV9eNCRmZtfgGhY6ZiMDHoKdASt7CPbM6h0
-         0DElC/kMj3sPWrjgOyYruMRj3PnSbRWjUvit9GX71PoyBDqSZFNFxxOX3feeZlje+/Vp
-         vu/VIDmcdcO51qD99DmzHozpyzkGeLlgYQEsU0SE+3CLzQAPTrW9WqD3sAtxHcu59n+E
-         j8Z3cMmWewkOrKiSE3t8lTfSeqfO9eFJTpCC6EjyfXXbFtfGg9y1Slgp15lnJkYErq/C
-         p+gA==
+        bh=0obpUWGDNnnecsPzS8P4okftDrsdGX3X7RmIPPZQtt4=;
+        b=Y7lpDtr7mmuIznuwsW38LbMd+Xx7g+hhZ5B780F6AhgAOjuR5XLq32sXACjpU0D4GN
+         anILOYs2xOe0uP4tNmWKPfTgLSNqqk9XFUksL8/7l/7X1e6Cw4hy9lUioTCDKDG+XGiU
+         emXwzx7Gv5RtQjx0AhKMzt1YA1b1tIxcr9k+ejdcS9mAaqiAazq26UdwJ1sKtLVLSp8y
+         6ofrTDQeZm25kOCsTkYtB8r6DE++CkgeIO1WOzdvPk1lA68SBk1mJEs9iR9xXIzQQCOc
+         uSull7FGbdNJT53sUNt7IOW7NPCvpKLWTzftBJ/duMrOIlTTRm1A2bAf32oJSpq64Yzs
+         Ujlw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=01dPSorkMzYoAkW8cLBYQTAhpw9QBeR18qNhoOAgQ3Y=;
-        b=ZwruABxrpuGuXwW4z+UhC7b9RbtfHxfadvxxkv8p8JSt/D5iDjz04KdlA7qeMO4/q1
-         SbFFQSHxPdjpBmlxCXFpH3iwtW6eCkUR1torPgov0mpOkMsPjvDa0Zy8Tn8qw1lJPdjl
-         +d3+8aJgG4XYiMIM+6xKjdSwpmOg1VSiKAEnIkTSiLW0/1Q+Fg2maCGgKB6oNt1UhiqG
-         RcqdJM42rJSL4UCCQlDDcw8/ppKHlNBFagInaVx2+qlufFmsg8Y07+Gs7YBPbp/MFWG0
-         mbcVd1UMfnwMVYbURMaYQ6GvLPOxhChnpLwHxWIdc6yqSvfmpmz8tMVDgk89kOYXGfha
-         R88Q==
-X-Gm-Message-State: AA+aEWZCTCdldGi1a7TQWbYxON0jKqZ/iDQsjm5Ir2Te2vz1IQiRoxzg
-        MUvfrVl1VkBT6ciP/xa5fLu0ib8=
-X-Google-Smtp-Source: AFSGD/WTvzB8TrTIoV5FGYJcPc3P4kJoNiMfk7ANfz83/Jd7ey05QrBqXeU6HIYVRv8cadUyIPpl3w==
-X-Received: by 2002:a6b:3bc8:: with SMTP id i191mr6630924ioa.23.1543618224520;
-        Fri, 30 Nov 2018 14:50:24 -0800 (PST)
+        bh=0obpUWGDNnnecsPzS8P4okftDrsdGX3X7RmIPPZQtt4=;
+        b=M/xWtiZGik+MGpx4uh98pMI+svCLqfSW8IHmPEhZNgtyeUWI5l1WuuSayCO0z7OAW0
+         1jvJ0qCf0tefOZwdx75CvoLxBEXSaUW8HLqRuAemdGTpTWBojJh6xT4EHLPhUetnMMBu
+         IiyE7aUz/WY1/ZhU/Gkbbg2OR3tAAO0rMk9/bTQpLMyXmOgwNEPpAudpRFWhAQLlHBBF
+         LdFav6+UVvM9qSpmGzlsTaxUwxD2roZHIx2vmu9dPuc+95C1bN8F/Or5GVXqQVDDG7FB
+         Bfy+2oIjJywWdnWHRVRVLgzFxcIl90PzzSeRWRLY/8sTBFaPmyPkpEAJ55ASbpyRysse
+         nXMw==
+X-Gm-Message-State: AA+aEWZ4zu9E1IG0MUrcVPCggA9xeJnyDTB9q+AzI34sW8KhnfNoXWEv
+        k8hH26kDzDqFXqw2BKlYrQQuCYo=
+X-Google-Smtp-Source: AFSGD/UuYdKIAYCPp5Zsw5Ig6ge2optYr+R9zFmVz6xOV0W0LPVw8SrGk89YpVdUqb2qi/jpmoC/xQ==
+X-Received: by 2002:a6b:fa0e:: with SMTP id p14mr449161ioh.271.1543618225584;
+        Fri, 30 Nov 2018 14:50:25 -0800 (PST)
 Received: from localhost.localdomain (c-68-40-195-73.hsd1.mi.comcast.net. [68.40.195.73])
-        by smtp.gmail.com with ESMTPSA id m8sm39391ioj.73.2018.11.30.14.50.23
+        by smtp.gmail.com with ESMTPSA id m8sm39391ioj.73.2018.11.30.14.50.24
         (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
-        Fri, 30 Nov 2018 14:50:23 -0800 (PST)
+        Fri, 30 Nov 2018 14:50:24 -0800 (PST)
 From:   Trond Myklebust <trondmy@gmail.com>
 X-Google-Original-From: Trond Myklebust <trond.myklebust@hammerspace.com>
 To:     Chuck Lever <chuck.lever@oracle.com>
 Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH v4 2/3] SUNRPC: Fix leak of krb5p encode pages
-Date:   Fri, 30 Nov 2018 17:49:15 -0500
-Message-Id: <20181130224916.22751-2-trond.myklebust@hammerspace.com>
+Subject: [PATCH v4 3/3] SUNRPC: Fix a memory leak in call_encode()
+Date:   Fri, 30 Nov 2018 17:49:16 -0500
+Message-Id: <20181130224916.22751-3-trond.myklebust@hammerspace.com>
 X-Mailer: git-send-email 2.19.2
-In-Reply-To: <20181130224916.22751-1-trond.myklebust@hammerspace.com>
+In-Reply-To: <20181130224916.22751-2-trond.myklebust@hammerspace.com>
 References: <20181130224916.22751-1-trond.myklebust@hammerspace.com>
+ <20181130224916.22751-2-trond.myklebust@hammerspace.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
@@ -75,41 +76,54 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Chuck Lever <chuck.lever@oracle.com>
+If we retransmit an RPC request, we currently end up clobbering the
+value of req->rq_rcv_buf.bvec that was allocated by the initial call to
+xprt_request_prepare(req).
 
-call_encode can be invoked more than once per RPC call. Ensure that
-each call to gss_wrap_req_priv does not overwrite pointers to
-previously allocated memory.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Cc: stable@kernel.org
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- net/sunrpc/auth_gss/auth_gss.c | 4 ++++
- 1 file changed, 4 insertions(+)
+ include/linux/sunrpc/xdr.h | 1 -
+ net/sunrpc/clnt.c          | 1 +
+ net/sunrpc/xprt.c          | 2 ++
+ 3 files changed, 3 insertions(+), 1 deletion(-)
 
-diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-index 5d3f252659f1..ba765473d1f0 100644
---- a/net/sunrpc/auth_gss/auth_gss.c
-+++ b/net/sunrpc/auth_gss/auth_gss.c
-@@ -1791,6 +1791,7 @@ priv_release_snd_buf(struct rpc_rqst *rqstp)
- 	for (i=0; i < rqstp->rq_enc_pages_num; i++)
- 		__free_page(rqstp->rq_enc_pages[i]);
- 	kfree(rqstp->rq_enc_pages);
-+	rqstp->rq_release_snd_buf = NULL;
- }
- 
- static int
-@@ -1799,6 +1800,9 @@ alloc_enc_pages(struct rpc_rqst *rqstp)
- 	struct xdr_buf *snd_buf = &rqstp->rq_snd_buf;
- 	int first, last, i;
- 
-+	if (rqstp->rq_release_snd_buf)
-+		rqstp->rq_release_snd_buf(rqstp);
-+
- 	if (snd_buf->page_len == 0) {
- 		rqstp->rq_enc_pages_num = 0;
- 		return 0;
+diff --git a/include/linux/sunrpc/xdr.h b/include/linux/sunrpc/xdr.h
+index 43106ffa6788..2ec128060239 100644
+--- a/include/linux/sunrpc/xdr.h
++++ b/include/linux/sunrpc/xdr.h
+@@ -72,7 +72,6 @@ xdr_buf_init(struct xdr_buf *buf, void *start, size_t len)
+ 	buf->head[0].iov_base = start;
+ 	buf->head[0].iov_len = len;
+ 	buf->tail[0].iov_len = 0;
+-	buf->bvec = NULL;
+ 	buf->pages = NULL;
+ 	buf->page_len = 0;
+ 	buf->flags = 0;
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index e35d642558e7..c6782aa47525 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -2309,6 +2309,7 @@ call_decode(struct rpc_task *task)
+ 	task->tk_status = 0;
+ 	/* Note: rpc_verify_header() may have freed the RPC slot */
+ 	if (task->tk_rqstp == req) {
++		xdr_free_bvec(&req->rq_rcv_buf);
+ 		req->rq_reply_bytes_recvd = req->rq_rcv_buf.len = 0;
+ 		if (task->tk_client->cl_discrtry)
+ 			xprt_conditional_disconnect(req->rq_xprt,
+diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+index 86bea4520c4d..122c91c28e7c 100644
+--- a/net/sunrpc/xprt.c
++++ b/net/sunrpc/xprt.c
+@@ -1623,6 +1623,8 @@ xprt_request_init(struct rpc_task *task)
+ 	req->rq_snd_buf.buflen = 0;
+ 	req->rq_rcv_buf.len = 0;
+ 	req->rq_rcv_buf.buflen = 0;
++	req->rq_snd_buf.bvec = NULL;
++	req->rq_rcv_buf.bvec = NULL;
+ 	req->rq_release_snd_buf = NULL;
+ 	xprt_reset_majortimeo(req);
+ 	dprintk("RPC: %5u reserved req %p xid %08x\n", task->tk_pid,
 -- 
 2.19.2
 
