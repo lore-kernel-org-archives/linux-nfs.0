@@ -8,61 +8,61 @@ X-Spam-Status: No, score=-8.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 10939C64EB4
-	for <linux-nfs@archiver.kernel.org>; Fri, 30 Nov 2018 20:03:57 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 594EAC04EB8
+	for <linux-nfs@archiver.kernel.org>; Fri, 30 Nov 2018 20:03:59 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id C88902082F
-	for <linux-nfs@archiver.kernel.org>; Fri, 30 Nov 2018 20:03:56 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 1AD972082F
+	for <linux-nfs@archiver.kernel.org>; Fri, 30 Nov 2018 20:03:59 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="mxZKrbW/"
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org C88902082F
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="Zw/9LYLt"
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 1AD972082F
 Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=gmail.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726424AbeLAHOU (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sat, 1 Dec 2018 02:14:20 -0500
-Received: from mail-ot1-f68.google.com ([209.85.210.68]:36555 "EHLO
-        mail-ot1-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725790AbeLAHOT (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 1 Dec 2018 02:14:19 -0500
-Received: by mail-ot1-f68.google.com with SMTP id k98so6237730otk.3;
-        Fri, 30 Nov 2018 12:03:55 -0800 (PST)
+        id S1726555AbeLAHOW (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sat, 1 Dec 2018 02:14:22 -0500
+Received: from mail-oi1-f193.google.com ([209.85.167.193]:42859 "EHLO
+        mail-oi1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725790AbeLAHOW (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 1 Dec 2018 02:14:22 -0500
+Received: by mail-oi1-f193.google.com with SMTP id w13so5763835oiw.9;
+        Fri, 30 Nov 2018 12:03:57 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references;
-        bh=IvT+zChRdZmo9Z/HWpUoiYO/PRDAUFPXOTb7glWeIsY=;
-        b=mxZKrbW/SPzKZzsJpxo6/N8Tk2V2GNkgU489BhLx3Qs5wdm8peAi77ouSQTl/Sr+ZY
-         dVZrX+VmJwUBf6c6AQ2BkKg+BYEv/LfigNSHdJDk14PE1mKaQQYgqc9Qdlc24SpFYWw6
-         gqpc35tUwLjz3O0J9CW6edRs99bF9v1UYDjBSAyAiWEwWI4/ytjYKlxr/t8LWECMZ0m0
-         2he3r4s1E/+mY/LcBpatlUqEzSMCjsiE2Z3AOlCscv3kE3ESwnc5eqggm587jBTVauqr
-         DiFOfZl6BM/JR7wFUpypMLtFtLwdVc+yvMWjkO6ahFJRxKzyj8fpYTthB+sczX+vE2vk
-         dSJQ==
+        bh=1adVQGu3EzleOzF5553sjm9Y+OTh0F8rRsMvzXeiYLM=;
+        b=Zw/9LYLtl29uqW/YnJZj+22JU0fgMEofliECH1R+e7N5JMHy6ZqMR5UgCbrrz5s8Lv
+         4t0QjFAhnorPuas5LvzoIAd3qP8QXfhhNTkchLs2TCwMkXujvFPa7/QNIn4la3qil9kk
+         IbiBVNkIzRbi5yRx1typ7oPdUTkmdJZL3qr5chgJlk49J/CX6Eh0o+hg1ibaJzS6Pr9J
+         q9Ccw1r8qfetzgkbGA4Etazh3Bmw7Gu5wm7jHfzLybOP52Sm63OBYHSRgmrtEIKCZQK1
+         g6rn3Rz9YhD5hnA/gaNkjdz4tRIPeciZYJSn/w2kly+C8qVIffjHikHd60K4fK+anCdJ
+         Xz0g==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references;
-        bh=IvT+zChRdZmo9Z/HWpUoiYO/PRDAUFPXOTb7glWeIsY=;
-        b=KuLiOKCIETCty3INgW6S+k8eMLs+kNtbHWymKrnmoSBFMue+nEyym95kkSf1jZaf6d
-         QyUnC0T6BOyW25jGAAs2ZPFhcSc5ou4lz5skuOj6nKrTqrHegQ+hbW1GuYxROvDJCwut
-         hwwRz8corBeftyw2bdUyg+7Z6cy5McI1gZ0vZJnFskBJ1J0UAlMzFCoYOacaJmVh+Chb
-         rZ14qtla3GUf1F3YLqcR2tz/rUVBXhr0reg0O/fCr85WPndoleJHQ6o76+PemtZSCvFD
-         imxpoZBIDlKhBbmsjP95DBpgVgd4TuZyiKs1OgMPKoWvRPjd7siUTwlzmyFnOzSuEzun
-         WyZQ==
-X-Gm-Message-State: AA+aEWbzAgp3+Yk/5vKeBTLcn31TsSENd1r13CFRTIHdimjcpGe2XbIC
-        RQ8BKzWXSRj/ADUgi0a8vIY=
-X-Google-Smtp-Source: AFSGD/UWZtNnYRNCiXIxJzgnFcGm9DxjXJjxP1Fv0CkPfIET1qmfeSU/sg3noloNOhuJN7LOBhvrEQ==
-X-Received: by 2002:a9d:1982:: with SMTP id k2mr4138813otk.197.1543608235257;
-        Fri, 30 Nov 2018 12:03:55 -0800 (PST)
+        bh=1adVQGu3EzleOzF5553sjm9Y+OTh0F8rRsMvzXeiYLM=;
+        b=bFFmn/hHS6KrWYjDldwDByuDuoWI+Z4A9jOPJ0kIuFHqclRd2Lxrxaf5ks1ihuKy8M
+         +196/gCW0/02G9kNdulAlhY/DLt0Rj1REVb7wRllEYmYHBr8vrhDEWCg2uGk6jYD3bnr
+         miSKxjn8rKlPn+6Y43zJNGV/zCUyxI8JMp1nZCQ8/YHDrrz3VyKVjJm86XH8tRTT4yk/
+         OCjxcl8HKrlc9XTf43nWSMdCwYzRd75HTyL77j5cprYEHO440Fto0ABZHMhNnewjybW3
+         nG9a4bA6tD//95hTGnCbrgEIFpBXDeCTStHn/BHQM2ncGELN5y1SGEUvsgE1BFLQBYfR
+         ov6w==
+X-Gm-Message-State: AA+aEWY7Bu33R68J+Mly20IhLIiE8P3G24fwHXiWw/i81TlyKKrOxZEG
+        Lbvbs2Skc/rvf9nfLFN1LdUM49Rj
+X-Google-Smtp-Source: AFSGD/WPHu3XxwqKCQCVYrc4KK2qhasqXmsoOZ75yWO8yH32Oe77m9eFcYIwKyFeh4yW7qvu+37UwA==
+X-Received: by 2002:aca:a90f:: with SMTP id s15mr4289512oie.137.1543608237537;
+        Fri, 30 Nov 2018 12:03:57 -0800 (PST)
 Received: from Olgas-MBP-195.attlocal.net (172-10-226-31.lightspeed.livnmi.sbcglobal.net. [172.10.226.31])
-        by smtp.gmail.com with ESMTPSA id q10sm2065289otl.15.2018.11.30.12.03.52
+        by smtp.gmail.com with ESMTPSA id q10sm2065289otl.15.2018.11.30.12.03.55
         (version=TLS1 cipher=AES128-SHA bits=128/128);
-        Fri, 30 Nov 2018 12:03:53 -0800 (PST)
+        Fri, 30 Nov 2018 12:03:56 -0800 (PST)
 From:   Olga Kornievskaia <olga.kornievskaia@gmail.com>
 To:     bfields@redhat.com
 Cc:     linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Subject: [PATCH v2 02/10] NFS fallback to generic_copy_file_range
-Date:   Fri, 30 Nov 2018 15:03:40 -0500
-Message-Id: <20181130200348.59524-3-olga.kornievskaia@gmail.com>
+Subject: [PATCH v2 03/10] NFSD fill-in netloc4 structure
+Date:   Fri, 30 Nov 2018 15:03:41 -0500
+Message-Id: <20181130200348.59524-4-olga.kornievskaia@gmail.com>
 X-Mailer: git-send-email 2.10.1 (Apple Git-78)
 In-Reply-To: <20181130200348.59524-1-olga.kornievskaia@gmail.com>
 References: <20181130200348.59524-1-olga.kornievskaia@gmail.com>
@@ -71,42 +71,67 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-If NFS unable to handle the copy then fallback to the generic VFS
-copy_file_range functionality.
+nfs.4 defines nfs42_netaddr structure that represents netloc4.
 
-Also remove the offset check, as the check was added at the VFS.
+Populate needed fields from the sockaddr structure.
+
+This will be used by flexfiles and 4.2 inter copy
 
 Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
 ---
- fs/nfs/nfs4file.c | 9 ++++-----
- 1 file changed, 4 insertions(+), 5 deletions(-)
+ fs/nfsd/nfsd.h | 32 ++++++++++++++++++++++++++++++++
+ 1 file changed, 32 insertions(+)
 
-diff --git a/fs/nfs/nfs4file.c b/fs/nfs/nfs4file.c
-index 4fe9fc1..78e163a 100644
---- a/fs/nfs/nfs4file.c
-+++ b/fs/nfs/nfs4file.c
-@@ -139,17 +139,16 @@ static ssize_t nfs4_copy_file_range(struct file *file_in, loff_t pos_in,
- 	nfs4_stateid *cnrs = NULL;
- 	ssize_t ret;
+diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
+index 0668999..a8fec63 100644
+--- a/fs/nfsd/nfsd.h
++++ b/fs/nfsd/nfsd.h
+@@ -18,6 +18,7 @@
+ #include <linux/nfs4.h>
+ #include <linux/sunrpc/svc.h>
+ #include <linux/sunrpc/msg_prot.h>
++#include <linux/sunrpc/addr.h>
  
--	if (pos_in >= i_size_read(file_inode(file_in)))
--		return -EINVAL;
--
- 	if (file_in->f_op != &nfs4_file_operations)
--		return -EXDEV;
-+		return generic_copy_file_range(file_in, pos_in, file_out,
-+					pos_out, count, flags);
+ #include <uapi/linux/nfsd/debug.h>
  
- 	if (file_inode(file_in) == file_inode(file_out))
- 		return -EINVAL;
+@@ -366,6 +367,37 @@ static inline bool nfsd4_spo_must_allow(struct svc_rqst *rqstp)
  
- 	if (!nfs_server_capable(file_inode(file_out), NFS_CAP_COPY))
--		return -EOPNOTSUPP;
-+		return generic_copy_file_range(file_in, pos_in, file_out,
-+					pos_out, count, flags);
- retry:
- 	if (!nfs42_files_from_same_server(file_in, file_out)) {
- 		cn_resp = kzalloc(sizeof(struct nfs42_copy_notify_res),
+ extern const u32 nfsd_suppattrs[3][3];
+ 
++static inline u32 nfsd4_set_netaddr(struct sockaddr *addr,
++				    struct nfs42_netaddr *netaddr)
++{
++	struct sockaddr_in *sin = (struct sockaddr_in *)addr;
++	struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)addr;
++	unsigned int port;
++	size_t ret_addr, ret_port;
++
++	switch (addr->sa_family) {
++	case AF_INET:
++		port = ntohs(sin->sin_port);
++		sprintf(netaddr->netid, "tcp");
++		netaddr->netid_len = 3;
++		break;
++	case AF_INET6:
++		port = ntohs(sin6->sin6_port);
++		sprintf(netaddr->netid, "tcp6");
++		netaddr->netid_len = 4;
++		break;
++	default:
++		return nfserr_inval;
++	}
++	ret_addr = rpc_ntop(addr, netaddr->addr, sizeof(netaddr->addr));
++	ret_port = snprintf(netaddr->addr + ret_addr,
++			    RPCBIND_MAXUADDRLEN + 1 - ret_addr,
++			    ".%u.%u", port >> 8, port & 0xff);
++	WARN_ON(ret_port >= RPCBIND_MAXUADDRLEN + 1 - ret_addr);
++	netaddr->addr_len = ret_addr + ret_port;
++	return 0;
++}
++
+ static inline bool bmval_is_subset(const u32 *bm1, const u32 *bm2)
+ {
+ 	return !((bm1[0] & ~bm2[0]) ||
 -- 
 1.8.3.1
 
