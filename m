@@ -7,59 +7,59 @@ X-Spam-Status: No, score=-4.0 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,
 	URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0F0D2C04EB9
-	for <linux-nfs@archiver.kernel.org>; Mon,  3 Dec 2018 12:52:06 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D7F39C04EBF
+	for <linux-nfs@archiver.kernel.org>; Mon,  3 Dec 2018 12:54:46 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id C4F212087F
-	for <linux-nfs@archiver.kernel.org>; Mon,  3 Dec 2018 12:52:05 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id A1B0720834
+	for <linux-nfs@archiver.kernel.org>; Mon,  3 Dec 2018 12:54:46 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="hP9PjQgs"
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org C4F212087F
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="uiY2VEPA"
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org A1B0720834
 Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=gmail.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726445AbeLCMxA (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 3 Dec 2018 07:53:00 -0500
-Received: from mail-yb1-f195.google.com ([209.85.219.195]:36516 "EHLO
-        mail-yb1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726386AbeLCMw7 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Dec 2018 07:52:59 -0500
-Received: by mail-yb1-f195.google.com with SMTP id w203so1373575ybg.3;
-        Mon, 03 Dec 2018 04:52:04 -0800 (PST)
+        id S1726526AbeLCMzj (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 3 Dec 2018 07:55:39 -0500
+Received: from mail-yw1-f67.google.com ([209.85.161.67]:45861 "EHLO
+        mail-yw1-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726369AbeLCMzj (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Dec 2018 07:55:39 -0500
+Received: by mail-yw1-f67.google.com with SMTP id d190so5303993ywd.12;
+        Mon, 03 Dec 2018 04:54:43 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=mime-version:references:in-reply-to:from:date:message-id:subject:to
          :cc;
-        bh=PU46l61mD8zyI7RWSeFrATcFxEhqMK/3VmF5vTzjP1Q=;
-        b=hP9PjQgsNHICe9lYC62iTeGNT3VJpYgv+gcoyxAeYbbYhph4INuPfC5vl9S/h5MwMq
-         eNetmOi7Pub5nQBLWvmJsxyAs9liLsbRpWr5WPRRbzN6rVD8T1kpsdacSavJrcgV92U2
-         ngy46x6dY5ZSBFgFJZfWPaU4Sg5qsE/2CjaXjhLa8c6twZGqaa9AzSLXRr4lLJR+d225
-         l7xBjwn7x5xRUng9eGTXyeR8gfzAd1qToO6MLJ45QtiadzjM7x4c2aqsk/rN2JwS5lYZ
-         Cs+kwo0XoraHl4psMsgc7f9JAvQXkQPXlSQmBtw1J8zX0SxbdgtO52J/l784wSRpv8XV
-         9/BA==
+        bh=FnIps5GPhVXk/xj3XVQUvp3mrILlW8tnTGINm1NA+T8=;
+        b=uiY2VEPA9M6JY2yqUW+YZfwCKHLLmRQNCgilfFlC9K5NWz4HFuf2S28kN/QTq710Kr
+         jOtoLtnv7tKmPyU+tmGsdRcXinXh78Z7KK+h8LTqZN7TYbQxSJsDSRLqLfXzNOuQnBcC
+         cvrttzDftP0ZegQk5OfEXGe7Dba2w4DW/XXnAh6L4NJBMvWTAE1wynakRfRCIxyst35m
+         Vso4+pf8fdWER12Hr5M6Y6jR4LVcn46gWJtsNfwsT6Ben9b7Kta+K/kUMepcV9BpY1+A
+         7OCgF/uVEdufr1v1m+NauzV/ViIdYqMQ18FL3zZW9y1VsBSFYbk1nk0wIK9OqupmazdD
+         VNTQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:mime-version:references:in-reply-to:from:date
          :message-id:subject:to:cc;
-        bh=PU46l61mD8zyI7RWSeFrATcFxEhqMK/3VmF5vTzjP1Q=;
-        b=lz4fOWE22b7KQrIlLTQXJwkZCDLzb9KQClX1sASghCKRnh0SVPi2WoqC21Fe9u64eD
-         OImg1Kpy069MCPMxehcfa2Ep1LzJt6ClaBjwEWurE8KDUW0cmRAnsKsAXs/QFOCeSKVw
-         2woq4JIopU2h7kGsNucIa589cSyxbk3gRVVZuTp7aqZ4mrNPGcNaAzpmbkPCD2YcmI2Y
-         zXBqx2tNzP06qMlG30KmpSnyn/uPXYkPjcXfZtA7lcMpuvAIBExUbWsvE+3AobNfJWzw
-         nej+LpVW0BVWUc9uIeD2PU+jGXYo/t4u0KK6Z80RsyuhhlH/1/A4TBwDrwMRQHk4GteG
-         3Sow==
-X-Gm-Message-State: AA+aEWZcwRv78uuRoIqjTC6db/UWHZaHyu/jm4OV1chkysJR4E09Gkx5
-        lfiOuhcshrf3MQ2DWoy5uqhHsTnyso4pHqTR2RM=
-X-Google-Smtp-Source: AFSGD/WsKx1mbc6dVksKdSj3PX4+gW6G1mNbcffSVYSyKQoQyLqJ5AJyG+gitKNAqKVvY3SjIkmUB+JawX4LB7lu9MM=
-X-Received: by 2002:a25:ff01:: with SMTP id c1-v6mr15406508ybe.325.1543841523787;
- Mon, 03 Dec 2018 04:52:03 -0800 (PST)
+        bh=FnIps5GPhVXk/xj3XVQUvp3mrILlW8tnTGINm1NA+T8=;
+        b=LbC/EuuvWpwC+w+W257I51LHdYrmx5a0jKLusGlgHrBdta0FDxDkIMcdJLKLzEDN8M
+         mbD5dpbMwNVCfUXcBJx9/vjuY/hiC2GW4bFnMH4iFXu3pXamhLODGkLUK0TzbHFPcHCe
+         +9tO5qk99/QRFx5gLSGNkS92U9ta93AZ53cDhQkDnOst1XcB9PCOJYbuz7Xg3p/+S89T
+         lZMBye/qDQOL9a1I5Oh93ukk823suBr5/t30u9G1v7n+LIEE5HSOUslZkD4rgDL3Eyto
+         HH4Hktii2HEP14kJkaBC/50W0xGi+cGwrBqJ0k03w/hBvmucpdhyGOxTIyqPJnmj+4gd
+         OMYQ==
+X-Gm-Message-State: AA+aEWZ3wsSSPyb7v5V3BACDLAUlaW7R+WiSa2PRz/gsMG0oP9SFXHYt
+        17QgTWrjvi+wRkBS95oB3AuS5MNoiCJhExmnkG4HY7FK
+X-Google-Smtp-Source: AFSGD/XdcnrKxDblCeeKjjtahA8YYagYc+yLRPa6JXF7KF7GrLarN7r8Jx9vqsdietYMdGJXGqIx3+9Z1WFnRBJSFWc=
+X-Received: by 2002:a81:c144:: with SMTP id e4mr15969546ywl.409.1543841682688;
+ Mon, 03 Dec 2018 04:54:42 -0800 (PST)
 MIME-Version: 1.0
-References: <20181203083416.28978-1-david@fromorbit.com> <20181203083416.28978-7-david@fromorbit.com>
-In-Reply-To: <20181203083416.28978-7-david@fromorbit.com>
+References: <20181203083416.28978-1-david@fromorbit.com> <20181203083416.28978-11-david@fromorbit.com>
+In-Reply-To: <20181203083416.28978-11-david@fromorbit.com>
 From:   Amir Goldstein <amir73il@gmail.com>
-Date:   Mon, 3 Dec 2018 14:51:52 +0200
-Message-ID: <CAOQ4uxibdJaN-tQBnUeLejyReaVbi1HOnvqW=SUP7ph1+VhDuw@mail.gmail.com>
-Subject: Re: [PATCH 06/11] vfs: copy_file_range needs to strip setuid bits
+Date:   Mon, 3 Dec 2018 14:54:31 +0200
+Message-ID: <CAOQ4uxhsVfqGkYi1v1Gd6BnzGsCb5=sOcByB0Nwp_ZGaFTmOPw@mail.gmail.com>
+Subject: Re: [PATCH 10/11] vfs: allow generic_copy_file_range to copy across devices
 To:     Dave Chinner <david@fromorbit.com>
 Cc:     linux-fsdevel <linux-fsdevel@vger.kernel.org>,
         linux-xfs <linux-xfs@vger.kernel.org>,
@@ -77,14 +77,14 @@ On Mon, Dec 3, 2018 at 10:34 AM Dave Chinner <david@fromorbit.com> wrote:
 >
 > From: Dave Chinner <dchinner@redhat.com>
 >
-> The file we are copying data into needs to have its setuid bit
-> stripped before we start the data copy so that unprivileged users
-> can't copy data into executables that are run with root privs.
+> do_splice_direct() can copy across superblocks without problems.
+> Remove the same superblock restriction on this fallback code.
 >
 > Signed-off-by: Dave Chinner <dchinner@redhat.com>
 > ---
 
 Looks good.
+
 Reviewed-by: Amir Goldstein <amir73il@gmail.com>
 
 Thanks,
