@@ -6,25 +6,25 @@ X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED
 	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id EFDBDC04EB8
-	for <linux-nfs@archiver.kernel.org>; Mon,  3 Dec 2018 00:33:02 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 185D3C64EB4
+	for <linux-nfs@archiver.kernel.org>; Mon,  3 Dec 2018 00:33:16 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id C00A320892
-	for <linux-nfs@archiver.kernel.org>; Mon,  3 Dec 2018 00:33:02 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org C00A320892
+	by mail.kernel.org (Postfix) with ESMTP id DD3E420834
+	for <linux-nfs@archiver.kernel.org>; Mon,  3 Dec 2018 00:33:15 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org DD3E420834
 Authentication-Results: mail.kernel.org; dmarc=none (p=none dis=none) header.from=suse.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726014AbeLCAdB (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 2 Dec 2018 19:33:01 -0500
-Received: from mx2.suse.de ([195.135.220.15]:41126 "EHLO mx1.suse.de"
+        id S1725792AbeLCAdN (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sun, 2 Dec 2018 19:33:13 -0500
+Received: from mx2.suse.de ([195.135.220.15]:41162 "EHLO mx1.suse.de"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1725785AbeLCAdA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sun, 2 Dec 2018 19:33:00 -0500
+        id S1725785AbeLCAdN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sun, 2 Dec 2018 19:33:13 -0500
 X-Virus-Scanned: by amavisd-new at test-mx.suse.de
-Received: from relay1.suse.de (unknown [195.135.220.254])
-        by mx1.suse.de (Postfix) with ESMTP id 7D918AD90;
-        Mon,  3 Dec 2018 00:32:54 +0000 (UTC)
+Received: from relay2.suse.de (unknown [195.135.220.254])
+        by mx1.suse.de (Postfix) with ESMTP id 3F5D6AD90;
+        Mon,  3 Dec 2018 00:33:07 +0000 (UTC)
 From:   NeilBrown <neilb@suse.com>
 To:     "J. Bruce Fields" <bfields@fieldses.org>,
         Chuck Lever <chuck.lever@oracle.com>,
@@ -32,11 +32,10 @@ To:     "J. Bruce Fields" <bfields@fieldses.org>,
         Trond Myklebust <trond.myklebust@hammerspace.com>,
         Anna Schumaker <anna.schumaker@netapp.com>
 Date:   Mon, 03 Dec 2018 11:30:30 +1100
-Subject: [PATCH 09/23] NFSv4: add cl_root_cred for use when machine cred is
- not available.
+Subject: [PATCH 11/23] SUNRPC: discard RPC_DO_ROOTOVERRIDE()
 Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
         linux-kernel@vger.kernel.org
-Message-ID: <154379703046.28598.12065100828754844053.stgit@noble>
+Message-ID: <154379703054.28598.4713826025082195125.stgit@noble>
 In-Reply-To: <154379689752.28598.6750646657534626618.stgit@noble>
 References: <154379689752.28598.6750646657534626618.stgit@noble>
 User-Agent: StGit/0.17.1-dirty
@@ -48,93 +47,24 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-NFSv4 state management tries a root credential when no machine
-credential is available, as can happen with kerberos.
-It does this by replacing the cl_machine_cred with a root credential.
-This means that any user of the machine credential needs to take
-a lock while getting a reference to the machine credential, which is
-a little cumbersome.
-
-So introduce an explicit cl_root_cred, and never free either
-credential until client shutdown.  This means that no locking
-is needed to reference these credentials.  Future patches
-will make use of this.
-
-This is only a temporary addition.  both cl_machine_cred and
-cl_root_cred will disappear later in the series.
+it is never used.
 
 Signed-off-by: NeilBrown <neilb@suse.com>
 ---
- fs/nfs/client.c           |    2 ++
- fs/nfs/nfs4state.c        |   20 ++++++++++++--------
- include/linux/nfs_fs_sb.h |    1 +
- 3 files changed, 15 insertions(+), 8 deletions(-)
+ include/linux/sunrpc/sched.h |    1 -
+ 1 file changed, 1 deletion(-)
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 96d5f8135eb9..cce151776709 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -248,6 +248,8 @@ void nfs_free_client(struct nfs_client *clp)
+diff --git a/include/linux/sunrpc/sched.h b/include/linux/sunrpc/sched.h
+index 7b540c066594..f542dad8d4ab 100644
+--- a/include/linux/sunrpc/sched.h
++++ b/include/linux/sunrpc/sched.h
+@@ -131,7 +131,6 @@ struct rpc_task_setup {
  
- 	if (clp->cl_machine_cred != NULL)
- 		put_rpccred(clp->cl_machine_cred);
-+	if (clp->cl_root_cred != NULL)
-+		put_rpccred(clp->cl_root_cred);
- 
- 	put_net(clp->cl_net);
- 	put_nfs_version(clp->cl_nfs_mod);
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index d8decf2ec48f..511bcdee98f5 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -166,24 +166,28 @@ int nfs40_discover_server_trunking(struct nfs_client *clp,
- 
- struct rpc_cred *nfs4_get_machine_cred_locked(struct nfs_client *clp)
- {
--	struct rpc_cred *cred = NULL;
-+	struct rpc_cred *cred = clp->cl_root_cred;
- 
--	if (clp->cl_machine_cred != NULL)
--		cred = get_rpccred(clp->cl_machine_cred);
-+	if (!cred)
-+		cred = clp->cl_machine_cred;
-+	if (cred)
-+		return get_rpccred(cred);
- 	return cred;
- }
- 
- static void nfs4_root_machine_cred(struct nfs_client *clp)
- {
--	struct rpc_cred *cred, *new;
-+	struct rpc_cred *new;
- 
- 	new = rpc_lookup_machine_cred(NULL);
- 	spin_lock(&clp->cl_lock);
--	cred = clp->cl_machine_cred;
--	clp->cl_machine_cred = new;
-+	if (clp->cl_root_cred == NULL) {
-+		clp->cl_root_cred = new;
-+		new = NULL;
-+	}
- 	spin_unlock(&clp->cl_lock);
--	if (cred != NULL)
--		put_rpccred(cred);
-+	if (new != NULL)
-+		put_rpccred(new);
- }
- 
- static struct rpc_cred *
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index 0fc0b9135d46..fea51b44fe50 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -59,6 +59,7 @@ struct nfs_client {
- 
- 	u32			cl_minorversion;/* NFSv4 minorversion */
- 	struct rpc_cred		*cl_machine_cred;
-+	struct rpc_cred		*cl_root_cred;	/* Use when machine_cred is ineffective */
- 
- #if IS_ENABLED(CONFIG_NFS_V4)
- 	struct list_head	cl_ds_clients; /* auth flavor data servers */
+ #define RPC_IS_ASYNC(t)		((t)->tk_flags & RPC_TASK_ASYNC)
+ #define RPC_IS_SWAPPER(t)	((t)->tk_flags & RPC_TASK_SWAPPER)
+-#define RPC_DO_ROOTOVERRIDE(t)	((t)->tk_flags & RPC_TASK_ROOTCREDS)
+ #define RPC_ASSASSINATED(t)	((t)->tk_flags & RPC_TASK_KILLED)
+ #define RPC_IS_SOFT(t)		((t)->tk_flags & (RPC_TASK_SOFT|RPC_TASK_TIMEOUT))
+ #define RPC_IS_SOFTCONN(t)	((t)->tk_flags & RPC_TASK_SOFTCONN)
 
 
