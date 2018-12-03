@@ -4,27 +4,27 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED
-	autolearn=unavailable autolearn_force=no version=3.4.0
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 124F0C64EB4
-	for <linux-nfs@archiver.kernel.org>; Mon,  3 Dec 2018 00:32:23 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 56D61C04EB8
+	for <linux-nfs@archiver.kernel.org>; Mon,  3 Dec 2018 00:32:24 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id CEC5020834
-	for <linux-nfs@archiver.kernel.org>; Mon,  3 Dec 2018 00:32:22 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org CEC5020834
+	by mail.kernel.org (Postfix) with ESMTP id 175AC20834
+	for <linux-nfs@archiver.kernel.org>; Mon,  3 Dec 2018 00:32:24 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 175AC20834
 Authentication-Results: mail.kernel.org; dmarc=none (p=none dis=none) header.from=suse.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1725926AbeLCAcV (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 2 Dec 2018 19:32:21 -0500
-Received: from mx2.suse.de ([195.135.220.15]:40898 "EHLO mx1.suse.de"
+        id S1725938AbeLCAc1 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sun, 2 Dec 2018 19:32:27 -0500
+Received: from mx2.suse.de ([195.135.220.15]:40932 "EHLO mx1.suse.de"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1725785AbeLCAcV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sun, 2 Dec 2018 19:32:21 -0500
+        id S1725785AbeLCAc1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sun, 2 Dec 2018 19:32:27 -0500
 X-Virus-Scanned: by amavisd-new at test-mx.suse.de
-Received: from relay2.suse.de (unknown [195.135.220.254])
-        by mx1.suse.de (Postfix) with ESMTP id 54831ADC0;
-        Mon,  3 Dec 2018 00:32:15 +0000 (UTC)
+Received: from relay1.suse.de (unknown [195.135.220.254])
+        by mx1.suse.de (Postfix) with ESMTP id 9BC41ADC0;
+        Mon,  3 Dec 2018 00:32:21 +0000 (UTC)
 From:   NeilBrown <neilb@suse.com>
 To:     "J. Bruce Fields" <bfields@fieldses.org>,
         Chuck Lever <chuck.lever@oracle.com>,
@@ -32,10 +32,11 @@ To:     "J. Bruce Fields" <bfields@fieldses.org>,
         Trond Myklebust <trond.myklebust@hammerspace.com>,
         Anna Schumaker <anna.schumaker@netapp.com>
 Date:   Mon, 03 Dec 2018 11:30:30 +1100
-Subject: [PATCH 03/23] cred: export get_task_cred().
+Subject: [PATCH 04/23] cred: allow get_cred() and put_cred() to be given
+ NULL.
 Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
         linux-kernel@vger.kernel.org
-Message-ID: <154379703016.28598.13147808379270234369.stgit@noble>
+Message-ID: <154379703020.28598.1657780881720707861.stgit@noble>
 In-Reply-To: <154379689752.28598.6750646657534626618.stgit@noble>
 References: <154379689752.28598.6750646657534626618.stgit@noble>
 User-Agent: StGit/0.17.1-dirty
@@ -47,26 +48,62 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-There is no reason that modules should not be able
-to use this, and NFS will need it when converted to
-use 'struct cred'.
+It is common practice for helpers like this to silently,
+accept a NULL pointer.
+get_rpccred() and put_rpccred() used by NFS act this way
+and using the same interface will ease the conversion
+for NFS, and simplify the resulting code.
 
 Signed-off-by: NeilBrown <neilb@suse.com>
 ---
- kernel/cred.c |    1 +
- 1 file changed, 1 insertion(+)
+ include/linux/cred.h |   14 +++++++++-----
+ 1 file changed, 9 insertions(+), 5 deletions(-)
 
-diff --git a/kernel/cred.c b/kernel/cred.c
-index ba60162249e8..21f4a97085b4 100644
---- a/kernel/cred.c
-+++ b/kernel/cred.c
-@@ -200,6 +200,7 @@ const struct cred *get_task_cred(struct task_struct *task)
- 	rcu_read_unlock();
- 	return cred;
+diff --git a/include/linux/cred.h b/include/linux/cred.h
+index 48979fcb95cf..4907c9df86b3 100644
+--- a/include/linux/cred.h
++++ b/include/linux/cred.h
+@@ -237,7 +237,7 @@ static inline struct cred *get_new_cred(struct cred *cred)
+  * @cred: The credentials to reference
+  *
+  * Get a reference on the specified set of credentials.  The caller must
+- * release the reference.
++ * release the reference.  If %NULL is passed, it is returned with no action.
+  *
+  * This is used to deal with a committed set of credentials.  Although the
+  * pointer is const, this will temporarily discard the const and increment the
+@@ -248,6 +248,8 @@ static inline struct cred *get_new_cred(struct cred *cred)
+ static inline const struct cred *get_cred(const struct cred *cred)
+ {
+ 	struct cred *nonconst_cred = (struct cred *) cred;
++	if (!cred)
++		return cred;
+ 	validate_creds(cred);
+ 	return get_new_cred(nonconst_cred);
  }
-+EXPORT_SYMBOL(get_task_cred);
+@@ -268,7 +270,7 @@ static inline const struct cred *get_cred_rcu(const struct cred *cred)
+  * @cred: The credentials to release
+  *
+  * Release a reference to a set of credentials, deleting them when the last ref
+- * is released.
++ * is released.  If %NULL is passed, nothing is done.
+  *
+  * This takes a const pointer to a set of credentials because the credentials
+  * on task_struct are attached by const pointers to prevent accidental
+@@ -278,9 +280,11 @@ static inline void put_cred(const struct cred *_cred)
+ {
+ 	struct cred *cred = (struct cred *) _cred;
  
- /*
-  * Allocate blank credentials, such that the credentials can be filled in at a
+-	validate_creds(cred);
+-	if (atomic_dec_and_test(&(cred)->usage))
+-		__put_cred(cred);
++	if (cred) {
++		validate_creds(cred);
++		if (atomic_dec_and_test(&(cred)->usage))
++			__put_cred(cred);
++	}
+ }
+ 
+ /**
 
 
