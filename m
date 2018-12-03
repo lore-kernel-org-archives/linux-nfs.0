@@ -7,63 +7,62 @@ X-Spam-Status: No, score=-7.0 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
 	SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id DF189C04EB9
-	for <linux-nfs@archiver.kernel.org>; Mon,  3 Dec 2018 17:34:05 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6E3F2C04EB9
+	for <linux-nfs@archiver.kernel.org>; Mon,  3 Dec 2018 17:58:28 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id A71BE20850
-	for <linux-nfs@archiver.kernel.org>; Mon,  3 Dec 2018 17:34:05 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 2675820672
+	for <linux-nfs@archiver.kernel.org>; Mon,  3 Dec 2018 17:58:28 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="SbRKD809"
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org A71BE20850
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="lBqr/F5f"
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 2675820672
 Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=gmail.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726448AbeLCReK (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 3 Dec 2018 12:34:10 -0500
-Received: from mail-vs1-f66.google.com ([209.85.217.66]:46403 "EHLO
-        mail-vs1-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725916AbeLCReK (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Dec 2018 12:34:10 -0500
-Received: by mail-vs1-f66.google.com with SMTP id r14so7991934vsc.13;
-        Mon, 03 Dec 2018 09:34:03 -0800 (PST)
+        id S1726615AbeLCR63 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 3 Dec 2018 12:58:29 -0500
+Received: from mail-ua1-f68.google.com ([209.85.222.68]:42155 "EHLO
+        mail-ua1-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726014AbeLCR63 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Dec 2018 12:58:29 -0500
+Received: by mail-ua1-f68.google.com with SMTP id d21so4745562uap.9;
+        Mon, 03 Dec 2018 09:58:22 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=mime-version:references:in-reply-to:from:date:message-id:subject:to
          :cc;
-        bh=2bNnFmVgG+n4xZ1zpC/vPexxdZhCm2/rqgQJ1NJL9W8=;
-        b=SbRKD809D0AITTg/WeVfS0EElc0vl6hQh2XvWi2URD8kgeGr2JjTXMeefP5bvp5pRL
-         Kvs53tZsgbpt4BOrroMTqtX+4uB5yYpZrnxnkxGiG//+imAdMNS1XucUttGx8VUZPrJ6
-         wdXpLERbTfJaZuPZUZP4JcTrYQ6fOHaARHjI52TRzz2+atrlvC9CsAkmPW/pvWc4OH0S
-         xi0ARHlBHioT4nXd6oQJfVenheynEEkRPkczIK56Ku/of9zPOU9tAFNY+jdoVoF5RuaP
-         n6/nDXEaWlBCi4pml4Qwi71JQBGk1DuoBcnkk1xeVAw7Df9qnH4y9EqEcgWk7/T5hgld
-         z8zw==
+        bh=o1OLVLFJA3brp+hYWtKoFZ7N/rYlMDkbKUr5VGkltss=;
+        b=lBqr/F5fdAsqH6BvH+0wiByTIj6ITvBDbtxNA94kAUIPewU69oy87ybjq3KwuGqJev
+         yN/KHojmnUVZldSAaHN1hF7Irza8IuBMdIoWA/o1OF/G6p+3yBearHcczsjbazPl2Pog
+         vdI67khjiivC43ziIG+7OuK4hIOPBlmxwHVf3H0mmriEGidrsqSa3zUn/S2M3uEobaSl
+         KyUD5K+V3c7dydK7a1rZQL9hDiFt1Le+fTeEo71ofkHw+M52QNxlZhTFzZdpJIgm2E0v
+         WJ0WU2c8jVP+5FZ0TzWfR2Q/JJlQQ2XoLlv3SXxJ7grUpO4yTjRAQHM+CBkTNd5Kqcq9
+         pnBQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:mime-version:references:in-reply-to:from:date
          :message-id:subject:to:cc;
-        bh=2bNnFmVgG+n4xZ1zpC/vPexxdZhCm2/rqgQJ1NJL9W8=;
-        b=H1C0QFrM/OFb67LNBFy91Kgj5SASxXJ9EUQj8T+pnjRRZmo1IVpmcRV0bWVrAMK/kX
-         Yg6KpTeWfNvxr7oYMjCj5gYUPD+7o+Yh8gphC74V+niTpPayfDcuZ/X5WGuuSOMvUA7r
-         9v1LJiKHfr0VuwSj65f7HC1rVXSgO7wPLzcutyG0trfEXt5kRnXYs5Loo0CpZG3lvtVn
-         zbh1J4KuxbUKmH1SpehLpw6xBT/+Dr8frV6O8KJHZbPPoOSX6841Q/y4TnYa3qXS6vnI
-         ihXWwaA+XD0Kv2nfu2B9Zjor1R5LNnvxL+9Cq4bfVo+9HhwEdQvu6e0bsp/VnDLslHsa
-         Bg9A==
-X-Gm-Message-State: AA+aEWapoRRanDUbmKdtUmbX52ttF+wRw9OYrIRS01gIqNRk0S40Izz8
-        Jw9qa1InzTcNqlDn4vDLFTkMa5wTa7h5o4g2tnE=
-X-Google-Smtp-Source: AFSGD/XoFETgimuBcAwOjYHT1gK+ebuMXEhkGQad0dK7ctVV4xGc3j57gpcmmBCZEO/5+nfZb2Cl2+/1nkHplJA6afY=
-X-Received: by 2002:a67:f453:: with SMTP id r19mr7350487vsn.164.1543858442424;
- Mon, 03 Dec 2018 09:34:02 -0800 (PST)
+        bh=o1OLVLFJA3brp+hYWtKoFZ7N/rYlMDkbKUr5VGkltss=;
+        b=jk4jWkUiVCDyWy0O72DfUl/X0R/h5ZT+RSIRtUjRDZdjUUpwbpNw10CmNfCLRqZX76
+         bRq/9urNzVZ+vqoBwHKALMO9STYuJX20hjkQxaaT97zxRcissIXUwJrC7etXZRpdzeeJ
+         ZhEBCC7QImRQk9iV+GTvv5J4tTDlzlK1CYg/G2CEKUu9P9Hrkcj9ilfoTzmaW0mrQpli
+         g78Er3qKftYtkWcMNvBOinxLH4u+0GYo5IVnLmAB1D8Rg9/ysTdkVQOSauqSNr/raIMS
+         BbVix8zpYvak1fMnJKD00PNQH0yV9SRovbZtJwudmwn+1E52Xv6OnEFJviF/LjyCQJCC
+         vv1Q==
+X-Gm-Message-State: AA+aEWaJL/M2GLDGJLhEXj5TOpny9GdJZiAhVupcn5rF199NXo4ve6X4
+        Vfvw1cWq3rTCsO4ehYBy7KFLpenI1ab+vw9QhMoP3A==
+X-Google-Smtp-Source: AFSGD/XWTtOuGWH4zyCDDqgnElfL6K3DIsisYNMrNqQ5LKNMs7oLKk4/7hzrlRbVQU0uAfeACiaUv8cPIadYicuqEhA=
+X-Received: by 2002:ab0:aa:: with SMTP id 39mr7385655uaj.120.1543859901582;
+ Mon, 03 Dec 2018 09:58:21 -0800 (PST)
 MIME-Version: 1.0
-References: <20181203083416.28978-1-david@fromorbit.com> <20181203083416.28978-8-david@fromorbit.com>
- <CAOQ4uxiCi9qJ15J=L6fNjuLGykQm5CDuJ-=Y=TwTP5c=jx-_fA@mail.gmail.com>
-In-Reply-To: <CAOQ4uxiCi9qJ15J=L6fNjuLGykQm5CDuJ-=Y=TwTP5c=jx-_fA@mail.gmail.com>
+References: <20181203083416.28978-1-david@fromorbit.com> <20181203083416.28978-10-david@fromorbit.com>
+In-Reply-To: <20181203083416.28978-10-david@fromorbit.com>
 From:   Olga Kornievskaia <olga.kornievskaia@gmail.com>
-Date:   Mon, 3 Dec 2018 12:33:50 -0500
-Message-ID: <CAN-5tyFMDnjm5cMneYyRTveyJ-6ddLCt1za-kk5eemOO2ngq=A@mail.gmail.com>
-Subject: Re: [PATCH 07/11] vfs: copy_file_range should update file timestamps
-To:     Amir Goldstein <amir73il@gmail.com>
-Cc:     david@fromorbit.com, linux-fsdevel@vger.kernel.org,
-        linux-xfs@vger.kernel.org, linux-nfs <linux-nfs@vger.kernel.org>,
+Date:   Mon, 3 Dec 2018 12:58:09 -0500
+Message-ID: <CAN-5tyFs9RuoDOnsB36KUEGymMOxb7=VUYqJOxYgUxMu6w7fFg@mail.gmail.com>
+Subject: Re: [PATCH 09/11] vfs: push copy_file_ranges -EXDEV checks down
+To:     david@fromorbit.com
+Cc:     linux-fsdevel@vger.kernel.org, linux-xfs@vger.kernel.org,
+        linux-nfs <linux-nfs@vger.kernel.org>,
         linux-unionfs@vger.kernel.org, ceph-devel@vger.kernel.org,
         linux-cifs@vger.kernel.org
 Content-Type: text/plain; charset="UTF-8"
@@ -72,60 +71,194 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Mon, Dec 3, 2018 at 5:47 AM Amir Goldstein <amir73il@gmail.com> wrote:
+On Mon, Dec 3, 2018 at 3:34 AM Dave Chinner <david@fromorbit.com> wrote:
 >
-> On Mon, Dec 3, 2018 at 10:34 AM Dave Chinner <david@fromorbit.com> wrote:
-> >
-> > From: Dave Chinner <dchinner@redhat.com>
-> >
-> > Timestamps are not updated right now, so programs looking for
-> > timestamp updates for file modifications (like rsync) will not
-> > detect that files have changed. We are also accessing the source
-> > data when doing a copy (but not when cloning) so we need to update
-> > atime on the source file as well.
-> >
-> > Signed-off-by: Dave Chinner <dchinner@redhat.com>
-> > ---
-> >  fs/read_write.c | 10 ++++++++++
-> >  1 file changed, 10 insertions(+)
-> >
-> > diff --git a/fs/read_write.c b/fs/read_write.c
-> > index 3b101183ea19..3288db1d5f21 100644
-> > --- a/fs/read_write.c
-> > +++ b/fs/read_write.c
-> > @@ -1576,6 +1576,16 @@ static ssize_t do_copy_file_range(struct file *file_in, loff_t pos_in,
-> >  {
-> >         ssize_t ret;
-> >
-> > +       /* Update source timestamps, because we are accessing file data */
-> > +       file_accessed(file_in);
-> > +
-> > +       /* Update destination timestamps, since we can alter file contents. */
-> > +       if (!(file_out->f_mode & FMODE_NOCMTIME)) {
-> > +               ret = file_update_time(file_out);
-> > +               if (ret)
-> > +                       return ret;
-> > +       }
-> > +
+> From: Dave Chinner <dchinner@redhat.com>
 >
-> If there is a consistency about who is responsible of calling file_accessed()
-> and file_update_time() it eludes me. grep tells me that they are mostly
-> handled by filesystem code or generic helpers called by filesystem code
-> and not in the vfs helpers.
+> We want to enable cross-filesystem copy_file_range functionality
+> where possible, so push the "same superblock only" checks down to
+> the individual filesystem callouts so they can make their own
+> decisions about cross-superblock copy offload.
 >
-> FMODE_NOCMTIME seems like an xfs specific flag (for DMAPI?), which
-> most generic callers of file_update_time() completely ignore.
-> This seems like another argument in favor of leaving the responsibility
-> of the timestamp updates to the filesystem.
->
-> Maybe I am missing something?
->
+> Signed-off-by: Dave Chinner <dchinner@redhat.com>
 
-I had similar question before about who is responsible for doing the
-checks. I agree that attributes should be updated for the case when no
-filesystem support exist for copy_file_range() but this code does it
-for all the cases. I also wonder if it's appropriate to update the
-attributes before the copy is actually done?
+Overall VFS/NFS bits look good to me. I'm re-basing my client and
+server patch series on top of this and will test it out.
 
-> Thanks,
-> Amir.
+Thank you.
+
+> ---
+>  fs/ceph/file.c      |  4 +++-
+>  fs/cifs/cifsfs.c    |  8 +++++++-
+>  fs/fuse/file.c      |  5 ++++-
+>  fs/nfs/nfs4file.c   | 16 ++++++++++------
+>  fs/overlayfs/file.c | 10 +++++++++-
+>  fs/read_write.c     | 10 ++++------
+>  6 files changed, 37 insertions(+), 16 deletions(-)
+>
+> diff --git a/fs/ceph/file.c b/fs/ceph/file.c
+> index cf29f0410dcb..eb876e19c1dc 100644
+> --- a/fs/ceph/file.c
+> +++ b/fs/ceph/file.c
+> @@ -1905,6 +1905,8 @@ static ssize_t __ceph_copy_file_range(struct file *src_file, loff_t src_off,
+>
+>         if (src_inode == dst_inode)
+>                 return -EINVAL;
+> +       if (src_inode->i_sb != dst_inode->i_sb)
+> +               return -EXDEV;
+>         if (ceph_snap(dst_inode) != CEPH_NOSNAP)
+>                 return -EROFS;
+>
+> @@ -2105,7 +2107,7 @@ static ssize_t ceph_copy_file_range(struct file *src_file, loff_t src_off,
+>         ret = __ceph_copy_file_range(src_file, src_off, dst_file, dst_off,
+>                                         len, flags);
+>
+> -       if (ret == -EOPNOTSUPP)
+> +       if (ret == -EOPNOTSUPP || ret == -EXDEV)
+>                 ret = generic_copy_file_range(src_file, src_off, dst_file,
+>                                         dst_off, len, flags);
+>         return ret;
+> diff --git a/fs/cifs/cifsfs.c b/fs/cifs/cifsfs.c
+> index 5ef4baec6234..03e4b9eacbd1 100644
+> --- a/fs/cifs/cifsfs.c
+> +++ b/fs/cifs/cifsfs.c
+> @@ -1072,6 +1072,12 @@ ssize_t cifs_file_copychunk_range(unsigned int xid,
+>                 goto out;
+>         }
+>
+> +       if (src_inode->i_sb != target_inode->i_sb) {
+> +               rc = -EXDEV;
+> +               goto out;
+> +       }
+> +
+> +
+>         if (!src_file->private_data || !dst_file->private_data) {
+>                 rc = -EBADF;
+>                 cifs_dbg(VFS, "missing cifsFileInfo on copy range src file\n");
+> @@ -1142,7 +1148,7 @@ static ssize_t cifs_copy_file_range(struct file *src_file, loff_t off,
+>                                         len, flags);
+>         free_xid(xid);
+>
+> -       if (rc == -EOPNOTSUPP)
+> +       if (rc == -EOPNOTSUPP || rc == -EXDEV)
+>                 rc = generic_copy_file_range(src_file, off, dst_file,
+>                                         destoff, len, flags);
+>         return rc;
+> diff --git a/fs/fuse/file.c b/fs/fuse/file.c
+> index b86fb0298739..0758f831a4eb 100644
+> --- a/fs/fuse/file.c
+> +++ b/fs/fuse/file.c
+> @@ -3053,6 +3053,9 @@ static ssize_t __fuse_copy_file_range(struct file *file_in, loff_t pos_in,
+>         if (fc->no_copy_file_range)
+>                 return -EOPNOTSUPP;
+>
+> +       if (file_inode(file_in)->i_sb != file_inode(file_out)->i_sb)
+> +               return -EXDEV;
+> +
+>         inode_lock(inode_out);
+>
+>         if (fc->writeback_cache) {
+> @@ -3109,7 +3112,7 @@ static ssize_t fuse_copy_file_range(struct file *src_file, loff_t src_off,
+>         ret = __fuse_copy_file_range(src_file, src_off, dst_file, dst_off,
+>                                         len, flags);
+>
+> -       if (ret == -EOPNOTSUPP)
+> +       if (ret == -EOPNOTSUPP || ret == -EXDEV)
+>                 ret = generic_copy_file_range(src_file, src_off, dst_file,
+>                                         dst_off, len, flags);
+>         return ret;
+> diff --git a/fs/nfs/nfs4file.c b/fs/nfs/nfs4file.c
+> index d7766a6eb0f4..4783c0c1c49e 100644
+> --- a/fs/nfs/nfs4file.c
+> +++ b/fs/nfs/nfs4file.c
+> @@ -133,16 +133,20 @@ static ssize_t nfs4_copy_file_range(struct file *file_in, loff_t pos_in,
+>                                     struct file *file_out, loff_t pos_out,
+>                                     size_t count, unsigned int flags)
+>  {
+> -       ssize_t ret;
+> +       ssize_t ret = -EXDEV;
+>
+>         if (file_inode(file_in) == file_inode(file_out))
+>                 return -EINVAL;
+> -retry:
+> -       ret = nfs42_proc_copy(file_in, pos_in, file_out, pos_out, count);
+> -       if (ret == -EAGAIN)
+> -               goto retry;
+>
+> -       if (ret == -EOPNOTSUPP)
+> +       /* only offload copy if superblock is the same */
+> +       if (file_inode(file_in)->i_sb == file_inode(file_out)->i_sb) {
+> +               do {
+> +                       ret = nfs42_proc_copy(file_in, pos_in, file_out,
+> +                                       pos_out, count);
+> +               } while (ret == -EAGAIN);
+> +       }
+> +
+> +       if (ret == -EOPNOTSUPP || ret == -EXDEV)
+>                 ret = generic_copy_file_range(file_in, pos_in, file_out,
+>                                         pos_out, count, flags);
+>         return ret;
+> diff --git a/fs/overlayfs/file.c b/fs/overlayfs/file.c
+> index 68736e5d6a56..34fb0398d016 100644
+> --- a/fs/overlayfs/file.c
+> +++ b/fs/overlayfs/file.c
+> @@ -443,6 +443,14 @@ static loff_t ovl_copyfile(struct file *file_in, loff_t pos_in,
+>         const struct cred *old_cred;
+>         loff_t ret;
+>
+> +       /*
+> +        * Temporary. Cross device copy checks should be left to the copy file
+> +        * call on the real inodes, but existing behaviour checks the upper
+> +        * files only.
+> +        */
+> +       if (file_inode(file_in)->i_sb != file_inode(file_out)->i_sb)
+> +               return -EXDEV;
+> +
+>         ret = ovl_real_fdget(file_out, &real_out);
+>         if (ret)
+>                 return ret;
+> @@ -491,7 +499,7 @@ static ssize_t ovl_copy_file_range(struct file *file_in, loff_t pos_in,
+>         ret =  ovl_copyfile(file_in, pos_in, file_out, pos_out, len, flags,
+>                             OVL_COPY);
+>
+> -       if (ret == -EOPNOTSUPP)
+> +       if (ret == -EOPNOTSUPP || ret == -EXDEV)
+>                 ret = generic_copy_file_range(file_in, pos_in, file_out,
+>                                         pos_out, len, flags);
+>         return ret;
+> diff --git a/fs/read_write.c b/fs/read_write.c
+> index 174cf92eea1d..4e0666de0d69 100644
+> --- a/fs/read_write.c
+> +++ b/fs/read_write.c
+> @@ -1565,6 +1565,10 @@ ssize_t generic_copy_file_range(struct file *file_in, loff_t pos_in,
+>                             struct file *file_out, loff_t pos_out,
+>                             size_t len, unsigned int flags)
+>  {
+> +       /* Temporary, do_splice_direct supports cross-sb copies */
+> +       if (file_inode(file_in)->i_sb != file_inode(file_out)->i_sb)
+> +               return -EXDEV;
+> +
+>         return do_splice_direct(file_in, &pos_in, file_out, &pos_out,
+>                         len > MAX_RW_COUNT ? MAX_RW_COUNT : len, 0);
+>  }
+> @@ -1611,17 +1615,11 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
+>                             struct file *file_out, loff_t pos_out,
+>                             size_t len, unsigned int flags)
+>  {
+> -       struct inode *inode_in = file_inode(file_in);
+> -       struct inode *inode_out = file_inode(file_out);
+>         ssize_t ret;
+>
+>         if (flags != 0)
+>                 return -EINVAL;
+>
+> -       /* this could be relaxed once a method supports cross-fs copies */
+> -       if (inode_in->i_sb != inode_out->i_sb)
+> -               return -EXDEV;
+> -
+>         ret = generic_copy_file_checks(file_in, pos_in, file_out, pos_out, &len,
+>                                         flags);
+>         if (ret < 0)
+> --
+> 2.19.1
+>
