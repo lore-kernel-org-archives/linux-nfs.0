@@ -2,134 +2,123 @@ Return-Path: <SRS0=4jnv=OM=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,SPF_PASS,URIBL_BLOCKED autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-7.0 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4F329C04EB9
-	for <linux-nfs@archiver.kernel.org>; Mon,  3 Dec 2018 11:54:03 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id AC00EC04EB9
+	for <linux-nfs@archiver.kernel.org>; Mon,  3 Dec 2018 12:36:14 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 1D1D8206B7
-	for <linux-nfs@archiver.kernel.org>; Mon,  3 Dec 2018 11:54:03 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 1D1D8206B7
-Authentication-Results: mail.kernel.org; dmarc=none (p=none dis=none) header.from=arm.com
+	by mail.kernel.org (Postfix) with ESMTP id 72FCC20850
+	for <linux-nfs@archiver.kernel.org>; Mon,  3 Dec 2018 12:36:14 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="OUDJxh8b"
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 72FCC20850
+Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=gmail.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726199AbeLCLyq (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 3 Dec 2018 06:54:46 -0500
-Received: from usa-sjc-mx-foss1.foss.arm.com ([217.140.101.70]:35536 "EHLO
-        foss.arm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725883AbeLCLyp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 3 Dec 2018 06:54:45 -0500
-Received: from usa-sjc-imap-foss1.foss.arm.com (unknown [10.72.51.249])
-        by usa-sjc-mx-foss1.foss.arm.com (Postfix) with ESMTP id AAFF9165C;
-        Mon,  3 Dec 2018 03:54:01 -0800 (PST)
-Received: from [10.1.197.50] (e120937-lin.cambridge.arm.com [10.1.197.50])
-        by usa-sjc-imap-foss1.foss.arm.com (Postfix) with ESMTPSA id 10ED63F59C;
-        Mon,  3 Dec 2018 03:54:00 -0800 (PST)
-Subject: Re: [PATCH v3 40/44] SUNRPC: Simplify TCP receive code by switching
- to using iterators
-To:     Catalin Marinas <catalin.marinas@arm.com>,
-        Trond Myklebust <trondmy@hammerspace.com>
-Cc:     "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-References: <20180917130335.112832-38-trond.myklebust@hammerspace.com>
- <20180917130335.112832-39-trond.myklebust@hammerspace.com>
- <20180917130335.112832-40-trond.myklebust@hammerspace.com>
- <20180917130335.112832-41-trond.myklebust@hammerspace.com>
- <20181109111930.idve77thgcnsg5u3@localhost>
- <e85fe63f-b142-5075-edb6-da6c9e2609fd@arm.com>
- <356631f8d49b5d0698d769ab9c916c84fadd3be6.camel@hammerspace.com>
- <a23d0c18-1030-82f3-a046-41497dc7725b@arm.com>
- <92a750b72255c6a91fd5606668f26b2d492ec43f.camel@hammerspace.com>
- <7d58a5dc7f62117245c824fc63bce62ba99e5b44.camel@hammerspace.com>
- <20181203114555.GF49865@arrakis.emea.arm.com>
-From:   Cristian Marussi <cristian.marussi@arm.com>
-Message-ID: <d5e4eac9-d7ad-2390-116b-e1f0fc814c7e@arm.com>
-Date:   Mon, 3 Dec 2018 11:53:59 +0000
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101
- Thunderbird/60.2.1
+        id S1726502AbeLCMhF (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 3 Dec 2018 07:37:05 -0500
+Received: from mail-yb1-f193.google.com ([209.85.219.193]:35267 "EHLO
+        mail-yb1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726238AbeLCMhE (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Dec 2018 07:37:04 -0500
+Received: by mail-yb1-f193.google.com with SMTP id z2-v6so5195123ybj.2;
+        Mon, 03 Dec 2018 04:36:11 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc;
+        bh=JDe2htvdGYJ17xTCzqD0/PZFt7huaU7qjeFKzScUHlI=;
+        b=OUDJxh8bMDGvGBfjh1orX9uRTpFjY6bAU4Wo/tWxYKSM9+9Lghco3Gs4/+8ZAdQYLT
+         jGbuEE5jaATrtfQ9WxtMZ58ZR0H6aH+6ENXpaaq8pPYdPT4D83aNfm4XSO1LnbCPUZhk
+         osbweVUSFAbL6XSY/TVGgrG9IcHvnKpM8i2lprXYP47klkNG0dBjlvJTecmMj5KxxiH9
+         OTUQqRWHQLdS/anm1UCKO/xiFSx0mDLMxkrT8E4evwfeW7n5sA8rKGYcqGMSeU77ss/R
+         aUImxIyZdOnQbBw6cheN5+HJFaeLCnVfqYPOaIqQ7WC1Y+3nI4W907CD7QEkIP/IQ8Pw
+         R1jw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=JDe2htvdGYJ17xTCzqD0/PZFt7huaU7qjeFKzScUHlI=;
+        b=q9FuBBjXMPOOEnUWuQ+hGalKpind6HjBCX4FEhC+/ZxCT29l53AeYCHwdzKW3mtQod
+         fFIhi/j7wUH1qxqTNoeIpkG72hWLQZq6gbGrY78Jd2PsaKHt4pO7TtI3ZYBOs6zgzqS4
+         afvUMUktW6jn9rUlPTGzZUisROM+oQ8GX8Mz112QhJwEZV5mAOZNE15cnmBfFBkNbjf2
+         cShGanSRfMohhI/H/ZxUK5bQWlMneEh8TVjIYqcvwNcPbBNhNCrUBpuirpt5sIye6oQg
+         Lgqc+/tRub55k4r3ShQlkl6Gxvr1epN8tcqATlaAc27H8XwrThUr6Gh1O/tWINmQ/Z9B
+         4TnQ==
+X-Gm-Message-State: AA+aEWY5Tdn/2vF3jOgEteWPsJ3F7Hj09GprwZeDg8oC6dIgBZvoXL51
+        JKSxD3bh8nm1PnaNYeJcIgAZK/9qYXM7Jz4XjKA=
+X-Google-Smtp-Source: AFSGD/VSQRc7ZEyrGZZUN2vRjotx4c2mh8ntr7sCGjPMvEN5BGWSnmlFVcs6FUfR10rTvBQpRq8ey9SR3Dh9vMHsPl0=
+X-Received: by 2002:a25:e4c1:: with SMTP id b184-v6mr15077021ybh.337.1543840571423;
+ Mon, 03 Dec 2018 04:36:11 -0800 (PST)
 MIME-Version: 1.0
-In-Reply-To: <20181203114555.GF49865@arrakis.emea.arm.com>
-Content-Type: text/plain; charset=utf-8
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
+References: <20181203083416.28978-1-david@fromorbit.com> <20181203083416.28978-10-david@fromorbit.com>
+In-Reply-To: <20181203083416.28978-10-david@fromorbit.com>
+From:   Amir Goldstein <amir73il@gmail.com>
+Date:   Mon, 3 Dec 2018 14:36:00 +0200
+Message-ID: <CAOQ4uxhiWGXrdzvXzsYcaTGL06xipDUC8KWMwGTBfcM+hZoekA@mail.gmail.com>
+Subject: Re: [PATCH 09/11] vfs: push copy_file_ranges -EXDEV checks down
+To:     Dave Chinner <david@fromorbit.com>
+Cc:     linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        linux-xfs <linux-xfs@vger.kernel.org>,
+        Olga Kornievskaia <olga.kornievskaia@gmail.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        overlayfs <linux-unionfs@vger.kernel.org>,
+        ceph-devel@vger.kernel.org, linux-cifs@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hi
+On Mon, Dec 3, 2018 at 10:34 AM Dave Chinner <david@fromorbit.com> wrote:
+>
+> From: Dave Chinner <dchinner@redhat.com>
+>
+> We want to enable cross-filesystem copy_file_range functionality
+> where possible, so push the "same superblock only" checks down to
+> the individual filesystem callouts so they can make their own
+> decisions about cross-superblock copy offload.
+>
+> Signed-off-by: Dave Chinner <dchinner@redhat.com>
 
-On 03/12/2018 11:45, Catalin Marinas wrote:
-> Hi Trond,
-> 
-> On Sun, Dec 02, 2018 at 04:44:49PM +0000, Trond Myklebust wrote:
->> On Fri, 2018-11-30 at 14:31 -0500, Trond Myklebust wrote:
->>> On Fri, 2018-11-30 at 16:19 +0000, Cristian Marussi wrote:
->>>> On 29/11/2018 19:56, Trond Myklebust wrote:
->>>>> On Thu, 2018-11-29 at 19:28 +0000, Cristian Marussi wrote:
->>>>> Question to you both: when this happens, does /proc/*/stack show
->>>>> any of the processes hanging in the socket or sunrpc code? If
->>>>> so, can you please send me examples of those stack traces (i.e.
->>>>> the contents of /proc/<pid>/stack for the processes that are
->>>>> hanging)
->>>>
->>>> (using a reverse shell since starting ssh causes a lot of pain and
->>>> traffic)
->>>>
->>>> Looking at NFS traffic holes(30-40 secs) to detect Client side
->>>> various HANGS
->>
->> Chuck and I have identified a few issues that might have an effect on
->> the hangs you report. Could you please give the linux-next branch in my
->> repository on git.linux-nfs.org (
->> https://git.linux-nfs.org/?p=trondmy/linux-nfs.git;a=shortlog;h=refs/heads/linux-next
->> ) a try?
->>
->> git pull git://git.linux-nfs.org/projects/trondmy/linux-nfs.git linux-next
-> 
-> I tried, unfortunately there's no difference for me (I merged the above
-> branch on top of 4.20-rc5).
-> 
+Looks good.
+You may add
+Reviewed-by: Amir Goldstein <amir73il@gmail.com>
 
-same for me. Issue still there.
+Similar comment about overlayfs as patch 3.
 
-Beside I saw some differences in the dbench result which I used for testing.
+ diff --git a/fs/overlayfs/file.c b/fs/overlayfs/file.c
+> index 68736e5d6a56..34fb0398d016 100644
+> --- a/fs/overlayfs/file.c
+> +++ b/fs/overlayfs/file.c
+> @@ -443,6 +443,14 @@ static loff_t ovl_copyfile(struct file *file_in, loff_t pos_in,
+>         const struct cred *old_cred;
+>         loff_t ret;
+>
+> +       /*
+> +        * Temporary. Cross device copy checks should be left to the copy file
+> +        * call on the real inodes, but existing behaviour checks the upper
+> +        * files only.
+> +        */
+> +       if (file_inode(file_in)->i_sb != file_inode(file_out)->i_sb)
+> +               return -EXDEV;
+> +
+>         ret = ovl_real_fdget(file_out, &real_out);
+>         if (ret)
+>                 return ret;
+> @@ -491,7 +499,7 @@ static ssize_t ovl_copy_file_range(struct file *file_in, loff_t pos_in,
+>         ret =  ovl_copyfile(file_in, pos_in, file_out, pos_out, len, flags,
+>                             OVL_COPY);
+>
+> -       if (ret == -EOPNOTSUPP)
+> +       if (ret == -EOPNOTSUPP || ret == -EXDEV)
+>                 ret = generic_copy_file_range(file_in, pos_in, file_out,
+>                                         pos_out, len, flags);
 
-From the dbench (comparing with previous mail) it seems that
-Unlink and Qpathinfo MaxLat has normalized.
+This fallback is already provided by vfs_copy_file_range().
 
- Operation      Count    AvgLat    MaxLat
- ----------------------------------------
- NTCreateX      90820    13.613 13855.620
- Close          66565    18.075 13853.289
- Rename          3845    23.668   326.642
- Unlink         18450     4.581   186.062
- Qpathinfo      82068     2.677   280.203
- Qfileinfo      14235    10.357   176.373
- Qfsinfo        15156     2.822   242.794
- Sfileinfo       7400    17.018   240.546
- Find           31812     5.988   277.332
- WriteX         44735     0.155    14.685
- ReadX         141872     0.741 13817.870
- LockX            288    10.558    96.179
- UnlockX          288     3.307    57.939
- Flush           6389    20.427   187.429
-
-
-> Is there anything else blocked in the RPC layer? The above are all
-> standard tasks waiting for the rpciod/xprtiod workqueues to complete
-> the calls to the server.
-cat  /proc/692/stack
-[<0>] __switch_to+0x6c/0x90
-[<0>] rescuer_thread+0x2e8/0x360
-[<0>] kthread+0x134/0x138
-[<0>] ret_from_fork+0x10/0x1c
-[<0>] 0xffffffffffffffff
-
-I was now trying to collect more evidence ftracing during the quiet-stuck-period
-till the restart happens.
-
-Thanks
-
-Cristian
+Thanks,
+Amir.
