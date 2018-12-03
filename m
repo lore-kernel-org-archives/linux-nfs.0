@@ -6,38 +6,38 @@ X-Spam-Status: No, score=-9.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,USER_AGENT_GIT
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 344FFC04EB9
-	for <linux-nfs@archiver.kernel.org>; Mon,  3 Dec 2018 08:34:42 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 99BE2C65BAE
+	for <linux-nfs@archiver.kernel.org>; Mon,  3 Dec 2018 08:34:44 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 0278B2145D
-	for <linux-nfs@archiver.kernel.org>; Mon,  3 Dec 2018 08:34:42 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 0278B2145D
+	by mail.kernel.org (Postfix) with ESMTP id 60EEE21479
+	for <linux-nfs@archiver.kernel.org>; Mon,  3 Dec 2018 08:34:44 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 60EEE21479
 Authentication-Results: mail.kernel.org; dmarc=none (p=none dis=none) header.from=fromorbit.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1725964AbeLCIei (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 3 Dec 2018 03:34:38 -0500
-Received: from ipmailnode02.adl6.internode.on.net ([150.101.137.148]:39077
+        id S1725941AbeLCIec (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 3 Dec 2018 03:34:32 -0500
+Received: from ipmailnode02.adl6.internode.on.net ([150.101.137.148]:36689
         "EHLO ipmailnode02.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1725953AbeLCIei (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Dec 2018 03:34:38 -0500
+        by vger.kernel.org with ESMTP id S1725891AbeLCIeb (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Dec 2018 03:34:31 -0500
 Received: from ppp59-167-129-252.static.internode.on.net (HELO dastard) ([59.167.129.252])
-  by ipmail02.adl6.internode.on.net with ESMTP; 03 Dec 2018 19:04:20 +1030
+  by ipmail02.adl6.internode.on.net with ESMTP; 03 Dec 2018 19:04:19 +1030
 Received: from discord.disaster.area ([192.168.1.111])
         by dastard with esmtp (Exim 4.80)
         (envelope-from <david@fromorbit.com>)
-        id 1gTjgJ-0003Pa-5q; Mon, 03 Dec 2018 19:34:19 +1100
+        id 1gTjgJ-0003PX-3r; Mon, 03 Dec 2018 19:34:19 +1100
 Received: from dave by discord.disaster.area with local (Exim 4.91)
         (envelope-from <david@fromorbit.com>)
-        id 1gTjgJ-00006J-4i; Mon, 03 Dec 2018 19:34:19 +1100
+        id 1gTjgJ-00006D-2l; Mon, 03 Dec 2018 19:34:19 +1100
 From:   Dave Chinner <david@fromorbit.com>
 To:     linux-fsdevel@vger.kernel.org, linux-xfs@vger.kernel.org
 Cc:     olga.kornievskaia@gmail.com, linux-nfs@vger.kernel.org,
         linux-unionfs@vger.kernel.org, ceph-devel@vger.kernel.org,
         linux-cifs@vger.kernel.org
-Subject: [PATCH 09/11] vfs: push copy_file_ranges -EXDEV checks down
-Date:   Mon,  3 Dec 2018 19:34:14 +1100
-Message-Id: <20181203083416.28978-10-david@fromorbit.com>
+Subject: [PATCH 07/11] vfs: copy_file_range should update file timestamps
+Date:   Mon,  3 Dec 2018 19:34:12 +1100
+Message-Id: <20181203083416.28978-8-david@fromorbit.com>
 X-Mailer: git-send-email 2.19.1
 In-Reply-To: <20181203083416.28978-1-david@fromorbit.com>
 References: <20181203083416.28978-1-david@fromorbit.com>
@@ -50,184 +50,38 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Dave Chinner <dchinner@redhat.com>
 
-We want to enable cross-filesystem copy_file_range functionality
-where possible, so push the "same superblock only" checks down to
-the individual filesystem callouts so they can make their own
-decisions about cross-superblock copy offload.
+Timestamps are not updated right now, so programs looking for
+timestamp updates for file modifications (like rsync) will not
+detect that files have changed. We are also accessing the source
+data when doing a copy (but not when cloning) so we need to update
+atime on the source file as well.
 
 Signed-off-by: Dave Chinner <dchinner@redhat.com>
 ---
- fs/ceph/file.c      |  4 +++-
- fs/cifs/cifsfs.c    |  8 +++++++-
- fs/fuse/file.c      |  5 ++++-
- fs/nfs/nfs4file.c   | 16 ++++++++++------
- fs/overlayfs/file.c | 10 +++++++++-
- fs/read_write.c     | 10 ++++------
- 6 files changed, 37 insertions(+), 16 deletions(-)
+ fs/read_write.c | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
 
-diff --git a/fs/ceph/file.c b/fs/ceph/file.c
-index cf29f0410dcb..eb876e19c1dc 100644
---- a/fs/ceph/file.c
-+++ b/fs/ceph/file.c
-@@ -1905,6 +1905,8 @@ static ssize_t __ceph_copy_file_range(struct file *src_file, loff_t src_off,
- 
- 	if (src_inode == dst_inode)
- 		return -EINVAL;
-+	if (src_inode->i_sb != dst_inode->i_sb)
-+		return -EXDEV;
- 	if (ceph_snap(dst_inode) != CEPH_NOSNAP)
- 		return -EROFS;
- 
-@@ -2105,7 +2107,7 @@ static ssize_t ceph_copy_file_range(struct file *src_file, loff_t src_off,
- 	ret = __ceph_copy_file_range(src_file, src_off, dst_file, dst_off,
- 					len, flags);
- 
--	if (ret == -EOPNOTSUPP)
-+	if (ret == -EOPNOTSUPP || ret == -EXDEV)
- 		ret = generic_copy_file_range(src_file, src_off, dst_file,
- 					dst_off, len, flags);
- 	return ret;
-diff --git a/fs/cifs/cifsfs.c b/fs/cifs/cifsfs.c
-index 5ef4baec6234..03e4b9eacbd1 100644
---- a/fs/cifs/cifsfs.c
-+++ b/fs/cifs/cifsfs.c
-@@ -1072,6 +1072,12 @@ ssize_t cifs_file_copychunk_range(unsigned int xid,
- 		goto out;
- 	}
- 
-+	if (src_inode->i_sb != target_inode->i_sb) {
-+		rc = -EXDEV;
-+		goto out;
-+	}
-+
-+
- 	if (!src_file->private_data || !dst_file->private_data) {
- 		rc = -EBADF;
- 		cifs_dbg(VFS, "missing cifsFileInfo on copy range src file\n");
-@@ -1142,7 +1148,7 @@ static ssize_t cifs_copy_file_range(struct file *src_file, loff_t off,
- 					len, flags);
- 	free_xid(xid);
- 
--	if (rc == -EOPNOTSUPP)
-+	if (rc == -EOPNOTSUPP || rc == -EXDEV)
- 		rc = generic_copy_file_range(src_file, off, dst_file,
- 					destoff, len, flags);
- 	return rc;
-diff --git a/fs/fuse/file.c b/fs/fuse/file.c
-index b86fb0298739..0758f831a4eb 100644
---- a/fs/fuse/file.c
-+++ b/fs/fuse/file.c
-@@ -3053,6 +3053,9 @@ static ssize_t __fuse_copy_file_range(struct file *file_in, loff_t pos_in,
- 	if (fc->no_copy_file_range)
- 		return -EOPNOTSUPP;
- 
-+	if (file_inode(file_in)->i_sb != file_inode(file_out)->i_sb)
-+		return -EXDEV;
-+
- 	inode_lock(inode_out);
- 
- 	if (fc->writeback_cache) {
-@@ -3109,7 +3112,7 @@ static ssize_t fuse_copy_file_range(struct file *src_file, loff_t src_off,
- 	ret = __fuse_copy_file_range(src_file, src_off, dst_file, dst_off,
- 					len, flags);
- 
--	if (ret == -EOPNOTSUPP)
-+	if (ret == -EOPNOTSUPP || ret == -EXDEV)
- 		ret = generic_copy_file_range(src_file, src_off, dst_file,
- 					dst_off, len, flags);
- 	return ret;
-diff --git a/fs/nfs/nfs4file.c b/fs/nfs/nfs4file.c
-index d7766a6eb0f4..4783c0c1c49e 100644
---- a/fs/nfs/nfs4file.c
-+++ b/fs/nfs/nfs4file.c
-@@ -133,16 +133,20 @@ static ssize_t nfs4_copy_file_range(struct file *file_in, loff_t pos_in,
- 				    struct file *file_out, loff_t pos_out,
- 				    size_t count, unsigned int flags)
- {
--	ssize_t ret;
-+	ssize_t ret = -EXDEV;
- 
- 	if (file_inode(file_in) == file_inode(file_out))
- 		return -EINVAL;
--retry:
--	ret = nfs42_proc_copy(file_in, pos_in, file_out, pos_out, count);
--	if (ret == -EAGAIN)
--		goto retry;
- 
--	if (ret == -EOPNOTSUPP)
-+	/* only offload copy if superblock is the same */
-+	if (file_inode(file_in)->i_sb == file_inode(file_out)->i_sb) {
-+		do {
-+			ret = nfs42_proc_copy(file_in, pos_in, file_out,
-+					pos_out, count);
-+		} while (ret == -EAGAIN);
-+	}
-+
-+	if (ret == -EOPNOTSUPP || ret == -EXDEV)
- 		ret = generic_copy_file_range(file_in, pos_in, file_out,
- 					pos_out, count, flags);
- 	return ret;
-diff --git a/fs/overlayfs/file.c b/fs/overlayfs/file.c
-index 68736e5d6a56..34fb0398d016 100644
---- a/fs/overlayfs/file.c
-+++ b/fs/overlayfs/file.c
-@@ -443,6 +443,14 @@ static loff_t ovl_copyfile(struct file *file_in, loff_t pos_in,
- 	const struct cred *old_cred;
- 	loff_t ret;
- 
-+	/*
-+	 * Temporary. Cross device copy checks should be left to the copy file
-+	 * call on the real inodes, but existing behaviour checks the upper
-+	 * files only.
-+	 */
-+	if (file_inode(file_in)->i_sb != file_inode(file_out)->i_sb)
-+		return -EXDEV;
-+
- 	ret = ovl_real_fdget(file_out, &real_out);
- 	if (ret)
- 		return ret;
-@@ -491,7 +499,7 @@ static ssize_t ovl_copy_file_range(struct file *file_in, loff_t pos_in,
- 	ret =  ovl_copyfile(file_in, pos_in, file_out, pos_out, len, flags,
- 			    OVL_COPY);
- 
--	if (ret == -EOPNOTSUPP)
-+	if (ret == -EOPNOTSUPP || ret == -EXDEV)
- 		ret = generic_copy_file_range(file_in, pos_in, file_out,
- 					pos_out, len, flags);
- 	return ret;
 diff --git a/fs/read_write.c b/fs/read_write.c
-index 174cf92eea1d..4e0666de0d69 100644
+index 3b101183ea19..3288db1d5f21 100644
 --- a/fs/read_write.c
 +++ b/fs/read_write.c
-@@ -1565,6 +1565,10 @@ ssize_t generic_copy_file_range(struct file *file_in, loff_t pos_in,
- 			    struct file *file_out, loff_t pos_out,
- 			    size_t len, unsigned int flags)
+@@ -1576,6 +1576,16 @@ static ssize_t do_copy_file_range(struct file *file_in, loff_t pos_in,
  {
-+	/* Temporary, do_splice_direct supports cross-sb copies */
-+	if (file_inode(file_in)->i_sb != file_inode(file_out)->i_sb)
-+		return -EXDEV;
-+
- 	return do_splice_direct(file_in, &pos_in, file_out, &pos_out,
- 			len > MAX_RW_COUNT ? MAX_RW_COUNT : len, 0);
- }
-@@ -1611,17 +1615,11 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
- 			    struct file *file_out, loff_t pos_out,
- 			    size_t len, unsigned int flags)
- {
--	struct inode *inode_in = file_inode(file_in);
--	struct inode *inode_out = file_inode(file_out);
  	ssize_t ret;
  
- 	if (flags != 0)
- 		return -EINVAL;
- 
--	/* this could be relaxed once a method supports cross-fs copies */
--	if (inode_in->i_sb != inode_out->i_sb)
--		return -EXDEV;
--
- 	ret = generic_copy_file_checks(file_in, pos_in, file_out, pos_out, &len,
- 					flags);
- 	if (ret < 0)
++	/* Update source timestamps, because we are accessing file data */
++	file_accessed(file_in);
++
++	/* Update destination timestamps, since we can alter file contents. */
++	if (!(file_out->f_mode & FMODE_NOCMTIME)) {
++		ret = file_update_time(file_out);
++		if (ret)
++			return ret;
++	}
++
+ 	/*
+ 	 * Clear the security bits if the process is not being run by root.
+ 	 * This keeps people from modifying setuid and setgid binaries.
 -- 
 2.19.1
 
