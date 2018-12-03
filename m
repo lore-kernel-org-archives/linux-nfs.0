@@ -5,61 +5,61 @@ X-Spam-Level:
 X-Spam-Status: No, score=-7.0 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
+	SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3AFF9C04EBF
-	for <linux-nfs@archiver.kernel.org>; Mon,  3 Dec 2018 10:47:56 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id F2A29C04EB9
+	for <linux-nfs@archiver.kernel.org>; Mon,  3 Dec 2018 11:04:24 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id F35AB20850
-	for <linux-nfs@archiver.kernel.org>; Mon,  3 Dec 2018 10:47:55 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id BA5EF214C1
+	for <linux-nfs@archiver.kernel.org>; Mon,  3 Dec 2018 11:04:24 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="UkheMb3b"
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org F35AB20850
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="Hxg7p5A8"
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org BA5EF214C1
 Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=gmail.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726115AbeLCKsX (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 3 Dec 2018 05:48:23 -0500
-Received: from mail-yb1-f194.google.com ([209.85.219.194]:33033 "EHLO
-        mail-yb1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725907AbeLCKsX (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Dec 2018 05:48:23 -0500
-Received: by mail-yb1-f194.google.com with SMTP id f125so335143ybc.0;
-        Mon, 03 Dec 2018 02:47:51 -0800 (PST)
+        id S1726191AbeLCLEy (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 3 Dec 2018 06:04:54 -0500
+Received: from mail-yw1-f65.google.com ([209.85.161.65]:41553 "EHLO
+        mail-yw1-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725888AbeLCLEy (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Dec 2018 06:04:54 -0500
+Received: by mail-yw1-f65.google.com with SMTP id f65so5194831ywc.8;
+        Mon, 03 Dec 2018 03:04:19 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=mime-version:references:in-reply-to:from:date:message-id:subject:to
          :cc;
-        bh=7bcB3r6I62FZ5AnIBxpBym3H8xID8B6CGGqT9NYFMMg=;
-        b=UkheMb3bz5HtMEYb17tynaaJADu6PR5e3sFsfGDDX0tv/vlaoVEJ1fJi9Tcxw01e7c
-         ijFs/whiiyC+8OSJWlr/eLKPk7VxNVuKWoMKnSP3VrkRDT07rWEifJyNrhad0ofszT4r
-         ha8ruGnsb74+QY+ur5q8bfdwKDZrpTt/5kjAcYurgx+NfOpjC8uFPNJheOehqe97R8av
-         9pIjuDVTde2695R+PVCy4huB8nacVUHdXDujDTqMx1eS1aVt/FZzMhvCbRivLV4ir33t
-         y1vqKW3UuqzDNcBZBSlc/+pAQ/E5E9Q6yMJAd5mtGeHGQZy/koWS3/kCaIaN95baOpTK
-         0apA==
+        bh=yYbezS2DF8oB0aKiloCHakgmqPdE9VfXa786+ZWAcAQ=;
+        b=Hxg7p5A8LksQPrJp5yFcxVmRsutTMyRCS6rDmDnqKSauMg91xIQ1k2/7l80d883gX5
+         IjUg3FW4m3/q4nOYAX1FCsPHESaEcjcAMZLlm9VBviCQENnVKRrLaSqICj0m07Z9SjtJ
+         cPesSRpfSiO67+kpCPvweJvzheLWk2NVrhfM0PFh6z8R4LDNBW8W2eBRlNZ+jdVHJGfg
+         4pgbd+MZnDgTrndb4gUZUjx0KLl5Ed9kwPp+fwJmBtsC5/JbnJNDlh3gb5l25L+heqBn
+         oVLsl2oMBI0rcKuaxPybLxmUrNqfNsPU6GvMw+iSxY/hTL6M0YU3QBYDAexwsLK8a/Iv
+         mEHw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:mime-version:references:in-reply-to:from:date
          :message-id:subject:to:cc;
-        bh=7bcB3r6I62FZ5AnIBxpBym3H8xID8B6CGGqT9NYFMMg=;
-        b=dTNH1PbBKbER5f/MoKvvQJ5AzBKmkr6opA+8eSn9+qVFyYQN6ddWwhXk8v1mB2W9Wq
-         NZvJrcqk7FPdx7ZKR9uibMRrfA7Ga2RojP4GXcSzvLbdg1txwuiQjZLrioRyPUjBPh1C
-         1S71pkgdWB2KGXD2wh8DDp7tOJjUTUr+icK2dDtczD+DQTV6cvfrQErfdCNIB8FsezU4
-         EXWHlMdr/5xRbR84O33Umq4ukHE7O+cCGyB1F9PhXsBSPbCtREAvNEYazu/pWBNk0AMl
-         UsrqJUOnlljOn5Ep6YY9JYumpbza5tDFWMI1IMzkCnHH75Y9ubJQTS71H2WE5FBPQPH8
-         ctFw==
-X-Gm-Message-State: AA+aEWYOcR8TncP+dRi+p/uYdcv14dlTjjR7R9xnSPGQA0zb8ZH/nY11
-        qIwmKaUdEWeQCRcOLm0yYkWgJGsWDvy46v2vVnmQsTVn
-X-Google-Smtp-Source: AFSGD/Xpw8L7hVEa6Kymc0bVf7U/Ie4+R0oB22xCofxojIWYobATqEMKbShmjjjPxk7ty1NpSohiVd09aPbDI2CXxMY=
-X-Received: by 2002:a25:e4c1:: with SMTP id b184-v6mr14741231ybh.337.1543834071245;
- Mon, 03 Dec 2018 02:47:51 -0800 (PST)
+        bh=yYbezS2DF8oB0aKiloCHakgmqPdE9VfXa786+ZWAcAQ=;
+        b=Ab2n8KQkPctlJGh6y1tCs51lFax5HM41QcOOppoqoGdyZk3nMDAsz4izpB1KLIX6+H
+         jYtwpR4ar47721MAv5ByKkj9DPXSSYw8svnT+ML2pZcdepcputUAhtG0dG+S3nhXnCOe
+         QVCh3J3/OHrQWHtfJqkl6kGG5n1VgNJp4AdjKPrVLC/Z48lmBRpBNoe/kSMLrVk5XyiJ
+         PBJWO3cacNl+CyYy6A1PpjTSDXvfD1emQfIes+NfYzOeXPpk9xNjjXFJmWHXEu9wQor6
+         eFPb2mU3isHPYMIpaFhRQBL0sCn/uFMtX6KUgN4uqWYXFoSoa1/gi0luj4EF5lf508U1
+         +fng==
+X-Gm-Message-State: AA+aEWaiFdUMg5+CflmT9WFkFVBDdzAGCYBvHEKtIYRsDD8SEDGveF5w
+        aYKTyoB50KJsJ0TzR2VK5KCFMp4wtDfJZ9LRuMMVGRM7
+X-Google-Smtp-Source: AFSGD/UiyrsQxOqCbA5c37ynWu5+MWmfu8ymrPZoK9Ax7iti1JTlKwDTFrQIUXzBthu27U8BbE5r6TliP/ByDi/Hfn8=
+X-Received: by 2002:a81:2916:: with SMTP id p22mr15137935ywp.176.1543835058475;
+ Mon, 03 Dec 2018 03:04:18 -0800 (PST)
 MIME-Version: 1.0
-References: <20181203083416.28978-1-david@fromorbit.com> <20181203083416.28978-8-david@fromorbit.com>
-In-Reply-To: <20181203083416.28978-8-david@fromorbit.com>
+References: <20181203083416.28978-1-david@fromorbit.com> <20181203083416.28978-9-david@fromorbit.com>
+In-Reply-To: <20181203083416.28978-9-david@fromorbit.com>
 From:   Amir Goldstein <amir73il@gmail.com>
-Date:   Mon, 3 Dec 2018 12:47:39 +0200
-Message-ID: <CAOQ4uxiCi9qJ15J=L6fNjuLGykQm5CDuJ-=Y=TwTP5c=jx-_fA@mail.gmail.com>
-Subject: Re: [PATCH 07/11] vfs: copy_file_range should update file timestamps
+Date:   Mon, 3 Dec 2018 13:04:07 +0200
+Message-ID: <CAOQ4uxgwZLsO1yV37_CHaZ-O+-+-OggSP9g6m9YE57kLPc5yDw@mail.gmail.com>
+Subject: Re: [PATCH 08/11] vfs: push EXDEV check down into ->remap_file_range
 To:     Dave Chinner <david@fromorbit.com>
 Cc:     linux-fsdevel <linux-fsdevel@vger.kernel.org>,
         linux-xfs <linux-xfs@vger.kernel.org>,
@@ -77,47 +77,61 @@ On Mon, Dec 3, 2018 at 10:34 AM Dave Chinner <david@fromorbit.com> wrote:
 >
 > From: Dave Chinner <dchinner@redhat.com>
 >
-> Timestamps are not updated right now, so programs looking for
-> timestamp updates for file modifications (like rsync) will not
-> detect that files have changed. We are also accessing the source
-> data when doing a copy (but not when cloning) so we need to update
-> atime on the source file as well.
+> before we can enable cross-device copies into copy_file_range(),
+> we have to ensure that ->remap_file_range() implemenations will
+> correctly reject attempts to do cross filesystem clones. Currently
+
+But you only fixed remap_file_range() implemenations of xfs and ocfs2...
+
+> these checks are done above calls to ->remap_file_range(), but
+> we need to drive them inwards so that we get EXDEV protection for all
+> callers of ->remap_file_range().
 >
 > Signed-off-by: Dave Chinner <dchinner@redhat.com>
 > ---
->  fs/read_write.c | 10 ++++++++++
->  1 file changed, 10 insertions(+)
+>  fs/read_write.c | 21 +++++++++++++--------
+>  1 file changed, 13 insertions(+), 8 deletions(-)
 >
 > diff --git a/fs/read_write.c b/fs/read_write.c
-> index 3b101183ea19..3288db1d5f21 100644
+> index 3288db1d5f21..174cf92eea1d 100644
 > --- a/fs/read_write.c
 > +++ b/fs/read_write.c
-> @@ -1576,6 +1576,16 @@ static ssize_t do_copy_file_range(struct file *file_in, loff_t pos_in,
->  {
->         ssize_t ret;
+> @@ -1909,6 +1909,19 @@ int generic_remap_file_range_prep(struct file *file_in, loff_t pos_in,
+>         bool same_inode = (inode_in == inode_out);
+>         int ret;
 >
-> +       /* Update source timestamps, because we are accessing file data */
-> +       file_accessed(file_in);
+> +       /*
+> +        * FICLONE/FICLONERANGE ioctls enforce that src and dest files are on
+> +        * the same mount. Practically, they only need to be on the same file
+> +        * system. We check this here rather than at the ioctl layers because
+> +        * this is effectively a limitation of the fielsystem implementations,
+> +        * not so much the API itself. Further, ->remap_file_range() can be
+> +        * called from syscalls that don't have cross device copy restrictions
+> +        * (such as copy_file_range()) and so we need to catch them before we
+> +        * do any damage.
+> +        */
+> +       if (inode_in->i_sb != inode_out->i_sb)
+> +               return -EXDEV;
 > +
-> +       /* Update destination timestamps, since we can alter file contents. */
-> +       if (!(file_out->f_mode & FMODE_NOCMTIME)) {
-> +               ret = file_update_time(file_out);
-> +               if (ret)
-> +                       return ret;
-> +       }
-> +
+>         /* Don't touch certain kinds of inodes */
+>         if (IS_IMMUTABLE(inode_out))
+>                 return -EPERM;
+> @@ -2013,14 +2026,6 @@ loff_t do_clone_file_range(struct file *file_in, loff_t pos_in,
+>         if (!S_ISREG(inode_in->i_mode) || !S_ISREG(inode_out->i_mode))
+>                 return -EINVAL;
+>
+> -       /*
+> -        * FICLONE/FICLONERANGE ioctls enforce that src and dest files are on
+> -        * the same mount. Practically, they only need to be on the same file
+> -        * system.
+> -        */
+> -       if (inode_in->i_sb != inode_out->i_sb)
+> -               return -EXDEV;
+> -
 
-If there is a consistency about who is responsible of calling file_accessed()
-and file_update_time() it eludes me. grep tells me that they are mostly
-handled by filesystem code or generic helpers called by filesystem code
-and not in the vfs helpers.
-
-FMODE_NOCMTIME seems like an xfs specific flag (for DMAPI?), which
-most generic callers of file_update_time() completely ignore.
-This seems like another argument in favor of leaving the responsibility
-of the timestamp updates to the filesystem.
-
-Maybe I am missing something?
+That leaves {nfs42,cifs,btrfs}_remap_file_range() exposed to passing
+files not of their own fs type let alone same sb when do_clone_file_range()
+is called from ovl_copy_up_data().
 
 Thanks,
 Amir.
