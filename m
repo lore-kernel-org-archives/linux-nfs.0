@@ -6,25 +6,25 @@ X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id EAC4AC04EB8
-	for <linux-nfs@archiver.kernel.org>; Mon,  3 Dec 2018 00:33:23 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 53B10C64EB4
+	for <linux-nfs@archiver.kernel.org>; Mon,  3 Dec 2018 00:33:30 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id B78F620659
-	for <linux-nfs@archiver.kernel.org>; Mon,  3 Dec 2018 00:33:23 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org B78F620659
+	by mail.kernel.org (Postfix) with ESMTP id 1F17F20659
+	for <linux-nfs@archiver.kernel.org>; Mon,  3 Dec 2018 00:33:30 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 1F17F20659
 Authentication-Results: mail.kernel.org; dmarc=none (p=none dis=none) header.from=suse.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726068AbeLCAd1 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 2 Dec 2018 19:33:27 -0500
-Received: from mx2.suse.de ([195.135.220.15]:41208 "EHLO mx1.suse.de"
+        id S1725803AbeLCAdd (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sun, 2 Dec 2018 19:33:33 -0500
+Received: from mx2.suse.de ([195.135.220.15]:41230 "EHLO mx1.suse.de"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1725785AbeLCAd1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sun, 2 Dec 2018 19:33:27 -0500
+        id S1725785AbeLCAdd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sun, 2 Dec 2018 19:33:33 -0500
 X-Virus-Scanned: by amavisd-new at test-mx.suse.de
-Received: from relay1.suse.de (unknown [195.135.220.254])
-        by mx1.suse.de (Postfix) with ESMTP id 30E87AD90;
-        Mon,  3 Dec 2018 00:33:20 +0000 (UTC)
+Received: from relay2.suse.de (unknown [195.135.220.254])
+        by mx1.suse.de (Postfix) with ESMTP id 81F39AD90;
+        Mon,  3 Dec 2018 00:33:26 +0000 (UTC)
 From:   NeilBrown <neilb@suse.com>
 To:     "J. Bruce Fields" <bfields@fieldses.org>,
         Chuck Lever <chuck.lever@oracle.com>,
@@ -32,11 +32,11 @@ To:     "J. Bruce Fields" <bfields@fieldses.org>,
         Trond Myklebust <trond.myklebust@hammerspace.com>,
         Anna Schumaker <anna.schumaker@netapp.com>
 Date:   Mon, 03 Dec 2018 11:30:30 +1100
-Subject: [PATCH 13/23] SUNRPC: introduce RPC_TASK_NULLCREDS to request
- auth_none
+Subject: [PATCH 14/23] SUNRPC: add side channel to use non-generic cred for
+ rpc call.
 Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
         linux-kernel@vger.kernel.org
-Message-ID: <154379703063.28598.7939095418189753352.stgit@noble>
+Message-ID: <154379703067.28598.6540375775619413453.stgit@noble>
 In-Reply-To: <154379689752.28598.6750646657534626618.stgit@noble>
 References: <154379689752.28598.6750646657534626618.stgit@noble>
 User-Agent: StGit/0.17.1-dirty
@@ -48,106 +48,107 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-In almost all cases the credential stored in rpc_message.rpc_cred
-is a "generic" credential.  One of the two expections is when an
-AUTH_NULL credential is used such as for RPC ping requests.
+The credential passed in rpc_message.rpc_cred is always a
+generic credential except in one instance.
+When gss_destroying_context() calls rpc_call_null(), it passes
+a specific credential that it needs to destroy.
+In this case the RPC acts *on* the credential rather than
+being authorized by it.
 
-To improve consistency, don't pass an explicit credential in
-these cases, but instead pass NULL and set a task flag,
-similar to RPC_TASK_ROOTCREDS, which requests that NULL credentials
-be used by default.
+This special case deserves explicit support and providing that will
+mean that rpc_message.rpc_cred is *always* generic, allowing
+some optimizations.
+
+So add "tk_op_cred" to rpc_task and "rpc_op_cred" to the setup data.
+Use this to pass the cred down from rpc_call_null(), and have
+rpcauth_bindcred() notice it and bind it in place.
+
+Credit to kernel test robot <fengguang.wu@intel.com> for finding
+a bug in earlier version of this patch.
 
 Signed-off-by: NeilBrown <neilb@suse.com>
 ---
- include/linux/sunrpc/sched.h |    1 +
- net/sunrpc/auth.c            |    2 ++
- net/sunrpc/clnt.c            |   19 ++++++-------------
- 3 files changed, 9 insertions(+), 13 deletions(-)
+ include/linux/sunrpc/sched.h |    2 ++
+ net/sunrpc/auth.c            |    6 +++++-
+ net/sunrpc/clnt.c            |    2 +-
+ net/sunrpc/sched.c           |    3 +++
+ 4 files changed, 11 insertions(+), 2 deletions(-)
 
 diff --git a/include/linux/sunrpc/sched.h b/include/linux/sunrpc/sched.h
-index f542dad8d4ab..bd722ebc70b7 100644
+index bd722ebc70b7..4e2b893b83a8 100644
 --- a/include/linux/sunrpc/sched.h
 +++ b/include/linux/sunrpc/sched.h
-@@ -118,6 +118,7 @@ struct rpc_task_setup {
-  */
- #define RPC_TASK_ASYNC		0x0001		/* is an async task */
- #define RPC_TASK_SWAPPER	0x0002		/* is swapping in/out */
-+#define RPC_TASK_NULLCREDS	0x0010		/* Use AUTH_NULL credential */
- #define RPC_CALL_MAJORSEEN	0x0020		/* major timeout seen */
- #define RPC_TASK_ROOTCREDS	0x0040		/* force root creds */
- #define RPC_TASK_DYNAMIC	0x0080		/* task was kmalloc'ed */
+@@ -71,6 +71,7 @@ struct rpc_task {
+ 
+ 	struct rpc_clnt *	tk_client;	/* RPC client */
+ 	struct rpc_xprt *	tk_xprt;	/* Transport */
++	struct rpc_cred *	tk_op_cred;	/* cred being operated on */
+ 
+ 	struct rpc_rqst *	tk_rqstp;	/* RPC request */
+ 
+@@ -105,6 +106,7 @@ struct rpc_task_setup {
+ 	struct rpc_task *task;
+ 	struct rpc_clnt *rpc_client;
+ 	struct rpc_xprt *rpc_xprt;
++	struct rpc_cred *rpc_op_cred;	/* credential being operated on */
+ 	const struct rpc_message *rpc_message;
+ 	const struct rpc_call_ops *callback_ops;
+ 	void *callback_data;
 diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
-index 9e709dcc8c39..dcfcc590b34e 100644
+index dcfcc590b34e..27d90578e7a0 100644
 --- a/net/sunrpc/auth.c
 +++ b/net/sunrpc/auth.c
-@@ -761,6 +761,8 @@ rpcauth_bindcred(struct rpc_task *task, struct rpc_cred *cred, int flags)
- 		;
- 	else if (cred == &machine_cred || (flags & RPC_TASK_ROOTCREDS))
- 		new = rpcauth_bind_root_cred(task, lookupflags);
-+	else if (flags & RPC_TASK_NULLCREDS)
-+		new = authnull_ops.lookup_cred(NULL, NULL, 0);
- 	else
- 		new = rpcauth_bind_new_cred(task, lookupflags);
- 	if (IS_ERR(new))
+@@ -751,7 +751,11 @@ rpcauth_bindcred(struct rpc_task *task, struct rpc_cred *cred, int flags)
+ 
+ 	if (flags & RPC_TASK_ASYNC)
+ 		lookupflags |= RPCAUTH_LOOKUP_NEW;
+-	if (cred != NULL && cred != &machine_cred)
++	if (task->tk_op_cred)
++		/* Task must use exactly this rpc_cred */
++		new = task->tk_op_cred->cr_ops->crbind(task, task->tk_op_cred,
++						       lookupflags);
++	else if (cred != NULL && cred != &machine_cred)
+ 		new = cred->cr_ops->crbind(task, cred, lookupflags);
+ 	else if (cred == &machine_cred)
+ 		new = rpcauth_bind_machine_cred(task, lookupflags);
 diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index 7c720b60f482..1217d874202c 100644
+index 1217d874202c..87a517d576c1 100644
 --- a/net/sunrpc/clnt.c
 +++ b/net/sunrpc/clnt.c
-@@ -2513,9 +2513,8 @@ static int rpc_ping(struct rpc_clnt *clnt)
+@@ -2525,12 +2525,12 @@ struct rpc_task *rpc_call_null_helper(struct rpc_clnt *clnt,
+ {
+ 	struct rpc_message msg = {
  		.rpc_proc = &rpcproc_null,
+-		.rpc_cred = cred,
  	};
- 	int err;
--	msg.rpc_cred = authnull_ops.lookup_cred(NULL, NULL, 0);
--	err = rpc_call_sync(clnt, &msg, RPC_TASK_SOFT | RPC_TASK_SOFTCONN);
--	put_rpccred(msg.rpc_cred);
-+	err = rpc_call_sync(clnt, &msg, RPC_TASK_SOFT | RPC_TASK_SOFTCONN |
-+			    RPC_TASK_NULLCREDS);
- 	return err;
- }
+ 	struct rpc_task_setup task_setup_data = {
+ 		.rpc_client = clnt,
+ 		.rpc_xprt = xprt,
+ 		.rpc_message = &msg,
++		.rpc_op_cred = cred,
+ 		.callback_ops = (ops != NULL) ? ops : &rpc_default_ops,
+ 		.callback_data = data,
+ 		.flags = flags,
+diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
+index 57ca5bead1cb..c9f65037a6ad 100644
+--- a/net/sunrpc/sched.c
++++ b/net/sunrpc/sched.c
+@@ -997,6 +997,8 @@ static void rpc_init_task(struct rpc_task *task, const struct rpc_task_setup *ta
  
-@@ -2585,7 +2584,6 @@ int rpc_clnt_test_and_add_xprt(struct rpc_clnt *clnt,
- 		void *dummy)
+ 	task->tk_xprt = xprt_get(task_setup_data->rpc_xprt);
+ 
++	task->tk_op_cred = get_rpccred(task_setup_data->rpc_op_cred);
++
+ 	if (task->tk_ops->rpc_call_prepare != NULL)
+ 		task->tk_action = rpc_prepare_task;
+ 
+@@ -1054,6 +1056,7 @@ static void rpc_free_task(struct rpc_task *task)
  {
- 	struct rpc_cb_add_xprt_calldata *data;
--	struct rpc_cred *cred;
- 	struct rpc_task *task;
+ 	unsigned short tk_flags = task->tk_flags;
  
- 	data = kmalloc(sizeof(*data), GFP_NOFS);
-@@ -2594,11 +2592,9 @@ int rpc_clnt_test_and_add_xprt(struct rpc_clnt *clnt,
- 	data->xps = xprt_switch_get(xps);
- 	data->xprt = xprt_get(xprt);
++	put_rpccred(task->tk_op_cred);
+ 	rpc_release_calldata(task->tk_ops, task->tk_calldata);
  
--	cred = authnull_ops.lookup_cred(NULL, NULL, 0);
--	task = rpc_call_null_helper(clnt, xprt, cred,
--			RPC_TASK_SOFT|RPC_TASK_SOFTCONN|RPC_TASK_ASYNC,
-+	task = rpc_call_null_helper(clnt, xprt, NULL,
-+			RPC_TASK_SOFT|RPC_TASK_SOFTCONN|RPC_TASK_ASYNC|RPC_TASK_NULLCREDS,
- 			&rpc_cb_add_xprt_call_ops, data);
--	put_rpccred(cred);
- 	if (IS_ERR(task))
- 		return PTR_ERR(task);
- 	rpc_put_task(task);
-@@ -2629,7 +2625,6 @@ int rpc_clnt_setup_test_and_add_xprt(struct rpc_clnt *clnt,
- 				     struct rpc_xprt *xprt,
- 				     void *data)
- {
--	struct rpc_cred *cred;
- 	struct rpc_task *task;
- 	struct rpc_add_xprt_test *xtest = (struct rpc_add_xprt_test *)data;
- 	int status = -EADDRINUSE;
-@@ -2641,11 +2636,9 @@ int rpc_clnt_setup_test_and_add_xprt(struct rpc_clnt *clnt,
- 		goto out_err;
- 
- 	/* Test the connection */
--	cred = authnull_ops.lookup_cred(NULL, NULL, 0);
--	task = rpc_call_null_helper(clnt, xprt, cred,
--				    RPC_TASK_SOFT | RPC_TASK_SOFTCONN,
-+	task = rpc_call_null_helper(clnt, xprt, NULL,
-+				    RPC_TASK_SOFT | RPC_TASK_SOFTCONN | RPC_TASK_NULLCREDS,
- 				    NULL, NULL);
--	put_rpccred(cred);
- 	if (IS_ERR(task)) {
- 		status = PTR_ERR(task);
- 		goto out_err;
+ 	if (tk_flags & RPC_TASK_DYNAMIC) {
 
 
