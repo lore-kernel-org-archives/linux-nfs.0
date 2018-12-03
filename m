@@ -2,272 +2,302 @@ Return-Path: <SRS0=4jnv=OM=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.0 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+X-Spam-Status: No, score=-6.8 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
+	SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id AECFCC04EBF
-	for <linux-nfs@archiver.kernel.org>; Mon,  3 Dec 2018 21:33:50 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id AC66DC04EB9
+	for <linux-nfs@archiver.kernel.org>; Mon,  3 Dec 2018 21:57:57 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 6D8BA20864
-	for <linux-nfs@archiver.kernel.org>; Mon,  3 Dec 2018 21:33:50 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 6463520850
+	for <linux-nfs@archiver.kernel.org>; Mon,  3 Dec 2018 21:57:57 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="nOqY6D5/"
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 6D8BA20864
-Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=gmail.com
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="GoEMw2mS"
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 6463520850
+Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=oracle.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726423AbeLCVdq (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 3 Dec 2018 16:33:46 -0500
-Received: from mail-vs1-f66.google.com ([209.85.217.66]:45409 "EHLO
-        mail-vs1-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726310AbeLCVdo (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Dec 2018 16:33:44 -0500
-Received: by mail-vs1-f66.google.com with SMTP id v10so8486352vsv.12;
-        Mon, 03 Dec 2018 13:33:43 -0800 (PST)
+        id S1725873AbeLCV54 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 3 Dec 2018 16:57:56 -0500
+Received: from mail-it1-f195.google.com ([209.85.166.195]:37055 "EHLO
+        mail-it1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725800AbeLCV54 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Dec 2018 16:57:56 -0500
+Received: by mail-it1-f195.google.com with SMTP id b5so11135065iti.2;
+        Mon, 03 Dec 2018 13:57:55 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
-        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
-         :cc:content-transfer-encoding;
-        bh=h83uuEMqbyYW2puI+p5UO4rto49vV57YhosagfKJYM0=;
-        b=nOqY6D5/fBmN2vyDH3r+WmzwxYXZBDDfQJl1sQ3M54P1j/0EHfLj9WxKP+BCCpwdk5
-         RteHJC38VeCMRRZYx9vQRGFmUBEa9VkmdsnAXoO4hpBeQFj7jbJVSKztEeoRD35SUcB5
-         uG8q3fZGv0rsD5dI2QAA+kdXDYQ/0wjI0CBKJiyPL8Q3OFbrGNP+3RyYTGHZoraWFKHe
-         PwEDFVr5z38S2i1pI0ubAWI9lndP8r0MS/vVFxteDNXk6e3Mcdz/z5K6bSoQtku2TG0d
-         bay7M1LpNiW3uOZR6xFMnX7s/D5R4VGl56Cl8oxa3tMAfc1upnc21PK+mUMzbezedDnZ
-         jt4w==
+        h=sender:subject:from:to:date:message-id:user-agent:mime-version
+         :content-transfer-encoding;
+        bh=lDqP1Ip5qcTjHPqygXcvs/+TGuV6f8PRn+PjImc80xw=;
+        b=GoEMw2mSvx5Zv3XjQW3ef7GR0FYVGbedi4gQMb3gX+nMgAhlLpF8YKFL4wrcBbaqm6
+         zhglmI7xeAg4pKpCiz2tKFm3P/Phqs+rSuKniFieQfQisgYXRs1juSC6IP0Qb5v8gmLB
+         jVcTNrxl1TPk0VtJFn/EoshBBW+2E9R82fhH72E/KEyqLMsIhki8bwTeWL9/x3qpHJSz
+         02lIc5TQOAqPLZnBF9M+Gi2O8bRiTqjZYO+mOH6Dg1TLkoTp39P4kzICZTklIALtd+mY
+         53uI3Pw1cqKHcdmob3awGy6DEN2FisqTVZYkG6QlleWOYgQmvOfbFRfhsFRI52aHBVvt
+         MRUg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
-         :message-id:subject:to:cc:content-transfer-encoding;
-        bh=h83uuEMqbyYW2puI+p5UO4rto49vV57YhosagfKJYM0=;
-        b=sWRHVrrAphqh20k+IApv+DUiyC2w+1C4/ibEkDbwPlgOAthgF/6118AHoZ1bDvO9oA
-         DraKJTEAv2VnlSr42v/MztVPwP8lhfEVQvEo2AX37TbGuzIwEVaBTHKgttagzUSOafUW
-         m2VM3c1Xpgi19zNNHSZy30j1M2PzJX6IbKQWK+UPqPFKRhN5WX9nmHa35BG0RomTae7n
-         OWULOJVzy35wHeI3tQl5kYqsfhF/lI8/ynQ43L1gGa2EBJFfLCKVlQKXDetCaJiWfEHZ
-         2yoNqThfE7aCiMm/wHwBbjALxua8poQiHc9SXYKkBALcn7VN0M5T+zmw68mZ4xGomrXt
-         CJFw==
-X-Gm-Message-State: AA+aEWZ/CbaZYsNNjMPsgYK8NICNJNcvTPC6Qhi4F2oId4s69nL8g831
-        3++g3/dqtwhXfOqfxjNjE6Z0Lsa0TGrUXT7az42zwXmf
-X-Google-Smtp-Source: AFSGD/XNEEswB1tkzM9hdQyszIx85DUwI40X7UlUauYAKLERFH13noLY43tDOIoF1se0pY3ynoV7NOvRT8MNFC38XSw=
-X-Received: by 2002:a67:4285:: with SMTP id p127mr7635658vsa.134.1543872822601;
- Mon, 03 Dec 2018 13:33:42 -0800 (PST)
+        h=x-gm-message-state:sender:subject:from:to:date:message-id
+         :user-agent:mime-version:content-transfer-encoding;
+        bh=lDqP1Ip5qcTjHPqygXcvs/+TGuV6f8PRn+PjImc80xw=;
+        b=nDzMMp4lDNIqDKRnT6h+w5WqPfAXmdzxYIVBqrx7G/QfOlUXzPhULY7ZgLMa9tZuQQ
+         E/S9Edj6dHtDf9OjedKNUoBM7+k5aevbkK96qzvVEdNN36dAl8mDV5bqEP95U8Hi/V0M
+         NUbaH1FaJd9A/ENCTK9HGVnICdfhrkudf4bS5aqiUo4jM2HtkYsQEf/Qs8JD8ZzrGBsG
+         TUXzDd/w0AejxwFk873OWy46nB3+rO+Qdprt8h0mlLC6um+rKCWkARThNPi7btvXUYdv
+         GbMKoIbYy2ogYVgTr/HEhRwY0l2Abp3sU/twdA1eEBHeagxdBm/dOy6RiI00bRcQh9cB
+         Pg8g==
+X-Gm-Message-State: AA+aEWY3kQ97BzjCoA6Y2RAxTBM3roNTVUt3BcQCp1AnRypCt0UWcbBx
+        bEyK55r41QOZLLPNxvXRT6lyph7r
+X-Google-Smtp-Source: AFSGD/WHbm2Jz66d3muawawknWnNAaVSZhZJxrsfKp/PEIb4AtqWWGU2cvuObijcJ24kaBI9hEbffg==
+X-Received: by 2002:a02:b719:: with SMTP id g25mr15446411jam.46.1543874274724;
+        Mon, 03 Dec 2018 13:57:54 -0800 (PST)
+Received: from gateway.1015granger.net (c-68-61-232-219.hsd1.mi.comcast.net. [68.61.232.219])
+        by smtp.gmail.com with ESMTPSA id y10sm3164703iom.64.2018.12.03.13.57.53
+        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Mon, 03 Dec 2018 13:57:53 -0800 (PST)
+Received: from klimt.1015granger.net (klimt.1015granger.net [192.168.1.55])
+        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id wB3Lvqfn011879;
+        Mon, 3 Dec 2018 21:57:52 GMT
+Subject: [PATCH v2] svcrdma: Optimize the logic that selects the R_key to
+ invalidate
+From:   Chuck Lever <chuck.lever@oracle.com>
+To:     linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Date:   Mon, 03 Dec 2018 16:57:52 -0500
+Message-ID: <20181203215547.2153.92661.stgit@klimt.1015granger.net>
+User-Agent: StGit/0.17.1-dirty
 MIME-Version: 1.0
-References: <20181203083416.28978-1-david@fromorbit.com> <20181203083416.28978-5-david@fromorbit.com>
-In-Reply-To: <20181203083416.28978-5-david@fromorbit.com>
-From:   Olga Kornievskaia <olga.kornievskaia@gmail.com>
-Date:   Mon, 3 Dec 2018 16:33:30 -0500
-Message-ID: <CAN-5tyH2RX_7SkvipnKkM2EF6_cHJ9qG6g9W+Ufb9+5r-Zb4hg@mail.gmail.com>
-Subject: Re: [PATCH 04/11] vfs: add missing checks to copy_file_range
-To:     david@fromorbit.com
-Cc:     linux-fsdevel@vger.kernel.org, linux-xfs@vger.kernel.org,
-        linux-nfs <linux-nfs@vger.kernel.org>,
-        linux-unionfs@vger.kernel.org, ceph-devel@vger.kernel.org,
-        linux-cifs@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Mon, Dec 3, 2018 at 3:34 AM Dave Chinner <david@fromorbit.com> wrote:
->
-> From: Dave Chinner <dchinner@redhat.com>
->
-> Like the clone and dedupe interfaces we've recently fixed, the
-> copy_file_range() implementation is missing basic sanity, limits and
-> boundary condition tests on the parameters that are passed to it
-> from userspace. Create a new "generic_copy_file_checks()" function
-> modelled on the generic_remap_checks() function to provide this
-> missing functionality.
->
-> Signed-off-by: Dave Chinner <dchinner@redhat.com>
-> ---
->  fs/read_write.c    | 27 ++++++------------
->  include/linux/fs.h |  3 ++
->  mm/filemap.c       | 69 ++++++++++++++++++++++++++++++++++++++++++++++
->  3 files changed, 81 insertions(+), 18 deletions(-)
->
-> diff --git a/fs/read_write.c b/fs/read_write.c
-> index 44339b44accc..69809345977e 100644
-> --- a/fs/read_write.c
-> +++ b/fs/read_write.c
-> @@ -1578,7 +1578,7 @@ static ssize_t do_copy_file_range(struct file *file=
-_in, loff_t pos_in,
->                 return file_out->f_op->copy_file_range(file_in, pos_in, f=
-ile_out,
->                                                       pos_out, len, flags=
-);
->
-> -       return generic_copy_file_range(file_in, &pos_in, file_out, &pos_o=
-ut,
-> +       return generic_copy_file_range(file_in, pos_in, file_out, pos_out=
-,
->                                         len, flags);
->  }
->
-> @@ -1598,10 +1598,14 @@ ssize_t vfs_copy_file_range(struct file *file_in,=
- loff_t pos_in,
->         if (flags !=3D 0)
->                 return -EINVAL;
->
-> -       if (S_ISDIR(inode_in->i_mode) || S_ISDIR(inode_out->i_mode))
-> -               return -EISDIR;
-> -       if (!S_ISREG(inode_in->i_mode) || !S_ISREG(inode_out->i_mode))
-> -               return -EINVAL;
-> +       /* this could be relaxed once a method supports cross-fs copies *=
-/
-> +       if (inode_in->i_sb !=3D inode_out->i_sb)
-> +               return -EXDEV;
-> +
-> +       ret =3D generic_copy_file_checks(file_in, pos_in, file_out, pos_o=
-ut, &len,
-> +                                       flags);
-> +       if (ret < 0)
-> +               return ret;
->
->         ret =3D rw_verify_area(READ, file_in, &pos_in, len);
->         if (unlikely(ret))
-> @@ -1611,22 +1615,9 @@ ssize_t vfs_copy_file_range(struct file *file_in, =
-loff_t pos_in,
->         if (unlikely(ret))
->                 return ret;
->
-> -       if (!(file_in->f_mode & FMODE_READ) ||
-> -           !(file_out->f_mode & FMODE_WRITE) ||
-> -           (file_out->f_flags & O_APPEND))
-> -               return -EBADF;
-> -
-> -       /* this could be relaxed once a method supports cross-fs copies *=
-/
-> -       if (inode_in->i_sb !=3D inode_out->i_sb)
-> -               return -EXDEV;
-> -
->         if (len =3D=3D 0)
->                 return 0;
->
-> -       /* If the source range crosses EOF, fail the copy */
-> -       if (pos_in >=3D i_size(inode_in) || pos_in + len > i_size(inode_i=
-n))
-> -               return -EINVAL;
-> -
->         file_start_write(file_out);
->
->         /*
-> diff --git a/include/linux/fs.h b/include/linux/fs.h
-> index a4478764cf63..0d9d2d93d4df 100644
-> --- a/include/linux/fs.h
-> +++ b/include/linux/fs.h
-> @@ -3022,6 +3022,9 @@ extern ssize_t generic_write_checks(struct kiocb *,=
- struct iov_iter *);
->  extern int generic_remap_checks(struct file *file_in, loff_t pos_in,
->                                 struct file *file_out, loff_t pos_out,
->                                 loff_t *count, unsigned int remap_flags);
-> +extern int generic_copy_file_checks(struct file *file_in, loff_t pos_in,
-> +                               struct file *file_out, loff_t pos_out,
-> +                               size_t *count, unsigned int flags);
->  extern ssize_t generic_file_read_iter(struct kiocb *, struct iov_iter *)=
-;
->  extern ssize_t __generic_file_write_iter(struct kiocb *, struct iov_iter=
- *);
->  extern ssize_t generic_file_write_iter(struct kiocb *, struct iov_iter *=
-);
-> diff --git a/mm/filemap.c b/mm/filemap.c
-> index 81adec8ee02c..0a170425935b 100644
-> --- a/mm/filemap.c
-> +++ b/mm/filemap.c
-> @@ -2975,6 +2975,75 @@ int generic_remap_checks(struct file *file_in, lof=
-f_t pos_in,
->         return 0;
->  }
->
-> +
-> +/*
-> + * Performs necessary checks before doing a file copy
-> + *
-> + * Can adjust amount of bytes to copy
-> + * Returns appropriate error code that caller should return or
-> + * zero in case the copy should be allowed.
-> + */
-> +int generic_copy_file_checks(struct file *file_in, loff_t pos_in,
-> +                        struct file *file_out, loff_t pos_out,
-> +                        size_t *req_count, unsigned int flags)
-> +{
-> +       struct inode *inode_in =3D file_inode(file_in);
-> +       struct inode *inode_out =3D file_inode(file_out);
-> +       uint64_t count =3D *req_count;
-> +       uint64_t bcount;
-> +       loff_t size_in, size_out;
-> +       loff_t bs =3D inode_out->i_sb->s_blocksize;
-> +       int ret;
+Make two minor optimizations:
 
-I got compile warnings:
+o Select the R_key to invalidate while the CPU cache still contains
+  the received RPC Call transport header, rather than waiting until
+  we're about to send the RPC Reply.
 
-mm/filemap.c: In function =E2=80=98generic_copy_file_checks=E2=80=99:
-mm/filemap.c:2995:9: warning: unused variable =E2=80=98bs=E2=80=99 [-Wunuse=
-d-variable]
-  loff_t bs =3D inode_out->i_sb->s_blocksize;
-         ^
-mm/filemap.c:2993:11: warning: unused variable =E2=80=98bcount=E2=80=99 [-W=
-unused-variable]
-  uint64_t bcount;
+o Choose Send With Invalidate if there is exactly one distinct R_key
+  in the received transport header.
 
-> +
-> +       /* Don't touch certain kinds of inodes */
-> +       if (IS_IMMUTABLE(inode_out))
-> +               return -EPERM;
-> +
-> +       if (IS_SWAPFILE(inode_in) || IS_SWAPFILE(inode_out))
-> +               return -ETXTBSY;
-> +
-> +       /* Don't copy dirs, pipes, sockets... */
-> +       if (S_ISDIR(inode_in->i_mode) || S_ISDIR(inode_out->i_mode))
-> +               return -EISDIR;
-> +       if (!S_ISREG(inode_in->i_mode) || !S_ISREG(inode_out->i_mode))
-> +               return -EINVAL;
-> +
-> +       if (!(file_in->f_mode & FMODE_READ) ||
-> +           !(file_out->f_mode & FMODE_WRITE) ||
-> +           (file_out->f_flags & O_APPEND))
-> +               return -EBADF;
-> +
-> +       /* Ensure offsets don't wrap. */
-> +       if (pos_in + count < pos_in || pos_out + count < pos_out)
-> +               return -EOVERFLOW;
-> +
-> +       size_in =3D i_size_read(inode_in);
-> +       size_out =3D i_size_read(inode_out);
-> +
-> +       /* If the source range crosses EOF, fail the copy */
-> +       if (pos_in >=3D size_in)
-> +               return -EINVAL;
-> +       if (pos_in + count > size_in)
-> +               return -EINVAL;
-> +
-> +       ret =3D generic_access_check_limits(file_in, pos_in, &count);
-> +       if (ret)
-> +               return ret;
-> +
-> +       ret =3D generic_write_check_limits(file_out, pos_out, &count);
-> +       if (ret)
-> +               return ret;
-> +
-> +       /* Don't allow overlapped copying within the same file. */
-> +       if (inode_in =3D=3D inode_out &&
-> +           pos_out + count > pos_in &&
-> +           pos_out < pos_in + count)
-> +               return -EINVAL;
-> +
-> +       *req_count =3D count;
-> +       return 0;
-> +}
-> +
->  int pagecache_write_begin(struct file *file, struct address_space *mappi=
-ng,
->                                 loff_t pos, unsigned len, unsigned flags,
->                                 struct page **pagep, void **fsdata)
-> --
-> 2.19.1
->
+The reason for the second change:
+
+Remote invalidation can invalidate only a single R_key. If the RPC
+has multiple R_keys, the Receive completion will wait for the
+remote invalidation, and then the RPC completion will wait for the
+local invalidations. Waiting twice takes longer.
+
+This change improves the throughput of large I/Os by a few percent,
+and has no effect on smaller I/Os.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+
+Posting one more time for review.
+
+Changes since v1:
+- Patch description updates suggested by ttalpey@microsoft.com
+- Continuous testing on 4.20-rc4 and -rc5
+
+
+ include/linux/sunrpc/svc_rdma.h         |    1 
+ net/sunrpc/xprtrdma/svc_rdma_recvfrom.c |   63 +++++++++++++++++++++++++++++++
+ net/sunrpc/xprtrdma/svc_rdma_sendto.c   |   53 ++++++--------------------
+ 3 files changed, 77 insertions(+), 40 deletions(-)
+
+diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
+index e6e2691..7e22681 100644
+--- a/include/linux/sunrpc/svc_rdma.h
++++ b/include/linux/sunrpc/svc_rdma.h
+@@ -135,6 +135,7 @@ struct svc_rdma_recv_ctxt {
+ 	u32			rc_byte_len;
+ 	unsigned int		rc_page_count;
+ 	unsigned int		rc_hdr_count;
++	u32			rc_inv_rkey;
+ 	struct page		*rc_pages[RPCSVC_MAXPAGES];
+ };
+ 
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+index b24d5b8..828b149 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+@@ -485,6 +485,68 @@ static __be32 *xdr_check_reply_chunk(__be32 *p, const __be32 *end)
+ 	return p;
+ }
+ 
++/* RPC-over-RDMA Version One private extension: Remote Invalidation.
++ * Responder's choice: requester signals it can handle Send With
++ * Invalidate, and responder chooses one R_key to invalidate.
++ *
++ * If there is exactly one distinct R_key in the received transport
++ * header, set rc_inv_rkey to that R_key. Otherwise, set it to zero.
++ *
++ * Perform this operation while the received transport header is
++ * still in the CPU cache.
++ */
++static void svc_rdma_get_inv_rkey(struct svcxprt_rdma *rdma,
++				  struct svc_rdma_recv_ctxt *ctxt)
++{
++	__be32 inv_rkey, *p;
++	u32 i, segcount;
++
++	ctxt->rc_inv_rkey = 0;
++
++	if (!rdma->sc_snd_w_inv)
++		return;
++
++	inv_rkey = xdr_zero;
++	p = ctxt->rc_recv_buf;
++	p += rpcrdma_fixed_maxsz;
++
++	/* Read list */
++	while (*p++ != xdr_zero) {
++		p++;	/* position */
++		if (inv_rkey == xdr_zero)
++			inv_rkey = *p;
++		else if (inv_rkey != *p)
++			return;
++		p += 4;
++	}
++
++	/* Write list */
++	while (*p++ != xdr_zero) {
++		segcount = be32_to_cpup(p++);
++		for (i = 0; i < segcount; i++) {
++			if (inv_rkey == xdr_zero)
++				inv_rkey = *p;
++			else if (inv_rkey != *p)
++				return;
++			p += 4;
++		}
++	}
++
++	/* Reply chunk */
++	if (*p++ != xdr_zero) {
++		segcount = be32_to_cpup(p++);
++		for (i = 0; i < segcount; i++) {
++			if (inv_rkey == xdr_zero)
++				inv_rkey = *p;
++			else if (inv_rkey != *p)
++				return;
++			p += 4;
++		}
++	}
++
++	ctxt->rc_inv_rkey = be32_to_cpu(inv_rkey);
++}
++
+ /* On entry, xdr->head[0].iov_base points to first byte in the
+  * RPC-over-RDMA header.
+  *
+@@ -746,6 +808,7 @@ int svc_rdma_recvfrom(struct svc_rqst *rqstp)
+ 		svc_rdma_recv_ctxt_put(rdma_xprt, ctxt);
+ 		return ret;
+ 	}
++	svc_rdma_get_inv_rkey(rdma_xprt, ctxt);
+ 
+ 	p += rpcrdma_fixed_maxsz;
+ 	if (*p != xdr_zero)
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+index 8602a5f..d48bc6d 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+@@ -484,32 +484,6 @@ static void svc_rdma_get_write_arrays(__be32 *rdma_argp,
+ 		*reply = NULL;
+ }
+ 
+-/* RPC-over-RDMA Version One private extension: Remote Invalidation.
+- * Responder's choice: requester signals it can handle Send With
+- * Invalidate, and responder chooses one rkey to invalidate.
+- *
+- * Find a candidate rkey to invalidate when sending a reply.  Picks the
+- * first R_key it finds in the chunk lists.
+- *
+- * Returns zero if RPC's chunk lists are empty.
+- */
+-static u32 svc_rdma_get_inv_rkey(__be32 *rdma_argp,
+-				 __be32 *wr_lst, __be32 *rp_ch)
+-{
+-	__be32 *p;
+-
+-	p = rdma_argp + rpcrdma_fixed_maxsz;
+-	if (*p != xdr_zero)
+-		p += 2;
+-	else if (wr_lst && be32_to_cpup(wr_lst + 1))
+-		p = wr_lst + 2;
+-	else if (rp_ch && be32_to_cpup(rp_ch + 1))
+-		p = rp_ch + 2;
+-	else
+-		return 0;
+-	return be32_to_cpup(p);
+-}
+-
+ static int svc_rdma_dma_map_page(struct svcxprt_rdma *rdma,
+ 				 struct svc_rdma_send_ctxt *ctxt,
+ 				 struct page *page,
+@@ -672,7 +646,7 @@ static void svc_rdma_save_io_pages(struct svc_rqst *rqstp,
+  *
+  * RDMA Send is the last step of transmitting an RPC reply. Pages
+  * involved in the earlier RDMA Writes are here transferred out
+- * of the rqstp and into the ctxt's page array. These pages are
++ * of the rqstp and into the sctxt's page array. These pages are
+  * DMA unmapped by each Write completion, but the subsequent Send
+  * completion finally releases these pages.
+  *
+@@ -680,32 +654,31 @@ static void svc_rdma_save_io_pages(struct svc_rqst *rqstp,
+  * - The Reply's transport header will never be larger than a page.
+  */
+ static int svc_rdma_send_reply_msg(struct svcxprt_rdma *rdma,
+-				   struct svc_rdma_send_ctxt *ctxt,
+-				   __be32 *rdma_argp,
++				   struct svc_rdma_send_ctxt *sctxt,
++				   struct svc_rdma_recv_ctxt *rctxt,
+ 				   struct svc_rqst *rqstp,
+ 				   __be32 *wr_lst, __be32 *rp_ch)
+ {
+ 	int ret;
+ 
+ 	if (!rp_ch) {
+-		ret = svc_rdma_map_reply_msg(rdma, ctxt,
++		ret = svc_rdma_map_reply_msg(rdma, sctxt,
+ 					     &rqstp->rq_res, wr_lst);
+ 		if (ret < 0)
+ 			return ret;
+ 	}
+ 
+-	svc_rdma_save_io_pages(rqstp, ctxt);
++	svc_rdma_save_io_pages(rqstp, sctxt);
+ 
+-	ctxt->sc_send_wr.opcode = IB_WR_SEND;
+-	if (rdma->sc_snd_w_inv) {
+-		ctxt->sc_send_wr.ex.invalidate_rkey =
+-			svc_rdma_get_inv_rkey(rdma_argp, wr_lst, rp_ch);
+-		if (ctxt->sc_send_wr.ex.invalidate_rkey)
+-			ctxt->sc_send_wr.opcode = IB_WR_SEND_WITH_INV;
++	if (rctxt->rc_inv_rkey) {
++		sctxt->sc_send_wr.opcode = IB_WR_SEND_WITH_INV;
++		sctxt->sc_send_wr.ex.invalidate_rkey = rctxt->rc_inv_rkey;
++	} else {
++		sctxt->sc_send_wr.opcode = IB_WR_SEND;
+ 	}
+ 	dprintk("svcrdma: posting Send WR with %u sge(s)\n",
+-		ctxt->sc_send_wr.num_sge);
+-	return svc_rdma_send(rdma, &ctxt->sc_send_wr);
++		sctxt->sc_send_wr.num_sge);
++	return svc_rdma_send(rdma, &sctxt->sc_send_wr);
+ }
+ 
+ /* Given the client-provided Write and Reply chunks, the server was not
+@@ -809,7 +782,7 @@ int svc_rdma_sendto(struct svc_rqst *rqstp)
+ 	}
+ 
+ 	svc_rdma_sync_reply_hdr(rdma, sctxt, svc_rdma_reply_hdr_len(rdma_resp));
+-	ret = svc_rdma_send_reply_msg(rdma, sctxt, rdma_argp, rqstp,
++	ret = svc_rdma_send_reply_msg(rdma, sctxt, rctxt, rqstp,
+ 				      wr_lst, rp_ch);
+ 	if (ret < 0)
+ 		goto err1;
+
