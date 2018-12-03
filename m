@@ -1,141 +1,163 @@
-Return-Path: <SRS0=5YGM=OL=vger.kernel.org=linux-nfs-owner@kernel.org>
+Return-Path: <SRS0=4jnv=OM=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.0 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-1.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_PASS autolearn=unavailable autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3FCDFC04EB8
-	for <linux-nfs@archiver.kernel.org>; Sun,  2 Dec 2018 22:39:17 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 74521C04EB8
+	for <linux-nfs@archiver.kernel.org>; Mon,  3 Dec 2018 00:32:00 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id E9F2020881
-	for <linux-nfs@archiver.kernel.org>; Sun,  2 Dec 2018 22:39:16 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="BQi3OZnu"
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org E9F2020881
-Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=gmail.com
+	by mail.kernel.org (Postfix) with ESMTP id 2F55220834
+	for <linux-nfs@archiver.kernel.org>; Mon,  3 Dec 2018 00:32:00 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 2F55220834
+Authentication-Results: mail.kernel.org; dmarc=none (p=none dis=none) header.from=suse.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1725786AbeLBWjT (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 2 Dec 2018 17:39:19 -0500
-Received: from mail-it1-f196.google.com ([209.85.166.196]:52047 "EHLO
-        mail-it1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725785AbeLBWjS (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 2 Dec 2018 17:39:18 -0500
-Received: by mail-it1-f196.google.com with SMTP id x19so6448487itl.1
-        for <linux-nfs@vger.kernel.org>; Sun, 02 Dec 2018 14:39:15 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=1NkZ7Tbw3Q5Q/w4Jq743PRe4Zw3xsFyeDzVajzhHdV4=;
-        b=BQi3OZnu/QArXzl7PSMRvxBHZkQKtslknVBq3WC5VKXmNnknpPixLALZG0eMmFPvaR
-         lGXYE45bo7OR0Xk8mOHcO+h5hXxQU0UXq4dvf/xb4kwlJ5VVPvsQY0379hak8LrRDMUV
-         BxrKUDbf3DTghzKFMRPf9JKEWxZ+KvP6q08whvVngLxeQhVi7G4oAD8w0evF3nDgxA3O
-         nPecTD1cLJiMQkusNqL2pG186A3yDMLL2iTGkCMHOvDeIEWOzZrr9HDZvJwME8Kjub4g
-         ovDpCb3Gt802TVUfIhtd7XyyJg9ES2NgUVYWBTRAAE835aodXpm3CdgRx7+UpjbGSQt0
-         ytrw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=1NkZ7Tbw3Q5Q/w4Jq743PRe4Zw3xsFyeDzVajzhHdV4=;
-        b=kLpBMmW6uxsVdwo64Y45HlOHqZpDEzYVnMaXa9K9UoSY6qvBPWFPNiLi8RAmqsCPSN
-         d38F/gT3oePMQHqO4+MpBnom3/R/foaKJVIz9waLJAcIWLh9OqhaH5oSijfTycybx8+F
-         DPV+Uzy/frMUkAohC5+cyLolPP0OwSPgwohc77qSxQmkkZjewMTs3AGN3NUiq3Ywd7Sc
-         Tl3XYR5wf8ZSAoDP14aJBENCGyIq8RRvG0EQhQtyU+9dF+adhsVAbwKp9F/sFg8yK2Dw
-         h/ljC7BZT1dnoHokIyosV2Twrw+TMMz473QqDbATF7fospGyykEQg36fGmbi9vRSDOnj
-         O3Yw==
-X-Gm-Message-State: AA+aEWY/xBST2nuvNly8vdDeDncBLftDaMIgrAfEZbtb8Jnkwa+LR065
-        qTgdUmF63hKJiGn6ex2ECA==
-X-Google-Smtp-Source: AFSGD/VfrWi5nBJiiEbVZPNr3qygLUD0+4kVOojSbOwpQKljqUiG54VvCrHbgDhyuKzT/hke3i7O5A==
-X-Received: by 2002:a02:70d7:: with SMTP id f206mr12668869jac.118.1543790354479;
-        Sun, 02 Dec 2018 14:39:14 -0800 (PST)
-Received: from localhost.localdomain (c-68-40-195-73.hsd1.mi.comcast.net. [68.40.195.73])
-        by smtp.gmail.com with ESMTPSA id b13sm4289183iot.70.2018.12.02.14.39.12
-        (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
-        Sun, 02 Dec 2018 14:39:12 -0800 (PST)
-From:   Trond Myklebust <trondmy@gmail.com>
-X-Google-Original-From: Trond Myklebust <trond.myklebust@hammerspace.com>
-To:     Chuck Lever <chuck.lever@oracle.com>
-Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH] SUNRPC: Fix up handling of the XDRBUF_SPARSE_PAGES flag
-Date:   Sun,  2 Dec 2018 17:38:05 -0500
-Message-Id: <20181202223805.100675-1-trond.myklebust@hammerspace.com>
-X-Mailer: git-send-email 2.19.2
+        id S1725786AbeLCAcD (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sun, 2 Dec 2018 19:32:03 -0500
+Received: from mx2.suse.de ([195.135.220.15]:40764 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1725785AbeLCAcD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sun, 2 Dec 2018 19:32:03 -0500
+X-Virus-Scanned: by amavisd-new at test-mx.suse.de
+Received: from relay2.suse.de (unknown [195.135.220.254])
+        by mx1.suse.de (Postfix) with ESMTP id 35A7AAD90;
+        Mon,  3 Dec 2018 00:31:57 +0000 (UTC)
+From:   NeilBrown <neilb@suse.com>
+To:     "J. Bruce Fields" <bfields@fieldses.org>,
+        Chuck Lever <chuck.lever@oracle.com>,
+        Jeff Layton <jlayton@kernel.org>,
+        Trond Myklebust <trond.myklebust@hammerspace.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>
+Date:   Mon, 03 Dec 2018 11:30:30 +1100
+Subject: [PATCH 00/23 - V5] NFS: Remove generic RPC credentials.
+Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        linux-kernel@vger.kernel.org
+Message-ID: <154379689752.28598.6750646657534626618.stgit@noble>
+User-Agent: StGit/0.17.1-dirty
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-If the allocator fails before it has reached the target number of pages,
-then we need to recheck that we're not seeking past the page buffer.
+This is the same series as posted on 07 November, modified slightly
+to match some recent code changes upstream - nothing substantial.
 
-Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
+General description:
+
+There doesn't seem to be a maintainer for the 'cred' code, so I don't
+know who to ask to approve the first 4 patches.  Maybe if the NFS
+team like them, they can just go to Linus with a note for him to look
+at them if he wants to.
+
+The original motivation for this was performance.  In some
+circumstances the cred caches can get big and particularly can get
+long chains.  The hash function has been changed at least once to
+improve the hashing and it still isn't perfect.
+Rather than improving pruning of the cache, or resizing the hashtable
+etc, it is easiest to just get rid of it.
+
+As well as discarding generic credentials completely (using 'struct
+cred' instead), we also stop storing AUTH_UNIX credentials in a hash
+table - that brings no value.  Just allocate as needed and discard
+when finished with.
+So the only hash table will still have is for AUTH_GSS.
+One of the main triggers for hashtable problems was users changing
+groups a lot, so there would be many entries for the one user, each
+with a different set of groups.  That doesn't apply for
+AUTH_GSS as the groupids on the client are ignored.
+
+That was the original motivation, but as I worked on it, I realized
+that it was making a log of code simpler.
+
+ 44 files changed, 550 insertions(+), 925 deletions(-)
+
+That is sufficient motivation in itself I think.
+
+Thanks,
+NeilBrown
+
+
 ---
- net/sunrpc/xprtsock.c | 24 +++++++++++-------------
- 1 file changed, 11 insertions(+), 13 deletions(-)
 
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index ae77c71c1f64..36647bfbd683 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -330,19 +330,15 @@ xs_alloc_sparse_pages(struct xdr_buf *buf, size_t want, gfp_t gfp)
- {
- 	size_t i,n;
- 
--	if (!(buf->flags & XDRBUF_SPARSE_PAGES))
-+	if (!want || !(buf->flags & XDRBUF_SPARSE_PAGES))
- 		return want;
--	if (want > buf->page_len)
--		want = buf->page_len;
- 	n = (buf->page_base + want + PAGE_SIZE - 1) >> PAGE_SHIFT;
- 	for (i = 0; i < n; i++) {
- 		if (buf->pages[i])
- 			continue;
- 		buf->bvec[i].bv_page = buf->pages[i] = alloc_page(gfp);
--		if (!buf->pages[i]) {
--			buf->page_len = (i * PAGE_SIZE) - buf->page_base;
--			return buf->page_len;
--		}
-+		if (!buf->pages[i])
-+			return (i * PAGE_SIZE) - buf->page_base;
- 	}
- 	return want;
- }
-@@ -404,10 +400,11 @@ xs_read_xdr_buf(struct socket *sock, struct msghdr *msg, int flags,
- 		seek -= buf->head[0].iov_len;
- 		offset += buf->head[0].iov_len;
- 	}
--	if (seek < buf->page_len) {
--		want = xs_alloc_sparse_pages(buf,
--				min_t(size_t, count - offset, buf->page_len),
--				GFP_NOWAIT);
-+
-+	want = xs_alloc_sparse_pages(buf,
-+			min_t(size_t, count - offset, buf->page_len),
-+			GFP_NOWAIT);
-+	if (seek < want) {
- 		ret = xs_read_bvec(sock, msg, flags, buf->bvec,
- 				xdr_buf_pagecount(buf),
- 				want + buf->page_base,
-@@ -421,9 +418,10 @@ xs_read_xdr_buf(struct socket *sock, struct msghdr *msg, int flags,
- 			goto eagain;
- 		seek = 0;
- 	} else {
--		seek -= buf->page_len;
--		offset += buf->page_len;
-+		seek -= want;
-+		offset += want;
- 	}
-+
- 	if (seek < buf->tail[0].iov_len) {
- 		want = min_t(size_t, count - offset, buf->tail[0].iov_len);
- 		ret = xs_read_kvec(sock, msg, flags, &buf->tail[0], want, seek);
--- 
-2.19.2
+NeilBrown (23):
+      cred: add cred_fscmp() for comparing creds.
+      cred: add get_cred_rcu()
+      cred: export get_task_cred().
+      cred: allow get_cred() and put_cred() to be given NULL.
+      SUNRPC: add 'struct cred *' to auth_cred and rpc_cred
+      SUNRPC: remove groupinfo from struct auth_cred.
+      SUNRPC: remove uid and gid from struct auth_cred
+      SUNRPC: remove machine_cred field from struct auth_cred
+      NFSv4: add cl_root_cred for use when machine cred is not available.
+      NFSv4: don't require lock for get_renew_cred or get_machine_cred
+      SUNRPC: discard RPC_DO_ROOTOVERRIDE()
+      NFS/SUNRPC: don't lookup machine credential until rpcauth_bindcred().
+      SUNRPC: introduce RPC_TASK_NULLCREDS to request auth_none
+      SUNRPC: add side channel to use non-generic cred for rpc call.
+      NFS: move credential expiry tracking out of SUNRPC into NFS.
+      SUNRPC: remove RPCAUTH_AUTH_NO_CRKEY_TIMEOUT
+      NFS: change access cache to use 'struct cred'.
+      NFS: struct nfs_open_dir_context: convert rpc_cred pointer to cred.
+      NFS/NFSD/SUNRPC: replace generic creds with 'struct cred'.
+      SUNRPC: remove generic cred code.
+      SUNRPC: remove crbind rpc_cred operation
+      SUNRPC: simplify auth_unix.
+      SUNRPC discard cr_uid from struct rpc_cred.
+
+
+ fs/lockd/clntproc.c                       |    6 -
+ fs/nfs/blocklayout/blocklayout.c          |    2 
+ fs/nfs/client.c                           |    9 -
+ fs/nfs/delegation.c                       |   28 +--
+ fs/nfs/delegation.h                       |   10 -
+ fs/nfs/dir.c                              |   59 ++----
+ fs/nfs/flexfilelayout/flexfilelayout.c    |   64 +++---
+ fs/nfs/flexfilelayout/flexfilelayout.h    |    8 -
+ fs/nfs/flexfilelayout/flexfilelayoutdev.c |   16 +-
+ fs/nfs/inode.c                            |   13 +
+ fs/nfs/internal.h                         |    8 -
+ fs/nfs/nfs3proc.c                         |    4 
+ fs/nfs/nfs4_fs.h                          |   65 +++---
+ fs/nfs/nfs4client.c                       |    4 
+ fs/nfs/nfs4proc.c                         |  150 +++++++--------
+ fs/nfs/nfs4renewd.c                       |    9 -
+ fs/nfs/nfs4session.c                      |    5 
+ fs/nfs/nfs4state.c                        |  129 ++++++-------
+ fs/nfs/pagelist.c                         |    2 
+ fs/nfs/pnfs.c                             |   14 +
+ fs/nfs/pnfs.h                             |   10 -
+ fs/nfs/pnfs_dev.c                         |    4 
+ fs/nfs/pnfs_nfs.c                         |    2 
+ fs/nfs/proc.c                             |    2 
+ fs/nfs/unlink.c                           |   15 -
+ fs/nfs/write.c                            |   24 ++
+ fs/nfsd/nfs4callback.c                    |   31 +--
+ fs/nfsd/state.h                           |    2 
+ include/linux/cred.h                      |   26 ++-
+ include/linux/nfs_fs.h                    |   13 +
+ include/linux/nfs_fs_sb.h                 |    2 
+ include/linux/nfs_xdr.h                   |   16 +-
+ include/linux/sunrpc/auth.h               |   51 -----
+ include/linux/sunrpc/clnt.h               |    1 
+ include/linux/sunrpc/sched.h              |    6 -
+ kernel/cred.c                             |   58 ++++++
+ net/sunrpc/Makefile                       |    2 
+ net/sunrpc/auth.c                         |  116 ++++++-----
+ net/sunrpc/auth_generic.c                 |  293 -----------------------------
+ net/sunrpc/auth_gss/auth_gss.c            |   47 +----
+ net/sunrpc/auth_null.c                    |    4 
+ net/sunrpc/auth_unix.c                    |  110 +++--------
+ net/sunrpc/clnt.c                         |   26 +--
+ net/sunrpc/sched.c                        |    5 
+ 44 files changed, 551 insertions(+), 920 deletions(-)
+ delete mode 100644 net/sunrpc/auth_generic.c
+
+--
+Signature
 
