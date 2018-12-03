@@ -2,263 +2,275 @@ Return-Path: <SRS0=4jnv=OM=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.0 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-10.3 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,UNPARSEABLE_RELAY,USER_AGENT_MUTT
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6E3F2C04EB9
-	for <linux-nfs@archiver.kernel.org>; Mon,  3 Dec 2018 17:58:28 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E34E0C04EBF
+	for <linux-nfs@archiver.kernel.org>; Mon,  3 Dec 2018 18:18:22 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 2675820672
-	for <linux-nfs@archiver.kernel.org>; Mon,  3 Dec 2018 17:58:28 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id AA3C920645
+	for <linux-nfs@archiver.kernel.org>; Mon,  3 Dec 2018 18:18:22 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="lBqr/F5f"
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 2675820672
-Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=gmail.com
+	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="uVQqsW1U"
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org AA3C920645
+Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=oracle.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726615AbeLCR63 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 3 Dec 2018 12:58:29 -0500
-Received: from mail-ua1-f68.google.com ([209.85.222.68]:42155 "EHLO
-        mail-ua1-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726014AbeLCR63 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Dec 2018 12:58:29 -0500
-Received: by mail-ua1-f68.google.com with SMTP id d21so4745562uap.9;
-        Mon, 03 Dec 2018 09:58:22 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
-         :cc;
-        bh=o1OLVLFJA3brp+hYWtKoFZ7N/rYlMDkbKUr5VGkltss=;
-        b=lBqr/F5fdAsqH6BvH+0wiByTIj6ITvBDbtxNA94kAUIPewU69oy87ybjq3KwuGqJev
-         yN/KHojmnUVZldSAaHN1hF7Irza8IuBMdIoWA/o1OF/G6p+3yBearHcczsjbazPl2Pog
-         vdI67khjiivC43ziIG+7OuK4hIOPBlmxwHVf3H0mmriEGidrsqSa3zUn/S2M3uEobaSl
-         KyUD5K+V3c7dydK7a1rZQL9hDiFt1Le+fTeEo71ofkHw+M52QNxlZhTFzZdpJIgm2E0v
-         WJ0WU2c8jVP+5FZ0TzWfR2Q/JJlQQ2XoLlv3SXxJ7grUpO4yTjRAQHM+CBkTNd5Kqcq9
-         pnBQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
-         :message-id:subject:to:cc;
-        bh=o1OLVLFJA3brp+hYWtKoFZ7N/rYlMDkbKUr5VGkltss=;
-        b=jk4jWkUiVCDyWy0O72DfUl/X0R/h5ZT+RSIRtUjRDZdjUUpwbpNw10CmNfCLRqZX76
-         bRq/9urNzVZ+vqoBwHKALMO9STYuJX20hjkQxaaT97zxRcissIXUwJrC7etXZRpdzeeJ
-         ZhEBCC7QImRQk9iV+GTvv5J4tTDlzlK1CYg/G2CEKUu9P9Hrkcj9ilfoTzmaW0mrQpli
-         g78Er3qKftYtkWcMNvBOinxLH4u+0GYo5IVnLmAB1D8Rg9/ysTdkVQOSauqSNr/raIMS
-         BbVix8zpYvak1fMnJKD00PNQH0yV9SRovbZtJwudmwn+1E52Xv6OnEFJviF/LjyCQJCC
-         vv1Q==
-X-Gm-Message-State: AA+aEWaJL/M2GLDGJLhEXj5TOpny9GdJZiAhVupcn5rF199NXo4ve6X4
-        Vfvw1cWq3rTCsO4ehYBy7KFLpenI1ab+vw9QhMoP3A==
-X-Google-Smtp-Source: AFSGD/XWTtOuGWH4zyCDDqgnElfL6K3DIsisYNMrNqQ5LKNMs7oLKk4/7hzrlRbVQU0uAfeACiaUv8cPIadYicuqEhA=
-X-Received: by 2002:ab0:aa:: with SMTP id 39mr7385655uaj.120.1543859901582;
- Mon, 03 Dec 2018 09:58:21 -0800 (PST)
-MIME-Version: 1.0
-References: <20181203083416.28978-1-david@fromorbit.com> <20181203083416.28978-10-david@fromorbit.com>
-In-Reply-To: <20181203083416.28978-10-david@fromorbit.com>
-From:   Olga Kornievskaia <olga.kornievskaia@gmail.com>
-Date:   Mon, 3 Dec 2018 12:58:09 -0500
-Message-ID: <CAN-5tyFs9RuoDOnsB36KUEGymMOxb7=VUYqJOxYgUxMu6w7fFg@mail.gmail.com>
-Subject: Re: [PATCH 09/11] vfs: push copy_file_ranges -EXDEV checks down
-To:     david@fromorbit.com
+        id S1726733AbeLCSSS (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 3 Dec 2018 13:18:18 -0500
+Received: from userp2120.oracle.com ([156.151.31.85]:53484 "EHLO
+        userp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726014AbeLCSSS (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Dec 2018 13:18:18 -0500
+Received: from pps.filterd (userp2120.oracle.com [127.0.0.1])
+        by userp2120.oracle.com (8.16.0.22/8.16.0.22) with SMTP id wB3IEG8Z187966;
+        Mon, 3 Dec 2018 18:18:11 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=date : from : to : cc
+ : subject : message-id : references : mime-version : content-type :
+ in-reply-to; s=corp-2018-07-02;
+ bh=SaH4YC/5uQsysuE6Zx811qVQBm0j/kxySYkAq7mEw3c=;
+ b=uVQqsW1Ubr9XJCn4DBPX1Dg2sdYBY5MpDCAFFLjlAq8+fGCdVYyRlVqjObvHj2i0oJrS
+ 4NbD7hVGz9Mi8dQgPEJZic3DUZYeNnPQDfrwY+Hd24e31ZUqFXCL6g16MIjTTZdkrhb/
+ FYum5N5OEgM5MvHev+Ww6QOnF3bOkmoO8qyFas8dtdCY3/rAzy5lMTlJzCBeK72MB7WG
+ zVptJh/LKL1TKhhD/56/f00mT2px7qOY+z5/IEleqPDVrLv/pVXLIXFOjHlI6V8cPsMp
+ SfRbdGA2zpUt+i/8C4zZ1Pos1FDyk2sXAxNj8AVwNzNT/X1tx0+thFtrf9jffu5sXmiz vA== 
+Received: from aserv0022.oracle.com (aserv0022.oracle.com [141.146.126.234])
+        by userp2120.oracle.com with ESMTP id 2p3jxr7xn8-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Mon, 03 Dec 2018 18:18:11 +0000
+Received: from aserv0121.oracle.com (aserv0121.oracle.com [141.146.126.235])
+        by aserv0022.oracle.com (8.14.4/8.14.4) with ESMTP id wB3II5dW026639
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Mon, 3 Dec 2018 18:18:05 GMT
+Received: from abhmp0007.oracle.com (abhmp0007.oracle.com [141.146.116.13])
+        by aserv0121.oracle.com (8.14.4/8.13.8) with ESMTP id wB3II53U001123;
+        Mon, 3 Dec 2018 18:18:05 GMT
+Received: from localhost (/67.169.218.210)
+        by default (Oracle Beehive Gateway v4.0)
+        with ESMTP ; Mon, 03 Dec 2018 10:18:04 -0800
+Date:   Mon, 3 Dec 2018 10:18:03 -0800
+From:   "Darrick J. Wong" <darrick.wong@oracle.com>
+To:     Dave Chinner <david@fromorbit.com>
 Cc:     linux-fsdevel@vger.kernel.org, linux-xfs@vger.kernel.org,
-        linux-nfs <linux-nfs@vger.kernel.org>,
+        olga.kornievskaia@gmail.com, linux-nfs@vger.kernel.org,
         linux-unionfs@vger.kernel.org, ceph-devel@vger.kernel.org,
         linux-cifs@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
+Subject: Re: [PATCH 05/11] vfs: use inode_permission in copy_file_range()
+Message-ID: <20181203181803.GX8125@magnolia>
+References: <20181203083416.28978-1-david@fromorbit.com>
+ <20181203083416.28978-6-david@fromorbit.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20181203083416.28978-6-david@fromorbit.com>
+User-Agent: Mutt/1.9.4 (2018-02-28)
+X-Proofpoint-Virus-Version: vendor=nai engine=5900 definitions=9096 signatures=668686
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 suspectscore=0 malwarescore=0
+ phishscore=0 bulkscore=0 spamscore=0 mlxscore=0 mlxlogscore=999
+ adultscore=0 classifier=spam adjust=0 reason=mlx scancount=1
+ engine=8.0.1-1810050000 definitions=main-1812030168
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Mon, Dec 3, 2018 at 3:34 AM Dave Chinner <david@fromorbit.com> wrote:
->
+On Mon, Dec 03, 2018 at 07:34:10PM +1100, Dave Chinner wrote:
 > From: Dave Chinner <dchinner@redhat.com>
->
-> We want to enable cross-filesystem copy_file_range functionality
-> where possible, so push the "same superblock only" checks down to
-> the individual filesystem callouts so they can make their own
-> decisions about cross-superblock copy offload.
->
+> 
+> Similar to FI_DEDUPERANGE, make copy_file_range() check that we have
+
+TLDR: No, it's not similar to FIDEDUPERANGE -- the use of
+inode_permission() in allow_file_dedupe() is to enable callers to dedupe
+into a file for which the caller has write permissions but opened the
+file O_RDONLY.
+
+[Please keep reading...]
+
+> write permissions to the destination inode.
+> 
 > Signed-off-by: Dave Chinner <dchinner@redhat.com>
-
-Overall VFS/NFS bits look good to me. I'm re-basing my client and
-server patch series on top of this and will test it out.
-
-Thank you.
-
 > ---
->  fs/ceph/file.c      |  4 +++-
->  fs/cifs/cifsfs.c    |  8 +++++++-
->  fs/fuse/file.c      |  5 ++++-
->  fs/nfs/nfs4file.c   | 16 ++++++++++------
->  fs/overlayfs/file.c | 10 +++++++++-
->  fs/read_write.c     | 10 ++++------
->  6 files changed, 37 insertions(+), 16 deletions(-)
->
-> diff --git a/fs/ceph/file.c b/fs/ceph/file.c
-> index cf29f0410dcb..eb876e19c1dc 100644
-> --- a/fs/ceph/file.c
-> +++ b/fs/ceph/file.c
-> @@ -1905,6 +1905,8 @@ static ssize_t __ceph_copy_file_range(struct file *src_file, loff_t src_off,
->
->         if (src_inode == dst_inode)
->                 return -EINVAL;
-> +       if (src_inode->i_sb != dst_inode->i_sb)
-> +               return -EXDEV;
->         if (ceph_snap(dst_inode) != CEPH_NOSNAP)
->                 return -EROFS;
->
-> @@ -2105,7 +2107,7 @@ static ssize_t ceph_copy_file_range(struct file *src_file, loff_t src_off,
->         ret = __ceph_copy_file_range(src_file, src_off, dst_file, dst_off,
->                                         len, flags);
->
-> -       if (ret == -EOPNOTSUPP)
-> +       if (ret == -EOPNOTSUPP || ret == -EXDEV)
->                 ret = generic_copy_file_range(src_file, src_off, dst_file,
->                                         dst_off, len, flags);
->         return ret;
-> diff --git a/fs/cifs/cifsfs.c b/fs/cifs/cifsfs.c
-> index 5ef4baec6234..03e4b9eacbd1 100644
-> --- a/fs/cifs/cifsfs.c
-> +++ b/fs/cifs/cifsfs.c
-> @@ -1072,6 +1072,12 @@ ssize_t cifs_file_copychunk_range(unsigned int xid,
->                 goto out;
->         }
->
-> +       if (src_inode->i_sb != target_inode->i_sb) {
-> +               rc = -EXDEV;
-> +               goto out;
-> +       }
+>  mm/filemap.c | 5 +++++
+>  1 file changed, 5 insertions(+)
+> 
+> diff --git a/mm/filemap.c b/mm/filemap.c
+> index 0a170425935b..876df5275514 100644
+> --- a/mm/filemap.c
+> +++ b/mm/filemap.c
+> @@ -3013,6 +3013,11 @@ int generic_copy_file_checks(struct file *file_in, loff_t pos_in,
+>  	    (file_out->f_flags & O_APPEND))
+>  		return -EBADF;
+>  
+> +	/* may sure we really are allowed to write to the destination inode */
+> +	ret = inode_permission(inode_out, MAY_WRITE);
+
+What's the difference between security_file_permission and
+inode_permission, and when do we call them for a regular
+open-write-close sequence?  Hmmm, let me take a look:
+
+It looks like we call inode_permission at open() time to make sure that
+the file permissions permit writes and the file isn't immutable.
+security_file_permission gets called at write() time to recheck with the
+security policy, but once a process has been granted a writable file
+descriptor, it retains that privilege until it closes the fd.  In other
+words, we check at open time, not at operation time.
+
+I think.  Nothing is ever that simple, so let's check behavior:
+
+So let's try opening a file for write, removing write permissions, then
+writing to the file:
+
+$ rm -rf xyz
+$ touch xyz
+$ ls -lad xyz
+-rw-rw-r-- 1 djwong djwong 0 Dec  3 09:28 xyz
+$ xfs_io xyz
+xfs_io> pwrite -S 0x58 0 4k
+wrote 4096/4096 bytes at offset 0
+4 KiB, 1 ops; 0.0000 sec (130.208 MiB/sec and 33333.3333 ops/sec)
+xfs_io> 
+[1]+  Stopped                 xfs_io xyz
+$ chmod a-w xyz
+$ sudo chown root:root xyz
+$ ls -lad xyz
+-r--r--r-- 1 root root 4096 Dec  3 09:28 xyz
+$ fg
+xfs_io xyz
+
+xfs_io> pwrite -S 0x58 0 8k
+wrote 8192/8192 bytes at offset 0
+8 KiB, 2 ops; 0.0000 sec (558.036 MiB/sec and 142857.1429 ops/sec)
+xfs_io>
+
+Yep, we can write to an already-open file even if we change its
+ownership and take away write permission.  How about the immutable flag?
+
+$ touch b
+$ xfs_io b
+xfs_io> pwrite -S 0x58 0 4k
+wrote 4096/4096 bytes at offset 0
+4 KiB, 1 ops; 0.0000 sec (75.120 MiB/sec and 19230.7692 ops/sec)
+xfs_io> sync
+xfs_io> 
+[1]+  Stopped                 xfs_io b
+$ sudo chown root:root b
+$ sudo chattr +i b
+$ ls -lad b ; lsattr b
+-rw-rw-r-- 1 root root 4096 Dec  3 09:51 b
+----i-------------- b
+$ fg
+xfs_io b
+
+xfs_io> pwrite -S 0x58 0 6k
+wrote 6144/6144 bytes at offset 0
+6 KiB, 2 ops; 0.0000 sec (102.796 MiB/sec and 35087.7193 ops/sec)
+xfs_io> sync
+xfs_io> 
+
+Similarly, it looks like we can write to an already-open file even if we
+change its ownership and mark the file immutable.  Both of these are a
+little unexpected; I would have thought at least that +i would have
+prevented the write.
+
+How about reflink?
+
+$ rm -rf a b
+$ xfs_io -f -c 'pwrite -S 0x58 0 64k' a
+wrote 65536/65536 bytes at offset 0
+64 KiB, 16 ops; 0.0000 sec (1.744 GiB/sec and 457142.8571 ops/sec)
+$ xfs_io -f -c 'pwrite -S 0x58 0 64k' b
+wrote 65536/65536 bytes at offset 0
+64 KiB, 16 ops; 0.0000 sec (1.969 GiB/sec and 516129.0323 ops/sec)
+$ xfs_io b
+xfs_io> 
+[1]+  Stopped                 xfs_io b
+$ chmod a-w b
+$ sudo chown root:root b
+$ sudo chattr +i b
+$ fg
+xfs_io b
+
+xfs_io> reflink a 0 0 4k
+XFS_IOC_CLONE_RANGE: Operation not permitted
+xfs_io> 
+[1]+  Stopped                 xfs_io b
+$ sudo chattr -i b
+$ fg
+xfs_io b
+
+xfs_io> reflink a 0 0 4k
+linked 4096/4096 bytes at offset 0
+4 KiB, 1 ops; 0.0004 sec (7.988 MiB/sec and 2044.9898 ops/sec)
+xfs_io> 
+
+We cannot reflink into a file that becomes immutable after we open it
+for write, but we can reflink into a file that loses its write
+permissions after we open it.  What about dedupe?
+
+$ rm -rf a b
+$ xfs_io -f -c 'pwrite -S 0x58 0 64k' a
+wrote 65536/65536 bytes at offset 0
+64 KiB, 16 ops; 0.0000 sec (1.795 GiB/sec and 470588.2353 ops/sec)
+$ xfs_io -f -c 'pwrite -S 0x58 0 64k' b
+wrote 65536/65536 bytes at offset 0
+64 KiB, 16 ops; 0.0001 sec (512.295 MiB/sec and 131147.5410 ops/sec)
+$ chmod a-w b
+$ sudo chown root:root b
+$ sudo chattr +i b
+$ fg
+xfs_io b
+
+xfs_io> dedupe a 0 0 4k
+XFS_IOC_FILE_EXTENT_SAME: Operation not permitted
+xfs_io> 
+[1]+  Stopped                 xfs_io b
+$ sudo chattr -i b
+$ fg
+xfs_io b
+
+xfs_io> dedupe a 0 0 4k
+deduped 4096/4096 bytes at offset 0
+4 KiB, 1 ops; 0.0160 sec (249.688 KiB/sec and 62.4220 ops/sec)
+xfs_io>
+
+We also cannot dedupe into a file that becomes immutable after we open
+it for write, but we can dedupe into a file that loses its write
+permissions after we open it.
+
+Summarized:
+
+op:		after +immutable?	after chmod a-w?
+write		yes			yes
+clonerange	no			yes
+dedupe		no			yes
+newcopyrange	no			no
+
+My reaction: I don't think that writes should be allowed after an
+administrator marks a file immutable (but that's a separate issue) but I
+do think we should be consistent in allowing copying into a file that
+has lost its write permissions after we opened the file for write, like
+we do for write() and the remap ioct....
+
+*OH*
+
+Now I remember what the FI_DEDUPERANGE inode_permission call is for!
+It's because dedupe tools want to be able to open a file readonly and
+have dedupe remap another file's identical blocks into the readonly
+file, provided that the process would have been able to open the file
+for writing had it asked.
+
+[Hugging hug hug huggy hugging hug of hug interface!!! :P]
+
+--D
+
+> +	if (ret < 0)
+> +		return ret;
 > +
-> +
->         if (!src_file->private_data || !dst_file->private_data) {
->                 rc = -EBADF;
->                 cifs_dbg(VFS, "missing cifsFileInfo on copy range src file\n");
-> @@ -1142,7 +1148,7 @@ static ssize_t cifs_copy_file_range(struct file *src_file, loff_t off,
->                                         len, flags);
->         free_xid(xid);
->
-> -       if (rc == -EOPNOTSUPP)
-> +       if (rc == -EOPNOTSUPP || rc == -EXDEV)
->                 rc = generic_copy_file_range(src_file, off, dst_file,
->                                         destoff, len, flags);
->         return rc;
-> diff --git a/fs/fuse/file.c b/fs/fuse/file.c
-> index b86fb0298739..0758f831a4eb 100644
-> --- a/fs/fuse/file.c
-> +++ b/fs/fuse/file.c
-> @@ -3053,6 +3053,9 @@ static ssize_t __fuse_copy_file_range(struct file *file_in, loff_t pos_in,
->         if (fc->no_copy_file_range)
->                 return -EOPNOTSUPP;
->
-> +       if (file_inode(file_in)->i_sb != file_inode(file_out)->i_sb)
-> +               return -EXDEV;
-> +
->         inode_lock(inode_out);
->
->         if (fc->writeback_cache) {
-> @@ -3109,7 +3112,7 @@ static ssize_t fuse_copy_file_range(struct file *src_file, loff_t src_off,
->         ret = __fuse_copy_file_range(src_file, src_off, dst_file, dst_off,
->                                         len, flags);
->
-> -       if (ret == -EOPNOTSUPP)
-> +       if (ret == -EOPNOTSUPP || ret == -EXDEV)
->                 ret = generic_copy_file_range(src_file, src_off, dst_file,
->                                         dst_off, len, flags);
->         return ret;
-> diff --git a/fs/nfs/nfs4file.c b/fs/nfs/nfs4file.c
-> index d7766a6eb0f4..4783c0c1c49e 100644
-> --- a/fs/nfs/nfs4file.c
-> +++ b/fs/nfs/nfs4file.c
-> @@ -133,16 +133,20 @@ static ssize_t nfs4_copy_file_range(struct file *file_in, loff_t pos_in,
->                                     struct file *file_out, loff_t pos_out,
->                                     size_t count, unsigned int flags)
->  {
-> -       ssize_t ret;
-> +       ssize_t ret = -EXDEV;
->
->         if (file_inode(file_in) == file_inode(file_out))
->                 return -EINVAL;
-> -retry:
-> -       ret = nfs42_proc_copy(file_in, pos_in, file_out, pos_out, count);
-> -       if (ret == -EAGAIN)
-> -               goto retry;
->
-> -       if (ret == -EOPNOTSUPP)
-> +       /* only offload copy if superblock is the same */
-> +       if (file_inode(file_in)->i_sb == file_inode(file_out)->i_sb) {
-> +               do {
-> +                       ret = nfs42_proc_copy(file_in, pos_in, file_out,
-> +                                       pos_out, count);
-> +               } while (ret == -EAGAIN);
-> +       }
-> +
-> +       if (ret == -EOPNOTSUPP || ret == -EXDEV)
->                 ret = generic_copy_file_range(file_in, pos_in, file_out,
->                                         pos_out, count, flags);
->         return ret;
-> diff --git a/fs/overlayfs/file.c b/fs/overlayfs/file.c
-> index 68736e5d6a56..34fb0398d016 100644
-> --- a/fs/overlayfs/file.c
-> +++ b/fs/overlayfs/file.c
-> @@ -443,6 +443,14 @@ static loff_t ovl_copyfile(struct file *file_in, loff_t pos_in,
->         const struct cred *old_cred;
->         loff_t ret;
->
-> +       /*
-> +        * Temporary. Cross device copy checks should be left to the copy file
-> +        * call on the real inodes, but existing behaviour checks the upper
-> +        * files only.
-> +        */
-> +       if (file_inode(file_in)->i_sb != file_inode(file_out)->i_sb)
-> +               return -EXDEV;
-> +
->         ret = ovl_real_fdget(file_out, &real_out);
->         if (ret)
->                 return ret;
-> @@ -491,7 +499,7 @@ static ssize_t ovl_copy_file_range(struct file *file_in, loff_t pos_in,
->         ret =  ovl_copyfile(file_in, pos_in, file_out, pos_out, len, flags,
->                             OVL_COPY);
->
-> -       if (ret == -EOPNOTSUPP)
-> +       if (ret == -EOPNOTSUPP || ret == -EXDEV)
->                 ret = generic_copy_file_range(file_in, pos_in, file_out,
->                                         pos_out, len, flags);
->         return ret;
-> diff --git a/fs/read_write.c b/fs/read_write.c
-> index 174cf92eea1d..4e0666de0d69 100644
-> --- a/fs/read_write.c
-> +++ b/fs/read_write.c
-> @@ -1565,6 +1565,10 @@ ssize_t generic_copy_file_range(struct file *file_in, loff_t pos_in,
->                             struct file *file_out, loff_t pos_out,
->                             size_t len, unsigned int flags)
->  {
-> +       /* Temporary, do_splice_direct supports cross-sb copies */
-> +       if (file_inode(file_in)->i_sb != file_inode(file_out)->i_sb)
-> +               return -EXDEV;
-> +
->         return do_splice_direct(file_in, &pos_in, file_out, &pos_out,
->                         len > MAX_RW_COUNT ? MAX_RW_COUNT : len, 0);
->  }
-> @@ -1611,17 +1615,11 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
->                             struct file *file_out, loff_t pos_out,
->                             size_t len, unsigned int flags)
->  {
-> -       struct inode *inode_in = file_inode(file_in);
-> -       struct inode *inode_out = file_inode(file_out);
->         ssize_t ret;
->
->         if (flags != 0)
->                 return -EINVAL;
->
-> -       /* this could be relaxed once a method supports cross-fs copies */
-> -       if (inode_in->i_sb != inode_out->i_sb)
-> -               return -EXDEV;
-> -
->         ret = generic_copy_file_checks(file_in, pos_in, file_out, pos_out, &len,
->                                         flags);
->         if (ret < 0)
-> --
+>  	/* Ensure offsets don't wrap. */
+>  	if (pos_in + count < pos_in || pos_out + count < pos_out)
+>  		return -EOVERFLOW;
+> -- 
 > 2.19.1
->
+> 
