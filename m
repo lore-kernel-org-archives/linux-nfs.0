@@ -7,270 +7,140 @@ X-Spam-Status: No, score=-10.3 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,UNPARSEABLE_RELAY,USER_AGENT_MUTT
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E34E0C04EBF
-	for <linux-nfs@archiver.kernel.org>; Mon,  3 Dec 2018 18:18:22 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 389B4C04EB9
+	for <linux-nfs@archiver.kernel.org>; Mon,  3 Dec 2018 18:22:25 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id AA3C920645
-	for <linux-nfs@archiver.kernel.org>; Mon,  3 Dec 2018 18:18:22 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 04E802145D
+	for <linux-nfs@archiver.kernel.org>; Mon,  3 Dec 2018 18:22:25 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="uVQqsW1U"
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org AA3C920645
+	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="GpQv+Krm"
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 04E802145D
 Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=oracle.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726733AbeLCSSS (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 3 Dec 2018 13:18:18 -0500
-Received: from userp2120.oracle.com ([156.151.31.85]:53484 "EHLO
-        userp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726014AbeLCSSS (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Dec 2018 13:18:18 -0500
-Received: from pps.filterd (userp2120.oracle.com [127.0.0.1])
-        by userp2120.oracle.com (8.16.0.22/8.16.0.22) with SMTP id wB3IEG8Z187966;
-        Mon, 3 Dec 2018 18:18:11 GMT
+        id S1726876AbeLCSW2 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 3 Dec 2018 13:22:28 -0500
+Received: from userp2130.oracle.com ([156.151.31.86]:51856 "EHLO
+        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726014AbeLCSW2 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Dec 2018 13:22:28 -0500
+Received: from pps.filterd (userp2130.oracle.com [127.0.0.1])
+        by userp2130.oracle.com (8.16.0.22/8.16.0.22) with SMTP id wB3IIVcr033104;
+        Mon, 3 Dec 2018 18:22:20 GMT
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=date : from : to : cc
  : subject : message-id : references : mime-version : content-type :
  in-reply-to; s=corp-2018-07-02;
- bh=SaH4YC/5uQsysuE6Zx811qVQBm0j/kxySYkAq7mEw3c=;
- b=uVQqsW1Ubr9XJCn4DBPX1Dg2sdYBY5MpDCAFFLjlAq8+fGCdVYyRlVqjObvHj2i0oJrS
- 4NbD7hVGz9Mi8dQgPEJZic3DUZYeNnPQDfrwY+Hd24e31ZUqFXCL6g16MIjTTZdkrhb/
- FYum5N5OEgM5MvHev+Ww6QOnF3bOkmoO8qyFas8dtdCY3/rAzy5lMTlJzCBeK72MB7WG
- zVptJh/LKL1TKhhD/56/f00mT2px7qOY+z5/IEleqPDVrLv/pVXLIXFOjHlI6V8cPsMp
- SfRbdGA2zpUt+i/8C4zZ1Pos1FDyk2sXAxNj8AVwNzNT/X1tx0+thFtrf9jffu5sXmiz vA== 
+ bh=pR2lTQr6PZ+tCcEjrlQdofnegKSg1lQDiNdPHI49uhw=;
+ b=GpQv+KrmcVXffdqzzr0YuRc2lYWm/LVFCztIkk42tW8PHdMWXNDf6p4PlizqP7qZpZst
+ WlGTGY/ydRB4dSi5lgT5CDfneogOe5ljswikMLOQ4h8Km68UuznmQ/jp6BeRnYLAyvOs
+ xwFq40LWW8AUqvpO6BB5u/1LwhZgsTj9Cx6jyYHA9ezN0PMPA0NKBu7A8/ItvXSxaBQy
+ wf32XuCuceHoFiIy2KD/d6lr2B7u3rXaWDdxmgPShzXCzGOMuIo7M0S9DgFfa13zWcbG
+ HzmfpD8VK5PLakg6WOg/zRx8kNlHFj5Nfk0gkDs7W0hcMro+wSMzW/5gz6x64dwZA0/k SA== 
 Received: from aserv0022.oracle.com (aserv0022.oracle.com [141.146.126.234])
-        by userp2120.oracle.com with ESMTP id 2p3jxr7xn8-1
+        by userp2130.oracle.com with ESMTP id 2p3hqtr26v-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Mon, 03 Dec 2018 18:18:11 +0000
+        Mon, 03 Dec 2018 18:22:20 +0000
 Received: from aserv0121.oracle.com (aserv0121.oracle.com [141.146.126.235])
-        by aserv0022.oracle.com (8.14.4/8.14.4) with ESMTP id wB3II5dW026639
+        by aserv0022.oracle.com (8.14.4/8.14.4) with ESMTP id wB3IMJmY008882
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Mon, 3 Dec 2018 18:18:05 GMT
-Received: from abhmp0007.oracle.com (abhmp0007.oracle.com [141.146.116.13])
-        by aserv0121.oracle.com (8.14.4/8.13.8) with ESMTP id wB3II53U001123;
-        Mon, 3 Dec 2018 18:18:05 GMT
+        Mon, 3 Dec 2018 18:22:19 GMT
+Received: from abhmp0013.oracle.com (abhmp0013.oracle.com [141.146.116.19])
+        by aserv0121.oracle.com (8.14.4/8.13.8) with ESMTP id wB3IMJmD003726;
+        Mon, 3 Dec 2018 18:22:19 GMT
 Received: from localhost (/67.169.218.210)
         by default (Oracle Beehive Gateway v4.0)
-        with ESMTP ; Mon, 03 Dec 2018 10:18:04 -0800
-Date:   Mon, 3 Dec 2018 10:18:03 -0800
+        with ESMTP ; Mon, 03 Dec 2018 10:22:19 -0800
+Date:   Mon, 3 Dec 2018 10:22:17 -0800
 From:   "Darrick J. Wong" <darrick.wong@oracle.com>
-To:     Dave Chinner <david@fromorbit.com>
-Cc:     linux-fsdevel@vger.kernel.org, linux-xfs@vger.kernel.org,
-        olga.kornievskaia@gmail.com, linux-nfs@vger.kernel.org,
+To:     Olga Kornievskaia <olga.kornievskaia@gmail.com>
+Cc:     Amir Goldstein <amir73il@gmail.com>, david@fromorbit.com,
+        linux-fsdevel@vger.kernel.org, linux-xfs@vger.kernel.org,
+        linux-nfs <linux-nfs@vger.kernel.org>,
         linux-unionfs@vger.kernel.org, ceph-devel@vger.kernel.org,
         linux-cifs@vger.kernel.org
-Subject: Re: [PATCH 05/11] vfs: use inode_permission in copy_file_range()
-Message-ID: <20181203181803.GX8125@magnolia>
+Subject: Re: [PATCH 07/11] vfs: copy_file_range should update file timestamps
+Message-ID: <20181203182217.GY8125@magnolia>
 References: <20181203083416.28978-1-david@fromorbit.com>
- <20181203083416.28978-6-david@fromorbit.com>
+ <20181203083416.28978-8-david@fromorbit.com>
+ <CAOQ4uxiCi9qJ15J=L6fNjuLGykQm5CDuJ-=Y=TwTP5c=jx-_fA@mail.gmail.com>
+ <CAN-5tyFMDnjm5cMneYyRTveyJ-6ddLCt1za-kk5eemOO2ngq=A@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20181203083416.28978-6-david@fromorbit.com>
+In-Reply-To: <CAN-5tyFMDnjm5cMneYyRTveyJ-6ddLCt1za-kk5eemOO2ngq=A@mail.gmail.com>
 User-Agent: Mutt/1.9.4 (2018-02-28)
 X-Proofpoint-Virus-Version: vendor=nai engine=5900 definitions=9096 signatures=668686
 X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 suspectscore=0 malwarescore=0
  phishscore=0 bulkscore=0 spamscore=0 mlxscore=0 mlxlogscore=999
  adultscore=0 classifier=spam adjust=0 reason=mlx scancount=1
- engine=8.0.1-1810050000 definitions=main-1812030168
+ engine=8.0.1-1810050000 definitions=main-1812030169
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Mon, Dec 03, 2018 at 07:34:10PM +1100, Dave Chinner wrote:
-> From: Dave Chinner <dchinner@redhat.com>
+On Mon, Dec 03, 2018 at 12:33:50PM -0500, Olga Kornievskaia wrote:
+> On Mon, Dec 3, 2018 at 5:47 AM Amir Goldstein <amir73il@gmail.com> wrote:
+> >
+> > On Mon, Dec 3, 2018 at 10:34 AM Dave Chinner <david@fromorbit.com> wrote:
+> > >
+> > > From: Dave Chinner <dchinner@redhat.com>
+> > >
+> > > Timestamps are not updated right now, so programs looking for
+> > > timestamp updates for file modifications (like rsync) will not
+> > > detect that files have changed. We are also accessing the source
+> > > data when doing a copy (but not when cloning) so we need to update
+> > > atime on the source file as well.
+> > >
+> > > Signed-off-by: Dave Chinner <dchinner@redhat.com>
+> > > ---
+> > >  fs/read_write.c | 10 ++++++++++
+> > >  1 file changed, 10 insertions(+)
+> > >
+> > > diff --git a/fs/read_write.c b/fs/read_write.c
+> > > index 3b101183ea19..3288db1d5f21 100644
+> > > --- a/fs/read_write.c
+> > > +++ b/fs/read_write.c
+> > > @@ -1576,6 +1576,16 @@ static ssize_t do_copy_file_range(struct file *file_in, loff_t pos_in,
+> > >  {
+> > >         ssize_t ret;
+> > >
+> > > +       /* Update source timestamps, because we are accessing file data */
+> > > +       file_accessed(file_in);
+> > > +
+> > > +       /* Update destination timestamps, since we can alter file contents. */
+> > > +       if (!(file_out->f_mode & FMODE_NOCMTIME)) {
+> > > +               ret = file_update_time(file_out);
+> > > +               if (ret)
+> > > +                       return ret;
+> > > +       }
+> > > +
+> >
+> > If there is a consistency about who is responsible of calling file_accessed()
+> > and file_update_time() it eludes me. grep tells me that they are mostly
+> > handled by filesystem code or generic helpers called by filesystem code
+> > and not in the vfs helpers.
+> >
+> > FMODE_NOCMTIME seems like an xfs specific flag (for DMAPI?), which
+> > most generic callers of file_update_time() completely ignore.
+> > This seems like another argument in favor of leaving the responsibility
+> > of the timestamp updates to the filesystem.
+> >
+> > Maybe I am missing something?
+> >
 > 
-> Similar to FI_DEDUPERANGE, make copy_file_range() check that we have
+> I had similar question before about who is responsible for doing the
+> checks. I agree that attributes should be updated for the case when no
+> filesystem support exist for copy_file_range() but this code does it
+> for all the cases. I also wonder if it's appropriate to update the
+> attributes before the copy is actually done?
 
-TLDR: No, it's not similar to FIDEDUPERANGE -- the use of
-inode_permission() in allow_file_dedupe() is to enable callers to dedupe
-into a file for which the caller has write permissions but opened the
-file O_RDONLY.
-
-[Please keep reading...]
-
-> write permissions to the destination inode.
-> 
-> Signed-off-by: Dave Chinner <dchinner@redhat.com>
-> ---
->  mm/filemap.c | 5 +++++
->  1 file changed, 5 insertions(+)
-> 
-> diff --git a/mm/filemap.c b/mm/filemap.c
-> index 0a170425935b..876df5275514 100644
-> --- a/mm/filemap.c
-> +++ b/mm/filemap.c
-> @@ -3013,6 +3013,11 @@ int generic_copy_file_checks(struct file *file_in, loff_t pos_in,
->  	    (file_out->f_flags & O_APPEND))
->  		return -EBADF;
->  
-> +	/* may sure we really are allowed to write to the destination inode */
-> +	ret = inode_permission(inode_out, MAY_WRITE);
-
-What's the difference between security_file_permission and
-inode_permission, and when do we call them for a regular
-open-write-close sequence?  Hmmm, let me take a look:
-
-It looks like we call inode_permission at open() time to make sure that
-the file permissions permit writes and the file isn't immutable.
-security_file_permission gets called at write() time to recheck with the
-security policy, but once a process has been granted a writable file
-descriptor, it retains that privilege until it closes the fd.  In other
-words, we check at open time, not at operation time.
-
-I think.  Nothing is ever that simple, so let's check behavior:
-
-So let's try opening a file for write, removing write permissions, then
-writing to the file:
-
-$ rm -rf xyz
-$ touch xyz
-$ ls -lad xyz
--rw-rw-r-- 1 djwong djwong 0 Dec  3 09:28 xyz
-$ xfs_io xyz
-xfs_io> pwrite -S 0x58 0 4k
-wrote 4096/4096 bytes at offset 0
-4 KiB, 1 ops; 0.0000 sec (130.208 MiB/sec and 33333.3333 ops/sec)
-xfs_io> 
-[1]+  Stopped                 xfs_io xyz
-$ chmod a-w xyz
-$ sudo chown root:root xyz
-$ ls -lad xyz
--r--r--r-- 1 root root 4096 Dec  3 09:28 xyz
-$ fg
-xfs_io xyz
-
-xfs_io> pwrite -S 0x58 0 8k
-wrote 8192/8192 bytes at offset 0
-8 KiB, 2 ops; 0.0000 sec (558.036 MiB/sec and 142857.1429 ops/sec)
-xfs_io>
-
-Yep, we can write to an already-open file even if we change its
-ownership and take away write permission.  How about the immutable flag?
-
-$ touch b
-$ xfs_io b
-xfs_io> pwrite -S 0x58 0 4k
-wrote 4096/4096 bytes at offset 0
-4 KiB, 1 ops; 0.0000 sec (75.120 MiB/sec and 19230.7692 ops/sec)
-xfs_io> sync
-xfs_io> 
-[1]+  Stopped                 xfs_io b
-$ sudo chown root:root b
-$ sudo chattr +i b
-$ ls -lad b ; lsattr b
--rw-rw-r-- 1 root root 4096 Dec  3 09:51 b
-----i-------------- b
-$ fg
-xfs_io b
-
-xfs_io> pwrite -S 0x58 0 6k
-wrote 6144/6144 bytes at offset 0
-6 KiB, 2 ops; 0.0000 sec (102.796 MiB/sec and 35087.7193 ops/sec)
-xfs_io> sync
-xfs_io> 
-
-Similarly, it looks like we can write to an already-open file even if we
-change its ownership and mark the file immutable.  Both of these are a
-little unexpected; I would have thought at least that +i would have
-prevented the write.
-
-How about reflink?
-
-$ rm -rf a b
-$ xfs_io -f -c 'pwrite -S 0x58 0 64k' a
-wrote 65536/65536 bytes at offset 0
-64 KiB, 16 ops; 0.0000 sec (1.744 GiB/sec and 457142.8571 ops/sec)
-$ xfs_io -f -c 'pwrite -S 0x58 0 64k' b
-wrote 65536/65536 bytes at offset 0
-64 KiB, 16 ops; 0.0000 sec (1.969 GiB/sec and 516129.0323 ops/sec)
-$ xfs_io b
-xfs_io> 
-[1]+  Stopped                 xfs_io b
-$ chmod a-w b
-$ sudo chown root:root b
-$ sudo chattr +i b
-$ fg
-xfs_io b
-
-xfs_io> reflink a 0 0 4k
-XFS_IOC_CLONE_RANGE: Operation not permitted
-xfs_io> 
-[1]+  Stopped                 xfs_io b
-$ sudo chattr -i b
-$ fg
-xfs_io b
-
-xfs_io> reflink a 0 0 4k
-linked 4096/4096 bytes at offset 0
-4 KiB, 1 ops; 0.0004 sec (7.988 MiB/sec and 2044.9898 ops/sec)
-xfs_io> 
-
-We cannot reflink into a file that becomes immutable after we open it
-for write, but we can reflink into a file that loses its write
-permissions after we open it.  What about dedupe?
-
-$ rm -rf a b
-$ xfs_io -f -c 'pwrite -S 0x58 0 64k' a
-wrote 65536/65536 bytes at offset 0
-64 KiB, 16 ops; 0.0000 sec (1.795 GiB/sec and 470588.2353 ops/sec)
-$ xfs_io -f -c 'pwrite -S 0x58 0 64k' b
-wrote 65536/65536 bytes at offset 0
-64 KiB, 16 ops; 0.0001 sec (512.295 MiB/sec and 131147.5410 ops/sec)
-$ chmod a-w b
-$ sudo chown root:root b
-$ sudo chattr +i b
-$ fg
-xfs_io b
-
-xfs_io> dedupe a 0 0 4k
-XFS_IOC_FILE_EXTENT_SAME: Operation not permitted
-xfs_io> 
-[1]+  Stopped                 xfs_io b
-$ sudo chattr -i b
-$ fg
-xfs_io b
-
-xfs_io> dedupe a 0 0 4k
-deduped 4096/4096 bytes at offset 0
-4 KiB, 1 ops; 0.0160 sec (249.688 KiB/sec and 62.4220 ops/sec)
-xfs_io>
-
-We also cannot dedupe into a file that becomes immutable after we open
-it for write, but we can dedupe into a file that loses its write
-permissions after we open it.
-
-Summarized:
-
-op:		after +immutable?	after chmod a-w?
-write		yes			yes
-clonerange	no			yes
-dedupe		no			yes
-newcopyrange	no			no
-
-My reaction: I don't think that writes should be allowed after an
-administrator marks a file immutable (but that's a separate issue) but I
-do think we should be consistent in allowing copying into a file that
-has lost its write permissions after we opened the file for write, like
-we do for write() and the remap ioct....
-
-*OH*
-
-Now I remember what the FI_DEDUPERANGE inode_permission call is for!
-It's because dedupe tools want to be able to open a file readonly and
-have dedupe remap another file's identical blocks into the readonly
-file, provided that the process would have been able to open the file
-for writing had it asked.
-
-[Hugging hug hug huggy hugging hug of hug interface!!! :P]
+The other functions that change file contents (write, clonerange) update
+mtime and remove suid before initiating the operation.  For mtime I
+think we should maintain consistent behavior, and for suid removal we
+definitely need to revoke that before we change the file contents.
 
 --D
 
-> +	if (ret < 0)
-> +		return ret;
-> +
->  	/* Ensure offsets don't wrap. */
->  	if (pos_in + count < pos_in || pos_out + count < pos_out)
->  		return -EOVERFLOW;
-> -- 
-> 2.19.1
-> 
+> > Thanks,
+> > Amir.
