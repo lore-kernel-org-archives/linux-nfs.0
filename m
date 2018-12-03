@@ -6,31 +6,32 @@ X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A9501C04EB8
-	for <linux-nfs@archiver.kernel.org>; Mon,  3 Dec 2018 00:58:55 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B424EC04EB8
+	for <linux-nfs@archiver.kernel.org>; Mon,  3 Dec 2018 00:59:00 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 6911F20881
-	for <linux-nfs@archiver.kernel.org>; Mon,  3 Dec 2018 00:58:55 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 6911F20881
+	by mail.kernel.org (Postfix) with ESMTP id 8395C20881
+	for <linux-nfs@archiver.kernel.org>; Mon,  3 Dec 2018 00:59:00 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 8395C20881
 Authentication-Results: mail.kernel.org; dmarc=none (p=none dis=none) header.from=suse.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1725851AbeLCA67 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 2 Dec 2018 19:58:59 -0500
-Received: from mx2.suse.de ([195.135.220.15]:43092 "EHLO mx1.suse.de"
+        id S1725874AbeLCA7E (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sun, 2 Dec 2018 19:59:04 -0500
+Received: from mx2.suse.de ([195.135.220.15]:43104 "EHLO mx1.suse.de"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1725785AbeLCA67 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sun, 2 Dec 2018 19:58:59 -0500
+        id S1725785AbeLCA7E (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sun, 2 Dec 2018 19:59:04 -0500
 X-Virus-Scanned: by amavisd-new at test-mx.suse.de
 Received: from relay2.suse.de (unknown [195.135.220.254])
-        by mx1.suse.de (Postfix) with ESMTP id 4F7C1AD3B;
-        Mon,  3 Dec 2018 00:58:53 +0000 (UTC)
+        by mx1.suse.de (Postfix) with ESMTP id 7CD66AD3B;
+        Mon,  3 Dec 2018 00:58:58 +0000 (UTC)
 From:   NeilBrown <neilb@suse.com>
 To:     Steve Dickson <SteveD@RedHat.com>
 Date:   Mon, 03 Dec 2018 11:58:25 +1100
-Subject: [PATCH 2/3] Let systemd know when rpc.statd is needed.
+Subject: [PATCH 3/3] systemd: run statd-notify even when nfs-client isn't
+ enabled.
 Cc:     Justin Mitchell <jumitche@rehat.com>, linux-nfs@vger.kernel.org
-Message-ID: <154379870498.3215.1051796458035422926.stgit@noble>
+Message-ID: <154379870500.3215.3980663938514502057.stgit@noble>
 In-Reply-To: <154379862296.3215.11174339731963464375.stgit@noble>
 References: <154379862296.3215.11174339731963464375.stgit@noble>
 User-Agent: StGit/0.17.1-dirty
@@ -42,51 +43,35 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-A recent change to set IgnoreOnIsolate for rpc-statd
-isn't quite sufficient (though it doesn't hurt).
-While rpc-statd does remain when
-  systemctl isolate multi-user
-is run, its dependencies don't remain, so rpcbind might
-get killed, which makes rpc.statd rather useless.
+When NFS filesytems are mounted, nfs-client.target really should
+be enabled.  However it is possible to mount NFS filesystems
+without this (providing gss isn't used) and it mostly works.
 
-The reason this is all an issue is that systemd doesn't know that
-rpc-statd is needed - mount.nfs explicitly starts it rather than
-having a dependency start it.
-This can be rectified by explicitly telling systemd about the
-dependency using "systemctl add-wants".  This can be done in the
-start-statd script, at the same time that rpc-statd is started.
+One aspect that doesn't work is that sm-notify isn't run, so the server
+isn't told to drop any locks from the previous client instance.
+This can result in confusing failures: if a client crashes while
+holding a lock, it won't be able to get the same lock after a reboot.
 
-As --runtime dependency is used so that it doesn't persist across
-reboots.  A new dependency will be created on next boot if an NFSv3
-filesystem is mounted.
-
-With this in place, both rpc.statd and rpcbind remain.
-Actually, rpcbind.service is stopped, but rpcbind.socket remains,
-and when anything tries to contact rpcbind, rpcbind.service
-is automatically started and it re-reads its saved state.
+While this isn't a complete solution (nfs-client really should be
+enabled), adding a dependency from rpc-statd to rpc-statd-notify is
+easy, has no down sides, and could help avoid confusion.
 
 Signed-off-by: NeilBrown <neilb@suse.com>
 ---
- utils/statd/start-statd |    7 ++++++-
- 1 file changed, 6 insertions(+), 1 deletion(-)
+ systemd/rpc-statd.service |    1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/utils/statd/start-statd b/utils/statd/start-statd
-index 82715b40c1af..54ced822016a 100755
---- a/utils/statd/start-statd
-+++ b/utils/statd/start-statd
-@@ -20,7 +20,12 @@ fi
- # First try systemd if it's installed.
- if [ -d /run/systemd/system ]; then
-     # Quit only if the call worked.
--    systemctl start rpc-statd.service && exit
-+    if systemctl start rpc-statd.service; then
-+        # Ensure systemd knows not to stop rpc.statd or its dependencies
-+        # on 'systemctl isolate ..'
-+        systemctl add-wants --runtime remote-fs.target rpc-statd.service
-+        exit 0
-+    fi
- fi
+diff --git a/systemd/rpc-statd.service b/systemd/rpc-statd.service
+index 1f4e6a8b92ab..3e92cf71add0 100644
+--- a/systemd/rpc-statd.service
++++ b/systemd/rpc-statd.service
+@@ -4,6 +4,7 @@ DefaultDependencies=no
+ Conflicts=umount.target
+ Requires=nss-lookup.target rpcbind.socket
+ Wants=network-online.target
++Wants=rpc-statd-notify.service
+ After=network-online.target nss-lookup.target rpcbind.socket
  
- cd /
+ PartOf=nfs-utils.service
 
 
