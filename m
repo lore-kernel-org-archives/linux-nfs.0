@@ -2,76 +2,60 @@ Return-Path: <SRS0=4jnv=OM=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-1.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B424EC04EB8
-	for <linux-nfs@archiver.kernel.org>; Mon,  3 Dec 2018 00:59:00 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 48EE3C04EB9
+	for <linux-nfs@archiver.kernel.org>; Mon,  3 Dec 2018 07:53:09 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 8395C20881
-	for <linux-nfs@archiver.kernel.org>; Mon,  3 Dec 2018 00:59:00 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 8395C20881
-Authentication-Results: mail.kernel.org; dmarc=none (p=none dis=none) header.from=suse.com
+	by mail.kernel.org (Postfix) with ESMTP id 16FB520672
+	for <linux-nfs@archiver.kernel.org>; Mon,  3 Dec 2018 07:53:09 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 16FB520672
+Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=redhat.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1725874AbeLCA7E (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 2 Dec 2018 19:59:04 -0500
-Received: from mx2.suse.de ([195.135.220.15]:43104 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1725785AbeLCA7E (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sun, 2 Dec 2018 19:59:04 -0500
-X-Virus-Scanned: by amavisd-new at test-mx.suse.de
-Received: from relay2.suse.de (unknown [195.135.220.254])
-        by mx1.suse.de (Postfix) with ESMTP id 7CD66AD3B;
-        Mon,  3 Dec 2018 00:58:58 +0000 (UTC)
-From:   NeilBrown <neilb@suse.com>
-To:     Steve Dickson <SteveD@RedHat.com>
-Date:   Mon, 03 Dec 2018 11:58:25 +1100
-Subject: [PATCH 3/3] systemd: run statd-notify even when nfs-client isn't
- enabled.
-Cc:     Justin Mitchell <jumitche@rehat.com>, linux-nfs@vger.kernel.org
-Message-ID: <154379870500.3215.3980663938514502057.stgit@noble>
-In-Reply-To: <154379862296.3215.11174339731963464375.stgit@noble>
-References: <154379862296.3215.11174339731963464375.stgit@noble>
-User-Agent: StGit/0.17.1-dirty
+        id S1725842AbeLCHxM (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 3 Dec 2018 02:53:12 -0500
+Received: from mx1.redhat.com ([209.132.183.28]:33616 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1725832AbeLCHxM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 3 Dec 2018 02:53:12 -0500
+Received: from smtp.corp.redhat.com (int-mx05.intmail.prod.int.phx2.redhat.com [10.5.11.15])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id F3C8183F4C
+        for <linux-nfs@vger.kernel.org>; Mon,  3 Dec 2018 07:53:07 +0000 (UTC)
+Received: from localhost.localdomain (ovpn-112-31.sin2.redhat.com [10.67.112.31])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 7AB385D778;
+        Mon,  3 Dec 2018 07:53:01 +0000 (UTC)
+From:   Soumya Koduri <skoduri@redhat.com>
+Subject: NFS client behavior on WRITE_DELEGATION
+To:     linux-nfs@vger.kernel.org
+Cc:     Matt Benjamin <mbenjamin@redhat.com>
+Message-ID: <68c7c07a-949d-1ce0-ec7e-5ab71ffaaa3b@redhat.com>
+Date:   Mon, 3 Dec 2018 13:22:59 +0530
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101
+ Thunderbird/60.0
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Language: en-US
 Content-Transfer-Encoding: 7bit
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.15
+X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.27]); Mon, 03 Dec 2018 07:53:08 +0000 (UTC)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-When NFS filesytems are mounted, nfs-client.target really should
-be enabled.  However it is possible to mount NFS filesystems
-without this (providing gss isn't used) and it mostly works.
+Hi,
 
-One aspect that doesn't work is that sm-notify isn't run, so the server
-isn't told to drop any locks from the previous client instance.
-This can result in confusing failures: if a client crashes while
-holding a lock, it won't be able to get the same lock after a reboot.
+In our NFSv4.1 Delegations testing we observed that NFS client sends 
+WRITE requests to the server even when granted WRITE_DELEGATION. I see 
+that only OPEN/CLOSE and LOCK operations are served locally by the client.
 
-While this isn't a complete solution (nfs-client really should be
-enabled), adding a dependency from rpc-statd to rpc-statd-notify is
-easy, has no down sides, and could help avoid confusion.
+Please confirm if this behavior is expected and if yes, can it be 
+improved to avoid sending WRITEs to the server until the application 
+does fsync.
 
-Signed-off-by: NeilBrown <neilb@suse.com>
----
- systemd/rpc-statd.service |    1 +
- 1 file changed, 1 insertion(+)
-
-diff --git a/systemd/rpc-statd.service b/systemd/rpc-statd.service
-index 1f4e6a8b92ab..3e92cf71add0 100644
---- a/systemd/rpc-statd.service
-+++ b/systemd/rpc-statd.service
-@@ -4,6 +4,7 @@ DefaultDependencies=no
- Conflicts=umount.target
- Requires=nss-lookup.target rpcbind.socket
- Wants=network-online.target
-+Wants=rpc-statd-notify.service
- After=network-online.target nss-lookup.target rpcbind.socket
- 
- PartOf=nfs-utils.service
-
-
+Thanks,
+Soumya
