@@ -6,25 +6,25 @@ X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 53B10C64EB4
-	for <linux-nfs@archiver.kernel.org>; Mon,  3 Dec 2018 00:33:30 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 89F6AC64EB4
+	for <linux-nfs@archiver.kernel.org>; Mon,  3 Dec 2018 00:33:42 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 1F17F20659
-	for <linux-nfs@archiver.kernel.org>; Mon,  3 Dec 2018 00:33:30 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 1F17F20659
+	by mail.kernel.org (Postfix) with ESMTP id 551A320659
+	for <linux-nfs@archiver.kernel.org>; Mon,  3 Dec 2018 00:33:42 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 551A320659
 Authentication-Results: mail.kernel.org; dmarc=none (p=none dis=none) header.from=suse.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1725803AbeLCAdd (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 2 Dec 2018 19:33:33 -0500
-Received: from mx2.suse.de ([195.135.220.15]:41230 "EHLO mx1.suse.de"
+        id S1726102AbeLCAdp (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sun, 2 Dec 2018 19:33:45 -0500
+Received: from mx2.suse.de ([195.135.220.15]:41286 "EHLO mx1.suse.de"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1725785AbeLCAdd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sun, 2 Dec 2018 19:33:33 -0500
+        id S1725785AbeLCAdp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sun, 2 Dec 2018 19:33:45 -0500
 X-Virus-Scanned: by amavisd-new at test-mx.suse.de
 Received: from relay2.suse.de (unknown [195.135.220.254])
-        by mx1.suse.de (Postfix) with ESMTP id 81F39AD90;
-        Mon,  3 Dec 2018 00:33:26 +0000 (UTC)
+        by mx1.suse.de (Postfix) with ESMTP id 4252BAC9C;
+        Mon,  3 Dec 2018 00:33:39 +0000 (UTC)
 From:   NeilBrown <neilb@suse.com>
 To:     "J. Bruce Fields" <bfields@fieldses.org>,
         Chuck Lever <chuck.lever@oracle.com>,
@@ -32,11 +32,10 @@ To:     "J. Bruce Fields" <bfields@fieldses.org>,
         Trond Myklebust <trond.myklebust@hammerspace.com>,
         Anna Schumaker <anna.schumaker@netapp.com>
 Date:   Mon, 03 Dec 2018 11:30:30 +1100
-Subject: [PATCH 14/23] SUNRPC: add side channel to use non-generic cred for
- rpc call.
+Subject: [PATCH 16/23] SUNRPC: remove RPCAUTH_AUTH_NO_CRKEY_TIMEOUT
 Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
         linux-kernel@vger.kernel.org
-Message-ID: <154379703067.28598.6540375775619413453.stgit@noble>
+Message-ID: <154379703077.28598.2784479173733392960.stgit@noble>
 In-Reply-To: <154379689752.28598.6750646657534626618.stgit@noble>
 References: <154379689752.28598.6750646657534626618.stgit@noble>
 User-Agent: StGit/0.17.1-dirty
@@ -48,107 +47,52 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-The credential passed in rpc_message.rpc_cred is always a
-generic credential except in one instance.
-When gss_destroying_context() calls rpc_call_null(), it passes
-a specific credential that it needs to destroy.
-In this case the RPC acts *on* the credential rather than
-being authorized by it.
-
-This special case deserves explicit support and providing that will
-mean that rpc_message.rpc_cred is *always* generic, allowing
-some optimizations.
-
-So add "tk_op_cred" to rpc_task and "rpc_op_cred" to the setup data.
-Use this to pass the cred down from rpc_call_null(), and have
-rpcauth_bindcred() notice it and bind it in place.
-
-Credit to kernel test robot <fengguang.wu@intel.com> for finding
-a bug in earlier version of this patch.
+This is no longer used.
 
 Signed-off-by: NeilBrown <neilb@suse.com>
 ---
- include/linux/sunrpc/sched.h |    2 ++
- net/sunrpc/auth.c            |    6 +++++-
- net/sunrpc/clnt.c            |    2 +-
- net/sunrpc/sched.c           |    3 +++
- 4 files changed, 11 insertions(+), 2 deletions(-)
+ include/linux/sunrpc/auth.h |    3 ---
+ net/sunrpc/auth_null.c      |    1 -
+ net/sunrpc/auth_unix.c      |    1 -
+ 3 files changed, 5 deletions(-)
 
-diff --git a/include/linux/sunrpc/sched.h b/include/linux/sunrpc/sched.h
-index bd722ebc70b7..4e2b893b83a8 100644
---- a/include/linux/sunrpc/sched.h
-+++ b/include/linux/sunrpc/sched.h
-@@ -71,6 +71,7 @@ struct rpc_task {
+diff --git a/include/linux/sunrpc/auth.h b/include/linux/sunrpc/auth.h
+index 0bdc2f4957ff..d8cf742f8032 100644
+--- a/include/linux/sunrpc/auth.h
++++ b/include/linux/sunrpc/auth.h
+@@ -69,9 +69,6 @@ struct rpc_cred {
  
- 	struct rpc_clnt *	tk_client;	/* RPC client */
- 	struct rpc_xprt *	tk_xprt;	/* Transport */
-+	struct rpc_cred *	tk_op_cred;	/* cred being operated on */
+ struct rpc_cred *rpc_machine_cred(void);
  
- 	struct rpc_rqst *	tk_rqstp;	/* RPC request */
- 
-@@ -105,6 +106,7 @@ struct rpc_task_setup {
- 	struct rpc_task *task;
- 	struct rpc_clnt *rpc_client;
- 	struct rpc_xprt *rpc_xprt;
-+	struct rpc_cred *rpc_op_cred;	/* credential being operated on */
- 	const struct rpc_message *rpc_message;
- 	const struct rpc_call_ops *callback_ops;
- 	void *callback_data;
-diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
-index dcfcc590b34e..27d90578e7a0 100644
---- a/net/sunrpc/auth.c
-+++ b/net/sunrpc/auth.c
-@@ -751,7 +751,11 @@ rpcauth_bindcred(struct rpc_task *task, struct rpc_cred *cred, int flags)
- 
- 	if (flags & RPC_TASK_ASYNC)
- 		lookupflags |= RPCAUTH_LOOKUP_NEW;
--	if (cred != NULL && cred != &machine_cred)
-+	if (task->tk_op_cred)
-+		/* Task must use exactly this rpc_cred */
-+		new = task->tk_op_cred->cr_ops->crbind(task, task->tk_op_cred,
-+						       lookupflags);
-+	else if (cred != NULL && cred != &machine_cred)
- 		new = cred->cr_ops->crbind(task, cred, lookupflags);
- 	else if (cred == &machine_cred)
- 		new = rpcauth_bind_machine_cred(task, lookupflags);
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index 1217d874202c..87a517d576c1 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -2525,12 +2525,12 @@ struct rpc_task *rpc_call_null_helper(struct rpc_clnt *clnt,
- {
- 	struct rpc_message msg = {
- 		.rpc_proc = &rpcproc_null,
--		.rpc_cred = cred,
- 	};
- 	struct rpc_task_setup task_setup_data = {
- 		.rpc_client = clnt,
- 		.rpc_xprt = xprt,
- 		.rpc_message = &msg,
-+		.rpc_op_cred = cred,
- 		.callback_ops = (ops != NULL) ? ops : &rpc_default_ops,
- 		.callback_data = data,
- 		.flags = flags,
-diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
-index 57ca5bead1cb..c9f65037a6ad 100644
---- a/net/sunrpc/sched.c
-+++ b/net/sunrpc/sched.c
-@@ -997,6 +997,8 @@ static void rpc_init_task(struct rpc_task *task, const struct rpc_task_setup *ta
- 
- 	task->tk_xprt = xprt_get(task_setup_data->rpc_xprt);
- 
-+	task->tk_op_cred = get_rpccred(task_setup_data->rpc_op_cred);
-+
- 	if (task->tk_ops->rpc_call_prepare != NULL)
- 		task->tk_action = rpc_prepare_task;
- 
-@@ -1054,6 +1056,7 @@ static void rpc_free_task(struct rpc_task *task)
- {
- 	unsigned short tk_flags = task->tk_flags;
- 
-+	put_rpccred(task->tk_op_cred);
- 	rpc_release_calldata(task->tk_ops, task->tk_calldata);
- 
- 	if (tk_flags & RPC_TASK_DYNAMIC) {
+-/* rpc_auth au_flags */
+-#define RPCAUTH_AUTH_NO_CRKEY_TIMEOUT	0x0001 /* underlying cred has no key timeout */
+-
+ /*
+  * Client authentication handle
+  */
+diff --git a/net/sunrpc/auth_null.c b/net/sunrpc/auth_null.c
+index 2694a1bc026b..135c75d6c470 100644
+--- a/net/sunrpc/auth_null.c
++++ b/net/sunrpc/auth_null.c
+@@ -116,7 +116,6 @@ static
+ struct rpc_auth null_auth = {
+ 	.au_cslack	= NUL_CALLSLACK,
+ 	.au_rslack	= NUL_REPLYSLACK,
+-	.au_flags	= RPCAUTH_AUTH_NO_CRKEY_TIMEOUT,
+ 	.au_ops		= &authnull_ops,
+ 	.au_flavor	= RPC_AUTH_NULL,
+ 	.au_count	= REFCOUNT_INIT(1),
+diff --git a/net/sunrpc/auth_unix.c b/net/sunrpc/auth_unix.c
+index 7d4099fc18e7..6ee43bfbfb4b 100644
+--- a/net/sunrpc/auth_unix.c
++++ b/net/sunrpc/auth_unix.c
+@@ -237,7 +237,6 @@ static
+ struct rpc_auth		unix_auth = {
+ 	.au_cslack	= UNX_CALLSLACK,
+ 	.au_rslack	= NUL_REPLYSLACK,
+-	.au_flags	= RPCAUTH_AUTH_NO_CRKEY_TIMEOUT,
+ 	.au_ops		= &authunix_ops,
+ 	.au_flavor	= RPC_AUTH_UNIX,
+ 	.au_count	= REFCOUNT_INIT(1),
 
 
