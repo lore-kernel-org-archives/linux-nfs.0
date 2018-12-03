@@ -6,31 +6,31 @@ X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8A0C4C04EB8
-	for <linux-nfs@archiver.kernel.org>; Mon,  3 Dec 2018 00:58:50 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A9501C04EB8
+	for <linux-nfs@archiver.kernel.org>; Mon,  3 Dec 2018 00:58:55 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 4FAF720881
-	for <linux-nfs@archiver.kernel.org>; Mon,  3 Dec 2018 00:58:50 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 4FAF720881
+	by mail.kernel.org (Postfix) with ESMTP id 6911F20881
+	for <linux-nfs@archiver.kernel.org>; Mon,  3 Dec 2018 00:58:55 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 6911F20881
 Authentication-Results: mail.kernel.org; dmarc=none (p=none dis=none) header.from=suse.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1725850AbeLCA6y (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 2 Dec 2018 19:58:54 -0500
-Received: from mx2.suse.de ([195.135.220.15]:43064 "EHLO mx1.suse.de"
+        id S1725851AbeLCA67 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sun, 2 Dec 2018 19:58:59 -0500
+Received: from mx2.suse.de ([195.135.220.15]:43092 "EHLO mx1.suse.de"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1725785AbeLCA6y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sun, 2 Dec 2018 19:58:54 -0500
+        id S1725785AbeLCA67 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sun, 2 Dec 2018 19:58:59 -0500
 X-Virus-Scanned: by amavisd-new at test-mx.suse.de
 Received: from relay2.suse.de (unknown [195.135.220.254])
-        by mx1.suse.de (Postfix) with ESMTP id 38D0EADC8;
-        Mon,  3 Dec 2018 00:58:48 +0000 (UTC)
+        by mx1.suse.de (Postfix) with ESMTP id 4F7C1AD3B;
+        Mon,  3 Dec 2018 00:58:53 +0000 (UTC)
 From:   NeilBrown <neilb@suse.com>
 To:     Steve Dickson <SteveD@RedHat.com>
-Date:   Mon, 03 Dec 2018 11:58:24 +1100
-Subject: [PATCH 1/3] nfs.conf: allow empty assignments.
+Date:   Mon, 03 Dec 2018 11:58:25 +1100
+Subject: [PATCH 2/3] Let systemd know when rpc.statd is needed.
 Cc:     Justin Mitchell <jumitche@rehat.com>, linux-nfs@vger.kernel.org
-Message-ID: <154379870495.3215.5548604122736274107.stgit@noble>
+Message-ID: <154379870498.3215.1051796458035422926.stgit@noble>
 In-Reply-To: <154379862296.3215.11174339731963464375.stgit@noble>
 References: <154379862296.3215.11174339731963464375.stgit@noble>
 User-Agent: StGit/0.17.1-dirty
@@ -42,52 +42,51 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-A recent commit caused an error message (but didn't actually
-trigger an error) for a config file line like:
+A recent change to set IgnoreOnIsolate for rpc-statd
+isn't quite sufficient (though it doesn't hurt).
+While rpc-statd does remain when
+  systemctl isolate multi-user
+is run, its dependencies don't remain, so rpcbind might
+get killed, which makes rpc.statd rather useless.
 
-  foo =
+The reason this is all an issue is that systemd doesn't know that
+rpc-statd is needed - mount.nfs explicitly starts it rather than
+having a dependency start it.
+This can be rectified by explicitly telling systemd about the
+dependency using "systemctl add-wants".  This can be done in the
+start-statd script, at the same time that rpc-statd is started.
 
-There is no good reason to treat this as an error, and we (SUSE) have
-established practice of expecting these to be accepted.
-Specifically "/etc/nfs.conf" includes "/etc/sysconfig/nfs" which
-contains lots of empty definitions.
+As --runtime dependency is used so that it doesn't persist across
+reboots.  A new dependency will be created on next boot if an NFSv3
+filesystem is mounted.
 
-So remove the error message.
+With this in place, both rpc.statd and rpcbind remain.
+Actually, rpcbind.service is stopped, but rpcbind.socket remains,
+and when anything tries to contact rpcbind, rpcbind.service
+is automatically started and it re-reads its saved state.
 
-Fixes: 1c2c18806800 ("nfs.conf: Removed buffer overruns")
 Signed-off-by: NeilBrown <neilb@suse.com>
 ---
- support/nfs/conffile.c      |    5 -----
- tests/nfsconf/01-errors.exp |    1 -
- 2 files changed, 6 deletions(-)
+ utils/statd/start-statd |    7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
 
-diff --git a/support/nfs/conffile.c b/support/nfs/conffile.c
-index 0e39aca6b468..77c5790c893c 100644
---- a/support/nfs/conffile.c
-+++ b/support/nfs/conffile.c
-@@ -405,11 +405,6 @@ conf_parse_line(int trans, char *line, const char *filename, int lineno, char **
- 			  "missing tag in assignment", filename, lineno);
- 		return;
- 	}
--	if (*val == '\0') {
--		xlog_warn("config error at %s:%d: "
--			  "missing value in assignment", filename, lineno);
--		return;
--	}
+diff --git a/utils/statd/start-statd b/utils/statd/start-statd
+index 82715b40c1af..54ced822016a 100755
+--- a/utils/statd/start-statd
++++ b/utils/statd/start-statd
+@@ -20,7 +20,12 @@ fi
+ # First try systemd if it's installed.
+ if [ -d /run/systemd/system ]; then
+     # Quit only if the call worked.
+-    systemctl start rpc-statd.service && exit
++    if systemctl start rpc-statd.service; then
++        # Ensure systemd knows not to stop rpc.statd or its dependencies
++        # on 'systemctl isolate ..'
++        systemctl add-wants --runtime remote-fs.target rpc-statd.service
++        exit 0
++    fi
+ fi
  
- 	if (strcasecmp(line, "include")==0) {
- 		/* load and parse subordinate config files */
-diff --git a/tests/nfsconf/01-errors.exp b/tests/nfsconf/01-errors.exp
-index 2bf1b8c7f65b..0b985b46267e 100644
---- a/tests/nfsconf/01-errors.exp
-+++ b/tests/nfsconf/01-errors.exp
-@@ -4,7 +4,6 @@ nfsconf: config error at 01-errors.conf:10: non-matched ']', ignoring until next
- nfsconf: config error at 01-errors.conf:11: ignoring line not in a section
- nfsconf: config error at 01-errors.conf:14: line not empty and not an assignment
- nfsconf: config error at 01-errors.conf:15: missing tag in assignment
--nfsconf: config error at 01-errors.conf:16: missing value in assignment
- nfsconf: config error at 01-errors.conf:18: unmatched quotes
- [four]
-  four = foo = bar
+ cd /
 
 
