@@ -3,28 +3,28 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
 X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED
 	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9FD9DC64EB4
-	for <linux-nfs@archiver.kernel.org>; Mon,  3 Dec 2018 00:32:56 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id EFDBDC04EB8
+	for <linux-nfs@archiver.kernel.org>; Mon,  3 Dec 2018 00:33:02 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 6F7BE20834
-	for <linux-nfs@archiver.kernel.org>; Mon,  3 Dec 2018 00:32:56 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 6F7BE20834
+	by mail.kernel.org (Postfix) with ESMTP id C00A320892
+	for <linux-nfs@archiver.kernel.org>; Mon,  3 Dec 2018 00:33:02 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org C00A320892
 Authentication-Results: mail.kernel.org; dmarc=none (p=none dis=none) header.from=suse.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726004AbeLCAcz (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 2 Dec 2018 19:32:55 -0500
-Received: from mx2.suse.de ([195.135.220.15]:41100 "EHLO mx1.suse.de"
+        id S1726014AbeLCAdB (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sun, 2 Dec 2018 19:33:01 -0500
+Received: from mx2.suse.de ([195.135.220.15]:41126 "EHLO mx1.suse.de"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1725785AbeLCAcz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sun, 2 Dec 2018 19:32:55 -0500
+        id S1725785AbeLCAdA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sun, 2 Dec 2018 19:33:00 -0500
 X-Virus-Scanned: by amavisd-new at test-mx.suse.de
 Received: from relay1.suse.de (unknown [195.135.220.254])
-        by mx1.suse.de (Postfix) with ESMTP id 2B8CAAD90;
-        Mon,  3 Dec 2018 00:32:48 +0000 (UTC)
+        by mx1.suse.de (Postfix) with ESMTP id 7D918AD90;
+        Mon,  3 Dec 2018 00:32:54 +0000 (UTC)
 From:   NeilBrown <neilb@suse.com>
 To:     "J. Bruce Fields" <bfields@fieldses.org>,
         Chuck Lever <chuck.lever@oracle.com>,
@@ -32,11 +32,11 @@ To:     "J. Bruce Fields" <bfields@fieldses.org>,
         Trond Myklebust <trond.myklebust@hammerspace.com>,
         Anna Schumaker <anna.schumaker@netapp.com>
 Date:   Mon, 03 Dec 2018 11:30:30 +1100
-Subject: [PATCH 08/23] SUNRPC: remove machine_cred field from struct
- auth_cred
+Subject: [PATCH 09/23] NFSv4: add cl_root_cred for use when machine cred is
+ not available.
 Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
         linux-kernel@vger.kernel.org
-Message-ID: <154379703042.28598.14367691422771762233.stgit@noble>
+Message-ID: <154379703046.28598.12065100828754844053.stgit@noble>
 In-Reply-To: <154379689752.28598.6750646657534626618.stgit@noble>
 References: <154379689752.28598.6750646657534626618.stgit@noble>
 User-Agent: StGit/0.17.1-dirty
@@ -48,117 +48,93 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-The cred is a machine_cred iff ->principal is set, so there is no
-need for the extra flag.
+NFSv4 state management tries a root credential when no machine
+credential is available, as can happen with kerberos.
+It does this by replacing the cl_machine_cred with a root credential.
+This means that any user of the machine credential needs to take
+a lock while getting a reference to the machine credential, which is
+a little cumbersome.
 
-There is one case which deserves some
-explanation. nfs4_root_machine_cred() calls rpc_lookup_machine_cred()
-with a NULL principal name which results in not getting a machine
-credential, but getting a root credential instead.
-This appears to be what is expected of the caller, and is
-clearly the result provided by both auth_unix and auth_gss
-which already ignore the flag.
+So introduce an explicit cl_root_cred, and never free either
+credential until client shutdown.  This means that no locking
+is needed to reference these credentials.  Future patches
+will make use of this.
+
+This is only a temporary addition.  both cl_machine_cred and
+cl_root_cred will disappear later in the series.
 
 Signed-off-by: NeilBrown <neilb@suse.com>
 ---
- include/linux/sunrpc/auth.h    |    3 +--
- net/sunrpc/auth_generic.c      |   12 ++++++------
- net/sunrpc/auth_gss/auth_gss.c |    5 +----
- 3 files changed, 8 insertions(+), 12 deletions(-)
+ fs/nfs/client.c           |    2 ++
+ fs/nfs/nfs4state.c        |   20 ++++++++++++--------
+ include/linux/nfs_fs_sb.h |    1 +
+ 3 files changed, 15 insertions(+), 8 deletions(-)
 
-diff --git a/include/linux/sunrpc/auth.h b/include/linux/sunrpc/auth.h
-index 831ea65bd9f4..1c0468f39479 100644
---- a/include/linux/sunrpc/auth.h
-+++ b/include/linux/sunrpc/auth.h
-@@ -46,9 +46,8 @@ enum {
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 96d5f8135eb9..cce151776709 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -248,6 +248,8 @@ void nfs_free_client(struct nfs_client *clp)
  
- struct auth_cred {
- 	const struct cred *cred;
--	const char *principal;
-+	const char *principal;	/* If present, this is a machine credential */
- 	unsigned long ac_flags;
--	unsigned char machine_cred : 1;
- };
+ 	if (clp->cl_machine_cred != NULL)
+ 		put_rpccred(clp->cl_machine_cred);
++	if (clp->cl_root_cred != NULL)
++		put_rpccred(clp->cl_root_cred);
  
- /*
-diff --git a/net/sunrpc/auth_generic.c b/net/sunrpc/auth_generic.c
-index 6c7c65da6063..7d1a8f45726c 100644
---- a/net/sunrpc/auth_generic.c
-+++ b/net/sunrpc/auth_generic.c
-@@ -50,12 +50,13 @@ EXPORT_SYMBOL_GPL(rpc_lookup_cred_nonblock);
+ 	put_net(clp->cl_net);
+ 	put_nfs_version(clp->cl_nfs_mod);
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index d8decf2ec48f..511bcdee98f5 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -166,24 +166,28 @@ int nfs40_discover_server_trunking(struct nfs_client *clp,
  
- /*
-  * Public call interface for looking up machine creds.
-+ * Note that if service_name is NULL, we actually look up
-+ * "root" credential.
-  */
- struct rpc_cred *rpc_lookup_machine_cred(const char *service_name)
+ struct rpc_cred *nfs4_get_machine_cred_locked(struct nfs_client *clp)
  {
- 	struct auth_cred acred = {
- 		.principal = service_name,
--		.machine_cred = 1,
- 		.cred = get_task_cred(&init_task),
- 	};
- 	struct rpc_cred *ret;
-@@ -108,11 +109,10 @@ generic_create_cred(struct rpc_auth *auth, struct auth_cred *acred, int flags, g
+-	struct rpc_cred *cred = NULL;
++	struct rpc_cred *cred = clp->cl_root_cred;
  
- 	gcred->acred.cred = gcred->gc_base.cr_cred;
- 	gcred->acred.ac_flags = 0;
--	gcred->acred.machine_cred = acred->machine_cred;
- 	gcred->acred.principal = acred->principal;
+-	if (clp->cl_machine_cred != NULL)
+-		cred = get_rpccred(clp->cl_machine_cred);
++	if (!cred)
++		cred = clp->cl_machine_cred;
++	if (cred)
++		return get_rpccred(cred);
+ 	return cred;
+ }
  
- 	dprintk("RPC:       allocated %s cred %p for uid %d gid %d\n",
--			gcred->acred.machine_cred ? "machine" : "generic",
-+			gcred->acred.principal ? "machine" : "generic",
- 			gcred,
- 			from_kuid(&init_user_ns, acred->cred->fsuid),
- 			from_kgid(&init_user_ns, acred->cred->fsgid));
-@@ -145,7 +145,7 @@ generic_destroy_cred(struct rpc_cred *cred)
- static int
- machine_cred_match(struct auth_cred *acred, struct generic_cred *gcred, int flags)
+ static void nfs4_root_machine_cred(struct nfs_client *clp)
  {
--	if (!gcred->acred.machine_cred ||
-+	if (!gcred->acred.principal ||
- 	    gcred->acred.principal != acred->principal ||
- 	    !uid_eq(gcred->acred.cred->fsuid, acred->cred->fsuid) ||
- 	    !gid_eq(gcred->acred.cred->fsgid, acred->cred->fsgid))
-@@ -163,12 +163,12 @@ generic_match(struct auth_cred *acred, struct rpc_cred *cred, int flags)
- 	int i;
- 	struct group_info *a, *g;
+-	struct rpc_cred *cred, *new;
++	struct rpc_cred *new;
  
--	if (acred->machine_cred)
-+	if (acred->principal)
- 		return machine_cred_match(acred, gcred, flags);
+ 	new = rpc_lookup_machine_cred(NULL);
+ 	spin_lock(&clp->cl_lock);
+-	cred = clp->cl_machine_cred;
+-	clp->cl_machine_cred = new;
++	if (clp->cl_root_cred == NULL) {
++		clp->cl_root_cred = new;
++		new = NULL;
++	}
+ 	spin_unlock(&clp->cl_lock);
+-	if (cred != NULL)
+-		put_rpccred(cred);
++	if (new != NULL)
++		put_rpccred(new);
+ }
  
- 	if (!uid_eq(gcred->acred.cred->fsuid, acred->cred->fsuid) ||
- 	    !gid_eq(gcred->acred.cred->fsgid, acred->cred->fsgid) ||
--	    gcred->acred.machine_cred != 0)
-+	    gcred->acred.principal != NULL)
- 		goto out_nomatch;
+ static struct rpc_cred *
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index 0fc0b9135d46..fea51b44fe50 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -59,6 +59,7 @@ struct nfs_client {
  
- 	a = acred->cred->group_info;
-diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-index 8c9e572aeea2..0fb390d9cd6e 100644
---- a/net/sunrpc/auth_gss/auth_gss.c
-+++ b/net/sunrpc/auth_gss/auth_gss.c
-@@ -1395,9 +1395,7 @@ gss_create_cred(struct rpc_auth *auth, struct auth_cred *acred, int flags, gfp_t
- 	 */
- 	cred->gc_base.cr_flags = 1UL << RPCAUTH_CRED_NEW;
- 	cred->gc_service = gss_auth->service;
--	cred->gc_principal = NULL;
--	if (acred->machine_cred)
--		cred->gc_principal = acred->principal;
-+	cred->gc_principal = acred->principal;
- 	kref_get(&gss_auth->kref);
- 	return &cred->gc_base;
+ 	u32			cl_minorversion;/* NFSv4 minorversion */
+ 	struct rpc_cred		*cl_machine_cred;
++	struct rpc_cred		*cl_root_cred;	/* Use when machine_cred is ineffective */
  
-@@ -1610,7 +1608,6 @@ static int gss_renew_cred(struct rpc_task *task)
- 	struct auth_cred acred = {
- 		.cred = oldcred->cr_cred,
- 		.principal = gss_cred->gc_principal,
--		.machine_cred = (gss_cred->gc_principal != NULL ? 1 : 0),
- 	};
- 	struct rpc_cred *new;
- 
+ #if IS_ENABLED(CONFIG_NFS_V4)
+ 	struct list_head	cl_ds_clients; /* auth flavor data servers */
 
 
