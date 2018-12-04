@@ -2,155 +2,137 @@ Return-Path: <SRS0=juBO=ON=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.0 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-1.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C03D5C04EBF
-	for <linux-nfs@archiver.kernel.org>; Tue,  4 Dec 2018 21:47:35 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C83C4C04EB8
+	for <linux-nfs@archiver.kernel.org>; Tue,  4 Dec 2018 22:14:44 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 83E6D20850
-	for <linux-nfs@archiver.kernel.org>; Tue,  4 Dec 2018 21:47:35 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="iWgi0zs7"
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 83E6D20850
-Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=gmail.com
+	by mail.kernel.org (Postfix) with ESMTP id 784B32082B
+	for <linux-nfs@archiver.kernel.org>; Tue,  4 Dec 2018 22:14:44 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 784B32082B
+Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=redhat.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726333AbeLDVrc (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 4 Dec 2018 16:47:32 -0500
-Received: from mail-vs1-f66.google.com ([209.85.217.66]:42338 "EHLO
-        mail-vs1-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725875AbeLDVrc (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Dec 2018 16:47:32 -0500
-Received: by mail-vs1-f66.google.com with SMTP id b74so10790720vsd.9;
-        Tue, 04 Dec 2018 13:47:30 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
-         :cc;
-        bh=ed41OLyGaB3hr4EoFGI15KQggEx+tY9zRtIsMSc7Nqk=;
-        b=iWgi0zs7QeWvfBi7rb6UOV7svQaMRvIew8C8Isr78WH/g1t1ZP43p1khRkFDPegjX8
-         Z8l6eIat/zzANPzqkpxvFRNiszmny+vIvbgFYjmUo0qn04AQIfDYam17hLQIrtBBTMcb
-         u2IrIekeaqxrXTqQ+Z49Qug8zpzffamEtQOThKxpDZO9NCf4XUBVg4avlP1yn2lK3d4D
-         xKwSjlX/Hz8ci/Qi5GHcbPotE2sb8JxliiAnvTrPhOkdG+VEkO73KlEA8tWH6+PpFdLa
-         gk4AOfwD1nOda7McfL9Yso6AP+wk4EoQPRRKAaFc7+7HF9Kx/ee08MKEztx2v+RnWARb
-         02xg==
+        id S1725912AbeLDWOo (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 4 Dec 2018 17:14:44 -0500
+Received: from mail-oi1-f180.google.com ([209.85.167.180]:38141 "EHLO
+        mail-oi1-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725904AbeLDWOn (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Dec 2018 17:14:43 -0500
+Received: by mail-oi1-f180.google.com with SMTP id a77so15745317oii.5
+        for <linux-nfs@vger.kernel.org>; Tue, 04 Dec 2018 14:14:42 -0800 (PST)
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:mime-version:references:in-reply-to:from:date
          :message-id:subject:to:cc;
-        bh=ed41OLyGaB3hr4EoFGI15KQggEx+tY9zRtIsMSc7Nqk=;
-        b=OLyEUl1/t/3S6M/QP7H4kK8uUVlWVJxxbSy6BNouyLTleG+DoJaE2F3+64ecyf45nM
-         lTKrRDq7PdRgR9aotuGQpIU00XcKuIbXlrGMFXVQYg2WDqKOUMOZBANn915otDS5BorO
-         yAv0KReyie7CQO+kyHE2aWZfBBz3ms+p1oGS/RGb1sJtrGdJ8/WNcbfi3mTzFiK1SyDb
-         rZlOIObVU/j28VkUGvF9qpySGpodghGMf60hPXvU77RZ3J7smQFvG9JlqcYfHsf8lfOc
-         tfaQO+KYTHcc8hK8ECJbKD/VVfAZekwRGeKeCNKaylXDVI2qZObMFBzZqVjAFDb2CDI1
-         ClbA==
-X-Gm-Message-State: AA+aEWZt0dOvvBLfUanHsl32hwHx/6TJMrt/KnFd78PXRzBB39SdTNmS
-        N+2I4Wh/T/GO9xbFoHFsp4eYUKAEPZwqNo5sHPM=
-X-Google-Smtp-Source: AFSGD/Xa/t0Rj/kef1ALS5oHlqdBkNc5RhB3hDwtBi8hQMrhTF9xLz3z5Ww0+DsyBYfbXxLvrZ39AybW0N81m3lMAGE=
-X-Received: by 2002:a67:a858:: with SMTP id r85mr9390819vse.215.1543960050045;
- Tue, 04 Dec 2018 13:47:30 -0800 (PST)
+        bh=72OoxRAiffpk7fqY7TKK2RiOrF8a+kOQreKsyC+Fm2A=;
+        b=idic0WwebWQ9R1LFOmU/oetg/Z/WFHq81eoeMR9pk5drd6H3En+JYaKnHxZQcveZXu
+         5E5NhY9Zsav7yQUuIP6g6OXwyVIY/+WMKQAEg/tfFyUnLXMwqLsja+1ZjkxU0DNCzwFN
+         +zS1Mxi5SdJGTJXK54CHWumPt5nijtTVsfOrnuQh69refbYLeK0y7WN9zSPZvT5sJyCO
+         ex3nRa2trnFGYrU38oxxaTFsVXN7BfFJaoGjV5qXOpY+rRoWb8dDPyZNUd0rvylsVxY9
+         XHAcBOQQS0Ps5SiY3ADstZPOTpGe78JIj84pSOY1spXR1qHRPIJm85r0jjkPa4HzDpv7
+         /fSQ==
+X-Gm-Message-State: AA+aEWYoCemNVoGoYvJwKNrp6HXgLwyv/08bQYMGtKamI26QfgfSMmBF
+        sBOh8r79u2c1miLlLAOBwBSNVrRjyw2IGmOfxoKvEw==
+X-Google-Smtp-Source: AFSGD/WY4P1z2VT/eJlrKtx1/TW/bLGT770/oHMO2ldZVEQCAAAr6NDGz3FnrJmj91UuRxKc0MCti2Llvrr9xbLxOro=
+X-Received: by 2002:aca:6c8b:: with SMTP id h133mr8777726oic.33.1543961682499;
+ Tue, 04 Dec 2018 14:14:42 -0800 (PST)
 MIME-Version: 1.0
-References: <20181203083416.28978-1-david@fromorbit.com> <20181203083416.28978-2-david@fromorbit.com>
- <CAOQ4uxhOQY8M5rbgHKREN5qpeDGHv0-xK3r37Lj6XfqFoE4qjg@mail.gmail.com>
- <20181204151332.GA32245@infradead.org> <20181204212948.GO6311@dastard>
-In-Reply-To: <20181204212948.GO6311@dastard>
-From:   Olga Kornievskaia <olga.kornievskaia@gmail.com>
-Date:   Tue, 4 Dec 2018 16:47:18 -0500
-Message-ID: <CAN-5tyGU=y5JO5UNcmn3rX1gRyK_UxjQvQ+kCsP34_NT2-mQ_A@mail.gmail.com>
-Subject: Re: [PATCH 01/11] vfs: copy_file_range source range over EOF should fail
-To:     david@fromorbit.com
-Cc:     Christoph Hellwig <hch@infradead.org>,
-        Amir Goldstein <amir73il@gmail.com>,
-        linux-fsdevel@vger.kernel.org, linux-xfs@vger.kernel.org,
-        linux-nfs <linux-nfs@vger.kernel.org>,
-        linux-unionfs@vger.kernel.org, ceph-devel@vger.kernel.org,
-        linux-cifs@vger.kernel.org
+References: <alpine.LNX.2.21.1.1811241957260.23228@winds.org>
+ <20181126140730.GC27372@fieldses.org> <CAHc6FU4jup+MxRky2pmVm89L=D42E2Q35s6G-sUSUL-tmXzX-w@mail.gmail.com>
+ <alpine.LNX.2.21.1.1811302156420.6541@winds.org> <20181204193912.GA3903@fieldses.org>
+ <20181204195302.GB3903@fieldses.org>
+In-Reply-To: <20181204195302.GB3903@fieldses.org>
+From:   Andreas Gruenbacher <agruenba@redhat.com>
+Date:   Tue, 4 Dec 2018 23:14:31 +0100
+Message-ID: <CAHc6FU5QOw_Gy0JNRq1Box6m=n1DEBJvV6tVfzqRwAiaz2deGQ@mail.gmail.com>
+Subject: Re: NFS v4.2 umask getting dropped
+To:     "J. Bruce Fields" <bfields@fieldses.org>
+Cc:     gandalf@winds.org, jlayton@kernel.org,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
 Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Tue, Dec 4, 2018 at 4:35 PM Dave Chinner <david@fromorbit.com> wrote:
+On Tue, 4 Dec 2018 at 20:53, J. Bruce Fields <bfields@fieldses.org> wrote:
 >
-> On Tue, Dec 04, 2018 at 07:13:32AM -0800, Christoph Hellwig wrote:
-> > On Mon, Dec 03, 2018 at 02:46:20PM +0200, Amir Goldstein wrote:
-> > > > From: Dave Chinner <dchinner@redhat.com>
-> > > >
-> > > > The man page says:
-> > > >
-> > > > EINVAL Requested range extends beyond the end of the source file
-> > > >
-> > > > But the current behaviour is that copy_file_range does a short
-> > > > copy up to the source file EOF. Fix the kernel behaviour to match
-> > > > the behaviour described in the man page.
-> >
-> > I think the behavior implemented is a lot more useful than the one
-> > documented..
->
-> The current behaviour is really nasty. Because copy_file_range() can
-> return short copies, the caller has to implement a loop to ensure
-> the range hey want get copied.  When the source range you are
-> trying to copy overlaps source EOF, this loop:
->
->         while (len > 0) {
->                 ret = copy_file_range(... len ...)
->                 ...
->                 off_in += ret;
->                 off_out += ret;
->                 len -= ret;
->         }
->
-> Currently the fallback code copies up to the end of the source file
-> on the first copy and then fails the second copy with EINVAL because
-> the source range is now completely beyond EOF.
->
-> So, from an application perspective, did the copy succeed or did it
-> fail?
->
-> Existing tools that exercise copy_file_range (like xfs_io) consider
-> this a failure, because the second copy_file_range() call returns
-> EINVAL and not some "there is no more to copy" marker like read()
-> returning 0 bytes when attempting to read beyond EOF.
->
-> IOWs, we cannot tell the difference between a real error and a short
-> copy because the input range spans EOF and it was silently
-> shortened. That's the API problem we need to fix here - the existing
-> behaviour is really crappy for applications. Erroring out
-> immmediately is one solution, and it's what the man page says should
-> happen so that is what I implemented.
->
-> Realistically, though, I think an attempt to read beyond EOF for the
-> copy should result in behaviour like read() (i.e. return 0 bytes),
-> not EINVAL. The existing behaviour needs to change, though.
-
-There are two checks to consider
-1. pos_in >= EOF should return EINVAL
-2. however what's perhaps should be relaxed is pos_in+len >= EOF
-should return a short copy.
-
-Having check#1 enforced allows to us to differentiate between a real
-error and a short copy.
-
->
-> > > i_size_read()...
+> On Tue, Dec 04, 2018 at 02:39:12PM -0500, J. Bruce Fields wrote:
+> > On Fri, Nov 30, 2018 at 10:13:59PM -0500, Byron Stanoszek wrote:
+> > > On Mon, 26 Nov 2018, Andreas Gruenbacher wrote:
 > > >
-> > > Otherwise
-> > > Reviewed-by: Amir Goldstein <amir73il@gmail.com>
+> > > >On Mon, 26 Nov 2018 at 15:07, J. Bruce Fields <bfields@fieldses.org> wrote:
+> > > >>
+> > > >>On Sat, Nov 24, 2018 at 08:18:40PM -0500, Byron Stanoszek wrote:
+> > > >>>I would like to report a problem with NFS v4.2: the umask seems to be
+> > > >>>getting dropped when creating files. This works as expected when
+> > > >>>connecting with a v4.1 client or any version prior.
+> > > >>
+> > > >>Watching the network traffic in wireshark might help determine which
+> > > >>side is at fault.
+> > > >
+> > > >Right, a network dump (tcpdump -w) of the incorrect operation(s) would
+> > > >be great so that we can have a look with wireshark.
+> > >
+> > > Sorry for the delay. I attached the two tcpdump files from the client side. The
+> > > server is 10.0.0.2 (lnxsvr1) and the client is 10.0.0.13 (burner). In both
+> > > cases, I ran:
+> > >
+> > > mount lnxsvr1:/test -overs=4.x /ext0
+> > > touch /ext0/blah
+> > > umount /ext0
+> > >
+> > > and waited ~3 seconds between each command entry.
 > >
-> > Looks like this doesn't even compile?
+> > Thanks!
+> >
+> > I looked at nfs4_2.pcap.  You can see the OPEN that creates the file in
+> > frame 56.  If expand OPEN->Open Type you'll see the only attribute it's
+> > setting htere is mode_umask, with mode 0666 and umask 022.
+> >
+> > There's a GETATTR later in the compound which queries attributes
+> > including the mode.  The reply, in frame frame 57, gives 0666 for the
+> > mode.
+> >
+> > So, that's a server bug: for some reason the server isn't applying the
+> > umask it was given.
+> >
+> > > >In 4.2 the umask is sent in a separate attribute, in earlier versions the
+> > > >umask and open mode are combined by the client and only the result is sent.
+> > >
+> > > Does "separate attribute" mean "future packet transmission", or is the
+> > > file_create+change_mode operation still atomic? I'm concerned that if "root"
+> > > creates an unexpected mode 666 file via the nfs client for a short period of
+> > > time, that opens up an avenue for a non-root user on the server side to write
+> > > things into the file before the nfs server processes the "umask"
+> > > command/packet.
+> >
+> > So the mode_umask is being sent as part of the OPEN, and knfsd is
+> > supposed to apply the mode and umask atomically.
+> >
+> > > >What filesystem type is /users/files on on lnxsvr1?
+> > >
+> > > reiserfs, with XATTRs disabled:
+> > >
+> > > CONFIG_REISERFS_FS=y
+> > > # CONFIG_REISERFS_CHECK is not set
+> > > # CONFIG_REISERFS_PROC_INFO is not set
+> > > # CONFIG_REISERFS_FS_XATTR is not set
+> >
+> > OK, seems unlikely to be a reiserfs bug, but that's also something
+> > that's probably doesn't get a lot of testing.
 >
-> It's fixed in a later patch that consolidates the checks into a
-> generic check function, but I'm not sure why my "compile every
-> patch" script didn't catch this.
->
-> Cheers,
->
-> -Dave.
-> --
-> Dave Chinner
-> david@fromorbit.com
+> Hm, OK I'll be honest I'm reluctant to devote a lot of time to debugging
+> this unusual combination (reiserfs with posix acl support configured
+> out), but on a quick skim it looks like reiser *might* depend on
+> reiserfs_inherit_default_acl() to apply the umask, but in your case
+> that's probably configured to be a dummy function that does nothing.
+> And in that case the vfs should take responsibility for applying the
+> umask, but that depends on SB_POSIXACL being unset on the superblock--I
+> wonder if that could be set incorrectly?
+
+I wonder if ext4 shows the same behavior with POSIX ACLs configured out?
+
+Andreas
