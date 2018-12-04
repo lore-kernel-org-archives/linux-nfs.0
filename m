@@ -2,150 +2,97 @@ Return-Path: <SRS0=juBO=ON=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_PASS,USER_AGENT_MUTT autolearn=ham autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-1.0 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS,URIBL_BLOCKED
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 244CCC04EB8
-	for <linux-nfs@archiver.kernel.org>; Tue,  4 Dec 2018 22:31:25 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B24FBC04EB8
+	for <linux-nfs@archiver.kernel.org>; Tue,  4 Dec 2018 23:34:44 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id E41B420834
-	for <linux-nfs@archiver.kernel.org>; Tue,  4 Dec 2018 22:31:24 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org E41B420834
-Authentication-Results: mail.kernel.org; dmarc=none (p=none dis=none) header.from=fromorbit.com
+	by mail.kernel.org (Postfix) with ESMTP id 748D32082B
+	for <linux-nfs@archiver.kernel.org>; Tue,  4 Dec 2018 23:34:44 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="F4un3MxT"
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 748D32082B
+Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=gmail.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1725905AbeLDWbY (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 4 Dec 2018 17:31:24 -0500
-Received: from ipmail06.adl6.internode.on.net ([150.101.137.145]:24591 "EHLO
-        ipmail06.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1725875AbeLDWbY (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Dec 2018 17:31:24 -0500
-Received: from ppp59-167-129-252.static.internode.on.net (HELO dastard) ([59.167.129.252])
-  by ipmail06.adl6.internode.on.net with ESMTP; 05 Dec 2018 09:01:18 +1030
-Received: from dave by dastard with local (Exim 4.80)
-        (envelope-from <david@fromorbit.com>)
-        id 1gUJDa-0005ul-Lg; Wed, 05 Dec 2018 09:31:02 +1100
-Date:   Wed, 5 Dec 2018 09:31:02 +1100
-From:   Dave Chinner <david@fromorbit.com>
-To:     Olga Kornievskaia <olga.kornievskaia@gmail.com>
+        id S1726396AbeLDXen (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 4 Dec 2018 18:34:43 -0500
+Received: from mail-vs1-f68.google.com ([209.85.217.68]:42411 "EHLO
+        mail-vs1-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725875AbeLDXen (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Dec 2018 18:34:43 -0500
+Received: by mail-vs1-f68.google.com with SMTP id b74so10950270vsd.9;
+        Tue, 04 Dec 2018 15:34:41 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc;
+        bh=RRZR8ckwo5dCR218TXcSn7H99CQoqpHXU2b37uy3Fr0=;
+        b=F4un3MxTsqQYR45tlWip/2F+UXu7+S4Wwn5QNtEp4ot2nKGKMoxXJjKaFHb/ZpO4V+
+         irFUNzOdICWcTYxTeSL2QKw6NOOAiOcwuTp4du2apRLXH0Ttynx6+v1rw4LgEb6B7cFT
+         WhCZ/o99gXlx1c/f+M4Tkly5D9sUuI6Yl+s4cVzhJoFKXniMZxfN9Ory4qLOD+stpWI1
+         mUcJf9QiGjNrCVNxcSZWtAs4XLIi9tgXRohuN6fMhRWEnLPwsLsLG81QqZxt2PoFpZjt
+         2vQOJDJIP4/HHeKAKna62YxhVUaf7590oJDRLCdxC+aZOUVpxzCarK3w69CtW1n9QEkJ
+         BRCw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=RRZR8ckwo5dCR218TXcSn7H99CQoqpHXU2b37uy3Fr0=;
+        b=HZheKnHAZHjlrBduM4Y6KHnKyg1Ebv+vCYio6x+sgjzIA3OVlse0Rc+5GmpO9+Gsp4
+         QaUJdrvzCdGWzqPGWGGKevLQkK4Yg9n53FmDHLROoXbHmRiVsKELcBdwIr58o5Odg/Zk
+         37mhzzE0tFSGsnNH269K+6YTbPzU/gl8uXqKMP4Lsgv9sOzcbHRLMDNBhGn7QQfGyWSW
+         QqelU0/cwbYqjd7ms3h6IiBlAhkt4FhU/aSR/fJP5ehTHr67vHfWohrEEE5xNcXSP+5S
+         AVJlBllK4a5GQV83501e8lsq/4n/z3M2UYWYwxFjNxClC4fhiZsDQ1wQ+jMpn59ZlTIw
+         4OAA==
+X-Gm-Message-State: AA+aEWa5XZvnN9a4cIzzum/C3YfiFZeKc8HjPXG4nP0Fg0e9u1tJeYTH
+        QfVpSkma4ot4C8pNHGTGksXH/6dmHmItp9tFgTJhPQ==
+X-Google-Smtp-Source: AFSGD/WpEyAiE6hHQyPWzQmMpJjWHOh6S1h2zMOB6IsFveExbMLtYyPtGemULs304ILs84wQFI+v/38xRmwT7VOKZ4M=
+X-Received: by 2002:a67:ca9d:: with SMTP id a29mr9801583vsl.194.1543966481229;
+ Tue, 04 Dec 2018 15:34:41 -0800 (PST)
+MIME-Version: 1.0
+References: <20181203083416.28978-1-david@fromorbit.com> <20181203083416.28978-10-david@fromorbit.com>
+ <20181204154347.GA6925@infradead.org> <20181204221847.GQ6311@dastard>
+In-Reply-To: <20181204221847.GQ6311@dastard>
+From:   Olga Kornievskaia <olga.kornievskaia@gmail.com>
+Date:   Tue, 4 Dec 2018 18:33:42 -0500
+Message-ID: <CAN-5tyG7avm_qiZxzmHYjRL_OYN1meLv-SPmDYUX6vAdGBkc-Q@mail.gmail.com>
+Subject: Re: [PATCH 09/11] vfs: push copy_file_ranges -EXDEV checks down
+To:     david@fromorbit.com
 Cc:     Christoph Hellwig <hch@infradead.org>,
-        Amir Goldstein <amir73il@gmail.com>,
         linux-fsdevel@vger.kernel.org, linux-xfs@vger.kernel.org,
         linux-nfs <linux-nfs@vger.kernel.org>,
         linux-unionfs@vger.kernel.org, ceph-devel@vger.kernel.org,
         linux-cifs@vger.kernel.org
-Subject: Re: [PATCH 01/11] vfs: copy_file_range source range over EOF should
- fail
-Message-ID: <20181204223102.GR6311@dastard>
-References: <20181203083416.28978-1-david@fromorbit.com>
- <20181203083416.28978-2-david@fromorbit.com>
- <CAOQ4uxhOQY8M5rbgHKREN5qpeDGHv0-xK3r37Lj6XfqFoE4qjg@mail.gmail.com>
- <20181204151332.GA32245@infradead.org>
- <20181204212948.GO6311@dastard>
- <CAN-5tyGU=y5JO5UNcmn3rX1gRyK_UxjQvQ+kCsP34_NT2-mQ_A@mail.gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <CAN-5tyGU=y5JO5UNcmn3rX1gRyK_UxjQvQ+kCsP34_NT2-mQ_A@mail.gmail.com>
-User-Agent: Mutt/1.5.21 (2010-09-15)
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Tue, Dec 04, 2018 at 04:47:18PM -0500, Olga Kornievskaia wrote:
-> On Tue, Dec 4, 2018 at 4:35 PM Dave Chinner <david@fromorbit.com> wrote:
-> >
-> > On Tue, Dec 04, 2018 at 07:13:32AM -0800, Christoph Hellwig wrote:
-> > > On Mon, Dec 03, 2018 at 02:46:20PM +0200, Amir Goldstein wrote:
-> > > > > From: Dave Chinner <dchinner@redhat.com>
-> > > > >
-> > > > > The man page says:
-> > > > >
-> > > > > EINVAL Requested range extends beyond the end of the source file
-> > > > >
-> > > > > But the current behaviour is that copy_file_range does a short
-> > > > > copy up to the source file EOF. Fix the kernel behaviour to match
-> > > > > the behaviour described in the man page.
-> > >
-> > > I think the behavior implemented is a lot more useful than the one
-> > > documented..
-> >
-> > The current behaviour is really nasty. Because copy_file_range() can
-> > return short copies, the caller has to implement a loop to ensure
-> > the range hey want get copied.  When the source range you are
-> > trying to copy overlaps source EOF, this loop:
-> >
-> >         while (len > 0) {
-> >                 ret = copy_file_range(... len ...)
-> >                 ...
-> >                 off_in += ret;
-> >                 off_out += ret;
-> >                 len -= ret;
-> >         }
-> >
-> > Currently the fallback code copies up to the end of the source file
-> > on the first copy and then fails the second copy with EINVAL because
-> > the source range is now completely beyond EOF.
-> >
-> > So, from an application perspective, did the copy succeed or did it
-> > fail?
-> >
-> > Existing tools that exercise copy_file_range (like xfs_io) consider
-> > this a failure, because the second copy_file_range() call returns
-> > EINVAL and not some "there is no more to copy" marker like read()
-> > returning 0 bytes when attempting to read beyond EOF.
-> >
-> > IOWs, we cannot tell the difference between a real error and a short
-> > copy because the input range spans EOF and it was silently
-> > shortened. That's the API problem we need to fix here - the existing
-> > behaviour is really crappy for applications. Erroring out
-> > immmediately is one solution, and it's what the man page says should
-> > happen so that is what I implemented.
-> >
-> > Realistically, though, I think an attempt to read beyond EOF for the
-> > copy should result in behaviour like read() (i.e. return 0 bytes),
-> > not EINVAL. The existing behaviour needs to change, though.
-> 
-> There are two checks to consider
-> 1. pos_in >= EOF should return EINVAL
-> 2. however what's perhaps should be relaxed is pos_in+len >= EOF
-> should return a short copy.
-> 
-> Having check#1 enforced allows to us to differentiate between a real
-> error and a short copy.
+On Tue, Dec 4, 2018 at 5:18 PM Dave Chinner <david@fromorbit.com> wrote:
+>
+> On Tue, Dec 04, 2018 at 07:43:47AM -0800, Christoph Hellwig wrote:
+> > Well, this isn't bugfixes anymore, but adding new features..
+>
+> I made that perfectly clear in the cover description. I called it
+> twice, one of them explicitly stating that this series made these
+> infrastructure changes because we have pending functionality that
+> dependents on cross-device copies being supported in a sane manner.
+>
+> I'll drop it if you want, but then I'll just have to come back after
+> all the NFS code is merged and do yet more cleanup work.
 
-That's what the code does right now and *exactly what I'm trying to
-fix* because it EINVAL is ambiguous and not an indicator that we've
-reached the end of the source file. EINVAL can indicate several
-different errors, so it really has to be treated as a "copy failed"
-error by applications.
+This doesn't needs to be fixed in this patch series. I think Anna was
+pointing out to me for something to take a look at.
 
-Have a look at read/pread() - they return 0 in this case to indicate
-a short read, and the value of zero is explicitly defined as meaning
-"read position is beyond EOF".  Applications know straight away that
-there is no more data to be read and there was no error, so can
-terminate on a successful short read.
-
-We need to allow applications to terminate copy loops on a
-successful short copy. IOWs, applications need to either:
-
-	- get an immediate error saying the range is invalid rather
-	  than doing a short copy (as per the man page); or
-	- have an explicit marker to say "no more data to be copied"
-
-Applications need the "no more data to copy" case to be explicit and
-unambiguous so they can make sane decisions about whether a short
-copy was successful because the file was shorter than expected or
-whether a short copy was a result of a real error being encountered.
-The current behaviour is largely unusable for applications because
-they have to guess at the reason for EINVAL part way through a
-copy....
-
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+>
+> Cheers,
+>
+> Dave.
+> --
+> Dave Chinner
+> david@fromorbit.com
