@@ -2,227 +2,114 @@ Return-Path: <SRS0=juBO=ON=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.0 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-9.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
+	MENTIONS_GIT_HOSTING,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3FCFAC04EB8
-	for <linux-nfs@archiver.kernel.org>; Tue,  4 Dec 2018 19:25:50 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 63869C04EB8
+	for <linux-nfs@archiver.kernel.org>; Tue,  4 Dec 2018 19:31:46 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id F39D8206B7
-	for <linux-nfs@archiver.kernel.org>; Tue,  4 Dec 2018 19:25:49 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id D117E206B7
+	for <linux-nfs@archiver.kernel.org>; Tue,  4 Dec 2018 19:31:45 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="n9JuMM04"
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org F39D8206B7
-Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=gmail.com
+	dkim=pass (1024-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="lrFTk0xO"
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org D117E206B7
+Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=hammerspace.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1725867AbeLDTZt (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 4 Dec 2018 14:25:49 -0500
-Received: from mail-it1-f196.google.com ([209.85.166.196]:35081 "EHLO
-        mail-it1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725831AbeLDTZt (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Dec 2018 14:25:49 -0500
-Received: by mail-it1-f196.google.com with SMTP id p197so16299277itp.0
-        for <linux-nfs@vger.kernel.org>; Tue, 04 Dec 2018 11:25:48 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=+5Uiy4NkcA08AbutZm4qywC5YVuauCiKk57abbWBmRg=;
-        b=n9JuMM04865dzmFhiJ3yl+dImgP4zn755tNCQfVnZPDHpwen0xVIY9YfDfn+peH72M
-         rpPF09Lu50fNXKhIZWhYOcIppLZzPrOW6sZyjsuio+yZl5I5kTJ1SqqeKelyLBcpjt0I
-         rqCP8v+1NCyQTW5ZpTNQyCmttsVTOqhJ5JlgybghIJAPJnWGrk//RFT2xgs4tFuLDZB0
-         PR0k6cLQY3loEO0kkT9T3b0oPzAAomVdUtncmy5e1KIXJko2uIDpGDWWl/IrJjUiSWUS
-         3NVQvSraZW6k0/ELZUtLm7mtnHPDTdWFWQ+mFpGGQSBhSTydp2usfscryccTpuonM9bM
-         XoXg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=+5Uiy4NkcA08AbutZm4qywC5YVuauCiKk57abbWBmRg=;
-        b=FK0K0oscULKPpOefZyeW05iicbqz/LnxjAM6TmP/FzkrBvi/zjKSy2AfEu7n8A0LSl
-         MRu5adA9UuR98Ct3jkRzBkY5OzTEdvLglC4jIbXSZRs5Z78VToQ/G2xxwCBIoVDDvLHa
-         Echtdfy822R/43vMlVNvuRiTostzQIumhZvnJH+lFONl4LmBGDmO162Y9cmpjGTPMTGZ
-         j+2JaZ22aSB53JRnIM/fudOSP9XS25yF3x/sezMIHzjAcLo2zTM/6OaQQhuomS6KiS/y
-         ePBHUQIvvxaLeCeiDVG2C7mxbvToXkkDdByLSXxWuuOAmYcLAkIQtMpc2NriWHG8+Dlm
-         G5xQ==
-X-Gm-Message-State: AA+aEWYacgGsYSdah+QxyMqYXhUzfxI2PasDwsKCpeDDGS6zV1WiiEQV
-        /u8+xUVdNTeMlxdk8ZVDCg==
-X-Google-Smtp-Source: AFSGD/VTxa3Rw9DecG64e3ArCj8X+ERK/DW38SafCMS8eRMZVApqVjSvRzS/Lr1q5ARO6uRCmQ/ABw==
-X-Received: by 2002:a24:6e14:: with SMTP id w20mr12370491itc.69.1543951547576;
-        Tue, 04 Dec 2018 11:25:47 -0800 (PST)
-Received: from localhost.localdomain (c-68-40-195-73.hsd1.mi.comcast.net. [68.40.195.73])
-        by smtp.gmail.com with ESMTPSA id o18sm2781694ioh.31.2018.12.04.11.25.46
-        (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
-        Tue, 04 Dec 2018 11:25:47 -0800 (PST)
-From:   Trond Myklebust <trondmy@gmail.com>
-X-Google-Original-From: Trond Myklebust <trond.myklebust@hammerspace.com>
-To:     Chuck Lever <chuck.lever@oracle.com>,
-        Catalin Marinas <catalin.marinas@arm.com>,
-        Cristian Marussi <cristian.marussi@arm.com>
-Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH] SUNRPC: Fix RPC receive hangs
-Date:   Tue,  4 Dec 2018 14:24:39 -0500
-Message-Id: <20181204192439.39259-1-trond.myklebust@hammerspace.com>
-X-Mailer: git-send-email 2.19.2
+        id S1725855AbeLDTbp (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 4 Dec 2018 14:31:45 -0500
+Received: from mail-eopbgr730124.outbound.protection.outlook.com ([40.107.73.124]:62496
+        "EHLO NAM05-DM3-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1725831AbeLDTbo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 4 Dec 2018 14:31:44 -0500
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=hammerspace.com;
+ s=selector1;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=/f+LWmWq0S6u3OCuzLQ+2Cvfu52PQNqRMP/RXtH8N38=;
+ b=lrFTk0xOs50l5Ljpo7qc3CMmsFowpGjAt5lwAEnyqqEXgF5QUlVa0WlCoqnl2063vr61IUEikwgKLu0v6mvzs0XhnbqymJyW3cSBv1HGEUi+PUKymIKnyVy3PYlnaDLx7Ybv3dIgA1k328UiZqPkr2S7ufyH1k4hocSsIj4vzkc=
+Received: from SN6PR13MB2494.namprd13.prod.outlook.com (52.135.95.148) by
+ SN6PR13MB2544.namprd13.prod.outlook.com (52.135.96.15) with Microsoft SMTP
+ Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ 15.20.1404.8; Tue, 4 Dec 2018 19:31:40 +0000
+Received: from SN6PR13MB2494.namprd13.prod.outlook.com
+ ([fe80::25d2:c29b:5dfa:e85f]) by SN6PR13MB2494.namprd13.prod.outlook.com
+ ([fe80::25d2:c29b:5dfa:e85f%4]) with mapi id 15.20.1404.016; Tue, 4 Dec 2018
+ 19:31:40 +0000
+From:   Trond Myklebust <trondmy@hammerspace.com>
+To:     "catalin.marinas@arm.com" <catalin.marinas@arm.com>,
+        "cristian.marussi@arm.com" <cristian.marussi@arm.com>,
+        "chuck.lever@oracle.com" <chuck.lever@oracle.com>
+CC:     "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] SUNRPC: Fix RPC receive hangs
+Thread-Topic: [PATCH] SUNRPC: Fix RPC receive hangs
+Thread-Index: AQHUjAcrBzSZN4+fvk6NtsSK8c4Yn6Vu9+OA
+Date:   Tue, 4 Dec 2018 19:31:39 +0000
+Message-ID: <70cd2493391a24e5f92a36622f588cdc463dfe4c.camel@hammerspace.com>
+References: <20181204192439.39259-1-trond.myklebust@hammerspace.com>
+In-Reply-To: <20181204192439.39259-1-trond.myklebust@hammerspace.com>
+Accept-Language: en-US, en-GB
+Content-Language: en-US
+X-MS-Has-Attach: 
+X-MS-TNEF-Correlator: 
+authentication-results: spf=none (sender IP is )
+ smtp.mailfrom=trondmy@hammerspace.com; 
+x-originating-ip: [68.40.195.73]
+x-ms-publictraffictype: Email
+x-microsoft-exchange-diagnostics: 1;SN6PR13MB2544;6:BgFqND59vt6SL1MjZTaepqLGFrmqCrNqj3Jyz+hzMaMCj5EKtaTggzK6AR5Je2XM8clETCFEMotojBf2ZSwr42djxF262iGlYqoptEi+BKsGVO5HXDx5GggdWNggPa7s8oc32xTCbam4XsSdDZOuryiCeKUjo0fQfxcDsyvwWeTchgoVrGMVqNhsFxNyGRyoigdC/RXDytmLHwVbHY8iR7sgUZr5nkIILArnCfmiqtj/5EwPpaYbJes+GkaTv9WX6lAe0PLtVDAOohTiWS+GNHGByAkSVpBs1EpBLqJcnpdXDP8IvY7R2XsqnTEMjr/+GwjROI0tJ/yee7GQSKATUQWfpEmtiK8f2DinTWdw/Gnt+PzYkeCFxzF3ffClBSvDeAVjQJAhDxZVeLPjlZyO0RER1kCr1F+2q9LUzz5EvJkWSu8JmSvyI3DUW6fX6qPB21BP6Bgjt10Mwthjf7AyYg==;5:J4wnT0Rs22fV8xRqUTx8S4ZiSzH8s31Y9xCWFusw1MFHnv1Lk/5kF9FEPmR+U0KGhG4JoDiSPA2IQo9Tn2Yw5RBKvfwwFUUbmUDmdnXogPYGkpUuaBOG+dU3Es3KtYroSGH4MjAV1W/7UiZ1tFWh1TdrTlJyfEQVJ9fVj3ZyjQM=;7:yty3ak26seXlfS+jkQYP8I5sE0b+/0EMXjJ2j9tQ82A6U07J8kVbvyAFPuTaAAJEAuMo9EPvyueodbYvRD2xuQc9yXWdSR4FHwFQoxmGFbz9txl4wLZI/a65Ytut5gkXyCGo5EKGubB5cjDRtE5Asg==
+x-ms-exchange-antispam-srfa-diagnostics: SOS;
+x-ms-office365-filtering-correlation-id: d506f465-d066-4765-2e29-08d65a1f1d44
+x-microsoft-antispam: BCL:0;PCL:0;RULEID:(2390098)(7020095)(4652040)(8989299)(4534185)(4627221)(201703031133081)(201702281549075)(8990200)(5600074)(711020)(2017052603328)(7153060)(7193020);SRVR:SN6PR13MB2544;
+x-ms-traffictypediagnostic: SN6PR13MB2544:
+x-microsoft-antispam-prvs: <SN6PR13MB2544246B682F33FB36A24594B8AF0@SN6PR13MB2544.namprd13.prod.outlook.com>
+x-ms-exchange-senderadcheck: 1
+x-exchange-antispam-report-cfa-test: BCL:0;PCL:0;RULEID:(6040522)(2401047)(8121501046)(5005006)(93006095)(93001095)(3231455)(999002)(944501493)(52105112)(3002001)(10201501046)(148016)(149066)(150057)(6041310)(20161123558120)(20161123562045)(20161123560045)(201703131423095)(201702281528075)(20161123555045)(201703061421075)(201703061406153)(20161123564045)(201708071742011)(7699051)(76991095);SRVR:SN6PR13MB2544;BCL:0;PCL:0;RULEID:;SRVR:SN6PR13MB2544;
+x-forefront-prvs: 0876988AF0
+x-forefront-antispam-report: SFV:NSPM;SFS:(10019020)(136003)(346002)(396003)(39830400003)(366004)(376002)(199004)(189003)(25786009)(229853002)(8936002)(486006)(99286004)(81166006)(8676002)(4326008)(6246003)(6512007)(6306002)(186003)(256004)(105586002)(106356001)(81156014)(966005)(476003)(14454004)(53936002)(71190400001)(71200400001)(2501003)(118296001)(66066001)(68736007)(316002)(6506007)(2616005)(76176011)(446003)(6436002)(305945005)(26005)(3846002)(7736002)(97736004)(478600001)(36756003)(102836004)(110136005)(6116002)(2906002)(2201001)(86362001)(6486002)(5660300001)(11346002);DIR:OUT;SFP:1102;SCL:1;SRVR:SN6PR13MB2544;H:SN6PR13MB2494.namprd13.prod.outlook.com;FPR:;SPF:None;LANG:en;PTR:InfoNoRecords;A:1;MX:1;
+received-spf: None (protection.outlook.com: hammerspace.com does not designate
+ permitted sender hosts)
+x-microsoft-antispam-message-info: Mk/USa/cuRsBp/uz1l7AaSMEmBdFLLPs1EeIE0Fel/grtKT1uVnL8Ur0EMLNlEihx2J43Q78LaCoxf2rnTh5l+1DXtso/kWa+2g/3qEsaLYSefGVHqm9Gq4OYsgt2JNm8YJreyh+T8heJokZQtu9uiDNU5DkP8i9CoTWzzJJ9FeUUJx201oyGq2ICd8OIemwL9s7d5MSklYYK/Ai6CwqD52UPxQKF4c2Graj9rKoV3TrHsxieyJq3/8YG8ukmF25d+AH7GgTAoAIzxMKi1pXwvyCo6MOfqdtCjrNxtMwRmFoT0drTMwMPeNM9tWwGtTXk6FH3JKzmF0/4Rf3NobcljYPRIkTheq6ownYqf3rrpA=
+spamdiagnosticoutput: 1:99
+spamdiagnosticmetadata: NSPM
+Content-Type: text/plain; charset="utf-8"
+Content-ID: <6E38689A976ED34F9BB5A19E4B6581D9@namprd13.prod.outlook.com>
+Content-Transfer-Encoding: base64
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+X-OriginatorOrg: hammerspace.com
+X-MS-Exchange-CrossTenant-Network-Message-Id: d506f465-d066-4765-2e29-08d65a1f1d44
+X-MS-Exchange-CrossTenant-originalarrivaltime: 04 Dec 2018 19:31:39.9706
+ (UTC)
+X-MS-Exchange-CrossTenant-fromentityheader: Hosted
+X-MS-Exchange-CrossTenant-id: 0d4fed5c-3a70-46fe-9430-ece41741f59e
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: SN6PR13MB2544
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-The RPC code is occasionally hanging when the receive code fails to
-empty the socket buffer due to a partial read of the data. When we
-convert that to an EAGAIN, it appears we occasionally leave data in the
-socket. The fix is to just keep reading until the socket returns
-EAGAIN/EWOULDBLOCK.
-
-Reported-by: Catalin Marinas <catalin.marinas@arm.com>
-Reported-by: Cristian Marussi <cristian.marussi@arm.com>
-Reported-by: Chuck Lever <chuck.lever@oracle.com>
-Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
----
- net/sunrpc/xprtsock.c | 39 +++++++++++++++++++--------------------
- 1 file changed, 19 insertions(+), 20 deletions(-)
-
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index ae77c71c1f64..1c0560dc5557 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -398,7 +398,7 @@ xs_read_xdr_buf(struct socket *sock, struct msghdr *msg, int flags,
- 		if (offset == count || msg->msg_flags & (MSG_EOR|MSG_TRUNC))
- 			goto out;
- 		if (ret != want)
--			goto eagain;
-+			goto out;
- 		seek = 0;
- 	} else {
- 		seek -= buf->head[0].iov_len;
-@@ -418,7 +418,7 @@ xs_read_xdr_buf(struct socket *sock, struct msghdr *msg, int flags,
- 		if (offset == count || msg->msg_flags & (MSG_EOR|MSG_TRUNC))
- 			goto out;
- 		if (ret != want)
--			goto eagain;
-+			goto out;
- 		seek = 0;
- 	} else {
- 		seek -= buf->page_len;
-@@ -433,7 +433,7 @@ xs_read_xdr_buf(struct socket *sock, struct msghdr *msg, int flags,
- 		if (offset == count || msg->msg_flags & (MSG_EOR|MSG_TRUNC))
- 			goto out;
- 		if (ret != want)
--			goto eagain;
-+			goto out;
- 	} else
- 		offset += buf->tail[0].iov_len;
- 	ret = -EMSGSIZE;
-@@ -441,9 +441,6 @@ xs_read_xdr_buf(struct socket *sock, struct msghdr *msg, int flags,
- out:
- 	*read = offset - seek_init;
- 	return ret;
--eagain:
--	ret = -EAGAIN;
--	goto out;
- sock_err:
- 	offset += seek;
- 	goto out;
-@@ -486,19 +483,18 @@ xs_read_stream_request(struct sock_xprt *transport, struct msghdr *msg,
- 	if (transport->recv.offset == transport->recv.len) {
- 		if (xs_read_stream_request_done(transport))
- 			msg->msg_flags |= MSG_EOR;
--		return transport->recv.copied;
-+		return read;
- 	}
- 
- 	switch (ret) {
-+	default:
-+		break;
- 	case -EMSGSIZE:
--		return transport->recv.copied;
-+		return read;
- 	case 0:
- 		return -ESHUTDOWN;
--	default:
--		if (ret < 0)
--			return ret;
- 	}
--	return -EAGAIN;
-+	return ret;
- }
- 
- static size_t
-@@ -537,7 +533,7 @@ xs_read_stream_call(struct sock_xprt *transport, struct msghdr *msg, int flags)
- 
- 	ret = xs_read_stream_request(transport, msg, flags, req);
- 	if (msg->msg_flags & (MSG_EOR|MSG_TRUNC))
--		xprt_complete_bc_request(req, ret);
-+		xprt_complete_bc_request(req, transport->recv.copied);
- 
- 	return ret;
- }
-@@ -570,7 +566,7 @@ xs_read_stream_reply(struct sock_xprt *transport, struct msghdr *msg, int flags)
- 
- 	spin_lock(&xprt->queue_lock);
- 	if (msg->msg_flags & (MSG_EOR|MSG_TRUNC))
--		xprt_complete_rqst(req->rq_task, ret);
-+		xprt_complete_rqst(req->rq_task, transport->recv.copied);
- 	xprt_unpin_rqst(req);
- out:
- 	spin_unlock(&xprt->queue_lock);
-@@ -591,10 +587,8 @@ xs_read_stream(struct sock_xprt *transport, int flags)
- 		if (ret <= 0)
- 			goto out_err;
- 		transport->recv.offset = ret;
--		if (ret != want) {
--			ret = -EAGAIN;
--			goto out_err;
--		}
-+		if (transport->recv.offset != want)
-+			return transport->recv.offset;
- 		transport->recv.len = be32_to_cpu(transport->recv.fraghdr) &
- 			RPC_FRAGMENT_SIZE_MASK;
- 		transport->recv.offset -= sizeof(transport->recv.fraghdr);
-@@ -602,6 +596,9 @@ xs_read_stream(struct sock_xprt *transport, int flags)
- 	}
- 
- 	switch (be32_to_cpu(transport->recv.calldir)) {
-+	default:
-+		msg.msg_flags |= MSG_TRUNC;
-+		break;
- 	case RPC_CALL:
- 		ret = xs_read_stream_call(transport, &msg, flags);
- 		break;
-@@ -616,6 +613,8 @@ xs_read_stream(struct sock_xprt *transport, int flags)
- 		goto out_err;
- 	read += ret;
- 	if (transport->recv.offset < transport->recv.len) {
-+		if (!(msg.msg_flags & MSG_TRUNC))
-+			return read;
- 		ret = xs_read_discard(transport->sock, &msg, flags,
- 				transport->recv.len - transport->recv.offset);
- 		if (ret <= 0)
-@@ -623,7 +622,7 @@ xs_read_stream(struct sock_xprt *transport, int flags)
- 		transport->recv.offset += ret;
- 		read += ret;
- 		if (transport->recv.offset != transport->recv.len)
--			return -EAGAIN;
-+			return read;
- 	}
- 	if (xs_read_stream_request_done(transport)) {
- 		trace_xs_stream_read_request(transport);
-@@ -653,7 +652,7 @@ static void xs_stream_data_receive(struct sock_xprt *transport)
- 	clear_bit(XPRT_SOCK_DATA_READY, &transport->sock_state);
- 	for (;;) {
- 		ret = xs_read_stream(transport, MSG_DONTWAIT);
--		if (ret <= 0)
-+		if (ret < 0)
- 			break;
- 		read += ret;
- 		cond_resched();
--- 
-2.19.2
-
+T24gVHVlLCAyMDE4LTEyLTA0IGF0IDE0OjI0IC0wNTAwLCBUcm9uZCBNeWtsZWJ1c3Qgd3JvdGU6
+DQo+IFRoZSBSUEMgY29kZSBpcyBvY2Nhc2lvbmFsbHkgaGFuZ2luZyB3aGVuIHRoZSByZWNlaXZl
+IGNvZGUgZmFpbHMgdG8NCj4gZW1wdHkgdGhlIHNvY2tldCBidWZmZXIgZHVlIHRvIGEgcGFydGlh
+bCByZWFkIG9mIHRoZSBkYXRhLiBXaGVuIHdlDQo+IGNvbnZlcnQgdGhhdCB0byBhbiBFQUdBSU4s
+IGl0IGFwcGVhcnMgd2Ugb2NjYXNpb25hbGx5IGxlYXZlIGRhdGEgaW4NCj4gdGhlDQo+IHNvY2tl
+dC4gVGhlIGZpeCBpcyB0byBqdXN0IGtlZXAgcmVhZGluZyB1bnRpbCB0aGUgc29ja2V0IHJldHVy
+bnMNCj4gRUFHQUlOL0VXT1VMREJMT0NLLg0KPiANCj4gUmVwb3J0ZWQtYnk6IENhdGFsaW4gTWFy
+aW5hcyA8Y2F0YWxpbi5tYXJpbmFzQGFybS5jb20+DQo+IFJlcG9ydGVkLWJ5OiBDcmlzdGlhbiBN
+YXJ1c3NpIDxjcmlzdGlhbi5tYXJ1c3NpQGFybS5jb20+DQo+IFJlcG9ydGVkLWJ5OiBDaHVjayBM
+ZXZlciA8Y2h1Y2subGV2ZXJAb3JhY2xlLmNvbT4NCj4gU2lnbmVkLW9mZi1ieTogVHJvbmQgTXlr
+bGVidXN0IDx0cm9uZC5teWtsZWJ1c3RAaGFtbWVyc3BhY2UuY29tPg0KPiAtLS0NCg0KSGkgZ3V5
+cywNCg0KSSB0aGluayBJIG1hbmFnZWQgdG8gcmVwcm9kdWNlIHRoZSBoYW5ncyB0aGF0IHlvdSB3
+ZXJlIHJlcG9ydGluZyBieQ0Kc2V0dGluZyB0aGUgci93c2l6ZSB0byAxMDI0LCBhbmQgdGhlbiBy
+dW5uaW5nIHRoZSB4ZnN0ZXN0cyBnZW5lcmljLzA3NA0KdGVzdC4gVGhpcyBwYXRjaCAod2hpY2gg
+c2hvdWxkIGFwcGx5IG9uIHRvcCBvZiB0aGUgbGludXgtbmV4dCBicmFuY2gNCnRoYXQgSSBwb2lu
+dGVkIHlvdSB0byBwcmV2aW91c2x5KSBhcHBlYXJzIHRvIGZpeCB0aGUgaGFuZyBmb3IgdGhhdCB0
+ZXN0DQpjYXNlLCBzbyBJJ20gaG9waW5nIGl0IHdpbGwgYWxzbyBmaXggdGhlIGlzc3VlcyB5b3Ug
+cmVwb3J0ZWQuDQoNClRoaXMgcGF0Y2ggY2FuIGFsc28gYmUgcmV0cmlldmVkIGFzIHBhcnQgb2Yg
+dGhlICd0ZXN0aW5nJyBicmFuY2ggKCANCmh0dHBzOi8vZ2l0LmxpbnV4LW5mcy5vcmcvP3A9dHJv
+bmRteS9saW51eC1uZnMuZ2l0O2E9c2hvcnRsb2c7aD1yZWZzL2hlYWRzL3Rlc3RpbmcNCikNCg0K
+Z2l0IHB1bGwgZ2l0Oi8vZ2l0LmxpbnV4LW5mcy5vcmcvcHJvamVjdHMvdHJvbmRteS9saW51eC1u
+ZnMuZ2l0IHRlc3RpbmcNCg0KQ2hlZXJzDQogIFRyb25kDQotLSANClRyb25kIE15a2xlYnVzdA0K
+TGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBIYW1tZXJzcGFjZQ0KdHJvbmQubXlrbGVidXN0
+QGhhbW1lcnNwYWNlLmNvbQ0KDQoNCg==
