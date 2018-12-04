@@ -6,168 +6,98 @@ X-Spam-Status: No, score=-2.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	MAILING_LIST_MULTI,SPF_PASS,USER_AGENT_MUTT autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 45F8FC04EB8
-	for <linux-nfs@archiver.kernel.org>; Tue,  4 Dec 2018 20:21:05 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id AF10BC04EB8
+	for <linux-nfs@archiver.kernel.org>; Tue,  4 Dec 2018 20:42:37 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 0FFC82082B
-	for <linux-nfs@archiver.kernel.org>; Tue,  4 Dec 2018 20:21:05 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 0FFC82082B
+	by mail.kernel.org (Postfix) with ESMTP id 7BE362081C
+	for <linux-nfs@archiver.kernel.org>; Tue,  4 Dec 2018 20:42:37 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 7BE362081C
 Authentication-Results: mail.kernel.org; dmarc=none (p=none dis=none) header.from=fieldses.org
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1725880AbeLDUVE (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 4 Dec 2018 15:21:04 -0500
-Received: from fieldses.org ([173.255.197.46]:49174 "EHLO fieldses.org"
+        id S1725875AbeLDUmg (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 4 Dec 2018 15:42:36 -0500
+Received: from fieldses.org ([173.255.197.46]:49200 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725866AbeLDUVE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 4 Dec 2018 15:21:04 -0500
+        id S1725866AbeLDUmg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 4 Dec 2018 15:42:36 -0500
 Received: by fieldses.org (Postfix, from userid 2815)
-        id 446941C22; Tue,  4 Dec 2018 15:21:03 -0500 (EST)
-Date:   Tue, 4 Dec 2018 15:21:03 -0500
+        id 1DDC21C22; Tue,  4 Dec 2018 15:42:36 -0500 (EST)
+Date:   Tue, 4 Dec 2018 15:42:36 -0500
 From:   "J. Bruce Fields" <bfields@fieldses.org>
 To:     NeilBrown <neilb@suse.com>
-Cc:     Chuck Lever <chuck.lever@oracle.com>,
-        Jeff Layton <jlayton@kernel.org>,
-        Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH 00/23 - V5] NFS: Remove generic RPC credentials.
-Message-ID: <20181204202103.GD3903@fieldses.org>
-References: <154379689752.28598.6750646657534626618.stgit@noble>
+Cc:     Vasily Averin <vvs@virtuozzo.com>,
+        Jeff Layton <jlayton@kernel.org>, linux-nfs@vger.kernel.org,
+        "David S. Miller" <davem@davemloft.net>,
+        Pavel Tikhomirov <ptikhomirov@virtuozzo.com>
+Subject: Re: [PATCH 0/1] cache_head leak in sunrpc_cache_lookup()
+Message-ID: <20181204204236.GE3903@fieldses.org>
+References: <d6bac5b8-9ee9-289c-7e85-0d4b6f55c931@virtuozzo.com>
+ <20181128233514.GC24160@fieldses.org>
+ <87zhtso38v.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <154379689752.28598.6750646657534626618.stgit@noble>
+In-Reply-To: <87zhtso38v.fsf@notabene.neil.brown.name>
 User-Agent: Mutt/1.5.21 (2010-09-15)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Mon, Dec 03, 2018 at 11:30:30AM +1100, NeilBrown wrote:
-> This is the same series as posted on 07 November, modified slightly
-> to match some recent code changes upstream - nothing substantial.
+On Thu, Nov 29, 2018 at 04:35:12PM +1100, NeilBrown wrote:
+> On Wed, Nov 28 2018, J. Bruce Fields wrote:
 > 
-> General description:
+> > On Wed, Nov 28, 2018 at 11:45:46AM +0300, Vasily Averin wrote:
+> >> Dear all, we have found memory leak on OpenVz7 node and believe it
+> >> affects mainline too.
+> >> 
+> >> sunrpc_cache_lookup() removes exprired cache_head from hash, however
+> >> if it waits for reply on submitted cache_request both of them can leak
+> >> forever, nobody cleans unhashed cache_heads.
+> >> 
+> >> Originally we had claim on busy loop device of stopped container, that
+> >> had executed nfs server inside.  Device was kept by mount that was
+> >> detached from already destroyed mount namespace.  By using crash
+> >> search we have found some structure with path struct related to our
+> >> mount.  Finally we have found that it was alive svc_export struct used
+> >> by to alive cache_request, however both of them pointed to already
+> >> freed cache_detail.
+> >> 
+> >> We decided that cache_detail was correctly freed during destroy of net
+> >> namespace, however svc_export with taken path struct, cache_request
+> >> and some other structures seems was leaked forever.
+> >> 
+> >> This could  happen only if cache_head of svc_export was removed from
+> >> hash on cache_detail before its destroy. Finally we have found that it
+> >> could happen when sunrpc_cache_lookup() removes expired cache_head
+> >> from hash.
+> >> 
+> >> Usually it works correctly and cache_put(freeme) frees expired
+> >> cache_head.  However in our case cache_head have an extra reference
+> >> counter from stalled cache_request.  Becasue of cache_head was removed
+> >> from hash of cache_detail it cannot be found in cache_clean() and its
+> >> cache_request cannot be freed in cache_dequeue(). Memory leaks
+> >> forever, exactly like we observed.
+> >> 
+> >> After may attempts we have reproduced this situation on OpenVz7
+> >> kernel, however our reproducer is quite long and complex.
+> >> Unfortunately we still did not reproduced this problem on mainline
+> >> kernel and did not validated the patch yet.
+> >> 
+> >> It would be great if someone advised us some simple way to trigger
+> >> described scenario.
+> >
+> > I think you should be able to produce hung upcalls by flushing the cache
+> > (exportfs -f), then stopping mountd, then trying to access the
+> > filesystem from a client.  Does that help?
+> >
+> >> We are not sure that our patch is correct, please let us know if our
+> >> analyze missed something.
+> >
+> > It looks OK to me, but it would be helpful to have Neil's review too.
 > 
-> There doesn't seem to be a maintainer for the 'cred' code, so I don't
-> know who to ask to approve the first 4 patches.  Maybe if the NFS
-> team like them, they can just go to Linus with a note for him to look
-> at them if he wants to.
+> Yes, it makes sense to me.
+>  Reviewed-by: NeilBrown <neilb@suse.com>
 
-For what it's worth: all my usual tests still pass with this series
-applied.  And the nfsd (and common) parts are unlikely to conflict with
-anything of mine.
-
-Otherwise: sounds like a reasonable idea, but I haven't gotten a chance
-to review the patches in any detail.
-
---b.
-
-> 
-> The original motivation for this was performance.  In some
-> circumstances the cred caches can get big and particularly can get
-> long chains.  The hash function has been changed at least once to
-> improve the hashing and it still isn't perfect.
-> Rather than improving pruning of the cache, or resizing the hashtable
-> etc, it is easiest to just get rid of it.
-> 
-> As well as discarding generic credentials completely (using 'struct
-> cred' instead), we also stop storing AUTH_UNIX credentials in a hash
-> table - that brings no value.  Just allocate as needed and discard
-> when finished with.
-> So the only hash table will still have is for AUTH_GSS.
-> One of the main triggers for hashtable problems was users changing
-> groups a lot, so there would be many entries for the one user, each
-> with a different set of groups.  That doesn't apply for
-> AUTH_GSS as the groupids on the client are ignored.
-> 
-> That was the original motivation, but as I worked on it, I realized
-> that it was making a log of code simpler.
-> 
->  44 files changed, 550 insertions(+), 925 deletions(-)
-> 
-> That is sufficient motivation in itself I think.
-> 
-> Thanks,
-> NeilBrown
-> 
-> 
-> ---
-> 
-> NeilBrown (23):
->       cred: add cred_fscmp() for comparing creds.
->       cred: add get_cred_rcu()
->       cred: export get_task_cred().
->       cred: allow get_cred() and put_cred() to be given NULL.
->       SUNRPC: add 'struct cred *' to auth_cred and rpc_cred
->       SUNRPC: remove groupinfo from struct auth_cred.
->       SUNRPC: remove uid and gid from struct auth_cred
->       SUNRPC: remove machine_cred field from struct auth_cred
->       NFSv4: add cl_root_cred for use when machine cred is not available.
->       NFSv4: don't require lock for get_renew_cred or get_machine_cred
->       SUNRPC: discard RPC_DO_ROOTOVERRIDE()
->       NFS/SUNRPC: don't lookup machine credential until rpcauth_bindcred().
->       SUNRPC: introduce RPC_TASK_NULLCREDS to request auth_none
->       SUNRPC: add side channel to use non-generic cred for rpc call.
->       NFS: move credential expiry tracking out of SUNRPC into NFS.
->       SUNRPC: remove RPCAUTH_AUTH_NO_CRKEY_TIMEOUT
->       NFS: change access cache to use 'struct cred'.
->       NFS: struct nfs_open_dir_context: convert rpc_cred pointer to cred.
->       NFS/NFSD/SUNRPC: replace generic creds with 'struct cred'.
->       SUNRPC: remove generic cred code.
->       SUNRPC: remove crbind rpc_cred operation
->       SUNRPC: simplify auth_unix.
->       SUNRPC discard cr_uid from struct rpc_cred.
-> 
-> 
->  fs/lockd/clntproc.c                       |    6 -
->  fs/nfs/blocklayout/blocklayout.c          |    2 
->  fs/nfs/client.c                           |    9 -
->  fs/nfs/delegation.c                       |   28 +--
->  fs/nfs/delegation.h                       |   10 -
->  fs/nfs/dir.c                              |   59 ++----
->  fs/nfs/flexfilelayout/flexfilelayout.c    |   64 +++---
->  fs/nfs/flexfilelayout/flexfilelayout.h    |    8 -
->  fs/nfs/flexfilelayout/flexfilelayoutdev.c |   16 +-
->  fs/nfs/inode.c                            |   13 +
->  fs/nfs/internal.h                         |    8 -
->  fs/nfs/nfs3proc.c                         |    4 
->  fs/nfs/nfs4_fs.h                          |   65 +++---
->  fs/nfs/nfs4client.c                       |    4 
->  fs/nfs/nfs4proc.c                         |  150 +++++++--------
->  fs/nfs/nfs4renewd.c                       |    9 -
->  fs/nfs/nfs4session.c                      |    5 
->  fs/nfs/nfs4state.c                        |  129 ++++++-------
->  fs/nfs/pagelist.c                         |    2 
->  fs/nfs/pnfs.c                             |   14 +
->  fs/nfs/pnfs.h                             |   10 -
->  fs/nfs/pnfs_dev.c                         |    4 
->  fs/nfs/pnfs_nfs.c                         |    2 
->  fs/nfs/proc.c                             |    2 
->  fs/nfs/unlink.c                           |   15 -
->  fs/nfs/write.c                            |   24 ++
->  fs/nfsd/nfs4callback.c                    |   31 +--
->  fs/nfsd/state.h                           |    2 
->  include/linux/cred.h                      |   26 ++-
->  include/linux/nfs_fs.h                    |   13 +
->  include/linux/nfs_fs_sb.h                 |    2 
->  include/linux/nfs_xdr.h                   |   16 +-
->  include/linux/sunrpc/auth.h               |   51 -----
->  include/linux/sunrpc/clnt.h               |    1 
->  include/linux/sunrpc/sched.h              |    6 -
->  kernel/cred.c                             |   58 ++++++
->  net/sunrpc/Makefile                       |    2 
->  net/sunrpc/auth.c                         |  116 ++++++-----
->  net/sunrpc/auth_generic.c                 |  293 -----------------------------
->  net/sunrpc/auth_gss/auth_gss.c            |   47 +----
->  net/sunrpc/auth_null.c                    |    4 
->  net/sunrpc/auth_unix.c                    |  110 +++--------
->  net/sunrpc/clnt.c                         |   26 +--
->  net/sunrpc/sched.c                        |    5 
->  44 files changed, 551 insertions(+), 920 deletions(-)
->  delete mode 100644 net/sunrpc/auth_generic.c
-> 
-> --
-> Signature
+OK, applied for 4.21.--b.
