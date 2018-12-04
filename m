@@ -2,61 +2,114 @@ Return-Path: <SRS0=juBO=ON=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.3 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS,USER_AGENT_MUTT
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.0 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B3790C04EBF
-	for <linux-nfs@archiver.kernel.org>; Tue,  4 Dec 2018 15:43:52 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 58E00C04EB8
+	for <linux-nfs@archiver.kernel.org>; Tue,  4 Dec 2018 19:09:25 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 7A2F7206B7
-	for <linux-nfs@archiver.kernel.org>; Tue,  4 Dec 2018 15:43:52 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 1D1382082B
+	for <linux-nfs@archiver.kernel.org>; Tue,  4 Dec 2018 19:09:25 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="XsCjoAwp"
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 7A2F7206B7
-Authentication-Results: mail.kernel.org; dmarc=none (p=none dis=none) header.from=infradead.org
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="OZSVqoTj"
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 1D1382082B
+Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=gmail.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726902AbeLDPns (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 4 Dec 2018 10:43:48 -0500
-Received: from bombadil.infradead.org ([198.137.202.133]:53382 "EHLO
-        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725910AbeLDPns (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Dec 2018 10:43:48 -0500
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-        d=infradead.org; s=bombadil.20170209; h=In-Reply-To:Content-Type:MIME-Version
-        :References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
-        Content-Transfer-Encoding:Content-ID:Content-Description:Resent-Date:
-        Resent-From:Resent-Sender:Resent-To:Resent-Cc:Resent-Message-ID:List-Id:
-        List-Help:List-Unsubscribe:List-Subscribe:List-Post:List-Owner:List-Archive;
-         bh=fdA6FpsWcfqJtGc45LwJT4goannKyTOW0L5mDqPPvJo=; b=XsCjoAwp2TivHefqhIMM2p3Lb
-        aGCQbDsBCFzD17LyivhGAUi5TKKui2wrShrV07dD8TySOwUrX6wp0joPnC46yda3t/pAXoGBLgZQJ
-        yhpMYRtOsnb7QjTUyE5kJXzp4a2qL3iE3sfBT7tr+ttwDEpIDbxNlnJA/GmVPKDtZuAbZA5iXnF2m
-        3d2vWyT3+EUwuHCMb/6yv4t4boOZLokWrD5csqgjsgcogf7Ok0fp0b7JQiHUpG1xYfRu6FYphzSOX
-        7L4KSAp9GACTSEzHQ2G4QcOSlLsAtgYfPcR4vPYr+/USEJKVvmEBHWPoTycaKp0krEww8iWArajpH
-        dzCX4gXew==;
-Received: from hch by bombadil.infradead.org with local (Exim 4.90_1 #2 (Red Hat Linux))
-        id 1gUCrT-00023q-8h; Tue, 04 Dec 2018 15:43:47 +0000
-Date:   Tue, 4 Dec 2018 07:43:47 -0800
-From:   Christoph Hellwig <hch@infradead.org>
-To:     Dave Chinner <david@fromorbit.com>
-Cc:     linux-fsdevel@vger.kernel.org, linux-xfs@vger.kernel.org,
-        olga.kornievskaia@gmail.com, linux-nfs@vger.kernel.org,
-        linux-unionfs@vger.kernel.org, ceph-devel@vger.kernel.org,
-        linux-cifs@vger.kernel.org
-Subject: Re: [PATCH 09/11] vfs: push copy_file_ranges -EXDEV checks down
-Message-ID: <20181204154347.GA6925@infradead.org>
-References: <20181203083416.28978-1-david@fromorbit.com>
- <20181203083416.28978-10-david@fromorbit.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20181203083416.28978-10-david@fromorbit.com>
-User-Agent: Mutt/1.9.2 (2017-12-15)
-X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
+        id S1725899AbeLDTJY (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 4 Dec 2018 14:09:24 -0500
+Received: from mail-oi1-f193.google.com ([209.85.167.193]:38351 "EHLO
+        mail-oi1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725865AbeLDTJY (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Dec 2018 14:09:24 -0500
+Received: by mail-oi1-f193.google.com with SMTP id a77so15260384oii.5
+        for <linux-nfs@vger.kernel.org>; Tue, 04 Dec 2018 11:09:24 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=from:to:cc:subject:date:message-id;
+        bh=dmjI0R2iUIbEq2MhJsBYQVIv0RjTZlwF3dCxHi55H2w=;
+        b=OZSVqoTjH45l+vvTmoIN2lkSX4BOKRuReb6BLumC8/FJlEfIsJIIRKB07Oo0Y3YhQL
+         q2UCS6IO5qMTm19L+MhvL/qgCfz7lQ14IjWCiyC1jGuziqx1eOwAI2rNxEHnxiwlyuap
+         rMtC0VyZVEwuGBJhtGbwKXy8FabPW3z4fHcJhW9mkrpIKsuicuJ98eqGKr3Qf1fprOg1
+         Bfs/WQSMKrePFdR5Km39YlRAhy/rrNsuF2uQR+DEXxssrbps2tAeR29ay074yXJAPsSa
+         cbgNrCnv5bmx5PW0nw8UM9PXA7grT2vvBmZjNaq+lOsHSYre6T/ZP496ojX/I7Dnx8DU
+         f7xA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:from:to:cc:subject:date:message-id;
+        bh=dmjI0R2iUIbEq2MhJsBYQVIv0RjTZlwF3dCxHi55H2w=;
+        b=a2aul7/9FO2tYgeBaYRZkdNgAK4vwX6TLqks3YUXo563aHROKodaki5D7REc93uaCl
+         Ckvd4MgXmHC7tTCHmnFjs8VLeVADczhAQigr8U6CJCAwEXBHUvgmPiD5SbKMoDDbqxwa
+         /VjREC5rN3vxfX88KdR2LAxenn9nKkqZyNn//srIHDZnCcuLVMUjbEv9fD0JbFOBlEIP
+         bT9RdA3DHGX/73/DulDMvwvLLHBhKdZGCy1a3qIPExUhZeZoQ/W3e9I58HNp4wbGJ89/
+         STvS+j0z60wA0PEHT4r9r3x6W1W7RUc3L2wvhfPn+jzmtfuRxBySdHUEn1i4hxOZjQQ3
+         TUOg==
+X-Gm-Message-State: AA+aEWazS/7G3v1/IJ69Poeg+sPDYJFE5Nd2PPszRLaePtDL+UkPYixp
+        uz/jTMs4HiSd2of4hm8LXI4rowrg
+X-Google-Smtp-Source: AFSGD/UVkWcRpw9O6qXSIPP4TpCyVK+gJMVq/juOwtkp6aaQD8gxH7hvLjASguGAK8PStZx5JG6dqg==
+X-Received: by 2002:aca:53cd:: with SMTP id h196mr13859834oib.355.1543950563520;
+        Tue, 04 Dec 2018 11:09:23 -0800 (PST)
+Received: from Olgas-MBP-195.attlocal.net (172-10-226-31.lightspeed.livnmi.sbcglobal.net. [172.10.226.31])
+        by smtp.gmail.com with ESMTPSA id u19sm7964977oia.31.2018.12.04.11.09.22
+        (version=TLS1 cipher=AES128-SHA bits=128/128);
+        Tue, 04 Dec 2018 11:09:22 -0800 (PST)
+From:   Olga Kornievskaia <olga.kornievskaia@gmail.com>
+To:     bfields@redhat.com
+Cc:     linux-nfs@vger.kernel.org
+Subject: [PATCH 1/1] NFSD remove OP_CACHEME from 4.2 op_flags
+Date:   Tue,  4 Dec 2018 14:09:21 -0500
+Message-Id: <20181204190921.61662-1-olga.kornievskaia@gmail.com>
+X-Mailer: git-send-email 2.10.1 (Apple Git-78)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Well, this isn't bugfixes anymore, but adding new features..
+From: Olga Kornievskaia <kolga@netapp.com>
+
+OP_CACHEME is only for the 4.0 operations.
+
+Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+---
+ fs/nfsd/nfs4proc.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 238c4b7..60c4650 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -3010,25 +3010,25 @@ static inline u32 nfsd4_seek_rsize(struct svc_rqst *rqstp, struct nfsd4_op *op)
+ 	/* NFSv4.2 operations */
+ 	[OP_ALLOCATE] = {
+ 		.op_func = nfsd4_allocate,
+-		.op_flags = OP_MODIFIES_SOMETHING | OP_CACHEME,
++		.op_flags = OP_MODIFIES_SOMETHING,
+ 		.op_name = "OP_ALLOCATE",
+ 		.op_rsize_bop = nfsd4_only_status_rsize,
+ 	},
+ 	[OP_DEALLOCATE] = {
+ 		.op_func = nfsd4_deallocate,
+-		.op_flags = OP_MODIFIES_SOMETHING | OP_CACHEME,
++		.op_flags = OP_MODIFIES_SOMETHING,
+ 		.op_name = "OP_DEALLOCATE",
+ 		.op_rsize_bop = nfsd4_only_status_rsize,
+ 	},
+ 	[OP_CLONE] = {
+ 		.op_func = nfsd4_clone,
+-		.op_flags = OP_MODIFIES_SOMETHING | OP_CACHEME,
++		.op_flags = OP_MODIFIES_SOMETHING,
+ 		.op_name = "OP_CLONE",
+ 		.op_rsize_bop = nfsd4_only_status_rsize,
+ 	},
+ 	[OP_COPY] = {
+ 		.op_func = nfsd4_copy,
+-		.op_flags = OP_MODIFIES_SOMETHING | OP_CACHEME,
++		.op_flags = OP_MODIFIES_SOMETHING,
+ 		.op_name = "OP_COPY",
+ 		.op_rsize_bop = nfsd4_copy_rsize,
+ 	},
+-- 
+1.8.3.1
+
