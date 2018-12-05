@@ -2,137 +2,99 @@ Return-Path: <SRS0=3CSe=OO=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,SPF_PASS,URIBL_BLOCKED autolearn=ham
+X-Spam-Status: No, score=-2.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_PASS,URIBL_BLOCKED,USER_AGENT_MUTT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B715FC04EB9
-	for <linux-nfs@archiver.kernel.org>; Wed,  5 Dec 2018 14:48:00 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B4FFFC04EBF
+	for <linux-nfs@archiver.kernel.org>; Wed,  5 Dec 2018 16:51:55 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 829AE20878
-	for <linux-nfs@archiver.kernel.org>; Wed,  5 Dec 2018 14:48:00 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 829AE20878
-Authentication-Results: mail.kernel.org; dmarc=none (p=none dis=none) header.from=linux-m68k.org
+	by mail.kernel.org (Postfix) with ESMTP id 860942084C
+	for <linux-nfs@archiver.kernel.org>; Wed,  5 Dec 2018 16:51:55 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 860942084C
+Authentication-Results: mail.kernel.org; dmarc=none (p=none dis=none) header.from=fieldses.org
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727628AbeLEOr7 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 5 Dec 2018 09:47:59 -0500
-Received: from mail-vs1-f66.google.com ([209.85.217.66]:35538 "EHLO
-        mail-vs1-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727094AbeLEOr7 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Dec 2018 09:47:59 -0500
-Received: by mail-vs1-f66.google.com with SMTP id e7so12227676vsc.2;
-        Wed, 05 Dec 2018 06:47:58 -0800 (PST)
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
-         :message-id:subject:to:cc;
-        bh=N4N2sZNH53i6D9yRmiCx9A+jnggLmHj8GKEOX/5FTrU=;
-        b=syT0Cxd7iRsE6xxv81HldcaU5rcJwGRyThmoW1uaFEwCCS5GLOo0sUht3GViYaOlDQ
-         ZG08GL4dKfbT30ZvwrHoetmxEi9f2MH672VbjGUQocW7rRNZH2TV4144pOKXUoeVQIfT
-         votsd3vgZhMxnRJgR7G6m4YjD+Avxy+BDIxhL31mIR3wzRjAxiTV+tPVKQb+cpM8fRTB
-         6p6hxgF/+/uVfqhoaR2v22nheRIvW8yw6Ot1laZS/9uPA0ZYGo0Adr8Hr+ayMEiYuvrc
-         qtpdf+dCutSdTbeW9Y4oXisYfPaNn9xrldXr8WtWuJyDWt7ZIQ6fGGeqG0XJ9tLA66LF
-         AyqQ==
-X-Gm-Message-State: AA+aEWbyR8JtTLk47J4TusiJRd0cD3UnVJ+cGxCnD/huqxQKsseZXzq6
-        /emScrQSSuyfLcHDRuHBuZN/hBwi/4Ewy1RiGTz9Kw==
-X-Google-Smtp-Source: AFSGD/Uy+i6JE9+hiJGclbeIZTeGcdjkd4MCajWCRvlYpZr8AXZ0fXFsHNvyQb/TGAszNCY9o2NxiJlfS3SKFXdg5vA=
-X-Received: by 2002:a67:f43:: with SMTP id 64mr10935737vsp.166.1544021277718;
- Wed, 05 Dec 2018 06:47:57 -0800 (PST)
+        id S1727242AbeLEQvw (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 5 Dec 2018 11:51:52 -0500
+Received: from fieldses.org ([173.255.197.46]:50510 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1727195AbeLEQvw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 5 Dec 2018 11:51:52 -0500
+Received: by fieldses.org (Postfix, from userid 2815)
+        id 7C0BF1C26; Wed,  5 Dec 2018 11:51:51 -0500 (EST)
+Date:   Wed, 5 Dec 2018 11:51:51 -0500
+To:     Dave Chinner <david@fromorbit.com>
+Cc:     Olga Kornievskaia <olga.kornievskaia@gmail.com>,
+        Christoph Hellwig <hch@infradead.org>,
+        Amir Goldstein <amir73il@gmail.com>,
+        linux-fsdevel@vger.kernel.org, linux-xfs@vger.kernel.org,
+        linux-nfs <linux-nfs@vger.kernel.org>,
+        linux-unionfs@vger.kernel.org, ceph-devel@vger.kernel.org,
+        linux-cifs@vger.kernel.org
+Subject: Re: [PATCH 01/11] vfs: copy_file_range source range over EOF should
+ fail
+Message-ID: <20181205165151.GB5182@fieldses.org>
+References: <20181203083416.28978-1-david@fromorbit.com>
+ <20181203083416.28978-2-david@fromorbit.com>
+ <CAOQ4uxhOQY8M5rbgHKREN5qpeDGHv0-xK3r37Lj6XfqFoE4qjg@mail.gmail.com>
+ <20181204151332.GA32245@infradead.org>
+ <20181204212948.GO6311@dastard>
+ <CAN-5tyGU=y5JO5UNcmn3rX1gRyK_UxjQvQ+kCsP34_NT2-mQ_A@mail.gmail.com>
+ <20181204223102.GR6311@dastard>
 MIME-Version: 1.0
-References: <CAMuHMdVJr0PwvJg3FeTCy7vxuyY1=S1tPLHO7hPsoZX4wZ+-cQ@mail.gmail.com>
- <20181205.221146.969453990167463340.anemo@mba.ocn.ne.jp> <CAMuHMdU9zXXSaPHKvfG3A73h3CTsb9H2RT_gWt-Ne=qQ+HKShQ@mail.gmail.com>
- <92ce4b8c2b2d53e27ed5bc0e5af3fee4bc17b4dc.camel@hammerspace.com>
-In-Reply-To: <92ce4b8c2b2d53e27ed5bc0e5af3fee4bc17b4dc.camel@hammerspace.com>
-From:   Geert Uytterhoeven <geert@linux-m68k.org>
-Date:   Wed, 5 Dec 2018 15:47:45 +0100
-Message-ID: <CAMuHMdXyfEVOWoBOx0Ywm6vw5oQ6eHNXFhQBKTfRSBOmPYGM6Q@mail.gmail.com>
-Subject: Re: NFS/TCP crashes on MIPS/RBTX4927 in v4.20-rcX (bisected)
-To:     trondmy@hammerspace.com
-Cc:     Atsushi Nemoto <anemo@mba.ocn.ne.jp>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        "open list:NFS, SUNRPC, AND..." <linux-nfs@vger.kernel.org>,
-        linux-mips@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20181204223102.GR6311@dastard>
+User-Agent: Mutt/1.5.21 (2010-09-15)
+From:   bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hi Trond,
+On Wed, Dec 05, 2018 at 09:31:02AM +1100, Dave Chinner wrote:
+> That's what the code does right now and *exactly what I'm trying to
+> fix* because it EINVAL is ambiguous and not an indicator that we've
+> reached the end of the source file. EINVAL can indicate several
+> different errors, so it really has to be treated as a "copy failed"
+> error by applications.
+> 
+> Have a look at read/pread() - they return 0 in this case to indicate
+> a short read, and the value of zero is explicitly defined as meaning
+> "read position is beyond EOF".  Applications know straight away that
+> there is no more data to be read and there was no error, so can
+> terminate on a successful short read.
+> 
+> We need to allow applications to terminate copy loops on a
+> successful short copy.
 
-On Wed, Dec 5, 2018 at 2:45 PM Trond Myklebust <trondmy@hammerspace.com> wrote:
-> On Wed, 2018-12-05 at 14:41 +0100, Geert Uytterhoeven wrote:
-> > On Wed, Dec 5, 2018 at 2:11 PM Atsushi Nemoto <anemo@mba.ocn.ne.jp>
-> > wrote:
-> > > On Tue, 4 Dec 2018 14:53:07 +0100, Geert Uytterhoeven <
-> > > geert@linux-m68k.org> wrote:
-> > > > I found similar crashes in a report from 2006, but of course the
-> > > > code
-> > > > has changed too much to apply the solution proposed there
-> > > > (
-> > > > https://www.linux-mips.org/archives/linux-mips/2006-09/msg00169.html
-> > > > ).
-> > > >
-> > > > Userland is Debian 8 (the last release supporting "old" MIPS).
-> > > > My kernel is based on v4.20.0-rc5, but the issue happens with
-> > > > v4.20-rc1,
-> > > > too.
-> > > >
-> > > > However, I noticed it works in v4.19! Hence I've bisected this,
-> > > > to commit
-> > > > 277e4ab7d530bf28 ("SUNRPC: Simplify TCP receive code by switching
-> > > > to using
-> > > > iterators").
-> > > >
-> > > > Dropping the ",tcp" part from the nfsroot parameter also fixes
-> > > > the issue.
-> > > >
-> > > > Given RBTX4927 is little endian, just like my arm/arm64 boards,
-> > > > it's probably
-> > > > not an endianness issue.  Sparse didn't show anything suspicious
-> > > > before/after
-> > > > the guilty commit.
-> > > >
-> > > > Do you have a clue?
-> > >
-> > > If it was a cache issue, disabling i-cache or d-cache completely
-> > > might
-> > > help understanding the problem.  I added TXx9 specific "icdisable"
-> > > and
-> > > "dcdisable" kernel options for debugging long ago.
-> > >
-> > > I hope these options still works correctly with recent kernel but
-> > > not
-> > > sure.
-> > >
-> > > Also, disabling i-cache makes your board VERY slow, of course.
-> >
-> > Thanks!
-> >
-> > When using these options, I do see a slowdown in early boot, but the
-> > issue
-> > is still there.
-> >
-> > My next guess is an unaligned access not using {get,put}_unaligned(),
-> > which
-> > doesn't seem to work on tx4927, but doesn't cause an exception
-> > neither.
->
-> Can you try my linux-next branch on git.linux-nfs.org? It contains a
-> fixes for a hang that results from the above commit.
->
-> git pull git://git.linux-nfs.org/projects/trondmy/linux-nfs.git linux-next
+I'm a little confused by your definition of "short copy" and "short
+read".  Are you using that to mean a copy/read that returns zero?  I
+usually see it used to mean any successful call that returned less than
+the requested amount.  I'd expect a zero return to terminate a copy
+loop, but not any positive return.
 
-Thanks for the suggestion, but unfortunately it doesn't help.
+--b.
 
-Gr{oetje,eeting}s,
 
-                        Geert
-
--- 
-Geert Uytterhoeven -- There's lots of Linux beyond ia32 -- geert@linux-m68k.org
-
-In personal conversations with technical people, I call myself a hacker. But
-when I'm talking to journalists I just say "programmer" or something like that.
-                                -- Linus Torvalds
+> IOWs, applications need to either:
+> 
+> 	- get an immediate error saying the range is invalid rather
+> 	  than doing a short copy (as per the man page); or
+> 	- have an explicit marker to say "no more data to be copied"
+> 
+> Applications need the "no more data to copy" case to be explicit and
+> unambiguous so they can make sane decisions about whether a short
+> copy was successful because the file was shorter than expected or
+> whether a short copy was a result of a real error being encountered.
+> The current behaviour is largely unusable for applications because
+> they have to guess at the reason for EINVAL part way through a
+> copy....
+> 
+> Cheers,
+> 
+> Dave.
+> -- 
+> Dave Chinner
+> david@fromorbit.com
