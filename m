@@ -2,118 +2,194 @@ Return-Path: <SRS0=3CSe=OO=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED,
-	USER_AGENT_MUTT autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 245E5C04EB8
-	for <linux-nfs@archiver.kernel.org>; Wed,  5 Dec 2018 01:49:02 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C9353C04EB8
+	for <linux-nfs@archiver.kernel.org>; Wed,  5 Dec 2018 02:10:59 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id DB3C92082B
-	for <linux-nfs@archiver.kernel.org>; Wed,  5 Dec 2018 01:49:01 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org DB3C92082B
-Authentication-Results: mail.kernel.org; dmarc=none (p=none dis=none) header.from=fieldses.org
+	by mail.kernel.org (Postfix) with ESMTP id 990AE2081C
+	for <linux-nfs@archiver.kernel.org>; Wed,  5 Dec 2018 02:10:59 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 990AE2081C
+Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=redhat.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1725841AbeLEBtB (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 4 Dec 2018 20:49:01 -0500
-Received: from fieldses.org ([173.255.197.46]:49516 "EHLO fieldses.org"
+        id S1726735AbeLECK6 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 4 Dec 2018 21:10:58 -0500
+Received: from mx1.redhat.com ([209.132.183.28]:41986 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725834AbeLEBtB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 4 Dec 2018 20:49:01 -0500
-Received: by fieldses.org (Postfix, from userid 2815)
-        id E471BFC; Tue,  4 Dec 2018 20:49:00 -0500 (EST)
-Date:   Tue, 4 Dec 2018 20:49:00 -0500
-From:   "J. Bruce Fields" <bfields@fieldses.org>
-To:     "zhengbin (A)" <zhengbin13@huawei.com>
-Cc:     jlayton@kernel.org, linux-nfs@vger.kernel.org, houtao1@huawei.com,
-        zhaohongjiang@huawei.com
-Subject: Re: [PATCH] nfsd: Return EPERM on utime/utimes/lutimes calls instead
- of EACCESS in some cases
-Message-ID: <20181205014900.GC6093@fieldses.org>
-References: <1543564290-147370-1-git-send-email-zhengbin13@huawei.com>
- <4e0152c4-bbe9-4246-27ee-bae2fee9129d@huawei.com>
- <20181204201357.GC3903@fieldses.org>
- <e3073b92-1eab-78f5-09ae-629e6496fac4@huawei.com>
- <20181205013717.GA6093@fieldses.org>
- <bfa4c769-79dd-79fe-c29f-75507719aec0@huawei.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <bfa4c769-79dd-79fe-c29f-75507719aec0@huawei.com>
-User-Agent: Mutt/1.5.21 (2010-09-15)
+        id S1725834AbeLECK6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 4 Dec 2018 21:10:58 -0500
+Received: from smtp.corp.redhat.com (int-mx07.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id 2D18C308A953;
+        Wed,  5 Dec 2018 02:10:58 +0000 (UTC)
+Received: from localhost.localdomain.com (unknown [10.67.116.10])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 294EF103BAB3;
+        Wed,  5 Dec 2018 02:10:54 +0000 (UTC)
+From:   Kenneth D'souza <kdsouza@redhat.com>
+To:     linux-nfs@vger.kernel.org
+Cc:     bfields@fieldses.org
+Subject: [PATCH] Add support for -L(logical) and -P(physical) option in nfs4_getfacl.
+Date:   Wed,  5 Dec 2018 07:40:51 +0530
+Message-Id: <20181205021051.8700-1-kdsouza@redhat.com>
+X-Scanned-By: MIMEDefang 2.84 on 10.5.11.22
+X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.41]); Wed, 05 Dec 2018 02:10:58 +0000 (UTC)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Wed, Dec 05, 2018 at 09:43:06AM +0800, zhengbin (A) wrote:
->  second parameter of utime/utimes/lutimes is not NULL   -------> maybe lutimes should be removed? I think "second parameter of utime/utimes is not NULL" would be better
+Signed-off-by: Kenneth D'souza <kdsouza@redhat.com>
+---
+ man/man1/nfs4_getfacl.1     | 18 +++++++++++++-
+ nfs4_getfacl/nfs4_getfacl.c | 47 +++++++++++++++++++++++++++++++++----
+ 2 files changed, 59 insertions(+), 6 deletions(-)
 
-Also fixed, thanks.--b.
+diff --git a/man/man1/nfs4_getfacl.1 b/man/man1/nfs4_getfacl.1
+index 83067c9..940a2b5 100644
+--- a/man/man1/nfs4_getfacl.1
++++ b/man/man1/nfs4_getfacl.1
+@@ -8,7 +8,7 @@
+ .SH NAME
+ nfs4_getfacl \- get NFSv4 file/directory access control lists
+ .SH SYNOPSIS
+-.B nfs4_getfacl [-HR]
++.B nfs4_getfacl [-HRLP]
+ file ...
+ .SH DESCRIPTION
+ .B nfs4_getfacl 
+@@ -28,6 +28,22 @@ flag is specified,
+ .B nfs4_getfacl
+ will list the NFSv4 ACLs of all files and directories recursively.
+ 
++If the
++.BR -L / --logical
++flag is specified,
++.B nfs4_getfacl
++will follow symbolic links to directories. The default behavior is to follow
++symbolic link arguments, and skip symbolic links encountered in subdirectories.
++Only effective in combination with -R.
++
++If the
++.BR -P / --physical
++flag is specified,
++.B nfs4_getfacl
++will not follow symbolic links to directories. This also skips symbolic link
++arguments.
++Only effective in combination with -R.
++
+ The output format for an NFSv4 file ACL, e.g., is:
+ .RS
+ .nf
+diff --git a/nfs4_getfacl/nfs4_getfacl.c b/nfs4_getfacl/nfs4_getfacl.c
+index 5a9c911..dd5c1b9 100644
+--- a/nfs4_getfacl/nfs4_getfacl.c
++++ b/nfs4_getfacl/nfs4_getfacl.c
+@@ -46,9 +46,19 @@ static void usage(int);
+ static void more_help();
+ static char *execname;
+ static void print_acl_from_path();
++static int walk_type = 0;
++static void logical();
+ 
+ static int recursive(const char *fpath, const struct stat *sb, int tflag, struct FTW *ftwbuf)
+ {
++	if ((tflag == FTW_SL) && (walk_type == 2))
++                return 0;
++
++        if ((tflag == FTW_SL) && (walk_type == 1)) {
++                logical(fpath);
++                return 0;
++        }
++
+ 	print_acl_from_path(fpath);
+ 	return 0;
+ }
+@@ -56,14 +66,16 @@ static int recursive(const char *fpath, const struct stat *sb, int tflag, struct
+ static struct option long_options[] = {
+         {"more-help",    0, 0, 'H' },
+         {"help",         0, 0, 'h' },
+-        {"recursive",     0, 0, 'R' },
++        {"recursive",    0, 0, 'R' },
++	{"logical",	 0, 0, 'L' },
++	{"physical",     0, 0, 'P' },
+         { NULL,          0, 0, 0,  },
+ };
+ 
+ int main(int argc, char **argv)
+ {
+ 	int opt, res = 1;
+-        int do_recursive = 0;
++        int flag, do_recursive = 0;
+ 	
+ 	execname = basename(argv[0]);
+ 
+@@ -73,7 +85,7 @@ int main(int argc, char **argv)
+ 		goto out;
+ 	}
+ 
+-	while ((opt = getopt_long(argc, argv, "HR?h", long_options, NULL)) != -1) {
++	while ((opt = getopt_long(argc, argv, "HR?hLP", long_options, NULL)) != -1) {
+ 		switch(opt) {
+ 			case 'H':
+ 				more_help();
+@@ -84,6 +96,22 @@ int main(int argc, char **argv)
+ 				do_recursive = 1;
+ 				break;
+ 
++			case 'L':
++                                if (walk_type != 0) {
++                                        fprintf(stderr, "More than one walk type specified\n");
++                                        goto out;
++                                }
++                                walk_type = 1;  /* Follow all symbolic links */
++                                break;
++
++                        case 'P':
++                                if (walk_type != 0) {
++					fprintf(stderr, "More than one walk type specified\n");
++                                        goto out;
++                                }
++                                walk_type = 2;  /* Skip all symbolic links */
++                                break;
++
+ 			default:
+ 				usage(1);
+ 				res = 0;
+@@ -99,7 +127,10 @@ int main(int argc, char **argv)
+ 
+ 	for(; optind < argc; optind++) {
+ 		if(do_recursive) {
+-			if (nftw(argv[optind], recursive, 20, 0) == -1)
++			if (walk_type == 2 || walk_type == 1)
++                        flag = FTW_PHYS;
++
++			if (nftw(argv[optind], recursive, 20, flag) == -1)
+ 				printf("Invalid filename: %s\n", argv[optind]);
+ 		}
+ 		else
+@@ -121,11 +152,17 @@ static void print_acl_from_path(const char *fpath)
+ 	}
+ }
+ 
++static void logical(const char *fpath)
++{
++        if (nftw(fpath, recursive, 20, 0) == -1)
++                printf("Invalid filename: %s\n", fpath);
++}
++
+ static void usage(int label)
+ {
+ 	if (label)
+ 		fprintf(stderr, "%s %s -- get NFSv4 file or directory access control lists.\n", execname, VERSION);
+-	fprintf(stderr, "Usage: %s [-R] file ...\n  -H, --more-help\tdisplay ACL format information\n  -?, -h, --help\tdisplay this help text\n  -R --recursive\trecurse into subdirectories\n", execname);
++	fprintf(stderr, "Usage: %s [-RPL] file ...\n  -H, --more-help\tdisplay ACL format information\n  -?, -h, --help\tdisplay this help text\n  -R, --recursive\trecurse into subdirectories\n  -L, --logical\t\tlogical walk, follow symbolic links\n  -P, --physical\tphysical walk, do not follow symbolic links\n", execname);
+ }
+ 
+ static void more_help()
+-- 
+2.17.2
 
-> 
-> On 2018/12/5 9:37, J. Bruce Fields wrote:
-> > On Wed, Dec 05, 2018 at 09:04:22AM +0800, zhengbin (A) wrote:
-> >> thanks,
-> >>>>> As the man(3) page for utime/utimes/lutimes, EPERM is returned
-> >>
-> >> -------->this should be As the man page for utime/utimes/lutimes, my little mistake. utime/utimes are man(2), lutimes is man(3)
-> >>
-> >> I send v2 patch?Or when you apply, help modify it?
-> > 
-> > Does this look OK?
-> > 
-> > --b.
-> > 
-> > commit eb6d67589750
-> > Author: zhengbin <zhengbin13@huawei.com>
-> > Date:   Fri Nov 30 16:04:25 2018 +0800
-> > 
-> >     nfsd: Return EPERM, not EACCES, in some SETATTR cases
-> >     
-> >     As the man(2) page for utime/utimes states, EPERM is returned when the
-> >     second parameter of utime/utimes/lutimes is not NULL, the caller's
-> >     effective UID does not match the owner of the file, and the caller is
-> >     not privileged.
-> >     
-> >     However, in a NFS directory mounted from knfsd, it will return EACCES
-> >     (from nfsd_setattr-> fh_verify->nfsd_permission).  This patch fixes
-> >     that.
-> >     
-> >     Signed-off-by: zhengbin <zhengbin13@huawei.com>
-> >     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> > 
-> > diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-> > index eb67098117b4..9824e32b2f23 100644
-> > --- a/fs/nfsd/vfs.c
-> > +++ b/fs/nfsd/vfs.c
-> > @@ -396,10 +396,23 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc_fh *fhp, struct iattr *iap,
-> >  	bool		get_write_count;
-> >  	bool		size_change = (iap->ia_valid & ATTR_SIZE);
-> >  
-> > -	if (iap->ia_valid & (ATTR_ATIME | ATTR_MTIME | ATTR_SIZE))
-> > +	if (iap->ia_valid & ATTR_SIZE) {
-> >  		accmode |= NFSD_MAY_WRITE|NFSD_MAY_OWNER_OVERRIDE;
-> > -	if (iap->ia_valid & ATTR_SIZE)
-> >  		ftype = S_IFREG;
-> > +	}
-> > +
-> > +	/*
-> > +	 * If utimes(2) and friends are called with times not NULL, we should
-> > +	 * not set NFSD_MAY_WRITE bit. Otherwise fh_verify->nfsd_permission
-> > +	 * will return EACCESS, when the caller's effective UID does not match
-> > +	 * the owner of the file, and the caller is not privileged. In this
-> > +	 * situation, we should return EPERM(notify_change will return this).
-> > +	 */
-> > +	if (iap->ia_valid & (ATTR_ATIME | ATTR_MTIME)) {
-> > +		accmode |= NFSD_MAY_OWNER_OVERRIDE;
-> > +		if (!(iap->ia_valid & (ATTR_ATIME_SET | ATTR_MTIME_SET)))
-> > +			accmode |= NFSD_MAY_WRITE;
-> > +	}
-> >  
-> >  	/* Callers that do fh_verify should do the fh_want_write: */
-> >  	get_write_count = !fhp->fh_dentry;
-> > 
-> > .
-> > 
