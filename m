@@ -2,98 +2,125 @@ Return-Path: <SRS0=3CSe=OO=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.0 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS,URIBL_BLOCKED
+X-Spam-Status: No, score=-8.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,USER_AGENT_MUTT
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D029DC04EB9
-	for <linux-nfs@archiver.kernel.org>; Wed,  5 Dec 2018 17:02:02 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B48F8C04EB9
+	for <linux-nfs@archiver.kernel.org>; Wed,  5 Dec 2018 17:28:11 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 954832084C
-	for <linux-nfs@archiver.kernel.org>; Wed,  5 Dec 2018 17:02:02 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="tOHc7OeL"
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 954832084C
-Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=gmail.com
+	by mail.kernel.org (Postfix) with ESMTP id 86D11205C9
+	for <linux-nfs@archiver.kernel.org>; Wed,  5 Dec 2018 17:28:11 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 86D11205C9
+Authentication-Results: mail.kernel.org; dmarc=none (p=none dis=none) header.from=fieldses.org
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727436AbeLERB7 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 5 Dec 2018 12:01:59 -0500
-Received: from mail-ua1-f66.google.com ([209.85.222.66]:41128 "EHLO
-        mail-ua1-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727240AbeLERB7 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Dec 2018 12:01:59 -0500
-Received: by mail-ua1-f66.google.com with SMTP id z24so7356122ual.8;
-        Wed, 05 Dec 2018 09:01:58 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
-         :cc;
-        bh=kgm5BRqN9FpvQPYSdOF+ddbRCItq2qAVwsZL93bGdlM=;
-        b=tOHc7OeLmUspCZxJKoKd1KmO+RyMyJzedke1E2Z6LpLcs/HjNM5yaDAjaFmswLIoLc
-         SpKbEgWJkzP8Q0wtD2F9DDlGXVus+ncCRYKoQ5lqRMN8lrbwxqRonv4El+7F4NHOzJRc
-         UX+suIEPtu0d8K1fIq1z3sqHpOsg+A9VpZOG0HT7QYh6VuNEVoEuo4PZ0oeC5z49A0ah
-         a1GLHMc4BSHnl4deSs6O6Nr5YsrPrxH0IwbuEjl+DH84C3ZTSZksO65wsKNGfyp3T7T5
-         Zo2DVYMUxEDhHRGQp8eJQghyC/iKFF/OGbig9Vzjv3FtxPtOwdgkQXo/Wz23V8rBdcAr
-         OlkA==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
-         :message-id:subject:to:cc;
-        bh=kgm5BRqN9FpvQPYSdOF+ddbRCItq2qAVwsZL93bGdlM=;
-        b=dfuvtLYki84Mhn9syy+oqbZMvjfulc7R84k5xaG0OZpu+LDw+WlanGS51eVJjAaRHE
-         assb4V4vb+bfMdMkSerVG9+VuvTQtIpYbozTeAvJCVLnhN9f8OG3WUkB0qgR4nmmwwiU
-         rBHKfK7yUwXHziscEKmVzQ+Bif2zqjtHYV0XlF6qpyITNmErMdUOTz5NIrKf5jCu5YVn
-         i5nYH5rYUQKd6qk3QGoEjjDDspGWgjiC9z1O8Bg8ohbL+0zdrFjdw7lL4DhOrLk0Dlw7
-         h43E1SO751EgmOImto0DQhQBQchyaCkI1DE71XfYpdC9WPqV+o4gw/Z3ESF5O3z0yked
-         kKzw==
-X-Gm-Message-State: AA+aEWZ8Xv/ivUAiNZuJjajj47srG8aTqhl1v3lbtQ3ZUwtWzqfymmgl
-        SFt67tSU3OfblHuKEF2YByFBLMunmASBQbvKqRY=
-X-Google-Smtp-Source: AFSGD/Xk87ahKtyMnJ9jdfSuDPQvMM3nF+dsbv+2TYrQOzEmOLFMXvw3UfbQBQ/mpvCVKHp8cvWhAX8i7hSjKrRfX9o=
-X-Received: by 2002:ab0:aa:: with SMTP id 39mr11119996uaj.120.1544029317566;
- Wed, 05 Dec 2018 09:01:57 -0800 (PST)
-MIME-Version: 1.0
-References: <20181203083416.28978-1-david@fromorbit.com> <20181203083416.28978-10-david@fromorbit.com>
- <20181204154347.GA6925@infradead.org> <20181204221847.GQ6311@dastard> <20181205140925.GA21109@infradead.org>
-In-Reply-To: <20181205140925.GA21109@infradead.org>
-From:   Olga Kornievskaia <olga.kornievskaia@gmail.com>
-Date:   Wed, 5 Dec 2018 12:01:45 -0500
-Message-ID: <CAN-5tyEuEidvyjmOUpc7zM=JgWsDpaoiBtzywDBC4TXmxVxxKw@mail.gmail.com>
-Subject: Re: [PATCH 09/11] vfs: push copy_file_ranges -EXDEV checks down
-To:     Christoph Hellwig <hch@infradead.org>
-Cc:     david@fromorbit.com, linux-fsdevel@vger.kernel.org,
-        linux-xfs@vger.kernel.org, linux-nfs <linux-nfs@vger.kernel.org>,
+        id S1728249AbeLER2K (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 5 Dec 2018 12:28:10 -0500
+Received: from fieldses.org ([173.255.197.46]:50580 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1727242AbeLER2K (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 5 Dec 2018 12:28:10 -0500
+Received: by fieldses.org (Postfix, from userid 2815)
+        id BCF921C1F; Wed,  5 Dec 2018 12:28:09 -0500 (EST)
+Date:   Wed, 5 Dec 2018 12:28:09 -0500
+To:     Dave Chinner <david@fromorbit.com>
+Cc:     "Darrick J. Wong" <darrick.wong@oracle.com>,
+        linux-fsdevel@vger.kernel.org, linux-xfs@vger.kernel.org,
+        olga.kornievskaia@gmail.com, linux-nfs@vger.kernel.org,
         linux-unionfs@vger.kernel.org, ceph-devel@vger.kernel.org,
         linux-cifs@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
+Subject: Re: [PATCH 05/11] vfs: use inode_permission in copy_file_range()
+Message-ID: <20181205172809.GC5182@fieldses.org>
+References: <20181203083416.28978-1-david@fromorbit.com>
+ <20181203083416.28978-6-david@fromorbit.com>
+ <20181203181803.GX8125@magnolia>
+ <20181203235517.GN6311@dastard>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20181203235517.GN6311@dastard>
+User-Agent: Mutt/1.5.21 (2010-09-15)
+From:   bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Wed, Dec 5, 2018 at 9:09 AM Christoph Hellwig <hch@infradead.org> wrote:
->
-> On Wed, Dec 05, 2018 at 09:18:47AM +1100, Dave Chinner wrote:
-> > I'll drop it if you want, but then I'll just have to come back after
-> > all the NFS code is merged and do yet more cleanup work.
->
-> IFF we want these NFS "features" we'll have to get it right before
-> merging the code.  But even with that I'd rather fix the glaring
-> issues you are fixing in your first patches as a priority before
-> adding more features.  In other words:  don't worry about NFS, lets
-> get the existing code right before worrying about the next round
-> of potential issues.
+On Tue, Dec 04, 2018 at 10:55:17AM +1100, Dave Chinner wrote:
+> On Mon, Dec 03, 2018 at 10:18:03AM -0800, Darrick J. Wong wrote:
+> > On Mon, Dec 03, 2018 at 07:34:10PM +1100, Dave Chinner wrote:
+> > > From: Dave Chinner <dchinner@redhat.com>
+> > > 
+> > > Similar to FI_DEDUPERANGE, make copy_file_range() check that we have
+> > 
+> > TLDR: No, it's not similar to FIDEDUPERANGE -- the use of
+> > inode_permission() in allow_file_dedupe() is to enable callers to dedupe
+> > into a file for which the caller has write permissions but opened the
+> > file O_RDONLY.
+> 
+> What a grotty, nasty hack.
+> 
+> > [Please keep reading...]
+> > 
+> > > write permissions to the destination inode.
+> > > 
+> > > Signed-off-by: Dave Chinner <dchinner@redhat.com>
+> > > ---
+> > >  mm/filemap.c | 5 +++++
+> > >  1 file changed, 5 insertions(+)
+> > > 
+> > > diff --git a/mm/filemap.c b/mm/filemap.c
+> > > index 0a170425935b..876df5275514 100644
+> > > --- a/mm/filemap.c
+> > > +++ b/mm/filemap.c
+> > > @@ -3013,6 +3013,11 @@ int generic_copy_file_checks(struct file *file_in, loff_t pos_in,
+> > >  	    (file_out->f_flags & O_APPEND))
+> > >  		return -EBADF;
+> > >  
+> > > +	/* may sure we really are allowed to write to the destination inode */
+> > > +	ret = inode_permission(inode_out, MAY_WRITE);
+> > 
+> > What's the difference between security_file_permission and
+> > inode_permission, and when do we call them for a regular
+> > open-write-close sequence?  Hmmm, let me take a look:
+> .....
+> > We also cannot dedupe into a file that becomes immutable after we open
+> > it for write, but we can dedupe into a file that loses its write
+> > permissions after we open it.
+> 
+> It's more nuanced than that - dedupe will proceed after write
+> permissions have been removed only if you are root or own the file,
+> otherwise it will fail.
+> 
+> Updated summary:
+> 
+> > op:		after +immutable?	after chmod a-w?
+> > write		yes			yes
+> > clonerange	no			yes
+> > dedupe	no			maybe
+> > newcopyrange	no			no
+> >
+> > My reaction: I don't think that writes should be allowed after an
+> > administrator marks a file immutable (but that's a separate issue) but I
+> > do think we should be consistent in allowing copying into a file that
+> > has lost its write permissions after we opened the file for write, like
+> > we do for write() and the remap ioct....
+> 
+> If we want to allow copying to files we don't actually have
+> permission to write to anymore, then I'll remove this from the test,
+> the man page and the code. But, quite frankly, I don't trust remote
+> server side copies to follow the same permission models as the
+> client side OS, so I think we have to treat copy_file_range
+> differently to a normal write syscall....
 
-Dave,
+The NFS COPY command takes references to the protocol's equivalent to
+open files, and I'd expect permission checks should depend on the open
+mode, not the current file permissions.
 
-Do you mind in v2 removing the 'retry, ret=EAGAIN' piece and leave the
-call to the nfs42_copy_file_range() (with the superblock block check)?
-If not, I could provide the patch.
+But server behavior may vary.  I'm not sure that's a good guide for what
+to do locally.
 
-This is a piece of code that got in as a part of the async copy
-patches and it was meant for the upcoming server-to-server series.
-This code will go right back in with the next series. But since dead
-piece of code is glaring wrong currently by all means let's fix it.
+In general I'm more comfortable the closer copy is to read & write.
 
-Thank you.
+--b.
