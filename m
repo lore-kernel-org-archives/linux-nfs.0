@@ -6,55 +6,60 @@ X-Spam-Status: No, score=-2.3 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
 	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS,USER_AGENT_MUTT
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id EBBADC04EBF
-	for <linux-nfs@archiver.kernel.org>; Wed,  5 Dec 2018 14:09:29 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D8888C04EB9
+	for <linux-nfs@archiver.kernel.org>; Wed,  5 Dec 2018 14:12:55 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id B0DAC2082B
-	for <linux-nfs@archiver.kernel.org>; Wed,  5 Dec 2018 14:09:29 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 7BE962082B
+	for <linux-nfs@archiver.kernel.org>; Wed,  5 Dec 2018 14:12:55 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="JyDg2fie"
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org B0DAC2082B
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="UC5Apv4m"
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 7BE962082B
 Authentication-Results: mail.kernel.org; dmarc=none (p=none dis=none) header.from=infradead.org
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727135AbeLEOJ0 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 5 Dec 2018 09:09:26 -0500
-Received: from bombadil.infradead.org ([198.137.202.133]:56798 "EHLO
+        id S1727177AbeLEOMy (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 5 Dec 2018 09:12:54 -0500
+Received: from bombadil.infradead.org ([198.137.202.133]:60188 "EHLO
         bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727025AbeLEOJ0 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Dec 2018 09:09:26 -0500
+        with ESMTP id S1727135AbeLEOMy (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Dec 2018 09:12:54 -0500
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=bombadil.20170209; h=In-Reply-To:Content-Type:MIME-Version
         :References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
         Content-Transfer-Encoding:Content-ID:Content-Description:Resent-Date:
         Resent-From:Resent-Sender:Resent-To:Resent-Cc:Resent-Message-ID:List-Id:
         List-Help:List-Unsubscribe:List-Subscribe:List-Post:List-Owner:List-Archive;
-         bh=VkCOEQBSuHOqt4sK2WMTNkLjYV9HncFkvIQj4UTIWB4=; b=JyDg2fieHhencKGABs1NI9KVN
-        EL9xYvt1/nbtOuJRROBKGWGXhh7YJ5aJUFkeH34jVkHGzn6cK3qR6n2kocJWYda+Mg1ghwvrMRaxm
-        SB63dCldc3eZWaQJxhKC0cvIRLunUdTGPD0IfT5VUzJi+d1Mvo1/rWN39jibQ5LG+rnREX41UQP7J
-        8+3sGR+y9XdQ/QRY3XzWR5Bxf3E3mOBrundaqvdhAUeQlO+QvlLJoOIl4CcUzuaqDX1P5QvLo5pBC
-        JUZyCqWnfLxIEIA1Q27w5HKUi2h8n1eGDSzZcrF86RXCPzm5evGzMPBNUu8NRTYoQYpNUd87LbQIh
-        rsDI6Nvsw==;
+         bh=nxSK4dE9PuUkQMI68/42sjodkJ2Ca+erf1/lre3zGD0=; b=UC5Apv4mA4yeb25T1qxH8YeDg
+        Vix33zH5E2SY4s7PmJ57wbpJMkBXTknbqORXNfoNTJYrgNes4hWbCNKL8Cpr7wKkA7+NFtvpzjFfe
+        O6TxWe06mmI26704K2xS4YmrhAdjBiduC9G9lB+kjpapPa+uhyIT6g9AxfdaR81GPp5LTfsPhAn4o
+        DrX4gbkxeiXkiLU0IaGhrKJJF5OsXJc3/TICyeA/No6Gnvy34QmmTht5bn0SDEjzkO2DE74uZkmoG
+        58EiZ8R8+l5yldUHdknC4mKFsO8R3Oolqr5Wvrn/AP2XI7paBxEUROcO+SUAZGDcwveNlmlWD9ysN
+        Lah2QCHBQ==;
 Received: from hch by bombadil.infradead.org with local (Exim 4.90_1 #2 (Red Hat Linux))
-        id 1gUXri-0006JP-15; Wed, 05 Dec 2018 14:09:26 +0000
-Date:   Wed, 5 Dec 2018 06:09:25 -0800
+        id 1gUXv3-0008KR-2X; Wed, 05 Dec 2018 14:12:53 +0000
+Date:   Wed, 5 Dec 2018 06:12:52 -0800
 From:   Christoph Hellwig <hch@infradead.org>
 To:     Dave Chinner <david@fromorbit.com>
 Cc:     Christoph Hellwig <hch@infradead.org>,
-        linux-fsdevel@vger.kernel.org, linux-xfs@vger.kernel.org,
-        olga.kornievskaia@gmail.com, linux-nfs@vger.kernel.org,
-        linux-unionfs@vger.kernel.org, ceph-devel@vger.kernel.org,
-        linux-cifs@vger.kernel.org
-Subject: Re: [PATCH 09/11] vfs: push copy_file_ranges -EXDEV checks down
-Message-ID: <20181205140925.GA21109@infradead.org>
+        Amir Goldstein <amir73il@gmail.com>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        linux-xfs <linux-xfs@vger.kernel.org>,
+        Olga Kornievskaia <olga.kornievskaia@gmail.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        overlayfs <linux-unionfs@vger.kernel.org>,
+        ceph-devel@vger.kernel.org, linux-cifs@vger.kernel.org
+Subject: Re: [PATCH 01/11] vfs: copy_file_range source range over EOF should
+ fail
+Message-ID: <20181205141252.GB21109@infradead.org>
 References: <20181203083416.28978-1-david@fromorbit.com>
- <20181203083416.28978-10-david@fromorbit.com>
- <20181204154347.GA6925@infradead.org>
- <20181204221847.GQ6311@dastard>
+ <20181203083416.28978-2-david@fromorbit.com>
+ <CAOQ4uxhOQY8M5rbgHKREN5qpeDGHv0-xK3r37Lj6XfqFoE4qjg@mail.gmail.com>
+ <20181204151332.GA32245@infradead.org>
+ <20181204212948.GO6311@dastard>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20181204221847.GQ6311@dastard>
+In-Reply-To: <20181204212948.GO6311@dastard>
 User-Agent: Mutt/1.9.2 (2017-12-15)
 X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
 Sender: linux-nfs-owner@vger.kernel.org
@@ -62,13 +67,8 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Wed, Dec 05, 2018 at 09:18:47AM +1100, Dave Chinner wrote:
-> I'll drop it if you want, but then I'll just have to come back after
-> all the NFS code is merged and do yet more cleanup work.
+> Realistically, though, I think an attempt to read beyond EOF for the
+> copy should result in behaviour like read() (i.e. return 0 bytes),
+> not EINVAL. The existing behaviour needs to change, though.
 
-IFF we want these NFS "features" we'll have to get it right before
-merging the code.  But even with that I'd rather fix the glaring
-issues you are fixing in your first patches as a priority before
-adding more features.  In other words:  don't worry about NFS, lets
-get the existing code right before worrying about the next round
-of potential issues.
+I agree with this statement.  So we don't we implement these semantics?
