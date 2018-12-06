@@ -2,123 +2,99 @@ Return-Path: <SRS0=YXm+=OP=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-6.0 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_PASS,
+	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 373B2C67838
-	for <linux-nfs@archiver.kernel.org>; Thu,  6 Dec 2018 15:11:02 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id ED59BC04EB8
+	for <linux-nfs@archiver.kernel.org>; Thu,  6 Dec 2018 16:10:36 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 051EF20700
-	for <linux-nfs@archiver.kernel.org>; Thu,  6 Dec 2018 15:11:02 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 051EF20700
-Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=redhat.com
+	by mail.kernel.org (Postfix) with ESMTP id B5E9520700
+	for <linux-nfs@archiver.kernel.org>; Thu,  6 Dec 2018 16:10:36 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="OGFHW68m"
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org B5E9520700
+Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=gmail.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1725871AbeLFPLB (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 6 Dec 2018 10:11:01 -0500
-Received: from mx1.redhat.com ([209.132.183.28]:46672 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725862AbeLFPLB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 6 Dec 2018 10:11:01 -0500
-Received: from smtp.corp.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id CEF93307DAA4;
-        Thu,  6 Dec 2018 15:11:00 +0000 (UTC)
-Received: from localhost.localdomain (unknown [10.67.112.12])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 74384604DA;
-        Thu,  6 Dec 2018 15:10:59 +0000 (UTC)
-Subject: Re: NFS client behavior on WRITE_DELEGATION
-To:     Anna Schumaker <schumakeranna@gmail.com>
-Cc:     linux-nfs@vger.kernel.org, Matt Benjamin <mbenjamin@redhat.com>
-References: <68c7c07a-949d-1ce0-ec7e-5ab71ffaaa3b@redhat.com>
- <CAFX2JfmYMnKoiQ0Kjt8SGLx2H=3GwwtLHco0wMR4xVHkJpLaoQ@mail.gmail.com>
-From:   Soumya Koduri <skoduri@redhat.com>
-Message-ID: <9ebd1b22-234c-f9ae-b3f8-015fe8e81a27@redhat.com>
-Date:   Thu, 6 Dec 2018 20:40:57 +0530
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101
- Thunderbird/60.0
-MIME-Version: 1.0
-In-Reply-To: <CAFX2JfmYMnKoiQ0Kjt8SGLx2H=3GwwtLHco0wMR4xVHkJpLaoQ@mail.gmail.com>
-Content-Type: text/plain; charset=utf-8; format=flowed
-Content-Language: en-US
-Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.11
-X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.42]); Thu, 06 Dec 2018 15:11:00 +0000 (UTC)
+        id S1726274AbeLFQKg (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 6 Dec 2018 11:10:36 -0500
+Received: from mail-oi1-f193.google.com ([209.85.167.193]:40455 "EHLO
+        mail-oi1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725871AbeLFQKg (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Dec 2018 11:10:36 -0500
+Received: by mail-oi1-f193.google.com with SMTP id t204so812601oie.7
+        for <linux-nfs@vger.kernel.org>; Thu, 06 Dec 2018 08:10:35 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=from:to:cc:subject:date:message-id;
+        bh=zgpPntqUujWVWIJKPXkxnnw9byqObKXnABpMZw1mWtk=;
+        b=OGFHW68m4yB/fu4jUl0wfcyR7TBu7l2sox9FHpHH7iZ8anwZ/h05f3QYu4u0pTmoeY
+         jH3L+AdVBVypoG3XQ0GetJSydEVTVHxWxhUzcVEaboDYR5oLDTWGmH8FaLx0hcnXJvvG
+         lwcXgTUDLzWsFWpU74LQQiPYqa17oqNS17mmZ91RjVIUkbzhwZF9xkItWirUj5wcMCQn
+         0QZXv4cxeMnnuj2HfNgjFc8ZyIItgQLYhdrY897gm9zATsk4wkVyG59qjBtlGJPef1J9
+         Ci1w6H6zrB9BxlYJFhpD4RygXBqfDrXKVUPFZADPyf8Ha6ABi1gtdi88KAHZgVxx7MLq
+         Zpbw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:from:to:cc:subject:date:message-id;
+        bh=zgpPntqUujWVWIJKPXkxnnw9byqObKXnABpMZw1mWtk=;
+        b=AGHWltX7LUmzQV6DVADN7aTxALS4468SPkdLjV0z3pK09RxBbvryR2G6iX6K+7uWcE
+         AodUWhefTBDdcf6yH9hcmFZewuI4CIOqV6kFIQWqTSpHMsnm7V3qeD6DOaZyA/50D6W4
+         r1NW8V8x/rCvmiD8hKR2F+ccAmVzP203sUfl8SGZf1vhLgpGRSuCK9CIbtLotZwaqpAm
+         hWsW4LO2Xobhjc/VuZpF173UjeHz4TUUeVV8L/Hwiek++Ay3sZyOq7KqrOGSx+E4lBVS
+         T+aOlTk4EBBxutqsguqy/pGrC0HNXbVSFJia9jbsKj3s3fSM15bhWPe6rEQShqJjXcXV
+         CD/g==
+X-Gm-Message-State: AA+aEWYITPhtEIXngHN6i4YQsmTrg9prohz09xbKJFrbSscxo80oDWjV
+        JNPpF/3AUUdxHti7o1POFC+fSuos
+X-Google-Smtp-Source: AFSGD/X0PKwd5IqicHoIyGncvOgCeJtPafobvzvZ1b2bacOlWi5tiOgw6HWQX5RaKH4E6W/pw65ZyQ==
+X-Received: by 2002:aca:4208:: with SMTP id p8mr18676172oia.331.1544112635196;
+        Thu, 06 Dec 2018 08:10:35 -0800 (PST)
+Received: from Olgas-MBP-195.attlocal.net (172-10-226-31.lightspeed.livnmi.sbcglobal.net. [172.10.226.31])
+        by smtp.gmail.com with ESMTPSA id d5sm271426oth.78.2018.12.06.08.10.33
+        (version=TLS1 cipher=AES128-SHA bits=128/128);
+        Thu, 06 Dec 2018 08:10:34 -0800 (PST)
+From:   Olga Kornievskaia <olga.kornievskaia@gmail.com>
+To:     trond.myklebust@hammerspace.com, anna.schumaker@netapp.com
+Cc:     linux-nfs@vger.kernel.org
+Subject: [PATCH 1/1] NFSv4.2 fix async copy reboot recovery
+Date:   Thu,  6 Dec 2018 11:10:36 -0500
+Message-Id: <20181206161036.62673-1-olga.kornievskaia@gmail.com>
+X-Mailer: git-send-email 2.10.1 (Apple Git-78)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hi Anna,
+From: Olga Kornievskaia <kolga@netapp.com>
 
-Thanks a lot for the response. To understand client behavior under 
-various scenarios, I started with a simple "C" program which does below 
-operations in a loop on a nfsv4.1 mount point-
+Original commit (e4648aa4f98a "NFS recover from destination server
+reboot for copies") used memcmp() and then it was changed to use
+nfs4_stateid_match_other() but that function returns opposite of
+memcmp. As the result, recovery can't find the copy leading
+to copy hanging.
 
-while(..)
-{
-OPEN,
-LOCK,
-READ/WRITE,
-UNLCK,
-CLOSE
-}
+Fixes: 80f42368868e ("NFSv4: Split out NFS v4.2 copy completion functions")
+Fixes: cb7a8384dc02 ("NFS: Split out the body of nfs4_reclaim_open_state")
+Signed-of-by: Olga Kornievskaia <kolga@netapp.com>
+---
+ fs/nfs/nfs4state.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-While examining the pkt traces, I observed that even when granted 
-WRITE_DELEGATION, there are WRITEs (though asynchronous & followed by 
-COMMIT) sent to the server for each of those iterations. So could it be 
-because of the kernel flushing out the data?
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index d8decf2..f4f6373 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -1560,7 +1560,7 @@ static void nfs42_complete_copies(struct nfs4_state_owner *sp, struct nfs4_state
+ 
+ 	spin_lock(&sp->so_server->nfs_client->cl_lock);
+ 	list_for_each_entry(copy, &sp->so_server->ss_copies, copies) {
+-		if (nfs4_stateid_match_other(&state->stateid, &copy->parent_state->stateid))
++		if (!nfs4_stateid_match_other(&state->stateid, &copy->parent_state->stateid))
+ 			continue;
+ 		copy->flags = 1;
+ 		complete(&copy->completion);
+-- 
+1.8.3.1
 
-Also I noticed that the behavior of WRITE_DELEGATION granted for 
-OPEN(O_RDWR) is different when compared to the one granted to OPEN(O_WRONLY)
-
-1) When the file is opened with OPEN4_SHARE_ACCESS_WRITE and a 
-OPEN_DELEGATE_WRITE delegation is granted, subsequent OPENs are avoided 
-and not sent to the server as expected, whereas
-If the file is opened with OPEN4_SHARE_ACCESS_BOTH and granted 
-OPEN_DELEGATE_WRITE, the next open is sent to server resulting in server 
-recalling the delegation it granted to the same client.
-
-2) And to that recall request, client responded back with EBADHANDLE error.
-
-This doesn't seem right. Could you please confirm.
-
-(Maybe the server also can avoid conflicting the OPENfrom the same 
-client to which it granted the delegation)
-
-Thanks,
-Soumya
-
-On 12/6/18 1:52 AM, Anna Schumaker wrote:
-> Hi Soumya,
-> 
-> What conditions are you seeing the writes?  It could be the kernel 
-> trying to flush out data to free up memory for other processes.
-> 
-> I don't think preemptively writing back data is necessarily a bad thing 
-> though, even with a write delegation.  If the server decides to recall 
-> the delegation, we wouldn't keep it waiting as long while we write back 
-> local data.  Additionally, if the client crashes then any updates might 
-> have already had a chance to sync to the server.
-> 
-> I hope this helps!
-> Anna
-> 
-> On Mon, Dec 3, 2018 at 2:55 AM Soumya Koduri <skoduri@redhat.com 
-> <mailto:skoduri@redhat.com>> wrote:
-> 
->     Hi,
-> 
->     In our NFSv4.1 Delegations testing we observed that NFS client sends
->     WRITE requests to the server even when granted WRITE_DELEGATION. I see
->     that only OPEN/CLOSE and LOCK operations are served locally by the
->     client.
-> 
->     Please confirm if this behavior is expected and if yes, can it be
->     improved to avoid sending WRITEs to the server until the application
->     does fsync.
-> 
->     Thanks,
->     Soumya
-> 
