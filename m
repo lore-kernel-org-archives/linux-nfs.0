@@ -2,82 +2,71 @@ Return-Path: <SRS0=0ybF=OQ=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_PASS,URIBL_BLOCKED autolearn=unavailable
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-6.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,SPF_PASS,
+	T_DKIMWL_WL_HIGH autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8D249C65BAF
-	for <linux-nfs@archiver.kernel.org>; Fri,  7 Dec 2018 16:19:31 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4978AC64EB1
+	for <linux-nfs@archiver.kernel.org>; Fri,  7 Dec 2018 18:35:03 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 518B82083D
-	for <linux-nfs@archiver.kernel.org>; Fri,  7 Dec 2018 16:19:31 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 518B82083D
-Authentication-Results: mail.kernel.org; dmarc=none (p=none dis=none) header.from=linux-m68k.org
+	by mail.kernel.org (Postfix) with ESMTP id 0C61E20868
+	for <linux-nfs@archiver.kernel.org>; Fri,  7 Dec 2018 18:35:03 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=default; t=1544207703;
+	bh=tu4YAEX4IERyIg+PTF8ZajZ0J1XI/D0LIumr/49tOzc=;
+	h=Subject:From:In-Reply-To:References:Date:To:Cc:List-ID:From;
+	b=Sl1yLlzBOTux+s4l6BoBlGXe21syx6c/8s05jt4e3P9smSJWKCnmVLfkw5fO9ERi8
+	 bs2XqRrV3zmVkrMiOw8ZzNnH8V43Kn+B04bs9DI2DKdtB66MokVPcWyK7gBqJ92kUy
+	 qCOd7DgFj6V+WzJwTiR1jgyNTLkoAubXSQxex02U=
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 0C61E20868
+Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=kernel.org
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726110AbeLGQTa (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 7 Dec 2018 11:19:30 -0500
-Received: from mail-vs1-f66.google.com ([209.85.217.66]:45811 "EHLO
-        mail-vs1-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726041AbeLGQTa (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 7 Dec 2018 11:19:30 -0500
-Received: by mail-vs1-f66.google.com with SMTP id v10so2743385vsv.12;
-        Fri, 07 Dec 2018 08:19:28 -0800 (PST)
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
-         :message-id:subject:to:cc;
-        bh=sKCXhSF44P5ohZOwcfLrWgu0vOnSIZ5gKQA9e5j6l5Y=;
-        b=X3iGtNS0KycW86yhNRYxQ/xUQU0tFcPk+86xcPoxQf4FQGQaxJ42VcLqfoX7KErvzV
-         v6uRO2FoEFufp6I92GIR8RG1JOW/ihbPp+T8XDeDmiB0Q0SwIx3+DTYpz8GrTICX+cB+
-         6Xrkx8CX2wo/KkWF4INNZ11qNyHuFTMqA7SW6xWZe4spwcmtSvR+ybYUk9EoqM+sXMAC
-         60jeYvB9upcZKSLKjOkBN/r+MUnb7tZ5BSAtis4gHjN7N0qhgGHzKXCVhHsvVnQNSh9C
-         uwfVDfKAley8141UWHWw6C8x4+w2LgHQFibC0bLFdOMV99byvAFkUPzfdvOiHWPp8QOa
-         BodQ==
-X-Gm-Message-State: AA+aEWZ7P26q3oMcNK4VnWSPdFc7Tc9/mQgfeQ/TCvBod0tU8PMXIXIk
-        9DTic7794ehvrYN6e6Lsl3BbBrAuapS2MTqnJPBHFg==
-X-Google-Smtp-Source: AFSGD/U8Hv5LkSN3xKFPIGm7iVrAT3AOBNWL2Tk84x7f30F9fCRTbTLR1MB8CV813THfv8L7Zb9N0y6lAzewBLMPOo8=
-X-Received: by 2002:a67:3885:: with SMTP id n5mr1045428vsi.96.1544199567976;
- Fri, 07 Dec 2018 08:19:27 -0800 (PST)
-MIME-Version: 1.0
-References: <CAMuHMdVJr0PwvJg3FeTCy7vxuyY1=S1tPLHO7hPsoZX4wZ+-cQ@mail.gmail.com>
- <20181205.221146.969453990167463340.anemo@mba.ocn.ne.jp> <CAMuHMdU9zXXSaPHKvfG3A73h3CTsb9H2RT_gWt-Ne=qQ+HKShQ@mail.gmail.com>
- <20181207.235141.2138062629640003368.anemo@mba.ocn.ne.jp>
-In-Reply-To: <20181207.235141.2138062629640003368.anemo@mba.ocn.ne.jp>
-From:   Geert Uytterhoeven <geert@linux-m68k.org>
-Date:   Fri, 7 Dec 2018 17:19:13 +0100
-Message-ID: <CAMuHMdUHxO2aTf+ixnG_U=nzHp85eoPnoqvMUHFP+TJtAL_nEA@mail.gmail.com>
-Subject: Re: NFS/TCP crashes on MIPS/RBTX4927 in v4.20-rcX (bisected)
-To:     Atsushi Nemoto <anemo@mba.ocn.ne.jp>
-Cc:     Trond Myklebust <trond.myklebust@hammerspace.com>,
-        "open list:NFS, SUNRPC, AND..." <linux-nfs@vger.kernel.org>,
-        linux-mips@vger.kernel.org,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+        id S1726304AbeLGSfC (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 7 Dec 2018 13:35:02 -0500
+Received: from mail.kernel.org ([198.145.29.99]:54928 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726061AbeLGSfC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 7 Dec 2018 13:35:02 -0500
+Subject: Re: [GIT PULL] Please pull NFS client changes
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=default; t=1544207701;
+        bh=tu4YAEX4IERyIg+PTF8ZajZ0J1XI/D0LIumr/49tOzc=;
+        h=From:In-Reply-To:References:Date:To:Cc:From;
+        b=QLrf1GsEAdMDoC+nNX9vD+VHaXRgY4YwmiJ57oXdR1MC8mAlqd9MbTRELuEwqNeEv
+         Valq9W9gs+lWj11zn3JAiBdBBbH8TTC5EvPU52XusVyrLVZ1Sr/iAPz7p9cFMS0Src
+         /JJCbfb6xZ2OXLHi7J1eh7n5azWZbjgNWVYFkjek=
+From:   pr-tracker-bot@kernel.org
+In-Reply-To: <af690bb605f8366f8b437ca0171edef42fc63e83.camel@hammerspace.com>
+References: <af690bb605f8366f8b437ca0171edef42fc63e83.camel@hammerspace.com>
+X-PR-Tracked-List-Id: <linux-kernel.vger.kernel.org>
+X-PR-Tracked-Message-Id: <af690bb605f8366f8b437ca0171edef42fc63e83.camel@hammerspace.com>
+X-PR-Tracked-Remote: git://git.linux-nfs.org/projects/trondmy/linux-nfs.git
+ tags/nfs-for-4.20-5
+X-PR-Tracked-Commit-Id: 79462857eb547e5d17fc8445b9768615e02dc1cf
+X-PR-Merge-Tree: torvalds/linux.git
+X-PR-Merge-Refname: refs/heads/master
+X-PR-Merge-Commit-Id: 7f80c7325be49db3fb8b5f343f47691b7999fda7
+Message-Id: <20181207183501.15805.51648.pr-tracker-bot@pdx-korg-gitolite-1.ci.codeaurora.org>
+Date:   Fri, 07 Dec 2018 18:35:01 +0000
+To:     Trond Myklebust <trondmy@hammerspace.com>
+Cc:     "torvalds@linux-foundation.org" <torvalds@linux-foundation.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hi Nemoto-san,
+The pull request you sent on Thu, 6 Dec 2018 21:55:54 +0000:
 
-On Fri, Dec 7, 2018 at 3:51 PM Atsushi Nemoto <anemo@mba.ocn.ne.jp> wrote:
-> On Wed, 5 Dec 2018 14:41:30 +0100, Geert Uytterhoeven <geert@linux-m68k.org> wrote:
-> > My next guess is an unaligned access not using {get,put}_unaligned(), which
-> > doesn't seem to work on tx4927, but doesn't cause an exception neither.
->
-> IIRC, TX49 can raise an exception on unaligned access.
+> git://git.linux-nfs.org/projects/trondmy/linux-nfs.git tags/nfs-for-4.20-5
 
-I thought so, too, but had verified that reading from an unaligned address
-didn't raise an exception, but returned a corrupt value instead.
+has been merged into torvalds/linux.git:
+https://git.kernel.org/torvalds/c/7f80c7325be49db3fb8b5f343f47691b7999fda7
 
-Gr{oetje,eeting}s,
-
-                        Geert
+Thank you!
 
 -- 
-Geert Uytterhoeven -- There's lots of Linux beyond ia32 -- geert@linux-m68k.org
-
-In personal conversations with technical people, I call myself a hacker. But
-when I'm talking to journalists I just say "programmer" or something like that.
-                                -- Linus Torvalds
+Deet-doot-dot, I am a bot.
+https://korg.wiki.kernel.org/userdoc/prtracker
