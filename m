@@ -2,153 +2,82 @@ Return-Path: <SRS0=0ybF=OQ=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.8 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-1.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_PASS,URIBL_BLOCKED autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id CA7ECC07E85
-	for <linux-nfs@archiver.kernel.org>; Fri,  7 Dec 2018 16:11:48 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8D249C65BAF
+	for <linux-nfs@archiver.kernel.org>; Fri,  7 Dec 2018 16:19:31 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 85F082083D
-	for <linux-nfs@archiver.kernel.org>; Fri,  7 Dec 2018 16:11:48 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="F1Q+ZENy"
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 85F082083D
-Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=oracle.com
+	by mail.kernel.org (Postfix) with ESMTP id 518B82083D
+	for <linux-nfs@archiver.kernel.org>; Fri,  7 Dec 2018 16:19:31 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 518B82083D
+Authentication-Results: mail.kernel.org; dmarc=none (p=none dis=none) header.from=linux-m68k.org
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726055AbeLGQLr (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 7 Dec 2018 11:11:47 -0500
-Received: from mail-it1-f193.google.com ([209.85.166.193]:32957 "EHLO
-        mail-it1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726053AbeLGQLr (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 7 Dec 2018 11:11:47 -0500
-Received: by mail-it1-f193.google.com with SMTP id m8so1896668itk.0;
-        Fri, 07 Dec 2018 08:11:47 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=sender:subject:from:to:cc:date:message-id:user-agent:mime-version
-         :content-transfer-encoding;
-        bh=QN7bGha7qbfgCpb9IluQxWRkbuKPO03YDrqWYdpMmTs=;
-        b=F1Q+ZENy9XfeN6kApmNF9prazwlkzA7jTQiIZtcUAMHnhveWkvhwYKi9RkYXJZbAQ2
-         HKaPMMhLJF/AsEm3ALXlV+sLl2Ajb+qfTjphuStTcjzFPikSD7qvNWr9iWxFq7zp+8ng
-         wIFrqSADEC8dvyKkO5uaQS7aUM2vrD3hai85nT5gcL1Ws/MDRSupYjqGACQwKbASzQZx
-         ec8vBCeFD26E7szdojcoi751z3vKJWA09nbNhCojUMVTpu9Z3zQ02imU05m31frO4uEy
-         6mY0nUHe0QQGeVZgBP0lG/AnUA8GcqDyyu1/FZNzA7BFsB2A8rqvbz82y3HknoG4VKH+
-         Nclw==
+        id S1726110AbeLGQTa (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 7 Dec 2018 11:19:30 -0500
+Received: from mail-vs1-f66.google.com ([209.85.217.66]:45811 "EHLO
+        mail-vs1-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726041AbeLGQTa (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 7 Dec 2018 11:19:30 -0500
+Received: by mail-vs1-f66.google.com with SMTP id v10so2743385vsv.12;
+        Fri, 07 Dec 2018 08:19:28 -0800 (PST)
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:sender:subject:from:to:cc:date:message-id
-         :user-agent:mime-version:content-transfer-encoding;
-        bh=QN7bGha7qbfgCpb9IluQxWRkbuKPO03YDrqWYdpMmTs=;
-        b=Kq89QogynPDkHa8bNU4a8vnaA1wObTeqwlM1Ygw3dh8UdiNy9K3xf4/MEfwP0KBEB9
-         Hfmwjz1xyX18QxVv28kig4iHmx/LyDDFoLH2/cg24z01H4AyJMr89vqVII6iGwMUy8cr
-         ir87sf5cr48R50FbrzYf31lZ4w/VaNKAgHqRefz+mIpKbfF2w3iXDqDP0GVx6y6VutLR
-         kgOOvO6IPb0JCq7IQPxaAiueAktg3TdJC4CiEoFlhz9cuxAwbSfh1kbvBfQBv9gylUWc
-         zqKOBj3kF2cZD4CpfdyjmVcOEjGNgeTnrbTCLOpbyZIi7qR/RithEb2UdSHOwOrMCGf3
-         F5Ug==
-X-Gm-Message-State: AA+aEWaU1P+M+cSbkJ5dgC2A/PxbZJh5WyUartzZw0fJzQLjyeW4ehzy
-        JQ6+00bLUmtEAHAu/OV41Jk=
-X-Google-Smtp-Source: AFSGD/X5OQ9xGGLyIUcHG+7KSmkA64l8hlqLV9juAI2U0LYDsF7OkmQBWEH7wiCWiTm75wD8v/pYUg==
-X-Received: by 2002:a02:5ec9:: with SMTP id h192mr2275889jab.112.1544199106810;
-        Fri, 07 Dec 2018 08:11:46 -0800 (PST)
-Received: from gateway.1015granger.net (c-68-61-232-219.hsd1.mi.comcast.net. [68.61.232.219])
-        by smtp.gmail.com with ESMTPSA id l186sm2013249itl.22.2018.12.07.08.11.46
-        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Fri, 07 Dec 2018 08:11:46 -0800 (PST)
-Received: from manet.1015granger.net (manet.1015granger.net [192.168.1.51])
-        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id wB7GBi0b022504;
-        Fri, 7 Dec 2018 16:11:44 GMT
-Subject: [PATCH] xprtrdma: Prevent leak of rpcrdma_rep objects
-From:   Chuck Lever <chuck.lever@oracle.com>
-To:     anna.schumaker@netapp.com
-Cc:     linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date:   Fri, 07 Dec 2018 11:11:44 -0500
-Message-ID: <20181207160645.5494.42006.stgit@manet.1015granger.net>
-User-Agent: StGit/0.17.1-dirty
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=sKCXhSF44P5ohZOwcfLrWgu0vOnSIZ5gKQA9e5j6l5Y=;
+        b=X3iGtNS0KycW86yhNRYxQ/xUQU0tFcPk+86xcPoxQf4FQGQaxJ42VcLqfoX7KErvzV
+         v6uRO2FoEFufp6I92GIR8RG1JOW/ihbPp+T8XDeDmiB0Q0SwIx3+DTYpz8GrTICX+cB+
+         6Xrkx8CX2wo/KkWF4INNZ11qNyHuFTMqA7SW6xWZe4spwcmtSvR+ybYUk9EoqM+sXMAC
+         60jeYvB9upcZKSLKjOkBN/r+MUnb7tZ5BSAtis4gHjN7N0qhgGHzKXCVhHsvVnQNSh9C
+         uwfVDfKAley8141UWHWw6C8x4+w2LgHQFibC0bLFdOMV99byvAFkUPzfdvOiHWPp8QOa
+         BodQ==
+X-Gm-Message-State: AA+aEWZ7P26q3oMcNK4VnWSPdFc7Tc9/mQgfeQ/TCvBod0tU8PMXIXIk
+        9DTic7794ehvrYN6e6Lsl3BbBrAuapS2MTqnJPBHFg==
+X-Google-Smtp-Source: AFSGD/U8Hv5LkSN3xKFPIGm7iVrAT3AOBNWL2Tk84x7f30F9fCRTbTLR1MB8CV813THfv8L7Zb9N0y6lAzewBLMPOo8=
+X-Received: by 2002:a67:3885:: with SMTP id n5mr1045428vsi.96.1544199567976;
+ Fri, 07 Dec 2018 08:19:27 -0800 (PST)
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
+References: <CAMuHMdVJr0PwvJg3FeTCy7vxuyY1=S1tPLHO7hPsoZX4wZ+-cQ@mail.gmail.com>
+ <20181205.221146.969453990167463340.anemo@mba.ocn.ne.jp> <CAMuHMdU9zXXSaPHKvfG3A73h3CTsb9H2RT_gWt-Ne=qQ+HKShQ@mail.gmail.com>
+ <20181207.235141.2138062629640003368.anemo@mba.ocn.ne.jp>
+In-Reply-To: <20181207.235141.2138062629640003368.anemo@mba.ocn.ne.jp>
+From:   Geert Uytterhoeven <geert@linux-m68k.org>
+Date:   Fri, 7 Dec 2018 17:19:13 +0100
+Message-ID: <CAMuHMdUHxO2aTf+ixnG_U=nzHp85eoPnoqvMUHFP+TJtAL_nEA@mail.gmail.com>
+Subject: Re: NFS/TCP crashes on MIPS/RBTX4927 in v4.20-rcX (bisected)
+To:     Atsushi Nemoto <anemo@mba.ocn.ne.jp>
+Cc:     Trond Myklebust <trond.myklebust@hammerspace.com>,
+        "open list:NFS, SUNRPC, AND..." <linux-nfs@vger.kernel.org>,
+        linux-mips@vger.kernel.org,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-If a reply has been processed but the RPC is later retransmitted
-anyway, the req->rl_reply field still contains the only pointer to
-the old rpcrdma rep. When the next reply comes in, the reply handler
-will stomp on the rl_reply field, leaking the old rep.
+Hi Nemoto-san,
 
-A trace event is added to capture such leaks.
+On Fri, Dec 7, 2018 at 3:51 PM Atsushi Nemoto <anemo@mba.ocn.ne.jp> wrote:
+> On Wed, 5 Dec 2018 14:41:30 +0100, Geert Uytterhoeven <geert@linux-m68k.org> wrote:
+> > My next guess is an unaligned access not using {get,put}_unaligned(), which
+> > doesn't seem to work on tx4927, but doesn't cause an exception neither.
+>
+> IIRC, TX49 can raise an exception on unaligned access.
 
-This problem seems to be worsened by the restructuring of the RPC
-Call path in v4.20. Fully addressing this issue will require at
-least a re-architecture of the disconnect logic, which is not
-appropriate during -rc.
+I thought so, too, but had verified that reading from an unaligned address
+didn't raise an exception, but returned a corrupt value instead.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
-Hi Anna-
+Gr{oetje,eeting}s,
 
-Would you consider this fix for v4.20-rc please?
+                        Geert
 
+-- 
+Geert Uytterhoeven -- There's lots of Linux beyond ia32 -- geert@linux-m68k.org
 
- include/trace/events/rpcrdma.h |   28 ++++++++++++++++++++++++++++
- net/sunrpc/xprtrdma/rpc_rdma.c |    4 ++++
- 2 files changed, 32 insertions(+)
-
-diff --git a/include/trace/events/rpcrdma.h b/include/trace/events/rpcrdma.h
-index b093058..602972d 100644
---- a/include/trace/events/rpcrdma.h
-+++ b/include/trace/events/rpcrdma.h
-@@ -917,6 +917,34 @@
- DEFINE_CB_EVENT(xprtrdma_cb_call);
- DEFINE_CB_EVENT(xprtrdma_cb_reply);
- 
-+TRACE_EVENT(xprtrdma_leaked_rep,
-+	TP_PROTO(
-+		const struct rpc_rqst *rqst,
-+		const struct rpcrdma_rep *rep
-+	),
-+
-+	TP_ARGS(rqst, rep),
-+
-+	TP_STRUCT__entry(
-+		__field(unsigned int, task_id)
-+		__field(unsigned int, client_id)
-+		__field(u32, xid)
-+		__field(const void *, rep)
-+	),
-+
-+	TP_fast_assign(
-+		__entry->task_id = rqst->rq_task->tk_pid;
-+		__entry->client_id = rqst->rq_task->tk_client->cl_clid;
-+		__entry->xid = be32_to_cpu(rqst->rq_xid);
-+		__entry->rep = rep;
-+	),
-+
-+	TP_printk("task:%u@%u xid=0x%08x rep=%p",
-+		__entry->task_id, __entry->client_id, __entry->xid,
-+		__entry->rep
-+	)
-+);
-+
- /**
-  ** Server-side RPC/RDMA events
-  **/
-diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index 9f53e02..a2eb647 100644
---- a/net/sunrpc/xprtrdma/rpc_rdma.c
-+++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -1356,6 +1356,10 @@ void rpcrdma_reply_handler(struct rpcrdma_rep *rep)
- 	}
- 
- 	req = rpcr_to_rdmar(rqst);
-+	if (req->rl_reply) {
-+		trace_xprtrdma_leaked_rep(rqst, req->rl_reply);
-+		rpcrdma_recv_buffer_put(req->rl_reply);
-+	}
- 	req->rl_reply = rep;
- 	rep->rr_rqst = rqst;
- 	clear_bit(RPCRDMA_REQ_F_PENDING, &req->rl_flags);
-
+In personal conversations with technical people, I call myself a hacker. But
+when I'm talking to journalists I just say "programmer" or something like that.
+                                -- Linus Torvalds
