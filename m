@@ -2,148 +2,153 @@ Return-Path: <SRS0=0ybF=OQ=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-6.8 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9CC39C07E85
-	for <linux-nfs@archiver.kernel.org>; Fri,  7 Dec 2018 15:07:03 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id CA7ECC07E85
+	for <linux-nfs@archiver.kernel.org>; Fri,  7 Dec 2018 16:11:48 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 6ADA92146D
-	for <linux-nfs@archiver.kernel.org>; Fri,  7 Dec 2018 15:07:03 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 6ADA92146D
-Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=redhat.com
+	by mail.kernel.org (Postfix) with ESMTP id 85F082083D
+	for <linux-nfs@archiver.kernel.org>; Fri,  7 Dec 2018 16:11:48 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="F1Q+ZENy"
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 85F082083D
+Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=oracle.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726045AbeLGPHC (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 7 Dec 2018 10:07:02 -0500
-Received: from mx1.redhat.com ([209.132.183.28]:35398 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726041AbeLGPHC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 7 Dec 2018 10:07:02 -0500
-Received: from smtp.corp.redhat.com (int-mx07.intmail.prod.int.phx2.redhat.com [10.5.11.22])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id C2A75308A94C;
-        Fri,  7 Dec 2018 15:07:01 +0000 (UTC)
-Received: from localhost.localdomain (ovpn-112-20.sin2.redhat.com [10.67.112.20])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id AAC141054FD8;
-        Fri,  7 Dec 2018 15:06:55 +0000 (UTC)
-Subject: Re: NFS client behavior on WRITE_DELEGATION
-From:   Soumya Koduri <skoduri@redhat.com>
-To:     Anna Schumaker <schumakeranna@gmail.com>
-Cc:     linux-nfs@vger.kernel.org, Matt Benjamin <mbenjamin@redhat.com>
-References: <68c7c07a-949d-1ce0-ec7e-5ab71ffaaa3b@redhat.com>
- <CAFX2JfmYMnKoiQ0Kjt8SGLx2H=3GwwtLHco0wMR4xVHkJpLaoQ@mail.gmail.com>
- <9ebd1b22-234c-f9ae-b3f8-015fe8e81a27@redhat.com>
-Message-ID: <d20c87e0-dc56-70e6-aef8-0131e5d8fd01@redhat.com>
-Date:   Fri, 7 Dec 2018 20:36:53 +0530
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101
- Thunderbird/60.0
+        id S1726055AbeLGQLr (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 7 Dec 2018 11:11:47 -0500
+Received: from mail-it1-f193.google.com ([209.85.166.193]:32957 "EHLO
+        mail-it1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726053AbeLGQLr (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 7 Dec 2018 11:11:47 -0500
+Received: by mail-it1-f193.google.com with SMTP id m8so1896668itk.0;
+        Fri, 07 Dec 2018 08:11:47 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=sender:subject:from:to:cc:date:message-id:user-agent:mime-version
+         :content-transfer-encoding;
+        bh=QN7bGha7qbfgCpb9IluQxWRkbuKPO03YDrqWYdpMmTs=;
+        b=F1Q+ZENy9XfeN6kApmNF9prazwlkzA7jTQiIZtcUAMHnhveWkvhwYKi9RkYXJZbAQ2
+         HKaPMMhLJF/AsEm3ALXlV+sLl2Ajb+qfTjphuStTcjzFPikSD7qvNWr9iWxFq7zp+8ng
+         wIFrqSADEC8dvyKkO5uaQS7aUM2vrD3hai85nT5gcL1Ws/MDRSupYjqGACQwKbASzQZx
+         ec8vBCeFD26E7szdojcoi751z3vKJWA09nbNhCojUMVTpu9Z3zQ02imU05m31frO4uEy
+         6mY0nUHe0QQGeVZgBP0lG/AnUA8GcqDyyu1/FZNzA7BFsB2A8rqvbz82y3HknoG4VKH+
+         Nclw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:sender:subject:from:to:cc:date:message-id
+         :user-agent:mime-version:content-transfer-encoding;
+        bh=QN7bGha7qbfgCpb9IluQxWRkbuKPO03YDrqWYdpMmTs=;
+        b=Kq89QogynPDkHa8bNU4a8vnaA1wObTeqwlM1Ygw3dh8UdiNy9K3xf4/MEfwP0KBEB9
+         Hfmwjz1xyX18QxVv28kig4iHmx/LyDDFoLH2/cg24z01H4AyJMr89vqVII6iGwMUy8cr
+         ir87sf5cr48R50FbrzYf31lZ4w/VaNKAgHqRefz+mIpKbfF2w3iXDqDP0GVx6y6VutLR
+         kgOOvO6IPb0JCq7IQPxaAiueAktg3TdJC4CiEoFlhz9cuxAwbSfh1kbvBfQBv9gylUWc
+         zqKOBj3kF2cZD4CpfdyjmVcOEjGNgeTnrbTCLOpbyZIi7qR/RithEb2UdSHOwOrMCGf3
+         F5Ug==
+X-Gm-Message-State: AA+aEWaU1P+M+cSbkJ5dgC2A/PxbZJh5WyUartzZw0fJzQLjyeW4ehzy
+        JQ6+00bLUmtEAHAu/OV41Jk=
+X-Google-Smtp-Source: AFSGD/X5OQ9xGGLyIUcHG+7KSmkA64l8hlqLV9juAI2U0LYDsF7OkmQBWEH7wiCWiTm75wD8v/pYUg==
+X-Received: by 2002:a02:5ec9:: with SMTP id h192mr2275889jab.112.1544199106810;
+        Fri, 07 Dec 2018 08:11:46 -0800 (PST)
+Received: from gateway.1015granger.net (c-68-61-232-219.hsd1.mi.comcast.net. [68.61.232.219])
+        by smtp.gmail.com with ESMTPSA id l186sm2013249itl.22.2018.12.07.08.11.46
+        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Fri, 07 Dec 2018 08:11:46 -0800 (PST)
+Received: from manet.1015granger.net (manet.1015granger.net [192.168.1.51])
+        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id wB7GBi0b022504;
+        Fri, 7 Dec 2018 16:11:44 GMT
+Subject: [PATCH] xprtrdma: Prevent leak of rpcrdma_rep objects
+From:   Chuck Lever <chuck.lever@oracle.com>
+To:     anna.schumaker@netapp.com
+Cc:     linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Date:   Fri, 07 Dec 2018 11:11:44 -0500
+Message-ID: <20181207160645.5494.42006.stgit@manet.1015granger.net>
+User-Agent: StGit/0.17.1-dirty
 MIME-Version: 1.0
-In-Reply-To: <9ebd1b22-234c-f9ae-b3f8-015fe8e81a27@redhat.com>
-Content-Type: text/plain; charset=utf-8; format=flowed
-Content-Language: en-US
-Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 2.84 on 10.5.11.22
-X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.41]); Fri, 07 Dec 2018 15:07:01 +0000 (UTC)
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
+If a reply has been processed but the RPC is later retransmitted
+anyway, the req->rl_reply field still contains the only pointer to
+the old rpcrdma rep. When the next reply comes in, the reply handler
+will stomp on the rl_reply field, leaking the old rep.
+
+A trace event is added to capture such leaks.
+
+This problem seems to be worsened by the restructuring of the RPC
+Call path in v4.20. Fully addressing this issue will require at
+least a re-architecture of the disconnect logic, which is not
+appropriate during -rc.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+Hi Anna-
+
+Would you consider this fix for v4.20-rc please?
 
 
-On 12/6/18 8:40 PM, Soumya Koduri wrote:
-> Hi Anna,
-> 
-> Thanks a lot for the response. To understand client behavior under 
-> various scenarios, I started with a simple "C" program which does below 
-> operations in a loop on a nfsv4.1 mount point-
-> 
-> while(..)
-> {
-> OPEN,
-> LOCK,
-> READ/WRITE,
-> UNLCK,
-> CLOSE
-> }
-> 
-> While examining the pkt traces, I observed that even when granted 
-> WRITE_DELEGATION, there are WRITEs (though asynchronous & followed by 
-> COMMIT) sent to the server for each of those iterations. So could it be 
-> because of the kernel flushing out the data?
-> 
-> Also I noticed that the behavior of WRITE_DELEGATION granted for 
-> OPEN(O_RDWR) is different when compared to the one granted to 
-> OPEN(O_WRONLY)
-> 
-> 1) When the file is opened with OPEN4_SHARE_ACCESS_WRITE and a 
-> OPEN_DELEGATE_WRITE delegation is granted, subsequent OPENs are avoided 
-> and not sent to the server as expected, whereas
-> If the file is opened with OPEN4_SHARE_ACCESS_BOTH and granted 
-> OPEN_DELEGATE_WRITE, the next open is sent to server resulting in server 
-> recalling the delegation it granted to the same client.
-> 
-> 2) And to that recall request, client responded back with EBADHANDLE error.
-> 
-> This doesn't seem right. Could you please confirm.
-> 
-> (Maybe the server also can avoid conflicting the OPENfrom the same 
-> client to which it granted the delegation)
+ include/trace/events/rpcrdma.h |   28 ++++++++++++++++++++++++++++
+ net/sunrpc/xprtrdma/rpc_rdma.c |    4 ++++
+ 2 files changed, 32 insertions(+)
 
-Apologies. This seem to have resulted from a server-side issue. On 
-further debugging, I found that server rejected READ op with 
-ERR_BAD_STATEID if there is WRITE_delegation granted to that file. This 
-may have led nfs client to discard the delegation granted and send 
-subsequent OPEN to server.
+diff --git a/include/trace/events/rpcrdma.h b/include/trace/events/rpcrdma.h
+index b093058..602972d 100644
+--- a/include/trace/events/rpcrdma.h
++++ b/include/trace/events/rpcrdma.h
+@@ -917,6 +917,34 @@
+ DEFINE_CB_EVENT(xprtrdma_cb_call);
+ DEFINE_CB_EVENT(xprtrdma_cb_reply);
+ 
++TRACE_EVENT(xprtrdma_leaked_rep,
++	TP_PROTO(
++		const struct rpc_rqst *rqst,
++		const struct rpcrdma_rep *rep
++	),
++
++	TP_ARGS(rqst, rep),
++
++	TP_STRUCT__entry(
++		__field(unsigned int, task_id)
++		__field(unsigned int, client_id)
++		__field(u32, xid)
++		__field(const void *, rep)
++	),
++
++	TP_fast_assign(
++		__entry->task_id = rqst->rq_task->tk_pid;
++		__entry->client_id = rqst->rq_task->tk_client->cl_clid;
++		__entry->xid = be32_to_cpu(rqst->rq_xid);
++		__entry->rep = rep;
++	),
++
++	TP_printk("task:%u@%u xid=0x%08x rep=%p",
++		__entry->task_id, __entry->client_id, __entry->xid,
++		__entry->rep
++	)
++);
++
+ /**
+  ** Server-side RPC/RDMA events
+  **/
+diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
+index 9f53e02..a2eb647 100644
+--- a/net/sunrpc/xprtrdma/rpc_rdma.c
++++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+@@ -1356,6 +1356,10 @@ void rpcrdma_reply_handler(struct rpcrdma_rep *rep)
+ 	}
+ 
+ 	req = rpcr_to_rdmar(rqst);
++	if (req->rl_reply) {
++		trace_xprtrdma_leaked_rep(rqst, req->rl_reply);
++		rpcrdma_recv_buffer_put(req->rl_reply);
++	}
+ 	req->rl_reply = rep;
+ 	rep->rr_rqst = rqst;
+ 	clear_bit(RPCRDMA_REQ_F_PENDING, &req->rl_flags);
 
-I think the server should allow READs if the access is 
-OPEN4_SHARE_ACCESS_BOTH and its the same client which holds the write 
-delegation. Will send out a patch to fix it.
-
-So the only question I have for now is if/how client can save WRITEs 
-from being sent to the server while holding write delegation. Please 
-share your thoughts.
-
-Thanks,
-Soumya
-
-
-> 
-> Thanks,
-> Soumya
-> 
-> On 12/6/18 1:52 AM, Anna Schumaker wrote:
->> Hi Soumya,
->>
->> What conditions are you seeing the writes?  It could be the kernel 
->> trying to flush out data to free up memory for other processes.
->>
->> I don't think preemptively writing back data is necessarily a bad 
->> thing though, even with a write delegation.  If the server decides to 
->> recall the delegation, we wouldn't keep it waiting as long while we 
->> write back local data.  Additionally, if the client crashes then any 
->> updates might have already had a chance to sync to the server.
->>
->> I hope this helps!
->> Anna
->>
->> On Mon, Dec 3, 2018 at 2:55 AM Soumya Koduri <skoduri@redhat.com 
->> <mailto:skoduri@redhat.com>> wrote:
->>
->>     Hi,
->>
->>     In our NFSv4.1 Delegations testing we observed that NFS client sends
->>     WRITE requests to the server even when granted WRITE_DELEGATION. I 
->> see
->>     that only OPEN/CLOSE and LOCK operations are served locally by the
->>     client.
->>
->>     Please confirm if this behavior is expected and if yes, can it be
->>     improved to avoid sending WRITEs to the server until the application
->>     does fsync.
->>
->>     Thanks,
->>     Soumya
->>
