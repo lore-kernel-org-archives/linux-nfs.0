@@ -3,75 +3,147 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
 X-Spam-Status: No, score=-1.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_PASS,URIBL_BLOCKED autolearn=unavailable
-	autolearn_force=no version=3.4.0
+	MAILING_LIST_MULTI,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 746ECC64EB1
-	for <linux-nfs@archiver.kernel.org>; Fri,  7 Dec 2018 14:51:58 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9CC39C07E85
+	for <linux-nfs@archiver.kernel.org>; Fri,  7 Dec 2018 15:07:03 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 4539A20989
-	for <linux-nfs@archiver.kernel.org>; Fri,  7 Dec 2018 14:51:58 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 4539A20989
-Authentication-Results: mail.kernel.org; dmarc=none (p=none dis=none) header.from=mba.ocn.ne.jp
+	by mail.kernel.org (Postfix) with ESMTP id 6ADA92146D
+	for <linux-nfs@archiver.kernel.org>; Fri,  7 Dec 2018 15:07:03 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 6ADA92146D
+Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=redhat.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726129AbeLGOvw (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 7 Dec 2018 09:51:52 -0500
-Received: from mfdf022.ocn.ad.jp ([153.128.50.80]:53104 "EHLO
-        mfdf022.ocn.ad.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725998AbeLGOvv (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 7 Dec 2018 09:51:51 -0500
-Received: from mogw0939.ocn.ad.jp (mogw0939.ocn.ad.jp [153.149.227.45])
-        by mfdf022.ocn.ad.jp (Postfix) with ESMTP id 19CD522353E;
-        Fri,  7 Dec 2018 23:51:50 +0900 (JST)
-Received: from mf-smf-unw009c1 (mf-smf-unw009c1.ocn.ad.jp [153.138.219.105])
-        by mogw0939.ocn.ad.jp (Postfix) with ESMTP id 3794AD00506;
-        Fri,  7 Dec 2018 23:51:48 +0900 (JST)
-Received: from ocn-vc-mts-201c1.ocn.ad.jp ([153.138.219.212])
-        by mf-smf-unw009c1 with ESMTP
-        id VHRhgngCrHkOOVHTogbxLT; Fri, 07 Dec 2018 23:51:48 +0900
-Received: from smtp.ocn.ne.jp ([153.149.227.165])
-        by ocn-vc-mts-201c1.ocn.ad.jp with ESMTP
-        id VHTngelAL63EtVHTngM9yz; Fri, 07 Dec 2018 23:51:48 +0900
-Received: from localhost (p935071-ipngn2102funabasi.chiba.ocn.ne.jp [180.56.175.71])
-        by smtp.ocn.ne.jp (Postfix) with ESMTPA;
-        Fri,  7 Dec 2018 23:51:47 +0900 (JST)
-Date:   Fri, 07 Dec 2018 23:51:41 +0900 (JST)
-Message-Id: <20181207.235141.2138062629640003368.anemo@mba.ocn.ne.jp>
-To:     geert@linux-m68k.org
-Cc:     trond.myklebust@hammerspace.com, linux-nfs@vger.kernel.org,
-        linux-mips@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: NFS/TCP crashes on MIPS/RBTX4927 in v4.20-rcX (bisected)
-From:   Atsushi Nemoto <anemo@mba.ocn.ne.jp>
-In-Reply-To: <CAMuHMdU9zXXSaPHKvfG3A73h3CTsb9H2RT_gWt-Ne=qQ+HKShQ@mail.gmail.com>
-References: <CAMuHMdVJr0PwvJg3FeTCy7vxuyY1=S1tPLHO7hPsoZX4wZ+-cQ@mail.gmail.com>
-        <20181205.221146.969453990167463340.anemo@mba.ocn.ne.jp>
-        <CAMuHMdU9zXXSaPHKvfG3A73h3CTsb9H2RT_gWt-Ne=qQ+HKShQ@mail.gmail.com>
-X-Fingerprint: 6ACA 1623 39BD 9A94 9B1A  B746 CA77 FE94 2874 D52F
-X-Pgp-Public-Key: http://wwwkeys.pgp.net:11371/pks/lookup?op=get&search=0x2874D52F
-X-Mailer: Mew version 6.7 on Emacs 24.5 / Mule 6.0 (HANACHIRUSATO)
-Mime-Version: 1.0
-Content-Type: Text/Plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
+        id S1726045AbeLGPHC (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 7 Dec 2018 10:07:02 -0500
+Received: from mx1.redhat.com ([209.132.183.28]:35398 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726041AbeLGPHC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 7 Dec 2018 10:07:02 -0500
+Received: from smtp.corp.redhat.com (int-mx07.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id C2A75308A94C;
+        Fri,  7 Dec 2018 15:07:01 +0000 (UTC)
+Received: from localhost.localdomain (ovpn-112-20.sin2.redhat.com [10.67.112.20])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id AAC141054FD8;
+        Fri,  7 Dec 2018 15:06:55 +0000 (UTC)
+Subject: Re: NFS client behavior on WRITE_DELEGATION
+From:   Soumya Koduri <skoduri@redhat.com>
+To:     Anna Schumaker <schumakeranna@gmail.com>
+Cc:     linux-nfs@vger.kernel.org, Matt Benjamin <mbenjamin@redhat.com>
+References: <68c7c07a-949d-1ce0-ec7e-5ab71ffaaa3b@redhat.com>
+ <CAFX2JfmYMnKoiQ0Kjt8SGLx2H=3GwwtLHco0wMR4xVHkJpLaoQ@mail.gmail.com>
+ <9ebd1b22-234c-f9ae-b3f8-015fe8e81a27@redhat.com>
+Message-ID: <d20c87e0-dc56-70e6-aef8-0131e5d8fd01@redhat.com>
+Date:   Fri, 7 Dec 2018 20:36:53 +0530
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101
+ Thunderbird/60.0
+MIME-Version: 1.0
+In-Reply-To: <9ebd1b22-234c-f9ae-b3f8-015fe8e81a27@redhat.com>
+Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Language: en-US
+Content-Transfer-Encoding: 8bit
+X-Scanned-By: MIMEDefang 2.84 on 10.5.11.22
+X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.41]); Fri, 07 Dec 2018 15:07:01 +0000 (UTC)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Wed, 5 Dec 2018 14:41:30 +0100, Geert Uytterhoeven <geert@linux-m68k.org> wrote:
-> When using these options, I do see a slowdown in early boot, but the issue
-> is still there.
 
-Hmm, the NIC of the board is NE2000 variants, so DMA coherency will
-not be an issue anyway.  So strange ...
 
-The board has a PCI slot.  If you had an legacy PCI NIC card, trying
-with it might help finding the bug.
+On 12/6/18 8:40 PM, Soumya Koduri wrote:
+> Hi Anna,
+> 
+> Thanks a lot for the response. To understand client behavior under 
+> various scenarios, I started with a simple "C" program which does below 
+> operations in a loop on a nfsv4.1 mount point-
+> 
+> while(..)
+> {
+> OPEN,
+> LOCK,
+> READ/WRITE,
+> UNLCK,
+> CLOSE
+> }
+> 
+> While examining the pkt traces, I observed that even when granted 
+> WRITE_DELEGATION, there are WRITEs (though asynchronous & followed by 
+> COMMIT) sent to the server for each of those iterations. So could it be 
+> because of the kernel flushing out the data?
+> 
+> Also I noticed that the behavior of WRITE_DELEGATION granted for 
+> OPEN(O_RDWR) is different when compared to the one granted to 
+> OPEN(O_WRONLY)
+> 
+> 1) When the file is opened with OPEN4_SHARE_ACCESS_WRITE and a 
+> OPEN_DELEGATE_WRITE delegation is granted, subsequent OPENs are avoided 
+> and not sent to the server as expected, whereas
+> If the file is opened with OPEN4_SHARE_ACCESS_BOTH and granted 
+> OPEN_DELEGATE_WRITE, the next open is sent to server resulting in server 
+> recalling the delegation it granted to the same client.
+> 
+> 2) And to that recall request, client responded back with EBADHANDLE error.
+> 
+> This doesn't seem right. Could you please confirm.
+> 
+> (Maybe the server also can avoid conflicting the OPENfrom the same 
+> client to which it granted the delegation)
 
-> My next guess is an unaligned access not using {get,put}_unaligned(), which
-> doesn't seem to work on tx4927, but doesn't cause an exception neither.
+Apologies. This seem to have resulted from a server-side issue. On 
+further debugging, I found that server rejected READ op with 
+ERR_BAD_STATEID if there is WRITE_delegation granted to that file. This 
+may have led nfs client to discard the delegation granted and send 
+subsequent OPEN to server.
 
-IIRC, TX49 can raise an exception on unaligned access.
+I think the server should allow READs if the access is 
+OPEN4_SHARE_ACCESS_BOTH and its the same client which holds the write 
+delegation. Will send out a patch to fix it.
 
----
-Atsushi Nemoto
+So the only question I have for now is if/how client can save WRITEs 
+from being sent to the server while holding write delegation. Please 
+share your thoughts.
+
+Thanks,
+Soumya
+
+
+> 
+> Thanks,
+> Soumya
+> 
+> On 12/6/18 1:52 AM, Anna Schumaker wrote:
+>> Hi Soumya,
+>>
+>> What conditions are you seeing the writes?  It could be the kernel 
+>> trying to flush out data to free up memory for other processes.
+>>
+>> I don't think preemptively writing back data is necessarily a bad 
+>> thing though, even with a write delegation.  If the server decides to 
+>> recall the delegation, we wouldn't keep it waiting as long while we 
+>> write back local data.  Additionally, if the client crashes then any 
+>> updates might have already had a chance to sync to the server.
+>>
+>> I hope this helps!
+>> Anna
+>>
+>> On Mon, Dec 3, 2018 at 2:55 AM Soumya Koduri <skoduri@redhat.com 
+>> <mailto:skoduri@redhat.com>> wrote:
+>>
+>>     Hi,
+>>
+>>     In our NFSv4.1 Delegations testing we observed that NFS client sends
+>>     WRITE requests to the server even when granted WRITE_DELEGATION. I 
+>> see
+>>     that only OPEN/CLOSE and LOCK operations are served locally by the
+>>     client.
+>>
+>>     Please confirm if this behavior is expected and if yes, can it be
+>>     improved to avoid sending WRITEs to the server until the application
+>>     does fsync.
+>>
+>>     Thanks,
+>>     Soumya
+>>
