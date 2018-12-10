@@ -6,89 +6,78 @@ X-Spam-Status: No, score=-2.4 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	MAILING_LIST_MULTI,SPF_PASS,USER_AGENT_MUTT autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D226BC5CFFE
-	for <linux-nfs@archiver.kernel.org>; Mon, 10 Dec 2018 19:00:51 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id ACFBDC04EB8
+	for <linux-nfs@archiver.kernel.org>; Mon, 10 Dec 2018 19:23:12 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 9AC96204FD
-	for <linux-nfs@archiver.kernel.org>; Mon, 10 Dec 2018 19:00:51 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 9AC96204FD
+	by mail.kernel.org (Postfix) with ESMTP id 77E0A2081F
+	for <linux-nfs@archiver.kernel.org>; Mon, 10 Dec 2018 19:23:12 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 77E0A2081F
 Authentication-Results: mail.kernel.org; dmarc=none (p=none dis=none) header.from=fieldses.org
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727145AbeLJTAt (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 10 Dec 2018 14:00:49 -0500
-Received: from fieldses.org ([173.255.197.46]:59504 "EHLO fieldses.org"
+        id S1728565AbeLJTXL (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 10 Dec 2018 14:23:11 -0500
+Received: from fieldses.org ([173.255.197.46]:59572 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726024AbeLJTAt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 10 Dec 2018 14:00:49 -0500
+        id S1728281AbeLJTXL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 10 Dec 2018 14:23:11 -0500
 Received: by fieldses.org (Postfix, from userid 2815)
-        id 821671C27; Mon, 10 Dec 2018 14:00:48 -0500 (EST)
-Date:   Mon, 10 Dec 2018 14:00:48 -0500
-From:   Bruce Fields <bfields@fieldses.org>
-To:     Chuck Lever <chuck.lever@oracle.com>
-Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-fsdevel@vger.kernel.org, Jeff Layton <jlayton@redhat.com>
+        id C041E1C26; Mon, 10 Dec 2018 14:23:10 -0500 (EST)
+Date:   Mon, 10 Dec 2018 14:23:10 -0500
+From:   "J. Bruce Fields" <bfields@fieldses.org>
+To:     Jeff Layton <jlayton@redhat.com>
+Cc:     linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
 Subject: Re: listing knfsd-held locks and opens
-Message-ID: <20181210190048.GB2925@fieldses.org>
+Message-ID: <20181210192310.GC2925@fieldses.org>
 References: <20181210174720.GA2925@fieldses.org>
- <08F6A3D9-6FF3-452A-BCD6-390ECA142136@oracle.com>
+ <0ff22d33d5d7d2b3fad241ebb2aa0e5c5cb70396.camel@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <08F6A3D9-6FF3-452A-BCD6-390ECA142136@oracle.com>
+In-Reply-To: <0ff22d33d5d7d2b3fad241ebb2aa0e5c5cb70396.camel@redhat.com>
 User-Agent: Mutt/1.5.21 (2010-09-15)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Mon, Dec 10, 2018 at 12:49:02PM -0500, Chuck Lever wrote:
-> > On Dec 10, 2018, at 12:47 PM, bfields@fieldses.org wrote:
-> > In a little more detail, as starting point, I was considering naming
-> > each client directory with a small integer, and including files like:
+On Mon, Dec 10, 2018 at 01:12:31PM -0500, Jeff Layton wrote:
+> On Mon, 2018-12-10 at 12:47 -0500, J. Bruce Fields wrote:
+> > We've got a long-standing complaint that tools like lsof, when run on an
+> > NFS server, overlook opens and locks held by NFS clients.
 > > 
-> > 	info: a text file with
-> > 		NFS protocol version
-> > 		ascii representation of client address
-> > 		krb5 principal if available
+> > The information's all there, it's just a question of how to expose it.
 > > 
-> > 	clientid: NFSv4 client ID; file absent for NFSv2/3 clients.
+> > Easiest might be a single flat file like /proc/locks, but I've always
+> > hoped we could do something slightly more structured, using a
+> > subdirectory per NFS client.
 > > 
-> > 	locks: list of locks, following something like the /proc/locks
-> > 		format.
+> > Jeff Layton looked into this several years ago.  I don't remember if
+> > there was some particular issue or if he just got bogged down in VFS
+> > details.
 > > 
-> > 	opens: list of file opens, with access bits, inode numbers,
-> > 		device number.
-> > 
-> > Does that sound reasonable?  Any other ideas?
 > 
-> How do you plan to make this kernel API namespace-aware?
+> I think I had a patch that generated a single flat file for locks, but
+> you wanted to present a directory or file per-client, and I just never
+> got around to reworking the earlier patch.
 
-I may have some details wrong, but:
+Oh, OK, makes sense.
 
-We associate most of nfsd's state with the network namespace.  The
-"nfsd" pseudofilesystem is where I'm thinking I might put this, and it
-inherits the network namespace from the process that calls mount and
-stores it in the superblock.  So each mount done in a different net
-namespace should get its own superblock, its own inodes, etc.  
+> That sounds like a great start. Some ideas:
+> 
+> The locks file could also list delegations and layouts, but it might be
+> good to do them in separate files. That would make it cleaner to display
+> info that is only relevant to those types (recall info, in particular).
+> 
+> You might also consider adding a v4-specific info file. Show things like
+> "when was last lease renewal"?
 
-(I think that's how proc works, too?)
+Yes, good ideas.  I hope this could be expandable in such a way that we
+don't need all of that at the start.
 
-So when you set up containerized nfsd, you mount a new nfsd filesystem
-in each container.  And the list of clients visible there should only be
-the ones visible to that namespace.
-
-I guess that means that if you share an export across multiple
-containers, then if you want to find all the clients locking a given
-file, you have to iterate over all the container's "nfsd" mounts.
-
-I suspect that's what we have to do, though.  I mean, the client
-addresses, for example, may not even make sense unless you know which
-network namespace they come from.
-
-(On the other hand... how does /proc/locks actually work?  Looks to me
-like it always lists every lock on the system.  Can it really translate
-any process on the system into a pid that makes sense in any container?
-I'm not following that, from a brief look at the code.)
+I also had some idea that we might eventually also benefit from some
+two-way communication.  But the only idea I had there was some sort of
+"destroy this client now" operation, which is probably less important
+for NFSv4 state, since it gets cleaned up automatically on lease expiry.
 
 --b.
