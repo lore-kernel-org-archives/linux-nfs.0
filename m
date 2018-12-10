@@ -5,81 +5,107 @@ X-Spam-Level:
 X-Spam-Status: No, score=-0.9 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	MAILING_LIST_MULTI,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2D1C8C5CFFE
-	for <linux-nfs@archiver.kernel.org>; Mon, 10 Dec 2018 21:26:56 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9D456C04EB8
+	for <linux-nfs@archiver.kernel.org>; Mon, 10 Dec 2018 23:35:06 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id ED79E20821
-	for <linux-nfs@archiver.kernel.org>; Mon, 10 Dec 2018 21:26:55 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org ED79E20821
-Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=RedHat.com
+	by mail.kernel.org (Postfix) with ESMTP id 61A852081F
+	for <linux-nfs@archiver.kernel.org>; Mon, 10 Dec 2018 23:35:06 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 61A852081F
+Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=redhat.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728058AbeLJV0z (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 10 Dec 2018 16:26:55 -0500
-Received: from mx1.redhat.com ([209.132.183.28]:42564 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727304AbeLJV0y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 10 Dec 2018 16:26:54 -0500
-Received: from smtp.corp.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id DD35481DE9;
-        Mon, 10 Dec 2018 21:26:54 +0000 (UTC)
-Received: from steved.boston.devel.redhat.com (ovpn-117-64.phx2.redhat.com [10.3.117.64])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 9160960C62;
-        Mon, 10 Dec 2018 21:26:54 +0000 (UTC)
-Subject: Re: [PATCH 0/3] Three little nfs-utils fixes.
-To:     NeilBrown <neilb@suse.com>
-Cc:     linux-nfs@vger.kernel.org
-References: <154379862296.3215.11174339731963464375.stgit@noble>
-From:   Steve Dickson <SteveD@RedHat.com>
-Message-ID: <cc86d565-04b9-7778-4b5d-33ef00dd0528@RedHat.com>
-Date:   Mon, 10 Dec 2018 16:26:54 -0500
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101
- Thunderbird/60.3.1
-MIME-Version: 1.0
-In-Reply-To: <154379862296.3215.11174339731963464375.stgit@noble>
-Content-Type: text/plain; charset=utf-8
-Content-Language: en-US
+        id S1728182AbeLJXfF (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 10 Dec 2018 18:35:05 -0500
+Received: from mail-qk1-f182.google.com ([209.85.222.182]:44083 "EHLO
+        mail-qk1-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726693AbeLJXfF (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Dec 2018 18:35:05 -0500
+Received: by mail-qk1-f182.google.com with SMTP id n12so7567647qkh.11
+        for <linux-nfs@vger.kernel.org>; Mon, 10 Dec 2018 15:35:04 -0800 (PST)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:message-id:subject:from:to:cc:date:in-reply-to
+         :references:user-agent:mime-version:content-transfer-encoding;
+        bh=nyHGiarUiZadwO4Zu3vi9MZV2Sk130ltMG/1hZ/TjMU=;
+        b=aqNBjF31N3ggM0JhbrCh2S0jNsSVmekFpTJeeCEyJXJd8MAFi0Lk33sI+aKsQX5c8j
+         j9kPD2PYBTqsz7B93Hw+hIyOPQxzYp93lKHTToNu2AuHn6YIbQLW5AZl5PTGXedvuiT1
+         M1R+UTNzYItRSgrk0YwX1YVDE799dl/NkMB8NUQqEXjXJE3kX1fzLsB/z64W9Pb1qw4V
+         1xwchsBd1dBYK3TJvgz6VrL1CnPv8SNt7+ZBUdT3M5NmYLVM3CFbbUrFQfw4tJQxPM93
+         wBZcZxUgQU/BQ6pm2oDW9jxP8FELbY442BQE6OcAlemqlPeKeA+Hoy+eSS1SOy749qP5
+         Yjww==
+X-Gm-Message-State: AA+aEWbO9ab4ilUxHUaWsxyj4uAbfv5fr3I/5dKZDHl2Krx+0fhb69ED
+        /LUZMN5hpPdkAU4syvB8Ue0O1EtvMh4=
+X-Google-Smtp-Source: AFSGD/XceQj6z0MTdx/0KrZQUUZDcBXuLvMlSsY8eBIF6yZK1fqzzoZ1FDP6nBo8XOwxb8OGveF6DA==
+X-Received: by 2002:a37:7183:: with SMTP id m125mr12245296qkc.195.1544484904077;
+        Mon, 10 Dec 2018 15:35:04 -0800 (PST)
+Received: from tleilax.poochiereds.net (cpe-2606-A000-1100-DB-0-0-0-E54.dyn6.twc.com. [2606:a000:1100:db::e54])
+        by smtp.gmail.com with ESMTPSA id w22sm8057701qtw.71.2018.12.10.15.35.03
+        (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
+        Mon, 10 Dec 2018 15:35:03 -0800 (PST)
+Message-ID: <ff22a1181606615ae9eb686f39ee5eded341c35b.camel@redhat.com>
+Subject: Re: listing knfsd-held locks and opens
+From:   Jeff Layton <jlayton@redhat.com>
+To:     "J. Bruce Fields" <bfields@fieldses.org>
+Cc:     linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Date:   Mon, 10 Dec 2018 18:35:02 -0500
+In-Reply-To: <20181210195347.GA4392@fieldses.org>
+References: <20181210174720.GA2925@fieldses.org>
+         <0ff22d33d5d7d2b3fad241ebb2aa0e5c5cb70396.camel@redhat.com>
+         <20181210192310.GC2925@fieldses.org> <20181210195347.GA4392@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"
+User-Agent: Evolution 3.30.2 (3.30.2-2.fc29) 
+Mime-Version: 1.0
 Content-Transfer-Encoding: 7bit
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.12
-X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.25]); Mon, 10 Dec 2018 21:26:54 +0000 (UTC)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
+On Mon, 2018-12-10 at 14:53 -0500, J. Bruce Fields wrote:
+> On Mon, Dec 10, 2018 at 02:23:10PM -0500, J. Bruce Fields wrote:
+> > On Mon, Dec 10, 2018 at 01:12:31PM -0500, Jeff Layton wrote:
+> > > On Mon, 2018-12-10 at 12:47 -0500, J. Bruce Fields wrote:
+> > > > We've got a long-standing complaint that tools like lsof, when run on an
+> > > > NFS server, overlook opens and locks held by NFS clients.
+> > > > 
+> > > > The information's all there, it's just a question of how to expose it.
+> > > > 
+> > > > Easiest might be a single flat file like /proc/locks, but I've always
+> > > > hoped we could do something slightly more structured, using a
+> > > > subdirectory per NFS client.
+> > > > 
+> > > > Jeff Layton looked into this several years ago.  I don't remember if
+> > > > there was some particular issue or if he just got bogged down in VFS
+> > > > details.
+> > > > 
+> > > 
+> > > I think I had a patch that generated a single flat file for locks, but
+> > > you wanted to present a directory or file per-client, and I just never
+> > > got around to reworking the earlier patch.
+> > 
+> > Oh, OK, makes sense.
+> 
+> (But, um, if anyone has a good starting point to recommend to me here,
+> I'm interested.  E.g. another pseudofs that's a good example to follow.)
+> 
 
+I looked for the branch, but I can't find it now. It may be possible to
+find my original posting of it on the mailing list, but it has been
+years. I'm pretty sure it'd be badly bitrotted by now anyway.
 
-On 12/2/18 7:58 PM, NeilBrown wrote:
-> First fixes a regression I found when importing the latest upstream at
-> SUSE.
-> 
-> Others are related to ensuring systemd starts thing properly in cases
-> that hadn't been tested before.
-> 
-> Thanks,
-> NeilBrown
-Committed... 
+Where do you intend for this to live? Do you plan to build a new
+hierarchy under /proc/fs/nfsd, or use something like sysfs or debugfs?
 
-steved.
+> I also had some idea that we might eventually also benefit from some
+> two-way communication.  But the only idea I had there was some sort of
+> "destroy this client now" operation, which is probably less important
+> for NFSv4 state, since it gets cleaned up automatically on lease expiry.
+> 
 
-> 
-> 
-> ---
-> 
-> NeilBrown (3):
->       nfs.conf: allow empty assignments.
->       Let systemd know when rpc.statd is needed.
->       systemd: run statd-notify even when nfs-client isn't enabled.
-> 
-> 
->  support/nfs/conffile.c      |    5 -----
->  systemd/rpc-statd.service   |    1 +
->  tests/nfsconf/01-errors.exp |    1 -
->  utils/statd/start-statd     |    7 ++++++-
->  4 files changed, 7 insertions(+), 7 deletions(-)
-> 
-> --
-> Signature
-> 
+Per client cancellation sounds like a nice feature. The fault injection
+code had some (less granular) stuff for killing off live clients. It may
+be worth going over that.
+
+-- 
+Jeff Layton <jlayton@redhat.com>
+
