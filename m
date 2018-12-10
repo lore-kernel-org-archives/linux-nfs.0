@@ -6,66 +6,66 @@ X-Spam-Status: No, score=-6.7 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
 	SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C2A79C04EB8
-	for <linux-nfs@archiver.kernel.org>; Mon, 10 Dec 2018 16:30:33 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 764D5C67839
+	for <linux-nfs@archiver.kernel.org>; Mon, 10 Dec 2018 16:30:34 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 88DC320821
-	for <linux-nfs@archiver.kernel.org>; Mon, 10 Dec 2018 16:30:33 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 30C8E20821
+	for <linux-nfs@archiver.kernel.org>; Mon, 10 Dec 2018 16:30:34 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="hnZv5A2K"
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 88DC320821
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="uoIohN4U"
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 30C8E20821
 Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=oracle.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728569AbeLJQac (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S1728373AbeLJQac (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Mon, 10 Dec 2018 11:30:32 -0500
-Received: from mail-it1-f193.google.com ([209.85.166.193]:34841 "EHLO
-        mail-it1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726261AbeLJQaa (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Dec 2018 11:30:30 -0500
-Received: by mail-it1-f193.google.com with SMTP id p197so19122693itp.0;
-        Mon, 10 Dec 2018 08:30:30 -0800 (PST)
+Received: from mail-it1-f194.google.com ([209.85.166.194]:39713 "EHLO
+        mail-it1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1728569AbeLJQa1 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Dec 2018 11:30:27 -0500
+Received: by mail-it1-f194.google.com with SMTP id a6so19091893itl.4;
+        Mon, 10 Dec 2018 08:30:27 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=sender:subject:from:to:cc:date:message-id:in-reply-to:references
          :user-agent:mime-version:content-transfer-encoding;
-        bh=RT9fEOnCP8fxzowXgYqOJRgbr1fLDSnkcGiwkNSrjPw=;
-        b=hnZv5A2KLhNBU06cQ6yQNVaTPKMqJt6Oho7LBti69YnW+3FtfS3PaqiMyI96qXK0w+
-         j0V6+tQ//Jl7Cj+UHMWL2d6fgKlVM2ZXXbHZ264YPjhCVuKN3l77OPTZTU5xD/btX/LZ
-         WmBqv75qCYdqwCRvgUIUeWjAohAI7DEWeFuD/5hpfSjNL+DfSSfmugTNncE/oogB+fAV
-         TMTQUdI8md/7fcwXApSMjZ5iVubdfPqHCJZghTVK4bXy2Wt8NRCFQfqy8X/jILpJrnAW
-         lxzautHcsTB5KHk0sh+JHgD7o/rWhSUtmU5LAsl10+5JPST8STd3204TF6EqRTTgnmHE
-         r/jA==
+        bh=G3k0++tNsXa6qZXNMfNtybpDUzEwXrhNBsIrZ1ExAmI=;
+        b=uoIohN4UQPkXnWIQSh3wW4Dfhl0sy6EDK152cYcROM/QduwfTyzoPFjHykndbu40LV
+         Ij8e5ONKiIH65z5cgslBSi7uQ+fwVLfxZI6+HAqmepTr+bbYkgYT5Fw0JnMbj0raZDd0
+         66a1MQgqwxzXV9crjWEIxsRLowzskOMuJI83p1T1UFbWLkY5HFLMXmBt+IFVlasGCn6P
+         vbhQxSbejdvzkt3029CO0I6KdZI2DROeCY6G8kRzo6y/slTd9XYM7iVGnLR/gYE3bLQM
+         N69YWR+/dGw9UMWQQ7xINox+2MwwKMYIUCcHCLj7Gv5yzFV+csPPpVqpe8QrPmX5EcZB
+         0a0A==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:sender:subject:from:to:cc:date:message-id
          :in-reply-to:references:user-agent:mime-version
          :content-transfer-encoding;
-        bh=RT9fEOnCP8fxzowXgYqOJRgbr1fLDSnkcGiwkNSrjPw=;
-        b=q16CaArehAXl2ArLR/C6UB8b2lkfqj1lPAXY3IJhEWM+ad6zeyG0glN9SZYawvF2Cx
-         bIcmnE/Iz4XNs/SHBgAb9bBFtRfqYiVB10guC/8PuLRNpxREPphPaQkGyCl4ht4t9S3I
-         DGdfOZhqdJreXhqyQOzIYe2qrQ8EV3aiYa7+IkJ6DB9LxGrBUINyM/HD2qnxFkEie0z1
-         MEhxVfsVFQoA7ZLtS/fkGE5+hsfdKxaSCbLiCcwgYkKNKaAMHRyAcFZiW9tId7K5Kcff
-         RyN09F0t2ukjWc1rYQs0PRCyQmcgnxVQtIoNSloxIa9nEj0cF0I5rdWqKdykxFUUR7qC
-         ifPg==
-X-Gm-Message-State: AA+aEWY+sgHfQREILyhYPYEn3W0hdxb0BeAR0UhqooxtJh21Wsxk/Ke3
-        G1eIxC5GpGsTvSfaBTbYmqA=
-X-Google-Smtp-Source: AFSGD/Wu3auj10ZNEXP+TKRJDvi+1upkvDfgRrZdoJzOitj95o+6Y1iYX63YtGzQiKqfo8eMVt/lhA==
-X-Received: by 2002:a02:2b2d:: with SMTP id h45mr12171093jaa.75.1544459429974;
-        Mon, 10 Dec 2018 08:30:29 -0800 (PST)
+        bh=G3k0++tNsXa6qZXNMfNtybpDUzEwXrhNBsIrZ1ExAmI=;
+        b=I88VdAyLD3koP328KJKrKHKv4hQ/myhc/kOAkQxgN078s4epyToTJM2KxLoAnyKIKO
+         /rkbmajzvoYZMmI9GT4JlmKk924IlGhMjQe3nl1ddhmHiKEYWcC0Y0SpvZGiZgdOkNbD
+         top8rXZGNH/gtIxuKLPhWZKCcx1gFGEEqLL5aluH9pVnTjeLhZYbzyQ0KjhQeM/0BRek
+         g5nRQZiSmHr2H6DrGs04R30x+WTsOA1g2A5Bp95ausBSlcKQh7bZn3IhrKDbmh9CsPM+
+         E4myjn8KhznGDm41hUG4i4SojqDFjrbQuDIvkMw5RanWT63hNjHNdjTX3HPpicIy5543
+         QVyg==
+X-Gm-Message-State: AA+aEWZr3efkrSGl/EdalDyaMTh9Sw+X2WtBoZ/t5wUtPORg5ByfaRPR
+        BX5nbVZaGyV8mpSbLR+8sNY=
+X-Google-Smtp-Source: AFSGD/VXLNxo8nsmpT6ScAyglLBmWc9KaBLllz2EnMNGo9ChiMe7SphWb+ZYP2As1ULM1xCZ8LggYg==
+X-Received: by 2002:a24:8ac7:: with SMTP id v190mr11455812itd.174.1544459426496;
+        Mon, 10 Dec 2018 08:30:26 -0800 (PST)
 Received: from gateway.1015granger.net (c-68-61-232-219.hsd1.mi.comcast.net. [68.61.232.219])
-        by smtp.gmail.com with ESMTPSA id f10sm5893153itf.41.2018.12.10.08.30.29
+        by smtp.gmail.com with ESMTPSA id y10sm4198285iom.64.2018.12.10.08.30.25
         (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Mon, 10 Dec 2018 08:30:29 -0800 (PST)
+        Mon, 10 Dec 2018 08:30:26 -0800 (PST)
 Received: from manet.1015granger.net (manet.1015granger.net [192.168.1.51])
-        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id wBAGUSrJ031061;
-        Mon, 10 Dec 2018 16:30:28 GMT
-Subject: [PATCH v3 13/24] xprtrdma: Relocate the xprtrdma_mr_map trace points
+        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id wBAGUNA1031058;
+        Mon, 10 Dec 2018 16:30:23 GMT
+Subject: [PATCH v3 12/24] xprtrdma: Clean up of xprtrdma chunk trace points
 From:   Chuck Lever <chuck.lever@oracle.com>
 To:     anna.schumaker@netapp.com
 Cc:     linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date:   Mon, 10 Dec 2018 11:30:28 -0500
-Message-ID: <20181210163028.4198.14435.stgit@manet.1015granger.net>
+Date:   Mon, 10 Dec 2018 11:30:23 -0500
+Message-ID: <20181210163023.4198.46828.stgit@manet.1015granger.net>
 In-Reply-To: <20181210161723.4198.51071.stgit@manet.1015granger.net>
 References: <20181210161723.4198.51071.stgit@manet.1015granger.net>
 User-Agent: StGit/0.17.1-dirty
@@ -77,32 +77,180 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-The mr_map trace points were capturing information about the previous
-use of the MR rather than about the segment that was just mapped.
+The chunk-related trace points capture nearly the same information
+as the MR-related trace points.
+
+Also, rename them so globbing can be used to enable or disable
+these trace points more easily.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/frwr_ops.c |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ include/trace/events/rpcrdma.h |   42 +++++++++++++++++++++++++---------------
+ net/sunrpc/xprtrdma/rpc_rdma.c |    6 +++---
+ 2 files changed, 29 insertions(+), 19 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/frwr_ops.c b/net/sunrpc/xprtrdma/frwr_ops.c
-index e758c0d..6d6cc80 100644
---- a/net/sunrpc/xprtrdma/frwr_ops.c
-+++ b/net/sunrpc/xprtrdma/frwr_ops.c
-@@ -394,7 +394,6 @@
- 	mr->mr_nents = ib_dma_map_sg(ia->ri_device, mr->mr_sg, i, mr->mr_dir);
- 	if (!mr->mr_nents)
- 		goto out_dmamap_err;
--	trace_xprtrdma_mr_map(mr);
+diff --git a/include/trace/events/rpcrdma.h b/include/trace/events/rpcrdma.h
+index 602972d..807669c 100644
+--- a/include/trace/events/rpcrdma.h
++++ b/include/trace/events/rpcrdma.h
+@@ -97,7 +97,6 @@
+ 	TP_STRUCT__entry(
+ 		__field(unsigned int, task_id)
+ 		__field(unsigned int, client_id)
+-		__field(const void *, mr)
+ 		__field(unsigned int, pos)
+ 		__field(int, nents)
+ 		__field(u32, handle)
+@@ -109,7 +108,6 @@
+ 	TP_fast_assign(
+ 		__entry->task_id = task->tk_pid;
+ 		__entry->client_id = task->tk_client->cl_clid;
+-		__entry->mr = mr;
+ 		__entry->pos = pos;
+ 		__entry->nents = mr->mr_nents;
+ 		__entry->handle = mr->mr_handle;
+@@ -118,8 +116,8 @@
+ 		__entry->nsegs = nsegs;
+ 	),
  
- 	ibmr = frwr->fr_mr;
- 	n = ib_map_mr_sg(ibmr, mr->mr_sg, mr->mr_nents, NULL, PAGE_SIZE);
-@@ -416,6 +415,7 @@
- 	mr->mr_handle = ibmr->rkey;
- 	mr->mr_length = ibmr->length;
- 	mr->mr_offset = ibmr->iova;
-+	trace_xprtrdma_mr_map(mr);
+-	TP_printk("task:%u@%u mr=%p pos=%u %u@0x%016llx:0x%08x (%s)",
+-		__entry->task_id, __entry->client_id, __entry->mr,
++	TP_printk("task:%u@%u pos=%u %u@0x%016llx:0x%08x (%s)",
++		__entry->task_id, __entry->client_id,
+ 		__entry->pos, __entry->length,
+ 		(unsigned long long)__entry->offset, __entry->handle,
+ 		__entry->nents < __entry->nsegs ? "more" : "last"
+@@ -127,7 +125,7 @@
+ );
  
- 	*out = mr;
- 	return seg;
+ #define DEFINE_RDCH_EVENT(name)						\
+-		DEFINE_EVENT(xprtrdma_rdch_event, name,			\
++		DEFINE_EVENT(xprtrdma_rdch_event, xprtrdma_chunk_##name,\
+ 				TP_PROTO(				\
+ 					const struct rpc_task *task,	\
+ 					unsigned int pos,		\
+@@ -148,7 +146,6 @@
+ 	TP_STRUCT__entry(
+ 		__field(unsigned int, task_id)
+ 		__field(unsigned int, client_id)
+-		__field(const void *, mr)
+ 		__field(int, nents)
+ 		__field(u32, handle)
+ 		__field(u32, length)
+@@ -159,7 +156,6 @@
+ 	TP_fast_assign(
+ 		__entry->task_id = task->tk_pid;
+ 		__entry->client_id = task->tk_client->cl_clid;
+-		__entry->mr = mr;
+ 		__entry->nents = mr->mr_nents;
+ 		__entry->handle = mr->mr_handle;
+ 		__entry->length = mr->mr_length;
+@@ -167,8 +163,8 @@
+ 		__entry->nsegs = nsegs;
+ 	),
+ 
+-	TP_printk("task:%u@%u mr=%p %u@0x%016llx:0x%08x (%s)",
+-		__entry->task_id, __entry->client_id, __entry->mr,
++	TP_printk("task:%u@%u %u@0x%016llx:0x%08x (%s)",
++		__entry->task_id, __entry->client_id,
+ 		__entry->length, (unsigned long long)__entry->offset,
+ 		__entry->handle,
+ 		__entry->nents < __entry->nsegs ? "more" : "last"
+@@ -176,7 +172,7 @@
+ );
+ 
+ #define DEFINE_WRCH_EVENT(name)						\
+-		DEFINE_EVENT(xprtrdma_wrch_event, name,			\
++		DEFINE_EVENT(xprtrdma_wrch_event, xprtrdma_chunk_##name,\
+ 				TP_PROTO(				\
+ 					const struct rpc_task *task,	\
+ 					struct rpcrdma_mr *mr,		\
+@@ -234,6 +230,18 @@
+ 				),					\
+ 				TP_ARGS(wc, frwr))
+ 
++TRACE_DEFINE_ENUM(DMA_BIDIRECTIONAL);
++TRACE_DEFINE_ENUM(DMA_TO_DEVICE);
++TRACE_DEFINE_ENUM(DMA_FROM_DEVICE);
++TRACE_DEFINE_ENUM(DMA_NONE);
++
++#define xprtrdma_show_direction(x)					\
++		__print_symbolic(x,					\
++				{ DMA_BIDIRECTIONAL, "BIDIR" },		\
++				{ DMA_TO_DEVICE, "TO_DEVICE" },		\
++				{ DMA_FROM_DEVICE, "FROM_DEVICE" },	\
++				{ DMA_NONE, "NONE" })
++
+ DECLARE_EVENT_CLASS(xprtrdma_mr,
+ 	TP_PROTO(
+ 		const struct rpcrdma_mr *mr
+@@ -246,6 +254,7 @@
+ 		__field(u32, handle)
+ 		__field(u32, length)
+ 		__field(u64, offset)
++		__field(u32, dir)
+ 	),
+ 
+ 	TP_fast_assign(
+@@ -253,12 +262,13 @@
+ 		__entry->handle = mr->mr_handle;
+ 		__entry->length = mr->mr_length;
+ 		__entry->offset = mr->mr_offset;
++		__entry->dir    = mr->mr_dir;
+ 	),
+ 
+-	TP_printk("mr=%p %u@0x%016llx:0x%08x",
++	TP_printk("mr=%p %u@0x%016llx:0x%08x (%s)",
+ 		__entry->mr, __entry->length,
+-		(unsigned long long)__entry->offset,
+-		__entry->handle
++		(unsigned long long)__entry->offset, __entry->handle,
++		xprtrdma_show_direction(__entry->dir)
+ 	)
+ );
+ 
+@@ -437,9 +447,9 @@
+ 
+ DEFINE_RXPRT_EVENT(xprtrdma_nomrs);
+ 
+-DEFINE_RDCH_EVENT(xprtrdma_read_chunk);
+-DEFINE_WRCH_EVENT(xprtrdma_write_chunk);
+-DEFINE_WRCH_EVENT(xprtrdma_reply_chunk);
++DEFINE_RDCH_EVENT(read);
++DEFINE_WRCH_EVENT(write);
++DEFINE_WRCH_EVENT(reply);
+ 
+ TRACE_DEFINE_ENUM(rpcrdma_noch);
+ TRACE_DEFINE_ENUM(rpcrdma_readch);
+diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
+index 636e0f1..b89342d 100644
+--- a/net/sunrpc/xprtrdma/rpc_rdma.c
++++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+@@ -366,7 +366,7 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
+ 		if (encode_read_segment(xdr, mr, pos) < 0)
+ 			return -EMSGSIZE;
+ 
+-		trace_xprtrdma_read_chunk(rqst->rq_task, pos, mr, nsegs);
++		trace_xprtrdma_chunk_read(rqst->rq_task, pos, mr, nsegs);
+ 		r_xprt->rx_stats.read_chunk_count++;
+ 		nsegs -= mr->mr_nents;
+ 	} while (nsegs);
+@@ -424,7 +424,7 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
+ 		if (encode_rdma_segment(xdr, mr) < 0)
+ 			return -EMSGSIZE;
+ 
+-		trace_xprtrdma_write_chunk(rqst->rq_task, mr, nsegs);
++		trace_xprtrdma_chunk_write(rqst->rq_task, mr, nsegs);
+ 		r_xprt->rx_stats.write_chunk_count++;
+ 		r_xprt->rx_stats.total_rdma_request += mr->mr_length;
+ 		nchunks++;
+@@ -482,7 +482,7 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
+ 		if (encode_rdma_segment(xdr, mr) < 0)
+ 			return -EMSGSIZE;
+ 
+-		trace_xprtrdma_reply_chunk(rqst->rq_task, mr, nsegs);
++		trace_xprtrdma_chunk_reply(rqst->rq_task, mr, nsegs);
+ 		r_xprt->rx_stats.reply_chunk_count++;
+ 		r_xprt->rx_stats.total_rdma_request += mr->mr_length;
+ 		nchunks++;
 
