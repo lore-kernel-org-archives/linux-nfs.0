@@ -2,89 +2,112 @@ Return-Path: <SRS0=OjhL=OU=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.2 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
-	SPF_PASS,UNPARSEABLE_RELAY autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-6.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_SBL,
+	URIBL_SBL_A autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0A91DC5CFFE
-	for <linux-nfs@archiver.kernel.org>; Tue, 11 Dec 2018 19:19:48 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 759DDC67839
+	for <linux-nfs@archiver.kernel.org>; Tue, 11 Dec 2018 22:27:24 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id C90492087F
-	for <linux-nfs@archiver.kernel.org>; Tue, 11 Dec 2018 19:19:47 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="RDUY3m1f"
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org C90492087F
-Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=oracle.com
+	by mail.kernel.org (Postfix) with ESMTP id 39DC52084C
+	for <linux-nfs@archiver.kernel.org>; Tue, 11 Dec 2018 22:27:24 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 39DC52084C
+Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=RedHat.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726788AbeLKTTq (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 11 Dec 2018 14:19:46 -0500
-Received: from aserp2130.oracle.com ([141.146.126.79]:35760 "EHLO
-        aserp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726508AbeLKTTq (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 11 Dec 2018 14:19:46 -0500
-Received: from pps.filterd (aserp2130.oracle.com [127.0.0.1])
-        by aserp2130.oracle.com (8.16.0.22/8.16.0.22) with SMTP id wBBJJ3un063005;
-        Tue, 11 Dec 2018 19:19:44 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=cc : subject : to :
- references : from : message-id : date : mime-version : in-reply-to :
- content-type : content-transfer-encoding; s=corp-2018-07-02;
- bh=bNVoMqXwNkT2A12Bzht7FIuu9XxlnDNVtqrlWoQwst4=;
- b=RDUY3m1fr9OAyNHaYaMTay5OcwYTbrsvgVvOsneRMXPQkou7SjY8vNy7jOg2K3TSrRMj
- aulG3/mQ9QfizjPbm8Z9fIpX0xrcuBMaabSEM9HAzVFJGgxIeYHVx2zfvR8smLGQ5mld
- dZ7Abx70wEAn0Pi62q71PstTd3JxMg5eWwDM5WXgDAJW6I88ODOGx8Mxb673dRYH9JOm
- J0JM5IIz9XbHZlzFoIOY9u15YUsesEOs+qbBxRv9qqoCFqAAtHukXbqgQIxqYukVS41w
- jOD/hedbMzNRf7iYG+pqDGWz7eeRgYXttkrWsKqsGo7Zwnj8bUyCm5hfqxKkVaqLP9yi KA== 
-Received: from userv0022.oracle.com (userv0022.oracle.com [156.151.31.74])
-        by aserp2130.oracle.com with ESMTP id 2p83fe60wb-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Tue, 11 Dec 2018 19:19:44 +0000
-Received: from userv0122.oracle.com (userv0122.oracle.com [156.151.31.75])
-        by userv0022.oracle.com (8.14.4/8.14.4) with ESMTP id wBBJJhf2006510
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Tue, 11 Dec 2018 19:19:43 GMT
-Received: from abhmp0016.oracle.com (abhmp0016.oracle.com [141.146.116.22])
-        by userv0122.oracle.com (8.14.4/8.14.4) with ESMTP id wBBJJgpW011759;
-        Tue, 11 Dec 2018 19:19:42 GMT
-Received: from mbp2018.cdmnet.org (/82.27.120.181)
-        by default (Oracle Beehive Gateway v4.0)
-        with ESMTP ; Tue, 11 Dec 2018 11:19:42 -0800
-Cc:     Anna Schumaker <anna.schumaker@netapp.com>,
-        linux-rdma@vger.kernel.org,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v3 18/24] NFS: Fix NFSv4 symbolic trace point output
+        id S1726183AbeLKW1X (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 11 Dec 2018 17:27:23 -0500
+Received: from mx1.redhat.com ([209.132.183.28]:33766 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726158AbeLKW1X (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 11 Dec 2018 17:27:23 -0500
+Received: from smtp.corp.redhat.com (int-mx06.intmail.prod.int.phx2.redhat.com [10.5.11.16])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id 08BA13082201;
+        Tue, 11 Dec 2018 22:27:23 +0000 (UTC)
+Received: from steved.boston.devel.redhat.com (ovpn-117-6.phx2.redhat.com [10.3.117.6])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id B27145C225;
+        Tue, 11 Dec 2018 22:27:22 +0000 (UTC)
+Subject: Re: [PATCH] nfsref: switch the way libraries are linked.
 To:     Chuck Lever <chuck.lever@oracle.com>
-References: <20181210161723.4198.51071.stgit@manet.1015granger.net>
- <20181210163055.4198.68306.stgit@manet.1015granger.net>
- <632f5635-4c37-16ae-cdd0-65679d21c9ec@oracle.com>
-From:   Calum Mackay <calum.mackay@oracle.com>
-Organization: Oracle
-Message-ID: <1f9f5d63-6168-db5a-3ba3-9ed479eef505@oracle.com>
-Date:   Tue, 11 Dec 2018 19:19:38 +0000
-User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.13; rv:65.0)
- Gecko/20100101 Thunderbird/65.0a1
+Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+References: <20181211190944.71940-1-steved@redhat.com>
+ <0F088877-F56A-47FF-BBF3-95A8293BF912@oracle.com>
+From:   Steve Dickson <SteveD@RedHat.com>
+Message-ID: <40177ab7-bf23-7966-fbfa-9bac12d4655c@RedHat.com>
+Date:   Tue, 11 Dec 2018 17:27:22 -0500
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101
+ Thunderbird/60.3.1
 MIME-Version: 1.0
-In-Reply-To: <632f5635-4c37-16ae-cdd0-65679d21c9ec@oracle.com>
-Content-Type: text/plain; charset=utf-8; format=flowed
-Content-Language: en-GB
+In-Reply-To: <0F088877-F56A-47FF-BBF3-95A8293BF912@oracle.com>
+Content-Type: text/plain; charset=utf-8
+Content-Language: en-US
 Content-Transfer-Encoding: 7bit
-X-Proofpoint-Virus-Version: vendor=nai engine=5900 definitions=9103 signatures=668679
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 suspectscore=0 malwarescore=0
- phishscore=0 bulkscore=0 spamscore=0 mlxscore=0 mlxlogscore=790
- adultscore=0 classifier=spam adjust=0 reason=mlx scancount=1
- engine=8.0.1-1810050000 definitions=main-1812110171
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.16
+X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.47]); Tue, 11 Dec 2018 22:27:23 +0000 (UTC)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-hi Chuck,
 
-On 10/12/2018 4:30 pm, Chuck Lever wrote:
-> These symbolic values were not being displayed in string form.
-> TRACE_ENUM_DEFINE was missing in many cases.
 
--> TRACE_DEFINE_ENUM
+On 12/11/18 2:12 PM, Chuck Lever wrote:
+> 
+>> On Dec 11, 2018, at 2:09 PM, Steve Dickson <steved@redhat.com> wrote:
+>>
+>> Link the static libs before the dynamic libs allowing
+>> the routines in the static libs to be defined
+>> by the dynamic libs
+> 
+> Hi Steve, Why is this change necessary? Is there a bug report?
+No... when I enabled junctions in the Fedora rawhide (F30) I got
+a bunch of xml undefined routines 
+   https://koji.fedoraproject.org/koji/getfile?taskID=31408933&volume=DEFAULT&name=build.log&offset=-4000
 
-cheers,
-calum.
+It compiled fine on f29 but not on rawhide
+
+After asking if the XML api changed, people suggested I simply
+change the order of how the static and dynamic libs are linked,
+which worked
+
+https://lists.fedoraproject.org/archives/list/devel@lists.fedoraproject.org/message/6UIAF47S73QFLCJDWEWXKQHZTOMB5JXQ/
+
+https://lists.fedoraproject.org/archives/list/devel@lists.fedoraproject.org/message/VK2XPHV2MELV6IRKBG2ITI6GKUBMMRQW/
+
+steved.
+
+> 
+> 
+>> Signed-off-by: Steve Dickson <steved@redhat.com>
+>> ---
+>> utils/nfsref/Makefile.am | 6 +++---
+>> 1 file changed, 3 insertions(+), 3 deletions(-)
+>>
+>> diff --git a/utils/nfsref/Makefile.am b/utils/nfsref/Makefile.am
+>> index 44edc83..2409dd0 100644
+>> --- a/utils/nfsref/Makefile.am
+>> +++ b/utils/nfsref/Makefile.am
+>> @@ -27,9 +27,9 @@ noinst_HEADERS		= nfsref.h
+>>
+>> sbin_PROGRAMS		= nfsref
+>> nfsref_SOURCES		= add.c lookup.c nfsref.c remove.c
+>> -LDADD			= $(LIBXML2) $(LIBCAP) \
+>> -			  ../../support/nfs/libnfs.la \
+>> -			  ../../support/junction/libjunction.la
+>> +LDADD			= ../../support/nfs/libnfs.la \
+>> +			  ../../support/junction/libjunction.la \
+>> +			  $(LIBXML2) $(LIBCAP)
+>>
+>> man8_MANS		= nfsref.man
+>>
+>> -- 
+>> 2.19.2
+>>
+> 
+> --
+> Chuck Lever
+> 
+> 
+> 
