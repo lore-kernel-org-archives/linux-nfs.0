@@ -2,83 +2,94 @@ Return-Path: <SRS0=XDbB=OV=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.0 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS,URIBL_BLOCKED
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-2.2 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS,URIBL_BLOCKED,
+	USER_AGENT_MUTT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 99B24C65BAF
-	for <linux-nfs@archiver.kernel.org>; Wed, 12 Dec 2018 18:57:26 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 30213C65BAF
+	for <linux-nfs@archiver.kernel.org>; Wed, 12 Dec 2018 19:43:03 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 5EA4920811
-	for <linux-nfs@archiver.kernel.org>; Wed, 12 Dec 2018 18:57:26 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id CE60720811
+	for <linux-nfs@archiver.kernel.org>; Wed, 12 Dec 2018 19:43:02 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="gRsW5s3A"
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 5EA4920811
-Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=gmail.com
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="JHM7AxK9"
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org CE60720811
+Authentication-Results: mail.kernel.org; dmarc=none (p=none dis=none) header.from=infradead.org
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726263AbeLLS5Z (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 12 Dec 2018 13:57:25 -0500
-Received: from mail-oi1-f170.google.com ([209.85.167.170]:37340 "EHLO
-        mail-oi1-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726249AbeLLS5Z (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 12 Dec 2018 13:57:25 -0500
-Received: by mail-oi1-f170.google.com with SMTP id y23so15913968oia.4
-        for <linux-nfs@vger.kernel.org>; Wed, 12 Dec 2018 10:57:25 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=mime-version:from:date:message-id:subject:to;
-        bh=X4R/5MWSkHjx+rcwZpnWWTr891Gorl6hzFds0cXjA/s=;
-        b=gRsW5s3Ags/fLoYGfvwZ0ECe2+KsV2Uazs06g7qX8+Q3hFtylZRgnJBte5nVI+R7qS
-         ZrEBdiKH2gU+AF9z/xKcF+s3zYGbXP5ISV0rj+oDDB7D+SyF2lSUzoP+y3lQtA1enyYu
-         qYq3nJRDv/dnViAcim+IMrJpFzltrC6lbW/zebfychIN7gFWaOaeqzmjIq10CnlpquTb
-         pqVjlKPCPuLc6towSAnoi43rS3iMuPcXHgPHP1XZQWhzoZgp9bTs+cynjx6FRFKI+a3T
-         DCZxUpo4XCcnBTk76tfOEoxi5ptbfdLDM+hvWFqoksywq79/tGCuLST5f0IGsk2ma6pn
-         HCUw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:mime-version:from:date:message-id:subject:to;
-        bh=X4R/5MWSkHjx+rcwZpnWWTr891Gorl6hzFds0cXjA/s=;
-        b=EbEIQDCqJ6UAiIes/QdvRQPHttdiM4A3a6DApcyAZaXVo6wZ2YhrLU5lYbN9TpxaH1
-         tVQktkWnqzsiNlf/Zt18IZEytj3xzE67SKTLjMMBw2hC60fj2QM3KlYwb9BM49DvEEJh
-         /1iTWyYOOrDjXJwCKkJi8a+Im1hLisnj0kvU+wKqh/yQhK6eoUcs/C3lWzZd1vt/XwX7
-         5aLR/p2ENqgGvkBkEFJ4PNmUKseGYla6z0IXitvfPTPkuHOjTl4R1VWR8luPYyTRPuCx
-         P3vfj+LuQOxXznpVK3ni/+9zX5vswzazeF443iWI/5AtAxbFq4HR6aM9KnghJdKK7TnS
-         7gcQ==
-X-Gm-Message-State: AA+aEWYlXGvjI7PrvK0tbyw2bcmvYjN4+1t9GS6fyor5gym6DPz+gGBP
-        aJEPl8b3aW49pfyUecGLlHalT3KRETawSyJPe+WzZHny
-X-Google-Smtp-Source: AFSGD/W2km2OCZcsziPByBdFMXt1zt6cnVCjGTRKchKhLVXSng07X0ZQaKKok9HhyNAo8R1vU/JwRG6Sh2ZUMA7AnNk=
-X-Received: by 2002:aca:ad14:: with SMTP id w20mr258496oie.3.1544641044329;
- Wed, 12 Dec 2018 10:57:24 -0800 (PST)
+        id S1727102AbeLLTnB (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 12 Dec 2018 14:43:01 -0500
+Received: from bombadil.infradead.org ([198.137.202.133]:44874 "EHLO
+        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726243AbeLLTnB (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 12 Dec 2018 14:43:01 -0500
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+        d=infradead.org; s=bombadil.20170209; h=In-Reply-To:Content-Type:MIME-Version
+        :References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
+        Content-Transfer-Encoding:Content-ID:Content-Description:Resent-Date:
+        Resent-From:Resent-Sender:Resent-To:Resent-Cc:Resent-Message-ID:List-Id:
+        List-Help:List-Unsubscribe:List-Subscribe:List-Post:List-Owner:List-Archive;
+         bh=cCV9FTYqNWT8eebWjimH3Bfsru2ZFqg0HLmmKpeonR0=; b=JHM7AxK9vqSeoPD9C+bDaGuis
+        wKeKu1HXJECukKezhk5CbYUNaT85Qr60qPmzMsju6fB2E+MCc8OKz7BUAaaFA1pL4wgnmu6BiElSQ
+        ah41Xft/6T9yfe67WJXFqOfKNVdj82xZGTijAwV8MSWj4Bm4FDZYswzn4DURsXcd23onmZGHBqWZM
+        1t6Y5k7mtDEtX2BDbG/5rWpk5++UQjVZoy397fDB9rVfn0jQHEU9hhXnsv9qxSP7BihdOlyP0e624
+        gIUs2QIZKcfxof6moIcJPhbK5eLRZDAdJWONwfQIcfVHM6kx53TQe1DRU/pnybLnemHpy9WYf0ST4
+        lfjvBYW6w==;
+Received: from willy by bombadil.infradead.org with local (Exim 4.90_1 #2 (Red Hat Linux))
+        id 1gXAPL-0003n6-1l; Wed, 12 Dec 2018 19:42:59 +0000
+Date:   Wed, 12 Dec 2018 11:42:58 -0800
+From:   Matthew Wilcox <willy@infradead.org>
+To:     Olga Kornievskaia <olga.kornievskaia@gmail.com>
+Cc:     lhenriques@suse.com, david@fromorbit.com,
+        "Darrick J. Wong" <darrick.wong@oracle.com>,
+        linux-fsdevel@vger.kernel.org, linux-xfs@vger.kernel.org,
+        linux-nfs <linux-nfs@vger.kernel.org>,
+        linux-unionfs@vger.kernel.org, ceph-devel@vger.kernel.org,
+        linux-cifs@vger.kernel.org
+Subject: Re: [PATCH 04/11] vfs: add missing checks to copy_file_range
+Message-ID: <20181212194258.GK6830@bombadil.infradead.org>
+References: <20181203083416.28978-1-david@fromorbit.com>
+ <20181203083416.28978-5-david@fromorbit.com>
+ <87a7lbrng4.fsf@suse.com>
+ <CAN-5tyHNGtLxeFyEO6qX_+8=K4tpkgYjB11OkfCTdWfokfAyEg@mail.gmail.com>
 MIME-Version: 1.0
-From:   Ashish Sangwan <ashishsangwan2@gmail.com>
-Date:   Thu, 13 Dec 2018 00:27:13 +0530
-Message-ID: <CAOiN93mX240ijc8mcX1OSKrQaP12At9t5c9cE3-T0gEuLC9RkA@mail.gmail.com>
-Subject: Handling of duplicate inode numbers for the directories in the nfs v3
- kernel client
-To:     linux-nfs@vger.kernel.org, neilb@suse.com
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <CAN-5tyHNGtLxeFyEO6qX_+8=K4tpkgYjB11OkfCTdWfokfAyEg@mail.gmail.com>
+User-Agent: Mutt/1.9.2 (2017-12-15)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hi,
+On Wed, Dec 12, 2018 at 01:55:28PM -0500, Olga Kornievskaia wrote:
+> On Wed, Dec 12, 2018 at 6:31 AM Luis Henriques <lhenriques@suse.com> wrote:
+> > I was wondering if, with the above check, it would make sense to also
+> > have an extra patch changing some filesystems (ceph, nfs and cifs) to
+> > simply return -EOPNOTSUPP (instead of -EINVAL) when inode_in ==
+> > inode_out.  Something like the diff below (not tested!).
 
-Our NFS filer can sometimes return same inode number for different directories.
-For example /mnt/dir1/dir2 and /mnt/dir3/dir4, in same rare cases dir2
-and dir4 might end up returning the same inode number to the client.
-Though it can never happen that inode numbers will be same for two
-directories and also there parent is same. Can linux client handle
-this case? What issues it can cause?
-https://lkml.org/lkml/2006/10/2/346
-I stumbled upon this thread where it is written that nfs client can
-handle this but userspace will see inode collisions. Given that this
-will happen only for directories, userspace utils logic might not get
-affected from this as hardlinks on directories are not possible. But
-the thread is really old. Wanted to confirm if this holds true even
-now.
+> > +++ b/fs/nfs/nfs4file.c
+> > @@ -136,7 +136,7 @@ static ssize_t nfs4_copy_file_range(struct file *file_in, loff_t pos_in,
+> >         ssize_t ret;
+> >
+> >         if (file_inode(file_in) == file_inode(file_out))
+> > -               return -EINVAL;
+> > +               return -EOPNOTSUPP;
+> 
+> Please don't change the NFS bits. This is against the NFS
+> specifications. RFC 7862 15.2.3
+> 
+> (snippet)
+> SAVED_FH and CURRENT_FH must be different files.  If SAVED_FH and
+>    CURRENT_FH refer to the same file, the operation MUST fail with
+>    NFS4ERR_INVAL.
 
-Thanks,
-Ashish
+I don't see how that applies.  That refers to a requirement _in the
+protocol_ that determines what the server MUST do if the client sends
+it two FHs which refer to the same file.
+
+What we're talking about here is how a Linux filesystem behaves when
+receiving a copy_file_range() referring to the same file.  As long as
+the Linux filesystem doesn't react by sending out one of these invalid
+protocol messages, I don't see the problem.
