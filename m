@@ -2,169 +2,160 @@ Return-Path: <SRS0=HBvY=OW=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.3 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_PASS,T_MIXED_ES,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-6.9 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id BD9D0C65BAE
-	for <linux-nfs@archiver.kernel.org>; Thu, 13 Dec 2018 04:50:43 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7E72CC65BAE
+	for <linux-nfs@archiver.kernel.org>; Thu, 13 Dec 2018 10:29:42 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 7AC2F2080F
-	for <linux-nfs@archiver.kernel.org>; Thu, 13 Dec 2018 04:50:43 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1544676643;
-	bh=w8lRYZUCRXSAvI2dJaqXkHPGbIwCPvgoDdrPBtjyd+E=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=f+HolucKXczV/Xjx32kaiwsN9EvYw5UjjbbHxYmE+eNCVrrBrkyYXw0H5/H1xbxBL
-	 5qWrTmjJUVi7NaHOc0ibnTh/yViE/P6qi3uZ+olT5c2BqTB6BDDDJlft6PFSoZu7E0
-	 q8YPXgAph9oDHH4bKhTrk2mYglnISU0Kni7dPHgU=
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 7AC2F2080F
-Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=kernel.org
+	by mail.kernel.org (Postfix) with ESMTP id 476E520811
+	for <linux-nfs@archiver.kernel.org>; Thu, 13 Dec 2018 10:29:42 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 476E520811
+Authentication-Results: mail.kernel.org; dmarc=none (p=none dis=none) header.from=suse.com
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727579AbeLME3W (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 12 Dec 2018 23:29:22 -0500
-Received: from mail.kernel.org ([198.145.29.99]:42344 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727561AbeLME3U (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 12 Dec 2018 23:29:20 -0500
-Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
-        (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 067FB20873;
-        Thu, 13 Dec 2018 04:29:17 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1544675358;
-        bh=w8lRYZUCRXSAvI2dJaqXkHPGbIwCPvgoDdrPBtjyd+E=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=0Ust/j7POdUgmsuBzQLryTWG+JzMVkWB6pBQn0KR65rOiykiuJ8Kl3puGSroMp/I9
-         zppl1gjW01jStzhCv9S+MWjGS78oXAweox4thfpRhpjCKoprFIvUsShWbLY3FM7a36
-         1M54PolJsntGOjy0WXudhyNcQoONLfQO0Y2OgXw4=
-From:   Sasha Levin <sashal@kernel.org>
-To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     Dave Kleikamp <dave.kleikamp@oracle.com>,
-        Santosh Shilimkar <santosh.shilimkar@oracle.com>,
-        Calum Mackay <calum.mackay@oracle.com>,
-        Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org
-Subject: [PATCH AUTOSEL 4.19 25/73] nfs: don't dirty kernel pages read by direct-io
-Date:   Wed, 12 Dec 2018 23:27:50 -0500
-Message-Id: <20181213042838.75160-25-sashal@kernel.org>
-X-Mailer: git-send-email 2.19.1
-In-Reply-To: <20181213042838.75160-1-sashal@kernel.org>
-References: <20181213042838.75160-1-sashal@kernel.org>
+        id S1727340AbeLMK3l (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 13 Dec 2018 05:29:41 -0500
+Received: from mx2.suse.de ([195.135.220.15]:36728 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1727133AbeLMK3l (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 13 Dec 2018 05:29:41 -0500
+X-Virus-Scanned: by amavisd-new at test-mx.suse.de
+Received: from relay1.suse.de (unknown [195.135.220.254])
+        by mx1.suse.de (Postfix) with ESMTP id 1D9ACAF4D;
+        Thu, 13 Dec 2018 10:29:38 +0000 (UTC)
+From:   Luis Henriques <lhenriques@suse.com>
+To:     Olga Kornievskaia <olga.kornievskaia@gmail.com>
+Cc:     willy@infradead.org, david@fromorbit.com,
+        "Darrick J. Wong" <darrick.wong@oracle.com>,
+        linux-fsdevel@vger.kernel.org, linux-xfs@vger.kernel.org,
+        linux-nfs <linux-nfs@vger.kernel.org>,
+        linux-unionfs@vger.kernel.org, ceph-devel@vger.kernel.org,
+        linux-cifs@vger.kernel.org
+Subject: Re: [PATCH 04/11] vfs: add missing checks to copy_file_range
+References: <20181203083416.28978-1-david@fromorbit.com>
+        <20181203083416.28978-5-david@fromorbit.com> <87a7lbrng4.fsf@suse.com>
+        <CAN-5tyHNGtLxeFyEO6qX_+8=K4tpkgYjB11OkfCTdWfokfAyEg@mail.gmail.com>
+        <20181212194258.GK6830@bombadil.infradead.org>
+        <CAN-5tyGmdrbbiej_mMosYKrCzOEuKMKJALfOJxvbBqHwZFiUOw@mail.gmail.com>
+Date:   Thu, 13 Dec 2018 10:29:52 +0000
+In-Reply-To: <CAN-5tyGmdrbbiej_mMosYKrCzOEuKMKJALfOJxvbBqHwZFiUOw@mail.gmail.com>
+        (Olga Kornievskaia's message of "Wed, 12 Dec 2018 15:22:23 -0500")
+Message-ID: <87bm5pra73.fsf@suse.com>
 MIME-Version: 1.0
-X-Patchwork-Hint: Ignore
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Dave Kleikamp <dave.kleikamp@oracle.com>
+Olga Kornievskaia <olga.kornievskaia@gmail.com> writes:
 
-[ Upstream commit ad3cba223ac02dc769c3bbe88efe277bbb457566 ]
+> On Wed, Dec 12, 2018 at 2:43 PM Matthew Wilcox <willy@infradead.org> wrote:
+>>
+>> On Wed, Dec 12, 2018 at 01:55:28PM -0500, Olga Kornievskaia wrote:
+>> > On Wed, Dec 12, 2018 at 6:31 AM Luis Henriques <lhenriques@suse.com> wrote:
+>> > > I was wondering if, with the above check, it would make sense to also
+>> > > have an extra patch changing some filesystems (ceph, nfs and cifs) to
+>> > > simply return -EOPNOTSUPP (instead of -EINVAL) when inode_in ==
+>> > > inode_out.  Something like the diff below (not tested!).
+>>
+>> > > +++ b/fs/nfs/nfs4file.c
+>> > > @@ -136,7 +136,7 @@ static ssize_t nfs4_copy_file_range(struct file *file_in, loff_t pos_in,
+>> > >         ssize_t ret;
+>> > >
+>> > >         if (file_inode(file_in) == file_inode(file_out))
+>> > > -               return -EINVAL;
+>> > > +               return -EOPNOTSUPP;
+>> >
+>> > Please don't change the NFS bits. This is against the NFS
+>> > specifications. RFC 7862 15.2.3
+>> >
+>> > (snippet)
+>> > SAVED_FH and CURRENT_FH must be different files.  If SAVED_FH and
+>> >    CURRENT_FH refer to the same file, the operation MUST fail with
+>> >    NFS4ERR_INVAL.
+>>
+>> I don't see how that applies.  That refers to a requirement _in the
+>> protocol_ that determines what the server MUST do if the client sends
+>> it two FHs which refer to the same file.
+>>
+>> What we're talking about here is how a Linux filesystem behaves when
+>> receiving a copy_file_range() referring to the same file.  As long as
+>> the Linux filesystem doesn't react by sending out one of these invalid
+>> protocol messages, I don't see the problem.
+>
+> Ok then this should be changed to call generic_copy_file_range() not
+> returning the EOPNOTSUPP since there is no longer fallback in vfs to
+> call the generic_copy_file_range() and in turn responsibility of each
+> file system.
 
-When we use direct_IO with an NFS backing store, we can trigger a
-WARNING in __set_page_dirty(), as below, since we're dirtying the page
-unnecessarily in nfs_direct_read_completion().
+Ah, I didn't look close enough and didn't realised the nfs code was
+doing something slightly different from the other 2 FSs.  In that case
+simply deleting that check seems to be enough to fallback to the vfs
+generic_copy_file_range.
 
-To fix, replicate the logic in commit 53cbf3b157a0 ("fs: direct-io:
-don't dirtying pages for ITER_BVEC/ITER_KVEC direct read").
+Anyway, please find below an updated patch (with proper changelog).
 
-Other filesystems that implement direct_IO handle this; most use
-blockdev_direct_IO(). ceph and cifs have similar logic.
-
-mount 127.0.0.1:/export /nfs
-dd if=/dev/zero of=/nfs/image bs=1M count=200
-losetup --direct-io=on -f /nfs/image
-mkfs.btrfs /dev/loop0
-mount -t btrfs /dev/loop0 /mnt/
-
-kernel: WARNING: CPU: 0 PID: 8067 at fs/buffer.c:580 __set_page_dirty+0xaf/0xd0
-kernel: Modules linked in: loop(E) nfsv3(E) rpcsec_gss_krb5(E) nfsv4(E) dns_resolver(E) nfs(E) fscache(E) nfsd(E) auth_rpcgss(E) nfs_acl(E) lockd(E) grace(E) fuse(E) tun(E) ip6t_rpfilter(E) ipt_REJECT(E) nf_
-kernel:  snd_seq(E) snd_seq_device(E) snd_pcm(E) video(E) snd_timer(E) snd(E) soundcore(E) ip_tables(E) xfs(E) libcrc32c(E) sd_mod(E) sr_mod(E) cdrom(E) ata_generic(E) pata_acpi(E) crc32c_intel(E) ahci(E) li
-kernel: CPU: 0 PID: 8067 Comm: kworker/0:2 Tainted: G            E     4.20.0-rc1.master.20181111.ol7.x86_64 #1
-kernel: Hardware name: innotek GmbH VirtualBox/VirtualBox, BIOS VirtualBox 12/01/2006
-kernel: Workqueue: nfsiod rpc_async_release [sunrpc]
-kernel: RIP: 0010:__set_page_dirty+0xaf/0xd0
-kernel: Code: c3 48 8b 02 f6 c4 04 74 d4 48 89 df e8 ba 05 f7 ff 48 89 c6 eb cb 48 8b 43 08 a8 01 75 1f 48 89 d8 48 8b 00 a8 04 74 02 eb 87 <0f> 0b eb 83 48 83 e8 01 eb 9f 48 83 ea 01 0f 1f 00 eb 8b 48 83 e8
-kernel: RSP: 0000:ffffc1c8825b7d78 EFLAGS: 00013046
-kernel: RAX: 000fffffc0020089 RBX: fffff2b603308b80 RCX: 0000000000000001
-kernel: RDX: 0000000000000001 RSI: ffff9d11478115c8 RDI: ffff9d11478115d0
-kernel: RBP: ffffc1c8825b7da0 R08: 0000646f6973666e R09: 8080808080808080
-kernel: R10: 0000000000000001 R11: 0000000000000000 R12: ffff9d11478115d0
-kernel: R13: ffff9d11478115c8 R14: 0000000000003246 R15: 0000000000000001
-kernel: FS:  0000000000000000(0000) GS:ffff9d115ba00000(0000) knlGS:0000000000000000
-kernel: CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-kernel: CR2: 00007f408686f640 CR3: 0000000104d8e004 CR4: 00000000000606f0
-kernel: DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-kernel: DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7: 0000000000000400
-kernel: Call Trace:
-kernel:  __set_page_dirty_buffers+0xb6/0x110
-kernel:  set_page_dirty+0x52/0xb0
-kernel:  nfs_direct_read_completion+0xc4/0x120 [nfs]
-kernel:  nfs_pgio_release+0x10/0x20 [nfs]
-kernel:  rpc_free_task+0x30/0x70 [sunrpc]
-kernel:  rpc_async_release+0x12/0x20 [sunrpc]
-kernel:  process_one_work+0x174/0x390
-kernel:  worker_thread+0x4f/0x3e0
-kernel:  kthread+0x102/0x140
-kernel:  ? drain_workqueue+0x130/0x130
-kernel:  ? kthread_stop+0x110/0x110
-kernel:  ret_from_fork+0x35/0x40
-kernel: ---[ end trace 01341980905412c9 ]---
-
-Signed-off-by: Dave Kleikamp <dave.kleikamp@oracle.com>
-Signed-off-by: Santosh Shilimkar <santosh.shilimkar@oracle.com>
-
-[forward-ported to v4.20]
-Signed-off-by: Calum Mackay <calum.mackay@oracle.com>
-Reviewed-by: Dave Kleikamp <dave.kleikamp@oracle.com>
-Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
-Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
-Signed-off-by: Sasha Levin <sashal@kernel.org>
----
- fs/nfs/direct.c | 9 ++++++++-
- 1 file changed, 8 insertions(+), 1 deletion(-)
-
-diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-index aa12c3063bae..33824a0a57bf 100644
---- a/fs/nfs/direct.c
-+++ b/fs/nfs/direct.c
-@@ -98,8 +98,11 @@ struct nfs_direct_req {
- 	struct pnfs_ds_commit_info ds_cinfo;	/* Storage for cinfo */
- 	struct work_struct	work;
- 	int			flags;
-+	/* for write */
- #define NFS_ODIRECT_DO_COMMIT		(1)	/* an unstable reply was received */
- #define NFS_ODIRECT_RESCHED_WRITES	(2)	/* write verification failed */
-+	/* for read */
-+#define NFS_ODIRECT_SHOULD_DIRTY	(3)	/* dirty user-space page after read */
- 	struct nfs_writeverf	verf;		/* unstable write verifier */
- };
- 
-@@ -412,7 +415,8 @@ static void nfs_direct_read_completion(struct nfs_pgio_header *hdr)
- 		struct nfs_page *req = nfs_list_entry(hdr->pages.next);
- 		struct page *page = req->wb_page;
- 
--		if (!PageCompound(page) && bytes < hdr->good_bytes)
-+		if (!PageCompound(page) && bytes < hdr->good_bytes &&
-+		    (dreq->flags == NFS_ODIRECT_SHOULD_DIRTY))
- 			set_page_dirty(page);
- 		bytes += req->wb_bytes;
- 		nfs_list_remove_request(req);
-@@ -587,6 +591,9 @@ ssize_t nfs_file_direct_read(struct kiocb *iocb, struct iov_iter *iter)
- 	if (!is_sync_kiocb(iocb))
- 		dreq->iocb = iocb;
- 
-+	if (iter_is_iovec(iter))
-+		dreq->flags = NFS_ODIRECT_SHOULD_DIRTY;
-+
- 	nfs_start_io_direct(inode);
- 
- 	NFS_I(inode)->read_io += count;
+Cheers,
 -- 
-2.19.1
+Luis
 
+From f66a07e22dc93827bdafc1666d4980edc986bce4 Mon Sep 17 00:00:00 2001
+From: Luis Henriques <lhenriques@suse.com>
+Date: Thu, 13 Dec 2018 10:19:54 +0000
+Subject: [PATCH] vfs: fallback to generic_copy_file_range if copying within
+ the same file
+
+If source and destination inode are the same simply fallback to the VFS
+generic_copy_file_range, as we've already checked overlapping areas in
+generic_copy_file_checks.
+
+Signed-off-by: Luis Henriques <lhenriques@suse.com>
+---
+ fs/ceph/file.c    | 2 +-
+ fs/cifs/cifsfs.c  | 2 +-
+ fs/nfs/nfs4file.c | 3 ---
+ 3 files changed, 2 insertions(+), 5 deletions(-)
+
+diff --git a/fs/ceph/file.c b/fs/ceph/file.c
+index eb876e19c1dc..ff48dc52c30e 100644
+--- a/fs/ceph/file.c
++++ b/fs/ceph/file.c
+@@ -1904,7 +1904,7 @@ static ssize_t __ceph_copy_file_range(struct file *src_file, loff_t src_off,
+ 	bool do_final_copy = false;
+ 
+ 	if (src_inode == dst_inode)
+-		return -EINVAL;
++		return -EOPNOTSUPP;
+ 	if (src_inode->i_sb != dst_inode->i_sb)
+ 		return -EXDEV;
+ 	if (ceph_snap(dst_inode) != CEPH_NOSNAP)
+diff --git a/fs/cifs/cifsfs.c b/fs/cifs/cifsfs.c
+index 03e4b9eacbd1..3c66454c59b6 100644
+--- a/fs/cifs/cifsfs.c
++++ b/fs/cifs/cifsfs.c
+@@ -1068,7 +1068,7 @@ ssize_t cifs_file_copychunk_range(unsigned int xid,
+ 	cifs_dbg(FYI, "copychunk range\n");
+ 
+ 	if (src_inode == target_inode) {
+-		rc = -EINVAL;
++		rc = -EOPNOTSUPP;
+ 		goto out;
+ 	}
+ 
+diff --git a/fs/nfs/nfs4file.c b/fs/nfs/nfs4file.c
+index 4783c0c1c49e..dc7f344849e9 100644
+--- a/fs/nfs/nfs4file.c
++++ b/fs/nfs/nfs4file.c
+@@ -135,9 +135,6 @@ static ssize_t nfs4_copy_file_range(struct file *file_in, loff_t pos_in,
+ {
+ 	ssize_t ret = -EXDEV;
+ 
+-	if (file_inode(file_in) == file_inode(file_out))
+-		return -EINVAL;
+-
+ 	/* only offload copy if superblock is the same */
+ 	if (file_inode(file_in)->i_sb == file_inode(file_out)->i_sb) {
+ 		do {
