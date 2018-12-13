@@ -7,48 +7,49 @@ X-Spam-Status: No, score=-9.3 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 31A32C67839
-	for <linux-nfs@archiver.kernel.org>; Thu, 13 Dec 2018 04:37:36 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9F771C65BAE
+	for <linux-nfs@archiver.kernel.org>; Thu, 13 Dec 2018 04:37:37 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id EAC1A20849
-	for <linux-nfs@archiver.kernel.org>; Thu, 13 Dec 2018 04:37:35 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 63BB320849
+	for <linux-nfs@archiver.kernel.org>; Thu, 13 Dec 2018 04:37:37 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1544675856;
-	bh=V78kKx1h1H8f0vQoGBMMG13Myw2x+2qLWhUE3Wj6oiw=;
+	s=default; t=1544675857;
+	bh=FTXN4IfJ7V/wDNvV3OPzDtFHb0i06sTJUOmwnlwnszc=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=zPqasMwUi22IMTmmS0418HnOwKKgUYZN19vXkKahL89ABkYZtCxVCaLYyCJasGzAE
-	 uSdmOd9c/0jvrV0btVVT8Ghl3oW9gUIvoLNDBzmYV0Eu40DcozbRFSr1jhLSdT46+u
-	 pVVoZkdryUUiFJxdRyoWxi6g6CP8gC2oUQF+JR+A=
-DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org EAC1A20849
+	b=rgIM7H24TB9OShx1y5EIPC65VDaFgApPVKK+ce9IBHB+40XFcxw7Yd/CdsCVAh8/6
+	 cZaftqTkyljaykhrWjI55TWSoidCk68WPoOtTFodFEI4LMVLlh1Sd5egTj8HCCBpA8
+	 jpqMNOPvfhoaqRlXW4ReiDLfk0Cqj/Q8YAUyLPj4=
+DMARC-Filter: OpenDMARC Filter v1.3.2 mail.kernel.org 63BB320849
 Authentication-Results: mail.kernel.org; dmarc=fail (p=none dis=none) header.from=kernel.org
 Authentication-Results: mail.kernel.org; spf=none smtp.mailfrom=linux-nfs-owner@vger.kernel.org
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728162AbeLMEh1 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 12 Dec 2018 23:37:27 -0500
-Received: from mail.kernel.org ([198.145.29.99]:46120 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1729289AbeLMEdO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        id S1729288AbeLMEdO (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Wed, 12 Dec 2018 23:33:14 -0500
+Received: from mail.kernel.org ([198.145.29.99]:46092 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1729283AbeLMEdN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 12 Dec 2018 23:33:13 -0500
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 8B9C320879;
-        Thu, 13 Dec 2018 04:33:13 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 5757220873;
+        Thu, 13 Dec 2018 04:33:12 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1544675594;
-        bh=V78kKx1h1H8f0vQoGBMMG13Myw2x+2qLWhUE3Wj6oiw=;
+        s=default; t=1544675593;
+        bh=FTXN4IfJ7V/wDNvV3OPzDtFHb0i06sTJUOmwnlwnszc=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=aArHLZPzb82IK0g/DCHo5LfwIoo+jWJYO4NxPQLl2i+L8Bcb0py7gdtTZowOTTOI2
-         XxwsZxXlcGbxPvNBJXEcAYPJPyihvGHT5ntxtKwMdVPRpfS4OjZh4uZwgmplKn09hh
-         nv/VF6AnRMeVrGvvumGhIiL4wPwskbZCDOntsQKg=
+        b=bGPCzWqe1CRfkjzUHf+cWUC3lTHZcexEBrmJBX3OeNxV5wFH5jfsOCWGusnVNRHnK
+         MDxT9kQJ/cz2ujntneEOndAnsgWTPbYItFA+ZJksuHq8ahd/vXGxmu48gmCYwp+DaA
+         hn+8DITnhvNZ6CEjBlz7VZbQaNV46a0Zknn1QSOg=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     Trond Myklebust <trond.myklebust@hammerspace.com>,
+Cc:     Chuck Lever <chuck.lever@oracle.com>, stable@kernel.org,
+        Trond Myklebust <trond.myklebust@hammerspace.com>,
         Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org,
         netdev@vger.kernel.org
-Subject: [PATCH AUTOSEL 4.4 09/23] SUNRPC: Fix a potential race in xprt_connect()
-Date:   Wed, 12 Dec 2018 23:32:45 -0500
-Message-Id: <20181213043259.76643-9-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 4.4 08/23] SUNRPC: Fix leak of krb5p encode pages
+Date:   Wed, 12 Dec 2018 23:32:44 -0500
+Message-Id: <20181213043259.76643-8-sashal@kernel.org>
 X-Mailer: git-send-email 2.19.1
 In-Reply-To: <20181213043259.76643-1-sashal@kernel.org>
 References: <20181213043259.76643-1-sashal@kernel.org>
@@ -60,46 +61,44 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Trond Myklebust <trond.myklebust@hammerspace.com>
+From: Chuck Lever <chuck.lever@oracle.com>
 
-[ Upstream commit 0a9a4304f3614e25d9de9b63502ca633c01c0d70 ]
+[ Upstream commit 8dae5398ab1ac107b1517e8195ed043d5f422bd0 ]
 
-If an asynchronous connection attempt completes while another task is
-in xprt_connect(), then the call to rpc_sleep_on() could end up
-racing with the call to xprt_wake_pending_tasks().
-So add a second test of the connection state after we've put the
-task to sleep and set the XPRT_CONNECTING flag, when we know that there
-can be no asynchronous connection attempts still in progress.
+call_encode can be invoked more than once per RPC call. Ensure that
+each call to gss_wrap_req_priv does not overwrite pointers to
+previously allocated memory.
 
-Fixes: 0b9e79431377d ("SUNRPC: Move the test for XPRT_CONNECTING into...")
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Cc: stable@kernel.org
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- net/sunrpc/xprt.c | 11 +++++++++--
- 1 file changed, 9 insertions(+), 2 deletions(-)
+ net/sunrpc/auth_gss/auth_gss.c | 4 ++++
+ 1 file changed, 4 insertions(+)
 
-diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-index 2e98f4a243e5..112c191b8336 100644
---- a/net/sunrpc/xprt.c
-+++ b/net/sunrpc/xprt.c
-@@ -758,8 +758,15 @@ void xprt_connect(struct rpc_task *task)
- 			return;
- 		if (xprt_test_and_set_connecting(xprt))
- 			return;
--		xprt->stat.connect_start = jiffies;
--		xprt->ops->connect(xprt, task);
-+		/* Race breaker */
-+		if (!xprt_connected(xprt)) {
-+			xprt->stat.connect_start = jiffies;
-+			xprt->ops->connect(xprt, task);
-+		} else {
-+			xprt_clear_connecting(xprt);
-+			task->tk_status = 0;
-+			rpc_wake_up_queued_task(&xprt->pending, task);
-+		}
- 	}
- 	xprt_release_write(xprt, task);
+diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+index 1f0687d8e3d7..62fca77bf3c7 100644
+--- a/net/sunrpc/auth_gss/auth_gss.c
++++ b/net/sunrpc/auth_gss/auth_gss.c
+@@ -1722,6 +1722,7 @@ priv_release_snd_buf(struct rpc_rqst *rqstp)
+ 	for (i=0; i < rqstp->rq_enc_pages_num; i++)
+ 		__free_page(rqstp->rq_enc_pages[i]);
+ 	kfree(rqstp->rq_enc_pages);
++	rqstp->rq_release_snd_buf = NULL;
  }
+ 
+ static int
+@@ -1730,6 +1731,9 @@ alloc_enc_pages(struct rpc_rqst *rqstp)
+ 	struct xdr_buf *snd_buf = &rqstp->rq_snd_buf;
+ 	int first, last, i;
+ 
++	if (rqstp->rq_release_snd_buf)
++		rqstp->rq_release_snd_buf(rqstp);
++
+ 	if (snd_buf->page_len == 0) {
+ 		rqstp->rq_enc_pages_num = 0;
+ 		return 0;
 -- 
 2.19.1
 
