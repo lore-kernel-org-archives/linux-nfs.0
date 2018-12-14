@@ -3,130 +3,113 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
 X-Spam-Status: No, score=-8.4 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,USER_AGENT_MUTT
-	autolearn=ham autolearn_force=no version=3.4.0
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED,
+	USER_AGENT_MUTT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1EBC8C43387
-	for <linux-nfs@archiver.kernel.org>; Fri, 14 Dec 2018 17:50:55 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 000E8C43387
+	for <linux-nfs@archiver.kernel.org>; Fri, 14 Dec 2018 18:29:37 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 343D9206BA
-	for <linux-nfs@archiver.kernel.org>; Fri, 14 Dec 2018 17:50:56 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 4E65C206C2
+	for <linux-nfs@archiver.kernel.org>; Fri, 14 Dec 2018 18:29:39 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729341AbeLNRuy (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 14 Dec 2018 12:50:54 -0500
-Received: from fieldses.org ([173.255.197.46]:38776 "EHLO fieldses.org"
+        id S1729962AbeLNS3h (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 14 Dec 2018 13:29:37 -0500
+Received: from mx1.redhat.com ([209.132.183.28]:39872 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727168AbeLNRuy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 14 Dec 2018 12:50:54 -0500
-Received: by fieldses.org (Postfix, from userid 2815)
-        id 56CD81C26; Fri, 14 Dec 2018 12:50:53 -0500 (EST)
-Date:   Fri, 14 Dec 2018 12:50:53 -0500
-From:   "J. Bruce Fields" <bfields@fieldses.org>
-To:     Benjamin Coddington <bcodding@redhat.com>
-Cc:     trond.myklebust@hammerspace.com, anna.schumaker@netapp.com,
-        jlayton@kernel.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] lockd: Show pid of lockd for remote locks
-Message-ID: <20181214175053.GD8696@fieldses.org>
-References: <62c22ff69bf762085a35d5706bd5e9e421bfbb33.1541093385.git.bcodding@redhat.com>
- <20181102184516.GA21442@fieldses.org>
+        id S1729707AbeLNS3g (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 14 Dec 2018 13:29:36 -0500
+Received: from smtp.corp.redhat.com (int-mx03.intmail.prod.int.phx2.redhat.com [10.5.11.13])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id A9E5EC079C2C;
+        Fri, 14 Dec 2018 18:29:36 +0000 (UTC)
+Received: from coeurl.usersys.redhat.com (ovpn-125-147.rdu2.redhat.com [10.10.125.147])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 59100608E0;
+        Fri, 14 Dec 2018 18:29:36 +0000 (UTC)
+Received: by coeurl.usersys.redhat.com (Postfix, from userid 1000)
+        id E3E6F20688; Fri, 14 Dec 2018 13:29:35 -0500 (EST)
+Date:   Fri, 14 Dec 2018 13:29:35 -0500
+From:   Scott Mayhew <smayhew@redhat.com>
+To:     Trond Myklebust <trondmy@hammerspace.com>
+Cc:     "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+        "dwysocha@redhat.com" <dwysocha@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/1] SUNRPC: Ensure XPRT_CONNECTED is cleared while
+ handling TCP RST
+Message-ID: <20181214182935.GI27213@coeurl.usersys.redhat.com>
+References: <20181212135157.4489-1-dwysocha@redhat.com>
+ <20181212135157.4489-2-dwysocha@redhat.com>
+ <03049f893dfd265abb90fd2692bc41e1534f85d0.camel@hammerspace.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20181102184516.GA21442@fieldses.org>
-User-Agent: Mutt/1.5.21 (2010-09-15)
+In-Reply-To: <03049f893dfd265abb90fd2692bc41e1534f85d0.camel@hammerspace.com>
+User-Agent: Mutt/1.10.1 (2018-07-13)
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.13
+X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.32]); Fri, 14 Dec 2018 18:29:36 +0000 (UTC)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Fri, Nov 02, 2018 at 02:45:16PM -0400, J. Bruce Fields wrote:
-> On Thu, Nov 01, 2018 at 01:39:49PM -0400, Benjamin Coddington wrote:
-> > Commit 9d5b86ac13c5 ("fs/locks: Remove fl_nspid and use fs-specific l_pid
-> > for remote locks") specified that the l_pid returned for F_GETLK on a local
-> > file that has a remote lock should be the pid of the lock manager process.
-> > That commit, while updating other filesystems, failed to update lockd, such
-> > that locks created by lockd had their fl_pid set to that of the remote
-> > process holding the lock.  Fix that here to be the pid of lockd.
-> > 
-> > Also, fix the client case so that the returned lock pid is negative, which
-> > indicates a remote lock on a remote file.
-> 
-> ACK.
-> 
-> Uh, I guess I'll take this if nobody else speaks up.
+On Wed, 12 Dec 2018, Trond Myklebust wrote:
 
-Applied for 4.21.--b.
-
-> 
-> --b.
-> 
+> On Wed, 2018-12-12 at 08:51 -0500, Dave Wysochanski wrote:
+> > Commit 9b30889c548a changed the handling of TCP_CLOSE inside
+> > xs_tcp_state_change.  Prior to this change, the XPRT_CONNECTED bit
+> > was cleared unconditionally inside xprt_disconnect_done, similar
+> > to the handling of TCP_CLOSE_WAIT.  After the change the clearing
+> > of XPRT_CONNECTED depends on successfully queueing a work based
+> > xprt_autoclose which depends on XPRT_LOCKED and may not happen.
+> > This is significant in the case of an unexpected RST from the
+> > server, as the client will only see xs_tcp_state_change called with
+> > sk_state == TCP_CLOSE.  Restore the unconditional clear_bit on
+> > XPRT_CONNECTED while handling TCP_CLOSE and make it consistent
+> > with handling TCP_CLOSE_WAIT.
 > > 
-> > Fixes: 9d5b86ac13c5 ("fs/locks: Remove fl_nspid and use fs-specific...")
-> > Cc: stable@vger.kernel.org
-> > 
-> > Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
+> > Signed-off-by: Dave Wysochanski <dwysocha@redhat.com>
 > > ---
-> >  fs/lockd/clntproc.c | 2 +-
-> >  fs/lockd/xdr.c      | 4 ++--
-> >  fs/lockd/xdr4.c     | 4 ++--
-> >  3 files changed, 5 insertions(+), 5 deletions(-)
+> >  net/sunrpc/xprtsock.c | 1 +
+> >  1 file changed, 1 insertion(+)
 > > 
-> > diff --git a/fs/lockd/clntproc.c b/fs/lockd/clntproc.c
-> > index d20b92f271c2..0a67dd4250e9 100644
-> > --- a/fs/lockd/clntproc.c
-> > +++ b/fs/lockd/clntproc.c
-> > @@ -442,7 +442,7 @@ nlmclnt_test(struct nlm_rqst *req, struct file_lock *fl)
-> >  			fl->fl_start = req->a_res.lock.fl.fl_start;
-> >  			fl->fl_end = req->a_res.lock.fl.fl_end;
-> >  			fl->fl_type = req->a_res.lock.fl.fl_type;
-> > -			fl->fl_pid = 0;
-> > +			fl->fl_pid = -req->a_res.lock.fl.fl_pid;
-> >  			break;
-> >  		default:
-> >  			status = nlm_stat_to_errno(req->a_res.status);
-> > diff --git a/fs/lockd/xdr.c b/fs/lockd/xdr.c
-> > index 7147e4aebecc..9846f7e95282 100644
-> > --- a/fs/lockd/xdr.c
-> > +++ b/fs/lockd/xdr.c
-> > @@ -127,7 +127,7 @@ nlm_decode_lock(__be32 *p, struct nlm_lock *lock)
-> >  
-> >  	locks_init_lock(fl);
-> >  	fl->fl_owner = current->files;
-> > -	fl->fl_pid   = (pid_t)lock->svid;
-> > +	fl->fl_pid   = current->tgid;
-> >  	fl->fl_flags = FL_POSIX;
-> >  	fl->fl_type  = F_RDLCK;		/* as good as anything else */
-> >  	start = ntohl(*p++);
-> > @@ -269,7 +269,7 @@ nlmsvc_decode_shareargs(struct svc_rqst *rqstp, __be32 *p)
-> >  	memset(lock, 0, sizeof(*lock));
-> >  	locks_init_lock(&lock->fl);
-> >  	lock->svid = ~(u32) 0;
-> > -	lock->fl.fl_pid = (pid_t)lock->svid;
-> > +	lock->fl.fl_pid = current->tgid;
-> >  
-> >  	if (!(p = nlm_decode_cookie(p, &argp->cookie))
-> >  	 || !(p = xdr_decode_string_inplace(p, &lock->caller,
-> > diff --git a/fs/lockd/xdr4.c b/fs/lockd/xdr4.c
-> > index 7ed9edf9aed4..70154f376695 100644
-> > --- a/fs/lockd/xdr4.c
-> > +++ b/fs/lockd/xdr4.c
-> > @@ -119,7 +119,7 @@ nlm4_decode_lock(__be32 *p, struct nlm_lock *lock)
-> >  
-> >  	locks_init_lock(fl);
-> >  	fl->fl_owner = current->files;
-> > -	fl->fl_pid   = (pid_t)lock->svid;
-> > +	fl->fl_pid   = current->tgid;
-> >  	fl->fl_flags = FL_POSIX;
-> >  	fl->fl_type  = F_RDLCK;		/* as good as anything else */
-> >  	p = xdr_decode_hyper(p, &start);
-> > @@ -266,7 +266,7 @@ nlm4svc_decode_shareargs(struct svc_rqst *rqstp, __be32 *p)
-> >  	memset(lock, 0, sizeof(*lock));
-> >  	locks_init_lock(&lock->fl);
-> >  	lock->svid = ~(u32) 0;
-> > -	lock->fl.fl_pid = (pid_t)lock->svid;
-> > +	lock->fl.fl_pid = current->tgid;
-> >  
-> >  	if (!(p = nlm4_decode_cookie(p, &argp->cookie))
-> >  	 || !(p = xdr_decode_string_inplace(p, &lock->caller,
-> > -- 
-> > 2.14.3
+> > diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+> > index 8a5e823e0b33..b9789036051d 100644
+> > --- a/net/sunrpc/xprtsock.c
+> > +++ b/net/sunrpc/xprtsock.c
+> > @@ -1492,6 +1492,7 @@ static void xs_tcp_state_change(struct sock
+> > *sk)
+> >  		if (sk->sk_err)
+> >  			xprt_wake_pending_tasks(xprt, -sk->sk_err);
+> >  		/* Trigger the socket release */
+> > +		clear_bit(XPRT_CONNECTED, &xprt->state);
+> >  		xs_tcp_force_close(xprt);
+> >  	}
+> >   out:
+> 
+> Hi Dave,
+> 
+> This isn't needed for 4.20 or newer because call_transmit() will now
+> always call xprt_end_transmit().
+
+Dave's script can also produce a hang on 4.20, but for a different
+reason... if xs_reset_transport() is called on an xprt that has
+XPRT_WRITE_SPACE set, then no further RPC tasks will be able to lock the
+transport or connect it.  Clearing XPRT_WRITE_SPACE in
+xs_sock_reset_connection_flags() seems to fix that. I don't know if
+XPRT_WRITE_SPACE counts as a "connection flag" though.
+
+-Scott
+
+> I suggest that a stable fix do
+> something similar (perhaps conditional on the error returned by
+> xprt_transmit()?).
+> 
+> Cheers
+>   Trond
+> 
+> -- 
+> Trond Myklebust
+> Linux NFS client maintainer, Hammerspace
+> trond.myklebust@hammerspace.com
+> 
+> 
