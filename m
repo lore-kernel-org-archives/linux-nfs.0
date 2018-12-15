@@ -1,105 +1,150 @@
-Return-Path: <SRS0=hAdq=OX=vger.kernel.org=linux-nfs-owner@kernel.org>
+Return-Path: <SRS0=VKO3=OY=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.0 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
-	SIGNED_OFF_BY,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-2.7 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS,USER_AGENT_NEOMUTT
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 578A4C43387
-	for <linux-nfs@archiver.kernel.org>; Fri, 14 Dec 2018 21:33:21 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4010BC43387
+	for <linux-nfs@archiver.kernel.org>; Sat, 15 Dec 2018 03:00:36 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 84254206DD
-	for <linux-nfs@archiver.kernel.org>; Fri, 14 Dec 2018 21:33:21 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 0B9AB2086D
+	for <linux-nfs@archiver.kernel.org>; Sat, 15 Dec 2018 03:00:35 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="Tbmu4jcC"
+	dkim=fail reason="signature verification failed" (1024-bit key) header.d=csiro.au header.i=@csiro.au header.b="IWBDY2px"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1730854AbeLNVdU (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 14 Dec 2018 16:33:20 -0500
-Received: from mail-eopbgr710097.outbound.protection.outlook.com ([40.107.71.97]:53737
-        "EHLO NAM05-BY2-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1730846AbeLNVdU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 14 Dec 2018 16:33:20 -0500
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=hammerspace.com;
- s=selector1;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=7XYB9/k0bwkfBdVJMXrN2EzuARWBUMhxaGVBHXQm2T4=;
- b=Tbmu4jcCZAr5ugcW8ha7AdJa+Aj0lDdgSoqKtuG52p94eQ0e4LXB+Qz79k6cOvQi31fQcSiYKyfoVnGqs2zZaPx40OiNNQL++YyRp1iGX4iqRwoUbVppHkoGLuPx7ajAymbzEg/38FIYeD3LcRLVGCHq0m7TeMCtkRA92/7EvlA=
-Received: from SN6PR13MB2494.namprd13.prod.outlook.com (52.135.95.148) by
- SN6PR13MB2528.namprd13.prod.outlook.com (52.135.95.158) with Microsoft SMTP
- Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- 15.20.1425.10; Fri, 14 Dec 2018 21:33:15 +0000
-Received: from SN6PR13MB2494.namprd13.prod.outlook.com
- ([fe80::25d2:c29b:5dfa:e85f]) by SN6PR13MB2494.namprd13.prod.outlook.com
- ([fe80::25d2:c29b:5dfa:e85f%4]) with mapi id 15.20.1425.021; Fri, 14 Dec 2018
- 21:33:15 +0000
-From:   Trond Myklebust <trondmy@hammerspace.com>
-To:     "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        "smayhew@redhat.com" <smayhew@redhat.com>
-CC:     "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] sunrpc: Be sure to clear XPRT_WRITE_SPACE when resetting
- the transport
-Thread-Topic: [PATCH] sunrpc: Be sure to clear XPRT_WRITE_SPACE when resetting
- the transport
-Thread-Index: AQHUk9sFH3HgprfhW0a1FuM6yMRWpqV+wYWA
-Date:   Fri, 14 Dec 2018 21:33:15 +0000
-Message-ID: <a7b8fb5de0a1b6623c0450577e225421ad731790.camel@hammerspace.com>
-References: <20181214182956.14643-1-smayhew@redhat.com>
-In-Reply-To: <20181214182956.14643-1-smayhew@redhat.com>
-Accept-Language: en-US, en-GB
-Content-Language: en-US
-X-MS-Has-Attach: 
-X-MS-TNEF-Correlator: 
-authentication-results: spf=none (sender IP is )
- smtp.mailfrom=trondmy@hammerspace.com; 
-x-originating-ip: [68.40.189.247]
-x-ms-publictraffictype: Email
-x-microsoft-exchange-diagnostics: 1;SN6PR13MB2528;6:qf6UIrgyW/YPqfEQulveXYu2cI6j869xLmQ4fYbnqzyzlnH2OsabgUHjc9P9O9vKPDYDxF8WMRvrT7LelMGHapotNrXmUeI384VhPsY16vI29s1JOTJaap7nd7F80xF6jnrPPgpXsIVI+pkYnNgQlZsNzxPYEyHHe4VyfWDHJT8q3qtgnKouM+1uZGpN7I5zkUPWRd8P9cAAFZCUV3SKNSPh0sr2clEz3k3xpT68awGXmd2SILyseqHK3f3a/H3AQFSvMO3JT8Y4pTDNTh11JEz0pfDlwUi9oR+acDDsO+3PiwbHLd52li+LIfAiYyOed/WtyCoW5Uw0uRjvPRGXNtv2en+RGV28+C7hTmOkSx+rTr0LuHdn7+73qHIgzuaT9hCZXTio0Vrg67zuIrh6pwJzajatatfkbvEEmxg1PtK6q668R539oIBIiuKc9bFI1x1bWfNymzd6hcuaIuEaSw==;5:oKNryRAnnsd8OouwfF+UEFrkijok9W9daHFq7YvGyul4JQsbJfe+JwyHpqH/uddi3scAkuOKpONwVbeO6tXM42JLsQmj3ploOIs3Ap4YTm/VhArnz+D055vcnkZH1f37uRNL80pKbxRSd6Q3rqlkdw1uXcb0oXgPpDUsbjqVgLM=;7:Cycj4Sw4tljLDOID5mt+mxo/13F2eQfJzzve/ibQEKS+fJMHweLIFq3qCf0OZhX/gJyrC6FIp6B9RKBnACN8GbcGpKCtWrnQ1Q+v+N3jZSXtaj3W1M8XaatLXP5rJpgJGr4viSwMfO8fcnw3q1R8hA==
-x-ms-exchange-antispam-srfa-diagnostics: SOS;
-x-ms-office365-filtering-correlation-id: cb0c6484-14c8-4de6-78bf-08d6620bc1ed
-x-microsoft-antispam: BCL:0;PCL:0;RULEID:(2390118)(7020095)(4652040)(8989299)(4534185)(4627221)(201703031133081)(201702281549075)(8990200)(5600074)(711020)(2017052603328)(7153060)(7193020);SRVR:SN6PR13MB2528;
-x-ms-traffictypediagnostic: SN6PR13MB2528:
-x-microsoft-antispam-prvs: <SN6PR13MB2528693EDFB358EC3228C975B8A10@SN6PR13MB2528.namprd13.prod.outlook.com>
-x-ms-exchange-senderadcheck: 1
-x-exchange-antispam-report-cfa-test: BCL:0;PCL:0;RULEID:(3230021)(999002)(6040522)(2401047)(5005006)(8121501046)(93006095)(93001095)(3002001)(3231475)(944501520)(52105112)(10201501046)(148016)(149066)(150057)(6041310)(20161123560045)(20161123562045)(20161123564045)(20161123558120)(201703131423095)(201702281528075)(20161123555045)(201703061421075)(201703061406153)(201708071742011)(7699051)(76991095);SRVR:SN6PR13MB2528;BCL:0;PCL:0;RULEID:;SRVR:SN6PR13MB2528;
-x-forefront-prvs: 08864C38AC
-x-forefront-antispam-report: SFV:NSPM;SFS:(10019020)(366004)(346002)(39830400003)(396003)(136003)(376002)(199004)(189003)(6486002)(6506007)(106356001)(110136005)(316002)(102836004)(66066001)(99286004)(6116002)(2906002)(3846002)(6246003)(76176011)(81166006)(5660300001)(4001150100001)(71190400001)(71200400001)(97736004)(36756003)(2501003)(25786009)(8936002)(2616005)(256004)(14444005)(6512007)(53936002)(486006)(81156014)(8676002)(476003)(11346002)(446003)(4326008)(118296001)(229853002)(7736002)(186003)(305945005)(575784001)(86362001)(478600001)(68736007)(14454004)(6436002)(105586002)(26005);DIR:OUT;SFP:1102;SCL:1;SRVR:SN6PR13MB2528;H:SN6PR13MB2494.namprd13.prod.outlook.com;FPR:;SPF:None;LANG:en;PTR:InfoNoRecords;A:1;MX:1;
-received-spf: None (protection.outlook.com: hammerspace.com does not designate
- permitted sender hosts)
-x-microsoft-antispam-message-info: nshx8t2DOuT0W/hmmd4gbUgHwJUOH6v571+5fEt9DAdMEXxqPjFsoxZg0QGGGOvtO6W8bRI3LJOS1YF2b8Fr5WnOLnhuZlxYH4HjZ6Dd7Bh/nZSiMe7oN7BbVQf4MlVP9cJsAnL36Zu837E6BgP8UPqStnEPmpy3OOH6wI7WjZYMkRjrxG2rIrFPgWvshPx4QgQalymCAoBXkO/dNSdsX++YC2wppkmtR1YfbcW+YGSXzTj7m4C4Y4Gjq8VJCmrlLQ/KMW0hphEocEGl+/hKpNj6cbKFePCmAYVhOXNxQoDBC/s1zQRJ5CYSlchdyipd
-spamdiagnosticoutput: 1:99
-spamdiagnosticmetadata: NSPM
-Content-Type: text/plain; charset="utf-8"
-Content-ID: <3B245F59213AA648BB0B303AE27A6F2F@namprd13.prod.outlook.com>
-Content-Transfer-Encoding: base64
+        id S1727778AbeLODAe (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 14 Dec 2018 22:00:34 -0500
+Received: from act-MTAout2.csiro.au ([150.229.7.38]:64610 "EHLO
+        act-MTAout2.csiro.au" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727634AbeLODAe (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Dec 2018 22:00:34 -0500
+X-Greylist: delayed 594 seconds by postgrey-1.27 at vger.kernel.org; Fri, 14 Dec 2018 22:00:32 EST
+DKIM-Signature: v=1; a=rsa-sha256; c=simple/simple;
+  d=csiro.au; i=@csiro.au; q=dns/txt; s=dkim;
+  t=1544842832; x=1576378832;
+  h=date:from:to:subject:message-id:mime-version;
+  bh=U5DsCITlkc0/ixI8sADhJHiKC0/2vXegHAVc5toZ46k=;
+  b=IWBDY2pxyu6AeKpMHmyr6iFkuf4Jy42zf8Td/bj59DE77lBOGbqYqH/2
+   1AlZ6XtsO10rP2w9FaJ9rVSoiZcz1+t4UC9EWqkrdPCs/W6r/TCda2Q7w
+   fnuds7NFv8hwWC4WglBs7FnimRi3rR6PiX3PVGZepm+ePmDQoWNgpaDLC
+   4=;
+X-SBRS: 4.0
+X-IronPort-Anti-Spam-Filtered: true
+X-IronPort-Anti-Spam-Result: =?us-ascii?q?A+EoAADOaxRcjACwBSSwhIATAJKcgDR?=
+ =?us-ascii?q?kHAEBAQQBAQcEAQGBUgYBAQsBgTCCbJgDmWWBeg0sgxiEMCI1CA0BAwEBAgE?=
+ =?us-ascii?q?BAgICEAEBASZYhWsTexUfToM0ggEBpj0zii0JAYw0gVc/gRGIYIUQAqEYBwK?=
+ =?us-ascii?q?CKI8nCxiRUoMIllmBSAE0KoEubINBgjSOOiyBOSGLfgGBHgEB?=
+X-IPAS-Result: =?us-ascii?q?A+EoAADOaxRcjACwBSSwhIATAJKcgDRkHAEBAQQBAQcEA?=
+ =?us-ascii?q?QGBUgYBAQsBgTCCbJgDmWWBeg0sgxiEMCI1CA0BAwEBAgEBAgICEAEBASZYh?=
+ =?us-ascii?q?WsTexUfToM0ggEBpj0zii0JAYw0gVc/gRGIYIUQAqEYBwKCKI8nCxiRUoMIl?=
+ =?us-ascii?q?lmBSAE0KoEubINBgjSOOiyBOSGLfgGBHgEB?=
+Received: from exch4-cdc.nexus.csiro.au ([IPv6:2405:b000:601:13::247:34])
+  by act-ironport-int.csiro.au with ESMTP/TLS/AES256-SHA; 15 Dec 2018 13:50:36 +1100
+Received: from mayhem.atnf.CSIRO.AU (130.155.194.144) by
+ exch4-cdc.nexus.csiro.au (152.83.247.34) with Microsoft SMTP Server (TLS) id
+ 15.0.1395.4; Sat, 15 Dec 2018 13:50:36 +1100
+Date:   Sat, 15 Dec 2018 13:50:35 +1100
+From:   Vincent McIntyre <vincent.mcintyre@csiro.au>
+To:     <linux-nfs@vger.kernel.org>
+Subject: mount option timeo - in deciseconds, or seconds?
+Message-ID: <20181215025034.j5zyfytvxqt35woz@mayhem.atnf.CSIRO.AU>
 MIME-Version: 1.0
-X-OriginatorOrg: hammerspace.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: cb0c6484-14c8-4de6-78bf-08d6620bc1ed
-X-MS-Exchange-CrossTenant-originalarrivaltime: 14 Dec 2018 21:33:15.6311
- (UTC)
-X-MS-Exchange-CrossTenant-fromentityheader: Hosted
-X-MS-Exchange-CrossTenant-id: 0d4fed5c-3a70-46fe-9430-ece41741f59e
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: SN6PR13MB2528
+Content-Type: text/plain; charset="us-ascii"
+Content-Disposition: inline
+User-Agent: NeoMutt/20170113 (1.7.2)
+X-Originating-IP: [130.155.194.144]
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-T24gRnJpLCAyMDE4LTEyLTE0IGF0IDEzOjI5IC0wNTAwLCBTY290dCBNYXloZXcgd3JvdGU6DQo+
-IE90aGVyd2lzZSBubyBSUEMgdGFza3Mgd2lsbCBiZSBhYmxlIHRvIGxvY2sgdGhlIHRyYW5zcG9y
-dCBhbmQgd2lsbA0KPiB0aGVyZWZvcmUgYmUgdW5hYmxlIHRvIGNvbm5lY3QgaXQgZWl0aGVyLg0K
-PiANCj4gU2lnbmVkLW9mZi1ieTogU2NvdHQgTWF5aGV3IDxzbWF5aGV3QHJlZGhhdC5jb20+DQo+
-IC0tLQ0KPiAgbmV0L3N1bnJwYy94cHJ0c29jay5jIHwgMSArDQo+ICAxIGZpbGUgY2hhbmdlZCwg
-MSBpbnNlcnRpb24oKykNCj4gDQo+IGRpZmYgLS1naXQgYS9uZXQvc3VucnBjL3hwcnRzb2NrLmMg
-Yi9uZXQvc3VucnBjL3hwcnRzb2NrLmMNCj4gaW5kZXggOGE1ZTgyM2UwYjMzLi5iYmUwNmUzY2M4
-NTMgMTAwNjQ0DQo+IC0tLSBhL25ldC9zdW5ycGMveHBydHNvY2suYw0KPiArKysgYi9uZXQvc3Vu
-cnBjL3hwcnRzb2NrLmMNCj4gQEAgLTExNTcsNiArMTE1Nyw3IEBAIHN0YXRpYyB2b2lkDQo+IHhz
-X3NvY2tfcmVzZXRfY29ubmVjdGlvbl9mbGFncyhzdHJ1Y3QgcnBjX3hwcnQgKnhwcnQpDQo+ICAJ
-c21wX21iX19iZWZvcmVfYXRvbWljKCk7DQo+ICAJY2xlYXJfYml0KFhQUlRfQ0xPU0VfV0FJVCwg
-JnhwcnQtPnN0YXRlKTsNCj4gIAljbGVhcl9iaXQoWFBSVF9DTE9TSU5HLCAmeHBydC0+c3RhdGUp
-Ow0KPiArCWNsZWFyX2JpdChYUFJUX1dSSVRFX1NQQUNFLCAmeHBydC0+c3RhdGUpOw0KPiAgCXhz
-X3NvY2tfcmVzZXRfc3RhdGVfZmxhZ3MoeHBydCk7DQo+ICAJc21wX21iX19hZnRlcl9hdG9taWMo
-KTsNCj4gIH0NCg0KWWVwLCB0aGlzIG1ha2Ugc2Vuc2UuIFRoYW5rcyENCg0KLS0gDQpUcm9uZCBN
-eWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lciwgSGFtbWVyc3BhY2UNCnRyb25k
-Lm15a2xlYnVzdEBoYW1tZXJzcGFjZS5jb20NCg0KDQo=
+Hi,
+
+I've been trying to figure out why the nfs.man manpage states
+
+  .BI timeo= n
+  The time in deciseconds (tenths of a second) the NFS client waits for a
+  response before it retries an NFS request.
+
+Can someone who actually understands NFS enlighten me?
+Here's where I'm up to.
+
+I looked in the upstream git.
+The 'deciseconds' has been in there since the start of git history
+(2007, commit id 16db99b56a532bf56fa27618a6ef30763cd9006f).
+But is it (still) correct?
+
+Unfortunately I can't see a direct use of the 'timeo' field
+of the NFS data structure so the answer is not easily found.
+
+In utils/mount/nfsmount.c mountnfs() we have
+
+ timeout = time(NULL) + 60 * retry;
+
+This sets the upper bound for how long to wait for a mount to succeed.
+The units are seconds, because retry is given in minutes.
+
+Also we see
+
+ prevt = 0;
+ t = 30;
+ val = 1;
+
+these are the control variables for the loop
+The main check that prolongs the waiting time is
+
+            if (t - prevt < 30)
+                sleep(30);
+             ....if not mounted yet...
+            prevt = t;
+
+The decision to time out is made like this
+            t = time(NULL);
+            if (t >= timeout) {
+                rpc_mount_errors(*nfs_server.hostname, 0, bg);
+                goto fail;
+            }
+
+so it seems clear that t should also have the units of seconds.
+That also matches up with the declaration of t & timeout as time_t.
+
+But I still don't see how data.timo gets used.
+utils/mount/network.h defines this
+
+  static const struct timeval TIMEOUT = { 20, 0 };
+and
+  #define MOUNT_TIMEOUT   (30)
+
+which would seem to be in units of seconds,
+since eg. connect_to() uses seconds
+which reaches it via the calling path:
+
+1.
+ CLIENT *mnt_openclnt(clnt_addr_t *mnt_server, int *msock)
+{
+...
+    *msock = get_socket(mnt_saddr, mnt_pmap->pm_prot, MOUNT_TIMEOUT,
+                TRUE, FALSE);
+
+2.
+static int get_socket(struct sockaddr_in *saddr, unsigned int p_prot,
+            unsigned int timeout, int resvp, int conn)
+{
+...
+        cc = connect_to(so, SAFE_SOCKADDR(saddr), namelen,
+                timeout);
+3.
+/*
+ * Attempt to connect a socket, but time out after "timeout" seconds.
+ *
+ * On error return, caller closes the socket.
+ */
+static int connect_to(int fd, struct sockaddr *addr,
+            socklen_t addrlen, int timeout)
+{
+
+
+Thanks
+Vince
