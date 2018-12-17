@@ -2,202 +2,112 @@ Return-Path: <SRS0=GOsY=O2=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.2 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
-	SPF_PASS,UNPARSEABLE_RELAY,URIBL_BLOCKED autolearn=ham autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-0.8 required=3.0 tests=DKIM_ADSP_CUSTOM_MED,
+	DKIM_INVALID,DKIM_SIGNED,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B6DCCC43387
-	for <linux-nfs@archiver.kernel.org>; Mon, 17 Dec 2018 15:11:45 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D42F1C43387
+	for <linux-nfs@archiver.kernel.org>; Mon, 17 Dec 2018 15:35:01 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 7A5C12145D
-	for <linux-nfs@archiver.kernel.org>; Mon, 17 Dec 2018 15:11:45 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id A19F320578
+	for <linux-nfs@archiver.kernel.org>; Mon, 17 Dec 2018 15:35:01 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="W9eM9YWq"
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="ZwBHBCTb"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726891AbeLQPLo (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 17 Dec 2018 10:11:44 -0500
-Received: from userp2120.oracle.com ([156.151.31.85]:43536 "EHLO
-        userp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726637AbeLQPLo (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Dec 2018 10:11:44 -0500
-Received: from pps.filterd (userp2120.oracle.com [127.0.0.1])
-        by userp2120.oracle.com (8.16.0.22/8.16.0.22) with SMTP id wBHF97nx095813;
-        Mon, 17 Dec 2018 15:11:38 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=content-type :
- mime-version : subject : from : in-reply-to : date : cc :
- content-transfer-encoding : message-id : references : to;
- s=corp-2018-07-02; bh=OPjgIw2tG722Ga6uqcHPxUC2ideR7gZbIWB10YqdfiM=;
- b=W9eM9YWqcXCTOcNE7wcZzXIdeiryJwVZx8o7b3zkUP2dIM+ME6h43+SRBsOOOb5C05kg
- emg6LTJ00fS9GlLkkjVbQ6WrTIDe90r76+aBBBP3pPu2VX7k1mopEq955gWYCcKEttkA
- 8CGYzO/b5L2JAHYj8pg2sFrPT4eDtYu5Md0dX2z46igMF9nUB9L1bQuVwE4/HiA3UfRE
- fofpyfnzqnpjEjhJGakFx6vgxGvvKqLSv5IWMmbugtF33KNinjsDQNcR/1py5xTs7Y6A
- KWfSbp+lPN8sFlRFx5QhBnSgnK7GFaWj1gMky2ZQK7jhnNFjCiyPiWUav1EbpuiX9UkC +w== 
-Received: from userv0022.oracle.com (userv0022.oracle.com [156.151.31.74])
-        by userp2120.oracle.com with ESMTP id 2pct8qp2ge-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Mon, 17 Dec 2018 15:11:38 +0000
-Received: from aserv0122.oracle.com (aserv0122.oracle.com [141.146.126.236])
-        by userv0022.oracle.com (8.14.4/8.14.4) with ESMTP id wBHFBbDT015393
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Mon, 17 Dec 2018 15:11:38 GMT
-Received: from abhmp0005.oracle.com (abhmp0005.oracle.com [141.146.116.11])
-        by aserv0122.oracle.com (8.14.4/8.14.4) with ESMTP id wBHFBaGC010585;
-        Mon, 17 Dec 2018 15:11:37 GMT
-Received: from anon-dhcp-171.1015granger.net (/68.61.232.219)
-        by default (Oracle Beehive Gateway v4.0)
-        with ESMTP ; Mon, 17 Dec 2018 07:11:36 -0800
-Content-Type: text/plain;
-        charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 11.5 \(3445.9.1\))
-Subject: Re: mount option timeo - in deciseconds, or seconds?
-From:   Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20181215025034.j5zyfytvxqt35woz@mayhem.atnf.CSIRO.AU>
-Date:   Mon, 17 Dec 2018 10:11:34 -0500
-Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Transfer-Encoding: quoted-printable
-Message-Id: <8EE078EE-CE10-4316-B447-F005B2034D69@oracle.com>
-References: <20181215025034.j5zyfytvxqt35woz@mayhem.atnf.CSIRO.AU>
-To:     Vincent McIntyre <vincent.mcintyre@csiro.au>
-X-Mailer: Apple Mail (2.3445.9.1)
-X-Proofpoint-Virus-Version: vendor=nai engine=5900 definitions=9110 signatures=668679
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 suspectscore=0 malwarescore=0
- phishscore=0 bulkscore=0 spamscore=0 mlxscore=0 mlxlogscore=999
- adultscore=0 classifier=spam adjust=0 reason=mlx scancount=1
- engine=8.0.1-1810050000 definitions=main-1812170135
+        id S2387563AbeLQPeu (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 17 Dec 2018 10:34:50 -0500
+Received: from mail-io1-f67.google.com ([209.85.166.67]:36595 "EHLO
+        mail-io1-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1733263AbeLQPeu (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Dec 2018 10:34:50 -0500
+Received: by mail-io1-f67.google.com with SMTP id m19so10300541ioh.3;
+        Mon, 17 Dec 2018 07:34:49 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=sender:message-id:subject:from:to:cc:date:in-reply-to:references
+         :user-agent:mime-version:content-transfer-encoding;
+        bh=o3yta6o3a1mOpOF4OvizI/sDaUomBC7RjDfTsS505N8=;
+        b=ZwBHBCTbX25hxswuOgsvHRQzVNfuyrGcBDQpo7pjmumKKJr+qrWwNmDLfa4pPRiyO/
+         5+28atb+7uEoX3kaOTJ7enfljBIohrKWDen/mNFMXyXzQOVwq+puq2hMTV/8uOPCPcVd
+         p9Mw6ibXPQoGCa3FsSpl6LotM9worTSiSeZT2BsRRKtHF8ez1pCO2NGyxQ8BQmrvrdcH
+         H9nw9Tdtn5VPKzJSn25aD/4Um3qfrcrBniDiWpTwOxPSF5EMbmzeYZ/bALq8PSkXfxh2
+         WnWccofhD2/U50sc+FtPx+CU5U/fGiQtlIavr1DIOH7ZTXnO2sjOMOBvEp34wQZSI9oV
+         vJ/g==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:sender:message-id:subject:from:to:cc:date
+         :in-reply-to:references:user-agent:mime-version
+         :content-transfer-encoding;
+        bh=o3yta6o3a1mOpOF4OvizI/sDaUomBC7RjDfTsS505N8=;
+        b=iLR0feV8iGXh4rBT/BUBevHjqkG46GcJ0Jr+w+QsycvPKLxsa9khJsCNsHcg2OUcB7
+         kfOFfuxpBOuqo8eoSKG1wV/w5gahjHZ7Id5WX5JuppZ7gLrRCaWOw2JHClctK9LdabnN
+         SFt26Dorqbw4wFAO86iUfWJYBSANYxP+c47mlx/k5KgNzgsuqK8NpBSBOeok9phc/a3m
+         d5YyOkokbPOR5K3f2W5Em0qiBlayVcf59BIKuh15Q7g/zsimT8RJU0hDacblp8p8euHB
+         NW6QEw5Opu6IkpSoJQfcIC/zU/s/PrnxahsF9Plk48LQmZS+zmdAj/ex/zpJyrYPGli+
+         awBQ==
+X-Gm-Message-State: AA+aEWbOX2YpMCRshqjgCL6uoVcRkaStkmQWEFFxKVr6wm4c4l74dPuH
+        iYUB/FzVdEZB0vALumAW/YE=
+X-Google-Smtp-Source: AFSGD/UPo6jbL47O2kjiGhWdqRlGijee+EdCJ4RYdmImta9T4R9RB6SVhmdFKTI6rzAEWbARJdDUMw==
+X-Received: by 2002:a6b:6504:: with SMTP id z4mr12190888iob.55.1545060889311;
+        Mon, 17 Dec 2018 07:34:49 -0800 (PST)
+Received: from gouda.nowheycreamery.com (99-9-112-69.lightspeed.livnmi.sbcglobal.net. [99.9.112.69])
+        by smtp.googlemail.com with ESMTPSA id r85sm5744362iod.13.2018.12.17.07.34.47
+        (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
+        Mon, 17 Dec 2018 07:34:48 -0800 (PST)
+Message-ID: <33a779e0263e28976ce14cd8c1406851134cfec9.camel@gmail.com>
+Subject: Re: linux-next: build failure after merge of the nfs-anna tree
+From:   Anna Schumaker <schumaker.anna@gmail.com>
+To:     Rasmus Villemoes <linux@rasmusvillemoes.dk>,
+        Stephen Rothwell <sfr@canb.auug.org.au>,
+        Trond Myklebust <trondmy@gmail.com>,
+        NFS Mailing List <linux-nfs@vger.kernel.org>
+Cc:     Linux Next Mailing List <linux-next@vger.kernel.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
+Date:   Mon, 17 Dec 2018 10:34:47 -0500
+In-Reply-To: <809c5ec8-0763-6855-bbbc-3cb95e168278@rasmusvillemoes.dk>
+References: <20181217101630.292dd55e@canb.auug.org.au>
+         <809c5ec8-0763-6855-bbbc-3cb95e168278@rasmusvillemoes.dk>
+Content-Type: text/plain; charset="UTF-8"
+User-Agent: Evolution 3.30.3 
+Mime-Version: 1.0
+Content-Transfer-Encoding: 7bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hi Vincent-
+On Mon, 2018-12-17 at 12:18 +0100, Rasmus Villemoes wrote:
+> On 17/12/2018 00.16, Stephen Rothwell wrote:
+> > Hi all,
+> > 
+> > After merging the nfs-anna tree, today's linux-next build (arm
+> > multi_v7_defconfig) failed like this:
+> > 
+> > /home/sfr/next/next/fs/nfs/nfsroot.c: In function 'root_nfs_data':
+> > /home/sfr/next/next/fs/nfs/nfsroot.c:264:5: error: implicit declaration of
+> > function 'fmtcheck'; did you mean 'dst_check'? [-Werror=implicit-function-
+> > declaration]
+> >      fmtcheck(tmp, "%s", 0), utsname()->nodename);
+> >      ^~~~~~~~
+> >      dst_check
+> > 
+> > Caused by commit
+> > 
+> >   66ab6f062d96 ("nfs: use fmtcheck() in root_nfs_data")
+> 
+> I didn't know anybody had picked that one up. It's completely safe to
+> just ignore that commit until the fmtcheck() utility is actually in.
+> 
+> Anna, can I take the fact that this was picked up as a sort-of implicit
+> ack, that I can use if and when I ever get around to resending the
+> fmtcheck() series? And for simplicitly, would you mind if the nfs patch
+> would just be routed along with the patches introducing fmtcheck()?
 
+Sure that sounds good.  I'll remove it from my tree for now.
 
-> On Dec 14, 2018, at 9:50 PM, Vincent McIntyre =
-<vincent.mcintyre@csiro.au> wrote:
->=20
-> Hi,
->=20
-> I've been trying to figure out why the nfs.man manpage states
->=20
->  .BI timeo=3D n
->  The time in deciseconds (tenths of a second) the NFS client waits for =
-a
->  response before it retries an NFS request.
->=20
-> Can someone who actually understands NFS enlighten me?
-> Here's where I'm up to.
->=20
-> I looked in the upstream git.
-> The 'deciseconds' has been in there since the start of git history
-> (2007, commit id 16db99b56a532bf56fa27618a6ef30763cd9006f).
-> But is it (still) correct?
->=20
-> Unfortunately I can't see a direct use of the 'timeo' field
-> of the NFS data structure so the answer is not easily found.
-
-The "timeo" mount option is not used by the mount.nfs command.
-It is passed to the kernel, which treats it just as the man
-page says.
-
-The code you excerpt below implements the "retry" mount option.
-
-.BI retry=3D n
-The number of minutes that the
-.BR mount (8)
-command retries an NFS mount operation
-in the foreground or background before giving up.
-If this option is not specified, the default value for foreground mounts
-is 2 minutes, and the default value for background mounts is 10000 =
-minutes
-(80 minutes shy of one week).
-If a value of zero is specified, the
-.BR mount (8)
-command exits immediately after the first failure.
-.IP
-Note that this only affects how many retries are made and doesn't
-affect the delay caused by each retry.  For UDP each retry takes the
-time determined by the
-.BR timeo
-and
-.BR retrans
-options, which by default will be about 7 seconds.  For TCP the
-default is 3 minutes, but system TCP connection timeouts will=20
-sometimes limit the timeout of each retransmission to around 2 minutes.
-
-
-> In utils/mount/nfsmount.c mountnfs() we have
->=20
-> timeout =3D time(NULL) + 60 * retry;
->=20
-> This sets the upper bound for how long to wait for a mount to succeed.
-> The units are seconds, because retry is given in minutes.
->=20
-> Also we see
->=20
-> prevt =3D 0;
-> t =3D 30;
-> val =3D 1;
->=20
-> these are the control variables for the loop
-> The main check that prolongs the waiting time is
->=20
->            if (t - prevt < 30)
->                sleep(30);
->             ....if not mounted yet...
->            prevt =3D t;
->=20
-> The decision to time out is made like this
->            t =3D time(NULL);
->            if (t >=3D timeout) {
->                rpc_mount_errors(*nfs_server.hostname, 0, bg);
->                goto fail;
->            }
->=20
-> so it seems clear that t should also have the units of seconds.
-> That also matches up with the declaration of t & timeout as time_t.
->=20
-> But I still don't see how data.timo gets used.
-> utils/mount/network.h defines this
->=20
->  static const struct timeval TIMEOUT =3D { 20, 0 };
-> and
->  #define MOUNT_TIMEOUT   (30)
->=20
-> which would seem to be in units of seconds,
-> since eg. connect_to() uses seconds
-> which reaches it via the calling path:
->=20
-> 1.
-> CLIENT *mnt_openclnt(clnt_addr_t *mnt_server, int *msock)
-> {
-> ...
->    *msock =3D get_socket(mnt_saddr, mnt_pmap->pm_prot, MOUNT_TIMEOUT,
->                TRUE, FALSE);
->=20
-> 2.
-> static int get_socket(struct sockaddr_in *saddr, unsigned int p_prot,
->            unsigned int timeout, int resvp, int conn)
-> {
-> ...
->        cc =3D connect_to(so, SAFE_SOCKADDR(saddr), namelen,
->                timeout);
-> 3.
-> /*
-> * Attempt to connect a socket, but time out after "timeout" seconds.
-> *
-> * On error return, caller closes the socket.
-> */
-> static int connect_to(int fd, struct sockaddr *addr,
->            socklen_t addrlen, int timeout)
-> {
->=20
->=20
-> Thanks
-> Vince
-
---
-Chuck Lever
-
-
+> 
+> Rasmus
+> 
+> 
 
