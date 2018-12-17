@@ -2,238 +2,199 @@ Return-Path: <SRS0=GOsY=O2=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.2 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,UNPARSEABLE_RELAY autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-7.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
+	SIGNED_OFF_BY,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B62BEC43387
-	for <linux-nfs@archiver.kernel.org>; Mon, 17 Dec 2018 22:06:45 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 38B6EC43387
+	for <linux-nfs@archiver.kernel.org>; Mon, 17 Dec 2018 22:24:40 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 7530421473
-	for <linux-nfs@archiver.kernel.org>; Mon, 17 Dec 2018 22:06:45 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id C0BFD2133F
+	for <linux-nfs@archiver.kernel.org>; Mon, 17 Dec 2018 22:24:39 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="uu0ItE0O"
+	dkim=pass (1024-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="ijBo9yHS"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1730181AbeLQWGo (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 17 Dec 2018 17:06:44 -0500
-Received: from aserp2130.oracle.com ([141.146.126.79]:56908 "EHLO
-        aserp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726574AbeLQWGo (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Dec 2018 17:06:44 -0500
-Received: from pps.filterd (aserp2130.oracle.com [127.0.0.1])
-        by aserp2130.oracle.com (8.16.0.22/8.16.0.22) with SMTP id wBHM41j3032833;
-        Mon, 17 Dec 2018 22:06:39 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=content-type :
- mime-version : subject : from : in-reply-to : date : cc :
- content-transfer-encoding : message-id : references : to;
- s=corp-2018-07-02; bh=ch7130DLWr/r0UTpZ3sTJQDM0t7sF+XChwxNvsOfW3U=;
- b=uu0ItE0OXwMwE+ge2a0LQmKg3LGBse8lZ0JxEVV0etX00i9biwQYuGV65vpyVDwlX/6w
- xVG/K0cvZtYELbJMsLdaNWLcKySnxB/lIO8r0r/V+kjvocDyqhwYZ37OVDrlNyLpPb2c
- JkDLF7V+yeJlLCdECQu6Gqb+dPGn7+g6gk9VcZrb7Fc1K/jj+/IY+pGk2SThpMU6fU5T
- LaGRQkrdyugl84JtOSdVtu0Y6IfpON6mTnTM+LLA22bTn/h2euD79+GeDpPcPn3J88Dy
- /FedH1hvW3lSD0cPCsvO4CFS3z3lpWym5nI2V7IXDFihRCRokiE8vqByr8IzG+NI+Uxt nw== 
-Received: from aserv0021.oracle.com (aserv0021.oracle.com [141.146.126.233])
-        by aserp2130.oracle.com with ESMTP id 2pcq4dr9d9-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Mon, 17 Dec 2018 22:06:39 +0000
-Received: from userv0122.oracle.com (userv0122.oracle.com [156.151.31.75])
-        by aserv0021.oracle.com (8.14.4/8.14.4) with ESMTP id wBHM6d78016373
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Mon, 17 Dec 2018 22:06:39 GMT
-Received: from abhmp0017.oracle.com (abhmp0017.oracle.com [141.146.116.23])
-        by userv0122.oracle.com (8.14.4/8.14.4) with ESMTP id wBHM6cYY005541;
-        Mon, 17 Dec 2018 22:06:38 GMT
-Received: from anon-dhcp-171.1015granger.net (/68.61.232.219)
-        by default (Oracle Beehive Gateway v4.0)
-        with ESMTP ; Mon, 17 Dec 2018 14:06:38 -0800
-Content-Type: text/plain;
-        charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 11.5 \(3445.9.1\))
+        id S1731326AbeLQWYj (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 17 Dec 2018 17:24:39 -0500
+Received: from mail-eopbgr730105.outbound.protection.outlook.com ([40.107.73.105]:62743
+        "EHLO NAM05-DM3-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1730992AbeLQWYi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 17 Dec 2018 17:24:38 -0500
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=hammerspace.com;
+ s=selector1;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=Nd9zbX7T+Bwsm32LLkQ3Ao7jfn8oybobpc+Z57Z9qXg=;
+ b=ijBo9yHSjW9KspAHdfhTFWFIJSiE/mxjhY8oEcALT7MTecjHY3FVLK0FT2Mm04CAvbYul9C55ytCv/TyXeSm54pWK98ZiGp6Nq218iN3k0d7wP3ofpYUZ6bTPkBABeztFpeS+seholMAfHKxpUCciy97IeRVMEN5xY783Yz/eXM=
+Received: from SN6PR13MB2494.namprd13.prod.outlook.com (52.135.95.148) by
+ SN6PR13MB2336.namprd13.prod.outlook.com (52.135.94.31) with Microsoft SMTP
+ Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ 15.20.1446.15; Mon, 17 Dec 2018 22:24:30 +0000
+Received: from SN6PR13MB2494.namprd13.prod.outlook.com
+ ([fe80::25d2:c29b:5dfa:e85f]) by SN6PR13MB2494.namprd13.prod.outlook.com
+ ([fe80::25d2:c29b:5dfa:e85f%4]) with mapi id 15.20.1446.015; Mon, 17 Dec 2018
+ 22:24:30 +0000
+From:   Trond Myklebust <trondmy@hammerspace.com>
+To:     "chuck.lever@oracle.com" <chuck.lever@oracle.com>
+CC:     "smayhew@redhat.com" <smayhew@redhat.com>,
+        "dwysocha@redhat.com" <dwysocha@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
 Subject: Re: [PATCH] SUNRPC: Fix disconnection races
-From:   Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20181217200524.105368-1-trond.myklebust@hammerspace.com>
-Date:   Mon, 17 Dec 2018 17:06:36 -0500
-Cc:     Dave Wysochanski <dwysocha@redhat.com>,
-        Scott Mayhew <smayhew@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Transfer-Encoding: quoted-printable
-Message-Id: <1D3503CB-1B9A-459B-980B-A71D0191CFA9@oracle.com>
+Thread-Topic: [PATCH] SUNRPC: Fix disconnection races
+Thread-Index: AQHUlkQFuDp3J3LaRkW2yhZseK5BqaWDfQUAgAAE/YA=
+Date:   Mon, 17 Dec 2018 22:24:30 +0000
+Message-ID: <c6568c6981fbc57030a7b2d77f3cbe74bce08289.camel@primarydata.com>
 References: <20181217200524.105368-1-trond.myklebust@hammerspace.com>
-To:     Trond Myklebust <trondmy@gmail.com>
-X-Mailer: Apple Mail (2.3445.9.1)
-X-Proofpoint-Virus-Version: vendor=nai engine=5900 definitions=9110 signatures=668679
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 suspectscore=0 malwarescore=0
- phishscore=0 bulkscore=0 spamscore=0 mlxscore=0 mlxlogscore=999
- adultscore=0 classifier=spam adjust=0 reason=mlx scancount=1
- engine=8.0.1-1810050000 definitions=main-1812170194
+         <1D3503CB-1B9A-459B-980B-A71D0191CFA9@oracle.com>
+In-Reply-To: <1D3503CB-1B9A-459B-980B-A71D0191CFA9@oracle.com>
+Accept-Language: en-US, en-GB
+Content-Language: en-US
+X-MS-Has-Attach: 
+X-MS-TNEF-Correlator: 
+authentication-results: spf=none (sender IP is )
+ smtp.mailfrom=trondmy@hammerspace.com; 
+x-originating-ip: [68.40.189.247]
+x-ms-publictraffictype: Email
+x-microsoft-exchange-diagnostics: 1;SN6PR13MB2336;6:EwzXHag0ab3/XcwLrUDyVTGIp+dXe3Dr+ZbJFMN3Ptu9qA641H2017hi7K9T5vtyhfZZ6ciWBxIRRPIgPkYUC7Xex2Q/JS+rIu0kLADG7e/awWiZCjpdCygNI8YI8BbNUazhvluwwqnfc+qusPWzQIdzdtHWBqKYgSgnksZTfHCo/F7BC/0CuM91WjmnvRnU669oyUbsOr4UzxfLe9VnPOSiKKeCaWlOGDKxD0HIOpnirW9pcTIqTDTdNkArfRTuQrTxaYocfzIFFrLulh/rlFTZDrbLAyZJhQ9VQNliFSVupYUQ/ieta3SyOJM1TN7/eNpRXcVcoDfm84GFrn/R6SsNzMN8qRwRSM/i03tUGbFcxFuBSIx3x2eJOsvq9xoEabf8/KEv2jBkcnbPwRa0St2Fp26kF5bjpURdwTgr0ecbc5a6yh/gBuRgru40xWKrUo3W4G20gE9i/rQUSp7RzQ==;5:NSQpBJga4Z3KE8lNIwUH0IF4D7k1dyW5BXyMfyjlROsWBu6smaiwk9obgOaa5l3Tnzu7bdK/tOJSafxswR//hQP87+0ILiIbDSL8pDBrBR2qvcwmlvO3K0U75SVVz85YGGt2gahsTWvICT0l6p+vpjsCuEYVibwqCQDZfas73rY=;7:RF/wgqVZFwl7W14HTS8oyFOSodr9PHuUpNJgCUzeABOyshmC779P4KDJ9yUnXOZ9jKlswBaksXOLsoldhmHKwEHeptFPMF34bSx1f5rTSox09cU8cbhjG+X3Yyoa76ELJYdJ5U71J6Q+tD9BGh524w==
+x-ms-exchange-antispam-srfa-diagnostics: SOS;
+x-ms-office365-filtering-correlation-id: 9d9cc205-7d0c-49fe-df98-08d6646e6a21
+x-microsoft-antispam: BCL:0;PCL:0;RULEID:(2390118)(7020095)(4652040)(8989299)(4534185)(4627221)(201703031133081)(201702281549075)(8990200)(5600074)(711020)(2017052603328)(7153060)(7193020);SRVR:SN6PR13MB2336;
+x-ms-traffictypediagnostic: SN6PR13MB2336:
+x-microsoft-antispam-prvs: <SN6PR13MB23366C27490F9E48B2AA7FFBB8BC0@SN6PR13MB2336.namprd13.prod.outlook.com>
+x-ms-exchange-senderadcheck: 1
+x-exchange-antispam-report-cfa-test: BCL:0;PCL:0;RULEID:(3230021)(999002)(6040522)(2401047)(5005006)(8121501046)(3231475)(944501520)(52105112)(3002001)(93006095)(93001095)(10201501046)(148016)(149066)(150057)(6041310)(201703131423095)(201702281528075)(20161123555045)(201703061421075)(201703061406153)(20161123558120)(20161123560045)(20161123562045)(20161123564045)(201708071742011)(7699051)(76991095);SRVR:SN6PR13MB2336;BCL:0;PCL:0;RULEID:;SRVR:SN6PR13MB2336;
+x-forefront-prvs: 08897B549D
+x-forefront-antispam-report: SFV:NSPM;SFS:(10019020)(376002)(346002)(136003)(39830400003)(396003)(366004)(199004)(189003)(478600001)(105586002)(106356001)(14454004)(3846002)(6116002)(2351001)(2906002)(25786009)(118296001)(5660300001)(97736004)(4001150100001)(305945005)(7736002)(2501003)(14444005)(256004)(6506007)(81156014)(6436002)(53936002)(316002)(81166006)(6512007)(575784001)(6916009)(8676002)(86362001)(229853002)(476003)(99286004)(446003)(68736007)(11346002)(486006)(9686003)(4326008)(54906003)(6246003)(76176011)(71190400001)(102836004)(33896004)(53546011)(36756003)(71200400001)(186003)(66066001)(5640700003)(8936002)(26005)(6486002);DIR:OUT;SFP:1102;SCL:1;SRVR:SN6PR13MB2336;H:SN6PR13MB2494.namprd13.prod.outlook.com;FPR:;SPF:None;LANG:en;PTR:InfoNoRecords;A:1;MX:1;
+received-spf: None (protection.outlook.com: hammerspace.com does not designate
+ permitted sender hosts)
+x-microsoft-antispam-message-info: QDQfS9788HGrYTtpHSYcixnsXJCmC3nxUg59Tmaa1ezCKj2M6zYP6VoddjtmoTcY+2LiPbY5U4FW6Iapd4kR6YyLPhhVQOrg/hD+MmxCZ58xWxgWxZtzFPh+tO0onOO54DIXLzLeV1z9ha1uSMBAGkJqcgDK2FRCfJj2ez3qPr2TYclTIz5Fao7ZGlW47PfpCgwRB1BwYbrCsG/qOYZFICTspNNc5M9EkjrGVr5ACo8+d6i34j0wq5dMCWMdE/mOxAZPnSNIepP2B0v/fYxo8jfenGWbNmfyDUwyPhbMq2y+6fuVowcL6SF4XkS8y4VA
+spamdiagnosticoutput: 1:99
+spamdiagnosticmetadata: NSPM
+Content-Type: text/plain; charset="utf-8"
+Content-ID: <E87C3031B7424E4B9EE6590A49C75896@namprd13.prod.outlook.com>
+Content-Transfer-Encoding: base64
+MIME-Version: 1.0
+X-OriginatorOrg: hammerspace.com
+X-MS-Exchange-CrossTenant-Network-Message-Id: 9d9cc205-7d0c-49fe-df98-08d6646e6a21
+X-MS-Exchange-CrossTenant-originalarrivaltime: 17 Dec 2018 22:24:30.7987
+ (UTC)
+X-MS-Exchange-CrossTenant-fromentityheader: Hosted
+X-MS-Exchange-CrossTenant-id: 0d4fed5c-3a70-46fe-9430-ece41741f59e
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: SN6PR13MB2336
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-
-
-> On Dec 17, 2018, at 3:05 PM, Trond Myklebust <trondmy@gmail.com> =
-wrote:
->=20
-> When the socket is closed, we need to call xprt_disconnect_done() in =
-order
-> to clean up the XPRT_WRITE_SPACE flag, and wake up the sleeping tasks.
->=20
-> However, we also want to ensure that we don't wake them up before the =
-socket
-> is closed, since that would cause thundering herd issues with everyone
-> piling up to retransmit before the TCP shutdown dance has completed.
-> Only the task that holds XPRT_LOCKED needs to wake up early in order =
-to
-> allow the close to complete.
->=20
-> Reported-by: Dave Wysochanski <dwysocha@redhat.com>
-> Reported-by: Scott Mayhew <smayhew@redhat.com>
-> Cc: Chuck Lever <chuck.lever@oracle.com>
-> Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
-> ---
-> net/sunrpc/xprt.c     |  4 +++-
-> net/sunrpc/xprtsock.c | 10 ++++------
-> 2 files changed, 7 insertions(+), 7 deletions(-)
->=20
-> diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-> index ce927002862a..089e53a87379 100644
-> --- a/net/sunrpc/xprt.c
-> +++ b/net/sunrpc/xprt.c
-> @@ -680,7 +680,9 @@ void xprt_force_disconnect(struct rpc_xprt *xprt)
-> 	/* Try to schedule an autoclose RPC call */
-> 	if (test_and_set_bit(XPRT_LOCKED, &xprt->state) =3D=3D 0)
-> 		queue_work(xprtiod_workqueue, &xprt->task_cleanup);
-> -	xprt_wake_pending_tasks(xprt, -EAGAIN);
-> +	else if (xprt->snd_task)
-> +		rpc_wake_up_queued_task_set_status(&xprt->pending,
-> +				xprt->snd_task, -ENOTCONN);
-> 	spin_unlock_bh(&xprt->transport_lock);
-> }
-> EXPORT_SYMBOL_GPL(xprt_force_disconnect);
-
-Hrm, well I'm not sure xprt_connect_status is ready to deal with =
--ENOTCONN.
-
-     kworker/2:3-2342  [002]  3706.246289: rpc_task_wakeup:      =
-task:39992@5 flags=3D0001 state=3D001e status=3D-107 timeout=3D120000 =
-queue=3Dxprt_pending
-     kworker/0:7-2424  [000]  3706.246296: xprtrdma_reconnect:   =
-peer=3D[192.168.2.55]:20049 r_xprt=3D0xffff88886c465000
-  kworker/u25:28-2270  [004]  3706.246321: rpc_task_run_action:  =
-task:39992@5 flags=3D0001 state=3D001d status=3D-107 =
-action=3Dxprt_connect_status
-  kworker/u25:28-2270  [004]  3706.246323: rpc_task_run_action:  =
-task:39992@5 flags=3D0001 state=3D001d status=3D-5 =
-action=3Dcall_connect_status
-  kworker/u25:28-2270  [004]  3706.246323: rpc_connect_status:   =
-task:39992@5 status=3D-5
-  kworker/u25:28-2270  [004]  3706.246324: rpc_task_run_action:  =
-task:39992@5 flags=3D0001 state=3D001d status=3D-5 action=3Drpc_exit_task
-  kworker/u25:28-2270  [004]  3706.246327: rpc_stats_latency:    =
-task:39992@5 xid=3D0x2f1ad350 nfsv3 READ backlog=3D0 rtt=3D0 =
-execute=3D13028
-  kworker/u25:28-2270  [004]  3706.246333: xprtrdma_rpc_done:    =
-task:39992@5 req=3D0xffff88886a438000 rep=3D(nil)
-
-static void xprt_connect_status(struct rpc_task *task)
-{
-        switch (task->tk_status) {
-        case 0:
-                dprintk("RPC: %5u xprt_connect_status: connection =
-established\n",
-                                task->tk_pid);
-                break;
-        case -ECONNREFUSED:
-        case -ECONNRESET:
-        case -ECONNABORTED:
-        case -ENETUNREACH:
-        case -EHOSTUNREACH:
-        case -EPIPE:
-        case -EAGAIN:
-                dprintk("RPC: %5u xprt_connect_status: retrying\n", =
-task->tk_pid);
-                break;
-        case -ETIMEDOUT:
-                dprintk("RPC: %5u xprt_connect_status: connect attempt =
-timed "
-                                "out\n", task->tk_pid);
-                break;
-        default:
-                dprintk("RPC: %5u xprt_connect_status: error %d =
-connecting to "
-                                "server %s\n", task->tk_pid, =
--task->tk_status,
-                                task->tk_rqstp->rq_xprt->servername);
-                task->tk_status =3D -EIO;
-        }   =20
-}
-
-Maybe the wake-up status should remain -EAGAIN ?
-
-
-> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-> index 8a5e823e0b33..f0b3700cec95 100644
-> --- a/net/sunrpc/xprtsock.c
-> +++ b/net/sunrpc/xprtsock.c
-> @@ -1217,6 +1217,8 @@ static void xs_reset_transport(struct sock_xprt =
-*transport)
->=20
-> 	trace_rpc_socket_close(xprt, sock);
-> 	sock_release(sock);
-> +
-> +	xprt_disconnect_done(xprt);
-> }
->=20
-> /**
-> @@ -1237,8 +1239,6 @@ static void xs_close(struct rpc_xprt *xprt)
->=20
-> 	xs_reset_transport(transport);
-> 	xprt->reestablish_timeout =3D 0;
-> -
-> -	xprt_disconnect_done(xprt);
-> }
->=20
-> static void xs_inject_disconnect(struct rpc_xprt *xprt)
-> @@ -1489,8 +1489,6 @@ static void xs_tcp_state_change(struct sock *sk)
-> 					&transport->sock_state))
-> 			xprt_clear_connecting(xprt);
-> 		clear_bit(XPRT_CLOSING, &xprt->state);
-> -		if (sk->sk_err)
-> -			xprt_wake_pending_tasks(xprt, -sk->sk_err);
-> 		/* Trigger the socket release */
-> 		xs_tcp_force_close(xprt);
-> 	}
-> @@ -2092,8 +2090,8 @@ static void xs_udp_setup_socket(struct =
-work_struct *work)
-> 	trace_rpc_socket_connect(xprt, sock, 0);
-> 	status =3D 0;
-> out:
-> -	xprt_unlock_connect(xprt, transport);
-> 	xprt_clear_connecting(xprt);
-> +	xprt_unlock_connect(xprt, transport);
-> 	xprt_wake_pending_tasks(xprt, status);
-> }
->=20
-> @@ -2329,8 +2327,8 @@ static void xs_tcp_setup_socket(struct =
-work_struct *work)
-> 	}
-> 	status =3D -EAGAIN;
-> out:
-> -	xprt_unlock_connect(xprt, transport);
-> 	xprt_clear_connecting(xprt);
-> +	xprt_unlock_connect(xprt, transport);
-> 	xprt_wake_pending_tasks(xprt, status);
-> }
->=20
-> --=20
-> 2.19.2
->=20
-
---
-Chuck Lever
-
-
-
+T24gTW9uLCAyMDE4LTEyLTE3IGF0IDE3OjA2IC0wNTAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
+PiBPbiBEZWMgMTcsIDIwMTgsIGF0IDM6MDUgUE0sIFRyb25kIE15a2xlYnVzdCA8dHJvbmRteUBn
+bWFpbC5jb20+DQo+ID4gd3JvdGU6DQo+ID4gDQo+ID4gV2hlbiB0aGUgc29ja2V0IGlzIGNsb3Nl
+ZCwgd2UgbmVlZCB0byBjYWxsIHhwcnRfZGlzY29ubmVjdF9kb25lKCkNCj4gPiBpbiBvcmRlcg0K
+PiA+IHRvIGNsZWFuIHVwIHRoZSBYUFJUX1dSSVRFX1NQQUNFIGZsYWcsIGFuZCB3YWtlIHVwIHRo
+ZSBzbGVlcGluZw0KPiA+IHRhc2tzLg0KPiA+IA0KPiA+IEhvd2V2ZXIsIHdlIGFsc28gd2FudCB0
+byBlbnN1cmUgdGhhdCB3ZSBkb24ndCB3YWtlIHRoZW0gdXAgYmVmb3JlDQo+ID4gdGhlIHNvY2tl
+dA0KPiA+IGlzIGNsb3NlZCwgc2luY2UgdGhhdCB3b3VsZCBjYXVzZSB0aHVuZGVyaW5nIGhlcmQg
+aXNzdWVzIHdpdGgNCj4gPiBldmVyeW9uZQ0KPiA+IHBpbGluZyB1cCB0byByZXRyYW5zbWl0IGJl
+Zm9yZSB0aGUgVENQIHNodXRkb3duIGRhbmNlIGhhcw0KPiA+IGNvbXBsZXRlZC4NCj4gPiBPbmx5
+IHRoZSB0YXNrIHRoYXQgaG9sZHMgWFBSVF9MT0NLRUQgbmVlZHMgdG8gd2FrZSB1cCBlYXJseSBp
+bg0KPiA+IG9yZGVyIHRvDQo+ID4gYWxsb3cgdGhlIGNsb3NlIHRvIGNvbXBsZXRlLg0KPiA+IA0K
+PiA+IFJlcG9ydGVkLWJ5OiBEYXZlIFd5c29jaGFuc2tpIDxkd3lzb2NoYUByZWRoYXQuY29tPg0K
+PiA+IFJlcG9ydGVkLWJ5OiBTY290dCBNYXloZXcgPHNtYXloZXdAcmVkaGF0LmNvbT4NCj4gPiBD
+YzogQ2h1Y2sgTGV2ZXIgPGNodWNrLmxldmVyQG9yYWNsZS5jb20+DQo+ID4gU2lnbmVkLW9mZi1i
+eTogVHJvbmQgTXlrbGVidXN0IDx0cm9uZC5teWtsZWJ1c3RAaGFtbWVyc3BhY2UuY29tPg0KPiA+
+IC0tLQ0KPiA+IG5ldC9zdW5ycGMveHBydC5jICAgICB8ICA0ICsrKy0NCj4gPiBuZXQvc3VucnBj
+L3hwcnRzb2NrLmMgfCAxMCArKysrLS0tLS0tDQo+ID4gMiBmaWxlcyBjaGFuZ2VkLCA3IGluc2Vy
+dGlvbnMoKyksIDcgZGVsZXRpb25zKC0pDQo+ID4gDQo+ID4gZGlmZiAtLWdpdCBhL25ldC9zdW5y
+cGMveHBydC5jIGIvbmV0L3N1bnJwYy94cHJ0LmMNCj4gPiBpbmRleCBjZTkyNzAwMjg2MmEuLjA4
+OWU1M2E4NzM3OSAxMDA2NDQNCj4gPiAtLS0gYS9uZXQvc3VucnBjL3hwcnQuYw0KPiA+ICsrKyBi
+L25ldC9zdW5ycGMveHBydC5jDQo+ID4gQEAgLTY4MCw3ICs2ODAsOSBAQCB2b2lkIHhwcnRfZm9y
+Y2VfZGlzY29ubmVjdChzdHJ1Y3QgcnBjX3hwcnQNCj4gPiAqeHBydCkNCj4gPiAJLyogVHJ5IHRv
+IHNjaGVkdWxlIGFuIGF1dG9jbG9zZSBSUEMgY2FsbCAqLw0KPiA+IAlpZiAodGVzdF9hbmRfc2V0
+X2JpdChYUFJUX0xPQ0tFRCwgJnhwcnQtPnN0YXRlKSA9PSAwKQ0KPiA+IAkJcXVldWVfd29yayh4
+cHJ0aW9kX3dvcmtxdWV1ZSwgJnhwcnQtPnRhc2tfY2xlYW51cCk7DQo+ID4gLQl4cHJ0X3dha2Vf
+cGVuZGluZ190YXNrcyh4cHJ0LCAtRUFHQUlOKTsNCj4gPiArCWVsc2UgaWYgKHhwcnQtPnNuZF90
+YXNrKQ0KPiA+ICsJCXJwY193YWtlX3VwX3F1ZXVlZF90YXNrX3NldF9zdGF0dXMoJnhwcnQtPnBl
+bmRpbmcsDQo+ID4gKwkJCQl4cHJ0LT5zbmRfdGFzaywgLUVOT1RDT05OKTsNCj4gPiAJc3Bpbl91
+bmxvY2tfYmgoJnhwcnQtPnRyYW5zcG9ydF9sb2NrKTsNCj4gPiB9DQo+ID4gRVhQT1JUX1NZTUJP
+TF9HUEwoeHBydF9mb3JjZV9kaXNjb25uZWN0KTsNCj4gDQo+IEhybSwgd2VsbCBJJ20gbm90IHN1
+cmUgeHBydF9jb25uZWN0X3N0YXR1cyBpcyByZWFkeSB0byBkZWFsIHdpdGgNCj4gLUVOT1RDT05O
+Lg0KPiANCj4gICAgICBrd29ya2VyLzI6My0yMzQyICBbMDAyXSAgMzcwNi4yNDYyODk6DQo+IHJw
+Y190YXNrX3dha2V1cDogICAgICB0YXNrOjM5OTkyQDUgZmxhZ3M9MDAwMSBzdGF0ZT0wMDFlIHN0
+YXR1cz0tMTA3DQo+IHRpbWVvdXQ9MTIwMDAwIHF1ZXVlPXhwcnRfcGVuZGluZw0KPiAgICAgIGt3
+b3JrZXIvMDo3LTI0MjQgIFswMDBdICAzNzA2LjI0NjI5NjoNCj4geHBydHJkbWFfcmVjb25uZWN0
+OiAgIHBlZXI9WzE5Mi4xNjguMi41NV06MjAwNDkNCj4gcl94cHJ0PTB4ZmZmZjg4ODg2YzQ2NTAw
+MA0KPiAgIGt3b3JrZXIvdTI1OjI4LTIyNzAgIFswMDRdICAzNzA2LjI0NjMyMToNCj4gcnBjX3Rh
+c2tfcnVuX2FjdGlvbjogIHRhc2s6Mzk5OTJANSBmbGFncz0wMDAxIHN0YXRlPTAwMWQgc3RhdHVz
+PS0xMDcNCj4gYWN0aW9uPXhwcnRfY29ubmVjdF9zdGF0dXMNCj4gICBrd29ya2VyL3UyNToyOC0y
+MjcwICBbMDA0XSAgMzcwNi4yNDYzMjM6DQo+IHJwY190YXNrX3J1bl9hY3Rpb246ICB0YXNrOjM5
+OTkyQDUgZmxhZ3M9MDAwMSBzdGF0ZT0wMDFkIHN0YXR1cz0tNQ0KPiBhY3Rpb249Y2FsbF9jb25u
+ZWN0X3N0YXR1cw0KPiAgIGt3b3JrZXIvdTI1OjI4LTIyNzAgIFswMDRdICAzNzA2LjI0NjMyMzoN
+Cj4gcnBjX2Nvbm5lY3Rfc3RhdHVzOiAgIHRhc2s6Mzk5OTJANSBzdGF0dXM9LTUNCj4gICBrd29y
+a2VyL3UyNToyOC0yMjcwICBbMDA0XSAgMzcwNi4yNDYzMjQ6DQo+IHJwY190YXNrX3J1bl9hY3Rp
+b246ICB0YXNrOjM5OTkyQDUgZmxhZ3M9MDAwMSBzdGF0ZT0wMDFkIHN0YXR1cz0tNQ0KPiBhY3Rp
+b249cnBjX2V4aXRfdGFzaw0KPiAgIGt3b3JrZXIvdTI1OjI4LTIyNzAgIFswMDRdICAzNzA2LjI0
+NjMyNzoNCj4gcnBjX3N0YXRzX2xhdGVuY3k6ICAgIHRhc2s6Mzk5OTJANSB4aWQ9MHgyZjFhZDM1
+MCBuZnN2MyBSRUFEDQo+IGJhY2tsb2c9MCBydHQ9MCBleGVjdXRlPTEzMDI4DQo+ICAga3dvcmtl
+ci91MjU6MjgtMjI3MCAgWzAwNF0gIDM3MDYuMjQ2MzMzOg0KPiB4cHJ0cmRtYV9ycGNfZG9uZTog
+ICAgdGFzazozOTk5MkA1IHJlcT0weGZmZmY4ODg4NmE0MzgwMDAgcmVwPShuaWwpDQo+IA0KPiBz
+dGF0aWMgdm9pZCB4cHJ0X2Nvbm5lY3Rfc3RhdHVzKHN0cnVjdCBycGNfdGFzayAqdGFzaykNCj4g
+ew0KPiAgICAgICAgIHN3aXRjaCAodGFzay0+dGtfc3RhdHVzKSB7DQo+ICAgICAgICAgY2FzZSAw
+Og0KPiAgICAgICAgICAgICAgICAgZHByaW50aygiUlBDOiAlNXUgeHBydF9jb25uZWN0X3N0YXR1
+czogY29ubmVjdGlvbg0KPiBlc3RhYmxpc2hlZFxuIiwNCj4gICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICB0YXNrLT50a19waWQpOw0KPiAgICAgICAgICAgICAgICAgYnJlYWs7DQo+ICAg
+ICAgICAgY2FzZSAtRUNPTk5SRUZVU0VEOg0KPiAgICAgICAgIGNhc2UgLUVDT05OUkVTRVQ6DQo+
+ICAgICAgICAgY2FzZSAtRUNPTk5BQk9SVEVEOg0KPiAgICAgICAgIGNhc2UgLUVORVRVTlJFQUNI
+Og0KPiAgICAgICAgIGNhc2UgLUVIT1NUVU5SRUFDSDoNCj4gICAgICAgICBjYXNlIC1FUElQRToN
+Cj4gICAgICAgICBjYXNlIC1FQUdBSU46DQo+ICAgICAgICAgICAgICAgICBkcHJpbnRrKCJSUEM6
+ICU1dSB4cHJ0X2Nvbm5lY3Rfc3RhdHVzOiByZXRyeWluZ1xuIiwNCj4gdGFzay0+dGtfcGlkKTsN
+Cj4gICAgICAgICAgICAgICAgIGJyZWFrOw0KPiAgICAgICAgIGNhc2UgLUVUSU1FRE9VVDoNCj4g
+ICAgICAgICAgICAgICAgIGRwcmludGsoIlJQQzogJTV1IHhwcnRfY29ubmVjdF9zdGF0dXM6IGNv
+bm5lY3QNCj4gYXR0ZW1wdCB0aW1lZCAiDQo+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
+ICAgIm91dFxuIiwgdGFzay0+dGtfcGlkKTsNCj4gICAgICAgICAgICAgICAgIGJyZWFrOw0KPiAg
+ICAgICAgIGRlZmF1bHQ6DQo+ICAgICAgICAgICAgICAgICBkcHJpbnRrKCJSUEM6ICU1dSB4cHJ0
+X2Nvbm5lY3Rfc3RhdHVzOiBlcnJvciAlZA0KPiBjb25uZWN0aW5nIHRvICINCj4gICAgICAgICAg
+ICAgICAgICAgICAgICAgICAgICAgICAic2VydmVyICVzXG4iLCB0YXNrLT50a19waWQsIC10YXNr
+LQ0KPiA+dGtfc3RhdHVzLA0KPiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHRhc2st
+PnRrX3Jxc3RwLT5ycV94cHJ0LT5zZXJ2ZXJuYW1lKTsNCj4gICAgICAgICAgICAgICAgIHRhc2st
+PnRrX3N0YXR1cyA9IC1FSU87DQo+ICAgICAgICAgfSAgICANCj4gfQ0KPiANCj4gTWF5YmUgdGhl
+IHdha2UtdXAgc3RhdHVzIHNob3VsZCByZW1haW4gLUVBR0FJTiA/DQoNCg0KQWN0dWFsbHksIHRo
+YXQgYnJpbmdzIHVwIGEgdmVyeSBnb29kIHBvaW50LiBHaXZlbiB0aGF0IGEgbnVtYmVyIG9mDQp0
+aGluZ3MgY2FuIHdha2UgdXAgdGFza3Mgb24geHBydC0+cGVuZGluZywgYW5kIHNldCBhbiBlcnJv
+ciBjb2RlLCB3aHkNCmRvIHdlIHdhbnQgeHBydF9jb25uZWN0X3N0YXR1cygpIHRvIGNoYW5nZSB0
+aGUgZXJyb3IgY29kZXMgb24gdXM/IFRoYXQNCmxvb2tzIGxpa2UgaXQgY2FuIGdvIHdyb25nIGlu
+IHF1aXRlIGEgZmV3IGRpZmZlcmVudCB3YXlzLg0KDQpGdXJ0aGVybW9yZSwgY2FsbF9jb25uZWN0
+X3N0YXR1cygpIGlzIHN1cHBvc2VkIHRvIHBlcmZvcm0gbW9yZSBvciBsZXNzDQp0aGUgc2FtZSBz
+ZXJ2aWNlLCBhbmQgYWxyZWFkeSBrbm93cyBob3cgdG8gZGVhbCB3aXRoIG1vcmUgZXJyb3JzLg0K
+DQo+IA0KPiA+IGRpZmYgLS1naXQgYS9uZXQvc3VucnBjL3hwcnRzb2NrLmMgYi9uZXQvc3VucnBj
+L3hwcnRzb2NrLmMNCj4gPiBpbmRleCA4YTVlODIzZTBiMzMuLmYwYjM3MDBjZWM5NSAxMDA2NDQN
+Cj4gPiAtLS0gYS9uZXQvc3VucnBjL3hwcnRzb2NrLmMNCj4gPiArKysgYi9uZXQvc3VucnBjL3hw
+cnRzb2NrLmMNCj4gPiBAQCAtMTIxNyw2ICsxMjE3LDggQEAgc3RhdGljIHZvaWQgeHNfcmVzZXRf
+dHJhbnNwb3J0KHN0cnVjdA0KPiA+IHNvY2tfeHBydCAqdHJhbnNwb3J0KQ0KPiA+IA0KPiA+IAl0
+cmFjZV9ycGNfc29ja2V0X2Nsb3NlKHhwcnQsIHNvY2spOw0KPiA+IAlzb2NrX3JlbGVhc2Uoc29j
+ayk7DQo+ID4gKw0KPiA+ICsJeHBydF9kaXNjb25uZWN0X2RvbmUoeHBydCk7DQo+ID4gfQ0KPiA+
+IA0KPiA+IC8qKg0KPiA+IEBAIC0xMjM3LDggKzEyMzksNiBAQCBzdGF0aWMgdm9pZCB4c19jbG9z
+ZShzdHJ1Y3QgcnBjX3hwcnQgKnhwcnQpDQo+ID4gDQo+ID4gCXhzX3Jlc2V0X3RyYW5zcG9ydCh0
+cmFuc3BvcnQpOw0KPiA+IAl4cHJ0LT5yZWVzdGFibGlzaF90aW1lb3V0ID0gMDsNCj4gPiAtDQo+
+ID4gLQl4cHJ0X2Rpc2Nvbm5lY3RfZG9uZSh4cHJ0KTsNCj4gPiB9DQo+ID4gDQo+ID4gc3RhdGlj
+IHZvaWQgeHNfaW5qZWN0X2Rpc2Nvbm5lY3Qoc3RydWN0IHJwY194cHJ0ICp4cHJ0KQ0KPiA+IEBA
+IC0xNDg5LDggKzE0ODksNiBAQCBzdGF0aWMgdm9pZCB4c190Y3Bfc3RhdGVfY2hhbmdlKHN0cnVj
+dCBzb2NrDQo+ID4gKnNrKQ0KPiA+IAkJCQkJJnRyYW5zcG9ydC0+c29ja19zdGF0ZSkpDQo+ID4g
+CQkJeHBydF9jbGVhcl9jb25uZWN0aW5nKHhwcnQpOw0KPiA+IAkJY2xlYXJfYml0KFhQUlRfQ0xP
+U0lORywgJnhwcnQtPnN0YXRlKTsNCj4gPiAtCQlpZiAoc2stPnNrX2VycikNCj4gPiAtCQkJeHBy
+dF93YWtlX3BlbmRpbmdfdGFza3MoeHBydCwgLXNrLT5za19lcnIpOw0KPiA+IAkJLyogVHJpZ2dl
+ciB0aGUgc29ja2V0IHJlbGVhc2UgKi8NCj4gPiAJCXhzX3RjcF9mb3JjZV9jbG9zZSh4cHJ0KTsN
+Cj4gPiAJfQ0KPiA+IEBAIC0yMDkyLDggKzIwOTAsOCBAQCBzdGF0aWMgdm9pZCB4c191ZHBfc2V0
+dXBfc29ja2V0KHN0cnVjdA0KPiA+IHdvcmtfc3RydWN0ICp3b3JrKQ0KPiA+IAl0cmFjZV9ycGNf
+c29ja2V0X2Nvbm5lY3QoeHBydCwgc29jaywgMCk7DQo+ID4gCXN0YXR1cyA9IDA7DQo+ID4gb3V0
+Og0KPiA+IC0JeHBydF91bmxvY2tfY29ubmVjdCh4cHJ0LCB0cmFuc3BvcnQpOw0KPiA+IAl4cHJ0
+X2NsZWFyX2Nvbm5lY3RpbmcoeHBydCk7DQo+ID4gKwl4cHJ0X3VubG9ja19jb25uZWN0KHhwcnQs
+IHRyYW5zcG9ydCk7DQo+ID4gCXhwcnRfd2FrZV9wZW5kaW5nX3Rhc2tzKHhwcnQsIHN0YXR1cyk7
+DQo+ID4gfQ0KPiA+IA0KPiA+IEBAIC0yMzI5LDggKzIzMjcsOCBAQCBzdGF0aWMgdm9pZCB4c190
+Y3Bfc2V0dXBfc29ja2V0KHN0cnVjdA0KPiA+IHdvcmtfc3RydWN0ICp3b3JrKQ0KPiA+IAl9DQo+
+ID4gCXN0YXR1cyA9IC1FQUdBSU47DQo+ID4gb3V0Og0KPiA+IC0JeHBydF91bmxvY2tfY29ubmVj
+dCh4cHJ0LCB0cmFuc3BvcnQpOw0KPiA+IAl4cHJ0X2NsZWFyX2Nvbm5lY3RpbmcoeHBydCk7DQo+
+ID4gKwl4cHJ0X3VubG9ja19jb25uZWN0KHhwcnQsIHRyYW5zcG9ydCk7DQo+ID4gCXhwcnRfd2Fr
+ZV9wZW5kaW5nX3Rhc2tzKHhwcnQsIHN0YXR1cyk7DQo+ID4gfQ0KPiA+IA0KPiA+IC0tIA0KPiA+
+IDIuMTkuMg0KPiA+IA0KPiANCj4gLS0NCj4gQ2h1Y2sgTGV2ZXINCj4gDQo+IA0KPiANCi0tIA0K
+VHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIsIEhhbW1lcnNwYWNl
+DQp0cm9uZC5teWtsZWJ1c3RAaGFtbWVyc3BhY2UuY29tDQoNCg0K
