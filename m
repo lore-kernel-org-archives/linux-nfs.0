@@ -2,213 +2,291 @@ Return-Path: <SRS0=GOsY=O2=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
-	SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-7.2 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,UNPARSEABLE_RELAY,URIBL_BLOCKED
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E438FC43387
-	for <linux-nfs@archiver.kernel.org>; Mon, 17 Dec 2018 19:09:48 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D2CB1C43387
+	for <linux-nfs@archiver.kernel.org>; Mon, 17 Dec 2018 19:19:39 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 8662321473
-	for <linux-nfs@archiver.kernel.org>; Mon, 17 Dec 2018 19:09:48 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 876B8206A2
+	for <linux-nfs@archiver.kernel.org>; Mon, 17 Dec 2018 19:19:39 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="Tjxq3Cwh"
+	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="0/d0NSef"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2387674AbeLQTJs (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 17 Dec 2018 14:09:48 -0500
-Received: from mail-eopbgr700104.outbound.protection.outlook.com ([40.107.70.104]:50592
-        "EHLO NAM04-SN1-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1727747AbeLQTJr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 17 Dec 2018 14:09:47 -0500
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=hammerspace.com;
- s=selector1;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=AgmJUfDT+OUYN0b5EwsLirL1GW4qLX4Z9APTZv3xGIU=;
- b=Tjxq3CwhtxQI4WoYA7HS5mXLm2JikU4hxq3TzuVpN+eeRVFoMtbefYIs+aBBrgfx5BsOu/ot/G+d5LYHchutlF3zy9RFijnjK4GGyjK121tDHGSZUGJnp4VtmGvOp1X0u6mMfAYqQEUSYCh8osF2m2OtQ9RfOU8I0oGJiLo2amk=
-Received: from SN6PR13MB2494.namprd13.prod.outlook.com (52.135.95.148) by
- SN6PR13MB2544.namprd13.prod.outlook.com (52.135.96.15) with Microsoft SMTP
- Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- 15.20.1446.15; Mon, 17 Dec 2018 19:09:39 +0000
-Received: from SN6PR13MB2494.namprd13.prod.outlook.com
- ([fe80::25d2:c29b:5dfa:e85f]) by SN6PR13MB2494.namprd13.prod.outlook.com
- ([fe80::25d2:c29b:5dfa:e85f%4]) with mapi id 15.20.1446.015; Mon, 17 Dec 2018
- 19:09:39 +0000
-From:   Trond Myklebust <trondmy@hammerspace.com>
-To:     "chuck.lever@oracle.com" <chuck.lever@oracle.com>
-CC:     "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+        id S1732524AbeLQTTi (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 17 Dec 2018 14:19:38 -0500
+Received: from userp2120.oracle.com ([156.151.31.85]:46192 "EHLO
+        userp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726399AbeLQTTi (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Dec 2018 14:19:38 -0500
+Received: from pps.filterd (userp2120.oracle.com [127.0.0.1])
+        by userp2120.oracle.com (8.16.0.22/8.16.0.22) with SMTP id wBHJJU3h106998;
+        Mon, 17 Dec 2018 19:19:34 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=content-type :
+ mime-version : subject : from : in-reply-to : date : cc :
+ content-transfer-encoding : message-id : references : to;
+ s=corp-2018-07-02; bh=783imR7aerfyjCKXfy8q4WQovQnhXb4056sFMwpCDpk=;
+ b=0/d0NSefQ8MTnurO73cJEqktqhvBJWfwalsiNzmSzlSy/RHusVmKm4D8qbN/rKLRWLkU
+ niSmNiIHL0WBoP1ka7nSNGWLG4EOjXvX68YrqyUgS6yag2QyE9uKDQ2053QxHq+Ur2bA
+ kyCr2Y1mY2N70J7QBERL1QLdNQitosmGPBrpERB+PE6Sa80IlUTebgW5yIfadcagfufW
+ QMtRAYwz3K9hoZ0PbvV/85/mz1+WBLSQxj3mI4kC0h8fibZZIbcbMJ2QesMzddaAeMOk
+ nJWQQoNmKSn8m7WaAiDiiWuPAWr2ejANTxZESQ6pJ1QN5mCcEzPoae/ggQW6W5Yvx3uV Pg== 
+Received: from userv0021.oracle.com (userv0021.oracle.com [156.151.31.71])
+        by userp2120.oracle.com with ESMTP id 2pct8qqarc-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Mon, 17 Dec 2018 19:19:34 +0000
+Received: from userv0121.oracle.com (userv0121.oracle.com [156.151.31.72])
+        by userv0021.oracle.com (8.14.4/8.14.4) with ESMTP id wBHJJXYe001928
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Mon, 17 Dec 2018 19:19:34 GMT
+Received: from abhmp0013.oracle.com (abhmp0013.oracle.com [141.146.116.19])
+        by userv0121.oracle.com (8.14.4/8.13.8) with ESMTP id wBHJJXS4023694;
+        Mon, 17 Dec 2018 19:19:33 GMT
+Received: from anon-dhcp-171.1015granger.net (/68.61.232.219)
+        by default (Oracle Beehive Gateway v4.0)
+        with ESMTP ; Mon, 17 Dec 2018 11:19:33 -0800
+Content-Type: text/plain;
+        charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 11.5 \(3445.9.1\))
 Subject: Re: [PATCH v4 06/30] xprtrdma: Don't wake pending tasks until
  disconnect is done
-Thread-Topic: [PATCH v4 06/30] xprtrdma: Don't wake pending tasks until
- disconnect is done
-Thread-Index: AQHUlicnTIY1+P6R7kSNyXN8lbLAWaWDL5oAgAATPgCAAAT9gIAAAVWAgAACoIA=
-Date:   Mon, 17 Dec 2018 19:09:38 +0000
-Message-ID: <cd54523fd9a234e2b6f043989a4a4349224cec49.camel@hammerspace.com>
+From:   Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <cd54523fd9a234e2b6f043989a4a4349224cec49.camel@hammerspace.com>
+Date:   Mon, 17 Dec 2018 14:19:31 -0500
+Cc:     "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Transfer-Encoding: quoted-printable
+Message-Id: <1490E575-2589-402B-B34A-4455CB6845F1@oracle.com>
 References: <20181217162406.24133.27356.stgit@manet.1015granger.net>
-         <20181217163953.24133.29214.stgit@manet.1015granger.net>
-         <f080c79d6722ad339e47e20c6da72f9b0fc8a297.camel@hammerspace.com>
-         <FD0CDDF9-EDEF-41C6-83F5-C956F3FF098E@oracle.com>
-         <c639c203e1c9a5c0016a46e95ceb690744480583.camel@hammerspace.com>
-         <6A4F0F5B-2D29-4A51-BC21-AF23B64D6ED7@oracle.com>
-In-Reply-To: <6A4F0F5B-2D29-4A51-BC21-AF23B64D6ED7@oracle.com>
-Accept-Language: en-US, en-GB
-Content-Language: en-US
-X-MS-Has-Attach: 
-X-MS-TNEF-Correlator: 
-authentication-results: spf=none (sender IP is )
- smtp.mailfrom=trondmy@hammerspace.com; 
-x-originating-ip: [68.40.189.247]
-x-ms-publictraffictype: Email
-x-microsoft-exchange-diagnostics: 1;SN6PR13MB2544;6:a657wuY78QRrPDgeAYoSsOG1NMU2zx74c8M741IwrZdseW8e0taO4bcWpRrTaB/eARHlIdHCRSWndIHHS4PmuZmDScDBRgN6iBRDH8iLOdVswTRFj5G4fSTbf+hZZk8RGkfVmLw5FfKeiODCHhZpuTyd4U56vHsxMzDW5feFLgm4OV9jkogNKwlhZPJ8phjaliGRhgPd+/fkrn+EDDg459hD51v/A5Vz0fqLO4bSMREqVOCkX9KL9xBGuT0l31uuLkxdYxnjKEIb42F48e8b4qRZrOvLRRx0UQVZ1pnmD5yrEEZ9cICo8ExdhJHck8HFo09S4J8ADuB5zooTnmU9M5YYqv/3cr5bMxS3s/eLir0t0bjOMWsiGoOVJlppd9lSm/1t273Y2O0sq06GSQr9WHzn9KATO+XLruHmZZ8c+U9f/FNvrUQmQDo4Nj2yZRzCkDeu29rmWfi8KTk05ZtfRQ==;5:Tktj5NtaUF8zlEGaTwUcBA2+qlLq8/kP6hH3sIqQVcf1KcabEUdo5IfXcA2v9NYAqdGKuGiBDCZq2R/P/c4ISd/F7iWYD2ktpw19UMcfyH5k57o51Ft5urNh7+L/oPu8L6BaEV4Lw5OxCcMzFoMLTYFiO1QaU+ysbiZMS0hwbDA=;7:riyjFUuEElx7duGiyyQI1rbo4Agc1z5qFAsrlvefmeT7RqHHlSWFCHiNuyZtksSOOTLEZ4E5pIblHBqfyzeYDn5Xm0gvfN9P+9J+Msl0xQo82B3EMXCelN+mtYjsjZV+QcOcJJMqJ8/ocm0vIxxxGA==
-x-ms-exchange-antispam-srfa-diagnostics: SOS;
-x-ms-office365-filtering-correlation-id: 3fa4eb0f-0192-4863-ecaf-08d664533135
-x-microsoft-antispam: BCL:0;PCL:0;RULEID:(2390118)(7020095)(4652040)(8989299)(5600074)(711020)(4534185)(4627221)(201703031133081)(201702281549075)(8990200)(2017052603328)(7153060)(7193020);SRVR:SN6PR13MB2544;
-x-ms-traffictypediagnostic: SN6PR13MB2544:
-x-microsoft-antispam-prvs: <SN6PR13MB25445B5A1AA36CFB9B722465B8BC0@SN6PR13MB2544.namprd13.prod.outlook.com>
-x-ms-exchange-senderadcheck: 1
-x-exchange-antispam-report-cfa-test: BCL:0;PCL:0;RULEID:(3230021)(999002)(6040522)(2401047)(5005006)(8121501046)(93006095)(93001095)(3002001)(10201501046)(3231475)(944501520)(52105112)(148016)(149066)(150057)(6041310)(20161123564045)(20161123558120)(20161123562045)(201703131423095)(201702281528075)(20161123555045)(201703061421075)(201703061406153)(20161123560045)(201708071742011)(7699051)(76991095);SRVR:SN6PR13MB2544;BCL:0;PCL:0;RULEID:;SRVR:SN6PR13MB2544;
-x-forefront-prvs: 08897B549D
-x-forefront-antispam-report: SFV:NSPM;SFS:(10019020)(136003)(396003)(39830400003)(376002)(346002)(366004)(51444003)(199004)(189003)(68736007)(66066001)(26005)(2501003)(14454004)(118296001)(53936002)(4326008)(105586002)(6246003)(5640700003)(2351001)(99286004)(106356001)(6512007)(316002)(2906002)(93886005)(5660300001)(4001150100001)(15974865002)(97736004)(102836004)(7736002)(305945005)(186003)(8936002)(229853002)(36756003)(81166006)(25786009)(81156014)(478600001)(256004)(14444005)(71190400001)(6436002)(71200400001)(54906003)(86362001)(446003)(11346002)(6486002)(8676002)(486006)(2616005)(476003)(76176011)(6116002)(3846002)(6506007)(53546011)(6916009);DIR:OUT;SFP:1102;SCL:1;SRVR:SN6PR13MB2544;H:SN6PR13MB2494.namprd13.prod.outlook.com;FPR:;SPF:None;LANG:en;PTR:InfoNoRecords;A:1;MX:1;
-received-spf: None (protection.outlook.com: hammerspace.com does not designate
- permitted sender hosts)
-x-microsoft-antispam-message-info: QCtUrVgFRLVekx7FfJdtnX5mDokDGpAKAeFNaZSd6GOA6mV309GjwCWHNj+IJdq262NjdJWy1OUopK5yrph/eT8mTXawbkyiQ6o4ZyGNQEO/LGw1Ya2AA5Z69L+F3k/JqKjsn0p91ExNCkXfgndpOCzJ79/MpH6q8izld79PIg965xOaw4uivhG5MT5d/VEr1iBd45ZQa9dyMd1yHKQtaT+ktKOqSKjEizqzB0qdsav4Zi4B1xC6fZYRYFocodiygcJ0/PgLaIDBBqckMXTdXYGOkeHUNV3CZuhO50zHp6Zqs+gI5fAIzfChEXQLp5hs
-spamdiagnosticoutput: 1:99
-spamdiagnosticmetadata: NSPM
-Content-Type: text/plain; charset="utf-8"
-Content-ID: <674FDA6965259E4C8105BC27C5945A01@namprd13.prod.outlook.com>
-Content-Transfer-Encoding: base64
-MIME-Version: 1.0
-X-OriginatorOrg: hammerspace.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: 3fa4eb0f-0192-4863-ecaf-08d664533135
-X-MS-Exchange-CrossTenant-originalarrivaltime: 17 Dec 2018 19:09:38.9073
- (UTC)
-X-MS-Exchange-CrossTenant-fromentityheader: Hosted
-X-MS-Exchange-CrossTenant-id: 0d4fed5c-3a70-46fe-9430-ece41741f59e
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: SN6PR13MB2544
+ <20181217163953.24133.29214.stgit@manet.1015granger.net>
+ <f080c79d6722ad339e47e20c6da72f9b0fc8a297.camel@hammerspace.com>
+ <FD0CDDF9-EDEF-41C6-83F5-C956F3FF098E@oracle.com>
+ <c639c203e1c9a5c0016a46e95ceb690744480583.camel@hammerspace.com>
+ <6A4F0F5B-2D29-4A51-BC21-AF23B64D6ED7@oracle.com>
+ <cd54523fd9a234e2b6f043989a4a4349224cec49.camel@hammerspace.com>
+To:     Trond Myklebust <trondmy@hammerspace.com>
+X-Mailer: Apple Mail (2.3445.9.1)
+X-Proofpoint-Virus-Version: vendor=nai engine=5900 definitions=9110 signatures=668679
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 suspectscore=0 malwarescore=0
+ phishscore=0 bulkscore=0 spamscore=0 mlxscore=0 mlxlogscore=999
+ adultscore=0 classifier=spam adjust=0 reason=mlx scancount=1
+ engine=8.0.1-1810050000 definitions=main-1812170170
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-T24gTW9uLCAyMDE4LTEyLTE3IGF0IDE0OjAwIC0wNTAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
-PiBPbiBEZWMgMTcsIDIwMTgsIGF0IDE6NTUgUE0sIFRyb25kIE15a2xlYnVzdCA8DQo+ID4gdHJv
-bmRteUBoYW1tZXJzcGFjZS5jb20+IHdyb3RlOg0KPiA+IA0KPiA+IE9uIE1vbiwgMjAxOC0xMi0x
-NyBhdCAxMzozNyAtMDUwMCwgQ2h1Y2sgTGV2ZXIgd3JvdGU6DQo+ID4gPiA+IE9uIERlYyAxNywg
-MjAxOCwgYXQgMTI6MjggUE0sIFRyb25kIE15a2xlYnVzdCA8DQo+ID4gPiA+IHRyb25kbXlAaGFt
-bWVyc3BhY2UuY29tPiB3cm90ZToNCj4gPiA+ID4gDQo+ID4gPiA+IE9uIE1vbiwgMjAxOC0xMi0x
-NyBhdCAxMTozOSAtMDUwMCwgQ2h1Y2sgTGV2ZXIgd3JvdGU6DQo+ID4gPiA+ID4gVHJhbnNwb3J0
-IGRpc2Nvbm5lY3QgcHJvY2Vzc2luZyBkb2VzIGEgIndha2UgcGVuZGluZyB0YXNrcyINCj4gPiA+
-ID4gPiBhdA0KPiA+ID4gPiA+IHZhcmlvdXMgcG9pbnRzLg0KPiA+ID4gPiA+IA0KPiA+ID4gPiA+
-IFN1cHBvc2UgYW4gUlBDIFJlcGx5IGlzIGJlaW5nIHByb2Nlc3NlZC4gVGhlIFJQQyB0YXNrIHRo
-YXQNCj4gPiA+ID4gPiBSZXBseQ0KPiA+ID4gPiA+IGdvZXMgd2l0aCBpcyB3YWl0aW5nIG9uIHRo
-ZSBwZW5kaW5nIHF1ZXVlLiBJZiBhIGRpc2Nvbm5lY3QNCj4gPiA+ID4gPiB3YWtlLQ0KPiA+ID4g
-PiA+IHVwDQo+ID4gPiA+ID4gaGFwcGVucyBiZWZvcmUgcmVwbHkgcHJvY2Vzc2luZyBpcyBkb25l
-LCB0aGF0IHJlcGx5LCBldmVuIGlmDQo+ID4gPiA+ID4gaXQNCj4gPiA+ID4gPiBpcw0KPiA+ID4g
-PiA+IGdvb2QsIGlzIHRocm93biBhd2F5LCBhbmQgdGhlIFJQQyBoYXMgdG8gYmUgc2VudCBhZ2Fp
-bi4NCj4gPiA+ID4gPiANCj4gPiA+ID4gPiBUaGlzIHdpbmRvdyBhcHBhcmVudGx5IGRvZXMgbm90
-IGV4aXN0IGZvciBzb2NrZXQgdHJhbnNwb3J0cw0KPiA+ID4gPiA+IGJlY2F1c2UNCj4gPiA+ID4g
-PiB0aGVyZSBpcyBhIGxvY2sgaGVsZCB3aGlsZSBhIHJlcGx5IGlzIGJlaW5nIHJlY2VpdmVkIHdo
-aWNoDQo+ID4gPiA+ID4gcHJldmVudHMNCj4gPiA+ID4gPiB0aGUgd2FrZS11cCBjYWxsIHVudGls
-IGFmdGVyIHJlcGx5IHByb2Nlc3NpbmcgaXMgZG9uZS4NCj4gPiA+ID4gPiANCj4gPiA+ID4gPiBU
-byByZXNvbHZlIHRoaXMsIGFsbCBSUEMgcmVwbGllcyBiZWluZyBwcm9jZXNzZWQgb24gYW4gUlBD
-LQ0KPiA+ID4gPiA+IG92ZXItDQo+ID4gPiA+ID4gUkRNQQ0KPiA+ID4gPiA+IHRyYW5zcG9ydCBo
-YXZlIHRvIGNvbXBsZXRlIGJlZm9yZSBwZW5kaW5nIHRhc2tzIGFyZSBhd29rZW4NCj4gPiA+ID4g
-PiBkdWUgdG8NCj4gPiA+ID4gPiBhDQo+ID4gPiA+ID4gdHJhbnNwb3J0IGRpc2Nvbm5lY3QuDQo+
-ID4gPiA+ID4gDQo+ID4gPiA+ID4gQ2FsbGVycyB0aGF0IGFscmVhZHkgaG9sZCB0aGUgdHJhbnNw
-b3J0IHdyaXRlIGxvY2sgbWF5IGludm9rZQ0KPiA+ID4gPiA+IC0+b3BzLT5jbG9zZSBkaXJlY3Rs
-eS4gT3RoZXJzIHVzZSBhIGdlbmVyaWMgaGVscGVyIHRoYXQNCj4gPiA+ID4gPiBzY2hlZHVsZXMN
-Cj4gPiA+ID4gPiBhIGNsb3NlIHdoZW4gdGhlIHdyaXRlIGxvY2sgY2FuIGJlIHRha2VuIHNhZmVs
-eS4NCj4gPiA+ID4gPiANCj4gPiA+ID4gPiBTaWduZWQtb2ZmLWJ5OiBDaHVjayBMZXZlciA8Y2h1
-Y2subGV2ZXJAb3JhY2xlLmNvbT4NCj4gPiA+ID4gPiAtLS0NCj4gPiA+ID4gPiBpbmNsdWRlL2xp
-bnV4L3N1bnJwYy94cHJ0LmggICAgICAgICAgICAgICAgfCAgICAxICsNCj4gPiA+ID4gPiBuZXQv
-c3VucnBjL3hwcnQuYyAgICAgICAgICAgICAgICAgICAgICAgICAgfCAgIDE5DQo+ID4gPiA+ID4g
-KysrKysrKysrKysrKysrKysrKw0KPiA+ID4gPiA+IG5ldC9zdW5ycGMveHBydHJkbWEvYmFja2No
-YW5uZWwuYyAgICAgICAgICB8ICAgMTMgKysrKysrKy0tDQo+ID4gPiA+ID4gLS0tLQ0KPiA+ID4g
-PiA+IG5ldC9zdW5ycGMveHBydHJkbWEvc3ZjX3JkbWFfYmFja2NoYW5uZWwuYyB8ICAgIDggKysr
-KystLS0NCj4gPiA+ID4gPiBuZXQvc3VucnBjL3hwcnRyZG1hL3RyYW5zcG9ydC5jICAgICAgICAg
-ICAgfCAgIDE2ICsrKysrKysrKystDQo+ID4gPiA+ID4gLS0tLQ0KPiA+ID4gPiA+IC0NCj4gPiA+
-ID4gPiBuZXQvc3VucnBjL3hwcnRyZG1hL3ZlcmJzLmMgICAgICAgICAgICAgICAgfCAgICA1ICsr
-LS0tDQo+ID4gPiA+ID4gNiBmaWxlcyBjaGFuZ2VkLCA0NCBpbnNlcnRpb25zKCspLCAxOCBkZWxl
-dGlvbnMoLSkNCj4gPiA+ID4gPiANCj4gPiA+ID4gPiBkaWZmIC0tZ2l0IGEvaW5jbHVkZS9saW51
-eC9zdW5ycGMveHBydC5oDQo+ID4gPiA+ID4gYi9pbmNsdWRlL2xpbnV4L3N1bnJwYy94cHJ0LmgN
-Cj4gPiA+ID4gPiBpbmRleCBhNGFiNGY4Li5lZTk0ZWQwIDEwMDY0NA0KPiA+ID4gPiA+IC0tLSBh
-L2luY2x1ZGUvbGludXgvc3VucnBjL3hwcnQuaA0KPiA+ID4gPiA+ICsrKyBiL2luY2x1ZGUvbGlu
-dXgvc3VucnBjL3hwcnQuaA0KPiA+ID4gPiA+IEBAIC00MDEsNiArNDAxLDcgQEAgc3RhdGljIGlu
-bGluZSBfX2JlMzINCj4gPiA+ID4gPiAqeHBydF9za2lwX3RyYW5zcG9ydF9oZWFkZXIoc3RydWN0
-IHJwY194cHJ0ICp4cHJ0LCBfX2JlMzIgKg0KPiA+ID4gPiA+IGJvb2wJCQl4cHJ0X3JlcXVlc3Rf
-Z2V0X2Nvbmcoc3RydWN0IHJwY194cHJ0DQo+ID4gPiA+ID4gKnhwcnQsDQo+ID4gPiA+ID4gc3Ry
-dWN0IHJwY19ycXN0ICpyZXEpOw0KPiA+ID4gPiA+IHZvaWQJCQl4cHJ0X2Rpc2Nvbm5lY3RfZG9u
-ZShzdHJ1Y3QgcnBjX3hwcnQNCj4gPiA+ID4gPiAqeHBydCk7DQo+ID4gPiA+ID4gdm9pZAkJCXhw
-cnRfZm9yY2VfZGlzY29ubmVjdChzdHJ1Y3QgcnBjX3hwcnQNCj4gPiA+ID4gPiAqeHBydCk7DQo+
-ID4gPiA+ID4gK3ZvaWQJCQl4cHJ0X2Rpc2Nvbm5lY3Rfbm93YWtlKHN0cnVjdCBycGNfeHBydA0K
-PiA+ID4gPiA+ICp4cHJ0KTsNCj4gPiA+ID4gPiB2b2lkCQkJeHBydF9jb25kaXRpb25hbF9kaXNj
-b25uZWN0KHN0cnVjdA0KPiA+ID4gPiA+IHJwY194cHJ0DQo+ID4gPiA+ID4gKnhwcnQsIHVuc2ln
-bmVkIGludCBjb29raWUpOw0KPiA+ID4gPiA+IA0KPiA+ID4gPiA+IGJvb2wJCQl4cHJ0X2xvY2tf
-Y29ubmVjdChzdHJ1Y3QgcnBjX3hwcnQgKiwNCj4gPiA+ID4gPiBzdHJ1Y3QNCj4gPiA+ID4gPiBy
-cGNfdGFzayAqLCB2b2lkICopOw0KPiA+ID4gPiA+IGRpZmYgLS1naXQgYS9uZXQvc3VucnBjL3hw
-cnQuYyBiL25ldC9zdW5ycGMveHBydC5jDQo+ID4gPiA+ID4gaW5kZXggY2U5MjcwMC4uYWZlNDEy
-ZSAxMDA2NDQNCj4gPiA+ID4gPiAtLS0gYS9uZXQvc3VucnBjL3hwcnQuYw0KPiA+ID4gPiA+ICsr
-KyBiL25ldC9zdW5ycGMveHBydC5jDQo+ID4gPiA+ID4gQEAgLTY4NSw2ICs2ODUsMjUgQEAgdm9p
-ZCB4cHJ0X2ZvcmNlX2Rpc2Nvbm5lY3Qoc3RydWN0DQo+ID4gPiA+ID4gcnBjX3hwcnQNCj4gPiA+
-ID4gPiAqeHBydCkNCj4gPiA+ID4gPiB9DQo+ID4gPiA+ID4gRVhQT1JUX1NZTUJPTF9HUEwoeHBy
-dF9mb3JjZV9kaXNjb25uZWN0KTsNCj4gPiA+ID4gPiANCj4gPiA+ID4gPiArLyoqDQo+ID4gPiA+
-ID4gKyAqIHhwcnRfZGlzY29ubmVjdF9ub3dha2UgLSBmb3JjZSBhIGNhbGwgdG8geHBydC0+b3Bz
-LT5jbG9zZQ0KPiA+ID4gPiA+ICsgKiBAeHBydDogdHJhbnNwb3J0IHRvIGRpc2Nvbm5lY3QNCj4g
-PiA+ID4gPiArICoNCj4gPiA+ID4gPiArICogVGhlIGNhbGxlciBtdXN0IGVuc3VyZSB0aGF0IHhw
-cnRfd2FrZV9wZW5kaW5nX3Rhc2tzKCkgaXMNCj4gPiA+ID4gPiArICogY2FsbGVkIGxhdGVyLg0K
-PiA+ID4gPiA+ICsgKi8NCj4gPiA+ID4gPiArdm9pZCB4cHJ0X2Rpc2Nvbm5lY3Rfbm93YWtlKHN0
-cnVjdCBycGNfeHBydCAqeHBydCkNCj4gPiA+ID4gPiArew0KPiA+ID4gPiA+ICsgICAgICAgLyog
-RG9uJ3QgcmFjZSB3aXRoIHRoZSB0ZXN0X2JpdCgpIGluDQo+ID4gPiA+ID4geHBydF9jbGVhcl9s
-b2NrZWQoKQ0KPiA+ID4gPiA+ICovDQo+ID4gPiA+ID4gKyAgICAgICBzcGluX2xvY2tfYmgoJnhw
-cnQtPnRyYW5zcG9ydF9sb2NrKTsNCj4gPiA+ID4gPiArICAgICAgIHNldF9iaXQoWFBSVF9DTE9T
-RV9XQUlULCAmeHBydC0+c3RhdGUpOw0KPiA+ID4gPiA+ICsgICAgICAgLyogVHJ5IHRvIHNjaGVk
-dWxlIGFuIGF1dG9jbG9zZSBSUEMgY2FsbCAqLw0KPiA+ID4gPiA+ICsgICAgICAgaWYgKHRlc3Rf
-YW5kX3NldF9iaXQoWFBSVF9MT0NLRUQsICZ4cHJ0LT5zdGF0ZSkgPT0gMCkNCj4gPiA+ID4gPiAr
-ICAgICAgICAgICAgICAgcXVldWVfd29yayh4cHJ0aW9kX3dvcmtxdWV1ZSwgJnhwcnQtDQo+ID4g
-PiA+ID4gPiB0YXNrX2NsZWFudXApOw0KPiA+ID4gPiA+ICsgICAgICAgc3Bpbl91bmxvY2tfYmgo
-JnhwcnQtPnRyYW5zcG9ydF9sb2NrKTsNCj4gPiA+ID4gPiArfQ0KPiA+ID4gPiA+ICtFWFBPUlRf
-U1lNQk9MX0dQTCh4cHJ0X2Rpc2Nvbm5lY3Rfbm93YWtlKTsNCj4gPiA+ID4gPiArDQo+ID4gPiA+
-IA0KPiA+ID4gPiBXZSBzaG91bGRuJ3QgbmVlZCBib3RoIHhwcnRfZGlzY29ubmVjdF9ub3dha2Uo
-KSBhbmQNCj4gPiA+ID4geHBydF9mb3JjZV9kaXNjb25uZWN0KCkgdG8gYmUgZXhwb3J0ZWQgZ2l2
-ZW4gdGhhdCB5b3UgY2FuIGJ1aWxkDQo+ID4gPiA+IHRoZQ0KPiA+ID4gPiBsYXR0ZXIgZnJvbSB0
-aGUgZm9ybWVyICsgeHBydF93YWtlX3BlbmRpbmdfdGFza3MoKSAod2hpY2ggaXMNCj4gPiA+ID4g
-YWxzbw0KPiA+ID4gPiBhbHJlYWR5IGV4cG9ydGVkKS4NCj4gPiA+IA0KPiA+ID4gVGhhbmtzIGZv
-ciB5b3VyIHJldmlldyENCj4gPiA+IA0KPiA+ID4gSSBjYW4gZ2V0IHJpZCBvZiB4cHJ0X2Rpc2Nv
-bm5lY3Rfbm93YWtlLiBUaGVyZSBhcmUgc29tZQ0KPiA+ID4gdmFyaWF0aW9ucywNCj4gPiA+IGRl
-cGVuZGluZyBvbiB3aHkgd2FrZV9wZW5kaW5nX3Rhc2tzIGlzIHByb3RlY3RlZCBieSB4cHJ0LQ0K
-PiA+ID4gPiB0cmFuc3BvcnRfbG9jay4NCj4gPiANCj4gPiBJJ20gaGF2aW5nIHNvbWUgc2Vjb25k
-IHRob3VnaHRzIGFib3V0IHRoZSBwYXRjaCB0aGF0IFNjb3R0IHNlbnQgb3V0DQo+ID4gbGFzdCB3
-ZWVrIHRvIGZpeCB0aGUgaXNzdWUgdGhhdCBEYXZlIGFuZCBoZSB3ZXJlIHNlZWluZy4gSSB0aGlu
-aw0KPiA+IHRoYXQNCj4gPiB3aGF0IHdlIHJlYWxseSBuZWVkIHRvIGRvIHRvIGZpeCBoaXMgaXNz
-dWUgaXMgdG8gY2FsbA0KPiA+IHhwcnRfZGlzY29ubmVjdF9kb25lKCkgYWZ0ZXIgd2UndmUgcmVs
-ZWFzZWQgdGhlIFRDUCBzb2NrZXQuDQo+ID4gDQo+ID4gR2l2ZW4gdGhhdCByZWFsaXNhdGlvbiwg
-SSB0aGluayB0aGF0IHdlIGNhbiBmaXggdXANCj4gPiB4cHJ0X2ZvcmNlX2Rpc2Nvbm5lY3QoKSB0
-byBvbmx5IHdha2UgdXAgdGhlIHRhc2sgdGhhdCBob2xkcyB0aGUNCj4gPiBYUFJUX0xPQ0tFRCBp
-bnN0ZWFkIG9mIGRvaW5nIGEgdGh1bmRlcmluZyBoZXJkIHdha2V1cCBsaWtlIHdlIGRvDQo+ID4g
-dG9kYXkuDQo+ID4gVGhhdCBzaG91bGQgKEkgdGhpbmspIG9idmlhdGUgdGhlIG5lZWQgZm9yIGEg
-c2VwYXJhdGUNCj4gPiB4cHJ0X2Rpc2Nvbm5lY3Rfbm93YWtlKCkuDQo+IA0KPiBGb3IgUlBDLW92
-ZXItUkRNQSwgdGhlcmUgcmVhbGx5IGlzIGEgZGFuZ2Vyb3VzIHJhY2UgYmV0d2VlbiB0aGUNCj4g
-d2FraW5nDQo+IHRhc2socykgYW5kIHdvcmsgYmVpbmcgZG9uZSBieSB0aGUgZGVmZXJyZWQgUlBD
-IGNvbXBsZXRpb24gaGFuZGxlci4NCj4gSU1PDQo+IHRoZSBvbmx5IHNhZmUgdGhpbmcgUlBDLW92
-ZXItUkRNQSBjYW4gZG8gaXMgbm90IHdha2UgYW55dGhpbmcgdW50aWwNCj4gdGhlDQo+IGRlZmVy
-cmVkIHF1ZXVlIGlzIHdlbGwgYW5kIHRydWx5IGRyYWluZWQuDQoNClRoZSBkZWZlcnJlZCBSUEMg
-Y29tcGxldGlvbiBoYW5kbGVyIChhbmQgaGVuY2UgdGhlIGNsb3NlKSBjYW5ub3QNCmV4ZWN1dGUg
-aWYgYW5vdGhlciB0YXNrIGlzIGhvbGRpbmcgWFBSVF9MT0NLRUQsIHNvIHdlIGRvIG5lZWQgdG8g
-d2FrZQ0KdXAgdGhhdCB0YXNrIChhbmQgb25seSB0aGF0IG9uZSkuDQoNCk5vdGUgdGhhdCBpbiB0
-aGUgbmV3IGNvZGUsIHRoZSBvbmx5IHJlYXNvbiB3aHkgYSB0YXNrIHdvdWxkIGJlIGhvbGRpbmcN
-ClhQUlRfTE9DS0VEIHdoaWxlIHNsZWVwaW5nIGlzIGJlY2F1c2UNCg0KICAgMS4gSXQgaXMgd2Fp
-dGluZyBmb3IgYSBjb25uZWN0aW9uIGF0dGVtcHQgdG8gY29tcGxldGUgZm9sbG93aW5nIGEgY2Fs
-bA0KICAgICAgdG8geHBydF9jb25uZWN0KCkuDQogICAyLiBJdCBpcyB3YWl0aW5nIGZvciBhIHdy
-aXRlX3NwYWNlIGV2ZW50IGZvbGxvd2luZyBhbiBhdHRlbXB0IHRvDQogICAgICB0cmFuc21pdC4N
-Cg0KDQoNCj4gQXMgeW91IG9ic2VydmVkIHdoZW4gd2UgbGFzdCBzcG9rZSwgc29ja2V0IHRyYW5z
-cG9ydHMgYXJlIGFscmVhZHkNCj4gcHJvdGVjdGVkIGZyb20gdGhpcyByYWNlIGJ5IHRoZSBzb2Nr
-ZXQgbG9jay4uLi4gUlBDLW92ZXItUkRNQSBpcw0KPiBnb2luZw0KPiB0byBoYXZlIHRvIGJlIG1v
-cmUgY2FyZWZ1bC4NCj4gDQo+IA0KPiA+IEEgcGF0Y2ggaXMgZm9ydGhjb21pbmcgbGF0ZXIgdG9k
-YXkuIEknbGwgbWFrZSBzdXJlIHlvdSBhcmUgQ2NlZCBzbw0KPiA+IHlvdQ0KPiA+IGNhbiBjb21t
-ZW50Lg0KPiA+IA0KPiA+IC0tIA0KPiA+IFRyb25kIE15a2xlYnVzdA0KPiA+IExpbnV4IE5GUyBj
-bGllbnQgbWFpbnRhaW5lciwgSGFtbWVyc3BhY2UNCj4gPiB0cm9uZC5teWtsZWJ1c3RAaGFtbWVy
-c3BhY2UuY29tDQo+IA0KPiAtLQ0KPiBDaHVjayBMZXZlcg0KPiANCj4gDQo+IA0KLS0gDQpUcm9u
-ZCBNeWtsZWJ1c3QNCkNUTywgSGFtbWVyc3BhY2UgSW5jDQo0MzAwIEVsIENhbWlubyBSZWFsLCBT
-dWl0ZSAxMDUNCkxvcyBBbHRvcywgQ0EgOTQwMjINCnd3dy5oYW1tZXIuc3BhY2UNCg0KDQo=
+
+
+> On Dec 17, 2018, at 2:09 PM, Trond Myklebust <trondmy@hammerspace.com> =
+wrote:
+>=20
+> On Mon, 2018-12-17 at 14:00 -0500, Chuck Lever wrote:
+>>> On Dec 17, 2018, at 1:55 PM, Trond Myklebust <
+>>> trondmy@hammerspace.com> wrote:
+>>>=20
+>>> On Mon, 2018-12-17 at 13:37 -0500, Chuck Lever wrote:
+>>>>> On Dec 17, 2018, at 12:28 PM, Trond Myklebust <
+>>>>> trondmy@hammerspace.com> wrote:
+>>>>>=20
+>>>>> On Mon, 2018-12-17 at 11:39 -0500, Chuck Lever wrote:
+>>>>>> Transport disconnect processing does a "wake pending tasks"
+>>>>>> at
+>>>>>> various points.
+>>>>>>=20
+>>>>>> Suppose an RPC Reply is being processed. The RPC task that
+>>>>>> Reply
+>>>>>> goes with is waiting on the pending queue. If a disconnect
+>>>>>> wake-
+>>>>>> up
+>>>>>> happens before reply processing is done, that reply, even if
+>>>>>> it
+>>>>>> is
+>>>>>> good, is thrown away, and the RPC has to be sent again.
+>>>>>>=20
+>>>>>> This window apparently does not exist for socket transports
+>>>>>> because
+>>>>>> there is a lock held while a reply is being received which
+>>>>>> prevents
+>>>>>> the wake-up call until after reply processing is done.
+>>>>>>=20
+>>>>>> To resolve this, all RPC replies being processed on an RPC-
+>>>>>> over-
+>>>>>> RDMA
+>>>>>> transport have to complete before pending tasks are awoken
+>>>>>> due to
+>>>>>> a
+>>>>>> transport disconnect.
+>>>>>>=20
+>>>>>> Callers that already hold the transport write lock may invoke
+>>>>>> ->ops->close directly. Others use a generic helper that
+>>>>>> schedules
+>>>>>> a close when the write lock can be taken safely.
+>>>>>>=20
+>>>>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>>>>>> ---
+>>>>>> include/linux/sunrpc/xprt.h                |    1 +
+>>>>>> net/sunrpc/xprt.c                          |   19
+>>>>>> +++++++++++++++++++
+>>>>>> net/sunrpc/xprtrdma/backchannel.c          |   13 +++++++--
+>>>>>> ----
+>>>>>> net/sunrpc/xprtrdma/svc_rdma_backchannel.c |    8 +++++---
+>>>>>> net/sunrpc/xprtrdma/transport.c            |   16 ++++++++++-
+>>>>>> ----
+>>>>>> -
+>>>>>> net/sunrpc/xprtrdma/verbs.c                |    5 ++---
+>>>>>> 6 files changed, 44 insertions(+), 18 deletions(-)
+>>>>>>=20
+>>>>>> diff --git a/include/linux/sunrpc/xprt.h
+>>>>>> b/include/linux/sunrpc/xprt.h
+>>>>>> index a4ab4f8..ee94ed0 100644
+>>>>>> --- a/include/linux/sunrpc/xprt.h
+>>>>>> +++ b/include/linux/sunrpc/xprt.h
+>>>>>> @@ -401,6 +401,7 @@ static inline __be32
+>>>>>> *xprt_skip_transport_header(struct rpc_xprt *xprt, __be32 *
+>>>>>> bool			xprt_request_get_cong(struct rpc_xprt
+>>>>>> *xprt,
+>>>>>> struct rpc_rqst *req);
+>>>>>> void			xprt_disconnect_done(struct rpc_xprt
+>>>>>> *xprt);
+>>>>>> void			xprt_force_disconnect(struct rpc_xprt
+>>>>>> *xprt);
+>>>>>> +void			xprt_disconnect_nowake(struct rpc_xprt
+>>>>>> *xprt);
+>>>>>> void			xprt_conditional_disconnect(struct
+>>>>>> rpc_xprt
+>>>>>> *xprt, unsigned int cookie);
+>>>>>>=20
+>>>>>> bool			xprt_lock_connect(struct rpc_xprt *,
+>>>>>> struct
+>>>>>> rpc_task *, void *);
+>>>>>> diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+>>>>>> index ce92700..afe412e 100644
+>>>>>> --- a/net/sunrpc/xprt.c
+>>>>>> +++ b/net/sunrpc/xprt.c
+>>>>>> @@ -685,6 +685,25 @@ void xprt_force_disconnect(struct
+>>>>>> rpc_xprt
+>>>>>> *xprt)
+>>>>>> }
+>>>>>> EXPORT_SYMBOL_GPL(xprt_force_disconnect);
+>>>>>>=20
+>>>>>> +/**
+>>>>>> + * xprt_disconnect_nowake - force a call to xprt->ops->close
+>>>>>> + * @xprt: transport to disconnect
+>>>>>> + *
+>>>>>> + * The caller must ensure that xprt_wake_pending_tasks() is
+>>>>>> + * called later.
+>>>>>> + */
+>>>>>> +void xprt_disconnect_nowake(struct rpc_xprt *xprt)
+>>>>>> +{
+>>>>>> +       /* Don't race with the test_bit() in
+>>>>>> xprt_clear_locked()
+>>>>>> */
+>>>>>> +       spin_lock_bh(&xprt->transport_lock);
+>>>>>> +       set_bit(XPRT_CLOSE_WAIT, &xprt->state);
+>>>>>> +       /* Try to schedule an autoclose RPC call */
+>>>>>> +       if (test_and_set_bit(XPRT_LOCKED, &xprt->state) =3D=3D 0)
+>>>>>> +               queue_work(xprtiod_workqueue, &xprt-
+>>>>>>> task_cleanup);
+>>>>>> +       spin_unlock_bh(&xprt->transport_lock);
+>>>>>> +}
+>>>>>> +EXPORT_SYMBOL_GPL(xprt_disconnect_nowake);
+>>>>>> +
+>>>>>=20
+>>>>> We shouldn't need both xprt_disconnect_nowake() and
+>>>>> xprt_force_disconnect() to be exported given that you can build
+>>>>> the
+>>>>> latter from the former + xprt_wake_pending_tasks() (which is
+>>>>> also
+>>>>> already exported).
+>>>>=20
+>>>> Thanks for your review!
+>>>>=20
+>>>> I can get rid of xprt_disconnect_nowake. There are some
+>>>> variations,
+>>>> depending on why wake_pending_tasks is protected by xprt-
+>>>>> transport_lock.
+>>>=20
+>>> I'm having some second thoughts about the patch that Scott sent out
+>>> last week to fix the issue that Dave and he were seeing. I think
+>>> that
+>>> what we really need to do to fix his issue is to call
+>>> xprt_disconnect_done() after we've released the TCP socket.
+>>>=20
+>>> Given that realisation, I think that we can fix up
+>>> xprt_force_disconnect() to only wake up the task that holds the
+>>> XPRT_LOCKED instead of doing a thundering herd wakeup like we do
+>>> today.
+>>> That should (I think) obviate the need for a separate
+>>> xprt_disconnect_nowake().
+>>=20
+>> For RPC-over-RDMA, there really is a dangerous race between the
+>> waking
+>> task(s) and work being done by the deferred RPC completion handler.
+>> IMO
+>> the only safe thing RPC-over-RDMA can do is not wake anything until
+>> the
+>> deferred queue is well and truly drained.
+>=20
+> The deferred RPC completion handler (and hence the close) cannot
+> execute if another task is holding XPRT_LOCKED,
+
+Just to be certain we are speaking of the same thing,
+rpcrdma_deferred_completion is queued by the Receive handler, and
+can indeed run independently of an rpc_task. It is always running
+outside the purview of XPRT_LOCKED.
+
+
+> so we do need to wake up that task (and only that one).
+>=20
+> Note that in the new code, the only reason why a task would be holding
+> XPRT_LOCKED while sleeping is because
+>=20
+>   1. It is waiting for a connection attempt to complete following a =
+call
+>      to xprt_connect().
+>   2. It is waiting for a write_space event following an attempt to
+>      transmit.
+
+xprt_rdma_close can sleep in rpcrdma_ep_disconnect:
+
+ -> ib_drain_{qp,sq,rq} can all sleep waiting for the last FLUSH
+
+ -> drain_workqueue, added in this patch, can sleep waiting for the
+    deferred RPC completion workqueue to drain
+
+
+>> As you observed when we last spoke, socket transports are already
+>> protected from this race by the socket lock.... RPC-over-RDMA is
+>> going
+>> to have to be more careful.
+>>=20
+>>=20
+>>> A patch is forthcoming later today. I'll make sure you are Cced so
+>>> you
+>>> can comment.
+>>>=20
+>>> --=20
+>>> Trond Myklebust
+>>> Linux NFS client maintainer, Hammerspace
+>>> trond.myklebust@hammerspace.com
+>>=20
+>> --
+>> Chuck Lever
+>>=20
+>>=20
+>>=20
+> --=20
+> Trond Myklebust
+> CTO, Hammerspace Inc
+> 4300 El Camino Real, Suite 105
+> Los Altos, CA 94022
+> www.hammer.space
+
+--
+Chuck Lever
+
+
+
