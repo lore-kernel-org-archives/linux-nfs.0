@@ -2,241 +2,228 @@ Return-Path: <SRS0=GOsY=O2=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
-	SIGNED_OFF_BY,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-7.2 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B8246C43387
-	for <linux-nfs@archiver.kernel.org>; Mon, 17 Dec 2018 17:28:59 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 78946C43387
+	for <linux-nfs@archiver.kernel.org>; Mon, 17 Dec 2018 17:49:27 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 488B920675
-	for <linux-nfs@archiver.kernel.org>; Mon, 17 Dec 2018 17:28:59 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="wL+6Tm1K"
+	by mail.kernel.org (Postfix) with ESMTP id 3446E20874
+	for <linux-nfs@archiver.kernel.org>; Mon, 17 Dec 2018 17:49:27 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=default; t=1545068967;
+	bh=oYPJChmpKT7nymHLYUzwgjX+gQsjmDWzFXEsPK4+woE=;
+	h=Subject:From:To:Cc:Date:In-Reply-To:References:List-ID:From;
+	b=tzT4FMk5L/AFVlXBgXbu/ApSkcO6BBDUZjlOHOmjFJLSuQPa7pFCsyvlwuCF4HqOs
+	 fBnYECMA98NQIAPbbHHPk5PLI/4DInKbYwTa4S5IkjgpQJ9bKe/JhK9gnf7jOE8BBh
+	 ap7m7ofVAWJfDrA2cw9koiSALxFZ1mCLxILpCXHA=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726656AbeLQR26 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 17 Dec 2018 12:28:58 -0500
-Received: from mail-eopbgr710108.outbound.protection.outlook.com ([40.107.71.108]:31237
-        "EHLO NAM05-BY2-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726436AbeLQR26 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 17 Dec 2018 12:28:58 -0500
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=hammerspace.com;
- s=selector1;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=G86odxEySZntaQjYoq5wC2dL8rlVMHLMlaQOMLNRNJ0=;
- b=wL+6Tm1K3ZDfii1F+zMp/MlHDqSMVaBhLWZjx6I7eGQXdxn2Z+iaIxZJ6fDbPxJvwwO/74LlPJ/fJauDE3iFR+j3iXgbgxdlWVEQg53CtGQJzT8aublYDVUfS5rtNNUMXtbcHM4jn6iIYQibR6q7GDyXLTGi1mPNf6/SsqTFf+0=
-Received: from SN6PR13MB2494.namprd13.prod.outlook.com (52.135.95.148) by
- SN6PR13MB2574.namprd13.prod.outlook.com (52.135.96.22) with Microsoft SMTP
- Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- 15.20.1446.9; Mon, 17 Dec 2018 17:28:46 +0000
-Received: from SN6PR13MB2494.namprd13.prod.outlook.com
- ([fe80::25d2:c29b:5dfa:e85f]) by SN6PR13MB2494.namprd13.prod.outlook.com
- ([fe80::25d2:c29b:5dfa:e85f%4]) with mapi id 15.20.1446.015; Mon, 17 Dec 2018
- 17:28:46 +0000
-From:   Trond Myklebust <trondmy@hammerspace.com>
-To:     "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
+        id S1727686AbeLQRt0 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 17 Dec 2018 12:49:26 -0500
+Received: from mail.kernel.org ([198.145.29.99]:53652 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1727301AbeLQRt0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 17 Dec 2018 12:49:26 -0500
+Received: from tleilax.poochiereds.net (cpe-71-70-156-158.nc.res.rr.com [71.70.156.158])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by mail.kernel.org (Postfix) with ESMTPSA id 44FFC2086C;
+        Mon, 17 Dec 2018 17:49:24 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=default; t=1545068965;
+        bh=oYPJChmpKT7nymHLYUzwgjX+gQsjmDWzFXEsPK4+woE=;
+        h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
+        b=It+qyjZa4eqR9sRqiIim1kB5JiClL1nj2KKIEERJADTxnfCr21DvfklUCyIg+n35y
+         Z9sV6JcEbNop81lvHcRIzFOglFHerJ1kMtYw6GtB3twbcFG4XyLoZuzCXAPPN6cEap
+         zKiaY7FEmckdjKuNbCxdgDjyan34lM97cypuKae0=
+Message-ID: <83282ba18c9d074294ff2eeb51c119d83f8856ca.camel@kernel.org>
+Subject: Re: [PATCH 1/4] nfs: use-after-free in svc_process_common()
+From:   Jeff Layton <jlayton@kernel.org>
+To:     Vasily Averin <vvs@virtuozzo.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Trond Myklebust <trond.myklebust@hammerspace.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>
+Cc:     Chuck Lever <chuck.lever@oracle.com>,
         "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "chuck.lever@oracle.com" <chuck.lever@oracle.com>
-Subject: Re: [PATCH v4 06/30] xprtrdma: Don't wake pending tasks until
- disconnect is done
-Thread-Topic: [PATCH v4 06/30] xprtrdma: Don't wake pending tasks until
- disconnect is done
-Thread-Index: AQHUlicnTIY1+P6R7kSNyXN8lbLAWaWDL5oA
-Date:   Mon, 17 Dec 2018 17:28:45 +0000
-Message-ID: <f080c79d6722ad339e47e20c6da72f9b0fc8a297.camel@hammerspace.com>
-References: <20181217162406.24133.27356.stgit@manet.1015granger.net>
-         <20181217163953.24133.29214.stgit@manet.1015granger.net>
-In-Reply-To: <20181217163953.24133.29214.stgit@manet.1015granger.net>
-Accept-Language: en-US, en-GB
-Content-Language: en-US
-X-MS-Has-Attach: 
-X-MS-TNEF-Correlator: 
-x-originating-ip: [68.40.189.247]
-x-ms-publictraffictype: Email
-x-microsoft-exchange-diagnostics: 1;SN6PR13MB2574;6:zCJrknL0yTYESzMVeXR7EmRxZZ4ihqYWutPkRpnBIsQhJnH4KBRLFdvxknuBWmkD8XUXSk9EJuJryI95iqzhxYK9lKh48aa+/CPs+aoaUgomvmkVS5AzsdPUmU9h0sITRN7Pc0+4f1df1ElTyJGZrHK5tpnFdGQUygqaAMdfcF2S/kaEyRzUQ+doKmJ3JIiOoPW4HRfhnVzFuQqxS4v2tnP9SAnioRHPVnuH++PS8Gaq2jtsCfCxFdwmy20nkqBWuE60zzn22M4RmbH4O+OAJiyVg9dRF+UOjgPq1gIPrhd9r8pKb+dbKo1L6UELc22oFa2Z7QzAikFRXr8Fer32c11oaBY/WgLcuwvSp+DOC0eQNlCtVaNZtb+6z3faMmE6MqjPceo1jSUgtpW/EfSsZla5HZUpl7q7RDoQigQF0BnG7wuhvIVmgK2dquT8y8Tz0y3Wb2tNSvK3zzRLAYskJQ==;5:i1kDomZ4/q7QiFGGTByeo8JBUNzcTpbEnHVH3/JaNwNY/AXC9h/GjpJmaoYRBbNaKiJ/sUHyRXGIc0xopLJGHXZTsBTcL7pR5MPii3IaM6xvgxQDxhz/INXQanCuVlKvdPAfGUGS1/PwfGpO4LDvPbmav927qZ9WTIVdgDMQcMI=;7:nOOee0D0lGXLInR9JJJMLDXh3XK1PhSQani0Y8U5WQC2vn6yy08A65+k30oXLxZUhGDc4VnH6uOKMSIUUC5Sib5kT4xGLP1ZPK/F0tww3KTY8ojhOB59MxEoxavCqjq86mQBrYCYjaAigfebyk4bNQ==
-x-ms-exchange-antispam-srfa-diagnostics: SOS;
-x-ms-office365-filtering-correlation-id: 715eb042-422b-4a5e-c92c-08d664451967
-x-microsoft-antispam: BCL:0;PCL:0;RULEID:(2390118)(7020095)(4652040)(8989299)(4534185)(4627221)(201703031133081)(201702281549075)(8990200)(5600074)(711020)(2017052603328)(7153060)(7193020);SRVR:SN6PR13MB2574;
-x-ms-traffictypediagnostic: SN6PR13MB2574:
-x-microsoft-antispam-prvs: <SN6PR13MB25745293E57ED5CDDF8104CDB8BC0@SN6PR13MB2574.namprd13.prod.outlook.com>
-x-ms-exchange-senderadcheck: 1
-x-exchange-antispam-report-cfa-test: BCL:0;PCL:0;RULEID:(3230021)(999002)(5005020)(6040522)(2401047)(8121501046)(10201501046)(3002001)(3231475)(944501520)(52105112)(93006095)(93001095)(148016)(149066)(150057)(6041310)(20161123562045)(201703131423095)(20161123555045)(201703061421075)(20161123560045)(20161123558120)(20161123564045)(201708071742011)(7699051)(76991095);SRVR:SN6PR13MB2574;BCL:0;PCL:0;RULEID:;SRVR:SN6PR13MB2574;
-x-forefront-prvs: 08897B549D
-x-forefront-antispam-report: SFV:NSPM;SFS:(10019020)(346002)(376002)(366004)(136003)(189003)(199004)(2201001)(110136005)(6486002)(6246003)(6346003)(102836004)(6506007)(6512007)(26005)(256004)(53936002)(229853002)(486006)(105586002)(476003)(446003)(2616005)(14444005)(106356001)(11346002)(99286004)(2501003)(76176011)(3846002)(6436002)(68736007)(186003)(118296001)(71200400001)(71190400001)(36756003)(4001150100001)(14454004)(5660300001)(6116002)(8676002)(81156014)(81166006)(7736002)(575784001)(66066001)(508600001)(305945005)(2906002)(97736004)(86362001)(25786009)(8936002);DIR:OUT;SFP:1102;SCL:1;SRVR:SN6PR13MB2574;H:SN6PR13MB2494.namprd13.prod.outlook.com;FPR:;SPF:None;LANG:en;PTR:InfoNoRecords;MX:1;A:1;
-received-spf: None (protection.outlook.com: hammerspace.com does not designate
- permitted sender hosts)
-authentication-results: spf=none (sender IP is )
- smtp.mailfrom=trondmy@hammerspace.com; 
-x-microsoft-antispam-message-info: TghZRqOCCKa+/7fTxuSLSh5hr1lp9LJ7OUmY+P1l8FI+1yE2Acfd2wI0z04TQBSVz4RkQahoUha0ltPQO0fRR5lW5B3K7Vw+gs2kCQyH9GTyAeHdq8VetFf+BgXkEIABK01RpBjAw3Ksq+QMw7EcsejwvmVN20W2hVR3kjetqbWfuspnYolgcipXVH3EvhwmuV6kFx3MTZbF6xRfFcggR3z8WAmg+32didPdvhD5yLzRHsRHp5u1sGsDGj2gKultP//1H5nZQsgzaQlIA5RF/LjvZkZNfh8k+PfDv0S1dpjAcOcZ8/6OkSN5a/F6KsuU
-spamdiagnosticoutput: 1:99
-spamdiagnosticmetadata: NSPM
-Content-Type: text/plain; charset="utf-8"
-Content-ID: <7409D59D89236C4C9A5215F4C0CBB3E3@namprd13.prod.outlook.com>
-Content-Transfer-Encoding: base64
-MIME-Version: 1.0
-X-OriginatorOrg: hammerspace.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: 715eb042-422b-4a5e-c92c-08d664451967
-X-MS-Exchange-CrossTenant-originalarrivaltime: 17 Dec 2018 17:28:45.9665
- (UTC)
-X-MS-Exchange-CrossTenant-fromentityheader: Hosted
-X-MS-Exchange-CrossTenant-id: 0d4fed5c-3a70-46fe-9430-ece41741f59e
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: SN6PR13MB2574
+        Evgenii Shatokhin <eshatokhin@virtuozzo.com>,
+        Konstantin Khorenko <khorenko@virtuozzo.com>
+Date:   Mon, 17 Dec 2018 12:49:22 -0500
+In-Reply-To: <134cf19c-e698-abed-02de-1659f9a5d4fb@virtuozzo.com>
+References: <134cf19c-e698-abed-02de-1659f9a5d4fb@virtuozzo.com>
+Content-Type: text/plain; charset="UTF-8"
+User-Agent: Evolution 3.30.3 (3.30.3-1.fc29) 
+Mime-Version: 1.0
+Content-Transfer-Encoding: 7bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-T24gTW9uLCAyMDE4LTEyLTE3IGF0IDExOjM5IC0wNTAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
-VHJhbnNwb3J0IGRpc2Nvbm5lY3QgcHJvY2Vzc2luZyBkb2VzIGEgIndha2UgcGVuZGluZyB0YXNr
-cyIgYXQNCj4gdmFyaW91cyBwb2ludHMuDQo+IA0KPiBTdXBwb3NlIGFuIFJQQyBSZXBseSBpcyBi
-ZWluZyBwcm9jZXNzZWQuIFRoZSBSUEMgdGFzayB0aGF0IFJlcGx5DQo+IGdvZXMgd2l0aCBpcyB3
-YWl0aW5nIG9uIHRoZSBwZW5kaW5nIHF1ZXVlLiBJZiBhIGRpc2Nvbm5lY3Qgd2FrZS11cA0KPiBo
-YXBwZW5zIGJlZm9yZSByZXBseSBwcm9jZXNzaW5nIGlzIGRvbmUsIHRoYXQgcmVwbHksIGV2ZW4g
-aWYgaXQgaXMNCj4gZ29vZCwgaXMgdGhyb3duIGF3YXksIGFuZCB0aGUgUlBDIGhhcyB0byBiZSBz
-ZW50IGFnYWluLg0KPiANCj4gVGhpcyB3aW5kb3cgYXBwYXJlbnRseSBkb2VzIG5vdCBleGlzdCBm
-b3Igc29ja2V0IHRyYW5zcG9ydHMgYmVjYXVzZQ0KPiB0aGVyZSBpcyBhIGxvY2sgaGVsZCB3aGls
-ZSBhIHJlcGx5IGlzIGJlaW5nIHJlY2VpdmVkIHdoaWNoIHByZXZlbnRzDQo+IHRoZSB3YWtlLXVw
-IGNhbGwgdW50aWwgYWZ0ZXIgcmVwbHkgcHJvY2Vzc2luZyBpcyBkb25lLg0KPiANCj4gVG8gcmVz
-b2x2ZSB0aGlzLCBhbGwgUlBDIHJlcGxpZXMgYmVpbmcgcHJvY2Vzc2VkIG9uIGFuIFJQQy1vdmVy
-LVJETUENCj4gdHJhbnNwb3J0IGhhdmUgdG8gY29tcGxldGUgYmVmb3JlIHBlbmRpbmcgdGFza3Mg
-YXJlIGF3b2tlbiBkdWUgdG8gYQ0KPiB0cmFuc3BvcnQgZGlzY29ubmVjdC4NCj4gDQo+IENhbGxl
-cnMgdGhhdCBhbHJlYWR5IGhvbGQgdGhlIHRyYW5zcG9ydCB3cml0ZSBsb2NrIG1heSBpbnZva2UN
-Cj4gLT5vcHMtPmNsb3NlIGRpcmVjdGx5LiBPdGhlcnMgdXNlIGEgZ2VuZXJpYyBoZWxwZXIgdGhh
-dCBzY2hlZHVsZXMNCj4gYSBjbG9zZSB3aGVuIHRoZSB3cml0ZSBsb2NrIGNhbiBiZSB0YWtlbiBz
-YWZlbHkuDQo+IA0KPiBTaWduZWQtb2ZmLWJ5OiBDaHVjayBMZXZlciA8Y2h1Y2subGV2ZXJAb3Jh
-Y2xlLmNvbT4NCj4gLS0tDQo+ICBpbmNsdWRlL2xpbnV4L3N1bnJwYy94cHJ0LmggICAgICAgICAg
-ICAgICAgfCAgICAxICsNCj4gIG5ldC9zdW5ycGMveHBydC5jICAgICAgICAgICAgICAgICAgICAg
-ICAgICB8ICAgMTkNCj4gKysrKysrKysrKysrKysrKysrKw0KPiAgbmV0L3N1bnJwYy94cHJ0cmRt
-YS9iYWNrY2hhbm5lbC5jICAgICAgICAgIHwgICAxMyArKysrKysrLS0tLS0tDQo+ICBuZXQvc3Vu
-cnBjL3hwcnRyZG1hL3N2Y19yZG1hX2JhY2tjaGFubmVsLmMgfCAgICA4ICsrKysrLS0tDQo+ICBu
-ZXQvc3VucnBjL3hwcnRyZG1hL3RyYW5zcG9ydC5jICAgICAgICAgICAgfCAgIDE2ICsrKysrKysr
-KystLS0tLS0NCj4gIG5ldC9zdW5ycGMveHBydHJkbWEvdmVyYnMuYyAgICAgICAgICAgICAgICB8
-ICAgIDUgKystLS0NCj4gIDYgZmlsZXMgY2hhbmdlZCwgNDQgaW5zZXJ0aW9ucygrKSwgMTggZGVs
-ZXRpb25zKC0pDQo+IA0KPiBkaWZmIC0tZ2l0IGEvaW5jbHVkZS9saW51eC9zdW5ycGMveHBydC5o
-DQo+IGIvaW5jbHVkZS9saW51eC9zdW5ycGMveHBydC5oDQo+IGluZGV4IGE0YWI0ZjguLmVlOTRl
-ZDAgMTAwNjQ0DQo+IC0tLSBhL2luY2x1ZGUvbGludXgvc3VucnBjL3hwcnQuaA0KPiArKysgYi9p
-bmNsdWRlL2xpbnV4L3N1bnJwYy94cHJ0LmgNCj4gQEAgLTQwMSw2ICs0MDEsNyBAQCBzdGF0aWMg
-aW5saW5lIF9fYmUzMg0KPiAqeHBydF9za2lwX3RyYW5zcG9ydF9oZWFkZXIoc3RydWN0IHJwY194
-cHJ0ICp4cHJ0LCBfX2JlMzIgKg0KPiAgYm9vbAkJCXhwcnRfcmVxdWVzdF9nZXRfY29uZyhzdHJ1
-Y3QgcnBjX3hwcnQgKnhwcnQsDQo+IHN0cnVjdCBycGNfcnFzdCAqcmVxKTsNCj4gIHZvaWQJCQl4
-cHJ0X2Rpc2Nvbm5lY3RfZG9uZShzdHJ1Y3QgcnBjX3hwcnQgKnhwcnQpOw0KPiAgdm9pZAkJCXhw
-cnRfZm9yY2VfZGlzY29ubmVjdChzdHJ1Y3QgcnBjX3hwcnQgKnhwcnQpOw0KPiArdm9pZAkJCXhw
-cnRfZGlzY29ubmVjdF9ub3dha2Uoc3RydWN0IHJwY194cHJ0ICp4cHJ0KTsNCj4gIHZvaWQJCQl4
-cHJ0X2NvbmRpdGlvbmFsX2Rpc2Nvbm5lY3Qoc3RydWN0IHJwY194cHJ0DQo+ICp4cHJ0LCB1bnNp
-Z25lZCBpbnQgY29va2llKTsNCj4gIA0KPiAgYm9vbAkJCXhwcnRfbG9ja19jb25uZWN0KHN0cnVj
-dCBycGNfeHBydCAqLCBzdHJ1Y3QNCj4gcnBjX3Rhc2sgKiwgdm9pZCAqKTsNCj4gZGlmZiAtLWdp
-dCBhL25ldC9zdW5ycGMveHBydC5jIGIvbmV0L3N1bnJwYy94cHJ0LmMNCj4gaW5kZXggY2U5Mjcw
-MC4uYWZlNDEyZSAxMDA2NDQNCj4gLS0tIGEvbmV0L3N1bnJwYy94cHJ0LmMNCj4gKysrIGIvbmV0
-L3N1bnJwYy94cHJ0LmMNCj4gQEAgLTY4NSw2ICs2ODUsMjUgQEAgdm9pZCB4cHJ0X2ZvcmNlX2Rp
-c2Nvbm5lY3Qoc3RydWN0IHJwY194cHJ0DQo+ICp4cHJ0KQ0KPiAgfQ0KPiAgRVhQT1JUX1NZTUJP
-TF9HUEwoeHBydF9mb3JjZV9kaXNjb25uZWN0KTsNCj4gIA0KPiArLyoqDQo+ICsgKiB4cHJ0X2Rp
-c2Nvbm5lY3Rfbm93YWtlIC0gZm9yY2UgYSBjYWxsIHRvIHhwcnQtPm9wcy0+Y2xvc2UNCj4gKyAq
-IEB4cHJ0OiB0cmFuc3BvcnQgdG8gZGlzY29ubmVjdA0KPiArICoNCj4gKyAqIFRoZSBjYWxsZXIg
-bXVzdCBlbnN1cmUgdGhhdCB4cHJ0X3dha2VfcGVuZGluZ190YXNrcygpIGlzDQo+ICsgKiBjYWxs
-ZWQgbGF0ZXIuDQo+ICsgKi8NCj4gK3ZvaWQgeHBydF9kaXNjb25uZWN0X25vd2FrZShzdHJ1Y3Qg
-cnBjX3hwcnQgKnhwcnQpDQo+ICt7DQo+ICsgICAgICAgLyogRG9uJ3QgcmFjZSB3aXRoIHRoZSB0
-ZXN0X2JpdCgpIGluIHhwcnRfY2xlYXJfbG9ja2VkKCkgKi8NCj4gKyAgICAgICBzcGluX2xvY2tf
-YmgoJnhwcnQtPnRyYW5zcG9ydF9sb2NrKTsNCj4gKyAgICAgICBzZXRfYml0KFhQUlRfQ0xPU0Vf
-V0FJVCwgJnhwcnQtPnN0YXRlKTsNCj4gKyAgICAgICAvKiBUcnkgdG8gc2NoZWR1bGUgYW4gYXV0
-b2Nsb3NlIFJQQyBjYWxsICovDQo+ICsgICAgICAgaWYgKHRlc3RfYW5kX3NldF9iaXQoWFBSVF9M
-T0NLRUQsICZ4cHJ0LT5zdGF0ZSkgPT0gMCkNCj4gKyAgICAgICAgICAgICAgIHF1ZXVlX3dvcmso
-eHBydGlvZF93b3JrcXVldWUsICZ4cHJ0LT50YXNrX2NsZWFudXApOw0KPiArICAgICAgIHNwaW5f
-dW5sb2NrX2JoKCZ4cHJ0LT50cmFuc3BvcnRfbG9jayk7DQo+ICt9DQo+ICtFWFBPUlRfU1lNQk9M
-X0dQTCh4cHJ0X2Rpc2Nvbm5lY3Rfbm93YWtlKTsNCj4gKw0KDQpXZSBzaG91bGRuJ3QgbmVlZCBi
-b3RoIHhwcnRfZGlzY29ubmVjdF9ub3dha2UoKSBhbmQNCnhwcnRfZm9yY2VfZGlzY29ubmVjdCgp
-IHRvIGJlIGV4cG9ydGVkIGdpdmVuIHRoYXQgeW91IGNhbiBidWlsZCB0aGUNCmxhdHRlciBmcm9t
-IHRoZSBmb3JtZXIgKyB4cHJ0X3dha2VfcGVuZGluZ190YXNrcygpICh3aGljaCBpcyBhbHNvDQph
-bHJlYWR5IGV4cG9ydGVkKS4NCg0KPiAgc3RhdGljIHVuc2lnbmVkIGludA0KPiAgeHBydF9jb25u
-ZWN0X2Nvb2tpZShzdHJ1Y3QgcnBjX3hwcnQgKnhwcnQpDQo+ICB7DQo+IGRpZmYgLS1naXQgYS9u
-ZXQvc3VucnBjL3hwcnRyZG1hL2JhY2tjaGFubmVsLmMNCj4gYi9uZXQvc3VucnBjL3hwcnRyZG1h
-L2JhY2tjaGFubmVsLmMNCj4gaW5kZXggMmNiMDdhMy4uNWQ0NjJlOCAxMDA2NDQNCj4gLS0tIGEv
-bmV0L3N1bnJwYy94cHJ0cmRtYS9iYWNrY2hhbm5lbC5jDQo+ICsrKyBiL25ldC9zdW5ycGMveHBy
-dHJkbWEvYmFja2NoYW5uZWwuYw0KPiBAQCAtMTkzLDE0ICsxOTMsMTUgQEAgc3RhdGljIGludCBy
-cGNyZG1hX2JjX21hcnNoYWxfcmVwbHkoc3RydWN0DQo+IHJwY19ycXN0ICpycXN0KQ0KPiAgICov
-DQo+ICBpbnQgeHBydF9yZG1hX2JjX3NlbmRfcmVwbHkoc3RydWN0IHJwY19ycXN0ICpycXN0KQ0K
-PiAgew0KPiAtCXN0cnVjdCBycGNyZG1hX3hwcnQgKnJfeHBydCA9IHJwY3hfdG9fcmRtYXgocnFz
-dC0+cnFfeHBydCk7DQo+ICsJc3RydWN0IHJwY194cHJ0ICp4cHJ0ID0gcnFzdC0+cnFfeHBydDsN
-Cj4gKwlzdHJ1Y3QgcnBjcmRtYV94cHJ0ICpyX3hwcnQgPSBycGN4X3RvX3JkbWF4KHhwcnQpOw0K
-PiAgCXN0cnVjdCBycGNyZG1hX3JlcSAqcmVxID0gcnBjcl90b19yZG1hcihycXN0KTsNCj4gIAlp
-bnQgcmM7DQo+ICANCj4gLQlpZiAoIXhwcnRfY29ubmVjdGVkKHJxc3QtPnJxX3hwcnQpKQ0KPiAt
-CQlnb3RvIGRyb3BfY29ubmVjdGlvbjsNCj4gKwlpZiAoIXhwcnRfY29ubmVjdGVkKHhwcnQpKQ0K
-PiArCQlyZXR1cm4gLUVOT1RDT05OOw0KPiAgDQo+IC0JaWYgKCF4cHJ0X3JlcXVlc3RfZ2V0X2Nv
-bmcocnFzdC0+cnFfeHBydCwgcnFzdCkpDQo+ICsJaWYgKCF4cHJ0X3JlcXVlc3RfZ2V0X2Nvbmco
-eHBydCwgcnFzdCkpDQo+ICAJCXJldHVybiAtRUJBRFNMVDsNCj4gIA0KPiAgCXJjID0gcnBjcmRt
-YV9iY19tYXJzaGFsX3JlcGx5KHJxc3QpOw0KPiBAQCAtMjE1LDcgKzIxNiw3IEBAIGludCB4cHJ0
-X3JkbWFfYmNfc2VuZF9yZXBseShzdHJ1Y3QgcnBjX3Jxc3QNCj4gKnJxc3QpDQo+ICAJaWYgKHJj
-ICE9IC1FTk9UQ09OTikNCj4gIAkJcmV0dXJuIHJjOw0KPiAgZHJvcF9jb25uZWN0aW9uOg0KPiAt
-CXhwcnRfZGlzY29ubmVjdF9kb25lKHJxc3QtPnJxX3hwcnQpOw0KPiArCXhwcnQtPm9wcy0+Y2xv
-c2UoeHBydCk7DQoNCldoeSB1c2UgYW4gaW5kaXJlY3QgY2FsbCBoZXJlPyBJcyB0aGlzIGV2ZXIg
-Z29pbmcgdG8gYmUgZGlmZmVyZW50IHRvDQp4cHJ0X3JkbWFfY2xvc2UoKT8NCg0KPiAgCXJldHVy
-biAtRU5PVENPTk47DQo+ICB9DQo+ICANCj4gQEAgLTMzOCw3ICszMzksNyBAQCB2b2lkIHJwY3Jk
-bWFfYmNfcmVjZWl2ZV9jYWxsKHN0cnVjdCBycGNyZG1hX3hwcnQNCj4gKnJfeHBydCwNCj4gIA0K
-PiAgb3V0X292ZXJmbG93Og0KPiAgCXByX3dhcm4oIlJQQy9SRE1BIGJhY2tjaGFubmVsIG92ZXJm
-bG93XG4iKTsNCj4gLQl4cHJ0X2Rpc2Nvbm5lY3RfZG9uZSh4cHJ0KTsNCj4gKwl4cHJ0X2Rpc2Nv
-bm5lY3Rfbm93YWtlKHhwcnQpOw0KPiAgCS8qIFRoaXMgcmVjZWl2ZSBidWZmZXIgZ2V0cyByZXBv
-c3RlZCBhdXRvbWF0aWNhbGx5DQo+ICAJICogd2hlbiB0aGUgY29ubmVjdGlvbiBpcyByZS1lc3Rh
-Ymxpc2hlZC4NCj4gIAkgKi8NCj4gZGlmZiAtLWdpdCBhL25ldC9zdW5ycGMveHBydHJkbWEvc3Zj
-X3JkbWFfYmFja2NoYW5uZWwuYw0KPiBiL25ldC9zdW5ycGMveHBydHJkbWEvc3ZjX3JkbWFfYmFj
-a2NoYW5uZWwuYw0KPiBpbmRleCBmM2MxNDdkLi5iOTA4ZjJjIDEwMDY0NA0KPiAtLS0gYS9uZXQv
-c3VucnBjL3hwcnRyZG1hL3N2Y19yZG1hX2JhY2tjaGFubmVsLmMNCj4gKysrIGIvbmV0L3N1bnJw
-Yy94cHJ0cmRtYS9zdmNfcmRtYV9iYWNrY2hhbm5lbC5jDQo+IEBAIC0yMDAsMTEgKzIwMCwxMCBA
-QCBzdGF0aWMgaW50IHN2Y19yZG1hX2JjX3NlbmR0byhzdHJ1Y3QNCj4gc3ZjeHBydF9yZG1hICpy
-ZG1hLA0KPiAgCQlzdmNfcmRtYV9zZW5kX2N0eHRfcHV0KHJkbWEsIGN0eHQpOw0KPiAgCQlnb3Rv
-IGRyb3BfY29ubmVjdGlvbjsNCj4gIAl9DQo+IC0JcmV0dXJuIHJjOw0KPiArCXJldHVybiAwOw0K
-PiAgDQo+ICBkcm9wX2Nvbm5lY3Rpb246DQo+ICAJZHByaW50aygic3ZjcmRtYTogZmFpbGVkIHRv
-IHNlbmQgYmMgY2FsbFxuIik7DQo+IC0JeHBydF9kaXNjb25uZWN0X2RvbmUoeHBydCk7DQo+ICAJ
-cmV0dXJuIC1FTk9UQ09OTjsNCj4gIH0NCj4gIA0KPiBAQCAtMjI1LDggKzIyNCwxMSBAQCBzdGF0
-aWMgaW50IHN2Y19yZG1hX2JjX3NlbmR0byhzdHJ1Y3QNCj4gc3ZjeHBydF9yZG1hICpyZG1hLA0K
-PiAgDQo+ICAJcmV0ID0gLUVOT1RDT05OOw0KPiAgCXJkbWEgPSBjb250YWluZXJfb2Yoc3hwcnQs
-IHN0cnVjdCBzdmN4cHJ0X3JkbWEsIHNjX3hwcnQpOw0KPiAtCWlmICghdGVzdF9iaXQoWFBUX0RF
-QUQsICZzeHBydC0+eHB0X2ZsYWdzKSkNCj4gKwlpZiAoIXRlc3RfYml0KFhQVF9ERUFELCAmc3hw
-cnQtPnhwdF9mbGFncykpIHsNCj4gIAkJcmV0ID0gcnBjcmRtYV9iY19zZW5kX3JlcXVlc3QocmRt
-YSwgcnFzdCk7DQo+ICsJCWlmIChyZXQgPT0gLUVOT1RDT05OKQ0KPiArCQkJc3ZjX2Nsb3NlX3hw
-cnQoc3hwcnQpOw0KPiArCX0NCj4gIA0KPiAgCW11dGV4X3VubG9jaygmc3hwcnQtPnhwdF9tdXRl
-eCk7DQo+ICANCj4gZGlmZiAtLWdpdCBhL25ldC9zdW5ycGMveHBydHJkbWEvdHJhbnNwb3J0LmMN
-Cj4gYi9uZXQvc3VucnBjL3hwcnRyZG1hL3RyYW5zcG9ydC5jDQo+IGluZGV4IDkxYzQ3NmEuLmEx
-NjI5NmIgMTAwNjQ0DQo+IC0tLSBhL25ldC9zdW5ycGMveHBydHJkbWEvdHJhbnNwb3J0LmMNCj4g
-KysrIGIvbmV0L3N1bnJwYy94cHJ0cmRtYS90cmFuc3BvcnQuYw0KPiBAQCAtNDUzLDEzICs0NTMs
-MTMgQEANCj4gIA0KPiAgCWlmICh0ZXN0X2FuZF9jbGVhcl9iaXQoUlBDUkRNQV9JQUZfUkVNT1ZJ
-TkcsICZpYS0+cmlfZmxhZ3MpKSB7DQo+ICAJCXJwY3JkbWFfaWFfcmVtb3ZlKGlhKTsNCj4gLQkJ
-cmV0dXJuOw0KPiArCQlnb3RvIG91dDsNCj4gIAl9DQo+ICsNCj4gIAlpZiAoZXAtPnJlcF9jb25u
-ZWN0ZWQgPT0gLUVOT0RFVikNCj4gIAkJcmV0dXJuOw0KPiAgCWlmIChlcC0+cmVwX2Nvbm5lY3Rl
-ZCA+IDApDQo+ICAJCXhwcnQtPnJlZXN0YWJsaXNoX3RpbWVvdXQgPSAwOw0KPiAtCXhwcnRfZGlz
-Y29ubmVjdF9kb25lKHhwcnQpOw0KPiAgCXJwY3JkbWFfZXBfZGlzY29ubmVjdChlcCwgaWEpOw0K
-PiAgDQo+ICAJLyogUHJlcGFyZSBAeHBydCBmb3IgdGhlIG5leHQgY29ubmVjdGlvbiBieSByZWlu
-aXRpYWxpemluZw0KPiBAQCAtNDY3LDYgKzQ2NywxMCBAQA0KPiAgCSAqLw0KPiAgCXJfeHBydC0+
-cnhfYnVmLnJiX2NyZWRpdHMgPSAxOw0KPiAgCXhwcnQtPmN3bmQgPSBSUENfQ1dORFNISUZUOw0K
-PiArDQo+ICtvdXQ6DQo+ICsJKyt4cHJ0LT5jb25uZWN0X2Nvb2tpZTsNCj4gKwl4cHJ0X2Rpc2Nv
-bm5lY3RfZG9uZSh4cHJ0KTsNCj4gIH0NCj4gIA0KPiAgLyoqDQo+IEBAIC01MTUsNyArNTE5LDcg
-QEANCj4gIHN0YXRpYyB2b2lkDQo+ICB4cHJ0X3JkbWFfdGltZXIoc3RydWN0IHJwY194cHJ0ICp4
-cHJ0LCBzdHJ1Y3QgcnBjX3Rhc2sgKnRhc2spDQo+ICB7DQo+IC0JeHBydF9mb3JjZV9kaXNjb25u
-ZWN0KHhwcnQpOw0KPiArCXhwcnRfZGlzY29ubmVjdF9ub3dha2UoeHBydCk7DQo+ICB9DQo+ICAN
-Cj4gIC8qKg0KPiBAQCAtNzE3LDcgKzcyMSw3IEBADQo+ICAjZW5kaWYJLyogQ09ORklHX1NVTlJQ
-Q19CQUNLQ0hBTk5FTCAqLw0KPiAgDQo+ICAJaWYgKCF4cHJ0X2Nvbm5lY3RlZCh4cHJ0KSkNCj4g
-LQkJZ290byBkcm9wX2Nvbm5lY3Rpb247DQo+ICsJCXJldHVybiAtRU5PVENPTk47DQo+ICANCj4g
-IAlpZiAoIXhwcnRfcmVxdWVzdF9nZXRfY29uZyh4cHJ0LCBycXN0KSkNCj4gIAkJcmV0dXJuIC1F
-QkFEU0xUOw0KPiBAQCAtNzQ5LDggKzc1Myw4IEBADQo+ICAJaWYgKHJjICE9IC1FTk9UQ09OTikN
-Cj4gIAkJcmV0dXJuIHJjOw0KPiAgZHJvcF9jb25uZWN0aW9uOg0KPiAtCXhwcnRfZGlzY29ubmVj
-dF9kb25lKHhwcnQpOw0KPiAtCXJldHVybiAtRU5PVENPTk47CS8qIGltcGxpZXMgZGlzY29ubmVj
-dCAqLw0KPiArCXhwcnRfcmRtYV9jbG9zZSh4cHJ0KTsNCj4gKwlyZXR1cm4gLUVOT1RDT05OOw0K
-PiAgfQ0KPiAgDQo+ICB2b2lkIHhwcnRfcmRtYV9wcmludF9zdGF0cyhzdHJ1Y3QgcnBjX3hwcnQg
-KnhwcnQsIHN0cnVjdCBzZXFfZmlsZQ0KPiAqc2VxKQ0KPiBkaWZmIC0tZ2l0IGEvbmV0L3N1bnJw
-Yy94cHJ0cmRtYS92ZXJicy5jDQo+IGIvbmV0L3N1bnJwYy94cHJ0cmRtYS92ZXJicy5jDQo+IGlu
-ZGV4IDlhMGE3NjUuLjM4YTc1N2MgMTAwNjQ0DQo+IC0tLSBhL25ldC9zdW5ycGMveHBydHJkbWEv
-dmVyYnMuYw0KPiArKysgYi9uZXQvc3VucnBjL3hwcnRyZG1hL3ZlcmJzLmMNCj4gQEAgLTI1Miw3
-ICsyNTIsNyBAQCBzdGF0aWMgdm9pZCBycGNyZG1hX3hwcnRfZHJhaW4oc3RydWN0DQo+IHJwY3Jk
-bWFfeHBydCAqcl94cHJ0KQ0KPiAgI2VuZGlmDQo+ICAJCXNldF9iaXQoUlBDUkRNQV9JQUZfUkVN
-T1ZJTkcsICZpYS0+cmlfZmxhZ3MpOw0KPiAgCQllcC0+cmVwX2Nvbm5lY3RlZCA9IC1FTk9ERVY7
-DQo+IC0JCXhwcnRfZm9yY2VfZGlzY29ubmVjdCh4cHJ0KTsNCj4gKwkJeHBydF9kaXNjb25uZWN0
-X25vd2FrZSh4cHJ0KTsNCj4gIAkJd2FpdF9mb3JfY29tcGxldGlvbigmaWEtPnJpX3JlbW92ZV9k
-b25lKTsNCj4gIA0KPiAgCQlpYS0+cmlfaWQgPSBOVUxMOw0KPiBAQCAtMjgwLDEwICsyODAsOSBA
-QCBzdGF0aWMgdm9pZCBycGNyZG1hX3hwcnRfZHJhaW4oc3RydWN0DQo+IHJwY3JkbWFfeHBydCAq
-cl94cHJ0KQ0KPiAgCQkJZXAtPnJlcF9jb25uZWN0ZWQgPSAtRUFHQUlOOw0KPiAgCQlnb3RvIGRp
-c2Nvbm5lY3RlZDsNCj4gIAljYXNlIFJETUFfQ01fRVZFTlRfRElTQ09OTkVDVEVEOg0KPiAtCQkr
-K3hwcnQtPmNvbm5lY3RfY29va2llOw0KPiAgCQllcC0+cmVwX2Nvbm5lY3RlZCA9IC1FQ09OTkFC
-T1JURUQ7DQo+ICBkaXNjb25uZWN0ZWQ6DQo+IC0JCXhwcnRfZm9yY2VfZGlzY29ubmVjdCh4cHJ0
-KTsNCj4gKwkJeHBydF9kaXNjb25uZWN0X25vd2FrZSh4cHJ0KTsNCj4gIAkJd2FrZV91cF9hbGwo
-JmVwLT5yZXBfY29ubmVjdF93YWl0KTsNCj4gIAkJYnJlYWs7DQo+ICAJZGVmYXVsdDoNCj4gDQoN
-Ci0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIsIEhhbW1l
-cnNwYWNlDQp0cm9uZC5teWtsZWJ1c3RAaGFtbWVyc3BhY2UuY29tDQoNCg0K
+On Mon, 2018-12-17 at 19:23 +0300, Vasily Averin wrote:
+> if node have NFSv41+ mounts inside several net namespaces
+> it can lead to use-after-free in svc_process_common()
+> 
+> svc_process_common() 
+>         /* Setup reply header */
+>         rqstp->rq_xprt->xpt_ops->xpo_prep_reply_hdr(rqstp); <<< HERE
+> 
+> svc_process_common() can use already freed rqstp->rq_xprt,
+> it was assigned in bc_svc_process() where it was taken from serv->sv_bc_xprt.
+> 
+> serv is global structure but sv_bc_xprt is assigned per-netnamespace,
+> so if nfsv41+ shares are mounted in several containers together
+> bc_svc_process() can use wrong backchannel or even access freed memory.
+> 
+> To find correct svc_xprt of client-related backchannel
+> bc_svc_process() now calls new .bc_get_xprt callback
+> that executes svc_find_xprt() with proper xprt name.
+> 
+> Signed-off-by: Vasily Averin <vvs@virtuozzo.com>
+> ---
+>  include/linux/sunrpc/xprt.h       |  1 +
+>  net/sunrpc/svc.c                  | 22 ++++++++++++++++------
+>  net/sunrpc/xprtrdma/backchannel.c |  5 +++++
+>  net/sunrpc/xprtrdma/transport.c   |  1 +
+>  net/sunrpc/xprtrdma/xprt_rdma.h   |  1 +
+>  net/sunrpc/xprtsock.c             |  7 +++++++
+>  6 files changed, 31 insertions(+), 6 deletions(-)
+> 
+> diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
+> index a4ab4f8d9140..031d2843a002 100644
+> --- a/include/linux/sunrpc/xprt.h
+> +++ b/include/linux/sunrpc/xprt.h
+> @@ -158,6 +158,7 @@ struct rpc_xprt_ops {
+>  	int		(*bc_setup)(struct rpc_xprt *xprt,
+>  				    unsigned int min_reqs);
+>  	int		(*bc_up)(struct svc_serv *serv, struct net *net);
+> +	struct svc_xprt*(*bc_get_xprt)(struct svc_serv *serv, struct net *net);
+>  	size_t		(*bc_maxpayload)(struct rpc_xprt *xprt);
+>  	void		(*bc_free_rqst)(struct rpc_rqst *rqst);
+>  	void		(*bc_destroy)(struct rpc_xprt *xprt,
+> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+> index d13e05f1a990..a7264fd1b3db 100644
+> --- a/net/sunrpc/svc.c
+> +++ b/net/sunrpc/svc.c
+> @@ -1450,16 +1450,22 @@ int
+>  bc_svc_process(struct svc_serv *serv, struct rpc_rqst *req,
+>  	       struct svc_rqst *rqstp)
+>  {
+> +	struct net	*net = req->rq_xprt->xprt_net;
+>  	struct kvec	*argv = &rqstp->rq_arg.head[0];
+>  	struct kvec	*resv = &rqstp->rq_res.head[0];
+>  	struct rpc_task *task;
+> +	struct svc_xprt *s_xprt;
+>  	int proc_error;
+>  	int error;
+>  
+>  	dprintk("svc: %s(%p)\n", __func__, req);
+>  
+> +	s_xprt = req->rq_xprt->ops->bc_get_xprt(serv, net);
+> +	if (!s_xprt)
+> +		goto proc_error;
+> +
+>  	/* Build the svc_rqst used by the common processing routine */
+> -	rqstp->rq_xprt = serv->sv_bc_xprt;
+> +	rqstp->rq_xprt = s_xprt;
+>  	rqstp->rq_xid = req->rq_xid;
+>  	rqstp->rq_prot = req->rq_xprt->prot;
+>  	rqstp->rq_server = serv;
+> @@ -1494,13 +1500,11 @@ bc_svc_process(struct svc_serv *serv, struct rpc_rqst *req,
+>  
+>  	/* Parse and execute the bc call */
+>  	proc_error = svc_process_common(rqstp, argv, resv);
+> +	svc_xprt_put(rqstp->rq_xprt);
+>  
+>  	atomic_inc(&req->rq_xprt->bc_free_slots);
+> -	if (!proc_error) {
+> -		/* Processing error: drop the request */
+> -		xprt_free_bc_request(req);
+> -		return 0;
+> -	}
+> +	if (!proc_error)
+> +		goto proc_error;
+>  
+>  	/* Finally, send the reply synchronously */
+>  	memcpy(&req->rq_snd_buf, &rqstp->rq_res, sizeof(req->rq_snd_buf));
+> @@ -1517,6 +1521,12 @@ bc_svc_process(struct svc_serv *serv, struct rpc_rqst *req,
+>  out:
+>  	dprintk("svc: %s(), error=%d\n", __func__, error);
+>  	return error;
+> +
+> +proc_error:
+> +	/* Processing error: drop the request */
+> +	xprt_free_bc_request(req);
+> +	error = -EINVAL;
+> +	goto out;
+>  }
+>  EXPORT_SYMBOL_GPL(bc_svc_process);
+>  #endif /* CONFIG_SUNRPC_BACKCHANNEL */
+> diff --git a/net/sunrpc/xprtrdma/backchannel.c b/net/sunrpc/xprtrdma/backchannel.c
+> index e5b367a3e517..3e06aeacda43 100644
+> --- a/net/sunrpc/xprtrdma/backchannel.c
+> +++ b/net/sunrpc/xprtrdma/backchannel.c
+> @@ -133,6 +133,11 @@ int xprt_rdma_bc_up(struct svc_serv *serv, struct net *net)
+>  	return 0;
+>  }
+>  
+> +struct svc_xprt *xprt_rdma_bc_get_xprt(struct svc_serv *serv, struct net *net)
+> +{
+> +	return svc_find_xprt(serv, "rdma-bc", net, AF_UNSPEC, 0);
+> +}
+> +
+>  /**
+>   * xprt_rdma_bc_maxpayload - Return maximum backchannel message size
+>   * @xprt: transport
+> diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
+> index ae2a83828953..41d67de93531 100644
+> --- a/net/sunrpc/xprtrdma/transport.c
+> +++ b/net/sunrpc/xprtrdma/transport.c
+> @@ -828,6 +828,7 @@ static const struct rpc_xprt_ops xprt_rdma_procs = {
+>  #if defined(CONFIG_SUNRPC_BACKCHANNEL)
+>  	.bc_setup		= xprt_rdma_bc_setup,
+>  	.bc_up			= xprt_rdma_bc_up,
+> +	.bc_get_xprt		= xprt_rdma_bc_get_xprt,
+>  	.bc_maxpayload		= xprt_rdma_bc_maxpayload,
+>  	.bc_free_rqst		= xprt_rdma_bc_free_rqst,
+>  	.bc_destroy		= xprt_rdma_bc_destroy,
+> diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+> index a13ccb643ce0..2726d71052a8 100644
+> --- a/net/sunrpc/xprtrdma/xprt_rdma.h
+> +++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+> @@ -662,6 +662,7 @@ void xprt_rdma_cleanup(void);
+>  #if defined(CONFIG_SUNRPC_BACKCHANNEL)
+>  int xprt_rdma_bc_setup(struct rpc_xprt *, unsigned int);
+>  int xprt_rdma_bc_up(struct svc_serv *, struct net *);
+> +struct svc_xprt *xprt_rdma_bc_get_xprt(struct svc_serv *serv, struct net *net);
+>  size_t xprt_rdma_bc_maxpayload(struct rpc_xprt *);
+>  int rpcrdma_bc_post_recv(struct rpcrdma_xprt *, unsigned int);
+>  void rpcrdma_bc_receive_call(struct rpcrdma_xprt *, struct rpcrdma_rep *);
+> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+> index 8a5e823e0b33..16f9c7720465 100644
+> --- a/net/sunrpc/xprtsock.c
+> +++ b/net/sunrpc/xprtsock.c
+> @@ -1411,6 +1411,12 @@ static int xs_tcp_bc_up(struct svc_serv *serv, struct net *net)
+>  	return 0;
+>  }
+>  
+> +static struct svc_xprt *xs_tcp_bc_get_xprt(struct svc_serv *serv,
+> +					   struct net *net)
+> +{
+> +	return svc_find_xprt(serv, "tcp-bc", net, AF_UNSPEC, 0);
+> +}
+> +
+>  static size_t xs_tcp_bc_maxpayload(struct rpc_xprt *xprt)
+>  {
+>  	return PAGE_SIZE;
+> @@ -2668,6 +2674,7 @@ static const struct rpc_xprt_ops xs_tcp_ops = {
+>  #ifdef CONFIG_SUNRPC_BACKCHANNEL
+>  	.bc_setup		= xprt_setup_bc,
+>  	.bc_up			= xs_tcp_bc_up,
+> +	.bc_get_xprt		= xs_tcp_bc_get_xprt,
+>  	.bc_maxpayload		= xs_tcp_bc_maxpayload,
+>  	.bc_free_rqst		= xprt_free_bc_rqst,
+>  	.bc_destroy		= xprt_destroy_bc,
+
+Reviewed-by: Jeff Layton <jlayton@kernel.org>
+
