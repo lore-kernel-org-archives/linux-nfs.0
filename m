@@ -6,62 +6,62 @@ X-Spam-Status: No, score=-6.8 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
 	SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B5651C43387
-	for <linux-nfs@archiver.kernel.org>; Mon, 17 Dec 2018 16:40:42 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 792E1C43387
+	for <linux-nfs@archiver.kernel.org>; Mon, 17 Dec 2018 16:40:45 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 854CE2133F
-	for <linux-nfs@archiver.kernel.org>; Mon, 17 Dec 2018 16:40:42 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 470012133F
+	for <linux-nfs@archiver.kernel.org>; Mon, 17 Dec 2018 16:40:45 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="W0Q4OpgB"
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="OJuXHt7Y"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727771AbeLQQkl (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 17 Dec 2018 11:40:41 -0500
-Received: from mail-io1-f67.google.com ([209.85.166.67]:38471 "EHLO
-        mail-io1-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2387905AbeLQQkk (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Dec 2018 11:40:40 -0500
-Received: by mail-io1-f67.google.com with SMTP id l14so10467769ioj.5;
-        Mon, 17 Dec 2018 08:40:39 -0800 (PST)
+        id S2388108AbeLQQko (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 17 Dec 2018 11:40:44 -0500
+Received: from mail-it1-f194.google.com ([209.85.166.194]:53962 "EHLO
+        mail-it1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2387905AbeLQQkn (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Dec 2018 11:40:43 -0500
+Received: by mail-it1-f194.google.com with SMTP id g85so19464174ita.3;
+        Mon, 17 Dec 2018 08:40:43 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=sender:subject:from:to:date:message-id:in-reply-to:references
          :user-agent:mime-version:content-transfer-encoding;
-        bh=z+FAU7x0pu2cR4+7sT5Y8flHVTgOYIrNWNeq22LHUsc=;
-        b=W0Q4OpgBomIWa8/yt+XPFn+k18aeQAjSnHBDgNZRoeL9q34XgokBa2PsLfpDiZPkqF
-         k6QSWBM96P4mxHMoKG84CZKKbwuQkt2LE3LMVHkSv1TaYaEpzqESETYlWmy4lg3ak6so
-         qrMHDSUF/6LwIEKv1VP3vx73LvwxStUV+ZEv8AxT1OE7Jklw9VACGH4st3kcqPT4gY53
-         E5jBJ51kXbSFscW79EWXXKY2wyYakDO5+//yXk83HYwokBmGaQjim24PzFbxUc/D3580
-         62vnQoaRA3geEwK9yjqQM9qkjit+LUWtc4paiFO2u4XV7URuWmRrDwdseWr+t2o/6H5q
-         rEAA==
+        bh=PXLIaALci2knYQ1gMtWCij3L4mHSL0l8lqusuVMPb0k=;
+        b=OJuXHt7YnmhJdGdCIqGcbzpCJNjAYpPGcIJwtKd5bdAjDQxCvkt6jDAjXkowFA2gqL
+         ldC6MNUWnEltASIb/MkIVv4aVIXtXGV034GCultyjJPqHNdZ3Eo5JcQHqdlBPSIhcBgs
+         XLXGzTxMHZBbBxNuSPkHi8XFdz9AFJjo4pdJXn24cyvqr7tjROD2G99pnXQWgiqEIaFL
+         CgsYaE7uku+4sbWjMPJJ2dMPq8Za/W/ArGwnYA+iUklSH4s2/WNqpzFB79Fq+BOzBZMv
+         1Wwma1GlZeJRwQOeHZKzJ91Vt422Yhegm9UDov244/8z4gUD+ewQouwVc4l2hkuUSANw
+         AuPg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:sender:subject:from:to:date:message-id
          :in-reply-to:references:user-agent:mime-version
          :content-transfer-encoding;
-        bh=z+FAU7x0pu2cR4+7sT5Y8flHVTgOYIrNWNeq22LHUsc=;
-        b=f0JaUUsOc6jzSdUFTV45r1H17rDNbzq+FUCVJnHFML6mad2Ue18tWfIMeR1t1khfaR
-         eqPL+Z/izrB8bVOnPT0U2+duSG9VVch7dWHRbLGcoJAc4L4yumpr5n3MVmsN6bhJatlC
-         JLMMeRGTloMEbgsKRTv9rlVLsUZzz3Tyuo9+mvZ2mmTh464+tz5HIPnrlWfTzKI4YKrv
-         5EF7NOT4CPEq4pq3WRAfOVVY1FNj9E/iZnf3u71ymbtlzfEkgddImq/g7quBNVMIo549
-         TpfneyluE4sJbEhoyLHZIZR6qy4WXToB2bf1p6vVlYqFu2Fwk6+Q7sTB6VKBNIKPXYex
-         xmtg==
-X-Gm-Message-State: AA+aEWYIzc03fS1ZIbpqmTN4GuYf/3Jeg8gKBgvzTFE/ZpbY14G6NMql
-        CuGftMmPhRY7BGs+2qvnB968akGz
-X-Google-Smtp-Source: AFSGD/WifFqsJA64UpgjvLHBgd4uU2B73LEVIcNkqZKFXzz5G2PIFm3a0CXBg5wrofBfLcyrj6n9DQ==
-X-Received: by 2002:a5d:9341:: with SMTP id i1mr11375086ioo.162.1545064838279;
-        Mon, 17 Dec 2018 08:40:38 -0800 (PST)
+        bh=PXLIaALci2knYQ1gMtWCij3L4mHSL0l8lqusuVMPb0k=;
+        b=jaJ+Aj17PoTOd7X9ntfaJdZxKSmmhGPCuxIwdVmSgcJCqO/rKePOV/yBFCy2D5ECNU
+         5w0rF0EIe5+8JoYuD+DNEpADHcdZzBqKHqmL1MVnsam3KydejcQnpP/h1J6VyuBfueIs
+         aUYDDMVY2jf5qUMhQNLpFo6IccPNH3jghLueg0om7KVffwZOhL9M68K+Q7A/huZ0bZ/2
+         2Wvmq89RIOc6fwj9BExGsfBB+d5FNTmGN5cOGaN+VFZw9JZfwWaj2BLMZ0hqIATahmh7
+         VPK7sy2FozxR++Ltl8NYhCs3hToh2QC6wQQ5btYcAxtwcUn1StLRPN92wf8huMoCZGhy
+         W2Sw==
+X-Gm-Message-State: AA+aEWYmpvrT9mM1O61Bv5yJQhlXPIZlEugNcL+njLnWMgJUgFkd80wm
+        dZtrV/XnyWZP0V3+Kdz1zbvp49Al
+X-Google-Smtp-Source: AFSGD/XHCFrM7ETvENr7cIroH1sACs3Kx+RsdgCM8OitrcjtUvmMH3oCzwhwbpwsJZkbyrWgRWb0dQ==
+X-Received: by 2002:a02:2b2d:: with SMTP id h45mr11068165jaa.75.1545064843028;
+        Mon, 17 Dec 2018 08:40:43 -0800 (PST)
 Received: from gateway.1015granger.net (c-68-61-232-219.hsd1.mi.comcast.net. [68.61.232.219])
-        by smtp.gmail.com with ESMTPSA id o63sm7894475ita.8.2018.12.17.08.40.36
+        by smtp.gmail.com with ESMTPSA id t194sm6572955iof.3.2018.12.17.08.40.42
         (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Mon, 17 Dec 2018 08:40:37 -0800 (PST)
+        Mon, 17 Dec 2018 08:40:42 -0800 (PST)
 Received: from manet.1015granger.net (manet.1015granger.net [192.168.1.51])
-        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id wBHGeajD018620;
-        Mon, 17 Dec 2018 16:40:36 GMT
-Subject: [PATCH v4 14/30] xprtrdma: Remove request_module from backchannel
+        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id wBHGeff6018623;
+        Mon, 17 Dec 2018 16:40:41 GMT
+Subject: [PATCH v4 15/30] xprtrdma: Expose transport header errors
 From:   Chuck Lever <chuck.lever@oracle.com>
 To:     linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date:   Mon, 17 Dec 2018 11:40:36 -0500
-Message-ID: <20181217164036.24133.28066.stgit@manet.1015granger.net>
+Date:   Mon, 17 Dec 2018 11:40:41 -0500
+Message-ID: <20181217164041.24133.94561.stgit@manet.1015granger.net>
 In-Reply-To: <20181217162406.24133.27356.stgit@manet.1015granger.net>
 References: <20181217162406.24133.27356.stgit@manet.1015granger.net>
 User-Agent: StGit/0.17.1-dirty
@@ -73,34 +73,24 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Since commit ffe1f0df5862 ("rpcrdma: Merge svcrdma and xprtrdma
-modules into one"), the forward and backchannel components are part
-of the same kernel module. A separate request_module() call in the
-backchannel code is no longer necessary.
+For better observability of parsing errors, return the error code
+generated in the decoders to the upper layer consumer.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/backchannel.c |    2 --
- 1 file changed, 2 deletions(-)
+ net/sunrpc/xprtrdma/rpc_rdma.c |    1 -
+ 1 file changed, 1 deletion(-)
 
-diff --git a/net/sunrpc/xprtrdma/backchannel.c b/net/sunrpc/xprtrdma/backchannel.c
-index 5d462e8..9cb96a5 100644
---- a/net/sunrpc/xprtrdma/backchannel.c
-+++ b/net/sunrpc/xprtrdma/backchannel.c
-@@ -5,7 +5,6 @@
-  * Support for backward direction RPCs on RPC/RDMA.
-  */
- 
--#include <linux/module.h>
- #include <linux/sunrpc/xprt.h>
- #include <linux/sunrpc/svc.h>
- #include <linux/sunrpc/svc_xprt.h>
-@@ -101,7 +100,6 @@ int xprt_rdma_bc_setup(struct rpc_xprt *xprt, unsigned int reqs)
- 		goto out_free;
- 
- 	r_xprt->rx_buf.rb_bc_srv_max_requests = reqs;
--	request_module("svcrdma");
- 	trace_xprtrdma_cb_setup(r_xprt, reqs);
- 	return 0;
+diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
+index 939f84a..8de0b9f 100644
+--- a/net/sunrpc/xprtrdma/rpc_rdma.c
++++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+@@ -1246,7 +1246,6 @@ void rpcrdma_complete_rqst(struct rpcrdma_rep *rep)
+ out_badheader:
+ 	trace_xprtrdma_reply_hdr(rep);
+ 	r_xprt->rx_stats.bad_reply_count++;
+-	status = -EIO;
+ 	goto out;
+ }
  
 
