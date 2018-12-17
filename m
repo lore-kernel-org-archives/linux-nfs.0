@@ -6,63 +6,62 @@ X-Spam-Status: No, score=-6.8 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
 	SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id CBEC3C43387
-	for <linux-nfs@archiver.kernel.org>; Mon, 17 Dec 2018 16:41:53 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id F2C70C43387
+	for <linux-nfs@archiver.kernel.org>; Mon, 17 Dec 2018 16:42:00 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 9D4702133F
-	for <linux-nfs@archiver.kernel.org>; Mon, 17 Dec 2018 16:41:53 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id C1E342133F
+	for <linux-nfs@archiver.kernel.org>; Mon, 17 Dec 2018 16:42:00 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="piEGMR/p"
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="a/Znnd8m"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2388329AbeLQQlx (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 17 Dec 2018 11:41:53 -0500
-Received: from mail-it1-f196.google.com ([209.85.166.196]:35605 "EHLO
-        mail-it1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2388011AbeLQQlx (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Dec 2018 11:41:53 -0500
-Received: by mail-it1-f196.google.com with SMTP id p197so20946607itp.0;
-        Mon, 17 Dec 2018 08:41:52 -0800 (PST)
+        id S2388331AbeLQQmA (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 17 Dec 2018 11:42:00 -0500
+Received: from mail-io1-f67.google.com ([209.85.166.67]:35176 "EHLO
+        mail-io1-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2388011AbeLQQl7 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Dec 2018 11:41:59 -0500
+Received: by mail-io1-f67.google.com with SMTP id o13so10494636ioh.2;
+        Mon, 17 Dec 2018 08:41:59 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=sender:subject:from:to:date:message-id:in-reply-to:references
          :user-agent:mime-version:content-transfer-encoding;
-        bh=zl8j8je6pfA0Wi9IzJb3FMhbqTE3c/KKDSDa4e1eAIg=;
-        b=piEGMR/p/W7nsqva7Ldjl+XONIPE+oILpDt/jClVSFqfhZG7hN+ha7xdI/fCaLCW/X
-         tWEGWqRJ5KpNxLlR0rhRPa9O+1WdrtBTBzBzT8dcI5Il3kzd0SgpRshZ08x66WB+KYuC
-         TVpPqnmx1l3LIJSUwp3dMmiq3f81zQ5ORSSx5g2S2QuV5nBqI59OV5UaTajGwT3lOaLh
-         Eyk99uaYpjVtsmCpTCu7hYmnzVjwRyIv4oN768k7ExQWTUsgM/XoBKqTr5oPl1DR9ssN
-         PWXlGcEjjzBf4jbLTukTpASz7WnyPs3NuRSDf2N/ZB+YjLxSi6IAJL/qlqZ0UkuGvZl9
-         Luog==
+        bh=Hg+/62w4wVOPn0SmI/QIaJsKJ5mlxxB+x5Gu8gJqcDo=;
+        b=a/Znnd8mn+JEb7fwLisp4e4zhqoizQuIpDCh1vInFW1C1nf7AFqtNV1n5UCyTsW9c7
+         bU9peQpQrQlKpOSWw5KRt6ifsMTuY7f8NzR/cKLqv/vd3sQBgP1GfF5TvFEzIvBFhw6X
+         KuFLDZLSIKbs/cAnUxl/sTZ/TNRW5u0jZEp/0T518beDX4z40ZRtCoWd4EGG9cRIYsa/
+         Rph8+Lo2uDu6R7kMkoPgCCoSRWY13ivfNjP3JJz9qa/7ZUDVjnnyJpOGMeKstEa0MngW
+         WOM4+zIZ/M5QpRv+I/x7VwjeE/XAPkO5NU4RF7USk063U8f35tgATCy1MT/z5VQCvzJZ
+         26eQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:sender:subject:from:to:date:message-id
          :in-reply-to:references:user-agent:mime-version
          :content-transfer-encoding;
-        bh=zl8j8je6pfA0Wi9IzJb3FMhbqTE3c/KKDSDa4e1eAIg=;
-        b=mCw1fOllESoOFg/PqmdD7FRW5tiJzeXF2/BG6IWxIp7jCCaELmABBcB4P94jsojrtm
-         HgS6D/gIYqwyXa4WYkqlgQe2aOgx1D4KtE8SmRQx7oZdzImmS4SBP6bjfY2x4mn65Ft1
-         XH+7nXT3xdPju7o4e7/ymqCXN42DKIfqx3ysi6Uor7QjnZysTWMMUuctdN3/eKH9tfd1
-         NkrOPAdYh8hiBAjHIus8ghFp6wAl9HGutrSdXdXCirD+4bIxz1LeMc1ImLWKKipFFFV7
-         oI4zDxclEPgMGW0zDvoJVSc4Q5c0+aIaERzdZshL7Q+iKRUHvD5Hp8/y8f4k54NgCf/t
-         YacA==
-X-Gm-Message-State: AA+aEWYtny5q4uuZuzzT6buKgTIkNRECel916bbpcEyI08rJVfMuUFm9
-        r5jN6GW6DuZMzPX9PtAl+ANhv6tb
-X-Google-Smtp-Source: AFSGD/XveRTjmxb+GTSw+E72w4inBbHu+DzErbMP1I9CASYGL/MJumwWJaZxxDgAYrnc+o4anfb+oA==
-X-Received: by 2002:a24:9fc1:: with SMTP id c184mr12386661ite.8.1545064912167;
-        Mon, 17 Dec 2018 08:41:52 -0800 (PST)
+        bh=Hg+/62w4wVOPn0SmI/QIaJsKJ5mlxxB+x5Gu8gJqcDo=;
+        b=Emd02x2G9VzRGt6gg5ZLhfWTJtgZPs/NJG+CXcu7RuifNdTI3bO9Wg451zbwtPCh09
+         6UZ3TV9ZNekn/EdmcrRKPyYVX4UGGNKuILpPRe0dgR6chS8pkKQ5tuYR7l5r9bCjaaLa
+         fSyay1WN7ZwLQ/Z5vzSJTcRXWCFW8k6LmkqcW9a/Ddat1QsoHslSz/es8sIaUAcaSkEr
+         AfkaOQXjrReRrh+iP+GB1yMID4pQ8RcddfqXCV16vU4zICN55wkeOZK2ulheju1R7ynn
+         qU/J8rCwAFWtSt+Rtru+XgJehgYwZMDSQfQlgjoczMGHWRx3ovW1FOCkt+X1SWJlRc6x
+         EkPQ==
+X-Gm-Message-State: AA+aEWZP6yDQ5t3boUpXr96HMc6XloSfddsWoBsJRTdZ2tnXvN1LrrNW
+        N8sn13KKXijyQwkBehhZ+eLFukoK
+X-Google-Smtp-Source: AFSGD/XtWLsXtqTcpRWWXiGcgM0qdeSWl4SSbOISjhsVjfWHrrb1zOyhnMK711oKkWD0XwAYtlCPpQ==
+X-Received: by 2002:a5e:9902:: with SMTP id t2mr11921118ioj.153.1545064917361;
+        Mon, 17 Dec 2018 08:41:57 -0800 (PST)
 Received: from gateway.1015granger.net (c-68-61-232-219.hsd1.mi.comcast.net. [68.61.232.219])
-        by smtp.gmail.com with ESMTPSA id t6sm6397677ioc.87.2018.12.17.08.41.51
+        by smtp.gmail.com with ESMTPSA id o128sm7702159itb.39.2018.12.17.08.41.56
         (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Mon, 17 Dec 2018 08:41:51 -0800 (PST)
+        Mon, 17 Dec 2018 08:41:56 -0800 (PST)
 Received: from manet.1015granger.net (manet.1015granger.net [192.168.1.51])
-        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id wBHGfoS4018663;
-        Mon, 17 Dec 2018 16:41:50 GMT
-Subject: [PATCH v4 28/30] xprtrdma: Add documenting comment for
- rpcrdma_buffer_destroy
+        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id wBHGfuaW018666;
+        Mon, 17 Dec 2018 16:41:56 GMT
+Subject: [PATCH v4 29/30] xprtrdma: Clarify comments in rpcrdma_ia_remove
 From:   Chuck Lever <chuck.lever@oracle.com>
 To:     linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date:   Mon, 17 Dec 2018 11:41:50 -0500
-Message-ID: <20181217164150.24133.67463.stgit@manet.1015granger.net>
+Date:   Mon, 17 Dec 2018 11:41:56 -0500
+Message-ID: <20181217164156.24133.2578.stgit@manet.1015granger.net>
 In-Reply-To: <20181217162406.24133.27356.stgit@manet.1015granger.net>
 References: <20181217162406.24133.27356.stgit@manet.1015granger.net>
 User-Agent: StGit/0.17.1-dirty
@@ -74,30 +73,52 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Make a note of the function's dependency on an earlier ib_drain_qp.
+Comments are clarified to note how transport data structures are
+protected.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/verbs.c |    8 ++++++++
- 1 file changed, 8 insertions(+)
+ net/sunrpc/xprtrdma/verbs.c |   14 ++++++++++----
+ 1 file changed, 10 insertions(+), 4 deletions(-)
 
 diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index c69b985..339c40e 100644
+index 339c40e..b700ade 100644
 --- a/net/sunrpc/xprtrdma/verbs.c
 +++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -1177,6 +1177,14 @@ struct rpcrdma_req *
- 	dprintk("RPC:       %s: released %u MRs\n", __func__, count);
- }
- 
-+/**
-+ * rpcrdma_buffer_destroy - Release all hw resources
-+ * @buf: root control block for resources
-+ *
-+ * ORDERING: relies on a prior ib_drain_qp :
-+ * - No more Send or Receive completions can occur
-+ * - All MRs, reps, and reqs are returned to their free lists
-+ */
+@@ -402,8 +402,7 @@ static void rpcrdma_xprt_drain(struct rpcrdma_xprt *r_xprt)
+  * rpcrdma_ia_remove - Handle device driver unload
+  * @ia: interface adapter being removed
+  *
+- * Divest transport H/W resources associated with this adapter,
+- * but allow it to be restored later.
++ * Callers must serialize calls to this function.
+  */
  void
- rpcrdma_buffer_destroy(struct rpcrdma_buffer *buf)
- {
+ rpcrdma_ia_remove(struct rpcrdma_ia *ia)
+@@ -434,16 +433,23 @@ static void rpcrdma_xprt_drain(struct rpcrdma_xprt *r_xprt)
+ 	ib_free_cq(ep->rep_attr.send_cq);
+ 	ep->rep_attr.send_cq = NULL;
+ 
+-	/* The ULP is responsible for ensuring all DMA
+-	 * mappings and MRs are gone.
++	/* The ib_drain_qp above guarantees that all posted
++	 * Receives have flushed, which returns the transport's
++	 * rpcrdma_reps to the rb_recv_bufs list.
+ 	 */
+ 	list_for_each_entry(rep, &buf->rb_recv_bufs, rr_list)
+ 		rpcrdma_dma_unmap_regbuf(rep->rr_rdmabuf);
++
++	/* DMA mapping happens in ->send_request with the
++	 * transport send lock held. Our caller is holding
++	 * the transport send lock.
++	 */
+ 	list_for_each_entry(req, &buf->rb_allreqs, rl_all) {
+ 		rpcrdma_dma_unmap_regbuf(req->rl_rdmabuf);
+ 		rpcrdma_dma_unmap_regbuf(req->rl_sendbuf);
+ 		rpcrdma_dma_unmap_regbuf(req->rl_recvbuf);
+ 	}
++
+ 	rpcrdma_mrs_destroy(buf);
+ 	ib_dealloc_pd(ia->ri_pd);
+ 	ia->ri_pd = NULL;
 
