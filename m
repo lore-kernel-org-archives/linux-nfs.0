@@ -2,222 +2,238 @@ Return-Path: <SRS0=GOsY=O2=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED,
-	USER_AGENT_MUTT autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-7.2 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,UNPARSEABLE_RELAY autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7BAD3C43387
-	for <linux-nfs@archiver.kernel.org>; Mon, 17 Dec 2018 21:50:28 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B62BEC43387
+	for <linux-nfs@archiver.kernel.org>; Mon, 17 Dec 2018 22:06:45 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 46EE6214C6
-	for <linux-nfs@archiver.kernel.org>; Mon, 17 Dec 2018 21:50:28 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 7530421473
+	for <linux-nfs@archiver.kernel.org>; Mon, 17 Dec 2018 22:06:45 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="uu0ItE0O"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727106AbeLQVu1 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 17 Dec 2018 16:50:27 -0500
-Received: from fieldses.org ([173.255.197.46]:43926 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727098AbeLQVu1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 17 Dec 2018 16:50:27 -0500
-Received: by fieldses.org (Postfix, from userid 2815)
-        id 241131C83; Mon, 17 Dec 2018 16:50:26 -0500 (EST)
-Date:   Mon, 17 Dec 2018 16:50:26 -0500
-From:   "J. Bruce Fields" <bfields@fieldses.org>
-To:     Vasily Averin <vvs@virtuozzo.com>
-Cc:     Jeff Layton <jlayton@kernel.org>,
-        Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Evgenii Shatokhin <eshatokhin@virtuozzo.com>,
-        Konstantin Khorenko <khorenko@virtuozzo.com>
-Subject: Re: [PATCH 1/4] nfs: use-after-free in svc_process_common()
-Message-ID: <20181217215026.GA8564@fieldses.org>
-References: <134cf19c-e698-abed-02de-1659f9a5d4fb@virtuozzo.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <134cf19c-e698-abed-02de-1659f9a5d4fb@virtuozzo.com>
-User-Agent: Mutt/1.5.21 (2010-09-15)
+        id S1730181AbeLQWGo (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 17 Dec 2018 17:06:44 -0500
+Received: from aserp2130.oracle.com ([141.146.126.79]:56908 "EHLO
+        aserp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726574AbeLQWGo (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Dec 2018 17:06:44 -0500
+Received: from pps.filterd (aserp2130.oracle.com [127.0.0.1])
+        by aserp2130.oracle.com (8.16.0.22/8.16.0.22) with SMTP id wBHM41j3032833;
+        Mon, 17 Dec 2018 22:06:39 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=content-type :
+ mime-version : subject : from : in-reply-to : date : cc :
+ content-transfer-encoding : message-id : references : to;
+ s=corp-2018-07-02; bh=ch7130DLWr/r0UTpZ3sTJQDM0t7sF+XChwxNvsOfW3U=;
+ b=uu0ItE0OXwMwE+ge2a0LQmKg3LGBse8lZ0JxEVV0etX00i9biwQYuGV65vpyVDwlX/6w
+ xVG/K0cvZtYELbJMsLdaNWLcKySnxB/lIO8r0r/V+kjvocDyqhwYZ37OVDrlNyLpPb2c
+ JkDLF7V+yeJlLCdECQu6Gqb+dPGn7+g6gk9VcZrb7Fc1K/jj+/IY+pGk2SThpMU6fU5T
+ LaGRQkrdyugl84JtOSdVtu0Y6IfpON6mTnTM+LLA22bTn/h2euD79+GeDpPcPn3J88Dy
+ /FedH1hvW3lSD0cPCsvO4CFS3z3lpWym5nI2V7IXDFihRCRokiE8vqByr8IzG+NI+Uxt nw== 
+Received: from aserv0021.oracle.com (aserv0021.oracle.com [141.146.126.233])
+        by aserp2130.oracle.com with ESMTP id 2pcq4dr9d9-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Mon, 17 Dec 2018 22:06:39 +0000
+Received: from userv0122.oracle.com (userv0122.oracle.com [156.151.31.75])
+        by aserv0021.oracle.com (8.14.4/8.14.4) with ESMTP id wBHM6d78016373
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Mon, 17 Dec 2018 22:06:39 GMT
+Received: from abhmp0017.oracle.com (abhmp0017.oracle.com [141.146.116.23])
+        by userv0122.oracle.com (8.14.4/8.14.4) with ESMTP id wBHM6cYY005541;
+        Mon, 17 Dec 2018 22:06:38 GMT
+Received: from anon-dhcp-171.1015granger.net (/68.61.232.219)
+        by default (Oracle Beehive Gateway v4.0)
+        with ESMTP ; Mon, 17 Dec 2018 14:06:38 -0800
+Content-Type: text/plain;
+        charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 11.5 \(3445.9.1\))
+Subject: Re: [PATCH] SUNRPC: Fix disconnection races
+From:   Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20181217200524.105368-1-trond.myklebust@hammerspace.com>
+Date:   Mon, 17 Dec 2018 17:06:36 -0500
+Cc:     Dave Wysochanski <dwysocha@redhat.com>,
+        Scott Mayhew <smayhew@redhat.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Transfer-Encoding: quoted-printable
+Message-Id: <1D3503CB-1B9A-459B-980B-A71D0191CFA9@oracle.com>
+References: <20181217200524.105368-1-trond.myklebust@hammerspace.com>
+To:     Trond Myklebust <trondmy@gmail.com>
+X-Mailer: Apple Mail (2.3445.9.1)
+X-Proofpoint-Virus-Version: vendor=nai engine=5900 definitions=9110 signatures=668679
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 suspectscore=0 malwarescore=0
+ phishscore=0 bulkscore=0 spamscore=0 mlxscore=0 mlxlogscore=999
+ adultscore=0 classifier=spam adjust=0 reason=mlx scancount=1
+ engine=8.0.1-1810050000 definitions=main-1812170194
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Mon, Dec 17, 2018 at 07:23:54PM +0300, Vasily Averin wrote:
-> if node have NFSv41+ mounts inside several net namespaces
-> it can lead to use-after-free in svc_process_common()
-> 
-> svc_process_common() 
->         /* Setup reply header */
->         rqstp->rq_xprt->xpt_ops->xpo_prep_reply_hdr(rqstp); <<< HERE
-> 
-> svc_process_common() can use already freed rqstp->rq_xprt,
-> it was assigned in bc_svc_process() where it was taken from serv->sv_bc_xprt.
-> 
-> serv is global structure but sv_bc_xprt is assigned per-netnamespace,
-> so if nfsv41+ shares are mounted in several containers together
-> bc_svc_process() can use wrong backchannel or even access freed memory.
-> 
-> To find correct svc_xprt of client-related backchannel
-> bc_svc_process() now calls new .bc_get_xprt callback
-> that executes svc_find_xprt() with proper xprt name.
 
-This stuff is confusing and I need to stare at it some more before I
-understand, but it's weird that we'd need to search for the right xprt.
 
-We know which connection the backchannel request came over, and there
-should only be one backchannel using that connection, why can't we find
-it by just chasing pointers the right way?
-
-OK, I do need to look at it more.
-
---b.
-
-> 
-> Signed-off-by: Vasily Averin <vvs@virtuozzo.com>
+> On Dec 17, 2018, at 3:05 PM, Trond Myklebust <trondmy@gmail.com> =
+wrote:
+>=20
+> When the socket is closed, we need to call xprt_disconnect_done() in =
+order
+> to clean up the XPRT_WRITE_SPACE flag, and wake up the sleeping tasks.
+>=20
+> However, we also want to ensure that we don't wake them up before the =
+socket
+> is closed, since that would cause thundering herd issues with everyone
+> piling up to retransmit before the TCP shutdown dance has completed.
+> Only the task that holds XPRT_LOCKED needs to wake up early in order =
+to
+> allow the close to complete.
+>=20
+> Reported-by: Dave Wysochanski <dwysocha@redhat.com>
+> Reported-by: Scott Mayhew <smayhew@redhat.com>
+> Cc: Chuck Lever <chuck.lever@oracle.com>
+> Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 > ---
->  include/linux/sunrpc/xprt.h       |  1 +
->  net/sunrpc/svc.c                  | 22 ++++++++++++++++------
->  net/sunrpc/xprtrdma/backchannel.c |  5 +++++
->  net/sunrpc/xprtrdma/transport.c   |  1 +
->  net/sunrpc/xprtrdma/xprt_rdma.h   |  1 +
->  net/sunrpc/xprtsock.c             |  7 +++++++
->  6 files changed, 31 insertions(+), 6 deletions(-)
-> 
-> diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
-> index a4ab4f8d9140..031d2843a002 100644
-> --- a/include/linux/sunrpc/xprt.h
-> +++ b/include/linux/sunrpc/xprt.h
-> @@ -158,6 +158,7 @@ struct rpc_xprt_ops {
->  	int		(*bc_setup)(struct rpc_xprt *xprt,
->  				    unsigned int min_reqs);
->  	int		(*bc_up)(struct svc_serv *serv, struct net *net);
-> +	struct svc_xprt*(*bc_get_xprt)(struct svc_serv *serv, struct net *net);
->  	size_t		(*bc_maxpayload)(struct rpc_xprt *xprt);
->  	void		(*bc_free_rqst)(struct rpc_rqst *rqst);
->  	void		(*bc_destroy)(struct rpc_xprt *xprt,
-> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-> index d13e05f1a990..a7264fd1b3db 100644
-> --- a/net/sunrpc/svc.c
-> +++ b/net/sunrpc/svc.c
-> @@ -1450,16 +1450,22 @@ int
->  bc_svc_process(struct svc_serv *serv, struct rpc_rqst *req,
->  	       struct svc_rqst *rqstp)
->  {
-> +	struct net	*net = req->rq_xprt->xprt_net;
->  	struct kvec	*argv = &rqstp->rq_arg.head[0];
->  	struct kvec	*resv = &rqstp->rq_res.head[0];
->  	struct rpc_task *task;
-> +	struct svc_xprt *s_xprt;
->  	int proc_error;
->  	int error;
->  
->  	dprintk("svc: %s(%p)\n", __func__, req);
->  
-> +	s_xprt = req->rq_xprt->ops->bc_get_xprt(serv, net);
-> +	if (!s_xprt)
-> +		goto proc_error;
-> +
->  	/* Build the svc_rqst used by the common processing routine */
-> -	rqstp->rq_xprt = serv->sv_bc_xprt;
-> +	rqstp->rq_xprt = s_xprt;
->  	rqstp->rq_xid = req->rq_xid;
->  	rqstp->rq_prot = req->rq_xprt->prot;
->  	rqstp->rq_server = serv;
-> @@ -1494,13 +1500,11 @@ bc_svc_process(struct svc_serv *serv, struct rpc_rqst *req,
->  
->  	/* Parse and execute the bc call */
->  	proc_error = svc_process_common(rqstp, argv, resv);
-> +	svc_xprt_put(rqstp->rq_xprt);
->  
->  	atomic_inc(&req->rq_xprt->bc_free_slots);
-> -	if (!proc_error) {
-> -		/* Processing error: drop the request */
-> -		xprt_free_bc_request(req);
-> -		return 0;
-> -	}
-> +	if (!proc_error)
-> +		goto proc_error;
->  
->  	/* Finally, send the reply synchronously */
->  	memcpy(&req->rq_snd_buf, &rqstp->rq_res, sizeof(req->rq_snd_buf));
-> @@ -1517,6 +1521,12 @@ bc_svc_process(struct svc_serv *serv, struct rpc_rqst *req,
->  out:
->  	dprintk("svc: %s(), error=%d\n", __func__, error);
->  	return error;
-> +
-> +proc_error:
-> +	/* Processing error: drop the request */
-> +	xprt_free_bc_request(req);
-> +	error = -EINVAL;
-> +	goto out;
->  }
->  EXPORT_SYMBOL_GPL(bc_svc_process);
->  #endif /* CONFIG_SUNRPC_BACKCHANNEL */
-> diff --git a/net/sunrpc/xprtrdma/backchannel.c b/net/sunrpc/xprtrdma/backchannel.c
-> index e5b367a3e517..3e06aeacda43 100644
-> --- a/net/sunrpc/xprtrdma/backchannel.c
-> +++ b/net/sunrpc/xprtrdma/backchannel.c
-> @@ -133,6 +133,11 @@ int xprt_rdma_bc_up(struct svc_serv *serv, struct net *net)
->  	return 0;
->  }
->  
-> +struct svc_xprt *xprt_rdma_bc_get_xprt(struct svc_serv *serv, struct net *net)
-> +{
-> +	return svc_find_xprt(serv, "rdma-bc", net, AF_UNSPEC, 0);
-> +}
-> +
->  /**
->   * xprt_rdma_bc_maxpayload - Return maximum backchannel message size
->   * @xprt: transport
-> diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-> index ae2a83828953..41d67de93531 100644
-> --- a/net/sunrpc/xprtrdma/transport.c
-> +++ b/net/sunrpc/xprtrdma/transport.c
-> @@ -828,6 +828,7 @@ static const struct rpc_xprt_ops xprt_rdma_procs = {
->  #if defined(CONFIG_SUNRPC_BACKCHANNEL)
->  	.bc_setup		= xprt_rdma_bc_setup,
->  	.bc_up			= xprt_rdma_bc_up,
-> +	.bc_get_xprt		= xprt_rdma_bc_get_xprt,
->  	.bc_maxpayload		= xprt_rdma_bc_maxpayload,
->  	.bc_free_rqst		= xprt_rdma_bc_free_rqst,
->  	.bc_destroy		= xprt_rdma_bc_destroy,
-> diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-> index a13ccb643ce0..2726d71052a8 100644
-> --- a/net/sunrpc/xprtrdma/xprt_rdma.h
-> +++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-> @@ -662,6 +662,7 @@ void xprt_rdma_cleanup(void);
->  #if defined(CONFIG_SUNRPC_BACKCHANNEL)
->  int xprt_rdma_bc_setup(struct rpc_xprt *, unsigned int);
->  int xprt_rdma_bc_up(struct svc_serv *, struct net *);
-> +struct svc_xprt *xprt_rdma_bc_get_xprt(struct svc_serv *serv, struct net *net);
->  size_t xprt_rdma_bc_maxpayload(struct rpc_xprt *);
->  int rpcrdma_bc_post_recv(struct rpcrdma_xprt *, unsigned int);
->  void rpcrdma_bc_receive_call(struct rpcrdma_xprt *, struct rpcrdma_rep *);
+> net/sunrpc/xprt.c     |  4 +++-
+> net/sunrpc/xprtsock.c | 10 ++++------
+> 2 files changed, 7 insertions(+), 7 deletions(-)
+>=20
+> diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+> index ce927002862a..089e53a87379 100644
+> --- a/net/sunrpc/xprt.c
+> +++ b/net/sunrpc/xprt.c
+> @@ -680,7 +680,9 @@ void xprt_force_disconnect(struct rpc_xprt *xprt)
+> 	/* Try to schedule an autoclose RPC call */
+> 	if (test_and_set_bit(XPRT_LOCKED, &xprt->state) =3D=3D 0)
+> 		queue_work(xprtiod_workqueue, &xprt->task_cleanup);
+> -	xprt_wake_pending_tasks(xprt, -EAGAIN);
+> +	else if (xprt->snd_task)
+> +		rpc_wake_up_queued_task_set_status(&xprt->pending,
+> +				xprt->snd_task, -ENOTCONN);
+> 	spin_unlock_bh(&xprt->transport_lock);
+> }
+> EXPORT_SYMBOL_GPL(xprt_force_disconnect);
+
+Hrm, well I'm not sure xprt_connect_status is ready to deal with =
+-ENOTCONN.
+
+     kworker/2:3-2342  [002]  3706.246289: rpc_task_wakeup:      =
+task:39992@5 flags=3D0001 state=3D001e status=3D-107 timeout=3D120000 =
+queue=3Dxprt_pending
+     kworker/0:7-2424  [000]  3706.246296: xprtrdma_reconnect:   =
+peer=3D[192.168.2.55]:20049 r_xprt=3D0xffff88886c465000
+  kworker/u25:28-2270  [004]  3706.246321: rpc_task_run_action:  =
+task:39992@5 flags=3D0001 state=3D001d status=3D-107 =
+action=3Dxprt_connect_status
+  kworker/u25:28-2270  [004]  3706.246323: rpc_task_run_action:  =
+task:39992@5 flags=3D0001 state=3D001d status=3D-5 =
+action=3Dcall_connect_status
+  kworker/u25:28-2270  [004]  3706.246323: rpc_connect_status:   =
+task:39992@5 status=3D-5
+  kworker/u25:28-2270  [004]  3706.246324: rpc_task_run_action:  =
+task:39992@5 flags=3D0001 state=3D001d status=3D-5 action=3Drpc_exit_task
+  kworker/u25:28-2270  [004]  3706.246327: rpc_stats_latency:    =
+task:39992@5 xid=3D0x2f1ad350 nfsv3 READ backlog=3D0 rtt=3D0 =
+execute=3D13028
+  kworker/u25:28-2270  [004]  3706.246333: xprtrdma_rpc_done:    =
+task:39992@5 req=3D0xffff88886a438000 rep=3D(nil)
+
+static void xprt_connect_status(struct rpc_task *task)
+{
+        switch (task->tk_status) {
+        case 0:
+                dprintk("RPC: %5u xprt_connect_status: connection =
+established\n",
+                                task->tk_pid);
+                break;
+        case -ECONNREFUSED:
+        case -ECONNRESET:
+        case -ECONNABORTED:
+        case -ENETUNREACH:
+        case -EHOSTUNREACH:
+        case -EPIPE:
+        case -EAGAIN:
+                dprintk("RPC: %5u xprt_connect_status: retrying\n", =
+task->tk_pid);
+                break;
+        case -ETIMEDOUT:
+                dprintk("RPC: %5u xprt_connect_status: connect attempt =
+timed "
+                                "out\n", task->tk_pid);
+                break;
+        default:
+                dprintk("RPC: %5u xprt_connect_status: error %d =
+connecting to "
+                                "server %s\n", task->tk_pid, =
+-task->tk_status,
+                                task->tk_rqstp->rq_xprt->servername);
+                task->tk_status =3D -EIO;
+        }   =20
+}
+
+Maybe the wake-up status should remain -EAGAIN ?
+
+
 > diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-> index 8a5e823e0b33..16f9c7720465 100644
+> index 8a5e823e0b33..f0b3700cec95 100644
 > --- a/net/sunrpc/xprtsock.c
 > +++ b/net/sunrpc/xprtsock.c
-> @@ -1411,6 +1411,12 @@ static int xs_tcp_bc_up(struct svc_serv *serv, struct net *net)
->  	return 0;
->  }
->  
-> +static struct svc_xprt *xs_tcp_bc_get_xprt(struct svc_serv *serv,
-> +					   struct net *net)
-> +{
-> +	return svc_find_xprt(serv, "tcp-bc", net, AF_UNSPEC, 0);
-> +}
+> @@ -1217,6 +1217,8 @@ static void xs_reset_transport(struct sock_xprt =
+*transport)
+>=20
+> 	trace_rpc_socket_close(xprt, sock);
+> 	sock_release(sock);
 > +
->  static size_t xs_tcp_bc_maxpayload(struct rpc_xprt *xprt)
->  {
->  	return PAGE_SIZE;
-> @@ -2668,6 +2674,7 @@ static const struct rpc_xprt_ops xs_tcp_ops = {
->  #ifdef CONFIG_SUNRPC_BACKCHANNEL
->  	.bc_setup		= xprt_setup_bc,
->  	.bc_up			= xs_tcp_bc_up,
-> +	.bc_get_xprt		= xs_tcp_bc_get_xprt,
->  	.bc_maxpayload		= xs_tcp_bc_maxpayload,
->  	.bc_free_rqst		= xprt_free_bc_rqst,
->  	.bc_destroy		= xprt_destroy_bc,
-> -- 
-> 2.17.1
+> +	xprt_disconnect_done(xprt);
+> }
+>=20
+> /**
+> @@ -1237,8 +1239,6 @@ static void xs_close(struct rpc_xprt *xprt)
+>=20
+> 	xs_reset_transport(transport);
+> 	xprt->reestablish_timeout =3D 0;
+> -
+> -	xprt_disconnect_done(xprt);
+> }
+>=20
+> static void xs_inject_disconnect(struct rpc_xprt *xprt)
+> @@ -1489,8 +1489,6 @@ static void xs_tcp_state_change(struct sock *sk)
+> 					&transport->sock_state))
+> 			xprt_clear_connecting(xprt);
+> 		clear_bit(XPRT_CLOSING, &xprt->state);
+> -		if (sk->sk_err)
+> -			xprt_wake_pending_tasks(xprt, -sk->sk_err);
+> 		/* Trigger the socket release */
+> 		xs_tcp_force_close(xprt);
+> 	}
+> @@ -2092,8 +2090,8 @@ static void xs_udp_setup_socket(struct =
+work_struct *work)
+> 	trace_rpc_socket_connect(xprt, sock, 0);
+> 	status =3D 0;
+> out:
+> -	xprt_unlock_connect(xprt, transport);
+> 	xprt_clear_connecting(xprt);
+> +	xprt_unlock_connect(xprt, transport);
+> 	xprt_wake_pending_tasks(xprt, status);
+> }
+>=20
+> @@ -2329,8 +2327,8 @@ static void xs_tcp_setup_socket(struct =
+work_struct *work)
+> 	}
+> 	status =3D -EAGAIN;
+> out:
+> -	xprt_unlock_connect(xprt, transport);
+> 	xprt_clear_connecting(xprt);
+> +	xprt_unlock_connect(xprt, transport);
+> 	xprt_wake_pending_tasks(xprt, status);
+> }
+>=20
+> --=20
+> 2.19.2
+>=20
+
+--
+Chuck Lever
+
+
+
