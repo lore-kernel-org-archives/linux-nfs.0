@@ -6,63 +6,63 @@ X-Spam-Status: No, score=-6.8 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
 	SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2D361C43387
-	for <linux-nfs@archiver.kernel.org>; Mon, 17 Dec 2018 16:40:24 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 37B4FC43387
+	for <linux-nfs@archiver.kernel.org>; Mon, 17 Dec 2018 16:40:29 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id EF36B2133F
-	for <linux-nfs@archiver.kernel.org>; Mon, 17 Dec 2018 16:40:23 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 072D92133F
+	for <linux-nfs@archiver.kernel.org>; Mon, 17 Dec 2018 16:40:29 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="PskoHHGb"
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="mrYyQNqv"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2388262AbeLQQkX (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 17 Dec 2018 11:40:23 -0500
-Received: from mail-it1-f196.google.com ([209.85.166.196]:55428 "EHLO
-        mail-it1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2388257AbeLQQkX (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Dec 2018 11:40:23 -0500
-Received: by mail-it1-f196.google.com with SMTP id o19so19438193itg.5;
-        Mon, 17 Dec 2018 08:40:22 -0800 (PST)
+        id S2388257AbeLQQk2 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 17 Dec 2018 11:40:28 -0500
+Received: from mail-it1-f172.google.com ([209.85.166.172]:37941 "EHLO
+        mail-it1-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2388108AbeLQQk2 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Dec 2018 11:40:28 -0500
+Received: by mail-it1-f172.google.com with SMTP id h65so20903471ith.3;
+        Mon, 17 Dec 2018 08:40:27 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=sender:subject:from:to:date:message-id:in-reply-to:references
          :user-agent:mime-version:content-transfer-encoding;
-        bh=ty1oGOtNt9biJZaf/kjTjU9tLsvdxKC6SZs1D4odKpI=;
-        b=PskoHHGbN8GgPWk/kMfPyO6sWlOkONEYpw5lYvVP9bshPM2/gUgIXsoKXNb/0HcKbq
-         bCEXywwfeRt3cGohvkp7q0Kaex2pF2dQWzNiF69WigVQxt2DPX19J1NaBS/R/5wmAXXp
-         B1icXQc5cFYh1O65Df/07WWRgp8Us6MuPFGuJ1DX+FXBNIH2SujBIEPqfNMRMe0P36pG
-         pFRJo0QSStisASs+cBa9qVuFzzgsyHC0TXSsq8X1Hms+IOPxco0A9jl05tA/sjW15jhY
-         mUud2yE6m7neEdIOz9ux/vxbWgycp+YBs1FcQxyDFu74eOuPgf2dOzXMCZQTxcuVXCK9
-         70Jw==
+        bh=Tke2KOJ89T4vcbDVIGt35hCRU2JIcQsMOR9LJ34omWk=;
+        b=mrYyQNqvPVMg1z9imePsy3XTU6ZWwoj09cMaJVnX0pH50Q92e+bLTMUwh1K5Uwm81f
+         d+yK0DRfv6bM89ZzU9winzaoIFhKVZIADXKFJ/BSV4L+9WzZJqNe62C5CcSJxAKUQJGK
+         V6x+opFOQUre0+ewBE4XM7wH5oxgjHj3eQkCyCg8aR9nMoOsI0A8ISEnmw+qlycfVi5S
+         jaKKZAK8ya/rIx9z0FsNMRSno1bJnq28bT+kdq+2NpLnwGWYm6A0VuQKKuEyPwwvSBOZ
+         ltx7UBvMEKtPBaoIuOzRTy5+zoRZZik53BVk0BFiTPAQTs/TVyBYnZCXzkPnwV4xO3y0
+         H+kg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:sender:subject:from:to:date:message-id
          :in-reply-to:references:user-agent:mime-version
          :content-transfer-encoding;
-        bh=ty1oGOtNt9biJZaf/kjTjU9tLsvdxKC6SZs1D4odKpI=;
-        b=Cs3rYe9IyZ95yA1EkMVGAdci8RMa8Wx0/fdz61uOSu4EMdwhdbONgY3dbQlq54gpnM
-         QdnoqTvNjmE4niAL6C5wV5GS+WW/MTW0Zj5/tFz1mcNGH9GuW3V+wscDEZ4mL8hvqFfH
-         tmgcYpbgoHts59ZY2+XfxbSaKzsjXwY0UvJfoil1UXhx9AMGa3+zaJh42mE40TZr7VVz
-         +1od/O0FWwLNVo0tYmyO2JlEEJHJCKoEvumE7qS9XhIle9DjoZjP8gq/bXFk7SRQeGr2
-         AQ5InI2hK8ECfAghnd/NDeLeFou5uRsllqQVJbySFFoLafcXb24B03Ig/JGwaMyVOHaa
-         sq4A==
-X-Gm-Message-State: AA+aEWb0a8Q8w8QrJFxNXE7uPztRvCx+2mpHg/FZ0pj2MFvqbvvviKHP
-        5GGmdZl/r3kjL5tpjZB3Qu6ThZOX
-X-Google-Smtp-Source: AFSGD/WlZTD/xBckq3tBhokjP14UGxMyhxOcERY4OWRFwnNtcJ+4+Qiae7DaLmMkKFzCWD/0oMinXQ==
-X-Received: by 2002:a24:7609:: with SMTP id z9mr13860403itb.66.1545064821873;
-        Mon, 17 Dec 2018 08:40:21 -0800 (PST)
+        bh=Tke2KOJ89T4vcbDVIGt35hCRU2JIcQsMOR9LJ34omWk=;
+        b=qTkLQVpW9a4xsah8q4EKrumtK6CemxTt2IzcjmMJ/6gieFlK0ZiRIbiekAH6nKXhBL
+         Dd299NQ2+tt224EDbGAuEjV2Nerf0RmPDlUDT9FlkIyjXHqlKul3FEtMuLjzprwiGw+S
+         X5iPgjsNJarzQZWoo9poqfIXAJ1hDCWNAVtTyfJZJB9aTvw7w0uyQrhZU5auQ2j/tqxp
+         ZfSY0uCsy1UQGmgTZsAWbM3zMERkdyzZVM/xpKHpC7yCiPnFhaXysLBtadcAhcPLWGRO
+         vyU2+/CJqNmiXFwm21zEqu6Zq0I6IjJ7e4VbKAvnMR1F4qR/JbALY7ZelNnHahNS1I9z
+         1SuA==
+X-Gm-Message-State: AA+aEWbIwAZKt6zWb6HextW8GwYfgnhThRQGE56Z1MP+Ny6AVMTbnjpp
+        u3/k0/JsjGnLgxBrG5LiZOI/Hb5F
+X-Google-Smtp-Source: AFSGD/W9d2gYcPBPH+I29Xs6YcI+jdWKmEumP7+aRo2S8v9KgaEpGz0G7krZMNEuVlh4xfYB1jVkNw==
+X-Received: by 2002:a02:98d2:: with SMTP id c18mr11908250jak.11.1545064826893;
+        Mon, 17 Dec 2018 08:40:26 -0800 (PST)
 Received: from gateway.1015granger.net (c-68-61-232-219.hsd1.mi.comcast.net. [68.61.232.219])
-        by smtp.gmail.com with ESMTPSA id y76sm7827351ita.18.2018.12.17.08.40.20
+        by smtp.gmail.com with ESMTPSA id m81sm7214014itb.43.2018.12.17.08.40.26
         (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Mon, 17 Dec 2018 08:40:21 -0800 (PST)
+        Mon, 17 Dec 2018 08:40:26 -0800 (PST)
 Received: from manet.1015granger.net (manet.1015granger.net [192.168.1.51])
-        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id wBHGeKGw018611;
-        Mon, 17 Dec 2018 16:40:20 GMT
-Subject: [PATCH v4 11/30] xprtrdma: Plant XID in on-the-wire RDMA offset
- (FRWR)
+        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id wBHGePPm018614;
+        Mon, 17 Dec 2018 16:40:25 GMT
+Subject: [PATCH v4 12/30] NFS: Make "port=" mount option optional for RDMA
+ mounts
 From:   Chuck Lever <chuck.lever@oracle.com>
 To:     linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date:   Mon, 17 Dec 2018 11:40:20 -0500
-Message-ID: <20181217164020.24133.66234.stgit@manet.1015granger.net>
+Date:   Mon, 17 Dec 2018 11:40:25 -0500
+Message-ID: <20181217164025.24133.45942.stgit@manet.1015granger.net>
 In-Reply-To: <20181217162406.24133.27356.stgit@manet.1015granger.net>
 References: <20181217162406.24133.27356.stgit@manet.1015granger.net>
 User-Agent: StGit/0.17.1-dirty
@@ -74,99 +74,52 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Place the associated RPC transaction's XID in the upper 32 bits of
-each RDMA segment's rdma_offset field. There are two reasons to do
-this:
+Having to specify "proto=rdma,port=20049" is cumbersome.
 
-- The R_key only has 8 bits that are different from registration to
-  registration. The XID adds more uniqueness to each RDMA segment to
-  reduce the likelihood of a software bug on the server reading from
-  or writing into memory it's not supposed to.
+RFC 8267 Section 6.3 requires NFSv4 clients to use "the alternative
+well-known port number", which is 20049. Make the use of the well-
+known port number automatic, just as it is for NFS/TCP and port
+2049.
 
-- On-the-wire RDMA Read and Write requests do not otherwise carry
-  any identifier that matches them up to an RPC. The XID in the
-  upper 32 bits will act as an eye-catcher in network captures.
+For NFSv2/3, Section 4.2 allows clients to simply choose 20049 as
+the default or use rpcbind. I don't know of an NFS/RDMA server
+implementation that registers it's NFS/RDMA service with rpcbind,
+so automatically choosing 20049 seems like the better choice. The
+other widely-deployed NFS/RDMA client, Solaris, also uses 20049
+as the default port.
 
-Suggested-by: Tom Talpey <ttalpey@microsoft.com>
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/frwr_ops.c  |    5 ++++-
- net/sunrpc/xprtrdma/rpc_rdma.c  |    6 +++---
- net/sunrpc/xprtrdma/xprt_rdma.h |    2 +-
- 3 files changed, 8 insertions(+), 5 deletions(-)
+ fs/nfs/super.c |   10 ++++++++--
+ 1 file changed, 8 insertions(+), 2 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/frwr_ops.c b/net/sunrpc/xprtrdma/frwr_ops.c
-index fb0944d..97f88bb 100644
---- a/net/sunrpc/xprtrdma/frwr_ops.c
-+++ b/net/sunrpc/xprtrdma/frwr_ops.c
-@@ -379,6 +379,7 @@ size_t frwr_maxpages(struct rpcrdma_xprt *r_xprt)
-  * @seg: memory region co-ordinates
-  * @nsegs: number of segments remaining
-  * @writing: true when RDMA Write will be used
-+ * @xid: XID of RPC using the registered memory
-  * @out: initialized MR
-  *
-  * Prepare a REG_MR Work Request to register a memory region
-@@ -389,7 +390,7 @@ size_t frwr_maxpages(struct rpcrdma_xprt *r_xprt)
-  */
- struct rpcrdma_mr_seg *frwr_map(struct rpcrdma_xprt *r_xprt,
- 				struct rpcrdma_mr_seg *seg,
--				int nsegs, bool writing,
-+				int nsegs, bool writing, u32 xid,
- 				struct rpcrdma_mr **out)
- {
- 	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
-@@ -444,6 +445,8 @@ struct rpcrdma_mr_seg *frwr_map(struct rpcrdma_xprt *r_xprt,
- 	if (unlikely(n != mr->mr_nents))
- 		goto out_mapmr_err;
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index ac4b2f0..22247c2 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -2168,7 +2168,10 @@ static int nfs_validate_text_mount_data(void *options,
  
-+	ibmr->iova &= 0x00000000ffffffff;
-+	ibmr->iova |= ((u64)cpu_to_be32(xid)) << 32;
- 	key = (u8)(ibmr->rkey & 0x000000FF);
- 	ib_update_fast_reg_key(ibmr, ++key);
+ 	if (args->version == 4) {
+ #if IS_ENABLED(CONFIG_NFS_V4)
+-		port = NFS_PORT;
++		if (args->nfs_server.protocol == XPRT_TRANSPORT_RDMA)
++			port = NFS_RDMA_PORT;
++		else
++			port = NFS_PORT;
+ 		max_namelen = NFS4_MAXNAMLEN;
+ 		max_pathlen = NFS4_MAXPATHLEN;
+ 		nfs_validate_transport_protocol(args);
+@@ -2178,8 +2181,11 @@ static int nfs_validate_text_mount_data(void *options,
+ #else
+ 		goto out_v4_not_compiled;
+ #endif /* CONFIG_NFS_V4 */
+-	} else
++	} else {
+ 		nfs_set_mount_transport_protocol(args);
++		if (args->nfs_server.protocol == XPRT_TRANSPORT_RDMA)
++			port = NFS_RDMA_PORT;
++	}
  
-diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index 2a2023d..3804fb3 100644
---- a/net/sunrpc/xprtrdma/rpc_rdma.c
-+++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -356,7 +356,7 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
- 		return nsegs;
+ 	nfs_set_port(sap, &args->nfs_server.port, port);
  
- 	do {
--		seg = frwr_map(r_xprt, seg, nsegs, false, &mr);
-+		seg = frwr_map(r_xprt, seg, nsegs, false, rqst->rq_xid, &mr);
- 		if (IS_ERR(seg))
- 			return PTR_ERR(seg);
- 		rpcrdma_mr_push(mr, &req->rl_registered);
-@@ -413,7 +413,7 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
- 
- 	nchunks = 0;
- 	do {
--		seg = frwr_map(r_xprt, seg, nsegs, true, &mr);
-+		seg = frwr_map(r_xprt, seg, nsegs, true, rqst->rq_xid, &mr);
- 		if (IS_ERR(seg))
- 			return PTR_ERR(seg);
- 		rpcrdma_mr_push(mr, &req->rl_registered);
-@@ -470,7 +470,7 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
- 
- 	nchunks = 0;
- 	do {
--		seg = frwr_map(r_xprt, seg, nsegs, true, &mr);
-+		seg = frwr_map(r_xprt, seg, nsegs, true, rqst->rq_xid, &mr);
- 		if (IS_ERR(seg))
- 			return PTR_ERR(seg);
- 		rpcrdma_mr_push(mr, &req->rl_registered);
-diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index eccb930..56b299f 100644
---- a/net/sunrpc/xprtrdma/xprt_rdma.h
-+++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -580,7 +580,7 @@ int frwr_open(struct rpcrdma_ia *ia, struct rpcrdma_ep *ep,
- size_t frwr_maxpages(struct rpcrdma_xprt *r_xprt);
- struct rpcrdma_mr_seg *frwr_map(struct rpcrdma_xprt *r_xprt,
- 				struct rpcrdma_mr_seg *seg,
--				int nsegs, bool writing,
-+				int nsegs, bool writing, u32 xid,
- 				struct rpcrdma_mr **mr);
- int frwr_send(struct rpcrdma_ia *ia, struct rpcrdma_req *req);
- void frwr_reminv(struct rpcrdma_rep *rep, struct list_head *mrs);
 
