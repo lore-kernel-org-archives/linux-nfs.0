@@ -1,102 +1,85 @@
-Return-Path: <SRS0=dkOU=OZ=vger.kernel.org=linux-nfs-owner@kernel.org>
+Return-Path: <SRS0=GOsY=O2=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS
-	autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED,
+	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E7F80C43387
-	for <linux-nfs@archiver.kernel.org>; Sun, 16 Dec 2018 23:16:35 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D201CC43387
+	for <linux-nfs@archiver.kernel.org>; Mon, 17 Dec 2018 05:59:23 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 8DB74206C2
-	for <linux-nfs@archiver.kernel.org>; Sun, 16 Dec 2018 23:16:35 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=canb.auug.org.au header.i=@canb.auug.org.au header.b="sLxXMWuo"
+	by mail.kernel.org (Postfix) with ESMTP id 974F520675
+	for <linux-nfs@archiver.kernel.org>; Mon, 17 Dec 2018 05:59:23 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1730987AbeLPXQe (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 16 Dec 2018 18:16:34 -0500
-Received: from ozlabs.org ([203.11.71.1]:36979 "EHLO ozlabs.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1730772AbeLPXQe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sun, 16 Dec 2018 18:16:34 -0500
-Received: from authenticated.ozlabs.org (localhost [127.0.0.1])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by ozlabs.org (Postfix) with ESMTPSA id 43J0XZ6THnz9sD4;
-        Mon, 17 Dec 2018 10:16:30 +1100 (AEDT)
-Authentication-Results: ozlabs.org; dmarc=none (p=none dis=none) header.from=canb.auug.org.au
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=canb.auug.org.au;
-        s=201702; t=1545002190;
-        bh=n9AdQheZgXZvVJlfrUAkO5i4kd9GYRJ7aBd1BHJJhM0=;
-        h=Date:From:To:Cc:Subject:From;
-        b=sLxXMWuoIE5FhJHdS/kBN9K6MoHKRwwFiijLr36Bj5tDXifVh7NyvFmhmMpqKb7qu
-         Xys5eIhHsevISaWPaXoKusar2Dox/A0sCsIsb9O623lKjrH8RHTAC2LZ3D2oYw0GQu
-         6mA4juRbIGwTWiEpx1fO6RO9SiKTOMutpEX2Zu0nmMVTVlwbtu/qOlcDh2CPN8fiE7
-         kYSq4dU0+b0Ki86+voB+cDOvUOMTi5U+/D1+0+gVgm+dit8DIoVc1Xvh9tNWswZ0b0
-         a9X+EgVO40BVydFzL9xE8P8jl0BJ3y8Sq/VtWU/WHE3oeQr23fcDONUV35QNG/zT11
-         vofT5pK1+TKIA==
-Date:   Mon, 17 Dec 2018 10:16:30 +1100
-From:   Stephen Rothwell <sfr@canb.auug.org.au>
-To:     Anna Schumaker <Anna.Schumaker@Netapp.com>,
-        Trond Myklebust <trondmy@gmail.com>,
-        NFS Mailing List <linux-nfs@vger.kernel.org>
-Cc:     Linux Next Mailing List <linux-next@vger.kernel.org>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        Rasmus Villemoes <linux@rasmusvillemoes.dk>
-Subject: linux-next: build failure after merge of the nfs-anna tree
-Message-ID: <20181217101630.292dd55e@canb.auug.org.au>
+        id S1726426AbeLQF7W (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 17 Dec 2018 00:59:22 -0500
+Received: from mail.windriver.com ([147.11.1.11]:53516 "EHLO
+        mail.windriver.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726323AbeLQF7W (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Dec 2018 00:59:22 -0500
+Received: from ALA-HCB.corp.ad.wrs.com ([147.11.189.41])
+        by mail.windriver.com (8.15.2/8.15.1) with ESMTPS id wBH5xH2k000352
+        (version=TLSv1 cipher=AES128-SHA bits=128 verify=FAIL)
+        for <linux-nfs@vger.kernel.org>; Sun, 16 Dec 2018 21:59:17 -0800 (PST)
+Received: from pek-lpg-core2.corp.ad.wrs.com (128.224.153.41) by
+ ALA-HCB.corp.ad.wrs.com (147.11.189.41) with Microsoft SMTP Server id
+ 14.3.408.0; Sun, 16 Dec 2018 21:59:16 -0800
+From:   <mingli.yu@windriver.com>
+To:     <linux-nfs@vger.kernel.org>
+Subject: [PATCH] Makefile.am: update the path of libnfs.a
+Date:   Mon, 17 Dec 2018 13:59:15 +0800
+Message-ID: <1545026355-401179-1-git-send-email-mingli.yu@windriver.com>
+X-Mailer: git-send-email 2.7.4
 MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha256;
- boundary="Sig_/b7l4dzBjV_3487Zir6v2ChE"; protocol="application/pgp-signature"
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
---Sig_/b7l4dzBjV_3487Zir6v2ChE
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+From: Mingli Yu <Mingli.Yu@windriver.com>
 
-Hi all,
+The libnfs.a is under ../support/nfs/.libs/ now,
+update the reference path accordingly to fix below
+build error when run "make -C tests statdb_dump":
+| make: *** No rule to make target '../support/nfs/libnfs.a', needed by 'statdb_dump'.  Stop.
 
-After merging the nfs-anna tree, today's linux-next build (arm
-multi_v7_defconfig) failed like this:
+And below error when run "make -C tests/nsm_client nsm_client"
+| make: *** No rule to make target '../../support/nfs/libnfs.a', needed by 'nsm_client'.  Stop.
 
-/home/sfr/next/next/fs/nfs/nfsroot.c: In function 'root_nfs_data':
-/home/sfr/next/next/fs/nfs/nfsroot.c:264:5: error: implicit declaration of =
-function 'fmtcheck'; did you mean 'dst_check'? [-Werror=3Dimplicit-function=
--declaration]
-     fmtcheck(tmp, "%s", 0), utsname()->nodename);
-     ^~~~~~~~
-     dst_check
+Signed-off-by: Mingli Yu <Mingli.Yu@windriver.com>
+---
+ tests/Makefile.am            | 2 +-
+ tests/nsm_client/Makefile.am | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
 
-Caused by commit
+diff --git a/tests/Makefile.am b/tests/Makefile.am
+index 1f96264..74aa629 100644
+--- a/tests/Makefile.am
++++ b/tests/Makefile.am
+@@ -3,7 +3,7 @@
+ check_PROGRAMS = statdb_dump
+ statdb_dump_SOURCES = statdb_dump.c
+ 
+-statdb_dump_LDADD = ../support/nfs/libnfs.a \
++statdb_dump_LDADD = ../support/nfs/.libs/libnfs.a \
+ 		    ../support/nsm/libnsm.a $(LIBCAP)
+ 
+ SUBDIRS = nsm_client
+diff --git a/tests/nsm_client/Makefile.am b/tests/nsm_client/Makefile.am
+index a8fc131..43db9c2 100644
+--- a/tests/nsm_client/Makefile.am
++++ b/tests/nsm_client/Makefile.am
+@@ -13,7 +13,7 @@ check_PROGRAMS	= nsm_client
+ nsm_client_SOURCES = $(GENFILES) nsm_client.c
+ 
+ BUILT_SOURCES = $(GENFILES)
+-nsm_client_LDADD = ../../support/nfs/libnfs.a \
++nsm_client_LDADD = ../../support/nfs/.libs/libnfs.a \
+ 		   ../../support/nsm/libnsm.a $(LIBCAP) $(LIBTIRPC)
+ 
+ if CONFIG_RPCGEN
+-- 
+2.7.4
 
-  66ab6f062d96 ("nfs: use fmtcheck() in root_nfs_data")
-
-For some reason this did not turn up until I was building the
-hwmon-staging tree (maybe some Kconfig change casued it to be built now),
-so I have just reverted that commit for today.
-
---=20
-Cheers,
-Stephen Rothwell
-
---Sig_/b7l4dzBjV_3487Zir6v2ChE
-Content-Type: application/pgp-signature
-Content-Description: OpenPGP digital signature
-
------BEGIN PGP SIGNATURE-----
-
-iQEzBAEBCAAdFiEENIC96giZ81tWdLgKAVBC80lX0GwFAlwW3M4ACgkQAVBC80lX
-0GyWpgf7BzuNbWNvh4jN36sW2BhM9Xo6BJ5qswIWKQCwJtiEG/CWidEcKMnV0DB/
-uIRij9FK45Yh0MgrWRkogTyQOnPTUyQckkBANRIOc6bKAflxT5+CzuqCtFYT263o
-KInyRT+KW3kp2V+6CTmpddyiIE9PL5PtPpdtBe63MIwxZHnWkX/t7fKwZI1nV8aW
-IX3TmybtKO6UKGYLEfVR9f+GikFhcodgfAzb9tVBBrv8vhr3c/Ifda0roQxHgrDr
-8r7sypF0FI6A/SETXjgwy3BwEgVAH/eGjvGW7uhonGaEf9NEWB+L6XztGBQMp9bp
-xZIjgZwRVNsrsmf8kosFIUp99viBng==
-=O2WA
------END PGP SIGNATURE-----
-
---Sig_/b7l4dzBjV_3487Zir6v2ChE--
