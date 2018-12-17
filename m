@@ -6,52 +6,50 @@ X-Spam-Status: No, score=-7.2 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
 	SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 06CD2C43387
-	for <linux-nfs@archiver.kernel.org>; Mon, 17 Dec 2018 17:52:19 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1DBE2C43387
+	for <linux-nfs@archiver.kernel.org>; Mon, 17 Dec 2018 17:56:49 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id C7A4920874
-	for <linux-nfs@archiver.kernel.org>; Mon, 17 Dec 2018 17:52:18 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id DFB9820874
+	for <linux-nfs@archiver.kernel.org>; Mon, 17 Dec 2018 17:56:48 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1545069138;
-	bh=rTpN6BhwwI5WCEeruJGFjNUMGBpIMO9+FaCXgXk7Im0=;
+	s=default; t=1545069409;
+	bh=HawIpgmdC2avxp5D8Lhdnsk7PnER3qJFKPS8eU+8eh8=;
 	h=Subject:From:To:Cc:Date:In-Reply-To:References:List-ID:From;
-	b=pHwfhM+Q6GCvdmR2OX7d7OGPZhozA5sHRDMwobx8Nw+EacvnjLhGWrbYWgu9TXwBT
-	 WATPg4oumygIBIqfXNaHyQdd671GHocPEflU6lDPlDd2I2e/CObkozex1MHy+r4fgX
-	 +5cA28hqnyfY9lPWeU5VL6i0gvVSEMqE0VTfY+WE=
+	b=aeuUlVWVZXMHo81ALSimXLowgBMmJNV+MeTuYjo1rqKZmwuLLkWRXPO+kwL+J4/ia
+	 QMjxrz0pB4qAUgqdyNqLicep/RcN7bDzGrjkVIt8eih6jifFT9WPx6Kofj9hJfZxJs
+	 ivp0FonRAdwMgJNAehSY6qw+/j62eVcP8GzYbWg8=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727502AbeLQRwS (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 17 Dec 2018 12:52:18 -0500
-Received: from mail.kernel.org ([198.145.29.99]:55330 "EHLO mail.kernel.org"
+        id S1727200AbeLQR4s (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 17 Dec 2018 12:56:48 -0500
+Received: from mail.kernel.org ([198.145.29.99]:59694 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726660AbeLQRwS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 17 Dec 2018 12:52:18 -0500
+        id S1726801AbeLQR4s (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 17 Dec 2018 12:56:48 -0500
 Received: from tleilax.poochiereds.net (cpe-71-70-156-158.nc.res.rr.com [71.70.156.158])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id C41CF2086C;
-        Mon, 17 Dec 2018 17:52:15 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 4CD4F2086C;
+        Mon, 17 Dec 2018 17:56:46 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1545069136;
-        bh=rTpN6BhwwI5WCEeruJGFjNUMGBpIMO9+FaCXgXk7Im0=;
+        s=default; t=1545069407;
+        bh=HawIpgmdC2avxp5D8Lhdnsk7PnER3qJFKPS8eU+8eh8=;
         h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
-        b=2SAILy2hCxnqRR+X+XMpVxebyg5ULMJWMIf3BYgOpp/EYSSoCYdCwKFtIQFeWnNWZ
-         ifDPD0q+0Vww3CGPn36KqsLDrntlUZUYJ6gpxOSCpTNhj4wQXyzMDJ4OHpg+/faSkd
-         vgCj68SUbIUl9RgZMBJNE/9AIQJV8c+RVk9XSZG0=
-Message-ID: <002ea48550649f977fa7791d1529c73aa2493bdd.camel@kernel.org>
-Subject: Re: [PATCH 2/4] nfs: remove sv_bc_enabled using in
- svc_is_backchannel()
+        b=BAOtPqSRZ/tkq+Kmtx+Fj8qytoNGvykpovy4lSmuJZqCdGrp4Hu2tL2bWago8gRVR
+         WqH5qhgSlS3+BsjgcEvPgqyIy9jMA0j6c/n4l27fAGHjXV22xfP6qLTBIZgMXIBl6v
+         4b2JyTypJFwSMelkFLTgd2LM/as+YY2EQMaIrD7U=
+Message-ID: <285400e54a70548b4404ecdba9e44c4e8e6c5953.camel@kernel.org>
+Subject: Re: [PATCH 4/4] nfs: fix debug message in svc_create_xprt()
 From:   Jeff Layton <jlayton@kernel.org>
 To:     Vasily Averin <vvs@virtuozzo.com>,
         "J. Bruce Fields" <bfields@fieldses.org>,
         Trond Myklebust <trond.myklebust@hammerspace.com>,
         Anna Schumaker <anna.schumaker@netapp.com>
-Cc:     Chuck Lever <chuck.lever@oracle.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Konstantin Khorenko <khorenko@virtuozzo.com>,
-        Evgenii Shatokhin <eshatokhin@virtuozzo.com>
-Date:   Mon, 17 Dec 2018 12:52:14 -0500
-In-Reply-To: <7b17745f-478b-affa-de7c-98d70a5431cb@virtuozzo.com>
-References: <7b17745f-478b-affa-de7c-98d70a5431cb@virtuozzo.com>
+Cc:     Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org,
+        Evgenii Shatokhin <eshatokhin@virtuozzo.com>,
+        Konstantin Khorenko <khorenko@virtuozzo.com>
+Date:   Mon, 17 Dec 2018 12:56:44 -0500
+In-Reply-To: <cff6406f-5c47-d0c6-64c8-48274c811d86@virtuozzo.com>
+References: <cff6406f-5c47-d0c6-64c8-48274c811d86@virtuozzo.com>
 Content-Type: text/plain; charset="UTF-8"
 User-Agent: Evolution 3.30.3 (3.30.3-1.fc29) 
 Mime-Version: 1.0
@@ -61,93 +59,40 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Mon, 2018-12-17 at 19:25 +0300, Vasily Averin wrote:
-> serv->sv_bc_xprt cannot be used as pointer,
-> serv is global structure, but sv_bc_xprt is assigned per-netnamespace
-> 
-> The only user of this field is svc_is_backchannel() where it is used
-> not as pointer but as mark of backchannel-compatible servers. 
-> 
-> Convert netns-unsafe xprt pointer to simple boolean mark,
-> Hope it helps to prevent misuse of sv_bc_xpr in future. 
+On Mon, 2018-12-17 at 19:26 +0300, Vasily Averin wrote:
+> _svc_create_xprt() returns positive port number 
+> so its non-zero return value is not an error
 > 
 > Signed-off-by: Vasily Averin <vvs@virtuozzo.com>
 > ---
->  include/linux/sunrpc/bc_xprt.h           | 10 ++++------
->  include/linux/sunrpc/svc.h               |  2 +-
->  net/sunrpc/svcsock.c                     |  2 +-
->  net/sunrpc/xprtrdma/svc_rdma_transport.c |  2 +-
->  4 files changed, 7 insertions(+), 9 deletions(-)
+>  net/sunrpc/svc_xprt.c | 4 ++--
+>  1 file changed, 2 insertions(+), 2 deletions(-)
 > 
-> diff --git a/include/linux/sunrpc/bc_xprt.h b/include/linux/sunrpc/bc_xprt.h
-> index 28721cf73ec3..4e8c773d02be 100644
-> --- a/include/linux/sunrpc/bc_xprt.h
-> +++ b/include/linux/sunrpc/bc_xprt.h
-> @@ -47,11 +47,9 @@ void xprt_free_bc_rqst(struct rpc_rqst *req);
->  /*
->   * Determine if a shared backchannel is in use
->   */
-> -static inline int svc_is_backchannel(const struct svc_rqst *rqstp)
-> +static inline bool svc_is_backchannel(const struct svc_rqst *rqstp)
->  {
-> -	if (rqstp->rq_server->sv_bc_xprt)
-> -		return 1;
-> -	return 0;
-> +	return rqstp->rq_server->sv_bc_enabled;
+> diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+> index 51d36230b6e3..130af22d5c66 100644
+> --- a/net/sunrpc/svc_xprt.c
+> +++ b/net/sunrpc/svc_xprt.c
+> @@ -296,9 +296,9 @@ int svc_create_xprt(struct svc_serv *serv, const char *xprt_name,
+>  		request_module("svc%s", xprt_name);
+>  		err = _svc_create_xprt(serv, xprt_name, net, family, port, flags);
+>  	}
+> -	if (err)
+> +	if (err < 0)
+>  		dprintk("svc: transport %s not found, err %d\n",
+> -			xprt_name, err);
+> +			xprt_name, -err);
+>  	return err;
 >  }
->  #else /* CONFIG_SUNRPC_BACKCHANNEL */
->  static inline int xprt_setup_backchannel(struct rpc_xprt *xprt,
-> @@ -60,9 +58,9 @@ static inline int xprt_setup_backchannel(struct rpc_xprt *xprt,
->  	return 0;
->  }
->  
-> -static inline int svc_is_backchannel(const struct svc_rqst *rqstp)
-> +static inline bool svc_is_backchannel(const struct svc_rqst *rqstp)
->  {
-> -	return 0;
-> +	return false;
->  }
->  
->  static inline void xprt_free_bc_request(struct rpc_rqst *req)
-> diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-> index 73e130a840ce..bf21609160c1 100644
-> --- a/include/linux/sunrpc/svc.h
-> +++ b/include/linux/sunrpc/svc.h
-> @@ -109,7 +109,7 @@ struct svc_serv {
->  	spinlock_t		sv_cb_lock;	/* protects the svc_cb_list */
->  	wait_queue_head_t	sv_cb_waitq;	/* sleep here if there are no
->  						 * entries in the svc_cb_list */
-> -	struct svc_xprt		*sv_bc_xprt;	/* callback on fore channel */
-> +	bool			sv_bc_enabled;	/* server uses backchannel */
->  #endif /* CONFIG_SUNRPC_BACKCHANNEL */
->  };
->  
-> diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-> index 986f3ed7d1a2..5a6b3ba555c7 100644
-> --- a/net/sunrpc/svcsock.c
-> +++ b/net/sunrpc/svcsock.c
-> @@ -1623,7 +1623,7 @@ static struct svc_xprt *svc_bc_create_socket(struct svc_serv *serv,
->  	svc_xprt_init(net, &svc_tcp_bc_class, xprt, serv);
->  	set_bit(XPT_CONG_CTRL, &svsk->sk_xprt.xpt_flags);
->  
-> -	serv->sv_bc_xprt = xprt;
-> +	serv->sv_bc_enabled = true;
->  
->  	return xprt;
->  }
-> diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-> index 2f7ec8912f49..88694048d5c0 100644
-> --- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
-> +++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-> @@ -136,7 +136,7 @@ static struct svc_xprt *svc_rdma_bc_create(struct svc_serv *serv,
->  
->  	svc_xprt_init(net, &svc_rdma_bc_class, xprt, serv);
->  	set_bit(XPT_CONG_CTRL, &xprt->xpt_flags);
-> -	serv->sv_bc_xprt = xprt;
-> +	serv->sv_bc_enabled = true;
->  
->  	dprintk("svcrdma: %s(%p)\n", __func__, xprt);
->  	return xprt;
+>  EXPORT_SYMBOL_GPL(svc_create_xprt);
+
+This patch is fine, but _svc_create_xprt does not make it clear that it
+returns a positive port number.
+
+Would you be amenable to spinning up a patch to add a kerneldoc comment
+over that function (and maybe one over svc_create_xprt too), to make it
+clear what it does?
+
+Thanks,
 
 Reviewed-by: Jeff Layton <jlayton@kernel.org>
 
