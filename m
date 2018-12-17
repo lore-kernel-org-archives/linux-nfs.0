@@ -6,62 +6,63 @@ X-Spam-Status: No, score=-6.8 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
 	SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 77F70C43387
-	for <linux-nfs@archiver.kernel.org>; Mon, 17 Dec 2018 16:39:30 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 221E2C43387
+	for <linux-nfs@archiver.kernel.org>; Mon, 17 Dec 2018 16:39:35 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 474E62133F
-	for <linux-nfs@archiver.kernel.org>; Mon, 17 Dec 2018 16:39:30 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id E68D22133F
+	for <linux-nfs@archiver.kernel.org>; Mon, 17 Dec 2018 16:39:34 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="N3ZkeNBB"
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="dZ1j9Gy+"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2387981AbeLQQj3 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 17 Dec 2018 11:39:29 -0500
-Received: from mail-it1-f194.google.com ([209.85.166.194]:38295 "EHLO
-        mail-it1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2387737AbeLQQj3 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Dec 2018 11:39:29 -0500
-Received: by mail-it1-f194.google.com with SMTP id h65so20898547ith.3;
-        Mon, 17 Dec 2018 08:39:28 -0800 (PST)
+        id S2387995AbeLQQje (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 17 Dec 2018 11:39:34 -0500
+Received: from mail-it1-f196.google.com ([209.85.166.196]:56298 "EHLO
+        mail-it1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727771AbeLQQje (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Dec 2018 11:39:34 -0500
+Received: by mail-it1-f196.google.com with SMTP id o19so19433635itg.5;
+        Mon, 17 Dec 2018 08:39:33 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=sender:subject:from:to:date:message-id:in-reply-to:references
          :user-agent:mime-version:content-transfer-encoding;
-        bh=YnmL2QcytZ7nDWQP0b2qARfKenfoawrMQNmn+bhvVt8=;
-        b=N3ZkeNBBhiaYv1gQ/+IR2BmE6eYN0wdBNvtzKlaXTr9gWsjLolAj3AMFdcuOxMdX79
-         SXoIN1K8DVwgGGXoRp4BYXj8D6iNf63OEePvXqzoeaUj9Mu8eSrWFvoF3d+YWGulzO6U
-         4fAuUuxU6r4KeuThjFrYx+9RMf79SM97jhiiXd6OCjWsQxdWg4HbvWwjLaFwHicpdpC6
-         p4YDxCy83s+4tJN2heCePs/lFGOMUvJcdQ0hMjCQ72rrR2O0lX4USBZhy9QmU0Y96EgV
-         9bTDcBXrWCpQsL+HATstiLtBMnyzWCfxNpY4V/GdMemI3Ez5Sx2PTaj/pMNb2C9Aj5oI
-         JzGw==
+        bh=nqihSE1hg4o1H0UcWmtuHnYhVxMpkCBQQUarfYAvFW0=;
+        b=dZ1j9Gy+8gVRrAamlgY0DVOq9cQRyUm6b37cshOhNQ0MV6VwuHl9ttUc1DQ/yoVUuQ
+         EBY6W+lVwcK4Mcs28/p1tfekencvxR6Qd1HVP8UvVUr/xnQAd9Fsl3Ipx9wbPlEmstXk
+         1zQGJBV8xFHEIK5Fcc8iqMhqwykBpTN3WYSLP3PCS/LszTrLqvcC5r1gdYMhLUDFCUuR
+         6XeyMuAd9euKyIkfxraxBsgciGz7Qb8aFTxJttHCssUHyWFOo9QcC8KATazxDBVE8n7x
+         A/7Z1MMXWc58HKrgkbrpU90PXhXCCka4necFIoGARgIyXckky9A77jbJsLXqL3OPEWvr
+         hYxw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:sender:subject:from:to:date:message-id
          :in-reply-to:references:user-agent:mime-version
          :content-transfer-encoding;
-        bh=YnmL2QcytZ7nDWQP0b2qARfKenfoawrMQNmn+bhvVt8=;
-        b=EaKEoPhfIQE4i1YFHdrX4FsRX4UoE5Ovaqapvh9EXpnbpiMrZfl/As+WEjBLxLLGJY
-         uIZWr/2yClGxRmhTJ0seXoVIfxSmx0bB7h+H5cinY6eAv5V9ergnKbCBhIGGKlUp0AIp
-         JhVwvRRXR+y9feK25jRe1IQGH4ve7xU2id32uHTA0IgQlMtGuK4AisF/v/xoQPOmLBCJ
-         QLabOC84dVdLByCD/qIjY2i+gH2b2SQ77y/msv+2xY1OtcEpMn77tJ4AISesQPDy3u7c
-         ifkSVu+tc/qtTwZRPau4BBJfyZ36V7o/dFjx133y7dtUUTjQmvbXYQcSFCe2+Hrdt2Kt
-         3ojQ==
-X-Gm-Message-State: AA+aEWZzStczlN86DV15J06QtNp/0BaNZGnw0D150izQFd/Gy7Tvz+tI
-        q2DNSylENqSxzUnOs8iCuk6xJlis
-X-Google-Smtp-Source: AFSGD/WcSY+x9u+0qS5TUlWzaQjykI+ezOYQ74A0MpziArE/Dm9bd/b5hhCQpYzSw9Mm75VIDsRShg==
-X-Received: by 2002:a24:8a44:: with SMTP id v65mr12430160itd.67.1545064767874;
-        Mon, 17 Dec 2018 08:39:27 -0800 (PST)
+        bh=nqihSE1hg4o1H0UcWmtuHnYhVxMpkCBQQUarfYAvFW0=;
+        b=dRCGadXLHZhWp771gkmn3+djF3STxPbdY2o7FF3FHPlAyXsyLb7OTnVQBfbi+31QHn
+         ksCuLJY4FlKPPNKhLrHxpMqYWKYoIZmB2QXk4HTpNpQI2d05GJxNHhitwRjg//7Kp9v8
+         4IdEjAvJ97IgBY/6DCxpw4cxsIbL3Sw/E121dXn6ejGiihTL0qy4tKt52Ar0fMwD84V+
+         YW5KbvEy8Rw/012qTb9+BXXqFHPbTbWyH5ZRwva5B36yPAyYa6Gbipdc55r3uf9zAz6b
+         MeFAQonvRA9/oOSml3rq/6go70fF/bBmLcLWPAnsN+LP7Jl6ch/WsS6VbI3xVFe2T0Oc
+         KYHw==
+X-Gm-Message-State: AA+aEWam9ozPVlaTWGEbpf9mQN9WSzS/elY8b3StxvAYaghgLZbuCgY3
+        aiqk2Ke2ieul4A2Rpu0yWAaiLGl6
+X-Google-Smtp-Source: AFSGD/WzjiNiRlKpkLkl9I7Paii9UQUeW3i0ey9YzUh9MqnNJn3z+UyYnR8Xg3JUYKeXUnHulkd5Ow==
+X-Received: by 2002:a24:69cd:: with SMTP id e196mr13353012itc.161.1545064773223;
+        Mon, 17 Dec 2018 08:39:33 -0800 (PST)
 Received: from gateway.1015granger.net (c-68-61-232-219.hsd1.mi.comcast.net. [68.61.232.219])
-        by smtp.gmail.com with ESMTPSA id k64sm9754861itb.7.2018.12.17.08.39.27
+        by smtp.gmail.com with ESMTPSA id g12sm5637162iok.38.2018.12.17.08.39.32
         (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Mon, 17 Dec 2018 08:39:27 -0800 (PST)
+        Mon, 17 Dec 2018 08:39:32 -0800 (PST)
 Received: from manet.1015granger.net (manet.1015granger.net [192.168.1.51])
-        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id wBHGdQtA018573;
-        Mon, 17 Dec 2018 16:39:26 GMT
-Subject: [PATCH v4 01/30] xprtrdma: Yet another double DMA-unmap
+        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id wBHGdV6s018576;
+        Mon, 17 Dec 2018 16:39:31 GMT
+Subject: [PATCH v4 02/30] xprtrdma: Ensure MRs are DMA-unmapped when posting
+ LOCAL_INV fails
 From:   Chuck Lever <chuck.lever@oracle.com>
 To:     linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date:   Mon, 17 Dec 2018 11:39:26 -0500
-Message-ID: <20181217163926.24133.67489.stgit@manet.1015granger.net>
+Date:   Mon, 17 Dec 2018 11:39:31 -0500
+Message-ID: <20181217163931.24133.44118.stgit@manet.1015granger.net>
 In-Reply-To: <20181217162406.24133.27356.stgit@manet.1015granger.net>
 References: <20181217162406.24133.27356.stgit@manet.1015granger.net>
 User-Agent: StGit/0.17.1-dirty
@@ -73,73 +74,28 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-While chasing yet another set of DMAR fault reports, I noticed that
-the frwr recycler conflates whether or not an MR has been DMA
-unmapped with frwr->fr_state. Actually the two have only an indirect
-relationship. It's in fact impossible to guess reliably whether the
-MR has been DMA unmapped based on its fr_state field, especially as
-the surrounding code and its assumptions have changed over time.
+The recovery case in frwr_op_unmap_sync needs to DMA unmap each MR.
+frwr_release_mr does not DMA-unmap, but the recycle worker does.
 
-A better approach is to track the DMA mapping status explicitly so
-that the recycler is less brittle to unexpected situations, and
-attempts to DMA-unmap a second time are prevented.
-
+Fixes: 61da886bf74e ("xprtrdma: Explicitly resetting MRs is ... ")
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Cc: stable@vger.kernel.org # v4.20
 ---
- net/sunrpc/xprtrdma/frwr_ops.c |    6 ++++--
- net/sunrpc/xprtrdma/verbs.c    |    9 ++++++---
- 2 files changed, 10 insertions(+), 5 deletions(-)
+ net/sunrpc/xprtrdma/frwr_ops.c |    4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/net/sunrpc/xprtrdma/frwr_ops.c b/net/sunrpc/xprtrdma/frwr_ops.c
-index fc6378cc..20ced24 100644
+index 20ced24..27222c0 100644
 --- a/net/sunrpc/xprtrdma/frwr_ops.c
 +++ b/net/sunrpc/xprtrdma/frwr_ops.c
-@@ -117,15 +117,15 @@
- frwr_mr_recycle_worker(struct work_struct *work)
- {
- 	struct rpcrdma_mr *mr = container_of(work, struct rpcrdma_mr, mr_recycle);
--	enum rpcrdma_frwr_state state = mr->frwr.fr_state;
- 	struct rpcrdma_xprt *r_xprt = mr->mr_xprt;
+@@ -563,8 +563,8 @@
+ 		mr = container_of(frwr, struct rpcrdma_mr, frwr);
+ 		bad_wr = bad_wr->next;
  
- 	trace_xprtrdma_mr_recycle(mr);
- 
--	if (state != FRWR_FLUSHED_LI) {
-+	if (mr->mr_dir != DMA_NONE) {
- 		trace_xprtrdma_mr_unmap(mr);
- 		ib_dma_unmap_sg(r_xprt->rx_ia.ri_device,
- 				mr->mr_sg, mr->mr_nents, mr->mr_dir);
-+		mr->mr_dir = DMA_NONE;
+-		list_del(&mr->mr_list);
+-		frwr_op_release_mr(mr);
++		list_del_init(&mr->mr_list);
++		rpcrdma_mr_recycle(mr);
  	}
- 
- 	spin_lock(&r_xprt->rx_buf.rb_mrlock);
-@@ -150,6 +150,8 @@
- 	if (!mr->mr_sg)
- 		goto out_list_err;
- 
-+	frwr->fr_state = FRWR_IS_INVALID;
-+	mr->mr_dir = DMA_NONE;
- 	INIT_LIST_HEAD(&mr->mr_list);
- 	INIT_WORK(&mr->mr_recycle, frwr_mr_recycle_worker);
- 	sg_init_table(mr->mr_sg, depth);
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 3ddba94..b9bc7f9 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -1329,9 +1329,12 @@ struct rpcrdma_mr *
- {
- 	struct rpcrdma_xprt *r_xprt = mr->mr_xprt;
- 
--	trace_xprtrdma_mr_unmap(mr);
--	ib_dma_unmap_sg(r_xprt->rx_ia.ri_device,
--			mr->mr_sg, mr->mr_nents, mr->mr_dir);
-+	if (mr->mr_dir != DMA_NONE) {
-+		trace_xprtrdma_mr_unmap(mr);
-+		ib_dma_unmap_sg(r_xprt->rx_ia.ri_device,
-+				mr->mr_sg, mr->mr_nents, mr->mr_dir);
-+		mr->mr_dir = DMA_NONE;
-+	}
- 	__rpcrdma_mr_put(&r_xprt->rx_buf, mr);
  }
  
 
