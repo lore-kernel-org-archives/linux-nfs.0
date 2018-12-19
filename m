@@ -6,63 +6,63 @@ X-Spam-Status: No, score=-6.8 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
 	SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C3FA7C43387
-	for <linux-nfs@archiver.kernel.org>; Wed, 19 Dec 2018 16:00:20 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id BE6AFC43387
+	for <linux-nfs@archiver.kernel.org>; Wed, 19 Dec 2018 16:00:27 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 83FBA217D9
-	for <linux-nfs@archiver.kernel.org>; Wed, 19 Dec 2018 16:00:20 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 83B8F217D9
+	for <linux-nfs@archiver.kernel.org>; Wed, 19 Dec 2018 16:00:27 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="mObUl3YO"
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="Vx+0MCCk"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727569AbeLSQAU (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 19 Dec 2018 11:00:20 -0500
-Received: from mail-it1-f194.google.com ([209.85.166.194]:38730 "EHLO
-        mail-it1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726652AbeLSQAT (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Dec 2018 11:00:19 -0500
-Received: by mail-it1-f194.google.com with SMTP id h65so10038051ith.3;
-        Wed, 19 Dec 2018 08:00:18 -0800 (PST)
+        id S1729561AbeLSQAY (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 19 Dec 2018 11:00:24 -0500
+Received: from mail-io1-f67.google.com ([209.85.166.67]:35467 "EHLO
+        mail-io1-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726652AbeLSQAY (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Dec 2018 11:00:24 -0500
+Received: by mail-io1-f67.google.com with SMTP id o13so275304ioh.2;
+        Wed, 19 Dec 2018 08:00:23 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=sender:subject:from:to:cc:date:message-id:in-reply-to:references
          :user-agent:mime-version:content-transfer-encoding;
-        bh=P/q4RnJj2efKP18/p35VQ/p0eIvp2esguJVWydMCWg8=;
-        b=mObUl3YO8qiq7RSN/BF3HrW+gUT21FhXJqCEK/+D7J8YMHMBuRJDBA44G66U+ne2vk
-         QDn6ySMA3NKOLz+qoQkVXyrQRUEXoMRL8/duShMDOB/oqnKCRe7EIn5SKlDmNyH2tmU7
-         fbrsfqJ1Q1rPvm9cgYDYYlsuWPOPv6Vz1OCaGti5hWgWxKB/CGszlwajIR4yVnN1NrwG
-         zz/Z3V35l7yQpqNcbP6sC7loUBqX9sFV3bHq/BX683PWhbbQboi1w48rJcwjJQTxzJxv
-         I1WE6UnZkl/SPtaGJfHKrnoBDlWAzB95YTAAspPLpcVMKOLr7JauFA86+LrZ5X6LajzV
-         Hr9g==
+        bh=yZQOIXq8m8T5Efj8bS/bVcfcxBqC9DeCwu7vAOO8MfU=;
+        b=Vx+0MCCkHGc4rRgTVq3WR1EFeyxFbcoS/qhi2T7ZR31nB0O8xqEAG3evxsTDbzx04W
+         CEOAP1lxiVWyOXZQCyungQsk8yENZ8F6kK+ZJ1Opd7Vs0Tnpa2WLYKtVA0mi1Fm+9hsy
+         mJD6X1THFR9wEJAihtMHDySHT00k+KNEFP5FOW+VUrdiN64/qoXjsJHn5slJTlu8GFiU
+         qOAtkJzJYRZ4GgBXsF4gCXAKP/zd/LgzOUzts7bv1wrLSM66SWnK2TuEo+EFcceH4Cke
+         2orqQrg4TmCgEi8NdZvy2Pxt6k2EzdlLHqtI8rR9qGYy9R/Se0tlQwQUqsTwFDtcqrBt
+         IbIg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:sender:subject:from:to:cc:date:message-id
          :in-reply-to:references:user-agent:mime-version
          :content-transfer-encoding;
-        bh=P/q4RnJj2efKP18/p35VQ/p0eIvp2esguJVWydMCWg8=;
-        b=lqQzd7uLvOd8CD7TSZhiA2j8TG7OEHbSSG+fBjdLIcDkLZRzyIBGm0kwQUm+wQ7EtP
-         ve5glnnjH9C4QfnEUriDIzfgzbVOytvDIQPWe2L3MuO6XYQLslatzoUtrm8koVzlL3KF
-         rwB6OCccDJKt0iUuAyuT1dWOY+7y5qZEgSon1+p1Bgy7eYPUzondRCKVmXHl0SbNecRm
-         tYt3izKM5vTktVXHIkjZsBgruutlDDSZG81vmHPympFD3d8hsZEfNH93eYVAWwbNKVFC
-         xtOW3avonvbHZnpmPz6v++Wo/AVWaGneTCjeI/NAFNTJ6bvJxFfZ6Zi0Sbdzttx/uxVw
-         qI7A==
-X-Gm-Message-State: AA+aEWbDfqw3pyXcPEhwX4VUinuTesWKiI0ERhyvXeptIViph7+ekrlA
-        +IikMera2FSOM8Ii4BjG0gg=
-X-Google-Smtp-Source: AFSGD/Uc2oKIOoUYP8muALMNUaoiEngkP6CLgyeoS1krWcL4es9kLksVJ1oaX+uAhbp9QnvclKEPKg==
-X-Received: by 2002:a24:41ea:: with SMTP id b103mr6902507itd.120.1545235218210;
-        Wed, 19 Dec 2018 08:00:18 -0800 (PST)
+        bh=yZQOIXq8m8T5Efj8bS/bVcfcxBqC9DeCwu7vAOO8MfU=;
+        b=CJQYoJzUSf2l+XQao5NgStcry4JFXhus0ErFk2tEEJGpSFNvPWDHOytTcjWItrkdQP
+         jsUKya3gLrT6YoqQFUQmqtqw1LQPoIt8b5e29s6E32PSmldiAHuac7SnCKEhY0mzKV6G
+         YmTm1oPAz/T57iQIq8TC0fFWv71ILqUIlAA/RnPTtljxnSDXxE+eoMDIHUPE+bmuvkO9
+         IT29CxNaofZK3kYfIOa5yF0M/1aoUpeKWEOUT1le9HfdqdvLwsW2XxdJLxYS03YTCFRe
+         fJ8+xf5d0Ay6fTRg6ZLWYglCCoikDXc7BI9ow/UWuO69KlzzpIbZxGeSJy8Ns/zfVzJE
+         5Opw==
+X-Gm-Message-State: AA+aEWYB8JH5PVw3SFyQ6FgxzeC6KLuIxasdRy/ygtCTLtVI+Mu3p8YY
+        9isRje6BAR2u1ob6W+4TO64CIaGi
+X-Google-Smtp-Source: AFSGD/WhmKV6E1HW1JAVJJkKiXpVCu/CLxJ2ZE3WxcRapqahf9f5Vcvp5DNEvYw2kOxiToewQXOSGQ==
+X-Received: by 2002:a6b:720f:: with SMTP id n15mr18679088ioc.175.1545235223493;
+        Wed, 19 Dec 2018 08:00:23 -0800 (PST)
 Received: from gateway.1015granger.net (c-68-61-232-219.hsd1.mi.comcast.net. [68.61.232.219])
-        by smtp.gmail.com with ESMTPSA id g186sm3389803ite.39.2018.12.19.08.00.17
+        by smtp.gmail.com with ESMTPSA id x79sm3373857ita.34.2018.12.19.08.00.22
         (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Wed, 19 Dec 2018 08:00:17 -0800 (PST)
+        Wed, 19 Dec 2018 08:00:22 -0800 (PST)
 Received: from manet.1015granger.net (manet.1015granger.net [192.168.1.51])
-        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id wBJG0G7j025838;
-        Wed, 19 Dec 2018 16:00:16 GMT
-Subject: [PATCH v5 24/30] SUNRPC: Simplify defining common RPC trace events
+        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id wBJG0MtO025841;
+        Wed, 19 Dec 2018 16:00:22 GMT
+Subject: [PATCH v5 25/30] SUNRPC: Fix some kernel doc complaints
 From:   Chuck Lever <chuck.lever@oracle.com>
 To:     anna.schumaker@netapp.com
 Cc:     linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date:   Wed, 19 Dec 2018 11:00:16 -0500
-Message-ID: <20181219160016.11602.19808.stgit@manet.1015granger.net>
+Date:   Wed, 19 Dec 2018 11:00:22 -0500
+Message-ID: <20181219160022.11602.84906.stgit@manet.1015granger.net>
 In-Reply-To: <20181219155152.11602.18605.stgit@manet.1015granger.net>
 References: <20181219155152.11602.18605.stgit@manet.1015granger.net>
 User-Agent: StGit/0.17.1-dirty
@@ -74,262 +74,82 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Clean up, no functional change is expected.
+Clean up some warnings observed when building with "make W=1".
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- include/trace/events/sunrpc.h |  172 ++++++++++++++++-------------------------
- 1 file changed, 69 insertions(+), 103 deletions(-)
+ net/sunrpc/auth_gss/gss_mech_switch.c |    2 +-
+ net/sunrpc/backchannel_rqst.c         |    2 +-
+ net/sunrpc/xprtmultipath.c            |    4 ++--
+ net/sunrpc/xprtsock.c                 |    2 ++
+ 4 files changed, 6 insertions(+), 4 deletions(-)
 
-diff --git a/include/trace/events/sunrpc.h b/include/trace/events/sunrpc.h
-index 28e3841..88bda93 100644
---- a/include/trace/events/sunrpc.h
-+++ b/include/trace/events/sunrpc.h
-@@ -16,40 +16,6 @@
+diff --git a/net/sunrpc/auth_gss/gss_mech_switch.c b/net/sunrpc/auth_gss/gss_mech_switch.c
+index 16ac0f4..379318d 100644
+--- a/net/sunrpc/auth_gss/gss_mech_switch.c
++++ b/net/sunrpc/auth_gss/gss_mech_switch.c
+@@ -244,7 +244,7 @@ struct gss_api_mech *
  
- DECLARE_EVENT_CLASS(rpc_task_status,
+ /**
+  * gss_mech_list_pseudoflavors - Discover registered GSS pseudoflavors
+- * @array: array to fill in
++ * @array_ptr: array to fill in
+  * @size: size of "array"
+  *
+  * Returns the number of array items filled in, or a negative errno.
+diff --git a/net/sunrpc/backchannel_rqst.c b/net/sunrpc/backchannel_rqst.c
+index fa5ba6e..ec451b8 100644
+--- a/net/sunrpc/backchannel_rqst.c
++++ b/net/sunrpc/backchannel_rqst.c
+@@ -197,7 +197,7 @@ int xprt_setup_bc(struct rpc_xprt *xprt, unsigned int min_reqs)
+ /**
+  * xprt_destroy_backchannel - Destroys the backchannel preallocated structures.
+  * @xprt:	the transport holding the preallocated strucures
+- * @max_reqs	the maximum number of preallocated structures to destroy
++ * @max_reqs:	the maximum number of preallocated structures to destroy
+  *
+  * Since these structures may have been allocated by multiple calls
+  * to xprt_setup_backchannel, we only destroy up to the maximum number
+diff --git a/net/sunrpc/xprtmultipath.c b/net/sunrpc/xprtmultipath.c
+index e2d64c7..8394124 100644
+--- a/net/sunrpc/xprtmultipath.c
++++ b/net/sunrpc/xprtmultipath.c
+@@ -383,7 +383,7 @@ void xprt_iter_init_listall(struct rpc_xprt_iter *xpi,
+ /**
+  * xprt_iter_xchg_switch - Atomically swap out the rpc_xprt_switch
+  * @xpi: pointer to rpc_xprt_iter
+- * @xps: pointer to a new rpc_xprt_switch or NULL
++ * @newswitch: pointer to a new rpc_xprt_switch or NULL
+  *
+  * Swaps out the existing xpi->xpi_xpswitch with a new value.
+  */
+@@ -401,7 +401,7 @@ struct rpc_xprt_switch *xprt_iter_xchg_switch(struct rpc_xprt_iter *xpi,
  
--	TP_PROTO(struct rpc_task *task),
--
--	TP_ARGS(task),
--
--	TP_STRUCT__entry(
--		__field(unsigned int, task_id)
--		__field(unsigned int, client_id)
--		__field(int, status)
--	),
--
--	TP_fast_assign(
--		__entry->task_id = task->tk_pid;
--		__entry->client_id = task->tk_client->cl_clid;
--		__entry->status = task->tk_status;
--	),
--
--	TP_printk("task:%u@%u status=%d",
--		__entry->task_id, __entry->client_id,
--		__entry->status)
--);
--
--DEFINE_EVENT(rpc_task_status, rpc_call_status,
--	TP_PROTO(struct rpc_task *task),
--
--	TP_ARGS(task)
--);
--
--DEFINE_EVENT(rpc_task_status, rpc_bind_status,
--	TP_PROTO(struct rpc_task *task),
--
--	TP_ARGS(task)
--);
--
--TRACE_EVENT(rpc_connect_status,
- 	TP_PROTO(const struct rpc_task *task),
+ /**
+  * xprt_iter_destroy - Destroys the xprt iterator
+- * @xpi pointer to rpc_xprt_iter
++ * @xpi: pointer to rpc_xprt_iter
+  */
+ void xprt_iter_destroy(struct rpc_xprt_iter *xpi)
+ {
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index f0b3700..d5ce1a8 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -1600,6 +1600,7 @@ static void xs_udp_set_buffer_size(struct rpc_xprt *xprt, size_t sndsize, size_t
  
- 	TP_ARGS(task),
-@@ -70,6 +36,16 @@
- 		__entry->task_id, __entry->client_id,
- 		__entry->status)
- );
-+#define DEFINE_RPC_STATUS_EVENT(name) \
-+	DEFINE_EVENT(rpc_task_status, rpc_##name##_status, \
-+			TP_PROTO( \
-+				const struct rpc_task *task \
-+			), \
-+			TP_ARGS(task))
-+
-+DEFINE_RPC_STATUS_EVENT(call);
-+DEFINE_RPC_STATUS_EVENT(bind);
-+DEFINE_RPC_STATUS_EVENT(connect);
+ /**
+  * xs_udp_timer - called when a retransmit timeout occurs on a UDP transport
++ * @xprt: controlling transport
+  * @task: task that timed out
+  *
+  * Adjust the congestion window after a retransmit timeout has occurred.
+@@ -2257,6 +2258,7 @@ static int xs_tcp_finish_connecting(struct rpc_xprt *xprt, struct socket *sock)
  
- TRACE_EVENT(rpc_request,
- 	TP_PROTO(const struct rpc_task *task),
-@@ -134,30 +110,17 @@
- 		__entry->action
- 		)
- );
-+#define DEFINE_RPC_RUNNING_EVENT(name) \
-+	DEFINE_EVENT(rpc_task_running, rpc_task_##name, \
-+			TP_PROTO( \
-+				const struct rpc_task *task, \
-+				const void *action \
-+			), \
-+			TP_ARGS(task, action))
- 
--DEFINE_EVENT(rpc_task_running, rpc_task_begin,
--
--	TP_PROTO(const struct rpc_task *task, const void *action),
--
--	TP_ARGS(task, action)
--
--);
--
--DEFINE_EVENT(rpc_task_running, rpc_task_run_action,
--
--	TP_PROTO(const struct rpc_task *task, const void *action),
--
--	TP_ARGS(task, action)
--
--);
--
--DEFINE_EVENT(rpc_task_running, rpc_task_complete,
--
--	TP_PROTO(const struct rpc_task *task, const void *action),
--
--	TP_ARGS(task, action)
--
--);
-+DEFINE_RPC_RUNNING_EVENT(begin);
-+DEFINE_RPC_RUNNING_EVENT(run_action);
-+DEFINE_RPC_RUNNING_EVENT(complete);
- 
- DECLARE_EVENT_CLASS(rpc_task_queued,
- 
-@@ -195,22 +158,16 @@
- 		__get_str(q_name)
- 		)
- );
-+#define DEFINE_RPC_QUEUED_EVENT(name) \
-+	DEFINE_EVENT(rpc_task_queued, rpc_task_##name, \
-+			TP_PROTO( \
-+				const struct rpc_task *task, \
-+				const struct rpc_wait_queue *q \
-+			), \
-+			TP_ARGS(task, q))
- 
--DEFINE_EVENT(rpc_task_queued, rpc_task_sleep,
--
--	TP_PROTO(const struct rpc_task *task, const struct rpc_wait_queue *q),
--
--	TP_ARGS(task, q)
--
--);
--
--DEFINE_EVENT(rpc_task_queued, rpc_task_wakeup,
--
--	TP_PROTO(const struct rpc_task *task, const struct rpc_wait_queue *q),
--
--	TP_ARGS(task, q)
--
--);
-+DEFINE_RPC_QUEUED_EVENT(sleep);
-+DEFINE_RPC_QUEUED_EVENT(wakeup);
- 
- TRACE_EVENT(rpc_stats_latency,
- 
-@@ -410,7 +367,11 @@
- DEFINE_RPC_SOCKET_EVENT(rpc_socket_shutdown);
- 
- DECLARE_EVENT_CLASS(rpc_xprt_event,
--	TP_PROTO(struct rpc_xprt *xprt, __be32 xid, int status),
-+	TP_PROTO(
-+		const struct rpc_xprt *xprt,
-+		__be32 xid,
-+		int status
-+	),
- 
- 	TP_ARGS(xprt, xid, status),
- 
-@@ -432,22 +393,19 @@
- 			__get_str(port), __entry->xid,
- 			__entry->status)
- );
-+#define DEFINE_RPC_XPRT_EVENT(name) \
-+	DEFINE_EVENT(rpc_xprt_event, xprt_##name, \
-+			TP_PROTO( \
-+				const struct rpc_xprt *xprt, \
-+				__be32 xid, \
-+				int status \
-+			), \
-+			TP_ARGS(xprt, xid, status))
- 
--DEFINE_EVENT(rpc_xprt_event, xprt_timer,
--	TP_PROTO(struct rpc_xprt *xprt, __be32 xid, int status),
--	TP_ARGS(xprt, xid, status));
--
--DEFINE_EVENT(rpc_xprt_event, xprt_lookup_rqst,
--	TP_PROTO(struct rpc_xprt *xprt, __be32 xid, int status),
--	TP_ARGS(xprt, xid, status));
--
--DEFINE_EVENT(rpc_xprt_event, xprt_transmit,
--	TP_PROTO(struct rpc_xprt *xprt, __be32 xid, int status),
--	TP_ARGS(xprt, xid, status));
--
--DEFINE_EVENT(rpc_xprt_event, xprt_complete_rqst,
--	TP_PROTO(struct rpc_xprt *xprt, __be32 xid, int status),
--	TP_ARGS(xprt, xid, status));
-+DEFINE_RPC_XPRT_EVENT(timer);
-+DEFINE_RPC_XPRT_EVENT(lookup_rqst);
-+DEFINE_RPC_XPRT_EVENT(transmit);
-+DEFINE_RPC_XPRT_EVENT(complete_rqst);
- 
- TRACE_EVENT(xprt_ping,
- 	TP_PROTO(const struct rpc_xprt *xprt, int status),
-@@ -587,7 +545,9 @@
- 
- DECLARE_EVENT_CLASS(svc_rqst_event,
- 
--	TP_PROTO(struct svc_rqst *rqst),
-+	TP_PROTO(
-+		const struct svc_rqst *rqst
-+	),
- 
- 	TP_ARGS(rqst),
- 
-@@ -607,14 +567,15 @@
- 			__get_str(addr), __entry->xid,
- 			show_rqstp_flags(__entry->flags))
- );
-+#define DEFINE_SVC_RQST_EVENT(name) \
-+	DEFINE_EVENT(svc_rqst_event, svc_##name, \
-+			TP_PROTO( \
-+				const struct svc_rqst *rqst \
-+			), \
-+			TP_ARGS(rqst))
- 
--DEFINE_EVENT(svc_rqst_event, svc_defer,
--	TP_PROTO(struct svc_rqst *rqst),
--	TP_ARGS(rqst));
--
--DEFINE_EVENT(svc_rqst_event, svc_drop,
--	TP_PROTO(struct svc_rqst *rqst),
--	TP_ARGS(rqst));
-+DEFINE_SVC_RQST_EVENT(defer);
-+DEFINE_SVC_RQST_EVENT(drop);
- 
- DECLARE_EVENT_CLASS(svc_rqst_status,
- 
-@@ -801,7 +762,9 @@
- );
- 
- DECLARE_EVENT_CLASS(svc_deferred_event,
--	TP_PROTO(struct svc_deferred_req *dr),
-+	TP_PROTO(
-+		const struct svc_deferred_req *dr
-+	),
- 
- 	TP_ARGS(dr),
- 
-@@ -818,13 +781,16 @@
- 
- 	TP_printk("addr=%s xid=0x%08x", __get_str(addr), __entry->xid)
- );
-+#define DEFINE_SVC_DEFERRED_EVENT(name) \
-+	DEFINE_EVENT(svc_deferred_event, svc_##name##_deferred, \
-+			TP_PROTO( \
-+				const struct svc_deferred_req *dr \
-+			), \
-+			TP_ARGS(dr))
-+
-+DEFINE_SVC_DEFERRED_EVENT(drop);
-+DEFINE_SVC_DEFERRED_EVENT(revisit);
- 
--DEFINE_EVENT(svc_deferred_event, svc_drop_deferred,
--	TP_PROTO(struct svc_deferred_req *dr),
--	TP_ARGS(dr));
--DEFINE_EVENT(svc_deferred_event, svc_revisit_deferred,
--	TP_PROTO(struct svc_deferred_req *dr),
--	TP_ARGS(dr));
- #endif /* _TRACE_SUNRPC_H */
- 
- #include <trace/define_trace.h>
+ /**
+  * xs_tcp_setup_socket - create a TCP socket and connect to a remote endpoint
++ * @work: queued work item
+  *
+  * Invoked by a work queue tasklet.
+  */
 
