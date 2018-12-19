@@ -6,63 +6,64 @@ X-Spam-Status: No, score=-6.8 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
 	SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 74E84C43387
-	for <linux-nfs@archiver.kernel.org>; Wed, 19 Dec 2018 15:58:54 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A3902C43387
+	for <linux-nfs@archiver.kernel.org>; Wed, 19 Dec 2018 15:59:00 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 44295217D9
-	for <linux-nfs@archiver.kernel.org>; Wed, 19 Dec 2018 15:58:54 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 5EB5B217D9
+	for <linux-nfs@archiver.kernel.org>; Wed, 19 Dec 2018 15:59:00 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="jgOBexe7"
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="I34zhbAD"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728095AbeLSP6x (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 19 Dec 2018 10:58:53 -0500
-Received: from mail-it1-f195.google.com ([209.85.166.195]:55781 "EHLO
-        mail-it1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727829AbeLSP6x (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Dec 2018 10:58:53 -0500
-Received: by mail-it1-f195.google.com with SMTP id m62so10358060ith.5;
-        Wed, 19 Dec 2018 07:58:53 -0800 (PST)
+        id S1729338AbeLSP67 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 19 Dec 2018 10:58:59 -0500
+Received: from mail-it1-f193.google.com ([209.85.166.193]:39373 "EHLO
+        mail-it1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727829AbeLSP67 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Dec 2018 10:58:59 -0500
+Received: by mail-it1-f193.google.com with SMTP id a6so10004956itl.4;
+        Wed, 19 Dec 2018 07:58:58 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=sender:subject:from:to:cc:date:message-id:in-reply-to:references
          :user-agent:mime-version:content-transfer-encoding;
-        bh=fZt2sJtHBzkz3cxTvQxkd76ytJ2+vEepYSr4HQtV1IE=;
-        b=jgOBexe7mgLWcIJt/O0aNgFAMbn+tCtUCDjCKsDhi8qhkEIZDZ/dt8bJWgdCR+xaVT
-         R3BRsTC2my6LGbbXY25qRKSOe4J68vGNVgL35hz2h2L/O82k9z/IOFPTQNJIN/q/UtN2
-         2utElo/+70ZLX84uW8lapHQuuB8z/7+A4oZJmGMyfJmYtji1zAvE1U4CB0bpBtUNmT1g
-         HUhgJxMWykYKRIuzIIolWulA6bqoi862h/r6u7S5K2/lvYXOfba0Dpxp8caKokp/Q8vg
-         9AqJStcSbmBHR1AHGrY21f9T40QXhIlGuSBjpf0oc4cLdulMeDMcDQf9IBNCh4bDoWsQ
-         wdiw==
+        bh=OORiC2wAnW7FG4R2YzuLb2JoY0Sas2INBajUJHi6Zxw=;
+        b=I34zhbAD8tw122kbRCO58j4ydcvHPNRGkix2ti/FUpQKfmbFuGvWwh8TnBKPzAZjKZ
+         zWeKMSaCHY4wn7FNxigpOuMzEhlpDwMeh0UMpzE8iRwBF487Zilc1K0RR5l14uGvbblF
+         P1S7+YFIq/WRm6mY3OEu0ygFQRERex5+G43oNdWfupex7BdE7czjNs2IdGYvUvTYkRN+
+         Z57Yt5id7Mn3iS/u2LPEMu7UgGNQur8A5d06CVTAeOnVc0h0tGnugCMyqmYxE6D/MisZ
+         TTvNwuosCFBEnDyfs86/KIF1hVq3QzC9lIRmUZbK3ZS9+o7uzcI0PK2c11pFZ6axkZbo
+         N/3A==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:sender:subject:from:to:cc:date:message-id
          :in-reply-to:references:user-agent:mime-version
          :content-transfer-encoding;
-        bh=fZt2sJtHBzkz3cxTvQxkd76ytJ2+vEepYSr4HQtV1IE=;
-        b=hrzUPOTyI/v1oTX+TcP/ae9NDTHF/hqWuDlvr8ATYGU/L+RDQtZdEbrcPRcjH3Ycvs
-         bFF4nYUhXx0u/P1Ywqn/gq744xy9aCA+Kt61El0AcFg/wLxrjKZIwWlMfWCv9s0P+VBP
-         ECtNLz+A76s4/JCzmWQSiGyv7Ec37mlwsSeq91Y4e2Chfh5fI77K5lhozyG5Or8rDOyT
-         olbqmnheHaUq1SL4HIzf76cbTeAmiMb520ErygEczQ2wy/2lwJ2w0Ctz3nAstu2IrOq+
-         ljd+cEP4q6k0HMuGYw+ZanZkS9Ky9Qy4q0UQ9GQiC2cyUiDvaGNOPZkwkR3HRDNTXYW3
-         X+Ug==
-X-Gm-Message-State: AA+aEWaTXLbewrszxlpNCWr63hvcctJEUUE6cJn8036EOVzXYBC10L1a
-        VjDJ/NTfUIu4JzKMcrbqaoQ=
-X-Google-Smtp-Source: AFSGD/Wpe7rgYzKA8XOTXJOB+okFKn2B23jxnBSYJxC0ousTWw7oHYok9ZxBhmRGM/tI+1uHfBPZ5g==
-X-Received: by 2002:a02:9b26:: with SMTP id o35mr20264818jak.23.1545235132715;
-        Wed, 19 Dec 2018 07:58:52 -0800 (PST)
+        bh=OORiC2wAnW7FG4R2YzuLb2JoY0Sas2INBajUJHi6Zxw=;
+        b=FM3oHIfb9cCe6qnkODMaBUFYvvf+dy2SCE5HTNbk3f7oY0uDLAfxiPBPyy+EimwUWN
+         l8y82l46/YP9LtaecQCp3FB6Ni4cINUA2x5l/mq/4qWHDvvnjyMk1eXM20Wv0FnOdsmN
+         pQs/zWp7Nyl79zFX+Mb/2FW/3TzuMPJkL/WWCFGaZwSSYTqquhTOIIRSFhsGjb11kKB4
+         6o6EYoS1ehpbw8PmZEVz+2oC7frA/0NvMY8HkpxDBmrhl6BQYVAzAT6ADPeyS/gR9Rw5
+         iNJD4voT72+32gJaBnTzsx5FWfkeuGJHlKyeQsm6MsTmXlBhzScr7UiVS0OfKqVxJENQ
+         wb9w==
+X-Gm-Message-State: AA+aEWYOKApP6zo872gD226yunxEQpr9vkweVujSQ/E3darhcy3YZPxG
+        drpWdl34JKiyBPM2vRijJ2u30T34
+X-Google-Smtp-Source: AFSGD/UsGIrFdKLf0TA5DRnWhXuyY5uuPrehBonZIoSc2HHVMKfsD18kmuDxLuTuruJolLIG5DDQ1w==
+X-Received: by 2002:a24:5a11:: with SMTP id v17mr7089016ita.114.1545235138003;
+        Wed, 19 Dec 2018 07:58:58 -0800 (PST)
 Received: from gateway.1015granger.net (c-68-61-232-219.hsd1.mi.comcast.net. [68.61.232.219])
-        by smtp.gmail.com with ESMTPSA id a16sm8486442ioh.48.2018.12.19.07.58.51
+        by smtp.gmail.com with ESMTPSA id i135sm3753477iti.34.2018.12.19.07.58.56
         (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Wed, 19 Dec 2018 07:58:52 -0800 (PST)
+        Wed, 19 Dec 2018 07:58:57 -0800 (PST)
 Received: from manet.1015granger.net (manet.1015granger.net [192.168.1.51])
-        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id wBJFwpDj025780;
-        Wed, 19 Dec 2018 15:58:51 GMT
-Subject: [PATCH v5 08/30] xprtrdma: Reduce max_frwr_depth
+        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id wBJFwuEG025783;
+        Wed, 19 Dec 2018 15:58:56 GMT
+Subject: [PATCH v5 09/30] xprtrdma: Remove support for FMR memory
+ registration
 From:   Chuck Lever <chuck.lever@oracle.com>
 To:     anna.schumaker@netapp.com
 Cc:     linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date:   Wed, 19 Dec 2018 10:58:51 -0500
-Message-ID: <20181219155851.11602.24862.stgit@manet.1015granger.net>
+Date:   Wed, 19 Dec 2018 10:58:56 -0500
+Message-ID: <20181219155856.11602.30114.stgit@manet.1015granger.net>
 In-Reply-To: <20181219155152.11602.18605.stgit@manet.1015granger.net>
 References: <20181219155152.11602.18605.stgit@manet.1015granger.net>
 User-Agent: StGit/0.17.1-dirty
@@ -74,50 +75,451 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Some devices advertise a large max_fast_reg_page_list_len
-capability, but perform optimally when MRs are significantly smaller
-than that depth -- probably when the MR itself is no larger than a
-page.
+FMR is not supported on most recent RDMA devices. It is also less
+secure than FRWR because an FMR memory registration can expose
+adjacent bytes to remote reading or writing. As discussed during the
+RDMA BoF at LPC 2018, it is time to remove support for FMR in the
+NFS/RDMA client stack.
 
-By default, the RDMA R/W core API uses max_sge_rd as the maximum
-page depth for MRs. For some devices, the value of max_sge_rd is
-1, which is also not optimal. Thus, when max_sge_rd is larger than
-1, use that value. Otherwise use the value of the
-max_fast_reg_page_list_len attribute.
+Note that NFS/RDMA server-side uses either local memory registration
+or FRWR. FMR is not used.
 
-I've tested this with CX-3 Pro, FastLinq, and CX-5 devices. It
-reproducibly improves the throughput of large I/Os by several
-percent.
+There are a few Infiniband/RoCE devices in the kernel tree that do
+not appear to support MEM_MGT_EXTENSIONS (FRWR), and therefore will
+not support client-side NFS/RDMA after this patch. These are:
+
+ - mthca
+ - qib
+ - hns (RoCE)
+
+Users of these devices can use NFS/TCP on IPoIB instead.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/frwr_ops.c |   15 +++++++++++----
- 1 file changed, 11 insertions(+), 4 deletions(-)
+ net/sunrpc/xprtrdma/Makefile    |    3 
+ net/sunrpc/xprtrdma/fmr_ops.c   |  340 ---------------------------------------
+ net/sunrpc/xprtrdma/verbs.c     |    6 -
+ net/sunrpc/xprtrdma/xprt_rdma.h |   12 -
+ 4 files changed, 2 insertions(+), 359 deletions(-)
+ delete mode 100644 net/sunrpc/xprtrdma/fmr_ops.c
 
-diff --git a/net/sunrpc/xprtrdma/frwr_ops.c b/net/sunrpc/xprtrdma/frwr_ops.c
-index f587e44..16976b0 100644
---- a/net/sunrpc/xprtrdma/frwr_ops.c
-+++ b/net/sunrpc/xprtrdma/frwr_ops.c
-@@ -193,10 +193,17 @@
- 	if (attrs->device_cap_flags & IB_DEVICE_SG_GAPS_REG)
- 		ia->ri_mrtype = IB_MR_TYPE_SG_GAPS;
+diff --git a/net/sunrpc/xprtrdma/Makefile b/net/sunrpc/xprtrdma/Makefile
+index 8bf19e1..8ed0377 100644
+--- a/net/sunrpc/xprtrdma/Makefile
++++ b/net/sunrpc/xprtrdma/Makefile
+@@ -1,8 +1,7 @@
+ # SPDX-License-Identifier: GPL-2.0
+ obj-$(CONFIG_SUNRPC_XPRT_RDMA) += rpcrdma.o
  
--	ia->ri_max_frwr_depth =
--			min_t(unsigned int, RPCRDMA_MAX_DATA_SEGS,
--			      attrs->max_fast_reg_page_list_len);
--	dprintk("RPC:       %s: device's max FR page list len = %u\n",
-+	/* Quirk: Some devices advertise a large max_fast_reg_page_list_len
-+	 * capability, but perform optimally when the MRs are not larger
-+	 * than a page.
-+	 */
-+	if (attrs->max_sge_rd > 1)
-+		ia->ri_max_frwr_depth = attrs->max_sge_rd;
-+	else
-+		ia->ri_max_frwr_depth = attrs->max_fast_reg_page_list_len;
-+	if (ia->ri_max_frwr_depth > RPCRDMA_MAX_DATA_SEGS)
-+		ia->ri_max_frwr_depth = RPCRDMA_MAX_DATA_SEGS;
-+	dprintk("RPC:       %s: max FR page list depth = %u\n",
- 		__func__, ia->ri_max_frwr_depth);
+-rpcrdma-y := transport.o rpc_rdma.o verbs.o \
+-	fmr_ops.o frwr_ops.o \
++rpcrdma-y := transport.o rpc_rdma.o verbs.o frwr_ops.o \
+ 	svc_rdma.o svc_rdma_backchannel.o svc_rdma_transport.o \
+ 	svc_rdma_sendto.o svc_rdma_recvfrom.o svc_rdma_rw.o \
+ 	module.o
+diff --git a/net/sunrpc/xprtrdma/fmr_ops.c b/net/sunrpc/xprtrdma/fmr_ops.c
+deleted file mode 100644
+index dd1e91b..0000000
+--- a/net/sunrpc/xprtrdma/fmr_ops.c
++++ /dev/null
+@@ -1,340 +0,0 @@
+-// SPDX-License-Identifier: GPL-2.0
+-/*
+- * Copyright (c) 2015, 2017 Oracle.  All rights reserved.
+- * Copyright (c) 2003-2007 Network Appliance, Inc. All rights reserved.
+- */
+-
+-/* Lightweight memory registration using Fast Memory Regions (FMR).
+- * Referred to sometimes as MTHCAFMR mode.
+- *
+- * FMR uses synchronous memory registration and deregistration.
+- * FMR registration is known to be fast, but FMR deregistration
+- * can take tens of usecs to complete.
+- */
+-
+-/* Normal operation
+- *
+- * A Memory Region is prepared for RDMA READ or WRITE using the
+- * ib_map_phys_fmr verb (fmr_op_map). When the RDMA operation is
+- * finished, the Memory Region is unmapped using the ib_unmap_fmr
+- * verb (fmr_op_unmap).
+- */
+-
+-#include <linux/sunrpc/svc_rdma.h>
+-
+-#include "xprt_rdma.h"
+-#include <trace/events/rpcrdma.h>
+-
+-#if IS_ENABLED(CONFIG_SUNRPC_DEBUG)
+-# define RPCDBG_FACILITY	RPCDBG_TRANS
+-#endif
+-
+-/* Maximum scatter/gather per FMR */
+-#define RPCRDMA_MAX_FMR_SGES	(64)
+-
+-/* Access mode of externally registered pages */
+-enum {
+-	RPCRDMA_FMR_ACCESS_FLAGS	= IB_ACCESS_REMOTE_WRITE |
+-					  IB_ACCESS_REMOTE_READ,
+-};
+-
+-bool
+-fmr_is_supported(struct rpcrdma_ia *ia)
+-{
+-	if (!ia->ri_device->alloc_fmr) {
+-		pr_info("rpcrdma: 'fmr' mode is not supported by device %s\n",
+-			ia->ri_device->name);
+-		return false;
+-	}
+-	return true;
+-}
+-
+-static void
+-__fmr_unmap(struct rpcrdma_mr *mr)
+-{
+-	LIST_HEAD(l);
+-	int rc;
+-
+-	list_add(&mr->fmr.fm_mr->list, &l);
+-	rc = ib_unmap_fmr(&l);
+-	list_del(&mr->fmr.fm_mr->list);
+-	if (rc)
+-		pr_err("rpcrdma: final ib_unmap_fmr for %p failed %i\n",
+-		       mr, rc);
+-}
+-
+-/* Release an MR.
+- */
+-static void
+-fmr_op_release_mr(struct rpcrdma_mr *mr)
+-{
+-	int rc;
+-
+-	kfree(mr->fmr.fm_physaddrs);
+-	kfree(mr->mr_sg);
+-
+-	/* In case this one was left mapped, try to unmap it
+-	 * to prevent dealloc_fmr from failing with EBUSY
+-	 */
+-	__fmr_unmap(mr);
+-
+-	rc = ib_dealloc_fmr(mr->fmr.fm_mr);
+-	if (rc)
+-		pr_err("rpcrdma: final ib_dealloc_fmr for %p returned %i\n",
+-		       mr, rc);
+-
+-	kfree(mr);
+-}
+-
+-/* MRs are dynamically allocated, so simply clean up and release the MR.
+- * A replacement MR will subsequently be allocated on demand.
+- */
+-static void
+-fmr_mr_recycle_worker(struct work_struct *work)
+-{
+-	struct rpcrdma_mr *mr = container_of(work, struct rpcrdma_mr, mr_recycle);
+-	struct rpcrdma_xprt *r_xprt = mr->mr_xprt;
+-
+-	trace_xprtrdma_mr_recycle(mr);
+-
+-	trace_xprtrdma_mr_unmap(mr);
+-	ib_dma_unmap_sg(r_xprt->rx_ia.ri_device,
+-			mr->mr_sg, mr->mr_nents, mr->mr_dir);
+-
+-	spin_lock(&r_xprt->rx_buf.rb_mrlock);
+-	list_del(&mr->mr_all);
+-	r_xprt->rx_stats.mrs_recycled++;
+-	spin_unlock(&r_xprt->rx_buf.rb_mrlock);
+-	fmr_op_release_mr(mr);
+-}
+-
+-static int
+-fmr_op_init_mr(struct rpcrdma_ia *ia, struct rpcrdma_mr *mr)
+-{
+-	static struct ib_fmr_attr fmr_attr = {
+-		.max_pages	= RPCRDMA_MAX_FMR_SGES,
+-		.max_maps	= 1,
+-		.page_shift	= PAGE_SHIFT
+-	};
+-
+-	mr->fmr.fm_physaddrs = kcalloc(RPCRDMA_MAX_FMR_SGES,
+-				       sizeof(u64), GFP_KERNEL);
+-	if (!mr->fmr.fm_physaddrs)
+-		goto out_free;
+-
+-	mr->mr_sg = kcalloc(RPCRDMA_MAX_FMR_SGES,
+-			    sizeof(*mr->mr_sg), GFP_KERNEL);
+-	if (!mr->mr_sg)
+-		goto out_free;
+-
+-	sg_init_table(mr->mr_sg, RPCRDMA_MAX_FMR_SGES);
+-
+-	mr->fmr.fm_mr = ib_alloc_fmr(ia->ri_pd, RPCRDMA_FMR_ACCESS_FLAGS,
+-				     &fmr_attr);
+-	if (IS_ERR(mr->fmr.fm_mr))
+-		goto out_fmr_err;
+-
+-	INIT_LIST_HEAD(&mr->mr_list);
+-	INIT_WORK(&mr->mr_recycle, fmr_mr_recycle_worker);
+-	return 0;
+-
+-out_fmr_err:
+-	dprintk("RPC:       %s: ib_alloc_fmr returned %ld\n", __func__,
+-		PTR_ERR(mr->fmr.fm_mr));
+-
+-out_free:
+-	kfree(mr->mr_sg);
+-	kfree(mr->fmr.fm_physaddrs);
+-	return -ENOMEM;
+-}
+-
+-/* On success, sets:
+- *	ep->rep_attr.cap.max_send_wr
+- *	ep->rep_attr.cap.max_recv_wr
+- *	cdata->max_requests
+- *	ia->ri_max_segs
+- */
+-static int
+-fmr_op_open(struct rpcrdma_ia *ia, struct rpcrdma_ep *ep,
+-	    struct rpcrdma_create_data_internal *cdata)
+-{
+-	int max_qp_wr;
+-
+-	max_qp_wr = ia->ri_device->attrs.max_qp_wr;
+-	max_qp_wr -= RPCRDMA_BACKWARD_WRS;
+-	max_qp_wr -= 1;
+-	if (max_qp_wr < RPCRDMA_MIN_SLOT_TABLE)
+-		return -ENOMEM;
+-	if (cdata->max_requests > max_qp_wr)
+-		cdata->max_requests = max_qp_wr;
+-	ep->rep_attr.cap.max_send_wr = cdata->max_requests;
+-	ep->rep_attr.cap.max_send_wr += RPCRDMA_BACKWARD_WRS;
+-	ep->rep_attr.cap.max_send_wr += 1; /* for ib_drain_sq */
+-	ep->rep_attr.cap.max_recv_wr = cdata->max_requests;
+-	ep->rep_attr.cap.max_recv_wr += RPCRDMA_BACKWARD_WRS;
+-	ep->rep_attr.cap.max_recv_wr += 1; /* for ib_drain_rq */
+-
+-	ia->ri_max_segs = max_t(unsigned int, 1, RPCRDMA_MAX_DATA_SEGS /
+-				RPCRDMA_MAX_FMR_SGES);
+-	/* Reply chunks require segments for head and tail buffers */
+-	ia->ri_max_segs += 2;
+-	if (ia->ri_max_segs > RPCRDMA_MAX_HDR_SEGS)
+-		ia->ri_max_segs = RPCRDMA_MAX_HDR_SEGS;
+-	return 0;
+-}
+-
+-/* FMR mode conveys up to 64 pages of payload per chunk segment.
+- */
+-static size_t
+-fmr_op_maxpages(struct rpcrdma_xprt *r_xprt)
+-{
+-	return min_t(unsigned int, RPCRDMA_MAX_DATA_SEGS,
+-		     (r_xprt->rx_ia.ri_max_segs - 2) * RPCRDMA_MAX_FMR_SGES);
+-}
+-
+-/* Use the ib_map_phys_fmr() verb to register a memory region
+- * for remote access via RDMA READ or RDMA WRITE.
+- */
+-static struct rpcrdma_mr_seg *
+-fmr_op_map(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg,
+-	   int nsegs, bool writing, struct rpcrdma_mr **out)
+-{
+-	struct rpcrdma_mr_seg *seg1 = seg;
+-	int len, pageoff, i, rc;
+-	struct rpcrdma_mr *mr;
+-	u64 *dma_pages;
+-
+-	mr = rpcrdma_mr_get(r_xprt);
+-	if (!mr)
+-		return ERR_PTR(-EAGAIN);
+-
+-	pageoff = offset_in_page(seg1->mr_offset);
+-	seg1->mr_offset -= pageoff;	/* start of page */
+-	seg1->mr_len += pageoff;
+-	len = -pageoff;
+-	if (nsegs > RPCRDMA_MAX_FMR_SGES)
+-		nsegs = RPCRDMA_MAX_FMR_SGES;
+-	for (i = 0; i < nsegs;) {
+-		if (seg->mr_page)
+-			sg_set_page(&mr->mr_sg[i],
+-				    seg->mr_page,
+-				    seg->mr_len,
+-				    offset_in_page(seg->mr_offset));
+-		else
+-			sg_set_buf(&mr->mr_sg[i], seg->mr_offset,
+-				   seg->mr_len);
+-		len += seg->mr_len;
+-		++seg;
+-		++i;
+-		/* Check for holes */
+-		if ((i < nsegs && offset_in_page(seg->mr_offset)) ||
+-		    offset_in_page((seg-1)->mr_offset + (seg-1)->mr_len))
+-			break;
+-	}
+-	mr->mr_dir = rpcrdma_data_dir(writing);
+-
+-	mr->mr_nents = ib_dma_map_sg(r_xprt->rx_ia.ri_device,
+-				     mr->mr_sg, i, mr->mr_dir);
+-	if (!mr->mr_nents)
+-		goto out_dmamap_err;
+-	trace_xprtrdma_mr_map(mr);
+-
+-	for (i = 0, dma_pages = mr->fmr.fm_physaddrs; i < mr->mr_nents; i++)
+-		dma_pages[i] = sg_dma_address(&mr->mr_sg[i]);
+-	rc = ib_map_phys_fmr(mr->fmr.fm_mr, dma_pages, mr->mr_nents,
+-			     dma_pages[0]);
+-	if (rc)
+-		goto out_maperr;
+-
+-	mr->mr_handle = mr->fmr.fm_mr->rkey;
+-	mr->mr_length = len;
+-	mr->mr_offset = dma_pages[0] + pageoff;
+-
+-	*out = mr;
+-	return seg;
+-
+-out_dmamap_err:
+-	pr_err("rpcrdma: failed to DMA map sg %p sg_nents %d\n",
+-	       mr->mr_sg, i);
+-	rpcrdma_mr_put(mr);
+-	return ERR_PTR(-EIO);
+-
+-out_maperr:
+-	pr_err("rpcrdma: ib_map_phys_fmr %u@0x%llx+%i (%d) status %i\n",
+-	       len, (unsigned long long)dma_pages[0],
+-	       pageoff, mr->mr_nents, rc);
+-	rpcrdma_mr_unmap_and_put(mr);
+-	return ERR_PTR(-EIO);
+-}
+-
+-/* Post Send WR containing the RPC Call message.
+- */
+-static int
+-fmr_op_send(struct rpcrdma_ia *ia, struct rpcrdma_req *req)
+-{
+-	return ib_post_send(ia->ri_id->qp, &req->rl_sendctx->sc_wr, NULL);
+-}
+-
+-/* Invalidate all memory regions that were registered for "req".
+- *
+- * Sleeps until it is safe for the host CPU to access the
+- * previously mapped memory regions.
+- *
+- * Caller ensures that @mrs is not empty before the call. This
+- * function empties the list.
+- */
+-static void
+-fmr_op_unmap_sync(struct rpcrdma_xprt *r_xprt, struct list_head *mrs)
+-{
+-	struct rpcrdma_mr *mr;
+-	LIST_HEAD(unmap_list);
+-	int rc;
+-
+-	/* ORDER: Invalidate all of the req's MRs first
+-	 *
+-	 * ib_unmap_fmr() is slow, so use a single call instead
+-	 * of one call per mapped FMR.
+-	 */
+-	list_for_each_entry(mr, mrs, mr_list) {
+-		dprintk("RPC:       %s: unmapping fmr %p\n",
+-			__func__, &mr->fmr);
+-		trace_xprtrdma_mr_localinv(mr);
+-		list_add_tail(&mr->fmr.fm_mr->list, &unmap_list);
+-	}
+-	r_xprt->rx_stats.local_inv_needed++;
+-	rc = ib_unmap_fmr(&unmap_list);
+-	if (rc)
+-		goto out_release;
+-
+-	/* ORDER: Now DMA unmap all of the req's MRs, and return
+-	 * them to the free MW list.
+-	 */
+-	while (!list_empty(mrs)) {
+-		mr = rpcrdma_mr_pop(mrs);
+-		list_del(&mr->fmr.fm_mr->list);
+-		rpcrdma_mr_unmap_and_put(mr);
+-	}
+-
+-	return;
+-
+-out_release:
+-	pr_err("rpcrdma: ib_unmap_fmr failed (%i)\n", rc);
+-
+-	while (!list_empty(mrs)) {
+-		mr = rpcrdma_mr_pop(mrs);
+-		list_del(&mr->fmr.fm_mr->list);
+-		rpcrdma_mr_recycle(mr);
+-	}
+-}
+-
+-const struct rpcrdma_memreg_ops rpcrdma_fmr_memreg_ops = {
+-	.ro_map				= fmr_op_map,
+-	.ro_send			= fmr_op_send,
+-	.ro_unmap_sync			= fmr_op_unmap_sync,
+-	.ro_open			= fmr_op_open,
+-	.ro_maxpages			= fmr_op_maxpages,
+-	.ro_init_mr			= fmr_op_init_mr,
+-	.ro_release_mr			= fmr_op_release_mr,
+-	.ro_displayname			= "fmr",
+-	.ro_send_w_inv_ok		= 0,
+-};
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index 29798b6..ef17596 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -397,12 +397,6 @@ static void rpcrdma_xprt_drain(struct rpcrdma_xprt *r_xprt)
+ 			break;
+ 		}
+ 		/*FALLTHROUGH*/
+-	case RPCRDMA_MTHCAFMR:
+-		if (fmr_is_supported(ia)) {
+-			ia->ri_ops = &rpcrdma_fmr_memreg_ops;
+-			break;
+-		}
+-		/*FALLTHROUGH*/
+ 	default:
+ 		pr_err("rpcrdma: Device %s does not support memreg mode %d\n",
+ 		       ia->ri_device->name, xprt_rdma_memreg_strategy);
+diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+index 99b7f8e..84f7bbe 100644
+--- a/net/sunrpc/xprtrdma/xprt_rdma.h
++++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+@@ -262,20 +262,12 @@ struct rpcrdma_frwr {
+ 	};
+ };
  
- 	/* Add room for frwr register and invalidate WRs.
+-struct rpcrdma_fmr {
+-	struct ib_fmr		*fm_mr;
+-	u64			*fm_physaddrs;
+-};
+-
+ struct rpcrdma_mr {
+ 	struct list_head	mr_list;
+ 	struct scatterlist	*mr_sg;
+ 	int			mr_nents;
+ 	enum dma_data_direction	mr_dir;
+-	union {
+-		struct rpcrdma_fmr	fmr;
+-		struct rpcrdma_frwr	frwr;
+-	};
++	struct rpcrdma_frwr	frwr;
+ 	struct rpcrdma_xprt	*mr_xprt;
+ 	u32			mr_handle;
+ 	u32			mr_length;
+@@ -490,7 +482,6 @@ struct rpcrdma_memreg_ops {
+ 	const int	ro_send_w_inv_ok;
+ };
+ 
+-extern const struct rpcrdma_memreg_ops rpcrdma_fmr_memreg_ops;
+ extern const struct rpcrdma_memreg_ops rpcrdma_frwr_memreg_ops;
+ 
+ /*
+@@ -545,7 +536,6 @@ struct rpcrdma_xprt {
+ void rpcrdma_ia_remove(struct rpcrdma_ia *ia);
+ void rpcrdma_ia_close(struct rpcrdma_ia *);
+ bool frwr_is_supported(struct rpcrdma_ia *);
+-bool fmr_is_supported(struct rpcrdma_ia *);
+ 
+ /*
+  * Endpoint calls - xprtrdma/verbs.c
 
