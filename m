@@ -6,25 +6,24 @@ X-Spam-Status: No, score=-7.0 required=3.0 tests=INCLUDES_PATCH,
 	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B3541C43387
-	for <linux-nfs@archiver.kernel.org>; Thu, 20 Dec 2018 13:57:09 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id F18A3C43387
+	for <linux-nfs@archiver.kernel.org>; Thu, 20 Dec 2018 13:57:31 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 8A2AB21852
-	for <linux-nfs@archiver.kernel.org>; Thu, 20 Dec 2018 13:57:09 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id C222E217D8
+	for <linux-nfs@archiver.kernel.org>; Thu, 20 Dec 2018 13:57:31 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1732947AbeLTN5J (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 20 Dec 2018 08:57:09 -0500
-Received: from relay.sw.ru ([185.231.240.75]:44478 "EHLO relay.sw.ru"
+        id S1732839AbeLTN5b (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 20 Dec 2018 08:57:31 -0500
+Received: from relay.sw.ru ([185.231.240.75]:44496 "EHLO relay.sw.ru"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1728803AbeLTN5J (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 20 Dec 2018 08:57:09 -0500
+        id S1728803AbeLTN5b (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 20 Dec 2018 08:57:31 -0500
 Received: from [172.16.24.21]
         by relay.sw.ru with esmtp (Exim 4.91)
         (envelope-from <vvs@virtuozzo.com>)
-        id 1gZyp0-0004xo-HX; Thu, 20 Dec 2018 16:57:06 +0300
+        id 1gZypM-0004y2-PL; Thu, 20 Dec 2018 16:57:28 +0300
 From:   Vasily Averin <vvs@virtuozzo.com>
-Subject: [PATCH v2 2/4] nfs: remove sv_bc_enabled using in
- svc_is_backchannel()
+Subject: [PATCH v2 3/4] nfs: fix debug message in svc_create_xprt()
 To:     Trond Myklebust <trond.myklebust@hammerspace.com>,
         Anna Schumaker <anna.schumaker@netapp.com>
 Cc:     "J. Bruce Fields" <bfields@fieldses.org>,
@@ -33,8 +32,8 @@ Cc:     "J. Bruce Fields" <bfields@fieldses.org>,
         linux-nfs@vger.kernel.org,
         Evgenii Shatokhin <eshatokhin@virtuozzo.com>
 References: <cover.1545313300.git.vvs@virtuozzo.com>
-Message-ID: <32cbe518-300d-664a-0b8b-8ac5948ad276@virtuozzo.com>
-Date:   Thu, 20 Dec 2018 16:57:06 +0300
+Message-ID: <4094a5ae-e02c-8df0-569f-f7711630b6cf@virtuozzo.com>
+Date:   Thu, 20 Dec 2018 16:57:28 +0300
 User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101
  Thunderbird/60.2.1
 MIME-Version: 1.0
@@ -47,92 +46,31 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-serv->sv_bc_xprt cannot be used as pointer,
-serv is global structure, but sv_bc_xprt is assigned per-netnamespace.
-
-The only user of this field is svc_is_backchannel() where it is used
-not as pointer but as mark of backchannel-compatible servers.
-
-Convert netns-unsafe xprt pointer to simple boolean mark.
+_svc_create_xprt() returns positive port number
+so its non-zero return value is not an error
 
 Reviewed-by: Jeff Layton <jlayton@kernel.org>
 Signed-off-by: Vasily Averin <vvs@virtuozzo.com>
 ---
- include/linux/sunrpc/bc_xprt.h           | 10 ++++------
- include/linux/sunrpc/svc.h               |  2 +-
- net/sunrpc/svcsock.c                     |  2 +-
- net/sunrpc/xprtrdma/svc_rdma_transport.c |  2 +-
- 4 files changed, 7 insertions(+), 9 deletions(-)
+ net/sunrpc/svc_xprt.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/include/linux/sunrpc/bc_xprt.h b/include/linux/sunrpc/bc_xprt.h
-index 28721cf73ec3..4e8c773d02be 100644
---- a/include/linux/sunrpc/bc_xprt.h
-+++ b/include/linux/sunrpc/bc_xprt.h
-@@ -47,11 +47,9 @@ void xprt_free_bc_rqst(struct rpc_rqst *req);
- /*
-  * Determine if a shared backchannel is in use
-  */
--static inline int svc_is_backchannel(const struct svc_rqst *rqstp)
-+static inline bool svc_is_backchannel(const struct svc_rqst *rqstp)
- {
--	if (rqstp->rq_server->sv_bc_xprt)
--		return 1;
--	return 0;
-+	return rqstp->rq_server->sv_bc_enabled;
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index 51da7c244bee..ccab77e8e088 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -296,9 +296,9 @@ int svc_create_xprt(struct svc_serv *serv, const char *xprt_name,
+ 		request_module("svc%s", xprt_name);
+ 		err = _svc_create_xprt(serv, xprt_name, net, family, port, flags);
+ 	}
+-	if (err)
++	if (err < 0)
+ 		dprintk("svc: transport %s not found, err %d\n",
+-			xprt_name, err);
++			xprt_name, -err);
+ 	return err;
  }
- #else /* CONFIG_SUNRPC_BACKCHANNEL */
- static inline int xprt_setup_backchannel(struct rpc_xprt *xprt,
-@@ -60,9 +58,9 @@ static inline int xprt_setup_backchannel(struct rpc_xprt *xprt,
- 	return 0;
- }
- 
--static inline int svc_is_backchannel(const struct svc_rqst *rqstp)
-+static inline bool svc_is_backchannel(const struct svc_rqst *rqstp)
- {
--	return 0;
-+	return false;
- }
- 
- static inline void xprt_free_bc_request(struct rpc_rqst *req)
-diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-index f87d2ba88869..aab26435e892 100644
---- a/include/linux/sunrpc/svc.h
-+++ b/include/linux/sunrpc/svc.h
-@@ -109,7 +109,7 @@ struct svc_serv {
- 	spinlock_t		sv_cb_lock;	/* protects the svc_cb_list */
- 	wait_queue_head_t	sv_cb_waitq;	/* sleep here if there are no
- 						 * entries in the svc_cb_list */
--	struct svc_xprt		*sv_bc_xprt;	/* callback on fore channel */
-+	bool			sv_bc_enabled;	/* server uses backchannel */
- #endif /* CONFIG_SUNRPC_BACKCHANNEL */
- };
- 
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 986f3ed7d1a2..5a6b3ba555c7 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -1623,7 +1623,7 @@ static struct svc_xprt *svc_bc_create_socket(struct svc_serv *serv,
- 	svc_xprt_init(net, &svc_tcp_bc_class, xprt, serv);
- 	set_bit(XPT_CONG_CTRL, &svsk->sk_xprt.xpt_flags);
- 
--	serv->sv_bc_xprt = xprt;
-+	serv->sv_bc_enabled = true;
- 
- 	return xprt;
- }
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-index 2f7ec8912f49..88694048d5c0 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-@@ -136,7 +136,7 @@ static struct svc_xprt *svc_rdma_bc_create(struct svc_serv *serv,
- 
- 	svc_xprt_init(net, &svc_rdma_bc_class, xprt, serv);
- 	set_bit(XPT_CONG_CTRL, &xprt->xpt_flags);
--	serv->sv_bc_xprt = xprt;
-+	serv->sv_bc_enabled = true;
- 
- 	dprintk("svcrdma: %s(%p)\n", __func__, xprt);
- 	return xprt;
+ EXPORT_SYMBOL_GPL(svc_create_xprt);
 -- 
 2.17.1
 
