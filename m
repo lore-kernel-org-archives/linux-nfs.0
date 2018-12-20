@@ -2,107 +2,163 @@ Return-Path: <SRS0=5+aP=O5=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,MAILING_LIST_MULTI,SPF_PASS autolearn=ham autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-6.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FROM,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,SPF_PASS,
+	URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9B016C43387
-	for <linux-nfs@archiver.kernel.org>; Thu, 20 Dec 2018 18:26:38 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 36374C43387
+	for <linux-nfs@archiver.kernel.org>; Thu, 20 Dec 2018 18:42:41 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 6E2F2218D9
-	for <linux-nfs@archiver.kernel.org>; Thu, 20 Dec 2018 18:26:38 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1545330398;
-	bh=4tOl0NSbMoiRJqB+wMyMUTGy4zTplcKPHeBkm8okOiA=;
-	h=Subject:From:To:Cc:Date:In-Reply-To:References:List-ID:From;
-	b=eQPp6+X1MuAyk0j0NpuKTlgh0EcENga61kaHAugc8gdVXrEHLl07Cw2KDM77QZaLt
-	 jGYSMGzcmv8U5Bz8rdBUV3AGCAPNKrBUsUATzCMMRwHZRCnbrHqMjjj2HLCfKqqxTC
-	 7/SfB9Snxym8LfwrddbiuN/CcPfB/gzjupDce1m0=
+	by mail.kernel.org (Postfix) with ESMTP id 03462218E0
+	for <linux-nfs@archiver.kernel.org>; Thu, 20 Dec 2018 18:42:40 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="ESmibpps"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1732581AbeLTS0h (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 20 Dec 2018 13:26:37 -0500
-Received: from mail.kernel.org ([198.145.29.99]:35798 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1731963AbeLTS0h (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 20 Dec 2018 13:26:37 -0500
-Received: from vulkan.poochiereds.net (cpe-71-70-156-158.nc.res.rr.com [71.70.156.158])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 337DB218D9;
-        Thu, 20 Dec 2018 18:26:36 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1545330396;
-        bh=4tOl0NSbMoiRJqB+wMyMUTGy4zTplcKPHeBkm8okOiA=;
-        h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
-        b=utoii8oPPDSw3vw2epdjpAy19da/fzjNX45p4pCp+nk1wJScV+tDpo5tCaA2oniYy
-         12ULIZiALph3PLsum4MNBGluGpzVoAjhZoqSrDkrqS7F5nQ44n05kIGdhQKw0QG9w9
-         CtVLx2wHOneoyFqirwTvgzOY+4sgZydEX4zRKLFQ=
-Message-ID: <f1664df76f40994a848e58f8a4ea86ab8c855ff8.camel@kernel.org>
-Subject: Re: [PATCH v2 3/3] nfsd: keep a tally of RECLAIM_COMPLETE
- operations when using nfsdcld
-From:   Jeff Layton <jlayton@kernel.org>
-To:     "J. Bruce Fields" <bfields@fieldses.org>
-Cc:     Scott Mayhew <smayhew@redhat.com>, linux-nfs@vger.kernel.org
-Date:   Thu, 20 Dec 2018 13:26:34 -0500
-In-Reply-To: <20181220180536.GE6063@fieldses.org>
-References: <20181218142926.27933-1-smayhew@redhat.com>
-         <20181218142926.27933-4-smayhew@redhat.com>
-         <20181219183600.GC28626@fieldses.org>
-         <20181219220545.GS27213@coeurl.usersys.redhat.com>
-         <20181219222147.GA31570@fieldses.org>
-         <901adec26f1fd20259bd3e50d963f304b903d312.camel@kernel.org>
-         <20181220180536.GE6063@fieldses.org>
+        id S1732413AbeLTSmk (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 20 Dec 2018 13:42:40 -0500
+Received: from mail-ua1-f68.google.com ([209.85.222.68]:36952 "EHLO
+        mail-ua1-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1731365AbeLTSmk (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 20 Dec 2018 13:42:40 -0500
+Received: by mail-ua1-f68.google.com with SMTP id u19so898108uae.4
+        for <linux-nfs@vger.kernel.org>; Thu, 20 Dec 2018 10:42:39 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc;
+        bh=WcgU+ZHQXtWCYY3Ax73kUnP8jPoERtsWXMmaPtGvwPY=;
+        b=ESmibpps5ZXUwRaPFVvoiXARLpUPjWa0e4aE0vmke/CU4e5QVOler6SC/TAEKAb5+d
+         53yJoBlCM+n+a1aqYxyMQwCxKT0m6u3/5ixvPO/yd3Fo16K2zGyfyXydDShmAs34GZOx
+         DK0BW9ROq8V0cJU8V9VUJoI3e11x+KmS2SV2CymumcXmQAp94bydL7ZS8glPSb4xL1PC
+         O54JzavyeGGcUJmGJ1x7LNUbZBCAeHX7DmrJb8BSiv11ygZ0gmiGgLJ5LW9qYdJsF6y9
+         3tAFV59J1o3OyNZhiwtOnK4fakjuxTEEC+hYtd4TX494JRpLSkEipKUukzxxeaVUryNj
+         txsQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=WcgU+ZHQXtWCYY3Ax73kUnP8jPoERtsWXMmaPtGvwPY=;
+        b=ofwNMkVmLNJoFrnZgWG9IKQcSEm4ueo9f8X9uUZC13+y249ZGWDALqN9U2Of6yXGAM
+         NFK4M9XVGisF/kPYe8WQ8/MQxnlwsKgXn1thAgWKcD5WeFUzrOyPaB805svCp54zC1US
+         tTVPjoL32ZQv+Pot3SQbvMBb/PbIz5tPJbu7glQeDLnu5IhYEV303XF4bCZbKk7+o8wj
+         WYclVtiE/3ZHgr4ACDplMMZjHbhjNByK1pxUmMh799mr5AQoDYv0iE1ky7F+AbT1rHTZ
+         YY3vxRHkle+0C8LJM6Zn4jpyH6i8MxY1bJ0OYLIDzWyO8KH6a/8dkCYq7jyhKtiHkr7B
+         mdmg==
+X-Gm-Message-State: AA+aEWYAHYjEkEAUgB08TLOPmuGajWqhimbsx9H64zakQMBUrp5bIOEo
+        cDZGgfjjySwX0aD23XJUJuCfJ2JFDz0eTvXgGnE=
+X-Google-Smtp-Source: AFSGD/XOtr8GY1yqsbBZJyqtCuLMCAvUjNUuvwWiEoXtqgdeApxacDc7tgzbV7R/tb38Oe5s8dex9nJOukMExAqwUm8=
+X-Received: by 2002:ab0:aa:: with SMTP id 39mr12038439uaj.120.1545331358702;
+ Thu, 20 Dec 2018 10:42:38 -0800 (PST)
+MIME-Version: 1.0
+References: <20181130200348.59524-1-olga.kornievskaia@gmail.com>
+In-Reply-To: <20181130200348.59524-1-olga.kornievskaia@gmail.com>
+From:   Olga Kornievskaia <olga.kornievskaia@gmail.com>
+Date:   Thu, 20 Dec 2018 13:42:27 -0500
+Message-ID: <CAN-5tyGBO1CnhkEe9yPXdh4837NYsZc1fyJ4MCuMPM2eSv4C5g@mail.gmail.com>
+Subject: Re: [PATCH v2 00/10] server-side support for "inter" SSC copy
+To:     "J. Bruce Fields" <bfields@redhat.com>
+Cc:     linux-nfs <linux-nfs@vger.kernel.org>
 Content-Type: text/plain; charset="UTF-8"
-User-Agent: Evolution 3.30.3 (3.30.3-1.fc29) 
-Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Thu, 2018-12-20 at 13:05 -0500, J. Bruce Fields wrote:
-> On Thu, Dec 20, 2018 at 12:29:43PM -0500, Jeff Layton wrote:
-> > That wasn't my thinking here.
-> > 
-> > Suppose we have a client that holds some locks. Server reboots and we do
-> > EXCHANGE_ID and start reclaiming, and eventually send a
-> > RECLAIM_COMPLETE.
-> > 
-> > Now, there is a network partition and we lose contact with the server
-> > for more than a lease period. The client record gets tossed out. Client
-> > eventually reestablishes the connection before the grace period ends and
-> > attempts to reclaim.
-> > 
-> > That reclaim should succeed, IMO, as there is no reason that it
-> > shouldn't. Nothing can have claimed competing state since we're still in
-> > the grace period.
-> 
-> That scenario requires a grace period longer than the lease period,
-> which isn't impossible but sounds rare?  I guess you're thinking in the
-> cluster case about the possibility of a second node failure extending
-> the grace period.
-> 
+On Fri, Nov 30, 2018 at 3:03 PM Olga Kornievskaia
+<olga.kornievskaia@gmail.com> wrote:
+>
+> This patch series adds support for NFSv4.2 copy offload feature
+> allowing copy between two different NFS servers.
+>
+> This functionality depends on the VFS ability to support generic
+> copy_file_range() where a copy is done between an NFS file and
+> a local file system.
+>
+> This feature is enabled by the kernel module parameter --
+> inter_copy_offload_enable -- and by default is disabled. There is
+> also a kernel compile configuration of NFSD_V4_2_INTER_SSC that
+> adds dependency on the NFS client side functions called from the
+> server.
+>
+> These patches work on top of existing async intra copy offload
+> patches. For the "inter" SSC, the implementation only supports
+> asynchronous inter copy.
+>
+> On the source server, upon receiving a COPY_NOTIFY, it generate a
+> unique stateid that's kept in the global list. Upon receiving a READ
+> with a stateid, the code checks the normal list of open stateid and
+> now additionally, it'll check the copy state list as well before
+> deciding to either fail with BAD_STATEID or find one that matches.
+> The stored stateid is only valid to be used for the first time
+> with a choosen lease period (90s currently). When the source server
+> received an OFFLOAD_CANCEL, it will remove the stateid from the
+> global list. Otherwise, the copy stateid is removed upon the removal
+> of its "parent" stateid (open/lock/delegation stateid).
+>
+> On the destination server, upon receiving a COPY request, the server
+> establishes the necessary clientid/session with the source server.
+> It calls into the NFS client code to establish the necessary
+> open stateid, filehandle, file description (without doing an NFS open).
+> Then the server calls into the copy_file_range() to preform the copy
+> where the source file will issue NFS READs and then do local file
+> system writes (this depends on the VFS ability to do cross device
+> copy_file_range().
+>
+> v2:
+> -- in on top of 4.20-rc4 + client side inter patch series
+> -- VFS changes to do enable generic copy_file_range() and then NFS
+> falls back on generic_copy_file_range() for previous EXDEV/OPNOTSUPP
+> errors
+> -- hopefully addressed Bruce's review comments (highlights are):
+>    --- copy_notify patch: addressed naming, sc_cp_list access is
+> now protected by s2s_cp_lock
+>    --- fillin netloc4 patch: address the size and added WARN_ON
+>    --- add ca_source to COPY: decode only 1 address, dont allocate
+> memory (the rest into dummy)
+>    --- check stateid against stored: moved the refcount under lock
+>    --- allow stale filehandle: adding a loop to go thru the ops in
+> the compound, store/manage puttfh if copy is present in the compound
+> mark the source putfh as "no verify".
+>
+> All the patches (client inter) and this patch series is available
+> from git://linux-nfs.org/projects/aglo/linux.git under the "linux-ssc"
+> branch
+>
 
-Isn't our grace period twice the lease period by default? I think we do
-have to assume that it may take an entire lease period before the
-client notices that the server has rebooted. If grace period == lease
-period then you aren't leaving much time for reclaim to occur.
+Bruce,
 
-> Still, that's different from the case where the client explicitly
-> destroys its own state.  That could happen in less than a lease period
-> and in that case there won't be a reclaim.  I think that case could
-> happen if a client rebooted quickly or maybe just unmounted.
-> 
-> Hm.
-> 
+Do you have comments on this v2? Once VFS has the patches for the
+generic copy_file_range() functionality, NFS should be all set to just
+used it.
 
-True. You're right that we don't want to delay lifting the grace period
-because we're waiting for clients that have unmounted and aren't coming
-back. Unfortunately, it's difficult to distinguish the two cases. Could
-we just decrement the counter when we're tearing down a clientid
-because of lease expiration and not on DESTROY_CLIENT?
-
--- 
-Jeff Layton <jlayton@kernel.org>
-
+> Olga Kornievskaia (10):
+>   VFS generic copy_file_range() support
+>   NFS fallback to generic_copy_file_range
+>   NFSD fill-in netloc4 structure
+>   NFSD add ca_source_server<> to COPY
+>   NFSD return nfs4_stid in nfs4_preprocess_stateid_op
+>   NFSD add COPY_NOTIFY operation
+>   NFSD check stateids against copy stateids
+>   NFSD generalize nfsd4_compound_state flag names
+>   NFSD: allow inter server COPY to have a STALE source server fh
+>   NFSD add nfs4 inter ssc to nfsd4_copy
+>
+>  fs/nfs/nfs4file.c    |   9 +-
+>  fs/nfsd/Kconfig      |  10 ++
+>  fs/nfsd/nfs4proc.c   | 406 ++++++++++++++++++++++++++++++++++++++++++++++-----
+>  fs/nfsd/nfs4state.c  | 124 ++++++++++++++--
+>  fs/nfsd/nfs4xdr.c    | 166 ++++++++++++++++++++-
+>  fs/nfsd/nfsd.h       |  32 ++++
+>  fs/nfsd/nfsfh.h      |   5 +-
+>  fs/nfsd/nfssvc.c     |   6 +
+>  fs/nfsd/state.h      |  21 ++-
+>  fs/nfsd/xdr4.h       |  37 ++++-
+>  fs/read_write.c      |  66 +++++++--
+>  include/linux/fs.h   |   7 +
+>  include/linux/nfs4.h |   1 +
+>  mm/filemap.c         |   6 +-
+>  14 files changed, 810 insertions(+), 86 deletions(-)
+>
+> --
+> 1.8.3.1
+>
