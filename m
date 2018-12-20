@@ -2,127 +2,173 @@ Return-Path: <SRS0=5+aP=O5=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,MAILING_LIST_MULTI,SPF_PASS,URIBL_BLOCKED autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-1.0 required=3.0 tests=MAILING_LIST_MULTI,SPF_PASS
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A72CBC43387
-	for <linux-nfs@archiver.kernel.org>; Thu, 20 Dec 2018 11:58:11 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9D100C43387
+	for <linux-nfs@archiver.kernel.org>; Thu, 20 Dec 2018 13:56:29 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 5D9012176F
-	for <linux-nfs@archiver.kernel.org>; Thu, 20 Dec 2018 11:58:11 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="YmP+YA4G"
+	by mail.kernel.org (Postfix) with ESMTP id 6C84321852
+	for <linux-nfs@archiver.kernel.org>; Thu, 20 Dec 2018 13:56:29 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729720AbeLTL6K (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 20 Dec 2018 06:58:10 -0500
-Received: from mail-eopbgr730135.outbound.protection.outlook.com ([40.107.73.135]:53856
-        "EHLO NAM05-DM3-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1729103AbeLTL6K (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 20 Dec 2018 06:58:10 -0500
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=hammerspace.com;
- s=selector1;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=HV73zBydlu9ijYT4Oc0/pUmmbJBdAX2YRkZA6M6rM8o=;
- b=YmP+YA4GX7iCCYGXVp5bkQSVzPYYzLK0oc2hj4RydFlD2aBDsB2DyPTT0L7oUEznEceMbKsoQbIlbFw79NDdg3nfHiILj/iGSd7BxS3Dau50bNT1xS+lNpCFu6J9IrNz9XVjvcgqJx84j7frsvT4gi4R7kn+o61AvqS7ogtxudU=
-Received: from SN6PR13MB2494.namprd13.prod.outlook.com (52.135.95.148) by
- SN6PR13MB2416.namprd13.prod.outlook.com (52.135.94.160) with Microsoft SMTP
- Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- 15.20.1446.15; Thu, 20 Dec 2018 11:58:05 +0000
-Received: from SN6PR13MB2494.namprd13.prod.outlook.com
- ([fe80::25d2:c29b:5dfa:e85f]) by SN6PR13MB2494.namprd13.prod.outlook.com
- ([fe80::25d2:c29b:5dfa:e85f%4]) with mapi id 15.20.1471.011; Thu, 20 Dec 2018
- 11:58:05 +0000
-From:   Trond Myklebust <trondmy@hammerspace.com>
-To:     "bfields@fieldses.org" <bfields@fieldses.org>,
-        "vvs@virtuozzo.com" <vvs@virtuozzo.com>
-CC:     "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        "khorenko@virtuozzo.com" <khorenko@virtuozzo.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "eshatokhin@virtuozzo.com" <eshatokhin@virtuozzo.com>,
-        "chuck.lever@oracle.com" <chuck.lever@oracle.com>,
-        "jlayton@kernel.org" <jlayton@kernel.org>
-Subject: Re: [PATCH 1/4] nfs: use-after-free in svc_process_common()
-Thread-Topic: [PATCH 1/4] nfs: use-after-free in svc_process_common()
-Thread-Index: AQHUliTq8x5/j6ovkEmcMIRcXEAVYaWDeL8AgACVn4CAAGV+AIAAHc0AgAAFZwCAAFXvAIAAC0AAgAD2awCAAO6fgIAABX+AgAB+KwCAAClHAA==
-Date:   Thu, 20 Dec 2018 11:58:04 +0000
-Message-ID: <8cd0f4191c4a98d5f27ba15f78ea1b9b990ab0f1.camel@hammerspace.com>
-References: <134cf19c-e698-abed-02de-1659f9a5d4fb@virtuozzo.com>
-         <20181217215026.GA8564@fieldses.org>
-         <cb8d51ae-2745-58ca-8b4d-86c7a4bd2ffe@virtuozzo.com>
-         <67f477b704d34b369f0530891a219f383f964001.camel@hammerspace.com>
-         <4d878140-02c0-e306-fee6-1573d9fdecf2@virtuozzo.com>
-         <068f1741afc54367853a2e4501fd95c2ab12a989.camel@hammerspace.com>
-         <eef084b9-4f1e-99e7-4d1a-a6e88b61d564@virtuozzo.com>
-         <48844583b23fbbac600dfc86c49a7c71c5db36eb.camel@hammerspace.com>
-         <d0b35e30-2eae-123e-19c6-fcd3cd93ab86@virtuozzo.com>
-         <2459cc18-3c14-fb68-def6-eb09fc096613@virtuozzo.com>
-         <76d71f3412b3104b917aa836eede3447db35bda0.camel@hammerspace.com>
-         <11b7dec4-cd81-cb23-68f9-d56b5df79337@virtuozzo.com>
-In-Reply-To: <11b7dec4-cd81-cb23-68f9-d56b5df79337@virtuozzo.com>
-Accept-Language: en-US, en-GB
-Content-Language: en-US
-X-MS-Has-Attach: 
-X-MS-TNEF-Correlator: 
-authentication-results: spf=none (sender IP is )
- smtp.mailfrom=trondmy@hammerspace.com; 
-x-originating-ip: [77.241.229.232]
-x-ms-publictraffictype: Email
-x-microsoft-exchange-diagnostics: 1;SN6PR13MB2416;6:apyb6nDHRxcXoXg/nuM+Cx/WmHbE5+IMFfg/V8Umwjluhdy7mgi7TDrFRiraUWgADOsNITSerQ7v00UzDQJaMnMKLZZTKaC63eRxrFD0t15S+uO3qFjAnPJlwhE8fT4DdrnEYK3Y9zHwBDx34CE10+56aMQghwBif6XRXMd7RMCd+bVREPU41B7r827U+n14yzcuBkwg4xmMw1tMBqmcT2LBCdthZbmnacZ00L1tMn7mKku0lcDZQ8fbnMOeA1a3Yhdo1mCJExzFdHehw0tVQ/OecDTVdNWxgb3VJzL+i5cD+9Icas5tG3bgcVneC8FXhan2n4Bl3HSV5QYzgbp4f8VkiQL5wTwKDkU74O/gOrHNXOCt6+cOl2Z9l9up0W/B4flrAjuBykF9vUWUMvd5t50DWjzf96YS9BbQ7WVAm5mNbBJVahHSYEMAS/OYmc2RLbiebBWuXWiAvzsRiSca4w==;5:u6vNmAEjwToG42yatFuLWT23Jt/zuDF9V43lKRx8lxCqLh84U0B3iIcf15LeDus3z8nC15jM21snUEttQVbuIQ4yKv8N4y2qGhxazWX7bSQEUta2X0H9Wsc9XJ1w1/oPu0MCyWaK46JrqiYKaL2Ckv5lJ3HBXPmoUadXKzOkRjU=;7:qqSh7nctNV6i+pa9xU6q1ENcaA93KRCU+C3CYTGBMUdnLjRgSwjEisRwCcdxONNGkJFpN/zLTRu/Hb1hc7J5+rwjdBcM5SSqPnWrWd8kR3A8sPzEqpX3ypCN1XAYqzP0Y+aI34e9BCdY0fcfC/Orxg==
-x-ms-exchange-antispam-srfa-diagnostics: SOS;
-x-ms-office365-filtering-correlation-id: 0dec507f-ddfc-4915-1346-08d66672667c
-x-microsoft-antispam: BCL:0;PCL:0;RULEID:(2390118)(7020095)(4652040)(8989299)(5600074)(711020)(4534185)(4627221)(201703031133081)(201702281549075)(8990200)(2017052603328)(7153060)(7193020);SRVR:SN6PR13MB2416;
-x-ms-traffictypediagnostic: SN6PR13MB2416:
-x-microsoft-antispam-prvs: <SN6PR13MB24165D072A683A5584FE7FCDB8BF0@SN6PR13MB2416.namprd13.prod.outlook.com>
-x-ms-exchange-senderadcheck: 1
-x-exchange-antispam-report-cfa-test: BCL:0;PCL:0;RULEID:(3230021)(999002)(5005026)(6040522)(2401047)(8121501046)(10201501046)(3002001)(3231475)(944501520)(52105112)(93006095)(93001095)(149066)(150057)(6041310)(201703131423095)(201702281528075)(20161123555045)(201703061421075)(201703061406153)(20161123564045)(20161123558120)(20161123560045)(20161123562045)(201708071742011)(7699051)(76991095);SRVR:SN6PR13MB2416;BCL:0;PCL:0;RULEID:;SRVR:SN6PR13MB2416;
-x-forefront-prvs: 0892FA9A88
-x-forefront-antispam-report: SFV:NSPM;SFS:(10019020)(396003)(376002)(366004)(136003)(346002)(39830400003)(199004)(189003)(76176011)(15974865002)(6306002)(11346002)(6512007)(256004)(14444005)(8936002)(66066001)(54906003)(7736002)(99286004)(2616005)(106356001)(2906002)(316002)(446003)(105586002)(2501003)(110136005)(6506007)(6116002)(8676002)(3846002)(86362001)(36756003)(93886005)(478600001)(6246003)(102836004)(186003)(966005)(6486002)(53546011)(14454004)(25786009)(5660300001)(26005)(68736007)(53936002)(486006)(81156014)(81166006)(97736004)(71190400001)(71200400001)(229853002)(4326008)(476003)(305945005)(4001150100001)(118296001)(6436002);DIR:OUT;SFP:1102;SCL:1;SRVR:SN6PR13MB2416;H:SN6PR13MB2494.namprd13.prod.outlook.com;FPR:;SPF:None;LANG:en;PTR:InfoNoRecords;A:1;MX:1;
-received-spf: None (protection.outlook.com: hammerspace.com does not designate
- permitted sender hosts)
-x-microsoft-antispam-message-info: x+VcNzkrhAx3DZYyb+sIhbPUOfW2NndaVETkbAnAn4G7En3Xd7xOzrb4Bs7JZaDnmLuKh7wDza/dkCmitCoeidAz6BuyMNrWDB0xfQvV5bUNvY06T0yXWdj9cO360nUi0rXvbh9B5W8NLhq1KhE/BnUuV2BnGAnQRXS5SwDOihzlT+2qODCK1yqgqQXC9vEOF38OvlV3R9ouwN0TM2v07jwQZEfuJMXAAVY04OBxijCSoF8e1Rv0ETr9dtaU//vGS8CcEf+nzWO+zj3GxOrLyKJnLbFJynr59VOne8O2RclcG48VEgJDzcGBSuF/c71x
-spamdiagnosticoutput: 1:99
-spamdiagnosticmetadata: NSPM
-Content-Type: text/plain; charset="utf-8"
-Content-ID: <889241F21E653D479942F06BF2FEFEC6@namprd13.prod.outlook.com>
-Content-Transfer-Encoding: base64
+        id S1733179AbeLTN42 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 20 Dec 2018 08:56:28 -0500
+Received: from relay.sw.ru ([185.231.240.75]:44424 "EHLO relay.sw.ru"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1728803AbeLTN42 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 20 Dec 2018 08:56:28 -0500
+Received: from [172.16.24.21]
+        by relay.sw.ru with esmtp (Exim 4.91)
+        (envelope-from <vvs@virtuozzo.com>)
+        id 1gZyoH-0004xK-Gq; Thu, 20 Dec 2018 16:56:21 +0300
+From:   Vasily Averin <vvs@virtuozzo.com>
+Subject: [PATCH v2 0/4] use-after-free in svc_process_common()
+To:     Trond Myklebust <trond.myklebust@hammerspace.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>
+Cc:     "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@kernel.org>,
+        Chuck Lever <chuck.lever@oracle.com>,
+        linux-nfs@vger.kernel.org,
+        Evgenii Shatokhin <eshatokhin@virtuozzo.com>
+Message-ID: <87abe81a-1c6f-76b9-6e58-1302a0fada0f@virtuozzo.com>
+Date:   Thu, 20 Dec 2018 16:56:20 +0300
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101
+ Thunderbird/60.2.1
 MIME-Version: 1.0
-X-OriginatorOrg: hammerspace.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: 0dec507f-ddfc-4915-1346-08d66672667c
-X-MS-Exchange-CrossTenant-originalarrivaltime: 20 Dec 2018 11:58:04.9655
- (UTC)
-X-MS-Exchange-CrossTenant-fromentityheader: Hosted
-X-MS-Exchange-CrossTenant-id: 0d4fed5c-3a70-46fe-9430-ece41741f59e
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: SN6PR13MB2416
+Content-Type: text/plain; charset=utf-8
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-T24gVGh1LCAyMDE4LTEyLTIwIGF0IDEyOjMwICswMzAwLCBWYXNpbHkgQXZlcmluIHdyb3RlOg0K
-PiBPbiAxMi8yMC8xOCA0OjU4IEFNLCBUcm9uZCBNeWtsZWJ1c3Qgd3JvdGU6DQo+ID4gT24gVGh1
-LCAyMDE4LTEyLTIwIGF0IDA0OjM5ICswMzAwLCBWYXNpbHkgQXZlcmluIHdyb3RlOg0KPiA+ID4g
-RGVhciBUcm9uZCwNCj4gPiA+IFJlZCBIYXQgc2VjdXJpdHkgYmVsaWV2ZXMgdGhlIHByb2JsZW0g
-aXMgcXVpdGUgaW1wb3J0YW50IHNlY3VyaXR5DQo+ID4gPiBpc3N1ZToNCj4gPiA+IGh0dHBzOi8v
-YWNjZXNzLnJlZGhhdC5jb20vc2VjdXJpdHkvY3ZlL2N2ZS0yMDE4LTE2ODg0DQo+ID4gPiANCj4g
-PiA+IEZpeCBzaG91bGQgYmUgYmFja3BvcnRlZCB0byBhZmZlY3RlZCBkaXN0cmlidXRpb25zLg0K
-PiA+ID4gDQo+ID4gPiBDb3VsZCB5b3UgcGxlYXNlIGFwcHJvdmUgbXkgZmlyc3QgcGF0Y2ggYW5k
-IHB1c2ggaXQgdG8gc3RhYmxlQCA/DQo+ID4gPiBGcm9tIG15IFBvViBpdCBpcyBjb3JyZWN0bHkg
-Zml4ZXMgdGhlIHByb2JsZW0sIGl0IGJyZWFrcyBub3RoaW5nDQo+ID4gPiBhbmQNCj4gPiA+IGVh
-c3kgZm9yIGJhY2twb3J0cywNCj4gPiA+IGxpZ2h0bHkgbW9kaWZpZWQgaXQgY2FuIGJlIGV2ZW4g
-bGl2ZS1wYXRjaGVkLg0KPiA+ID4gDQo+ID4gPiBPdGhlciBwYXRjaGVzIGluY2x1ZGluZyBzd2l0
-Y2ggdG8gdXNpbmcgZW1wdHkgcnFzdC0+cnFfeHBydCBjYW4NCj4gPiA+IHdhaXQuDQo+ID4gPiAN
-Cj4gPiANCj4gPiBUaGF0IHBhdGNoIGlzIG5vdCBhY2NlcHRhYmxlIGZvciB1cHN0cmVhbS4NCj4g
-DQo+IEluIHRoaXMgY2FzZSBob3cgYWJvdXQgbXkgaW5pdGlhbCBwbGFuIEIgLS0gbWFrZSBzdmNf
-c2VydiBwZXIgbmV0LQ0KPiBuYW1lc3BhY2U/DQo+IEl0IGV4ZWN1dGVzIGFkZGl0aW9uYWwgcGVy
-LW5ldG5zIG5mc3Y0IGNhbGxiYWNrIHRocmVhZHMgDQo+IGJ1dCBkb2VzIG5vdCByZXF1aXJlIGFu
-eSBjaGFuZ2VzIGluIGV4aXN0aW5nIHN1bnJwYyBjb2RlPw0KDQpDYW4gd2UgcGxlYXNlIGZpeCB0
-aGlzIGlzc3VlIHByb3Blcmx5IHdpdGhvdXQgYWRkaW5nIG1vcmUgaGFja3M/IFRoZQ0KaGFja3Mg
-YXJlIHdoYXQgaGFzIGNhdXNlZCB0aGUgcHJvYmxlbSBpbiB0aGUgZmlyc3QgcGxhY2UuDQoNClRo
-ZSBzZXJ2ZXIgdHJhbnNwb3J0IGNvZGUgaXMgY29tcGxldGVseSBpcnJlbGV2YW50IHRvIHRoZSBj
-bGllbnQNCmJhY2tjaGFubmVsIGFuZCBzbyBhbnl0aGluZyBpbiB0aGUgYmFja2NoYW5uZWwgY29k
-ZSBwYXRoIHRoYXQgcmVsaWVzIG9uDQp0ZXN0cyBvciBjaGVja3Mgb2YgdGhlICJzZXJ2ZXIgdHJh
-bnNwb3J0IHN0YXRlIiBpcyBnb2luZyB0byBiZSBicm9rZW4uDQoNCi0tIA0KVHJvbmQgTXlrbGVi
-dXN0DQpDVE8sIEhhbW1lcnNwYWNlIEluYw0KNDMwMCBFbCBDYW1pbm8gUmVhbCwgU3VpdGUgMTA1
-DQpMb3MgQWx0b3MsIENBIDk0MDIyDQp3d3cuaGFtbWVyLnNwYWNlDQoNCg0K
+nfsv41+ clients are still not properly net-namespace-filied.
+
+OpenVz got report on crash in svc_process_common() 
+abd founf that bc_svc_process() cannot use serv->sv_bc_xprt as a pointer.
+
+serv is global structure, but sv_bc_xprt is assigned per-netnamespace.
+If nfsv41+ shares (with the same minorversion) are mounted in several containers together
+then bc_svc_process() can use wrong backchannel or even access freed memory.
+
+OpenVz got report on crash svc_process_common(),
+and after careful investigations Evgenii Shatokhin have found its reproducer.
+Then I've reproduced the problem on last mainline kernel.
+
+In described scenario you need to have: 
+- nodeA: VM with 2 interfaces and debug kernel with enabled KASAN.
+- nodeB: any other node 
+- NFS-SRV: NFSv41+ server (4.2 is used in exaple below) 
+
+1) nodeA: mount nfsv41+ share
+# mount -t nfs4 -o vers=4.2 NFS-SRV:/export/ /mnt/ns1
+  VvS: here serv->sv_bc_xprt is assigned first time,
+       in xs_tcp_bc_up() it is assigned to svc_xprt of mount's backchannel
+
+2) nodeA: create net namespace, and mount the same (or any other) NFSv41+ share
+# ip netns add second
+# ip link set ens2 netns second
+# ip netns exec second bash
+(inside netns second) # dhclient ens2 
+  VvS: now nets got access to external network
+(inside netns second) # mount -t nfs4 -o vers=4.2 NFS-SRV:/export/ /mnt/ns2 
+  VvS: now serv->sv_bc_xprt is overwritten by reference to svc_xprt of new mount's backchannel
+  NB: you can mount any other NFS share but minorversion must be the same.
+  NB2: if hardware allows you can use rdma transport here
+  NB3: you can access nothing in mounted share, problem's trigger was enabled already.
+
+3) NodeA, destroy mount inside netns and then netns itself.
+
+(inside netns second) # umount /mnt/ns2
+(inside netns second) # ip link set ens2 netns 1
+(inside netns second) # exit
+   VvS: return to init_net
+# ip netns del second
+   VvS: now second NFS mount and second net namespace was destroyed.
+
+4) Node A: prepare backchannel event
+# echo test1 > /mnt/ns1/test1.txt
+# echo test2 > /mnt/ns1/test2.txt
+# python
+>>> fl=open('/mnt/ns1/test1.txt','r')
+>>>
+
+4) Node B: replace file open by NodeA
+# mount -t nfs -o vers=4.2 NFS-SRV:/export/ /mnt/
+# mv /mnt/test2.txt /mnt/test1.txt
+
+===> KASAN on nodeA detect an access to already freed memory.
+(see dmesg example in attach of v1 patch version)
+
+svc_process_common() 
+        /* Setup reply header */
+        rqstp->rq_xprt->xpt_ops->xpo_prep_reply_hdr(rqstp); <<< HERE
+
+svc_process_common() uses already freed rqstp->rq_xprt,
+it was assigned in bc_svc_process() where it was taken from serv->sv_bc_xprt.
+
+serv->sv_bc_xprt cannot be used as a pointer,
+it can be assigned per net-namespace, either in svc_bc_tcp_create() 
+or in xprt_rdma_bc_up(). 
+(Hopefully both transports cannot be used together in the same netns)
+
+To fix this problem I've added new callback to struct rpc_xprt_ops,
+it calls svc_find_xprt with proper name of transport's backchannel.
+
+According to Trond, the whole "let's set up rqstp->rq_xprt
+for the back channel" is nothing but a giant hack in order
+to work around the fact that svc_process_common() uses it
+to find the xpt_ops, and perform a couple of (meaningless
+for the back channel) tests of xpt_flags.
+
+Trond proposed to pass in the xpt_ops as a new parameter to
+svc_process_common(), and make those xpt_flags tests check
+for whether or not rqstp->rq_xprt is actually non-NULL.
+
+It also required to store a pointer to struct net in the
+struct svc_rqst so that functions called from inside
+svc_process_common() (nfs4_callback_compound(),
+svcauth_gss_accept() and some other) can find it.
+Some other functions was adopted to handle empty rqstp->rq_xprt
+
+2nd patch replaces sv_bc_xprt pointer to boolean flag,
+serv->sv_bc_xprt is used in svc_is_backchannel() too.
+Here this filed is used not as pointer but as some mark of 
+backchannel-compatible svc servers.
+I hope it helps to prevent misuse of sv_bc_xprt in future.
+
+3rd and 4th patches are minor cleanup in debug messages. 
+
+v2:
+- first patch was reworked to satisfy Trond's requirements:
+  to do not assign rqstp->rq_xprt in svc_process_common() at all,
+  provide proper xpt_ops reference as a new parameter,
+  adopt functions potentially called from svc_process_common() 
+   to properly handle rqstp->rq_xprt = NULL case.
+
+
+Vasily Averin (4):
+  nfs: use-after-free in svc_process_common()
+  nfs: remove sv_bc_enabled using in svc_is_backchannel()
+  nfs: fix debug message in svc_create_xprt()
+  nfs: minor typo in nfs4_callback_up_net()
+
+ fs/nfs/callback.c                        |  2 +-
+ include/linux/sunrpc/bc_xprt.h           | 10 +++----
+ include/linux/sunrpc/svc.h               |  7 +++--
+ include/linux/sunrpc/xprt.h              |  1 +
+ include/trace/events/sunrpc.h            |  6 ++--
+ net/sunrpc/auth_gss/svcauth_gss.c        |  8 +++---
+ net/sunrpc/svc.c                         | 36 ++++++++++++++++--------
+ net/sunrpc/svc_xprt.c                    |  9 +++---
+ net/sunrpc/svcsock.c                     |  2 +-
+ net/sunrpc/xprtrdma/backchannel.c        |  5 ++++
+ net/sunrpc/xprtrdma/svc_rdma_transport.c |  2 +-
+ net/sunrpc/xprtrdma/transport.c          |  1 +
+ net/sunrpc/xprtrdma/xprt_rdma.h          |  1 +
+ net/sunrpc/xprtsock.c                    |  7 +++++
+ 14 files changed, 64 insertions(+), 33 deletions(-)
+
+-- 
+2.17.1
