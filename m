@@ -2,42 +2,49 @@ Return-Path: <SRS0=HAHT=O6=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.0 required=3.0 tests=INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-1.0 required=3.0 tests=MAILING_LIST_MULTI,SPF_PASS,
+	URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 78B08C43387
-	for <linux-nfs@archiver.kernel.org>; Fri, 21 Dec 2018 17:36:17 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7B4D5C43387
+	for <linux-nfs@archiver.kernel.org>; Fri, 21 Dec 2018 17:39:57 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 5374021917
-	for <linux-nfs@archiver.kernel.org>; Fri, 21 Dec 2018 17:36:17 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 4B2E42190A
+	for <linux-nfs@archiver.kernel.org>; Fri, 21 Dec 2018 17:39:57 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1732770AbeLURgQ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 21 Dec 2018 12:36:16 -0500
-Received: from relay.sw.ru ([185.231.240.75]:40974 "EHLO relay.sw.ru"
+        id S2388171AbeLURj4 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 21 Dec 2018 12:39:56 -0500
+Received: from relay.sw.ru ([185.231.240.75]:41064 "EHLO relay.sw.ru"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1730364AbeLURgQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 21 Dec 2018 12:36:16 -0500
+        id S1730364AbeLURj4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 21 Dec 2018 12:39:56 -0500
 Received: from [172.16.24.21]
         by relay.sw.ru with esmtp (Exim 4.91)
         (envelope-from <vvs@virtuozzo.com>)
-        id 1gaOic-0004wI-2N; Fri, 21 Dec 2018 20:36:14 +0300
+        id 1gaOm6-0004z7-7Y; Fri, 21 Dec 2018 20:39:50 +0300
+Subject: Re: [PATCH 1/4] nfs: use-after-free in svc_process_common()
+To:     "bfields@fieldses.org" <bfields@fieldses.org>,
+        Trond Myklebust <trondmy@hammerspace.com>
+Cc:     "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+        "khorenko@virtuozzo.com" <khorenko@virtuozzo.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "eshatokhin@virtuozzo.com" <eshatokhin@virtuozzo.com>,
+        "chuck.lever@oracle.com" <chuck.lever@oracle.com>,
+        "jlayton@kernel.org" <jlayton@kernel.org>
+References: <134cf19c-e698-abed-02de-1659f9a5d4fb@virtuozzo.com>
+ <20181217215026.GA8564@fieldses.org>
+ <cb8d51ae-2745-58ca-8b4d-86c7a4bd2ffe@virtuozzo.com>
+ <67f477b704d34b369f0530891a219f383f964001.camel@hammerspace.com>
+ <4d878140-02c0-e306-fee6-1573d9fdecf2@virtuozzo.com>
+ <068f1741afc54367853a2e4501fd95c2ab12a989.camel@hammerspace.com>
+ <20181221010007.GA10196@fieldses.org>
+ <bb212b31-ebe8-b11f-5151-f579ff8d85b9@virtuozzo.com>
 From:   Vasily Averin <vvs@virtuozzo.com>
-Subject: [PATCH v3 8/8] nfs: minor typo in nfs4_callback_up_net()
-To:     Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>
-Cc:     "J. Bruce Fields" <bfields@fieldses.org>,
-        Jeff Layton <jlayton@kernel.org>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        linux-nfs@vger.kernel.org,
-        Evgenii Shatokhin <eshatokhin@virtuozzo.com>
-References: <cover.1545412216.git.vvs@virtuozzo.com>
-Message-ID: <d8c5c69b-7099-c828-7245-c86df4b797cf@virtuozzo.com>
-Date:   Fri, 21 Dec 2018 20:36:13 +0300
+Message-ID: <303d0974-5f37-a8cd-ccb9-a9e0498cbbd9@virtuozzo.com>
+Date:   Fri, 21 Dec 2018 20:39:49 +0300
 User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101
  Thunderbird/60.2.1
 MIME-Version: 1.0
-In-Reply-To: <cover.1545412216.git.vvs@virtuozzo.com>
+In-Reply-To: <bb212b31-ebe8-b11f-5151-f579ff8d85b9@virtuozzo.com>
 Content-Type: text/plain; charset=utf-8
 Content-Language: en-US
 Content-Transfer-Encoding: 7bit
@@ -46,24 +53,26 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Signed-off-by: Vasily Averin <vvs@virtuozzo.com>
----
- fs/nfs/callback.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+On 12/21/18 2:30 PM, Vasily Averin wrote:
+> On 12/21/18 4:00 AM, bfields@fieldses.org wrote:
+>> On Tue, Dec 18, 2018 at 02:55:15PM +0000, Trond Myklebust wrote:
+>>> No. We don't care about xpt_flags for the back channel because there is
+>>> no "server transport". The actual transport is stored in the 'struct
+>>> rpc_rqst', and is the struct rpc_xprt corresponding to the client
+>>> socket or RDMA channel.
+>>>
+>>> IOW: All we really need in svc_process_common() is to be able to run
+>>> rqstp->rq_xprt->xpt_ops->xpo_prep_reply_hdr(), and that can be passed
+>>> either as a pointer to the struct svc_xprt_ops itself.
+>>
+>> For what it's worth, I'd rather get rid of that op--it's an awfully
+>> roundabout way just to do "svc_putnl(resv, 0);" in the tcp case.
+> 
+> I'll try to save pointer to xpt_ops on per-netns sunrpc_net, 
+> and use it in svc_process_common() if rqstp->rq_xprt == NULL.
 
-diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-index 509dc5adeb8f..52d8e1681eec 100644
---- a/fs/nfs/callback.c
-+++ b/fs/nfs/callback.c
-@@ -56,7 +56,7 @@ static int nfs4_callback_up_net(struct svc_serv *serv, struct net *net)
- 				nfs_callback_set_tcpport, SVC_SOCK_ANONYMOUS);
- 	if (ret > 0) {
- 		nn->nfs_callback_tcpport6 = ret;
--		dprintk("NFS: Callback listener port = %u (af %u, net %x\n",
-+		dprintk("NFS: Callback listener port = %u (af %u, net %x)\n",
- 			nn->nfs_callback_tcpport6, PF_INET6, net->ns.inum);
- 	} else if (ret != -EAFNOSUPPORT)
- 		goto out_err;
--- 
-2.17.1
+Bruce, Trond,
+I've send v3 patch version, and waiting for your feedback.
 
+Thank you,
+	Vasily Averin
