@@ -1,101 +1,79 @@
-Return-Path: <SRS0=HAHT=O6=vger.kernel.org=linux-nfs-owner@kernel.org>
+Return-Path: <SRS0=A8/U=O7=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.5 required=3.0 tests=MAILING_LIST_MULTI,
-	MENTIONS_GIT_HOSTING,SPF_PASS,URIBL_BLOCKED,USER_AGENT_MUTT autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-0.9 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 798F5C43387
-	for <linux-nfs@archiver.kernel.org>; Fri, 21 Dec 2018 19:08:39 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3AC86C43387
+	for <linux-nfs@archiver.kernel.org>; Sat, 22 Dec 2018 17:47:11 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 507682190A
-	for <linux-nfs@archiver.kernel.org>; Fri, 21 Dec 2018 19:08:39 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 105D721A7E
+	for <linux-nfs@archiver.kernel.org>; Sat, 22 Dec 2018 17:47:10 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2389360AbeLUTIi (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 21 Dec 2018 14:08:38 -0500
-Received: from mx1.redhat.com ([209.132.183.28]:33160 "EHLO mx1.redhat.com"
+        id S1729519AbeLVRrJ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sat, 22 Dec 2018 12:47:09 -0500
+Received: from relay.sw.ru ([185.231.240.75]:55100 "EHLO relay.sw.ru"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2388931AbeLUTIi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 21 Dec 2018 14:08:38 -0500
-Received: from smtp.corp.redhat.com (int-mx06.intmail.prod.int.phx2.redhat.com [10.5.11.16])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 1AF793B714;
-        Fri, 21 Dec 2018 19:08:38 +0000 (UTC)
-Received: from parsley.fieldses.org (unknown [10.17.132.205])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 00B235C1B2;
-        Fri, 21 Dec 2018 19:08:37 +0000 (UTC)
-Received: by parsley.fieldses.org (Postfix, from userid 2815)
-        id 82E4018035E; Fri, 21 Dec 2018 14:08:37 -0500 (EST)
-Date:   Fri, 21 Dec 2018 14:08:37 -0500
-From:   "J. Bruce Fields" <bfields@redhat.com>
-To:     Olga Kornievskaia <olga.kornievskaia@gmail.com>
-Cc:     linux-nfs <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v2 00/10] server-side support for "inter" SSC copy
-Message-ID: <20181221190837.GB15842@parsley.fieldses.org>
-References: <20181130200348.59524-1-olga.kornievskaia@gmail.com>
- <CAN-5tyGBO1CnhkEe9yPXdh4837NYsZc1fyJ4MCuMPM2eSv4C5g@mail.gmail.com>
+        id S1726334AbeLVRrJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sat, 22 Dec 2018 12:47:09 -0500
+Received: from [172.16.24.21]
+        by relay.sw.ru with esmtp (Exim 4.91)
+        (envelope-from <vvs@virtuozzo.com>)
+        id 1galMW-00029a-GT; Sat, 22 Dec 2018 20:46:56 +0300
+Subject: Re: [PATCH 1/4] nfs: use-after-free in svc_process_common()
+To:     "bfields@fieldses.org" <bfields@fieldses.org>,
+        Trond Myklebust <trondmy@hammerspace.com>
+Cc:     "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+        "khorenko@virtuozzo.com" <khorenko@virtuozzo.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "eshatokhin@virtuozzo.com" <eshatokhin@virtuozzo.com>,
+        "chuck.lever@oracle.com" <chuck.lever@oracle.com>,
+        "jlayton@kernel.org" <jlayton@kernel.org>
+References: <134cf19c-e698-abed-02de-1659f9a5d4fb@virtuozzo.com>
+ <20181217215026.GA8564@fieldses.org>
+ <cb8d51ae-2745-58ca-8b4d-86c7a4bd2ffe@virtuozzo.com>
+ <67f477b704d34b369f0530891a219f383f964001.camel@hammerspace.com>
+ <4d878140-02c0-e306-fee6-1573d9fdecf2@virtuozzo.com>
+ <068f1741afc54367853a2e4501fd95c2ab12a989.camel@hammerspace.com>
+ <20181221010007.GA10196@fieldses.org>
+From:   Vasily Averin <vvs@virtuozzo.com>
+Message-ID: <9082b04a-8235-4b9d-39ae-1462fe350935@virtuozzo.com>
+Date:   Sat, 22 Dec 2018 20:46:55 +0300
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101
+ Thunderbird/60.2.1
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <CAN-5tyGBO1CnhkEe9yPXdh4837NYsZc1fyJ4MCuMPM2eSv4C5g@mail.gmail.com>
-User-Agent: Mutt/1.10.1 (2018-07-13)
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.16
-X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.30]); Fri, 21 Dec 2018 19:08:38 +0000 (UTC)
+In-Reply-To: <20181221010007.GA10196@fieldses.org>
+Content-Type: text/plain; charset=utf-8
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Thu, Dec 20, 2018 at 01:42:27PM -0500, Olga Kornievskaia wrote:
-> On Fri, Nov 30, 2018 at 3:03 PM Olga Kornievskaia
-> <olga.kornievskaia@gmail.com> wrote:
-> > All the patches (client inter) and this patch series is available
-> > from git://linux-nfs.org/projects/aglo/linux.git under the "linux-ssc"
-> > branch
-> >
+On 12/21/18 4:00 AM, bfields@fieldses.org wrote:
+> On Tue, Dec 18, 2018 at 02:55:15PM +0000, Trond Myklebust wrote:
+>> No. We don't care about xpt_flags for the back channel because there is
+>> no "server transport". The actual transport is stored in the 'struct
+>> rpc_rqst', and is the struct rpc_xprt corresponding to the client
+>> socket or RDMA channel.
+>>
+>> IOW: All we really need in svc_process_common() is to be able to run
+>> rqstp->rq_xprt->xpt_ops->xpo_prep_reply_hdr(), and that can be passed
+>> either as a pointer to the struct svc_xprt_ops itself.
 > 
-> Bruce,
-> 
-> Do you have comments on this v2? Once VFS has the patches for the
-> generic copy_file_range() functionality, NFS should be all set to just
-> used it.
+> For what it's worth, I'd rather get rid of that op--it's an awfully
+> roundabout way just to do "svc_putnl(resv, 0);" in the tcp case.
 
-Not yet, sorry.  I probably won't be able to give it a proper review
-till the second week in January, feel free to ping me again then.
+Do you mean that svc_create_xprt(serv, "tcp-bc", ...) was used ONLY to call 
+svc_tcp_prep_reply_hdr() in svc_process_common() ?
+And according call for rdma-bc does nothing useful at all? 
 
---b.
+I've just tried to remove svc_create_xprt() from xs_tcp_bc_up() and just 
+provide pointer to svc_tcp_prep_reply_hdr() in  svc_process_common() 
+via per-netns sunrpc_net -- and seems it was enough, my testcase worked correctly.
 
-> 
-> > Olga Kornievskaia (10):
-> >   VFS generic copy_file_range() support
-> >   NFS fallback to generic_copy_file_range
-> >   NFSD fill-in netloc4 structure
-> >   NFSD add ca_source_server<> to COPY
-> >   NFSD return nfs4_stid in nfs4_preprocess_stateid_op
-> >   NFSD add COPY_NOTIFY operation
-> >   NFSD check stateids against copy stateids
-> >   NFSD generalize nfsd4_compound_state flag names
-> >   NFSD: allow inter server COPY to have a STALE source server fh
-> >   NFSD add nfs4 inter ssc to nfsd4_copy
-> >
-> >  fs/nfs/nfs4file.c    |   9 +-
-> >  fs/nfsd/Kconfig      |  10 ++
-> >  fs/nfsd/nfs4proc.c   | 406 ++++++++++++++++++++++++++++++++++++++++++++++-----
-> >  fs/nfsd/nfs4state.c  | 124 ++++++++++++++--
-> >  fs/nfsd/nfs4xdr.c    | 166 ++++++++++++++++++++-
-> >  fs/nfsd/nfsd.h       |  32 ++++
-> >  fs/nfsd/nfsfh.h      |   5 +-
-> >  fs/nfsd/nfssvc.c     |   6 +
-> >  fs/nfsd/state.h      |  21 ++-
-> >  fs/nfsd/xdr4.h       |  37 ++++-
-> >  fs/read_write.c      |  66 +++++++--
-> >  include/linux/fs.h   |   7 +
-> >  include/linux/nfs4.h |   1 +
-> >  mm/filemap.c         |   6 +-
-> >  14 files changed, 810 insertions(+), 86 deletions(-)
-> >
-> > --
-> > 1.8.3.1
-> >
+Am I missed something probably?
+Should we really remove svc_create_xprt( "tcp/rdma-bc"...) related stuff? ?
