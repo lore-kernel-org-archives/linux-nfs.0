@@ -6,24 +6,25 @@ X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2ED39C43387
-	for <linux-nfs@archiver.kernel.org>; Mon, 24 Dec 2018 11:45:09 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E60E9C43387
+	for <linux-nfs@archiver.kernel.org>; Mon, 24 Dec 2018 11:45:28 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 069BA2176F
-	for <linux-nfs@archiver.kernel.org>; Mon, 24 Dec 2018 11:45:09 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id BE6EA2176F
+	for <linux-nfs@archiver.kernel.org>; Mon, 24 Dec 2018 11:45:28 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1725446AbeLXLpI (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 24 Dec 2018 06:45:08 -0500
-Received: from relay.sw.ru ([185.231.240.75]:50640 "EHLO relay.sw.ru"
+        id S1725616AbeLXLp2 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 24 Dec 2018 06:45:28 -0500
+Received: from relay.sw.ru ([185.231.240.75]:50660 "EHLO relay.sw.ru"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725268AbeLXLpI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 24 Dec 2018 06:45:08 -0500
+        id S1725268AbeLXLp2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 24 Dec 2018 06:45:28 -0500
 Received: from [172.16.24.21]
         by relay.sw.ru with esmtp (Exim 4.91)
         (envelope-from <vvs@virtuozzo.com>)
-        id 1gbOfR-0004ZN-FU; Mon, 24 Dec 2018 14:45:05 +0300
+        id 1gbOfl-0004Zh-JT; Mon, 24 Dec 2018 14:45:25 +0300
 From:   Vasily Averin <vvs@virtuozzo.com>
-Subject: [PATCH v4 03/10] sunrpc: replace svc_serv->sv_bc_xprt by boolean flag
+Subject: [PATCH v4 04/10] sunrpc: remove unused bc_up operation from
+ rpc_xprt_ops
 To:     "J. Bruce Fields" <bfields@fieldses.org>,
         Trond Myklebust <trond.myklebust@hammerspace.com>
 Cc:     Jeff Layton <jlayton@kernel.org>,
@@ -32,8 +33,8 @@ Cc:     Jeff Layton <jlayton@kernel.org>,
         linux-nfs@vger.kernel.org,
         Evgenii Shatokhin <eshatokhin@virtuozzo.com>
 References: <cover.1545648882.git.vvs@virtuozzo.com>
-Message-ID: <3105562e-fbac-432d-f95a-7f87c5a2551a@virtuozzo.com>
-Date:   Mon, 24 Dec 2018 14:45:04 +0300
+Message-ID: <8df076d6-1f35-f3f6-9b04-cc3c33ec2e27@virtuozzo.com>
+Date:   Mon, 24 Dec 2018 14:45:25 +0300
 User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101
  Thunderbird/60.2.1
 MIME-Version: 1.0
@@ -46,107 +47,112 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-svc_serv-> sv_bc_xprt is netns-unsafe and cannot be used as pointer.
-To prevent its misuse in future it is replaced by new boolean flag.
-
 Signed-off-by: Vasily Averin <vvs@virtuozzo.com>
 ---
- fs/nfs/callback.c                        |  8 +++++---
- include/linux/sunrpc/bc_xprt.h           | 10 ++++------
- include/linux/sunrpc/svc.h               |  2 +-
- net/sunrpc/svcsock.c                     |  2 --
- net/sunrpc/xprtrdma/svc_rdma_transport.c |  1 -
- 5 files changed, 10 insertions(+), 13 deletions(-)
+ include/linux/sunrpc/xprt.h       |  1 -
+ net/sunrpc/xprtrdma/backchannel.c | 20 --------------------
+ net/sunrpc/xprtrdma/transport.c   |  1 -
+ net/sunrpc/xprtrdma/xprt_rdma.h   |  1 -
+ net/sunrpc/xprtsock.c             | 12 ------------
+ 5 files changed, 35 deletions(-)
 
-diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-index 509dc5adeb8f..6dd04774aedc 100644
---- a/fs/nfs/callback.c
-+++ b/fs/nfs/callback.c
-@@ -206,11 +206,13 @@ static int nfs_callback_up_net(int minorversion, struct svc_serv *serv,
- 		goto err_bind;
- 	}
- 
--	ret = -EPROTONOSUPPORT;
-+	ret = 0;
- 	if (!IS_ENABLED(CONFIG_NFS_V4_1) || minorversion == 0)
- 		ret = nfs4_callback_up_net(serv, net);
--	else if (xprt->ops->bc_up)
--		ret = xprt->ops->bc_up(serv, net);
-+	else if (xprt->ops->bc_setup)
-+		serv->sv_bc_enabled = true;
-+	else
-+		ret = -EPROTONOSUPPORT;
- 
- 	if (ret < 0) {
- 		printk(KERN_ERR "NFS: callback service start failed\n");
-diff --git a/include/linux/sunrpc/bc_xprt.h b/include/linux/sunrpc/bc_xprt.h
-index 28721cf73ec3..4e8c773d02be 100644
---- a/include/linux/sunrpc/bc_xprt.h
-+++ b/include/linux/sunrpc/bc_xprt.h
-@@ -47,11 +47,9 @@ void xprt_free_bc_rqst(struct rpc_rqst *req);
- /*
-  * Determine if a shared backchannel is in use
-  */
--static inline int svc_is_backchannel(const struct svc_rqst *rqstp)
-+static inline bool svc_is_backchannel(const struct svc_rqst *rqstp)
- {
--	if (rqstp->rq_server->sv_bc_xprt)
--		return 1;
--	return 0;
-+	return rqstp->rq_server->sv_bc_enabled;
- }
- #else /* CONFIG_SUNRPC_BACKCHANNEL */
- static inline int xprt_setup_backchannel(struct rpc_xprt *xprt,
-@@ -60,9 +58,9 @@ static inline int xprt_setup_backchannel(struct rpc_xprt *xprt,
- 	return 0;
+diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
+index a4ab4f8d9140..ad7e910b119d 100644
+--- a/include/linux/sunrpc/xprt.h
++++ b/include/linux/sunrpc/xprt.h
+@@ -157,7 +157,6 @@ struct rpc_xprt_ops {
+ 	void		(*inject_disconnect)(struct rpc_xprt *xprt);
+ 	int		(*bc_setup)(struct rpc_xprt *xprt,
+ 				    unsigned int min_reqs);
+-	int		(*bc_up)(struct svc_serv *serv, struct net *net);
+ 	size_t		(*bc_maxpayload)(struct rpc_xprt *xprt);
+ 	void		(*bc_free_rqst)(struct rpc_rqst *rqst);
+ 	void		(*bc_destroy)(struct rpc_xprt *xprt,
+diff --git a/net/sunrpc/xprtrdma/backchannel.c b/net/sunrpc/xprtrdma/backchannel.c
+index e5b367a3e517..edba0d35776b 100644
+--- a/net/sunrpc/xprtrdma/backchannel.c
++++ b/net/sunrpc/xprtrdma/backchannel.c
+@@ -113,26 +113,6 @@ int xprt_rdma_bc_setup(struct rpc_xprt *xprt, unsigned int reqs)
+ 	return -ENOMEM;
  }
  
--static inline int svc_is_backchannel(const struct svc_rqst *rqstp)
-+static inline bool svc_is_backchannel(const struct svc_rqst *rqstp)
- {
--	return 0;
-+	return false;
- }
- 
- static inline void xprt_free_bc_request(struct rpc_rqst *req)
-diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-index fdb6b317d974..e52385340b3b 100644
---- a/include/linux/sunrpc/svc.h
-+++ b/include/linux/sunrpc/svc.h
-@@ -109,7 +109,7 @@ struct svc_serv {
- 	spinlock_t		sv_cb_lock;	/* protects the svc_cb_list */
- 	wait_queue_head_t	sv_cb_waitq;	/* sleep here if there are no
- 						 * entries in the svc_cb_list */
--	struct svc_xprt		*sv_bc_xprt;	/* callback on fore channel */
-+	bool			sv_bc_enabled;	/* service uses backchannel */
- #endif /* CONFIG_SUNRPC_BACKCHANNEL */
- };
- 
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 793149ba1bda..8ce181ecb627 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -1623,8 +1623,6 @@ static struct svc_xprt *svc_bc_create_socket(struct svc_serv *serv,
- 	svc_xprt_init(net, &svc_tcp_bc_class, xprt, serv);
- 	set_bit(XPT_CONG_CTRL, &svsk->sk_xprt.xpt_flags);
- 
--	serv->sv_bc_xprt = xprt;
+-/**
+- * xprt_rdma_bc_up - Create transport endpoint for backchannel service
+- * @serv: server endpoint
+- * @net: network namespace
+- *
+- * The "xprt" is an implied argument: it supplies the name of the
+- * backchannel transport class.
+- *
+- * Returns zero on success, negative errno on failure
+- */
+-int xprt_rdma_bc_up(struct svc_serv *serv, struct net *net)
+-{
+-	int ret;
 -
- 	return xprt;
+-	ret = svc_create_xprt(serv, "rdma-bc", net, PF_INET, 0, 0);
+-	if (ret < 0)
+-		return ret;
+-	return 0;
+-}
+-
+ /**
+  * xprt_rdma_bc_maxpayload - Return maximum backchannel message size
+  * @xprt: transport
+diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
+index ae2a83828953..9141068693fa 100644
+--- a/net/sunrpc/xprtrdma/transport.c
++++ b/net/sunrpc/xprtrdma/transport.c
+@@ -827,7 +827,6 @@ static const struct rpc_xprt_ops xprt_rdma_procs = {
+ 	.inject_disconnect	= xprt_rdma_inject_disconnect,
+ #if defined(CONFIG_SUNRPC_BACKCHANNEL)
+ 	.bc_setup		= xprt_rdma_bc_setup,
+-	.bc_up			= xprt_rdma_bc_up,
+ 	.bc_maxpayload		= xprt_rdma_bc_maxpayload,
+ 	.bc_free_rqst		= xprt_rdma_bc_free_rqst,
+ 	.bc_destroy		= xprt_rdma_bc_destroy,
+diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+index a13ccb643ce0..9218dbebedce 100644
+--- a/net/sunrpc/xprtrdma/xprt_rdma.h
++++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+@@ -661,7 +661,6 @@ void xprt_rdma_cleanup(void);
+  */
+ #if defined(CONFIG_SUNRPC_BACKCHANNEL)
+ int xprt_rdma_bc_setup(struct rpc_xprt *, unsigned int);
+-int xprt_rdma_bc_up(struct svc_serv *, struct net *);
+ size_t xprt_rdma_bc_maxpayload(struct rpc_xprt *);
+ int rpcrdma_bc_post_recv(struct rpcrdma_xprt *, unsigned int);
+ void rpcrdma_bc_receive_call(struct rpcrdma_xprt *, struct rpcrdma_rep *);
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 8a5e823e0b33..a51152af8780 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -1400,17 +1400,6 @@ static void xs_tcp_force_close(struct rpc_xprt *xprt)
  }
  
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-index 2f7ec8912f49..d410e6f34f44 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-@@ -136,7 +136,6 @@ static struct svc_xprt *svc_rdma_bc_create(struct svc_serv *serv,
- 
- 	svc_xprt_init(net, &svc_rdma_bc_class, xprt, serv);
- 	set_bit(XPT_CONG_CTRL, &xprt->xpt_flags);
--	serv->sv_bc_xprt = xprt;
- 
- 	dprintk("svcrdma: %s(%p)\n", __func__, xprt);
- 	return xprt;
+ #if defined(CONFIG_SUNRPC_BACKCHANNEL)
+-static int xs_tcp_bc_up(struct svc_serv *serv, struct net *net)
+-{
+-	int ret;
+-
+-	ret = svc_create_xprt(serv, "tcp-bc", net, PF_INET, 0,
+-			      SVC_SOCK_ANONYMOUS);
+-	if (ret < 0)
+-		return ret;
+-	return 0;
+-}
+-
+ static size_t xs_tcp_bc_maxpayload(struct rpc_xprt *xprt)
+ {
+ 	return PAGE_SIZE;
+@@ -2667,7 +2656,6 @@ static const struct rpc_xprt_ops xs_tcp_ops = {
+ 	.inject_disconnect	= xs_inject_disconnect,
+ #ifdef CONFIG_SUNRPC_BACKCHANNEL
+ 	.bc_setup		= xprt_setup_bc,
+-	.bc_up			= xs_tcp_bc_up,
+ 	.bc_maxpayload		= xs_tcp_bc_maxpayload,
+ 	.bc_free_rqst		= xprt_free_bc_rqst,
+ 	.bc_destroy		= xprt_destroy_bc,
 -- 
 2.17.1
 
