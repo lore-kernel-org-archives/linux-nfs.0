@@ -3,27 +3,27 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
 X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS autolearn=ham
-	autolearn_force=no version=3.4.0
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 339BAC43387
-	for <linux-nfs@archiver.kernel.org>; Mon, 24 Dec 2018 11:44:47 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6EE79C43387
+	for <linux-nfs@archiver.kernel.org>; Mon, 24 Dec 2018 11:44:56 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 004DB2176F
-	for <linux-nfs@archiver.kernel.org>; Mon, 24 Dec 2018 11:44:46 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 475CE2176F
+	for <linux-nfs@archiver.kernel.org>; Mon, 24 Dec 2018 11:44:56 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1725355AbeLXLoq (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 24 Dec 2018 06:44:46 -0500
-Received: from relay.sw.ru ([185.231.240.75]:50606 "EHLO relay.sw.ru"
+        id S1725298AbeLXLoz (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 24 Dec 2018 06:44:55 -0500
+Received: from relay.sw.ru ([185.231.240.75]:50624 "EHLO relay.sw.ru"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725298AbeLXLoq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 24 Dec 2018 06:44:46 -0500
+        id S1725268AbeLXLoz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 24 Dec 2018 06:44:55 -0500
 Received: from [172.16.24.21]
         by relay.sw.ru with esmtp (Exim 4.91)
         (envelope-from <vvs@virtuozzo.com>)
-        id 1gbOf4-0004Yy-MX; Mon, 24 Dec 2018 14:44:42 +0300
+        id 1gbOfE-0004Z8-KR; Mon, 24 Dec 2018 14:44:52 +0300
 From:   Vasily Averin <vvs@virtuozzo.com>
-Subject: [PATCH v4 01/10] sunrpc: use SVC_NET() in svcauth_gss_* functions
+Subject: [PATCH v4 02/10] sunrpc: use-after-free in svc_process_common()
 To:     "J. Bruce Fields" <bfields@fieldses.org>,
         Trond Myklebust <trond.myklebust@hammerspace.com>
 Cc:     Jeff Layton <jlayton@kernel.org>,
@@ -32,8 +32,8 @@ Cc:     Jeff Layton <jlayton@kernel.org>,
         linux-nfs@vger.kernel.org,
         Evgenii Shatokhin <eshatokhin@virtuozzo.com>
 References: <cover.1545648882.git.vvs@virtuozzo.com>
-Message-ID: <e225b0ed-9cd4-409b-be02-ea067bcc06ee@virtuozzo.com>
-Date:   Mon, 24 Dec 2018 14:44:42 +0300
+Message-ID: <2d71abdb-2e79-4b13-21a6-3d439ddd96c5@virtuozzo.com>
+Date:   Mon, 24 Dec 2018 14:44:52 +0300
 User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101
  Thunderbird/60.2.1
 MIME-Version: 1.0
@@ -46,51 +46,168 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
+if node have NFSv41+ mounts inside several net namespaces
+it can lead to use-after-free in svc_process_common()
+
+svc_process_common()
+        /* Setup reply header */
+        rqstp->rq_xprt->xpt_ops->xpo_prep_reply_hdr(rqstp); <<< HERE
+
+svc_process_common() can use incorrect rqstp->rq_xprt,
+its caller function bc_svc_process() takes it from serv->sv_bc_xprt.
+The problem is that serv is global structure but sv_bc_xprt
+is assigned per-netnamespace.
+
+According to Trond, the whole "let's set up rqstp->rq_xprt
+for the back channel" is nothing but a giant hack in order
+to work around the fact that svc_process_common() uses it
+to find the xpt_ops, and perform a couple of (meaningless
+for the back channel) tests of xpt_flags.
+
+All we really need in svc_process_common() is to be able to run
+rqstp->rq_xprt->xpt_ops->xpo_prep_reply_hdr()
+
+Bruce J Fields points that this xpo_prep_reply_hdr() call
+is an awfully roundabout way just to do "svc_putnl(resv, 0);"
+in the tcp case.
+
+This patch does not initialiuze rqstp->rq_xprt in bc_svc_process(),
+now it calls svc_process_common() with rqstp->rq_xprt = NULL.
+
+To adjust reply header svc_process_common() just check
+rqstp->rq_prot and calls svc_tcp_prep_reply_hdr() for tcp case.
+
+To handle rqstp->rq_xprt = NULL case in functions called from
+svc_process_common() patch intruduces net namespace pointer
+svc_rqst->rq_bc_net and adjust SVC_NET() definition.
+Some other function was also adopted to properly handle described case.
+
 Signed-off-by: Vasily Averin <vvs@virtuozzo.com>
 ---
- net/sunrpc/auth_gss/svcauth_gss.c | 8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
+ include/linux/sunrpc/svc.h    | 5 ++++-
+ include/trace/events/sunrpc.h | 6 ++++--
+ net/sunrpc/svc.c              | 9 +++++----
+ net/sunrpc/svc_xprt.c         | 5 +++--
+ net/sunrpc/svcsock.c          | 2 +-
+ 5 files changed, 17 insertions(+), 10 deletions(-)
 
-diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
-index 1ece4bc3eb8d..152790ed309c 100644
---- a/net/sunrpc/auth_gss/svcauth_gss.c
-+++ b/net/sunrpc/auth_gss/svcauth_gss.c
-@@ -1142,7 +1142,7 @@ static int svcauth_gss_legacy_init(struct svc_rqst *rqstp,
+diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+index 73e130a840ce..fdb6b317d974 100644
+--- a/include/linux/sunrpc/svc.h
++++ b/include/linux/sunrpc/svc.h
+@@ -295,9 +295,12 @@ struct svc_rqst {
+ 	struct svc_cacherep *	rq_cacherep;	/* cache info */
+ 	struct task_struct	*rq_task;	/* service thread */
+ 	spinlock_t		rq_lock;	/* per-request lock */
++	struct net		*rq_bc_net;	/* pointer to backchannel's
++						 * net namespace
++						 */
+ };
+ 
+-#define SVC_NET(svc_rqst)	(svc_rqst->rq_xprt->xpt_net)
++#define SVC_NET(rqst) (rqst->rq_xprt ? rqst->rq_xprt->xpt_net : rqst->rq_bc_net)
+ 
+ /*
+  * Rigorous type checking on sockaddr type conversions
+diff --git a/include/trace/events/sunrpc.h b/include/trace/events/sunrpc.h
+index 28e384186c35..8617f4fd6b70 100644
+--- a/include/trace/events/sunrpc.h
++++ b/include/trace/events/sunrpc.h
+@@ -569,7 +569,8 @@ TRACE_EVENT(svc_process,
+ 		__field(u32, vers)
+ 		__field(u32, proc)
+ 		__string(service, name)
+-		__string(addr, rqst->rq_xprt->xpt_remotebuf)
++		__string(addr, rqst->rq_xprt ?
++			 rqst->rq_xprt->xpt_remotebuf : "(null)")
+ 	),
+ 
+ 	TP_fast_assign(
+@@ -577,7 +578,8 @@ TRACE_EVENT(svc_process,
+ 		__entry->vers = rqst->rq_vers;
+ 		__entry->proc = rqst->rq_proc;
+ 		__assign_str(service, name);
+-		__assign_str(addr, rqst->rq_xprt->xpt_remotebuf);
++		__assign_str(addr, rqst->rq_xprt ?
++			     rqst->rq_xprt->xpt_remotebuf : "(null)");
+ 	),
+ 
+ 	TP_printk("addr=%s xid=0x%08x service=%s vers=%u proc=%u",
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index d13e05f1a990..fb647bc01fc5 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -1172,7 +1172,8 @@ svc_process_common(struct svc_rqst *rqstp, struct kvec *argv, struct kvec *resv)
+ 	clear_bit(RQ_DROPME, &rqstp->rq_flags);
+ 
+ 	/* Setup reply header */
+-	rqstp->rq_xprt->xpt_ops->xpo_prep_reply_hdr(rqstp);
++	if (rqstp->rq_prot == IPPROTO_TCP)
++		svc_tcp_prep_reply_hdr(rqstp);
+ 
+ 	svc_putu32(resv, rqstp->rq_xid);
+ 
+@@ -1244,7 +1245,7 @@ svc_process_common(struct svc_rqst *rqstp, struct kvec *argv, struct kvec *resv)
+ 	 * for lower versions. RPC_PROG_MISMATCH seems to be the closest
+ 	 * fit.
+ 	 */
+-	if (versp->vs_need_cong_ctrl &&
++	if (versp->vs_need_cong_ctrl && rqstp->rq_xprt &&
+ 	    !test_bit(XPT_CONG_CTRL, &rqstp->rq_xprt->xpt_flags))
+ 		goto err_bad_vers;
+ 
+@@ -1336,7 +1337,7 @@ svc_process_common(struct svc_rqst *rqstp, struct kvec *argv, struct kvec *resv)
+ 	return 0;
+ 
+  close:
+-	if (test_bit(XPT_TEMP, &rqstp->rq_xprt->xpt_flags))
++	if (rqstp->rq_xprt && test_bit(XPT_TEMP, &rqstp->rq_xprt->xpt_flags))
+ 		svc_close_xprt(rqstp->rq_xprt);
+ 	dprintk("svc: svc_process close\n");
+ 	return 0;
+@@ -1459,10 +1460,10 @@ bc_svc_process(struct svc_serv *serv, struct rpc_rqst *req,
+ 	dprintk("svc: %s(%p)\n", __func__, req);
+ 
+ 	/* Build the svc_rqst used by the common processing routine */
+-	rqstp->rq_xprt = serv->sv_bc_xprt;
+ 	rqstp->rq_xid = req->rq_xid;
+ 	rqstp->rq_prot = req->rq_xprt->prot;
+ 	rqstp->rq_server = serv;
++	rqstp->rq_bc_net = req->rq_xprt->xprt_net;
+ 
+ 	rqstp->rq_addrlen = sizeof(req->rq_xprt->addr);
+ 	memcpy(&rqstp->rq_addr, &req->rq_xprt->addr, rqstp->rq_addrlen);
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index 51d36230b6e3..bd42da287c26 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -468,10 +468,11 @@ static struct svc_xprt *svc_xprt_dequeue(struct svc_pool *pool)
+  */
+ void svc_reserve(struct svc_rqst *rqstp, int space)
+ {
++	struct svc_xprt *xprt = rqstp->rq_xprt;
++
+ 	space += rqstp->rq_res.head[0].iov_len;
+ 
+-	if (space < rqstp->rq_reserved) {
+-		struct svc_xprt *xprt = rqstp->rq_xprt;
++	if (xprt && space < rqstp->rq_reserved) {
+ 		atomic_sub((rqstp->rq_reserved - space), &xprt->xpt_reserved);
+ 		rqstp->rq_reserved = space;
+ 
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index 986f3ed7d1a2..793149ba1bda 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -1173,7 +1173,7 @@ static int svc_tcp_sendto(struct svc_rqst *rqstp)
+ /*
+  * Setup response header. TCP has a 4B record length field.
+  */
+-static void svc_tcp_prep_reply_hdr(struct svc_rqst *rqstp)
++void svc_tcp_prep_reply_hdr(struct svc_rqst *rqstp)
+ {
  	struct kvec *resv = &rqstp->rq_res.head[0];
- 	struct rsi *rsip, rsikey;
- 	int ret;
--	struct sunrpc_net *sn = net_generic(rqstp->rq_xprt->xpt_net, sunrpc_net_id);
-+	struct sunrpc_net *sn = net_generic(SVC_NET(rqstp), sunrpc_net_id);
  
- 	memset(&rsikey, 0, sizeof(rsikey));
- 	ret = gss_read_verf(gc, argv, authp,
-@@ -1253,7 +1253,7 @@ static int svcauth_gss_proxy_init(struct svc_rqst *rqstp,
- 	uint64_t handle;
- 	int status;
- 	int ret;
--	struct net *net = rqstp->rq_xprt->xpt_net;
-+	struct net *net = SVC_NET(rqstp);
- 	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
- 
- 	memset(&ud, 0, sizeof(ud));
-@@ -1444,7 +1444,7 @@ svcauth_gss_accept(struct svc_rqst *rqstp, __be32 *authp)
- 	__be32		*rpcstart;
- 	__be32		*reject_stat = resv->iov_base + resv->iov_len;
- 	int		ret;
--	struct sunrpc_net *sn = net_generic(rqstp->rq_xprt->xpt_net, sunrpc_net_id);
-+	struct sunrpc_net *sn = net_generic(SVC_NET(rqstp), sunrpc_net_id);
- 
- 	dprintk("RPC:       svcauth_gss: argv->iov_len = %zd\n",
- 			argv->iov_len);
-@@ -1734,7 +1734,7 @@ svcauth_gss_release(struct svc_rqst *rqstp)
- 	struct rpc_gss_wire_cred *gc = &gsd->clcred;
- 	struct xdr_buf *resbuf = &rqstp->rq_res;
- 	int stat = -EINVAL;
--	struct sunrpc_net *sn = net_generic(rqstp->rq_xprt->xpt_net, sunrpc_net_id);
-+	struct sunrpc_net *sn = net_generic(SVC_NET(rqstp), sunrpc_net_id);
- 
- 	if (gc->gc_proc != RPC_GSS_PROC_DATA)
- 		goto out;
 -- 
 2.17.1
 
