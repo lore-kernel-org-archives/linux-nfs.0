@@ -2,77 +2,215 @@ Return-Path: <SRS0=eAd3=PB=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-8.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,USER_AGENT_MUTT
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 16D61C43387
-	for <linux-nfs@archiver.kernel.org>; Mon, 24 Dec 2018 11:49:08 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9B5E1C64E75
+	for <linux-nfs@archiver.kernel.org>; Mon, 24 Dec 2018 16:59:32 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id E53982176F
-	for <linux-nfs@archiver.kernel.org>; Mon, 24 Dec 2018 11:49:07 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 6002621850
+	for <linux-nfs@archiver.kernel.org>; Mon, 24 Dec 2018 16:59:32 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1725298AbeLXLtH (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 24 Dec 2018 06:49:07 -0500
-Received: from relay.sw.ru ([185.231.240.75]:50866 "EHLO relay.sw.ru"
+        id S1725648AbeLXQ7b (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 24 Dec 2018 11:59:31 -0500
+Received: from fieldses.org ([173.255.197.46]:55034 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725268AbeLXLtG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 24 Dec 2018 06:49:06 -0500
-Received: from [172.16.24.21]
-        by relay.sw.ru with esmtp (Exim 4.91)
-        (envelope-from <vvs@virtuozzo.com>)
-        id 1gbOjE-0004bu-EV; Mon, 24 Dec 2018 14:49:00 +0300
-Subject: Re: [PATCH 1/4] nfs: use-after-free in svc_process_common()
-To:     Trond Myklebust <trondmy@hammerspace.com>,
-        "bfields@fieldses.org" <bfields@fieldses.org>
-Cc:     "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        "khorenko@virtuozzo.com" <khorenko@virtuozzo.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "eshatokhin@virtuozzo.com" <eshatokhin@virtuozzo.com>,
-        "chuck.lever@oracle.com" <chuck.lever@oracle.com>,
-        "jlayton@kernel.org" <jlayton@kernel.org>
-References: <134cf19c-e698-abed-02de-1659f9a5d4fb@virtuozzo.com>
- <20181217215026.GA8564@fieldses.org>
- <cb8d51ae-2745-58ca-8b4d-86c7a4bd2ffe@virtuozzo.com>
- <67f477b704d34b369f0530891a219f383f964001.camel@hammerspace.com>
- <4d878140-02c0-e306-fee6-1573d9fdecf2@virtuozzo.com>
- <068f1741afc54367853a2e4501fd95c2ab12a989.camel@hammerspace.com>
- <20181221010007.GA10196@fieldses.org>
- <9082b04a-8235-4b9d-39ae-1462fe350935@virtuozzo.com>
- <b80a9496d933064c0080ef277e79a07b69ae80b1.camel@hammerspace.com>
- <c57c4ebc-7be7-2f66-deda-bb8df6393099@virtuozzo.com>
- <83f3d959-1193-7222-f190-aee1de7eef0c@virtuozzo.com>
- <6051cc19f72f9104806f628666ce54b31a5b184a.camel@hammerspace.com>
- <29ca1423-619d-ace5-53b3-d6567abf067b@virtuozzo.com>
- <57db94b668327d579d7e052fd8e9e8d007b586e9.camel@hammerspace.com>
-From:   Vasily Averin <vvs@virtuozzo.com>
-Message-ID: <226cf590-9a53-a126-cbc7-b8624c8d6102@virtuozzo.com>
-Date:   Mon, 24 Dec 2018 14:48:59 +0300
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101
- Thunderbird/60.2.1
+        id S1725385AbeLXQ7b (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 24 Dec 2018 11:59:31 -0500
+Received: by fieldses.org (Postfix, from userid 2815)
+        id 6CF0D1DCB; Mon, 24 Dec 2018 11:59:30 -0500 (EST)
+Date:   Mon, 24 Dec 2018 11:59:30 -0500
+From:   "J. Bruce Fields" <bfields@fieldses.org>
+To:     Vasily Averin <vvs@virtuozzo.com>
+Cc:     Trond Myklebust <trond.myklebust@hammerspace.com>,
+        Jeff Layton <jlayton@kernel.org>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Chuck Lever <chuck.lever@oracle.com>,
+        linux-nfs@vger.kernel.org,
+        Evgenii Shatokhin <eshatokhin@virtuozzo.com>
+Subject: Re: [PATCH v4 02/10] sunrpc: use-after-free in svc_process_common()
+Message-ID: <20181224165930.GA11596@fieldses.org>
+References: <cover.1545648882.git.vvs@virtuozzo.com>
+ <2d71abdb-2e79-4b13-21a6-3d439ddd96c5@virtuozzo.com>
 MIME-Version: 1.0
-In-Reply-To: <57db94b668327d579d7e052fd8e9e8d007b586e9.camel@hammerspace.com>
-Content-Type: text/plain; charset=utf-8
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <2d71abdb-2e79-4b13-21a6-3d439ddd96c5@virtuozzo.com>
+User-Agent: Mutt/1.5.21 (2010-09-15)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On 12/24/18 12:53 PM, Trond Myklebust wrote:
-> On Mon, 2018-12-24 at 11:59 +0300, Vasily Averin wrote:
->> Can I just check rqstp->rq_prot ? It is inherited from incoming
->> svc_req,
->> and it seems it enough to check its propo, it isn't? 
->>
->> svc_process_common()
->> ...
->>         /* Setup reply header */
->>         if (rqstp->rq_prot == IPPROTO_TCP)
->>                 svc_tcp_prep_reply_hdr(rqstp);
+On Mon, Dec 24, 2018 at 02:44:52PM +0300, Vasily Averin wrote:
+> if node have NFSv41+ mounts inside several net namespaces
+> it can lead to use-after-free in svc_process_common()
 > 
-> Yes. In these days with retpoline slowing down all indirect function
-> calls, then the above is probably the better solution.
+> svc_process_common()
+>         /* Setup reply header */
+>         rqstp->rq_xprt->xpt_ops->xpo_prep_reply_hdr(rqstp); <<< HERE
+> 
+> svc_process_common() can use incorrect rqstp->rq_xprt,
+> its caller function bc_svc_process() takes it from serv->sv_bc_xprt.
+> The problem is that serv is global structure but sv_bc_xprt
+> is assigned per-netnamespace.
+> 
+> According to Trond, the whole "let's set up rqstp->rq_xprt
+> for the back channel" is nothing but a giant hack in order
+> to work around the fact that svc_process_common() uses it
+> to find the xpt_ops, and perform a couple of (meaningless
+> for the back channel) tests of xpt_flags.
+> 
+> All we really need in svc_process_common() is to be able to run
+> rqstp->rq_xprt->xpt_ops->xpo_prep_reply_hdr()
+> 
+> Bruce J Fields points that this xpo_prep_reply_hdr() call
+> is an awfully roundabout way just to do "svc_putnl(resv, 0);"
+> in the tcp case.
+> 
+> This patch does not initialiuze rqstp->rq_xprt in bc_svc_process(),
+> now it calls svc_process_common() with rqstp->rq_xprt = NULL.
+> 
+> To adjust reply header svc_process_common() just check
+> rqstp->rq_prot and calls svc_tcp_prep_reply_hdr() for tcp case.
+> 
+> To handle rqstp->rq_xprt = NULL case in functions called from
+> svc_process_common() patch intruduces net namespace pointer
+> svc_rqst->rq_bc_net and adjust SVC_NET() definition.
+> Some other function was also adopted to properly handle described case.
+> 
+> Signed-off-by: Vasily Averin <vvs@virtuozzo.com>
+> ---
+>  include/linux/sunrpc/svc.h    | 5 ++++-
+>  include/trace/events/sunrpc.h | 6 ++++--
+>  net/sunrpc/svc.c              | 9 +++++----
+>  net/sunrpc/svc_xprt.c         | 5 +++--
+>  net/sunrpc/svcsock.c          | 2 +-
+>  5 files changed, 17 insertions(+), 10 deletions(-)
+> 
+> diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+> index 73e130a840ce..fdb6b317d974 100644
+> --- a/include/linux/sunrpc/svc.h
+> +++ b/include/linux/sunrpc/svc.h
+> @@ -295,9 +295,12 @@ struct svc_rqst {
+>  	struct svc_cacherep *	rq_cacherep;	/* cache info */
+>  	struct task_struct	*rq_task;	/* service thread */
+>  	spinlock_t		rq_lock;	/* per-request lock */
+> +	struct net		*rq_bc_net;	/* pointer to backchannel's
+> +						 * net namespace
+> +						 */
+>  };
+>  
+> -#define SVC_NET(svc_rqst)	(svc_rqst->rq_xprt->xpt_net)
+> +#define SVC_NET(rqst) (rqst->rq_xprt ? rqst->rq_xprt->xpt_net : rqst->rq_bc_net)
+>  
+>  /*
+>   * Rigorous type checking on sockaddr type conversions
+> diff --git a/include/trace/events/sunrpc.h b/include/trace/events/sunrpc.h
+> index 28e384186c35..8617f4fd6b70 100644
+> --- a/include/trace/events/sunrpc.h
+> +++ b/include/trace/events/sunrpc.h
+> @@ -569,7 +569,8 @@ TRACE_EVENT(svc_process,
+>  		__field(u32, vers)
+>  		__field(u32, proc)
+>  		__string(service, name)
+> -		__string(addr, rqst->rq_xprt->xpt_remotebuf)
+> +		__string(addr, rqst->rq_xprt ?
+> +			 rqst->rq_xprt->xpt_remotebuf : "(null)")
+>  	),
+>  
+>  	TP_fast_assign(
+> @@ -577,7 +578,8 @@ TRACE_EVENT(svc_process,
+>  		__entry->vers = rqst->rq_vers;
+>  		__entry->proc = rqst->rq_proc;
+>  		__assign_str(service, name);
+> -		__assign_str(addr, rqst->rq_xprt->xpt_remotebuf);
+> +		__assign_str(addr, rqst->rq_xprt ?
+> +			     rqst->rq_xprt->xpt_remotebuf : "(null)");
+>  	),
+>  
+>  	TP_printk("addr=%s xid=0x%08x service=%s vers=%u proc=%u",
+> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+> index d13e05f1a990..fb647bc01fc5 100644
+> --- a/net/sunrpc/svc.c
+> +++ b/net/sunrpc/svc.c
+> @@ -1172,7 +1172,8 @@ svc_process_common(struct svc_rqst *rqstp, struct kvec *argv, struct kvec *resv)
+>  	clear_bit(RQ_DROPME, &rqstp->rq_flags);
+>  
+>  	/* Setup reply header */
+> -	rqstp->rq_xprt->xpt_ops->xpo_prep_reply_hdr(rqstp);
+> +	if (rqstp->rq_prot == IPPROTO_TCP)
+> +		svc_tcp_prep_reply_hdr(rqstp);
 
-I've submitted v4 patch version with these changes.
- 
+svc_tcp_prep_reply_hdr is a one-liner, I'd just copy the svc_putnl() and
+comment here.
+
+--b.
+
+>  
+>  	svc_putu32(resv, rqstp->rq_xid);
+>  
+> @@ -1244,7 +1245,7 @@ svc_process_common(struct svc_rqst *rqstp, struct kvec *argv, struct kvec *resv)
+>  	 * for lower versions. RPC_PROG_MISMATCH seems to be the closest
+>  	 * fit.
+>  	 */
+> -	if (versp->vs_need_cong_ctrl &&
+> +	if (versp->vs_need_cong_ctrl && rqstp->rq_xprt &&
+>  	    !test_bit(XPT_CONG_CTRL, &rqstp->rq_xprt->xpt_flags))
+>  		goto err_bad_vers;
+>  
+> @@ -1336,7 +1337,7 @@ svc_process_common(struct svc_rqst *rqstp, struct kvec *argv, struct kvec *resv)
+>  	return 0;
+>  
+>   close:
+> -	if (test_bit(XPT_TEMP, &rqstp->rq_xprt->xpt_flags))
+> +	if (rqstp->rq_xprt && test_bit(XPT_TEMP, &rqstp->rq_xprt->xpt_flags))
+>  		svc_close_xprt(rqstp->rq_xprt);
+>  	dprintk("svc: svc_process close\n");
+>  	return 0;
+> @@ -1459,10 +1460,10 @@ bc_svc_process(struct svc_serv *serv, struct rpc_rqst *req,
+>  	dprintk("svc: %s(%p)\n", __func__, req);
+>  
+>  	/* Build the svc_rqst used by the common processing routine */
+> -	rqstp->rq_xprt = serv->sv_bc_xprt;
+>  	rqstp->rq_xid = req->rq_xid;
+>  	rqstp->rq_prot = req->rq_xprt->prot;
+>  	rqstp->rq_server = serv;
+> +	rqstp->rq_bc_net = req->rq_xprt->xprt_net;
+>  
+>  	rqstp->rq_addrlen = sizeof(req->rq_xprt->addr);
+>  	memcpy(&rqstp->rq_addr, &req->rq_xprt->addr, rqstp->rq_addrlen);
+> diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+> index 51d36230b6e3..bd42da287c26 100644
+> --- a/net/sunrpc/svc_xprt.c
+> +++ b/net/sunrpc/svc_xprt.c
+> @@ -468,10 +468,11 @@ static struct svc_xprt *svc_xprt_dequeue(struct svc_pool *pool)
+>   */
+>  void svc_reserve(struct svc_rqst *rqstp, int space)
+>  {
+> +	struct svc_xprt *xprt = rqstp->rq_xprt;
+> +
+>  	space += rqstp->rq_res.head[0].iov_len;
+>  
+> -	if (space < rqstp->rq_reserved) {
+> -		struct svc_xprt *xprt = rqstp->rq_xprt;
+> +	if (xprt && space < rqstp->rq_reserved) {
+>  		atomic_sub((rqstp->rq_reserved - space), &xprt->xpt_reserved);
+>  		rqstp->rq_reserved = space;
+>  
+> diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+> index 986f3ed7d1a2..793149ba1bda 100644
+> --- a/net/sunrpc/svcsock.c
+> +++ b/net/sunrpc/svcsock.c
+> @@ -1173,7 +1173,7 @@ static int svc_tcp_sendto(struct svc_rqst *rqstp)
+>  /*
+>   * Setup response header. TCP has a 4B record length field.
+>   */
+> -static void svc_tcp_prep_reply_hdr(struct svc_rqst *rqstp)
+> +void svc_tcp_prep_reply_hdr(struct svc_rqst *rqstp)
+>  {
+>  	struct kvec *resv = &rqstp->rq_res.head[0];
+>  
+> -- 
+> 2.17.1
