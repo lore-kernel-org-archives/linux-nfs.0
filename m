@@ -2,228 +2,124 @@ Return-Path: <SRS0=NNg4=PC=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-1.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS,URIBL_BLOCKED
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9BC17C43387
-	for <linux-nfs@archiver.kernel.org>; Tue, 25 Dec 2018 11:47:15 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C212EC43387
+	for <linux-nfs@archiver.kernel.org>; Tue, 25 Dec 2018 22:12:23 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 613002070B
-	for <linux-nfs@archiver.kernel.org>; Tue, 25 Dec 2018 11:47:15 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 85AB32171F
+	for <linux-nfs@archiver.kernel.org>; Tue, 25 Dec 2018 22:12:23 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="P8fiLfK0"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1725858AbeLYLrO (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 25 Dec 2018 06:47:14 -0500
-Received: from relay.sw.ru ([185.231.240.75]:44028 "EHLO relay.sw.ru"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725857AbeLYLrO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 25 Dec 2018 06:47:14 -0500
-Received: from [172.16.24.21]
-        by relay.sw.ru with esmtp (Exim 4.91)
-        (envelope-from <vvs@virtuozzo.com>)
-        id 1gblAu-00053c-RE; Tue, 25 Dec 2018 14:47:04 +0300
-Subject: Re: [PATCH v4 00/10] use-after-free in svc_process_common()
-To:     "J. Bruce Fields" <bfields@fieldses.org>
-Cc:     Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Jeff Layton <jlayton@kernel.org>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        linux-nfs@vger.kernel.org,
-        Evgenii Shatokhin <eshatokhin@virtuozzo.com>
-References: <c696783e-86a4-a10a-928d-35189cffd4ba@virtuozzo.com>
- <20181224170316.GB11596@fieldses.org>
-From:   Vasily Averin <vvs@virtuozzo.com>
-Message-ID: <1b3282c0-12ce-0e2c-0fa9-63418a3f2a80@virtuozzo.com>
-Date:   Tue, 25 Dec 2018 14:47:04 +0300
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101
- Thunderbird/60.2.1
+        id S1725885AbeLYWMW (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 25 Dec 2018 17:12:22 -0500
+Received: from mail-ot1-f66.google.com ([209.85.210.66]:38335 "EHLO
+        mail-ot1-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725863AbeLYWMW (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Dec 2018 17:12:22 -0500
+Received: by mail-ot1-f66.google.com with SMTP id e12so12944416otl.5;
+        Tue, 25 Dec 2018 14:12:20 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=mime-version:in-reply-to:references:from:date:message-id:subject:to
+         :cc;
+        bh=H+F/7kpffcrmNLAFlA4wQutLgELa0cIpQ4uv5/ujSEk=;
+        b=P8fiLfK03yMTM7XE6f2Ds0glYoRxzHGPBtcnafPmETZmxn2VXTEdfWJd9F2Ty5Oe8q
+         p4LrWRFIrjDz1iojSp/BL072c9uq5QPStsI9F3SEjJ+E7ACN0360Qq0xpxgRfWGqbBEZ
+         LQDaDkxA6qpIGyHZZieRtMfVMo2up6++yVWGnNRo56Xw662d+B7vf5dRAMwy9BNIajf1
+         zocs3wv94Xj9ntP5wp+A4wrIbKyaHVVG7Y8zKcgEEjiz1audCsNhvghteIDLh2n7ukBP
+         CRpWw0klrXRLCMfADzygTeD7ir4BUNs10eM7j7d4c47YnGeYy5BK/z6seNiNu4Xnc0jd
+         fiQg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:in-reply-to:references:from:date
+         :message-id:subject:to:cc;
+        bh=H+F/7kpffcrmNLAFlA4wQutLgELa0cIpQ4uv5/ujSEk=;
+        b=YxPOpEGljWxg9uJp0QSMRnLdRCsNwoLZScrcDmbYzjyQ0GuyOcOPBc0vfFJFOuLCLq
+         18aal3TsR8I6VJED4umNIMx6gPxy+xzwUV0xytGYeytbtGd1UKztevcYgnXv9diOheqk
+         ekooUZBAQZDp2LhoUJ7AuKB+joDdzZTnIYDuOHLrPljrLL6j5nS5dtLkNwSnhbUfauQi
+         c/9/AUEZquCEDUE+1Af498Y0WMDAKZItd4/O9P2ihikmntKatO2LoyZcsKALEp2b3GxV
+         ljqEixOEwu41seS5MKvVSuTf+NBdjqNiMNWnkWz/xtNM7NZbzczH2ELY6I4bNNAa8CWT
+         EIgQ==
+X-Gm-Message-State: AJcUukcw+65B0ARtRjITjeeqq5CD1RJ9+Tv+iZM9+vrllT1zp+DvNAda
+        KTVPnygpHZHCOnswP0FuCqG7u9SbA5UF4+3gkFw=
+X-Google-Smtp-Source: ALg8bN4n4DoI/o7renZYLXiIcxQ2lByhvr3lHP4BDQo8lgAspVaSh51vTURsuGN8CRhRA0nPmv65YYMl/iKxwsNGF7M=
+X-Received: by 2002:a9d:734e:: with SMTP id l14mr11308345otk.270.1545775940592;
+ Tue, 25 Dec 2018 14:12:20 -0800 (PST)
 MIME-Version: 1.0
-In-Reply-To: <20181224170316.GB11596@fieldses.org>
-Content-Type: text/plain; charset=utf-8
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
+Received: by 2002:a9d:6c19:0:0:0:0:0 with HTTP; Tue, 25 Dec 2018 14:12:20
+ -0800 (PST)
+In-Reply-To: <alpine.DEB.2.21.1812232304130.2940@hadrien>
+References: <1545555435-24576-1-git-send-email-Julia.Lawall@lip6.fr>
+ <CAKR_QVJefW1vxYb7-qiU8=0YdbFghYo15SK2eGjOC-dntRfyYA@mail.gmail.com> <alpine.DEB.2.21.1812232304130.2940@hadrien>
+From:   Tom Psyborg <pozega.tomislav@gmail.com>
+Date:   Tue, 25 Dec 2018 23:12:20 +0100
+Message-ID: <CAKR_QVLeZBL43W4x1mzcfcakSZyyh9L81vgUMxfnSccKawEfdg@mail.gmail.com>
+Subject: Re: [PATCH 00/20] drop useless LIST_HEAD
+To:     Julia Lawall <julia.lawall@lip6.fr>
+Cc:     Andy Shevchenko <andriy.shevchenko@linux.intel.com>,
+        kernel-janitors@vger.kernel.org, dmaengine@vger.kernel.org,
+        linux-arm-kernel@lists.infradead.org,
+        Dan Williams <dan.j.williams@intel.com>,
+        linux-scsi@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, netdev@vger.kernel.org,
+        linux-rdma@vger.kernel.org, linux-xfs@vger.kernel.org,
+        linux-btrfs@vger.kernel.org,
+        Stefano Stabellini <sstabellini@kernel.org>,
+        xen-devel@lists.xenproject.org, linux-wireless@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Dear Bruce,
+there was discussion about this just some days ago. CC 4-5 lists is
+more than enough
 
-I would like to ask you to send first two patches to stable@ (rest ones can be skipped)
-It fixes CVE-2018-16884
-it was broken since 2012, v3.7 when following patch allowed 
-to execute svc_create_xprt("tcp-bc") in different net namespaces. 
-Fixes: commit 23c20ecd4475 ("NFS: callback up - users counting cleanup") # 3.7
-
-On 12/24/18 8:03 PM, J. Bruce Fields wrote:
-> So you fixed a bug *and* deleted a net 200 lines?  Sign me up.
-> 
-> I guess I'll plan to take this through my tree for 4.21.  The patches
-> look OK to me, I just want to run it through my testing.  That make take
-> a couple days due to the holidays.
-> 
-> --b.
-> 
-> On Mon, Dec 24, 2018 at 02:44:24PM +0300, Vasily Averin wrote:
->> v4: 
->> - re-split,
->> - use direct call of svc_tcp_prep_reply_hdr() in svc_process_common()
->> - removed unused bc_up
->> - removed useless svc_tcp_bc_class and svc_rdma_bc_class
->> - removed unused xpo_prep_reply_hdr
+On 23/12/2018, Julia Lawall <julia.lawall@lip6.fr> wrote:
+>
+>
+> On Sun, 23 Dec 2018, Tom Psyborg wrote:
+>
+>> Why do you CC this to so many lists?
+>
+> Because the different files are in different subsystems.  The cover letter
+> goes to a list for each file, or to a person if there is no list.  The
+> patches go to the people and lists associated with the affected files.
+>
+> julia
+>
 >>
->> v3:
->> - first patch was reworked again,
->>   instead of svc_xprt search svc_process_common() now uses 
->>   bc_prep_reply_hdr() function pointer saved on per-netns sunrpc_net.
->> - first patch was splitted into 5 parts.
->> - comments cleanup
+>> On 23/12/2018, Julia Lawall <Julia.Lawall@lip6.fr> wrote:
+>> > Drop LIST_HEAD where the variable it declares is never used.
+>> >
+>> > ---
+>> >
+>> >  drivers/dma/at_hdmac.c                                |    5 -----
+>> >  drivers/dma/dw/core.c                                 |    1 -
+>> >  drivers/dma/pl330.c                                   |    1 -
+>> >  drivers/dma/sa11x0-dma.c                              |    2 --
+>> >  drivers/dma/st_fdma.c                                 |    3 ---
+>> >  drivers/infiniband/ulp/ipoib/ipoib_ib.c               |    1 -
+>> >  drivers/net/ethernet/mellanox/mlx4/resource_tracker.c |    5 -----
+>> >  drivers/net/ethernet/mellanox/mlx5/core/en_tc.c       |    3 ---
+>> >  drivers/net/ethernet/mellanox/mlxsw/spectrum.c        |    1 -
+>> >  drivers/net/wireless/st/cw1200/queue.c                |    1 -
+>> >  drivers/scsi/lpfc/lpfc_nvme.c                         |    2 --
+>> >  drivers/scsi/lpfc/lpfc_scsi.c                         |    2 --
+>> >  drivers/scsi/lpfc/lpfc_sli.c                          |    1 -
+>> >  drivers/scsi/qla2xxx/qla_init.c                       |    1 -
+>> >  drivers/xen/xenbus/xenbus_dev_frontend.c              |    2 --
+>> >  fs/btrfs/relocation.c                                 |    1 -
+>> >  fs/nfs/nfs4client.c                                   |    1 -
+>> >  fs/nfsd/nfs4layouts.c                                 |    1 -
+>> >  fs/xfs/xfs_buf.c                                      |    1 -
+>> >  fs/xfs/xfs_fsops.c                                    |    1 -
+>> >  20 files changed, 36 deletions(-)
+>> >
 >>
->> v2:
->> - first patch was reworked to satisfy Trond's requirements:
->>   to do not assign rqstp->rq_xprt in svc_process_common() at all,
->>   provide proper xpt_ops reference as a new parameter,
->>   adopt functions potentially called from svc_process_common() 
->>    to properly handle rqstp->rq_xprt = NULL case.
->>
->>
->> nfsv41+ clients are still not properly net-namespace-filied.
->>
->> OpenVz got report on crash in svc_process_common() 
->> abd founf that bc_svc_process() cannot use serv->sv_bc_xprt as a pointer.
->>
->> serv is global structure, but sv_bc_xprt is assigned per-netnamespace.
->> If nfsv41+ shares (with the same minorversion) are mounted in several containers together
->> then bc_svc_process() can use wrong backchannel or even access freed memory.
->>
->> OpenVz got report on crash svc_process_common(),
->> and after careful investigations Evgenii Shatokhin have found its reproducer.
->> Then I've reproduced the problem on last mainline kernel.
->>
->> In described scenario you need to have: 
->> - nodeA: VM with 2 interfaces and debug kernel with enabled KASAN.
->> - nodeB: any other node 
->> - NFS-SRV: NFSv41+ server (4.2 is used in exaple below) 
->>
->> 1) nodeA: mount nfsv41+ share
->> # mount -t nfs4 -o vers=4.2 NFS-SRV:/export/ /mnt/ns1
->>   VvS: here serv->sv_bc_xprt is assigned first time,
->>        in xs_tcp_bc_up() it is assigned to svc_xprt of mount's backchannel
->>
->> 2) nodeA: create net namespace, and mount the same (or any other) NFSv41+ share
->> # ip netns add second
->> # ip link set ens2 netns second
->> # ip netns exec second bash
->> (inside netns second) # dhclient ens2 
->>   VvS: now nets got access to external network
->> (inside netns second) # mount -t nfs4 -o vers=4.2 NFS-SRV:/export/ /mnt/ns2 
->>   VvS: now serv->sv_bc_xprt is overwritten by reference to svc_xprt of new mount's backchannel
->>   NB: you can mount any other NFS share but minorversion must be the same.
->>   NB2: if hardware allows you can use rdma transport here
->>   NB3: you can access nothing in mounted share, problem's trigger was enabled already.
->>
->> 3) NodeA, destroy mount inside netns and then netns itself.
->>
->> (inside netns second) # umount /mnt/ns2
->> (inside netns second) # ip link set ens2 netns 1
->> (inside netns second) # exit
->>    VvS: return to init_net
->> # ip netns del second
->>    VvS: now second NFS mount and second net namespace was destroyed.
->>
->> 4) Node A: prepare backchannel event
->> # echo test1 > /mnt/ns1/test1.txt
->> # echo test2 > /mnt/ns1/test2.txt
->> # python
->>>>> fl=open('/mnt/ns1/test1.txt','r')
->>>>>
->>
->> 4) Node B: replace file open by NodeA
->> # mount -t nfs -o vers=4.2 NFS-SRV:/export/ /mnt/
->> # mv /mnt/test2.txt /mnt/test1.txt
->>
->> ===> KASAN on nodeA detect an access to already freed memory.
->> (see dmesg example in attach of v1 patch version)
->>
->> svc_process_common() 
->>         /* Setup reply header */
->>         rqstp->rq_xprt->xpt_ops->xpo_prep_reply_hdr(rqstp); <<< HERE
->>
->> svc_process_common() uses already freed rqstp->rq_xprt,
->> it was assigned in bc_svc_process() where it was taken from serv->sv_bc_xprt.
->>
->> serv->sv_bc_xprt cannot be used as a pointer,
->> it can be assigned per net-namespace, either in svc_bc_tcp_create() 
->> or in xprt_rdma_bc_up().
->>
->> According to Trond, the whole "let's set up rqstp->rq_xprt
->> for the back channel" is nothing but a giant hack in order
->> to work around the fact that svc_process_common() uses it
->> to find the xpt_ops, and perform a couple of (meaningless
->> for the back channel) tests of xpt_flags.
->>
->> All we really need in svc_process_common() is to be able to run
->> rqstp->rq_xprt->xpt_ops->xpo_prep_reply_hdr()
->>
->> Bruce J Fields points that this xpo_prep_reply_hdr() call
->> is an awfully roundabout way just to do "svc_putnl(resv, 0);"
->> in the tcp case.
->>
->> To fix the problem svc_process_common() checks svc_rqstp->rq_prot
->> inherited from incoming request and if required calls 
->> svc_tcp_prep_reply_hdr() directly.
->>
->> It was also required to store a pointer to struct net in the
->> struct svc_rqst so that functions called from inside
->> svc_process_common() (nfs4_callback_compound(),
->> svcauth_gss_accept() and some other) can find it.
->> Some other functions was adopted to handle empty rqstp->rq_xprt
->>
->> First patch switches svnauth_gss-* function to use SVC_NET()
->> 2nd patch fixes use-after-free itself:
->>  to adjust reply header svc_process_common() checks prot of incoming request
->>    and if required calls svc_tcp_prep_reply_hdr() directly
->>  function called from svc_process_common() are adopted to properly handle
->>    rqstp->rq_xprt = NULL
->> 3rd patch replaces sv_bc_xprt use in in svc_is_backchannel()
->>  by simple boolean flag
->> 4rd patch removes unused bc_up calls
->>
->> 5th and 6th patches removes unused fake "transports", svc_tcp/rdma_bc_class
->> 7th patch removes unused xpo_prep_reply_hdr callback
->> Rest of patches are minor cleanup. 
->>
->> Vasily Averin (10):
->>   sunrpc: use SVC_NET() in svcauth_gss_* functions
->>   sunrpc: use-after-free in svc_process_common()
->>   sunrpc: replace svc_serv->sv_bc_xprt by boolean flag
->>   sunrpc: remove unused bc_up operation from rpc_xprt_ops
->>   sunrpc: remove svc_tcp_bc_class
->>   sunrpc: remove svc_rdma_bc_class
->>   sunrpc: remove unused xpo_prep_reply_hdr callback
->>   sunrpc: make visible processing error in bc_svc_process()
->>   sunrpc: fix debug message in svc_create_xprt()
->>   nfs: minor typo in nfs4_callback_up_net()
->>
->>  fs/nfs/callback.c                        |  10 +-
->>  include/linux/sunrpc/bc_xprt.h           |  10 +-
->>  include/linux/sunrpc/svc.h               |   7 +-
->>  include/linux/sunrpc/svc_rdma.h          |   1 -
->>  include/linux/sunrpc/svc_xprt.h          |   1 -
->>  include/linux/sunrpc/xprt.h              |   1 -
->>  include/trace/events/sunrpc.h            |   6 +-
->>  net/sunrpc/auth_gss/svcauth_gss.c        |   8 +-
->>  net/sunrpc/svc.c                         |  24 +++--
->>  net/sunrpc/svc_xprt.c                    |   9 +-
->>  net/sunrpc/svcsock.c                     | 120 -----------------------
->>  net/sunrpc/xprtrdma/backchannel.c        |  20 ----
->>  net/sunrpc/xprtrdma/svc_rdma.c           |   6 --
->>  net/sunrpc/xprtrdma/svc_rdma_sendto.c    |   4 -
->>  net/sunrpc/xprtrdma/svc_rdma_transport.c |  59 -----------
->>  net/sunrpc/xprtrdma/transport.c          |   1 -
->>  net/sunrpc/xprtrdma/xprt_rdma.h          |   1 -
->>  net/sunrpc/xprtsock.c                    |  12 ---
->>  18 files changed, 46 insertions(+), 254 deletions(-)
->>
->> -- 
->> 2.17.1
-> 
+>
