@@ -1,125 +1,289 @@
-Return-Path: <SRS0=fblw=PE=vger.kernel.org=linux-nfs-owner@kernel.org>
+Return-Path: <SRS0=XDl6=PF=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.2 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
-	SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id ABA94C43387
-	for <linux-nfs@archiver.kernel.org>; Thu, 27 Dec 2018 22:34:50 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 72C8BC43387
+	for <linux-nfs@archiver.kernel.org>; Fri, 28 Dec 2018 02:55:21 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 6CA392148E
-	for <linux-nfs@archiver.kernel.org>; Thu, 27 Dec 2018 22:34:50 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 2CD1D214C6
+	for <linux-nfs@archiver.kernel.org>; Fri, 28 Dec 2018 02:55:21 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="YV83CEd9"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="RtCQ91Ih"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1730058AbeL0Wet (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 27 Dec 2018 17:34:49 -0500
-Received: from userp2130.oracle.com ([156.151.31.86]:39454 "EHLO
-        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1729908AbeL0Wet (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 27 Dec 2018 17:34:49 -0500
-Received: from pps.filterd (userp2130.oracle.com [127.0.0.1])
-        by userp2130.oracle.com (8.16.0.22/8.16.0.22) with SMTP id wBRMTu8Z075620;
-        Thu, 27 Dec 2018 22:34:46 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=content-type :
- mime-version : subject : from : in-reply-to : date : cc :
- content-transfer-encoding : message-id : references : to;
- s=corp-2018-07-02; bh=tSbbs4sazqv5WJ/mlvGMZYdkey3cKT9s4DZGHiDo6dQ=;
- b=YV83CEd9OKzqh5gwc55YDBcQcR6PznVSmYA9UUHlGm2Ct6kAQT7kEnYJ4aWipeKH2HsS
- pSME7KkYA9sJAt21E25l0iKCYWEla8XvPmIWXywacrVqOtKi+allzTBVeoxb7AObj53U
- ncFZ5zgc1OOt21emITTxF/SIMYH+g+RvPRuS9yIKm5w5GEtxmz3URcMX3ZAaREbjGbtJ
- DY+pDGSSqgscDEWCx5QBUBX1HdPJXYpy7+ay0asf8WXLa3b5GFh2J3GXb0e1MyCDUsks
- unVA2hoHdPiOiLJ3KIMlIh/Y2nf7Y8qUy+vxbU0z9kWBsr5C1u3aJ0e7CbL9wQeHW86M ow== 
-Received: from userv0022.oracle.com (userv0022.oracle.com [156.151.31.74])
-        by userp2130.oracle.com with ESMTP id 2phcptxsfc-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Thu, 27 Dec 2018 22:34:46 +0000
-Received: from aserv0121.oracle.com (aserv0121.oracle.com [141.146.126.235])
-        by userv0022.oracle.com (8.14.4/8.14.4) with ESMTP id wBRMYjde012462
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Thu, 27 Dec 2018 22:34:46 GMT
-Received: from abhmp0019.oracle.com (abhmp0019.oracle.com [141.146.116.25])
-        by aserv0121.oracle.com (8.14.4/8.13.8) with ESMTP id wBRMYjLA025768;
-        Thu, 27 Dec 2018 22:34:45 GMT
-Received: from [192.168.1.184] (/68.61.232.219)
-        by default (Oracle Beehive Gateway v4.0)
-        with ESMTP ; Thu, 27 Dec 2018 14:34:45 -0800
-Content-Type: text/plain;
-        charset=utf-8
-Mime-Version: 1.0 (1.0)
-Subject: Re: [PATCH v3 26/44] SUNRPC: Improve latency for interactive tasks
-From:   Chuck Lever <chuck.lever@oracle.com>
-X-Mailer: iPad Mail (16C50)
-In-Reply-To: <BC34B04D-4AD5-46FB-8DC6-310BF3FBEBD3@hammerspace.com>
-Date:   Thu, 27 Dec 2018 17:34:42 -0500
-Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Transfer-Encoding: quoted-printable
-Message-Id: <4FB643C8-4790-42B9-AF38-622E10F6A1B2@oracle.com>
-References: <20180917130335.112832-1-trond.myklebust@hammerspace.com> <20180917130335.112832-2-trond.myklebust@hammerspace.com> <20180917130335.112832-3-trond.myklebust@hammerspace.com> <20180917130335.112832-4-trond.myklebust@hammerspace.com> <20180917130335.112832-5-trond.myklebust@hammerspace.com> <20180917130335.112832-6-trond.myklebust@hammerspace.com> <20180917130335.112832-7-trond.myklebust@hammerspace.com> <20180917130335.112832-8-trond.myklebust@hammerspace.com> <20180917130335.112832-9-trond.myklebust@hammerspace.com> <20180917130335.112832-10-trond.myklebust@hammerspace.com> <20180917130335.112832-11-trond.myklebust@hammerspace.com> <20180917130335.112832-12-trond.myklebust@hammerspace.com> <20180917130335.112832-13-trond.myklebust@hammerspace.com> <20180917130335.112832-14-trond.myklebust@hammerspace.com> <20180917130335.112832-15-trond.myklebust@hammerspace.com> <20180917130335.112832-16-trond.myklebust@hammerspace.com> <20180917130335.112832-17-trond.myklebust@!
- hammerspace.com> <20180917130335.112832-18-trond.myklebust@hammerspace.com> <20180917130335.112832-19-trond.myklebust@hammerspace.com> <20180917130335.112832-20-trond.myklebust@hammerspace.com> <20180917130335.112832-21-trond.myklebust@hammerspace.com> <20180917130335.112832-22-trond.myklebust@hammerspace.com> <20180917130335.112832-23-trond.myklebust@hammerspace.com> <20180917130335.112832-24-trond.myklebust@hammerspace.com> <20180917130335.112832-25-trond.myklebust@hammerspace.com> <20180917130335.112832-26-trond.myklebust@hammerspace.com> <20180917130335.112832-27-trond.myklebust@hammerspace.com> <4D3465FB-041C-4BB1-AB75-03511FA5AAF1@oracle.com> <BC34B04D-4AD5-46FB-8DC6-310BF3FBEBD3@hammerspace.com>
-To:     Trond Myklebust <trondmy@hammerspace.com>
-X-Proofpoint-Virus-Version: vendor=nai engine=5900 definitions=9119 signatures=668680
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 suspectscore=0 malwarescore=0
- phishscore=0 bulkscore=0 spamscore=0 mlxscore=0 mlxlogscore=359
- adultscore=0 classifier=spam adjust=0 reason=mlx scancount=1
- engine=8.0.1-1810050000 definitions=main-1812270194
+        id S1728177AbeL1CzS (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 27 Dec 2018 21:55:18 -0500
+Received: from mail-pg1-f196.google.com ([209.85.215.196]:40490 "EHLO
+        mail-pg1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726873AbeL1CzR (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 27 Dec 2018 21:55:17 -0500
+Received: by mail-pg1-f196.google.com with SMTP id z10so9491426pgp.7;
+        Thu, 27 Dec 2018 18:55:16 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=from:to:cc:subject:date:message-id;
+        bh=7C49Dk38UTlEkVQcN/N0SGjB+P62imQcKZsC2ilj/A4=;
+        b=RtCQ91IhUIwdJMB0yHiKF728Z6OceIxLxVzDTRZpi8lnH7cV0aHSCHOXG710dnuu7m
+         VmgKAJN5zQSsQ4rg6BaHX87BPWehdm2DlPZCr1DRIV6NvsbouMmQ7ctjvYVPr9o2iK3u
+         r2m0INlP6w1sBF994GfU22GeTIeR/L8ZfVtb6NTotcvLp76A2zYHiBLyyyZcKYr908JA
+         a9PMSB/zcl1tNPvS4CiwNv0RrupJGLke2ix5u5Cjy4yrni17K/MyKcVe9wOnQs2vr6Ei
+         JDFkQIQ5IEijrmNhnWIBxqimLyZydeoDAQL05dvQ8fSb8kJmZ2CDu/bJn+r017s0foSz
+         j+WQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:from:to:cc:subject:date:message-id;
+        bh=7C49Dk38UTlEkVQcN/N0SGjB+P62imQcKZsC2ilj/A4=;
+        b=QY3PGmrDotQs6jLKD+Iv85HXHGSoVG71kUhaq1WAj41HmpwaZ0vbgusF+ETiJOGIXS
+         2JCdqsB+HJyDPtkq87dRRsF2UJoWDS/Elnds1SqRRqZqRYjkIHIDEEw3dXsGduNCmxzn
+         Mcrlj08R+d0Oy+h1K2GvNejOzuD6ukkcYu6w2o+uGlb8WLdEeW4w/E05PWR1PfQZOKAU
+         0EahDhNgXsen0h0o3qcV6Tj5W9hj66RjD2PKv6SVN6/YFIQlxlN+wVLdNH2/CPgeWVMW
+         oZG0prkvyPdia1VqUEOp8niq2ri/oT6ezFLT71qlCl1i13I6v20zCnh6r05sWNN2amnR
+         rOEQ==
+X-Gm-Message-State: AJcUukeAmmaFKnFV11HdL1k01taooA0Zwn3GQuJARKMmnGbp+cAkV/LL
+        egWJyEPOjmTe5g3z5b1Tx/bX/upf
+X-Google-Smtp-Source: AFSGD/UEj7T4wzKqnni8+YqVPC796Y+S35F5IbEAcMHewGa0pvtJkDNs+B6o1RCemoofBWbYKuGCHA==
+X-Received: by 2002:a62:1484:: with SMTP id 126mr26090954pfu.257.1545965715599;
+        Thu, 27 Dec 2018 18:55:15 -0800 (PST)
+Received: from deepa-ubuntu.lan (c-98-234-52-230.hsd1.ca.comcast.net. [98.234.52.230])
+        by smtp.gmail.com with ESMTPSA id c13sm85461530pfe.93.2018.12.27.18.55.14
+        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Thu, 27 Dec 2018 18:55:14 -0800 (PST)
+From:   Deepa Dinamani <deepa.kernel@gmail.com>
+To:     davem@davemloft.net, netdev@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Cc:     linux-nfs@vger.kernel.org, viro@zeniv.linux.org.uk, arnd@arndb.de,
+        eric.dumazet@gmail.com, y2038@lists.linaro.org
+Subject: [PATCH v3] sock: Make sock->sk_stamp thread-safe
+Date:   Thu, 27 Dec 2018 18:55:09 -0800
+Message-Id: <20181228025509.14194-1-deepa.kernel@gmail.com>
+X-Mailer: git-send-email 2.17.1
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
+Al Viro mentioned (Message-ID
+<20170626041334.GZ10672@ZenIV.linux.org.uk>)
+that there is probably a race condition
+lurking in accesses of sk_stamp on 32-bit machines.
 
-> On Dec 27, 2018, at 5:14 PM, Trond Myklebust <trondmy@hammerspace.com> wro=
-te:
->=20
->=20
->=20
->> On Dec 27, 2018, at 20:21, Chuck Lever <chuck.lever@oracle.com> wrote:
->>=20
->> Hi Trond-
->>=20
->> I've chased down a couple of remaining regressions with the v4.20 NFS cli=
-ent,
->> and they seem to be rooted in this commit.
->>=20
->> When using sec=3Dkrb5, krb5i, or krb5p I found that multi-threaded worklo=
-ads
->> trigger a lot of server-side disconnects. This is with TCP and RDMA trans=
-ports.
->> An instrumented server shows that the client is under-running the GSS seq=
-uence
->> number window. I monitored the order in which GSS sequence numbers appear=
- on
->> the wire, and after this commit, the sequence numbers are wildly misorder=
-ed.
->> If I revert the hunk in xprt_request_enqueue_transmit, the problem goes a=
-way.
->>=20
->> I also found that reverting that hunk results in a 3-4% improvement in fi=
-o
->> IOPS rates, as well as improvement in average and maximum latency as repo=
-rted
->> by fio.
->>=20
->=20
-> Hmm=E2=80=A6 Provided the sequence numbers still lie within the window, th=
-en why would the order matter?
+sock->sk_stamp is of type ktime_t which is always an s64.
+On a 32 bit architecture, we might run into situations of
+unsafe access as the access to the field becomes non atomic.
 
-The misordering is so bad that one request is delayed long enough to
-fall outside the window. The new =E2=80=9Cneed re-encode=E2=80=9D logic does=
- not
-trigger.
+Use seqlocks for synchronization.
+This allows us to avoid using spinlocks for readers as
+readers do not need mutual exclusion.
 
+Another approach to solve this is to require sk_lock for all
+modifications of the timestamps. The current approach allows
+for timestamps to have their own lock: sk_stamp_lock.
+This allows for the patch to not compete with already
+existing critical sections, and side effects are limited
+to the paths in the patch.
 
-> Cheers
->  Trond
->=20
->=20
-> _________________________________
-> Trond Myklebust
-> Linux NFS client maintainer, Hammerspace
-> trond.myklebust@hammerspace.com
->=20
+The addition of the new field maintains the data locality
+optimizations from
+commit 9115e8cd2a0c ("net: reorganize struct sock for better data
+locality")
+
+Note that all the instances of the sk_stamp accesses
+are either through the ioctl or the syscall recvmsg.
+
+Signed-off-by: Deepa Dinamani <deepa.kernel@gmail.com>
+---
+Changes since v2:
+* added ifdef as per eric's request
+Changes since v1:
+* fixed sunrpc sk_stamp update
+
+ include/net/sock.h   | 38 +++++++++++++++++++++++++++++++++++---
+ net/compat.c         | 15 +++++++++------
+ net/core/sock.c      | 15 ++++++++++-----
+ net/sunrpc/svcsock.c |  2 +-
+ 4 files changed, 55 insertions(+), 15 deletions(-)
+
+diff --git a/include/net/sock.h b/include/net/sock.h
+index f665d74ae509..e144c071c93f 100644
+--- a/include/net/sock.h
++++ b/include/net/sock.h
+@@ -298,6 +298,7 @@ struct sock_common {
+   *	@sk_filter: socket filtering instructions
+   *	@sk_timer: sock cleanup timer
+   *	@sk_stamp: time stamp of last packet received
++  *	@sk_stamp_seq: lock for accessing sk_stamp on 32 bit architectures only
+   *	@sk_tsflags: SO_TIMESTAMPING socket options
+   *	@sk_tskey: counter to disambiguate concurrent tstamp requests
+   *	@sk_zckey: counter to order MSG_ZEROCOPY notifications
+@@ -474,6 +475,9 @@ struct sock {
+ 	const struct cred	*sk_peer_cred;
+ 	long			sk_rcvtimeo;
+ 	ktime_t			sk_stamp;
++#if BITS_PER_LONG==32
++	seqlock_t		sk_stamp_seq;
++#endif
+ 	u16			sk_tsflags;
+ 	u8			sk_shutdown;
+ 	u32			sk_tskey;
+@@ -2287,6 +2291,34 @@ static inline void sk_drops_add(struct sock *sk, const struct sk_buff *skb)
+ 	atomic_add(segs, &sk->sk_drops);
+ }
+ 
++static inline ktime_t sock_read_timestamp(struct sock *sk)
++{
++#if BITS_PER_LONG==32
++	unsigned int seq;
++	ktime_t kt;
++
++	do {
++		seq = read_seqbegin(&sk->sk_stamp_seq);
++		kt = sk->sk_stamp;
++	} while (read_seqretry(&sk->sk_stamp_seq, seq));
++
++	return kt;
++#else
++	return sk->sk_stamp;
++#endif
++}
++
++static inline void sock_write_timestamp(struct sock *sk, ktime_t kt)
++{
++#if BITS_PER_LONG==32
++	write_seqlock(&sk->sk_stamp_seq);
++	sk->sk_stamp = kt;
++	write_sequnlock(&sk->sk_stamp_seq);
++#else
++	sk->sk_stamp = kt;
++#endif
++}
++
+ void __sock_recv_timestamp(struct msghdr *msg, struct sock *sk,
+ 			   struct sk_buff *skb);
+ void __sock_recv_wifi_status(struct msghdr *msg, struct sock *sk,
+@@ -2311,7 +2343,7 @@ sock_recv_timestamp(struct msghdr *msg, struct sock *sk, struct sk_buff *skb)
+ 	     (sk->sk_tsflags & SOF_TIMESTAMPING_RAW_HARDWARE)))
+ 		__sock_recv_timestamp(msg, sk, skb);
+ 	else
+-		sk->sk_stamp = kt;
++		sock_write_timestamp(sk, kt);
+ 
+ 	if (sock_flag(sk, SOCK_WIFI_STATUS) && skb->wifi_acked_valid)
+ 		__sock_recv_wifi_status(msg, sk, skb);
+@@ -2332,9 +2364,9 @@ static inline void sock_recv_ts_and_drops(struct msghdr *msg, struct sock *sk,
+ 	if (sk->sk_flags & FLAGS_TS_OR_DROPS || sk->sk_tsflags & TSFLAGS_ANY)
+ 		__sock_recv_ts_and_drops(msg, sk, skb);
+ 	else if (unlikely(sock_flag(sk, SOCK_TIMESTAMP)))
+-		sk->sk_stamp = skb->tstamp;
++		sock_write_timestamp(sk, skb->tstamp);
+ 	else if (unlikely(sk->sk_stamp == SK_DEFAULT_STAMP))
+-		sk->sk_stamp = 0;
++		sock_write_timestamp(sk, 0);
+ }
+ 
+ void __sock_tx_timestamp(__u16 tsflags, __u8 *tx_flags);
+diff --git a/net/compat.c b/net/compat.c
+index 47a614b370cd..d1f3a8a0b3ef 100644
+--- a/net/compat.c
++++ b/net/compat.c
+@@ -467,12 +467,14 @@ int compat_sock_get_timestamp(struct sock *sk, struct timeval __user *userstamp)
+ 	ctv = (struct compat_timeval __user *) userstamp;
+ 	err = -ENOENT;
+ 	sock_enable_timestamp(sk, SOCK_TIMESTAMP);
+-	tv = ktime_to_timeval(sk->sk_stamp);
++	tv = ktime_to_timeval(sock_read_timestamp(sk));
++
+ 	if (tv.tv_sec == -1)
+ 		return err;
+ 	if (tv.tv_sec == 0) {
+-		sk->sk_stamp = ktime_get_real();
+-		tv = ktime_to_timeval(sk->sk_stamp);
++		ktime_t kt = ktime_get_real();
++		sock_write_timestamp(sk, kt);
++		tv = ktime_to_timeval(kt);
+ 	}
+ 	err = 0;
+ 	if (put_user(tv.tv_sec, &ctv->tv_sec) ||
+@@ -494,12 +496,13 @@ int compat_sock_get_timestampns(struct sock *sk, struct timespec __user *usersta
+ 	ctv = (struct compat_timespec __user *) userstamp;
+ 	err = -ENOENT;
+ 	sock_enable_timestamp(sk, SOCK_TIMESTAMP);
+-	ts = ktime_to_timespec(sk->sk_stamp);
++	ts = ktime_to_timespec(sock_read_timestamp(sk));
+ 	if (ts.tv_sec == -1)
+ 		return err;
+ 	if (ts.tv_sec == 0) {
+-		sk->sk_stamp = ktime_get_real();
+-		ts = ktime_to_timespec(sk->sk_stamp);
++		ktime_t kt = ktime_get_real();
++		sock_write_timestamp(sk, kt);
++		ts = ktime_to_timespec(kt);
+ 	}
+ 	err = 0;
+ 	if (put_user(ts.tv_sec, &ctv->tv_sec) ||
+diff --git a/net/core/sock.c b/net/core/sock.c
+index 6d7e189e3cd9..8236b28611c5 100644
+--- a/net/core/sock.c
++++ b/net/core/sock.c
+@@ -2747,6 +2747,9 @@ void sock_init_data(struct socket *sock, struct sock *sk)
+ 	sk->sk_sndtimeo		=	MAX_SCHEDULE_TIMEOUT;
+ 
+ 	sk->sk_stamp = SK_DEFAULT_STAMP;
++#if BITS_PER_LONG==32
++	seqlock_init(&sk->sk_stamp_seq);
++#endif
+ 	atomic_set(&sk->sk_zckey, 0);
+ 
+ #ifdef CONFIG_NET_RX_BUSY_POLL
+@@ -2846,12 +2849,13 @@ int sock_get_timestamp(struct sock *sk, struct timeval __user *userstamp)
+ 	struct timeval tv;
+ 
+ 	sock_enable_timestamp(sk, SOCK_TIMESTAMP);
+-	tv = ktime_to_timeval(sk->sk_stamp);
++	tv = ktime_to_timeval(sock_read_timestamp(sk));
+ 	if (tv.tv_sec == -1)
+ 		return -ENOENT;
+ 	if (tv.tv_sec == 0) {
+-		sk->sk_stamp = ktime_get_real();
+-		tv = ktime_to_timeval(sk->sk_stamp);
++		ktime_t kt = ktime_get_real();
++		sock_write_timestamp(sk, kt);
++		tv = ktime_to_timeval(kt);
+ 	}
+ 	return copy_to_user(userstamp, &tv, sizeof(tv)) ? -EFAULT : 0;
+ }
+@@ -2862,11 +2866,12 @@ int sock_get_timestampns(struct sock *sk, struct timespec __user *userstamp)
+ 	struct timespec ts;
+ 
+ 	sock_enable_timestamp(sk, SOCK_TIMESTAMP);
+-	ts = ktime_to_timespec(sk->sk_stamp);
++	ts = ktime_to_timespec(sock_read_timestamp(sk));
+ 	if (ts.tv_sec == -1)
+ 		return -ENOENT;
+ 	if (ts.tv_sec == 0) {
+-		sk->sk_stamp = ktime_get_real();
++		ktime_t kt = ktime_get_real();
++		sock_write_timestamp(sk, kt);
+ 		ts = ktime_to_timespec(sk->sk_stamp);
+ 	}
+ 	return copy_to_user(userstamp, &ts, sizeof(ts)) ? -EFAULT : 0;
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index 986f3ed7d1a2..b7e67310ec37 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -549,7 +549,7 @@ static int svc_udp_recvfrom(struct svc_rqst *rqstp)
+ 		/* Don't enable netstamp, sunrpc doesn't
+ 		   need that much accuracy */
+ 	}
+-	svsk->sk_sk->sk_stamp = skb->tstamp;
++	sock_write_timestamp(svsk->sk_sk, skb->tstamp);
+ 	set_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags); /* there may be more data... */
+ 
+ 	len  = skb->len;
+-- 
+2.17.1
 
