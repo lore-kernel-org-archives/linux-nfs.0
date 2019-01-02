@@ -2,173 +2,162 @@ Return-Path: <SRS0=5e7g=PK=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.5 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
-	SPF_PASS,UNPARSEABLE_RELAY,URIBL_BLOCKED autolearn=ham autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-1.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 15724C43387
-	for <linux-nfs@archiver.kernel.org>; Wed,  2 Jan 2019 18:51:14 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 52154C43387
+	for <linux-nfs@archiver.kernel.org>; Wed,  2 Jan 2019 18:57:16 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id DFA81218D3
-	for <linux-nfs@archiver.kernel.org>; Wed,  2 Jan 2019 18:51:13 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id F268221019
+	for <linux-nfs@archiver.kernel.org>; Wed,  2 Jan 2019 18:57:15 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="ObnBpzFV"
+	dkim=pass (1024-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="p0xE0sHf"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728414AbfABSvN (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 2 Jan 2019 13:51:13 -0500
-Received: from userp2130.oracle.com ([156.151.31.86]:40272 "EHLO
-        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725993AbfABSvL (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 2 Jan 2019 13:51:11 -0500
-Received: from pps.filterd (userp2130.oracle.com [127.0.0.1])
-        by userp2130.oracle.com (8.16.0.22/8.16.0.22) with SMTP id x02IiB7g011783;
-        Wed, 2 Jan 2019 18:51:07 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=content-type :
- mime-version : subject : from : in-reply-to : date : cc :
- content-transfer-encoding : message-id : references : to;
- s=corp-2018-07-02; bh=W2xuuSzYTCCgijcXT0vth/ST4ItKLuZN65LPw+xzxgE=;
- b=ObnBpzFVbbJa5Wj7MzjHZWJ/BN26d1j4pIteCPtoTvzXvSTdNTvmpcTOJ99FXdIKQg+J
- FByxkGW0hdpYdO9EbJEyYZVEh4yDGqM8bRxvZ/spBDRH4ejMTMyN6R3fX5Ico60ITaPB
- bi+AxgpTsV3wWAOPAxDdgJFs6tGBpXmLmyPqX/C3JJCKObmAvREsXaG9PoZI+8n1NzsE
- 2cyMJFAhZDCx5bAPgoETDsGI99loQCsyM8CafWZOFgzcZhLHzamuwlXGzls9lWBX+C0p
- ZOfU7cGe9LaZkbqvrwBnropdBpb4XcSKZThUi5sEwHrhqTaE1SFw9hs5Oh4FUwI/LXAi Ag== 
-Received: from aserv0022.oracle.com (aserv0022.oracle.com [141.146.126.234])
-        by userp2130.oracle.com with ESMTP id 2pp0btuja7-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Wed, 02 Jan 2019 18:51:07 +0000
-Received: from aserv0122.oracle.com (aserv0122.oracle.com [141.146.126.236])
-        by aserv0022.oracle.com (8.14.4/8.14.4) with ESMTP id x02Ip6CA009079
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Wed, 2 Jan 2019 18:51:06 GMT
-Received: from abhmp0016.oracle.com (abhmp0016.oracle.com [141.146.116.22])
-        by aserv0122.oracle.com (8.14.4/8.14.4) with ESMTP id x02Ip6YI023989;
-        Wed, 2 Jan 2019 18:51:06 GMT
-Received: from anon-dhcp-121.1015granger.net (/68.61.232.219)
-        by default (Oracle Beehive Gateway v4.0)
-        with ESMTP ; Wed, 02 Jan 2019 10:51:06 -0800
-Content-Type: text/plain;
-        charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 11.5 \(3445.9.1\))
+        id S1728596AbfABS5P (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 2 Jan 2019 13:57:15 -0500
+Received: from mail-eopbgr680108.outbound.protection.outlook.com ([40.107.68.108]:35264
+        "EHLO NAM04-BN3-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1728395AbfABS5P (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 2 Jan 2019 13:57:15 -0500
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=hammerspace.com;
+ s=selector1;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=Y7X1cuEJN5BEST6UNLCGEl+pSGdbyPSnVRUcZmj6eWc=;
+ b=p0xE0sHfi8VMu9O+NUZt744A9jmDaMbBoHqKwUSoV2qH5bSg27dNINXYjO6MskD7W1z9Jm0FR9HU70xQUym+iH5q2SK5U6TKvbqh0V0bSK821FrVjtk8HasxSbym2gCmwuDIIycTXfylqKswITEivQZjfPDlvzJmu9bVQ66/rm0=
+Received: from SN6PR13MB2494.namprd13.prod.outlook.com (52.135.95.148) by
+ SN6PR13MB2382.namprd13.prod.outlook.com (52.135.94.150) with Microsoft SMTP
+ Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ 15.20.1495.6; Wed, 2 Jan 2019 18:57:10 +0000
+Received: from SN6PR13MB2494.namprd13.prod.outlook.com
+ ([fe80::7dd2:1e4f:2de1:eb27]) by SN6PR13MB2494.namprd13.prod.outlook.com
+ ([fe80::7dd2:1e4f:2de1:eb27%3]) with mapi id 15.20.1495.005; Wed, 2 Jan 2019
+ 18:57:10 +0000
+From:   Trond Myklebust <trondmy@hammerspace.com>
+To:     "chuck.lever@oracle.com" <chuck.lever@oracle.com>
+CC:     "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
 Subject: Re: [PATCH v3 26/44] SUNRPC: Improve latency for interactive tasks
-From:   Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1fa9f43b6cc2ba5d4ebd24955bf76454bfab0c18.camel@hammerspace.com>
-Date:   Wed, 2 Jan 2019 13:51:05 -0500
-Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Transfer-Encoding: quoted-printable
-Message-Id: <5160E7EB-556C-4099-B564-8EFF7D7D9113@oracle.com>
+Thread-Topic: [PATCH v3 26/44] SUNRPC: Improve latency for interactive tasks
+Thread-Index: AQHUTob5qK09WaTXZkeMo/gY+CHqD6WTldAAgAAwIgCAAAW4AIAF/x2AgAAJ4YCAAAQ7gIAAAqsAgAACmQCAAADYgIADEu6AgAAHwwCAAAF8gIAAAbEA
+Date:   Wed, 2 Jan 2019 18:57:09 +0000
+Message-ID: <3e3c803dd0d007e4692ae2142b73bc1294d2b62a.camel@hammerspace.com>
 References: <c4bd04d525a1355e3dfff054985d697f0f391816.camel@hammerspace.com>
- <07dcc1731996d6e59d882c5e4e7e7765d013c337.camel@hammerspace.com>
- <E9A190A9-4A55-4D02-9259-2F26BC41F16C@oracle.com>
- <1fa9f43b6cc2ba5d4ebd24955bf76454bfab0c18.camel@hammerspace.com>
-To:     Trond Myklebust <trondmy@hammerspace.com>
-X-Mailer: Apple Mail (2.3445.9.1)
-X-Proofpoint-Virus-Version: vendor=nai engine=5900 definitions=9124 signatures=668680
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 suspectscore=0 malwarescore=0
- phishscore=0 bulkscore=0 spamscore=0 mlxscore=0 mlxlogscore=999
- adultscore=0 classifier=spam adjust=0 reason=mlx scancount=1
- engine=8.0.1-1810050000 definitions=main-1901020166
+         <07dcc1731996d6e59d882c5e4e7e7765d013c337.camel@hammerspace.com>
+         <E9A190A9-4A55-4D02-9259-2F26BC41F16C@oracle.com>
+         <1fa9f43b6cc2ba5d4ebd24955bf76454bfab0c18.camel@hammerspace.com>
+         <5160E7EB-556C-4099-B564-8EFF7D7D9113@oracle.com>
+In-Reply-To: <5160E7EB-556C-4099-B564-8EFF7D7D9113@oracle.com>
+Accept-Language: en-US, en-GB
+Content-Language: en-US
+X-MS-Has-Attach: 
+X-MS-TNEF-Correlator: 
+authentication-results: spf=none (sender IP is )
+ smtp.mailfrom=trondmy@hammerspace.com; 
+x-originating-ip: [68.40.189.247]
+x-ms-publictraffictype: Email
+x-microsoft-exchange-diagnostics: 1;SN6PR13MB2382;6:Ud1tJLEep1ZXJcl3/Iimse64b137Av6UACZTp3pfYnksfgynW8rHdM71whSkh1ETmrSw/wDkTDwyU0OvsFGyJL0lCv43U+HQCFIbw0vFfd9pJJ7po+WpzPMb3hGxIjd37KGd0Z1XOcOQ3Ckh/W1wzmfSs7OnG8SJ2Iy3C26/bMQq7q2c4ignr77ilIKUvw8aPCEVJpbYogaOios73/mHXInKuc/m5XghCTMtn669LyQFGD7bbDysGoZjnPBZIX76qAOSpIQpmL7n3Toc+bkOmucaiBYxBW0Cz4BQBxgWCGHmrA3oNBThemnVch3wPa8tv7QIhIW5b/n5HN/N9lFd2WyG/na7vxadsKpZILVDjWjOAupqepA5Hw6SwbTiRTdlfpPF0VEjDjj2NVsjbUWH2q6gJRtg/J+i2ylY1rz4k1JxxeSv5Fnz/LEbXtj3DkDJSP1UnPfq5X8MIUnDPZLdqQ==;5:t0tpKL1Ul43LQuu2P6Z5CbWVZBrqg9WLetMTX5B03ztakD3IQJeBH/w6iP3Rr83RSix4pomVSE8l+igVpX4s9VRH2nDcsA0msHln2qLmu+fL77szfa+N+sseryb2SY1kkQQnHsJfGHXMK7S/7KEZhaDJH5L8L0F1weXtoPx9wsq4xCDYoJEKBwDDGsPHVOvqQbQpfFIiRX0GKJ8fjNGYYw==;7:qMVn7RHJJWVOZCg4DWAP/USsFm3GSc7h+NHHJObUtxwidtdSosJQRDVt7kzuQNwUyjo+rLixceOCBBfpsgd0KfEZ5ZLFBxAKD2GjvkP23RT7denWLB861dhSphlTE2myoCIxUziGSC3p528Ln6MYzw==
+x-ms-exchange-antispam-srfa-diagnostics: SOS;
+x-ms-office365-filtering-correlation-id: 411851a7-fd00-4abd-500d-08d670e41968
+x-microsoft-antispam: BCL:0;PCL:0;RULEID:(2390118)(7020095)(4652040)(8989299)(4534185)(4627221)(201703031133081)(201702281549075)(8990200)(5600109)(711020)(2017052603328)(7153060)(7193020);SRVR:SN6PR13MB2382;
+x-ms-traffictypediagnostic: SN6PR13MB2382:
+x-microsoft-antispam-prvs: <SN6PR13MB2382A2CE3914BF02FB2A8614B88C0@SN6PR13MB2382.namprd13.prod.outlook.com>
+x-exchange-antispam-report-cfa-test: BCL:0;PCL:0;RULEID:(3230021)(908002)(999002)(5005026)(6040522)(8220060)(2401047)(8121501046)(3002001)(10201501046)(93006095)(93001095)(3231475)(944501520)(52105112)(6041310)(20161123562045)(20161123558120)(201703131423095)(201702281528075)(20161123555045)(201703061421075)(201703061406153)(20161123564045)(20161123560045)(201708071742011)(7699051)(76991095);SRVR:SN6PR13MB2382;BCL:0;PCL:0;RULEID:;SRVR:SN6PR13MB2382;
+x-forefront-prvs: 0905A6B2C7
+x-forefront-antispam-report: SFV:NSPM;SFS:(10019020)(396003)(376002)(39830400003)(366004)(136003)(346002)(199004)(189003)(66066001)(105586002)(229853002)(305945005)(71200400001)(6486002)(71190400001)(81156014)(6436002)(7736002)(36756003)(486006)(81166006)(86362001)(476003)(2501003)(2616005)(8676002)(14444005)(256004)(6916009)(106356001)(2351001)(186003)(102836004)(25786009)(4001150100001)(118296001)(97736004)(446003)(11346002)(4326008)(68736007)(5640700003)(5660300001)(8936002)(3846002)(26005)(6116002)(6512007)(14454004)(76176011)(478600001)(6246003)(53936002)(2906002)(99286004)(6506007)(53546011)(316002)(93886005);DIR:OUT;SFP:1102;SCL:1;SRVR:SN6PR13MB2382;H:SN6PR13MB2494.namprd13.prod.outlook.com;FPR:;SPF:None;LANG:en;PTR:InfoNoRecords;A:1;MX:1;
+received-spf: None (protection.outlook.com: hammerspace.com does not designate
+ permitted sender hosts)
+x-ms-exchange-senderadcheck: 1
+x-microsoft-antispam-message-info: nD/cBFVeeUbVOOWWZ2kbMWx/qpo7MJoauvUarcEzkMuCHwlzjXQpGO/eThmvmWThKDbQaqVHEGdjyxlAoFIaxEuCxE1gNmXQ1R/hRxvrZlRFqWNzf/x5md2Oo1CdMOYf7Ou/THF3fB43Rl8gI0vPP4Taz4cmTPTaSyw+U+YI8IIv8b+D6H5K/oCm8gB9sBvfIJTJgULj1jeUJDJg6uGh67SYU8NGg6rZCgFm0qiu7eaoMmSTIjUtFUpcMy/R1QqTnL3VWyJ6QcWJeUVTzFuqm2IbVKZ+S3yImvTaOQutsv2J7+JTdToUKmIMnjV8t5Bn
+spamdiagnosticoutput: 1:99
+spamdiagnosticmetadata: NSPM
+Content-Type: text/plain; charset="utf-8"
+Content-ID: <BFD53B9DD9504743A223965A304EF162@namprd13.prod.outlook.com>
+Content-Transfer-Encoding: base64
+MIME-Version: 1.0
+X-OriginatorOrg: hammerspace.com
+X-MS-Exchange-CrossTenant-Network-Message-Id: 411851a7-fd00-4abd-500d-08d670e41968
+X-MS-Exchange-CrossTenant-originalarrivaltime: 02 Jan 2019 18:57:09.9062
+ (UTC)
+X-MS-Exchange-CrossTenant-fromentityheader: Hosted
+X-MS-Exchange-CrossTenant-id: 0d4fed5c-3a70-46fe-9430-ece41741f59e
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: SN6PR13MB2382
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-
-
-> On Jan 2, 2019, at 1:45 PM, Trond Myklebust <trondmy@hammerspace.com> =
-wrote:
->=20
-> On Wed, 2019-01-02 at 13:17 -0500, Chuck Lever wrote:
->>> On Dec 31, 2018, at 2:21 PM, Trond Myklebust <
->>> trondmy@hammerspace.com> wrote:
->>>=20
->>> On Mon, 2018-12-31 at 19:18 +0000, Trond Myklebust wrote:
->>>> On Mon, 2018-12-31 at 14:09 -0500, Chuck Lever wrote:
->>>>>> On Dec 31, 2018, at 1:59 PM, Trond Myklebust <
->>>>>> trondmy@hammerspace.com> wrote:
->>>>>>=20
->>>>>>=20
->>>> The test for rpcauth_xmit_need_reencode() happens when we call
->>>> xprt_request_transmit() to actually put the RPC call on the wire.
->>>> The
->>>> enqueue order should not be able to defeat that test.
->>>>=20
->>>> Hmm... Is it perhaps the test for req->rq_bytes_sent that is
->>>> failing
->>>> because this is a retransmission after a disconnect/reconnect
->>>> that
->>>> didn't trigger a re-encode?
->>>=20
->>> Actually, it might be worth a try to move the test for
->>> rpcauth_xmit_need_reencode() outside the enclosing test for req-
->>>> rq_bytes_sent as that is just a minor optimisation.
->>=20
->> Perhaps that's the case for TCP, but RPCs sent via xprtrdma never set
->> req->rq_bytes_sent to a non-zero value. The body of the "if"
->> statement
->> is always executed for those RPCs.
->>=20
->=20
-> Then the question is what is defeating the call to
-> rpcauth_xmit_need_reencode() in xprt_request_transmit() and causing it
-> not to trigger in the misordered cases?
-
-Here's a sample RPC/RDMA case.
-
-My instrumented server reports this:
-
-Jan  2 13:29:00 klimt kernel: gss_check_seq_num: dropped: seq_num=3D141220=
- sd->sd_max=3D141360
-
-
-ftrace log on the client shows this:
-
-  kworker/u28:12-2191  [004]   194.048534: rpcgss_need_reencode: =
-task:1761@5 xid=3D0x88f4f47c rq_seqno=3D141220 seq_xmit=3D141336 =
-reencode unneeded
-  kworker/u28:12-2191  [004]   194.048534: xprt_transmit:        =
-task:1761@5 xid=3D0x88f4f47c seqno=3D141220 status=3D-57
-  kworker/u28:12-2191  [004]   194.048534: rpc_task_run_action:  =
-task:1779@5 flags=3DASYNC runstate=3DRUNNING|ACTIVE|NEED_XMIT|NEED_RECV =
-status=3D-57 action=3Dcall_transmit_status
-  kworker/u28:12-2191  [004]   194.048535: rpc_task_run_action:  =
-task:1779@5 flags=3DASYNC runstate=3DRUNNING|ACTIVE|NEED_XMIT|NEED_RECV =
-status=3D0 action=3Dcall_transmit
-  kworker/u28:12-2191  [004]   194.048535: rpc_task_sleep:       =
-task:1779@5 flags=3DASYNC runstate=3DRUNNING|ACTIVE|NEED_XMIT|NEED_RECV =
-status=3D-11 timeout=3D0 queue=3Dxprt_sending
-
-
-  kworker/u28:12-2191  [004]   194.048552: rpcgss_need_reencode: =
-task:1761@5 xid=3D0x88f4f47c rq_seqno=3D141220 seq_xmit=3D141336 =
-reencode unneeded
-  kworker/u28:12-2191  [004]   194.048557: xprt_transmit:        =
-task:1761@5 xid=3D0x88f4f47c seqno=3D141220 status=3D0
-
-
-  kworker/u28:12-2191  [004]   194.048559: rpcgss_need_reencode: =
-task:1902@5 xid=3D0x14f5f47c rq_seqno=3D141360 seq_xmit=3D141336 =
-reencode unneeded
-  kworker/u28:12-2191  [004]   194.048563: xprt_transmit:        =
-task:1902@5 xid=3D0x14f5f47c seqno=3D141360 status=3D0
-
-
-Note that first need_reencode: the sequence numbers show that the xmit
-queue has been significantly re-ordered. The request being transmitted =
-is
-already very close to the lower end of the GSS sequence number window.
-
-The server then re-ordereds these two slightly because the first one had
-some Read chunks that need to be pulled over, the second was pure inline
-and therefore could be processed immediately. That is enough to force =
-the
-first one outside the GSS sequence number window.
-
-I haven't looked closely at the pathology of the TCP case.
-
-
---
-Chuck Lever
-
-
-
+T24gV2VkLCAyMDE5LTAxLTAyIGF0IDEzOjUxIC0wNTAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
+PiBPbiBKYW4gMiwgMjAxOSwgYXQgMTo0NSBQTSwgVHJvbmQgTXlrbGVidXN0IDwNCj4gPiB0cm9u
+ZG15QGhhbW1lcnNwYWNlLmNvbT4gd3JvdGU6DQo+ID4gDQo+ID4gT24gV2VkLCAyMDE5LTAxLTAy
+IGF0IDEzOjE3IC0wNTAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4gPiA+ID4gT24gRGVjIDMxLCAy
+MDE4LCBhdCAyOjIxIFBNLCBUcm9uZCBNeWtsZWJ1c3QgPA0KPiA+ID4gPiB0cm9uZG15QGhhbW1l
+cnNwYWNlLmNvbT4gd3JvdGU6DQo+ID4gPiA+IA0KPiA+ID4gPiBPbiBNb24sIDIwMTgtMTItMzEg
+YXQgMTk6MTggKzAwMDAsIFRyb25kIE15a2xlYnVzdCB3cm90ZToNCj4gPiA+ID4gPiBPbiBNb24s
+IDIwMTgtMTItMzEgYXQgMTQ6MDkgLTA1MDAsIENodWNrIExldmVyIHdyb3RlOg0KPiA+ID4gPiA+
+ID4gPiBPbiBEZWMgMzEsIDIwMTgsIGF0IDE6NTkgUE0sIFRyb25kIE15a2xlYnVzdCA8DQo+ID4g
+PiA+ID4gPiA+IHRyb25kbXlAaGFtbWVyc3BhY2UuY29tPiB3cm90ZToNCj4gPiA+ID4gPiA+ID4g
+DQo+ID4gPiA+ID4gPiA+IA0KPiA+ID4gPiA+IFRoZSB0ZXN0IGZvciBycGNhdXRoX3htaXRfbmVl
+ZF9yZWVuY29kZSgpIGhhcHBlbnMgd2hlbiB3ZQ0KPiA+ID4gPiA+IGNhbGwNCj4gPiA+ID4gPiB4
+cHJ0X3JlcXVlc3RfdHJhbnNtaXQoKSB0byBhY3R1YWxseSBwdXQgdGhlIFJQQyBjYWxsIG9uIHRo
+ZQ0KPiA+ID4gPiA+IHdpcmUuDQo+ID4gPiA+ID4gVGhlDQo+ID4gPiA+ID4gZW5xdWV1ZSBvcmRl
+ciBzaG91bGQgbm90IGJlIGFibGUgdG8gZGVmZWF0IHRoYXQgdGVzdC4NCj4gPiA+ID4gPiANCj4g
+PiA+ID4gPiBIbW0uLi4gSXMgaXQgcGVyaGFwcyB0aGUgdGVzdCBmb3IgcmVxLT5ycV9ieXRlc19z
+ZW50IHRoYXQgaXMNCj4gPiA+ID4gPiBmYWlsaW5nDQo+ID4gPiA+ID4gYmVjYXVzZSB0aGlzIGlz
+IGEgcmV0cmFuc21pc3Npb24gYWZ0ZXIgYSBkaXNjb25uZWN0L3JlY29ubmVjdA0KPiA+ID4gPiA+
+IHRoYXQNCj4gPiA+ID4gPiBkaWRuJ3QgdHJpZ2dlciBhIHJlLWVuY29kZT8NCj4gPiA+ID4gDQo+
+ID4gPiA+IEFjdHVhbGx5LCBpdCBtaWdodCBiZSB3b3J0aCBhIHRyeSB0byBtb3ZlIHRoZSB0ZXN0
+IGZvcg0KPiA+ID4gPiBycGNhdXRoX3htaXRfbmVlZF9yZWVuY29kZSgpIG91dHNpZGUgdGhlIGVu
+Y2xvc2luZyB0ZXN0IGZvcg0KPiA+ID4gPiByZXEtDQo+ID4gPiA+ID4gcnFfYnl0ZXNfc2VudCBh
+cyB0aGF0IGlzIGp1c3QgYSBtaW5vciBvcHRpbWlzYXRpb24uDQo+ID4gPiANCj4gPiA+IFBlcmhh
+cHMgdGhhdCdzIHRoZSBjYXNlIGZvciBUQ1AsIGJ1dCBSUENzIHNlbnQgdmlhIHhwcnRyZG1hIG5l
+dmVyDQo+ID4gPiBzZXQNCj4gPiA+IHJlcS0+cnFfYnl0ZXNfc2VudCB0byBhIG5vbi16ZXJvIHZh
+bHVlLiBUaGUgYm9keSBvZiB0aGUgImlmIg0KPiA+ID4gc3RhdGVtZW50DQo+ID4gPiBpcyBhbHdh
+eXMgZXhlY3V0ZWQgZm9yIHRob3NlIFJQQ3MuDQo+ID4gPiANCj4gPiANCj4gPiBUaGVuIHRoZSBx
+dWVzdGlvbiBpcyB3aGF0IGlzIGRlZmVhdGluZyB0aGUgY2FsbCB0bw0KPiA+IHJwY2F1dGhfeG1p
+dF9uZWVkX3JlZW5jb2RlKCkgaW4geHBydF9yZXF1ZXN0X3RyYW5zbWl0KCkgYW5kIGNhdXNpbmcN
+Cj4gPiBpdA0KPiA+IG5vdCB0byB0cmlnZ2VyIGluIHRoZSBtaXNvcmRlcmVkIGNhc2VzPw0KPiAN
+Cj4gSGVyZSdzIGEgc2FtcGxlIFJQQy9SRE1BIGNhc2UuDQo+IA0KPiBNeSBpbnN0cnVtZW50ZWQg
+c2VydmVyIHJlcG9ydHMgdGhpczoNCj4gDQo+IEphbiAgMiAxMzoyOTowMCBrbGltdCBrZXJuZWw6
+IGdzc19jaGVja19zZXFfbnVtOiBkcm9wcGVkOg0KPiBzZXFfbnVtPTE0MTIyMCBzZC0+c2RfbWF4
+PTE0MTM2MA0KPiANCj4gDQo+IGZ0cmFjZSBsb2cgb24gdGhlIGNsaWVudCBzaG93cyB0aGlzOg0K
+PiANCj4gICBrd29ya2VyL3UyODoxMi0yMTkxICBbMDA0XSAgIDE5NC4wNDg1MzQ6IHJwY2dzc19u
+ZWVkX3JlZW5jb2RlOg0KPiB0YXNrOjE3NjFANSB4aWQ9MHg4OGY0ZjQ3YyBycV9zZXFubz0xNDEy
+MjAgc2VxX3htaXQ9MTQxMzM2IHJlZW5jb2RlDQo+IHVubmVlZGVkDQo+ICAga3dvcmtlci91Mjg6
+MTItMjE5MSAgWzAwNF0gICAxOTQuMDQ4NTM0Og0KPiB4cHJ0X3RyYW5zbWl0OiAgICAgICAgdGFz
+azoxNzYxQDUgeGlkPTB4ODhmNGY0N2Mgc2Vxbm89MTQxMjIwDQo+IHN0YXR1cz0tNTcNCj4gICBr
+d29ya2VyL3UyODoxMi0yMTkxICBbMDA0XSAgIDE5NC4wNDg1MzQ6DQo+IHJwY190YXNrX3J1bl9h
+Y3Rpb246ICB0YXNrOjE3NzlANSBmbGFncz1BU1lOQw0KPiBydW5zdGF0ZT1SVU5OSU5HfEFDVElW
+RXxORUVEX1hNSVR8TkVFRF9SRUNWIHN0YXR1cz0tNTcNCj4gYWN0aW9uPWNhbGxfdHJhbnNtaXRf
+c3RhdHVzDQo+ICAga3dvcmtlci91Mjg6MTItMjE5MSAgWzAwNF0gICAxOTQuMDQ4NTM1Og0KPiBy
+cGNfdGFza19ydW5fYWN0aW9uOiAgdGFzazoxNzc5QDUgZmxhZ3M9QVNZTkMNCj4gcnVuc3RhdGU9
+UlVOTklOR3xBQ1RJVkV8TkVFRF9YTUlUfE5FRURfUkVDViBzdGF0dXM9MA0KPiBhY3Rpb249Y2Fs
+bF90cmFuc21pdA0KPiAgIGt3b3JrZXIvdTI4OjEyLTIxOTEgIFswMDRdICAgMTk0LjA0ODUzNToN
+Cj4gcnBjX3Rhc2tfc2xlZXA6ICAgICAgIHRhc2s6MTc3OUA1IGZsYWdzPUFTWU5DDQo+IHJ1bnN0
+YXRlPVJVTk5JTkd8QUNUSVZFfE5FRURfWE1JVHxORUVEX1JFQ1Ygc3RhdHVzPS0xMSB0aW1lb3V0
+PTANCj4gcXVldWU9eHBydF9zZW5kaW5nDQo+IA0KPiANCj4gICBrd29ya2VyL3UyODoxMi0yMTkx
+ICBbMDA0XSAgIDE5NC4wNDg1NTI6IHJwY2dzc19uZWVkX3JlZW5jb2RlOg0KPiB0YXNrOjE3NjFA
+NSB4aWQ9MHg4OGY0ZjQ3YyBycV9zZXFubz0xNDEyMjAgc2VxX3htaXQ9MTQxMzM2IHJlZW5jb2Rl
+DQo+IHVubmVlZGVkDQo+ICAga3dvcmtlci91Mjg6MTItMjE5MSAgWzAwNF0gICAxOTQuMDQ4NTU3
+Og0KPiB4cHJ0X3RyYW5zbWl0OiAgICAgICAgdGFzazoxNzYxQDUgeGlkPTB4ODhmNGY0N2Mgc2Vx
+bm89MTQxMjIwDQo+IHN0YXR1cz0wDQo+IA0KPiANCj4gICBrd29ya2VyL3UyODoxMi0yMTkxICBb
+MDA0XSAgIDE5NC4wNDg1NTk6IHJwY2dzc19uZWVkX3JlZW5jb2RlOg0KPiB0YXNrOjE5MDJANSB4
+aWQ9MHgxNGY1ZjQ3YyBycV9zZXFubz0xNDEzNjAgc2VxX3htaXQ9MTQxMzM2IHJlZW5jb2RlDQo+
+IHVubmVlZGVkDQo+ICAga3dvcmtlci91Mjg6MTItMjE5MSAgWzAwNF0gICAxOTQuMDQ4NTYzOg0K
+PiB4cHJ0X3RyYW5zbWl0OiAgICAgICAgdGFzazoxOTAyQDUgeGlkPTB4MTRmNWY0N2Mgc2Vxbm89
+MTQxMzYwDQo+IHN0YXR1cz0wDQo+IA0KPiANCj4gTm90ZSB0aGF0IGZpcnN0IG5lZWRfcmVlbmNv
+ZGU6IHRoZSBzZXF1ZW5jZSBudW1iZXJzIHNob3cgdGhhdCB0aGUNCj4geG1pdA0KPiBxdWV1ZSBo
+YXMgYmVlbiBzaWduaWZpY2FudGx5IHJlLW9yZGVyZWQuIFRoZSByZXF1ZXN0IGJlaW5nDQo+IHRy
+YW5zbWl0dGVkIGlzDQo+IGFscmVhZHkgdmVyeSBjbG9zZSB0byB0aGUgbG93ZXIgZW5kIG9mIHRo
+ZSBHU1Mgc2VxdWVuY2UgbnVtYmVyDQo+IHdpbmRvdy4NCj4gDQo+IFRoZSBzZXJ2ZXIgdGhlbiBy
+ZS1vcmRlcmVkcyB0aGVzZSB0d28gc2xpZ2h0bHkgYmVjYXVzZSB0aGUgZmlyc3Qgb25lDQo+IGhh
+ZA0KPiBzb21lIFJlYWQgY2h1bmtzIHRoYXQgbmVlZCB0byBiZSBwdWxsZWQgb3ZlciwgdGhlIHNl
+Y29uZCB3YXMgcHVyZQ0KPiBpbmxpbmUNCj4gYW5kIHRoZXJlZm9yZSBjb3VsZCBiZSBwcm9jZXNz
+ZWQgaW1tZWRpYXRlbHkuIFRoYXQgaXMgZW5vdWdoIHRvIGZvcmNlDQo+IHRoZQ0KPiBmaXJzdCBv
+bmUgb3V0c2lkZSB0aGUgR1NTIHNlcXVlbmNlIG51bWJlciB3aW5kb3cuDQo+IA0KPiBJIGhhdmVu
+J3QgbG9va2VkIGNsb3NlbHkgYXQgdGhlIHBhdGhvbG9neSBvZiB0aGUgVENQIGNhc2UuDQoNCldh
+aXQgYSBtaW51dGUuLi4gVGhhdCdzIG5vdCBPSy4gVGhlIGNsaWVudCBjYW4ndCBiZSBleHBlY3Rl
+ZCB0byB0YWtlDQppbnRvIGFjY291bnQgcmVvcmRlcmluZyB0aGF0IGhhcHBlbnMgb24gdGhlIHNl
+cnZlciBzaWRlLg0KDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1h
+aW50YWluZXIsIEhhbW1lcnNwYWNlDQp0cm9uZC5teWtsZWJ1c3RAaGFtbWVyc3BhY2UuY29tDQoN
+Cg0K
