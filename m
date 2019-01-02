@@ -2,199 +2,112 @@ Return-Path: <SRS0=5e7g=PK=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.5 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
-	SPF_PASS,UNPARSEABLE_RELAY,URIBL_BLOCKED autolearn=ham autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-1.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 22F7CC43387
-	for <linux-nfs@archiver.kernel.org>; Wed,  2 Jan 2019 18:18:15 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B5F81C43387
+	for <linux-nfs@archiver.kernel.org>; Wed,  2 Jan 2019 18:45:55 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id E368C218DE
-	for <linux-nfs@archiver.kernel.org>; Wed,  2 Jan 2019 18:18:14 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 6203B218D3
+	for <linux-nfs@archiver.kernel.org>; Wed,  2 Jan 2019 18:45:55 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="Rmd+N153"
+	dkim=pass (1024-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="Z2bteC7j"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726609AbfABSSO (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 2 Jan 2019 13:18:14 -0500
-Received: from userp2130.oracle.com ([156.151.31.86]:38352 "EHLO
-        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727196AbfABSSN (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 2 Jan 2019 13:18:13 -0500
-Received: from pps.filterd (userp2130.oracle.com [127.0.0.1])
-        by userp2130.oracle.com (8.16.0.22/8.16.0.22) with SMTP id x02I4BgW177668;
-        Wed, 2 Jan 2019 18:18:10 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=content-type :
- mime-version : subject : from : in-reply-to : date : cc :
- content-transfer-encoding : message-id : references : to;
- s=corp-2018-07-02; bh=oMysqpLdCNDo5W7BO9XqsjH7aHfGk34EwOcOko3fUjk=;
- b=Rmd+N153v8vw8zDdgSN2lSCzfxyhY0OsRRpvMd6OGO8JPU3rs/R7+p3a0HK68LAy0WSb
- huUGu2Nw0NIh0tL9yrJL9OZhhzsBc16Uah59YEDG6ahXBxruOSC31OAM9PBAWC8/tifl
- mzv7qDs3lPw2GVr92emu9wAepK0svrLcdUUWXtpTXq0A4kf1fHqp3KoLfRVCP0Cp/w+N
- 89I2SmVyXuBJKITjXDVHRTOJ7Btbi19VTrBLV/eTzHc3AbHcpWfGNAolh3P88Nm3dQ0/
- CvO/x2W2n00l8tuGE+zoueGxyMgX5Bggp6Vzh+YSaan1+eo0f0uOO2AWrroBXn62a3c3 2A== 
-Received: from userv0021.oracle.com (userv0021.oracle.com [156.151.31.71])
-        by userp2130.oracle.com with ESMTP id 2pp0btudtx-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Wed, 02 Jan 2019 18:18:10 +0000
-Received: from aserv0121.oracle.com (aserv0121.oracle.com [141.146.126.235])
-        by userv0021.oracle.com (8.14.4/8.14.4) with ESMTP id x02II9E8014756
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Wed, 2 Jan 2019 18:18:09 GMT
-Received: from abhmp0019.oracle.com (abhmp0019.oracle.com [141.146.116.25])
-        by aserv0121.oracle.com (8.14.4/8.13.8) with ESMTP id x02II5rv009229;
-        Wed, 2 Jan 2019 18:18:08 GMT
-Received: from anon-dhcp-121.1015granger.net (/68.61.232.219)
-        by default (Oracle Beehive Gateway v4.0)
-        with ESMTP ; Wed, 02 Jan 2019 10:18:05 -0800
-Content-Type: text/plain;
-        charset=utf-8
-Mime-Version: 1.0 (Mac OS X Mail 11.5 \(3445.9.1\))
+        id S1728297AbfABSpy (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 2 Jan 2019 13:45:54 -0500
+Received: from mail-eopbgr690108.outbound.protection.outlook.com ([40.107.69.108]:56425
+        "EHLO NAM04-CO1-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1728202AbfABSpx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 2 Jan 2019 13:45:53 -0500
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=hammerspace.com;
+ s=selector1;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=ZumHpUKC1ASSJb+r3bkWamd6eVgPLQ4RypQjwlVs6jg=;
+ b=Z2bteC7jd5U47slQ8/cs5GjrtFpj3ISvWJZrp4SewQ3LrDd3A7zpZLVY1SXAulAQpjt6QpInVnq5WdghoXBF9oOLd2qyvjLQNepRAwJoeXoJ2awmxYZrMu9nO+dy4hhJhMadJAYLnkSLVy8krWGZVNNbQ3yE05widIcistVlIAk=
+Received: from SN6PR13MB2494.namprd13.prod.outlook.com (52.135.95.148) by
+ SN6PR13MB2238.namprd13.prod.outlook.com (52.135.93.151) with Microsoft SMTP
+ Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ 15.20.1495.6; Wed, 2 Jan 2019 18:45:49 +0000
+Received: from SN6PR13MB2494.namprd13.prod.outlook.com
+ ([fe80::7dd2:1e4f:2de1:eb27]) by SN6PR13MB2494.namprd13.prod.outlook.com
+ ([fe80::7dd2:1e4f:2de1:eb27%3]) with mapi id 15.20.1495.005; Wed, 2 Jan 2019
+ 18:45:49 +0000
+From:   Trond Myklebust <trondmy@hammerspace.com>
+To:     "chuck.lever@oracle.com" <chuck.lever@oracle.com>
+CC:     "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
 Subject: Re: [PATCH v3 26/44] SUNRPC: Improve latency for interactive tasks
-From:   Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <07dcc1731996d6e59d882c5e4e7e7765d013c337.camel@hammerspace.com>
-Date:   Wed, 2 Jan 2019 13:17:59 -0500
-Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Transfer-Encoding: quoted-printable
-Message-Id: <E9A190A9-4A55-4D02-9259-2F26BC41F16C@oracle.com>
+Thread-Topic: [PATCH v3 26/44] SUNRPC: Improve latency for interactive tasks
+Thread-Index: AQHUTob5qK09WaTXZkeMo/gY+CHqD6WTldAAgAAwIgCAAAW4AIAF/x2AgAAJ4YCAAAQ7gIAAAqsAgAACmQCAAADYgIADEu6AgAAHwwA=
+Date:   Wed, 2 Jan 2019 18:45:48 +0000
+Message-ID: <1fa9f43b6cc2ba5d4ebd24955bf76454bfab0c18.camel@hammerspace.com>
 References: <c4bd04d525a1355e3dfff054985d697f0f391816.camel@hammerspace.com>
- <07dcc1731996d6e59d882c5e4e7e7765d013c337.camel@hammerspace.com>
-To:     Trond Myklebust <trondmy@hammerspace.com>
-X-Mailer: Apple Mail (2.3445.9.1)
-X-Proofpoint-Virus-Version: vendor=nai engine=5900 definitions=9124 signatures=668680
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 suspectscore=0 malwarescore=0
- phishscore=0 bulkscore=0 spamscore=0 mlxscore=0 mlxlogscore=800
- adultscore=0 classifier=spam adjust=0 reason=mlx scancount=1
- engine=8.0.1-1810050000 definitions=main-1901020162
+         <07dcc1731996d6e59d882c5e4e7e7765d013c337.camel@hammerspace.com>
+         <E9A190A9-4A55-4D02-9259-2F26BC41F16C@oracle.com>
+In-Reply-To: <E9A190A9-4A55-4D02-9259-2F26BC41F16C@oracle.com>
+Accept-Language: en-US, en-GB
+Content-Language: en-US
+X-MS-Has-Attach: 
+X-MS-TNEF-Correlator: 
+x-originating-ip: [68.40.189.247]
+x-ms-publictraffictype: Email
+x-microsoft-exchange-diagnostics: 1;SN6PR13MB2238;6:y8q5OEXV6HuxDI9l8OmN3L1qGdStzqwhMKRUp537YwMmkEyDNSxpV6clHu3yQU5IQTIuog3q6scRx4Tze+fWkYy5/lIfH8TLm7yiUL41A+3spMyVgZO+HUwIy/dCFLFAJYLZ/Cv+pBsSafZY+A43v5aMsE09ks1C8+Ed8huJJkm7EyHaFDgSUKnzBaWIn9G6ZuauIZJAGAUPnMduHkBIw60/9Wy7wZEw/Zsa3N4XG/qx7XjZBmJO7spXVq+let7dDTNn1tlWcCqMHxMty5vF0/5LIj79os6FRA0Lz8WBhCAlWKg6j70QHDX1DfaPoS3UmpqdbsnmsVF1z4+klcQwfRvH4bYxs59dcLRG0Hzl98xqo+gj3vUrRMOIRovt+0i6QRQ8hBMQSc15Gwx4fHyYPfm5IZZQUDvkI0yunUOPBcd1YgPUrYH4oJq+oi4NNxKmenSEs7RqlUr8hRGeZ96e2w==;5:a+RqCv0ZmFbMPtR3v+4c28DzALdQsF1xPF6RuVU6e8hlIC8s9pucnUh+4L7h6yjpdeujyIZtK0Lrw/194Q0G6bZsMhRBOxSL70U1Y8N+y6IZpRXx3X1rsmi3zZZdNVCCGRUOkZVIYJDn54HL3C5H96cAVhlCcc156n6jiHQMYpoetUDvMJPHsOWmiTXv6SdFMy7ukc9lx1jf+fE9lABynA==;7:R5UWpdWxAbvlcrGiELGIfsXisiw7rPm9NNoyGXqcvchp7NlLxwGNhZTAJ15yJYkTK6gGRYQ7kZunYvQodjtV3sBT6/Z4KYgFwOl5idVGCGbgwwUk+S+tGyp8njIhlg8XQZeE1OD/nS2pIRVwN7kWdQ==
+x-ms-exchange-antispam-srfa-diagnostics: SOS;
+x-ms-office365-filtering-correlation-id: be4d2802-5a98-423b-a2ce-08d670e2838f
+x-microsoft-antispam: BCL:0;PCL:0;RULEID:(2390118)(7020095)(4652040)(8989299)(4534185)(4627221)(201703031133081)(201702281549075)(8990200)(5600109)(711020)(2017052603328)(7153060)(7193020);SRVR:SN6PR13MB2238;
+x-ms-traffictypediagnostic: SN6PR13MB2238:
+authentication-results: spf=none (sender IP is )
+ smtp.mailfrom=trondmy@hammerspace.com; 
+x-microsoft-antispam-prvs: <SN6PR13MB2238D0296778A28974ED9264B88C0@SN6PR13MB2238.namprd13.prod.outlook.com>
+x-exchange-antispam-report-cfa-test: BCL:0;PCL:0;RULEID:(3230021)(908002)(999002)(5005026)(6040522)(8220060)(2401047)(8121501046)(10201501046)(3231475)(944501520)(52105112)(93006095)(93001095)(3002001)(6041310)(201703131423095)(201702281528075)(20161123555045)(201703061421075)(201703061406153)(20161123562045)(20161123560045)(20161123558120)(20161123564045)(201708071742011)(7699051)(76991095);SRVR:SN6PR13MB2238;BCL:0;PCL:0;RULEID:;SRVR:SN6PR13MB2238;
+x-forefront-prvs: 0905A6B2C7
+x-forefront-antispam-report: SFV:NSPM;SFS:(10019020)(39830400003)(346002)(136003)(376002)(366004)(396003)(189003)(199004)(229853002)(86362001)(6916009)(5640700003)(6436002)(6512007)(66066001)(6486002)(118296001)(2351001)(5660300001)(2906002)(478600001)(106356001)(105586002)(8676002)(71200400001)(71190400001)(81166006)(81156014)(14454004)(8936002)(305945005)(7736002)(476003)(11346002)(446003)(2501003)(25786009)(97736004)(76176011)(316002)(186003)(68736007)(26005)(4001150100001)(6506007)(102836004)(36756003)(2616005)(6246003)(53546011)(53936002)(486006)(6116002)(99286004)(256004)(3846002)(14444005)(4326008);DIR:OUT;SFP:1102;SCL:1;SRVR:SN6PR13MB2238;H:SN6PR13MB2494.namprd13.prod.outlook.com;FPR:;SPF:None;LANG:en;PTR:InfoNoRecords;MX:1;A:1;
+received-spf: None (protection.outlook.com: hammerspace.com does not designate
+ permitted sender hosts)
+x-ms-exchange-senderadcheck: 1
+x-microsoft-antispam-message-info: 9vPHzEQAGRTzeJQkDX36O6hvGjZb7t2drPn+gOHWsUiWHpv6qDkRMuk0CTIhErl/COvgiq+XZOzHjcxAS0UFcXpPbz8Sz38ziv5c8VuANsOSM8P1Hhc47oXa0jPwnCNA2crkLYb7rFGEfGfHVXbhUfYtLVUYRpOmuDWyay03NDQ9m1hE3iqyzwAVCbhS+4PyePjNxSQx3/zy88KcteXI1ZqWoNO74REsGe2K0xFChjEcTPy9W6irYTe/cQyjOzs77LTHj2qxnF3yneESO8BFRt5qo7tljJ/SQKWIh0O96FDzTdz1j8yhPgVM5zLvFRYg
+spamdiagnosticoutput: 1:99
+spamdiagnosticmetadata: NSPM
+Content-Type: text/plain; charset="utf-8"
+Content-ID: <58A90725731B6044A3F253757D0BF318@namprd13.prod.outlook.com>
+Content-Transfer-Encoding: base64
+MIME-Version: 1.0
+X-OriginatorOrg: hammerspace.com
+X-MS-Exchange-CrossTenant-Network-Message-Id: be4d2802-5a98-423b-a2ce-08d670e2838f
+X-MS-Exchange-CrossTenant-originalarrivaltime: 02 Jan 2019 18:45:49.0871
+ (UTC)
+X-MS-Exchange-CrossTenant-fromentityheader: Hosted
+X-MS-Exchange-CrossTenant-id: 0d4fed5c-3a70-46fe-9430-ece41741f59e
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: SN6PR13MB2238
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-
-
-> On Dec 31, 2018, at 2:21 PM, Trond Myklebust <trondmy@hammerspace.com> =
-wrote:
->=20
-> On Mon, 2018-12-31 at 19:18 +0000, Trond Myklebust wrote:
->> On Mon, 2018-12-31 at 14:09 -0500, Chuck Lever wrote:
->>>> On Dec 31, 2018, at 1:59 PM, Trond Myklebust <
->>>> trondmy@hammerspace.com> wrote:
->>>>=20
->>>> On Mon, 2018-12-31 at 13:44 -0500, Chuck Lever wrote:
->>>>>> On Dec 31, 2018, at 1:09 PM, Trond Myklebust <
->>>>>> trondmy@hammerspace.com> wrote:
->>>>>>=20
->>>>>> On Thu, 2018-12-27 at 17:34 -0500, Chuck Lever wrote:
->>>>>>>> On Dec 27, 2018, at 5:14 PM, Trond Myklebust <
->>>>>>>> trondmy@hammerspace.com> wrote:
->>>>>>>>=20
->>>>>>>>=20
->>>>>>>>=20
->>>>>>>>> On Dec 27, 2018, at 20:21, Chuck Lever <
->>>>>>>>> chuck.lever@oracle.com>
->>>>>>>>> wrote:
->>>>>>>>>=20
->>>>>>>>> Hi Trond-
->>>>>>>>>=20
->>>>>>>>> I've chased down a couple of remaining regressions with
->>>>>>>>> the
->>>>>>>>> v4.20
->>>>>>>>> NFS client,
->>>>>>>>> and they seem to be rooted in this commit.
->>>>>>>>>=20
->>>>>>>>> When using sec=3Dkrb5, krb5i, or krb5p I found that
->>>>>>>>> multi-
->>>>>>>>> threaded
->>>>>>>>> workloads
->>>>>>>>> trigger a lot of server-side disconnects. This is with
->>>>>>>>> TCP
->>>>>>>>> and
->>>>>>>>> RDMA transports.
->>>>>>>>> An instrumented server shows that the client is under-
->>>>>>>>> running=20
->>>>>>>>> the
->>>>>>>>> GSS sequence
->>>>>>>>> number window. I monitored the order in which GSS
->>>>>>>>> sequence
->>>>>>>>> numbers appear on
->>>>>>>>> the wire, and after this commit, the sequence numbers
->>>>>>>>> are
->>>>>>>>> wildly
->>>>>>>>> misordered.
->>>>>>>>> If I revert the hunk in xprt_request_enqueue_transmit,
->>>>>>>>> the
->>>>>>>>> problem goes away.
->>>>>>>>>=20
->>>>>>>>> I also found that reverting that hunk results in a 3-4%
->>>>>>>>> improvement in fio
->>>>>>>>> IOPS rates, as well as improvement in average and
->>>>>>>>> maximum
->>>>>>>>> latency
->>>>>>>>> as reported
->>>>>>>>> by fio.
->>>>>>>>>=20
->>>>>>>>=20
->>>>>>>> Hmm=E2=80=A6 Provided the sequence numbers still lie within the
->>>>>>>> window,
->>>>>>>> then why would the order matter?
->>>>>>>=20
->>>>>>> The misordering is so bad that one request is delayed long
->>>>>>> enough
->>>>>>> to
->>>>>>> fall outside the window. The new =E2=80=9Cneed re-encode=E2=80=9D =
-logic
->>>>>>> does
->>>>>>> not
->>>>>>> trigger.
->>>>>>>=20
->>>>>>=20
->>>>>> That's weird. I can't see anything wrong with need re-encode
->>>>>> at
->>>>>> this
->>>>>> point.
->>>>>=20
->>>>> I don't think there is anything wrong with it, it looks like
->>>>> it's
->>>>> not called in this case.
->>>>=20
->>>> So you are saying that the call to rpcauth_xmit_need_reencode()
->>>> is
->>>> triggering the EBADMSG, but that this fails to cause a re-encode
->>>> of
->>>> the
->>>> message?
->>>=20
->>> No, I think what's going on is that the need_reencode happens when
->>> the
->>> RPC is enqueued, and is successful.
->>>=20
->>> But xprt_request_enqueue_transmit places the RPC somewhere in the
->>> middle
->>> of xmit_queue. xmit_queue is long enough that more than 128
->>> requests
->>> are
->>> before the enqueued request.
->>=20
->> The test for rpcauth_xmit_need_reencode() happens when we call
->> xprt_request_transmit() to actually put the RPC call on the wire. The
->> enqueue order should not be able to defeat that test.
->>=20
->> Hmm... Is it perhaps the test for req->rq_bytes_sent that is failing
->> because this is a retransmission after a disconnect/reconnect that
->> didn't trigger a re-encode?
->=20
-> Actually, it might be worth a try to move the test for
-> rpcauth_xmit_need_reencode() outside the enclosing test for req-
->> rq_bytes_sent as that is just a minor optimisation.
-
-Perhaps that's the case for TCP, but RPCs sent via xprtrdma never set
-req->rq_bytes_sent to a non-zero value. The body of the "if" statement
-is always executed for those RPCs.
-
-
---
-Chuck Lever
-
-
-
+T24gV2VkLCAyMDE5LTAxLTAyIGF0IDEzOjE3IC0wNTAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
+PiBPbiBEZWMgMzEsIDIwMTgsIGF0IDI6MjEgUE0sIFRyb25kIE15a2xlYnVzdCA8DQo+ID4gdHJv
+bmRteUBoYW1tZXJzcGFjZS5jb20+IHdyb3RlOg0KPiA+IA0KPiA+IE9uIE1vbiwgMjAxOC0xMi0z
+MSBhdCAxOToxOCArMDAwMCwgVHJvbmQgTXlrbGVidXN0IHdyb3RlOg0KPiA+ID4gT24gTW9uLCAy
+MDE4LTEyLTMxIGF0IDE0OjA5IC0wNTAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4gPiA+ID4gPiBP
+biBEZWMgMzEsIDIwMTgsIGF0IDE6NTkgUE0sIFRyb25kIE15a2xlYnVzdCA8DQo+ID4gPiA+ID4g
+dHJvbmRteUBoYW1tZXJzcGFjZS5jb20+IHdyb3RlOg0KPiA+ID4gPiA+IA0KPiA+ID4gPiA+IA0K
+PiA+ID4gVGhlIHRlc3QgZm9yIHJwY2F1dGhfeG1pdF9uZWVkX3JlZW5jb2RlKCkgaGFwcGVucyB3
+aGVuIHdlIGNhbGwNCj4gPiA+IHhwcnRfcmVxdWVzdF90cmFuc21pdCgpIHRvIGFjdHVhbGx5IHB1
+dCB0aGUgUlBDIGNhbGwgb24gdGhlIHdpcmUuDQo+ID4gPiBUaGUNCj4gPiA+IGVucXVldWUgb3Jk
+ZXIgc2hvdWxkIG5vdCBiZSBhYmxlIHRvIGRlZmVhdCB0aGF0IHRlc3QuDQo+ID4gPiANCj4gPiA+
+IEhtbS4uLiBJcyBpdCBwZXJoYXBzIHRoZSB0ZXN0IGZvciByZXEtPnJxX2J5dGVzX3NlbnQgdGhh
+dCBpcw0KPiA+ID4gZmFpbGluZw0KPiA+ID4gYmVjYXVzZSB0aGlzIGlzIGEgcmV0cmFuc21pc3Np
+b24gYWZ0ZXIgYSBkaXNjb25uZWN0L3JlY29ubmVjdA0KPiA+ID4gdGhhdA0KPiA+ID4gZGlkbid0
+IHRyaWdnZXIgYSByZS1lbmNvZGU/DQo+ID4gDQo+ID4gQWN0dWFsbHksIGl0IG1pZ2h0IGJlIHdv
+cnRoIGEgdHJ5IHRvIG1vdmUgdGhlIHRlc3QgZm9yDQo+ID4gcnBjYXV0aF94bWl0X25lZWRfcmVl
+bmNvZGUoKSBvdXRzaWRlIHRoZSBlbmNsb3NpbmcgdGVzdCBmb3IgcmVxLQ0KPiA+ID4gcnFfYnl0
+ZXNfc2VudCBhcyB0aGF0IGlzIGp1c3QgYSBtaW5vciBvcHRpbWlzYXRpb24uDQo+IA0KPiBQZXJo
+YXBzIHRoYXQncyB0aGUgY2FzZSBmb3IgVENQLCBidXQgUlBDcyBzZW50IHZpYSB4cHJ0cmRtYSBu
+ZXZlciBzZXQNCj4gcmVxLT5ycV9ieXRlc19zZW50IHRvIGEgbm9uLXplcm8gdmFsdWUuIFRoZSBi
+b2R5IG9mIHRoZSAiaWYiDQo+IHN0YXRlbWVudA0KPiBpcyBhbHdheXMgZXhlY3V0ZWQgZm9yIHRo
+b3NlIFJQQ3MuDQo+IA0KDQpUaGVuIHRoZSBxdWVzdGlvbiBpcyB3aGF0IGlzIGRlZmVhdGluZyB0
+aGUgY2FsbCB0bw0KcnBjYXV0aF94bWl0X25lZWRfcmVlbmNvZGUoKSBpbiB4cHJ0X3JlcXVlc3Rf
+dHJhbnNtaXQoKSBhbmQgY2F1c2luZyBpdA0Kbm90IHRvIHRyaWdnZXIgaW4gdGhlIG1pc29yZGVy
+ZWQgY2FzZXM/DQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50
+YWluZXIsIEhhbW1lcnNwYWNlDQp0cm9uZC5teWtsZWJ1c3RAaGFtbWVyc3BhY2UuY29tDQoNCg0K
