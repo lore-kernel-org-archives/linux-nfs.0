@@ -2,185 +2,235 @@ Return-Path: <SRS0=5e7g=PK=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS,
-	URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-3.5 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
+	SPF_PASS,UNPARSEABLE_RELAY,URIBL_BLOCKED autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 08CC8C43387
-	for <linux-nfs@archiver.kernel.org>; Wed,  2 Jan 2019 19:28:37 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1EE66C43387
+	for <linux-nfs@archiver.kernel.org>; Wed,  2 Jan 2019 19:33:44 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id B8448218D3
-	for <linux-nfs@archiver.kernel.org>; Wed,  2 Jan 2019 19:28:36 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id DA2B3218D3
+	for <linux-nfs@archiver.kernel.org>; Wed,  2 Jan 2019 19:33:43 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="h5mA66pM"
+	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="MmOuzLwk"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729298AbfABT2f (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 2 Jan 2019 14:28:35 -0500
-Received: from mail-eopbgr800137.outbound.protection.outlook.com ([40.107.80.137]:13216
-        "EHLO NAM03-DM3-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1727107AbfABT2f (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 2 Jan 2019 14:28:35 -0500
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=hammerspace.com;
- s=selector1;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=VQejquCwEjRumEHnXuBvo8G2oaAhg/7Em3EhaSaO4yY=;
- b=h5mA66pMLCP7/wKdcUUvbuNbNvkWt8vjwBYfOoft5Mi6bqq6TDEoyQmf4SeybdmnSr6GwksxU1NsBIUHoTZ8N570v6uGOKTZiqLhrQBlbU94P6ZQR/GXt14NaHUS79qB0JBlXc+S0K8shIrYP7RYZ/sYqwr1Q3jSYWirVfG1JDk=
-Received: from SN6PR13MB2494.namprd13.prod.outlook.com (52.135.95.148) by
- SN6PR13MB2285.namprd13.prod.outlook.com (52.135.94.16) with Microsoft SMTP
- Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- 15.20.1495.5; Wed, 2 Jan 2019 19:24:48 +0000
-Received: from SN6PR13MB2494.namprd13.prod.outlook.com
- ([fe80::7dd2:1e4f:2de1:eb27]) by SN6PR13MB2494.namprd13.prod.outlook.com
- ([fe80::7dd2:1e4f:2de1:eb27%3]) with mapi id 15.20.1495.005; Wed, 2 Jan 2019
- 19:24:47 +0000
-From:   Trond Myklebust <trondmy@hammerspace.com>
-To:     "chuck.lever@oracle.com" <chuck.lever@oracle.com>
-CC:     "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+        id S1729584AbfABTdm (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 2 Jan 2019 14:33:42 -0500
+Received: from userp2130.oracle.com ([156.151.31.86]:49846 "EHLO
+        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1729535AbfABTdl (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 2 Jan 2019 14:33:41 -0500
+Received: from pps.filterd (userp2130.oracle.com [127.0.0.1])
+        by userp2130.oracle.com (8.16.0.22/8.16.0.22) with SMTP id x02JSaB7046292;
+        Wed, 2 Jan 2019 19:33:39 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=content-type :
+ mime-version : subject : from : in-reply-to : date : cc :
+ content-transfer-encoding : message-id : references : to;
+ s=corp-2018-07-02; bh=4eZYnK62izDTFKg0JOb+Yz9xNHO/6zSSnpYXJbdZ2WQ=;
+ b=MmOuzLwkLxSDVZgTWBsJElrBRyMAOXINn1az02R15p0z3qhrQS4XbkgRcXJWohAY+NtK
+ zkbyacpEf4PlVwhAeY4ESDxoU+od1VYuo9RnblEmF9/d6vgFqx1qGlbEfrN/vfYmfJ6S
+ ShFPF7mS6ltCzhC1vEfwt/DitkQSZdwPbqTH1EhJ+jlUdl+9dbLbWaI6prtD8MpwbNrd
+ cqnm59yN+ScudmQo4bMTKnW1kEKiNp1lRrkBwJgUw1GCpcWvJ7bpgPN4wp593Tc1T0w1
+ 594MEerBxnOmyllWCGE6HuNAYv1WFlOd/xkKlzXcB8ZjhiQPPDaStaeNRSyETY9B0lM8 8g== 
+Received: from userv0022.oracle.com (userv0022.oracle.com [156.151.31.74])
+        by userp2130.oracle.com with ESMTP id 2pp0btuqyn-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Wed, 02 Jan 2019 19:33:39 +0000
+Received: from userv0121.oracle.com (userv0121.oracle.com [156.151.31.72])
+        by userv0022.oracle.com (8.14.4/8.14.4) with ESMTP id x02JXdwp011929
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Wed, 2 Jan 2019 19:33:39 GMT
+Received: from abhmp0007.oracle.com (abhmp0007.oracle.com [141.146.116.13])
+        by userv0121.oracle.com (8.14.4/8.13.8) with ESMTP id x02JXchU025936;
+        Wed, 2 Jan 2019 19:33:39 GMT
+Received: from anon-dhcp-121.1015granger.net (/68.61.232.219)
+        by default (Oracle Beehive Gateway v4.0)
+        with ESMTP ; Wed, 02 Jan 2019 11:33:38 -0800
+Content-Type: text/plain;
+        charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 11.5 \(3445.9.1\))
 Subject: Re: [PATCH v3 26/44] SUNRPC: Improve latency for interactive tasks
-Thread-Topic: [PATCH v3 26/44] SUNRPC: Improve latency for interactive tasks
-Thread-Index: AQHUTob5qK09WaTXZkeMo/gY+CHqD6WTldAAgAAwIgCAAAW4AIAF/x2AgAAJ4YCAAAQ7gIAAAqsAgAACmQCAAADYgIADEu6AgAAHwwCAAAF8gIAAAbEAgAACqYCAAAUOgA==
-Date:   Wed, 2 Jan 2019 19:24:47 +0000
-Message-ID: <f451e8ac200370c520f2fb3371f4b2ae637fd3a8.camel@hammerspace.com>
+From:   Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <f451e8ac200370c520f2fb3371f4b2ae637fd3a8.camel@hammerspace.com>
+Date:   Wed, 2 Jan 2019 14:33:37 -0500
+Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Transfer-Encoding: quoted-printable
+Message-Id: <5F5AF2D8-EB72-4B1C-BE5E-7593037FFB92@oracle.com>
 References: <c4bd04d525a1355e3dfff054985d697f0f391816.camel@hammerspace.com>
-         <07dcc1731996d6e59d882c5e4e7e7765d013c337.camel@hammerspace.com>
-         <E9A190A9-4A55-4D02-9259-2F26BC41F16C@oracle.com>
-         <1fa9f43b6cc2ba5d4ebd24955bf76454bfab0c18.camel@hammerspace.com>
-         <5160E7EB-556C-4099-B564-8EFF7D7D9113@oracle.com>
-         <3e3c803dd0d007e4692ae2142b73bc1294d2b62a.camel@hammerspace.com>
-         <91dd8e9708db2f96f181de5b3867e0dbec2426de.camel@hammerspace.com>
-In-Reply-To: <91dd8e9708db2f96f181de5b3867e0dbec2426de.camel@hammerspace.com>
-Accept-Language: en-US, en-GB
-Content-Language: en-US
-X-MS-Has-Attach: 
-X-MS-TNEF-Correlator: 
-authentication-results: spf=none (sender IP is )
- smtp.mailfrom=trondmy@hammerspace.com; 
-x-originating-ip: [68.40.189.247]
-x-ms-publictraffictype: Email
-x-microsoft-exchange-diagnostics: 1;SN6PR13MB2285;6:PjYdtaVpf8VVy74VZz5ww4EWIpcVrb0jgNTiqhNm8JPut5l3J8hczZAR7QF6NNA9dIxf/8Kkx/BwrAY69Pwe+vSvEPknKH8wENroza63KGhawumszVVqOL27lUN1u4Abox562I73xU4lCloCSjlHa+cjOTFhDuNr8XAlL7n7UKn+M2iLsegW7Z6mc857LP+Lul+mTp+3tfpUXlbK6X4O4W0sqmp2ZUh5tyfmVpc6S5PXkvaFfYygKh7o3Kd8oApHChTj0XvSY5Syxl0U+jBNRU7zTvWpqsQ5Bl7I9D7UmzyeRYWvfY2wE40x8f69nZJi0RoGY5tR8nVGq8VEP1HuxA5gM+P28PBSwKWrBuHbntuxRoEcXc6nZtr/3lI4zNOqsHHHH8UpqdptM9iF2+rOpCdAGcLpoBLhKgkmwpNbFA9wlT0ZuQZn8YrqQoVOlMiulXS4HC9orjOGq7TEbyBz7g==;5:sM0XDcdzL6ZcvuCWrSaNF1TebkXz+k5rS2XGOPACx05oxdxSjWlsJqq9iXzwpyfq65q1LXit5OQGZgeBAgdg6SX085+thMZ+YeJGZBbEtcQIes6SHWIQKGY45gzb7V52FFDHw5hOCbKAYf5EYsQVUkNIL2gUPFbLy2Od2LKgbOWZbjqLtKvy/g3VDPWk9fu487RIWfpVAQFzme03ME0dng==;7:/epMBj5ED8CgDEKBcwnr06g55b2VlUSNYpIhTTPuf0bEKFO69jFVxzoZWR81tQewK02rDyQDYDzTpvtRWN+cVE7P+ymyOk72PUMjotBJSzsPQp9F1eU93oTfQzxmBLQdBwQkL8WNOMu6ke3MKqravw==
-x-ms-exchange-antispam-srfa-diagnostics: SOS;
-x-ms-office365-filtering-correlation-id: 3ade16e4-9746-498e-adcc-08d670e7f58e
-x-microsoft-antispam: BCL:0;PCL:0;RULEID:(2390118)(7020095)(4652040)(8989299)(5600109)(711020)(4534185)(4627221)(201703031133081)(201702281549075)(8990200)(2017052603328)(7153060)(7193020);SRVR:SN6PR13MB2285;
-x-ms-traffictypediagnostic: SN6PR13MB2285:
-x-microsoft-antispam-prvs: <SN6PR13MB22855F8A400A3F834E4AB12AB88C0@SN6PR13MB2285.namprd13.prod.outlook.com>
-x-exchange-antispam-report-cfa-test: BCL:0;PCL:0;RULEID:(3230021)(908002)(999002)(5005026)(6040522)(8220060)(2401047)(8121501046)(10201501046)(3002001)(93006095)(93001095)(3231475)(944501520)(52105112)(6041310)(20161123564045)(20161123558120)(20161123562045)(20161123560045)(201703131423095)(201702281528075)(20161123555045)(201703061421075)(201703061406153)(201708071742011)(7699051)(76991095);SRVR:SN6PR13MB2285;BCL:0;PCL:0;RULEID:;SRVR:SN6PR13MB2285;
-x-forefront-prvs: 0905A6B2C7
-x-forefront-antispam-report: SFV:NSPM;SFS:(10019020)(376002)(346002)(136003)(39830400003)(366004)(396003)(189003)(199004)(14444005)(256004)(66066001)(86362001)(2616005)(11346002)(68736007)(476003)(81156014)(81166006)(76176011)(4001150100001)(26005)(118296001)(478600001)(6506007)(53546011)(93886005)(6246003)(2906002)(25786009)(71200400001)(36756003)(71190400001)(6916009)(8676002)(102836004)(4326008)(106356001)(7736002)(305945005)(2351001)(316002)(105586002)(53936002)(6116002)(3846002)(229853002)(2501003)(5660300001)(99286004)(14454004)(446003)(97736004)(186003)(8936002)(486006)(6512007)(6486002)(6436002)(5640700003);DIR:OUT;SFP:1102;SCL:1;SRVR:SN6PR13MB2285;H:SN6PR13MB2494.namprd13.prod.outlook.com;FPR:;SPF:None;LANG:en;PTR:InfoNoRecords;MX:1;A:1;
-received-spf: None (protection.outlook.com: hammerspace.com does not designate
- permitted sender hosts)
-x-ms-exchange-senderadcheck: 1
-x-microsoft-antispam-message-info: HHrhleCyvZ1fOT6xyy9BTTmL1/azenE3HPNLhFQ3+/IFEGCDgVWi8bTsiKiy/mhpBzlQoJlR8//rkP/VSymeovhZyDE9gGm2dVWiD+lRcI7UoV/a6Rp8O7fAF52bMmM/OILZ7baOlIx+UrIKuaLP9+dgc27lBzYiPHz8hUn6/S5eHmuP0JnLQP/6ZzT6U4sWFrXNm/FzasA6SOVQf4bXNE8QXnW4ZZiy/j6/e0+/xRWuDqJSiriXOawxclAwmanmkxk6N9sflZ4opVCbUYzPj8UNjqPF092jMSzecOWSs6d3XhPpwoIgzlT9gYaXfThL
-spamdiagnosticoutput: 1:99
-spamdiagnosticmetadata: NSPM
-Content-Type: text/plain; charset="utf-8"
-Content-ID: <B106561111533442B090EF41CBCF3DD4@namprd13.prod.outlook.com>
-Content-Transfer-Encoding: base64
-MIME-Version: 1.0
-X-OriginatorOrg: hammerspace.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: 3ade16e4-9746-498e-adcc-08d670e7f58e
-X-MS-Exchange-CrossTenant-originalarrivaltime: 02 Jan 2019 19:24:47.7778
- (UTC)
-X-MS-Exchange-CrossTenant-fromentityheader: Hosted
-X-MS-Exchange-CrossTenant-id: 0d4fed5c-3a70-46fe-9430-ece41741f59e
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: SN6PR13MB2285
+ <07dcc1731996d6e59d882c5e4e7e7765d013c337.camel@hammerspace.com>
+ <E9A190A9-4A55-4D02-9259-2F26BC41F16C@oracle.com>
+ <1fa9f43b6cc2ba5d4ebd24955bf76454bfab0c18.camel@hammerspace.com>
+ <5160E7EB-556C-4099-B564-8EFF7D7D9113@oracle.com>
+ <3e3c803dd0d007e4692ae2142b73bc1294d2b62a.camel@hammerspace.com>
+ <91dd8e9708db2f96f181de5b3867e0dbec2426de.camel@hammerspace.com>
+ <f451e8ac200370c520f2fb3371f4b2ae637fd3a8.camel@hammerspace.com>
+To:     Trond Myklebust <trondmy@hammerspace.com>
+X-Mailer: Apple Mail (2.3445.9.1)
+X-Proofpoint-Virus-Version: vendor=nai engine=5900 definitions=9124 signatures=668680
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 suspectscore=0 malwarescore=0
+ phishscore=0 bulkscore=0 spamscore=0 mlxscore=0 mlxlogscore=999
+ adultscore=0 classifier=spam adjust=0 reason=mlx scancount=1
+ engine=8.0.1-1810050000 definitions=main-1901020172
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-T24gV2VkLCAyMDE5LTAxLTAyIGF0IDE0OjA2IC0wNTAwLCBUcm9uZCBNeWtsZWJ1c3Qgd3JvdGU6
-DQo+IE9uIFdlZCwgMjAxOS0wMS0wMiBhdCAxMzo1NyAtMDUwMCwgVHJvbmQgTXlrbGVidXN0IHdy
-b3RlOg0KPiA+IE9uIFdlZCwgMjAxOS0wMS0wMiBhdCAxMzo1MSAtMDUwMCwgQ2h1Y2sgTGV2ZXIg
-d3JvdGU6DQo+ID4gPiA+IE9uIEphbiAyLCAyMDE5LCBhdCAxOjQ1IFBNLCBUcm9uZCBNeWtsZWJ1
-c3QgPA0KPiA+ID4gPiB0cm9uZG15QGhhbW1lcnNwYWNlLmNvbT4gd3JvdGU6DQo+ID4gPiA+IA0K
-PiA+ID4gPiBPbiBXZWQsIDIwMTktMDEtMDIgYXQgMTM6MTcgLTA1MDAsIENodWNrIExldmVyIHdy
-b3RlOg0KPiA+ID4gPiA+ID4gT24gRGVjIDMxLCAyMDE4LCBhdCAyOjIxIFBNLCBUcm9uZCBNeWts
-ZWJ1c3QgPA0KPiA+ID4gPiA+ID4gdHJvbmRteUBoYW1tZXJzcGFjZS5jb20+IHdyb3RlOg0KPiA+
-ID4gPiA+ID4gDQo+ID4gPiA+ID4gPiBPbiBNb24sIDIwMTgtMTItMzEgYXQgMTk6MTggKzAwMDAs
-IFRyb25kIE15a2xlYnVzdCB3cm90ZToNCj4gPiA+ID4gPiA+ID4gT24gTW9uLCAyMDE4LTEyLTMx
-IGF0IDE0OjA5IC0wNTAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4gPiA+ID4gPiA+ID4gPiA+IE9u
-IERlYyAzMSwgMjAxOCwgYXQgMTo1OSBQTSwgVHJvbmQgTXlrbGVidXN0IDwNCj4gPiA+ID4gPiA+
-ID4gPiA+IHRyb25kbXlAaGFtbWVyc3BhY2UuY29tPiB3cm90ZToNCj4gPiA+ID4gPiA+ID4gPiA+
-IA0KPiA+ID4gPiA+ID4gPiA+ID4gDQo+ID4gPiA+ID4gPiA+IFRoZSB0ZXN0IGZvciBycGNhdXRo
-X3htaXRfbmVlZF9yZWVuY29kZSgpIGhhcHBlbnMgd2hlbiB3ZQ0KPiA+ID4gPiA+ID4gPiBjYWxs
-DQo+ID4gPiA+ID4gPiA+IHhwcnRfcmVxdWVzdF90cmFuc21pdCgpIHRvIGFjdHVhbGx5IHB1dCB0
-aGUgUlBDIGNhbGwgb24NCj4gPiA+ID4gPiA+ID4gdGhlDQo+ID4gPiA+ID4gPiA+IHdpcmUuDQo+
-ID4gPiA+ID4gPiA+IFRoZQ0KPiA+ID4gPiA+ID4gPiBlbnF1ZXVlIG9yZGVyIHNob3VsZCBub3Qg
-YmUgYWJsZSB0byBkZWZlYXQgdGhhdCB0ZXN0Lg0KPiA+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+
-ID4gSG1tLi4uIElzIGl0IHBlcmhhcHMgdGhlIHRlc3QgZm9yIHJlcS0+cnFfYnl0ZXNfc2VudCB0
-aGF0DQo+ID4gPiA+ID4gPiA+IGlzDQo+ID4gPiA+ID4gPiA+IGZhaWxpbmcNCj4gPiA+ID4gPiA+
-ID4gYmVjYXVzZSB0aGlzIGlzIGEgcmV0cmFuc21pc3Npb24gYWZ0ZXIgYQ0KPiA+ID4gPiA+ID4g
-PiBkaXNjb25uZWN0L3JlY29ubmVjdA0KPiA+ID4gPiA+ID4gPiB0aGF0DQo+ID4gPiA+ID4gPiA+
-IGRpZG4ndCB0cmlnZ2VyIGEgcmUtZW5jb2RlPw0KPiA+ID4gPiA+ID4gDQo+ID4gPiA+ID4gPiBB
-Y3R1YWxseSwgaXQgbWlnaHQgYmUgd29ydGggYSB0cnkgdG8gbW92ZSB0aGUgdGVzdCBmb3INCj4g
-PiA+ID4gPiA+IHJwY2F1dGhfeG1pdF9uZWVkX3JlZW5jb2RlKCkgb3V0c2lkZSB0aGUgZW5jbG9z
-aW5nIHRlc3QgZm9yDQo+ID4gPiA+ID4gPiByZXEtDQo+ID4gPiA+ID4gPiA+IHJxX2J5dGVzX3Nl
-bnQgYXMgdGhhdCBpcyBqdXN0IGEgbWlub3Igb3B0aW1pc2F0aW9uLg0KPiA+ID4gPiA+IA0KPiA+
-ID4gPiA+IFBlcmhhcHMgdGhhdCdzIHRoZSBjYXNlIGZvciBUQ1AsIGJ1dCBSUENzIHNlbnQgdmlh
-IHhwcnRyZG1hDQo+ID4gPiA+ID4gbmV2ZXINCj4gPiA+ID4gPiBzZXQNCj4gPiA+ID4gPiByZXEt
-PnJxX2J5dGVzX3NlbnQgdG8gYSBub24temVybyB2YWx1ZS4gVGhlIGJvZHkgb2YgdGhlICJpZiIN
-Cj4gPiA+ID4gPiBzdGF0ZW1lbnQNCj4gPiA+ID4gPiBpcyBhbHdheXMgZXhlY3V0ZWQgZm9yIHRo
-b3NlIFJQQ3MuDQo+ID4gPiA+ID4gDQo+ID4gPiA+IA0KPiA+ID4gPiBUaGVuIHRoZSBxdWVzdGlv
-biBpcyB3aGF0IGlzIGRlZmVhdGluZyB0aGUgY2FsbCB0bw0KPiA+ID4gPiBycGNhdXRoX3htaXRf
-bmVlZF9yZWVuY29kZSgpIGluIHhwcnRfcmVxdWVzdF90cmFuc21pdCgpIGFuZA0KPiA+ID4gPiBj
-YXVzaW5nDQo+ID4gPiA+IGl0DQo+ID4gPiA+IG5vdCB0byB0cmlnZ2VyIGluIHRoZSBtaXNvcmRl
-cmVkIGNhc2VzPw0KPiA+ID4gDQo+ID4gPiBIZXJlJ3MgYSBzYW1wbGUgUlBDL1JETUEgY2FzZS4N
-Cj4gPiA+IA0KPiA+ID4gTXkgaW5zdHJ1bWVudGVkIHNlcnZlciByZXBvcnRzIHRoaXM6DQo+ID4g
-PiANCj4gPiA+IEphbiAgMiAxMzoyOTowMCBrbGltdCBrZXJuZWw6IGdzc19jaGVja19zZXFfbnVt
-OiBkcm9wcGVkOg0KPiA+ID4gc2VxX251bT0xNDEyMjAgc2QtPnNkX21heD0xNDEzNjANCj4gPiA+
-IA0KPiA+ID4gDQo+ID4gPiBmdHJhY2UgbG9nIG9uIHRoZSBjbGllbnQgc2hvd3MgdGhpczoNCj4g
-PiA+IA0KPiA+ID4gICBrd29ya2VyL3UyODoxMi0yMTkxICBbMDA0XSAgIDE5NC4wNDg1MzQ6IHJw
-Y2dzc19uZWVkX3JlZW5jb2RlOg0KPiA+ID4gdGFzazoxNzYxQDUgeGlkPTB4ODhmNGY0N2MgcnFf
-c2Vxbm89MTQxMjIwIHNlcV94bWl0PTE0MTMzNg0KPiA+ID4gcmVlbmNvZGUNCj4gPiA+IHVubmVl
-ZGVkDQo+ID4gPiAgIGt3b3JrZXIvdTI4OjEyLTIxOTEgIFswMDRdICAgMTk0LjA0ODUzNDoNCj4g
-PiA+IHhwcnRfdHJhbnNtaXQ6ICAgICAgICB0YXNrOjE3NjFANSB4aWQ9MHg4OGY0ZjQ3YyBzZXFu
-bz0xNDEyMjANCj4gPiA+IHN0YXR1cz0tNTcNCj4gPiA+ICAga3dvcmtlci91Mjg6MTItMjE5MSAg
-WzAwNF0gICAxOTQuMDQ4NTM0Og0KPiA+ID4gcnBjX3Rhc2tfcnVuX2FjdGlvbjogIHRhc2s6MTc3
-OUA1IGZsYWdzPUFTWU5DDQo+ID4gPiBydW5zdGF0ZT1SVU5OSU5HfEFDVElWRXxORUVEX1hNSVR8
-TkVFRF9SRUNWIHN0YXR1cz0tNTcNCj4gPiA+IGFjdGlvbj1jYWxsX3RyYW5zbWl0X3N0YXR1cw0K
-PiA+ID4gICBrd29ya2VyL3UyODoxMi0yMTkxICBbMDA0XSAgIDE5NC4wNDg1MzU6DQo+ID4gPiBy
-cGNfdGFza19ydW5fYWN0aW9uOiAgdGFzazoxNzc5QDUgZmxhZ3M9QVNZTkMNCj4gPiA+IHJ1bnN0
-YXRlPVJVTk5JTkd8QUNUSVZFfE5FRURfWE1JVHxORUVEX1JFQ1Ygc3RhdHVzPTANCj4gPiA+IGFj
-dGlvbj1jYWxsX3RyYW5zbWl0DQo+ID4gPiAgIGt3b3JrZXIvdTI4OjEyLTIxOTEgIFswMDRdICAg
-MTk0LjA0ODUzNToNCj4gPiA+IHJwY190YXNrX3NsZWVwOiAgICAgICB0YXNrOjE3NzlANSBmbGFn
-cz1BU1lOQw0KPiA+ID4gcnVuc3RhdGU9UlVOTklOR3xBQ1RJVkV8TkVFRF9YTUlUfE5FRURfUkVD
-ViBzdGF0dXM9LTExIHRpbWVvdXQ9MA0KPiA+ID4gcXVldWU9eHBydF9zZW5kaW5nDQo+ID4gPiAN
-Cj4gPiA+IA0KPiA+ID4gICBrd29ya2VyL3UyODoxMi0yMTkxICBbMDA0XSAgIDE5NC4wNDg1NTI6
-IHJwY2dzc19uZWVkX3JlZW5jb2RlOg0KPiA+ID4gdGFzazoxNzYxQDUgeGlkPTB4ODhmNGY0N2Mg
-cnFfc2Vxbm89MTQxMjIwIHNlcV94bWl0PTE0MTMzNg0KPiA+ID4gcmVlbmNvZGUNCj4gPiA+IHVu
-bmVlZGVkDQo+ID4gPiAgIGt3b3JrZXIvdTI4OjEyLTIxOTEgIFswMDRdICAgMTk0LjA0ODU1NzoN
-Cj4gPiA+IHhwcnRfdHJhbnNtaXQ6ICAgICAgICB0YXNrOjE3NjFANSB4aWQ9MHg4OGY0ZjQ3YyBz
-ZXFubz0xNDEyMjANCj4gPiA+IHN0YXR1cz0wDQo+ID4gPiANCj4gPiA+IA0KPiA+ID4gICBrd29y
-a2VyL3UyODoxMi0yMTkxICBbMDA0XSAgIDE5NC4wNDg1NTk6IHJwY2dzc19uZWVkX3JlZW5jb2Rl
-Og0KPiA+ID4gdGFzazoxOTAyQDUgeGlkPTB4MTRmNWY0N2MgcnFfc2Vxbm89MTQxMzYwIHNlcV94
-bWl0PTE0MTMzNg0KPiA+ID4gcmVlbmNvZGUNCj4gPiA+IHVubmVlZGVkDQo+ID4gPiAgIGt3b3Jr
-ZXIvdTI4OjEyLTIxOTEgIFswMDRdICAgMTk0LjA0ODU2MzoNCj4gPiA+IHhwcnRfdHJhbnNtaXQ6
-ICAgICAgICB0YXNrOjE5MDJANSB4aWQ9MHgxNGY1ZjQ3YyBzZXFubz0xNDEzNjANCj4gPiA+IHN0
-YXR1cz0wDQo+ID4gPiANCj4gPiA+IA0KPiA+ID4gTm90ZSB0aGF0IGZpcnN0IG5lZWRfcmVlbmNv
-ZGU6IHRoZSBzZXF1ZW5jZSBudW1iZXJzIHNob3cgdGhhdCB0aGUNCj4gPiA+IHhtaXQNCj4gPiA+
-IHF1ZXVlIGhhcyBiZWVuIHNpZ25pZmljYW50bHkgcmUtb3JkZXJlZC4gVGhlIHJlcXVlc3QgYmVp
-bmcNCj4gPiA+IHRyYW5zbWl0dGVkIGlzDQo+ID4gPiBhbHJlYWR5IHZlcnkgY2xvc2UgdG8gdGhl
-IGxvd2VyIGVuZCBvZiB0aGUgR1NTIHNlcXVlbmNlIG51bWJlcg0KPiA+ID4gd2luZG93Lg0KPiA+
-ID4gDQo+ID4gPiBUaGUgc2VydmVyIHRoZW4gcmUtb3JkZXJlZHMgdGhlc2UgdHdvIHNsaWdodGx5
-IGJlY2F1c2UgdGhlIGZpcnN0DQo+ID4gPiBvbmUNCj4gPiA+IGhhZA0KPiA+ID4gc29tZSBSZWFk
-IGNodW5rcyB0aGF0IG5lZWQgdG8gYmUgcHVsbGVkIG92ZXIsIHRoZSBzZWNvbmQgd2FzIHB1cmUN
-Cj4gPiA+IGlubGluZQ0KPiA+ID4gYW5kIHRoZXJlZm9yZSBjb3VsZCBiZSBwcm9jZXNzZWQgaW1t
-ZWRpYXRlbHkuIFRoYXQgaXMgZW5vdWdoIHRvDQo+ID4gPiBmb3JjZQ0KPiA+ID4gdGhlDQo+ID4g
-PiBmaXJzdCBvbmUgb3V0c2lkZSB0aGUgR1NTIHNlcXVlbmNlIG51bWJlciB3aW5kb3cuDQo+ID4g
-PiANCj4gPiA+IEkgaGF2ZW4ndCBsb29rZWQgY2xvc2VseSBhdCB0aGUgcGF0aG9sb2d5IG9mIHRo
-ZSBUQ1AgY2FzZS4NCj4gPiANCj4gPiBXYWl0IGEgbWludXRlLi4uIFRoYXQncyBub3QgT0suIFRo
-ZSBjbGllbnQgY2FuJ3QgYmUgZXhwZWN0ZWQgdG8NCj4gPiB0YWtlDQo+ID4gaW50byBhY2NvdW50
-IHJlb3JkZXJpbmcgdGhhdCBoYXBwZW5zIG9uIHRoZSBzZXJ2ZXIgc2lkZS4NCj4gDQo+IElmIHRo
-YXQncyB0aGUgY2FzZSwgdGhlbiB3ZSB3b3VsZCBuZWVkIHRvIGhhbHQgdHJhbnNtaXNzaW9uIGFz
-IHNvb24NCj4gYXMNCj4gd2UgaGl0IHRoZSBSUENTRUNfR1NTIHdpbmRvdyBlZGdlLiBPZmYgdGhl
-IGN1ZmYsIEknbSBub3Qgc3VyZSBob3cgdG8NCj4gZG8NCj4gdGhhdCwgc2luY2UgdGhvc2Ugd2lu
-ZG93cyBhcmUgcGVyIHNlc3Npb24gKGkuZS4gcGVyIHVzZXIpLg0KDQpTbyBoZXJlIGlzIHNvbWV0
-aGluZyB3ZSBwcm9iYWJseSBjb3VsZCBkbzogbW9kaWZ5DQp4cHJ0X3JlcXVlc3RfZW5xdWV1ZV90
-cmFuc21pdCgpIHRvIG9yZGVyIHRoZSBsaXN0IGluIHJlcS0+cnFfeG1pdDIgYnkNCnJlcS0+cnFf
-c2Vxbm8uIFNpbmNlIHRhc2stPnRrX293bmVyIGlzIGFjdHVhbGx5IGEgcGlkLCB0aGVuIHRoYXQn
-cyBub3QNCmEgcGVyZmVjdCBzb2x1dGlvbiwgYnV0IHdlIGNvdWxkIGZ1cnRoZXIgbWl0aWdhdGUg
-YnkgbW9kaWZ5aW5nDQpnc3NfeG1pdF9uZWVkX3JlZW5jb2RlKCkgdG8gb25seSBhbGxvdyB0cmFu
-c21pc3Npb24gb2YgcmVxdWVzdHMgdGhhdA0KYXJlIHdpdGhpbiAyLzMgb2YgdGhlIHdpbmRvdy4N
-Ci0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIsIEhhbW1l
-cnNwYWNlDQp0cm9uZC5teWtsZWJ1c3RAaGFtbWVyc3BhY2UuY29tDQoNCg0K
+
+
+> On Jan 2, 2019, at 2:24 PM, Trond Myklebust <trondmy@hammerspace.com> =
+wrote:
+>=20
+> On Wed, 2019-01-02 at 14:06 -0500, Trond Myklebust wrote:
+>> On Wed, 2019-01-02 at 13:57 -0500, Trond Myklebust wrote:
+>>> On Wed, 2019-01-02 at 13:51 -0500, Chuck Lever wrote:
+>>>>> On Jan 2, 2019, at 1:45 PM, Trond Myklebust <
+>>>>> trondmy@hammerspace.com> wrote:
+>>>>>=20
+>>>>> On Wed, 2019-01-02 at 13:17 -0500, Chuck Lever wrote:
+>>>>>>> On Dec 31, 2018, at 2:21 PM, Trond Myklebust <
+>>>>>>> trondmy@hammerspace.com> wrote:
+>>>>>>>=20
+>>>>>>> On Mon, 2018-12-31 at 19:18 +0000, Trond Myklebust wrote:
+>>>>>>>> On Mon, 2018-12-31 at 14:09 -0500, Chuck Lever wrote:
+>>>>>>>>>> On Dec 31, 2018, at 1:59 PM, Trond Myklebust <
+>>>>>>>>>> trondmy@hammerspace.com> wrote:
+>>>>>>>>>>=20
+>>>>>>>>>>=20
+>>>>>>>> The test for rpcauth_xmit_need_reencode() happens when we
+>>>>>>>> call
+>>>>>>>> xprt_request_transmit() to actually put the RPC call on
+>>>>>>>> the
+>>>>>>>> wire.
+>>>>>>>> The
+>>>>>>>> enqueue order should not be able to defeat that test.
+>>>>>>>>=20
+>>>>>>>> Hmm... Is it perhaps the test for req->rq_bytes_sent that
+>>>>>>>> is
+>>>>>>>> failing
+>>>>>>>> because this is a retransmission after a
+>>>>>>>> disconnect/reconnect
+>>>>>>>> that
+>>>>>>>> didn't trigger a re-encode?
+>>>>>>>=20
+>>>>>>> Actually, it might be worth a try to move the test for
+>>>>>>> rpcauth_xmit_need_reencode() outside the enclosing test for
+>>>>>>> req-
+>>>>>>>> rq_bytes_sent as that is just a minor optimisation.
+>>>>>>=20
+>>>>>> Perhaps that's the case for TCP, but RPCs sent via xprtrdma
+>>>>>> never
+>>>>>> set
+>>>>>> req->rq_bytes_sent to a non-zero value. The body of the "if"
+>>>>>> statement
+>>>>>> is always executed for those RPCs.
+>>>>>>=20
+>>>>>=20
+>>>>> Then the question is what is defeating the call to
+>>>>> rpcauth_xmit_need_reencode() in xprt_request_transmit() and
+>>>>> causing
+>>>>> it
+>>>>> not to trigger in the misordered cases?
+>>>>=20
+>>>> Here's a sample RPC/RDMA case.
+>>>>=20
+>>>> My instrumented server reports this:
+>>>>=20
+>>>> Jan  2 13:29:00 klimt kernel: gss_check_seq_num: dropped:
+>>>> seq_num=3D141220 sd->sd_max=3D141360
+>>>>=20
+>>>>=20
+>>>> ftrace log on the client shows this:
+>>>>=20
+>>>>  kworker/u28:12-2191  [004]   194.048534: rpcgss_need_reencode:
+>>>> task:1761@5 xid=3D0x88f4f47c rq_seqno=3D141220 seq_xmit=3D141336
+>>>> reencode
+>>>> unneeded
+>>>>  kworker/u28:12-2191  [004]   194.048534:
+>>>> xprt_transmit:        task:1761@5 xid=3D0x88f4f47c seqno=3D141220
+>>>> status=3D-57
+>>>>  kworker/u28:12-2191  [004]   194.048534:
+>>>> rpc_task_run_action:  task:1779@5 flags=3DASYNC
+>>>> runstate=3DRUNNING|ACTIVE|NEED_XMIT|NEED_RECV status=3D-57
+>>>> action=3Dcall_transmit_status
+>>>>  kworker/u28:12-2191  [004]   194.048535:
+>>>> rpc_task_run_action:  task:1779@5 flags=3DASYNC
+>>>> runstate=3DRUNNING|ACTIVE|NEED_XMIT|NEED_RECV status=3D0
+>>>> action=3Dcall_transmit
+>>>>  kworker/u28:12-2191  [004]   194.048535:
+>>>> rpc_task_sleep:       task:1779@5 flags=3DASYNC
+>>>> runstate=3DRUNNING|ACTIVE|NEED_XMIT|NEED_RECV status=3D-11 =
+timeout=3D0
+>>>> queue=3Dxprt_sending
+>>>>=20
+>>>>=20
+>>>>  kworker/u28:12-2191  [004]   194.048552: rpcgss_need_reencode:
+>>>> task:1761@5 xid=3D0x88f4f47c rq_seqno=3D141220 seq_xmit=3D141336
+>>>> reencode
+>>>> unneeded
+>>>>  kworker/u28:12-2191  [004]   194.048557:
+>>>> xprt_transmit:        task:1761@5 xid=3D0x88f4f47c seqno=3D141220
+>>>> status=3D0
+>>>>=20
+>>>>=20
+>>>>  kworker/u28:12-2191  [004]   194.048559: rpcgss_need_reencode:
+>>>> task:1902@5 xid=3D0x14f5f47c rq_seqno=3D141360 seq_xmit=3D141336
+>>>> reencode
+>>>> unneeded
+>>>>  kworker/u28:12-2191  [004]   194.048563:
+>>>> xprt_transmit:        task:1902@5 xid=3D0x14f5f47c seqno=3D141360
+>>>> status=3D0
+>>>>=20
+>>>>=20
+>>>> Note that first need_reencode: the sequence numbers show that the
+>>>> xmit
+>>>> queue has been significantly re-ordered. The request being
+>>>> transmitted is
+>>>> already very close to the lower end of the GSS sequence number
+>>>> window.
+>>>>=20
+>>>> The server then re-ordereds these two slightly because the first
+>>>> one
+>>>> had
+>>>> some Read chunks that need to be pulled over, the second was pure
+>>>> inline
+>>>> and therefore could be processed immediately. That is enough to
+>>>> force
+>>>> the
+>>>> first one outside the GSS sequence number window.
+>>>>=20
+>>>> I haven't looked closely at the pathology of the TCP case.
+>>>=20
+>>> Wait a minute... That's not OK. The client can't be expected to
+>>> take
+>>> into account reordering that happens on the server side.
+>>=20
+>> If that's the case, then we would need to halt transmission as soon
+>> as
+>> we hit the RPCSEC_GSS window edge. Off the cuff, I'm not sure how to
+>> do
+>> that, since those windows are per session (i.e. per user).
+>=20
+> So here is something we probably could do: modify
+> xprt_request_enqueue_transmit() to order the list in req->rq_xmit2 by
+> req->rq_seqno.
+
+Why not add " && !req->rq_seq_no " to the third arm? Calls are already
+enqueued in sequence number order.
+
+
+> Since task->tk_owner is actually a pid, then that's not
+> a perfect solution, but we could further mitigate by modifying
+> gss_xmit_need_reencode() to only allow transmission of requests that
+> are within 2/3 of the window.
+> --=20
+> Trond Myklebust
+> Linux NFS client maintainer, Hammerspace
+> trond.myklebust@hammerspace.com
+
+--
+Chuck Lever
+
+
+
