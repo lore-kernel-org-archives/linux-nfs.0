@@ -7,65 +7,66 @@ X-Spam-Status: No, score=-9.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
 	SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 44014C43387
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C0C16C43612
 	for <linux-nfs@archiver.kernel.org>; Wed,  2 Jan 2019 22:54:26 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 1009720879
+	by mail.kernel.org (Postfix) with ESMTP id 8DAEF20879
 	for <linux-nfs@archiver.kernel.org>; Wed,  2 Jan 2019 22:54:26 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="jph52i6h"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="O7HvPG1B"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729991AbfABWyZ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S1729990AbfABWyZ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Wed, 2 Jan 2019 17:54:25 -0500
-Received: from mail-it1-f196.google.com ([209.85.166.196]:40563 "EHLO
-        mail-it1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1729990AbfABWyY (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 2 Jan 2019 17:54:24 -0500
-Received: by mail-it1-f196.google.com with SMTP id h193so40634985ita.5
+Received: from mail-it1-f195.google.com ([209.85.166.195]:51127 "EHLO
+        mail-it1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1729935AbfABWyZ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 2 Jan 2019 17:54:25 -0500
+Received: by mail-it1-f195.google.com with SMTP id z7so43086863iti.0
         for <linux-nfs@vger.kernel.org>; Wed, 02 Jan 2019 14:54:24 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references
          :mime-version:content-transfer-encoding;
-        bh=Qt0q9Hn+zH64pXxPLhc0X06mrmxhIcYsC/4IHHsTpUo=;
-        b=jph52i6hBvEo1nbaxjuUQD+iaNtRG36AkZVpeo8+wKFVT62/iZciz/dfa0bMF8zonk
-         XiQIu/YF6KEJISrTUHbJvemTX8WxXDj7XDogItsgf6hdiy8+jfMLLCqHpKlWhfwcACcX
-         UgUOOynNbkwnC4UEL+VaaJonvpq2PURZPV4iuhLqHsR2xIpMgAwq1TpSvIBP+6IDu90r
-         /LpRzCo3NwD9XgCIq89Pe3bEauBdxSA1S8wq0EsCi4F0N0K4RBA5ORNuBPx2zhCwdbV4
-         987QXSfWaJa6Q3c65gsgqH2v+cRoSFDeWBVxIX8Y/1A4ITyWe6HdnCmgDGShP1ViwQan
-         a1kw==
+        bh=6i+R29n/uLak+GIH+f2r+Se6UvKJSXp0zdIvffi5Q8k=;
+        b=O7HvPG1BbcQMrbAOg7zjWYHPJVAQCxvjKOFG7H2FMvccxoq3+WCnA/bMC0Rawtkyqa
+         7/1uyK/FFZdHsyyj8YbHdm1TasGDRQRmiW9lzHYifXgJ2rq545LFTKx6D3StxVLorJiY
+         DayMsTvHPbr+xRH+/kTWodceE6eFJ2INcHcRNgPkbf1/qXNgpXD3ThSWSEdGby6nq3Yt
+         nlTLhHHeXoisGfq8IQpJzYEnxxbTX7oHXeip9yhm1FkndV8013LesOupE3PcE9PWZIoc
+         r+d921XnuM0apEB58/gMNbd+N+SjEmRzAuRNK/UhZo9VS8d8gDe9VOGIILfPfcInletU
+         6qvg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=Qt0q9Hn+zH64pXxPLhc0X06mrmxhIcYsC/4IHHsTpUo=;
-        b=BLp/ENF1a95Tm0HQ51Mg1b/F+bHjHYq9mo9cWD1sJa6yhmpCoVjbxBOm7+ueBAEWwB
-         BRn0U56D0kR2Y6vOirJHjOVuH7UiKYUK+69xbXDY2+fFObjQJBrHNMItAI2LpqsHMiAj
-         dIj+1VvVTWHWmN2RoQD73zOvVfMXTQOvujRHK1tZgjgVH+r108FrMe2nhDwCAa6ENDY9
-         eITSfjZVc0eWkKljyRV/PGa0yVaIwiUb6mcLvTFTU3bW2/oCbL+vOTLAX64eiqia15XJ
-         cl9MapsQXl01EcwFe9LPqxsUdQOJVKkIT2lvZ726pIdL5Sh4JO6CU5tk3ziHTKZmaddf
-         eo7g==
-X-Gm-Message-State: AJcUukfdIgaltkhdcoJTM4QhrTpDRofMVvLOKwYHMEKjmf7XUhsDub2C
-        7RMnNQPgqRmu+8sk4ZCXsWOlYQ3SGg==
-X-Google-Smtp-Source: AFSGD/VTNSJLgYU4UWpVZME7b+DSE8Z4x0vEoPmRm4cqbhBbYK1l+znbvyCeVs2qjleNABK4OufMkQ==
-X-Received: by 2002:a24:2c50:: with SMTP id i77mr26056332iti.131.1546469663470;
-        Wed, 02 Jan 2019 14:54:23 -0800 (PST)
+        bh=6i+R29n/uLak+GIH+f2r+Se6UvKJSXp0zdIvffi5Q8k=;
+        b=SMUoton3d9X1gfHDVy2muCgY8RFMEbhFGofr+xkQ2qDGa9mpOmv+LFwT8Qawz6xdui
+         I7inYKalLz36xxKRYWGXp/wzzWj+4OmxGoRQByGV1sWNcXPXFjQsDagdEHclzuAHXxEp
+         hwwIanytO14rZOq9NF24CRluWfxJMS9RLNonschl58Azl7UfP12HrSs9DDq/hexJm2Ke
+         b3l+rQRXxcHQmsLU4n6y0ioVe3Uf0jQhidJH6tZnwYzBwi6H9B08W6P6FcBnmaTToMiD
+         vhU5iMDQi8RIE0MTG3GeVA7bqFroi+VsWLyUmoY6oACp7WuOwDCYColy/uRQKYfUqvfW
+         cfTw==
+X-Gm-Message-State: AA+aEWaTMrJtwWqIZMpXnBMCa8yKX4pLYnksj2nNbZzGyea77WXesQEO
+        MxqnNwujC68soyiu2Ph1LQhIWtdf0A==
+X-Google-Smtp-Source: AFSGD/U2prwOd5PdSTacIohObeJZbAh7eiWCU4TMlaiVbyBDL9Diso23ohtT6xTjv9yegjRYJDsKdA==
+X-Received: by 2002:a24:cc46:: with SMTP id x67mr27905668itf.66.1546469664134;
+        Wed, 02 Jan 2019 14:54:24 -0800 (PST)
 Received: from localhost.localdomain (c-68-40-189-247.hsd1.mi.comcast.net. [68.40.189.247])
-        by smtp.gmail.com with ESMTPSA id d3sm23036154itc.40.2019.01.02.14.54.22
+        by smtp.gmail.com with ESMTPSA id d3sm23036154itc.40.2019.01.02.14.54.23
         (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
-        Wed, 02 Jan 2019 14:54:22 -0800 (PST)
+        Wed, 02 Jan 2019 14:54:23 -0800 (PST)
 From:   Trond Myklebust <trondmy@gmail.com>
 X-Google-Original-From: Trond Myklebust <trond.myklebust@hammerspace.com>
 To:     Chuck Lever <chuck.lever@oracle.com>
 Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH 3/4] SUNRPC: Allow for some re-ordering of RPCSEC_GSS requests on the server
-Date:   Wed,  2 Jan 2019 17:53:12 -0500
-Message-Id: <20190102225313.2097-4-trond.myklebust@hammerspace.com>
+Subject: [PATCH 4/4] SUNRPC: Ensure we respect the RPCSEC_GSS sequence number limit
+Date:   Wed,  2 Jan 2019 17:53:13 -0500
+Message-Id: <20190102225313.2097-5-trond.myklebust@hammerspace.com>
 X-Mailer: git-send-email 2.20.1
-In-Reply-To: <20190102225313.2097-3-trond.myklebust@hammerspace.com>
+In-Reply-To: <20190102225313.2097-4-trond.myklebust@hammerspace.com>
 References: <20190102225313.2097-1-trond.myklebust@hammerspace.com>
  <20190102225313.2097-2-trond.myklebust@hammerspace.com>
  <20190102225313.2097-3-trond.myklebust@hammerspace.com>
+ <20190102225313.2097-4-trond.myklebust@hammerspace.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
@@ -73,43 +74,100 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Strictly speaking, the client is probably not supposed to transmit more
-requests than are allowed for in the RPCSEC_GSS window. However since
-we do, try to ensure that we allow for some re-ordering by the server.
+According to RFC2203, the RPCSEC_GSS sequence numbers are bounded to
+an upper limit of MAXSEQ = 0x80000000. Ensure that we handle that
+correctly.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- net/sunrpc/auth_gss/auth_gss.c | 10 ++++++----
- 1 file changed, 6 insertions(+), 4 deletions(-)
+ net/sunrpc/auth_gss/auth_gss.c | 12 +++++++++---
+ net/sunrpc/clnt.c              | 19 ++++++++++++-------
+ 2 files changed, 21 insertions(+), 10 deletions(-)
 
 diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-index ba765473d1f0..dc7124d45c8a 100644
+index dc7124d45c8a..96c1f12e791e 100644
 --- a/net/sunrpc/auth_gss/auth_gss.c
 +++ b/net/sunrpc/auth_gss/auth_gss.c
-@@ -2029,9 +2029,6 @@ gss_xmit_need_reencode(struct rpc_task *task)
- 	if (!ctx)
- 		return true;
+@@ -1563,8 +1563,10 @@ gss_marshal(struct rpc_task *task, __be32 *p)
+ 	cred_len = p++;
  
--	if (gss_seq_is_newer(req->rq_seqno, READ_ONCE(ctx->gc_seq)))
--		goto out;
--
- 	seq_xmit = READ_ONCE(ctx->gc_seq_xmit);
- 	while (gss_seq_is_newer(req->rq_seqno, seq_xmit)) {
- 		u32 tmp = seq_xmit;
-@@ -2043,7 +2040,12 @@ gss_xmit_need_reencode(struct rpc_task *task)
- 		}
+ 	spin_lock(&ctx->gc_seq_lock);
+-	req->rq_seqno = ctx->gc_seq++;
++	req->rq_seqno = (ctx->gc_seq < MAXSEQ) ? ctx->gc_seq++ : MAXSEQ;
+ 	spin_unlock(&ctx->gc_seq_lock);
++	if (req->rq_seqno == MAXSEQ)
++		goto out_expired;
+ 
+ 	*p++ = htonl((u32) RPC_GSS_VERSION);
+ 	*p++ = htonl((u32) ctx->gc_proc);
+@@ -1586,14 +1588,18 @@ gss_marshal(struct rpc_task *task, __be32 *p)
+ 	mic.data = (u8 *)(p + 1);
+ 	maj_stat = gss_get_mic(ctx->gc_gss_ctx, &verf_buf, &mic);
+ 	if (maj_stat == GSS_S_CONTEXT_EXPIRED) {
+-		clear_bit(RPCAUTH_CRED_UPTODATE, &cred->cr_flags);
++		goto out_expired;
+ 	} else if (maj_stat != 0) {
+-		printk("gss_marshal: gss_get_mic FAILED (%d)\n", maj_stat);
++		pr_warn("gss_marshal: gss_get_mic FAILED (%d)\n", maj_stat);
++		task->tk_status = -EIO;
+ 		goto out_put_ctx;
+ 	}
+ 	p = xdr_encode_opaque(p, NULL, mic.len);
+ 	gss_put_ctx(ctx);
+ 	return p;
++out_expired:
++	clear_bit(RPCAUTH_CRED_UPTODATE, &cred->cr_flags);
++	task->tk_status = -EKEYEXPIRED;
+ out_put_ctx:
+ 	gss_put_ctx(ctx);
+ 	return NULL;
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 2189fbc4c570..1ee04e0ec4bc 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -1740,11 +1740,8 @@ rpc_xdr_encode(struct rpc_task *task)
+ 		     req->rq_rcvsize);
+ 
+ 	p = rpc_encode_header(task);
+-	if (p == NULL) {
+-		printk(KERN_INFO "RPC: couldn't encode RPC header, exit EIO\n");
+-		rpc_exit(task, -EIO);
++	if (p == NULL)
+ 		return;
+-	}
+ 
+ 	encode = task->tk_msg.rpc_proc->p_encode;
+ 	if (encode == NULL)
+@@ -1769,10 +1766,17 @@ call_encode(struct rpc_task *task)
+ 	/* Did the encode result in an error condition? */
+ 	if (task->tk_status != 0) {
+ 		/* Was the error nonfatal? */
+-		if (task->tk_status == -EAGAIN || task->tk_status == -ENOMEM)
++		switch (task->tk_status) {
++		case -EAGAIN:
++		case -ENOMEM:
+ 			rpc_delay(task, HZ >> 4);
+-		else
++			break;
++		case -EKEYEXPIRED:
++			task->tk_action = call_refresh;
++			break;
++		default:
+ 			rpc_exit(task, task->tk_status);
++		}
+ 		return;
  	}
  
--	win = ctx->gc_win;
-+	/*
-+	 * Ensure the request is within 3/4 of the RPCSEC_GSS sequence
-+	 * window so that we allow for some re-ordering of the requests
-+	 * by the server.
-+	 */
-+	win = 3 * ((ctx->gc_win + 3) >> 2);
- 	if (win > 0)
- 		ret = !gss_seq_is_newer(req->rq_seqno, seq_xmit - win);
- out:
+@@ -2334,7 +2338,8 @@ rpc_encode_header(struct rpc_task *task)
+ 	*p++ = htonl(clnt->cl_vers);	/* program version */
+ 	*p++ = htonl(task->tk_msg.rpc_proc->p_proc);	/* procedure */
+ 	p = rpcauth_marshcred(task, p);
+-	req->rq_slen = xdr_adjust_iovec(&req->rq_svec[0], p);
++	if (p)
++		req->rq_slen = xdr_adjust_iovec(&req->rq_svec[0], p);
+ 	return p;
+ }
+ 
 -- 
 2.20.1
 
