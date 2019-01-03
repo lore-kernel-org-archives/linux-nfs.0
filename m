@@ -2,92 +2,156 @@ Return-Path: <SRS0=enTr=PL=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS,
-	URIBL_BLOCKED autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-6.5 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_PASS,UNPARSEABLE_RELAY,URIBL_BLOCKED autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B7F42C43387
-	for <linux-nfs@archiver.kernel.org>; Thu,  3 Jan 2019 20:53:26 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 03F5EC43387
+	for <linux-nfs@archiver.kernel.org>; Thu,  3 Jan 2019 20:54:06 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 8382C217F5
-	for <linux-nfs@archiver.kernel.org>; Thu,  3 Jan 2019 20:53:26 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id C12E9217F5
+	for <linux-nfs@archiver.kernel.org>; Thu,  3 Jan 2019 20:54:05 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=linux-foundation.org header.i=@linux-foundation.org header.b="J/1pEAYo"
+	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="lESXGNmW"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726388AbfACUxV (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 3 Jan 2019 15:53:21 -0500
-Received: from mail-lf1-f68.google.com ([209.85.167.68]:46297 "EHLO
-        mail-lf1-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726073AbfACUxV (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Jan 2019 15:53:21 -0500
-Received: by mail-lf1-f68.google.com with SMTP id y14so5115762lfg.13
-        for <linux-nfs@vger.kernel.org>; Thu, 03 Jan 2019 12:53:19 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=linux-foundation.org; s=google;
-        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
-         :cc;
-        bh=mDNrvkxxd60+K6Wwm2FMQyhVxIavAJa512uq74mBQUA=;
-        b=J/1pEAYoYy9n0QcxVBradL1P4NBR4Jn93gvg2ZoKIsLfcKzQNhdGEdt+zIdkExkT4U
-         RZVoplZvjmjAGPwWdavkBNqpu/uKd8V/OAiQ9xuw9KgQGFT6MLJsAYFo7iFkup6ZZK8n
-         fa5kPQ/5SRAGEbEPGmtu7hxgWJdXxLNh+ffis=
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
-         :message-id:subject:to:cc;
-        bh=mDNrvkxxd60+K6Wwm2FMQyhVxIavAJa512uq74mBQUA=;
-        b=YOqQdIE08Rh6mzR0fFsToNdbq7BSnhS6/9R89We1JXk6Qp/AWZJAKxEOkmsx9HjHBD
-         H3msmG6fw7aoGhWL28EJeKyUe9kVcN5P9NTnaF9h7R+7J9/RjfiejYuNa1vcDFVh7Xcs
-         Qs7796BsyN2SFCjVhetEbTf8NMxAvfeutZlW60J4nXCkdxI3L/CPBUCe936xBW6wZMIW
-         5DHin0jpOH+nnXbTKTheZemBGf+Tp9ohm1BVlN7Lk5s9eSMloXdLf6Vd6ZqgMjDb9efi
-         TG4UB8drFfaMZ3gi3+K7Us4iLm7c/ssBbNR9uEn3tAZekYilIsJqA9sIAx+svt0OXso7
-         VF8g==
-X-Gm-Message-State: AA+aEWZaNyG4QXpoYUQYC0c7ufuZqk+NYGkekWVmgAUr7VABhtOCH8cb
-        NGlur0BDi69ebKxZJuGDeQhNrZKRyO4=
-X-Google-Smtp-Source: AFSGD/UZFe0qWdXKUD1n9SjLLhCvYomWbYlRBUl2m4tOf7JA+rwoErtwJCKUX4YRc2R70c93Aaa++g==
-X-Received: by 2002:a19:5e5d:: with SMTP id z29mr23603949lfi.105.1546548797922;
-        Thu, 03 Jan 2019 12:53:17 -0800 (PST)
-Received: from mail-lj1-f170.google.com (mail-lj1-f170.google.com. [209.85.208.170])
-        by smtp.gmail.com with ESMTPSA id z15-v6sm13256023ljb.9.2019.01.03.12.53.16
-        for <linux-nfs@vger.kernel.org>
-        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Thu, 03 Jan 2019 12:53:17 -0800 (PST)
-Received: by mail-lj1-f170.google.com with SMTP id c19-v6so30819909lja.5
-        for <linux-nfs@vger.kernel.org>; Thu, 03 Jan 2019 12:53:16 -0800 (PST)
-X-Received: by 2002:a2e:9c7:: with SMTP id 190-v6mr20707080ljj.120.1546548796500;
- Thu, 03 Jan 2019 12:53:16 -0800 (PST)
-MIME-Version: 1.0
-References: <02d3ecd37f9390e7b8a7be8ec0e1cafb7fdbed26.camel@netapp.com>
- <CAHk-=whZkaZn1UQLad6v9vmfx8+BB3m8cvT0wcKdtg=k=FDbGw@mail.gmail.com>
- <87bm4yl4th.fsf@notabene.neil.brown.name> <55e9d0eb47662f2d6c308eba8b9a84fbba978ac8.camel@hammerspace.com>
-In-Reply-To: <55e9d0eb47662f2d6c308eba8b9a84fbba978ac8.camel@hammerspace.com>
-From:   Linus Torvalds <torvalds@linux-foundation.org>
-Date:   Thu, 3 Jan 2019 12:53:00 -0800
-X-Gmail-Original-Message-ID: <CAHk-=whVxZ54i9uhXkWoaP+K1y4wu0J5z7d_mZ=-Zcpi5UhZww@mail.gmail.com>
-Message-ID: <CAHk-=whVxZ54i9uhXkWoaP+K1y4wu0J5z7d_mZ=-Zcpi5UhZww@mail.gmail.com>
-Subject: Re: [GIT PULL] Please pull NFS client updates for 4.21
+        id S1726519AbfACUyF (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 3 Jan 2019 15:54:05 -0500
+Received: from aserp2130.oracle.com ([141.146.126.79]:46762 "EHLO
+        aserp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726003AbfACUyF (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Jan 2019 15:54:05 -0500
+Received: from pps.filterd (aserp2130.oracle.com [127.0.0.1])
+        by aserp2130.oracle.com (8.16.0.22/8.16.0.22) with SMTP id x03KmWUG143506;
+        Thu, 3 Jan 2019 20:53:59 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=content-type :
+ mime-version : subject : from : in-reply-to : date : cc :
+ content-transfer-encoding : message-id : references : to;
+ s=corp-2018-07-02; bh=B0ogmQTZWnWXc9mmXwxCWmuv3QRsUcbGNlfCtMr8grE=;
+ b=lESXGNmW75Ps1h4nov2UVqJtf0Sr6CGiZmAaq1ZyXZKhYxcl1mN0Tk0Wdkg10FFBJmXX
+ i6IzssrClRqrVM1Q3MMUFJgkQsW1l9sLzm0wXJln/gGQpziU2TPArxlYg8QX9DQ7uJmK
+ ItKkiOvzHLVyyWU8wJDaAqNtpQvHxHuocPw+7lxwIuqsA0oAnvg17oqo5peJ2tQtvzCJ
+ fmQALwkLzUByV23wGXq+/mfLpf9kY3t0WyA7MTeGgDE0lT2/sonGZ2vV4+Ggl3V6d1rp
+ GX1By4jWcWT66kIPM3MNqPkF5aZzvELW9OdiC6Z+yk/QsJIgfZScjK1rBLYc9MyOAcFP ng== 
+Received: from aserv0022.oracle.com (aserv0022.oracle.com [141.146.126.234])
+        by aserp2130.oracle.com with ESMTP id 2pnxee9ba2-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Thu, 03 Jan 2019 20:53:59 +0000
+Received: from userv0122.oracle.com (userv0122.oracle.com [156.151.31.75])
+        by aserv0022.oracle.com (8.14.4/8.14.4) with ESMTP id x03Krx5I029367
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Thu, 3 Jan 2019 20:53:59 GMT
+Received: from abhmp0015.oracle.com (abhmp0015.oracle.com [141.146.116.21])
+        by userv0122.oracle.com (8.14.4/8.14.4) with ESMTP id x03Krw7D008130;
+        Thu, 3 Jan 2019 20:53:58 GMT
+Received: from anon-dhcp-121.1015granger.net (/68.61.232.219)
+        by default (Oracle Beehive Gateway v4.0)
+        with ESMTP ; Thu, 03 Jan 2019 12:53:58 -0800
+Content-Type: text/plain;
+        charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 11.5 \(3445.9.1\))
+Subject: Re: [PATCH] SUNRPC: Remove rpc_xprt::tsh_size
+From:   Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <0331de80b8161f8bf16a92de20049cafb0c228da.camel@hammerspace.com>
+Date:   Thu, 3 Jan 2019 15:53:56 -0500
+Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Transfer-Encoding: quoted-printable
+Message-Id: <90B38E07-3241-4CCD-A4C8-AB78BADFB0CD@oracle.com>
+References: <20190103182649.4148.19838.stgit@manet.1015granger.net>
+ <0331de80b8161f8bf16a92de20049cafb0c228da.camel@hammerspace.com>
 To:     Trond Myklebust <trondmy@hammerspace.com>
-Cc:     "Anna.Schumaker@netapp.com" <Anna.Schumaker@netapp.com>,
-        "neilb@suse.com" <neilb@suse.com>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+X-Mailer: Apple Mail (2.3445.9.1)
+X-Proofpoint-Virus-Version: vendor=nai engine=5900 definitions=9125 signatures=668680
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 suspectscore=0 malwarescore=0
+ phishscore=0 bulkscore=0 spamscore=0 mlxscore=0 mlxlogscore=999
+ adultscore=0 classifier=spam adjust=0 reason=mlx scancount=1
+ engine=8.0.1-1810050000 definitions=main-1901030180
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Wed, Jan 2, 2019 at 10:10 PM Trond Myklebust <trondmy@hammerspace.com> wrote:
->
-> The values being compared are in cred_fscmp() are all of type kuid_t or
-> kgid_t so that means they have already been mapped from the user
-> namespace into the kernel uid/gid space.
 
-Ok, "everything happens in init_ns" is I guess a very valid argument.
 
-It might be good to perhaps show that in the name (and maybe even a
-comment), but as long as it's only really used for nfs I guess it
-isn't a big deal.
+> On Jan 3, 2019, at 1:47 PM, Trond Myklebust <trondmy@hammerspace.com> =
+wrote:
+>=20
+> On Thu, 2019-01-03 at 13:29 -0500, Chuck Lever wrote:
+>> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+>> index d5ce1a8..66b08aa 100644
+>> --- a/net/sunrpc/xprtsock.c
+>> +++ b/net/sunrpc/xprtsock.c
+>> @@ -678,6 +678,31 @@ static void xs_stream_data_receive_workfn(struct
+>> work_struct *work)
+>>=20
+>> #define XS_SENDMSG_FLAGS	(MSG_DONTWAIT | MSG_NOSIGNAL)
+>>=20
+>> +static int xs_send_record_marker(struct sock_xprt *transport,
+>> +				 const struct rpc_rqst *req)
+>> +{
+>> +	static struct msghdr msg =3D {
+>> +		.msg_name	=3D NULL,
+>> +		.msg_namelen	=3D 0,
+>> +		.msg_flags	=3D (XS_SENDMSG_FLAGS | MSG_MORE),
+>> +	};
+>> +	rpc_fraghdr marker;
+>> +	struct kvec iov =3D {
+>> +		.iov_base	=3D &marker,
+>> +		.iov_len	=3D sizeof(marker),
+>> +	};
+>> +	u32 reclen;
+>> +
+>> +	if (unlikely(!transport->sock))
+>> +		return -ENOTSOCK;
+>> +	if (req->rq_bytes_sent)
+>> +		return 0;
+>=20
+> The test needs to use transport->xmit.offset, not req->rq_bytes_sent.
 
-Thanks,
+OK, that seems to work better.
 
-             Linus
+
+> You also need to update transport->xmit.offset on success,
+
+That causes the first 4 bytes of the rq_snd_buf to not be sent.
+Not updating xmit.offset seems more correct.
+
+
+> and be
+> prepared to handle the case where < sizeof(marker) bytes get
+> transmitted due to a write_space condition.
+
+Probably the only recourse is to break the connection.
+
+
+>> +
+>> +	reclen =3D req->rq_snd_buf.len;
+>> +	marker =3D cpu_to_be32(RPC_LAST_STREAM_FRAGMENT | reclen);
+>> +	return kernel_sendmsg(transport->sock, &msg, &iov, 1,
+>> iov.iov_len);
+>=20
+>=20
+> So what does this do for performance? I'd expect that adding another
+> dive into the socket layer will come with penalties.
+
+NFSv3 on TCP, sec=3Dsys, 56Gbs IBoIP, v4.20 + my v4.21 patches
+fio, 8KB random, 70% read, 30% write, 16 threads, iodepth=3D16
+
+Without this patch:
+
+   read: IOPS=3D28.7k, BW=3D224MiB/s (235MB/s)(11.2GiB/51092msec)
+  write: IOPS=3D12.3k, BW=3D96.3MiB/s (101MB/s)(4918MiB/51092msec)
+
+With this patch:
+
+   read: IOPS=3D28.6k, BW=3D224MiB/s (235MB/s)(11.2GiB/51276msec)
+  write: IOPS=3D12.3k, BW=3D95.8MiB/s (100MB/s)(4914MiB/51276msec)
+
+Seems like that's in the noise.
+
+
+--
+Chuck Lever
+
+
+
