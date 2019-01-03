@@ -2,100 +2,104 @@ Return-Path: <SRS0=enTr=PL=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-1.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS,
+	URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C638FC43387
-	for <linux-nfs@archiver.kernel.org>; Thu,  3 Jan 2019 14:18:23 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 69B97C43387
+	for <linux-nfs@archiver.kernel.org>; Thu,  3 Jan 2019 14:26:42 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 8D02820815
-	for <linux-nfs@archiver.kernel.org>; Thu,  3 Jan 2019 14:18:23 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 28C1520815
+	for <linux-nfs@archiver.kernel.org>; Thu,  3 Jan 2019 14:26:42 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="L5xO1kq4"
+	dkim=pass (1024-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="BnKCj01a"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1730780AbfACOSW (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 3 Jan 2019 09:18:22 -0500
-Received: from mail-it1-f194.google.com ([209.85.166.194]:51170 "EHLO
-        mail-it1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727650AbfACOSW (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Jan 2019 09:18:22 -0500
-Received: by mail-it1-f194.google.com with SMTP id z7so45396322iti.0
-        for <linux-nfs@vger.kernel.org>; Thu, 03 Jan 2019 06:18:22 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=p+jVw7m1VkU55Z+h4vl73u59DzM+akbkAL24Sfw8S3w=;
-        b=L5xO1kq4T/nMKepbB02U3sVRnVdRIO/ECLd/mPXPnktVzn9jS1Lpj6Xq2p/g6cKKXr
-         d0EXpUEMx3eWSNpzDs6EcCQ15Be5ANXCMoRBR+SOPxN1SCmCnJJvodfRiJ30OuQSo7ye
-         4TyWZnedDKSr/EWsyVht12SVqXYmh/+veTOmvvwmnL7mF6UkJiPUbsNlZr4mdRDrFKa+
-         d80f1SyLiZezK7Z/nrerVPI989v3ol6+bN6zQ4kbZak6x9ch21yAPtnvgsOZroA9oLOU
-         JjZVpj4Kaqjd0rPFAGUyTcc39hs/566UNdJkaEBtCFnwHZraLnIkx3b09yGpXsvlekug
-         grFw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=p+jVw7m1VkU55Z+h4vl73u59DzM+akbkAL24Sfw8S3w=;
-        b=Kf3DB3tOYDIynqnuoagXah54hP88aPsAuaXLlLoaMByf3SWPCrf/DN4+BNCcnq+Gma
-         5s79cqQF7cKZshHC3feSCbTGeohWOcMDa8V9SyVIba5+2Elau6bVY/UaHQC4POgtINB8
-         qQ8Nvp2CvfdNpNBo8mWUuMzTh1xDgPwFQcBHeXqWKaCOii5DYKE/ZDAf+EbVqC0y2H+K
-         hOmaN3gU9OBW+BVuCcbEmss4nd/Lq6kuzS/ZcYrOv2OdoAJrzP3x5U4GD+ATTAJWfYSy
-         eDtFogJeQRva9rY+3FyOy9/XlaFb9FCopSg0v0wul7qj+WJ15fywB9zocjXjtqoDQzOZ
-         67Gg==
-X-Gm-Message-State: AA+aEWaPZl57zr+t32pRINoaNi1XmCFlRFbN4mEXU8RFC47/DsgXXP0/
-        u7lnM84cvmKwlqZZgSDC2h2R9gU0tg==
-X-Google-Smtp-Source: AFSGD/VXoI224Db8NldVtvrDS6JDF/Sps5OqLv5SSRGqR8+hVU+zh9hSrsI0mFJzN+ok7PgAFGGg4g==
-X-Received: by 2002:a02:1217:: with SMTP id i23mr32642395jad.53.1546525101594;
-        Thu, 03 Jan 2019 06:18:21 -0800 (PST)
-Received: from localhost.localdomain (c-68-40-189-247.hsd1.mi.comcast.net. [68.40.189.247])
-        by smtp.gmail.com with ESMTPSA id h64sm24472886itb.14.2019.01.03.06.18.20
-        (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
-        Thu, 03 Jan 2019 06:18:21 -0800 (PST)
-From:   Trond Myklebust <trondmy@gmail.com>
-X-Google-Original-From: Trond Myklebust <trond.myklebust@hammerspace.com>
-To:     J Bruce Fields <bfields@fieldses.org>
-Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH] SUNRPC: Don't allow compiler optimisation of svc_xprt_release_slot()
-Date:   Thu,  3 Jan 2019 09:17:12 -0500
-Message-Id: <20190103141712.24381-1-trond.myklebust@hammerspace.com>
-X-Mailer: git-send-email 2.20.1
+        id S1727670AbfACO0l (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 3 Jan 2019 09:26:41 -0500
+Received: from mail-eopbgr770107.outbound.protection.outlook.com ([40.107.77.107]:58784
+        "EHLO NAM02-SN1-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1727147AbfACO0l (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 3 Jan 2019 09:26:41 -0500
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=hammerspace.com;
+ s=selector1;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=CPBdjZMSM0cjlOSbKY6UEb8ZeEgeTeHV0i/b4QKb9YI=;
+ b=BnKCj01ahiMWzfHdr/eDKsRKMGeahe+/Esd8cXBCWz3mDvS4gwDenOSDYJpB3O00CS8EECRYTjOTJGgt/47BwcPRSakPKpZeAuWJLcENbZGgqoNW79Q4bWWC8cCUegMZKy/zFhlfQ3Pm9+XUAWT/pNkJg20TkPfrm/gNLo56D5U=
+Received: from SN6PR13MB2494.namprd13.prod.outlook.com (52.135.95.148) by
+ SN6PR13MB2478.namprd13.prod.outlook.com (52.135.95.143) with Microsoft SMTP
+ Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ 15.20.1495.6; Thu, 3 Jan 2019 14:26:37 +0000
+Received: from SN6PR13MB2494.namprd13.prod.outlook.com
+ ([fe80::7dd2:1e4f:2de1:eb27]) by SN6PR13MB2494.namprd13.prod.outlook.com
+ ([fe80::7dd2:1e4f:2de1:eb27%3]) with mapi id 15.20.1495.005; Thu, 3 Jan 2019
+ 14:26:37 +0000
+From:   Trond Myklebust <trondmy@hammerspace.com>
+To:     "geert@linux-m68k.org" <geert@linux-m68k.org>
+CC:     "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-mips@linux-mips.org" <linux-mips@linux-mips.org>
+Subject: Re: [PATCH v2] SUNRPC: Fix TCP receive code on archs with
+ flush_dcache_page()
+Thread-Topic: [PATCH v2] SUNRPC: Fix TCP receive code on archs with
+ flush_dcache_page()
+Thread-Index: AQHUoyua7l5ZKHM4hESBaVcRAYnWxaWdVHGAgABAooCAAAU+gA==
+Date:   Thu, 3 Jan 2019 14:26:37 +0000
+Message-ID: <51911b9147bd4ceef0e24f440067f6e61cb63103.camel@hammerspace.com>
+References: <20190103061324.16607-1-trond.myklebust@hammerspace.com>
+         <CAMuHMdXpHLjJBMQWDaWKYQFfY4_3yVi9NdBYnWr6Xfzttrb5iA@mail.gmail.com>
+         <3f4ee085ffde4c9823719e6607f521836c4158cf.camel@hammerspace.com>
+In-Reply-To: <3f4ee085ffde4c9823719e6607f521836c4158cf.camel@hammerspace.com>
+Accept-Language: en-US, en-GB
+Content-Language: en-US
+X-MS-Has-Attach: 
+X-MS-TNEF-Correlator: 
+authentication-results: spf=none (sender IP is )
+ smtp.mailfrom=trondmy@hammerspace.com; 
+x-originating-ip: [68.40.189.247]
+x-ms-publictraffictype: Email
+x-microsoft-exchange-diagnostics: 1;SN6PR13MB2478;6:Jcf44OPX/LLU2mpLEvBFmSVkUe4knPhwj8pZSUQywOzNqnssTdyYfxMFrMqwZH8SdXFPXABSzW+tOhfhKLwbRFD4ob7FvXn0cJPntmSW3Licy8xBlUzLeSkB0Wp2ArWtfWWbQl2IYMU8JFpgYlvrdQIrH0rVxUyYkG2G4T/V9maTgXg4saR+N8QkuVglFH84WQPNPbK/oulUxiiP9BXNf2cEfKvxiKoN6UNNjGdgvBuBKF+GpRt4nY5+Tpv3anT+8CSsiYiQ0nQAjCJgMhsYZ5bIy0grCsx/a/2LWaLaQE8SiKBeVjUQAkzQvNbHMnTp4JJiNA6dvvCGd1sw8krEtHenXRWRL0jOF3myd98V0FiYXIBk1ecnlert9xbqPwcNHzjri7onuMS3lT/DjwP7luHQGeoufZwp6oNBvBTEu2EWPFweMNJkTv5Z6JvmQdjoZVjbLksX9y9db6R4mMvMJQ==;5:CQazmlym17VgusOjotc+8qga5Ljco+R04KAVkmISKXCO8Ha/Cb3ds905C8Y3DFUh3p1AeAuOtj9Zgm2JTIX+UIGUCGnLmwHPtzquQ3UwzrqvmKw8ynit82BayeqmxMdS6FZAmcJyu1zxs2UPxjBOV94SmBmA4bgnmpTe/QMqaWVl7oMuz8tBedu9i5lVgFLLFaxghi5cwjOVBuxAL4avWQ==;7:lcEr5yvGOUrAsaTgLPQgCeRF1+ZwepqmFqik5Z5nJmeW1sni1GjN6+/oHxEaisd8C/BaY/gDKM/I1A/tdgM2VyZo7xZ/dR9SsAX57kOJvibVXveUd2zUcgbZ5PvFIdGP/Gov+0zddam0LtRk/FCYAQ==
+x-ms-exchange-antispam-srfa-diagnostics: SOS;
+x-ms-office365-filtering-correlation-id: ea3d6783-cf0c-4229-bd0b-08d671877874
+x-microsoft-antispam: BCL:0;PCL:0;RULEID:(2390118)(7020095)(4652040)(8989299)(4534185)(4627221)(201703031133081)(201702281549075)(8990200)(5600109)(711020)(2017052603328)(7153060)(7193020);SRVR:SN6PR13MB2478;
+x-ms-traffictypediagnostic: SN6PR13MB2478:
+x-microsoft-antispam-prvs: <SN6PR13MB2478ECEB263BA655E7BBB874B88D0@SN6PR13MB2478.namprd13.prod.outlook.com>
+x-exchange-antispam-report-cfa-test: BCL:0;PCL:0;RULEID:(3230021)(908002)(999002)(5005026)(6040522)(8220060)(2401047)(8121501046)(93006095)(93001095)(10201501046)(3231475)(944501520)(52105112)(3002001)(6041310)(20161123564045)(20161123558120)(20161123560045)(201703131423095)(201702281528075)(20161123555045)(201703061421075)(201703061406153)(20161123562045)(201708071742011)(7699051)(76991095);SRVR:SN6PR13MB2478;BCL:0;PCL:0;RULEID:;SRVR:SN6PR13MB2478;
+x-forefront-prvs: 0906E83A25
+x-forefront-antispam-report: SFV:NSPM;SFS:(10019020)(396003)(376002)(366004)(39830400003)(136003)(346002)(199004)(189003)(81166006)(76176011)(5660300001)(6916009)(6512007)(53936002)(36756003)(81156014)(486006)(86362001)(305945005)(8676002)(8936002)(14454004)(7736002)(256004)(1730700003)(3846002)(6116002)(478600001)(54906003)(2906002)(106356001)(2351001)(71200400001)(6246003)(6506007)(68736007)(99286004)(25786009)(316002)(11346002)(97736004)(186003)(476003)(66066001)(2616005)(118296001)(446003)(105586002)(71190400001)(102836004)(5640700003)(6436002)(6486002)(26005)(2501003)(4326008)(229853002);DIR:OUT;SFP:1102;SCL:1;SRVR:SN6PR13MB2478;H:SN6PR13MB2494.namprd13.prod.outlook.com;FPR:;SPF:None;LANG:en;PTR:InfoNoRecords;A:1;MX:1;
+received-spf: None (protection.outlook.com: hammerspace.com does not designate
+ permitted sender hosts)
+x-ms-exchange-senderadcheck: 1
+x-microsoft-antispam-message-info: MyHTo9Cf1M1ORtOK8e7E1hOOwd6H5cMtnfLcFU+Df6ovdl7Hmn7ALOBAWznTQBRrFFJDsPPHW1gNqITPIbL3eHtYuB/mbokkXdprvfaMe0/8TZeFrj0ccrajQNtNbKUNa5GpOnOQ8v0t6EO+U4BV6qUelha5DrrpSqAMgMwUVliZtOLfBqbrYz2iPfjcg3WddjpZmbaCp+ItPNvNRh/CSrhYXT9kUnA3r6cw9kjli9KDMvItrLbkpE0P3noBk9GNrBciF0nP2Itdbifbh0Bw7xMzgxp14EtbuCuXCeLiDLc+DQFktuGpbYO0vwKb+CYm
+spamdiagnosticoutput: 1:99
+spamdiagnosticmetadata: NSPM
+Content-Type: text/plain; charset="utf-8"
+Content-ID: <554F077F3B2D194AAEC14B097BCB85FD@namprd13.prod.outlook.com>
+Content-Transfer-Encoding: base64
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+X-OriginatorOrg: hammerspace.com
+X-MS-Exchange-CrossTenant-Network-Message-Id: ea3d6783-cf0c-4229-bd0b-08d671877874
+X-MS-Exchange-CrossTenant-originalarrivaltime: 03 Jan 2019 14:26:37.4006
+ (UTC)
+X-MS-Exchange-CrossTenant-fromentityheader: Hosted
+X-MS-Exchange-CrossTenant-id: 0d4fed5c-3a70-46fe-9430-ece41741f59e
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: SN6PR13MB2478
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Use READ_ONCE() to tell the compiler to not optimse away the read of
-xprt->xpt_flags in svc_xprt_release_slot().
-
-Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
----
- net/sunrpc/svc_xprt.c | 6 ++++--
- 1 file changed, 4 insertions(+), 2 deletions(-)
-
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index 51d36230b6e3..94d344325e22 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -363,9 +363,11 @@ static void svc_xprt_release_slot(struct svc_rqst *rqstp)
- 
- static bool svc_xprt_has_something_to_do(struct svc_xprt *xprt)
- {
--	if (xprt->xpt_flags & ((1<<XPT_CONN)|(1<<XPT_CLOSE)))
-+	unsigned long xpt_flags = READ_ONCE(xprt->xpt_flags);
-+
-+	if (xpt_flags & (BIT(XPT_CONN) | BIT(XPT_CLOSE)))
- 		return true;
--	if (xprt->xpt_flags & ((1<<XPT_DATA)|(1<<XPT_DEFERRED))) {
-+	if (xpt_flags & (BIT(XPT_DATA) | BIT(XPT_DEFERRED))) {
- 		if (xprt->xpt_ops->xpo_has_wspace(xprt) &&
- 		    svc_xprt_slots_in_range(xprt))
- 			return true;
--- 
-2.20.1
-
+T24gVGh1LCAyMDE5LTAxLTAzIGF0IDE0OjA3ICswMDAwLCBUcm9uZCBNeWtsZWJ1c3Qgd3JvdGU6
+DQo+IE9uIFRodSwgMjAxOS0wMS0wMyBhdCAxMToxNiArMDEwMCwgR2VlcnQgVXl0dGVyaG9ldmVu
+IHdyb3RlOg0KPiA+IA0KPiA+IEkgZG9uJ3QgdW5kZXJzdGFuZCB0aGUgY29kZSB3ZWxsIGVub3Vn
+aCB0byBzZWUgd2h5IHRoZSBjYWxsIHRvDQo+ID4geHNfZmx1c2hfYnZlYygpIGlzIG5lZWRlZCBp
+biB0aGlzIGJyYW5jaCBvbmx5LCBidXQgaXQgZG9lcyBmaXggVENQDQo+ID4gTkZTIG9uIFJCVFg0
+OTI3LCBzbw0KPiA+IFRlc3RlZC1ieTogR2VlcnQgVXl0dGVyaG9ldmVuIDxnZWVydEBsaW51eC1t
+NjhrLm9yZz4NCg0KU29ycnkuIEkgZm9yZ290IHRvIGFuc3dlciB0aGUgaW1wbGljaXQgcXVlc3Rp
+b24gdGhlcmUuIFRoaXMgaXMgdGhlIG9ubHkNCnBsYWNlIHdoZXJlIHdlIG1heSBmaW5kIG91cnNl
+bHZlcyByZWFkaW5nIGRpcmVjdGx5IGZyb20gYSBzb2NrZXQgaW50bw0KdGhlIHBhZ2UgY2FjaGUs
+IHNvIHRoYXQncyB3aHkgd2UgZG9uJ3QgbmVlZCB4c19mbHVzaF9idmVjKCkgaW4gdGhlDQpvdGhl
+ciBicmFuY2hlcy4gVGhlIGt2ZWMgZW50cmllcyBpbiBzdHJ1Y3QgeGRyX2J1ZiBzaG91bGQgYWx3
+YXlzIHBvaW50DQp0byBwcml2YXRlIG1lbW9yeSBidWZmZXJzIHRoYXQgY2FuJ3QgYmUgbWFwcGVk
+IGludG8gdXNlciBzcGFjZS4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGll
+bnQgbWFpbnRhaW5lciwgSGFtbWVyc3BhY2UNCnRyb25kLm15a2xlYnVzdEBoYW1tZXJzcGFjZS5j
+b20NCg0KDQo=
