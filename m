@@ -2,165 +2,349 @@ Return-Path: <SRS0=enTr=PL=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
-	SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-6.8 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id F3714C43387
-	for <linux-nfs@archiver.kernel.org>; Thu,  3 Jan 2019 18:11:59 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C10DCC43387
+	for <linux-nfs@archiver.kernel.org>; Thu,  3 Jan 2019 18:35:31 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 9144D217F5
-	for <linux-nfs@archiver.kernel.org>; Thu,  3 Jan 2019 18:11:59 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 7746520815
+	for <linux-nfs@archiver.kernel.org>; Thu,  3 Jan 2019 18:35:31 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="vWTImNTp"
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="LlEgO2Qs"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727107AbfACSL6 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 3 Jan 2019 13:11:58 -0500
-Received: from mail-eopbgr770118.outbound.protection.outlook.com ([40.107.77.118]:7850
-        "EHLO NAM02-SN1-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1727932AbfACSL6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 3 Jan 2019 13:11:58 -0500
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=hammerspace.com;
- s=selector1;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=GnHOBLyw7HeLxbhGkkQN9LLUj85LQi4Gwl6pbUHHdo8=;
- b=vWTImNTpqWQPAm9farCF9Dm+4BlTrdDels5pjemI/amW5Y5EeycjvErIrEY/l1tZsAaUrFaBkeeDeiP0l9M3Sxk/fG9FW3sNoGGRGICS4r8i9K/TMgGmRiLdbEEqr+/qp8M3eV+n46RrRbvpUx+qCz0LnzYDHtsvo5pMXWZnlwI=
-Received: from SN6PR13MB2494.namprd13.prod.outlook.com (52.135.95.148) by
- SN6PR13MB2528.namprd13.prod.outlook.com (52.135.95.158) with Microsoft SMTP
- Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- 15.20.1516.4; Thu, 3 Jan 2019 18:09:02 +0000
-Received: from SN6PR13MB2494.namprd13.prod.outlook.com
- ([fe80::7dd2:1e4f:2de1:eb27]) by SN6PR13MB2494.namprd13.prod.outlook.com
- ([fe80::7dd2:1e4f:2de1:eb27%3]) with mapi id 15.20.1495.005; Thu, 3 Jan 2019
- 18:09:02 +0000
-From:   Trond Myklebust <trondmy@hammerspace.com>
-To:     "chuck.lever@oracle.com" <chuck.lever@oracle.com>
-CC:     "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/4] SUNRPC: Ensure rq_bytes_sent is reset before request
- transmission
-Thread-Topic: [PATCH 1/4] SUNRPC: Ensure rq_bytes_sent is reset before request
- transmission
-Thread-Index: AQHUou4ciNJmIo9Omk+8lSTAAKbkzqWdrGSAgAAKCoCAAAoCAIAAGHoA
-Date:   Thu, 3 Jan 2019 18:09:02 +0000
-Message-ID: <cc4a7358e770668447ed8e4dac5bd41f70df10e9.camel@hammerspace.com>
-References: <20190102225313.2097-1-trond.myklebust@hammerspace.com>
-         <20190102225313.2097-2-trond.myklebust@hammerspace.com>
-         <1B5E1F96-246A-43AB-B9CE-FA41C595ADFF@oracle.com>
-         <6e18b8ce25652bf17d6d1fa95c3a6127767cb45b.camel@hammerspace.com>
-         <0044B1EA-215B-412C-B1C6-0D1767B3CCEE@oracle.com>
-In-Reply-To: <0044B1EA-215B-412C-B1C6-0D1767B3CCEE@oracle.com>
-Accept-Language: en-US, en-GB
-Content-Language: en-US
-X-MS-Has-Attach: 
-X-MS-TNEF-Correlator: 
-authentication-results: spf=none (sender IP is )
- smtp.mailfrom=trondmy@hammerspace.com; 
-x-originating-ip: [68.40.189.247]
-x-ms-publictraffictype: Email
-x-microsoft-exchange-diagnostics: 1;SN6PR13MB2528;6:ePvp0PxeKuDOMbFL9IKXBbZlkpFYlPvNdb3quhGNstdiXDEHreP+4ZTZu/9xWV5jA/eTVJ2KwJYY+4XGAEgh7bCXdtxPjbzezbQ/s/eSpUocYaXwX9s5AAplt+AnD4ruZSkx+b4GyZkMHn+z5sH2B86scborKWNC0yACMqgUi6oyGS5bLNZ87hWlgoOLEFkSNBV9FwrtQ3HTBKuG03E8qzVBIqKSmu0iAXVZmm/A+fygrtSNjY0j3sU64sV3pPFhw6j5PxELNj+Ub6j0hvNxCrxJmQexxNrI+MXKFnIcVkxs2cfw92cSNhQkinpPUUZB0SBy0VeiubH9DXJ+ZViYMzzPcjwPeytm4NlUlJ3uAJWc0lwMjZt8ATVl5hPs1E8w/PEzVqCc+UWGIKO8trX1pe0V5H3ulZe1CXfmXjmZtWQwfUBuOlKdLFrZq9D4TxKoUjGd6tHrAbHGqCj2FaL7Ow==;5:0ksv6gWckBkoPDYFSBjgsPn1Tz0dPgedxw7lMtFkNqXXfR6SucZwBjNkq0BQInvtc4wxtd3mOwTMcCxp78VZdtn2wpo+xpOb7vPzItPNBHTQdgWO3SR5jTtH7duqyPmb6WmorayIfFyADEPXTW+cwwxp1CwMkeWTwiUmjmmfssh8xt3IdjkNSq+zOLJ3cK635lQm/QlQMNDrf+Bed/bc7w==;7:ZY1KafiHNnyL3YOUJSh01LfjT24XP38qyRNKE9ilufOqWjBynvMeTk7y7oM3uMQ12B3DZmeBjmBaGCtEoV5+t1Y+fDb4PKrhl8g4k8u/jb0WzxDjfEgk2zSxK2fMEJ0wQKDb2YW5pjJgoTXgFv1qgg==
-x-ms-exchange-antispam-srfa-diagnostics: SOS;
-x-ms-office365-filtering-correlation-id: 57cbee5d-39b1-4f19-7f55-08d671a68ac4
-x-microsoft-antispam: BCL:0;PCL:0;RULEID:(2390118)(7020095)(4652040)(8989299)(4534185)(4627221)(201703031133081)(201702281549075)(8990200)(5600109)(711020)(2017052603328)(7153060)(7193020);SRVR:SN6PR13MB2528;
-x-ms-traffictypediagnostic: SN6PR13MB2528:
-x-microsoft-antispam-prvs: <SN6PR13MB252899D686903DC500815643B88D0@SN6PR13MB2528.namprd13.prod.outlook.com>
-x-exchange-antispam-report-cfa-test: BCL:0;PCL:0;RULEID:(3230021)(908002)(999002)(5005026)(6040522)(8220060)(2401047)(8121501046)(3002001)(10201501046)(3231475)(944501520)(52105112)(93006095)(93001095)(6041310)(20161123564045)(20161123558120)(20161123562045)(20161123560045)(201703131423095)(201702281528075)(20161123555045)(201703061421075)(201703061406153)(201708071742011)(7699051)(76991095);SRVR:SN6PR13MB2528;BCL:0;PCL:0;RULEID:;SRVR:SN6PR13MB2528;
-x-forefront-prvs: 0906E83A25
-x-forefront-antispam-report: SFV:NSPM;SFS:(10019020)(396003)(136003)(346002)(366004)(376002)(39830400003)(199004)(189003)(2906002)(26005)(305945005)(118296001)(6916009)(81156014)(81166006)(316002)(8676002)(478600001)(5660300001)(6116002)(3846002)(76176011)(6506007)(53546011)(186003)(99286004)(102836004)(86362001)(93886005)(66066001)(53936002)(25786009)(229853002)(2351001)(476003)(2616005)(105586002)(11346002)(486006)(106356001)(7736002)(6246003)(36756003)(14444005)(68736007)(6512007)(2501003)(8936002)(14454004)(71190400001)(4326008)(71200400001)(5640700003)(256004)(97736004)(6486002)(446003)(6436002);DIR:OUT;SFP:1102;SCL:1;SRVR:SN6PR13MB2528;H:SN6PR13MB2494.namprd13.prod.outlook.com;FPR:;SPF:None;LANG:en;PTR:InfoNoRecords;A:1;MX:1;
-received-spf: None (protection.outlook.com: hammerspace.com does not designate
- permitted sender hosts)
-x-ms-exchange-senderadcheck: 1
-x-microsoft-antispam-message-info: Eu+2APhe0eAJGJWsjTR/gpo+gOE4TFWrVgTVkMXDghhaKqJNIpx4LYNZtJKQAxGDFsZWGZPIXe7vyGMQhbD6P7KbSD5vwRpQho143zeNSId9QYavfzo2rGnN6vuDoHAR8hv6s/4Nm6zUXHAc2rKltw0+qI6iuzBSgpjbn8VStyECUh1Y3l3zeaNcV9i0KP2Q3uueU4ir/XLhf1WWMjwrBCoJFz3opcKfwVG10+YYTEKs9ftGDa0GbpBGmdfJ1sRlEjHTgQo885jUvJJ8E1sHveil+o9FScgiEHAEfH6I+7GGw4DqqxODsodnD0BXvND1
-spamdiagnosticoutput: 1:99
-spamdiagnosticmetadata: NSPM
-Content-Type: text/plain; charset="utf-8"
-Content-ID: <DB9E7FCF442A3946800F18D7B8F088E4@namprd13.prod.outlook.com>
-Content-Transfer-Encoding: base64
+        id S1726025AbfACSfa (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 3 Jan 2019 13:35:30 -0500
+Received: from mail-it1-f194.google.com ([209.85.166.194]:53724 "EHLO
+        mail-it1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725986AbfACSfa (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Jan 2019 13:35:30 -0500
+Received: by mail-it1-f194.google.com with SMTP id g85so46542419ita.3
+        for <linux-nfs@vger.kernel.org>; Thu, 03 Jan 2019 10:35:29 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=sender:subject:from:to:date:message-id:user-agent:mime-version
+         :content-transfer-encoding;
+        bh=r268dfwHntBb3iBUSmEHWjkGL8yiCA/sJPmxP9jovJM=;
+        b=LlEgO2QscwjP2Zo1LYh5hSDUy4Z82zDD3MSq3uGtK4VEDotUuNcQhoUS/bDf9cwzMj
+         8/WHpo2QHdFSd3BGekC+qGAQZL02uvFF3hluzN3FUTb48EJXQR9+hzcds9QD90u2SJag
+         mgVOdbfs2a7OM7KyBrsmsGtvsKGlBcDmWP4oz7LtkMi5M/ELnme/zroT5bueukoIjksy
+         MrbBxNB8DjUhwfZMfuh0hwea6Op0ShdfHVCfx+4G/Mk1bHp7mPrL1tYDTlBY9R0h0fZ6
+         LeB8iJZ1VI1gzlD2mwgwwZO/PE8YEYazLi1Xrodc7LDwsb6v2K1+Li/4z28FTyys8Twn
+         gacg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:sender:subject:from:to:date:message-id
+         :user-agent:mime-version:content-transfer-encoding;
+        bh=r268dfwHntBb3iBUSmEHWjkGL8yiCA/sJPmxP9jovJM=;
+        b=G24dzvceFhbndDBaYNKab0z7wdj2QP5Nx1CbQFuloDbBzljAz7jwvjAyV6YAyGSSZz
+         gFCRiAKu6ZO/zzfdSdNzvaQd+2U4l1kqqnd6TJgjbSbJkp5H+UWjLhMHX0kP7qeDSyz6
+         pI92LsMMzDXzjBK1eGmoHaExutkVRnRKECSFKdY1Wuq6Epr3k92D6T/mbWOHlCQxiKPk
+         5FFAQr6yWo2f/l4xKhn6+QZOj8KW1H6zIUgrUbCWnxb6aiBBVAPodVV++SJhIx9TukMk
+         cSl0IlwqDk5xfKNvocGb8xZ3f75OuYWIbWSNeled8uGbxl2c3IMn4DlY0e58/0eHSP3n
+         EyKA==
+X-Gm-Message-State: AJcUukcl9n5zOMLRMjstEz8kobgpEdhBF1G/OZi59WrM79yVmN3lcJxL
+        xcNeqZJtlhWEAk25Q66cjRig1bfG
+X-Google-Smtp-Source: AFSGD/WkS0ailPVw3nK7SBW0RJwbeDmqZFPpGWFL9RjA68yy6w955bbzpX7/79VzfPlSgr3Yo3N8EQ==
+X-Received: by 2002:a24:2f82:: with SMTP id j124mr28832805itj.166.1546540160596;
+        Thu, 03 Jan 2019 10:29:20 -0800 (PST)
+Received: from gateway.1015granger.net (c-68-61-232-219.hsd1.mi.comcast.net. [68.61.232.219])
+        by smtp.gmail.com with ESMTPSA id o16sm23409204ito.19.2019.01.03.10.29.19
+        for <linux-nfs@vger.kernel.org>
+        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Thu, 03 Jan 2019 10:29:19 -0800 (PST)
+Received: from manet.1015granger.net (manet.1015granger.net [192.168.1.51])
+        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id x03ITI1S023231
+        for <linux-nfs@vger.kernel.org>; Thu, 3 Jan 2019 18:29:18 GMT
+Subject: [PATCH] SUNRPC: Remove rpc_xprt::tsh_size
+From:   Chuck Lever <chuck.lever@oracle.com>
+To:     linux-nfs@vger.kernel.org
+Date:   Thu, 03 Jan 2019 13:29:18 -0500
+Message-ID: <20190103182649.4148.19838.stgit@manet.1015granger.net>
+User-Agent: StGit/0.17.1-dirty
 MIME-Version: 1.0
-X-OriginatorOrg: hammerspace.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: 57cbee5d-39b1-4f19-7f55-08d671a68ac4
-X-MS-Exchange-CrossTenant-originalarrivaltime: 03 Jan 2019 18:09:02.5365
- (UTC)
-X-MS-Exchange-CrossTenant-fromentityheader: Hosted
-X-MS-Exchange-CrossTenant-id: 0d4fed5c-3a70-46fe-9430-ece41741f59e
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: SN6PR13MB2528
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-T24gVGh1LCAyMDE5LTAxLTAzIGF0IDExOjQxIC0wNTAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
-PiBPbiBKYW4gMywgMjAxOSwgYXQgMTE6MDUgQU0sIFRyb25kIE15a2xlYnVzdCA8DQo+ID4gdHJv
-bmRteUBoYW1tZXJzcGFjZS5jb20+IHdyb3RlOg0KPiA+IA0KPiA+IE9uIFRodSwgMjAxOS0wMS0w
-MyBhdCAxMDoyOSAtMDUwMCwgQ2h1Y2sgTGV2ZXIgd3JvdGU6DQo+ID4gPiBIaSBUcm9uZC0NCj4g
-PiA+IA0KPiA+ID4gSSB3YXMgY3VyaW91cyBhYm91dCB0aGlzIG9uZSBiZWNhdXNlIHllc3RlcmRh
-eSBJIHNhdyBldmlkZW5jZQ0KPiA+ID4gKGZvcg0KPiA+ID4gb3RoZXIgcmVhc29ucykgdGhhdCBy
-cV9ieXRlc19zZW50IHdhc24ndCBhbHdheXMgemVyb2VkIHdoZW4gaXQNCj4gPiA+IHNob3VsZA0K
-PiA+ID4gYmUuDQo+ID4gPiANCj4gPiA+IA0KPiA+ID4gPiBPbiBKYW4gMiwgMjAxOSwgYXQgNTo1
-MyBQTSwgVHJvbmQgTXlrbGVidXN0IDx0cm9uZG15QGdtYWlsLmNvbT4NCj4gPiA+ID4gd3JvdGU6
-DQo+ID4gPiA+IA0KPiA+ID4gPiBXaGVuIHdlIHJlc2VuZCBhIHJlcXVlc3QsIGVuc3VyZSB0aGF0
-IHRoZSAncnFfYnl0ZXNfc2VudCcgaXMNCj4gPiA+ID4gcmVzZXQNCj4gPiA+ID4gdG8gemVyby4N
-Cj4gPiA+ID4gDQo+ID4gPiA+IFNpZ25lZC1vZmYtYnk6IFRyb25kIE15a2xlYnVzdCA8dHJvbmQu
-bXlrbGVidXN0QGhhbW1lcnNwYWNlLmNvbQ0KPiA+ID4gPiA+DQo+ID4gPiA+IC0tLQ0KPiA+ID4g
-PiBuZXQvc3VucnBjL2NsbnQuYyB8IDEgLQ0KPiA+ID4gPiBuZXQvc3VucnBjL3hwcnQuYyB8IDEg
-Kw0KPiA+ID4gPiAyIGZpbGVzIGNoYW5nZWQsIDEgaW5zZXJ0aW9uKCspLCAxIGRlbGV0aW9uKC0p
-DQo+ID4gPiA+IA0KPiA+ID4gPiBkaWZmIC0tZ2l0IGEvbmV0L3N1bnJwYy9jbG50LmMgYi9uZXQv
-c3VucnBjL2NsbnQuYw0KPiA+ID4gPiBpbmRleCAyNGNiZGRjNDRjODguLjIxODlmYmM0YzU3MCAx
-MDA2NDQNCj4gPiA+ID4gLS0tIGEvbmV0L3N1bnJwYy9jbG50LmMNCj4gPiA+ID4gKysrIGIvbmV0
-L3N1bnJwYy9jbG50LmMNCj4gPiA+ID4gQEAgLTE3MzgsNyArMTczOCw2IEBAIHJwY194ZHJfZW5j
-b2RlKHN0cnVjdCBycGNfdGFzayAqdGFzaykNCj4gPiA+ID4gCXhkcl9idWZfaW5pdCgmcmVxLT5y
-cV9yY3ZfYnVmLA0KPiA+ID4gPiAJCSAgICAgcmVxLT5ycV9yYnVmZmVyLA0KPiA+ID4gPiAJCSAg
-ICAgcmVxLT5ycV9yY3ZzaXplKTsNCj4gPiA+ID4gLQlyZXEtPnJxX2J5dGVzX3NlbnQgPSAwOw0K
-PiA+ID4gDQo+ID4gPiBJIGFncmVlIHRoaXMgbGluZSBpcyBub3Qgc3VmZmljaWVudCwgYW5kIGl0
-IHNob3VsZCBiZSBtb3ZlZC4NCj4gPiA+IE5vdCBldmVyeSByZXRyYW5zbWlzc2lvbiByZXF1aXJl
-cyBhIHJlLWVuY29kZS4gSG93ZXZlciwgdGhlDQo+ID4gPiBwYXRjaCBkZXNjcmlwdGlvbiBzaG91
-bGQgZXhwbGFpbiB0aGF0LCBhbmQgaXQgcHJvYmFibHkgbmVlZHMNCj4gPiA+IGEgRml4ZXM6IHRh
-Zy4NCj4gPiA+IA0KPiA+ID4gQ2FuIHlvdSBub3cgYWxzbyByZW1vdmUgdGhlIHNhbWUgbGluZSBm
-cm9tIHhwcnRfcmVxdWVzdF9pbml0DQo+ID4gPiBhbmQgeHBydF9pbml0X2JjX3JlcXVlc3QgPw0K
-PiA+ID4gDQo+ID4gPiBBbHNvLCBJIG5vdGljZSB0aGF0IFVEUCBkb2VzIG5vdCB0b3VjaCBycV9i
-eXRlc19zZW50LiBTaW5jZQ0KPiA+ID4gUkRNQSBhbHNvIGRvZXMgbm90IHVzZSBycV9ieXRlc19z
-ZW50LCBtYXliZSB0aGUgc2FtZSBsaW5lDQo+ID4gPiBjYW4gYmUgcmVtb3ZlZCBmcm9tIHhwcnRy
-ZG1hL3RyYW5zcG9ydC5jIGFuZA0KPiA+ID4geHBydHJkbWEvYmFja2NoYW5uZWwuYyA/DQo+ID4g
-DQo+ID4gU3VyZS4NCj4gPiANCj4gPiBTbyBwbGVhc2Ugbm90ZSB0aGF0IHJxX2J5dGVzX3NlbnQg
-PT0gMCBubyBsb25nZXIgbWVhbnMgInRoaXMNCj4gPiByZXF1ZXN0DQo+ID4gbmVlZHMgdG8gYmUg
-cmV0cmFuc21pdHRlZCIgYW5kIHdlIG5vIGxvbmdlciB0ZXN0IGZvciBpdCBpbg0KPiA+IG5ldC9z
-dW5ycGMvY2xudC5jLiBXZSBkbyBzdGlsbCBoYXZlIGEgY291cGxlIG9mIHRlc3RzIG9mDQo+ID4g
-cnFfYnl0ZXNfc2VudA0KPiA+IGluIG5ldC9zdW5ycGMveHBydC5jIGFuZCBuZXQvc3VucnBjL3hw
-cnRzb2NrLmMsIGJ1dCB0aG9zZSBhcmUgbW9yZQ0KPiA+IGFib3V0IGNoZWNraW5nIGlmIGEgdHJh
-bnNtaXNzaW9uIG9mIHRoYXQgcmVxdWVzdCBpcyBjdXJyZW50bHkgaW4NCj4gPiBwcm9ncmVzcywg
-aW4gd2hpY2ggY2FzZSB3ZSBkb24ndCB3YW50IHRvIHF1ZXVlIGFueXRoaW5nIGluIGZyb250IG9m
-DQo+ID4gaXQNCj4gPiBvbiB0aGUgdHJhbnNtaXNzaW9uIHF1ZXVlLCBhbmQgd2UgZG9uJ3Qgd2Fu
-dCB0byBhYm9ydCB0aGUNCj4gPiB0cmFuc21pc3Npb24NCj4gPiB1bmxlc3Mgd2UgYWxzbyBjbG9z
-ZSB0aGUgc29ja2V0Lg0KPiA+IA0KPiA+IFRoZSBpbnRlbnRpb24gbm93IGlzIHRoYXQgaWYgd2Ug
-a25vdyB0aGUgcmVxdWVzdCBuZWVkcw0KPiA+IHJldHJhbnNtaXNzaW9uDQo+ID4gKGR1ZSB0byBh
-IHRyYW5zcG9ydCBjb25uZWN0aW9uIGxvc3Mgb3IgYSB0aW1lb3V0KSwgdGhlbiB3ZSBqdXN0IGFk
-ZA0KPiA+IGl0DQo+ID4gdG8gdGhlIHRyYW5zbWlzc2lvbiBxdWV1ZS4NCj4gPiANCj4gPiANCj4g
-PiA+ID4gCXAgPSBycGNfZW5jb2RlX2hlYWRlcih0YXNrKTsNCj4gPiA+ID4gCWlmIChwID09IE5V
-TEwpIHsNCj4gPiA+ID4gZGlmZiAtLWdpdCBhL25ldC9zdW5ycGMveHBydC5jIGIvbmV0L3N1bnJw
-Yy94cHJ0LmMNCj4gPiA+ID4gaW5kZXggNzM1NDdkMTdkM2M2Li45MDc1YWUxNTBhZTUgMTAwNjQ0
-DQo+ID4gPiA+IC0tLSBhL25ldC9zdW5ycGMveHBydC5jDQo+ID4gPiA+ICsrKyBiL25ldC9zdW5y
-cGMveHBydC5jDQo+ID4gPiA+IEBAIC0xMTUxLDYgKzExNTEsNyBAQCB4cHJ0X3JlcXVlc3RfZW5x
-dWV1ZV90cmFuc21pdChzdHJ1Y3QNCj4gPiA+ID4gcnBjX3Rhc2sNCj4gPiA+ID4gKnRhc2spDQo+
-ID4gPiA+IAlzdHJ1Y3QgcnBjX3hwcnQgKnhwcnQgPSByZXEtPnJxX3hwcnQ7DQo+ID4gPiA+IA0K
-PiA+ID4gPiAJaWYgKHhwcnRfcmVxdWVzdF9uZWVkX2VucXVldWVfdHJhbnNtaXQodGFzaywgcmVx
-KSkgew0KPiA+ID4gPiArCQlyZXEtPnJxX2J5dGVzX3NlbnQgPSAwOw0KPiA+ID4gPiAJCXNwaW5f
-bG9jaygmeHBydC0+cXVldWVfbG9jayk7DQo+ID4gPiA+IAkJLyoNCj4gPiA+ID4gCQkgKiBSZXF1
-ZXN0cyB0aGF0IGNhcnJ5IGNvbmdlc3Rpb24gY29udHJvbA0KPiA+ID4gPiBjcmVkaXRzIGFyZQ0K
-PiA+ID4gPiBhZGRlZA0KPiA+ID4gDQo+ID4gPiBTbyBJJ20gbm90IGNvbnZpbmNlZCB0aGlzIGNv
-dmVycyBldmVyeSBjYXNlLiBJIG5lZWQgc29tZQ0KPiA+ID4gdGltZSB0byBpbnZlc3RpZ2F0ZS4N
-Cj4gPiANCj4gPiBJdCBzaG91bGQgbm9ybWFsbHkgY292ZXIgYWxsIGNhc2VzLiBBcyBJIHNhaWQs
-IHRoZSBvbmx5IHJlbWFpbmluZw0KPiA+IHRlc3RzDQo+ID4gYXJlIGluIHhwcnQuYyBhbmQgIHhw
-cnRzb2NrLmMNCj4gDQo+IEluIHRoZSBwYXRjaCBJIGhhdmUgdGhhdCByZW1vdmVzIHhwcnQ6OnRz
-aF9zaXplLCBJJ20gdXNpbmcNCj4gcnFfYnl0ZXNfc2VudA0KPiB0byBmaWd1cmUgb3V0IHdoZW4g
-dG8gaW5zZXJ0IGEgcmVjb3JkIG1hcmtlci4gRXZlcnkgb25jZSBpbiBhIHdoaWxlLA0KPiBpdA0K
-PiBzdGlja3MgaW4gYSByZWNvcmQgbWFya2VyIHdoZXJlIGl0IHNob3VsZG4ndC4NCg0KSSdtIG5v
-dCBzdXJlIEkgdW5kZXJzdGFuZC4gcmVxLT5ycV9ieXRlc19zZW50IGlzIGV4cGVjdGVkIHRvIGJl
-IHplcm8NCndoZW4gd2UgY2FsbCBycGNfZW5jb2RlX2hlYWRlcigpLCB3aGljaCBpcyB3aGVyZSB3
-ZSBjYWxsDQp4cHJ0X3NraXBfdHJhbnNwb3J0X2hlYWRlcigpLg0KDQpJZiB5b3Ugd2FudCB0byBy
-ZW1vdmUgdHNoX3NpemUsIHRoZW4gSSB3b3VsZCBzdWdnZXN0IHJlcGxhY2luZw0KeHBydF9za2lw
-X3RyYW5zcG9ydF9oZWFkZXIoKSB3aXRoIGFuIG9wZXJhdGlvbiBpbiBzdHJ1Y3QgcnBjX3hwcnRf
-b3BzDQp0aGF0IHJldHVybnMgYSBwb2ludGVyIHRvIHRoZSBmaXJzdCB3b3JkIGluIHRoZSBzZW5k
-IGJ1ZmZlciB0aGF0IGlzIG5vdA0KcmVzZXJ2ZWQgZm9yIHRyYW5zcG9ydCB1c2UuDQoNCi0tIA0K
-VHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIsIEhhbW1lcnNwYWNl
-DQp0cm9uZC5teWtsZWJ1c3RAaGFtbWVyc3BhY2UuY29tDQoNCg0K
+tsh_size was added to accommodate transports that send a pre-amble
+before each RPC message. However, this assumes the pre-amble is
+fixed in size, which isn't true for some transports. That makes
+tsh_size not very generic.
+
+Also I'd like to make the estimation of RPC send and receive
+buffer sizes more precise. tsh_size doesn't currently appear to be
+accounted for at all by call_allocate.
+
+Therefore let's just remove the tsh_size concept, and make the only
+transports that have a non-zero tsh_size employ a direct approach.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+
+I've taken an approach where only the transports that need a record
+marker need to pay the expense. I don't want to add another indirect
+call in the generic path.
+
+However, I've found that during heavy multi-threaded workloads,
+occasionally this mechanism inserts a record marker in the middle of
+a Call message.
+
+
+ include/linux/sunrpc/xprt.h                |    7 ---
+ net/sunrpc/auth_gss/auth_gss.c             |    3 -
+ net/sunrpc/clnt.c                          |    1 
+ net/sunrpc/xprtrdma/svc_rdma_backchannel.c |    1 
+ net/sunrpc/xprtrdma/transport.c            |    1 
+ net/sunrpc/xprtsock.c                      |   69 +++++++++++++++++-----------
+ 6 files changed, 43 insertions(+), 39 deletions(-)
+
+diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
+index a4ab4f8..17fc651 100644
+--- a/include/linux/sunrpc/xprt.h
++++ b/include/linux/sunrpc/xprt.h
+@@ -197,8 +197,6 @@ struct rpc_xprt {
+ 
+ 	size_t			max_payload;	/* largest RPC payload size,
+ 						   in bytes */
+-	unsigned int		tsh_size;	/* size of transport specific
+-						   header */
+ 
+ 	struct rpc_wait_queue	binding;	/* requests waiting on rpcbind */
+ 	struct rpc_wait_queue	sending;	/* requests waiting to send */
+@@ -363,11 +361,6 @@ struct rpc_xprt *	xprt_alloc(struct net *net, size_t size,
+ 				unsigned int max_req);
+ void			xprt_free(struct rpc_xprt *);
+ 
+-static inline __be32 *xprt_skip_transport_header(struct rpc_xprt *xprt, __be32 *p)
+-{
+-	return p + xprt->tsh_size;
+-}
+-
+ static inline int
+ xprt_enable_swap(struct rpc_xprt *xprt)
+ {
+diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+index 4735a06..13508e4 100644
+--- a/net/sunrpc/auth_gss/auth_gss.c
++++ b/net/sunrpc/auth_gss/auth_gss.c
+@@ -1577,8 +1577,7 @@ static void gss_pipe_free(struct gss_pipe *p)
+ 
+ 	/* We compute the checksum for the verifier over the xdr-encoded bytes
+ 	 * starting with the xid and ending at the end of the credential: */
+-	iov.iov_base = xprt_skip_transport_header(req->rq_xprt,
+-					req->rq_snd_buf.head[0].iov_base);
++	iov.iov_base = req->rq_snd_buf.head[0].iov_base;
+ 	iov.iov_len = (u8 *)p - (u8 *)iov.iov_base;
+ 	xdr_buf_from_iov(&iov, &verf_buf);
+ 
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 1ee04e0..4f88062 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -2330,7 +2330,6 @@ void rpc_force_rebind(struct rpc_clnt *clnt)
+ 
+ 	/* FIXME: check buffer size? */
+ 
+-	p = xprt_skip_transport_header(req->rq_xprt, p);
+ 	*p++ = req->rq_xid;		/* XID */
+ 	*p++ = htonl(RPC_CALL);		/* CALL */
+ 	*p++ = htonl(RPC_VERSION);	/* RPC version */
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_backchannel.c b/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
+index b908f2c..907464c 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
+@@ -304,7 +304,6 @@ static int svc_rdma_bc_sendto(struct svcxprt_rdma *rdma,
+ 	xprt->idle_timeout = RPCRDMA_IDLE_DISC_TO;
+ 
+ 	xprt->prot = XPRT_TRANSPORT_BC_RDMA;
+-	xprt->tsh_size = 0;
+ 	xprt->ops = &xprt_rdma_bc_procs;
+ 
+ 	memcpy(&xprt->addr, args->dstaddr, args->addrlen);
+diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
+index 9a7bb58..2a704d5 100644
+--- a/net/sunrpc/xprtrdma/transport.c
++++ b/net/sunrpc/xprtrdma/transport.c
+@@ -332,7 +332,6 @@
+ 	xprt->idle_timeout = RPCRDMA_IDLE_DISC_TO;
+ 
+ 	xprt->resvport = 0;		/* privileged port not needed */
+-	xprt->tsh_size = 0;		/* RPC-RDMA handles framing */
+ 	xprt->ops = &xprt_rdma_procs;
+ 
+ 	/*
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index d5ce1a8..66b08aa 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -678,6 +678,31 @@ static void xs_stream_data_receive_workfn(struct work_struct *work)
+ 
+ #define XS_SENDMSG_FLAGS	(MSG_DONTWAIT | MSG_NOSIGNAL)
+ 
++static int xs_send_record_marker(struct sock_xprt *transport,
++				 const struct rpc_rqst *req)
++{
++	static struct msghdr msg = {
++		.msg_name	= NULL,
++		.msg_namelen	= 0,
++		.msg_flags	= (XS_SENDMSG_FLAGS | MSG_MORE),
++	};
++	rpc_fraghdr marker;
++	struct kvec iov = {
++		.iov_base	= &marker,
++		.iov_len	= sizeof(marker),
++	};
++	u32 reclen;
++
++	if (unlikely(!transport->sock))
++		return -ENOTSOCK;
++	if (req->rq_bytes_sent)
++		return 0;
++
++	reclen = req->rq_snd_buf.len;
++	marker = cpu_to_be32(RPC_LAST_STREAM_FRAGMENT | reclen);
++	return kernel_sendmsg(transport->sock, &msg, &iov, 1, iov.iov_len);
++}
++
+ static int xs_send_kvec(struct socket *sock, struct sockaddr *addr, int addrlen, struct kvec *vec, unsigned int base, int more)
+ {
+ 	struct msghdr msg = {
+@@ -851,16 +876,6 @@ static int xs_nospace(struct rpc_rqst *req)
+ 	return transport->xmit.offset != 0 && req->rq_bytes_sent == 0;
+ }
+ 
+-/*
+- * Construct a stream transport record marker in @buf.
+- */
+-static inline void xs_encode_stream_record_marker(struct xdr_buf *buf)
+-{
+-	u32 reclen = buf->len - sizeof(rpc_fraghdr);
+-	rpc_fraghdr *base = buf->head[0].iov_base;
+-	*base = cpu_to_be32(RPC_LAST_STREAM_FRAGMENT | reclen);
+-}
+-
+ /**
+  * xs_local_send_request - write an RPC request to an AF_LOCAL socket
+  * @req: pointer to RPC request
+@@ -887,18 +902,20 @@ static int xs_local_send_request(struct rpc_rqst *req)
+ 		return -ENOTCONN;
+ 	}
+ 
+-	xs_encode_stream_record_marker(&req->rq_snd_buf);
+-
+ 	xs_pktdump("packet data:",
+ 			req->rq_svec->iov_base, req->rq_svec->iov_len);
+ 
+ 	req->rq_xtime = ktime_get();
++	status = xs_send_record_marker(transport, req);
++	if (status < 0)
++		goto marker_fail;
+ 	status = xs_sendpages(transport->sock, NULL, 0, xdr,
+ 			      transport->xmit.offset,
+ 			      true, &sent);
+ 	dprintk("RPC:       %s(%u) = %d\n",
+ 			__func__, xdr->len - transport->xmit.offset, status);
+ 
++marker_fail:
+ 	if (status == -EAGAIN && sock_writeable(transport->inet))
+ 		status = -ENOBUFS;
+ 
+@@ -1039,8 +1056,6 @@ static int xs_tcp_send_request(struct rpc_rqst *req)
+ 		return -ENOTCONN;
+ 	}
+ 
+-	xs_encode_stream_record_marker(&req->rq_snd_buf);
+-
+ 	xs_pktdump("packet data:",
+ 				req->rq_svec->iov_base,
+ 				req->rq_svec->iov_len);
+@@ -1058,6 +1073,9 @@ static int xs_tcp_send_request(struct rpc_rqst *req)
+ 	 * to cope with writespace callbacks arriving _after_ we have
+ 	 * called sendmsg(). */
+ 	req->rq_xtime = ktime_get();
++	status = xs_send_record_marker(transport, req);
++	if (status < 0)
++		goto marker_fail;
+ 	while (1) {
+ 		sent = 0;
+ 		status = xs_sendpages(transport->sock, NULL, 0, xdr,
+@@ -1106,6 +1124,7 @@ static int xs_tcp_send_request(struct rpc_rqst *req)
+ 		vm_wait = false;
+ 	}
+ 
++marker_fail:
+ 	switch (status) {
+ 	case -ENOTSOCK:
+ 		status = -ENOTCONN;
+@@ -2530,24 +2549,24 @@ static int bc_sendto(struct rpc_rqst *req)
+ 	struct rpc_xprt *xprt = req->rq_xprt;
+ 	struct sock_xprt *transport =
+ 				container_of(xprt, struct sock_xprt, xprt);
+-	struct socket *sock = transport->sock;
+ 	unsigned long headoff;
+ 	unsigned long tailoff;
+ 
+-	xs_encode_stream_record_marker(xbufp);
++	len = xs_send_record_marker(transport, req);
++	if (len < 0)
++		goto out_fail;
+ 
+ 	tailoff = (unsigned long)xbufp->tail[0].iov_base & ~PAGE_MASK;
+ 	headoff = (unsigned long)xbufp->head[0].iov_base & ~PAGE_MASK;
+-	len = svc_send_common(sock, xbufp,
++	len = svc_send_common(transport->sock, xbufp,
+ 			      virt_to_page(xbufp->head[0].iov_base), headoff,
+ 			      xbufp->tail[0].iov_base, tailoff);
+-
+-	if (len != xbufp->len) {
+-		printk(KERN_NOTICE "Error sending entire callback!\n");
+-		len = -EAGAIN;
+-	}
+-
++	if (len != xbufp->len)
++		goto out_fail;
+ 	return len;
++out_fail:
++	pr_info("Error sending entire callback!\n");
++	return -EAGAIN;
+ }
+ 
+ /*
+@@ -2787,7 +2806,6 @@ static struct rpc_xprt *xs_setup_local(struct xprt_create *args)
+ 	transport = container_of(xprt, struct sock_xprt, xprt);
+ 
+ 	xprt->prot = 0;
+-	xprt->tsh_size = sizeof(rpc_fraghdr) / sizeof(u32);
+ 	xprt->max_payload = RPC_MAX_FRAGMENT_SIZE;
+ 
+ 	xprt->bind_timeout = XS_BIND_TO;
+@@ -2856,7 +2874,6 @@ static struct rpc_xprt *xs_setup_udp(struct xprt_create *args)
+ 	transport = container_of(xprt, struct sock_xprt, xprt);
+ 
+ 	xprt->prot = IPPROTO_UDP;
+-	xprt->tsh_size = 0;
+ 	/* XXX: header size can vary due to auth type, IPv6, etc. */
+ 	xprt->max_payload = (1U << 16) - (MAX_HEADER << 3);
+ 
+@@ -2936,7 +2953,6 @@ static struct rpc_xprt *xs_setup_tcp(struct xprt_create *args)
+ 	transport = container_of(xprt, struct sock_xprt, xprt);
+ 
+ 	xprt->prot = IPPROTO_TCP;
+-	xprt->tsh_size = sizeof(rpc_fraghdr) / sizeof(u32);
+ 	xprt->max_payload = RPC_MAX_FRAGMENT_SIZE;
+ 
+ 	xprt->bind_timeout = XS_BIND_TO;
+@@ -3009,7 +3025,6 @@ static struct rpc_xprt *xs_setup_bc_tcp(struct xprt_create *args)
+ 	transport = container_of(xprt, struct sock_xprt, xprt);
+ 
+ 	xprt->prot = IPPROTO_TCP;
+-	xprt->tsh_size = sizeof(rpc_fraghdr) / sizeof(u32);
+ 	xprt->max_payload = RPC_MAX_FRAGMENT_SIZE;
+ 	xprt->timeout = &xs_tcp_default_timeout;
+ 
+
