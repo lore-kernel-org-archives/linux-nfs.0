@@ -2,349 +2,111 @@ Return-Path: <SRS0=enTr=PL=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.8 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-4.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
+	SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C10DCC43387
-	for <linux-nfs@archiver.kernel.org>; Thu,  3 Jan 2019 18:35:31 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id ECE51C43387
+	for <linux-nfs@archiver.kernel.org>; Thu,  3 Jan 2019 18:48:02 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 7746520815
-	for <linux-nfs@archiver.kernel.org>; Thu,  3 Jan 2019 18:35:31 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id AAB5B217F5
+	for <linux-nfs@archiver.kernel.org>; Thu,  3 Jan 2019 18:48:02 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="LlEgO2Qs"
+	dkim=pass (1024-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="cFSMEQGq"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726025AbfACSfa (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 3 Jan 2019 13:35:30 -0500
-Received: from mail-it1-f194.google.com ([209.85.166.194]:53724 "EHLO
-        mail-it1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725986AbfACSfa (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Jan 2019 13:35:30 -0500
-Received: by mail-it1-f194.google.com with SMTP id g85so46542419ita.3
-        for <linux-nfs@vger.kernel.org>; Thu, 03 Jan 2019 10:35:29 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=sender:subject:from:to:date:message-id:user-agent:mime-version
-         :content-transfer-encoding;
-        bh=r268dfwHntBb3iBUSmEHWjkGL8yiCA/sJPmxP9jovJM=;
-        b=LlEgO2QscwjP2Zo1LYh5hSDUy4Z82zDD3MSq3uGtK4VEDotUuNcQhoUS/bDf9cwzMj
-         8/WHpo2QHdFSd3BGekC+qGAQZL02uvFF3hluzN3FUTb48EJXQR9+hzcds9QD90u2SJag
-         mgVOdbfs2a7OM7KyBrsmsGtvsKGlBcDmWP4oz7LtkMi5M/ELnme/zroT5bueukoIjksy
-         MrbBxNB8DjUhwfZMfuh0hwea6Op0ShdfHVCfx+4G/Mk1bHp7mPrL1tYDTlBY9R0h0fZ6
-         LeB8iJZ1VI1gzlD2mwgwwZO/PE8YEYazLi1Xrodc7LDwsb6v2K1+Li/4z28FTyys8Twn
-         gacg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:sender:subject:from:to:date:message-id
-         :user-agent:mime-version:content-transfer-encoding;
-        bh=r268dfwHntBb3iBUSmEHWjkGL8yiCA/sJPmxP9jovJM=;
-        b=G24dzvceFhbndDBaYNKab0z7wdj2QP5Nx1CbQFuloDbBzljAz7jwvjAyV6YAyGSSZz
-         gFCRiAKu6ZO/zzfdSdNzvaQd+2U4l1kqqnd6TJgjbSbJkp5H+UWjLhMHX0kP7qeDSyz6
-         pI92LsMMzDXzjBK1eGmoHaExutkVRnRKECSFKdY1Wuq6Epr3k92D6T/mbWOHlCQxiKPk
-         5FFAQr6yWo2f/l4xKhn6+QZOj8KW1H6zIUgrUbCWnxb6aiBBVAPodVV++SJhIx9TukMk
-         cSl0IlwqDk5xfKNvocGb8xZ3f75OuYWIbWSNeled8uGbxl2c3IMn4DlY0e58/0eHSP3n
-         EyKA==
-X-Gm-Message-State: AJcUukcl9n5zOMLRMjstEz8kobgpEdhBF1G/OZi59WrM79yVmN3lcJxL
-        xcNeqZJtlhWEAk25Q66cjRig1bfG
-X-Google-Smtp-Source: AFSGD/WkS0ailPVw3nK7SBW0RJwbeDmqZFPpGWFL9RjA68yy6w955bbzpX7/79VzfPlSgr3Yo3N8EQ==
-X-Received: by 2002:a24:2f82:: with SMTP id j124mr28832805itj.166.1546540160596;
-        Thu, 03 Jan 2019 10:29:20 -0800 (PST)
-Received: from gateway.1015granger.net (c-68-61-232-219.hsd1.mi.comcast.net. [68.61.232.219])
-        by smtp.gmail.com with ESMTPSA id o16sm23409204ito.19.2019.01.03.10.29.19
-        for <linux-nfs@vger.kernel.org>
-        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Thu, 03 Jan 2019 10:29:19 -0800 (PST)
-Received: from manet.1015granger.net (manet.1015granger.net [192.168.1.51])
-        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id x03ITI1S023231
-        for <linux-nfs@vger.kernel.org>; Thu, 3 Jan 2019 18:29:18 GMT
-Subject: [PATCH] SUNRPC: Remove rpc_xprt::tsh_size
-From:   Chuck Lever <chuck.lever@oracle.com>
-To:     linux-nfs@vger.kernel.org
-Date:   Thu, 03 Jan 2019 13:29:18 -0500
-Message-ID: <20190103182649.4148.19838.stgit@manet.1015granger.net>
-User-Agent: StGit/0.17.1-dirty
-MIME-Version: 1.0
+        id S1726200AbfACSsB (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 3 Jan 2019 13:48:01 -0500
+Received: from mail-eopbgr710103.outbound.protection.outlook.com ([40.107.71.103]:36992
+        "EHLO NAM05-BY2-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1726163AbfACSsB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 3 Jan 2019 13:48:01 -0500
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=hammerspace.com;
+ s=selector1;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=l9JOfcBgBHNhJ8FixYWd/8a0sC1IQuOANIrNc+ehFbM=;
+ b=cFSMEQGqL2Q2P2mnMbP0c7uyKBJKFXHBKhsWiUd5kUl8Llf1fEjND2RVQ+ujXF4qF6mS+ppUyeeTnVPhYoKWmvxg8WlxxWKpP2ZtFLYsPPiFrT2yKZSJMRFSrEj3igDZtstdl1JFK38Wx5eCnj+Igq9h6bms6R0wXKJxuuPKy/I=
+Received: from SN6PR13MB2494.namprd13.prod.outlook.com (52.135.95.148) by
+ SN6PR13MB2303.namprd13.prod.outlook.com (52.135.94.22) with Microsoft SMTP
+ Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ 15.20.1516.3; Thu, 3 Jan 2019 18:47:57 +0000
+Received: from SN6PR13MB2494.namprd13.prod.outlook.com
+ ([fe80::7dd2:1e4f:2de1:eb27]) by SN6PR13MB2494.namprd13.prod.outlook.com
+ ([fe80::7dd2:1e4f:2de1:eb27%3]) with mapi id 15.20.1495.005; Thu, 3 Jan 2019
+ 18:47:57 +0000
+From:   Trond Myklebust <trondmy@hammerspace.com>
+To:     "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "chuck.lever@oracle.com" <chuck.lever@oracle.com>
+Subject: Re: [PATCH] SUNRPC: Remove rpc_xprt::tsh_size
+Thread-Topic: [PATCH] SUNRPC: Remove rpc_xprt::tsh_size
+Thread-Index: AQHUo5McwpQQZImh0EO/lRKWh6zKuqWd4oaA
+Date:   Thu, 3 Jan 2019 18:47:57 +0000
+Message-ID: <0331de80b8161f8bf16a92de20049cafb0c228da.camel@hammerspace.com>
+References: <20190103182649.4148.19838.stgit@manet.1015granger.net>
+In-Reply-To: <20190103182649.4148.19838.stgit@manet.1015granger.net>
+Accept-Language: en-US, en-GB
+Content-Language: en-US
+X-MS-Has-Attach: 
+X-MS-TNEF-Correlator: 
+authentication-results: spf=none (sender IP is )
+ smtp.mailfrom=trondmy@hammerspace.com; 
+x-originating-ip: [68.40.189.247]
+x-ms-publictraffictype: Email
+x-microsoft-exchange-diagnostics: 1;SN6PR13MB2303;6:ooPQWVvoM0cyX4ZAcuoTy6tTw0HI6NP8rmJMm6xG4GDqO//qvU5z0WDRzuNYKkqn6acarWoDMJ3+ObnOe6s0S4bIk7W+MzDO0f8IFBbfyn0A7p1pUXAOaLGF0QOjra6hOtQ4j9Z9r1/ipRnL76oXcPL0+eyKGG6mNCzQWmjC06PB2Agu848RoaSNDE3mnVohrxSxOOuE1CQ0RZ+/UzylxPL8sKWw09PxnCvdNpBrpQh4DU0CqjXOXeEUN2erfaoFSHZrcGf8gZFV3JPzKBkxNk/ZXJFMMXp1Zfqf1S/4LNuUzORqWl2/SHR/ayePwDj89vwQee/+zd3PwlPoGPFUQLFdFyNd4Q6gTqATyQNBcfJKj8Tz22jo/cBWbgPsGNQBQEkRdkeqOz6e/rhScu7bNK3gH4CbHDv/dWTv3fB8c0X4zPrETBiGQwp/lrwaAOfSm+uIJAVnHyO71MtzOkVPBA==;5:B991zSDu8Mkl3YlYRvIEfGc+hl1Sewd7NI1ZHnVWHnmmicYcoVktAy4l954967pZCm+FfFY9kCidRkidVpm8K1HY4JsUL7Jq3I3Fst2t4ZyOjVb4DDMzUlbbUqXtcdMBUFPX9ZWioqkf4SIW4it3YR3UYGD9scD0MhnLAtYpRPxJYYGU6aMKTotz/8RhB9WqMivLuF8AwSqFohPTmTLb1Q==;7:tH0tjiOSrQ/UoEv2+Y+TQNsXL9ZIw8YIUJEpZL9dQgj+pmgl1mGSc89lzqhvNrG4m+EqrfWMnAG5zAi2gtl4vdfEodZIRuD585u80yPzfv+pGIMrZZcWheJH752NzVE651ytUn5atU+fcpUZeLSYTQ==
+x-ms-exchange-antispam-srfa-diagnostics: SOS;
+x-ms-office365-filtering-correlation-id: ca5a92c4-735e-49e4-246c-08d671abfaa0
+x-microsoft-antispam: BCL:0;PCL:0;RULEID:(2390118)(7020095)(4652040)(8989299)(4534185)(4627221)(201703031133081)(201702281549075)(8990200)(5600109)(711020)(2017052603328)(7153060)(7193020);SRVR:SN6PR13MB2303;
+x-ms-traffictypediagnostic: SN6PR13MB2303:
+x-microsoft-antispam-prvs: <SN6PR13MB23032B863732EFFAAB9E9703B88D0@SN6PR13MB2303.namprd13.prod.outlook.com>
+x-exchange-antispam-report-cfa-test: BCL:0;PCL:0;RULEID:(3230021)(908002)(999002)(5005026)(6040522)(8220060)(2401047)(8121501046)(3002001)(3231475)(944501520)(52105112)(10201501046)(93006095)(93001095)(6041310)(20161123562045)(20161123558120)(20161123560045)(20161123564045)(201703131423095)(201702281528075)(20161123555045)(201703061421075)(201703061406153)(201708071742011)(7699051)(76991095);SRVR:SN6PR13MB2303;BCL:0;PCL:0;RULEID:;SRVR:SN6PR13MB2303;
+x-forefront-prvs: 0906E83A25
+x-forefront-antispam-report: SFV:NSPM;SFS:(10019020)(39830400003)(136003)(366004)(396003)(376002)(346002)(199004)(189003)(11346002)(8676002)(2906002)(486006)(2616005)(99286004)(476003)(446003)(316002)(36756003)(8936002)(478600001)(6116002)(3846002)(256004)(14444005)(110136005)(7736002)(5660300001)(305945005)(81156014)(81166006)(14454004)(6506007)(53936002)(102836004)(25786009)(6246003)(118296001)(97736004)(71190400001)(66066001)(186003)(106356001)(105586002)(26005)(71200400001)(6436002)(6486002)(76176011)(2501003)(68736007)(86362001)(229853002)(6512007);DIR:OUT;SFP:1102;SCL:1;SRVR:SN6PR13MB2303;H:SN6PR13MB2494.namprd13.prod.outlook.com;FPR:;SPF:None;LANG:en;PTR:InfoNoRecords;A:1;MX:1;
+received-spf: None (protection.outlook.com: hammerspace.com does not designate
+ permitted sender hosts)
+x-ms-exchange-senderadcheck: 1
+x-microsoft-antispam-message-info: jWa9Pfz56UO6HF3RY6ASk9RbkfRWcWY9guGFT5SxFEI4avIv5UfkXE9lud9ucH8BKcaZwrnbiYEvZyhTwt5CZRW2vPNehiboe7e0tRxJwTx4mDDBq8m+jTsVGzBvV5D8EX8dbHRaTujO14xZnCtVtXbBvipBHjjnFU5tj/bZVCYuU5dhX9dsYnEFic6fIteMYLDiRsW40xVPKXSQE9iqTP+ROpvpXKoZ2sPPOZzFpfekX/uW/WZDsdrU+LbQl6uyR1ZyexQ/S97LFVRbxJPBy7628GQc54Je9nkn9VfmPjX16quTMxBEOm4dwGXoAigH
+spamdiagnosticoutput: 1:99
+spamdiagnosticmetadata: NSPM
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
+Content-ID: <15B3F23A9206944AA5EFB010CC7DC2B3@namprd13.prod.outlook.com>
+Content-Transfer-Encoding: base64
+MIME-Version: 1.0
+X-OriginatorOrg: hammerspace.com
+X-MS-Exchange-CrossTenant-Network-Message-Id: ca5a92c4-735e-49e4-246c-08d671abfaa0
+X-MS-Exchange-CrossTenant-originalarrivaltime: 03 Jan 2019 18:47:57.6399
+ (UTC)
+X-MS-Exchange-CrossTenant-fromentityheader: Hosted
+X-MS-Exchange-CrossTenant-id: 0d4fed5c-3a70-46fe-9430-ece41741f59e
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: SN6PR13MB2303
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-tsh_size was added to accommodate transports that send a pre-amble
-before each RPC message. However, this assumes the pre-amble is
-fixed in size, which isn't true for some transports. That makes
-tsh_size not very generic.
-
-Also I'd like to make the estimation of RPC send and receive
-buffer sizes more precise. tsh_size doesn't currently appear to be
-accounted for at all by call_allocate.
-
-Therefore let's just remove the tsh_size concept, and make the only
-transports that have a non-zero tsh_size employ a direct approach.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
-
-I've taken an approach where only the transports that need a record
-marker need to pay the expense. I don't want to add another indirect
-call in the generic path.
-
-However, I've found that during heavy multi-threaded workloads,
-occasionally this mechanism inserts a record marker in the middle of
-a Call message.
-
-
- include/linux/sunrpc/xprt.h                |    7 ---
- net/sunrpc/auth_gss/auth_gss.c             |    3 -
- net/sunrpc/clnt.c                          |    1 
- net/sunrpc/xprtrdma/svc_rdma_backchannel.c |    1 
- net/sunrpc/xprtrdma/transport.c            |    1 
- net/sunrpc/xprtsock.c                      |   69 +++++++++++++++++-----------
- 6 files changed, 43 insertions(+), 39 deletions(-)
-
-diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
-index a4ab4f8..17fc651 100644
---- a/include/linux/sunrpc/xprt.h
-+++ b/include/linux/sunrpc/xprt.h
-@@ -197,8 +197,6 @@ struct rpc_xprt {
- 
- 	size_t			max_payload;	/* largest RPC payload size,
- 						   in bytes */
--	unsigned int		tsh_size;	/* size of transport specific
--						   header */
- 
- 	struct rpc_wait_queue	binding;	/* requests waiting on rpcbind */
- 	struct rpc_wait_queue	sending;	/* requests waiting to send */
-@@ -363,11 +361,6 @@ struct rpc_xprt *	xprt_alloc(struct net *net, size_t size,
- 				unsigned int max_req);
- void			xprt_free(struct rpc_xprt *);
- 
--static inline __be32 *xprt_skip_transport_header(struct rpc_xprt *xprt, __be32 *p)
--{
--	return p + xprt->tsh_size;
--}
--
- static inline int
- xprt_enable_swap(struct rpc_xprt *xprt)
- {
-diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-index 4735a06..13508e4 100644
---- a/net/sunrpc/auth_gss/auth_gss.c
-+++ b/net/sunrpc/auth_gss/auth_gss.c
-@@ -1577,8 +1577,7 @@ static void gss_pipe_free(struct gss_pipe *p)
- 
- 	/* We compute the checksum for the verifier over the xdr-encoded bytes
- 	 * starting with the xid and ending at the end of the credential: */
--	iov.iov_base = xprt_skip_transport_header(req->rq_xprt,
--					req->rq_snd_buf.head[0].iov_base);
-+	iov.iov_base = req->rq_snd_buf.head[0].iov_base;
- 	iov.iov_len = (u8 *)p - (u8 *)iov.iov_base;
- 	xdr_buf_from_iov(&iov, &verf_buf);
- 
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index 1ee04e0..4f88062 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -2330,7 +2330,6 @@ void rpc_force_rebind(struct rpc_clnt *clnt)
- 
- 	/* FIXME: check buffer size? */
- 
--	p = xprt_skip_transport_header(req->rq_xprt, p);
- 	*p++ = req->rq_xid;		/* XID */
- 	*p++ = htonl(RPC_CALL);		/* CALL */
- 	*p++ = htonl(RPC_VERSION);	/* RPC version */
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_backchannel.c b/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
-index b908f2c..907464c 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
-@@ -304,7 +304,6 @@ static int svc_rdma_bc_sendto(struct svcxprt_rdma *rdma,
- 	xprt->idle_timeout = RPCRDMA_IDLE_DISC_TO;
- 
- 	xprt->prot = XPRT_TRANSPORT_BC_RDMA;
--	xprt->tsh_size = 0;
- 	xprt->ops = &xprt_rdma_bc_procs;
- 
- 	memcpy(&xprt->addr, args->dstaddr, args->addrlen);
-diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index 9a7bb58..2a704d5 100644
---- a/net/sunrpc/xprtrdma/transport.c
-+++ b/net/sunrpc/xprtrdma/transport.c
-@@ -332,7 +332,6 @@
- 	xprt->idle_timeout = RPCRDMA_IDLE_DISC_TO;
- 
- 	xprt->resvport = 0;		/* privileged port not needed */
--	xprt->tsh_size = 0;		/* RPC-RDMA handles framing */
- 	xprt->ops = &xprt_rdma_procs;
- 
- 	/*
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index d5ce1a8..66b08aa 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -678,6 +678,31 @@ static void xs_stream_data_receive_workfn(struct work_struct *work)
- 
- #define XS_SENDMSG_FLAGS	(MSG_DONTWAIT | MSG_NOSIGNAL)
- 
-+static int xs_send_record_marker(struct sock_xprt *transport,
-+				 const struct rpc_rqst *req)
-+{
-+	static struct msghdr msg = {
-+		.msg_name	= NULL,
-+		.msg_namelen	= 0,
-+		.msg_flags	= (XS_SENDMSG_FLAGS | MSG_MORE),
-+	};
-+	rpc_fraghdr marker;
-+	struct kvec iov = {
-+		.iov_base	= &marker,
-+		.iov_len	= sizeof(marker),
-+	};
-+	u32 reclen;
-+
-+	if (unlikely(!transport->sock))
-+		return -ENOTSOCK;
-+	if (req->rq_bytes_sent)
-+		return 0;
-+
-+	reclen = req->rq_snd_buf.len;
-+	marker = cpu_to_be32(RPC_LAST_STREAM_FRAGMENT | reclen);
-+	return kernel_sendmsg(transport->sock, &msg, &iov, 1, iov.iov_len);
-+}
-+
- static int xs_send_kvec(struct socket *sock, struct sockaddr *addr, int addrlen, struct kvec *vec, unsigned int base, int more)
- {
- 	struct msghdr msg = {
-@@ -851,16 +876,6 @@ static int xs_nospace(struct rpc_rqst *req)
- 	return transport->xmit.offset != 0 && req->rq_bytes_sent == 0;
- }
- 
--/*
-- * Construct a stream transport record marker in @buf.
-- */
--static inline void xs_encode_stream_record_marker(struct xdr_buf *buf)
--{
--	u32 reclen = buf->len - sizeof(rpc_fraghdr);
--	rpc_fraghdr *base = buf->head[0].iov_base;
--	*base = cpu_to_be32(RPC_LAST_STREAM_FRAGMENT | reclen);
--}
--
- /**
-  * xs_local_send_request - write an RPC request to an AF_LOCAL socket
-  * @req: pointer to RPC request
-@@ -887,18 +902,20 @@ static int xs_local_send_request(struct rpc_rqst *req)
- 		return -ENOTCONN;
- 	}
- 
--	xs_encode_stream_record_marker(&req->rq_snd_buf);
--
- 	xs_pktdump("packet data:",
- 			req->rq_svec->iov_base, req->rq_svec->iov_len);
- 
- 	req->rq_xtime = ktime_get();
-+	status = xs_send_record_marker(transport, req);
-+	if (status < 0)
-+		goto marker_fail;
- 	status = xs_sendpages(transport->sock, NULL, 0, xdr,
- 			      transport->xmit.offset,
- 			      true, &sent);
- 	dprintk("RPC:       %s(%u) = %d\n",
- 			__func__, xdr->len - transport->xmit.offset, status);
- 
-+marker_fail:
- 	if (status == -EAGAIN && sock_writeable(transport->inet))
- 		status = -ENOBUFS;
- 
-@@ -1039,8 +1056,6 @@ static int xs_tcp_send_request(struct rpc_rqst *req)
- 		return -ENOTCONN;
- 	}
- 
--	xs_encode_stream_record_marker(&req->rq_snd_buf);
--
- 	xs_pktdump("packet data:",
- 				req->rq_svec->iov_base,
- 				req->rq_svec->iov_len);
-@@ -1058,6 +1073,9 @@ static int xs_tcp_send_request(struct rpc_rqst *req)
- 	 * to cope with writespace callbacks arriving _after_ we have
- 	 * called sendmsg(). */
- 	req->rq_xtime = ktime_get();
-+	status = xs_send_record_marker(transport, req);
-+	if (status < 0)
-+		goto marker_fail;
- 	while (1) {
- 		sent = 0;
- 		status = xs_sendpages(transport->sock, NULL, 0, xdr,
-@@ -1106,6 +1124,7 @@ static int xs_tcp_send_request(struct rpc_rqst *req)
- 		vm_wait = false;
- 	}
- 
-+marker_fail:
- 	switch (status) {
- 	case -ENOTSOCK:
- 		status = -ENOTCONN;
-@@ -2530,24 +2549,24 @@ static int bc_sendto(struct rpc_rqst *req)
- 	struct rpc_xprt *xprt = req->rq_xprt;
- 	struct sock_xprt *transport =
- 				container_of(xprt, struct sock_xprt, xprt);
--	struct socket *sock = transport->sock;
- 	unsigned long headoff;
- 	unsigned long tailoff;
- 
--	xs_encode_stream_record_marker(xbufp);
-+	len = xs_send_record_marker(transport, req);
-+	if (len < 0)
-+		goto out_fail;
- 
- 	tailoff = (unsigned long)xbufp->tail[0].iov_base & ~PAGE_MASK;
- 	headoff = (unsigned long)xbufp->head[0].iov_base & ~PAGE_MASK;
--	len = svc_send_common(sock, xbufp,
-+	len = svc_send_common(transport->sock, xbufp,
- 			      virt_to_page(xbufp->head[0].iov_base), headoff,
- 			      xbufp->tail[0].iov_base, tailoff);
--
--	if (len != xbufp->len) {
--		printk(KERN_NOTICE "Error sending entire callback!\n");
--		len = -EAGAIN;
--	}
--
-+	if (len != xbufp->len)
-+		goto out_fail;
- 	return len;
-+out_fail:
-+	pr_info("Error sending entire callback!\n");
-+	return -EAGAIN;
- }
- 
- /*
-@@ -2787,7 +2806,6 @@ static struct rpc_xprt *xs_setup_local(struct xprt_create *args)
- 	transport = container_of(xprt, struct sock_xprt, xprt);
- 
- 	xprt->prot = 0;
--	xprt->tsh_size = sizeof(rpc_fraghdr) / sizeof(u32);
- 	xprt->max_payload = RPC_MAX_FRAGMENT_SIZE;
- 
- 	xprt->bind_timeout = XS_BIND_TO;
-@@ -2856,7 +2874,6 @@ static struct rpc_xprt *xs_setup_udp(struct xprt_create *args)
- 	transport = container_of(xprt, struct sock_xprt, xprt);
- 
- 	xprt->prot = IPPROTO_UDP;
--	xprt->tsh_size = 0;
- 	/* XXX: header size can vary due to auth type, IPv6, etc. */
- 	xprt->max_payload = (1U << 16) - (MAX_HEADER << 3);
- 
-@@ -2936,7 +2953,6 @@ static struct rpc_xprt *xs_setup_tcp(struct xprt_create *args)
- 	transport = container_of(xprt, struct sock_xprt, xprt);
- 
- 	xprt->prot = IPPROTO_TCP;
--	xprt->tsh_size = sizeof(rpc_fraghdr) / sizeof(u32);
- 	xprt->max_payload = RPC_MAX_FRAGMENT_SIZE;
- 
- 	xprt->bind_timeout = XS_BIND_TO;
-@@ -3009,7 +3025,6 @@ static struct rpc_xprt *xs_setup_bc_tcp(struct xprt_create *args)
- 	transport = container_of(xprt, struct sock_xprt, xprt);
- 
- 	xprt->prot = IPPROTO_TCP;
--	xprt->tsh_size = sizeof(rpc_fraghdr) / sizeof(u32);
- 	xprt->max_payload = RPC_MAX_FRAGMENT_SIZE;
- 	xprt->timeout = &xs_tcp_default_timeout;
- 
-
+T24gVGh1LCAyMDE5LTAxLTAzIGF0IDEzOjI5IC0wNTAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
+ZGlmZiAtLWdpdCBhL25ldC9zdW5ycGMveHBydHNvY2suYyBiL25ldC9zdW5ycGMveHBydHNvY2su
+Yw0KPiBpbmRleCBkNWNlMWE4Li42NmIwOGFhIDEwMDY0NA0KPiAtLS0gYS9uZXQvc3VucnBjL3hw
+cnRzb2NrLmMNCj4gKysrIGIvbmV0L3N1bnJwYy94cHJ0c29jay5jDQo+IEBAIC02NzgsNiArNjc4
+LDMxIEBAIHN0YXRpYyB2b2lkIHhzX3N0cmVhbV9kYXRhX3JlY2VpdmVfd29ya2ZuKHN0cnVjdA0K
+PiB3b3JrX3N0cnVjdCAqd29yaykNCj4gIA0KPiAgI2RlZmluZSBYU19TRU5ETVNHX0ZMQUdTCShN
+U0dfRE9OVFdBSVQgfCBNU0dfTk9TSUdOQUwpDQo+ICANCj4gK3N0YXRpYyBpbnQgeHNfc2VuZF9y
+ZWNvcmRfbWFya2VyKHN0cnVjdCBzb2NrX3hwcnQgKnRyYW5zcG9ydCwNCj4gKwkJCQkgY29uc3Qg
+c3RydWN0IHJwY19ycXN0ICpyZXEpDQo+ICt7DQo+ICsJc3RhdGljIHN0cnVjdCBtc2doZHIgbXNn
+ID0gew0KPiArCQkubXNnX25hbWUJPSBOVUxMLA0KPiArCQkubXNnX25hbWVsZW4JPSAwLA0KPiAr
+CQkubXNnX2ZsYWdzCT0gKFhTX1NFTkRNU0dfRkxBR1MgfCBNU0dfTU9SRSksDQo+ICsJfTsNCj4g
+KwlycGNfZnJhZ2hkciBtYXJrZXI7DQo+ICsJc3RydWN0IGt2ZWMgaW92ID0gew0KPiArCQkuaW92
+X2Jhc2UJPSAmbWFya2VyLA0KPiArCQkuaW92X2xlbgk9IHNpemVvZihtYXJrZXIpLA0KPiArCX07
+DQo+ICsJdTMyIHJlY2xlbjsNCj4gKw0KPiArCWlmICh1bmxpa2VseSghdHJhbnNwb3J0LT5zb2Nr
+KSkNCj4gKwkJcmV0dXJuIC1FTk9UU09DSzsNCj4gKwlpZiAocmVxLT5ycV9ieXRlc19zZW50KQ0K
+PiArCQlyZXR1cm4gMDsNCg0KVGhlIHRlc3QgbmVlZHMgdG8gdXNlIHRyYW5zcG9ydC0+eG1pdC5v
+ZmZzZXQsIG5vdCByZXEtPnJxX2J5dGVzX3NlbnQNCllvdSBhbHNvIG5lZWQgdG8gdXBkYXRlIHRy
+YW5zcG9ydC0+eG1pdC5vZmZzZXQgb24gc3VjY2VzcywgYW5kIGJlDQpwcmVwYXJlZCB0byBoYW5k
+bGUgdGhlIGNhc2Ugd2hlcmUgPCBzaXplb2YobWFya2VyKSBieXRlcyBnZXQNCnRyYW5zbWl0dGVk
+IGR1ZSB0byBhIHdyaXRlX3NwYWNlIGNvbmRpdGlvbi4NCg0KPiArDQo+ICsJcmVjbGVuID0gcmVx
+LT5ycV9zbmRfYnVmLmxlbjsNCj4gKwltYXJrZXIgPSBjcHVfdG9fYmUzMihSUENfTEFTVF9TVFJF
+QU1fRlJBR01FTlQgfCByZWNsZW4pOw0KPiArCXJldHVybiBrZXJuZWxfc2VuZG1zZyh0cmFuc3Bv
+cnQtPnNvY2ssICZtc2csICZpb3YsIDEsDQo+IGlvdi5pb3ZfbGVuKTsNCg0KDQpTbyB3aGF0IGRv
+ZXMgdGhpcyBkbyBmb3IgcGVyZm9ybWFuY2U/IEknZCBleHBlY3QgdGhhdCBhZGRpbmcgYW5vdGhl
+cg0KZGl2ZSBpbnRvIHRoZSBzb2NrZXQgbGF5ZXIgd2lsbCBjb21lIHdpdGggcGVuYWx0aWVzLg0K
+DQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIsIEhh
+bW1lcnNwYWNlDQp0cm9uZC5teWtsZWJ1c3RAaGFtbWVyc3BhY2UuY29tDQoNCg0K
