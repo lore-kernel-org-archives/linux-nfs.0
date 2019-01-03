@@ -2,104 +2,139 @@ Return-Path: <SRS0=enTr=PL=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS,
-	URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.5 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,UNPARSEABLE_RELAY,URIBL_BLOCKED
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 69B97C43387
-	for <linux-nfs@archiver.kernel.org>; Thu,  3 Jan 2019 14:26:42 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 74955C43387
+	for <linux-nfs@archiver.kernel.org>; Thu,  3 Jan 2019 15:29:39 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 28C1520815
-	for <linux-nfs@archiver.kernel.org>; Thu,  3 Jan 2019 14:26:42 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 3BFB7208E3
+	for <linux-nfs@archiver.kernel.org>; Thu,  3 Jan 2019 15:29:39 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="BnKCj01a"
+	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="48i9jub0"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727670AbfACO0l (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 3 Jan 2019 09:26:41 -0500
-Received: from mail-eopbgr770107.outbound.protection.outlook.com ([40.107.77.107]:58784
-        "EHLO NAM02-SN1-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1727147AbfACO0l (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 3 Jan 2019 09:26:41 -0500
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=hammerspace.com;
- s=selector1;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=CPBdjZMSM0cjlOSbKY6UEb8ZeEgeTeHV0i/b4QKb9YI=;
- b=BnKCj01ahiMWzfHdr/eDKsRKMGeahe+/Esd8cXBCWz3mDvS4gwDenOSDYJpB3O00CS8EECRYTjOTJGgt/47BwcPRSakPKpZeAuWJLcENbZGgqoNW79Q4bWWC8cCUegMZKy/zFhlfQ3Pm9+XUAWT/pNkJg20TkPfrm/gNLo56D5U=
-Received: from SN6PR13MB2494.namprd13.prod.outlook.com (52.135.95.148) by
- SN6PR13MB2478.namprd13.prod.outlook.com (52.135.95.143) with Microsoft SMTP
- Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- 15.20.1495.6; Thu, 3 Jan 2019 14:26:37 +0000
-Received: from SN6PR13MB2494.namprd13.prod.outlook.com
- ([fe80::7dd2:1e4f:2de1:eb27]) by SN6PR13MB2494.namprd13.prod.outlook.com
- ([fe80::7dd2:1e4f:2de1:eb27%3]) with mapi id 15.20.1495.005; Thu, 3 Jan 2019
- 14:26:37 +0000
-From:   Trond Myklebust <trondmy@hammerspace.com>
-To:     "geert@linux-m68k.org" <geert@linux-m68k.org>
-CC:     "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-mips@linux-mips.org" <linux-mips@linux-mips.org>
-Subject: Re: [PATCH v2] SUNRPC: Fix TCP receive code on archs with
- flush_dcache_page()
-Thread-Topic: [PATCH v2] SUNRPC: Fix TCP receive code on archs with
- flush_dcache_page()
-Thread-Index: AQHUoyua7l5ZKHM4hESBaVcRAYnWxaWdVHGAgABAooCAAAU+gA==
-Date:   Thu, 3 Jan 2019 14:26:37 +0000
-Message-ID: <51911b9147bd4ceef0e24f440067f6e61cb63103.camel@hammerspace.com>
-References: <20190103061324.16607-1-trond.myklebust@hammerspace.com>
-         <CAMuHMdXpHLjJBMQWDaWKYQFfY4_3yVi9NdBYnWr6Xfzttrb5iA@mail.gmail.com>
-         <3f4ee085ffde4c9823719e6607f521836c4158cf.camel@hammerspace.com>
-In-Reply-To: <3f4ee085ffde4c9823719e6607f521836c4158cf.camel@hammerspace.com>
-Accept-Language: en-US, en-GB
-Content-Language: en-US
-X-MS-Has-Attach: 
-X-MS-TNEF-Correlator: 
-authentication-results: spf=none (sender IP is )
- smtp.mailfrom=trondmy@hammerspace.com; 
-x-originating-ip: [68.40.189.247]
-x-ms-publictraffictype: Email
-x-microsoft-exchange-diagnostics: 1;SN6PR13MB2478;6:Jcf44OPX/LLU2mpLEvBFmSVkUe4knPhwj8pZSUQywOzNqnssTdyYfxMFrMqwZH8SdXFPXABSzW+tOhfhKLwbRFD4ob7FvXn0cJPntmSW3Licy8xBlUzLeSkB0Wp2ArWtfWWbQl2IYMU8JFpgYlvrdQIrH0rVxUyYkG2G4T/V9maTgXg4saR+N8QkuVglFH84WQPNPbK/oulUxiiP9BXNf2cEfKvxiKoN6UNNjGdgvBuBKF+GpRt4nY5+Tpv3anT+8CSsiYiQ0nQAjCJgMhsYZ5bIy0grCsx/a/2LWaLaQE8SiKBeVjUQAkzQvNbHMnTp4JJiNA6dvvCGd1sw8krEtHenXRWRL0jOF3myd98V0FiYXIBk1ecnlert9xbqPwcNHzjri7onuMS3lT/DjwP7luHQGeoufZwp6oNBvBTEu2EWPFweMNJkTv5Z6JvmQdjoZVjbLksX9y9db6R4mMvMJQ==;5:CQazmlym17VgusOjotc+8qga5Ljco+R04KAVkmISKXCO8Ha/Cb3ds905C8Y3DFUh3p1AeAuOtj9Zgm2JTIX+UIGUCGnLmwHPtzquQ3UwzrqvmKw8ynit82BayeqmxMdS6FZAmcJyu1zxs2UPxjBOV94SmBmA4bgnmpTe/QMqaWVl7oMuz8tBedu9i5lVgFLLFaxghi5cwjOVBuxAL4avWQ==;7:lcEr5yvGOUrAsaTgLPQgCeRF1+ZwepqmFqik5Z5nJmeW1sni1GjN6+/oHxEaisd8C/BaY/gDKM/I1A/tdgM2VyZo7xZ/dR9SsAX57kOJvibVXveUd2zUcgbZ5PvFIdGP/Gov+0zddam0LtRk/FCYAQ==
-x-ms-exchange-antispam-srfa-diagnostics: SOS;
-x-ms-office365-filtering-correlation-id: ea3d6783-cf0c-4229-bd0b-08d671877874
-x-microsoft-antispam: BCL:0;PCL:0;RULEID:(2390118)(7020095)(4652040)(8989299)(4534185)(4627221)(201703031133081)(201702281549075)(8990200)(5600109)(711020)(2017052603328)(7153060)(7193020);SRVR:SN6PR13MB2478;
-x-ms-traffictypediagnostic: SN6PR13MB2478:
-x-microsoft-antispam-prvs: <SN6PR13MB2478ECEB263BA655E7BBB874B88D0@SN6PR13MB2478.namprd13.prod.outlook.com>
-x-exchange-antispam-report-cfa-test: BCL:0;PCL:0;RULEID:(3230021)(908002)(999002)(5005026)(6040522)(8220060)(2401047)(8121501046)(93006095)(93001095)(10201501046)(3231475)(944501520)(52105112)(3002001)(6041310)(20161123564045)(20161123558120)(20161123560045)(201703131423095)(201702281528075)(20161123555045)(201703061421075)(201703061406153)(20161123562045)(201708071742011)(7699051)(76991095);SRVR:SN6PR13MB2478;BCL:0;PCL:0;RULEID:;SRVR:SN6PR13MB2478;
-x-forefront-prvs: 0906E83A25
-x-forefront-antispam-report: SFV:NSPM;SFS:(10019020)(396003)(376002)(366004)(39830400003)(136003)(346002)(199004)(189003)(81166006)(76176011)(5660300001)(6916009)(6512007)(53936002)(36756003)(81156014)(486006)(86362001)(305945005)(8676002)(8936002)(14454004)(7736002)(256004)(1730700003)(3846002)(6116002)(478600001)(54906003)(2906002)(106356001)(2351001)(71200400001)(6246003)(6506007)(68736007)(99286004)(25786009)(316002)(11346002)(97736004)(186003)(476003)(66066001)(2616005)(118296001)(446003)(105586002)(71190400001)(102836004)(5640700003)(6436002)(6486002)(26005)(2501003)(4326008)(229853002);DIR:OUT;SFP:1102;SCL:1;SRVR:SN6PR13MB2478;H:SN6PR13MB2494.namprd13.prod.outlook.com;FPR:;SPF:None;LANG:en;PTR:InfoNoRecords;A:1;MX:1;
-received-spf: None (protection.outlook.com: hammerspace.com does not designate
- permitted sender hosts)
-x-ms-exchange-senderadcheck: 1
-x-microsoft-antispam-message-info: MyHTo9Cf1M1ORtOK8e7E1hOOwd6H5cMtnfLcFU+Df6ovdl7Hmn7ALOBAWznTQBRrFFJDsPPHW1gNqITPIbL3eHtYuB/mbokkXdprvfaMe0/8TZeFrj0ccrajQNtNbKUNa5GpOnOQ8v0t6EO+U4BV6qUelha5DrrpSqAMgMwUVliZtOLfBqbrYz2iPfjcg3WddjpZmbaCp+ItPNvNRh/CSrhYXT9kUnA3r6cw9kjli9KDMvItrLbkpE0P3noBk9GNrBciF0nP2Itdbifbh0Bw7xMzgxp14EtbuCuXCeLiDLc+DQFktuGpbYO0vwKb+CYm
-spamdiagnosticoutput: 1:99
-spamdiagnosticmetadata: NSPM
-Content-Type: text/plain; charset="utf-8"
-Content-ID: <554F077F3B2D194AAEC14B097BCB85FD@namprd13.prod.outlook.com>
-Content-Transfer-Encoding: base64
-MIME-Version: 1.0
-X-OriginatorOrg: hammerspace.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: ea3d6783-cf0c-4229-bd0b-08d671877874
-X-MS-Exchange-CrossTenant-originalarrivaltime: 03 Jan 2019 14:26:37.4006
- (UTC)
-X-MS-Exchange-CrossTenant-fromentityheader: Hosted
-X-MS-Exchange-CrossTenant-id: 0d4fed5c-3a70-46fe-9430-ece41741f59e
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: SN6PR13MB2478
+        id S1730904AbfACP3i (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 3 Jan 2019 10:29:38 -0500
+Received: from userp2130.oracle.com ([156.151.31.86]:37858 "EHLO
+        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1730901AbfACP3i (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Jan 2019 10:29:38 -0500
+Received: from pps.filterd (userp2130.oracle.com [127.0.0.1])
+        by userp2130.oracle.com (8.16.0.22/8.16.0.22) with SMTP id x03FSwoh124627;
+        Thu, 3 Jan 2019 15:29:36 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=content-type :
+ mime-version : subject : from : in-reply-to : date : cc :
+ content-transfer-encoding : message-id : references : to;
+ s=corp-2018-07-02; bh=tu9iQ2ssqyI2eyLSTmWUg/cTEF6k73ErbsEzaQXsO10=;
+ b=48i9jub0XrHbn3EfEc132E8I46YnYhYgwnC8/MBmr5ve/4K/Ksb5GLcdyEnXeG/WXx0n
+ UlN+3Q5er8QWITqNmaWs32pQgAbcXbR4njKj9cJQXoyS/HkQ84ThdoaiaztilXdiJDaX
+ dpcG4VQ9YR2EJPWT2fNim8iJYSMG4rLyRjGE+OJwDhZZ1EPq29yOoNfTiXSVP6VQR3zU
+ 8u5vc/X6GPshIyvhw7zjkDADLdUCWiNKFgANmJJjgo9QDwvC1CDDsHlAQanqsw7Z89me
+ H7SlecbMf60kvVbYx+spYdzifHFZw5TEcwdBOx6hBG76FOajWs/w6VGxqWavQjo5+l/o HA== 
+Received: from aserv0021.oracle.com (aserv0021.oracle.com [141.146.126.233])
+        by userp2130.oracle.com with ESMTP id 2pp0btypx5-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Thu, 03 Jan 2019 15:29:35 +0000
+Received: from aserv0121.oracle.com (aserv0121.oracle.com [141.146.126.235])
+        by aserv0021.oracle.com (8.14.4/8.14.4) with ESMTP id x03FTYUD030626
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Thu, 3 Jan 2019 15:29:35 GMT
+Received: from abhmp0010.oracle.com (abhmp0010.oracle.com [141.146.116.16])
+        by aserv0121.oracle.com (8.14.4/8.13.8) with ESMTP id x03FTY67016384;
+        Thu, 3 Jan 2019 15:29:34 GMT
+Received: from anon-dhcp-121.1015granger.net (/68.61.232.219)
+        by default (Oracle Beehive Gateway v4.0)
+        with ESMTP ; Thu, 03 Jan 2019 07:29:34 -0800
+Content-Type: text/plain;
+        charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 11.5 \(3445.9.1\))
+Subject: Re: [PATCH 1/4] SUNRPC: Ensure rq_bytes_sent is reset before request
+ transmission
+From:   Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20190102225313.2097-2-trond.myklebust@hammerspace.com>
+Date:   Thu, 3 Jan 2019 10:29:33 -0500
+Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Transfer-Encoding: 7bit
+Message-Id: <1B5E1F96-246A-43AB-B9CE-FA41C595ADFF@oracle.com>
+References: <20190102225313.2097-1-trond.myklebust@hammerspace.com>
+ <20190102225313.2097-2-trond.myklebust@hammerspace.com>
+To:     Trond Myklebust <trondmy@gmail.com>
+X-Mailer: Apple Mail (2.3445.9.1)
+X-Proofpoint-Virus-Version: vendor=nai engine=5900 definitions=9124 signatures=668680
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 suspectscore=0 malwarescore=0
+ phishscore=0 bulkscore=0 spamscore=0 mlxscore=0 mlxlogscore=813
+ adultscore=0 classifier=spam adjust=0 reason=mlx scancount=1
+ engine=8.0.1-1810050000 definitions=main-1901030137
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-T24gVGh1LCAyMDE5LTAxLTAzIGF0IDE0OjA3ICswMDAwLCBUcm9uZCBNeWtsZWJ1c3Qgd3JvdGU6
-DQo+IE9uIFRodSwgMjAxOS0wMS0wMyBhdCAxMToxNiArMDEwMCwgR2VlcnQgVXl0dGVyaG9ldmVu
-IHdyb3RlOg0KPiA+IA0KPiA+IEkgZG9uJ3QgdW5kZXJzdGFuZCB0aGUgY29kZSB3ZWxsIGVub3Vn
-aCB0byBzZWUgd2h5IHRoZSBjYWxsIHRvDQo+ID4geHNfZmx1c2hfYnZlYygpIGlzIG5lZWRlZCBp
-biB0aGlzIGJyYW5jaCBvbmx5LCBidXQgaXQgZG9lcyBmaXggVENQDQo+ID4gTkZTIG9uIFJCVFg0
-OTI3LCBzbw0KPiA+IFRlc3RlZC1ieTogR2VlcnQgVXl0dGVyaG9ldmVuIDxnZWVydEBsaW51eC1t
-NjhrLm9yZz4NCg0KU29ycnkuIEkgZm9yZ290IHRvIGFuc3dlciB0aGUgaW1wbGljaXQgcXVlc3Rp
-b24gdGhlcmUuIFRoaXMgaXMgdGhlIG9ubHkNCnBsYWNlIHdoZXJlIHdlIG1heSBmaW5kIG91cnNl
-bHZlcyByZWFkaW5nIGRpcmVjdGx5IGZyb20gYSBzb2NrZXQgaW50bw0KdGhlIHBhZ2UgY2FjaGUs
-IHNvIHRoYXQncyB3aHkgd2UgZG9uJ3QgbmVlZCB4c19mbHVzaF9idmVjKCkgaW4gdGhlDQpvdGhl
-ciBicmFuY2hlcy4gVGhlIGt2ZWMgZW50cmllcyBpbiBzdHJ1Y3QgeGRyX2J1ZiBzaG91bGQgYWx3
-YXlzIHBvaW50DQp0byBwcml2YXRlIG1lbW9yeSBidWZmZXJzIHRoYXQgY2FuJ3QgYmUgbWFwcGVk
-IGludG8gdXNlciBzcGFjZS4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGll
-bnQgbWFpbnRhaW5lciwgSGFtbWVyc3BhY2UNCnRyb25kLm15a2xlYnVzdEBoYW1tZXJzcGFjZS5j
-b20NCg0KDQo=
+Hi Trond-
+
+I was curious about this one because yesterday I saw evidence (for
+other reasons) that rq_bytes_sent wasn't always zeroed when it should
+be.
+
+
+> On Jan 2, 2019, at 5:53 PM, Trond Myklebust <trondmy@gmail.com> wrote:
+> 
+> When we resend a request, ensure that the 'rq_bytes_sent' is reset
+> to zero.
+> 
+> Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
+> ---
+> net/sunrpc/clnt.c | 1 -
+> net/sunrpc/xprt.c | 1 +
+> 2 files changed, 1 insertion(+), 1 deletion(-)
+> 
+> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+> index 24cbddc44c88..2189fbc4c570 100644
+> --- a/net/sunrpc/clnt.c
+> +++ b/net/sunrpc/clnt.c
+> @@ -1738,7 +1738,6 @@ rpc_xdr_encode(struct rpc_task *task)
+> 	xdr_buf_init(&req->rq_rcv_buf,
+> 		     req->rq_rbuffer,
+> 		     req->rq_rcvsize);
+> -	req->rq_bytes_sent = 0;
+
+I agree this line is not sufficient, and it should be moved.
+Not every retransmission requires a re-encode. However, the
+patch description should explain that, and it probably needs
+a Fixes: tag.
+
+Can you now also remove the same line from xprt_request_init
+and xprt_init_bc_request ?
+
+Also, I notice that UDP does not touch rq_bytes_sent. Since
+RDMA also does not use rq_bytes_sent, maybe the same line
+can be removed from xprtrdma/transport.c and
+xprtrdma/backchannel.c ?
+
+
+> 	p = rpc_encode_header(task);
+> 	if (p == NULL) {
+> diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+> index 73547d17d3c6..9075ae150ae5 100644
+> --- a/net/sunrpc/xprt.c
+> +++ b/net/sunrpc/xprt.c
+> @@ -1151,6 +1151,7 @@ xprt_request_enqueue_transmit(struct rpc_task *task)
+> 	struct rpc_xprt *xprt = req->rq_xprt;
+> 
+> 	if (xprt_request_need_enqueue_transmit(task, req)) {
+> +		req->rq_bytes_sent = 0;
+> 		spin_lock(&xprt->queue_lock);
+> 		/*
+> 		 * Requests that carry congestion control credits are added
+
+So I'm not convinced this covers every case. I need some
+time to investigate.
+
+
+--
+Chuck Lever
+
+
+
