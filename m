@@ -4,30 +4,30 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-9.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,UNPARSEABLE_RELAY,
-	URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id CCA9DC43387
-	for <linux-nfs@archiver.kernel.org>; Fri,  4 Jan 2019 05:36:47 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 20D13C43387
+	for <linux-nfs@archiver.kernel.org>; Fri,  4 Jan 2019 05:46:38 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 95D892184B
-	for <linux-nfs@archiver.kernel.org>; Fri,  4 Jan 2019 05:36:47 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id D3FB32087F
+	for <linux-nfs@archiver.kernel.org>; Fri,  4 Jan 2019 05:46:37 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726709AbfADFgq (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 4 Jan 2019 00:36:46 -0500
-Received: from out30-131.freemail.mail.aliyun.com ([115.124.30.131]:48757 "EHLO
+        id S1726256AbfADFqh (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 4 Jan 2019 00:46:37 -0500
+Received: from out30-131.freemail.mail.aliyun.com ([115.124.30.131]:53715 "EHLO
         out30-131.freemail.mail.aliyun.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726692AbfADFgq (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Jan 2019 00:36:46 -0500
-X-Alimail-AntiSpam: AC=PASS;BC=-1|-1;BR=01201311R111e4;CH=green;FP=0|-1|-1|-1|0|-1|-1|-1;HT=e01e04426;MF=zhangliguang@linux.alibaba.com;NM=1;PH=DS;RN=3;SR=0;TI=SMTPD_---0THV53B1_1546580096;
-Received: from localhost(mailfrom:zhangliguang@linux.alibaba.com fp:SMTPD_---0THV53B1_1546580096)
+        by vger.kernel.org with ESMTP id S1726093AbfADFqg (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Jan 2019 00:46:36 -0500
+X-Alimail-AntiSpam: AC=PASS;BC=-1|-1;BR=01201311R221e4;CH=green;FP=0|-1|-1|-1|0|-1|-1|-1;HT=e01f04391;MF=zhangliguang@linux.alibaba.com;NM=1;PH=DS;RN=3;SR=0;TI=SMTPD_---0THVJ2IM_1546580736;
+Received: from localhost(mailfrom:zhangliguang@linux.alibaba.com fp:SMTPD_---0THVJ2IM_1546580736)
           by smtp.aliyun-inc.com(127.0.0.1);
-          Fri, 04 Jan 2019 13:35:05 +0800
+          Fri, 04 Jan 2019 13:45:44 +0800
 From:   zhangliguang <zhangliguang@linux.alibaba.com>
 To:     linux-nfs@vger.kernel.org
 Cc:     trond.myklebust@hammerspace.com, anna.schumaker@netapp.com
-Subject: [PATCH] NFS: readdirplus optimization by cache mechanism
-Date:   Fri,  4 Jan 2019 13:34:55 +0800
-Message-Id: <1546580095-125450-1-git-send-email-zhangliguang@linux.alibaba.com>
+Subject: [RFC v1] NFS: readdirplus optimization by cache mechanism
+Date:   Fri,  4 Jan 2019 13:45:36 +0800
+Message-Id: <1546580736-125966-1-git-send-email-zhangliguang@linux.alibaba.com>
 X-Mailer: git-send-email 1.8.3.1
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
@@ -80,8 +80,8 @@ readdirplus rpc calls decrease: 85%
 Signed-off-by: Liguang Zhang <zhangliguang@linux.alibaba.com>
 ---
  fs/nfs/dir.c      | 114 +++++++++++++++++++++++++++++++++++++++++++++++++++---
- fs/nfs/internal.h |   3 ++
- 2 files changed, 111 insertions(+), 6 deletions(-)
+ fs/nfs/internal.h |   5 ++-
+ 2 files changed, 112 insertions(+), 7 deletions(-)
 
 diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
 index 6bf4471..8b80c02 100644
@@ -276,19 +276,21 @@ index 6bf4471..8b80c02 100644
  	if (res > 0)
  		res = 0;
 diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 7f80f03..132ffc7 100644
+index 7f80f03..d667eb9 100644
 --- a/fs/nfs/internal.h
 +++ b/fs/nfs/internal.h
-@@ -71,6 +71,9 @@ struct nfs_clone_mount {
+@@ -69,7 +69,10 @@ struct nfs_clone_mount {
+  * Maximum number of pages that readdir can use for creating
+  * a vmapped array of pages.
   */
- #define NFS_MAX_READDIR_PAGES 8
- 
+-#define NFS_MAX_READDIR_PAGES 8
++#define NFS_MAX_READDIR_PAGES 64
++
 +/* Maximum number of pages that readdir can readahead. */
 +#define NFS_MAX_READDIR_RAPAGES 8
-+
+ 
  struct nfs_client_initdata {
  	unsigned long init_flags;
- 	const char *hostname;			/* Hostname of the server */
 -- 
 1.8.3.1
 
