@@ -1,93 +1,101 @@
-Return-Path: <SRS0=9vja=PN=vger.kernel.org=linux-nfs-owner@kernel.org>
+Return-Path: <SRS0=jPLZ=PP=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.0 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,SPF_PASS,USER_AGENT_MUTT
-	autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 36453C43444
-	for <linux-nfs@archiver.kernel.org>; Sat,  5 Jan 2019 20:53:55 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id ED136C43387
+	for <linux-nfs@archiver.kernel.org>; Mon,  7 Jan 2019 06:54:02 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id EF476222EB
-	for <linux-nfs@archiver.kernel.org>; Sat,  5 Jan 2019 20:53:54 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1546721635;
-	bh=mi25Lhvu4wPofx1LrDEopFD5UMOfTpUBFPWkepwdTXI=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To:List-ID:From;
-	b=Rh4WROU+BSAAjAN68odXeNvTU4mZAZFaHCLkBDz4LN7HmoF5EeDO4kkzfWpIsmLZn
-	 tM+C0NUN7BJJ7J05UXzswOXFzBUFB2VltQR/6OUMbuffGM+V1XSiUbejRg4NrirpNU
-	 5WSgFMdP0XmfqIZx8B6njZkwhXbo8DE0hN66AFZY=
+	by mail.kernel.org (Postfix) with ESMTP id C6E802085A
+	for <linux-nfs@archiver.kernel.org>; Mon,  7 Jan 2019 06:54:01 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726289AbfAEUxy (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sat, 5 Jan 2019 15:53:54 -0500
-Received: from mail.kernel.org ([198.145.29.99]:48708 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726282AbfAEUxy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sat, 5 Jan 2019 15:53:54 -0500
-Received: from localhost (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 2DF3620660;
-        Sat,  5 Jan 2019 20:53:53 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1546721633;
-        bh=mi25Lhvu4wPofx1LrDEopFD5UMOfTpUBFPWkepwdTXI=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=NkiFydu+jDtvotoUXLLT+rWoLpslZz/6vNWtBxgTZdfCVH2GKZSuL/R65lvWGa/db
-         CISXDR+1XefAcfZsxr8x+dapLN9xABLL18Lj+iuTX/ZQlrqHEj6hdcoJ+XOfevR6Zu
-         7H6Y0SVzL0INz98o3noJ02GM6GK4Kuj0SAjJN/N4=
-Date:   Sat, 5 Jan 2019 15:53:52 -0500
-From:   Sasha Levin <sashal@kernel.org>
-To:     Geert Uytterhoeven <geert@linux-m68k.org>
-Cc:     Trond Myklebust <trondmy@gmail.com>,
-        "open list:NFS, SUNRPC, AND..." <linux-nfs@vger.kernel.org>,
-        stable <stable@vger.kernel.org>
-Subject: Re: [PATCH] SUNRPC: Fix TCP receive code on archs with
- flush_dcache_page()
-Message-ID: <20190105205352.GC166797@sasha-vm>
-References: <20190103004211.12404-1-trond.myklebust@hammerspace.com>
- <20190103135226.7D5F2217F5@mail.kernel.org>
- <CAMuHMdXTMod81YP5Vtv4KdWVMG3yLO4dR45CO1W4TfDSfg8LmQ@mail.gmail.com>
+        id S1726448AbfAGGyA (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 7 Jan 2019 01:54:00 -0500
+Received: from mx2.suse.de ([195.135.220.15]:60700 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1725550AbfAGGyA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 7 Jan 2019 01:54:00 -0500
+X-Virus-Scanned: by amavisd-new at test-mx.suse.de
+X-Amavis-Alert: BAD HEADER SECTION, Duplicate header field: "Cc"
+Received: from relay2.suse.de (unknown [195.135.220.254])
+        by mx1.suse.de (Postfix) with ESMTP id 52A15AC3A;
+        Mon,  7 Jan 2019 06:53:59 +0000 (UTC)
+From:   NeilBrown <neilb@suse.com>
+To:     Trond Myklebust <trond.myklebust@hammerspace.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>
+Date:   Mon, 07 Jan 2019 17:53:52 +1100
+Cc:     Dan Carpenter <dan.carpenter@oracle.com>
+Cc:     linux-nfs@vger.kernel.org
+Subject: [PATCH] SUNRPC: remove pointless test in unx_match()
+In-Reply-To: <20181221091024.GF2735@kadam>
+References: <20181221091024.GF2735@kadam>
+Message-ID: <87d0p9j6v3.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8; format=flowed
-Content-Disposition: inline
-Content-Transfer-Encoding: 8bit
-In-Reply-To: <CAMuHMdXTMod81YP5Vtv4KdWVMG3yLO4dR45CO1W4TfDSfg8LmQ@mail.gmail.com>
-User-Agent: Mutt/1.10.1 (2018-07-13)
+Content-Type: multipart/signed; boundary="=-=-=";
+        micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Thu, Jan 03, 2019 at 03:00:10PM +0100, Geert Uytterhoeven wrote:
->Hi Sasha,
->
->On Thu, Jan 3, 2019 at 2:52 PM Sasha Levin <sashal@kernel.org> wrote:
->> [This is an automated email]
->>
->> This commit has been processed because it contains a "Fixes:" tag,
->> fixing commit: 277e4ab7d530 SUNRPC: Simplify TCP receive code by switching to using iterators.
->>
->> The bot has tested the following trees: v4.20.0,
->>
->> v4.20.0: Build failed! Errors:
->>     net/sunrpc/xprtsock.c:396:24: error: ‘struct bio_vec’ has no member named ‘page’; did you mean ‘bv_page’?
->>
->>
->> How should we proceed with this patch?
->
->Please drop it, as it was superseded by v2.
+--=-=-=
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
-Hi Geert,
 
-These mails don't really mean that the patch got queued anywhere (as
-it's obviously not upstream yet). It's more of a heads-up about how this
-patch (won't) be backported to various -stable branches.
+As reported by Dan Carpenter, this test for acred->cred being set is
+inconsistent with the dereference of the pointer a few lines earlier.
 
-It's usually easier to get response from people while the patch is still
-fresh in their heads rather than a few weeks later :)
+An 'auth_cred' *always* has ->cred set - every place that creates one
+initializes this field, often as the first thing done.
 
---
-Thanks,
-Sasha
+So remove this test.
+
+Reported-by: Dan Carpenter <dan.carpenter@oracle.com>
+Signed-off-by: NeilBrown <neilb@suse.com>
+=2D--
+ net/sunrpc/auth_unix.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/net/sunrpc/auth_unix.c b/net/sunrpc/auth_unix.c
+index 387f6b3ffbea..770e338a9b11 100644
+=2D-- a/net/sunrpc/auth_unix.c
++++ b/net/sunrpc/auth_unix.c
+@@ -87,7 +87,7 @@ unx_match(struct auth_cred *acred, struct rpc_cred *cred,=
+ int flags)
+ 	if (!uid_eq(cred->cr_cred->fsuid, acred->cred->fsuid) || !gid_eq(cred->cr=
+_cred->fsgid, acred->cred->fsgid))
+ 		return 0;
+=20
+=2D	if (acred->cred && acred->cred->group_info !=3D NULL)
++	if (acred->cred->group_info !=3D NULL)
+ 		groups =3D acred->cred->group_info->ngroups;
+ 	if (groups > UNX_NGROUPS)
+ 		groups =3D UNX_NGROUPS;
+=2D-=20
+2.14.0.rc0.dirty
+
+
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+
+iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlwy94AACgkQOeye3VZi
+gbkmNBAAsEkiHcQGNncfs9tfsmt8mh8RCkAh0RbTkIbkLfsBFZp4a/8JXvl3Nzkl
+YjwpgsLPnVFj729GW6IosR9UzEITxYNaBKrb09YP95Z1mWqIAxzN6tPeL7XBRHcY
+EVGOS/48O6eA/GXZqFkTfjEs2mdDoFd6gMR2PvEr9C5GaDMvezgy0Q0Zk6QALFcP
+Ma/ct9AAG76Rl45IvzuyqUqWFY1zJ5u+dfrBYvnPA3G/0padbnl1pE0Gmq79xryC
+RUwCdsT9kk6P2gs8U9841TekMpXrkMvlRTVvH4QIsRAcLKDmpfeW6juAtqIJvBSO
+bBotskbQzTmC7aMAzW90GZr9Zux0RobfX31ma8MnV6AnAA9/JwLr+MfXKcZq3tiM
+82Bt0606yaYGa9lT0bdq6M9RYmnwfQ8O/zOU3KANRVB9d63onlTs2FAIQFQB11H1
+injmkSBTlj19rvas9IACO6bl+xefJrwsObPpxTfa+JyBZs3z1OC/IBxlWt4WAKR/
+dKYHCKb4aNwLSABqxIKPmug85nqcd2OWI1SFaS7QbODvoMOWc9/Nhq5XDLiwBHwh
+LdiZI5GcW4GtjKap9UvJ9Eks88Xwp73U5oNJuCgLVlYYpyRkmaruoxTZqtG82RSf
+FUSjXyYhDJAgSPqZYNcrxmqUoiyH2TL4ZPFE3QSKIAOSJinFxNY=
+=UTAX
+-----END PGP SIGNATURE-----
+--=-=-=--
