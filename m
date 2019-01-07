@@ -2,127 +2,86 @@ Return-Path: <SRS0=jPLZ=PP=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-11.7 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,UNPARSEABLE_RELAY autolearn=ham
+X-Spam-Status: No, score=-2.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_PASS,URIBL_BLOCKED,USER_AGENT_MUTT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 97C82C43387
-	for <linux-nfs@archiver.kernel.org>; Mon,  7 Jan 2019 21:25:31 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9A13FC43387
+	for <linux-nfs@archiver.kernel.org>; Mon,  7 Jan 2019 21:32:19 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 5E0CA206BB
-	for <linux-nfs@archiver.kernel.org>; Mon,  7 Jan 2019 21:25:31 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="OM6Xfob8"
+	by mail.kernel.org (Postfix) with ESMTP id 728462087F
+	for <linux-nfs@archiver.kernel.org>; Mon,  7 Jan 2019 21:32:19 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726724AbfAGVZa (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 7 Jan 2019 16:25:30 -0500
-Received: from userp2120.oracle.com ([156.151.31.85]:56920 "EHLO
-        userp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726535AbfAGVZa (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Jan 2019 16:25:30 -0500
-Received: from pps.filterd (userp2120.oracle.com [127.0.0.1])
-        by userp2120.oracle.com (8.16.0.22/8.16.0.22) with SMTP id x07LOs6F029727;
-        Mon, 7 Jan 2019 21:25:25 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=content-type :
- mime-version : subject : from : in-reply-to : date : cc :
- content-transfer-encoding : message-id : references : to;
- s=corp-2018-07-02; bh=cMrOPGsc6dOKS9ZOZaLRH3Fc/6iRI+wt3IMsqJEh2PU=;
- b=OM6Xfob855snZHz++owPlI247xg3w0MRzHB4UWVwLkdj9qe7ZPuD+hyxErlPl8VMEI9k
- HIAYfCJxjMsvdkg+/KY5PClKZrECMm6zVcZM7tDfoysf+/5X/S0B9+tDj0d0fUNcojcy
- jDjTiBKkhJkiWkewtK1+BjgbC8qvkTZ9PZk+Yc5ZCOC2aPMrp84Zmeq4qZ5Dv41Pbngu
- +K5ziq75yfVMu6yCVp4SllkeoxlbQ42Mr6Os54c1foDv16Pam2rnZOI5qj6vCdnv4xjz
- 5Uuj7nv4sKqdTJC2W2KObrDdPwHo7rHb0btH1DxsUOOZe8ilduyBOOGQbmfJanLP2SYL zA== 
-Received: from aserv0021.oracle.com (aserv0021.oracle.com [141.146.126.233])
-        by userp2120.oracle.com with ESMTP id 2ptn7qr1qv-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Mon, 07 Jan 2019 21:25:25 +0000
-Received: from aserv0122.oracle.com (aserv0122.oracle.com [141.146.126.236])
-        by aserv0021.oracle.com (8.14.4/8.14.4) with ESMTP id x07LPOiT023304
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Mon, 7 Jan 2019 21:25:24 GMT
-Received: from abhmp0012.oracle.com (abhmp0012.oracle.com [141.146.116.18])
-        by aserv0122.oracle.com (8.14.4/8.14.4) with ESMTP id x07LPLlD000444;
-        Mon, 7 Jan 2019 21:25:21 GMT
-Received: from anon-dhcp-171.1015granger.net (/68.61.232.219)
-        by default (Oracle Beehive Gateway v4.0)
-        with ESMTP ; Mon, 07 Jan 2019 13:25:21 -0800
-Content-Type: text/plain;
-        charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 11.5 \(3445.9.1\))
-Subject: Re: [PATCH] xprtrdma: Make rpcrdma_sendctxs_destroy() more robust
-From:   Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20190107190806.GA6094@kadam>
-Date:   Mon, 7 Jan 2019 16:25:19 -0500
-Cc:     Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Jeff Layton <jlayton@kernel.org>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        kernel-janitors@vger.kernel.org
-Content-Transfer-Encoding: quoted-printable
-Message-Id: <E3C7A7BA-DECD-4EF6-96D8-A43681E56081@oracle.com>
-References: <20190107190806.GA6094@kadam>
-To:     Dan Carpenter <dan.carpenter@oracle.com>
-X-Mailer: Apple Mail (2.3445.9.1)
-X-Proofpoint-Virus-Version: vendor=nai engine=5900 definitions=9129 signatures=668680
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 suspectscore=2 malwarescore=0
- phishscore=0 bulkscore=0 spamscore=0 mlxscore=0 mlxlogscore=999
- adultscore=0 classifier=spam adjust=0 reason=mlx scancount=1
- engine=8.0.1-1810050000 definitions=main-1901070176
+        id S1726934AbfAGVcS (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 7 Jan 2019 16:32:18 -0500
+Received: from fieldses.org ([173.255.197.46]:44914 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726535AbfAGVcS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 7 Jan 2019 16:32:18 -0500
+Received: by fieldses.org (Postfix, from userid 2815)
+        id 433BC3F4; Mon,  7 Jan 2019 16:32:18 -0500 (EST)
+Date:   Mon, 7 Jan 2019 16:32:18 -0500
+From:   "bfields@fieldses.org" <bfields@fieldses.org>
+To:     Trond Myklebust <trondmy@hammerspace.com>
+Cc:     "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] SUNRPC: Don't allow compiler optimisation of
+ svc_xprt_release_slot()
+Message-ID: <20190107213218.GD7753@fieldses.org>
+References: <20190103141712.24381-1-trond.myklebust@hammerspace.com>
+ <20190103224529.GA6907@fieldses.org>
+ <a0493a5f022a666779d19fde5cdfbfdf9c7316c4.camel@hammerspace.com>
+ <20190104173912.GC11787@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20190104173912.GC11787@fieldses.org>
+User-Agent: Mutt/1.5.21 (2010-09-15)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
+On Fri, Jan 04, 2019 at 12:39:12PM -0500, bfields@fieldses.org wrote:
+> I wonder if there's a race here independent of that change:
+> 
+> svc_xprt_enqueue() callers all do something like:
+> 
+> 	1. change some condition
+> 	2. call svc_xprt_enqueue() to check whether the xprt should 
+> 	   now be enqueued.
+> 
+> where the conditions are settings of the xpt_flags, or socket wspace, or
+> xpt_nr_rqsts.
+> 
+> In theory if we miss some concurrent change we're OK because whoever's
+> making that change will then also call svc_xprt_enqueue.  But that's not
+> enough; e.g.:
+> 
+> 	task 1				task 2
+> 	------				------
+> 	set XPT_DATA
+> 					atomic_dec(xpt_nr_rqsts)
+> 
+> 	check XPT_DATA && check xpt_nr_rqsts
+> 
+> 					check XPT_DATA && check xpt_nr_rqsts
+> 
+> If the tasks only see their local changes, then neither see both
+> conditions true, so the socket doesn't get enqueued.  (And a request
+> that was ready to be processed will sit around until someone else comes
+> calls svc_xprt_enqueue() on that xprt.)
 
+So maybe we actually need
 
-> On Jan 7, 2019, at 2:08 PM, Dan Carpenter <dan.carpenter@oracle.com> =
-wrote:
->=20
-> There was a double free in the error handling here recently.  It was
-> a bit subtle which function was supposed to call =
-rpcrdma_sendctxs_destroy()
-> so it was called in both.
->=20
-> This patch makes it so we can call rpcrdma_sendctxs_destroy() twice
-> in a row without crashing.
+ static bool svc_xprt_has_something_to_do(struct svc_xprt *xprt)
+ {
++	mb();
+ 	if (xprt->xpt_flags & ((1<<XPT_CONN)|(1<<XPT_CLOSE)))
+ 		return true;
+ 	if (xprt->xpt_flags & ((1<<XPT_DATA)|(1<<XPT_DEFERRED))) {
 
-Belt-and-braces. I think the other patch "must" be applied, and this
-one "should" be applied.
+Then whichever memory barrier executes second guarantees that the
+following check sees the result of both the XPT_DATA and xpt_nr_rqsts
+changes.  I think....
 
-Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
-
-
-> Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
-> ---
-> net/sunrpc/xprtrdma/verbs.c | 3 +++
-> 1 file changed, 3 insertions(+)
->=20
-> diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-> index 7749a2bf6887..d05f4885548d 100644
-> --- a/net/sunrpc/xprtrdma/verbs.c
-> +++ b/net/sunrpc/xprtrdma/verbs.c
-> @@ -802,9 +802,12 @@ static void rpcrdma_sendctxs_destroy(struct =
-rpcrdma_buffer *buf)
-> {
-> 	unsigned long i;
->=20
-> +	if (!buf->rb_sc_ctxs)
-> +		return;
-> 	for (i =3D 0; i <=3D buf->rb_sc_last; i++)
-> 		kfree(buf->rb_sc_ctxs[i]);
-> 	kfree(buf->rb_sc_ctxs);
-> +	buf->rb_sc_ctxs =3D NULL;
-> }
->=20
-> static struct rpcrdma_sendctx *rpcrdma_sendctx_create(struct =
-rpcrdma_ia *ia)
-> --=20
-> 2.17.1
->=20
-
---
-Chuck Lever
-
-
-
+--b.
