@@ -2,101 +2,220 @@ Return-Path: <SRS0=3Jq2=PS=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.1 required=3.0 tests=DKIMWL_WL_MED,DKIM_SIGNED,
-	DKIM_VALID,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
-	SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no
+X-Spam-Status: No, score=-5.6 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
+	SPF_PASS,UNPARSEABLE_RELAY,URIBL_BLOCKED autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3C89CC43387
-	for <linux-nfs@archiver.kernel.org>; Thu, 10 Jan 2019 15:53:34 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id EEEB0C43387
+	for <linux-nfs@archiver.kernel.org>; Thu, 10 Jan 2019 17:13:29 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 02B87206B7
-	for <linux-nfs@archiver.kernel.org>; Thu, 10 Jan 2019 15:53:34 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id B47E520874
+	for <linux-nfs@archiver.kernel.org>; Thu, 10 Jan 2019 17:13:29 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=netapp.onmicrosoft.com header.i=@netapp.onmicrosoft.com header.b="qW+sip81"
+	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="3Hp61ixN"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728795AbfAJPxd (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 10 Jan 2019 10:53:33 -0500
-Received: from mail-eopbgr700045.outbound.protection.outlook.com ([40.107.70.45]:57152
-        "EHLO NAM04-SN1-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1729561AbfAJPxd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 10 Jan 2019 10:53:33 -0500
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
- d=netapp.onmicrosoft.com; s=selector1-netapp-com;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=ZET1B15oS+fPcugDOpOJfDW0TiUtqcPBHF+AW41lvSw=;
- b=qW+sip81IIE3IUoPJW8FX8MAqwlTe35aO2Hb7aaFCJvBQ7ST55ZlYexpznSgrij1wWPPoP4TZtjZdnl1QP5cfYyTcLfVk4Aqw1RRd3dinrLyQo8Hn/LWcja7AWIbuRfrrS1+ltO0w6Ln6AEgdOmAR1G/rPiOGTBAAsN97lsGQv8=
-Received: from DM5PR06MB3161.namprd06.prod.outlook.com (10.174.240.148) by
- DM5PR06MB3049.namprd06.prod.outlook.com (10.168.196.151) with Microsoft SMTP
- Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- 15.20.1516.14; Thu, 10 Jan 2019 15:53:30 +0000
-Received: from DM5PR06MB3161.namprd06.prod.outlook.com
- ([fe80::e942:888d:b5bb:44fb]) by DM5PR06MB3161.namprd06.prod.outlook.com
- ([fe80::e942:888d:b5bb:44fb%5]) with mapi id 15.20.1495.011; Thu, 10 Jan 2019
- 15:53:30 +0000
-From:   "Schumaker, Anna" <Anna.Schumaker@netapp.com>
-To:     "trond.myklebust@hammerspace.com" <trond.myklebust@hammerspace.com>,
-        "santoshkumar.pradhan@wdc.com" <santoshkumar.pradhan@wdc.com>
-CC:     "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "davej@codemonkey.org.uk" <davej@codemonkey.org.uk>
-Subject: Re: [PATCH] sunrpc: kernel BUG at kernel/cred.c:825!
-Thread-Topic: [PATCH] sunrpc: kernel BUG at kernel/cred.c:825!
-Thread-Index: AQHUqDnEnNpCrEgCbkSvaaZ+iB8kNqWoqM0A
-Date:   Thu, 10 Jan 2019 15:53:30 +0000
-Message-ID: <e9fb95ddac73ce50483405ab76c8da13b48146e8.camel@netapp.com>
-References: <20190109163826.2851-1-santoshkumar.pradhan@wdc.com>
-In-Reply-To: <20190109163826.2851-1-santoshkumar.pradhan@wdc.com>
-Accept-Language: en-US
-Content-Language: en-US
-X-MS-Has-Attach: 
-X-MS-TNEF-Correlator: 
-user-agent: Evolution 3.30.4 
-authentication-results: spf=none (sender IP is )
- smtp.mailfrom=Anna.Schumaker@netapp.com; 
-x-originating-ip: [216.240.30.11]
-x-ms-publictraffictype: Email
-x-microsoft-exchange-diagnostics: 1;DM5PR06MB3049;6:ySpTZif7iYCA1Eod0euVeq4YW5V4sAlrDYUFEwgyTpLGLx9zmc+FevPqNJTfYni9hP2Uy/JbkPn1jxGafnKDZwHdYPK4Pr2t7ltqafBsZWOVvxjDVPjcVP2iWYfkuKYVH8nNIq1HwbM70blkRVcYXO1WlaeLgZH51qE5Ud+T3iqSkVrzvZSwIZtcLzcoPZGGBdQ44bScZKDkHEmBP9mJ07i6/LoLl/1bRfoHM93cmep73vEFN/B3ALR9ZGAJg7DCtsC9NNg8leMuaMfI23n4zRWyk6lSWSkQCrKxhT4rT2L29NSRfxSHDY5gXsyMbJhCV60YpSmbDgQQq0LlhXR5/KU20cUBn20xftgRmgL1QswvTJvrozHJF7qlE7koVno7DRGP+LxCtyUVSf6+Kvw4zyzOuEyw/F0OxybrNs91LUz7sYI92ondocDo2hzvXiAh3gbId/MsAlyq6iGxvRh93A==;5:A4YZs73/Suw/n3a7nAMCQpt5uYdrNQqJsvqZKzoQYYU1VYiFT8MuW6eJVEDmfHie4G6TyDmieostt5Q7sy7x+K8R+L2NrsNFwvTLL8nMp7+vxuWUqlYTbtEahwCTz/dMREONbGQ7jxGKcz/+x/jUYKru+w0zIntQipDv1MqQRa775PbVKpuC1OPk6qspbORQhWqX6x2gssbq3zQW/N88bw==;7:jpo28Qfm0x+Crm5B08K1LvnVIVIAUgBwrd4zcb7vBu60nXCZHPwD+zU8tcB8+hkkPPhgQvMtuUnXziip22YLSles8eIvSvgOqUWvdH2F1McJZYanVzESb8lhTf47ZutcPu9BRB0BEmfY8YDdojG1wA==
-x-ms-exchange-antispam-srfa-diagnostics: SOS;
-x-ms-office365-filtering-correlation-id: ee78001b-8ab1-4d56-7755-08d67713c46b
-x-microsoft-antispam: BCL:0;PCL:0;RULEID:(2390118)(7020095)(4652040)(8989299)(4534185)(7168020)(4627221)(201703031133081)(201702281549075)(8990200)(5600109)(711020)(2017052603328)(7193020);SRVR:DM5PR06MB3049;
-x-ms-traffictypediagnostic: DM5PR06MB3049:
-x-microsoft-antispam-prvs: <DM5PR06MB30490F1E2FB5691E741DEB8FF8840@DM5PR06MB3049.namprd06.prod.outlook.com>
-x-forefront-prvs: 0913EA1D60
-x-forefront-antispam-report: SFV:NSPM;SFS:(10009020)(376002)(346002)(39860400002)(396003)(136003)(366004)(189003)(199004)(2906002)(446003)(11346002)(575784001)(97736004)(476003)(2616005)(4326008)(72206003)(86362001)(6512007)(229853002)(25786009)(6486002)(6116002)(5660300001)(53936002)(4744005)(3846002)(14454004)(68736007)(478600001)(6246003)(118296001)(8936002)(6436002)(76176011)(106356001)(105586002)(55236004)(6506007)(54906003)(110136005)(58126008)(102836004)(26005)(81156014)(316002)(256004)(186003)(99286004)(36756003)(71190400001)(71200400001)(81166006)(66066001)(2501003)(226693001)(305945005)(486006)(7736002)(8676002);DIR:OUT;SFP:1101;SCL:1;SRVR:DM5PR06MB3049;H:DM5PR06MB3161.namprd06.prod.outlook.com;FPR:;SPF:None;LANG:en;PTR:InfoNoRecords;MX:1;A:1;
-received-spf: None (protection.outlook.com: netapp.com does not designate
- permitted sender hosts)
-x-ms-exchange-senderadcheck: 1
-x-microsoft-antispam-message-info: v0yBhdZM1e3gk2V7d/tY+BiJmvVWwqbgwVh+dcQ/r5EmXED75G/A1wOcW1HX57Z6C1CR4W0lJRVPM383T+BWHVNt302FsC3x3MOK2VOqGPtPqty71L8XpvWMxu8JSWYrQ6HEBIZTYLNVjNHeoED0QU9Y/XNy/OvXV0qKR/a8oDCv/DpHNMWS5P/jjWQhKMMCw0QyWT0ybl6OqylOyFXUVqcrgdzJHYoIPk+k7kOFGtxIUAPyvy3wUSlL4TmcAeCPpTIj9klhqqzukWeh8Y1nYHFBtsP6pGfuGOyjztLo/hHWA6P45iy1UjAHV6b06ADL
-spamdiagnosticoutput: 1:99
-spamdiagnosticmetadata: NSPM
-Content-Type: text/plain; charset="utf-8"
-Content-ID: <31034E057E26D243B1FF2B0333E91DF8@namprd06.prod.outlook.com>
-Content-Transfer-Encoding: base64
-MIME-Version: 1.0
-X-OriginatorOrg: netapp.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: ee78001b-8ab1-4d56-7755-08d67713c46b
-X-MS-Exchange-CrossTenant-originalarrivaltime: 10 Jan 2019 15:53:30.1834
- (UTC)
-X-MS-Exchange-CrossTenant-fromentityheader: Hosted
-X-MS-Exchange-CrossTenant-id: 4b0911a0-929b-4715-944b-c03745165b3a
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: DM5PR06MB3049
+        id S1729422AbfAJRN2 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 10 Jan 2019 12:13:28 -0500
+Received: from userp2120.oracle.com ([156.151.31.85]:60232 "EHLO
+        userp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1729346AbfAJRN2 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Jan 2019 12:13:28 -0500
+Received: from pps.filterd (userp2120.oracle.com [127.0.0.1])
+        by userp2120.oracle.com (8.16.0.22/8.16.0.22) with SMTP id x0AH3VdD188936;
+        Thu, 10 Jan 2019 17:13:25 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=content-type :
+ mime-version : subject : from : in-reply-to : date : cc :
+ content-transfer-encoding : message-id : references : to;
+ s=corp-2018-07-02; bh=cj2SSE9qA2mrC92xFVLMvTzaCd1KsGDevauNQRKu8ck=;
+ b=3Hp61ixN+uE5rt9bPfx+NEW5RhMKyzVNUqefiTfQfbqUiXD7Jkt4NZbUTXGr5iSLBrFD
+ dvBCXWgGNYWZt8H/xqfutqasRxGN+T9y6IaNzso5KZyKZ7uQ6lGCTwRe9P9Q9WCbEhvk
+ L7/MjXx/iVNzZ08bG5C6QEIDvTd8JylB+3mIbQovQtz+z4rMZCflO1LS28MRFVEJiJOo
+ obA0VaeCW1rwlyKNSvTf2Dr7I1CPz5+R62CZPno1h9S0bDquoaFPBEhA7Tb6PJvy9t8h
+ NVorO8qSMhtFrS6rYS5QwST5E2OPYPn3M/AyI5YzBAtBsrVlGBJl25KH/gw+FdrjmrZS NA== 
+Received: from aserv0022.oracle.com (aserv0022.oracle.com [141.146.126.234])
+        by userp2120.oracle.com with ESMTP id 2ptn7r8cmf-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Thu, 10 Jan 2019 17:13:24 +0000
+Received: from aserv0121.oracle.com (aserv0121.oracle.com [141.146.126.235])
+        by aserv0022.oracle.com (8.14.4/8.14.4) with ESMTP id x0AHDOa2007575
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Thu, 10 Jan 2019 17:13:24 GMT
+Received: from abhmp0015.oracle.com (abhmp0015.oracle.com [141.146.116.21])
+        by aserv0121.oracle.com (8.14.4/8.13.8) with ESMTP id x0AHDMio004331;
+        Thu, 10 Jan 2019 17:13:24 GMT
+Received: from anon-dhcp-171.1015granger.net (/68.61.232.219)
+        by default (Oracle Beehive Gateway v4.0)
+        with ESMTP ; Thu, 10 Jan 2019 09:13:22 -0800
+Content-Type: text/plain;
+        charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 11.5 \(3445.9.1\))
+Subject: Re: [PATCH] SUNRPC: Remove rpc_xprt::tsh_size
+From:   Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <e69a8e3965258109772f1adaedebc02d0863f3d9.camel@hammerspace.com>
+Date:   Thu, 10 Jan 2019 12:13:21 -0500
+Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Transfer-Encoding: quoted-printable
+Message-Id: <27A8300E-DF7E-48F3-8106-3027D0831C9C@oracle.com>
+References: <20190103182649.4148.19838.stgit@manet.1015granger.net>
+ <0331de80b8161f8bf16a92de20049cafb0c228da.camel@hammerspace.com>
+ <90B38E07-3241-4CCD-A4C8-AB78BADFB0CD@oracle.com>
+ <791EE189-59E5-4D58-9CF6-6D2CFC6C1210@oracle.com>
+ <076cce85045dbaab3ca40947b2599f96cff66b53.camel@hammerspace.com>
+ <1353EAC5-5BEE-461E-A11E-31F00FC7B946@oracle.com>
+ <CE340D31-4F14-4C6F-B7C8-958754394C08@oracle.com>
+ <1d6779ff05f2d31c4eccd048acbb28563bc9b79b.camel@hammerspace.com>
+ <EE4DED67-E4A7-4F82-A5D0-9137381A2B4A@oracle.com>
+ <e69a8e3965258109772f1adaedebc02d0863f3d9.camel@hammerspace.com>
+To:     Trond Myklebust <trondmy@hammerspace.com>
+X-Mailer: Apple Mail (2.3445.9.1)
+X-Proofpoint-Virus-Version: vendor=nai engine=5900 definitions=9131 signatures=668680
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 suspectscore=0 malwarescore=0
+ phishscore=0 bulkscore=0 spamscore=0 mlxscore=0 mlxlogscore=999
+ adultscore=0 classifier=spam adjust=0 reason=mlx scancount=1
+ engine=8.0.1-1810050000 definitions=main-1901100134
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-T24gV2VkLCAyMDE5LTAxLTA5IGF0IDIyOjA4ICswNTMwLCBTYW50b3NoIGt1bWFyIHByYWRoYW4g
-d3JvdGU6DQo+IEluaXQgbWlzc2luZyBkZWJ1ZyBtZW1iZXIgbWFnaWMgd2l0aCBDUkVEX01BR0lD
-Lg0KPiANCj4gU2lnbmVkLW9mZi1ieTogU2FudG9zaCBrdW1hciBwcmFkaGFuIDxzYW50b3Noa3Vt
-YXIucHJhZGhhbkB3ZGMuY29tPg0KPiBSZXBvcnRlZC1ieTogRGF2ZSBKb25lcyA8ZGF2ZWpAY29k
-ZW1vbmtleS5vcmcudWs+DQoNClRoaXMgcGF0Y2ggbG9va3MgZ29vZCB0byBtZSwgdGhhbmtzIQ0K
-DQpBbm5hDQoNCj4gLS0tDQo+ICBuZXQvc3VucnBjL2F1dGguYyB8IDMgKysrDQo+ICAxIGZpbGUg
-Y2hhbmdlZCwgMyBpbnNlcnRpb25zKCspDQo+IA0KPiBkaWZmIC0tZ2l0IGEvbmV0L3N1bnJwYy9h
-dXRoLmMgYi9uZXQvc3VucnBjL2F1dGguYw0KPiBpbmRleCAxZmY5NzY4ZjU0NTYuLmYzMDIzYmJj
-MGI3ZiAxMDA2NDQNCj4gLS0tIGEvbmV0L3N1bnJwYy9hdXRoLmMNCj4gKysrIGIvbmV0L3N1bnJw
-Yy9hdXRoLmMNCj4gQEAgLTQxLDYgKzQxLDkgQEAgc3RhdGljIHVuc2lnbmVkIGxvbmcgbnVtYmVy
-X2NyZWRfdW51c2VkOw0KPiANCj4gIHN0YXRpYyBzdHJ1Y3QgY3JlZCBtYWNoaW5lX2NyZWQgPSB7
-DQo+ICAgICAgICAgLnVzYWdlID0gQVRPTUlDX0lOSVQoMSksDQo+ICsjaWZkZWYgQ09ORklHX0RF
-QlVHX0NSRURFTlRJQUxTDQo+ICsgICAgICAgLm1hZ2ljID0gQ1JFRF9NQUdJQywNCj4gKyNlbmRp
-Zg0KPiAgfTsNCj4gDQo+ICAvKg0KPiAtLQ0KPiAyLjIwLjENCj4gDQo=
+
+
+> On Jan 4, 2019, at 5:44 PM, Trond Myklebust <trondmy@hammerspace.com> =
+wrote:
+>=20
+> On Fri, 2019-01-04 at 16:35 -0500, Chuck Lever wrote:
+>>> On Jan 3, 2019, at 11:00 PM, Trond Myklebust <
+>>> trondmy@hammerspace.com> wrote:
+>>>=20
+>>> On Thu, 2019-01-03 at 17:49 -0500, Chuck Lever wrote:
+>>>>> On Jan 3, 2019, at 4:35 PM, Chuck Lever <chuck.lever@oracle.com
+>>>>>>=20
+>>>>> wrote:
+>>>>>=20
+>>>>>> On Jan 3, 2019, at 4:28 PM, Trond Myklebust <
+>>>>>> trondmy@hammerspace.com> wrote:
+>>>>>>=20
+>>>>>> On Thu, 2019-01-03 at 16:07 -0500, Chuck Lever wrote:
+>>>>>>>> On Jan 3, 2019, at 3:53 PM, Chuck Lever <
+>>>>>>>> chuck.lever@oracle.com>
+>>>>>>>> wrote:
+>>>>>>>>=20
+>>>>>>>>> On Jan 3, 2019, at 1:47 PM, Trond Myklebust <
+>>>>>>>>> trondmy@hammerspace.com> wrote:
+>>>>>>>>>=20
+>>>>>>>>> On Thu, 2019-01-03 at 13:29 -0500, Chuck Lever wrote:
+>>>>>>>>>> +	reclen =3D req->rq_snd_buf.len;
+>>>>>>>>>> +	marker =3D cpu_to_be32(RPC_LAST_STREAM_FRAGMENT |
+>>>>>>>>>> reclen);
+>>>>>>>>>> +	return kernel_sendmsg(transport->sock, &msg,
+>>>>>>>>>> &iov, 1,
+>>>>>>>>>> iov.iov_len);
+>>>>>>>>>=20
+>>>>>>>>> So what does this do for performance? I'd expect that
+>>>>>>>>> adding
+>>>>>>>>> another
+>>>>>>>>> dive into the socket layer will come with penalties.
+>>>>>>>>=20
+>>>>>>>> NFSv3 on TCP, sec=3Dsys, 56Gbs IBoIP, v4.20 + my v4.21
+>>>>>>>> patches
+>>>>>>>> fio, 8KB random, 70% read, 30% write, 16 threads,
+>>>>>>>> iodepth=3D16
+>>>>>>>>=20
+>>>>>>>> Without this patch:
+>>>>>>>>=20
+>>>>>>>> read: IOPS=3D28.7k, BW=3D224MiB/s
+>>>>>>>> (235MB/s)(11.2GiB/51092msec)
+>>>>>>>> write: IOPS=3D12.3k, BW=3D96.3MiB/s
+>>>>>>>> (101MB/s)(4918MiB/51092msec)
+>>>>>>>>=20
+>>>>>>>> With this patch:
+>>>>>>>>=20
+>>>>>>>> read: IOPS=3D28.6k, BW=3D224MiB/s
+>>>>>>>> (235MB/s)(11.2GiB/51276msec)
+>>>>>>>> write: IOPS=3D12.3k, BW=3D95.8MiB/s
+>>>>>>>> (100MB/s)(4914MiB/51276msec)
+>>>>>>>>=20
+>>>>>>>> Seems like that's in the noise.
+>>>>>>>=20
+>>>>>>> Sigh. That's because it was the same kernel. Again, with
+>>>>>>> feeling:
+>>>>>>>=20
+>>>>>>> 4.20.0-rc7-00048-g9274254:
+>>>>>>> read: IOPS=3D28.6k, BW=3D224MiB/s (235MB/s)(11.2GiB/51276msec)
+>>>>>>> write: IOPS=3D12.3k, BW=3D95.8MiB/s
+>>>>>>> (100MB/s)(4914MiB/51276msec)
+>>>>>>>=20
+>>>>>>> 4.20.0-rc7-00049-ga4dea15:
+>>>>>>> read: IOPS=3D27.2k, BW=3D212MiB/s (223MB/s)(11.2GiB/53979msec)
+>>>>>>> write: IOPS=3D11.7k, BW=3D91.1MiB/s
+>>>>>>> (95.5MB/s)(4917MiB/53979msec)
+>>>>>>>=20
+>>>>>>=20
+>>>>>> So about a 5% reduction in performance?
+>>>>>=20
+>>>>> On this workload, yes.
+>>>>>=20
+>>>>> Could send the record marker in xs_send_kvec with the head[0]
+>>>>> iovec.
+>>>>> I'm going to try that next.
+>>>>=20
+>>>> That helps:
+>>>>=20
+>>>> Linux 4.20.0-rc7-00049-g664f679 #651 SMP Thu Jan 3 17:35:26 EST
+>>>> 2019
+>>>>=20
+>>>>  read: IOPS=3D28.7k, BW=3D224MiB/s (235MB/s)(11.2GiB/51185msec)
+>>>> write: IOPS=3D12.3k, BW=3D96.1MiB/s (101MB/s)(4919MiB/51185msec)
+>>>>=20
+>>>=20
+>>> Interesting... Perhaps we might be able to eke out a few more
+>>> percent
+>>> performance on file writes by also converting xs_send_pagedata() to
+>>> use
+>>> a single sock_sendmsg() w/ iov_iter rather than looping through
+>>> several
+>>> calls to sendpage()?
+>>=20
+>> IMO...
+>>=20
+>> For small requests (say, smaller than 17 pages), packing the head,
+>> pagevec,
+>> and tail into an iov_iter and sending them all via a single
+>> sock_sendmsg
+>> call would likely be efficient.
+>>=20
+>> For larger requests, other overheads would dominate. And you'd have
+>> to keep around an iter array that held 257 entries... You could pass
+>> a
+>> large pagevec to sock_sendmsg in smaller chunks.
+>>=20
+>> Are you thinking of converting xs_sendpages (or even xdr_bufs) to use
+>> iov_iter directly?
+>=20
+> For now, I was thinking of just converting xs_sendpages to call
+> xdr_alloc_bvec(), and then do the equivalent of what xs_read_bvec()
+> does for receives today.
+>=20
+> The next step is to convert xdr_bufs to use bvecs natively instead of
+> having to allocate them to shadow the array of pages. I believe =
+someone
+> was working on allowing a single bvec to take an array of pages
+> (containing contiguous data), which would make that conversion almost
+> trivial.
+>=20
+> The final step would be to do as you say, to pack the kvecs into the
+> same call to sock_sendmsg() as the bvecs. We might imagine adding a =
+new
+> type of iov_iter that can iterate over an array of struct iov_iter in
+> order to deal with this case?
+
+The same approach might help svc_send_common, and could be an easier
+first step.
+
+
+--
+Chuck Lever
+
+
+
