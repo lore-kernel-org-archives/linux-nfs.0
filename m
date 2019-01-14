@@ -2,125 +2,152 @@ Return-Path: <SRS0=O3Iw=PW=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,
-	SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-7.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
+	MENTIONS_GIT_HOSTING,SPF_PASS,UNPARSEABLE_RELAY,URIBL_BLOCKED autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C1728C43387
-	for <linux-nfs@archiver.kernel.org>; Mon, 14 Jan 2019 14:53:23 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 0879AC43387
+	for <linux-nfs@archiver.kernel.org>; Mon, 14 Jan 2019 17:24:34 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 8CE3E2086D
-	for <linux-nfs@archiver.kernel.org>; Mon, 14 Jan 2019 14:53:23 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id CB5302070B
+	for <linux-nfs@archiver.kernel.org>; Mon, 14 Jan 2019 17:24:33 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="WrOBX+il"
+	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="cZ3a61gT"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726751AbfANOxW (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 14 Jan 2019 09:53:22 -0500
-Received: from mail-ua1-f68.google.com ([209.85.222.68]:35250 "EHLO
-        mail-ua1-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726542AbfANOxW (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Jan 2019 09:53:22 -0500
-Received: by mail-ua1-f68.google.com with SMTP id d2so7152885ual.2
-        for <linux-nfs@vger.kernel.org>; Mon, 14 Jan 2019 06:53:22 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
-         :cc;
-        bh=argvRVf0sFruai4o7rPyeGb95MRpnXRphZIjHXyJH5A=;
-        b=WrOBX+ilZTUvh70/+62FwOEa6GaRj/db5eNZDNp33624EEDYMizgcebGUfCjSMIoID
-         xm74MTaj8ABQqJFbrL2X7yrXWX9jV8jhBRtkLGQSYhmBIeX1z91dbmy4Se6N5skwPLAu
-         YHj9/KS+XbGYIDP++8hS6snQ/RKygfJfLXvnI5vjGIvlFd01heto7T+DfcqKgkU5XPd4
-         hQvtxX4RMkjdxW8EK3mu2uxkQ/pcDlJ6lOhEfpkjNVxRaEiKxNkXi061HEqkRvfwlYyy
-         6/vKPR4rFrKHUtPdq6NgnDpVsIHO1nzIAeUwxpqMjOMR+oJADYgLnKKPd0iB//lFR/IH
-         XOzw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
-         :message-id:subject:to:cc;
-        bh=argvRVf0sFruai4o7rPyeGb95MRpnXRphZIjHXyJH5A=;
-        b=drvrSsKbBzKbW5sf9qUewuiGYSH8AJ/TfLdOtzaUVLxZNiLNSkYCYwvnKVHHlYvRD+
-         3Rl0EAQ5hnG164OxdsNnEGcUs9xbJjE/oyCUZ6gV/qd8bIQqaRv1Z4GHnPB0l7/DzJVJ
-         Magd8erp4ajp2sq8rNAzpcAdW3n5MrjZqDsZjtfPOkVUXZgaXvaZv0bXNZQL5Eg2xcPP
-         T9PRe1qe20q28LKCGGSn+SjYP+qpA9D3PG3J0AtfQwptEeHR+lr5PCshB6uMcb7IqXq0
-         ncnemQgfaUUwklmYLl2vtmd9ujKGoees05ovoybNmuMbN0dZUJIAoLKBiaJO7kBCF0cY
-         BohQ==
-X-Gm-Message-State: AJcUukf7uulAVnSxn9zDXB28ZA+NZNRTKklKqPvCgQfst4TjE+hQQ7nm
-        E8LZOyFVEtqKgUVR71ov7Ox8nTZykaARiZy7OMQk9A==
-X-Google-Smtp-Source: ALg8bN68hgScefObrveRsveksyk9cyB/74S0Uk0ZdBdKKrMMMnt5PCO9ZtWzazjP7OsxcjTOdkVOVZPWdDybrKmDAQE=
-X-Received: by 2002:ab0:2017:: with SMTP id v23mr9445831uak.5.1547477601617;
- Mon, 14 Jan 2019 06:53:21 -0800 (PST)
-MIME-Version: 1.0
-References: <20181130200348.59524-1-olga.kornievskaia@gmail.com>
- <CAN-5tyGBO1CnhkEe9yPXdh4837NYsZc1fyJ4MCuMPM2eSv4C5g@mail.gmail.com> <20181221190837.GB15842@parsley.fieldses.org>
-In-Reply-To: <20181221190837.GB15842@parsley.fieldses.org>
-From:   Olga Kornievskaia <olga.kornievskaia@gmail.com>
-Date:   Mon, 14 Jan 2019 09:53:10 -0500
-Message-ID: <CAN-5tyG6o2Zi61j=miGJpR-AmbzvAUm6x4wauzUC9JgQmpma+w@mail.gmail.com>
-Subject: Re: [PATCH v2 00/10] server-side support for "inter" SSC copy
-To:     "J. Bruce Fields" <bfields@redhat.com>
-Cc:     linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+        id S1726706AbfANRYd (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 14 Jan 2019 12:24:33 -0500
+Received: from userp2130.oracle.com ([156.151.31.86]:54990 "EHLO
+        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726646AbfANRYd (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Jan 2019 12:24:33 -0500
+Received: from pps.filterd (userp2130.oracle.com [127.0.0.1])
+        by userp2130.oracle.com (8.16.0.22/8.16.0.22) with SMTP id x0EHOK5u116614;
+        Mon, 14 Jan 2019 17:24:28 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=content-type :
+ mime-version : subject : from : in-reply-to : date : cc :
+ content-transfer-encoding : message-id : references : to;
+ s=corp-2018-07-02; bh=W4mMutscSVfo2xhomTdGllmEIJ08BJyk8/lZYjAoN7U=;
+ b=cZ3a61gTntEthotxVZDRe277meIzkQOJ+8/bnkhhHHR4WjGRZw7+1vNBi8TJVENBuScT
+ FXgoWe0oD2trke0knilT82jKWfzgjE8KttoBAcNhKocT6JEZ5xT/GwLJH+eQZ9Idbzs5
+ Pcyy6TqDMQ9qkp5xHI8Q1pM5JCqpY5sr/ONgnNgKr12vn6pyNKfTMqHwE/VTPxcIqCxI
+ kl1AyVcuCzG6ZjTwqAGmVc4O8IwKMzaPiaUbciIkXq3leO9+9v5Duq0+GXPRBi1WSXr+
+ NGeqZtiDlly9fWxWyR0MWFBlI0epV4LWJ7C544tA6pLoaU+13ng6IhFH+5Z+/24ZvU8F 9A== 
+Received: from userv0022.oracle.com (userv0022.oracle.com [156.151.31.74])
+        by userp2130.oracle.com with ESMTP id 2pybkc6u7b-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Mon, 14 Jan 2019 17:24:28 +0000
+Received: from userv0122.oracle.com (userv0122.oracle.com [156.151.31.75])
+        by userv0022.oracle.com (8.14.4/8.14.4) with ESMTP id x0EHORes001160
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Mon, 14 Jan 2019 17:24:28 GMT
+Received: from abhmp0018.oracle.com (abhmp0018.oracle.com [141.146.116.24])
+        by userv0122.oracle.com (8.14.4/8.14.4) with ESMTP id x0EHOPUX014926;
+        Mon, 14 Jan 2019 17:24:27 GMT
+Received: from anon-dhcp-171.1015granger.net (/68.61.232.219)
+        by default (Oracle Beehive Gateway v4.0)
+        with ESMTP ; Mon, 14 Jan 2019 09:24:25 -0800
+Content-Type: text/plain;
+        charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 11.5 \(3445.9.1\))
+Subject: Re: [PATCH] SUNRPC: Don't allow compiler optimisation of
+ svc_xprt_release_slot()
+From:   Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20190112005613.GA29181@fieldses.org>
+Date:   Mon, 14 Jan 2019 12:24:24 -0500
+Cc:     Trond Myklebust <trondmy@hammerspace.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Transfer-Encoding: quoted-printable
+Message-Id: <F21839E5-A5DB-4BC8-8F3B-2AD02D4B2652@oracle.com>
+References: <e14e17167ef98c456e7648ad0536827b7870f0ff.camel@hammerspace.com>
+ <20190108150107.GA15921@fieldses.org>
+ <4077991d3d3acee4c37c7c8c6dc2b76930c9584e.camel@hammerspace.com>
+ <20190109165142.GB32189@fieldses.org>
+ <300445038b75d5efafe9391eb4b8e83d9d6e3633.camel@hammerspace.com>
+ <20190111211235.GA27206@fieldses.org>
+ <BB7240BE-3F20-43AD-B709-7F18CC33CC02@oracle.com>
+ <6F5B73B7-E9F8-4FDB-8381-E5C02772C6A5@oracle.com>
+ <20190111221030.GA28794@fieldses.org>
+ <A33F8CE5-3E5D-4359-8061-8DB8214B012B@oracle.com>
+ <20190112005613.GA29181@fieldses.org>
+To:     Bruce Fields <bfields@fieldses.org>
+X-Mailer: Apple Mail (2.3445.9.1)
+X-Proofpoint-Virus-Version: vendor=nai engine=5900 definitions=9136 signatures=668680
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 suspectscore=0 malwarescore=0
+ phishscore=0 bulkscore=0 spamscore=0 mlxscore=0 mlxlogscore=879
+ adultscore=0 classifier=spam adjust=0 reason=mlx scancount=1
+ engine=8.0.1-1810050000 definitions=main-1901140141
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Fri, Dec 21, 2018 at 2:08 PM J. Bruce Fields <bfields@redhat.com> wrote:
->
-> On Thu, Dec 20, 2018 at 01:42:27PM -0500, Olga Kornievskaia wrote:
-> > On Fri, Nov 30, 2018 at 3:03 PM Olga Kornievskaia
-> > <olga.kornievskaia@gmail.com> wrote:
-> > > All the patches (client inter) and this patch series is available
-> > > from git://linux-nfs.org/projects/aglo/linux.git under the "linux-ssc"
-> > > branch
-> > >
-> >
-> > Bruce,
-> >
-> > Do you have comments on this v2? Once VFS has the patches for the
-> > generic copy_file_range() functionality, NFS should be all set to just
-> > used it.
->
-> Not yet, sorry.  I probably won't be able to give it a proper review
-> till the second week in January, feel free to ping me again then.
->
 
-Hi Bruce,
 
-Any progress on this?
+> On Jan 11, 2019, at 7:56 PM, Bruce Fields <bfields@fieldses.org> =
+wrote:
+>=20
+> On Fri, Jan 11, 2019 at 05:27:30PM -0500, Chuck Lever wrote:
+>>=20
+>>=20
+>>> On Jan 11, 2019, at 5:10 PM, Bruce Fields <bfields@fieldses.org> =
+wrote:
+>>>=20
+>>> On Fri, Jan 11, 2019 at 04:54:01PM -0500, Chuck Lever wrote:
+>>>>> On Jan 11, 2019, at 4:52 PM, Chuck Lever <chuck.lever@oracle.com> =
+wrote:
+>>>>>> So, I think we need your patch plus something like this.
+>>>>>>=20
+>>>>>> Chuck, maybe you could help me with the "XXX: Chuck:" parts?
+>>>>>=20
+>>>>> I haven't been following. Why do you think those are necessary?
+>>>=20
+>>> I'm worried something like this could happen:
+>>>=20
+>>> 	CPU 1				CPU 2
+>>> 	-----				-----
+>>>=20
+>>> 	set XPT_DATA			dec xpt_nr_rqsts
+>>>=20
+>>> 	svc_xprt_enqueue		svc_xprt_enqueue
+>>>=20
+>>> And both decide nothing should be done if neither sees the change =
+that
+>>> the other made.
+>>>=20
+>>> Maybe I'm still missing some reason that couldn't happen.
+>>>=20
+>>> Even if it can happen, it's an unlikely race that will likely be =
+fixed
+>>> when another event comes along a little later, which would explain =
+why
+>>> we've never seen any reports.
+>>>=20
+>>>>> We've had set_bit and atomic_{inc,dec} in this code for ages,
+>>>>> and I've never noticed a problem.
+>>>>>=20
+>>>>> Rather than adding another CPU pipeline bubble in the RDMA code,
+>>>>> though, could you simply move the set_bit() call site inside the
+>>>>> critical sections?
+>>>>=20
+>>>> er, inside the preceding critical section. Just reverse the order
+>>>> of the spin_unlock and the set_bit.
+>>>=20
+>>> That'd do it, thanks!
+>>=20
+>> I can try that here and see if it results in a performance =
+regression.
+>=20
+> Thanks, I've got a version with a typo fixed at
+>=20
+> 	git://linux-nfs.org/~bfields/linux.git nfsd-next
 
-> --b.
->
-> >
-> > > Olga Kornievskaia (10):
-> > >   VFS generic copy_file_range() support
-> > >   NFS fallback to generic_copy_file_range
-> > >   NFSD fill-in netloc4 structure
-> > >   NFSD add ca_source_server<> to COPY
-> > >   NFSD return nfs4_stid in nfs4_preprocess_stateid_op
-> > >   NFSD add COPY_NOTIFY operation
-> > >   NFSD check stateids against copy stateids
-> > >   NFSD generalize nfsd4_compound_state flag names
-> > >   NFSD: allow inter server COPY to have a STALE source server fh
-> > >   NFSD add nfs4 inter ssc to nfsd4_copy
-> > >
-> > >  fs/nfs/nfs4file.c    |   9 +-
-> > >  fs/nfsd/Kconfig      |  10 ++
-> > >  fs/nfsd/nfs4proc.c   | 406 ++++++++++++++++++++++++++++++++++++++++++++++-----
-> > >  fs/nfsd/nfs4state.c  | 124 ++++++++++++++--
-> > >  fs/nfsd/nfs4xdr.c    | 166 ++++++++++++++++++++-
-> > >  fs/nfsd/nfsd.h       |  32 ++++
-> > >  fs/nfsd/nfsfh.h      |   5 +-
-> > >  fs/nfsd/nfssvc.c     |   6 +
-> > >  fs/nfsd/state.h      |  21 ++-
-> > >  fs/nfsd/xdr4.h       |  37 ++++-
-> > >  fs/read_write.c      |  66 +++++++--
-> > >  include/linux/fs.h   |   7 +
-> > >  include/linux/nfs4.h |   1 +
-> > >  mm/filemap.c         |   6 +-
-> > >  14 files changed, 810 insertions(+), 86 deletions(-)
-> > >
-> > > --
-> > > 1.8.3.1
-> > >
+Applied all four patches here. I don't see any performance regressions,
+but my server has only a single last-level CPU cache.
+
+
+--
+Chuck Lever
+
+
+
