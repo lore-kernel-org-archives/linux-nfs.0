@@ -1,105 +1,143 @@
-Return-Path: <SRS0=7zHz=PX=vger.kernel.org=linux-nfs-owner@kernel.org>
+Return-Path: <SRS0=vPHX=PY=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_PASS,URIBL_BLOCKED,USER_AGENT_MUTT
-	autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-7.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
+	SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A2448C43387
-	for <linux-nfs@archiver.kernel.org>; Tue, 15 Jan 2019 23:40:22 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 39278C43387
+	for <linux-nfs@archiver.kernel.org>; Wed, 16 Jan 2019 02:35:58 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 71AD620645
-	for <linux-nfs@archiver.kernel.org>; Tue, 15 Jan 2019 23:40:22 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 0558720859
+	for <linux-nfs@archiver.kernel.org>; Wed, 16 Jan 2019 02:35:57 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=canb.auug.org.au header.i=@canb.auug.org.au header.b="YmygAP8g"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2387948AbfAOXkQ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 15 Jan 2019 18:40:16 -0500
-Received: from mail5.windriver.com ([192.103.53.11]:47924 "EHLO mail5.wrs.com"
+        id S1728392AbfAPCf5 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 15 Jan 2019 21:35:57 -0500
+Received: from ozlabs.org ([203.11.71.1]:47649 "EHLO ozlabs.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2387904AbfAOXkQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 15 Jan 2019 18:40:16 -0500
-Received: from ALA-HCB.corp.ad.wrs.com (ala-hcb.corp.ad.wrs.com [147.11.189.41])
-        by mail5.wrs.com (8.15.2/8.15.2) with ESMTPS id x0FNcMia013462
-        (version=TLSv1 cipher=AES128-SHA bits=128 verify=FAIL);
-        Tue, 15 Jan 2019 15:38:32 -0800
-Received: from yow-pgortmak-d1.corp.ad.wrs.com (128.224.56.57) by
- ALA-HCB.corp.ad.wrs.com (147.11.189.41) with Microsoft SMTP Server id
- 14.3.408.0; Tue, 15 Jan 2019 15:38:12 -0800
-Received: by yow-pgortmak-d1.corp.ad.wrs.com (Postfix, from userid 1000)        id
- C95A52E0922; Tue, 15 Jan 2019 18:38:11 -0500 (EST)
-Date:   Tue, 15 Jan 2019 18:38:11 -0500
-From:   Paul Gortmaker <paul.gortmaker@windriver.com>
-To:     Takashi Iwai <tiwai@suse.de>
-CC:     Chuck Lever <chuck.lever@oracle.com>,
-        Stephen Rothwell <sfr@canb.auug.org.au>,
+        id S1728309AbfAPCf4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 15 Jan 2019 21:35:56 -0500
+Received: from authenticated.ozlabs.org (localhost [127.0.0.1])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange ECDHE (P-256) server-signature RSA-PSS (2048 bits) server-digest SHA256)
+        (No client certificate requested)
+        by ozlabs.org (Postfix) with ESMTPSA id 43fWXn0g3Nz9s2P;
+        Wed, 16 Jan 2019 13:35:53 +1100 (AEDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=canb.auug.org.au;
+        s=201702; t=1547606153;
+        bh=+ck+JoWQUW/h9liz+DG1vGHOmkRd9WBJf5LyPjAkj4I=;
+        h=Date:From:To:Cc:Subject:From;
+        b=YmygAP8gpzIBq/NQ89k0mjLi5l5AFH1tqCw3Uf0xB0fXcitCvBn4Ilg4ex+MZDVmX
+         KjZplrTF0+gBsQ/RoWpRMzPq+55yIBSj0rvff1lGPUxlLBIZ+F60aA+BIuzAor5E0h
+         BeaoPT/8lESkoZpaipYV2wKVT/vs5TgVy55uiXwtPRrWlADy+cauJfWa2cRaHbREF2
+         vH6zXSicGH32x0D5aNXwthVPFnvtiRI29P4qfxISGxtBMpdJM/hRNTn6iaulv94NBs
+         cLWvRFeSLsEFY1rDtVxPvC2XJguSkLx8BQeUp4ZyTWWMYyT88eo9v8XMatLOs140zb
+         HOdA4hCDuUEVQ==
+Date:   Wed, 16 Jan 2019 13:35:52 +1100
+From:   Stephen Rothwell <sfr@canb.auug.org.au>
+To:     Jens Axboe <axboe@kernel.dk>,
         Anna Schumaker <Anna.Schumaker@Netapp.com>,
         Trond Myklebust <trondmy@gmail.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Linux Next Mailing List <linux-next@vger.kernel.org>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
-Subject: Re: linux-next: Fixes tag needs some work in the nfs-anna tree
-Message-ID: <20190115233811.GD26416@windriver.com>
-References: <20190116083831.256824cf@canb.auug.org.au>
- <A4B834E5-2DFD-428E-8E24-9F6F6A822B09@oracle.com>
- <s5hbm4hfu45.wl-tiwai@suse.de>
+        NFS Mailing List <linux-nfs@vger.kernel.org>
+Cc:     Linux Next Mailing List <linux-next@vger.kernel.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        Ming Lei <ming.lei@redhat.com>
+Subject: linux-next: build failure after merge of the block tree
+Message-ID: <20190116133552.37436b9c@canb.auug.org.au>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Disposition: inline
-In-Reply-To: <s5hbm4hfu45.wl-tiwai@suse.de>
-User-Agent: Mutt/1.5.24 (2015-08-30)
+Content-Type: multipart/signed; micalg=pgp-sha256;
+ boundary="Sig_/qYOt_5uLb3ymrivCw=yJuQI"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-[Re: linux-next: Fixes tag needs some work in the nfs-anna tree] On 15/01/2019 (Tue 23:12) Takashi Iwai wrote:
+--Sig_/qYOt_5uLb3ymrivCw=yJuQI
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-> On Tue, 15 Jan 2019 22:41:21 +0100,
-> Chuck Lever wrote:
-> > 
-> > Hi Stephen-
-> > 
-> > On Jan 15, 2019, at 4:38 PM, Stephen Rothwell <sfr@canb.auug.org.au> wrote:
-> > 
-> > > [I am experimenting with checking the Fixes tags in commits in linux-next.
-> > > Please let me know if you think I am being too strict.]
-> > > 
-> > > Hi all,
-> > > 
-> > > Commit
-> > > 
-> > >  deaa5c96c2f7 ("SUNRPC: Address Kerberos performance/behavior regression")
-> > > 
-> > > has problem with this Fixes tag:
-> > > 
-> > >  Fixes: 918f3c1fe83c ("SUNRPC: Improve latency for interactive ... ")
-> > > 
-> > > The subject should match the subject of the fixed commit.
-> > > 
-> > > -- 
-> > > Cheers,
-> > > Stephen Rothwell
-> > 
-> > I shortened the commit title so that the Fixes: line is shorter than 68
-> > characters. I can leave these titles alone if that's preferred.
-> 
-> I've sometimes shorted the subject like the above, too, as I find a
-> too long text annoying.  Maybe the partial string matching should
-> suffice, especially when it ends with "..." ?
+Hi all,
 
-The problem is consistency.  Perhaps you shorten at four words.  A
-person searches with five words or 70 chars -  they never see your commit.
+After merging the block tree, today's linux-next build (arm
+multi_v7_defconfig) failed like this:
 
-The idea of consistency across the "Fixes:" tags is to allow a level of
-automated processing so that the creators of the stable releases can do
-a lot less manual hands-on processing.  They have enough work to do.
+net/sunrpc/xprtsock.c: In function 'xs_flush_bvec':
+net/sunrpc/xprtsock.c:390:2: error: implicit declaration of function 'for_e=
+ach_bvec'; did you mean 'for_each_net'? [-Werror=3Dimplicit-function-declar=
+ation]
+  for_each_bvec(bv, bvec, bi, bi)
+  ^~~~~~~~~~~~~
+  for_each_net
+net/sunrpc/xprtsock.c:390:33: error: expected ';' before 'flush_dcache_page'
+  for_each_bvec(bv, bvec, bi, bi)
+                                 ^
+                                 ;
+   flush_dcache_page(bv.bv_page);
+   ~~~~~~~~~~~~~~~~~             =20
 
-Thanks,
-Paul.
---
+Caused by commit
 
-> 
-> 
-> thanks,
-> 
-> Takashi
+  f3effe4c1240 ("block: rename bvec helpers")
+
+interacting with commit
+
+  6a829eb8619f ("SUNRPC: Fix TCP receive code on archs with flush_dcache_pa=
+ge()")
+
+from the nfs-anna tree.
+
+[I love API changes :-(]
+
+I have applied the following merge fix patch:
+
+From: Stephen Rothwell <sfr@canb.auug.org.au>
+Date: Wed, 16 Jan 2019 13:32:59 +1100
+Subject: [PATCH] SUNRPC: merge fix for "block: rename bvec helpers"
+
+Signed-off-by: Stephen Rothwell <sfr@canb.auug.org.au>
+---
+ net/sunrpc/xprtsock.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 7754aa3e434f..47f29cc23f27 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -387,7 +387,7 @@ xs_flush_bvec(const struct bio_vec *bvec, size_t count,=
+ size_t seek)
+ 	struct bio_vec bv;
+=20
+ 	bvec_iter_advance(bvec, &bi, seek & PAGE_MASK);
+-	for_each_bvec(bv, bvec, bi, bi)
++	for_each_segment(bv, bvec, bi, bi)
+ 		flush_dcache_page(bv.bv_page);
+ }
+ #else
+--=20
+2.20.1
+
+--=20
+Cheers,
+Stephen Rothwell
+
+--Sig_/qYOt_5uLb3ymrivCw=yJuQI
+Content-Type: application/pgp-signature
+Content-Description: OpenPGP digital signature
+
+-----BEGIN PGP SIGNATURE-----
+
+iQEzBAEBCAAdFiEENIC96giZ81tWdLgKAVBC80lX0GwFAlw+mIgACgkQAVBC80lX
+0Gzuwwf+La/pohlEBDONJUvWmXyLlrYiTe4dk8pUR+R6ScpuMamN+xMQGOuTCHQj
+5GNZuNvy2Rvh2H/r4qO3nGJxhWoJoDf8a1bffEK6Kveh6smUm1Ygfgz5DYyym9zN
+CaaqG5cZtWDV02w4ipNiRVGBJqcUSuptKAXIxCZuxY7LYUCVFYv43vBLOKSB4BP9
+/LkF53i/CF/cKUUHjqTcNEm61N1CO5lVPbCQHKg36Nrk+D09rYRuAdsS2KQHWSkZ
+0UgqJBV5thYlLe43UaMcLAzbi6oUc3/GnP3phG+ocGvL4FIFbuA1GCZqX+7aLQQz
+rHZCfdywXSNbL1creWVMxbsEgWudMQ==
+=9hhs
+-----END PGP SIGNATURE-----
+
+--Sig_/qYOt_5uLb3ymrivCw=yJuQI--
