@@ -2,140 +2,173 @@ Return-Path: <SRS0=+NMN=PZ=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,
+X-Spam-Status: No, score=-6.8 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
 	SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E1C6BC43387
-	for <linux-nfs@archiver.kernel.org>; Thu, 17 Jan 2019 17:03:28 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 379BCC43387
+	for <linux-nfs@archiver.kernel.org>; Thu, 17 Jan 2019 22:02:38 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id AC58320856
-	for <linux-nfs@archiver.kernel.org>; Thu, 17 Jan 2019 17:03:28 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id EC62A20859
+	for <linux-nfs@archiver.kernel.org>; Thu, 17 Jan 2019 22:02:37 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="JAgulY1e"
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="fW7ACo1r"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728515AbfAQRD2 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 17 Jan 2019 12:03:28 -0500
-Received: from mail-ua1-f65.google.com ([209.85.222.65]:42069 "EHLO
-        mail-ua1-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728767AbfAQRD2 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Jan 2019 12:03:28 -0500
-Received: by mail-ua1-f65.google.com with SMTP id d21so3701669uap.9
-        for <linux-nfs@vger.kernel.org>; Thu, 17 Jan 2019 09:03:27 -0800 (PST)
+        id S1727444AbfAQWCh (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 17 Jan 2019 17:02:37 -0500
+Received: from mail-it1-f194.google.com ([209.85.166.194]:50243 "EHLO
+        mail-it1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726348AbfAQWCh (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Jan 2019 17:02:37 -0500
+Received: by mail-it1-f194.google.com with SMTP id z7so3949969iti.0
+        for <linux-nfs@vger.kernel.org>; Thu, 17 Jan 2019 14:02:36 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
-        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
-         :cc;
-        bh=BmnOOLm+qPyN4h+EVc+h1Vc3ebUy84r6+LgO1056YY4=;
-        b=JAgulY1eE28Sr3DKt2/TwQqxfFdfQnDf0Umda9EIZesAVEZfMP/tMZtx27ip3EET3K
-         G3TE1xpiPj0gMO9gohkPlDhp8Xfvb7dFRJpEWvzVFhPL8XgL6ZE0IJjETz3DVAPcCKNt
-         3Oj8xdskAz1nSJu0ONJF81VM4oiqlA1J8/tO0uIGBmNmqZmUzhPIgoh2knXLP21Y4pyI
-         4EbYEAwuvO+aWRYgbxfyTPcvZOLAbawohYz41wrczcJsQoASEvR7sftGQIyETCDI+GRH
-         1IipKr3EU3W9qIi3mBeLAlFnUtpcLOSUmGmYbt+wYDt7rFueqSZri/YVtVvB8U/i5v4x
-         2c2A==
+        h=sender:subject:from:to:cc:date:message-id:user-agent:mime-version
+         :content-transfer-encoding;
+        bh=jX16A0Jqac7HO/FNCWNKnYQTXLnVzrcc6cMyf9KuLU0=;
+        b=fW7ACo1rkMs+KX70sbhVE3O3o/QsoSU87fimj+neN/OaZ+c+yeb1LenH0mN6I4qhjM
+         PgVUq3PLeK7XH0y15wiqHzG5bD7F2g7cfS4xGV2NBhSX4jqvT/w6TmZm5tiKvwbz8wNj
+         cByP32xmllg/nhIcuNfGFZfnhwOnBpOz3zyZbmjAaKqfrlMAoZz6QFBT5dF/JSVkKW+c
+         7sT3XUn/Ct1pSenTcIuq1fxHmJCPue0iQs+P/uJDIHBXlcs08WiXNwin6ZV30PA4EZ1N
+         TWhUDW7tmsbvE64/o+YxenKhd704W6jfsPOMrzG7Ie0yR7zOsOOb3jM5mhht6wNtreG0
+         aHUw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
-         :message-id:subject:to:cc;
-        bh=BmnOOLm+qPyN4h+EVc+h1Vc3ebUy84r6+LgO1056YY4=;
-        b=Fm59iIs1Crj6/CAjSrJ677xoEQy3KHgHnb1njXfFBS5drh2dop2ozXiTfv9JFrdT3C
-         ww9lAnCfnVZzz1s4VQYVhTQXGLqgogbzFZmzJCSRN5X04uWaR9xwkqgbhbtCozVAY7qX
-         uDi++Ti1xCZ++iMRS/A9WJsEt01IV4aZkdfca9XL/yOv0zz3KE+usrqRyLLWKJuo7Ni2
-         hoI0yNVOa4wJecekMpnxlfRJ6YnYmfUAsyaJjlARcMBNJ5S3wOc03yCNuGBpapY2nQ0U
-         I1AKagunrgi6megasiT48P8eeHeWGgy05lOrYl6pDFNn1w12kkHEJUEzj7dtWV26gmKO
-         0rqg==
-X-Gm-Message-State: AJcUukdD6Ab28eEbiFVdnnNGtOVNfbs0pKkR7eeBM1NEuWZGSRDSYjmf
-        TnZooBznNzFl2r7VNVG58dRhwadYZsh7AAyD/A/tUQ==
-X-Google-Smtp-Source: ALg8bN4DI2avOTohCi3eYtP8jSqt57xO/2PVT9/lt1ZppdXagHwyCi4DP9sXlZRe9UQzDHyTexu6Z5xUQjI9d1aZfGU=
-X-Received: by 2002:ab0:60da:: with SMTP id g26mr5960552uam.104.1547744606254;
- Thu, 17 Jan 2019 09:03:26 -0800 (PST)
+        h=x-gm-message-state:sender:subject:from:to:cc:date:message-id
+         :user-agent:mime-version:content-transfer-encoding;
+        bh=jX16A0Jqac7HO/FNCWNKnYQTXLnVzrcc6cMyf9KuLU0=;
+        b=VLq2NEzqRx+kFRlAssNZ8f3RH8BSwCTdVckx5LRX4RfH9eWxiz4jwfhbbPavl3Ltza
+         PQI998vkBdLe8Vs1I92Ann3oqHdHy+c0c+k4S8n0f1qUzjedlE224jPNdciOKb+wKnUk
+         ANu5gLsPt3cFLfeLFPdx9gThYOCsnKSJnTXMUXkip1KxyIZKeA9r5vMMDWqcMmZMtGNH
+         IaqTkSRKfEsh1gJs2rlJa2JNTTzGY4ILPCesXs7IdVCM7gCSSG7AnnrrVvV1c2YTcARq
+         M/XfwFJoivar1wdploDhz0i+pv5iNsqBEcUt/WmahhL7yY/ukQgM4XZcEoeVYBe77zuI
+         lgIQ==
+X-Gm-Message-State: AJcUukcFQSvhVnQg+R4eWpiu1rkqlmiYF7KxPjlbzhNvFJRM/z8f5YOo
+        nhR8EVLHCXlF7b4kw/Jcj0hVHwKd
+X-Google-Smtp-Source: ALg8bN5VmRmpOLf+CzPBrAocIPuurvpMEOhHyuVfXVr/gYtzDN1nKJMvMXNGAHfYARXcT2xfbe942w==
+X-Received: by 2002:a24:b8c6:: with SMTP id m189mr9028447ite.72.1547762556003;
+        Thu, 17 Jan 2019 14:02:36 -0800 (PST)
+Received: from gateway.1015granger.net (c-68-61-232-219.hsd1.mi.comcast.net. [68.61.232.219])
+        by smtp.gmail.com with ESMTPSA id v4sm1454871itv.20.2019.01.17.14.02.35
+        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Thu, 17 Jan 2019 14:02:35 -0800 (PST)
+Received: from manet.1015granger.net (manet.1015granger.net [192.168.1.51])
+        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id x0HM2XFW016948;
+        Thu, 17 Jan 2019 22:02:33 GMT
+Subject: [PATCH RFC] SUNRPC: Add SPDX IDs to some net/sunrpc/auth_gss/ files
+From:   Chuck Lever <chuck.lever@oracle.com>
+To:     linux-nfs@vger.kernel.org
+Cc:     kstewart@linuxfoundation.org, simo@redhat.com
+Date:   Thu, 17 Jan 2019 17:02:33 -0500
+Message-ID: <20190117220233.13961.53423.stgit@manet.1015granger.net>
+User-Agent: StGit/0.17.1-dirty
 MIME-Version: 1.0
-References: <20181130200348.59524-1-olga.kornievskaia@gmail.com>
- <CAN-5tyGBO1CnhkEe9yPXdh4837NYsZc1fyJ4MCuMPM2eSv4C5g@mail.gmail.com>
- <20181221190837.GB15842@parsley.fieldses.org> <CAN-5tyG6o2Zi61j=miGJpR-AmbzvAUm6x4wauzUC9JgQmpma+w@mail.gmail.com>
- <20190116220817.GA4499@parsley.fieldses.org>
-In-Reply-To: <20190116220817.GA4499@parsley.fieldses.org>
-From:   Olga Kornievskaia <olga.kornievskaia@gmail.com>
-Date:   Thu, 17 Jan 2019 12:03:15 -0500
-Message-ID: <CAN-5tyHm7XNm4aUhDMEDw3RJDFb2EYOwc=2YsigQrsjmjLLBqg@mail.gmail.com>
-Subject: Re: [PATCH v2 00/10] server-side support for "inter" SSC copy
-To:     "J. Bruce Fields" <bfields@redhat.com>
-Cc:     linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Wed, Jan 16, 2019 at 5:08 PM J. Bruce Fields <bfields@redhat.com> wrote:
->
-> On Mon, Jan 14, 2019 at 09:53:10AM -0500, Olga Kornievskaia wrote:
-> > On Fri, Dec 21, 2018 at 2:08 PM J. Bruce Fields <bfields@redhat.com> wrote:
-> > >
-> > > On Thu, Dec 20, 2018 at 01:42:27PM -0500, Olga Kornievskaia wrote:
-> > > > On Fri, Nov 30, 2018 at 3:03 PM Olga Kornievskaia
-> > > > <olga.kornievskaia@gmail.com> wrote:
-> > > > > All the patches (client inter) and this patch series is available
-> > > > > from git://linux-nfs.org/projects/aglo/linux.git under the "linux-ssc"
-> > > > > branch
-> > > > >
-> > > >
-> > > > Bruce,
-> > > >
-> > > > Do you have comments on this v2? Once VFS has the patches for the
-> > > > generic copy_file_range() functionality, NFS should be all set to just
-> > > > used it.
-> > >
-> > > Not yet, sorry.  I probably won't be able to give it a proper review
-> > > till the second week in January, feel free to ping me again then.
-> >
-> > Any progress on this?
->
-> I have some delegation patches I want to get debugged first, hopefully
-> just a couple more days.
->
-> Where does the VFS cross-superblock copy work stand?  I remember Dave
-> Chinner sending some patches but don't see them in 5.0-rc1, on a quick
-> look.
+Files under net/sunrpc/auth_gss/ do not yet have SPDX ID tags.
+This directory is somewhat complicated because most of these files
+have license boilerplate that is not strictly GPL 2.0.
 
-I don't know where it stands. Dave didn't reply my asking about it.
+In this patch I add ID tags where there is an obvious match. The
+less recognizable licenses are still under research.
 
->
-> --b.
->
-> >
-> > > --b.
-> > >
-> > > >
-> > > > > Olga Kornievskaia (10):
-> > > > >   VFS generic copy_file_range() support
-> > > > >   NFS fallback to generic_copy_file_range
-> > > > >   NFSD fill-in netloc4 structure
-> > > > >   NFSD add ca_source_server<> to COPY
-> > > > >   NFSD return nfs4_stid in nfs4_preprocess_stateid_op
-> > > > >   NFSD add COPY_NOTIFY operation
-> > > > >   NFSD check stateids against copy stateids
-> > > > >   NFSD generalize nfsd4_compound_state flag names
-> > > > >   NFSD: allow inter server COPY to have a STALE source server fh
-> > > > >   NFSD add nfs4 inter ssc to nfsd4_copy
-> > > > >
-> > > > >  fs/nfs/nfs4file.c    |   9 +-
-> > > > >  fs/nfsd/Kconfig      |  10 ++
-> > > > >  fs/nfsd/nfs4proc.c   | 406 ++++++++++++++++++++++++++++++++++++++++++++++-----
-> > > > >  fs/nfsd/nfs4state.c  | 124 ++++++++++++++--
-> > > > >  fs/nfsd/nfs4xdr.c    | 166 ++++++++++++++++++++-
-> > > > >  fs/nfsd/nfsd.h       |  32 ++++
-> > > > >  fs/nfsd/nfsfh.h      |   5 +-
-> > > > >  fs/nfsd/nfssvc.c     |   6 +
-> > > > >  fs/nfsd/state.h      |  21 ++-
-> > > > >  fs/nfsd/xdr4.h       |  37 ++++-
-> > > > >  fs/read_write.c      |  66 +++++++--
-> > > > >  include/linux/fs.h   |   7 +
-> > > > >  include/linux/nfs4.h |   1 +
-> > > > >  mm/filemap.c         |   6 +-
-> > > > >  14 files changed, 810 insertions(+), 86 deletions(-)
-> > > > >
-> > > > > --
-> > > > > 1.8.3.1
-> > > > >
+For reference, SPDX IDs added in this patch correspond to the
+following license text:
+
+GPL-2.0         https://spdx.org/licenses/GPL-2.0.html
+GPL-2.0+        https://spdx.org/licenses/GPL-2.0+.html
+BSD-3-Clause    https://spdx.org/licenses/BSD-3-Clause.html
+
+Cc: Simo Sorce <simo@redhat.com>
+Cc: Kate Stewart <kstewart@linuxfoundation.org>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+ net/sunrpc/auth_gss/auth_gss.c        |    1 +
+ net/sunrpc/auth_gss/gss_krb5_mech.c   |    1 +
+ net/sunrpc/auth_gss/gss_mech_switch.c |    1 +
+ net/sunrpc/auth_gss/gss_rpc_upcall.c  |    1 +
+ net/sunrpc/auth_gss/gss_rpc_upcall.h  |    1 +
+ net/sunrpc/auth_gss/gss_rpc_xdr.c     |    1 +
+ net/sunrpc/auth_gss/gss_rpc_xdr.h     |    1 +
+ net/sunrpc/auth_gss/svcauth_gss.c     |    1 +
+ 8 files changed, 8 insertions(+)
+
+diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+index 3bf7cb0..0513891 100644
+--- a/net/sunrpc/auth_gss/auth_gss.c
++++ b/net/sunrpc/auth_gss/auth_gss.c
+@@ -1,3 +1,4 @@
++// SPDX-License-Identifier: BSD-3-Clause
+ /*
+  * linux/net/sunrpc/auth_gss/auth_gss.c
+  *
+diff --git a/net/sunrpc/auth_gss/gss_krb5_mech.c b/net/sunrpc/auth_gss/gss_krb5_mech.c
+index be31a58..1286fe9 100644
+--- a/net/sunrpc/auth_gss/gss_krb5_mech.c
++++ b/net/sunrpc/auth_gss/gss_krb5_mech.c
+@@ -1,3 +1,4 @@
++// SPDX-License-Identifier: BSD-3-Clause
+ /*
+  *  linux/net/sunrpc/gss_krb5_mech.c
+  *
+diff --git a/net/sunrpc/auth_gss/gss_mech_switch.c b/net/sunrpc/auth_gss/gss_mech_switch.c
+index 379318d..cd32c12 100644
+--- a/net/sunrpc/auth_gss/gss_mech_switch.c
++++ b/net/sunrpc/auth_gss/gss_mech_switch.c
+@@ -1,3 +1,4 @@
++// SPDX-License-Identifier: BSD-3-Clause
+ /*
+  *  linux/net/sunrpc/gss_mech_switch.c
+  *
+diff --git a/net/sunrpc/auth_gss/gss_rpc_upcall.c b/net/sunrpc/auth_gss/gss_rpc_upcall.c
+index 73dcda0..21ff372 100644
+--- a/net/sunrpc/auth_gss/gss_rpc_upcall.c
++++ b/net/sunrpc/auth_gss/gss_rpc_upcall.c
+@@ -1,3 +1,4 @@
++// SPDX-License-Identifier: GPL-2.0+
+ /*
+  *  linux/net/sunrpc/gss_rpc_upcall.c
+  *
+diff --git a/net/sunrpc/auth_gss/gss_rpc_upcall.h b/net/sunrpc/auth_gss/gss_rpc_upcall.h
+index 1e542ad..7adeeb9 100644
+--- a/net/sunrpc/auth_gss/gss_rpc_upcall.h
++++ b/net/sunrpc/auth_gss/gss_rpc_upcall.h
+@@ -1,3 +1,4 @@
++/* SPDX-License-Identifier: GPL-2.0+ */
+ /*
+  *  linux/net/sunrpc/gss_rpc_upcall.h
+  *
+diff --git a/net/sunrpc/auth_gss/gss_rpc_xdr.c b/net/sunrpc/auth_gss/gss_rpc_xdr.c
+index 006062a..caf2428 100644
+--- a/net/sunrpc/auth_gss/gss_rpc_xdr.c
++++ b/net/sunrpc/auth_gss/gss_rpc_xdr.c
+@@ -1,3 +1,4 @@
++// SPDX-License-Identifier: GPL-2.0+
+ /*
+  * GSS Proxy upcall module
+  *
+diff --git a/net/sunrpc/auth_gss/gss_rpc_xdr.h b/net/sunrpc/auth_gss/gss_rpc_xdr.h
+index 146c310..3877fa0 100644
+--- a/net/sunrpc/auth_gss/gss_rpc_xdr.h
++++ b/net/sunrpc/auth_gss/gss_rpc_xdr.h
+@@ -1,3 +1,4 @@
++/* SPDX-License-Identifier: GPL-2.0+ */
+ /*
+  * GSS Proxy upcall module
+  *
+diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
+index f1aabab..0c5d789 100644
+--- a/net/sunrpc/auth_gss/svcauth_gss.c
++++ b/net/sunrpc/auth_gss/svcauth_gss.c
+@@ -1,3 +1,4 @@
++// SPDX-License-Identifier: GPL-2.0
+ /*
+  * Neil Brown <neilb@cse.unsw.edu.au>
+  * J. Bruce Fields <bfields@umich.edu>
+
