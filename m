@@ -2,116 +2,135 @@ Return-Path: <SRS0=PH1c=P7=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.2 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,UNPARSEABLE_RELAY autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-1.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7AC9EC282C0
-	for <linux-nfs@archiver.kernel.org>; Wed, 23 Jan 2019 16:51:37 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 78AA6C282C0
+	for <linux-nfs@archiver.kernel.org>; Wed, 23 Jan 2019 17:06:33 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 44C972085A
-	for <linux-nfs@archiver.kernel.org>; Wed, 23 Jan 2019 16:51:37 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="Z8OaPQeK"
+	by mail.kernel.org (Postfix) with ESMTP id 52F362184C
+	for <linux-nfs@archiver.kernel.org>; Wed, 23 Jan 2019 17:06:33 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726040AbfAWQvg (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 23 Jan 2019 11:51:36 -0500
-Received: from userp2130.oracle.com ([156.151.31.86]:46750 "EHLO
-        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725871AbfAWQvg (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Jan 2019 11:51:36 -0500
-Received: from pps.filterd (userp2130.oracle.com [127.0.0.1])
-        by userp2130.oracle.com (8.16.0.22/8.16.0.22) with SMTP id x0NGml0w051738;
-        Wed, 23 Jan 2019 16:51:31 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=content-type :
- mime-version : subject : from : in-reply-to : date : cc :
- content-transfer-encoding : message-id : references : to;
- s=corp-2018-07-02; bh=TKrl/dD6yvrs+1tkTcJsVlGAxz+Z4WMllXHXBX3B2BQ=;
- b=Z8OaPQeKctll4Ouu3ChvVNnQSLqza7nspXmTypNeOIvG1j+2LBO44fXFgrxd7bibHi8F
- mYyF6+GAv9ZtXnqCdlmMQLxGsgxuk8QG8ogvKXpAwkrigEmhP8pkNFccgTz/RtjsKX/E
- HA6NNUWHOuF60n143/mjn2IXHYyuTl4tEMB+7VJK2IkOckeIEtrxPVEbXKEzmcSpKhsp
- HZLNwLyRp1AgMX/OCSN2Ryfld4x+Ieo1llmdKhqnGgAZNq0OSXz2Xp7lBgKsDZs4tVLy
- nKMZpHMOSKYiGW1WSfZcYFhiyA9TbkyaPpkpB7vc7vdwPf+tuXoEeFtag6HmS+gl+Zzl PQ== 
-Received: from userv0022.oracle.com (userv0022.oracle.com [156.151.31.74])
-        by userp2130.oracle.com with ESMTP id 2q3uauu3ux-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Wed, 23 Jan 2019 16:51:31 +0000
-Received: from userv0122.oracle.com (userv0122.oracle.com [156.151.31.75])
-        by userv0022.oracle.com (8.14.4/8.14.4) with ESMTP id x0NGpU0S025087
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Wed, 23 Jan 2019 16:51:31 GMT
-Received: from abhmp0014.oracle.com (abhmp0014.oracle.com [141.146.116.20])
-        by userv0122.oracle.com (8.14.4/8.14.4) with ESMTP id x0NGpURM003945;
-        Wed, 23 Jan 2019 16:51:30 GMT
-Received: from dhcp-10-211-47-54.usdhcp.oraclecorp.com (/10.211.47.54)
-        by default (Oracle Beehive Gateway v4.0)
-        with ESMTP ; Wed, 23 Jan 2019 08:51:30 -0800
-Content-Type: text/plain;
-        charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 11.5 \(3445.9.1\))
+        id S1726152AbfAWRGc (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 23 Jan 2019 12:06:32 -0500
+Received: from mx2.suse.de ([195.135.220.15]:60674 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1725896AbfAWRGc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 23 Jan 2019 12:06:32 -0500
+X-Virus-Scanned: by amavisd-new at test-mx.suse.de
+Received: from relay2.suse.de (unknown [195.135.220.254])
+        by mx1.suse.de (Postfix) with ESMTP id 4CD12B10D;
+        Wed, 23 Jan 2019 17:06:30 +0000 (UTC)
 Subject: Re: [PATCH] xprtrdma: Make sure Send CQ is allocated on an existing
  CPU
-From:   Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <3f5da1e4-99f1-8376-a291-e50a7d52c303@suse.com>
-Date:   Wed, 23 Jan 2019 11:51:49 -0500
-Cc:     linux-rdma@vger.kernel.org,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Transfer-Encoding: quoted-printable
-Message-Id: <BF1A6DC0-FF34-4B80-8602-6B122AD5ABFD@oracle.com>
+To:     Chuck Lever <chuck.lever@oracle.com>
+Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        linux-rdma@vger.kernel.org
 References: <3f5da1e4-99f1-8376-a291-e50a7d52c303@suse.com>
-To:     Nicolas Morey-Chaisemartin <nmoreychaisemartin@suse.com>
-X-Mailer: Apple Mail (2.3445.9.1)
-X-Proofpoint-Virus-Version: vendor=nai engine=5900 definitions=9145 signatures=668682
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 suspectscore=3 malwarescore=0
- phishscore=0 bulkscore=0 spamscore=0 mlxscore=0 mlxlogscore=999
- adultscore=0 classifier=spam adjust=0 reason=mlx scancount=1
- engine=8.0.1-1810050000 definitions=main-1901230123
+ <BF1A6DC0-FF34-4B80-8602-6B122AD5ABFD@oracle.com>
+From:   Nicolas Morey-Chaisemartin <nmoreychaisemartin@suse.de>
+Openpgp: preference=signencrypt
+Autocrypt: addr=nmoreychaisemartin@suse.de; prefer-encrypt=mutual; keydata=
+ xsBNBFjZETwBCADEkoe7QWAXzd9xpSiPbQK6P2F4wKdxyTp6r0aN4I0O+4fc8xWXvmwOrCjF
+ UsuoGZ3CxJaHgdB/3ueW/IhMO5Ldz7pylhKVlG/moUh4CBK2eRUdaG7mHID01GyJMtR3VQqu
+ 22hJhHPYy0erpYViyr+I4MzQA9QZLoQhSxn4imjZOZPcj20JE+lRfXppNv9g7vQiRLMcXjTi
+ KcnrqG5owOi6Cn1sZ201YfdeztGxKA+jvjWO+6absTTlorIlZNGUf85s2+caGDsqa31u2DPs
+ hVv5UUTy1g/5aP2wacSWI3Qm4n2MWl1aCnHN2h737PCXXfBk5iGJsgBUnSQULgdgEAt1ABEB
+ AAHNO05pY29sYXMgTW9yZXktQ2hhaXNlbWFydGluIDxuaWNvbGFzQG1vcmV5LWNoYWlzZW1h
+ cnRpbi5jb20+wsCOBBMBCAA4FiEEQtJThcGhwCuLGxxvgBvduCWYj2QFAltPP2wCGwMFCwkI
+ BwIGFQoJCAsCBBYCAwECHgECF4AACgkQgBvduCWYj2QOPQgAq99w9BuzV6ahqg05g3gnl2XR
+ bjvn3zY5DLIU6W1zda5DYNO3lL14ii92MhWYAncfpqDNoTO2idDXXO4BvGiEY6+DK2liYt7R
+ +Q1iNJfCnv5Oeh/dmaCxzbYsBV3EYqimZvGer7jxyS+wThAvE7jzMSDOzhjd0K+KWIycNDRB
+ V0kycGwcFf/mvsZxORI8LEHFsaKRQXJ22ilubaAU9byF/gvp7fjlfWlKaL2H2OP7d9a2asbK
+ x2A+KHQfGSOy3lkjlXDz90IOXkKvpFm5ZQMFoFxMdL0KZIAu7Lu34LNtZ9FhWfNsKo3r3u7q
+ 9oXP9mtJpCs9yGtK36RhSKiqf2Ud1c7ATQRY2RE8AQgAvcwMwkZU4M8jvbIlS0GMG0VIXC9U
+ 1CVPxYjkFkE5i97g3QXOjIFQbPoafNkcD22107+FuK4IQWDynZhV70Tfo7xgy6tX9obLgkoh
+ NXJEzMxVfrCqFkSBAtdrRKcOZ3BBRpvtZP6yUS5PXh8bqp/skYz68jfAiurSuPm+LWdrqypT
+ 9vVxvk95f5m1EqKn46r8nimluscO5LvPRF9l6EFj/6ZvdkcVHelQ1Pb6VVv0+6j2UZdMLVJw
+ 5ztsHj6GZr1HxK+TrIdzDb5tZshvr+BFdh4L2jU+qWtuyKba1KtOnAOnQ7CCsD7TLk4SUKfP
+ 8bpoJeUPQPxK0KCU6wfa3JSJuwARAQABwsBfBBgBAgAJBQJY2RE8AhsMAAoJEIAb3bglmI9k
+ MDcH/3jiKRQeu3CqFCb3JtyVnL52oGTrsmrAsMcB/WtKPYzkXKvp7CaMp0vw6Y1ChsmWoMu/
+ he7Aaxe18dHFxdn+QaONlzTYkAxOT/1S8L4J/etgCd6tHaeDu6ECPFIDZnbKHEITWgRxwqDm
+ myxq4DaGw02iwXm/c2jmas/AgbgImdG1QARKYOdIQxGEx6eIwoFqWnYQLKf3goJvd03PmPnt
+ X6rRNxZqDi8coRWunr4Z9ENYl9JAmrDGcJc7Hs6i2Y0zNSqKp+vlCB1xN0GlC8hSg9Rg4YrF
+ 8cqJTgej9k17Mn74rWHSGdwgrSOz1Q8c5l9l5JLxM/WzLUraDKbHvagLJh0=
+Message-ID: <18bbe249-7d03-2475-d943-2f7d386a3797@suse.de>
+Date:   Wed, 23 Jan 2019 18:06:25 +0100
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101
+ Thunderbird/60.3.0
+MIME-Version: 1.0
+In-Reply-To: <BF1A6DC0-FF34-4B80-8602-6B122AD5ABFD@oracle.com>
+Content-Type: multipart/signed; micalg=pgp-sha256;
+ protocol="application/pgp-signature";
+ boundary="E1lOAR08MMOxfHFZRyJkhLqp8G02aQnAr"
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hi Nicolas-
+This is an OpenPGP/MIME signed message (RFC 4880 and 3156)
+--E1lOAR08MMOxfHFZRyJkhLqp8G02aQnAr
+Content-Type: multipart/mixed; boundary="3eYxmqVNL6VA7zHrDWqYTsWcqJcs6xiBU";
+ protected-headers="v1"
+From: Nicolas Morey-Chaisemartin <nmoreychaisemartin@suse.de>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+ linux-rdma@vger.kernel.org
+Message-ID: <18bbe249-7d03-2475-d943-2f7d386a3797@suse.de>
+Subject: Re: [PATCH] xprtrdma: Make sure Send CQ is allocated on an existing
+ CPU
+References: <3f5da1e4-99f1-8376-a291-e50a7d52c303@suse.com>
+ <BF1A6DC0-FF34-4B80-8602-6B122AD5ABFD@oracle.com>
+In-Reply-To: <BF1A6DC0-FF34-4B80-8602-6B122AD5ABFD@oracle.com>
 
-> On Jan 23, 2019, at 8:12 AM, Nicolas Morey-Chaisemartin =
-<nmoreychaisemartin@suse.com> wrote:
->=20
-> Make sure host has at least 2 CPU before allocating to CPU#1
-
-The fourth parameter of ib_alloc_cq() is not a CPU number,
-it's a completion vector number. What failure did you see
-that prompted this patch?
-
-
-> Fixes: a4699f5647f3 (xprtrdma: Put Send CQ in IB_POLL_WORKQUEUE mode)
-> Signed-off-by: Nicolas Morey-Chaisemartin =
-<nmoreychaisemartin@suse.com>
-> ---
-> net/sunrpc/xprtrdma/verbs.c | 2 +-
-> 1 file changed, 1 insertion(+), 1 deletion(-)
->=20
-> diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-> index b725911c0f3f..36aa7b2648e4 100644
-> --- a/net/sunrpc/xprtrdma/verbs.c
-> +++ b/net/sunrpc/xprtrdma/verbs.c
-> @@ -546,7 +546,7 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct =
-rpcrdma_ia *ia,
->=20
-> 	sendcq =3D ib_alloc_cq(ia->ri_device, NULL,
-> 			     ep->rep_attr.cap.max_send_wr + 1,
-> -			     1, IB_POLL_WORKQUEUE);
-> +			     num_online_cpus() > 1 ? 1 : 0, =
-IB_POLL_WORKQUEUE);
-> 	if (IS_ERR(sendcq)) {
-> 		rc =3D PTR_ERR(sendcq);
-> 		dprintk("RPC:       %s: failed to create send CQ: %i\n",
-> --=20
-> 2.18.0
->=20
-
---
-Chuck Lever
+--3eYxmqVNL6VA7zHrDWqYTsWcqJcs6xiBU
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: quoted-printable
+Content-Language: fr
 
 
 
+On 1/23/19 5:51 PM, Chuck Lever wrote:
+> Hi Nicolas-
+>
+>> On Jan 23, 2019, at 8:12 AM, Nicolas Morey-Chaisemartin <nmoreychaisem=
+artin@suse.com> wrote:
+>>
+>> Make sure host has at least 2 CPU before allocating to CPU#1
+> The fourth parameter of ib_alloc_cq() is not a CPU number,
+> it's a completion vector number. What failure did you see
+> that prompted this patch?
+When trying to mount, I get this:
++ mount -o rdma,port=3D20049 192.168.20.15:/tmp/RAM /tmp/RAM
+mount.nfs: mounting 192.168.20.15:/tmp/RAM failed, reason given by server=
+: No such file or directory
+
+Digging a bit into the code, it appears that the cq allocation here retur=
+ns a ENOENT which come from mlx5_vector2eqn.
+On my system (VM with a mlx5 card with SRIOV), the comp_eqs_list only con=
+tains one entry with index =3D=3D 0
+
+Nicolas
+
+
+--3eYxmqVNL6VA7zHrDWqYTsWcqJcs6xiBU--
+
+--E1lOAR08MMOxfHFZRyJkhLqp8G02aQnAr
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: OpenPGP digital signature
+Content-Disposition: attachment; filename="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+
+iQEzBAEBCAAdFiEEQtJThcGhwCuLGxxvgBvduCWYj2QFAlxInxEACgkQgBvduCWY
+j2TJVwf/cIHyupCWAsJEIzUj8UWcLuUUEho36qAWzgj18Dm1IyjlGS9iFiNYHMKj
+M5plxAbALcT/P4AMCD7LjGX8NpK4+4PUJkmoVUR/Tzhw79Mq1rnaEfQirE/l+BMi
+rN7nu9Yw6FFpYOOHMjV1ky0aevur7Oy72nrcnDbUj8dtwKgJamXX9F8H6VqrP+fY
+yWmMRHRnHBRP6/qroMNL/7u+fMZNcFtzRqmQBFPNZ1jGKWpoKp/hpY7xiS8CzoiU
+6XNsaeSEHs4dgfSlyc/06osCg+XLYOFto5S1D7xyVXyHZNB4iL9zBnTXcefdESDZ
+6gi6Cb44Z3r3xvtb81MIImLeoWCQmQ==
+=KqOZ
+-----END PGP SIGNATURE-----
+
+--E1lOAR08MMOxfHFZRyJkhLqp8G02aQnAr--
