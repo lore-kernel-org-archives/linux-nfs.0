@@ -6,30 +6,31 @@ X-Spam-Status: No, score=-1.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	MAILING_LIST_MULTI,SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 78AA6C282C0
-	for <linux-nfs@archiver.kernel.org>; Wed, 23 Jan 2019 17:06:33 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B19BEC282C0
+	for <linux-nfs@archiver.kernel.org>; Wed, 23 Jan 2019 17:07:13 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 52F362184C
-	for <linux-nfs@archiver.kernel.org>; Wed, 23 Jan 2019 17:06:33 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 857BE2184C
+	for <linux-nfs@archiver.kernel.org>; Wed, 23 Jan 2019 17:07:13 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726152AbfAWRGc (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 23 Jan 2019 12:06:32 -0500
-Received: from mx2.suse.de ([195.135.220.15]:60674 "EHLO mx1.suse.de"
+        id S1726035AbfAWRHM (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 23 Jan 2019 12:07:12 -0500
+Received: from mx2.suse.de ([195.135.220.15]:60730 "EHLO mx1.suse.de"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1725896AbfAWRGc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 23 Jan 2019 12:06:32 -0500
+        id S1725976AbfAWRHM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 23 Jan 2019 12:07:12 -0500
 X-Virus-Scanned: by amavisd-new at test-mx.suse.de
 Received: from relay2.suse.de (unknown [195.135.220.254])
-        by mx1.suse.de (Postfix) with ESMTP id 4CD12B10D;
-        Wed, 23 Jan 2019 17:06:30 +0000 (UTC)
+        by mx1.suse.de (Postfix) with ESMTP id 91A57B10D;
+        Wed, 23 Jan 2019 17:07:10 +0000 (UTC)
 Subject: Re: [PATCH] xprtrdma: Make sure Send CQ is allocated on an existing
  CPU
+From:   Nicolas Morey-Chaisemartin <nmoreychaisemartin@suse.de>
 To:     Chuck Lever <chuck.lever@oracle.com>
 Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
         linux-rdma@vger.kernel.org
 References: <3f5da1e4-99f1-8376-a291-e50a7d52c303@suse.com>
  <BF1A6DC0-FF34-4B80-8602-6B122AD5ABFD@oracle.com>
-From:   Nicolas Morey-Chaisemartin <nmoreychaisemartin@suse.de>
+ <18bbe249-7d03-2475-d943-2f7d386a3797@suse.de>
 Openpgp: preference=signencrypt
 Autocrypt: addr=nmoreychaisemartin@suse.de; prefer-encrypt=mutual; keydata=
  xsBNBFjZETwBCADEkoe7QWAXzd9xpSiPbQK6P2F4wKdxyTp6r0aN4I0O+4fc8xWXvmwOrCjF
@@ -55,82 +56,89 @@ Autocrypt: addr=nmoreychaisemartin@suse.de; prefer-encrypt=mutual; keydata=
  myxq4DaGw02iwXm/c2jmas/AgbgImdG1QARKYOdIQxGEx6eIwoFqWnYQLKf3goJvd03PmPnt
  X6rRNxZqDi8coRWunr4Z9ENYl9JAmrDGcJc7Hs6i2Y0zNSqKp+vlCB1xN0GlC8hSg9Rg4YrF
  8cqJTgej9k17Mn74rWHSGdwgrSOz1Q8c5l9l5JLxM/WzLUraDKbHvagLJh0=
-Message-ID: <18bbe249-7d03-2475-d943-2f7d386a3797@suse.de>
-Date:   Wed, 23 Jan 2019 18:06:25 +0100
+Message-ID: <1dd8b5a5-4ce7-a53e-9510-bd122039bcfb@suse.de>
+Date:   Wed, 23 Jan 2019 18:07:08 +0100
 User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101
  Thunderbird/60.3.0
 MIME-Version: 1.0
-In-Reply-To: <BF1A6DC0-FF34-4B80-8602-6B122AD5ABFD@oracle.com>
+In-Reply-To: <18bbe249-7d03-2475-d943-2f7d386a3797@suse.de>
 Content-Type: multipart/signed; micalg=pgp-sha256;
  protocol="application/pgp-signature";
- boundary="E1lOAR08MMOxfHFZRyJkhLqp8G02aQnAr"
+ boundary="wp9TDXc8BEXnHdOe8u4HjeuMfIaikVppG"
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
 This is an OpenPGP/MIME signed message (RFC 4880 and 3156)
---E1lOAR08MMOxfHFZRyJkhLqp8G02aQnAr
-Content-Type: multipart/mixed; boundary="3eYxmqVNL6VA7zHrDWqYTsWcqJcs6xiBU";
+--wp9TDXc8BEXnHdOe8u4HjeuMfIaikVppG
+Content-Type: multipart/mixed; boundary="EWfPsvo7U6uNMUvpHfSp1hjQ1vFY2O1XH";
  protected-headers="v1"
 From: Nicolas Morey-Chaisemartin <nmoreychaisemartin@suse.de>
 To: Chuck Lever <chuck.lever@oracle.com>
 Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
  linux-rdma@vger.kernel.org
-Message-ID: <18bbe249-7d03-2475-d943-2f7d386a3797@suse.de>
+Message-ID: <1dd8b5a5-4ce7-a53e-9510-bd122039bcfb@suse.de>
 Subject: Re: [PATCH] xprtrdma: Make sure Send CQ is allocated on an existing
  CPU
 References: <3f5da1e4-99f1-8376-a291-e50a7d52c303@suse.com>
  <BF1A6DC0-FF34-4B80-8602-6B122AD5ABFD@oracle.com>
-In-Reply-To: <BF1A6DC0-FF34-4B80-8602-6B122AD5ABFD@oracle.com>
+ <18bbe249-7d03-2475-d943-2f7d386a3797@suse.de>
+In-Reply-To: <18bbe249-7d03-2475-d943-2f7d386a3797@suse.de>
 
---3eYxmqVNL6VA7zHrDWqYTsWcqJcs6xiBU
+--EWfPsvo7U6uNMUvpHfSp1hjQ1vFY2O1XH
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
 Content-Language: fr
 
 
 
-On 1/23/19 5:51 PM, Chuck Lever wrote:
-> Hi Nicolas-
+On 1/23/19 6:06 PM, Nicolas Morey-Chaisemartin wrote:
 >
->> On Jan 23, 2019, at 8:12 AM, Nicolas Morey-Chaisemartin <nmoreychaisem=
-artin@suse.com> wrote:
+> On 1/23/19 5:51 PM, Chuck Lever wrote:
+>> Hi Nicolas-
 >>
->> Make sure host has at least 2 CPU before allocating to CPU#1
-> The fourth parameter of ib_alloc_cq() is not a CPU number,
-> it's a completion vector number. What failure did you see
-> that prompted this patch?
-When trying to mount, I get this:
-+ mount -o rdma,port=3D20049 192.168.20.15:/tmp/RAM /tmp/RAM
-mount.nfs: mounting 192.168.20.15:/tmp/RAM failed, reason given by server=
-: No such file or directory
+>>> On Jan 23, 2019, at 8:12 AM, Nicolas Morey-Chaisemartin <nmoreychaise=
+martin@suse.com> wrote:
+>>>
+>>> Make sure host has at least 2 CPU before allocating to CPU#1
+>> The fourth parameter of ib_alloc_cq() is not a CPU number,
+>> it's a completion vector number. What failure did you see
+>> that prompted this patch?
+> When trying to mount, I get this:
+> + mount -o rdma,port=3D20049 192.168.20.15:/tmp/RAM /tmp/RAM
+> mount.nfs: mounting 192.168.20.15:/tmp/RAM failed, reason given by serv=
+er: No such file or directory
+>
+> Digging a bit into the code, it appears that the cq allocation here ret=
+urns a ENOENT which come from mlx5_vector2eqn.
+> On my system (VM with a mlx5 card with SRIOV), the comp_eqs_list only c=
+ontains one entry with index =3D=3D 0
+>
+> Nicolas
+>
 
-Digging a bit into the code, it appears that the cq allocation here retur=
-ns a ENOENT which come from mlx5_vector2eqn.
-On my system (VM with a mlx5 card with SRIOV), the comp_eqs_list only con=
-tains one entry with index =3D=3D 0
-
-Nicolas
+Also, adding a 2nd core to my VM fixes the issue (thus my understanding t=
+hat it was a CPU number)
 
 
---3eYxmqVNL6VA7zHrDWqYTsWcqJcs6xiBU--
+--EWfPsvo7U6uNMUvpHfSp1hjQ1vFY2O1XH--
 
---E1lOAR08MMOxfHFZRyJkhLqp8G02aQnAr
+--wp9TDXc8BEXnHdOe8u4HjeuMfIaikVppG
 Content-Type: application/pgp-signature; name="signature.asc"
 Content-Description: OpenPGP digital signature
 Content-Disposition: attachment; filename="signature.asc"
 
 -----BEGIN PGP SIGNATURE-----
 
-iQEzBAEBCAAdFiEEQtJThcGhwCuLGxxvgBvduCWYj2QFAlxInxEACgkQgBvduCWY
-j2TJVwf/cIHyupCWAsJEIzUj8UWcLuUUEho36qAWzgj18Dm1IyjlGS9iFiNYHMKj
-M5plxAbALcT/P4AMCD7LjGX8NpK4+4PUJkmoVUR/Tzhw79Mq1rnaEfQirE/l+BMi
-rN7nu9Yw6FFpYOOHMjV1ky0aevur7Oy72nrcnDbUj8dtwKgJamXX9F8H6VqrP+fY
-yWmMRHRnHBRP6/qroMNL/7u+fMZNcFtzRqmQBFPNZ1jGKWpoKp/hpY7xiS8CzoiU
-6XNsaeSEHs4dgfSlyc/06osCg+XLYOFto5S1D7xyVXyHZNB4iL9zBnTXcefdESDZ
-6gi6Cb44Z3r3xvtb81MIImLeoWCQmQ==
-=KqOZ
+iQEzBAEBCAAdFiEEQtJThcGhwCuLGxxvgBvduCWYj2QFAlxInzwACgkQgBvduCWY
+j2RFHgf9GMJmCGJX3CecOFbIZti5emRfHeLu1f5Hhc2CM/TPPpq6j2CJcnivXKb+
+SvfGRUtJsGLMuvo9aeowbAkNGLRbWDKGE+T89YO3EZPG/T1ODspfJEvPLCAINOiX
+tM1Q6jpTTTCgUk/E8LExfL03VDSCpnGw59bNIzHbK0mwahaZvuksyNadZvhRq0EJ
+fcfxNygIwd/M2L1iPs3DtvfnS3B7y6S48oTDegyb/KW0UbOJf1epzE9VWI3xkpOo
+cviCQB8skMjDeaMav4dwLFRUBY+2OrzHrJSWbTEAWomDvVOIVnZMIs8YXhlY8yuQ
+u/8BDsn9+/VMrgW10xm19mRhmfqIKA==
+=cLg3
 -----END PGP SIGNATURE-----
 
---E1lOAR08MMOxfHFZRyJkhLqp8G02aQnAr--
+--wp9TDXc8BEXnHdOe8u4HjeuMfIaikVppG--
