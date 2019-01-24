@@ -2,84 +2,79 @@ Return-Path: <SRS0=k36n=QA=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-1.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5C239C282C3
-	for <linux-nfs@archiver.kernel.org>; Thu, 24 Jan 2019 16:11:44 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 58654C282C3
+	for <linux-nfs@archiver.kernel.org>; Thu, 24 Jan 2019 18:12:03 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 336D8217D7
-	for <linux-nfs@archiver.kernel.org>; Thu, 24 Jan 2019 16:11:44 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 2953F218AF
+	for <linux-nfs@archiver.kernel.org>; Thu, 24 Jan 2019 18:12:03 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728056AbfAXQLn (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 24 Jan 2019 11:11:43 -0500
-Received: from p3plsmtpa12-04.prod.phx3.secureserver.net ([68.178.252.233]:41750
-        "EHLO p3plsmtpa12-04.prod.phx3.secureserver.net" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1727649AbfAXQLn (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Jan 2019 11:11:43 -0500
-X-Greylist: delayed 438 seconds by postgrey-1.27 at vger.kernel.org; Thu, 24 Jan 2019 11:11:43 EST
-Received: from [10.3.6.161] ([8.25.222.2])
-        by :SMTPAUTH: with ESMTPSA
-        id mhUOgAKMjwsznmhUOg8GQg; Thu, 24 Jan 2019 09:04:24 -0700
-Subject: Re: [PATCH v2] xprtrdma: Make sure Send CQ is allocated on an
- existing compvec
-To:     Nicolas Morey-Chaisemartin <nmoreychaisemartin@suse.com>,
-        linux-rdma@vger.kernel.org
-Cc:     linux-nfs@vger.kernel.org, chuck.lever@oracle.com
-References: <164839c0-399e-d01b-dafc-5c873e650bdb@suse.com>
-From:   Tom Talpey <tom@talpey.com>
-Message-ID: <0e2e8737-9ec7-f3b5-ff0c-f178330b826c@talpey.com>
-Date:   Thu, 24 Jan 2019 08:04:23 -0800
-User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64; rv:60.0) Gecko/20100101
- Thunderbird/60.4.0
+        id S1727991AbfAXSMC (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 24 Jan 2019 13:12:02 -0500
+Received: from mx2.math.uh.edu ([129.7.128.33]:56354 "EHLO mx2.math.uh.edu"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1727664AbfAXSMC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 24 Jan 2019 13:12:02 -0500
+X-Greylist: delayed 2358 seconds by postgrey-1.27 at vger.kernel.org; Thu, 24 Jan 2019 13:12:02 EST
+Received: from epithumia.math.uh.edu ([129.7.128.2])
+        by mx2.math.uh.edu with esmtp (Exim 4.91)
+        (envelope-from <tibbs@math.uh.edu>)
+        id 1gmirq-0004YI-7P
+        for linux-nfs@vger.kernel.org; Thu, 24 Jan 2019 11:32:43 -0600
+Received: by epithumia.math.uh.edu (Postfix, from userid 7225)
+        id 280B1801554; Thu, 24 Jan 2019 11:32:42 -0600 (CST)
+From:   Jason L Tibbitts III <tibbs@math.uh.edu>
+To:     linux-nfs@vger.kernel.org
+Subject: Need help debugging NFS issues new to 4.20 kernel
+Date:   Thu, 24 Jan 2019 11:32:42 -0600
+Message-ID: <ufaimyearlx.fsf@epithumia.math.uh.edu>
+User-Agent: Gnus/5.13 (Gnus v5.13) Emacs/26.1 (gnu/linux)
 MIME-Version: 1.0
-In-Reply-To: <164839c0-399e-d01b-dafc-5c873e650bdb@suse.com>
-Content-Type: text/plain; charset=windows-1252; format=flowed
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
-X-CMAE-Envelope: MS4wfNZNmwKjHLXbnJhEq31yb4mNVlO/EpBrm15FZ35ZlE+YBBMRvBZFjPgEYInXZePv0mDTN9IXt6xJJpP3dbKCwNycj7A39rWAxKzRWIRDnXpCwfu2Z21m
- 2bxkQW9dlRlGJaCB/H+7MONk0MTKzaBV1unSScvqh00EF+AJGFEdNENshVJe9UHZ9Cuxk1e8ub0KY6X6/qrTBftCSrhIgMJHEgQNIoIbvwdIcYcQavM90+zM
- lmo9Lp3v+BMXMGZYgizW3p7M24V/YdsWAouztc1YAx4=
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On 1/23/2019 11:02 PM, Nicolas Morey-Chaisemartin wrote:
-> Make sure the device has at least 2 completion vectors before allocating to compvec#1
+I could use some help figuring out the cause of some serious NFS client
+issues I'm having with the 4.20.3 kernel which I did not see under
+4.19.15.
 
-I agree this fixes the bug, but wouldn't it be better to attempt
-to steer the affinity to chosen cores, rather than unconditionally
-using static values? At least make some determination that the
-device, and the memory that was just allocated, were pointed to
-slightly optimal NUMA node to handle its completions.
+I have a network of about 130 desktops (plus a bunch of other machines,
+VMs and the like) running Fedora 29 connecting to six NFS servers
+running CentOS 7.6 (with the heavily patched vendor kernel
+3.10.0-957.1.3).  All machines involved are x86_64.  We use kerberized
+NFS4 with generally sec=krb5i.  The exports are generally made with
+"(rw,async,sec=krb5i:krb5p)".
 
-Does the verbs API not support this? I thought that was discussed
-a while back.
+Since I booted those clients into 4.20.3 I've started seeing processes
+getting stuck in the D state.  The system itself will seem OK (except
+for the high load average) as long as I don't touch the hung NFS mount.
+Nothing was logged to dmesg or to the journal.  So far booting back into
+the 4.19.15 kernel has cleared up the problem.  I cannot yet reproduce
+this on demand; I've tried but it is probably related to some specific
+usage pattern.
 
-Tom.
+Has anyone else seen issues like this?  Can anyone help me to get more
+useful information that might point to the problem?  I still haven't
+learned how to debug NFS issues properly.  And if there's a stress test
+tool I could easily run that might help to reproduce the issue, I'd be
+happy to run it.
 
-> Fixes: a4699f5647f3 (xprtrdma: Put Send CQ in IB_POLL_WORKQUEUE mode)
-> Signed-off-by: Nicolas Morey-Chaisemartin <nmoreychaisemartin@suse.com>
-> ---
-> Fixes since v1:
->   - Use num_comp_vector instead online_cpus
-> 
->   net/sunrpc/xprtrdma/verbs.c | 2 +-
->   1 file changed, 1 insertion(+), 1 deletion(-)
-> 
-> diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-> index b725911c0f3f..db913bcef984 100644
-> --- a/net/sunrpc/xprtrdma/verbs.c
-> +++ b/net/sunrpc/xprtrdma/verbs.c
-> @@ -546,7 +546,7 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
->   
->   	sendcq = ib_alloc_cq(ia->ri_device, NULL,
->   			     ep->rep_attr.cap.max_send_wr + 1,
-> -			     1, IB_POLL_WORKQUEUE);
-> +			     ia->ri_device->num_comp_vectors > 1 ? 1 : 0, IB_POLL_WORKQUEUE);
->   	if (IS_ERR(sendcq)) {
->   		rc = PTR_ERR(sendcq);
->   		dprintk("RPC:       %s: failed to create send CQ: %i\n",
-> 
+I note that 4.20.4 is out; I see one sunrpc fix which I guess could be
+related (sunrpc: handle ENOMEM in rpcb_getport_async) but the systems
+involved have plenty of free memory so I doubt that's it.  I'll
+certainly try it anyway.
+
+Various package versions:
+kernel-4.20.3-200.fc29.x86_64 (the problematic kernel)
+kernel-4.19.15-300.fc29.x86_64 (the functional kernel)
+nfs-utils-2.3.3-1.rc2.fc29.x86_64
+gssproxy-0.8.0-6.fc29.x86_64
+krb5-libs-1.16.1-25.fc29.i686
+
+Thanks in advance for any help or advice,
+
+ - J<
