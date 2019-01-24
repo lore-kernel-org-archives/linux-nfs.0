@@ -2,98 +2,68 @@ Return-Path: <SRS0=k36n=QA=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED,
-	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4F577C282C0
-	for <linux-nfs@archiver.kernel.org>; Thu, 24 Jan 2019 02:31:12 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 86215C282C3
+	for <linux-nfs@archiver.kernel.org>; Thu, 24 Jan 2019 07:02:43 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 20F0C2184C
-	for <linux-nfs@archiver.kernel.org>; Thu, 24 Jan 2019 02:31:11 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 5F5B7218A3
+	for <linux-nfs@archiver.kernel.org>; Thu, 24 Jan 2019 07:02:43 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726366AbfAXCbK (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 23 Jan 2019 21:31:10 -0500
-Received: from mail.cn.fujitsu.com ([183.91.158.132]:45424 "EHLO
-        heian.cn.fujitsu.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1726249AbfAXCbK (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Jan 2019 21:31:10 -0500
-X-IronPort-AV: E=Sophos;i="5.56,514,1539619200"; 
-   d="scan'208";a="52695061"
-Received: from unknown (HELO cn.fujitsu.com) ([10.167.33.5])
-  by heian.cn.fujitsu.com with ESMTP; 24 Jan 2019 10:31:08 +0800
-Received: from G08CNEXCHPEKD03.g08.fujitsu.local (unknown [10.167.33.85])
-        by cn.fujitsu.com (Postfix) with ESMTP id 528AD4BAD9DB;
-        Thu, 24 Jan 2019 10:31:05 +0800 (CST)
-Received: from ubuntu.g08.fujitsu.local (10.167.226.33) by
- G08CNEXCHPEKD03.g08.fujitsu.local (10.167.33.89) with Microsoft SMTP Server
- (TLS) id 14.3.408.0; Thu, 24 Jan 2019 10:31:05 +0800
-From:   Su Yanjun <suyj.fnst@cn.fujitsu.com>
-To:     <mora@netapp.com>
-CC:     <linux-nfs@vger.kernel.org>, Su Yanjun <suyj.fnst@cn.fujitsu.com>
-Subject: [PATCH] CACHE: Fix test script as delegation being introduced
-Date:   Wed, 23 Jan 2019 21:30:19 -0500
-Message-ID: <1548297019-9398-1-git-send-email-suyj.fnst@cn.fujitsu.com>
-X-Mailer: git-send-email 2.7.4
+        id S1726034AbfAXHCm (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 24 Jan 2019 02:02:42 -0500
+Received: from mx2.suse.de ([195.135.220.15]:40044 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1725287AbfAXHCm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 24 Jan 2019 02:02:42 -0500
+X-Virus-Scanned: by amavisd-new at test-mx.suse.de
+Received: from relay2.suse.de (unknown [195.135.220.254])
+        by mx1.suse.de (Postfix) with ESMTP id 33375AF6E;
+        Thu, 24 Jan 2019 07:02:41 +0000 (UTC)
+From:   Nicolas Morey-Chaisemartin <nmoreychaisemartin@suse.com>
+Subject: [PATCH v2] xprtrdma: Make sure Send CQ is allocated on an existing
+ compvec
+To:     linux-rdma@vger.kernel.org
+Cc:     linux-nfs@vger.kernel.org, chuck.lever@oracle.com
+Message-ID: <164839c0-399e-d01b-dafc-5c873e650bdb@suse.com>
+Date:   Thu, 24 Jan 2019 08:02:40 +0100
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101
+ Thunderbird/60.3.0
 MIME-Version: 1.0
-Content-Type: text/plain
-X-Originating-IP: [10.167.226.33]
-X-yoursite-MailScanner-ID: 528AD4BAD9DB.A162B
-X-yoursite-MailScanner: Found to be clean
-X-yoursite-MailScanner-From: suyj.fnst@cn.fujitsu.com
+Content-Type: text/plain; charset=windows-1252
+Content-Language: fr
+Content-Transfer-Encoding: 7bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-When we run nfstest_cache with nfsversion=4, it fails.
-As i know nfsv4 introduces delegation, so nfstest_cache runs fail since nfsv4.
+Make sure the device has at least 2 completion vectors before allocating to compvec#1
 
-The test commandline is as below:
- ./nfstest_cache --nfsversion=4 -e  /nfsroot --server 192.168.102.143 --client 192.168.102.142 --runtest acregmax_data --verbose all
-
-This patch adds compatible code for nfsv3 and nfsv4.
-When we test nfsv4, just use 'chmod' to recall delegation, then
-run the test. As 'chmod' will modify atime, so use 'noatime' mount option.
-
-Signed-off-by: Su Yanjun <suyj.fnst@cn.fujitsu.com>
+Fixes: a4699f5647f3 (xprtrdma: Put Send CQ in IB_POLL_WORKQUEUE mode)
+Signed-off-by: Nicolas Morey-Chaisemartin <nmoreychaisemartin@suse.com>
 ---
- test/nfstest_cache | 12 +++++++++++-
- 1 file changed, 11 insertions(+), 1 deletion(-)
+Fixes since v1:
+ - Use num_comp_vector instead online_cpus
 
-diff --git a/test/nfstest_cache b/test/nfstest_cache
-index 0838418..a31d48f 100755
---- a/test/nfstest_cache
-+++ b/test/nfstest_cache
-@@ -165,8 +165,13 @@ class CacheTest(TestUtil):
-             fd = None
-             attr = 'data' if data_cache else 'attribute'
-             header = "Verify consistency of %s caching with %s on a file" % (attr, self.nfsstr())
-+
-             # Mount options
--            mtopts = "hard,intr,rsize=4096,wsize=4096"
-+            if self.nfsversion >= 4:
-+                mtopts = "noatime,hard,intr,rsize=4096,wsize=4096"
-+            else: 
-+                mtopts = "hard,intr,rsize=4096,wsize=4096"
-+
-             if actimeo:
-                 header += " actimeo = %d" % actimeo
-                 mtopts += ",actimeo=%d" % actimeo
-@@ -216,6 +221,11 @@ class CacheTest(TestUtil):
-             if fstat.st_size != dlen:
-                 raise Exception("Size of newly created file is %d, should have been %d" %(fstat.st_size, dlen))
+ net/sunrpc/xprtrdma/verbs.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index b725911c0f3f..db913bcef984 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -546,7 +546,7 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
  
-+            if self.nfsversion >= 4:
-+                # revoke delegation
-+                self.dprint('DBG3', "revoke delegation")
-+                self.clientobj.run_cmd('chmod +x %s' % self.absfile)
-+
-             if acregmax:
-                 # Stat the unchanging file until acregmax is hit
-                 # each stat doubles the valid cache time
+ 	sendcq = ib_alloc_cq(ia->ri_device, NULL,
+ 			     ep->rep_attr.cap.max_send_wr + 1,
+-			     1, IB_POLL_WORKQUEUE);
++			     ia->ri_device->num_comp_vectors > 1 ? 1 : 0, IB_POLL_WORKQUEUE);
+ 	if (IS_ERR(sendcq)) {
+ 		rc = PTR_ERR(sendcq);
+ 		dprintk("RPC:       %s: failed to create send CQ: %i\n",
 -- 
-2.7.4
-
-
+2.18.0
 
