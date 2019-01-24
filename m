@@ -2,122 +2,304 @@ Return-Path: <SRS0=k36n=QA=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS,
-	URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-1.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8CAD1C282C3
-	for <linux-nfs@archiver.kernel.org>; Thu, 24 Jan 2019 19:58:46 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 69348C282C6
+	for <linux-nfs@archiver.kernel.org>; Thu, 24 Jan 2019 20:09:08 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 51A6B21726
-	for <linux-nfs@archiver.kernel.org>; Thu, 24 Jan 2019 19:58:46 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="ua13cPGf"
+	by mail.kernel.org (Postfix) with ESMTP id 3845E218D0
+	for <linux-nfs@archiver.kernel.org>; Thu, 24 Jan 2019 20:09:08 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729654AbfAXT6p (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 24 Jan 2019 14:58:45 -0500
-Received: from mail-eopbgr800125.outbound.protection.outlook.com ([40.107.80.125]:33821
-        "EHLO NAM03-DM3-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1729407AbfAXT6o (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 24 Jan 2019 14:58:44 -0500
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=hammerspace.com;
- s=selector1;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=yQ0BAdk3STz3/5BwH5Xukka/KBoUAhTmUG5mtBcZ+OA=;
- b=ua13cPGfrIJbVvFB8Jq4jkvLpBPpSTf6GIj3RtRmx//ZdBGjM528Hv71inCX1VFXVVHmOPczvwSGp7JtLGSqoWmIZLiNH6NtSWC75uOPm9iVfcdqszP7uJU5BMo6vr3MGiL0YF9aiWDmhVo7zEJgFv/wd4PbaoXyYocggxkP9+0=
-Received: from BYAPR13MB2486.namprd13.prod.outlook.com (52.135.230.12) by
- BYAPR13MB2406.namprd13.prod.outlook.com (52.135.229.144) with Microsoft SMTP
- Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- 15.20.1558.10; Thu, 24 Jan 2019 19:58:41 +0000
-Received: from BYAPR13MB2486.namprd13.prod.outlook.com
- ([fe80::f003:cf45:194d:8dc1]) by BYAPR13MB2486.namprd13.prod.outlook.com
- ([fe80::f003:cf45:194d:8dc1%4]) with mapi id 15.20.1558.016; Thu, 24 Jan 2019
- 19:58:41 +0000
-From:   Trond Myklebust <trondmy@hammerspace.com>
-To:     "tibbs@math.uh.edu" <tibbs@math.uh.edu>,
-        "Anna.Schumaker@netapp.com" <Anna.Schumaker@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "Chuck.Lever@oracle.com" <Chuck.Lever@oracle.com>
+        id S1728732AbfAXUJH (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 24 Jan 2019 15:09:07 -0500
+Received: from mx2.math.uh.edu ([129.7.128.33]:59836 "EHLO mx2.math.uh.edu"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1731041AbfAXT2u (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 24 Jan 2019 14:28:50 -0500
+Received: from epithumia.math.uh.edu ([129.7.128.2])
+        by mx2.math.uh.edu with esmtp (Exim 4.91)
+        (envelope-from <tibbs@math.uh.edu>)
+        id 1gmkgA-0005hx-HJ
+        for linux-nfs@vger.kernel.org; Thu, 24 Jan 2019 13:28:48 -0600
+Received: by epithumia.math.uh.edu (Postfix, from userid 7225)
+        id 72268801554; Thu, 24 Jan 2019 13:28:46 -0600 (CST)
+From:   Jason L Tibbitts III <tibbs@math.uh.edu>
+To:     linux-nfs@vger.kernel.org
 Subject: Re: Need help debugging NFS issues new to 4.20 kernel
-Thread-Topic: Need help debugging NFS issues new to 4.20 kernel
-Thread-Index: AQHUtBBQLoOJiO8U1kuiVnwIPcpCS6W+1kMA
-Date:   Thu, 24 Jan 2019 19:58:40 +0000
-Message-ID: <eff194a660ce562753d0112cdf6b1aacc5aa5dfb.camel@hammerspace.com>
 References: <ufaimyearlx.fsf@epithumia.math.uh.edu>
-In-Reply-To: <ufaimyearlx.fsf@epithumia.math.uh.edu>
-Accept-Language: en-US, en-GB
-Content-Language: en-US
-X-MS-Has-Attach: 
-X-MS-TNEF-Correlator: 
-authentication-results: spf=none (sender IP is )
- smtp.mailfrom=trondmy@hammerspace.com; 
-x-originating-ip: [68.40.189.247]
-x-ms-publictraffictype: Email
-x-microsoft-exchange-diagnostics: 1;BYAPR13MB2406;6:jlY+6lwg/tP7F00z6GVl4eqNYCG/4YYhrozGaQ9jsDAtSAltDZe/mwC5qVzJvNwUOfH/mNjDyjgq3dllLuRj590bjvR1/2CqjGx0HhFyqPfyGhotgS0UVuyz8mhNQTNfK9+zpDRkO3sWiVazIGNkFB5O5dL9nGsTc/zPopZh1GpSEuRm0n8y6v8Q6U/pQhj/CGqw+wUePGSlkrzhSBODmYRBCLYWCkfD6LE+a6JUNBbcW0Zz8UVbv6dAVz1VjTsYpsMBAGtrNR1DuVRxF1OokQw/hiTtrrE/6e01EYcZygNNjb1GEIOlD0uIyIO/MiSTAN3Iw517qst4mpTSxNVjAvYyYEPakS96+gLhsPcogkae+xYhY1IdPCl32/hmXB4lNaa8ZYZKcSfgSUSxPqVlSJ82ZS7gj8ks4sOXfsO1Omgu4AyjbU00kUe0u/OC3ucuMf1iHxR11FgHHgut6TZr0A==;5:oknDGpkh97qIvOUGnozAU4K1ND22yGe91GB0xVsZDOjYNZmVSL7ghnC80cGiewncJkhe3arUccnqZFS0JxnaZPqQnQDel20BGcT5GUFrWc1ZfjUVnxSNP2nyKPKRLrAtNEA576V2fLHlgHsTiEUO3/5VYF05LM6W/gCaiW3BN5/rqa9IqfBrHFWkMAfeweMa4kN3o8eto3Uo/fO+x/Ek9Q==;7:pe8gVEZdWg/P5avqGP+ZYsHxUV3DSsx3CgtqnFubHlod8eF7tsWuMBDFsH318gDAeLetcLEpQRjF/5m22B2GJi+c28C7OkpZeNRWSUFQkWF9mHkzg21vyGZaurprcw3SRzrwNDgIij9g/O3A/eLJdg==
-x-ms-office365-filtering-correlation-id: 5b21678f-5aa8-4964-d4d8-08d682365677
-x-microsoft-antispam: BCL:0;PCL:0;RULEID:(2390118)(7020095)(4652040)(8989299)(5600110)(711020)(4605077)(4534185)(4627221)(201703031133081)(201702281549075)(8990200)(2017052603328)(7153060)(7193020);SRVR:BYAPR13MB2406;
-x-ms-traffictypediagnostic: BYAPR13MB2406:
-x-microsoft-antispam-prvs: <BYAPR13MB2406CD766DBBE1F288CC797EB89A0@BYAPR13MB2406.namprd13.prod.outlook.com>
-x-forefront-prvs: 0927AA37C7
-x-forefront-antispam-report: SFV:NSPM;SFS:(10019020)(376002)(136003)(346002)(39830400003)(366004)(396003)(51874003)(199004)(189003)(66066001)(6486002)(99286004)(102836004)(478600001)(118296001)(6436002)(81156014)(81166006)(25786009)(76176011)(105586002)(3846002)(8936002)(486006)(8676002)(6116002)(316002)(6512007)(106356001)(305945005)(110136005)(36756003)(7736002)(256004)(186003)(97736004)(53936002)(2906002)(11346002)(2171002)(26005)(14454004)(86362001)(6246003)(2501003)(2616005)(2201001)(446003)(71200400001)(71190400001)(476003)(229853002)(68736007)(6506007);DIR:OUT;SFP:1102;SCL:1;SRVR:BYAPR13MB2406;H:BYAPR13MB2486.namprd13.prod.outlook.com;FPR:;SPF:None;LANG:en;PTR:InfoNoRecords;A:1;MX:1;
-received-spf: None (protection.outlook.com: hammerspace.com does not designate
- permitted sender hosts)
-x-ms-exchange-senderadcheck: 1
-x-microsoft-antispam-message-info: s657sOLrsD7bC+iaCGpn63IEAFuj0CX6/93qGCd3dBZAVXbWsdrRn3pTs4GFKlOoGhNQkkcG8r/CWyafyY0Yg9NAVgpSrAyEm/eAWTwU6Y/djoMUH4TKT/S7zV3MsVFpzXq9Da2a6AhNVnQVd0mv4GEXzcp2f4hB1vWiz2pCj0jwnwq/29JZ8tDAFbXw7gXDWQXZ5Tj/qrlI491pyYslDiirAWFemqvpwLiE/FrkrrXRAsD2eb9tAB07j9/Yl5GZj/hOcnltwoyzLXWIz9yFETAXQNvKODgWEbn7A/Epp6wxUK1gbBsVDVLxUNPqYgsTE3x4O1lmRQp7f45WqO0VK1pI1Ryq4Or+gfk975N2qwSu8/RoUEgW8N/R7f74T4fpmLAEf9TCZWpHNNNC3/zoLrZ8PXzAUiTHCLXAW3Snx1c=
-Content-Type: text/plain; charset="utf-8"
-Content-ID: <912CE860FBD2FA468CA4ACBDCCA13463@namprd13.prod.outlook.com>
-Content-Transfer-Encoding: base64
+Date:   Thu, 24 Jan 2019 13:28:46 -0600
+In-Reply-To: <ufaimyearlx.fsf@epithumia.math.uh.edu> (Jason L. Tibbitts, III's
+        message of "Thu, 24 Jan 2019 11:32:42 -0600")
+Message-ID: <ufaa7jpam8h.fsf@epithumia.math.uh.edu>
+User-Agent: Gnus/5.13 (Gnus v5.13) Emacs/26.1 (gnu/linux)
 MIME-Version: 1.0
-X-OriginatorOrg: hammerspace.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: 5b21678f-5aa8-4964-d4d8-08d682365677
-X-MS-Exchange-CrossTenant-originalarrivaltime: 24 Jan 2019 19:58:40.9232
- (UTC)
-X-MS-Exchange-CrossTenant-fromentityheader: Hosted
-X-MS-Exchange-CrossTenant-id: 0d4fed5c-3a70-46fe-9430-ece41741f59e
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: BYAPR13MB2406
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-T24gVGh1LCAyMDE5LTAxLTI0IGF0IDExOjMyIC0wNjAwLCBKYXNvbiBMIFRpYmJpdHRzIElJSSB3
-cm90ZToNCj4gSSBjb3VsZCB1c2Ugc29tZSBoZWxwIGZpZ3VyaW5nIG91dCB0aGUgY2F1c2Ugb2Yg
-c29tZSBzZXJpb3VzIE5GUw0KPiBjbGllbnQNCj4gaXNzdWVzIEknbSBoYXZpbmcgd2l0aCB0aGUg
-NC4yMC4zIGtlcm5lbCB3aGljaCBJIGRpZCBub3Qgc2VlIHVuZGVyDQo+IDQuMTkuMTUuDQo+IA0K
-PiBJIGhhdmUgYSBuZXR3b3JrIG9mIGFib3V0IDEzMCBkZXNrdG9wcyAocGx1cyBhIGJ1bmNoIG9m
-IG90aGVyDQo+IG1hY2hpbmVzLA0KPiBWTXMgYW5kIHRoZSBsaWtlKSBydW5uaW5nIEZlZG9yYSAy
-OSBjb25uZWN0aW5nIHRvIHNpeCBORlMgc2VydmVycw0KPiBydW5uaW5nIENlbnRPUyA3LjYgKHdp
-dGggdGhlIGhlYXZpbHkgcGF0Y2hlZCB2ZW5kb3Iga2VybmVsDQo+IDMuMTAuMC05NTcuMS4zKS4g
-IEFsbCBtYWNoaW5lcyBpbnZvbHZlZCBhcmUgeDg2XzY0LiAgV2UgdXNlDQo+IGtlcmJlcml6ZWQN
-Cj4gTkZTNCB3aXRoIGdlbmVyYWxseSBzZWM9a3JiNWkuICBUaGUgZXhwb3J0cyBhcmUgZ2VuZXJh
-bGx5IG1hZGUgd2l0aA0KPiAiKHJ3LGFzeW5jLHNlYz1rcmI1aTprcmI1cCkiLg0KPiANCj4gU2lu
-Y2UgSSBib290ZWQgdGhvc2UgY2xpZW50cyBpbnRvIDQuMjAuMyBJJ3ZlIHN0YXJ0ZWQgc2VlaW5n
-DQo+IHByb2Nlc3Nlcw0KPiBnZXR0aW5nIHN0dWNrIGluIHRoZSBEIHN0YXRlLiAgVGhlIHN5c3Rl
-bSBpdHNlbGYgd2lsbCBzZWVtIE9LIChleGNlcHQNCj4gZm9yIHRoZSBoaWdoIGxvYWQgYXZlcmFn
-ZSkgYXMgbG9uZyBhcyBJIGRvbid0IHRvdWNoIHRoZSBodW5nIE5GUw0KPiBtb3VudC4NCj4gTm90
-aGluZyB3YXMgbG9nZ2VkIHRvIGRtZXNnIG9yIHRvIHRoZSBqb3VybmFsLiAgU28gZmFyIGJvb3Rp
-bmcgYmFjaw0KPiBpbnRvDQo+IHRoZSA0LjE5LjE1IGtlcm5lbCBoYXMgY2xlYXJlZCB1cCB0aGUg
-cHJvYmxlbS4gIEkgY2Fubm90IHlldA0KPiByZXByb2R1Y2UNCj4gdGhpcyBvbiBkZW1hbmQ7IEkn
-dmUgdHJpZWQgYnV0IGl0IGlzIHByb2JhYmx5IHJlbGF0ZWQgdG8gc29tZQ0KPiBzcGVjaWZpYw0K
-PiB1c2FnZSBwYXR0ZXJuLg0KPiANCj4gSGFzIGFueW9uZSBlbHNlIHNlZW4gaXNzdWVzIGxpa2Ug
-dGhpcz8gIENhbiBhbnlvbmUgaGVscCBtZSB0byBnZXQNCj4gbW9yZQ0KPiB1c2VmdWwgaW5mb3Jt
-YXRpb24gdGhhdCBtaWdodCBwb2ludCB0byB0aGUgcHJvYmxlbT8gIEkgc3RpbGwgaGF2ZW4ndA0K
-PiBsZWFybmVkIGhvdyB0byBkZWJ1ZyBORlMgaXNzdWVzIHByb3Blcmx5LiAgQW5kIGlmIHRoZXJl
-J3MgYSBzdHJlc3MNCj4gdGVzdA0KPiB0b29sIEkgY291bGQgZWFzaWx5IHJ1biB0aGF0IG1pZ2h0
-IGhlbHAgdG8gcmVwcm9kdWNlIHRoZSBpc3N1ZSwgSSdkDQo+IGJlDQo+IGhhcHB5IHRvIHJ1biBp
-dC4NCj4gDQo+IEkgbm90ZSB0aGF0IDQuMjAuNCBpcyBvdXQ7IEkgc2VlIG9uZSBzdW5ycGMgZml4
-IHdoaWNoIEkgZ3Vlc3MgY291bGQNCj4gYmUNCj4gcmVsYXRlZCAoc3VucnBjOiBoYW5kbGUgRU5P
-TUVNIGluIHJwY2JfZ2V0cG9ydF9hc3luYykgYnV0IHRoZSBzeXN0ZW1zDQo+IGludm9sdmVkIGhh
-dmUgcGxlbnR5IG9mIGZyZWUgbWVtb3J5IHNvIEkgZG91YnQgdGhhdCdzIGl0LiAgSSdsbA0KPiBj
-ZXJ0YWlubHkgdHJ5IGl0IGFueXdheS4NCj4gDQo+IFZhcmlvdXMgcGFja2FnZSB2ZXJzaW9uczoN
-Cj4ga2VybmVsLTQuMjAuMy0yMDAuZmMyOS54ODZfNjQgKHRoZSBwcm9ibGVtYXRpYyBrZXJuZWwp
-DQo+IGtlcm5lbC00LjE5LjE1LTMwMC5mYzI5Lng4Nl82NCAodGhlIGZ1bmN0aW9uYWwga2VybmVs
-KQ0KPiBuZnMtdXRpbHMtMi4zLjMtMS5yYzIuZmMyOS54ODZfNjQNCj4gZ3NzcHJveHktMC44LjAt
-Ni5mYzI5Lng4Nl82NA0KPiBrcmI1LWxpYnMtMS4xNi4xLTI1LmZjMjkuaTY4Ng0KPiANCj4gVGhh
-bmtzIGluIGFkdmFuY2UgZm9yIGFueSBoZWxwIG9yIGFkdmljZSwNCj4gDQo+ICAtIEo8DQoNCkNv
-bW1pdCBkZWFhNWM5NmMyZjcgKCJTVU5SUEM6IEFkZHJlc3MgS2VyYmVyb3MgcGVyZm9ybWFuY2Uv
-YmVoYXZpb3INCnJlZ3Jlc3Npb24iKSB3YXMgc3VwcG9zZWQgdG8gYmUgbWFya2VkIGZvciBzdGFi
-bGUgYXMgYSBmaXguIENodWNrICYNCkFubmE/DQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXgg
-TkZTIGNsaWVudCBtYWludGFpbmVyLCBIYW1tZXJzcGFjZQ0KdHJvbmQubXlrbGVidXN0QGhhbW1l
-cnNwYWNlLmNvbQ0KDQoNCg==
+Just had another machine get into this state.  This time I thought to at
+least do alt-sysrq-w.  The result is a big pile of backtraces but it
+looks like basically every NFS operation is hung up.
+
+I'm not sure how useful it will be, but I tried to categorize the
+various backtraces.  Most of them are like the following, going through
+nfs_file_fsync:
+
+tcsh            D    0  9511      1 0x80000006
+Call Trace:
+ ? __schedule+0x253/0x850
+ schedule+0x28/0x80
+ io_schedule+0x12/0x40
+ wait_on_page_bit_common+0x11a/0x270
+ ? file_check_and_advance_wb_err+0xc0/0xc0
+ __filemap_fdatawait_range+0xe2/0x130
+ ? __filemap_fdatawrite_range+0xc8/0xf0
+ filemap_write_and_wait_range+0x45/0x80
+ nfs_file_fsync+0x44/0x1e0 [nfs]
+ filp_close+0x31/0x60
+ put_files_struct+0x6c/0xc0
+ do_exit+0x2b4/0xb30
+ ? __fput+0x151/0x220
+ do_group_exit+0x3a/0xa0
+ get_signal+0x276/0x590
+ do_signal+0x36/0x610
+ ? do_sys_open+0x128/0x210
+ exit_to_usermode_loop+0x71/0xe0
+ do_syscall_64+0x14d/0x160
+ entry_SYSCALL_64_after_hwframe+0x44/0xa9
+RIP: 0033:0x7f4760d46ca2
+Code: Bad RIP value.
+RSP: 002b:00007ffc29c788d0 EFLAGS: 00000246 ORIG_RAX: 0000000000000101
+RAX: fffffffffffffe00 RBX: 00005652381bf990 RCX: 00007f4760d46ca2
+RDX: 0000000000000000 RSI: 00005652381d4b40 RDI: 00000000ffffff9c
+RBP: 0000000000000000 R08: 0000000000000000 R09: 00007ffc29c78920
+R10: 0000000000000000 R11: 0000000000000246 R12: 00005652381d4b40
+R13: 0000000000000000 R14: 00005652381dcd30 R15: 0000000000000000
+
+
+There are a few others which are hung on locking operations:
+
+QThread         D    0  9740      1 0x80000006
+Call Trace:
+ ? __schedule+0x253/0x850
+ ? __rpc_wait_for_completion_task+0x30/0x30 [sunrpc]
+ schedule+0x28/0x80
+ rpc_wait_bit_killable+0x1e/0x90 [sunrpc]
+ __wait_on_bit+0x6c/0x80
+ out_of_line_wait_on_bit+0x91/0xb0
+ ? init_wait_var_entry+0x40/0x40
+ nfs4_proc_lock+0x1a9/0x320 [nfsv4]
+ ? do_unlk+0x98/0xe0 [nfs]
+ locks_remove_posix+0xb1/0x140
+ ? __nfs_commit_inode+0xc4/0x1b0 [nfs]
+ filp_close+0x50/0x60
+ put_files_struct+0x6c/0xc0
+ do_exit+0x2b4/0xb30
+ ? mem_cgroup_try_charge+0xe6/0x180
+ do_group_exit+0x3a/0xa0
+ get_signal+0x276/0x590
+ do_signal+0x36/0x610
+ exit_to_usermode_loop+0x71/0xe0
+ do_syscall_64+0x14d/0x160
+ entry_SYSCALL_64_after_hwframe+0x44/0xa9
+RIP: 0033:0x7ff3e9321421
+Code: Bad RIP value.
+RSP: 002b:00007ff3d7ffeac0 EFLAGS: 00000293 ORIG_RAX: 0000000000000007
+RAX: fffffffffffffdfc RBX: 00007ff3c8004db0 RCX: 00007ff3e9321421
+RDX: 00000000ffffffff RSI: 0000000000000001 RDI: 00007ff3c8004db0
+RBP: 0000000000000001 R08: 0000000000000000 R09: 00007ff3c8000c78
+R10: 00007ff3d0003480 R11: 0000000000000293 R12: 00000000ffffffff
+R13: 00007ff3e6e48f10 R14: 00000000ffffffff R15: 0000000000000001
+
+gvfsd-metadata  D    0 24382      1 0x80000006
+Call Trace:
+ ? __schedule+0x253/0x850
+ ? __rpc_wait_for_completion_task+0x30/0x30 [sunrpc]
+ schedule+0x28/0x80
+ rpc_wait_bit_killable+0x1e/0x90 [sunrpc]
+ __wait_on_bit+0x6c/0x80
+ out_of_line_wait_on_bit+0x91/0xb0
+ ? init_wait_var_entry+0x40/0x40
+ nfs4_do_close+0x2bf/0x2f0 [nfsv4]
+ __put_nfs_open_context+0xa9/0x100 [nfs]
+ nfs_file_release+0x39/0x40 [nfs]
+ __fput+0xb4/0x220
+ task_work_run+0x84/0xa0
+ do_exit+0x2d2/0xb30
+ do_group_exit+0x3a/0xa0
+ get_signal+0x276/0x590
+ do_signal+0x36/0x610
+ ? handle_mm_fault+0xda/0x200
+ exit_to_usermode_loop+0x71/0xe0
+ do_syscall_64+0x14d/0x160
+ entry_SYSCALL_64_after_hwframe+0x44/0xa9
+RIP: 0033:0x7f3cf843d421
+Code: Bad RIP value.
+RSP: 002b:00007ffc224ea250 EFLAGS: 00000293 ORIG_RAX: 0000000000000007
+RAX: fffffffffffffdfc RBX: 000055c9db8fa2a0 RCX: 00007f3cf843d421
+RDX: 00000000ffffffff RSI: 0000000000000001 RDI: 000055c9db8fa2a0
+RBP: 0000000000000001 R08: 0000000000000000 R09: 000055c9db8ea488
+R10: 000055c9db8dbae0 R11: 0000000000000293 R12: 00000000ffffffff
+R13: 00007f3cf85bff10 R14: 00000000ffffffff R15: 0000000000000001
+
+
+And some others waiting on metadata operations:
+
+localStorage DB D    0 24794   9621 0x00000004
+Call Trace:
+ ? __schedule+0x253/0x850
+ schedule+0x28/0x80
+ io_schedule+0x12/0x40
+ wait_on_page_bit_common+0x11a/0x270
+ ? file_check_and_advance_wb_err+0xc0/0xc0
+ __filemap_fdatawait_range+0xe2/0x130
+ filemap_write_and_wait+0x47/0x70
+ nfs_wb_all+0x1a/0x120 [nfs]
+ nfs_setattr+0x1cb/0x1d0 [nfs]
+ notify_change+0x2da/0x440
+ do_truncate+0x74/0xc0
+ do_sys_ftruncate+0xb6/0x100
+ do_syscall_64+0x5b/0x160
+ entry_SYSCALL_64_after_hwframe+0x44/0xa9
+RIP: 0033:0x7eff1cd1382b
+Code: Bad RIP value.
+RSP: 002b:00007eff0c3787c8 EFLAGS: 00000246 ORIG_RAX: 000000000000004d
+RAX: ffffffffffffffda RBX: 0000000000bd0000 RCX: 00007eff1cd1382b
+RDX: 0002000100000000 RSI: 0000000000bd0000 RDI: 000000000000005c
+RBP: 00007eff034d61a0 R08: 00007ffc7d3b40b0 R09: 00007ffc7d3b4080
+R10: 000000000274ded2 R11: 0000000000000246 R12: 000000000000005c
+R13: 00007eff02f081c0 R14: 00007eff025fd8e0 R15: 00007eff034832e0
+
+df              D    0 25187  25186 0x00000000
+Call Trace:
+ ? __schedule+0x253/0x850
+ ? __rpc_wait_for_completion_task+0x30/0x30 [sunrpc]
+ ? __rpc_atrun+0x20/0x20 [sunrpc]
+ schedule+0x28/0x80
+ rpc_wait_bit_killable+0x1e/0x90 [sunrpc]
+ __wait_on_bit+0x6c/0x80
+ ? trace_event_raw_event_rpc_stats_latency+0x240/0x240 [sunrpc]
+ out_of_line_wait_on_bit+0x91/0xb0
+ ? init_wait_var_entry+0x40/0x40
+ __rpc_execute+0xe0/0x350 [sunrpc]
+ ? recalibrate_cpu_khz+0x10/0x10
+ ? ktime_get+0x36/0xa0
+ rpc_run_task+0x121/0x180 [sunrpc]
+ nfs4_call_sync_sequence+0x64/0xa0 [nfsv4]
+ _nfs4_proc_getattr+0xf8/0x120 [nfsv4]
+ nfs4_proc_getattr+0x75/0x100 [nfsv4]
+ __nfs_revalidate_inode+0x1b7/0x2a0 [nfs]
+ nfs_getattr+0x118/0x2b0 [nfs]
+ ? security_inode_getattr+0x30/0x50
+ vfs_statx+0x89/0xe0
+ __do_sys_newstat+0x39/0x70
+ do_syscall_64+0x5b/0x160
+ entry_SYSCALL_64_after_hwframe+0x44/0xa9
+RIP: 0033:0x7f7dc6195579
+Code: Bad RIP value.
+RSP: 002b:00007ffd44e725a8 EFLAGS: 00000246 ORIG_RAX: 0000000000000004
+RAX: ffffffffffffffda RBX: 000055ad9832ef80 RCX: 00007f7dc6195579
+RDX: 00007ffd44e72650 RSI: 00007ffd44e72650 RDI: 000055ad9832e380
+RBP: 000055ad9832e310 R08: 0000000000000003 R09: aaaaaaaaaaaaaaab
+R10: 000055ad98326010 R11: 0000000000000246 R12: 000055ad9832e3c0
+R13: 0000000000000000 R14: 000055ad9832b9b0 R15: 0000000000000000
+
+
+And others on writes:
+
+mozStorage #1   D    0 24816   9621 0x00000004
+Call Trace:
+ ? __schedule+0x253/0x850
+ ? __switch_to_asm+0x40/0x70
+ schedule+0x28/0x80
+ io_schedule+0x12/0x40
+ __lock_page+0x13c/0x230
+ ? file_check_and_advance_wb_err+0xc0/0xc0
+ pagecache_get_page+0x1ae/0x340
+ grab_cache_page_write_begin+0x1c/0x40
+ nfs_write_begin+0x63/0x340 [nfs]
+ generic_perform_write+0xf4/0x1b0
+ ? __handle_mm_fault+0xb9d/0x1380
+ nfs_file_write+0xdc/0x200 [nfs]
+ __vfs_write+0x136/0x1a0
+ vfs_write+0xa5/0x1a0
+ ksys_write+0x4f/0xb0
+ do_syscall_64+0x5b/0x160
+ entry_SYSCALL_64_after_hwframe+0x44/0xa9
+RIP: 0033:0x7eff1d131d57
+Code: Bad RIP value.
+RSP: 002b:00007eff00546380 EFLAGS: 00000293 ORIG_RAX: 0000000000000001
+RAX: ffffffffffffffda RBX: 000000000000002d RCX: 00007eff1d131d57
+RDX: 0000000000008000 RSI: 00007efef8085000 RDI: 000000000000002d
+RBP: 00007efef8085000 R08: 0000000000000000 R09: 00007ffc7d3b4080
+R10: 000000000274d526 R11: 0000000000000293 R12: 0000000000008000
+R13: 00007eff08604868 R14: 00000000000300c8 R15: 00007efef8085000
+
+
+Not sure what this one is waiting on:
+
+kdm-uh          D    0 25357  25345 0x00000000
+Call Trace:
+ ? __schedule+0x253/0x850
+ ? __switch_to_asm+0x34/0x70
+ ? __rpc_wait_for_completion_task+0x30/0x30 [sunrpc]
+ ? __rpc_atrun+0x20/0x20 [sunrpc]
+ schedule+0x28/0x80
+ rpc_wait_bit_killable+0x1e/0x90 [sunrpc]
+ __wait_on_bit+0x6c/0x80
+ ? trace_event_raw_event_rpc_stats_latency+0x240/0x240 [sunrpc]
+ out_of_line_wait_on_bit+0x91/0xb0
+ ? init_wait_var_entry+0x40/0x40
+ __rpc_execute+0xe0/0x350 [sunrpc]
+ ? recalibrate_cpu_khz+0x10/0x10
+ ? ktime_get+0x36/0xa0
+ rpc_run_task+0x121/0x180 [sunrpc]
+ nfs4_call_sync_sequence+0x64/0xa0 [nfsv4]
+ _nfs4_proc_getattr+0xf8/0x120 [nfsv4]
+ nfs4_proc_getattr+0x75/0x100 [nfsv4]
+ __nfs_revalidate_inode+0x1b7/0x2a0 [nfs]
+ nfs_do_access+0x2cd/0x400 [nfs]
+ ? rpcauth_lookupcred+0x99/0xc0 [sunrpc]
+ nfs_permission+0x1b9/0x1e0 [nfs]
+ inode_permission+0xbe/0x180
+ link_path_walk.part.49+0x3f2/0x520
+ path_openat+0x9f/0x1610
+ ? page_counter_try_charge+0x57/0xc0
+ ? memcg_kmem_charge_memcg+0x76/0xa0
+ ? get_random_u32+0x3e/0xd0
+ do_filp_open+0x93/0x100
+ ? __check_object_size+0x15d/0x189
+ do_sys_open+0x186/0x210
+ do_syscall_64+0x5b/0x160
+ entry_SYSCALL_64_after_hwframe+0x44/0xa9
+RIP: 0033:0x7f3f0fc5dca2
+Code: Bad RIP value.
+RSP: 002b:00007ffc18c62840 EFLAGS: 00000246 ORIG_RAX: 0000000000000101
+RAX: ffffffffffffffda RBX: 000055a70650bfa0 RCX: 00007f3f0fc5dca2
+RDX: 0000000000000800 RSI: 000055a70650bcf0 RDI: 00000000ffffff9c
+RBP: 0000000000001e34 R08: 000055a70650c3b0 R09: 0000000000000002
+R10: 0000000000000000 R11: 0000000000000246 R12: 0000000000000001
+R13: 00007ffc18c62a30 R14: 000055a70650bcf0 R15: 00007ffc18c62afc
+
+And there's one kernel thread, I assume for the mount since that's the
+IP of the NFS server.
+
+172.21.86.74-ma D    0 25099      2 0x80000000
+Call Trace:
+ ? __schedule+0x253/0x850
+ ? __rpc_wait_for_completion_task+0x30/0x30 [sunrpc]
+ schedule+0x28/0x80
+ rpc_wait_bit_killable+0x1e/0x90 [sunrpc]
+ __wait_on_bit+0x6c/0x80
+ out_of_line_wait_on_bit+0x91/0xb0
+ ? init_wait_var_entry+0x40/0x40
+ nfs4_proc_sequence+0x3c/0x50 [nfsv4]
+ nfs4_run_state_manager+0x257/0x760 [nfsv4]
+ ? nfs4_do_reclaim+0x680/0x680 [nfsv4]
+ kthread+0x112/0x130
+ ? kthread_create_on_node+0x60/0x60
+ ret_from_fork+0x35/0x40
+
