@@ -2,81 +2,111 @@ Return-Path: <SRS0=p/Fe=QB=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_PASS,USER_AGENT_MUTT autolearn=ham autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-7.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,SPF_PASS,USER_AGENT_MUTT
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id F3DE0C282C0
-	for <linux-nfs@archiver.kernel.org>; Fri, 25 Jan 2019 20:15:52 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2F78CC282C0
+	for <linux-nfs@archiver.kernel.org>; Fri, 25 Jan 2019 20:30:03 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id C066E218CD
-	for <linux-nfs@archiver.kernel.org>; Fri, 25 Jan 2019 20:15:52 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 04B7221872
+	for <linux-nfs@archiver.kernel.org>; Fri, 25 Jan 2019 20:30:02 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726044AbfAYUPw (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 25 Jan 2019 15:15:52 -0500
-Received: from fieldses.org ([173.255.197.46]:49840 "EHLO fieldses.org"
+        id S1726179AbfAYUaC (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 25 Jan 2019 15:30:02 -0500
+Received: from fieldses.org ([173.255.197.46]:49852 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726030AbfAYUPw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 25 Jan 2019 15:15:52 -0500
+        id S1726044AbfAYUaC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 25 Jan 2019 15:30:02 -0500
 Received: by fieldses.org (Postfix, from userid 2815)
-        id C40541C1D; Fri, 25 Jan 2019 15:15:51 -0500 (EST)
-Date:   Fri, 25 Jan 2019 15:15:51 -0500
-From:   "J. Bruce Fields" <bfields@fieldses.org>
-To:     Olga Kornievskaia <aglo@umich.edu>
-Cc:     Trond Myklebust <trondmy@gmail.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "Darrick J. Wong" <darrick.wong@oracle.com>,
-        linux-nfs <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfsd: Fix error return values for
- nfsd4_clone_file_range()
-Message-ID: <20190125201551.GB5173@fieldses.org>
-References: <20190121205838.18680-1-trond.myklebust@hammerspace.com>
- <20190125004658.GB3953@fieldses.org>
- <698446e18a6718ee1ced06ecfd06e2de802fa16e.camel@gmail.com>
- <20190125163218.GA2752@fieldses.org>
- <CAN-5tyEZhVEMSjxbWfGoODb6eAmO7VJLjYkMv2HwUyXKHjyyWw@mail.gmail.com>
- <20190125201037.GA5173@fieldses.org>
+        id 9BAE91C1D; Fri, 25 Jan 2019 15:30:01 -0500 (EST)
+Date:   Fri, 25 Jan 2019 15:30:01 -0500
+From:   Bruce Fields <bfields@fieldses.org>
+To:     Chuck Lever <chuck.lever@oracle.com>
+Cc:     Trond Myklebust <trondmy@hammerspace.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] SUNRPC: Don't allow compiler optimisation of
+ svc_xprt_release_slot()
+Message-ID: <20190125203001.GA5972@fieldses.org>
+References: <4077991d3d3acee4c37c7c8c6dc2b76930c9584e.camel@hammerspace.com>
+ <20190109165142.GB32189@fieldses.org>
+ <300445038b75d5efafe9391eb4b8e83d9d6e3633.camel@hammerspace.com>
+ <20190111211235.GA27206@fieldses.org>
+ <BB7240BE-3F20-43AD-B709-7F18CC33CC02@oracle.com>
+ <6F5B73B7-E9F8-4FDB-8381-E5C02772C6A5@oracle.com>
+ <20190111221030.GA28794@fieldses.org>
+ <A33F8CE5-3E5D-4359-8061-8DB8214B012B@oracle.com>
+ <20190112005613.GA29181@fieldses.org>
+ <F21839E5-A5DB-4BC8-8F3B-2AD02D4B2652@oracle.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20190125201037.GA5173@fieldses.org>
+In-Reply-To: <F21839E5-A5DB-4BC8-8F3B-2AD02D4B2652@oracle.com>
 User-Agent: Mutt/1.5.21 (2010-09-15)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Fri, Jan 25, 2019 at 03:10:37PM -0500, J. Bruce Fields wrote:
-> Yeah.  I was assuming it could happen in the case you ask to clone
-> beyond the end of the source file.  But looking at the code, there's a
-> check for that case in generic_remap_checks() before doing the clone,
-> and while holding a write lock on i_rwsem (I assume that's enough to
-> hold the file size constant).  At least that's true in the cases (btrfs
-> & xfs) that I checked.
+On Mon, Jan 14, 2019 at 12:24:24PM -0500, Chuck Lever wrote:
 > 
-> So, I don't know, maybe that check is just dead code.
+> 
+> > On Jan 11, 2019, at 7:56 PM, Bruce Fields <bfields@fieldses.org> wrote:
+> > 
+> > On Fri, Jan 11, 2019 at 05:27:30PM -0500, Chuck Lever wrote:
+> >> 
+> >> 
+> >>> On Jan 11, 2019, at 5:10 PM, Bruce Fields <bfields@fieldses.org> wrote:
+> >>> 
+> >>> On Fri, Jan 11, 2019 at 04:54:01PM -0500, Chuck Lever wrote:
+> >>>>> On Jan 11, 2019, at 4:52 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+> >>>>>> So, I think we need your patch plus something like this.
+> >>>>>> 
+> >>>>>> Chuck, maybe you could help me with the "XXX: Chuck:" parts?
+> >>>>> 
+> >>>>> I haven't been following. Why do you think those are necessary?
+> >>> 
+> >>> I'm worried something like this could happen:
+> >>> 
+> >>> 	CPU 1				CPU 2
+> >>> 	-----				-----
+> >>> 
+> >>> 	set XPT_DATA			dec xpt_nr_rqsts
+> >>> 
+> >>> 	svc_xprt_enqueue		svc_xprt_enqueue
+> >>> 
+> >>> And both decide nothing should be done if neither sees the change that
+> >>> the other made.
+> >>> 
+> >>> Maybe I'm still missing some reason that couldn't happen.
+> >>> 
+> >>> Even if it can happen, it's an unlikely race that will likely be fixed
+> >>> when another event comes along a little later, which would explain why
+> >>> we've never seen any reports.
+> >>> 
+> >>>>> We've had set_bit and atomic_{inc,dec} in this code for ages,
+> >>>>> and I've never noticed a problem.
+> >>>>> 
+> >>>>> Rather than adding another CPU pipeline bubble in the RDMA code,
+> >>>>> though, could you simply move the set_bit() call site inside the
+> >>>>> critical sections?
+> >>>> 
+> >>>> er, inside the preceding critical section. Just reverse the order
+> >>>> of the spin_unlock and the set_bit.
+> >>> 
+> >>> That'd do it, thanks!
+> >> 
+> >> I can try that here and see if it results in a performance regression.
+> > 
+> > Thanks, I've got a version with a typo fixed at
+> > 
+> > 	git://linux-nfs.org/~bfields/linux.git nfsd-next
+> 
+> Applied all four patches here. I don't see any performance regressions,
+> but my server has only a single last-level CPU cache.
 
-In the xfs case it looks like the main work of the clone is done in
-xfs_reflink_remap_blocks(), where there's a loop like:
+Thanks!
 
-	while (len) {
-		... mysterious code that clones range_len worth of
-		    extents?
-		if (fatal_signal_pending(current)) {
-			error =-EINTR;
-			break;
-		}
-		...
-		len -= range_len;
-		remapped_len += range_len;
-	}
-
-And then it ends up returning remapped_len if it's positive.
-
-So it looks to me like if you do a big clone on xfs and kill the
-process, it can clone part of the range, return the amount cloned, and
-then the ioctl code will throw away that amount and just return EINVAL,
-with the result that the application thinks the operation failed
-completely actually it cloned a bunch of data.
+I'm adding a Tested-by: for you if that's OK.
 
 --b.
