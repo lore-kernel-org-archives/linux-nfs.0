@@ -2,75 +2,122 @@ Return-Path: <SRS0=p/Fe=QB=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-5.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_PASS,URIBL_BLOCKED,USER_AGENT_MUTT
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 465F1C282C0
-	for <linux-nfs@archiver.kernel.org>; Fri, 25 Jan 2019 19:51:36 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1DC70C282C0
+	for <linux-nfs@archiver.kernel.org>; Fri, 25 Jan 2019 20:10:39 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 18088218B0
-	for <linux-nfs@archiver.kernel.org>; Fri, 25 Jan 2019 19:51:36 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id EC6F22184C
+	for <linux-nfs@archiver.kernel.org>; Fri, 25 Jan 2019 20:10:38 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726218AbfAYTvf (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 25 Jan 2019 14:51:35 -0500
-Received: from mx2.math.uh.edu ([129.7.128.33]:46284 "EHLO mx2.math.uh.edu"
+        id S1726284AbfAYUKi (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 25 Jan 2019 15:10:38 -0500
+Received: from fieldses.org ([173.255.197.46]:49828 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725778AbfAYTvf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 25 Jan 2019 14:51:35 -0500
-Received: from epithumia.math.uh.edu ([129.7.128.2])
-        by mx2.math.uh.edu with esmtp (Exim 4.91)
-        (envelope-from <tibbs@math.uh.edu>)
-        id 1gn7Vi-00030c-Ds; Fri, 25 Jan 2019 13:51:32 -0600
-Received: by epithumia.math.uh.edu (Postfix, from userid 7225)
-        id 55E31801554; Fri, 25 Jan 2019 13:51:30 -0600 (CST)
-From:   Jason L Tibbitts III <tibbs@math.uh.edu>
-To:     Trond Myklebust <trondmy@hammerspace.com>
-Cc:     "Anna.Schumaker\@netapp.com" <Anna.Schumaker@netapp.com>,
-        "linux-nfs\@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "Chuck.Lever\@oracle.com" <Chuck.Lever@oracle.com>
-Subject: Re: Need help debugging NFS issues new to 4.20 kernel
-References: <ufaimyearlx.fsf@epithumia.math.uh.edu>
-        <eff194a660ce562753d0112cdf6b1aacc5aa5dfb.camel@hammerspace.com>
-Date:   Fri, 25 Jan 2019 13:51:30 -0600
-In-Reply-To: <eff194a660ce562753d0112cdf6b1aacc5aa5dfb.camel@hammerspace.com>
-        (Trond Myklebust's message of "Thu, 24 Jan 2019 19:58:40 +0000")
-Message-ID: <ufak1isms71.fsf@epithumia.math.uh.edu>
-User-Agent: Gnus/5.13 (Gnus v5.13) Emacs/26.1 (gnu/linux)
+        id S1726262AbfAYUKi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 25 Jan 2019 15:10:38 -0500
+Received: by fieldses.org (Postfix, from userid 2815)
+        id 4505B1C1D; Fri, 25 Jan 2019 15:10:37 -0500 (EST)
+Date:   Fri, 25 Jan 2019 15:10:37 -0500
+From:   "J. Bruce Fields" <bfields@fieldses.org>
+To:     Olga Kornievskaia <aglo@umich.edu>
+Cc:     Trond Myklebust <trondmy@gmail.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        "Darrick J. Wong" <darrick.wong@oracle.com>,
+        linux-nfs <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] nfsd: Fix error return values for
+ nfsd4_clone_file_range()
+Message-ID: <20190125201037.GA5173@fieldses.org>
+References: <20190121205838.18680-1-trond.myklebust@hammerspace.com>
+ <20190125004658.GB3953@fieldses.org>
+ <698446e18a6718ee1ced06ecfd06e2de802fa16e.camel@gmail.com>
+ <20190125163218.GA2752@fieldses.org>
+ <CAN-5tyEZhVEMSjxbWfGoODb6eAmO7VJLjYkMv2HwUyXKHjyyWw@mail.gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <CAN-5tyEZhVEMSjxbWfGoODb6eAmO7VJLjYkMv2HwUyXKHjyyWw@mail.gmail.com>
+User-Agent: Mutt/1.5.21 (2010-09-15)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
->>>>> "TM" == Trond Myklebust <trondmy@hammerspace.com> writes:
+On Fri, Jan 25, 2019 at 11:42:17AM -0500, Olga Kornievskaia wrote:
+> On Fri, Jan 25, 2019 at 11:32 AM J. Bruce Fields <bfields@fieldses.org> wrote:
+> >
+> > On Fri, Jan 25, 2019 at 12:50:09AM -0500, Trond Myklebust wrote:
+> > > On Thu, 2019-01-24 at 19:46 -0500, J. Bruce Fields wrote:
+> > > > On Mon, Jan 21, 2019 at 03:58:38PM -0500, Trond Myklebust wrote:
+> > > > > If the parameter 'count' is non-zero, nfsd4_clone_file_range() will
+> > > > > currently clobber all errors returned by vfs_clone_file_range() and
+> > > > > replace them with EINVAL.
+> > > >
+> > > > Oops, thanks for the fix.  I'm still a little confused, though:
+> > ...
+> > > > > diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+> > > > > index 9824e32b2f23..7dc98e14655d 100644
+> > > > > --- a/fs/nfsd/vfs.c
+> > > > > +++ b/fs/nfsd/vfs.c
+> > > > > @@ -557,9 +557,11 @@ __be32 nfsd4_clone_file_range(struct file
+> > > > > *src, u64 src_pos, struct file *dst,
+> > > > >   loff_t cloned;
+> > > > >
+> > > > >   cloned = vfs_clone_file_range(src, src_pos, dst, dst_pos,
+> > > > > count, 0);
+> > > > > + if (cloned < 0)
+> > > > > +         return nfserrno(cloned);
+> > > > >   if (count && cloned != count)
+> > > > > -         cloned = -EINVAL;
+> > > > > - return nfserrno(cloned < 0 ? cloned : 0);
+> > > > > +         return nfserrno(-EINVAL);
+> > > > > + return 0;
+> > > >
+> > > > I still don't understand the cloned != count case.  I thought clone
+> > > > was
+> > > > supposed to be all-or-nothing and atomic, can it really return a
+> > > > short
+> > > > copy?  And how is that inval, shouldn't that be serverfault?
+> > >
+> > > That, quite frankly, seems like more of a question for Darrick, not me.
+> > > I haven't changed that part of the code.
+> > >
+> > > The main thing I care about is being able to correctly report
+> > > EOPNOTSUPP errors for the vast majority of filesystems that don't
+> > > support clone() or dedup().
+> >
+> > Makes sense, and I'm happy just to apply this and then sort out the rest in a
+> > subsequent patch, but I'd really like to understand; Darrick?:
+> >
+> > ioctl_file_clone also converts short copies to EINVAL:
+> >
+> >         if (cloned < 0)
+> >                 ret = cloned;
+> >         else if (olen && cloned != olen)
+> >                 ret = -EINVAL;
+> >         else
+> >                 ret = 0;
+> >
+> > Maybe that happens iff we hit EOF in the short file?
+> >
+> > Does that mean we can successfully copy up to EOF and then return -EINVAL?
+> > That sounds wrong.
+> >
+> > There's a man page (IOCTL-FICLONERANGE(2)) but it doesn't cover this case.
+> 
+> I thought cloned by definition was all or nothing meaning there can't
+> be a "short" clone. If you allow for less then asked bytes to be
+> returned, then your next offsets might not be block aligned.
 
-TM> Commit deaa5c96c2f7 ("SUNRPC: Address Kerberos performance/behavior
-TM> regression") was supposed to be marked for stable as a fix.
+Yeah.  I was assuming it could happen in the case you ask to clone
+beyond the end of the source file.  But looking at the code, there's a
+check for that case in generic_remap_checks() before doing the clone,
+and while holding a write lock on i_rwsem (I assume that's enough to
+hold the file size constant).  At least that's true in the cases (btrfs
+& xfs) that I checked.
 
-I wonder, though; is that likely to be the root of the problem I'm
-seeing?  The commit description talks about this as a performance
-regression, but I'm seeing a complete loss of NFS functionality.
+So, I don't know, maybe that check is just dead code.
 
-Sadly I still don't have a reproducer, so outside of just deploying the
-patch and hoping, I have no way to actually test this.  So far I've been
-running things like:
-
-  stress-ng --all 0 --class 'filesystem' -t 10m --times
-
-in an NFS4-krb5p mounted directory without being able to reproduce the
-problem.  That drives the load up close to 200 but everything seems to make
-progress.  So it must be some specific sequence that causes it; I just
-don't know which.
-
-I did get this to show up in the kernel log, though, when I typed "df"
-while running that stress-ng command was running:
-
-[94547.656419] NFS: server nas00 error: fileid changed
-               fsid 0:57: expected fileid 0x6bc27eb, got 0x9996c6
-
-I've never seen that one before, but it doesn't seem to hurt anything.
-(This is still with 4.20.3.)
-
- - J<
+--b.
