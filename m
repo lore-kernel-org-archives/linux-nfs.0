@@ -2,140 +2,166 @@ Return-Path: <SRS0=p/Fe=QB=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.7 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+X-Spam-Status: No, score=-7.2 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
-	SPF_PASS,UNPARSEABLE_RELAY,USER_AGENT_MUTT autolearn=ham autolearn_force=no
+	MENTIONS_GIT_HOSTING,SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 59478C282C0
-	for <linux-nfs@archiver.kernel.org>; Fri, 25 Jan 2019 20:57:42 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C4579C282C0
+	for <linux-nfs@archiver.kernel.org>; Fri, 25 Jan 2019 21:33:09 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 1D8CB218A6
-	for <linux-nfs@archiver.kernel.org>; Fri, 25 Jan 2019 20:57:42 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 8DCB3217D4
+	for <linux-nfs@archiver.kernel.org>; Fri, 25 Jan 2019 21:33:09 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="GGGwLaYB"
+	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="R0rMc/C/"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726218AbfAYU5l (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 25 Jan 2019 15:57:41 -0500
-Received: from userp2130.oracle.com ([156.151.31.86]:51692 "EHLO
-        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726044AbfAYU5l (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Jan 2019 15:57:41 -0500
-Received: from pps.filterd (userp2130.oracle.com [127.0.0.1])
-        by userp2130.oracle.com (8.16.0.22/8.16.0.22) with SMTP id x0PKmvL8113660;
-        Fri, 25 Jan 2019 20:57:32 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=date : from : to : cc
- : subject : message-id : references : mime-version : content-type :
- in-reply-to; s=corp-2018-07-02;
- bh=37shyhFlcZYOoIdud8SZfFFTEQLqS8NoGmsde+YcCIo=;
- b=GGGwLaYBGRxPSj/8U64aH7xvEMQp9jEwdPD6JKJR3uGXEjV6q9wzQKwQwFanA8d2Df3P
- l5zF4QaXvoy8qc8ugWOOTqVRhEds/6vWqnucDc817AvTL1cqsUUHtPsrhqOf+aE7t+xZ
- bG3zvsSipc5R6xdLrHbnR64dRUQ+vaBWeg3bqu5YlbI6RPupUOKN7D5xKkYXSrUHIsYg
- RRDKQne8pY7Wn3S4Q/N3vSaq/1sHpzW3ShXC5zqELk0PLDdGM2WSfVlR61soU30ojoby
- 1jHbjvaYNglWDSr55IYbV0g5w8pb/RgFZRxS1EmiFNSKv8Krb4H9oT9dEWIBaHC15Qsg Qg== 
-Received: from aserv0021.oracle.com (aserv0021.oracle.com [141.146.126.233])
-        by userp2130.oracle.com with ESMTP id 2q3uav7yxn-1
+        id S1726257AbfAYVdJ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 25 Jan 2019 16:33:09 -0500
+Received: from userp2120.oracle.com ([156.151.31.85]:59416 "EHLO
+        userp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726179AbfAYVdI (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Jan 2019 16:33:08 -0500
+Received: from pps.filterd (userp2120.oracle.com [127.0.0.1])
+        by userp2120.oracle.com (8.16.0.22/8.16.0.22) with SMTP id x0PLSf1f103934;
+        Fri, 25 Jan 2019 21:33:04 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=content-type :
+ mime-version : subject : from : in-reply-to : date : cc :
+ content-transfer-encoding : message-id : references : to;
+ s=corp-2018-07-02; bh=JU0erfgdEssn8oWE9g5dBgeYOGOXgiNWeckczuIaxOo=;
+ b=R0rMc/C/x/8mk9kzqlXuOE6QY3A6ec0EApsSeIbgpW8qqjJdy2OwzYqUhQ00H6OU9N4D
+ uTqi2/qA8gTCd4Jd3QKB5RqT/YQFduyFEpX6qtVO5dWQLzm7PQOZQO8CWIRRbnY3bT3C
+ y6+eAkIpTS+N0HtSVGGRJDRIVBw9M49UAgApwxKyyslYbgqFGcAcCOnWdcBXfPH+yNrP
+ v5jzEZm9SRW/3Ywe1p/CEVxdfGyHXgOuy8pUsJWZNZkmMIpJ2rxWOYGZxfLpuxY+RkOo
+ LVx289Eqfg8SwX7JNDfdGA11maPYrykl1z7AT6NXdTIbGm1fd4buMhNRLOBqF3hJhC2r yg== 
+Received: from userv0022.oracle.com (userv0022.oracle.com [156.151.31.74])
+        by userp2120.oracle.com with ESMTP id 2q3vhs7x2a-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Fri, 25 Jan 2019 20:57:31 +0000
+        Fri, 25 Jan 2019 21:33:04 +0000
 Received: from userv0122.oracle.com (userv0122.oracle.com [156.151.31.75])
-        by aserv0021.oracle.com (8.14.4/8.14.4) with ESMTP id x0PKvUlU016863
+        by userv0022.oracle.com (8.14.4/8.14.4) with ESMTP id x0PLX3Ud025925
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Fri, 25 Jan 2019 20:57:31 GMT
-Received: from abhmp0003.oracle.com (abhmp0003.oracle.com [141.146.116.9])
-        by userv0122.oracle.com (8.14.4/8.14.4) with ESMTP id x0PKvUR4030116;
-        Fri, 25 Jan 2019 20:57:30 GMT
-Received: from localhost (/67.169.218.210)
+        Fri, 25 Jan 2019 21:33:03 GMT
+Received: from abhmp0015.oracle.com (abhmp0015.oracle.com [141.146.116.21])
+        by userv0122.oracle.com (8.14.4/8.14.4) with ESMTP id x0PLX0LZ013617;
+        Fri, 25 Jan 2019 21:33:03 GMT
+Received: from [10.126.150.87] (/148.87.23.44)
         by default (Oracle Beehive Gateway v4.0)
-        with ESMTP ; Fri, 25 Jan 2019 12:57:29 -0800
-Date:   Fri, 25 Jan 2019 12:57:26 -0800
-From:   "Darrick J. Wong" <darrick.wong@oracle.com>
-To:     "J. Bruce Fields" <bfields@fieldses.org>
-Cc:     Olga Kornievskaia <aglo@umich.edu>,
-        Trond Myklebust <trondmy@gmail.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        linux-nfs <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfsd: Fix error return values for
- nfsd4_clone_file_range()
-Message-ID: <20190125205726.GA19328@magnolia>
-References: <20190121205838.18680-1-trond.myklebust@hammerspace.com>
- <20190125004658.GB3953@fieldses.org>
- <698446e18a6718ee1ced06ecfd06e2de802fa16e.camel@gmail.com>
- <20190125163218.GA2752@fieldses.org>
- <CAN-5tyEZhVEMSjxbWfGoODb6eAmO7VJLjYkMv2HwUyXKHjyyWw@mail.gmail.com>
- <20190125201037.GA5173@fieldses.org>
- <20190125201551.GB5173@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20190125201551.GB5173@fieldses.org>
-User-Agent: Mutt/1.9.4 (2018-02-28)
+        with ESMTP ; Fri, 25 Jan 2019 13:33:00 -0800
+Content-Type: text/plain;
+        charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 11.5 \(3445.9.1\))
+Subject: Re: [PATCH] SUNRPC: Don't allow compiler optimisation of
+ svc_xprt_release_slot()
+From:   Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20190125203001.GA5972@fieldses.org>
+Date:   Fri, 25 Jan 2019 13:32:58 -0800
+Cc:     Trond Myklebust <trondmy@hammerspace.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Transfer-Encoding: quoted-printable
+Message-Id: <40A18BC9-E3F9-45D0-98FF-7BCA171A3E62@oracle.com>
+References: <4077991d3d3acee4c37c7c8c6dc2b76930c9584e.camel@hammerspace.com>
+ <20190109165142.GB32189@fieldses.org>
+ <300445038b75d5efafe9391eb4b8e83d9d6e3633.camel@hammerspace.com>
+ <20190111211235.GA27206@fieldses.org>
+ <BB7240BE-3F20-43AD-B709-7F18CC33CC02@oracle.com>
+ <6F5B73B7-E9F8-4FDB-8381-E5C02772C6A5@oracle.com>
+ <20190111221030.GA28794@fieldses.org>
+ <A33F8CE5-3E5D-4359-8061-8DB8214B012B@oracle.com>
+ <20190112005613.GA29181@fieldses.org>
+ <F21839E5-A5DB-4BC8-8F3B-2AD02D4B2652@oracle.com>
+ <20190125203001.GA5972@fieldses.org>
+To:     Bruce Fields <bfields@fieldses.org>
+X-Mailer: Apple Mail (2.3445.9.1)
 X-Proofpoint-Virus-Version: vendor=nai engine=5900 definitions=9147 signatures=668682
 X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 suspectscore=0 malwarescore=0
- phishscore=0 bulkscore=0 spamscore=0 mlxscore=0 mlxlogscore=999
+ phishscore=0 bulkscore=0 spamscore=0 mlxscore=0 mlxlogscore=949
  adultscore=0 classifier=spam adjust=0 reason=mlx scancount=1
- engine=8.0.1-1810050000 definitions=main-1901250160
+ engine=8.0.1-1810050000 definitions=main-1901250164
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Fri, Jan 25, 2019 at 03:15:51PM -0500, J. Bruce Fields wrote:
-> On Fri, Jan 25, 2019 at 03:10:37PM -0500, J. Bruce Fields wrote:
-> > Yeah.  I was assuming it could happen in the case you ask to clone
-> > beyond the end of the source file.  But looking at the code, there's a
-> > check for that case in generic_remap_checks() before doing the clone,
-> > and while holding a write lock on i_rwsem (I assume that's enough to
-> > hold the file size constant).  At least that's true in the cases (btrfs
-> > & xfs) that I checked.
-> > 
-> > So, I don't know, maybe that check is just dead code.
-> 
-> In the xfs case it looks like the main work of the clone is done in
-> xfs_reflink_remap_blocks(), where there's a loop like:
-> 
-> 	while (len) {
-> 		... mysterious code that clones range_len worth of
-> 		    extents?
-> 		if (fatal_signal_pending(current)) {
-> 			error =-EINTR;
-> 			break;
-> 		}
-> 		...
-> 		len -= range_len;
-> 		remapped_len += range_len;
-> 	}
-> 
-> And then it ends up returning remapped_len if it's positive.
 
-Hmm?  In xfs_reflink_remap_blocks, *remapped (an out parameter) is set
-to remapped_len just prior to returning whatever error is.  The caller
-(xfs_file_remap_range) can see how many bytes were remapped, as well as
-any error that might have cut short the remapping process...
 
-> So it looks to me like if you do a big clone on xfs and kill the
-> process, it can clone part of the range, return the amount cloned, and
-> then the ioctl code will throw away that amount and just return EINVAL,
+> On Jan 25, 2019, at 12:30 PM, Bruce Fields <bfields@fieldses.org> =
+wrote:
+>=20
+> On Mon, Jan 14, 2019 at 12:24:24PM -0500, Chuck Lever wrote:
+>>=20
+>>=20
+>>> On Jan 11, 2019, at 7:56 PM, Bruce Fields <bfields@fieldses.org> =
+wrote:
+>>>=20
+>>> On Fri, Jan 11, 2019 at 05:27:30PM -0500, Chuck Lever wrote:
+>>>>=20
+>>>>=20
+>>>>> On Jan 11, 2019, at 5:10 PM, Bruce Fields <bfields@fieldses.org> =
+wrote:
+>>>>>=20
+>>>>> On Fri, Jan 11, 2019 at 04:54:01PM -0500, Chuck Lever wrote:
+>>>>>>> On Jan 11, 2019, at 4:52 PM, Chuck Lever =
+<chuck.lever@oracle.com> wrote:
+>>>>>>>> So, I think we need your patch plus something like this.
+>>>>>>>>=20
+>>>>>>>> Chuck, maybe you could help me with the "XXX: Chuck:" parts?
+>>>>>>>=20
+>>>>>>> I haven't been following. Why do you think those are necessary?
+>>>>>=20
+>>>>> I'm worried something like this could happen:
+>>>>>=20
+>>>>> 	CPU 1				CPU 2
+>>>>> 	-----				-----
+>>>>>=20
+>>>>> 	set XPT_DATA			dec xpt_nr_rqsts
+>>>>>=20
+>>>>> 	svc_xprt_enqueue		svc_xprt_enqueue
+>>>>>=20
+>>>>> And both decide nothing should be done if neither sees the change =
+that
+>>>>> the other made.
+>>>>>=20
+>>>>> Maybe I'm still missing some reason that couldn't happen.
+>>>>>=20
+>>>>> Even if it can happen, it's an unlikely race that will likely be =
+fixed
+>>>>> when another event comes along a little later, which would explain =
+why
+>>>>> we've never seen any reports.
+>>>>>=20
+>>>>>>> We've had set_bit and atomic_{inc,dec} in this code for ages,
+>>>>>>> and I've never noticed a problem.
+>>>>>>>=20
+>>>>>>> Rather than adding another CPU pipeline bubble in the RDMA code,
+>>>>>>> though, could you simply move the set_bit() call site inside the
+>>>>>>> critical sections?
+>>>>>>=20
+>>>>>> er, inside the preceding critical section. Just reverse the order
+>>>>>> of the spin_unlock and the set_bit.
+>>>>>=20
+>>>>> That'd do it, thanks!
+>>>>=20
+>>>> I can try that here and see if it results in a performance =
+regression.
+>>>=20
+>>> Thanks, I've got a version with a typo fixed at
+>>>=20
+>>> 	git://linux-nfs.org/~bfields/linux.git nfsd-next
+>>=20
+>> Applied all four patches here. I don't see any performance =
+regressions,
+>> but my server has only a single last-level CPU cache.
+>=20
+> Thanks!
+>=20
+> I'm adding a Tested-by: for you if that's OK.
 
-...and so xfs_file_remap_range will return the number of bytes remapped
-before it returns any error codes.  This was done so that
-copy_file_range can call remap_file_range and report a short but
-otherwise successful copy.
+Sorry, yes! that's fine with me.
 
-Yes, it's sort of dumb that we pass the "bytes remapped" information all
-the way up the call stack only to have the clonerange ioctl spit back
-EINVAL on a short remap, but we're stuck with that (poorly thought out)
-artifact of btrfs.
 
-Note that XFS can return cloned < count if (for example) it runs out of
-space trying to expand the extent map btree to add more extents.
 
-> with the result that the application thinks the operation failed
-> completely actually it cloned a bunch of data.
+--
+Chuck Lever
 
-(Yes, the ioctl is dumb; I would say that programs should use
-copy_file_range instead as a less bad interface, but the splice copy
-fallback is ...  yuck.)
 
---D
 
-> --b.
