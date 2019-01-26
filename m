@@ -3,27 +3,27 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
 X-Spam-Status: No, score=-0.2 required=3.0 tests=DATE_IN_PAST_12_24,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS autolearn=ham
-	autolearn_force=no version=3.4.0
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C86DBC282C7
-	for <linux-nfs@archiver.kernel.org>; Sat, 26 Jan 2019 21:12:16 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2616AC282C7
+	for <linux-nfs@archiver.kernel.org>; Sat, 26 Jan 2019 21:49:58 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 9C4662133D
-	for <linux-nfs@archiver.kernel.org>; Sat, 26 Jan 2019 21:12:16 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id EDAF621903
+	for <linux-nfs@archiver.kernel.org>; Sat, 26 Jan 2019 21:49:57 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726389AbfAZVMQ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sat, 26 Jan 2019 16:12:16 -0500
-Received: from rtw117.rackrabbit.com ([185.53.170.117]:39341 "EHLO
+        id S1726377AbfAZVt5 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sat, 26 Jan 2019 16:49:57 -0500
+Received: from rtw117.rackrabbit.com ([185.53.170.117]:60039 "EHLO
         loghomestore.com" rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1726398AbfAZVMQ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 26 Jan 2019 16:12:16 -0500
-X-Greylist: delayed 21632 seconds by postgrey-1.27 at vger.kernel.org; Sat, 26 Jan 2019 16:12:15 EST
+        with ESMTP id S1726350AbfAZVt5 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 26 Jan 2019 16:49:57 -0500
+X-Greylist: delayed 22385 seconds by postgrey-1.27 at vger.kernel.org; Sat, 26 Jan 2019 16:49:34 EST
 To:     linux-nfs@vger.kernel.org
 Subject: Data entry service and data processing services
-Message-ID: <a7120540f5dae7b52ed41c85b2699f9f@vecteezy.com>
-Date:   Sat, 26 Jan 2019 08:29:54 +0100
-From:   "Linda" <jafentqanse@mail.fr>
+Message-ID: <5f2efa0fbd6dc4b6c63b5521ddd955a0@vecteezy.com>
+Date:   Sat, 26 Jan 2019 08:53:20 +0100
+From:   "Linda" <jafentsanse@mail.fr>
 Reply-To: huhansto@sina.com
 MIME-Version: 1.0
 Content-Type: text/plain; format=flowed; charset="UTF-8"
