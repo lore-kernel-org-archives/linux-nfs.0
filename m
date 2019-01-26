@@ -1,312 +1,102 @@
-Return-Path: <SRS0=p/Fe=QB=vger.kernel.org=linux-nfs-owner@kernel.org>
+Return-Path: <SRS0=byNy=QC=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-4.0 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_PASS,UNWANTED_LANGUAGE_BODY autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-1.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS,URIBL_BLOCKED
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 944FBC282C0
-	for <linux-nfs@archiver.kernel.org>; Fri, 25 Jan 2019 22:11:48 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 676B9C282C5
+	for <linux-nfs@archiver.kernel.org>; Sat, 26 Jan 2019 08:39:41 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 5082F21855
-	for <linux-nfs@archiver.kernel.org>; Fri, 25 Jan 2019 22:11:48 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 29D9A218A6
+	for <linux-nfs@archiver.kernel.org>; Sat, 26 Jan 2019 08:39:41 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="OcV0JHZ5"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="CBecMT+3"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728236AbfAYWLr (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 25 Jan 2019 17:11:47 -0500
-Received: from mail-pf1-f196.google.com ([209.85.210.196]:44287 "EHLO
-        mail-pf1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726179AbfAYWLr (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Jan 2019 17:11:47 -0500
-Received: by mail-pf1-f196.google.com with SMTP id u6so5331717pfh.11
-        for <linux-nfs@vger.kernel.org>; Fri, 25 Jan 2019 14:11:46 -0800 (PST)
+        id S1726174AbfAZIjk (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sat, 26 Jan 2019 03:39:40 -0500
+Received: from mail-oi1-f196.google.com ([209.85.167.196]:46022 "EHLO
+        mail-oi1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726122AbfAZIjk (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 26 Jan 2019 03:39:40 -0500
+Received: by mail-oi1-f196.google.com with SMTP id y1so9448844oie.12
+        for <linux-nfs@vger.kernel.org>; Sat, 26 Jan 2019 00:39:39 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
-        h=sender:subject:from:to:date:message-id:in-reply-to:references
-         :user-agent:mime-version:content-transfer-encoding;
-        bh=us2bHDK3g3XF93RdX+LkN+iJspgd41HpAdODfkus8ZQ=;
-        b=OcV0JHZ5wo1u60Bwm9CBwzAOi5W/+OO8t+CjaSi98d1scKTJgMW/VoYAbP2Zl3gzat
-         vzt/RBQzk5zVgS09nz4kSHqIK0Mi+XWiV25K3vvtZZ4QeilQBPH1dM7P3Be4liayik3E
-         QcLD3/fDbIlYAUxsKuB7JQUDVAtG1XZqp5ztqU+x1GySvT3ekFYG7efHLY5HhnhSulPi
-         Ee3QLrCPPjpf80c2QkPgb6gkWtYZxUWD25gOkzyjtMqIS2AhIZ1PJjlnudl0Zyn9fFlL
-         FhwffGCEti+Sfk9yWIvXZ4d+FTatYf9AxTF5Jpg0YnYFVZjoI6Hi2psKmFFeXlWf+TM5
-         U7iQ==
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc;
+        bh=gALillPbNkPldw2oG2g+16C930PT+GUt9ZlGR5t0fAU=;
+        b=CBecMT+3ayq97Dp6s0uPiCpDjBSUZ3uX4+zgZVhe3OEmpf4YIdbuBBRxUel7yQzmY1
+         OGzlqmMtir859Jwjnzw/TlkZ6/wPAoSFN2AWlFglcYKPQJSNIex/0VUTto86CnRaEWJi
+         p1523+QUXkHTxoipUWvqL6zIyx6rOugpJcVy4ZPnsRQp3L+XNG+q79q0oX62zlgEm/fe
+         puLFeM3m2BcSgqsiMIm9Q6+D9RMUxqrjRCMsk8SsmSAGkp0m92Qq7JZAHKbfgtWUov57
+         eJRxdHaZwJP9rt2XQnfTZTi37eWBx3j9FR38yZ4RT2rtJVq3LiNMdvIbI5UNxUKRL1J3
+         DF2g==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:sender:subject:from:to:date:message-id
-         :in-reply-to:references:user-agent:mime-version
-         :content-transfer-encoding;
-        bh=us2bHDK3g3XF93RdX+LkN+iJspgd41HpAdODfkus8ZQ=;
-        b=UBcdm/vnl3D9gvtmbmvZYPfv8+3/Ao/bdFmgBTpegSTaxzCREhGDLG2lCQA0Vc8wf6
-         AYK0odv5YkZA8UG8MLCI3JxMCrgcDye5C7S0gD584D5vcYFh8j64aV5fA1fr+/CLUtFS
-         vsg/vHjfyRfkJB8sIXlv/v+GzUYq13x9Isv6/bhP2/cLJPt27HYHuclRWM/pAg5IPQ8W
-         FK6OioVZdNfVdGmlVAoXxkhqcLDbu6UxA78VcNq2xZ/bsVqX8kewInABWgDw1eZmSfWl
-         UhP0gLNQ0pu6ftILpGV2uGE2XXHZS+QbXbap47CtNz+2UwUpnvcrCxQlVOiOTuJiyTOZ
-         t/Uw==
-X-Gm-Message-State: AJcUukdpEuI5P0J8tCCZyJb9oVfbG7cYtOICRWYFzCgbifDmgWR6xiIR
-        blKLPRlYxec2jYL8f8VVUnZSMRTL
-X-Google-Smtp-Source: ALg8bN6xmt16h3nFLQCQauOaxd7Wsh5+/aD2ZjJwF5bmmv5DI4tM1zUDVkAkvu/UTkUhOO8nh7d1ng==
-X-Received: by 2002:a62:da5a:: with SMTP id w26mr12697860pfl.106.1548454306251;
-        Fri, 25 Jan 2019 14:11:46 -0800 (PST)
-Received: from seurat.1015granger.net ([148.87.23.44])
-        by smtp.gmail.com with ESMTPSA id m3sm54276395pff.173.2019.01.25.14.11.45
-        for <linux-nfs@vger.kernel.org>
-        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Fri, 25 Jan 2019 14:11:45 -0800 (PST)
-Subject: [PATCH RFC 5/5] NFS: Add trace events to report non-zero NFS status
- codes
-From:   Chuck Lever <chuck.lever@oracle.com>
-To:     linux-nfs@vger.kernel.org
-Date:   Fri, 25 Jan 2019 17:11:25 -0500
-Message-ID: <154845426495.70638.4642038290001399722.stgit@seurat.1015granger.net>
-In-Reply-To: <154845390550.70638.13083502621745566898.stgit@seurat.1015granger.net>
-References: <154845390550.70638.13083502621745566898.stgit@seurat.1015granger.net>
-User-Agent: StGit/unknown-version
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=gALillPbNkPldw2oG2g+16C930PT+GUt9ZlGR5t0fAU=;
+        b=FhJw/AtGmnKuxEd4rg0b68EeNhKarLM7AcUwPAKVwnaYN3j4bZcpoT9K5GcosbCmje
+         qnMEmIjBn9D7YVC46EQJrYFkVBrok2OaPM8WTfMHovYsD5S86P7qblXCnPBLQJnmzrGl
+         0+QHFFhtSFkaFcgrKKfcMK8RM7tT2ZOlq6Y04jV2OBSp25ty7aevuVMU5/koO+gfJY7j
+         XC0Ed50Arf+TJNYqVnxvnQF8/LpPao7FWBYr19RagmjHhn3IlJbQCA1MwmDDC7A9jRQs
+         TWThAQ+7olugdl2W9DsHccptLx0CShswdiuvjuiRHa5IYbCJ66IINhfJy22YtHGA/fiY
+         4B9Q==
+X-Gm-Message-State: AHQUAuZqZ6nQ4RmYgE7g2DrL0mnQx+OqNz1ofcfh6ktTIOndnYWGjQE4
+        Qq0rMuL/A5+C4YooDUhdOABONtPYQ+ey9tHIJpY=
+X-Google-Smtp-Source: AHgI3Ialgus3cNN+SX9jJuYJovikKWac6CRIycMDOG+9j27wX78LAhyqnFgNtQV3ykfxY0kPt+DojN+O/+d5paPWPi8=
+X-Received: by 2002:aca:100b:: with SMTP id 11mr491566oiq.303.1548491979381;
+ Sat, 26 Jan 2019 00:39:39 -0800 (PST)
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
+References: <CAOiN93mX240ijc8mcX1OSKrQaP12At9t5c9cE3-T0gEuLC9RkA@mail.gmail.com>
+ <878t0uuzxv.fsf@notabene.neil.brown.name> <CAOiN93=bh8WrCD8gZ+En4EfzTv2iHMn5n4w5=rYJOr6RbUkCKQ@mail.gmail.com>
+ <20190110203320.GE15492@fieldses.org>
+In-Reply-To: <20190110203320.GE15492@fieldses.org>
+From:   Ashish Sangwan <ashishsangwan2@gmail.com>
+Date:   Sat, 26 Jan 2019 14:09:28 +0530
+Message-ID: <CAOiN93npkvux_xfJsAs1jc7HeEnNU=1up+6UzHrCNJcY5YteDw@mail.gmail.com>
+Subject: Re: Handling of duplicate inode numbers for the directories in the
+ nfs v3 kernel client
+To:     "J. Bruce Fields" <bfields@fieldses.org>
+Cc:     neilb@suse.com, linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-These can help field troubleshooting without needing the overhead
-of a full network capture (ie, tcpdump).
+On Fri, Jan 11, 2019 at 2:03 AM J. Bruce Fields <bfields@fieldses.org> wrote:
+>
+> On Thu, Dec 13, 2018 at 09:17:31AM +0530, Ashish Sangwan wrote:
+> > Thanks for the clarification!
+> >
+> > On Thu, 13 Dec 2018, 4:15 am NeilBrown <neilb@suse.com wrote:
+> > >
+> > > On Thu, Dec 13 2018, Ashish Sangwan wrote:
+> > >
+> > > > Hi,
+> > > >
+> > > > Our NFS filer can sometimes return same inode number for different directories.
+> > >
+> > > Why?
+> > The NFS fileserver is handling file systems over different nodes at
+> > the same time.
+> > To the client however, we want to present with a single pseudo fsid
+> > (sent as part of the getattr) so that submounts can be avoided.
+>
+> Out of curiosity, why do you want to avoid submounts?
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
- fs/nfs/nfs2xdr.c   |    7 ++++
- fs/nfs/nfs3xdr.c   |    7 ++++
- fs/nfs/nfs4trace.h |   25 +++++++++++++++
- fs/nfs/nfs4xdr.c   |   12 +++++--
- fs/nfs/nfstrace.c  |    1 +
- fs/nfs/nfstrace.h  |   85 ++++++++++++++++++++++++++++++++++++++++++++++++++++
- 6 files changed, 133 insertions(+), 4 deletions(-)
-
-diff --git a/fs/nfs/nfs2xdr.c b/fs/nfs/nfs2xdr.c
-index 76614311f957..bac3a4e2cb5d 100644
---- a/fs/nfs/nfs2xdr.c
-+++ b/fs/nfs/nfs2xdr.c
-@@ -22,6 +22,7 @@
- #include <linux/nfs.h>
- #include <linux/nfs2.h>
- #include <linux/nfs_fs.h>
-+#include "nfstrace.h"
- #include "internal.h"
- 
- #define NFSDBG_FACILITY		NFSDBG_XDR
-@@ -145,7 +146,13 @@ static int decode_stat(struct xdr_stream *xdr, enum nfs_stat *status)
- 	p = xdr_inline_decode(xdr, 4);
- 	if (unlikely(!p))
- 		return -EIO;
-+	if (unlikely(*p != cpu_to_be32(NFS_OK)))
-+		goto out_status;
-+	*status = 0;
-+	return 0;
-+out_status:
- 	*status = be32_to_cpup(p);
-+	trace_nfs_xdr_status((int)*status);
- 	return 0;
- }
- 
-diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
-index e5619803a4f6..4aa3ffe1800e 100644
---- a/fs/nfs/nfs3xdr.c
-+++ b/fs/nfs/nfs3xdr.c
-@@ -21,6 +21,7 @@
- #include <linux/nfs3.h>
- #include <linux/nfs_fs.h>
- #include <linux/nfsacl.h>
-+#include "nfstrace.h"
- #include "internal.h"
- 
- #define NFSDBG_FACILITY		NFSDBG_XDR
-@@ -337,7 +338,13 @@ static int decode_nfsstat3(struct xdr_stream *xdr, enum nfs_stat *status)
- 	p = xdr_inline_decode(xdr, 4);
- 	if (unlikely(!p))
- 		return -EIO;
-+	if (unlikely(*p != cpu_to_be32(NFS3_OK)))
-+		goto out_status;
-+	*status = 0;
-+	return 0;
-+out_status:
- 	*status = be32_to_cpup(p);
-+	trace_nfs_xdr_status((int)*status);
- 	return 0;
- }
- 
-diff --git a/fs/nfs/nfs4trace.h b/fs/nfs/nfs4trace.h
-index b4557cf685fb..cd1a5c08da9a 100644
---- a/fs/nfs/nfs4trace.h
-+++ b/fs/nfs/nfs4trace.h
-@@ -524,6 +524,31 @@ TRACE_EVENT(nfs4_setup_sequence,
- 		)
- );
- 
-+TRACE_EVENT(nfs4_xdr_status,
-+		TP_PROTO(
-+			u32 op,
-+			int error
-+		),
-+
-+		TP_ARGS(op, error),
-+
-+		TP_STRUCT__entry(
-+			__field(u32, op)
-+			__field(int, error)
-+		),
-+
-+		TP_fast_assign(
-+			__entry->op = op;
-+			__entry->error = -error;
-+		),
-+
-+		TP_printk(
-+			"operation %d: nfs status %d (%s)",
-+			__entry->op,
-+			__entry->error, show_nfsv4_errors(__entry->error)
-+		)
-+);
-+
- DECLARE_EVENT_CLASS(nfs4_open_event,
- 		TP_PROTO(
- 			const struct nfs_open_context *ctx,
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 24e6a45a5726..38a4cbc18657 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -54,6 +54,7 @@
- #include <linux/nfs_fs.h>
- 
- #include "nfs4_fs.h"
-+#include "nfs4trace.h"
- #include "internal.h"
- #include "nfs4idmap.h"
- #include "nfs4session.h"
-@@ -3188,11 +3189,14 @@ static bool __decode_op_hdr(struct xdr_stream *xdr, enum nfs_opnum4 expected,
- 	opnum = be32_to_cpup(p++);
- 	if (unlikely(opnum != expected))
- 		goto out_bad_operation;
-+	if (unlikely(*p != cpu_to_be32(NFS_OK)))
-+		goto out_status;
-+	*nfs_retval = 0;
-+	return true;
-+out_status:
- 	nfserr = be32_to_cpup(p);
--	if (nfserr == NFS_OK)
--		*nfs_retval = 0;
--	else
--		*nfs_retval = nfs4_stat_to_errno(nfserr);
-+	trace_nfs4_xdr_status(opnum, nfserr);
-+	*nfs_retval = nfs4_stat_to_errno(nfserr);
- 	return true;
- out_bad_operation:
- 	dprintk("nfs: Server returned operation"
-diff --git a/fs/nfs/nfstrace.c b/fs/nfs/nfstrace.c
-index b60d5fbd7727..a90b363500c2 100644
---- a/fs/nfs/nfstrace.c
-+++ b/fs/nfs/nfstrace.c
-@@ -11,3 +11,4 @@
- 
- EXPORT_TRACEPOINT_SYMBOL_GPL(nfs_fsync_enter);
- EXPORT_TRACEPOINT_SYMBOL_GPL(nfs_fsync_exit);
-+EXPORT_TRACEPOINT_SYMBOL_GPL(nfs_xdr_status);
-diff --git a/fs/nfs/nfstrace.h b/fs/nfs/nfstrace.h
-index bd60f8d1e181..a0d6910aa03a 100644
---- a/fs/nfs/nfstrace.h
-+++ b/fs/nfs/nfstrace.h
-@@ -969,6 +969,91 @@ TRACE_EVENT(nfs_commit_done,
- 		)
- );
- 
-+TRACE_DEFINE_ENUM(NFS_OK);
-+TRACE_DEFINE_ENUM(NFSERR_PERM);
-+TRACE_DEFINE_ENUM(NFSERR_NOENT);
-+TRACE_DEFINE_ENUM(NFSERR_IO);
-+TRACE_DEFINE_ENUM(NFSERR_NXIO);
-+TRACE_DEFINE_ENUM(NFSERR_ACCES);
-+TRACE_DEFINE_ENUM(NFSERR_EXIST);
-+TRACE_DEFINE_ENUM(NFSERR_XDEV);
-+TRACE_DEFINE_ENUM(NFSERR_NODEV);
-+TRACE_DEFINE_ENUM(NFSERR_NOTDIR);
-+TRACE_DEFINE_ENUM(NFSERR_ISDIR);
-+TRACE_DEFINE_ENUM(NFSERR_INVAL);
-+TRACE_DEFINE_ENUM(NFSERR_FBIG);
-+TRACE_DEFINE_ENUM(NFSERR_NOSPC);
-+TRACE_DEFINE_ENUM(NFSERR_ROFS);
-+TRACE_DEFINE_ENUM(NFSERR_MLINK);
-+TRACE_DEFINE_ENUM(NFSERR_NAMETOOLONG);
-+TRACE_DEFINE_ENUM(NFSERR_NOTEMPTY);
-+TRACE_DEFINE_ENUM(NFSERR_DQUOT);
-+TRACE_DEFINE_ENUM(NFSERR_STALE);
-+TRACE_DEFINE_ENUM(NFSERR_REMOTE);
-+TRACE_DEFINE_ENUM(NFSERR_WFLUSH);
-+TRACE_DEFINE_ENUM(NFSERR_BADHANDLE);
-+TRACE_DEFINE_ENUM(NFSERR_NOT_SYNC);
-+TRACE_DEFINE_ENUM(NFSERR_BAD_COOKIE);
-+TRACE_DEFINE_ENUM(NFSERR_NOTSUPP);
-+TRACE_DEFINE_ENUM(NFSERR_TOOSMALL);
-+TRACE_DEFINE_ENUM(NFSERR_SERVERFAULT);
-+TRACE_DEFINE_ENUM(NFSERR_BADTYPE);
-+TRACE_DEFINE_ENUM(NFSERR_JUKEBOX);
-+
-+#define nfs_show_status(x) \
-+	__print_symbolic(x, \
-+			{ NFS_OK, "OK" }, \
-+			{ NFSERR_PERM, "PERM" }, \
-+			{ NFSERR_NOENT, "NOENT" }, \
-+			{ NFSERR_IO, "IO" }, \
-+			{ NFSERR_NXIO, "NXIO" }, \
-+			{ NFSERR_ACCES, "ACCES" }, \
-+			{ NFSERR_EXIST, "EXIST" }, \
-+			{ NFSERR_XDEV, "XDEV" }, \
-+			{ NFSERR_NODEV, "NODEV" }, \
-+			{ NFSERR_NOTDIR, "NOTDIR" }, \
-+			{ NFSERR_ISDIR, "ISDIR" }, \
-+			{ NFSERR_INVAL, "INVAL" }, \
-+			{ NFSERR_FBIG, "FBIG" }, \
-+			{ NFSERR_NOSPC, "NOSPC" }, \
-+			{ NFSERR_ROFS, "ROFS" }, \
-+			{ NFSERR_MLINK, "MLINK" }, \
-+			{ NFSERR_NAMETOOLONG, "NAMETOOLONG" }, \
-+			{ NFSERR_NOTEMPTY, "NOTEMPTY" }, \
-+			{ NFSERR_DQUOT, "DQUOT" }, \
-+			{ NFSERR_STALE, "STALE" }, \
-+			{ NFSERR_REMOTE, "REMOTE" }, \
-+			{ NFSERR_WFLUSH, "WFLUSH" }, \
-+			{ NFSERR_BADHANDLE, "BADHANDLE" }, \
-+			{ NFSERR_NOT_SYNC, "NOTSYNC" }, \
-+			{ NFSERR_BAD_COOKIE, "BADCOOKIE" }, \
-+			{ NFSERR_NOTSUPP, "NOTSUPP" }, \
-+			{ NFSERR_TOOSMALL, "TOOSMALL" }, \
-+			{ NFSERR_SERVERFAULT, "REMOTEIO" }, \
-+			{ NFSERR_BADTYPE, "BADTYPE" }, \
-+			{ NFSERR_JUKEBOX, "JUKEBOX" })
-+
-+TRACE_EVENT(nfs_xdr_status,
-+		TP_PROTO(
-+			int error
-+		),
-+
-+		TP_ARGS(error),
-+
-+		TP_STRUCT__entry(
-+			__field(int, error)
-+		),
-+
-+		TP_fast_assign(
-+			__entry->error = error;
-+		),
-+
-+		TP_printk(
-+			"error=%d (%s)",
-+			__entry->error, nfs_show_status(__entry->error)
-+		)
-+);
-+
- #endif /* _TRACE_NFS_H */
- 
- #undef TRACE_INCLUDE_PATH
-
+Apologies for late reply. Didn't notice I have a new mail for this thread.
+Some of the user space utils doesn't work well on mount points.
+For example, "rm -rf" on the mount point doesn't work. (unlink fails with EBUSY)
+GNU coreutils "mv" also doesn't work (rename fails with EBUSY)
+(all-though even if sub-mounts are avoided, we give back EXDEV as part
+of rename but that is internally handled by mv which performs
+write/unlink in that case)
+Every time user have to perform such operations, we have to tell them
+to explicitly perform a umount first.
+>
+> --b.
