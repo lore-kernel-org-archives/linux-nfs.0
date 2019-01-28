@@ -6,48 +6,50 @@ X-Spam-Status: No, score=-9.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
 	SPF_PASS,USER_AGENT_GIT autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1F46EC282CF
-	for <linux-nfs@archiver.kernel.org>; Mon, 28 Jan 2019 17:02:32 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3BB5AC4151A
+	for <linux-nfs@archiver.kernel.org>; Mon, 28 Jan 2019 17:11:25 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id DA6DC21741
-	for <linux-nfs@archiver.kernel.org>; Mon, 28 Jan 2019 17:02:31 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 01204217F5
+	for <linux-nfs@archiver.kernel.org>; Mon, 28 Jan 2019 17:11:24 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1548694952;
-	bh=4XSvo/1exxtw/Vykv7ljN8jvyJpyeLsXHEWoBA5LyBs=;
+	s=default; t=1548695485;
+	bh=fMY4GZNKsagDYDKlCbu25KvJ/aQt/jgMGzkEgozac28=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=nSnM8xHnC6jLjzO5tjVqcOafnaDpB/qdKYQEtXIgG8HV9w4Z5PkmXbVg4Y+z768my
-	 C+jdUlCLtBR4Y74A4G6MjRC/JcgFdCUsg5xuwBSjrtjr1yMMqoEgmLJhqAaCTOdUrT
-	 eyFHwLHvND+5uxNgE1sfmffNS2PPTc/abHRPv6PU=
+	b=t2cFQEovz+MwHHlVzUktkO3vE+3r/555y0WM2Rq2iFeLBb82oowLphpQPmW2llh47
+	 O06lCG7KLEL41bblx/bMpMf5BDguvII4Rx3Hd7GZStffOHcG/asXWTEGqJPA2f211W
+	 k8l1olgqqsLIHpxhFoSQouo1Ym545tVYcLYUFNyU=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1732874AbfA1QOM (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 28 Jan 2019 11:14:12 -0500
-Received: from mail.kernel.org ([198.145.29.99]:43332 "EHLO mail.kernel.org"
+        id S1732159AbfA1RLM (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 28 Jan 2019 12:11:12 -0500
+Received: from mail.kernel.org ([198.145.29.99]:35096 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1732851AbfA1QOK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 28 Jan 2019 11:14:10 -0500
+        id S1731968AbfA1QJv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 28 Jan 2019 11:09:51 -0500
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 459D02086C;
-        Mon, 28 Jan 2019 16:14:09 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id B05C62171F;
+        Mon, 28 Jan 2019 16:09:49 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1548692050;
-        bh=4XSvo/1exxtw/Vykv7ljN8jvyJpyeLsXHEWoBA5LyBs=;
+        s=default; t=1548691791;
+        bh=fMY4GZNKsagDYDKlCbu25KvJ/aQt/jgMGzkEgozac28=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=teZuAvdxKXV0ZsG8JCicGUXKLhvR3RTUJtx8nB69sG1+suBh0s7yKd0T4P6/pTp1y
-         RVMDyiPSIySFGqeIweylR54OxOSAOcexnqHKTxepbhrOtjW3XsvBmtSyUlqAYDZHmB
-         ovqhI5k6Ok66zmLfznljmoKxGO4M/uZqOJVAf098=
+        b=u2i+SRxyn+jg5mUuoUDaoF02jqu5TxmR1XUH8PiYQQg0yQF8H4Pdwv4HGJ5rfh+R3
+         SbKHpOaVDWTBZM+vO0a+1nuAIoJtisKP0c8thRUQ7bCOm52pfZZwfuViXvOzsWqE2j
+         7iqmTQDH0QKYx5n3jJ1Das/uWwIXCT36Teiqvoog=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     "J. Bruce Fields" <bfields@redhat.com>,
+Cc:     Chris Perl <cperl@janestreet.com>,
+        Anna Schumaker <Anna.Schumaker@Netapp.com>,
         Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org
-Subject: [PATCH AUTOSEL 4.14 053/170] nfsd4: fix crash on writing v4_end_grace before nfsd startup
-Date:   Mon, 28 Jan 2019 11:10:03 -0500
-Message-Id: <20190128161200.55107-53-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 4.19 218/258] NFS: nfs_compare_mount_options always compare auth flavors.
+Date:   Mon, 28 Jan 2019 10:58:44 -0500
+Message-Id: <20190128155924.51521-218-sashal@kernel.org>
 X-Mailer: git-send-email 2.19.1
-In-Reply-To: <20190128161200.55107-1-sashal@kernel.org>
-References: <20190128161200.55107-1-sashal@kernel.org>
+In-Reply-To: <20190128155924.51521-1-sashal@kernel.org>
+References: <20190128155924.51521-1-sashal@kernel.org>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 X-Patchwork-Hint: Ignore
 Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
@@ -55,40 +57,52 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+From: Chris Perl <cperl@janestreet.com>
 
-[ Upstream commit 62a063b8e7d1db684db3f207261a466fa3194e72 ]
+[ Upstream commit 594d1644cd59447f4fceb592448d5cd09eb09b5e ]
 
-Anatoly Trosinenko reports that this:
+This patch removes the check from nfs_compare_mount_options to see if a
+`sec' option was passed for the current mount before comparing auth
+flavors and instead just always compares auth flavors.
 
-1) Checkout fresh master Linux branch (tested with commit e195ca6cb)
-2) Copy x84_64-config-4.14 to .config, then enable NFS server v4 and build
-3) From `kvm-xfstests shell`:
+Consider the following scenario:
 
-results in NULL dereference in locks_end_grace.
+You have a server with the address 192.168.1.1 and two exports /export/a
+and /export/b.  The first export supports `sys' and `krb5' security, the
+second just `sys'.
 
-Check that nfsd has been started before trying to end the grace period.
+Assume you start with no mounts from the server.
 
-Reported-by: Anatoly Trosinenko <anatoly.trosinenko@gmail.com>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+The following results in EIOs being returned as the kernel nfs client
+incorrectly thinks it can share the underlying `struct nfs_server's:
+
+$ mkdir /tmp/{a,b}
+$ sudo mount -t nfs -o vers=3,sec=krb5 192.168.1.1:/export/a /tmp/a
+$ sudo mount -t nfs -o vers=3          192.168.1.1:/export/b /tmp/b
+$ df >/dev/null
+df: ‘/tmp/b’: Input/output error
+
+Signed-off-by: Chris Perl <cperl@janestreet.com>
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- fs/nfsd/nfsctl.c | 2 ++
- 1 file changed, 2 insertions(+)
+ fs/nfs/super.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
 
-diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index 6493df6b1bd5..4b8ebcc6b183 100644
---- a/fs/nfsd/nfsctl.c
-+++ b/fs/nfsd/nfsctl.c
-@@ -1126,6 +1126,8 @@ static ssize_t write_v4_end_grace(struct file *file, char *buf, size_t size)
- 		case 'Y':
- 		case 'y':
- 		case '1':
-+			if (nn->nfsd_serv)
-+				return -EBUSY;
- 			nfsd4_end_grace(nn);
- 			break;
- 		default:
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index ac4b2f005778..5ef2c71348bd 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -2409,8 +2409,7 @@ static int nfs_compare_mount_options(const struct super_block *s, const struct n
+ 		goto Ebusy;
+ 	if (a->acdirmax != b->acdirmax)
+ 		goto Ebusy;
+-	if (b->auth_info.flavor_len > 0 &&
+-	   clnt_a->cl_auth->au_flavor != clnt_b->cl_auth->au_flavor)
++	if (clnt_a->cl_auth->au_flavor != clnt_b->cl_auth->au_flavor)
+ 		goto Ebusy;
+ 	return 1;
+ Ebusy:
 -- 
 2.19.1
 
