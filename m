@@ -2,94 +2,82 @@ Return-Path: <SRS0=/R4e=QG=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-1.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
+	SPF_PASS,UNPARSEABLE_RELAY autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4EC15C282D7
-	for <linux-nfs@archiver.kernel.org>; Wed, 30 Jan 2019 19:05:31 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 39DFEC282D7
+	for <linux-nfs@archiver.kernel.org>; Wed, 30 Jan 2019 20:15:45 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 230EE2087F
-	for <linux-nfs@archiver.kernel.org>; Wed, 30 Jan 2019 19:05:31 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id EEC942184D
+	for <linux-nfs@archiver.kernel.org>; Wed, 30 Jan 2019 20:15:44 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="FGR2D4TB"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1733291AbfA3TFa (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 30 Jan 2019 14:05:30 -0500
-Received: from mx1.redhat.com ([209.132.183.28]:33060 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727760AbfA3TF3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 30 Jan 2019 14:05:29 -0500
-Received: from smtp.corp.redhat.com (int-mx07.intmail.prod.int.phx2.redhat.com [10.5.11.22])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id C72493D966
-        for <linux-nfs@vger.kernel.org>; Wed, 30 Jan 2019 19:05:29 +0000 (UTC)
-Received: from steved.boston.devel.redhat.com (ovpn-116-222.phx2.redhat.com [10.3.116.222])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 8B5FE10021B2
-        for <linux-nfs@vger.kernel.org>; Wed, 30 Jan 2019 19:05:29 +0000 (UTC)
-Subject: Re: [PATCH] nfs-utils: Removed new error=format-overflow=2 errors
-To:     Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-References: <20190129203459.38815-1-steved@redhat.com>
-From:   Steve Dickson <SteveD@RedHat.com>
-Message-ID: <35c2d012-e8c0-2476-f706-65307397212f@RedHat.com>
-Date:   Wed, 30 Jan 2019 14:05:28 -0500
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101
- Thunderbird/60.4.0
-MIME-Version: 1.0
-In-Reply-To: <20190129203459.38815-1-steved@redhat.com>
-Content-Type: text/plain; charset=utf-8
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
-X-Scanned-By: MIMEDefang 2.84 on 10.5.11.22
-X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.30]); Wed, 30 Jan 2019 19:05:29 +0000 (UTC)
+        id S1730902AbfA3UPo (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 30 Jan 2019 15:15:44 -0500
+Received: from userp2130.oracle.com ([156.151.31.86]:34558 "EHLO
+        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1728446AbfA3UPo (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Jan 2019 15:15:44 -0500
+Received: from pps.filterd (userp2130.oracle.com [127.0.0.1])
+        by userp2130.oracle.com (8.16.0.22/8.16.0.22) with SMTP id x0UK8vD1193745;
+        Wed, 30 Jan 2019 20:15:41 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=from : content-type :
+ content-transfer-encoding : mime-version : subject : message-id : date :
+ cc : to; s=corp-2018-07-02;
+ bh=YsZhINC0ZKq2F0UZWN2ad3TGQAe5+NcM+JdHdeT+2mk=;
+ b=FGR2D4TBk1p1CKFBX2WIrc/PBugDLH6n9xOY2Atecv5J4HF3vhfh8/O/hUZqgqzxklJa
+ TLBZL8cyccOUqZLgA02ECuJRsYUvypK6beERyd5a/SHvXrzp1MSAdf59MhzRgEAUSHRS
+ cfeURrtCMqilSoMUYMYiqZDilJXwlBzPdVrbPf/AZ7//7LrScS94d6dlBPxekh3n0Hq/
+ UvEMpmZb4bIQyeyamPJJvDb7CxlFOsqP9C+WU4orA/PbW6LheiQaZT0G/SL5MRDJYpOL
+ ThrhmI0XcZHVLQVbmDw682GhuydkpmeL2FweXRjju8NMJdnY4wxcg2IewYTurmuwxYjl Ug== 
+Received: from userv0021.oracle.com (userv0021.oracle.com [156.151.31.71])
+        by userp2130.oracle.com with ESMTP id 2q8eyumtd0-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Wed, 30 Jan 2019 20:15:41 +0000
+Received: from aserv0121.oracle.com (aserv0121.oracle.com [141.146.126.235])
+        by userv0021.oracle.com (8.14.4/8.14.4) with ESMTP id x0UKFegV002487
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Wed, 30 Jan 2019 20:15:41 GMT
+Received: from abhmp0010.oracle.com (abhmp0010.oracle.com [141.146.116.16])
+        by aserv0121.oracle.com (8.14.4/8.13.8) with ESMTP id x0UKFd9U014285;
+        Wed, 30 Jan 2019 20:15:40 GMT
+Received: from anon-dhcp-171.1015granger.net (/68.61.232.219)
+        by default (Oracle Beehive Gateway v4.0)
+        with ESMTP ; Wed, 30 Jan 2019 12:15:39 -0800
+From:   Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain;
+        charset=us-ascii
+Content-Transfer-Encoding: quoted-printable
+Mime-Version: 1.0 (Mac OS X Mail 12.2 \(3445.102.3\))
+Subject: Windows server IOPS benchmark result
+Message-Id: <8C05243F-E8A9-417A-8677-43F0DB630C25@oracle.com>
+Date:   Wed, 30 Jan 2019 15:15:38 -0500
+Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+To:     Trond Myklebust <trondmy@hammerspace.com>
+X-Mailer: Apple Mail (2.3445.102.3)
+X-Proofpoint-Virus-Version: vendor=nai engine=5900 definitions=9152 signatures=668682
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 priorityscore=1501 malwarescore=0
+ suspectscore=0 phishscore=0 bulkscore=0 spamscore=0 clxscore=1011
+ lowpriorityscore=0 mlxscore=0 impostorscore=0 mlxlogscore=754 adultscore=0
+ classifier=spam adjust=0 reason=mlx scancount=1 engine=8.0.1-1810050000
+ definitions=main-1901300151
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
+Hi Trond, this is what I mentioned to you yesterday.
+
+=
+https://blogs.technet.microsoft.com/filecab/2018/10/30/windows-server-2019=
+-and-intel-optane-dc-persistent-memory/
+
+I thought others on the list might also be interested.
+
+--
+Chuck Lever
 
 
-On 1/29/19 3:34 PM, Steve Dickson wrote:
-> With the latest C99-compliant gcc printf, sprintf, etc
-> now only support up to 4k in buffer sizes. There were
-> only a couple places that had to change to not
-> violated this new restriction
-> 
-> Signed-off-by: Steve Dickson <steved@redhat.com>
-Committed.... 
 
-steved.
-
-> ---
->  utils/blkmapd/device-discovery.c | 2 +-
->  utils/mount/error.c              | 4 ++--
->  2 files changed, 3 insertions(+), 3 deletions(-)
-> 
-> diff --git a/utils/blkmapd/device-discovery.c b/utils/blkmapd/device-discovery.c
-> index 3a202e0..2ce60f8 100644
-> --- a/utils/blkmapd/device-discovery.c
-> +++ b/utils/blkmapd/device-discovery.c
-> @@ -239,7 +239,7 @@ int bl_discover_devices(void)
->  {
->  	FILE *f;
->  	int n;
-> -	char buf[PATH_MAX], devname[PATH_MAX], fulldevname[PATH_MAX+NAME_MAX];
-> +	char buf[PATH_MAX], devname[NAME_MAX], fulldevname[PATH_MAX];
->  
->  	/* release previous list */
->  	bl_release_disk();
-> diff --git a/utils/mount/error.c b/utils/mount/error.c
-> index dfe5c7d..562f312 100644
-> --- a/utils/mount/error.c
-> +++ b/utils/mount/error.c
-> @@ -50,8 +50,8 @@
->  
->  extern char *progname;
->  
-> -static char errbuf[BUFSIZ];
-> -static char *erreob = &errbuf[BUFSIZ];
-> +static char errbuf[PATH_MAX];
-> +static char *erreob = &errbuf[PATH_MAX];
->  
->  /* Convert RPC errors into strings */
->  static int rpc_strerror(int spos)
-> 
