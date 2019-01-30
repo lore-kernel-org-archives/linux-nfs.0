@@ -3,77 +3,93 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
 X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED
-	autolearn=ham autolearn_force=no version=3.4.0
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E501EC282D7
-	for <linux-nfs@archiver.kernel.org>; Wed, 30 Jan 2019 13:58:50 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4EC15C282D7
+	for <linux-nfs@archiver.kernel.org>; Wed, 30 Jan 2019 19:05:31 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id BAE552184D
-	for <linux-nfs@archiver.kernel.org>; Wed, 30 Jan 2019 13:58:50 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 230EE2087F
+	for <linux-nfs@archiver.kernel.org>; Wed, 30 Jan 2019 19:05:31 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727740AbfA3N6u (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 30 Jan 2019 08:58:50 -0500
-Received: from out03.mta.xmission.com ([166.70.13.233]:53361 "EHLO
-        out03.mta.xmission.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727149AbfA3N6t (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Jan 2019 08:58:49 -0500
-Received: from in01.mta.xmission.com ([166.70.13.51])
-        by out03.mta.xmission.com with esmtps (TLS1.2:ECDHE_RSA_AES_128_GCM_SHA256:128)
-        (Exim 4.87)
-        (envelope-from <ebiederm@xmission.com>)
-        id 1goqO7-0007hG-Cg; Wed, 30 Jan 2019 06:58:47 -0700
-Received: from ip68-227-174-240.om.om.cox.net ([68.227.174.240] helo=x220.xmission.com)
-        by in01.mta.xmission.com with esmtpsa (TLS1.2:ECDHE_RSA_AES_128_GCM_SHA256:128)
-        (Exim 4.87)
-        (envelope-from <ebiederm@xmission.com>)
-        id 1goqO6-00056S-HH; Wed, 30 Jan 2019 06:58:47 -0700
-From:   ebiederm@xmission.com (Eric W. Biederman)
-To:     Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>
-Cc:     linux-nfs@vger.kernel.org, <linux-fsdevel@vger.kernel.org>
-Date:   Wed, 30 Jan 2019 07:58:38 -0600
-Message-ID: <87fttap7qp.fsf@xmission.com>
-User-Agent: Gnus/5.13 (Gnus v5.13) Emacs/25.1 (gnu/linux)
+        id S1733291AbfA3TFa (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 30 Jan 2019 14:05:30 -0500
+Received: from mx1.redhat.com ([209.132.183.28]:33060 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1727760AbfA3TF3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 30 Jan 2019 14:05:29 -0500
+Received: from smtp.corp.redhat.com (int-mx07.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id C72493D966
+        for <linux-nfs@vger.kernel.org>; Wed, 30 Jan 2019 19:05:29 +0000 (UTC)
+Received: from steved.boston.devel.redhat.com (ovpn-116-222.phx2.redhat.com [10.3.116.222])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 8B5FE10021B2
+        for <linux-nfs@vger.kernel.org>; Wed, 30 Jan 2019 19:05:29 +0000 (UTC)
+Subject: Re: [PATCH] nfs-utils: Removed new error=format-overflow=2 errors
+To:     Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+References: <20190129203459.38815-1-steved@redhat.com>
+From:   Steve Dickson <SteveD@RedHat.com>
+Message-ID: <35c2d012-e8c0-2476-f706-65307397212f@RedHat.com>
+Date:   Wed, 30 Jan 2019 14:05:28 -0500
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101
+ Thunderbird/60.4.0
 MIME-Version: 1.0
-Content-Type: text/plain
-X-XM-SPF: eid=1goqO6-00056S-HH;;;mid=<87fttap7qp.fsf@xmission.com>;;;hst=in01.mta.xmission.com;;;ip=68.227.174.240;;;frm=ebiederm@xmission.com;;;spf=neutral
-X-XM-AID: U2FsdGVkX18Sc9JFECJKf8fZBQjsW06p99ksyApBqUo=
-X-SA-Exim-Connect-IP: 68.227.174.240
-X-SA-Exim-Mail-From: ebiederm@xmission.com
-Subject: [PATCH] fs/nfs: Fix nfs_parse_devname to not modify it's argument
-X-SA-Exim-Version: 4.2.1 (built Thu, 05 May 2016 13:38:54 -0600)
-X-SA-Exim-Scanned: Yes (on in01.mta.xmission.com)
+In-Reply-To: <20190129203459.38815-1-steved@redhat.com>
+Content-Type: text/plain; charset=utf-8
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
+X-Scanned-By: MIMEDefang 2.84 on 10.5.11.22
+X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.30]); Wed, 30 Jan 2019 19:05:29 +0000 (UTC)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
 
-In the rare and unsupported case of a hostname list nfs_parse_devname
-will modify dev_name.  There is no need to modify dev_name as the all
-that is being computed is the length of the hostname, so the computed
-length can just be shorted.
 
-Fixes: dc04589827f7 ("NFS: Use common device name parsing logic for NFSv4 and NFSv2/v3")
-Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
----
- fs/nfs/super.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+On 1/29/19 3:34 PM, Steve Dickson wrote:
+> With the latest C99-compliant gcc printf, sprintf, etc
+> now only support up to 4k in buffer sizes. There were
+> only a couple places that had to change to not
+> violated this new restriction
+> 
+> Signed-off-by: Steve Dickson <steved@redhat.com>
+Committed.... 
 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 22ce3c8a2f46..35af005af748 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -1914,7 +1914,7 @@ static int nfs_parse_devname(const char *dev_name,
- 		/* kill possible hostname list: not supported */
- 		comma = strchr(dev_name, ',');
- 		if (comma != NULL && comma < end)
--			*comma = 0;
-+			len = comma - dev_name;
- 	}
- 
- 	if (len > maxnamlen)
--- 
-2.17.1
+steved.
 
+> ---
+>  utils/blkmapd/device-discovery.c | 2 +-
+>  utils/mount/error.c              | 4 ++--
+>  2 files changed, 3 insertions(+), 3 deletions(-)
+> 
+> diff --git a/utils/blkmapd/device-discovery.c b/utils/blkmapd/device-discovery.c
+> index 3a202e0..2ce60f8 100644
+> --- a/utils/blkmapd/device-discovery.c
+> +++ b/utils/blkmapd/device-discovery.c
+> @@ -239,7 +239,7 @@ int bl_discover_devices(void)
+>  {
+>  	FILE *f;
+>  	int n;
+> -	char buf[PATH_MAX], devname[PATH_MAX], fulldevname[PATH_MAX+NAME_MAX];
+> +	char buf[PATH_MAX], devname[NAME_MAX], fulldevname[PATH_MAX];
+>  
+>  	/* release previous list */
+>  	bl_release_disk();
+> diff --git a/utils/mount/error.c b/utils/mount/error.c
+> index dfe5c7d..562f312 100644
+> --- a/utils/mount/error.c
+> +++ b/utils/mount/error.c
+> @@ -50,8 +50,8 @@
+>  
+>  extern char *progname;
+>  
+> -static char errbuf[BUFSIZ];
+> -static char *erreob = &errbuf[BUFSIZ];
+> +static char errbuf[PATH_MAX];
+> +static char *erreob = &errbuf[PATH_MAX];
+>  
+>  /* Convert RPC errors into strings */
+>  static int rpc_strerror(int spos)
+> 
