@@ -2,136 +2,100 @@ Return-Path: <SRS0=SG1H=QH=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,UNPARSEABLE_RELAY,URIBL_BLOCKED
-	autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-11.0 required=3.0 tests=DKIMWL_WL_MED,DKIM_SIGNED,
+	DKIM_VALID,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PULL_REQUEST,
+	MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,SPF_PASS autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5A4BCC169C4
-	for <linux-nfs@archiver.kernel.org>; Thu, 31 Jan 2019 14:11:59 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id EF45DC169C4
+	for <linux-nfs@archiver.kernel.org>; Thu, 31 Jan 2019 18:12:28 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 309A420869
-	for <linux-nfs@archiver.kernel.org>; Thu, 31 Jan 2019 14:11:59 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id BE5F4218AF
+	for <linux-nfs@archiver.kernel.org>; Thu, 31 Jan 2019 18:12:28 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="5GcbCBFP"
+	dkim=pass (1024-bit key) header.d=netapp.onmicrosoft.com header.i=@netapp.onmicrosoft.com header.b="XqXSw9El"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727452AbfAaOLv (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 31 Jan 2019 09:11:51 -0500
-Received: from userp2130.oracle.com ([156.151.31.86]:40624 "EHLO
-        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726977AbfAaOLv (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 31 Jan 2019 09:11:51 -0500
-Received: from pps.filterd (userp2130.oracle.com [127.0.0.1])
-        by userp2130.oracle.com (8.16.0.22/8.16.0.22) with SMTP id x0VDwuPu014744;
-        Thu, 31 Jan 2019 14:11:30 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=content-type :
- mime-version : subject : from : in-reply-to : date : cc :
- content-transfer-encoding : message-id : references : to;
- s=corp-2018-07-02; bh=N5VR5x4CDRyax5gYEKWdfiG1SVVfqYpLpX5VzlWJST0=;
- b=5GcbCBFPGrHXiJ6Kn7Sk9G9JzKJ0mvqIHiX9wwFJ4oDQhdei7TdO+mDfcR+gS+CmFSU9
- +JA4FbfXFOCx1y6YaaUASbip8E2vCEbzHDIzSC1lvuo5ojKk/ig4bzhfCNTxEQEcWDNO
- RdGXPG8nGW6QUUuXs7AgSBKwNrvxVyQ52iW+QCYFucB44kTIij6TodfVI3hGwPVvc5or
- EnJ0RE/9l1936XecH8W7ksfpi+KXFf+7nb6cE78p+8q66tIdKs/unPQWQYzHLepSel5t
- s3uYb7rCpBbGTc+8CBAsvG9BpbMZ4/v7hGE91BWvsT6UpDinYMiXnAu+Eo92y0QoN4aX wg== 
-Received: from aserv0021.oracle.com (aserv0021.oracle.com [141.146.126.233])
-        by userp2130.oracle.com with ESMTP id 2q8eyurxf5-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Thu, 31 Jan 2019 14:11:30 +0000
-Received: from aserv0121.oracle.com (aserv0121.oracle.com [141.146.126.235])
-        by aserv0021.oracle.com (8.14.4/8.14.4) with ESMTP id x0VEBT6P002279
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Thu, 31 Jan 2019 14:11:29 GMT
-Received: from abhmp0020.oracle.com (abhmp0020.oracle.com [141.146.116.26])
-        by aserv0121.oracle.com (8.14.4/8.13.8) with ESMTP id x0VEBQ0U019026;
-        Thu, 31 Jan 2019 14:11:26 GMT
-Received: from anon-dhcp-171.1015granger.net (/68.61.232.219)
-        by default (Oracle Beehive Gateway v4.0)
-        with ESMTP ; Thu, 31 Jan 2019 06:11:26 -0800
-Content-Type: text/plain;
-        charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 12.2 \(3445.102.3\))
-Subject: Re: [PATCH net-next] xprtrdma: Use struct_size() in kzalloc()
-From:   Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20190131004622.GA30261@embeddedor>
-Date:   Thu, 31 Jan 2019 09:11:24 -0500
-Cc:     Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Bruce Fields <bfields@fieldses.org>,
-        Jeff Layton <jlayton@kernel.org>,
-        "David S. Miller" <davem@davemloft.net>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org
-Content-Transfer-Encoding: quoted-printable
-Message-Id: <07CB966E-A946-4956-8480-C0FC13E13E4E@oracle.com>
-References: <20190131004622.GA30261@embeddedor>
-To:     "Gustavo A. R. Silva" <gustavo@embeddedor.com>
-X-Mailer: Apple Mail (2.3445.102.3)
-X-Proofpoint-Virus-Version: vendor=nai engine=5900 definitions=9152 signatures=668682
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 priorityscore=1501 malwarescore=0
- suspectscore=0 phishscore=0 bulkscore=0 spamscore=0 clxscore=1011
- lowpriorityscore=0 mlxscore=0 impostorscore=0 mlxlogscore=999 adultscore=0
- classifier=spam adjust=0 reason=mlx scancount=1 engine=8.0.1-1810050000
- definitions=main-1901310110
+        id S1727237AbfAaSM1 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 31 Jan 2019 13:12:27 -0500
+Received: from mail-eopbgr750070.outbound.protection.outlook.com ([40.107.75.70]:12320
+        "EHLO NAM02-BL2-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1725730AbfAaSM1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 31 Jan 2019 13:12:27 -0500
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+ d=netapp.onmicrosoft.com; s=selector1-netapp-com;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=PEcrG3LVnnI+A2wTWLkilK4TnmdJ5Ru51g1wmUSFtYA=;
+ b=XqXSw9ElxN7ML6KoD2cOYRhtnaGZqRvgwwbee70/EzNeNN/pkTbE1gjm1bTAwNin4zDfqoTjyYlBWVIQq8rbzOS+hZqhIYF5iiPC+sNf617ltf7ZK24nV3fxLmMdXnCtIm/0CCa4JC79RSkqoUmGUw4NEpEIhQnlH4Ph2E6vxcE=
+Received: from BN8PR06MB6228.namprd06.prod.outlook.com (20.178.217.156) by
+ BN8PR06MB5746.namprd06.prod.outlook.com (20.179.137.27) with Microsoft SMTP
+ Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ 15.20.1558.18; Thu, 31 Jan 2019 18:12:24 +0000
+Received: from BN8PR06MB6228.namprd06.prod.outlook.com
+ ([fe80::f88b:ea19:e85a:ab8]) by BN8PR06MB6228.namprd06.prod.outlook.com
+ ([fe80::f88b:ea19:e85a:ab8%3]) with mapi id 15.20.1558.026; Thu, 31 Jan 2019
+ 18:12:24 +0000
+From:   "Schumaker, Anna" <Anna.Schumaker@netapp.com>
+To:     "torvalds@linux-foundation.org" <torvalds@linux-foundation.org>
+CC:     "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: [GIT PULL] Please pull NFS client bugfixes for 5.0-rc5
+Thread-Topic: [GIT PULL] Please pull NFS client bugfixes for 5.0-rc5
+Thread-Index: AQHUuZCEkru9OA1SZUuEXQsj7W1pSQ==
+Date:   Thu, 31 Jan 2019 18:12:24 +0000
+Message-ID: <c00eb546108828e6f73a2aeca5efd041f66593a1.camel@netapp.com>
+Accept-Language: en-US
+Content-Language: en-US
+X-MS-Has-Attach: 
+X-MS-TNEF-Correlator: 
+user-agent: Evolution 3.30.4 
+authentication-results: spf=none (sender IP is )
+ smtp.mailfrom=Anna.Schumaker@netapp.com; 
+x-originating-ip: [23.28.75.121]
+x-ms-publictraffictype: Email
+x-microsoft-exchange-diagnostics: 1;BN8PR06MB5746;6:BWeowFpMBvVoeXdzbu11dkV/mD96eDFJglhjUyuvt44UWIdFgzXWQ2RhsrT78BHEy5CTFuU1i1gYnCsQ1gmxw2Rt+vp0aUSlkZ/9lO6xyeBjrsEoMNadV4vp/qWAoc2OVxHqu1+xVjbHSmTxulYs7AwqqlIfhSkdE6kux0Mf/Oo8x13CPKwpRcfotm0AA6VYghTIiuSj8xjA4cvgcKR6J2NsCaII0eMkbwZcV9POre0NkO2JZ45sSbuwhuhIIokBruc/kFeu3zDH/EIPKVF5nLzrpqkDyREyCo+PMQaLF71VxdtsiF3cv5nCrLHKUSTOym1JdB0KJlpVZ0ryrPpZ8BY3aGeHkwIKXCoJQVSrHOm2DXFx/4q94+7bsrenYW70odMT2jpxPSCEAH8ZrpiG7bQwbt6VP5C+oVqyF1pZYvlPAGySOe9D7V6cLCrqjfXEz2aWwTkapp3YnT0Qc0YEPQ==;5:k3L3lMS7DTIRvIE1H2V1ufNqRWK16t/eUdJRXj+Q/sz4XxNFM0AkC8pWVuL07vcEQj3gAenlpOSwOi27i9KyZBK7lq4XAswYUOJBdMVdKJyP4e9pHbDElCVjksbxJUxAP5GaQwxnTXRijRP+vE08kyALXQg2WlYqEZGQuEJ+KEenN6EPJIsgQ81raV6yEchKe6np0WwOxgz5Ez52ncj0gw==;7:ZiBgCAoL4bauyL086MsLb16nqSXzirpfT/cNAhuyZ2fYh2m99Eazo7E8XFKmYZYYRN4J13L2OgSKGewYEUd80txnHnG4TUB4t0DPhyhpgIH1nipgUAl26165P8pBXAOl8bUyjvNfzunUQVOIRnp9Rw==
+x-ms-office365-filtering-correlation-id: 5aa3f2b1-daa0-4c62-f97c-08d687a7a6e0
+x-microsoft-antispam: BCL:0;PCL:0;RULEID:(2390118)(7020095)(4652040)(8989299)(4534185)(4627221)(201703031133081)(201702281549075)(8990200)(5600110)(711020)(4605077)(2017052603328)(7193020);SRVR:BN8PR06MB5746;
+x-ms-traffictypediagnostic: BN8PR06MB5746:
+x-microsoft-antispam-prvs: <BN8PR06MB574612EB6106352B407E2596F8910@BN8PR06MB5746.namprd06.prod.outlook.com>
+x-forefront-prvs: 09347618C4
+x-forefront-antispam-report: SFV:NSPM;SFS:(10009020)(346002)(396003)(376002)(39860400002)(136003)(366004)(199004)(189003)(6116002)(68736007)(478600001)(5640700003)(6486002)(72206003)(2906002)(3846002)(6436002)(97736004)(118296001)(14444005)(25786009)(53936002)(14454004)(256004)(4326008)(6512007)(58126008)(316002)(99286004)(54906003)(305945005)(81166006)(86362001)(71190400001)(186003)(81156014)(8936002)(2501003)(66066001)(6916009)(1730700003)(102836004)(26005)(36756003)(8676002)(106356001)(6506007)(105586002)(2351001)(476003)(7736002)(2616005)(71200400001)(486006);DIR:OUT;SFP:1101;SCL:1;SRVR:BN8PR06MB5746;H:BN8PR06MB6228.namprd06.prod.outlook.com;FPR:;SPF:None;LANG:en;PTR:InfoNoRecords;A:1;MX:1;
+received-spf: None (protection.outlook.com: netapp.com does not designate
+ permitted sender hosts)
+x-ms-exchange-senderadcheck: 1
+x-microsoft-antispam-message-info: YCGek5tjs9OMWjivjnl5+u2a4XFlHm38g9Lr5fRlF/fTyMnegAx5li6pPDwPFe7Xt35y6IZKKfQD51OPT7ubZUSUx95f3E2mReL3fSF6LgtB6wo/6TvpqVnDpiVVsRylIN7tUphqvRPO+Nwy995re75KCOn2/i0tXNWFRpQo0rFkF+ajC07ZpRCmpUlwtZgy9fhjkhrkTJzcAtEuCxnaeFOSPohGmZAROWuooo2rAbO+NDp95V7jAc3JWQZ4sCqtdRbSNecntBSyMGaRmvFuv7bglu3VdkLPQMjsFYNeA4k/U/oPvI+V8PXlEFl+NDKfxWel1kiEznxGkmvaeTAcihdng92zklLOiycxALDh50QOKDEhgvqwyaMWssHnk2WyC2ZqkkbJuD5oJf4P1ePwYlA84AvD/+rimq6ERPJhbeQ=
+Content-Type: text/plain; charset="utf-8"
+Content-ID: <05C165F6FE2A34489D125015EBA9A23D@namprd06.prod.outlook.com>
+Content-Transfer-Encoding: base64
+MIME-Version: 1.0
+X-OriginatorOrg: netapp.com
+X-MS-Exchange-CrossTenant-Network-Message-Id: 5aa3f2b1-daa0-4c62-f97c-08d687a7a6e0
+X-MS-Exchange-CrossTenant-originalarrivaltime: 31 Jan 2019 18:12:24.6222
+ (UTC)
+X-MS-Exchange-CrossTenant-fromentityheader: Hosted
+X-MS-Exchange-CrossTenant-id: 4b0911a0-929b-4715-944b-c03745165b3a
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: BN8PR06MB5746
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-
-
-> On Jan 30, 2019, at 7:46 PM, Gustavo A. R. Silva =
-<gustavo@embeddedor.com> wrote:
->=20
-> One of the more common cases of allocation size calculations is =
-finding
-> the size of a structure that has a zero-sized array at the end, along
-> with memory for some number of elements for that array. For example:
->=20
-> struct foo {
->    int stuff;
->    struct boo entry[];
-> };
->=20
-> instance =3D kzalloc(sizeof(struct foo) + count * sizeof(struct boo), =
-GFP_KERNEL);
->=20
-> Instead of leaving these open-coded and prone to type mistakes, we can
-> now use the new struct_size() helper:
->=20
-> instance =3D kzalloc(struct_size(instance, entry, count), GFP_KERNEL);
->=20
-> This code was detected with the help of Coccinelle.
->=20
-> Signed-off-by: Gustavo A. R. Silva <gustavo@embeddedor.com>
-
-Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
-
-
-> ---
-> net/sunrpc/xprtrdma/verbs.c | 3 +--
-> 1 file changed, 1 insertion(+), 2 deletions(-)
->=20
-> diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-> index 4994e75945b8..9e8cf7456840 100644
-> --- a/net/sunrpc/xprtrdma/verbs.c
-> +++ b/net/sunrpc/xprtrdma/verbs.c
-> @@ -811,8 +811,7 @@ static struct rpcrdma_sendctx =
-*rpcrdma_sendctx_create(struct rpcrdma_ia *ia)
-> {
-> 	struct rpcrdma_sendctx *sc;
->=20
-> -	sc =3D kzalloc(sizeof(*sc) +
-> -		     ia->ri_max_send_sges * sizeof(struct ib_sge),
-> +	sc =3D kzalloc(struct_size(sc, sc_sges, ia->ri_max_send_sges),
-> 		     GFP_KERNEL);
-> 	if (!sc)
-> 		return NULL;
-> --=20
-> 2.20.1
->=20
-
---
-Chuck Lever
-
-
-
+SGkgTGludXMsDQoNClRoZSBmb2xsb3dpbmcgY2hhbmdlcyBzaW5jZSBjb21taXQgZGVhYTVjOTZj
+MmY3ZThiOTM0MDg4YTFlNzBhMGZlODc5N2JkMTE0OToNCg0KICBTVU5SUEM6IEFkZHJlc3MgS2Vy
+YmVyb3MgcGVyZm9ybWFuY2UvYmVoYXZpb3IgcmVncmVzc2lvbiAoMjAxOS0wMS0xNSAxNTozNjo0
+MQ0KLTA1MDApDQoNCmFyZSBhdmFpbGFibGUgaW4gdGhlIEdpdCByZXBvc2l0b3J5IGF0Og0KDQog
+IGdpdDovL2dpdC5saW51eC1uZnMub3JnL3Byb2plY3RzL2FubmEvbGludXgtbmZzLmdpdCB0YWdz
+L25mcy1mb3ItNS4wLTMNCg0KZm9yIHlvdSB0byBmZXRjaCBjaGFuZ2VzIHVwIHRvIDhmYzc1YmVk
+OTZiYjk0ZTIzY2E1MWJkOWJlNGRhZjY1YzU3Njk3YmY6DQoNCiAgTkZTOiBGaXggdXAgcmV0dXJu
+IHZhbHVlIG9uIGZhdGFsIGVycm9ycyBpbiBuZnNfcGFnZV9hc3luY19mbHVzaCgpICgyMDE5LTAx
+LTI5IA0KMTY6MzM6MjQgLTA1MDApDQoNCi0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0NClRoaXMgcHVsbCByZXF1ZXN0IGFkZHJl
+c3NlcyB0d28gYnVncywgb25lIGluIHRoZSBlcnJvciBjb2RlIGhhbmRsaW5nIG9mDQpuZnNfcGFn
+ZV9hc3luY19mbHVzaCgpIGFuZCBvbmUgdG8gZml4IGEgcG90ZW50aWFsIE5VTEwgcG9pbnRlciBk
+ZXJlZmVyZW5jZQ0KaW4gbmZzX3BhcnNlX2Rldm5hbWUoKS4NCg0KVGhhbmtzLA0KQW5uYQ0KDQot
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tDQpUcm9uZCBNeWtsZWJ1c3QgKDEpOg0KICAgICAgTkZTOiBGaXggdXAgcmV0dXJuIHZh
+bHVlIG9uIGZhdGFsIGVycm9ycyBpbiBuZnNfcGFnZV9hc3luY19mbHVzaCgpDQoNCllhbyBMaXUg
+KDEpOg0KICAgICAgbmZzOiBGaXggTlVMTCBwb2ludGVyIGRlcmVmZXJlbmNlIG9mIGRldl9uYW1l
+DQoNCiBmcy9uZnMvc3VwZXIuYyB8IDUgKysrKysNCiBmcy9uZnMvd3JpdGUuYyB8IDkgKysrKyst
+LS0tDQogMiBmaWxlcyBjaGFuZ2VkLCAxMCBpbnNlcnRpb25zKCspLCA0IGRlbGV0aW9ucygtKQ0K
