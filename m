@@ -2,198 +2,108 @@ Return-Path: <SRS0=oebN=QK=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,UNPARSEABLE_RELAY,URIBL_BLOCKED
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-1.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS,
+	URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0231EC169C4
-	for <linux-nfs@archiver.kernel.org>; Sun,  3 Feb 2019 16:49:25 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2E0EFC169C4
+	for <linux-nfs@archiver.kernel.org>; Sun,  3 Feb 2019 18:58:48 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id BB64121773
-	for <linux-nfs@archiver.kernel.org>; Sun,  3 Feb 2019 16:49:24 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id CAA15217D6
+	for <linux-nfs@archiver.kernel.org>; Sun,  3 Feb 2019 18:58:47 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="0dU0Ams3"
+	dkim=pass (1024-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="lLQieSXu"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727932AbfBCQtX (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 3 Feb 2019 11:49:23 -0500
-Received: from aserp2130.oracle.com ([141.146.126.79]:36714 "EHLO
-        aserp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726616AbfBCQtX (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 3 Feb 2019 11:49:23 -0500
-Received: from pps.filterd (aserp2130.oracle.com [127.0.0.1])
-        by aserp2130.oracle.com (8.16.0.27/8.16.0.27) with SMTP id x13Gk7xx130108;
-        Sun, 3 Feb 2019 16:49:16 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=content-type :
- mime-version : subject : from : in-reply-to : date : cc :
- content-transfer-encoding : message-id : references : to;
- s=corp-2018-07-02; bh=8FiorOjf/+A+NT3Xamh0f+yqAGvQKKkunLU/dpAR4WA=;
- b=0dU0Ams3hOlrfV8aPyb8Vf4VOs7TOTn6ktN5uZzvN5AsdvC3YiPriqVnPBljycsR1YmV
- YJ84q/ZrrImGJSLRUm1xYZ+uMTiF+WzSFIyMB9jwDA8PZRsBwqBBh/d4UGBLGgJ3MCA7
- tPjEGrfsWkb2/61ioWM/mu/jV2HgXk999zWX5H3xV1y8qvY6tkyIK5kkWWDPm6DudMoE
- cy/CPlWTwJAsvf+x6i9Lu3ca/romQpXCKvDSGExNAyqc8Ai5/TEb9JpiulM/vWsl1EQk
- AbDuuYuTCcfVc2+d9FdOjXJBq89b4FLOAZmY1zq3OizYeBmnHJuuAriWsRzAsV1KouHH 7A== 
-Received: from aserv0021.oracle.com (aserv0021.oracle.com [141.146.126.233])
-        by aserp2130.oracle.com with ESMTP id 2qd97ej558-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Sun, 03 Feb 2019 16:49:16 +0000
-Received: from aserv0122.oracle.com (aserv0122.oracle.com [141.146.126.236])
-        by aserv0021.oracle.com (8.14.4/8.14.4) with ESMTP id x13GnELp004469
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Sun, 3 Feb 2019 16:49:14 GMT
-Received: from abhmp0009.oracle.com (abhmp0009.oracle.com [141.146.116.15])
-        by aserv0122.oracle.com (8.14.4/8.14.4) with ESMTP id x13GnBI6006297;
-        Sun, 3 Feb 2019 16:49:14 GMT
-Received: from anon-dhcp-171.1015granger.net (/68.61.232.219)
-        by default (Oracle Beehive Gateway v4.0)
-        with ESMTP ; Sun, 03 Feb 2019 16:49:11 +0000
-Content-Type: text/plain;
-        charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 12.2 \(3445.102.3\))
+        id S1726840AbfBCS6r (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sun, 3 Feb 2019 13:58:47 -0500
+Received: from mail-eopbgr750124.outbound.protection.outlook.com ([40.107.75.124]:16092
+        "EHLO NAM02-BL2-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1726762AbfBCS6q (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sun, 3 Feb 2019 13:58:46 -0500
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=hammerspace.com;
+ s=selector1;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=J43amQST4yGnRys3ZLBFivvPrgSB0phc0aIz6hYi7ME=;
+ b=lLQieSXuiq++05LNVIxjufnXvsG05ob7Ro+Fuk/SphR2DDxH0akmXKDoX3yGpiIY8NxTcp0j+yZm7wPxvufvkelod1m2oq/0OjCMkElRBTDpE36FhAAtetCiMPgSw0pvcGxslcy5rmx3AovZuhQ5hyZr/L2Poft8gcOEyN2o4UM=
+Received: from SN6PR13MB2494.namprd13.prod.outlook.com (52.135.95.148) by
+ SN6PR13MB2494.namprd13.prod.outlook.com (52.135.95.148) with Microsoft SMTP
+ Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ 15.20.1601.14; Sun, 3 Feb 2019 18:58:42 +0000
+Received: from SN6PR13MB2494.namprd13.prod.outlook.com
+ ([fe80::f4e2:9f89:7255:36f0]) by SN6PR13MB2494.namprd13.prod.outlook.com
+ ([fe80::f4e2:9f89:7255:36f0%3]) with mapi id 15.20.1601.016; Sun, 3 Feb 2019
+ 18:58:42 +0000
+From:   Trond Myklebust <trondmy@hammerspace.com>
+To:     "chuck.lever@oracle.com" <chuck.lever@oracle.com>
+CC:     "tom@talpey.com" <tom@talpey.com>,
+        "simo@redhat.com" <simo@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
 Subject: Re: [PATCH RFC 04/10] SUNRPC: Add common byte-swapped RPC header
  constants
-From:   Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <fdcf717bf7ccd45b29bd26162223afc07ba4ed2a.camel@hammerspace.com>
-Date:   Sun, 3 Feb 2019 11:49:10 -0500
-Cc:     Tom Talpey <tom@talpey.com>, "simo@redhat.com" <simo@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Transfer-Encoding: quoted-printable
-Message-Id: <B5C94F11-2434-4114-9827-F3731E1A11D0@oracle.com>
+Thread-Topic: [PATCH RFC 04/10] SUNRPC: Add common byte-swapped RPC header
+ constants
+Thread-Index: AQHUumhq0Vii9L2mgU+TMhVuRlnQtaXLycIAgAFTxgCAARABAIAAHmsAgAAkLYA=
+Date:   Sun, 3 Feb 2019 18:58:42 +0000
+Message-ID: <6ffbfd6e51b31bc3467824493a77b78d052d4f4d.camel@hammerspace.com>
 References: <20190201195538.11389.96106.stgit@manet.1015granger.net>
- <20190201195747.11389.75164.stgit@manet.1015granger.net>
- <7a88add8-c1a3-72b5-cdcc-e6e7578e2ccc@talpey.com>
- <1EDAC62A-8F55-400B-A473-BF2ED133C2CF@oracle.com>
- <fdcf717bf7ccd45b29bd26162223afc07ba4ed2a.camel@hammerspace.com>
-To:     Trond Myklebust <trondmy@hammerspace.com>
-X-Mailer: Apple Mail (2.3445.102.3)
-X-Proofpoint-Virus-Version: vendor=nai engine=5900 definitions=9156 signatures=668682
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 priorityscore=1501 malwarescore=0
- suspectscore=0 phishscore=0 bulkscore=0 spamscore=0 clxscore=1015
- lowpriorityscore=0 mlxscore=0 impostorscore=0 mlxlogscore=999 adultscore=0
- classifier=spam adjust=0 reason=mlx scancount=1 engine=8.0.1-1810050000
- definitions=main-1902030139
+         <20190201195747.11389.75164.stgit@manet.1015granger.net>
+         <7a88add8-c1a3-72b5-cdcc-e6e7578e2ccc@talpey.com>
+         <1EDAC62A-8F55-400B-A473-BF2ED133C2CF@oracle.com>
+         <fdcf717bf7ccd45b29bd26162223afc07ba4ed2a.camel@hammerspace.com>
+         <B5C94F11-2434-4114-9827-F3731E1A11D0@oracle.com>
+In-Reply-To: <B5C94F11-2434-4114-9827-F3731E1A11D0@oracle.com>
+Accept-Language: en-US, en-GB
+Content-Language: en-US
+X-MS-Has-Attach: 
+X-MS-TNEF-Correlator: 
+authentication-results: spf=none (sender IP is )
+ smtp.mailfrom=trondmy@hammerspace.com; 
+x-originating-ip: [68.40.189.247]
+x-ms-publictraffictype: Email
+x-microsoft-exchange-diagnostics: 1;SN6PR13MB2494;6:IKKfCghWFfU0vNATnx2dHWbSmeCssk32XaHvHUwvBVLDatuXsrjpbit4VT9PFnCIUeWkGKGo3cM7EiYwOePXCCHAhb0AvzRf2I+3Us864CaMp8WjwBlDJMDcntWOZCJmlqDTthCoz8dQocD3+RoAYOewTt9L5yhGXhvD5M2S/TiITlyZpVKnNtIB7Zf5XchQtWNjMxhlfvg3mkw+/66lbiqvkCpW46wvv8ZlR/D4ypRiw1rRrCAIgESqozORkdYCnu+WqMmAoMaWTrD+LEqHyKh1ZNSWwWjfAaVZgYVYStpDwFpAJd4aHjm4I7iy3r69LdGOud72zmIuN+Y52HPeRNVT2SZ+zkd2qEtP6lbkEQYsreOn6tK7dCUZDmo1kpZRkegP8LfEukKjs6oQUjkaM7GdDxevqCE2r6ltfQpMna7br+/kaY62GOlB7VLj/12rQfUMXBPmcDn6IhLTYs3Atg==;5:86g14syidZzpfX/NyqIMTjZIG1nbYxOk2QSY5LTMJ5iBNTzqAP0DsC0DltODPg+hGiH/MPJB/Ug3Y+SH0PvHOseltSjPmL8x3SNWIi9ZjFQVeQyCeJJ9Hk6GjVPvjFFsljcwlHERqDIrfUaEzWDiGEV+Q/xHfMgiYrvK/4KNtXBl4RntiCxiG2P0iaoxxUS3740rvNP05e6lH1Xp77wyjQ==;7:PdXyzZVg4cCPyjBqoUaaM2E72XqlrXMjOY6OEi4wLmZrIIKztYTxX/q5CarnM+C3aaf8JfofvspeJioXkEvK6cYhUg8QuH87mSg8VkfsEdeOsEMmDWgnFG26n6MB4iBtRcMghhEuVYCRK+y8Wwj04A==
+x-ms-office365-filtering-correlation-id: 206b0afe-cefe-4fda-2c5d-08d68a099dc9
+x-microsoft-antispam: BCL:0;PCL:0;RULEID:(2390118)(7020095)(4652040)(7021145)(8989299)(4534185)(7022145)(4603075)(4627221)(201702281549075)(8990200)(7048125)(7024125)(7027125)(7023125)(5600110)(711020)(4605077)(2017052603328)(7153060)(7193020);SRVR:SN6PR13MB2494;
+x-ms-traffictypediagnostic: SN6PR13MB2494:
+x-microsoft-antispam-prvs: <SN6PR13MB24946A997DE2394D6678F403B86C0@SN6PR13MB2494.namprd13.prod.outlook.com>
+x-forefront-prvs: 0937FB07C5
+x-forefront-antispam-report: SFV:NSPM;SFS:(10019020)(346002)(376002)(136003)(396003)(366004)(39830400003)(189003)(199004)(476003)(11346002)(2616005)(446003)(105586002)(486006)(2501003)(106356001)(8936002)(316002)(76176011)(4744005)(86362001)(54906003)(6512007)(229853002)(25786009)(6486002)(99286004)(6916009)(4326008)(6246003)(6436002)(5640700003)(217873002)(66066001)(97736004)(256004)(71200400001)(71190400001)(508600001)(14454004)(118296001)(305945005)(7736002)(2351001)(53936002)(6506007)(81166006)(2906002)(53546011)(102836004)(186003)(36756003)(8676002)(26005)(81156014)(68736007)(93886005)(3846002)(6116002);DIR:OUT;SFP:1102;SCL:1;SRVR:SN6PR13MB2494;H:SN6PR13MB2494.namprd13.prod.outlook.com;FPR:;SPF:None;LANG:en;PTR:InfoNoRecords;MX:1;A:1;
+received-spf: None (protection.outlook.com: hammerspace.com does not designate
+ permitted sender hosts)
+x-ms-exchange-senderadcheck: 1
+x-microsoft-antispam-message-info: HBkmTcdpHxuChCNIwDKpf2eyNfz8oIXNyZNakDXpXdTmVgML2hY+00NZf0CYqSFWDpaoalSw19BNtuyoeqqf/tsIMqW5DAhNF3p+1x3ytSrfJOs5pON+/6xBXLcbFfcYGlhpw9UjXfj/+iC0VdPyRUEOnFb1bxELa0FjpfT5F6hIAA3FnsfKlbuIalm5I2EG+kBp58FJBWLg3sEvLeGN8leCh+O4HCqmRo/zi+U/2A/jrzP3JIlkA9PAV3+h0ZugcN5TBYf13VymRWTfFcmg5hbrCrCz2dBBYOWgxs0xNSl8vFIDPbfyUlIVAF6x5jnBSR1TtAm0S4PQU/uqMjglGhKnWKzJxALf/P3z8pZ3kBlt/JBggW9Or0pnp0A4BT15Ca4LS4U6xSPAgjtd66Dkpzev5bEMpEIgqzn48wmvV7Q=
+Content-Type: text/plain; charset="utf-8"
+Content-ID: <4BFC93AB3DDE004D8ACAC13702B91845@namprd13.prod.outlook.com>
+Content-Transfer-Encoding: base64
+MIME-Version: 1.0
+X-OriginatorOrg: hammerspace.com
+X-MS-Exchange-CrossTenant-Network-Message-Id: 206b0afe-cefe-4fda-2c5d-08d68a099dc9
+X-MS-Exchange-CrossTenant-originalarrivaltime: 03 Feb 2019 18:58:42.4988
+ (UTC)
+X-MS-Exchange-CrossTenant-fromentityheader: Hosted
+X-MS-Exchange-CrossTenant-id: 0d4fed5c-3a70-46fe-9430-ece41741f59e
+X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: SN6PR13MB2494
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-
-
-> On Feb 3, 2019, at 10:00 AM, Trond Myklebust <trondmy@hammerspace.com> =
-wrote:
->=20
-> On Sat, 2019-02-02 at 17:46 -0500, Chuck Lever wrote:
->>> On Feb 1, 2019, at 9:30 PM, Tom Talpey <tom@talpey.com> wrote:
->>>=20
->>> On 2/1/2019 2:57 PM, Chuck Lever wrote:
->>>> Byte-swapping causes a CPU pipeline bubble on some processors.
->>>> When
->>>> a decoder is comparing an on-the-wire value for equality, byte-
->>>> swapping can be avoided by comparing it directly to a pre-byte-
->>>> swapped constant value.
->>>> The current set of pre-xdr'd constants is missing some common
->>>> values
->>>> used in the RPC header. Fill those out.
->>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->>>> ---
->>>> include/linux/sunrpc/auth_gss.h |    5 ++-
->>>> include/linux/sunrpc/xdr.h      |   66 ++++++++++++++++++++++++-
->>>> --------------
->>>> 2 files changed, 45 insertions(+), 26 deletions(-)
->>>> diff --git a/include/linux/sunrpc/auth_gss.h
->>>> b/include/linux/sunrpc/auth_gss.h
->>>> index 30427b7..adc4be2 100644
->>>> --- a/include/linux/sunrpc/auth_gss.h
->>>> +++ b/include/linux/sunrpc/auth_gss.h
->>>> @@ -19,7 +19,10 @@
->>>> #include <linux/sunrpc/svc.h>
->>>> #include <linux/sunrpc/gss_api.h>
->>>> -#define RPC_GSS_VERSION		1
->>>> +enum {
->>>> +	RPC_GSS_VERSION =3D 1,
->>>> +	rpc_gss_version =3D cpu_to_be32(RPC_GSS_VERSION)
->>>> +};
->>>>   #define MAXSEQ 0x80000000 /* maximum legal sequence number,
->>>> from rfc 2203 */
->>>> diff --git a/include/linux/sunrpc/xdr.h
->>>> b/include/linux/sunrpc/xdr.h
->>>> index 787939d..69161cb 100644
->>>> --- a/include/linux/sunrpc/xdr.h
->>>> +++ b/include/linux/sunrpc/xdr.h
->>>> @@ -17,6 +17,7 @@
->>>> #include <asm/byteorder.h>
->>>> #include <asm/unaligned.h>
->>>> #include <linux/scatterlist.h>
->>>> +#include <linux/sunrpc/msg_prot.h>
->>>>   struct bio_vec;
->>>> struct rpc_rqst;
->>>> @@ -79,31 +80,46 @@ struct xdr_buf {
->>>> 	buf->buflen =3D len;
->>>> }
->>>> -/*
->>>> - * pre-xdr'ed macros.
->>>> - */
->>>> -
->>>> -#define	xdr_zero	cpu_to_be32(0)
->>>> -#define	xdr_one		cpu_to_be32(1)
->>>> -#define	xdr_two		cpu_to_be32(2)
->>>> -
->>>> -#define	rpc_success		cpu_to_be32(RPC_SUCCESS)
->>>> -#define	rpc_prog_unavail	cpu_to_be32(RPC_PROG_UNAVAIL)
->>>> -#define	rpc_prog_mismatch	cpu_to_be32(RPC_PROG_MISMATCH)
->>>> -#define	rpc_proc_unavail	cpu_to_be32(RPC_PROC_UNAVAIL)
->>>> -#define	rpc_garbage_args	cpu_to_be32(RPC_GARBAGE_ARGS)
->>>> -#define	rpc_system_err		cpu_to_be32(RPC_SYSTEM_ER
->>>> R)
->>>> -#define	rpc_drop_reply		cpu_to_be32(RPC_DROP_REPL
->>>> Y)
->>>> -
->>>> -#define	rpc_auth_ok		cpu_to_be32(RPC_AUTH_OK)
->>>> -#define	rpc_autherr_badcred	cpu_to_be32(RPC_AUTH_BADCRED)
->>>> -#define	rpc_autherr_rejectedcred
->>>> cpu_to_be32(RPC_AUTH_REJECTEDCRED)
->>>> -#define	rpc_autherr_badverf	cpu_to_be32(RPC_AUTH_BADVERF)
->>>> -#define	rpc_autherr_rejectedverf
->>>> cpu_to_be32(RPC_AUTH_REJECTEDVERF)
->>>> -#define	rpc_autherr_tooweak	cpu_to_be32(RPC_AUTH_TOOWEAK)
->>>> -#define	rpcsec_gsserr_credproblem	=
-cpu_to_be32(RPCSEC_GSS_CR
->>>> EDPROBLEM)
->>>> -#define	rpcsec_gsserr_ctxproblem	=
-cpu_to_be32(RPCSEC_GSS_CT
->>>> XPROBLEM)
->>>> -#define	rpc_autherr_oldseqnum	cpu_to_be32(101)
->>>> +enum xdr_be32_equivalents {
->>>> +	xdr_zero		=3D cpu_to_be32(0),
->>>> +	xdr_one			=3D cpu_to_be32(1),
->>>> +	xdr_two			=3D cpu_to_be32(2),
->>>=20
->>> It is clever to use an enum to pre-compute these values, but
->>=20
->> Perhaps not clever; it is a current Linux kernel coding
->> practice to use an enum in favor of a C macro for constants.
->=20
-> Sure, but won't that confuse 'sparse' static checking? These constants
-> will no longer appear as being big endian.
-
-Agreed, that is not a desirable situation for these symbolic constants.
-
-
-> Doesn't gcc's __builtin_bswap32() already compute the result at =
-compile
-> time when you feed it a constant value? AFAICS it is supposed to, =
-which
-> is why we use it directly in include/uapi/linux/swab.h instead of =
-using
-> a special cased __builtin_constant_p().
-
-The return type of __builtin_bswap32 is uint32_t, not __be32.
-
-I will stick with cpu_to_be32(), and simply add the missing constants.
-
-
---
-Chuck Lever
-
-
-
+T24gU3VuLCAyMDE5LTAyLTAzIGF0IDExOjQ5IC0wNTAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
+PiBPbiBGZWIgMywgMjAxOSwgYXQgMTA6MDAgQU0sIFRyb25kIE15a2xlYnVzdCA8DQo+ID4gdHJv
+bmRteUBoYW1tZXJzcGFjZS5jb20+IHdyb3RlOg0KPiA+IA0KPiA+IERvZXNuJ3QgZ2NjJ3MgX19i
+dWlsdGluX2Jzd2FwMzIoKSBhbHJlYWR5IGNvbXB1dGUgdGhlIHJlc3VsdCBhdA0KPiA+IGNvbXBp
+bGUNCj4gPiB0aW1lIHdoZW4geW91IGZlZWQgaXQgYSBjb25zdGFudCB2YWx1ZT8gQUZBSUNTIGl0
+IGlzIHN1cHBvc2VkIHRvLA0KPiA+IHdoaWNoDQo+ID4gaXMgd2h5IHdlIHVzZSBpdCBkaXJlY3Rs
+eSBpbiBpbmNsdWRlL3VhcGkvbGludXgvc3dhYi5oIGluc3RlYWQgb2YNCj4gPiB1c2luZw0KPiA+
+IGEgc3BlY2lhbCBjYXNlZCBfX2J1aWx0aW5fY29uc3RhbnRfcCgpLg0KPiANCj4gVGhlIHJldHVy
+biB0eXBlIG9mIF9fYnVpbHRpbl9ic3dhcDMyIGlzIHVpbnQzMl90LCBub3QgX19iZTMyLg0KPiAN
+Cj4gSSB3aWxsIHN0aWNrIHdpdGggY3B1X3RvX2JlMzIoKSwgYW5kIHNpbXBseSBhZGQgdGhlIG1p
+c3NpbmcNCj4gY29uc3RhbnRzLg0KPiANCg0KY3B1X3RvX2JlMzIoKSBpcyBhIG1hY3JvIHRoYXQg
+ZXhwYW5kcyB0byBfX2J1aWx0aW5fYnN3YXAzMigpIHBsdXMgYQ0KY2FzdCBmb3IgbW9zdCBhcmNo
+aXRlY3R1cmVzIG9uIGdjYy4NCg0KV2hhdCBJJ20gc2F5aW5nIGlzIHRoYXQgYXMgZmFyIGFzIEkg
+a25vdywgdGhlIGV4aXN0aW5nICNkZWZpbmVzIHNob3VsZA0KY29tcGlsZSBpbnRvIGJlMzIgY29u
+c3RhbnRzIGJ5IGRlZmF1bHQsIGFzIHNob3VsZCBhbnkgY2FsbCBvZiB0aGUgZm9ybQ0KY3B1X3Rv
+X2IzMig8Y29uc3QgZXhwcmVzc2lvbj4pIGFuZCBodG9ubCg8Y29uc3QgZXhwcmVzc2lvbj4pLg0K
+DQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIsIEhh
+bW1lcnNwYWNlDQp0cm9uZC5teWtsZWJ1c3RAaGFtbWVyc3BhY2UuY29tDQoNCg0K
