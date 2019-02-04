@@ -2,129 +2,107 @@ Return-Path: <SRS0=dgFe=QL=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
-	SPF_PASS,UNPARSEABLE_RELAY,URIBL_BLOCKED autolearn=ham autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-9.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
+	SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2FEABC282CB
-	for <linux-nfs@archiver.kernel.org>; Mon,  4 Feb 2019 14:17:11 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E8D6DC4151A
+	for <linux-nfs@archiver.kernel.org>; Mon,  4 Feb 2019 14:30:40 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 008C82082E
-	for <linux-nfs@archiver.kernel.org>; Mon,  4 Feb 2019 14:17:10 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id BA2B12087C
+	for <linux-nfs@archiver.kernel.org>; Mon,  4 Feb 2019 14:30:40 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="e0ZXkivT"
+	dkim=pass (2048-bit key) header.d=pks.im header.i=@pks.im header.b="eWcaVEwR";
+	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="ntHz+1e4"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728525AbfBDORK (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 4 Feb 2019 09:17:10 -0500
-Received: from aserp2130.oracle.com ([141.146.126.79]:45682 "EHLO
-        aserp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725980AbfBDORK (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Feb 2019 09:17:10 -0500
-Received: from pps.filterd (aserp2130.oracle.com [127.0.0.1])
-        by aserp2130.oracle.com (8.16.0.27/8.16.0.27) with SMTP id x14E928F028308;
-        Mon, 4 Feb 2019 14:16:57 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=content-type :
- mime-version : subject : from : in-reply-to : date : cc :
- content-transfer-encoding : message-id : references : to;
- s=corp-2018-07-02; bh=svXNWI0UNKrFHhtxukSD8YRq6HN7PJSSSlxk48z5xqg=;
- b=e0ZXkivTIknYb7PEtDaEMSpwBG2YIgmAwTC12d9qZBByNv+ydX18XE9QvakQpP5+3Pvr
- JvnI5g2VlR6mLM3qApCOBJpAn9seh531vrBB06ZMEzsHkg/J8d0QsoukUae2m2sdPpN0
- kU3S7Z37/TwdlqywQB9DwOlFrYwOAtjnZESVwGDA6Eip/9KLPnBKnH6nMwJa6O7FHAju
- gIj8ZmbODTrrUE1tbRGfs0WC75eRL3arhm1eqDLiRi5UaHI+Q40AwHTpg+NvXy7RpCaX
- FJ4dgHRbj1mf5+Zq0aD3rYjhu29BnLPOV6zoi9VYKIm77Q6rZgpVdFGGp7U1PJZPLcf3 Ng== 
-Received: from aserv0021.oracle.com (aserv0021.oracle.com [141.146.126.233])
-        by aserp2130.oracle.com with ESMTP id 2qd97enbqw-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Mon, 04 Feb 2019 14:16:57 +0000
-Received: from userv0121.oracle.com (userv0121.oracle.com [156.151.31.72])
-        by aserv0021.oracle.com (8.14.4/8.14.4) with ESMTP id x14EGuQ0021263
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Mon, 4 Feb 2019 14:16:57 GMT
-Received: from abhmp0018.oracle.com (abhmp0018.oracle.com [141.146.116.24])
-        by userv0121.oracle.com (8.14.4/8.13.8) with ESMTP id x14EGuFS024519;
-        Mon, 4 Feb 2019 14:16:56 GMT
-Received: from anon-dhcp-171.1015granger.net (/68.61.232.219)
-        by default (Oracle Beehive Gateway v4.0)
-        with ESMTP ; Mon, 04 Feb 2019 14:16:56 +0000
-Content-Type: text/plain;
-        charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 12.2 \(3445.102.3\))
-Subject: Re: [PATCH RFC 04/10] SUNRPC: Add common byte-swapped RPC header
- constants
-From:   Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20190204075336.GA28337@infradead.org>
-Date:   Mon, 4 Feb 2019 09:16:54 -0500
-Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>, simo@redhat.com
-Content-Transfer-Encoding: 7bit
-Message-Id: <0EB44600-7CF7-45C3-A1AB-75B76EFA1546@oracle.com>
-References: <20190201195538.11389.96106.stgit@manet.1015granger.net>
- <20190201195747.11389.75164.stgit@manet.1015granger.net>
- <20190202170258.GA14074@infradead.org>
- <52468C38-9E9C-49A7-B44B-2BE302A33145@oracle.com>
- <20190204075336.GA28337@infradead.org>
-To:     Christoph Hellwig <hch@infradead.org>
-X-Mailer: Apple Mail (2.3445.102.3)
-X-Proofpoint-Virus-Version: vendor=nai engine=5900 definitions=9156 signatures=668682
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 priorityscore=1501 malwarescore=0
- suspectscore=0 phishscore=0 bulkscore=0 spamscore=0 clxscore=1015
- lowpriorityscore=0 mlxscore=0 impostorscore=0 mlxlogscore=999 adultscore=0
- classifier=spam adjust=0 reason=mlx scancount=1 engine=8.0.1-1810050000
- definitions=main-1902040113
+        id S1728487AbfBDOaj (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 4 Feb 2019 09:30:39 -0500
+Received: from wout2-smtp.messagingengine.com ([64.147.123.25]:47527 "EHLO
+        wout2-smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1727722AbfBDOaj (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Feb 2019 09:30:39 -0500
+Received: from compute1.internal (compute1.nyi.internal [10.202.2.41])
+        by mailout.west.internal (Postfix) with ESMTP id D13702FF1
+        for <linux-nfs@vger.kernel.org>; Mon,  4 Feb 2019 09:30:35 -0500 (EST)
+Received: from mailfrontend2 ([10.202.2.163])
+  by compute1.internal (MEProxy); Mon, 04 Feb 2019 09:30:35 -0500
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=pks.im; h=from
+        :to:cc:subject:date:message-id:in-reply-to:references
+        :mime-version:content-transfer-encoding; s=fm3; bh=GrIkU933ivKlb
+        h8bDbAVJjXXbG4bCUFmUlXmhwWswqc=; b=eWcaVEwRCqQeTB/LVNySoGuUfJu59
+        DWjKaB5jcmy7FL9tOLOKOW1G1rur1a6uYE+IPhfpsaLF3hQ5cC8iGpOj9A7/FhvK
+        9YiFX81rKB7dCYEr9cxm/K8OTpr7gB7puCMlzxVFp9MTYe3mw6/Mxdpvpu+NvK/T
+        NUiv3NPYzj4iDhHMnau3q9Mq88kJI7gagNS4zWYMlCu88WQ9WHFHl7nzJvR5LkCP
+        KIHGCfDICzjV2r5XIucpLZnAFQembGpUPtz10z6R3UFdL2lZOvbkGZqhV+RDhWbu
+        LsuS0VYTlUEh3lpAcNchsX5l8w7TfoWoO+tLamAqTBe9YqOyxKD38fULA==
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
+        messagingengine.com; h=cc:content-transfer-encoding:date:from
+        :in-reply-to:message-id:mime-version:references:subject:to
+        :x-me-proxy:x-me-proxy:x-me-sender:x-me-sender:x-sasl-enc; s=
+        fm1; bh=GrIkU933ivKlbh8bDbAVJjXXbG4bCUFmUlXmhwWswqc=; b=ntHz+1e4
+        me9QhLQicymG+1lAL36b82W+0WlZ1PE7wvXLd5qzala701Vxbol0tY2UZ7w7wkM8
+        s6EIJukkXKzKCjqYTa9o8hKfUoh5MKNPM0JaeO956mGEPvKFJu1nTzyyFNNGhUK0
+        ++h7Domn6Qroj8AdlDJpfp7IOnusP2v8W0Ga+OFHF60MJ6v+xSmyjCnngYzA6TE1
+        A7tjmV0SF4BwkTXCwTyF6ogf6aiKzL5Lyw5ezK2QEGo/YdTdOjx7nQUM6xFANGXv
+        KDppwwE4A9iteCrNM/uvtWrPd2Uh0cRP3o86XP7MHSN414+V6GF9Fba9IK0IvBsI
+        9smj8lhVrABC1w==
+X-ME-Sender: <xms:i0xYXHZhIvvym-VH1Qz_jfv3XtQZVeMlP-ldPARJZbrtNILFtEIikQ>
+X-ME-Proxy-Cause: gggruggvucftvghtrhhoucdtuddrgedtledrkeeggdeiiecutefuodetggdotefrodftvf
+    curfhrohhfihhlvgemucfhrghsthforghilhdpqfhuthenuceurghilhhouhhtmecufedt
+    tdenucenucfjughrpefhvffufffkofgjfhgggfestdekredtredttdenucfhrhhomheprf
+    grthhrihgtkhcuufhtvghinhhhrghrughtuceophhssehpkhhsrdhimheqnecukfhppeej
+    kedrheehrddvgeelrdeifeenucfrrghrrghmpehmrghilhhfrhhomhepphhssehpkhhsrd
+    himhenucevlhhushhtvghrufhiiigvpedt
+X-ME-Proxy: <xmx:i0xYXCFaSJlgQF0WFzcmLX7sPr5-aszywtOUQn44cVICpqhAaKWA7A>
+    <xmx:i0xYXA3-pcUMZeNqmje2jFcA8uczlsWGRKtt0bVt4amzhiCBOqEccQ>
+    <xmx:i0xYXCea1RHdwWK-hgTH7BSJuRukOZIA2dhta4vjAMyuR7PDQgp9Xg>
+    <xmx:i0xYXFXVR8EMZ1-yrXZQ3cj9jJCiqs1k7Vkho-BT8vjZPfQ_2wt-SQ>
+Received: from NSJAIL (x4e37f93f.dyn.telefonica.de [78.55.249.63])
+        by mail.messagingengine.com (Postfix) with ESMTPA id BBD8B1031B
+        for <linux-nfs@vger.kernel.org>; Mon,  4 Feb 2019 09:30:34 -0500 (EST)
+Received: from localhost (10.192.0.11 [10.192.0.11])
+        by NSJAIL (OpenSMTPD) with ESMTPSA id 822cd24f (TLSv1.2:ECDHE-RSA-AES256-GCM-SHA384:256:NO);
+        Mon, 4 Feb 2019 14:30:32 +0000 (UTC)
+From:   Patrick Steinhardt <ps@pks.im>
+To:     linux-nfs@vger.kernel.org
+Cc:     Patrick Steinhardt <ps@pks.im>
+Subject: [PATCH 2/3] file: fix missing include for PATH_MAX constant
+Date:   Mon,  4 Feb 2019 15:31:19 +0100
+Message-Id: <b867217d30569b84e098ca013c44e07e1df598fb.1549290423.git.ps@pks.im>
+X-Mailer: git-send-email 2.20.1
+In-Reply-To: <a6f2aaea93c1293e62d5109b10d47a7675a45393.1549290423.git.ps@pks.im>
+References: <a6f2aaea93c1293e62d5109b10d47a7675a45393.1549290423.git.ps@pks.im>
+MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
+While making use of the PATH_MAX constant, "file.c" does not include the
+"limits.h" header. While it is being transitively included via other
+headers on most platforms, it is not on e.g. musl-based systems.
 
+Add the include to fix compilation.
 
-> On Feb 4, 2019, at 2:53 AM, Christoph Hellwig <hch@infradead.org> wrote:
-> 
-> On Sat, Feb 02, 2019 at 05:49:35PM -0500, Chuck Lever wrote:
->>>> Byte-swapping causes a CPU pipeline bubble on some processors. When
->>>> a decoder is comparing an on-the-wire value for equality, byte-
->>>> swapping can be avoided by comparing it directly to a pre-byte-
->>>> swapped constant value.
->>> 
->>> Which ones?
->> 
->> I assume you mean on which processors have I observed CPU cycle
->> spikes around bswap instructions.
-> 
-> Yes.
-> 
->> I've seen this behavior only
->> on Intel processors of various families.
-> 
-> Interesting. In general we should not do separate byte swap instructions
-> on x86, as MOVBE can be used to do a load or store with an included
-> byteswap, and I thought the whole point for that was that they could
-> be handled in the same cycle.
-> 
-> In fact https://www.agner.org/optimize/instruction_tables.pdf
-> says that movbe is generally a single cycle instruction.
-> 
->> Would you prefer a different justification for this clean-up?
-> 
-> I don't really care about the cleanup, it is just that the explanation
-> goes against conventional wisdom, which is why I was a little surpised.
-> 
-> And that is not just the cycles, but also as Trond pointed out
-> that the Linux byte swapping macro on constants should usually be
-> optimized away at compile time anyway.
+Signed-off-by: Patrick Steinhardt <ps@pks.im>
+---
+ support/misc/file.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-They are. The problem is that we are byte-swapping the incoming wire
-data and then comparing to CPU-endian constants in some hot paths.
-It's better to leave the incoming data alone and compare to a pre-
-byte-swapped constant. This patch adds some of these constants that
-were missing, in preparation for fixing the hot paths.
-
-That is apparently not clear from the patch description, so I will
-endeavor to improve it.
-
-
---
-Chuck Lever
-
-
+diff --git a/support/misc/file.c b/support/misc/file.c
+index 4065376..e7c3819 100644
+--- a/support/misc/file.c
++++ b/support/misc/file.c
+@@ -27,6 +27,7 @@
+ #include <dirent.h>
+ #include <stdlib.h>
+ #include <stdbool.h>
++#include <limits.h>
+ 
+ #include "xlog.h"
+ #include "misc.h"
+-- 
+2.20.1
 
