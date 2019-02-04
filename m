@@ -2,67 +2,61 @@ Return-Path: <SRS0=dgFe=QL=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-1.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5F43EC282C4
-	for <linux-nfs@archiver.kernel.org>; Mon,  4 Feb 2019 18:55:01 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 15E6BC282C4
+	for <linux-nfs@archiver.kernel.org>; Mon,  4 Feb 2019 19:03:12 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 172F82082E
-	for <linux-nfs@archiver.kernel.org>; Mon,  4 Feb 2019 18:55:01 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=umich.edu header.i=@umich.edu header.b="NFODjyWt"
+	by mail.kernel.org (Postfix) with ESMTP id DFAAB2082E
+	for <linux-nfs@archiver.kernel.org>; Mon,  4 Feb 2019 19:03:11 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729300AbfBDSzA (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 4 Feb 2019 13:55:00 -0500
-Received: from mail-vs1-f45.google.com ([209.85.217.45]:45013 "EHLO
-        mail-vs1-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728731AbfBDSzA (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Feb 2019 13:55:00 -0500
-Received: by mail-vs1-f45.google.com with SMTP id u11so577608vsp.11
-        for <linux-nfs@vger.kernel.org>; Mon, 04 Feb 2019 10:54:59 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=umich.edu; s=google-2016-06-03;
-        h=mime-version:from:date:message-id:subject:to;
-        bh=/d149eHIveBn5MXAg0380glR8TRTcY6uGrO0jyvfNgc=;
-        b=NFODjyWtXFYXl4o6Nrtwyl+BNpPvcN+IveLBEXSM67xAU5vtTQfkJSSltgSMCkkYu8
-         0ZLpuJafqNUI2kJgmnkp3JBCfSE+m6tK7wtU2Kvmw0RCRosHWkJ/R7LvJupadeKo6kTd
-         wP69Cjc+ayMvSk3LWbEZEuRRUSiOUB0SsgY5oVe61GFZfbHiSPPNLCZ6rjwzPHtZk1ZQ
-         umWQHmcDMi0y1S2CKZjhJZ7S/JFLRzxWjQxL/CksU8+qVxu1pkAOOMt3KoH20dlghriz
-         RIE5aENDezlcuos9f+6mwL4ui04hfFZ8sFH59nmbwjLZlnSBiLm4PuFiKsJiXtflQtPK
-         h5Fg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:mime-version:from:date:message-id:subject:to;
-        bh=/d149eHIveBn5MXAg0380glR8TRTcY6uGrO0jyvfNgc=;
-        b=RaBDugxs5UpdNH81AQkYc1tMFmzV7RchTP/b88KuixbD/bCl38CbCP74Q1PPyKyvAE
-         D3g1bU7UF0HycQ0d4/8fERLGHABzaz3rAtEGLRYN9lworp0zt5ccM3MaNGp7ZAojvk8z
-         /7nT0VRQw/XZFydRbjjawgmNneODM5pq1RpmRYQGgmf451sknFnw2HkW3I3SFFjxApgt
-         rQodhH63LabFS3pjAFll3S34UTIFeqx6P5bBCXeQctYuDkJtnxrJ4Pkm9+8g8fhxeZmS
-         UYKmfeALMM1Vw9SH75r3NIwXDSC5C44SIBF+wwh2pc56oMI6q4e0K8U+smuJxJXpUkJT
-         ogSA==
-X-Gm-Message-State: AHQUAuaDeuTwAi+5iIH43iS9diVR4KCdgr2kcmV6eGfiaNFEYYWzQguX
-        sp3UNnfuwMEoQw4eSFyME6rtMEk5oG0JOo92s1v2jg==
-X-Google-Smtp-Source: AHgI3IZNJTw2HvTPs7V3xCi3uJ4d8AYrR3PvHNhnu79UzVSrWVoUfKOFlq3MuLsmTJKOOkJgWUeKG5XU+TKjpiSyJMU=
-X-Received: by 2002:a67:e242:: with SMTP id w2mr387870vse.134.1549306498800;
- Mon, 04 Feb 2019 10:54:58 -0800 (PST)
+        id S1727723AbfBDTDL (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 4 Feb 2019 14:03:11 -0500
+Received: from mx1.redhat.com ([209.132.183.28]:44488 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1727673AbfBDTDK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 4 Feb 2019 14:03:10 -0500
+Received: from smtp.corp.redhat.com (int-mx07.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id ABCC687620;
+        Mon,  4 Feb 2019 19:03:10 +0000 (UTC)
+Received: from [172.16.176.1] (ovpn-112-2.rdu2.redhat.com [10.10.112.2])
+        by smtp.corp.redhat.com (Postfix) with ESMTPS id 99E771000049;
+        Mon,  4 Feb 2019 19:03:09 +0000 (UTC)
+From:   "Benjamin Coddington" <bcodding@redhat.com>
+To:     "Trond Myklebust" <trondmy@hammerspace.com>
+Cc:     anna.schumaker@netapp.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] NFS: Don't use page_file_mapping after removing the page
+Date:   Mon, 04 Feb 2019 14:03:08 -0500
+Message-ID: <22D43CDC-BB14-4C8F-A10E-DF7816EBF0B0@redhat.com>
+In-Reply-To: <c525031691d77cff46adc30dc16bf1d19fb46900.camel@hammerspace.com>
+References: <b85247642d77ea12153d042a4dce85b94d7624ca.1549303962.git.bcodding@redhat.com>
+ <c525031691d77cff46adc30dc16bf1d19fb46900.camel@hammerspace.com>
 MIME-Version: 1.0
-From:   Olga Kornievskaia <aglo@umich.edu>
-Date:   Mon, 4 Feb 2019 13:54:47 -0500
-Message-ID: <CAN-5tyEm3F2Z8bJ_SyLdWqj432xy4_+W0ucMBpOg5PV0u5OGWw@mail.gmail.com>
-Subject: why no nlmport mount option been implemented
-To:     linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+X-Scanned-By: MIMEDefang 2.84 on 10.5.11.22
+X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.26]); Mon, 04 Feb 2019 19:03:10 +0000 (UTC)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hi folks,
+On 4 Feb 2019, at 13:32, Trond Myklebust wrote:
 
-I'm curious why there is an option to by-pass the port mapper call for
-the MNT port but not for the NLM port? Is there a reason why having
-such an option is a bad idea?
+> On Mon, 2019-02-04 at 13:13 -0500, Benjamin Coddington wrote:
+>> If nfs_page_async_flush() removes the page from the mapping, then we
+>> can't
+>> use page_file_mapping() on it as nfs_updatepate() is wont to do when
+>> receiving an error.  Instead, simplify nfs_zap_mapping() to take the
+>> inode.
+>>
+>
+> Won't this break NFS swap?
 
-Thank you.
+I guess it may, but then I wonder: is that a thing that anyone does?  It
+sounds like a terrible idea..
+
+I'm curious enough though, and doing some research on it.
+
+Ben
