@@ -2,59 +2,82 @@ Return-Path: <SRS0=v/uS=QM=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-2.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_PASS,USER_AGENT_MUTT autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6983DC282CB
-	for <linux-nfs@archiver.kernel.org>; Tue,  5 Feb 2019 18:12:52 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A1065C282D7
+	for <linux-nfs@archiver.kernel.org>; Tue,  5 Feb 2019 21:31:49 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 4B3B42175B
-	for <linux-nfs@archiver.kernel.org>; Tue,  5 Feb 2019 18:12:52 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 6CB31217D6
+	for <linux-nfs@archiver.kernel.org>; Tue,  5 Feb 2019 21:31:49 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726685AbfBESMv (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 5 Feb 2019 13:12:51 -0500
-Received: from mx1.math.uh.edu ([129.7.128.32]:54526 "EHLO mx1.math.uh.edu"
+        id S1727232AbfBEVbs (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 5 Feb 2019 16:31:48 -0500
+Received: from fieldses.org ([173.255.197.46]:53126 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726534AbfBESMv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 5 Feb 2019 13:12:51 -0500
-Received: from c-73-155-225-101.hsd1.tx.comcast.net ([73.155.225.101] helo=hippogriff.math.uh.edu)
-        by mx1.math.uh.edu with esmtpsa (TLSv1.3:TLS_AES_256_GCM_SHA384:256)
-        (Exim 4.91)
-        (envelope-from <tibbs@math.uh.edu>)
-        id 1gr5DE-0005mX-Pf; Tue, 05 Feb 2019 12:12:49 -0600
-From:   Jason Tibbitts <tibbs@math.uh.edu>
-To:     Trond Myklebust <trondmy@hammerspace.com>
-Cc:     "Anna.Schumaker\@netapp.com" <Anna.Schumaker@netapp.com>,
-        "linux-nfs\@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "Chuck.Lever\@oracle.com" <Chuck.Lever@oracle.com>
-Subject: Re: Need help debugging NFS issues new to 4.20 kernel
-References: <ufaimyearlx.fsf@epithumia.math.uh.edu>
-        <eff194a660ce562753d0112cdf6b1aacc5aa5dfb.camel@hammerspace.com>
-        <ufak1isms71.fsf@epithumia.math.uh.edu>
-Date:   Tue, 05 Feb 2019 12:12:45 -0600
-In-Reply-To: <ufak1isms71.fsf@epithumia.math.uh.edu> (Jason L. Tibbitts, III's
-        message of "Fri, 25 Jan 2019 13:51:30 -0600")
-Message-ID: <87ftt2cdeq.fsf@hippogriff.math.uh.edu>
-User-Agent: Gnus/5.13 (Gnus v5.13) Emacs/26.1 (gnu/linux)
+        id S1726062AbfBEVbs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 5 Feb 2019 16:31:48 -0500
+Received: by fieldses.org (Postfix, from userid 2815)
+        id 23E1B1CE6; Tue,  5 Feb 2019 16:31:48 -0500 (EST)
+Date:   Tue, 5 Feb 2019 16:31:48 -0500
+From:   "J. Bruce Fields" <bfields@fieldses.org>
+To:     Donald Buczek <buczek@molgen.mpg.de>
+Cc:     stable@vger.kernel.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 4.14 0/2] Two nfsd4 fixes for 4.14 longterm
+Message-ID: <20190205213148.GA16660@fieldses.org>
+References: <20190205100141.25304-1-buczek@molgen.mpg.de>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20190205100141.25304-1-buczek@molgen.mpg.de>
+User-Agent: Mutt/1.5.21 (2010-09-15)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
->>>>> "JLT" == Jason L Tibbitts <tibbs@math.uh.edu> writes:
+ACK to both, thanks.--b.
 
-JLT> I wonder, though; is that likely to be the root of the problem I'm
-JLT> seeing?  The commit description talks about this as a performance
-JLT> regression, but I'm seeing a complete loss of NFS functionality.
-
-It turns out that 4.20.6 (which has the patch in question) does not
-appear to solve my issue.  At least, I've still had a few complete NFS
-hangups on machines running 4.20.6 though I haven't had a chance to
-closely inspect one yet.
-
-As before, any hints about how I could best debug this issue would be
-appreciated.
-
- - J<
+On Tue, Feb 05, 2019 at 11:01:39AM +0100, Donald Buczek wrote:
+> Please include the upstream patches
+> 
+>     *  commit 085def3ade52 ("nfsd4: fix cached replies to solo SEQUENCE
+> compounds")
+>     *  commit 53da6a53e1d4 ("nfsd4: catch some false session retries")
+> 
+> into longterm kernel 4.14.
+> 
+> Because these patches went upstream in 4.15, they are already
+> included in longterm 4.19 and stable.
+> 
+> A nfsd4 server failure, where the server sends unrelated replies
+> to client requests containing only SEQUENCE operations has been
+> experienced with kernel version 4.14.87 [1]. Because the client
+> retries endlessly, this completely breaks the nfs mount.
+> 
+> A backport of these patches has been suggested by the patch
+> author J. Bruce Fields. [1]
+> 
+> Only limited testing has been done (running a single server with
+> 4.14.96 and these two patches for a week and generating some high
+> load on it). It can not be proven by testing, that the patches
+> really fix the experienced problem. However, as the patches are
+> part of upstream and stable kernels for over a year
+> they should be a save pick.
+> 
+> Backport note: Only line numbers updated.
+> 
+> [1] https://bugzilla.kernel.org/show_bug.cgi?id=202435
+> 
+> J. Bruce Fields (2):
+>   nfsd4: fix cached replies to solo SEQUENCE compounds
+>   nfsd4: catch some false session retries
+> 
+>  fs/nfsd/nfs4state.c | 57 ++++++++++++++++++++++++++++++++++++++++-----
+>  fs/nfsd/state.h     |  2 ++
+>  fs/nfsd/xdr4.h      | 13 +++++++++--
+>  3 files changed, 64 insertions(+), 8 deletions(-)
+> 
+> -- 
+> 2.20.0
