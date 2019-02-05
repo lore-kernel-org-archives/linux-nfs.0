@@ -2,166 +2,152 @@ Return-Path: <SRS0=v/uS=QM=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED,
+	USER_AGENT_GIT autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id DCF5BC282C4
-	for <linux-nfs@archiver.kernel.org>; Tue,  5 Feb 2019 01:57:57 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9F1EAC4151A
+	for <linux-nfs@archiver.kernel.org>; Tue,  5 Feb 2019 10:01:44 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 9CCD42070B
-	for <linux-nfs@archiver.kernel.org>; Tue,  5 Feb 2019 01:57:57 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 77E322175B
+	for <linux-nfs@archiver.kernel.org>; Tue,  5 Feb 2019 10:01:44 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726138AbfBEB54 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 4 Feb 2019 20:57:56 -0500
-Received: from p3plsmtpa12-04.prod.phx3.secureserver.net ([68.178.252.233]:58062
-        "EHLO p3plsmtpa12-04.prod.phx3.secureserver.net" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1725874AbfBEB54 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Feb 2019 20:57:56 -0500
-Received: from [192.168.0.55] ([24.218.182.144])
-        by :SMTPAUTH: with ESMTPSA
-        id qpzmgDQVJwsznqpzmgJpYc; Mon, 04 Feb 2019 18:57:55 -0700
-Subject: Re: [PATCH RFC 04/10] SUNRPC: Add common byte-swapped RPC header
- constants
-To:     "J. Bruce Fields" <bfields@fieldses.org>,
-        Chuck Lever <chuck.lever@oracle.com>
-Cc:     Christoph Hellwig <hch@infradead.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        simo@redhat.com
-References: <20190201195538.11389.96106.stgit@manet.1015granger.net>
- <20190201195747.11389.75164.stgit@manet.1015granger.net>
- <20190202170258.GA14074@infradead.org>
- <52468C38-9E9C-49A7-B44B-2BE302A33145@oracle.com>
- <20190204075336.GA28337@infradead.org>
- <0EB44600-7CF7-45C3-A1AB-75B76EFA1546@oracle.com>
- <20190204143239.GA15081@infradead.org>
- <7532348A-4059-4435-9D87-291902148681@oracle.com>
- <20190204193745.GB1816@fieldses.org>
-From:   Tom Talpey <tom@talpey.com>
-Message-ID: <6c9fa778-ee8e-0e5d-5d0e-aa18e6668358@talpey.com>
-Date:   Mon, 4 Feb 2019 20:57:54 -0500
-User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64; rv:60.0) Gecko/20100101
- Thunderbird/60.5.0
+        id S1728207AbfBEKBn (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 5 Feb 2019 05:01:43 -0500
+Received: from mx3.molgen.mpg.de ([141.14.17.11]:50751 "EHLO mx1.molgen.mpg.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1727099AbfBEKBn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 5 Feb 2019 05:01:43 -0500
+Received: from theinternet.molgen.mpg.de (theinternet.molgen.mpg.de [141.14.31.7])
+        by mx.molgen.mpg.de (Postfix) with ESMTP id 426D0201353437;
+        Tue,  5 Feb 2019 11:01:41 +0100 (CET)
+From:   Donald Buczek <buczek@molgen.mpg.de>
+To:     stable@vger.kernel.org
+Cc:     linux-nfs@vger.kernel.org, bfields@fieldses.org
+Subject: [PATCH 4.14 2/2] nfsd4: catch some false session retries
+Date:   Tue,  5 Feb 2019 11:01:41 +0100
+Message-Id: <20190205100141.25304-3-buczek@molgen.mpg.de>
+X-Mailer: git-send-email 2.20.0
+In-Reply-To: <20190205100141.25304-1-buczek@molgen.mpg.de>
+References: <20190205100141.25304-1-buczek@molgen.mpg.de>
 MIME-Version: 1.0
-In-Reply-To: <20190204193745.GB1816@fieldses.org>
-Content-Type: text/plain; charset=utf-8; format=flowed
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
-X-CMAE-Envelope: MS4wfF8VspEwhVTUq2LH68OIlxlX0ZJ92iVsdwecasvVX5pEJ6etdgeSnaFlKuRtBT3ph3e5AafZZmkTiX4N1tHl7pRTOTHD0sUmIWBJgCFE66QeaOlQTRpX
- Pbeu8Zjh0zcyZARq2+hQPngscPz3H1kgT6O0flEUPe0Jqk6sz3M30ADou02Rfq0RGzvDLIFhfdBsq8OsnLNxR8c/3I/EpIfOGicH8vlGksNZEIAmtfkJk8oy
- 4NUHlYoHKwyX9HPe+wMQ0JQlsY+4qLyftfevpqQsk77G4BWiTkBXJgLRcjS8NON0
+Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On 2/4/2019 2:37 PM, J. Bruce Fields wrote:
-> On Mon, Feb 04, 2019 at 09:56:20AM -0500, Chuck Lever wrote:
->>
->>
->>> On Feb 4, 2019, at 9:32 AM, Christoph Hellwig <hch@infradead.org> wrote:
->>>
->>> On Mon, Feb 04, 2019 at 09:16:54AM -0500, Chuck Lever wrote:
->>>> They are. The problem is that we are byte-swapping the incoming wire
->>>> data and then comparing to CPU-endian constants in some hot paths.
->>>> It's better to leave the incoming data alone and compare to a pre-
->>>> byte-swapped constant. This patch adds some of these constants that
->>>> were missing, in preparation for fixing the hot paths.
->>>>
->>>> That is apparently not clear from the patch description, so I will
->>>> endeavor to improve it.
->>>
->>> Why do we need new enums / #defines for that?
->>>
->>> Just replace:
->>>
->>> 	if (beXX_to_cpu(pkt->field) == SOME_CONSTANT)
->>>
->>> with
->>>
->>> 	if (pkt->field == cpu_to_be32(SOME_CONSTANT))
->>>
->>> and we are done.
->>
->> True.
-> 
-> I'm a little surprised the compiler couldn't do that automatically.
-> (Disclaimer: I know nothing about compilers.)
-> 
->>> The latter is a pretty common pattern through the kernel.
->>
->> However the pattern in the NFS server and lockd is to define a
->> lower-case version of the same macro that is pre-byte-swapped.
->> I'm attempting to follow existing precedent in this area.
-> 
-> I've never really understood why that was done.  (Not saying it was
-> wrong, just that I don't understand it.)  As long as you're reading the
-> value, how could byte-swapping it actually add a significant expense?
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Shifts and Rotates are expensive on many processors, and hard to
-pipeline for byteawap because each step needs to wait for the result
-of the previous.
+commit 53da6a53e1d414e05759fa59b7032ee08f4e22d7 upstream.
 
-Maybe this is less of an issue with modern processors, but I'd
-certainly not be surprised that embedded processors "did it the
-hard way".
+The spec allows us to return NFS4ERR_SEQ_FALSE_RETRY if we notice that
+the client is making a call that matches a previous (slot, seqid) pair
+but that *isn't* actually a replay, because some detail of the call
+doesn't actually match the previous one.
 
-Tom.
+Catching every such case is difficult, but we may as well catch a few
+easy ones.  This also handles the case described in the previous patch,
+in a different way.
 
+The spec does however require us to catch the case where the difference
+is in the rpc credentials.  This prevents somebody from snooping another
+user's replies by fabricating retries.
 
-> 
-> The one thing I do like is that I can look at e.g.:
-> 
-> 	int nfsd4_get_nfs4_acl	...
-> 	__be32 nfsd4_set_nfs4_acl ...
-> 
-> and tell that the former returns a linux errno, the latter an NFS error.
-> 
-> --b.
-> 
->>
->> We already have, for example, in various sunrpc headers:
->>
->> enum rpc_accept_stat {
->>          RPC_SUCCESS = 0,
->>          RPC_PROG_UNAVAIL = 1,
->>          RPC_PROG_MISMATCH = 2,
->>    ...
->> };
->>
->> #define rpc_success             cpu_to_be32(RPC_SUCCESS)
->> #define rpc_prog_unavail        cpu_to_be32(RPC_PROG_UNAVAIL)
->> #define rpc_prog_mismatch       cpu_to_be32(RPC_PROG_MISMATCH)
->>
->> Or, for NFS:
->>
->> enum nfs_stat {
->>     ...
->>     NFSERR_SHARE_DENIED = 10015,
->>     ...
->> };
->>
->> #define nfserr_share_denied cpu_to_be32(NFSERR_SHARE_DENIED)
->>
->> There are some missing lower-case macros, which I am trying to
->> add to our existing collection before I rewrite the RPC header
->> encoding and decoding functions. So I'm adding:
->>
->> +       rpc_gss_version = cpu_to_be32(RPC_GSS_VERSION),
->>
->> +       rpc_call                = cpu_to_be32(RPC_CALL),
->> +       rpc_reply               = cpu_to_be32(RPC_REPLY),
->> +
->> +       rpc_msg_accepted        = cpu_to_be32(RPC_MSG_ACCEPTED),
->> +       rpc_msg_denied          = cpu_to_be32(RPC_MSG_DENIED),
->>
->> Actually since we have decided not to use enum for these, this
->> smaller addition can simply be squashed into the later patches,
->> and I can drop this patch, which was intended as a clean-up but
->> now appears to be unnecessary.
->>
->> --
->> Chuck Lever
->>
->>
-> 
-> 
+(But the practical value of the attack is limited by the fact that the
+replies with the most sensitive data are READ replies, which are not
+normally cached.)
+
+Tested-by: Olga Kornievskaia <aglo@umich.edu>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Signed-off-by: Donald Buczek <buczek@molgen.mpg.de>
+---
+ fs/nfsd/nfs4state.c | 37 ++++++++++++++++++++++++++++++++++++-
+ fs/nfsd/state.h     |  1 +
+ 2 files changed, 37 insertions(+), 1 deletion(-)
+
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 177be048c17f..94128643ec1a 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -1472,8 +1472,10 @@ free_session_slots(struct nfsd4_session *ses)
+ {
+ 	int i;
+ 
+-	for (i = 0; i < ses->se_fchannel.maxreqs; i++)
++	for (i = 0; i < ses->se_fchannel.maxreqs; i++) {
++		free_svc_cred(&ses->se_slots[i]->sl_cred);
+ 		kfree(ses->se_slots[i]);
++	}
+ }
+ 
+ /*
+@@ -2334,6 +2336,8 @@ nfsd4_store_cache_entry(struct nfsd4_compoundres *resp)
+ 	slot->sl_flags |= NFSD4_SLOT_INITIALIZED;
+ 	slot->sl_opcnt = resp->opcnt;
+ 	slot->sl_status = resp->cstate.status;
++	free_svc_cred(&slot->sl_cred);
++	copy_cred(&slot->sl_cred, &resp->rqstp->rq_cred);
+ 
+ 	if (!nfsd4_cache_this(resp)) {
+ 		slot->sl_flags &= ~NFSD4_SLOT_CACHED;
+@@ -3040,6 +3044,34 @@ static bool nfsd4_request_too_big(struct svc_rqst *rqstp,
+ 	return xb->len > session->se_fchannel.maxreq_sz;
+ }
+ 
++static bool replay_matches_cache(struct svc_rqst *rqstp,
++		 struct nfsd4_sequence *seq, struct nfsd4_slot *slot)
++{
++	struct nfsd4_compoundargs *argp = rqstp->rq_argp;
++
++	if ((bool)(slot->sl_flags & NFSD4_SLOT_CACHETHIS) !=
++	    (bool)seq->cachethis)
++		return false;
++	/*
++	 * If there's an error than the reply can have fewer ops than
++	 * the call.  But if we cached a reply with *more* ops than the
++	 * call you're sending us now, then this new call is clearly not
++	 * really a replay of the old one:
++	 */
++	if (slot->sl_opcnt < argp->opcnt)
++		return false;
++	/* This is the only check explicitly called by spec: */
++	if (!same_creds(&rqstp->rq_cred, &slot->sl_cred))
++		return false;
++	/*
++	 * There may be more comparisons we could actually do, but the
++	 * spec doesn't require us to catch every case where the calls
++	 * don't match (that would require caching the call as well as
++	 * the reply), so we don't bother.
++	 */
++	return true;
++}
++
+ __be32
+ nfsd4_sequence(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		union nfsd4_op_u *u)
+@@ -3099,6 +3131,9 @@ nfsd4_sequence(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		status = nfserr_seq_misordered;
+ 		if (!(slot->sl_flags & NFSD4_SLOT_INITIALIZED))
+ 			goto out_put_session;
++		status = nfserr_seq_false_retry;
++		if (!replay_matches_cache(rqstp, seq, slot))
++			goto out_put_session;
+ 		cstate->slot = slot;
+ 		cstate->session = session;
+ 		cstate->clp = clp;
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 2488b7df1b35..86aa92d200e1 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -169,6 +169,7 @@ static inline struct nfs4_delegation *delegstateid(struct nfs4_stid *s)
+ struct nfsd4_slot {
+ 	u32	sl_seqid;
+ 	__be32	sl_status;
++	struct svc_cred sl_cred;
+ 	u32	sl_datalen;
+ 	u16	sl_opcnt;
+ #define NFSD4_SLOT_INUSE	(1 << 0)
+-- 
+2.20.0
+
