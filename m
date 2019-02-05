@@ -2,60 +2,70 @@ Return-Path: <SRS0=v/uS=QM=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_PASS autolearn=unavailable autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 25C02C282D7
-	for <linux-nfs@archiver.kernel.org>; Tue,  5 Feb 2019 14:59:08 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id BC7E9C282CB
+	for <linux-nfs@archiver.kernel.org>; Tue,  5 Feb 2019 17:21:05 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id F1757217F9
-	for <linux-nfs@archiver.kernel.org>; Tue,  5 Feb 2019 14:59:07 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 9633F20818
+	for <linux-nfs@archiver.kernel.org>; Tue,  5 Feb 2019 17:21:05 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728496AbfBEO7H (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 5 Feb 2019 09:59:07 -0500
-Received: from mx3.molgen.mpg.de ([141.14.17.11]:40391 "EHLO mx1.molgen.mpg.de"
+        id S1727379AbfBERVE (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 5 Feb 2019 12:21:04 -0500
+Received: from mx2.suse.de ([195.135.220.15]:54240 "EHLO mx1.suse.de"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726098AbfBEO7G (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 5 Feb 2019 09:59:06 -0500
-Received: from theinternet.molgen.mpg.de (theinternet.molgen.mpg.de [141.14.31.7])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
-        (No client certificate requested)
-        (Authenticated sender: buczek)
-        by mx.molgen.mpg.de (Postfix) with ESMTPSA id 67AEF201353433;
-        Tue,  5 Feb 2019 15:59:04 +0100 (CET)
-Subject: Re: [PATCH 4.14 0/2] Two nfsd4 fixes for 4.14 longterm
-To:     Salvatore Bonaccorso <carnil@debian.org>
-Cc:     stable@vger.kernel.org, linux-nfs@vger.kernel.org,
-        bfields@fieldses.org
-References: <20190205100141.25304-1-buczek@molgen.mpg.de>
- <20190205115948.azdwswkyetbop56r@lorien.valinor.li>
-From:   Donald Buczek <buczek@molgen.mpg.de>
-Message-ID: <7a263d82-27e7-077f-3a51-78180785a41f@molgen.mpg.de>
-Date:   Tue, 5 Feb 2019 15:59:04 +0100
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:52.0) Gecko/20100101
- Thunderbird/52.9.1
+        id S1726922AbfBERVE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 5 Feb 2019 12:21:04 -0500
+X-Virus-Scanned: by amavisd-new at test-mx.suse.de
+Received: from relay2.suse.de (unknown [195.135.220.254])
+        by mx1.suse.de (Postfix) with ESMTP id 7AC00B6A4;
+        Tue,  5 Feb 2019 17:21:03 +0000 (UTC)
+From:   Nicolas Morey-Chaisemartin <nmoreychaisemartin@suse.com>
+Subject: [PATCH v3] xprtrdma: Make sure Send CQ is allocated on an existing
+ compvec
+To:     linux-rdma@vger.kernel.org
+Cc:     linux-nfs@vger.kernel.org, chuck.lever@oracle.com
+Message-ID: <9d418664-1f67-c705-19a0-80fc9dc5a12b@suse.com>
+Date:   Tue, 5 Feb 2019 18:21:02 +0100
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101
+ Thunderbird/60.3.0
 MIME-Version: 1.0
-In-Reply-To: <20190205115948.azdwswkyetbop56r@lorien.valinor.li>
-Content-Type: text/plain; charset=utf-8; format=flowed
-Content-Language: en-US
+Content-Type: text/plain; charset=windows-1252
+Content-Language: fr
 Content-Transfer-Encoding: 7bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On 02/05/19 12:59, Salvatore Bonaccorso wrote:
+Make sure the device has at least 2 completion vectors
+before allocating to compvec#1
 
-> Are you planning to submit the same as well for 4.9 LTS? The two
-> commits apply on top of 4.9.154 with line number updated.
+Fixes: a4699f5647f3 (xprtrdma: Put Send CQ in IB_POLL_WORKQUEUE mode)
+Signed-off-by: Nicolas Morey-Chaisemartin <nmoreychaisemartin@suse.com>
+---
+Changes since v2:
+ - Split line for checkpatch to be happy
 
-No, I'm not, because I didn't do any testing with 4.9.
+ net/sunrpc/xprtrdma/verbs.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-Additionally, I'm unsure about the right procedure for trivial backports
-to multiple trees: Individual patch sets, which apply perfectly, a single
-patch sets and Greg resolves that for the other trees or maybe no patch
-set at all and just a "please cherry-pick .... from upstream" mail.
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index b725911c0f3f..5fe727a7db82 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -546,7 +546,8 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
+ 
+ 	sendcq = ib_alloc_cq(ia->ri_device, NULL,
+ 			     ep->rep_attr.cap.max_send_wr + 1,
+-			     1, IB_POLL_WORKQUEUE);
++			     ia->ri_device->num_comp_vectors > 1 ? 1 : 0,
++			     IB_POLL_WORKQUEUE);
+ 	if (IS_ERR(sendcq)) {
+ 		rc = PTR_ERR(sendcq);
+ 		dprintk("RPC:       %s: failed to create send CQ: %i\n",
+-- 
+2.18.0
 
-Best
-   Donald
