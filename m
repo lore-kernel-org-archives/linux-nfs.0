@@ -4,45 +4,48 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED
-	autolearn=ham autolearn_force=no version=3.4.0
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3D0D0C169C4
-	for <linux-nfs@archiver.kernel.org>; Wed,  6 Feb 2019 11:41:14 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9D16FC282CC
+	for <linux-nfs@archiver.kernel.org>; Wed,  6 Feb 2019 11:42:17 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 0B8C520823
-	for <linux-nfs@archiver.kernel.org>; Wed,  6 Feb 2019 11:41:14 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 779C4218AE
+	for <linux-nfs@archiver.kernel.org>; Wed,  6 Feb 2019 11:42:17 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727041AbfBFLlN (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 6 Feb 2019 06:41:13 -0500
-Received: from mx1.redhat.com ([209.132.183.28]:39030 "EHLO mx1.redhat.com"
+        id S1727847AbfBFLmQ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 6 Feb 2019 06:42:16 -0500
+Received: from mx1.redhat.com ([209.132.183.28]:39696 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726957AbfBFLlN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 6 Feb 2019 06:41:13 -0500
-Received: from smtp.corp.redhat.com (int-mx07.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+        id S1727089AbfBFLmQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 6 Feb 2019 06:42:16 -0500
+Received: from smtp.corp.redhat.com (int-mx03.intmail.prod.int.phx2.redhat.com [10.5.11.13])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 7417410F8B;
-        Wed,  6 Feb 2019 11:41:12 +0000 (UTC)
+        by mx1.redhat.com (Postfix) with ESMTPS id 1C4DF10F84;
+        Wed,  6 Feb 2019 11:42:16 +0000 (UTC)
 Received: from bcodding.csb (ovpn-112-2.rdu2.redhat.com [10.10.112.2])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 2602C1048109;
-        Wed,  6 Feb 2019 11:41:12 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTP id C3D9A60BE8;
+        Wed,  6 Feb 2019 11:42:15 +0000 (UTC)
 Received: by bcodding.csb (Postfix, from userid 24008)
-        id 57C7310C30F3; Wed,  6 Feb 2019 06:41:11 -0500 (EST)
+        id 3F52D10C30F3; Wed,  6 Feb 2019 06:42:15 -0500 (EST)
 From:   Benjamin Coddington <bcodding@redhat.com>
-To:     bcodding@redhat.com
+To:     stable@vger.kernel.org
 Cc:     dwysocha@redhat.com, linux-nfs@vger.kernel.org, smayhew@redhat.com,
         trondmy@hammerspace.com
 Subject: [STABLE PATCH] SUNRPC: Always drop the XPRT_LOCK on XPRT_CLOSE_WAIT
-Date:   Wed,  6 Feb 2019 06:41:11 -0500
-Message-Id: <f3dda1a55b9a5d5a7416925358379608cc3a431e.1549453044.git.bcodding@redhat.com>
+Date:   Wed,  6 Feb 2019 06:42:15 -0500
+Message-Id:
+ <f3dda1a55b9a5d5a7416925358379608cc3a431e.1549453044.git.bcodding@redhat.com>
 In-Reply-To: <f3dda1a55b9a5d5a7416925358379608cc3a431e.1547069858.git.bcodding@redhat.com>
 References: <f3dda1a55b9a5d5a7416925358379608cc3a431e.1547069858.git.bcodding@redhat.com>
-X-Scanned-By: MIMEDefang 2.84 on 10.5.11.22
-X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.28]); Wed, 06 Feb 2019 11:41:12 +0000 (UTC)
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.13
+X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.28]); Wed, 06 Feb 2019 11:42:16 +0000 (UTC)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Message-ID: <20190206114215.DEKMsSGdBxbPDnpAcS7wUP_pa612AIsfT1wMeQ5uJC8@z>
 
 This patch is only appropriate for stable kernels v4.16 - v4.19
 
