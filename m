@@ -6,63 +6,63 @@ X-Spam-Status: No, score=-6.8 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
 	SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 38273C282C2
-	for <linux-nfs@archiver.kernel.org>; Wed,  6 Feb 2019 16:36:58 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2F120C282C2
+	for <linux-nfs@archiver.kernel.org>; Wed,  6 Feb 2019 16:37:03 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id F036C20811
-	for <linux-nfs@archiver.kernel.org>; Wed,  6 Feb 2019 16:36:57 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id EA63020811
+	for <linux-nfs@archiver.kernel.org>; Wed,  6 Feb 2019 16:37:02 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="IBSUUguZ"
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="fuKx78xs"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1730831AbfBFQg5 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 6 Feb 2019 11:36:57 -0500
-Received: from mail-it1-f196.google.com ([209.85.166.196]:55073 "EHLO
-        mail-it1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1730678AbfBFQg5 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Feb 2019 11:36:57 -0500
-Received: by mail-it1-f196.google.com with SMTP id i145so7585964ita.4
-        for <linux-nfs@vger.kernel.org>; Wed, 06 Feb 2019 08:36:56 -0800 (PST)
+        id S1730998AbfBFQhC (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 6 Feb 2019 11:37:02 -0500
+Received: from mail-it1-f193.google.com ([209.85.166.193]:53802 "EHLO
+        mail-it1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1730678AbfBFQhC (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Feb 2019 11:37:02 -0500
+Received: by mail-it1-f193.google.com with SMTP id g85so7601616ita.3
+        for <linux-nfs@vger.kernel.org>; Wed, 06 Feb 2019 08:37:01 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=sender:subject:from:to:date:message-id:in-reply-to:references
          :user-agent:mime-version:content-transfer-encoding;
-        bh=ni8Ebgf4CrraYTR402x+jTubCAGP2TtYigExe5dKhvM=;
-        b=IBSUUguZAssdYmsjxwzjTpVRploPttO+aPuOReLOh9lWNaetVrCTAYp3a1OBPuOXff
-         WFukK51YhRmBmralqYhQ+DAumPEWSJBUPA5DcqI7dXTu1ytnWvqMmZURii4M14bh1QIh
-         YlDPWwngQAPeG1pCwXLreRGbTN1ySjqi2XIhfaH6F8M4CX9FmmhCk3FgbXI9hfa5rqgc
-         +KgeRmtvrlEAVQMEpW5l7t3QkzlfHsn3vXe9PZGfrXrSur8zpo2CAUVeTUi4HWiznkLc
-         dKio32BqjvrL0L2mNOMnHvmGkhMUXhncJcq5P5Grgul19vZGFmiwCYfn1tO4xzTfnms5
-         OGxA==
+        bh=iuQvMK0MGp8uT9eYmM7R6lZig/A1gmPQEn7nPA3V4CE=;
+        b=fuKx78xsmvf4jUDDbe1cXa0b6pfpNgNEm4lR3rX/BDn/txSglIjBOJYEvl0euZQKjE
+         pswGikjo1+retEU+TbOthBgavF8W+S7iaDXZTEOf5QJU2cbfiXyZoE/rLMU9Pkan2jo/
+         LEZdB96zOYQbn206ePLjzIQVj3FzV0MXiC9ZAT355RyEEs70As1DmYlqd8ctxt3Yk0xM
+         Q1a+JBZh/4t4lJ7HSZT4RQJnaPeTBqAFUul3+c4eh/Jr8SRyHVi00zZh50lZ5wfawjJT
+         5eak3lBGfETCXDfc0aCHnVqo2lJmZm119sLL1gafjJ+CxoVAuVBdaqkfTtJTRoonql8a
+         4aVQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:sender:subject:from:to:date:message-id
          :in-reply-to:references:user-agent:mime-version
          :content-transfer-encoding;
-        bh=ni8Ebgf4CrraYTR402x+jTubCAGP2TtYigExe5dKhvM=;
-        b=ad0QTd6XvsxXfz0XM2ge2PcR/SAosdVVL43VywwO9BGxZX+lJakdCeRo4mYy9o2HNR
-         vtfu4TlBu2LnPUcepc3bIShNN2jfzH/DwyV2PL5sQjo+xNh5MLu3yKpmyEqtXXBgX+Ep
-         Zso0PAUAxbzA1kOn3uKgL0iKBjbzdo/8Ft9oEwhmoUk6rIe85LTL+GEi28mhC/tb0sO4
-         QPSkY30+OBPvgA1hPouwI6gCTbqrrT22toinU62jU77CEsG+IHMeWBizeB0bjZhRvO1A
-         s1eXCKtNEXzjKTVAOc26RIl+oM2rzKnTbmjegDBO30/lfmBSGh7sY8OlWZQQX56uuZLY
-         5q8w==
-X-Gm-Message-State: AHQUAubcaSRD65jpwl2StmBZ32/HUZwMWK7jDA5f+u7eF9XN3FPmprS1
-        ewK/nYQgb9RXjxJlft+cGHfw4oei
-X-Google-Smtp-Source: AHgI3IYNSEnviYyjnkSIkfZcmLwoAmJKY+ucSKREikKIuoTyfY3YjX37rlxzCu/ccVJlGLksjquiig==
-X-Received: by 2002:a02:94eb:: with SMTP id x98mr6068721jah.88.1549471015497;
-        Wed, 06 Feb 2019 08:36:55 -0800 (PST)
+        bh=iuQvMK0MGp8uT9eYmM7R6lZig/A1gmPQEn7nPA3V4CE=;
+        b=JPBMmd3Yrh/J4u2bvwA59mk0u0r6ikPubKnbtllIFsexwxL5WlCBb7ZcUwkIIpXpiv
+         bApyrfMNGo2t277ERuNjMvECrjVaKvCi7TOpNE2UcqL9e7A2AXy+IMBCMrQQeHJk04Xa
+         raB+xBAiqm2qkrB3RThMAtpX3MalWmhnyTR1GJzcu4DWDPQqGvKpE+MFgotOebvKLkRU
+         pci1/c5nB/VTggNjewaarrnYxFu/zGkNI0tBNTVWburG/C0H7xe1fWwoCYrZU69cs0xl
+         lSOWKGcXLKlr5MEBu0cCfVMnCuK8AQQ+Fmll39mi5+Uln5cyGuTzlmNHuXRhpf0NsCVH
+         71xA==
+X-Gm-Message-State: AHQUAua/RIEWJJTSh2vGri8Z40JP6x3TBCOfwJgX2HlAaEwPfd/jVaYr
+        9etcd2Z9Vz5U10AH1dzxF6DdCN4w
+X-Google-Smtp-Source: AHgI3Ib+eefsd1Bi7UaOZvvfnv4IGRz9ZiebXcwl8yErBwiqZlC6zFDJe1hhw0XTfA5PKSmXFJTetw==
+X-Received: by 2002:a02:76d8:: with SMTP id z207mr3326377jab.114.1549471020737;
+        Wed, 06 Feb 2019 08:37:00 -0800 (PST)
 Received: from gateway.1015granger.net (c-68-61-232-219.hsd1.mi.comcast.net. [68.61.232.219])
-        by smtp.gmail.com with ESMTPSA id e19sm2711455iob.70.2019.02.06.08.36.54
+        by smtp.gmail.com with ESMTPSA id x10sm3172315iop.54.2019.02.06.08.37.00
         for <linux-nfs@vger.kernel.org>
         (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Wed, 06 Feb 2019 08:36:55 -0800 (PST)
+        Wed, 06 Feb 2019 08:37:00 -0800 (PST)
 Received: from manet.1015granger.net (manet.1015granger.net [192.168.1.51])
-        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id x16Gasre015987
-        for <linux-nfs@vger.kernel.org>; Wed, 6 Feb 2019 16:36:54 GMT
-Subject: [PATCH RFC 1/5] SUNRPC: Introduce rpc_prepare_reply_pages()
+        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id x16GaxWh015990
+        for <linux-nfs@vger.kernel.org>; Wed, 6 Feb 2019 16:36:59 GMT
+Subject: [PATCH RFC 2/5] NFS: Account for XDR pad of buf->pages
 From:   Chuck Lever <chuck.lever@oracle.com>
 To:     linux-nfs@vger.kernel.org
-Date:   Wed, 06 Feb 2019 11:36:54 -0500
-Message-ID: <20190206163654.16810.48449.stgit@manet.1015granger.net>
+Date:   Wed, 06 Feb 2019 11:36:59 -0500
+Message-ID: <20190206163659.16810.6630.stgit@manet.1015granger.net>
 In-Reply-To: <20190206163256.16810.62516.stgit@manet.1015granger.net>
 References: <20190206163256.16810.62516.stgit@manet.1015granger.net>
 User-Agent: StGit/0.17.1-dirty
@@ -74,397 +74,173 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-prepare_reply_buffer() and its NFSv4 equivalents expose the details
-of the RPC header and the auth slack values to upper layer
-consumers, creating a layering violation, and duplicating code.
+Certain NFS results (eg. READLINK) might expect a data payload that
+is not an exact multiple of 4 bytes. In this case, XDR encoding
+is required to pad that payload so its length on the wire is a
+multiple of 4 bytes. The constants that define the maximum size of
+each NFS result do not appear to account for this extra word.
 
-Remedy these issues by adding a new RPC client API that hides those
-details from upper layers in a common helper function.
+In each case where the data payload is to be received into pages:
+
+- 1 word is added to the size of the receive buffer allocated by
+  call_allocate
+
+- rpc_inline_rcv_pages subtracts 1 word from @hdrsize so that the
+  extra buffer space falls into the rcv_buf's tail iovec
+
+- If buf->pagelen is word-aligned, an XDR pad is not needed and
+  is thus removed from the tail
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfs/nfs2xdr.c              |   27 +++++-----------------
- fs/nfs/nfs3xdr.c              |   29 ++++++-----------------
- fs/nfs/nfs4xdr.c              |   51 +++++++++++++++++------------------------
- include/linux/sunrpc/clnt.h   |    3 ++
- include/trace/events/sunrpc.h |   37 ++++++++++++++++++++++++++++++
- net/sunrpc/clnt.c             |   19 +++++++++++++++
- net/sunrpc/xdr.c              |    9 +++++++
- 7 files changed, 102 insertions(+), 73 deletions(-)
+ fs/nfs/nfs2xdr.c  |    6 +++---
+ fs/nfs/nfs3xdr.c  |   10 +++++-----
+ fs/nfs/nfs4xdr.c  |   15 ++++++++-------
+ net/sunrpc/clnt.c |    6 +++++-
+ net/sunrpc/xdr.c  |    2 ++
+ 5 files changed, 23 insertions(+), 16 deletions(-)
 
 diff --git a/fs/nfs/nfs2xdr.c b/fs/nfs/nfs2xdr.c
-index bac3a4e..1dcd0fe 100644
+index 1dcd0fe..a7ed29d 100644
 --- a/fs/nfs/nfs2xdr.c
 +++ b/fs/nfs/nfs2xdr.c
-@@ -66,21 +66,6 @@
+@@ -56,11 +56,11 @@
+ 
+ #define NFS_attrstat_sz		(1+NFS_fattr_sz)
+ #define NFS_diropres_sz		(1+NFS_fhandle_sz+NFS_fattr_sz)
+-#define NFS_readlinkres_sz	(2)
+-#define NFS_readres_sz		(1+NFS_fattr_sz+1)
++#define NFS_readlinkres_sz	(2+1)
++#define NFS_readres_sz		(1+NFS_fattr_sz+1+1)
+ #define NFS_writeres_sz         (NFS_attrstat_sz)
+ #define NFS_stat_sz		(1)
+-#define NFS_readdirres_sz	(1)
++#define NFS_readdirres_sz	(1+1)
+ #define NFS_statfsres_sz	(1+NFS_info_sz)
+ 
  static int nfs_stat_to_errno(enum nfs_stat);
- 
- /*
-- * While encoding arguments, set up the reply buffer in advance to
-- * receive reply data directly into the page cache.
-- */
--static void prepare_reply_buffer(struct rpc_rqst *req, struct page **pages,
--				 unsigned int base, unsigned int len,
--				 unsigned int bufsize)
--{
--	struct rpc_auth	*auth = req->rq_cred->cr_auth;
--	unsigned int replen;
--
--	replen = RPC_REPHDRSIZE + auth->au_rslack + bufsize;
--	xdr_inline_pages(&req->rq_rcv_buf, replen << 2, pages, base, len);
--}
--
--/*
-  * Encode/decode NFSv2 basic data types
-  *
-  * Basic NFSv2 data types are defined in section 2.3 of RFC 1094:
-@@ -593,8 +578,8 @@ static void nfs2_xdr_enc_readlinkargs(struct rpc_rqst *req,
- 	const struct nfs_readlinkargs *args = data;
- 
- 	encode_fhandle(xdr, args->fh);
--	prepare_reply_buffer(req, args->pages, args->pgbase,
--					args->pglen, NFS_readlinkres_sz);
-+	rpc_prepare_reply_pages(req, args->pages, args->pgbase,
-+				args->pglen, NFS_readlinkres_sz);
- }
- 
- /*
-@@ -629,8 +614,8 @@ static void nfs2_xdr_enc_readargs(struct rpc_rqst *req,
- 	const struct nfs_pgio_args *args = data;
- 
- 	encode_readargs(xdr, args);
--	prepare_reply_buffer(req, args->pages, args->pgbase,
--					args->count, NFS_readres_sz);
-+	rpc_prepare_reply_pages(req, args->pages, args->pgbase,
-+				args->count, NFS_readres_sz);
- 	req->rq_rcv_buf.flags |= XDRBUF_READ;
- }
- 
-@@ -787,8 +772,8 @@ static void nfs2_xdr_enc_readdirargs(struct rpc_rqst *req,
- 	const struct nfs_readdirargs *args = data;
- 
- 	encode_readdirargs(xdr, args);
--	prepare_reply_buffer(req, args->pages, 0,
--					args->count, NFS_readdirres_sz);
-+	rpc_prepare_reply_pages(req, args->pages, 0,
-+				args->count, NFS_readdirres_sz);
- }
- 
- /*
 diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
-index 4aa3ffe..a54dcf4 100644
+index a54dcf4..110358f 100644
 --- a/fs/nfs/nfs3xdr.c
 +++ b/fs/nfs/nfs3xdr.c
-@@ -105,21 +105,6 @@
- };
+@@ -69,13 +69,13 @@
+ #define NFS3_removeres_sz	(NFS3_setattrres_sz)
+ #define NFS3_lookupres_sz	(1+NFS3_fh_sz+(2 * NFS3_post_op_attr_sz))
+ #define NFS3_accessres_sz	(1+NFS3_post_op_attr_sz+1)
+-#define NFS3_readlinkres_sz	(1+NFS3_post_op_attr_sz+1)
+-#define NFS3_readres_sz		(1+NFS3_post_op_attr_sz+3)
++#define NFS3_readlinkres_sz	(1+NFS3_post_op_attr_sz+1+1)
++#define NFS3_readres_sz		(1+NFS3_post_op_attr_sz+3+1)
+ #define NFS3_writeres_sz	(1+NFS3_wcc_data_sz+4)
+ #define NFS3_createres_sz	(1+NFS3_fh_sz+NFS3_post_op_attr_sz+NFS3_wcc_data_sz)
+ #define NFS3_renameres_sz	(1+(2 * NFS3_wcc_data_sz))
+ #define NFS3_linkres_sz		(1+NFS3_post_op_attr_sz+NFS3_wcc_data_sz)
+-#define NFS3_readdirres_sz	(1+NFS3_post_op_attr_sz+2)
++#define NFS3_readdirres_sz	(1+NFS3_post_op_attr_sz+2+1)
+ #define NFS3_fsstatres_sz	(1+NFS3_post_op_attr_sz+13)
+ #define NFS3_fsinfores_sz	(1+NFS3_post_op_attr_sz+12)
+ #define NFS3_pathconfres_sz	(1+NFS3_post_op_attr_sz+6)
+@@ -85,7 +85,7 @@
+ #define ACL3_setaclargs_sz	(NFS3_fh_sz+1+ \
+ 				XDR_QUADLEN(NFS_ACL_INLINE_BUFSIZE))
+ #define ACL3_getaclres_sz	(1+NFS3_post_op_attr_sz+1+ \
+-				XDR_QUADLEN(NFS_ACL_INLINE_BUFSIZE))
++				XDR_QUADLEN(NFS_ACL_INLINE_BUFSIZE)+1)
+ #define ACL3_setaclres_sz	(1+NFS3_post_op_attr_sz)
  
- /*
-- * While encoding arguments, set up the reply buffer in advance to
-- * receive reply data directly into the page cache.
-- */
--static void prepare_reply_buffer(struct rpc_rqst *req, struct page **pages,
--				 unsigned int base, unsigned int len,
--				 unsigned int bufsize)
--{
--	struct rpc_auth	*auth = req->rq_cred->cr_auth;
--	unsigned int replen;
--
--	replen = RPC_REPHDRSIZE + auth->au_rslack + bufsize;
--	xdr_inline_pages(&req->rq_rcv_buf, replen << 2, pages, base, len);
--}
--
--/*
-  * Encode/decode NFSv3 basic data types
-  *
-  * Basic NFSv3 data types are defined in section 2.5 of RFC 1813:
-@@ -910,8 +895,8 @@ static void nfs3_xdr_enc_readlink3args(struct rpc_rqst *req,
- 	const struct nfs3_readlinkargs *args = data;
- 
- 	encode_nfs_fh3(xdr, args->fh);
--	prepare_reply_buffer(req, args->pages, args->pgbase,
--					args->pglen, NFS3_readlinkres_sz);
-+	rpc_prepare_reply_pages(req, args->pages, args->pgbase,
-+				args->pglen, NFS3_readlinkres_sz);
- }
- 
- /*
-@@ -943,8 +928,8 @@ static void nfs3_xdr_enc_read3args(struct rpc_rqst *req,
- 	unsigned int replen = args->replen ? args->replen : NFS3_readres_sz;
- 
- 	encode_read3args(xdr, args);
--	prepare_reply_buffer(req, args->pages, args->pgbase,
--					args->count, replen);
-+	rpc_prepare_reply_pages(req, args->pages, args->pgbase,
-+				args->count, replen);
- 	req->rq_rcv_buf.flags |= XDRBUF_READ;
- }
- 
-@@ -1236,7 +1221,7 @@ static void nfs3_xdr_enc_readdir3args(struct rpc_rqst *req,
- 	const struct nfs3_readdirargs *args = data;
- 
- 	encode_readdir3args(xdr, args);
--	prepare_reply_buffer(req, args->pages, 0,
-+	rpc_prepare_reply_pages(req, args->pages, 0,
- 				args->count, NFS3_readdirres_sz);
- }
- 
-@@ -1278,7 +1263,7 @@ static void nfs3_xdr_enc_readdirplus3args(struct rpc_rqst *req,
- 	const struct nfs3_readdirargs *args = data;
- 
- 	encode_readdirplus3args(xdr, args);
--	prepare_reply_buffer(req, args->pages, 0,
-+	rpc_prepare_reply_pages(req, args->pages, 0,
- 				args->count, NFS3_readdirres_sz);
- }
- 
-@@ -1323,7 +1308,7 @@ static void nfs3_xdr_enc_getacl3args(struct rpc_rqst *req,
- 	encode_nfs_fh3(xdr, args->fh);
- 	encode_uint32(xdr, args->mask);
- 	if (args->mask & (NFS_ACL | NFS_DFACL)) {
--		prepare_reply_buffer(req, args->pages, 0,
-+		rpc_prepare_reply_pages(req, args->pages, 0,
- 					NFSACL_MAXPAGES << PAGE_SHIFT,
- 					ACL3_getaclres_sz);
- 		req->rq_rcv_buf.flags |= XDRBUF_SPARSE_PAGES;
+ static int nfs3_stat_to_errno(enum nfs_stat);
+@@ -1629,7 +1629,7 @@ static int nfs3_xdr_dec_read3res(struct rpc_rqst *req, struct xdr_stream *xdr,
+ 	result->op_status = status;
+ 	if (status != NFS3_OK)
+ 		goto out_status;
+-	result->replen = 3 + ((xdr_stream_pos(xdr) - pos) >> 2);
++	result->replen = 4 + ((xdr_stream_pos(xdr) - pos) >> 2);
+ 	error = decode_read3resok(xdr, result);
+ out:
+ 	return error;
 diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 38a4cbc..d0fa18d 100644
+index d0fa18d..6d9d5e2 100644
 --- a/fs/nfs/nfs4xdr.c
 +++ b/fs/nfs/nfs4xdr.c
-@@ -1016,12 +1016,11 @@ static void encode_compound_hdr(struct xdr_stream *xdr,
- 				struct compound_hdr *hdr)
- {
- 	__be32 *p;
--	struct rpc_auth *auth = req->rq_cred->cr_auth;
+@@ -215,14 +215,14 @@ static int decode_layoutget(struct xdr_stream *xdr, struct rpc_rqst *req,
+ 				 nfs4_fattr_bitmap_maxsz)
+ #define encode_read_maxsz	(op_encode_hdr_maxsz + \
+ 				 encode_stateid_maxsz + 3)
+-#define decode_read_maxsz	(op_decode_hdr_maxsz + 2)
++#define decode_read_maxsz	(op_decode_hdr_maxsz + 2 + 1)
+ #define encode_readdir_maxsz	(op_encode_hdr_maxsz + \
+ 				 2 + encode_verifier_maxsz + 5 + \
+ 				nfs4_label_maxsz)
+ #define decode_readdir_maxsz	(op_decode_hdr_maxsz + \
+-				 decode_verifier_maxsz)
++				 decode_verifier_maxsz + 1)
+ #define encode_readlink_maxsz	(op_encode_hdr_maxsz)
+-#define decode_readlink_maxsz	(op_decode_hdr_maxsz + 1)
++#define decode_readlink_maxsz	(op_decode_hdr_maxsz + 1 + 1)
+ #define encode_write_maxsz	(op_encode_hdr_maxsz + \
+ 				 encode_stateid_maxsz + 4)
+ #define decode_write_maxsz	(op_decode_hdr_maxsz + \
+@@ -284,14 +284,14 @@ static int decode_layoutget(struct xdr_stream *xdr, struct rpc_rqst *req,
+ #define decode_delegreturn_maxsz (op_decode_hdr_maxsz)
+ #define encode_getacl_maxsz	(encode_getattr_maxsz)
+ #define decode_getacl_maxsz	(op_decode_hdr_maxsz + \
+-				 nfs4_fattr_bitmap_maxsz + 1)
++				 nfs4_fattr_bitmap_maxsz + 1 + 1)
+ #define encode_setacl_maxsz	(op_encode_hdr_maxsz + \
+ 				 encode_stateid_maxsz + 3)
+ #define decode_setacl_maxsz	(decode_setattr_maxsz)
+ #define encode_fs_locations_maxsz \
+ 				(encode_getattr_maxsz)
+ #define decode_fs_locations_maxsz \
+-				(0)
++				(1)
+ #define encode_secinfo_maxsz	(op_encode_hdr_maxsz + nfs4_name_maxsz)
+ #define decode_secinfo_maxsz	(op_decode_hdr_maxsz + 1 + ((NFS_MAX_SECFLAVORS * (16 + GSS_OID_MAX_LEN)) / 4))
  
- 	/* initialize running count of expected bytes in reply.
- 	 * NOTE: the replied tag SHOULD be the same is the one sent,
- 	 * but this is not required as a MUST for the server to do so. */
--	hdr->replen = RPC_REPHDRSIZE + auth->au_rslack + 3 + hdr->taglen;
-+	hdr->replen = 3 + hdr->taglen;
- 
- 	WARN_ON_ONCE(hdr->taglen > NFS4_MAXTAGLEN);
- 	encode_string(xdr, hdr->taglen, hdr->tag);
-@@ -2341,9 +2340,9 @@ static void nfs4_xdr_enc_open(struct rpc_rqst *req, struct xdr_stream *xdr,
- 	encode_getfattr_open(xdr, args->bitmask, args->open_bitmap, &hdr);
- 	if (args->lg_args) {
- 		encode_layoutget(xdr, args->lg_args, &hdr);
--		xdr_inline_pages(&req->rq_rcv_buf, hdr.replen << 2,
--				 args->lg_args->layout.pages,
--				 0, args->lg_args->layout.pglen);
-+		rpc_prepare_reply_pages(req, args->lg_args->layout.pages, 0,
-+					args->lg_args->layout.pglen,
-+					hdr.replen);
- 	}
- 	encode_nops(&hdr);
- }
-@@ -2387,9 +2386,9 @@ static void nfs4_xdr_enc_open_noattr(struct rpc_rqst *req,
- 	encode_getfattr_open(xdr, args->bitmask, args->open_bitmap, &hdr);
- 	if (args->lg_args) {
- 		encode_layoutget(xdr, args->lg_args, &hdr);
--		xdr_inline_pages(&req->rq_rcv_buf, hdr.replen << 2,
--				 args->lg_args->layout.pages,
--				 0, args->lg_args->layout.pglen);
-+		rpc_prepare_reply_pages(req, args->lg_args->layout.pages, 0,
-+					args->lg_args->layout.pglen,
-+					hdr.replen);
- 	}
- 	encode_nops(&hdr);
- }
-@@ -2499,8 +2498,8 @@ static void nfs4_xdr_enc_readlink(struct rpc_rqst *req, struct xdr_stream *xdr,
- 	encode_putfh(xdr, args->fh, &hdr);
- 	encode_readlink(xdr, args, req, &hdr);
- 
--	xdr_inline_pages(&req->rq_rcv_buf, hdr.replen << 2, args->pages,
--			args->pgbase, args->pglen);
-+	rpc_prepare_reply_pages(req, args->pages, args->pgbase,
-+				args->pglen, hdr.replen);
- 	encode_nops(&hdr);
- }
- 
-@@ -2520,11 +2519,8 @@ static void nfs4_xdr_enc_readdir(struct rpc_rqst *req, struct xdr_stream *xdr,
- 	encode_putfh(xdr, args->fh, &hdr);
- 	encode_readdir(xdr, args, req, &hdr);
- 
--	xdr_inline_pages(&req->rq_rcv_buf, hdr.replen << 2, args->pages,
--			 args->pgbase, args->count);
--	dprintk("%s: inlined page args = (%u, %p, %u, %u)\n",
--			__func__, hdr.replen << 2, args->pages,
--			args->pgbase, args->count);
-+	rpc_prepare_reply_pages(req, args->pages, args->pgbase,
-+				args->count, hdr.replen);
- 	encode_nops(&hdr);
- }
- 
-@@ -2544,8 +2540,8 @@ static void nfs4_xdr_enc_read(struct rpc_rqst *req, struct xdr_stream *xdr,
- 	encode_putfh(xdr, args->fh, &hdr);
- 	encode_read(xdr, args, &hdr);
- 
--	xdr_inline_pages(&req->rq_rcv_buf, hdr.replen << 2,
--			 args->pages, args->pgbase, args->count);
-+	rpc_prepare_reply_pages(req, args->pages, args->pgbase,
-+				args->count, hdr.replen);
- 	req->rq_rcv_buf.flags |= XDRBUF_READ;
- 	encode_nops(&hdr);
- }
-@@ -2591,9 +2587,8 @@ static void nfs4_xdr_enc_getacl(struct rpc_rqst *req, struct xdr_stream *xdr,
- 	encode_getattr(xdr, nfs4_acl_bitmap, NULL,
- 			ARRAY_SIZE(nfs4_acl_bitmap), &hdr);
- 
--	xdr_inline_pages(&req->rq_rcv_buf, replen << 2,
--		args->acl_pages, 0, args->acl_len);
--
-+	rpc_prepare_reply_pages(req, args->acl_pages, 0,
-+				args->acl_len, replen);
- 	encode_nops(&hdr);
- }
- 
-@@ -2814,9 +2809,8 @@ static void nfs4_xdr_enc_fs_locations(struct rpc_rqst *req,
- 		encode_fs_locations(xdr, args->bitmask, &hdr);
- 	}
- 
--	/* Set up reply kvec to capture returned fs_locations array. */
--	xdr_inline_pages(&req->rq_rcv_buf, replen << 2,
--			 (struct page **)&args->page, 0, PAGE_SIZE);
-+	rpc_prepare_reply_pages(req, (struct page **)&args->page, 0,
-+				PAGE_SIZE, replen);
- 	encode_nops(&hdr);
- }
- 
-@@ -3018,10 +3012,8 @@ static void nfs4_xdr_enc_getdeviceinfo(struct rpc_rqst *req,
- 
- 	/* set up reply kvec. Subtract notification bitmap max size (2)
- 	 * so that notification bitmap is put in xdr_buf tail */
--	xdr_inline_pages(&req->rq_rcv_buf, (hdr.replen - 2) << 2,
--			 args->pdev->pages, args->pdev->pgbase,
--			 args->pdev->pglen);
--
-+	rpc_prepare_reply_pages(req, args->pdev->pages, args->pdev->pgbase,
-+				args->pdev->pglen, hdr.replen - 2);
- 	encode_nops(&hdr);
- }
- 
-@@ -3042,9 +3034,8 @@ static void nfs4_xdr_enc_layoutget(struct rpc_rqst *req,
- 	encode_putfh(xdr, NFS_FH(args->inode), &hdr);
- 	encode_layoutget(xdr, args, &hdr);
- 
--	xdr_inline_pages(&req->rq_rcv_buf, hdr.replen << 2,
--	    args->layout.pages, 0, args->layout.pglen);
--
-+	rpc_prepare_reply_pages(req, args->layout.pages, 0,
-+				args->layout.pglen, hdr.replen);
- 	encode_nops(&hdr);
- }
- 
-diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
-index 1c44171..98bc988 100644
---- a/include/linux/sunrpc/clnt.h
-+++ b/include/linux/sunrpc/clnt.h
-@@ -169,6 +169,9 @@ int		rpcb_v4_register(struct net *net, const u32 program,
- 				 const char *netid);
- void		rpcb_getport_async(struct rpc_task *);
- 
-+void rpc_prepare_reply_pages(struct rpc_rqst *req, struct page **pages,
-+			     unsigned int base, unsigned int len,
-+			     unsigned int hdrsize);
- void		rpc_call_start(struct rpc_task *);
- int		rpc_call_async(struct rpc_clnt *clnt,
- 			       const struct rpc_message *msg, int flags,
-diff --git a/include/trace/events/sunrpc.h b/include/trace/events/sunrpc.h
-index e58dda8..8451f30 100644
---- a/include/trace/events/sunrpc.h
-+++ b/include/trace/events/sunrpc.h
-@@ -461,6 +461,43 @@
- 	)
- );
- 
-+TRACE_EVENT(rpc_reply_pages,
-+	TP_PROTO(
-+		const struct rpc_rqst *req
-+	),
-+
-+	TP_ARGS(req),
-+
-+	TP_STRUCT__entry(
-+		__field(unsigned int, task_id)
-+		__field(unsigned int, client_id)
-+		__field(const void *, head_base)
-+		__field(size_t, head_len)
-+		__field(const void *, tail_base)
-+		__field(size_t, tail_len)
-+		__field(unsigned int, page_len)
-+	),
-+
-+	TP_fast_assign(
-+		__entry->task_id = req->rq_task->tk_pid;
-+		__entry->client_id = req->rq_task->tk_client->cl_clid;
-+
-+		__entry->head_base = req->rq_rcv_buf.head[0].iov_base;
-+		__entry->head_len = req->rq_rcv_buf.head[0].iov_len;
-+		__entry->page_len = req->rq_rcv_buf.page_len;
-+		__entry->tail_base = req->rq_rcv_buf.tail[0].iov_base;
-+		__entry->tail_len = req->rq_rcv_buf.tail[0].iov_len;
-+	),
-+
-+	TP_printk(
-+		"task:%u@%u xdr=[%p,%zu]/%u/[%p,%zu]\n",
-+		__entry->task_id, __entry->client_id,
-+		__entry->head_base, __entry->head_len,
-+		__entry->page_len,
-+		__entry->tail_base, __entry->tail_len
-+	)
-+);
-+
- /*
-  * First define the enums in the below macros to be exported to userspace
-  * via TRACE_DEFINE_ENUM().
+@@ -392,12 +392,13 @@ static int decode_layoutget(struct xdr_stream *xdr, struct rpc_rqst *req,
+ 				1 /* opaque devaddr4 length */ + \
+ 				  /* devaddr4 payload is read into page */ \
+ 				1 /* notification bitmap length */ + \
+-				1 /* notification bitmap, word 0 */)
++				1 /* notification bitmap, word 0 */ + \
++				1 /* possible XDR padding */)
+ #define encode_layoutget_maxsz	(op_encode_hdr_maxsz + 10 + \
+ 				encode_stateid_maxsz)
+ #define decode_layoutget_maxsz	(op_decode_hdr_maxsz + 8 + \
+ 				decode_stateid_maxsz + \
+-				XDR_QUADLEN(PNFS_LAYOUT_MAXSIZE))
++				XDR_QUADLEN(PNFS_LAYOUT_MAXSIZE) + 1)
+ #define encode_layoutcommit_maxsz (op_encode_hdr_maxsz +          \
+ 				2 /* offset */ + \
+ 				2 /* length */ + \
 diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index 803e931..f780605 100644
+index f780605..4ea38b0 100644
 --- a/net/sunrpc/clnt.c
 +++ b/net/sunrpc/clnt.c
-@@ -1164,6 +1164,25 @@ struct rpc_task *rpc_run_bc_task(struct rpc_rqst *req)
- }
- #endif /* CONFIG_SUNRPC_BACKCHANNEL */
- 
-+/**
-+ * rpc_prepare_reply_pages - Prepare to receive a reply data payload into pages
-+ * @req: RPC request to prepare
-+ * @pages: vector of struct page pointers
-+ * @base: offset in first page where receive should start, in bytes
-+ * @len: expected size of the upper layer data payload, in bytes
-+ * @hdrsize: expected size of upper layer reply header, in XDR words
-+ *
-+ */
-+void rpc_prepare_reply_pages(struct rpc_rqst *req, struct page **pages,
-+			     unsigned int base, unsigned int len,
-+			     unsigned int hdrsize)
-+{
-+	hdrsize += RPC_REPHDRSIZE + req->rq_cred->cr_auth->au_rslack;
-+	xdr_inline_pages(&req->rq_rcv_buf, hdrsize << 2, pages, base, len);
-+	trace_rpc_reply_pages(req);
-+}
-+EXPORT_SYMBOL_GPL(rpc_prepare_reply_pages);
-+
- void
- rpc_call_start(struct rpc_task *task)
+@@ -1177,7 +1177,11 @@ void rpc_prepare_reply_pages(struct rpc_rqst *req, struct page **pages,
+ 			     unsigned int base, unsigned int len,
+ 			     unsigned int hdrsize)
  {
+-	hdrsize += RPC_REPHDRSIZE + req->rq_cred->cr_auth->au_rslack;
++	/* Subtract one to force an extra word of buffer space for the
++	 * payload's XDR pad to fall into the rcv_buf's tail iovec.
++	 */
++	hdrsize += RPC_REPHDRSIZE + req->rq_cred->cr_auth->au_rslack - 1;
++
+ 	xdr_inline_pages(&req->rq_rcv_buf, hdrsize << 2, pages, base, len);
+ 	trace_rpc_reply_pages(req);
+ }
 diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
-index 4bce619..7cca515 100644
+index 7cca515..aa8177d 100644
 --- a/net/sunrpc/xdr.c
 +++ b/net/sunrpc/xdr.c
-@@ -163,6 +163,15 @@ __be32 *xdr_encode_opaque(__be32 *p, const void *ptr, unsigned int nbytes)
- 	buf->bvec = NULL;
- }
+@@ -189,6 +189,8 @@ __be32 *xdr_encode_opaque(__be32 *p, const void *ptr, unsigned int nbytes)
  
-+/**
-+ * xdr_inline_pages - Prepare receive buffer for a large reply
-+ * @xdr: xdr_buf into which reply will be placed
-+ * @offset: expected offset where data payload will start, in bytes
-+ * @pages: vector of struct page pointers
-+ * @base: offset in first page where receive should start, in bytes
-+ * @len: expected size of the upper layer data payload, in bytes
-+ *
-+ */
- void
- xdr_inline_pages(struct xdr_buf *xdr, unsigned int offset,
- 		 struct page **pages, unsigned int base, unsigned int len)
+ 	tail->iov_base = buf + offset;
+ 	tail->iov_len = buflen - offset;
++	if ((xdr->page_len & 3) == 0)
++		tail->iov_len -= sizeof(__be32);
+ 
+ 	xdr->buflen += len;
+ }
 
