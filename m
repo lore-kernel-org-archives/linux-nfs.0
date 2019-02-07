@@ -5,57 +5,85 @@ X-Spam-Level:
 X-Spam-Status: No, score=-1.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	MAILING_LIST_MULTI,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 01C8CC282C2
-	for <linux-nfs@archiver.kernel.org>; Thu,  7 Feb 2019 11:14:02 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 127CAC282C4
+	for <linux-nfs@archiver.kernel.org>; Thu,  7 Feb 2019 11:48:46 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id CE9B52147C
-	for <linux-nfs@archiver.kernel.org>; Thu,  7 Feb 2019 11:14:01 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id DE0DD2080A
+	for <linux-nfs@archiver.kernel.org>; Thu,  7 Feb 2019 11:48:45 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726579AbfBGLOB (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 7 Feb 2019 06:14:01 -0500
-Received: from mx1.redhat.com ([209.132.183.28]:51134 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726448AbfBGLOA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 7 Feb 2019 06:14:00 -0500
-Received: from smtp.corp.redhat.com (int-mx08.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        id S1726960AbfBGLso (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 7 Feb 2019 06:48:44 -0500
+Received: from mx3.molgen.mpg.de ([141.14.17.11]:52587 "EHLO mx1.molgen.mpg.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1726579AbfBGLso (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 7 Feb 2019 06:48:44 -0500
+Received: from theinternet.molgen.mpg.de (theinternet.molgen.mpg.de [141.14.31.7])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 6D8FF8E591;
-        Thu,  7 Feb 2019 11:14:00 +0000 (UTC)
-Received: from [172.16.176.1] (ovpn-112-2.rdu2.redhat.com [10.10.112.2])
-        by smtp.corp.redhat.com (Postfix) with ESMTPS id DE721277A7;
-        Thu,  7 Feb 2019 11:13:58 +0000 (UTC)
-From:   "Benjamin Coddington" <bcodding@redhat.com>
-To:     "Jason Tibbitts" <tibbs@math.uh.edu>
-Cc:     "Trond Myklebust" <trondmy@hammerspace.com>,
-        Anna.Schumaker@netapp.com, linux-nfs@vger.kernel.org,
-        Chuck.Lever@oracle.com
-Subject: Re: Need help debugging NFS issues new to 4.20 kernel
-Date:   Thu, 07 Feb 2019 06:13:57 -0500
-Message-ID: <662CE7B3-235E-4E2D-9C8C-0F6233F3085F@redhat.com>
-In-Reply-To: <87imxwab12.fsf@hippogriff.math.uh.edu>
-References: <ufaimyearlx.fsf@epithumia.math.uh.edu>
- <eff194a660ce562753d0112cdf6b1aacc5aa5dfb.camel@hammerspace.com>
- <ufak1isms71.fsf@epithumia.math.uh.edu>
- <87ftt2cdeq.fsf@hippogriff.math.uh.edu>
- <FC712F54-5A7A-436D-B076-936B29C013F4@redhat.com>
- <87imxwab12.fsf@hippogriff.math.uh.edu>
+        (Authenticated sender: buczek)
+        by mx.molgen.mpg.de (Postfix) with ESMTPSA id 73F2260C3DA99;
+        Thu,  7 Feb 2019 12:48:41 +0100 (CET)
+From:   Donald Buczek <buczek@molgen.mpg.de>
+Subject: 4.0 client and server restart with decreased lease time
+To:     linux-nfs@vger.kernel.org
+Cc:     it+nfs@molgen.mpg.de
+Message-ID: <480bf69d-4651-aaac-2b85-634561c579c8@molgen.mpg.de>
+Date:   Thu, 7 Feb 2019 12:48:41 +0100
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:52.0) Gecko/20100101
+ Thunderbird/52.9.1
 MIME-Version: 1.0
-X-Scanned-By: MIMEDefang 2.84 on 10.5.11.23
-X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.28]); Thu, 07 Feb 2019 11:14:00 +0000 (UTC)
+Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On 6 Feb 2019, at 15:59, Jason Tibbitts wrote:
+The nfsd default lease time has been changed from 90 seconds to 45
+seconds between Linux 4.14 and 4.19 by commit d6ebf5088f09 ("nfsd4:
+return default lease period").
 
-> This machine has a load of 93; a bunch of those are just df commands
-> started by a monitoring process.  So far the user hasn't complained, so
-> I can still poke at the machine for a while.
+After we did an upgrade of a nfs server from 4.14 to 4.19, we noticed
+a failing process and dmesg logs "NFS: nfs4_reclaim_open_state: Lock
+reclaim failed!" on a client (Linux 4.14.87). The client had the
+file system mounted with vers=4.0.
 
--10063 is -NFS4ERR_SEQ_MISORDERED.. I wonder why the
-trace_nfs4_sequence_done() in nfs41_sequence_process() isn't showing up in
-the trace?  Ah.. my fault - add "nfs4:*" to the set_events.
+Network trace indicated, that the client continued to use the
+90 seconds lease period of the previous server incarnation and
+sent RENEWs every 60 seconds (2/3 of 90 seconds).  Sometimes the
+server answered with NFS4ERR_EXPIRED.
 
-Ben
+When this happened, the client executed recovery (SETCLIENTID...) but
+did non query the server for a new lease_time.  So the problem was
+persistent even after the first failure.
+
+As an experiment, I've also restarted a server with the lease time
+decrement from 90 to 45 seconds, but the grace period fixed to
+90 seconds. Now the client got NFS4ERR_STALE_CLIENTID  but still did
+not query the server for a new lease_time and continued to send RENEWs
+in 60 second intervals.
+
+At least for the later case, the RFC say, a client should refetch
+the lease_time:
+
+> A server may, upon restart, establish a new value for the lease
+> period.  Therefore, clients should, once a new client ID is
+> established, refetch the lease_time attribute and use it as the basis
+> for lease renewal for the lease associated with that server.
+> However, the server must establish, for this restart event, a grace
+> period at least as long as the lease period for the previous server
+> instantiation.  This allows the client state obtained during the
+> previous server instance to be reliably re-established.
+
+[ https://tools.ietf.org/html/rfc7530 ]
+
+I understand that a restart with a grace period smaller than the
+previous lease time is never save.
+
+Aside from that, is a server restart with a decreased lease time
+supposed to be supported by the Linux client? If not, this is kind
+of a trap for server upgrades when just relying on the defaults.
+
+Best
+   Donald
