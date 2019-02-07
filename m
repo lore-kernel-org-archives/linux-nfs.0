@@ -2,88 +2,164 @@ Return-Path: <SRS0=BC+Y=QO=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 127CAC282C4
-	for <linux-nfs@archiver.kernel.org>; Thu,  7 Feb 2019 11:48:46 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 01A47C282C2
+	for <linux-nfs@archiver.kernel.org>; Thu,  7 Feb 2019 13:37:18 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id DE0DD2080A
-	for <linux-nfs@archiver.kernel.org>; Thu,  7 Feb 2019 11:48:45 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id C99F3206DD
+	for <linux-nfs@archiver.kernel.org>; Thu,  7 Feb 2019 13:37:17 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726960AbfBGLso (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 7 Feb 2019 06:48:44 -0500
-Received: from mx3.molgen.mpg.de ([141.14.17.11]:52587 "EHLO mx1.molgen.mpg.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726579AbfBGLso (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 7 Feb 2019 06:48:44 -0500
-Received: from theinternet.molgen.mpg.de (theinternet.molgen.mpg.de [141.14.31.7])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+        id S1727080AbfBGNhR (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 7 Feb 2019 08:37:17 -0500
+Received: from mx1.redhat.com ([209.132.183.28]:44910 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1727061AbfBGNhR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 7 Feb 2019 08:37:17 -0500
+Received: from smtp.corp.redhat.com (int-mx07.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        (Authenticated sender: buczek)
-        by mx.molgen.mpg.de (Postfix) with ESMTPSA id 73F2260C3DA99;
-        Thu,  7 Feb 2019 12:48:41 +0100 (CET)
-From:   Donald Buczek <buczek@molgen.mpg.de>
-Subject: 4.0 client and server restart with decreased lease time
-To:     linux-nfs@vger.kernel.org
-Cc:     it+nfs@molgen.mpg.de
-Message-ID: <480bf69d-4651-aaac-2b85-634561c579c8@molgen.mpg.de>
-Date:   Thu, 7 Feb 2019 12:48:41 +0100
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:52.0) Gecko/20100101
- Thunderbird/52.9.1
+        by mx1.redhat.com (Postfix) with ESMTPS id 24C8489ADA;
+        Thu,  7 Feb 2019 13:37:16 +0000 (UTC)
+Received: from [172.16.176.1] (ovpn-112-2.rdu2.redhat.com [10.10.112.2])
+        by smtp.corp.redhat.com (Postfix) with ESMTPS id 069D0104811A;
+        Thu,  7 Feb 2019 13:37:13 +0000 (UTC)
+From:   "Benjamin Coddington" <bcodding@redhat.com>
+To:     "Kazuo Ito" <ito_kazuo_g3@lab.ntt.co.jp>
+Cc:     "Trond Myklebust" <trond.myklebust@hammerspace.com>,
+        "Anna Schumaker" <anna.schumaker@netapp.com>,
+        linux-nfs@vger.kernel.org,
+        "Ryusuke Konishi" <konishi.ryusuke@lab.ntt.co.jp>,
+        watanabe.hiroyuki@lab.ntt.co.jp
+Subject: Re: [PATCH] pNFS: Avoid read-modify-write for page-aligned full page
+ write
+Date:   Thu, 07 Feb 2019 08:37:12 -0500
+Message-ID: <5905EB17-75B9-494A-B608-F135D6330F49@redhat.com>
+In-Reply-To: <37261782-eebb-b9c5-a480-7ced59b3703f@lab.ntt.co.jp>
+References: <37261782-eebb-b9c5-a480-7ced59b3703f@lab.ntt.co.jp>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8; format=flowed
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; format=flowed
+X-Scanned-By: MIMEDefang 2.84 on 10.5.11.22
+X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.26]); Thu, 07 Feb 2019 13:37:16 +0000 (UTC)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-The nfsd default lease time has been changed from 90 seconds to 45
-seconds between Linux 4.14 and 4.19 by commit d6ebf5088f09 ("nfsd4:
-return default lease period").
+On 7 Feb 2019, at 3:12, Kazuo Ito wrote:
 
-After we did an upgrade of a nfs server from 4.14 to 4.19, we noticed
-a failing process and dmesg logs "NFS: nfs4_reclaim_open_state: Lock
-reclaim failed!" on a client (Linux 4.14.87). The client had the
-file system mounted with vers=4.0.
+> As the block and SCSI layouts can only read/write fixed-length
+> blocks, we must perform read-modify-write when data to be written is
+> not aligned to a block boundary or smaller than the block size.
+> (612aa983a0410 pnfs: add flag to force read-modify-write in 
+> ->write_begin)
+>
+> The current code tries to see if we have to do read-modify-write
+> on block-oriented pNFS layouts by just checking !PageUptodate(page),
+> but the same condition also applies for overwriting of any uncached
+> potions of existing files, making such operations excessively slow
+> even if it is block-aligned.
+>
+> The change does not affect the optimization for modify-write-read
+> cases (38c73044f5f4d NFS: read-modify-write page updating),
+> because partial update of !PageUptodate() pages can only happen
+> in layouts that can do arbitrary length read/write and never
+> in block-based ones.
+>
+> Testing results:
+>
+> We ran fio on one of the pNFS clients running 4.20 kernel
+> (vanilla and patched) in this configuration to read/write/overwrite
+> files on the storage array, exported as pnfs share by the server.
+>
+>  pNFS clients ---1G Ethernet--- pNFS server
+>  (HP DL360 G8)                  (HP DL360 G8)
+>        |                              |
+>        |                              |
+>        +------8G Fiber Channel--------+
+>                      |
+>                Storage Array
+>                  (HP P6350)
+>
+> Throughput of overwrite (both buffered and O_SYNC) is noticeably
+> improved.
+>
+> Ops.     |block size|   Throughput   |
+>          |  (KiB)   |    (MiB/s)     |
+>          |          |  4.20 | patched|
+> ---------+----------+----------------+
+> buffered |         4|  21.3 |  233   |
+> overwrite|        32|  22.2 |  254   |
+>          |       512|  22.4 |  258   |
+> ---------+----------+----------------+
+> O_SYNC   |         4|   3.84|    4.68|
+> overwrite|        32|  12.2 |   32.9 |
+>          |       512|  18.5 |  151   |
+> ---------+----------+----------------+
+>
+> Read and write (buffered and O_SYNC) by the same client remain 
+> unchanged
+> by the patch either negatively or positively, as they should do.
+>
+> Ops.     |block size|   Throughput   |
+>          |  (KiB)   |    (MiB/s)     |
+>          |          |  4.20 | patched|
+> ---------+----------+----------------+
+> read     |         4| 548   |  551   |
+>          |        32| 547   |  552   |
+>          |       512| 548   |  549   |
+> ---------+----------+----------------+
+> buffered |         4| 237   |  243   |
+> write    |        32| 261   |  267   |
+>          |       512| 265   |  271   |
+> ---------+----------+----------------+
+> O_SYNC   |         4|   0.46|    0.46|
+> write    |        32|   3.60|    3.61|
+>          |       512| 105   |  108   |
+> ---------+----------+----------------+
+>
+> Signed-off-by: Kazuo Ito <ito_kazuo_g3@lab.ntt.co.jp>
+> Tested-by: Hiroyuki Watabane <watanabe.hiroyuki@lab.ntt.co.jp>
+>
+> diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+> index 29553fdba8af..e80954c96ec1 100644
+> --- a/fs/nfs/file.c
+> +++ b/fs/nfs/file.c
+> @@ -276,6 +276,12 @@ EXPORT_SYMBOL_GPL(nfs_file_fsync);
+>   * then a modify/write/read cycle when writing to a page in the
+>   * page cache.
+>   *
+> + * Some pNFS layout drivers can only read/write at a certain block
+> + * granularity like all block devices and therefore we must perform
+> + * read/modify/write whenever a page hasn't read yet and the data
+> + * to be written there is not aligned to a block boundary and/or
+> + * smaller than the block size.
+> + *
+>   * The modify/write/read cycle may occur if a page is read before
+>   * being completely filled by the writer.  In this situation, the
+>   * page must be completely written to stable storage on the server
+> @@ -299,8 +305,10 @@ static int nfs_want_read_modify_write(struct file 
+> *file, struct page *page,
+>  	unsigned int end = offset + len;
+>
+>  	if (pnfs_ld_read_whole_page(file->f_mapping->host)) {
+> -		if (!PageUptodate(page))
+> -			return 1;
+> +		if (!PageUptodate(page)) {
+> +			if (pglen && (end < pglen || offset))
+> +				return 1;
+> +		}
+>  		return 0;
+>  	}
 
-Network trace indicated, that the client continued to use the
-90 seconds lease period of the previous server incarnation and
-sent RENEWs every 60 seconds (2/3 of 90 seconds).  Sometimes the
-server answered with NFS4ERR_EXPIRED.
+This looks right.  I think that a static inline bool 
+nfs_write_covers_page,
+or full_page_write or similar might make sense here, as we do the same 
+test
+just below, and would make the code easier to quickly understand.
 
-When this happened, the client executed recovery (SETCLIENTID...) but
-did non query the server for a new lease_time.  So the problem was
-persistent even after the first failure.
+Reviewed-by: Benjamin Coddington <bcodding@redhat.com>
 
-As an experiment, I've also restarted a server with the lease time
-decrement from 90 to 45 seconds, but the grace period fixed to
-90 seconds. Now the client got NFS4ERR_STALE_CLIENTID  but still did
-not query the server for a new lease_time and continued to send RENEWs
-in 60 second intervals.
-
-At least for the later case, the RFC say, a client should refetch
-the lease_time:
-
-> A server may, upon restart, establish a new value for the lease
-> period.  Therefore, clients should, once a new client ID is
-> established, refetch the lease_time attribute and use it as the basis
-> for lease renewal for the lease associated with that server.
-> However, the server must establish, for this restart event, a grace
-> period at least as long as the lease period for the previous server
-> instantiation.  This allows the client state obtained during the
-> previous server instance to be reliably re-established.
-
-[ https://tools.ietf.org/html/rfc7530 ]
-
-I understand that a restart with a grace period smaller than the
-previous lease time is never save.
-
-Aside from that, is a server restart with a decreased lease time
-supposed to be supported by the Linux client? If not, this is kind
-of a trap for server upgrades when just relying on the defaults.
-
-Best
-   Donald
+Ben
