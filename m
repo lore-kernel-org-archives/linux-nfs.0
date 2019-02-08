@@ -2,234 +2,200 @@ Return-Path: <SRS0=erep=QP=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+X-Spam-Status: No, score=-4.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS,URIBL_BLOCKED
-	autolearn=ham autolearn_force=no version=3.4.0
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_PASS,
+	URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3B13BC169C4
-	for <linux-nfs@archiver.kernel.org>; Fri,  8 Feb 2019 14:46:01 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3A763C169C4
+	for <linux-nfs@archiver.kernel.org>; Fri,  8 Feb 2019 15:07:59 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id F274F2177B
-	for <linux-nfs@archiver.kernel.org>; Fri,  8 Feb 2019 14:46:00 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id EFBEB20863
+	for <linux-nfs@archiver.kernel.org>; Fri,  8 Feb 2019 15:07:58 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="G7xhFQ4O"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="WqZT9RhM"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726813AbfBHOqA (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 8 Feb 2019 09:46:00 -0500
-Received: from mail-yb1-f195.google.com ([209.85.219.195]:40097 "EHLO
-        mail-yb1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726568AbfBHOp7 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Feb 2019 09:45:59 -0500
-Received: by mail-yb1-f195.google.com with SMTP id y13so1490493ybr.7;
-        Fri, 08 Feb 2019 06:45:58 -0800 (PST)
+        id S1726887AbfBHPH6 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 8 Feb 2019 10:07:58 -0500
+Received: from mail-it1-f195.google.com ([209.85.166.195]:37796 "EHLO
+        mail-it1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726813AbfBHPH5 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Feb 2019 10:07:57 -0500
+Received: by mail-it1-f195.google.com with SMTP id b5so9558398iti.2
+        for <linux-nfs@vger.kernel.org>; Fri, 08 Feb 2019 07:07:57 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
-        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
-         :cc;
-        bh=V9t/Jd664aFeQmWZZqoEsU028xri2S1kac4BhLu1m3E=;
-        b=G7xhFQ4OgcV8JVhvj/z14aqORBxQzQGNiMQCEu3Z7IDj24R7xcOV61S8/vQb7jcc3a
-         KScAziLZ3GIXaWjFrikpp6LDrwdBPaN8mCAmSwr1KiDWOKgieaMQKhS0SAdcsCaEhCO9
-         xG+eunmPtECx4qwnlqE84z2mTF3CTsfJVLkwv/gCD7pPYdhFnQyk5rS165cW54LgdcGo
-         2fkFOxWwZcncGh/Y6uhnkcM3/2zNIHyXMuyldOXHcr66Gug5qyUPFFkbYAu6Ty3XusEa
-         Unu5NXakX34R/12tUiB39rhrnPCOc3OeHDx5QbCDsAUA8ZznGHmDREvX5KLSz1UCSJuE
-         Ty3g==
+        h=from:message-id:subject:to:cc:in-reply-to:references:organization
+         :mime-version:date:user-agent:content-transfer-encoding;
+        bh=YtzwsFpBnIHorRfyleS9mjSAIhrZknO+kZbcDSiwqkA=;
+        b=WqZT9RhME1iF5taHSurD52RJMZDm0sJHeIMjKpdzFnuwqMuWAoLLAGCX256BGlJc9W
+         poRD3kxOAABx1uUYS/kYHT8PzFGqEQNGwKViNed5M05QSq4ut5aOQ1/xfMzQN1RyHnPi
+         Bkzg5z9O/iQ0NH5GEeNBR4yZtDIHxoqYo3k7S0Vlh+Rz5WrpzZVOVedn4vhddJn1MpQZ
+         ukZNXeRxL5l5GHI0iz+gwJJoAP7mngIsAeK5tGo6lMJiIWABsdv+kJWj9AI9lKL1dmFI
+         +HLvzA0x27ukq0leTVjacY4OfAOmQpwTdHHWwcd+0LG4fssjerOWDrUIiywaS+jPqQdE
+         jq+w==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
-         :message-id:subject:to:cc;
-        bh=V9t/Jd664aFeQmWZZqoEsU028xri2S1kac4BhLu1m3E=;
-        b=RkZs2Pe4aZCYYal8ZR0ZcX+/fLCOY4SPCa+CbDC3n57B355HQ2Qh2z0b6csKdjnNXV
-         Vh6scIdA2OKVYsyjV9GXMDOjPGhHG44nZnwwi6hkUuBd/c0gL3IWdHlcEbnEGe0Dr76E
-         q1EyHtZLro8wqybAxGHRUoD5wtuTckaC6wTe1DeJulrxXuED/wtjnfRvSMa8EpfMqVwx
-         8duuTCLhk89BYNId6f9w0+mwn17wWSMgtPYOdEHnmZAXltZgGZ+zjsAy3KjhPr5w3VNb
-         MPuCjmclPs/rsn6AWgJmv1sMPI2dzASw/nZ1zluIrNUYkzqHjDV7j0BISnpxH66+iowz
-         +tyA==
-X-Gm-Message-State: AHQUAubDlpQxTYIVo2GW8aS3IeFXec5k19MLLEA2xo8cTrY8kNOFAA4z
-        9VPuyhIrqVoVq7TmKm7PYbaSYPQUtJ3NYNGaOlc=
-X-Google-Smtp-Source: AHgI3IZJnzEvQXqSZUvLMFbMQCtI2/gqIzdUl64TNs7IejM8XReZMa54S6w8GOkBbwMxKiFhWEIcgSaEBuVzdu9tg+c=
-X-Received: by 2002:a25:ba84:: with SMTP id s4mr18396031ybg.325.1549637158087;
- Fri, 08 Feb 2019 06:45:58 -0800 (PST)
-MIME-Version: 1.0
-References: <CAOQ4uxjQdLrZXkpP30Pq_=Cckcb=mADrEwQUXmsG92r-gn2y5w@mail.gmail.com>
- <379106947f859bdf5db4c6f9c4ab8c44f7423c08.camel@kernel.org>
-In-Reply-To: <379106947f859bdf5db4c6f9c4ab8c44f7423c08.camel@kernel.org>
-From:   Amir Goldstein <amir73il@gmail.com>
-Date:   Fri, 8 Feb 2019 16:45:46 +0200
-Message-ID: <CAOQ4uxgewN=j3ju5MSowEvwhK1HqKG3n1hBRUQTi1W5asaO1dQ@mail.gmail.com>
-Subject: Re: Better interop for NFS/SMB file share mode/reservation
-To:     Jeff Layton <jlayton@kernel.org>
-Cc:     "J. Bruce Fields" <bfields@fieldses.org>,
-        Volker.Lendecke@sernet.de, samba-technical@lists.samba.org,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Pavel Shilovsky <piastryyy@gmail.com>
+        h=x-gm-message-state:from:message-id:subject:to:cc:in-reply-to
+         :references:organization:mime-version:date:user-agent
+         :content-transfer-encoding;
+        bh=YtzwsFpBnIHorRfyleS9mjSAIhrZknO+kZbcDSiwqkA=;
+        b=Vfp0+PytrRIgNpx43usZKnCfv4OgyqkW4VwLf1sOKSkNLzB1u2taGI1odwFAvZ+uWs
+         EoNofYZDr/KcNZTjARU11rrVPimnitfdUv8idko4SBznjgoxpzPgXxSqz0zpKn2VDEyW
+         AG+oD9JNQCpDYRhiWxWvM1qdjuE2zIggaGWCzWVeL9Lq+HtKxvSFhZJ34yO9H0hAkePO
+         NOeYSctuTdsqoGJYYauPjbQ1lQAK0v7b6iytsBBZc5W8lCf1vcTH/NGUxN1kRBhoCQAl
+         P3HC/Uh1ZGAceZOZNnE+B9JRCjWAe12k9og5Pe5kVypPoNWea1d/ZLSJNand9EyJ1877
+         eOvQ==
+X-Gm-Message-State: AHQUAub5Y9bz6TOyKRTAbWmiCz/IGEO67ntCj7CKU33zQQ1pyaSePNbs
+        6x281Hap0Q5tlGYVl8g3oA==
+X-Google-Smtp-Source: AHgI3IYAnxdpH2SpB/2y/3ji3DZ58Yo0fqZSvKnkIkeuLUo2CGHLh1vQwrbo2wNpg9xH/W1vo5lQLg==
+X-Received: by 2002:a5e:dc0d:: with SMTP id b13mr6545441iok.269.1549638476343;
+        Fri, 08 Feb 2019 07:07:56 -0800 (PST)
+Received: from leira (c-68-40-189-247.hsd1.mi.comcast.net. [68.40.189.247])
+        by smtp.gmail.com with ESMTPSA id n129sm1393135itb.20.2019.02.08.07.07.55
+        (version=TLS1_3 cipher=AEAD-AES256-GCM-SHA384 bits=256/256);
+        Fri, 08 Feb 2019 07:07:55 -0800 (PST)
+From:   Trond Myklebust <trondmy@gmail.com>
+X-Google-Original-From: Trond Myklebust <trond.myklebust@hammerspace.com>
+Message-ID: <17e929a2eea3d2c33dcd3d2c9b8d8a932568be47.camel@hammerspace.com>
+Subject: Re: [PATCH] pNFS: Avoid read-modify-write for page-aligned full
+ page write
+To:     =?UTF-8?Q?=E4=BC=8A=E8=97=A4=E5=92=8C=E5=A4=AB?= 
+        <ito_kazuo_g3@lab.ntt.co.jp>,
+        Benjamin Coddington <bcodding@redhat.com>
+Cc:     Anna Schumaker <anna.schumaker@netapp.com>,
+        linux-nfs@vger.kernel.org,
+        Ryusuke Konishi <konishi.ryusuke@lab.ntt.co.jp>,
+        watanabe.hiroyuki@lab.ntt.co.jp
+In-Reply-To: <4332a67f-0d50-cc30-4e2b-8d08a112a76f@lab.ntt.co.jp>
+References: <37261782-eebb-b9c5-a480-7ced59b3703f@lab.ntt.co.jp>
+         <5905EB17-75B9-494A-B608-F135D6330F49@redhat.com>
+         <4332a67f-0d50-cc30-4e2b-8d08a112a76f@lab.ntt.co.jp>
+Organization: Hammerspace Inc
 Content-Type: text/plain; charset="UTF-8"
+MIME-Version: 1.0
+Date:   Fri, 08 Feb 2019 09:58:56 -0500
+User-Agent: Evolution 3.30.5 (3.30.5-1.fc29) 
+Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Fri, Feb 8, 2019 at 3:10 PM Jeff Layton <jlayton@kernel.org> wrote:
->
-> On Fri, 2019-02-08 at 13:20 +0200, Amir Goldstein wrote:
-> > Hi Bruce,
-> >
-> > I have been following you discussion with Volker Lendecke
-> > on the samba technical mailing list [1] and have had discussed
-> > this issue with Volker myself as well.
-> >
-> > I decided to start this new thread to bring some kernel developers
-> > in the loop and to propose an idea that takes a somewhat
-> > different approach to the "interop" approaches I have seen
-> > so far. "interop" in this context often means consistency of file
-> > lock states between samba and nfs server, but I am referring
-> > to the stronger sense of interop with local filesystem on the server.
-> >
-> > You pointed to Pavel Shilovsky's O_DENY* patches [2] as a possible
-> > solution to interop of NFS Share Reservation and SMB Share Mode
-> > with local filesystems.
-> > Some of the complaints on this approach were (rightfully) concerned
-> > about DoS and the prospect of plaguing Linux with Windows server
-> > "files left open" issues.
-> >
-> > My idea comes from the observation that Windows server
-> > administrators can release locked files that were left open by clients.
-> > I suppose that an NFS server admin can do the same?
->
-> The Linux kernel has no mechanism for this (aside from sending a SIGKILL
-> to lockd, which makes it drop all locks). Solaris did have a tool for
-> this at one point (and probably still does).
->
-> It's a little less of a problem now than it used to be with NFS, given
-> the move to NFSv4 (which has lease-based locking). If you have
-> misbehaving clients, you just kick them out and their locks eventually
-> go away. v3 locks can stick around in perpetuity however, so people have
-> long wanted such a tool on Linux as well.
->
+On Fri, 2019-02-08 at 16:54 +0900, 伊藤和夫 wrote:
+> On 2019/02/07 22:37, Benjamin Coddington wrote:
+> > On 7 Feb 2019, at 3:12, Kazuo Ito wrote:
+> > [snipped]
+> > > @@ -299,8 +305,10 @@ static int nfs_want_read_modify_write(struct
+> > > file 
+> > > *file, struct page *page,
+> > >      unsigned int end = offset + len;
+> > > 
+> > >      if (pnfs_ld_read_whole_page(file->f_mapping->host)) {
+> > > -        if (!PageUptodate(page))
+> > > -            return 1;
+> > > +        if (!PageUptodate(page)) {
+> > > +            if (pglen && (end < pglen || offset))
+> > > +                return 1;
+> > > +        }
+> > >          return 0;
+> > >      }
+> > 
+> > This looks right.  I think that a static inline bool
+> > nfs_write_covers_page,
+> > or full_page_write or similar might make sense here, as we do the
+> > same test
+> > just below, and would make the code easier to quickly understand.
+> > 
+> > Reviewed-by: Benjamin Coddington <bcodding@redhat.com>
+>  >
+>  > Ben
+> 
+> As per Ben's comment, I made the check for full page write a static
+> inline function and both the block-oriented and the non-block-
+> oriented paths call it.
+> 
+> diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+> index 29553fdba8af..458c77ccf274 100644
+> --- a/fs/nfs/file.c
+> +++ b/fs/nfs/file.c
+> @@ -276,6 +276,12 @@ EXPORT_SYMBOL_GPL(nfs_file_fsync);
+>    * then a modify/write/read cycle when writing to a page in the
+>    * page cache.
+>    *
+> + * Some pNFS layout drivers can only read/write at a certain block
+> + * granularity like all block devices and therefore we must perform
+> + * read/modify/write whenever a page hasn't read yet and the data
+> + * to be written there is not aligned to a block boundary and/or
+> + * smaller than the block size.
+> + *
+>    * The modify/write/read cycle may occur if a page is read before
+>    * being completely filled by the writer.  In this situation, the
+>    * page must be completely written to stable storage on the server
+> @@ -291,15 +297,23 @@ EXPORT_SYMBOL_GPL(nfs_file_fsync);
+>    * and that the new data won't completely replace the old data in
+>    * that range of the file.
+>    */
+> -static int nfs_want_read_modify_write(struct file *file, struct page
+> *page,
+> -			loff_t pos, unsigned len)
+> +static bool nfs_full_page_write(struct page *page, loff_t pos,
+> unsigned 
+> len)
+>   {
+>   	unsigned int pglen = nfs_page_length(page);
+>   	unsigned int offset = pos & (PAGE_SIZE - 1);
+>   	unsigned int end = offset + len;
+> 
+> +	if (pglen && ((end < pglen) || offset))
+> +	    return 0;
+> +	return 1;
+> +}
+> +
+> +static int nfs_want_read_modify_write(struct file *file, struct page
+> *page,
+> +			loff_t pos, unsigned len)
+> +{
+>   	if (pnfs_ld_read_whole_page(file->f_mapping->host)) {
+> -		if (!PageUptodate(page))
+> +		if (!PageUptodate(page) &&
+> +		    !nfs_full_page_write(page, pos, len))
+>   			return 1;
+>   		return 0;
+>   	}
+> @@ -307,8 +321,7 @@ static int nfs_want_read_modify_write(struct
+> file 
+> *file, struct page *page,
+>   	if ((file->f_mode & FMODE_READ) &&	/* open for read? */
+>   	    !PageUptodate(page) &&		/* Uptodate? */
+>   	    !PagePrivate(page) &&		/* i/o request already? */
+> -	    pglen &&				/* valid bytes of
+> file? */
+> -	    (end < pglen || offset))		/* replace all valid
+> bytes? */
+> +	    !nfs_full_page_write(page, pos, len))
+>   		return 1;
+>   	return 0;
+>   }
 
-In a nut shell, I think my proposal is that samba will do something
-similar and request leases from the kernel instead of trying to
-enforce real mandatory locks.
+How about adding a separate
 
-> > That realization makes "share access" locks (a.k.a. MAND_LOCK)
-> > not so very different from oplocks (leases/delegations).
-> > As long as samba and nfsd cooperate nicely with MAND_LOCK
-> > semantics, we don't really have to force local filesystems
-> > to obay MAND_LOCK semantics. If the file servers take leases
-> > on local filesystems, they will not get exclusive write access for
-> > files already open for write on local filesytem and same for read.
-> >
->
-> I think this last statement isn't correct (if I'm parsing it correctly).
-> If a file is already open for write, then you just don't get a lease
-> when you try to request one. Ditto for write leases if it's already open
-> for read.
->
+if (PageUptodate(page) || nfs_full_page_write())
+    return 0;
 
-I think you miss read what I miss wrote ;-)
-As the title of this thread states, I am talking about the first case
-of acquiring an exclusive or read shared access to file at open time.
-It may be the fact that samba currently calls flock(LOCK_MAND)
-that is the source for confusion.
+before the check for pNFS?
 
-Open failure is the expected behavior if file is already open for
-write (or read) on local filesystem, so my suggestion is:
-- Server opens the file and request a lease based of desired share mode
-- If file server got the lease, client gets the file handle
-- Otherwise, client gets an open failure
+That means we won't have to duplicate those for the pNFS block and
+ordinary case, and it improves code clarity.
 
-> > On local file access on the server that violates the share mode,
-> > the file server acts as a grumpy washed out administrator that
-> > automatically grants any lock revoke ticket after timeout.
-> >
->
-> Devil's advocate:
->
-> Is this situation any better than just teaching the NFS/SMB servers to
-> track these locks out of band? Both samba and most NFS servers respect
-> share/deny mode locks, but only internally -- they aren't aware of the
-> others'. We could (in principle) come up with a mechanism to track these
-> that doesn't involve plumbing them into the kernel.
->
+BTW: Why doesn't the pNFS case check for PagePrivate(page)? That looks
+like a bug which would cause the existing write to get corrupted.
+If so, we should move that check too into the common code.
 
-That would be a prerequisite to my suggested solution, as I wrote:
-"As long as samba and nfsd cooperate nicely with LOCK_MAND..."
-That means the two file servers cooperate on the share mode locks
-and try to figure out if there are outstanding leases before opening
-a file that will break those leases.
+-- 
+Trond Myklebust
+Linux NFS client maintainer, Hammerspace
+trond.myklebust@hammerspace.com
 
-> That said, coherent locking is best done in the kernel, IMO...
->
 
-Indeed...
 
-> > This model may not fit use cases where "real" interop with
-> > local filesystem is needed, but compared to the existing
-> > solution (no interop at all) it is quite an improvement.
-> >
-> > Furthermore, short of SMB DENY_DELETE, we may not even
-> > need to change any kernel APIs.
-> > The addition of O_DENY* open flags can make programming
-> > easier, but taking a lease on an open file is still safe enough
-> > to implement share reservation (no?).
-> >
-> > Satisfying DENY_DELETE could be more tricky, but perhaps
-> > the existing SILLYRENAME interface of==between knfsd and vfs
-> > could be somehow utilized for this purpose?
-> >
-> > I though of bringing this up as a TOPIC for LSF/MM, but wanted
-> > to consult with you first. I am sure that you or Jeff can do a better
-> > job than me in enumerating the "interop" file lock issues that
-> > could be discussed in filesystems track forum.
-> >
-> > Thoughts? Explanation why this idea is idiotic?
->
-> I think it's not a single idea. There are really two different aspects
-> to this given that we're really talking about two different types of
-> locks in SMB. I think you have to consider solving these problems
-> separately:
->
-> 1) the ability to set a (typically whole-file) share/deny lock
-> atomically when you open a file. This is necessary for coherent
-> share/deny lock semantics. Note that these are only enforced open()
-> time.
->
-> 2) mandatory locking (forbidding reads and writes on a byte range when
-> there is a conflicting lock set).
->
-
-I was only trying to address the first problem (small steps...).
-
-> The first could (probably) be solved with something like what Pavel
-> proposed a few years ago...or maybe we just wire up O_EXLOCK and
-> O_SHLOCK:
->
->     https://www.gnu.org/software/libc/manual/html_node/Open_002dtime-Flags.html
->
-
-Nice. I wasn't aware of those BSD flags.
-
-> This seems like a fine idea (in principle) but it needs someone to drive
-> the work forward. You'll also likely be consuming a couple of O_* flags,
-> which could be tough sell (unless you come up with another way to do
-> it).
->
-
-Once I know the obstacles to watch out from, I can drive this work.
-Thing is, I am not convinced myself that any new O_ flags are needed.
-
-How about this (for samba, knfsd is simpler):
-- pfd = open(filename, O_PATH)
-- flock(pfd, LOCK_MAND) (for file servers interop)
-- vfs checks no conflicting LOCK_MAND locks (like patch you once posted)
-- open(filename, O_RDWR) (and verify st_ino like samba does)
-- Request lease (for local fs interop)
-- check_conflicting_open() is changed to use inode_is_open_for_read()
-  instead of checking d_count and i_count.
-- we already have i_readcount, just need to remove ifdef CONFIG_IMA
-- On lease break (from local fs), break client oplocks and invalidate
-file handle on server
-
-Thanks,
-Amir.
