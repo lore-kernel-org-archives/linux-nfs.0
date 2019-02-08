@@ -2,153 +2,146 @@ Return-Path: <SRS0=erep=QP=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-4.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS autolearn=unavailable
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-6.9 required=3.0 tests=FROM_EXCESS_BASE64,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id BB964C169C4
-	for <linux-nfs@archiver.kernel.org>; Fri,  8 Feb 2019 04:13:26 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 45FE6C169C4
+	for <linux-nfs@archiver.kernel.org>; Fri,  8 Feb 2019 07:55:15 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 8F1152147C
-	for <linux-nfs@archiver.kernel.org>; Fri,  8 Feb 2019 04:13:26 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 13E7821917
+	for <linux-nfs@archiver.kernel.org>; Fri,  8 Feb 2019 07:55:15 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726793AbfBHEN0 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 7 Feb 2019 23:13:26 -0500
-Received: from gateway21.websitewelcome.com ([192.185.45.147]:33117 "EHLO
-        gateway21.websitewelcome.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726791AbfBHENZ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Feb 2019 23:13:25 -0500
-X-Greylist: delayed 1443 seconds by postgrey-1.27 at vger.kernel.org; Thu, 07 Feb 2019 23:13:25 EST
-Received: from cm14.websitewelcome.com (cm14.websitewelcome.com [100.42.49.7])
-        by gateway21.websitewelcome.com (Postfix) with ESMTP id 01A25400C8A6C
-        for <linux-nfs@vger.kernel.org>; Thu,  7 Feb 2019 21:49:22 -0600 (CST)
-Received: from gator4166.hostgator.com ([108.167.133.22])
-        by cmsmtp with SMTP
-        id rxAHg6efj2qH7rxAHgffiT; Thu, 07 Feb 2019 21:49:21 -0600
-X-Authority-Reason: nr=8
-Received: from [189.250.49.191] (port=43108 helo=[192.168.1.76])
-        by gator4166.hostgator.com with esmtpsa (TLSv1.2:ECDHE-RSA-AES128-GCM-SHA256:128)
-        (Exim 4.91)
-        (envelope-from <gustavo@embeddedor.com>)
-        id 1grxA8-001qzA-BR; Thu, 07 Feb 2019 21:49:21 -0600
-Subject: Re: [PATCH net-next] xprtrdma: Use struct_size() in kzalloc()
-To:     Chuck Lever <chuck.lever@oracle.com>
+        id S1727058AbfBHHzO (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 8 Feb 2019 02:55:14 -0500
+Received: from tama50.ecl.ntt.co.jp ([129.60.39.147]:41644 "EHLO
+        tama50.ecl.ntt.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726004AbfBHHzO (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Feb 2019 02:55:14 -0500
+Received: from vc2.ecl.ntt.co.jp (vc2.ecl.ntt.co.jp [129.60.86.154])
+        by tama50.ecl.ntt.co.jp (8.13.8/8.13.8) with ESMTP id x187t4US014567;
+        Fri, 8 Feb 2019 16:55:04 +0900
+Received: from vc2.ecl.ntt.co.jp (localhost [127.0.0.1])
+        by vc2.ecl.ntt.co.jp (Postfix) with ESMTP id EE3E3639AD5;
+        Fri,  8 Feb 2019 16:55:03 +0900 (JST)
+Received: from jcms-pop11.ecl.ntt.co.jp (jcms-pop11.ecl.ntt.co.jp [129.60.87.132])
+        by vc2.ecl.ntt.co.jp (Postfix) with ESMTP id E2A3E639A5E;
+        Fri,  8 Feb 2019 16:55:03 +0900 (JST)
+Received: from [IPv6:::1] (unknown [129.60.241.190])
+        by jcms-pop11.ecl.ntt.co.jp (Postfix) with ESMTPSA id D927170C076F;
+        Fri,  8 Feb 2019 16:55:03 +0900 (JST)
+Subject: Re: [PATCH] pNFS: Avoid read-modify-write for page-aligned full page
+ write
+References: <37261782-eebb-b9c5-a480-7ced59b3703f@lab.ntt.co.jp>
+ <5905EB17-75B9-494A-B608-F135D6330F49@redhat.com>
+From:   =?UTF-8?B?5LyK6Jek5ZKM5aSr?= <ito_kazuo_g3@lab.ntt.co.jp>
+Message-ID: <4332a67f-0d50-cc30-4e2b-8d08a112a76f@lab.ntt.co.jp>
+Date:   Fri, 8 Feb 2019 16:54:45 +0900
+User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64; rv:60.0) Gecko/20100101
+ Thunderbird/60.5.0
+MIME-Version: 1.0
+In-Reply-To: <5905EB17-75B9-494A-B608-F135D6330F49@redhat.com>
+Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Language: en-US
+Content-Transfer-Encoding: 8bit
+X-CC-Mail-RelayStamp: 1
+To:     Benjamin Coddington <bcodding@redhat.com>
 Cc:     Trond Myklebust <trond.myklebust@hammerspace.com>,
         Anna Schumaker <anna.schumaker@netapp.com>,
-        Bruce Fields <bfields@fieldses.org>,
-        Jeff Layton <jlayton@kernel.org>,
-        "David S. Miller" <davem@davemloft.net>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org
-References: <20190131004622.GA30261@embeddedor>
- <07CB966E-A946-4956-8480-C0FC13E13E4E@oracle.com>
-From:   "Gustavo A. R. Silva" <gustavo@embeddedor.com>
-Openpgp: preference=signencrypt
-Autocrypt: addr=gustavo@embeddedor.com; keydata=
- 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
- VtSixD1uOgytAP7RWS474w==
-Message-ID: <f0ee151d-f4e5-ab26-1ff0-bffe1f09454d@embeddedor.com>
-Date:   Thu, 7 Feb 2019 21:49:06 -0600
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101
- Thunderbird/60.4.0
-MIME-Version: 1.0
-In-Reply-To: <07CB966E-A946-4956-8480-C0FC13E13E4E@oracle.com>
-Content-Type: text/plain; charset=utf-8
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
-X-AntiAbuse: This header was added to track abuse, please include it with any abuse report
-X-AntiAbuse: Primary Hostname - gator4166.hostgator.com
-X-AntiAbuse: Original Domain - vger.kernel.org
-X-AntiAbuse: Originator/Caller UID/GID - [47 12] / [47 12]
-X-AntiAbuse: Sender Address Domain - embeddedor.com
-X-BWhitelist: no
-X-Source-IP: 189.250.49.191
-X-Source-L: No
-X-Exim-ID: 1grxA8-001qzA-BR
-X-Source: 
-X-Source-Args: 
-X-Source-Dir: 
-X-Source-Sender: ([192.168.1.76]) [189.250.49.191]:43108
-X-Source-Auth: gustavo@embeddedor.com
-X-Email-Count: 42
-X-Source-Cap: Z3V6aWRpbmU7Z3V6aWRpbmU7Z2F0b3I0MTY2Lmhvc3RnYXRvci5jb20=
-X-Local-Domain: yes
+        linux-nfs@vger.kernel.org,
+        Ryusuke Konishi <konishi.ryusuke@lab.ntt.co.jp>,
+        watanabe.hiroyuki@lab.ntt.co.jp
+X-TM-AS-MML: disable
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
 
+On 2019/02/07 22:37, Benjamin Coddington wrote:
+> On 7 Feb 2019, at 3:12, Kazuo Ito wrote:
+> [snipped]
+>> @@ -299,8 +305,10 @@ static int nfs_want_read_modify_write(struct file 
+>> *file, struct page *page,
+>>      unsigned int end = offset + len;
+>>
+>>      if (pnfs_ld_read_whole_page(file->f_mapping->host)) {
+>> -        if (!PageUptodate(page))
+>> -            return 1;
+>> +        if (!PageUptodate(page)) {
+>> +            if (pglen && (end < pglen || offset))
+>> +                return 1;
+>> +        }
+>>          return 0;
+>>      }
+> 
+> This looks right.  I think that a static inline bool nfs_write_covers_page,
+> or full_page_write or similar might make sense here, as we do the same test
+> just below, and would make the code easier to quickly understand.
+> 
+> Reviewed-by: Benjamin Coddington <bcodding@redhat.com>
+ >
+ > Ben
 
-On 1/31/19 8:11 AM, Chuck Lever wrote:
-> 
-> 
->> On Jan 30, 2019, at 7:46 PM, Gustavo A. R. Silva <gustavo@embeddedor.com> wrote:
->>
->> One of the more common cases of allocation size calculations is finding
->> the size of a structure that has a zero-sized array at the end, along
->> with memory for some number of elements for that array. For example:
->>
->> struct foo {
->>    int stuff;
->>    struct boo entry[];
->> };
->>
->> instance = kzalloc(sizeof(struct foo) + count * sizeof(struct boo), GFP_KERNEL);
->>
->> Instead of leaving these open-coded and prone to type mistakes, we can
->> now use the new struct_size() helper:
->>
->> instance = kzalloc(struct_size(instance, entry, count), GFP_KERNEL);
->>
->> This code was detected with the help of Coccinelle.
->>
->> Signed-off-by: Gustavo A. R. Silva <gustavo@embeddedor.com>
-> 
-> Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
-> 
+As per Ben's comment, I made the check for full page write a static
+inline function and both the block-oriented and the non-block-
+oriented paths call it.
 
-Thanks, Chuck.
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index 29553fdba8af..458c77ccf274 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -276,6 +276,12 @@ EXPORT_SYMBOL_GPL(nfs_file_fsync);
+   * then a modify/write/read cycle when writing to a page in the
+   * page cache.
+   *
++ * Some pNFS layout drivers can only read/write at a certain block
++ * granularity like all block devices and therefore we must perform
++ * read/modify/write whenever a page hasn't read yet and the data
++ * to be written there is not aligned to a block boundary and/or
++ * smaller than the block size.
++ *
+   * The modify/write/read cycle may occur if a page is read before
+   * being completely filled by the writer.  In this situation, the
+   * page must be completely written to stable storage on the server
+@@ -291,15 +297,23 @@ EXPORT_SYMBOL_GPL(nfs_file_fsync);
+   * and that the new data won't completely replace the old data in
+   * that range of the file.
+   */
+-static int nfs_want_read_modify_write(struct file *file, struct page *page,
+-			loff_t pos, unsigned len)
++static bool nfs_full_page_write(struct page *page, loff_t pos, unsigned 
+len)
+  {
+  	unsigned int pglen = nfs_page_length(page);
+  	unsigned int offset = pos & (PAGE_SIZE - 1);
+  	unsigned int end = offset + len;
 
---
-Gustavo
++	if (pglen && ((end < pglen) || offset))
++	    return 0;
++	return 1;
++}
++
++static int nfs_want_read_modify_write(struct file *file, struct page *page,
++			loff_t pos, unsigned len)
++{
+  	if (pnfs_ld_read_whole_page(file->f_mapping->host)) {
+-		if (!PageUptodate(page))
++		if (!PageUptodate(page) &&
++		    !nfs_full_page_write(page, pos, len))
+  			return 1;
+  		return 0;
+  	}
+@@ -307,8 +321,7 @@ static int nfs_want_read_modify_write(struct file 
+*file, struct page *page,
+  	if ((file->f_mode & FMODE_READ) &&	/* open for read? */
+  	    !PageUptodate(page) &&		/* Uptodate? */
+  	    !PagePrivate(page) &&		/* i/o request already? */
+-	    pglen &&				/* valid bytes of file? */
+-	    (end < pglen || offset))		/* replace all valid bytes? */
++	    !nfs_full_page_write(page, pos, len))
+  		return 1;
+  	return 0;
+  }
+
+Signed-off-by: Kazuo Ito <ito_kazuo_g3@lab.ntt.co.jp>
