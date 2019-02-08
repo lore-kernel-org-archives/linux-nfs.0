@@ -2,105 +2,153 @@ Return-Path: <SRS0=erep=QP=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_PASS,URIBL_BLOCKED,USER_AGENT_MUTT autolearn=ham
+X-Spam-Status: No, score=-4.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C1053C282C2
-	for <linux-nfs@archiver.kernel.org>; Fri,  8 Feb 2019 02:03:24 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id BB964C169C4
+	for <linux-nfs@archiver.kernel.org>; Fri,  8 Feb 2019 04:13:26 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 94F9A2146E
-	for <linux-nfs@archiver.kernel.org>; Fri,  8 Feb 2019 02:03:24 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 8F1152147C
+	for <linux-nfs@archiver.kernel.org>; Fri,  8 Feb 2019 04:13:26 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726801AbfBHCDX (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 7 Feb 2019 21:03:23 -0500
-Received: from fieldses.org ([173.255.197.46]:55898 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726775AbfBHCDX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 7 Feb 2019 21:03:23 -0500
-Received: by fieldses.org (Postfix, from userid 2815)
-        id A36BC1C97; Thu,  7 Feb 2019 21:03:22 -0500 (EST)
-Date:   Thu, 7 Feb 2019 21:03:22 -0500
-To:     Donald Buczek <buczek@molgen.mpg.de>
-Cc:     linux-nfs@vger.kernel.org, it+nfs@molgen.mpg.de
-Subject: Re: 4.0 client and server restart with decreased lease time
-Message-ID: <20190208020322.GA9482@fieldses.org>
-References: <480bf69d-4651-aaac-2b85-634561c579c8@molgen.mpg.de>
+        id S1726793AbfBHEN0 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 7 Feb 2019 23:13:26 -0500
+Received: from gateway21.websitewelcome.com ([192.185.45.147]:33117 "EHLO
+        gateway21.websitewelcome.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1726791AbfBHENZ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Feb 2019 23:13:25 -0500
+X-Greylist: delayed 1443 seconds by postgrey-1.27 at vger.kernel.org; Thu, 07 Feb 2019 23:13:25 EST
+Received: from cm14.websitewelcome.com (cm14.websitewelcome.com [100.42.49.7])
+        by gateway21.websitewelcome.com (Postfix) with ESMTP id 01A25400C8A6C
+        for <linux-nfs@vger.kernel.org>; Thu,  7 Feb 2019 21:49:22 -0600 (CST)
+Received: from gator4166.hostgator.com ([108.167.133.22])
+        by cmsmtp with SMTP
+        id rxAHg6efj2qH7rxAHgffiT; Thu, 07 Feb 2019 21:49:21 -0600
+X-Authority-Reason: nr=8
+Received: from [189.250.49.191] (port=43108 helo=[192.168.1.76])
+        by gator4166.hostgator.com with esmtpsa (TLSv1.2:ECDHE-RSA-AES128-GCM-SHA256:128)
+        (Exim 4.91)
+        (envelope-from <gustavo@embeddedor.com>)
+        id 1grxA8-001qzA-BR; Thu, 07 Feb 2019 21:49:21 -0600
+Subject: Re: [PATCH net-next] xprtrdma: Use struct_size() in kzalloc()
+To:     Chuck Lever <chuck.lever@oracle.com>
+Cc:     Trond Myklebust <trond.myklebust@hammerspace.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Bruce Fields <bfields@fieldses.org>,
+        Jeff Layton <jlayton@kernel.org>,
+        "David S. Miller" <davem@davemloft.net>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org
+References: <20190131004622.GA30261@embeddedor>
+ <07CB966E-A946-4956-8480-C0FC13E13E4E@oracle.com>
+From:   "Gustavo A. R. Silva" <gustavo@embeddedor.com>
+Openpgp: preference=signencrypt
+Autocrypt: addr=gustavo@embeddedor.com; keydata=
+ mQINBFssHAwBEADIy3ZoPq3z5UpsUknd2v+IQud4TMJnJLTeXgTf4biSDSrXn73JQgsISBwG
+ 2Pm4wnOyEgYUyJd5tRWcIbsURAgei918mck3tugT7AQiTUN3/5aAzqe/4ApDUC+uWNkpNnSV
+ tjOx1hBpla0ifywy4bvFobwSh5/I3qohxDx+c1obd8Bp/B/iaOtnq0inli/8rlvKO9hp6Z4e
+ DXL3PlD0QsLSc27AkwzLEc/D3ZaqBq7ItvT9Pyg0z3Q+2dtLF00f9+663HVC2EUgP25J3xDd
+ 496SIeYDTkEgbJ7WYR0HYm9uirSET3lDqOVh1xPqoy+U9zTtuA9NQHVGk+hPcoazSqEtLGBk
+ YE2mm2wzX5q2uoyptseSNceJ+HE9L+z1KlWW63HhddgtRGhbP8pj42bKaUSrrfDUsicfeJf6
+ m1iJRu0SXYVlMruGUB1PvZQ3O7TsVfAGCv85pFipdgk8KQnlRFkYhUjLft0u7CL1rDGZWDDr
+ NaNj54q2CX9zuSxBn9XDXvGKyzKEZ4NY1Jfw+TAMPCp4buawuOsjONi2X0DfivFY+ZsjAIcx
+ qQMglPtKk/wBs7q2lvJ+pHpgvLhLZyGqzAvKM1sVtRJ5j+ARKA0w4pYs5a5ufqcfT7dN6TBk
+ LXZeD9xlVic93Ju08JSUx2ozlcfxq+BVNyA+dtv7elXUZ2DrYwARAQABtCxHdXN0YXZvIEEu
+ IFIuIFNpbHZhIDxndXN0YXZvQGVtYmVkZGVkb3IuY29tPokCPQQTAQgAJwUCWywcDAIbIwUJ
+ CWYBgAULCQgHAgYVCAkKCwIEFgIDAQIeAQIXgAAKCRBHBbTLRwbbMZ6tEACk0hmmZ2FWL1Xi
+ l/bPqDGFhzzexrdkXSfTTZjBV3a+4hIOe+jl6Rci/CvRicNW4H9yJHKBrqwwWm9fvKqOBAg9
+ obq753jydVmLwlXO7xjcfyfcMWyx9QdYLERTeQfDAfRqxir3xMeOiZwgQ6dzX3JjOXs6jHBP
+ cgry90aWbaMpQRRhaAKeAS14EEe9TSIly5JepaHoVdASuxklvOC0VB0OwNblVSR2S5i5hSsh
+ ewbOJtwSlonsYEj4EW1noQNSxnN/vKuvUNegMe+LTtnbbocFQ7dGMsT3kbYNIyIsp42B5eCu
+ JXnyKLih7rSGBtPgJ540CjoPBkw2mCfhj2p5fElRJn1tcX2McsjzLFY5jK9RYFDavez5w3lx
+ JFgFkla6sQHcrxH62gTkb9sUtNfXKucAfjjCMJ0iuQIHRbMYCa9v2YEymc0k0RvYr43GkA3N
+ PJYd/vf9vU7VtZXaY4a/dz1d9dwIpyQARFQpSyvt++R74S78eY/+lX8wEznQdmRQ27kq7BJS
+ R20KI/8knhUNUJR3epJu2YFT/JwHbRYC4BoIqWl+uNvDf+lUlI/D1wP+lCBSGr2LTkQRoU8U
+ 64iK28BmjJh2K3WHmInC1hbUucWT7Swz/+6+FCuHzap/cjuzRN04Z3Fdj084oeUNpP6+b9yW
+ e5YnLxF8ctRAp7K4yVlvA7kCDQRbLBwMARAAsHCE31Ffrm6uig1BQplxMV8WnRBiZqbbsVJB
+ H1AAh8tq2ULl7udfQo1bsPLGGQboJSVN9rckQQNahvHAIK8ZGfU4Qj8+CER+fYPp/MDZj+t0
+ DbnWSOrG7z9HIZo6PR9z4JZza3Hn/35jFggaqBtuydHwwBANZ7A6DVY+W0COEU4of7CAahQo
+ 5NwYiwS0lGisLTqks5R0Vh+QpvDVfuaF6I8LUgQR/cSgLkR//V1uCEQYzhsoiJ3zc1HSRyOP
+ otJTApqGBq80X0aCVj1LOiOF4rrdvQnj6iIlXQssdb+WhSYHeuJj1wD0ZlC7ds5zovXh+FfF
+ l5qH5RFY/qVn3mNIVxeO987WSF0jh+T5ZlvUNdhedGndRmwFTxq2Li6GNMaolgnpO/CPcFpD
+ jKxY/HBUSmaE9rNdAa1fCd4RsKLlhXda+IWpJZMHlmIKY8dlUybP+2qDzP2lY7kdFgPZRU+e
+ zS/pzC/YTzAvCWM3tDgwoSl17vnZCr8wn2/1rKkcLvTDgiJLPCevqpTb6KFtZosQ02EGMuHQ
+ I6Zk91jbx96nrdsSdBLGH3hbvLvjZm3C+fNlVb9uvWbdznObqcJxSH3SGOZ7kCHuVmXUcqoz
+ ol6ioMHMb+InrHPP16aVDTBTPEGwgxXI38f7SUEn+NpbizWdLNz2hc907DvoPm6HEGCanpcA
+ EQEAAYkCJQQYAQgADwUCWywcDAIbDAUJCWYBgAAKCRBHBbTLRwbbMdsZEACUjmsJx2CAY+QS
+ UMebQRFjKavwXB/xE7fTt2ahuhHT8qQ/lWuRQedg4baInw9nhoPE+VenOzhGeGlsJ0Ys52sd
+ XvUjUocKgUQq6ekOHbcw919nO5L9J2ejMf/VC/quN3r3xijgRtmuuwZjmmi8ct24TpGeoBK4
+ WrZGh/1hAYw4ieARvKvgjXRstcEqM5thUNkOOIheud/VpY+48QcccPKbngy//zNJWKbRbeVn
+ imua0OpqRXhCrEVm/xomeOvl1WK1BVO7z8DjSdEBGzbV76sPDJb/fw+y+VWrkEiddD/9CSfg
+ fBNOb1p1jVnT2mFgGneIWbU0zdDGhleI9UoQTr0e0b/7TU+Jo6TqwosP9nbk5hXw6uR5k5PF
+ 8ieyHVq3qatJ9K1jPkBr8YWtI5uNwJJjTKIA1jHlj8McROroxMdI6qZ/wZ1ImuylpJuJwCDC
+ ORYf5kW61fcrHEDlIvGc371OOvw6ejF8ksX5+L2zwh43l/pKkSVGFpxtMV6d6J3eqwTafL86
+ YJWH93PN+ZUh6i6Rd2U/i8jH5WvzR57UeWxE4P8bQc0hNGrUsHQH6bpHV2lbuhDdqo+cM9eh
+ GZEO3+gCDFmKrjspZjkJbB5Gadzvts5fcWGOXEvuT8uQSvl+vEL0g6vczsyPBtqoBLa9SNrS
+ VtSixD1uOgytAP7RWS474w==
+Message-ID: <f0ee151d-f4e5-ab26-1ff0-bffe1f09454d@embeddedor.com>
+Date:   Thu, 7 Feb 2019 21:49:06 -0600
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101
+ Thunderbird/60.4.0
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <480bf69d-4651-aaac-2b85-634561c579c8@molgen.mpg.de>
-User-Agent: Mutt/1.5.21 (2010-09-15)
-From:   bfields@fieldses.org (J. Bruce Fields)
+In-Reply-To: <07CB966E-A946-4956-8480-C0FC13E13E4E@oracle.com>
+Content-Type: text/plain; charset=utf-8
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
+X-AntiAbuse: This header was added to track abuse, please include it with any abuse report
+X-AntiAbuse: Primary Hostname - gator4166.hostgator.com
+X-AntiAbuse: Original Domain - vger.kernel.org
+X-AntiAbuse: Originator/Caller UID/GID - [47 12] / [47 12]
+X-AntiAbuse: Sender Address Domain - embeddedor.com
+X-BWhitelist: no
+X-Source-IP: 189.250.49.191
+X-Source-L: No
+X-Exim-ID: 1grxA8-001qzA-BR
+X-Source: 
+X-Source-Args: 
+X-Source-Dir: 
+X-Source-Sender: ([192.168.1.76]) [189.250.49.191]:43108
+X-Source-Auth: gustavo@embeddedor.com
+X-Email-Count: 42
+X-Source-Cap: Z3V6aWRpbmU7Z3V6aWRpbmU7Z2F0b3I0MTY2Lmhvc3RnYXRvci5jb20=
+X-Local-Domain: yes
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Thu, Feb 07, 2019 at 12:48:41PM +0100, Donald Buczek wrote:
-> The nfsd default lease time has been changed from 90 seconds to 45
-> seconds between Linux 4.14 and 4.19 by commit d6ebf5088f09 ("nfsd4:
-> return default lease period").
+
+
+On 1/31/19 8:11 AM, Chuck Lever wrote:
 > 
-> After we did an upgrade of a nfs server from 4.14 to 4.19, we noticed
-> a failing process and dmesg logs "NFS: nfs4_reclaim_open_state: Lock
-> reclaim failed!" on a client (Linux 4.14.87). The client had the
-> file system mounted with vers=4.0.
-
-Argh.  My fault for changing that default without thinking of the impact
-on a server upgrade on existing client mounts, sorry.
-
-> Network trace indicated, that the client continued to use the
-> 90 seconds lease period of the previous server incarnation and
-> sent RENEWs every 60 seconds (2/3 of 90 seconds).  Sometimes the
-> server answered with NFS4ERR_EXPIRED.
->
-> When this happened, the client executed recovery (SETCLIENTID...) but
-> did non query the server for a new lease_time.  So the problem was
-> persistent even after the first failure.
-
-That certainly sounds like a client bug, though.
-
-> As an experiment, I've also restarted a server with the lease time
-> decrement from 90 to 45 seconds, but the grace period fixed to
-> 90 seconds. Now the client got NFS4ERR_STALE_CLIENTID  but still did
-> not query the server for a new lease_time and continued to send RENEWs
-> in 60 second intervals.
 > 
-> At least for the later case, the RFC say, a client should refetch
-> the lease_time:
+>> On Jan 30, 2019, at 7:46 PM, Gustavo A. R. Silva <gustavo@embeddedor.com> wrote:
+>>
+>> One of the more common cases of allocation size calculations is finding
+>> the size of a structure that has a zero-sized array at the end, along
+>> with memory for some number of elements for that array. For example:
+>>
+>> struct foo {
+>>    int stuff;
+>>    struct boo entry[];
+>> };
+>>
+>> instance = kzalloc(sizeof(struct foo) + count * sizeof(struct boo), GFP_KERNEL);
+>>
+>> Instead of leaving these open-coded and prone to type mistakes, we can
+>> now use the new struct_size() helper:
+>>
+>> instance = kzalloc(struct_size(instance, entry, count), GFP_KERNEL);
+>>
+>> This code was detected with the help of Coccinelle.
+>>
+>> Signed-off-by: Gustavo A. R. Silva <gustavo@embeddedor.com>
 > 
-> >A server may, upon restart, establish a new value for the lease
-> >period.  Therefore, clients should, once a new client ID is
-> >established, refetch the lease_time attribute and use it as the basis
-> >for lease renewal for the lease associated with that server.
-> >However, the server must establish, for this restart event, a grace
-> >period at least as long as the lease period for the previous server
-> >instantiation.  This allows the client state obtained during the
-> >previous server instance to be reliably re-established.
+> Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
 > 
-> [ https://tools.ietf.org/html/rfc7530 ]
-> 
-> I understand that a restart with a grace period smaller than the
-> previous lease time is never save.
-> 
-> Aside from that, is a server restart with a decreased lease time
-> supposed to be supported by the Linux client? If not, this is kind
-> of a trap for server upgrades when just relying on the defaults.
 
-The client should be following the RFC and requesting the lease period
-again after restart.
+Thanks, Chuck.
 
-With that fixed, it may still fail to reclaim locks in this case, since
-the upgraded server isn't providing a 90-second grace period as it
-should, but that should at least avoid problems caused by it continuing to
-renew only at 60-second intervals.
-
-The server shouldn't have changed the defaults.  The only safe way to
-decrease the lease period is to do it from userspace (e.g., change
-NFSD_V4_LEASE value in /etc/sysconfig/nfs, restart, wait at least 90
-seconds for every client to have a chance to get the new lease time,
-then change NFSD_V4_GRACE).  The kernel on its own can't do this safely
-since it doesn't know how to find the old value of the lease time.
-
---b.
+--
+Gustavo
