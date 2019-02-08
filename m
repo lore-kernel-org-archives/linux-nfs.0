@@ -2,146 +2,127 @@ Return-Path: <SRS0=erep=QP=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.9 required=3.0 tests=FROM_EXCESS_BASE64,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-1.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS,URIBL_BLOCKED
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 45FE6C169C4
-	for <linux-nfs@archiver.kernel.org>; Fri,  8 Feb 2019 07:55:15 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 955CFC169C4
+	for <linux-nfs@archiver.kernel.org>; Fri,  8 Feb 2019 11:20:39 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 13E7821917
-	for <linux-nfs@archiver.kernel.org>; Fri,  8 Feb 2019 07:55:15 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 659AA20863
+	for <linux-nfs@archiver.kernel.org>; Fri,  8 Feb 2019 11:20:39 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="iYJNKzSs"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727058AbfBHHzO (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 8 Feb 2019 02:55:14 -0500
-Received: from tama50.ecl.ntt.co.jp ([129.60.39.147]:41644 "EHLO
-        tama50.ecl.ntt.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726004AbfBHHzO (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Feb 2019 02:55:14 -0500
-Received: from vc2.ecl.ntt.co.jp (vc2.ecl.ntt.co.jp [129.60.86.154])
-        by tama50.ecl.ntt.co.jp (8.13.8/8.13.8) with ESMTP id x187t4US014567;
-        Fri, 8 Feb 2019 16:55:04 +0900
-Received: from vc2.ecl.ntt.co.jp (localhost [127.0.0.1])
-        by vc2.ecl.ntt.co.jp (Postfix) with ESMTP id EE3E3639AD5;
-        Fri,  8 Feb 2019 16:55:03 +0900 (JST)
-Received: from jcms-pop11.ecl.ntt.co.jp (jcms-pop11.ecl.ntt.co.jp [129.60.87.132])
-        by vc2.ecl.ntt.co.jp (Postfix) with ESMTP id E2A3E639A5E;
-        Fri,  8 Feb 2019 16:55:03 +0900 (JST)
-Received: from [IPv6:::1] (unknown [129.60.241.190])
-        by jcms-pop11.ecl.ntt.co.jp (Postfix) with ESMTPSA id D927170C076F;
-        Fri,  8 Feb 2019 16:55:03 +0900 (JST)
-Subject: Re: [PATCH] pNFS: Avoid read-modify-write for page-aligned full page
- write
-References: <37261782-eebb-b9c5-a480-7ced59b3703f@lab.ntt.co.jp>
- <5905EB17-75B9-494A-B608-F135D6330F49@redhat.com>
-From:   =?UTF-8?B?5LyK6Jek5ZKM5aSr?= <ito_kazuo_g3@lab.ntt.co.jp>
-Message-ID: <4332a67f-0d50-cc30-4e2b-8d08a112a76f@lab.ntt.co.jp>
-Date:   Fri, 8 Feb 2019 16:54:45 +0900
-User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64; rv:60.0) Gecko/20100101
- Thunderbird/60.5.0
+        id S1726465AbfBHLUi (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 8 Feb 2019 06:20:38 -0500
+Received: from mail-yb1-f196.google.com ([209.85.219.196]:34603 "EHLO
+        mail-yb1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726068AbfBHLUi (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Feb 2019 06:20:38 -0500
+Received: by mail-yb1-f196.google.com with SMTP id k9so1279155ybg.1;
+        Fri, 08 Feb 2019 03:20:38 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=mime-version:from:date:message-id:subject:to:cc;
+        bh=K/5NuJhG2mS5tDdcJ+QiUDL2beRB0IqOqPlPkZzUgTc=;
+        b=iYJNKzSsa65ixmrVsBdrjiCXMFVmSylokeIGZSQMKx6ETkNCo0dy9ER0hhNAtDPD/r
+         nI8+9FAqwVMV/hflvqYiaiqibLkHfwb/gqeuqGdD6+6tfFadhC47olmhfWjeoF1kdluy
+         wfPtA3KiuUJfG9d3cAcyeSfmJuX3Z6ElUuYaxB6hy/cfJilUmAQoEjkJXG7rb8ZXfYjP
+         b4yOVvMb3X1lMRXugjj9vjw00ZZcvDOfFbbzIOKQZ/CuHYQECPa2vpAuLz8B+K4NhrVF
+         OR1ZY2uAgsMcdsoSlhmKFScVybho+iZxRq4VdEMef2YxBkWQz+BO/6L4VtbsgQN+a2Ff
+         lNSQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:from:date:message-id:subject:to:cc;
+        bh=K/5NuJhG2mS5tDdcJ+QiUDL2beRB0IqOqPlPkZzUgTc=;
+        b=lrsYlbwCsimiGh090CyHgS2WbgBW85/vxcCSCaq3ULNb+ZbI9CrRygiGdd6eDhkyN4
+         4VnP6/MdFU1AfzTrJJilsFlFJQcxE9TXfEH/4aQa4dSuwGDWU4tleYyIw4Vzp2V9CVXe
+         ZJUdreCKu8Ekxv8g/FJ9GI88E9ClxD7eRbTmKZkG53WP8xcXjJ7xolUjheGUsJjn6nmY
+         iy5JYzpgp03na2vx/zQr+pvdWuCOlY7rF+lwEFP06eQbAVPJfoSucFOem5zCUo8VyzUn
+         ygvPGOwYUns26vgPANeNXrbR9jl5rJMpiG3MZrLXPJsBYBTL/COyQ4HdOR40e4cMqo7d
+         /vgw==
+X-Gm-Message-State: AHQUAuaI/GlzXCuU3D/hUjAsG7HInZWRPqdtrKiim9yH46aI0c4BeaNQ
+        uGfWyO6pZZWD/5kqRGeP39iAvGRVJCfCPr9vmPM=
+X-Google-Smtp-Source: AHgI3IZvOqF566wMoug1jp2lMdX/KNWuZ8oHODeVjVLUb/G5jb0jK9R5l3KVQExICCCdqMg29P/BH8y7eWkhn7ugjE4=
+X-Received: by 2002:a25:c087:: with SMTP id c129mr17494075ybf.320.1549624837290;
+ Fri, 08 Feb 2019 03:20:37 -0800 (PST)
 MIME-Version: 1.0
-In-Reply-To: <5905EB17-75B9-494A-B608-F135D6330F49@redhat.com>
-Content-Type: text/plain; charset=utf-8; format=flowed
-Content-Language: en-US
-Content-Transfer-Encoding: 8bit
-X-CC-Mail-RelayStamp: 1
-To:     Benjamin Coddington <bcodding@redhat.com>
-Cc:     Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        linux-nfs@vger.kernel.org,
-        Ryusuke Konishi <konishi.ryusuke@lab.ntt.co.jp>,
-        watanabe.hiroyuki@lab.ntt.co.jp
-X-TM-AS-MML: disable
+From:   Amir Goldstein <amir73il@gmail.com>
+Date:   Fri, 8 Feb 2019 13:20:26 +0200
+Message-ID: <CAOQ4uxjQdLrZXkpP30Pq_=Cckcb=mADrEwQUXmsG92r-gn2y5w@mail.gmail.com>
+Subject: Better interop for NFS/SMB file share mode/reservation
+To:     "J. Bruce Fields" <bfields@fieldses.org>
+Cc:     Jeff Layton <jlayton@kernel.org>, Volker.Lendecke@sernet.de,
+        samba-technical@lists.samba.org,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Pavel Shilovsky <piastryyy@gmail.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
+Hi Bruce,
 
-On 2019/02/07 22:37, Benjamin Coddington wrote:
-> On 7 Feb 2019, at 3:12, Kazuo Ito wrote:
-> [snipped]
->> @@ -299,8 +305,10 @@ static int nfs_want_read_modify_write(struct file 
->> *file, struct page *page,
->>      unsigned int end = offset + len;
->>
->>      if (pnfs_ld_read_whole_page(file->f_mapping->host)) {
->> -        if (!PageUptodate(page))
->> -            return 1;
->> +        if (!PageUptodate(page)) {
->> +            if (pglen && (end < pglen || offset))
->> +                return 1;
->> +        }
->>          return 0;
->>      }
-> 
-> This looks right.  I think that a static inline bool nfs_write_covers_page,
-> or full_page_write or similar might make sense here, as we do the same test
-> just below, and would make the code easier to quickly understand.
-> 
-> Reviewed-by: Benjamin Coddington <bcodding@redhat.com>
- >
- > Ben
+I have been following you discussion with Volker Lendecke
+on the samba technical mailing list [1] and have had discussed
+this issue with Volker myself as well.
 
-As per Ben's comment, I made the check for full page write a static
-inline function and both the block-oriented and the non-block-
-oriented paths call it.
+I decided to start this new thread to bring some kernel developers
+in the loop and to propose an idea that takes a somewhat
+different approach to the "interop" approaches I have seen
+so far. "interop" in this context often means consistency of file
+lock states between samba and nfs server, but I am referring
+to the stronger sense of interop with local filesystem on the server.
 
-diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-index 29553fdba8af..458c77ccf274 100644
---- a/fs/nfs/file.c
-+++ b/fs/nfs/file.c
-@@ -276,6 +276,12 @@ EXPORT_SYMBOL_GPL(nfs_file_fsync);
-   * then a modify/write/read cycle when writing to a page in the
-   * page cache.
-   *
-+ * Some pNFS layout drivers can only read/write at a certain block
-+ * granularity like all block devices and therefore we must perform
-+ * read/modify/write whenever a page hasn't read yet and the data
-+ * to be written there is not aligned to a block boundary and/or
-+ * smaller than the block size.
-+ *
-   * The modify/write/read cycle may occur if a page is read before
-   * being completely filled by the writer.  In this situation, the
-   * page must be completely written to stable storage on the server
-@@ -291,15 +297,23 @@ EXPORT_SYMBOL_GPL(nfs_file_fsync);
-   * and that the new data won't completely replace the old data in
-   * that range of the file.
-   */
--static int nfs_want_read_modify_write(struct file *file, struct page *page,
--			loff_t pos, unsigned len)
-+static bool nfs_full_page_write(struct page *page, loff_t pos, unsigned 
-len)
-  {
-  	unsigned int pglen = nfs_page_length(page);
-  	unsigned int offset = pos & (PAGE_SIZE - 1);
-  	unsigned int end = offset + len;
+You pointed to Pavel Shilovsky's O_DENY* patches [2] as a possible
+solution to interop of NFS Share Reservation and SMB Share Mode
+with local filesystems.
+Some of the complaints on this approach were (rightfully) concerned
+about DoS and the prospect of plaguing Linux with Windows server
+"files left open" issues.
 
-+	if (pglen && ((end < pglen) || offset))
-+	    return 0;
-+	return 1;
-+}
-+
-+static int nfs_want_read_modify_write(struct file *file, struct page *page,
-+			loff_t pos, unsigned len)
-+{
-  	if (pnfs_ld_read_whole_page(file->f_mapping->host)) {
--		if (!PageUptodate(page))
-+		if (!PageUptodate(page) &&
-+		    !nfs_full_page_write(page, pos, len))
-  			return 1;
-  		return 0;
-  	}
-@@ -307,8 +321,7 @@ static int nfs_want_read_modify_write(struct file 
-*file, struct page *page,
-  	if ((file->f_mode & FMODE_READ) &&	/* open for read? */
-  	    !PageUptodate(page) &&		/* Uptodate? */
-  	    !PagePrivate(page) &&		/* i/o request already? */
--	    pglen &&				/* valid bytes of file? */
--	    (end < pglen || offset))		/* replace all valid bytes? */
-+	    !nfs_full_page_write(page, pos, len))
-  		return 1;
-  	return 0;
-  }
+My idea comes from the observation that Windows server
+administrators can release locked files that were left open by clients.
+I suppose that an NFS server admin can do the same?
+That realization makes "share access" locks (a.k.a. MAND_LOCK)
+not so very different from oplocks (leases/delegations).
+As long as samba and nfsd cooperate nicely with MAND_LOCK
+semantics, we don't really have to force local filesystems
+to obay MAND_LOCK semantics. If the file servers take leases
+on local filesystems, they will not get exclusive write access for
+files already open for write on local filesytem and same for read.
 
-Signed-off-by: Kazuo Ito <ito_kazuo_g3@lab.ntt.co.jp>
+On local file access on the server that violates the share mode,
+the file server acts as a grumpy washed out administrator that
+automatically grants any lock revoke ticket after timeout.
+
+This model may not fit use cases where "real" interop with
+local filesystem is needed, but compared to the existing
+solution (no interop at all) it is quite an improvement.
+
+Furthermore, short of SMB DENY_DELETE, we may not even
+need to change any kernel APIs.
+The addition of O_DENY* open flags can make programming
+easier, but taking a lease on an open file is still safe enough
+to implement share reservation (no?).
+
+Satisfying DENY_DELETE could be more tricky, but perhaps
+the existing SILLYRENAME interface of==between knfsd and vfs
+could be somehow utilized for this purpose?
+
+I though of bringing this up as a TOPIC for LSF/MM, but wanted
+to consult with you first. I am sure that you or Jeff can do a better
+job than me in enumerating the "interop" file lock issues that
+could be discussed in filesystems track forum.
+
+Thoughts? Explanation why this idea is idiotic?
+
+Thanks,
+Amir.
+
+[1] https://lists.samba.org/archive/samba-technical/2019-February/132366.html
+[2] https://lore.kernel.org/lkml/1389953232-9428-1-git-send-email-piastry@etersoft.ru/
