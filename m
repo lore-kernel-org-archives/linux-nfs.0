@@ -2,277 +2,77 @@ Return-Path: <SRS0=erep=QP=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS,
-	URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-1.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3A8B1C169C4
-	for <linux-nfs@archiver.kernel.org>; Fri,  8 Feb 2019 16:44:20 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2BBD6C169C4
+	for <linux-nfs@archiver.kernel.org>; Fri,  8 Feb 2019 17:17:46 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id C0C3F2080F
-	for <linux-nfs@archiver.kernel.org>; Fri,  8 Feb 2019 16:44:19 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=samba.org header.i=@samba.org header.b="vBZMdPS2"
+	by mail.kernel.org (Postfix) with ESMTP id EBEB220823
+	for <linux-nfs@archiver.kernel.org>; Fri,  8 Feb 2019 17:17:45 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726747AbfBHQoS (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 8 Feb 2019 11:44:18 -0500
-Received: from hr2.samba.org ([144.76.82.148]:33916 "EHLO hr2.samba.org"
+        id S1726522AbfBHRRp (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 8 Feb 2019 12:17:45 -0500
+Received: from mx2.math.uh.edu ([129.7.128.33]:47758 "EHLO mx2.math.uh.edu"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726522AbfBHQoS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 8 Feb 2019 11:44:18 -0500
-X-Greylist: delayed 926 seconds by postgrey-1.27 at vger.kernel.org; Fri, 08 Feb 2019 11:44:17 EST
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed; d=samba.org;
-         s=42627210; h=Date:Cc:To:From:Message-ID;
-        bh=WuFkZhJvaxNfOnnG2bjqIbA/l+gmCsJdWUvKYjGabxc=; b=vBZMdPS2WMHMlG/t53IaCPF8Wl
-        1LrRuoOv6G9A9NIRFv9qu9XKifoRbmDVcyMfqkUmHbMyhiIBPdCCmyj1XN0eUxgkKCS4J6+4OHahd
-        MuaC9X0QJtpLru5OZb4eg64PtxEpI0f/P36Mj9j+IcV6HJCFaGCnS83W2RpQGCQ1/XUE=;
-Received: from [127.0.0.2] (localhost [127.0.0.1])
-        by hr2.samba.org with esmtpsa (TLS1.2:ECDHE_ECDSA_CHACHA20_POLY1305:256)
-        (Exim)
-        id 1gs91G-0008UH-7C; Fri, 08 Feb 2019 16:28:50 +0000
-Message-ID: <6c4a7b293a483b20464d08d924d5efa6eb230c9d.camel@samba.org>
-Subject: Re: Better interop for NFS/SMB file share mode/reservation
-From:   Jeffrey Layton <jlayton@samba.org>
-To:     Amir Goldstein <amir73il@gmail.com>
-Cc:     "J. Bruce Fields" <bfields@fieldses.org>,
-        Volker.Lendecke@sernet.de, samba-technical@lists.samba.org,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Pavel Shilovsky <piastryyy@gmail.com>
-Date:   Fri, 08 Feb 2019 11:28:43 -0500
-In-Reply-To: <930108f76b89c93b2f1847003d9e060f09ba1a17.camel@kernel.org>
-References: <CAOQ4uxjQdLrZXkpP30Pq_=Cckcb=mADrEwQUXmsG92r-gn2y5w@mail.gmail.com>
-         <379106947f859bdf5db4c6f9c4ab8c44f7423c08.camel@kernel.org>
-         <CAOQ4uxgewN=j3ju5MSowEvwhK1HqKG3n1hBRUQTi1W5asaO1dQ@mail.gmail.com>
-         <930108f76b89c93b2f1847003d9e060f09ba1a17.camel@kernel.org>
-Content-Type: text/plain; charset="UTF-8"
-User-Agent: Evolution 3.30.4 (3.30.4-1.fc29) 
-Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
+        id S1727684AbfBHRRp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 8 Feb 2019 12:17:45 -0500
+Received: from epithumia.math.uh.edu ([129.7.128.2])
+        by mx2.math.uh.edu with esmtp (Exim 4.91)
+        (envelope-from <tibbs@math.uh.edu>)
+        id 1gs9mS-000470-LE; Fri, 08 Feb 2019 11:17:38 -0600
+Received: by epithumia.math.uh.edu (Postfix, from userid 7225)
+        id 916948014D9; Fri,  8 Feb 2019 11:17:36 -0600 (CST)
+From:   Jason L Tibbitts III <tibbs@math.uh.edu>
+To:     Chuck Lever <chuck.lever@oracle.com>
+Cc:     Benjamin Coddington <bcodding@redhat.com>,
+        Trond Myklebust <trondmy@hammerspace.com>,
+        Anna Schumaker <Anna.Schumaker@netapp.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: Need help debugging NFS issues new to 4.20 kernel
+References: <ufaimyearlx.fsf@epithumia.math.uh.edu>
+        <eff194a660ce562753d0112cdf6b1aacc5aa5dfb.camel@hammerspace.com>
+        <ufak1isms71.fsf@epithumia.math.uh.edu>
+        <87ftt2cdeq.fsf@hippogriff.math.uh.edu>
+        <FC712F54-5A7A-436D-B076-936B29C013F4@redhat.com>
+        <87imxwab12.fsf@hippogriff.math.uh.edu>
+        <662CE7B3-235E-4E2D-9C8C-0F6233F3085F@redhat.com>
+        <87d0o3aadg.fsf@hippogriff.math.uh.edu>
+        <B730E8AE-AFA3-4CE7-9103-FCCC35C37EDD@redhat.com>
+        <7C8B2CA6-0254-44B2-B5A8-A2A9E0C042E9@oracle.com>
+Date:   Fri, 08 Feb 2019 11:17:36 -0600
+In-Reply-To: <7C8B2CA6-0254-44B2-B5A8-A2A9E0C042E9@oracle.com> (Chuck Lever's
+        message of "Fri, 8 Feb 2019 10:19:40 -0500")
+Message-ID: <ufaa7j6jj2n.fsf@epithumia.math.uh.edu>
+User-Agent: Gnus/5.13 (Gnus v5.13) Emacs/26.1 (gnu/linux)
+MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Fri, 2019-02-08 at 11:03 -0500, Jeff Layton wrote:
-> On Fri, 2019-02-08 at 16:45 +0200, Amir Goldstein wrote:
-> > On Fri, Feb 8, 2019 at 3:10 PM Jeff Layton <jlayton@kernel.org> wrote:
-> > > On Fri, 2019-02-08 at 13:20 +0200, Amir Goldstein wrote:
-> > > > Hi Bruce,
-> > > > 
-> > > > I have been following you discussion with Volker Lendecke
-> > > > on the samba technical mailing list [1] and have had discussed
-> > > > this issue with Volker myself as well.
-> > > > 
-> > > > I decided to start this new thread to bring some kernel developers
-> > > > in the loop and to propose an idea that takes a somewhat
-> > > > different approach to the "interop" approaches I have seen
-> > > > so far. "interop" in this context often means consistency of file
-> > > > lock states between samba and nfs server, but I am referring
-> > > > to the stronger sense of interop with local filesystem on the server.
-> > > > 
-> > > > You pointed to Pavel Shilovsky's O_DENY* patches [2] as a possible
-> > > > solution to interop of NFS Share Reservation and SMB Share Mode
-> > > > with local filesystems.
-> > > > Some of the complaints on this approach were (rightfully) concerned
-> > > > about DoS and the prospect of plaguing Linux with Windows server
-> > > > "files left open" issues.
-> > > > 
-> > > > My idea comes from the observation that Windows server
-> > > > administrators can release locked files that were left open by clients.
-> > > > I suppose that an NFS server admin can do the same?
-> > > 
-> > > The Linux kernel has no mechanism for this (aside from sending a SIGKILL
-> > > to lockd, which makes it drop all locks). Solaris did have a tool for
-> > > this at one point (and probably still does).
-> > > 
-> > > It's a little less of a problem now than it used to be with NFS, given
-> > > the move to NFSv4 (which has lease-based locking). If you have
-> > > misbehaving clients, you just kick them out and their locks eventually
-> > > go away. v3 locks can stick around in perpetuity however, so people have
-> > > long wanted such a tool on Linux as well.
-> > > 
-> > 
-> > In a nut shell, I think my proposal is that samba will do something
-> > similar and request leases from the kernel instead of trying to
-> > enforce real mandatory locks.
-> > 
-> > > > That realization makes "share access" locks (a.k.a. MAND_LOCK)
-> > > > not so very different from oplocks (leases/delegations).
-> > > > As long as samba and nfsd cooperate nicely with MAND_LOCK
-> > > > semantics, we don't really have to force local filesystems
-> > > > to obay MAND_LOCK semantics. If the file servers take leases
-> > > > on local filesystems, they will not get exclusive write access for
-> > > > files already open for write on local filesytem and same for read.
-> > > > 
-> > > 
-> > > I think this last statement isn't correct (if I'm parsing it correctly).
-> > > If a file is already open for write, then you just don't get a lease
-> > > when you try to request one. Ditto for write leases if it's already open
-> > > for read.
-> > > 
-> > 
-> > I think you miss read what I miss wrote ;-)
-> > As the title of this thread states, I am talking about the first case
-> > of acquiring an exclusive or read shared access to file at open time.
-> > It may be the fact that samba currently calls flock(LOCK_MAND)
-> > that is the source for confusion.
-> > 
-> > Open failure is the expected behavior if file is already open for
-> > write (or read) on local filesystem, so my suggestion is:
-> > - Server opens the file and request a lease based of desired share mode
-> > - If file server got the lease, client gets the file handle
-> > - Otherwise, client gets an open failure
-> > > > On local file access on the server that violates the share mode,
-> > > > the file server acts as a grumpy washed out administrator that
-> > > > automatically grants any lock revoke ticket after timeout.
-> > > > 
-> > > 
-> > > Devil's advocate:
-> > > 
-> > > Is this situation any better than just teaching the NFS/SMB servers to
-> > > track these locks out of band? Both samba and most NFS servers respect
-> > > share/deny mode locks, but only internally -- they aren't aware of the
-> > > others'. We could (in principle) come up with a mechanism to track these
-> > > that doesn't involve plumbing them into the kernel.
-> > > 
-> > 
-> > That would be a prerequisite to my suggested solution, as I wrote:
-> > "As long as samba and nfsd cooperate nicely with LOCK_MAND..."
-> > That means the two file servers cooperate on the share mode locks
-> > and try to figure out if there are outstanding leases before opening
-> > a file that will break those leases.
-> > 
-> > > That said, coherent locking is best done in the kernel, IMO...
-> > > 
-> > 
-> > Indeed...
-> > 
-> > > > This model may not fit use cases where "real" interop with
-> > > > local filesystem is needed, but compared to the existing
-> > > > solution (no interop at all) it is quite an improvement.
-> > > > 
-> > > > Furthermore, short of SMB DENY_DELETE, we may not even
-> > > > need to change any kernel APIs.
-> > > > The addition of O_DENY* open flags can make programming
-> > > > easier, but taking a lease on an open file is still safe enough
-> > > > to implement share reservation (no?).
-> > > > 
-> > > > Satisfying DENY_DELETE could be more tricky, but perhaps
-> > > > the existing SILLYRENAME interface of==between knfsd and vfs
-> > > > could be somehow utilized for this purpose?
-> > > > 
-> > > > I though of bringing this up as a TOPIC for LSF/MM, but wanted
-> > > > to consult with you first. I am sure that you or Jeff can do a better
-> > > > job than me in enumerating the "interop" file lock issues that
-> > > > could be discussed in filesystems track forum.
-> > > > 
-> > > > Thoughts? Explanation why this idea is idiotic?
-> > > 
-> > > I think it's not a single idea. There are really two different aspects
-> > > to this given that we're really talking about two different types of
-> > > locks in SMB. I think you have to consider solving these problems
-> > > separately:
-> > > 
-> > > 1) the ability to set a (typically whole-file) share/deny lock
-> > > atomically when you open a file. This is necessary for coherent
-> > > share/deny lock semantics. Note that these are only enforced open()
-> > > time.
-> > > 
-> > > 2) mandatory locking (forbidding reads and writes on a byte range when
-> > > there is a conflicting lock set).
-> > > 
-> > 
-> > I was only trying to address the first problem (small steps...).
-> > 
-> > > The first could (probably) be solved with something like what Pavel
-> > > proposed a few years ago...or maybe we just wire up O_EXLOCK and
-> > > O_SHLOCK:
-> > > 
-> > >     https://www.gnu.org/software/libc/manual/html_node/Open_002dtime-Flags.html
-> > > 
-> > 
-> > Nice. I wasn't aware of those BSD flags.
-> > 
-> 
-> Share/deny open semantics are pretty similar across NFS and SMB (by
-> design, really). If you intend to solve that use-case, what you really
-> want is whole-file, shared/exclusive locks that are set atomically with
-> the open call. O_EXLOCK and O_SHLOCK seem like a reasonable fit there.
-> 
-> Then you could have SMB and NFS servers set these flags when opening
-> files, and deal with the occasional denial at open time. Other
-> applications won't be aware of them of course, but that's probably fine
-> for most use-cases where you want this sort of protocol interop.
-> 
-> DENY_DELETE is a bit harder to deal with however, but that's probably
-> something that could be addressed separately.
-> 
-> > > This seems like a fine idea (in principle) but it needs someone to drive
-> > > the work forward. You'll also likely be consuming a couple of O_* flags,
-> > > which could be tough sell (unless you come up with another way to do
-> > > it).
-> > > 
-> > 
-> > Once I know the obstacles to watch out from, I can drive this work.
-> > Thing is, I am not convinced myself that any new O_ flags are needed.
-> > 
-> > How about this (for samba, knfsd is simpler):
-> > - pfd = open(filename, O_PATH)
-> > - flock(pfd, LOCK_MAND) (for file servers interop)
-> > - vfs checks no conflicting LOCK_MAND locks (like patch you once posted)
-> > - open(filename, O_RDWR) (and verify st_ino like samba does)
-> > - Request lease (for local fs interop)
-> > - check_conflicting_open() is changed to use inode_is_open_for_read()gi
-> > - we already have i_readcount, just need to remove ifdef CONFIG_IMA
-> > - On lease break (from local fs), break client oplocks and invalidate
-> > file handle on server
-> > 
-> 
-> Now that I look at the handling of flock LOCK_MAND, I'm not sure how
-> it's supposed to work. In particular, flock_locks_conflict basically
-> says that a LOCK_MAND lock can never conflict with anything. I'm not
-> sure what good that does.
-> 
-> The flock manpage does not document LOCK_MAND. It's in /usr/include/asm-
-> generic/fcntl.h on my machine, but it looks like it just got taken right
-> out of the kernel headers long ago.
-> 
-> I think we need to have a hard look at what this flag is doing today
-> (seems like not much). What are samba's expectations with that flag?
-> 
+>>>>> "CL" == Chuck Lever <chuck.lever@oracle.com> writes:
 
-Yeah, in fact, I rolled this program and ran it in two different shells
-on the same machine against the same file, and they both acquired a
-lock:
+CL> The server is returning SEQ_MISORDERED to a singleton SEQUENCE.
+CL> That suggests the client is trying to re-establish its lease but is
+CL> sending a slot nr the server doesn't recognize for the virtual slot
+CL> used for this purpose. Could be a problem on either side, and I
+CL> don't know enough to say how this loop could have started.
 
----------------------------[snip]------------------------------
-#define _GNU_SOURCE
-#include <stdio.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <sys/file.h>
-#include <fcntl.h>
+In case I didn't say so earlier, the server is just Centos 7.6 running
+that heavily modified 3.10.0-957.1.3.el7.x86_64.  I was not able to
+reproduce anything like this throughout the 4.19 cycle but it started
+cropping up pretty quickly on user desktops after booting into 4.20.3
+(the first of the 4.20 series I tried).  And it does not reoccur after
+rebooting back to 4.19.15.  Of course I know that doesn't absolve the
+server.
 
-int main(int argc, char **argv) {
-	int fd, ret;
+It is possible for me to try to push a mainline kernel to all of the
+relevant file servers, but that obviously carries other overhead and
+risks that I would certainly prefer to avoid.
 
-	fd = open(argv[1], O_RDWR|O_CREAT, 0644);
-	if (fd < 0)
-		perror("open");
+I just wish I knew how to reproduce this other than sticking it on a
+bunch of machines and waiting until people complain.
 
-	ret = flock(fd, LOCK_EX|LOCK_MAND);
-	if (ret)
-		perror("flock");
-	printf("Lock acquired");
-	getchar();
-	return 0;
-}
----------------------------[snip]------------------------------
-
-I move that LOCK_MAND be nuked from orbit...or someone step forward to
-propose reasonable semantics for it. :)
-
--- 
-Jeffrey Layton <jlayton@samba.org>
-
+ - J<
