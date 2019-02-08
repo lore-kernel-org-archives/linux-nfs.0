@@ -6,20 +6,20 @@ X-Spam-Status: No, score=-9.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,USER_AGENT_GIT
 	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2A1CEC169C4
-	for <linux-nfs@archiver.kernel.org>; Fri,  8 Feb 2019 20:11:43 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 618BDC282CB
+	for <linux-nfs@archiver.kernel.org>; Fri,  8 Feb 2019 20:11:44 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 000A32177B
-	for <linux-nfs@archiver.kernel.org>; Fri,  8 Feb 2019 20:11:42 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 2EE632177B
+	for <linux-nfs@archiver.kernel.org>; Fri,  8 Feb 2019 20:11:44 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727767AbfBHULY (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S1727445AbfBHULY (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Fri, 8 Feb 2019 15:11:24 -0500
-Received: from fieldses.org ([173.255.197.46]:57080 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:57078 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727561AbfBHUKt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        id S1727457AbfBHUKt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
         Fri, 8 Feb 2019 15:10:49 -0500
 Received: by fieldses.org (Postfix, from userid 2815)
-        id E98D82012; Fri,  8 Feb 2019 15:10:48 -0500 (EST)
+        id EF646BCC; Fri,  8 Feb 2019 15:10:48 -0500 (EST)
 From:   "J. Bruce Fields" <bfields@redhat.com>
 To:     linux-nfs@vger.kernel.org
 Cc:     linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
@@ -29,9 +29,9 @@ Cc:     linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
         Peter Zijlstra <peterz@infradead.org>,
         Shaohua Li <shli@fb.com>, Oleg Nesterov <oleg@redhat.com>,
         "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 5/7] rpc: separate out body of svc_start_kthreads
-Date:   Fri,  8 Feb 2019 15:10:45 -0500
-Message-Id: <1549656647-25115-6-git-send-email-bfields@redhat.com>
+Subject: [PATCH 6/7] rpc: move rpc server threads into their own thread group
+Date:   Fri,  8 Feb 2019 15:10:46 -0500
+Message-Id: <1549656647-25115-7-git-send-email-bfields@redhat.com>
 X-Mailer: git-send-email 1.8.3.1
 In-Reply-To: <1549656647-25115-1-git-send-email-bfields@redhat.com>
 References: <1549656647-25115-1-git-send-email-bfields@redhat.com>
@@ -42,95 +42,79 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: "J. Bruce Fields" <bfields@redhat.com>
 
-No change in behavior, just trivial refactoring.
-
 Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- net/sunrpc/svc.c | 62 +++++++++++++++++++++++++++++-------------------
- 1 file changed, 37 insertions(+), 25 deletions(-)
+ include/linux/sunrpc/svc.h |  1 +
+ net/sunrpc/svc.c           | 23 ++++++++++++++++++-----
+ 2 files changed, 19 insertions(+), 5 deletions(-)
 
+diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+index e52385340b3b..07d428dd067f 100644
+--- a/include/linux/sunrpc/svc.h
++++ b/include/linux/sunrpc/svc.h
+@@ -101,6 +101,7 @@ struct svc_serv {
+ 
+ 	unsigned int		sv_nrpools;	/* number of thread pools */
+ 	struct svc_pool *	sv_pools;	/* array of thread pools */
++	struct kthread_group *	sv_kthread_grp;
+ 	const struct svc_serv_ops *sv_ops;	/* server operations */
+ #if defined(CONFIG_SUNRPC_BACKCHANNEL)
+ 	struct list_head	sv_cb_list;	/* queue for callback requests
 diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index e87ddb9f7feb..502e09a28f84 100644
+index 502e09a28f84..d8586a57da40 100644
 --- a/net/sunrpc/svc.c
 +++ b/net/sunrpc/svc.c
-@@ -702,40 +702,52 @@ choose_victim(struct svc_serv *serv, struct svc_pool *pool, unsigned int *state)
- 	return task;
+@@ -464,10 +464,16 @@ __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
+ 	serv->sv_pools =
+ 		kcalloc(serv->sv_nrpools, sizeof(struct svc_pool),
+ 			GFP_KERNEL);
+-	if (!serv->sv_pools) {
+-		kfree(serv);
+-		return NULL;
+-	}
++	if (!serv->sv_pools)
++		goto out_free_serv;
++
++	serv->sv_kthread_grp = kthread_start_group(CLONE_THREAD |
++					CLONE_SIGHAND | CLONE_VM | CLONE_FS |
++					CLONE_FILES | SIGCHLD,
++					serv->sv_name);
++
++	if (IS_ERR(serv->sv_kthread_grp))
++		goto out_free_pools;
+ 
+ 	for (i = 0; i < serv->sv_nrpools; i++) {
+ 		struct svc_pool *pool = &serv->sv_pools[i];
+@@ -482,6 +488,11 @@ __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
+ 	}
+ 
+ 	return serv;
++out_free_pools:
++	kfree(serv->sv_pools);
++out_free_serv:
++	kfree(serv);
++	return NULL;
  }
  
--/* create new threads */
- static int
--svc_start_kthreads(struct svc_serv *serv, struct svc_pool *pool, int nrservs)
-+svc_start_kthread(struct svc_serv *serv, struct svc_pool *pool,
-+			unsigned int *state)
- {
- 	struct svc_rqst	*rqstp;
- 	struct task_struct *task;
- 	struct svc_pool *chosen_pool;
--	unsigned int state = serv->sv_nrthreads-1;
- 	int node;
+ struct svc_serv *
+@@ -551,6 +562,7 @@ svc_destroy(struct svc_serv *serv)
+ 	if (svc_serv_is_pooled(serv))
+ 		svc_pool_map_put();
  
--	do {
--		nrservs--;
--		chosen_pool = choose_pool(serv, pool, &state);
--
--		node = svc_pool_map_get_node(chosen_pool->sp_id);
--		rqstp = svc_prepare_thread(serv, chosen_pool, node);
--		if (IS_ERR(rqstp))
--			return PTR_ERR(rqstp);
--
--		__module_get(serv->sv_ops->svo_module);
--		task = kthread_create_on_node(serv->sv_ops->svo_function, rqstp,
--					      node, "%s", serv->sv_name);
--		if (IS_ERR(task)) {
--			module_put(serv->sv_ops->svo_module);
--			svc_exit_thread(rqstp);
--			return PTR_ERR(task);
--		}
-+	chosen_pool = choose_pool(serv, pool, state);
++	kthread_stop_group(serv->sv_kthread_grp);
+ 	kfree(serv->sv_pools);
+ 	kfree(serv);
+ }
+@@ -719,7 +731,8 @@ svc_start_kthread(struct svc_serv *serv, struct svc_pool *pool,
+ 		return PTR_ERR(rqstp);
  
--		rqstp->rq_task = task;
--		if (serv->sv_nrpools > 1)
--			svc_pool_map_set_cpumask(task, chosen_pool->sp_id);
-+	node = svc_pool_map_get_node(chosen_pool->sp_id);
-+	rqstp = svc_prepare_thread(serv, chosen_pool, node);
-+	if (IS_ERR(rqstp))
-+		return PTR_ERR(rqstp);
- 
--		svc_sock_update_bufs(serv);
--		wake_up_process(task);
-+	__module_get(serv->sv_ops->svo_module);
-+	task = kthread_create_on_node(serv->sv_ops->svo_function, rqstp,
-+				      node, "%s", serv->sv_name);
-+	if (IS_ERR(task)) {
-+		module_put(serv->sv_ops->svo_module);
-+		svc_exit_thread(rqstp);
-+		return PTR_ERR(task);
-+	}
-+
-+	rqstp->rq_task = task;
-+	if (serv->sv_nrpools > 1)
-+		svc_pool_map_set_cpumask(task, chosen_pool->sp_id);
-+
-+	svc_sock_update_bufs(serv);
-+	wake_up_process(task);
-+	return 0;
-+}
-+
-+/* create new threads */
-+static int
-+svc_start_kthreads(struct svc_serv *serv, struct svc_pool *pool, int nrservs)
-+{
-+	unsigned int state = serv->sv_nrthreads-1;
-+	int ret;
-+
-+	do {
-+		nrservs--;
-+		ret = svc_start_kthread(serv, pool, &state);
-+		if (ret)
-+			return ret;
- 	} while (nrservs > 0);
- 
- 	return 0;
+ 	__module_get(serv->sv_ops->svo_module);
+-	task = kthread_create_on_node(serv->sv_ops->svo_function, rqstp,
++	task = kthread_group_create_on_node(serv->sv_kthread_grp,
++				      serv->sv_ops->svo_function, rqstp,
+ 				      node, "%s", serv->sv_name);
+ 	if (IS_ERR(task)) {
+ 		module_put(serv->sv_ops->svo_module);
 -- 
 2.20.1
 
