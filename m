@@ -2,92 +2,104 @@ Return-Path: <SRS0=erep=QP=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
-	SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
+X-Spam-Status: No, score=-1.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 648FDC169C4
-	for <linux-nfs@archiver.kernel.org>; Fri,  8 Feb 2019 17:26:00 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id EB423C169C4
+	for <linux-nfs@archiver.kernel.org>; Fri,  8 Feb 2019 20:02:57 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 1025220855
-	for <linux-nfs@archiver.kernel.org>; Fri,  8 Feb 2019 17:26:00 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id B711E217D8
+	for <linux-nfs@archiver.kernel.org>; Fri,  8 Feb 2019 20:02:57 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=desy.de header.i=@desy.de header.b="avzj3/6Y"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="igqHtqEQ"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727262AbfBHRZ7 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 8 Feb 2019 12:25:59 -0500
-Received: from smtp-o-3.desy.de ([131.169.56.156]:47298 "EHLO smtp-o-3.desy.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726522AbfBHRZ7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 8 Feb 2019 12:25:59 -0500
-X-Greylist: delayed 467 seconds by postgrey-1.27 at vger.kernel.org; Fri, 08 Feb 2019 12:25:58 EST
-Received: from smtp-buf-3.desy.de (smtp-buf-3.desy.de [IPv6:2001:638:700:1038::1:a6])
-        by smtp-o-3.desy.de (DESY-O-3) with ESMTP id AAB7A280BC2
-        for <linux-nfs@vger.kernel.org>; Fri,  8 Feb 2019 18:18:10 +0100 (CET)
-DKIM-Filter: OpenDKIM Filter v2.11.0 smtp-o-3.desy.de AAB7A280BC2
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=desy.de; s=default;
-        t=1549646290; bh=8LCfsppLIonHz64GWMFrt8YiD4hiu4+8ssEjwsNFB7E=;
-        h=From:To:Cc:Subject:Date:From;
-        b=avzj3/6YL401/GGaHHNNEUa+cwSltyXOG05iHZIlZv3ZPuJ7RZ8M3SzlGKUabSbU5
-         m+Ta33ugxz5OFxppKRb3ZRebeFauLELPCbZQJmlIqefWiPsT0OSOd6eCs7ly5x7Xd2
-         4IqfcUP2u4r9wQKTLh8HAY/Uos/H+dO1gPbicgYo=
-Received: from smtp-m-3.desy.de (smtp-m-3.desy.de [131.169.56.131])
-        by smtp-buf-3.desy.de (Postfix) with ESMTP id 8F27EA0040;
-        Fri,  8 Feb 2019 18:18:10 +0100 (CET)
-X-Virus-Scanned: amavisd-new at desy.de
-Received: from ani.desy.de (zitpcx21033.desy.de [131.169.185.213])
-        by smtp-intra-3.desy.de (DESY-INTRA-3) with ESMTP id 4B7E31029;
-        Fri,  8 Feb 2019 18:18:10 +0100 (MET)
-From:   Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-To:     bfields@fieldses.org
-Cc:     linux-nfs@vger.kernel.org,
-        Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-Subject: [PATCH] st_getattr: do not expect server to return rdattr_error
-Date:   Fri,  8 Feb 2019 18:18:08 +0100
-Message-Id: <20190208171808.7861-1-tigran.mkrtchyan@desy.de>
-X-Mailer: git-send-email 2.20.1
+        id S1726522AbfBHUC4 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 8 Feb 2019 15:02:56 -0500
+Received: from mail-yw1-f68.google.com ([209.85.161.68]:39744 "EHLO
+        mail-yw1-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726700AbfBHUC4 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Feb 2019 15:02:56 -0500
+Received: by mail-yw1-f68.google.com with SMTP id k188so1855632ywa.6;
+        Fri, 08 Feb 2019 12:02:56 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc;
+        bh=5Lu2z5qIe9HLYQIczuk11hxCRuBW3S3oIxRGLiSMwqI=;
+        b=igqHtqEQfbpqxaanH7duUXYmXwboMiIhsykuFiprWPnCP0fC79HEpkaI9sgRtlHXuf
+         VngYn8G+dITYvV9DPqCiLpM0kAUGGGxgaJizylYgjMXi6N4CHbSXdfH8PFKHwYoLMJO5
+         lQ0eUX0CnKqR1swYsD16TJI9Wi/EAlGlogOLA6rma4GacoiucPRXmFyC6MYrWRWGlQG4
+         Xr5tuttgrbreQVwid0rKnKvlXqJDQ0RVo7ggmBiYtkueQx8w+EOJTLiwaGvrR/X/lqHF
+         TAeNn+9y2Ik3cYqloQBG6ekj4CBypFsWENicgxjwcU+FXMo7DNoZ07Un2+DhvEKa/mAJ
+         /V3A==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=5Lu2z5qIe9HLYQIczuk11hxCRuBW3S3oIxRGLiSMwqI=;
+        b=EOgklj5AvduzJwh3YEfR5I5s6tf54I637DFDDMk90ikr9KDFo1YtCAwmIqF+yZznKy
+         flHoMUjrUqWSx8ZZW4SMrykDrg54F13VWZ3+P4qQgWBwftd1YD9z6/TtNRa0rSwh3xZW
+         JyvvtpqrOGm+lb0uH/SBsn4ynJ0jWX3Duh0531VBoR3Y/x4uHBdXxMND+DmZPNZrsZ3F
+         Z/sD58sJhNbHdO5hfBsiKr+86hmNiOHNWaoUbPfPcMjPYrEsU5fSdwPoERMQkl/qrBE1
+         WFcx4Afq8mkbpmZl7CvjRvoXDzMXt7CXNkeiun7qNLtr+kSxu46obFK8DO93dDu9bbtX
+         Eo2Q==
+X-Gm-Message-State: AHQUAuYfm/nvQlTdMvUE754wzeICxfC0MoVK7YsuyiWIcZIWxSy9ZCPp
+        atFgLrHgpOZ7QM7aDCC+1dvhSZCMdXhcrc868+E=
+X-Google-Smtp-Source: AHgI3IYXumkM5mTpFOoEnz4MkpLVILncbyuO8/W735kIguosRd4d5KbGVrY0+DVCJEsyuxbC0prqqr3Q6KN2rr8c/PM=
+X-Received: by 2002:a81:6f41:: with SMTP id k62mr18621806ywc.211.1549656175591;
+ Fri, 08 Feb 2019 12:02:55 -0800 (PST)
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+References: <CAOQ4uxjQdLrZXkpP30Pq_=Cckcb=mADrEwQUXmsG92r-gn2y5w@mail.gmail.com>
+ <379106947f859bdf5db4c6f9c4ab8c44f7423c08.camel@kernel.org>
+ <CAOQ4uxgewN=j3ju5MSowEvwhK1HqKG3n1hBRUQTi1W5asaO1dQ@mail.gmail.com> <20190208155052.GB20573@fieldses.org>
+In-Reply-To: <20190208155052.GB20573@fieldses.org>
+From:   Amir Goldstein <amir73il@gmail.com>
+Date:   Fri, 8 Feb 2019 22:02:43 +0200
+Message-ID: <CAOQ4uxg9NGPRpMZt0KgH9HUKMRpn0dFta7EnP1WioRb917n4+A@mail.gmail.com>
+Subject: Re: Better interop for NFS/SMB file share mode/reservation
+To:     "J. Bruce Fields" <bfields@fieldses.org>
+Cc:     Jeff Layton <jlayton@kernel.org>, Volker.Lendecke@sernet.de,
+        samba-technical@lists.samba.org,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Pavel Shilovsky <piastryyy@gmail.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-rfc7530:
-   5.8.1.12.  Attribute 11: rdattr_error
+On Fri, Feb 8, 2019 at 5:51 PM J. Bruce Fields <bfields@fieldses.org> wrote:
+>
+> On Fri, Feb 08, 2019 at 04:45:46PM +0200, Amir Goldstein wrote:
+> > - check_conflicting_open() is changed to use inode_is_open_for_read()
+> >   instead of checking d_count and i_count.
+>
+> Independently of the rest, I'd love to do away with those
+> d_count/i_count checks.  What's inode_is_open_for_read()?
+>
 
-     Error returned from an attempt to retrieve attributes during a
-     READDIR operation.
+It would look maybe something like this:
 
-IOW, we do not expect rdattr_error to be returned in reply to regular
-GETATTR operation.
+static inline bool file_is_open_for_read(const struct inode *file)
+{
+        struct inode *inode = file_inode(file);
+        int countself = (file->f_mode & (FMODE_READ | FMODE_WRITE)) ==
+FMODE_READ) ? 1 : 0;
 
-Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
----
- nfs4.0/servertests/st_getattr.py | 4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
+        return atomic_read(&inode->i_readcount) > countself;
+}
 
-diff --git a/nfs4.0/servertests/st_getattr.py b/nfs4.0/servertests/st_getattr.py
-index 292fcd2..1c47ebf 100644
---- a/nfs4.0/servertests/st_getattr.py
-+++ b/nfs4.0/servertests/st_getattr.py
-@@ -1,12 +1,14 @@
- from xdrdef.nfs4_const import *
- from .environment import check
--from nfs4lib import get_attr_name
-+from nfs4lib import get_attr_name, get_attrbitnum_dict
- import nfs_ops
- op = nfs_ops.NFS4ops()
- 
- def _try_mandatory(t, env, path):
-     c = env.c1
-     mandatory = [attr.bitnum for attr in env.attr_info if attr.mandatory]
-+    # don't expect rdattr_error to be a part of returned attributes
-+    mandatory.remove(get_attrbitnum_dict()['rdattr_error'])
-     ops = c.use_obj(path)
-     ops += [c.getattr(mandatory)]
-     res = c.compound(ops)
--- 
-2.20.1
+And it would allow for acquiring F_WRLCK lease if other
+instances of inode are open O_PATH.
+A slight change of semantics that seems harmless(?)
+and will allow some flexibility.
 
+But if samba can't figure out a way to keep a single open file
+descriptor for oplocks per client-file, then this model doesn't
+help us make any progress.
+
+Thanks,
+Amir.
