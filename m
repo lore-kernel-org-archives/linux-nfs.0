@@ -2,77 +2,92 @@ Return-Path: <SRS0=erep=QP=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
+	SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2BBD6C169C4
-	for <linux-nfs@archiver.kernel.org>; Fri,  8 Feb 2019 17:17:46 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 648FDC169C4
+	for <linux-nfs@archiver.kernel.org>; Fri,  8 Feb 2019 17:26:00 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id EBEB220823
-	for <linux-nfs@archiver.kernel.org>; Fri,  8 Feb 2019 17:17:45 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 1025220855
+	for <linux-nfs@archiver.kernel.org>; Fri,  8 Feb 2019 17:26:00 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (1024-bit key) header.d=desy.de header.i=@desy.de header.b="avzj3/6Y"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726522AbfBHRRp (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 8 Feb 2019 12:17:45 -0500
-Received: from mx2.math.uh.edu ([129.7.128.33]:47758 "EHLO mx2.math.uh.edu"
+        id S1727262AbfBHRZ7 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 8 Feb 2019 12:25:59 -0500
+Received: from smtp-o-3.desy.de ([131.169.56.156]:47298 "EHLO smtp-o-3.desy.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727684AbfBHRRp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 8 Feb 2019 12:17:45 -0500
-Received: from epithumia.math.uh.edu ([129.7.128.2])
-        by mx2.math.uh.edu with esmtp (Exim 4.91)
-        (envelope-from <tibbs@math.uh.edu>)
-        id 1gs9mS-000470-LE; Fri, 08 Feb 2019 11:17:38 -0600
-Received: by epithumia.math.uh.edu (Postfix, from userid 7225)
-        id 916948014D9; Fri,  8 Feb 2019 11:17:36 -0600 (CST)
-From:   Jason L Tibbitts III <tibbs@math.uh.edu>
-To:     Chuck Lever <chuck.lever@oracle.com>
-Cc:     Benjamin Coddington <bcodding@redhat.com>,
-        Trond Myklebust <trondmy@hammerspace.com>,
-        Anna Schumaker <Anna.Schumaker@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: Need help debugging NFS issues new to 4.20 kernel
-References: <ufaimyearlx.fsf@epithumia.math.uh.edu>
-        <eff194a660ce562753d0112cdf6b1aacc5aa5dfb.camel@hammerspace.com>
-        <ufak1isms71.fsf@epithumia.math.uh.edu>
-        <87ftt2cdeq.fsf@hippogriff.math.uh.edu>
-        <FC712F54-5A7A-436D-B076-936B29C013F4@redhat.com>
-        <87imxwab12.fsf@hippogriff.math.uh.edu>
-        <662CE7B3-235E-4E2D-9C8C-0F6233F3085F@redhat.com>
-        <87d0o3aadg.fsf@hippogriff.math.uh.edu>
-        <B730E8AE-AFA3-4CE7-9103-FCCC35C37EDD@redhat.com>
-        <7C8B2CA6-0254-44B2-B5A8-A2A9E0C042E9@oracle.com>
-Date:   Fri, 08 Feb 2019 11:17:36 -0600
-In-Reply-To: <7C8B2CA6-0254-44B2-B5A8-A2A9E0C042E9@oracle.com> (Chuck Lever's
-        message of "Fri, 8 Feb 2019 10:19:40 -0500")
-Message-ID: <ufaa7j6jj2n.fsf@epithumia.math.uh.edu>
-User-Agent: Gnus/5.13 (Gnus v5.13) Emacs/26.1 (gnu/linux)
+        id S1726522AbfBHRZ7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 8 Feb 2019 12:25:59 -0500
+X-Greylist: delayed 467 seconds by postgrey-1.27 at vger.kernel.org; Fri, 08 Feb 2019 12:25:58 EST
+Received: from smtp-buf-3.desy.de (smtp-buf-3.desy.de [IPv6:2001:638:700:1038::1:a6])
+        by smtp-o-3.desy.de (DESY-O-3) with ESMTP id AAB7A280BC2
+        for <linux-nfs@vger.kernel.org>; Fri,  8 Feb 2019 18:18:10 +0100 (CET)
+DKIM-Filter: OpenDKIM Filter v2.11.0 smtp-o-3.desy.de AAB7A280BC2
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=desy.de; s=default;
+        t=1549646290; bh=8LCfsppLIonHz64GWMFrt8YiD4hiu4+8ssEjwsNFB7E=;
+        h=From:To:Cc:Subject:Date:From;
+        b=avzj3/6YL401/GGaHHNNEUa+cwSltyXOG05iHZIlZv3ZPuJ7RZ8M3SzlGKUabSbU5
+         m+Ta33ugxz5OFxppKRb3ZRebeFauLELPCbZQJmlIqefWiPsT0OSOd6eCs7ly5x7Xd2
+         4IqfcUP2u4r9wQKTLh8HAY/Uos/H+dO1gPbicgYo=
+Received: from smtp-m-3.desy.de (smtp-m-3.desy.de [131.169.56.131])
+        by smtp-buf-3.desy.de (Postfix) with ESMTP id 8F27EA0040;
+        Fri,  8 Feb 2019 18:18:10 +0100 (CET)
+X-Virus-Scanned: amavisd-new at desy.de
+Received: from ani.desy.de (zitpcx21033.desy.de [131.169.185.213])
+        by smtp-intra-3.desy.de (DESY-INTRA-3) with ESMTP id 4B7E31029;
+        Fri,  8 Feb 2019 18:18:10 +0100 (MET)
+From:   Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+To:     bfields@fieldses.org
+Cc:     linux-nfs@vger.kernel.org,
+        Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+Subject: [PATCH] st_getattr: do not expect server to return rdattr_error
+Date:   Fri,  8 Feb 2019 18:18:08 +0100
+Message-Id: <20190208171808.7861-1-tigran.mkrtchyan@desy.de>
+X-Mailer: git-send-email 2.20.1
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
->>>>> "CL" == Chuck Lever <chuck.lever@oracle.com> writes:
+rfc7530:
+   5.8.1.12.  Attribute 11: rdattr_error
 
-CL> The server is returning SEQ_MISORDERED to a singleton SEQUENCE.
-CL> That suggests the client is trying to re-establish its lease but is
-CL> sending a slot nr the server doesn't recognize for the virtual slot
-CL> used for this purpose. Could be a problem on either side, and I
-CL> don't know enough to say how this loop could have started.
+     Error returned from an attempt to retrieve attributes during a
+     READDIR operation.
 
-In case I didn't say so earlier, the server is just Centos 7.6 running
-that heavily modified 3.10.0-957.1.3.el7.x86_64.  I was not able to
-reproduce anything like this throughout the 4.19 cycle but it started
-cropping up pretty quickly on user desktops after booting into 4.20.3
-(the first of the 4.20 series I tried).  And it does not reoccur after
-rebooting back to 4.19.15.  Of course I know that doesn't absolve the
-server.
+IOW, we do not expect rdattr_error to be returned in reply to regular
+GETATTR operation.
 
-It is possible for me to try to push a mainline kernel to all of the
-relevant file servers, but that obviously carries other overhead and
-risks that I would certainly prefer to avoid.
+Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+---
+ nfs4.0/servertests/st_getattr.py | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
-I just wish I knew how to reproduce this other than sticking it on a
-bunch of machines and waiting until people complain.
+diff --git a/nfs4.0/servertests/st_getattr.py b/nfs4.0/servertests/st_getattr.py
+index 292fcd2..1c47ebf 100644
+--- a/nfs4.0/servertests/st_getattr.py
++++ b/nfs4.0/servertests/st_getattr.py
+@@ -1,12 +1,14 @@
+ from xdrdef.nfs4_const import *
+ from .environment import check
+-from nfs4lib import get_attr_name
++from nfs4lib import get_attr_name, get_attrbitnum_dict
+ import nfs_ops
+ op = nfs_ops.NFS4ops()
+ 
+ def _try_mandatory(t, env, path):
+     c = env.c1
+     mandatory = [attr.bitnum for attr in env.attr_info if attr.mandatory]
++    # don't expect rdattr_error to be a part of returned attributes
++    mandatory.remove(get_attrbitnum_dict()['rdattr_error'])
+     ops = c.use_obj(path)
+     ops += [c.getattr(mandatory)]
+     res = c.compound(ops)
+-- 
+2.20.1
 
- - J<
