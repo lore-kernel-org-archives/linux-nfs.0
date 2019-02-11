@@ -4,66 +4,65 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-6.8 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
+	SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 00A66C282CE
-	for <linux-nfs@archiver.kernel.org>; Mon, 11 Feb 2019 16:25:19 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8524EC169C4
+	for <linux-nfs@archiver.kernel.org>; Mon, 11 Feb 2019 16:25:24 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id B1458218F0
-	for <linux-nfs@archiver.kernel.org>; Mon, 11 Feb 2019 16:25:18 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 40069218F0
+	for <linux-nfs@archiver.kernel.org>; Mon, 11 Feb 2019 16:25:24 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="ABg49c+u"
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="h+AH6Wmy"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728628AbfBKQZS (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 11 Feb 2019 11:25:18 -0500
-Received: from mail-it1-f195.google.com ([209.85.166.195]:54039 "EHLO
-        mail-it1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727620AbfBKQZS (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Feb 2019 11:25:18 -0500
-Received: by mail-it1-f195.google.com with SMTP id g85so27762861ita.3;
-        Mon, 11 Feb 2019 08:25:17 -0800 (PST)
+        id S1728244AbfBKQZX (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 11 Feb 2019 11:25:23 -0500
+Received: from mail-it1-f194.google.com ([209.85.166.194]:55657 "EHLO
+        mail-it1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1728664AbfBKQZX (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Feb 2019 11:25:23 -0500
+Received: by mail-it1-f194.google.com with SMTP id f18so16708828itb.5;
+        Mon, 11 Feb 2019 08:25:22 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=sender:subject:from:to:cc:date:message-id:in-reply-to:references
          :user-agent:mime-version:content-transfer-encoding;
-        bh=KYhZBUhVt7L/FI3FzgYHVapqgCpL9eCj2NXeHs+aPNY=;
-        b=ABg49c+utwitn6uKfrPjtflgmLDs2PBGMBRgaKtbiRCRKS2PczwSs80ufDoOadaHDN
-         xH2qQ07Ez1VLSaLAA9lanUVIwc0aMGpTLgVqAc4r61QO6os4yc27OcXDdjj2uLcSWU+3
-         W82tzTKsyZj8MY4jNdkPQN8zCvfwmkpLK94jMfRTDLCqbDKKt5563LYr/iUckdmKRG85
-         O/egwIMCZvUM/PsNacQXW5qY5ZkQ4t0DRdF7To75H/tp8ywfqpLtzcb60AZKiFhk5MVT
-         tCoBfH50cqiLiqMFnOhmCoGs8Q4KkS1SKYu6Alau35yjkesMtF4H1Pb6mU1TcyeekwVN
-         3vFw==
+        bh=ni8Ebgf4CrraYTR402x+jTubCAGP2TtYigExe5dKhvM=;
+        b=h+AH6Wmy0hQMN0dTi6GSoZY/MEXkQYzgQtAjt7f+BLn8pxLOnZBxl/SSbA4MQpum1p
+         bWwfD7uG5TVsw2gbuVM+PzcKHpEC/N7RzpUR8Eg8wNIAkNjUXxuDxKScwAPvHDRP7jl+
+         PsLU3WqtnCsqSetyWPvuYhzN7by8z5MYHZYcHFkS1Kzk42SeKl2TIkj0QoghPeloXwFg
+         a8opEHxbVcEE7mFpeJxf+fqyJ+0FcJhJkCPtTBXSmX0/q0RLZYhq1hx7NpYyeoAObno/
+         R8lQ/j5fctocCatUtmOrE8RcaAx3aaESywutOrHma9JkXJyuq3U3CJ0fdqXtqeHa0hU+
+         4+XA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:sender:subject:from:to:cc:date:message-id
          :in-reply-to:references:user-agent:mime-version
          :content-transfer-encoding;
-        bh=KYhZBUhVt7L/FI3FzgYHVapqgCpL9eCj2NXeHs+aPNY=;
-        b=JGlgtnnWsiK5jlUZLIAJ9W0oLPk6S3hjIJwrgRCVHvb/zyvrEsnlPtSsytWrkUXo4z
-         cXC//stcofWIqMzJpTjPzEMFXOvD82YgLcvhRFYzxu3eVnZsoWS6iqICT75d4LkkmgCu
-         jFpzEUCHy7gnmRpno6HFLWaVFl6qjcGp0fJBZLw0/0t4OjRaw9zuZ8lqDT3sODNw7oXU
-         1chh8Robo2/QoYI8VHCcpGPIPnTkoMReGbnVr7/2Pg61LjFGTpmpGdDdA0B9GcvY/0CZ
-         QO9VIJMVE8CYG58dDqPPCDp2ffjUiukrzpcKFaFJjUr4hMVaGVEU/vnieRKAumR/2oZm
-         lUtw==
-X-Gm-Message-State: AHQUAuZlk03UBNkamc6HMpdOWOSxpsT1+AdGgJh8Bxwg8uQYm3Y7aWCt
-        nfgk3wAjvxUjojog8fxi09U=
-X-Google-Smtp-Source: AHgI3IZfsmFc3kCD3QBPHMAI16hPhJ8GxwEB6UdR3lChVsHz87ObA1kQLATqlcYJZsJylnJFyaxAvQ==
-X-Received: by 2002:a6b:f01a:: with SMTP id w26mr9118761ioc.101.1549902316445;
-        Mon, 11 Feb 2019 08:25:16 -0800 (PST)
+        bh=ni8Ebgf4CrraYTR402x+jTubCAGP2TtYigExe5dKhvM=;
+        b=MAT6Sbo15bgeXW5b7iEvQRBgYD/FR/lqHALThi3tm4gj2GahRbxf2JfFYkGz2YDYZH
+         xXKlUc9ByU5UcrxcKKsAOxbV+b5DAQEKg8HUyKUy75yLskmZb575gu0MN60YDsG6+205
+         3fQZpNN3zZVWK8Er+HrtsIVKMcvv4XMfx6Zs7h6z35L9p/MG2/37XPh6qyw9Zbp2tjOR
+         zA6WaAVhqU76dDIOOGOcym31vEUl5k066bSVBnSstkJN/3Wlh+bKpb110AkKuEl7T71E
+         Z3La6sJOjGJS2fUuvkAhKI/BwOJ2UOJEnJuqAJgw0/n71RHT0sWMVyydKk+Lgzm1WMF1
+         y4jg==
+X-Gm-Message-State: AHQUAubu289fWO+YxYgY2mwblFh5Yo1yG2PdBmIg2b7tZrNrqNO4yZad
+        IqaPvrlVyzixPZzFwWGFUCc=
+X-Google-Smtp-Source: AHgI3IZ31t6IC8eb1K1/Bn58GBGDQNRSgLZh2MSWo1tgeW7q/QXbDzGW+5J9qD2hzBWYm5spdK8ibA==
+X-Received: by 2002:a6b:751a:: with SMTP id l26mr6767989ioh.300.1549902321897;
+        Mon, 11 Feb 2019 08:25:21 -0800 (PST)
 Received: from gateway.1015granger.net (c-68-61-232-219.hsd1.mi.comcast.net. [68.61.232.219])
-        by smtp.gmail.com with ESMTPSA id c128sm1680397itc.43.2019.02.11.08.25.15
+        by smtp.gmail.com with ESMTPSA id q24sm4654915iob.59.2019.02.11.08.25.21
         (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Mon, 11 Feb 2019 08:25:15 -0800 (PST)
+        Mon, 11 Feb 2019 08:25:21 -0800 (PST)
 Received: from manet.1015granger.net (manet.1015granger.net [192.168.1.51])
-        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id x1BGPFDm030006;
-        Mon, 11 Feb 2019 16:25:15 GMT
-Subject: [PATCH v1 18/23] SUNRPC: Add SPDX IDs to some net/sunrpc/auth_gss/
- files
+        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id x1BGPKL4030009;
+        Mon, 11 Feb 2019 16:25:20 GMT
+Subject: [PATCH v1 19/23] SUNRPC: Introduce rpc_prepare_reply_pages()
 From:   Chuck Lever <chuck.lever@oracle.com>
 To:     anna.schumaker@netapp.com
 Cc:     linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date:   Mon, 11 Feb 2019 11:25:15 -0500
-Message-ID: <20190211162515.2817.41264.stgit@manet.1015granger.net>
+Date:   Mon, 11 Feb 2019 11:25:20 -0500
+Message-ID: <20190211162520.2817.44606.stgit@manet.1015granger.net>
 In-Reply-To: <20190211161920.2817.20881.stgit@manet.1015granger.net>
 References: <20190211161920.2817.20881.stgit@manet.1015granger.net>
 User-Agent: StGit/0.17.1-dirty
@@ -75,290 +74,397 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Files under net/sunrpc/auth_gss/ do not yet have SPDX ID tags.
-This directory is somewhat complicated because most of these files
-have license boilerplate that is not strictly GPL 2.0.
+prepare_reply_buffer() and its NFSv4 equivalents expose the details
+of the RPC header and the auth slack values to upper layer
+consumers, creating a layering violation, and duplicating code.
 
-In this patch I add ID tags where there is an obvious match. The
-less recognizable licenses are still under research.
+Remedy these issues by adding a new RPC client API that hides those
+details from upper layers in a common helper function.
 
-For reference, SPDX IDs added in this patch correspond to the
-following license text:
-
-GPL-2.0         https://spdx.org/licenses/GPL-2.0.html
-GPL-2.0+        https://spdx.org/licenses/GPL-2.0+.html
-BSD-3-Clause    https://spdx.org/licenses/BSD-3-Clause.html
-
-Cc: Simo Sorce <simo@redhat.com>
-Cc: Kate Stewart <kstewart@linuxfoundation.org>
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/auth_gss/auth_gss.c        |   27 +--------------------------
- net/sunrpc/auth_gss/gss_krb5_mech.c   |   27 +--------------------------
- net/sunrpc/auth_gss/gss_mech_switch.c |   27 +--------------------------
- net/sunrpc/auth_gss/gss_rpc_upcall.c  |   15 +--------------
- net/sunrpc/auth_gss/gss_rpc_upcall.h  |   16 ++--------------
- net/sunrpc/auth_gss/gss_rpc_xdr.c     |   15 +--------------
- net/sunrpc/auth_gss/gss_rpc_xdr.h     |   17 +----------------
- net/sunrpc/auth_gss/svcauth_gss.c     |    1 +
- 8 files changed, 9 insertions(+), 136 deletions(-)
+ fs/nfs/nfs2xdr.c              |   27 +++++-----------------
+ fs/nfs/nfs3xdr.c              |   29 ++++++-----------------
+ fs/nfs/nfs4xdr.c              |   51 +++++++++++++++++------------------------
+ include/linux/sunrpc/clnt.h   |    3 ++
+ include/trace/events/sunrpc.h |   37 ++++++++++++++++++++++++++++++
+ net/sunrpc/clnt.c             |   19 +++++++++++++++
+ net/sunrpc/xdr.c              |    9 +++++++
+ 7 files changed, 102 insertions(+), 73 deletions(-)
 
-diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-index 3d1fbd6..fda454c 100644
---- a/net/sunrpc/auth_gss/auth_gss.c
-+++ b/net/sunrpc/auth_gss/auth_gss.c
-@@ -1,3 +1,4 @@
-+// SPDX-License-Identifier: BSD-3-Clause
- /*
-  * linux/net/sunrpc/auth_gss/auth_gss.c
-  *
-@@ -8,34 +9,8 @@
-  *
-  *  Dug Song       <dugsong@monkey.org>
-  *  Andy Adamson   <andros@umich.edu>
-- *
-- *  Redistribution and use in source and binary forms, with or without
-- *  modification, are permitted provided that the following conditions
-- *  are met:
-- *
-- *  1. Redistributions of source code must retain the above copyright
-- *     notice, this list of conditions and the following disclaimer.
-- *  2. Redistributions in binary form must reproduce the above copyright
-- *     notice, this list of conditions and the following disclaimer in the
-- *     documentation and/or other materials provided with the distribution.
-- *  3. Neither the name of the University nor the names of its
-- *     contributors may be used to endorse or promote products derived
-- *     from this software without specific prior written permission.
-- *
-- *  THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED
-- *  WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
-- *  MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-- *  DISCLAIMED. IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
-- *  FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-- *  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-- *  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
-- *  BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-- *  LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-- *  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-- *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-  */
+diff --git a/fs/nfs/nfs2xdr.c b/fs/nfs/nfs2xdr.c
+index bac3a4e..1dcd0fe 100644
+--- a/fs/nfs/nfs2xdr.c
++++ b/fs/nfs/nfs2xdr.c
+@@ -66,21 +66,6 @@
+ static int nfs_stat_to_errno(enum nfs_stat);
  
+ /*
+- * While encoding arguments, set up the reply buffer in advance to
+- * receive reply data directly into the page cache.
+- */
+-static void prepare_reply_buffer(struct rpc_rqst *req, struct page **pages,
+-				 unsigned int base, unsigned int len,
+-				 unsigned int bufsize)
+-{
+-	struct rpc_auth	*auth = req->rq_cred->cr_auth;
+-	unsigned int replen;
 -
- #include <linux/module.h>
- #include <linux/init.h>
- #include <linux/types.h>
-diff --git a/net/sunrpc/auth_gss/gss_krb5_mech.c b/net/sunrpc/auth_gss/gss_krb5_mech.c
-index be31a58..56cc85c 100644
---- a/net/sunrpc/auth_gss/gss_krb5_mech.c
-+++ b/net/sunrpc/auth_gss/gss_krb5_mech.c
-@@ -1,3 +1,4 @@
-+// SPDX-License-Identifier: BSD-3-Clause
- /*
-  *  linux/net/sunrpc/gss_krb5_mech.c
+-	replen = RPC_REPHDRSIZE + auth->au_rslack + bufsize;
+-	xdr_inline_pages(&req->rq_rcv_buf, replen << 2, pages, base, len);
+-}
+-
+-/*
+  * Encode/decode NFSv2 basic data types
   *
-@@ -6,32 +7,6 @@
-  *
-  *  Andy Adamson <andros@umich.edu>
-  *  J. Bruce Fields <bfields@umich.edu>
-- *
-- *  Redistribution and use in source and binary forms, with or without
-- *  modification, are permitted provided that the following conditions
-- *  are met:
-- *
-- *  1. Redistributions of source code must retain the above copyright
-- *     notice, this list of conditions and the following disclaimer.
-- *  2. Redistributions in binary form must reproduce the above copyright
-- *     notice, this list of conditions and the following disclaimer in the
-- *     documentation and/or other materials provided with the distribution.
-- *  3. Neither the name of the University nor the names of its
-- *     contributors may be used to endorse or promote products derived
-- *     from this software without specific prior written permission.
-- *
-- *  THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED
-- *  WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
-- *  MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-- *  DISCLAIMED. IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
-- *  FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-- *  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-- *  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
-- *  BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-- *  LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-- *  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-- *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-- *
-  */
+  * Basic NFSv2 data types are defined in section 2.3 of RFC 1094:
+@@ -593,8 +578,8 @@ static void nfs2_xdr_enc_readlinkargs(struct rpc_rqst *req,
+ 	const struct nfs_readlinkargs *args = data;
  
- #include <crypto/hash.h>
-diff --git a/net/sunrpc/auth_gss/gss_mech_switch.c b/net/sunrpc/auth_gss/gss_mech_switch.c
-index 379318d..8206009 100644
---- a/net/sunrpc/auth_gss/gss_mech_switch.c
-+++ b/net/sunrpc/auth_gss/gss_mech_switch.c
-@@ -1,3 +1,4 @@
-+// SPDX-License-Identifier: BSD-3-Clause
- /*
-  *  linux/net/sunrpc/gss_mech_switch.c
-  *
-@@ -5,32 +6,6 @@
-  *  All rights reserved.
-  *
-  *  J. Bruce Fields   <bfields@umich.edu>
-- *
-- *  Redistribution and use in source and binary forms, with or without
-- *  modification, are permitted provided that the following conditions
-- *  are met:
-- *
-- *  1. Redistributions of source code must retain the above copyright
-- *     notice, this list of conditions and the following disclaimer.
-- *  2. Redistributions in binary form must reproduce the above copyright
-- *     notice, this list of conditions and the following disclaimer in the
-- *     documentation and/or other materials provided with the distribution.
-- *  3. Neither the name of the University nor the names of its
-- *     contributors may be used to endorse or promote products derived
-- *     from this software without specific prior written permission.
-- *
-- *  THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED
-- *  WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
-- *  MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-- *  DISCLAIMED. IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
-- *  FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-- *  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-- *  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
-- *  BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-- *  LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-- *  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-- *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-- *
-  */
+ 	encode_fhandle(xdr, args->fh);
+-	prepare_reply_buffer(req, args->pages, args->pgbase,
+-					args->pglen, NFS_readlinkres_sz);
++	rpc_prepare_reply_pages(req, args->pages, args->pgbase,
++				args->pglen, NFS_readlinkres_sz);
+ }
  
- #include <linux/types.h>
-diff --git a/net/sunrpc/auth_gss/gss_rpc_upcall.c b/net/sunrpc/auth_gss/gss_rpc_upcall.c
-index 73dcda0..0349f45 100644
---- a/net/sunrpc/auth_gss/gss_rpc_upcall.c
-+++ b/net/sunrpc/auth_gss/gss_rpc_upcall.c
-@@ -1,21 +1,8 @@
-+// SPDX-License-Identifier: GPL-2.0+
  /*
-  *  linux/net/sunrpc/gss_rpc_upcall.c
-  *
-  *  Copyright (C) 2012 Simo Sorce <simo@redhat.com>
-- *
-- * This program is free software; you can redistribute it and/or modify
-- * it under the terms of the GNU General Public License as published by
-- * the Free Software Foundation; either version 2 of the License, or
-- * (at your option) any later version.
-- *
-- * This program is distributed in the hope that it will be useful,
-- * but WITHOUT ANY WARRANTY; without even the implied warranty of
-- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-- * GNU General Public License for more details.
-- *
-- * You should have received a copy of the GNU General Public License
-- * along with this program; if not, write to the Free Software
-- * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
-  */
+@@ -629,8 +614,8 @@ static void nfs2_xdr_enc_readargs(struct rpc_rqst *req,
+ 	const struct nfs_pgio_args *args = data;
  
- #include <linux/types.h>
-diff --git a/net/sunrpc/auth_gss/gss_rpc_upcall.h b/net/sunrpc/auth_gss/gss_rpc_upcall.h
-index 1e542ad..31e9634 100644
---- a/net/sunrpc/auth_gss/gss_rpc_upcall.h
-+++ b/net/sunrpc/auth_gss/gss_rpc_upcall.h
-@@ -1,21 +1,8 @@
-+/* SPDX-License-Identifier: GPL-2.0+ */
+ 	encode_readargs(xdr, args);
+-	prepare_reply_buffer(req, args->pages, args->pgbase,
+-					args->count, NFS_readres_sz);
++	rpc_prepare_reply_pages(req, args->pages, args->pgbase,
++				args->count, NFS_readres_sz);
+ 	req->rq_rcv_buf.flags |= XDRBUF_READ;
+ }
+ 
+@@ -787,8 +772,8 @@ static void nfs2_xdr_enc_readdirargs(struct rpc_rqst *req,
+ 	const struct nfs_readdirargs *args = data;
+ 
+ 	encode_readdirargs(xdr, args);
+-	prepare_reply_buffer(req, args->pages, 0,
+-					args->count, NFS_readdirres_sz);
++	rpc_prepare_reply_pages(req, args->pages, 0,
++				args->count, NFS_readdirres_sz);
+ }
+ 
  /*
-  *  linux/net/sunrpc/gss_rpc_upcall.h
-  *
-  *  Copyright (C) 2012 Simo Sorce <simo@redhat.com>
-- *
-- * This program is free software; you can redistribute it and/or modify
-- * it under the terms of the GNU General Public License as published by
-- * the Free Software Foundation; either version 2 of the License, or
-- * (at your option) any later version.
-- *
-- * This program is distributed in the hope that it will be useful,
-- * but WITHOUT ANY WARRANTY; without even the implied warranty of
-- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-- * GNU General Public License for more details.
-- *
-- * You should have received a copy of the GNU General Public License
-- * along with this program; if not, write to the Free Software
-- * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
-  */
+diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
+index 4aa3ffe..a54dcf4 100644
+--- a/fs/nfs/nfs3xdr.c
++++ b/fs/nfs/nfs3xdr.c
+@@ -105,21 +105,6 @@
+ };
  
- #ifndef _GSS_RPC_UPCALL_H
-@@ -45,4 +32,5 @@ int gssp_accept_sec_context_upcall(struct net *net,
- void init_gssp_clnt(struct sunrpc_net *);
- int set_gssp_clnt(struct net *);
- void clear_gssp_clnt(struct sunrpc_net *);
+ /*
+- * While encoding arguments, set up the reply buffer in advance to
+- * receive reply data directly into the page cache.
+- */
+-static void prepare_reply_buffer(struct rpc_rqst *req, struct page **pages,
+-				 unsigned int base, unsigned int len,
+-				 unsigned int bufsize)
+-{
+-	struct rpc_auth	*auth = req->rq_cred->cr_auth;
+-	unsigned int replen;
+-
+-	replen = RPC_REPHDRSIZE + auth->au_rslack + bufsize;
+-	xdr_inline_pages(&req->rq_rcv_buf, replen << 2, pages, base, len);
+-}
+-
+-/*
+  * Encode/decode NFSv3 basic data types
+  *
+  * Basic NFSv3 data types are defined in section 2.5 of RFC 1813:
+@@ -910,8 +895,8 @@ static void nfs3_xdr_enc_readlink3args(struct rpc_rqst *req,
+ 	const struct nfs3_readlinkargs *args = data;
+ 
+ 	encode_nfs_fh3(xdr, args->fh);
+-	prepare_reply_buffer(req, args->pages, args->pgbase,
+-					args->pglen, NFS3_readlinkres_sz);
++	rpc_prepare_reply_pages(req, args->pages, args->pgbase,
++				args->pglen, NFS3_readlinkres_sz);
+ }
+ 
+ /*
+@@ -943,8 +928,8 @@ static void nfs3_xdr_enc_read3args(struct rpc_rqst *req,
+ 	unsigned int replen = args->replen ? args->replen : NFS3_readres_sz;
+ 
+ 	encode_read3args(xdr, args);
+-	prepare_reply_buffer(req, args->pages, args->pgbase,
+-					args->count, replen);
++	rpc_prepare_reply_pages(req, args->pages, args->pgbase,
++				args->count, replen);
+ 	req->rq_rcv_buf.flags |= XDRBUF_READ;
+ }
+ 
+@@ -1236,7 +1221,7 @@ static void nfs3_xdr_enc_readdir3args(struct rpc_rqst *req,
+ 	const struct nfs3_readdirargs *args = data;
+ 
+ 	encode_readdir3args(xdr, args);
+-	prepare_reply_buffer(req, args->pages, 0,
++	rpc_prepare_reply_pages(req, args->pages, 0,
+ 				args->count, NFS3_readdirres_sz);
+ }
+ 
+@@ -1278,7 +1263,7 @@ static void nfs3_xdr_enc_readdirplus3args(struct rpc_rqst *req,
+ 	const struct nfs3_readdirargs *args = data;
+ 
+ 	encode_readdirplus3args(xdr, args);
+-	prepare_reply_buffer(req, args->pages, 0,
++	rpc_prepare_reply_pages(req, args->pages, 0,
+ 				args->count, NFS3_readdirres_sz);
+ }
+ 
+@@ -1323,7 +1308,7 @@ static void nfs3_xdr_enc_getacl3args(struct rpc_rqst *req,
+ 	encode_nfs_fh3(xdr, args->fh);
+ 	encode_uint32(xdr, args->mask);
+ 	if (args->mask & (NFS_ACL | NFS_DFACL)) {
+-		prepare_reply_buffer(req, args->pages, 0,
++		rpc_prepare_reply_pages(req, args->pages, 0,
+ 					NFSACL_MAXPAGES << PAGE_SHIFT,
+ 					ACL3_getaclres_sz);
+ 		req->rq_rcv_buf.flags |= XDRBUF_SPARSE_PAGES;
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 38a4cbc..d0fa18d 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -1016,12 +1016,11 @@ static void encode_compound_hdr(struct xdr_stream *xdr,
+ 				struct compound_hdr *hdr)
+ {
+ 	__be32 *p;
+-	struct rpc_auth *auth = req->rq_cred->cr_auth;
+ 
+ 	/* initialize running count of expected bytes in reply.
+ 	 * NOTE: the replied tag SHOULD be the same is the one sent,
+ 	 * but this is not required as a MUST for the server to do so. */
+-	hdr->replen = RPC_REPHDRSIZE + auth->au_rslack + 3 + hdr->taglen;
++	hdr->replen = 3 + hdr->taglen;
+ 
+ 	WARN_ON_ONCE(hdr->taglen > NFS4_MAXTAGLEN);
+ 	encode_string(xdr, hdr->taglen, hdr->tag);
+@@ -2341,9 +2340,9 @@ static void nfs4_xdr_enc_open(struct rpc_rqst *req, struct xdr_stream *xdr,
+ 	encode_getfattr_open(xdr, args->bitmask, args->open_bitmap, &hdr);
+ 	if (args->lg_args) {
+ 		encode_layoutget(xdr, args->lg_args, &hdr);
+-		xdr_inline_pages(&req->rq_rcv_buf, hdr.replen << 2,
+-				 args->lg_args->layout.pages,
+-				 0, args->lg_args->layout.pglen);
++		rpc_prepare_reply_pages(req, args->lg_args->layout.pages, 0,
++					args->lg_args->layout.pglen,
++					hdr.replen);
+ 	}
+ 	encode_nops(&hdr);
+ }
+@@ -2387,9 +2386,9 @@ static void nfs4_xdr_enc_open_noattr(struct rpc_rqst *req,
+ 	encode_getfattr_open(xdr, args->bitmask, args->open_bitmap, &hdr);
+ 	if (args->lg_args) {
+ 		encode_layoutget(xdr, args->lg_args, &hdr);
+-		xdr_inline_pages(&req->rq_rcv_buf, hdr.replen << 2,
+-				 args->lg_args->layout.pages,
+-				 0, args->lg_args->layout.pglen);
++		rpc_prepare_reply_pages(req, args->lg_args->layout.pages, 0,
++					args->lg_args->layout.pglen,
++					hdr.replen);
+ 	}
+ 	encode_nops(&hdr);
+ }
+@@ -2499,8 +2498,8 @@ static void nfs4_xdr_enc_readlink(struct rpc_rqst *req, struct xdr_stream *xdr,
+ 	encode_putfh(xdr, args->fh, &hdr);
+ 	encode_readlink(xdr, args, req, &hdr);
+ 
+-	xdr_inline_pages(&req->rq_rcv_buf, hdr.replen << 2, args->pages,
+-			args->pgbase, args->pglen);
++	rpc_prepare_reply_pages(req, args->pages, args->pgbase,
++				args->pglen, hdr.replen);
+ 	encode_nops(&hdr);
+ }
+ 
+@@ -2520,11 +2519,8 @@ static void nfs4_xdr_enc_readdir(struct rpc_rqst *req, struct xdr_stream *xdr,
+ 	encode_putfh(xdr, args->fh, &hdr);
+ 	encode_readdir(xdr, args, req, &hdr);
+ 
+-	xdr_inline_pages(&req->rq_rcv_buf, hdr.replen << 2, args->pages,
+-			 args->pgbase, args->count);
+-	dprintk("%s: inlined page args = (%u, %p, %u, %u)\n",
+-			__func__, hdr.replen << 2, args->pages,
+-			args->pgbase, args->count);
++	rpc_prepare_reply_pages(req, args->pages, args->pgbase,
++				args->count, hdr.replen);
+ 	encode_nops(&hdr);
+ }
+ 
+@@ -2544,8 +2540,8 @@ static void nfs4_xdr_enc_read(struct rpc_rqst *req, struct xdr_stream *xdr,
+ 	encode_putfh(xdr, args->fh, &hdr);
+ 	encode_read(xdr, args, &hdr);
+ 
+-	xdr_inline_pages(&req->rq_rcv_buf, hdr.replen << 2,
+-			 args->pages, args->pgbase, args->count);
++	rpc_prepare_reply_pages(req, args->pages, args->pgbase,
++				args->count, hdr.replen);
+ 	req->rq_rcv_buf.flags |= XDRBUF_READ;
+ 	encode_nops(&hdr);
+ }
+@@ -2591,9 +2587,8 @@ static void nfs4_xdr_enc_getacl(struct rpc_rqst *req, struct xdr_stream *xdr,
+ 	encode_getattr(xdr, nfs4_acl_bitmap, NULL,
+ 			ARRAY_SIZE(nfs4_acl_bitmap), &hdr);
+ 
+-	xdr_inline_pages(&req->rq_rcv_buf, replen << 2,
+-		args->acl_pages, 0, args->acl_len);
+-
++	rpc_prepare_reply_pages(req, args->acl_pages, 0,
++				args->acl_len, replen);
+ 	encode_nops(&hdr);
+ }
+ 
+@@ -2814,9 +2809,8 @@ static void nfs4_xdr_enc_fs_locations(struct rpc_rqst *req,
+ 		encode_fs_locations(xdr, args->bitmask, &hdr);
+ 	}
+ 
+-	/* Set up reply kvec to capture returned fs_locations array. */
+-	xdr_inline_pages(&req->rq_rcv_buf, replen << 2,
+-			 (struct page **)&args->page, 0, PAGE_SIZE);
++	rpc_prepare_reply_pages(req, (struct page **)&args->page, 0,
++				PAGE_SIZE, replen);
+ 	encode_nops(&hdr);
+ }
+ 
+@@ -3018,10 +3012,8 @@ static void nfs4_xdr_enc_getdeviceinfo(struct rpc_rqst *req,
+ 
+ 	/* set up reply kvec. Subtract notification bitmap max size (2)
+ 	 * so that notification bitmap is put in xdr_buf tail */
+-	xdr_inline_pages(&req->rq_rcv_buf, (hdr.replen - 2) << 2,
+-			 args->pdev->pages, args->pdev->pgbase,
+-			 args->pdev->pglen);
+-
++	rpc_prepare_reply_pages(req, args->pdev->pages, args->pdev->pgbase,
++				args->pdev->pglen, hdr.replen - 2);
+ 	encode_nops(&hdr);
+ }
+ 
+@@ -3042,9 +3034,8 @@ static void nfs4_xdr_enc_layoutget(struct rpc_rqst *req,
+ 	encode_putfh(xdr, NFS_FH(args->inode), &hdr);
+ 	encode_layoutget(xdr, args, &hdr);
+ 
+-	xdr_inline_pages(&req->rq_rcv_buf, hdr.replen << 2,
+-	    args->layout.pages, 0, args->layout.pglen);
+-
++	rpc_prepare_reply_pages(req, args->layout.pages, 0,
++				args->layout.pglen, hdr.replen);
+ 	encode_nops(&hdr);
+ }
+ 
+diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+index 1c44171..98bc988 100644
+--- a/include/linux/sunrpc/clnt.h
++++ b/include/linux/sunrpc/clnt.h
+@@ -169,6 +169,9 @@ int		rpcb_v4_register(struct net *net, const u32 program,
+ 				 const char *netid);
+ void		rpcb_getport_async(struct rpc_task *);
+ 
++void rpc_prepare_reply_pages(struct rpc_rqst *req, struct page **pages,
++			     unsigned int base, unsigned int len,
++			     unsigned int hdrsize);
+ void		rpc_call_start(struct rpc_task *);
+ int		rpc_call_async(struct rpc_clnt *clnt,
+ 			       const struct rpc_message *msg, int flags,
+diff --git a/include/trace/events/sunrpc.h b/include/trace/events/sunrpc.h
+index e58dda8..8451f30 100644
+--- a/include/trace/events/sunrpc.h
++++ b/include/trace/events/sunrpc.h
+@@ -461,6 +461,43 @@
+ 	)
+ );
+ 
++TRACE_EVENT(rpc_reply_pages,
++	TP_PROTO(
++		const struct rpc_rqst *req
++	),
 +
- #endif /* _GSS_RPC_UPCALL_H */
-diff --git a/net/sunrpc/auth_gss/gss_rpc_xdr.c b/net/sunrpc/auth_gss/gss_rpc_xdr.c
-index 006062a..2ff7b70 100644
---- a/net/sunrpc/auth_gss/gss_rpc_xdr.c
-+++ b/net/sunrpc/auth_gss/gss_rpc_xdr.c
-@@ -1,21 +1,8 @@
-+// SPDX-License-Identifier: GPL-2.0+
++	TP_ARGS(req),
++
++	TP_STRUCT__entry(
++		__field(unsigned int, task_id)
++		__field(unsigned int, client_id)
++		__field(const void *, head_base)
++		__field(size_t, head_len)
++		__field(const void *, tail_base)
++		__field(size_t, tail_len)
++		__field(unsigned int, page_len)
++	),
++
++	TP_fast_assign(
++		__entry->task_id = req->rq_task->tk_pid;
++		__entry->client_id = req->rq_task->tk_client->cl_clid;
++
++		__entry->head_base = req->rq_rcv_buf.head[0].iov_base;
++		__entry->head_len = req->rq_rcv_buf.head[0].iov_len;
++		__entry->page_len = req->rq_rcv_buf.page_len;
++		__entry->tail_base = req->rq_rcv_buf.tail[0].iov_base;
++		__entry->tail_len = req->rq_rcv_buf.tail[0].iov_len;
++	),
++
++	TP_printk(
++		"task:%u@%u xdr=[%p,%zu]/%u/[%p,%zu]\n",
++		__entry->task_id, __entry->client_id,
++		__entry->head_base, __entry->head_len,
++		__entry->page_len,
++		__entry->tail_base, __entry->tail_len
++	)
++);
++
  /*
-  * GSS Proxy upcall module
-  *
-  *  Copyright (C) 2012 Simo Sorce <simo@redhat.com>
-- *
-- * This program is free software; you can redistribute it and/or modify
-- * it under the terms of the GNU General Public License as published by
-- * the Free Software Foundation; either version 2 of the License, or
-- * (at your option) any later version.
-- *
-- * This program is distributed in the hope that it will be useful,
-- * but WITHOUT ANY WARRANTY; without even the implied warranty of
-- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-- * GNU General Public License for more details.
-- *
-- * You should have received a copy of the GNU General Public License
-- * along with this program; if not, write to the Free Software
-- * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
-  */
+  * First define the enums in the below macros to be exported to userspace
+  * via TRACE_DEFINE_ENUM().
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 803e931..f780605 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -1164,6 +1164,25 @@ struct rpc_task *rpc_run_bc_task(struct rpc_rqst *req)
+ }
+ #endif /* CONFIG_SUNRPC_BACKCHANNEL */
  
- #include <linux/sunrpc/svcauth.h>
-diff --git a/net/sunrpc/auth_gss/gss_rpc_xdr.h b/net/sunrpc/auth_gss/gss_rpc_xdr.h
-index 146c310..3f17411 100644
---- a/net/sunrpc/auth_gss/gss_rpc_xdr.h
-+++ b/net/sunrpc/auth_gss/gss_rpc_xdr.h
-@@ -1,21 +1,8 @@
-+/* SPDX-License-Identifier: GPL-2.0+ */
- /*
-  * GSS Proxy upcall module
-  *
-  *  Copyright (C) 2012 Simo Sorce <simo@redhat.com>
-- *
-- * This program is free software; you can redistribute it and/or modify
-- * it under the terms of the GNU General Public License as published by
-- * the Free Software Foundation; either version 2 of the License, or
-- * (at your option) any later version.
-- *
-- * This program is distributed in the hope that it will be useful,
-- * but WITHOUT ANY WARRANTY; without even the implied warranty of
-- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-- * GNU General Public License for more details.
-- *
-- * You should have received a copy of the GNU General Public License
-- * along with this program; if not, write to the Free Software
-- * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
-  */
++/**
++ * rpc_prepare_reply_pages - Prepare to receive a reply data payload into pages
++ * @req: RPC request to prepare
++ * @pages: vector of struct page pointers
++ * @base: offset in first page where receive should start, in bytes
++ * @len: expected size of the upper layer data payload, in bytes
++ * @hdrsize: expected size of upper layer reply header, in XDR words
++ *
++ */
++void rpc_prepare_reply_pages(struct rpc_rqst *req, struct page **pages,
++			     unsigned int base, unsigned int len,
++			     unsigned int hdrsize)
++{
++	hdrsize += RPC_REPHDRSIZE + req->rq_cred->cr_auth->au_rslack;
++	xdr_inline_pages(&req->rq_rcv_buf, hdrsize << 2, pages, base, len);
++	trace_rpc_reply_pages(req);
++}
++EXPORT_SYMBOL_GPL(rpc_prepare_reply_pages);
++
+ void
+ rpc_call_start(struct rpc_task *task)
+ {
+diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
+index 4bce619..7cca515 100644
+--- a/net/sunrpc/xdr.c
++++ b/net/sunrpc/xdr.c
+@@ -163,6 +163,15 @@ __be32 *xdr_encode_opaque(__be32 *p, const void *ptr, unsigned int nbytes)
+ 	buf->bvec = NULL;
+ }
  
- #ifndef _LINUX_GSS_RPC_XDR_H
-@@ -262,6 +249,4 @@ int gssx_dec_accept_sec_context(struct rpc_rqst *rqstp,
- #define GSSX_ARG_wrap_size_limit_sz 0
- #define GSSX_RES_wrap_size_limit_sz 0
- 
--
--
- #endif /* _LINUX_GSS_RPC_XDR_H */
-diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
-index f1aabab..0c5d789 100644
---- a/net/sunrpc/auth_gss/svcauth_gss.c
-+++ b/net/sunrpc/auth_gss/svcauth_gss.c
-@@ -1,3 +1,4 @@
-+// SPDX-License-Identifier: GPL-2.0
- /*
-  * Neil Brown <neilb@cse.unsw.edu.au>
-  * J. Bruce Fields <bfields@umich.edu>
++/**
++ * xdr_inline_pages - Prepare receive buffer for a large reply
++ * @xdr: xdr_buf into which reply will be placed
++ * @offset: expected offset where data payload will start, in bytes
++ * @pages: vector of struct page pointers
++ * @base: offset in first page where receive should start, in bytes
++ * @len: expected size of the upper layer data payload, in bytes
++ *
++ */
+ void
+ xdr_inline_pages(struct xdr_buf *xdr, unsigned int offset,
+ 		 struct page **pages, unsigned int base, unsigned int len)
 
