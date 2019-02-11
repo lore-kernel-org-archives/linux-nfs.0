@@ -2,68 +2,68 @@ Return-Path: <SRS0=ULVj=QS=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-4.0 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
+X-Spam-Status: No, score=-6.8 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_PASS,UNWANTED_LANGUAGE_BODY autolearn=ham autolearn_force=no version=3.4.0
+	SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6D5C7C282CE
-	for <linux-nfs@archiver.kernel.org>; Mon, 11 Feb 2019 16:24:32 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 311D7C169C4
+	for <linux-nfs@archiver.kernel.org>; Mon, 11 Feb 2019 16:24:37 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 38B74218F0
-	for <linux-nfs@archiver.kernel.org>; Mon, 11 Feb 2019 16:24:32 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id E7287218F0
+	for <linux-nfs@archiver.kernel.org>; Mon, 11 Feb 2019 16:24:36 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="uQpghJWN"
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="IBdNgh8D"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728226AbfBKQYa (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 11 Feb 2019 11:24:30 -0500
-Received: from mail-it1-f196.google.com ([209.85.166.196]:39230 "EHLO
-        mail-it1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727620AbfBKQYa (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Feb 2019 11:24:30 -0500
-Received: by mail-it1-f196.google.com with SMTP id a6so27610218itl.4;
-        Mon, 11 Feb 2019 08:24:28 -0800 (PST)
+        id S1727520AbfBKQYf (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 11 Feb 2019 11:24:35 -0500
+Received: from mail-it1-f193.google.com ([209.85.166.193]:36493 "EHLO
+        mail-it1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1728812AbfBKQYe (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Feb 2019 11:24:34 -0500
+Received: by mail-it1-f193.google.com with SMTP id c9so27704782itj.1;
+        Mon, 11 Feb 2019 08:24:34 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=sender:subject:from:to:cc:date:message-id:in-reply-to:references
          :user-agent:mime-version:content-transfer-encoding;
-        bh=j1T7XJ1FRRHWScn57cfBx1R8i9beLTzMK0Q98w9Jvxc=;
-        b=uQpghJWNLAyzfxidB/peq7sNxAcFq2u2L187QCjNVkHh6mja06CJ91uSS45mcBqaHT
-         /+g+tNU0vdMfKNilthn8C/4hYhvDIPZlXphOzs7pc8ly2j+5Xp9l7Tzdnj9EsXHfNfv4
-         I5cF3RpDwh6obG5fTs+ktr1YaIDmDxglyzo4qqRdUXjVWIjJA5Cnixb6SvVVRtCGNwz3
-         UsP/O7rkOMXQNECM6Msf76ImUxu/aXEa3PyUd4SogU/fK5/1tpvcrkf5v2Rv+fXaJgSn
-         biFWY16h/AXyxB3YZvluyh1s44m34JldixrFhPWi360I3Ogf+FUvLHEezIQdmm8rOLqm
-         xQiA==
+        bh=YbSxqbwld/2BO0pv+Hci8l9vQ6yfOqjeePvHQkpfG1c=;
+        b=IBdNgh8DbwT7yZzYojoaM1KucqiW0Cgp9BeV/Jn/yBAyh13U/61mVvGaVWrYCnsFaF
+         UhPOT5KhIEyolNW3Zg9S92lJxpYThIt4R+VTh7CbzW7zGOJpks5TUR8BA4xIrZPV8DZV
+         wZIw/F7R12kjWJ8XeBI/YNm5jSq9rkzveBb2ENQ17ufiun8X2+B7XRSo/jmD61m0KqO4
+         YziNVUN9kn19KXbCAWUthB/I5V3IEMUels0rwqOapSYLeVd6d3QGpagfkxfDTd6QzNuP
+         sbwlGYjK//rK+wn3lbZ2HHRHa9g00l/OP4Z+v3fzoF6iKuI35TIEREItrqmLNkvYc+Uo
+         l0HA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:sender:subject:from:to:cc:date:message-id
          :in-reply-to:references:user-agent:mime-version
          :content-transfer-encoding;
-        bh=j1T7XJ1FRRHWScn57cfBx1R8i9beLTzMK0Q98w9Jvxc=;
-        b=qrcmfI9qCPv8vcALrY0h4YHuzrKCLdSwSz5bs3S37SzRl9KIm2jM0P6vRe5olKYMD+
-         d+VzB/xmlV0iEIt1rGHbKioDm0l4zFmuLgmf7V3tZ+3JycIl/GBLnoEcZr2326IjcNQ6
-         /5kqVw0pTXrA/xc00jfehA0r87p07jxslS4s/8dekFG9zVttYOIK5HmsiT+RgnnvR6AK
-         GGJLagVHr1j1S6zvYb4AK1HLZ2HV2LZ/a8NYPxWugOwawL/8M4hDLvFTbCVAAZTA8Wyh
-         8gQEzSCwqyglFxBPPEIlGq38q3m6e7PgLPBKxsW/v66jCSlXc3ZqiaLYzg69RUAUFSPq
-         IfzQ==
-X-Gm-Message-State: AHQUAuZyUWjq1Xr7u0TvCjbxrpcc+1WKR7cz3yB4kcOjuZWLaezj1G/Z
-        qPpwN59xGCGBc2SJOtgMz6RqiJAQ
-X-Google-Smtp-Source: AHgI3IZilUb8a4RQinIjgjifzXrfK8YaQRbNE+NLmDMuagixRp2Vk2/uSj688tApdlWrAv7Hs1tRug==
-X-Received: by 2002:a24:c601:: with SMTP id j1mr216655itg.130.1549902268257;
-        Mon, 11 Feb 2019 08:24:28 -0800 (PST)
+        bh=YbSxqbwld/2BO0pv+Hci8l9vQ6yfOqjeePvHQkpfG1c=;
+        b=Wz76BTLdQCgf2gn/y/vIeXXIc7OtUVrwcLJSE0D8gJqyif07D6MGwUx/6o9uQ6W5nQ
+         5UULJtmUEyDJqeM68OmHbQ6hDewuCzxaEqcgZHYoeXdq5ndQV6r5a9Tpuqyx6dAMjYUp
+         MvIvP5H/N4MJZd7/dNZxxhlej2kWl2aSJJcy7peKNV5pF3WAtGFvolx/VqOpHCK/edmK
+         lVd61KoPBLhsMQ4kHpKTHSbZGoqLL0aujCJzWi89F6+whRuS+/n140fc1vpx0aZqnru8
+         9S8btVpE4AOdEexKCDNo5KSCjR91ZN6vw+nlqS8TfS6f2lpVkUIxylQsdwo3P/GF7yPf
+         GKDQ==
+X-Gm-Message-State: AHQUAuYzVdJa12oq33vxaR+Y2IXd5aFsxj0V8IFjG3MsXyVT4VgxiAmF
+        Kwlk0kMwjYJQbbeBoe6EZVs=
+X-Google-Smtp-Source: AHgI3IbG8nnpWAlUOktLwryeYewyiLgVeW+mZL7yniih5U+6sJA3Xq0gKTiAsgeGYOrw5tu4Btnv9g==
+X-Received: by 2002:a6b:398b:: with SMTP id g133mr19613269ioa.160.1549902273603;
+        Mon, 11 Feb 2019 08:24:33 -0800 (PST)
 Received: from gateway.1015granger.net (c-68-61-232-219.hsd1.mi.comcast.net. [68.61.232.219])
-        by smtp.gmail.com with ESMTPSA id v19sm5292156itb.0.2019.02.11.08.24.27
+        by smtp.gmail.com with ESMTPSA id f13sm4789982iol.82.2019.02.11.08.24.32
         (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Mon, 11 Feb 2019 08:24:27 -0800 (PST)
+        Mon, 11 Feb 2019 08:24:33 -0800 (PST)
 Received: from manet.1015granger.net (manet.1015granger.net [192.168.1.51])
-        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id x1BGOQ06029979;
-        Mon, 11 Feb 2019 16:24:26 GMT
-Subject: [PATCH v1 09/23] NFS: Add trace events to report non-zero NFS
- status codes
+        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id x1BGOWem029982;
+        Mon, 11 Feb 2019 16:24:32 GMT
+Subject: [PATCH v1 10/23] SUNRPC: Remove some dprintk() call sites from auth
+ functions
 From:   Chuck Lever <chuck.lever@oracle.com>
 To:     anna.schumaker@netapp.com
 Cc:     linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date:   Mon, 11 Feb 2019 11:24:26 -0500
-Message-ID: <20190211162426.2817.69452.stgit@manet.1015granger.net>
+Date:   Mon, 11 Feb 2019 11:24:32 -0500
+Message-ID: <20190211162432.2817.6360.stgit@manet.1015granger.net>
 In-Reply-To: <20190211161920.2817.20881.stgit@manet.1015granger.net>
 References: <20190211161920.2817.20881.stgit@manet.1015granger.net>
 User-Agent: StGit/0.17.1-dirty
@@ -75,241 +75,172 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-These can help field troubleshooting without needing the overhead
-of a full network capture (ie, tcpdump).
+Clean up: Reduce dprintk noise by removing dprintk() call sites
+from hot path that do not report exceptions. These are usually
+replaceable with function graph tracing.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfs/nfs2xdr.c   |    7 ++++
- fs/nfs/nfs3xdr.c   |    7 ++++
- fs/nfs/nfs4trace.h |   25 +++++++++++++++
- fs/nfs/nfs4xdr.c   |   12 +++++--
- fs/nfs/nfstrace.c  |    1 +
- fs/nfs/nfstrace.h  |   85 ++++++++++++++++++++++++++++++++++++++++++++++++++++
- 6 files changed, 133 insertions(+), 4 deletions(-)
+ net/sunrpc/auth.c      |   29 -----------------------------
+ net/sunrpc/auth_unix.c |    9 +--------
+ 2 files changed, 1 insertion(+), 37 deletions(-)
 
-diff --git a/fs/nfs/nfs2xdr.c b/fs/nfs/nfs2xdr.c
-index 7661431..bac3a4e 100644
---- a/fs/nfs/nfs2xdr.c
-+++ b/fs/nfs/nfs2xdr.c
-@@ -22,6 +22,7 @@
- #include <linux/nfs.h>
- #include <linux/nfs2.h>
- #include <linux/nfs_fs.h>
-+#include "nfstrace.h"
- #include "internal.h"
+diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
+index 8dfab61..275e84e 100644
+--- a/net/sunrpc/auth.c
++++ b/net/sunrpc/auth.c
+@@ -17,10 +17,6 @@
+ #include <linux/sunrpc/gss_api.h>
+ #include <linux/spinlock.h>
  
- #define NFSDBG_FACILITY		NFSDBG_XDR
-@@ -145,7 +146,13 @@ static int decode_stat(struct xdr_stream *xdr, enum nfs_stat *status)
- 	p = xdr_inline_decode(xdr, 4);
- 	if (unlikely(!p))
- 		return -EIO;
-+	if (unlikely(*p != cpu_to_be32(NFS_OK)))
-+		goto out_status;
-+	*status = 0;
-+	return 0;
-+out_status:
- 	*status = be32_to_cpup(p);
-+	trace_nfs_xdr_status((int)*status);
- 	return 0;
+-#if IS_ENABLED(CONFIG_SUNRPC_DEBUG)
+-# define RPCDBG_FACILITY	RPCDBG_AUTH
+-#endif
+-
+ #define RPC_CREDCACHE_DEFAULT_HASHBITS	(4)
+ struct rpc_cred_cache {
+ 	struct hlist_head	*hashtable;
+@@ -267,8 +263,6 @@ static int param_get_hashtbl_sz(char *buffer, const struct kernel_param *kp)
+ 		}
+ 	}
+ 	rcu_read_unlock();
+-
+-	dprintk("RPC:       %s returns %d\n", __func__, result);
+ 	return result;
+ }
+ EXPORT_SYMBOL_GPL(rpcauth_list_flavors);
+@@ -636,9 +630,6 @@ struct rpc_cred *
+ 	struct rpc_cred *ret;
+ 	const struct cred *cred = current_cred();
+ 
+-	dprintk("RPC:       looking up %s cred\n",
+-		auth->au_ops->au_name);
+-
+ 	memset(&acred, 0, sizeof(acred));
+ 	acred.cred = cred;
+ 	ret = auth->au_ops->lookup_cred(auth, &acred, flags);
+@@ -670,8 +661,6 @@ struct rpc_cred *
+ 	};
+ 	struct rpc_cred *ret;
+ 
+-	dprintk("RPC: %5u looking up %s cred\n",
+-		task->tk_pid, task->tk_client->cl_auth->au_ops->au_name);
+ 	ret = auth->au_ops->lookup_cred(auth, &acred, lookupflags);
+ 	put_cred(acred.cred);
+ 	return ret;
+@@ -688,8 +677,6 @@ struct rpc_cred *
+ 
+ 	if (!acred.principal)
+ 		return NULL;
+-	dprintk("RPC: %5u looking up %s machine cred\n",
+-		task->tk_pid, task->tk_client->cl_auth->au_ops->au_name);
+ 	return auth->au_ops->lookup_cred(auth, &acred, lookupflags);
  }
  
-diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
-index e561980..4aa3ffe 100644
---- a/fs/nfs/nfs3xdr.c
-+++ b/fs/nfs/nfs3xdr.c
-@@ -21,6 +21,7 @@
- #include <linux/nfs3.h>
- #include <linux/nfs_fs.h>
- #include <linux/nfsacl.h>
-+#include "nfstrace.h"
- #include "internal.h"
+@@ -698,8 +685,6 @@ struct rpc_cred *
+ {
+ 	struct rpc_auth *auth = task->tk_client->cl_auth;
  
- #define NFSDBG_FACILITY		NFSDBG_XDR
-@@ -337,7 +338,13 @@ static int decode_nfsstat3(struct xdr_stream *xdr, enum nfs_stat *status)
- 	p = xdr_inline_decode(xdr, 4);
- 	if (unlikely(!p))
- 		return -EIO;
-+	if (unlikely(*p != cpu_to_be32(NFS3_OK)))
-+		goto out_status;
-+	*status = 0;
-+	return 0;
-+out_status:
- 	*status = be32_to_cpup(p);
-+	trace_nfs_xdr_status((int)*status);
- 	return 0;
+-	dprintk("RPC: %5u looking up %s cred\n",
+-		task->tk_pid, auth->au_ops->au_name);
+ 	return rpcauth_lookupcred(auth, lookupflags);
  }
  
-diff --git a/fs/nfs/nfs4trace.h b/fs/nfs/nfs4trace.h
-index b4557cf..cd1a5c0 100644
---- a/fs/nfs/nfs4trace.h
-+++ b/fs/nfs/nfs4trace.h
-@@ -524,6 +524,31 @@
- 		)
- );
+@@ -776,9 +761,6 @@ struct rpc_cred *
+ {
+ 	struct rpc_cred	*cred = task->tk_rqstp->rq_cred;
  
-+TRACE_EVENT(nfs4_xdr_status,
-+		TP_PROTO(
-+			u32 op,
-+			int error
-+		),
-+
-+		TP_ARGS(op, error),
-+
-+		TP_STRUCT__entry(
-+			__field(u32, op)
-+			__field(int, error)
-+		),
-+
-+		TP_fast_assign(
-+			__entry->op = op;
-+			__entry->error = -error;
-+		),
-+
-+		TP_printk(
-+			"operation %d: nfs status %d (%s)",
-+			__entry->op,
-+			__entry->error, show_nfsv4_errors(__entry->error)
-+		)
-+);
-+
- DECLARE_EVENT_CLASS(nfs4_open_event,
- 		TP_PROTO(
- 			const struct nfs_open_context *ctx,
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 24e6a45..38a4cbc 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -54,6 +54,7 @@
- #include <linux/nfs_fs.h>
+-	dprintk("RPC: %5u marshaling %s cred %p\n",
+-		task->tk_pid, cred->cr_auth->au_ops->au_name, cred);
+-
+ 	return cred->cr_ops->crmarshal(task, p);
+ }
  
- #include "nfs4_fs.h"
-+#include "nfs4trace.h"
- #include "internal.h"
- #include "nfs4idmap.h"
- #include "nfs4session.h"
-@@ -3188,11 +3189,14 @@ static bool __decode_op_hdr(struct xdr_stream *xdr, enum nfs_opnum4 expected,
- 	opnum = be32_to_cpup(p++);
- 	if (unlikely(opnum != expected))
- 		goto out_bad_operation;
-+	if (unlikely(*p != cpu_to_be32(NFS_OK)))
-+		goto out_status;
-+	*nfs_retval = 0;
-+	return true;
-+out_status:
- 	nfserr = be32_to_cpup(p);
--	if (nfserr == NFS_OK)
--		*nfs_retval = 0;
--	else
--		*nfs_retval = nfs4_stat_to_errno(nfserr);
-+	trace_nfs4_xdr_status(opnum, nfserr);
-+	*nfs_retval = nfs4_stat_to_errno(nfserr);
- 	return true;
- out_bad_operation:
- 	dprintk("nfs: Server returned operation"
-diff --git a/fs/nfs/nfstrace.c b/fs/nfs/nfstrace.c
-index b60d5fb..a90b363 100644
---- a/fs/nfs/nfstrace.c
-+++ b/fs/nfs/nfstrace.c
-@@ -11,3 +11,4 @@
+@@ -787,9 +769,6 @@ struct rpc_cred *
+ {
+ 	struct rpc_cred	*cred = task->tk_rqstp->rq_cred;
  
- EXPORT_TRACEPOINT_SYMBOL_GPL(nfs_fsync_enter);
- EXPORT_TRACEPOINT_SYMBOL_GPL(nfs_fsync_exit);
-+EXPORT_TRACEPOINT_SYMBOL_GPL(nfs_xdr_status);
-diff --git a/fs/nfs/nfstrace.h b/fs/nfs/nfstrace.h
-index bd60f8d..a0d6910 100644
---- a/fs/nfs/nfstrace.h
-+++ b/fs/nfs/nfstrace.h
-@@ -969,6 +969,91 @@
- 		)
- );
+-	dprintk("RPC: %5u validating %s cred %p\n",
+-		task->tk_pid, cred->cr_auth->au_ops->au_name, cred);
+-
+ 	return cred->cr_ops->crvalidate(task, p);
+ }
  
-+TRACE_DEFINE_ENUM(NFS_OK);
-+TRACE_DEFINE_ENUM(NFSERR_PERM);
-+TRACE_DEFINE_ENUM(NFSERR_NOENT);
-+TRACE_DEFINE_ENUM(NFSERR_IO);
-+TRACE_DEFINE_ENUM(NFSERR_NXIO);
-+TRACE_DEFINE_ENUM(NFSERR_ACCES);
-+TRACE_DEFINE_ENUM(NFSERR_EXIST);
-+TRACE_DEFINE_ENUM(NFSERR_XDEV);
-+TRACE_DEFINE_ENUM(NFSERR_NODEV);
-+TRACE_DEFINE_ENUM(NFSERR_NOTDIR);
-+TRACE_DEFINE_ENUM(NFSERR_ISDIR);
-+TRACE_DEFINE_ENUM(NFSERR_INVAL);
-+TRACE_DEFINE_ENUM(NFSERR_FBIG);
-+TRACE_DEFINE_ENUM(NFSERR_NOSPC);
-+TRACE_DEFINE_ENUM(NFSERR_ROFS);
-+TRACE_DEFINE_ENUM(NFSERR_MLINK);
-+TRACE_DEFINE_ENUM(NFSERR_NAMETOOLONG);
-+TRACE_DEFINE_ENUM(NFSERR_NOTEMPTY);
-+TRACE_DEFINE_ENUM(NFSERR_DQUOT);
-+TRACE_DEFINE_ENUM(NFSERR_STALE);
-+TRACE_DEFINE_ENUM(NFSERR_REMOTE);
-+TRACE_DEFINE_ENUM(NFSERR_WFLUSH);
-+TRACE_DEFINE_ENUM(NFSERR_BADHANDLE);
-+TRACE_DEFINE_ENUM(NFSERR_NOT_SYNC);
-+TRACE_DEFINE_ENUM(NFSERR_BAD_COOKIE);
-+TRACE_DEFINE_ENUM(NFSERR_NOTSUPP);
-+TRACE_DEFINE_ENUM(NFSERR_TOOSMALL);
-+TRACE_DEFINE_ENUM(NFSERR_SERVERFAULT);
-+TRACE_DEFINE_ENUM(NFSERR_BADTYPE);
-+TRACE_DEFINE_ENUM(NFSERR_JUKEBOX);
-+
-+#define nfs_show_status(x) \
-+	__print_symbolic(x, \
-+			{ NFS_OK, "OK" }, \
-+			{ NFSERR_PERM, "PERM" }, \
-+			{ NFSERR_NOENT, "NOENT" }, \
-+			{ NFSERR_IO, "IO" }, \
-+			{ NFSERR_NXIO, "NXIO" }, \
-+			{ NFSERR_ACCES, "ACCES" }, \
-+			{ NFSERR_EXIST, "EXIST" }, \
-+			{ NFSERR_XDEV, "XDEV" }, \
-+			{ NFSERR_NODEV, "NODEV" }, \
-+			{ NFSERR_NOTDIR, "NOTDIR" }, \
-+			{ NFSERR_ISDIR, "ISDIR" }, \
-+			{ NFSERR_INVAL, "INVAL" }, \
-+			{ NFSERR_FBIG, "FBIG" }, \
-+			{ NFSERR_NOSPC, "NOSPC" }, \
-+			{ NFSERR_ROFS, "ROFS" }, \
-+			{ NFSERR_MLINK, "MLINK" }, \
-+			{ NFSERR_NAMETOOLONG, "NAMETOOLONG" }, \
-+			{ NFSERR_NOTEMPTY, "NOTEMPTY" }, \
-+			{ NFSERR_DQUOT, "DQUOT" }, \
-+			{ NFSERR_STALE, "STALE" }, \
-+			{ NFSERR_REMOTE, "REMOTE" }, \
-+			{ NFSERR_WFLUSH, "WFLUSH" }, \
-+			{ NFSERR_BADHANDLE, "BADHANDLE" }, \
-+			{ NFSERR_NOT_SYNC, "NOTSYNC" }, \
-+			{ NFSERR_BAD_COOKIE, "BADCOOKIE" }, \
-+			{ NFSERR_NOTSUPP, "NOTSUPP" }, \
-+			{ NFSERR_TOOSMALL, "TOOSMALL" }, \
-+			{ NFSERR_SERVERFAULT, "REMOTEIO" }, \
-+			{ NFSERR_BADTYPE, "BADTYPE" }, \
-+			{ NFSERR_JUKEBOX, "JUKEBOX" })
-+
-+TRACE_EVENT(nfs_xdr_status,
-+		TP_PROTO(
-+			int error
-+		),
-+
-+		TP_ARGS(error),
-+
-+		TP_STRUCT__entry(
-+			__field(int, error)
-+		),
-+
-+		TP_fast_assign(
-+			__entry->error = error;
-+		),
-+
-+		TP_printk(
-+			"error=%d (%s)",
-+			__entry->error, nfs_show_status(__entry->error)
-+		)
-+);
-+
- #endif /* _TRACE_NFS_H */
+@@ -808,8 +787,6 @@ static void rpcauth_wrap_req_encode(kxdreproc_t encode, struct rpc_rqst *rqstp,
+ {
+ 	struct rpc_cred *cred = task->tk_rqstp->rq_cred;
  
- #undef TRACE_INCLUDE_PATH
+-	dprintk("RPC: %5u using %s cred %p to wrap rpc data\n",
+-			task->tk_pid, cred->cr_ops->cr_name, cred);
+ 	if (cred->cr_ops->crwrap_req)
+ 		return cred->cr_ops->crwrap_req(task, encode, rqstp, data, obj);
+ 	/* By default, we encode the arguments normally. */
+@@ -833,8 +810,6 @@ static void rpcauth_wrap_req_encode(kxdreproc_t encode, struct rpc_rqst *rqstp,
+ {
+ 	struct rpc_cred *cred = task->tk_rqstp->rq_cred;
+ 
+-	dprintk("RPC: %5u using %s cred %p to unwrap rpc data\n",
+-			task->tk_pid, cred->cr_ops->cr_name, cred);
+ 	if (cred->cr_ops->crunwrap_resp)
+ 		return cred->cr_ops->crunwrap_resp(task, decode, rqstp,
+ 						   data, obj);
+@@ -865,8 +840,6 @@ static void rpcauth_wrap_req_encode(kxdreproc_t encode, struct rpc_rqst *rqstp,
+ 			goto out;
+ 		cred = task->tk_rqstp->rq_cred;
+ 	}
+-	dprintk("RPC: %5u refreshing %s cred %p\n",
+-		task->tk_pid, cred->cr_auth->au_ops->au_name, cred);
+ 
+ 	err = cred->cr_ops->crrefresh(task);
+ out:
+@@ -880,8 +853,6 @@ static void rpcauth_wrap_req_encode(kxdreproc_t encode, struct rpc_rqst *rqstp,
+ {
+ 	struct rpc_cred *cred = task->tk_rqstp->rq_cred;
+ 
+-	dprintk("RPC: %5u invalidating %s cred %p\n",
+-		task->tk_pid, cred->cr_auth->au_ops->au_name, cred);
+ 	if (cred)
+ 		clear_bit(RPCAUTH_CRED_UPTODATE, &cred->cr_flags);
+ }
+diff --git a/net/sunrpc/auth_unix.c b/net/sunrpc/auth_unix.c
+index 387f6b3..fc8a591 100644
+--- a/net/sunrpc/auth_unix.c
++++ b/net/sunrpc/auth_unix.c
+@@ -28,8 +28,6 @@
+ static struct rpc_auth *
+ unx_create(const struct rpc_auth_create_args *args, struct rpc_clnt *clnt)
+ {
+-	dprintk("RPC:       creating UNIX authenticator for client %p\n",
+-			clnt);
+ 	refcount_inc(&unix_auth.au_count);
+ 	return &unix_auth;
+ }
+@@ -37,7 +35,6 @@
+ static void
+ unx_destroy(struct rpc_auth *auth)
+ {
+-	dprintk("RPC:       destroying UNIX authenticator %p\n", auth);
+ }
+ 
+ /*
+@@ -48,10 +45,6 @@
+ {
+ 	struct rpc_cred *ret = mempool_alloc(unix_pool, GFP_NOFS);
+ 
+-	dprintk("RPC:       allocating UNIX cred for uid %d gid %d\n",
+-			from_kuid(&init_user_ns, acred->cred->fsuid),
+-			from_kgid(&init_user_ns, acred->cred->fsgid));
+-
+ 	rpcauth_init_cred(ret, acred, auth, &unix_credops);
+ 	ret->cr_flags = 1UL << RPCAUTH_CRED_UPTODATE;
+ 	return ret;
+@@ -61,7 +54,7 @@
+ unx_free_cred_callback(struct rcu_head *head)
+ {
+ 	struct rpc_cred *rpc_cred = container_of(head, struct rpc_cred, cr_rcu);
+-	dprintk("RPC:       unx_free_cred %p\n", rpc_cred);
++
+ 	put_cred(rpc_cred->cr_cred);
+ 	mempool_free(rpc_cred, unix_pool);
+ }
 
