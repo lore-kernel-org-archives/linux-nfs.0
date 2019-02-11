@@ -6,63 +6,64 @@ X-Spam-Status: No, score=-6.8 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
 	SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B8021C169C4
-	for <linux-nfs@archiver.kernel.org>; Mon, 11 Feb 2019 16:24:14 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 0D0F1C169C4
+	for <linux-nfs@archiver.kernel.org>; Mon, 11 Feb 2019 16:24:20 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 76F2D218F0
-	for <linux-nfs@archiver.kernel.org>; Mon, 11 Feb 2019 16:24:14 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id C4274218F0
+	for <linux-nfs@archiver.kernel.org>; Mon, 11 Feb 2019 16:24:19 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="WpH3d83B"
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="UWjY5nw5"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728539AbfBKQYO (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 11 Feb 2019 11:24:14 -0500
-Received: from mail-it1-f195.google.com ([209.85.166.195]:35053 "EHLO
-        mail-it1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728096AbfBKQYN (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Feb 2019 11:24:13 -0500
-Received: by mail-it1-f195.google.com with SMTP id v72so2762236itc.0;
-        Mon, 11 Feb 2019 08:24:12 -0800 (PST)
+        id S1728700AbfBKQYT (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 11 Feb 2019 11:24:19 -0500
+Received: from mail-it1-f196.google.com ([209.85.166.196]:36424 "EHLO
+        mail-it1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1728699AbfBKQYS (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Feb 2019 11:24:18 -0500
+Received: by mail-it1-f196.google.com with SMTP id c9so27702549itj.1;
+        Mon, 11 Feb 2019 08:24:18 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=sender:subject:from:to:cc:date:message-id:in-reply-to:references
          :user-agent:mime-version:content-transfer-encoding;
-        bh=UzY2+bCRqn1Brv41PHmWOM9CfB1orMDzn3vzRPwOzWM=;
-        b=WpH3d83BczZNh066kC6Lyh43F7IvInwtukoh7II9iuKi4qig0c9Qpwq4GWDrTkYlqB
-         ezzDIhLux4uiEk/mOsNNN1JzYac/Jf6sD3965r356N/rpyqU16i5xo9gAGmxrPECyNxG
-         dBWtm8UTxFmFUXHUM0pb8GSv+1TSBlsQe0+X5NLAn3mRVk/j5BJ9ws5eF4E2tBNiKRiX
-         ltVzZ8/6Ctqz7GxmazX2C1i8Yf+9TZmUwFTX7aa6bAKB2edV/G9aIhui+jUkzvUQ9sz4
-         RsZT7DS0m4LJhvwsa7ZqfSe+VqT3xpglVk4GJC5rBXKagdUTFzcydHg6cR8Y1PHWurGl
-         SQyQ==
+        bh=iFs5pcOp/J41ovxb5GvsjSrHLbi8rpX4+Bpm+F8aumw=;
+        b=UWjY5nw5qZ/NA9pgjLoYpgvealZAA/K2CKi76QAZgp/ABPE+ZdHcijiA6BGajBZdGg
+         xB944U97H849N+/s36CHmBFYdW2hg8mPCDXyYDVOwVoBriw/nA1ES17JHAEeK6HxUPkz
+         aOOefaZXxxPfp0Sx492O2ydEqlWyV80rbb/DpuaVJSldiadwwgzfvp4Ms2N2bBuF09fY
+         ZLp23EXdYJ7Qf6wxSKab/MyQ4uwwzBzKgRyU7Slm8AeSnnx9tWvb0q5eh+jLfEyL+Dby
+         XPIgoS5JMaj8Q6SLgfYihYRUpAa+5av8SnIfNDrglJSjzZHt67+dKfrmhnZc8n4ps6xM
+         XfBw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:sender:subject:from:to:cc:date:message-id
          :in-reply-to:references:user-agent:mime-version
          :content-transfer-encoding;
-        bh=UzY2+bCRqn1Brv41PHmWOM9CfB1orMDzn3vzRPwOzWM=;
-        b=uQG0XaOetpSrwOx7wfyXGw6uNnoablrF/+KsT9XEg8GkgXPCd3zSWACVfWO27oh7q0
-         USkZM+2O40TUnRjLKEeOnStbzAUPi4+kk1FFCbaPiw+rdZ0870G0Zmz5V0hKHVnnizsP
-         W92nqCrMfQgjPRpzIbQTlbh9XbAQxLobutz6QxumJGq8oiZlPx+oNQzUODzcntDA3xE0
-         xGSC2CO5SVjkctyHbGZDkeoDij1WEUU1Isq6iam+6IjI7fZGh81UYxUpRRvnQEeVuSvx
-         5MOUnqfkmitCflFzSAHxnsUutDerW8haq4y68c+k7LW9P6SV4notVgPbjexH452zh5pf
-         C7xg==
-X-Gm-Message-State: AHQUAuYVAto7kPq14DhWzYhqF+bV+26vCuKAhXRL4vLXmi+0WlEE4e6G
-        bTVUgNvL144Ts4b33q3/2Q4=
-X-Google-Smtp-Source: AHgI3IYZcm5iOyF8AahZNkbRPyjGVlFSZgSHWDfVeI2U4E+YD24pru7J6boTMBy1OqLp4pKnrM5DvA==
-X-Received: by 2002:a02:9c16:: with SMTP id q22mr6559203jak.49.1549902252067;
-        Mon, 11 Feb 2019 08:24:12 -0800 (PST)
+        bh=iFs5pcOp/J41ovxb5GvsjSrHLbi8rpX4+Bpm+F8aumw=;
+        b=rdXP5ICxsFWy2ioUQ14FkhqjfBHoFPLEMT90+aksdbj+ITm6USQpO8rWCEy+Qj6xJc
+         zkqZYBA5cszho1KGMrBhK/9GQeXL4NQ+Uc4fFHSRGDxFt8SXGQ2yz2KW9NWL9FgLJ7md
+         7K1d6GzsYmmpfeR3qPdHTnisVQ451PJM/7A3NmBO9IpZ/K8bu1KRkBP/TZqu3XZQ8wsy
+         lvl374TwtHjJxiNR8R9wJERZUvF7xHHLMdbn8SoEjz9aAq3v8Qk8h7FFVltSMyxL2Hc9
+         6bcQAmpUQAlcbwxmOEGN+kXfoZVA0ypwgG59iGPO8bcEqXQW3w9toP0ye3vZ3tADDJr2
+         hPTA==
+X-Gm-Message-State: AHQUAubR5i4rbi5xT9TGAOSxil/J8ZTV4cp2st2Ka6kb+F8WnfyzAzE2
+        VnJK+zpEG7Qt6JzD2xZDugY=
+X-Google-Smtp-Source: AHgI3IY1ab/JWl1AJsWeMQLPtUhzmLwWUgAc5ndIcoctMmV1bdTNTa65mQSOMMcf0vm6YRcUKpeXRg==
+X-Received: by 2002:a5e:de45:: with SMTP id e5mr14065880ioq.294.1549902257612;
+        Mon, 11 Feb 2019 08:24:17 -0800 (PST)
 Received: from gateway.1015granger.net (c-68-61-232-219.hsd1.mi.comcast.net. [68.61.232.219])
-        by smtp.gmail.com with ESMTPSA id u19sm5059518iog.17.2019.02.11.08.24.11
+        by smtp.gmail.com with ESMTPSA id h123sm5339650itb.36.2019.02.11.08.24.16
         (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Mon, 11 Feb 2019 08:24:11 -0800 (PST)
+        Mon, 11 Feb 2019 08:24:16 -0800 (PST)
 Received: from manet.1015granger.net (manet.1015granger.net [192.168.1.51])
-        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id x1BGOAx3029970;
-        Mon, 11 Feb 2019 16:24:10 GMT
-Subject: [PATCH v1 06/23] SUNRPC: Add XDR overflow trace event
+        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id x1BGOGrA029973;
+        Mon, 11 Feb 2019 16:24:16 GMT
+Subject: [PATCH v1 07/23] SUNRPC: Add trace event that reports reply page
+ vector alignment
 From:   Chuck Lever <chuck.lever@oracle.com>
 To:     anna.schumaker@netapp.com
 Cc:     linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date:   Mon, 11 Feb 2019 11:24:10 -0500
-Message-ID: <20190211162410.2817.88199.stgit@manet.1015granger.net>
+Date:   Mon, 11 Feb 2019 11:24:16 -0500
+Message-ID: <20190211162416.2817.25507.stgit@manet.1015granger.net>
 In-Reply-To: <20190211161920.2817.20881.stgit@manet.1015granger.net>
 References: <20190211161920.2817.20881.stgit@manet.1015granger.net>
 User-Agent: StGit/0.17.1-dirty
@@ -74,38 +75,45 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-This can help field troubleshooting without needing the overhead of
-a full network capture (ie, tcpdump).
+We don't want READ payloads that are partially in the head iovec and
+in the page buffer because this requires pull-up, which can be
+expensive.
+
+The NFS/RPC client tries hard to predict the size of the head iovec
+so that the incoming READ data payload lands only in the page
+vector, but it doesn't always get it right. To help diagnose such
+problems, add a trace point in the logic that decodes READ-like
+operations that reports whether pull-up is being done.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- include/trace/events/sunrpc.h |   67 +++++++++++++++++++++++++++++++++++++++++
- net/sunrpc/xdr.c              |   24 ++++++++++-----
- 2 files changed, 84 insertions(+), 7 deletions(-)
+ include/trace/events/sunrpc.h |   59 +++++++++++++++++++++++++++++++++++++++++
+ net/sunrpc/xdr.c              |   33 +++++++++++++++++++----
+ 2 files changed, 86 insertions(+), 6 deletions(-)
 
 diff --git a/include/trace/events/sunrpc.h b/include/trace/events/sunrpc.h
-index f88b0f5..fbc41b8 100644
+index fbc41b8..6276508 100644
 --- a/include/trace/events/sunrpc.h
 +++ b/include/trace/events/sunrpc.h
-@@ -254,6 +254,73 @@
- 		__entry->backlog, __entry->rtt, __entry->execute)
+@@ -321,6 +321,65 @@
+ 	)
  );
  
-+TRACE_EVENT(rpc_xdr_overflow,
++TRACE_EVENT(rpc_xdr_alignment,
 +	TP_PROTO(
 +		const struct xdr_stream *xdr,
-+		size_t requested
++		size_t offset,
++		unsigned int copied
 +	),
 +
-+	TP_ARGS(xdr, requested),
++	TP_ARGS(xdr, offset, copied),
 +
 +	TP_STRUCT__entry(
 +		__field(unsigned int, task_id)
 +		__field(unsigned int, client_id)
 +		__field(int, version)
-+		__field(size_t, requested)
-+		__field(const void *, end)
-+		__field(const void *, p)
++		__field(size_t, offset)
++		__field(unsigned int, copied)
 +		__field(const void *, head_base)
 +		__field(size_t, head_len)
 +		__field(const void *, tail_base)
@@ -119,25 +127,17 @@ index f88b0f5..fbc41b8 100644
 +	),
 +
 +	TP_fast_assign(
-+		if (xdr->rqst) {
-+			const struct rpc_task *task = xdr->rqst->rq_task;
++		const struct rpc_task *task = xdr->rqst->rq_task;
 +
-+			__entry->task_id = task->tk_pid;
-+			__entry->client_id = task->tk_client->cl_clid;
-+			__assign_str(progname,
-+				     task->tk_client->cl_program->name)
-+			__entry->version = task->tk_client->cl_vers;
-+			__assign_str(procedure, task->tk_msg.rpc_proc->p_name)
-+		} else {
-+			__entry->task_id = 0;
-+			__entry->client_id = 0;
-+			__assign_str(progname, "unknown")
-+			__entry->version = 0;
-+			__assign_str(procedure, "unknown")
-+		}
-+		__entry->requested = requested;
-+		__entry->end = xdr->end;
-+		__entry->p = xdr->p;
++		__entry->task_id = task->tk_pid;
++		__entry->client_id = task->tk_client->cl_clid;
++		__assign_str(progname,
++			     task->tk_client->cl_program->name)
++		__entry->version = task->tk_client->cl_vers;
++		__assign_str(procedure, task->tk_msg.rpc_proc->p_name)
++
++		__entry->offset = offset;
++		__entry->copied = copied;
 +		__entry->head_base = xdr->buf->head[0].iov_base,
 +		__entry->head_len = xdr->buf->head[0].iov_len,
 +		__entry->page_len = xdr->buf->page_len,
@@ -147,10 +147,10 @@ index f88b0f5..fbc41b8 100644
 +	),
 +
 +	TP_printk(
-+		"task:%u@%u %sv%d %s requested=%zu p=%p end=%p xdr=[%p,%zu]/%u/[%p,%zu]/%u\n",
++		"task:%u@%u %sv%d %s offset=%zu copied=%u xdr=[%p,%zu]/%u/[%p,%zu]/%u\n",
 +		__entry->task_id, __entry->client_id,
 +		__get_str(progname), __entry->version, __get_str(procedure),
-+		__entry->requested, __entry->p, __entry->end,
++		__entry->offset, __entry->copied,
 +		__entry->head_base, __entry->head_len,
 +		__entry->page_len,
 +		__entry->tail_base, __entry->tail_len,
@@ -162,84 +162,143 @@ index f88b0f5..fbc41b8 100644
   * First define the enums in the below macros to be exported to userspace
   * via TRACE_DEFINE_ENUM().
 diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
-index 345f08b..6d0b615 100644
+index 6d0b615..5f0aa53 100644
 --- a/net/sunrpc/xdr.c
 +++ b/net/sunrpc/xdr.c
-@@ -16,6 +16,7 @@
- #include <linux/sunrpc/xdr.h>
- #include <linux/sunrpc/msg_prot.h>
- #include <linux/bvec.h>
-+#include <trace/events/sunrpc.h>
- 
- /*
-  * XDR functions for basic NFS types
-@@ -554,9 +555,9 @@ static __be32 *xdr_get_next_encode_buffer(struct xdr_stream *xdr,
- 	int frag1bytes, frag2bytes;
- 
- 	if (nbytes > PAGE_SIZE)
--		return NULL; /* Bigger buffers require special handling */
-+		goto out_overflow; /* Bigger buffers require special handling */
- 	if (xdr->buf->len + nbytes > xdr->buf->buflen)
--		return NULL; /* Sorry, we're totally out of space */
-+		goto out_overflow; /* Sorry, we're totally out of space */
- 	frag1bytes = (xdr->end - xdr->p) << 2;
- 	frag2bytes = nbytes - frag1bytes;
- 	if (xdr->iov)
-@@ -585,6 +586,9 @@ static __be32 *xdr_get_next_encode_buffer(struct xdr_stream *xdr,
- 	xdr->buf->page_len += frag2bytes;
- 	xdr->buf->len += nbytes;
- 	return p;
-+out_overflow:
-+	trace_rpc_xdr_overflow(xdr, nbytes);
-+	return NULL;
- }
- 
- /**
-@@ -902,20 +906,23 @@ static __be32 *xdr_copy_to_scratch(struct xdr_stream *xdr, size_t nbytes)
- 	size_t cplen = (char *)xdr->end - (char *)xdr->p;
- 
- 	if (nbytes > xdr->scratch.iov_len)
--		return NULL;
-+		goto out_overflow;
- 	p = __xdr_inline_decode(xdr, cplen);
- 	if (p == NULL)
- 		return NULL;
- 	memcpy(cpdest, p, cplen);
-+	if (!xdr_set_next_buffer(xdr))
-+		goto out_overflow;
- 	cpdest += cplen;
- 	nbytes -= cplen;
--	if (!xdr_set_next_buffer(xdr))
--		return NULL;
- 	p = __xdr_inline_decode(xdr, nbytes);
- 	if (p == NULL)
- 		return NULL;
- 	memcpy(cpdest, p, nbytes);
- 	return xdr->scratch.iov_base;
-+out_overflow:
-+	trace_rpc_xdr_overflow(xdr, nbytes);
-+	return NULL;
- }
- 
- /**
-@@ -932,14 +939,17 @@ __be32 * xdr_inline_decode(struct xdr_stream *xdr, size_t nbytes)
+@@ -347,13 +347,15 @@ __be32 *xdr_encode_opaque(__be32 *p, const void *ptr, unsigned int nbytes)
+  * 'len' bytes. The extra data is not lost, but is instead
+  * moved into the inlined pages and/or the tail.
+  */
+-static void
++static unsigned int
+ xdr_shrink_bufhead(struct xdr_buf *buf, size_t len)
  {
- 	__be32 *p;
+ 	struct kvec *head, *tail;
+ 	size_t copy, offs;
+ 	unsigned int pglen = buf->page_len;
++	unsigned int result;
  
--	if (nbytes == 0)
-+	if (unlikely(nbytes == 0))
- 		return xdr->p;
- 	if (xdr->p == xdr->end && !xdr_set_next_buffer(xdr))
--		return NULL;
-+		goto out_overflow;
- 	p = __xdr_inline_decode(xdr, nbytes);
- 	if (p != NULL)
- 		return p;
- 	return xdr_copy_to_scratch(xdr, nbytes);
-+out_overflow:
-+	trace_rpc_xdr_overflow(xdr, nbytes);
-+	return NULL;
++	result = 0;
+ 	tail = buf->tail;
+ 	head = buf->head;
+ 
+@@ -367,6 +369,7 @@ __be32 *xdr_encode_opaque(__be32 *p, const void *ptr, unsigned int nbytes)
+ 			copy = tail->iov_len - len;
+ 			memmove((char *)tail->iov_base + len,
+ 					tail->iov_base, copy);
++			result += copy;
+ 		}
+ 		/* Copy from the inlined pages into the tail */
+ 		copy = len;
+@@ -377,11 +380,13 @@ __be32 *xdr_encode_opaque(__be32 *p, const void *ptr, unsigned int nbytes)
+ 			copy = 0;
+ 		else if (copy > tail->iov_len - offs)
+ 			copy = tail->iov_len - offs;
+-		if (copy != 0)
++		if (copy != 0) {
+ 			_copy_from_pages((char *)tail->iov_base + offs,
+ 					buf->pages,
+ 					buf->page_base + pglen + offs - len,
+ 					copy);
++			result += copy;
++		}
+ 		/* Do we also need to copy data from the head into the tail ? */
+ 		if (len > pglen) {
+ 			offs = copy = len - pglen;
+@@ -391,6 +396,7 @@ __be32 *xdr_encode_opaque(__be32 *p, const void *ptr, unsigned int nbytes)
+ 					(char *)head->iov_base +
+ 					head->iov_len - offs,
+ 					copy);
++			result += copy;
+ 		}
+ 	}
+ 	/* Now handle pages */
+@@ -406,12 +412,15 @@ __be32 *xdr_encode_opaque(__be32 *p, const void *ptr, unsigned int nbytes)
+ 		_copy_to_pages(buf->pages, buf->page_base,
+ 				(char *)head->iov_base + head->iov_len - len,
+ 				copy);
++		result += copy;
+ 	}
+ 	head->iov_len -= len;
+ 	buf->buflen -= len;
+ 	/* Have we truncated the message? */
+ 	if (buf->len > buf->buflen)
+ 		buf->len = buf->buflen;
++
++	return result;
  }
- EXPORT_SYMBOL_GPL(xdr_inline_decode);
  
+ /**
+@@ -423,14 +432,16 @@ __be32 *xdr_encode_opaque(__be32 *p, const void *ptr, unsigned int nbytes)
+  * 'len' bytes. The extra data is not lost, but is instead
+  * moved into the tail.
+  */
+-static void
++static unsigned int
+ xdr_shrink_pagelen(struct xdr_buf *buf, size_t len)
+ {
+ 	struct kvec *tail;
+ 	size_t copy;
+ 	unsigned int pglen = buf->page_len;
+ 	unsigned int tailbuf_len;
++	unsigned int result;
+ 
++	result = 0;
+ 	tail = buf->tail;
+ 	BUG_ON (len > pglen);
+ 
+@@ -448,18 +459,22 @@ __be32 *xdr_encode_opaque(__be32 *p, const void *ptr, unsigned int nbytes)
+ 		if (tail->iov_len > len) {
+ 			char *p = (char *)tail->iov_base + len;
+ 			memmove(p, tail->iov_base, tail->iov_len - len);
++			result += tail->iov_len - len;
+ 		} else
+ 			copy = tail->iov_len;
+ 		/* Copy from the inlined pages into the tail */
+ 		_copy_from_pages((char *)tail->iov_base,
+ 				buf->pages, buf->page_base + pglen - len,
+ 				copy);
++		result += copy;
+ 	}
+ 	buf->page_len -= len;
+ 	buf->buflen -= len;
+ 	/* Have we truncated the message? */
+ 	if (buf->len > buf->buflen)
+ 		buf->len = buf->buflen;
++
++	return result;
+ }
+ 
+ void
+@@ -959,13 +974,17 @@ static unsigned int xdr_align_pages(struct xdr_stream *xdr, unsigned int len)
+ 	struct kvec *iov;
+ 	unsigned int nwords = XDR_QUADLEN(len);
+ 	unsigned int cur = xdr_stream_pos(xdr);
++	unsigned int copied, offset;
+ 
+ 	if (xdr->nwords == 0)
+ 		return 0;
++
+ 	/* Realign pages to current pointer position */
+-	iov  = buf->head;
++	iov = buf->head;
+ 	if (iov->iov_len > cur) {
+-		xdr_shrink_bufhead(buf, iov->iov_len - cur);
++		offset = iov->iov_len - cur;
++		copied = xdr_shrink_bufhead(buf, offset);
++		trace_rpc_xdr_alignment(xdr, offset, copied);
+ 		xdr->nwords = XDR_QUADLEN(buf->len - cur);
+ 	}
+ 
+@@ -977,7 +996,9 @@ static unsigned int xdr_align_pages(struct xdr_stream *xdr, unsigned int len)
+ 		len = buf->page_len;
+ 	else if (nwords < xdr->nwords) {
+ 		/* Truncate page data and move it into the tail */
+-		xdr_shrink_pagelen(buf, buf->page_len - len);
++		offset = buf->page_len - len;
++		copied = xdr_shrink_pagelen(buf, offset);
++		trace_rpc_xdr_alignment(xdr, offset, copied);
+ 		xdr->nwords = XDR_QUADLEN(buf->len - cur);
+ 	}
+ 	return len;
 
