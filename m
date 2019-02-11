@@ -6,63 +6,64 @@ X-Spam-Status: No, score=-6.8 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
 	SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E5B8BC282CE
-	for <linux-nfs@archiver.kernel.org>; Mon, 11 Feb 2019 16:24:41 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8AF65C169C4
+	for <linux-nfs@archiver.kernel.org>; Mon, 11 Feb 2019 16:24:46 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 90475218F0
-	for <linux-nfs@archiver.kernel.org>; Mon, 11 Feb 2019 16:24:41 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 52A3E218F0
+	for <linux-nfs@archiver.kernel.org>; Mon, 11 Feb 2019 16:24:46 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="XKkcc8uZ"
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="ZFq/aT3d"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728529AbfBKQYk (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 11 Feb 2019 11:24:40 -0500
-Received: from mail-it1-f196.google.com ([209.85.166.196]:38169 "EHLO
-        mail-it1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728518AbfBKQYk (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Feb 2019 11:24:40 -0500
-Received: by mail-it1-f196.google.com with SMTP id z20so27637301itc.3;
-        Mon, 11 Feb 2019 08:24:39 -0800 (PST)
+        id S1727260AbfBKQYp (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 11 Feb 2019 11:24:45 -0500
+Received: from mail-it1-f193.google.com ([209.85.166.193]:40551 "EHLO
+        mail-it1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1728484AbfBKQYp (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Feb 2019 11:24:45 -0500
+Received: by mail-it1-f193.google.com with SMTP id i2so3606006ite.5;
+        Mon, 11 Feb 2019 08:24:44 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=sender:subject:from:to:cc:date:message-id:in-reply-to:references
          :user-agent:mime-version:content-transfer-encoding;
-        bh=aJWyu4yqiF6oEJf2GFLO3VcdAYqwCPRZxwDL723FfcI=;
-        b=XKkcc8uZ85fw3eFk/o/F2qLBApL/jiXMbApLvfc+4oddT56+b8qcDsV2Syzd4eyuxf
-         O2btLK2/JVhF9Doaj162gnLqLjs1pfj6XDYUXlJ9aB6ul1F09j2MW8e2fMUmwh132i0J
-         tC7QPTGjr2gxh98TY/09EPJP8GI1CGvERoGPv9Rl5k/KJrBXS+IUwLMzgTz4uZTpI6WB
-         djn0kuSQkTy6s7Qo7WnqkA/G2U7Vmxod4yMi2t12IP40niNCZAa+JK5UVvadm17R23+D
-         GUxgOANkpUQwAJR52/PtBWxNAEP3npIK89TLpgBKnuqTi7Nv/zJibzMriU9z9UZOfWOX
-         uiBA==
+        bh=Z66nf1oMqx7yZleiBce97GTP+EwJaeegxHi7p538Oug=;
+        b=ZFq/aT3dI7+gYGqZ+Xe5xhkT1EHLZe0L/NcxZHf7PB67jg7mccUpwT+s7gsobUosnA
+         wnVuEEYUwoOEmWmZ48cg5AjBD515e18r9izbqHtEKLTCsS+HnvDqYTYkG8JwONOAv1aD
+         jWbknV3Vb6iEMlKtmUwwkH+G9RleC3+k4XuPEQt8TJGCO6it/eAQuQZ3K7XlVNH/FTSU
+         IGqBt/suBY0LcTubw2KJZr557f6jVgialnbax5Jt1V4cvuVkbO3LbX+PJ7QGcHeNz4b/
+         Gi2eVtGn239SeTk/A3BUZ9zUwJG41d7a/c7PAqZj/Fw2YzceT1rTZWiqC5hCJ8cJNyEn
+         e3AQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:sender:subject:from:to:cc:date:message-id
          :in-reply-to:references:user-agent:mime-version
          :content-transfer-encoding;
-        bh=aJWyu4yqiF6oEJf2GFLO3VcdAYqwCPRZxwDL723FfcI=;
-        b=f807HfzJas5F7k0sP3+x5sVKkmJFAt2CziXDz21N1xTNYtY0gv6nizGmouaRI2wROH
-         MZ1yfSmECp4yEUUx7GrkWVcNb2QjuJJ9laVIaaJpHY+I8soItQ864wv4I6K3SkXh+xj2
-         aWpieMtI+s4uNNzQuASx1WU9QEN7/uXPMSuhe5ZYkMbEkYDKqd94+M5IDoC2xepvcM5N
-         a8LLoxVqoDupAWRLjVpYeJcWWzHN8u7REyGXLUoKxiPheRXkz3RI3lCi8LrRAN+ErHrD
-         S/qDRKzLDWQR7U5TP9Xz5SN5k4CuEOR/8a3UthFA1BHZUPC/WehuwH0VFWv9pSA1P/f+
-         nOQQ==
-X-Gm-Message-State: AHQUAubTGy60tpGRbFMaYNlY1poc3EahhBCyVy0gCu/W/X85jPa6a0bq
-        OtLdE6iZRnTtH6eU4n3/SRs=
-X-Google-Smtp-Source: AHgI3IY9E7kdsw3pl+rgS1gtxqy/qa93ADxxAIJXu3PEPDRiEBDT1qi99Jm9BC6zx86gXcVgKZqpZA==
-X-Received: by 2002:a02:7127:: with SMTP id n39mr18961123jac.91.1549902279093;
-        Mon, 11 Feb 2019 08:24:39 -0800 (PST)
+        bh=Z66nf1oMqx7yZleiBce97GTP+EwJaeegxHi7p538Oug=;
+        b=M2w2htBAqAT48pgFLQWJz0tD6X8WRaC3Mbox80djG2VP3aOnHtBUPewGoY1+/5GCOm
+         fUK9LkQtt6CxWK4OWXUbwrp1KMLXsTVBTOJi0yK/wMvi3VJWRRZdKFNhdaoSqG3PEJas
+         BqtfSAIUFGDwgZAoMS0t8GTvKzIK1VetbF1eTzVRuRDXzMQCKsQytCQTMvpYSmng3sI+
+         IVFvHkxpC6qq9shhoKZSD7Pm0L6EQzU4qjblW2+07PEgh0ctmfiK76n45qBiWTSR5mrK
+         zrhiUT0wUzZfrhynt79PCqyFYRm/xgedQ831TzAoKz6EL/jTQz0u3zNB7cVxKJK2v0ah
+         49hw==
+X-Gm-Message-State: AHQUAuYEPHXrXm56r8H1iwGWTEhGG3th/r1Hj+ksSFfGuL6P84ckxNgb
+        7KaOlTqFO9v3tsUQ7AogZfHZB+kv
+X-Google-Smtp-Source: AHgI3Iaqsh6FQmHgBjgSRZRB7JBrVjhXWRWMyOvRguR5/tyxE4/ANJHoAQT7+pZM2LJyoTc2e/UB6Q==
+X-Received: by 2002:a02:9951:: with SMTP id d17mr18657688jak.134.1549902284130;
+        Mon, 11 Feb 2019 08:24:44 -0800 (PST)
 Received: from gateway.1015granger.net (c-68-61-232-219.hsd1.mi.comcast.net. [68.61.232.219])
-        by smtp.gmail.com with ESMTPSA id k62sm4231788ite.3.2019.02.11.08.24.38
+        by smtp.gmail.com with ESMTPSA id s81sm2641832itb.8.2019.02.11.08.24.43
         (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Mon, 11 Feb 2019 08:24:38 -0800 (PST)
+        Mon, 11 Feb 2019 08:24:43 -0800 (PST)
 Received: from manet.1015granger.net (manet.1015granger.net [192.168.1.51])
-        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id x1BGObZN029985;
-        Mon, 11 Feb 2019 16:24:37 GMT
-Subject: [PATCH v1 11/23] SUNRPC: Remove rpc_xprt::tsh_size
+        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id x1BGOhIf029988;
+        Mon, 11 Feb 2019 16:24:43 GMT
+Subject: [PATCH v1 12/23] SUNRPC: Add build option to disable support for
+ insecure enctypes
 From:   Chuck Lever <chuck.lever@oracle.com>
 To:     anna.schumaker@netapp.com
 Cc:     linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date:   Mon, 11 Feb 2019 11:24:37 -0500
-Message-ID: <20190211162437.2817.33967.stgit@manet.1015granger.net>
+Date:   Mon, 11 Feb 2019 11:24:43 -0500
+Message-ID: <20190211162442.2817.45497.stgit@manet.1015granger.net>
 In-Reply-To: <20190211161920.2817.20881.stgit@manet.1015granger.net>
 References: <20190211161920.2817.20881.stgit@manet.1015granger.net>
 User-Agent: StGit/0.17.1-dirty
@@ -74,319 +75,118 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-tsh_size was added to accommodate transports that send a pre-amble
-before each RPC message. However, this assumes the pre-amble is
-fixed in size, which isn't true for some transports. That makes
-tsh_size not very generic.
+Enable distributions to enforce the rejection of ancient and
+insecure Kerberos enctypes in the kernel's RPCSEC_GSS
+implementation. These are the single-DES encryption types that
+were deprecated in 2012 by RFC 6649.
 
-Also I'd like to make the estimation of RPC send and receive
-buffer sizes more precise. tsh_size doesn't currently appear to be
-accounted for at all by call_allocate.
-
-Therefore let's just remove the tsh_size concept, and make the only
-transports that have a non-zero tsh_size employ a direct approach.
+Enctypes that were deprecated more recently (by RFC 8429) remain
+fully supported for now because they are still likely to be widely
+used.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Acked-by: Simo Sorce <simo@redhat.com>
 ---
- include/linux/sunrpc/xprt.h                |    7 --
- net/sunrpc/auth_gss/auth_gss.c             |    3 -
- net/sunrpc/clnt.c                          |    1 
- net/sunrpc/svc.c                           |   19 +-----
- net/sunrpc/xprtrdma/svc_rdma_backchannel.c |    1 
- net/sunrpc/xprtrdma/transport.c            |    1 
- net/sunrpc/xprtsock.c                      |   91 ++++++++++++++++++----------
- 7 files changed, 65 insertions(+), 58 deletions(-)
+ include/linux/sunrpc/gss_krb5_enctypes.h |   42 +++++++++++++++++++++++++++++-
+ net/sunrpc/Kconfig                       |   16 +++++++++++
+ net/sunrpc/auth_gss/gss_krb5_mech.c      |    2 +
+ 3 files changed, 59 insertions(+), 1 deletion(-)
 
-diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
-index ad7e910..3a39154 100644
---- a/include/linux/sunrpc/xprt.h
-+++ b/include/linux/sunrpc/xprt.h
-@@ -196,8 +196,6 @@ struct rpc_xprt {
- 
- 	size_t			max_payload;	/* largest RPC payload size,
- 						   in bytes */
--	unsigned int		tsh_size;	/* size of transport specific
--						   header */
- 
- 	struct rpc_wait_queue	binding;	/* requests waiting on rpcbind */
- 	struct rpc_wait_queue	sending;	/* requests waiting to send */
-@@ -362,11 +360,6 @@ struct rpc_xprt *	xprt_alloc(struct net *net, size_t size,
- 				unsigned int max_req);
- void			xprt_free(struct rpc_xprt *);
- 
--static inline __be32 *xprt_skip_transport_header(struct rpc_xprt *xprt, __be32 *p)
--{
--	return p + xprt->tsh_size;
--}
--
- static inline int
- xprt_enable_swap(struct rpc_xprt *xprt)
- {
-diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-index a42672e..4b52e2b 100644
---- a/net/sunrpc/auth_gss/auth_gss.c
-+++ b/net/sunrpc/auth_gss/auth_gss.c
-@@ -1563,8 +1563,7 @@ static void gss_pipe_free(struct gss_pipe *p)
- 
- 	/* We compute the checksum for the verifier over the xdr-encoded bytes
- 	 * starting with the xid and ending at the end of the credential: */
--	iov.iov_base = xprt_skip_transport_header(req->rq_xprt,
--					req->rq_snd_buf.head[0].iov_base);
-+	iov.iov_base = req->rq_snd_buf.head[0].iov_base;
- 	iov.iov_len = (u8 *)p - (u8 *)iov.iov_base;
- 	xdr_buf_from_iov(&iov, &verf_buf);
- 
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index d7ec613..c4203f6 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -2331,7 +2331,6 @@ void rpc_force_rebind(struct rpc_clnt *clnt)
- 
- 	/* FIXME: check buffer size? */
- 
--	p = xprt_skip_transport_header(req->rq_xprt, p);
- 	*p++ = req->rq_xid;		/* XID */
- 	*p++ = htonl(RPC_CALL);		/* CALL */
- 	*p++ = htonl(RPC_VERSION);	/* RPC version */
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index e87ddb9..dbd1969 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -1145,17 +1145,6 @@ static __printf(2,3) void svc_printk(struct svc_rqst *rqstp, const char *fmt, ..
- #endif
- 
+diff --git a/include/linux/sunrpc/gss_krb5_enctypes.h b/include/linux/sunrpc/gss_krb5_enctypes.h
+index ec6234e..981c89c 100644
+--- a/include/linux/sunrpc/gss_krb5_enctypes.h
++++ b/include/linux/sunrpc/gss_krb5_enctypes.h
+@@ -1,4 +1,44 @@
++/* SPDX-License-Identifier: GPL-2.0 */
  /*
-- * Setup response header for TCP, it has a 4B record length field.
-- */
--static void svc_tcp_prep_reply_hdr(struct svc_rqst *rqstp)
--{
--	struct kvec *resv = &rqstp->rq_res.head[0];
--
--	/* tcp needs a space for the record length... */
--	svc_putnl(resv, 0);
--}
--
--/*
-  * Common routine for processing the RPC request.
-  */
- static int
-@@ -1182,10 +1171,6 @@ static void svc_tcp_prep_reply_hdr(struct svc_rqst *rqstp)
- 	set_bit(RQ_USEDEFERRAL, &rqstp->rq_flags);
- 	clear_bit(RQ_DROPME, &rqstp->rq_flags);
- 
--	/* Setup reply header */
--	if (rqstp->rq_prot == IPPROTO_TCP)
--		svc_tcp_prep_reply_hdr(rqstp);
--
- 	svc_putu32(resv, rqstp->rq_xid);
- 
- 	vers = svc_getnl(argv);
-@@ -1443,6 +1428,10 @@ static void svc_tcp_prep_reply_hdr(struct svc_rqst *rqstp)
- 		goto out_drop;
- 	}
- 
-+	/* Reserve space for the record marker */
-+	if (rqstp->rq_prot == IPPROTO_TCP)
-+		svc_putnl(resv, 0);
-+
- 	/* Returns 1 for send, 0 for drop */
- 	if (likely(svc_process_common(rqstp, argv, resv)))
- 		return svc_send(rqstp);
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_backchannel.c b/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
-index b908f2c..907464c 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
-@@ -304,7 +304,6 @@ static int svc_rdma_bc_sendto(struct svcxprt_rdma *rdma,
- 	xprt->idle_timeout = RPCRDMA_IDLE_DISC_TO;
- 
- 	xprt->prot = XPRT_TRANSPORT_BC_RDMA;
--	xprt->tsh_size = 0;
- 	xprt->ops = &xprt_rdma_bc_procs;
- 
- 	memcpy(&xprt->addr, args->dstaddr, args->addrlen);
-diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index fbc171e..e7274dc 100644
---- a/net/sunrpc/xprtrdma/transport.c
-+++ b/net/sunrpc/xprtrdma/transport.c
-@@ -332,7 +332,6 @@
- 	xprt->idle_timeout = RPCRDMA_IDLE_DISC_TO;
- 
- 	xprt->resvport = 0;		/* privileged port not needed */
--	xprt->tsh_size = 0;		/* RPC-RDMA handles framing */
- 	xprt->ops = &xprt_rdma_procs;
- 
- 	/*
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 7754aa3..ae09d85 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -696,6 +696,40 @@ static void xs_stream_data_receive_workfn(struct work_struct *work)
- 
- #define XS_SENDMSG_FLAGS	(MSG_DONTWAIT | MSG_NOSIGNAL)
- 
-+/* Common case:
-+ *  - stream transport
-+ *  - sending from byte 0 of the message
-+ *  - the message is wholly contained in @xdr's head iovec
+- * Dumb way to share this static piece of information with nfsd
++ * Define the string that exports the set of kernel-supported
++ * Kerberos enctypes. This list is sent via upcall to gssd, and
++ * is also exposed via the nfsd /proc API. The consumers generally
++ * treat this as an ordered list, where the first item in the list
++ * is the most preferred.
 + */
-+static int xs_send_rm_and_kvec(struct socket *sock, struct xdr_buf *xdr,
-+			       unsigned int remainder)
-+{
-+	struct msghdr msg = {
-+		.msg_flags	= XS_SENDMSG_FLAGS | (remainder ? MSG_MORE : 0)
-+	};
-+	rpc_fraghdr marker = cpu_to_be32(RPC_LAST_STREAM_FRAGMENT |
-+					 (u32)xdr->len);
-+	struct kvec iov[2] = {
-+		{
-+			.iov_base	= &marker,
-+			.iov_len	= sizeof(marker)
-+		},
-+		{
-+			.iov_base	= xdr->head[0].iov_base,
-+			.iov_len	= xdr->head[0].iov_len
-+		},
-+	};
-+	int ret;
 +
-+	ret = kernel_sendmsg(sock, &msg, iov, 2,
-+			     iov[0].iov_len + iov[1].iov_len);
-+	if (ret < 0)
-+		return ret;
-+	if (ret < iov[0].iov_len)
-+		return -EPIPE;
-+	return ret - iov[0].iov_len;
-+}
++#ifndef _LINUX_SUNRPC_GSS_KRB5_ENCTYPES_H
++#define _LINUX_SUNRPC_GSS_KRB5_ENCTYPES_H
 +
- static int xs_send_kvec(struct socket *sock, struct sockaddr *addr, int addrlen, struct kvec *vec, unsigned int base, int more)
- {
- 	struct msghdr msg = {
-@@ -779,7 +813,11 @@ static int xs_sendpages(struct socket *sock, struct sockaddr *addr, int addrlen,
- 	if (base < xdr->head[0].iov_len || addr != NULL) {
- 		unsigned int len = xdr->head[0].iov_len - base;
- 		remainder -= len;
--		err = xs_send_kvec(sock, addr, addrlen, &xdr->head[0], base, remainder != 0);
-+		if (!base && !addr)
-+			err = xs_send_rm_and_kvec(sock, xdr, remainder);
-+		else
-+			err = xs_send_kvec(sock, addr, addrlen, &xdr->head[0],
-+					   base, remainder != 0);
- 		if (remainder == 0 || err != len)
- 			goto out;
- 		*sent_p += err;
-@@ -869,16 +907,6 @@ static int xs_nospace(struct rpc_rqst *req)
- 	return transport->xmit.offset != 0 && req->rq_bytes_sent == 0;
- }
++#ifdef CONFIG_SUNRPC_DISABLE_INSECURE_ENCTYPES
++
++/*
++ * NB: This list includes encryption types that were deprecated
++ * by RFC 8429 (DES3_CBC_SHA1 and ARCFOUR_HMAC).
++ *
++ * ENCTYPE_AES256_CTS_HMAC_SHA1_96
++ * ENCTYPE_AES128_CTS_HMAC_SHA1_96
++ * ENCTYPE_DES3_CBC_SHA1
++ * ENCTYPE_ARCFOUR_HMAC
++ */
++#define KRB5_SUPPORTED_ENCTYPES "18,17,16,23"
++
++#else	/* CONFIG_SUNRPC_DISABLE_INSECURE_ENCTYPES */
++
++/*
++ * NB: This list includes encryption types that were deprecated
++ * by RFC 8429 and RFC 6649.
++ *
++ * ENCTYPE_AES256_CTS_HMAC_SHA1_96
++ * ENCTYPE_AES128_CTS_HMAC_SHA1_96
++ * ENCTYPE_DES3_CBC_SHA1
++ * ENCTYPE_ARCFOUR_HMAC
++ * ENCTYPE_DES_CBC_MD5
++ * ENCTYPE_DES_CBC_CRC
++ * ENCTYPE_DES_CBC_MD4
+  */
+ #define KRB5_SUPPORTED_ENCTYPES "18,17,16,23,3,1,2"
++
++#endif	/* CONFIG_SUNRPC_DISABLE_INSECURE_ENCTYPES */
++
++#endif	/* _LINUX_SUNRPC_GSS_KRB5_ENCTYPES_H */
+diff --git a/net/sunrpc/Kconfig b/net/sunrpc/Kconfig
+index ac09ca8..83f5617 100644
+--- a/net/sunrpc/Kconfig
++++ b/net/sunrpc/Kconfig
+@@ -34,6 +34,22 @@ config RPCSEC_GSS_KRB5
  
--/*
-- * Construct a stream transport record marker in @buf.
-- */
--static inline void xs_encode_stream_record_marker(struct xdr_buf *buf)
--{
--	u32 reclen = buf->len - sizeof(rpc_fraghdr);
--	rpc_fraghdr *base = buf->head[0].iov_base;
--	*base = cpu_to_be32(RPC_LAST_STREAM_FRAGMENT | reclen);
--}
--
- /**
-  * xs_local_send_request - write an RPC request to an AF_LOCAL socket
-  * @req: pointer to RPC request
-@@ -905,8 +933,6 @@ static int xs_local_send_request(struct rpc_rqst *req)
- 		return -ENOTCONN;
- 	}
+ 	  If unsure, say Y.
  
--	xs_encode_stream_record_marker(&req->rq_snd_buf);
--
- 	xs_pktdump("packet data:",
- 			req->rq_svec->iov_base, req->rq_svec->iov_len);
++config CONFIG_SUNRPC_DISABLE_INSECURE_ENCTYPES
++	bool "Secure RPC: Disable insecure Kerberos encryption types"
++	depends on RPCSEC_GSS_KRB5
++	default n
++	help
++	  Choose Y here to disable the use of deprecated encryption types
++	  with the Kerberos version 5 GSS-API mechanism (RFC 1964). The
++	  deprecated encryption types include DES-CBC-MD5, DES-CBC-CRC,
++	  and DES-CBC-MD4. These types were deprecated by RFC 6649 because
++	  they were found to be insecure.
++
++	  N is the default because many sites have deployed KDCs and
++	  keytabs that contain only these deprecated encryption types.
++	  Choosing Y prevents the use of known-insecure encryption types
++	  but might result in compatibility problems.
++
+ config SUNRPC_DEBUG
+ 	bool "RPC: Enable dprintk debugging"
+ 	depends on SUNRPC && SYSCTL
+diff --git a/net/sunrpc/auth_gss/gss_krb5_mech.c b/net/sunrpc/auth_gss/gss_krb5_mech.c
+index eab71fc..be31a58 100644
+--- a/net/sunrpc/auth_gss/gss_krb5_mech.c
++++ b/net/sunrpc/auth_gss/gss_krb5_mech.c
+@@ -53,6 +53,7 @@
+ static struct gss_api_mech gss_kerberos_mech;	/* forward declaration */
  
-@@ -1057,8 +1083,6 @@ static int xs_tcp_send_request(struct rpc_rqst *req)
- 		return -ENOTCONN;
- 	}
- 
--	xs_encode_stream_record_marker(&req->rq_snd_buf);
--
- 	xs_pktdump("packet data:",
- 				req->rq_svec->iov_base,
- 				req->rq_svec->iov_len);
-@@ -2534,26 +2558,35 @@ static int bc_sendto(struct rpc_rqst *req)
- {
- 	int len;
- 	struct xdr_buf *xbufp = &req->rq_snd_buf;
--	struct rpc_xprt *xprt = req->rq_xprt;
- 	struct sock_xprt *transport =
--				container_of(xprt, struct sock_xprt, xprt);
--	struct socket *sock = transport->sock;
-+			container_of(req->rq_xprt, struct sock_xprt, xprt);
- 	unsigned long headoff;
- 	unsigned long tailoff;
-+	struct page *tailpage;
-+	struct msghdr msg = {
-+		.msg_flags	= MSG_MORE
-+	};
-+	rpc_fraghdr marker = cpu_to_be32(RPC_LAST_STREAM_FRAGMENT |
-+					 (u32)xbufp->len);
-+	struct kvec iov = {
-+		.iov_base	= &marker,
-+		.iov_len	= sizeof(marker),
-+	};
- 
--	xs_encode_stream_record_marker(xbufp);
-+	len = kernel_sendmsg(transport->sock, &msg, &iov, 1, iov.iov_len);
-+	if (len != iov.iov_len)
-+		return -EAGAIN;
- 
-+	tailpage = NULL;
-+	if (xbufp->tail[0].iov_len)
-+		tailpage = virt_to_page(xbufp->tail[0].iov_base);
- 	tailoff = (unsigned long)xbufp->tail[0].iov_base & ~PAGE_MASK;
- 	headoff = (unsigned long)xbufp->head[0].iov_base & ~PAGE_MASK;
--	len = svc_send_common(sock, xbufp,
-+	len = svc_send_common(transport->sock, xbufp,
- 			      virt_to_page(xbufp->head[0].iov_base), headoff,
--			      xbufp->tail[0].iov_base, tailoff);
--
--	if (len != xbufp->len) {
--		printk(KERN_NOTICE "Error sending entire callback!\n");
--		len = -EAGAIN;
--	}
--
-+			      tailpage, tailoff);
-+	if (len != xbufp->len)
-+		return -EAGAIN;
- 	return len;
- }
- 
-@@ -2793,7 +2826,6 @@ static struct rpc_xprt *xs_setup_local(struct xprt_create *args)
- 	transport = container_of(xprt, struct sock_xprt, xprt);
- 
- 	xprt->prot = 0;
--	xprt->tsh_size = sizeof(rpc_fraghdr) / sizeof(u32);
- 	xprt->max_payload = RPC_MAX_FRAGMENT_SIZE;
- 
- 	xprt->bind_timeout = XS_BIND_TO;
-@@ -2862,7 +2894,6 @@ static struct rpc_xprt *xs_setup_udp(struct xprt_create *args)
- 	transport = container_of(xprt, struct sock_xprt, xprt);
- 
- 	xprt->prot = IPPROTO_UDP;
--	xprt->tsh_size = 0;
- 	/* XXX: header size can vary due to auth type, IPv6, etc. */
- 	xprt->max_payload = (1U << 16) - (MAX_HEADER << 3);
- 
-@@ -2942,7 +2973,6 @@ static struct rpc_xprt *xs_setup_tcp(struct xprt_create *args)
- 	transport = container_of(xprt, struct sock_xprt, xprt);
- 
- 	xprt->prot = IPPROTO_TCP;
--	xprt->tsh_size = sizeof(rpc_fraghdr) / sizeof(u32);
- 	xprt->max_payload = RPC_MAX_FRAGMENT_SIZE;
- 
- 	xprt->bind_timeout = XS_BIND_TO;
-@@ -3015,7 +3045,6 @@ static struct rpc_xprt *xs_setup_bc_tcp(struct xprt_create *args)
- 	transport = container_of(xprt, struct sock_xprt, xprt);
- 
- 	xprt->prot = IPPROTO_TCP;
--	xprt->tsh_size = sizeof(rpc_fraghdr) / sizeof(u32);
- 	xprt->max_payload = RPC_MAX_FRAGMENT_SIZE;
- 	xprt->timeout = &xs_tcp_default_timeout;
- 
+ static const struct gss_krb5_enctype supported_gss_krb5_enctypes[] = {
++#ifndef CONFIG_SUNRPC_DISABLE_INSECURE_ENCTYPES
+ 	/*
+ 	 * DES (All DES enctypes are mapped to the same gss functionality)
+ 	 */
+@@ -74,6 +75,7 @@
+ 	  .cksumlength = 8,
+ 	  .keyed_cksum = 0,
+ 	},
++#endif	/* CONFIG_SUNRPC_DISABLE_INSECURE_ENCTYPES */
+ 	/*
+ 	 * RC4-HMAC
+ 	 */
 
