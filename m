@@ -2,105 +2,121 @@ Return-Path: <SRS0=XA/Y=QT=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.5 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
-	SIGNED_OFF_BY,SPF_PASS,USER_AGENT_MUTT autolearn=ham autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 707B9C282C4
-	for <linux-nfs@archiver.kernel.org>; Tue, 12 Feb 2019 18:27:38 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 10823C282C4
+	for <linux-nfs@archiver.kernel.org>; Tue, 12 Feb 2019 18:52:40 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 3838C222C4
-	for <linux-nfs@archiver.kernel.org>; Tue, 12 Feb 2019 18:27:38 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1549996058;
-	bh=PNpbkcRbbXPVhdxQGFCpfM+tGy2YMqDGStMNrusOHtU=;
-	h=Date:From:To:Cc:Subject:List-ID:From;
-	b=ofxUsFxvz/DPTY8T5EPqlaFuutxwoeMx7Mqpx49YINmcN9gu8HqLroDk5jVGwKShp
-	 30Ld3tyJT1ybjl0ZiItb95nVL/1VwYHQCj9YrWN0oLe1ozB2k1ESVX40zDEMr7plGv
-	 fgLBb+JV5dLcE6IxvrmIv+pVLMnkkKL2CEpBNI5w=
+	by mail.kernel.org (Postfix) with ESMTP id DA8C0222BE
+	for <linux-nfs@archiver.kernel.org>; Tue, 12 Feb 2019 18:52:39 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1730205AbfBLS1h (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 12 Feb 2019 13:27:37 -0500
-Received: from mail.kernel.org ([198.145.29.99]:60134 "EHLO mail.kernel.org"
+        id S1728460AbfBLSwj (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 12 Feb 2019 13:52:39 -0500
+Received: from mx1.redhat.com ([209.132.183.28]:34922 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1729198AbfBLS1h (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 12 Feb 2019 13:27:37 -0500
-Received: from localhost (5356596B.cm-6-7b.dynamic.ziggo.nl [83.86.89.107])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        id S1727348AbfBLSwj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 12 Feb 2019 13:52:39 -0500
+Received: from smtp.corp.redhat.com (int-mx04.intmail.prod.int.phx2.redhat.com [10.5.11.14])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 18351222BB;
-        Tue, 12 Feb 2019 18:27:35 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1549996056;
-        bh=PNpbkcRbbXPVhdxQGFCpfM+tGy2YMqDGStMNrusOHtU=;
-        h=Date:From:To:Cc:Subject:From;
-        b=O3RgSNCL1YIE8l4ZaxLG3upkKFikPc2FRbnND2SjcWwuBfQVzqJb9qg++v0wshRYO
-         JQhNAx53W9sOmlBuDsPMf+2FmHT38Ejl1umkxHUZP7fTb2UmokCEXj1CRhHqvmumoO
-         PNHqb+TiOjM7uMN2IRufB+z0s26QrOjsMohhg7j4=
-Date:   Tue, 12 Feb 2019 19:27:34 +0100
-From:   Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-To:     "J. Bruce Fields" <bfields@fieldses.org>,
-        Jeff Layton <jlayton@kernel.org>,
-        Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>
-Cc:     linux-nfs@vger.kernel.org, netdev@vger.kernel.org,
-        David Howells <dhowells@redhat.com>
-Subject: [PATCH] rpc: properly check debugfs dentry before using it
-Message-ID: <20190212182734.GA4509@kroah.com>
+        by mx1.redhat.com (Postfix) with ESMTPS id 181BAC070474;
+        Tue, 12 Feb 2019 18:52:39 +0000 (UTC)
+Received: from [172.16.176.1] (ovpn-112-2.rdu2.redhat.com [10.10.112.2])
+        by smtp.corp.redhat.com (Postfix) with ESMTPS id 0E4C85D9D1;
+        Tue, 12 Feb 2019 18:52:37 +0000 (UTC)
+From:   "Benjamin Coddington" <bcodding@redhat.com>
+To:     trond.myklebust@hammerspace.com, anna.schumaker@netapp.com
+Cc:     linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2] NFS: Don't use page_file_mapping after removing the
+ page
+Date:   Tue, 12 Feb 2019 13:52:36 -0500
+Message-ID: <D1443158-8840-4D21-8215-68B96138F45C@redhat.com>
+In-Reply-To: <5eb439e690e72e3a69ad0a5bb48827c7e5ce32a8.1549451324.git.bcodding@redhat.com>
+References: <5eb439e690e72e3a69ad0a5bb48827c7e5ce32a8.1549451324.git.bcodding@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-User-Agent: Mutt/1.11.3 (2019-02-01)
+Content-Type: text/plain; format=flowed
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.14
+X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.32]); Tue, 12 Feb 2019 18:52:39 +0000 (UTC)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-debugfs can now report an error code if something went wrong instead of
-just NULL.  So if the return value is to be used as a "real" dentry, it
-needs to be checked if it is an error before dereferencing it.
+Hi Trond and Anna,
 
-This is now happening because of ff9fb72bc077 ("debugfs: return error
-values, not NULL"), but why debugfs files are not being created properly
-is an older issue, probably one that has always been there and should
-probably be looked at...
+I want to bump this.  The problem we created is easier to hit now than 
+the problem we were fixing, so something should be done for 5.0 if 
+possible.
 
-Cc: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Jeff Layton <jlayton@kernel.org>
-Cc: Trond Myklebust <trond.myklebust@hammerspace.com>
-Cc: Anna Schumaker <anna.schumaker@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Cc: netdev@vger.kernel.org
-Reported-by: David Howells <dhowells@redhat.com>
-Tested-by: David Howells <dhowells@redhat.com>
-Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Ben
 
----
- net/sunrpc/debugfs.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+On 6 Feb 2019, at 6:09, Benjamin Coddington wrote:
 
-I can take this through my tree if people don't object, or it can go
-through the NFS tree.  It does need to get merged before 5.0-final
-though.
-
-I also have a "larger" debugfs cleanup patch for this file, but that's
-not really 5.0-final material and I will send it out later.
-
-thanks,
-
-greg k-h
-
-diff --git a/net/sunrpc/debugfs.c b/net/sunrpc/debugfs.c
-index 45a033329cd4..19bb356230ed 100644
---- a/net/sunrpc/debugfs.c
-+++ b/net/sunrpc/debugfs.c
-@@ -146,7 +146,7 @@ rpc_clnt_debugfs_register(struct rpc_clnt *clnt)
- 	rcu_read_lock();
- 	xprt = rcu_dereference(clnt->cl_xprt);
- 	/* no "debugfs" dentry? Don't bother with the symlink. */
--	if (!xprt->debugfs) {
-+	if (IS_ERR_OR_NULL(xprt->debugfs)) {
- 		rcu_read_unlock();
- 		return;
- 	}
+> If nfs_page_async_flush() removes the page from the mapping, then we 
+> can't
+> use page_file_mapping() on it as nfs_updatepate() is wont to do when
+> receiving an error.  Instead, push the mapping to the stack before the 
+> page
+> is possibly truncated.
+>
+> Fixes: 8fc75bed96bb ("NFS: Fix up return value on fatal errors in 
+> nfs_page_async_flush()")
+> Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
+> ---
+>  fs/nfs/write.c | 11 ++++++-----
+>  1 file changed, 6 insertions(+), 5 deletions(-)
+>
+> diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+> index f12cb31a41e5..d09c9f878141 100644
+> --- a/fs/nfs/write.c
+> +++ b/fs/nfs/write.c
+> @@ -238,9 +238,9 @@ static void nfs_grow_file(struct page *page, 
+> unsigned int offset, unsigned int c
+>  }
+>
+>  /* A writeback failed: mark the page as bad, and invalidate the page 
+> cache */
+> -static void nfs_set_pageerror(struct page *page)
+> +static void nfs_set_pageerror(struct address_space *mapping)
+>  {
+> -	nfs_zap_mapping(page_file_mapping(page)->host, 
+> page_file_mapping(page));
+> +	nfs_zap_mapping(mapping->host, mapping);
+>  }
+>
+>  /*
+> @@ -994,7 +994,7 @@ static void nfs_write_completion(struct 
+> nfs_pgio_header *hdr)
+>  		nfs_list_remove_request(req);
+>  		if (test_bit(NFS_IOHDR_ERROR, &hdr->flags) &&
+>  		    (hdr->good_bytes < bytes)) {
+> -			nfs_set_pageerror(req->wb_page);
+> +			nfs_set_pageerror(page_file_mapping(req->wb_page));
+>  			nfs_context_set_write_error(req->wb_context, hdr->error);
+>  			goto remove_req;
+>  		}
+> @@ -1348,7 +1348,8 @@ int nfs_updatepage(struct file *file, struct 
+> page *page,
+>  		unsigned int offset, unsigned int count)
+>  {
+>  	struct nfs_open_context *ctx = nfs_file_open_context(file);
+> -	struct inode	*inode = page_file_mapping(page)->host;
+> +	struct address_space *mapping = page_file_mapping(page);
+> +	struct inode	*inode = mapping->host;
+>  	int		status = 0;
+>
+>  	nfs_inc_stats(inode, NFSIOS_VFSUPDATEPAGE);
+> @@ -1366,7 +1367,7 @@ int nfs_updatepage(struct file *file, struct 
+> page *page,
+>
+>  	status = nfs_writepage_setup(ctx, page, offset, count);
+>  	if (status < 0)
+> -		nfs_set_pageerror(page);
+> +		nfs_set_pageerror(mapping);
+>  	else
+>  		__set_page_dirty_nobuffers(page);
+>  out:
+> -- 
+> 2.14.3
