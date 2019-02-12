@@ -2,151 +2,68 @@ Return-Path: <SRS0=XA/Y=QT=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_PASS autolearn=unavailable autolearn_force=no
+X-Spam-Status: No, score=-4.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 609A0C282CA
-	for <linux-nfs@archiver.kernel.org>; Tue, 12 Feb 2019 14:31:23 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5339EC282C4
+	for <linux-nfs@archiver.kernel.org>; Tue, 12 Feb 2019 14:35:26 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 38225214DA
-	for <linux-nfs@archiver.kernel.org>; Tue, 12 Feb 2019 14:31:23 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 2AC9D214DA
+	for <linux-nfs@archiver.kernel.org>; Tue, 12 Feb 2019 14:35:26 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1730456AbfBLObS convert rfc822-to-8bit (ORCPT
-        <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 12 Feb 2019 09:31:18 -0500
-Received: from mx1.redhat.com ([209.132.183.28]:45978 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1728166AbfBLObR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 12 Feb 2019 09:31:17 -0500
-Received: from smtp.corp.redhat.com (int-mx07.intmail.prod.int.phx2.redhat.com [10.5.11.22])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 2AC0988E64;
-        Tue, 12 Feb 2019 14:31:17 +0000 (UTC)
-Received: from warthog.procyon.org.uk (ovpn-121-129.rdu2.redhat.com [10.10.121.129])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id AB7F0101960B;
-        Tue, 12 Feb 2019 14:31:15 +0000 (UTC)
-Organization: Red Hat UK Ltd. Registered Address: Red Hat UK Ltd, Amberley
-        Place, 107-111 Peascod Street, Windsor, Berkshire, SI4 1TE, United
-        Kingdom.
-        Registered in England and Wales under Company Registration No. 3798903
-From:   David Howells <dhowells@redhat.com>
-In-Reply-To: <19914.1549970944@warthog.procyon.org.uk>
-References: <19914.1549970944@warthog.procyon.org.uk>
-To:     Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Cc:     dhowells@redhat.com, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, mhiramat@kernel.org,
-        bigeasy@linutronix.de
-Subject: Oops in rpc_clnt_debugfs_register() from debugfs change
+        id S1727750AbfBLOfZ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 12 Feb 2019 09:35:25 -0500
+Received: from mx2.suse.de ([195.135.220.15]:41774 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1729482AbfBLOfZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 12 Feb 2019 09:35:25 -0500
+X-Virus-Scanned: by amavisd-new at test-mx.suse.de
+Received: from relay2.suse.de (unknown [195.135.220.254])
+        by mx1.suse.de (Postfix) with ESMTP id E1380ACE3;
+        Tue, 12 Feb 2019 14:35:23 +0000 (UTC)
+Subject: Re: [PATCH v3] xprtrdma: Make sure Send CQ is allocated on an
+ existing compvec
+To:     Chuck Lever <chuck.lever@oracle.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>
+Cc:     linux-rdma <linux-rdma@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+References: <9d418664-1f67-c705-19a0-80fc9dc5a12b@suse.com>
+ <91CC910C-48A1-4234-8347-39D1A710A87C@oracle.com>
+From:   Nicolas Morey-Chaisemartin <nmoreychaisemartin@suse.com>
+Message-ID: <f9291365-bbb7-f516-cac0-0a8b28fa22ec@suse.com>
+Date:   Tue, 12 Feb 2019 15:35:21 +0100
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101
+ Thunderbird/60.3.0
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-ID: <14222.1549981874.1@warthog.procyon.org.uk>
-Content-Transfer-Encoding: 8BIT
-Date:   Tue, 12 Feb 2019 14:31:14 +0000
-Message-ID: <14223.1549981874@warthog.procyon.org.uk>
-X-Scanned-By: MIMEDefang 2.84 on 10.5.11.22
-X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.25]); Tue, 12 Feb 2019 14:31:17 +0000 (UTC)
+In-Reply-To: <91CC910C-48A1-4234-8347-39D1A710A87C@oracle.com>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 7bit
+Content-Language: en-US
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-I've bisected an oops that occurs in rpc_clnt_debugfs_register() trying to
-dereference a pointer with -EACCES in it.  This is the causing commit, though
-I suspect the bug is in sunrpc expecting to see NULL rather than an error.
 
-ff9fb72bc07705c00795ca48631f7fffe24d2c6b is the first bad commit
-commit ff9fb72bc07705c00795ca48631f7fffe24d2c6b
-Author: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Date:   Wed Jan 23 11:28:14 2019 +0100
 
-    debugfs: return error values, not NULL
-    
-    When an error happens, debugfs should return an error pointer value, not
-    NULL.  This will prevent the totally theoretical error where a debugfs
-    call fails due to lack of memory, returning NULL, and that dentry value
-    is then passed to another debugfs call, which would end up succeeding,
-    creating a file at the root of the debugfs tree, but would then be
-    impossible to remove (because you can not remove the directory NULL).
-    
-    So, to make everyone happy, always return errors, this makes the users
-    of debugfs much simpler (they do not have to ever check the return
-    value), and everyone can rest easy.
-    ...
+On 2/5/19 6:23 PM, Chuck Lever wrote:
+>
+>> On Feb 5, 2019, at 12:21 PM, Nicolas Morey-Chaisemartin <nmoreychaisemartin@suse.com> wrote:
+>>
+>> Make sure the device has at least 2 completion vectors
+>> before allocating to compvec#1
+>>
+>> Fixes: a4699f5647f3 (xprtrdma: Put Send CQ in IB_POLL_WORKQUEUE mode)
+>> Signed-off-by: Nicolas Morey-Chaisemartin <nmoreychaisemartin@suse.com>
+> Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
+>
+> Anna, can you see that this fix gets into v5.0-rc ? Thanks!
+>
+>
+Ping.
 
-The attached oops occurs during boot from the gssproxy process in
-rpc_clnt_debugfs_register().  The code at this point is:
+Haven't seen this upstream nor in the nfs repo (maybe I'm not checking the right one :) )
+Any chance this gets picked up for 5.0 ?
 
-   0xffffffff8195cbdd <+450>:   mov    0x50(%rax),%rcx   <--- oopsing
-   0xffffffff8195cbe1 <+454>:   mov    $0xffffffff821cc8ba,%rdx
-   0xffffffff8195cbe8 <+461>:   mov    $0x18,%esi
-   0xffffffff8195cbed <+466>:   lea    -0x30(%rbp),%rdi
-   0xffffffff8195cbf1 <+470>:   callq  0xffffffff819db773 <snprintf>
-
-RAX is -EACCES.
-
-Looking in the source:
-
-	len = snprintf(name, sizeof(name), "../../rpc_xprt/%s",
-			xprt->debugfs->d_name.name);
-
-I think xprt->debugfs is the value in RAX.
-
-	(gdb) p &((struct dentry *)0)->d_name.name
-	$5 = (const unsigned char **) 0x50 <irq_stack_union+80>
-
-which matches the offset on the oopsing MOV instruction.
-
-This is with linus/master (aa0c38cf39de73bf7360a3da8f1707601261e518).
-
-David
----
-BUG: unable to handle kernel NULL pointer dereference at 0000000000000043
-#PF error: [normal kernel read fault]
-...
-RIP: 0010:rpc_clnt_debugfs_register+0x1c2/0x27e
-RSP: 0018:ffff8880be407b58 EFLAGS: 00010286
-RAX: fffffffffffffff3 RBX: ffff8880d56c0e00 RCX: ab0ed8627cda32e2
-RDX: 000000000000000f RSI: ffffffff82462ac0 RDI: ffff8880ce487018
-RBP: ffff8880be407b88 R08: 0000000000000000 R09: 0000000000000000
-R10: ffffffff826ccfac R11: 0000000000000000 R12: 0000000000000000
-R13: ffffffff8241b540 R14: ffff8880ce6a1000 R15: ffff8880d56c0e00
-FS:  00007f195717bc80(0000) GS:ffff8880c6d80000(0000) knlGS:0000000000000000
-CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-CR2: 0000000000000043 CR3: 00000000be40a004 CR4: 00000000001606e0
-Call Trace:
- rpc_client_register+0x43/0x271
- rpc_new_client+0x215/0x291
- rpc_create_xprt+0xa5/0x167
- ? rpc_xprt_debugfs_register+0x8b/0xce
- ? page_mapping+0x5e/0x84
- rpc_create+0x143/0x15f
- ? __mutex_lock+0x8f/0x7b0
- ? set_gssp_clnt+0x13b/0x194
- ? mntput_no_expire+0xc0/0x39e
- gssp_rpc_create+0x76/0xdb
- set_gssp_clnt+0x147/0x194
- ? _kstrtoull+0x3b/0x8a
- write_gssp+0x90/0xcc
- proc_reg_write+0x3b/0x59
- ? proc_reg_poll+0x52/0x52
- __vfs_write+0x31/0x15b
- ? rcu_read_lock_sched_held+0x5d/0x63
- ? rcu_sync_lockdep_assert+0x28/0x4e
- ? __sb_start_write+0xb6/0x151
- ? vfs_write+0xca/0x182
- vfs_write+0xdb/0x182
- ksys_write+0x60/0xb1
- do_syscall_64+0x7d/0x1a0
- entry_SYSCALL_64_after_hwframe+0x49/0xbe
-RIP: 0033:0x7f1957711d25
-Code: 00 00 75 05 48 83 c4 58 c3 e8 f7 49 ff ff 0f 1f 80 00 00 00 00 f3 0f 1e fa 8b 05 26 f7 00 00 85 c0 75 12 b8 01 00 00 00 0f 05 <48> 3d 00 f0 ff ff 77 53 c3 66 90 41 54 49 89 d4 55 48 89 f5 53 89
-RSP: 002b:00007ffcc0d5f288 EFLAGS: 00000246 ORIG_RAX: 0000000000000001
-RAX: ffffffffffffffda RBX: 0000000000000009 RCX: 00007f1957711d25
-RDX: 0000000000000001 RSI: 00007ffcc0d5f296 RDI: 0000000000000009
-RBP: 0000000000000000 R08: 0000000000000031 R09: 0000000000000000
-R10: 0000000000000000 R11: 0000000000000246 R12: 000055be5a699950
-R13: 00007ffcc0d5f5c0 R14: 0000000000000000 R15: 0000000000000000
-Modules linked in:
-CR2: 0000000000000043
+Nicolas
