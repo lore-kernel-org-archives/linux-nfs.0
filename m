@@ -2,68 +2,113 @@ Return-Path: <SRS0=XA/Y=QT=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-4.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS autolearn=ham autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-2.5 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS,
+	URIBL_BLOCKED,USER_AGENT_MUTT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5339EC282C4
-	for <linux-nfs@archiver.kernel.org>; Tue, 12 Feb 2019 14:35:26 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C418DC282C4
+	for <linux-nfs@archiver.kernel.org>; Tue, 12 Feb 2019 14:37:24 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 2AC9D214DA
-	for <linux-nfs@archiver.kernel.org>; Tue, 12 Feb 2019 14:35:26 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 959BC2186A
+	for <linux-nfs@archiver.kernel.org>; Tue, 12 Feb 2019 14:37:24 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=default; t=1549982244;
+	bh=wSQp1s7vV/Fk7aOZeyAQNu1tFbXx1ebe+cxsy91/sXc=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To:List-ID:From;
+	b=GbgkxgU5tQXScVlGX0GSwouq6eJTmBT3D7/KBx5bw5Su2ufGm1ZRw+E/jqmz+8e4L
+	 8Hc7UyRnGLEaYSYtAJeXXdKtLNkYYtTjw4aCRdniNytrbs50FLO40XC2Gp98cTddWO
+	 7NTJhEGNtLBVNhAMNZ706MC2pjvbpqfRQVkFh+os=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727750AbfBLOfZ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 12 Feb 2019 09:35:25 -0500
-Received: from mx2.suse.de ([195.135.220.15]:41774 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1729482AbfBLOfZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 12 Feb 2019 09:35:25 -0500
-X-Virus-Scanned: by amavisd-new at test-mx.suse.de
-Received: from relay2.suse.de (unknown [195.135.220.254])
-        by mx1.suse.de (Postfix) with ESMTP id E1380ACE3;
-        Tue, 12 Feb 2019 14:35:23 +0000 (UTC)
-Subject: Re: [PATCH v3] xprtrdma: Make sure Send CQ is allocated on an
- existing compvec
-To:     Chuck Lever <chuck.lever@oracle.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>
-Cc:     linux-rdma <linux-rdma@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-References: <9d418664-1f67-c705-19a0-80fc9dc5a12b@suse.com>
- <91CC910C-48A1-4234-8347-39D1A710A87C@oracle.com>
-From:   Nicolas Morey-Chaisemartin <nmoreychaisemartin@suse.com>
-Message-ID: <f9291365-bbb7-f516-cac0-0a8b28fa22ec@suse.com>
-Date:   Tue, 12 Feb 2019 15:35:21 +0100
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101
- Thunderbird/60.3.0
+        id S1729063AbfBLOhX (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 12 Feb 2019 09:37:23 -0500
+Received: from mail.kernel.org ([198.145.29.99]:40478 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1728993AbfBLOhX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 12 Feb 2019 09:37:23 -0500
+Received: from localhost (5356596B.cm-6-7b.dynamic.ziggo.nl [83.86.89.107])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by mail.kernel.org (Postfix) with ESMTPSA id A6137214DA;
+        Tue, 12 Feb 2019 14:37:22 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=default; t=1549982243;
+        bh=wSQp1s7vV/Fk7aOZeyAQNu1tFbXx1ebe+cxsy91/sXc=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+        b=FwUNo0fUatxok5NpzhCWkdW+cHbSMSlg5up20wY/5Nk6lKBe5tN3L/w8RQjilUiQ+
+         kD/SUPNpmnwgBW4k0yrDZn/KwXfFvg3PdhUdAd3Hk9UKym142jHPd9mXWp5B+soe8K
+         xWo15yBi/g/v50ZUyJZ2VoVzCC64z508RZEE9Fc4=
+Date:   Tue, 12 Feb 2019 15:37:20 +0100
+From:   Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+To:     David Howells <dhowells@redhat.com>
+Cc:     linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        mhiramat@kernel.org, bigeasy@linutronix.de
+Subject: Re: Oops in rpc_clnt_debugfs_register() from debugfs change
+Message-ID: <20190212143720.GA16380@kroah.com>
+References: <19914.1549970944@warthog.procyon.org.uk>
+ <14223.1549981874@warthog.procyon.org.uk>
 MIME-Version: 1.0
-In-Reply-To: <91CC910C-48A1-4234-8347-39D1A710A87C@oracle.com>
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 7bit
-Content-Language: en-US
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <14223.1549981874@warthog.procyon.org.uk>
+User-Agent: Mutt/1.11.3 (2019-02-01)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
+On Tue, Feb 12, 2019 at 02:31:14PM +0000, David Howells wrote:
+> I've bisected an oops that occurs in rpc_clnt_debugfs_register() trying to
+> dereference a pointer with -EACCES in it.  This is the causing commit, though
+> I suspect the bug is in sunrpc expecting to see NULL rather than an error.
+> 
+> ff9fb72bc07705c00795ca48631f7fffe24d2c6b is the first bad commit
+> commit ff9fb72bc07705c00795ca48631f7fffe24d2c6b
+> Author: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+> Date:   Wed Jan 23 11:28:14 2019 +0100
+> 
+>     debugfs: return error values, not NULL
+>     
+>     When an error happens, debugfs should return an error pointer value, not
+>     NULL.  This will prevent the totally theoretical error where a debugfs
+>     call fails due to lack of memory, returning NULL, and that dentry value
+>     is then passed to another debugfs call, which would end up succeeding,
+>     creating a file at the root of the debugfs tree, but would then be
+>     impossible to remove (because you can not remove the directory NULL).
+>     
+>     So, to make everyone happy, always return errors, this makes the users
+>     of debugfs much simpler (they do not have to ever check the return
+>     value), and everyone can rest easy.
+>     ...
+> 
+> The attached oops occurs during boot from the gssproxy process in
+> rpc_clnt_debugfs_register().  The code at this point is:
+> 
+>    0xffffffff8195cbdd <+450>:   mov    0x50(%rax),%rcx   <--- oopsing
+>    0xffffffff8195cbe1 <+454>:   mov    $0xffffffff821cc8ba,%rdx
+>    0xffffffff8195cbe8 <+461>:   mov    $0x18,%esi
+>    0xffffffff8195cbed <+466>:   lea    -0x30(%rbp),%rdi
+>    0xffffffff8195cbf1 <+470>:   callq  0xffffffff819db773 <snprintf>
+> 
+> RAX is -EACCES.
+> 
+> Looking in the source:
+> 
+> 	len = snprintf(name, sizeof(name), "../../rpc_xprt/%s",
+> 			xprt->debugfs->d_name.name);
+> 
+> I think xprt->debugfs is the value in RAX.
+> 
+> 	(gdb) p &((struct dentry *)0)->d_name.name
+> 	$5 = (const unsigned char **) 0x50 <irq_stack_union+80>
+> 
+> which matches the offset on the oopsing MOV instruction.
+> 
+> This is with linus/master (aa0c38cf39de73bf7360a3da8f1707601261e518).
 
+Ugh, yeah, I see the problem, sorry about that.
 
-On 2/5/19 6:23 PM, Chuck Lever wrote:
->
->> On Feb 5, 2019, at 12:21 PM, Nicolas Morey-Chaisemartin <nmoreychaisemartin@suse.com> wrote:
->>
->> Make sure the device has at least 2 completion vectors
->> before allocating to compvec#1
->>
->> Fixes: a4699f5647f3 (xprtrdma: Put Send CQ in IB_POLL_WORKQUEUE mode)
->> Signed-off-by: Nicolas Morey-Chaisemartin <nmoreychaisemartin@suse.com>
-> Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
->
-> Anna, can you see that this fix gets into v5.0-rc ? Thanks!
->
->
-Ping.
+I wonder why the debugfs call is always failing, that's not good...
 
-Haven't seen this upstream nor in the nfs repo (maybe I'm not checking the right one :) )
-Any chance this gets picked up for 5.0 ?
+let me dig and see if I already have a patch for this...
 
-Nicolas
+greg k-h
