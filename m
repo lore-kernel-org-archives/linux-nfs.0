@@ -3,53 +3,79 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
 X-Spam-Status: No, score=-1.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
+	MAILING_LIST_MULTI,SPF_PASS autolearn=unavailable autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C5886C282CA
-	for <linux-nfs@archiver.kernel.org>; Tue, 12 Feb 2019 11:29:06 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 609A0C282CA
+	for <linux-nfs@archiver.kernel.org>; Tue, 12 Feb 2019 14:31:23 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 9D9D22080F
-	for <linux-nfs@archiver.kernel.org>; Tue, 12 Feb 2019 11:29:06 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 38225214DA
+	for <linux-nfs@archiver.kernel.org>; Tue, 12 Feb 2019 14:31:23 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728084AbfBLL3G convert rfc822-to-8bit (ORCPT
+        id S1730456AbfBLObS convert rfc822-to-8bit (ORCPT
         <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 12 Feb 2019 06:29:06 -0500
-Received: from mx1.redhat.com ([209.132.183.28]:49732 "EHLO mx1.redhat.com"
+        Tue, 12 Feb 2019 09:31:18 -0500
+Received: from mx1.redhat.com ([209.132.183.28]:45978 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726044AbfBLL3F (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 12 Feb 2019 06:29:05 -0500
-Received: from smtp.corp.redhat.com (int-mx04.intmail.prod.int.phx2.redhat.com [10.5.11.14])
+        id S1728166AbfBLObR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 12 Feb 2019 09:31:17 -0500
+Received: from smtp.corp.redhat.com (int-mx07.intmail.prod.int.phx2.redhat.com [10.5.11.22])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id A346C5947A
-        for <linux-nfs@vger.kernel.org>; Tue, 12 Feb 2019 11:29:05 +0000 (UTC)
+        by mx1.redhat.com (Postfix) with ESMTPS id 2AC0988E64;
+        Tue, 12 Feb 2019 14:31:17 +0000 (UTC)
 Received: from warthog.procyon.org.uk (ovpn-121-129.rdu2.redhat.com [10.10.121.129])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 191585D9D1;
-        Tue, 12 Feb 2019 11:29:04 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTP id AB7F0101960B;
+        Tue, 12 Feb 2019 14:31:15 +0000 (UTC)
 Organization: Red Hat UK Ltd. Registered Address: Red Hat UK Ltd, Amberley
         Place, 107-111 Peascod Street, Windsor, Berkshire, SI4 1TE, United
         Kingdom.
         Registered in England and Wales under Company Registration No. 3798903
 From:   David Howells <dhowells@redhat.com>
-To:     linux-nfs@vger.kernel.org
-cc:     dhowells@redhat.com
-Subject: Oops in rpc_clnt_debugfs_register()
+In-Reply-To: <19914.1549970944@warthog.procyon.org.uk>
+References: <19914.1549970944@warthog.procyon.org.uk>
+To:     Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Cc:     dhowells@redhat.com, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, mhiramat@kernel.org,
+        bigeasy@linutronix.de
+Subject: Oops in rpc_clnt_debugfs_register() from debugfs change
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Content-ID: <19913.1549970944.1@warthog.procyon.org.uk>
+Content-ID: <14222.1549981874.1@warthog.procyon.org.uk>
 Content-Transfer-Encoding: 8BIT
-Date:   Tue, 12 Feb 2019 11:29:04 +0000
-Message-ID: <19914.1549970944@warthog.procyon.org.uk>
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.14
-X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.39]); Tue, 12 Feb 2019 11:29:05 +0000 (UTC)
+Date:   Tue, 12 Feb 2019 14:31:14 +0000
+Message-ID: <14223.1549981874@warthog.procyon.org.uk>
+X-Scanned-By: MIMEDefang 2.84 on 10.5.11.22
+X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.25]); Tue, 12 Feb 2019 14:31:17 +0000 (UTC)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hi,
+I've bisected an oops that occurs in rpc_clnt_debugfs_register() trying to
+dereference a pointer with -EACCES in it.  This is the causing commit, though
+I suspect the bug is in sunrpc expecting to see NULL rather than an error.
 
-I'm getting the attached oops during boot from the gssproxy process in
+ff9fb72bc07705c00795ca48631f7fffe24d2c6b is the first bad commit
+commit ff9fb72bc07705c00795ca48631f7fffe24d2c6b
+Author: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Date:   Wed Jan 23 11:28:14 2019 +0100
+
+    debugfs: return error values, not NULL
+    
+    When an error happens, debugfs should return an error pointer value, not
+    NULL.  This will prevent the totally theoretical error where a debugfs
+    call fails due to lack of memory, returning NULL, and that dentry value
+    is then passed to another debugfs call, which would end up succeeding,
+    creating a file at the root of the debugfs tree, but would then be
+    impossible to remove (because you can not remove the directory NULL).
+    
+    So, to make everyone happy, always return errors, this makes the users
+    of debugfs much simpler (they do not have to ever check the return
+    value), and everyone can rest easy.
+    ...
+
+The attached oops occurs during boot from the gssproxy process in
 rpc_clnt_debugfs_register().  The code at this point is:
 
    0xffffffff8195cbdd <+450>:   mov    0x50(%rax),%rcx   <--- oopsing
