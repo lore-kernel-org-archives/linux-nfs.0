@@ -1,113 +1,183 @@
-Return-Path: <SRS0=ULVj=QS=vger.kernel.org=linux-nfs-owner@kernel.org>
+Return-Path: <SRS0=XA/Y=QT=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.8 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-4.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_PASS,URIBL_BLOCKED autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 90DA5C169C4
-	for <linux-nfs@archiver.kernel.org>; Mon, 11 Feb 2019 16:25:45 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 94C5EC282CE
+	for <linux-nfs@archiver.kernel.org>; Tue, 12 Feb 2019 04:34:54 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 5DF39218F0
-	for <linux-nfs@archiver.kernel.org>; Mon, 11 Feb 2019 16:25:45 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="uuxDZC7y"
+	by mail.kernel.org (Postfix) with ESMTP id 6EE0A21773
+	for <linux-nfs@archiver.kernel.org>; Tue, 12 Feb 2019 04:34:54 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728819AbfBKQZo (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 11 Feb 2019 11:25:44 -0500
-Received: from mail-it1-f194.google.com ([209.85.166.194]:54161 "EHLO
-        mail-it1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728664AbfBKQZo (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Feb 2019 11:25:44 -0500
-Received: by mail-it1-f194.google.com with SMTP id g85so27766806ita.3;
-        Mon, 11 Feb 2019 08:25:43 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=sender:subject:from:to:cc:date:message-id:in-reply-to:references
-         :user-agent:mime-version:content-transfer-encoding;
-        bh=WasZ4ZCsfD0lpf1GgLDmIamXjZPOzY6aKnXZuu80OGA=;
-        b=uuxDZC7yQZdhWsOySuGQ79axWg8RkyRhiO7r4Y3pASMLOhP7pWNTTbAWj1YCiAPuBL
-         TUOLoC2pJJsL9ZwQ50CDj9caO8+9n14v89s/UoBckC74qakfS24G/8zm5g35kts5B6DD
-         maY3k505vQU0g+Vjw5sIZUZAKo4Vi315qi2RhBNy1GABDTuDtMk+v3a8knyPJ11bndNx
-         Nw1Z8QNgwE0XIAsIEk5GevHHMcfH/g6bisue94Y5jsSnzQ8gmyecH7XXJD1fG00zGmxo
-         WVeBSkld11aq3V2ioC5wSndqprOrViZ2d11rhpgYQ+wXsw4iw1x1uFLIqrnVYXEE1srC
-         znBQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:sender:subject:from:to:cc:date:message-id
-         :in-reply-to:references:user-agent:mime-version
-         :content-transfer-encoding;
-        bh=WasZ4ZCsfD0lpf1GgLDmIamXjZPOzY6aKnXZuu80OGA=;
-        b=Zsw+vxnz1wzdnIngoVwXh9dckjW4b/iT/c70byZof4qbKs5FTLKvqig+yvY4jJmqw+
-         HtFl525/d0K0HhX07iuz9xm/L2M37vS/KE7cWJj7cElRSpJlxciLg1yOiAoX63gJ+p0v
-         2+CVfH9Sh1rIBMqoGdjTcupVPre7y0rnNaKjACDMkgUkhvosCQJAG3NAvuZj8xuHx3Ba
-         fhdLvL5HGLVwwy1ncQxBy3IUXHlLSaU0t/dVmkT8/nWFwhDnZJ3FgjPWnEYIPbj3iI2q
-         S9FwEfto68ps2b1CiVKf70hgxBphLu0B46I7WTU+lNh8IS2CZOJk8icsDuw+ZJgQ6Q1d
-         XFkQ==
-X-Gm-Message-State: AHQUAubIHSj0P+K/B7kYPveGRUmOkl5WUnnu3seCiQ9w9289k1du4CqW
-        r6xXz4ArIEqN24UNiUE2BdAqL+V7
-X-Google-Smtp-Source: AHgI3IZ3tzvrgkn4Ic60lWIO1+hiMZXnRCVTDmCbOGbtiCBOUMHBZaXqCPxyUGFtSZyW8EDMJ+yhvA==
-X-Received: by 2002:a24:b003:: with SMTP id d3mr203182itf.55.1549902343288;
-        Mon, 11 Feb 2019 08:25:43 -0800 (PST)
-Received: from gateway.1015granger.net (c-68-61-232-219.hsd1.mi.comcast.net. [68.61.232.219])
-        by smtp.gmail.com with ESMTPSA id m81sm5406466itb.43.2019.02.11.08.25.42
-        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Mon, 11 Feb 2019 08:25:42 -0800 (PST)
-Received: from manet.1015granger.net (manet.1015granger.net [192.168.1.51])
-        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id x1BGPfHo030021;
-        Mon, 11 Feb 2019 16:25:41 GMT
-Subject: [PATCH v1 23/23] SUNRPC: Use au_rslack when computing reply buffer
- size
-From:   Chuck Lever <chuck.lever@oracle.com>
-To:     anna.schumaker@netapp.com
-Cc:     linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date:   Mon, 11 Feb 2019 11:25:41 -0500
-Message-ID: <20190211162541.2817.96724.stgit@manet.1015granger.net>
-In-Reply-To: <20190211161920.2817.20881.stgit@manet.1015granger.net>
-References: <20190211161920.2817.20881.stgit@manet.1015granger.net>
-User-Agent: StGit/0.17.1-dirty
+        id S1727231AbfBLEex (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 11 Feb 2019 23:34:53 -0500
+Received: from tama500.ecl.ntt.co.jp ([129.60.39.148]:49329 "EHLO
+        tama500.ecl.ntt.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727166AbfBLEex (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Feb 2019 23:34:53 -0500
+Received: from vc1.ecl.ntt.co.jp (vc1.ecl.ntt.co.jp [129.60.86.153])
+        by tama500.ecl.ntt.co.jp (8.13.8/8.13.8) with ESMTP id x1C4YldD013722;
+        Tue, 12 Feb 2019 13:34:47 +0900
+Received: from vc1.ecl.ntt.co.jp (localhost [127.0.0.1])
+        by vc1.ecl.ntt.co.jp (Postfix) with ESMTP id 289C0EA7892;
+        Tue, 12 Feb 2019 13:34:47 +0900 (JST)
+Received: from jcms-pop11.ecl.ntt.co.jp (jcms-pop11.ecl.ntt.co.jp [129.60.87.132])
+        by vc1.ecl.ntt.co.jp (Postfix) with ESMTP id 1DB9CEA7364;
+        Tue, 12 Feb 2019 13:34:47 +0900 (JST)
+Received: from [IPv6:::1] (unknown [129.60.241.122])
+        by jcms-pop11.ecl.ntt.co.jp (Postfix) with ESMTPSA id 102EB70C01E0;
+        Tue, 12 Feb 2019 13:34:47 +0900 (JST)
+Subject: Re: [PATCH] pNFS: Avoid read-modify-write for page-aligned full page
+ write
+References: <37261782-eebb-b9c5-a480-7ced59b3703f@lab.ntt.co.jp>
+ <5905EB17-75B9-494A-B608-F135D6330F49@redhat.com>
+ <4332a67f-0d50-cc30-4e2b-8d08a112a76f@lab.ntt.co.jp>
+ <17e929a2eea3d2c33dcd3d2c9b8d8a932568be47.camel@hammerspace.com>
+From:   Kazuo Ito <ito_kazuo_g3@lab.ntt.co.jp>
+Message-ID: <bea45df0-0bf1-048d-e842-7fd7eb0f2b34@lab.ntt.co.jp>
+Date:   Tue, 12 Feb 2019 13:34:28 +0900
+User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64; rv:60.0) Gecko/20100101
+ Thunderbird/60.5.0
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
+In-Reply-To: <17e929a2eea3d2c33dcd3d2c9b8d8a932568be47.camel@hammerspace.com>
+Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Language: en-US
+Content-Transfer-Encoding: 8bit
+X-CC-Mail-RelayStamp: 1
+To:     Trond Myklebust <trondmy@gmail.com>,
+        Benjamin Coddington <bcodding@redhat.com>
+Cc:     Anna Schumaker <anna.schumaker@netapp.com>,
+        linux-nfs@vger.kernel.org,
+        Ryusuke Konishi <konishi.ryusuke@lab.ntt.co.jp>,
+        watanabe.hiroyuki@lab.ntt.co.jp
+X-TM-AS-MML: disable
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-au_rslack is significantly smaller than (au_cslack << 2). Using
-that value results in smaller receive buffers. In some cases this
-eliminates an extra segment in Reply chunks (RPC/RDMA).
+On 2019/02/08 23:58, Trond Myklebust wrote:
+> On Fri, 2019-02-08 at 16:54 +0900, 伊藤和夫 wrote:
+>> On 2019/02/07 22:37, Benjamin Coddington wrote:
+>>> On 7 Feb 2019, at 3:12, Kazuo Ito wrote:
+>>> [snipped]
+>>>> @@ -299,8 +305,10 @@ static int nfs_want_read_modify_write(struct
+>>>> file
+>>>> *file, struct page *page,
+>>>>       unsigned int end = offset + len;
+>>>>
+>>>>       if (pnfs_ld_read_whole_page(file->f_mapping->host)) {
+>>>> -        if (!PageUptodate(page))
+>>>> -            return 1;
+>>>> +        if (!PageUptodate(page)) {
+>>>> +            if (pglen && (end < pglen || offset))
+>>>> +                return 1;
+>>>> +        }
+>>>>           return 0;
+>>>>       }
+>>>
+>>> This looks right.  I think that a static inline bool
+>>> nfs_write_covers_page,
+>>> or full_page_write or similar might make sense here, as we do the
+>>> same test
+>>> just below, and would make the code easier to quickly understand.
+>>>
+>>> Reviewed-by: Benjamin Coddington <bcodding@redhat.com>
+>>   >
+>>   > Ben
+>>
+>> As per Ben's comment, I made the check for full page write a static
+>> inline function and both the block-oriented and the non-block-
+>> oriented paths call it.
+>>
+>> diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+>> index 29553fdba8af..458c77ccf274 100644
+>> --- a/fs/nfs/file.c
+>> +++ b/fs/nfs/file.c
+>> @@ -276,6 +276,12 @@ EXPORT_SYMBOL_GPL(nfs_file_fsync);
+>>     * then a modify/write/read cycle when writing to a page in the
+>>     * page cache.
+>>     *
+>> + * Some pNFS layout drivers can only read/write at a certain block
+>> + * granularity like all block devices and therefore we must perform
+>> + * read/modify/write whenever a page hasn't read yet and the data
+>> + * to be written there is not aligned to a block boundary and/or
+>> + * smaller than the block size.
+>> + *
+>>     * The modify/write/read cycle may occur if a page is read before
+>>     * being completely filled by the writer.  In this situation, the
+>>     * page must be completely written to stable storage on the server
+>> @@ -291,15 +297,23 @@ EXPORT_SYMBOL_GPL(nfs_file_fsync);
+>>     * and that the new data won't completely replace the old data in
+>>     * that range of the file.
+>>     */
+>> -static int nfs_want_read_modify_write(struct file *file, struct page
+>> *page,
+>> -			loff_t pos, unsigned len)
+>> +static bool nfs_full_page_write(struct page *page, loff_t pos,
+>> unsigned
+>> len)
+>>    {
+>>    	unsigned int pglen = nfs_page_length(page);
+>>    	unsigned int offset = pos & (PAGE_SIZE - 1);
+>>    	unsigned int end = offset + len;
+>>
+>> +	if (pglen && ((end < pglen) || offset))
+>> +	    return 0;
+>> +	return 1;
+>> +}
+>> +
+>> +static int nfs_want_read_modify_write(struct file *file, struct page
+>> *page,
+>> +			loff_t pos, unsigned len)
+>> +{
+>>    	if (pnfs_ld_read_whole_page(file->f_mapping->host)) {
+>> -		if (!PageUptodate(page))
+>> +		if (!PageUptodate(page) &&
+>> +		    !nfs_full_page_write(page, pos, len))
+>>    			return 1;
+>>    		return 0;
+>>    	}
+>> @@ -307,8 +321,7 @@ static int nfs_want_read_modify_write(struct
+>> file
+>> *file, struct page *page,
+>>    	if ((file->f_mode & FMODE_READ) &&	/* open for read? */
+>>    	    !PageUptodate(page) &&		/* Uptodate? */
+>>    	    !PagePrivate(page) &&		/* i/o request already? */
+>> -	    pglen &&				/* valid bytes of
+>> file? */
+>> -	    (end < pglen || offset))		/* replace all valid
+>> bytes? */
+>> +	    !nfs_full_page_write(page, pos, len))
+>>    		return 1;
+>>    	return 0;
+>>    }
+> 
+> How about adding a separate
+> 
+> if (PageUptodate(page) || nfs_full_page_write())
+>      return 0;
+> 
+> before the check for pNFS?
+ >
+ > That means we won't have to duplicate those for the pNFS block and
+ > ordinary case, and it improves code clarity.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
- net/sunrpc/clnt.c |    7 ++++---
- 1 file changed, 4 insertions(+), 3 deletions(-)
+Yes, it is much better, and
 
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index 99bfeb1..241e842 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -1690,7 +1690,7 @@ void rpc_force_rebind(struct rpc_clnt *clnt)
- static void
- call_allocate(struct rpc_task *task)
- {
--	unsigned int slack = task->tk_rqstp->rq_cred->cr_auth->au_cslack;
-+	const struct rpc_auth *auth = task->tk_rqstp->rq_cred->cr_auth;
- 	struct rpc_rqst *req = task->tk_rqstp;
- 	struct rpc_xprt *xprt = req->rq_xprt;
- 	const struct rpc_procinfo *proc = task->tk_msg.rpc_proc;
-@@ -1715,9 +1715,10 @@ void rpc_force_rebind(struct rpc_clnt *clnt)
- 	 * and reply headers, and convert both values
- 	 * to byte sizes.
- 	 */
--	req->rq_callsize = RPC_CALLHDRSIZE + (slack << 1) + proc->p_arglen;
-+	req->rq_callsize = RPC_CALLHDRSIZE + (auth->au_cslack << 1) +
-+			   proc->p_arglen;
- 	req->rq_callsize <<= 2;
--	req->rq_rcvsize = RPC_REPHDRSIZE + slack + proc->p_replen;
-+	req->rq_rcvsize = RPC_REPHDRSIZE + auth->au_rslack + proc->p_replen;
- 	req->rq_rcvsize <<= 2;
- 
- 	status = xprt->ops->buf_alloc(task);
+> BTW: Why doesn't the pNFS case check for PagePrivate(page)? That looks
+> like a bug which would cause the existing write to get corrupted.
+> If so, we should move that check too into the common code.
 
+It's been that way since the check for
+pnfs_ld_read_whole_page(file->f_mapping->host) was added there.
+As you pointed out, it shouldn't try to initiate read when there's
+an outstanding write.
+So, I'll update the patch with these changes, including check for
+ongoing I/O, and come up with newer test results in a couple of days.
+--
+kazuo ito (ito_kazuo_g3@iecl.ntt.co.jp)
+NTT OSS Center
