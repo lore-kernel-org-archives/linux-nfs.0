@@ -2,89 +2,151 @@ Return-Path: <SRS0=saDi=QU=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS,
-	USER_AGENT_MUTT autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6BF62C4151A
-	for <linux-nfs@archiver.kernel.org>; Wed, 13 Feb 2019 14:25:47 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 718EDC43381
+	for <linux-nfs@archiver.kernel.org>; Wed, 13 Feb 2019 21:55:08 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 3AEF2222B2
-	for <linux-nfs@archiver.kernel.org>; Wed, 13 Feb 2019 14:25:47 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 3CE5B21872
+	for <linux-nfs@archiver.kernel.org>; Wed, 13 Feb 2019 21:55:08 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=kroah.com header.i=@kroah.com header.b="CH3INqVb";
-	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="k37h6K7t"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="VhpznEBX"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2392140AbfBMOZq (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 13 Feb 2019 09:25:46 -0500
-Received: from out2-smtp.messagingengine.com ([66.111.4.26]:59501 "EHLO
-        out2-smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1731144AbfBMOZq (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Feb 2019 09:25:46 -0500
-Received: from compute6.internal (compute6.nyi.internal [10.202.2.46])
-        by mailout.nyi.internal (Postfix) with ESMTP id 1D51620B77;
-        Wed, 13 Feb 2019 09:25:45 -0500 (EST)
-Received: from mailfrontend2 ([10.202.2.163])
-  by compute6.internal (MEProxy); Wed, 13 Feb 2019 09:25:45 -0500
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kroah.com; h=
-        date:from:to:cc:subject:message-id:references:mime-version
-        :content-type:in-reply-to; s=fm3; bh=EEwawwk0Y/TypUv7Is2mbpWQOjO
-        g347U0Q/mGw07Xz8=; b=CH3INqVbzp6qWVV2p+DYEkdCB42eingnJuJocj9Ug/7
-        nQXRTSrt4ngXrfS/tgNDAzwZDt3ljb+1nxTPb+BIKjVQ1CeSm13qkwQaKELGGqJw
-        orLrXkLRHuwuEsLBHc0AWahTmWNoW53e9IVOFw8XPxHt2lr4j4PvGCgveaDO+J0D
-        R0Hyy9aCX3b9ThBWRs1d3wOUkQ/BRYdSU6Uf8ZXpsfZntkOGuQCNEYoWRsu8rHgC
-        xIfdDeQRCr8PauNAz98UaBf0HqsqnPy/j4ZB2oBO9uLh9t816mfmwOjSeteXBn5Z
-        txsWRi4hl1BpE16iJVIOXU37d4N4R101Z2DeSR3GWgA==
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
-        messagingengine.com; h=cc:content-type:date:from:in-reply-to
-        :message-id:mime-version:references:subject:to:x-me-proxy
-        :x-me-proxy:x-me-sender:x-me-sender:x-sasl-enc; s=fm2; bh=EEwaww
-        k0Y/TypUv7Is2mbpWQOjOg347U0Q/mGw07Xz8=; b=k37h6K7t6mlZ6K1738tEqD
-        HqasIH5Qp/vPsqWsi3eGEmSjVRsMlLhLVTRuIWapWGvB3LlplXu/7YquGZmowIqX
-        6Xdpt+WQLH8I/WE0VH549CzPOAHzqvznOzKJRZGYS33mr0qAOSt3+bOTKAvx0yoR
-        Epp6bhHncZLTyErQHl3GSedBfdXVkxWfraBG4KdLGhEhvQyiLLwcaWpWjEN79/8q
-        1kJxdZJ26hBby5NOEiRHMVEWq3ZpiPS2d3yy94Rmsg0MWDu+KhA4W8SUn7rnviLj
-        O4kMt7z7ZN/KCy4TIQCYOgv1UDd1kobtmomkkT9rkDguGkP5M29XdBw7GcIX93qw
-        ==
-X-ME-Sender: <xms:6ChkXNHBEEhQMiFdpaPHTZtxfwhS65GXBs88CYfE3Sifj0SXjwh08Q>
-X-ME-Proxy-Cause: gggruggvucftvghtrhhoucdtuddrgedtledruddtfedgieegucetufdoteggodetrfdotf
-    fvucfrrhhofhhilhgvmecuhfgrshhtofgrihhlpdfquhhtnecuuegrihhlohhuthemucef
-    tddtnecusecvtfgvtghiphhivghnthhsucdlqddutddtmdenucfjughrpeffhffvuffkfh
-    ggtggujggfsehttdertddtredvnecuhfhrohhmpefirhgvghcumffjuceoghhrvghgsehk
-    rhhorghhrdgtohhmqeenucfkphepkeefrdekiedrkeelrddutdejnecurfgrrhgrmhepmh
-    grihhlfhhrohhmpehgrhgvgheskhhrohgrhhdrtghomhenucevlhhushhtvghrufhiiigv
-    pedt
-X-ME-Proxy: <xmx:6ChkXMSRJ0n-aUELqp9mb51TVE_XGXnj5jjJAtRDgBHHWDZJEyXYsw>
-    <xmx:6ChkXBAyXiOfIgkkIXMCXyIRjuBbU8J4srfH5j5-gOyTwAcUn3J7BQ>
-    <xmx:6ChkXOgv3YylXrr8Nzaknwealg3r4kayV1o7jdvPfbzDw54ga3N44Q>
-    <xmx:6ShkXMWFNSEhl6ouB45nTvD-N31IZIKiK7qKzZbbSBrRZw_QnumnHQ>
-Received: from localhost (5356596b.cm-6-7b.dynamic.ziggo.nl [83.86.89.107])
-        by mail.messagingengine.com (Postfix) with ESMTPA id E8DAC1030F;
-        Wed, 13 Feb 2019 09:25:43 -0500 (EST)
-Date:   Wed, 13 Feb 2019 15:25:42 +0100
-From:   Greg KH <greg@kroah.com>
-To:     Benjamin Coddington <bcodding@redhat.com>
-Cc:     stable@vger.kernel.org, dwysocha@redhat.com,
-        linux-nfs@vger.kernel.org, smayhew@redhat.com,
-        trondmy@hammerspace.com
-Subject: Re: [STABLE PATCH] SUNRPC: Always drop the XPRT_LOCK on
- XPRT_CLOSE_WAIT
-Message-ID: <20190213142542.GF10202@kroah.com>
-References: <f3dda1a55b9a5d5a7416925358379608cc3a431e.1547069858.git.bcodding@redhat.com>
- <f3dda1a55b9a5d5a7416925358379608cc3a431e.1549453044.git.bcodding@redhat.com>
+        id S2392290AbfBMVzH (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 13 Feb 2019 16:55:07 -0500
+Received: from mail-it1-f195.google.com ([209.85.166.195]:52936 "EHLO
+        mail-it1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2388687AbfBMVzH (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Feb 2019 16:55:07 -0500
+Received: by mail-it1-f195.google.com with SMTP id r11so9747393itc.2
+        for <linux-nfs@vger.kernel.org>; Wed, 13 Feb 2019 13:55:06 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=from:to:cc:subject:date:message-id:mime-version
+         :content-transfer-encoding;
+        bh=rb+wJldDmRdRFdVzR15kzmTKgtHcxu+6JLHaC8Z4OEE=;
+        b=VhpznEBXgIQ7ORt1JRcS/Cc34uT6gtUMyujJilRCUQOEH562tDQAfnEFl6MwItJVKV
+         bnWETXQwHpqPesQh6/71/akhEkoYofO7zE751Sor9CK4mExgfAyNR+rfIr4ZKusjbYeP
+         N2f5doH3N7GeiKhs/sjZFdTrGdabM8rBzz1b5yu5l1ZXDD7x6wa6TdIUkawXarO9H32D
+         xTUBFjKlfkFSz+PozDtX7VPHPZ4zhSYWGT1WBa8c1tlP4fF8nx7G/YTjlqKM4YCYl483
+         UTApNnzUihfgZXh0CWO8cyGaWVa5ED05KmMSWXqEf055o0wAADFT4cWM9dYsDAS6rc99
+         OQQQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:from:to:cc:subject:date:message-id:mime-version
+         :content-transfer-encoding;
+        bh=rb+wJldDmRdRFdVzR15kzmTKgtHcxu+6JLHaC8Z4OEE=;
+        b=Q6YYF92QsgUXfQcwh6RBGurf2VpeeGuT3G8qeAflCgJb1/dkcKhYw9BhHoVhY14ocx
+         Ibnl6VqehkLsPPxLNHfv8iD2eviqXMQu5PTg/a/PZUDirEvXo596Lhi74b/If9SeWUXb
+         pI8TnCH7gJ6VGuFifnPaA/Eru7pmbIq9Y3A2+FBPqz0fKq/spug1G9Y5uLhRT3u39W33
+         wC1hyHLNxdBmtSptAd0nsjaIzjGi00eIEX+Uoh4X6lkXWDYMlNFsC5yKvELd5SI+n1HK
+         KJJLiobjyfMloXNVzvu1KT2tfgsGCG6CAFhDby018rU8pi54nvF2cjGGvq+P0+jmM3+3
+         xA/w==
+X-Gm-Message-State: AHQUAuZfc2F3ng2FtBDCOkiNHNEBIGua3amAW732oW903aRjeaFj2Wme
+        sZDLlf3m+ppp++c5wklmEw==
+X-Google-Smtp-Source: AHgI3IYq9RUZuLvhyrTM/aNEG6y6LeIU6kAY3K0U58fLN29M2n0jxyuv6Iq8ToBikqmtZFvGcETMRw==
+X-Received: by 2002:a24:35c3:: with SMTP id k186mr239031ita.5.1550094905771;
+        Wed, 13 Feb 2019 13:55:05 -0800 (PST)
+Received: from localhost.localdomain (c-68-40-189-247.hsd1.mi.comcast.net. [68.40.189.247])
+        by smtp.gmail.com with ESMTPSA id y184sm322113ity.27.2019.02.13.13.55.04
+        (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
+        Wed, 13 Feb 2019 13:55:04 -0800 (PST)
+From:   Trond Myklebust <trondmy@gmail.com>
+X-Google-Original-From: Trond Myklebust <trond.myklebust@hammerspace.com>
+To:     Anna Schumaker <anna.schumaker@netapp.com>
+Cc:     linux-nfs@vger.kernel.org
+Subject: [PATCH 1/2] NFS: Fix I/O request leakages
+Date:   Wed, 13 Feb 2019 16:53:56 -0500
+Message-Id: <20190213215357.19696-1-trond.myklebust@hammerspace.com>
+X-Mailer: git-send-email 2.20.1
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <f3dda1a55b9a5d5a7416925358379608cc3a431e.1549453044.git.bcodding@redhat.com>
-User-Agent: Mutt/1.11.3 (2019-02-01)
+Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Wed, Feb 06, 2019 at 06:42:15AM -0500, Benjamin Coddington wrote:
-> This patch is only appropriate for stable kernels v4.16 - v4.19
+When we fail to add the request to the I/O queue, we currently leave it
+to the caller to free the failed request. However since some of the
+requests that fail are actually created by nfs_pageio_add_request()
+itself, and are not passed back the caller, this leads to a leakage
+issue, which can again cause page locks to leak.
 
-Now queued up, thanks.
+This commit addresses the leakage by freeing the created requests on
+error, using desc->pg_completion_ops->error_cleanup()
 
-greg k-h
+Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
+Fixes: a7d42ddb30997 ("nfs: add mirroring support to pgio layer")
+Cc: stable@vger.kernel.org # v4.0+
+---
+ fs/nfs/pagelist.c | 25 ++++++++++++++++++++-----
+ 1 file changed, 20 insertions(+), 5 deletions(-)
+
+diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+index e54d899c1848..40b90f187eeb 100644
+--- a/fs/nfs/pagelist.c
++++ b/fs/nfs/pagelist.c
+@@ -988,6 +988,17 @@ static void nfs_pageio_doio(struct nfs_pageio_descriptor *desc)
+ 	}
+ }
+ 
++static void
++nfs_pageio_cleanup_request(struct nfs_pageio_descriptor *desc,
++		struct nfs_page *req)
++{
++	LIST_HEAD(head);
++
++	nfs_list_remove_request(req);
++	nfs_list_add_request(req, &head);
++	desc->pg_completion_ops->error_cleanup(&head);
++}
++
+ /**
+  * nfs_pageio_add_request - Attempt to coalesce a request into a page list.
+  * @desc: destination io descriptor
+@@ -1025,10 +1036,8 @@ static int __nfs_pageio_add_request(struct nfs_pageio_descriptor *desc,
+ 			nfs_page_group_unlock(req);
+ 			desc->pg_moreio = 1;
+ 			nfs_pageio_doio(desc);
+-			if (desc->pg_error < 0)
+-				return 0;
+-			if (mirror->pg_recoalesce)
+-				return 0;
++			if (desc->pg_error < 0 || mirror->pg_recoalesce)
++				goto out_cleanup_subreq;
+ 			/* retry add_request for this subreq */
+ 			nfs_page_group_lock(req);
+ 			continue;
+@@ -1061,6 +1070,9 @@ static int __nfs_pageio_add_request(struct nfs_pageio_descriptor *desc,
+ 	desc->pg_error = PTR_ERR(subreq);
+ 	nfs_page_group_unlock(req);
+ 	return 0;
++out_cleanup_subreq:
++	nfs_pageio_cleanup_request(desc, subreq);
++	return 0;
+ }
+ 
+ static int nfs_do_recoalesce(struct nfs_pageio_descriptor *desc)
+@@ -1168,11 +1180,14 @@ int nfs_pageio_add_request(struct nfs_pageio_descriptor *desc,
+ 		if (nfs_pgio_has_mirroring(desc))
+ 			desc->pg_mirror_idx = midx;
+ 		if (!nfs_pageio_add_request_mirror(desc, dupreq))
+-			goto out_failed;
++			goto out_cleanup_subreq;
+ 	}
+ 
+ 	return 1;
+ 
++out_cleanup_subreq:
++	if (req != dupreq)
++		nfs_pageio_cleanup_request(desc, dupreq);
+ out_failed:
+ 	nfs_pageio_error_cleanup(desc);
+ 	return 0;
+-- 
+2.20.1
+
