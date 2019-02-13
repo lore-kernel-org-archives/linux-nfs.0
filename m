@@ -2,90 +2,121 @@ Return-Path: <SRS0=saDi=QU=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-2.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS,
+	USER_AGENT_MUTT autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2E6E4C282CA
-	for <linux-nfs@archiver.kernel.org>; Wed, 13 Feb 2019 11:50:21 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DDBE9C282CE
+	for <linux-nfs@archiver.kernel.org>; Wed, 13 Feb 2019 14:15:44 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 095BF222B2
-	for <linux-nfs@archiver.kernel.org>; Wed, 13 Feb 2019 11:50:21 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id AA575222BA
+	for <linux-nfs@archiver.kernel.org>; Wed, 13 Feb 2019 14:15:44 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=kroah.com header.i=@kroah.com header.b="s1FXZE36";
+	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="ja9f2Y/a"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1733182AbfBMLuT (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 13 Feb 2019 06:50:19 -0500
-Received: from mail-qt1-f174.google.com ([209.85.160.174]:42647 "EHLO
-        mail-qt1-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726411AbfBMLuT (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Feb 2019 06:50:19 -0500
-Received: by mail-qt1-f174.google.com with SMTP id b8so2132269qtr.9
-        for <linux-nfs@vger.kernel.org>; Wed, 13 Feb 2019 03:50:18 -0800 (PST)
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:message-id:subject:from:to:date:in-reply-to
-         :references:user-agent:mime-version:content-transfer-encoding;
-        bh=FEilIrlN50uu7jpGZXpNgSrBCeNanC8f9UwfcvMMJag=;
-        b=c3xlixaJTsqAsvsqSFvkjSne7+ygC0T9X8xPjYcWo5Bs8aXfvoRnfKvXSCNV2on0lf
-         9kWxb2WgDP5oKU2dsoOoxK1cLGfGlmMO1QJ2ECw/o8wqKziV6r1Jvn1S234Z0xpML7A7
-         nrGAVyrpnm2bL9DOjS9vjbG8xMyu2SKIulivW0DfmUJm8h6E6R0xR9wf94zuvvfM2lFn
-         80toWlfbRORrjFx3BuO1nqhIcv+bHEIcacunAIia4ZHTVQWAz2soJvTOziNWkEm4zoAp
-         DddQq5JsBxETf7NYPgsRavp91inXshxa2pDRSu3OH2tmMhhGoc1LdBBxRY8CwiUg3Js8
-         HMSw==
-X-Gm-Message-State: AHQUAuanHgAZdvHU6j8yQuotLRbj/lUN8AVgaDKlraCKFoulBuUkAyXj
-        dE/MZNJ9PATuJgdJNnMAUNB0yeytsdE=
-X-Google-Smtp-Source: AHgI3IY6PtWijilkPFB9CT0+70QWvnL6iSv4fZN/4jT+c5Uk5WAerX4uk4Z7Zsk4mCYcTNTUklmTeg==
-X-Received: by 2002:ac8:601:: with SMTP id d1mr53078qth.155.1550058618081;
-        Wed, 13 Feb 2019 03:50:18 -0800 (PST)
-Received: from tleilax.poochiereds.net (cpe-2606-A000-1100-DB-0-0-0-C3D.dyn6.twc.com. [2606:a000:1100:db::c3d])
-        by smtp.gmail.com with ESMTPSA id t38sm36271477qtc.12.2019.02.13.03.50.17
-        (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
-        Wed, 13 Feb 2019 03:50:17 -0800 (PST)
-Message-ID: <0bd905c30a652d19404eef82b40f6b92987ca814.camel@redhat.com>
-Subject: Re: Why doesn't NFSv3 implement LOOKUPP?
-From:   Jeff Layton <jlayton@redhat.com>
-To:     Yihao Wu <wuyihao@linux.alibaba.com>, linux-nfs@vger.kernel.org
-Date:   Wed, 13 Feb 2019 06:50:16 -0500
-In-Reply-To: <3dc67361-9c2f-d183-09e5-0a4d5c48d0f7@linux.alibaba.com>
-References: <3dc67361-9c2f-d183-09e5-0a4d5c48d0f7@linux.alibaba.com>
-Content-Type: text/plain; charset="UTF-8"
-User-Agent: Evolution 3.30.5 (3.30.5-1.fc29) 
+        id S1729738AbfBMOPn (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 13 Feb 2019 09:15:43 -0500
+Received: from wout2-smtp.messagingengine.com ([64.147.123.25]:60921 "EHLO
+        wout2-smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1726654AbfBMOPn (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Feb 2019 09:15:43 -0500
+Received: from compute6.internal (compute6.nyi.internal [10.202.2.46])
+        by mailout.west.internal (Postfix) with ESMTP id 435363060;
+        Wed, 13 Feb 2019 09:15:42 -0500 (EST)
+Received: from mailfrontend1 ([10.202.2.162])
+  by compute6.internal (MEProxy); Wed, 13 Feb 2019 09:15:42 -0500
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kroah.com; h=
+        date:from:to:cc:subject:message-id:references:mime-version
+        :content-type:in-reply-to; s=fm3; bh=sNro6bY0ZzqDjLOiq94IZ6FX4a2
+        AoTEHLVIw15V1T0g=; b=s1FXZE36GWpigJ4x7ZMUedJg9mgEBvV+GjusxmE1ZuK
+        FC2YSWepCgEUmDFjL1HP94dAqDl9b3em/lePIcYewhn15SIr/M1SwYH/SDG++uCV
+        pLvzRyCl2BSr5LGbIil6rx7/G99na0j2KGv50hwErxnPnNWzJzSrKOgq2vzsyKGL
+        s8irTmjrV+khbJEA5CoVTGuqGm+DUZUAyRtGvELiIGv+F3uS/yZKQb2fRPvaAEtE
+        ztn3K/aguYaTFV0EHY3pIOPWjDdHPqfzgJpbxdgdcGOPZ+2lkfB5vb1b8xKgMW9E
+        hG6DZqTNoLGzUpkgHzAzUp41D2mjjhDGqZU7R/d5/WQ==
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
+        messagingengine.com; h=cc:content-type:date:from:in-reply-to
+        :message-id:mime-version:references:subject:to:x-me-proxy
+        :x-me-proxy:x-me-sender:x-me-sender:x-sasl-enc; s=fm2; bh=sNro6b
+        Y0ZzqDjLOiq94IZ6FX4a2AoTEHLVIw15V1T0g=; b=ja9f2Y/aku+xDCW6yNZ2sJ
+        T5VXWtyL5pLGWh87OZ1CgBs8PEajzH0uBxJQ353VGwFis6Uw6AgYe9LL2EsAUiC5
+        KbNJgrqG0kUL2sl/SOevhIyUNzLV8OrDQL2XkhBvZYB+jfSprrRi84eH7/St8UtQ
+        TsjH9Ekbm/ZcGteEqckGmWrouAV9F1AU4uPRgyYniar1dC+Nn6gOplCF8CqzjMyw
+        0lgb9ELI6fZPGqeFneBFVpJ7CZuP3nX28ukqJcc/sPks7OB8M2WvA+ejauU35VVO
+        pB9waoqxbdsHWa6PA3o86rF4f4taJZyveJRScanHqaJPl5T2TOJDKy3GZ2Pzt6Aw
+        ==
+X-ME-Sender: <xms:jCZkXEEICqy4LBg_8Q75rwI9fT1vJ0MP8tanbcRXC6PvNtn-ShfrcQ>
+X-ME-Proxy-Cause: gggruggvucftvghtrhhoucdtuddrgedtledruddtfedgiedvucetufdoteggodetrfdotf
+    fvucfrrhhofhhilhgvmecuhfgrshhtofgrihhlpdfquhhtnecuuegrihhlohhuthemucef
+    tddtnecusecvtfgvtghiphhivghnthhsucdlqddutddtmdenucfjughrpeffhffvuffkfh
+    ggtggujggfsehttdertddtredvnecuhfhrohhmpefirhgvghcumffjuceoghhrvghgsehk
+    rhhorghhrdgtohhmqeenucffohhmrghinhepuggvsghirghnrdhorhhgnecukfhppeekfe
+    drkeeirdekledruddtjeenucfrrghrrghmpehmrghilhhfrhhomhepghhrvghgsehkrhho
+    rghhrdgtohhmnecuvehluhhsthgvrhfuihiivgeptd
+X-ME-Proxy: <xmx:jCZkXKGT5tonlZeJkEMYGlcFNIZ4kXDCIhUyViuzA1YdMEkm57FlOw>
+    <xmx:jCZkXIsB0G0yJH7nYITicUSwLO3BHhfYnEaQv0ArsFZvusEra9khqw>
+    <xmx:jCZkXJVEFaWn7qoP8SknGrF7gF1cJ_azjOBoffP__jhHIlN71izuBQ>
+    <xmx:jSZkXCLL8nBh99Fv7OCMyYi2BU9IUb9RdoejHQ6Nx8huEktgOnkODA>
+Received: from localhost (5356596b.cm-6-7b.dynamic.ziggo.nl [83.86.89.107])
+        by mail.messagingengine.com (Postfix) with ESMTPA id 29DBEE4543;
+        Wed, 13 Feb 2019 09:15:40 -0500 (EST)
+Date:   Wed, 13 Feb 2019 15:15:38 +0100
+From:   Greg KH <greg@kroah.com>
+To:     Salvatore Bonaccorso <carnil@debian.org>
+Cc:     Donald Buczek <buczek@molgen.mpg.de>, stable@vger.kernel.org,
+        linux-nfs@vger.kernel.org, bfields@fieldses.org
+Subject: Re: [PATCH 4.14 0/2] Two nfsd4 fixes for 4.14 longterm
+Message-ID: <20190213141538.GB10202@kroah.com>
+References: <20190205100141.25304-1-buczek@molgen.mpg.de>
+ <20190205115948.azdwswkyetbop56r@lorien.valinor.li>
+ <7a263d82-27e7-077f-3a51-78180785a41f@molgen.mpg.de>
+ <20190211133441.GA17709@kroah.com>
+ <20190211155926.GA19955@eldamar.local>
+ <20190213064956.i57glcw5qql6t6qr@lorien.valinor.li>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20190213064956.i57glcw5qql6t6qr@lorien.valinor.li>
+User-Agent: Mutt/1.11.3 (2019-02-01)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Wed, 2019-02-13 at 16:41 +0800, Yihao Wu wrote:
-> Hi all,
+On Wed, Feb 13, 2019 at 07:49:56AM +0100, Salvatore Bonaccorso wrote:
+> On Mon, Feb 11, 2019 at 04:59:26PM +0100, Salvatore Bonaccorso wrote:
+> > On Mon, Feb 11, 2019 at 02:34:41PM +0100, Greg KH wrote:
+> > > On Tue, Feb 05, 2019 at 03:59:04PM +0100, Donald Buczek wrote:
+> > > > On 02/05/19 12:59, Salvatore Bonaccorso wrote:
+> > > > 
+> > > > > Are you planning to submit the same as well for 4.9 LTS? The two
+> > > > > commits apply on top of 4.9.154 with line number updated.
+> > > > 
+> > > > No, I'm not, because I didn't do any testing with 4.9.
+> > > > 
+> > > > Additionally, I'm unsure about the right procedure for trivial backports
+> > > > to multiple trees: Individual patch sets, which apply perfectly, a single
+> > > > patch sets and Greg resolves that for the other trees or maybe no patch
+> > > > set at all and just a "please cherry-pick .... from upstream" mail.
+> > > 
+> > > The first patch in this series applies to 4.9.y, but the second does
+> > > not.
+> > > 
+> > > I'll be glad to take a backported, and tested, series, if someone still
+> > > cares about NFS for 4.9.y.  But unless you really care about that tree,
+> > > I would not worry about it.
+> > 
+> > Hmm, both apply on top of 4.9.155, still but with line numbers
+> > adjusted (I'm attaching the respective rebased patches). Actually my
+> > question on the respective backports was originally triggered due to
+> > https://bugs-devel.debian.org/898060
+> > 
+> > The problem actually is on the 'tested' part, as Donald did no
+> > testing/reproducing with 4.9 itself.
 > 
-> When looking into "Failures: generic/467" given by xfstests, I found that NFSv3
-> didn't implement LOOKUPP. I know that this might be by design. But LOOKUPP was
-> meant to replace ".." in NFSv3, right?
-> 
-> xfstests's generic/467 test case performs the following sequence of operations.
-> 
-> name_to_handle -> drop_caches -> open_by_handle
-> 
-> Dentry becomes disconnected due to drop_caches. NFSv3 doesn't support LOOKUPP.
-> So when it performs open_by_handle to an directory, this test case fails.
-> 
-> I did some small experiment by implementing LOOKUPP for NFSv3. The way I tried
-> is to merely pass ".." to nfs3_proc_lookup. And it seems to work. At least it's
-> a workaround for xfstests.
-> 
-> I'm curious whether this sort of simulation of LOOKUPP will work or make sense.
-> 
-> Thanks,
-> Yihao Wu
+> Attached rebased to apply on top of 4.9.156.
 
-v3 was mostly designed with unix-like clients in mind. For v4, the spec
-writers cast a wider net and decided not to put special meaning on
-lookups of "." and "..", but they still needed a way to do a lookup of
-"..".
+Thanks, both now queued up.
 
-The question is why you want to implement LOOKUPP in v3. Mostly we added
-it to the client to support reexporting NFSv4 filesystems via NFSv3. Are
-you looking to reexport v3 filesystems for some reason?
--- 
-Jeff Layton <jlayton@redhat.com>
-
+greg k-h
