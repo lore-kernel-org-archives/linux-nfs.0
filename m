@@ -2,101 +2,90 @@ Return-Path: <SRS0=saDi=QU=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
+X-Spam-Status: No, score=-2.5 required=3.0 tests=DKIM_ADSP_CUSTOM_MED,
+	FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_PASS,URIBL_BLOCKED,USER_AGENT_MUTT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E82BAC282C4
-	for <linux-nfs@archiver.kernel.org>; Wed, 13 Feb 2019 03:03:53 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E333CC282C2
+	for <linux-nfs@archiver.kernel.org>; Wed, 13 Feb 2019 05:36:54 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id A95FA2190A
-	for <linux-nfs@archiver.kernel.org>; Wed, 13 Feb 2019 03:03:53 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1550027033;
-	bh=w7JM8JijRO33isBI3Mv2R/8iO4yhaXM95FG04WwrJo8=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=Rn8Mq8LdXk1d+vNn6bgIb3qDkuSbS9POXBkSI2C/R/nPxQHyVWwrsmeYUGOsS+mqS
-	 5AhHuBJvhbHibNwXTcN/2b2zJyM1R19eMHdgy6LHVDaBMVgpEd1V832wLG1ViGJCRa
-	 sk1n/2TsK1+0rlmX2ocvpHJ2S/AK9/9MGjFu3C/k=
+	by mail.kernel.org (Postfix) with ESMTP id B867A222BB
+	for <linux-nfs@archiver.kernel.org>; Wed, 13 Feb 2019 05:36:54 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2387640AbfBMCeS (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 12 Feb 2019 21:34:18 -0500
-Received: from mail.kernel.org ([198.145.29.99]:37842 "EHLO mail.kernel.org"
+        id S1726432AbfBMFgx (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 13 Feb 2019 00:36:53 -0500
+Received: from mx1.redhat.com ([209.132.183.28]:57336 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2387664AbfBMCeR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 12 Feb 2019 21:34:17 -0500
-Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+        id S1726418AbfBMFgx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 13 Feb 2019 00:36:53 -0500
+Received: from smtp.corp.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 0B03C222C7;
-        Wed, 13 Feb 2019 02:34:15 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1550025256;
-        bh=w7JM8JijRO33isBI3Mv2R/8iO4yhaXM95FG04WwrJo8=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=vzvTxEumIMaM/AKyYD1oYE+3YkcyK6TpnVFpSjNqi6FT8jT1/NxpXVRWMGR91YqpH
-         CxniocCXLrBwVH6MbX+jWGvFC6l50D1u18PevKrod7jsbYKAKSxmWDWGuGua0MtSDO
-         Ir0n/rcsJyP0Fvgl+F+QBF6cJvZMDNqhDgfU708E=
-From:   Sasha Levin <sashal@kernel.org>
-To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     Dan Carpenter <dan.carpenter@oracle.com>,
-        Anna Schumaker <Anna.Schumaker@Netapp.com>,
-        Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org,
-        netdev@vger.kernel.org
-Subject: [PATCH AUTOSEL 4.20 034/105] xprtrdma: Double free in rpcrdma_sendctxs_create()
-Date:   Tue, 12 Feb 2019 21:32:25 -0500
-Message-Id: <20190213023336.19019-34-sashal@kernel.org>
-X-Mailer: git-send-email 2.19.1
-In-Reply-To: <20190213023336.19019-1-sashal@kernel.org>
-References: <20190213023336.19019-1-sashal@kernel.org>
-MIME-Version: 1.0
-X-Patchwork-Hint: Ignore
-Content-Transfer-Encoding: 8bit
+        by mx1.redhat.com (Postfix) with ESMTPS id 8ADECC058CB0;
+        Wed, 13 Feb 2019 05:36:53 +0000 (UTC)
+Received: from sh-el5.eng.rdu2.redhat.com (sh-el5.eng.rdu2.redhat.com [10.10.160.68])
+        by smtp.corp.redhat.com (Postfix) with ESMTPS id 5F7A660BE8;
+        Wed, 13 Feb 2019 05:36:53 +0000 (UTC)
+Received: from sh-el5.eng.rdu2.redhat.com (localhost.localdomain [127.0.0.1])
+        by sh-el5.eng.rdu2.redhat.com (8.13.8/8.13.8) with ESMTP id x1D5aqYk012284;
+        Wed, 13 Feb 2019 00:36:52 -0500
+Received: (from xzhou@localhost)
+        by sh-el5.eng.rdu2.redhat.com (8.13.8/8.13.8/Submit) id x1D5aqiL012283;
+        Wed, 13 Feb 2019 00:36:52 -0500
+Date:   Wed, 13 Feb 2019 00:36:52 -0500
+From:   Murphy Zhou <jencce.kernel@gmail.com>
+To:     Greg KH <gregkh@linuxfoundation.org>
+Cc:     linux-nfs@vger.kernel.org
+Subject: Re: [v5.0-rc3 regression] Oops when starting nfs service
+Message-ID: <20190213053652.GA12243@sh-el5.eng.rdu2.redhat.com>
+References: <20190212162157.GA27459@sh-el5.eng.rdu2.redhat.com> <20190212194413.GC3471@kroah.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20190212194413.GC3471@kroah.com>
+User-Agent: Mutt/1.4.2.2i
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.12
+X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.32]); Wed, 13 Feb 2019 05:36:53 +0000 (UTC)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Dan Carpenter <dan.carpenter@oracle.com>
+Hi Greg,
 
-[ Upstream commit 6e17f58c486d9554341f70aa5b63b8fbed07b3fa ]
+Your patch works fine for me. Thanks!
 
-The clean up is handled by the caller, rpcrdma_buffer_create(), so this
-call to rpcrdma_sendctxs_destroy() leads to a double free.
+On Tue, Feb 12, 2019 at 08:44:13PM +0100, Greg KH wrote:
+> On Tue, Feb 12, 2019 at 11:21:57AM -0500, Murphy Zhou wrote:
+> > Hi,
+> > 
+> > Starting nfs-server service can crash the kernel since
+> > commit ff9fb72bc07705c00795ca48631f7fffe24d2c6b
+> > Author: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+> > Date:   Wed Jan 23 11:28:14 2019 +0100
+> > 
+> >     debugfs: return error values, not NULL
+> > 
+> > # git describe ff9fb72bc07705c00795ca48631f7fffe24d2c6b
+> > v5.0-rc2-3-gff9fb72bc077
+> > 
+> 
+> Be careful with 'git describe', you showed what I applied that patch
+> against, not what release it showed up in.
+> 
+> This really showed up in 5.0-rc6:
+> 
+> $ git describe --contains ff9fb72bc07705c00795ca48631f7fffe24d2c6b
+> v5.0-rc6~21^2~3
 
-Fixes: ae72950abf99 ("xprtrdma: Add data structure to manage RDMA Send arguments")
-Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
-Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
-Signed-off-by: Sasha Levin <sashal@kernel.org>
----
- net/sunrpc/xprtrdma/verbs.c | 6 +-----
- 1 file changed, 1 insertion(+), 5 deletions(-)
+Thanks very much for the tip! I forgot about this, so it should be
+rc6 regression.
 
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index b9bc7f9f6bb9..4ffa6db804bb 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -913,17 +913,13 @@ static int rpcrdma_sendctxs_create(struct rpcrdma_xprt *r_xprt)
- 	for (i = 0; i <= buf->rb_sc_last; i++) {
- 		sc = rpcrdma_sendctx_create(&r_xprt->rx_ia);
- 		if (!sc)
--			goto out_destroy;
-+			return -ENOMEM;
- 
- 		sc->sc_xprt = r_xprt;
- 		buf->rb_sc_ctxs[i] = sc;
- 	}
- 
- 	return 0;
--
--out_destroy:
--	rpcrdma_sendctxs_destroy(buf);
--	return -ENOMEM;
- }
- 
- /* The sendctx queue is not guaranteed to have a size that is a
--- 
-2.19.1
+Thanks,
+Murphy
 
+> 
+> thanks,
+> 
+> greg k-h
