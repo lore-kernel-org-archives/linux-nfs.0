@@ -8,61 +8,63 @@ X-Spam-Status: No, score=-9.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 718EDC43381
-	for <linux-nfs@archiver.kernel.org>; Wed, 13 Feb 2019 21:55:08 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2723BC4360F
+	for <linux-nfs@archiver.kernel.org>; Wed, 13 Feb 2019 21:55:09 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 3CE5B21872
+	by mail.kernel.org (Postfix) with ESMTP id E0C6621872
 	for <linux-nfs@archiver.kernel.org>; Wed, 13 Feb 2019 21:55:08 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="VhpznEBX"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="kvogw94U"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2392290AbfBMVzH (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 13 Feb 2019 16:55:07 -0500
-Received: from mail-it1-f195.google.com ([209.85.166.195]:52936 "EHLO
-        mail-it1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2388687AbfBMVzH (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Feb 2019 16:55:07 -0500
-Received: by mail-it1-f195.google.com with SMTP id r11so9747393itc.2
-        for <linux-nfs@vger.kernel.org>; Wed, 13 Feb 2019 13:55:06 -0800 (PST)
+        id S2388687AbfBMVzI (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 13 Feb 2019 16:55:08 -0500
+Received: from mail-it1-f194.google.com ([209.85.166.194]:39641 "EHLO
+        mail-it1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2392266AbfBMVzI (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Feb 2019 16:55:08 -0500
+Received: by mail-it1-f194.google.com with SMTP id p4so7651484itc.4
+        for <linux-nfs@vger.kernel.org>; Wed, 13 Feb 2019 13:55:07 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
-        h=from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=rb+wJldDmRdRFdVzR15kzmTKgtHcxu+6JLHaC8Z4OEE=;
-        b=VhpznEBXgIQ7ORt1JRcS/Cc34uT6gtUMyujJilRCUQOEH562tDQAfnEFl6MwItJVKV
-         bnWETXQwHpqPesQh6/71/akhEkoYofO7zE751Sor9CK4mExgfAyNR+rfIr4ZKusjbYeP
-         N2f5doH3N7GeiKhs/sjZFdTrGdabM8rBzz1b5yu5l1ZXDD7x6wa6TdIUkawXarO9H32D
-         xTUBFjKlfkFSz+PozDtX7VPHPZ4zhSYWGT1WBa8c1tlP4fF8nx7G/YTjlqKM4YCYl483
-         UTApNnzUihfgZXh0CWO8cyGaWVa5ED05KmMSWXqEf055o0wAADFT4cWM9dYsDAS6rc99
-         OQQQ==
+        h=from:to:cc:subject:date:message-id:in-reply-to:references
+         :mime-version:content-transfer-encoding;
+        bh=isP+0Pou2hKfs7cLQ0JCQj28Ybr/PWCUNJ5cuZNSLMo=;
+        b=kvogw94ULqOA/69mWV316xal2LNaRD6CQwFY3UkLqsTytrX1zawKjWf+FfIN8Q939a
+         D7fGTR7hatU8jIebEWAKk0yXDMLV13KiqBxnjXSQowiXOrYsvS1cHnruoO5XPOOIEIBC
+         9PN/sQ2/Nezdq8rwJdKHP7kXW46SL0yyYLQZZjSNBZkj+8tf43rrvciX6YCUtWwtBVLh
+         a/uCVOZlpchAOdlO14GUQMHKcwO47vtO7pFiLY7OfiWOac8uQn2AZ3xwRhqIUqfcM3y9
+         UnG3eXXTP+n+LrU2FEcoPcOeDrxm5uSTexuMRJUjxdt2PwKHKSZcL3r9BdcVkvYK02O+
+         vuaQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=rb+wJldDmRdRFdVzR15kzmTKgtHcxu+6JLHaC8Z4OEE=;
-        b=Q6YYF92QsgUXfQcwh6RBGurf2VpeeGuT3G8qeAflCgJb1/dkcKhYw9BhHoVhY14ocx
-         Ibnl6VqehkLsPPxLNHfv8iD2eviqXMQu5PTg/a/PZUDirEvXo596Lhi74b/If9SeWUXb
-         pI8TnCH7gJ6VGuFifnPaA/Eru7pmbIq9Y3A2+FBPqz0fKq/spug1G9Y5uLhRT3u39W33
-         wC1hyHLNxdBmtSptAd0nsjaIzjGi00eIEX+Uoh4X6lkXWDYMlNFsC5yKvELd5SI+n1HK
-         KJJLiobjyfMloXNVzvu1KT2tfgsGCG6CAFhDby018rU8pi54nvF2cjGGvq+P0+jmM3+3
-         xA/w==
-X-Gm-Message-State: AHQUAuZfc2F3ng2FtBDCOkiNHNEBIGua3amAW732oW903aRjeaFj2Wme
-        sZDLlf3m+ppp++c5wklmEw==
-X-Google-Smtp-Source: AHgI3IYq9RUZuLvhyrTM/aNEG6y6LeIU6kAY3K0U58fLN29M2n0jxyuv6Iq8ToBikqmtZFvGcETMRw==
-X-Received: by 2002:a24:35c3:: with SMTP id k186mr239031ita.5.1550094905771;
-        Wed, 13 Feb 2019 13:55:05 -0800 (PST)
+        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
+         :references:mime-version:content-transfer-encoding;
+        bh=isP+0Pou2hKfs7cLQ0JCQj28Ybr/PWCUNJ5cuZNSLMo=;
+        b=eJ502T4pFl6spTSuWlI3oj2hSmTw8QZ3ugk4+FOrw6/yhAq2B93b3CSRmZM7AxJoxc
+         mMUz/+ogpjxyDeEDVzHv1NqpdL+AQLKzqZJ59p91rRye4lKEThUhzQcGWMGgcjcAIV3p
+         fwXZ1UYO7H7Mz+kwhoQ0g085IDo999GYUEUqUsY+dTTr4hDtmAuaF2vl/bEGD4kr7XaI
+         DrAr5KiHBFHutL6Ha4Q6iY5SEDIF2jkLzzeTpIzAPun3fY+Cs66g8FMjjdiLIKdM8xJF
+         Qf3/g5tT26VOZcozCRlQXd9Jdxn39fk0We/T0yQ0Z0y8KOVHNH6o7OE1HQ9JwtIGtzyP
+         ZMSQ==
+X-Gm-Message-State: AHQUAuaT57lnnZ/Gn4Cuij5rHFMjj4qknpRA2JkeTAezr6VRdzk7rrxB
+        wsDa0eg8VeW2Fcjq4JoozzZGIM8=
+X-Google-Smtp-Source: AHgI3IbF0veg8ZMPuxYUxLvUxdr2D8s4xvaBK4iNz6w5Yo7jAdvb/9NGIZjoeabQrgmT1gwYgSSbqQ==
+X-Received: by 2002:a24:3595:: with SMTP id k143mr195585ita.37.1550094906570;
+        Wed, 13 Feb 2019 13:55:06 -0800 (PST)
 Received: from localhost.localdomain (c-68-40-189-247.hsd1.mi.comcast.net. [68.40.189.247])
-        by smtp.gmail.com with ESMTPSA id y184sm322113ity.27.2019.02.13.13.55.04
+        by smtp.gmail.com with ESMTPSA id y184sm322113ity.27.2019.02.13.13.55.05
         (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
-        Wed, 13 Feb 2019 13:55:04 -0800 (PST)
+        Wed, 13 Feb 2019 13:55:06 -0800 (PST)
 From:   Trond Myklebust <trondmy@gmail.com>
 X-Google-Original-From: Trond Myklebust <trond.myklebust@hammerspace.com>
 To:     Anna Schumaker <anna.schumaker@netapp.com>
 Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH 1/2] NFS: Fix I/O request leakages
-Date:   Wed, 13 Feb 2019 16:53:56 -0500
-Message-Id: <20190213215357.19696-1-trond.myklebust@hammerspace.com>
+Subject: [PATCH 2/2] NFS: Pass error information to the pgio error cleanup routine
+Date:   Wed, 13 Feb 2019 16:53:57 -0500
+Message-Id: <20190213215357.19696-2-trond.myklebust@hammerspace.com>
 X-Mailer: git-send-email 2.20.1
+In-Reply-To: <20190213215357.19696-1-trond.myklebust@hammerspace.com>
+References: <20190213215357.19696-1-trond.myklebust@hammerspace.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
@@ -70,83 +72,124 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-When we fail to add the request to the I/O queue, we currently leave it
-to the caller to free the failed request. However since some of the
-requests that fail are actually created by nfs_pageio_add_request()
-itself, and are not passed back the caller, this leads to a leakage
-issue, which can again cause page locks to leak.
-
-This commit addresses the leakage by freeing the created requests on
-error, using desc->pg_completion_ops->error_cleanup()
+Allow the caller to pass error information when cleaning up a failed
+I/O request so that we can conditionally take action to cancel the
+request altogether if the error turned out to be fatal.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
-Fixes: a7d42ddb30997 ("nfs: add mirroring support to pgio layer")
-Cc: stable@vger.kernel.org # v4.0+
 ---
- fs/nfs/pagelist.c | 25 ++++++++++++++++++++-----
- 1 file changed, 20 insertions(+), 5 deletions(-)
+ fs/nfs/direct.c         |  4 ++--
+ fs/nfs/pagelist.c       |  5 +++--
+ fs/nfs/read.c           |  2 +-
+ fs/nfs/write.c          | 11 +++++++++--
+ include/linux/nfs_xdr.h |  2 +-
+ 5 files changed, 16 insertions(+), 8 deletions(-)
 
+diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+index 33824a0a57bf..aa24a2e10dd7 100644
+--- a/fs/nfs/direct.c
++++ b/fs/nfs/direct.c
+@@ -428,7 +428,7 @@ static void nfs_direct_read_completion(struct nfs_pgio_header *hdr)
+ 	hdr->release(hdr);
+ }
+ 
+-static void nfs_read_sync_pgio_error(struct list_head *head)
++static void nfs_read_sync_pgio_error(struct list_head *head, int error)
+ {
+ 	struct nfs_page *req;
+ 
+@@ -821,7 +821,7 @@ static void nfs_direct_write_completion(struct nfs_pgio_header *hdr)
+ 	hdr->release(hdr);
+ }
+ 
+-static void nfs_write_sync_pgio_error(struct list_head *head)
++static void nfs_write_sync_pgio_error(struct list_head *head, int error)
+ {
+ 	struct nfs_page *req;
+ 
 diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-index e54d899c1848..40b90f187eeb 100644
+index 40b90f187eeb..9e512c0ab544 100644
 --- a/fs/nfs/pagelist.c
 +++ b/fs/nfs/pagelist.c
-@@ -988,6 +988,17 @@ static void nfs_pageio_doio(struct nfs_pageio_descriptor *desc)
- 	}
+@@ -996,7 +996,7 @@ nfs_pageio_cleanup_request(struct nfs_pageio_descriptor *desc,
+ 
+ 	nfs_list_remove_request(req);
+ 	nfs_list_add_request(req, &head);
+-	desc->pg_completion_ops->error_cleanup(&head);
++	desc->pg_completion_ops->error_cleanup(&head, desc->pg_error);
  }
  
-+static void
-+nfs_pageio_cleanup_request(struct nfs_pageio_descriptor *desc,
-+		struct nfs_page *req)
-+{
-+	LIST_HEAD(head);
-+
-+	nfs_list_remove_request(req);
-+	nfs_list_add_request(req, &head);
-+	desc->pg_completion_ops->error_cleanup(&head);
-+}
-+
  /**
-  * nfs_pageio_add_request - Attempt to coalesce a request into a page list.
-  * @desc: destination io descriptor
-@@ -1025,10 +1036,8 @@ static int __nfs_pageio_add_request(struct nfs_pageio_descriptor *desc,
- 			nfs_page_group_unlock(req);
- 			desc->pg_moreio = 1;
- 			nfs_pageio_doio(desc);
--			if (desc->pg_error < 0)
--				return 0;
--			if (mirror->pg_recoalesce)
--				return 0;
-+			if (desc->pg_error < 0 || mirror->pg_recoalesce)
-+				goto out_cleanup_subreq;
- 			/* retry add_request for this subreq */
- 			nfs_page_group_lock(req);
- 			continue;
-@@ -1061,6 +1070,9 @@ static int __nfs_pageio_add_request(struct nfs_pageio_descriptor *desc,
- 	desc->pg_error = PTR_ERR(subreq);
- 	nfs_page_group_unlock(req);
- 	return 0;
-+out_cleanup_subreq:
-+	nfs_pageio_cleanup_request(desc, subreq);
-+	return 0;
+@@ -1132,7 +1132,8 @@ static void nfs_pageio_error_cleanup(struct nfs_pageio_descriptor *desc)
+ 
+ 	for (midx = 0; midx < desc->pg_mirror_count; midx++) {
+ 		mirror = &desc->pg_mirrors[midx];
+-		desc->pg_completion_ops->error_cleanup(&mirror->pg_list);
++		desc->pg_completion_ops->error_cleanup(&mirror->pg_list,
++				desc->pg_error);
+ 	}
  }
  
- static int nfs_do_recoalesce(struct nfs_pageio_descriptor *desc)
-@@ -1168,11 +1180,14 @@ int nfs_pageio_add_request(struct nfs_pageio_descriptor *desc,
- 		if (nfs_pgio_has_mirroring(desc))
- 			desc->pg_mirror_idx = midx;
- 		if (!nfs_pageio_add_request_mirror(desc, dupreq))
--			goto out_failed;
-+			goto out_cleanup_subreq;
+diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+index f9f19784db82..1d95a60b2586 100644
+--- a/fs/nfs/read.c
++++ b/fs/nfs/read.c
+@@ -205,7 +205,7 @@ static void nfs_initiate_read(struct nfs_pgio_header *hdr,
+ }
+ 
+ static void
+-nfs_async_read_error(struct list_head *head)
++nfs_async_read_error(struct list_head *head, int error)
+ {
+ 	struct nfs_page	*req;
+ 
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index f12cb31a41e5..480ccad94b9a 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -1411,20 +1411,27 @@ static void nfs_redirty_request(struct nfs_page *req)
+ 	nfs_release_request(req);
+ }
+ 
+-static void nfs_async_write_error(struct list_head *head)
++static void nfs_async_write_error(struct list_head *head, int error)
+ {
+ 	struct nfs_page	*req;
+ 
+ 	while (!list_empty(head)) {
+ 		req = nfs_list_entry(head->next);
+ 		nfs_list_remove_request(req);
++		if (nfs_error_is_fatal(error)) {
++			nfs_context_set_write_error(req->wb_context, error);
++			if (nfs_error_is_fatal_on_server(error)) {
++				nfs_write_error_remove_page(req);
++				continue;
++			}
++		}
+ 		nfs_redirty_request(req);
  	}
+ }
  
- 	return 1;
+ static void nfs_async_write_reschedule_io(struct nfs_pgio_header *hdr)
+ {
+-	nfs_async_write_error(&hdr->pages);
++	nfs_async_write_error(&hdr->pages, 0);
+ 	filemap_fdatawrite_range(hdr->inode->i_mapping, hdr->args.offset,
+ 			hdr->args.offset + hdr->args.count - 1);
+ }
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index c39a29ab0dfd..9b8324ec08f3 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -1584,7 +1584,7 @@ struct nfs_commit_data {
+ };
  
-+out_cleanup_subreq:
-+	if (req != dupreq)
-+		nfs_pageio_cleanup_request(desc, dupreq);
- out_failed:
- 	nfs_pageio_error_cleanup(desc);
- 	return 0;
+ struct nfs_pgio_completion_ops {
+-	void	(*error_cleanup)(struct list_head *head);
++	void	(*error_cleanup)(struct list_head *head, int);
+ 	void	(*init_hdr)(struct nfs_pgio_header *hdr);
+ 	void	(*completion)(struct nfs_pgio_header *hdr);
+ 	void	(*reschedule_io)(struct nfs_pgio_header *hdr);
 -- 
 2.20.1
 
