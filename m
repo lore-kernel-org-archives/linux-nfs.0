@@ -6,39 +6,38 @@ X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS
 	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 623E1C43381
-	for <linux-nfs@archiver.kernel.org>; Thu, 14 Feb 2019 16:58:48 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 95ABBC10F04
+	for <linux-nfs@archiver.kernel.org>; Thu, 14 Feb 2019 16:58:51 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 3A1EB222DA
-	for <linux-nfs@archiver.kernel.org>; Thu, 14 Feb 2019 16:58:48 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 6C5DC222DD
+	for <linux-nfs@archiver.kernel.org>; Thu, 14 Feb 2019 16:58:51 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2502948AbfBNQ5o (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 14 Feb 2019 11:57:44 -0500
-Received: from mx1.redhat.com ([209.132.183.28]:39814 "EHLO mx1.redhat.com"
+        id S2502853AbfBNQ5W (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 14 Feb 2019 11:57:22 -0500
+Received: from mx1.redhat.com ([209.132.183.28]:4851 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2502887AbfBNQ5n (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 14 Feb 2019 11:57:43 -0500
+        id S2502823AbfBNQ5V (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 14 Feb 2019 11:57:21 -0500
 Received: from smtp.corp.redhat.com (int-mx03.intmail.prod.int.phx2.redhat.com [10.5.11.13])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id A6B8D81DF9;
-        Thu, 14 Feb 2019 16:57:42 +0000 (UTC)
+        by mx1.redhat.com (Postfix) with ESMTPS id BF2CD81DF3;
+        Thu, 14 Feb 2019 16:57:20 +0000 (UTC)
 Received: from warthog.procyon.org.uk (ovpn-121-129.rdu2.redhat.com [10.10.121.129])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 7D776611B5;
-        Thu, 14 Feb 2019 16:57:36 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 820F8611B0;
+        Thu, 14 Feb 2019 16:57:09 +0000 (UTC)
 Organization: Red Hat UK Ltd. Registered Address: Red Hat UK Ltd, Amberley
  Place, 107-111 Peascod Street, Windsor, Berkshire, SI4 1TE, United
  Kingdom.
  Registered in England and Wales under Company Registration No. 3798903
-Subject: [RFC PATCH 4/9] keys: Cache the hash value to avoid lots of
- recalculation
+Subject: [RFC PATCH 2/9] keys: Kill off request_key_async{,_with_auxdata}
 From:   David Howells <dhowells@redhat.com>
 To:     keyrings@vger.kernel.org
 Cc:     linux-security-module@vger.kernel.org, linux-nfs@vger.kernel.org,
         linux-cifs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         rgb@redhat.com, dhowells@redhat.com, linux-kernel@vger.kernel.org
-Date:   Thu, 14 Feb 2019 16:57:35 +0000
-Message-ID: <155016345570.11489.12881645434285035244.stgit@warthog.procyon.org.uk>
+Date:   Thu, 14 Feb 2019 16:57:08 +0000
+Message-ID: <155016342870.11489.3526179007799503736.stgit@warthog.procyon.org.uk>
 In-Reply-To: <155016339876.11489.901851271827069026.stgit@warthog.procyon.org.uk>
 References: <155016339876.11489.901851271827069026.stgit@warthog.procyon.org.uk>
 User-Agent: StGit/unknown-version
@@ -46,146 +45,99 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
 X-Scanned-By: MIMEDefang 2.79 on 10.5.11.13
-X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.25]); Thu, 14 Feb 2019 16:57:42 +0000 (UTC)
+X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.25]); Thu, 14 Feb 2019 16:57:20 +0000 (UTC)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Cache the hash of the key's type and description in the index key so that
-we're not recalculating it every time we look at a key during a search.
-The hash function does a bunch of multiplications, so evading those is
-probably worthwhile - especially as this is done for every key examined
-during a search.
-
-This also allows the methods used by assoc_array to get chunks of index-key
-to be simplified.
+Kill off request_key_async{,_with_auxdata}() as they're not currently used.
 
 Signed-off-by: David Howells <dhowells@redhat.com>
 ---
 
- include/linux/key.h      |    3 +++
- security/keys/internal.h |    8 +-------
- security/keys/key.c      |    2 +-
- security/keys/keyring.c  |   28 ++++++++++++++++++++--------
- 4 files changed, 25 insertions(+), 16 deletions(-)
+ include/linux/key.h         |   11 ---------
+ security/keys/request_key.c |   50 -------------------------------------------
+ 2 files changed, 61 deletions(-)
 
 diff --git a/include/linux/key.h b/include/linux/key.h
-index 33d87cb2d469..b39f5876b66d 100644
+index 7099985e35a9..aaa93fe3f587 100644
 --- a/include/linux/key.h
 +++ b/include/linux/key.h
-@@ -86,6 +86,8 @@ struct keyring_list;
- struct keyring_name;
+@@ -280,17 +280,6 @@ extern struct key *request_key_with_auxdata(struct key_type *type,
+ 					    size_t callout_len,
+ 					    void *aux);
  
- struct keyring_index_key {
-+	/* [!] If this structure is altered, the union in struct key must change too! */
-+	unsigned long		hash;			/* Hash value */
- 	union {
- 		struct {
- #ifdef __LITTLE_ENDIAN /* Put desc_len at the LSB of x */
-@@ -213,6 +215,7 @@ struct key {
- 	union {
- 		struct keyring_index_key index_key;
- 		struct {
-+			unsigned long	hash;
- 			unsigned long	len_desc;
- 			struct key_type	*type;		/* type of key */
- 			char		*description;
-diff --git a/security/keys/internal.h b/security/keys/internal.h
-index 02592d24f13a..3154ba59a2f0 100644
---- a/security/keys/internal.h
-+++ b/security/keys/internal.h
-@@ -89,13 +89,7 @@ extern spinlock_t key_serial_lock;
- extern struct mutex key_construction_mutex;
- extern wait_queue_head_t request_key_conswq;
- 
+-extern struct key *request_key_async(struct key_type *type,
+-				     const char *description,
+-				     const void *callout_info,
+-				     size_t callout_len);
 -
--static inline void key_set_index_key(struct keyring_index_key *index_key)
--{
--	size_t n = min_t(size_t, index_key->desc_len, sizeof(index_key->desc));
--	memcpy(index_key->desc, index_key->description, n);
--}
+-extern struct key *request_key_async_with_auxdata(struct key_type *type,
+-						  const char *description,
+-						  const void *callout_info,
+-						  size_t callout_len,
+-						  void *aux);
 -
-+extern void key_set_index_key(struct keyring_index_key *index_key);
- extern struct key_type *key_type_lookup(const char *type);
- extern void key_type_put(struct key_type *ktype);
+ extern int wait_for_key_construction(struct key *key, bool intr);
  
-diff --git a/security/keys/key.c b/security/keys/key.c
-index 1d0250a8990e..1568b0028ba4 100644
---- a/security/keys/key.c
-+++ b/security/keys/key.c
-@@ -285,12 +285,12 @@ struct key *key_alloc(struct key_type *type, const char *desc,
- 	key->index_key.description = kmemdup(desc, desclen + 1, GFP_KERNEL);
- 	if (!key->index_key.description)
- 		goto no_memory_3;
-+	key->index_key.type = type;
- 	key_set_index_key(&key->index_key);
- 
- 	refcount_set(&key->usage, 1);
- 	init_rwsem(&key->sem);
- 	lockdep_set_class(&key->sem, &type->lock_class);
--	key->index_key.type = type;
- 	key->user = user;
- 	key->quotalen = quotalen;
- 	key->datalen = type->def_datalen;
-diff --git a/security/keys/keyring.c b/security/keys/keyring.c
-index bece229aeccd..11c44ad07b5b 100644
---- a/security/keys/keyring.c
-+++ b/security/keys/keyring.c
-@@ -168,7 +168,7 @@ static u64 mult_64x32_and_fold(u64 x, u32 y)
- /*
-  * Hash a key type and description.
-  */
--static unsigned long hash_key_type_and_desc(const struct keyring_index_key *index_key)
-+static void hash_key_type_and_desc(struct keyring_index_key *index_key)
- {
- 	const unsigned level_shift = ASSOC_ARRAY_LEVEL_STEP;
- 	const unsigned long fan_mask = ASSOC_ARRAY_FAN_MASK;
-@@ -206,10 +206,22 @@ static unsigned long hash_key_type_and_desc(const struct keyring_index_key *inde
- 	 * zero for keyrings and non-zero otherwise.
- 	 */
- 	if (index_key->type != &key_type_keyring && (hash & fan_mask) == 0)
--		return hash | (hash >> (ASSOC_ARRAY_KEY_CHUNK_SIZE - level_shift)) | 1;
--	if (index_key->type == &key_type_keyring && (hash & fan_mask) != 0)
--		return (hash + (hash << level_shift)) & ~fan_mask;
--	return hash;
-+		hash |= (hash >> (ASSOC_ARRAY_KEY_CHUNK_SIZE - level_shift)) | 1;
-+	else if (index_key->type == &key_type_keyring && (hash & fan_mask) != 0)
-+		hash = (hash + (hash << level_shift)) & ~fan_mask;
-+	index_key->hash = hash;
-+}
-+
-+/*
-+ * Finalise an index key to include a part of the description actually in the
-+ * index key and to add in the hash too.
-+ */
-+void key_set_index_key(struct keyring_index_key *index_key)
-+{
-+	size_t n = min_t(size_t, index_key->desc_len, sizeof(index_key->desc));
-+	memcpy(index_key->desc, index_key->description, n);
-+
-+	hash_key_type_and_desc(index_key);
+ extern int key_validate(const struct key *key);
+diff --git a/security/keys/request_key.c b/security/keys/request_key.c
+index 7e935553af2b..7d716876a29b 100644
+--- a/security/keys/request_key.c
++++ b/security/keys/request_key.c
+@@ -686,53 +686,3 @@ struct key *request_key_with_auxdata(struct key_type *type,
+ 	return key;
  }
- 
- /*
-@@ -227,7 +239,7 @@ static unsigned long keyring_get_key_chunk(const void *data, int level)
- 	level /= ASSOC_ARRAY_KEY_CHUNK_SIZE;
- 	switch (level) {
- 	case 0:
--		return hash_key_type_and_desc(index_key);
-+		return index_key->hash;
- 	case 1:
- 		return index_key->x;
- 	case 2:
-@@ -280,8 +292,8 @@ static int keyring_diff_objects(const void *object, const void *data)
- 	int level, i;
- 
- 	level = 0;
--	seg_a = hash_key_type_and_desc(a);
--	seg_b = hash_key_type_and_desc(b);
-+	seg_a = a->hash;
-+	seg_b = b->hash;
- 	if ((seg_a ^ seg_b) != 0)
- 		goto differ;
- 	level += ASSOC_ARRAY_KEY_CHUNK_SIZE / 8;
+ EXPORT_SYMBOL(request_key_with_auxdata);
+-
+-/*
+- * request_key_async - Request a key (allow async construction)
+- * @type: Type of key.
+- * @description: The searchable description of the key.
+- * @callout_info: The data to pass to the instantiation upcall (or NULL).
+- * @callout_len: The length of callout_info.
+- *
+- * As for request_key_and_link() except that it does not add the returned key
+- * to a keyring if found, new keys are always allocated in the user's quota and
+- * no auxiliary data can be passed.
+- *
+- * The caller should call wait_for_key_construction() to wait for the
+- * completion of the returned key if it is still undergoing construction.
+- */
+-struct key *request_key_async(struct key_type *type,
+-			      const char *description,
+-			      const void *callout_info,
+-			      size_t callout_len)
+-{
+-	return request_key_and_link(type, description, callout_info,
+-				    callout_len, NULL, NULL,
+-				    KEY_ALLOC_IN_QUOTA);
+-}
+-EXPORT_SYMBOL(request_key_async);
+-
+-/*
+- * request a key with auxiliary data for the upcaller (allow async construction)
+- * @type: Type of key.
+- * @description: The searchable description of the key.
+- * @callout_info: The data to pass to the instantiation upcall (or NULL).
+- * @callout_len: The length of callout_info.
+- * @aux: Auxiliary data for the upcall.
+- *
+- * As for request_key_and_link() except that it does not add the returned key
+- * to a keyring if found and new keys are always allocated in the user's quota.
+- *
+- * The caller should call wait_for_key_construction() to wait for the
+- * completion of the returned key if it is still undergoing construction.
+- */
+-struct key *request_key_async_with_auxdata(struct key_type *type,
+-					   const char *description,
+-					   const void *callout_info,
+-					   size_t callout_len,
+-					   void *aux)
+-{
+-	return request_key_and_link(type, description, callout_info,
+-				    callout_len, aux, NULL, KEY_ALLOC_IN_QUOTA);
+-}
+-EXPORT_SYMBOL(request_key_async_with_auxdata);
 
