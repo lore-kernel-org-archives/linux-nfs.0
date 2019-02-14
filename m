@@ -2,65 +2,68 @@ Return-Path: <SRS0=jvUk=QV=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.8 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,
+X-Spam-Status: No, score=-6.8 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
 	SPF_PASS autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 26EA0C10F05
-	for <linux-nfs@archiver.kernel.org>; Thu, 14 Feb 2019 20:43:11 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id CCE84C4360F
+	for <linux-nfs@archiver.kernel.org>; Thu, 14 Feb 2019 20:43:15 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id E8BBB21B68
-	for <linux-nfs@archiver.kernel.org>; Thu, 14 Feb 2019 20:43:10 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 8B9992192B
+	for <linux-nfs@archiver.kernel.org>; Thu, 14 Feb 2019 20:43:15 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="lRn7ytDy"
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="i0rn4qxw"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2390196AbfBNUnI (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 14 Feb 2019 15:43:08 -0500
-Received: from mail-it1-f195.google.com ([209.85.166.195]:38102 "EHLO
-        mail-it1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2389444AbfBNUnI (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Feb 2019 15:43:08 -0500
-Received: by mail-it1-f195.google.com with SMTP id l66so7747274itg.3;
-        Thu, 14 Feb 2019 12:43:07 -0800 (PST)
+        id S2389444AbfBNUnN (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 14 Feb 2019 15:43:13 -0500
+Received: from mail-it1-f194.google.com ([209.85.166.194]:50722 "EHLO
+        mail-it1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2388630AbfBNUnN (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Feb 2019 15:43:13 -0500
+Received: by mail-it1-f194.google.com with SMTP id z7so18662114iti.0;
+        Thu, 14 Feb 2019 12:43:12 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
-        h=sender:subject:from:to:date:message-id:user-agent:mime-version
-         :content-transfer-encoding;
-        bh=ywj50zLLmbe5uxXqlccyrFee1766tyo4QskRCN7gUPo=;
-        b=lRn7ytDyvlAUhPie6mLZCm4LtC2UkF5qd5EXvDT/sV8Z3A11GPc6ks8TdXqMpUA9ih
-         J6uSjmwpUHjvw8XCLVk9cJG0PiAxzk9twT1Bt6wdjdrWqjfuDepvvt821NwfaReD5Sbs
-         pjgWdef0Z5xMvrrqWgaOXu9upjNSBPlwTCNpZpY8iqdrQAVrgrdOlcT1J50bltGinaAv
-         shXtx7SwQjmm/v9TOM454UoWtzb8qDKBKvZInA2Aqeh/XcOhj5/fsEQjOo5emSCk+vbP
-         VfM72vY6I1OykV4g6vQuQ+xgdKLOVBxU33MM7rbyeS1nwE1vHWNKfebZ19H8cooVJbfz
-         xPBA==
+        h=sender:subject:from:to:date:message-id:in-reply-to:references
+         :user-agent:mime-version:content-transfer-encoding;
+        bh=vxHkntpfIAx6Jkx57Y4/1HXD+768KWbcgw5EDCyfM6U=;
+        b=i0rn4qxwt2eEiOQ6OsyKsXlob/oPeRvYLVpDEqR+pPTeShJPSTZ44oPwsRh1EQV/fs
+         oaGwDLskWf33wxPb0GIjZOUE9Bt5EQ/usPkmShuTjaJPB7Znk5mPZShof3A8wqSFk2zd
+         eq1JRprgjk3DZBnMRck8b+34xLZI3AEvm/3fuVFDBXfWgYlxqI7pFqA/g+qCN7faOAA4
+         f4Bv+ZB8AiR0mGdUhnaQvMJg+nOpHjKnk1fyCxtyS2nda3HTrya9r0iHDFjebTjcE82r
+         s/KB+euaoh31bdaMWcN3SLRkMeUvSmSDM7CTMZgJRSfc5yeq/ei6GYHqXhkcgS1gEvjK
+         0arQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:sender:subject:from:to:date:message-id
-         :user-agent:mime-version:content-transfer-encoding;
-        bh=ywj50zLLmbe5uxXqlccyrFee1766tyo4QskRCN7gUPo=;
-        b=p7UVsSacA0QG4C137VDpH/1oQnJA1fi2TpDewNN0OwhxOG2uYOi1ZPTd/oQ932B+Kp
-         2VtzNg0peT/FtcC16Y8SWPobQhekaWmGDAyqkJMBhbuhGEfo9/48QXUCwzHyA2ggC6WB
-         8zoFvBhx4iDcwvCZNmxzp0+mYFsw/T+Dh7ruUMu1I6hABYoAsXl8L7Iyo7PnXTHNvo8e
-         rY8KW5Pe+RkOZnjFNGa/CShRXKL4d61nzNTNA8gMyMiK8H7UfcNO9FziP7uFWQYmYOmG
-         yL1sGnQ6OB2uHfAYx6YZ4fhgqwRheVC43L1w5nttMSqofe5hsqoimZGSi/WWvjl/dnBY
-         hFsA==
-X-Gm-Message-State: AHQUAuZ942UJgiXdqPynJsuvBoXmqzLar7Mqj1hFJ599oCq8ACvFSHc4
-        vH+/eVuLZyrSYhIkzzFdzqy8VOKv
-X-Google-Smtp-Source: AHgI3IbMY8s3f8fhzZCq1olyGCgq8QElkfScAkqEftI9rz+UiJ/WE/K4+Q4HhdLHpFlaNJDUWRATdg==
-X-Received: by 2002:a24:14e:: with SMTP id 75mr3499722itk.44.1550176987118;
-        Thu, 14 Feb 2019 12:43:07 -0800 (PST)
+         :in-reply-to:references:user-agent:mime-version
+         :content-transfer-encoding;
+        bh=vxHkntpfIAx6Jkx57Y4/1HXD+768KWbcgw5EDCyfM6U=;
+        b=JD3i8CoWoLJYZhqNlSdoLlL5hG/r7gqcp7Usas4Hj7BKgS5gTZUSORVqTU9LFDcgum
+         gwQpCtxGROiFPLTAKQrNycLNsF1Z57wYoxSYGJguJo9w0oMfOTLY5yW7iZtW17ieaNRX
+         gPJe8aRQ8gj2TXVyKEcIwx658wTdm6qeH2h6J2xcJnsOebOd9OD7Sms5faC++Qg4jBc/
+         YarN15MIn48Wu6j7x+ZuyH2VPUQssL29pslZg/GdexKKLKMPPUbL3pdlpBhhIsGVgQ75
+         aC9mLDAaEEQNaJiL7pPEIr07v21rm/26GXWUVjCRK7eYPSh8wbvV4CWjCmpVHGMTKalu
+         RpYA==
+X-Gm-Message-State: AHQUAuYuo3WDo3F4qoejBnKn/Rhen7fDRIfbzvgkhiqbCXTKZ+vx1jzQ
+        EnOcdnj67Larn8PrVk+Q6IPrznYe
+X-Google-Smtp-Source: AHgI3IYx3vfq1CsxblzqQpHtix6D34Z7XWNyKgW13ZblsjPj3ccEolXoqbyYS1Bj/Z2n08G0EV+JVA==
+X-Received: by 2002:a6b:b214:: with SMTP id b20mr3409232iof.130.1550176992022;
+        Thu, 14 Feb 2019 12:43:12 -0800 (PST)
 Received: from gateway.1015granger.net (c-68-61-232-219.hsd1.mi.comcast.net. [68.61.232.219])
-        by smtp.gmail.com with ESMTPSA id w67sm2392778itw.38.2019.02.14.12.43.06
+        by smtp.gmail.com with ESMTPSA id 125sm1590540itk.28.2019.02.14.12.43.11
         (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Thu, 14 Feb 2019 12:43:06 -0800 (PST)
+        Thu, 14 Feb 2019 12:43:11 -0800 (PST)
 Received: from manet.1015granger.net (manet.1015granger.net [192.168.1.51])
-        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id x1EKh5rR006552;
-        Thu, 14 Feb 2019 20:43:05 GMT
-Subject: [PATCH RFC 0/4] IMA on NFS prototype
+        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id x1EKhALB006555;
+        Thu, 14 Feb 2019 20:43:10 GMT
+Subject: [PATCH RFC 1/4] NFS: Define common IMA-related protocol elements
 From:   Chuck Lever <chuck.lever@oracle.com>
 To:     linux-nfs@vger.kernel.org, linux-integrity@vger.kernel.org
-Date:   Thu, 14 Feb 2019 15:43:05 -0500
-Message-ID: <20190214203336.6469.34750.stgit@manet.1015granger.net>
+Date:   Thu, 14 Feb 2019 15:43:10 -0500
+Message-ID: <20190214204310.6469.44847.stgit@manet.1015granger.net>
+In-Reply-To: <20190214203336.6469.34750.stgit@manet.1015granger.net>
+References: <20190214203336.6469.34750.stgit@manet.1015granger.net>
 User-Agent: StGit/0.17.1-dirty
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -70,56 +73,34 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-This series implements support for accessing and updating the
-security.ima xattr on files that reside on an NFS mount. Since NFS
-does not have CAP_SYS_ADMIN, only root is allowed to set this xattr
-(on clients or on the server).
+Common protocol definitions used by the server and client
+implementations. A separate patch also makes it easier to see what
+code needs to be change when the flag name and value is eventually
+standardized.
 
-EVM is not supported in this prototype. NFS does not support several
-of the xattrs that are protected by EVM: SMACK64, Posix ACLs, and
-Linux file capabilities are not supported, which makes EVM more
-difficult to support on NFS mounts.
-
-Please see the individual patch descriptions: standards action is
-still required to define the official FATTR4 flag that all NFSv4.2
-implementations recognize as meaning "the security.ima xattr". This
-prototype is not guaranteed to interoperate with future prototypes
-or standards-compliant implementations of this feature. It is for
-experimental purposes only.
-
-I'm interested in comments on the implementation, test results, or a
-discussion of whether this proposal creates undesirable security
-exposures.
-
-A topic branch with this work is here:
-
-git://git.linux-nfs.org/projects/cel/cel-2.6.git
-
-in the nfs-ima-prototype topic branch.
-
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
+ include/linux/nfs4.h |    2 ++
+ 1 file changed, 2 insertions(+)
 
-Chuck Lever (4):
-      NFS: Define common IMA-related protocol elements
-      NFS: Rename security xattr handler
-      NFS: Prototype support for IMA on NFS (client)
-      NFSD: Prototype support for IMA on NFS (server)
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index 1b06f0b..ca3adb1 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -41,6 +41,7 @@ struct nfs4_acl {
+ };
+ 
+ #define NFS4_MAXLABELLEN	2048
++#define NFS4_MAXIMALEN		(4096)
+ 
+ struct nfs4_label {
+ 	uint32_t	lfs;
+@@ -451,6 +452,7 @@ enum change_attr_type4 {
+ #define FATTR4_WORD2_CHANGE_ATTR_TYPE	(1UL << 15)
+ #define FATTR4_WORD2_SECURITY_LABEL     (1UL << 16)
+ #define FATTR4_WORD2_MODE_UMASK		(1UL << 17)
++#define FATTR4_WORD2_LINUX_IMA		(1UL << 18)
+ 
+ /* MDS threshold bitmap bits */
+ #define THRESHOLD_RD                    (1UL << 0)
 
-
- fs/nfs/nfs4_fs.h          |    1 
- fs/nfs/nfs4proc.c         |  138 ++++++++++++++++++++++++++++++++---
- fs/nfs/nfs4xdr.c          |  175 +++++++++++++++++++++++++++++++++++++++++++++
- fs/nfsd/nfs4proc.c        |   15 ++++
- fs/nfsd/nfs4xdr.c         |   54 ++++++++++++--
- fs/nfsd/nfsd.h            |   10 +++
- fs/nfsd/vfs.c             |   32 ++++++++
- fs/nfsd/vfs.h             |    3 +
- fs/nfsd/xdr4.h            |    3 +
- fs/xattr.c                |    3 +
- include/linux/nfs4.h      |    5 +
- include/linux/nfs_fs_sb.h |    1 
- include/linux/nfs_xdr.h   |   21 +++++
- 13 files changed, 440 insertions(+), 21 deletions(-)
-
---
-Chuck Lever
