@@ -6,252 +6,186 @@ X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS
 	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9E47DC10F04
-	for <linux-nfs@archiver.kernel.org>; Thu, 14 Feb 2019 16:58:47 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 623E1C43381
+	for <linux-nfs@archiver.kernel.org>; Thu, 14 Feb 2019 16:58:48 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 6C54E222DA
-	for <linux-nfs@archiver.kernel.org>; Thu, 14 Feb 2019 16:58:47 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 3A1EB222DA
+	for <linux-nfs@archiver.kernel.org>; Thu, 14 Feb 2019 16:58:48 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2502970AbfBNQ6D (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 14 Feb 2019 11:58:03 -0500
-Received: from mx1.redhat.com ([209.132.183.28]:59104 "EHLO mx1.redhat.com"
+        id S2502948AbfBNQ5o (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 14 Feb 2019 11:57:44 -0500
+Received: from mx1.redhat.com ([209.132.183.28]:39814 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2502928AbfBNQ5z (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 14 Feb 2019 11:57:55 -0500
-Received: from smtp.corp.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
+        id S2502887AbfBNQ5n (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 14 Feb 2019 11:57:43 -0500
+Received: from smtp.corp.redhat.com (int-mx03.intmail.prod.int.phx2.redhat.com [10.5.11.13])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id F1D6A37E74;
-        Thu, 14 Feb 2019 16:57:54 +0000 (UTC)
+        by mx1.redhat.com (Postfix) with ESMTPS id A6B8D81DF9;
+        Thu, 14 Feb 2019 16:57:42 +0000 (UTC)
 Received: from warthog.procyon.org.uk (ovpn-121-129.rdu2.redhat.com [10.10.121.129])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 9E38560C69;
-        Thu, 14 Feb 2019 16:57:48 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 7D776611B5;
+        Thu, 14 Feb 2019 16:57:36 +0000 (UTC)
 Organization: Red Hat UK Ltd. Registered Address: Red Hat UK Ltd, Amberley
  Place, 107-111 Peascod Street, Windsor, Berkshire, SI4 1TE, United
  Kingdom.
  Registered in England and Wales under Company Registration No. 3798903
-Subject: [RFC PATCH 5/9] keys: Include target namespace in match criteria
+Subject: [RFC PATCH 4/9] keys: Cache the hash value to avoid lots of
+ recalculation
 From:   David Howells <dhowells@redhat.com>
 To:     keyrings@vger.kernel.org
 Cc:     linux-security-module@vger.kernel.org, linux-nfs@vger.kernel.org,
         linux-cifs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         rgb@redhat.com, dhowells@redhat.com, linux-kernel@vger.kernel.org
-Date:   Thu, 14 Feb 2019 16:57:47 +0000
-Message-ID: <155016346784.11489.7639781267844538576.stgit@warthog.procyon.org.uk>
+Date:   Thu, 14 Feb 2019 16:57:35 +0000
+Message-ID: <155016345570.11489.12881645434285035244.stgit@warthog.procyon.org.uk>
 In-Reply-To: <155016339876.11489.901851271827069026.stgit@warthog.procyon.org.uk>
 References: <155016339876.11489.901851271827069026.stgit@warthog.procyon.org.uk>
 User-Agent: StGit/unknown-version
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.12
-X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.29]); Thu, 14 Feb 2019 16:57:55 +0000 (UTC)
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.13
+X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.25]); Thu, 14 Feb 2019 16:57:42 +0000 (UTC)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Currently a key has a standard matching criteria of { type, description } and
-this is used to only allow keys with unique criteria in a keyring.  This
-means, however, that you cannot have keys with the same type and description
-but a different target namespace in the same keyring.
+Cache the hash of the key's type and description in the index key so that
+we're not recalculating it every time we look at a key during a search.
+The hash function does a bunch of multiplications, so evading those is
+probably worthwhile - especially as this is done for every key examined
+during a search.
 
-This is a potential problem for a containerised environment where, say, a
-container is made up of some parts of its mount space involving netfs
-superblocks from two different network namespaces.
-
-This is also a problem for shared system management keyrings such as the DNS
-records keyring or the NFS idmapper keyring that might contain keys from
-different network namespaces.
-
-Fix this by including a namespace component in a key's matching criteria.
-Keyring types are marked to indicate which, if any, namespace is relevant to
-keys of that type, and that namespace is set when the key is created from the
-current task's namespace set.
+This also allows the methods used by assoc_array to get chunks of index-key
+to be simplified.
 
 Signed-off-by: David Howells <dhowells@redhat.com>
 ---
 
- include/linux/key.h        |   11 +++++++++++
- security/keys/gc.c         |    2 +-
- security/keys/key.c        |    1 +
- security/keys/keyring.c    |   36 ++++++++++++++++++++++++++++++++++--
- security/keys/persistent.c |    1 +
- 5 files changed, 48 insertions(+), 3 deletions(-)
+ include/linux/key.h      |    3 +++
+ security/keys/internal.h |    8 +-------
+ security/keys/key.c      |    2 +-
+ security/keys/keyring.c  |   28 ++++++++++++++++++++--------
+ 4 files changed, 25 insertions(+), 16 deletions(-)
 
 diff --git a/include/linux/key.h b/include/linux/key.h
-index b39f5876b66d..bb716c33bffe 100644
+index 33d87cb2d469..b39f5876b66d 100644
 --- a/include/linux/key.h
 +++ b/include/linux/key.h
-@@ -82,9 +82,16 @@ struct cred;
- 
- struct key_type;
- struct key_owner;
-+struct key_tag;
- struct keyring_list;
+@@ -86,6 +86,8 @@ struct keyring_list;
  struct keyring_name;
  
-+struct key_tag {
-+	struct rcu_head		rcu;
-+	refcount_t		usage;
-+	bool			removed;	/* T when subject removed */
-+};
-+
  struct keyring_index_key {
- 	/* [!] If this structure is altered, the union in struct key must change too! */
- 	unsigned long		hash;			/* Hash value */
-@@ -101,6 +108,7 @@ struct keyring_index_key {
- 		unsigned long x;
- 	};
- 	struct key_type		*type;
-+	struct key_tag		*domain_tag;	/* Domain of operation */
- 	const char		*description;
- };
- 
-@@ -218,6 +226,7 @@ struct key {
- 			unsigned long	hash;
++	/* [!] If this structure is altered, the union in struct key must change too! */
++	unsigned long		hash;			/* Hash value */
+ 	union {
+ 		struct {
+ #ifdef __LITTLE_ENDIAN /* Put desc_len at the LSB of x */
+@@ -213,6 +215,7 @@ struct key {
+ 	union {
+ 		struct keyring_index_key index_key;
+ 		struct {
++			unsigned long	hash;
  			unsigned long	len_desc;
  			struct key_type	*type;		/* type of key */
-+			struct key_tag	*domain_tag;	/* Domain of operation */
  			char		*description;
- 		};
- 	};
-@@ -268,6 +277,7 @@ extern struct key *key_alloc(struct key_type *type,
- extern void key_revoke(struct key *key);
- extern void key_invalidate(struct key *key);
- extern void key_put(struct key *key);
-+extern bool key_put_tag(struct key_tag *tag);
+diff --git a/security/keys/internal.h b/security/keys/internal.h
+index 02592d24f13a..3154ba59a2f0 100644
+--- a/security/keys/internal.h
++++ b/security/keys/internal.h
+@@ -89,13 +89,7 @@ extern spinlock_t key_serial_lock;
+ extern struct mutex key_construction_mutex;
+ extern wait_queue_head_t request_key_conswq;
  
- static inline struct key *__key_get(struct key *key)
- {
-@@ -425,6 +435,7 @@ extern void key_init(void);
- #define key_fsuid_changed(t)		do { } while(0)
- #define key_fsgid_changed(t)		do { } while(0)
- #define key_init()			do { } while(0)
-+#define key_put_subject(s)		do { } while(0)
- 
- #endif /* CONFIG_KEYS */
- #endif /* __KERNEL__ */
-diff --git a/security/keys/gc.c b/security/keys/gc.c
-index 634e96b380e8..83d279fb7793 100644
---- a/security/keys/gc.c
-+++ b/security/keys/gc.c
-@@ -154,7 +154,7 @@ static noinline void key_gc_unused_keys(struct list_head *keys)
- 			atomic_dec(&key->user->nikeys);
- 
- 		key_user_put(key->user);
 -
-+		key_put_tag(key->domain_tag);
- 		kfree(key->description);
+-static inline void key_set_index_key(struct keyring_index_key *index_key)
+-{
+-	size_t n = min_t(size_t, index_key->desc_len, sizeof(index_key->desc));
+-	memcpy(index_key->desc, index_key->description, n);
+-}
+-
++extern void key_set_index_key(struct keyring_index_key *index_key);
+ extern struct key_type *key_type_lookup(const char *type);
+ extern void key_type_put(struct key_type *ktype);
  
- 		memzero_explicit(key, sizeof(*key));
 diff --git a/security/keys/key.c b/security/keys/key.c
-index 1568b0028ba4..8cd0f98e4fa3 100644
+index 1d0250a8990e..1568b0028ba4 100644
 --- a/security/keys/key.c
 +++ b/security/keys/key.c
-@@ -317,6 +317,7 @@ struct key *key_alloc(struct key_type *type, const char *desc,
- 		goto security_error;
+@@ -285,12 +285,12 @@ struct key *key_alloc(struct key_type *type, const char *desc,
+ 	key->index_key.description = kmemdup(desc, desclen + 1, GFP_KERNEL);
+ 	if (!key->index_key.description)
+ 		goto no_memory_3;
++	key->index_key.type = type;
+ 	key_set_index_key(&key->index_key);
  
- 	/* publish the key by giving it a serial number */
-+	refcount_inc(&key->domain_tag->usage);
- 	atomic_inc(&user->nkeys);
- 	key_alloc_serial(key);
- 
+ 	refcount_set(&key->usage, 1);
+ 	init_rwsem(&key->sem);
+ 	lockdep_set_class(&key->sem, &type->lock_class);
+-	key->index_key.type = type;
+ 	key->user = user;
+ 	key->quotalen = quotalen;
+ 	key->datalen = type->def_datalen;
 diff --git a/security/keys/keyring.c b/security/keys/keyring.c
-index 11c44ad07b5b..0df10221c037 100644
+index bece229aeccd..11c44ad07b5b 100644
 --- a/security/keys/keyring.c
 +++ b/security/keys/keyring.c
-@@ -181,6 +181,9 @@ static void hash_key_type_and_desc(struct keyring_index_key *index_key)
- 	type = (unsigned long)index_key->type;
- 	acc = mult_64x32_and_fold(type, desc_len + 13);
- 	acc = mult_64x32_and_fold(acc, 9207);
-+	piece = (unsigned long)index_key->domain_tag;
-+	acc = mult_64x32_and_fold(acc, piece);
-+	acc = mult_64x32_and_fold(acc, 9207);
- 
- 	for (;;) {
- 		n = desc_len;
-@@ -214,16 +217,36 @@ static void hash_key_type_and_desc(struct keyring_index_key *index_key)
- 
+@@ -168,7 +168,7 @@ static u64 mult_64x32_and_fold(u64 x, u32 y)
  /*
-  * Finalise an index key to include a part of the description actually in the
-- * index key and to add in the hash too.
-+ * index key, to set the domain tag and to calculate the hash.
+  * Hash a key type and description.
   */
- void key_set_index_key(struct keyring_index_key *index_key)
+-static unsigned long hash_key_type_and_desc(const struct keyring_index_key *index_key)
++static void hash_key_type_and_desc(struct keyring_index_key *index_key)
  {
-+	static struct key_tag default_domain_tag = { .usage = REFCOUNT_INIT(1), };
- 	size_t n = min_t(size_t, index_key->desc_len, sizeof(index_key->desc));
-+
- 	memcpy(index_key->desc, index_key->description, n);
- 
-+	index_key->domain_tag = &default_domain_tag;
- 	hash_key_type_and_desc(index_key);
- }
- 
-+/**
-+ * key_put_tag - Release a ref on a tag.
-+ * @tag: The tag to release.
-+ *
-+ * This releases a reference the given tag and returns true if that ref was the
-+ * last one.
-+ */
-+bool key_put_tag(struct key_tag *tag)
-+{
-+	if (refcount_dec_and_test(&tag->usage)) {
-+		kfree_rcu(tag, rcu);
-+		return true;
-+	}
-+
-+	return false;
+ 	const unsigned level_shift = ASSOC_ARRAY_LEVEL_STEP;
+ 	const unsigned long fan_mask = ASSOC_ARRAY_FAN_MASK;
+@@ -206,10 +206,22 @@ static unsigned long hash_key_type_and_desc(const struct keyring_index_key *inde
+ 	 * zero for keyrings and non-zero otherwise.
+ 	 */
+ 	if (index_key->type != &key_type_keyring && (hash & fan_mask) == 0)
+-		return hash | (hash >> (ASSOC_ARRAY_KEY_CHUNK_SIZE - level_shift)) | 1;
+-	if (index_key->type == &key_type_keyring && (hash & fan_mask) != 0)
+-		return (hash + (hash << level_shift)) & ~fan_mask;
+-	return hash;
++		hash |= (hash >> (ASSOC_ARRAY_KEY_CHUNK_SIZE - level_shift)) | 1;
++	else if (index_key->type == &key_type_keyring && (hash & fan_mask) != 0)
++		hash = (hash + (hash << level_shift)) & ~fan_mask;
++	index_key->hash = hash;
 +}
 +
++/*
++ * Finalise an index key to include a part of the description actually in the
++ * index key and to add in the hash too.
++ */
++void key_set_index_key(struct keyring_index_key *index_key)
++{
++	size_t n = min_t(size_t, index_key->desc_len, sizeof(index_key->desc));
++	memcpy(index_key->desc, index_key->description, n);
++
++	hash_key_type_and_desc(index_key);
+ }
+ 
  /*
-  * Build the next index key chunk.
-  *
-@@ -244,8 +267,10 @@ static unsigned long keyring_get_key_chunk(const void *data, int level)
+@@ -227,7 +239,7 @@ static unsigned long keyring_get_key_chunk(const void *data, int level)
+ 	level /= ASSOC_ARRAY_KEY_CHUNK_SIZE;
+ 	switch (level) {
+ 	case 0:
+-		return hash_key_type_and_desc(index_key);
++		return index_key->hash;
+ 	case 1:
  		return index_key->x;
  	case 2:
- 		return (unsigned long)index_key->type;
-+	case 3:
-+		return (unsigned long)index_key->domain_tag;
- 	default:
--		level -= 3;
-+		level -= 4;
- 		if (desc_len <= sizeof(index_key->desc))
- 			return 0;
+@@ -280,8 +292,8 @@ static int keyring_diff_objects(const void *object, const void *data)
+ 	int level, i;
  
-@@ -274,6 +299,7 @@ static bool keyring_compare_object(const void *object, const void *data)
- 	const struct key *key = keyring_ptr_to_key(object);
- 
- 	return key->index_key.type == index_key->type &&
-+		key->index_key.domain_tag == index_key->domain_tag &&
- 		key->index_key.desc_len == index_key->desc_len &&
- 		memcmp(key->index_key.description, index_key->description,
- 		       index_key->desc_len) == 0;
-@@ -315,6 +341,12 @@ static int keyring_diff_objects(const void *object, const void *data)
+ 	level = 0;
+-	seg_a = hash_key_type_and_desc(a);
+-	seg_b = hash_key_type_and_desc(b);
++	seg_a = a->hash;
++	seg_b = b->hash;
+ 	if ((seg_a ^ seg_b) != 0)
  		goto differ;
- 	level += sizeof(unsigned long);
- 
-+	seg_a = (unsigned long)a->domain_tag;
-+	seg_b = (unsigned long)b->domain_tag;
-+	if ((seg_a ^ seg_b) != 0)
-+		goto differ;
-+	level += sizeof(unsigned long);
-+
- 	i = sizeof(a->desc);
- 	if (a->desc_len <= i)
- 		goto same;
-diff --git a/security/keys/persistent.c b/security/keys/persistent.c
-index fc29ec59efa7..c9fbe63adc58 100644
---- a/security/keys/persistent.c
-+++ b/security/keys/persistent.c
-@@ -84,6 +84,7 @@ static long key_get_persistent(struct user_namespace *ns, kuid_t uid,
- 	long ret;
- 
- 	/* Look in the register if it exists */
-+	memset(&index_key, 0, sizeof(index_key));
- 	index_key.type = &key_type_keyring;
- 	index_key.description = buf;
- 	index_key.desc_len = sprintf(buf, "_persistent.%u", from_kuid(ns, uid));
+ 	level += ASSOC_ARRAY_KEY_CHUNK_SIZE / 8;
 
