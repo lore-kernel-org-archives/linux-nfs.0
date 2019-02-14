@@ -2,93 +2,124 @@ Return-Path: <SRS0=jvUk=QV=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,USER_AGENT_MUTT
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-5.8 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,
+	SPF_PASS autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4CF6EC43381
-	for <linux-nfs@archiver.kernel.org>; Thu, 14 Feb 2019 17:56:57 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 26EA0C10F05
+	for <linux-nfs@archiver.kernel.org>; Thu, 14 Feb 2019 20:43:11 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 2580A21928
-	for <linux-nfs@archiver.kernel.org>; Thu, 14 Feb 2019 17:56:56 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id E8BBB21B68
+	for <linux-nfs@archiver.kernel.org>; Thu, 14 Feb 2019 20:43:10 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="lRn7ytDy"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2388084AbfBNR44 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 14 Feb 2019 12:56:56 -0500
-Received: from fieldses.org ([173.255.197.46]:37418 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726337AbfBNR44 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 14 Feb 2019 12:56:56 -0500
-Received: by fieldses.org (Postfix, from userid 2815)
-        id AD5B31CE7; Thu, 14 Feb 2019 12:56:55 -0500 (EST)
-Date:   Thu, 14 Feb 2019 12:56:55 -0500
-From:   "J. Bruce Fields" <bfields@fieldses.org>
-To:     Donald Buczek <buczek@molgen.mpg.de>
-Cc:     linux-nfs@vger.kernel.org, it+nfs@molgen.mpg.de
-Subject: [PATCH] Revert "nfsd4: return default lease period"
-Message-ID: <20190214175655.GA9216@fieldses.org>
-References: <480bf69d-4651-aaac-2b85-634561c579c8@molgen.mpg.de>
- <20190208020322.GA9482@fieldses.org>
+        id S2390196AbfBNUnI (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 14 Feb 2019 15:43:08 -0500
+Received: from mail-it1-f195.google.com ([209.85.166.195]:38102 "EHLO
+        mail-it1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2389444AbfBNUnI (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Feb 2019 15:43:08 -0500
+Received: by mail-it1-f195.google.com with SMTP id l66so7747274itg.3;
+        Thu, 14 Feb 2019 12:43:07 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=sender:subject:from:to:date:message-id:user-agent:mime-version
+         :content-transfer-encoding;
+        bh=ywj50zLLmbe5uxXqlccyrFee1766tyo4QskRCN7gUPo=;
+        b=lRn7ytDyvlAUhPie6mLZCm4LtC2UkF5qd5EXvDT/sV8Z3A11GPc6ks8TdXqMpUA9ih
+         J6uSjmwpUHjvw8XCLVk9cJG0PiAxzk9twT1Bt6wdjdrWqjfuDepvvt821NwfaReD5Sbs
+         pjgWdef0Z5xMvrrqWgaOXu9upjNSBPlwTCNpZpY8iqdrQAVrgrdOlcT1J50bltGinaAv
+         shXtx7SwQjmm/v9TOM454UoWtzb8qDKBKvZInA2Aqeh/XcOhj5/fsEQjOo5emSCk+vbP
+         VfM72vY6I1OykV4g6vQuQ+xgdKLOVBxU33MM7rbyeS1nwE1vHWNKfebZ19H8cooVJbfz
+         xPBA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:sender:subject:from:to:date:message-id
+         :user-agent:mime-version:content-transfer-encoding;
+        bh=ywj50zLLmbe5uxXqlccyrFee1766tyo4QskRCN7gUPo=;
+        b=p7UVsSacA0QG4C137VDpH/1oQnJA1fi2TpDewNN0OwhxOG2uYOi1ZPTd/oQ932B+Kp
+         2VtzNg0peT/FtcC16Y8SWPobQhekaWmGDAyqkJMBhbuhGEfo9/48QXUCwzHyA2ggC6WB
+         8zoFvBhx4iDcwvCZNmxzp0+mYFsw/T+Dh7ruUMu1I6hABYoAsXl8L7Iyo7PnXTHNvo8e
+         rY8KW5Pe+RkOZnjFNGa/CShRXKL4d61nzNTNA8gMyMiK8H7UfcNO9FziP7uFWQYmYOmG
+         yL1sGnQ6OB2uHfAYx6YZ4fhgqwRheVC43L1w5nttMSqofe5hsqoimZGSi/WWvjl/dnBY
+         hFsA==
+X-Gm-Message-State: AHQUAuZ942UJgiXdqPynJsuvBoXmqzLar7Mqj1hFJ599oCq8ACvFSHc4
+        vH+/eVuLZyrSYhIkzzFdzqy8VOKv
+X-Google-Smtp-Source: AHgI3IbMY8s3f8fhzZCq1olyGCgq8QElkfScAkqEftI9rz+UiJ/WE/K4+Q4HhdLHpFlaNJDUWRATdg==
+X-Received: by 2002:a24:14e:: with SMTP id 75mr3499722itk.44.1550176987118;
+        Thu, 14 Feb 2019 12:43:07 -0800 (PST)
+Received: from gateway.1015granger.net (c-68-61-232-219.hsd1.mi.comcast.net. [68.61.232.219])
+        by smtp.gmail.com with ESMTPSA id w67sm2392778itw.38.2019.02.14.12.43.06
+        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Thu, 14 Feb 2019 12:43:06 -0800 (PST)
+Received: from manet.1015granger.net (manet.1015granger.net [192.168.1.51])
+        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id x1EKh5rR006552;
+        Thu, 14 Feb 2019 20:43:05 GMT
+Subject: [PATCH RFC 0/4] IMA on NFS prototype
+From:   Chuck Lever <chuck.lever@oracle.com>
+To:     linux-nfs@vger.kernel.org, linux-integrity@vger.kernel.org
+Date:   Thu, 14 Feb 2019 15:43:05 -0500
+Message-ID: <20190214203336.6469.34750.stgit@manet.1015granger.net>
+User-Agent: StGit/0.17.1-dirty
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20190208020322.GA9482@fieldses.org>
-User-Agent: Mutt/1.5.21 (2010-09-15)
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+This series implements support for accessing and updating the
+security.ima xattr on files that reside on an NFS mount. Since NFS
+does not have CAP_SYS_ADMIN, only root is allowed to set this xattr
+(on clients or on the server).
 
-This reverts commit d6ebf5088f09472c1136cd506bdc27034a6763f8.
+EVM is not supported in this prototype. NFS does not support several
+of the xattrs that are protected by EVM: SMACK64, Posix ACLs, and
+Linux file capabilities are not supported, which makes EVM more
+difficult to support on NFS mounts.
 
-I forgot that the kernel's default lease period should never be
-decreased!
+Please see the individual patch descriptions: standards action is
+still required to define the official FATTR4 flag that all NFSv4.2
+implementations recognize as meaning "the security.ima xattr". This
+prototype is not guaranteed to interoperate with future prototypes
+or standards-compliant implementations of this feature. It is for
+experimental purposes only.
 
-After a kernel upgrade, the kernel has no way of knowing on its own what
-the previous lease time was.  Unless userspace tells it otherwise, it
-will assume the previous lease period was the same.
+I'm interested in comments on the implementation, test results, or a
+discussion of whether this proposal creates undesirable security
+exposures.
 
-So if we decrease this value in a kernel upgrade, we end up enforcing a
-grace period that's too short, and clients will fail to reclaim state in
-time.  Symptoms may include EIO and log messages like "NFS:
-nfs4_reclaim_open_state: Lock reclaim failed!"
+A topic branch with this work is here:
 
-There was no real justification for the lease period decrease anyway.
+git://git.linux-nfs.org/projects/cel/cel-2.6.git
 
-Reported-by: Donald Buczek <buczek@molgen.mpg.de>
-Fixes: d6ebf5088f09 "nfsd4: return default lease period"
-Cc: stable@vger.kernel.org
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+in the nfs-ima-prototype topic branch.
+
 ---
- fs/nfsd/nfsctl.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
 
-On Thu, Feb 07, 2019 at 09:03:22PM -0500, bfields wrote:
-> On Thu, Feb 07, 2019 at 12:48:41PM +0100, Donald Buczek wrote:
-> > As an experiment, I've also restarted a server with the lease time
-> > decrement from 90 to 45 seconds, but the grace period fixed to
-> > 90 seconds. Now the client got NFS4ERR_STALE_CLIENTID  but still did
-> > not query the server for a new lease_time and continued to send RENEWs
-> > in 60 second intervals.
+Chuck Lever (4):
+      NFS: Define common IMA-related protocol elements
+      NFS: Rename security xattr handler
+      NFS: Prototype support for IMA on NFS (client)
+      NFSD: Prototype support for IMA on NFS (server)
 
-So this doesn't fix that client bug, but it does fix the server.
 
-diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index b33f9785b756..72a7681f4046 100644
---- a/fs/nfsd/nfsctl.c
-+++ b/fs/nfsd/nfsctl.c
-@@ -1239,8 +1239,8 @@ static __net_init int nfsd_init_net(struct net *net)
- 	retval = nfsd_idmap_init(net);
- 	if (retval)
- 		goto out_idmap_error;
--	nn->nfsd4_lease = 45;	/* default lease time */
--	nn->nfsd4_grace = 45;
-+	nn->nfsd4_lease = 90;	/* default lease time */
-+	nn->nfsd4_grace = 90;
- 	nn->somebody_reclaimed = false;
- 	nn->clverifier_counter = prandom_u32();
- 	nn->clientid_counter = prandom_u32();
--- 
-2.20.1
+ fs/nfs/nfs4_fs.h          |    1 
+ fs/nfs/nfs4proc.c         |  138 ++++++++++++++++++++++++++++++++---
+ fs/nfs/nfs4xdr.c          |  175 +++++++++++++++++++++++++++++++++++++++++++++
+ fs/nfsd/nfs4proc.c        |   15 ++++
+ fs/nfsd/nfs4xdr.c         |   54 ++++++++++++--
+ fs/nfsd/nfsd.h            |   10 +++
+ fs/nfsd/vfs.c             |   32 ++++++++
+ fs/nfsd/vfs.h             |    3 +
+ fs/nfsd/xdr4.h            |    3 +
+ fs/xattr.c                |    3 +
+ include/linux/nfs4.h      |    5 +
+ include/linux/nfs_fs_sb.h |    1 
+ include/linux/nfs_xdr.h   |   21 +++++
+ 13 files changed, 440 insertions(+), 21 deletions(-)
 
+--
+Chuck Lever
