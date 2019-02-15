@@ -3,202 +3,140 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
 X-Spam-Status: No, score=-8.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,USER_AGENT_MUTT
-	autolearn=ham autolearn_force=no version=3.4.0
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED,
+	USER_AGENT_MUTT autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 14574C43381
-	for <linux-nfs@archiver.kernel.org>; Fri, 15 Feb 2019 19:58:20 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 92EA2C4360F
+	for <linux-nfs@archiver.kernel.org>; Fri, 15 Feb 2019 20:09:41 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id E080A21B18
-	for <linux-nfs@archiver.kernel.org>; Fri, 15 Feb 2019 19:58:19 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 6A4FB222BE
+	for <linux-nfs@archiver.kernel.org>; Fri, 15 Feb 2019 20:09:41 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726689AbfBOT6T (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 15 Feb 2019 14:58:19 -0500
-Received: from fieldses.org ([173.255.197.46]:39632 "EHLO fieldses.org"
+        id S2389737AbfBOUJj (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 15 Feb 2019 15:09:39 -0500
+Received: from fieldses.org ([173.255.197.46]:39644 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726317AbfBOT6T (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 15 Feb 2019 14:58:19 -0500
+        id S1726317AbfBOUJj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 15 Feb 2019 15:09:39 -0500
 Received: by fieldses.org (Postfix, from userid 2815)
-        id 1A5F61CE7; Fri, 15 Feb 2019 14:58:18 -0500 (EST)
-Date:   Fri, 15 Feb 2019 14:58:18 -0500
+        id 076B8BD3; Fri, 15 Feb 2019 15:09:38 -0500 (EST)
+Date:   Fri, 15 Feb 2019 15:09:38 -0500
 From:   "J. Bruce Fields" <bfields@fieldses.org>
-To:     Scott Mayhew <smayhew@redhat.com>
-Cc:     trond.myklebust@hammerspace.com, anna.schumaker@netapp.com,
-        jlayton@kernel.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] sunrpc: fix 4 more call sites that were using stack
- memory with a scatterlist
-Message-ID: <20190215195818.GB22354@fieldses.org>
-References: <20190215184202.5537-1-smayhew@redhat.com>
+To:     Amir Goldstein <amir73il@gmail.com>
+Cc:     Jeff Layton <jlayton@kernel.org>, Volker.Lendecke@sernet.de,
+        samba-technical@lists.samba.org,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Pavel Shilovsky <piastryyy@gmail.com>
+Subject: Re: Better interop for NFS/SMB file share mode/reservation
+Message-ID: <20190215200938.GC22354@fieldses.org>
+References: <CAOQ4uxjQdLrZXkpP30Pq_=Cckcb=mADrEwQUXmsG92r-gn2y5w@mail.gmail.com>
+ <379106947f859bdf5db4c6f9c4ab8c44f7423c08.camel@kernel.org>
+ <CAOQ4uxgewN=j3ju5MSowEvwhK1HqKG3n1hBRUQTi1W5asaO1dQ@mail.gmail.com>
+ <20190208155052.GB20573@fieldses.org>
+ <CAOQ4uxg9NGPRpMZt0KgH9HUKMRpn0dFta7EnP1WioRb917n4+A@mail.gmail.com>
+ <20190208201649.GA23657@fieldses.org>
+ <CAOQ4uxjV2FahWEtESJJRwz0kkBZxkKosCnURzj2HtuKNwhscng@mail.gmail.com>
+ <20190214205100.GB9216@fieldses.org>
+ <CAOQ4uxhORdbODd01xrm6frbBUU1-U=5Rh86ZU63CrybpdyCL+A@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20190215184202.5537-1-smayhew@redhat.com>
+In-Reply-To: <CAOQ4uxhORdbODd01xrm6frbBUU1-U=5Rh86ZU63CrybpdyCL+A@mail.gmail.com>
 User-Agent: Mutt/1.5.21 (2010-09-15)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Thanks!  Applying for 5.0 and stable.
+On Fri, Feb 15, 2019 at 09:31:48AM +0200, Amir Goldstein wrote:
+> On Thu, Feb 14, 2019 at 10:51 PM J. Bruce Fields <bfields@fieldses.org> wrote:
+> >
+> > On Fri, Feb 08, 2019 at 10:31:07PM +0200, Amir Goldstein wrote:
+> > > On Fri, Feb 8, 2019 at 10:17 PM J. Bruce Fields <bfields@fieldses.org> wrote:
+> > > > On Fri, Feb 08, 2019 at 10:02:43PM +0200, Amir Goldstein wrote:
+> > > > > On Fri, Feb 8, 2019 at 5:51 PM J. Bruce Fields <bfields@fieldses.org> wrote:
+> > > > > > On Fri, Feb 08, 2019 at 04:45:46PM +0200, Amir Goldstein wrote:
+> > > > > > > - check_conflicting_open() is changed to use inode_is_open_for_read()
+> > > > > > >   instead of checking d_count and i_count.
+> > > > > >
+> > > > > > Independently of the rest, I'd love to do away with those
+> > > > > > d_count/i_count checks.  What's inode_is_open_for_read()?
+> > > > > >
+> > > > >
+> > > > > It would look maybe something like this:
+> > > > >
+> > > > > static inline bool file_is_open_for_read(const struct inode *file)
+> > > > > {
+> > > > >         struct inode *inode = file_inode(file);
+> > > > >         int countself = (file->f_mode & (FMODE_READ | FMODE_WRITE)) ==
+> > > > > FMODE_READ) ? 1 : 0;
+> > > > >
+> > > > >         return atomic_read(&inode->i_readcount) > countself;
+> > > > > }
+> > > > >
+> > > > > And it would allow for acquiring F_WRLCK lease if other
+> > > > > instances of inode are open O_PATH.
+> > > > > A slight change of semantics that seems harmless(?)
+> > > > > and will allow some flexibility.
+> > > >
+> > > > How did I not know about i_readcount?  (Looking)  I guess it would mean
+> > > > adding some dependence on CONFIG_IMA, hm.
+> > > >
+> > >
+> > > Yes, or we remove ifdef CONFIG_IMA from i_readcount.
+> > > I am not sure if the concern was size of struct inode
+> > > (shouldn't increase on 64bit arch) or the accounting on
+> > > open/close. The impact doesn't look significant (?)..
+> >
+> > Looks like the original patch was d984ea604943bb "fs: move i_readcount".
+> > I did some googling around and looked at the discussion summarized by
+> > https://lwn.net/Articles/410895/ but can't find useful discussion of
+> > i_readcount impact.
+> >
+> > Looks like CONFIG_IMA is on in Fedora and RHEL, for what it's worth.
+> >
+> > Maybe something like this?
+> >
+> > --b.
+> >
+> > commit 02cfda99ed8c
+> > Author: J. Bruce Fields <bfields@redhat.com>
+> > Date:   Thu Feb 14 15:02:02 2019 -0500
+> >
+> >     locks: use i_readcount to detect lease conflicts
+> >
+> >     The lease code currently uses the inode and dentry refcounts to detect
+> >     whether someone has a file open for read.  This seems fragile.  Use
+> >     i_readcount instead.
+> >
+> >     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> >
+> > diff --git a/fs/locks.c b/fs/locks.c
+> > index ff6af2c32601..299abad65545 100644
+> > --- a/fs/locks.c
+> > +++ b/fs/locks.c
+> > @@ -1769,8 +1769,7 @@ check_conflicting_open(const struct dentry *dentry, const long arg, int flags)
+> >         if ((arg == F_RDLCK) && inode_is_open_for_write(inode))
+> >                 return -EAGAIN;
+> >
+> > -       if ((arg == F_WRLCK) && ((d_count(dentry) > 1) ||
+> > -           (atomic_read(&inode->i_count) > 1)))
+> > +       if ((arg == F_WRLCK) && (atomic_read(&inode->i_readcount) > 1))
+> >                 ret = -EAGAIN;
+> 
+> Alas, i_readcount is not the count of file opens for read, it is the count
+> of file opens O_RDONLY, so this is incorrect wrt conflict with other writers.
+
+Whoops, thanks!
+
+> I guess since there is a full smp_mb() before this check, then you
+> can check (i_readcount + i_writecount) > 1 || (i_writecount < 0)
+> 
+> You can also check if caller itself is O_RDONLY to know if self
+> count is expect to be in i_readcount or i_writecount, but not sure
+> it is worth the trouble.
+
+I don't know, it still looks reasonable.  I'll fool around with it.
 
 --b.
-
-On Fri, Feb 15, 2019 at 01:42:02PM -0500, Scott Mayhew wrote:
-> While trying to reproduce a reported kernel panic on arm64, I discovered
-> that AUTH_GSS basically doesn't work at all with older enctypes on arm64
-> systems with CONFIG_VMAP_STACK enabled.  It turns out there still a few
-> places using stack memory with scatterlists, causing krb5_encrypt() and
-> krb5_decrypt() to produce incorrect results (or a BUG if CONFIG_DEBUG_SG
-> is enabled).
-> 
-> Tested with cthon on v4.0/v4.1/v4.2 with krb5/krb5i/krb5p using
-> des3-cbc-sha1 and arcfour-hmac-md5.
-> 
-> Signed-off-by: Scott Mayhew <smayhew@redhat.com>
-> ---
->  net/sunrpc/auth_gss/gss_krb5_seqnum.c | 49 +++++++++++++++++++++------
->  1 file changed, 38 insertions(+), 11 deletions(-)
-> 
-> diff --git a/net/sunrpc/auth_gss/gss_krb5_seqnum.c b/net/sunrpc/auth_gss/gss_krb5_seqnum.c
-> index fb6656295204..507105127095 100644
-> --- a/net/sunrpc/auth_gss/gss_krb5_seqnum.c
-> +++ b/net/sunrpc/auth_gss/gss_krb5_seqnum.c
-> @@ -44,7 +44,7 @@ krb5_make_rc4_seq_num(struct krb5_ctx *kctx, int direction, s32 seqnum,
->  		      unsigned char *cksum, unsigned char *buf)
->  {
->  	struct crypto_sync_skcipher *cipher;
-> -	unsigned char plain[8];
-> +	unsigned char *plain;
->  	s32 code;
->  
->  	dprintk("RPC:       %s:\n", __func__);
-> @@ -52,6 +52,10 @@ krb5_make_rc4_seq_num(struct krb5_ctx *kctx, int direction, s32 seqnum,
->  	if (IS_ERR(cipher))
->  		return PTR_ERR(cipher);
->  
-> +	plain = kmalloc(8, GFP_NOFS);
-> +	if (!plain)
-> +		return -ENOMEM;
-> +
->  	plain[0] = (unsigned char) ((seqnum >> 24) & 0xff);
->  	plain[1] = (unsigned char) ((seqnum >> 16) & 0xff);
->  	plain[2] = (unsigned char) ((seqnum >> 8) & 0xff);
-> @@ -67,6 +71,7 @@ krb5_make_rc4_seq_num(struct krb5_ctx *kctx, int direction, s32 seqnum,
->  
->  	code = krb5_encrypt(cipher, cksum, plain, buf, 8);
->  out:
-> +	kfree(plain);
->  	crypto_free_sync_skcipher(cipher);
->  	return code;
->  }
-> @@ -77,12 +82,17 @@ krb5_make_seq_num(struct krb5_ctx *kctx,
->  		u32 seqnum,
->  		unsigned char *cksum, unsigned char *buf)
->  {
-> -	unsigned char plain[8];
-> +	unsigned char *plain;
-> +	s32 code;
->  
->  	if (kctx->enctype == ENCTYPE_ARCFOUR_HMAC)
->  		return krb5_make_rc4_seq_num(kctx, direction, seqnum,
->  					     cksum, buf);
->  
-> +	plain = kmalloc(8, GFP_NOFS);
-> +	if (!plain)
-> +		return -ENOMEM;
-> +
->  	plain[0] = (unsigned char) (seqnum & 0xff);
->  	plain[1] = (unsigned char) ((seqnum >> 8) & 0xff);
->  	plain[2] = (unsigned char) ((seqnum >> 16) & 0xff);
-> @@ -93,7 +103,9 @@ krb5_make_seq_num(struct krb5_ctx *kctx,
->  	plain[6] = direction;
->  	plain[7] = direction;
->  
-> -	return krb5_encrypt(key, cksum, plain, buf, 8);
-> +	code = krb5_encrypt(key, cksum, plain, buf, 8);
-> +	kfree(plain);
-> +	return code;
->  }
->  
->  static s32
-> @@ -101,7 +113,7 @@ krb5_get_rc4_seq_num(struct krb5_ctx *kctx, unsigned char *cksum,
->  		     unsigned char *buf, int *direction, s32 *seqnum)
->  {
->  	struct crypto_sync_skcipher *cipher;
-> -	unsigned char plain[8];
-> +	unsigned char *plain;
->  	s32 code;
->  
->  	dprintk("RPC:       %s:\n", __func__);
-> @@ -113,20 +125,28 @@ krb5_get_rc4_seq_num(struct krb5_ctx *kctx, unsigned char *cksum,
->  	if (code)
->  		goto out;
->  
-> +	plain = kmalloc(8, GFP_NOFS);
-> +	if (!plain) {
-> +		code = -ENOMEM;
-> +		goto out;
-> +	}
-> +
->  	code = krb5_decrypt(cipher, cksum, buf, plain, 8);
->  	if (code)
-> -		goto out;
-> +		goto out_plain;
->  
->  	if ((plain[4] != plain[5]) || (plain[4] != plain[6])
->  				   || (plain[4] != plain[7])) {
->  		code = (s32)KG_BAD_SEQ;
-> -		goto out;
-> +		goto out_plain;
->  	}
->  
->  	*direction = plain[4];
->  
->  	*seqnum = ((plain[0] << 24) | (plain[1] << 16) |
->  					(plain[2] << 8) | (plain[3]));
-> +out_plain:
-> +	kfree(plain);
->  out:
->  	crypto_free_sync_skcipher(cipher);
->  	return code;
-> @@ -139,7 +159,7 @@ krb5_get_seq_num(struct krb5_ctx *kctx,
->  	       int *direction, u32 *seqnum)
->  {
->  	s32 code;
-> -	unsigned char plain[8];
-> +	unsigned char *plain;
->  	struct crypto_sync_skcipher *key = kctx->seq;
->  
->  	dprintk("RPC:       krb5_get_seq_num:\n");
-> @@ -147,18 +167,25 @@ krb5_get_seq_num(struct krb5_ctx *kctx,
->  	if (kctx->enctype == ENCTYPE_ARCFOUR_HMAC)
->  		return krb5_get_rc4_seq_num(kctx, cksum, buf,
->  					    direction, seqnum);
-> +	plain = kmalloc(8, GFP_NOFS);
-> +	if (!plain)
-> +		return -ENOMEM;
->  
->  	if ((code = krb5_decrypt(key, cksum, buf, plain, 8)))
-> -		return code;
-> +		goto out;
->  
->  	if ((plain[4] != plain[5]) || (plain[4] != plain[6]) ||
-> -	    (plain[4] != plain[7]))
-> -		return (s32)KG_BAD_SEQ;
-> +	    (plain[4] != plain[7])) {
-> +		code = (s32)KG_BAD_SEQ;
-> +		goto out;
-> +	}
->  
->  	*direction = plain[4];
->  
->  	*seqnum = ((plain[0]) |
->  		   (plain[1] << 8) | (plain[2] << 16) | (plain[3] << 24));
->  
-> -	return 0;
-> +out:
-> +	kfree(plain);
-> +	return code;
->  }
-> -- 
-> 2.17.2
