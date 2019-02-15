@@ -6,212 +6,219 @@ X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS
 	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0A006C43381
-	for <linux-nfs@archiver.kernel.org>; Fri, 15 Feb 2019 16:12:29 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D3936C4360F
+	for <linux-nfs@archiver.kernel.org>; Fri, 15 Feb 2019 16:12:40 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id D3E3421924
-	for <linux-nfs@archiver.kernel.org>; Fri, 15 Feb 2019 16:12:28 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id AB2712192B
+	for <linux-nfs@archiver.kernel.org>; Fri, 15 Feb 2019 16:12:40 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2391141AbfBOQMT (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 15 Feb 2019 11:12:19 -0500
-Received: from mx1.redhat.com ([209.132.183.28]:36438 "EHLO mx1.redhat.com"
+        id S1727559AbfBOQM2 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 15 Feb 2019 11:12:28 -0500
+Received: from mx1.redhat.com ([209.132.183.28]:36804 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727559AbfBOQMN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 15 Feb 2019 11:12:13 -0500
-Received: from smtp.corp.redhat.com (int-mx03.intmail.prod.int.phx2.redhat.com [10.5.11.13])
+        id S1727183AbfBOQM1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 15 Feb 2019 11:12:27 -0500
+Received: from smtp.corp.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 5B056C2E26;
-        Fri, 15 Feb 2019 16:12:12 +0000 (UTC)
+        by mx1.redhat.com (Postfix) with ESMTPS id 823E8C7943;
+        Fri, 15 Feb 2019 16:12:25 +0000 (UTC)
 Received: from warthog.procyon.org.uk (ovpn-121-129.rdu2.redhat.com [10.10.121.129])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 32CEA60933;
-        Fri, 15 Feb 2019 16:12:10 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 4BEFE60C62;
+        Fri, 15 Feb 2019 16:12:19 +0000 (UTC)
 Organization: Red Hat UK Ltd. Registered Address: Red Hat UK Ltd, Amberley
  Place, 107-111 Peascod Street, Windsor, Berkshire, SI4 1TE, United
  Kingdom.
  Registered in England and Wales under Company Registration No. 3798903
-Subject: [RFC PATCH 26/27] keys: Allow containers to be included in key ACLs
- by name
+Subject: [RFC PATCH 27/27] containers: Sample to grant access to a key in a
+ container
 From:   David Howells <dhowells@redhat.com>
 To:     keyrings@vger.kernel.org, trond.myklebust@hammerspace.com,
         sfrench@samba.org
 Cc:     linux-security-module@vger.kernel.org, linux-nfs@vger.kernel.org,
         linux-cifs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         rgb@redhat.com, dhowells@redhat.com, linux-kernel@vger.kernel.org
-Date:   Fri, 15 Feb 2019 16:12:09 +0000
-Message-ID: <155024712939.21651.14094051420890992278.stgit@warthog.procyon.org.uk>
+Date:   Fri, 15 Feb 2019 16:12:17 +0000
+Message-ID: <155024713756.21651.13272811997083735868.stgit@warthog.procyon.org.uk>
 In-Reply-To: <155024683432.21651.14153938339749694146.stgit@warthog.procyon.org.uk>
 References: <155024683432.21651.14153938339749694146.stgit@warthog.procyon.org.uk>
 User-Agent: StGit/unknown-version
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.13
-X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.26]); Fri, 15 Feb 2019 16:12:12 +0000 (UTC)
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.12
+X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.26]); Fri, 15 Feb 2019 16:12:26 +0000 (UTC)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Allow a container to be specified to KEYCTL_GRANT_PERMISSION by name.  This
-allows processes that don't have access to the container fd to grant
-permission on a key to a container.  This is restricted to the containers
-that are children of the current container.
+Provide a sample program that will grant access to the specified key for a
+container named "foo-test" (as created by the test-container sample) and
+then link the key into the container keyring (either given on the command
+line or searches for a keyring called "_container" in the session keyring
+as placed there by the test-container sample).
 
-This can be effected with something like:
+So, for example, this could be used to place an rxrpc key in the container
+keyring for kAFS inside the container to use:
 
-	keyctl(KEYCTL_GRANT_PERMISSION, key,
-	       KEY_ACE_SUBJ_CONTAINER_NAME, "foo-test",
-	       KEY_ACE_SEARCH);
+ (1) Poke kerberos to get a ticket for accessing AFS.
 
+	# kinit
+	# aklog-kafs redhat.com
+
+ (2) Find the rxrpc key ID:
+
+	# keyctl show
+	Session Keyring
+	1071328996 --alswrv      0     0  keyring: _ses
+	 574060623 ---lswrv      0 65534   \_ keyring: _uid.0
+	1004048468 --alswrv      0     0   \_ rxrpc: afs@redhat.com
+	 918328787 --alswrv      0     0   \_ keyring: upcall
+	 996275498 --alswrv      0     0   \_ keyring: _container
+	 785497401 --alswrv      0     0       \_ user: foobar
+
+     which would be 1004048468 in this example.
+
+ (3) Invoke the sample:
+
+	# test-cont-grant 1004048468
+
+     The rxrpc key can now be seen in the container keyring:
+
+	# keyctl show
+	Session Keyring
+	1071328996 --alswrv      0     0  keyring: _ses
+	 574060623 ---lswrv      0 65534   \_ keyring: _uid.0
+	1004048468 --alswrv      0     0   \_ rxrpc: afs@redhat.com
+	 918328787 --alswrv      0     0   \_ keyring: upcall
+	 996275498 --alswrv      0     0   \_ keyring: _container
+	 785497401 --alswrv      0     0       \_ user: foobar
+	1004048468 --alswrv      0     0       \_ rxrpc: afs@redhat.com
+
+ (4) Mount the kAFS filesystem inside the container:
+
+	> mount -t afs "%redhat.com:root.cell" /mnt
+
+The contents of /mnt can then be used from inside the container using the
+key placed into the container keyring.
 
 Signed-off-by: David Howells <dhowells@redhat.com>
 ---
 
- include/linux/container.h   |    1 +
- include/uapi/linux/keyctl.h |    1 +
- kernel/container.c          |   24 ++++++++++++++++++++++++
- security/keys/compat.c      |    4 ++++
- security/keys/internal.h    |    2 +-
- security/keys/keyctl.c      |    2 +-
- security/keys/permission.c  |   19 ++++++++++++++++++-
- 7 files changed, 50 insertions(+), 3 deletions(-)
+ samples/vfs/Makefile          |    3 +
+ samples/vfs/test-cont-grant.c |   84 +++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 87 insertions(+)
+ create mode 100644 samples/vfs/test-cont-grant.c
 
-diff --git a/include/linux/container.h b/include/linux/container.h
-index cd82074c26a3..fd49ce23467d 100644
---- a/include/linux/container.h
-+++ b/include/linux/container.h
-@@ -61,6 +61,7 @@ extern struct container init_container;
- #ifdef CONFIG_CONTAINERS
- extern const struct file_operations container_fops;
+diff --git a/samples/vfs/Makefile b/samples/vfs/Makefile
+index a8e9e1142ae3..c8eea193a856 100644
+--- a/samples/vfs/Makefile
++++ b/samples/vfs/Makefile
+@@ -6,6 +6,7 @@ hostprogs-$(CONFIG_SAMPLE_VFS) := \
+ 	test-mntinfo \
+ 	test-statx \
+ 	test-container \
++	test-cont-grant \
+ 	test-upcall
  
-+extern struct container *find_container(const char *name);
- extern int copy_container(unsigned long flags, struct task_struct *tsk,
- 			  struct container *container);
- extern void exit_container(struct task_struct *tsk);
-diff --git a/include/uapi/linux/keyctl.h b/include/uapi/linux/keyctl.h
-index 89ab609f774c..31520da17f37 100644
---- a/include/uapi/linux/keyctl.h
-+++ b/include/uapi/linux/keyctl.h
-@@ -21,6 +21,7 @@
- enum key_ace_subject_type {
- 	KEY_ACE_SUBJ_STANDARD	= 0,	/* subject is one of key_ace_standard_subject */
- 	KEY_ACE_SUBJ_CONTAINER	= 1,	/* subject is a container fd */
-+	KEY_ACE_SUBJ_CONTAINER_NAME = 2, /* subject is a container name pointer */
- 	nr__key_ace_subject_type
- };
+ # Tell kbuild to always build the programs
+@@ -22,5 +23,7 @@ HOSTCFLAGS_test-statx.o += -I$(objtree)/usr/include
  
-diff --git a/kernel/container.c b/kernel/container.c
-index 81be4ed915c2..c164c16328d6 100644
---- a/kernel/container.c
-+++ b/kernel/container.c
-@@ -235,6 +235,30 @@ struct container *fd_to_container(int fd)
- 	return c;
- }
- 
-+/**
-+ * find_container - Find a child container by name.
-+ * @name: The name of the container to find.
+ HOSTCFLAGS_test-container.o += -I$(objtree)/usr/include
+ HOSTLDLIBS_test-container += -lkeyutils
++HOSTCFLAGS_test-cont-grant.o += -I$(objtree)/usr/include
++HOSTLDLIBS_test-cont-grant += -lkeyutils
+ HOSTCFLAGS_test-upcall.o += -I$(objtree)/usr/include
+ HOSTLDLIBS_test-upcall += -lkeyutils
+diff --git a/samples/vfs/test-cont-grant.c b/samples/vfs/test-cont-grant.c
+new file mode 100644
+index 000000000000..da4a60bc71fa
+--- /dev/null
++++ b/samples/vfs/test-cont-grant.c
+@@ -0,0 +1,84 @@
++/* Link a key into a container keyring and grant perms to the container.
 + *
-+ * Find a child of the current container by name.
++ * Copyright (C) 2019 Red Hat, Inc. All Rights Reserved.
++ * Written by David Howells (dhowells@redhat.com)
++ *
++ * This program is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU General Public Licence
++ * as published by the Free Software Foundation; either version
++ * 2 of the Licence, or (at your option) any later version.
 + */
-+struct container *find_container(const char *name)
++
++#include <stdio.h>
++#include <stdlib.h>
++#include <unistd.h>
++#include <errno.h>
++#include <sys/wait.h>
++#include <linux/mount.h>
++#include <linux/unistd.h>
++#include <dirent.h>
++#include <sys/stat.h>
++#include <keyutils.h>
++
++#define KEYCTL_GRANT_PERMISSION		36	/* Grant a permit to a key */
++
++enum key_ace_subject_type {
++	KEY_ACE_SUBJ_STANDARD	= 0,	/* subject is one of key_ace_standard_subject */
++	KEY_ACE_SUBJ_CONTAINER	= 1,	/* subject is a container fd */
++	KEY_ACE_SUBJ_CONTAINER_NAME = 2, /* subject is a container name pointer */
++};
++
++enum key_ace_standard_subject {
++	KEY_ACE_EVERYONE	= 0,	/* Everyone, including owner and group */
++	KEY_ACE_GROUP		= 1,	/* The key's group */
++	KEY_ACE_OWNER		= 2,	/* The owner of the key */
++	KEY_ACE_POSSESSOR	= 3,	/* Any process that possesses of the key */
++};
++
++#define KEY_ACE_VIEW		0x00000001 /* Can describe the key */
++#define KEY_ACE_READ		0x00000002 /* Can read the key content */
++#define KEY_ACE_WRITE		0x00000004 /* Can update/modify the key content */
++#define KEY_ACE_SEARCH		0x00000008 /* Can find the key by search */
++#define KEY_ACE_LINK		0x00000010 /* Can make a link to the key */
++#define KEY_ACE_SET_SECURITY	0x00000020 /* Can set owner, group, ACL */
++#define KEY_ACE_INVAL		0x00000040 /* Can invalidate the key */
++#define KEY_ACE_REVOKE		0x00000080 /* Can revoke the key */
++#define KEY_ACE_JOIN		0x00000100 /* Can join keyring */
++#define KEY_ACE_CLEAR		0x00000200 /* Can clear keyring */
++
++int main(int argc, char *argv[])
 +{
-+	struct container *c = current->container, *p;
++	key_serial_t key, keyring;
 +
-+	spin_lock(&c->lock);
-+	list_for_each_entry(p, &c->children, child_link) {
-+		if (strcmp(p->name, name) == 0) {
-+			get_container(p);
-+			goto found;
++	if (argc == 2) {
++		printf("Find keyring '_container'...\n");
++		keyring = keyctl_search(KEY_SPEC_SESSION_KEYRING, "keyring", "_container", 0);
++		if (keyring == -1) {
++			perror("keyctl_search");
++			exit(1);
 +		}
++
++		key = atoi(argv[1]);
++	} else if (argc == 3) {
++		printf("Use specified keyring...\n");
++		keyring = atoi(argv[2]);
++		key = atoi(argv[1]);
++	} else {
++		fprintf(stderr, "Format: test-cont-grant <key> [<cont-keyring>]\n");
++		exit(2);
 +	}
 +
-+	p = NULL;
-+found:
-+	spin_unlock(&c->lock);
-+	return p;
++	if (keyctl(KEYCTL_GRANT_PERMISSION, key,
++		   KEY_ACE_SUBJ_CONTAINER_NAME, "foo-test",
++		   KEY_ACE_SEARCH) < 0) {
++		perror("keyctl_grant/s");
++		exit(1);
++	}
++
++	if (keyctl_link(key, keyring) < 0) {
++		perror("keyctl_link");
++		exit(1);
++	}
++
++	exit(0);
 +}
-+
- /*
-  * Handle fork/clone.
-  *
-diff --git a/security/keys/compat.c b/security/keys/compat.c
-index 953156f94320..78c6c0e0eb59 100644
---- a/security/keys/compat.c
-+++ b/security/keys/compat.c
-@@ -175,6 +175,10 @@ COMPAT_SYSCALL_DEFINE5(keyctl, u32, option,
- 	case KEYCTL_MOVE:
- 		return keyctl_keyring_move(arg2, arg3, arg4, arg5);
- 	case KEYCTL_GRANT_PERMISSION:
-+		if (arg3 == KEY_ACE_SUBJ_CONTAINER_NAME)
-+			return keyctl_grant_permission(arg2, arg3,
-+						       (unsigned long)compat_ptr(arg4),
-+						       arg5);
- 		return keyctl_grant_permission(arg2, arg3, arg4, arg5);
- 
- 	default:
-diff --git a/security/keys/internal.h b/security/keys/internal.h
-index 6cd7b5c17298..aa4ad9c8002e 100644
---- a/security/keys/internal.h
-+++ b/security/keys/internal.h
-@@ -379,7 +379,7 @@ extern long keyctl_set_container_keyring(int, key_serial_t);
- 
- extern long keyctl_grant_permission(key_serial_t keyid,
- 				    enum key_ace_subject_type type,
--				    unsigned int subject,
-+				    unsigned long subject,
- 				    unsigned int perm);
- 
- /*
-diff --git a/security/keys/keyctl.c b/security/keys/keyctl.c
-index 02bd73d5a05a..978c9008c3b2 100644
---- a/security/keys/keyctl.c
-+++ b/security/keys/keyctl.c
-@@ -1964,7 +1964,7 @@ SYSCALL_DEFINE5(keyctl, int, option, unsigned long, arg2, unsigned long, arg3,
- 	case KEYCTL_GRANT_PERMISSION:
- 		return keyctl_grant_permission((key_serial_t)arg2,
- 					       (enum key_ace_subject_type)arg3,
--					       (unsigned int)arg4,
-+					       (unsigned long)arg4,
- 					       (unsigned int)arg5);
- 
- 	default:
-diff --git a/security/keys/permission.c b/security/keys/permission.c
-index f16d1665885f..b0e94ccc4635 100644
---- a/security/keys/permission.c
-+++ b/security/keys/permission.c
-@@ -407,7 +407,7 @@ static long key_change_acl(struct key *key, struct key_ace *new_ace)
-  */
- long keyctl_grant_permission(key_serial_t keyid,
- 			     enum key_ace_subject_type type,
--			     unsigned int subject,
-+			     unsigned long subject,
- 			     unsigned int perm)
- {
- 	struct key_ace new_ace;
-@@ -436,6 +436,23 @@ long keyctl_grant_permission(key_serial_t keyid,
- 		put_container(c);
- 		break;
- 	}
-+	case KEY_ACE_SUBJ_CONTAINER_NAME: {
-+		struct container *c;
-+		char *name;
-+
-+		name = strndup_user((const char __user *)subject, 23);
-+		if (IS_ERR(name))
-+			return PTR_ERR(name);
-+		c = find_container(name);
-+		kfree(name);
-+		if (!c)
-+			return -EINVAL;
-+		new_ace.type = KEY_ACE_SUBJ_CONTAINER;
-+		refcount_inc(&c->tag->usage);
-+		new_ace.container_tag = c->tag;
-+		put_container(c);
-+		break;
-+	}
- #endif
- 
- 	default:
 
