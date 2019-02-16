@@ -1,58 +1,60 @@
-Return-Path: <SRS0=Mjai=QW=vger.kernel.org=linux-nfs-owner@kernel.org>
+Return-Path: <SRS0=NyTm=QX=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_PASS,URIBL_BLOCKED autolearn=unavailable
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,UNPARSEABLE_RELAY,
+	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id BAE2EC10F02
-	for <linux-nfs@archiver.kernel.org>; Fri, 15 Feb 2019 22:36:26 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 70F37C43381
+	for <linux-nfs@archiver.kernel.org>; Sat, 16 Feb 2019 00:31:26 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 9466C222D9
-	for <linux-nfs@archiver.kernel.org>; Fri, 15 Feb 2019 22:36:26 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 3E4A6218D9
+	for <linux-nfs@archiver.kernel.org>; Sat, 16 Feb 2019 00:31:26 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2391539AbfBOWgV (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 15 Feb 2019 17:36:21 -0500
-Received: from namei.org ([65.99.196.166]:52504 "EHLO namei.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2390411AbfBOWgU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 15 Feb 2019 17:36:20 -0500
-Received: from localhost (localhost [127.0.0.1])
-        by namei.org (8.14.4/8.14.4) with ESMTP id x1FMa4QR006885;
-        Fri, 15 Feb 2019 22:36:04 GMT
-Date:   Sat, 16 Feb 2019 09:36:04 +1100 (AEDT)
-From:   James Morris <jmorris@namei.org>
-To:     David Howells <dhowells@redhat.com>
-cc:     keyrings@vger.kernel.org, trond.myklebust@hammerspace.com,
-        sfrench@samba.org, linux-security-module@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, rgb@redhat.com,
-        linux-kernel@vger.kernel.org, ebiederm@xmission.com
-Subject: Re: [RFC PATCH 00/27] Containers and using authenticated
- filesystems
-In-Reply-To: <155024683432.21651.14153938339749694146.stgit@warthog.procyon.org.uk>
-Message-ID: <alpine.LRH.2.21.1902160934140.6353@namei.org>
-References: <155024683432.21651.14153938339749694146.stgit@warthog.procyon.org.uk>
-User-Agent: Alpine 2.21 (LRH 202 2017-01-01)
-MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+        id S2391582AbfBPAbZ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 15 Feb 2019 19:31:25 -0500
+Received: from out30-45.freemail.mail.aliyun.com ([115.124.30.45]:59237 "EHLO
+        out30-45.freemail.mail.aliyun.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S2389118AbfBPAbZ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Feb 2019 19:31:25 -0500
+X-Alimail-AntiSpam: AC=PASS;BC=-1|-1;BR=01201311R191e4;CH=green;DM=||false|;FP=0|-1|-1|-1|0|-1|-1|-1;HT=e01f04452;MF=zhangliguang@linux.alibaba.com;NM=1;PH=DS;RN=4;SR=0;TI=SMTPD_---0TKBxR-7_1550277075;
+Received: from localhost(mailfrom:zhangliguang@linux.alibaba.com fp:SMTPD_---0TKBxR-7_1550277075)
+          by smtp.aliyun-inc.com(127.0.0.1);
+          Sat, 16 Feb 2019 08:31:23 +0800
+From:   zhangliguang <zhangliguang@linux.alibaba.com>
+To:     trond.myklebust@hammerspace.com, anna.schumaker@netapp.com
+Cc:     zhangliguang@linux.alibaba.com, linux-nfs@vger.kernel.org
+Subject: [PATCH] NFS: Remove redundant semicolon
+Date:   Sat, 16 Feb 2019 08:31:15 +0800
+Message-Id: <1550277075-120448-1-git-send-email-zhangliguang@linux.alibaba.com>
+X-Mailer: git-send-email 1.8.3.1
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Fri, 15 Feb 2019, David Howells wrote:
+This removes redundant semicolon for ending code.
 
-> 
-> Here's a collection of patches that containerises the kernel keys and makes
-> it possible to separate keys by namespace.  This can be extended to any
-> filesystem that uses request_key() to obtain the pertinent authentication
-> token on entry to VFS or socket methods.
+Fixes: c7944ebb9ce9 ("NFSv4: Fix lookup revalidate of regular files")
+Signed-off-by: Liguang Zhang <zhangliguang@linux.alibaba.com>
+---
+ fs/nfs/dir.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-Shouldn't Eric Biederman be cc'd on this?
-
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index 6bf4471..96dd679 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -1649,7 +1649,7 @@ int nfs_atomic_open(struct inode *dir, struct dentry *dentry,
+ reval_dentry:
+ 	if (flags & LOOKUP_RCU)
+ 		return -ECHILD;
+-	return nfs_lookup_revalidate_dentry(dir, dentry, inode);;
++	return nfs_lookup_revalidate_dentry(dir, dentry, inode);
+ 
+ full_reval:
+ 	return nfs_do_lookup_revalidate(dir, dentry, flags);
 -- 
-James Morris
-<jmorris@namei.org>
+1.8.3.1
 
