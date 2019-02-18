@@ -2,90 +2,78 @@ Return-Path: <SRS0=QdOa=QZ=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_PASS,USER_AGENT_MUTT autolearn=ham autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-1.2 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,SPF_PASS autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B6B1EC43381
-	for <linux-nfs@archiver.kernel.org>; Mon, 18 Feb 2019 20:21:47 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A4E1CC43381
+	for <linux-nfs@archiver.kernel.org>; Mon, 18 Feb 2019 21:14:40 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 8DAC7217D7
-	for <linux-nfs@archiver.kernel.org>; Mon, 18 Feb 2019 20:21:47 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 7532721773
+	for <linux-nfs@archiver.kernel.org>; Mon, 18 Feb 2019 21:14:40 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=default; t=1550524480;
+	bh=IEEbYHWwY5KRIw2ddOy0FzcymGnsiwkBM34ZTCYunRg=;
+	h=Date:From:To:To:To:Cc:Cc:Subject:In-Reply-To:References:List-ID:
+	 From;
+	b=MQkjk2da0qgW+w2p0hhSZCOrzVKfnQ0ymCJ8PxwsL1g16g+KbdJgucG/vgTti3Nqv
+	 ciO32a797QXksNZAPr40W9v8/sp6/fAQ7+p8YubLgiGQvdnqGVrsnoGP3MtahopMKW
+	 WGzmo/xIXsxmeAD3nW/Vk1KqygWj03i2RZWOkR3o=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727682AbfBRUVq (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 18 Feb 2019 15:21:46 -0500
-Received: from fieldses.org ([173.255.197.46]:45360 "EHLO fieldses.org"
+        id S1730459AbfBRVOj (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 18 Feb 2019 16:14:39 -0500
+Received: from mail.kernel.org ([198.145.29.99]:54544 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727400AbfBRUVq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 18 Feb 2019 15:21:46 -0500
-Received: by fieldses.org (Postfix, from userid 2815)
-        id 12C1E1E29; Mon, 18 Feb 2019 15:21:46 -0500 (EST)
-Date:   Mon, 18 Feb 2019 15:21:46 -0500
-To:     Gefei Li <gefeili.2013@gmail.com>
+        id S1730456AbfBRVOj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 18 Feb 2019 16:14:39 -0500
+Received: from localhost (unknown [23.100.24.84])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by mail.kernel.org (Postfix) with ESMTPSA id AE7A8218FC;
+        Mon, 18 Feb 2019 21:14:38 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=default; t=1550524478;
+        bh=IEEbYHWwY5KRIw2ddOy0FzcymGnsiwkBM34ZTCYunRg=;
+        h=Date:From:To:To:To:Cc:Cc:Subject:In-Reply-To:References:From;
+        b=ofmK0bCbfGV34VEQpbuICOSLKHR6DgFaJQ/EcF5tzWfOcxi8vC91dOsX1Nl44P1HL
+         hxjBJP/T1FGQoI4BI+5SfhndZzeUhV3OY02bsnsJ2OVkhAym9y36+aUCnjXgkz2PAS
+         xDAumtZW2BEIg7D584iI5gi4cA7z67nPKWCTtwPY=
+Date:   Mon, 18 Feb 2019 21:14:37 +0000
+From:   Sasha Levin <sashal@kernel.org>
+To:     Sasha Levin <sashal@kernel.org>
+To:     Trond Myklebust <trondmy@gmail.com>
+To:     Anna Schumaker <anna.schumaker@netapp.com>
 Cc:     linux-nfs@vger.kernel.org
-Subject: Re: linux NFS client lock file cannot get a expected response
-Message-ID: <20190218202146.GB5879@fieldses.org>
-References: <CANidX5RGLuvdS82TpxuagUsA4DmUochDv2AwX7rwHdD-q+Khbg@mail.gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Disposition: inline
-Content-Transfer-Encoding: 8bit
-In-Reply-To: <CANidX5RGLuvdS82TpxuagUsA4DmUochDv2AwX7rwHdD-q+Khbg@mail.gmail.com>
-User-Agent: Mutt/1.5.21 (2010-09-15)
-From:   bfields@fieldses.org (J. Bruce Fields)
+Cc:     stable@vger.kernel.org
+Subject: Re: [PATCH 1/2] NFS: Fix I/O request leakages
+In-Reply-To: <20190213215357.19696-1-trond.myklebust@hammerspace.com>
+References: <20190213215357.19696-1-trond.myklebust@hammerspace.com>
+Message-Id: <20190218211438.AE7A8218FC@mail.kernel.org>
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Mon, Feb 18, 2019 at 05:11:47PM +0800, Gefei Li wrote:
-> I am recently testing linux nfs lock with NFS share from a WinServer
-> 2016. I tried to write a file which has already been locked with fcntl
-> exclusively, but the response of `write` syscall is neither
-> `Permission denied`, nor successfully written with file content
-> changed. Here is several experiments I did:
-> 
-> The first shell runs c program, calling `fcntl` to lock file
-> exclusively “fcntl(fd, F_SETLKW, &fl)”
-> 
-> 2.1 The second shell tried to open with flag O_RDWR, and write a
-> buffer to the same file, write returned the correct bytes written, but
-> the file content remained unchanged.
+Hi,
 
-You're checking the file content on the server somehow?
+[This is an automated email]
 
-The client's caching the write--it returns success to the application
-and then sends the actual write to the server later.  Anything else will
-hurt performance of a lot of applications.
+This commit has been processed because it contains a "Fixes:" tag,
+fixing commit: a7d42ddb3099 nfs: add mirroring support to pgio layer.
 
-> 2.2 The second shell tried to open with flag O_RDWR|O_SYNC, write the
-> same buffer to the same file, write operation returned EAGAIN
-> 2.3 The same operation on ext4 file system gives me a expected
-> behavior the same as advisory lock expressed, successfully written
-> with file content changed.
-> 
-> I reviewed NFS 4.1 protocol(RFC 5661 page 185), the nfs server can
-> determine whether byte range lock can be either mandatory or advisory,
-> but I think 2.1 and 2.2 gives me some unexpected behavior as these
-> two.. What’s your idea about this? Can you give me some tips to work
-> this out?
+The bot has tested the following trees: v4.20.10, v4.19.23, v4.14.101, v4.9.158, v4.4.174.
 
-There's also section 10.3.3, but I never understood how that was really
-supposed to work.  It recommends the client turn off caching when
-mandatory locking is in effect--but the only way it gives the client
-that mandatory locking is in effect is by seeing an ERR_LOCKED reply to
-a READ or WRITE, and by that point it's too late.
+v4.20.10: Build OK!
+v4.19.23: Build OK!
+v4.14.101: Build OK!
+v4.9.158: Build OK!
+v4.4.174: Failed to apply! Possible dependencies:
+    c18b96a1b862 ("nfs: clean up rest of reqs when failing to add one")
+    d600ad1f2bdb ("NFS41: pop some layoutget errors to application")
 
-Anyway, as far as I can tell the results you report are what's expected.
 
---b.
+How should we proceed with this patch?
 
-> Looking forward for your reply. Thanks in advance!
-> 
-> BTW, my linux kernel version is 4.15.0, linux release: ubuntu 16.04
-> from Azure marketplace, my nfs-common version is
-> "nfs-common/xenial-updates,now 1:1.2.8-9ubuntu12.1 amd64" from ubuntu
-> apt repo.
-> 
-> Thanks,
-> Gefei
+--
+Thanks,
+Sasha
