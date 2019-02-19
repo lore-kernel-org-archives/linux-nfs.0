@@ -2,62 +2,69 @@ Return-Path: <SRS0=cCtV=Q2=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_PASS,USER_AGENT_MUTT autolearn=ham autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-1.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 95119C43381
-	for <linux-nfs@archiver.kernel.org>; Tue, 19 Feb 2019 16:03:20 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B8D17C43381
+	for <linux-nfs@archiver.kernel.org>; Tue, 19 Feb 2019 16:07:53 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 6B3882147A
-	for <linux-nfs@archiver.kernel.org>; Tue, 19 Feb 2019 16:03:20 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 954A8217D9
+	for <linux-nfs@archiver.kernel.org>; Tue, 19 Feb 2019 16:07:53 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729193AbfBSQDT (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 19 Feb 2019 11:03:19 -0500
-Received: from fieldses.org ([173.255.197.46]:47092 "EHLO fieldses.org"
+        id S1726605AbfBSQHw (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 19 Feb 2019 11:07:52 -0500
+Received: from mx1.redhat.com ([209.132.183.28]:36666 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726244AbfBSQDT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 19 Feb 2019 11:03:19 -0500
-Received: by fieldses.org (Postfix, from userid 2815)
-        id 25FFE1CE7; Tue, 19 Feb 2019 11:03:19 -0500 (EST)
-Date:   Tue, 19 Feb 2019 11:03:19 -0500
-To:     "J. Bruce Fields" <bfields@redhat.com>
-Cc:     Olga Kornievskaia <olga.kornievskaia@gmail.com>,
-        linux-nfs <linux-nfs@vger.kernel.org>, dchinner@redhat.com
-Subject: Re: [PATCH v2 00/10] server-side support for "inter" SSC copy
-Message-ID: <20190219160319.GC19603@fieldses.org>
-References: <20181130200348.59524-1-olga.kornievskaia@gmail.com>
- <CAN-5tyGBO1CnhkEe9yPXdh4837NYsZc1fyJ4MCuMPM2eSv4C5g@mail.gmail.com>
- <20181221190837.GB15842@parsley.fieldses.org>
- <CAN-5tyG6o2Zi61j=miGJpR-AmbzvAUm6x4wauzUC9JgQmpma+w@mail.gmail.com>
- <20190116220817.GA4499@parsley.fieldses.org>
+        id S1726321AbfBSQHw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 19 Feb 2019 11:07:52 -0500
+Received: from smtp.corp.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id 85AEAC007330;
+        Tue, 19 Feb 2019 16:07:52 +0000 (UTC)
+Received: from steved.boston.devel.redhat.com (steved.boston.devel.redhat.com [10.19.60.47])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 17B6360140;
+        Tue, 19 Feb 2019 16:07:52 +0000 (UTC)
+Subject: Re: [PATCH] nfs-utils: fix addrinfo usage with musl-1.1.21
+To:     Peter Wagner <tripolar@gmx.at>,
+        Chuck Lever <chuck.lever@oracle.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+References: <20190217173901.33296254@onion.lan>
+ <1081BBCD-8CA0-49CC-A02C-16F46FF613BF@oracle.com>
+ <20190218001153.3d21b28c@onion.lan>
+ <34D9E70A-7F29-4C6B-8A10-18F7A7EFFE2E@oracle.com>
+ <137b8db8-a6d6-33a6-408b-73f8915eee08@RedHat.com>
+ <EE3790BC-A5B4-4C34-9F21-7009579B3A25@oracle.com>
+ <530ec927-e9c6-490c-1382-8e5be1aea203@RedHat.com>
+ <0B1E18B0-0034-4612-B63B-41155D2E0D64@oracle.com>
+ <20190218222600.198f25d1@onion.lan> <20190219100330.7679f4a3@onion.lan>
+From:   Steve Dickson <SteveD@RedHat.com>
+Message-ID: <4df6f5e7-527f-4dae-02e5-11ca9ad67adf@RedHat.com>
+Date:   Tue, 19 Feb 2019 11:07:51 -0500
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101
+ Thunderbird/60.5.0
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20190116220817.GA4499@parsley.fieldses.org>
-User-Agent: Mutt/1.5.21 (2010-09-15)
-From:   bfields@fieldses.org (J. Bruce Fields)
+In-Reply-To: <20190219100330.7679f4a3@onion.lan>
+Content-Type: text/plain; charset=utf-8
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.11
+X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.32]); Tue, 19 Feb 2019 16:07:52 +0000 (UTC)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Wed, Jan 16, 2019 at 05:08:17PM -0500, J. Bruce Fields wrote:
-> I have some delegation patches I want to get debugged first, hopefully
-> just a couple more days.
+Hey Peter,
 
-Sorry for the delay, I should be back to the server-to-server copy
-patches today and tomorrow.
+On 2/19/19 4:03 AM, Peter Wagner wrote:
+> i updated to code to the latest version
 
-> Where does the VFS cross-superblock copy work stand?  I remember Dave
-> Chinner sending some patches but don't see them in 5.0-rc1, on a quick
-> look.
+Would you please create a new thread with 
+each patch version adding the version to
+the subject line ex [PATCH V2].
 
-(Adding Dave to the cc.)
+It just make it much easier for me to
+find the patch... tia,
 
-I don't recall wha the remaining cross-device copy issues were.  Any
-opinion whether they'd be worth a discussion at lsf/mm?
-
-https://lkml.org/lkml/2019/1/18/696
-
---b.
+steved.
