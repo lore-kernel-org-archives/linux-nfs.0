@@ -2,140 +2,684 @@ Return-Path: <SRS0=cCtV=Q2=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-0.9 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-6.8 required=3.0 tests=FREEMAIL_FORGED_FROMDOMAIN,
+	FREEMAIL_FROM,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
+	SIGNED_OFF_BY,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 77050C43381
-	for <linux-nfs@archiver.kernel.org>; Tue, 19 Feb 2019 02:09:40 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DC60DC43381
+	for <linux-nfs@archiver.kernel.org>; Tue, 19 Feb 2019 09:02:47 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 378A121773
-	for <linux-nfs@archiver.kernel.org>; Tue, 19 Feb 2019 02:09:40 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="fMyso69k"
+	by mail.kernel.org (Postfix) with ESMTP id A198B21902
+	for <linux-nfs@archiver.kernel.org>; Tue, 19 Feb 2019 09:02:47 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726260AbfBSCJj (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 18 Feb 2019 21:09:39 -0500
-Received: from mail-ed1-f44.google.com ([209.85.208.44]:34180 "EHLO
-        mail-ed1-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726225AbfBSCJj (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Feb 2019 21:09:39 -0500
-Received: by mail-ed1-f44.google.com with SMTP id b3so15456354ede.1
-        for <linux-nfs@vger.kernel.org>; Mon, 18 Feb 2019 18:09:37 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
-         :cc:content-transfer-encoding;
-        bh=tSlZ1opQXdL7qPnXXGV+oi11COU7cogrhVlhiWXiQdU=;
-        b=fMyso69ke4DFibWM6PDqmmFyVUi7wEBEyxSrHnQdef4pvvgygIlf+4exXe1vi+eYBo
-         bjbs9agmaqjBeHo3CgEldIj0hzXAr7oXf4gIciaVD8dinKXWHy4f6Ma5NQPLym2qwLgU
-         +HXBgq3GTW5WbufTp41BbeE1SPxoAD9q45ZQkfTEkLj3M6GD97ZRI0Rl6NSw2Xv25ohz
-         sKe76WJ0IRL6R3TIawaNsbsPMY4NCG72o0RqF76mrT9pFabfYLml2rbrtLk4ezAkEIZs
-         QMeiZDR1PwGyzmlChX+C4ML3sdhuYiVeOm0tidpkIgj2nTH0OaXso+bm1AkqJryovcLj
-         Iicw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
-         :message-id:subject:to:cc:content-transfer-encoding;
-        bh=tSlZ1opQXdL7qPnXXGV+oi11COU7cogrhVlhiWXiQdU=;
-        b=M6a55Sr/QSyETTuQcH6aauO9e2bps538Mj3TK8PGkgzXe0Ob4esQI1AbJi5dc2p/yk
-         iMl/bPIy7IMF6qmvgaQGEC9dI2ImE+vFnghrvlmwjiv0ONdPCiThtWgPGtyfW8cOmfMj
-         4v6gsAMIXJVlKsuFQ4diCTy1f679upMZyPWY/BSbT3tJg+xirtf+qpL9EHIZ64QN7eFu
-         naV2iOcjlch+gfAc12ICubEO2MkFvqcHRXkPPfU+kYj/hkCrhzHSvjjL9k5EYW92REwA
-         IyrDy+7ro59HHvLGnDWBEnRl8+ODeRuuYCaIZX3tQ30DeJ4G9s77KrUmHPYHVBZy3BKI
-         /9qQ==
-X-Gm-Message-State: AHQUAuYmvsd549rsaXCkWsikq1bcgomF80QnxX5Unk0hqRGnzMRoRajx
-        2A7IiwmICB7D+q/vnQsK929R9G+PhUG8cWzaZqDlEkWd
-X-Google-Smtp-Source: AHgI3Ibsw3OxljJBQPYHBy8eIB37l5BlAyLPb8ug9RxqaE0O/HY+H9HDNbKM2AP/3fCdXq8cq0/YmFBS7SBsymp/I98=
-X-Received: by 2002:a17:906:1191:: with SMTP id n17mr18702653eja.47.1550542177066;
- Mon, 18 Feb 2019 18:09:37 -0800 (PST)
+        id S1727244AbfBSJCq convert rfc822-to-8bit (ORCPT
+        <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 19 Feb 2019 04:02:46 -0500
+Received: from mout.gmx.net ([212.227.17.21]:41409 "EHLO mout.gmx.net"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1727228AbfBSJCq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 19 Feb 2019 04:02:46 -0500
+Received: from onion.lan ([62.178.200.226]) by mail.gmx.com (mrgmx103
+ [212.227.17.168]) with ESMTPSA (Nemesis) id 0M6SE3-1hEoT73ANv-00yQOu; Tue, 19
+ Feb 2019 10:02:38 +0100
+Date:   Tue, 19 Feb 2019 10:03:30 +0100
+From:   Peter Wagner <tripolar@gmx.at>
+To:     Chuck Lever <chuck.lever@oracle.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] nfs-utils: fix addrinfo usage with musl-1.1.21
+Message-ID: <20190219100330.7679f4a3@onion.lan>
+In-Reply-To: <20190218222600.198f25d1@onion.lan>
+References: <20190217173901.33296254@onion.lan>
+        <1081BBCD-8CA0-49CC-A02C-16F46FF613BF@oracle.com>
+        <20190218001153.3d21b28c@onion.lan>
+        <34D9E70A-7F29-4C6B-8A10-18F7A7EFFE2E@oracle.com>
+        <137b8db8-a6d6-33a6-408b-73f8915eee08@RedHat.com>
+        <EE3790BC-A5B4-4C34-9F21-7009579B3A25@oracle.com>
+        <530ec927-e9c6-490c-1382-8e5be1aea203@RedHat.com>
+        <0B1E18B0-0034-4612-B63B-41155D2E0D64@oracle.com>
+        <20190218222600.198f25d1@onion.lan>
 MIME-Version: 1.0
-References: <CANidX5RGLuvdS82TpxuagUsA4DmUochDv2AwX7rwHdD-q+Khbg@mail.gmail.com>
- <20190218202146.GB5879@fieldses.org>
-In-Reply-To: <20190218202146.GB5879@fieldses.org>
-From:   Gefei Li <gefeili.2013@gmail.com>
-Date:   Tue, 19 Feb 2019 10:09:25 +0800
-Message-ID: <CANidX5RjDwJ=yN=aG_D+pQ4fzJ-gXrdqbmwin9eOkyerCU6QRA@mail.gmail.com>
-Subject: Re: linux NFS client lock file cannot get a expected response
-To:     "J. Bruce Fields" <bfields@fieldses.org>
-Cc:     linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 8BIT
+X-Provags-ID: V03:K1:kZh/MZLYJR0h7kF0wiR0M+8ucoyUlqa+Bak7up8s6+PQIJtOxhL
+ 0T3R1FhiLLP/Y6+VCRkewW005KFAi+p//6uL1bS7giu7xdBbsWFvYVlGtYETTgzogwPtYQM
+ g6G1S3sVWy9mzrXo7s1lVA/EkLKKcoULSm9YuGVf/fkLOLP1B/73qy3DO/hvD0DFj+2GqG1
+ JotCO5ihaJXrNodAQbY+g==
+X-UI-Out-Filterresults: notjunk:1;V03:K0:gduRZ8K07Ps=:nsOyvGvK9xqEQOQ+OdAxzB
+ zjUZp7TdECW4ZkDTVzostefX3HtgnDa03/ObE2xlNsUFPj+2bdYpWiRRsehmv/FDoA3gicTBX
+ 10P+1PA5YYwIEMUG6QOIQSq5hTRNGUxNN37URzVR0N9NrvLvClm+Ue0ezbWvcLBZiBvlB+7LL
+ Kqv7wwxqMkL4nNgrTOlR+zm13l1bN1GCdu4ZXn5KvxAmPVru4XXEAyi4tKZZypYHS7KX/+itv
+ y0443vI8OUbW9UZGH0TV/6qVtBsPTS5TWpK5owUTQS+g8PZIpIosKTjseycaXxJnBgDEDPlsM
+ s3aVIYIzgLs4uiMjcYoJZDdyHwn1iu3IQ+7fso9FlGoudHduvtgX2EfafmgIPXsWpKTrdoTMH
+ wxnNos7uoh5ZVq017+mK6p7K9VjVwYWeeeo6yWTfGBiLuROzhoY0DZFlgwPKF6D3q4q9mnMzW
+ i3FaleVi1ZWycxjolsOFthh5DvJdXnMUv8/JZBi0R8lxGpZNz6p8y6CV9d3nbooHmhq5URjPZ
+ +Sr0qb1dzO3Q6MQ509cRhX0QaqMuZoFHQnS9aVwe2B1sbZLTH6rvO6+Ywj9JzqwPn67fpJzpT
+ YRXNYZSjfJ9Hlgb05iLaBClntao0jmi0/OwRRaOLUytSVByqOrHqzXVHyFkKPBiTwIMCYb+JT
+ R6tjxUSYShWP49ELXEFahH1MFDyhvgFYWREgGfZ2xyOMohS2Kvzn89Z57cgMyGyPoihiIMpIa
+ 0e6C2ewhKO1byYE+FfWYywymr9+1zc1XnKOp8RCPSDO3hEoTlCNrbLLNKYdfJRyhpMEgmT/rj
+ xnRZzcIGZon2nJmIoVYXODAEKKhoF+p2MvsgyDMoxFJzp2VGUKmW8saP8xxHQOYHwGQY3KBHh
+ frmPorosqJsmYnMZocyX5k+Z4Yb7XTtbPtQZ2f7aIFENw1S5X8XjCygl/XirgB5PGrIAK/LKC
+ S/AooKlT+fA==
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Thanks a lot for your reply! I tried to capture and analyse the
-network packets with wireshark and find that a NFS4ERR_LOCKED(10012)
-replied in my experiment 2.2(open with O_SYNC and write) Write
-response. Does this mean that my NFS server uses mandatory locking?
+Hi,
 
-But something unexpected is that an EAGAIN(Resource temporarily
-unavailable) returned in user space, I think an EACCES/EIO is better
-for locked situations, what's your idea about this?
+i updated to code to the latest version
 
->> You're checking the file content on the server somehow?
-I close my lock program in my first shell, and check from both
-server-side(use notepad to view the file) and client-side(cat/vim to
-view the file), the file content remained unchanged.
+From dc2c02c12cf66e7ac4ab12fad7ea21f83f10ee7a Mon Sep 17 00:00:00 2001
+From: Peter Wagner <tripolar@gmx.at>
+Date: Tue, 19 Feb 2019 09:53:07 +0100
+Subject: [PATCH] define and use wrapper function nfs_freeaddrinfo to handle
+ freeaddrinfo versions that don't tolerate NULL pointers
 
-Best Regards,
-Gefei
+set AI_CANONNAME flag in host_pton to set the ip address of the connected
+host to ai_canonname
 
-On Tue, Feb 19, 2019 at 4:22 AM J. Bruce Fields <bfields@fieldses.org> wrot=
-e:
->
-> On Mon, Feb 18, 2019 at 05:11:47PM +0800, Gefei Li wrote:
-> > I am recently testing linux nfs lock with NFS share from a WinServer
-> > 2016. I tried to write a file which has already been locked with fcntl
-> > exclusively, but the response of `write` syscall is neither
-> > `Permission denied`, nor successfully written with file content
-> > changed. Here is several experiments I did:
-> >
-> > The first shell runs c program, calling `fcntl` to lock file
-> > exclusively =E2=80=9Cfcntl(fd, F_SETLKW, &fl)=E2=80=9D
-> >
-> > 2.1 The second shell tried to open with flag O_RDWR, and write a
-> > buffer to the same file, write returned the correct bytes written, but
-> > the file content remained unchanged.
->
-> You're checking the file content on the server somehow?
->
-> The client's caching the write--it returns success to the application
-> and then sends the actual write to the server later.  Anything else will
-> hurt performance of a lot of applications.
->
-> > 2.2 The second shell tried to open with flag O_RDWR|O_SYNC, write the
-> > same buffer to the same file, write operation returned EAGAIN
-> > 2.3 The same operation on ext4 file system gives me a expected
-> > behavior the same as advisory lock expressed, successfully written
-> > with file content changed.
-> >
-> > I reviewed NFS 4.1 protocol(RFC 5661 page 185), the nfs server can
-> > determine whether byte range lock can be either mandatory or advisory,
-> > but I think 2.1 and 2.2 gives me some unexpected behavior as these
-> > two.. What=E2=80=99s your idea about this? Can you give me some tips to=
- work
-> > this out?
->
-> There's also section 10.3.3, but I never understood how that was really
-> supposed to work.  It recommends the client turn off caching when
-> mandatory locking is in effect--but the only way it gives the client
-> that mandatory locking is in effect is by seeing an ERR_LOCKED reply to
-> a READ or WRITE, and by that point it's too late.
->
-> Anyway, as far as I can tell the results you report are what's expected.
->
-> --b.
->
-> > Looking forward for your reply. Thanks in advance!
-> >
-> > BTW, my linux kernel version is 4.15.0, linux release: ubuntu 16.04
-> > from Azure marketplace, my nfs-common version is
-> > "nfs-common/xenial-updates,now 1:1.2.8-9ubuntu12.1 amd64" from ubuntu
-> > apt repo.
-> >
-> > Thanks,
-> > Gefei
+Signed-off-by: Peter Wagner <tripolar@gmx.at>
+---
+ support/export/client.c       |  6 +++---
+ support/export/hostname.c     | 28 +++-------------------------
+ support/include/exportfs.h    | 11 +++++++++++
+ support/nfs/getport.c         |  7 ++++---
+ support/nfs/svc_create.c      |  8 +++++---
+ support/nfsidmap/umich_ldap.c |  2 +-
+ tests/nsm_client/nsm_client.c |  2 +-
+ utils/exportfs/exportfs.c     | 10 +++++-----
+ utils/gssd/gssd.c             |  4 ++--
+ utils/gssd/krb5_util.c        |  2 +-
+ utils/mount/network.c         |  7 ++++---
+ utils/mount/stropts.c         |  3 ++-
+ utils/mountd/auth.c           |  2 +-
+ utils/mountd/cache.c          | 10 +++++-----
+ utils/mountd/mountd.c         |  4 ++--
+ utils/mountd/rmtab.c          |  2 +-
+ utils/nfsd/nfssvc.c           |  4 ++--
+ utils/statd/hostname.c        | 11 ++++++-----
+ utils/statd/sm-notify.c       | 14 +++++++-------
+ 19 files changed, 66 insertions(+), 71 deletions(-)
+
+diff --git a/support/export/client.c b/support/export/client.c
+index baf59c8..a1fba01 100644
+--- a/support/export/client.c
++++ b/support/export/client.c
+@@ -210,7 +210,7 @@ init_subnetwork(nfs_client *clp)
+ 	set_addrlist(clp, 0, ai->ai_addr);
+ 	family = ai->ai_addr->sa_family;
+ 
+-	freeaddrinfo(ai);
++	nfs_freeaddrinfo(ai);
+ 
+ 	switch (family) {
+ 	case AF_INET:
+@@ -309,7 +309,7 @@ client_lookup(char *hname, int canonical)
+ 		init_addrlist(clp, ai);
+ 
+ out:
+-	freeaddrinfo(ai);
++	nfs_freeaddrinfo(ai);
+ 	return clp;
+ }
+ 
+@@ -674,7 +674,7 @@ check_netgroup(const nfs_client *clp, const struct addrinfo *ai)
+ 	tmp = host_pton(hname);
+ 	if (tmp != NULL) {
+ 		char *cname = host_canonname(tmp->ai_addr);
+-		freeaddrinfo(tmp);
++		nfs_freeaddrinfo(tmp);
+ 
+ 		/* The resulting FQDN may be in our netgroup. */
+ 		if (cname != NULL) {
+diff --git a/support/export/hostname.c b/support/export/hostname.c
+index 5c4c824..9845a59 100644
+--- a/support/export/hostname.c
++++ b/support/export/hostname.c
+@@ -101,6 +101,7 @@ host_pton(const char *paddr)
+ 		.ai_protocol	= (int)IPPROTO_UDP,
+ 		.ai_flags	= AI_NUMERICHOST,
+ 		.ai_family	= AF_UNSPEC,
++		.ai_flags	= AI_CANONNAME,
+ 	};
+ 	struct sockaddr_in sin;
+ 	int error, inet4;
+@@ -130,7 +131,7 @@ host_pton(const char *paddr)
+ 		if (!inet4 && ai->ai_addr->sa_family == AF_INET) {
+ 			xlog(D_GENERAL, "%s: failed to convert %s",
+ 					__func__, paddr);
+-			freeaddrinfo(ai);
++			nfs_freeaddrinfo(ai);
+ 			break;
+ 		}
+ 		return ai;
+@@ -290,7 +291,7 @@ host_reliable_addrinfo(const struct sockaddr *sap)
+ 		if (nfs_compare_sockaddr(a->ai_addr, sap))
+ 			break;
+ 
+-	freeaddrinfo(ai);
++	nfs_freeaddrinfo(ai);
+ 	if (!a)
+ 		goto out_free_hostname;
+ 
+@@ -350,18 +351,6 @@ host_numeric_addrinfo(const struct sockaddr *sap)
+ 
+ 	ai = host_pton(buf);
+ 
+-	/*
+-	 * getaddrinfo(AI_NUMERICHOST) never fills in ai_canonname
+-	 */
+-	if (ai != NULL) {
+-		free(ai->ai_canonname);		/* just in case */
+-		ai->ai_canonname = strdup(buf);
+-		if (ai->ai_canonname == NULL) {
+-			freeaddrinfo(ai);
+-			ai = NULL;
+-		}
+-	}
+-
+ 	return ai;
+ }
+ #else	/* !HAVE_GETNAMEINFO */
+@@ -384,17 +373,6 @@ host_numeric_addrinfo(const struct sockaddr *sap)
+ 
+ 	ai = host_pton(buf);
+ 
+-	/*
+-	 * getaddrinfo(AI_NUMERICHOST) never fills in ai_canonname
+-	 */
+-	if (ai != NULL) {
+-		ai->ai_canonname = strdup(buf);
+-		if (ai->ai_canonname == NULL) {
+-			freeaddrinfo(ai);
+-			ai = NULL;
+-		}
+-	}
+-
+ 	return ai;
+ }
+ #endif	/* !HAVE_GETNAMEINFO */
+diff --git a/support/include/exportfs.h b/support/include/exportfs.h
+index 4e0d9d1..b81f963 100644
+--- a/support/include/exportfs.h
++++ b/support/include/exportfs.h
+@@ -47,6 +47,17 @@ typedef struct mclient {
+ 	int			m_count;
+ } nfs_client;
+ 
++/*
++ * Some versions of freeaddrinfo(3) do not tolerate being
++ * passed a NULL pointer.
++ */
++static inline void nfs_freeaddrinfo(struct addrinfo *ai)
++{
++	if (ai) {
++		freeaddrinfo(ai);
++	}
++}
++
+ static inline const struct sockaddr *
+ get_addrlist(const nfs_client *clp, const int i)
+ {
+diff --git a/support/nfs/getport.c b/support/nfs/getport.c
+index 081594c..26ec85e 100644
+--- a/support/nfs/getport.c
++++ b/support/nfs/getport.c
+@@ -47,6 +47,7 @@
+ 
+ #include "sockaddr.h"
+ #include "nfsrpc.h"
++#include "exportfs.h"
+ 
+ /*
+  * Try a local socket first to access the local rpcbind daemon
+@@ -109,7 +110,7 @@ static int nfs_gp_loopback_address(struct sockaddr *sap, socklen_t *salen)
+ 		ret = 1;
+ 	}
+ 
+-	freeaddrinfo(gai_results);
++	nfs_freeaddrinfo(gai_results);
+ 	return ret;
+ }
+ 
+@@ -134,8 +135,8 @@ static in_port_t nfs_gp_getservbyname(const char *service,
+ 
+ 	sin = (const struct sockaddr_in *)gai_results->ai_addr;
+ 	port = sin->sin_port;
+-	
+-	freeaddrinfo(gai_results);
++
++	nfs_freeaddrinfo(gai_results);
+ 	return port;
+ }
+ 
+diff --git a/support/nfs/svc_create.c b/support/nfs/svc_create.c
+index ef7ff05..d0b747b 100644
+--- a/support/nfs/svc_create.c
++++ b/support/nfs/svc_create.c
+@@ -39,6 +39,8 @@
+ #include <rpc/rpc.h>
+ #include <rpc/svc.h>
+ 
++#include "exportfs.h"
++
+ #ifdef HAVE_TCP_WRAPPER
+ #include "tcpwrapper.h"
+ #endif
+@@ -273,7 +275,7 @@ svc_create_nconf_rand_port(const char *name, const rpcprog_t program,
+ 	bindaddr.qlen = SOMAXCONN;
+ 
+ 	xprt = svc_tli_create(RPC_ANYFD, nconf, &bindaddr, 0, 0);
+-	freeaddrinfo(ai);
++	nfs_freeaddrinfo(ai);
+ 	if (xprt == NULL) {
+ 		xlog(L_ERROR, "Failed to create listener xprt "
+ 			"(%s, %u, %s)", name, version, nconf->nc_netid);
+@@ -364,11 +366,11 @@ svc_create_nconf_fixed_port(const char *name, const rpcprog_t program,
+ 
+ 	svc_create_cache_xprt(xprt);
+ 
+-	freeaddrinfo(ai);
++	nfs_freeaddrinfo(ai);
+ 	return 1;
+ 
+ out_free:
+-	freeaddrinfo(ai);
++	nfs_freeaddrinfo(ai);
+ 	return 0;
+ }
+ 
+diff --git a/support/nfsidmap/umich_ldap.c b/support/nfsidmap/umich_ldap.c
+index b661110..b8ee184 100644
+--- a/support/nfsidmap/umich_ldap.c
++++ b/support/nfsidmap/umich_ldap.c
+@@ -1089,7 +1089,7 @@ get_canonical_hostname(const char *inname)
+ 	return_name = strdup (tmphost);
+ 
+ out_free:
+-	freeaddrinfo(ap);
++	nfs_freeaddrinfo(ap);
+ out_err:
+ 	return return_name;
+ }
+diff --git a/tests/nsm_client/nsm_client.c b/tests/nsm_client/nsm_client.c
+index 0fa3422..8dc0591 100644
+--- a/tests/nsm_client/nsm_client.c
++++ b/tests/nsm_client/nsm_client.c
+@@ -243,7 +243,7 @@ nsm_client_get_rpcclient(const char *node)
+ 		printf("RPC client creation failed\n");
+ 	}
+ out:
+-	freeaddrinfo(ai);
++	nfs_freeaddrinfo(ai);
+ 	return client;
+ }
+ 
+diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
+index cd3c979..333eadc 100644
+--- a/utils/exportfs/exportfs.c
++++ b/utils/exportfs/exportfs.c
+@@ -282,7 +282,7 @@ exportfs_parsed(char *hname, char *path, char *options, int verbose)
+ 	validate_export(exp);
+ 
+ out:
+-	freeaddrinfo(ai);
++	nfs_freeaddrinfo(ai);
+ }
+ 
+ static int exportfs_generic(char *arg, char *options, int verbose)
+@@ -395,7 +395,7 @@ unexportfs_parsed(char *hname, char *path, int verbose)
+ 	if (!success)
+ 		xlog(L_ERROR, "Could not find '%s:%s' to unexport.", hname, path);
+ 
+-	freeaddrinfo(ai);
++	nfs_freeaddrinfo(ai);
+ }
+ 
+ static int unexportfs_generic(char *arg, int verbose)
+@@ -588,7 +588,7 @@ address_list(const char *hostname)
+ 	if (ai != NULL) {
+ 		/* @hostname was a presentation address */
+ 		cname = host_canonname(ai->ai_addr);
+-		freeaddrinfo(ai);
++		nfs_freeaddrinfo(ai);
+ 		if (cname != NULL)
+ 			goto out;
+ 	}
+@@ -639,8 +639,8 @@ matchhostname(const char *hostname1, const char *hostname2)
+ 			}
+ 
+ out:
+-	freeaddrinfo(results1);
+-	freeaddrinfo(results2);
++	nfs_freeaddrinfo(results1);
++	nfs_freeaddrinfo(results2);
+ 	return result;
+ }
+ 
+diff --git a/utils/gssd/gssd.c b/utils/gssd/gssd.c
+index 2e92f28..7eeb05f 100644
+--- a/utils/gssd/gssd.c
++++ b/utils/gssd/gssd.c
+@@ -172,14 +172,14 @@ gssd_addrstr_to_sockaddr(struct sockaddr *sa, const char *node, const char *port
+ 		if (sin6->sin6_scope_id) {
+ 			printerr(0, "ERROR: address %s has non-zero "
+ 				    "sin6_scope_id!\n", node);
+-			freeaddrinfo(res);
++			nfs_freeaddrinfo(res);
+ 			return false;
+ 		}
+ 	}
+ #endif /* IPV6_SUPPORTED */
+ 
+ 	memcpy(sa, res->ai_addr, res->ai_addrlen);
+-	freeaddrinfo(res);
++	nfs_freeaddrinfo(res);
+ 	return true;
+ }
+ 
+diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
+index eba1aac..adbde93 100644
+--- a/utils/gssd/krb5_util.c
++++ b/utils/gssd/krb5_util.c
+@@ -587,7 +587,7 @@ get_full_hostname(const char *inhost, char *outhost, int outhostlen)
+ 		goto out;
+ 	}
+ 	strncpy(outhost, addrs->ai_canonname, outhostlen);
+-	freeaddrinfo(addrs);
++	nfs_freeaddrinfo(addrs);
+ 	for (c = outhost; *c != '\0'; c++)
+ 	    *c = tolower(*c);
+ 
+diff --git a/utils/mount/network.c b/utils/mount/network.c
+index 356f663..fcb0b9f 100644
+--- a/utils/mount/network.c
++++ b/utils/mount/network.c
+@@ -53,6 +53,7 @@
+ #include <net/if.h>
+ #include <ifaddrs.h>
+ 
++#include "exportfs.h"
+ #include "sockaddr.h"
+ #include "xcommon.h"
+ #include "mount.h"
+@@ -250,7 +251,7 @@ int nfs_lookup(const char *hostname, const sa_family_t family,
+ 		break;
+ 	}
+ 
+-	freeaddrinfo(gai_results);
++	nfs_freeaddrinfo(gai_results);
+ 	return ret;
+ }
+ 
+@@ -307,7 +308,7 @@ int nfs_string_to_sockaddr(const char *address, struct sockaddr *sap,
+ 			}
+ 			break;
+ 		}
+-		freeaddrinfo(gai_results);
++		nfs_freeaddrinfo(gai_results);
+ 	}
+ 
+ 	return ret;
+@@ -1180,7 +1181,7 @@ static int nfs_ca_gai(const struct sockaddr *sap,
+ 	*buflen = gai_results->ai_addrlen;
+ 	memcpy(buf, gai_results->ai_addr, *buflen);
+ 
+-	freeaddrinfo(gai_results);
++	nfs_freeaddrinfo(gai_results);
+ 
+ 	return 1;
+ }
+diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+index 0a25b1f..b170552 100644
+--- a/utils/mount/stropts.c
++++ b/utils/mount/stropts.c
+@@ -35,6 +35,7 @@
+ #include <netinet/in.h>
+ #include <arpa/inet.h>
+ 
++#include "exportfs.h"
+ #include "sockaddr.h"
+ #include "xcommon.h"
+ #include "mount.h"
+@@ -1268,7 +1269,7 @@ int nfsmount_string(const char *spec, const char *node, char *type,
+ 	} else
+ 		nfs_error(_("%s: internal option parsing error"), progname);
+ 
+-	freeaddrinfo(mi.address);
++	nfs_freeaddrinfo(mi.address);
+ 	free(mi.hostname);
+ 	return retval;
+ }
+diff --git a/utils/mountd/auth.c b/utils/mountd/auth.c
+index 8299256..8f7cbd4 100644
+--- a/utils/mountd/auth.c
++++ b/utils/mountd/auth.c
+@@ -297,7 +297,7 @@ auth_authenticate(const char *what, const struct sockaddr *caller,
+ 			path, epath, error);
+ 	}
+ 
+-	freeaddrinfo(ai);
++	nfs_freeaddrinfo(ai);
+ 	return exp;
+ }
+ 
+diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
+index 7e8d403..2cb370f 100644
+--- a/utils/mountd/cache.c
++++ b/utils/mountd/cache.c
+@@ -113,7 +113,7 @@ static void auth_unix_ip(int f)
+ 		ai = client_resolve(tmp->ai_addr);
+ 		if (ai) {
+ 			client = client_compose(ai);
+-			freeaddrinfo(ai);
++			nfs_freeaddrinfo(ai);
+ 		}
+ 	}
+ 	bp = buf; blen = sizeof(buf);
+@@ -133,7 +133,7 @@ static void auth_unix_ip(int f)
+ 	xlog(D_CALL, "auth_unix_ip: client %p '%s'", client, client?client: "DEFAULT");
+ 
+ 	free(client);
+-	freeaddrinfo(tmp);
++	nfs_freeaddrinfo(tmp);
+ 
+ }
+ 
+@@ -667,7 +667,7 @@ static struct addrinfo *lookup_client_addr(char *dom)
+ 	if (tmp == NULL)
+ 		return NULL;
+ 	ret = client_resolve(tmp->ai_addr);
+-	freeaddrinfo(tmp);
++	nfs_freeaddrinfo(tmp);
+ 	return ret;
+ }
+ 
+@@ -834,7 +834,7 @@ static void nfsd_fh(int f)
+ out:
+ 	if (found_path)
+ 		free(found_path);
+-	freeaddrinfo(ai);
++	nfs_freeaddrinfo(ai);
+ 	free(dom);
+ 	xlog(D_CALL, "nfsd_fh: found %p path %s", found, found ? found->e_path : NULL);
+ }
+@@ -1355,7 +1355,7 @@ static void nfsd_export(int f)
+ 	xlog(D_CALL, "nfsd_export: found %p path %s", found, path ? path : NULL);
+ 	if (dom) free(dom);
+ 	if (path) free(path);
+-	freeaddrinfo(ai);
++	nfs_freeaddrinfo(ai);
+ }
+ 
+ 
+diff --git a/utils/mountd/mountd.c b/utils/mountd/mountd.c
+index 086c39b..fb7bba4 100644
+--- a/utils/mountd/mountd.c
++++ b/utils/mountd/mountd.c
+@@ -578,10 +578,10 @@ static void prune_clients(nfs_export *exp, struct exportnode *e)
+ 				*cp = c->gr_next;
+ 				xfree(c->gr_name);
+ 				xfree(c);
+-				freeaddrinfo(ai);
++				nfs_freeaddrinfo(ai);
+ 				continue;
+ 			}
+-			freeaddrinfo(ai);
++			nfs_freeaddrinfo(ai);
+ 		}
+ 		cp = &(c->gr_next);
+ 	}
+diff --git a/utils/mountd/rmtab.c b/utils/mountd/rmtab.c
+index 3ae0dbb..c896243 100644
+--- a/utils/mountd/rmtab.c
++++ b/utils/mountd/rmtab.c
+@@ -226,7 +226,7 @@ mountlist_list(void)
+ 				ai = host_pton(rep->r_client);
+ 				if (ai != NULL) {
+ 					m->ml_hostname = host_canonname(ai->ai_addr);
+-					freeaddrinfo(ai);
++					nfs_freeaddrinfo(ai);
+ 				}
+ 			}
+ 			if (m->ml_hostname == NULL)
+diff --git a/utils/nfsd/nfssvc.c b/utils/nfsd/nfssvc.c
+index 1e6ffd6..47b1882 100644
+--- a/utils/nfsd/nfssvc.c
++++ b/utils/nfsd/nfssvc.c
+@@ -25,6 +25,7 @@
+ #include "nfslib.h"
+ #include "xlog.h"
+ #include "nfssvc.h"
++#include "exportfs.h"
+ #include "../mount/version.h"
+ 
+ #ifndef NFSD_FS_DIR
+@@ -246,8 +247,7 @@ error:
+ 		close(fd);
+ 	if (sockfd >= 0)
+ 		close(sockfd);
+-	if (addrhead)
+-		freeaddrinfo(addrhead);
++	nfs_freeaddrinfo(addrhead);
+ 	return (bounded ? 0 : rc);
+ }
+ 
+diff --git a/utils/statd/hostname.c b/utils/statd/hostname.c
+index 8cccdb8..c9e22d3 100644
+--- a/utils/statd/hostname.c
++++ b/utils/statd/hostname.c
+@@ -35,6 +35,7 @@
+ #include <netdb.h>
+ #include <arpa/inet.h>
+ 
++#include "exportfs.h"
+ #include "sockaddr.h"
+ #include "statd.h"
+ #include "xlog.h"
+@@ -203,7 +204,7 @@ statd_canonical_name(const char *hostname)
+ 		_Bool result;
+ 		result = get_nameinfo(ai->ai_addr, ai->ai_addrlen,
+ 					buf, (socklen_t)sizeof(buf));
+-		freeaddrinfo(ai);
++		nfs_freeaddrinfo(ai);
+ 		if (!result || buf[0] == '\0')
+ 			/* OK to use presentation address,
+ 			 * if no reverse map exists */
+@@ -217,7 +218,7 @@ statd_canonical_name(const char *hostname)
+ 	if (ai == NULL)
+ 		return NULL;
+ 	strcpy(buf, ai->ai_canonname);
+-	freeaddrinfo(ai);
++	nfs_freeaddrinfo(ai);
+ 
+ 	return strdup(buf);
+ }
+@@ -253,7 +254,7 @@ statd_canonical_list(const char *hostname)
+ 		_Bool result;
+ 		result = get_nameinfo(ai->ai_addr, ai->ai_addrlen,
+ 					buf, (socklen_t)sizeof(buf));
+-		freeaddrinfo(ai);
++		nfs_freeaddrinfo(ai);
+ 		if (result)
+ 			goto out;
+ 	}
+@@ -308,8 +309,8 @@ statd_matchhostname(const char *hostname1, const char *hostname2)
+ 			}
+ 
+ out:
+-	freeaddrinfo(results2);
+-	freeaddrinfo(results1);
++	nfs_freeaddrinfo(results2);
++	nfs_freeaddrinfo(results1);
+ 
+ 	xlog(D_CALL, "%s: hostnames %s and %s %s", __func__,
+ 			hostname1, hostname2,
+diff --git a/utils/statd/sm-notify.c b/utils/statd/sm-notify.c
+index 29dad38..05d72a3 100644
+--- a/utils/statd/sm-notify.c
++++ b/utils/statd/sm-notify.c
+@@ -37,6 +37,7 @@
+ #include "xlog.h"
+ #include "nsm.h"
+ #include "nfsrpc.h"
++#include "exportfs.h"
+ 
+ /* glibc before 2.3.4 */
+ #ifndef AI_NUMERICSERV
+@@ -179,7 +180,7 @@ smn_verify_my_name(const char *name)
+ 	case 0:
+ 		/* @name was a presentation address */
+ 		retval = smn_get_hostname(ai->ai_addr, ai->ai_addrlen, name);
+-		freeaddrinfo(ai);
++		nfs_freeaddrinfo(ai);
+ 		if (retval == NULL)
+ 			return NULL;
+ 		break;
+@@ -253,8 +254,7 @@ static void smn_forget_host(struct nsm_host *host)
+ 	free((void *)host->my_name);
+ 	free((void *)host->mon_name);
+ 	free(host->name);
+-	if (host->ai)
+-		freeaddrinfo(host->ai);
++	nfs_freeaddrinfo(host->ai);
+ 
+ 	free(host);
+ }
+@@ -430,7 +430,7 @@ retry:
+ 	if (srcport) {
+ 		if (bind(sock, ai->ai_addr, ai->ai_addrlen) == -1) {
+ 			xlog(L_ERROR, "Failed to bind RPC socket: %m");
+-			freeaddrinfo(ai);
++			nfs_freeaddrinfo(ai);
+ 			(void)close(sock);
+ 			return -1;
+ 		}
+@@ -440,7 +440,7 @@ retry:
+ 		if (smn_bindresvport(sock, ai->ai_addr) == -1) {
+ 			xlog(L_ERROR,
+ 				"bindresvport on RPC socket failed: %m");
+-			freeaddrinfo(ai);
++			nfs_freeaddrinfo(ai);
+ 			(void)close(sock);
+ 			return -1;
+ 		}
+@@ -449,13 +449,13 @@ retry:
+ 		se = getservbyport((int)nfs_get_port(ai->ai_addr), "udp");
+ 		if (se != NULL && retry_cnt < 100) {
+ 			retry_cnt++;
+-			freeaddrinfo(ai);
++			nfs_freeaddrinfo(ai);
+ 			(void)close(sock);
+ 			goto retry;
+ 		}
+ 	}
+ 
+-	freeaddrinfo(ai);
++	nfs_freeaddrinfo(ai);
+ 	return sock;
+ }
+ 
+-- 
+2.20.1
+
