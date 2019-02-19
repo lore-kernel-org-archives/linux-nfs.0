@@ -2,251 +2,277 @@ Return-Path: <SRS0=cCtV=Q2=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.2 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,UNPARSEABLE_RELAY autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-6.8 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A9775C43381
-	for <linux-nfs@archiver.kernel.org>; Tue, 19 Feb 2019 15:41:17 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C9ED7C43381
+	for <linux-nfs@archiver.kernel.org>; Tue, 19 Feb 2019 15:52:41 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 6F58721738
-	for <linux-nfs@archiver.kernel.org>; Tue, 19 Feb 2019 15:41:17 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 905CB21738
+	for <linux-nfs@archiver.kernel.org>; Tue, 19 Feb 2019 15:52:41 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="OSL64Upn"
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="O6XQiOkR"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1725885AbfBSPlQ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 19 Feb 2019 10:41:16 -0500
-Received: from userp2130.oracle.com ([156.151.31.86]:56228 "EHLO
-        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726110AbfBSPlQ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Feb 2019 10:41:16 -0500
-Received: from pps.filterd (userp2130.oracle.com [127.0.0.1])
-        by userp2130.oracle.com (8.16.0.27/8.16.0.27) with SMTP id x1JFdDGq040200;
-        Tue, 19 Feb 2019 15:41:01 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=content-type :
- mime-version : subject : from : in-reply-to : date : cc :
- content-transfer-encoding : message-id : references : to;
- s=corp-2018-07-02; bh=BfclNLPBkf4+4h/mytdGTKOYXaePFfIEtoa9LYG2Usc=;
- b=OSL64Upnq0q1rmRsItOQsmvIm5PTIdgCo4flY0NDEqb2jZXbXOFRr7x5jqto9qOnZwBu
- tdv4I99iWq5eR+vLWJi9d7ib7zeZzjhlXRiX46QulthkUghdJDW4dbx3FPomAJiWAzmc
- CmcEM0ouHkXbW/oN2fRpdHoN/Vso5paCtGBe/9g5N8mgiFV/vNgcsMaeLPO+TVfD7Dgw
- N7Cag3a/21MG2cJXXy/M69aNF/LWF9ybnqgtRO+RAJbY5rJQL7MHSNN7HIba2Eg0Xwp4
- eJpPmZnX/wG4ZILWslML6FbTDVwttoMlkv+H5vdfXTD+Mvz2ukk0q84TmhiywITW/fsw Dg== 
-Received: from userv0022.oracle.com (userv0022.oracle.com [156.151.31.74])
-        by userp2130.oracle.com with ESMTP id 2qp9xtv0d4-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Tue, 19 Feb 2019 15:41:01 +0000
-Received: from userv0121.oracle.com (userv0121.oracle.com [156.151.31.72])
-        by userv0022.oracle.com (8.14.4/8.14.4) with ESMTP id x1JFf1e3002588
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Tue, 19 Feb 2019 15:41:01 GMT
-Received: from abhmp0018.oracle.com (abhmp0018.oracle.com [141.146.116.24])
-        by userv0121.oracle.com (8.14.4/8.13.8) with ESMTP id x1JFf0mR012219;
-        Tue, 19 Feb 2019 15:41:00 GMT
-Received: from anon-dhcp-171.1015granger.net (/68.61.232.219)
-        by default (Oracle Beehive Gateway v4.0)
-        with ESMTP ; Tue, 19 Feb 2019 07:41:00 -0800
-Content-Type: text/plain;
-        charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 12.2 \(3445.102.3\))
-Subject: Re: [PATCH RFC] Remove one usage of ai_canonname
+        id S1725885AbfBSPwk (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 19 Feb 2019 10:52:40 -0500
+Received: from mail-it1-f193.google.com ([209.85.166.193]:36184 "EHLO
+        mail-it1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725820AbfBSPwk (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Feb 2019 10:52:40 -0500
+Received: by mail-it1-f193.google.com with SMTP id h6so7335098itl.1
+        for <linux-nfs@vger.kernel.org>; Tue, 19 Feb 2019 07:52:39 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=sender:subject:from:to:cc:date:message-id:user-agent:mime-version
+         :content-transfer-encoding;
+        bh=92AUFlWLzcIhYEh9m1l+sTVsTKU77ANWigCwJrxVsUI=;
+        b=O6XQiOkRtYBcz+KyG7B8XiEgwKTfbNdZMwKw9cWzqVEhSSo/atOoUhhfLRmBvNovv3
+         h5rNIXlWYbDJtYWjHcAJhFZWSRC8b/PjyOd7Kkcqu0SDxmiH3ZyNz+xesFYxg+jzl2Uu
+         RQLzAW32eDVqr1dZKIx+XuEHJLqOaNbJ4vLyF11X5dpRYgSHXpqndJW5jKfh4HrgFpT5
+         FS7ijS+CAkwpfrMRl7vroxGA+iICl7i6RVw+Ob1Q2YDP9TO3dHTKZhGxIPpSHVJ0DwJI
+         xbN0qpK34Uw4CCTAM2qxSDBivw4+tew7P736vW1OWAS48B4W2rsdBKHqvAE4mrE61c5B
+         StyQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:sender:subject:from:to:cc:date:message-id
+         :user-agent:mime-version:content-transfer-encoding;
+        bh=92AUFlWLzcIhYEh9m1l+sTVsTKU77ANWigCwJrxVsUI=;
+        b=Az4ZBAauXCga2rr0jkUZG2GoZvI/Kfvc0fYlWxmAv1CcGh0MMz0lBp+B1+X5ozejgP
+         Lzvi7Dl2iZAdHP8Z3HdRSUirh1qM2n9yhV+SarbHxVlCD+xRpyHpmISYvPCbveFsXHtW
+         cfrEKnbyMN7yHRwy7fd76dBVmXccqBwjWzxxIPedpIzi2I5gDRGT7//LW7Ie+KvZ1iFA
+         6zRYimE7Pm3fna/hf+94dU+CKmmU2LxW9f8SJcSJV89mTK6xFhff1odta8cUo6Cf/MZ9
+         oEPHF3T3mGNbTsisNNbdgwGXyOg1ezLR6EebH+OaHuHQY3L46YnwIld+pXGFD9i9ZQxN
+         TfYQ==
+X-Gm-Message-State: AHQUAuaGFz8/UJUxFVw2ND3p/12CiE2cH6cc1whmHPLLk0FtVJGdwIfk
+        S5d6519Mo8DwdeUf/53TnEmGNJSA
+X-Google-Smtp-Source: AHgI3IYmrJrjkjt2RSbzljfu6sjVBrg1KZtPuMR5YgNVX2gBz7xns6njmnhSTgjQHIjwGkfY1f0Q5Q==
+X-Received: by 2002:a24:3512:: with SMTP id k18mr2396861ita.83.1550591559327;
+        Tue, 19 Feb 2019 07:52:39 -0800 (PST)
+Received: from gateway.1015granger.net (c-68-61-232-219.hsd1.mi.comcast.net. [68.61.232.219])
+        by smtp.gmail.com with ESMTPSA id r65sm1333943itb.19.2019.02.19.07.52.38
+        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Tue, 19 Feb 2019 07:52:38 -0800 (PST)
+Received: from manet.1015granger.net (manet.1015granger.net [192.168.1.51])
+        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id x1JFqaGo024832;
+        Tue, 19 Feb 2019 15:52:37 GMT
+Subject: [PATCH v2] Remove abuse of ai_canonname
 From:   Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20190219153100.16674.71283.stgit@manet.1015granger.net>
-Date:   Tue, 19 Feb 2019 10:40:59 -0500
-Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Transfer-Encoding: quoted-printable
-Message-Id: <6F18BB24-1D6A-47F0-B545-6528B1E7F61C@oracle.com>
-References: <20190219153100.16674.71283.stgit@manet.1015granger.net>
-To:     Steve Dickson <SteveD@redhat.com>, Peter Wagner <tripolar@gmx.at>
-X-Mailer: Apple Mail (2.3445.102.3)
-X-Proofpoint-Virus-Version: vendor=nai engine=5900 definitions=9172 signatures=668683
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 priorityscore=1501 malwarescore=0
- suspectscore=2 phishscore=0 bulkscore=0 spamscore=0 clxscore=1015
- lowpriorityscore=0 mlxscore=0 impostorscore=0 mlxlogscore=999 adultscore=0
- classifier=spam adjust=0 reason=mlx scancount=1 engine=8.0.1-1810050000
- definitions=main-1902190116
+To:     linux-nfs@vger.kernel.org
+Cc:     SteveD@redhat.com, tripolar@gmx.at
+Date:   Tue, 19 Feb 2019 10:52:36 -0500
+Message-ID: <20190219155220.17240.31293.stgit@manet.1015granger.net>
+User-Agent: StGit/0.17.1-dirty
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
+Peter Wagner <tripolar@gmx.at> reports a portability issue with
+freeing ai_canonname (and subsequently replacing that pointer via
+strdup(3)). The relevant standards text is:
+
+> If nodename is not null, and if requested by the AI_CANONNAME
+> flag, the ai_canonname field of the first returned addrinfo
+> structure shall point to a null-terminated string containing the
+> canonical name corresponding to the input nodename; if the
+> canonical name is not available, then ai_canonname shall refer to
+> the nodename argument or a string with the same contents.
+
+There is no indication that this string may be freed using free(3).
+Eg, the library could have allocated it as part of the addrinfo
+struct itself, or it could point to static memory. The Linux man
+page is equally silent on this issue.
+
+There is only one caller to host_reliable_addrinfo() that actually
+uses the string in ai->ai_canonname, and then only for debugging
+messages. Change those to display the IP address instead.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+ support/export/hostname.c |   58 +++++++++------------------------------------
+ utils/mountd/auth.c       |   16 ++++++------
+ 2 files changed, 20 insertions(+), 54 deletions(-)
 
 
-> On Feb 19, 2019, at 10:31 AM, Chuck Lever <chuck.lever@oracle.com> =
-wrote:
->=20
-> Peter Wagner <tripolar@gmx.at> reports a portability issue with
-> freeing ai_canonname (and subsequently replacing that pointer via
-> strdup(3)). The relevant standards text is:
->=20
->> If nodename is not null, and if requested by the AI_CANONNAME
->> flag, the ai_canonname field of the first returned addrinfo
->> structure shall point to a null-terminated string containing the
->> canonical name corresponding to the input nodename; if the
->> canonical name is not available, then ai_canonname shall refer to
->> the nodename argument or a string with the same contents.
->=20
-> There is no indication that this string may be freed using free(3).
-> Eg, the library could have allocated it as part of the addrinfo
-> struct itself, or it could point to static memory. The Linux man
-> page is equally silent on this issue.
->=20
-> There is only one caller to host_reliable_addrinfo() that actually
-> uses the string in ai->ai_canonname, and then only for debugging
-> messages. Change those to display the IP address instead.
-
-Actually, now that I look at callers to host_numeric_addrinfo,
-it appears that client_resolve is the only one. So this might fix
-the entire issue (with the addition of hunks to remove the faulty
-free/strdup logic from host_numeric_addrinfo).
-
-Steve, Peter, is that your reading as well?
+Compile-tested only.
 
 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
-> support/export/hostname.c |   25 ++++++++++---------------
-> utils/mountd/auth.c       |   16 ++++++++--------
-> 2 files changed, 18 insertions(+), 23 deletions(-)
->=20
-> This patch is compile-tested only. Steve, does this patch pass your
-> internal tests? Are the new debugging messages sufficient IYO ?
->=20
-> diff --git a/support/export/hostname.c b/support/export/hostname.c
-> index 5c4c824..9914e0d 100644
-> --- a/support/export/hostname.c
-> +++ b/support/export/hostname.c
-> @@ -264,9 +264,9 @@ host_canonname(const struct sockaddr *sap)
->  * Reverse and forward lookups are performed to ensure the address has
->  * matching forward and reverse mappings.
->  *
-> - * Returns addrinfo structure with just the provided address with
-> - * ai_canonname filled in. If there is a problem with resolution or
-> - * the resolved records don't match up properly then it returns NULL
-> + * Returns addrinfo structure with just the provided address. If =
-there
-> + * is a problem with resolution or the resolved records don't match =
-up
-> + * properly then returns NULL.
->  *
->  * Caller must free the returned structure with freeaddrinfo(3).
->  */
-> @@ -277,13 +277,15 @@ host_reliable_addrinfo(const struct sockaddr =
-*sap)
-> 	struct addrinfo *ai, *a;
-> 	char *hostname;
->=20
-> +	ai =3D NULL;
-> 	hostname =3D host_canonname(sap);
-> 	if (hostname =3D=3D NULL)
-> -		return NULL;
-> +		goto out;
->=20
-> 	ai =3D host_addrinfo(hostname);
-> +	free(hostname);
-> 	if (!ai)
-> -		goto out_free_hostname;
-> +		goto out;
->=20
-> 	/* make sure there's a matching address in the list */
-> 	for (a =3D ai; a; a =3D a->ai_next)
-> @@ -291,22 +293,15 @@ host_reliable_addrinfo(const struct sockaddr =
-*sap)
-> 			break;
->=20
-> 	freeaddrinfo(ai);
-> +	ai =3D NULL;
-> 	if (!a)
-> -		goto out_free_hostname;
-> +		goto out;
->=20
-> 	/* get addrinfo with just the original address */
-> 	ai =3D host_numeric_addrinfo(sap);
-> -	if (!ai)
-> -		goto out_free_hostname;
->=20
-> -	/* and populate its ai_canonname field */
-> -	free(ai->ai_canonname);
-> -	ai->ai_canonname =3D hostname;
-> +out:
-> 	return ai;
-> -
-> -out_free_hostname:
-> -	free(hostname);
-> -	return NULL;
-> }
->=20
-> /**
-> diff --git a/utils/mountd/auth.c b/utils/mountd/auth.c
-> index 8299256..cb4848c 100644
-> --- a/utils/mountd/auth.c
-> +++ b/utils/mountd/auth.c
-> @@ -261,40 +261,40 @@ auth_authenticate(const char *what, const struct =
-sockaddr *caller,
-> 		*p =3D '\0';
-> 	}
->=20
-> +	host_ntop(caller, buf, sizeof(buf));
-> 	switch (error) {
-> 	case bad_path:
-> 		xlog(L_WARNING, "bad path in %s request from %s: =
-\"%s\"",
-> -		     what, host_ntop(caller, buf, sizeof(buf)), path);
-> +		     what, buf, path);
-> 		break;
->=20
-> 	case unknown_host:
-> 		xlog(L_WARNING, "refused %s request from %s for %s (%s): =
-unmatched host",
-> -		     what, host_ntop(caller, buf, sizeof(buf)), path, =
-epath);
-> +		     what, buf, path, epath);
-> 		break;
->=20
-> 	case no_entry:
-> 		xlog(L_WARNING, "refused %s request from %s for %s (%s): =
-no export entry",
-> -		     what, ai->ai_canonname, path, epath);
-> +		     what, buf, path, epath);
-> 		break;
->=20
-> 	case not_exported:
-> 		xlog(L_WARNING, "refused %s request from %s for %s (%s): =
-not exported",
-> -		     what, ai->ai_canonname, path, epath);
-> +		     what, buf, path, epath);
-> 		break;
->=20
-> 	case illegal_port:
-> 		xlog(L_WARNING, "refused %s request from %s for %s (%s): =
-illegal port %u",
-> -		     what, ai->ai_canonname, path, epath, =
-nfs_get_port(caller));
-> +		     what, buf, path, epath, nfs_get_port(caller));
-> 		break;
->=20
-> 	case success:
-> 		xlog(L_NOTICE, "authenticated %s request from %s:%u for =
-%s (%s)",
-> -		     what, ai->ai_canonname, nfs_get_port(caller), path, =
-epath);
-> +		     what, buf, nfs_get_port(caller), path, epath);
-> 		break;
-> 	default:
-> 		xlog(L_NOTICE, "%s request from %s:%u for %s (%s) gave =
-%d",
-> -		     what, ai->ai_canonname, nfs_get_port(caller),
-> -			path, epath, error);
-> +		     what, buf, nfs_get_port(caller), path, epath, =
-error);
-> 	}
->=20
-> 	freeaddrinfo(ai);
->=20
-
---
-Chuck Lever
-
-
+diff --git a/support/export/hostname.c b/support/export/hostname.c
+index 5c4c824..96c5449 100644
+--- a/support/export/hostname.c
++++ b/support/export/hostname.c
+@@ -264,9 +264,9 @@ host_canonname(const struct sockaddr *sap)
+  * Reverse and forward lookups are performed to ensure the address has
+  * matching forward and reverse mappings.
+  *
+- * Returns addrinfo structure with just the provided address with
+- * ai_canonname filled in. If there is a problem with resolution or
+- * the resolved records don't match up properly then it returns NULL
++ * Returns addrinfo structure with just the provided address. If there
++ * is a problem with resolution or the resolved records don't match up
++ * properly then returns NULL.
+  *
+  * Caller must free the returned structure with freeaddrinfo(3).
+  */
+@@ -277,13 +277,15 @@ host_reliable_addrinfo(const struct sockaddr *sap)
+ 	struct addrinfo *ai, *a;
+ 	char *hostname;
+ 
++	ai = NULL;
+ 	hostname = host_canonname(sap);
+ 	if (hostname == NULL)
+-		return NULL;
++		goto out;
+ 
+ 	ai = host_addrinfo(hostname);
++	free(hostname);
+ 	if (!ai)
+-		goto out_free_hostname;
++		goto out;
+ 
+ 	/* make sure there's a matching address in the list */
+ 	for (a = ai; a; a = a->ai_next)
+@@ -291,22 +293,15 @@ host_reliable_addrinfo(const struct sockaddr *sap)
+ 			break;
+ 
+ 	freeaddrinfo(ai);
++	ai = NULL;
+ 	if (!a)
+-		goto out_free_hostname;
++		goto out;
+ 
+ 	/* get addrinfo with just the original address */
+ 	ai = host_numeric_addrinfo(sap);
+-	if (!ai)
+-		goto out_free_hostname;
+ 
+-	/* and populate its ai_canonname field */
+-	free(ai->ai_canonname);
+-	ai->ai_canonname = hostname;
++out:
+ 	return ai;
+-
+-out_free_hostname:
+-	free(hostname);
+-	return NULL;
+ }
+ 
+ /**
+@@ -323,7 +318,6 @@ host_numeric_addrinfo(const struct sockaddr *sap)
+ {
+ 	socklen_t salen = nfs_sockaddr_length(sap);
+ 	char buf[INET6_ADDRSTRLEN];
+-	struct addrinfo *ai;
+ 	int error;
+ 
+ 	if (salen == 0) {
+@@ -348,21 +342,7 @@ host_numeric_addrinfo(const struct sockaddr *sap)
+ 		return NULL;
+ 	}
+ 
+-	ai = host_pton(buf);
+-
+-	/*
+-	 * getaddrinfo(AI_NUMERICHOST) never fills in ai_canonname
+-	 */
+-	if (ai != NULL) {
+-		free(ai->ai_canonname);		/* just in case */
+-		ai->ai_canonname = strdup(buf);
+-		if (ai->ai_canonname == NULL) {
+-			freeaddrinfo(ai);
+-			ai = NULL;
+-		}
+-	}
+-
+-	return ai;
++	return host_pton(buf);
+ }
+ #else	/* !HAVE_GETNAMEINFO */
+ __attribute__((__malloc__))
+@@ -372,7 +352,6 @@ host_numeric_addrinfo(const struct sockaddr *sap)
+ 	const struct sockaddr_in *sin = (const struct sockaddr_in *)sap;
+ 	const struct in_addr *addr = &sin->sin_addr;
+ 	char buf[INET_ADDRSTRLEN];
+-	struct addrinfo *ai;
+ 
+ 	if (sap->sa_family != AF_INET)
+ 		return NULL;
+@@ -382,19 +361,6 @@ host_numeric_addrinfo(const struct sockaddr *sap)
+ 					(socklen_t)sizeof(buf)) == NULL)
+ 		return NULL;
+ 
+-	ai = host_pton(buf);
+-
+-	/*
+-	 * getaddrinfo(AI_NUMERICHOST) never fills in ai_canonname
+-	 */
+-	if (ai != NULL) {
+-		ai->ai_canonname = strdup(buf);
+-		if (ai->ai_canonname == NULL) {
+-			freeaddrinfo(ai);
+-			ai = NULL;
+-		}
+-	}
+-
+-	return ai;
++	return host_pton(buf);
+ }
+ #endif	/* !HAVE_GETNAMEINFO */
+diff --git a/utils/mountd/auth.c b/utils/mountd/auth.c
+index 8299256..cb4848c 100644
+--- a/utils/mountd/auth.c
++++ b/utils/mountd/auth.c
+@@ -261,40 +261,40 @@ auth_authenticate(const char *what, const struct sockaddr *caller,
+ 		*p = '\0';
+ 	}
+ 
++	host_ntop(caller, buf, sizeof(buf));
+ 	switch (error) {
+ 	case bad_path:
+ 		xlog(L_WARNING, "bad path in %s request from %s: \"%s\"",
+-		     what, host_ntop(caller, buf, sizeof(buf)), path);
++		     what, buf, path);
+ 		break;
+ 
+ 	case unknown_host:
+ 		xlog(L_WARNING, "refused %s request from %s for %s (%s): unmatched host",
+-		     what, host_ntop(caller, buf, sizeof(buf)), path, epath);
++		     what, buf, path, epath);
+ 		break;
+ 
+ 	case no_entry:
+ 		xlog(L_WARNING, "refused %s request from %s for %s (%s): no export entry",
+-		     what, ai->ai_canonname, path, epath);
++		     what, buf, path, epath);
+ 		break;
+ 
+ 	case not_exported:
+ 		xlog(L_WARNING, "refused %s request from %s for %s (%s): not exported",
+-		     what, ai->ai_canonname, path, epath);
++		     what, buf, path, epath);
+ 		break;
+ 
+ 	case illegal_port:
+ 		xlog(L_WARNING, "refused %s request from %s for %s (%s): illegal port %u",
+-		     what, ai->ai_canonname, path, epath, nfs_get_port(caller));
++		     what, buf, path, epath, nfs_get_port(caller));
+ 		break;
+ 
+ 	case success:
+ 		xlog(L_NOTICE, "authenticated %s request from %s:%u for %s (%s)",
+-		     what, ai->ai_canonname, nfs_get_port(caller), path, epath);
++		     what, buf, nfs_get_port(caller), path, epath);
+ 		break;
+ 	default:
+ 		xlog(L_NOTICE, "%s request from %s:%u for %s (%s) gave %d",
+-		     what, ai->ai_canonname, nfs_get_port(caller),
+-			path, epath, error);
++		     what, buf, nfs_get_port(caller), path, epath, error);
+ 	}
+ 
+ 	freeaddrinfo(ai);
 
