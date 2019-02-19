@@ -7,63 +7,64 @@ X-Spam-Status: No, score=-8.9 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
 	SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A553AC10F00
-	for <linux-nfs@archiver.kernel.org>; Tue, 19 Feb 2019 16:23:13 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4EF3FC43381
+	for <linux-nfs@archiver.kernel.org>; Tue, 19 Feb 2019 16:23:14 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 760E62147A
-	for <linux-nfs@archiver.kernel.org>; Tue, 19 Feb 2019 16:23:13 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 1E6E32147A
+	for <linux-nfs@archiver.kernel.org>; Tue, 19 Feb 2019 16:23:14 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="KzIzV8Co"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="H46O0eTg"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729018AbfBSQXM (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 19 Feb 2019 11:23:12 -0500
-Received: from mail-it1-f194.google.com ([209.85.166.194]:53455 "EHLO
+        id S1726342AbfBSQXN (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 19 Feb 2019 11:23:13 -0500
+Received: from mail-it1-f194.google.com ([209.85.166.194]:54450 "EHLO
         mail-it1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726342AbfBSQXM (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Feb 2019 11:23:12 -0500
-Received: by mail-it1-f194.google.com with SMTP id x131so7391045itc.3
+        with ESMTP id S1728216AbfBSQXN (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Feb 2019 11:23:13 -0500
+Received: by mail-it1-f194.google.com with SMTP id f10so7373192ita.4
         for <linux-nfs@vger.kernel.org>; Tue, 19 Feb 2019 08:23:12 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:subject:date:message-id:in-reply-to:references:mime-version
          :content-transfer-encoding;
-        bh=72oU/TkKqTiqq7cVg+AUBpRPupcx4Rw4nRfDtgXws1E=;
-        b=KzIzV8CofJsX43OrvRk9/tCsZ4zIf3mzWEBr6t+ViaaRNbQgFfPrx6AdhcO8SldpaD
-         BWItGrJhCLlMObH+QxWrsJAGk8/7eDiZOvEP5t/ebdeaK60tVnsG1PXW8JM7JqnrjDbu
-         KcXoSb1/WjLqBDrD2h3ha+lI7wmdcCeDE8ta/tNMfyIJDDP+XrjvNyi6gC06s/eNB0oP
-         FW77nR9uwkeSbHUh4q19K9zmBcDGtGEIBcj0QO/4cHxQ1H9kZiIunslWPCcwwUY5Lknc
-         mHMl8V7gZdCpHuIIVgyVBBH1veXRl9WvUClLAlhZ7qxxyX5GruXqMgF+DrBjPsCYnqoj
-         3u+Q==
+        bh=jT74WFfrDl/+VabIgj0qfMzVGMbohB+BWe9aCCdqkGw=;
+        b=H46O0eTg1r26hB/ZZesRqfRx4kcri6r2pamAKrc82lma3EXS1fsW9VdK4a1EibQ2kt
+         lCAbJ1N0GUu5iFTSoIghnfAgkeGXR3f7Tv9oGgupvB2oUg8Fsv9eF8e6VVSA9ldkcoEs
+         NMxhIbStZ+zMb9POJ7Z461oqYFZrmDMGAtCZxh7M6XLZYzbiJx99hSHwuEYAXZ/OBY/k
+         jf4K9RjO1AzHQnZiQ0Mu9YusmjRKsHP4VVJt1Fx5JwfgPjHuJpFG3m8TC/equ1jxrAXR
+         ATixfULH25TCINXyqTsTRwCxc6ohivAj3DyqqS4TErmqHCY/22C0h2yN45xtvSwEdWEQ
+         GadA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=72oU/TkKqTiqq7cVg+AUBpRPupcx4Rw4nRfDtgXws1E=;
-        b=dB8ZoJBNjXysaiyO6a4Pdqw8bIKSfacmXzCr41vUSErZCgvCqrO8cD1O2x5VAxVu5j
-         AmNywuE7qqGimAvSa46aRGuLina65OsIQvDSDY/jYxTMdc+DxFCirhBDnWorNKe/rZ18
-         F+SVIcSgZHDHCHYSTBDiN0WeiUSu7xOGHjMCpvg+/7pbecuyNX9Wve6ILnxsYdLLoEeT
-         A7qbLHNKCREKV4iIPJpz7sElcFezTwiTpiGcifOmZLMczqP3pDDYdwBzwUs5KAPw0eXc
-         BaVepWE2JWz6GYFhro9RB4Lt2RL5TOTUaw6CDK5cJP/livRZvV92NFWc9dk4M0kDnhwy
-         2CXQ==
-X-Gm-Message-State: AHQUAuYaxUC4CRCSCoRRwBDTz2rxDGwzxZ451QabSVFO0tTNApbuLVIg
-        d1RPB1JWysAt0XzNAXs7JpupuiU=
-X-Google-Smtp-Source: AHgI3IYO3zB5Oh2t2ovxYExdets846mHeSWyRTFSIU0+b6Vg5/xqvHujoH3316unLZ4ceD9W4jQ1Zw==
-X-Received: by 2002:a02:9d07:: with SMTP id n7mr14822856jak.36.1550593391308;
-        Tue, 19 Feb 2019 08:23:11 -0800 (PST)
+        bh=jT74WFfrDl/+VabIgj0qfMzVGMbohB+BWe9aCCdqkGw=;
+        b=F6T28H+0BgWtksIWNhAfvrsZ5dDQi5vQ46RO022OChnJjl8RdLTVqKub+70yhYXd6H
+         S7sZPXSREPZKdIbnpB4Jzut3HS/TTbm3qA3OIkaeid9fDKFiTZRphDXJGOl4Utm33Meq
+         iDQIfcne8YoNiNMELFWsb/epSb+7qQI3fXmUBRv82cxpj3r9OQpo7FuunnX+AZ1TI0vJ
+         8iuY7RAmGF+V30uNlb2uVbiW6FmtPaMb9ChZScAfHDvhgYtc7hXa8ErplecdtQumbHc6
+         m/vCDnDJgbYEhoGupqPFqAd7l7qvxK93rUJjDC1Kf5eiqzO6hrH/s1TGCzu8UWrqcF7m
+         FpTA==
+X-Gm-Message-State: AHQUAua+9EJl4KCMrIUA2khvHSZx/DGzyCiSSAeCLbr9KNDOHCsdrZhh
+        XFHif/oVyyh+z/xS/GiHx56D7ZE=
+X-Google-Smtp-Source: AHgI3IYACqAY8MAve28SmEIU4aRYj01BxmKjoel/h0b5oQKnLMKsjCxoGmU4WpZ+PbuoKMevqA6vSg==
+X-Received: by 2002:a02:c60b:: with SMTP id i11mr16091337jan.118.1550593392048;
+        Tue, 19 Feb 2019 08:23:12 -0800 (PST)
 Received: from localhost.localdomain (c-68-40-189-247.hsd1.mi.comcast.net. [68.40.189.247])
-        by smtp.gmail.com with ESMTPSA id o9sm882683itb.23.2019.02.19.08.23.10
+        by smtp.gmail.com with ESMTPSA id o9sm882683itb.23.2019.02.19.08.23.11
         for <linux-nfs@vger.kernel.org>
         (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
-        Tue, 19 Feb 2019 08:23:10 -0800 (PST)
+        Tue, 19 Feb 2019 08:23:11 -0800 (PST)
 From:   Trond Myklebust <trondmy@gmail.com>
 X-Google-Original-From: Trond Myklebust <trond.myklebust@hammerspace.com>
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH 2/3] SUNRPC: Handle zero length fragments correctly
-Date:   Tue, 19 Feb 2019 11:22:01 -0500
-Message-Id: <20190219162202.68013-2-trond.myklebust@hammerspace.com>
+Subject: [PATCH 3/3] SUNRPC: Initiate a connection close on an ESHUTDOWN error in stream receive
+Date:   Tue, 19 Feb 2019 11:22:02 -0500
+Message-Id: <20190219162202.68013-3-trond.myklebust@hammerspace.com>
 X-Mailer: git-send-email 2.20.1
-In-Reply-To: <20190219162202.68013-1-trond.myklebust@hammerspace.com>
+In-Reply-To: <20190219162202.68013-2-trond.myklebust@hammerspace.com>
 References: <20190219162202.68013-1-trond.myklebust@hammerspace.com>
+ <20190219162202.68013-2-trond.myklebust@hammerspace.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
@@ -71,97 +72,32 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-A zero length fragment is really a bug, but let's ensure we don't
-go nuts when one turns up.
+If the client stream receive code receives an ESHUTDOWN error either
+because the server closed the connection, or because it sent a
+callback which cannot be processed, then we should shut down
+the connection.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- net/sunrpc/xprtsock.c | 32 ++++++++++++++++++++++----------
- 1 file changed, 22 insertions(+), 10 deletions(-)
+ net/sunrpc/xprtsock.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
 
 diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 52c98dc480ec..89bcab53848a 100644
+index 89bcab53848a..618e9c255a9f 100644
 --- a/net/sunrpc/xprtsock.c
 +++ b/net/sunrpc/xprtsock.c
-@@ -405,8 +405,8 @@ xs_read_xdr_buf(struct socket *sock, struct msghdr *msg, int flags,
- 	size_t want, seek_init = seek, offset = 0;
- 	ssize_t ret;
- 
--	if (seek < buf->head[0].iov_len) {
--		want = min_t(size_t, count, buf->head[0].iov_len);
-+	want = min_t(size_t, count, buf->head[0].iov_len);
-+	if (seek < want) {
- 		ret = xs_read_kvec(sock, msg, flags, &buf->head[0], want, seek);
- 		if (ret <= 0)
- 			goto sock_err;
-@@ -417,8 +417,8 @@ xs_read_xdr_buf(struct socket *sock, struct msghdr *msg, int flags,
- 			goto out;
- 		seek = 0;
- 	} else {
--		seek -= buf->head[0].iov_len;
--		offset += buf->head[0].iov_len;
-+		seek -= want;
-+		offset += want;
+@@ -694,7 +694,10 @@ static void xs_stream_data_receive(struct sock_xprt *transport)
+ 		read += ret;
+ 		cond_resched();
  	}
- 
- 	want = xs_alloc_sparse_pages(buf,
-@@ -443,8 +443,8 @@ xs_read_xdr_buf(struct socket *sock, struct msghdr *msg, int flags,
- 		offset += want;
- 	}
- 
--	if (seek < buf->tail[0].iov_len) {
--		want = min_t(size_t, count - offset, buf->tail[0].iov_len);
-+	want = min_t(size_t, count - offset, buf->tail[0].iov_len);
-+	if (seek < want) {
- 		ret = xs_read_kvec(sock, msg, flags, &buf->tail[0], want, seek);
- 		if (ret <= 0)
- 			goto sock_err;
-@@ -454,7 +454,7 @@ xs_read_xdr_buf(struct socket *sock, struct msghdr *msg, int flags,
- 		if (ret != want)
- 			goto out;
- 	} else
--		offset += buf->tail[0].iov_len;
-+		offset = seek_init;
- 	ret = -EMSGSIZE;
+-	xs_poll_check_readable(transport);
++	if (ret == -ESHUTDOWN)
++		kernel_sock_shutdown(transport->sock, SHUT_RDWR);
++	else
++		xs_poll_check_readable(transport);
  out:
- 	*read = offset - seek_init;
-@@ -482,6 +482,14 @@ xs_read_stream_request_done(struct sock_xprt *transport)
- 	return transport->recv.fraghdr & cpu_to_be32(RPC_LAST_STREAM_FRAGMENT);
- }
- 
-+static void
-+xs_read_stream_check_eor(struct sock_xprt *transport,
-+		struct msghdr *msg)
-+{
-+	if (xs_read_stream_request_done(transport))
-+		msg->msg_flags |= MSG_EOR;
-+}
-+
- static ssize_t
- xs_read_stream_request(struct sock_xprt *transport, struct msghdr *msg,
- 		int flags, struct rpc_rqst *req)
-@@ -493,14 +501,18 @@ xs_read_stream_request(struct sock_xprt *transport, struct msghdr *msg,
- 	xs_read_header(transport, buf);
- 
- 	want = transport->recv.len - transport->recv.offset;
-+	if (want == 0) {
-+		xs_read_stream_check_eor(transport, msg);
-+		return 0;
-+	}
-+
- 	ret = xs_read_xdr_buf(transport->sock, msg, flags, buf,
- 			transport->recv.copied + want, transport->recv.copied,
- 			&read);
- 	transport->recv.offset += read;
- 	transport->recv.copied += read;
--	if (transport->recv.offset == transport->recv.len &&
--	    xs_read_stream_request_done(transport))
--		msg->msg_flags |= MSG_EOR;
-+	if (transport->recv.offset == transport->recv.len)
-+		xs_read_stream_check_eor(transport, msg);
- 
- 	switch (ret) {
- 	default:
+ 	mutex_unlock(&transport->recv_mutex);
+ 	trace_xs_stream_read_data(&transport->xprt, ret, read);
 -- 
 2.20.1
 
