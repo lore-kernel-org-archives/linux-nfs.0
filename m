@@ -7,742 +7,152 @@ X-Spam-Status: No, score=-7.2 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,UNPARSEABLE_RELAY autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 803F0C43381
-	for <linux-nfs@archiver.kernel.org>; Tue, 19 Feb 2019 14:52:28 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A9104C43381
+	for <linux-nfs@archiver.kernel.org>; Tue, 19 Feb 2019 14:55:02 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 3B6152146E
-	for <linux-nfs@archiver.kernel.org>; Tue, 19 Feb 2019 14:52:28 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 78BF620665
+	for <linux-nfs@archiver.kernel.org>; Tue, 19 Feb 2019 14:55:01 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="C7AV+Fc5"
+	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="odJlzxjh"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1725794AbfBSOw1 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 19 Feb 2019 09:52:27 -0500
-Received: from userp2120.oracle.com ([156.151.31.85]:57890 "EHLO
-        userp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725803AbfBSOw1 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Feb 2019 09:52:27 -0500
-Received: from pps.filterd (userp2120.oracle.com [127.0.0.1])
-        by userp2120.oracle.com (8.16.0.27/8.16.0.27) with SMTP id x1JEi8lP183929;
-        Tue, 19 Feb 2019 14:52:19 GMT
+        id S1726180AbfBSOzA (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 19 Feb 2019 09:55:00 -0500
+Received: from aserp2130.oracle.com ([141.146.126.79]:41978 "EHLO
+        aserp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725885AbfBSOzA (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Feb 2019 09:55:00 -0500
+Received: from pps.filterd (aserp2130.oracle.com [127.0.0.1])
+        by aserp2130.oracle.com (8.16.0.27/8.16.0.27) with SMTP id x1JEsSUC196279;
+        Tue, 19 Feb 2019 14:54:58 GMT
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=content-type :
  mime-version : subject : from : in-reply-to : date : cc :
  content-transfer-encoding : message-id : references : to;
- s=corp-2018-07-02; bh=w5LV8eu+O6Ap3Ri9bYTZcxmWrhqK7d78hSN290/sQP8=;
- b=C7AV+Fc5pKFRoyve0tiJC8SeimyvhyJ+vbgypps8/XGNB77w8K0/FWCA2jtNarEosn/0
- gZeIyZjvvLfdRJVx3mWWDItHAYwEsDYiaWpM8uiOObU7kyrQeK9Ll3SGWrNvvZ/vCLet
- dwY0Scob6lXvzDw+EcDBvWHhqUWMuGPWRZYaWV6ekAugCmTXSutW9fb/VLG93O7PQpPX
- o4R0m56aJ8x0Wk1NPVNfeHUBUf0ZaN5MdI9GIEPJoXpld4VBZG39ixq0bti6BDb7g6Ws
- 7OpSweVw8MTWwjdZEnOSTeLHJwOX9g907mUUBMKiQqNKtYpIxkr6/4zPeONpOkV6C/2t sw== 
-Received: from aserv0021.oracle.com (aserv0021.oracle.com [141.146.126.233])
-        by userp2120.oracle.com with ESMTP id 2qpb5rbgjs-1
+ s=corp-2018-07-02; bh=XmR8oWiAzZE4CX6Hc8HvILv5HF06U04QfKjz6RwPWLQ=;
+ b=odJlzxjhMYiUUeoNvIPUDu6aTY7tNiC6Y6me6dOCiIhoXC/wilJtCHEJN+tXBp/TTKml
+ eyCCQaYnMYqCzypNBgDm4tBQGefi62jH6fJ0pl+qNeTzlJ23HGXLgZV28tgX987fjxbP
+ DThEWCHQs2sb8dMcUvXh6TdWI6cEgeC3EL4FEysJgcMTLN/o/Zb0njC1gOuC0T3TDbgK
+ //lgWgaSzlSJ9r5wHPQRLCC+lUSOFpS1yTCmmMcc/KaS5jiHucj7heD09jvcymx0wmtC
+ qZyvdhZeE/z5QzabqPhqqyApIc4gZaNyUbN7wKFQXgcflfBpETEb/fnpjFJOZp+IGB4/ vw== 
+Received: from userv0021.oracle.com (userv0021.oracle.com [156.151.31.71])
+        by aserp2130.oracle.com with ESMTP id 2qp81e3trh-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Tue, 19 Feb 2019 14:52:18 +0000
-Received: from userv0121.oracle.com (userv0121.oracle.com [156.151.31.72])
-        by aserv0021.oracle.com (8.14.4/8.14.4) with ESMTP id x1JEqH3J005382
+        Tue, 19 Feb 2019 14:54:57 +0000
+Received: from aserv0121.oracle.com (aserv0121.oracle.com [141.146.126.235])
+        by userv0021.oracle.com (8.14.4/8.14.4) with ESMTP id x1JEsuw2006517
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Tue, 19 Feb 2019 14:52:17 GMT
-Received: from abhmp0017.oracle.com (abhmp0017.oracle.com [141.146.116.23])
-        by userv0121.oracle.com (8.14.4/8.13.8) with ESMTP id x1JEqG0I015652;
-        Tue, 19 Feb 2019 14:52:17 GMT
+        Tue, 19 Feb 2019 14:54:57 GMT
+Received: from abhmp0004.oracle.com (abhmp0004.oracle.com [141.146.116.10])
+        by aserv0121.oracle.com (8.14.4/8.13.8) with ESMTP id x1JEsuSC025535;
+        Tue, 19 Feb 2019 14:54:56 GMT
 Received: from anon-dhcp-171.1015granger.net (/68.61.232.219)
         by default (Oracle Beehive Gateway v4.0)
-        with ESMTP ; Tue, 19 Feb 2019 06:52:16 -0800
+        with ESMTP ; Tue, 19 Feb 2019 06:54:56 -0800
 Content-Type: text/plain;
         charset=us-ascii
 Mime-Version: 1.0 (Mac OS X Mail 12.2 \(3445.102.3\))
-Subject: Re: [PATCH] nfs-utils: fix addrinfo usage with musl-1.1.21
+Subject: Re: [PATCH] SUNRPC: Use poll() to fix up the socket requeue races
 From:   Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20190219100330.7679f4a3@onion.lan>
-Date:   Tue, 19 Feb 2019 09:52:15 -0500
+In-Reply-To: <20190219140616.123141-1-trond.myklebust@hammerspace.com>
+Date:   Tue, 19 Feb 2019 09:54:55 -0500
 Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>
 Content-Transfer-Encoding: quoted-printable
-Message-Id: <997F0B77-1AF8-4253-82CB-C2A81EA0BC60@oracle.com>
-References: <20190217173901.33296254@onion.lan>
- <1081BBCD-8CA0-49CC-A02C-16F46FF613BF@oracle.com>
- <20190218001153.3d21b28c@onion.lan>
- <34D9E70A-7F29-4C6B-8A10-18F7A7EFFE2E@oracle.com>
- <137b8db8-a6d6-33a6-408b-73f8915eee08@RedHat.com>
- <EE3790BC-A5B4-4C34-9F21-7009579B3A25@oracle.com>
- <530ec927-e9c6-490c-1382-8e5be1aea203@RedHat.com>
- <0B1E18B0-0034-4612-B63B-41155D2E0D64@oracle.com>
- <20190218222600.198f25d1@onion.lan> <20190219100330.7679f4a3@onion.lan>
-To:     Peter Wagner <tripolar@gmx.at>
+Message-Id: <A2BBC175-F60D-4C61-B70F-479952D2CD21@oracle.com>
+References: <20190219140616.123141-1-trond.myklebust@hammerspace.com>
+To:     Trond Myklebust <trondmy@gmail.com>
 X-Mailer: Apple Mail (2.3445.102.3)
 X-Proofpoint-Virus-Version: vendor=nai engine=5900 definitions=9171 signatures=668683
 X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 priorityscore=1501 malwarescore=0
- suspectscore=2 phishscore=0 bulkscore=0 spamscore=0 clxscore=1015
+ suspectscore=0 phishscore=0 bulkscore=0 spamscore=0 clxscore=1015
  lowpriorityscore=0 mlxscore=0 impostorscore=0 mlxlogscore=999 adultscore=0
  classifier=spam adjust=0 reason=mlx scancount=1 engine=8.0.1-1810050000
- definitions=main-1902190111
+ definitions=main-1902190112
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
+Hi Trond-
+
+> On Feb 19, 2019, at 9:06 AM, Trond Myklebust <trondmy@gmail.com> =
+wrote:
+>=20
+> Because we clear XPRT_SOCK_DATA_READY before reading, we can end up
+> with a situation where new data arrives, causing xs_data_ready() to
+> queue up a second receive worker job for the same socket, which then
+> immediately gets stuck waiting on the transport receive mutex.
+> The fix is to only clear XPRT_SOCK_DATA_READY once we're done reading,
+> and then to use poll() to check if we might need to queue up a new
+> job in order to deal with any new data.
+
+Does this fix an application-visible hang, or is it merely a performance
+optimization?
 
 
-> On Feb 19, 2019, at 4:03 AM, Peter Wagner <tripolar@gmx.at> wrote:
->=20
-> Hi,
->=20
-> i updated to code to the latest version
->=20
-> =46rom dc2c02c12cf66e7ac4ab12fad7ea21f83f10ee7a Mon Sep 17 00:00:00 =
-2001
-> From: Peter Wagner <tripolar@gmx.at>
-> Date: Tue, 19 Feb 2019 09:53:07 +0100
-> Subject: [PATCH] define and use wrapper function nfs_freeaddrinfo to =
-handle
-> freeaddrinfo versions that don't tolerate NULL pointers
->=20
-> set AI_CANONNAME flag in host_pton to set the ip address of the =
-connected
-> host to ai_canonname
->=20
-> Signed-off-by: Peter Wagner <tripolar@gmx.at>
+> Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 > ---
-> support/export/client.c       |  6 +++---
-> support/export/hostname.c     | 28 +++-------------------------
-> support/include/exportfs.h    | 11 +++++++++++
-> support/nfs/getport.c         |  7 ++++---
-> support/nfs/svc_create.c      |  8 +++++---
-> support/nfsidmap/umich_ldap.c |  2 +-
-> tests/nsm_client/nsm_client.c |  2 +-
-> utils/exportfs/exportfs.c     | 10 +++++-----
-> utils/gssd/gssd.c             |  4 ++--
-> utils/gssd/krb5_util.c        |  2 +-
-> utils/mount/network.c         |  7 ++++---
-> utils/mount/stropts.c         |  3 ++-
-> utils/mountd/auth.c           |  2 +-
-> utils/mountd/cache.c          | 10 +++++-----
-> utils/mountd/mountd.c         |  4 ++--
-> utils/mountd/rmtab.c          |  2 +-
-> utils/nfsd/nfssvc.c           |  4 ++--
-> utils/statd/hostname.c        | 11 ++++++-----
-> utils/statd/sm-notify.c       | 14 +++++++-------
-> 19 files changed, 66 insertions(+), 71 deletions(-)
+> net/sunrpc/xprtsock.c | 17 +++++++++++++++--
+> 1 file changed, 15 insertions(+), 2 deletions(-)
 >=20
-> diff --git a/support/export/client.c b/support/export/client.c
-> index baf59c8..a1fba01 100644
-> --- a/support/export/client.c
-> +++ b/support/export/client.c
-> @@ -210,7 +210,7 @@ init_subnetwork(nfs_client *clp)
-> 	set_addrlist(clp, 0, ai->ai_addr);
-> 	family =3D ai->ai_addr->sa_family;
->=20
-> -	freeaddrinfo(ai);
-> +	nfs_freeaddrinfo(ai);
->=20
-> 	switch (family) {
-> 	case AF_INET:
-> @@ -309,7 +309,7 @@ client_lookup(char *hname, int canonical)
-> 		init_addrlist(clp, ai);
->=20
-> out:
-> -	freeaddrinfo(ai);
-> +	nfs_freeaddrinfo(ai);
-> 	return clp;
+> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+> index f5d7dcd9e8d9..a721c843d5d3 100644
+> --- a/net/sunrpc/xprtsock.c
+> +++ b/net/sunrpc/xprtsock.c
+> @@ -656,13 +656,25 @@ xs_read_stream(struct sock_xprt *transport, int =
+flags)
+> 	return ret !=3D 0 ? ret : -ESHUTDOWN;
 > }
 >=20
-> @@ -674,7 +674,7 @@ check_netgroup(const nfs_client *clp, const struct =
-addrinfo *ai)
-> 	tmp =3D host_pton(hname);
-> 	if (tmp !=3D NULL) {
-> 		char *cname =3D host_canonname(tmp->ai_addr);
-> -		freeaddrinfo(tmp);
-> +		nfs_freeaddrinfo(tmp);
->=20
-> 		/* The resulting FQDN may be in our netgroup. */
-> 		if (cname !=3D NULL) {
-> diff --git a/support/export/hostname.c b/support/export/hostname.c
-> index 5c4c824..9845a59 100644
-> --- a/support/export/hostname.c
-> +++ b/support/export/hostname.c
-> @@ -101,6 +101,7 @@ host_pton(const char *paddr)
-> 		.ai_protocol	=3D (int)IPPROTO_UDP,
-> 		.ai_flags	=3D AI_NUMERICHOST,
-> 		.ai_family	=3D AF_UNSPEC,
-> +		.ai_flags	=3D AI_CANONNAME,
-
-Now I wonder if this will force getaddrinfo(3) to do an on-the-wire
-DNS query? The point of host_pton() and host_numeric_addrinfo() is
-to avoid any on-the-wire activity.
-
-In any event, please put fixes like this in a separate patch.
-
-Also, what do you plan to do about host_reliable_addrinfo, which
-also has a "free(ai->ai_canonname);" call site? In that case, we
-are not trying to avoid DNS queries, which could make it easier
-to fix (in a separate patch, of course).
-
-
-> 	};
-> 	struct sockaddr_in sin;
-> 	int error, inet4;
-> @@ -130,7 +131,7 @@ host_pton(const char *paddr)
-> 		if (!inet4 && ai->ai_addr->sa_family =3D=3D AF_INET) {
-> 			xlog(D_GENERAL, "%s: failed to convert %s",
-> 					__func__, paddr);
-> -			freeaddrinfo(ai);
-> +			nfs_freeaddrinfo(ai);
-> 			break;
-> 		}
-> 		return ai;
-> @@ -290,7 +291,7 @@ host_reliable_addrinfo(const struct sockaddr *sap)
-> 		if (nfs_compare_sockaddr(a->ai_addr, sap))
-> 			break;
->=20
-> -	freeaddrinfo(ai);
-> +	nfs_freeaddrinfo(ai);
-> 	if (!a)
-> 		goto out_free_hostname;
->=20
-> @@ -350,18 +351,6 @@ host_numeric_addrinfo(const struct sockaddr *sap)
->=20
-> 	ai =3D host_pton(buf);
->=20
-> -	/*
-> -	 * getaddrinfo(AI_NUMERICHOST) never fills in ai_canonname
-> -	 */
-> -	if (ai !=3D NULL) {
-> -		free(ai->ai_canonname);		/* just in case */
-> -		ai->ai_canonname =3D strdup(buf);
-> -		if (ai->ai_canonname =3D=3D NULL) {
-> -			freeaddrinfo(ai);
-> -			ai =3D NULL;
-> -		}
-> -	}
-> -
-> 	return ai;
-> }
-> #else	/* !HAVE_GETNAMEINFO */
-> @@ -384,17 +373,6 @@ host_numeric_addrinfo(const struct sockaddr *sap)
->=20
-> 	ai =3D host_pton(buf);
->=20
-> -	/*
-> -	 * getaddrinfo(AI_NUMERICHOST) never fills in ai_canonname
-> -	 */
-> -	if (ai !=3D NULL) {
-> -		ai->ai_canonname =3D strdup(buf);
-> -		if (ai->ai_canonname =3D=3D NULL) {
-> -			freeaddrinfo(ai);
-> -			ai =3D NULL;
-> -		}
-> -	}
-> -
-> 	return ai;
-> }
-> #endif	/* !HAVE_GETNAMEINFO */
-> diff --git a/support/include/exportfs.h b/support/include/exportfs.h
-> index 4e0d9d1..b81f963 100644
-> --- a/support/include/exportfs.h
-> +++ b/support/include/exportfs.h
-> @@ -47,6 +47,17 @@ typedef struct mclient {
-> 	int			m_count;
-> } nfs_client;
->=20
-> +/*
-> + * Some versions of freeaddrinfo(3) do not tolerate being
-> + * passed a NULL pointer.
-> + */
-> +static inline void nfs_freeaddrinfo(struct addrinfo *ai)
+> +static void xs_poll_check_readable(struct sock_xprt *transport)
 > +{
-> +	if (ai) {
-> +		freeaddrinfo(ai);
-> +	}
+> +	struct socket *sock =3D transport->sock;
+> +	__poll_t events;
+> +
+> +	clear_bit(XPRT_SOCK_DATA_READY, &transport->sock_state);
+> +	events =3D sock->ops->poll(NULL, sock, NULL);
+> +	if (!(events & (EPOLLIN | EPOLLRDNORM)) || events & EPOLLRDHUP)
+> +		return;
+> +	if (!test_and_set_bit(XPRT_SOCK_DATA_READY, =
+&transport->sock_state))
+> +		queue_work(xprtiod_workqueue, &transport->recv_worker);
 > +}
 > +
-> static inline const struct sockaddr *
-> get_addrlist(const nfs_client *clp, const int i)
+> static void xs_stream_data_receive(struct sock_xprt *transport)
 > {
-> diff --git a/support/nfs/getport.c b/support/nfs/getport.c
-> index 081594c..26ec85e 100644
-> --- a/support/nfs/getport.c
-> +++ b/support/nfs/getport.c
-> @@ -47,6 +47,7 @@
+> 	size_t read =3D 0;
+> 	ssize_t ret =3D 0;
 >=20
-> #include "sockaddr.h"
-> #include "nfsrpc.h"
-> +#include "exportfs.h"
->=20
-> /*
->  * Try a local socket first to access the local rpcbind daemon
-> @@ -109,7 +110,7 @@ static int nfs_gp_loopback_address(struct sockaddr =
-*sap, socklen_t *salen)
-> 		ret =3D 1;
-> 	}
->=20
-> -	freeaddrinfo(gai_results);
-> +	nfs_freeaddrinfo(gai_results);
-> 	return ret;
-> }
->=20
-> @@ -134,8 +135,8 @@ static in_port_t nfs_gp_getservbyname(const char =
-*service,
->=20
-> 	sin =3D (const struct sockaddr_in *)gai_results->ai_addr;
-> 	port =3D sin->sin_port;
-> -=09
-> -	freeaddrinfo(gai_results);
-> +
-> +	nfs_freeaddrinfo(gai_results);
-> 	return port;
-> }
->=20
-> diff --git a/support/nfs/svc_create.c b/support/nfs/svc_create.c
-> index ef7ff05..d0b747b 100644
-> --- a/support/nfs/svc_create.c
-> +++ b/support/nfs/svc_create.c
-> @@ -39,6 +39,8 @@
-> #include <rpc/rpc.h>
-> #include <rpc/svc.h>
->=20
-> +#include "exportfs.h"
-> +
-> #ifdef HAVE_TCP_WRAPPER
-> #include "tcpwrapper.h"
-> #endif
-> @@ -273,7 +275,7 @@ svc_create_nconf_rand_port(const char *name, const =
-rpcprog_t program,
-> 	bindaddr.qlen =3D SOMAXCONN;
->=20
-> 	xprt =3D svc_tli_create(RPC_ANYFD, nconf, &bindaddr, 0, 0);
-> -	freeaddrinfo(ai);
-> +	nfs_freeaddrinfo(ai);
-> 	if (xprt =3D=3D NULL) {
-> 		xlog(L_ERROR, "Failed to create listener xprt "
-> 			"(%s, %u, %s)", name, version, nconf->nc_netid);
-> @@ -364,11 +366,11 @@ svc_create_nconf_fixed_port(const char *name, =
-const rpcprog_t program,
->=20
-> 	svc_create_cache_xprt(xprt);
->=20
-> -	freeaddrinfo(ai);
-> +	nfs_freeaddrinfo(ai);
-> 	return 1;
->=20
-> out_free:
-> -	freeaddrinfo(ai);
-> +	nfs_freeaddrinfo(ai);
-> 	return 0;
-> }
->=20
-> diff --git a/support/nfsidmap/umich_ldap.c =
-b/support/nfsidmap/umich_ldap.c
-> index b661110..b8ee184 100644
-> --- a/support/nfsidmap/umich_ldap.c
-> +++ b/support/nfsidmap/umich_ldap.c
-> @@ -1089,7 +1089,7 @@ get_canonical_hostname(const char *inname)
-> 	return_name =3D strdup (tmphost);
->=20
-> out_free:
-> -	freeaddrinfo(ap);
-> +	nfs_freeaddrinfo(ap);
-> out_err:
-> 	return return_name;
-> }
-> diff --git a/tests/nsm_client/nsm_client.c =
-b/tests/nsm_client/nsm_client.c
-> index 0fa3422..8dc0591 100644
-> --- a/tests/nsm_client/nsm_client.c
-> +++ b/tests/nsm_client/nsm_client.c
-> @@ -243,7 +243,7 @@ nsm_client_get_rpcclient(const char *node)
-> 		printf("RPC client creation failed\n");
-> 	}
-> out:
-> -	freeaddrinfo(ai);
-> +	nfs_freeaddrinfo(ai);
-> 	return client;
-> }
->=20
-> diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
-> index cd3c979..333eadc 100644
-> --- a/utils/exportfs/exportfs.c
-> +++ b/utils/exportfs/exportfs.c
-> @@ -282,7 +282,7 @@ exportfs_parsed(char *hname, char *path, char =
-*options, int verbose)
-> 	validate_export(exp);
->=20
-> out:
-> -	freeaddrinfo(ai);
-> +	nfs_freeaddrinfo(ai);
-> }
->=20
-> static int exportfs_generic(char *arg, char *options, int verbose)
-> @@ -395,7 +395,7 @@ unexportfs_parsed(char *hname, char *path, int =
-verbose)
-> 	if (!success)
-> 		xlog(L_ERROR, "Could not find '%s:%s' to unexport.", =
-hname, path);
->=20
-> -	freeaddrinfo(ai);
-> +	nfs_freeaddrinfo(ai);
-> }
->=20
-> static int unexportfs_generic(char *arg, int verbose)
-> @@ -588,7 +588,7 @@ address_list(const char *hostname)
-> 	if (ai !=3D NULL) {
-> 		/* @hostname was a presentation address */
-> 		cname =3D host_canonname(ai->ai_addr);
-> -		freeaddrinfo(ai);
-> +		nfs_freeaddrinfo(ai);
-> 		if (cname !=3D NULL)
-> 			goto out;
-> 	}
-> @@ -639,8 +639,8 @@ matchhostname(const char *hostname1, const char =
-*hostname2)
-> 			}
->=20
-> out:
-> -	freeaddrinfo(results1);
-> -	freeaddrinfo(results2);
-> +	nfs_freeaddrinfo(results1);
-> +	nfs_freeaddrinfo(results2);
-> 	return result;
-> }
->=20
-> diff --git a/utils/gssd/gssd.c b/utils/gssd/gssd.c
-> index 2e92f28..7eeb05f 100644
-> --- a/utils/gssd/gssd.c
-> +++ b/utils/gssd/gssd.c
-> @@ -172,14 +172,14 @@ gssd_addrstr_to_sockaddr(struct sockaddr *sa, =
-const char *node, const char *port
-> 		if (sin6->sin6_scope_id) {
-> 			printerr(0, "ERROR: address %s has non-zero "
-> 				    "sin6_scope_id!\n", node);
-> -			freeaddrinfo(res);
-> +			nfs_freeaddrinfo(res);
-> 			return false;
-> 		}
-> 	}
-> #endif /* IPV6_SUPPORTED */
->=20
-> 	memcpy(sa, res->ai_addr, res->ai_addrlen);
-> -	freeaddrinfo(res);
-> +	nfs_freeaddrinfo(res);
-> 	return true;
-> }
->=20
-> diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
-> index eba1aac..adbde93 100644
-> --- a/utils/gssd/krb5_util.c
-> +++ b/utils/gssd/krb5_util.c
-> @@ -587,7 +587,7 @@ get_full_hostname(const char *inhost, char =
-*outhost, int outhostlen)
+> 	mutex_lock(&transport->recv_mutex);
+> -	clear_bit(XPRT_SOCK_DATA_READY, &transport->sock_state);
+> 	if (transport->sock =3D=3D NULL)
 > 		goto out;
+> 	for (;;) {
+> @@ -672,6 +684,7 @@ static void xs_stream_data_receive(struct =
+sock_xprt *transport)
+> 		read +=3D ret;
+> 		cond_resched();
 > 	}
-> 	strncpy(outhost, addrs->ai_canonname, outhostlen);
-> -	freeaddrinfo(addrs);
-> +	nfs_freeaddrinfo(addrs);
-> 	for (c =3D outhost; *c !=3D '\0'; c++)
-> 	    *c =3D tolower(*c);
->=20
-> diff --git a/utils/mount/network.c b/utils/mount/network.c
-> index 356f663..fcb0b9f 100644
-> --- a/utils/mount/network.c
-> +++ b/utils/mount/network.c
-> @@ -53,6 +53,7 @@
-> #include <net/if.h>
-> #include <ifaddrs.h>
->=20
-> +#include "exportfs.h"
-> #include "sockaddr.h"
-> #include "xcommon.h"
-> #include "mount.h"
-> @@ -250,7 +251,7 @@ int nfs_lookup(const char *hostname, const =
-sa_family_t family,
-> 		break;
-> 	}
->=20
-> -	freeaddrinfo(gai_results);
-> +	nfs_freeaddrinfo(gai_results);
-> 	return ret;
-> }
->=20
-> @@ -307,7 +308,7 @@ int nfs_string_to_sockaddr(const char *address, =
-struct sockaddr *sap,
-> 			}
-> 			break;
-> 		}
-> -		freeaddrinfo(gai_results);
-> +		nfs_freeaddrinfo(gai_results);
-> 	}
->=20
-> 	return ret;
-> @@ -1180,7 +1181,7 @@ static int nfs_ca_gai(const struct sockaddr =
-*sap,
-> 	*buflen =3D gai_results->ai_addrlen;
-> 	memcpy(buf, gai_results->ai_addr, *buflen);
->=20
-> -	freeaddrinfo(gai_results);
-> +	nfs_freeaddrinfo(gai_results);
->=20
-> 	return 1;
-> }
-> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-> index 0a25b1f..b170552 100644
-> --- a/utils/mount/stropts.c
-> +++ b/utils/mount/stropts.c
-> @@ -35,6 +35,7 @@
-> #include <netinet/in.h>
-> #include <arpa/inet.h>
->=20
-> +#include "exportfs.h"
-> #include "sockaddr.h"
-> #include "xcommon.h"
-> #include "mount.h"
-> @@ -1268,7 +1269,7 @@ int nfsmount_string(const char *spec, const char =
-*node, char *type,
-> 	} else
-> 		nfs_error(_("%s: internal option parsing error"), =
-progname);
->=20
-> -	freeaddrinfo(mi.address);
-> +	nfs_freeaddrinfo(mi.address);
-> 	free(mi.hostname);
-> 	return retval;
-> }
-> diff --git a/utils/mountd/auth.c b/utils/mountd/auth.c
-> index 8299256..8f7cbd4 100644
-> --- a/utils/mountd/auth.c
-> +++ b/utils/mountd/auth.c
-> @@ -297,7 +297,7 @@ auth_authenticate(const char *what, const struct =
-sockaddr *caller,
-> 			path, epath, error);
-> 	}
->=20
-> -	freeaddrinfo(ai);
-> +	nfs_freeaddrinfo(ai);
-> 	return exp;
-> }
->=20
-> diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
-> index 7e8d403..2cb370f 100644
-> --- a/utils/mountd/cache.c
-> +++ b/utils/mountd/cache.c
-> @@ -113,7 +113,7 @@ static void auth_unix_ip(int f)
-> 		ai =3D client_resolve(tmp->ai_addr);
-> 		if (ai) {
-> 			client =3D client_compose(ai);
-> -			freeaddrinfo(ai);
-> +			nfs_freeaddrinfo(ai);
-> 		}
-> 	}
-> 	bp =3D buf; blen =3D sizeof(buf);
-> @@ -133,7 +133,7 @@ static void auth_unix_ip(int f)
-> 	xlog(D_CALL, "auth_unix_ip: client %p '%s'", client, =
-client?client: "DEFAULT");
->=20
-> 	free(client);
-> -	freeaddrinfo(tmp);
-> +	nfs_freeaddrinfo(tmp);
->=20
-> }
->=20
-> @@ -667,7 +667,7 @@ static struct addrinfo *lookup_client_addr(char =
-*dom)
-> 	if (tmp =3D=3D NULL)
-> 		return NULL;
-> 	ret =3D client_resolve(tmp->ai_addr);
-> -	freeaddrinfo(tmp);
-> +	nfs_freeaddrinfo(tmp);
-> 	return ret;
-> }
->=20
-> @@ -834,7 +834,7 @@ static void nfsd_fh(int f)
+> +	xs_poll_check_readable(transport);
 > out:
-> 	if (found_path)
-> 		free(found_path);
-> -	freeaddrinfo(ai);
-> +	nfs_freeaddrinfo(ai);
-> 	free(dom);
-> 	xlog(D_CALL, "nfsd_fh: found %p path %s", found, found ? =
-found->e_path : NULL);
-> }
-> @@ -1355,7 +1355,7 @@ static void nfsd_export(int f)
-> 	xlog(D_CALL, "nfsd_export: found %p path %s", found, path ? path =
-: NULL);
-> 	if (dom) free(dom);
-> 	if (path) free(path);
-> -	freeaddrinfo(ai);
-> +	nfs_freeaddrinfo(ai);
-> }
+> 	mutex_unlock(&transport->recv_mutex);
+> 	trace_xs_stream_read_data(&transport->xprt, ret, read);
+> @@ -1362,7 +1375,6 @@ static void xs_udp_data_receive(struct sock_xprt =
+*transport)
+> 	int err;
 >=20
->=20
-> diff --git a/utils/mountd/mountd.c b/utils/mountd/mountd.c
-> index 086c39b..fb7bba4 100644
-> --- a/utils/mountd/mountd.c
-> +++ b/utils/mountd/mountd.c
-> @@ -578,10 +578,10 @@ static void prune_clients(nfs_export *exp, =
-struct exportnode *e)
-> 				*cp =3D c->gr_next;
-> 				xfree(c->gr_name);
-> 				xfree(c);
-> -				freeaddrinfo(ai);
-> +				nfs_freeaddrinfo(ai);
-> 				continue;
-> 			}
-> -			freeaddrinfo(ai);
-> +			nfs_freeaddrinfo(ai);
-> 		}
-> 		cp =3D &(c->gr_next);
+> 	mutex_lock(&transport->recv_mutex);
+> -	clear_bit(XPRT_SOCK_DATA_READY, &transport->sock_state);
+> 	sk =3D transport->inet;
+> 	if (sk =3D=3D NULL)
+> 		goto out;
+> @@ -1374,6 +1386,7 @@ static void xs_udp_data_receive(struct sock_xprt =
+*transport)
+> 		consume_skb(skb);
+> 		cond_resched();
 > 	}
-> diff --git a/utils/mountd/rmtab.c b/utils/mountd/rmtab.c
-> index 3ae0dbb..c896243 100644
-> --- a/utils/mountd/rmtab.c
-> +++ b/utils/mountd/rmtab.c
-> @@ -226,7 +226,7 @@ mountlist_list(void)
-> 				ai =3D host_pton(rep->r_client);
-> 				if (ai !=3D NULL) {
-> 					m->ml_hostname =3D =
-host_canonname(ai->ai_addr);
-> -					freeaddrinfo(ai);
-> +					nfs_freeaddrinfo(ai);
-> 				}
-> 			}
-> 			if (m->ml_hostname =3D=3D NULL)
-> diff --git a/utils/nfsd/nfssvc.c b/utils/nfsd/nfssvc.c
-> index 1e6ffd6..47b1882 100644
-> --- a/utils/nfsd/nfssvc.c
-> +++ b/utils/nfsd/nfssvc.c
-> @@ -25,6 +25,7 @@
-> #include "nfslib.h"
-> #include "xlog.h"
-> #include "nfssvc.h"
-> +#include "exportfs.h"
-> #include "../mount/version.h"
->=20
-> #ifndef NFSD_FS_DIR
-> @@ -246,8 +247,7 @@ error:
-> 		close(fd);
-> 	if (sockfd >=3D 0)
-> 		close(sockfd);
-> -	if (addrhead)
-> -		freeaddrinfo(addrhead);
-> +	nfs_freeaddrinfo(addrhead);
-> 	return (bounded ? 0 : rc);
-> }
->=20
-> diff --git a/utils/statd/hostname.c b/utils/statd/hostname.c
-> index 8cccdb8..c9e22d3 100644
-> --- a/utils/statd/hostname.c
-> +++ b/utils/statd/hostname.c
-> @@ -35,6 +35,7 @@
-> #include <netdb.h>
-> #include <arpa/inet.h>
->=20
-> +#include "exportfs.h"
-> #include "sockaddr.h"
-> #include "statd.h"
-> #include "xlog.h"
-> @@ -203,7 +204,7 @@ statd_canonical_name(const char *hostname)
-> 		_Bool result;
-> 		result =3D get_nameinfo(ai->ai_addr, ai->ai_addrlen,
-> 					buf, (socklen_t)sizeof(buf));
-> -		freeaddrinfo(ai);
-> +		nfs_freeaddrinfo(ai);
-> 		if (!result || buf[0] =3D=3D '\0')
-> 			/* OK to use presentation address,
-> 			 * if no reverse map exists */
-> @@ -217,7 +218,7 @@ statd_canonical_name(const char *hostname)
-> 	if (ai =3D=3D NULL)
-> 		return NULL;
-> 	strcpy(buf, ai->ai_canonname);
-> -	freeaddrinfo(ai);
-> +	nfs_freeaddrinfo(ai);
->=20
-> 	return strdup(buf);
-> }
-> @@ -253,7 +254,7 @@ statd_canonical_list(const char *hostname)
-> 		_Bool result;
-> 		result =3D get_nameinfo(ai->ai_addr, ai->ai_addrlen,
-> 					buf, (socklen_t)sizeof(buf));
-> -		freeaddrinfo(ai);
-> +		nfs_freeaddrinfo(ai);
-> 		if (result)
-> 			goto out;
-> 	}
-> @@ -308,8 +309,8 @@ statd_matchhostname(const char *hostname1, const =
-char *hostname2)
-> 			}
->=20
+> +	xs_poll_check_readable(transport);
 > out:
-> -	freeaddrinfo(results2);
-> -	freeaddrinfo(results1);
-> +	nfs_freeaddrinfo(results2);
-> +	nfs_freeaddrinfo(results1);
->=20
-> 	xlog(D_CALL, "%s: hostnames %s and %s %s", __func__,
-> 			hostname1, hostname2,
-> diff --git a/utils/statd/sm-notify.c b/utils/statd/sm-notify.c
-> index 29dad38..05d72a3 100644
-> --- a/utils/statd/sm-notify.c
-> +++ b/utils/statd/sm-notify.c
-> @@ -37,6 +37,7 @@
-> #include "xlog.h"
-> #include "nsm.h"
-> #include "nfsrpc.h"
-> +#include "exportfs.h"
->=20
-> /* glibc before 2.3.4 */
-> #ifndef AI_NUMERICSERV
-> @@ -179,7 +180,7 @@ smn_verify_my_name(const char *name)
-> 	case 0:
-> 		/* @name was a presentation address */
-> 		retval =3D smn_get_hostname(ai->ai_addr, ai->ai_addrlen, =
-name);
-> -		freeaddrinfo(ai);
-> +		nfs_freeaddrinfo(ai);
-> 		if (retval =3D=3D NULL)
-> 			return NULL;
-> 		break;
-> @@ -253,8 +254,7 @@ static void smn_forget_host(struct nsm_host *host)
-> 	free((void *)host->my_name);
-> 	free((void *)host->mon_name);
-> 	free(host->name);
-> -	if (host->ai)
-> -		freeaddrinfo(host->ai);
-> +	nfs_freeaddrinfo(host->ai);
->=20
-> 	free(host);
+> 	mutex_unlock(&transport->recv_mutex);
 > }
-> @@ -430,7 +430,7 @@ retry:
-> 	if (srcport) {
-> 		if (bind(sock, ai->ai_addr, ai->ai_addrlen) =3D=3D -1) {
-> 			xlog(L_ERROR, "Failed to bind RPC socket: %m");
-> -			freeaddrinfo(ai);
-> +			nfs_freeaddrinfo(ai);
-> 			(void)close(sock);
-> 			return -1;
-> 		}
-> @@ -440,7 +440,7 @@ retry:
-> 		if (smn_bindresvport(sock, ai->ai_addr) =3D=3D -1) {
-> 			xlog(L_ERROR,
-> 				"bindresvport on RPC socket failed: =
-%m");
-> -			freeaddrinfo(ai);
-> +			nfs_freeaddrinfo(ai);
-> 			(void)close(sock);
-> 			return -1;
-> 		}
-> @@ -449,13 +449,13 @@ retry:
-> 		se =3D getservbyport((int)nfs_get_port(ai->ai_addr), =
-"udp");
-> 		if (se !=3D NULL && retry_cnt < 100) {
-> 			retry_cnt++;
-> -			freeaddrinfo(ai);
-> +			nfs_freeaddrinfo(ai);
-> 			(void)close(sock);
-> 			goto retry;
-> 		}
-> 	}
->=20
-> -	freeaddrinfo(ai);
-> +	nfs_freeaddrinfo(ai);
-> 	return sock;
-> }
->=20
 > --=20
 > 2.20.1
 >=20
