@@ -2,102 +2,140 @@ Return-Path: <SRS0=cCtV=Q2=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS autolearn=ham
+X-Spam-Status: No, score=-0.9 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id BB733C43381
-	for <linux-nfs@archiver.kernel.org>; Tue, 19 Feb 2019 01:00:35 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 77050C43381
+	for <linux-nfs@archiver.kernel.org>; Tue, 19 Feb 2019 02:09:40 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 921DB21738
-	for <linux-nfs@archiver.kernel.org>; Tue, 19 Feb 2019 01:00:35 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 378A121773
+	for <linux-nfs@archiver.kernel.org>; Tue, 19 Feb 2019 02:09:40 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="fMyso69k"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1732574AbfBSBAe (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 18 Feb 2019 20:00:34 -0500
-Received: from mail.cn.fujitsu.com ([183.91.158.132]:49050 "EHLO
-        heian.cn.fujitsu.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1732571AbfBSBAe (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Feb 2019 20:00:34 -0500
-X-IronPort-AV: E=Sophos;i="5.58,385,1544457600"; 
-   d="scan'208";a="54669620"
-Received: from unknown (HELO cn.fujitsu.com) ([10.167.33.5])
-  by heian.cn.fujitsu.com with ESMTP; 19 Feb 2019 09:00:04 +0800
-Received: from G08CNEXCHPEKD03.g08.fujitsu.local (unknown [10.167.33.85])
-        by cn.fujitsu.com (Postfix) with ESMTP id 5BEF14C4C526;
-        Tue, 19 Feb 2019 09:00:01 +0800 (CST)
-Received: from [10.167.226.33] (10.167.226.33) by
- G08CNEXCHPEKD03.g08.fujitsu.local (10.167.33.89) with Microsoft SMTP Server
- (TLS) id 14.3.408.0; Tue, 19 Feb 2019 09:00:05 +0800
-Subject: Re: [PATCH] CACHE: Fix test script as delegation being introduced
-To:     <mora@netapp.com>
-CC:     <linux-nfs@vger.kernel.org>
-References: <1548297019-9398-1-git-send-email-suyj.fnst@cn.fujitsu.com>
-From:   "Su Yanjun <suyj.fnst@cn.fujitsu.com>" <suyj.fnst@cn.fujitsu.com>
-Message-ID: <694c9815-831f-ec96-2d18-13be63910dc1@cn.fujitsu.com>
-Date:   Tue, 19 Feb 2019 09:00:01 +0800
-User-Agent: Mozilla/5.0 (Windows NT 6.1; WOW64; rv:60.0) Gecko/20100101
- Thunderbird/60.3.3
+        id S1726260AbfBSCJj (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 18 Feb 2019 21:09:39 -0500
+Received: from mail-ed1-f44.google.com ([209.85.208.44]:34180 "EHLO
+        mail-ed1-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726225AbfBSCJj (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Feb 2019 21:09:39 -0500
+Received: by mail-ed1-f44.google.com with SMTP id b3so15456354ede.1
+        for <linux-nfs@vger.kernel.org>; Mon, 18 Feb 2019 18:09:37 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc:content-transfer-encoding;
+        bh=tSlZ1opQXdL7qPnXXGV+oi11COU7cogrhVlhiWXiQdU=;
+        b=fMyso69ke4DFibWM6PDqmmFyVUi7wEBEyxSrHnQdef4pvvgygIlf+4exXe1vi+eYBo
+         bjbs9agmaqjBeHo3CgEldIj0hzXAr7oXf4gIciaVD8dinKXWHy4f6Ma5NQPLym2qwLgU
+         +HXBgq3GTW5WbufTp41BbeE1SPxoAD9q45ZQkfTEkLj3M6GD97ZRI0Rl6NSw2Xv25ohz
+         sKe76WJ0IRL6R3TIawaNsbsPMY4NCG72o0RqF76mrT9pFabfYLml2rbrtLk4ezAkEIZs
+         QMeiZDR1PwGyzmlChX+C4ML3sdhuYiVeOm0tidpkIgj2nTH0OaXso+bm1AkqJryovcLj
+         Iicw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc:content-transfer-encoding;
+        bh=tSlZ1opQXdL7qPnXXGV+oi11COU7cogrhVlhiWXiQdU=;
+        b=M6a55Sr/QSyETTuQcH6aauO9e2bps538Mj3TK8PGkgzXe0Ob4esQI1AbJi5dc2p/yk
+         iMl/bPIy7IMF6qmvgaQGEC9dI2ImE+vFnghrvlmwjiv0ONdPCiThtWgPGtyfW8cOmfMj
+         4v6gsAMIXJVlKsuFQ4diCTy1f679upMZyPWY/BSbT3tJg+xirtf+qpL9EHIZ64QN7eFu
+         naV2iOcjlch+gfAc12ICubEO2MkFvqcHRXkPPfU+kYj/hkCrhzHSvjjL9k5EYW92REwA
+         IyrDy+7ro59HHvLGnDWBEnRl8+ODeRuuYCaIZX3tQ30DeJ4G9s77KrUmHPYHVBZy3BKI
+         /9qQ==
+X-Gm-Message-State: AHQUAuYmvsd549rsaXCkWsikq1bcgomF80QnxX5Unk0hqRGnzMRoRajx
+        2A7IiwmICB7D+q/vnQsK929R9G+PhUG8cWzaZqDlEkWd
+X-Google-Smtp-Source: AHgI3Ibsw3OxljJBQPYHBy8eIB37l5BlAyLPb8ug9RxqaE0O/HY+H9HDNbKM2AP/3fCdXq8cq0/YmFBS7SBsymp/I98=
+X-Received: by 2002:a17:906:1191:: with SMTP id n17mr18702653eja.47.1550542177066;
+ Mon, 18 Feb 2019 18:09:37 -0800 (PST)
 MIME-Version: 1.0
-In-Reply-To: <1548297019-9398-1-git-send-email-suyj.fnst@cn.fujitsu.com>
-Content-Type: text/plain; charset="gbk"; format=flowed
-Content-Transfer-Encoding: 7bit
-X-Originating-IP: [10.167.226.33]
-X-yoursite-MailScanner-ID: 5BEF14C4C526.A8BCB
-X-yoursite-MailScanner: Found to be clean
-X-yoursite-MailScanner-From: suyj.fnst@cn.fujitsu.com
+References: <CANidX5RGLuvdS82TpxuagUsA4DmUochDv2AwX7rwHdD-q+Khbg@mail.gmail.com>
+ <20190218202146.GB5879@fieldses.org>
+In-Reply-To: <20190218202146.GB5879@fieldses.org>
+From:   Gefei Li <gefeili.2013@gmail.com>
+Date:   Tue, 19 Feb 2019 10:09:25 +0800
+Message-ID: <CANidX5RjDwJ=yN=aG_D+pQ4fzJ-gXrdqbmwin9eOkyerCU6QRA@mail.gmail.com>
+Subject: Re: linux NFS client lock file cannot get a expected response
+To:     "J. Bruce Fields" <bfields@fieldses.org>
+Cc:     linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Any ping?
+Thanks a lot for your reply! I tried to capture and analyse the
+network packets with wireshark and find that a NFS4ERR_LOCKED(10012)
+replied in my experiment 2.2(open with O_SYNC and write) Write
+response. Does this mean that my NFS server uses mandatory locking?
 
-On 2019/1/24 10:30, Su Yanjun wrote:
-> When we run nfstest_cache with nfsversion=4, it fails.
-> As i know nfsv4 introduces delegation, so nfstest_cache runs fail since nfsv4.
->
-> The test commandline is as below:
->   ./nfstest_cache --nfsversion=4 -e  /nfsroot --server 192.168.102.143 --client 192.168.102.142 --runtest acregmax_data --verbose all
->
-> This patch adds compatible code for nfsv3 and nfsv4.
-> When we test nfsv4, just use 'chmod' to recall delegation, then
-> run the test. As 'chmod' will modify atime, so use 'noatime' mount option.
->
-> Signed-off-by: Su Yanjun <suyj.fnst@cn.fujitsu.com>
-> ---
->   test/nfstest_cache | 12 +++++++++++-
->   1 file changed, 11 insertions(+), 1 deletion(-)
->
-> diff --git a/test/nfstest_cache b/test/nfstest_cache
-> index 0838418..a31d48f 100755
-> --- a/test/nfstest_cache
-> +++ b/test/nfstest_cache
-> @@ -165,8 +165,13 @@ class CacheTest(TestUtil):
->               fd = None
->               attr = 'data' if data_cache else 'attribute'
->               header = "Verify consistency of %s caching with %s on a file" % (attr, self.nfsstr())
-> +
->               # Mount options
-> -            mtopts = "hard,intr,rsize=4096,wsize=4096"
-> +            if self.nfsversion >= 4:
-> +                mtopts = "noatime,hard,intr,rsize=4096,wsize=4096"
-> +            else:
-> +                mtopts = "hard,intr,rsize=4096,wsize=4096"
-> +
->               if actimeo:
->                   header += " actimeo = %d" % actimeo
->                   mtopts += ",actimeo=%d" % actimeo
-> @@ -216,6 +221,11 @@ class CacheTest(TestUtil):
->               if fstat.st_size != dlen:
->                   raise Exception("Size of newly created file is %d, should have been %d" %(fstat.st_size, dlen))
->   
-> +            if self.nfsversion >= 4:
-> +                # revoke delegation
-> +                self.dprint('DBG3', "revoke delegation")
-> +                self.clientobj.run_cmd('chmod +x %s' % self.absfile)
-> +
->               if acregmax:
->                   # Stat the unchanging file until acregmax is hit
->                   # each stat doubles the valid cache time
+But something unexpected is that an EAGAIN(Resource temporarily
+unavailable) returned in user space, I think an EACCES/EIO is better
+for locked situations, what's your idea about this?
 
+>> You're checking the file content on the server somehow?
+I close my lock program in my first shell, and check from both
+server-side(use notepad to view the file) and client-side(cat/vim to
+view the file), the file content remained unchanged.
 
+Best Regards,
+Gefei
+
+On Tue, Feb 19, 2019 at 4:22 AM J. Bruce Fields <bfields@fieldses.org> wrot=
+e:
+>
+> On Mon, Feb 18, 2019 at 05:11:47PM +0800, Gefei Li wrote:
+> > I am recently testing linux nfs lock with NFS share from a WinServer
+> > 2016. I tried to write a file which has already been locked with fcntl
+> > exclusively, but the response of `write` syscall is neither
+> > `Permission denied`, nor successfully written with file content
+> > changed. Here is several experiments I did:
+> >
+> > The first shell runs c program, calling `fcntl` to lock file
+> > exclusively =E2=80=9Cfcntl(fd, F_SETLKW, &fl)=E2=80=9D
+> >
+> > 2.1 The second shell tried to open with flag O_RDWR, and write a
+> > buffer to the same file, write returned the correct bytes written, but
+> > the file content remained unchanged.
+>
+> You're checking the file content on the server somehow?
+>
+> The client's caching the write--it returns success to the application
+> and then sends the actual write to the server later.  Anything else will
+> hurt performance of a lot of applications.
+>
+> > 2.2 The second shell tried to open with flag O_RDWR|O_SYNC, write the
+> > same buffer to the same file, write operation returned EAGAIN
+> > 2.3 The same operation on ext4 file system gives me a expected
+> > behavior the same as advisory lock expressed, successfully written
+> > with file content changed.
+> >
+> > I reviewed NFS 4.1 protocol(RFC 5661 page 185), the nfs server can
+> > determine whether byte range lock can be either mandatory or advisory,
+> > but I think 2.1 and 2.2 gives me some unexpected behavior as these
+> > two.. What=E2=80=99s your idea about this? Can you give me some tips to=
+ work
+> > this out?
+>
+> There's also section 10.3.3, but I never understood how that was really
+> supposed to work.  It recommends the client turn off caching when
+> mandatory locking is in effect--but the only way it gives the client
+> that mandatory locking is in effect is by seeing an ERR_LOCKED reply to
+> a READ or WRITE, and by that point it's too late.
+>
+> Anyway, as far as I can tell the results you report are what's expected.
+>
+> --b.
+>
+> > Looking forward for your reply. Thanks in advance!
+> >
+> > BTW, my linux kernel version is 4.15.0, linux release: ubuntu 16.04
+> > from Azure marketplace, my nfs-common version is
+> > "nfs-common/xenial-updates,now 1:1.2.8-9ubuntu12.1 amd64" from ubuntu
+> > apt repo.
+> >
+> > Thanks,
+> > Gefei
