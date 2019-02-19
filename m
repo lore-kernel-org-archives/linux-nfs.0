@@ -2,163 +2,129 @@ Return-Path: <SRS0=cCtV=Q2=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.2 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,UNPARSEABLE_RELAY autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-1.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A9104C43381
-	for <linux-nfs@archiver.kernel.org>; Tue, 19 Feb 2019 14:55:02 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 757A3C43381
+	for <linux-nfs@archiver.kernel.org>; Tue, 19 Feb 2019 15:13:32 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 78BF620665
-	for <linux-nfs@archiver.kernel.org>; Tue, 19 Feb 2019 14:55:01 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 2037D20665
+	for <linux-nfs@archiver.kernel.org>; Tue, 19 Feb 2019 15:13:32 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="odJlzxjh"
+	dkim=pass (1024-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="A+jpOJar"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726180AbfBSOzA (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 19 Feb 2019 09:55:00 -0500
-Received: from aserp2130.oracle.com ([141.146.126.79]:41978 "EHLO
-        aserp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725885AbfBSOzA (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Feb 2019 09:55:00 -0500
-Received: from pps.filterd (aserp2130.oracle.com [127.0.0.1])
-        by aserp2130.oracle.com (8.16.0.27/8.16.0.27) with SMTP id x1JEsSUC196279;
-        Tue, 19 Feb 2019 14:54:58 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=content-type :
- mime-version : subject : from : in-reply-to : date : cc :
- content-transfer-encoding : message-id : references : to;
- s=corp-2018-07-02; bh=XmR8oWiAzZE4CX6Hc8HvILv5HF06U04QfKjz6RwPWLQ=;
- b=odJlzxjhMYiUUeoNvIPUDu6aTY7tNiC6Y6me6dOCiIhoXC/wilJtCHEJN+tXBp/TTKml
- eyCCQaYnMYqCzypNBgDm4tBQGefi62jH6fJ0pl+qNeTzlJ23HGXLgZV28tgX987fjxbP
- DThEWCHQs2sb8dMcUvXh6TdWI6cEgeC3EL4FEysJgcMTLN/o/Zb0njC1gOuC0T3TDbgK
- //lgWgaSzlSJ9r5wHPQRLCC+lUSOFpS1yTCmmMcc/KaS5jiHucj7heD09jvcymx0wmtC
- qZyvdhZeE/z5QzabqPhqqyApIc4gZaNyUbN7wKFQXgcflfBpETEb/fnpjFJOZp+IGB4/ vw== 
-Received: from userv0021.oracle.com (userv0021.oracle.com [156.151.31.71])
-        by aserp2130.oracle.com with ESMTP id 2qp81e3trh-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Tue, 19 Feb 2019 14:54:57 +0000
-Received: from aserv0121.oracle.com (aserv0121.oracle.com [141.146.126.235])
-        by userv0021.oracle.com (8.14.4/8.14.4) with ESMTP id x1JEsuw2006517
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Tue, 19 Feb 2019 14:54:57 GMT
-Received: from abhmp0004.oracle.com (abhmp0004.oracle.com [141.146.116.10])
-        by aserv0121.oracle.com (8.14.4/8.13.8) with ESMTP id x1JEsuSC025535;
-        Tue, 19 Feb 2019 14:54:56 GMT
-Received: from anon-dhcp-171.1015granger.net (/68.61.232.219)
-        by default (Oracle Beehive Gateway v4.0)
-        with ESMTP ; Tue, 19 Feb 2019 06:54:56 -0800
-Content-Type: text/plain;
-        charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 12.2 \(3445.102.3\))
+        id S1726352AbfBSPNb (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 19 Feb 2019 10:13:31 -0500
+Received: from mail-eopbgr820128.outbound.protection.outlook.com ([40.107.82.128]:31520
+        "EHLO NAM01-SN1-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1727846AbfBSPNa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 19 Feb 2019 10:13:30 -0500
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=hammerspace.com;
+ s=selector1;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=j3UFEPmMtfVai6GxNKSaxgzpBfWo3CH3dK6bjlo9UO8=;
+ b=A+jpOJarYHygmFdrZt2mF02RllXMWetla8D3z9t3OAXMKj01JHK748hWCTZjOOsVw3nX/s6NOUFFcuqG1duB/ZKfX7qSXz4qCG03HxMSiangWmmGn4BxRWqsyXE84ujUZfGqGAskryqxNNcMnhxQKvq8py15Aj8DVX3i1qc+9rE=
+Received: from SN6PR13MB2494.namprd13.prod.outlook.com (52.135.95.148) by
+ SN6PR13MB2367.namprd13.prod.outlook.com (52.135.94.147) with Microsoft SMTP
+ Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ 15.20.1643.8; Tue, 19 Feb 2019 15:13:27 +0000
+Received: from SN6PR13MB2494.namprd13.prod.outlook.com
+ ([fe80::c1d2:93da:11b5:c4d4]) by SN6PR13MB2494.namprd13.prod.outlook.com
+ ([fe80::c1d2:93da:11b5:c4d4%3]) with mapi id 15.20.1643.012; Tue, 19 Feb 2019
+ 15:13:27 +0000
+From:   Trond Myklebust <trondmy@hammerspace.com>
+To:     "chuck.lever@oracle.com" <chuck.lever@oracle.com>
+CC:     "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
 Subject: Re: [PATCH] SUNRPC: Use poll() to fix up the socket requeue races
-From:   Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20190219140616.123141-1-trond.myklebust@hammerspace.com>
-Date:   Tue, 19 Feb 2019 09:54:55 -0500
-Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Transfer-Encoding: quoted-printable
-Message-Id: <A2BBC175-F60D-4C61-B70F-479952D2CD21@oracle.com>
+Thread-Topic: [PATCH] SUNRPC: Use poll() to fix up the socket requeue races
+Thread-Index: AQHUyFyJR973skBS7kOFl7asZXFqtaXnNW2AgAAFKgA=
+Date:   Tue, 19 Feb 2019 15:13:26 +0000
+Message-ID: <e0a1f082b017aadb98dec3f8df6de7a49c078fac.camel@hammerspace.com>
 References: <20190219140616.123141-1-trond.myklebust@hammerspace.com>
-To:     Trond Myklebust <trondmy@gmail.com>
-X-Mailer: Apple Mail (2.3445.102.3)
-X-Proofpoint-Virus-Version: vendor=nai engine=5900 definitions=9171 signatures=668683
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 priorityscore=1501 malwarescore=0
- suspectscore=0 phishscore=0 bulkscore=0 spamscore=0 clxscore=1015
- lowpriorityscore=0 mlxscore=0 impostorscore=0 mlxlogscore=999 adultscore=0
- classifier=spam adjust=0 reason=mlx scancount=1 engine=8.0.1-1810050000
- definitions=main-1902190112
+         <A2BBC175-F60D-4C61-B70F-479952D2CD21@oracle.com>
+In-Reply-To: <A2BBC175-F60D-4C61-B70F-479952D2CD21@oracle.com>
+Accept-Language: en-US, en-GB
+Content-Language: en-US
+X-MS-Has-Attach: 
+X-MS-TNEF-Correlator: 
+x-originating-ip: [68.40.189.247]
+x-ms-publictraffictype: Email
+x-ms-office365-filtering-correlation-id: 120708e6-72b4-409e-d950-08d6967cccad
+x-microsoft-antispam: BCL:0;PCL:0;RULEID:(2390118)(7020095)(4652040)(8989299)(5600110)(711020)(4605104)(4534185)(4627221)(201703031133081)(201702281549075)(8990200)(2017052603328)(7153060)(7193020);SRVR:SN6PR13MB2367;
+x-ms-traffictypediagnostic: SN6PR13MB2367:
+x-microsoft-exchange-diagnostics: =?utf-8?B?MTtTTjZQUjEzTUIyMzY3OzIzOmUwR3RBVlByK2ZWc0UvNHNiWU1uVkZEUmE1?=
+ =?utf-8?B?QmhERmdqWTg1V2c0VVZrbDc2QmkyTmpNd1VSNG0zRlVrMHEwL0tXM3pZTkFD?=
+ =?utf-8?B?U1U0VjdGRlcvQ3RwZno5bStUazV5emlIdjk4YmlVc3FrRTZJbU9rRTkzR0Nn?=
+ =?utf-8?B?NDlOdnJJOXdDeHdJTFpONWJ6d0ptSHFuRE8wdjQ2V2U4OEJkSFF2YUNwSDZ4?=
+ =?utf-8?B?RXlnY09lS21raHF1Q1pZZVVndmRPYTZzTE4wRER3SU9pT3pHM0tOLzdwMFYy?=
+ =?utf-8?B?Z1k5eDBTb0dRME5ZWVhpdWwyRzB0N2tjQzNsNVhMK0NkMjFTTkhObUZkV2Ro?=
+ =?utf-8?B?TG80VW5ER0VCUFJ1RWw0TWVwOVc5ellSaWJuK3pQYVVubGVnUXdQemFSUEFK?=
+ =?utf-8?B?L2M4Y1kyekEweng2MTlYREpmV0F5ZjhHRUlDSHh3OGFXaysvcm50MU9rM3ZK?=
+ =?utf-8?B?VEhEeEFML0x5Q2tDOG9CQW5tZTlzQVZERERjWm1zVDlHRjFQb3BwWGVzWFBX?=
+ =?utf-8?B?bjNXcUhzSnFhWUZyQlV0cFphQjRxMlVhOGtIVkVNdW16QTlKUHNRRVVCR21z?=
+ =?utf-8?B?dytJYVU5aUlRNEtVRjRFbFVNUGxrOFI0OUVDa2xVR0ZPZEFERzVSb0lNZHl1?=
+ =?utf-8?B?ZFFsS1dwck9CUUJCN0k2YVNYZFJUSmFmRWt5UDJxU2l0cXhzQjZmaDdvODlN?=
+ =?utf-8?B?UWhwWkFzRGdCaHQ1ZkdteWpOeHZJVWUwNjB4Mmg1Vk5vYlJCZ1liYS9HTXAr?=
+ =?utf-8?B?dk1lU29UYk0yZFNNbHZCeWx6b3owYjFHS1JIMW1wdlNBdG5oaHFHUWZxM1V5?=
+ =?utf-8?B?TlpoL2N2b0NOdURCc1NxWGYrUjJENzdkV2JlYjhTV0k1eko4UGhsbTNUMTc2?=
+ =?utf-8?B?STVXME5tNFd0eklnbDZMOWZEbXhBWDdsdWdSMHYreTZIbmkxWm8wWUx5N3Rn?=
+ =?utf-8?B?NTZ1NnkzQzFJWDE4eTlDUGhzRXRWR00yQWlyQXN4VFp4bTBkSUdEcXQ5NVdz?=
+ =?utf-8?B?a1hCTlpFVUdPaUd1TFlJWlJvL0tzTGxLWkg4ZGpnUTNnY3pzMGZaVHplaFV6?=
+ =?utf-8?B?ZVBuTWRzNURMK0N3MVJ5ajU4K2lyM3BPUUQ5RUI4YXFWMStOMXhNK3UyMmY0?=
+ =?utf-8?B?dzdZWU9qREYwZFZqRXhwTWc1cHNPUGs3MHo0WlVFQUFDR0Q2RHB3ZDhYYy9n?=
+ =?utf-8?B?MGVxeVJmdVFYZVZxejBnWkY0SEkvS3J1aGRGNHllMjV3Mzk4L2dmNmhmYnJs?=
+ =?utf-8?B?anRwT05SdWp1SENTanJBSGdwV1NJTDNTc2Qvd2MyaG9DUHdZbGZ2R3dLZUwx?=
+ =?utf-8?B?Z2pDWnk2TUJTRTliaW4zeDJWaTJPaXVLQU8ySFZBM2VqZlVBL1BYMDJZWVdM?=
+ =?utf-8?B?b2c4R2pwc1lTOXg1SDZmdXhnQkxydXpuOUJJRlp2cVExT3dJSGdOeHdrbmg3?=
+ =?utf-8?B?cGpZelE0UDEyc0owSWtzZGVXTS9ZYUh5YUhSRWsydnB4d1hlb0tXQ2E1MTc5?=
+ =?utf-8?B?RTN6U3VUOS9RNncxVE8yZFBtcTJWOVlmZVNtVnBtWStTWXFFbi81Y0tMUXBn?=
+ =?utf-8?B?MityaTIrTnN2QlIrVUgwL2srWWovS0VYTXBwTVZZNHhvV1pLMWpiVUttTHcw?=
+ =?utf-8?B?SVJHcy96QmxJTHczNmtrRWhOa1VTWFFKYnB0ZDN5aXlDNnk2MW01YzIrdDZM?=
+ =?utf-8?B?NmpIZmF2aW04RUsyUnM3S0JkdHZ3Z0RVdEFITjdKT3cwZm1ydGJ5TmJzQ1Vj?=
+ =?utf-8?Q?tNK/2ZajjEs18VgKFduYvO9hCTE/544MPoz5o=3D?=
+x-microsoft-antispam-prvs: <SN6PR13MB23679BFF5477EE84FCDF2896B87C0@SN6PR13MB2367.namprd13.prod.outlook.com>
+x-forefront-prvs: 09538D3531
+x-forefront-antispam-report: SFV:NSPM;SFS:(10019020)(376002)(366004)(136003)(346002)(39830400003)(396003)(189003)(199004)(14454004)(53936002)(6246003)(36756003)(6512007)(2906002)(105586002)(106356001)(71190400001)(68736007)(4744005)(71200400001)(6916009)(478600001)(2501003)(6506007)(53546011)(7736002)(305945005)(2351001)(6346003)(102836004)(76176011)(6486002)(86362001)(66066001)(6116002)(3846002)(118296001)(2616005)(316002)(476003)(486006)(5660300002)(81166006)(5640700003)(11346002)(81156014)(26005)(6436002)(186003)(8676002)(446003)(229853002)(8936002)(97736004)(25786009)(99286004)(4326008)(14444005)(256004);DIR:OUT;SFP:1102;SCL:1;SRVR:SN6PR13MB2367;H:SN6PR13MB2494.namprd13.prod.outlook.com;FPR:;SPF:None;LANG:en;PTR:InfoNoRecords;MX:1;A:1;
+received-spf: None (protection.outlook.com: hammerspace.com does not designate
+ permitted sender hosts)
+authentication-results: spf=none (sender IP is )
+ smtp.mailfrom=trondmy@hammerspace.com; 
+x-ms-exchange-senderadcheck: 1
+x-microsoft-antispam-message-info: Z2E8ZwN/qYOiujaAXUSOWGguYMxr7MEKMiVIbSIyAjbtUUJlRgJyaMfck4EMqhzJ5Gwuy1jGRwDzpZn2UOJ0wF+CXl9sOcwYGcCrgdoi5je/lxKLtc461A9UX/ufVJbYc0hCVeoSU20r/2/oKBcOyUkyR47q+2O6jgdYx6Me4H7Oc+3YmHcnfH39N1zF+2kGKAmgKySqebSBFb2sfKVpt5veH7SJWQmxO+44ld/KtTHVS+AuM1SQbTLOCK+K08t2BUr1Ue7WqcSuHs01/4wxpXymbLk6gMDHOWIZRCPT/UZNWe6bgDcpQ6c27pmxcr2Jz5EUIMnaqukxJHpUgCYoEkQcpGZv4ZwdylefR/UPd1rwBlBjOI6G67NbvAAUl4VyYy5zCze2KlX/4FKHVmsqYEe/8Mqch80i3JaPyvhrWvI=
+Content-Type: text/plain; charset="utf-8"
+Content-ID: <6FE6241FF9BA1E42B90A41374AA6A20A@namprd13.prod.outlook.com>
+Content-Transfer-Encoding: base64
+MIME-Version: 1.0
+X-OriginatorOrg: hammerspace.com
+X-MS-Exchange-CrossTenant-Network-Message-Id: 120708e6-72b4-409e-d950-08d6967cccad
+X-MS-Exchange-CrossTenant-originalarrivaltime: 19 Feb 2019 15:13:27.2329
+ (UTC)
+X-MS-Exchange-CrossTenant-fromentityheader: Hosted
+X-MS-Exchange-CrossTenant-id: 0d4fed5c-3a70-46fe-9430-ece41741f59e
+X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: SN6PR13MB2367
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hi Trond-
-
-> On Feb 19, 2019, at 9:06 AM, Trond Myklebust <trondmy@gmail.com> =
-wrote:
->=20
-> Because we clear XPRT_SOCK_DATA_READY before reading, we can end up
-> with a situation where new data arrives, causing xs_data_ready() to
-> queue up a second receive worker job for the same socket, which then
-> immediately gets stuck waiting on the transport receive mutex.
-> The fix is to only clear XPRT_SOCK_DATA_READY once we're done reading,
-> and then to use poll() to check if we might need to queue up a new
-> job in order to deal with any new data.
-
-Does this fix an application-visible hang, or is it merely a performance
-optimization?
-
-
-> Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
-> ---
-> net/sunrpc/xprtsock.c | 17 +++++++++++++++--
-> 1 file changed, 15 insertions(+), 2 deletions(-)
->=20
-> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-> index f5d7dcd9e8d9..a721c843d5d3 100644
-> --- a/net/sunrpc/xprtsock.c
-> +++ b/net/sunrpc/xprtsock.c
-> @@ -656,13 +656,25 @@ xs_read_stream(struct sock_xprt *transport, int =
-flags)
-> 	return ret !=3D 0 ? ret : -ESHUTDOWN;
-> }
->=20
-> +static void xs_poll_check_readable(struct sock_xprt *transport)
-> +{
-> +	struct socket *sock =3D transport->sock;
-> +	__poll_t events;
-> +
-> +	clear_bit(XPRT_SOCK_DATA_READY, &transport->sock_state);
-> +	events =3D sock->ops->poll(NULL, sock, NULL);
-> +	if (!(events & (EPOLLIN | EPOLLRDNORM)) || events & EPOLLRDHUP)
-> +		return;
-> +	if (!test_and_set_bit(XPRT_SOCK_DATA_READY, =
-&transport->sock_state))
-> +		queue_work(xprtiod_workqueue, &transport->recv_worker);
-> +}
-> +
-> static void xs_stream_data_receive(struct sock_xprt *transport)
-> {
-> 	size_t read =3D 0;
-> 	ssize_t ret =3D 0;
->=20
-> 	mutex_lock(&transport->recv_mutex);
-> -	clear_bit(XPRT_SOCK_DATA_READY, &transport->sock_state);
-> 	if (transport->sock =3D=3D NULL)
-> 		goto out;
-> 	for (;;) {
-> @@ -672,6 +684,7 @@ static void xs_stream_data_receive(struct =
-sock_xprt *transport)
-> 		read +=3D ret;
-> 		cond_resched();
-> 	}
-> +	xs_poll_check_readable(transport);
-> out:
-> 	mutex_unlock(&transport->recv_mutex);
-> 	trace_xs_stream_read_data(&transport->xprt, ret, read);
-> @@ -1362,7 +1375,6 @@ static void xs_udp_data_receive(struct sock_xprt =
-*transport)
-> 	int err;
->=20
-> 	mutex_lock(&transport->recv_mutex);
-> -	clear_bit(XPRT_SOCK_DATA_READY, &transport->sock_state);
-> 	sk =3D transport->inet;
-> 	if (sk =3D=3D NULL)
-> 		goto out;
-> @@ -1374,6 +1386,7 @@ static void xs_udp_data_receive(struct sock_xprt =
-*transport)
-> 		consume_skb(skb);
-> 		cond_resched();
-> 	}
-> +	xs_poll_check_readable(transport);
-> out:
-> 	mutex_unlock(&transport->recv_mutex);
-> }
-> --=20
-> 2.20.1
->=20
-
---
-Chuck Lever
-
-
-
+T24gVHVlLCAyMDE5LTAyLTE5IGF0IDA5OjU0IC0wNTAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
+SGkgVHJvbmQtDQo+IA0KPiA+IE9uIEZlYiAxOSwgMjAxOSwgYXQgOTowNiBBTSwgVHJvbmQgTXlr
+bGVidXN0IDx0cm9uZG15QGdtYWlsLmNvbT4NCj4gPiB3cm90ZToNCj4gPiANCj4gPiBCZWNhdXNl
+IHdlIGNsZWFyIFhQUlRfU09DS19EQVRBX1JFQURZIGJlZm9yZSByZWFkaW5nLCB3ZSBjYW4gZW5k
+IHVwDQo+ID4gd2l0aCBhIHNpdHVhdGlvbiB3aGVyZSBuZXcgZGF0YSBhcnJpdmVzLCBjYXVzaW5n
+IHhzX2RhdGFfcmVhZHkoKSB0bw0KPiA+IHF1ZXVlIHVwIGEgc2Vjb25kIHJlY2VpdmUgd29ya2Vy
+IGpvYiBmb3IgdGhlIHNhbWUgc29ja2V0LCB3aGljaA0KPiA+IHRoZW4NCj4gPiBpbW1lZGlhdGVs
+eSBnZXRzIHN0dWNrIHdhaXRpbmcgb24gdGhlIHRyYW5zcG9ydCByZWNlaXZlIG11dGV4Lg0KPiA+
+IFRoZSBmaXggaXMgdG8gb25seSBjbGVhciBYUFJUX1NPQ0tfREFUQV9SRUFEWSBvbmNlIHdlJ3Jl
+IGRvbmUNCj4gPiByZWFkaW5nLA0KPiA+IGFuZCB0aGVuIHRvIHVzZSBwb2xsKCkgdG8gY2hlY2sg
+aWYgd2UgbWlnaHQgbmVlZCB0byBxdWV1ZSB1cCBhIG5ldw0KPiA+IGpvYiBpbiBvcmRlciB0byBk
+ZWFsIHdpdGggYW55IG5ldyBkYXRhLg0KPiANCj4gRG9lcyB0aGlzIGZpeCBhbiBhcHBsaWNhdGlv
+bi12aXNpYmxlIGhhbmcsIG9yIGlzIGl0IG1lcmVseSBhDQo+IHBlcmZvcm1hbmNlDQo+IG9wdGlt
+aXphdGlvbj8NCg0KSSdtIG5vdCBhd2FyZSBvZiBhbnkgaGFuZyBhc3NvY2lhdGVkIHdpdGggdGhp
+cyBiZWhhdmlvdXIuIFRoZSBwYXRjaCBpcw0KcmF0aGVyIGludGVuZGVkIGFzIGFuIG9wdGltaXNh
+dGlvbiB0byBhdm9pZCBoYXZpbmcgdGhlc2UgdGhyZWFkcyBibG9jaw0KdXNlbGVzc2x5IG9uIGEg
+bXV0ZXguDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWlu
+ZXIsIEhhbW1lcnNwYWNlDQp0cm9uZC5teWtsZWJ1c3RAaGFtbWVyc3BhY2UuY29tDQoNCg0K
