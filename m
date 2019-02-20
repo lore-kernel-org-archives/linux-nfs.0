@@ -6,118 +6,84 @@ X-Spam-Status: No, score=-1.0 required=3.0 tests=DKIMWL_WL_MED,DKIM_SIGNED,
 	DKIM_VALID,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS,
 	URIBL_BLOCKED autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5F9F0C4360F
-	for <linux-nfs@archiver.kernel.org>; Wed, 20 Feb 2019 06:57:49 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id BEDF3C43381
+	for <linux-nfs@archiver.kernel.org>; Wed, 20 Feb 2019 07:01:12 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 324182183F
-	for <linux-nfs@archiver.kernel.org>; Wed, 20 Feb 2019 06:57:49 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 907832087B
+	for <linux-nfs@archiver.kernel.org>; Wed, 20 Feb 2019 07:01:12 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=paul-moore-com.20150623.gappssmtp.com header.i=@paul-moore-com.20150623.gappssmtp.com header.b="OcCZh083"
+	dkim=pass (2048-bit key) header.d=paul-moore-com.20150623.gappssmtp.com header.i=@paul-moore-com.20150623.gappssmtp.com header.b="G+5tK/0M"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726527AbfBTG5s (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 20 Feb 2019 01:57:48 -0500
-Received: from mail-lj1-f193.google.com ([209.85.208.193]:33355 "EHLO
-        mail-lj1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725857AbfBTG5s (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Feb 2019 01:57:48 -0500
-Received: by mail-lj1-f193.google.com with SMTP id f24-v6so19847046ljk.0
-        for <linux-nfs@vger.kernel.org>; Tue, 19 Feb 2019 22:57:46 -0800 (PST)
+        id S1726121AbfBTHBI (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 20 Feb 2019 02:01:08 -0500
+Received: from mail-lj1-f194.google.com ([209.85.208.194]:39791 "EHLO
+        mail-lj1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726082AbfBTHBI (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Feb 2019 02:01:08 -0500
+Received: by mail-lj1-f194.google.com with SMTP id g80so19833787ljg.6
+        for <linux-nfs@vger.kernel.org>; Tue, 19 Feb 2019 23:01:06 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=paul-moore-com.20150623.gappssmtp.com; s=20150623;
         h=mime-version:references:in-reply-to:from:date:message-id:subject:to
          :cc;
-        bh=ncoDYnqxH3gs9Sc4jdqZc699sEVY31p6X34ojqSqzzM=;
-        b=OcCZh083AzJ6sYc48woP23gRRbpaNKLC68TAdlArP77RO3+mrjVrj/iw4ZpWg3rNV3
-         29swcTzY/zTMAOqxs45u579zp81oWJDiOwSJh6tom9D/tAOgnuzVSLlkcuqb8zkvn041
-         kOisgtVcvn0D2ldK2m99xkgmKknYygp1QYdTxOKnNijCZ/APmJ7hGFeM3e3VsCDdMErt
-         wx0sR0iBJ+9HphZXJkooMsrO2GYHiQuoD7D0L5Nb1CAmiVGw+uEgE5SHW+LeT4H60qrm
-         snbkENIP97Ktg8O/dDr3jUbp95t4Oa9ezjlJLisfHr/j4+wT/VqcxY16IMT2kuOtYSUn
-         LRcw==
+        bh=7n3R0LFJo2U7VhZo2UnoL8uJHngbkUminPwgfsqPKDo=;
+        b=G+5tK/0MzLY46/Py/4V9aGTSfZ+YQfTTLAMVS4TC58uZMxoDqJ6QjISPNm9vxxZsnE
+         oGDkmh5cV4YOHygpL350Z22maHptXHAuVWxg3YDMYHi3VB+Cyi41H+tCOmVzN8ZhlCB/
+         GW+ju7jTGNaLIe3Aj9RiScx6wWGlsDE+G5V1TvgNM83JanhEBeylL9/5ctDtkuEh4uv2
+         MuzFf9oC64CZRU36vt+T7ZZVpIJWGRa/UzbUf6MD8ofxYrPasIukccjLma8Pu0mIgQ8W
+         IQgsPeFsRudZL/QzUH5+Atpjdd42xzBgHPLpigQGy0t+t6SGVG92UZ0uH1l3Ats9VEyU
+         7tUA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:mime-version:references:in-reply-to:from:date
          :message-id:subject:to:cc;
-        bh=ncoDYnqxH3gs9Sc4jdqZc699sEVY31p6X34ojqSqzzM=;
-        b=QXSc1FUOUuzSEKOIkzQFFXP09beO4xt1vnZ8cIJUFiqaGL/YteuJyFIDnrm64D6XJ5
-         jJ0mdZwRK/18q5z0Tydyn4ELLPF8m/XIw2rlzL7JP1ZU3NyP4RGZZW1lrPR5EMOJrORP
-         SiG6sxrJUvfOmXv+4J7fBsAMQL3fKQv7MD/VMcVpdyj30TbVUEOknlUnFAZy3p/pgGFX
-         ksu5ZFu0bY44p67O9e+myIBU3R6hdI8dDYg5GdPnCXEEeTay4Ghhxdzl2mlsrxAiuwCO
-         1Yu7iBknG0GPE3/f/wgeU7sB6V5nLmGvgKqNNBhSV3gHxf7PTVQ89McnOWLeSfu983kn
-         +mww==
-X-Gm-Message-State: AHQUAuZI9Ws5DSE1C7EpXhQ9778YDL2Km35EY8H+6h115+kjoyigYlq0
-        3BFXpN6WWgDEe8rxltb25cTUpPJ481+Ce6xNXrZ+
-X-Google-Smtp-Source: AHgI3IYNFpwogVRQTUBcod7un1tdomwmO6KB9Kx4d3EN4057kTMV12Wev9+tRhU4ylfg5rpiF1lmm8LPwJmAQFU2rTo=
-X-Received: by 2002:a2e:2419:: with SMTP id k25mr8500519ljk.38.1550645865873;
- Tue, 19 Feb 2019 22:57:45 -0800 (PST)
+        bh=7n3R0LFJo2U7VhZo2UnoL8uJHngbkUminPwgfsqPKDo=;
+        b=iSgTjrxQ5YsBE2P9qZdMzJVYrnz3kFztB3CVwY1O78LTv+H2qp5PhlkugmTvtfuJBr
+         iUzON8juc7pgkKuSWvL5mzNqlk6RXM6tvLcVm4cxAmW5Ai410x6TnSAX7JK6J31zMyt3
+         h9/9lu0hKpujUpbx5UET69giOHUJHX3Mh4jkvM5EeQHzGM/e7UVxXp6DfIeLATgF0s+g
+         1/1lzpwgN1+k805Fj933NNEWfK/2EJwlLCxz8AsMp/ejHXjds2Tb+7kBuhKil1Td4ACa
+         BJuIcKClx1z7EOaBGR8HlDlMOyjn5KczWHNcyUyfU/BLUn+wxhv++iIHZfKZoz+bRwj+
+         ONzw==
+X-Gm-Message-State: AHQUAubNkn65ybE3mOkopxj+mo7OY6Arz8pZ70tmcE4waz/GjM41Qgl/
+        quyLqi/2+U/07se0P0oVp8mCH6PvE2gs0NhNTpE7
+X-Google-Smtp-Source: AHgI3IaHO0iAVCrCLitFJ+Mt0v4Frblbu3fm1miPdhBeFL4cgYgEd2Ytz37yGjWDdBAEdE6kQNdX5UmRujc3Rh8Ce1A=
+X-Received: by 2002:a2e:9d17:: with SMTP id t23-v6mr19395612lji.57.1550646065640;
+ Tue, 19 Feb 2019 23:01:05 -0800 (PST)
 MIME-Version: 1.0
-References: <1550432358.2809.21.camel@HansenPartnership.com>
- <155024683432.21651.14153938339749694146.stgit@warthog.procyon.org.uk>
- <155024685321.21651.1504201877881622756.stgit@warthog.procyon.org.uk>
- <19562.1550617574@warthog.procyon.org.uk> <1550629220.11684.3.camel@HansenPartnership.com>
- <054c1e762d28306abd4db9c42fb1c5f4261332fd.camel@themaw.net> <1550634367.11684.6.camel@HansenPartnership.com>
-In-Reply-To: <1550634367.11684.6.camel@HansenPartnership.com>
+References: <155024683432.21651.14153938339749694146.stgit@warthog.procyon.org.uk>
+ <8736ojybw7.fsf@xmission.com> <22055.1550619729@warthog.procyon.org.uk>
+In-Reply-To: <22055.1550619729@warthog.procyon.org.uk>
 From:   Paul Moore <paul@paul-moore.com>
-Date:   Wed, 20 Feb 2019 01:57:34 -0500
-Message-ID: <CAHC9VhQga+bSVEyKbAtfxDsV9RqK5Hv6h-cbs4ArQ3KedxvgpQ@mail.gmail.com>
-Subject: Re: [RFC PATCH 02/27] containers: Implement containers as kernel objects
-To:     James Bottomley <James.Bottomley@hansenpartnership.com>
-Cc:     Ian Kent <raven@themaw.net>, David Howells <dhowells@redhat.com>,
+Date:   Wed, 20 Feb 2019 02:00:54 -0500
+Message-ID: <CAHC9VhTaZ4Gnx_NvoTBTtcrQZppL1_mKM03miOCE2KUBR8z5Sg@mail.gmail.com>
+Subject: Re: [RFC PATCH 00/27] Containers and using authenticated filesystems
+To:     David Howells <dhowells@redhat.com>
+Cc:     "Eric W. Biederman" <ebiederm@xmission.com>,
         keyrings@vger.kernel.org, trond.myklebust@hammerspace.com,
         sfrench@samba.org, linux-security-module@vger.kernel.org,
         linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
         linux-fsdevel@vger.kernel.org, rgb@redhat.com,
         linux-kernel@vger.kernel.org,
-        containers@lists.linux-foundation.org, cgroups@vger.kernel.org
+        Linux Containers <containers@lists.linux-foundation.org>,
+        linux-api@vger.kernel.org
 Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Tue, Feb 19, 2019 at 10:46 PM James Bottomley
-<James.Bottomley@hansenpartnership.com> wrote:
-> On Wed, 2019-02-20 at 11:04 +0800, Ian Kent wrote:
-> > On Tue, 2019-02-19 at 18:20 -0800, James Bottomley wrote:
-> > > On Tue, 2019-02-19 at 23:06 +0000, David Howells wrote:
-> > > > James Bottomley <James.Bottomley@HansenPartnership.com> wrote:
-> > > >
-> > > > > I thought we got agreement years ago that containers don't
-> > > > > exist in Linux as a single entity: they're currently a
-> > > > > collection of cgroups and namespaces some of which may and some
-> > > > > of which may not be local to the entity the orchestration
-> > > > > system thinks of as a "container".
-> > > >
-> > > > I wasn't party to that agreement and don't feel particularly
-> > > > bound by it.
-> > >
-> > > That's not at all relevant, is it?  The point is we have widespread
-> > > uses of namespaces and cgroups that span containers today meaning
-> > > that a "container id" becomes a problematic concept.  What we
-> > > finally got to with the audit people was an unmodifiable label
-> > > which the orchestration system can set ... can't you just use that?
-> >
-> > Sorry James, I fail to see how assigning an id to a collection of
-> > objects constitutes a problem or how that could restrict the way a
-> > container is used.
+On Tue, Feb 19, 2019 at 6:42 PM David Howells <dhowells@redhat.com> wrote:
+> Eric W. Biederman <ebiederm@xmission.com> wrote:
+
+...
+
+> > Looking at your description you are introducing a container id.
 >
-> Rather than rehash the whole argument again, what's the reason you
-> can't use the audit label?  It seems to do what you want in a way that
-> doesn't cause problems.  If you can just use it there's little point
-> arguing over what is effectively a moot issue.
+> Yes.  For audit logging, which was why I cc'd Richard.
 
-Ignoring for a moment whether or not the audit container ID is
-applicable here, one of the things I've been focused on with the audit
-container ID work is trying to make it difficult for other subsystems
-to use it.  I've taken this stance not because I don't think something
-like a container ID would be useful outside the audit subsystem, but
-rather because I'm afraid of how it might be abused by other
-subsystems and that abuse might threaten the existence of the audit
-container ID.
-
-If there is a willingness to implement a general kernel container ID
-that behaves similarly to how the audit container ID is envisioned,
-I'd much rather do that then implement something which is audit
-specific.
+Not to pile on, but it is more important to CC the audit mailing list.
+You can obviously still CC Richard, but you should send it to the
+entire mailing list.
 
 -- 
 paul moore
