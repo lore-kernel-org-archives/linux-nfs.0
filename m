@@ -2,293 +2,128 @@ Return-Path: <SRS0=q2Lh=Q3=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,USER_AGENT_MUTT
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-1.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E662FC43381
-	for <linux-nfs@archiver.kernel.org>; Wed, 20 Feb 2019 02:35:38 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D9EC1C4360F
+	for <linux-nfs@archiver.kernel.org>; Wed, 20 Feb 2019 02:46:42 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id B26C121773
-	for <linux-nfs@archiver.kernel.org>; Wed, 20 Feb 2019 02:35:38 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 9E1202146F
+	for <linux-nfs@archiver.kernel.org>; Wed, 20 Feb 2019 02:46:42 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=themaw.net header.i=@themaw.net header.b="BJxsv+b4";
+	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="wsFWPPwd"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729793AbfBTCfi (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 19 Feb 2019 21:35:38 -0500
-Received: from fieldses.org ([173.255.197.46]:47934 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1728427AbfBTCfh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 19 Feb 2019 21:35:37 -0500
-Received: by fieldses.org (Postfix, from userid 2815)
-        id 5AD421E29; Tue, 19 Feb 2019 21:35:36 -0500 (EST)
-Date:   Tue, 19 Feb 2019 21:35:36 -0500
-To:     Olga Kornievskaia <olga.kornievskaia@gmail.com>
-Cc:     bfields@redhat.com, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org
-Subject: Re: [PATCH v2 06/10] NFSD add COPY_NOTIFY operation
-Message-ID: <20190220023536.GH19603@fieldses.org>
-References: <20181130200348.59524-1-olga.kornievskaia@gmail.com>
- <20181130200348.59524-7-olga.kornievskaia@gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20181130200348.59524-7-olga.kornievskaia@gmail.com>
-User-Agent: Mutt/1.5.21 (2010-09-15)
-From:   bfields@fieldses.org (J. Bruce Fields)
+        id S1729194AbfBTCqg (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 19 Feb 2019 21:46:36 -0500
+Received: from out2-smtp.messagingengine.com ([66.111.4.26]:35681 "EHLO
+        out2-smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1725616AbfBTCqf (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Feb 2019 21:46:35 -0500
+Received: from compute1.internal (compute1.nyi.internal [10.202.2.41])
+        by mailout.nyi.internal (Postfix) with ESMTP id 20FAF233AB;
+        Tue, 19 Feb 2019 21:46:34 -0500 (EST)
+Received: from mailfrontend2 ([10.202.2.163])
+  by compute1.internal (MEProxy); Tue, 19 Feb 2019 21:46:34 -0500
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=themaw.net; h=
+        message-id:subject:from:to:cc:date:in-reply-to:references
+        :content-type:mime-version:content-transfer-encoding; s=fm2; bh=
+        YqCbabGzvKCWGS13EUnOLA95VIhsqfmIn0nslossjtk=; b=BJxsv+b4YoQRjux5
+        EFeAe/StoQCwvFdf3CVkcspwiHI8omrukwadCqNMdubj21xp+AvPXot9bP8TW6dG
+        vsBWhzLVk4Pra+n4G+4hywvor3VBovJhJjBPndH2LehOkCpbidcmbGBwagBbiWNd
+        FRyeLR6OuDh1esODhoEeSnDzjaQHHeey6eFmdrrGLAgLWDf8fgTxXOWzqWZpbxe9
+        aWHUuN6iyhmV69msFcM2uMFgYvZXyWdJjIZEPeTDvBdfKh7cwLLZvhM5dYsajqm5
+        /YXSazduDV9HtaAjBc+IxiIehqCPYtpSWaDCNbO6uWyrxwEQAqOdTVPwSUpPJtrD
+        e7MvwQ==
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
+        messagingengine.com; h=cc:content-transfer-encoding:content-type
+        :date:from:in-reply-to:message-id:mime-version:references
+        :subject:to:x-me-proxy:x-me-proxy:x-me-sender:x-me-sender
+        :x-sasl-enc; s=fm2; bh=YqCbabGzvKCWGS13EUnOLA95VIhsqfmIn0nslossj
+        tk=; b=wsFWPPwd4B/kLjwCxJOwpE7PfKSfJ1xUL+EtjnfaWtupzWeRs/K6cLQSK
+        oJjTWYv/nqUl2Q6BN2g0ABPr7+WjwGK+/EsQuSGZ0UiW8wbyTAEZVThACHHpKh+g
+        vVk9Bg7AbD/ljf5Hqdz0LmVtO75hD9OHNI2G0dg+69nXRS9LtHKnLo8fBKE2U28X
+        fFH92DBYBanVewp6IUvMkJtDIDhSTAc8jKvE7v9gVzYVk1SeE0gfzhY4g5LRLbUV
+        1CyrKho578883F9jVfvOAonTzTUf7UijWCCNmD6a5uL0hMxWlMmAad4D0hFYIKlF
+        U04m/MaanRWbzlrrNWqK/HYM2L6JQ==
+X-ME-Sender: <xms:iL9sXPg-mpLvZXx-9dr1NUx73NrUJj6aVSn1H2PKGGXSZBHX6Z3-Cg>
+X-ME-Proxy-Cause: gggruggvucftvghtrhhoucdtuddrgedutddrtdehgdehvdculddtuddrgedtledrtddtmd
+    cutefuodetggdotefrodftvfcurfhrohhfihhlvgemucfhrghsthforghilhdpqfhuthen
+    uceurghilhhouhhtmecufedttdenucesvcftvggtihhpihgvnhhtshculddquddttddmne
+    cujfgurhepkffuhffvffgjfhgtofgggfesthejredtredtjeenucfhrhhomhepkfgrnhcu
+    mfgvnhhtuceorhgrvhgvnhesthhhvghmrgifrdhnvghtqeenucfkphepuddukedrvddtke
+    drheehrdeknecurfgrrhgrmhepmhgrihhlfhhrohhmpehrrghvvghnsehthhgvmhgrfidr
+    nhgvthenucevlhhushhtvghrufhiiigvpedt
+X-ME-Proxy: <xmx:iL9sXHftdWs8pa6mBabBlElwNUyxOp1tNr_jNR43qRhfKHM2LS2bUQ>
+    <xmx:iL9sXCkZLligRfdy8ymOdJYjrYUwte0-qJd46qLQ0oHEM75OVyFHYA>
+    <xmx:iL9sXAtzNNEFu6LkuvTQj_ivt_8fZjcV6LaTikqtG3pFPckO8vFk0g>
+    <xmx:ir9sXGiAPqRXfbpMcFt-YryH_j2kPx57PYup1vdOH_on3V3BGbmFpg>
+Received: from localhost (unknown [118.208.55.8])
+        by mail.messagingengine.com (Postfix) with ESMTPA id E2C3910312;
+        Tue, 19 Feb 2019 21:46:27 -0500 (EST)
+Message-ID: <7923d4aa646fbe4bd71cfb4144f1c96f28cad972.camel@themaw.net>
+Subject: Re: [RFC PATCH 02/27] containers: Implement containers as kernel
+ objects
+From:   Ian Kent <raven@themaw.net>
+To:     David Howells <dhowells@redhat.com>, keyrings@vger.kernel.org,
+        trond.myklebust@hammerspace.com, sfrench@samba.org,
+        James Bottomley <James.Bottomley@HansenPartnership.com>
+Cc:     linux-security-module@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-cifs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        rgb@redhat.com, linux-kernel@vger.kernel.org,
+        containers@lists.linux-foundation.org, cgroups@vger.kernel.org
+Date:   Wed, 20 Feb 2019 10:46:24 +0800
+In-Reply-To: <155024685321.21651.1504201877881622756.stgit@warthog.procyon.org.uk>
+References: <155024683432.21651.14153938339749694146.stgit@warthog.procyon.org.uk>
+         <155024685321.21651.1504201877881622756.stgit@warthog.procyon.org.uk>
+Content-Type: text/plain; charset="UTF-8"
+X-Mailer: Evolution 3.28.5 (3.28.5-2.fc28) 
+Mime-Version: 1.0
+Content-Transfer-Encoding: 7bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Fri, Nov 30, 2018 at 03:03:44PM -0500, Olga Kornievskaia wrote:
-> Introducing the COPY_NOTIFY operation.
+On Fri, 2019-02-15 at 16:07 +0000, David Howells wrote:
+> Implement a kernel container object such that it contains the following
+> things:
 > 
-> Create a new unique stateid that will keep track of the copy
-> state and the upcoming READs that will use that stateid. Keep
-> it in the list associated with parent stateid.
+>  (1) Namespaces.
 > 
-> Return single netaddr to advertise to the copy.
+>  (2) A root directory.
 > 
-> Signed-off-by: Andy Adamson <andros@netapp.com>
-> Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
-> ---
->  fs/nfsd/nfs4proc.c  | 72 +++++++++++++++++++++++++++++++++++----
->  fs/nfsd/nfs4state.c | 64 +++++++++++++++++++++++++++++++----
->  fs/nfsd/nfs4xdr.c   | 97 +++++++++++++++++++++++++++++++++++++++++++++++++++--
->  fs/nfsd/state.h     | 18 ++++++++--
->  fs/nfsd/xdr4.h      | 13 +++++++
->  5 files changed, 248 insertions(+), 16 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-> index 0152b34..51fca9e 100644
-> --- a/fs/nfsd/nfs4proc.c
-> +++ b/fs/nfsd/nfs4proc.c
-> @@ -37,6 +37,7 @@
->  #include <linux/falloc.h>
->  #include <linux/slab.h>
->  #include <linux/kthread.h>
-> +#include <linux/sunrpc/addr.h>
->  
->  #include "idmap.h"
->  #include "cache.h"
-> @@ -1035,7 +1036,8 @@ static __be32 nfsd4_do_lookupp(struct svc_rqst *rqstp, struct svc_fh *fh)
->  static __be32
->  nfsd4_verify_copy(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->  		  stateid_t *src_stateid, struct file **src,
-> -		  stateid_t *dst_stateid, struct file **dst)
-> +		  stateid_t *dst_stateid, struct file **dst,
-> +		  struct nfs4_stid **stid)
->  {
->  	__be32 status;
->  
-> @@ -1052,7 +1054,7 @@ static __be32 nfsd4_do_lookupp(struct svc_rqst *rqstp, struct svc_fh *fh)
->  
->  	status = nfs4_preprocess_stateid_op(rqstp, cstate, &cstate->current_fh,
->  					    dst_stateid, WR_STATE, dst, NULL,
-> -					    NULL);
-> +					    stid);
->  	if (status) {
->  		dprintk("NFSD: %s: couldn't process dst stateid!\n", __func__);
->  		goto out_put_src;
-> @@ -1083,7 +1085,7 @@ static __be32 nfsd4_do_lookupp(struct svc_rqst *rqstp, struct svc_fh *fh)
->  	__be32 status;
->  
->  	status = nfsd4_verify_copy(rqstp, cstate, &clone->cl_src_stateid, &src,
-> -				   &clone->cl_dst_stateid, &dst);
-> +				   &clone->cl_dst_stateid, &dst, NULL);
->  	if (status)
->  		goto out;
->  
-> @@ -1230,7 +1232,7 @@ static void dup_copy_fields(struct nfsd4_copy *src, struct nfsd4_copy *dst)
->  
->  static void cleanup_async_copy(struct nfsd4_copy *copy)
->  {
-> -	nfs4_free_cp_state(copy);
-> +	nfs4_free_copy_state(copy);
->  	fput(copy->file_dst);
->  	fput(copy->file_src);
->  	spin_lock(&copy->cp_clp->async_lock);
-> @@ -1270,7 +1272,7 @@ static int nfsd4_do_async_copy(void *data)
->  
->  	status = nfsd4_verify_copy(rqstp, cstate, &copy->cp_src_stateid,
->  				   &copy->file_src, &copy->cp_dst_stateid,
-> -				   &copy->file_dst);
-> +				   &copy->file_dst, NULL);
->  	if (status)
->  		goto out;
->  
-> @@ -1284,7 +1286,7 @@ static int nfsd4_do_async_copy(void *data)
->  		async_copy = kzalloc(sizeof(struct nfsd4_copy), GFP_KERNEL);
->  		if (!async_copy)
->  			goto out;
-> -		if (!nfs4_init_cp_state(nn, copy)) {
-> +		if (!nfs4_init_copy_state(nn, copy)) {
->  			kfree(async_copy);
->  			goto out;
->  		}
-> @@ -1348,6 +1350,43 @@ struct nfsd4_copy *
->  }
->  
->  static __be32
-> +nfsd4_copy_notify(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
-> +		  union nfsd4_op_u *u)
-> +{
-> +	struct nfsd4_copy_notify *cn = &u->copy_notify;
-> +	__be32 status;
-> +	struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
-> +	struct nfs4_stid *stid;
-> +	struct nfs4_cpntf_state *cps;
-> +
-> +	status = nfs4_preprocess_stateid_op(rqstp, cstate, &cstate->current_fh,
-> +					&cn->cpn_src_stateid, RD_STATE, NULL,
-> +					NULL, &stid);
-> +	if (status)
-> +		return status;
-> +
-> +	cn->cpn_sec = nn->nfsd4_lease;
-> +	cn->cpn_nsec = 0;
-> +
-> +	status = nfserrno(-ENOMEM);
-> +	cps = nfs4_alloc_init_cpntf_state(nn, stid);
-> +	if (!cps)
-> +		return status;
-> +	memcpy(&cn->cpn_cnr_stateid, &cps->cp_stateid, sizeof(stateid_t));
-> +
-> +	/**
-> +	 * For now, only return one server address in cpn_src, the
-> +	 * address used by the client to connect to this server.
-> +	 */
-> +	cn->cpn_src.nl4_type = NL4_NETADDR;
-> +	status = nfsd4_set_netaddr((struct sockaddr *)&rqstp->rq_daddr,
-> +				 &cn->cpn_src.u.nl4_addr);
-> +	WARN_ON_ONCE(status);
-> +
-> +	return status;
-> +}
-> +
-> +static __be32
->  nfsd4_fallocate(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->  		struct nfsd4_fallocate *fallocate, int flags)
->  {
-> @@ -2299,6 +2338,21 @@ static inline u32 nfsd4_offload_status_rsize(struct svc_rqst *rqstp,
->  		1 /* osr_complete<1> optional 0 for now */) * sizeof(__be32);
->  }
->  
-> +static inline u32 nfsd4_copy_notify_rsize(struct svc_rqst *rqstp,
-> +					struct nfsd4_op *op)
-> +{
-> +	return (op_encode_hdr_size +
-> +		3 /* cnr_lease_time */ +
-> +		1 /* We support one cnr_source_server */ +
-> +		1 /* cnr_stateid seq */ +
-> +		op_encode_stateid_maxsz /* cnr_stateid */ +
-> +		1 /* num cnr_source_server*/ +
-> +		1 /* nl4_type */ +
-> +		1 /* nl4 size */ +
-> +		XDR_QUADLEN(NFS4_OPAQUE_LIMIT) /*nl4_loc + nl4_loc_sz */)
-> +		* sizeof(__be32);
-> +}
-> +
->  #ifdef CONFIG_NFSD_PNFS
->  static inline u32 nfsd4_getdeviceinfo_rsize(struct svc_rqst *rqstp, struct nfsd4_op *op)
->  {
-> @@ -2723,6 +2777,12 @@ static inline u32 nfsd4_seek_rsize(struct svc_rqst *rqstp, struct nfsd4_op *op)
->  		.op_name = "OP_OFFLOAD_CANCEL",
->  		.op_rsize_bop = nfsd4_only_status_rsize,
->  	},
-> +	[OP_COPY_NOTIFY] = {
-> +		.op_func = nfsd4_copy_notify,
-> +		.op_flags = OP_MODIFIES_SOMETHING,
-> +		.op_name = "OP_COPY_NOTIFY",
-> +		.op_rsize_bop = nfsd4_copy_notify_rsize,
-> +	},
->  };
->  
->  /**
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index be3e967..eaa136f 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -697,6 +697,7 @@ struct nfs4_stid *nfs4_alloc_stid(struct nfs4_client *cl, struct kmem_cache *sla
->  	/* Will be incremented before return to client: */
->  	refcount_set(&stid->sc_count, 1);
->  	spin_lock_init(&stid->sc_lock);
-> +	INIT_LIST_HEAD(&stid->sc_cp_list);
->  
->  	/*
->  	 * It shouldn't be a problem to reuse an opaque stateid value.
-> @@ -716,24 +717,53 @@ struct nfs4_stid *nfs4_alloc_stid(struct nfs4_client *cl, struct kmem_cache *sla
->  /*
->   * Create a unique stateid_t to represent each COPY.
->   */
-> -int nfs4_init_cp_state(struct nfsd_net *nn, struct nfsd4_copy *copy)
-> +static int nfs4_init_cp_state(struct nfsd_net *nn, void *ptr, stateid_t *stid)
->  {
->  	int new_id;
->  
->  	idr_preload(GFP_KERNEL);
->  	spin_lock(&nn->s2s_cp_lock);
-> -	new_id = idr_alloc_cyclic(&nn->s2s_cp_stateids, copy, 0, 0, GFP_NOWAIT);
-> +	new_id = idr_alloc_cyclic(&nn->s2s_cp_stateids, ptr, 0, 0, GFP_NOWAIT);
->  	spin_unlock(&nn->s2s_cp_lock);
->  	idr_preload_end();
->  	if (new_id < 0)
->  		return 0;
-> -	copy->cp_stateid.si_opaque.so_id = new_id;
-> -	copy->cp_stateid.si_opaque.so_clid.cl_boot = nn->boot_time;
-> -	copy->cp_stateid.si_opaque.so_clid.cl_id = nn->s2s_cp_cl_id;
-> +	stid->si_opaque.so_id = new_id;
-> +	stid->si_opaque.so_clid.cl_boot = nn->boot_time;
-> +	stid->si_opaque.so_clid.cl_id = nn->s2s_cp_cl_id;
->  	return 1;
->  }
->  
-> -void nfs4_free_cp_state(struct nfsd4_copy *copy)
-> +int nfs4_init_copy_state(struct nfsd_net *nn, struct nfsd4_copy *copy)
-> +{
-> +	return nfs4_init_cp_state(nn, copy, &copy->cp_stateid);
-> +}
-> +
-> +struct nfs4_cpntf_state *nfs4_alloc_init_cpntf_state(struct nfsd_net *nn,
-> +						     struct nfs4_stid *p_stid)
-> +{
-> +	struct nfs4_cpntf_state *cps;
-> +
-> +	cps = kzalloc(sizeof(struct nfs4_cpntf_state), GFP_KERNEL);
-> +	if (!cps)
-> +		return NULL;
-> +	if (!nfs4_init_cp_state(nn, cps, &cps->cp_stateid))
-> +		goto out_free;
-> +	cps->cp_p_stid = p_stid;
-> +	cps->cp_active = false;
-> +	cps->cp_timeout = jiffies + (nn->nfsd4_lease * HZ);
-> +	INIT_LIST_HEAD(&cps->cp_list);
-> +	spin_lock(&nn->s2s_cp_lock);
-> +	list_add(&cps->cp_list, &p_stid->sc_cp_list);
-> +	spin_unlock(&nn->s2s_cp_lock);
-> +
-> +	return cps;
-> +out_free:
-> +	kfree(cps);
-> +	return NULL;
-> +}
-> +
-> +void nfs4_free_copy_state(struct nfsd4_copy *copy)
->  {
->  	struct nfsd_net *nn;
->  
-> @@ -743,6 +773,27 @@ void nfs4_free_cp_state(struct nfsd4_copy *copy)
->  	spin_unlock(&nn->s2s_cp_lock);
->  }
->  
-> +static void nfs4_free_cpntf_statelist(struct net *net, struct nfs4_stid *stid)
-> +{
-> +	struct nfs4_cpntf_state *cps;
-> +	struct nfsd_net *nn;
-> +
-> +	nn = net_generic(net, nfsd_net_id);
-> +
-> +	might_sleep();
+>  (3) A set of processes, including one designated as the 'init' process.
 
-What's that for?  Just remove it unless you've got some good reason.
+Yeah, I think a name other than init needs to be used for this
+process.
 
---b.
+The problem being that there is no requirement for container
+process 1 to behave in any way like an "init" process is
+expected to behave and that leads to confusion (at least
+it certainly did for me).
+
+Admittedly I haven't yet worked through the series but in the
+light of the comments from James I wanted to chime in (probably
+too early to be useful not having read the series but ...).
+
+I believe what your trying to do here is so badly needed it
+would be great if the needs of James could be met to some
+(as yet undefined) satisfactory extent.
+
+Would there be any possibility of introducing a concept of
+inactive and active containers where the creation is a two
+(maybe more) step procedure, first the creation of (if you like
+a "true") container that's essentially empty, basically a shell
+(not the program "shell" of course), inert wrt. events and such
+and implement the ability to make the container active by adding
+various things, like processes, to it?
+
+Clearly the concepts of inactive and active require a definition
+of what they mean and I don't have that, perhaps a starting point
+could be a container that has a process 1 (which should also require
+a root fs and namespaces) is active otherwise it's considered inactive.
+
+Ian
+
