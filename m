@@ -2,100 +2,95 @@ Return-Path: <SRS0=q2Lh=Q3=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.9 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-1.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8CA3DC43381
-	for <linux-nfs@archiver.kernel.org>; Wed, 20 Feb 2019 14:56:59 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id EAD90C43381
+	for <linux-nfs@archiver.kernel.org>; Wed, 20 Feb 2019 15:25:20 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 5BD9121848
-	for <linux-nfs@archiver.kernel.org>; Wed, 20 Feb 2019 14:56:59 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="PB9I9BZb"
+	by mail.kernel.org (Postfix) with ESMTP id BA61B2086A
+	for <linux-nfs@archiver.kernel.org>; Wed, 20 Feb 2019 15:25:20 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726441AbfBTO46 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 20 Feb 2019 09:56:58 -0500
-Received: from mail-yw1-f67.google.com ([209.85.161.67]:40557 "EHLO
-        mail-yw1-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726194AbfBTO46 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Feb 2019 09:56:58 -0500
-Received: by mail-yw1-f67.google.com with SMTP id c67so9296578ywa.7
-        for <linux-nfs@vger.kernel.org>; Wed, 20 Feb 2019 06:56:57 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=from:to:cc:subject:date:message-id;
-        bh=9qxOPm4L8xhV6CpMnGkpUNUShb3i+T9FGKbgqdEv4bo=;
-        b=PB9I9BZbUJHTez3IxIP4EHyyB6AuXve42e1bWMd3cA6dclVXdTNqKLafOWS1dOt02V
-         CurJTrrcAiXlNXao5Yfad9jbWBRNiCAjm7VMUYKrL/mcP8pv83JCV2IoC413gCv5WyBh
-         c1JBP/q2LE2/putBEejRD6av5WAxeEebbLd8cYtivxLL8o4zFuW5yVTY4xeWHLn4klts
-         AVaWmOvI2lzN0dsZEEnIE+ySYBlfTi7W/PmLd0f2NEKQy+SdLtPghCov65ptTsvyFwjv
-         S8LLjnPbO/cTpbzkkJJfw58/siVQxH7Qz1WJuyyIpVt3lRKcQZPE3xL5sRRwdaLlIyU0
-         8Uow==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id;
-        bh=9qxOPm4L8xhV6CpMnGkpUNUShb3i+T9FGKbgqdEv4bo=;
-        b=e+VwPY1jKq5KEK1W2PZTRza+7fVzn9IPKsJ3FUiJM1ogEFJJkASUquKuxUaEkw64n6
-         b7ING/5QjegJ/9JZjNPet7wBzElmYYLoCn1rd50Lfk7Pfwe5N5yR2XKzHT/OAHXjlNzw
-         nWYIEGP8lT7S2JLSJagRzDXPJwk/JRHDGrRMpqCl3V10EpzqhCTme+zTZCIAn+AruKge
-         MceqDRHf1kvvdcDg/GJlwg5RSzgwRflR6iWw4GO9czQG9NFalsGg/jBTTboQg4PXtKMB
-         2jpSv2I6uYIjHLpt/U4Dhz4pLACOqJM75cNP86ZtjW90pe9hhBTw/b/jkbGCYaFfDYwS
-         /vmA==
-X-Gm-Message-State: AHQUAuayGIEQGHfuoBlvOyIJDo445fY75mEBA0yK9M839AaIM6JhD9UC
-        zxdi+Ki30DTQFwbHYRKGJ9p3fRdO
-X-Google-Smtp-Source: AHgI3IYSFwnpn9HclPJTwkKuYgPpZSou2FBXW55CleERjnVOUagapdLFoYoz3uDv8wvgb0/q1yDEuQ==
-X-Received: by 2002:a0d:c683:: with SMTP id i125mr2646405ywd.471.1550674617550;
-        Wed, 20 Feb 2019 06:56:57 -0800 (PST)
-Received: from localhost.localdomain ([97.101.44.244])
-        by smtp.gmail.com with ESMTPSA id h205sm11296586ywh.85.2019.02.20.06.56.56
-        (version=TLS1 cipher=AES128-SHA bits=128/128);
-        Wed, 20 Feb 2019 06:56:56 -0800 (PST)
-From:   Olga Kornievskaia <olga.kornievskaia@gmail.com>
-To:     trond.myklebust@hammerspace.com, anna.schumaker@netapp.com
-Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH 1/1] SUNRPC: fix handling of half-closed connection
-Date:   Wed, 20 Feb 2019 09:56:50 -0500
-Message-Id: <20190220145650.21566-1-olga.kornievskaia@gmail.com>
-X-Mailer: git-send-email 2.10.1 (Apple Git-78)
+        id S1727174AbfBTPZU (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 20 Feb 2019 10:25:20 -0500
+Received: from mx1.math.uh.edu ([129.7.128.32]:57880 "EHLO mx1.math.uh.edu"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726405AbfBTPZT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 20 Feb 2019 10:25:19 -0500
+Received: from epithumia.math.uh.edu ([129.7.128.2])
+        by mx1.math.uh.edu with esmtp (Exim 4.91)
+        (envelope-from <tibbs@math.uh.edu>)
+        id 1gwTkG-00087f-Kf; Wed, 20 Feb 2019 09:25:14 -0600
+Received: by epithumia.math.uh.edu (Postfix, from userid 7225)
+        id 8CEA5801B44; Wed, 20 Feb 2019 09:25:12 -0600 (CST)
+From:   Jason L Tibbitts III <tibbs@math.uh.edu>
+To:     Trond Myklebust <trondmy@hammerspace.com>
+Cc:     "bcodding\@redhat.com" <bcodding@redhat.com>,
+        "Anna.Schumaker\@netapp.com" <Anna.Schumaker@netapp.com>,
+        "linux-nfs\@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "Chuck.Lever\@oracle.com" <Chuck.Lever@oracle.com>
+Subject: Re: Need help debugging NFS issues new to 4.20 kernel
+References: <ufaimyearlx.fsf@epithumia.math.uh.edu>
+        <eff194a660ce562753d0112cdf6b1aacc5aa5dfb.camel@hammerspace.com>
+        <ufak1isms71.fsf@epithumia.math.uh.edu>
+        <87ftt2cdeq.fsf@hippogriff.math.uh.edu>
+        <FC712F54-5A7A-436D-B076-936B29C013F4@redhat.com>
+        <87imxwab12.fsf@hippogriff.math.uh.edu>
+        <662CE7B3-235E-4E2D-9C8C-0F6233F3085F@redhat.com>
+        <87d0o3aadg.fsf@hippogriff.math.uh.edu>
+        <B730E8AE-AFA3-4CE7-9103-FCCC35C37EDD@redhat.com>
+        <ufa4l943i6v.fsf@epithumia.math.uh.edu>
+        <e8887651e91b1d0110cab2330a03e3e3ccef742b.camel@hammerspace.com>
+Date:   Wed, 20 Feb 2019 09:25:12 -0600
+In-Reply-To: <e8887651e91b1d0110cab2330a03e3e3ccef742b.camel@hammerspace.com>
+        (Trond Myklebust's message of "Sat, 16 Feb 2019 14:46:45 +0000")
+Message-ID: <ufapnrmbhyf.fsf@epithumia.math.uh.edu>
+User-Agent: Gnus/5.13 (Gnus v5.13) Emacs/26.1 (gnu/linux)
+MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Olga Kornievskaia <kolga@netapp.com>
+Sadly, after a bit more testing I find that 4.20.10 with that patch
+applied still exhibits the problem.  Just found a machine where NFS hung
+up just six minutes after the user logged in.  As always: nothing is
+logged to the client or the server.  I turned on the tracing as
+requested previously and see what I think it just the same sequence as
+before.  Please let me know if there is any other information I can
+provide.  Right now I'm going to build 4.20.10 with my previously posted
+revert patch applied and roll that out to the same 50 hosts and see how
+it fares.
 
-When server replies with an ACK to client's FIN/ACK, client ends
-up stuck in a TCP_FIN_WAIT2 state and client's mount hangs.
-Instead, make sure to close and reset client's socket and transport
-when transitioned into that state.
+ - J<
 
-Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
----
- net/sunrpc/xprtsock.c | 2 ++
- 1 file changed, 2 insertions(+)
-
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 618e9c2..812e5e3 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -1502,6 +1502,7 @@ static void xs_tcp_state_change(struct sock *sk)
- 		clear_bit(XPRT_CLOSE_WAIT, &xprt->state);
- 		smp_mb__after_atomic();
- 		break;
-+	case TCP_FIN_WAIT2:
- 	case TCP_CLOSE_WAIT:
- 		/* The server initiated a shutdown of the socket */
- 		xprt->connect_cookie++;
-@@ -2152,6 +2153,7 @@ static void xs_tcp_shutdown(struct rpc_xprt *xprt)
- 		kernel_sock_shutdown(sock, SHUT_RDWR);
- 		trace_rpc_socket_shutdown(xprt, sock);
- 		break;
-+	case TCP_FIN_WAIT2:
- 	case TCP_CLOSE:
- 	case TCP_TIME_WAIT:
- 		xs_reset_transport(transport);
--- 
-1.8.3.1
-
+    kworker/u8:0-12608 [001] .... 47884.661073: rpc_request: task:20469@1 nfsv4 SEQUENCE (async)
+    kworker/u8:0-12608 [001] .... 47884.661073: rpc_task_run_action: task:20469@1 flags=5281 state=0005 status=0 action=call_reserve [sunrpc]
+    kworker/u8:0-12608 [001] .... 47884.661074: rpc_task_run_action: task:20469@1 flags=5281 state=0005 status=0 action=call_reserveresult [sunrpc]
+    kworker/u8:0-12608 [001] .... 47884.661074: rpc_task_run_action: task:20469@1 flags=5281 state=0005 status=0 action=call_refresh [sunrpc]
+    kworker/u8:0-12608 [001] .... 47884.661075: rpc_task_run_action: task:20469@1 flags=5281 state=0005 status=0 action=call_refreshresult [sunrpc]
+    kworker/u8:0-12608 [001] .... 47884.661076: rpc_task_run_action: task:20469@1 flags=5281 state=0005 status=0 action=call_allocate [sunrpc]
+    kworker/u8:0-12608 [001] .... 47884.661076: rpc_task_run_action: task:20469@1 flags=5281 state=0005 status=0 action=call_encode [sunrpc]
+    kworker/u8:0-12608 [001] .... 47884.661091: rpc_task_run_action: task:20469@1 flags=5281 state=001d status=0 action=call_bind [sunrpc]
+    kworker/u8:0-12608 [001] .... 47884.661091: rpc_task_run_action: task:20469@1 flags=5281 state=001d status=0 action=call_connect [sunrpc]
+    kworker/u8:0-12608 [001] .... 47884.661092: rpc_task_run_action: task:20469@1 flags=5281 state=001d status=0 action=call_transmit [sunrpc]
+    kworker/u8:0-12608 [001] .... 47884.661106: xprt_transmit: peer=[172.21.86.74]:2049 xid=0x0d7ca068 status=0
+    kworker/u8:0-12608 [001] .... 47884.661107: rpc_task_run_action: task:20469@1 flags=5a81 state=0015 status=0 action=call_transmit_status [sunrpc]
+    kworker/u8:0-12608 [001] .... 47884.661107: rpc_task_sleep: task:20469@1 flags=5a81 state=0015 status=0 timeout=60000 queue=xprt_pending
+    kworker/u9:0-12884 [002] .... 47884.661371: xprt_lookup_rqst: peer=[172.21.86.74]:2049 xid=0x0d7ca068 status=0
+    kworker/u9:0-12884 [002] .... 47884.661372: xprt_complete_rqst: peer=[172.21.86.74]:2049 xid=0x0d7ca068 status=112
+    kworker/u9:0-12884 [002] .... 47884.661373: rpc_task_wakeup: task:20469@1 flags=5a81 state=0006 status=0 timeout=60000 queue=xprt_pending
+    kworker/u9:0-12884 [002] .... 47884.661375: xs_stream_read_request: peer=[172.21.86.74]:2049 xid=0x0d7ca068 copied=112 reclen=112 offset=112
+    kworker/u9:0-12884 [002] .... 47884.661376: xs_stream_read_data: peer=[172.21.86.74]:2049 err=-11 total=116
+    kworker/u8:0-12608 [001] .... 47884.661388: rpc_task_run_action: task:20469@1 flags=5a81 state=0005 status=0 action=xprt_timer [sunrpc]
+    kworker/u8:0-12608 [001] .... 47884.661389: rpc_task_run_action: task:20469@1 flags=5a81 state=0005 status=0 action=call_status [sunrpc]
+    kworker/u8:0-12608 [001] .... 47884.661389: rpc_task_run_action: task:20469@1 flags=5a81 state=0005 status=0 action=call_decode [sunrpc]
+    kworker/u8:0-12608 [001] .... 47884.661408: rpc_task_run_action: task:20469@1 flags=5a81 state=0005 status=-10063 action=rpc_exit_task [sunrpc]
+    kworker/u8:0-12608 [001] .... 47884.661409: nfs4_sequence_done: error=-10063 (SEQ_MISORDERED) session=0x4480e725 slot_nr=0 seq_nr=1 highest_slotid=0 target_highest_slotid=0 status_flags=0 ()
+    kworker/u8:0-12608 [001] .... 47884.661410: rpc_stats_latency: task:20469@1 xid=0x0d7ca068 nfsv4 SEQUENCE backlog=21 rtt=278 execute=339
+    kworker/u8:0-12608 [001] .... 47884.661412: rpc_task_run_action: task:20469@1 flags=5281 state=0005 status=0 action=rpc_prepare_task [sunrpc]
+    kworker/u8:0-12608 [001] .... 47884.661413: nfs4_setup_sequence: session=0x4480e725 slot_nr=0 seq_nr=1 highest_used_slotid=0
+    kworker/u8:0-12608 [001] .... 47884.661413: rpc_task_run_action: task:20469@1 flags=5281 state=0005 status=0 action=call_start [sunrpc]
+    kworker/u8:0-12608 [001] .... 47884.661414: rpc_request: task:20469@1 nfsv4 SEQUENCE (async)
+   
