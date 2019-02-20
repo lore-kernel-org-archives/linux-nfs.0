@@ -2,62 +2,112 @@ Return-Path: <SRS0=q2Lh=Q3=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-8.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,USER_AGENT_MUTT
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E7185C43381
-	for <linux-nfs@archiver.kernel.org>; Wed, 20 Feb 2019 18:12:54 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9D186C43381
+	for <linux-nfs@archiver.kernel.org>; Wed, 20 Feb 2019 18:15:15 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id C00922083E
-	for <linux-nfs@archiver.kernel.org>; Wed, 20 Feb 2019 18:12:54 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 6CF872089F
+	for <linux-nfs@archiver.kernel.org>; Wed, 20 Feb 2019 18:15:15 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1725939AbfBTSMy (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 20 Feb 2019 13:12:54 -0500
-Received: from mx1.redhat.com ([209.132.183.28]:58390 "EHLO mx1.redhat.com"
+        id S1725989AbfBTSPP (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 20 Feb 2019 13:15:15 -0500
+Received: from fieldses.org ([173.255.197.46]:49294 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725815AbfBTSMy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 20 Feb 2019 13:12:54 -0500
-Received: from smtp.corp.redhat.com (int-mx08.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 0C0CC338856;
-        Wed, 20 Feb 2019 18:12:54 +0000 (UTC)
-Received: from steved.boston.devel.redhat.com (ovpn-116-52.phx2.redhat.com [10.3.116.52])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 93C121A8F3;
-        Wed, 20 Feb 2019 18:12:53 +0000 (UTC)
-Subject: Re: [PATCH v2] Remove abuse of ai_canonname
-To:     Chuck Lever <chuck.lever@oracle.com>,
-        Peter Wagner <tripolar@gmx.at>
-Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-References: <20190219155220.17240.31293.stgit@manet.1015granger.net>
- <20190219195729.6d893e98@onion.lan>
- <D9488568-838E-45BE-A58C-435581481B48@oracle.com>
-From:   Steve Dickson <SteveD@RedHat.com>
-Message-ID: <b7b773ec-579a-7c9e-583e-d3d1de155ca5@RedHat.com>
-Date:   Wed, 20 Feb 2019 13:12:53 -0500
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101
- Thunderbird/60.5.0
+        id S1725815AbfBTSPO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 20 Feb 2019 13:15:14 -0500
+Received: by fieldses.org (Postfix, from userid 2815)
+        id 76FA5957; Wed, 20 Feb 2019 13:15:14 -0500 (EST)
+Date:   Wed, 20 Feb 2019 13:15:14 -0500
+From:   "J. Bruce Fields" <bfields@fieldses.org>
+To:     James Pearson <jcpearson@gmail.com>
+Cc:     linux-nfs@vger.kernel.org
+Subject: Re: nfsd thread limit and UDP ?
+Message-ID: <20190220181514.GC4399@fieldses.org>
+References: <CAK3fRr9EL-YOp3yUr5tMe5zuiERxHjkLDhAaWkxxEHjtfSwisQ@mail.gmail.com>
+ <20190220174404.GB4399@fieldses.org>
 MIME-Version: 1.0
-In-Reply-To: <D9488568-838E-45BE-A58C-435581481B48@oracle.com>
-Content-Type: text/plain; charset=utf-8
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
-X-Scanned-By: MIMEDefang 2.84 on 10.5.11.23
-X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.29]); Wed, 20 Feb 2019 18:12:54 +0000 (UTC)
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20190220174404.GB4399@fieldses.org>
+User-Agent: Mutt/1.5.21 (2010-09-15)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
+Would it be possible for you to try this?
 
+--b.
 
-On 2/19/19 2:40 PM, Chuck Lever wrote:
->> On Feb 19, 2019, at 1:57 PM, Peter Wagner <tripolar@gmx.at> wrote:
->>
->> Looks good to me.
->> I run tested it on musl and in combination with me nfs_freeaddrinfo
->> patch it works.
-> Very good. Let's see what Steve's testing shows up, if anything.
-I've rolled them up and smoking them now!! :-) I'll let you know... 
+commit b45466587b37
+Author: J. Bruce Fields <bfields@redhat.com>
+Date:   Wed Feb 20 12:54:50 2019 -0500
 
-steved.
+    svcrpc: fix UDP on servers with lots of threads
+    
+    James Pearson found that an NFS server stopped responding to UDP
+    requests if started with more than 1017 threads.
+    
+    sv_max_mesg is about 2^20, so that is probably where the calculation
+    performed by
+    
+            svc_sock_setbufsize(svsk->sk_sock,
+                                (serv->sv_nrthreads+3) * serv->sv_max_mesg,
+                                (serv->sv_nrthreads+3) * serv->sv_max_mesg);
+    
+    starts to overflow an int.
+    
+    Reported-by: James Pearson <jcpearson@gmail.com>
+    Cc: stable@vger.kernel.org
+    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index a6a060925e5d..43590a968b73 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -349,12 +349,16 @@ static ssize_t svc_recvfrom(struct svc_rqst *rqstp, struct kvec *iov,
+ /*
+  * Set socket snd and rcv buffer lengths
+  */
+-static void svc_sock_setbufsize(struct socket *sock, unsigned int snd,
+-				unsigned int rcv)
++static void svc_sock_setbufsize(struct svc_sock *svsk, unsigned int nreqs)
+ {
++	unsigned int max_mesg = svsk->sk_xprt.xpt_server->sv_max_mesg;
++	struct socket *sock = svsk->sk_sock;
++
++	nreqs = min(nreqs, INT_MAX / 2 / max_mesg);
++
+ 	lock_sock(sock->sk);
+-	sock->sk->sk_sndbuf = snd * 2;
+-	sock->sk->sk_rcvbuf = rcv * 2;
++	sock->sk->sk_sndbuf = nreqs * max_mesg * 2;
++	sock->sk->sk_rcvbuf = nreqs * max_mesg * 2;
+ 	sock->sk->sk_write_space(sock->sk);
+ 	release_sock(sock->sk);
+ }
+@@ -516,9 +520,7 @@ static int svc_udp_recvfrom(struct svc_rqst *rqstp)
+ 	     * provides an upper bound on the number of threads
+ 	     * which will access the socket.
+ 	     */
+-	    svc_sock_setbufsize(svsk->sk_sock,
+-				(serv->sv_nrthreads+3) * serv->sv_max_mesg,
+-				(serv->sv_nrthreads+3) * serv->sv_max_mesg);
++	    svc_sock_setbufsize(svsk, serv->sv_nrthreads + 3);
+ 
+ 	clear_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags);
+ 	skb = NULL;
+@@ -681,9 +683,7 @@ static void svc_udp_init(struct svc_sock *svsk, struct svc_serv *serv)
+ 	 * receive and respond to one request.
+ 	 * svc_udp_recvfrom will re-adjust if necessary
+ 	 */
+-	svc_sock_setbufsize(svsk->sk_sock,
+-			    3 * svsk->sk_xprt.xpt_server->sv_max_mesg,
+-			    3 * svsk->sk_xprt.xpt_server->sv_max_mesg);
++	svc_sock_setbufsize(svsk, 3);
+ 
+ 	/* data might have come in before data_ready set up */
+ 	set_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags);
