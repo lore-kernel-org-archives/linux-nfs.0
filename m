@@ -2,154 +2,127 @@ Return-Path: <SRS0=V3X6=Q4=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.9 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-8.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,USER_AGENT_MUTT
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id EF1ECC43381
-	for <linux-nfs@archiver.kernel.org>; Thu, 21 Feb 2019 16:18:07 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id EF804C43381
+	for <linux-nfs@archiver.kernel.org>; Thu, 21 Feb 2019 16:27:41 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id BDC4220836
-	for <linux-nfs@archiver.kernel.org>; Thu, 21 Feb 2019 16:18:07 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="Ekg9i2kz"
+	by mail.kernel.org (Postfix) with ESMTP id C457620818
+	for <linux-nfs@archiver.kernel.org>; Thu, 21 Feb 2019 16:27:41 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727336AbfBUQSH (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 21 Feb 2019 11:18:07 -0500
-Received: from mail-it1-f196.google.com ([209.85.166.196]:50992 "EHLO
-        mail-it1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726371AbfBUQSH (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Feb 2019 11:18:07 -0500
-Received: by mail-it1-f196.google.com with SMTP id m137so23252147ita.0
-        for <linux-nfs@vger.kernel.org>; Thu, 21 Feb 2019 08:18:06 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=from:to:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=IC6opYrU272peHufrLZwtEhJiETEUMDJayo2Co+eLDI=;
-        b=Ekg9i2kzkRRm/dsoTvlVtFcmOoVi5teV0ljUc+N2KgcNO6abmogqa8bMYiKIm48wZW
-         Fe0IdxYUpahYepXJjFJr3T0N1z2ydYFWyRrH1IYRuxpTRdlHcmi3QH3n6WEouOh2CckB
-         TwCKGp7d2ep7taIkGzvnlTZGhtlxn7emTLjqo2Jp70WtjeIfJpvS/4KQjZ+cBO2/mZJL
-         kWKPwunUB38f5vOOQOQi4Mw7zaHoOpWUHSfLOhoPMqkeki6kUR8JgUm+DYx3+sd4Fhcs
-         DNHNmbd3nUtG+wfuzCfBxO3CHnotECUGJo6KPL/CfPzWMl6n/Rs855H8AhnGh7kTZ7Mc
-         fD1w==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:to:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=IC6opYrU272peHufrLZwtEhJiETEUMDJayo2Co+eLDI=;
-        b=pdjsX6WZu6U/6Tc/FKcoxDuQq7K/p9Hq5zeAoVxQFeZJK2Vg3/yg0ZeRrFBLgXfdXP
-         gKDDLRW22i2gIrlRwTGze4teqv1yYRD/+5Ox6kOjnB6i8To4PZgyvSJC+Y/KC2tb3QKp
-         L4YIoNZxpFaY47aUBRAgTwp+iz+eXxnKgsaKB2wWMl3Jpd7XjByGSU7xxKmrI6MZPJ5e
-         pJCQQj33GGQwyGryL3oiE6aF5PYEre8jypVnaFOsvWFWenS91ztyBmtr5RKi0FLIKn1j
-         CIjWCOsynZqPTTymb26+RW7QoLscBDEC5N4SyNEMM8ooy+8ZmThc34/razZO3IxrwI8t
-         KWqQ==
-X-Gm-Message-State: AHQUAuZX0gtshR+m4TQkIj8PsGAMCLMDrYQPN8rgC0j5EWcgRURFqaWJ
-        McFENnUrzc5E0uekTPNR8r/5gZ0=
-X-Google-Smtp-Source: AHgI3IaU4ise8C1nhBf9LWvaMgrv9ywwalwvAwJO3XBDbCok8L1TXR6p04dY/c0KRgDBIEtkbt1vxg==
-X-Received: by 2002:a02:b885:: with SMTP id p5mr22278894jam.60.1550765885624;
-        Thu, 21 Feb 2019 08:18:05 -0800 (PST)
-Received: from localhost.localdomain (c-68-40-189-247.hsd1.mi.comcast.net. [68.40.189.247])
-        by smtp.gmail.com with ESMTPSA id a16sm4588517itc.27.2019.02.21.08.18.04
-        for <linux-nfs@vger.kernel.org>
-        (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
-        Thu, 21 Feb 2019 08:18:04 -0800 (PST)
-From:   Trond Myklebust <trondmy@gmail.com>
-X-Google-Original-From: Trond Myklebust <trond.myklebust@hammerspace.com>
-To:     linux-nfs@vger.kernel.org
-Subject: [PATCH v2] SUNRPC: Use poll() to fix up the socket requeue races
-Date:   Thu, 21 Feb 2019 11:16:18 -0500
-Message-Id: <20190221161618.21926-1-trond.myklebust@hammerspace.com>
-X-Mailer: git-send-email 2.20.1
+        id S1726400AbfBUQ1l (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 21 Feb 2019 11:27:41 -0500
+Received: from fieldses.org ([173.255.197.46]:51304 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726074AbfBUQ1l (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 21 Feb 2019 11:27:41 -0500
+Received: by fieldses.org (Postfix, from userid 2815)
+        id 1B0181C26; Thu, 21 Feb 2019 11:27:40 -0500 (EST)
+Date:   Thu, 21 Feb 2019 11:27:40 -0500
+From:   "J. Bruce Fields" <bfields@fieldses.org>
+To:     Chris Tracy <ctracy@engr.scu.edu>
+Cc:     linux-nfs@vger.kernel.org
+Subject: Re: Linux NFS v4.1 server support for dynamic slot allocation?
+Message-ID: <20190221162740.GD23154@fieldses.org>
+References: <alpine.LRH.2.21.1902181301001.4186@unimatrix3.engr.scu.edu>
+ <20190220171027.GA4399@fieldses.org>
+ <alpine.LRH.2.21.1902201017450.7591@unimatrix3.engr.scu.edu>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <alpine.LRH.2.21.1902201017450.7591@unimatrix3.engr.scu.edu>
+User-Agent: Mutt/1.5.21 (2010-09-15)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Because we clear XPRT_SOCK_DATA_READY before reading, we can end up
-with a situation where new data arrives, causing xs_data_ready() to
-queue up a second receive worker job for the same socket, which then
-immediately gets stuck waiting on the transport receive mutex.
-The fix is to only clear XPRT_SOCK_DATA_READY once we're done reading,
-and then to use poll() to check if we might need to queue up a new
-job in order to deal with any new data.
+On Wed, Feb 20, 2019 at 11:07:45AM -0800, Chris Tracy wrote:
+> 	I'm nothing close to a kernel hacker, but the issue seems to come
+> down to nfsd4_get_drc_mem().  Yes, it calls slot_bytes() which uses
+> ca->maxresp_cached (the size of which is impacted by the referenced
+> patch) but the slot size's impact on the number of slots returned
+> seems to pale in comparison to this bit in nfsd4_get_drc_mem():
 
-Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
----
+Gah, yes, that's just a bug.  Thanks for your persistence.
 
-v2: refactor xs_poll_check_readable() to pull out the poll() socket
-    api details.  
+We need some (optional) pynfs CREATE_SESSION tests to confirm that this
+is working the way we expect, rather than waiting for people to report
+performance regressions....
 
- net/sunrpc/xprtsock.c | 26 ++++++++++++++++++++++++--
- 1 file changed, 24 insertions(+), 2 deletions(-)
+> 	And in fairness, it's not like it's broken out of the box.  I'm
+> complaining about single-client read speeds being 600MB/s with NFS
+> v3/v4.0 but "only" ~440MB/s with NFS v4.1/v4.2.
 
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index f5d7dcd9e8d9..da45bb1e931e 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -656,13 +656,34 @@ xs_read_stream(struct sock_xprt *transport, int flags)
- 	return ret != 0 ? ret : -ESHUTDOWN;
- }
- 
-+static __poll_t xs_poll_socket(struct sock_xprt *transport)
-+{
-+	return transport->sock->ops->poll(NULL, transport->sock, NULL);
-+}
-+
-+static bool xs_poll_socket_readable(struct sock_xprt *transport)
-+{
-+	__poll_t events = xs_poll_socket(transport);
-+
-+	return (events & (EPOLLIN | EPOLLRDNORM)) && !(events & EPOLLRDHUP);
-+}
-+
-+static void xs_poll_check_readable(struct sock_xprt *transport)
-+{
-+
-+	clear_bit(XPRT_SOCK_DATA_READY, &transport->sock_state);
-+	if (!xs_poll_socket_readable(transport))
-+		return;
-+	if (!test_and_set_bit(XPRT_SOCK_DATA_READY, &transport->sock_state))
-+		queue_work(xprtiod_workqueue, &transport->recv_worker);
-+}
-+
- static void xs_stream_data_receive(struct sock_xprt *transport)
+Out of curiosity, is your bandwidth limited by disk at this point?  If
+not it might be interesting to compare with recent upstream.
+
+> NOTE: Looking at it now, I wonder if the intent of the comment block
+> in nfsd4_get_drc_mem() would be better expressed:
+> 
+> --------
+> avail = min((unsigned long)NFSD_MAX_MEM_PER_SESSION,
+> 		nfsd_drc_max_mem - nfsd_drc_mem_used);
+> /*
+>  * Never use more than a third of the remaining memory,
+>  * unless it's the only way to give this client a slot:
+>  */
+> avail = clamp_t(int, avail, slotsize,
+> 	(nfsd_drc_max_mem - nfsd_drc_mem_used)/3);
+> num = min_t(int, num, avail / slotsize);
+> --------
+> 
+> ensuring that 'avail' can never be more than a third of the DRC
+> memory available, rather than a third of NFSD_MAX_MEM_PER_SESSION.
+
+Yep.  Here's what I've got:
+
+commit c54f24e338ed
+Author: J. Bruce Fields <bfields@redhat.com>
+Date:   Thu Feb 21 10:47:00 2019 -0500
+
+    nfsd: fix performance-limiting session calculation
+    
+    We're unintentionally limiting the number of slots per nfsv4.1 session
+    to 10.  Often more than 10 simultaneous RPCs are needed for the best
+    performance.
+    
+    This calculation was meant to prevent any one client from using up more
+    than a third of the limit we set for total memory use across all clients
+    and sessions.  Instead, it's limiting the client to a third of the
+    maximum for a single session.
+    
+    Fix this.
+    
+    Reported-by: Chris Tracy <ctracy@engr.scu.edu>
+    Cc: stable@vger.kernel.org
+    Fixes: de766e570413 "nfsd: give out fewer session slots as limit approaches"
+    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index fb3c9844c82a..6a45fb00c5fc 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -1544,16 +1544,16 @@ static u32 nfsd4_get_drc_mem(struct nfsd4_channel_attrs *ca)
  {
- 	size_t read = 0;
- 	ssize_t ret = 0;
+ 	u32 slotsize = slot_bytes(ca);
+ 	u32 num = ca->maxreqs;
+-	int avail;
++	unsigned long avail, total_avail;
  
- 	mutex_lock(&transport->recv_mutex);
--	clear_bit(XPRT_SOCK_DATA_READY, &transport->sock_state);
- 	if (transport->sock == NULL)
- 		goto out;
- 	for (;;) {
-@@ -672,6 +693,7 @@ static void xs_stream_data_receive(struct sock_xprt *transport)
- 		read += ret;
- 		cond_resched();
- 	}
-+	xs_poll_check_readable(transport);
- out:
- 	mutex_unlock(&transport->recv_mutex);
- 	trace_xs_stream_read_data(&transport->xprt, ret, read);
-@@ -1362,7 +1384,6 @@ static void xs_udp_data_receive(struct sock_xprt *transport)
- 	int err;
- 
- 	mutex_lock(&transport->recv_mutex);
--	clear_bit(XPRT_SOCK_DATA_READY, &transport->sock_state);
- 	sk = transport->inet;
- 	if (sk == NULL)
- 		goto out;
-@@ -1374,6 +1395,7 @@ static void xs_udp_data_receive(struct sock_xprt *transport)
- 		consume_skb(skb);
- 		cond_resched();
- 	}
-+	xs_poll_check_readable(transport);
- out:
- 	mutex_unlock(&transport->recv_mutex);
- }
--- 
-2.20.1
-
+ 	spin_lock(&nfsd_drc_lock);
+-	avail = min((unsigned long)NFSD_MAX_MEM_PER_SESSION,
+-		    nfsd_drc_max_mem - nfsd_drc_mem_used);
++	total_avail = nfsd_drc_max_mem - nfsd_drc_mem_used;
++	avail = min((unsigned long)NFSD_MAX_MEM_PER_SESSION, total_avail);
+ 	/*
+ 	 * Never use more than a third of the remaining memory,
+ 	 * unless it's the only way to give this client a slot:
+ 	 */
+-	avail = clamp_t(int, avail, slotsize, avail/3);
++	avail = clamp_t(int, avail, slotsize, total_avail/3);
+ 	num = min_t(int, num, avail / slotsize);
+ 	nfsd_drc_mem_used += num * slotsize;
+ 	spin_unlock(&nfsd_drc_lock);
