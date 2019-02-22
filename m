@@ -2,65 +2,66 @@ Return-Path: <SRS0=ibFv=Q5=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.6 required=3.0 tests=DKIM_ADSP_CUSTOM_MED,
+X-Spam-Status: No, score=-5.8 required=3.0 tests=DKIM_ADSP_CUSTOM_MED,
 	DKIM_INVALID,DKIM_SIGNED,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+	SPF_PASS,UNWANTED_LANGUAGE_BODY,USER_AGENT_GIT autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6816AC43381
-	for <linux-nfs@archiver.kernel.org>; Fri, 22 Feb 2019 21:59:26 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 00CA7C10F00
+	for <linux-nfs@archiver.kernel.org>; Fri, 22 Feb 2019 21:59:27 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 2A98720675
+	by mail.kernel.org (Postfix) with ESMTP id AABEF20675
 	for <linux-nfs@archiver.kernel.org>; Fri, 22 Feb 2019 21:59:26 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="HnmrPu82"
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="oumKCo5y"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726237AbfBVV7Z (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 22 Feb 2019 16:59:25 -0500
-Received: from mail-io1-f66.google.com ([209.85.166.66]:33331 "EHLO
+        id S1726239AbfBVV70 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 22 Feb 2019 16:59:26 -0500
+Received: from mail-io1-f66.google.com ([209.85.166.66]:33903 "EHLO
         mail-io1-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726116AbfBVV7Y (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Feb 2019 16:59:24 -0500
-Received: by mail-io1-f66.google.com with SMTP id e186so3029569ioa.0
-        for <linux-nfs@vger.kernel.org>; Fri, 22 Feb 2019 13:59:23 -0800 (PST)
+        with ESMTP id S1726080AbfBVV7Z (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Feb 2019 16:59:25 -0500
+Received: by mail-io1-f66.google.com with SMTP id e1so3028244iok.1
+        for <linux-nfs@vger.kernel.org>; Fri, 22 Feb 2019 13:59:24 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=sender:from:to:cc:subject:date:message-id:in-reply-to:references
          :mime-version:content-transfer-encoding;
-        bh=LP2hmCdYU9qGVvtw/7cjfUxsP7LOVY3WvPuMkrzMq+Y=;
-        b=HnmrPu8271roe/fxC1e39/xpzgyomO2/7a4h3f3HEdvFiMeGr9wuzl3c1igD4Pu97G
-         7HOQv0pTjglGdwO2NO6rTRl8xGnRX6LBDAP2U1bA6NR6FfVzyiK0YoG07QZybrNj3l5o
-         jxgljTyhogkjFXzdtJH38jkAfrrDbVZpQ3wpbRv+2moCa5Qiq//DhMsIrodsz7sQnqq3
-         9pvK630Z3C6pNQro/sM7JC3oAfIl2m6samkMeijyU9n8hcz0Tf4dN0jFJNvr5sYzKWlH
-         Ji+jWB/c54KzhpONP/jWOrdbyPpfEtXV17ChAJNdyGIb1E2Siagtw+EYDGE/km/q7lhu
-         ttPw==
+        bh=Ia7aST5lPiAEQVsVWLwzrWewgh95bZPNwt/gEeGIXvc=;
+        b=oumKCo5y6WnousE+ihR6Ap8QTWIhh5II8ZoQJ+It007PAp5ohra4LUo1rn2T/omlO8
+         TlOBwcmHOdipbhu8u9W2CVdxqd36JCs52e9PAI9IMVn5BV1W7xamU+rIhczPGFLBh8QQ
+         kUnZixD/i9Dz6xqbIuOvQ0gv4FRE1Hd5ZlPdzmCt0Hz0KuiwWj+M/KB8iS3/sWwLKA3X
+         N7sYHbnPVDlAQ179/CwIOyF8mU6iECfJKlZXQBNhTQhaqH6X4HDY2ktltVOKZ0NTU7SG
+         WCI0ixUpnWiOL2N4gVoImJJjKWOIrZ/i3V+ai80QrkuttWGrVOH5nqSSoZKSWB1Y22JL
+         pyYg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:sender:from:to:cc:subject:date:message-id
          :in-reply-to:references:mime-version:content-transfer-encoding;
-        bh=LP2hmCdYU9qGVvtw/7cjfUxsP7LOVY3WvPuMkrzMq+Y=;
-        b=m8kNGa+NVyjzkrSoKm11YznA2MRQYXa1KDbCuJyeCmk8YDlKte8wStfKhoUCpvzRP7
-         8T0yxtEOsm/b63IVvoZDq2KnuBGeXVOVMt54krGo085NGCqnH0TWoI+b8i3ynrgcz9ne
-         H0Cmi4nGO7tXNoLiXZW3vToN/N4fL+lzzFh4pa22vStPRcZjmqwBTmMqHV9tNw14sAvY
-         q8hZiIhUJW4BchV3LpbfvyD8SiPZ7RLZ+NG2X/cWI6UWzhYcNv11ExgqyqlVFoqPyDyn
-         SvqoS8sRxy8reIaStW/FH+ByfexsePynmYoJPBWlCTyW7g0fT5lz+t6S9V5TV02r9oQw
-         fSpg==
-X-Gm-Message-State: AHQUAuZOcGcSVbdqu2UNLh5X5LaBZF5yTSs0B7+ybNg3NsDfucaaLvdn
-        6ilWpUbR9G7Xb3u8gVP11dI=
-X-Google-Smtp-Source: AHgI3IZn10uf4VH2PtpEN1MwVOwoeaNa5iVKr8jHQUisZHX+rhcbv0qe67Jvkp3hdlNZTWAKZO0olw==
-X-Received: by 2002:a5d:8494:: with SMTP id t20mr3685312iom.232.1550872763074;
-        Fri, 22 Feb 2019 13:59:23 -0800 (PST)
+        bh=Ia7aST5lPiAEQVsVWLwzrWewgh95bZPNwt/gEeGIXvc=;
+        b=IzcnGz9U1mB7L2IM5InRCYZjRfjp4BgdHX/gx3+e+nOKpS1FCoAQCLDi1akjYHQvPM
+         vfQDJmqS1d3m6ItsjIzsePRBZeI+A3bxtyCbPd1xzziPEfMuYD0xZXMiDCznLg3ReYAf
+         TQN/XVdnseAKvhP7+k064hX6AufBiPBtNDfhPEqIx3PQiJgQFCqmollU/rnFw9Vw8Zpn
+         qcx4O2JTXLCC7oLwaoDDJ9uBPBuS/KIPvu4/+1KVJzMjKXLiKhXdL7yZ+5HXuUlLdBlA
+         WenuYGk1FKaC4o4dGckYnueKWST6EVDnLaeAP0VLEunV+zvxK9JJagSihLGGM8oSGNe3
+         jvZQ==
+X-Gm-Message-State: AHQUAuaEaqBZDCLygf7DFPZ1uXibQC5W4NK3cawOj3VgOlCef66FnKZa
+        uFsvV6cwpb/p1/RWWg+kP2PyifxzhNk=
+X-Google-Smtp-Source: AHgI3Iaa+366gmgGFl2MmtGEVSVfVC2oBpzBU9kiB7nQSSN00UxFQh2yHSdY5ePmqh17Uka2lyVFDg==
+X-Received: by 2002:a6b:e219:: with SMTP id z25mr3426271ioc.116.1550872764201;
+        Fri, 22 Feb 2019 13:59:24 -0800 (PST)
 Received: from gouda.nowheycreamery.com.nowheycreamery.com (d28-23-121-75.dim.wideopenwest.com. [23.28.75.121])
-        by smtp.gmail.com with ESMTPSA id f13sm998171iol.82.2019.02.22.13.59.22
+        by smtp.gmail.com with ESMTPSA id f13sm998171iol.82.2019.02.22.13.59.23
         (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Fri, 22 Feb 2019 13:59:22 -0800 (PST)
+        Fri, 22 Feb 2019 13:59:23 -0800 (PST)
 From:   schumaker.anna@gmail.com
 X-Google-Original-From: Anna.Schumaker@Netapp.com
 To:     Trond.Myklebust@hammerspace.com, linux-nfs@vger.kernel.org
 Cc:     Anna.Schumaker@Netapp.com
-Subject: [PATCH 3/6] SUNRPC: Add the ability to shift data to a specific offset
-Date:   Fri, 22 Feb 2019 16:59:15 -0500
-Message-Id: <20190222215918.20647-4-Anna.Schumaker@Netapp.com>
+Subject: [PATCH 4/6] NFS: Add basic READ_PLUS support
+Date:   Fri, 22 Feb 2019 16:59:16 -0500
+Message-Id: <20190222215918.20647-5-Anna.Schumaker@Netapp.com>
 X-Mailer: git-send-email 2.20.1
 In-Reply-To: <20190222215918.20647-1-Anna.Schumaker@Netapp.com>
 References: <20190222215918.20647-1-Anna.Schumaker@Netapp.com>
@@ -73,188 +74,347 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Anna Schumaker <Anna.Schumaker@Netapp.com>
 
-Expanding holes tends to put the data content a few bytes to the right
-of where we want it.  This patch implements a left-shift operation to
-line everything up properly.
+This patch adds support for decoding a single NFS4_CONTENT_DATA or
+NFS4_CONTENT_HOLE segment returned by the server.  This gives a simple
+implementation that does not need to spent a lot of time shifting data
+arount.
 
 Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 ---
- include/linux/sunrpc/xdr.h |   1 +
- net/sunrpc/xdr.c           | 135 +++++++++++++++++++++++++++++++++++++
- 2 files changed, 136 insertions(+)
+ fs/nfs/nfs42xdr.c         | 160 ++++++++++++++++++++++++++++++++++++++
+ fs/nfs/nfs4proc.c         |  32 +++++++-
+ fs/nfs/nfs4xdr.c          |   1 +
+ include/linux/nfs4.h      |   1 +
+ include/linux/nfs_fs_sb.h |   1 +
+ include/linux/nfs_xdr.h   |   2 +-
+ 6 files changed, 193 insertions(+), 4 deletions(-)
 
-diff --git a/include/linux/sunrpc/xdr.h b/include/linux/sunrpc/xdr.h
-index 47e2d1fff59a..c7e49dc06b0b 100644
---- a/include/linux/sunrpc/xdr.h
-+++ b/include/linux/sunrpc/xdr.h
-@@ -244,6 +244,7 @@ extern unsigned int xdr_read_pages(struct xdr_stream *xdr, unsigned int len);
- extern void xdr_enter_page(struct xdr_stream *xdr, unsigned int len);
- extern int xdr_process_buf(struct xdr_buf *buf, unsigned int offset, unsigned int len, int (*actor)(struct scatterlist *, void *), void *data);
- extern size_t xdr_expand_hole(struct xdr_stream *, size_t, uint64_t);
-+extern uint64_t xdr_align_data(struct xdr_stream *, uint64_t, uint64_t);
+diff --git a/fs/nfs/nfs42xdr.c b/fs/nfs/nfs42xdr.c
+index 69f72ed2bf87..57ec9c0fc00a 100644
+--- a/fs/nfs/nfs42xdr.c
++++ b/fs/nfs/nfs42xdr.c
+@@ -32,6 +32,14 @@
+ #define encode_deallocate_maxsz		(op_encode_hdr_maxsz + \
+ 					 encode_fallocate_maxsz)
+ #define decode_deallocate_maxsz		(op_decode_hdr_maxsz)
++#define encode_read_plus_maxsz		(op_encode_hdr_maxsz + \
++					 encode_stateid_maxsz + 3)
++#define decode_read_plus_maxsz		(op_decode_hdr_maxsz + \
++					 1 /* rpr_eof */ + \
++					 1 /* rpr_contents count */ + \
++					 1 /* data_content4 */ + \
++					 2 /* data_info4.di_offset */ + \
++					 2 /* data_info4.di_length */)
+ #define encode_seek_maxsz		(op_encode_hdr_maxsz + \
+ 					 encode_stateid_maxsz + \
+ 					 2 /* offset */ + \
+@@ -92,6 +100,12 @@
+ 					 decode_putfh_maxsz + \
+ 					 decode_deallocate_maxsz + \
+ 					 decode_getattr_maxsz)
++#define NFS4_enc_read_plus_sz		(compound_encode_hdr_maxsz + \
++					 encode_putfh_maxsz + \
++					 encode_read_plus_maxsz)
++#define NFS4_dec_read_plus_sz		(compound_decode_hdr_maxsz + \
++					 decode_putfh_maxsz + \
++					 decode_read_plus_maxsz)
+ #define NFS4_enc_seek_sz		(compound_encode_hdr_maxsz + \
+ 					 encode_putfh_maxsz + \
+ 					 encode_seek_maxsz)
+@@ -170,6 +184,16 @@ static void encode_deallocate(struct xdr_stream *xdr,
+ 	encode_fallocate(xdr, args);
+ }
  
- /**
-  * xdr_stream_remaining - Return the number of bytes remaining in the stream
-diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
-index 27dd3a507ef6..f85f83da663c 100644
---- a/net/sunrpc/xdr.c
-+++ b/net/sunrpc/xdr.c
-@@ -17,6 +17,9 @@
- #include <linux/sunrpc/msg_prot.h>
- #include <linux/bvec.h>
- 
-+static void _copy_to_pages(struct page **, size_t, const char *, size_t);
++static void encode_read_plus(struct xdr_stream *xdr,
++			     const struct nfs_pgio_args *args,
++			     struct compound_hdr *hdr)
++{
++	encode_op_hdr(xdr, OP_READ_PLUS, decode_read_plus_maxsz, hdr);
++	encode_nfs4_stateid(xdr, &args->stateid);
++	encode_uint64(xdr, args->offset);
++	encode_uint32(xdr, args->count);
++}
 +
+ static void encode_seek(struct xdr_stream *xdr,
+ 			const struct nfs42_seek_args *args,
+ 			struct compound_hdr *hdr)
+@@ -317,6 +341,29 @@ static void nfs4_xdr_enc_deallocate(struct rpc_rqst *req,
+ 	encode_nops(&hdr);
+ }
+ 
++/*
++ * Encode READ_PLUS request
++ */
++static void nfs4_xdr_enc_read_plus(struct rpc_rqst *req,
++				   struct xdr_stream *xdr,
++				   const void *data)
++{
++	const struct nfs_pgio_args *args = data;
++	struct compound_hdr hdr = {
++		.minorversion = nfs4_xdr_minorversion(&args->seq_args),
++	};
++
++	encode_compound_hdr(xdr, req, &hdr);
++	encode_sequence(xdr, &args->seq_args, &hdr);
++	encode_putfh(xdr, args->fh, &hdr);
++	encode_read_plus(xdr, args, &hdr);
++
++	xdr_inline_pages(&req->rq_rcv_buf, hdr.replen << 2,
++			 args->pages, args->pgbase, args->count);
++	req->rq_rcv_buf.flags |= XDRBUF_READ;
++	encode_nops(&hdr);
++}
 +
  /*
-  * XDR functions for basic NFS types
+  * Encode SEEK request
   */
-@@ -287,6 +290,117 @@ _shift_data_right(struct xdr_buf *buf, size_t to, size_t from, size_t len)
- 				shift);
+@@ -463,6 +510,92 @@ static int decode_deallocate(struct xdr_stream *xdr, struct nfs42_falloc_res *re
+ 	return decode_op_hdr(xdr, OP_DEALLOCATE);
  }
  
++static int decode_read_plus_data(struct xdr_stream *xdr, struct nfs_pgio_res *res)
++{
++	__be32 *p;
++	uint32_t count, recvd;
++	uint64_t offset;
 +
-+/**
-+ * _shift_data_left_pages
-+ * @pages: vector of pages containing both the source and dest memory area.
-+ * @pgto_base: page vector address of destination
-+ * @pgfrom_base: page vector address of source
-+ * @len: number of bytes to copy
-+ *
-+ * Note: the addresses pgto_base and pgfrom_base are both calculated in
-+ *       the same way:
-+ *            if a memory area starts at byte 'base' in page 'pages[i]',
-+ *            then its address is given as (i << PAGE_CACHE_SHIFT) + base
-+ * Alse note: pgto_base must be < pgfrom_base, but the memory areas
-+ * 	they point to may overlap.
++	p = xdr_inline_decode(xdr, 8 + 4);
++	if (unlikely(!p))
++		goto out_overflow;
++
++	p = xdr_decode_hyper(p, &offset);
++	count = be32_to_cpup(p);
++
++	recvd = xdr_read_pages(xdr, count);
++	if (recvd < count)
++		res->eof = 0;
++
++	res->count = recvd;
++	return 0;
++out_overflow:
++	print_overflow_msg(__func__, xdr);
++	return -EIO;
++}
++
++static int decode_read_plus_hole(struct xdr_stream *xdr, struct nfs_pgio_res *res)
++{
++	__be32 *p;
++	uint64_t offset, length;
++	size_t recvd;
++
++	p = xdr_inline_decode(xdr, 8 + 8);
++	if (unlikely(!p))
++		goto out_overflow;
++
++	p = xdr_decode_hyper(p, &offset);
++	p = xdr_decode_hyper(p, &length);
++
++	recvd = xdr_expand_hole(xdr, 0, length);
++	if (recvd < length)
++		res->eof = 0;
++
++	res->count = recvd;
++	return 0;
++out_overflow:
++	print_overflow_msg(__func__, xdr);
++	return -EIO;
++}
++
++static int decode_read_plus(struct xdr_stream *xdr, struct nfs_pgio_res *res)
++{
++	__be32 *p;
++	int status, type;
++	uint32_t segments;
++
++	status = decode_op_hdr(xdr, OP_READ_PLUS);
++	if (status)
++		return status;
++
++	p = xdr_inline_decode(xdr, 4 + 4);
++	if (unlikely(!p))
++		goto out_overflow;
++
++	res->count = 0;
++	res->eof = be32_to_cpup(p++);
++	segments = be32_to_cpup(p++);
++	if (segments == 0)
++		return 0;
++
++	p = xdr_inline_decode(xdr, 4);
++	if (unlikely(!p))
++		goto out_overflow;
++
++	type = be32_to_cpup(p++);
++	if (type == NFS4_CONTENT_DATA)
++		status = decode_read_plus_data(xdr, res);
++	else
++		status = decode_read_plus_hole(xdr, res);
++
++	if (segments > 1)
++		res->eof = 0;
++	return status;
++out_overflow:
++	print_overflow_msg(__func__, xdr);
++	return -EIO;
++}
++
+ static int decode_seek(struct xdr_stream *xdr, struct nfs42_seek_res *res)
+ {
+ 	int status;
+@@ -612,6 +745,33 @@ static int nfs4_xdr_dec_deallocate(struct rpc_rqst *rqstp,
+ 	return status;
+ }
+ 
++/*
++ * Decode READ_PLUS request
 + */
-+static void
-+_shift_data_left_pages(struct page **pages, size_t pgto_base,
-+			size_t pgfrom_base, size_t len)
++static int nfs4_xdr_dec_read_plus(struct rpc_rqst *rqstp,
++				  struct xdr_stream *xdr,
++				  void *data)
 +{
-+	struct page **pgfrom, **pgto;
-+	char *vfrom, *vto;
-+	size_t copy;
++	struct nfs_pgio_res *res = data;
++	struct compound_hdr hdr;
++	int status;
 +
-+	BUG_ON(pgfrom_base <= pgto_base);
-+
-+	pgto = pages + (pgto_base >> PAGE_SHIFT);
-+	pgfrom = pages + (pgfrom_base >> PAGE_SHIFT);
-+
-+	pgto_base = pgto_base % PAGE_SIZE;
-+	pgfrom_base = pgfrom_base % PAGE_SIZE;
-+
-+	do {
-+		if (pgto_base >= PAGE_SIZE) {
-+			pgto_base = 0;
-+			pgto++;
-+		}
-+		if (pgfrom_base >= PAGE_SIZE){
-+			pgfrom_base = 0;
-+			pgfrom++;
-+		}
-+
-+		copy = len;
-+		if (copy > (PAGE_SIZE - pgto_base))
-+			copy = PAGE_SIZE - pgto_base;
-+		if (copy > (PAGE_SIZE - pgfrom_base))
-+			copy = PAGE_SIZE - pgfrom_base;
-+
-+		if (pgto_base == 131056)
-+			break;
-+
-+		vto = kmap_atomic(*pgto);
-+		if (*pgto != *pgfrom) {
-+			vfrom = kmap_atomic(*pgfrom);
-+			memcpy(vto + pgto_base, vfrom + pgfrom_base, copy);
-+			kunmap_atomic(vfrom);
-+		} else
-+			memmove(vto + pgto_base, vto + pgfrom_base, copy);
-+		flush_dcache_page(*pgto);
-+		kunmap_atomic(vto);
-+
-+		pgto_base += copy;
-+		pgfrom_base += copy;
-+
-+	} while ((len -= copy) != 0);
++	status = decode_compound_hdr(xdr, &hdr);
++	if (status)
++		goto out;
++	status = decode_sequence(xdr, &res->seq_res, rqstp);
++	if (status)
++		goto out;
++	status = decode_putfh(xdr);
++	if (status)
++		goto out;
++	status = decode_read_plus(xdr, res);
++	if (!status)
++		status = res->count;
++out:
++	return status;
 +}
 +
-+static void
-+_shift_data_left_tail(struct xdr_buf *buf, size_t pgto_base,
-+		      size_t tail_from, size_t len)
-+{
-+	struct kvec *tail = buf->tail;
-+	size_t shift = len;
-+
-+	if (len == 0)
-+		return;
-+	if (pgto_base + len > buf->page_len)
-+		shift = buf->page_len - pgto_base;
-+
-+	_copy_to_pages(buf->pages,
-+			buf->page_base + pgto_base,
-+			(char *)(tail->iov_base + tail_from),
-+			shift);
-+
-+	memmove((char *)tail->iov_base, tail->iov_base + tail_from + shift, shift);
-+	tail->iov_len -= (tail_from + shift);
-+}
-+
-+static void
-+_shift_data_left(struct xdr_buf *buf, size_t to, size_t from, size_t len)
-+{
-+	size_t shift = len;
-+
-+	if (from < buf->page_len) {
-+		shift = min(len, buf->page_len - from);
-+		_shift_data_left_pages(buf->pages,
-+					buf->page_base + to,
-+					buf->page_base + from,
-+					shift);
-+		to += shift;
-+		from += shift;
-+		shift = len - shift;
-+	}
-+
-+	if (shift == 0)
-+		return;
-+	if (from >= buf->page_len)
-+		from -= buf->page_len;
-+
-+	_shift_data_left_tail(buf, to, from, shift);
-+}
-+
- /**
-  * _copy_to_pages
-  * @pages: array of pages
-@@ -1114,6 +1228,27 @@ size_t xdr_expand_hole(struct xdr_stream *xdr, size_t offset, uint64_t length)
- }
- EXPORT_SYMBOL_GPL(xdr_expand_hole);
+ /*
+  * Decode SEEK request
+  */
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 557a5d636183..0aabddc900e0 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -69,6 +69,10 @@
  
-+uint64_t xdr_align_data(struct xdr_stream *xdr, uint64_t offset, uint64_t length)
-+{
-+	struct xdr_buf *buf = xdr->buf;
-+	size_t from = offset;
+ #include "nfs4trace.h"
+ 
++#ifdef CONFIG_NFS_V4_2
++#include "nfs42.h"
++#endif /* CONFIG_NFS_V4_2 */
 +
-+	if (offset + length > buf->page_len)
-+		length = buf->page_len - offset;
-+
-+	if (offset == 0)
-+		xdr_align_pages(xdr, xdr->nwords << 2);
-+	else {
-+		from = xdr_page_pos(xdr);
-+		_shift_data_left(buf, offset, from, length);
+ #define NFSDBG_FACILITY		NFSDBG_PROC
+ 
+ #define NFS4_BITMASK_SZ		3
+@@ -5007,9 +5011,15 @@ static bool nfs4_read_stateid_changed(struct rpc_task *task,
+ 
+ static int nfs4_read_done(struct rpc_task *task, struct nfs_pgio_header *hdr)
+ {
+-
++	struct nfs_server *server = NFS_SERVER(hdr->inode);
+ 	dprintk("--> %s\n", __func__);
+ 
++	if ((server->caps & NFS_CAP_READ_PLUS) && (task->tk_status == -ENOTSUPP)) {
++		server->caps &= ~NFS_CAP_READ_PLUS;
++		if (rpc_restart_call_prepare(task))
++			task->tk_status = 0;
++		return -EAGAIN;
 +	}
-+
-+	xdr->nwords -= XDR_QUADLEN(length);
-+	xdr_set_page(xdr, from + length);
-+	return length;
+ 	if (!nfs4_sequence_done(task, &hdr->res.seq_res))
+ 		return -EAGAIN;
+ 	if (nfs4_read_stateid_changed(task, &hdr->args))
+@@ -5020,13 +5030,28 @@ static int nfs4_read_done(struct rpc_task *task, struct nfs_pgio_header *hdr)
+ 				    nfs4_read_done_cb(task, hdr);
+ }
+ 
++#ifdef CONFIG_NFS_V4_2
++static void nfs42_read_plus_support(struct nfs_server *server, struct rpc_message *msg)
++{
++	if (server->caps & NFS_CAP_READ_PLUS)
++		msg->rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_READ_PLUS];
++	else
++		msg->rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_READ];
 +}
-+EXPORT_SYMBOL_GPL(xdr_align_data);
++#else
++static void nfs42_read_plus_support(struct nfs_server *server, struct rpc_message *msg)
++{
++	msg->rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_READ];
++}
++#endif /* CONFIG_NFS_V4_2 */
 +
- /**
-  * xdr_enter_page - decode data from the XDR page
-  * @xdr: pointer to xdr_stream struct
+ static void nfs4_proc_read_setup(struct nfs_pgio_header *hdr,
+ 				 struct rpc_message *msg)
+ {
+ 	hdr->timestamp   = jiffies;
+ 	if (!hdr->pgio_done_cb)
+ 		hdr->pgio_done_cb = nfs4_read_done_cb;
+-	msg->rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_READ];
++	nfs42_read_plus_support(NFS_SERVER(hdr->inode), msg);
+ 	nfs4_init_sequence(&hdr->args.seq_args, &hdr->res.seq_res, 0, 0);
+ }
+ 
+@@ -9691,7 +9716,8 @@ static const struct nfs4_minor_version_ops nfs_v4_2_minor_ops = {
+ 		| NFS_CAP_DEALLOCATE
+ 		| NFS_CAP_SEEK
+ 		| NFS_CAP_LAYOUTSTATS
+-		| NFS_CAP_CLONE,
++		| NFS_CAP_CLONE
++		| NFS_CAP_READ_PLUS,
+ 	.init_client = nfs41_init_client,
+ 	.shutdown_client = nfs41_shutdown_client,
+ 	.match_stateid = nfs41_match_stateid,
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 2fc8f6fa25e4..b18a0143a4af 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -7790,6 +7790,7 @@ const struct rpc_procinfo nfs4_procedures[] = {
+ 	PROC42(CLONE,		enc_clone,		dec_clone),
+ 	PROC42(COPY,		enc_copy,		dec_copy),
+ 	PROC42(OFFLOAD_CANCEL,	enc_offload_cancel,	dec_offload_cancel),
++	PROC42(READ_PLUS,	enc_read_plus,		dec_read_plus),
+ 	PROC(LOOKUPP,		enc_lookupp,		dec_lookupp),
+ };
+ 
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index 1b06f0b28453..db465ad6659b 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -536,6 +536,7 @@ enum {
+ 	NFSPROC4_CLNT_CLONE,
+ 	NFSPROC4_CLNT_COPY,
+ 	NFSPROC4_CLNT_OFFLOAD_CANCEL,
++	NFSPROC4_CLNT_READ_PLUS,
+ 
+ 	NFSPROC4_CLNT_LOOKUPP,
+ };
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index 6aa8cc83c3b6..e431c2a7affd 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -261,5 +261,6 @@ struct nfs_server {
+ #define NFS_CAP_CLONE		(1U << 23)
+ #define NFS_CAP_COPY		(1U << 24)
+ #define NFS_CAP_OFFLOAD_CANCEL	(1U << 25)
++#define NFS_CAP_READ_PLUS	(1U << 26)
+ 
+ #endif
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 441a93ebcac0..4fb9b9d11685 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -620,7 +620,7 @@ struct nfs_pgio_args {
+ struct nfs_pgio_res {
+ 	struct nfs4_sequence_res	seq_res;
+ 	struct nfs_fattr *	fattr;
+-	__u32			count;
++	__u64			count;
+ 	__u32			op_status;
+ 	union {
+ 		struct {
 -- 
 2.20.1
 
