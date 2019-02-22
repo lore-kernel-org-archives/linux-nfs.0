@@ -2,174 +2,197 @@ Return-Path: <SRS0=ibFv=Q5=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-10.6 required=3.0 tests=DKIM_ADSP_CUSTOM_MED,
+X-Spam-Status: No, score=-2.6 required=3.0 tests=DKIM_ADSP_CUSTOM_MED,
 	DKIM_INVALID,DKIM_SIGNED,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PULL_REQUEST,MAILING_LIST_MULTI,
-	MENTIONS_GIT_HOSTING,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS,USER_AGENT_GIT
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 114BBC43381
-	for <linux-nfs@archiver.kernel.org>; Fri, 22 Feb 2019 20:54:39 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B3686C43381
+	for <linux-nfs@archiver.kernel.org>; Fri, 22 Feb 2019 21:58:56 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id C6ED2206BB
-	for <linux-nfs@archiver.kernel.org>; Fri, 22 Feb 2019 20:54:38 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 6965520675
+	for <linux-nfs@archiver.kernel.org>; Fri, 22 Feb 2019 21:58:56 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="cWn/zfOR"
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="mhilJ3ts"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726826AbfBVUyi (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 22 Feb 2019 15:54:38 -0500
-Received: from mail-it1-f196.google.com ([209.85.166.196]:52714 "EHLO
-        mail-it1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726056AbfBVUyh (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Feb 2019 15:54:37 -0500
-Received: by mail-it1-f196.google.com with SMTP id r11so4961880itc.2
-        for <linux-nfs@vger.kernel.org>; Fri, 22 Feb 2019 12:54:37 -0800 (PST)
+        id S1725900AbfBVV6z (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 22 Feb 2019 16:58:55 -0500
+Received: from mail-it1-f170.google.com ([209.85.166.170]:36147 "EHLO
+        mail-it1-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725832AbfBVV6z (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Feb 2019 16:58:55 -0500
+Received: by mail-it1-f170.google.com with SMTP id h6so5479665itl.1
+        for <linux-nfs@vger.kernel.org>; Fri, 22 Feb 2019 13:58:54 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
-        h=sender:message-id:subject:from:to:cc:date:user-agent:mime-version
+        h=sender:from:to:cc:subject:date:message-id:mime-version
          :content-transfer-encoding;
-        bh=86IdcXWQ7UwpsKCWk/Rw5so6gPJ2u/1mL4Py+/4C8Rs=;
-        b=cWn/zfORgdFJbFUDGtWJ3Jb2NjEP+Tc+z6Yj/uxupVJgXuFR+zF9SnClB20l15l12d
-         hWiWAMiu0UxCpgn2p1MUbTcOy5WEx5OMpB1iJ85aR3BA+t6EL+2PWkolnUmZqOk1bzV6
-         tWgXjJSeXBnGCZOPDhKp6R08SomY7/x2MwA9N7DGYIUGS7+K71vyks3BZx1XI2czUxBR
-         arH9xAkIpnBAbh3Es7DWI0U+RxdjLKgjZAXUymB6/F/QDCGlufKpjoAfedSD1WcjH/RG
-         s7gFN5R/+8i/1L/IIjeS8TKZXy8H8E2PJvEW+AObCmtAI9olVolW6AaS1Jrvvxoj8mAm
-         YWMw==
+        bh=uqwPSTSTyg2Du3TNfDNJchVaN8gk0hwPxrInhdsT1eQ=;
+        b=mhilJ3tsKzeuVKHiqVBz3qidIbJE0/BsZx320Vj+adegQiR35ANWt5DVwpj2S4o8WS
+         MxIeThQZnqz5FJ9UbRjvi56D+4RUblksqj6zE/ZsNfvMqxPp0a52pqqx7x9Lj+ONbQ18
+         vgBXM2A5+xvoymqu6NW0pKWDjwpUANTwJ089xk4Km4KAL3geqx/aPQwEeZZEYO/sjCYZ
+         F5PqD62ak2Zk1HHyC/SQMgJBrpDpc50TBIwP7YGET3rrFEPzln5ZT3xdxPP18p4BpYwD
+         /c1oPKFaJuCbXRb/eSJjo7hAAaZrk28tV0R7WL1zdxYrE/1CIw6veVwWdVYwx6tWVcIG
+         F5+A==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:sender:message-id:subject:from:to:cc:date
-         :user-agent:mime-version:content-transfer-encoding;
-        bh=86IdcXWQ7UwpsKCWk/Rw5so6gPJ2u/1mL4Py+/4C8Rs=;
-        b=VJ/0IUxmX2x0+TkvTWkpSfvWH1jlLs2CCpPqHTlGyHUwsH7fr5BU2x0ipe3MjLd2y6
-         PaJnj0QGdk/UqUOVDchYFg4NsxM7ak4gZ7cOwWXfEu6/F7qi1jr3eZlU2Vgp18FhiGeW
-         v4RfFTHk5LayQdYT8oIyPJZT7pPgA3BNOukxHmGMgNgRhdSkNDF4ge2qE3FT4bbpNPJR
-         2WMWW2Bg5nqPlldho0P3Ux6XinHayoPTs1dKhE4aOdh3dx+niIPutQJ4APTWQOvJVS5l
-         8/8puwbx0vZ8CFhGZPnnOKIxX2jgtkoV/39Dc7WzYiIWvIqzjF3bPuAUDqR2flyq5CrG
-         2C/g==
-X-Gm-Message-State: AHQUAuaj917cJYHH5Uv/B+EeObHhVagK5W9bVT3Wo64MRWjw8ENYu1Go
-        /TJRV6jGHaPvu/txQSGvfDZBhz8d+Ds=
-X-Google-Smtp-Source: AHgI3IYVTm5dx1NBwFXg7OKU6oLoo7x6sghUkLK4XunL6Prh7sNWeWhPj4lhNyzzvAASRiiu7FrpAw==
-X-Received: by 2002:a24:e502:: with SMTP id g2mr3322284iti.78.1550868876326;
-        Fri, 22 Feb 2019 12:54:36 -0800 (PST)
-Received: from gouda.nowheycreamery.com (d28-23-121-75.dim.wideopenwest.com. [23.28.75.121])
-        by smtp.googlemail.com with ESMTPSA id n10sm1211089itb.39.2019.02.22.12.54.34
-        (version=TLS1_3 cipher=AEAD-AES256-GCM-SHA384 bits=256/256);
-        Fri, 22 Feb 2019 12:54:35 -0800 (PST)
-Message-ID: <486306ab8bb34942b2719b8250950727f382f5ce.camel@gmail.com>
-Subject: [GIT PULL] Please pull NFS client updates for 5.1
+        h=x-gm-message-state:sender:from:to:cc:subject:date:message-id
+         :mime-version:content-transfer-encoding;
+        bh=uqwPSTSTyg2Du3TNfDNJchVaN8gk0hwPxrInhdsT1eQ=;
+        b=SU+Xqt9A/N5d5+OZhMbKNKSDXH9Xtgdu4fe8ibfiinoqxy0HUZh8yKhR5YTAM1cCNr
+         GvLzyFmV+/bUxnJdiv1Vpi8VNNxQSGmDqb8RZSYX7E/i3f53rHVeAO2Ec4NaGK42IaNu
+         00hHr05XWUBBm9La8K4LfyN1omm6wpCtfNKGVOYgdELuLtlCwoquBVKBLBq+NCadefTP
+         xHYDunTq5gwDBR1SqkkK92Jr9MxGpu4B6TZKEv8jrtb0z9dvfy7kRDj/3VpqYeh1vLFc
+         mRWT2jYHmSJhCseqt8WfG1VZwU+WyIQO7SviW+4vcnFutoFwL7VwnE5s0RjQut4ckeuX
+         XsGw==
+X-Gm-Message-State: AHQUAubJI+UcB1muysPaMbsMBuIO++LkUqXb5SPb4CDicyYNg2QApnIV
+        CSt2CX5oUAgdQCDU/dHURdEkOjMxL/Q=
+X-Google-Smtp-Source: AHgI3IZfwISfNQHv6j15LhKIUVQvnV2S1qZaE4S/zRbaUVtGOJ1Wr7knX0NVMgQItOrYKjacZYW3rg==
+X-Received: by 2002:a05:660c:fcd:: with SMTP id m13mr3991666itn.77.1550872733674;
+        Fri, 22 Feb 2019 13:58:53 -0800 (PST)
+Received: from gouda.nowheycreamery.com.nowheycreamery.com (d28-23-121-75.dim.wideopenwest.com. [23.28.75.121])
+        by smtp.gmail.com with ESMTPSA id t74sm1532459itt.29.2019.02.22.13.58.52
+        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Fri, 22 Feb 2019 13:58:52 -0800 (PST)
 From:   Anna Schumaker <schumaker.anna@gmail.com>
-To:     Trond Myklebust <trondmy@hammerspace.com>
-Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Date:   Fri, 22 Feb 2019 15:54:33 -0500
-Content-Type: text/plain; charset="UTF-8"
-User-Agent: Evolution 3.30.5 
+X-Google-Original-From: Anna Schumaker <Anna.Schumaker@Netapp.com>
+To:     bfields@fieldses.org
+Cc:     linux-nfs@vger.kernel.org
+Subject: [PATCH 0/2] NFSD: Add support for the v4.2 READ_PLUS operation
+Date:   Fri, 22 Feb 2019 16:58:48 -0500
+Message-Id: <20190222215850.20508-1-Anna.Schumaker@Netapp.com>
+X-Mailer: git-send-email 2.20.1
 MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hi Trond,
+These patches add server support for the READ_PLUS operation.  This
+operation is meant to improve file reading performance when working with
+sparse files, but there are some issues around the use of vfs_llseek() to
+identify hole and data segments when encoding the reply.  I've done a
+bunch of testing on virtual machines, and I found that READ_PLUS
+performs best if:
 
-The following changes since commit d13937116f1e82bf508a6325111b322c30c85eb9:
+  1) The file being read is not yet in the server's page cache.
+  2) The read request begins with a hole segment. And
+  3) The server only performs one llseek() call during encoding
 
-  Linux 5.0-rc6 (2019-02-10 14:42:20 -0800)
+I've added a "noreadplus" mount option on the client side to allow users
+to disable the new operation if it becomes a problem, similar to the
+"nordirplus" mount option that we already have.
 
-are available in the Git repository at:
+Here are the results of my performance tests, separated by underlying
+filesystem and if the file is already in the cache or not.  The NFS v4.2
+column is for the standard READ operation, and v4.2+ is with READ_PLUS.
+In addition to the 100% data and 100% hole cases, I also test with files
+that alternate between data and hole chunks.  I tested with two files
+for each chunk size, one beginning with a data segment and one beginning
+with a hole.  I used the `vmtouch` utility to load and clear the file
+from the server's cache, and I used the following `dd` command on the
+client for reading back the file:
 
-  git://git.linux-nfs.org/projects/anna/linux-nfs.git tags/nfs-rdma-for-5.1-1
+  $ dd if=$src of=/dev/null bs=$rsize_from_mount 2>&1
 
-for you to fetch changes up to 2c94b8eca1a26cd46010d6e73a23da5f2e93a19d:
 
-  SUNRPC: Use au_rslack when computing reply buffer size (2019-02-14 11:58:44
--0500)
+     xfs (uncached)     |  NFS v3  NFS v4.0  NFS v4.1  NFS v4.2  NFS v4.2+
+------------------------+-------------------------------------------------
+   Whole File (data)    |  3.228s    3.361s    3.679s    3.382s    3.483s
+   Whole File (hole)    |  1.276s    1.086s    1.143s    1.066s    0.805s
+   Sparse  4K (data)    |  3.473s    3.953s    3.740s    3.535s    3.515s
+   Sparse  4K (hole)    |  3.373s    3.192s    3.120s    3.113s    2.709s
+   Sparse  8K (data)    |  3.782s    3.527s    3.589s    3.476s    3.494s
+   Sparse  8K (hole)    |  3.161s    3.328s    2.974s    2.889s    2.863s
+   Sparse 16K (data)    |  3.804s    3.945s    3.885s    3.507s    3.569s
+   Sparse 16K (hole)    |  2.961s    3.124s    3.413s    3.136s    2.712s
+   Sparse 32K (data)    |  2.891s    3.632s    3.833s    3.643s    3.485s
+   Sparse 32K (hole)    |  2.592s    2.216s    2.545s    2.665s    2.829s
 
-----------------------------------------------------------------
-New features:
-- Convert rpc auth layer to use xdr_streams
-- Config option to disable insecure enctypes
-- Reduce size of RPC receive buffers
+      xfs (cached)      |  NFS v3  NFS v4.0  NFS v4.1  NFS v4.2  NFS v4.2+
+------------------------+-------------------------------------------------
+   Whole File (data)    |  0.939s    0.943s    0.939s    0.942s    1.153s
+   Whole File (hole)    |  0.982s    1.007s    0.991s    0.946s    0.826s
+   Sparse  4K (data)    |  0.980s    0.999s    0.961s    0.996s    1.166s
+   Sparse  4K (hole)    |  1.001s    0.972s    0.997s    1.001s    1.201s
+   Sparse  8K (data)    |  1.272s    1.053s    0.999s    0.974s    1.200s
+   Sparse  8K (hole)    |  0.965s    1.004s    1.036s    1.006s    1.248s
+   Sparse 16K (data)    |  0.995s    0.993s    1.035s    1.054s    1.210s
+   Sparse 16K (hole)    |  0.966s    0.982s    1.091s    1.038s    1.214s
+   Sparse 32K (data)    |  1.054s    0.968s    1.045s    0.990s    1.203s
+   Sparse 32K (hole)    |  1.019s    0.960s    1.001s    0.983s    1.254s
 
-Bugfixes and cleanups:
-- Fix sparse warnings
-- Check inline size before providing a write chunk
-- Reduce the receive doorbell rate
-- Various tracepoint improvements
-----------------------------------------------------------------
+    ext4 (uncached)     |  NFS v3  NFS v4.0  NFS v4.1  NFS v4.2  NFS v4.2+
+------------------------+-------------------------------------------------
+   Whole File (data)    |  6.089s    6.104s    6.489s    6.342s    6.137s
+   Whole File (hole)    |  2.603s    2.258s    2.226s    2.315s    1.715s
+   Sparse  4K (data)    |  7.063s    7.372s    7.064s    7.149s    7.459s
+   Sparse  4K (hole)    |  7.231s    6.709s    6.495s    6.880s    6.138s
+   Sparse  8K (data)    |  6.576s    6.938s    6.386s    6.086s    6.154s
+   Sparse  8K (hole)    |  5.903s    6.089s    5.555s    5.578s    5.442s
+   Sparse 16K (data)    |  6.556s    6.257s    6.135s    5.588s    5.856s
+   Sparse 16K (hole)    |  5.504s    5.290s    5.545s    5.195s    4.983s
+   Sparse 32K (data)    |  5.047s    5.490s    5.734s    5.578s    5.378s
+   Sparse 32K (hole)    |  4.232s    3.860s    4.299s    4.466s    4.633s
 
-Chuck Lever (23):
-      xprtrdma: Fix sparse warnings
-      xprtrdma: Check inline size before providing a Write chunk
-      xprtrdma: Reduce the doorbell rate (Receive)
-      SUNRPC: Display symbolic flag names in RPC trace events
-      SUNRPC: Add xdr_stream::rqst field
-      SUNRPC: Add XDR overflow trace event
-      SUNRPC: Add trace event that reports reply page vector alignment
-      NFS: Remove print_overflow_msg()
-      NFS: Add trace events to report non-zero NFS status codes
-      SUNRPC: Remove some dprintk() call sites from auth functions
-      SUNRPC: Remove rpc_xprt::tsh_size
-      SUNRPC: Add build option to disable support for insecure enctypes
-      SUNRPC: Use struct xdr_stream when constructing RPC Call header
-      SUNRPC: Clean up rpc_verify_header()
-      SUNRPC: Use struct xdr_stream when decoding RPC Reply header
-      SUNRPC: Introduce trace points in rpc_auth_gss.ko
-      SUNRPC: Remove xdr_buf_trim()
-      SUNRPC: Add SPDX IDs to some net/sunrpc/auth_gss/ files
-      SUNRPC: Introduce rpc_prepare_reply_pages()
-      NFS: Account for XDR pad of buf->pages
-      SUNRPC: Make AUTH_SYS and AUTH_NULL set au_verfsize
-      SUNRPC: Add rpc_auth::au_ralign field
-      SUNRPC: Use au_rslack when computing reply buffer size
+     ext4 (cached)      |  NFS v3  NFS v4.0  NFS v4.1  NFS v4.2  NFS v4.2+
+------------------------+-------------------------------------------------
+   Whole File (data)    |  1.873s    1.881s    1.869s    1.890s    2.344s
+   Whole File (hole)    |  1.929s    2.009s    1.963s    1.917s    1.554s
+   Sparse  4K (data)    |  1.961s    1.974s    1.957s    1.986s    2.408s
+   Sparse  4K (hole)    |  2.056s    2.025s    1.977s    1.988s    2.458s
+   Sparse  8K (data)    |  2.297s    2.038s    2.008s    1.954s    2.437s
+   Sparse  8K (hole)    |  1.939s    2.011s    2.024s    2.015s    2.509s
+   Sparse 16K (data)    |  1.907s    1.973s    2.053s    2.070s    2.411s
+   Sparse 16K (hole)    |  1.940s    1.964s    2.075s    1.996s    2.422s
+   Sparse 32K (data)    |  2.045s    1.921s    2.021s    2.013s    2.388s
+   Sparse 32K (hole)    |  1.984s    1.944s    1.997s    1.974s    2.398s
 
- fs/lockd/clnt4xdr.c                        |  14 -
- fs/lockd/clntxdr.c                         |  14 -
- fs/nfs/callback_xdr.c                      |  64 ++--
- fs/nfs/flexfilelayout/flexfilelayout.c     |   2 +-
- fs/nfs/nfs2xdr.c                           | 124 +++----
- fs/nfs/nfs3xdr.c                           | 209 ++++-------
- fs/nfs/nfs42xdr.c                          |  21 +-
- fs/nfs/nfs4trace.h                         |  25 ++
- fs/nfs/nfs4xdr.c                           | 529 ++++++++-------------------
- fs/nfs/nfstrace.c                          |   1 +
- fs/nfs/nfstrace.h                          |  85 +++++
- fs/nfsd/nfs4callback.c                     |  13 -
- include/linux/sunrpc/auth.h                |  44 ++-
- include/linux/sunrpc/clnt.h                |   3 +
- include/linux/sunrpc/gss_krb5_enctypes.h   |  42 ++-
- include/linux/sunrpc/xdr.h                 |  23 +-
- include/linux/sunrpc/xprt.h                |   7 -
- include/trace/events/rpcgss.h              | 361 +++++++++++++++++++
- include/trace/events/rpcrdma.h             |  12 +-
- include/trace/events/sunrpc.h              | 361 ++++++++++++++++++-
- net/sunrpc/Kconfig                         |  16 +
- net/sunrpc/auth.c                          | 136 +++----
- net/sunrpc/auth_gss/Makefile               |   2 +-
- net/sunrpc/auth_gss/auth_gss.c             | 551 ++++++++++++++---------------
- net/sunrpc/auth_gss/gss_krb5_mech.c        |  29 +-
- net/sunrpc/auth_gss/gss_krb5_wrap.c        |   8 +-
- net/sunrpc/auth_gss/gss_mech_switch.c      |  27 +-
- net/sunrpc/auth_gss/gss_rpc_upcall.c       |  15 +-
- net/sunrpc/auth_gss/gss_rpc_upcall.h       |  16 +-
- net/sunrpc/auth_gss/gss_rpc_xdr.c          |  15 +-
- net/sunrpc/auth_gss/gss_rpc_xdr.h          |  17 +-
- net/sunrpc/auth_gss/svcauth_gss.c          |   3 +-
- net/sunrpc/auth_gss/trace.c                |  11 +
- net/sunrpc/auth_null.c                     |  56 +--
- net/sunrpc/auth_unix.c                     | 120 ++++---
- net/sunrpc/clnt.c                          | 390 ++++++++++----------
- net/sunrpc/svc.c                           |  19 +-
- net/sunrpc/xdr.c                           | 121 ++++---
- net/sunrpc/xprt.c                          |  10 +-
- net/sunrpc/xprtrdma/backchannel.c          |   2 +-
- net/sunrpc/xprtrdma/frwr_ops.c             |   4 +-
- net/sunrpc/xprtrdma/rpc_rdma.c             |  22 +-
- net/sunrpc/xprtrdma/svc_rdma_backchannel.c |   1 -
- net/sunrpc/xprtrdma/transport.c            |   1 -
- net/sunrpc/xprtrdma/verbs.c                |   2 +
- net/sunrpc/xprtrdma/xprt_rdma.h            |  12 +-
- net/sunrpc/xprtsock.c                      |  91 +++--
- 47 files changed, 2071 insertions(+), 1580 deletions(-)
- create mode 100644 include/trace/events/rpcgss.h
- create mode 100644 net/sunrpc/auth_gss/trace.c
+    btrfs (uncached)    |  NFS v3  NFS v4.0  NFS v4.1  NFS v4.2  NFS v4.2+
+------------------------+-------------------------------------------------
+   Whole File (data)    |  9.369s    9.438s    9.837s    9.840s   11.790s
+   Whole File (hole)    |  4.052s    3.390s    3.380s    3.619s    2.519s
+   Sparse  4K (data)    |  9.738s   10.110s    9.774s    9.819s   12.471s
+   Sparse  4K (hole)    |  9.907s    9.504s    9.241s    9.610s    9.054s
+   Sparse  8K (data)    |  9.132s    9.453s    8.954s    8.660s   10.555s
+   Sparse  8K (hole)    |  8.290s    8.489s    8.305s    8.332s    7.850s
+   Sparse 16K (data)    |  8.742s    8.507s    8.667s    8.002s    9.940s
+   Sparse 16K (hole)    |  7.635s    7.604s    7.967s    7.558s    7.062s
+   Sparse 32K (data)    |  7.279s    7.670s    8.006s    7.705s    9.219s
+   Sparse 32K (hole)    |  6.200s    5.713s    6.268s    6.464s    6.486s
+
+     btrfs (cached)     |  NFS v3  NFS v4.0  NFS v4.1  NFS v4.2  NFS v4.2+
+------------------------+-------------------------------------------------
+   Whole File (data)    |  2.770s    2.814s    2.841s    2.854s    3.492s
+   Whole File (hole)    |  2.871s    2.970s    3.001s    2.929s    2.372s
+   Sparse  4K (data)    |  2.945s    2.905s    2.930s    2.951s    3.663s
+   Sparse  4K (hole)    |  3.032s    3.057s    2.962s    3.050s    3.705s
+   Sparse  8K (data)    |  3.277s    3.069s    3.127s    3.034s    3.652s
+   Sparse  8K (hole)    |  2.866s    2.959s    3.078s    2.989s    3.762s
+   Sparse 16K (data)    |  2.916s    2.923s    3.060s    3.081s    3.631s
+   Sparse 16K (hole)    |  2.948s    2.969s    3.108s    2.990s    3.623s
+   Sparse 32K (data)    |  3.044s    2.881s    3.052s    2.962s    3.585s
+   Sparse 32K (hole)    |  2.954s    2.957s    3.018s    2.951s    3.639s
+
+
+I also have performance numbers for if we encode every hole and data
+segment but I figured this email was long enough already. I'm happy to
+share it if requested!
+
+Thoughts?
+Anna
+
+-------------------------------------------------------------------------
+
+Anna Schumaker (2):
+  NFSD: nfsd4_encode_read{v}() should encode eof and maxcount
+  NFSD: Add basic READ_PLUS support
+
+ fs/nfsd/nfs4proc.c |  16 ++++
+ fs/nfsd/nfs4xdr.c  | 180 ++++++++++++++++++++++++++++++++++-----------
+ 2 files changed, 153 insertions(+), 43 deletions(-)
+
+-- 
+2.20.1
 
