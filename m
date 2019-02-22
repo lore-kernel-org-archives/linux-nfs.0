@@ -1,109 +1,113 @@
-Return-Path: <SRS0=V3X6=Q4=vger.kernel.org=linux-nfs-owner@kernel.org>
+Return-Path: <SRS0=ibFv=Q5=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS
-	autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-1.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 683D3C43381
-	for <linux-nfs@archiver.kernel.org>; Thu, 21 Feb 2019 23:23:54 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B8007C43381
+	for <linux-nfs@archiver.kernel.org>; Fri, 22 Feb 2019 00:58:43 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 364B02077B
-	for <linux-nfs@archiver.kernel.org>; Thu, 21 Feb 2019 23:23:54 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=canb.auug.org.au header.i=@canb.auug.org.au header.b="WPQacMIq"
+	by mail.kernel.org (Postfix) with ESMTP id 8E20D2080F
+	for <linux-nfs@archiver.kernel.org>; Fri, 22 Feb 2019 00:58:43 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726237AbfBUXXo (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 21 Feb 2019 18:23:44 -0500
-Received: from ozlabs.org ([203.11.71.1]:47553 "EHLO ozlabs.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726035AbfBUXXn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 21 Feb 2019 18:23:43 -0500
-Received: from authenticated.ozlabs.org (localhost [127.0.0.1])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange ECDHE (P-256) server-signature RSA-PSS (2048 bits) server-digest SHA256)
-        (No client certificate requested)
-        by ozlabs.org (Postfix) with ESMTPSA id 4459Wx1Fn6z9s1B;
-        Fri, 22 Feb 2019 10:23:40 +1100 (AEDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=canb.auug.org.au;
-        s=201702; t=1550791421;
-        bh=TxfOWlom4PJ1Y4jJNP7AyzsHwRzU05PaFCwuM5nUqbo=;
-        h=Date:From:To:Cc:Subject:From;
-        b=WPQacMIqkLK3Oc74fp3JssNb8tO7pvU09y7ipVWY3yv/RBXFo8jy+4OuJIk9MJhg7
-         nXpGb0h3ivBk8yQt8sktDEg8+TBhjy3ZKAOxZXeFCuD0aTOhnERdUN2Cbd1Ei79jRC
-         u9rn6A3qRJK/m/Fnm9bCG2DZOd/eISYblCGmflXW8yIjXoqDsE60Aavx2p6O3KOX31
-         2WBxrzs5AAEZMju8yxwFv86rUfWwbxmjtCVZklfCUE0CCPaCx4HCMycukGI0Jal32+
-         VTyOda7yo2tbPqgBkPvxXsvq3quFtf97X5tAlr1QAi2VxioIbTLZWGrl4FdK8ngJ2U
-         PuFIt4agjZ9tw==
-Date:   Fri, 22 Feb 2019 10:23:40 +1100
-From:   Stephen Rothwell <sfr@canb.auug.org.au>
-To:     Anna Schumaker <Anna.Schumaker@Netapp.com>,
-        Trond Myklebust <trondmy@gmail.com>,
-        NFS Mailing List <linux-nfs@vger.kernel.org>
-Cc:     Linux Next Mailing List <linux-next@vger.kernel.org>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
-Subject: linux-next: manual merge of the nfs-anna tree with the nfs tree
-Message-ID: <20190222102340.3298742c@canb.auug.org.au>
+        id S1726183AbfBVA6n (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 21 Feb 2019 19:58:43 -0500
+Received: from mx2.suse.de ([195.135.220.15]:59530 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1726178AbfBVA6m (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 21 Feb 2019 19:58:42 -0500
+X-Virus-Scanned: by amavisd-new at test-mx.suse.de
+Received: from relay2.suse.de (unknown [195.135.220.254])
+        by mx1.suse.de (Postfix) with ESMTP id CC030AD12
+        for <linux-nfs@vger.kernel.org>; Fri, 22 Feb 2019 00:58:41 +0000 (UTC)
+From:   NeilBrown <neilb@suse.com>
+To:     linux-nfs <linux-nfs@vger.kernel.org>
+Date:   Fri, 22 Feb 2019 11:58:34 +1100
+Subject: Another OPEN / OPEN_DOWNGRADE race
+Message-ID: <874l8wwsed.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha256;
- boundary="Sig_/8y0o.51I1gOnmRaJ+ngAOPT"; protocol="application/pgp-signature"
+Content-Type: multipart/signed; boundary="=-=-=";
+        micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
---Sig_/8y0o.51I1gOnmRaJ+ngAOPT
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+--=-=-=
+Content-Type: text/plain
 
-Hi all,
 
-Today's linux-next merge of the nfs-anna tree got a conflict in:
+Hi,
+ I have a report of an NFSv4.1 state management problem in our 4.4
+ kernel which appears to be caused by a race between OPEN and
+ OPEN_DOWNGRADE, and I don't think the race is fixed in mainline.
 
-  fs/nfs/pagelist.c
+ The test program creates multiple threads which open a file O_RDWR and
+ write to it, then opens for O_RDONLY and reads from it.
+ A network trace which shows the problem suggests that at a point in
+ time where there are some O_RDONLY opens and one O_RDWR open, a new
+ O_RDWR open is requested just as the O_RDWR open is being closed.
 
-between commit:
+ The close of the O_RDWR clears state->n_rdwr early so can_open_cached()
+ fails for the O_RDWR open, and it needs to go to the server.
+ The open for O_RDWR doesn't increment n_rdwr until after the open
+ succeeds, so nfs4_close_prepare sees
+    n_rdwr == 0
+    n_rdonly > 0
+    NFS_O_RDWR_STATE and NFS_O_RDONLY_STATE set
+ which causes it to choose an OPEN_DOWNGRADE.
 
-  df3accb84960 ("NFS: Pass error information to the pgio error cleanup rout=
-ine")
+ What we see is a OPEN/share-all and an OPEN_DOWNGRADE/share-read
+ request are sent one after the other without waiting for a reply.
+ The OPEN is processed first, then the OPEN_DOWNGRADE, resulting in a
+ state that only allows reads.  Then a WRITE is attempted which fails.
+ This enters a infinite loop with 2 steps:
+  - a WRITE gets NFS4ERR_OPENMODE
+  - a TEST_STATEID succeeds
 
-from the nfs tree and commit:
+ Once an OPEN/share-all request has been sent, it isn't really correct
+ to send an OPEN_DOWNGRADE/share-read request.  However the fact that
+ the OPEN has been sent isn't visible to nfs4_close_prepare().
 
-  7517d01d20e1 ("FS: Pass error information to the pgio error cleanup routi=
-ne")
+ There is an asymmetry between open and close w.r.t. updating the
+ n_[mode] counter and setting the NFS_O_mode_STATE bits.
 
-from the nfs-anna tree.
+ For close, the counter is decremented, then the server is told, then
+ the state bits are cleared.
+ For open, the counter and state bits are both cleared after the server
+ is asked.
 
-I fixed it up (I just use the former version (since there are
-other changes to this file in that tree)) and can carry the fix as
-necessary. This is now fixed as far as linux-next is concerned, but any
-non trivial conflicts should be mentioned to your upstream maintainer
-when your tree is submitted for merging.  You may also want to consider
-cooperating with the maintainer of the conflicting tree to minimise any
-particularly complex conflicts.
+ I understand that this is probably because the OPEN could fail, and
+ incrementing a counter before we are sure of success seems unwise.  But
+ doing so would allow us to avoid the incorrect OPEN_DOWNGRADE.
 
-There are a few common patches (as differetn commits) in these 2 trees,
-so one should be cleaned up, please.
+ Any suggestions on what a good solution would look like?  Does it ever
+ make sense for an OPEN request to be concurrent with a CLOSE or
+ OPEN_DOWNGRADE ??  Maybe they should be serialized with each other
+ (maybe not as fully serialized as NFSv4.0, but more than they currently
+ are in NFSv4.1)
 
---=20
-Cheers,
-Stephen Rothwell
+Thanks,
+NeilBrown
 
---Sig_/8y0o.51I1gOnmRaJ+ngAOPT
-Content-Type: application/pgp-signature
-Content-Description: OpenPGP digital signature
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
 
 -----BEGIN PGP SIGNATURE-----
 
-iQEzBAEBCAAdFiEENIC96giZ81tWdLgKAVBC80lX0GwFAlxvMvwACgkQAVBC80lX
-0GxtXwf/R9n7ATjU16gHD2JUuETP140yf0RXsfcAR5m/W8fecSuKyPbPyD6DKJLs
-mHRseG32w/pBZl+chE2gNGE0FgxHbzuBT2iE4iYx664jJ2AscdPoL0MU9FpbTRNu
-Bk4njvTgBlR6hVsy2ttM9jUkWyT/UYQxhDm8oCtAZb37GDTOrvEE4HSNdI0iAXqD
-YZfEm+f+NIXwnkoZkJfUNNqMEzEItFXdJKjdimQlnsAERE7U1B7tbGMwZDNwrL+o
-g5/+GgZmBXd8dYx0xBZIwT+l2FRjqRNm1I2zovpPYZz7mj7VuWvaq3GLzsV7YVv6
-NfAFIxGu60kCIIamYYppapYRqvCAKA==
-=sBbd
+iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlxvSTsACgkQOeye3VZi
+gbkYcRAAl1LBv4cPVMFXJRRLz/D0VrpCzPQkPuISLPLdXzIpfOqpAyZYfJ1ipU/u
+iulMiwMwSrBCaGZ36+Ufg4bhH1l2IVIITepMCJrDIB4CsJpVJ1t+C2+ZJcdNyyld
+Tb1hsEZIwJ8lmdSjs1UGEHNWZNgmGl8WIL4G0F1ojtp7lACXzPGK+wmEEdXlq1l1
+vQ4RhFxd09AlfsBv3g9FESgeC0u+HHexzGRc/P9WwTF8V2yF9EpP37foRbuPufPj
+6jd/Tk1MqiQl3beESFB3q2E2VymcZu01EEm0hcEWrbw/twBnks8rnexLeeGl1dD8
+40PCb6+2Uocxg8yZNzjRBJiMEmv2hi3IGi+UJfoXHKMJ51+Q0DI3smDgA72jV+vD
+6NHtHvRVNL5+5VCZ+uo5llOUtSiYfhf6wnvdpwBS9dgEmY47Wct/0YXmHKSDw1b2
+9Yryyoh1q4xPKeFWF15c7+KDSuzHLFm144f+V0WtZMqsNAsbup/vcVC4/dcBW0DO
+9sM2S3ULhdfhCwbTG4P9cnHNVIfmRHszHdfk6v2u96WapsUf3Y5bP9sML6foXlDk
+IFhZHlsvABL2tuzxiGZdAPbbK9uxmeYmLc1XLNMwecU3FKYQg7Bu7qUWQaw2V2nh
+pYhmu93mWEH0OTnu/AMji9BoKoQqYv2X4EmuuOpu3ROTtWOn18A=
+=vzvB
 -----END PGP SIGNATURE-----
-
---Sig_/8y0o.51I1gOnmRaJ+ngAOPT--
+--=-=-=--
