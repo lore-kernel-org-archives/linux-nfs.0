@@ -2,244 +2,147 @@ Return-Path: <SRS0=ibFv=Q5=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-0.9 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9595CC43381
-	for <linux-nfs@archiver.kernel.org>; Fri, 22 Feb 2019 17:09:59 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id CB9F4C43381
+	for <linux-nfs@archiver.kernel.org>; Fri, 22 Feb 2019 17:10:47 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 3014320700
-	for <linux-nfs@archiver.kernel.org>; Fri, 22 Feb 2019 17:09:59 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 96C0D20700
+	for <linux-nfs@archiver.kernel.org>; Fri, 22 Feb 2019 17:10:47 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="unM3haX1"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="kd5KtuIB"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726229AbfBVRJ6 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 22 Feb 2019 12:09:58 -0500
-Received: from mail-eopbgr730131.outbound.protection.outlook.com ([40.107.73.131]:30154
-        "EHLO NAM05-DM3-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1725832AbfBVRJ6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 22 Feb 2019 12:09:58 -0500
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=hammerspace.com;
- s=selector1;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=/r09hn9gxSisZcRVQbc9oU4PBxhwPEVarrLZrlTjNmw=;
- b=unM3haX1yUwUu2D3RXHbFPHK+e1XKMpTs/6iaw+0KoKkOZ8+TJ1Jw+oHex+9G/YQmvCR2JH1NDoBEsf0iwH0DKX6QN0M/vFXI/Ug41APMM9RWRmHW8cOwg6MLljq/b2lBojyR/HIU/pY9lu5cgxloZ4QkeekL5bMhhHB/YL+EUc=
-Received: from SN6PR13MB2494.namprd13.prod.outlook.com (52.135.95.148) by
- SN6PR13MB2512.namprd13.prod.outlook.com (52.135.95.154) with Microsoft SMTP
- Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- 15.20.1665.6; Fri, 22 Feb 2019 17:09:49 +0000
-Received: from SN6PR13MB2494.namprd13.prod.outlook.com
- ([fe80::c1d2:93da:11b5:c4d4]) by SN6PR13MB2494.namprd13.prod.outlook.com
- ([fe80::c1d2:93da:11b5:c4d4%3]) with mapi id 15.20.1643.018; Fri, 22 Feb 2019
- 17:09:49 +0000
-From:   Trond Myklebust <trondmy@hammerspace.com>
-To:     "olga.kornievskaia@gmail.com" <olga.kornievskaia@gmail.com>
-CC:     "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "dwysocha@redhat.com" <dwysocha@redhat.com>
-Subject: Re: [PATCH 1/1] SUNRPC: fix handling of half-closed connection
-Thread-Topic: [PATCH 1/1] SUNRPC: fix handling of half-closed connection
-Thread-Index: AQHUySyIDqRlQFwo+E+ucUjvP+DatqXrvYkAgAAZ7ACAABEcgIAABU+AgAABbgCAAAsfAIAAFBIAgAAB+4A=
-Date:   Fri, 22 Feb 2019 17:09:49 +0000
-Message-ID: <c00a04e483ca289c12b753494aa8dfa00b72a337.camel@hammerspace.com>
-References: <20190220145650.21566-1-olga.kornievskaia@gmail.com>
-         <1550837576.6456.3.camel@redhat.com>
-         <a124c78ca5a5eefce34e8a84e92d87516345ee0c.camel@hammerspace.com>
-         <CAN-5tyE5dm07V_8Qqse5qrLQVzrYXELM1EY2ySpCedBUBKYsLQ@mail.gmail.com>
-         <05e439b3c419f3ac173feb770d3d2ae1d7500a2d.camel@hammerspace.com>
-         <CAN-5tyFu4g40XJ7JzTSbidaEA30NeLQXFWD4t9pkRufesV-vJw@mail.gmail.com>
-         <132998d93b8eb3d85c63a4176536b7b1403e0f88.camel@hammerspace.com>
-         <CAN-5tyE3iWR1655w-ixRpo3v-_C2+t44F8W=ou7oByHGnn8+cg@mail.gmail.com>
-In-Reply-To: <CAN-5tyE3iWR1655w-ixRpo3v-_C2+t44F8W=ou7oByHGnn8+cg@mail.gmail.com>
-Accept-Language: en-US, en-GB
-Content-Language: en-US
-X-MS-Has-Attach: 
-X-MS-TNEF-Correlator: 
-x-originating-ip: [68.40.189.247]
-x-ms-publictraffictype: Email
-x-ms-office365-filtering-correlation-id: 9d380809-04b3-4cff-7aa1-08d698e88da5
-x-microsoft-antispam: BCL:0;PCL:0;RULEID:(2390118)(7020095)(4652040)(8989299)(5600110)(711020)(4605104)(4534185)(4627221)(201703031133081)(201702281549075)(8990200)(2017052603328)(7153060)(7193020);SRVR:SN6PR13MB2512;
-x-ms-traffictypediagnostic: SN6PR13MB2512:
-x-microsoft-exchange-diagnostics: =?utf-8?B?MTtTTjZQUjEzTUIyNTEyOzIzOkxKWlBoeWJDQ1VlbVhiMlV6djUxR1ZlRkpk?=
- =?utf-8?B?YnVodW4venRacmVxazIxM0ExRWdIbDFXRzIxK29rbmRMV2tRTXV2TlRyWXpT?=
- =?utf-8?B?Y0M5S2hlbXBKbnA5dng4OE41TDJrelFBOW5naEl4UUs2eDZ2R3pidHFVK0R2?=
- =?utf-8?B?ZTJ6NWZYbi9JVStrTEliVElaYVUzczEvTUVmWTRacEMrdzZwVnpmc0RkUEFE?=
- =?utf-8?B?UTRFNmZYWDlaQ1JNN01hYlQ0bW15T2hxUldRRkduSXBGZVB1dXBHZmNiY200?=
- =?utf-8?B?djdMamFHSVFUSk1uREFML3ZQTEJMbVM0d20rSThiWElUcFA2eDh1N2E4WXU1?=
- =?utf-8?B?SjJiZVJEMy85ZnpFNjlhaWptTkFpa2JQS1owdzJRSytxQ2F1Y0ZLSUk1a1l5?=
- =?utf-8?B?YVpSMXZIajBvYzJOb25XUXBTUExZdkZDMTZiQXBkaFh2VFlIdmMvS1ZZUmo2?=
- =?utf-8?B?eHNDdnpmakNQa29KNXVqeGRjYjl1amowQWt0cjNYanVNVEh2YWRlZ2d2SWl6?=
- =?utf-8?B?ZnlUazVERnJkd2RRak9NZ1FCdEZoYi9ObWFJeDhyQUN0bFdNMzFQL0tWOVFh?=
- =?utf-8?B?ZDF4REZyNG5JS1pPNWFKWC94NXNsREYxbkZRR0s3clFkL092ZTFKaTZSekRL?=
- =?utf-8?B?ZGlMYTdUYlVmbm5rTm5RelI1T3U2alB0aGxTcjlwMmJ3YVl6VlJFZVpMeG5V?=
- =?utf-8?B?MVNoTEl1SS9ublI2dEN3V0VOSWxoVThOeE4rSkZxUy9odEtoTUtuR0xVa3Fz?=
- =?utf-8?B?RExKcGt4cHI3c2RFTUNWeFJONDYzYXVIdmhCYmlna1NRTGFiRFRZUXNlWEVH?=
- =?utf-8?B?Y21PaUhsMWJJUGpINXZSckF1dzVNWkVkOHQ2bjZjbUJMUlFVY05KUGYzN29J?=
- =?utf-8?B?ZnAzRjdPZ2RqbndqUExqR1lFbVNKY2xnV25YRXVQbFNpVHAvMUw2ZFpGVkkv?=
- =?utf-8?B?N3g5SzBYdk1RQWNZUnNTMG10czFGMjlEYVZyWTlnak0vaVREY3FsSUxLUDFS?=
- =?utf-8?B?T0V6dEY1aGwyL1krWmc5UWZaU0Q4bXF0WFd4T0ZzM0tCODkvY2JTck5XR2pP?=
- =?utf-8?B?eWlMZXVmQWlEQjJ5b1VQMjhyY0d2MXlpbXlWT3o4R04wYkJ1a2ZVbS92YjFC?=
- =?utf-8?B?V21sRklPSjY2TWp5ZUsrd2hsd1F6dFRKSnQzK0NkWk9RZHFiMVF0ZWRNeHVp?=
- =?utf-8?B?bFZEd08rdzhPM3E5WmN5VDlWMDRJcng2QVJYQmRTS2E3Q0dwREZNUVQ1ajR6?=
- =?utf-8?B?NEZtdlNtMUlCSjVNNElydlc4R0dKUWh1R00vNEtwOGlvT0RlZ3hhOTF2dTUw?=
- =?utf-8?B?T24zeG9qaFU3NlFiNDVzdkhvdVY3UzNHTFlEa0ZDL1VOUWVVSFI5QXhpRmY2?=
- =?utf-8?B?S1FJYzJlVkExWkNGYlFXRkNzeE5sN3RCdGhNNEpmcTA4bk5wem9HakIvelRE?=
- =?utf-8?B?OHZLU2FnRVhRUkZtcWNJM21NWDhVYWVZQ1l0N05ZNm44OEdZMjB2dk5pcUNJ?=
- =?utf-8?B?QTVoODdLNk11STZ0cXV2bFE2VnJyNDQwTW1zK0NYdllzZDh3RXdvUEtSVkJq?=
- =?utf-8?B?Z29ya2tud0FmczM0OFhpZ1V6Zk4yTXBTVTVGbndJRXpzUkdOS2ozQzZRZ0hE?=
- =?utf-8?B?Sm56aG5xVVMybjNUWER1THc4RTVjR0NYUW1vREhMWnNZWk1nWE9LdWRPNk13?=
- =?utf-8?B?aHpsbTRjY1FGOVJ3WVhrV2N3ZkREVVdBRnlwZVFINmxjZW5LYm1jT3VubEY5?=
- =?utf-8?B?Y2VONmlDQUNsOU42UndXVU8wOThheEN4YW9DWW1Wd0pDbVhjcDQ3Z2ZrSnFo?=
- =?utf-8?B?cUdaanZGZm1IeERNc2dkbmQ0eDhJRkl0SEc0dnVLOURRY0E9PQ==?=
-x-microsoft-antispam-prvs: <SN6PR13MB25124ABB550BA2CE44CF0869B87F0@SN6PR13MB2512.namprd13.prod.outlook.com>
-x-forefront-prvs: 09565527D6
-x-forefront-antispam-report: SFV:NSPM;SFS:(10019020)(366004)(39830400003)(396003)(376002)(136003)(346002)(189003)(199004)(2906002)(6916009)(486006)(5660300002)(76176011)(11346002)(81166006)(81156014)(8936002)(26005)(4326008)(68736007)(106356001)(66066001)(186003)(2351001)(99286004)(36756003)(316002)(53546011)(476003)(86362001)(102836004)(54906003)(446003)(2616005)(6346003)(6506007)(105586002)(71200400001)(14444005)(3846002)(6116002)(8676002)(6486002)(6246003)(1361003)(71190400001)(97736004)(118296001)(256004)(14454004)(229853002)(25786009)(478600001)(53936002)(2501003)(93886005)(5640700003)(7736002)(305945005)(6436002)(6512007);DIR:OUT;SFP:1102;SCL:1;SRVR:SN6PR13MB2512;H:SN6PR13MB2494.namprd13.prod.outlook.com;FPR:;SPF:None;LANG:en;PTR:InfoNoRecords;MX:1;A:1;
-received-spf: None (protection.outlook.com: hammerspace.com does not designate
- permitted sender hosts)
-authentication-results: spf=none (sender IP is )
- smtp.mailfrom=trondmy@hammerspace.com; 
-x-ms-exchange-senderadcheck: 1
-x-microsoft-antispam-message-info: LXG8JI1TwqymBYst6PELEaIZeQ70ownIpN05AvcYOW1CYhpEGGIgJbRKlGAMM02D0fgGdmZLYe7vL2oZB5vj+d4Qj5csYPXb5x2QKaDbCnm+Xr5vwM2X/StoaYPRcDVn1f3LTZAwCJ60R1qinIFn6p0b+hAdCHQyUucYXgLXxA3A2qB+m/aBUsSEWK9mvDOguTBSq8aeFS1Z6Q9ueJ9X+d4zb2BIHSU7iKrQ97/M2slhCj45zqNF5kH7bgdIeF/9zvu/8AVL4zSMp6yyrv6wThkUQME4vmISFDHG/P/0LX0dgLAaFK2qVp+HLRGeO3P53H+RjwVCrqwiqKQwnWzxKi4+bcCiked2Z1hbKGpF25Dp2vqs6Lyr5kym6DRApaUQr74xamE1DUVSBQo+GofG/u93PWZjza+70V1EUA3AivE=
-Content-Type: text/plain; charset="utf-8"
-Content-ID: <8A4A56CBAB6AAB419FC20E8CC87078FD@namprd13.prod.outlook.com>
-Content-Transfer-Encoding: base64
+        id S1726869AbfBVRKr (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 22 Feb 2019 12:10:47 -0500
+Received: from mail-vk1-f196.google.com ([209.85.221.196]:43270 "EHLO
+        mail-vk1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726749AbfBVRKq (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Feb 2019 12:10:46 -0500
+Received: by mail-vk1-f196.google.com with SMTP id e131so646641vkf.10
+        for <linux-nfs@vger.kernel.org>; Fri, 22 Feb 2019 09:10:46 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc;
+        bh=+eqhrNwhq+CQzmEKZCn4oP2fGah0LdpMfPdvDnjvTZk=;
+        b=kd5KtuIBtHP62pZqYX12bJBh7NegKY8yt7y8yTFfJb8svb3tR426r5W5snyK6kNCNS
+         aV8Q0Y4yjTNI4rrj8zRvxbgg7+HemXVlOEbwZMN3ZETHiXF/7eYjVQoKlNYetCBFpmjR
+         V9/usNYWC5+EPQiHgfk1tMSASFYlwPT49d5vjEQcFfv8B97RRm/z5Oe+OoZ5/xS1Q4vQ
+         k5Ko1LiAbv2QUOKH/FmM02y0/clXZsxT/kQbq8uvORqyqEEtHqB1gkF81dwj2+gwfdSL
+         5N1Vp2XolX7G2fyCMuguwpjJmg9eS2HlYpmDqrOHfVXYoe6LYEllgSymgPPTUEXkqcd/
+         oABQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=+eqhrNwhq+CQzmEKZCn4oP2fGah0LdpMfPdvDnjvTZk=;
+        b=LrQ5NItoHov4YnEIl3U4+Mb4nxbUq9w39gqlhrRdZ7wgTHyyOsaixGmhVc8CURcNlX
+         cAhuPhF4j04M+awGKfBVwyGph1mUA+6BA1QaFvc+yCfRR/OIezL4oopDmug1cCI3578S
+         Ro3NxEQUmmrrq4ZiABAzXjxOp7s58e7jblyu67c1Ni9Ptbk72VW5TjLyEuCWUX0ByWxW
+         JcXP+akCDLGe6NXWKrG8XRtoDO5ArzT6bTbLTr3aSkWU7IqoYUYXreAtRewHqW6pVx75
+         JHcfgz4E0BJikkS2BvN+8lEnDt6/wDrsFLwSQiEMufMaJkbJo4v0hBukkw6zpVjRtk22
+         21SQ==
+X-Gm-Message-State: AHQUAuYe/ejAgSyx5ZUn6jDqBEBQpm1zZHBxFodMYvI1Cx0/Annub1x0
+        4eLX3AjSdnE6+f+gPRN3Y69/nlwiZtfyqMNTMcAGYQ==
+X-Google-Smtp-Source: AHgI3IbqhK6UnCXLpgzInNefsW2ZSEn82xGQZjj2v9w2KmY3UUPWnPr5lAGBn/Fy2tmpNozr2FOoAMXqvkbOCVpcpqc=
+X-Received: by 2002:a1f:1ac3:: with SMTP id a186mr2754568vka.34.1550855445512;
+ Fri, 22 Feb 2019 09:10:45 -0800 (PST)
 MIME-Version: 1.0
-X-OriginatorOrg: hammerspace.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: 9d380809-04b3-4cff-7aa1-08d698e88da5
-X-MS-Exchange-CrossTenant-originalarrivaltime: 22 Feb 2019 17:09:49.4660
- (UTC)
-X-MS-Exchange-CrossTenant-fromentityheader: Hosted
-X-MS-Exchange-CrossTenant-id: 0d4fed5c-3a70-46fe-9430-ece41741f59e
-X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: SN6PR13MB2512
+References: <20190220145650.21566-1-olga.kornievskaia@gmail.com>
+ <1550837576.6456.3.camel@redhat.com> <CAN-5tyH1e_cakjmU5VkQraw=ht71y8vxvaZbe2W6zAdfEnWLPA@mail.gmail.com>
+ <1550853168.9958.1.camel@redhat.com>
+In-Reply-To: <1550853168.9958.1.camel@redhat.com>
+From:   Olga Kornievskaia <olga.kornievskaia@gmail.com>
+Date:   Fri, 22 Feb 2019 12:10:34 -0500
+Message-ID: <CAN-5tyEpWevmXJb8weecFBm_V=FZm4Zc=b+rrwJFtMgUYhm2tg@mail.gmail.com>
+Subject: Re: [PATCH 1/1] SUNRPC: fix handling of half-closed connection
+To:     Dave Wysochanski <dwysocha@redhat.com>
+Cc:     trond.myklebust@hammerspace.com,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        linux-nfs <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-T24gRnJpLCAyMDE5LTAyLTIyIGF0IDEyOjAyIC0wNTAwLCBPbGdhIEtvcm5pZXZza2FpYSB3cm90
-ZToNCj4gT24gRnJpLCBGZWIgMjIsIDIwMTkgYXQgMTA6NTAgQU0gVHJvbmQgTXlrbGVidXN0DQo+
-IDx0cm9uZG15QGhhbW1lcnNwYWNlLmNvbT4gd3JvdGU6DQo+ID4gT24gRnJpLCAyMDE5LTAyLTIy
-IGF0IDEwOjExIC0wNTAwLCBPbGdhIEtvcm5pZXZza2FpYSB3cm90ZToNCj4gPiA+IE9uIEZyaSwg
-RmViIDIyLCAyMDE5IGF0IDEwOjA2IEFNIFRyb25kIE15a2xlYnVzdA0KPiA+ID4gPHRyb25kbXlA
-aGFtbWVyc3BhY2UuY29tPiB3cm90ZToNCj4gPiA+ID4gT24gRnJpLCAyMDE5LTAyLTIyIGF0IDA5
-OjQ2IC0wNTAwLCBPbGdhIEtvcm5pZXZza2FpYSB3cm90ZToNCj4gPiA+ID4gPiBPbiBGcmksIEZl
-YiAyMiwgMjAxOSBhdCA4OjQ1IEFNIFRyb25kIE15a2xlYnVzdCA8DQo+ID4gPiA+ID4gdHJvbmRt
-eUBoYW1tZXJzcGFjZS5jb20+IHdyb3RlOg0KPiA+ID4gPiA+ID4gT24gRnJpLCAyMDE5LTAyLTIy
-IGF0IDA3OjEyIC0wNTAwLCBEYXZlIFd5c29jaGFuc2tpIHdyb3RlOg0KPiA+ID4gPiA+ID4gPiBI
-aSBPbGdhLA0KPiA+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+ID4gRG8geW91IGhhdmUgYSByZXBy
-b2R1Y2VyIGZvciB0aGlzPyAgQSBudW1iZXIgb2YgbW9udGhzDQo+ID4gPiA+ID4gPiA+IGFnbyBJ
-DQo+ID4gPiA+ID4gPiA+IGRpZA0KPiA+ID4gPiA+ID4gPiBhDQo+ID4gPiA+ID4gPiA+IHNpZ25p
-ZmljYW50IGFtb3VudCBvZiB0ZXN0aW5nIHdpdGggaGFsZi1jbG9zZWQNCj4gPiA+ID4gPiA+ID4g
-Y29ubmVjdGlvbnMsDQo+ID4gPiA+ID4gPiA+IGFmdGVyDQo+ID4gPiA+ID4gPiA+IHdlDQo+ID4g
-PiA+ID4gPiA+IGhhZCByZXBvcnRzIG9mIGNvbm5lY3Rpb25zIHN0dWNrIGluIEZJTl9XQUlUMiBp
-biBzb21lDQo+ID4gPiA+ID4gPiA+IG9sZGVyDQo+ID4gPiA+ID4gPiA+IGtlcm5lbHMuDQo+ID4g
-PiA+ID4gPiA+IFdoYXQgSSBmb3VuZCB3YXMgd2l0aCBrZXJuZWxzIHRoYXQgaGFkIHRoZSB0Y3Ag
-a2VlcGFsaXZlcw0KPiA+ID4gPiA+ID4gPiAoY29tbWl0DQo+ID4gPiA+ID4gPiA+IDdmMjYwZTg1
-NzViZjUzYjkzYjc3OTc4YzFlMzlmOGU2NzYxMjc1OWMpLCBJIGNvdWxkIG9ubHkNCj4gPiA+ID4g
-PiA+ID4gcmVwcm9kdWNlDQo+ID4gPiA+ID4gPiA+IGENCj4gPiA+ID4gPiA+ID4gaGFuZyBvZiBh
-IGZldyBtaW51dGVzLCBhZnRlciB3aGljaCB0aW1lIHRoZSB0Y3Aga2VlcGFsaXZlDQo+ID4gPiA+
-ID4gPiA+IGNvZGUNCj4gPiA+ID4gPiA+ID4gd291bGQNCj4gPiA+ID4gPiA+ID4gcmVzZXQgdGhl
-IGNvbm5lY3Rpb24uDQo+ID4gPiA+ID4gPiA+IA0KPiA+ID4gPiA+ID4gPiBUaGF0IHNhaWQgaXQg
-d2FzIGEgd2hpbGUgYWdvIGFuZCBzb21ldGhpbmcgc3VidGxlIG1heQ0KPiA+ID4gPiA+ID4gPiBo
-YXZlDQo+ID4gPiA+ID4gPiA+IGNoYW5nZWQuDQo+ID4gPiA+ID4gPiA+IEFsc28gSSdtIG5vdCBu
-b3Qgc3VyZSBpZiB5b3VyIGhlYWRlciBpbXBsaWVzIGFuDQo+ID4gPiA+ID4gPiA+IGluZGVmaW5p
-dGUNCj4gPiA+ID4gPiA+ID4gaGFuZw0KPiA+ID4gPiA+ID4gPiBvcg0KPiA+ID4gPiA+ID4gPiBq
-dXN0DQo+ID4gPiA+ID4gPiA+IGEgZmV3IG1pbnV0ZXMuDQo+ID4gPiA+ID4gPiA+IA0KPiA+ID4g
-PiA+ID4gPiBUaGFua3MuDQo+ID4gPiA+ID4gPiA+IA0KPiA+ID4gPiA+ID4gPiANCj4gPiA+ID4g
-PiA+ID4gT24gV2VkLCAyMDE5LTAyLTIwIGF0IDA5OjU2IC0wNTAwLCBPbGdhIEtvcm5pZXZza2Fp
-YQ0KPiA+ID4gPiA+ID4gPiB3cm90ZToNCj4gPiA+ID4gPiA+ID4gPiBGcm9tOiBPbGdhIEtvcm5p
-ZXZza2FpYSA8a29sZ2FAbmV0YXBwLmNvbT4NCj4gPiA+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+
-ID4gPiBXaGVuIHNlcnZlciByZXBsaWVzIHdpdGggYW4gQUNLIHRvIGNsaWVudCdzIEZJTi9BQ0ss
-DQo+ID4gPiA+ID4gPiA+ID4gY2xpZW50DQo+ID4gPiA+ID4gPiA+ID4gZW5kcw0KPiA+ID4gPiA+
-ID4gPiA+IHVwIHN0dWNrIGluIGEgVENQX0ZJTl9XQUlUMiBzdGF0ZSBhbmQgY2xpZW50J3MgbW91
-bnQNCj4gPiA+ID4gPiA+ID4gPiBoYW5ncy4NCj4gPiA+ID4gPiA+ID4gPiBJbnN0ZWFkLCBtYWtl
-IHN1cmUgdG8gY2xvc2UgYW5kIHJlc2V0IGNsaWVudCdzIHNvY2tldA0KPiA+ID4gPiA+ID4gPiA+
-IGFuZA0KPiA+ID4gPiA+ID4gPiA+IHRyYW5zcG9ydA0KPiA+ID4gPiA+ID4gPiA+IHdoZW4gdHJh
-bnNpdGlvbmVkIGludG8gdGhhdCBzdGF0ZS4NCj4gPiA+ID4gPiANCj4gPiA+ID4gPiBIaSBUcm9u
-ZCwNCj4gPiA+ID4gPiANCj4gPiA+ID4gPiA+IFNvLCBwbGVhc2UgZG8gbm90ZSB0aGF0IHdlIGRv
-IG5vdCB3YW50IHRvIGlnbm9yZSB0aGUNCj4gPiA+ID4gPiA+IEZJTl9XQUlUMg0KPiA+ID4gPiA+
-ID4gc3RhdGUNCj4gPiA+ID4gPiANCj4gPiA+ID4gPiBCdXQgd2UgZG8gaWdub3JlIHRoZSBGSU5f
-V0FJVDIgc3RhdGUuDQo+ID4gPiA+IA0KPiA+ID4gPiBXZSBkbyBub3QuIFdlIHdhaXQgZm9yIHRo
-ZSBzZXJ2ZXIgdG8gc2VuZCBhIEZJTiwgd2hpY2ggaXMNCj4gPiA+ID4gcHJlY2lzZWx5DQo+ID4g
-PiA+IHRoZQ0KPiA+ID4gPiByZWFzb24gZm9yIHdoaWNoIEZJTl9XQUlUMiBleGlzdHMuDQo+ID4g
-PiA+IA0KPiA+ID4gPiA+ID4gYmVjYXVzZSBpdCBpbXBsaWVzIHRoYXQgdGhlIHNlcnZlciBoYXMg
-bm90IGNsb3NlZCB0aGUNCj4gPiA+ID4gPiA+IHNvY2tldCBvbg0KPiA+ID4gPiA+ID4gaXRzDQo+
-ID4gPiA+ID4gPiBzaWRlLg0KPiA+ID4gPiA+IA0KPiA+ID4gPiA+IFRoYXQncyBjb3JyZWN0Lg0K
-PiA+ID4gPiA+IA0KPiA+ID4gPiA+ID4gVGhhdCBhZ2FpbiBtZWFucyB0aGF0IHdlIGNhbm5vdCBy
-ZS1lc3RhYmxpc2ggYSBjb25uZWN0aW9uDQo+ID4gPiA+ID4gPiB1c2luZw0KPiA+ID4gPiA+ID4g
-dGhlIHNhbWUgc291cmNlIElQK3BvcnQgdG8gdGhlIHNlcnZlciwgd2hpY2ggaXMgcHJvYmxlbWF0
-aWMNCj4gPiA+ID4gPiA+IGZvcg0KPiA+ID4gPiA+ID4gcHJvdG9jb2xzIHN1Y2ggYXMgTkZTdjMg
-d2hpY2ggcmVseSBvbiBzdGFuZGFyZCBkdXBsaWNhdGUNCj4gPiA+ID4gPiA+IHJlcGx5DQo+ID4g
-PiA+ID4gPiBjYWNoZQ0KPiA+ID4gPiA+ID4gZm9yIGNvcnJlY3QgcmVwbGF5IHNlbWFudGljcy4N
-Cj4gPiA+ID4gPiANCj4gPiA+ID4gPiB0aGF0J3MgZXhhY3RseSB3aGF0J3MgaGFwcGVuaW5nIHRo
-YXQgYSBjbGllbnQgaXMgdW5hYmxlIHRvDQo+ID4gPiA+ID4gZXN0YWJsaXNoDQo+ID4gPiA+ID4g
-YQ0KPiA+ID4gPiA+IG5ldyBjb25uZWN0aW9uIHRvIHRoZSBzZXJ2ZXIuIFdpdGggdGhlIHBhdGNo
-LCB0aGUgY2xpZW50IGRvZXMNCj4gPiA+ID4gPiBhbg0KPiA+ID4gPiA+IFJTVA0KPiA+ID4gPiA+
-IGFuZCBpdCByZS11c2VzIHRoZSBwb3J0IGFuZCBhbGwgaXMgd2VsbCBmb3IgTkZTdjMuDQo+ID4g
-PiA+IA0KPiA+ID4gPiBSU1QgaXMgbm90IGd1YXJhbnRlZWQgdG8gYmUgZGVsaXZlcmVkIHRvIHRo
-ZSByZWNpcGllbnQuIFRoYXQncw0KPiA+ID4gPiB3aHkNCj4gPiA+ID4gdGhlDQo+ID4gPiA+IFRD
-UCBwcm90b2NvbCBkZWZpbmVzIEZJTjogaXQgaXMgYSBndWFyYW50ZWVkIHRvIGJlIGRlbGl2ZXJl
-ZA0KPiA+ID4gPiBiZWNhdXNlIGl0DQo+ID4gPiA+IGlzIEFDS2VkLg0KPiA+ID4gPiANCj4gPiA+
-ID4gPiA+IFRoaXMgaXMgd2h5IHdlIGRvbid0IGp1c3Qgc2V0IHRoZSBUQ1BfTElOR0VSMiBzb2Nr
-ZXQgb3B0aW9uDQo+ID4gPiA+ID4gPiBhbmQNCj4gPiA+ID4gPiA+IGNhbGwNCj4gPiA+ID4gPiA+
-IHNvY2tfcmVsZWFzZSgpLiBUaGUgY2hvaWNlIHRvIHRyeSB0byB3YWl0IGl0IG91dCBpcw0KPiA+
-ID4gPiA+ID4gZGVsaWJlcmF0ZQ0KPiA+ID4gPiA+ID4gYmVjYXVzZQ0KPiA+ID4gPiA+ID4gdGhl
-IGFsdGVybmF0aXZlIGlzIHRoYXQgd2UgZW5kIHVwIHdpdGggYnVzeS13YWl0aW5nIHJlLQ0KPiA+
-ID4gPiA+ID4gY29ubmVjdGlvbg0KPiA+ID4gPiA+ID4gYXR0ZW1wdHMuDQo+ID4gPiA+ID4gDQo+
-ID4gPiA+ID4gV2h5IHdvdWxkIGl0IGJ1c3ktd2FpdD8gSW4gbXkgdGVzdGluZywgUlNUIGhhcHBl
-bnMgYW5kIG5ldw0KPiA+ID4gPiA+IGNvbm5lY3Rpb24NCj4gPiA+ID4gPiBpcyBlc3RhYmxpc2hl
-ZD8NCj4gPiA+ID4gDQo+ID4gPiA+IE9ubHkgaWYgdGhlIHNlcnZlciBoYXMgZHJvcHBlZCB0aGUg
-Y29ubmVjdGlvbiB3aXRob3V0IG5vdGlmeWluZw0KPiA+ID4gPiB0aGUNCj4gPiA+ID4gY2xpZW50
-Lg0KPiA+ID4gDQo+ID4gPiBZZXMgdGhlIHNlcnZlciBkcm9wcGVkIHRoZSBjb25uZWN0aW9uIHdp
-dGhvdXQgbm90aWZ5aW5nIHRoZQ0KPiA+ID4gY2xpZW50DQo+ID4gPiAob3INCj4gPiA+IHBlcmhh
-cHMgc29tZXRoaW5nIGluIHRoZSBtaWRkbGUgZGlkIGl0IGFzIGFuIGF0dGFjaykuIEFnYWluLCBJ
-DQo+ID4gPiByYWlzZQ0KPiA+ID4gdGhpcyBjb25jZXJuIGZvciB0aGUgc2FrZSBvZiBkZWFsaW5n
-IHdpdGggdGhpcyBhcyBhbiBhdHRhY2suIEkNCj4gPiA+IGhhdmUNCj4gPiA+IG5vDQo+ID4gPiBp
-bnRlbnRpb25zIG9mIGNhdGVyaW5nIHRvIGJyb2tlbiBzZXJ2ZXJzLiBJZiB0aGlzIGlzIG5vdCBh
-DQo+ID4gPiBwb3NzaWJsZQ0KPiA+ID4gYXR0YWNrLCB0aGVuIHdlIGRvbid0IGhhdmUgdG8gZGVh
-bCB3aXRoIGl0Lg0KPiA+IA0KPiA+IEEgbWFuIGluIHRoZSBtaWRkbGUgbWlnaHQgYmUgYWJsZSB0
-byBpbnRlcmNlcHQgdGhlIEZJTiBmcm9tIHRoZQ0KPiA+IHNlcnZlcg0KPiA+IGFuZCBBQ0sgaXQs
-IGNhdXNpbmcgdGhlIGNvbm5lY3Rpb24gdG8gYmUgY2xvc2VkIG9uIHRoYXQgc2VydmVyLg0KPiA+
-IEhvd2V2ZXIsIGFzIERhdmUgcG9pbnRlZCBvdXQsIHdoeSB3b3VsZG4ndCB0aGUga2VlcGFsaXZl
-IG1lY2hhbmlzbQ0KPiA+IHRoZW4NCj4gPiBldmVudHVhbGx5IGtpY2sgaW4gYW5kIGNsb3NlIHRo
-ZSBzb2NrZXQgb24gdGhlIGNsaWVudCBhcyB3ZWxsPw0KPiANCj4gVGhlIG1lY2hhbmlzbSBpcyBh
-bHJlYWR5IGtpY2tlZCBpbiBhbmQgZ290IHN0dWNrIGluIEZJTl9XQUlUMi4gTkZTDQo+IGNvbm5l
-Y3Rpb24gd2FzIGlkbGUsIHNvIFRDUCBsYXllciB3YXMgc2VuZGluZyBrZWVwLWFsaXZlcy4gVGhl
-biBpdA0KPiBzZW50IGEgRklOL0FDSyB0byB3aGljaCB0aGUgc2VydmVyIHJlcGxpZWQgd2l0aCBq
-dXN0IGFuIEFDSy4gS2VybmVsDQo+IG5vdGlmaWVkIE5GUyB0aGF0IHdlIGFyZSBpbiBGSU5fV0FJ
-VDIgYW5kIEkgYmVsaWV2ZSBpdCBpcyBORlMNCj4gcmVzcG9uc2liaWxpdHkgdG8gYWN0IGFjY29y
-ZGluZ2x5LiBLZXJuZWwgdGhlbiBrZWVwcyBzZW5kaW5nDQo+ICJrZWVwLWFsaXZlcyIgZm9yZXZl
-ci4gIEJlY2F1c2Ugb2YgdGhpcyBjb2RlOg0KPiANCj4gICAgICAgICBjYXNlIFRDUF9GSU5fV0FJ
-VDE6DQo+ICAgICAgICAgY2FzZSBUQ1BfRklOX1dBSVQyOg0KPiAgICAgICAgICAgICAgICAgLyog
-UkZDIDc5MyBzYXlzIHRvIHF1ZXVlIGRhdGEgaW4gdGhlc2Ugc3RhdGVzLA0KPiAgICAgICAgICAg
-ICAgICAgICogUkZDIDExMjIgc2F5cyB3ZSBNVVNUIHNlbmQgYSByZXNldC4NCj4gICAgICAgICAg
-ICAgICAgICAqIEJTRCA0LjQgYWxzbyBkb2VzIHJlc2V0Lg0KPiAgICAgICAgICAgICAgICAgICov
-DQo+ICAgICAgICAgICAgICAgICBpZiAoc2stPnNrX3NodXRkb3duICYgUkNWX1NIVVRET1dOKSB7
-DQo+ICAgICAgICAgICAgICAgICAgICAgICAgIGlmIChUQ1BfU0tCX0NCKHNrYiktPmVuZF9zZXEg
-IT0NCj4gVENQX1NLQl9DQihza2IpLT5zZXEgJiYNCj4gICAgICAgICAgICAgICAgICAgICAgICAg
-ICAgIGFmdGVyKFRDUF9TS0JfQ0Ioc2tiKS0+ZW5kX3NlcSAtIHRoLT5maW4sDQo+IHRwLT5yY3Zf
-bnh0KSkgew0KPiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIE5FVF9JTkNfU1RBVFMo
-c29ja19uZXQoc2spLA0KPiBMSU5VWF9NSUJfVENQQUJPUlRPTkRBVEEpOw0KPiAgICAgICAgICAg
-ICAgICAgICAgICAgICAgICAgICAgIHRjcF9yZXNldChzayk7ICAgPDwgdGhpcyBpcyBuZXZlcg0K
-PiB0cmlnZ2VyZWQNCj4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICByZXR1cm4gMTsN
-Cj4gICAgICAgICAgICAgICAgICAgICAgICAgfQ0KPiAgICAgICAgICAgICAgICAgfQ0KPiANCj4g
-SW4gb3VyIGNhc2UgVENQX1NLQl9DQihza2IpLT5lbmRfc2VxIGFsd2F5cyBlcXVhbHMNCj4gVENQ
-X1NLQl9DQihza2IpLT5zZXEuIChObyBpIGRvbid0IGtub3cgdGhlIG1lYW5pbmcgb2YgZW5kX3Nl
-cSBhbmQgc2VxDQo+IDotLykuDQoNClJpZ2h0LCBidXQgaWYgdGhlIGNvbm5lY3Rpb24gaXMgY2xv
-c2VkIG9uIHRoZSBzZXJ2ZXIsIHRoZW4gaXQgc2hvdWxkIGJlDQpzZW5kaW5nIFJTVCByZXBsaWVz
-IHRvIGFsbCB0aGVzZSBrZWVwYWxpdmVzLCBvbmUgb2Ygd2hpY2ggd2lsbA0KcHJlc3VtYWJseSBl
-dmVudHVhbGx5IHJlYWNoIHRoZSBjbGllbnQuDQoNCj4gPiBJZiB0aGUgRklOIGlzIG5vdCBBQ0tl
-ZCwgdGhlbiB0aGUgc2VydmVyIGlzIHN1cHBvc2VkIHRvIGtlZXANCj4gPiByZXRyYW5zbWl0dGlu
-ZyBpdC4gVW50aWwgdGhhdCBBQ0sgaXMgcmVjZWl2ZWQsIGl0IGNhbm5vdCBjbG9zZSB0aGUNCj4g
-PiBzb2NrZXQgd2l0aG91dCB2aW9sYXRpbmcgdGhlIFRDUCBwcm90b2NvbC4NCj4gDQo+IFNvbWV0
-aGluZyBpbiB0aGUgbWlkZGxlIGNhbiBrZWVwIGludGVyY2VwdGluZyB0aGUgdGhlIEZJTi9BQ0sg
-ZnJvbQ0KPiB0aGUNCj4gc2VydmVyIGFuZCBrZWVwIHNlbmRpbmcgYW4gQUNLIGJhY2s/DQoNClN1
-cmUsIGJ1dCBpZiBjYW4gZG8gdGhhdCAod2hpY2ggd291bGQgZW50YWlsIGJlaW5nIGFibGUgdG8g
-Z3Vlc3MgdGhlDQpUQ1Agc2VnbWVudCBzZXEgbnVtcykgaXQgY2FuIGFsc28gYmUgaW4gYSBwb3Np
-dGlvbiB0byBnZW5lcmFsbHkgbWVzcw0Kd2l0aCB0aGUgVENQIGNvbm5lY3Rpb24uIFdoeSBkbyB3
-ZSBjYXJlIGFib3V0IHRoYXQgY2FzZT8NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5G
-UyBjbGllbnQgbWFpbnRhaW5lciwgSGFtbWVyc3BhY2UNCnRyb25kLm15a2xlYnVzdEBoYW1tZXJz
-cGFjZS5jb20NCg0KDQo=
+On Fri, Feb 22, 2019 at 11:32 AM Dave Wysochanski <dwysocha@redhat.com> wrote:
+>
+> On Fri, 2019-02-22 at 09:44 -0500, Olga Kornievskaia wrote:
+> > Hi Dave,
+> >
+> > A re-producer is a server that sends an ACK to the client's FIN/ACK
+> > request and does nothing afterwards (I can reproduce it 100% with a
+> > hacked up server. It was discovered with a "broken" server that
+> > doesn't fully closes a connection). It leave this client unable to
+> > connect to this server again indefinitely/forever/reboot required
+> > kind
+> > of state. Once it was considered that doing something like that to
+> > the
+> > client is a form of an attack (denial-of-server) and thus the kernel
+> > has a tcp_fin_timeout option after which the kernel will abort the
+> > connection. However this only applies to the sockets that have been
+> > closed by the client. This is NOT the case. NFS does not close the
+> > connection and it ignores kernel's notification of FIN_WAIT2 state.
+> >
+> Interesting.  I had the same reproducer but eventually an RST would get
+> sent from the NFS client due to the TCP keepalives.  It sounds like
+> that is not the case anymore.  When I did my testing was over a year
+> and a half ago though.
+
+after the keepalives the TCP also sends a FIN/ACK if the server
+properly sent a FIN/ACK back, then keep alive will indeed be
+sufficient. Can you check if in your trace server in one time sent
+just an ACK but in another case sent the FIN/ACK?
+
+> > One can argue that this is a broken server and we shouldn't bother.
+> > But this patch is an attempt to argue that the client still should
+> > care and deal with this condition. However, if the community feels
+> > that a broken server is a broken server and this form of an attack is
+> > not interested, this patch can live will be an archive for later or
+> > never.
+> >
+>
+> This isn't IPoIB is it?
+
+No, just normal TCP.
+
+
+> Actually, fwiw, looking back I had speculated on changes in this area.
+> I'm adding you to the CC list of this bug which had some of my musings
+> on it:
+> https://bugzilla.redhat.com/show_bug.cgi?id=1466802#c43
+> That bug I ended up closing when we could no longer prove there was any
+> state where the NFS client could get stuck in FIN_WAIT2 after the
+> keepalive patch.
+
+I can reproduce current behavior with the current upstream code.
+
+
+> It can happen that the server only sends the ACK back to the clients
+> FIN,ACK so in general the testcase is valid.  But then the question is
+> how long should one wait for the final data and FIN from the server, or
+> are there ever instances where you shouldn't wait forever?  Is there a
+> way for us to know for sure there is no data left to receive so it's
+> safe to timeout?  No RPCs outstanding?
+
+Yep all good questions which I don't have answers to. I realize that
+for instance, that a server might send an ACK and then send a FIN/ACK
+after that. But why is it bad for the client to proactively send an
+RST (by shutting down the connection in TCP_FIN_WAIT2 if the client
+was shutting down the connection anyway.
+
+> I don't claim to know many of the subtleties here as far as would the
+> server wait forever in LAST_ACK or do implementations eventually
+> timeout after some time?  Seems like if these last packets get lost
+> there is likely a bug somewhere (either firewall or TCP stack, etc).
+> https://tools.ietf.org/html/rfc793#page-22
+>
+> It looks like at least some people are putting timeouts into their
+> stacks though I'm not sure that's a good idea or not.
+
+I saw only one other driver in the kernel that does have handling of
+the TCP_FIN_WAIT2 state (driver/crypto/chelsio) ...
