@@ -2,250 +2,283 @@ Return-Path: <SRS0=ibFv=Q5=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-1.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id CF70AC43381
-	for <linux-nfs@archiver.kernel.org>; Fri, 22 Feb 2019 19:17:33 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id BF38AC43381
+	for <linux-nfs@archiver.kernel.org>; Fri, 22 Feb 2019 20:00:25 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 8C90B206B6
-	for <linux-nfs@archiver.kernel.org>; Fri, 22 Feb 2019 19:17:33 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 488732070B
+	for <linux-nfs@archiver.kernel.org>; Fri, 22 Feb 2019 20:00:25 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (1024-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="rcYaMN1O"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1725902AbfBVTRc (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 22 Feb 2019 14:17:32 -0500
-Received: from mail-qt1-f193.google.com ([209.85.160.193]:36630 "EHLO
-        mail-qt1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725767AbfBVTRc (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Feb 2019 14:17:32 -0500
-Received: by mail-qt1-f193.google.com with SMTP id p25so3794007qtb.3
-        for <linux-nfs@vger.kernel.org>; Fri, 22 Feb 2019 11:17:31 -0800 (PST)
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:message-id:subject:from:to:cc:date:in-reply-to
-         :references:mime-version:content-transfer-encoding;
-        bh=n7FSBEECNe5Zqx3AJURAyltJvG5Xu/dxrO4UAmXQUNg=;
-        b=kbCXaR7UMMHoSIVZLPOEo++JVs9TAD+9981gAZvBhVzztbJoQdGGVTwrRS+9kqcfOv
-         wjwtFuuW1gUkJciTGjItEEJUMGWnOwcQkXUerfoC96yvoaUIE/yeQW4jB5CtxGkyZqKD
-         KLVUPBB5eJE6IFUqeN2zwnR26TBaPeptWXPCdkmvBzIzPNSMvNDWcknCxCXvhYBqhcYB
-         ucbL2x4CdIm+L+WMAnsFWVTZYXoIRYDDG3Ptzz5t/goqtTh5ueIsEFKFm5+LXYfStnhZ
-         0ewyzq9w1YD12LRu4sYlZH6l5YKxnktjROA65P1a6UlqnTjfNeKuH1tS0KFkWMvp+iHi
-         42Rw==
-X-Gm-Message-State: AHQUAubd6kINdnuNnLsL2sD4xVvFvQkHhM+7TdBRhbxR0I6w1EbgO/1D
-        y4ZM+6AK3yC0vwZjPTdWpoD0J804Txs=
-X-Google-Smtp-Source: AHgI3Ia3he6HDl8YXr+cVZbr/uVfTuua43/UoliKg/IL1CQ01HOxNHrYZoalRI/dD5drF7H9UxjR3A==
-X-Received: by 2002:a0c:8938:: with SMTP id 53mr4422667qvp.165.1550863051026;
-        Fri, 22 Feb 2019 11:17:31 -0800 (PST)
-Received: from dhcp-12-212-173.gsslab.rdu.redhat.com (nat-pool-rdu-t.redhat.com. [66.187.233.202])
-        by smtp.gmail.com with ESMTPSA id z42sm1349822qta.28.2019.02.22.11.17.30
-        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Fri, 22 Feb 2019 11:17:30 -0800 (PST)
-Message-ID: <1550863049.9958.3.camel@redhat.com>
+        id S1725902AbfBVUAY (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 22 Feb 2019 15:00:24 -0500
+Received: from mail-eopbgr820113.outbound.protection.outlook.com ([40.107.82.113]:9833
+        "EHLO NAM01-SN1-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1725892AbfBVUAY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 22 Feb 2019 15:00:24 -0500
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=hammerspace.com;
+ s=selector1;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=agonyNkMC/xh7e+0LoR6ZTs+Fe1yrTVOIOwkRs5XkyE=;
+ b=rcYaMN1OfSuwUKHw5Pk2t8mIsv8ySHrEXty/Rh9Nc4LfzuhE3CX+2yud2m47uPm8mmdWQlQ2yvwhfeNW71OPRTQMlsprHhwfaCTszzgcnwW0brvhZMt656zJzOXyug4uldYMWXr7mcEERFxiXH+s/Hcg+hrI/nPQANTXW2jO6xI=
+Received: from SN6PR13MB2494.namprd13.prod.outlook.com (52.135.95.148) by
+ SN6PR13MB2384.namprd13.prod.outlook.com (52.135.94.152) with Microsoft SMTP
+ Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ 15.20.1665.11; Fri, 22 Feb 2019 20:00:19 +0000
+Received: from SN6PR13MB2494.namprd13.prod.outlook.com
+ ([fe80::c1d2:93da:11b5:c4d4]) by SN6PR13MB2494.namprd13.prod.outlook.com
+ ([fe80::c1d2:93da:11b5:c4d4%3]) with mapi id 15.20.1643.018; Fri, 22 Feb 2019
+ 20:00:18 +0000
+From:   Trond Myklebust <trondmy@hammerspace.com>
+To:     "olga.kornievskaia@gmail.com" <olga.kornievskaia@gmail.com>,
+        "dwysocha@redhat.com" <dwysocha@redhat.com>
+CC:     "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
 Subject: Re: [PATCH 1/1] SUNRPC: fix handling of half-closed connection
-From:   Dave Wysochanski <dwysocha@redhat.com>
-To:     Olga Kornievskaia <olga.kornievskaia@gmail.com>
-Cc:     trond.myklebust@hammerspace.com,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        linux-nfs <linux-nfs@vger.kernel.org>
-Date:   Fri, 22 Feb 2019 14:17:29 -0500
-In-Reply-To: <CAN-5tyEpWevmXJb8weecFBm_V=FZm4Zc=b+rrwJFtMgUYhm2tg@mail.gmail.com>
+Thread-Topic: [PATCH 1/1] SUNRPC: fix handling of half-closed connection
+Thread-Index: AQHUySyIDqRlQFwo+E+ucUjvP+DatqXrvYkAgAAqWoCAAB5BAIAACo4AgAAjdoCAAAv1gA==
+Date:   Fri, 22 Feb 2019 20:00:18 +0000
+Message-ID: <cac1ddc0f4f2e70e1bfc2dc142f9675b68073440.camel@hammerspace.com>
 References: <20190220145650.21566-1-olga.kornievskaia@gmail.com>
          <1550837576.6456.3.camel@redhat.com>
          <CAN-5tyH1e_cakjmU5VkQraw=ht71y8vxvaZbe2W6zAdfEnWLPA@mail.gmail.com>
          <1550853168.9958.1.camel@redhat.com>
          <CAN-5tyEpWevmXJb8weecFBm_V=FZm4Zc=b+rrwJFtMgUYhm2tg@mail.gmail.com>
-Content-Type: text/plain; charset="UTF-8"
-X-Mailer: Evolution 3.22.6 (3.22.6-14.el7) 
-Mime-Version: 1.0
-Content-Transfer-Encoding: 8bit
+         <1550863049.9958.3.camel@redhat.com>
+In-Reply-To: <1550863049.9958.3.camel@redhat.com>
+Accept-Language: en-US, en-GB
+Content-Language: en-US
+X-MS-Has-Attach: 
+X-MS-TNEF-Correlator: 
+x-originating-ip: [68.40.189.247]
+x-ms-publictraffictype: Email
+x-ms-office365-filtering-correlation-id: 9496eed5-e491-410e-863e-08d699005eda
+x-microsoft-antispam: BCL:0;PCL:0;RULEID:(2390118)(7020095)(4652040)(8989299)(5600110)(711020)(4605104)(4534185)(4627221)(201703031133081)(201702281549075)(8990200)(2017052603328)(7153060)(7193020);SRVR:SN6PR13MB2384;
+x-ms-traffictypediagnostic: SN6PR13MB2384:
+x-ms-exchange-purlcount: 5
+x-microsoft-exchange-diagnostics: =?utf-8?B?MTtTTjZQUjEzTUIyMzg0OzIzOktHOGdGNlN0dng2NVdPTzNZU0hnUmFTYXNO?=
+ =?utf-8?B?QVZkSTJ6YnBaOFZtNWV5bUlpNmM0Q2J5UVhpUG5pQjloT2lHMmQvb25uVjk4?=
+ =?utf-8?B?aVpGYnVIMGoxRU1KcUdGNk5CVEg0KzNkc1djM1Q1NEV0MEpQMGVaYVhEeDI4?=
+ =?utf-8?B?bytpSEdpcTJOZHpqOHdPVkRXSkgzanNaNWs0ZTh3RUFQU2svRDVLd0R0SzRo?=
+ =?utf-8?B?TmJBcXZMbkhoYzdvQm56VXFwYVVNQXg1ZHJRTXRDSWNEUU5CNXBaRzNrV2pD?=
+ =?utf-8?B?WVNYbkhkZmo5ZnRtc1BVYTNYT1lHSkVBM0dtVEttR09WTXhDRE5wcktibHdN?=
+ =?utf-8?B?RWNyVVY4czBHcno1enorQ0RZOFdmQXE2aTY2NXJuVGxIRkcxRWpTMTFjMWRo?=
+ =?utf-8?B?Um5ZeGduWlZJbE94d0g2YzJadGF6WVN5YkNmL004c1FHNnowTjhKOStOVlZM?=
+ =?utf-8?B?NnlDc3JTREVMMVg1aXMveDhYanR4SjlzZ0ZVNGM1cTJ2MlRtdGprQUZYQ3g1?=
+ =?utf-8?B?ajd2ODladFVlcDFlbVFzMkJCbTNEMndhUmdaN09mQlFJT25kenRMZmlWUzlq?=
+ =?utf-8?B?bTFCTVF5Qml6STlXbmQ0YTgzVThHZzd5enpCeHpZSDNBdnJ0WUI5d294d3Vi?=
+ =?utf-8?B?RzRId0NKR2lidkg2YXBFVG4vM3FnbGp2Q3BuazZ0QXVrRTdKbTFMcU5nQWh4?=
+ =?utf-8?B?dUZXRURPazI5UnNlTlNnT1d6NGNOQnFqL29LVTdGbndzK1cxL2psWm5nb1dD?=
+ =?utf-8?B?UmI4aExObFo4MEt1ZTJyUDgzWHE2QW5GYlJ5bVZkNWNORnJWV1hPQW5xdFRT?=
+ =?utf-8?B?bHZqRVFWYUdJaTJSWlo3WnJJSFo3R3dZRzdnUFFBZk9kNWV1cXJLOU9KdXJ3?=
+ =?utf-8?B?cmFndlZMeUd0Myt6ZllUSHM1NFlPR2ZkRHk1SVpjalhrdkdTcTV4MW9obEp1?=
+ =?utf-8?B?UUlkT3grUFdWRC9zWXpiRWdUbnViRVhtaTVPaWhmcHkwd2V5bTZIaEc0WW9Z?=
+ =?utf-8?B?OFBSdU5UWUxwMmh2L3pVVFRKTEdYTlJwb2VYR1FXYTlyV1JhT1ZGV3lYRkRG?=
+ =?utf-8?B?aDRvZjVOcmxtdXNXMU94cjhaRklUZFRIZFZBNnNUendJUC95eWdMOUNkTVNC?=
+ =?utf-8?B?NlFGeVpzWTRWVEpmcTZuOGJQT3RXWTFXbXlzQmE5R3E1RUp0ekpBb0FLcGFC?=
+ =?utf-8?B?K1ZKUU9mem1DN0ZNaVJaTThZMitJcVlLenRhZUNZUERNMXZ2eXpHNWlpNFVR?=
+ =?utf-8?B?MGF3NHUvWXdHWjJLYlFuN1NBalEwUlhxVVk0RmFRb0xGNVNvM0JEU0MvNzRF?=
+ =?utf-8?B?aDA4VjU3NjBRWFNpRkZuQyt3NENzaktpUFBzamtCMHlTYXJRYy9sR3JTdWtz?=
+ =?utf-8?B?L25nMWVCbFM5QWErZyswZVkrNi9rM1F3WGJEc1JRV0Z4amVGSmFxMGhYSWpz?=
+ =?utf-8?B?TnhJdm5pSSsrVldoaFRtZHdkeEp2Znp1MDhQVWl4UVBSa1gxRVZhRFppT0dZ?=
+ =?utf-8?B?bjdNUjhaeHZHR3JKNVoxbnpMblFZanZ6dDA0Q0NTKzY4YWM0K1U3V3Yzc0Qz?=
+ =?utf-8?B?UjZTOU1iQ1QycmFQRlgzVkJiM1BkbHBCMjJGdmlwTEdrODRkbGxFUmdNWnly?=
+ =?utf-8?B?NEtwejdBYlJWVTdjNUFVWnFRa2VvL2hXY1IwbnlSVitSRXFJSkk2Mi9JSVRy?=
+ =?utf-8?B?UnprOGxlTnFlQ29RS01XMHY2eGdOQmx3ckJFWERpazhuZzRTQUM4NVhha21H?=
+ =?utf-8?B?UldJME1MdzUraSs4OEJib2RXamNBV0Y1disxb2pEdlA3VWh6azBkTVVMbmNx?=
+ =?utf-8?B?TFZoR1Vsb1RzMUdPMWl2eFIramhibzJJR01ldWxZN20vd2c9PQ==?=
+x-microsoft-antispam-prvs: <SN6PR13MB2384B7AD1D34D8F478DD3F08B87F0@SN6PR13MB2384.namprd13.prod.outlook.com>
+x-forefront-prvs: 09565527D6
+x-forefront-antispam-report: SFV:NSPM;SFS:(10019020)(366004)(346002)(39830400003)(376002)(136003)(396003)(189003)(199004)(81156014)(54906003)(110136005)(3846002)(8936002)(7736002)(53936002)(316002)(305945005)(66066001)(106356001)(6116002)(2501003)(8676002)(105586002)(81166006)(93886005)(68736007)(229853002)(118296001)(71190400001)(76176011)(5660300002)(97736004)(25786009)(486006)(14444005)(4326008)(99286004)(71200400001)(478600001)(966005)(14454004)(256004)(15974865002)(2616005)(6246003)(6512007)(26005)(6306002)(6346003)(186003)(53546011)(6506007)(2906002)(6436002)(86362001)(36756003)(102836004)(11346002)(446003)(476003)(6486002);DIR:OUT;SFP:1102;SCL:1;SRVR:SN6PR13MB2384;H:SN6PR13MB2494.namprd13.prod.outlook.com;FPR:;SPF:None;LANG:en;PTR:InfoNoRecords;MX:1;A:1;
+received-spf: None (protection.outlook.com: hammerspace.com does not designate
+ permitted sender hosts)
+authentication-results: spf=none (sender IP is )
+ smtp.mailfrom=trondmy@hammerspace.com; 
+x-ms-exchange-senderadcheck: 1
+x-microsoft-antispam-message-info: ZNQI9Z9mygIJ338LwNmsD6tayvAhEUYWGbqebKOnLaDvda955Vh26Z3418RsyH5lZ79opxOLKaqVdEyYha9u7kKiO2td+q6V7YHPwKxGuKX68UnSV4WeUD9vxmuB6LdkDWoKtTA9dja75wo99KAdvSX11DXyxJrey5R84sGEvkkd+lr+mxuSqMggmevFNErmZuEsNRQWSLvZOPREM0kQUEAnhCMo5mHXyCajTUyAdQrpSs3HL47ZWcuOfae/l/ZTAT3CQVzkfmKTtn+mnjoqPDl7MJ/Z8JUo6nqMxQOlxsuWSy0SfeSCw995HFfwcpU5trf48gn11BA65FrTriDWYZ0pdEH7XibRHPddD0sjaU2wo49wlEk7sbbJLk16BQQqUmbp1AzeWqRfszg2WxoQSMUs4rSUxe1HtMPlNH29f/E=
+Content-Type: text/plain; charset="utf-8"
+Content-ID: <9FBAA18928C59E46B682A433E447B96A@namprd13.prod.outlook.com>
+Content-Transfer-Encoding: base64
+MIME-Version: 1.0
+X-OriginatorOrg: hammerspace.com
+X-MS-Exchange-CrossTenant-Network-Message-Id: 9496eed5-e491-410e-863e-08d699005eda
+X-MS-Exchange-CrossTenant-originalarrivaltime: 22 Feb 2019 20:00:18.8331
+ (UTC)
+X-MS-Exchange-CrossTenant-fromentityheader: Hosted
+X-MS-Exchange-CrossTenant-id: 0d4fed5c-3a70-46fe-9430-ece41741f59e
+X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: SN6PR13MB2384
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Fri, 2019-02-22 at 12:10 -0500, Olga Kornievskaia wrote:
-> On Fri, Feb 22, 2019 at 11:32 AM Dave Wysochanski <dwysocha@redhat.co
-> m> wrote:
-> > 
-> > On Fri, 2019-02-22 at 09:44 -0500, Olga Kornievskaia wrote:
-> > > Hi Dave,
-> > > 
-> > > A re-producer is a server that sends an ACK to the client's
-> > > FIN/ACK
-> > > request and does nothing afterwards (I can reproduce it 100% with
-> > > a
-> > > hacked up server. It was discovered with a "broken" server that
-> > > doesn't fully closes a connection). It leave this client unable
-> > > to
-> > > connect to this server again indefinitely/forever/reboot required
-> > > kind
-> > > of state. Once it was considered that doing something like that
-> > > to
-> > > the
-> > > client is a form of an attack (denial-of-server) and thus the
-> > > kernel
-> > > has a tcp_fin_timeout option after which the kernel will abort
-> > > the
-> > > connection. However this only applies to the sockets that have
-> > > been
-> > > closed by the client. This is NOT the case. NFS does not close
-> > > the
-> > > connection and it ignores kernel's notification of FIN_WAIT2
-> > > state.
-> > > 
-> > 
-> > Interesting.  I had the same reproducer but eventually an RST would
-> > get
-> > sent from the NFS client due to the TCP keepalives.  It sounds like
-> > that is not the case anymore.  When I did my testing was over a
-> > year
-> > and a half ago though.
-> 
-> after the keepalives the TCP also sends a FIN/ACK if the server
-> properly sent a FIN/ACK back, then keep alive will indeed be
-> sufficient. Can you check if in your trace server in one time sent
-> just an ACK but in another case sent the FIN/ACK?
-> 
-
-I had two reproducers actually.  In both cases the NFS server would
-never send a FIN.
-
-The first bug (https://bugzilla.redhat.com/show_bug.cgi?id=1458421) was
-about a NFS server crash after being in the half-close state.  An NFS4
-client without that keepalive patch would hang.
-This is a valid test case and we check for that now in all releases. 
-Here's the outline:
-# Outline
-# Step 1. On NFS client: tcpdump -U -q -i $INTERFACE -w $PCAP_FILE -s 0 port 2049 and host $NFS_SERVER
-# Step 2. On NFS client, mount NFS4 server export with "vers=4,timeo=5"
-# Step 3. On NFS server, block outgoing FIN packets from the NFS server"
-# Step 4. On NFS server, using systemtap script, to delay NFS4OPEN_CONFIRM response for a few seconds
-# Step 5. On NFS client, open a file, which should get delayed and trigger a FIN from the NFS client
-# Step 6. On NFS server, after a short delay, crash the server by 'echo c > /proc/sysrq-trigger'
-# Step 7. On NFS client, wait for NFS server to reboot
-# Step 8. On NFS client, wait for the NFS to reconnect TCP connection
-# Step 9. On NFS client, wait for NFS4 grace period
-# Step 10. On NFS client, try a 'ls' of the file created earlier
-# Step 11. On NFS client, sleep for $DELAY seconds to allow all operations to complete
-# Step 12. On NFS client, ensure all operations have completed
-# Step 13. Cleanup
-
-
-The second test case (after the keepalive patch) was arguably invalid
-test as I used systemtap on the NFS server to never close the socket so
-it would never send a FIN.  This obviously should never happen but at
-the time I wanted to see if the NFS client would recover.
-I did that with this:
-probe module("sunrpc").function("svc_xprt_enqueue") {
-	printf("%s: %s removing XPT_CLOSE from xprt = %p\n", tz_ctime(gettimeofday_s()), ppfunc(), $xprt);
-	$xprt->xpt_flags = $xprt->xpt_flags & ~(1 << 2);
-}
-Here's the full outline for this test:
-
-# This test checks automatic NFS TCP recovery after a specific failure scenario.
-# The failure scenario is with an NFSv3 mount that goes idle and the NFS client closes the
-# TCP connection, and the final FIN from the NFS server gets lost.
-# This can be a tricky scenario since the NFS client's TCP may get stuck in FIN-WAIT-2 indefinitely.
-# The NFS client should be able to recover the NFS TCP connection automatically without unmount/mount
-# cycle or reboot, and the TCP connection should not be stuck in FIN-WAIT-2 or any other non-connected
-# state.
-# 
-# Outline
-# Step 1. On NFS client: tcpdump -U -q -i $INTERFACE -w $PCAP_FILE -s 0 port 2049 and host $NFS_SERVER
-# Step 2. On NFS client, mount NFS3 server export
-# Step 3. On NFS server, using systemtap script, force the NFS server to never send a FIN (avoid close)
-# Step 4. On NFS client, verify the NFS mount with 'ls' and TCP connection in TCP_ESTABLISHED
-# Step 5. On NFS client, wait up to $time_limit seconds to allow NFS TCP connection to transition to TIME_WAIT state
-# Step 6. On NFS client, wait up to $time_limit seconds to allow NFS TCP connection to disappear
-# Step 7. Cleanup
-#
-# PASS: The state of NFS's TCP connection is usable by the end of the test (commands don't hang, etc)
-# FAIL: The state of the NFS TCP connection remains in FIN-WAIT-2 indefinitely
-
-
-> > > One can argue that this is a broken server and we shouldn't
-> > > bother.
-> > > But this patch is an attempt to argue that the client still
-> > > should
-> > > care and deal with this condition. However, if the community
-> > > feels
-> > > that a broken server is a broken server and this form of an
-> > > attack is
-> > > not interested, this patch can live will be an archive for later
-> > > or
-> > > never.
-> > > 
-> > 
-> > This isn't IPoIB is it?
-> 
-> No, just normal TCP.
-> 
-> 
-> > Actually, fwiw, looking back I had speculated on changes in this
-> > area.
-> > I'm adding you to the CC list of this bug which had some of my
-> > musings
-> > on it:
-> > https://bugzilla.redhat.com/show_bug.cgi?id=1466802#c43
-> > That bug I ended up closing when we could no longer prove there was
-> > any
-> > state where the NFS client could get stuck in FIN_WAIT2 after the
-> > keepalive patch.
-> 
-> I can reproduce current behavior with the current upstream code.
-> 
-> 
-> > It can happen that the server only sends the ACK back to the
-> > clients
-> > FIN,ACK so in general the testcase is valid.  But then the question
-> > is
-> > how long should one wait for the final data and FIN from the
-> > server, or
-> > are there ever instances where you shouldn't wait forever?  Is
-> > there a
-> > way for us to know for sure there is no data left to receive so
-> > it's
-> > safe to timeout?  No RPCs outstanding?
-> 
-> Yep all good questions which I don't have answers to. I realize that
-> for instance, that a server might send an ACK and then send a FIN/ACK
-> after that. But why is it bad for the client to proactively send an
-> RST (by shutting down the connection in TCP_FIN_WAIT2 if the client
-> was shutting down the connection anyway.
-> 
-I think you could lose data from the server if you RST and don't wait
-but other than that I don't know.  We may be splitting hairs here
-though if there's no demonstrable harm to the application (NFS).  As
-Trond points out elsewhere reconnect / port reuse may be an issue.
-
-When I looked at this in the second bug I was almost convinced that
-there was a problem with the 'close' method in xs_tcp_ops - we needed
-to be calling xs_close(), but I ran into some problems and I wasn't
-sure about the test case.
-
-
-> > I don't claim to know many of the subtleties here as far as would
-> > the
-> > server wait forever in LAST_ACK or do implementations eventually
-> > timeout after some time?  Seems like if these last packets get lost
-> > there is likely a bug somewhere (either firewall or TCP stack,
-> > etc).
-> > https://tools.ietf.org/html/rfc793#page-22
-> > 
-> > It looks like at least some people are putting timeouts into their
-> > stacks though I'm not sure that's a good idea or not.
-> 
-> I saw only one other driver in the kernel that does have handling of
-> the TCP_FIN_WAIT2 state (driver/crypto/chelsio) ...
-
-
-One final thought - is it possible that we could have a network that
-does not support TCP keepalives?  In that instance, I'll bet we could
-get an indefinite hang in FIN_WAIT2 on my first test case (server
-crashed after the half-close state).
-
-It does not look like TCP keepalives have to be implemented and maybe
-some routers / NATs / firewalls disallow them (due to extra traffic)?
-https://tools.ietf.org/html/rfc1122#page-101
-
-
+T24gRnJpLCAyMDE5LTAyLTIyIGF0IDE0OjE3IC0wNTAwLCBEYXZlIFd5c29jaGFuc2tpIHdyb3Rl
+Og0KPiBPbiBGcmksIDIwMTktMDItMjIgYXQgMTI6MTAgLTA1MDAsIE9sZ2EgS29ybmlldnNrYWlh
+IHdyb3RlOg0KPiA+IE9uIEZyaSwgRmViIDIyLCAyMDE5IGF0IDExOjMyIEFNIERhdmUgV3lzb2No
+YW5za2kgPA0KPiA+IGR3eXNvY2hhQHJlZGhhdC5jbw0KPiA+IG0+IHdyb3RlOg0KPiA+ID4gT24g
+RnJpLCAyMDE5LTAyLTIyIGF0IDA5OjQ0IC0wNTAwLCBPbGdhIEtvcm5pZXZza2FpYSB3cm90ZToN
+Cj4gPiA+ID4gSGkgRGF2ZSwNCj4gPiA+ID4gDQo+ID4gPiA+IEEgcmUtcHJvZHVjZXIgaXMgYSBz
+ZXJ2ZXIgdGhhdCBzZW5kcyBhbiBBQ0sgdG8gdGhlIGNsaWVudCdzDQo+ID4gPiA+IEZJTi9BQ0sN
+Cj4gPiA+ID4gcmVxdWVzdCBhbmQgZG9lcyBub3RoaW5nIGFmdGVyd2FyZHMgKEkgY2FuIHJlcHJv
+ZHVjZSBpdCAxMDAlDQo+ID4gPiA+IHdpdGgNCj4gPiA+ID4gYQ0KPiA+ID4gPiBoYWNrZWQgdXAg
+c2VydmVyLiBJdCB3YXMgZGlzY292ZXJlZCB3aXRoIGEgImJyb2tlbiIgc2VydmVyIHRoYXQNCj4g
+PiA+ID4gZG9lc24ndCBmdWxseSBjbG9zZXMgYSBjb25uZWN0aW9uKS4gSXQgbGVhdmUgdGhpcyBj
+bGllbnQgdW5hYmxlDQo+ID4gPiA+IHRvDQo+ID4gPiA+IGNvbm5lY3QgdG8gdGhpcyBzZXJ2ZXIg
+YWdhaW4gaW5kZWZpbml0ZWx5L2ZvcmV2ZXIvcmVib290DQo+ID4gPiA+IHJlcXVpcmVkDQo+ID4g
+PiA+IGtpbmQNCj4gPiA+ID4gb2Ygc3RhdGUuIE9uY2UgaXQgd2FzIGNvbnNpZGVyZWQgdGhhdCBk
+b2luZyBzb21ldGhpbmcgbGlrZSB0aGF0DQo+ID4gPiA+IHRvDQo+ID4gPiA+IHRoZQ0KPiA+ID4g
+PiBjbGllbnQgaXMgYSBmb3JtIG9mIGFuIGF0dGFjayAoZGVuaWFsLW9mLXNlcnZlcikgYW5kIHRo
+dXMgdGhlDQo+ID4gPiA+IGtlcm5lbA0KPiA+ID4gPiBoYXMgYSB0Y3BfZmluX3RpbWVvdXQgb3B0
+aW9uIGFmdGVyIHdoaWNoIHRoZSBrZXJuZWwgd2lsbCBhYm9ydA0KPiA+ID4gPiB0aGUNCj4gPiA+
+ID4gY29ubmVjdGlvbi4gSG93ZXZlciB0aGlzIG9ubHkgYXBwbGllcyB0byB0aGUgc29ja2V0cyB0
+aGF0IGhhdmUNCj4gPiA+ID4gYmVlbg0KPiA+ID4gPiBjbG9zZWQgYnkgdGhlIGNsaWVudC4gVGhp
+cyBpcyBOT1QgdGhlIGNhc2UuIE5GUyBkb2VzIG5vdCBjbG9zZQ0KPiA+ID4gPiB0aGUNCj4gPiA+
+ID4gY29ubmVjdGlvbiBhbmQgaXQgaWdub3JlcyBrZXJuZWwncyBub3RpZmljYXRpb24gb2YgRklO
+X1dBSVQyDQo+ID4gPiA+IHN0YXRlLg0KPiA+ID4gPiANCj4gPiA+IA0KPiA+ID4gSW50ZXJlc3Rp
+bmcuICBJIGhhZCB0aGUgc2FtZSByZXByb2R1Y2VyIGJ1dCBldmVudHVhbGx5IGFuIFJTVA0KPiA+
+ID4gd291bGQNCj4gPiA+IGdldA0KPiA+ID4gc2VudCBmcm9tIHRoZSBORlMgY2xpZW50IGR1ZSB0
+byB0aGUgVENQIGtlZXBhbGl2ZXMuICBJdCBzb3VuZHMNCj4gPiA+IGxpa2UNCj4gPiA+IHRoYXQg
+aXMgbm90IHRoZSBjYXNlIGFueW1vcmUuICBXaGVuIEkgZGlkIG15IHRlc3Rpbmcgd2FzIG92ZXIg
+YQ0KPiA+ID4geWVhcg0KPiA+ID4gYW5kIGEgaGFsZiBhZ28gdGhvdWdoLg0KPiA+IA0KPiA+IGFm
+dGVyIHRoZSBrZWVwYWxpdmVzIHRoZSBUQ1AgYWxzbyBzZW5kcyBhIEZJTi9BQ0sgaWYgdGhlIHNl
+cnZlcg0KPiA+IHByb3Blcmx5IHNlbnQgYSBGSU4vQUNLIGJhY2ssIHRoZW4ga2VlcCBhbGl2ZSB3
+aWxsIGluZGVlZCBiZQ0KPiA+IHN1ZmZpY2llbnQuIENhbiB5b3UgY2hlY2sgaWYgaW4geW91ciB0
+cmFjZSBzZXJ2ZXIgaW4gb25lIHRpbWUgc2VudA0KPiA+IGp1c3QgYW4gQUNLIGJ1dCBpbiBhbm90
+aGVyIGNhc2Ugc2VudCB0aGUgRklOL0FDSz8NCj4gPiANCj4gDQo+IEkgaGFkIHR3byByZXByb2R1
+Y2VycyBhY3R1YWxseS4gIEluIGJvdGggY2FzZXMgdGhlIE5GUyBzZXJ2ZXIgd291bGQNCj4gbmV2
+ZXIgc2VuZCBhIEZJTi4NCj4gDQo+IFRoZSBmaXJzdCBidWcgKGh0dHBzOi8vYnVnemlsbGEucmVk
+aGF0LmNvbS9zaG93X2J1Zy5jZ2k/aWQ9MTQ1ODQyMSkNCj4gd2FzDQo+IGFib3V0IGEgTkZTIHNl
+cnZlciBjcmFzaCBhZnRlciBiZWluZyBpbiB0aGUgaGFsZi1jbG9zZSBzdGF0ZS4gIEFuDQo+IE5G
+UzQNCj4gY2xpZW50IHdpdGhvdXQgdGhhdCBrZWVwYWxpdmUgcGF0Y2ggd291bGQgaGFuZy4NCj4g
+VGhpcyBpcyBhIHZhbGlkIHRlc3QgY2FzZSBhbmQgd2UgY2hlY2sgZm9yIHRoYXQgbm93IGluIGFs
+bCByZWxlYXNlcy4gDQo+IEhlcmUncyB0aGUgb3V0bGluZToNCj4gIyBPdXRsaW5lDQo+ICMgU3Rl
+cCAxLiBPbiBORlMgY2xpZW50OiB0Y3BkdW1wIC1VIC1xIC1pICRJTlRFUkZBQ0UgLXcgJFBDQVBf
+RklMRSAtcw0KPiAwIHBvcnQgMjA0OSBhbmQgaG9zdCAkTkZTX1NFUlZFUg0KPiAjIFN0ZXAgMi4g
+T24gTkZTIGNsaWVudCwgbW91bnQgTkZTNCBzZXJ2ZXIgZXhwb3J0IHdpdGgNCj4gInZlcnM9NCx0
+aW1lbz01Ig0KPiAjIFN0ZXAgMy4gT24gTkZTIHNlcnZlciwgYmxvY2sgb3V0Z29pbmcgRklOIHBh
+Y2tldHMgZnJvbSB0aGUgTkZTDQo+IHNlcnZlciINCj4gIyBTdGVwIDQuIE9uIE5GUyBzZXJ2ZXIs
+IHVzaW5nIHN5c3RlbXRhcCBzY3JpcHQsIHRvIGRlbGF5DQo+IE5GUzRPUEVOX0NPTkZJUk0gcmVz
+cG9uc2UgZm9yIGEgZmV3IHNlY29uZHMNCj4gIyBTdGVwIDUuIE9uIE5GUyBjbGllbnQsIG9wZW4g
+YSBmaWxlLCB3aGljaCBzaG91bGQgZ2V0IGRlbGF5ZWQgYW5kDQo+IHRyaWdnZXIgYSBGSU4gZnJv
+bSB0aGUgTkZTIGNsaWVudA0KPiAjIFN0ZXAgNi4gT24gTkZTIHNlcnZlciwgYWZ0ZXIgYSBzaG9y
+dCBkZWxheSwgY3Jhc2ggdGhlIHNlcnZlciBieQ0KPiAnZWNobyBjID4gL3Byb2Mvc3lzcnEtdHJp
+Z2dlcicNCj4gIyBTdGVwIDcuIE9uIE5GUyBjbGllbnQsIHdhaXQgZm9yIE5GUyBzZXJ2ZXIgdG8g
+cmVib290DQo+ICMgU3RlcCA4LiBPbiBORlMgY2xpZW50LCB3YWl0IGZvciB0aGUgTkZTIHRvIHJl
+Y29ubmVjdCBUQ1AgY29ubmVjdGlvbg0KPiAjIFN0ZXAgOS4gT24gTkZTIGNsaWVudCwgd2FpdCBm
+b3IgTkZTNCBncmFjZSBwZXJpb2QNCj4gIyBTdGVwIDEwLiBPbiBORlMgY2xpZW50LCB0cnkgYSAn
+bHMnIG9mIHRoZSBmaWxlIGNyZWF0ZWQgZWFybGllcg0KPiAjIFN0ZXAgMTEuIE9uIE5GUyBjbGll
+bnQsIHNsZWVwIGZvciAkREVMQVkgc2Vjb25kcyB0byBhbGxvdyBhbGwNCj4gb3BlcmF0aW9ucyB0
+byBjb21wbGV0ZQ0KPiAjIFN0ZXAgMTIuIE9uIE5GUyBjbGllbnQsIGVuc3VyZSBhbGwgb3BlcmF0
+aW9ucyBoYXZlIGNvbXBsZXRlZA0KPiAjIFN0ZXAgMTMuIENsZWFudXANCj4gDQo+IA0KPiBUaGUg
+c2Vjb25kIHRlc3QgY2FzZSAoYWZ0ZXIgdGhlIGtlZXBhbGl2ZSBwYXRjaCkgd2FzIGFyZ3VhYmx5
+IGludmFsaWQNCj4gdGVzdCBhcyBJIHVzZWQgc3lzdGVtdGFwIG9uIHRoZSBORlMgc2VydmVyIHRv
+IG5ldmVyIGNsb3NlIHRoZSBzb2NrZXQNCj4gc28NCj4gaXQgd291bGQgbmV2ZXIgc2VuZCBhIEZJ
+Ti4gIFRoaXMgb2J2aW91c2x5IHNob3VsZCBuZXZlciBoYXBwZW4gYnV0IGF0DQo+IHRoZSB0aW1l
+IEkgd2FudGVkIHRvIHNlZSBpZiB0aGUgTkZTIGNsaWVudCB3b3VsZCByZWNvdmVyLg0KPiBJIGRp
+ZCB0aGF0IHdpdGggdGhpczoNCj4gcHJvYmUgbW9kdWxlKCJzdW5ycGMiKS5mdW5jdGlvbigic3Zj
+X3hwcnRfZW5xdWV1ZSIpIHsNCj4gCXByaW50ZigiJXM6ICVzIHJlbW92aW5nIFhQVF9DTE9TRSBm
+cm9tIHhwcnQgPSAlcFxuIiwNCj4gdHpfY3RpbWUoZ2V0dGltZW9mZGF5X3MoKSksIHBwZnVuYygp
+LCAkeHBydCk7DQo+IAkkeHBydC0+eHB0X2ZsYWdzID0gJHhwcnQtPnhwdF9mbGFncyAmIH4oMSA8
+PCAyKTsNCj4gfQ0KPiBIZXJlJ3MgdGhlIGZ1bGwgb3V0bGluZSBmb3IgdGhpcyB0ZXN0Og0KPiAN
+Cj4gIyBUaGlzIHRlc3QgY2hlY2tzIGF1dG9tYXRpYyBORlMgVENQIHJlY292ZXJ5IGFmdGVyIGEg
+c3BlY2lmaWMNCj4gZmFpbHVyZSBzY2VuYXJpby4NCj4gIyBUaGUgZmFpbHVyZSBzY2VuYXJpbyBp
+cyB3aXRoIGFuIE5GU3YzIG1vdW50IHRoYXQgZ29lcyBpZGxlIGFuZCB0aGUNCj4gTkZTIGNsaWVu
+dCBjbG9zZXMgdGhlDQo+ICMgVENQIGNvbm5lY3Rpb24sIGFuZCB0aGUgZmluYWwgRklOIGZyb20g
+dGhlIE5GUyBzZXJ2ZXIgZ2V0cyBsb3N0Lg0KPiAjIFRoaXMgY2FuIGJlIGEgdHJpY2t5IHNjZW5h
+cmlvIHNpbmNlIHRoZSBORlMgY2xpZW50J3MgVENQIG1heSBnZXQNCj4gc3R1Y2sgaW4gRklOLVdB
+SVQtMiBpbmRlZmluaXRlbHkuDQo+ICMgVGhlIE5GUyBjbGllbnQgc2hvdWxkIGJlIGFibGUgdG8g
+cmVjb3ZlciB0aGUgTkZTIFRDUCBjb25uZWN0aW9uDQo+IGF1dG9tYXRpY2FsbHkgd2l0aG91dCB1
+bm1vdW50L21vdW50DQo+ICMgY3ljbGUgb3IgcmVib290LCBhbmQgdGhlIFRDUCBjb25uZWN0aW9u
+IHNob3VsZCBub3QgYmUgc3R1Y2sgaW4gRklOLQ0KPiBXQUlULTIgb3IgYW55IG90aGVyIG5vbi1j
+b25uZWN0ZWQNCj4gIyBzdGF0ZS4NCj4gIyANCj4gIyBPdXRsaW5lDQo+ICMgU3RlcCAxLiBPbiBO
+RlMgY2xpZW50OiB0Y3BkdW1wIC1VIC1xIC1pICRJTlRFUkZBQ0UgLXcgJFBDQVBfRklMRSAtcw0K
+PiAwIHBvcnQgMjA0OSBhbmQgaG9zdCAkTkZTX1NFUlZFUg0KPiAjIFN0ZXAgMi4gT24gTkZTIGNs
+aWVudCwgbW91bnQgTkZTMyBzZXJ2ZXIgZXhwb3J0DQo+ICMgU3RlcCAzLiBPbiBORlMgc2VydmVy
+LCB1c2luZyBzeXN0ZW10YXAgc2NyaXB0LCBmb3JjZSB0aGUgTkZTIHNlcnZlcg0KPiB0byBuZXZl
+ciBzZW5kIGEgRklOIChhdm9pZCBjbG9zZSkNCj4gIyBTdGVwIDQuIE9uIE5GUyBjbGllbnQsIHZl
+cmlmeSB0aGUgTkZTIG1vdW50IHdpdGggJ2xzJyBhbmQgVENQDQo+IGNvbm5lY3Rpb24gaW4gVENQ
+X0VTVEFCTElTSEVEDQo+ICMgU3RlcCA1LiBPbiBORlMgY2xpZW50LCB3YWl0IHVwIHRvICR0aW1l
+X2xpbWl0IHNlY29uZHMgdG8gYWxsb3cgTkZTDQo+IFRDUCBjb25uZWN0aW9uIHRvIHRyYW5zaXRp
+b24gdG8gVElNRV9XQUlUIHN0YXRlDQo+ICMgU3RlcCA2LiBPbiBORlMgY2xpZW50LCB3YWl0IHVw
+IHRvICR0aW1lX2xpbWl0IHNlY29uZHMgdG8gYWxsb3cgTkZTDQo+IFRDUCBjb25uZWN0aW9uIHRv
+IGRpc2FwcGVhcg0KPiAjIFN0ZXAgNy4gQ2xlYW51cA0KPiAjDQo+ICMgUEFTUzogVGhlIHN0YXRl
+IG9mIE5GUydzIFRDUCBjb25uZWN0aW9uIGlzIHVzYWJsZSBieSB0aGUgZW5kIG9mIHRoZQ0KPiB0
+ZXN0IChjb21tYW5kcyBkb24ndCBoYW5nLCBldGMpDQo+ICMgRkFJTDogVGhlIHN0YXRlIG9mIHRo
+ZSBORlMgVENQIGNvbm5lY3Rpb24gcmVtYWlucyBpbiBGSU4tV0FJVC0yDQo+IGluZGVmaW5pdGVs
+eQ0KPiANCj4gDQo+ID4gPiA+IE9uZSBjYW4gYXJndWUgdGhhdCB0aGlzIGlzIGEgYnJva2VuIHNl
+cnZlciBhbmQgd2Ugc2hvdWxkbid0DQo+ID4gPiA+IGJvdGhlci4NCj4gPiA+ID4gQnV0IHRoaXMg
+cGF0Y2ggaXMgYW4gYXR0ZW1wdCB0byBhcmd1ZSB0aGF0IHRoZSBjbGllbnQgc3RpbGwNCj4gPiA+
+ID4gc2hvdWxkDQo+ID4gPiA+IGNhcmUgYW5kIGRlYWwgd2l0aCB0aGlzIGNvbmRpdGlvbi4gSG93
+ZXZlciwgaWYgdGhlIGNvbW11bml0eQ0KPiA+ID4gPiBmZWVscw0KPiA+ID4gPiB0aGF0IGEgYnJv
+a2VuIHNlcnZlciBpcyBhIGJyb2tlbiBzZXJ2ZXIgYW5kIHRoaXMgZm9ybSBvZiBhbg0KPiA+ID4g
+PiBhdHRhY2sgaXMNCj4gPiA+ID4gbm90IGludGVyZXN0ZWQsIHRoaXMgcGF0Y2ggY2FuIGxpdmUg
+d2lsbCBiZSBhbiBhcmNoaXZlIGZvcg0KPiA+ID4gPiBsYXRlcg0KPiA+ID4gPiBvcg0KPiA+ID4g
+PiBuZXZlci4NCj4gPiA+ID4gDQo+ID4gPiANCj4gPiA+IFRoaXMgaXNuJ3QgSVBvSUIgaXMgaXQ/
+DQo+ID4gDQo+ID4gTm8sIGp1c3Qgbm9ybWFsIFRDUC4NCj4gPiANCj4gPiANCj4gPiA+IEFjdHVh
+bGx5LCBmd2l3LCBsb29raW5nIGJhY2sgSSBoYWQgc3BlY3VsYXRlZCBvbiBjaGFuZ2VzIGluIHRo
+aXMNCj4gPiA+IGFyZWEuDQo+ID4gPiBJJ20gYWRkaW5nIHlvdSB0byB0aGUgQ0MgbGlzdCBvZiB0
+aGlzIGJ1ZyB3aGljaCBoYWQgc29tZSBvZiBteQ0KPiA+ID4gbXVzaW5ncw0KPiA+ID4gb24gaXQ6
+DQo+ID4gPiBodHRwczovL2J1Z3ppbGxhLnJlZGhhdC5jb20vc2hvd19idWcuY2dpP2lkPTE0NjY4
+MDIjYzQzDQo+ID4gPiBUaGF0IGJ1ZyBJIGVuZGVkIHVwIGNsb3Npbmcgd2hlbiB3ZSBjb3VsZCBu
+byBsb25nZXIgcHJvdmUgdGhlcmUNCj4gPiA+IHdhcw0KPiA+ID4gYW55DQo+ID4gPiBzdGF0ZSB3
+aGVyZSB0aGUgTkZTIGNsaWVudCBjb3VsZCBnZXQgc3R1Y2sgaW4gRklOX1dBSVQyIGFmdGVyIHRo
+ZQ0KPiA+ID4ga2VlcGFsaXZlIHBhdGNoLg0KPiA+IA0KPiA+IEkgY2FuIHJlcHJvZHVjZSBjdXJy
+ZW50IGJlaGF2aW9yIHdpdGggdGhlIGN1cnJlbnQgdXBzdHJlYW0gY29kZS4NCj4gPiANCj4gPiAN
+Cj4gPiA+IEl0IGNhbiBoYXBwZW4gdGhhdCB0aGUgc2VydmVyIG9ubHkgc2VuZHMgdGhlIEFDSyBi
+YWNrIHRvIHRoZQ0KPiA+ID4gY2xpZW50cw0KPiA+ID4gRklOLEFDSyBzbyBpbiBnZW5lcmFsIHRo
+ZSB0ZXN0Y2FzZSBpcyB2YWxpZC4gIEJ1dCB0aGVuIHRoZQ0KPiA+ID4gcXVlc3Rpb24NCj4gPiA+
+IGlzDQo+ID4gPiBob3cgbG9uZyBzaG91bGQgb25lIHdhaXQgZm9yIHRoZSBmaW5hbCBkYXRhIGFu
+ZCBGSU4gZnJvbSB0aGUNCj4gPiA+IHNlcnZlciwgb3INCj4gPiA+IGFyZSB0aGVyZSBldmVyIGlu
+c3RhbmNlcyB3aGVyZSB5b3Ugc2hvdWxkbid0IHdhaXQgZm9yZXZlcj8gIElzDQo+ID4gPiB0aGVy
+ZSBhDQo+ID4gPiB3YXkgZm9yIHVzIHRvIGtub3cgZm9yIHN1cmUgdGhlcmUgaXMgbm8gZGF0YSBs
+ZWZ0IHRvIHJlY2VpdmUgc28NCj4gPiA+IGl0J3MNCj4gPiA+IHNhZmUgdG8gdGltZW91dD8gIE5v
+IFJQQ3Mgb3V0c3RhbmRpbmc/DQo+ID4gDQo+ID4gWWVwIGFsbCBnb29kIHF1ZXN0aW9ucyB3aGlj
+aCBJIGRvbid0IGhhdmUgYW5zd2VycyB0by4gSSByZWFsaXplDQo+ID4gdGhhdA0KPiA+IGZvciBp
+bnN0YW5jZSwgdGhhdCBhIHNlcnZlciBtaWdodCBzZW5kIGFuIEFDSyBhbmQgdGhlbiBzZW5kIGEN
+Cj4gPiBGSU4vQUNLDQo+ID4gYWZ0ZXIgdGhhdC4gQnV0IHdoeSBpcyBpdCBiYWQgZm9yIHRoZSBj
+bGllbnQgdG8gcHJvYWN0aXZlbHkgc2VuZCBhbg0KPiA+IFJTVCAoYnkgc2h1dHRpbmcgZG93biB0
+aGUgY29ubmVjdGlvbiBpbiBUQ1BfRklOX1dBSVQyIGlmIHRoZSBjbGllbnQNCj4gPiB3YXMgc2h1
+dHRpbmcgZG93biB0aGUgY29ubmVjdGlvbiBhbnl3YXkuDQo+ID4gDQo+IEkgdGhpbmsgeW91IGNv
+dWxkIGxvc2UgZGF0YSBmcm9tIHRoZSBzZXJ2ZXIgaWYgeW91IFJTVCBhbmQgZG9uJ3Qgd2FpdA0K
+PiBidXQgb3RoZXIgdGhhbiB0aGF0IEkgZG9uJ3Qga25vdy4gIFdlIG1heSBiZSBzcGxpdHRpbmcg
+aGFpcnMgaGVyZQ0KPiB0aG91Z2ggaWYgdGhlcmUncyBubyBkZW1vbnN0cmFibGUgaGFybSB0byB0
+aGUgYXBwbGljYXRpb24gKE5GUykuICBBcw0KPiBUcm9uZCBwb2ludHMgb3V0IGVsc2V3aGVyZSBy
+ZWNvbm5lY3QgLyBwb3J0IHJldXNlIG1heSBiZSBhbiBpc3N1ZS4NCj4gDQo+IFdoZW4gSSBsb29r
+ZWQgYXQgdGhpcyBpbiB0aGUgc2Vjb25kIGJ1ZyBJIHdhcyBhbG1vc3QgY29udmluY2VkIHRoYXQN
+Cj4gdGhlcmUgd2FzIGEgcHJvYmxlbSB3aXRoIHRoZSAnY2xvc2UnIG1ldGhvZCBpbiB4c190Y3Bf
+b3BzIC0gd2UgbmVlZGVkDQo+IHRvIGJlIGNhbGxpbmcgeHNfY2xvc2UoKSwgYnV0IEkgcmFuIGlu
+dG8gc29tZSBwcm9ibGVtcyBhbmQgSSB3YXNuJ3QNCj4gc3VyZSBhYm91dCB0aGUgdGVzdCBjYXNl
+Lg0KPiANCj4gDQo+ID4gPiBJIGRvbid0IGNsYWltIHRvIGtub3cgbWFueSBvZiB0aGUgc3VidGxl
+dGllcyBoZXJlIGFzIGZhciBhcyB3b3VsZA0KPiA+ID4gdGhlDQo+ID4gPiBzZXJ2ZXIgd2FpdCBm
+b3JldmVyIGluIExBU1RfQUNLIG9yIGRvIGltcGxlbWVudGF0aW9ucyBldmVudHVhbGx5DQo+ID4g
+PiB0aW1lb3V0IGFmdGVyIHNvbWUgdGltZT8gIFNlZW1zIGxpa2UgaWYgdGhlc2UgbGFzdCBwYWNr
+ZXRzIGdldA0KPiA+ID4gbG9zdA0KPiA+ID4gdGhlcmUgaXMgbGlrZWx5IGEgYnVnIHNvbWV3aGVy
+ZSAoZWl0aGVyIGZpcmV3YWxsIG9yIFRDUCBzdGFjaywNCj4gPiA+IGV0YykuDQo+ID4gPiBodHRw
+czovL3Rvb2xzLmlldGYub3JnL2h0bWwvcmZjNzkzI3BhZ2UtMjINCj4gPiA+IA0KPiA+ID4gSXQg
+bG9va3MgbGlrZSBhdCBsZWFzdCBzb21lIHBlb3BsZSBhcmUgcHV0dGluZyB0aW1lb3V0cyBpbnRv
+DQo+ID4gPiB0aGVpcg0KPiA+ID4gc3RhY2tzIHRob3VnaCBJJ20gbm90IHN1cmUgdGhhdCdzIGEg
+Z29vZCBpZGVhIG9yIG5vdC4NCj4gPiANCj4gPiBJIHNhdyBvbmx5IG9uZSBvdGhlciBkcml2ZXIg
+aW4gdGhlIGtlcm5lbCB0aGF0IGRvZXMgaGF2ZSBoYW5kbGluZw0KPiA+IG9mDQo+ID4gdGhlIFRD
+UF9GSU5fV0FJVDIgc3RhdGUgKGRyaXZlci9jcnlwdG8vY2hlbHNpbykgLi4uDQo+IA0KPiBPbmUg
+ZmluYWwgdGhvdWdodCAtIGlzIGl0IHBvc3NpYmxlIHRoYXQgd2UgY291bGQgaGF2ZSBhIG5ldHdv
+cmsgdGhhdA0KPiBkb2VzIG5vdCBzdXBwb3J0IFRDUCBrZWVwYWxpdmVzPyAgSW4gdGhhdCBpbnN0
+YW5jZSwgSSdsbCBiZXQgd2UgY291bGQNCj4gZ2V0IGFuIGluZGVmaW5pdGUgaGFuZyBpbiBGSU5f
+V0FJVDIgb24gbXkgZmlyc3QgdGVzdCBjYXNlIChzZXJ2ZXINCj4gY3Jhc2hlZCBhZnRlciB0aGUg
+aGFsZi1jbG9zZSBzdGF0ZSkuDQo+IA0KPiBJdCBkb2VzIG5vdCBsb29rIGxpa2UgVENQIGtlZXBh
+bGl2ZXMgaGF2ZSB0byBiZSBpbXBsZW1lbnRlZCBhbmQgbWF5YmUNCj4gc29tZSByb3V0ZXJzIC8g
+TkFUcyAvIGZpcmV3YWxscyBkaXNhbGxvdyB0aGVtIChkdWUgdG8gZXh0cmEgdHJhZmZpYyk/DQo+
+IGh0dHBzOi8vdG9vbHMuaWV0Zi5vcmcvaHRtbC9yZmMxMTIyI3BhZ2UtMTAxDQoNCg0KQWdhaW4s
+IHRoYXQncyBhIGNvcm5lciBjYXNlIG9mIGEgY29ybmVyIGNhc2UuIEkndmUgbmV2ZXIgc2VlbiBh
+bnkNCnJlcG9ydHMgb2YgdGhpcyBvY2N1cnJpbmcuDQoNCk9uIHRoZSBvdGhlciBoYW5kLCBJIF9o
+YXZlXyBzZWVuIGxvdHMgb2YgcmVwb3J0cyBvZiBwcm9ibGVtcyBkdWUgdG8gdGhlDQpyZWNvbm5l
+Y3Rpb24gaXNzdWVzIHdoZW4gdGhlIHNlcnZlciBzdGlsbCBob2xkcyB0aGUgc29ja2V0IG9wZW4u
+IFRob3NlDQpyZXBvcnRzIHdlcmUgdGhlIG1haW4gcmVhc29uIGZvciB0aGUgY3VycmVudCBkZXNp
+Z24uDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpDVE8sIEhhbW1lcnNwYWNlIEluYw0KNDMwMCBF
+bCBDYW1pbm8gUmVhbCwgU3VpdGUgMTA1DQpMb3MgQWx0b3MsIENBIDk0MDIyDQp3d3cuaGFtbWVy
+LnNwYWNlDQoNCg0K
