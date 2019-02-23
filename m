@@ -2,351 +2,111 @@ Return-Path: <SRS0=i0gF=Q6=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no
+X-Spam-Status: No, score=-9.2 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id F3D57C43381
-	for <linux-nfs@archiver.kernel.org>; Sat, 23 Feb 2019 17:31:17 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id EEBD0C43381
+	for <linux-nfs@archiver.kernel.org>; Sat, 23 Feb 2019 21:10:26 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id B548D206A3
-	for <linux-nfs@archiver.kernel.org>; Sat, 23 Feb 2019 17:31:17 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id B05B220861
+	for <linux-nfs@archiver.kernel.org>; Sat, 23 Feb 2019 21:10:26 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=default; t=1550956226;
+	bh=hN7kMr0WyF9h2O8eYxmOdcJwr/C5EHv4WIJM3IeH39o=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
+	b=j+VwbXJ52H6twkQu7u82vWPefryJPq3USwHz6wep799GilSnHhAKjIij3UzqQ7Tk2
+	 2Fn3tDQZzqoT1tsNL/l08IxAd2u3IFLuhiUI4aTvwpwyHSEz0vpptmeoq7Z6+eVZlu
+	 MjCZlDfdb7MhDJ3EHay0BAWcENZRm1fY+He6bMJY=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1725920AbfBWRbQ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sat, 23 Feb 2019 12:31:16 -0500
-Received: from mail-qk1-f193.google.com ([209.85.222.193]:37967 "EHLO
-        mail-qk1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725837AbfBWRbQ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 23 Feb 2019 12:31:16 -0500
-Received: by mail-qk1-f193.google.com with SMTP id p15so3026680qkl.5
-        for <linux-nfs@vger.kernel.org>; Sat, 23 Feb 2019 09:31:15 -0800 (PST)
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:message-id:subject:from:to:cc:date:in-reply-to
-         :references:mime-version:content-transfer-encoding;
-        bh=sD6h5mumMy+A6wN1x/AmCAnU5V4p+rnkh/OlO9DUwZE=;
-        b=CIMd3SqzTroAgnCfeSa+ZtINeYiTqNr02V+2U4PI5V2njy4wAhzEVuSMBCAiaQ8ZCU
-         g6a/TgTOsE5SuB+0/odL7X2u3fMsQHshrGw8ZPZLoGZoWcOOZafI1zYNUte3f1/IwLP1
-         OnGyghyWoor3ZKfgWjhxBLgyITenSiXQkjZ9/5HKE3H24BJjuLvH+yB94k6MWHjDWPqs
-         XeJB1OfZ0XqA1JRJeS0RwPMMz0Ea6VoYd//9w9gXkp9Jw1l+K0z5QssQkxY/PpWBdPTV
-         u/nzcVuGL/YibQdPWRl40+O0oDU6pWGW0Fycmec2p8/hAI3zbJO6qcY3/GWqldBl+61T
-         ShrQ==
-X-Gm-Message-State: AHQUAuZUr2Dms8jHgpR0fAAQMdSNPpGIlSa6OmKn+Z9VJjMyprncM8TA
-        26K6BmsCy6rDY8umYdmQrVVS9Q==
-X-Google-Smtp-Source: AHgI3Ib8s/YKUFPtVfNcxokFctvh/nJqS2LUH62F8C/7lT0XEbIId/3p0alYcapOyky0aK7lrrOyxA==
-X-Received: by 2002:a37:b46:: with SMTP id 67mr7198685qkl.161.1550943075087;
-        Sat, 23 Feb 2019 09:31:15 -0800 (PST)
-Received: from dwysocha.rdu.csb (75-26-10-140.lightspeed.rlghnc.sbcglobal.net. [75.26.10.140])
-        by smtp.gmail.com with ESMTPSA id p9sm3003667qtp.50.2019.02.23.09.31.14
-        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Sat, 23 Feb 2019 09:31:14 -0800 (PST)
-Message-ID: <1550943073.4890.1.camel@redhat.com>
-Subject: Re: [PATCH 1/1] SUNRPC: fix handling of half-closed connection
-From:   Dave Wysochanski <dwysocha@redhat.com>
-To:     Trond Myklebust <trondmy@hammerspace.com>,
-        "olga.kornievskaia@gmail.com" <olga.kornievskaia@gmail.com>
-Cc:     "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Date:   Sat, 23 Feb 2019 12:31:13 -0500
-In-Reply-To: <cac1ddc0f4f2e70e1bfc2dc142f9675b68073440.camel@hammerspace.com>
-References: <20190220145650.21566-1-olga.kornievskaia@gmail.com>
-         <1550837576.6456.3.camel@redhat.com>
-         <CAN-5tyH1e_cakjmU5VkQraw=ht71y8vxvaZbe2W6zAdfEnWLPA@mail.gmail.com>
-         <1550853168.9958.1.camel@redhat.com>
-         <CAN-5tyEpWevmXJb8weecFBm_V=FZm4Zc=b+rrwJFtMgUYhm2tg@mail.gmail.com>
-         <1550863049.9958.3.camel@redhat.com>
-         <cac1ddc0f4f2e70e1bfc2dc142f9675b68073440.camel@hammerspace.com>
-Content-Type: text/plain; charset="UTF-8"
-X-Mailer: Evolution 3.22.6 (3.22.6-14.el7) 
-Mime-Version: 1.0
+        id S1729328AbfBWVKZ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sat, 23 Feb 2019 16:10:25 -0500
+Received: from mail.kernel.org ([198.145.29.99]:46460 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1729734AbfBWVKY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sat, 23 Feb 2019 16:10:24 -0500
+Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+        (No client certificate requested)
+        by mail.kernel.org (Postfix) with ESMTPSA id E53B02086C;
+        Sat, 23 Feb 2019 21:10:22 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=default; t=1550956223;
+        bh=hN7kMr0WyF9h2O8eYxmOdcJwr/C5EHv4WIJM3IeH39o=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=09ME524b8bBtV9IpO2efO1vWiZJA8BsfkDmlTcAUcdqy4WMTiyEcQlL5tVcVubSk2
+         E8SFXkZ+9GO57yYbAUWu8o4seFAX4RJ0hanCOvWee1FJylRRVRuurOf7ttHj68EqaX
+         jSenZdkKngzvwEHez+RSY82gugGDb5T4bOj++1Qk=
+From:   Sasha Levin <sashal@kernel.org>
+To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
+Cc:     Yao Liu <yotta.liu@ucloud.cn>,
+        Anna Schumaker <Anna.Schumaker@Netapp.com>,
+        Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org
+Subject: [PATCH AUTOSEL 4.9 20/32] nfs: Fix NULL pointer dereference of dev_name
+Date:   Sat, 23 Feb 2019 16:09:39 -0500
+Message-Id: <20190223210951.202268-20-sashal@kernel.org>
+X-Mailer: git-send-email 2.19.1
+In-Reply-To: <20190223210951.202268-1-sashal@kernel.org>
+References: <20190223210951.202268-1-sashal@kernel.org>
+MIME-Version: 1.0
+X-Patchwork-Hint: Ignore
 Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Fri, 2019-02-22 at 20:00 +0000, Trond Myklebust wrote:
-> On Fri, 2019-02-22 at 14:17 -0500, Dave Wysochanski wrote:
-> > On Fri, 2019-02-22 at 12:10 -0500, Olga Kornievskaia wrote:
-> > > On Fri, Feb 22, 2019 at 11:32 AM Dave Wysochanski <
-> > > dwysocha@redhat.co
-> > > m> wrote:
-> > > > On Fri, 2019-02-22 at 09:44 -0500, Olga Kornievskaia wrote:
-> > > > > Hi Dave,
-> > > > > 
-> > > > > A re-producer is a server that sends an ACK to the client's
-> > > > > FIN/ACK
-> > > > > request and does nothing afterwards (I can reproduce it 100%
-> > > > > with
-> > > > > a
-> > > > > hacked up server. It was discovered with a "broken" server
-> > > > > that
-> > > > > doesn't fully closes a connection). It leave this client
-> > > > > unable
-> > > > > to
-> > > > > connect to this server again indefinitely/forever/reboot
-> > > > > required
-> > > > > kind
-> > > > > of state. Once it was considered that doing something like
-> > > > > that
-> > > > > to
-> > > > > the
-> > > > > client is a form of an attack (denial-of-server) and thus the
-> > > > > kernel
-> > > > > has a tcp_fin_timeout option after which the kernel will
-> > > > > abort
-> > > > > the
-> > > > > connection. However this only applies to the sockets that
-> > > > > have
-> > > > > been
-> > > > > closed by the client. This is NOT the case. NFS does not
-> > > > > close
-> > > > > the
-> > > > > connection and it ignores kernel's notification of FIN_WAIT2
-> > > > > state.
-> > > > > 
-> > > > 
-> > > > Interesting.  I had the same reproducer but eventually an RST
-> > > > would
-> > > > get
-> > > > sent from the NFS client due to the TCP keepalives.  It sounds
-> > > > like
-> > > > that is not the case anymore.  When I did my testing was over a
-> > > > year
-> > > > and a half ago though.
-> > > 
-> > > after the keepalives the TCP also sends a FIN/ACK if the server
-> > > properly sent a FIN/ACK back, then keep alive will indeed be
-> > > sufficient. Can you check if in your trace server in one time
-> > > sent
-> > > just an ACK but in another case sent the FIN/ACK?
-> > > 
-> > 
-> > I had two reproducers actually.  In both cases the NFS server would
-> > never send a FIN.
-> > 
-> > The first bug (https://bugzilla.redhat.com/show_bug.cgi?id=1458421)
-> > was
-> > about a NFS server crash after being in the half-close state.  An
-> > NFS4
-> > client without that keepalive patch would hang.
-> > This is a valid test case and we check for that now in all
-> > releases. 
-> > Here's the outline:
-> > # Outline
-> > # Step 1. On NFS client: tcpdump -U -q -i $INTERFACE -w $PCAP_FILE
-> > -s
-> > 0 port 2049 and host $NFS_SERVER
-> > # Step 2. On NFS client, mount NFS4 server export with
-> > "vers=4,timeo=5"
-> > # Step 3. On NFS server, block outgoing FIN packets from the NFS
-> > server"
-> > # Step 4. On NFS server, using systemtap script, to delay
-> > NFS4OPEN_CONFIRM response for a few seconds
-> > # Step 5. On NFS client, open a file, which should get delayed and
-> > trigger a FIN from the NFS client
-> > # Step 6. On NFS server, after a short delay, crash the server by
-> > 'echo c > /proc/sysrq-trigger'
-> > # Step 7. On NFS client, wait for NFS server to reboot
-> > # Step 8. On NFS client, wait for the NFS to reconnect TCP
-> > connection
-> > # Step 9. On NFS client, wait for NFS4 grace period
-> > # Step 10. On NFS client, try a 'ls' of the file created earlier
-> > # Step 11. On NFS client, sleep for $DELAY seconds to allow all
-> > operations to complete
-> > # Step 12. On NFS client, ensure all operations have completed
-> > # Step 13. Cleanup
-> > 
-> > 
-> > The second test case (after the keepalive patch) was arguably
-> > invalid
-> > test as I used systemtap on the NFS server to never close the
-> > socket
-> > so
-> > it would never send a FIN.  This obviously should never happen but
-> > at
-> > the time I wanted to see if the NFS client would recover.
-> > I did that with this:
-> > probe module("sunrpc").function("svc_xprt_enqueue") {
-> > 	printf("%s: %s removing XPT_CLOSE from xprt = %p\n",
-> > tz_ctime(gettimeofday_s()), ppfunc(), $xprt);
-> > 	$xprt->xpt_flags = $xprt->xpt_flags & ~(1 << 2);
-> > }
-> > Here's the full outline for this test:
-> > 
-> > # This test checks automatic NFS TCP recovery after a specific
-> > failure scenario.
-> > # The failure scenario is with an NFSv3 mount that goes idle and
-> > the
-> > NFS client closes the
-> > # TCP connection, and the final FIN from the NFS server gets lost.
-> > # This can be a tricky scenario since the NFS client's TCP may get
-> > stuck in FIN-WAIT-2 indefinitely.
-> > # The NFS client should be able to recover the NFS TCP connection
-> > automatically without unmount/mount
-> > # cycle or reboot, and the TCP connection should not be stuck in
-> > FIN-
-> > WAIT-2 or any other non-connected
-> > # state.
-> > # 
-> > # Outline
-> > # Step 1. On NFS client: tcpdump -U -q -i $INTERFACE -w $PCAP_FILE
-> > -s
-> > 0 port 2049 and host $NFS_SERVER
-> > # Step 2. On NFS client, mount NFS3 server export
-> > # Step 3. On NFS server, using systemtap script, force the NFS
-> > server
-> > to never send a FIN (avoid close)
-> > # Step 4. On NFS client, verify the NFS mount with 'ls' and TCP
-> > connection in TCP_ESTABLISHED
-> > # Step 5. On NFS client, wait up to $time_limit seconds to allow
-> > NFS
-> > TCP connection to transition to TIME_WAIT state
-> > # Step 6. On NFS client, wait up to $time_limit seconds to allow
-> > NFS
-> > TCP connection to disappear
-> > # Step 7. Cleanup
-> > #
-> > # PASS: The state of NFS's TCP connection is usable by the end of
-> > the
-> > test (commands don't hang, etc)
-> > # FAIL: The state of the NFS TCP connection remains in FIN-WAIT-2
-> > indefinitely
-> > 
-> > 
-> > > > > One can argue that this is a broken server and we shouldn't
-> > > > > bother.
-> > > > > But this patch is an attempt to argue that the client still
-> > > > > should
-> > > > > care and deal with this condition. However, if the community
-> > > > > feels
-> > > > > that a broken server is a broken server and this form of an
-> > > > > attack is
-> > > > > not interested, this patch can live will be an archive for
-> > > > > later
-> > > > > or
-> > > > > never.
-> > > > > 
-> > > > 
-> > > > This isn't IPoIB is it?
-> > > 
-> > > No, just normal TCP.
-> > > 
-> > > 
-> > > > Actually, fwiw, looking back I had speculated on changes in
-> > > > this
-> > > > area.
-> > > > I'm adding you to the CC list of this bug which had some of my
-> > > > musings
-> > > > on it:
-> > > > https://bugzilla.redhat.com/show_bug.cgi?id=1466802#c43
-> > > > That bug I ended up closing when we could no longer prove there
-> > > > was
-> > > > any
-> > > > state where the NFS client could get stuck in FIN_WAIT2 after
-> > > > the
-> > > > keepalive patch.
-> > > 
-> > > I can reproduce current behavior with the current upstream code.
-> > > 
-> > > 
-> > > > It can happen that the server only sends the ACK back to the
-> > > > clients
-> > > > FIN,ACK so in general the testcase is valid.  But then the
-> > > > question
-> > > > is
-> > > > how long should one wait for the final data and FIN from the
-> > > > server, or
-> > > > are there ever instances where you shouldn't wait forever?  Is
-> > > > there a
-> > > > way for us to know for sure there is no data left to receive so
-> > > > it's
-> > > > safe to timeout?  No RPCs outstanding?
-> > > 
-> > > Yep all good questions which I don't have answers to. I realize
-> > > that
-> > > for instance, that a server might send an ACK and then send a
-> > > FIN/ACK
-> > > after that. But why is it bad for the client to proactively send
-> > > an
-> > > RST (by shutting down the connection in TCP_FIN_WAIT2 if the
-> > > client
-> > > was shutting down the connection anyway.
-> > > 
-> > 
-> > I think you could lose data from the server if you RST and don't
-> > wait
-> > but other than that I don't know.  We may be splitting hairs here
-> > though if there's no demonstrable harm to the application
-> > (NFS).  As
-> > Trond points out elsewhere reconnect / port reuse may be an issue.
-> > 
-> > When I looked at this in the second bug I was almost convinced that
-> > there was a problem with the 'close' method in xs_tcp_ops - we
-> > needed
-> > to be calling xs_close(), but I ran into some problems and I wasn't
-> > sure about the test case.
-> > 
-> > 
-> > > > I don't claim to know many of the subtleties here as far as
-> > > > would
-> > > > the
-> > > > server wait forever in LAST_ACK or do implementations
-> > > > eventually
-> > > > timeout after some time?  Seems like if these last packets get
-> > > > lost
-> > > > there is likely a bug somewhere (either firewall or TCP stack,
-> > > > etc).
-> > > > https://tools.ietf.org/html/rfc793#page-22
-> > > > 
-> > > > It looks like at least some people are putting timeouts into
-> > > > their
-> > > > stacks though I'm not sure that's a good idea or not.
-> > > 
-> > > I saw only one other driver in the kernel that does have handling
-> > > of
-> > > the TCP_FIN_WAIT2 state (driver/crypto/chelsio) ...
-> > 
-> > One final thought - is it possible that we could have a network
-> > that
-> > does not support TCP keepalives?  In that instance, I'll bet we
-> > could
-> > get an indefinite hang in FIN_WAIT2 on my first test case (server
-> > crashed after the half-close state).
-> > 
-> > It does not look like TCP keepalives have to be implemented and
-> > maybe
-> > some routers / NATs / firewalls disallow them (due to extra
-> > traffic)?
-> > https://tools.ietf.org/html/rfc1122#page-101
-> 
-> 
-> Again, that's a corner case of a corner case. I've never seen any
-> reports of this occurring.
-> 
+From: Yao Liu <yotta.liu@ucloud.cn>
 
-I agree neither have I, and due to the issue about a year and a half
-ago I'm confident I would have known about any stuck NFS due to
-FIN_WAIT2 problems.  Though my experience of course centers around
-RHEL7 (3.10 based) and RHEL8 beta (4.18 based) so it's not the same
-bits as the you and others on the list.
+[ Upstream commit 80ff00172407e0aad4b10b94ef0816fc3e7813cb ]
 
-I thought about the "network that does not support keepalives" some
-more and for various reasons (not sure it exists, even if it does that
-network would be asking for hangs, etc) I don't think it is an
-important case to consider.
+There is a NULL pointer dereference of dev_name in nfs_parse_devname()
 
+The oops looks something like:
 
-> On the other hand, I _have_ seen lots of reports of problems due to
-> the
-> reconnection issues when the server still holds the socket open.
-> Those
-> reports were the main reason for the current design.
-> 
-> 
+  BUG: unable to handle kernel NULL pointer dereference at 0000000000000000
+  ...
+  RIP: 0010:nfs_fs_mount+0x3b6/0xc20 [nfs]
+  ...
+  Call Trace:
+   ? ida_alloc_range+0x34b/0x3d0
+   ? nfs_clone_super+0x80/0x80 [nfs]
+   ? nfs_free_parsed_mount_data+0x60/0x60 [nfs]
+   mount_fs+0x52/0x170
+   ? __init_waitqueue_head+0x3b/0x50
+   vfs_kern_mount+0x6b/0x170
+   do_mount+0x216/0xdc0
+   ksys_mount+0x83/0xd0
+   __x64_sys_mount+0x25/0x30
+   do_syscall_64+0x65/0x220
+   entry_SYSCALL_64_after_hwframe+0x49/0xbe
 
-Yes I agree reconnect issues happen a lot more than I would have
-thought so I would never want any change for a corner case of corner
-case that wasn't truly valid.
+Fix this by adding a NULL check on dev_name
 
-Thanks.
+Signed-off-by: Yao Liu <yotta.liu@ucloud.cn>
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+Signed-off-by: Sasha Levin <sashal@kernel.org>
+---
+ fs/nfs/super.c | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 2fdb8f5a7b69d..841b5664098f9 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -1904,6 +1904,11 @@ static int nfs_parse_devname(const char *dev_name,
+ 	size_t len;
+ 	char *end;
+ 
++	if (unlikely(!dev_name || !*dev_name)) {
++		dfprintk(MOUNT, "NFS: device name not specified\n");
++		return -EINVAL;
++	}
++
+ 	/* Is the host name protected with square brakcets? */
+ 	if (*dev_name == '[') {
+ 		end = strchr(++dev_name, ']');
+-- 
+2.19.1
+
