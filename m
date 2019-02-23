@@ -4,50 +4,51 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-9.2 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_PASS,USER_AGENT_GIT autolearn=unavailable autolearn_force=no version=3.4.0
+	SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id CA92FC10F0B
-	for <linux-nfs@archiver.kernel.org>; Sat, 23 Feb 2019 21:14:24 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A9BC4C43381
+	for <linux-nfs@archiver.kernel.org>; Sat, 23 Feb 2019 21:20:44 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 8D7DA20675
-	for <linux-nfs@archiver.kernel.org>; Sat, 23 Feb 2019 21:14:24 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 6EDB820651
+	for <linux-nfs@archiver.kernel.org>; Sat, 23 Feb 2019 21:20:44 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1550956464;
-	bh=p4kan2IM2IrDaDDB9W42ixbh+nU1EN9A4HLzGAW2Xmg=;
+	s=default; t=1550956844;
+	bh=St40ydnlK9xZuYAaNvKuVnxEwfdKT0pVeml7r9OX7O8=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=O1uwsy1/mQjIDkEBnerfmvvRjWU/WPzfoXlALev9myXeLOjeXQrRG3yplgXX7mUkg
-	 Jrq9MOdXKJ7fXx5dP/s9KT0bUCu4vL6zYuowt72yEBFRV3mWQ0QXu+PLF+XVjmaj2e
-	 rO+TGjJ9mzJy6/Va5mI/BBpwLDF57cjgUaurwQfM=
+	b=D1n2KUKG26I4rKc06zl6kGKY9sGq4rO5WbcscSq6mzU9sV5I+hWnKmYCMq4qwfj2P
+	 wPNjNX3/0LzCFYqfV9rH0oCvZs8/hUmYqgYXgHVO2qnTxTgeGa8evLfuh4gNrIkbpp
+	 Zm2gftq7kCw4qhSI68A5DDNh8AZHwz6w6wR6spnY=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728522AbfBWVOS (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sat, 23 Feb 2019 16:14:18 -0500
-Received: from mail.kernel.org ([198.145.29.99]:47634 "EHLO mail.kernel.org"
+        id S1728642AbfBWVUe (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sat, 23 Feb 2019 16:20:34 -0500
+Received: from mail.kernel.org ([198.145.29.99]:44828 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1729935AbfBWVLO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sat, 23 Feb 2019 16:11:14 -0500
+        id S1729465AbfBWVJQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sat, 23 Feb 2019 16:09:16 -0500
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 74B972086A;
-        Sat, 23 Feb 2019 21:11:13 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 08CC82086A;
+        Sat, 23 Feb 2019 21:09:14 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1550956274;
-        bh=p4kan2IM2IrDaDDB9W42ixbh+nU1EN9A4HLzGAW2Xmg=;
+        s=default; t=1550956155;
+        bh=St40ydnlK9xZuYAaNvKuVnxEwfdKT0pVeml7r9OX7O8=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=yAyQssjI3Lm/Q8DOenaerrm0rvi/0DeKxTNkt1Inj6cwIn9EPaLi1Uidp88Y4nXGJ
-         wcisz2txkrNaDC3dvV44kTjulfa6k4hH6qAxMTIXAgokFypHFGMU1zjsiGhC50gZb9
-         wSavd+SHQzc1EHCisF90WwwqbjYbbOElSlMPHoko=
+        b=cmvPx8wH43PBTmsacCZCbGUkRl4EJrACHXLC7TiUxYMrVug5/HE+ZVO7ARePeMokm
+         7s+BXjL1BuikuGFJ3Midw4Hcz2zAzopuA3ozt8QiPvk8uxfxBkfn1zVlNC0HSkMnWI
+         1eGMXeNw6uQ8UGbDF9Tzw8NPqXYBzwDXc86D5Gc8=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
 Cc:     Yao Liu <yotta.liu@ucloud.cn>,
         Anna Schumaker <Anna.Schumaker@Netapp.com>,
         Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org
-Subject: [PATCH AUTOSEL 4.4 16/26] nfs: Fix NULL pointer dereference of dev_name
-Date:   Sat, 23 Feb 2019 16:10:37 -0500
-Message-Id: <20190223211047.202725-16-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 4.14 24/45] nfs: Fix NULL pointer dereference of dev_name
+Date:   Sat, 23 Feb 2019 16:08:14 -0500
+Message-Id: <20190223210835.201708-24-sashal@kernel.org>
 X-Mailer: git-send-email 2.19.1
-In-Reply-To: <20190223211047.202725-1-sashal@kernel.org>
-References: <20190223211047.202725-1-sashal@kernel.org>
+In-Reply-To: <20190223210835.201708-1-sashal@kernel.org>
+References: <20190223210835.201708-1-sashal@kernel.org>
 MIME-Version: 1.0
 X-Patchwork-Hint: Ignore
 Content-Transfer-Encoding: 8bit
@@ -91,10 +92,10 @@ Signed-off-by: Sasha Levin <sashal@kernel.org>
  1 file changed, 5 insertions(+)
 
 diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 62f358f677646..322efac79cc71 100644
+index 38de09b08e966..d0d0438a5b263 100644
 --- a/fs/nfs/super.c
 +++ b/fs/nfs/super.c
-@@ -1877,6 +1877,11 @@ static int nfs_parse_devname(const char *dev_name,
+@@ -1901,6 +1901,11 @@ static int nfs_parse_devname(const char *dev_name,
  	size_t len;
  	char *end;
  
