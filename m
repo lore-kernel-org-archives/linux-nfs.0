@@ -2,152 +2,150 @@ Return-Path: <SRS0=6MPh=RA=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
-	SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-1.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D0C18C43381
-	for <linux-nfs@archiver.kernel.org>; Mon, 25 Feb 2019 22:27:30 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 62335C43381
+	for <linux-nfs@archiver.kernel.org>; Mon, 25 Feb 2019 22:42:05 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 9BCAB20842
-	for <linux-nfs@archiver.kernel.org>; Mon, 25 Feb 2019 22:27:30 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 21AB020C01
+	for <linux-nfs@archiver.kernel.org>; Mon, 25 Feb 2019 22:42:05 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=nvidia.com header.i=@nvidia.com header.b="dba/+Xl7"
+	dkim=pass (1024-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="c1SkrQIx"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726845AbfBYW1a (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 25 Feb 2019 17:27:30 -0500
-Received: from hqemgate14.nvidia.com ([216.228.121.143]:17030 "EHLO
-        hqemgate14.nvidia.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726575AbfBYW13 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Feb 2019 17:27:29 -0500
-Received: from hqpgpgate101.nvidia.com (Not Verified[216.228.121.13]) by hqemgate14.nvidia.com (using TLS: TLSv1.2, DES-CBC3-SHA)
-        id <B5c746bd80000>; Mon, 25 Feb 2019 14:27:36 -0800
-Received: from hqmail.nvidia.com ([172.20.161.6])
-  by hqpgpgate101.nvidia.com (PGP Universal service);
-  Mon, 25 Feb 2019 14:27:27 -0800
-X-PGP-Universal: processed;
-        by hqpgpgate101.nvidia.com on Mon, 25 Feb 2019 14:27:27 -0800
-Received: from [10.26.11.173] (10.124.1.5) by HQMAIL101.nvidia.com
- (172.20.187.10) with Microsoft SMTP Server (TLS) id 15.0.1395.4; Mon, 25 Feb
- 2019 22:27:25 +0000
-Subject: Re: Regression: SUNRPC: Use poll() to fix up the socket requeue races
-To:     Trond Myklebust <trondmy@hammerspace.com>,
+        id S1727574AbfBYWl7 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 25 Feb 2019 17:41:59 -0500
+Received: from mail-eopbgr770137.outbound.protection.outlook.com ([40.107.77.137]:37728
+        "EHLO NAM02-SN1-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1727396AbfBYWl7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 25 Feb 2019 17:41:59 -0500
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=hammerspace.com;
+ s=selector1;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=hA+tXepepHiPfKSOu/zfKYVyHQDzLoXzal2g509SWm8=;
+ b=c1SkrQIxmGFoSoMw9dqnsy3dnfjwhn6jT6CXObgCDKRYK/7RU4QXZEOn5CjuKi+Gy+Yy3j4vM4nWjmPA3zA5lpjTgctJu7UZpywAWeEeW3kMrqx72gjhzIpiEFaD4qxkk4GZMFN7jE+q3CM1xPEX+KYpm67LPPp+YX0F0r4jE7U=
+Received: from SN6PR13MB2494.namprd13.prod.outlook.com (52.135.95.148) by
+ SN6PR13MB2365.namprd13.prod.outlook.com (52.135.94.145) with Microsoft SMTP
+ Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ 15.20.1665.6; Mon, 25 Feb 2019 22:41:55 +0000
+Received: from SN6PR13MB2494.namprd13.prod.outlook.com
+ ([fe80::c1d2:93da:11b5:c4d4]) by SN6PR13MB2494.namprd13.prod.outlook.com
+ ([fe80::c1d2:93da:11b5:c4d4%4]) with mapi id 15.20.1665.012; Mon, 25 Feb 2019
+ 22:41:55 +0000
+From:   Trond Myklebust <trondmy@hammerspace.com>
+To:     "jonathanh@nvidia.com" <jonathanh@nvidia.com>,
         "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
         "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
         "linux-tegra@vger.kernel.org" <linux-tegra@vger.kernel.org>
+Subject: Re: Regression: SUNRPC: Use poll() to fix up the socket requeue races
+Thread-Topic: Regression: SUNRPC: Use poll() to fix up the socket requeue
+ races
+Thread-Index: AQHUzUhAfjY8UpPesU2cJZ8XbzkbuKXxAJ4AgAAXXgCAAAQNAA==
+Date:   Mon, 25 Feb 2019 22:41:54 +0000
+Message-ID: <9b9a6c5e34edea13b3ace42d39d97c27fd21c0db.camel@hammerspace.com>
 References: <95702994-6762-e42b-06ee-ae945c2137bd@nvidia.com>
- <ab485d7ba4f9603850b81e6c2242dc25026eabcb.camel@hammerspace.com>
-From:   Jon Hunter <jonathanh@nvidia.com>
-Message-ID: <88677895-7f89-ae1d-3060-819f4b04f530@nvidia.com>
-Date:   Mon, 25 Feb 2019 22:27:22 +0000
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101
- Thunderbird/60.4.0
-MIME-Version: 1.0
-In-Reply-To: <ab485d7ba4f9603850b81e6c2242dc25026eabcb.camel@hammerspace.com>
-X-Originating-IP: [10.124.1.5]
-X-ClientProxiedBy: HQMAIL108.nvidia.com (172.18.146.13) To
- HQMAIL101.nvidia.com (172.20.187.10)
-Content-Type: text/plain; charset="utf-8"
+         <ab485d7ba4f9603850b81e6c2242dc25026eabcb.camel@hammerspace.com>
+         <88677895-7f89-ae1d-3060-819f4b04f530@nvidia.com>
+In-Reply-To: <88677895-7f89-ae1d-3060-819f4b04f530@nvidia.com>
+Accept-Language: en-US, en-GB
 Content-Language: en-US
-Content-Transfer-Encoding: 7bit
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=nvidia.com; s=n1;
-        t=1551133656; bh=I7MyxE+9hg3tFLUS914t6N0EdyIAW91f6NRmxSCzpU8=;
-        h=X-PGP-Universal:Subject:To:References:From:Message-ID:Date:
-         User-Agent:MIME-Version:In-Reply-To:X-Originating-IP:
-         X-ClientProxiedBy:Content-Type:Content-Language:
-         Content-Transfer-Encoding;
-        b=dba/+Xl7tXsZYcIIa441F1nsvYM4ihG3CE+LVZ22tREmcuMjP0omgcNR/me37cYDS
-         7Iuz2imibBmCPYwbq/TI7auedWVITIiFxA1U4GKW4sXPEk0okA6yfjgQ72Iiv63d4G
-         pkzt132lNcVBdTYoALE/pnsf8XnnDaonECDsY1fgCgIVGkdBi8uimMGQqRsWVrQmJw
-         KKSaLE8LlZq5ghWvHusTW5xjJiSUQi+UkqJdr5EYwENjKsr2J/locHCCFE+OgSNKVt
-         mAsoeo9qbF3cLZotM254DjUpr+gLpBr5jO3Cqr6nHAxMg8K+baZelhCPif59jkqXqq
-         g7WDvegzwOleg==
+X-MS-Has-Attach: 
+X-MS-TNEF-Correlator: 
+authentication-results: spf=none (sender IP is )
+ smtp.mailfrom=trondmy@hammerspace.com; 
+x-originating-ip: [68.40.189.247]
+x-ms-publictraffictype: Email
+x-ms-office365-filtering-correlation-id: 10cf53ff-77fc-4f08-e001-08d69b72715d
+x-microsoft-antispam: BCL:0;PCL:0;RULEID:(2390118)(7020095)(4652040)(8989299)(4534185)(4627221)(201703031133081)(201702281549075)(8990200)(5600127)(711020)(4605104)(2017052603328)(7153060)(7193020);SRVR:SN6PR13MB2365;
+x-ms-traffictypediagnostic: SN6PR13MB2365:
+x-microsoft-exchange-diagnostics: =?utf-8?B?MTtTTjZQUjEzTUIyMzY1OzIzOks4YXZFZzdjNTN1Z1d1MG52MjZvMWd5dEZp?=
+ =?utf-8?B?MEdmaDlQZzBPY0xDT1ErbzE0Umowd0tjdnJDNVFhQjhndnBCdnl3UmtxQnVz?=
+ =?utf-8?B?V0RwTmk1UDhwY1ROUEVOSGVzRS9CM0x4dGd5MGROT2RsaEZtVkhPeWFTeVRM?=
+ =?utf-8?B?NytWUG9mdXNFYU1UeitzZGdLSDhuTmNPcU1SbWluUWtnWFpXejk5bHlHbUF5?=
+ =?utf-8?B?Q2tsNXBhWFZqaTRlSHRKc1NkbzIvOE9xS09Rd05CbjMvTDkyNVhZSk5VSnpl?=
+ =?utf-8?B?aXFZaWRXa2VXV2hRUFh3SXFneFM1a3YzOVdkSWF0RjlvemFKbWhqaFlYN1NX?=
+ =?utf-8?B?ZE12eDFoWVd2MnRnZFVxbVV5R1MrT0Q4Y0s0WUVUMWFINTljeTZxWlZxZHBn?=
+ =?utf-8?B?S2R2TmNEKzVRdVpVVGxNQ1N5dnZkSkRzdnRuM28vdExGV1NnZ3UzdlpFYXNl?=
+ =?utf-8?B?YzY1dU5ySmxWeTREaTZIbDF1S3lmeTNQdEZsdW1rdWt6R2NBcUw1V1BDRW8w?=
+ =?utf-8?B?UVhnaDJEZ0hiNmY2dEp4bmFRVG1aeUExUWZjRm9yMFV5b25hZWR4MnoyVFZ0?=
+ =?utf-8?B?NHZOV01QSXd5eWlGTTgxMDBHUW50bHg1SitReThzdm5MaDl6QmpUMmRwM0hZ?=
+ =?utf-8?B?ck1neit3N212ajdYeVFVQnIzWEsxSVVDQ01DTG13WEFSZHNucS9sS2MrQXhR?=
+ =?utf-8?B?Si80L0lwclRZSmM1c0JtYWtJTGJCd0lXdkNSeFpRcjBkYWtxc3pPRFNhaEpo?=
+ =?utf-8?B?a3ovUWpNQ2NvZjMzUDdyT3FnNklXTHljLzRITmtnRDFKR1JFQXNJVzVyelUr?=
+ =?utf-8?B?V0xDOW1tK0VteStTMmpWSnJlU1RtdFBUQW05Yis2c3RBdEY5RjZMSFN5enBG?=
+ =?utf-8?B?L2ZrQUdqVXNnRjhTOGxOSEJVcS8zWnNMOGtFeEkrZ1JkYW8vd3pMOGJnYkZU?=
+ =?utf-8?B?UnJrK25iOWk3WTJUWmY1d2Z2M3pzMkJicC83WVlTVDRtTXJpMXQvVWkrenVN?=
+ =?utf-8?B?Vk1LODU3MUxZVUhPdlgxb0pmc0NwcmVWdUR6R21qTitSbTgwZ2ZzcENrMmlw?=
+ =?utf-8?B?L1d1bUovYk0zQ2JvZzBBT1NqVFl0dk54Zkg5M0Q1WHJ2Q296VjY2dTRUcmti?=
+ =?utf-8?B?SnBtY2Z5V0IwWHNWcGoxU0N2RU9EY2VlYStTUGNNQnZtaGVYeDJQNXl5b3BL?=
+ =?utf-8?B?eTY3aG84U3lLU3JzTE5nYzhsazBFZ1dnbnlhWjFUQVpaOE5CWFh5ZnpmakJE?=
+ =?utf-8?B?MXZPLys0NnpKa0lTelJTRlZuait4eC9WQ2IrL2djYTE4WUp1N1M1ZWorMHFy?=
+ =?utf-8?B?d1pPaDZaUlVxUzVyZUVvL1BkSXV4K1ZzclZVN0hCM3lqUFIzR0hzekJCSURm?=
+ =?utf-8?B?UHJFM3BwdXdvOTNUWU1JSkp1bk1GQ1hCcmRnRkoyS3diZDdjMElnWWpUQXNw?=
+ =?utf-8?B?MDJzUjBWeUlQcGZTcGJUTjQzcUlSd0JiUDB6K2ZkUE5OMER4YTdhQ3F6b0FL?=
+ =?utf-8?B?WTQzTWlUb3lXbCt1dVRXWmlpdDU3ZVBXWWhhbk9Td2RkazdDQmNtQ2RUWWZV?=
+ =?utf-8?B?S1R6bkxmZmdaZFp4K0hxTmp0RE9MNlorb2ZEdm9oL1ZGeW54WDR3R2tBTUFD?=
+ =?utf-8?B?Z0hjSURTQTFzQTZWR2xsb3pqNFBFdHIyTXExclNwbWZyU2dldGc0emYreWVE?=
+ =?utf-8?Q?UIMFmIbCddXRgWXf5XlvnAW/63562Lk4HYpFNVq?=
+x-microsoft-antispam-prvs: <SN6PR13MB2365DE55B72613017F9AF1DEB87A0@SN6PR13MB2365.namprd13.prod.outlook.com>
+x-forefront-prvs: 095972DF2F
+x-forefront-antispam-report: SFV:NSPM;SFS:(10019020)(376002)(39830400003)(136003)(346002)(396003)(366004)(51234002)(189003)(199004)(106356001)(316002)(2616005)(305945005)(118296001)(76176011)(110136005)(6486002)(7736002)(6506007)(486006)(25786009)(36756003)(53546011)(53936002)(102836004)(476003)(81166006)(81156014)(71200400001)(11346002)(86362001)(446003)(8936002)(2201001)(6246003)(8676002)(71190400001)(14454004)(105586002)(26005)(97736004)(256004)(66066001)(478600001)(6512007)(45080400002)(186003)(68736007)(5660300002)(2501003)(2906002)(6436002)(3846002)(6116002)(229853002)(99286004);DIR:OUT;SFP:1102;SCL:1;SRVR:SN6PR13MB2365;H:SN6PR13MB2494.namprd13.prod.outlook.com;FPR:;SPF:None;LANG:en;PTR:InfoNoRecords;MX:1;A:1;
+received-spf: None (protection.outlook.com: hammerspace.com does not designate
+ permitted sender hosts)
+x-ms-exchange-senderadcheck: 1
+x-microsoft-antispam-message-info: 0FOlTYAlxQVCLL73hsOx8/g9pf4vtAPPnt38wxoA3sk9wPWPtO/OrFEHBUCZHu7Udp+P8yN3nJ/4CtlzT6sxy8k+srxyitVwRuybYkPloCzNaH0MfSSC5ayna7jO5QmFjHDpJct1oqBVmdQls2Kx0WVlBAEM4txYMURAs9f+8ixuzBe7PVp8EyTJ4ZxaVu9butyDdLrSazs5fXn+PmJ008XQ1VASPrX7OU8u7xTaEuec4qpMYWhOGEUl0XtV0GkBInxVw4OsdDfOqrTP8ETYsoL5ygp1LWmtafuxcb8fuK9x+IHb2mhkERlZmj8RzaZN1ODRgZcOIlhlijCnzcmMFr5pag12lAuUksoFrVB9M3m1S9oCxU1FPDyci0736hnfxHHfiUzmI473lUIA12bmqUEAfZRlbPC+LGfSlCp+BLk=
+Content-Type: text/plain; charset="utf-8"
+Content-ID: <7173E62304E3CB41814930014C5CC14F@namprd13.prod.outlook.com>
+Content-Transfer-Encoding: base64
+MIME-Version: 1.0
+X-OriginatorOrg: hammerspace.com
+X-MS-Exchange-CrossTenant-Network-Message-Id: 10cf53ff-77fc-4f08-e001-08d69b72715d
+X-MS-Exchange-CrossTenant-originalarrivaltime: 25 Feb 2019 22:41:54.9167
+ (UTC)
+X-MS-Exchange-CrossTenant-fromentityheader: Hosted
+X-MS-Exchange-CrossTenant-id: 0d4fed5c-3a70-46fe-9430-ece41741f59e
+X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: SN6PR13MB2365
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-
-On 25/02/2019 21:03, Trond Myklebust wrote:
-> On Mon, 2019-02-25 at 20:25 +0000, Jon Hunter wrote:
->> Hi Trond,
->>
->> Starting in next-20190222 I have observed a regression with NFS
->> causing
->> some of our boards to fail to boot. Bisect points to your commit ...
->>
->> commit 0ffe86f48026b7f34db22d1004bc9992f0db8b33
->> Author: Trond Myklebust <trond.myklebust@hammerspace.com>
->> Date:   Wed Jan 30 14:51:26 2019 -0500
->>
->>     SUNRPC: Use poll() to fix up the socket requeue races
->>
->>
->> After reverting this on top of -next I no longer see the problem. I
->> have
->> not had chance to look any closer, but wanted to see if you had any
->> ideas what might be the problem.
->>
->> Cheers
->> Jon
-> 
-> What kind of boot is this? UDP or TCP? nfsroot? NFSv3 or NFSv4? 
-
-This is nfsroot. I don't specify any particular NFS version from 
-the kernel cmdline, but this is seen with ARM kernel configs
-tegra_defconfig and multi_v7_defconfig. 
-
-Looking at the logs I am seeing the following crash which appears
-to point to UDP ...
-
-[    8.032956] Unable to handle kernel NULL pointer dereference at virtual address 00000024
-[    8.041137] pgd = (ptrval)
-[    8.043858] [00000024] *pgd=00000000
-[    8.047437] Internal error: Oops: 5 [#1] SMP ARM
-[    8.052049] Modules linked in:
-[    8.055104] CPU: 1 PID: 100 Comm: kworker/u9:2 Not tainted 5.0.0-rc7-next-20190222-g94a4752 #1
-[    8.063699] Hardware name: NVIDIA Tegra SoC (Flattened Device Tree)
-[    8.069960] Workqueue: xprtiod xs_udp_data_receive_workfn
-[    8.075353] PC is at udp_poll+0x30/0x64
-[    8.079178] LR is at udp_poll+0x10/0x64
-[    8.083006] pc : [<c0d3be08>]    lr : [<c0d3bde8>]    psr: 20000113
-[    8.089257] sp : e8963ea8  ip : 00000000  fp : 00001064
-[    8.094471] r10: 00000000  r9 : e8963ef4  r8 : e8963efc
-[    8.099687] r7 : e940db34  r6 : 00000000  r5 : e9d1c540  r4 : 00000345
-[    8.106203] r3 : c0d3bdd8  r2 : e8908cc0  r1 : e8908cc0  r0 : e89089c0
-[    8.112718] Flags: nzCv  IRQs on  FIQs on  Mode SVC_32  ISA ARM  Segment none
-[    8.119843] Control: 10c5387d  Table: 8020406a  DAC: 00000051
-[    8.125579] Process kworker/u9:2 (pid: 100, stack limit = 0x(ptrval))
-[    8.132008] Stack: (0xe8963ea8 to 0xe8964000)
-[    8.136352] 3ea0:                   e940d800 e940db04 e89089c0 c0dcac04 fffffff5 00000000
-[    8.144515] 3ec0: e88f4400 c0dcae80 e8963efc e8963ef4 e940da58 e940d800 c187c680 e8941b58
-[    8.152681] 3ee0: 000010f0 e940da50 e940db44 00000000 e8963f44 fffffff5 00000000 00000000
-[    8.160838] 3f00: e894247c ea203180 e940db34 ea3f5c00 e940db38 ea35e500 00000000 00000000
-[    8.169001] 3f20: c188ef50 c035f21c ea3f5c00 ea3f5c00 e8962018 ea203180 ea3f5c00 ea3f5c18
-[    8.177164] 3f40: e8962018 c188e91c ea203194 c1703d00 00000088 c035f548 e890d05c e8962000
-[    8.185327] 3f60: ea200480 c1703d00 e890d05c e890d040 ea200480 00000000 e890d05c ea203180
-[    8.193492] 3f80: c035f508 ea433ebc 00000000 c0364810 ea200480 c03646ec 00000000 00000000
-[    8.201657] 3fa0: 00000000 00000000 00000000 c03010e8 00000000 00000000 00000000 00000000
-[    8.209815] 3fc0: 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000
-[    8.217979] 3fe0: 00000000 00000000 00000000 00000000 00000013 00000000 00000000 00000000
-[    8.226154] [<c0d3be08>] (udp_poll) from [<c0dcac04>] (xs_poll_check_readable+0x30/0x70)
-[    8.234241] [<c0dcac04>] (xs_poll_check_readable) from [<c0dcae80>] (xs_udp_data_receive_workfn+0x23c/0x2a0)
-[    8.244062] [<c0dcae80>] (xs_udp_data_receive_workfn) from [<c035f21c>] (process_one_work+0x164/0x450)
-[    8.253359] [<c035f21c>] (process_one_work) from [<c035f548>] (worker_thread+0x40/0x524)
-[    8.261444] [<c035f548>] (worker_thread) from [<c0364810>] (kthread+0x124/0x154)
-[    8.268834] [<c0364810>] (kthread) from [<c03010e8>] (ret_from_fork+0x14/0x2c)
-[    8.276044] Exception stack(0xe8963fb0 to 0xe8963ff8)
-[    8.281084] 3fa0:                                     00000000 00000000 00000000 00000000
-[    8.289248] 3fc0: 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000
-[    8.297411] 3fe0: 00000000 00000000 00000000 00000000 00000013 00000000
-[    8.304017] Code: e1510002 13844041 e3140040 0a000005 (e5962024) 
-[    8.310129] ---[ end trace 52d5b8bca1dce72c ]---
-[   19.321470] nfs: server 192.168.99.1 not responding, still trying
-[   55.001474] nfs: server 192.168.99.1 not responding, still trying
-
-Cheers
-Jon
- 
-
--- 
-nvpublic
+T24gTW9uLCAyMDE5LTAyLTI1IGF0IDIyOjI3ICswMDAwLCBKb24gSHVudGVyIHdyb3RlOg0KPiBP
+biAyNS8wMi8yMDE5IDIxOjAzLCBUcm9uZCBNeWtsZWJ1c3Qgd3JvdGU6DQo+ID4gT24gTW9uLCAy
+MDE5LTAyLTI1IGF0IDIwOjI1ICswMDAwLCBKb24gSHVudGVyIHdyb3RlOg0KPiA+ID4gSGkgVHJv
+bmQsDQo+ID4gPiANCj4gPiA+IFN0YXJ0aW5nIGluIG5leHQtMjAxOTAyMjIgSSBoYXZlIG9ic2Vy
+dmVkIGEgcmVncmVzc2lvbiB3aXRoIE5GUw0KPiA+ID4gY2F1c2luZw0KPiA+ID4gc29tZSBvZiBv
+dXIgYm9hcmRzIHRvIGZhaWwgdG8gYm9vdC4gQmlzZWN0IHBvaW50cyB0byB5b3VyIGNvbW1pdA0K
+PiA+ID4gLi4uDQo+ID4gPiANCj4gPiA+IGNvbW1pdCAwZmZlODZmNDgwMjZiN2YzNGRiMjJkMTAw
+NGJjOTk5MmYwZGI4YjMzDQo+ID4gPiBBdXRob3I6IFRyb25kIE15a2xlYnVzdCA8dHJvbmQubXlr
+bGVidXN0QGhhbW1lcnNwYWNlLmNvbT4NCj4gPiA+IERhdGU6ICAgV2VkIEphbiAzMCAxNDo1MToy
+NiAyMDE5IC0wNTAwDQo+ID4gPiANCj4gPiA+ICAgICBTVU5SUEM6IFVzZSBwb2xsKCkgdG8gZml4
+IHVwIHRoZSBzb2NrZXQgcmVxdWV1ZSByYWNlcw0KPiA+ID4gDQo+ID4gPiANCj4gPiA+IEFmdGVy
+IHJldmVydGluZyB0aGlzIG9uIHRvcCBvZiAtbmV4dCBJIG5vIGxvbmdlciBzZWUgdGhlIHByb2Js
+ZW0uDQo+ID4gPiBJDQo+ID4gPiBoYXZlDQo+ID4gPiBub3QgaGFkIGNoYW5jZSB0byBsb29rIGFu
+eSBjbG9zZXIsIGJ1dCB3YW50ZWQgdG8gc2VlIGlmIHlvdSBoYWQNCj4gPiA+IGFueQ0KPiA+ID4g
+aWRlYXMgd2hhdCBtaWdodCBiZSB0aGUgcHJvYmxlbS4NCj4gPiA+IA0KPiA+ID4gQ2hlZXJzDQo+
+ID4gPiBKb24NCj4gPiANCj4gPiBXaGF0IGtpbmQgb2YgYm9vdCBpcyB0aGlzPyBVRFAgb3IgVENQ
+PyBuZnNyb290PyBORlN2MyBvciBORlN2ND8gDQo+IA0KPiBUaGlzIGlzIG5mc3Jvb3QuIEkgZG9u
+J3Qgc3BlY2lmeSBhbnkgcGFydGljdWxhciBORlMgdmVyc2lvbiBmcm9tIA0KPiB0aGUga2VybmVs
+IGNtZGxpbmUsIGJ1dCB0aGlzIGlzIHNlZW4gd2l0aCBBUk0ga2VybmVsIGNvbmZpZ3MNCj4gdGVn
+cmFfZGVmY29uZmlnIGFuZCBtdWx0aV92N19kZWZjb25maWcuIA0KPiANCj4gTG9va2luZyBhdCB0
+aGUgbG9ncyBJIGFtIHNlZWluZyB0aGUgZm9sbG93aW5nIGNyYXNoIHdoaWNoIGFwcGVhcnMNCj4g
+dG8gcG9pbnQgdG8gVURQIC4uLg0KPiANCj4gWyAgICA4LjAzMjk1Nl0gVW5hYmxlIHRvIGhhbmRs
+ZSBrZXJuZWwgTlVMTCBwb2ludGVyIGRlcmVmZXJlbmNlIGF0DQo+IHZpcnR1YWwgYWRkcmVzcyAw
+MDAwMDAyNA0KPiBbICAgIDguMDQxMTM3XSBwZ2QgPSAocHRydmFsKQ0KPiBbICAgIDguMDQzODU4
+XSBbMDAwMDAwMjRdICpwZ2Q9MDAwMDAwMDANCj4gWyAgICA4LjA0NzQzN10gSW50ZXJuYWwgZXJy
+b3I6IE9vcHM6IDUgWyMxXSBTTVAgQVJNDQo+IFsgICAgOC4wNTIwNDldIE1vZHVsZXMgbGlua2Vk
+IGluOg0KPiBbICAgIDguMDU1MTA0XSBDUFU6IDEgUElEOiAxMDAgQ29tbToga3dvcmtlci91OToy
+IE5vdCB0YWludGVkIDUuMC4wLQ0KPiByYzctbmV4dC0yMDE5MDIyMi1nOTRhNDc1MiAjMQ0KPiBb
+ICAgIDguMDYzNjk5XSBIYXJkd2FyZSBuYW1lOiBOVklESUEgVGVncmEgU29DIChGbGF0dGVuZWQg
+RGV2aWNlDQo+IFRyZWUpDQo+IFsgICAgOC4wNjk5NjBdIFdvcmtxdWV1ZTogeHBydGlvZCB4c191
+ZHBfZGF0YV9yZWNlaXZlX3dvcmtmbg0KPiBbICAgIDguMDc1MzUzXSBQQyBpcyBhdCB1ZHBfcG9s
+bCsweDMwLzB4NjQNCj4gWyAgICA4LjA3OTE3OF0gTFIgaXMgYXQgdWRwX3BvbGwrMHgxMC8weDY0
+DQoNClRoYW5rcyEgSSBzZWUgd2hhdCB0aGUgaXNzdWUgaXMgbm93IGFuZCBJJ2xsIGJlIGZpeGlu
+ZyBpdCBBU0FQLg0KDQpDaGVlcnMNCiAgIFRyb25kDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpM
+aW51eCBORlMgY2xpZW50IG1haW50YWluZXIsIEhhbW1lcnNwYWNlDQp0cm9uZC5teWtsZWJ1c3RA
+aGFtbWVyc3BhY2UuY29tDQoNCg0K
