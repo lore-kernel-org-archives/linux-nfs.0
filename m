@@ -6,75 +6,56 @@ X-Spam-Status: No, score=-2.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	MAILING_LIST_MULTI,SPF_PASS,USER_AGENT_MUTT autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E2AC3C43381
-	for <linux-nfs@archiver.kernel.org>; Tue, 26 Feb 2019 18:33:44 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id CDD69C43381
+	for <linux-nfs@archiver.kernel.org>; Tue, 26 Feb 2019 19:46:07 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id B466521852
-	for <linux-nfs@archiver.kernel.org>; Tue, 26 Feb 2019 18:33:44 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 95CB221850
+	for <linux-nfs@archiver.kernel.org>; Tue, 26 Feb 2019 19:46:07 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729035AbfBZSdo (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 26 Feb 2019 13:33:44 -0500
-Received: from muru.com ([72.249.23.125]:40836 "EHLO muru.com"
+        id S1727998AbfBZTqG (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 26 Feb 2019 14:46:06 -0500
+Received: from fieldses.org ([173.255.197.46]:59344 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1728736AbfBZSdn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 26 Feb 2019 13:33:43 -0500
-Received: from atomide.com (localhost [127.0.0.1])
-        by muru.com (Postfix) with ESMTPS id 49C4980CD;
-        Tue, 26 Feb 2019 18:33:54 +0000 (UTC)
-Date:   Tue, 26 Feb 2019 10:33:40 -0800
-From:   Tony Lindgren <tony@atomide.com>
-To:     Trond Myklebust <trondmy@hammerspace.com>
-Cc:     "jonathanh@nvidia.com" <jonathanh@nvidia.com>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-tegra@vger.kernel.org" <linux-tegra@vger.kernel.org>
-Subject: Re: Regression: SUNRPC: Use poll() to fix up the socket requeue races
-Message-ID: <20190226183340.GD39872@atomide.com>
-References: <95702994-6762-e42b-06ee-ae945c2137bd@nvidia.com>
- <ab485d7ba4f9603850b81e6c2242dc25026eabcb.camel@hammerspace.com>
- <88677895-7f89-ae1d-3060-819f4b04f530@nvidia.com>
- <9b9a6c5e34edea13b3ace42d39d97c27fd21c0db.camel@hammerspace.com>
+        id S1727196AbfBZTqG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 26 Feb 2019 14:46:06 -0500
+Received: by fieldses.org (Postfix, from userid 2815)
+        id 38BA31C98; Tue, 26 Feb 2019 14:46:06 -0500 (EST)
+Date:   Tue, 26 Feb 2019 14:46:06 -0500
+To:     David Noveck <davenoveck@gmail.com>
+Cc:     "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>,
+        linux-nfs-owner <linux-nfs-owner@vger.kernel.org>,
+        linux-nfs <linux-nfs@vger.kernel.org>, NFSv4 <nfsv4@ietf.org>,
+        Ganesha-devel <devel@lists.nfs-ganesha.org>
+Subject: Re: [nfsv4] file size and getattr
+Message-ID: <20190226194606.GA12035@fieldses.org>
+References: <155049372736.14318.3390584694682770373.idtracker@ietfa.amsl.com>
+ <CADaq8je2Ap4oAZAPOguaWctUs8dQ=Q9g=TO39EOiJW5EJSFTGg@mail.gmail.com>
+ <OFE5A6CD32.4DC48078-ON882583A9.007FB4BC-882583A9.0080ACAC@notes.na.collabserv.com>
+ <CADaq8jfT=nxmVPz4mDRFAaOx36uxWqKbxitqS-YH3GCOs4CsrQ@mail.gmail.com>
+ <741516773.7109032.1551084577150.JavaMail.zimbra@desy.de>
+ <CADaq8jdp7qVOE9aKui-tgrk00hVmNVXP=yjQ_G-RtGm+G4VrYw@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <9b9a6c5e34edea13b3ace42d39d97c27fd21c0db.camel@hammerspace.com>
-User-Agent: Mutt/1.11.2 (2019-01-07)
+In-Reply-To: <CADaq8jdp7qVOE9aKui-tgrk00hVmNVXP=yjQ_G-RtGm+G4VrYw@mail.gmail.com>
+User-Agent: Mutt/1.5.21 (2010-09-15)
+From:   bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hi,
+On Mon, Feb 25, 2019 at 10:50:21AM -0500, David Noveck wrote:
+> For example, if you (or another client) read data written unstably,
+> and there was been no restart you will see bytes past the eof as known
+> by the metadata server.
 
-* Trond Myklebust <trondmy@hammerspace.com> [700101 00:00]:
-> On Mon, 2019-02-25 at 22:27 +0000, Jon Hunter wrote:
-> > On 25/02/2019 21:03, Trond Myklebust wrote:
-> > This is nfsroot. I don't specify any particular NFS version from 
-> > the kernel cmdline, but this is seen with ARM kernel configs
-> > tegra_defconfig and multi_v7_defconfig. 
-> > 
-> > Looking at the logs I am seeing the following crash which appears
-> > to point to UDP ...
-> > 
-> > [    8.032956] Unable to handle kernel NULL pointer dereference at
-> > virtual address 00000024
-> > [    8.041137] pgd = (ptrval)
-> > [    8.043858] [00000024] *pgd=00000000
-> > [    8.047437] Internal error: Oops: 5 [#1] SMP ARM
-> > [    8.052049] Modules linked in:
-> > [    8.055104] CPU: 1 PID: 100 Comm: kworker/u9:2 Not tainted 5.0.0-
-> > rc7-next-20190222-g94a4752 #1
-> > [    8.063699] Hardware name: NVIDIA Tegra SoC (Flattened Device
-> > Tree)
-> > [    8.069960] Workqueue: xprtiod xs_udp_data_receive_workfn
-> > [    8.075353] PC is at udp_poll+0x30/0x64
-> > [    8.079178] LR is at udp_poll+0x10/0x64
-> 
-> Thanks! I see what the issue is now and I'll be fixing it ASAP.
+Possibly worth noting that if there *is* a restart, all bets are off.
 
-I'm seeing this also with NFSroot. I can test the fix when available,
-that is if you can please Cc me on the fix.
+And how do you know there hasn't been a restart?  Or if you can figure
+that out (e.g. if you're using sessions), how do you know when clients
+have finished retransmitting unstable write data?
 
-Thanks,
+I'd be curious what prompted the original question.
 
-Tony
+--b.
