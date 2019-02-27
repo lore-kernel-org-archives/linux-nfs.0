@@ -6,28 +6,28 @@ X-Spam-Status: No, score=-9.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED,
 	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 07361C00319
-	for <linux-nfs@archiver.kernel.org>; Wed, 27 Feb 2019 14:52:03 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 0FAD7C43381
+	for <linux-nfs@archiver.kernel.org>; Wed, 27 Feb 2019 14:52:04 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id D474D20863
-	for <linux-nfs@archiver.kernel.org>; Wed, 27 Feb 2019 14:52:02 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id DAD3C20863
+	for <linux-nfs@archiver.kernel.org>; Wed, 27 Feb 2019 14:52:03 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1730483AbfB0OwC (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 27 Feb 2019 09:52:02 -0500
-Received: from mx3.molgen.mpg.de ([141.14.17.11]:46675 "EHLO mx1.molgen.mpg.de"
+        id S1730577AbfB0OwD (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 27 Feb 2019 09:52:03 -0500
+Received: from mx3.molgen.mpg.de ([141.14.17.11]:41567 "EHLO mx1.molgen.mpg.de"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726590AbfB0OwC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        id S1730224AbfB0OwC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
         Wed, 27 Feb 2019 09:52:02 -0500
 Received: from theinternet.molgen.mpg.de (theinternet.molgen.mpg.de [141.14.31.7])
-        by mx.molgen.mpg.de (Postfix) with ESMTP id 5552C604E3BCC;
-        Wed, 27 Feb 2019 15:52:00 +0100 (CET)
+        by mx.molgen.mpg.de (Postfix) with ESMTP id 14DC4604E3BCF;
+        Wed, 27 Feb 2019 15:52:01 +0100 (CET)
 From:   Donald Buczek <buczek@molgen.mpg.de>
 To:     linux-nfs@vger.kernel.org, trond.myklebust@hammerspace.com,
         anna.schumaker@netapp.com
 Cc:     Donald Buczek <buczek@molgen.mpg.de>
-Subject: [PATCH 1/4] nfs: Fix copy-and-paste error in debug message
-Date:   Wed, 27 Feb 2019 15:51:27 +0100
-Message-Id: <20190227145130.22323-2-buczek@molgen.mpg.de>
+Subject: [PATCH 2/4] nfs4: Rename nfs41_setup_state_renewal
+Date:   Wed, 27 Feb 2019 15:51:28 +0100
+Message-Id: <20190227145130.22323-3-buczek@molgen.mpg.de>
 X-Mailer: git-send-email 2.21.0
 In-Reply-To: <20190227145130.22323-1-buczek@molgen.mpg.de>
 References: <20190227145130.22323-1-buczek@molgen.mpg.de>
@@ -38,27 +38,36 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-The debug message of decode_attr_lease_time incorrectly
-says "file size". Fix it to "lease time".
+The function nfs41_setup_state_renewal is useful to the nfs 4.0 client
+as well, so rename the function to nfs4_setup_state_renewal.
 
 Signed-off-by: Donald Buczek <buczek@molgen.mpg.de>
 ---
- fs/nfs/nfs4xdr.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ fs/nfs/nfs4state.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 2fc8f6fa25e4..34adaa899a8c 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -3471,7 +3471,7 @@ static int decode_attr_lease_time(struct xdr_stream *xdr, uint32_t *bitmap, uint
- 		*res = be32_to_cpup(p);
- 		bitmap[0] &= ~FATTR4_WORD0_LEASE_TIME;
- 	}
--	dprintk("%s: file size=%u\n", __func__, (unsigned int)*res);
-+	dprintk("%s: lease time=%u\n", __func__, (unsigned int)*res);
- 	return 0;
- out_overflow:
- 	print_overflow_msg(__func__, xdr);
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index 02488b50534a..28863a9b705d 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -282,7 +282,7 @@ static int nfs4_begin_drain_session(struct nfs_client *clp)
+ 
+ #if defined(CONFIG_NFS_V4_1)
+ 
+-static int nfs41_setup_state_renewal(struct nfs_client *clp)
++static int nfs4_setup_state_renewal(struct nfs_client *clp)
+ {
+ 	int status;
+ 	struct nfs_fsinfo fsinfo;
+@@ -309,7 +309,7 @@ static void nfs41_finish_session_reset(struct nfs_client *clp)
+ 	clear_bit(NFS4CLNT_SESSION_RESET, &clp->cl_state);
+ 	/* create_session negotiated new slot table */
+ 	clear_bit(NFS4CLNT_BIND_CONN_TO_SESSION, &clp->cl_state);
+-	nfs41_setup_state_renewal(clp);
++	nfs4_setup_state_renewal(clp);
+ }
+ 
+ int nfs41_init_clientid(struct nfs_client *clp, const struct cred *cred)
 -- 
 2.21.0
 
