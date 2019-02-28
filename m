@@ -2,75 +2,78 @@ Return-Path: <SRS0=Ptm/=RD=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_PASS,UNPARSEABLE_RELAY autolearn=ham
+X-Spam-Status: No, score=-6.3 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_PASS,UNWANTED_LANGUAGE_BODY,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4D2E7C43381
-	for <linux-nfs@archiver.kernel.org>; Thu, 28 Feb 2019 10:10:07 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8D409C43381
+	for <linux-nfs@archiver.kernel.org>; Thu, 28 Feb 2019 14:42:18 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 1B03F2183F
-	for <linux-nfs@archiver.kernel.org>; Thu, 28 Feb 2019 10:10:07 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 5B5CD2184A
+	for <linux-nfs@archiver.kernel.org>; Thu, 28 Feb 2019 14:42:18 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (1024-bit key) header.d=163.com header.i=@163.com header.b="j21fGeYS"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1732220AbfB1KKG (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 28 Feb 2019 05:10:06 -0500
-Received: from out30-45.freemail.mail.aliyun.com ([115.124.30.45]:60842 "EHLO
-        out30-45.freemail.mail.aliyun.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1730388AbfB1KKG (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Feb 2019 05:10:06 -0500
-X-Alimail-AntiSpam: AC=PASS;BC=-1|-1;BR=01201311R141e4;CH=green;DM=||false|;FP=0|-1|-1|-1|0|-1|-1|-1;HT=e01f04427;MF=jiufei.xue@linux.alibaba.com;NM=1;PH=DS;RN=5;SR=0;TI=SMTPD_---0TLYIJtD_1551348603;
-Received: from ali-186590e05fa3.local(mailfrom:jiufei.xue@linux.alibaba.com fp:SMTPD_---0TLYIJtD_1551348603)
-          by smtp.aliyun-inc.com(127.0.0.1);
-          Thu, 28 Feb 2019 18:10:03 +0800
-From:   Jiufei Xue <jiufei.xue@linux.alibaba.com>
-Subject: [bug report] task hang while testing xfstests generic/323
-To:     bfields@fieldses.org
-Cc:     Anna.Schumaker@Netapp.com, trond.myklebust@primarydata.com,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Joseph Qi <joseph.qi@linux.alibaba.com>
-Message-ID: <fa8ca171-b260-3e5a-d69c-13f263f5bb9c@linux.alibaba.com>
-Date:   Thu, 28 Feb 2019 18:10:03 +0800
-User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.13; rv:60.0)
- Gecko/20100101 Thunderbird/60.3.3
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
+        id S1733028AbfB1OmR (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 28 Feb 2019 09:42:17 -0500
+Received: from m12-15.163.com ([220.181.12.15]:58562 "EHLO m12-15.163.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1725896AbfB1OmR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 28 Feb 2019 09:42:17 -0500
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=163.com;
+        s=s110527; h=From:Subject:Date:Message-Id; bh=M+u5m0qqD0rEVXvSVv
+        u/489essjUlIufqN6foOKObqk=; b=j21fGeYSKApVnzhlMBUbdIWTS3hE9A/oq1
+        7NJpZFdiUCYV+vBZb/BJ0wvJ9XY7SF9wYLblmxRUd/ccezC1TWkmdDAFPguSpiyc
+        nRHv7v645KQKRUkFPNqvhIN8HVkHGwXhHWXYdRBW1bl7Da78gldPcy2xmUKSWOFa
+        81vujxKoY=
+Received: from yangwei-T440.lan (unknown [171.223.98.87])
+        by smtp11 (Coremail) with SMTP id D8CowADHLkkN83dcuXkbFQ--.27937S3;
+        Thu, 28 Feb 2019 22:41:19 +0800 (CST)
+From:   Yang Wei <albin_yang@163.com>
+To:     linux-nfs@vger.kernel.org
+Cc:     trond.myklebust@hammerspace.com, anna.schumaker@netapp.com,
+        yang.wei9@zte.com.cn, albin_yang@163.com
+Subject: [PATCH] fs: nfs: fix semicolon code style issue
+Date:   Thu, 28 Feb 2019 22:41:16 +0800
+Message-Id: <1551364876-4331-1-git-send-email-albin_yang@163.com>
+X-Mailer: git-send-email 2.7.4
+X-CM-TRANSID: D8CowADHLkkN83dcuXkbFQ--.27937S3
+X-Coremail-Antispam: 1Uf129KBjvdXoWrtF4UKw17GF15WrW8XryDGFg_yoWxKrX_Zr
+        40yw40g393Xr48Jrs0ka4Syrs3ZFn5KF13Z3yrCF4DJayqyr4DAFyDJFn8WF9xG3yxXr4a
+        kryDC3yjyw4FgjkaLaAFLSUrUUUUUb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
+        9fnUUvcSsGvfC2KfnxnUUI43ZEXa7IU8pBTUUUUUU==
+X-Originating-IP: [171.223.98.87]
+X-CM-SenderInfo: pdoex0xb1d0wi6rwjhhfrp/1tbiSg9polPADNPVxwAAsQ
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hi,
+From: Yang Wei <yang.wei9@zte.com.cn>
 
-when I tested xfstests/generic/323 with NFSv4.1 and v4.2, the task
-changed to zombie occasionally while a thread is hanging with the
-following stack:
+Delete a superfluous semicolon in nfs4_do_lookup_revalidate().
 
-[<0>] rpc_wait_bit_killable+0x1e/0xa0 [sunrpc]
-[<0>] nfs4_do_close+0x21b/0x2c0 [nfsv4]
-[<0>] __put_nfs_open_context+0xa2/0x110 [nfs]
-[<0>] nfs_file_release+0x35/0x50 [nfs]
-[<0>] __fput+0xa2/0x1c0
-[<0>] task_work_run+0x82/0xa0
-[<0>] do_exit+0x2ac/0xc20
-[<0>] do_group_exit+0x39/0xa0
-[<0>] get_signal+0x1ce/0x5d0
-[<0>] do_signal+0x36/0x620
-[<0>] exit_to_usermode_loop+0x5e/0xc2
-[<0>] do_syscall_64+0x16c/0x190
-[<0>] entry_SYSCALL_64_after_hwframe+0x44/0xa9
-[<0>] 0xffffffffffffffff
+Signed-off-by: Yang Wei <yang.wei9@zte.com.cn>
+---
+ fs/nfs/dir.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-Since commit 12f275cdd163(NFSv4: Retry CLOSE and DELEGRETURN on
-NFS4ERR_OLD_STATEID), the client will retry to close the file when
-stateid generation number in client is lower than server. 
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index 6bf4471..96dd679 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -1649,7 +1649,7 @@ nfs4_do_lookup_revalidate(struct inode *dir, struct dentry *dentry,
+ reval_dentry:
+ 	if (flags & LOOKUP_RCU)
+ 		return -ECHILD;
+-	return nfs_lookup_revalidate_dentry(dir, dentry, inode);;
++	return nfs_lookup_revalidate_dentry(dir, dentry, inode);
+ 
+ full_reval:
+ 	return nfs_do_lookup_revalidate(dir, dentry, flags);
+-- 
+2.7.4
 
-The original intention of this commit is retrying the operation while
-racing with an OPEN. However, in this case the stateid generation remains
-mismatch forever.
 
-Any suggestions?
-
-Thanks,
-Jiufei
