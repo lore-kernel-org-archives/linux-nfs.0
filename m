@@ -2,66 +2,69 @@ Return-Path: <SRS0=Psyw=RE=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+X-Spam-Status: No, score=-9.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS,USER_AGENT_GIT
-	autolearn=ham autolearn_force=no version=3.4.0
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 02537C43381
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DD875C10F03
 	for <linux-nfs@archiver.kernel.org>; Fri,  1 Mar 2019 19:26:56 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id BFD152084F
-	for <linux-nfs@archiver.kernel.org>; Fri,  1 Mar 2019 19:26:55 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id AD4B82084F
+	for <linux-nfs@archiver.kernel.org>; Fri,  1 Mar 2019 19:26:56 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="e+lV+dq7"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="bfluqCvJ"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1725974AbfCAT0z (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 1 Mar 2019 14:26:55 -0500
-Received: from mail-yw1-f68.google.com ([209.85.161.68]:46389 "EHLO
-        mail-yw1-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725862AbfCAT0z (ORCPT
+        id S1725988AbfCAT04 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 1 Mar 2019 14:26:56 -0500
+Received: from mail-yw1-f65.google.com ([209.85.161.65]:46389 "EHLO
+        mail-yw1-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725905AbfCAT0z (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Mar 2019 14:26:55 -0500
-Received: by mail-yw1-f68.google.com with SMTP id n12so14911074ywn.13
-        for <linux-nfs@vger.kernel.org>; Fri, 01 Mar 2019 11:26:54 -0800 (PST)
+Received: by mail-yw1-f65.google.com with SMTP id n12so14911120ywn.13
+        for <linux-nfs@vger.kernel.org>; Fri, 01 Mar 2019 11:26:55 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
-        h=from:to:subject:date:message-id:mime-version
+        h=from:to:subject:date:message-id:in-reply-to:references:mime-version
          :content-transfer-encoding;
-        bh=u7uwen2p6wHrAWzMTcDbfyqAS6Nsp1mZf2z1Zy6ERw8=;
-        b=e+lV+dq7u2uE8mIjbpd6PSHdMaRr7FqrzTGdLup72UY0bdNNqnSPNqcXS9y+/E428M
-         vH+rtf9HUaRZ1QW6Lk4LvO/jPeJ20sS3jWSZRoqGgZNoK0s5VtXuRsIiIjktXEi+03hO
-         EKajuccroXaXoSz6xIBEaXHfVKNIWMBziM4RGupy+NWqtniy3gohTSoQk+3Nr1pvBGev
-         mH0tWq8wV+06B5Zyd2KENQ8IGnqWt/L8jQYen5XSNlsOURwAOEuJY5vNbl/W/fGGbQGv
-         tdvXGiIcdhRmWDDl49ak1AUrs7/1CkCgvxqBef+SXTI43k/D+rb+okxKNOGjtihMDlXi
-         UNqw==
+        bh=nJFBhEOlZ3nJuZrBWuxE2iOl/WFwKdya9WR0Q2DDQTk=;
+        b=bfluqCvJHLIvCs/eqJeXixHXrefmbEWSnLA/s3R+zT+O5vyN5XfLdwXxUB366AP/ps
+         BXYiGExkmImZOKXDsrP7E4LCstdTMAEsfjNW1mJX5zsc/Y3yn+hK+G1TvBbb9b831iXQ
+         EQyUEsQ/JcOJHgTFTBZbOQR+5YWRpfpR0oQtvTFjVY/At9bLcJSYXVaas6/B8xVDkKsu
+         rYra9GnY7IsUVYY0A/wayENSqMAZ4zIH7A4iPgLScjUkzjoHydzxEfpPqnzQCXGgbSKZ
+         s9aBA+VXdQEaqXVSLi2jTm25s/X8RFZKr0B9I0O/cO7I8ot0MIBIdPzkneRk6OZi63lt
+         LGFQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:to:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=u7uwen2p6wHrAWzMTcDbfyqAS6Nsp1mZf2z1Zy6ERw8=;
-        b=rz6VnIE9uSCsUDKa2B2CANAbJLLHNmeuArsXf4v41MiH1YYo6Lnx0qW2LbR+NEpiis
-         oxfomQmmX8nc8nwwSfPt7Mb2aRP5KrxSR5e+ZjLFjWbA1ovYz3N41NheNscr7NUXLEPq
-         Zb2B9kZ+KQ6BI6qnprXqN35cRnFI5Vb8wqMt/IjzS4X3sgLmtgDC35hAqLxZc7fW6XYj
-         WpQ/HmVxlDNmG2USHuw9g/9shjjGZ3OO/wsaA7O+ng66wtM3eYrCq57Vvj4xR2Q1KRGq
-         4OCdK/9W9xRMKeXbWt1BZqNiLVnktMma2EDrW4SOZnVmBhpUBRWbW6+J2qsk5UIX3/Pr
-         KOPA==
-X-Gm-Message-State: APjAAAXF4sxz7bVHa0QgiAytqC+ci2iHvnHsfjgFihpbj4K3bIgKhdX3
-        T9+b6mI1dVQSCEF2iIVnMRUzyiw=
-X-Google-Smtp-Source: APXvYqwJtw6MpDCPrF5XZ/0XHIBnb7bdkAgeOVu5KOhuH2y5xI9JjbHQaxcSKf254TzYDOKBmKuyaQ==
-X-Received: by 2002:a25:9c82:: with SMTP id y2mr5666472ybo.435.1551468413225;
-        Fri, 01 Mar 2019 11:26:53 -0800 (PST)
+        h=x-gm-message-state:from:to:subject:date:message-id:in-reply-to
+         :references:mime-version:content-transfer-encoding;
+        bh=nJFBhEOlZ3nJuZrBWuxE2iOl/WFwKdya9WR0Q2DDQTk=;
+        b=Ltk0iMVny8zJbH9Mf5A1Y5R8HuWRyNa3AOuDbPZNiC56TpbXPbe/BX2tdJFCORjKbM
+         VfYlx4mFuiVFU+CPYMbqDm6pUM8OAMSny7pmRzrKOMuBeFz23N/dOFGSwhO9sEX+78Ls
+         dm4SOOCXGVSRzUv6k0nGtNpmI3aNQgCUYdlXO61PpA31ywaO3FwGwKy2HQkMID2kVllH
+         9oMMjcsS4yIatJyZ/xBjUBgRaIimCBdURmO/ZAGqM/yNfDW5DzZC2oEYluYPMC135Xl9
+         VuWJhOpCCvFLfS3Yk+oRy8KAe2iBmdP1i5wtkW6bewQxVTfPv5NQGo8w4filrps6LwP8
+         eYCw==
+X-Gm-Message-State: APjAAAWsLDyYCkCHSo0JZDV8tKb3Ozenhq91IAxzEkpxmFMpPZNL1/kz
+        2n0UT8zawO+CITuo7SMCqgu8yUI=
+X-Google-Smtp-Source: APXvYqzYfYvGvViENNL+3B1IkGdZ0x+HzOxvcz0KqH40GyIr46TX72pkX3LW7d15f1QL61vszfuUhA==
+X-Received: by 2002:a25:6085:: with SMTP id u127mr5655648ybb.291.1551468414244;
+        Fri, 01 Mar 2019 11:26:54 -0800 (PST)
 Received: from localhost.localdomain (c-68-40-189-247.hsd1.mi.comcast.net. [68.40.189.247])
-        by smtp.gmail.com with ESMTPSA id l71sm7509193ywl.65.2019.03.01.11.26.52
+        by smtp.gmail.com with ESMTPSA id l71sm7509193ywl.65.2019.03.01.11.26.53
         for <linux-nfs@vger.kernel.org>
         (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
-        Fri, 01 Mar 2019 11:26:52 -0800 (PST)
+        Fri, 01 Mar 2019 11:26:53 -0800 (PST)
 From:   Trond Myklebust <trondmy@gmail.com>
 X-Google-Original-From: Trond Myklebust <trond.myklebust@hammerspace.com>
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH 00/19] Updates for pNFS/flexfiles
-Date:   Fri,  1 Mar 2019 14:24:36 -0500
-Message-Id: <20190301192455.104943-1-trond.myklebust@hammerspace.com>
+Subject: [PATCH 01/19] NFSv4/flexfiles: Fix invalid deref in FF_LAYOUT_DEVID_NODE()
+Date:   Fri,  1 Mar 2019 14:24:37 -0500
+Message-Id: <20190301192455.104943-2-trond.myklebust@hammerspace.com>
 X-Mailer: git-send-email 2.20.1
+In-Reply-To: <20190301192455.104943-1-trond.myklebust@hammerspace.com>
+References: <20190301192455.104943-1-trond.myklebust@hammerspace.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
@@ -69,59 +72,66 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-The following patches update the pNFS/flexfiles layout driver.
-The main feature enhancements revolve around adding support for
-the NFSv4.2 LAYOUTERROR operation. This was seen as necessary
-in order to fix a livelock issue that can occur if the client
-has lots of outstanding I/O, but the DS is down.
-In that case, we currently file an error that is supposed to get
-sent to the server as part of LAYOUTRETURN. However if the I/O
-retries are occurring quickly enough so that we keep renewing
-the layout, then we end up never being able to send the
-layoutreturn,  the server ends up never getting notified about
-the error condition, and just keeps handing out the same
-layout over and over again in response to new LAYOUTGETs.
-By sending the LAYOUTERROR without needing to return the layout,
-we can break the cycle.
+If the attempt to instantiate the mirror's layout DS pointer failed,
+then that pointer may hold a value of type ERR_PTR(), so we need
+to check that before we dereference it.
 
-Trond Myklebust (19):
-  NFSv4/flexfiles: Fix invalid deref in FF_LAYOUT_DEVID_NODE()
-  NFS/flexfiles: Fix up sparse RCU annotations
-  NFSv4/pnfs: Fix barriers in nfs4_mark_deviceid_unavailable()
-  NFSv4/flexfiles: Abort I/O early if the layout segment was invalidated
-  NFSv4.2: Add client support for the generic 'layouterror' RPC call
-  NFS/flexfiles: Send LAYOUTERROR when failing over mirrored reads
-  NFSv4: Handle early exit in layoutget by returning an error
-  NFS/flexfiles: refactor calls to fs4_ff_layout_prepare_ds()
-  NFS/flexfiles: Avoid unnecessary layout invalidations
-  NFS/flexfiles: Remove bogus checks for invalid deviceids
-  NFS/flexfiles: Don't invalidate DS deviceids for being unresponsive
-  NFS/flexfiles: Speed up read failover when DSes are down
-  NFS/flexfiles: Simplify nfs4_ff_layout_select_ds_fh()
-  NFS/flexfiles: Simplify nfs4_ff_find_or_create_ds_client()
-  NFS/flexfiles: Simplify ff_layout_get_ds_cred()
-  NFS/flexfile: Simplify nfs4_ff_layout_ds_version()
-  NFS/flexfile: Simplify nfs4_ff_layout_select_ds_stateid()
-  NFS/flexfiles: Remove dead code in ff_layout_mirror_valid()
-  NFS/flexfiles: Clean up mirror DS initialisation
+Fixes: 65990d1afbd2d ("pNFS/flexfiles: Fix a deadlock on LAYOUTGET")
+Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
+---
+ fs/nfs/flexfilelayout/flexfilelayout.h | 32 +++++++++++++++-----------
+ 1 file changed, 19 insertions(+), 13 deletions(-)
 
- fs/nfs/flexfilelayout/flexfilelayout.c    | 216 ++++++++++++++++------
- fs/nfs/flexfilelayout/flexfilelayout.h    |  75 ++++----
- fs/nfs/flexfilelayout/flexfilelayoutdev.c | 150 +++++----------
- fs/nfs/nfs42.h                            |   3 +
- fs/nfs/nfs42proc.c                        | 164 ++++++++++++++++
- fs/nfs/nfs42xdr.c                         |  99 ++++++++++
- fs/nfs/nfs4proc.c                         |   9 +-
- fs/nfs/nfs4xdr.c                          |   1 +
- fs/nfs/pnfs.h                             |   1 +
- fs/nfs/pnfs_dev.c                         |  13 ++
- include/linux/nfs4.h                      |   1 +
- include/linux/nfs_fs_sb.h                 |   1 +
- include/linux/nfs_xdr.h                   |  35 ++++
- include/linux/sunrpc/sched.h              |   1 +
- net/sunrpc/xprt.c                         |   7 +
- 15 files changed, 571 insertions(+), 205 deletions(-)
-
+diff --git a/fs/nfs/flexfilelayout/flexfilelayout.h b/fs/nfs/flexfilelayout/flexfilelayout.h
+index c2626bad466b..8a2d5d630af9 100644
+--- a/fs/nfs/flexfilelayout/flexfilelayout.h
++++ b/fs/nfs/flexfilelayout/flexfilelayout.h
+@@ -132,16 +132,6 @@ FF_LAYOUT_LSEG(struct pnfs_layout_segment *lseg)
+ 			    generic_hdr);
+ }
+ 
+-static inline struct nfs4_deviceid_node *
+-FF_LAYOUT_DEVID_NODE(struct pnfs_layout_segment *lseg, u32 idx)
+-{
+-	if (idx >= FF_LAYOUT_LSEG(lseg)->mirror_array_cnt ||
+-	    FF_LAYOUT_LSEG(lseg)->mirror_array[idx] == NULL ||
+-	    FF_LAYOUT_LSEG(lseg)->mirror_array[idx]->mirror_ds == NULL)
+-		return NULL;
+-	return &FF_LAYOUT_LSEG(lseg)->mirror_array[idx]->mirror_ds->id_node;
+-}
+-
+ static inline struct nfs4_ff_layout_ds *
+ FF_LAYOUT_MIRROR_DS(struct nfs4_deviceid_node *node)
+ {
+@@ -151,9 +141,25 @@ FF_LAYOUT_MIRROR_DS(struct nfs4_deviceid_node *node)
+ static inline struct nfs4_ff_layout_mirror *
+ FF_LAYOUT_COMP(struct pnfs_layout_segment *lseg, u32 idx)
+ {
+-	if (idx >= FF_LAYOUT_LSEG(lseg)->mirror_array_cnt)
+-		return NULL;
+-	return FF_LAYOUT_LSEG(lseg)->mirror_array[idx];
++	struct nfs4_ff_layout_segment *fls = FF_LAYOUT_LSEG(lseg);
++
++	if (idx < fls->mirror_array_cnt)
++		return fls->mirror_array[idx];
++	return NULL;
++}
++
++static inline struct nfs4_deviceid_node *
++FF_LAYOUT_DEVID_NODE(struct pnfs_layout_segment *lseg, u32 idx)
++{
++	struct nfs4_ff_layout_mirror *mirror = FF_LAYOUT_COMP(lseg, idx);
++
++	if (mirror != NULL) {
++		struct nfs4_ff_layout_ds *mirror_ds = mirror->mirror_ds;
++
++		if (!IS_ERR_OR_NULL(mirror_ds))
++			return &mirror_ds->id_node;
++	}
++	return NULL;
+ }
+ 
+ static inline u32
 -- 
 2.20.1
 
