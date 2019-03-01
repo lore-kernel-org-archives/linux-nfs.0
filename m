@@ -2,228 +2,93 @@ Return-Path: <SRS0=Psyw=RE=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS,
-	URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-2.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_PASS,USER_AGENT_MUTT autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id BCF97C43381
-	for <linux-nfs@archiver.kernel.org>; Fri,  1 Mar 2019 13:08:56 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5A9D6C4360F
+	for <linux-nfs@archiver.kernel.org>; Fri,  1 Mar 2019 15:04:03 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 548AD20643
-	for <linux-nfs@archiver.kernel.org>; Fri,  1 Mar 2019 13:08:56 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="SeoUPmNA"
+	by mail.kernel.org (Postfix) with ESMTP id 3229B20850
+	for <linux-nfs@archiver.kernel.org>; Fri,  1 Mar 2019 15:04:03 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1731716AbfCANIz (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 1 Mar 2019 08:08:55 -0500
-Received: from mail-eopbgr790138.outbound.protection.outlook.com ([40.107.79.138]:6112
-        "EHLO NAM03-CO1-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1728305AbfCANIz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 1 Mar 2019 08:08:55 -0500
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=hammerspace.com;
- s=selector1;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=N0mlh+mkIW7CtpY5ChtptnhcZEIAxUtbRZkBPJ0tXj0=;
- b=SeoUPmNAC4Kmkeh7Z78rTvhopNU544Ty2kP5gvD+ydZkDoh506hIzaJDQlFOLQIv8d5GjQFW/n6RmQwK46GdsrZzJtnfiGiiApk7cLwccX6LpzVdR3THU21Go3fdIoyqRGV0mODVaStGu00Br3f4pJHzEmq3AZfB3Aoce1mdGJE=
-Received: from SN6PR13MB2494.namprd13.prod.outlook.com (52.135.95.148) by
- SN6PR13MB2255.namprd13.prod.outlook.com (52.135.93.156) with Microsoft SMTP
- Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- 15.20.1686.11; Fri, 1 Mar 2019 13:08:50 +0000
-Received: from SN6PR13MB2494.namprd13.prod.outlook.com
- ([fe80::d1d6:9683:8c9b:3dcb]) by SN6PR13MB2494.namprd13.prod.outlook.com
- ([fe80::d1d6:9683:8c9b:3dcb%3]) with mapi id 15.20.1686.011; Fri, 1 Mar 2019
- 13:08:50 +0000
-From:   Trond Myklebust <trondmy@hammerspace.com>
-To:     "jiufei.xue@linux.alibaba.com" <jiufei.xue@linux.alibaba.com>,
-        "aglo@umich.edu" <aglo@umich.edu>
-CC:     "bfields@fieldses.org" <bfields@fieldses.org>,
-        "Anna.Schumaker@netapp.com" <Anna.Schumaker@netapp.com>,
-        Trond Myklebust <trondmy@hammerspace.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "joseph.qi@linux.alibaba.com" <joseph.qi@linux.alibaba.com>
-Subject: Re: [bug report] task hang while testing xfstests generic/323
-Thread-Topic: [bug report] task hang while testing xfstests generic/323
-Thread-Index: AQHUz03JX9HUIwfLV060fPzVrzJvGKX1yrYAgABwXICAAD3OgIAASFUA
-Date:   Fri, 1 Mar 2019 13:08:50 +0000
-Message-ID: <ce839197cb70f3bc75413ed2e54f8baafafc01dd.camel@hammerspace.com>
-References: <fa8ca171-b260-3e5a-d69c-13f263f5bb9c@linux.alibaba.com>
-         <CAN-5tyG9sUw2Oi+hbaW+KJDhvk8KT3Lb-cgU6azxq1yN+Tr=KQ@mail.gmail.com>
-         <3b6597b0-41b4-255a-5ebb-cf34ad95315c@linux.alibaba.com>
-         <57796366-0f08-2cfb-6f85-27d5485c07af@linux.alibaba.com>
-In-Reply-To: <57796366-0f08-2cfb-6f85-27d5485c07af@linux.alibaba.com>
-Accept-Language: en-US, en-GB
-Content-Language: en-US
-X-MS-Has-Attach: 
-X-MS-TNEF-Correlator: 
-x-originating-ip: [68.40.189.247]
-x-ms-publictraffictype: Email
-x-ms-office365-filtering-correlation-id: 17db47d8-07dc-4978-6a96-08d69e470c7c
-x-microsoft-antispam: BCL:0;PCL:0;RULEID:(2390118)(7020095)(4652040)(8989299)(4534185)(4627221)(201703031133081)(201702281549075)(8990200)(5600127)(711020)(4605104)(2017052603328)(7153060)(7193020);SRVR:SN6PR13MB2255;
-x-ms-traffictypediagnostic: SN6PR13MB2255:
-x-microsoft-exchange-diagnostics: =?utf-8?B?MTtTTjZQUjEzTUIyMjU1OzIzOjVoSjh0VnBZRFdkK2VFY1dJeE9sQk1NSS9H?=
- =?utf-8?B?U3RTY0ZObEJsQjFTcFA1YTB3SHdYcW5KbThCOWJzNmt3VmFCcHk2aDJyOXlB?=
- =?utf-8?B?bFlUSDZVUVQwUm4vNDBnMDBxMW84cVhLV0hHaWM4cm1RdU9qTTlpQXRGMkdB?=
- =?utf-8?B?aEszVGZORW5QaGhBUEpLYUw2ekgyWDVwNHRiVXg2Q3VIdDFoRURXRHh0TTB4?=
- =?utf-8?B?WDNTUCtIcllVUGIzQjVhVkwwK0xhYzZNUkpNa1E0M3hTU1czeDc5YnNraksx?=
- =?utf-8?B?OGtUVkRqeTd5R3VBQXp5TkRFUGVBNWZOT09RVVEzUTdrSkhpNUlHdEYvTW5o?=
- =?utf-8?B?cXF1cmVXMDYyTldoelFWQXRCTEZnSWErcW1lSXFxOFFmS25zeCt1QnErcE8x?=
- =?utf-8?B?TUlhd3pDYjdORTNoMUdGTTdzWmtnOWc5a2VMN09aMFpOZWFZVHYzQVFFMWox?=
- =?utf-8?B?SHZJSnhLOTFJNVpRSmE5dEFkOFdaKzZXYkx1WWR6V3lLTnhZajM4c3JuTUdT?=
- =?utf-8?B?bVF4VzBxckhZTGpjSXJFOFFmUXRnZ0xUTnZNdTlyc1FEOGlUT0dGU2w2THRx?=
- =?utf-8?B?NE5uOTJrNGw5VVcwZ0NyN3hoY1VkYVJyQ2tNYkp0N2lINTdSbnRuWTUvdllY?=
- =?utf-8?B?cHpTS1RUSUdTYkZNS0ZsdFpQWjh1R0hzUSsvMU41VnR4TDBFZXFpMGwzNlVE?=
- =?utf-8?B?RmJndERLdnJIYTZmd2xsY3pUT1VPMDNtNFBxcHJwcnFjTDh0UE9NUi9VL3pU?=
- =?utf-8?B?Zno0NVprdXBUazRzbXJXRFcvanppK1QwQWFuNk9FM1FVT3RPSldTb2N3OE1L?=
- =?utf-8?B?QWhrczVVdEI1OGhYYjdRZVRwNmdUdklmS25nSVV0b1BEOGtOaUEzN3dkVFlP?=
- =?utf-8?B?UnR3ZDIzQnhaVTZJUFQ5VzhzZzRyU2owZ2dwUEN0VGlSZTA4akx5dGlENERu?=
- =?utf-8?B?YWd0SXg3MW1lVXgzWGoveDdySWpiSU84Q3crdnlKVTA0amRsUnhIdGNFQlha?=
- =?utf-8?B?S3k3QXJXZHNmQXRRM0xTdnRtZWlaZGhOL1hoVzIvNVM4YXdJREZudjJaNHdz?=
- =?utf-8?B?ejNJWmpxZ3VXUXZCRU5ONW5vTkFDYVplQWRRdlZYRWxXeHpKMitzZzBEVWw0?=
- =?utf-8?B?QUs0WVVXQ1ZMQzhnd3RncDNiUHZseW04WGNHLzVUc2Z6eUR6SnJoYk5FbEli?=
- =?utf-8?B?WFhrTFJGa042YUlyU294cTQ3Z0h4dGEzeUVTKzBxVWNtcEMwMWtPR2hPRUx0?=
- =?utf-8?B?cFVBMGlNaURFZTE3eElITWU0US9yb1ZkTmpWbS9FRlZLdHJCSzRQdTFkUkpr?=
- =?utf-8?B?bko1N2F6T3dTU3VQUyszRWsvSDNoOWhnWWtOdkJRL28zSUVOSWg0aVJsQTV1?=
- =?utf-8?B?dUt5d0RhUURFWElTZ1VBQThWNjYyT3RyRjh2VUFvSEV3TnBMc1RmclhPWFFX?=
- =?utf-8?B?Ti82aUpuV3FxMndVTHp1MGpMTWZnNEM1cmxnM01iUWg0dWpLazJ2MWN5cHow?=
- =?utf-8?B?d3NXbnB3dEhsdUl0Zld5YXliQ3BLUUZYUCtJaGNYVUxrU1pZYktsY0JQZ3lu?=
- =?utf-8?B?N2w4M0YzR20vajFEMVk2L2RXZktvYWhYM0RjanZ0SjY2RktTdEpXMnJncy9U?=
- =?utf-8?B?NGIrak04SWFCNjB5N2VDVmJHWDAxUXUrSy9rSUdwa2RLNFkycnpWOVU0T3pW?=
- =?utf-8?B?c0hubE1laWVZb0lHdXJmOFNPYXJ2bFhDeUhzdGwrYUFtTGx2OXJtQW9iejBI?=
- =?utf-8?B?dDMzN3lvZHZYeEtpMytKNS9MOWExaGJSbDBBMldtcktSV1BUbUc0ZTNSdVJ3?=
- =?utf-8?B?Vnl2ZjdRUE91b1dGVDRKOGpjaXIrVU16Z0djSWxJYmJaeFE9PQ==?=
-x-microsoft-antispam-prvs: <SN6PR13MB2255E4F9080B1C41FD4C90ADB8760@SN6PR13MB2255.namprd13.prod.outlook.com>
-x-forefront-prvs: 09634B1196
-x-forefront-antispam-report: SFV:NSPM;SFS:(10019020)(376002)(396003)(346002)(366004)(39830400003)(136003)(199004)(189003)(71190400001)(71200400001)(53936002)(102836004)(93886005)(53546011)(76176011)(6506007)(99286004)(5660300002)(6436002)(2501003)(8676002)(26005)(305945005)(106356001)(316002)(446003)(2616005)(11346002)(476003)(105586002)(486006)(186003)(5024004)(14444005)(256004)(54906003)(110136005)(6346003)(7736002)(478600001)(14454004)(25786009)(229853002)(8936002)(4326008)(68736007)(6246003)(2171002)(6486002)(81156014)(6116002)(66066001)(97736004)(3846002)(6512007)(36756003)(86362001)(2906002)(118296001)(81166006)(41533002);DIR:OUT;SFP:1102;SCL:1;SRVR:SN6PR13MB2255;H:SN6PR13MB2494.namprd13.prod.outlook.com;FPR:;SPF:None;LANG:en;PTR:InfoNoRecords;A:1;MX:1;
-received-spf: None (protection.outlook.com: hammerspace.com does not designate
- permitted sender hosts)
-authentication-results: spf=none (sender IP is )
- smtp.mailfrom=trondmy@hammerspace.com; 
-x-ms-exchange-senderadcheck: 1
-x-microsoft-antispam-message-info: WFHofHJ4owJZ87eVIO/ID3plvVsjt3gd8W4FvzCeV1dkNUWzEYhOPX5mgZ7pyDgXfUzLxqjJ1V7Npe9I92HJk7FSTur+rAFW/4Y/zYxCnt55OIGx6WxiP1ctMzgk42btVm89MQy8NvG1iiAGIg3OjfNd2L60aG2cTmdIO8GfiVj+uKMJ1bTqJyCUBM/q9M2WW080Pa8ovnjReHaj6aoVfYZQTH1sWjGZ585GcdrWLGQzpDCIUhu+zVObwB+rvw6BcFm8fZidBTYch164I1EFwa1ISbxDVuFf2xC8n57c1jjvUh7dpvTdj1Q7rygfmlrchq1uT4M8eDVyv5fJtER+U4qwZpI38Wy9HECPFGOGrKjBQ/9VSSq2K27LSPeivmRJKoXoetflGmN0LUMm4oS4kEqUp6dXJrCvSD+hb930cRM=
-Content-Type: text/plain; charset="utf-8"
-Content-ID: <A0E6B5314D160B44BB71F5454A48A252@namprd13.prod.outlook.com>
-Content-Transfer-Encoding: base64
+        id S1728257AbfCAPEC (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 1 Mar 2019 10:04:02 -0500
+Received: from fieldses.org ([173.255.197.46]:34866 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1727492AbfCAPEC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 1 Mar 2019 10:04:02 -0500
+Received: by fieldses.org (Postfix, from userid 2815)
+        id 8A5891E19; Fri,  1 Mar 2019 10:04:01 -0500 (EST)
+Date:   Fri, 1 Mar 2019 10:04:01 -0500
+From:   Bruce Fields <bfields@fieldses.org>
+To:     Chuck Lever <chuck.lever@oracle.com>
+Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        linux-integrity@vger.kernel.org
+Subject: Re: [PATCH RFC 4/4] NFSD: Prototype support for IMA on NFS (server)
+Message-ID: <20190301150401.GA17160@fieldses.org>
+References: <20190214203336.6469.34750.stgit@manet.1015granger.net>
+ <20190214204326.6469.25843.stgit@manet.1015granger.net>
+ <20190218193218.GA5879@fieldses.org>
+ <A7D59BDC-08B3-4338-8E3B-6B41AC652968@oracle.com>
 MIME-Version: 1.0
-X-OriginatorOrg: hammerspace.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: 17db47d8-07dc-4978-6a96-08d69e470c7c
-X-MS-Exchange-CrossTenant-originalarrivaltime: 01 Mar 2019 13:08:50.7199
- (UTC)
-X-MS-Exchange-CrossTenant-fromentityheader: Hosted
-X-MS-Exchange-CrossTenant-id: 0d4fed5c-3a70-46fe-9430-ece41741f59e
-X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: SN6PR13MB2255
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <A7D59BDC-08B3-4338-8E3B-6B41AC652968@oracle.com>
+User-Agent: Mutt/1.5.21 (2010-09-15)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-T24gRnJpLCAyMDE5LTAzLTAxIGF0IDE2OjQ5ICswODAwLCBKaXVmZWkgWHVlIHdyb3RlOg0KPiAN
-Cj4gT24gMjAxOS8zLzEg5LiL5Y2IMTowOCwgSml1ZmVpIFh1ZSB3cm90ZToNCj4gPiBIaSBPbGdh
-LA0KPiA+IA0KPiA+IE9uIDIwMTkvMy8xIOS4iuWNiDY6MjYsIE9sZ2EgS29ybmlldnNrYWlhIHdy
-b3RlOg0KPiA+ID4gT24gVGh1LCBGZWIgMjgsIDIwMTkgYXQgNToxMSBBTSBKaXVmZWkgWHVlIDwN
-Cj4gPiA+IGppdWZlaS54dWVAbGludXguYWxpYmFiYS5jb20+IHdyb3RlOg0KPiA+ID4gPiBIaSwN
-Cj4gPiA+ID4gDQo+ID4gPiA+IHdoZW4gSSB0ZXN0ZWQgeGZzdGVzdHMvZ2VuZXJpYy8zMjMgd2l0
-aCBORlN2NC4xIGFuZCB2NC4yLCB0aGUNCj4gPiA+ID4gdGFzaw0KPiA+ID4gPiBjaGFuZ2VkIHRv
-IHpvbWJpZSBvY2Nhc2lvbmFsbHkgd2hpbGUgYSB0aHJlYWQgaXMgaGFuZ2luZyB3aXRoDQo+ID4g
-PiA+IHRoZQ0KPiA+ID4gPiBmb2xsb3dpbmcgc3RhY2s6DQo+ID4gPiA+IA0KPiA+ID4gPiBbPDA+
-XSBycGNfd2FpdF9iaXRfa2lsbGFibGUrMHgxZS8weGEwIFtzdW5ycGNdDQo+ID4gPiA+IFs8MD5d
-IG5mczRfZG9fY2xvc2UrMHgyMWIvMHgyYzAgW25mc3Y0XQ0KPiA+ID4gPiBbPDA+XSBfX3B1dF9u
-ZnNfb3Blbl9jb250ZXh0KzB4YTIvMHgxMTAgW25mc10NCj4gPiA+ID4gWzwwPl0gbmZzX2ZpbGVf
-cmVsZWFzZSsweDM1LzB4NTAgW25mc10NCj4gPiA+ID4gWzwwPl0gX19mcHV0KzB4YTIvMHgxYzAN
-Cj4gPiA+ID4gWzwwPl0gdGFza193b3JrX3J1bisweDgyLzB4YTANCj4gPiA+ID4gWzwwPl0gZG9f
-ZXhpdCsweDJhYy8weGMyMA0KPiA+ID4gPiBbPDA+XSBkb19ncm91cF9leGl0KzB4MzkvMHhhMA0K
-PiA+ID4gPiBbPDA+XSBnZXRfc2lnbmFsKzB4MWNlLzB4NWQwDQo+ID4gPiA+IFs8MD5dIGRvX3Np
-Z25hbCsweDM2LzB4NjIwDQo+ID4gPiA+IFs8MD5dIGV4aXRfdG9fdXNlcm1vZGVfbG9vcCsweDVl
-LzB4YzINCj4gPiA+ID4gWzwwPl0gZG9fc3lzY2FsbF82NCsweDE2Yy8weDE5MA0KPiA+ID4gPiBb
-PDA+XSBlbnRyeV9TWVNDQUxMXzY0X2FmdGVyX2h3ZnJhbWUrMHg0NC8weGE5DQo+ID4gPiA+IFs8
-MD5dIDB4ZmZmZmZmZmZmZmZmZmZmZg0KPiA+ID4gPiANCj4gPiA+ID4gU2luY2UgY29tbWl0IDEy
-ZjI3NWNkZDE2MyhORlN2NDogUmV0cnkgQ0xPU0UgYW5kIERFTEVHUkVUVVJOIG9uDQo+ID4gPiA+
-IE5GUzRFUlJfT0xEX1NUQVRFSUQpLCB0aGUgY2xpZW50IHdpbGwgcmV0cnkgdG8gY2xvc2UgdGhl
-IGZpbGUNCj4gPiA+ID4gd2hlbg0KPiA+ID4gPiBzdGF0ZWlkIGdlbmVyYXRpb24gbnVtYmVyIGlu
-IGNsaWVudCBpcyBsb3dlciB0aGFuIHNlcnZlci4NCj4gPiA+ID4gDQo+ID4gPiA+IFRoZSBvcmln
-aW5hbCBpbnRlbnRpb24gb2YgdGhpcyBjb21taXQgaXMgcmV0cnlpbmcgdGhlIG9wZXJhdGlvbg0K
-PiA+ID4gPiB3aGlsZQ0KPiA+ID4gPiByYWNpbmcgd2l0aCBhbiBPUEVOLiBIb3dldmVyLCBpbiB0
-aGlzIGNhc2UgdGhlIHN0YXRlaWQNCj4gPiA+ID4gZ2VuZXJhdGlvbiByZW1haW5zDQo+ID4gPiA+
-IG1pc21hdGNoIGZvcmV2ZXIuDQo+ID4gPiA+IA0KPiA+ID4gPiBBbnkgc3VnZ2VzdGlvbnM/DQo+
-ID4gPiANCj4gPiA+IENhbiB5b3UgaW5jbHVkZSBhIG5ldHdvcmsgdHJhY2Ugb2YgdGhlIGZhaWx1
-cmU/IElzIGl0IHBvc3NpYmxlDQo+ID4gPiB0aGF0DQo+ID4gPiB0aGUgc2VydmVyIGhhcyBjcmFz
-aGVkIG9uIHJlcGx5IHRvIHRoZSBjbG9zZSBhbmQgdGhhdCdzIHdoeSB0aGUNCj4gPiA+IHRhc2sN
-Cj4gPiA+IGlzIGh1bmc/IFdoYXQgc2VydmVyIGFyZSB5b3UgdGVzdGluZyBhZ2FpbnN0Pw0KPiA+
-ID4gDQo+ID4gSSBhbSB0ZXN0aW5nIHRoZSBsb2NhbCBzZXJ2ZXIsIHRoZSB0ZXN0Y2FzZSBpcyBh
-dHRhY2hlZCBiZWxvdy4NCj4gPiANCj4gPiAjIHVuYW1lIC1yDQo+ID4gNS4wLjAtcmM4DQo+ID4g
-DQo+ID4gIyBjYXQgL2V0Yy9leHBvcnRzDQo+ID4gL21udC92ZGQgKihydyxub19zdWJ0cmVlX2No
-ZWNrLG5vX3Jvb3Rfc3F1YXNoKQ0KPiA+IA0KPiA+ICMgY2F0IHRlc3Quc2gNCj4gPiBtb3VudCAv
-ZGV2L3ZkZCAvbW50L3ZkZA0KPiA+IHN5c3RlbWN0bCBzdGFydCBuZnMNCj4gPiBtb3VudCAtdCBu
-ZnMgLW8gcncscmVsYXRpbWUsdmVycz00LjEgMTI3LjAuMC4xOi9tbnQvdmRkDQo+ID4gL21udC9u
-ZnNzY3JhdGNoDQo+ID4gDQo+ID4gZm9yICgoaT0wO2k8MTAwMDA7aSsrKSkNCj4gPiBkbw0KPiA+
-ICAgICAgICAgZWNobyAibG9vcCAkaSBzdGFydGVkIg0KPiA+ICAgICAgICAgL3Vzci9sb2NhbC94
-ZnN0ZXN0cy9zcmMvYWlvLWRpby1yZWdyZXNzL2Fpby1sYXN0LXJlZi1oZWxkLQ0KPiA+IGJ5LWlv
-IDEgMTAwIC9tbnQvbmZzc2NyYXRjaC9haW8tdGVzdGZpbGUNCj4gPiAJc2xlZXAgNQ0KPiA+IGRv
-bmUNCj4gPiANCj4gPiBUaGUgY29tbWFuZCBhaW8tbGFzdC1yZWYtaGVsZC1ieS1pbyBmcm9tIHhm
-c3Rlc3RzIHdpbGwgc3Bhd24gMTAwDQo+ID4gdGhyZWFkcy4gRWFjaCB0aHJlYWQNCj4gPiByZXBl
-YXRlZCBkb2luZyBvcGVuL2lvX3N1Ym1pdC9jbG9zZS9pb19nZXRldmVudHMvaW9fZGVzdHJveSB1
-bnRpbA0KPiA+IHRoZSBwYXJlbnQgZXhpc3QNCj4gPiBiZWNhdXNlIG9mIHRpbWVvdXQuDQo+ID4g
-DQo+ID4gDQo+ID4gSGVyZSBpcyB0aGUgbG9nIHdoZW4gdGhlIHRhc2sgaHVuZy4NCj4gPiANCj4g
-PiBbMTA4NDEuMTIxNTIzXSBuZnM0X2Nsb3NlX3ByZXBhcmU6IGJlZ2luIQ0KPiA+IFsxMDg0MS4x
-MjE1MjZdIC0tPiBuZnM0X2FsbG9jX3Nsb3QgdXNlZF9zbG90cz0wMDAwDQo+ID4gaGlnaGVzdF91
-c2VkPTQyOTQ5NjcyOTUgbWF4X3Nsb3RzPTEwDQo+ID4gWzEwODQxLjEyMTUyOF0gPC0tIG5mczRf
-YWxsb2Nfc2xvdCB1c2VkX3Nsb3RzPTAwMDEgaGlnaGVzdF91c2VkPTANCj4gPiBzbG90aWQ9MA0K
-PiA+IFsxMDg0MS4xMjE1MzBdIG5mczRfY2xvc2VfcHJlcGFyZTogZG9uZSENCj4gPiBbMTA4NDEu
-MTIxNTM2XSBlbmNvZGVfc2VxdWVuY2U6IHNlc3Npb25pZD0xNTUxNDA1NzQ5OjM4MjIzMzE1MzA6
-MTowDQo+ID4gc2VxaWQ9NTk0OTU4NDUgc2xvdGlkPTAgbWF4X3Nsb3RpZD0wIGNhY2hlX3RoaXM9
-MQ0KPiA+IFsxMDg0MS4xMjE1ODNdIG5mc2RfZGlzcGF0Y2g6IHZlcnMgNCBwcm9jIDENCj4gPiBb
-MTA4NDEuMTIxNTg4XSBfX2ZpbmRfaW5fc2Vzc2lvbmlkX2hhc2h0Ymw6DQo+ID4gMTU1MTQwNTc0
-OTozODIyMzMxNTMwOjE6MA0KPiA+IFsxMDg0MS4xMjE1OTBdIG5mc2Q0X3NlcXVlbmNlOiBzbG90
-aWQgMA0KPiA+IFsxMDg0MS4xMjE1OTJdIGNoZWNrX3Nsb3Rfc2VxaWQgZW50ZXIuIHNlcWlkIDU5
-NDk1ODQ1IHNsb3Rfc2VxaWQNCj4gPiA1OTQ5NTg0NA0KPiA+IFsxMDg0MS4xMjE1OTZdIG5mc2Q6
-IGZoX3ZlcmlmeSgyODogMDEwNjAwMDEgMGM2NmM2ZGIgZDc0ZWE0YzkNCj4gPiA2MWUxMmQ5ZSBj
-MDNiZWJhNiAwMDAwMDAwYikNCj4gPiBbMTA4NDEuMTIxNjA3XSBuZnNkOiBmaF92ZXJpZnkoMjg6
-IDAxMDYwMDAxIDBjNjZjNmRiIGQ3NGVhNGM5DQo+ID4gNjFlMTJkOWUgYzAzYmViYTYgMDAwMDAw
-MGIpDQo+ID4gWzEwODQxLjEyMTYxM10gTkZTRDogbmZzZDRfY2xvc2Ugb24gZmlsZSBhaW8tdGVz
-dGZpbGUNCj4gPiBbMTA4NDEuMTIxNjE1XSBORlNEOiBuZnM0X3ByZXByb2Nlc3Nfc2VxaWRfb3A6
-IHNlcWlkPTAgc3RhdGVpZCA9DQo+ID4gKDVjNzg5MmI1L2UzZDQyNjhhLzAwMGFiOTA1LzAwMDA3
-NDZiKQ0KPiA+IFsxMDg0MS4xMjE2MTldIG5mc3Y0IGNvbXBvdW5kIHJldHVybmVkIDEwMDI0DQo+
-ID4gWzEwODQxLjEyMTYyMV0gLS0+IG5mc2Q0X3N0b3JlX2NhY2hlX2VudHJ5IHNsb3QgMDAwMDAw
-MDBmNTQwZGRkOQ0KPiA+IFsxMDg0MS4xMjE2MjVdIHJlbmV3aW5nIGNsaWVudCAoY2xpZW50aWQg
-NWM3ODkyYjUvZTNkNDI2OGEpDQo+ID4gWzEwODQxLjEyMjUyNl0gZGVjb2RlX2F0dHJfdHlwZTog
-dHlwZT0wMA0KPiA+IC4uLi4uLg0KPiA+IFsxMDg0MS4xMjI1NThdIG5mczRfY2xvc2VfZG9uZTog
-YmVnaW4hDQo+ID4gWzEwODQxLjEyMjU2MV0gLS0+IG5mczRfYWxsb2Nfc2xvdCB1c2VkX3Nsb3Rz
-PTAwMDEgaGlnaGVzdF91c2VkPTANCj4gPiBtYXhfc2xvdHM9MTANCj4gPiBbMTA4NDEuMTIyNTY0
-XSA8LS0gbmZzNF9hbGxvY19zbG90IHVzZWRfc2xvdHM9MDAwMyBoaWdoZXN0X3VzZWQ9MQ0KPiA+
-IHNsb3RpZD0xDQo+ID4gWzEwODQxLjEyMjU2Nl0gbmZzNF9mcmVlX3Nsb3Q6IHNsb3RpZCAxIGhp
-Z2hlc3RfdXNlZF9zbG90aWQgMA0KPiA+IFsxMDg0MS4xMjI1NjhdIG5mczQxX3NlcXVlbmNlX3By
-b2Nlc3M6IEVycm9yIDAgZnJlZSB0aGUgc2xvdA0KPiA+IFsxMDg0MS4xMjI1NzFdIG5mczRfZnJl
-ZV9zbG90OiBzbG90aWQgMCBoaWdoZXN0X3VzZWRfc2xvdGlkDQo+ID4gNDI5NDk2NzI5NQ0KPiA+
-IFsxMDg0MS4xMjI1NzVdIG5mczRfY2xvc2VfZG9uZTogZG9uZSwgcmV0ID0gMCENCj4gPiBbMTA4
-NDEuMTIyNTg0XSBuZnM0X2Nsb3NlX3ByZXBhcmU6IGJlZ2luIQ0KPiA+IC4uLi4uLg0KPiA+IENs
-aWVudCBrZWVwIHJldHJ5IHRoZSBDTE9TRS4NCj4gPiANCj4gPiA+IEkgaGF2ZSBzZWVuIHRyYWNl
-IHdoZXJlIGNsb3NlIHdvdWxkIGdldCBFUlJfT0xEX1NUQVRFSUQgYW5kIHdvdWxkDQo+ID4gPiBz
-dGlsbCByZXRyeSB3aXRoIHRoZSBzYW1lIG9wZW4gc3RhdGUgdW50aWwgaXQgZ290IGEgcmVwbHkg
-dG8gdGhlDQo+ID4gPiBPUEVODQo+ID4gPiB3aGljaCBjaGFuZ2VkIHRoZSBzdGF0ZSBhbmQgd2hl
-biB0aGUgY2xpZW50IHJlY2VpdmVkIHJlcGx5IHRvDQo+ID4gPiB0aGF0LA0KPiA+ID4gaXQnbGwg
-cmV0cnkgdGhlIENMT1NFIHdpdGggdGhlIHVwZGF0ZWQgc3RhdGVpZC4NCj4gPiA+IA0KPiA+IA0K
-PiA+IFllcywgeW91IGFyZSByaWdodC4gSSBoYXZlIGFsc28gbm90aWNlZCB0aGF0LiBCdXQgd2hh
-dCBoYXBwZW5lZCBpZg0KPiA+IHRoZQ0KPiA+IE9QRU4gdGFzayBleGl0IHJlY2VpdmluZyBhIHNp
-Z25hbD8gSG93IGNhbiBhIGNsaWVudCB1cGRhdGUgdGhlDQo+ID4gc3RhdGVpZD8NCj4gPiANCg0K
-c3RhdGljIHZvaWQgbmZzNF9vcGVuX3JlbGVhc2Uodm9pZCAqY2FsbGRhdGEpDQp7DQogICAgICAg
-IHN0cnVjdA0KbmZzNF9vcGVuZGF0YSAqZGF0YSA9IGNhbGxkYXRhOw0KICAgICAgICBzdHJ1Y3Qg
-bmZzNF9zdGF0ZSAqc3RhdGUgPSBOVUxMOw0KDQogICAgICAgIC8qIElmIHRoaXMgcmVxdWVzdCBo
-YXNuJ3QgYmVlbiBjYW5jZWxsZWQsIGRvIG5vdGhpbmcgKi8NCiAgICAgICAgaWYgKCFkYXRhLT5j
-YW5jZWxsZWQpDQogICAgICAgICAgICAgICAgZ290byBvdXRfZnJlZTsNCiAgICAgICAgLyogSW4g
-Y2FzZSBvZiBlcnJvciwgbm8gY2xlYW51cCEgKi8NCiAgICAgICAgaWYgKGRhdGEtPnJwY19zdGF0
-dXMgIT0gMCB8fCAhZGF0YS0+cnBjX2RvbmUpDQogICAgICAgICAgICAgICAgZ290byBvdXRfZnJl
-ZTsNCiAgICAgICAgLyogSW4gY2FzZSB3ZSBuZWVkIGFuIG9wZW5fY29uZmlybSwgbm8gY2xlYW51
-cCEgKi8NCiAgICAgICAgaWYgKGRhdGEtPm9fcmVzLnJmbGFncyAmIE5GUzRfT1BFTl9SRVNVTFRf
-Q09ORklSTSkNCiAgICAgICAgICAgICAgICBnb3RvIG91dF9mcmVlOw0KICAgICAgICBzdGF0ZSA9
-IG5mczRfb3BlbmRhdGFfdG9fbmZzNF9zdGF0ZShkYXRhKTsNCiAgICAgICAgaWYgKCFJU19FUlIo
-c3RhdGUpKQ0KICAgICAgICAgICAgICAgIG5mczRfY2xvc2Vfc3RhdGUoc3RhdGUsIGRhdGEtPm9f
-YXJnLmZtb2RlKTsNCm91dF9mcmVlOg0KICAgICAgICBuZnM0X29wZW5kYXRhX3B1dChkYXRhKTsN
-Cn0NCg0KTm90ZSB3aGF0IGhhcHBlbnMgd2hlbiB0aGUgJ2RhdGEtPmNhbmNlbGxlZCcgZmxhZyBp
-cyBzZXQuIFRoaXMgaXMgd2h5DQp3ZSBhbHdheXMgZW5zdXJlIHRoYXQgc3RhdGVmdWwgb3BlcmF0
-aW9ucyBzdWNoIGFzIE9QRU4sIGFuZCBMT0NLLC4uLg0KYXJlIHJ1biBhcyBhc3luY2hyb25vdXMg
-UlBDIHRhc2tzLg0KT1BFTl9ET1dOR1JBREUsIENMT1NFIGFuZCBMT0NLVSBhcmUgYWxzbyBhc3lu
-Y2hyb25vdXMsIGJ1dCB0aGV5IGFyZQ0KaW5oZXJlbnRseSBzYWZlIGFnYWluc3Qgc2lnbmFscyBz
-aW5jZSB0aGV5IGRvIG5vdCBlc3RhYmxpc2ggbmV3IHN0YXRlDQp0aGF0IG5lZWRzIHRvIGJlIHRv
-cm4gZG93bi4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRh
-aW5lciwgSGFtbWVyc3BhY2UNCnRyb25kLm15a2xlYnVzdEBoYW1tZXJzcGFjZS5jb20NCg0KDQo=
+On Mon, Feb 18, 2019 at 02:41:24PM -0500, Chuck Lever wrote:
+> 
+> 
+> > On Feb 18, 2019, at 2:32 PM, bfields@fieldses.org wrote:
+> > 
+> > On Thu, Feb 14, 2019 at 03:43:26PM -0500, Chuck Lever wrote:
+> >> When NFSv4 Security Label support is enabled and kernel Integrity
+> >> and IMA support is enabled (via CONFIG), then build in code to
+> >> handle the "security.ima" xattr. The NFS server converts incoming
+> >> GETATTR and SETATTR calls to acesses and updates of the xattr.
+> >> 
+> >> The FATTR4 bit is made up; meaning we still have to go through a
+> >> standards process to allocate a bit that all NFS vendors agree on.
+> >> Thus there is no guarantee this prototype will interoperate with
+> >> others or with a future standards-based implementation.
+> > 
+> > Why the dependence on CONFIG_NFSD_V4_SECURITY_LABEL?
+> 
+> Hrm, well there is some mechanism on the client side that IMA
+> needs that is behind CONFIG_NFS_V4_SECURITY_LABEL. I guess I
+> didn't think about not doing the same thing on the server. It
+> may just be an artifact of an earlier version of this code.
+> 
+> 
+> > (Also, I wonder if we actually need CONFIG_NFSD_V4_SECURITY_LABEL or if
+> > we could just remove it, or replace it by CONFIG_SECURITY where
+> > necessary.)
+> 
+> On the server, there is already a (run-time) export option to
+> enable and disable security labels. Is there a reason a
+> distribution would want to disable client or server support
+> for security labels at build time?
+
+Distributions tend to want kernels that can do anything, with run time
+controls that are adequate to handle any use cases.
+
+So given that we need adequate run-time configuration, why might someone
+also want the ability to disable at build time?  Some reasons I can
+think of:
+
+	- they need a really small kernel.
+	- the feature is too hard to support, or they think it
+	  introduces security risks, so they don't want their users
+	  turning it on at all.
+
+I could see any of those being reasons for someone not to want NFSD_V4
+or SECURITY at all, but is there likely to be a big need to configure in
+both of those things but configure out NFSD_V4_SECURITY_LABEL?  That
+seems unnecessarily fine grained.
+
+--b.
