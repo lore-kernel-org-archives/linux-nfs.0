@@ -3,184 +3,196 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
 X-Spam-Status: No, score=-1.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_PASS,UNPARSEABLE_RELAY autolearn=ham
-	autolearn_force=no version=3.4.0
+	MAILING_LIST_MULTI,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 411CDC43381
-	for <linux-nfs@archiver.kernel.org>; Fri,  1 Mar 2019 08:50:00 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9C205C43381
+	for <linux-nfs@archiver.kernel.org>; Fri,  1 Mar 2019 12:31:39 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 0838B2087E
-	for <linux-nfs@archiver.kernel.org>; Fri,  1 Mar 2019 08:49:59 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 66E3920850
+	for <linux-nfs@archiver.kernel.org>; Fri,  1 Mar 2019 12:31:39 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726195AbfCAIt7 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 1 Mar 2019 03:49:59 -0500
-Received: from out4436.biz.mail.alibaba.com ([47.88.44.36]:31914 "EHLO
-        out4436.biz.mail.alibaba.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1725951AbfCAIt7 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Mar 2019 03:49:59 -0500
-X-Alimail-AntiSpam: AC=PASS;BC=-1|-1;BR=01201311R131e4;CH=green;DM=||false|;FP=0|-1|-1|-1|0|-1|-1|-1;HT=e01f04389;MF=jiufei.xue@linux.alibaba.com;NM=1;PH=DS;RN=6;SR=0;TI=SMTPD_---0TLf0V0I_1551430195;
-Received: from ali-186590e05fa3.local(mailfrom:jiufei.xue@linux.alibaba.com fp:SMTPD_---0TLf0V0I_1551430195)
-          by smtp.aliyun-inc.com(127.0.0.1);
-          Fri, 01 Mar 2019 16:49:56 +0800
-Subject: Re: [bug report] task hang while testing xfstests generic/323
-To:     Olga Kornievskaia <aglo@umich.edu>
-Cc:     "J. Bruce Fields" <bfields@fieldses.org>,
-        Anna Schumaker <Anna.Schumaker@netapp.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Joseph Qi <joseph.qi@linux.alibaba.com>
-References: <fa8ca171-b260-3e5a-d69c-13f263f5bb9c@linux.alibaba.com>
- <CAN-5tyG9sUw2Oi+hbaW+KJDhvk8KT3Lb-cgU6azxq1yN+Tr=KQ@mail.gmail.com>
- <3b6597b0-41b4-255a-5ebb-cf34ad95315c@linux.alibaba.com>
-From:   Jiufei Xue <jiufei.xue@linux.alibaba.com>
-Message-ID: <57796366-0f08-2cfb-6f85-27d5485c07af@linux.alibaba.com>
-Date:   Fri, 1 Mar 2019 16:49:55 +0800
-User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.13; rv:60.0)
- Gecko/20100101 Thunderbird/60.3.3
-MIME-Version: 1.0
-In-Reply-To: <3b6597b0-41b4-255a-5ebb-cf34ad95315c@linux.alibaba.com>
-Content-Type: text/plain; charset=utf-8
-Content-Language: en-US
-Content-Transfer-Encoding: 8bit
+        id S1727052AbfCAMbi convert rfc822-to-8bit (ORCPT
+        <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 1 Mar 2019 07:31:38 -0500
+Received: from mail.lysator.liu.se ([130.236.254.3]:49927 "EHLO
+        mail.lysator.liu.se" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725978AbfCAMbi (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Mar 2019 07:31:38 -0500
+X-Greylist: delayed 354 seconds by postgrey-1.27 at vger.kernel.org; Fri, 01 Mar 2019 07:31:37 EST
+Received: from mail.lysator.liu.se (localhost [127.0.0.1])
+        by mail.lysator.liu.se (Postfix) with ESMTP id E92B040006
+        for <linux-nfs@vger.kernel.org>; Fri,  1 Mar 2019 13:25:42 +0100 (CET)
+Received: by mail.lysator.liu.se (Postfix, from userid 1004)
+        id CEB3840013; Fri,  1 Mar 2019 13:25:42 +0100 (CET)
+Received: from [IPv6:2001:6b0:17:f002:4c86:fa6d:33dc:a323] (unknown [IPv6:2001:6b0:17:f002:4c86:fa6d:33dc:a323])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by mail.lysator.liu.se (Postfix) with ESMTPSA id 2AFDE40006
+        for <linux-nfs@vger.kernel.org>; Fri,  1 Mar 2019 13:25:42 +0100 (CET)
+From:   Peter Eriksson <pen@lysator.liu.se>
+Content-Type: text/plain;
+        charset=utf-8
+Content-Transfer-Encoding: 8BIT
+Mime-Version: 1.0 (Mac OS X Mail 12.2 \(3445.102.3\))
+Subject: [Bug report] NULL-pointer dereference in gssd (nfs-utils version
+ 1.3.4 & 2.3.3)
+Message-Id: <77C72E28-D137-408E-834B-623341F21BB3@lysator.liu.se>
+Date:   Fri, 1 Mar 2019 13:25:40 +0100
+To:     linux-nfs@vger.kernel.org
+X-Mailer: Apple Mail (2.3445.102.3)
+X-Virus-Scanned: ClamAV using ClamSMTP
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
+I’m seeing Segmentation Faults in gssd from nfs-utils 1.3.4 and 2.3.3 when running it on a machine running CentOS 7.6.1810 / kernel 3.10.0-957.5.1.el7.x86_64 that uses GSSAPI quite a bit (a Linux machine doing validation checks of our fileserver - runs a list of SMB/NFS/LDAP/Kerberos check every minute 24/7). We compiled our own version since the version that CentOS delivers (1.3.0) also crashed (unsure if it is the same bug there though).
 
 
-On 2019/3/1 下午1:08, Jiufei Xue wrote:
-> Hi Olga,
-> 
-> On 2019/3/1 上午6:26, Olga Kornievskaia wrote:
->> On Thu, Feb 28, 2019 at 5:11 AM Jiufei Xue <jiufei.xue@linux.alibaba.com> wrote:
->>>
->>> Hi,
->>>
->>> when I tested xfstests/generic/323 with NFSv4.1 and v4.2, the task
->>> changed to zombie occasionally while a thread is hanging with the
->>> following stack:
->>>
->>> [<0>] rpc_wait_bit_killable+0x1e/0xa0 [sunrpc]
->>> [<0>] nfs4_do_close+0x21b/0x2c0 [nfsv4]
->>> [<0>] __put_nfs_open_context+0xa2/0x110 [nfs]
->>> [<0>] nfs_file_release+0x35/0x50 [nfs]
->>> [<0>] __fput+0xa2/0x1c0
->>> [<0>] task_work_run+0x82/0xa0
->>> [<0>] do_exit+0x2ac/0xc20
->>> [<0>] do_group_exit+0x39/0xa0
->>> [<0>] get_signal+0x1ce/0x5d0
->>> [<0>] do_signal+0x36/0x620
->>> [<0>] exit_to_usermode_loop+0x5e/0xc2
->>> [<0>] do_syscall_64+0x16c/0x190
->>> [<0>] entry_SYSCALL_64_after_hwframe+0x44/0xa9
->>> [<0>] 0xffffffffffffffff
->>>
->>> Since commit 12f275cdd163(NFSv4: Retry CLOSE and DELEGRETURN on
->>> NFS4ERR_OLD_STATEID), the client will retry to close the file when
->>> stateid generation number in client is lower than server.
->>>
->>> The original intention of this commit is retrying the operation while
->>> racing with an OPEN. However, in this case the stateid generation remains
->>> mismatch forever.
->>>
->>> Any suggestions?
->>
->> Can you include a network trace of the failure? Is it possible that
->> the server has crashed on reply to the close and that's why the task
->> is hung? What server are you testing against?
->>
-> I am testing the local server, the testcase is attached below.
-> 
-> # uname -r
-> 5.0.0-rc8
-> 
-> # cat /etc/exports
-> /mnt/vdd *(rw,no_subtree_check,no_root_squash)
-> 
-> # cat test.sh
-> mount /dev/vdd /mnt/vdd
-> systemctl start nfs
-> mount -t nfs -o rw,relatime,vers=4.1 127.0.0.1:/mnt/vdd /mnt/nfsscratch
-> 
-> for ((i=0;i<10000;i++))
-> do
->         echo "loop $i started"
->         /usr/local/xfstests/src/aio-dio-regress/aio-last-ref-held-by-io 1 100 /mnt/nfsscratch/aio-testfile
-> 	sleep 5
-> done
-> 
-> The command aio-last-ref-held-by-io from xfstests will spawn 100 threads. Each thread
-> repeated doing open/io_submit/close/io_getevents/io_destroy until the parent exist
-> because of timeout.
-> 
-> 
-> Here is the log when the task hung.
-> 
-> [10841.121523] nfs4_close_prepare: begin!
-> [10841.121526] --> nfs4_alloc_slot used_slots=0000 highest_used=4294967295 max_slots=10
-> [10841.121528] <-- nfs4_alloc_slot used_slots=0001 highest_used=0 slotid=0
-> [10841.121530] nfs4_close_prepare: done!
-> [10841.121536] encode_sequence: sessionid=1551405749:3822331530:1:0 seqid=59495845 slotid=0 max_slotid=0 cache_this=1
-> [10841.121583] nfsd_dispatch: vers 4 proc 1
-> [10841.121588] __find_in_sessionid_hashtbl: 1551405749:3822331530:1:0
-> [10841.121590] nfsd4_sequence: slotid 0
-> [10841.121592] check_slot_seqid enter. seqid 59495845 slot_seqid 59495844
-> [10841.121596] nfsd: fh_verify(28: 01060001 0c66c6db d74ea4c9 61e12d9e c03beba6 0000000b)
-> [10841.121607] nfsd: fh_verify(28: 01060001 0c66c6db d74ea4c9 61e12d9e c03beba6 0000000b)
-> [10841.121613] NFSD: nfsd4_close on file aio-testfile
-> [10841.121615] NFSD: nfs4_preprocess_seqid_op: seqid=0 stateid = (5c7892b5/e3d4268a/000ab905/0000746b)
-> [10841.121619] nfsv4 compound returned 10024
-> [10841.121621] --> nfsd4_store_cache_entry slot 00000000f540ddd9
-> [10841.121625] renewing client (clientid 5c7892b5/e3d4268a)
-> [10841.122526] decode_attr_type: type=00
-> ......
-> [10841.122558] nfs4_close_done: begin!
-> [10841.122561] --> nfs4_alloc_slot used_slots=0001 highest_used=0 max_slots=10
-> [10841.122564] <-- nfs4_alloc_slot used_slots=0003 highest_used=1 slotid=1
-> [10841.122566] nfs4_free_slot: slotid 1 highest_used_slotid 0
-> [10841.122568] nfs41_sequence_process: Error 0 free the slot
-> [10841.122571] nfs4_free_slot: slotid 0 highest_used_slotid 4294967295
-> [10841.122575] nfs4_close_done: done, ret = 0!
-> [10841.122584] nfs4_close_prepare: begin!
-> ......
-> Client keep retry the CLOSE.
-> 
->> I have seen trace where close would get ERR_OLD_STATEID and would
->> still retry with the same open state until it got a reply to the OPEN
->> which changed the state and when the client received reply to that,
->> it'll retry the CLOSE with the updated stateid.
->>
-> 
-> Yes, you are right. I have also noticed that. But what happened if the
-> OPEN task exit receiving a signal? How can a client update the stateid?
-> 
-> Thanks,
-> Jiufei
->
+# gdb ./gssd
+(gdb) run -f -v
+...
+[New Thread 0x7fffef7fe700 (LWP 24902)]
+Error doing scandir on directory '/run/user/11189': No such file or directory
+[Thread 0x7fffef7fe700 (LWP 24902) exited]
+[New Thread 0x7fffeffff700 (LWP 24904)]
+Error doing scandir on directory '/run/user/11189': No such file or directory
+[Thread 0x7fffeffff700 (LWP 24904) exited]
 
-I have added a tracepoint nfsd_inc_and_copy_stateid and enable the following
-trace: nfs4_open_file,nfs4_open_stateid_update on client and
-nfsd_inc_and_copy_stateid on server.
+Program received signal SIGSEGV, Segmentation fault.
+[Switching to Thread 0x7ffff4cec700 (LWP 24448)]
+create_auth_rpc_client (clp=clp@entry=0x621590, tgtname=tgtname@entry=0x0, 
+    clnt_return=clnt_return@entry=0x7ffff4cebd48, 
+    auth_return=auth_return@entry=0x7ffff4cebcd0, uid=uid@entry=0, 
+    authtype=authtype@entry=0, cred=cred@entry=0x0) at gssd_proc.c:352
+352		if ((strcmp(clp->protocol, "udp")) == 0)
+Missing separate debuginfos, use: debuginfo-install glibc-2.17-260.el7_6.3.x86_64 gssproxy-0.7.0-21.el7.x86_64 keyutils-libs-1.5.8-3.el7.x86_64 krb5-libs-1.15.1-37.el7_6.x86_64 libcom_err-1.42.9-13.el7.x86_64 libevent-2.0.21-4.el7.x86_64 libselinux-2.5-14.1.el7.x86_64 libtirpc-0.2.4-0.15.el7.x86_64 pcre-8.32-17.el7.x86_64
 
-Here's some trace right before the problem. The generation on server is 31856(7c70) which
-is higher than client(31855). And the client didn't update the stateid forever.
+(gdb) where
+#0  create_auth_rpc_client (clp=clp@entry=0x621590, tgtname=tgtname@entry=0x0, 
+    clnt_return=clnt_return@entry=0x7ffff4cebd48, 
+    auth_return=auth_return@entry=0x7ffff4cebcd0, uid=uid@entry=0, 
+    authtype=authtype@entry=0, cred=cred@entry=0x0) at gssd_proc.c:352
+#1  0x0000000000406d21 in krb5_use_machine_creds (rpc_clnt=0x7ffff4cebd48, 
+    service=0x6293c0 "*", tgtname=0x0, srchost=0x0, uid=0, clp=0x621590)
+    at gssd_proc.c:569
+#2  process_krb5_upcall (clp=clp@entry=0x621590, uid=uid@entry=0, fd=13, 
+    srchost=srchost@entry=0x0, tgtname=tgtname@entry=0x0, 
+    service=service@entry=0x6293c0 "*") at gssd_proc.c:657
+#3  0x000000000040759c in handle_gssd_upcall (info=0x6293a0) at gssd_proc.c:819
+#4  0x00007ffff6de6dd5 in start_thread () from /lib64/libpthread.so.0
+#5  0x00007ffff68f6ead in clone () from /lib64/libc.so.6
 
-aio-last-ref-he-5224  [000] ...1  1105.173446: nfs4_open_file: error=0 (OK) flags=49152 (O_DIRECT|0x8000) fmode=READ|0x801c fileid=00:2b:11 fhandle=0x0ca0e657 name=00:2b:2/aio-testfile stateid=31854:0x2a82450b openstateid=31854:0x2a82450b
- aio-last-ref-he-5222  [000] ...1  1105.173568: nfs4_open_file: error=-512 (ERESTARTSYS) flags=49152 (O_DIRECT|0x8000) fmode=READ fileid=00:2b:0 fhandle=0x00000000 name=00:2b:2/aio-testfile stateid=0:0x00000000 openstateid=0:0x00000000
-            nfsd-2991  [000] ...1  1105.173661: nfsd_inc_and_copy_stateid: client 5c78ec26:60bfa0c2 stateid 00095d13:00007c6f
- aio-last-ref-he-5234  [000] ...1  1105.174000: nfs4_open_file: error=0 (OK) flags=49152 (O_DIRECT|0x8000) fmode=READ|0x801c fileid=00:2b:11 fhandle=0x0ca0e657 name=00:2b:2/aio-testfile stateid=31854:0x2a82450b openstateid=31854:0x2a82450b
- aio-last-ref-he-5151  [001] ...1  1105.174226: nfs4_open_file: error=-512 (ERESTARTSYS) flags=49152 (O_DIRECT|0x8000) fmode=READ|0x801c fileid=00:2b:0 fhandle=0x00000000 name=00:2b:2/aio-testfile stateid=0:0x00000000 openstateid=0:0x00000000
- aio-last-ref-he-5235  [001] ...1  1105.174544: nfs4_open_file: error=-512 (ERESTARTSYS) flags=49152 (O_DIRECT|0x8000) fmode=READ|0x801c fileid=00:2b:0 fhandle=0x00000000 name=00:2b:2/aio-testfile stateid=0:0x00000000 openstateid=0:0x00000000
- aio-last-ref-he-5141  [001] ...4  1105.174752: nfs4_open_stateid_update: error=-4 (0x4) fileid=00:2b:11 fhandle=0x0ca0e657 stateid=25925:0xe0cb0a41
- aio-last-ref-he-5151  [001] ...4  1105.178258: nfs4_open_stateid_update: error=-4 (0x4) fileid=00:2b:11 fhandle=0x0ca0e657 stateid=31855:0x2a82450b
-           <...>-5181  [001] .N.1  1105.180254: nfs4_open_file: error=-512 (ERESTARTSYS) flags=49152 (O_DIRECT|0x8000) fmode=READ|0x801c fileid=00:2b:0 fhandle=0x00000000 name=00:2b:2/aio-testfile stateid=0:0x00000000 openstateid=0:0x00000000
- aio-last-ref-he-5151  [001] ...1  1105.180670: nfs4_open_file: error=-512 (ERESTARTSYS) flags=49152 (O_DIRECT|0x8000) fmode=READ fileid=00:2b:0 fhandle=0x00000000 name=00:2b:2/aio-testfile stateid=0:0x00000000 openstateid=0:0x00000000
- aio-last-ref-he-5235  [001] ...1  1105.180929: nfs4_open_file: error=-512 (ERESTARTSYS) flags=49152 (O_DIRECT|0x8000) fmode=READ fileid=00:2b:0 fhandle=0x00000000 name=00:2b:2/aio-testfile stateid=0:0x00000000 openstateid=0:0x00000000
- aio-last-ref-he-5181  [001] ...1  1105.181179: nfs4_open_file: error=-512 (ERESTARTSYS) flags=49152 (O_DIRECT|0x8000) fmode=READ fileid=00:2b:0 fhandle=0x00000000 name=00:2b:2/aio-testfile stateid=0:0x00000000 openstateid=0:0x00000000
- aio-last-ref-he-5141  [001] ...1  1105.181816: nfs4_open_file: error=0 (OK) flags=49152 (O_DIRECT|0x8000) fmode=READ|0x801c fileid=00:2b:11 fhandle=0x0ca0e657 name=00:2b:2/aio-testfile stateid=31855:0x2a82450b openstateid=31855:0x2a82450b
-            nfsd-2990  [001] ...1  1105.182033: nfsd_inc_and_copy_stateid: client 5c78ec26:60bfa0c2 stateid 00095d13:00007c70
+(gdb) frame 0
+#0  create_auth_rpc_client (clp=clp@entry=0x621590, tgtname=tgtname@entry=0x0, 
+    clnt_return=clnt_return@entry=0x7ffff4cebd48, 
+    auth_return=auth_return@entry=0x7ffff4cebcd0, uid=uid@entry=0, 
+    authtype=authtype@entry=0, cred=cred@entry=0x0) at gssd_proc.c:352
+352		if ((strcmp(clp->protocol, "udp")) == 0)
 
-Thanks,
-Jiufei
+(gdb) list
+347	
+348		printerr(2, "creating %s client for server %s\n", clp->protocol,
+349				clp->servername);
+350	
+351		protocol = IPPROTO_TCP;
+352		if ((strcmp(clp->protocol, "udp")) == 0)
+353			protocol = IPPROTO_UDP;
+354	
+355		switch (addr->sa_family) {
+356		case AF_INET:
 
+(gdb) print clp
+$1 = (struct clnt_info *) 0x621590
+
+(gdb) print clp->protocol
+$2 = 0x0
+
+(gdb) print *clp
+$3 = {list = {tqe_next = 0x0, tqe_prev = 0xffffffff}, wd = 0, scanned = false, 
+  name = 0x0, relpath = 0x0, servicename = 0x0, servername = 0x0, prog = 0, 
+  vers = 0, protocol = 0x0, krb5_fd = 0, krb5_ev = {ev_active_next = {
+      tqe_next = 0x0, tqe_prev = 0x0}, ev_next = {tqe_next = 0x0, 
+      tqe_prev = 0x0}, ev_timeout_pos = {ev_next_with_common_timeout = {
+        tqe_next = 0x0, tqe_prev = 0x0}, min_heap_idx = 0}, ev_fd = 0, 
+    ev_base = 0x0, _ev = {ev_io = {ev_io_next = {tqe_next = 0x0, 
+          tqe_prev = 0x0}, ev_timeout = {tv_sec = 0, tv_usec = 0}}, 
+      ev_signal = {ev_signal_next = {tqe_next = 0x0, tqe_prev = 0x0}, 
+        ev_ncalls = 0, ev_pncalls = 0x0}}, ev_events = 0, ev_res = 0, 
+    ev_flags = 0, ev_pri = 0 '\000', ev_closure = 0 '\000', ev_timeout = {
+      tv_sec = 0, tv_usec = 0}, ev_callback = 0x0, ev_arg = 0x0}, gssd_fd = 0, 
+  gssd_ev = {ev_active_next = {tqe_next = 0x0, tqe_prev = 0x0}, ev_next = {
+      tqe_next = 0x0, tqe_prev = 0x0}, ev_timeout_pos = {
+      ev_next_with_common_timeout = {tqe_next = 0x0, tqe_prev = 0x0}, 
+      min_heap_idx = 0}, ev_fd = 496, ev_base = 0x70, _ev = {ev_io = {
+        ev_io_next = {tqe_next = 0x0, tqe_prev = 0x7f3865333232}, 
+        ev_timeout = {tv_sec = 0, tv_usec = 273}}, ev_signal = {
+        ev_signal_next = {tqe_next = 0x0, tqe_prev = 0x7f3865333232}, 
+        ev_ncalls = 0, ev_pncalls = 0x111}}, ev_events = -1864, 
+    ev_res = -2373, ev_flags = 32767, ev_pri = 0 '\000', 
+    ev_closure = 0 '\000', ev_timeout = {tv_sec = 140737332902072, 
+      tv_usec = 4294977170}, ev_callback = 0x6218c4, ev_arg = 0x240}, addr = {
+---Type <return> to continue, or q <return> to quit---
+    ss_family = 32, 
+    __ss_padding = "\000\000\000\000\000\000\260\020b\000\000\000\000\000\270\367\273\366\377\177\000\000`\002\000\000\000\000\000\000\301\000\000\000\000\000\000\000\360\027b\000\000\000\000\000\000\214b", '\000' <repeats 13 times>, "\241\000\000\000\000\000\000\000\200\021b\000\000\000\000\000H\370\273\366\377\177", '\000' <repeats 26 times>, "q\000\000\000\000\000\000", __ss_align = 6427008}}
+
+(gdb) frame 1
+#1  0x0000000000406d21 in krb5_use_machine_creds (rpc_clnt=0x7ffff4cebd48, 
+    service=0x6293c0 "*", tgtname=0x0, srchost=0x0, uid=0, clp=0x621590)
+    at gssd_proc.c:569
+569				if ((create_auth_rpc_client(clp, tgtname, rpc_clnt,
+
+(gdb) list
+564					printerr(1, "WARNING: gss_krb5_ccache_name "
+565						 "with name '%s' failed (%s)\n",
+566						 *ccname, error_message(min_stat));
+567					continue;
+568				}
+569				if ((create_auth_rpc_client(clp, tgtname, rpc_clnt,
+570							&auth, uid,
+571							AUTHTYPE_KRB5,
+572							GSS_C_NO_CREDENTIAL)) == 0) {
+573					/* Success! */
+
+(gdb) print tgtname
+$6 = 0x0
+
+(gdb) print rpc_clnt
+$7 = (CLIENT **) 0x7ffff4cebd48
+
+(gdb) print *rpc_clnt
+$8 = (CLIENT *) 0x0
+
+(gdb) frame 2
+#2  process_krb5_upcall (clp=clp@entry=0x621590, uid=uid@entry=0, fd=13, 
+    srchost=srchost@entry=0x0, tgtname=tgtname@entry=0x0, 
+    service=service@entry=0x6293c0 "*") at gssd_proc.c:657
+657				auth =	krb5_use_machine_creds(clp, uid, srchost, tgtname,
+
+(gdb) list
+652				goto out_return_error;
+653		}
+654		if (auth == NULL) {
+655			if (uid == 0 && (root_uses_machine_creds == 1 ||
+656					service != NULL)) {
+657				auth =	krb5_use_machine_creds(clp, uid, srchost, tgtname,
+658								service, &rpc_clnt);
+659				if (auth == NULL)
+660					goto out_return_error;
+661			} else {
+
+(gdb) print uid
+$9 = 0
+
+(gdb) print srchost
+$10 = 0x0
+
+(gdb) print tgtname
+$11 = 0x0
+
+
+Exactly what is causing this event to happen is unclear (a lot of automated checks are running, but they run well for a couple of hours before this crash occur).
+
+Please let me know if there is some other information someone might need to fix this bug… (I’m going to add sanity checks to the code in order to try to mitigate the crash and instead fail in a more “nice” way).
+
+- Peter
