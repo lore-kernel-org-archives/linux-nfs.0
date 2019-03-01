@@ -7,64 +7,65 @@ X-Spam-Status: No, score=-9.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
 	SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A79E5C43381
-	for <linux-nfs@archiver.kernel.org>; Fri,  1 Mar 2019 19:26:57 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 45452C4360F
+	for <linux-nfs@archiver.kernel.org>; Fri,  1 Mar 2019 19:26:58 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 7749B2084F
-	for <linux-nfs@archiver.kernel.org>; Fri,  1 Mar 2019 19:26:57 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 10F102084F
+	for <linux-nfs@archiver.kernel.org>; Fri,  1 Mar 2019 19:26:58 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="iPj9JpCW"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="i+bAWRK0"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1725997AbfCAT05 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S1725862AbfCAT05 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Fri, 1 Mar 2019 14:26:57 -0500
-Received: from mail-yw1-f67.google.com ([209.85.161.67]:41015 "EHLO
-        mail-yw1-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725862AbfCAT04 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Mar 2019 14:26:56 -0500
-Received: by mail-yw1-f67.google.com with SMTP id q128so14917094ywg.8
-        for <linux-nfs@vger.kernel.org>; Fri, 01 Mar 2019 11:26:55 -0800 (PST)
+Received: from mail-yw1-f65.google.com ([209.85.161.65]:33946 "EHLO
+        mail-yw1-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725905AbfCAT05 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Mar 2019 14:26:57 -0500
+Received: by mail-yw1-f65.google.com with SMTP id u205so14959403ywe.1
+        for <linux-nfs@vger.kernel.org>; Fri, 01 Mar 2019 11:26:56 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:subject:date:message-id:in-reply-to:references:mime-version
          :content-transfer-encoding;
-        bh=4R/Kf8z3Xqz6UYa2j9PRwzcmqRxvTHufVmm/jGZ9C3g=;
-        b=iPj9JpCWE3rnBolh/OAm+UP6wLPxXdWbT9IRIcH8yhNGVxZ7xXBbZQEIB4W9hikynG
-         pb5lmoWBGX4D2AIZh9wIS8m87RhyZrKyb6ncuNezdQHcvOti/390LkQkLuWXcbQBd4QM
-         UhrqRZ3b4NGCh/kH8dP2A4B9DNU+/luNtsB7P3sHS2186DT3eedvE6hd7WMJiTLI7Fss
-         g7AFCdA2UmXwTIQ1OlRaXk9dLVTmtq8XexnaQueNjUZM6pqGYtEOm3ohG0QwRYtCD4aK
-         I6xBbH+a+6EtASxZnV0DRZpEQ2+4eP36/fB65JgC8ZDOMHGzgGkq40KxmN06GBzRXC7y
-         kItQ==
+        bh=2QvvkV1Xrxgz0nLmZ+gse3tjySRBEI2DeUAlDEnYu4c=;
+        b=i+bAWRK0qHFMJhcO7k9IiFqrTI2/nllCt5T/xoKbSRJaDUV4MxCJRR4wcu1djm72x2
+         VUvpxQplvk3wWEgFf/VSF/sem7wJ9mPTZTBnCodYjU/Dl5so0uVuAF48jJaipLmZiTfS
+         OmCjC3USkOiE76R0/BFY1wc1WGlC2+XkZDg6yoyHsRbtt2Cc8E0zjDFAIJ4fpkIV187s
+         4hKB7n0dFahNwcMqoa9DJxVFfFrGZpfTxOSGm/+ZQ/Rm4eDOi6RutCqHFFhYxD1/sY7V
+         VGP4rYlIFQ28b0j3ESaeaiUYaOd3aQ2VfuyOjZMfdN1UQq/gk6w2W8uacSffyspV9+vX
+         CE0A==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=4R/Kf8z3Xqz6UYa2j9PRwzcmqRxvTHufVmm/jGZ9C3g=;
-        b=W7vHoBDpMCuLZNZsJUoX++sTsa3UbCLWCVoqJMEzKl2lqY6MrZZONOdZaC8XhowGw/
-         IkaGkI5egA2yIDOfFKssti6+FbnzIjZVNK2PDjieYQLkGbXLw5E7E0oMZ+od8z4UEfkk
-         OTVS5bQC+7IKRQqlRvXL7378fPr8Clt2PYSCcKYN8mAAfEXFXG58RTSQ4N3+10eYC0u3
-         TZbDTFAUrONCp54UlLauLsWAOiPT8HEon+vhU7fWs7iU6NNGoOtKF43cblALRjcId1bB
-         z4DldZEnt02+GnuPV/N4G5HsXk/aUyEIEQRK+wQmNasYaEGe//bCSlx+Pz4AZAj+YTeJ
-         B2Ug==
-X-Gm-Message-State: APjAAAX+5ycrNWik5BswtB/TFb547oqYjVsXAged6ujjyASzDVPdM/wR
-        6LP5KnGA17skOftkcvFxJBdR6eM=
-X-Google-Smtp-Source: APXvYqzJ+8jB7RpAAMGICUo61n1A7DPUIgaKk4SupneZNA3dApOhX5FOwspR1JX01Cmf92f8L5TLpw==
-X-Received: by 2002:a25:8703:: with SMTP id a3mr1981962ybl.445.1551468415076;
+        bh=2QvvkV1Xrxgz0nLmZ+gse3tjySRBEI2DeUAlDEnYu4c=;
+        b=JwqT3TT27BxnBBWnDBzKGK29bfrvi5kqyUQBhBuBt+0gNK6IkUn+KeLCcspzt1/6Tm
+         bVRg5Cvw0sCc2BVBpKKvaL102ZET6oWXagUpTKLzTlIS9MhKWSykzmooerULEPz7rI3M
+         uGGqUm48r9WLXdkDqIN01gwLpcEtGGSEWPIOxXFGTKP9Fmbt2kqEHkzLXnrTuGknQ7eH
+         tLdJEye8GKZK/Uw45CHtkG93+FuJTvMoTLKj9s9ARky/UYBfKueyeZXGfdXLXqZPptRM
+         u4wu+fcNQE0qDHrTpsUbm3s1Lge09tgTm8i+C4/EvRZbhakXWNdtc6FrI5JAafHZXNIz
+         rFgA==
+X-Gm-Message-State: APjAAAU7oMDxTk5DBSqLrnAURCIp37QuO4T1IYLRYymoa6aurOD2n/6f
+        NKXtxP2A5o+syYKGhJw7yJN6Q5c=
+X-Google-Smtp-Source: APXvYqz0Wk36THGaOMaVqDRUaMSoB80FQ53KiwqY7+bVjnbcgdBBz9HuCJQzbDodByHituMcELBJnA==
+X-Received: by 2002:a81:5987:: with SMTP id n129mr4987991ywb.95.1551468415895;
         Fri, 01 Mar 2019 11:26:55 -0800 (PST)
 Received: from localhost.localdomain (c-68-40-189-247.hsd1.mi.comcast.net. [68.40.189.247])
-        by smtp.gmail.com with ESMTPSA id l71sm7509193ywl.65.2019.03.01.11.26.54
+        by smtp.gmail.com with ESMTPSA id l71sm7509193ywl.65.2019.03.01.11.26.55
         for <linux-nfs@vger.kernel.org>
         (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
-        Fri, 01 Mar 2019 11:26:54 -0800 (PST)
+        Fri, 01 Mar 2019 11:26:55 -0800 (PST)
 From:   Trond Myklebust <trondmy@gmail.com>
 X-Google-Original-From: Trond Myklebust <trond.myklebust@hammerspace.com>
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH 02/19] NFS/flexfiles: Fix up sparse RCU annotations
-Date:   Fri,  1 Mar 2019 14:24:38 -0500
-Message-Id: <20190301192455.104943-3-trond.myklebust@hammerspace.com>
+Subject: [PATCH 03/19] NFSv4/pnfs: Fix barriers in nfs4_mark_deviceid_unavailable()
+Date:   Fri,  1 Mar 2019 14:24:39 -0500
+Message-Id: <20190301192455.104943-4-trond.myklebust@hammerspace.com>
 X-Mailer: git-send-email 2.20.1
-In-Reply-To: <20190301192455.104943-2-trond.myklebust@hammerspace.com>
+In-Reply-To: <20190301192455.104943-3-trond.myklebust@hammerspace.com>
 References: <20190301192455.104943-1-trond.myklebust@hammerspace.com>
  <20190301192455.104943-2-trond.myklebust@hammerspace.com>
+ <20190301192455.104943-3-trond.myklebust@hammerspace.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
@@ -72,33 +73,36 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
+Fix the memory barriers in nfs4_mark_deviceid_unavailable() and
+nfs4_test_deviceid_unavailable().
+
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/flexfilelayout/flexfilelayout.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ fs/nfs/pnfs_dev.c | 3 +++
+ 1 file changed, 3 insertions(+)
 
-diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
-index 32701b6a9566..244a03c22b31 100644
---- a/fs/nfs/flexfilelayout/flexfilelayout.c
-+++ b/fs/nfs/flexfilelayout/flexfilelayout.c
-@@ -410,7 +410,7 @@ ff_layout_alloc_lseg(struct pnfs_layout_hdr *lh,
- 	for (i = 0; i < fls->mirror_array_cnt; i++) {
- 		struct nfs4_ff_layout_mirror *mirror;
- 		struct cred *kcred;
--		const struct cred *cred;
-+		const struct cred __rcu *cred;
- 		kuid_t uid;
- 		kgid_t gid;
- 		u32 ds_count, fh_count, id;
-@@ -501,7 +501,7 @@ ff_layout_alloc_lseg(struct pnfs_layout_hdr *lh,
- 			goto out_err_free;
- 		kcred->fsuid = uid;
- 		kcred->fsgid = gid;
--		cred = kcred;
-+		cred = RCU_INITIALIZER(kcred);
+diff --git a/fs/nfs/pnfs_dev.c b/fs/nfs/pnfs_dev.c
+index 7fb59487ee90..ec6b607ff1d7 100644
+--- a/fs/nfs/pnfs_dev.c
++++ b/fs/nfs/pnfs_dev.c
+@@ -287,7 +287,9 @@ void
+ nfs4_mark_deviceid_unavailable(struct nfs4_deviceid_node *node)
+ {
+ 	node->timestamp_unavailable = jiffies;
++	smp_mb__before_atomic();
+ 	set_bit(NFS_DEVICEID_UNAVAILABLE, &node->flags);
++	smp_mb__after_atomic();
+ }
+ EXPORT_SYMBOL_GPL(nfs4_mark_deviceid_unavailable);
  
- 		if (lgr->range.iomode == IOMODE_READ)
- 			rcu_assign_pointer(fls->mirror_array[i]->ro_cred, cred);
+@@ -302,6 +304,7 @@ nfs4_test_deviceid_unavailable(struct nfs4_deviceid_node *node)
+ 		if (time_in_range(node->timestamp_unavailable, start, end))
+ 			return true;
+ 		clear_bit(NFS_DEVICEID_UNAVAILABLE, &node->flags);
++		smp_mb__after_atomic();
+ 	}
+ 	return false;
+ }
 -- 
 2.20.1
 
