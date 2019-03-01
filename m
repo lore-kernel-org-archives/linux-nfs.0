@@ -2,197 +2,228 @@ Return-Path: <SRS0=Psyw=RE=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-1.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS,
+	URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9C205C43381
-	for <linux-nfs@archiver.kernel.org>; Fri,  1 Mar 2019 12:31:39 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id BCF97C43381
+	for <linux-nfs@archiver.kernel.org>; Fri,  1 Mar 2019 13:08:56 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 66E3920850
-	for <linux-nfs@archiver.kernel.org>; Fri,  1 Mar 2019 12:31:39 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 548AD20643
+	for <linux-nfs@archiver.kernel.org>; Fri,  1 Mar 2019 13:08:56 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (1024-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="SeoUPmNA"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727052AbfCAMbi convert rfc822-to-8bit (ORCPT
-        <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 1 Mar 2019 07:31:38 -0500
-Received: from mail.lysator.liu.se ([130.236.254.3]:49927 "EHLO
-        mail.lysator.liu.se" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725978AbfCAMbi (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Mar 2019 07:31:38 -0500
-X-Greylist: delayed 354 seconds by postgrey-1.27 at vger.kernel.org; Fri, 01 Mar 2019 07:31:37 EST
-Received: from mail.lysator.liu.se (localhost [127.0.0.1])
-        by mail.lysator.liu.se (Postfix) with ESMTP id E92B040006
-        for <linux-nfs@vger.kernel.org>; Fri,  1 Mar 2019 13:25:42 +0100 (CET)
-Received: by mail.lysator.liu.se (Postfix, from userid 1004)
-        id CEB3840013; Fri,  1 Mar 2019 13:25:42 +0100 (CET)
-Received: from [IPv6:2001:6b0:17:f002:4c86:fa6d:33dc:a323] (unknown [IPv6:2001:6b0:17:f002:4c86:fa6d:33dc:a323])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by mail.lysator.liu.se (Postfix) with ESMTPSA id 2AFDE40006
-        for <linux-nfs@vger.kernel.org>; Fri,  1 Mar 2019 13:25:42 +0100 (CET)
-From:   Peter Eriksson <pen@lysator.liu.se>
-Content-Type: text/plain;
-        charset=utf-8
-Content-Transfer-Encoding: 8BIT
-Mime-Version: 1.0 (Mac OS X Mail 12.2 \(3445.102.3\))
-Subject: [Bug report] NULL-pointer dereference in gssd (nfs-utils version
- 1.3.4 & 2.3.3)
-Message-Id: <77C72E28-D137-408E-834B-623341F21BB3@lysator.liu.se>
-Date:   Fri, 1 Mar 2019 13:25:40 +0100
-To:     linux-nfs@vger.kernel.org
-X-Mailer: Apple Mail (2.3445.102.3)
-X-Virus-Scanned: ClamAV using ClamSMTP
+        id S1731716AbfCANIz (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 1 Mar 2019 08:08:55 -0500
+Received: from mail-eopbgr790138.outbound.protection.outlook.com ([40.107.79.138]:6112
+        "EHLO NAM03-CO1-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1728305AbfCANIz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 1 Mar 2019 08:08:55 -0500
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=hammerspace.com;
+ s=selector1;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=N0mlh+mkIW7CtpY5ChtptnhcZEIAxUtbRZkBPJ0tXj0=;
+ b=SeoUPmNAC4Kmkeh7Z78rTvhopNU544Ty2kP5gvD+ydZkDoh506hIzaJDQlFOLQIv8d5GjQFW/n6RmQwK46GdsrZzJtnfiGiiApk7cLwccX6LpzVdR3THU21Go3fdIoyqRGV0mODVaStGu00Br3f4pJHzEmq3AZfB3Aoce1mdGJE=
+Received: from SN6PR13MB2494.namprd13.prod.outlook.com (52.135.95.148) by
+ SN6PR13MB2255.namprd13.prod.outlook.com (52.135.93.156) with Microsoft SMTP
+ Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ 15.20.1686.11; Fri, 1 Mar 2019 13:08:50 +0000
+Received: from SN6PR13MB2494.namprd13.prod.outlook.com
+ ([fe80::d1d6:9683:8c9b:3dcb]) by SN6PR13MB2494.namprd13.prod.outlook.com
+ ([fe80::d1d6:9683:8c9b:3dcb%3]) with mapi id 15.20.1686.011; Fri, 1 Mar 2019
+ 13:08:50 +0000
+From:   Trond Myklebust <trondmy@hammerspace.com>
+To:     "jiufei.xue@linux.alibaba.com" <jiufei.xue@linux.alibaba.com>,
+        "aglo@umich.edu" <aglo@umich.edu>
+CC:     "bfields@fieldses.org" <bfields@fieldses.org>,
+        "Anna.Schumaker@netapp.com" <Anna.Schumaker@netapp.com>,
+        Trond Myklebust <trondmy@hammerspace.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "joseph.qi@linux.alibaba.com" <joseph.qi@linux.alibaba.com>
+Subject: Re: [bug report] task hang while testing xfstests generic/323
+Thread-Topic: [bug report] task hang while testing xfstests generic/323
+Thread-Index: AQHUz03JX9HUIwfLV060fPzVrzJvGKX1yrYAgABwXICAAD3OgIAASFUA
+Date:   Fri, 1 Mar 2019 13:08:50 +0000
+Message-ID: <ce839197cb70f3bc75413ed2e54f8baafafc01dd.camel@hammerspace.com>
+References: <fa8ca171-b260-3e5a-d69c-13f263f5bb9c@linux.alibaba.com>
+         <CAN-5tyG9sUw2Oi+hbaW+KJDhvk8KT3Lb-cgU6azxq1yN+Tr=KQ@mail.gmail.com>
+         <3b6597b0-41b4-255a-5ebb-cf34ad95315c@linux.alibaba.com>
+         <57796366-0f08-2cfb-6f85-27d5485c07af@linux.alibaba.com>
+In-Reply-To: <57796366-0f08-2cfb-6f85-27d5485c07af@linux.alibaba.com>
+Accept-Language: en-US, en-GB
+Content-Language: en-US
+X-MS-Has-Attach: 
+X-MS-TNEF-Correlator: 
+x-originating-ip: [68.40.189.247]
+x-ms-publictraffictype: Email
+x-ms-office365-filtering-correlation-id: 17db47d8-07dc-4978-6a96-08d69e470c7c
+x-microsoft-antispam: BCL:0;PCL:0;RULEID:(2390118)(7020095)(4652040)(8989299)(4534185)(4627221)(201703031133081)(201702281549075)(8990200)(5600127)(711020)(4605104)(2017052603328)(7153060)(7193020);SRVR:SN6PR13MB2255;
+x-ms-traffictypediagnostic: SN6PR13MB2255:
+x-microsoft-exchange-diagnostics: =?utf-8?B?MTtTTjZQUjEzTUIyMjU1OzIzOjVoSjh0VnBZRFdkK2VFY1dJeE9sQk1NSS9H?=
+ =?utf-8?B?U3RTY0ZObEJsQjFTcFA1YTB3SHdYcW5KbThCOWJzNmt3VmFCcHk2aDJyOXlB?=
+ =?utf-8?B?bFlUSDZVUVQwUm4vNDBnMDBxMW84cVhLV0hHaWM4cm1RdU9qTTlpQXRGMkdB?=
+ =?utf-8?B?aEszVGZORW5QaGhBUEpLYUw2ekgyWDVwNHRiVXg2Q3VIdDFoRURXRHh0TTB4?=
+ =?utf-8?B?WDNTUCtIcllVUGIzQjVhVkwwK0xhYzZNUkpNa1E0M3hTU1czeDc5YnNraksx?=
+ =?utf-8?B?OGtUVkRqeTd5R3VBQXp5TkRFUGVBNWZOT09RVVEzUTdrSkhpNUlHdEYvTW5o?=
+ =?utf-8?B?cXF1cmVXMDYyTldoelFWQXRCTEZnSWErcW1lSXFxOFFmS25zeCt1QnErcE8x?=
+ =?utf-8?B?TUlhd3pDYjdORTNoMUdGTTdzWmtnOWc5a2VMN09aMFpOZWFZVHYzQVFFMWox?=
+ =?utf-8?B?SHZJSnhLOTFJNVpRSmE5dEFkOFdaKzZXYkx1WWR6V3lLTnhZajM4c3JuTUdT?=
+ =?utf-8?B?bVF4VzBxckhZTGpjSXJFOFFmUXRnZ0xUTnZNdTlyc1FEOGlUT0dGU2w2THRx?=
+ =?utf-8?B?NE5uOTJrNGw5VVcwZ0NyN3hoY1VkYVJyQ2tNYkp0N2lINTdSbnRuWTUvdllY?=
+ =?utf-8?B?cHpTS1RUSUdTYkZNS0ZsdFpQWjh1R0hzUSsvMU41VnR4TDBFZXFpMGwzNlVE?=
+ =?utf-8?B?RmJndERLdnJIYTZmd2xsY3pUT1VPMDNtNFBxcHJwcnFjTDh0UE9NUi9VL3pU?=
+ =?utf-8?B?Zno0NVprdXBUazRzbXJXRFcvanppK1QwQWFuNk9FM1FVT3RPSldTb2N3OE1L?=
+ =?utf-8?B?QWhrczVVdEI1OGhYYjdRZVRwNmdUdklmS25nSVV0b1BEOGtOaUEzN3dkVFlP?=
+ =?utf-8?B?UnR3ZDIzQnhaVTZJUFQ5VzhzZzRyU2owZ2dwUEN0VGlSZTA4akx5dGlENERu?=
+ =?utf-8?B?YWd0SXg3MW1lVXgzWGoveDdySWpiSU84Q3crdnlKVTA0amRsUnhIdGNFQlha?=
+ =?utf-8?B?S3k3QXJXZHNmQXRRM0xTdnRtZWlaZGhOL1hoVzIvNVM4YXdJREZudjJaNHdz?=
+ =?utf-8?B?ejNJWmpxZ3VXUXZCRU5ONW5vTkFDYVplQWRRdlZYRWxXeHpKMitzZzBEVWw0?=
+ =?utf-8?B?QUs0WVVXQ1ZMQzhnd3RncDNiUHZseW04WGNHLzVUc2Z6eUR6SnJoYk5FbEli?=
+ =?utf-8?B?WFhrTFJGa042YUlyU294cTQ3Z0h4dGEzeUVTKzBxVWNtcEMwMWtPR2hPRUx0?=
+ =?utf-8?B?cFVBMGlNaURFZTE3eElITWU0US9yb1ZkTmpWbS9FRlZLdHJCSzRQdTFkUkpr?=
+ =?utf-8?B?bko1N2F6T3dTU3VQUyszRWsvSDNoOWhnWWtOdkJRL28zSUVOSWg0aVJsQTV1?=
+ =?utf-8?B?dUt5d0RhUURFWElTZ1VBQThWNjYyT3RyRjh2VUFvSEV3TnBMc1RmclhPWFFX?=
+ =?utf-8?B?Ti82aUpuV3FxMndVTHp1MGpMTWZnNEM1cmxnM01iUWg0dWpLazJ2MWN5cHow?=
+ =?utf-8?B?d3NXbnB3dEhsdUl0Zld5YXliQ3BLUUZYUCtJaGNYVUxrU1pZYktsY0JQZ3lu?=
+ =?utf-8?B?N2w4M0YzR20vajFEMVk2L2RXZktvYWhYM0RjanZ0SjY2RktTdEpXMnJncy9U?=
+ =?utf-8?B?NGIrak04SWFCNjB5N2VDVmJHWDAxUXUrSy9rSUdwa2RLNFkycnpWOVU0T3pW?=
+ =?utf-8?B?c0hubE1laWVZb0lHdXJmOFNPYXJ2bFhDeUhzdGwrYUFtTGx2OXJtQW9iejBI?=
+ =?utf-8?B?dDMzN3lvZHZYeEtpMytKNS9MOWExaGJSbDBBMldtcktSV1BUbUc0ZTNSdVJ3?=
+ =?utf-8?B?Vnl2ZjdRUE91b1dGVDRKOGpjaXIrVU16Z0djSWxJYmJaeFE9PQ==?=
+x-microsoft-antispam-prvs: <SN6PR13MB2255E4F9080B1C41FD4C90ADB8760@SN6PR13MB2255.namprd13.prod.outlook.com>
+x-forefront-prvs: 09634B1196
+x-forefront-antispam-report: SFV:NSPM;SFS:(10019020)(376002)(396003)(346002)(366004)(39830400003)(136003)(199004)(189003)(71190400001)(71200400001)(53936002)(102836004)(93886005)(53546011)(76176011)(6506007)(99286004)(5660300002)(6436002)(2501003)(8676002)(26005)(305945005)(106356001)(316002)(446003)(2616005)(11346002)(476003)(105586002)(486006)(186003)(5024004)(14444005)(256004)(54906003)(110136005)(6346003)(7736002)(478600001)(14454004)(25786009)(229853002)(8936002)(4326008)(68736007)(6246003)(2171002)(6486002)(81156014)(6116002)(66066001)(97736004)(3846002)(6512007)(36756003)(86362001)(2906002)(118296001)(81166006)(41533002);DIR:OUT;SFP:1102;SCL:1;SRVR:SN6PR13MB2255;H:SN6PR13MB2494.namprd13.prod.outlook.com;FPR:;SPF:None;LANG:en;PTR:InfoNoRecords;A:1;MX:1;
+received-spf: None (protection.outlook.com: hammerspace.com does not designate
+ permitted sender hosts)
+authentication-results: spf=none (sender IP is )
+ smtp.mailfrom=trondmy@hammerspace.com; 
+x-ms-exchange-senderadcheck: 1
+x-microsoft-antispam-message-info: WFHofHJ4owJZ87eVIO/ID3plvVsjt3gd8W4FvzCeV1dkNUWzEYhOPX5mgZ7pyDgXfUzLxqjJ1V7Npe9I92HJk7FSTur+rAFW/4Y/zYxCnt55OIGx6WxiP1ctMzgk42btVm89MQy8NvG1iiAGIg3OjfNd2L60aG2cTmdIO8GfiVj+uKMJ1bTqJyCUBM/q9M2WW080Pa8ovnjReHaj6aoVfYZQTH1sWjGZ585GcdrWLGQzpDCIUhu+zVObwB+rvw6BcFm8fZidBTYch164I1EFwa1ISbxDVuFf2xC8n57c1jjvUh7dpvTdj1Q7rygfmlrchq1uT4M8eDVyv5fJtER+U4qwZpI38Wy9HECPFGOGrKjBQ/9VSSq2K27LSPeivmRJKoXoetflGmN0LUMm4oS4kEqUp6dXJrCvSD+hb930cRM=
+Content-Type: text/plain; charset="utf-8"
+Content-ID: <A0E6B5314D160B44BB71F5454A48A252@namprd13.prod.outlook.com>
+Content-Transfer-Encoding: base64
+MIME-Version: 1.0
+X-OriginatorOrg: hammerspace.com
+X-MS-Exchange-CrossTenant-Network-Message-Id: 17db47d8-07dc-4978-6a96-08d69e470c7c
+X-MS-Exchange-CrossTenant-originalarrivaltime: 01 Mar 2019 13:08:50.7199
+ (UTC)
+X-MS-Exchange-CrossTenant-fromentityheader: Hosted
+X-MS-Exchange-CrossTenant-id: 0d4fed5c-3a70-46fe-9430-ece41741f59e
+X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: SN6PR13MB2255
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-I’m seeing Segmentation Faults in gssd from nfs-utils 1.3.4 and 2.3.3 when running it on a machine running CentOS 7.6.1810 / kernel 3.10.0-957.5.1.el7.x86_64 that uses GSSAPI quite a bit (a Linux machine doing validation checks of our fileserver - runs a list of SMB/NFS/LDAP/Kerberos check every minute 24/7). We compiled our own version since the version that CentOS delivers (1.3.0) also crashed (unsure if it is the same bug there though).
-
-
-# gdb ./gssd
-(gdb) run -f -v
-...
-[New Thread 0x7fffef7fe700 (LWP 24902)]
-Error doing scandir on directory '/run/user/11189': No such file or directory
-[Thread 0x7fffef7fe700 (LWP 24902) exited]
-[New Thread 0x7fffeffff700 (LWP 24904)]
-Error doing scandir on directory '/run/user/11189': No such file or directory
-[Thread 0x7fffeffff700 (LWP 24904) exited]
-
-Program received signal SIGSEGV, Segmentation fault.
-[Switching to Thread 0x7ffff4cec700 (LWP 24448)]
-create_auth_rpc_client (clp=clp@entry=0x621590, tgtname=tgtname@entry=0x0, 
-    clnt_return=clnt_return@entry=0x7ffff4cebd48, 
-    auth_return=auth_return@entry=0x7ffff4cebcd0, uid=uid@entry=0, 
-    authtype=authtype@entry=0, cred=cred@entry=0x0) at gssd_proc.c:352
-352		if ((strcmp(clp->protocol, "udp")) == 0)
-Missing separate debuginfos, use: debuginfo-install glibc-2.17-260.el7_6.3.x86_64 gssproxy-0.7.0-21.el7.x86_64 keyutils-libs-1.5.8-3.el7.x86_64 krb5-libs-1.15.1-37.el7_6.x86_64 libcom_err-1.42.9-13.el7.x86_64 libevent-2.0.21-4.el7.x86_64 libselinux-2.5-14.1.el7.x86_64 libtirpc-0.2.4-0.15.el7.x86_64 pcre-8.32-17.el7.x86_64
-
-(gdb) where
-#0  create_auth_rpc_client (clp=clp@entry=0x621590, tgtname=tgtname@entry=0x0, 
-    clnt_return=clnt_return@entry=0x7ffff4cebd48, 
-    auth_return=auth_return@entry=0x7ffff4cebcd0, uid=uid@entry=0, 
-    authtype=authtype@entry=0, cred=cred@entry=0x0) at gssd_proc.c:352
-#1  0x0000000000406d21 in krb5_use_machine_creds (rpc_clnt=0x7ffff4cebd48, 
-    service=0x6293c0 "*", tgtname=0x0, srchost=0x0, uid=0, clp=0x621590)
-    at gssd_proc.c:569
-#2  process_krb5_upcall (clp=clp@entry=0x621590, uid=uid@entry=0, fd=13, 
-    srchost=srchost@entry=0x0, tgtname=tgtname@entry=0x0, 
-    service=service@entry=0x6293c0 "*") at gssd_proc.c:657
-#3  0x000000000040759c in handle_gssd_upcall (info=0x6293a0) at gssd_proc.c:819
-#4  0x00007ffff6de6dd5 in start_thread () from /lib64/libpthread.so.0
-#5  0x00007ffff68f6ead in clone () from /lib64/libc.so.6
-
-(gdb) frame 0
-#0  create_auth_rpc_client (clp=clp@entry=0x621590, tgtname=tgtname@entry=0x0, 
-    clnt_return=clnt_return@entry=0x7ffff4cebd48, 
-    auth_return=auth_return@entry=0x7ffff4cebcd0, uid=uid@entry=0, 
-    authtype=authtype@entry=0, cred=cred@entry=0x0) at gssd_proc.c:352
-352		if ((strcmp(clp->protocol, "udp")) == 0)
-
-(gdb) list
-347	
-348		printerr(2, "creating %s client for server %s\n", clp->protocol,
-349				clp->servername);
-350	
-351		protocol = IPPROTO_TCP;
-352		if ((strcmp(clp->protocol, "udp")) == 0)
-353			protocol = IPPROTO_UDP;
-354	
-355		switch (addr->sa_family) {
-356		case AF_INET:
-
-(gdb) print clp
-$1 = (struct clnt_info *) 0x621590
-
-(gdb) print clp->protocol
-$2 = 0x0
-
-(gdb) print *clp
-$3 = {list = {tqe_next = 0x0, tqe_prev = 0xffffffff}, wd = 0, scanned = false, 
-  name = 0x0, relpath = 0x0, servicename = 0x0, servername = 0x0, prog = 0, 
-  vers = 0, protocol = 0x0, krb5_fd = 0, krb5_ev = {ev_active_next = {
-      tqe_next = 0x0, tqe_prev = 0x0}, ev_next = {tqe_next = 0x0, 
-      tqe_prev = 0x0}, ev_timeout_pos = {ev_next_with_common_timeout = {
-        tqe_next = 0x0, tqe_prev = 0x0}, min_heap_idx = 0}, ev_fd = 0, 
-    ev_base = 0x0, _ev = {ev_io = {ev_io_next = {tqe_next = 0x0, 
-          tqe_prev = 0x0}, ev_timeout = {tv_sec = 0, tv_usec = 0}}, 
-      ev_signal = {ev_signal_next = {tqe_next = 0x0, tqe_prev = 0x0}, 
-        ev_ncalls = 0, ev_pncalls = 0x0}}, ev_events = 0, ev_res = 0, 
-    ev_flags = 0, ev_pri = 0 '\000', ev_closure = 0 '\000', ev_timeout = {
-      tv_sec = 0, tv_usec = 0}, ev_callback = 0x0, ev_arg = 0x0}, gssd_fd = 0, 
-  gssd_ev = {ev_active_next = {tqe_next = 0x0, tqe_prev = 0x0}, ev_next = {
-      tqe_next = 0x0, tqe_prev = 0x0}, ev_timeout_pos = {
-      ev_next_with_common_timeout = {tqe_next = 0x0, tqe_prev = 0x0}, 
-      min_heap_idx = 0}, ev_fd = 496, ev_base = 0x70, _ev = {ev_io = {
-        ev_io_next = {tqe_next = 0x0, tqe_prev = 0x7f3865333232}, 
-        ev_timeout = {tv_sec = 0, tv_usec = 273}}, ev_signal = {
-        ev_signal_next = {tqe_next = 0x0, tqe_prev = 0x7f3865333232}, 
-        ev_ncalls = 0, ev_pncalls = 0x111}}, ev_events = -1864, 
-    ev_res = -2373, ev_flags = 32767, ev_pri = 0 '\000', 
-    ev_closure = 0 '\000', ev_timeout = {tv_sec = 140737332902072, 
-      tv_usec = 4294977170}, ev_callback = 0x6218c4, ev_arg = 0x240}, addr = {
----Type <return> to continue, or q <return> to quit---
-    ss_family = 32, 
-    __ss_padding = "\000\000\000\000\000\000\260\020b\000\000\000\000\000\270\367\273\366\377\177\000\000`\002\000\000\000\000\000\000\301\000\000\000\000\000\000\000\360\027b\000\000\000\000\000\000\214b", '\000' <repeats 13 times>, "\241\000\000\000\000\000\000\000\200\021b\000\000\000\000\000H\370\273\366\377\177", '\000' <repeats 26 times>, "q\000\000\000\000\000\000", __ss_align = 6427008}}
-
-(gdb) frame 1
-#1  0x0000000000406d21 in krb5_use_machine_creds (rpc_clnt=0x7ffff4cebd48, 
-    service=0x6293c0 "*", tgtname=0x0, srchost=0x0, uid=0, clp=0x621590)
-    at gssd_proc.c:569
-569				if ((create_auth_rpc_client(clp, tgtname, rpc_clnt,
-
-(gdb) list
-564					printerr(1, "WARNING: gss_krb5_ccache_name "
-565						 "with name '%s' failed (%s)\n",
-566						 *ccname, error_message(min_stat));
-567					continue;
-568				}
-569				if ((create_auth_rpc_client(clp, tgtname, rpc_clnt,
-570							&auth, uid,
-571							AUTHTYPE_KRB5,
-572							GSS_C_NO_CREDENTIAL)) == 0) {
-573					/* Success! */
-
-(gdb) print tgtname
-$6 = 0x0
-
-(gdb) print rpc_clnt
-$7 = (CLIENT **) 0x7ffff4cebd48
-
-(gdb) print *rpc_clnt
-$8 = (CLIENT *) 0x0
-
-(gdb) frame 2
-#2  process_krb5_upcall (clp=clp@entry=0x621590, uid=uid@entry=0, fd=13, 
-    srchost=srchost@entry=0x0, tgtname=tgtname@entry=0x0, 
-    service=service@entry=0x6293c0 "*") at gssd_proc.c:657
-657				auth =	krb5_use_machine_creds(clp, uid, srchost, tgtname,
-
-(gdb) list
-652				goto out_return_error;
-653		}
-654		if (auth == NULL) {
-655			if (uid == 0 && (root_uses_machine_creds == 1 ||
-656					service != NULL)) {
-657				auth =	krb5_use_machine_creds(clp, uid, srchost, tgtname,
-658								service, &rpc_clnt);
-659				if (auth == NULL)
-660					goto out_return_error;
-661			} else {
-
-(gdb) print uid
-$9 = 0
-
-(gdb) print srchost
-$10 = 0x0
-
-(gdb) print tgtname
-$11 = 0x0
-
-
-Exactly what is causing this event to happen is unclear (a lot of automated checks are running, but they run well for a couple of hours before this crash occur).
-
-Please let me know if there is some other information someone might need to fix this bug… (I’m going to add sanity checks to the code in order to try to mitigate the crash and instead fail in a more “nice” way).
-
-- Peter
+T24gRnJpLCAyMDE5LTAzLTAxIGF0IDE2OjQ5ICswODAwLCBKaXVmZWkgWHVlIHdyb3RlOg0KPiAN
+Cj4gT24gMjAxOS8zLzEg5LiL5Y2IMTowOCwgSml1ZmVpIFh1ZSB3cm90ZToNCj4gPiBIaSBPbGdh
+LA0KPiA+IA0KPiA+IE9uIDIwMTkvMy8xIOS4iuWNiDY6MjYsIE9sZ2EgS29ybmlldnNrYWlhIHdy
+b3RlOg0KPiA+ID4gT24gVGh1LCBGZWIgMjgsIDIwMTkgYXQgNToxMSBBTSBKaXVmZWkgWHVlIDwN
+Cj4gPiA+IGppdWZlaS54dWVAbGludXguYWxpYmFiYS5jb20+IHdyb3RlOg0KPiA+ID4gPiBIaSwN
+Cj4gPiA+ID4gDQo+ID4gPiA+IHdoZW4gSSB0ZXN0ZWQgeGZzdGVzdHMvZ2VuZXJpYy8zMjMgd2l0
+aCBORlN2NC4xIGFuZCB2NC4yLCB0aGUNCj4gPiA+ID4gdGFzaw0KPiA+ID4gPiBjaGFuZ2VkIHRv
+IHpvbWJpZSBvY2Nhc2lvbmFsbHkgd2hpbGUgYSB0aHJlYWQgaXMgaGFuZ2luZyB3aXRoDQo+ID4g
+PiA+IHRoZQ0KPiA+ID4gPiBmb2xsb3dpbmcgc3RhY2s6DQo+ID4gPiA+IA0KPiA+ID4gPiBbPDA+
+XSBycGNfd2FpdF9iaXRfa2lsbGFibGUrMHgxZS8weGEwIFtzdW5ycGNdDQo+ID4gPiA+IFs8MD5d
+IG5mczRfZG9fY2xvc2UrMHgyMWIvMHgyYzAgW25mc3Y0XQ0KPiA+ID4gPiBbPDA+XSBfX3B1dF9u
+ZnNfb3Blbl9jb250ZXh0KzB4YTIvMHgxMTAgW25mc10NCj4gPiA+ID4gWzwwPl0gbmZzX2ZpbGVf
+cmVsZWFzZSsweDM1LzB4NTAgW25mc10NCj4gPiA+ID4gWzwwPl0gX19mcHV0KzB4YTIvMHgxYzAN
+Cj4gPiA+ID4gWzwwPl0gdGFza193b3JrX3J1bisweDgyLzB4YTANCj4gPiA+ID4gWzwwPl0gZG9f
+ZXhpdCsweDJhYy8weGMyMA0KPiA+ID4gPiBbPDA+XSBkb19ncm91cF9leGl0KzB4MzkvMHhhMA0K
+PiA+ID4gPiBbPDA+XSBnZXRfc2lnbmFsKzB4MWNlLzB4NWQwDQo+ID4gPiA+IFs8MD5dIGRvX3Np
+Z25hbCsweDM2LzB4NjIwDQo+ID4gPiA+IFs8MD5dIGV4aXRfdG9fdXNlcm1vZGVfbG9vcCsweDVl
+LzB4YzINCj4gPiA+ID4gWzwwPl0gZG9fc3lzY2FsbF82NCsweDE2Yy8weDE5MA0KPiA+ID4gPiBb
+PDA+XSBlbnRyeV9TWVNDQUxMXzY0X2FmdGVyX2h3ZnJhbWUrMHg0NC8weGE5DQo+ID4gPiA+IFs8
+MD5dIDB4ZmZmZmZmZmZmZmZmZmZmZg0KPiA+ID4gPiANCj4gPiA+ID4gU2luY2UgY29tbWl0IDEy
+ZjI3NWNkZDE2MyhORlN2NDogUmV0cnkgQ0xPU0UgYW5kIERFTEVHUkVUVVJOIG9uDQo+ID4gPiA+
+IE5GUzRFUlJfT0xEX1NUQVRFSUQpLCB0aGUgY2xpZW50IHdpbGwgcmV0cnkgdG8gY2xvc2UgdGhl
+IGZpbGUNCj4gPiA+ID4gd2hlbg0KPiA+ID4gPiBzdGF0ZWlkIGdlbmVyYXRpb24gbnVtYmVyIGlu
+IGNsaWVudCBpcyBsb3dlciB0aGFuIHNlcnZlci4NCj4gPiA+ID4gDQo+ID4gPiA+IFRoZSBvcmln
+aW5hbCBpbnRlbnRpb24gb2YgdGhpcyBjb21taXQgaXMgcmV0cnlpbmcgdGhlIG9wZXJhdGlvbg0K
+PiA+ID4gPiB3aGlsZQ0KPiA+ID4gPiByYWNpbmcgd2l0aCBhbiBPUEVOLiBIb3dldmVyLCBpbiB0
+aGlzIGNhc2UgdGhlIHN0YXRlaWQNCj4gPiA+ID4gZ2VuZXJhdGlvbiByZW1haW5zDQo+ID4gPiA+
+IG1pc21hdGNoIGZvcmV2ZXIuDQo+ID4gPiA+IA0KPiA+ID4gPiBBbnkgc3VnZ2VzdGlvbnM/DQo+
+ID4gPiANCj4gPiA+IENhbiB5b3UgaW5jbHVkZSBhIG5ldHdvcmsgdHJhY2Ugb2YgdGhlIGZhaWx1
+cmU/IElzIGl0IHBvc3NpYmxlDQo+ID4gPiB0aGF0DQo+ID4gPiB0aGUgc2VydmVyIGhhcyBjcmFz
+aGVkIG9uIHJlcGx5IHRvIHRoZSBjbG9zZSBhbmQgdGhhdCdzIHdoeSB0aGUNCj4gPiA+IHRhc2sN
+Cj4gPiA+IGlzIGh1bmc/IFdoYXQgc2VydmVyIGFyZSB5b3UgdGVzdGluZyBhZ2FpbnN0Pw0KPiA+
+ID4gDQo+ID4gSSBhbSB0ZXN0aW5nIHRoZSBsb2NhbCBzZXJ2ZXIsIHRoZSB0ZXN0Y2FzZSBpcyBh
+dHRhY2hlZCBiZWxvdy4NCj4gPiANCj4gPiAjIHVuYW1lIC1yDQo+ID4gNS4wLjAtcmM4DQo+ID4g
+DQo+ID4gIyBjYXQgL2V0Yy9leHBvcnRzDQo+ID4gL21udC92ZGQgKihydyxub19zdWJ0cmVlX2No
+ZWNrLG5vX3Jvb3Rfc3F1YXNoKQ0KPiA+IA0KPiA+ICMgY2F0IHRlc3Quc2gNCj4gPiBtb3VudCAv
+ZGV2L3ZkZCAvbW50L3ZkZA0KPiA+IHN5c3RlbWN0bCBzdGFydCBuZnMNCj4gPiBtb3VudCAtdCBu
+ZnMgLW8gcncscmVsYXRpbWUsdmVycz00LjEgMTI3LjAuMC4xOi9tbnQvdmRkDQo+ID4gL21udC9u
+ZnNzY3JhdGNoDQo+ID4gDQo+ID4gZm9yICgoaT0wO2k8MTAwMDA7aSsrKSkNCj4gPiBkbw0KPiA+
+ICAgICAgICAgZWNobyAibG9vcCAkaSBzdGFydGVkIg0KPiA+ICAgICAgICAgL3Vzci9sb2NhbC94
+ZnN0ZXN0cy9zcmMvYWlvLWRpby1yZWdyZXNzL2Fpby1sYXN0LXJlZi1oZWxkLQ0KPiA+IGJ5LWlv
+IDEgMTAwIC9tbnQvbmZzc2NyYXRjaC9haW8tdGVzdGZpbGUNCj4gPiAJc2xlZXAgNQ0KPiA+IGRv
+bmUNCj4gPiANCj4gPiBUaGUgY29tbWFuZCBhaW8tbGFzdC1yZWYtaGVsZC1ieS1pbyBmcm9tIHhm
+c3Rlc3RzIHdpbGwgc3Bhd24gMTAwDQo+ID4gdGhyZWFkcy4gRWFjaCB0aHJlYWQNCj4gPiByZXBl
+YXRlZCBkb2luZyBvcGVuL2lvX3N1Ym1pdC9jbG9zZS9pb19nZXRldmVudHMvaW9fZGVzdHJveSB1
+bnRpbA0KPiA+IHRoZSBwYXJlbnQgZXhpc3QNCj4gPiBiZWNhdXNlIG9mIHRpbWVvdXQuDQo+ID4g
+DQo+ID4gDQo+ID4gSGVyZSBpcyB0aGUgbG9nIHdoZW4gdGhlIHRhc2sgaHVuZy4NCj4gPiANCj4g
+PiBbMTA4NDEuMTIxNTIzXSBuZnM0X2Nsb3NlX3ByZXBhcmU6IGJlZ2luIQ0KPiA+IFsxMDg0MS4x
+MjE1MjZdIC0tPiBuZnM0X2FsbG9jX3Nsb3QgdXNlZF9zbG90cz0wMDAwDQo+ID4gaGlnaGVzdF91
+c2VkPTQyOTQ5NjcyOTUgbWF4X3Nsb3RzPTEwDQo+ID4gWzEwODQxLjEyMTUyOF0gPC0tIG5mczRf
+YWxsb2Nfc2xvdCB1c2VkX3Nsb3RzPTAwMDEgaGlnaGVzdF91c2VkPTANCj4gPiBzbG90aWQ9MA0K
+PiA+IFsxMDg0MS4xMjE1MzBdIG5mczRfY2xvc2VfcHJlcGFyZTogZG9uZSENCj4gPiBbMTA4NDEu
+MTIxNTM2XSBlbmNvZGVfc2VxdWVuY2U6IHNlc3Npb25pZD0xNTUxNDA1NzQ5OjM4MjIzMzE1MzA6
+MTowDQo+ID4gc2VxaWQ9NTk0OTU4NDUgc2xvdGlkPTAgbWF4X3Nsb3RpZD0wIGNhY2hlX3RoaXM9
+MQ0KPiA+IFsxMDg0MS4xMjE1ODNdIG5mc2RfZGlzcGF0Y2g6IHZlcnMgNCBwcm9jIDENCj4gPiBb
+MTA4NDEuMTIxNTg4XSBfX2ZpbmRfaW5fc2Vzc2lvbmlkX2hhc2h0Ymw6DQo+ID4gMTU1MTQwNTc0
+OTozODIyMzMxNTMwOjE6MA0KPiA+IFsxMDg0MS4xMjE1OTBdIG5mc2Q0X3NlcXVlbmNlOiBzbG90
+aWQgMA0KPiA+IFsxMDg0MS4xMjE1OTJdIGNoZWNrX3Nsb3Rfc2VxaWQgZW50ZXIuIHNlcWlkIDU5
+NDk1ODQ1IHNsb3Rfc2VxaWQNCj4gPiA1OTQ5NTg0NA0KPiA+IFsxMDg0MS4xMjE1OTZdIG5mc2Q6
+IGZoX3ZlcmlmeSgyODogMDEwNjAwMDEgMGM2NmM2ZGIgZDc0ZWE0YzkNCj4gPiA2MWUxMmQ5ZSBj
+MDNiZWJhNiAwMDAwMDAwYikNCj4gPiBbMTA4NDEuMTIxNjA3XSBuZnNkOiBmaF92ZXJpZnkoMjg6
+IDAxMDYwMDAxIDBjNjZjNmRiIGQ3NGVhNGM5DQo+ID4gNjFlMTJkOWUgYzAzYmViYTYgMDAwMDAw
+MGIpDQo+ID4gWzEwODQxLjEyMTYxM10gTkZTRDogbmZzZDRfY2xvc2Ugb24gZmlsZSBhaW8tdGVz
+dGZpbGUNCj4gPiBbMTA4NDEuMTIxNjE1XSBORlNEOiBuZnM0X3ByZXByb2Nlc3Nfc2VxaWRfb3A6
+IHNlcWlkPTAgc3RhdGVpZCA9DQo+ID4gKDVjNzg5MmI1L2UzZDQyNjhhLzAwMGFiOTA1LzAwMDA3
+NDZiKQ0KPiA+IFsxMDg0MS4xMjE2MTldIG5mc3Y0IGNvbXBvdW5kIHJldHVybmVkIDEwMDI0DQo+
+ID4gWzEwODQxLjEyMTYyMV0gLS0+IG5mc2Q0X3N0b3JlX2NhY2hlX2VudHJ5IHNsb3QgMDAwMDAw
+MDBmNTQwZGRkOQ0KPiA+IFsxMDg0MS4xMjE2MjVdIHJlbmV3aW5nIGNsaWVudCAoY2xpZW50aWQg
+NWM3ODkyYjUvZTNkNDI2OGEpDQo+ID4gWzEwODQxLjEyMjUyNl0gZGVjb2RlX2F0dHJfdHlwZTog
+dHlwZT0wMA0KPiA+IC4uLi4uLg0KPiA+IFsxMDg0MS4xMjI1NThdIG5mczRfY2xvc2VfZG9uZTog
+YmVnaW4hDQo+ID4gWzEwODQxLjEyMjU2MV0gLS0+IG5mczRfYWxsb2Nfc2xvdCB1c2VkX3Nsb3Rz
+PTAwMDEgaGlnaGVzdF91c2VkPTANCj4gPiBtYXhfc2xvdHM9MTANCj4gPiBbMTA4NDEuMTIyNTY0
+XSA8LS0gbmZzNF9hbGxvY19zbG90IHVzZWRfc2xvdHM9MDAwMyBoaWdoZXN0X3VzZWQ9MQ0KPiA+
+IHNsb3RpZD0xDQo+ID4gWzEwODQxLjEyMjU2Nl0gbmZzNF9mcmVlX3Nsb3Q6IHNsb3RpZCAxIGhp
+Z2hlc3RfdXNlZF9zbG90aWQgMA0KPiA+IFsxMDg0MS4xMjI1NjhdIG5mczQxX3NlcXVlbmNlX3By
+b2Nlc3M6IEVycm9yIDAgZnJlZSB0aGUgc2xvdA0KPiA+IFsxMDg0MS4xMjI1NzFdIG5mczRfZnJl
+ZV9zbG90OiBzbG90aWQgMCBoaWdoZXN0X3VzZWRfc2xvdGlkDQo+ID4gNDI5NDk2NzI5NQ0KPiA+
+IFsxMDg0MS4xMjI1NzVdIG5mczRfY2xvc2VfZG9uZTogZG9uZSwgcmV0ID0gMCENCj4gPiBbMTA4
+NDEuMTIyNTg0XSBuZnM0X2Nsb3NlX3ByZXBhcmU6IGJlZ2luIQ0KPiA+IC4uLi4uLg0KPiA+IENs
+aWVudCBrZWVwIHJldHJ5IHRoZSBDTE9TRS4NCj4gPiANCj4gPiA+IEkgaGF2ZSBzZWVuIHRyYWNl
+IHdoZXJlIGNsb3NlIHdvdWxkIGdldCBFUlJfT0xEX1NUQVRFSUQgYW5kIHdvdWxkDQo+ID4gPiBz
+dGlsbCByZXRyeSB3aXRoIHRoZSBzYW1lIG9wZW4gc3RhdGUgdW50aWwgaXQgZ290IGEgcmVwbHkg
+dG8gdGhlDQo+ID4gPiBPUEVODQo+ID4gPiB3aGljaCBjaGFuZ2VkIHRoZSBzdGF0ZSBhbmQgd2hl
+biB0aGUgY2xpZW50IHJlY2VpdmVkIHJlcGx5IHRvDQo+ID4gPiB0aGF0LA0KPiA+ID4gaXQnbGwg
+cmV0cnkgdGhlIENMT1NFIHdpdGggdGhlIHVwZGF0ZWQgc3RhdGVpZC4NCj4gPiA+IA0KPiA+IA0K
+PiA+IFllcywgeW91IGFyZSByaWdodC4gSSBoYXZlIGFsc28gbm90aWNlZCB0aGF0LiBCdXQgd2hh
+dCBoYXBwZW5lZCBpZg0KPiA+IHRoZQ0KPiA+IE9QRU4gdGFzayBleGl0IHJlY2VpdmluZyBhIHNp
+Z25hbD8gSG93IGNhbiBhIGNsaWVudCB1cGRhdGUgdGhlDQo+ID4gc3RhdGVpZD8NCj4gPiANCg0K
+c3RhdGljIHZvaWQgbmZzNF9vcGVuX3JlbGVhc2Uodm9pZCAqY2FsbGRhdGEpDQp7DQogICAgICAg
+IHN0cnVjdA0KbmZzNF9vcGVuZGF0YSAqZGF0YSA9IGNhbGxkYXRhOw0KICAgICAgICBzdHJ1Y3Qg
+bmZzNF9zdGF0ZSAqc3RhdGUgPSBOVUxMOw0KDQogICAgICAgIC8qIElmIHRoaXMgcmVxdWVzdCBo
+YXNuJ3QgYmVlbiBjYW5jZWxsZWQsIGRvIG5vdGhpbmcgKi8NCiAgICAgICAgaWYgKCFkYXRhLT5j
+YW5jZWxsZWQpDQogICAgICAgICAgICAgICAgZ290byBvdXRfZnJlZTsNCiAgICAgICAgLyogSW4g
+Y2FzZSBvZiBlcnJvciwgbm8gY2xlYW51cCEgKi8NCiAgICAgICAgaWYgKGRhdGEtPnJwY19zdGF0
+dXMgIT0gMCB8fCAhZGF0YS0+cnBjX2RvbmUpDQogICAgICAgICAgICAgICAgZ290byBvdXRfZnJl
+ZTsNCiAgICAgICAgLyogSW4gY2FzZSB3ZSBuZWVkIGFuIG9wZW5fY29uZmlybSwgbm8gY2xlYW51
+cCEgKi8NCiAgICAgICAgaWYgKGRhdGEtPm9fcmVzLnJmbGFncyAmIE5GUzRfT1BFTl9SRVNVTFRf
+Q09ORklSTSkNCiAgICAgICAgICAgICAgICBnb3RvIG91dF9mcmVlOw0KICAgICAgICBzdGF0ZSA9
+IG5mczRfb3BlbmRhdGFfdG9fbmZzNF9zdGF0ZShkYXRhKTsNCiAgICAgICAgaWYgKCFJU19FUlIo
+c3RhdGUpKQ0KICAgICAgICAgICAgICAgIG5mczRfY2xvc2Vfc3RhdGUoc3RhdGUsIGRhdGEtPm9f
+YXJnLmZtb2RlKTsNCm91dF9mcmVlOg0KICAgICAgICBuZnM0X29wZW5kYXRhX3B1dChkYXRhKTsN
+Cn0NCg0KTm90ZSB3aGF0IGhhcHBlbnMgd2hlbiB0aGUgJ2RhdGEtPmNhbmNlbGxlZCcgZmxhZyBp
+cyBzZXQuIFRoaXMgaXMgd2h5DQp3ZSBhbHdheXMgZW5zdXJlIHRoYXQgc3RhdGVmdWwgb3BlcmF0
+aW9ucyBzdWNoIGFzIE9QRU4sIGFuZCBMT0NLLC4uLg0KYXJlIHJ1biBhcyBhc3luY2hyb25vdXMg
+UlBDIHRhc2tzLg0KT1BFTl9ET1dOR1JBREUsIENMT1NFIGFuZCBMT0NLVSBhcmUgYWxzbyBhc3lu
+Y2hyb25vdXMsIGJ1dCB0aGV5IGFyZQ0KaW5oZXJlbnRseSBzYWZlIGFnYWluc3Qgc2lnbmFscyBz
+aW5jZSB0aGV5IGRvIG5vdCBlc3RhYmxpc2ggbmV3IHN0YXRlDQp0aGF0IG5lZWRzIHRvIGJlIHRv
+cm4gZG93bi4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRh
+aW5lciwgSGFtbWVyc3BhY2UNCnRyb25kLm15a2xlYnVzdEBoYW1tZXJzcGFjZS5jb20NCg0KDQo=
