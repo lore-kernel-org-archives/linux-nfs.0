@@ -6,39 +6,39 @@ X-Spam-Status: No, score=-1.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	MAILING_LIST_MULTI,SPF_PASS,UNPARSEABLE_RELAY autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1C2C8C43381
-	for <linux-nfs@archiver.kernel.org>; Fri,  1 Mar 2019 05:20:00 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 411CDC43381
+	for <linux-nfs@archiver.kernel.org>; Fri,  1 Mar 2019 08:50:00 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id E152320851
-	for <linux-nfs@archiver.kernel.org>; Fri,  1 Mar 2019 05:19:59 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 0838B2087E
+	for <linux-nfs@archiver.kernel.org>; Fri,  1 Mar 2019 08:49:59 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1725913AbfCAFT7 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 1 Mar 2019 00:19:59 -0500
-Received: from out30-42.freemail.mail.aliyun.com ([115.124.30.42]:34334 "EHLO
-        out30-42.freemail.mail.aliyun.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1725287AbfCAFT6 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Mar 2019 00:19:58 -0500
-X-Alimail-AntiSpam: AC=PASS;BC=-1|-1;BR=01201311R111e4;CH=green;DM=||false|;FP=0|-1|-1|-1|0|-1|-1|-1;HT=e01f04455;MF=jiufei.xue@linux.alibaba.com;NM=1;PH=DS;RN=6;SR=0;TI=SMTPD_---0TLdWz5u_1551417594;
-Received: from ali-186590e05fa3.local(mailfrom:jiufei.xue@linux.alibaba.com fp:SMTPD_---0TLdWz5u_1551417594)
+        id S1726195AbfCAIt7 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 1 Mar 2019 03:49:59 -0500
+Received: from out4436.biz.mail.alibaba.com ([47.88.44.36]:31914 "EHLO
+        out4436.biz.mail.alibaba.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1725951AbfCAIt7 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Mar 2019 03:49:59 -0500
+X-Alimail-AntiSpam: AC=PASS;BC=-1|-1;BR=01201311R131e4;CH=green;DM=||false|;FP=0|-1|-1|-1|0|-1|-1|-1;HT=e01f04389;MF=jiufei.xue@linux.alibaba.com;NM=1;PH=DS;RN=6;SR=0;TI=SMTPD_---0TLf0V0I_1551430195;
+Received: from ali-186590e05fa3.local(mailfrom:jiufei.xue@linux.alibaba.com fp:SMTPD_---0TLf0V0I_1551430195)
           by smtp.aliyun-inc.com(127.0.0.1);
-          Fri, 01 Mar 2019 13:19:55 +0800
+          Fri, 01 Mar 2019 16:49:56 +0800
 Subject: Re: [bug report] task hang while testing xfstests generic/323
-To:     Trond Myklebust <trondmy@hammerspace.com>,
-        "aglo@umich.edu" <aglo@umich.edu>
-Cc:     "bfields@fieldses.org" <bfields@fieldses.org>,
-        "Anna.Schumaker@netapp.com" <Anna.Schumaker@netapp.com>,
+To:     Olga Kornievskaia <aglo@umich.edu>
+Cc:     "J. Bruce Fields" <bfields@fieldses.org>,
+        Anna Schumaker <Anna.Schumaker@netapp.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
         "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "joseph.qi@linux.alibaba.com" <joseph.qi@linux.alibaba.com>
+        Joseph Qi <joseph.qi@linux.alibaba.com>
 References: <fa8ca171-b260-3e5a-d69c-13f263f5bb9c@linux.alibaba.com>
  <CAN-5tyG9sUw2Oi+hbaW+KJDhvk8KT3Lb-cgU6azxq1yN+Tr=KQ@mail.gmail.com>
- <dae18b965a55ed36071b5296d6b1466a57878d16.camel@hammerspace.com>
+ <3b6597b0-41b4-255a-5ebb-cf34ad95315c@linux.alibaba.com>
 From:   Jiufei Xue <jiufei.xue@linux.alibaba.com>
-Message-ID: <c4b68217-275d-d40c-1b7e-71fddf91f830@linux.alibaba.com>
-Date:   Fri, 1 Mar 2019 13:19:54 +0800
+Message-ID: <57796366-0f08-2cfb-6f85-27d5485c07af@linux.alibaba.com>
+Date:   Fri, 1 Mar 2019 16:49:55 +0800
 User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.13; rv:60.0)
  Gecko/20100101 Thunderbird/60.3.3
 MIME-Version: 1.0
-In-Reply-To: <dae18b965a55ed36071b5296d6b1466a57878d16.camel@hammerspace.com>
+In-Reply-To: <3b6597b0-41b4-255a-5ebb-cf34ad95315c@linux.alibaba.com>
 Content-Type: text/plain; charset=utf-8
 Content-Language: en-US
 Content-Transfer-Encoding: 8bit
@@ -49,10 +49,12 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 
 
-On 2019/3/1 上午7:56, Trond Myklebust wrote:
-> On Thu, 2019-02-28 at 17:26 -0500, Olga Kornievskaia wrote:
->> On Thu, Feb 28, 2019 at 5:11 AM Jiufei Xue <
->> jiufei.xue@linux.alibaba.com> wrote:
+On 2019/3/1 下午1:08, Jiufei Xue wrote:
+> Hi Olga,
+> 
+> On 2019/3/1 上午6:26, Olga Kornievskaia wrote:
+>> On Thu, Feb 28, 2019 at 5:11 AM Jiufei Xue <jiufei.xue@linux.alibaba.com> wrote:
+>>>
 >>> Hi,
 >>>
 >>> when I tested xfstests/generic/323 with NFSv4.1 and v4.2, the task
@@ -78,10 +80,8 @@ On 2019/3/1 上午7:56, Trond Myklebust wrote:
 >>> NFS4ERR_OLD_STATEID), the client will retry to close the file when
 >>> stateid generation number in client is lower than server.
 >>>
->>> The original intention of this commit is retrying the operation
->>> while
->>> racing with an OPEN. However, in this case the stateid generation
->>> remains
+>>> The original intention of this commit is retrying the operation while
+>>> racing with an OPEN. However, in this case the stateid generation remains
 >>> mismatch forever.
 >>>
 >>> Any suggestions?
@@ -90,21 +90,97 @@ On 2019/3/1 上午7:56, Trond Myklebust wrote:
 >> the server has crashed on reply to the close and that's why the task
 >> is hung? What server are you testing against?
 >>
+> I am testing the local server, the testcase is attached below.
+> 
+> # uname -r
+> 5.0.0-rc8
+> 
+> # cat /etc/exports
+> /mnt/vdd *(rw,no_subtree_check,no_root_squash)
+> 
+> # cat test.sh
+> mount /dev/vdd /mnt/vdd
+> systemctl start nfs
+> mount -t nfs -o rw,relatime,vers=4.1 127.0.0.1:/mnt/vdd /mnt/nfsscratch
+> 
+> for ((i=0;i<10000;i++))
+> do
+>         echo "loop $i started"
+>         /usr/local/xfstests/src/aio-dio-regress/aio-last-ref-held-by-io 1 100 /mnt/nfsscratch/aio-testfile
+> 	sleep 5
+> done
+> 
+> The command aio-last-ref-held-by-io from xfstests will spawn 100 threads. Each thread
+> repeated doing open/io_submit/close/io_getevents/io_destroy until the parent exist
+> because of timeout.
+> 
+> 
+> Here is the log when the task hung.
+> 
+> [10841.121523] nfs4_close_prepare: begin!
+> [10841.121526] --> nfs4_alloc_slot used_slots=0000 highest_used=4294967295 max_slots=10
+> [10841.121528] <-- nfs4_alloc_slot used_slots=0001 highest_used=0 slotid=0
+> [10841.121530] nfs4_close_prepare: done!
+> [10841.121536] encode_sequence: sessionid=1551405749:3822331530:1:0 seqid=59495845 slotid=0 max_slotid=0 cache_this=1
+> [10841.121583] nfsd_dispatch: vers 4 proc 1
+> [10841.121588] __find_in_sessionid_hashtbl: 1551405749:3822331530:1:0
+> [10841.121590] nfsd4_sequence: slotid 0
+> [10841.121592] check_slot_seqid enter. seqid 59495845 slot_seqid 59495844
+> [10841.121596] nfsd: fh_verify(28: 01060001 0c66c6db d74ea4c9 61e12d9e c03beba6 0000000b)
+> [10841.121607] nfsd: fh_verify(28: 01060001 0c66c6db d74ea4c9 61e12d9e c03beba6 0000000b)
+> [10841.121613] NFSD: nfsd4_close on file aio-testfile
+> [10841.121615] NFSD: nfs4_preprocess_seqid_op: seqid=0 stateid = (5c7892b5/e3d4268a/000ab905/0000746b)
+> [10841.121619] nfsv4 compound returned 10024
+> [10841.121621] --> nfsd4_store_cache_entry slot 00000000f540ddd9
+> [10841.121625] renewing client (clientid 5c7892b5/e3d4268a)
+> [10841.122526] decode_attr_type: type=00
+> ......
+> [10841.122558] nfs4_close_done: begin!
+> [10841.122561] --> nfs4_alloc_slot used_slots=0001 highest_used=0 max_slots=10
+> [10841.122564] <-- nfs4_alloc_slot used_slots=0003 highest_used=1 slotid=1
+> [10841.122566] nfs4_free_slot: slotid 1 highest_used_slotid 0
+> [10841.122568] nfs41_sequence_process: Error 0 free the slot
+> [10841.122571] nfs4_free_slot: slotid 0 highest_used_slotid 4294967295
+> [10841.122575] nfs4_close_done: done, ret = 0!
+> [10841.122584] nfs4_close_prepare: begin!
+> ......
+> Client keep retry the CLOSE.
+> 
 >> I have seen trace where close would get ERR_OLD_STATEID and would
 >> still retry with the same open state until it got a reply to the OPEN
 >> which changed the state and when the client received reply to that,
 >> it'll retry the CLOSE with the updated stateid.
+>>
 > 
-> I agree with Olga's assessment. The server is not allowed to randomly
-> change the values of the seqid, and the client should be taking pains
-> to replay any OPEN calls for which a reply is missed. The expectation
-> is therefore that NFS4ERR_OLD_STATEID should always be a temporary
-> state.
+> Yes, you are right. I have also noticed that. But what happened if the
+> OPEN task exit receiving a signal? How can a client update the stateid?
 > 
-The server bumped the seqid because of a new OPEN from another thread.
-And I doubt that maybe the new OPEN task exit while receiving a signal
-without update the stateid.
+> Thanks,
+> Jiufei
+>
 
-> If it is not, then the bugreport needs to explain why the server bumped
-> the seqid without informing the client.
-> 
+I have added a tracepoint nfsd_inc_and_copy_stateid and enable the following
+trace: nfs4_open_file,nfs4_open_stateid_update on client and
+nfsd_inc_and_copy_stateid on server.
+
+Here's some trace right before the problem. The generation on server is 31856(7c70) which
+is higher than client(31855). And the client didn't update the stateid forever.
+
+aio-last-ref-he-5224  [000] ...1  1105.173446: nfs4_open_file: error=0 (OK) flags=49152 (O_DIRECT|0x8000) fmode=READ|0x801c fileid=00:2b:11 fhandle=0x0ca0e657 name=00:2b:2/aio-testfile stateid=31854:0x2a82450b openstateid=31854:0x2a82450b
+ aio-last-ref-he-5222  [000] ...1  1105.173568: nfs4_open_file: error=-512 (ERESTARTSYS) flags=49152 (O_DIRECT|0x8000) fmode=READ fileid=00:2b:0 fhandle=0x00000000 name=00:2b:2/aio-testfile stateid=0:0x00000000 openstateid=0:0x00000000
+            nfsd-2991  [000] ...1  1105.173661: nfsd_inc_and_copy_stateid: client 5c78ec26:60bfa0c2 stateid 00095d13:00007c6f
+ aio-last-ref-he-5234  [000] ...1  1105.174000: nfs4_open_file: error=0 (OK) flags=49152 (O_DIRECT|0x8000) fmode=READ|0x801c fileid=00:2b:11 fhandle=0x0ca0e657 name=00:2b:2/aio-testfile stateid=31854:0x2a82450b openstateid=31854:0x2a82450b
+ aio-last-ref-he-5151  [001] ...1  1105.174226: nfs4_open_file: error=-512 (ERESTARTSYS) flags=49152 (O_DIRECT|0x8000) fmode=READ|0x801c fileid=00:2b:0 fhandle=0x00000000 name=00:2b:2/aio-testfile stateid=0:0x00000000 openstateid=0:0x00000000
+ aio-last-ref-he-5235  [001] ...1  1105.174544: nfs4_open_file: error=-512 (ERESTARTSYS) flags=49152 (O_DIRECT|0x8000) fmode=READ|0x801c fileid=00:2b:0 fhandle=0x00000000 name=00:2b:2/aio-testfile stateid=0:0x00000000 openstateid=0:0x00000000
+ aio-last-ref-he-5141  [001] ...4  1105.174752: nfs4_open_stateid_update: error=-4 (0x4) fileid=00:2b:11 fhandle=0x0ca0e657 stateid=25925:0xe0cb0a41
+ aio-last-ref-he-5151  [001] ...4  1105.178258: nfs4_open_stateid_update: error=-4 (0x4) fileid=00:2b:11 fhandle=0x0ca0e657 stateid=31855:0x2a82450b
+           <...>-5181  [001] .N.1  1105.180254: nfs4_open_file: error=-512 (ERESTARTSYS) flags=49152 (O_DIRECT|0x8000) fmode=READ|0x801c fileid=00:2b:0 fhandle=0x00000000 name=00:2b:2/aio-testfile stateid=0:0x00000000 openstateid=0:0x00000000
+ aio-last-ref-he-5151  [001] ...1  1105.180670: nfs4_open_file: error=-512 (ERESTARTSYS) flags=49152 (O_DIRECT|0x8000) fmode=READ fileid=00:2b:0 fhandle=0x00000000 name=00:2b:2/aio-testfile stateid=0:0x00000000 openstateid=0:0x00000000
+ aio-last-ref-he-5235  [001] ...1  1105.180929: nfs4_open_file: error=-512 (ERESTARTSYS) flags=49152 (O_DIRECT|0x8000) fmode=READ fileid=00:2b:0 fhandle=0x00000000 name=00:2b:2/aio-testfile stateid=0:0x00000000 openstateid=0:0x00000000
+ aio-last-ref-he-5181  [001] ...1  1105.181179: nfs4_open_file: error=-512 (ERESTARTSYS) flags=49152 (O_DIRECT|0x8000) fmode=READ fileid=00:2b:0 fhandle=0x00000000 name=00:2b:2/aio-testfile stateid=0:0x00000000 openstateid=0:0x00000000
+ aio-last-ref-he-5141  [001] ...1  1105.181816: nfs4_open_file: error=0 (OK) flags=49152 (O_DIRECT|0x8000) fmode=READ|0x801c fileid=00:2b:11 fhandle=0x0ca0e657 name=00:2b:2/aio-testfile stateid=31855:0x2a82450b openstateid=31855:0x2a82450b
+            nfsd-2990  [001] ...1  1105.182033: nfsd_inc_and_copy_stateid: client 5c78ec26:60bfa0c2 stateid 00095d13:00007c70
+
+Thanks,
+Jiufei
+
