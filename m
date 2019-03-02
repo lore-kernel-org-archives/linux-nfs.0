@@ -2,259 +2,224 @@ Return-Path: <SRS0=6Mc3=RF=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,SPF_PASS,URIBL_BLOCKED,
-	USER_AGENT_MUTT autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-1.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_PASS,UNPARSEABLE_RELAY autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 766FEC43381
-	for <linux-nfs@archiver.kernel.org>; Sat,  2 Mar 2019 03:28:11 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A7F3DC43381
+	for <linux-nfs@archiver.kernel.org>; Sat,  2 Mar 2019 16:34:08 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 3AD622075B
-	for <linux-nfs@archiver.kernel.org>; Sat,  2 Mar 2019 03:28:11 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 6DE1620643
+	for <linux-nfs@archiver.kernel.org>; Sat,  2 Mar 2019 16:34:08 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726778AbfCBD2K (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 1 Mar 2019 22:28:10 -0500
-Received: from mga02.intel.com ([134.134.136.20]:7270 "EHLO mga02.intel.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726412AbfCBD2K (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 1 Mar 2019 22:28:10 -0500
-X-Amp-Result: UNSCANNABLE
-X-Amp-File-Uploaded: False
-Received: from fmsmga005.fm.intel.com ([10.253.24.32])
-  by orsmga101.jf.intel.com with ESMTP/TLS/DHE-RSA-AES256-GCM-SHA384; 01 Mar 2019 19:28:01 -0800
-X-ExtLoop1: 1
-X-IronPort-AV: E=Sophos;i="5.58,430,1544515200"; 
-   d="gz'50?scan'50,208,50";a="324676876"
-Received: from lkp-server01.sh.intel.com (HELO lkp-server01) ([10.239.97.150])
-  by fmsmga005.fm.intel.com with ESMTP; 01 Mar 2019 19:28:00 -0800
-Received: from kbuild by lkp-server01 with local (Exim 4.89)
-        (envelope-from <lkp@intel.com>)
-        id 1gzvJg-0004mm-7e; Sat, 02 Mar 2019 11:28:00 +0800
-Date:   Sat, 2 Mar 2019 11:27:17 +0800
-From:   kbuild test robot <lkp@intel.com>
-To:     Trond Myklebust <trond.myklebust@hammerspace.com>
-Cc:     kbuild-all@01.org, linux-nfs@vger.kernel.org
-Subject: [nfs:testing 44/57] ERROR: "nfs42_proc_layouterror"
- [fs/nfs/flexfilelayout/nfs_layout_flexfiles.ko] undefined!
-Message-ID: <201903021109.U1BSVkRo%fengguang.wu@intel.com>
+        id S1726368AbfCBQeH (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sat, 2 Mar 2019 11:34:07 -0500
+Received: from out30-42.freemail.mail.aliyun.com ([115.124.30.42]:34608 "EHLO
+        out30-42.freemail.mail.aliyun.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1726282AbfCBQeH (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 2 Mar 2019 11:34:07 -0500
+X-Alimail-AntiSpam: AC=PASS;BC=-1|-1;BR=01201311R111e4;CH=green;DM=||false|;FP=0|-1|-1|-1|0|-1|-1|-1;HT=e01f04397;MF=jiufei.xue@linux.alibaba.com;NM=1;PH=DS;RN=6;SR=0;TI=SMTPD_---0TLnheZu_1551544442;
+Received: from ali-186590e05fa3.local(mailfrom:jiufei.xue@linux.alibaba.com fp:SMTPD_---0TLnheZu_1551544442)
+          by smtp.aliyun-inc.com(127.0.0.1);
+          Sun, 03 Mar 2019 00:34:03 +0800
+Subject: Re: [bug report] task hang while testing xfstests generic/323
+To:     Trond Myklebust <trondmy@hammerspace.com>,
+        "aglo@umich.edu" <aglo@umich.edu>
+Cc:     "bfields@fieldses.org" <bfields@fieldses.org>,
+        "Anna.Schumaker@netapp.com" <Anna.Schumaker@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "joseph.qi@linux.alibaba.com" <joseph.qi@linux.alibaba.com>
+References: <fa8ca171-b260-3e5a-d69c-13f263f5bb9c@linux.alibaba.com>
+ <CAN-5tyG9sUw2Oi+hbaW+KJDhvk8KT3Lb-cgU6azxq1yN+Tr=KQ@mail.gmail.com>
+ <3b6597b0-41b4-255a-5ebb-cf34ad95315c@linux.alibaba.com>
+ <57796366-0f08-2cfb-6f85-27d5485c07af@linux.alibaba.com>
+ <ce839197cb70f3bc75413ed2e54f8baafafc01dd.camel@hammerspace.com>
+From:   Jiufei Xue <jiufei.xue@linux.alibaba.com>
+Message-ID: <1edd3a2c-b42d-b0eb-0c52-9e564b5282d7@linux.alibaba.com>
+Date:   Sun, 3 Mar 2019 00:34:02 +0800
+User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.13; rv:60.0)
+ Gecko/20100101 Thunderbird/60.3.3
 MIME-Version: 1.0
-Content-Type: multipart/mixed; boundary="mP3DRpeJDSE+ciuQ"
-Content-Disposition: inline
-User-Agent: Mutt/1.5.23 (2014-03-12)
+In-Reply-To: <ce839197cb70f3bc75413ed2e54f8baafafc01dd.camel@hammerspace.com>
+Content-Type: text/plain; charset=utf-8
+Content-Language: en-US
+Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
+Hi Trond,
 
---mP3DRpeJDSE+ciuQ
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
+On 2019/3/1 下午9:08, Trond Myklebust wrote:
+> On Fri, 2019-03-01 at 16:49 +0800, Jiufei Xue wrote:
+>>
+>> On 2019/3/1 下午1:08, Jiufei Xue wrote:
+>>> Hi Olga,
+>>>
+>>> On 2019/3/1 上午6:26, Olga Kornievskaia wrote:
+>>>> On Thu, Feb 28, 2019 at 5:11 AM Jiufei Xue <
+>>>> jiufei.xue@linux.alibaba.com> wrote:
+>>>>> Hi,
+>>>>>
+>>>>> when I tested xfstests/generic/323 with NFSv4.1 and v4.2, the
+>>>>> task
+>>>>> changed to zombie occasionally while a thread is hanging with
+>>>>> the
+>>>>> following stack:
+>>>>>
+>>>>> [<0>] rpc_wait_bit_killable+0x1e/0xa0 [sunrpc]
+>>>>> [<0>] nfs4_do_close+0x21b/0x2c0 [nfsv4]
+>>>>> [<0>] __put_nfs_open_context+0xa2/0x110 [nfs]
+>>>>> [<0>] nfs_file_release+0x35/0x50 [nfs]
+>>>>> [<0>] __fput+0xa2/0x1c0
+>>>>> [<0>] task_work_run+0x82/0xa0
+>>>>> [<0>] do_exit+0x2ac/0xc20
+>>>>> [<0>] do_group_exit+0x39/0xa0
+>>>>> [<0>] get_signal+0x1ce/0x5d0
+>>>>> [<0>] do_signal+0x36/0x620
+>>>>> [<0>] exit_to_usermode_loop+0x5e/0xc2
+>>>>> [<0>] do_syscall_64+0x16c/0x190
+>>>>> [<0>] entry_SYSCALL_64_after_hwframe+0x44/0xa9
+>>>>> [<0>] 0xffffffffffffffff
+>>>>>
+>>>>> Since commit 12f275cdd163(NFSv4: Retry CLOSE and DELEGRETURN on
+>>>>> NFS4ERR_OLD_STATEID), the client will retry to close the file
+>>>>> when
+>>>>> stateid generation number in client is lower than server.
+>>>>>
+>>>>> The original intention of this commit is retrying the operation
+>>>>> while
+>>>>> racing with an OPEN. However, in this case the stateid
+>>>>> generation remains
+>>>>> mismatch forever.
+>>>>>
+>>>>> Any suggestions?
+>>>>
+>>>> Can you include a network trace of the failure? Is it possible
+>>>> that
+>>>> the server has crashed on reply to the close and that's why the
+>>>> task
+>>>> is hung? What server are you testing against?
+>>>>
+>>> I am testing the local server, the testcase is attached below.
+>>>
+>>> # uname -r
+>>> 5.0.0-rc8
+>>>
+>>> # cat /etc/exports
+>>> /mnt/vdd *(rw,no_subtree_check,no_root_squash)
+>>>
+>>> # cat test.sh
+>>> mount /dev/vdd /mnt/vdd
+>>> systemctl start nfs
+>>> mount -t nfs -o rw,relatime,vers=4.1 127.0.0.1:/mnt/vdd
+>>> /mnt/nfsscratch
+>>>
+>>> for ((i=0;i<10000;i++))
+>>> do
+>>>         echo "loop $i started"
+>>>         /usr/local/xfstests/src/aio-dio-regress/aio-last-ref-held-
+>>> by-io 1 100 /mnt/nfsscratch/aio-testfile
+>>> 	sleep 5
+>>> done
+>>>
+>>> The command aio-last-ref-held-by-io from xfstests will spawn 100
+>>> threads. Each thread
+>>> repeated doing open/io_submit/close/io_getevents/io_destroy until
+>>> the parent exist
+>>> because of timeout.
+>>>
+>>>
+>>> Here is the log when the task hung.
+>>>
+>>> [10841.121523] nfs4_close_prepare: begin!
+>>> [10841.121526] --> nfs4_alloc_slot used_slots=0000
+>>> highest_used=4294967295 max_slots=10
+>>> [10841.121528] <-- nfs4_alloc_slot used_slots=0001 highest_used=0
+>>> slotid=0
+>>> [10841.121530] nfs4_close_prepare: done!
+>>> [10841.121536] encode_sequence: sessionid=1551405749:3822331530:1:0
+>>> seqid=59495845 slotid=0 max_slotid=0 cache_this=1
+>>> [10841.121583] nfsd_dispatch: vers 4 proc 1
+>>> [10841.121588] __find_in_sessionid_hashtbl:
+>>> 1551405749:3822331530:1:0
+>>> [10841.121590] nfsd4_sequence: slotid 0
+>>> [10841.121592] check_slot_seqid enter. seqid 59495845 slot_seqid
+>>> 59495844
+>>> [10841.121596] nfsd: fh_verify(28: 01060001 0c66c6db d74ea4c9
+>>> 61e12d9e c03beba6 0000000b)
+>>> [10841.121607] nfsd: fh_verify(28: 01060001 0c66c6db d74ea4c9
+>>> 61e12d9e c03beba6 0000000b)
+>>> [10841.121613] NFSD: nfsd4_close on file aio-testfile
+>>> [10841.121615] NFSD: nfs4_preprocess_seqid_op: seqid=0 stateid =
+>>> (5c7892b5/e3d4268a/000ab905/0000746b)
+>>> [10841.121619] nfsv4 compound returned 10024
+>>> [10841.121621] --> nfsd4_store_cache_entry slot 00000000f540ddd9
+>>> [10841.121625] renewing client (clientid 5c7892b5/e3d4268a)
+>>> [10841.122526] decode_attr_type: type=00
+>>> ......
+>>> [10841.122558] nfs4_close_done: begin!
+>>> [10841.122561] --> nfs4_alloc_slot used_slots=0001 highest_used=0
+>>> max_slots=10
+>>> [10841.122564] <-- nfs4_alloc_slot used_slots=0003 highest_used=1
+>>> slotid=1
+>>> [10841.122566] nfs4_free_slot: slotid 1 highest_used_slotid 0
+>>> [10841.122568] nfs41_sequence_process: Error 0 free the slot
+>>> [10841.122571] nfs4_free_slot: slotid 0 highest_used_slotid
+>>> 4294967295
+>>> [10841.122575] nfs4_close_done: done, ret = 0!
+>>> [10841.122584] nfs4_close_prepare: begin!
+>>> ......
+>>> Client keep retry the CLOSE.
+>>>
+>>>> I have seen trace where close would get ERR_OLD_STATEID and would
+>>>> still retry with the same open state until it got a reply to the
+>>>> OPEN
+>>>> which changed the state and when the client received reply to
+>>>> that,
+>>>> it'll retry the CLOSE with the updated stateid.
+>>>>
+>>>
+>>> Yes, you are right. I have also noticed that. But what happened if
+>>> the
+>>> OPEN task exit receiving a signal? How can a client update the
+>>> stateid?
+>>>
+> 
+> static void nfs4_open_release(void *calldata)
+> {
+>         struct
+> nfs4_opendata *data = calldata;
+>         struct nfs4_state *state = NULL;
+> 
+>         /* If this request hasn't been cancelled, do nothing */
+>         if (!data->cancelled)
+>                 goto out_free;
+>         /* In case of error, no cleanup! */
+>         if (data->rpc_status != 0 || !data->rpc_done)
+>                 goto out_free;
+>         /* In case we need an open_confirm, no cleanup! */
+>         if (data->o_res.rflags & NFS4_OPEN_RESULT_CONFIRM)
+>                 goto out_free;
+>         state = nfs4_opendata_to_nfs4_state(data);
+>         if (!IS_ERR(state))
+>                 nfs4_close_state(state, data->o_arg.fmode);
+> out_free:
+>         nfs4_opendata_put(data);
+> }
+> 
+> Note what happens when the 'data->cancelled' flag is set. This is why
+> we always ensure that stateful operations such as OPEN, and LOCK,...
+> are run as asynchronous RPC tasks.
+> OPEN_DOWNGRADE, CLOSE and LOCKU are also asynchronous, but they are
+> inherently safe against signals since they do not establish new state
+> that needs to be torn down.
+> 
+Thank you for your correction. I have not noted that before. However,
+the problem can still be reproduced on 5.0.0-rc8. I found that server
+bumped the last seqid in function nfsd4_process_open2(), while not keeping
+the client updated for some reasons.
 
-tree:   git://git.linux-nfs.org/projects/trondmy/linux-nfs.git testing
-head:   1db05fa5a2f4b3aa4d40f2d03a80cb30af1bff11
-commit: e52d629942a7d6e8760f475649633dded643a8cd [44/57] NFS/flexfiles: Send LAYOUTERROR when failing over mirrored reads
-config: nds32-defconfig (attached as .config)
-compiler: nds32le-linux-gcc (GCC) 6.4.0
-reproduce:
-        wget https://raw.githubusercontent.com/intel/lkp-tests/master/sbin/make.cross -O ~/bin/make.cross
-        chmod +x ~/bin/make.cross
-        git checkout e52d629942a7d6e8760f475649633dded643a8cd
-        # save the attached .config to linux build tree
-        GCC_VERSION=6.4.0 make.cross ARCH=nds32 
-
-All errors (new ones prefixed by >>):
-
->> ERROR: "nfs42_proc_layouterror" [fs/nfs/flexfilelayout/nfs_layout_flexfiles.ko] undefined!
-
----
-0-DAY kernel test infrastructure                Open Source Technology Center
-https://lists.01.org/pipermail/kbuild-all                   Intel Corporation
-
---mP3DRpeJDSE+ciuQ
-Content-Type: application/gzip
-Content-Disposition: attachment; filename=".config.gz"
-Content-Transfer-Encoding: base64
-
-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
-
---mP3DRpeJDSE+ciuQ--
+Thanks,
+Jiufei
