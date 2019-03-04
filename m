@@ -2,161 +2,229 @@ Return-Path: <SRS0=iDPq=RH=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-1.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_PASS,UNPARSEABLE_RELAY autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id BDA53C43381
-	for <linux-nfs@archiver.kernel.org>; Mon,  4 Mar 2019 03:08:32 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 427E3C43381
+	for <linux-nfs@archiver.kernel.org>; Mon,  4 Mar 2019 15:20:10 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 936F620823
-	for <linux-nfs@archiver.kernel.org>; Mon,  4 Mar 2019 03:08:32 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 0FC2C20652
+	for <linux-nfs@archiver.kernel.org>; Mon,  4 Mar 2019 15:20:10 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1725974AbfCDDIb (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 3 Mar 2019 22:08:31 -0500
-Received: from mx2.suse.de ([195.135.220.15]:41782 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1725938AbfCDDIb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sun, 3 Mar 2019 22:08:31 -0500
-X-Virus-Scanned: by amavisd-new at test-mx.suse.de
-Received: from relay2.suse.de (unknown [195.135.220.254])
-        by mx1.suse.de (Postfix) with ESMTP id 622F1AEDF;
-        Mon,  4 Mar 2019 03:08:30 +0000 (UTC)
-From:   NeilBrown <neilb@suse.com>
-To:     "J. Bruce Fields" <bfields@fieldses.org>,
-        Jeff Layton <jlayton@kernel.org>
-Date:   Mon, 04 Mar 2019 14:08:22 +1100
-Subject: [PATCH] nfsd: fix memory corruption caused by readdir
-cc:     linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Message-ID: <87lg1vs5eh.fsf@notabene.neil.brown.name>
+        id S1726181AbfCDPUJ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 4 Mar 2019 10:20:09 -0500
+Received: from out30-45.freemail.mail.aliyun.com ([115.124.30.45]:58435 "EHLO
+        out30-45.freemail.mail.aliyun.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1726166AbfCDPUJ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Mar 2019 10:20:09 -0500
+X-Alimail-AntiSpam: AC=PASS;BC=-1|-1;BR=01201311R181e4;CH=green;DM=||false|;FP=0|-1|-1|-1|0|-1|-1|-1;HT=e01f04455;MF=jiufei.xue@linux.alibaba.com;NM=1;PH=DS;RN=6;SR=0;TI=SMTPD_---0TLxDJaG_1551712803;
+Received: from ali-186590e05fa3.local(mailfrom:jiufei.xue@linux.alibaba.com fp:SMTPD_---0TLxDJaG_1551712803)
+          by smtp.aliyun-inc.com(127.0.0.1);
+          Mon, 04 Mar 2019 23:20:04 +0800
+Subject: Re: [bug report] task hang while testing xfstests generic/323
+To:     Trond Myklebust <trondmy@hammerspace.com>,
+        "aglo@umich.edu" <aglo@umich.edu>
+Cc:     "bfields@fieldses.org" <bfields@fieldses.org>,
+        "Anna.Schumaker@netapp.com" <Anna.Schumaker@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "joseph.qi@linux.alibaba.com" <joseph.qi@linux.alibaba.com>
+References: <fa8ca171-b260-3e5a-d69c-13f263f5bb9c@linux.alibaba.com>
+ <CAN-5tyG9sUw2Oi+hbaW+KJDhvk8KT3Lb-cgU6azxq1yN+Tr=KQ@mail.gmail.com>
+ <3b6597b0-41b4-255a-5ebb-cf34ad95315c@linux.alibaba.com>
+ <57796366-0f08-2cfb-6f85-27d5485c07af@linux.alibaba.com>
+ <ce839197cb70f3bc75413ed2e54f8baafafc01dd.camel@hammerspace.com>
+From:   Jiufei Xue <jiufei.xue@linux.alibaba.com>
+Message-ID: <365504c3-d785-7e4b-1dd2-c75f30c85c65@linux.alibaba.com>
+Date:   Mon, 4 Mar 2019 23:20:03 +0800
+User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.13; rv:60.0)
+ Gecko/20100101 Thunderbird/60.3.3
 MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
+In-Reply-To: <ce839197cb70f3bc75413ed2e54f8baafafc01dd.camel@hammerspace.com>
+Content-Type: text/plain; charset=utf-8
+Content-Language: en-US
+Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
---=-=-=
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+Hi Trond,
 
+On 2019/3/1 下午9:08, Trond Myklebust wrote:
+> On Fri, 2019-03-01 at 16:49 +0800, Jiufei Xue wrote:
+>>
+>> On 2019/3/1 下午1:08, Jiufei Xue wrote:
+>>> Hi Olga,
+>>>
+>>> On 2019/3/1 上午6:26, Olga Kornievskaia wrote:
+>>>> On Thu, Feb 28, 2019 at 5:11 AM Jiufei Xue <
+>>>> jiufei.xue@linux.alibaba.com> wrote:
+>>>>> Hi,
+>>>>>
+>>>>> when I tested xfstests/generic/323 with NFSv4.1 and v4.2, the
+>>>>> task
+>>>>> changed to zombie occasionally while a thread is hanging with
+>>>>> the
+>>>>> following stack:
+>>>>>
+>>>>> [<0>] rpc_wait_bit_killable+0x1e/0xa0 [sunrpc]
+>>>>> [<0>] nfs4_do_close+0x21b/0x2c0 [nfsv4]
+>>>>> [<0>] __put_nfs_open_context+0xa2/0x110 [nfs]
+>>>>> [<0>] nfs_file_release+0x35/0x50 [nfs]
+>>>>> [<0>] __fput+0xa2/0x1c0
+>>>>> [<0>] task_work_run+0x82/0xa0
+>>>>> [<0>] do_exit+0x2ac/0xc20
+>>>>> [<0>] do_group_exit+0x39/0xa0
+>>>>> [<0>] get_signal+0x1ce/0x5d0
+>>>>> [<0>] do_signal+0x36/0x620
+>>>>> [<0>] exit_to_usermode_loop+0x5e/0xc2
+>>>>> [<0>] do_syscall_64+0x16c/0x190
+>>>>> [<0>] entry_SYSCALL_64_after_hwframe+0x44/0xa9
+>>>>> [<0>] 0xffffffffffffffff
+>>>>>
+>>>>> Since commit 12f275cdd163(NFSv4: Retry CLOSE and DELEGRETURN on
+>>>>> NFS4ERR_OLD_STATEID), the client will retry to close the file
+>>>>> when
+>>>>> stateid generation number in client is lower than server.
+>>>>>
+>>>>> The original intention of this commit is retrying the operation
+>>>>> while
+>>>>> racing with an OPEN. However, in this case the stateid
+>>>>> generation remains
+>>>>> mismatch forever.
+>>>>>
+>>>>> Any suggestions?
+>>>>
+>>>> Can you include a network trace of the failure? Is it possible
+>>>> that
+>>>> the server has crashed on reply to the close and that's why the
+>>>> task
+>>>> is hung? What server are you testing against?
+>>>>
+>>> I am testing the local server, the testcase is attached below.
+>>>
+>>> # uname -r
+>>> 5.0.0-rc8
+>>>
+>>> # cat /etc/exports
+>>> /mnt/vdd *(rw,no_subtree_check,no_root_squash)
+>>>
+>>> # cat test.sh
+>>> mount /dev/vdd /mnt/vdd
+>>> systemctl start nfs
+>>> mount -t nfs -o rw,relatime,vers=4.1 127.0.0.1:/mnt/vdd
+>>> /mnt/nfsscratch
+>>>
+>>> for ((i=0;i<10000;i++))
+>>> do
+>>>         echo "loop $i started"
+>>>         /usr/local/xfstests/src/aio-dio-regress/aio-last-ref-held-
+>>> by-io 1 100 /mnt/nfsscratch/aio-testfile
+>>> 	sleep 5
+>>> done
+>>>
+>>> The command aio-last-ref-held-by-io from xfstests will spawn 100
+>>> threads. Each thread
+>>> repeated doing open/io_submit/close/io_getevents/io_destroy until
+>>> the parent exist
+>>> because of timeout.
+>>>
+>>>
+>>> Here is the log when the task hung.
+>>>
+>>> [10841.121523] nfs4_close_prepare: begin!
+>>> [10841.121526] --> nfs4_alloc_slot used_slots=0000
+>>> highest_used=4294967295 max_slots=10
+>>> [10841.121528] <-- nfs4_alloc_slot used_slots=0001 highest_used=0
+>>> slotid=0
+>>> [10841.121530] nfs4_close_prepare: done!
+>>> [10841.121536] encode_sequence: sessionid=1551405749:3822331530:1:0
+>>> seqid=59495845 slotid=0 max_slotid=0 cache_this=1
+>>> [10841.121583] nfsd_dispatch: vers 4 proc 1
+>>> [10841.121588] __find_in_sessionid_hashtbl:
+>>> 1551405749:3822331530:1:0
+>>> [10841.121590] nfsd4_sequence: slotid 0
+>>> [10841.121592] check_slot_seqid enter. seqid 59495845 slot_seqid
+>>> 59495844
+>>> [10841.121596] nfsd: fh_verify(28: 01060001 0c66c6db d74ea4c9
+>>> 61e12d9e c03beba6 0000000b)
+>>> [10841.121607] nfsd: fh_verify(28: 01060001 0c66c6db d74ea4c9
+>>> 61e12d9e c03beba6 0000000b)
+>>> [10841.121613] NFSD: nfsd4_close on file aio-testfile
+>>> [10841.121615] NFSD: nfs4_preprocess_seqid_op: seqid=0 stateid =
+>>> (5c7892b5/e3d4268a/000ab905/0000746b)
+>>> [10841.121619] nfsv4 compound returned 10024
+>>> [10841.121621] --> nfsd4_store_cache_entry slot 00000000f540ddd9
+>>> [10841.121625] renewing client (clientid 5c7892b5/e3d4268a)
+>>> [10841.122526] decode_attr_type: type=00
+>>> ......
+>>> [10841.122558] nfs4_close_done: begin!
+>>> [10841.122561] --> nfs4_alloc_slot used_slots=0001 highest_used=0
+>>> max_slots=10
+>>> [10841.122564] <-- nfs4_alloc_slot used_slots=0003 highest_used=1
+>>> slotid=1
+>>> [10841.122566] nfs4_free_slot: slotid 1 highest_used_slotid 0
+>>> [10841.122568] nfs41_sequence_process: Error 0 free the slot
+>>> [10841.122571] nfs4_free_slot: slotid 0 highest_used_slotid
+>>> 4294967295
+>>> [10841.122575] nfs4_close_done: done, ret = 0!
+>>> [10841.122584] nfs4_close_prepare: begin!
+>>> ......
+>>> Client keep retry the CLOSE.
+>>>
+>>>> I have seen trace where close would get ERR_OLD_STATEID and would
+>>>> still retry with the same open state until it got a reply to the
+>>>> OPEN
+>>>> which changed the state and when the client received reply to
+>>>> that,
+>>>> it'll retry the CLOSE with the updated stateid.
+>>>>
+>>>
+>>> Yes, you are right. I have also noticed that. But what happened if
+>>> the
+>>> OPEN task exit receiving a signal? How can a client update the
+>>> stateid?
+>>>
+> 
+> static void nfs4_open_release(void *calldata)
+> {
+>         struct
+> nfs4_opendata *data = calldata;
+>         struct nfs4_state *state = NULL;
+> 
+>         /* If this request hasn't been cancelled, do nothing */
+>         if (!data->cancelled)
+>                 goto out_free;
+>         /* In case of error, no cleanup! */
+>         if (data->rpc_status != 0 || !data->rpc_done)
+>                 goto out_free;
+>         /* In case we need an open_confirm, no cleanup! */
+>         if (data->o_res.rflags & NFS4_OPEN_RESULT_CONFIRM)
+>                 goto out_free;
+>         state = nfs4_opendata_to_nfs4_state(data);
+>         if (!IS_ERR(state))
+>                 nfs4_close_state(state, data->o_arg.fmode);
+> out_free:
+>         nfs4_opendata_put(data);
+> }
+> 
+> Note what happens when the 'data->cancelled' flag is set. This is why
+> we always ensure that stateful operations such as OPEN, and LOCK,...
+> are run as asynchronous RPC tasks.
 
-If the result of an NFSv3 readdir{,plus} request results in the
-"offset" on one entry having to be split across 2 pages, and is sized
-so that the next directory entry doesn't fix in the requested size,
-then memory corruption can happen.
+I noticed that when receiving a signal, the rpc_status will be set to
+-ERESTARTSYS in rpc_exit->rpc_exit_task->nfs4_open_done, which made stateid
+not updated in nfs4_open_release().
 
-When encode_entry() is called after encoding the last entry that fits,
-it notices that ->offset and ->offset1 are set, and so stores the
-offset value in the two pages as required.  It clears ->offset1 but
-*does not* clear ->offset.
+So is it possible that the stateid between the client and the server remain
+mismatch if the OPEN task received the signal right after transmitting the
+message or receiving the response, but before calling rpc_exit_task normally?
 
-Normally this omission doesn't matter as encode_entry_baggage() will
-be called, and will set ->offset to a suitable value (not on a page
-boundary).
-But in the case where cd->buflen < elen and nfserr_toosmall is
-returned, ->offset is not reset.
+Thanks,
+Jiufei
 
-This means that nfsd3proc_readdirplus will see ->offset with a value 4
-bytes before the end of a page, and ->offset1 set to NULL.
-It will try to write 8bytes to ->offset.
-If we are lucky, the next page will be read-only, and the system will
-  BUG: unable to handle kernel paging request at...
-
-If we are unlucky, some innocent page will have the first 4 bytes
-corrupted.
-
-nfsd3proc_readdir() doesn't even check for ->offset1, it just blindly
-writes 8 bytes to the offset wherever it is.
-
-Fix this by clearing ->offset after it is used, and copying the
-=2D>offset handling code from nfsd3_proc_readdirplus into
-nfsd3_proc_readdir.
-
-(Note that the commit hash in the Fixes tag is from the 'history'
- tree - this bug predates git).
-Fixes: eb229d253e6c ("[PATCH] kNFSd: fix two xdr-encode bugs for readdirplu=
-s reply")
-Cc: stable@vger.kernel.org (v2.6.12+)
-Signed-off-by: NeilBrown <neilb@suse.com>
-=2D--
-
-Can I still get extra credit for fixing a bug that is 14.5 years old, if
-I'm the one who introduced it?
-
- fs/nfsd/nfs3proc.c | 16 ++++++++++++++--
- fs/nfsd/nfs3xdr.c  |  1 +
- 2 files changed, 15 insertions(+), 2 deletions(-)
-
-diff --git a/fs/nfsd/nfs3proc.c b/fs/nfsd/nfs3proc.c
-index 9eb8086ea841..c9cf46e0c040 100644
-=2D-- a/fs/nfsd/nfs3proc.c
-+++ b/fs/nfsd/nfs3proc.c
-@@ -463,8 +463,19 @@ nfsd3_proc_readdir(struct svc_rqst *rqstp)
- 					&resp->common, nfs3svc_encode_entry);
- 	memcpy(resp->verf, argp->verf, 8);
- 	resp->count =3D resp->buffer - argp->buffer;
-=2D	if (resp->offset)
-=2D		xdr_encode_hyper(resp->offset, argp->cookie);
-+	if (resp->offset) {
-+		loff_t offset =3D argp->cookie;
-+
-+		if (unlikely(resp->offset1)) {
-+			/* we ended up with offset on a page boundary */
-+			*resp->offset =3D htonl(offset >> 32);
-+			*resp->offset1 =3D htonl(offset & 0xffffffff);
-+			resp->offset1 =3D NULL;
-+		} else {
-+			xdr_encode_hyper(resp->offset, offset);
-+		}
-+		resp->offset =3D NULL;
-+	}
-=20
- 	RETURN_STATUS(nfserr);
- }
-@@ -533,6 +544,7 @@ nfsd3_proc_readdirplus(struct svc_rqst *rqstp)
- 		} else {
- 			xdr_encode_hyper(resp->offset, offset);
- 		}
-+		resp->offset =3D NULL;
- 	}
-=20
- 	RETURN_STATUS(nfserr);
-diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
-index 9b973f4f7d01..83919116d5cb 100644
-=2D-- a/fs/nfsd/nfs3xdr.c
-+++ b/fs/nfsd/nfs3xdr.c
-@@ -921,6 +921,7 @@ encode_entry(struct readdir_cd *ccd, const char *name, =
-int namlen,
- 		} else {
- 			xdr_encode_hyper(cd->offset, offset64);
- 		}
-+		cd->offset =3D NULL;
- 	}
-=20
- 	/*
-=2D-=20
-2.14.0.rc0.dirty
-
-
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlx8lqcACgkQOeye3VZi
-gbmMZQ//X3PHTu3swQ0759WwQhkkdqXWlyt2uv8yzx3rcYeeP45AIzq2NS7tDsbJ
-JwD2qWS+QciC0VhizPVQ+pgPRJvGMrGOwTZGGiDxKIDVauCKTPLMLzSh2do8zO0o
-z9dyltflNwixZoeDp4l8mByQhx3Qh2yXkY6iHoNGmQVsnHltnC/t2akQDz2XlXJF
-/eoamBN6vmrjnniXTR5TivgygOC0LCBKnawbJNbWUPA7UhG+sP8mWiHTqz8jquym
-qOQRJnA7aOzxebA6RBTJScmcnT86S8bOFvY4lBbsxO6vVK9fsY0pQG2GALnT+S4R
-8NMfGbO3dmcIn5ayCAEOYUp195O98PclJLeTqGyF9Pro25JCBI/9BUF2jQTSUhrh
-W8fNnGtGiEgMU25sX779q44jE4W20q/RENkyMH0u6bJUoaCc4mUVg0OTNRcO94NU
-1ysnu3f6Pl90kwaWtS8xR0dZFOsiCTyZH2dKZQSOgfocM+pUk8wk4cCvkN2dcu6c
-H3oSPYP+lAIeFAuFWWljkHyIhheL6xAsP79548ixGiZDdebyMwt1b9zFDcF95aqV
-EsYaEmZaVmjDupPq/c9Kwhn8NUogK8E62wK6O0+D7wpntXB0y/TX5+3/j1e75qDD
-0v3IguvlL30o62trjuLV/3vdPEiaeNPgML2QH9WyrtDBUKkVPXI=
-=D6y8
------END PGP SIGNATURE-----
---=-=-=--
+> OPEN_DOWNGRADE, CLOSE and LOCKU are also asynchronous, but they are
+> inherently safe against signals since they do not establish new state
+> that needs to be torn down.
+> 
