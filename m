@@ -2,86 +2,107 @@ Return-Path: <SRS0=HPA/=RI=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,USER_AGENT_MUTT
-	autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-7.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,SPF_PASS,USER_AGENT_MUTT
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 413E3C43381
-	for <linux-nfs@archiver.kernel.org>; Tue,  5 Mar 2019 21:25:19 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6F51EC43381
+	for <linux-nfs@archiver.kernel.org>; Tue,  5 Mar 2019 21:42:13 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 10ADB20652
-	for <linux-nfs@archiver.kernel.org>; Tue,  5 Mar 2019 21:25:19 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 47A6920652
+	for <linux-nfs@archiver.kernel.org>; Tue,  5 Mar 2019 21:42:13 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726744AbfCEVZS (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 5 Mar 2019 16:25:18 -0500
-Received: from fieldses.org ([173.255.197.46]:40536 "EHLO fieldses.org"
+        id S1727417AbfCEVmM (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 5 Mar 2019 16:42:12 -0500
+Received: from fieldses.org ([173.255.197.46]:40554 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726214AbfCEVZR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 5 Mar 2019 16:25:17 -0500
+        id S1726214AbfCEVmM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 5 Mar 2019 16:42:12 -0500
 Received: by fieldses.org (Postfix, from userid 2815)
-        id CC51A1C81; Tue,  5 Mar 2019 16:25:16 -0500 (EST)
-Date:   Tue, 5 Mar 2019 16:25:16 -0500
+        id 26C3C77E; Tue,  5 Mar 2019 16:42:12 -0500 (EST)
+Date:   Tue, 5 Mar 2019 16:42:12 -0500
 From:   "J. Bruce Fields" <bfields@fieldses.org>
-To:     Paul Moore <paul@paul-moore.com>,
-        Stephen Smalley <sds@tycho.nsa.gov>,
-        Eric Paris <eparis@parisplace.org>
-Cc:     selinux@vger.kernel.org, Scott Mayhew <smayhew@redhat.com>,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] security/selinux: fix SECURITY_LSM_NATIVE_LABELS on
- reused superblock
-Message-ID: <20190305212516.GB27437@fieldses.org>
-References: <20190305211758.GA27437@fieldses.org>
+To:     NeilBrown <neilb@suse.com>
+Cc:     Jeff Layton <jlayton@kernel.org>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] nfsd: fix memory corruption caused by readdir
+Message-ID: <20190305214212.GC27437@fieldses.org>
+References: <87lg1vs5eh.fsf@notabene.neil.brown.name>
+ <20190304164725.GE13690@fieldses.org>
+ <877ederyjm.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20190305211758.GA27437@fieldses.org>
+In-Reply-To: <877ederyjm.fsf@notabene.neil.brown.name>
 User-Agent: Mutt/1.5.21 (2010-09-15)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Whoops, probably should have cc'd linux-nfs as well.--b.
+On Tue, Mar 05, 2019 at 10:48:45AM +1100, NeilBrown wrote:
+> On Mon, Mar 04 2019, J. Bruce Fields wrote:
+> 
+> > On Mon, Mar 04, 2019 at 02:08:22PM +1100, NeilBrown wrote:
+> >> (Note that the commit hash in the Fixes tag is from the 'history'
+> >>  tree - this bug predates git).
+> >> Fixes: eb229d253e6c ("[PATCH] kNFSd: fix two xdr-encode bugs for readdirplus reply")
+> >
+> > It'd be nice to provide a URL for that.  The one I originally cloned one
+> > seems to have disappeared.
+> 
+> Fixes-URL: https://git.kernel.org/pub/scm/linux/kernel/git/history/history.git/commit/?id=eb229d253e6c
+> 
+> Though on reflection, that didn't introduce the bug, it just failed to
+> fix it properly.  It should be:
+> 
+> Fixes: 0b1d57cf7654 ("[PATCH] kNFSd: Fix nfs3 dentry encoding")
+> Fixes-URL: https://git.kernel.org/pub/scm/linux/kernel/git/history/history.git/commit/?id=0b1d57cf7654
 
-On Tue, Mar 05, 2019 at 04:17:58PM -0500, bfields wrote:
-> From: "J. Bruce Fields" <bfields@redhat.com>
+Oh, so we can blame Olaf.  Even better.
+
+> > And how did it go undetected so long, and what caused it to surface just
+> > now?
 > 
-> In the case when we're reusing a superblock, selinux_sb_clone_mnt_opts()
-> fails to set set_kern_flags, with the result that
-> nfs_clone_sb_security() incorrectly clears NFS_CAP_SECURITY_LABEL.
+> I suspect two different things need to come together to trigger the bug.
+> 1/ a directory needs to have filename lengths which cause the xdr
+>    encoding of the readdirplus reply to place the offset across a page
+>    boundary.
+>    A typical entry is around 200 bytes, or 50 quads, so there should be
+>    a 1:50 chance of hitting that, assuming name lengths are evenly
+>    distributed (which they aren't).
+>    In the case which triggered the bug, all file names were 43 bytes,
+>    all filehandles 28 bytes. This means 192 bytes per entry.
+>    21 entries fit in a page leaving 64 bytes.  This puts the cookie
+>    on the page boundary.
 > 
-> The result is that if you mount the same NFS filesystem twice, NFS
-> security labels are turned off, even if they would work fine if you
-> mounted the filesystem only once.
+> 2/ The *next* entry after the one that crosses the page boundary doesn't
+>    fit.  In the cases which triggered, the requested size was 0x1110
+>    (4368).
+>    That is enough room for 21 entries, but not for 22.
 > 
-> ("fixes" may be not exactly the right tag, it may be more like
-> "fixed-other-cases-but-missed-this-one".)
+> So presumably the client doesn't run Linux - which always asks
+> for 4096 bytes of directory entry (from a Linux server).
+> I have no idea what clients the customer was using, but these clients
+> seem to have a fairly good chance of triggering the bug (when configured
+> like the customer configured them - maybe).
+
+Thanks for the explanation!
+
+> > I once thought about converting this over to the xdr_stream api that
+> > NFSv4 uses to hide the page-crossing logic now.  But I think it's better
+> > to leave it alone.
 > 
-> Cc: Scott Mayhew <smayhew@redhat.com>
-> Cc: stable@vger.kernel.org
-> Fixes: 0b4d3452b8b4 "security/selinux: allow security_sb_clone_mnt_opts..."
-> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> ---
->  security/selinux/hooks.c | 5 ++++-
->  1 file changed, 4 insertions(+), 1 deletion(-)
+> I agree - the code isn't being actively developed, so stability wins
+> over elegance.
 > 
-> diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
-> index f0e36c3492ba..5e9304567233 100644
-> --- a/security/selinux/hooks.c
-> +++ b/security/selinux/hooks.c
-> @@ -959,8 +959,11 @@ static int selinux_sb_clone_mnt_opts(const struct super_block *oldsb,
->  	BUG_ON(!(oldsbsec->flags & SE_SBINITIALIZED));
->  
->  	/* if fs is reusing a sb, make sure that the contexts match */
-> -	if (newsbsec->flags & SE_SBINITIALIZED)
-> +	if (newsbsec->flags & SE_SBINITIALIZED) {
-> +		if ((kern_flags & SECURITY_LSM_NATIVE_LABELS) && !set_context)
-> +			*set_kern_flags |= SECURITY_LSM_NATIVE_LABELS;
->  		return selinux_cmp_sb_context(oldsb, newsb);
-> +	}
->  
->  	mutex_lock(&newsbsec->lock);
->  
-> -- 
-> 2.20.1
 > 
+> BTW, the readdir (non-plus) code doesn't really need fixing.
+> nfs3svc_decode_readdirargs() caps the ->count at PAGE_SIZE, so the cookie
+> can never cross pages. nfs3svc_decode_readdirplusargs() caps it
+> at max_blocksize.  So if you feel like leaving that part of the change
+> out, I probably wouldn't complain.
+
+Eh, makes sense to me to fix it.
+
+--b.
