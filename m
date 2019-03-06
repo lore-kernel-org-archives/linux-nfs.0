@@ -2,75 +2,81 @@ Return-Path: <SRS0=mk5Y=RJ=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,USER_AGENT_MUTT
-	autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-2.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_PASS,USER_AGENT_MUTT autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A8F8EC10F00
-	for <linux-nfs@archiver.kernel.org>; Wed,  6 Mar 2019 14:58:50 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 60495C43381
+	for <linux-nfs@archiver.kernel.org>; Wed,  6 Mar 2019 15:11:52 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 8153620840
-	for <linux-nfs@archiver.kernel.org>; Wed,  6 Mar 2019 14:58:50 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 39A3A20675
+	for <linux-nfs@archiver.kernel.org>; Wed,  6 Mar 2019 15:11:52 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727795AbfCFO6t (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 6 Mar 2019 09:58:49 -0500
-Received: from fieldses.org ([173.255.197.46]:41624 "EHLO fieldses.org"
+        id S1728643AbfCFPLv (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 6 Mar 2019 10:11:51 -0500
+Received: from fieldses.org ([173.255.197.46]:41646 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726934AbfCFO6t (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 6 Mar 2019 09:58:49 -0500
+        id S1728092AbfCFPLv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 6 Mar 2019 10:11:51 -0500
 Received: by fieldses.org (Postfix, from userid 2815)
-        id 4A2CEA9F; Wed,  6 Mar 2019 09:58:49 -0500 (EST)
-Date:   Wed, 6 Mar 2019 09:58:49 -0500
+        id 7FEFD37E; Wed,  6 Mar 2019 10:11:50 -0500 (EST)
+Date:   Wed, 6 Mar 2019 10:11:50 -0500
 From:   "J. Bruce Fields" <bfields@fieldses.org>
-To:     Yihao Wu <wuyihao@linux.alibaba.com>
-Cc:     Jeff Layton <jlayton@kernel.org>, linux-nfs@vger.kernel.org,
-        stable@vger.kernel.org, Joseph Qi <joseph.qi@linux.alibaba.com>
-Subject: Re: [PATCH] nfsd: fix wrong check in write_v4_end_grace()
-Message-ID: <20190306145849.GA2426@fieldses.org>
-References: <22af6507-782d-d2fb-77f7-455dad27697f@linux.alibaba.com>
+To:     Amir Goldstein <amir73il@gmail.com>
+Cc:     Jeremy Allison <jra@samba.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Volker.Lendecke@sernet.de, Jeff Layton <jlayton@kernel.org>,
+        samba-technical@lists.samba.org,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        devel@lists.nfs-ganesha.org
+Subject: Re: Better interop for NFS/SMB file share mode/reservation
+Message-ID: <20190306151150.GC2426@fieldses.org>
+References: <CAOQ4uxjQdLrZXkpP30Pq_=Cckcb=mADrEwQUXmsG92r-gn2y5w@mail.gmail.com>
+ <379106947f859bdf5db4c6f9c4ab8c44f7423c08.camel@kernel.org>
+ <CAOQ4uxgewN=j3ju5MSowEvwhK1HqKG3n1hBRUQTi1W5asaO1dQ@mail.gmail.com>
+ <20190208155052.GB20573@fieldses.org>
+ <CAOQ4uxg9NGPRpMZt0KgH9HUKMRpn0dFta7EnP1WioRb917n4+A@mail.gmail.com>
+ <20190208221239.GA199180@jra3>
+ <CAOQ4uxjxQoCWqfp+f91--tyR81PREsssT=RV9uRgCQFs+yk7mw@mail.gmail.com>
+ <20190214210652.GC9216@fieldses.org>
+ <20190305214748.GD27437@fieldses.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <22af6507-782d-d2fb-77f7-455dad27697f@linux.alibaba.com>
+In-Reply-To: <20190305214748.GD27437@fieldses.org>
 User-Agent: Mutt/1.5.21 (2010-09-15)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Wed, Mar 06, 2019 at 09:47:14PM +0800, Yihao Wu wrote:
-> >From 04ddefd79a5cd410d65b7a30593ac915b9fab687 Mon Sep 17 00:00:00 2001
-> From: Yihao Wu <wuyihao@linux.alibaba.com>
-> Date: Wed, 6 Mar 2019 21:03:50 +0800
-> Subject: [PATCH] nfsd: fix wrong check in write_v4_end_grace()
+On Tue, Mar 05, 2019 at 04:47:48PM -0500, J. Bruce Fields wrote:
+> On Thu, Feb 14, 2019 at 04:06:52PM -0500, J. Bruce Fields wrote:
+> > After this:
+> > 
+> > 	https://marc.info/?l=linux-nfs&m=154966239918297&w=2
+> > 
+> > delegations would no longer conflict with opens from the same tgid.  So
+> > if your threads all run in the same process and you're willing to manage
+> > conflicts among your own clients, that should still allow you to do
+> > multiple opens of the same file without giving up your lease/delegation.
+> > 
+> > I'd be curious to know whether that works with Samba's design.
 > 
-> Commit 62a063b8e7d1 "nfsd4: fix crash on writing v4_end_grace before
-> nfsd startup" is trying to fix a NULL dereference issue, but it
-> mistakenly checks if the nfsd server is started. So fix it.
+> Any idea whether that would work?
+> 
+> (Easy?  Impossible?  Possible, but realistically the changes required to
+> Samba would be painful enough that it'd be unlikely to get done?)
 
-Applied, thanks!--b.
+Volker reminds me off-list that he'd like to see Ganesha and Samba work
+out an API in userspace first before commiting to a user<->kernel API.
 
-> 
-> Fixes: 62a063b8e7d1 "nfsd4: fix crash on writing v4_end_grace before nfsd startup"
-> Cc: stable@vger.kernel.org
-> Reviewed-by: Joseph Qi <joseph.qi@linux.alibaba.com>
-> Signed-off-by: Yihao Wu <wuyihao@linux.alibaba.com>
-> ---
->  fs/nfsd/nfsctl.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
-> 
-> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-> index 72a7681..f2feb2d 100644
-> --- a/fs/nfsd/nfsctl.c
-> +++ b/fs/nfsd/nfsctl.c
-> @@ -1126,7 +1126,7 @@ static ssize_t write_v4_end_grace(struct file *file, char *buf, size_t size)
->  		case 'Y':
->  		case 'y':
->  		case '1':
-> -			if (nn->nfsd_serv)
-> +			if (!nn->nfsd_serv)
->  				return -EBUSY;
->  			nfsd4_end_grace(nn);
->  			break;
-> -- 
-> 1.8.3.1
+Jeff, wasn't there some work (on Ceph maybe?) on a userspace delegation
+API?  Is that close to what's needed?
+
+In any case, my immediate goal is just to get knfsd fixed, which doesn't
+really commit us to anything--knfsd only needs kernel internal
+interfaces.  But it'd be nice to have at least some idea if we're on the
+right track, to save having to redo that work later.
+
+--b.
