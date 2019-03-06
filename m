@@ -2,114 +2,113 @@ Return-Path: <SRS0=mk5Y=RJ=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.0 required=3.0 tests=DKIMWL_WL_MED,DKIM_SIGNED,
-	DKIM_VALID,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS
+X-Spam-Status: No, score=-6.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,SPF_PASS
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 995F6C43381
-	for <linux-nfs@archiver.kernel.org>; Wed,  6 Mar 2019 19:46:55 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 94BF5C43381
+	for <linux-nfs@archiver.kernel.org>; Wed,  6 Mar 2019 20:31:12 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 610C720684
-	for <linux-nfs@archiver.kernel.org>; Wed,  6 Mar 2019 19:46:55 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=poochiereds-net.20150623.gappssmtp.com header.i=@poochiereds-net.20150623.gappssmtp.com header.b="uM09ScpR"
+	by mail.kernel.org (Postfix) with ESMTP id 5F59E20684
+	for <linux-nfs@archiver.kernel.org>; Wed,  6 Mar 2019 20:31:12 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=default; t=1551904272;
+	bh=sS0SabldpOE988tR7YkgKM0skb1wFHmx/U8r2+/G6AY=;
+	h=Subject:From:To:Cc:Date:In-Reply-To:References:List-ID:From;
+	b=fGV2zpwa0w2BEanDuuWbdqZ8A8i4pRCtSIlve3d5GhUGbnTtSptiFeu0SNjd72tFL
+	 6HajDJPyjZqgPj2z3eXFUJQtD4zWPs6xWphdpLyEvkm8y+rUMRZze3RJK/pYsuUBsG
+	 Iz1aO5VirTYD3jJbQOfWdecFg9/pG96I8T2Acq5g=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729378AbfCFTqy (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 6 Mar 2019 14:46:54 -0500
-Received: from mail-yw1-f41.google.com ([209.85.161.41]:34966 "EHLO
-        mail-yw1-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726143AbfCFTqy (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Mar 2019 14:46:54 -0500
-Received: by mail-yw1-f41.google.com with SMTP id s204so11066581ywg.2
-        for <linux-nfs@vger.kernel.org>; Wed, 06 Mar 2019 11:46:53 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=poochiereds-net.20150623.gappssmtp.com; s=20150623;
-        h=message-id:subject:from:to:date:user-agent:mime-version;
-        bh=4bf0STDUPlw9YIZhsfolod6vOusWosg1rYH5jfnYcxs=;
-        b=uM09ScpRdq389pzs553iRC4i0yAEKXNEiqECVc3lPL1dKvFQfCGG+7Z2ol1CxGe+NA
-         KL2XOInty7Bws/Iw0onw3UxdQe6FgimC4xW4sl90wJHtpD8cljzrZ+u71AMMj3jjVSmn
-         BzLNDwAXG+bMulUMyl6UWU5Zn8EZonysvtft74y0AD4C6bgwMLW0Jt2+s34sTdXNQYy5
-         5C/ROwQi+KBQMHPxgCf4mIzfs7buvq6CJQMzuqkXbT1INPnVV9xZvJuxOsIARHozql+W
-         o54kheAw21E3SplOiiDvGC9TnT11G/kOh/uhEDp2dSme8f0zy9NwWz5dk6WIdzkSOqFc
-         AItQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:message-id:subject:from:to:date:user-agent
-         :mime-version;
-        bh=4bf0STDUPlw9YIZhsfolod6vOusWosg1rYH5jfnYcxs=;
-        b=GU5+P0EqiIQQIoHmN4zSNSJn392pIq6RSlGzjgH48rBv5MiZANcuTnyC9ia8KV+33+
-         bNH8DcCGJuuZjJDCwPlTY3ojrCzqBeM7U8ck7RHMFNkX/sR92wqcgrPjZ25YK9J1OXqG
-         cf9yxsPLVQ8nUo+tHpWs7alVkoy68vUujZ5TckHA4XR8HPMkFtxUpyWOf1JtHkQa8ixN
-         udTa/GzXSr2gMTcMeStPDou8F9lrxir8fX00unNK8V0YqDGwFESgKpCqqaBG5jYYs8Yv
-         3wmtgLpCVmsTBujEFlyzhPPpONLLLMIDJ298tnEdege/3RVsRwGGly5c9Pi8Yo8leLHs
-         2A7g==
-X-Gm-Message-State: APjAAAWb5pVrYy6CPkcSE+9HyMabA9zAiH/vllFiCzPK0ks2iJOhN5gV
-        3E1rkChdE+/kOHE1IfT34axUNA==
-X-Google-Smtp-Source: APXvYqx8DF0gU/nNhYd4Vr9DKVSSBhVOvidGkj7jkEv7t31RgtcL+v1QNZR0n3iVNraoSYtBsQO4Uw==
-X-Received: by 2002:a81:9bd6:: with SMTP id s205mr6847841ywg.354.1551901613040;
-        Wed, 06 Mar 2019 11:46:53 -0800 (PST)
-Received: from tleilax.poochiereds.net (cpe-2606-A000-1100-DB-0-0-0-6D3.dyn6.twc.com. [2606:a000:1100:db::6d3])
-        by smtp.gmail.com with ESMTPSA id a194sm843718ywh.103.2019.03.06.11.46.51
-        (version=TLS1_3 cipher=AEAD-AES256-GCM-SHA384 bits=256/256);
-        Wed, 06 Mar 2019 11:46:51 -0800 (PST)
-Message-ID: <04463ae0a2005fee74867fd5c90745b980b43b01.camel@poochiereds.net>
-Subject: Deploying a Ceph+NFS Server Cluster with Rook
-From:   Jeff Layton <jlayton@poochiereds.net>
-To:     ceph-devel <ceph-devel@vger.kernel.org>,
-        "devel@lists.nfs-ganesha.org" <devel@lists.nfs-ganesha.org>,
-        ceph-users <ceph-users@ceph.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Date:   Wed, 06 Mar 2019 14:46:45 -0500
-Content-Type: multipart/signed; micalg="pgp-sha256";
-        protocol="application/pgp-signature"; boundary="=-wf3twI7kA5nG6+svlJHR"
+        id S1728424AbfCFUbL (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 6 Mar 2019 15:31:11 -0500
+Received: from mail.kernel.org ([198.145.29.99]:52064 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1727214AbfCFUbL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 6 Mar 2019 15:31:11 -0500
+Received: from tleilax.poochiereds.net (cpe-71-70-156-158.nc.res.rr.com [71.70.156.158])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by mail.kernel.org (Postfix) with ESMTPSA id 1E87E20661;
+        Wed,  6 Mar 2019 20:31:10 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=default; t=1551904271;
+        bh=sS0SabldpOE988tR7YkgKM0skb1wFHmx/U8r2+/G6AY=;
+        h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
+        b=J3Bn7toBWJ7K71Wa7CPvVtLRMznq1DLETldc3EAg2na6+t5TiuD3OZ2ez6aZyF/jO
+         nDrR0QCYMxMqZZUQBryUS9U/1DnBlgpADKGKcMDr3HT9Jb+/nJEYbK7NGCBRjF2Aio
+         ema5/xSS5py2ksghXHtxAXmkFe1UNGpgEyGjmse0=
+Message-ID: <1ade4724a4e505baf7b7c23a76e44d58b931da1f.camel@kernel.org>
+Subject: Re: Better interop for NFS/SMB file share mode/reservation
+From:   Jeff Layton <jlayton@kernel.org>
+To:     "J. Bruce Fields" <bfields@fieldses.org>,
+        Amir Goldstein <amir73il@gmail.com>
+Cc:     Jeremy Allison <jra@samba.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Volker.Lendecke@sernet.de, samba-technical@lists.samba.org,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        devel@lists.nfs-ganesha.org
+Date:   Wed, 06 Mar 2019 15:31:08 -0500
+In-Reply-To: <20190306151150.GC2426@fieldses.org>
+References: <CAOQ4uxjQdLrZXkpP30Pq_=Cckcb=mADrEwQUXmsG92r-gn2y5w@mail.gmail.com>
+         <379106947f859bdf5db4c6f9c4ab8c44f7423c08.camel@kernel.org>
+         <CAOQ4uxgewN=j3ju5MSowEvwhK1HqKG3n1hBRUQTi1W5asaO1dQ@mail.gmail.com>
+         <20190208155052.GB20573@fieldses.org>
+         <CAOQ4uxg9NGPRpMZt0KgH9HUKMRpn0dFta7EnP1WioRb917n4+A@mail.gmail.com>
+         <20190208221239.GA199180@jra3>
+         <CAOQ4uxjxQoCWqfp+f91--tyR81PREsssT=RV9uRgCQFs+yk7mw@mail.gmail.com>
+         <20190214210652.GC9216@fieldses.org> <20190305214748.GD27437@fieldses.org>
+         <20190306151150.GC2426@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"
 User-Agent: Evolution 3.30.5 (3.30.5-1.fc29) 
 MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
+On Wed, 2019-03-06 at 10:11 -0500, J. Bruce Fields wrote:
+> On Tue, Mar 05, 2019 at 04:47:48PM -0500, J. Bruce Fields wrote:
+> > On Thu, Feb 14, 2019 at 04:06:52PM -0500, J. Bruce Fields wrote:
+> > > After this:
+> > > 
+> > > 	https://marc.info/?l=linux-nfs&m=154966239918297&w=2
+> > > 
+> > > delegations would no longer conflict with opens from the same tgid.  So
+> > > if your threads all run in the same process and you're willing to manage
+> > > conflicts among your own clients, that should still allow you to do
+> > > multiple opens of the same file without giving up your lease/delegation.
+> > > 
+> > > I'd be curious to know whether that works with Samba's design.
+> > 
+> > Any idea whether that would work?
+> > 
+> > (Easy?  Impossible?  Possible, but realistically the changes required to
+> > Samba would be painful enough that it'd be unlikely to get done?)
+> 
+> Volker reminds me off-list that he'd like to see Ganesha and Samba work
+> out an API in userspace first before commiting to a user<->kernel API.
+> 
+> Jeff, wasn't there some work (on Ceph maybe?) on a userspace delegation
+> API?  Is that close to what's needed?
+> 
 
---=-wf3twI7kA5nG6+svlJHR
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Here's the C headers for that stuff:
 
-I had several people ask me to put together some instructions on how to
-deploy a Ceph+NFS cluster from scratch, and the new functionality in
-Ceph and rook.io make this quite easy.
+    https://github.com/ceph/ceph/blob/7ba6bece4187eda5d05a9b84211fe6ba8dd287bd/src/include/cephfs/libcephfs.h#L1734
 
-I wrote a Ceph community blog post that walks the reader through the
-process:
+It's simple enough and works for us in ganesha, and I think we can
+probably adapt it to samba without too much difficulty. The callback
+doesn't seem like it'll do for a kernel API though -- you'd almost
+certainly need to do something different there (signals? inotify?).
 
-    https://ceph.com/community/deploying-a-cephnfs-server-cluster-with-rook=
-/
+> In any case, my immediate goal is just to get knfsd fixed, which doesn't
+> really commit us to anything--knfsd only needs kernel internal
+> interfaces.  But it'd be nice to have at least some idea if we're on the
+> right track, to save having to redo that work later.
+> 
 
-I don't think that site has a way to post comments, but I'm happy to
-answer questions about it via email.
---=20
-Jeff Layton <jlayton@poochiereds.net>
 
---=-wf3twI7kA5nG6+svlJHR
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: This is a digitally signed message part
-Content-Transfer-Encoding: 7bit
-
------BEGIN PGP SIGNATURE-----
-
-iQIzBAABCAAdFiEES8DXskRxsqGE6vXTAA5oQRlWghUFAlyAI6UACgkQAA5oQRlW
-ghXpEBAAqbtEURfdDvdRiYT9tx4GhQ8vZ3n/9copksl3E+BRozjstzCgllnVwD32
-KXW0TDM22XsrOE36A8V8WHUz25qjpnSi9c+y22zoJjfufY2/lO3tJ9L54th+YGZ6
-wKiOwe3ieuAiCWPzfRLchsduLuSB+8sl+JBAtzk5tNLlujjk9LSyCdMVB2Qrn2dZ
-h+LtKu5FrRU13HJHB3U17I2l3yEDjU8lQ0DdwxPVaXQDsZEnrwZf+i9k35wNRFWV
-SSl/s+PRh8ZhBPu2xQWG/wRo+UH9to8q386TCdmOaWXxUZqVlUBdj0h+ciI4lhFw
-KDQyDZecDFvoowMkBO3bb8u4PbsxkCo6H8ORZ4N4dOC4k9T4QlI5AW0o8PA+/s5a
-g6/cTWKQmrD9oC54jO+/NDTZLRELb4ApBCX+UwNNi78ePNNksu8RZOfN6XAu9DaS
-31U8nSjQXhSCJ8g9QR5K5fPyY2wvfKxMJ9QMz0inb9XyqCgbQiX4QoZjyvrJKLne
-ez3HrTFuwTZtSz2GZE4uehNs46tAvFKSLJMU6lcPrdDlcTHK9V/qoQN0k6P7uk5o
-XzLc+2RpFxSuIdG1XMgixR3v93nlGPziE1+JiyOAJd2kVAK80anqBkC7dz0YcdLR
-O9KDeJVTmsKJvZGr1/s5/SbggBwqFDgpPjJY4dWQGr2TFy+eIYE=
-=Mrtu
------END PGP SIGNATURE-----
-
---=-wf3twI7kA5nG6+svlJHR--
+-- 
+Jeff Layton <jlayton@kernel.org>
 
