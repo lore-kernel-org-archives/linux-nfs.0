@@ -2,210 +2,122 @@ Return-Path: <SRS0=mk5Y=RJ=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS autolearn=ham
+X-Spam-Status: No, score=-0.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id DC46AC43381
-	for <linux-nfs@archiver.kernel.org>; Wed,  6 Mar 2019 04:36:09 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E953DC43381
+	for <linux-nfs@archiver.kernel.org>; Wed,  6 Mar 2019 07:09:34 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id AE77E20663
-	for <linux-nfs@archiver.kernel.org>; Wed,  6 Mar 2019 04:36:09 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id B52BF2064A
+	for <linux-nfs@archiver.kernel.org>; Wed,  6 Mar 2019 07:09:34 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="IQPB3f0S"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726699AbfCFEgI convert rfc822-to-8bit (ORCPT
-        <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 5 Mar 2019 23:36:08 -0500
-Received: from mx1.redhat.com ([209.132.183.28]:50074 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726655AbfCFEgI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 5 Mar 2019 23:36:08 -0500
-Received: from smtp.corp.redhat.com (int-mx06.intmail.prod.int.phx2.redhat.com [10.5.11.16])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id E9709309264F;
-        Wed,  6 Mar 2019 04:36:07 +0000 (UTC)
-Received: from colo-mx.corp.redhat.com (colo-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.20])
-        by smtp.corp.redhat.com (Postfix) with ESMTPS id E08B417115;
-        Wed,  6 Mar 2019 04:36:07 +0000 (UTC)
-Received: from zmail21.collab.prod.int.phx2.redhat.com (zmail21.collab.prod.int.phx2.redhat.com [10.5.83.24])
-        by colo-mx.corp.redhat.com (Postfix) with ESMTP id CC1F81819AFB;
-        Wed,  6 Mar 2019 04:36:07 +0000 (UTC)
-Date:   Tue, 5 Mar 2019 23:36:07 -0500 (EST)
-From:   Jianhong Yin <jiyin@redhat.com>
-To:     Steve Dickson <SteveD@RedHat.com>
-Cc:     "Jianhong.Yin" <yin-jianhong@163.com>, linux-nfs@vger.kernel.org
-Message-ID: <569350425.9942929.1551846967676.JavaMail.zimbra@redhat.com>
-In-Reply-To: <813b5167-8c4a-dd64-eb95-d29b4463d54a@RedHat.com>
-References: <20190228050842.15827-1-yin-jianhong@163.com> <813b5167-8c4a-dd64-eb95-d29b4463d54a@RedHat.com>
-Subject: Re: [PATCH] mount.nfs: fix ignore EBUSY problem in special scenario
+        id S1729037AbfCFHJd (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 6 Mar 2019 02:09:33 -0500
+Received: from mail-yw1-f68.google.com ([209.85.161.68]:38748 "EHLO
+        mail-yw1-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726145AbfCFHJd (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Mar 2019 02:09:33 -0500
+Received: by mail-yw1-f68.google.com with SMTP id o184so9129205ywo.5;
+        Tue, 05 Mar 2019 23:09:32 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc;
+        bh=3zBuV17I5sWNzu5F2rgnNcAnFnr0PboJ9pM364Vyw7o=;
+        b=IQPB3f0S7FAODtycXQAIxOCJeu+2i+sBnw9pSl1aUZerMJsPsFiCrrlqME4oiwT4P7
+         3Pn23+ZXInvFuEjGQxT5mDR5OgstjzykhEo90YrdRqZy69Hmz+JZTowN9GPX+pF2+xJF
+         u+ewHkwruPwl7Z/gCeMYpxru2D6b2hlcvds5tlCSe7eKGq/ncYsImTbXkQengDViM+/r
+         GEfcUGzJRlTMXxqh/XYvr23jTLvQDb+4goG6jySPKZlwqW1ZeuQfqbYWpSp0/gqWjCK7
+         pVqVK+KiLHs0vHUKk59ESxjXwzKmj6sRKBfC3JtJozUvRO9xPYUjCaZ+VQIu+KnsbeZN
+         c6kQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=3zBuV17I5sWNzu5F2rgnNcAnFnr0PboJ9pM364Vyw7o=;
+        b=LC9JT1cPezVccG/l7T6YoFy0k+VKD8s6c5LV8iLKxhp3CUz9rgeLlGVakZ+ypO91O9
+         FQmhbEf+SFpecqq7DaYCNmyNeV6v4XLkF+JmZHam7MlytO7IQxUiwuD0c3yJ8Zrp9GO6
+         np0ZJteXc7RyKPMVFPN9VXziw13tsg14f8fbZ5Z2DXQOW6QZKx7CCxmcffDMTzt0v3/V
+         znSDjHd3aE19BvG6XSPkLV+fzRwfAnbjM0fGoGVPhT2KhNwb0hzluLri7nvDPD00WTp0
+         jUeuqxuze91CrhkKD0V5skTs3DzWB3e5XB+vFEAu+2r/+MnRep8XhT/751+JNna7fenP
+         T4MQ==
+X-Gm-Message-State: APjAAAWG4raR3/yapOITPoUt+z8FhBXQYt5++YmQOdu1qyJXVgq3xvgY
+        BPHoeChSnbWAwSOm/qNMRekN41iKllYMU3GMB1M=
+X-Google-Smtp-Source: APXvYqxgLeo3kasAOFvEKhdbiwn9S0V2UOlp7flp6xpFTvsglpKyQBKAVCmgoJ6MhjsDL/j/2xrTWqZEK0yvXRd4CXc=
+X-Received: by 2002:a81:2e86:: with SMTP id u128mr4140438ywu.241.1551856172179;
+ Tue, 05 Mar 2019 23:09:32 -0800 (PST)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 8BIT
-X-Originating-IP: [10.66.12.115, 10.4.195.23]
-Thread-Topic: mount.nfs: fix ignore EBUSY problem in special scenario
-Thread-Index: jdRtCuA1VfG89YCOAeyLwCeG4toh6w==
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.16
-X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.43]); Wed, 06 Mar 2019 04:36:07 +0000 (UTC)
+References: <CAOQ4uxjQdLrZXkpP30Pq_=Cckcb=mADrEwQUXmsG92r-gn2y5w@mail.gmail.com>
+ <379106947f859bdf5db4c6f9c4ab8c44f7423c08.camel@kernel.org>
+ <CAOQ4uxgewN=j3ju5MSowEvwhK1HqKG3n1hBRUQTi1W5asaO1dQ@mail.gmail.com>
+ <20190208155052.GB20573@fieldses.org> <CAOQ4uxg9NGPRpMZt0KgH9HUKMRpn0dFta7EnP1WioRb917n4+A@mail.gmail.com>
+ <20190208221239.GA199180@jra3> <CAOQ4uxjxQoCWqfp+f91--tyR81PREsssT=RV9uRgCQFs+yk7mw@mail.gmail.com>
+ <20190214210652.GC9216@fieldses.org> <20190305214748.GD27437@fieldses.org>
+In-Reply-To: <20190305214748.GD27437@fieldses.org>
+From:   Amir Goldstein <amir73il@gmail.com>
+Date:   Wed, 6 Mar 2019 09:09:21 +0200
+Message-ID: <CAOQ4uxigRpjjni8nvYxCqeyTnr0Zf7Stj9h2+24_S9n4i0euYA@mail.gmail.com>
+Subject: Re: Better interop for NFS/SMB file share mode/reservation
+To:     "J. Bruce Fields" <bfields@fieldses.org>
+Cc:     Jeremy Allison <jra@samba.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Volker.Lendecke@sernet.de, Jeff Layton <jlayton@kernel.org>,
+        samba-technical@lists.samba.org,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Ralph Boehme <slow@samba.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
+On Tue, Mar 5, 2019 at 11:48 PM J. Bruce Fields <bfields@fieldses.org> wrote:
+>
+> On Thu, Feb 14, 2019 at 04:06:52PM -0500, J. Bruce Fields wrote:
+> > After this:
+> >
+> >       https://marc.info/?l=linux-nfs&m=154966239918297&w=2
+> >
+> > delegations would no longer conflict with opens from the same tgid.  So
+> > if your threads all run in the same process and you're willing to manage
+> > conflicts among your own clients, that should still allow you to do
+> > multiple opens of the same file without giving up your lease/delegation.
+> >
+> > I'd be curious to know whether that works with Samba's design.
+>
+> Any idea whether that would work?
+>
+> (Easy?  Impossible?  Possible, but realistically the changes required to
+> Samba would be painful enough that it'd be unlikely to get done?)
+>
 
------ 原始邮件 -----
-> 发件人: "Steve Dickson" <SteveD@RedHat.com>
-> 收件人: "Jianhong.Yin" <yin-jianhong@163.com>
-> 抄送: linux-nfs@vger.kernel.org, jiyin@redhat.com
-> 发送时间: 星期三, 2019年 3 月 06日 上午 2:00:02
-> 主题: Re: [PATCH] mount.nfs: fix ignore EBUSY problem in special scenario
-> 
-> Hello,
-> 
-> I apologies for taking so long to get to this...
-> 
-> On 2/28/19 12:08 AM, Jianhong.Yin wrote:
-> > now mount.nfs ignore EBUSY when the $dir is a mountpoint,
-> > it's not correct in specail scenario for example:
-> >   $dir is a mountpoint of other filesystem(let's say tmpfs)
-> > so we must be sure: current nfs mounting has mounted on $dir, then
-> > ignore the EBUSY for user.
-> > 
-> > - if (errno == EBUSY && is_mountpoint(mi->node))
-> > + if (errno == EBUSY && is_mountpoint(mi->node) && has_mounted_on(mi->spec,
-> > mi->node))
-> > 
-> > reproducer:
-> > '''
-> > mkdir -p /expdir /mnt/nfsmp /mnt/tmpfs
-> > echo "/expdir *(rw,no_root_squash)" >/etc/exports
-> > service nfs restart
-> > mount -t tmpfs tmpfs /mnt/tmpfs
-> > mount -osharecache localhost:/expdir /mnt/nfsmp #success
-> > mount -osharecache localhost:/expdir /mnt/nfsmp #mounted already, return
-> > 0(pass)
-> > mount -osharecache localhost:/expdir /mnt/tmpfs #success
-> > mount -osharecache localhost:/expdir /mnt/tmpfs #mounted already, return
-> > 0(pass)
-> > umount /mnt/nfsmp
-> > umount /mnt/tmpfs
-> > 
-> > mount -ocontext=system_u:object_r:xferlog_t:s0,sharecache localhost:/expdir
-> > /mnt/nfsmp
-> > mount -ocontext=system_u:object_r:user_home_dir_t:s0,sharecache
-> > localhost:/expdir /mnt/tmpfs
-> > [[ $? = 0 ]] && echo "***test fail: hasn't mounted, should return fail ***"
-> > 
-> > umount /mnt/nfsmp
-> What real world problem is this solving or better yet what real world
-> situation would something like this be done??
-> 
-> I see this more of a pilot error... no one uses tmpfs to make mount to fail
-> (or not fail in this case)... It's just not how tmpfs is used.
-replace tmpfs with ext4/xfs ... will get same unexpected result.
+[CC Ralph Boehme]
 
-> 
-> Plus who uses -ocontext= this way? If some one is that sophisticated to
-> use mount like that.... and get wrong... they need to be a little
-> more sophisticated ;-)
-> 
-> Finally, when tmpfs is not in the picture things work as expected....
-> 
-> Maybe I'm missing something... I don't this as a problem or a situation
-> the people will run into... again... maybe I'm missing something.
+I am not a samba team member, but seems to me that your proposal
+fits samba design like a glove. With one smbd process per client connection,
+with your proposal, opens (for read) from same smbd process will not break the
+shared read lease from same client, so oplocks level II could be implemented
+using kernel oplocks (new flavor).
 
-something you missing might be:
-  "$Dir is a mountpoint"  doesn't mean  "$Dir has mounted on a nfs:/share you want"
-     (it might be tmpfs/ext4/xfs/btrfs/... or another nfs that is not your expect)
+IOW, can someone from samba team please elaborate on this quote
+from samba wiki [1]: "Linux kernel oplocks don't provide the needed features.
+(They don't even work correctly for oplocks...) ==> SMB-only feature."
 
-I know this test path is very ... abnormal. I just think
-I think the plane should not ignore "Landing gear failure"(EBUSY), even if the pilot 
-did a very unconventional operation :)
+[1] https://wiki.samba.org/index.php/Samba3/SMB2#new_concepts
 
-I'm just want you understand what will happen in this corner corner case.
-It's up to you(won't fix/or fix)
+I would like to use this opportunity to ask samba team members to raise
+any (*) other pain points about missing or lacking Linux kernel interfaces.
+I promise to use my time in LSF/MM 2019 to try and promote samba
+needs among Linux filesystem developers.
 
-Jianhong
+Preferably, update the samba wiki page with wish list from Linux kernel,
+but try to be more descriptive than "... don't provide the needed features".
 
-> 
-> steved.
-> > '''
-> > 
-> > Signed-off-by: Jianhong Yin <yin-jianhong@163.com>
-> > ---
-> >  support/include/misc.h    |  1 +
-> >  support/misc/mountpoint.c | 26 +++++++++++++++++++++++++-
-> >  utils/mount/stropts.c     |  2 +-
-> >  3 files changed, 27 insertions(+), 2 deletions(-)
-> > 
-> > diff --git a/support/include/misc.h b/support/include/misc.h
-> > index 06e2a0c..bd02bfc 100644
-> > --- a/support/include/misc.h
-> > +++ b/support/include/misc.h
-> > @@ -19,6 +19,7 @@ char *generic_make_pathname(const char *, const char *);
-> >  _Bool generic_setup_basedir(const char *, const char *, char *, const
-> >  size_t);
-> >  
-> >  extern int is_mountpoint(char *path);
-> > +extern int has_mounted_on(const char *fsname, const char *dir);
-> >  
-> >  /* size of the file pointer buffers for rpc procfs files */
-> >  #define RPC_CHAN_BUF_SIZE 32768
-> > diff --git a/support/misc/mountpoint.c b/support/misc/mountpoint.c
-> > index 9f9ce44..7f8a89f 100644
-> > --- a/support/misc/mountpoint.c
-> > +++ b/support/misc/mountpoint.c
-> > @@ -3,9 +3,11 @@
-> >   * check if a given path is a mountpoint
-> >   */
-> >  
-> > +#include <stdio.h>
-> >  #include <string.h>
-> > -#include "xcommon.h"
-> > +#include <mntent.h>
-> >  #include <sys/stat.h>
-> > +#include "xcommon.h"
-> >  #include "misc.h"
-> >  
-> >  int
-> > @@ -38,3 +40,25 @@ is_mountpoint(char *path)
-> >  	free(dotdot);
-> >  	return rv;
-> >  }
-> > +
-> > +int
-> > +has_mounted_on(const char *fsname, const char *dir)
-> > +{
-> > +	struct mntent *ent;
-> > +	FILE *fp;
-> > +	int ret = 0;
-> > +
-> > +	fp = setmntent("/proc/mounts", "r");
-> > +	if (fp == NULL) {
-> > +		perror("[unlikely] setmntent(3) fail");
-> > +		exit(1);
-> > +	}
-> > +	while (NULL != (ent = getmntent(fp))) {
-> > +		if (!strcmp(ent->mnt_fsname, fsname) && !strcmp(ent->mnt_dir, dir)) {
-> > +			ret = 1;
-> > +			break;
-> > +		}
-> > +	}
-> > +	endmntent(fp);
-> > +	return ret;
-> > +}
-> > diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-> > index a093926..bffb74a 100644
-> > --- a/utils/mount/stropts.c
-> > +++ b/utils/mount/stropts.c
-> > @@ -1081,7 +1081,7 @@ static int nfsmount_fg(struct nfsmount_info *mi)
-> >  			return EX_SUCCESS;
-> >  
-> >  #pragma GCC diagnostic ignored "-Wdiscarded-qualifiers"
-> > -		if (errno == EBUSY && is_mountpoint(mi->node)) {
-> > +		if (errno == EBUSY && is_mountpoint(mi->node) &&
-> > has_mounted_on(mi->spec, mi->node)) {
-> >  #pragma GCC diagnostic warning "-Wdiscarded-qualifiers"
-> >  			/*
-> >  			 * EBUSY can happen when mounting a filesystem that
-> > 
-> 
+(*) OK, not RichACLs. I know my own limitations.
+
+Thanks,
+Amir.
