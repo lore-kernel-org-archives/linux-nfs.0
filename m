@@ -2,110 +2,138 @@ Return-Path: <SRS0=mk5Y=RJ=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_PASS,USER_AGENT_MUTT autolearn=ham autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-13.5 required=3.0
+	tests=HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
+	MENTIONS_GIT_HOSTING,SIGNED_OFF_BY,SPF_PASS,USER_AGENT_MUTT
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 546C4C43381
-	for <linux-nfs@archiver.kernel.org>; Wed,  6 Mar 2019 15:17:37 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 60C20C10F00
+	for <linux-nfs@archiver.kernel.org>; Wed,  6 Mar 2019 15:34:37 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 2D6FF20675
-	for <linux-nfs@archiver.kernel.org>; Wed,  6 Mar 2019 15:17:37 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 3CBC12087C
+	for <linux-nfs@archiver.kernel.org>; Wed,  6 Mar 2019 15:34:37 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727760AbfCFPRg (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 6 Mar 2019 10:17:36 -0500
-Received: from fieldses.org ([173.255.197.46]:41716 "EHLO fieldses.org"
+        id S1726826AbfCFPeg (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 6 Mar 2019 10:34:36 -0500
+Received: from fieldses.org ([173.255.197.46]:41766 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1729706AbfCFPRg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 6 Mar 2019 10:17:36 -0500
+        id S1726317AbfCFPeg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 6 Mar 2019 10:34:36 -0500
 Received: by fieldses.org (Postfix, from userid 2815)
-        id 862D71C82; Wed,  6 Mar 2019 10:17:35 -0500 (EST)
-Date:   Wed, 6 Mar 2019 10:17:35 -0500
+        id 16BB8BD8; Wed,  6 Mar 2019 10:34:35 -0500 (EST)
+Date:   Wed, 6 Mar 2019 10:34:35 -0500
 From:   "J. Bruce Fields" <bfields@fieldses.org>
-To:     Amir Goldstein <amir73il@gmail.com>
-Cc:     Jeremy Allison <jra@samba.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Volker.Lendecke@sernet.de, Jeff Layton <jlayton@kernel.org>,
-        samba-technical@lists.samba.org,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Ralph Boehme <slow@samba.org>, devel@lists.nfs-ganesha.org
-Subject: Re: Better interop for NFS/SMB file share mode/reservation
-Message-ID: <20190306151735.GD2426@fieldses.org>
-References: <CAOQ4uxjQdLrZXkpP30Pq_=Cckcb=mADrEwQUXmsG92r-gn2y5w@mail.gmail.com>
- <379106947f859bdf5db4c6f9c4ab8c44f7423c08.camel@kernel.org>
- <CAOQ4uxgewN=j3ju5MSowEvwhK1HqKG3n1hBRUQTi1W5asaO1dQ@mail.gmail.com>
- <20190208155052.GB20573@fieldses.org>
- <CAOQ4uxg9NGPRpMZt0KgH9HUKMRpn0dFta7EnP1WioRb917n4+A@mail.gmail.com>
- <20190208221239.GA199180@jra3>
- <CAOQ4uxjxQoCWqfp+f91--tyR81PREsssT=RV9uRgCQFs+yk7mw@mail.gmail.com>
- <20190214210652.GC9216@fieldses.org>
- <20190305214748.GD27437@fieldses.org>
- <CAOQ4uxigRpjjni8nvYxCqeyTnr0Zf7Stj9h2+24_S9n4i0euYA@mail.gmail.com>
+To:     Stephen Smalley <sds@tycho.nsa.gov>
+Cc:     Paul Moore <paul@paul-moore.com>,
+        Eric Paris <eparis@parisplace.org>, selinux@vger.kernel.org,
+        Scott Mayhew <smayhew@redhat.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] security/selinux: fix SECURITY_LSM_NATIVE_LABELS on
+ reused superblock
+Message-ID: <20190306153435.GF2426@fieldses.org>
+References: <20190305211758.GA27437@fieldses.org>
+ <ea347670-ea52-3ab6-a786-aeebff40dd0e@tycho.nsa.gov>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <CAOQ4uxigRpjjni8nvYxCqeyTnr0Zf7Stj9h2+24_S9n4i0euYA@mail.gmail.com>
+In-Reply-To: <ea347670-ea52-3ab6-a786-aeebff40dd0e@tycho.nsa.gov>
 User-Agent: Mutt/1.5.21 (2010-09-15)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Wed, Mar 06, 2019 at 09:09:21AM +0200, Amir Goldstein wrote:
-> On Tue, Mar 5, 2019 at 11:48 PM J. Bruce Fields <bfields@fieldses.org> wrote:
+On Wed, Mar 06, 2019 at 09:34:43AM -0500, Stephen Smalley wrote:
+> On 3/5/19 4:17 PM, J. Bruce Fields wrote:
+> >From: "J. Bruce Fields" <bfields@redhat.com>
 > >
-> > On Thu, Feb 14, 2019 at 04:06:52PM -0500, J. Bruce Fields wrote:
-> > > After this:
-> > >
-> > >       https://marc.info/?l=linux-nfs&m=154966239918297&w=2
-> > >
-> > > delegations would no longer conflict with opens from the same tgid.  So
-> > > if your threads all run in the same process and you're willing to manage
-> > > conflicts among your own clients, that should still allow you to do
-> > > multiple opens of the same file without giving up your lease/delegation.
-> > >
-> > > I'd be curious to know whether that works with Samba's design.
+> >In the case when we're reusing a superblock, selinux_sb_clone_mnt_opts()
+> >fails to set set_kern_flags, with the result that
+> >nfs_clone_sb_security() incorrectly clears NFS_CAP_SECURITY_LABEL.
 > >
-> > Any idea whether that would work?
+> >The result is that if you mount the same NFS filesystem twice, NFS
+> >security labels are turned off, even if they would work fine if you
+> >mounted the filesystem only once.
 > >
-> > (Easy?  Impossible?  Possible, but realistically the changes required to
-> > Samba would be painful enough that it'd be unlikely to get done?)
+> >("fixes" may be not exactly the right tag, it may be more like
+> >"fixed-other-cases-but-missed-this-one".)
 > >
+> >Cc: Scott Mayhew <smayhew@redhat.com>
+> >Cc: stable@vger.kernel.org
+> >Fixes: 0b4d3452b8b4 "security/selinux: allow security_sb_clone_mnt_opts..."
+> >Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 > 
-> [CC Ralph Boehme]
+> Acked-by: Stephen Smalley <sds@tycho.nsa.gov>
 > 
-> I am not a samba team member, but seems to me that your proposal
-> fits samba design like a glove. With one smbd process per client connection,
-> with your proposal, opens (for read) from same smbd process will not break the
-> shared read lease from same client, so oplocks level II could be implemented
-> using kernel oplocks (new flavor).
+> Do you have some tests you are using for the selinux nfs support?
 
-OK.  So I wonder about Ganesha.  I'm not sure, but I *think* it's like
-knfsd in that it has a bunch of worker threads that can each take rpc's
-from any client.  I don't remember if they're actually threads or
-processes.
+No.  I'll ask around.  Trond or Anna, do either of you do any selinux
+testing?
 
-> IOW, can someone from samba team please elaborate on this quote
-> from samba wiki [1]: "Linux kernel oplocks don't provide the needed features.
-> (They don't even work correctly for oplocks...) ==> SMB-only feature."
-> 
-> [1] https://wiki.samba.org/index.php/Samba3/SMB2#new_concepts
+> I have an open issue on the selinux-testsuite with an example script
+> for running the regular selinux tests on a NFS mount but it can't
+> fully succeed as noted there,
+> https://github.com/SELinuxProject/selinux-testsuite/issues/32
 
-Yes, it'd be useful to get those details written down in one place.
+So if I just clone
+https://github.com/SELinuxProject/selinux-testsuite.git and filter out
+those known failures, would that be a good starting point?
 
-> I would like to use this opportunity to ask samba team members to raise
-> any (*) other pain points about missing or lacking Linux kernel interfaces.
-> I promise to use my time in LSF/MM 2019 to try and promote samba
-> needs among Linux filesystem developers.
+> I've also have another script to test context= mount handling for
+> nfs since that should take precedence over native labels; it looks
+>  like that might be broken again:
 
-I feel like this particular problem is about details of
-oplock/lease/delegation semantics that will interest a small number of
-people, so should mainly be handled as a hallway-track thing.  But,
-maybe it's good to bring it up in a session if only to make sure anyone
-interested is aware.
-
-> (*) OK, not RichACLs. I know my own limitations.
-
-Hah.
+Thanks for the report, I'll take a look.  That's before or after
+applying this patch?  Assuming the former, do you have an idea how
+recent a regression it is?
 
 --b.
+
+> #!/bin/sh
+> cat > /etc/exports <<EOF
+> /home localhost(rw,no_root_squash,security_label)
+> EOF
+> exportfs -a
+> systemctl start nfs-server
+> mkdir -p /mnt/home
+> mount -t nfs -o vers=4.0,context=system_u:object_r:etc_t:s0
+> localhost:/home /mnt/home
+> echo "Under NFSv4.0:"
+> ls -Za /mnt/home
+> touch /mnt/home/foo
+> ls -Z /mnt/home/foo
+> ls -Z /home/foo
+> rm /mnt/home/foo
+> umount /mnt/home
+> mount -t nfs -o vers=4.2,context=system_u:object_r:etc_t:s0
+> localhost:/home /mnt/home
+> echo "Under NFSv4.2:"
+> ls -Za /mnt/home
+> touch /mnt/home/foo
+> ls -Z /mnt/home/foo
+> ls -Z /home/foo
+> rm /home/foo
+> umount /mnt/home
+> rmdir /mnt/home
+> rm /etc/exports
+> exportfs -ua
+> systemctl stop nfs-server
+> 
+> >---
+> >  security/selinux/hooks.c | 5 ++++-
+> >  1 file changed, 4 insertions(+), 1 deletion(-)
+> >
+> >diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
+> >index f0e36c3492ba..5e9304567233 100644
+> >--- a/security/selinux/hooks.c
+> >+++ b/security/selinux/hooks.c
+> >@@ -959,8 +959,11 @@ static int selinux_sb_clone_mnt_opts(const struct super_block *oldsb,
+> >  	BUG_ON(!(oldsbsec->flags & SE_SBINITIALIZED));
+> >  	/* if fs is reusing a sb, make sure that the contexts match */
+> >-	if (newsbsec->flags & SE_SBINITIALIZED)
+> >+	if (newsbsec->flags & SE_SBINITIALIZED) {
+> >+		if ((kern_flags & SECURITY_LSM_NATIVE_LABELS) && !set_context)
+> >+			*set_kern_flags |= SECURITY_LSM_NATIVE_LABELS;
+> >  		return selinux_cmp_sb_context(oldsb, newsb);
+> >+	}
+> >  	mutex_lock(&newsbsec->lock);
+> >
