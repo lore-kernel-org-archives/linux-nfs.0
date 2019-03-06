@@ -2,137 +2,122 @@ Return-Path: <SRS0=mk5Y=RJ=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,SPF_PASS
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C5AC4C43381
-	for <linux-nfs@archiver.kernel.org>; Wed,  6 Mar 2019 21:55:56 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D310FC43381
+	for <linux-nfs@archiver.kernel.org>; Wed,  6 Mar 2019 22:49:57 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 93005206DD
-	for <linux-nfs@archiver.kernel.org>; Wed,  6 Mar 2019 21:55:56 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1551909356;
-	bh=eawVKdRNEhu4Ey5hiAI4DNRKt8NytWlImF5lHoMU8/E=;
-	h=Subject:From:To:Cc:Date:In-Reply-To:References:List-ID:From;
-	b=B0II29mPEJjmRQRR+ogFibfgKpb2yoSN9KoB3KRR0hYTEZtznEdKJ/eBeVaxdjtvn
-	 C8A/UdEpiP6wjEscbo7KGN9lMCxviY5Q85N8wcJ4XuKWXLpblPo5Q5PsHdcl6DfbGv
-	 yCtlu0MUZRzKAQUZSlyJ76v4Osqs+tWTXF8jXhYo=
+	by mail.kernel.org (Postfix) with ESMTP id A442E20675
+	for <linux-nfs@archiver.kernel.org>; Wed,  6 Mar 2019 22:49:57 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726136AbfCFVzz (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 6 Mar 2019 16:55:55 -0500
-Received: from mail.kernel.org ([198.145.29.99]:34840 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726082AbfCFVzz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 6 Mar 2019 16:55:55 -0500
-Received: from tleilax.poochiereds.net (cpe-71-70-156-158.nc.res.rr.com [71.70.156.158])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 4D9AD20663;
-        Wed,  6 Mar 2019 21:55:53 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1551909354;
-        bh=eawVKdRNEhu4Ey5hiAI4DNRKt8NytWlImF5lHoMU8/E=;
-        h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
-        b=AAFE3umzMoKxFbGhSNciADIn0BHMr5L3tbIovvt9WSRgJfNkFznrDXSwGYnNnr0iO
-         jXUA7PxWgQ6LPGJkHsY9UEHuyhRrTAis3AprPia7HtwQ+QHoFhnFz9JvRbhGFd7yRm
-         g0MFkIK24Wr7uLSnKguzR+JsXY3RA9+MC1Q4UUrw=
-Message-ID: <89ff2c6c082557ab840aa4f5dd9f62c7d288e88a.camel@kernel.org>
-Subject: Re: Better interop for NFS/SMB file share mode/reservation
-From:   Jeff Layton <jlayton@kernel.org>
-To:     Jeremy Allison <jra@samba.org>
-Cc:     "J. Bruce Fields" <bfields@fieldses.org>,
-        Amir Goldstein <amir73il@gmail.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Volker.Lendecke@sernet.de, samba-technical@lists.samba.org,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        devel@lists.nfs-ganesha.org
-Date:   Wed, 06 Mar 2019 16:55:51 -0500
-In-Reply-To: <20190306210743.GE19279@jra3>
-References: <379106947f859bdf5db4c6f9c4ab8c44f7423c08.camel@kernel.org>
-         <CAOQ4uxgewN=j3ju5MSowEvwhK1HqKG3n1hBRUQTi1W5asaO1dQ@mail.gmail.com>
-         <20190208155052.GB20573@fieldses.org>
-         <CAOQ4uxg9NGPRpMZt0KgH9HUKMRpn0dFta7EnP1WioRb917n4+A@mail.gmail.com>
-         <20190208221239.GA199180@jra3>
-         <CAOQ4uxjxQoCWqfp+f91--tyR81PREsssT=RV9uRgCQFs+yk7mw@mail.gmail.com>
-         <20190214210652.GC9216@fieldses.org> <20190305214748.GD27437@fieldses.org>
-         <20190306151150.GC2426@fieldses.org>
-         <1ade4724a4e505baf7b7c23a76e44d58b931da1f.camel@kernel.org>
-         <20190306210743.GE19279@jra3>
-Content-Type: text/plain; charset="UTF-8"
-User-Agent: Evolution 3.30.5 (3.30.5-1.fc29) 
+        id S1726094AbfCFWt4 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 6 Mar 2019 17:49:56 -0500
+Received: from mx2.suse.de ([195.135.220.15]:44994 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1725783AbfCFWt4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 6 Mar 2019 17:49:56 -0500
+X-Virus-Scanned: by amavisd-new at test-mx.suse.de
+Received: from relay2.suse.de (unknown [195.135.220.254])
+        by mx1.suse.de (Postfix) with ESMTP id 03E4CB615;
+        Wed,  6 Mar 2019 22:49:54 +0000 (UTC)
+From:   NeilBrown <neilb@suse.com>
+To:     "J. Bruce Fields" <bfields@fieldses.org>
+Date:   Thu, 07 Mar 2019 09:49:46 +1100
+Cc:     Jeff Layton <jlayton@kernel.org>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: [PATCH] nfsd: allow nfsv3 readdir request to be larger.
+In-Reply-To: <20190305214212.GC27437@fieldses.org>
+References: <87lg1vs5eh.fsf@notabene.neil.brown.name> <20190304164725.GE13690@fieldses.org> <877ederyjm.fsf@notabene.neil.brown.name> <20190305214212.GC27437@fieldses.org>
+Message-ID: <87y35rr52t.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
+Content-Type: multipart/signed; boundary="=-=-=";
+        micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Wed, 2019-03-06 at 13:07 -0800, Jeremy Allison wrote:
-> On Wed, Mar 06, 2019 at 03:31:08PM -0500, Jeff Layton wrote:
-> > On Wed, 2019-03-06 at 10:11 -0500, J. Bruce Fields wrote:
-> > > On Tue, Mar 05, 2019 at 04:47:48PM -0500, J. Bruce Fields wrote:
-> > > > On Thu, Feb 14, 2019 at 04:06:52PM -0500, J. Bruce Fields wrote:
-> > > > > After this:
-> > > > > 
-> > > > > 	https://marc.info/?l=linux-nfs&m=154966239918297&w=2
-> > > > > 
-> > > > > delegations would no longer conflict with opens from the same tgid.  So
-> > > > > if your threads all run in the same process and you're willing to manage
-> > > > > conflicts among your own clients, that should still allow you to do
-> > > > > multiple opens of the same file without giving up your lease/delegation.
-> > > > > 
-> > > > > I'd be curious to know whether that works with Samba's design.
-> > > > 
-> > > > Any idea whether that would work?
-> > > > 
-> > > > (Easy?  Impossible?  Possible, but realistically the changes required to
-> > > > Samba would be painful enough that it'd be unlikely to get done?)
-> > > 
-> > > Volker reminds me off-list that he'd like to see Ganesha and Samba work
-> > > out an API in userspace first before commiting to a user<->kernel API.
-> > > 
-> > > Jeff, wasn't there some work (on Ceph maybe?) on a userspace delegation
-> > > API?  Is that close to what's needed?
-> > > 
-> > 
-> > Here's the C headers for that stuff:
-> > 
-> >     https://github.com/ceph/ceph/blob/7ba6bece4187eda5d05a9b84211fe6ba8dd287bd/src/include/cephfs/libcephfs.h#L1734
-> > 
-> > It's simple enough and works for us in ganesha, and I think we can
-> > probably adapt it to samba without too much difficulty. The callback
-> > doesn't seem like it'll do for a kernel API though -- you'd almost
-> > certainly need to do something different there (signals? inotify?).
-> 
-> SMB3 leases have R/RW and Handle-based leases.
-> 
-> Handle leases allow multiple opens of the same pathname
-> that get different handles to share the lease, allowing
-> a client redirector to delay opens or closes locally
-> so long as it has a handle lease.
-> 
-> Here are the semantics:
-> 
-> https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-smb2/d8df943d-6ad7-4b30-9f58-96ae90fc6204
-> 
-> I'm not sure a simple file-descriptor based API is
-> enough for us. Can he have a uuid or token based
-> API instead where the server can chose what fd's
-> to cover with a token ?
+--=-=-=
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
-The libcephfs API takes an opaque void * that could hold such a token.
-It gets passed back to the callback function when it's called to handle
-a delegation break.
 
-I could envision a delegation storing something similar (maybe an
-unsigned long or uint64_t) and pass it back in a delegation break. With
-that you could set multiple delegations on a fd, and use that to store a
-key for each one.
+nfsd currently reports the NFSv4 dtpref FSINFO parameter
+to be PAGE_SIZE, so NFS clients will typically ask for one
+page of directory entries at a time.  This is needlessly restrictive
+as nfsd can handle larger replies easily.
 
-Would something like that work for samba, or am I misunderstanding what
-it needs?
+Also, a READDIR request (but not a READDIRPLUS request) has the count
+size clipped to PAGE_SIE, again unnecessary.
 
--- 
-Jeff Layton <jlayton@kernel.org>
+This patch lifts these limits so that larger readdir requests can be
+used.
 
+Signed-off-by: NeilBrown <neilb@suse.com>
+=2D--
+ fs/nfsd/nfs3proc.c | 2 +-
+ fs/nfsd/nfs3xdr.c  | 4 +++-
+ 2 files changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/fs/nfsd/nfs3proc.c b/fs/nfsd/nfs3proc.c
+index c9cf46e0c040..8f933e84cec1 100644
+=2D-- a/fs/nfsd/nfs3proc.c
++++ b/fs/nfsd/nfs3proc.c
+@@ -588,7 +588,7 @@ nfsd3_proc_fsinfo(struct svc_rqst *rqstp)
+ 	resp->f_wtmax  =3D max_blocksize;
+ 	resp->f_wtpref =3D max_blocksize;
+ 	resp->f_wtmult =3D PAGE_SIZE;
+=2D	resp->f_dtpref =3D PAGE_SIZE;
++	resp->f_dtpref =3D max_blocksize;
+ 	resp->f_maxfilesize =3D ~(u32) 0;
+ 	resp->f_properties =3D NFS3_FSF_DEFAULT;
+=20
+diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
+index 83919116d5cb..93fea246f676 100644
+=2D-- a/fs/nfsd/nfs3xdr.c
++++ b/fs/nfsd/nfs3xdr.c
+@@ -573,6 +573,8 @@ int
+ nfs3svc_decode_readdirargs(struct svc_rqst *rqstp, __be32 *p)
+ {
+ 	struct nfsd3_readdirargs *args =3D rqstp->rq_argp;
++	u32 max_blocksize =3D svc_max_payload(rqstp);
++
+ 	p =3D decode_fh(p, &args->fh);
+ 	if (!p)
+ 		return 0;
+@@ -580,7 +582,7 @@ nfs3svc_decode_readdirargs(struct svc_rqst *rqstp, __be=
+32 *p)
+ 	args->verf   =3D p; p +=3D 2;
+ 	args->dircount =3D ~0;
+ 	args->count  =3D ntohl(*p++);
+=2D	args->count  =3D min_t(u32, args->count, PAGE_SIZE);
++	args->count  =3D min_t(u32, args->count, max_blocksize);
+ 	args->buffer =3D page_address(*(rqstp->rq_next_page++));
+=20
+ 	return xdr_argsize_check(rqstp, p);
+=2D-=20
+2.14.0.rc0.dirty
+
+
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+
+iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlyATosACgkQOeye3VZi
+gbnWvBAAwnMdpmf4PvM1cimIjSJhHQFC5W5eZD6C+8dy6savgpoCaidOPxi1hHXm
+RMNETiyQKfffsOoI1gvqLWNpT0NtMTI0KGu47D66Bub0inV33jdSUI4qu7F24DJt
+JKjHQwtw7ON0xLWYzTqwAEQRD2bpxG1qphNUOQ/0NwQUzJkmH6jtoPIyjCylzXrj
+KwIh4pHSxwH5i82QYGIM7QIGwYftBBLvQYCGwW6EbVgpJ2X4tocmWWnMo90+qfa/
+l4Gd5faFgkpy5qFvS7arvyg7wS/c5naAMOJnt+8mAL6aNvPT434vWqwyYWP/2IyV
+oIMv3Q2numhsb2ugfeMq41fC6LgbzQ9MGJv9+rAmQ6rcl4FdvDrajpHenZJmn3Mh
+NekKz+jEabB4F/8pCzId12ObTWZxqIqLpGLkBvrckQBlKSHDUfZPqSiUfvoSivJi
+uOe0GrZIVpnCCbAj0uJHe+Yj2Y9uz4/TJ5KhVQl8RJ21QziNE1Fq/ZcJsmiufjsr
+1piAgKWi42v9YEibzGiPEH9Cmqh/GuD/64iajnbO4edm5rjM5Rd1TppPFr/CHswq
+8Gt8L8G+/Y2XNFDvWz+TPry7el9Iu18P7DJ8arqKUT8oGH8wSUCq668SbV+/Lish
+yfbkJ8RC+qPJxoeahM3VZSS665NZsqfH7xWJdze+d2ApQOWzXnI=
+=/k3D
+-----END PGP SIGNATURE-----
+--=-=-=--
