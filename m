@@ -2,118 +2,140 @@ Return-Path: <SRS0=nj1J=RK=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.9 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_PASS
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-5.8 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,
+	SPF_PASS autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 92295C43381
-	for <linux-nfs@archiver.kernel.org>; Thu,  7 Mar 2019 15:02:25 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 419FAC10F03
+	for <linux-nfs@archiver.kernel.org>; Thu,  7 Mar 2019 15:28:43 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 5B77920449
-	for <linux-nfs@archiver.kernel.org>; Thu,  7 Mar 2019 15:02:25 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 107192085A
+	for <linux-nfs@archiver.kernel.org>; Thu,  7 Mar 2019 15:28:43 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="GSXON3hk"
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="Uzwdn9ei"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726161AbfCGPCY (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 7 Mar 2019 10:02:24 -0500
-Received: from mail-lf1-f41.google.com ([209.85.167.41]:39121 "EHLO
-        mail-lf1-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726127AbfCGPCY (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Mar 2019 10:02:24 -0500
-Received: by mail-lf1-f41.google.com with SMTP id r123so11911217lff.6
-        for <linux-nfs@vger.kernel.org>; Thu, 07 Mar 2019 07:02:23 -0800 (PST)
+        id S1726311AbfCGP2m (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 7 Mar 2019 10:28:42 -0500
+Received: from mail-it1-f194.google.com ([209.85.166.194]:36068 "EHLO
+        mail-it1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726207AbfCGP2m (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Mar 2019 10:28:42 -0500
+Received: by mail-it1-f194.google.com with SMTP id v83so16394385itf.1;
+        Thu, 07 Mar 2019 07:28:41 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
-        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+        h=sender:subject:from:to:date:message-id:user-agent:mime-version
          :content-transfer-encoding;
-        bh=EjCuhpqoP7zw90m43pLWnFZBq+baED7i4bsS6AnZQZA=;
-        b=GSXON3hkq/oQcBK8OFU98+ALb+2fxbu5Pez6CUdW5RN/y/h+YbNELc1tanh3UL5w/q
-         7crVrSiMMGV32aiacwxNLn7PcGyeVWdFoX6fBHFTPSjuU791ja7NihfwPB0LSO8ycqvz
-         pdcIhkOwhSluAkqK29MCtuuVEupxOj6t1cAZTqZQW0iilV9XlpZOQNgXzMZmZB4WUGJ7
-         PCYaUW+INMsQEsNRIifUEdE1ixDIK7SQCthBNanEWNZuQ68FqYvKGt3YpNbPbfaD1T6o
-         uo91SlEGqtAIIAqF29hWPvd7olBtuDItvyUgIp7bPlF3sjmyWJyCNIQCXjJW9Arc61Sb
-         VlEQ==
+        bh=ytFn4gtJbVK7BZovKxprUx8LCj9qJPAX8GdGlqlR93A=;
+        b=Uzwdn9ei5BGoLI8+GYcOuVhjh2SinzX1+tzBtGaOaS1JVPJR0IvjGNgVsis3lT/Oa8
+         60vP1dgUbq34n5NG2ZWTXKOy8mCXHAqK7RK23Mk07synVZ2IUFEH34wZl70QKaYytOe9
+         hYpdXXsV1PwKTwqUFfaDZ+yL5z7yaWciMWCr0D5YVB25pw1telMqCnP3MDLQ4MRru465
+         f1Rf2Piq7bKHc8z5tAD1t6kOXvRDeqyGOukeLcu1xAbB6zRlrDMVwkum9FUosgesMV9/
+         nAjh7x8Du6n7+lBl9KCJ95uSf0QTiyQzk7d42Ukm8aZvLDPK16MOykqkO/1lOjUvBFjy
+         jARw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
-         :message-id:subject:to:content-transfer-encoding;
-        bh=EjCuhpqoP7zw90m43pLWnFZBq+baED7i4bsS6AnZQZA=;
-        b=mkO/I3/kFhIE6snnFUmbqCXgJRGx+cjcxIj/UfhowCHnDQ/W0O65PfXnxMjK3ysvuC
-         fXiiBRbgAy15ZrgIkpzxBYKAynMbw5exbhhcopbLO8Szk3+wFFaRo7GgQK+nICYp7NHm
-         pFT2K/UJTBTFY3Mme9EWGjF0ldboNzjZOXbfodo3VZobQMEjwuKrElVzVHimGeoYUEqa
-         RHlWJgxeeHAQPkTrIQS/pZYbl4g1Tm8/ViycKj5k4kEyb7lUBbkNhNVgtwVlnyTVEwo/
-         6dCeDJvHjO//nuUv9gH2UmnVXCRrh+kj/PuPmUF6BJ8/p2Q5A5G/0mtPAJYRV4Jcssal
-         tvrA==
-X-Gm-Message-State: APjAAAWpVX9Nkl6J3i635JarU+2XtXQKWqnJ1F8fZz2DYwfoIa78AdfL
-        39CWAAQbrcXrcx90pJGZdloTs5nk7eV9ISbXSgfNTjMm
-X-Google-Smtp-Source: APXvYqyI04AN8g9goeQx41K9Z9CqxQKDNtoijla2B4yj8vDWwk/xhPZ1MWCfWpCKDEVVszAhyNNCUaG1ULNtDUY6/Cs=
-X-Received: by 2002:a19:8c56:: with SMTP id i22mr7272050lfj.79.1551970942385;
- Thu, 07 Mar 2019 07:02:22 -0800 (PST)
+        h=x-gm-message-state:sender:subject:from:to:date:message-id
+         :user-agent:mime-version:content-transfer-encoding;
+        bh=ytFn4gtJbVK7BZovKxprUx8LCj9qJPAX8GdGlqlR93A=;
+        b=GL4xH7TW8xsetLZf1KjbKnNhUh2kaMBDUcR2WXGyafZ+ksP3J0ZjRGvFEm2QHPvKcb
+         +3WofF/jc0haDlk6WjJW1vtorfLygZzQrJm0gRgpwsNpuvBJ3a1wY/askGTXAsfRRYNY
+         LpTSO6QEvunLOIVQoJ9hyjNSm54uamiBokJuH+Wr+dUn+WLrhC4xRz0/VM++85RWAIJc
+         DtEFmzm7Tib/Wa6fC43VQoV7FVLLBHHHleuFw8uiWTRdjymfD+NqR3je2Bqqd3PB3QOR
+         rUU1MTPMl66ctlKjSwNGEk7gkLknJOVnFlSRjFNLbW/ixf6KmiS2wIE4yUJs1Id96C5t
+         bfVA==
+X-Gm-Message-State: APjAAAU4pDfzF7JFP1IlvAaSYbfTIYSIB/WN/QiokxX8HErTisGU4bC7
+        ESFFPgoa09F3xWg5fj3A/2XSo42w
+X-Google-Smtp-Source: APXvYqywEPobpk7yWk2807WASyXZdDoQP/u1Mqq92O4nC7mI2QMTYC8q4mxa3c+8pe/52K51LnhWww==
+X-Received: by 2002:a24:9982:: with SMTP id a124mr5435212ite.79.1551972520306;
+        Thu, 07 Mar 2019 07:28:40 -0800 (PST)
+Received: from gateway.1015granger.net (c-68-61-232-219.hsd1.mi.comcast.net. [68.61.232.219])
+        by smtp.gmail.com with ESMTPSA id u18sm2063945ioc.64.2019.03.07.07.28.39
+        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Thu, 07 Mar 2019 07:28:39 -0800 (PST)
+Received: from manet.1015granger.net (manet.1015granger.net [192.168.1.51])
+        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id x27FScfm007215;
+        Thu, 7 Mar 2019 15:28:38 GMT
+Subject: [PATCH v2 0/5] RFC: Linux IMA on NFS prototype
+From:   Chuck Lever <chuck.lever@oracle.com>
+To:     linux-nfs@vger.kernel.org, linux-integrity@vger.kernel.org
+Date:   Thu, 07 Mar 2019 10:28:38 -0500
+Message-ID: <20190307151838.11306.94183.stgit@manet.1015granger.net>
+User-Agent: StGit/0.17.1-dirty
 MIME-Version: 1.0
-References: <CACyXjPx84Y9jwrAQzvhjDz2jH8aZnx8MsvJjQvW9FzDfZy0HCQ@mail.gmail.com>
-In-Reply-To: <CACyXjPx84Y9jwrAQzvhjDz2jH8aZnx8MsvJjQvW9FzDfZy0HCQ@mail.gmail.com>
-From:   Richard Sharpe <realrichardsharpe@gmail.com>
-Date:   Thu, 7 Mar 2019 07:01:54 -0800
-Message-ID: <CACyXjPx0oxRhKiSm1AJU9pQ27FEMHYuAnhfLO_NSV20fQVgmyA@mail.gmail.com>
-Subject: Re: Check that an RPC compiler has been installed
-To:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Wed, Mar 6, 2019 at 5:17 PM Richard Sharpe
-<realrichardsharpe@gmail.com> wrote:
->
-> When I installed Fedora-29 to check out building on Fedora I didn't
-> have rpcgen installed.
->
-> autogen worked and configure worked but make failed in spectacular ways.
->
-> The attached patch warns the user during configure but is perhaps not
-> the correct test, because of rpcgen is on your path but not where the
-> earlier tests expect it, things will still likely fail.
+This series implements support for accessing and updating the
+security.ima xattr on files that reside on an NFS export. Since the
+NFS protocol does not have capabilities like CAP_SYS_ADMIN, on NFS
+clients, only root is allowed to set this xattr.
 
-Here is a better version. Since we already know we didn't find rpcgen,
-just let the user know.
+I'm interested in comments on the implementation, test results, or a
+discussion of whether this proposal creates undesirable security
+exposures.
 
-Tested by uninstalling rpcgen.
+Git repo: git://git.linux-nfs.org/projects/cel/cel-2.6.git
 
-From 6caea95ccebb5d3635b3d1c91e8683954fe61645 Mon Sep 17 00:00:00 2001
-From: root <realrichardsharpe@gmail.com>
-Date: Wed, 6 Mar 2019 19:51:12 -0500
-Subject: [PATCH] If we don't find rpcgen let the user know about it rather
- than getting an error later during make.
+in the nfs-ima-prototype topic branch.
+
+
+Implementation Notes
+
+Please see the individual patch descriptions: standards action is
+still required to define the official FATTR4 flag that all NFSv4.2
+implementations recognize as meaning "the security.ima xattr". This
+prototype is not guaranteed to interoperate with future prototypes
+or standards-compliant implementations of this feature. It is for
+experimental purposes only.
+
+EVM is not supported in this prototype. The NFS protocol does not
+support several of the xattrs that are protected by EVM: SMACK64,
+Posix ACLs, and Linux file capabilities are not supported. When
+these are present in an EVM hash, NFS clients can't retrieve them
+to verify the hash.
+
+This prototype does not match what is described in draft-ietf-nfsv4-
+integrity-measurement. Since that draft was submitted, there has
+been vigorous discussion on nfsv4@ietf.org about how the NFS
+protocol should support Linux IMA. The prototype attempts a narrow
+interpretation of what the comments have requested. The draft will
+be updated to reflect the prototype implementation.
+
+
+Changes since v1:
+- Rebased on kernel v5.0
+- Moved NFSD support out from behind CONFIG_NFSD_V4_SECURITY_LABELS
+- Added a patch to remove ima_file_check call in NFSD
 
 ---
- configure.ac | 3 +++
- 1 file changed, 3 insertions(+)
 
-diff --git a/configure.ac b/configure.ac
-index cb9d921..b23bb6a 100644
---- a/configure.ac
-+++ b/configure.ac
-@@ -154,6 +154,9 @@ AC_ARG_WITH(rpcgen,
-        if test "$rpcgen_path" =3D "yes"; then
-            for p in /usr/local/bin/rpcgen /usr/bin/rpcgen /bin/rpcgen
-            do if test -f $p ; then RPCGEN_PATH=3D$p ; break; fi ; done
-+           if test -z "$RPCGEN_PATH"; then
-+                AC_MSG_ERROR([Please install rpcgen or use --with-rpcgen])
-+           fi
-        elif test "$rpcgen_path" !=3D "internal"; then
-            RPCGEN_PATH=3D$rpcgen_path
-        else
+Chuck Lever (5):
+      NFS: Define common IMA-related protocol elements
+      NFSD: Prototype support for IMA on NFS (server)
+      NFSD: Remove ima_file_check call
+      NFS: Rename security xattr handler
+      NFS: Prototype support for IMA on NFS (client)
+
+
+ fs/nfs/nfs4_fs.h          |    1 
+ fs/nfs/nfs4proc.c         |  134 +++++++++++++++++++++++++++++---
+ fs/nfs/nfs4xdr.c          |  186 +++++++++++++++++++++++++++++++++++++++++++++
+ fs/nfsd/nfs4proc.c        |    9 ++
+ fs/nfsd/nfs4xdr.c         |   49 ++++++++++--
+ fs/nfsd/nfsd.h            |    3 -
+ fs/nfsd/vfs.c             |   25 +++++-
+ fs/nfsd/vfs.h             |    3 +
+ fs/nfsd/xdr4.h            |    3 +
+ fs/xattr.c                |   25 +++---
+ include/linux/nfs4.h      |    5 +
+ include/linux/nfs_fs_sb.h |    1 
+ include/linux/nfs_xdr.h   |   21 +++++
+ 13 files changed, 426 insertions(+), 39 deletions(-)
+
 --
-2.19.1
-
-
-
---=20
-Regards,
-Richard Sharpe
-(=E4=BD=95=E4=BB=A5=E8=A7=A3=E6=86=82=EF=BC=9F=E5=94=AF=E6=9C=89=E6=9D=9C=
-=E5=BA=B7=E3=80=82--=E6=9B=B9=E6=93=8D)(=E4=BC=A0=E8=AF=B4=E6=9D=9C=E5=BA=
-=B7=E6=98=AF=E9=85=92=E7=9A=84=E5=8F=91=E6=98=8E=E8=80=85)
+Chuck Lever
