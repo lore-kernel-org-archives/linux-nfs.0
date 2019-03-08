@@ -8,64 +8,63 @@ X-Spam-Status: No, score=-8.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 42774C43381
-	for <linux-nfs@archiver.kernel.org>; Fri,  8 Mar 2019 00:47:39 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1FDE3C10F03
+	for <linux-nfs@archiver.kernel.org>; Fri,  8 Mar 2019 00:47:38 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 11D8B20675
-	for <linux-nfs@archiver.kernel.org>; Fri,  8 Mar 2019 00:47:39 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id E5AC620840
+	for <linux-nfs@archiver.kernel.org>; Fri,  8 Mar 2019 00:47:37 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="FXV44NW4"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="qnB18tEi"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726267AbfCHAri (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 7 Mar 2019 19:47:38 -0500
-Received: from mail-it1-f194.google.com ([209.85.166.194]:40494 "EHLO
-        mail-it1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726248AbfCHAri (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Mar 2019 19:47:38 -0500
-Received: by mail-it1-f194.google.com with SMTP id l139so18907101ita.5
-        for <linux-nfs@vger.kernel.org>; Thu, 07 Mar 2019 16:47:37 -0800 (PST)
+        id S1726227AbfCHArh (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 7 Mar 2019 19:47:37 -0500
+Received: from mail-io1-f67.google.com ([209.85.166.67]:35717 "EHLO
+        mail-io1-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726248AbfCHArh (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Mar 2019 19:47:37 -0500
+Received: by mail-io1-f67.google.com with SMTP id x4so15354907ion.2
+        for <linux-nfs@vger.kernel.org>; Thu, 07 Mar 2019 16:47:36 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:subject:date:message-id:in-reply-to:references:mime-version
          :content-transfer-encoding;
-        bh=GOLejrKBaBKNwAD9Yjefk59wxxyUttb+EopuXTNkvY4=;
-        b=FXV44NW4jSZX0UG/IRFPVk0JRMtruog52z54K4fZKjpW5pU9mAgQOV6KMPnYbBnZs1
-         vZA869tSP4aQMLgW974RHUoIx6uz4gEWj3cewdxo6dzCUSulaosyfWUrE9A9fYQxvWdL
-         OF6lZ/FtF6nxWMBZ/L2kiKvhF1EBoMlnJvlpgqseVq6WdjdIVc8dmvyI3T/TeztXIs8D
-         lkJ4/mkZvZ3ghXFFsh+Uf8DIv+LoFF3PvPFO24qEbUF5THqG4G1mtFz6jts4wQ0JvJCl
-         jJaoQ5QgZooPCDOQQ8/j6W3gC9d3RDTjpfb08pKGFJJKTsX4DGWT37XYTFZyNHBEw7IV
-         HXHA==
+        bh=/9HFUDewElV+nsL8NSHYFpzTyBHWJzEh4IYU2sa8OnQ=;
+        b=qnB18tEinedVZzPvpf5GY/DWa6jCCuaS/B+kiVqnxDjNvZdesB54582zzBp2mT9xLj
+         WMo6+YA1yRsWkVk6RHYeEyNLRuE5/IStYEI3cvn8AGgRjSTQG9M6Py1AJhJJnn6cK6aS
+         wNUAPfmxzXk1q46By/MyL+voTSl8pm9fCj6qU3j6K3fm013g+SDo3m/039E8Hg9UR45D
+         EH4UNmdF5dEni8PPi0KS2xGm+yHo8K+W0Wm/OoVyPK7HLNKsn3Q08qqvPRuonztF1oQa
+         u+iGdKAWn1QbckteP8mGYTvgIrLKad0gXf1pS6yKbQ7IdnPR2R3R9fMVyS9LV6Ypv1gT
+         SyTg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=GOLejrKBaBKNwAD9Yjefk59wxxyUttb+EopuXTNkvY4=;
-        b=X1HALNo7jPYGfetCac+BaC3AZ6QqmLkn9ZuDim5xSjEIGsIps8J27EZjfSSBKe8bcn
-         lsLr+GfnlCS6rYRq2Rh+xaYaYGmXcEDKhkLfO0surC85bcYekYPktEkLC7+zlC/vcM0c
-         33BFsZ8qRczQ/vz31DxG3fwTBp2poJS497dIPmQBAIk0or340NaVt8ZYdnd8AMZdjK0C
-         BDJXQqQ5WcstlsrQVEn+kKrLf9PUBe0MJVDCDSzQbS6van2KztNoDvd8VY0DEj44BzeW
-         ThuuOUBbIRV2lm89wewQ1NdpTHc34NoexCjZz6lyBHn22k4XnsuHW8C1wcXyjZp0uBtD
-         bglQ==
-X-Gm-Message-State: APjAAAXDIe7F7IgSMODT5J/xwDiMEJtpx9NQD4tTyYy/oRRe4oJZLo3D
-        CcwV6zybDpKm7LbnlJd1WAclf5k=
-X-Google-Smtp-Source: APXvYqw4YtWHDfX9uQ5xx3zoShWCjaASt9IIAia7TkWgORFgg4xuNzrwFbS4nTtBuKfAFoEw/e7Lcg==
-X-Received: by 2002:a24:6b57:: with SMTP id v84mr5527498itc.145.1552006056555;
-        Thu, 07 Mar 2019 16:47:36 -0800 (PST)
+        bh=/9HFUDewElV+nsL8NSHYFpzTyBHWJzEh4IYU2sa8OnQ=;
+        b=qpAeYl8IF+YZ6SCFy5K25U/pbtdQ69aWAunJgW1ZqnQveDAUP4GIzQ+ffvZdP5qta7
+         mAbDv21oieJTO5vFJ6jt9aZBHemWgQh5q4td1Gu8tnqJ3Ox9sd0lj3sVIHtkhXrNwMnB
+         0UWdhKGZEBtqnJdbXfXAggeMLDb/zIWatZjoy9orONvSAgjWnBSo4TeYvsG3SLpc4vKY
+         HDMbPxDS4wLjputDAY6hrH5vg1zDuAoprz5zSOK0ZgNBkkmSLSmUtsn2rJlP9fyDYI7m
+         t/sI/uJczkWPF27GGU/ghBqI4A9J2ctfrKzgQUcItby3d3aJrLg4PWBpOmvm/06RQ9iV
+         HOmw==
+X-Gm-Message-State: APjAAAUKawtNqZxn/KpAXHa6E72Mvpuzl7oZ2s9OfWFbQ9NaKbhp0nM3
+        /QjO9E1lwEV7NtyY+bsOEXFFIMY=
+X-Google-Smtp-Source: APXvYqx81bBayAHLeQzNfDAw+A5VR6+FA3BLvcFd+Ods+WERqMwQQK8gMdyAuj1GgpI6sYks3x34ew==
+X-Received: by 2002:a6b:7311:: with SMTP id e17mr8423102ioh.91.1552006055205;
+        Thu, 07 Mar 2019 16:47:35 -0800 (PST)
 Received: from localhost.localdomain (c-68-40-189-247.hsd1.mi.comcast.net. [68.40.189.247])
-        by smtp.gmail.com with ESMTPSA id r65sm3278223itb.19.2019.03.07.16.47.35
+        by smtp.gmail.com with ESMTPSA id r65sm3278223itb.19.2019.03.07.16.47.34
         for <linux-nfs@vger.kernel.org>
         (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
-        Thu, 07 Mar 2019 16:47:35 -0800 (PST)
+        Thu, 07 Mar 2019 16:47:34 -0800 (PST)
 From:   Trond Myklebust <trondmy@gmail.com>
 X-Google-Original-From: Trond Myklebust <trond.myklebust@hammerspace.com>
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH v3 3/3] SUNRPC: Respect RPC call timeouts when retrying transmission
-Date:   Thu,  7 Mar 2019 19:46:23 -0500
-Message-Id: <20190308004623.10618-3-trond.myklebust@hammerspace.com>
+Subject: [PATCH v3 2/3] SUNRPC: Fix up RPC back channel transmission
+Date:   Thu,  7 Mar 2019 19:46:22 -0500
+Message-Id: <20190308004623.10618-2-trond.myklebust@hammerspace.com>
 X-Mailer: git-send-email 2.20.1
-In-Reply-To: <20190308004623.10618-2-trond.myklebust@hammerspace.com>
+In-Reply-To: <20190308004623.10618-1-trond.myklebust@hammerspace.com>
 References: <20190308004623.10618-1-trond.myklebust@hammerspace.com>
- <20190308004623.10618-2-trond.myklebust@hammerspace.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
@@ -73,131 +72,144 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Fix a regression where soft and softconn requests are not timing out
-as expected.
+Now that transmissions happen through a queue, we require the RPC tasks
+to handle error conditions that may have been set while they were
+sleeping. The back channel does not currently do this, but assumes
+that any error condition happens during its own call to xprt_transmit().
+
+The solution is to ensure that the back channel splits out the
+error handling just like the forward channel does.
 
 Fixes: 89f90fe1ad8b ("SUNRPC: Allow calls to xprt_transmit() to drain...")
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- net/sunrpc/clnt.c | 42 ++++++++++++++++++++++++------------------
- 1 file changed, 24 insertions(+), 18 deletions(-)
+ net/sunrpc/clnt.c | 61 +++++++++++++++++++++++++----------------------
+ 1 file changed, 33 insertions(+), 28 deletions(-)
 
 diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index b9558e10c6c1..311029b7c33a 100644
+index 7ab4da342ab5..b9558e10c6c1 100644
 --- a/net/sunrpc/clnt.c
 +++ b/net/sunrpc/clnt.c
-@@ -79,6 +79,7 @@ static int	rpc_encode_header(struct rpc_task *task,
- static int	rpc_decode_header(struct rpc_task *task,
- 				  struct xdr_stream *xdr);
- static int	rpc_ping(struct rpc_clnt *clnt);
-+static void	rpc_check_timeout(struct rpc_task *task);
+@@ -66,9 +66,6 @@ static void	call_decode(struct rpc_task *task);
+ static void	call_bind(struct rpc_task *task);
+ static void	call_bind_status(struct rpc_task *task);
+ static void	call_transmit(struct rpc_task *task);
+-#if defined(CONFIG_SUNRPC_BACKCHANNEL)
+-static void	call_bc_transmit(struct rpc_task *task);
+-#endif /* CONFIG_SUNRPC_BACKCHANNEL */
+ static void	call_status(struct rpc_task *task);
+ static void	call_transmit_status(struct rpc_task *task);
+ static void	call_refresh(struct rpc_task *task);
+@@ -1133,6 +1130,8 @@ rpc_call_async(struct rpc_clnt *clnt, const struct rpc_message *msg, int flags,
+ EXPORT_SYMBOL_GPL(rpc_call_async);
  
- static void rpc_register_client(struct rpc_clnt *clnt)
- {
-@@ -1962,8 +1963,7 @@ call_connect_status(struct rpc_task *task)
- 			break;
- 		if (clnt->cl_autobind) {
- 			rpc_force_rebind(clnt);
--			task->tk_action = call_bind;
--			return;
-+			goto out_retry;
- 		}
- 		/* fall through */
- 	case -ECONNRESET:
-@@ -1983,16 +1983,19 @@ call_connect_status(struct rpc_task *task)
- 		/* fall through */
- 	case -ENOTCONN:
- 	case -EAGAIN:
--		/* Check for timeouts before looping back to call_bind */
- 	case -ETIMEDOUT:
--		task->tk_action = call_timeout;
--		return;
-+		goto out_retry;
- 	case 0:
- 		clnt->cl_stats->netreconn++;
- 		task->tk_action = call_transmit;
- 		return;
- 	}
- 	rpc_exit(task, status);
-+	return;
-+out_retry:
-+	/* Check for timeouts before looping back to call_bind */
-+	task->tk_action = call_bind;
-+	rpc_check_timeout(task);
- }
+ #if defined(CONFIG_SUNRPC_BACKCHANNEL)
++static void call_bc_encode(struct rpc_task *task);
++
+ /**
+  * rpc_run_bc_task - Allocate a new RPC task for backchannel use, then run
+  * rpc_execute against it
+@@ -1154,7 +1153,7 @@ struct rpc_task *rpc_run_bc_task(struct rpc_rqst *req)
+ 	task = rpc_new_task(&task_setup_data);
+ 	xprt_init_bc_request(req, task);
  
- /*
-@@ -2069,7 +2072,7 @@ call_transmit_status(struct rpc_task *task)
- 				trace_xprt_ping(task->tk_xprt,
- 						task->tk_status);
- 			rpc_exit(task, task->tk_status);
--			break;
-+			return;
- 		}
- 		/* fall through */
- 	case -ECONNRESET:
-@@ -2081,6 +2084,7 @@ call_transmit_status(struct rpc_task *task)
- 		task->tk_status = 0;
- 		break;
- 	}
-+	rpc_check_timeout(task);
+-	task->tk_action = call_bc_transmit;
++	task->tk_action = call_bc_encode;
+ 	atomic_inc(&task->tk_count);
+ 	WARN_ON_ONCE(atomic_read(&task->tk_count) != 2);
+ 	rpc_execute(task);
+@@ -2085,6 +2084,16 @@ call_transmit_status(struct rpc_task *task)
  }
  
  #if defined(CONFIG_SUNRPC_BACKCHANNEL)
-@@ -2217,7 +2221,7 @@ call_status(struct rpc_task *task)
- 	case -EPIPE:
- 	case -ENOTCONN:
- 	case -EAGAIN:
--		task->tk_action = call_encode;
-+		task->tk_action = call_timeout;
- 		break;
- 	case -EIO:
- 		/* shutdown or soft timeout */
-@@ -2231,20 +2235,13 @@ call_status(struct rpc_task *task)
- 	}
- }
- 
--/*
-- * 6a.	Handle RPC timeout
-- * 	We do not release the request slot, so we keep using the
-- *	same XID for all retransmits.
-- */
++static void call_bc_transmit(struct rpc_task *task);
++static void call_bc_transmit_status(struct rpc_task *task);
++
++static void
++call_bc_encode(struct rpc_task *task)
++{
++	xprt_request_enqueue_transmit(task);
++	task->tk_action = call_bc_transmit;
++}
++
+ /*
+  * 5b.	Send the backchannel RPC reply.  On error, drop the reply.  In
+  * addition, disconnect on connectivity errors.
+@@ -2092,26 +2101,23 @@ call_transmit_status(struct rpc_task *task)
  static void
--call_timeout(struct rpc_task *task)
-+rpc_check_timeout(struct rpc_task *task)
+ call_bc_transmit(struct rpc_task *task)
  {
- 	struct rpc_clnt	*clnt = task->tk_client;
- 
--	if (xprt_adjust_timeout(task->tk_rqstp) == 0) {
--		dprintk("RPC: %5u call_timeout (minor)\n", task->tk_pid);
--		goto retry;
--	}
-+	if (xprt_adjust_timeout(task->tk_rqstp) == 0)
-+		return;
- 
- 	dprintk("RPC: %5u call_timeout (major)\n", task->tk_pid);
- 	task->tk_timeouts++;
-@@ -2280,10 +2277,19 @@ call_timeout(struct rpc_task *task)
- 	 * event? RFC2203 requires the server to drop all such requests.
- 	 */
- 	rpcauth_invalcred(task);
+-	struct rpc_rqst *req = task->tk_rqstp;
+-
+-	if (rpc_task_need_encode(task))
+-		xprt_request_enqueue_transmit(task);
+-	if (!test_bit(RPC_TASK_NEED_XMIT, &task->tk_runstate))
+-		goto out_wakeup;
+-
+-	if (!xprt_prepare_transmit(task))
+-		goto out_retry;
+-
+-	if (task->tk_status < 0) {
+-		printk(KERN_NOTICE "RPC: Could not send backchannel reply "
+-			"error: %d\n", task->tk_status);
+-		goto out_done;
++	task->tk_action = call_bc_transmit_status;
++	if (test_bit(RPC_TASK_NEED_XMIT, &task->tk_runstate)) {
++		if (!xprt_prepare_transmit(task))
++			return;
++		task->tk_status = 0;
++		xprt_transmit(task);
+ 	}
++	xprt_end_transmit(task);
 +}
  
--retry:
-+/*
-+ * 6a.	Handle RPC timeout
-+ * 	We do not release the request slot, so we keep using the
-+ *	same XID for all retransmits.
-+ */
+-	xprt_transmit(task);
 +static void
-+call_timeout(struct rpc_task *task)
++call_bc_transmit_status(struct rpc_task *task)
 +{
- 	task->tk_action = call_encode;
- 	task->tk_status = 0;
-+	rpc_check_timeout(task);
- }
++	struct rpc_rqst *req = task->tk_rqstp;
  
- /*
+-	xprt_end_transmit(task);
+ 	dprint_status(task);
++
+ 	switch (task->tk_status) {
+ 	case 0:
+ 		/* Success */
+@@ -2125,8 +2131,14 @@ call_bc_transmit(struct rpc_task *task)
+ 	case -ENOTCONN:
+ 	case -EPIPE:
+ 		break;
++	case -ENOBUFS:
++		rpc_delay(task, HZ>>2);
++		/* fall through */
++	case -EBADSLT:
+ 	case -EAGAIN:
+-		goto out_retry;
++		task->tk_status = 0;
++		task->tk_action = call_bc_transmit;
++		return;
+ 	case -ETIMEDOUT:
+ 		/*
+ 		 * Problem reaching the server.  Disconnect and let the
+@@ -2145,18 +2157,11 @@ call_bc_transmit(struct rpc_task *task)
+ 		 * We were unable to reply and will have to drop the
+ 		 * request.  The server should reconnect and retransmit.
+ 		 */
+-		WARN_ON_ONCE(task->tk_status == -EAGAIN);
+ 		printk(KERN_NOTICE "RPC: Could not send backchannel reply "
+ 			"error: %d\n", task->tk_status);
+ 		break;
+ 	}
+-out_wakeup:
+-	rpc_wake_up_queued_task(&req->rq_xprt->pending, task);
+-out_done:
+ 	task->tk_action = rpc_exit_task;
+-	return;
+-out_retry:
+-	task->tk_status = 0;
+ }
+ #endif /* CONFIG_SUNRPC_BACKCHANNEL */
+ 
 -- 
 2.20.1
 
