@@ -1,166 +1,158 @@
-Return-Path: <SRS0=3/9x=RL=vger.kernel.org=linux-nfs-owner@kernel.org>
+Return-Path: <SRS0=yRiJ=RN=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.1 required=3.0 tests=DKIMWL_WL_MED,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
-	SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-1.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4B3C9C43381
-	for <linux-nfs@archiver.kernel.org>; Fri,  8 Mar 2019 21:53:25 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 446F3C43381
+	for <linux-nfs@archiver.kernel.org>; Sun, 10 Mar 2019 22:20:19 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 0728A20851
-	for <linux-nfs@archiver.kernel.org>; Fri,  8 Mar 2019 21:53:25 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id E30F12077B
+	for <linux-nfs@archiver.kernel.org>; Sun, 10 Mar 2019 22:20:18 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=mindspring.com header.i=@mindspring.com header.b="Q12N3LhF"
+	dkim=pass (2048-bit key) header.d=umich.edu header.i=@umich.edu header.b="pHI4dIyA"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726286AbfCHVxY (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 8 Mar 2019 16:53:24 -0500
-Received: from elasmtp-mealy.atl.sa.earthlink.net ([209.86.89.69]:34148 "EHLO
-        elasmtp-mealy.atl.sa.earthlink.net" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726268AbfCHVxY (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Mar 2019 16:53:24 -0500
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mindspring.com;
-        s=dk12062016; t=1552082002; bh=7YSLO8XiCMm6WgJCxZZ8RvD7vlFjtuNYcOxJ
-        XVEGEFc=; h=Received:From:To:Cc:References:In-Reply-To:Subject:Date:
-         Message-ID:MIME-Version:Content-Type:Content-Transfer-Encoding:
-         X-Mailer:Content-Language:Thread-Index:X-ELNK-Trace:
-         X-Originating-IP; b=Q12N3LhF08IBCS9M/mPipH5wkJVIfdHg2vPzlDNFWICvBm
-        LkAv482d/8+jRnICzLKl/ZDIlMXsxFlvAue9O2svuW8gzjLSrDZzkBj98NOoYLnoKZF
-        Ticu5otwVjd6xaO3aJdhClh5I17ltpwD3vYegP1e3mRoWlk46cl/E6tLbjfDjK1VQ8n
-        9OUoiZVyuJYkhH6q7I5Oe2nMH1QpD9PiUfn7Q3JIzmSCO77a/IedRQLwodBe6nwsn8c
-        ni0MgzxWQ3zg6MSEig5jJgpXELReRgkouP5Zr35H+fHkU88yObgSqd1enfCxwy4Mmwv
-        TCn6SeMJmBOSdu9wYX0nmWr0y4lw==
-DomainKey-Signature: a=rsa-sha1; q=dns; c=nofws;
-  s=dk12062016; d=mindspring.com;
-  b=WKCpbMwnlhZsrMfw32Aud9dtJjO9AOD6m2OcklYNJ5hG2+K81qa8hbyjM6XZJsXEuWfthSa+hnNRYbS7sdb+Gncy64kfMrBPrpOR0+BQTg/GGhitGBTX4MhfiPTAzik1maZJ+KuKAkmyxJk0mBx7I3OZB5nUNHkG4Vbx7LDHGtUv6309q2MKMfHvYvyiHKdQeO+/si7/AEKi+ckTQ5jOs3YzCq8YDuUjsKro9Bu0OtU0QUNHXe6B/qNcqVnFf3SfYa95x3IiYAnecRjK91WSvHS0yIjxaKDovaVz64tU3aj+uEKkzCh5KO87Qp2iD9eN4GvK16yQ3pQJ4SlhrVuazQ==;
-  h=Received:From:To:Cc:References:In-Reply-To:Subject:Date:Message-ID:MIME-Version:Content-Type:Content-Transfer-Encoding:X-Mailer:Content-Language:Thread-Index:X-ELNK-Trace:X-Originating-IP;
-Received: from [76.105.143.216] (helo=FRANKSTHINKPAD)
-        by elasmtp-mealy.atl.sa.earthlink.net with esmtpa (Exim 4)
-        (envelope-from <ffilzlnx@mindspring.com>)
-        id 1h2NQc-000Bgb-3V; Fri, 08 Mar 2019 16:53:18 -0500
-From:   "Frank Filz" <ffilzlnx@mindspring.com>
-To:     "'J. Bruce Fields'" <bfields@fieldses.org>
-Cc:     "'linux-fsdevel'" <linux-fsdevel@vger.kernel.org>,
-        <Volker.Lendecke@sernet.de>, <samba-technical@lists.samba.org>,
-        "'Jeremy Allison'" <jra@samba.org>,
-        "'Linux NFS Mailing List'" <linux-nfs@vger.kernel.org>,
-        "'Jeff Layton'" <jlayton@kernel.org>,
-        "'Amir Goldstein'" <amir73il@gmail.com>,
-        <devel@lists.nfs-ganesha.org>, "'Ralph Boehme'" <slow@samba.org>
-References: <CAOQ4uxgewN=j3ju5MSowEvwhK1HqKG3n1hBRUQTi1W5asaO1dQ@mail.gmail.com> <20190208155052.GB20573@fieldses.org> <CAOQ4uxg9NGPRpMZt0KgH9HUKMRpn0dFta7EnP1WioRb917n4+A@mail.gmail.com> <20190208221239.GA199180@jra3> <CAOQ4uxjxQoCWqfp+f91--tyR81PREsssT=RV9uRgCQFs+yk7mw@mail.gmail.com> <20190214210652.GC9216@fieldses.org> <20190305214748.GD27437@fieldses.org> <CAOQ4uxigRpjjni8nvYxCqeyTnr0Zf7Stj9h2+24_S9n4i0euYA@mail.gmail.com> <20190306151735.GD2426@fieldses.org> <066801d4d432$719f5df0$54de19d0$@mindspring.com> <20190308213819.GC28002@fieldses.org>
-In-Reply-To: <20190308213819.GC28002@fieldses.org>
-Subject: RE: [NFS-Ganesha-Devel] Re: Better interop for NFS/SMB file share mode/reservation
-Date:   Fri, 8 Mar 2019 13:53:17 -0800
-Message-ID: <00e901d4d5f9$57827f10$06877d30$@mindspring.com>
+        id S1726751AbfCJWUS (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sun, 10 Mar 2019 18:20:18 -0400
+Received: from mail-vs1-f44.google.com ([209.85.217.44]:40306 "EHLO
+        mail-vs1-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726700AbfCJWUR (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 10 Mar 2019 18:20:17 -0400
+Received: by mail-vs1-f44.google.com with SMTP id z18so1594694vso.7
+        for <linux-nfs@vger.kernel.org>; Sun, 10 Mar 2019 15:20:16 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=umich.edu; s=google-2016-06-03;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc;
+        bh=cIpK/CwyhVtc8zeR8fOw/LJcJZXps29DGKD5QFASBqY=;
+        b=pHI4dIyAaj8TjFUHK8KmWuEM7a2oHqRmbnhyPGG7qHKJyINqTWkKqyjmS11OFLIqQk
+         67Qe8svH73cGOuK+SDS4K4LMSCPPqnxGxefMs6/63TUvFRi7QECHCixnq2gTY3JG5jgp
+         1+lWwLKAXnn3apjJzoJOunQ8XsAmDJzwDitgPDpvQ5gU0h9BhJFrysmNFgAcd5DwCCIh
+         SwyiL6lM7qy74hI7G5BkIPVgxyrY962kY99r0A2DG7BPmgtz5zi4BSZMA/cT203tYMJY
+         9tyR5esb01Aa+8k1C0EMJXmAb+9pR810y/RgUo9mfhiuxhywoDMKdLfDnPAyfj0/3zcP
+         dRtA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=cIpK/CwyhVtc8zeR8fOw/LJcJZXps29DGKD5QFASBqY=;
+        b=aUZCXrg2uxu3KhCzktcJtmCf0jrxsf/oeCLH82O5UCrVvLH2I/vz7gZXE2PEksWMk/
+         06JsUWyuul3P5CuNggtKJH1c8Zc/4N57tn13iyvZKjooquzcpHjIq7N5EDbveu57hMXR
+         vyKSkAlwh+iwBpyc5wPLZFqm4UadarOavvhRHQw9mskiMo0K0MVdhuMdAE0+qJXkFwk0
+         UCMyOzWXogqLiQn0hnpz/PkxOjlS3M1RWxk20znHjRjMP4c6WPCPFg0Pv0ms3YmiqGSI
+         Y3aTeiLDz3bBMLTiN22pxhXqzcYpjPqvNOln7LCJXl52jyvYubWfLnm2riRozw4V+6+J
+         mIBA==
+X-Gm-Message-State: APjAAAWRNHC0AicupQFo0APhZBydPLLsIZpMo8EDoWmkQMI4T+Nh4ROq
+        jaqFrSd7YpwckvUwj1Bb2AP8953k2MLYDYMHHf48uTSe
+X-Google-Smtp-Source: APXvYqyBTANy0FgLV3dukIBR0O9Ec9hgiNVzP8TMmRn4onvgaAiKbUgaGLypxFAUgurXliuVxAVcCxMw48hejg5xAfk=
+X-Received: by 2002:a67:7488:: with SMTP id p130mr15247265vsc.164.1552256416273;
+ Sun, 10 Mar 2019 15:20:16 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain;
-        charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
-X-Mailer: Microsoft Outlook 15.0
-Content-Language: en-us
-Thread-Index: AQGLrJJRYR3LL3fnzQ/8W/s0P/ODKAIJU9CqAOPM+8MCWOvwNQNjSxKfAMxzl98CGloolwKYHdIRAdVHaYcCPpNDAQIx5sGhpfEovkA=
-X-ELNK-Trace: 136157f01908a8929c7f779228e2f6aeda0071232e20db4dbbacfb2fd9df3c0aaf7c9ece45cf3044350badd9bab72f9c350badd9bab72f9c350badd9bab72f9c
-X-Originating-IP: 76.105.143.216
+References: <fa8ca171-b260-3e5a-d69c-13f263f5bb9c@linux.alibaba.com>
+ <CAN-5tyG9sUw2Oi+hbaW+KJDhvk8KT3Lb-cgU6azxq1yN+Tr=KQ@mail.gmail.com>
+ <3b6597b0-41b4-255a-5ebb-cf34ad95315c@linux.alibaba.com> <57796366-0f08-2cfb-6f85-27d5485c07af@linux.alibaba.com>
+ <ce839197cb70f3bc75413ed2e54f8baafafc01dd.camel@hammerspace.com>
+ <365504c3-d785-7e4b-1dd2-c75f30c85c65@linux.alibaba.com> <740c1ad6c5b2afad196af34f48dda7097b5102b7.camel@hammerspace.com>
+ <1417d6c8-3602-d895-a036-44031a7c1e98@linux.alibaba.com> <b729878b38f32053890a592a91f0645f15caa96f.camel@hammerspace.com>
+ <46f5c870-f4fd-b29a-f5eb-eab39c4c1e89@linux.alibaba.com> <20190306160934.GB3066@fieldses.org>
+In-Reply-To: <20190306160934.GB3066@fieldses.org>
+From:   Olga Kornievskaia <aglo@umich.edu>
+Date:   Sun, 10 Mar 2019 18:20:05 -0400
+Message-ID: <CAN-5tyEPSDKao=83sW+voU9SPbcszZyR+XfZzcsD2-ozVa22Xg@mail.gmail.com>
+Subject: Re: [bug report] task hang while testing xfstests generic/323
+To:     "bfields@fieldses.org" <bfields@fieldses.org>
+Cc:     Jiufei Xue <jiufei.xue@linux.alibaba.com>,
+        Trond Myklebust <trondmy@hammerspace.com>,
+        "Anna.Schumaker@netapp.com" <Anna.Schumaker@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "joseph.qi@linux.alibaba.com" <joseph.qi@linux.alibaba.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-> From: 'J. Bruce Fields' [mailto:bfields@fieldses.org]
-> Sent: Friday, March 8, 2019 1:38 PM
-> To: Frank Filz <ffilzlnx@mindspring.com>
-> Cc: 'linux-fsdevel' <linux-fsdevel@vger.kernel.org>;
-> Volker.Lendecke@sernet.de; samba-technical@lists.samba.org; 'Jeremy =
-Allison'
-> <jra@samba.org>; 'Linux NFS Mailing List' <linux-nfs@vger.kernel.org>; =
-'Jeff
-> Layton' <jlayton@kernel.org>; 'Amir Goldstein' <amir73il@gmail.com>;
-> devel@lists.nfs-ganesha.org; 'Ralph Boehme' <slow@samba.org>
-> Subject: [NFS-Ganesha-Devel] Re: Better interop for NFS/SMB file share
-> mode/reservation
->=20
-> On Wed, Mar 06, 2019 at 07:37:00AM -0800, Frank Filz wrote:
-> > > On Wed, Mar 06, 2019 at 09:09:21AM +0200, Amir Goldstein wrote:
-> > > > On Tue, Mar 5, 2019 at 11:48 PM J. Bruce Fields
-> > > > <bfields@fieldses.org> wrote:
-> > > > >
-> > > > > On Thu, Feb 14, 2019 at 04:06:52PM -0500, J. Bruce Fields =
-wrote:
-> > > > > > After this:
-> > > > > >
-> > > > > >       =
-https://marc.info/?l=3Dlinux-nfs&m=3D154966239918297&w=3D2
-> > > > > >
-> > > > > > delegations would no longer conflict with opens from the =
-same
-> > > > > > tgid.  So if your threads all run in the same process and
-> > > > > > you're willing to manage conflicts among your own clients,
-> > > > > > that should still allow you to do multiple opens of the same
-> > > > > > file without giving up your
-> > > lease/delegation.
-> > > > > >
-> > > > > > I'd be curious to know whether that works with Samba's =
-design.
-> > > > >
-> > > > > Any idea whether that would work?
-> > > > >
-> > > > > (Easy?  Impossible?  Possible, but realistically the changes
-> > > > > required to Samba would be painful enough that it'd be =
-unlikely
-> > > > > to get done?)
-> > > > >
-> > > >
-> > > > [CC Ralph Boehme]
-> > > >
-> > > > I am not a samba team member, but seems to me that your proposal
-> > > > fits samba design like a glove. With one smbd process per client
-> > > > connection, with your proposal, opens (for read) from same smbd
-> > > > process will not break the shared read lease from same client, =
-so
-> > > > oplocks level II could be implemented using kernel oplocks (new
-> > > > flavor).
+On Wed, Mar 6, 2019 at 11:09 AM bfields@fieldses.org
+<bfields@fieldses.org> wrote:
+>
+> On Wed, Mar 06, 2019 at 05:59:39PM +0800, Jiufei Xue wrote:
+> > Hi Trond,
+> >
 > > >
-> > > OK.  So I wonder about Ganesha.  I'm not sure, but I *think* it's
-> > > like knfsd in that it has a bunch of worker threads that can each
-> > > take rpc's from any client.  I don't remember if they're actually
-> > > threads or processes.
+> > > No, that's quite weird... Were you able to catch this behaviour on
+> > > wireshark? It would be interesting to see if the server is actually
+> > > sending 2 SEQUENCE ops or if that is a corruption that occurs on the
+> > > client.
+> > >
 > >
-> > Ganesha does use worker threads
->=20
-> And they're all part of one process?
+> > Many packages are dropped by kernel when I use tcpdump, so I am not sure
+> > whether the server is sending 2 SEQUENCE.
+>
+> For what it's worth, tcpdump with -s200 or so should be enough to get
+> this.  Or maybe capturing from a different machine could help?
+>
+> > However, according to tracepoint nfsd_compound_status, the server is
+> > processing SEQUENCE op only once. I think it is more likely blames to
+> > the client.
+>
+> If there was a bug in nfsd's xdr decoding, that'd happen after that
+> tracepoint.  That'd be weird corruption, but perhaps all the
+> possibilites are weird at this point.
 
-Sorry, should have specified, yes, Ganesha runs a single multi-threaded =
-process.
+This is not a bug in the Linux nfsd. I was able to reproduce it
+against the Ontap server. I ran using the RHEL7.6 client (but it's
+upsteram since Jiufei hit it). (I wanted to attach a trace but it
+looks like it's too big as my first attempt at posting this was
+unsuccessful. I can send a trace to a personal email if interested).
 
-> > however, one thing that may be an
-> > advantage here, or at least can be leveraged, is that Ganesha =
-attaches
-> > a single file descriptor to each stateid. As long as the I/O =
-requests
-> > come using the stateid, that file descriptor will be used.
+There are a bunch of cases where multiple operations are using the
+same seqid and slot.
+
+Example of such weirdness is (nfs.seqid == 0x000002f4) && (nfs.slotid
+== 0) and the one leading to the hang.
+
+In frame 415870, there is an OPEN using that seqid and slot for the
+first time (but this slot will be re-used a bunch of times before it
+gets a reply in frame 415908 with the open stateid seq=40).  (also in
+this packet there is an example of reuse slot=1+seqid=0x000128f7 by
+both TEST_STATEID and OPEN but let's set that aside).
+
+In frame 415874 (in the same packet), client sends 5 opens on the SAME
+seqid and slot (all have distinct xids). In a ways that's end up being
+alright since opens are for the same file and thus reply out of the
+cache and the reply is ERR_DELAY. But in frame 415876, client sends
+again uses the same seqid and slot  and in this case it's used by
+3opens and a test_stateid.
+
+Client in all this mess never processes the open stateid seq=40 and
+keeps on resending CLOSE with seq=37 (also to note client "missed"
+processing seqid=38 and 39 as well. 39 probably because it was a reply
+on the same kind of "Reused" slot=1 and seq=0x000128f7. I haven't
+tracked 38 but i'm assuming it's the same). I don't know how many
+times but after 5mins, I see a TEST_STATEID that again uses the same
+seqid+slot (which gets a reply from the cache matching OPEN). Also
+open + close (still with seq=37) open is replied to but after this
+client goes into a soft lockup logs have "nfs4_schedule_state_manager:
+kthread_ruan: -4" over and over again . then a soft lockup.
+
+Looking back on slot 0. nfs.seqid=0x000002f3 was used in frame=415866
+by the TEST_STATEID. This is replied to in frame 415877 (with an
+ERR_DELAY). But before the client got a reply, it used the slot and
+the seq by frame 415874. TEST_STATEID is a synchronous and
+interruptible operation. I'm suspecting that somehow it was
+interrupted and that's who the slot was able to be re-used by the
+frame 415874. But how the several opens were able to get the same slot
+I don't know..
+
+Regardless of how we got into the soft lockup. Client shouldn't be
+using the same slot+seqid on multiple operations.
+>
+> --b.
+>
+> > Is there any other way to catch the behaviour?
 > >
-> > We have some work completed and more in progress on delegations, and
-> > if there becomes a new kernel oplock available, we could definitely
-> > use it. On the other hand, FSAL_VFS which is the FSAL used with =
-kernel
-> > file systems does not support delegations...
+> > Thanks,
+> > Jiufei
 > >
-> > The (distributed) file systems we support delegations on have use
-> > space libraries (which Samba should also be using?) that implement =
-the
-> > delegation primitives.
->=20
-> Is there anyone working on delegation support for FSAL_VFS?  If it's =
-not getting
-> much attention then maybe Samba is the only real user for the =
-forseeable
-> future.
-
-As far as I know, no one is working on delegations for FSAL_VFS. A good =
-interface would make it something that might be used if it then became =
-easy to implement delegations. FSAL_VFS is convenient for verifying some =
-of the protocol and meta-data caching features of Ganesha.
-
-Frank
-
