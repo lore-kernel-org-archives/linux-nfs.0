@@ -1,158 +1,198 @@
-Return-Path: <SRS0=yRiJ=RN=vger.kernel.org=linux-nfs-owner@kernel.org>
+Return-Path: <SRS0=Z4n1=RO=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-8.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 446F3C43381
-	for <linux-nfs@archiver.kernel.org>; Sun, 10 Mar 2019 22:20:19 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 600D4C43381
+	for <linux-nfs@archiver.kernel.org>; Mon, 11 Mar 2019 01:31:08 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id E30F12077B
-	for <linux-nfs@archiver.kernel.org>; Sun, 10 Mar 2019 22:20:18 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 2A92620652
+	for <linux-nfs@archiver.kernel.org>; Mon, 11 Mar 2019 01:31:08 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=umich.edu header.i=@umich.edu header.b="pHI4dIyA"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="TqkIx/bI"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726751AbfCJWUS (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 10 Mar 2019 18:20:18 -0400
-Received: from mail-vs1-f44.google.com ([209.85.217.44]:40306 "EHLO
-        mail-vs1-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726700AbfCJWUR (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 10 Mar 2019 18:20:17 -0400
-Received: by mail-vs1-f44.google.com with SMTP id z18so1594694vso.7
-        for <linux-nfs@vger.kernel.org>; Sun, 10 Mar 2019 15:20:16 -0700 (PDT)
+        id S1727053AbfCKBbH (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sun, 10 Mar 2019 21:31:07 -0400
+Received: from mail-io1-f68.google.com ([209.85.166.68]:35191 "EHLO
+        mail-io1-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726901AbfCKBbH (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 10 Mar 2019 21:31:07 -0400
+Received: by mail-io1-f68.google.com with SMTP id x4so2619698ion.2
+        for <linux-nfs@vger.kernel.org>; Sun, 10 Mar 2019 18:31:06 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=umich.edu; s=google-2016-06-03;
-        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
-         :cc;
-        bh=cIpK/CwyhVtc8zeR8fOw/LJcJZXps29DGKD5QFASBqY=;
-        b=pHI4dIyAaj8TjFUHK8KmWuEM7a2oHqRmbnhyPGG7qHKJyINqTWkKqyjmS11OFLIqQk
-         67Qe8svH73cGOuK+SDS4K4LMSCPPqnxGxefMs6/63TUvFRi7QECHCixnq2gTY3JG5jgp
-         1+lWwLKAXnn3apjJzoJOunQ8XsAmDJzwDitgPDpvQ5gU0h9BhJFrysmNFgAcd5DwCCIh
-         SwyiL6lM7qy74hI7G5BkIPVgxyrY962kY99r0A2DG7BPmgtz5zi4BSZMA/cT203tYMJY
-         9tyR5esb01Aa+8k1C0EMJXmAb+9pR810y/RgUo9mfhiuxhywoDMKdLfDnPAyfj0/3zcP
-         dRtA==
+        d=gmail.com; s=20161025;
+        h=from:to:subject:date:message-id:mime-version
+         :content-transfer-encoding;
+        bh=QapxjmDMh3e4kgR0jm5KZjvtjNP0u9f3AxHVvc9E+i0=;
+        b=TqkIx/bIcQQFsSAumIE0MACcw3yrU8XuEbbriU4ZeOAUqypoPlHSJeoPCU/TD65NmU
+         2UjRkCVal7ODI/On0uXhcVNeKSsZjay9Xnzh6CIbHPioRMnO0gK7rzb1Vn/ZvFvTcPuA
+         4MwP1BQTKKVsGpEczh4yAcAYNn19TzjuY/qjuhVEitqoSTqg8/h33oDVSZ4anizjUsIK
+         4RkfFMTaEDhwdYm0JnhJG0Ze95tE2OJmpE3TUqQl6jexLqDjJqL3Y+B2m9XDccQnXVJB
+         77jGef5eHbnP4HriRw2u28MhH1XgmDqJ8s0Fzsq2Wb5M3bJzI0KGHrQtXvYcANVLVwB/
+         RkJA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
-         :message-id:subject:to:cc;
-        bh=cIpK/CwyhVtc8zeR8fOw/LJcJZXps29DGKD5QFASBqY=;
-        b=aUZCXrg2uxu3KhCzktcJtmCf0jrxsf/oeCLH82O5UCrVvLH2I/vz7gZXE2PEksWMk/
-         06JsUWyuul3P5CuNggtKJH1c8Zc/4N57tn13iyvZKjooquzcpHjIq7N5EDbveu57hMXR
-         vyKSkAlwh+iwBpyc5wPLZFqm4UadarOavvhRHQw9mskiMo0K0MVdhuMdAE0+qJXkFwk0
-         UCMyOzWXogqLiQn0hnpz/PkxOjlS3M1RWxk20znHjRjMP4c6WPCPFg0Pv0ms3YmiqGSI
-         Y3aTeiLDz3bBMLTiN22pxhXqzcYpjPqvNOln7LCJXl52jyvYubWfLnm2riRozw4V+6+J
-         mIBA==
-X-Gm-Message-State: APjAAAWRNHC0AicupQFo0APhZBydPLLsIZpMo8EDoWmkQMI4T+Nh4ROq
-        jaqFrSd7YpwckvUwj1Bb2AP8953k2MLYDYMHHf48uTSe
-X-Google-Smtp-Source: APXvYqyBTANy0FgLV3dukIBR0O9Ec9hgiNVzP8TMmRn4onvgaAiKbUgaGLypxFAUgurXliuVxAVcCxMw48hejg5xAfk=
-X-Received: by 2002:a67:7488:: with SMTP id p130mr15247265vsc.164.1552256416273;
- Sun, 10 Mar 2019 15:20:16 -0700 (PDT)
+        h=x-gm-message-state:from:to:subject:date:message-id:mime-version
+         :content-transfer-encoding;
+        bh=QapxjmDMh3e4kgR0jm5KZjvtjNP0u9f3AxHVvc9E+i0=;
+        b=H69zSXAz4ycjWyOB2jmxvMjH15HZ5/XB7HGArDn9JnbS3Nz1Nks1jTv+4bgfUR7oSg
+         apQDnUJpHI75f22lZbM6ZsRcFD0KFaqlTtEkbhqXkcgE7TR7Zgbf69hCMvAS3SMTxuR6
+         K9sufy5QAc+Tn3zVqKxuHfrAncVEI6IRb8Uif/B0sTJO6ztlG/LUR8owMCx925zTgToA
+         lktmMtHbpf1VqO78kWu5xXvTlTP0o0cFTa7xNME+fLXaIRQXGVcXCqnjcrpjX2Q4BNBj
+         wUCswdc3lUb0poN2n7oqQZ/ZTArkLr3/iuJKgTRGIPKb2PWSInKiWh46YFa1Mjsnoc/s
+         8wyA==
+X-Gm-Message-State: APjAAAWoeQ7sSSPD/u698la6i1tvosCEGtGiIEsF92YchV5OEA1wBM/r
+        Z7iwwMG/Fk1RFKqjcIoZ6QibuZ0=
+X-Google-Smtp-Source: APXvYqzNtAZsf46CuXGN4gtcAgfaBlC2S/z8L7n/RZX3ksQsRDC83WyzBRUA1cyUgzbwiag82tjdnw==
+X-Received: by 2002:a6b:c544:: with SMTP id v65mr14685381iof.222.1552267865435;
+        Sun, 10 Mar 2019 18:31:05 -0700 (PDT)
+Received: from localhost.localdomain (c-68-40-189-247.hsd1.mi.comcast.net. [68.40.189.247])
+        by smtp.gmail.com with ESMTPSA id p79sm7515011itb.7.2019.03.10.18.31.04
+        for <linux-nfs@vger.kernel.org>
+        (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
+        Sun, 10 Mar 2019 18:31:04 -0700 (PDT)
+From:   Trond Myklebust <trondmy@gmail.com>
+X-Google-Original-From: Trond Myklebust <trond.myklebust@hammerspace.com>
+To:     linux-nfs@vger.kernel.org
+Subject: [PATCH 1/5] SUNRPC: Clean up
+Date:   Sun, 10 Mar 2019 21:29:53 -0400
+Message-Id: <20190311012957.3994-1-trond.myklebust@hammerspace.com>
+X-Mailer: git-send-email 2.20.1
 MIME-Version: 1.0
-References: <fa8ca171-b260-3e5a-d69c-13f263f5bb9c@linux.alibaba.com>
- <CAN-5tyG9sUw2Oi+hbaW+KJDhvk8KT3Lb-cgU6azxq1yN+Tr=KQ@mail.gmail.com>
- <3b6597b0-41b4-255a-5ebb-cf34ad95315c@linux.alibaba.com> <57796366-0f08-2cfb-6f85-27d5485c07af@linux.alibaba.com>
- <ce839197cb70f3bc75413ed2e54f8baafafc01dd.camel@hammerspace.com>
- <365504c3-d785-7e4b-1dd2-c75f30c85c65@linux.alibaba.com> <740c1ad6c5b2afad196af34f48dda7097b5102b7.camel@hammerspace.com>
- <1417d6c8-3602-d895-a036-44031a7c1e98@linux.alibaba.com> <b729878b38f32053890a592a91f0645f15caa96f.camel@hammerspace.com>
- <46f5c870-f4fd-b29a-f5eb-eab39c4c1e89@linux.alibaba.com> <20190306160934.GB3066@fieldses.org>
-In-Reply-To: <20190306160934.GB3066@fieldses.org>
-From:   Olga Kornievskaia <aglo@umich.edu>
-Date:   Sun, 10 Mar 2019 18:20:05 -0400
-Message-ID: <CAN-5tyEPSDKao=83sW+voU9SPbcszZyR+XfZzcsD2-ozVa22Xg@mail.gmail.com>
-Subject: Re: [bug report] task hang while testing xfstests generic/323
-To:     "bfields@fieldses.org" <bfields@fieldses.org>
-Cc:     Jiufei Xue <jiufei.xue@linux.alibaba.com>,
-        Trond Myklebust <trondmy@hammerspace.com>,
-        "Anna.Schumaker@netapp.com" <Anna.Schumaker@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "joseph.qi@linux.alibaba.com" <joseph.qi@linux.alibaba.com>
-Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Wed, Mar 6, 2019 at 11:09 AM bfields@fieldses.org
-<bfields@fieldses.org> wrote:
->
-> On Wed, Mar 06, 2019 at 05:59:39PM +0800, Jiufei Xue wrote:
-> > Hi Trond,
-> >
-> > >
-> > > No, that's quite weird... Were you able to catch this behaviour on
-> > > wireshark? It would be interesting to see if the server is actually
-> > > sending 2 SEQUENCE ops or if that is a corruption that occurs on the
-> > > client.
-> > >
-> >
-> > Many packages are dropped by kernel when I use tcpdump, so I am not sure
-> > whether the server is sending 2 SEQUENCE.
->
-> For what it's worth, tcpdump with -s200 or so should be enough to get
-> this.  Or maybe capturing from a different machine could help?
->
-> > However, according to tracepoint nfsd_compound_status, the server is
-> > processing SEQUENCE op only once. I think it is more likely blames to
-> > the client.
->
-> If there was a bug in nfsd's xdr decoding, that'd happen after that
-> tracepoint.  That'd be weird corruption, but perhaps all the
-> possibilites are weird at this point.
+Replace remaining callers of call_timeout() with rpc_check_timeout().
 
-This is not a bug in the Linux nfsd. I was able to reproduce it
-against the Ontap server. I ran using the RHEL7.6 client (but it's
-upsteram since Jiufei hit it). (I wanted to attach a trace but it
-looks like it's too big as my first attempt at posting this was
-unsuccessful. I can send a trace to a personal email if interested).
+Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
+---
+ net/sunrpc/clnt.c | 47 ++++++++++++++---------------------------------
+ 1 file changed, 14 insertions(+), 33 deletions(-)
 
-There are a bunch of cases where multiple operations are using the
-same seqid and slot.
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 311029b7c33a..a0e7322fc171 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -70,7 +70,6 @@ static void	call_status(struct rpc_task *task);
+ static void	call_transmit_status(struct rpc_task *task);
+ static void	call_refresh(struct rpc_task *task);
+ static void	call_refreshresult(struct rpc_task *task);
+-static void	call_timeout(struct rpc_task *task);
+ static void	call_connect(struct rpc_task *task);
+ static void	call_connect_status(struct rpc_task *task);
+ 
+@@ -1908,7 +1907,8 @@ call_bind_status(struct rpc_task *task)
+ 
+ retry_timeout:
+ 	task->tk_status = 0;
+-	task->tk_action = call_timeout;
++	task->tk_action = call_encode;
++	rpc_check_timeout(task);
+ }
+ 
+ /*
+@@ -2197,10 +2197,8 @@ call_status(struct rpc_task *task)
+ 	case -EHOSTUNREACH:
+ 	case -ENETUNREACH:
+ 	case -EPERM:
+-		if (RPC_IS_SOFTCONN(task)) {
+-			rpc_exit(task, status);
+-			break;
+-		}
++		if (RPC_IS_SOFTCONN(task))
++			goto out_exit;
+ 		/*
+ 		 * Delay any retries for 3 seconds, then handle as if it
+ 		 * were a timeout.
+@@ -2208,7 +2206,6 @@ call_status(struct rpc_task *task)
+ 		rpc_delay(task, 3*HZ);
+ 		/* fall through */
+ 	case -ETIMEDOUT:
+-		task->tk_action = call_timeout;
+ 		break;
+ 	case -ECONNREFUSED:
+ 	case -ECONNRESET:
+@@ -2221,18 +2218,21 @@ call_status(struct rpc_task *task)
+ 	case -EPIPE:
+ 	case -ENOTCONN:
+ 	case -EAGAIN:
+-		task->tk_action = call_timeout;
+ 		break;
+ 	case -EIO:
+ 		/* shutdown or soft timeout */
+-		rpc_exit(task, status);
+-		break;
++		goto out_exit;
+ 	default:
+ 		if (clnt->cl_chatty)
+ 			printk("%s: RPC call returned error %d\n",
+ 			       clnt->cl_program->name, -status);
+-		rpc_exit(task, status);
++		goto out_exit;
+ 	}
++	task->tk_action = call_encode;
++	rpc_check_timeout(task);
++	return;
++out_exit:
++	rpc_exit(task, status);
+ }
+ 
+ static void
+@@ -2279,19 +2279,6 @@ rpc_check_timeout(struct rpc_task *task)
+ 	rpcauth_invalcred(task);
+ }
+ 
+-/*
+- * 6a.	Handle RPC timeout
+- * 	We do not release the request slot, so we keep using the
+- *	same XID for all retransmits.
+- */
+-static void
+-call_timeout(struct rpc_task *task)
+-{
+-	task->tk_action = call_encode;
+-	task->tk_status = 0;
+-	rpc_check_timeout(task);
+-}
+-
+ /*
+  * 7.	Decode the RPC reply
+  */
+@@ -2329,16 +2316,8 @@ call_decode(struct rpc_task *task)
+ 	WARN_ON(memcmp(&req->rq_rcv_buf, &req->rq_private_buf,
+ 				sizeof(req->rq_rcv_buf)) != 0);
+ 
+-	if (req->rq_rcv_buf.len < 12) {
+-		if (!RPC_IS_SOFT(task)) {
+-			task->tk_action = call_encode;
+-			goto out_retry;
+-		}
+-		dprintk("RPC:       %s: too small RPC reply size (%d bytes)\n",
+-				clnt->cl_program->name, task->tk_status);
+-		task->tk_action = call_timeout;
++	if (req->rq_rcv_buf.len < 12)
+ 		goto out_retry;
+-	}
+ 
+ 	xdr_init_decode(&xdr, &req->rq_rcv_buf,
+ 			req->rq_rcv_buf.head[0].iov_base, req);
+@@ -2361,6 +2340,8 @@ call_decode(struct rpc_task *task)
+ 				xprt_conditional_disconnect(req->rq_xprt,
+ 							    req->rq_connect_cookie);
+ 		}
++		task->tk_action = call_encode;
++		rpc_check_timeout(task);
+ 	}
+ }
+ 
+-- 
+2.20.1
 
-Example of such weirdness is (nfs.seqid == 0x000002f4) && (nfs.slotid
-== 0) and the one leading to the hang.
-
-In frame 415870, there is an OPEN using that seqid and slot for the
-first time (but this slot will be re-used a bunch of times before it
-gets a reply in frame 415908 with the open stateid seq=40).  (also in
-this packet there is an example of reuse slot=1+seqid=0x000128f7 by
-both TEST_STATEID and OPEN but let's set that aside).
-
-In frame 415874 (in the same packet), client sends 5 opens on the SAME
-seqid and slot (all have distinct xids). In a ways that's end up being
-alright since opens are for the same file and thus reply out of the
-cache and the reply is ERR_DELAY. But in frame 415876, client sends
-again uses the same seqid and slot  and in this case it's used by
-3opens and a test_stateid.
-
-Client in all this mess never processes the open stateid seq=40 and
-keeps on resending CLOSE with seq=37 (also to note client "missed"
-processing seqid=38 and 39 as well. 39 probably because it was a reply
-on the same kind of "Reused" slot=1 and seq=0x000128f7. I haven't
-tracked 38 but i'm assuming it's the same). I don't know how many
-times but after 5mins, I see a TEST_STATEID that again uses the same
-seqid+slot (which gets a reply from the cache matching OPEN). Also
-open + close (still with seq=37) open is replied to but after this
-client goes into a soft lockup logs have "nfs4_schedule_state_manager:
-kthread_ruan: -4" over and over again . then a soft lockup.
-
-Looking back on slot 0. nfs.seqid=0x000002f3 was used in frame=415866
-by the TEST_STATEID. This is replied to in frame 415877 (with an
-ERR_DELAY). But before the client got a reply, it used the slot and
-the seq by frame 415874. TEST_STATEID is a synchronous and
-interruptible operation. I'm suspecting that somehow it was
-interrupted and that's who the slot was able to be re-used by the
-frame 415874. But how the several opens were able to get the same slot
-I don't know..
-
-Regardless of how we got into the soft lockup. Client shouldn't be
-using the same slot+seqid on multiple operations.
->
-> --b.
->
-> > Is there any other way to catch the behaviour?
-> >
-> > Thanks,
-> > Jiufei
-> >
