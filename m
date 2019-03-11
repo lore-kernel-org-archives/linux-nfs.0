@@ -6,79 +6,96 @@ X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8BE10C10F0B
-	for <linux-nfs@archiver.kernel.org>; Mon, 11 Mar 2019 15:49:53 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 89DDEC43381
+	for <linux-nfs@archiver.kernel.org>; Mon, 11 Mar 2019 17:55:24 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 5931A2075C
-	for <linux-nfs@archiver.kernel.org>; Mon, 11 Mar 2019 15:49:53 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 5DF5A20643
+	for <linux-nfs@archiver.kernel.org>; Mon, 11 Mar 2019 17:55:24 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727531AbfCKPtw (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 11 Mar 2019 11:49:52 -0400
-Received: from mx1.redhat.com ([209.132.183.28]:58952 "EHLO mx1.redhat.com"
+        id S1727050AbfCKRzY (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 11 Mar 2019 13:55:24 -0400
+Received: from mx1.redhat.com ([209.132.183.28]:43358 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727480AbfCKPtw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 11 Mar 2019 11:49:52 -0400
-Received: from smtp.corp.redhat.com (int-mx04.intmail.prod.int.phx2.redhat.com [10.5.11.14])
+        id S1727514AbfCKRzX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 11 Mar 2019 13:55:23 -0400
+Received: from smtp.corp.redhat.com (int-mx08.intmail.prod.int.phx2.redhat.com [10.5.11.23])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id C9572307D846;
-        Mon, 11 Mar 2019 15:49:51 +0000 (UTC)
-Received: from coeurl.usersys.redhat.com (ovpn-122-19.rdu2.redhat.com [10.10.122.19])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id B0DD05DA62;
-        Mon, 11 Mar 2019 15:49:51 +0000 (UTC)
-Received: by coeurl.usersys.redhat.com (Postfix, from userid 1000)
-        id 4209A21508; Mon, 11 Mar 2019 11:49:51 -0400 (EDT)
-From:   Scott Mayhew <smayhew@redhat.com>
-To:     bfields@fieldses.org
-Cc:     linux-nfs@vger.kernel.org
-Subject: [pynfs PATCH 3/3] nfs4.1: close the file created in SEQ10b
-Date:   Mon, 11 Mar 2019 11:49:51 -0400
-Message-Id: <20190311154951.6144-4-smayhew@redhat.com>
-In-Reply-To: <20190311154951.6144-1-smayhew@redhat.com>
-References: <20190311154951.6144-1-smayhew@redhat.com>
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.14
-X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.48]); Mon, 11 Mar 2019 15:49:51 +0000 (UTC)
+        by mx1.redhat.com (Postfix) with ESMTPS id BF67730842B0
+        for <linux-nfs@vger.kernel.org>; Mon, 11 Mar 2019 17:55:23 +0000 (UTC)
+Received: from madhat.boston.devel.redhat.com (ovpn-116-95.phx2.redhat.com [10.3.116.95])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 75D5C19C71
+        for <linux-nfs@vger.kernel.org>; Mon, 11 Mar 2019 17:55:23 +0000 (UTC)
+From:   Steve Dickson <steved@redhat.com>
+To:     Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH] gssd: add verbosity options to the rpc.gssd man page
+Date:   Mon, 11 Mar 2019 13:55:21 -0400
+Message-Id: <20190311175521.24526-1-steved@redhat.com>
+MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
+X-Scanned-By: MIMEDefang 2.84 on 10.5.11.23
+X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.40]); Mon, 11 Mar 2019 17:55:23 +0000 (UTC)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Otherwise, the DESTROY_CLIENTID sent during cleanup returns
-NFS4ERR_CLIENTID_BUSY.
+From: Pierguido Lambri <plambri@redhat.com>
 
-Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+It also adds the commented out entries in the nfs.conf
+default file.
+
+Fixes: https://bugzilla.redhat.com/show_bug.cgi?id=1668026
+
+Signed-off-by: Pierguido Lambri <plambri@redhat.com>
+Signed-off-by: Steve Dickson <steved@redhat.com>
 ---
- nfs4.1/server41tests/st_sequence.py | 5 ++++-
- 1 file changed, 4 insertions(+), 1 deletion(-)
+ nfs.conf             | 2 ++
+ systemd/nfs.conf.man | 2 ++
+ utils/gssd/gssd.c    | 4 ++--
+ 3 files changed, 6 insertions(+), 2 deletions(-)
 
-diff --git a/nfs4.1/server41tests/st_sequence.py b/nfs4.1/server41tests/st_sequence.py
-index 391b226..c21d8f7 100644
---- a/nfs4.1/server41tests/st_sequence.py
-+++ b/nfs4.1/server41tests/st_sequence.py
-@@ -1,6 +1,6 @@
- from st_create_session import create_session
- from xdrdef.nfs4_const import *
--from .environment import check, fail, bad_sessionid, create_file
-+from .environment import check, fail, bad_sessionid, create_file, close_file
- from xdrdef.nfs4_type import channel_attrs4
- import nfs_ops
- op = nfs_ops.NFS4ops()
-@@ -223,12 +223,15 @@ def testReplayCache007(t, env):
-     sess1 = env.c1.new_client_session(env.testname(t))
-     res = create_file(sess1, "%s_1" % env.testname(t))
-     check(res)
-+    fh = res.resarray[-1].object
-+    stateid = res.resarray[-2].stateid
-     ops = env.home + [op.savefh(),\
-           op.rename("%s_1" % env.testname(t), "%s_2" % env.testname(t))]
-     res1 = sess1.compound(ops, cache_this=False)
-     check(res1, NFS4_OK)
-     res2 = sess1.compound(ops, seq_delta=0, cache_this=False)
-     check(res2, [NFS4_OK, NFS4ERR_RETRY_UNCACHED_REP])
-+    close_file(sess1, fh, stateid=stateid)
+diff --git a/nfs.conf b/nfs.conf
+index d332375..faa07b1 100644
+--- a/nfs.conf
++++ b/nfs.conf
+@@ -9,6 +9,8 @@
+ # debug=0
+ #
+ [gssd]
++# verbosity=0
++# rpc-verbosity=0
+ # use-memcache=0
+ # use-machine-creds=1
+ # use-gss-proxy=0
+diff --git a/systemd/nfs.conf.man b/systemd/nfs.conf.man
+index 699db3f..e3654a3 100644
+--- a/systemd/nfs.conf.man
++++ b/systemd/nfs.conf.man
+@@ -211,6 +211,8 @@ for details.
+ .TP
+ .B gssd
+ Recognized values:
++.BR verbosity ,
++.BR rpc-verbosity ,
+ .BR use-memcache ,
+ .BR use-machine-creds ,
+ .BR use-gss-proxy ,
+diff --git a/utils/gssd/gssd.c b/utils/gssd/gssd.c
+index 7eeb05f..19ad4da 100644
+--- a/utils/gssd/gssd.c
++++ b/utils/gssd/gssd.c
+@@ -890,8 +890,8 @@ main(int argc, char *argv[])
  
- def testOpNotInSession(t, env):
-     """Operations other than SEQUENCE, BIND_CONN_TO_SESSION, EXCHANGE_ID,
+ 	read_gss_conf();
+ 
+-	verbosity = conf_get_num("gssd", "Verbosity", verbosity);
+-	rpc_verbosity = conf_get_num("gssd", "RPC-Verbosity", rpc_verbosity);
++	verbosity = conf_get_num("gssd", "verbosity", verbosity);
++	rpc_verbosity = conf_get_num("gssd", "rpc-verbosity", rpc_verbosity);
+ 
+ 	while ((opt = getopt(argc, argv, "DfvrlmnMp:k:d:t:T:R:")) != -1) {
+ 		switch (opt) {
 -- 
-2.17.2
+2.20.1
 
