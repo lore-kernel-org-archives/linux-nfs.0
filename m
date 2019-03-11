@@ -4,51 +4,52 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-6.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
-	MENTIONS_GIT_HOSTING,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
+	MENTIONS_GIT_HOSTING,SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B3C36C43381
-	for <linux-nfs@archiver.kernel.org>; Mon, 11 Mar 2019 15:13:13 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 790FAC43381
+	for <linux-nfs@archiver.kernel.org>; Mon, 11 Mar 2019 15:14:54 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 8188A206BA
-	for <linux-nfs@archiver.kernel.org>; Mon, 11 Mar 2019 15:13:13 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 48CC8206BA
+	for <linux-nfs@archiver.kernel.org>; Mon, 11 Mar 2019 15:14:54 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=umich.edu header.i=@umich.edu header.b="gmp288xp"
+	dkim=pass (2048-bit key) header.d=umich.edu header.i=@umich.edu header.b="gRyWnmrM"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726675AbfCKPNN (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 11 Mar 2019 11:13:13 -0400
-Received: from mail-ua1-f68.google.com ([209.85.222.68]:39248 "EHLO
-        mail-ua1-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725845AbfCKPNM (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Mar 2019 11:13:12 -0400
-Received: by mail-ua1-f68.google.com with SMTP id s15so1636190uap.6
-        for <linux-nfs@vger.kernel.org>; Mon, 11 Mar 2019 08:13:11 -0700 (PDT)
+        id S1727320AbfCKPOx (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 11 Mar 2019 11:14:53 -0400
+Received: from mail-vs1-f68.google.com ([209.85.217.68]:39328 "EHLO
+        mail-vs1-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727216AbfCKPOx (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Mar 2019 11:14:53 -0400
+Received: by mail-vs1-f68.google.com with SMTP id w14so2922058vso.6
+        for <linux-nfs@vger.kernel.org>; Mon, 11 Mar 2019 08:14:52 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=umich.edu; s=google-2016-06-03;
         h=mime-version:references:in-reply-to:from:date:message-id:subject:to
          :cc;
-        bh=W5Bm3UK1sYUTkREvkZKMr2r5k8diW8OqvDOfQTuXmhk=;
-        b=gmp288xpaFrjVwb37PfMoYjTzziYLrlcIj94mV8GmIfw/hH/evyGBuRkFhHScAIm+l
-         iY70lLk8zdRkLgTCb/vTVYPBXXa4oVZv3EJAwDOlUKYeTeQaF00KJCFTfQU/psliuN8B
-         LouZplTgbFph4yEiM/2vVu9IfdXgcougJ0g6RakatXdKLmpiTa6XXdGpPlSSa/NMahZd
-         YCSN5ZHNY/VOmszjBCQN738cWc91MtI9lyEmlm71AdB/lvHeSZGpbp0vXNq/FSvumdjD
-         gWLQWjbE3sutZtikxpntzOOBNk/3ZZ+oybGg5g0ULguLvnBuMYm6cdgqqSOdVBC9xcaP
-         sedA==
+        bh=emPOYlFok5aQSz4Wvx5YA4FdSgMlD8tynKOnVHHMsWE=;
+        b=gRyWnmrMRHde7dEhzIakfa+CiJ3uLtLLR2TB3bCX7DtDprNp0GRX4mFWVpdiGBJwwH
+         NWdL9ZApzHcr4PFdbE+wxRtE/7BmSZ2cnddQXssU0NBCv04PIkJ4LRU51w/+bAmz9Uhf
+         pKtUHTEh65b9XZl54kSknQmWldvJFbJPSPhCFQvwzaLPkklwYmCQlQM3VO9DyEdx+hh8
+         TGqFBT3QX/+QJPSFNZvBhKvLexbO5b/+1DzEypVDMALi4YeNJ0LFmAYmH28yUyOC2KoB
+         2K+hIpW+PYF0j9Bqllo/1+FfXSeIljN2csWiyD7QR3ZFy+QrTg9WpdFcB5sPaCAIs/Tn
+         ecfw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:mime-version:references:in-reply-to:from:date
          :message-id:subject:to:cc;
-        bh=W5Bm3UK1sYUTkREvkZKMr2r5k8diW8OqvDOfQTuXmhk=;
-        b=i0L51kGdVnpWN992L72aNzYGGFMsosd1bCbv9PtO9cCaO2Gb0F3kH+C/pAdj3q2nY0
-         IY/ZtlnK1rEPUGanaRMYHXAbmoFYmoigjF3T9FOzHlRRQcDDCrJpSdZByKlXEApCjWLp
-         W+LZ2GO6GeJY+GGA1l5DSns+K83Ox8ixhGTm26cmD6EJ7HyOY498wuJZSUUq5ewY2eu5
-         3MKicV7s70WgNtVbheGzK3hVGtCi8uPW3DwTlgOv69vxcUSdUFiytILnLOzJpWSxOx8Y
-         o/OSPY4NoeJQhSewKNJP1GgXsaJQSRSsM/pBDIejnS+Fkd+s/aQK67db4/4LbnUVcVb+
-         d3gw==
-X-Gm-Message-State: APjAAAWpIP0NQGiEYCiPwm5EZPQ+N0AMijj7bfnRHxpo1COO5Ush1RNF
-        SZEQ8/PuwaBrYG7eHkKPnH8DOwTztRJBr2sn9ec4Gg==
-X-Google-Smtp-Source: APXvYqxkCvY0ya054G46EcEiZv6BWHBd8wYI1Gq42d7Ftc83HxHbA5E25oBklAe64Isg5CvmgTfKRJ+RQxCQlVzocME=
-X-Received: by 2002:ab0:3011:: with SMTP id f17mr16714650ual.5.1552317191459;
- Mon, 11 Mar 2019 08:13:11 -0700 (PDT)
+        bh=emPOYlFok5aQSz4Wvx5YA4FdSgMlD8tynKOnVHHMsWE=;
+        b=aV4KFWj+iE4ZN3LkRVqhO63uOkZVEi7yrhJHb6+Wj6ve1O552R/sY6w0JiTzDABd+W
+         65FTgxTnHcQt5U7f3vsUHZoaAQSAEau3Av4COU5TTiYvedyMSXQCTLnTlKIk/pO66jNA
+         btrjKsQiyZRX6FhjxM+SbuDbm11vDSsMmVNyZ6i3TEdpo6sOgSUMUasRWqBrdTHA1lw/
+         POt6Ff9lEYxHERqen+B13AhSJSLMQI1c2EmggFRqRkIZYdjr95PfqUjlzv1Ofmeo8kqN
+         ZypwmwJMwnWZdkfwCCIUcV2SfhQCCZFDjr18brOKA4YE/DjNU93/5H6i3s79LC6SPAB8
+         wRiQ==
+X-Gm-Message-State: APjAAAX5vdYfuEp9GGbclehJ+4JW9eC7buGEvvqg/l1RdR3SaAVO+DiF
+        ypaNtlGJkISq0zbzsqfCYWKm5F52snI15kwIB8I=
+X-Google-Smtp-Source: APXvYqxMGUa+ayNKB4BNd78AZ2rpjisZLDb6CFpo6bnqIuziX9onvNxtHRsYDrjWxHLAhHYkZxRGmgxliu9fm378E1o=
+X-Received: by 2002:a67:3112:: with SMTP id x18mr16137555vsx.194.1552317292167;
+ Mon, 11 Mar 2019 08:14:52 -0700 (PDT)
 MIME-Version: 1.0
 References: <fa8ca171-b260-3e5a-d69c-13f263f5bb9c@linux.alibaba.com>
  <CAN-5tyG9sUw2Oi+hbaW+KJDhvk8KT3Lb-cgU6azxq1yN+Tr=KQ@mail.gmail.com>
@@ -58,11 +59,11 @@ References: <fa8ca171-b260-3e5a-d69c-13f263f5bb9c@linux.alibaba.com>
  <1417d6c8-3602-d895-a036-44031a7c1e98@linux.alibaba.com> <b729878b38f32053890a592a91f0645f15caa96f.camel@hammerspace.com>
  <46f5c870-f4fd-b29a-f5eb-eab39c4c1e89@linux.alibaba.com> <20190306160934.GB3066@fieldses.org>
  <CAN-5tyEPSDKao=83sW+voU9SPbcszZyR+XfZzcsD2-ozVa22Xg@mail.gmail.com>
- <ace3659edd3efb70d3d978e108ecf1fc22ee3966.camel@hammerspace.com> <CAN-5tyH8hFmEsAKDMDL4uey0MXh9+kY43=LEpgjj711eVUubAA@mail.gmail.com>
-In-Reply-To: <CAN-5tyH8hFmEsAKDMDL4uey0MXh9+kY43=LEpgjj711eVUubAA@mail.gmail.com>
+ <ace3659edd3efb70d3d978e108ecf1fc22ee3966.camel@hammerspace.com> <7824abe2b39fef6c5e1cd9cc53732fc91728871c.camel@hammerspace.com>
+In-Reply-To: <7824abe2b39fef6c5e1cd9cc53732fc91728871c.camel@hammerspace.com>
 From:   Olga Kornievskaia <aglo@umich.edu>
-Date:   Mon, 11 Mar 2019 11:13:00 -0400
-Message-ID: <CAN-5tyEAfV_WA3Vyf8LQ-EN4yn99p1sk7fuu7n43t8H8+un2Yw@mail.gmail.com>
+Date:   Mon, 11 Mar 2019 11:14:41 -0400
+Message-ID: <CAN-5tyH52dv7zuCkQoUS04rpbqotWn+SM1rJoxqBgsWG2bKLcg@mail.gmail.com>
 Subject: Re: [bug report] task hang while testing xfstests generic/323
 To:     Trond Myklebust <trondmy@hammerspace.com>
 Cc:     "bfields@fieldses.org" <bfields@fieldses.org>,
@@ -76,23 +77,25 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Mon, Mar 11, 2019 at 11:07 AM Olga Kornievskaia <aglo@umich.edu> wrote:
+On Mon, Mar 11, 2019 at 11:12 AM Trond Myklebust
+<trondmy@hammerspace.com> wrote:
 >
-> On Mon, Mar 11, 2019 at 10:30 AM Trond Myklebust
-> <trondmy@hammerspace.com> wrote:
-> >
+> On Mon, 2019-03-11 at 14:30 +0000, Trond Myklebust wrote:
 > > Hi Olga,
 > >
 > > On Sun, 2019-03-10 at 18:20 -0400, Olga Kornievskaia wrote:
 > > > There are a bunch of cases where multiple operations are using the
 > > > same seqid and slot.
 > > >
-> > > Example of such weirdness is (nfs.seqid == 0x000002f4) && (nfs.slotid
+> > > Example of such weirdness is (nfs.seqid == 0x000002f4) &&
+> > > (nfs.slotid
 > > > == 0) and the one leading to the hang.
 > > >
 > > > In frame 415870, there is an OPEN using that seqid and slot for the
-> > > first time (but this slot will be re-used a bunch of times before it
-> > > gets a reply in frame 415908 with the open stateid seq=40).  (also in
+> > > first time (but this slot will be re-used a bunch of times before
+> > > it
+> > > gets a reply in frame 415908 with the open stateid seq=40).  (also
+> > > in
 > > > this packet there is an example of reuse slot=1+seqid=0x000128f7 by
 > > > both TEST_STATEID and OPEN but let's set that aside).
 > > >
@@ -104,21 +107,25 @@ On Mon, Mar 11, 2019 at 11:07 AM Olga Kornievskaia <aglo@umich.edu> wrote:
 > > > cache and the reply is ERR_DELAY. But in frame 415876, client sends
 > > > again uses the same seqid and slot  and in this case it's used by
 > > > 3opens and a test_stateid.
-> > >
+>
+> This should result in exactly 1 bump of the stateid seqid.
+>
 > > > Client in all this mess never processes the open stateid seq=40 and
 > > > keeps on resending CLOSE with seq=37 (also to note client "missed"
 > > > processing seqid=38 and 39 as well. 39 probably because it was a
 > > > reply
 > > > on the same kind of "Reused" slot=1 and seq=0x000128f7. I haven't
 > > > tracked 38 but i'm assuming it's the same). I don't know how many
-> > > times but after 5mins, I see a TEST_STATEID that again uses the same
+> > > times but after 5mins, I see a TEST_STATEID that again uses the
+> > > same
 > > > seqid+slot (which gets a reply from the cache matching OPEN). Also
 > > > open + close (still with seq=37) open is replied to but after this
 > > > client goes into a soft lockup logs have
 > > > "nfs4_schedule_state_manager:
 > > > kthread_ruan: -4" over and over again . then a soft lockup.
 > > >
-> > > Looking back on slot 0. nfs.seqid=0x000002f3 was used in frame=415866
+> > > Looking back on slot 0. nfs.seqid=0x000002f3 was used in
+> > > frame=415866
 > > > by the TEST_STATEID. This is replied to in frame 415877 (with an
 > > > ERR_DELAY). But before the client got a reply, it used the slot and
 > > > the seq by frame 415874. TEST_STATEID is a synchronous and
@@ -132,23 +139,30 @@ On Mon, Mar 11, 2019 at 11:07 AM Olga Kornievskaia <aglo@umich.edu> wrote:
 > > patch
 > > http://git.linux-nfs.org/?p=trondmy/linux-nfs.git;a=commitdiff;h=3453d5708b33efe76f40eca1c0ed60923094b971
 > > to change the Linux client behaviour in the above regard.
+> >
 >
-> Yes. I reproduced it against your origin/testing (5.0.0-rc7+) commit
-> 0d1bf3407c4ae88 ("SUNRPC: allow dynamic allocation of back channel
-> slots").
+>
+> Note also that what you describe would appear to indicate a serious
+> server bug. If the client is reusing a slot+seqid, then the correct
+> server behaviour is to either return one of the errors NFS4ERR_DELAY,
+> NFS4ERR_SEQ_FALSE_RETRY, NFS4ERR_RETRY_UNCACHED_REP,
+> NFS4ERR_SEQ_MISORDERED, or else it must replay the exact same reply
+> that it had cached for the original request.
+>
+> It is protocol violation for the server to execute new requests on a
+> slot+seqid combination that has already been used. For that reason, it
+> is also impossible for a replay to cause further state changes on the
+> server; a replay means that the server belts out the exact same reply
+> that was attempted sent earlier with no changes (with stateids that
+> match bit for bit what would have been sent earlier).
+>
 
-Let me double check that. I have reproduced the "infinite loop" or
-CLOSE on the upstream (I'm looking thru the trace points from friday).
+But it is the same requests because all of them are opens on the same
+file same everything.
 
+> --
+> Trond Myklebust
+> Linux NFS client maintainer, Hammerspace
+> trond.myklebust@hammerspace.com
 >
 >
-> >
-> > Cheers
-> >   Trond
-> >
-> > --
-> > Trond Myklebust
-> > Linux NFS client maintainer, Hammerspace
-> > trond.myklebust@hammerspace.com
-> >
-> >
