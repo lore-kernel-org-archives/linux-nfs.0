@@ -6,48 +6,48 @@ X-Spam-Status: No, score=-9.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
 	SPF_PASS,USER_AGENT_GIT autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2FC7EC4360F
-	for <linux-nfs@archiver.kernel.org>; Mon, 11 Mar 2019 20:03:03 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E613EC43381
+	for <linux-nfs@archiver.kernel.org>; Mon, 11 Mar 2019 20:05:35 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 021C52087C
-	for <linux-nfs@archiver.kernel.org>; Mon, 11 Mar 2019 20:03:03 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id B76182087C
+	for <linux-nfs@archiver.kernel.org>; Mon, 11 Mar 2019 20:05:35 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1552334583;
-	bh=d7Tqjh7SIOkwevRNpGbd6OaKpbBseCw01ihijQfJa5Y=;
+	s=default; t=1552334735;
+	bh=1NBB3WLsM3p6uRGOplZg73mDiVeStTDgAgNckrrakDI=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=aptDGgmJAz2PVXqMY9PFNBvj7hN2mGxzNQ7lVgWmtX86z9Z1UDjD9hEiVAobyZJ4o
-	 tbKY1rA6vdiVXS+NDnAKXSZr0j/zVRba3xSs3RTObsWgzq9bVVF6rvtKe4Acf42EjN
-	 es3qaxdW83YyaVpl7ayxB3d8x7Z5L5LLTkNP3/z4=
+	b=MJMD6UWHMH/0eWGIKt9tFCrFvo7PsLb4vwbPYhLChDAZLHE9TY+rFNODf4M1tIUEE
+	 5ha8ppDv4tIMGnxv4wgazb5M9g/rrBW1mXL2aZuC4QBxd6fCtgUEyI4w/g/pYvbFGH
+	 brvB4Gj3hfrU9PpFNUpdgboFF019rYXycfFSgCVw=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728921AbfCKUC5 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 11 Mar 2019 16:02:57 -0400
-Received: from mail.kernel.org ([198.145.29.99]:36308 "EHLO mail.kernel.org"
+        id S1728650AbfCKT6D (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 11 Mar 2019 15:58:03 -0400
+Received: from mail.kernel.org ([198.145.29.99]:35368 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1729482AbfCKT6x (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 11 Mar 2019 15:58:53 -0400
+        id S1729267AbfCKT6A (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 11 Mar 2019 15:58:00 -0400
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 7EB1F214AE;
-        Mon, 11 Mar 2019 19:58:52 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id CB5812087C;
+        Mon, 11 Mar 2019 19:57:58 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1552334333;
-        bh=d7Tqjh7SIOkwevRNpGbd6OaKpbBseCw01ihijQfJa5Y=;
+        s=default; t=1552334279;
+        bh=1NBB3WLsM3p6uRGOplZg73mDiVeStTDgAgNckrrakDI=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=ukJG49nj+34uKdHNozD+OxawY8qskoYFBoImhK9y+31GRd+i8Mw+J2oUYZ5xm9DsZ
-         adENVAKHc0oqCv9b2ktTfzSnyDBgdzI14sgnCjpxoB+ntR+bUhmFBs/UIx9OdWidpt
-         rHGq0PENqU2cwW7PMIL4n3SIwmvx9tgaOPHSfLWo=
+        b=iu8C7Z86FDZqtCauN9colb2BiGWG2bm2hZq9CvY7Pwfgtk9OUW6qDLu9nSg3Igj4A
+         LGEtVu/226dle7Dh/ulGvUSHFlE3tipbxp3foI9pfg5chXITO6gcaJHDaG9OL/xBHd
+         rJ25UREsqcQk18Uuk0/phxDuV22hsYY17GACl68w=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
 Cc:     Benjamin Coddington <bcodding@redhat.com>,
         Anna Schumaker <Anna.Schumaker@Netapp.com>,
         Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org
-Subject: [PATCH AUTOSEL 4.14 19/27] NFS: Don't use page_file_mapping after removing the page
-Date:   Mon, 11 Mar 2019 15:58:16 -0400
-Message-Id: <20190311195824.139043-19-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 4.19 33/44] NFS: Don't use page_file_mapping after removing the page
+Date:   Mon, 11 Mar 2019 15:56:49 -0400
+Message-Id: <20190311195700.138462-33-sashal@kernel.org>
 X-Mailer: git-send-email 2.19.1
-In-Reply-To: <20190311195824.139043-1-sashal@kernel.org>
-References: <20190311195824.139043-1-sashal@kernel.org>
+In-Reply-To: <20190311195700.138462-1-sashal@kernel.org>
+References: <20190311195700.138462-1-sashal@kernel.org>
 MIME-Version: 1.0
 X-Patchwork-Hint: Ignore
 Content-Transfer-Encoding: 8bit
@@ -74,10 +74,10 @@ Signed-off-by: Sasha Levin <sashal@kernel.org>
  1 file changed, 6 insertions(+), 5 deletions(-)
 
 diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 2d956a7d5378..50ed3944d183 100644
+index d790faff8e47..51d0b7913c04 100644
 --- a/fs/nfs/write.c
 +++ b/fs/nfs/write.c
-@@ -236,9 +236,9 @@ static void nfs_grow_file(struct page *page, unsigned int offset, unsigned int c
+@@ -238,9 +238,9 @@ static void nfs_grow_file(struct page *page, unsigned int offset, unsigned int c
  }
  
  /* A writeback failed: mark the page as bad, and invalidate the page cache */
