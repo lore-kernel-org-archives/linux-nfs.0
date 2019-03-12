@@ -2,110 +2,101 @@ Return-Path: <SRS0=zOxf=RP=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-1.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7C76DC43381
-	for <linux-nfs@archiver.kernel.org>; Tue, 12 Mar 2019 13:17:58 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id AA591C43381
+	for <linux-nfs@archiver.kernel.org>; Tue, 12 Mar 2019 14:30:02 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 55ACB214D8
-	for <linux-nfs@archiver.kernel.org>; Tue, 12 Mar 2019 13:17:58 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 503CF2147C
+	for <linux-nfs@archiver.kernel.org>; Tue, 12 Mar 2019 14:30:02 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=umich.edu header.i=@umich.edu header.b="kmkETVnB"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726304AbfCLNR5 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 12 Mar 2019 09:17:57 -0400
-Received: from mx1.redhat.com ([209.132.183.28]:37726 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726009AbfCLNR5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 12 Mar 2019 09:17:57 -0400
-Received: from smtp.corp.redhat.com (int-mx06.intmail.prod.int.phx2.redhat.com [10.5.11.16])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 0DA9F3099FC3
-        for <linux-nfs@vger.kernel.org>; Tue, 12 Mar 2019 13:17:57 +0000 (UTC)
-Received: from madhat.boston.devel.redhat.com (madhat.boston.devel.redhat.com [10.19.60.33])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id CEC7A5C280
-        for <linux-nfs@vger.kernel.org>; Tue, 12 Mar 2019 13:17:56 +0000 (UTC)
-Subject: Re: [PATCH] gssd: add verbosity options to the rpc.gssd man page
-To:     Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-References: <20190311175521.24526-1-steved@redhat.com>
-From:   Steve Dickson <SteveD@RedHat.com>
-Message-ID: <ea315433-eace-af27-2dcc-e2689ed7640c@RedHat.com>
-Date:   Tue, 12 Mar 2019 09:17:55 -0400
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101
- Thunderbird/60.5.1
+        id S1726255AbfCLOaB (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 12 Mar 2019 10:30:01 -0400
+Received: from mail-vk1-f196.google.com ([209.85.221.196]:38932 "EHLO
+        mail-vk1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726192AbfCLOaB (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Mar 2019 10:30:01 -0400
+Received: by mail-vk1-f196.google.com with SMTP id i68so694437vke.6
+        for <linux-nfs@vger.kernel.org>; Tue, 12 Mar 2019 07:30:00 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=umich.edu; s=google-2016-06-03;
+        h=mime-version:from:date:message-id:subject:to:cc;
+        bh=EJnx3DVBz9P/NYsmlT0ljxFEHZxZE5bYtQ1ZXcySoDw=;
+        b=kmkETVnBS6o/uIhlFZ5nrGuqU14vllAUaq1M3yBZ+2j2K7Gfijaia5yR1T7msuaHck
+         UZB+IREo7r4h/SzLEaAEjhLQJLYsxtTthf9vgzElAHXnhFgpTztY3iJ4S+MM6GYwP254
+         5TBGH7Qe7oTjkDwx5wj5lVd6rpkMy6VAkFcpNSZJ6s9DKnD5wtWctAem0axurrICcIJU
+         rP2Xw2tzwBr94dKLZY2IKCoXLXBcLJkEOorGMuvhUGBQxc23MOzch3YTYDmJDkdnhBV/
+         UfNdSeCYx2PGyr1ugeQed0/xVZRAEC5yPQhawmRTW61pEQd7CpjwPsLK6EU21as7l79Q
+         I1Wg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:from:date:message-id:subject:to:cc;
+        bh=EJnx3DVBz9P/NYsmlT0ljxFEHZxZE5bYtQ1ZXcySoDw=;
+        b=hGoN1KJKkMXyPYdb62HSS585wmV86CjDG+FBBLqLKG+ooiEgoKyfGDIkfkkCgL1cEV
+         I5FvgP268QZHjDWzyu+oCR/qZ7e/FF3FXNdGEfuPf2tfr1qqS+5sZnUcike7Rl2Zqx3o
+         /Xr/qXY3lZiaeKXOJNwZAa6tZYorZsNinRDZj2lxJzKWJD5GUYHtpxGOLw+7tqLA2yxL
+         dDYbp7GrGXOo2v7PCv0IL4g8Fb14j0NNBt/Ve8iD4/gkMq0aUNhAMbhLlVSwGkZ1LCkq
+         KU/UY1VF41Dmm2VR19JQWdxD2sCPcMWVKAJI6Ogas/h77ZHOCs7sQ+SClMKt8IQEZlKz
+         Hq7Q==
+X-Gm-Message-State: APjAAAUJLU0fVITfX/e1aP4giGHKiAscWbvQkS8pKIDI/yvn9JeQmlr8
+        ZDnEyGHJWdaW9pvJeGzeRJmnACcbNcijbFxmvcY=
+X-Google-Smtp-Source: APXvYqw+fSAnVf/GBFBGiwIXM6uF5XjWKDMJSS5hqhdkoeX6gS5gkAQmqWtBBeRPxR8cyLDvD8E9DOj/UXtLT8BcaR8=
+X-Received: by 2002:a1f:682:: with SMTP id 124mr20175402vkg.34.1552401000169;
+ Tue, 12 Mar 2019 07:30:00 -0700 (PDT)
 MIME-Version: 1.0
-In-Reply-To: <20190311175521.24526-1-steved@redhat.com>
-Content-Type: text/plain; charset=utf-8
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.16
-X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.41]); Tue, 12 Mar 2019 13:17:57 +0000 (UTC)
+From:   Olga Kornievskaia <aglo@umich.edu>
+Date:   Tue, 12 Mar 2019 10:29:49 -0400
+Message-ID: <CAN-5tyFt0j9g4iTzoT-HqzKLDvMqq+x1=PxWPBHzAd3seyaqcQ@mail.gmail.com>
+Subject: oops on a sunrpc tracepoint
+To:     Chuck Lever <chuck.lever@oracle.com>
+Cc:     linux-nfs <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
+Hi Chuck,
 
+Is this a known issue?
 
-On 3/11/19 1:55 PM, Steve Dickson wrote:
-> From: Pierguido Lambri <plambri@redhat.com>
-> 
-> It also adds the commented out entries in the nfs.conf
-> default file.
-> 
-> Fixes: https://bugzilla.redhat.com/show_bug.cgi?id=1668026
-> 
-> Signed-off-by: Pierguido Lambri <plambri@redhat.com>
-> Signed-off-by: Steve Dickson <steved@redhat.com>
-> ---
->  nfs.conf             | 2 ++
->  systemd/nfs.conf.man | 2 ++
->  utils/gssd/gssd.c    | 4 ++--
->  3 files changed, 6 insertions(+), 2 deletions(-)
-Committed...
-
-steved.
-> 
-> diff --git a/nfs.conf b/nfs.conf
-> index d332375..faa07b1 100644
-> --- a/nfs.conf
-> +++ b/nfs.conf
-> @@ -9,6 +9,8 @@
->  # debug=0
->  #
->  [gssd]
-> +# verbosity=0
-> +# rpc-verbosity=0
->  # use-memcache=0
->  # use-machine-creds=1
->  # use-gss-proxy=0
-> diff --git a/systemd/nfs.conf.man b/systemd/nfs.conf.man
-> index 699db3f..e3654a3 100644
-> --- a/systemd/nfs.conf.man
-> +++ b/systemd/nfs.conf.man
-> @@ -211,6 +211,8 @@ for details.
->  .TP
->  .B gssd
->  Recognized values:
-> +.BR verbosity ,
-> +.BR rpc-verbosity ,
->  .BR use-memcache ,
->  .BR use-machine-creds ,
->  .BR use-gss-proxy ,
-> diff --git a/utils/gssd/gssd.c b/utils/gssd/gssd.c
-> index 7eeb05f..19ad4da 100644
-> --- a/utils/gssd/gssd.c
-> +++ b/utils/gssd/gssd.c
-> @@ -890,8 +890,8 @@ main(int argc, char *argv[])
->  
->  	read_gss_conf();
->  
-> -	verbosity = conf_get_num("gssd", "Verbosity", verbosity);
-> -	rpc_verbosity = conf_get_num("gssd", "RPC-Verbosity", rpc_verbosity);
-> +	verbosity = conf_get_num("gssd", "verbosity", verbosity);
-> +	rpc_verbosity = conf_get_num("gssd", "rpc-verbosity", rpc_verbosity);
->  
->  	while ((opt = getopt(argc, argv, "DfvrlmnMp:k:d:t:T:R:")) != -1) {
->  		switch (opt) {
-> 
+[ 5087.845704] BUG: unable to handle kernel NULL pointer dereference
+at 0000000000000004
+[ 5087.848463] #PF error: [normal kernel read fault]
+[ 5087.849852] PGD 0 P4D 0
+[ 5087.850618] Oops: 0000 [#1] SMP PTI
+[ 5087.851577] CPU: 0 PID: 5964 Comm: NFSv4 callback Not tainted 5.0.0-rc7+ #1
+[ 5087.853388] Hardware name: VMware, Inc. VMware Virtual
+Platform/440BX Desktop Reference Platform, BIOS 6.00 07/02/2015
+[ 5087.860280] RIP: 0010:trace_event_raw_event_xprt_enq_xmit+0x6f/0xf0 [sunrpc]
+[ 5087.862149] Code: 00 00 00 48 89 ee 48 89 e7 e8 7d 69 65 ef 48 85
+c0 74 4a 41 0f b7 94 24 e0 00 00 00 48 89 e7 89 50 08 49 8b 94 24 a8
+00 00 00 <8b> 52 04 89 50 0c 49 8b 94 24 c0 00 00 00 8b 92 a8 00 00 00
+0f ca
+[ 5087.866380] RSP: 0018:ffffc03c43297cf8 EFLAGS: 00010286
+[ 5087.867797] RAX: ffff9ef936d134a0 RBX: 0000000000000003 RCX: 0000000000000000
+[ 5087.869456] RDX: 0000000000000000 RSI: 0000000000000000 RDI: ffffc03c43297cf8
+[ 5087.871092] RBP: ffff9ef92f5b28f0 R08: 0000000000000246 R09: 0000000000000000
+[ 5087.872767] R10: fffff11380b706c0 R11: 0000000000000000 R12: ffff9ef9338bda00
+[ 5087.874659] R13: 0000000000000004 R14: ffff9ef932e813f0 R15: ffff9ef932e81000
+[ 5087.876538] FS:  0000000000000000(0000) GS:ffff9ef93bc00000(0000)
+knlGS:0000000000000000
+[ 5087.879404] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+[ 5087.881202] CR2: 0000000000000004 CR3: 000000000f0f2002 CR4: 00000000001606f0
+[ 5087.883331] Call Trace:
+[ 5087.885770]  xprt_request_enqueue_transmit+0x2b6/0x4a0 [sunrpc]
+[ 5087.887341]  ? rpc_task_need_encode+0x40/0x40 [sunrpc]
+[ 5087.888710]  call_bc_transmit+0xd5/0x170 [sunrpc]
+[ 5087.889880]  __rpc_execute+0x7e/0x3f0 [sunrpc]
+[ 5087.891022]  rpc_run_bc_task+0x78/0xd0 [sunrpc]
+[ 5087.892097]  bc_svc_process+0x281/0x340 [sunrpc]
+[ 5087.895456]  nfs41_callback_svc+0x130/0x1c0 [nfsv4]
+[ 5087.897018]  ? remove_wait_queue+0x60/0x60
+[ 5087.898038]  kthread+0xf5/0x130
+[ 5087.899531]  ? nfs_callback_authenticate+0x50/0x50 [nfsv4]
+[ 5087.900912]  ? kthread_bind+0x10/0x10
+[ 5087.902438]  ret_from_fork+0x1f/0x30
