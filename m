@@ -2,154 +2,200 @@ Return-Path: <SRS0=zOxf=RP=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
-	SIGNED_OFF_BY,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-6.5 required=3.0 tests=DKIM_ADSP_CUSTOM_MED,
+	DKIM_INVALID,DKIM_SIGNED,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B095CC4360F
-	for <linux-nfs@archiver.kernel.org>; Tue, 12 Mar 2019 20:12:31 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 28E7BC43381
+	for <linux-nfs@archiver.kernel.org>; Tue, 12 Mar 2019 21:22:55 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 728322147C
-	for <linux-nfs@archiver.kernel.org>; Tue, 12 Mar 2019 20:12:31 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id DC54E2147C
+	for <linux-nfs@archiver.kernel.org>; Tue, 12 Mar 2019 21:22:54 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="eKTZ8ACB"
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="n42hxzr0"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726573AbfCLUMa (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 12 Mar 2019 16:12:30 -0400
-Received: from mail-eopbgr800132.outbound.protection.outlook.com ([40.107.80.132]:16224
-        "EHLO NAM03-DM3-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726571AbfCLUMa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 12 Mar 2019 16:12:30 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=hammerspace.com;
- s=selector1;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=34Ob5OrxLAX6sx3Brufo41UPwMshpyvoMl4HhWfTY6c=;
- b=eKTZ8ACBrXEdjYUaOzBQHVgjI2MR2DOjRws7ljJllwWgYMXmB01U11pdIVAL9RRCnfKbmI7zi3MaW2jl8cNV25bHBomeek+bruWlSuMTkavFfmHwRnEs0hfsoYXcrACZcYy/BIiZQrkyuX+483lMkLrU6qJqV2F5VmC5J44DBy4=
-Received: from SN6PR13MB2494.namprd13.prod.outlook.com (52.135.95.148) by
- SN6PR13MB2574.namprd13.prod.outlook.com (52.135.96.22) with Microsoft SMTP
- Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- 15.20.1709.10; Tue, 12 Mar 2019 20:12:08 +0000
-Received: from SN6PR13MB2494.namprd13.prod.outlook.com
- ([fe80::d1d6:9683:8c9b:3dcb]) by SN6PR13MB2494.namprd13.prod.outlook.com
- ([fe80::d1d6:9683:8c9b:3dcb%3]) with mapi id 15.20.1709.011; Tue, 12 Mar 2019
- 20:12:08 +0000
-From:   Trond Myklebust <trondmy@hammerspace.com>
-To:     "Anna.Schumaker@netapp.com" <Anna.Schumaker@netapp.com>
-CC:     "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+        id S1726329AbfCLVWy (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 12 Mar 2019 17:22:54 -0400
+Received: from mail-io1-f68.google.com ([209.85.166.68]:46877 "EHLO
+        mail-io1-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726141AbfCLVWy (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Mar 2019 17:22:54 -0400
+Received: by mail-io1-f68.google.com with SMTP id k21so3381239ior.13
+        for <linux-nfs@vger.kernel.org>; Tue, 12 Mar 2019 14:22:53 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=sender:message-id:subject:from:to:cc:date:in-reply-to:references
+         :user-agent:mime-version:content-transfer-encoding;
+        bh=v35i4uX0jw/CGmdSQHA1GfD3ZY3zDwgtxT408E2jDNg=;
+        b=n42hxzr0cwiIvITdImKcXOVNLiUBlnMiT9US8R80vsJtTduTlXr8G1/9IPPFVpwGnD
+         Rq+SaKUIDshFmkTTv93aSm+96FR8dKLAcSzIYiV666TxtEu+qyCJ0Qq4cQbpE/KK3gLv
+         Uxmt3HyyTKP18hIe4CflNoEcFUg5vryD17Dj9Q/G/qgtfRl+4pOXycC2UOW5TEDJ39b8
+         X0RfTO+zRTS8altPXtQAnwEcPPFdgBcUifSi6v2OA1tY1SRc2Jh6MhbMP5A3KTaM7QQP
+         1EZZu1FQTFT/5IbnG+JE2fsXxblVvfsP+EVuidx+tUmvJD88OVI+kCRb2F1rNzrC/izc
+         d8Mg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:sender:message-id:subject:from:to:cc:date
+         :in-reply-to:references:user-agent:mime-version
+         :content-transfer-encoding;
+        bh=v35i4uX0jw/CGmdSQHA1GfD3ZY3zDwgtxT408E2jDNg=;
+        b=Ez8iR4eHlGS+v1J89qDTJsg1NFembBJR6Kl1ZDUx0onVpSwoOAu2LaBFKsqGmtj4Ru
+         B7myd+9AIVNqSaSrqRoRiTpMobp+In4yZARkT66KGJuU8EetiK3Rc/wIdaceZw7WhMkB
+         KtzvPgaChdjT3V+2mRsuHR9Ir6w0NM3acz9u1VKQVnfowd1/9W2BnNHU4iBxh2nGMRGb
+         5JZ6lay3Y5Oxf7thCLW91eEqD+HD+GRouJkA+TtFT38QjHr+vGHyF1rKaNbi7ImrW8Ki
+         g4JwdjOjyg1b6kbCR3TcisQPRhyP15Db+8w1TmH2P86QQkTOSzeJd1kiogVGt5OAouPs
+         1g3w==
+X-Gm-Message-State: APjAAAVh0Aihkt01MNGMLaA3ooUBgyWzJckOj//AyetCtIT/pmyJlmAd
+        aiu1FYOCFUIlX1LXHNSFrY+2DcRrULU=
+X-Google-Smtp-Source: APXvYqzFg7gtxCWhYnlg55JTxJrvAl6M+KgB67mA/3eZKxpNbdeK4Es31u7M478KOupvAPEmwdkoMQ==
+X-Received: by 2002:a6b:db19:: with SMTP id t25mr8154206ioc.140.1552425772542;
+        Tue, 12 Mar 2019 14:22:52 -0700 (PDT)
+Received: from gouda.nowheycreamery.com (c-73-145-169-100.hsd1.mi.comcast.net. [73.145.169.100])
+        by smtp.googlemail.com with ESMTPSA id g4sm4650961ioc.1.2019.03.12.14.22.51
+        (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
+        Tue, 12 Mar 2019 14:22:51 -0700 (PDT)
+Message-ID: <672c7858f622e78973296bc0a504114c7610b761.camel@gmail.com>
 Subject: Re: [PATCH 1/4] pNFS: Ensure we return the error if someone kills a
  waiting layoutget
-Thread-Topic: [PATCH 1/4] pNFS: Ensure we return the error if someone kills a
- waiting layoutget
-Thread-Index: AQHURUNoW4zAXF/260mqOpWC6FLreqYJkxsAgAACGAA=
-Date:   Tue, 12 Mar 2019 20:12:08 +0000
-Message-ID: <6057b85eea9d1b25189e2c1ead89112c91180ff0.camel@hammerspace.com>
+From:   Anna Schumaker <schumaker.anna@gmail.com>
+To:     Trond Myklebust <trondmy@hammerspace.com>
+Cc:     "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Date:   Tue, 12 Mar 2019 17:22:50 -0400
+In-Reply-To: <6057b85eea9d1b25189e2c1ead89112c91180ff0.camel@hammerspace.com>
 References: <20180905180715.99485-1-trond.myklebust@hammerspace.com>
          <233f58676bee06fe87fae6c6ca04708a24716187.camel@netapp.com>
-In-Reply-To: <233f58676bee06fe87fae6c6ca04708a24716187.camel@netapp.com>
-Accept-Language: en-US, en-GB
-Content-Language: en-US
-X-MS-Has-Attach: 
-X-MS-TNEF-Correlator: 
-x-originating-ip: [68.40.189.247]
-x-ms-publictraffictype: Email
-x-ms-office365-filtering-correlation-id: ca51ce8c-992a-44b3-ab4f-08d6a727015d
-x-microsoft-antispam: BCL:0;PCL:0;RULEID:(2390118)(7020095)(4652040)(8989299)(4534185)(4627221)(201703031133081)(201702281549075)(8990200)(5600127)(711020)(4605104)(2017052603328)(7153060)(7193020);SRVR:SN6PR13MB2574;
-x-ms-traffictypediagnostic: SN6PR13MB2574:
-authentication-results: spf=none (sender IP is )
- smtp.mailfrom=trondmy@hammerspace.com; 
-x-microsoft-antispam-prvs: <SN6PR13MB2574E1E6EEDAFD7D1DBB6976B8490@SN6PR13MB2574.namprd13.prod.outlook.com>
-x-forefront-prvs: 09749A275C
-x-forefront-antispam-report: SFV:NSPM;SFS:(10019020)(136003)(39830400003)(376002)(366004)(396003)(346002)(199004)(189003)(3846002)(6116002)(26005)(5660300002)(66066001)(14444005)(5024004)(256004)(106356001)(446003)(2351001)(486006)(68736007)(25786009)(71190400001)(71200400001)(11346002)(2906002)(8676002)(86362001)(81156014)(81166006)(4326008)(8936002)(6916009)(99286004)(229853002)(2616005)(2501003)(53936002)(7736002)(97736004)(186003)(6506007)(316002)(53546011)(76176011)(478600001)(6246003)(14454004)(6486002)(6436002)(118296001)(105586002)(6512007)(5640700003)(36756003)(476003)(305945005)(102836004);DIR:OUT;SFP:1102;SCL:1;SRVR:SN6PR13MB2574;H:SN6PR13MB2494.namprd13.prod.outlook.com;FPR:;SPF:None;LANG:en;PTR:InfoNoRecords;A:1;MX:1;
-received-spf: None (protection.outlook.com: hammerspace.com does not designate
- permitted sender hosts)
-x-ms-exchange-senderadcheck: 1
-x-microsoft-antispam-message-info: 20aV4SgrkkN8hn2DRK9mNKaxl31+oSgEHO67utKcf4g4SXbhlmcyEcJbRdsF2M0PEbjMc6Lk4xhOTbhMkRnwSuqg2c8ua+ZS92UUqcPZWTHis2e+Gt9iB22Yfs6XhCkn1nDOB+LUM+Yj4z8EmD3zSgmw0ktMYfN/whlsFCVqE5j7IYnUNEk/01yz5vphK/XagypINuAT3NzJ4J/JdZ084hz5BJw3KrM3PNaVwKdnkXf5DnjiTT/SQvoVlOQOBR5dn7zdrWJCS9BccYNRuWoBPHXX/Yurxkj+ZI4PLy22yfspJm8X7QoYC1H4F00dBBt1UoFhZd1LaDa4pRv0BIhDmoA0gpv7tOXVb7kfqwQ25d3Pat/k/j365FMz1Ea2D/9Ius62gbDRGwvpdUd+WUX3OYb1XOodBUx2MCJENOz5mVg=
-Content-Type: text/plain; charset="utf-8"
-Content-ID: <829467F0E938C94DBE26548A4E3BD3DD@namprd13.prod.outlook.com>
-Content-Transfer-Encoding: base64
+         <6057b85eea9d1b25189e2c1ead89112c91180ff0.camel@hammerspace.com>
+Content-Type: text/plain; charset="UTF-8"
+User-Agent: Evolution 3.30.5 
 MIME-Version: 1.0
-X-OriginatorOrg: hammerspace.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: ca51ce8c-992a-44b3-ab4f-08d6a727015d
-X-MS-Exchange-CrossTenant-originalarrivaltime: 12 Mar 2019 20:12:08.6281
- (UTC)
-X-MS-Exchange-CrossTenant-fromentityheader: Hosted
-X-MS-Exchange-CrossTenant-id: 0d4fed5c-3a70-46fe-9430-ece41741f59e
-X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: SN6PR13MB2574
+Content-Transfer-Encoding: 7bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-T24gVHVlLCAyMDE5LTAzLTEyIGF0IDIwOjA0ICswMDAwLCBTY2h1bWFrZXIsIEFubmEgd3JvdGU6
-DQo+IEhpIFRyb25kLA0KPiANCj4gSSdtIHNlZWluZyBhIGhhbmcgd2hlbiB0ZXN0aW5nIHhmc3Rl
-c3RzIGdlbmVyaWMvMDEzIG9uIHY0LjEgd2l0aCBwTkZTDQo+IGFmdGVyIHRoaXMNCj4gcGF0Y2g6
-DQo+IA0KPiBPbiBXZWQsIDIwMTgtMDktMDUgYXQgMTQ6MDcgLTA0MDAsIFRyb25kIE15a2xlYnVz
-dCB3cm90ZToNCj4gPiBJZiBzb21lb25lIGludGVycnVwdHMgYSB3YWl0IG9uIG9uZSBvciBtb3Jl
-IG91dHN0YW5kaW5nIGxheW91dGdldHMNCj4gPiBpbg0KPiA+IHBuZnNfdXBkYXRlX2xheW91dCgp
-IHRoZW4gcmV0dXJuIHRoZSBFUkVTVEFSVFNZUy9FSU5UUiBlcnJvci4NCj4gPiANCj4gPiBTaWdu
-ZWQtb2ZmLWJ5OiBUcm9uZCBNeWtsZWJ1c3QgPHRyb25kLm15a2xlYnVzdEBoYW1tZXJzcGFjZS5j
-b20+DQo+ID4gLS0tDQo+ID4gIGZzL25mcy9wbmZzLmMgfCAyNiArKysrKysrKysrKysrKysrLS0t
-LS0tLS0tLQ0KPiA+ICAxIGZpbGUgY2hhbmdlZCwgMTYgaW5zZXJ0aW9ucygrKSwgMTAgZGVsZXRp
-b25zKC0pDQo+ID4gDQo+ID4gZGlmZiAtLWdpdCBhL2ZzL25mcy9wbmZzLmMgYi9mcy9uZnMvcG5m
-cy5jDQo+ID4gaW5kZXggZThmMjMyZGU0ODRmLi43ZDlhNTFlNmI4NDcgMTAwNjQ0DQo+ID4gLS0t
-IGEvZnMvbmZzL3BuZnMuYw0KPiA+ICsrKyBiL2ZzL25mcy9wbmZzLmMNCj4gPiBAQCAtMTc0MCwx
-NiArMTc0MCwxNiBAQCBzdGF0aWMgYm9vbCBwbmZzX3dpdGhpbl9tZHN0aHJlc2hvbGQoc3RydWN0
-DQo+ID4gbmZzX29wZW5fY29udGV4dCAqY3R4LA0KPiA+ICAJcmV0dXJuIHJldDsNCj4gPiAgfQ0K
-PiA+ICANCj4gPiAtc3RhdGljIGJvb2wgcG5mc19wcmVwYXJlX3RvX3JldHJ5X2xheW91dGdldChz
-dHJ1Y3QgcG5mc19sYXlvdXRfaGRyDQo+ID4gKmxvKQ0KPiA+ICtzdGF0aWMgaW50IHBuZnNfcHJl
-cGFyZV90b19yZXRyeV9sYXlvdXRnZXQoc3RydWN0IHBuZnNfbGF5b3V0X2hkcg0KPiA+ICpsbykN
-Cj4gPiAgew0KPiA+ICAJLyoNCj4gPiAgCSAqIHNlbmQgbGF5b3V0Y29tbWl0IGFzIGl0IGNhbiBo
-b2xkIHVwIGxheW91dHJldHVybiBkdWUgdG8gbHNlZw0KPiA+ICAJICogcmVmZXJlbmNlDQo+ID4g
-IAkgKi8NCj4gPiAgCXBuZnNfbGF5b3V0Y29tbWl0X2lub2RlKGxvLT5wbGhfaW5vZGUsIGZhbHNl
-KTsNCj4gPiAtCXJldHVybiAhd2FpdF9vbl9iaXRfYWN0aW9uKCZsby0+cGxoX2ZsYWdzLCBORlNf
-TEFZT1VUX1JFVFVSTiwNCj4gPiArCXJldHVybiB3YWl0X29uX2JpdF9hY3Rpb24oJmxvLT5wbGhf
-ZmxhZ3MsIE5GU19MQVlPVVRfUkVUVVJOLA0KPiA+ICAJCQkJICAgbmZzX3dhaXRfYml0X2tpbGxh
-YmxlLA0KPiA+IC0JCQkJICAgVEFTS19VTklOVEVSUlVQVElCTEUpOw0KPiA+ICsJCQkJICAgVEFT
-S19LSUxMQUJMRSk7DQo+ID4gIH0NCj4gPiAgDQo+ID4gIHN0YXRpYyB2b2lkIG5mc19sYXlvdXRn
-ZXRfYmVnaW4oc3RydWN0IHBuZnNfbGF5b3V0X2hkciAqbG8pDQo+ID4gQEAgLTE4MzAsNyArMTgz
-MCw5IEBAIHBuZnNfdXBkYXRlX2xheW91dChzdHJ1Y3QgaW5vZGUgKmlubywNCj4gPiAgCX0NCj4g
-PiAgDQo+ID4gIGxvb2t1cF9hZ2FpbjoNCj4gPiAtCW5mczRfY2xpZW50X3JlY292ZXJfZXhwaXJl
-ZF9sZWFzZShjbHApOw0KPiA+ICsJbHNlZyA9IEVSUl9QVFIobmZzNF9jbGllbnRfcmVjb3Zlcl9l
-eHBpcmVkX2xlYXNlKGNscCkpOw0KPiA+ICsJaWYgKElTX0VSUihsc2VnKSkNCj4gPiArCQlnb3Rv
-IG91dDsNCj4gPiAgCWZpcnN0ID0gZmFsc2U7DQo+ID4gIAlzcGluX2xvY2soJmluby0+aV9sb2Nr
-KTsNCj4gPiAgCWxvID0gcG5mc19maW5kX2FsbG9jX2xheW91dChpbm8sIGN0eCwgZ2ZwX2ZsYWdz
-KTsNCj4gPiBAQCAtMTg2Myw5ICsxODY1LDkgQEAgcG5mc191cGRhdGVfbGF5b3V0KHN0cnVjdCBp
-bm9kZSAqaW5vLA0KPiA+ICAJaWYgKGxpc3RfZW1wdHkoJmxvLT5wbGhfc2VncykgJiYNCj4gPiAg
-CSAgICBhdG9taWNfcmVhZCgmbG8tPnBsaF9vdXRzdGFuZGluZykgIT0gMCkgew0KPiA+ICAJCXNw
-aW5fdW5sb2NrKCZpbm8tPmlfbG9jayk7DQo+ID4gLQkJaWYgKHdhaXRfdmFyX2V2ZW50X2tpbGxh
-YmxlKCZsby0+cGxoX291dHN0YW5kaW5nLA0KPiA+IC0JCQkJCWF0b21pY19yZWFkKCZsby0NCj4g
-PiA+cGxoX291dHN0YW5kaW5nKSA9PSAwDQo+ID4gLQkJCQkJfHwgIWxpc3RfZW1wdHkoJmxvLT5w
-bGhfc2VncykpKQ0KPiA+ICsJCWxzZWcgPSBFUlJfUFRSKHdhaXRfdmFyX2V2ZW50X2tpbGxhYmxl
-KCZsby0NCj4gPiA+cGxoX291dHN0YW5kaW5nLA0KPiA+ICsJCQkJCWF0b21pY19yZWFkKCZsby0N
-Cj4gPiA+cGxoX291dHN0YW5kaW5nKSkpOw0KPiA+ICsJCWlmIChJU19FUlIobHNlZykgfHwgIWxp
-c3RfZW1wdHkoJmxvLT5wbGhfc2VncykpDQo+IA0KPiBXYXMgZHJvcHBpbmcgdGhlICI9PSAwIiBj
-b25kaXRpb24gYXR0YWNoZWQgdG8gdGhlIGF0b21pY19yZWFkKCkgaGVyZQ0KPiBhIG1pc3Rha2U/
-DQo+IEkgdGhpbmsgd2hhdCdzIGhhcHBlbmluZyBpcyB0aGF0IG15IGNsaWVudCBpcyB3YWl0aW5n
-IGZvcg0KPiBwbGhfb3V0c3RhbmRpbmcgdG8gYmUNCj4gYW55dGhpbmcgb3RoZXIgdGhhbiAwIHdo
-ZW4gdGhlcmUgaXNuJ3QgYW55IHdvcmsgbGVmdCB0byBkby4NCg0KWWVzLiBUaGF0J3MgYSBidWcu
-IEhvdyBhYm91dCB0aGUgZm9sbG93aW5nIHBhdGNoPw0KDQo4PC0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLQ0KRnJvbSA0MDA0MTdiMDVmM2VjMDUzMTU0
-NGNhNWY5NGU2NGQ4MzhkOGI4ODQ5IE1vbiBTZXAgMTcgMDA6MDA6MDAgMjAwMQ0KRnJvbTogVHJv
-bmQgTXlrbGVidXN0IDx0cm9uZC5teWtsZWJ1c3RAaGFtbWVyc3BhY2UuY29tPg0KRGF0ZTogVHVl
-LCAxMiBNYXIgMjAxOSAxNjowNDo1MSAtMDQwMA0KU3ViamVjdDogW1BBVENIXSBwTkZTOiBGaXgg
-YSB0eXBvIGluIHBuZnNfdXBkYXRlX2xheW91dA0KDQpXZSdyZSBzdXBwb3NlZCB0byB3YWl0IGZv
-ciB0aGUgb3V0c3RhbmRpbmcgbGF5b3V0IGNvdW50IHRvIGdvIHRvIHplcm8sDQpidXQgdGhhdCBn
-b3QgbG9zdCBzb21laG93Lg0KDQpGaXhlczogZDAzMzYwYWFmNWNjYSAoInBORlM6IEVuc3VyZSB3
-ZSByZXR1cm4gdGhlIGVycm9yIGlmIHNvbWVvbmUuLi4iKQ0KUmVwb3J0ZWQtYnk6IEFubmEgU2No
-dW1ha2VyIDxBbm5hLlNjaHVtYWtlckBOZXRhcHAuY29tPg0KU2lnbmVkLW9mZi1ieTogVHJvbmQg
-TXlrbGVidXN0IDx0cm9uZC5teWtsZWJ1c3RAaGFtbWVyc3BhY2UuY29tPg0KLS0tDQogZnMvbmZz
-L3BuZnMuYyB8IDIgKy0NCiAxIGZpbGUgY2hhbmdlZCwgMSBpbnNlcnRpb24oKyksIDEgZGVsZXRp
-b24oLSkNCg0KZGlmZiAtLWdpdCBhL2ZzL25mcy9wbmZzLmMgYi9mcy9uZnMvcG5mcy5jDQppbmRl
-eCA4MjQ3YmQxNjM0Y2IuLjcwNjZjZDdjN2FmZiAxMDA2NDQNCi0tLSBhL2ZzL25mcy9wbmZzLmMN
-CisrKyBiL2ZzL25mcy9wbmZzLmMNCkBAIC0xODg5LDcgKzE4ODksNyBAQCBwbmZzX3VwZGF0ZV9s
-YXlvdXQoc3RydWN0IGlub2RlICppbm8sDQogCSAgICBhdG9taWNfcmVhZCgmbG8tPnBsaF9vdXRz
-dGFuZGluZykgIT0gMCkgew0KIAkJc3Bpbl91bmxvY2soJmluby0+aV9sb2NrKTsNCiAJCWxzZWcg
-PSBFUlJfUFRSKHdhaXRfdmFyX2V2ZW50X2tpbGxhYmxlKCZsby0+cGxoX291dHN0YW5kaW5nLA0K
-LQkJCQkJYXRvbWljX3JlYWQoJmxvLT5wbGhfb3V0c3RhbmRpbmcpKSk7DQorCQkJCQkhYXRvbWlj
-X3JlYWQoJmxvLT5wbGhfb3V0c3RhbmRpbmcpKSk7DQogCQlpZiAoSVNfRVJSKGxzZWcpIHx8ICFs
-aXN0X2VtcHR5KCZsby0+cGxoX3NlZ3MpKQ0KIAkJCWdvdG8gb3V0X3B1dF9sYXlvdXRfaGRyOw0K
-IAkJcG5mc19wdXRfbGF5b3V0X2hkcihsbyk7DQotLSANCjIuMjAuMQ0KDQotLSANClRyb25kIE15
-a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBIYW1tZXJzcGFjZQ0KdHJvbmQu
-bXlrbGVidXN0QGhhbW1lcnNwYWNlLmNvbQ0KDQoNCg==
+On Tue, 2019-03-12 at 20:12 +0000, Trond Myklebust wrote:
+> On Tue, 2019-03-12 at 20:04 +0000, Schumaker, Anna wrote:
+> > Hi Trond,
+> > 
+> > I'm seeing a hang when testing xfstests generic/013 on v4.1 with pNFS
+> > after this
+> > patch:
+> > 
+> > On Wed, 2018-09-05 at 14:07 -0400, Trond Myklebust wrote:
+> > > If someone interrupts a wait on one or more outstanding layoutgets
+> > > in
+> > > pnfs_update_layout() then return the ERESTARTSYS/EINTR error.
+> > > 
+> > > Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
+> > > ---
+> > >  fs/nfs/pnfs.c | 26 ++++++++++++++++----------
+> > >  1 file changed, 16 insertions(+), 10 deletions(-)
+> > > 
+> > > diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+> > > index e8f232de484f..7d9a51e6b847 100644
+> > > --- a/fs/nfs/pnfs.c
+> > > +++ b/fs/nfs/pnfs.c
+> > > @@ -1740,16 +1740,16 @@ static bool pnfs_within_mdsthreshold(struct
+> > > nfs_open_context *ctx,
+> > >  	return ret;
+> > >  }
+> > >  
+> > > -static bool pnfs_prepare_to_retry_layoutget(struct pnfs_layout_hdr
+> > > *lo)
+> > > +static int pnfs_prepare_to_retry_layoutget(struct pnfs_layout_hdr
+> > > *lo)
+> > >  {
+> > >  	/*
+> > >  	 * send layoutcommit as it can hold up layoutreturn due to lseg
+> > >  	 * reference
+> > >  	 */
+> > >  	pnfs_layoutcommit_inode(lo->plh_inode, false);
+> > > -	return !wait_on_bit_action(&lo->plh_flags, NFS_LAYOUT_RETURN,
+> > > +	return wait_on_bit_action(&lo->plh_flags, NFS_LAYOUT_RETURN,
+> > >  				   nfs_wait_bit_killable,
+> > > -				   TASK_UNINTERRUPTIBLE);
+> > > +				   TASK_KILLABLE);
+> > >  }
+> > >  
+> > >  static void nfs_layoutget_begin(struct pnfs_layout_hdr *lo)
+> > > @@ -1830,7 +1830,9 @@ pnfs_update_layout(struct inode *ino,
+> > >  	}
+> > >  
+> > >  lookup_again:
+> > > -	nfs4_client_recover_expired_lease(clp);
+> > > +	lseg = ERR_PTR(nfs4_client_recover_expired_lease(clp));
+> > > +	if (IS_ERR(lseg))
+> > > +		goto out;
+> > >  	first = false;
+> > >  	spin_lock(&ino->i_lock);
+> > >  	lo = pnfs_find_alloc_layout(ino, ctx, gfp_flags);
+> > > @@ -1863,9 +1865,9 @@ pnfs_update_layout(struct inode *ino,
+> > >  	if (list_empty(&lo->plh_segs) &&
+> > >  	    atomic_read(&lo->plh_outstanding) != 0) {
+> > >  		spin_unlock(&ino->i_lock);
+> > > -		if (wait_var_event_killable(&lo->plh_outstanding,
+> > > -					atomic_read(&lo-
+> > > > plh_outstanding) == 0
+> > > -					|| !list_empty(&lo->plh_segs)))
+> > > +		lseg = ERR_PTR(wait_var_event_killable(&lo-
+> > > > plh_outstanding,
+> > > +					atomic_read(&lo-
+> > > > plh_outstanding)));
+> > > +		if (IS_ERR(lseg) || !list_empty(&lo->plh_segs))
+> > 
+> > Was dropping the "== 0" condition attached to the atomic_read() here
+> > a mistake?
+> > I think what's happening is that my client is waiting for
+> > plh_outstanding to be
+> > anything other than 0 when there isn't any work left to do.
+> 
+> Yes. That's a bug. How about the following patch?
+
+This patch works for me, but for some reason doing "!atomic_read()" takes 8
+minutes longer to complete compared to doing "atomic_read() == 0".  I have not
+run this multiple times to confirm that it's always the case.
+
+Anna
+
+> 
+> 8<---------------------------------------------------
+> From 400417b05f3ec0531544ca5f94e64d838d8b8849 Mon Sep 17 00:00:00 2001
+> From: Trond Myklebust <trond.myklebust@hammerspace.com>
+> Date: Tue, 12 Mar 2019 16:04:51 -0400
+> Subject: [PATCH] pNFS: Fix a typo in pnfs_update_layout
+> 
+> We're supposed to wait for the outstanding layout count to go to zero,
+> but that got lost somehow.
+> 
+> Fixes: d03360aaf5cca ("pNFS: Ensure we return the error if someone...")
+> Reported-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+> Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
+> ---
+>  fs/nfs/pnfs.c | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+> 
+> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+> index 8247bd1634cb..7066cd7c7aff 100644
+> --- a/fs/nfs/pnfs.c
+> +++ b/fs/nfs/pnfs.c
+> @@ -1889,7 +1889,7 @@ pnfs_update_layout(struct inode *ino,
+>  	    atomic_read(&lo->plh_outstanding) != 0) {
+>  		spin_unlock(&ino->i_lock);
+>  		lseg = ERR_PTR(wait_var_event_killable(&lo->plh_outstanding,
+> -					atomic_read(&lo->plh_outstanding)));
+> +					!atomic_read(&lo->plh_outstanding)));
+>  		if (IS_ERR(lseg) || !list_empty(&lo->plh_segs))
+>  			goto out_put_layout_hdr;
+>  		pnfs_put_layout_hdr(lo);
+> -- 
+> 2.20.1
+> 
+> -- 
+> Trond Myklebust
+> Linux NFS client maintainer, Hammerspace
+> trond.myklebust@hammerspace.com
+> 
+> 
+
