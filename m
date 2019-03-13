@@ -6,49 +6,49 @@ X-Spam-Status: No, score=-9.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
 	SPF_PASS,USER_AGENT_GIT autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 73575C43381
-	for <linux-nfs@archiver.kernel.org>; Wed, 13 Mar 2019 19:25:42 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A43B0C4360F
+	for <linux-nfs@archiver.kernel.org>; Wed, 13 Mar 2019 19:28:53 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 32B9B20657
-	for <linux-nfs@archiver.kernel.org>; Wed, 13 Mar 2019 19:25:42 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 5FF1320657
+	for <linux-nfs@archiver.kernel.org>; Wed, 13 Mar 2019 19:28:53 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1552505142;
-	bh=Bz9q3srD5moYyWRtOeK3UURhl3snr16Hv6pNdT+9etU=;
+	s=default; t=1552505333;
+	bh=HZP1H3f6YekF+749wqsjErPQX/KZ/qO65v97vwNVGHE=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=HBmh6yn/7SJhciCqvx5j8C7/jdQeo8BdO3n60pFSaVOsV78fw3kZbsMMuG5Sewknw
-	 TyL+vwgQBCH/jR781yhktBlu5ucq821erV3/8QMEpmytd7PSkTz74pZbWwF4OHG+5o
-	 1WVR7i6NMjHYePHk9MT403iAPqEFOrm2msCmTON4=
+	b=i1exElTI9RxU3P+y/wrFs2+pCvVzC+8NY5Bq8yscvS7ihYSzi0iBLMRHiZDgjTzQP
+	 NDC7Xuyj6K1iUVvY6GvFmhPztOlHzbWZ+cF2EIjCuZkTOhQsqJDMHh6LYz+viTzDja
+	 nF+HMV5wG5vVDBoN1hKXgxwwhF3K7VYVwsPBUVqc=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727514AbfCMTPe (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 13 Mar 2019 15:15:34 -0400
-Received: from mail.kernel.org ([198.145.29.99]:45660 "EHLO mail.kernel.org"
+        id S1727972AbfCMTN3 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 13 Mar 2019 15:13:29 -0400
+Received: from mail.kernel.org ([198.145.29.99]:43978 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1728470AbfCMTPd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 13 Mar 2019 15:15:33 -0400
+        id S1727159AbfCMTN2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 13 Mar 2019 15:13:28 -0400
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id B3047213A2;
-        Wed, 13 Mar 2019 19:15:28 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 8E4D62186A;
+        Wed, 13 Mar 2019 19:13:24 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1552504531;
-        bh=Bz9q3srD5moYyWRtOeK3UURhl3snr16Hv6pNdT+9etU=;
+        s=default; t=1552504406;
+        bh=HZP1H3f6YekF+749wqsjErPQX/KZ/qO65v97vwNVGHE=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=Y33YjUZTxBLb4b8UnnNhHjPbM/F0lx7Yal37ADQAuwtP3GRWdtS8LarFXPpqSeaax
-         Y8plDictgSuTh5XMJiA71MiA0hTAnvdaewOAStBTeuB3AhWSRvSyzVY/qgt8QVgcA1
-         CCoi4/CyS40IF0JPHRPyyttR742PKV7p/YU5ZBQk=
+        b=OOlX1o8oL4hC2eINCLxNfG0XIysqhrr/dj4QfnGeRslRtc2HbaZpWysvvM6PDsYwc
+         CoQZfBmTztp/DUOSkpysQIp19P6jh7BQE9FYUFpS921NS4+iP22UifC4Fr4I17Nm6+
+         VqB/uTP2Xm8g7eBE9JgJl52UTEbWFPfJo3NXQccI=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
 Cc:     David Howells <dhowells@redhat.com>,
         James Morris <james.morris@microsoft.com>,
         Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org,
         keyrings@vger.kernel.org, linux-security-module@vger.kernel.org
-Subject: [PATCH AUTOSEL 4.14 07/33] keys: Fix dependency loop between construction record and auth key
-Date:   Wed, 13 Mar 2019 15:14:40 -0400
-Message-Id: <20190313191506.159677-7-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 4.19 11/48] keys: Fix dependency loop between construction record and auth key
+Date:   Wed, 13 Mar 2019 15:12:13 -0400
+Message-Id: <20190313191250.158955-11-sashal@kernel.org>
 X-Mailer: git-send-email 2.19.1
-In-Reply-To: <20190313191506.159677-1-sashal@kernel.org>
-References: <20190313191506.159677-1-sashal@kernel.org>
+In-Reply-To: <20190313191250.158955-1-sashal@kernel.org>
+References: <20190313191250.158955-1-sashal@kernel.org>
 MIME-Version: 1.0
 X-Patchwork-Hint: Ignore
 Content-Transfer-Encoding: 8bit
@@ -96,7 +96,7 @@ Signed-off-by: Sasha Levin <sashal@kernel.org>
  create mode 100644 include/keys/request_key_auth-type.h
 
 diff --git a/fs/nfs/nfs4idmap.c b/fs/nfs/nfs4idmap.c
-index b6f9d84ba19b..ae2d6f220627 100644
+index 3f23b6840547..bf34ddaa2ad7 100644
 --- a/fs/nfs/nfs4idmap.c
 +++ b/fs/nfs/nfs4idmap.c
 @@ -44,6 +44,7 @@
@@ -125,7 +125,7 @@ index b6f9d84ba19b..ae2d6f220627 100644
  static ssize_t idmap_pipe_downcall(struct file *, const char __user *,
  				   size_t);
  static void idmap_release_pipe(struct inode *);
-@@ -545,11 +546,12 @@ nfs_idmap_prepare_pipe_upcall(struct idmap *idmap,
+@@ -549,11 +550,12 @@ nfs_idmap_prepare_pipe_upcall(struct idmap *idmap,
  static void
  nfs_idmap_complete_pipe_upcall_locked(struct idmap *idmap, int ret)
  {
@@ -140,7 +140,7 @@ index b6f9d84ba19b..ae2d6f220627 100644
  }
  
  static void
-@@ -559,15 +561,14 @@ nfs_idmap_abort_pipe_upcall(struct idmap *idmap, int ret)
+@@ -563,15 +565,14 @@ nfs_idmap_abort_pipe_upcall(struct idmap *idmap, int ret)
  		nfs_idmap_complete_pipe_upcall_locked(idmap, ret);
  }
  
@@ -159,7 +159,7 @@ index b6f9d84ba19b..ae2d6f220627 100644
  	int ret = -ENOKEY;
  
  	if (!aux)
-@@ -582,7 +583,7 @@ static int nfs_idmap_legacy_upcall(struct key_construction *cons,
+@@ -586,7 +587,7 @@ static int nfs_idmap_legacy_upcall(struct key_construction *cons,
  	msg = &data->pipe_msg;
  	im = &data->idmap_msg;
  	data->idmap = idmap;
@@ -168,7 +168,7 @@ index b6f9d84ba19b..ae2d6f220627 100644
  
  	ret = nfs_idmap_prepare_message(key->description, idmap, im, msg);
  	if (ret < 0)
-@@ -600,7 +601,7 @@ static int nfs_idmap_legacy_upcall(struct key_construction *cons,
+@@ -604,7 +605,7 @@ static int nfs_idmap_legacy_upcall(struct key_construction *cons,
  out2:
  	kfree(data);
  out1:
@@ -177,7 +177,7 @@ index b6f9d84ba19b..ae2d6f220627 100644
  	return ret;
  }
  
-@@ -647,9 +648,10 @@ static int nfs_idmap_read_and_verify_message(struct idmap_msg *im,
+@@ -651,9 +652,10 @@ static int nfs_idmap_read_and_verify_message(struct idmap_msg *im,
  static ssize_t
  idmap_pipe_downcall(struct file *filp, const char __user *src, size_t mlen)
  {
@@ -189,7 +189,7 @@ index b6f9d84ba19b..ae2d6f220627 100644
  	struct idmap_msg im;
  	size_t namelen_in;
  	int ret = -ENOKEY;
-@@ -661,7 +663,8 @@ idmap_pipe_downcall(struct file *filp, const char __user *src, size_t mlen)
+@@ -665,7 +667,8 @@ idmap_pipe_downcall(struct file *filp, const char __user *src, size_t mlen)
  	if (idmap->idmap_upcall_data == NULL)
  		goto out_noupcall;
  
@@ -199,7 +199,7 @@ index b6f9d84ba19b..ae2d6f220627 100644
  
  	if (mlen != sizeof(im)) {
  		ret = -ENOSPC;
-@@ -686,9 +689,9 @@ idmap_pipe_downcall(struct file *filp, const char __user *src, size_t mlen)
+@@ -690,9 +693,9 @@ idmap_pipe_downcall(struct file *filp, const char __user *src, size_t mlen)
  
  	ret = nfs_idmap_read_and_verify_message(&im,
  			&idmap->idmap_upcall_data->idmap_msg,
@@ -254,7 +254,7 @@ index 000000000000..a726dd3f1dc6
 +
 +#endif /* _KEYS_REQUEST_KEY_AUTH_TYPE_H */
 diff --git a/include/linux/key-type.h b/include/linux/key-type.h
-index 9520fc3c3b9a..dfb3ba782d2c 100644
+index 05d8fb5a06c4..d3c5ae8ad498 100644
 --- a/include/linux/key-type.h
 +++ b/include/linux/key-type.h
 @@ -17,15 +17,6 @@
@@ -274,7 +274,7 @@ index 9520fc3c3b9a..dfb3ba782d2c 100644
   * Pre-parsed payload, used by key add, update and instantiate.
   *
 @@ -47,8 +38,7 @@ struct key_preparsed_payload {
- 	time_t		expiry;		/* Expiry time of key */
+ 	time64_t	expiry;		/* Expiry time of key */
  } __randomize_layout;
  
 -typedef int (*request_key_actor_t)(struct key_construction *key,
@@ -310,7 +310,7 @@ index 9520fc3c3b9a..dfb3ba782d2c 100644
  
  extern int generic_key_instantiate(struct key *key, struct key_preparsed_payload *prep);
 diff --git a/security/keys/internal.h b/security/keys/internal.h
-index 503adbae7b0d..e3a573840186 100644
+index 9f8208dc0e55..a02742621c8d 100644
 --- a/security/keys/internal.h
 +++ b/security/keys/internal.h
 @@ -188,20 +188,9 @@ static inline int key_permission(const key_ref_t key_ref, unsigned perm)
@@ -348,7 +348,7 @@ index 1ffe60bb2845..ca31af186abd 100644
  
  #define KEY_MAX_DESC_SIZE 4096
 diff --git a/security/keys/process_keys.c b/security/keys/process_keys.c
-index 740affd65ee9..5f2993ab2d50 100644
+index d5b25e535d3a..d776d2114651 100644
 --- a/security/keys/process_keys.c
 +++ b/security/keys/process_keys.c
 @@ -20,6 +20,7 @@
@@ -360,7 +360,7 @@ index 740affd65ee9..5f2993ab2d50 100644
  
  /* Session keyring create vs join semaphore */
 diff --git a/security/keys/request_key.c b/security/keys/request_key.c
-index c707fdbb3429..2ecd67221476 100644
+index 738553698649..1a547cec8385 100644
 --- a/security/keys/request_key.c
 +++ b/security/keys/request_key.c
 @@ -18,31 +18,30 @@
