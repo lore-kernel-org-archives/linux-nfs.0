@@ -8,66 +8,67 @@ X-Spam-Status: No, score=-8.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1BB42C10F00
-	for <linux-nfs@archiver.kernel.org>; Fri, 15 Mar 2019 17:52:57 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3838FC43381
+	for <linux-nfs@archiver.kernel.org>; Fri, 15 Mar 2019 17:52:58 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id E1818218A1
-	for <linux-nfs@archiver.kernel.org>; Fri, 15 Mar 2019 17:52:56 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 0E92F218A1
+	for <linux-nfs@archiver.kernel.org>; Fri, 15 Mar 2019 17:52:58 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="XS8U8gVi"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="Cd3ivY7N"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726527AbfCORw4 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 15 Mar 2019 13:52:56 -0400
-Received: from mail-it1-f195.google.com ([209.85.166.195]:40437 "EHLO
-        mail-it1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726496AbfCORw4 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Mar 2019 13:52:56 -0400
-Received: by mail-it1-f195.google.com with SMTP id l139so12192653ita.5
-        for <linux-nfs@vger.kernel.org>; Fri, 15 Mar 2019 10:52:55 -0700 (PDT)
+        id S1726556AbfCORw5 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 15 Mar 2019 13:52:57 -0400
+Received: from mail-io1-f49.google.com ([209.85.166.49]:38352 "EHLO
+        mail-io1-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726496AbfCORw5 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Mar 2019 13:52:57 -0400
+Received: by mail-io1-f49.google.com with SMTP id v4so7961660ioj.5
+        for <linux-nfs@vger.kernel.org>; Fri, 15 Mar 2019 10:52:56 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:subject:date:message-id:in-reply-to:references:mime-version
          :content-transfer-encoding;
-        bh=wFrrKbKR8ieezLBHPq2aOkY3Zb4IiPdPima20uTaGUw=;
-        b=XS8U8gVi2l2xiNS1fm01sTDG19aCExlmzHURirxg77dhP9Ys9ZfrPaTAOXaVWYZCxQ
-         fBhZIDLhjO1ZJjq4qPtezHm5wq5WATDVJ1xo5asZleKyh35ElCWsQHkqrAMgPuwmspNi
-         FGwoO4BmkeQfMQ2k8R2KJc9CWvzuR+NKdJndaIDIVPdlzRBLqzXYS4Ea77WaOLxok4UC
-         zCU5ZlStRbAdGbh/FlWez/1z+uP5tmMQBfVocpJbKOduRLocfkKqSHbdzX+zRlZqSNpm
-         ry1oyHB4tGGB7BdlnMzGZnFOtQEmMU4yBij6egQzPRrFwN6AbtjzrInYHzqfWYj/+xKx
-         mEBw==
+        bh=Q3b0beomq0EufQKy0zCGXv8Yfy3DIKlGtoWL89UZoR8=;
+        b=Cd3ivY7NZKu8GL2DQAEuaeEY2cPudnBMR71GDWMuSCMzX2cO8/7WTswqra/3H0WWjx
+         P3nRI6BWl6aiu2ZuZGndnRWfceCpBbmZBuZb3KLGpSFy5X9oU/xLiKb7Ia8NQyOJ8xZn
+         xo4yvfk5UC6OcD0mXYEyARWGRDlxl9JKFMKvmdIl5N+w6y459ZZNFPucLp57s9CPKNkm
+         8ij+PrBfRGueVjvQ8quJikyT+xY4KbrnKBx8ebzAGwMMVsox1xxRhCM7YY5+tG/6ux7n
+         9RY+4wuBuU5uaMFDREtSrOhSVI4JUr4UVVGLcwAcDbbvcC1/co/brOAN8cjXb6XdlwSu
+         WGhg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=wFrrKbKR8ieezLBHPq2aOkY3Zb4IiPdPima20uTaGUw=;
-        b=TgXDgnDt5kuyRL0u3Ee9dLWLDWnZG+gGOajpaW5P1f+d354hUdLYpXvUi9HNnOBgB7
-         1FddxKNs3J5xm6tiEIi7XbRqNdcQ/EgLyFZGHiixJRX2iAA0UPw+uNmdBNItT1HSJ1Pa
-         AYR9Gl3U7Hr3UCEf3ILap2Y0ejrPxZJoFMY/07N1a9J4fd+jjH/o3Vpt7T4Ry63sj61t
-         7Y/VUvp7pwxTY7OHNKsWVjLXcyxig/Kl9myMTknqi4Z1erxughBi+/I3H+9CZ84Vmgy5
-         JrE0i8bl/meLAyke/zE1YKYxIq4OB33qaASjjN7SuzFPcVoPSlA0tWGVnMDv8R0ncwdf
-         /HpQ==
-X-Gm-Message-State: APjAAAXBgBa/S1L9+dW3izarNyupicDYI81MX31LWiuK953ZU0mBaylz
-        wbTd8bUGCkOdgfRJWqhViplpgm4=
-X-Google-Smtp-Source: APXvYqw1VlusZ27wBireo3hZp4z5lDalqy/0y6Fy5sR+8oCyQF5xChwEEALlUs+58Cic2BZj0sZ+Zw==
-X-Received: by 2002:a24:4643:: with SMTP id j64mr2676213itb.74.1552672374845;
-        Fri, 15 Mar 2019 10:52:54 -0700 (PDT)
+        bh=Q3b0beomq0EufQKy0zCGXv8Yfy3DIKlGtoWL89UZoR8=;
+        b=FkRVU5rALFmoffHFF7KS/5Px7z5jVdDLVTSETDry5BcRZbi8cawm0qL/kC8MHhJtZ+
+         Y13Xv0QoysDadi3JxOqzNSEpDY5j4WVTJPY8HyaQ9Wgnj1eg8hHzVMH2JIPuo7miEQty
+         9+BFMUh+a6J5LJEim5qnx0Wbf3dL5uBbbOa9KcAA5kcOWs7Zb4mnuvCOCe2yBNzOcJ1G
+         ZHDJW1T5qlq27q8naX/INovRirO4JSuCpfy82OtYydWYmoPJlZWWMBrC1ecY0yzVPTYD
+         bfyjr41DcuUvpSKriZ0u+SqL8DSSmsPZldsLPcOIqTtpQQqNamwJqVTDgep/KNfqMbZK
+         xyZw==
+X-Gm-Message-State: APjAAAVph6ENiMKX83Xancw/zj2XUI5M9LBMM2RBOvZKe9UovugViDUc
+        ouWagxIQz39xKWC7EJlSmuZQ69U=
+X-Google-Smtp-Source: APXvYqzMIsatBKD84muGMrdJGiKH1awMe1/+X7VjOc6NsKH1MGRHzT4jA7DOWXUoBfaanqyfT64REw==
+X-Received: by 2002:a6b:641a:: with SMTP id t26mr2956480iog.204.1552672375611;
+        Fri, 15 Mar 2019 10:52:55 -0700 (PDT)
 Received: from localhost.localdomain (c-68-40-189-247.hsd1.mi.comcast.net. [68.40.189.247])
-        by smtp.gmail.com with ESMTPSA id r2sm1138415itk.5.2019.03.15.10.52.53
+        by smtp.gmail.com with ESMTPSA id r2sm1138415itk.5.2019.03.15.10.52.54
         for <linux-nfs@vger.kernel.org>
         (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
-        Fri, 15 Mar 2019 10:52:54 -0700 (PDT)
+        Fri, 15 Mar 2019 10:52:55 -0700 (PDT)
 From:   Trond Myklebust <trondmy@gmail.com>
 X-Google-Original-From: Trond Myklebust <trond.myklebust@hammerspace.com>
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH 5/6] SUNRPC: Handle the SYSTEM_ERR rpc error
-Date:   Fri, 15 Mar 2019 13:51:40 -0400
-Message-Id: <20190315175141.68792-5-trond.myklebust@hammerspace.com>
+Subject: [PATCH 6/6] SUNRPC: Remove redundant check for the reply length in call_decode()
+Date:   Fri, 15 Mar 2019 13:51:41 -0400
+Message-Id: <20190315175141.68792-6-trond.myklebust@hammerspace.com>
 X-Mailer: git-send-email 2.20.1
-In-Reply-To: <20190315175141.68792-4-trond.myklebust@hammerspace.com>
+In-Reply-To: <20190315175141.68792-5-trond.myklebust@hammerspace.com>
 References: <20190315175141.68792-1-trond.myklebust@hammerspace.com>
  <20190315175141.68792-2-trond.myklebust@hammerspace.com>
  <20190315175141.68792-3-trond.myklebust@hammerspace.com>
  <20190315175141.68792-4-trond.myklebust@hammerspace.com>
+ <20190315175141.68792-5-trond.myklebust@hammerspace.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
@@ -75,26 +76,36 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Handle the SYSTEM_ERR rpc error by retrying the RPC call as if it
-were a garbage argument.
+Now that we're using the xdr_stream functions to decode the header,
+the test for the minimum reply length is redundant.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- net/sunrpc/clnt.c | 1 +
- 1 file changed, 1 insertion(+)
+ net/sunrpc/clnt.c | 4 ----
+ 1 file changed, 4 deletions(-)
 
 diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index 1f47801e0002..cb73d6c25857 100644
+index cb73d6c25857..228970e6e52b 100644
 --- a/net/sunrpc/clnt.c
 +++ b/net/sunrpc/clnt.c
-@@ -2497,6 +2497,7 @@ rpc_decode_header(struct rpc_task *task, struct xdr_stream *xdr)
- 		error = -EOPNOTSUPP;
- 		goto out_err;
- 	case rpc_garbage_args:
-+	case rpc_system_err:
- 		trace_rpc__garbage_args(task);
- 		error = -EIO;
- 		break;
+@@ -2392,9 +2392,6 @@ call_decode(struct rpc_task *task)
+ 	WARN_ON(memcmp(&req->rq_rcv_buf, &req->rq_private_buf,
+ 				sizeof(req->rq_rcv_buf)) != 0);
+ 
+-	if (req->rq_rcv_buf.len < 12)
+-		goto out_retry;
+-
+ 	xdr_init_decode(&xdr, &req->rq_rcv_buf,
+ 			req->rq_rcv_buf.head[0].iov_base, req);
+ 	switch (rpc_decode_header(task, &xdr)) {
+@@ -2405,7 +2402,6 @@ call_decode(struct rpc_task *task)
+ 			task->tk_pid, __func__, task->tk_status);
+ 		return;
+ 	case -EAGAIN:
+-out_retry:
+ 		task->tk_status = 0;
+ 		/* Note: rpc_decode_header() may have freed the RPC slot */
+ 		if (task->tk_rqstp == req) {
 -- 
 2.20.1
 
