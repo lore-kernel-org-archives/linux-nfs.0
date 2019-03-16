@@ -2,123 +2,116 @@ Return-Path: <SRS0=f8xw=RT=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_PASS,UNPARSEABLE_RELAY autolearn=ham
+X-Spam-Status: No, score=-11.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PULL_REQUEST,
+	MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,SPF_PASS,URIBL_BLOCKED autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C8DC0C43381
-	for <linux-nfs@archiver.kernel.org>; Sat, 16 Mar 2019 14:11:21 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 41464C43381
+	for <linux-nfs@archiver.kernel.org>; Sat, 16 Mar 2019 18:33:39 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id A25CD218FE
-	for <linux-nfs@archiver.kernel.org>; Sat, 16 Mar 2019 14:11:21 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id EE541206BA
+	for <linux-nfs@archiver.kernel.org>; Sat, 16 Mar 2019 18:33:38 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (1024-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="ZsBJ7+F0"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726932AbfCPOLU (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sat, 16 Mar 2019 10:11:20 -0400
-Received: from out30-42.freemail.mail.aliyun.com ([115.124.30.42]:57492 "EHLO
-        out30-42.freemail.mail.aliyun.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726064AbfCPOLU (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 16 Mar 2019 10:11:20 -0400
-X-Alimail-AntiSpam: AC=PASS;BC=-1|-1;BR=01201311R201e4;CH=green;DM=||false|;FP=0|-1|-1|-1|0|-1|-1|-1;HT=e01f04396;MF=jiufei.xue@linux.alibaba.com;NM=1;PH=DS;RN=6;SR=0;TI=SMTPD_---0TMs5Fa2_1552745472;
-Received: from ali-186590e05fa3.local(mailfrom:jiufei.xue@linux.alibaba.com fp:SMTPD_---0TMs5Fa2_1552745472)
-          by smtp.aliyun-inc.com(127.0.0.1);
-          Sat, 16 Mar 2019 22:11:12 +0800
-Subject: Re: [bug report] task hang while testing xfstests generic/323
-To:     Olga Kornievskaia <aglo@umich.edu>
-Cc:     Trond Myklebust <trondmy@hammerspace.com>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "Anna.Schumaker@netapp.com" <Anna.Schumaker@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "joseph.qi@linux.alibaba.com" <joseph.qi@linux.alibaba.com>
-References: <fa8ca171-b260-3e5a-d69c-13f263f5bb9c@linux.alibaba.com>
- <3b6597b0-41b4-255a-5ebb-cf34ad95315c@linux.alibaba.com>
- <57796366-0f08-2cfb-6f85-27d5485c07af@linux.alibaba.com>
- <ce839197cb70f3bc75413ed2e54f8baafafc01dd.camel@hammerspace.com>
- <365504c3-d785-7e4b-1dd2-c75f30c85c65@linux.alibaba.com>
- <740c1ad6c5b2afad196af34f48dda7097b5102b7.camel@hammerspace.com>
- <1417d6c8-3602-d895-a036-44031a7c1e98@linux.alibaba.com>
- <b729878b38f32053890a592a91f0645f15caa96f.camel@hammerspace.com>
- <46f5c870-f4fd-b29a-f5eb-eab39c4c1e89@linux.alibaba.com>
- <20190306160934.GB3066@fieldses.org>
- <CAN-5tyEPSDKao=83sW+voU9SPbcszZyR+XfZzcsD2-ozVa22Xg@mail.gmail.com>
- <ace3659edd3efb70d3d978e108ecf1fc22ee3966.camel@hammerspace.com>
- <CAN-5tyH8hFmEsAKDMDL4uey0MXh9+kY43=LEpgjj711eVUubAA@mail.gmail.com>
- <CAN-5tyEAfV_WA3Vyf8LQ-EN4yn99p1sk7fuu7n43t8H8+un2Yw@mail.gmail.com>
- <37b3d7db-0bdf-014a-adff-ea401ea92fc7@linux.alibaba.com>
- <CAN-5tyFHD5ZCqZ59GJzf_CAaJQZ7OXEhaxtYaSDAdXMLSA-xDA@mail.gmail.com>
-From:   Jiufei Xue <jiufei.xue@linux.alibaba.com>
-Message-ID: <63f00c10-28f5-b1e6-dcf9-f85f5edbfabf@linux.alibaba.com>
-Date:   Sat, 16 Mar 2019 22:11:12 +0800
-User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.13; rv:60.0)
- Gecko/20100101 Thunderbird/60.3.3
-MIME-Version: 1.0
-In-Reply-To: <CAN-5tyFHD5ZCqZ59GJzf_CAaJQZ7OXEhaxtYaSDAdXMLSA-xDA@mail.gmail.com>
-Content-Type: text/plain; charset=utf-8
+        id S1726629AbfCPSdi (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sat, 16 Mar 2019 14:33:38 -0400
+Received: from mail-eopbgr720099.outbound.protection.outlook.com ([40.107.72.99]:64160
+        "EHLO NAM05-CO1-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1726578AbfCPSdh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sat, 16 Mar 2019 14:33:37 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=hammerspace.com;
+ s=selector1;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=X300Hd0ekVX5uZPRDxdJnt32j5AIQKi8YG4NtYg63HI=;
+ b=ZsBJ7+F0vkSXnqgTOcUboYFh5pBsvm7/ce1hzdKfEJb5bszviC6cKu5GuiMBCpYrR0taDt9vSdf9tjt8/q88v34pp2YRaM0p5UZ9ZXpfmgYvCs2uD0IMVhB+pShjw/8QVb3FYFUA+1uDU7BWIrtv/tW+n6wfTIMyG/WincN0IFU=
+Received: from SN6PR13MB2494.namprd13.prod.outlook.com (52.135.95.148) by
+ SN6PR13MB2254.namprd13.prod.outlook.com (52.135.93.155) with Microsoft SMTP
+ Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ 15.20.1730.7; Sat, 16 Mar 2019 18:33:33 +0000
+Received: from SN6PR13MB2494.namprd13.prod.outlook.com
+ ([fe80::d1d6:9683:8c9b:3dcb]) by SN6PR13MB2494.namprd13.prod.outlook.com
+ ([fe80::d1d6:9683:8c9b:3dcb%3]) with mapi id 15.20.1730.003; Sat, 16 Mar 2019
+ 18:33:33 +0000
+From:   Trond Myklebust <trondmy@hammerspace.com>
+To:     "torvalds@linux-foundation.org" <torvalds@linux-foundation.org>
+CC:     "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: [GIT PULL] Please pull NFS client bugfixes for 5.1
+Thread-Topic: [GIT PULL] Please pull NFS client bugfixes for 5.1
+Thread-Index: AQHU3CbCoviNcgOOW0+w8ft5Rig7pQ==
+Date:   Sat, 16 Mar 2019 18:33:33 +0000
+Message-ID: <3a30ab7dd854db06aca0a5f70b66e54cb9415c6e.camel@hammerspace.com>
+Accept-Language: en-US, en-GB
 Content-Language: en-US
-Content-Transfer-Encoding: 8bit
+X-MS-Has-Attach: 
+X-MS-TNEF-Correlator: 
+authentication-results: spf=none (sender IP is )
+ smtp.mailfrom=trondmy@hammerspace.com; 
+x-originating-ip: [68.40.189.247]
+x-ms-publictraffictype: Email
+x-ms-office365-filtering-correlation-id: 4a905429-bf8e-494a-4204-08d6aa3de55d
+x-microsoft-antispam: BCL:0;PCL:0;RULEID:(2390118)(7020095)(4652040)(8989299)(4534185)(4627221)(201703031133081)(201702281549075)(8990200)(5600127)(711020)(4605104)(2017052603328)(7153060)(7193020);SRVR:SN6PR13MB2254;
+x-ms-traffictypediagnostic: SN6PR13MB2254:
+x-microsoft-antispam-prvs: <SN6PR13MB2254A846A4DE44AFBDE91E41B8450@SN6PR13MB2254.namprd13.prod.outlook.com>
+x-forefront-prvs: 09781D4C35
+x-forefront-antispam-report: SFV:NSPM;SFS:(10019020)(396003)(136003)(366004)(346002)(376002)(39830400003)(199004)(189003)(86362001)(106356001)(68736007)(81166006)(256004)(25786009)(14444005)(186003)(4326008)(71190400001)(486006)(36756003)(2616005)(99286004)(105586002)(476003)(2351001)(66066001)(26005)(71200400001)(6506007)(102836004)(1730700003)(5660300002)(305945005)(7736002)(118296001)(14454004)(97736004)(81156014)(8676002)(54906003)(316002)(2501003)(8936002)(478600001)(6916009)(6512007)(2906002)(53936002)(5640700003)(6116002)(3846002)(6486002)(6436002);DIR:OUT;SFP:1102;SCL:1;SRVR:SN6PR13MB2254;H:SN6PR13MB2494.namprd13.prod.outlook.com;FPR:;SPF:None;LANG:en;PTR:InfoNoRecords;A:1;MX:1;
+received-spf: None (protection.outlook.com: hammerspace.com does not designate
+ permitted sender hosts)
+x-ms-exchange-senderadcheck: 1
+x-microsoft-antispam-message-info: 7MxK7/bLVMEIL6F85fhoiQffEFPRQT9yqJWUiQQ4CS8BWKFPdZ17jU4oB6xzBgmqW9iC33V3IoHCWHXKdDho0ERFWH8Lwla3Qj3M2hpWUdmTuqCWqQ6qCKfKm6uwmN4KcAnd1c3U4hM+jAHK1vX2eFxAnawj9P04RmKEgQ7uIqjwRROkFkPs4rSKSFM20gToFTvbWlSBERilpZ2CwOpTrE/UWtL0tj0aYYGWlhZQfa2zPg4ONSciz7l0LMx+c86Cw4kyNvneZZpe/fjSnyNuSgiWvAj9dGHSBrVvBitTtgbEro6a3JhQl+5Sd41JCNo0Pl2HJmn4HDYVmzLpKhgKyNfi4+mDEhxxi61RrReJHF79+YKh753tJcrmk+HIYm3oz8PsYDKUNcq+W57VfPNb7iD1h8uwL2lcfqTAZzsV88E=
+Content-Type: text/plain; charset="utf-8"
+Content-ID: <0BFE8AEFD586C4468443CA101A5C7935@namprd13.prod.outlook.com>
+Content-Transfer-Encoding: base64
+MIME-Version: 1.0
+X-OriginatorOrg: hammerspace.com
+X-MS-Exchange-CrossTenant-Network-Message-Id: 4a905429-bf8e-494a-4204-08d6aa3de55d
+X-MS-Exchange-CrossTenant-originalarrivaltime: 16 Mar 2019 18:33:33.5403
+ (UTC)
+X-MS-Exchange-CrossTenant-fromentityheader: Hosted
+X-MS-Exchange-CrossTenant-id: 0d4fed5c-3a70-46fe-9430-ece41741f59e
+X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: SN6PR13MB2254
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-
-Hi Olga,
-On 2019/3/16 上午4:33, Olga Kornievskaia wrote:
-> On Fri, Mar 15, 2019 at 2:31 AM Jiufei Xue <jiufei.xue@linux.alibaba.com> wrote:
->>
->> Hi Olga,
->>
->> On 2019/3/11 下午11:13, Olga Kornievskaia wrote:
->>> Let me double check that. I have reproduced the "infinite loop" or
->>> CLOSE on the upstream (I'm looking thru the trace points from friday).
->>
->> Do you try to capture the packages when reproduced this issue on the
->> upstream. I still lost kernel packages after some adjustment according
->> to bfield's suggestion :(
-> 
-> Hi Jiufei,
-> 
-> Yes I have network trace captures but they are too big to post to the
-> mailing list. I have reproduced the problem on the latest upstream
-> origin/testing branch commit "SUNRPC: Take the transport send lock
-> before binding+connecting". As you have noted before infinite loops is
-> due to client "losing" an update to the seqid.
-> 
-> one packet would send out an (recovery) OPEN with slot=0 seqid=Y.
-> tracepoint (nfs4_open_file) would log that status=ERESTARTSYS. The rpc
-> task would be sent and the rpc task would receive a reply but there is
-> nobody there to receive it... This open that got a reply has an
-> updated stateid seqid which client never updates. When CLOSE is sent,
-> it's sent with the "old" stateid and puts the client in an infinite
-> loop. Btw, CLOSE is sent on the interrupted slot which should get
-> FALSE_RETRY which causes the client to terminate the session. But it
-> would still keep sending the CLOSE with the old stateid.
-> 
-> Some things I've noticed is that TEST_STATE op (as a part of the
-> nfs41_test_and _free_expired_stateid()) for some reason always has a
-> signal set even before issuing and RPC task so the task never
-> completes (ever).
-> 
-> I always thought that OPEN's can't be interrupted but I guess they are
-> since they call rpc_wait_for_completion_task() and that's a killable
-> event. But I don't know how to find out what's sending a signal to the
-> process. I'm rather stuck here trying to figure out where to go from
-> there. So I'm still trying to figure out what's causing the signal or
-> also how to recover from it that the client doesn't lose that seqid.
-> 
->>
-Thank you for you quick relpy.
-
-I have also noticed the ERESTARTSYS status for OPEN op, but I think it
-is returned by the open process which is woken in nfs4_run_open_task().
-I found that the decode routine nfs4_xdr_dec_open returned -121, which
-I thought is the root cause of this problem. Could you please post the
-content of the last OPEN message?
-
-Thanks,
-Jiufei.
-
-
-
->> Thanks,
->> Jiufei
-> 
+SGkgTGludXMsDQoNClRoZSBmb2xsb3dpbmcgY2hhbmdlcyBzaW5jZSBjb21taXQgNGQ2YzY3MWFj
+ZTU2OWQ0YjBkM2Y4ZDkyYWIzYWVmMThhNWQxNjZiYzoNCg0KICBTVU5SUEM6IFRha2UgdGhlIHRy
+YW5zcG9ydCBzZW5kIGxvY2sgYmVmb3JlIGJpbmRpbmcrY29ubmVjdGluZyAoMjAxOS0wMy0xMCAx
+NDowODoxOSAtMDQwMCkNCg0KYXJlIGF2YWlsYWJsZSBpbiB0aGUgR2l0IHJlcG9zaXRvcnkgYXQ6
+DQoNCiAgZ2l0Oi8vZ2l0LmxpbnV4LW5mcy5vcmcvcHJvamVjdHMvdHJvbmRteS9saW51eC1uZnMu
+Z2l0IHRhZ3MvbmZzLWZvci01LjEtMg0KDQpmb3IgeW91IHRvIGZldGNoIGNoYW5nZXMgdXAgdG8g
+NWUzODYzZmQ1OTdlYmE4YzY2NzlkZTgwNTY4MTYzMWIxYWFkOWJkYjoNCg0KICBTVU5SUEM6IFJl
+bW92ZSByZWR1bmRhbnQgY2hlY2sgZm9yIHRoZSByZXBseSBsZW5ndGggaW4gY2FsbF9kZWNvZGUo
+KSAoMjAxOS0wMy0xNSAxMzoxMTozNiAtMDQwMCkNCg0KQ2hlZXJzDQogIFRyb25kDQoNCi0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0NCk5GUyBjbGllbnQgYnVnZml4ZXMgZm9yIExpbnV4IDUuMQ0KDQpIaWdobGlnaHRzIGluY2x1
+ZGU6DQoNCkJ1Z2ZpeGVzOg0KLSBGaXggYW4gT29wcyBpbiBTVU5SUEMgYmFjayBjaGFubmVsIHRy
+YWNlcG9pbnRzDQotIEZpeCBhIFNVTlJQQyBjbGllbnQgcmVncmVzc2lvbiB3aGVuIGhhbmRsaW5n
+IG92ZXJzaXplZCByZXBsaWVzDQotIEZpeCB0aGUgbWluaW1hbCBzaXplIGZvciBTVU5SUEMgcmVw
+bHkgYnVmZmVyIGFsbG9jYXRpb24NCi0gcnBjX2RlY29kZV9oZWFkZXIoKSBtdXN0IGFsd2F5cyBy
+ZXR1cm4gYSBub24temVybyB2YWx1ZSBvbiBlcnJvcg0KLSBGaXggYSB0eXBvIGluIHBuZnNfdXBk
+YXRlX2xheW91dCgpDQoNCkNsZWFudXBzOg0KLSBSZW1vdmUgcmVkdW5kYW50IGNoZWNrIGZvciB0
+aGUgcmVwbHkgbGVuZ3RoIGluIGNhbGxfZGVjb2RlKCkNCg0KLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLQ0KT2xnYSBLb3JuaWV2
+c2thaWEgKDEpOg0KICAgICAgZml4IG51bGwgcG9pbnRlciBkZXJlZiBpbiB0cmFjZXBvaW50cyBp
+biBiYWNrIGNoYW5uZWwNCg0KVHJvbmQgTXlrbGVidXN0ICg3KToNCiAgICAgIHBORlM6IEZpeCBh
+IHR5cG8gaW4gcG5mc191cGRhdGVfbGF5b3V0DQogICAgICBTVU5SUEM6IEZpeCBhIGNsaWVudCBy
+ZWdyZXNzaW9uIHdoZW4gaGFuZGxpbmcgb3ZlcnNpemVkIHJlcGxpZXMNCiAgICAgIFNVTlJQQzog
+Rml4IHRoZSBtaW5pbWFsIHNpemUgZm9yIHJlcGx5IGJ1ZmZlciBhbGxvY2F0aW9uDQogICAgICBT
+VU5SUEM6IFVzZSB0aGUgRU5PVENPTk4gZXJyb3Igb24gc29ja2V0IGRpc2Nvbm5lY3QNCiAgICAg
+IFNVTlJQQzogcnBjX2RlY29kZV9oZWFkZXIoKSBtdXN0IGFsd2F5cyByZXR1cm4gYSBub24temVy
+byB2YWx1ZSBvbiBlcnJvcg0KICAgICAgU1VOUlBDOiBIYW5kbGUgdGhlIFNZU1RFTV9FUlIgcnBj
+IGVycm9yDQogICAgICBTVU5SUEM6IFJlbW92ZSByZWR1bmRhbnQgY2hlY2sgZm9yIHRoZSByZXBs
+eSBsZW5ndGggaW4gY2FsbF9kZWNvZGUoKQ0KDQogZnMvbmZzL3BuZnMuYyAgICAgICAgICAgICAg
+ICAgfCAgMiArLQ0KIGluY2x1ZGUvdHJhY2UvZXZlbnRzL3N1bnJwYy5oIHwgIDYgKysrKy0tDQog
+bmV0L3N1bnJwYy9jbG50LmMgICAgICAgICAgICAgfCAzMiArKysrKysrKysrKysrKy0tLS0tLS0t
+LS0tLS0tLS0tLQ0KIG5ldC9zdW5ycGMveHBydC5jICAgICAgICAgICAgIHwgIDIgKy0NCiBuZXQv
+c3VucnBjL3hwcnRzb2NrLmMgICAgICAgICB8ICAyICstDQogNSBmaWxlcyBjaGFuZ2VkLCAyMSBp
+bnNlcnRpb25zKCspLCAyMyBkZWxldGlvbnMoLSkNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51
+eCBORlMgY2xpZW50IG1haW50YWluZXIsIEhhbW1lcnNwYWNlDQp0cm9uZC5teWtsZWJ1c3RAaGFt
+bWVyc3BhY2UuY29tDQoNCg0K
