@@ -2,140 +2,135 @@ Return-Path: <SRS0=1lUO=RV=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
-	SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED autolearn=unavailable autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-1.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 041D1C10F00
-	for <linux-nfs@archiver.kernel.org>; Mon, 18 Mar 2019 17:11:15 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C102FC43381
+	for <linux-nfs@archiver.kernel.org>; Mon, 18 Mar 2019 20:38:28 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id BEC6420863
-	for <linux-nfs@archiver.kernel.org>; Mon, 18 Mar 2019 17:11:14 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="nxnWk90M"
+	by mail.kernel.org (Postfix) with ESMTP id 656A92085A
+	for <linux-nfs@archiver.kernel.org>; Mon, 18 Mar 2019 20:38:28 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726806AbfCRRLN (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 18 Mar 2019 13:11:13 -0400
-Received: from mail-eopbgr710127.outbound.protection.outlook.com ([40.107.71.127]:34944
-        "EHLO NAM05-BY2-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726777AbfCRRLN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 18 Mar 2019 13:11:13 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=hammerspace.com;
- s=selector1;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=OqAjRpyzDY8LNY98Ify/oJ+tQz7duPHzYFDxT7uYPaw=;
- b=nxnWk90MAelLaaM/22wOL2PEPZYGlF/PnAiUDaCdMnZFWdHc8G9VtFXDuj4gLaW5N92W4Metw9qVNAeWKrZnNfASHnXq+1ibrExt54+cxZH+brXcX68zD9+gEYi/jojf7IdvrLFd1d7suRf7zvQfr1gqJL8cnwlWTiAFGXGgE5U=
-Received: from SN6PR13MB2494.namprd13.prod.outlook.com (52.135.95.148) by
- SN6PR13MB2429.namprd13.prod.outlook.com (52.135.94.161) with Microsoft SMTP
- Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- 15.20.1709.9; Mon, 18 Mar 2019 17:11:09 +0000
-Received: from SN6PR13MB2494.namprd13.prod.outlook.com
- ([fe80::d1d6:9683:8c9b:3dcb]) by SN6PR13MB2494.namprd13.prod.outlook.com
- ([fe80::d1d6:9683:8c9b:3dcb%3]) with mapi id 15.20.1730.003; Mon, 18 Mar 2019
- 17:11:09 +0000
-From:   Trond Myklebust <trondmy@hammerspace.com>
-To:     "catalin.marinas@arm.com" <catalin.marinas@arm.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-CC:     "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        "neilb@suse.com" <neilb@suse.com>,
-        "stable@vger.kernel.org" <stable@vger.kernel.org>
-Subject: Re: [PATCH] NFS: Fix nfs4_lock_state refcounting in
- nfs4_alloc_{lock,unlock}data()
-Thread-Topic: [PATCH] NFS: Fix nfs4_lock_state refcounting in
- nfs4_alloc_{lock,unlock}data()
-Thread-Index: AQHU3awd9iQEYbfPS0GRAmU5BTgR16YRn86A
-Date:   Mon, 18 Mar 2019 17:11:09 +0000
-Message-ID: <9cee20976d23acb18c4925b3cc55d34c1369ae83.camel@hammerspace.com>
-References: <20190318170028.61423-1-catalin.marinas@arm.com>
-In-Reply-To: <20190318170028.61423-1-catalin.marinas@arm.com>
-Accept-Language: en-US, en-GB
-Content-Language: en-US
-X-MS-Has-Attach: 
-X-MS-TNEF-Correlator: 
-x-originating-ip: [68.40.189.247]
-x-ms-publictraffictype: Email
-x-ms-office365-filtering-correlation-id: b6a79034-af5b-472c-9a71-08d6abc4b74b
-x-microsoft-antispam: BCL:0;PCL:0;RULEID:(2390118)(7020095)(4652040)(8989299)(4534185)(4627221)(201703031133081)(201702281549075)(8990200)(5600127)(711020)(4605104)(2017052603328)(7153060)(7193020);SRVR:SN6PR13MB2429;
-x-ms-traffictypediagnostic: SN6PR13MB2429:
-x-microsoft-antispam-prvs: <SN6PR13MB24293C3B0EC744908CB953CAB8470@SN6PR13MB2429.namprd13.prod.outlook.com>
-x-forefront-prvs: 098076C36C
-x-forefront-antispam-report: SFV:NSPM;SFS:(10019020)(366004)(136003)(396003)(376002)(39830400003)(346002)(189003)(199004)(53936002)(6436002)(229853002)(6512007)(8936002)(68736007)(478600001)(8676002)(81156014)(81166006)(14454004)(86362001)(3846002)(6486002)(256004)(14444005)(6116002)(36756003)(97736004)(99286004)(25786009)(5660300002)(106356001)(105586002)(76176011)(476003)(186003)(6246003)(102836004)(71190400001)(446003)(11346002)(486006)(6506007)(118296001)(2501003)(4326008)(316002)(6346003)(110136005)(305945005)(54906003)(7736002)(2906002)(66066001)(2616005)(26005)(71200400001)(142933001);DIR:OUT;SFP:1102;SCL:1;SRVR:SN6PR13MB2429;H:SN6PR13MB2494.namprd13.prod.outlook.com;FPR:;SPF:None;LANG:en;PTR:InfoNoRecords;MX:1;A:1;
-received-spf: None (protection.outlook.com: hammerspace.com does not designate
- permitted sender hosts)
-authentication-results: spf=none (sender IP is )
- smtp.mailfrom=trondmy@hammerspace.com; 
-x-ms-exchange-senderadcheck: 1
-x-microsoft-antispam-message-info: AwSk8y0nKDnaSkzu08lfgyHEJFJkR6BHo+TMh1nBz3LN9qcp2ua7f8Ke7s0VJo77UqI9HlZZfsvr3yWKClDhVlOdpSjzd9jwmrkLmVagGLiwFKwUF08kOWXFyi/IUHPDGkZACjHfw4rF0+7DluNtYsvgGL/vXixNUJzbJ0LCqtw+gvv9fNmCPowakWu5k2zocm9IKntrmAKWQeG8EGhZbTROysr5EDryfP77nqo6etPHRPPRbPRLoyG/F/UUveimufZNs1pFFb5RhzMApy/Rd4FRJpjvTFE7yRys4cc7G8DXulvZH4KF13fH+J0VTmWoo8z73U6WlWqWNw7kLEPQ9SXPMCZmjmf1SXFl39rNQYhsnF4UBlQ8zBHRmrcYh+B19bY3wyaKDa0s13RRwg4ZHAIxEBQA5gdHBbByt2JTEbc=
-Content-Type: text/plain; charset="utf-8"
-Content-ID: <F6DD1B6E4B8D5348A7F1C42F3B0F6210@namprd13.prod.outlook.com>
-Content-Transfer-Encoding: base64
+        id S1726980AbfCRUi1 convert rfc822-to-8bit (ORCPT
+        <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 18 Mar 2019 16:38:27 -0400
+Received: from mx2.math.uh.edu ([129.7.128.33]:46846 "EHLO mx2.math.uh.edu"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726959AbfCRUi1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 18 Mar 2019 16:38:27 -0400
+Received: from epithumia.math.uh.edu ([129.7.128.2])
+        by mx2.math.uh.edu with esmtp (Exim 4.92)
+        (envelope-from <tibbs@math.uh.edu>)
+        id 1h5z1c-0006Q0-7K
+        for linux-nfs@vger.kernel.org; Mon, 18 Mar 2019 15:38:26 -0500
+Received: by epithumia.math.uh.edu (Postfix, from userid 7225)
+        id 27EC4801554; Mon, 18 Mar 2019 15:38:24 -0500 (CDT)
+From:   Jason L Tibbitts III <tibbs@math.uh.edu>
+To:     linux-nfs@vger.kernel.org
+Subject: Null pointer dereference in gss_verify_mic_kerberos (4.20.14)
+Date:   Mon, 18 Mar 2019 15:38:24 -0500
+Message-ID: <ufad0mn6hq7.fsf@epithumia.math.uh.edu>
+User-Agent: Gnus/5.13 (Gnus v5.13) Emacs/26.1 (gnu/linux)
 MIME-Version: 1.0
-X-OriginatorOrg: hammerspace.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: b6a79034-af5b-472c-9a71-08d6abc4b74b
-X-MS-Exchange-CrossTenant-originalarrivaltime: 18 Mar 2019 17:11:09.4967
- (UTC)
-X-MS-Exchange-CrossTenant-fromentityheader: Hosted
-X-MS-Exchange-CrossTenant-id: 0d4fed5c-3a70-46fe-9430-ece41741f59e
-X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: SN6PR13MB2429
+Content-Type: text/plain
+Content-Transfer-Encoding: 8BIT
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-T24gTW9uLCAyMDE5LTAzLTE4IGF0IDE3OjAwICswMDAwLCBDYXRhbGluIE1hcmluYXMgd3JvdGU6
-DQo+IENvbW1pdCA3YjU4N2UxYTVhNmMgKCJORlM6IHVzZSBsb2Nrc19jb3B5X2xvY2soKSB0byBj
-b3B5IGxvY2tzLiIpDQo+IGNoYW5nZWQgdGhlIGxvY2sgY29weWluZyBmcm9tIG1lbWNweSgpIHRv
-IHRoZSBkZWRpY2F0ZWQNCj4gbG9ja3NfY29weV9sb2NrKCkgZnVuY3Rpb24uIFRoZSBsYXR0ZXIg
-Y29ycmVjdGx5IGluY3JlbWVudHMgdGhlDQo+IG5mczRfbG9ja19zdGF0ZS5sc19jb3VudCB2aWEg
-bmZzNF9mbF9jb3B5X2xvY2soKSwgaG93ZXZlciwgdGhpcw0KPiByZWZjb3VudA0KPiBoYXMgYWxy
-ZWFkeSBiZWVuIGluY3JlbWVudGVkIGluIHRoZSBuZnM0X2FsbG9jX3tsb2NrLHVubG9ja31kYXRh
-KCkuDQo+IEttZW1sZWFrIHN1YnNlcXVlbnRseSByZXBvcnRzIGFuIHVucmVmZXJlbmNlZCBuZnM0
-X2xvY2tfc3RhdGUgb2JqZWN0DQo+IGFzDQo+IGJlbG93IChhcm02NCBwbGF0Zm9ybSk6DQo+IA0K
-PiB1bnJlZmVyZW5jZWQgb2JqZWN0IDB4ZmZmZjgwMDBmY2UwYjAwMCAoc2l6ZSAyNTYpOg0KPiAg
-IGNvbW0gInN5c3RlbWQtc3lzdXNlciIsIHBpZCAxNjA4LCBqaWZmaWVzIDQyOTQ4OTI4MjUgKGFn
-ZSAzMi4zNDhzKQ0KPiAgIGhleCBkdW1wIChmaXJzdCAzMiBieXRlcyk6DQo+ICAgICAyMCA1NyA0
-YyBmYiAwMCA4MCBmZiBmZiAyMCA1NyA0YyBmYiAwMCA4MCBmZiBmZiAgIFdMLi4uLi4gV0wuLi4u
-Lg0KPiAgICAgMDAgNTcgNGMgZmIgMDAgODAgZmYgZmYgMDEgMDAgMDAgMDAgMDAgMDAgMDAgMDAg
-IC5XTC4uLi4uLi4uLi4uLi4NCj4gICBiYWNrdHJhY2U6DQo+ICAgICBbPDAwMDAwMDAwMGQxNTAx
-MGQ+XSBrbWVtX2NhY2hlX2FsbG9jKzB4MTc4LzB4MjA4DQo+ICAgICBbPDAwMDAwMDAwZDdjMWQy
-NjQ+XSBuZnM0X3NldF9sb2NrX3N0YXRlKzB4MTI0LzB4MWYwDQo+ICAgICBbPDAwMDAwMDAwOWM4
-Njc2Mjg+XSBuZnM0X3Byb2NfbG9jaysweDkwLzB4NDc4DQo+ICAgICBbPDAwMDAwMDAwMTY4NmJk
-NzQ+XSBkb19zZXRsaysweDY0LzB4ZTgNCj4gICAgIFs8MDAwMDAwMDBlMDE1MDBkND5dIG5mc19s
-b2NrKzB4ZTgvMHgxZjANCj4gICAgIFs8MDAwMDAwMDA0ZjM4N2Q4ZD5dIHZmc19sb2NrX2ZpbGUr
-MHgxOC8weDQwDQo+ICAgICBbPDAwMDAwMDAwNjU2YWI3OWI+XSBkb19sb2NrX2ZpbGVfd2FpdCsw
-eDY4LzB4ZjgNCj4gICAgIFs8MDAwMDAwMDBmMTdjNGE0Yj5dIGZjbnRsX3NldGxrKzB4MjI0LzB4
-MjgwDQo+ICAgICBbPDAwMDAwMDAwNTJhMjQyYzY+XSBkb19mY250bCsweDQxOC8weDczMA0KPiAg
-ICAgWzwwMDAwMDAwMDRmNDcyOTFhPl0gX19hcm02NF9zeXNfZmNudGwrMHg4NC8weGQwDQo+ICAg
-ICBbPDAwMDAwMDAwZDY4NTZlMDE+XSBlbDBfc3ZjX2NvbW1vbisweDgwLzB4ZjANCj4gICAgIFs8
-MDAwMDAwMDA5YzRiZDFkZj5dIGVsMF9zdmNfaGFuZGxlcisweDJjLzB4ODANCj4gICAgIFs8MDAw
-MDAwMDBiMWEwZDQ3OT5dIGVsMF9zdmMrMHg4LzB4Yw0KPiAgICAgWzwwMDAwMDAwMDU2YzYyYTBm
-Pl0gMHhmZmZmZmZmZmZmZmZmZmZmDQo+IA0KPiBUaGlzIHBhdGNoIHJlbW92ZXMgdGhlIG9yaWdp
-bmFsIHJlZmNvdW50X2luYygmbHNwLT5sc19jb3VudCkgdGhhdCB3YXMNCj4gcGFpcmVkIHdpdGgg
-dGhlIG1lbWNweSgpIGxvY2sgY29weWluZy4NCj4gDQo+IEZpeGVzOiA3YjU4N2UxYTVhNmMgKCJO
-RlM6IHVzZSBsb2Nrc19jb3B5X2xvY2soKSB0byBjb3B5IGxvY2tzLiIpDQo+IENjOiA8c3RhYmxl
-QHZnZXIua2VybmVsLm9yZz4gIyA1LjAueC0NCj4gQ2M6IE5laWxCcm93biA8bmVpbGJAc3VzZS5j
-b20+DQo+IFNpZ25lZC1vZmYtYnk6IENhdGFsaW4gTWFyaW5hcyA8Y2F0YWxpbi5tYXJpbmFzQGFy
-bS5jb20+DQo+IC0tLQ0KPiAgZnMvbmZzL25mczRwcm9jLmMgfCAyIC0tDQo+ICAxIGZpbGUgY2hh
-bmdlZCwgMiBkZWxldGlvbnMoLSkNCj4gDQo+IGRpZmYgLS1naXQgYS9mcy9uZnMvbmZzNHByb2Mu
-YyBiL2ZzL25mcy9uZnM0cHJvYy5jDQo+IGluZGV4IDRkYmIwZWUyMzQzMi4uNmQyODEyYTM5Mjg3
-IDEwMDY0NA0KPiAtLS0gYS9mcy9uZnMvbmZzNHByb2MuYw0KPiArKysgYi9mcy9uZnMvbmZzNHBy
-b2MuYw0KPiBAQCAtNjMwMSw3ICs2MzAxLDYgQEAgc3RhdGljIHN0cnVjdCBuZnM0X3VubG9ja2Rh
-dGENCj4gKm5mczRfYWxsb2NfdW5sb2NrZGF0YShzdHJ1Y3QgZmlsZV9sb2NrICpmbCwNCj4gIAlw
-LT5hcmcuc2VxaWQgPSBzZXFpZDsNCj4gIAlwLT5yZXMuc2VxaWQgPSBzZXFpZDsNCj4gIAlwLT5s
-c3AgPSBsc3A7DQo+IC0JcmVmY291bnRfaW5jKCZsc3AtPmxzX2NvdW50KTsNCj4gIAkvKiBFbnN1
-cmUgd2UgZG9uJ3QgY2xvc2UgZmlsZSB1bnRpbCB3ZSdyZSBkb25lIGZyZWVpbmcgbG9ja3MhDQo+
-ICovDQo+ICAJcC0+Y3R4ID0gZ2V0X25mc19vcGVuX2NvbnRleHQoY3R4KTsNCj4gIAlwLT5sX2N0
-eCA9IG5mc19nZXRfbG9ja19jb250ZXh0KGN0eCk7DQo+IEBAIC02NTI2LDcgKzY1MjUsNiBAQCBz
-dGF0aWMgc3RydWN0IG5mczRfbG9ja2RhdGENCj4gKm5mczRfYWxsb2NfbG9ja2RhdGEoc3RydWN0
-IGZpbGVfbG9jayAqZmwsDQo+ICAJcC0+cmVzLmxvY2tfc2VxaWQgPSBwLT5hcmcubG9ja19zZXFp
-ZDsNCj4gIAlwLT5sc3AgPSBsc3A7DQo+ICAJcC0+c2VydmVyID0gc2VydmVyOw0KPiAtCXJlZmNv
-dW50X2luYygmbHNwLT5sc19jb3VudCk7DQo+ICAJcC0+Y3R4ID0gZ2V0X25mc19vcGVuX2NvbnRl
-eHQoY3R4KTsNCj4gIAlsb2Nrc19pbml0X2xvY2soJnAtPmZsKTsNCj4gIAlsb2Nrc19jb3B5X2xv
-Y2soJnAtPmZsLCBmbCk7DQoNClRoYW5rcyBDYXRhbGluISBHb29kIGNhdGNoLi4uDQoNCkknbSBh
-cHBseWluZyB0aGlzIHRvIG15IGxpbnV4LW5leHQgYnJhbmNoLg0KDQotLSANClRyb25kIE15a2xl
-YnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBIYW1tZXJzcGFjZQ0KdHJvbmQubXlr
-bGVidXN0QGhhbW1lcnNwYWNlLmNvbQ0KDQoNCg==
+Just hit an odd oops on a desktop running Fedora's 4.20.14, which was
+followed by a complete hang of all NFS operations.  The Fedora kernel is
+only lightly patched, but does include Trond's "[PATCH] NFSv4.1: Avoid
+false retries when RPC calls are interrupted".  I don't think that's
+involved here but I'm certainly no expert.  I also don't know if this is
+known, but I don't see anything in 4.20.15 or 4.20.16 that looks like it
+would be help.
+
+So far I've seen this only once across 100+ desktops and have no idea
+how I might reproduce it.
+
+I have filed a ticket with Fedora
+(https://bugzilla.redhat.com/show_bug.cgi?id=1690123).  If there's
+another place I should report this, please let me know.
+
+ - J<
+
+[Mar18 13:57] BUG: unable to handle kernel NULL pointer dereference at 0000000000000000
+[  +0.000004] PGD 0 P4D 0 
+[  +0.000004] Oops: 0000 [#1] SMP PTI
+[  +0.000003] CPU: 0 PID: 6747 Comm: kactivitymanage Not tainted 4.20.14-200.fc29.x86_64 #1
+[  +0.000001] Hardware name: ASUS All Series/H87I-PLUS, BIOS 2002 07/22/2014
+[  +0.000006] RIP: 0010:gss_verify_mic_kerberos+0x73/0x300 [rpcsec_gss_krb5]
+[  +0.000002] Code: 00 0f 84 a7 02 00 00 48 8d 44 24 34 4c 8b 62 08 c7 44 24 20 14 00 00 00 48 89 44 24 28 f6 05 9f f8 d2 ff 10 0f 85 95 3a 00 00 <66> 41 81 3c 24 04 04 41 bd 00 00 09 00 0f 85 b3 00 00 00 41 0f b6
+[  +0.000002] RSP: 0018:ffff97f702afb748 EFLAGS: 00010246
+[  +0.000002] RAX: ffff97f702afb77c RBX: ffff8a69b3945600 RCX: 0000000000000012
+[  +0.000001] RDX: ffff97f702afb7c0 RSI: ffff97f702afb7d0 RDI: ffff8a69a4bafe20
+[  +0.000002] RBP: ffff97f702afb7d0 R08: 00000000000002f4 R09: ffff8a69b38e9780
+[  +0.000001] R10: ffff8a690ddfcf98 R11: 0000000035e353de R12: 0000000000000000
+[  +0.000002] R13: 0000000000000000 R14: 0000000000000b14 R15: ffff8a6991c68660
+[  +0.000002] FS:  00007f2f9785de00(0000) GS:ffff8a6a4f800000(0000) knlGS:0000000000000000
+[  +0.000001] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+[  +0.000002] CR2: 0000000000000000 CR3: 0000000348fee004 CR4: 00000000001606f0
+[  +0.000001] DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+[  +0.000002] DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7: 0000000000000400
+[  +0.000001] Call Trace:
+[  +0.000008]  gss_unwrap_resp_integ.isra.10+0xa6/0xf0 [auth_rpcgss]
+[  +0.000017]  ? nfs4_xdr_dec_layoutget+0xa0/0xa0 [nfsv4]
+[  +0.000003]  gss_unwrap_resp+0x1c4/0x230 [auth_rpcgss]
+[  +0.000011]  ? nfs4_xdr_dec_layoutget+0xa0/0xa0 [nfsv4]
+[  +0.000014]  rpcauth_unwrap_resp+0x67/0xc0 [sunrpc]
+[  +0.000012]  ? nfs4_xdr_dec_layoutget+0xa0/0xa0 [nfsv4]
+[  +0.000009]  call_decode+0x260/0x500 [sunrpc]
+[  +0.000010]  ? trace_event_raw_event_rpc_stats_latency+0x240/0x240 [sunrpc]
+[  +0.000008]  ? call_refreshresult+0xd0/0xd0 [sunrpc]
+[  +0.000009]  __rpc_execute+0x7f/0x350 [sunrpc]
+[  +0.000005]  ? recalibrate_cpu_khz+0x10/0x10
+[  +0.000002]  ? ktime_get+0x36/0xa0
+[  +0.000008]  rpc_run_task+0x121/0x180 [sunrpc]
+[  +0.000009]  nfs4_call_sync_sequence+0x64/0xa0 [nfsv4]
+[  +0.000008]  _nfs4_proc_readdir+0x208/0x280 [nfsv4]
+[  +0.000010]  nfs4_proc_readdir+0x86/0x120 [nfsv4]
+[  +0.000008]  ? nfs4_proc_symlink+0x1e0/0x1e0 [nfsv4]
+[  +0.000011]  nfs_readdir_xdr_to_array+0x17a/0x3f0 [nfs]
+[  +0.000005]  ? xas_store+0x2a/0x520
+[  +0.000003]  ? mem_cgroup_commit_charge+0x82/0x150
+[  +0.000003]  ? __add_to_page_cache_locked+0x2b1/0x3d0
+[  +0.000008]  nfs_readdir_filler+0x1b/0x90 [nfs]
+[  +0.000003]  do_read_cache_page+0x375/0x7d0
+[  +0.000006]  ? nfs_readdir_xdr_to_array+0x3f0/0x3f0 [nfs]
+[  +0.000011]  ? nfs4_do_check_delegation+0x18/0x40 [nfsv4]
+[  +0.000007]  nfs_readdir+0x137/0x510 [nfs]
+[  +0.000009]  ? nfs4_xdr_dec_allocate+0xd0/0xd0 [nfsv4]
+[  +0.000005]  iterate_dir+0x91/0x180
+[  +0.000003]  ksys_getdents64+0x9c/0x130
+[  +0.000002]  ? iterate_dir+0x180/0x180
+[  +0.000003]  __x64_sys_getdents64+0x16/0x20
+[  +0.000003]  do_syscall_64+0x5b/0x160
+[  +0.000003]  entry_SYSCALL_64_after_hwframe+0x44/0xa9
+[  +0.000002] RIP: 0033:0x7f2f9a2e2e2b
+[  +0.000002] Code: 00 00 48 83 c4 08 5b 5d c3 66 0f 1f 44 00 00 f3 0f 1e fa 48 8b 47 20 c3 0f 1f 80 00 00 00 00 f3 0f 1e fa b8 d9 00 00 00 0f 05 <48> 3d 00 f0 ff ff 77 05 c3 0f 1f 40 00 48 8b 15 29 b0 0f 00 f7 d8
+[  +0.000002] RSP: 002b:00007ffde2c6b468 EFLAGS: 00000246 ORIG_RAX: 00000000000000d9
+[  +0.000002] RAX: ffffffffffffffda RBX: 00005628b48fb6f0 RCX: 00007f2f9a2e2e2b
+[  +0.000001] RDX: 0000000000008000 RSI: 00005628b48fb720 RDI: 0000000000000012
+[  +0.000001] RBP: 00005628b48fb720 R08: 0000000000000001 R09: 0000000000000020
+[  +0.000002] R10: 00005628b451c010 R11: 0000000000000246 R12: ffffffffffffff40
+[  +0.000001] R13: 0000000000000002 R14: 00007ffde2c6b4b8 R15: 00005628b48efae0
+[  +0.000002] Modules linked in: rpcsec_gss_krb5 nfsv4 dns_resolver nfs lockd grace fscache ip6t_rpfilter ip6t_REJECT nf_reject_ipv6 xt_conntrack ebtable_nat ip6table_nat nf_nat_ipv6 ip6table_mangle ip6table_raw ip6table_security iptable_nat nf_nat_ipv4 nf_nat iptable_mangle iptable_raw iptable_security nf_conntrack nf_defrag_ipv6 nf_defrag_ipv4 ip_set nfnetlink ebtable_filter ebtables ip6table_filter ip6_tables vfat fat intel_rapl x86_pkg_temp_thermal intel_powerclamp coretemp iTCO_wdt iTCO_vendor_support snd_hda_codec_realtek snd_hda_codec_hdmi snd_hda_codec_generic snd_hda_intel crct10dif_pclmul snd_hda_codec crc32_pclmul snd_hda_core snd_hwdep snd_seq joydev ghash_clmulni_intel intel_cstate eeepc_wmi snd_seq_device asus_wmi sparse_keymap intel_uncore rfkill snd_pcm intel_rapl_perf wmi_bmof i2c_i801 mei_me e1000e snd_timer mei snd soundcore lpc_ich pcc_cpufreq auth_rpcgss sunrpc binfmt_misc xfs libcrc32c i915 kvmgt mdev vfio kvm hid_logitech_hidpp irqbypass i2c_algo_bit drm_kms_he
+ lper drm
+[  +0.000032]  crc32c_intel wmi video hid_logitech_dj
+[  +0.000005] CR2: 0000000000000000
+[  +0.000016] ---[ end trace afe2e7ddfac01670 ]---
+[  +0.000004] RIP: 0010:gss_verify_mic_kerberos+0x73/0x300 [rpcsec_gss_krb5]
+[  +0.000002] Code: 00 0f 84 a7 02 00 00 48 8d 44 24 34 4c 8b 62 08 c7 44 24 20 14 00 00 00 48 89 44 24 28 f6 05 9f f8 d2 ff 10 0f 85 95 3a 00 00 <66> 41 81 3c 24 04 04 41 bd 00 00 09 00 0f 85 b3 00 00 00 41 0f b6
+[  +0.000001] RSP: 0018:ffff97f702afb748 EFLAGS: 00010246
+[  +0.000002] RAX: ffff97f702afb77c RBX: ffff8a69b3945600 RCX: 0000000000000012
+[  +0.000002] RDX: ffff97f702afb7c0 RSI: ffff97f702afb7d0 RDI: ffff8a69a4bafe20
+[  +0.000001] RBP: ffff97f702afb7d0 R08: 00000000000002f4 R09: ffff8a69b38e9780
+[  +0.000001] R10: ffff8a690ddfcf98 R11: 0000000035e353de R12: 0000000000000000
+[  +0.000002] R13: 0000000000000000 R14: 0000000000000b14 R15: ffff8a6991c68660
+[  +0.000002] FS:  00007f2f9785de00(0000) GS:ffff8a6a4f800000(0000) knlGS:0000000000000000
+[  +0.000001] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+[  +0.000001] CR2: 0000000000000000 CR3: 0000000348fee004 CR4: 00000000001606f0
+[  +0.000002] DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+[  +0.000001] DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7: 0000000000000400
