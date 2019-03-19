@@ -2,161 +2,142 @@ Return-Path: <SRS0=azWf=RW=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
-	SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A8D9BC43381
-	for <linux-nfs@archiver.kernel.org>; Tue, 19 Mar 2019 02:40:34 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id F34E8C43381
+	for <linux-nfs@archiver.kernel.org>; Tue, 19 Mar 2019 10:56:28 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 52CF32085A
-	for <linux-nfs@archiver.kernel.org>; Tue, 19 Mar 2019 02:40:34 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="Oan9gD3P"
+	by mail.kernel.org (Postfix) with ESMTP id C5CAD20857
+	for <linux-nfs@archiver.kernel.org>; Tue, 19 Mar 2019 10:56:28 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727030AbfCSCkd (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 18 Mar 2019 22:40:33 -0400
-Received: from mail-eopbgr810111.outbound.protection.outlook.com ([40.107.81.111]:16992
-        "EHLO NAM01-BY2-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726915AbfCSCkd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 18 Mar 2019 22:40:33 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=hammerspace.com;
- s=selector1;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=1FDsO+yAwy3MVHmfhxZR/Eh/30K0uJnZHBhnPVTOyj4=;
- b=Oan9gD3Pqh6C1uDg2xsrx2Akc1OMAijYNHJTI5vqItH63yc3QQYP7/vh23JR3+UWgyNtTrVGhdps2oodm42br28+MJ5x34tFGT4R3yYdviJE+rZjydaIW49G3MpR8avWOv0nsFK0AaAnzMvSVIGLpvEAMdXPrubtS+x6SvrpBVU=
-Received: from SN6PR13MB2494.namprd13.prod.outlook.com (52.135.95.148) by
- SN6PR13MB2575.namprd13.prod.outlook.com (52.135.96.23) with Microsoft SMTP
- Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- 15.20.1709.9; Tue, 19 Mar 2019 02:40:27 +0000
-Received: from SN6PR13MB2494.namprd13.prod.outlook.com
- ([fe80::d1d6:9683:8c9b:3dcb]) by SN6PR13MB2494.namprd13.prod.outlook.com
- ([fe80::d1d6:9683:8c9b:3dcb%3]) with mapi id 15.20.1730.003; Tue, 19 Mar 2019
- 02:40:27 +0000
-From:   Trond Myklebust <trondmy@hammerspace.com>
-To:     "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        "neilb@suse.com" <neilb@suse.com>
-CC:     "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "chuck.lever@oracle.com" <chuck.lever@oracle.com>
-Subject: Re: [PATCH] NFS: fix mount/umount race in nlmclnt.
-Thread-Topic: [PATCH] NFS: fix mount/umount race in nlmclnt.
-Thread-Index: AQHU3etj5JNP1oJmLUSrOoBVDjduUaYSPlYA
-Date:   Tue, 19 Mar 2019 02:40:27 +0000
-Message-ID: <4aaf0c67c164bc4bf5d13857774317e77a393e0f.camel@hammerspace.com>
-References: <877ecv8zzf.fsf@notabene.neil.brown.name>
-In-Reply-To: <877ecv8zzf.fsf@notabene.neil.brown.name>
-Accept-Language: en-US, en-GB
-Content-Language: en-US
-X-MS-Has-Attach: yes
-X-MS-TNEF-Correlator: 
-authentication-results: spf=none (sender IP is )
- smtp.mailfrom=trondmy@hammerspace.com; 
-x-originating-ip: [68.40.189.247]
-x-ms-publictraffictype: Email
-x-ms-office365-filtering-correlation-id: 6bcd0f85-c500-4849-a424-08d6ac143ee7
-x-microsoft-antispam: BCL:0;PCL:0;RULEID:(2390118)(7020095)(4652040)(8989299)(4534185)(4627221)(201703031133081)(201702281549075)(8990200)(5600127)(711020)(4605104)(2017052603328)(7153060)(49563074)(7193020);SRVR:SN6PR13MB2575;
-x-ms-traffictypediagnostic: SN6PR13MB2575:
-x-microsoft-antispam-prvs: <SN6PR13MB2575205589478355313D9884B8400@SN6PR13MB2575.namprd13.prod.outlook.com>
-x-forefront-prvs: 0981815F2F
-x-forefront-antispam-report: SFV:NSPM;SFS:(10019020)(346002)(376002)(366004)(136003)(189003)(199004)(508600001)(36756003)(25786009)(66066001)(105586002)(6486002)(7736002)(102836004)(5660300002)(26005)(6512007)(6436002)(186003)(118296001)(106356001)(6506007)(14454004)(2906002)(86362001)(68736007)(4326008)(229853002)(8676002)(446003)(81166006)(99936001)(3846002)(53936002)(486006)(2616005)(110136005)(6246003)(71200400001)(97736004)(71190400001)(6116002)(76176011)(81156014)(54906003)(99286004)(2501003)(256004)(14444005)(305945005)(476003)(8936002)(11346002);DIR:OUT;SFP:1102;SCL:1;SRVR:SN6PR13MB2575;H:SN6PR13MB2494.namprd13.prod.outlook.com;FPR:;SPF:None;LANG:en;PTR:InfoNoRecords;MX:1;A:1;
-received-spf: None (protection.outlook.com: hammerspace.com does not designate
- permitted sender hosts)
-x-ms-exchange-senderadcheck: 1
-x-microsoft-antispam-message-info: o7mHURPmApziBY+yfh9LRZ1KFaCjgeEFPbAX1xQVo8FiCmI9vN+OztETY9g8g0zSKfbPzGW3/jy4SGotFjwK6rcQyhbAzeaW/vmfT1NBtozZmB7IWGeFVuSWzgkFS5aEIqMllNm2XEPun4qgHVKFNN6xB3qRZgSd1OLznNGBvu+utY7czNuRJX1pNYpcdNx1qRV2nsmDEd3HyWJjxrk4j0EWcO0f8PLavWTGKAunaAGku6jBo2jNKLMxKK23Fp+zGyvUySA6wEbh7fqzk5qLt/WaMtN91RR4rw+DBXYzz/yvHs1HgZEaqX/XPHI2gIE2r4NLEc4uq1EtG5NrtrkS+VepL/8UrrFzFg9bIHXlTF2Hqol9ioZGm38YwodQzcNO5tMx7Ok87WF6ECQlpRdPi9zc924/hkoIlYUiXgJ0iL0=
-Content-Type: multipart/signed; micalg="pgp-sha256";
-        protocol="application/pgp-signature"; boundary="=-7BD6GcfyGoZhUBPWjsHX"
+        id S1726717AbfCSK42 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 19 Mar 2019 06:56:28 -0400
+Received: from www262.sakura.ne.jp ([202.181.97.72]:39482 "EHLO
+        www262.sakura.ne.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726712AbfCSK42 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Mar 2019 06:56:28 -0400
+Received: from fsav402.sakura.ne.jp (fsav402.sakura.ne.jp [133.242.250.101])
+        by www262.sakura.ne.jp (8.15.2/8.15.2) with ESMTP id x2JAuPJR072932;
+        Tue, 19 Mar 2019 19:56:25 +0900 (JST)
+        (envelope-from penguin-kernel@i-love.sakura.ne.jp)
+Received: from www262.sakura.ne.jp (202.181.97.72)
+ by fsav402.sakura.ne.jp (F-Secure/fsigk_smtp/530/fsav402.sakura.ne.jp);
+ Tue, 19 Mar 2019 19:56:25 +0900 (JST)
+X-Virus-Status: clean(F-Secure/fsigk_smtp/530/fsav402.sakura.ne.jp)
+Received: from [192.168.1.8] (softbank126065253096.bbtec.net [126.65.253.96])
+        (authenticated bits=0)
+        by www262.sakura.ne.jp (8.15.2/8.15.2) with ESMTPSA id x2JAuIZn072901
+        (version=TLSv1.2 cipher=AES256-SHA bits=256 verify=NO);
+        Tue, 19 Mar 2019 19:56:25 +0900 (JST)
+        (envelope-from penguin-kernel@i-love.sakura.ne.jp)
+Subject: Re: mount.nfs: Protocol error after upgrade to linux/master
+To:     Casey Schaufler <casey@schaufler-ca.com>,
+        Kees Cook <keescook@chromium.org>
+Cc:     Jakub Kicinski <jakub.kicinski@netronome.com>,
+        linux-security-module <linux-security-module@vger.kernel.org>,
+        Trond Myklebust <trond.myklebust@hammerspace.com>,
+        "open list:NFS, SUNRPC, AND..." <linux-nfs@vger.kernel.org>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        LKML <linux-kernel@vger.kernel.org>
+References: <20190315110555.0807d015@cakuba.netronome.com>
+ <20190315120105.5541ad46@cakuba.netronome.com>
+ <20190315165440.53b9db3c@cakuba.netronome.com>
+ <CAGXu5jKHRPuaALQcPXvpDeuVgZR+EeRqo9Qj4j3kYatb3HUSSA@mail.gmail.com>
+ <CAGXu5jL-e7bDEXfpUuT-HyFarR-8T0djXChR0cuzTwFQPQ0tOw@mail.gmail.com>
+ <f23d0fad-dc72-0e53-cac6-31abfd12a050@I-love.SAKURA.ne.jp>
+ <bee1a774-461a-2535-a640-bbe65291e909@schaufler-ca.com>
+From:   Tetsuo Handa <penguin-kernel@i-love.sakura.ne.jp>
+Message-ID: <2bf23acd-22c4-a260-7648-845887a409d5@i-love.sakura.ne.jp>
+Date:   Tue, 19 Mar 2019 19:56:15 +0900
+User-Agent: Mozilla/5.0 (Windows NT 6.3; WOW64; rv:60.0) Gecko/20100101
+ Thunderbird/60.5.3
 MIME-Version: 1.0
-X-OriginatorOrg: hammerspace.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: 6bcd0f85-c500-4849-a424-08d6ac143ee7
-X-MS-Exchange-CrossTenant-originalarrivaltime: 19 Mar 2019 02:40:27.2364
- (UTC)
-X-MS-Exchange-CrossTenant-fromentityheader: Hosted
-X-MS-Exchange-CrossTenant-id: 0d4fed5c-3a70-46fe-9430-ece41741f59e
-X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: SN6PR13MB2575
+In-Reply-To: <bee1a774-461a-2535-a640-bbe65291e909@schaufler-ca.com>
+Content-Type: text/plain; charset=utf-8
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
---=-7BD6GcfyGoZhUBPWjsHX
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Since Kees Cook seems to be busy now, here is my version...
 
-On Tue, 2019-03-19 at 11:33 +1100, NeilBrown wrote:
-> If the last NFSv3 unmount from a given host races with a mount from
-> the
-> same host, we can destroy an nlm_host that is still in use.
->=20
-> Specifically nlmclnt_lookup_host() can increment h_count on
-> an nlm_host that nlmclnt_release_host() has just successfully called
-> refcount_dec_and_test() on.
-> Once nlmclnt_lookup_host() drops the mutex, nlm_destroy_host_lock()
-> will be called to destroy the nlmclnt which is now in use again.
->=20
-> The cause of the problem is that the dec_and_test happens outside the
-> locked region.  This is easily fixed by using
-> refcount_dec_and_mutex_lock().
->=20
-> Fixes: 8ea6ecc8b075 ("lockd: Create client-side nlm_host cache")
-> Cc: stable@vger.kernel.org (v2.6.38+)
-> Signed-off-by: NeilBrown <neilb@suse.com>
-> ---
->  fs/lockd/host.c | 3 +--
->  1 file changed, 1 insertion(+), 2 deletions(-)
->=20
-> diff --git a/fs/lockd/host.c b/fs/lockd/host.c
-> index 93fb7cf0b92b..f0b5c987d6ae 100644
-> --- a/fs/lockd/host.c
-> +++ b/fs/lockd/host.c
-> @@ -290,12 +290,11 @@ void nlmclnt_release_host(struct nlm_host
-> *host)
-> =20
->  	WARN_ON_ONCE(host->h_server);
-> =20
-> -	if (refcount_dec_and_test(&host->h_count)) {
-> +	if (refcount_dec_and_mutex_lock(&host->h_count,
-> &nlm_host_mutex)) {
->  		WARN_ON_ONCE(!list_empty(&host->h_lockowners));
->  		WARN_ON_ONCE(!list_empty(&host->h_granted));
->  		WARN_ON_ONCE(!list_empty(&host->h_reclaim));
-> =20
-> -		mutex_lock(&nlm_host_mutex);
->  		nlm_destroy_host_locked(host);
->  		mutex_unlock(&nlm_host_mutex);
->  	}
+From 885553e4793d9af2d4e9e99c7d137b0ec7b5f8ad Mon Sep 17 00:00:00 2001
+From: Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>
+Date: Tue, 19 Mar 2019 19:52:31 +0900
+Subject: [PATCH] LSM: Revive CONFIG_DEFAULT_SECURITY_* for "make oldconfig"
 
-Thanks Neil! Applying to linux-next.
+Commit 70b62c25665f636c ("LoadPin: Initialize as ordered LSM") removed
+CONFIG_DEFAULT_SECURITY_{SELINUX,SMACK,TOMOYO,APPARMOR,DAC} from
+security/Kconfig and changed CONFIG_LSM to provide a fixed ordering as a
+default value. That commit expected that existing users (upgrading from
+Linux 5.0 and earlier) will edit CONFIG_LSM value in accordance with
+their CONFIG_DEFAULT_SECURITY_* choice in their old kernel configs. But
+since users might forget to edit CONFIG_LSM value, this patch revives
+the choice (only for providing the default value for CONFIG_LSM) in order
+to make sure that CONFIG_LSM reflects CONFIG_DEFAULT_SECURITY_* from their
+old kernel configs.
 
---=20
-Trond Myklebust
-Linux NFS client maintainer, Hammerspace
-trond.myklebust@hammerspace.com
+Reported-by: Jakub Kicinski <jakub.kicinski@netronome.com>
+Signed-off-by: Kees Cook <keescook@chromium.org>
+Signed-off-by: Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>
+---
+ security/Kconfig | 36 +++++++++++++++++++++++++++++++++++-
+ 1 file changed, 35 insertions(+), 1 deletion(-)
+
+diff --git a/security/Kconfig b/security/Kconfig
+index 1d6463f..743e594 100644
+--- a/security/Kconfig
++++ b/security/Kconfig
+@@ -239,9 +239,43 @@ source "security/safesetid/Kconfig"
+ 
+ source "security/integrity/Kconfig"
+ 
++choice
++	prompt "Default security module [superseded by 'Ordered list of enabled LSMs' below]"
++	default DEFAULT_SECURITY_SELINUX if SECURITY_SELINUX
++	default DEFAULT_SECURITY_SMACK if SECURITY_SMACK
++	default DEFAULT_SECURITY_TOMOYO if SECURITY_TOMOYO
++	default DEFAULT_SECURITY_APPARMOR if SECURITY_APPARMOR
++	default DEFAULT_SECURITY_DAC
++
++	help
++	  This choice is there only for converting CONFIG_DEFAULT_SECURITY in old
++	  kernel config to CONFIG_LSM in new kernel config. Don't change this choice
++	  unless you are creating a fresh kernel config, for this choice will be
++	  ignored after CONFIG_LSM is once defined.
++
++	config DEFAULT_SECURITY_SELINUX
++		bool "SELinux" if SECURITY_SELINUX=y
++
++	config DEFAULT_SECURITY_SMACK
++		bool "Simplified Mandatory Access Control" if SECURITY_SMACK=y
++
++	config DEFAULT_SECURITY_TOMOYO
++		bool "TOMOYO" if SECURITY_TOMOYO=y
++
++	config DEFAULT_SECURITY_APPARMOR
++		bool "AppArmor" if SECURITY_APPARMOR=y
++	config DEFAULT_SECURITY_DAC
++		bool "Unix Discretionary Access Controls"
++
++endchoice
++
+ config LSM
+ 	string "Ordered list of enabled LSMs"
+-	default "yama,loadpin,safesetid,integrity,selinux,smack,tomoyo,apparmor"
++	default "yama,loadpin,safesetid,integrity,selinux" if DEFAULT_SECURITY_SELINUX
++	default "yama,loadpin,safesetid,integrity,smack" if DEFAULT_SECURITY_SMACK
++	default "yama,loadpin,safesetid,integrity,tomoyo" if DEFAULT_SECURITY_TOMOYO
++	default "yama,loadpin,safesetid,integrity,apparmor" if DEFAULT_SECURITY_APPARMOR
++	default "yama,loadpin,safesetid,integrity"
+ 	help
+ 	  A comma-separated list of LSMs, in initialization order.
+ 	  Any LSMs left off this list will be ignored. This can be
+-- 
+1.8.3.1
 
 
-
---=-7BD6GcfyGoZhUBPWjsHX
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: This is a digitally signed message part
-Content-Transfer-Encoding: 7bit
-
------BEGIN PGP SIGNATURE-----
-
-iQIzBAABCAAdFiEESQctxSBg8JpV8KqEZwvnipYKAPIFAlyQVpIACgkQZwvnipYK
-APKLoBAAugy0YWVE5uNO+3JPypn/9x5D/c0XTusCf9wVIouqTZSI8/NtmxX2Bs7F
-uOztFXBvgfBtaGcvyr3AM2M2dqMiJSiP4eZ4papRYLu01idIkb1FaePJOO8P5j8o
-rAzbT5xcmceLW8mktICQnzfZUGKHZN4YGuPYX6D9gXdsgM196ih3zx3USTwj/tCW
-b3cF0ufZ/0JN2tSTwsw1kcC26VFW2vEz+UbO82/WsfJ/075CJKX3p1Kw0wh+99LE
-7f1Y6dQcdDQl503jlUg1jsgax2zRDTnk6ZHVNdCiN7pyNyPaDiEFRRi5XrGebCTQ
-oXtCaMyydG7bmcjRMithKNATw062qrriE4/4/D8upoVj3Qex/UydNSVALjFgnCVq
-Y2yJ3iJda96ehI66wCAZ4/igbPoFTVNKIdFsyiai2esMN8jGAFiiDF0VHVk4uM2R
-CHSwGyu3tRn6gpuSfJNARjQqcCBf5dCa8Jkz75mu3V7T+zm5+a12wqJ1mLrROTZd
-/zP6EnMA/aLkYfCNFJyFZwnT+iM34AAfYMjELttSrgWmQEI6nHJFxTww0ucP+goK
-okaat/id1lyycSoZv+HMc2R7tGH2uvgktNEBmBK2KctYEfc6IM2GQX54qQ8Hqbz9
-8zt/aaVsfTQqmQztfoDeY0BZVc+QiUj2P1sAPab0/aX4VFiNnPk=
-=9Zr7
------END PGP SIGNATURE-----
-
---=-7BD6GcfyGoZhUBPWjsHX--
