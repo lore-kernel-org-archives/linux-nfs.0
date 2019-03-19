@@ -2,154 +2,201 @@ Return-Path: <SRS0=azWf=RW=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.0 required=3.0 tests=DKIMWL_WL_MED,DKIM_SIGNED,
-	DKIM_VALID,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
-	SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED autolearn=unavailable autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-7.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
+	SIGNED_OFF_BY,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id CE71EC43381
-	for <linux-nfs@archiver.kernel.org>; Tue, 19 Mar 2019 15:03:10 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 912F3C43381
+	for <linux-nfs@archiver.kernel.org>; Tue, 19 Mar 2019 15:33:25 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 9EE9820850
-	for <linux-nfs@archiver.kernel.org>; Tue, 19 Mar 2019 15:03:10 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 3E74920811
+	for <linux-nfs@archiver.kernel.org>; Tue, 19 Mar 2019 15:33:25 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=yahoo.com header.i=@yahoo.com header.b="WkttnIsj"
+	dkim=pass (2048-bit key) header.d=umich.edu header.i=@umich.edu header.b="o478iWbP"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726857AbfCSPDF (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 19 Mar 2019 11:03:05 -0400
-Received: from sonic310-30.consmr.mail.ne1.yahoo.com ([66.163.186.211]:42362
-        "EHLO sonic310-30.consmr.mail.ne1.yahoo.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726876AbfCSPDE (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Mar 2019 11:03:04 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=yahoo.com; s=s2048; t=1553007783; bh=8eLDNP09NKHtb6NKCYkbHfriJ1YDJnmcG+IWUIIPBv8=; h=Subject:To:Cc:References:From:Date:In-Reply-To:From:Subject; b=WkttnIsjw2rQEQWwCEPKQJhxjki53j4LZYFvJW2pQ0+ptuInKOzNW5F1+L4I6etBeV1ocq3JA2bLk/TPV+LvXnTssXOd4ATRhjmsqRXOhX02LhUvuucQtlwo3KzO5uIaQYTFK4uwepi5cjgb22TKLX5NSFSYYPZCSp5XOxn2XVosXpRxItLSFy1A/dSTjZHgHoF5vmIHNwlExPKV8TeS49/6tVy4ddAXCTVfqOoIt7s5aMPpI6jFnkU5ZnwIRHWmg1HIXBknNvBZYifyzFASdLHmY+rBjsMZ2FJVrPWs2WTQLKPrhsGNZYiuZH/TKtP7tBTXlF2Dp/5d7Dv165FJdA==
-X-YMail-OSG: lfg7TroVM1mnAKETjHG4PAgpnkk.fgSnZhWVqK1FkMlzaTOG4BpRN.sIHkA3Mb_
- 1_NzOUE3bvJmHUmDtkYZ.kVgv9wUmw94pP27QT0RJ4d1G7KfaEDImSPkRS8crhRUHJaUanbaA2aQ
- fVIyMViTojLp7socja5glXFbHaX_mHqVhlCZ8l0GKoWoz3iF9_RkVtmlL.U2RLrm_bcwdSF7Nix1
- cwFXvVRIAS39JWVeUOBoEzfpFNVhEU8W_HDapcMba2TzcP9_jQXwNS2DmvCDtGYhK6nj6cLX6PDl
- pB7aAiblCTMA8JqBDZnxoN4oSkcRqMZfL2qT0w4gr7mI60ARKmHfvgk.ogaq7Zk_x5fztUirnzCs
- Lv14t554TB8BgcA7W73O65sUo.nLCS9tjAhmLRluW32sbv.uaeXb8vj8gyktKQ9BR6e.1gbo2eqa
- B00yj1jTIOtq349fhicZLqHAN5br7277bTjjhT6HHiHe_o5gdZpO1y6RcWvEwezKaySys3liKuI5
- LruFRpQNN8WgFpD0bJCtecuBAWEjJ2QRABa7FfDUXEBmV6I6DS9TLhPkZdKecKh7Ps2agf2LhxB2
- S1NuI5nkUUcPWVC6dZg8l2llL2IoiBt4waqAlCxCiaEzUt6GtpSxWiuAfv9683xdbF9vrL.m.xOX
- UGlYa7ydVf2nG1d9EzZGkLTqYb.8IMUDr4V59Ofx5DdE4qtwRJndLDD.DMG5fc8sOICqDxdnVBsd
- f9iIK8ZT4UCoVfMABKoJyBJ5CqRFBOtSJgIlb9MK3NllLrAFMXnWEplCu.DzdL5ewSMzJUxkrIkl
- WPuxo6ZLWFqlXeFZo8glPwcNWwzfqP0h7H6dD_j2gwp5qm9tQPDEsrlsQUzKQ_ylDFJjDAzP0Zgf
- rx7VM79tE9hfAdGpyeq2m.HFZIOFyDyGSHnf_3C8fKgyQ5fJGm5yNb0UgND5rsCaZLUp8VS1wJRo
- cVw5gDLGB8dKIWHwKz4zaDG3zbhcoJNZyIuqjUgwBSV_QWVSsbCjoLoZkkxkKVPDvh.tDzmREdWk
- kuz5Beia72UxmgoHwEU5T2bPUDuFz0YeFf47E.JdcU8NO1tP2MeXNAr_NuxVoHTNWzsHbaMMBE1W
- p2PC7FyxL.9xOIhm57fGSsWf5wTgIX19G1na.dcul
-Received: from sonic.gate.mail.ne1.yahoo.com by sonic310.consmr.mail.ne1.yahoo.com with HTTP; Tue, 19 Mar 2019 15:03:03 +0000
-Received: from c-67-169-65-224.hsd1.ca.comcast.net (EHLO [192.168.0.103]) ([67.169.65.224])
-          by smtp417.mail.ne1.yahoo.com (Oath Hermes SMTP Server) with ESMTPA ID 2f9b5d50a452cf0c127cb7cfad7d058a;
-          Tue, 19 Mar 2019 15:03:01 +0000 (UTC)
-Subject: Re: mount.nfs: Protocol error after upgrade to linux/master
-To:     Tetsuo Handa <penguin-kernel@i-love.sakura.ne.jp>,
-        Kees Cook <keescook@chromium.org>
-Cc:     Jakub Kicinski <jakub.kicinski@netronome.com>,
-        linux-security-module <linux-security-module@vger.kernel.org>,
-        Trond Myklebust <trond.myklebust@hammerspace.com>,
-        "open list:NFS, SUNRPC, AND..." <linux-nfs@vger.kernel.org>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        LKML <linux-kernel@vger.kernel.org>
-References: <20190315110555.0807d015@cakuba.netronome.com>
- <20190315120105.5541ad46@cakuba.netronome.com>
- <20190315165440.53b9db3c@cakuba.netronome.com>
- <CAGXu5jKHRPuaALQcPXvpDeuVgZR+EeRqo9Qj4j3kYatb3HUSSA@mail.gmail.com>
- <CAGXu5jL-e7bDEXfpUuT-HyFarR-8T0djXChR0cuzTwFQPQ0tOw@mail.gmail.com>
- <f23d0fad-dc72-0e53-cac6-31abfd12a050@I-love.SAKURA.ne.jp>
- <bee1a774-461a-2535-a640-bbe65291e909@schaufler-ca.com>
- <2bf23acd-22c4-a260-7648-845887a409d5@i-love.sakura.ne.jp>
-From:   Casey Schaufler <casey@schaufler-ca.com>
-Message-ID: <b00a3b2e-f603-331a-ef72-de59db288b90@schaufler-ca.com>
-Date:   Tue, 19 Mar 2019 08:03:01 -0700
-User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64; rv:60.0) Gecko/20100101
- Thunderbird/60.5.3
+        id S1727670AbfCSPdY (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 19 Mar 2019 11:33:24 -0400
+Received: from mail-vs1-f46.google.com ([209.85.217.46]:46582 "EHLO
+        mail-vs1-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726876AbfCSPdY (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Mar 2019 11:33:24 -0400
+Received: by mail-vs1-f46.google.com with SMTP id w26so9476160vsk.13
+        for <linux-nfs@vger.kernel.org>; Tue, 19 Mar 2019 08:33:23 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=umich.edu; s=google-2016-06-03;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc:content-transfer-encoding;
+        bh=bGDpfwsWabDHKnXFm2gbGgX8H1X1+lnEJNbWDskz/30=;
+        b=o478iWbP0ocWUlkY7cQ2gt4whuKBjJeshbV8GZ93MYN7lblsMWhpqn4GLOQUU4Kgdj
+         wUsEGgDaX1M5mZTUnYpU4yvLJgtnrrh+m8eyxB+jsZdtEtc6UMZ77LikrKs1tCTqT5oc
+         xOWF7m4z+SWnacU7cSeKJHhIn5kQFmyoeU5v4ZogtDR+pTX8fJnOroxkaWvMMlI62/al
+         Nn9Z16/MXotOQV4ZMUdZq9rJonjMYpq3O87sj6s5TJQ86KRy06uv6FsrailZLI0G+VKy
+         rnB+OkHrP3PgyMuMki57enmSjUZVo+RawvZf3AjyQbfoR/gaTtPPrKAcciXOjxY8ZgSd
+         1rCw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc:content-transfer-encoding;
+        bh=bGDpfwsWabDHKnXFm2gbGgX8H1X1+lnEJNbWDskz/30=;
+        b=XmiFhSBUH600g7Mq1xsUwOThDcYWsR47X+ethRGzcACv5ubnfxRrWSOB9IF+K1BrJT
+         dHCQntVRS1tGJxv9RKigpllpfRVPukR4wEvAjTKQRC8Iqp7cwECyVVRC48kUzmpWqes5
+         zWGnYP7G7pZjHgg/Z5w/MLPE1GVrI+GKSyHR1xCKQCUXNfI7Izgp1EsO1E6Zbni3zKV5
+         cGTqXyuH/dLjrr611WxSENdoSjVgwBz1+RgJ9PpOH/k63sgzqZjZIiTMOcUE1QooZ7Jp
+         o55wPTKTHm4xuNpxlOETleO65fxH9bNF4Rzm67yYINpmNl820J73UnDEP99alRfbL3AS
+         diWA==
+X-Gm-Message-State: APjAAAV2gzbV68NF9c4NttbezCSIQ3t9PShLFOpjBMntq4tzc0gG19TS
+        2Xy17xZxXzIfTF2BDIBPdmTUJ5xJLdBC2gdEPapZRHog
+X-Google-Smtp-Source: APXvYqzpyhEa0Of/qYHtXcmR/s7xx5qizBGuZ0JsD3+l2KhKoMl4oLk6T7YkG9MP//MUP1O6SuLTQAI6D8b6WaxzAKE=
+X-Received: by 2002:a67:74cd:: with SMTP id p196mr1705055vsc.215.1553009601917;
+ Tue, 19 Mar 2019 08:33:21 -0700 (PDT)
 MIME-Version: 1.0
-In-Reply-To: <2bf23acd-22c4-a260-7648-845887a409d5@i-love.sakura.ne.jp>
-Content-Type: text/plain; charset=utf-8; format=flowed
-Content-Transfer-Encoding: 7bit
-Content-Language: en-US
+References: <fa8ca171-b260-3e5a-d69c-13f263f5bb9c@linux.alibaba.com>
+ <3b6597b0-41b4-255a-5ebb-cf34ad95315c@linux.alibaba.com> <57796366-0f08-2cfb-6f85-27d5485c07af@linux.alibaba.com>
+ <ce839197cb70f3bc75413ed2e54f8baafafc01dd.camel@hammerspace.com>
+ <365504c3-d785-7e4b-1dd2-c75f30c85c65@linux.alibaba.com> <740c1ad6c5b2afad196af34f48dda7097b5102b7.camel@hammerspace.com>
+ <1417d6c8-3602-d895-a036-44031a7c1e98@linux.alibaba.com> <b729878b38f32053890a592a91f0645f15caa96f.camel@hammerspace.com>
+ <46f5c870-f4fd-b29a-f5eb-eab39c4c1e89@linux.alibaba.com> <20190306160934.GB3066@fieldses.org>
+ <CAN-5tyEPSDKao=83sW+voU9SPbcszZyR+XfZzcsD2-ozVa22Xg@mail.gmail.com>
+ <ace3659edd3efb70d3d978e108ecf1fc22ee3966.camel@hammerspace.com>
+ <CAN-5tyH8hFmEsAKDMDL4uey0MXh9+kY43=LEpgjj711eVUubAA@mail.gmail.com>
+ <CAN-5tyEAfV_WA3Vyf8LQ-EN4yn99p1sk7fuu7n43t8H8+un2Yw@mail.gmail.com>
+ <37b3d7db-0bdf-014a-adff-ea401ea92fc7@linux.alibaba.com> <CAN-5tyFHD5ZCqZ59GJzf_CAaJQZ7OXEhaxtYaSDAdXMLSA-xDA@mail.gmail.com>
+ <63f00c10-28f5-b1e6-dcf9-f85f5edbfabf@linux.alibaba.com>
+In-Reply-To: <63f00c10-28f5-b1e6-dcf9-f85f5edbfabf@linux.alibaba.com>
+From:   Olga Kornievskaia <aglo@umich.edu>
+Date:   Tue, 19 Mar 2019 11:33:10 -0400
+Message-ID: <CAN-5tyHxQ7q9aR=dmS4_-b0269vcepjcv7r6W9-soDhp4McAKA@mail.gmail.com>
+Subject: Re: [bug report] task hang while testing xfstests generic/323
+To:     Jiufei Xue <jiufei.xue@linux.alibaba.com>
+Cc:     Trond Myklebust <trondmy@hammerspace.com>,
+        "bfields@fieldses.org" <bfields@fieldses.org>,
+        "Anna.Schumaker@netapp.com" <Anna.Schumaker@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "joseph.qi@linux.alibaba.com" <joseph.qi@linux.alibaba.com>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On 3/19/2019 3:56 AM, Tetsuo Handa wrote:
-> Since Kees Cook seems to be busy now, here is my version...
+On Sat, Mar 16, 2019 at 10:11 AM Jiufei Xue
+<jiufei.xue@linux.alibaba.com> wrote:
 >
->  From 885553e4793d9af2d4e9e99c7d137b0ec7b5f8ad Mon Sep 17 00:00:00 2001
-> From: Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>
-> Date: Tue, 19 Mar 2019 19:52:31 +0900
-> Subject: [PATCH] LSM: Revive CONFIG_DEFAULT_SECURITY_* for "make oldconfig"
 >
-> Commit 70b62c25665f636c ("LoadPin: Initialize as ordered LSM") removed
-> CONFIG_DEFAULT_SECURITY_{SELINUX,SMACK,TOMOYO,APPARMOR,DAC} from
-> security/Kconfig and changed CONFIG_LSM to provide a fixed ordering as a
-> default value. That commit expected that existing users (upgrading from
-> Linux 5.0 and earlier) will edit CONFIG_LSM value in accordance with
-> their CONFIG_DEFAULT_SECURITY_* choice in their old kernel configs. But
-> since users might forget to edit CONFIG_LSM value, this patch revives
-> the choice (only for providing the default value for CONFIG_LSM) in order
-> to make sure that CONFIG_LSM reflects CONFIG_DEFAULT_SECURITY_* from their
-> old kernel configs.
+> Hi Olga,
+> On 2019/3/16 =E4=B8=8A=E5=8D=884:33, Olga Kornievskaia wrote:
+> > On Fri, Mar 15, 2019 at 2:31 AM Jiufei Xue <jiufei.xue@linux.alibaba.co=
+m> wrote:
+> >>
+> >> Hi Olga,
+> >>
+> >> On 2019/3/11 =E4=B8=8B=E5=8D=8811:13, Olga Kornievskaia wrote:
+> >>> Let me double check that. I have reproduced the "infinite loop" or
+> >>> CLOSE on the upstream (I'm looking thru the trace points from friday)=
+.
+> >>
+> >> Do you try to capture the packages when reproduced this issue on the
+> >> upstream. I still lost kernel packages after some adjustment according
+> >> to bfield's suggestion :(
+> >
+> > Hi Jiufei,
+> >
+> > Yes I have network trace captures but they are too big to post to the
+> > mailing list. I have reproduced the problem on the latest upstream
+> > origin/testing branch commit "SUNRPC: Take the transport send lock
+> > before binding+connecting". As you have noted before infinite loops is
+> > due to client "losing" an update to the seqid.
+> >
+> > one packet would send out an (recovery) OPEN with slot=3D0 seqid=3DY.
+> > tracepoint (nfs4_open_file) would log that status=3DERESTARTSYS. The rp=
+c
+> > task would be sent and the rpc task would receive a reply but there is
+> > nobody there to receive it... This open that got a reply has an
+> > updated stateid seqid which client never updates. When CLOSE is sent,
+> > it's sent with the "old" stateid and puts the client in an infinite
+> > loop. Btw, CLOSE is sent on the interrupted slot which should get
+> > FALSE_RETRY which causes the client to terminate the session. But it
+> > would still keep sending the CLOSE with the old stateid.
+> >
+> > Some things I've noticed is that TEST_STATE op (as a part of the
+> > nfs41_test_and _free_expired_stateid()) for some reason always has a
+> > signal set even before issuing and RPC task so the task never
+> > completes (ever).
+> >
+> > I always thought that OPEN's can't be interrupted but I guess they are
+> > since they call rpc_wait_for_completion_task() and that's a killable
+> > event. But I don't know how to find out what's sending a signal to the
+> > process. I'm rather stuck here trying to figure out where to go from
+> > there. So I'm still trying to figure out what's causing the signal or
+> > also how to recover from it that the client doesn't lose that seqid.
+> >
+> >>
+> Thank you for you quick relpy.
 >
-> Reported-by: Jakub Kicinski <jakub.kicinski@netronome.com>
-> Signed-off-by: Kees Cook <keescook@chromium.org>
-> Signed-off-by: Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>
+> I have also noticed the ERESTARTSYS status for OPEN op, but I think it
+> is returned by the open process which is woken in nfs4_run_open_task().
+> I found that the decode routine nfs4_xdr_dec_open returned -121, which
+> I thought is the root cause of this problem. Could you please post the
+> content of the last OPEN message?
 
-Acked-by: Casey Schaufler <casey@schaufler-ca.com>
+
+Hi Jiufei,
+
+Yes I think that's why the update isn't happening because the
+rpc_status isn't 0.
+
+Trond,
+
+rpc_status of the rpc tasks that were interrupted but are finishing
+are not able to succeed because when they try to decode_sequence the
+res->st_slot is NULL. Sequence op is not decoded and then when it
+tries to decode the PUTFH it throws unexpected op (expecting PUTFH but
+has SEQ still there instead).
+
+res->st_slot is going away because after the open(s) were interrupted
+and _nfs4_proc_open() returned an error (interrupted), it goes and
+frees the slot.
+
+Is it perhaps appropriate to only free the slot there when if
+(!data->cancelled) free_slot() otherwise. Let the async RPC task
+continue and once it's done it'll free the slot.
+
+How's this for a proposed fix:
+Subject: [PATCH 1/1] NFSv4.1 don't free interrupted slot on open
+
+Allow the async rpc task for finish and update the open state if needed,
+then free the slot. Otherwise, the async rpc unable to decode the reply.
+
+Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+---
+ fs/nfs/nfs4proc.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 4dbb0ee..96c2499 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2933,7 +2933,8 @@ static int _nfs4_open_and_get_state(struct
+nfs4_opendata *opendata,
+  }
+
+ out:
+- nfs4_sequence_free_slot(&opendata->o_res.seq_res);
++ if (!opendata->cancelled)
++ nfs4_sequence_free_slot(&opendata->o_res.seq_res);
+  return ret;
+ }
 
 
-> ---
->   security/Kconfig | 36 +++++++++++++++++++++++++++++++++++-
->   1 file changed, 35 insertions(+), 1 deletion(-)
+
+
 >
-> diff --git a/security/Kconfig b/security/Kconfig
-> index 1d6463f..743e594 100644
-> --- a/security/Kconfig
-> +++ b/security/Kconfig
-> @@ -239,9 +239,43 @@ source "security/safesetid/Kconfig"
->   
->   source "security/integrity/Kconfig"
->   
-> +choice
-> +	prompt "Default security module [superseded by 'Ordered list of enabled LSMs' below]"
-> +	default DEFAULT_SECURITY_SELINUX if SECURITY_SELINUX
-> +	default DEFAULT_SECURITY_SMACK if SECURITY_SMACK
-> +	default DEFAULT_SECURITY_TOMOYO if SECURITY_TOMOYO
-> +	default DEFAULT_SECURITY_APPARMOR if SECURITY_APPARMOR
-> +	default DEFAULT_SECURITY_DAC
-> +
-> +	help
-> +	  This choice is there only for converting CONFIG_DEFAULT_SECURITY in old
-> +	  kernel config to CONFIG_LSM in new kernel config. Don't change this choice
-> +	  unless you are creating a fresh kernel config, for this choice will be
-> +	  ignored after CONFIG_LSM is once defined.
-> +
-> +	config DEFAULT_SECURITY_SELINUX
-> +		bool "SELinux" if SECURITY_SELINUX=y
-> +
-> +	config DEFAULT_SECURITY_SMACK
-> +		bool "Simplified Mandatory Access Control" if SECURITY_SMACK=y
-> +
-> +	config DEFAULT_SECURITY_TOMOYO
-> +		bool "TOMOYO" if SECURITY_TOMOYO=y
-> +
-> +	config DEFAULT_SECURITY_APPARMOR
-> +		bool "AppArmor" if SECURITY_APPARMOR=y
-> +	config DEFAULT_SECURITY_DAC
-> +		bool "Unix Discretionary Access Controls"
-> +
-> +endchoice
-> +
->   config LSM
->   	string "Ordered list of enabled LSMs"
-> -	default "yama,loadpin,safesetid,integrity,selinux,smack,tomoyo,apparmor"
-> +	default "yama,loadpin,safesetid,integrity,selinux" if DEFAULT_SECURITY_SELINUX
-> +	default "yama,loadpin,safesetid,integrity,smack" if DEFAULT_SECURITY_SMACK
-> +	default "yama,loadpin,safesetid,integrity,tomoyo" if DEFAULT_SECURITY_TOMOYO
-> +	default "yama,loadpin,safesetid,integrity,apparmor" if DEFAULT_SECURITY_APPARMOR
-> +	default "yama,loadpin,safesetid,integrity"
->   	help
->   	  A comma-separated list of LSMs, in initialization order.
->   	  Any LSMs left off this list will be ignored. This can be
+> Thanks,
+> Jiufei.
+>
+>
+>
+> >> Thanks,
+> >> Jiufei
+> >
