@@ -2,171 +2,113 @@ Return-Path: <SRS0=31iP=RZ=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-1.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
+	SPF_PASS,URIBL_BLOCKED autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E4066C43381
-	for <linux-nfs@archiver.kernel.org>; Fri, 22 Mar 2019 22:32:19 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 51FCFC43381
+	for <linux-nfs@archiver.kernel.org>; Fri, 22 Mar 2019 22:45:26 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id BBC40218D4
-	for <linux-nfs@archiver.kernel.org>; Fri, 22 Mar 2019 22:32:19 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 1EC5C2075E
+	for <linux-nfs@archiver.kernel.org>; Fri, 22 Mar 2019 22:45:26 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (1024-bit key) header.d=chromium.org header.i=@chromium.org header.b="mDVknPG/"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727770AbfCVWcT (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 22 Mar 2019 18:32:19 -0400
-Received: from mx2.suse.de ([195.135.220.15]:53332 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1727248AbfCVWcS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 22 Mar 2019 18:32:18 -0400
-X-Virus-Scanned: by amavisd-new at test-mx.suse.de
-Received: from relay2.suse.de (unknown [195.135.220.254])
-        by mx1.suse.de (Postfix) with ESMTP id 82335AF96;
-        Fri, 22 Mar 2019 22:32:17 +0000 (UTC)
-From:   NeilBrown <neilb@suse.com>
-To:     "J. Bruce Fields" <bfields@fieldses.org>
-Date:   Sat, 23 Mar 2019 09:32:08 +1100
-Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] sunrpc/cache: handle missing listeners better.
-In-Reply-To: <20190322165338.GB7692@fieldses.org>
-References: <87pnqj64br.fsf@notabene.neil.brown.name> <20190322165338.GB7692@fieldses.org>
-Message-ID: <87bm225ymv.fsf@notabene.neil.brown.name>
+        id S1728377AbfCVWpZ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 22 Mar 2019 18:45:25 -0400
+Received: from mail-ua1-f68.google.com ([209.85.222.68]:35008 "EHLO
+        mail-ua1-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1728330AbfCVWpU (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Mar 2019 18:45:20 -0400
+Received: by mail-ua1-f68.google.com with SMTP id f88so1279188uaf.2
+        for <linux-nfs@vger.kernel.org>; Fri, 22 Mar 2019 15:45:19 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=chromium.org; s=google;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc;
+        bh=XIWF5r+FeAyzFbB/tkDZ1Cwr2CHIZ4gIs+pbAdf62jk=;
+        b=mDVknPG/ZmQ9thZGsga0cOASQO6ss/HgUzvEnM228t8RAHZw3hWN8WerQSRw/M9Afm
+         roKYwxtmePMDQjQOFiG9eDPcbxc5qIXQ7j3PQuRoY0gRF/zV6uqJU5O6ZmaTOayzTu0v
+         AMvnzZz7mA8KuTsxqEOUEc743wS0ObEQ1FXDI=
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=XIWF5r+FeAyzFbB/tkDZ1Cwr2CHIZ4gIs+pbAdf62jk=;
+        b=NzFvEm4FsT0t26wc2DwGt4YzBJTkPLg+ZjXsiix87E8mzbaTzxC+QrXt7QGatA120K
+         clFjYgj7jDT135njF94CF2Bhw+l3VDSlrPlEBcslacrthT9xQUM78QM2dxN1ICoulX3I
+         Qt2P1Nj9cWs1p8hnR1p6iE/luWBXa9CiYhCOgoGGYJTZ0XPT6TC9gXbYZMYPWwlFQif4
+         Ny9NHkuxQkA5/G2y+85mYE4WatKYsbF/X8yJhsekBw4oWLdDHPFFefT5tzhf0dN2Zu8W
+         xIYfFGWjNFksl90HqKqMclyn7ooqLuIwpoLBIlOmfPaR9gMAYysnk0lzhbyiMVgpZooJ
+         yUBQ==
+X-Gm-Message-State: APjAAAWfJuflU5VEBJCkmpIhOceMQHUcLb9HEE0heD5QVNx9lJTsfbAN
+        Jesp8eYdJGNub5OsSdLByvw6tAZiLKE=
+X-Google-Smtp-Source: APXvYqwO7FPrwR1YklyAiCtuonX5/B8VsRCsz8vEET0G9Cyn2FrViZhPTJoGaUSYyrrtktqMyhg/HQ==
+X-Received: by 2002:ab0:14ce:: with SMTP id f14mr5931844uae.50.1553294718469;
+        Fri, 22 Mar 2019 15:45:18 -0700 (PDT)
+Received: from mail-vk1-f180.google.com (mail-vk1-f180.google.com. [209.85.221.180])
+        by smtp.gmail.com with ESMTPSA id t4sm4203964uaq.0.2019.03.22.15.45.16
+        for <linux-nfs@vger.kernel.org>
+        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Fri, 22 Mar 2019 15:45:16 -0700 (PDT)
+Received: by mail-vk1-f180.google.com with SMTP id d15so819020vka.8
+        for <linux-nfs@vger.kernel.org>; Fri, 22 Mar 2019 15:45:16 -0700 (PDT)
+X-Received: by 2002:a1f:a4d:: with SMTP id 74mr3298849vkk.13.1553294715883;
+ Fri, 22 Mar 2019 15:45:15 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
+References: <20190315110555.0807d015@cakuba.netronome.com> <20190315120105.5541ad46@cakuba.netronome.com>
+ <20190315165440.53b9db3c@cakuba.netronome.com> <CAGXu5jKHRPuaALQcPXvpDeuVgZR+EeRqo9Qj4j3kYatb3HUSSA@mail.gmail.com>
+ <CAGXu5jL-e7bDEXfpUuT-HyFarR-8T0djXChR0cuzTwFQPQ0tOw@mail.gmail.com>
+ <f23d0fad-dc72-0e53-cac6-31abfd12a050@I-love.SAKURA.ne.jp>
+ <bee1a774-461a-2535-a640-bbe65291e909@schaufler-ca.com> <2bf23acd-22c4-a260-7648-845887a409d5@i-love.sakura.ne.jp>
+ <CAGXu5jKj-Pq4krHmKd__4MoXBe1FK399cDZnSxdPigZo78tPfA@mail.gmail.com> <e20bf21e-77b0-6403-51b6-3f174d45529e@i-love.sakura.ne.jp>
+In-Reply-To: <e20bf21e-77b0-6403-51b6-3f174d45529e@i-love.sakura.ne.jp>
+From:   Kees Cook <keescook@chromium.org>
+Date:   Fri, 22 Mar 2019 15:45:04 -0700
+X-Gmail-Original-Message-ID: <CAGXu5jKVQ=-mdMWsefuNDagwF3pQEiosb4niRx-gBKCmRK_h-g@mail.gmail.com>
+Message-ID: <CAGXu5jKVQ=-mdMWsefuNDagwF3pQEiosb4niRx-gBKCmRK_h-g@mail.gmail.com>
+Subject: Re: mount.nfs: Protocol error after upgrade to linux/master
+To:     Tetsuo Handa <penguin-kernel@i-love.sakura.ne.jp>
+Cc:     Casey Schaufler <casey@schaufler-ca.com>,
+        Jakub Kicinski <jakub.kicinski@netronome.com>,
+        linux-security-module <linux-security-module@vger.kernel.org>,
+        Trond Myklebust <trond.myklebust@hammerspace.com>,
+        "open list:NFS, SUNRPC, AND..." <linux-nfs@vger.kernel.org>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        LKML <linux-kernel@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
---=-=-=
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
-
-On Fri, Mar 22 2019, J. Bruce Fields wrote:
-
-> I've gotten complaints about the same thing and said "well, in
-> retrospect we shouldn't have designed the interface this way, but we
-> did, so just stop opening those files".
-
-As the fool who actually "designed" this, I can say with some confidence
-that the intention was always the requests would block for at most 30
-seconds.
-Unfortunately the implementation was sloppy and the testing was
-haphazard.=20
-
+On Thu, Mar 21, 2019 at 2:10 PM Tetsuo Handa
+<penguin-kernel@i-love.sakura.ne.jp> wrote:
 >
-> But maybe this is a reasonable compromise.
+> On 2019/03/22 1:38, Kees Cook wrote:
+> > This is mostly good. I'd like to keep the other LSMs listed though
+> > (similar to what I had originally) so that if a legacy-major doesn't
+> > initialize, later ones will be. I want to remove the concept of
+> > "major" LSMs. The only thing that should matter is init order...
 >
-> One advantage of waiting for mountd to come back is that you could
-> upgrade mountd in place.  That shouldn't take 30 seconds, though.  And I
-> haven't heard of anyone actually doing that.
-
-Surely upgrading of mountd in-place happens whenever you install a new
-version.
-That was (iirc) the main reason for not treating a recent close as fatal.
-
+> Excuse me? Are you saying that
 >
-> It's too bad that not opening auth.unix.gid is the only way for mountd
-> to communicate that gids shouldn't be mapped.
-
-I have a general preference for reusing existing functionality rather
-than creating new special-purpose functionality.  I think this has
-served me well more often than not.  Maybe this is one case of "not".
-
-If you want to restart mountd without --managed-gids (where previously
-it had that option), there is a chance that you will hit this problem.
-That is a case where the answer "just stop opening those files" doesn't
-really apply.
-
-Thanks,
-NeilBrown
-
+>   if a legacy-major (which is defined as the "Default security module")
+>   doesn't initialize, later ones (any of selinux,smack,tomoyo,apparmor
+>   except the one which is defined as "Default security module") will be
+>   initialized
 >
-> --b.
->
-> On Fri, Mar 22, 2019 at 01:16:56PM +1100, NeilBrown wrote:
->> If no handler (such as rpc.mountd) has opened
->> a cache 'channel', the sunrpc cache responds to
->> all lookup requests with -ENOENT.  This is particularly
->> important for the auth.unix.gid cache which is
->> optional.
->>=20
->> If the channel was open briefly and an upcall was written to it,
->> this upcall remains pending even when the handler closes the
->> channel.  When an upcall is pending, the code currently
->> doesn't check if there are still listeners, it only performs
->> that check before sending an upcall.
->>=20
->> As the cache treads a recently closes channel (closed less than
->> 30 seconds ago) as "potentially still open", there is a
->> reasonable sized window when a request can become pending
->> in a closed channel, and thereby block lookups indefinitely.
->>=20
->> This can easily be demonstrated by running
->>   cat /proc/net/rpc/auth.unix.gid/channel
->>=20
->> and then trying to mount an NFS filesystem from this host.  It
->> will block indefinitely (unless mountd is run with --manage-gids,
->> or krb5 is used).
->>=20
->> When cache_check() finds that an upcall is pending, it should
->> perform the "cache_listeners_exist()" exist test.  If no
->> listeners do exist, the request should be negated.
->>=20
->> With this change in place, there can still be a 30second wait on
->> mount, until the cache gives up waiting for a handler to come
->> back, but this is much better than an indefinite wait.
->>=20
->> Signed-off-by: NeilBrown <neilb@suse.com>
->> ---
->>  net/sunrpc/cache.c | 4 +++-
->>  1 file changed, 3 insertions(+), 1 deletion(-)
->>=20
->> diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
->> index 12bb23b8e0c5..be9e29385adc 100644
->> --- a/net/sunrpc/cache.c
->> +++ b/net/sunrpc/cache.c
->> @@ -40,6 +40,7 @@
->>=20=20
->>  static bool cache_defer_req(struct cache_req *req, struct cache_head *i=
-tem);
->>  static void cache_revisit_request(struct cache_head *item);
->> +static bool cache_listeners_exist(struct cache_detail *detail);
->>=20=20
->>  static void cache_init(struct cache_head *h, struct cache_detail *detai=
-l)
->>  {
->> @@ -303,7 +304,8 @@ int cache_check(struct cache_detail *detail,
->>  				cache_fresh_unlocked(h, detail);
->>  				break;
->>  			}
->> -		}
->> +		} else if (!cache_listeners_exist(detail))
->> +			rv =3D try_to_negate_entry(detail, h);
->>  	}
->>=20=20
->>  	if (rv =3D=3D -EAGAIN) {
->> --=20
->> 2.14.0.rc0.dirty
->>=20
+> ? That sounds strange to me. Any of selinux,smack,tomoyo,apparmor can be
+> initialized when specified by lsm= kernel command line option (or security=
+> kernel command line option if lsm= kernel command line option is not
+> specified), won't it?
 
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
+It breaks the backward-compat for the "security=" line. If a system is
+booted with CONFIG_LSM="minors...,apparmor" and "security=selinux",
+neither apparmor nor selinux will be initialized. The logic on
+"security=..." depends on the other LSMs being present in the list.
 
------BEGIN PGP SIGNATURE-----
+-Kees
 
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlyVYmkACgkQOeye3VZi
-gblMUhAAj9fcy0KKgeqOpFCHf+ajfEjXfiVJBRMNUhblSedJFyhnMfAwzZEIUr9Q
-S2h8Lup0xQSL8DoRY3TaOfw5llOxaUX8m1q5VTX0kBr4reheRvfWpZJ2BuNcT32Z
-I52W1YCPqnF1rV2IvEwk9+hcoWyoIazY115fcaNNJy9O8eUfb73INOmvWBaC9r6o
-4JKPmtGzjAYAiM3DbszlzmGoWm+p6cqqjaNy2+YEw+6jEPxYCqcg0a3eOwwHiUAD
-vOVTNotY1QsK/rWq5Q+oB5XJrZeMtEjR/fN5EK/iFL5wQUBN1I3RUFLTpQYvjhNv
-HVdtp2b79+KDKrVf2NxYU1JgeXITRSBwoXH9Mwoy5O9tW5MGcjtmHvbD+nI6+mXy
-AmqOlCCSbnM3CLUMZIpWDlHXccXjJND40YraGCgixtoyh1DfcJyVVSr83n7S3ldA
-fPcSPGVTDzsFeOEFr40qOQmgxmffHTeaQB+rdkDobBMMliyzG/KpoGXFZqf003wT
-JLbYs0voqhLQE3kFt2xU+8rc29/GIOOZWgpKYUIeHAwIae5wNyRYIwwHdIFp/1XD
-KswfKjrUq2wTMFcaoVWJ7BQ+EFALHimISJuPXonmbdO9yU5NHOsE2GmqAO/fGguD
-O1FJ8nRShilvUWpQcNYMhuCYyBovFvT8pukZDsUQk5MxDYLoxCQ=
-=+oRN
------END PGP SIGNATURE-----
---=-=-=--
+-- 
+Kees Cook
