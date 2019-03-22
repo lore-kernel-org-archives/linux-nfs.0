@@ -2,126 +2,113 @@ Return-Path: <SRS0=31iP=RZ=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED,
+	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5FC39C43381
-	for <linux-nfs@archiver.kernel.org>; Fri, 22 Mar 2019 02:17:05 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A7CCAC43381
+	for <linux-nfs@archiver.kernel.org>; Fri, 22 Mar 2019 14:07:46 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 34D3A213F2
-	for <linux-nfs@archiver.kernel.org>; Fri, 22 Mar 2019 02:17:05 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 7DD2E21874
+	for <linux-nfs@archiver.kernel.org>; Fri, 22 Mar 2019 14:07:46 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727427AbfCVCRE (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 21 Mar 2019 22:17:04 -0400
-Received: from mx2.suse.de ([195.135.220.15]:40074 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726460AbfCVCRE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 21 Mar 2019 22:17:04 -0400
-X-Virus-Scanned: by amavisd-new at test-mx.suse.de
-Received: from relay2.suse.de (unknown [195.135.220.254])
-        by mx1.suse.de (Postfix) with ESMTP id 32B0AAEE7;
-        Fri, 22 Mar 2019 02:17:03 +0000 (UTC)
-From:   NeilBrown <neilb@suse.com>
-To:     "J. Bruce Fields" <bfields@fieldses.org>
-Date:   Fri, 22 Mar 2019 13:16:56 +1100
-Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: [PATCH] sunrpc/cache: handle missing listeners better.
-Message-ID: <87pnqj64br.fsf@notabene.neil.brown.name>
+        id S1727851AbfCVOHp (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 22 Mar 2019 10:07:45 -0400
+Received: from mout.kundenserver.de ([212.227.17.10]:57969 "EHLO
+        mout.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727487AbfCVOHp (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Mar 2019 10:07:45 -0400
+Received: from wuerfel.lan ([149.172.19.189]) by mrelayeu.kundenserver.de
+ (mreue106 [212.227.15.145]) with ESMTPA (Nemesis) id
+ 1M7KG2-1h42V92tcS-007ksc; Fri, 22 Mar 2019 15:07:27 +0100
+From:   Arnd Bergmann <arnd@arndb.de>
+To:     "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@kernel.org>
+Cc:     clang-built-linux@googlegroups.com,
+        Nick Desaulniers <ndesaulniers@google.com>,
+        Nathan Chancellor <natechancellor@gmail.com>,
+        Arnd Bergmann <arnd@arndb.de>,
+        Olga Kornievskaia <kolga@netapp.com>,
+        Chuck Lever <chuck.lever@oracle.com>,
+        Scott Mayhew <smayhew@redhat.com>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: [PATCH] nfsd: avoid uninitialized variable warning
+Date:   Fri, 22 Mar 2019 15:07:11 +0100
+Message-Id: <20190322140726.251521-1-arnd@arndb.de>
+X-Mailer: git-send-email 2.20.0
 MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
+Content-Transfer-Encoding: 8bit
+X-Provags-ID: V03:K1:ClqJeMIIUkB9B1PjxqSTgR+0icspArSydm3eP4QX8KXk1cbCgud
+ iHZc7n3E2QXam7UFXOqaLr3HXM8LOTd2U4S7LTXrsyUQ54IFFxeDbvW/wtXsswAmsV1chi0
+ rqN2cRIbaW05brr7QR9dDT9gfEABoxBc87eMuY2V9zIPfqKo7QcioQkfny3zfEzAphCtCdx
+ qZEceoJdxr28tF3H6gXdg==
+X-UI-Out-Filterresults: notjunk:1;V03:K0:LGxE0xuTpZs=:kZtuMZP9gxBlOmbKB5g9TH
+ OFD7INBA+zol0o63/lMsauA3ARhRDRKe8iidgyjakTWaeROQqoo4WthKNxy8TkmiD7C1QSItU
+ zpgPnrPMXti9I0NaAIut0axtEdCxeqUWnft6q7Us2QzV5NUqHo6Eln0Ppn7HAwSJOuvrAux7r
+ W9ZdBUts+/grU2oqWMenrL1UBI6rUT6pYeUG6SP4JYWkZr/dhr0ZsBqxZQAA5YNBotRlDBvuh
+ ZZc6hPTj/GS3tHvKjKqyve5mzzfwUrx2okO+jfErbxnUCdsfaqm5+JLpyxDW6bWw4FkgXWnOW
+ otRnhAql9DsHXcQOcG5ohL0Xi1MHhBwA4aSMY9QG4JqMBfBMn4uEUz9wy1ZlF+hvFUYZvTDFS
+ H23fTdcH8V9ve0+QvPK8JDoLp/cJdCYKiAZ3nEWZ5pH/679+Y5FPJTzRnSq7/rAnA1QYno0GW
+ M3VEvyxCN11JyY/A63WX9YK+LLZEH531ra5ivba9T3KuugxBoHXddlME1Ls8TuSk0jM1cKUB/
+ xMcqGQvMaK2ite05Cm2jqB+MdbQpNz4aEOVw29R8as5RyBsBjKg86L3r5IRudm0EpmUy9xRMc
+ 2XDYTcVK+q+KY7SPPDFQ9enKRiVjdi7nrxdLwEBrSNxbM0PxbpX7IDIXILDLa6HF/rKnV4iBC
+ ETN/0wccaoozGT3tF3ala1X9JpGlf0vwVClaOFCRx+KHAoV9Ot85S9azf/edJRUaegDNsn5qm
+ lZtiklxc2ZKY82NW8RQgWG7iW8AMvftx7lb6PQ==
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
---=-=-=
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+clang warns that 'contextlen' may be accessed without an initialization:
 
+fs/nfsd/nfs4xdr.c:2911:9: error: variable 'contextlen' is uninitialized when used here [-Werror,-Wuninitialized]
+                                                                contextlen);
+                                                                ^~~~~~~~~~
+fs/nfsd/nfs4xdr.c:2424:16: note: initialize the variable 'contextlen' to silence this warning
+        int contextlen;
+                      ^
+                       = 0
 
-If no handler (such as rpc.mountd) has opened
-a cache 'channel', the sunrpc cache responds to
-all lookup requests with -ENOENT.  This is particularly
-important for the auth.unix.gid cache which is
-optional.
+Presumably this cannot happen, as FATTR4_WORD2_SECURITY_LABEL is
+set if CONFIG_NFSD_V4_SECURITY_LABEL is enabled.
+Adding another #ifdef like the other two in this function
+avoids the warning.
 
-If the channel was open briefly and an upcall was written to it,
-this upcall remains pending even when the handler closes the
-channel.  When an upcall is pending, the code currently
-doesn't check if there are still listeners, it only performs
-that check before sending an upcall.
+Signed-off-by: Arnd Bergmann <arnd@arndb.de>
+---
+ fs/nfsd/nfs4xdr.c | 4 ++++
+ 1 file changed, 4 insertions(+)
 
-As the cache treads a recently closes channel (closed less than
-30 seconds ago) as "potentially still open", there is a
-reasonable sized window when a request can become pending
-in a closed channel, and thereby block lookups indefinitely.
-
-This can easily be demonstrated by running
-  cat /proc/net/rpc/auth.unix.gid/channel
-
-and then trying to mount an NFS filesystem from this host.  It
-will block indefinitely (unless mountd is run with --manage-gids,
-or krb5 is used).
-
-When cache_check() finds that an upcall is pending, it should
-perform the "cache_listeners_exist()" exist test.  If no
-listeners do exist, the request should be negated.
-
-With this change in place, there can still be a 30second wait on
-mount, until the cache gives up waiting for a handler to come
-back, but this is much better than an indefinite wait.
-
-Signed-off-by: NeilBrown <neilb@suse.com>
-=2D--
- net/sunrpc/cache.c | 4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
-
-diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
-index 12bb23b8e0c5..be9e29385adc 100644
-=2D-- a/net/sunrpc/cache.c
-+++ b/net/sunrpc/cache.c
-@@ -40,6 +40,7 @@
-=20
- static bool cache_defer_req(struct cache_req *req, struct cache_head *item=
-);
- static void cache_revisit_request(struct cache_head *item);
-+static bool cache_listeners_exist(struct cache_detail *detail);
-=20
- static void cache_init(struct cache_head *h, struct cache_detail *detail)
- {
-@@ -303,7 +304,8 @@ int cache_check(struct cache_detail *detail,
- 				cache_fresh_unlocked(h, detail);
- 				break;
- 			}
-=2D		}
-+		} else if (!cache_listeners_exist(detail))
-+			rv =3D try_to_negate_entry(detail, h);
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 3de42a729093..a3a3455826aa 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -2420,8 +2420,10 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp,
+ 	__be32 status;
+ 	int err;
+ 	struct nfs4_acl *acl = NULL;
++#ifdef CONFIG_NFSD_V4_SECURITY_LABEL
+ 	void *context = NULL;
+ 	int contextlen;
++#endif
+ 	bool contextsupport = false;
+ 	struct nfsd4_compoundres *resp = rqstp->rq_resp;
+ 	u32 minorversion = resp->cstate.minorversion;
+@@ -2906,12 +2908,14 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp,
+ 			*p++ = cpu_to_be32(NFS4_CHANGE_TYPE_IS_TIME_METADATA);
  	}
-=20
- 	if (rv =3D=3D -EAGAIN) {
-=2D-=20
-2.14.0.rc0.dirty
+ 
++#ifdef CONFIG_NFSD_V4_SECURITY_LABEL
+ 	if (bmval2 & FATTR4_WORD2_SECURITY_LABEL) {
+ 		status = nfsd4_encode_security_label(xdr, rqstp, context,
+ 								contextlen);
+ 		if (status)
+ 			goto out;
+ 	}
++#endif
+ 
+ 	attrlen = htonl(xdr->buf->len - attrlen_offset - 4);
+ 	write_bytes_to_xdr_buf(xdr->buf, attrlen_offset, &attrlen, 4);
+-- 
+2.20.0
 
-
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlyURZkACgkQOeye3VZi
-gbkVpA/9EWaVc5Avg1LjbCnRYME1VsWYg8oK6fwlIHth2QJRKNU9bcmq+gibC0KT
-0jzqyRmlJvUmBVA30BI1DQs4/XZXuVe5M8OXfIvWerpLEs7vH3TTY9YAwSfqRzuv
-ABDRS42Rt41x+kPR2Afms9al4Q7asKSeh5uClIAbYkzmF49lgKN4kA3t0X0t03/v
-ge2s2j1apGXahsYHMRI64AP/iets1xTLQQu9CP4Ickq8xfwLNUH+mWcmMR8+WX8W
-3BJZpdgyUQJewAm48oAvla7bxYtNm7PCr5L4jrIYT+sNb9Ck1e3T3YofyN0VJVWg
-JJuDs70ROMj8xAOyGfRUteeRNjuq7mWiH+55RX6448rYcxfq1AhQJ4sd4y13ku8j
-9P3mltbMDQdtsfeWbf8sEMuRPli5kWaz0TrjE2Qig8wlFA3ZxgQP8mvAdH8HsIi4
-RSahJMn+KbzoN0rEFtnu7rZdupCDTqeVxciFw0lrcV/gbnp4Aimj5+kEvXuVNUJJ
-3cS1RAnUB98BmGIW1K6w5eNH0mPqbDCLXG7c/TOGxf2mGs7aioBahPV/RqbO0Zj1
-WAOYIDYMsVCeOLOQh5DPGgmopBs7Yyy2XPvcGsyCzsuDyBT0nXP/cQ45uRPoy9s5
-da5xD7AUuDkDZ7nNpHos33DhHwWbbqt6x+bowWws60hm/zBvibM=
-=rBuQ
------END PGP SIGNATURE-----
---=-=-=--
