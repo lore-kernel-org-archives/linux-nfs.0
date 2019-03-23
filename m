@@ -2,152 +2,115 @@ Return-Path: <SRS0=9F0h=R2=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,UNPARSEABLE_RELAY,
-	URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-8.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E63A3C43381
-	for <linux-nfs@archiver.kernel.org>; Sat, 23 Mar 2019 13:46:56 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D5636C43381
+	for <linux-nfs@archiver.kernel.org>; Sat, 23 Mar 2019 16:02:39 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id BFB1E2183E
-	for <linux-nfs@archiver.kernel.org>; Sat, 23 Mar 2019 13:46:56 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 9C4B7206BA
+	for <linux-nfs@archiver.kernel.org>; Sat, 23 Mar 2019 16:02:39 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="kuo/KB4+"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727482AbfCWNq4 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sat, 23 Mar 2019 09:46:56 -0400
-Received: from out20-39.mail.aliyun.com ([115.124.20.39]:32954 "EHLO
-        out20-39.mail.aliyun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726909AbfCWNq4 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 23 Mar 2019 09:46:56 -0400
-X-Alimail-AntiSpam: AC=CONTINUE;BC=0.07455182|-1;CH=green;DM=CONTINUE|CONTINUE|true|0.302902-0.0232141-0.673883;FP=0|0|0|0|0|-1|-1|-1;HT=e01a16378;MF=liupeifeng@horiscale.com;NM=1;PH=DS;RN=2;RT=2;SR=0;TI=SMTPD_---.EBmQpiQ_1553348797;
-Received: from LIU.OPENFS.NET.OPENFS.NET(mailfrom:liupeifeng@horiscale.com fp:SMTPD_---.EBmQpiQ_1553348797)
-          by smtp.aliyun-inc.com(10.194.99.21);
-          Sat, 23 Mar 2019 21:46:50 +0800
-From:   Pei-Feng liu <liupeifeng@horiscale.com>
+        id S1727526AbfCWQCi (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sat, 23 Mar 2019 12:02:38 -0400
+Received: from mail-it1-f196.google.com ([209.85.166.196]:55615 "EHLO
+        mail-it1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727298AbfCWQCi (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 23 Mar 2019 12:02:38 -0400
+Received: by mail-it1-f196.google.com with SMTP id z126so7905503itd.5
+        for <linux-nfs@vger.kernel.org>; Sat, 23 Mar 2019 09:02:38 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=from:to:subject:date:message-id:mime-version
+         :content-transfer-encoding;
+        bh=uJyEfztZDd1sv3Ok/PqOr9k1S8uMgnBCG5cZDPOhzkI=;
+        b=kuo/KB4+OZ6E/q6VvuUGPay9bvPm+cEYfi4f4yYiGyWoZi3hqUageLzOev3zuFEs+3
+         NEzh3p0MqEcXhE2mxXpeA9KU0RHNV0hfzrPpmxUnETh+iQmVO33vtHCjLyYptFNRIL7g
+         bTozNQf04ce4lCO9VOkw0Zn/A53R2mWl6zQfcpo4flA9ZN//7UeBWBc00ULVUw6B4t66
+         Kc8/Kvox094hZD/GhbT57H7b1Py9xEOO3IhbI/WCzwpBHjSnlVbKPHFDjd8cBGL/fClm
+         8VwAQ4xq5u1ownziVJ4NlhmVGQCSXwmruzyZdgSNXB+Zjl7/I++1+C0reE+YoraLXueh
+         2+aw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:from:to:subject:date:message-id:mime-version
+         :content-transfer-encoding;
+        bh=uJyEfztZDd1sv3Ok/PqOr9k1S8uMgnBCG5cZDPOhzkI=;
+        b=LUxpNcWJVAh71VUlGlhVz2nHwx8I3VXjE6jswM7n/6ANtOIj3JmF8rRHO5l8FOM2U6
+         /t6d0/savXSRaZugTRHCN3t8VXlYNwTwA89p9cKhFqw0XDKajFO2AGlg18UAZnwaQ8Wm
+         zadNzuHKF4M9IoDwX+LlVy/N2dq5WcnVs6FUbEpo2FF22QOuWgCcoT8tuefn4GgYh2B6
+         CPJomSusjD5B94zi67S5mwoD8EacgG0c63rWitnovELZwgtMo64Wgt4B3HbbGYP0p5LK
+         UpyQ5fPGJuQaBFFCxL4MHBqMEZdX+7GYY4tSQUNMIGChnNCOVfXN+HaDgJgtkWmuCtdk
+         wShg==
+X-Gm-Message-State: APjAAAWtD+SsdxWvGDXJVJ9tGUfHG6pC6eI1BsrndZHhIURK5/OC77Bd
+        QCdKZzWl3x1i8vQaO523UPdXeb8=
+X-Google-Smtp-Source: APXvYqxXlqyhhPaSIiJXVmxXH/tY2GcGsOk9ZxtWY2SUF4Tn1JcvCsjeld+NNipdNWi8kde7N8/NlQ==
+X-Received: by 2002:a24:4355:: with SMTP id s82mr5062945itb.176.1553356957047;
+        Sat, 23 Mar 2019 09:02:37 -0700 (PDT)
+Received: from localhost.localdomain (c-68-40-189-247.hsd1.mi.comcast.net. [68.40.189.247])
+        by smtp.gmail.com with ESMTPSA id u13sm4272473iog.80.2019.03.23.09.02.36
+        for <linux-nfs@vger.kernel.org>
+        (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
+        Sat, 23 Mar 2019 09:02:36 -0700 (PDT)
+From:   Trond Myklebust <trondmy@gmail.com>
+X-Google-Original-From: Trond Myklebust <trond.myklebust@hammerspace.com>
 To:     linux-nfs@vger.kernel.org
-Cc:     Pei-Feng liu <liupeifeng@horiscale.com>
-Subject: [PATCH] fs/exportfs: Decoding FH with a larger memory to cache the filename.
-Date:   Sat, 23 Mar 2019 21:46:34 +0800
-Message-Id: <1553348794-4505-2-git-send-email-liupeifeng@horiscale.com>
-X-Mailer: git-send-email 1.8.3.1
-In-Reply-To: <1553348794-4505-1-git-send-email-liupeifeng@horiscale.com>
-References: <1553348794-4505-1-git-send-email-liupeifeng@horiscale.com>
+Subject: [PATCH v2] SUNRPC: Don't let RPC_SOFTCONN tasks time out if the transport is connected
+Date:   Sat, 23 Mar 2019 11:59:10 -0400
+Message-Id: <20190323155910.23092-1-trond.myklebust@hammerspace.com>
+X-Mailer: git-send-email 2.20.1
+MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-It uses 'NAME_MAX+1' memory to cache a filename string when decoding a FH
-to a connected 'dentry' object. As a matter of fact, the correct method
-is using 'f_namelen' that returned by 'vfs_statfs()'.
+If the transport is still connected, then we do want to allow
+RPC_SOFTCONN tasks to retry. They should time out if and only if
+the connection is broken.
 
-More details: I have a proprietary filesystem driver, which looks like
-XFS or EXT4 and is going to be exported its namespace with a special
-NFS/CIFS server. The filename's maxlen (in bytes) of it is larger than
-'NAME_MAX'.  And 'dentry' object doesn't contraint that the name string
-within 'NAME_MAX'. So, this piece of code in 'exportfs_decode_fh' in
-'fs/exportfs/expfs.c' doesn't work when the exported namespace is from
-my proprietary filesystem.
-
-This patch is filed to get this resolved. The max length of a filesystem
-is probed firstly with 'vfs_statfs()', then malloc a large enough memory
-to cache the filename string when decoding a 'FH'.
-
-Signed-off-by: Pei-Feng liu <liupeifeng@horiscale.com>
+Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/exportfs/expfs.c | 30 +++++++++++++++++++++++++++++-
- 1 file changed, 29 insertions(+), 1 deletion(-)
+ net/sunrpc/clnt.c | 12 +++++++++++-
+ 1 file changed, 11 insertions(+), 1 deletion(-)
 
-diff --git a/fs/exportfs/expfs.c b/fs/exportfs/expfs.c
-index c69927be..8738868 100644
---- a/fs/exportfs/expfs.c
-+++ b/fs/exportfs/expfs.c
-@@ -16,6 +16,8 @@
- #include <linux/namei.h>
- #include <linux/sched.h>
- #include <linux/cred.h>
-+#include <linux/slab.h>
-+#include <linux/statfs.h>
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 228970e6e52b..187d10443a15 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -2311,6 +2311,15 @@ call_status(struct rpc_task *task)
+ 	rpc_exit(task, status);
+ }
  
- #define dprintk(fmt, args...) do{}while(0)
- 
-@@ -422,7 +424,7 @@ struct dentry *exportfs_decode_fh(struct vfsmount *mnt, struct fid *fid,
++static bool
++rpc_check_connected(const struct rpc_rqst *req)
++{
++	/* No allocated request or transport? return true */
++	if (!req || !req->rq_xprt)
++		return true;
++	return xprt_connected(req->rq_xprt);
++}
++
+ static void
+ rpc_check_timeout(struct rpc_task *task)
  {
- 	const struct export_operations *nop = mnt->mnt_sb->s_export_op;
- 	struct dentry *result, *alias;
--	char nbuf[NAME_MAX+1];
-+	int nbuf_max = NAME_MAX+1;
- 	int err;
+@@ -2322,10 +2331,11 @@ rpc_check_timeout(struct rpc_task *task)
+ 	dprintk("RPC: %5u call_timeout (major)\n", task->tk_pid);
+ 	task->tk_timeouts++;
  
- 	/*
-@@ -445,6 +447,15 @@ struct dentry *exportfs_decode_fh(struct vfsmount *mnt, struct fid *fid,
- 	if (!acceptable)
- 		return result;
- 
-+	if (NULL!=mnt->mnt_sb->s_op && NULL!=mnt->mnt_sb->s_op->statfs) {
-+		struct kstatfs stfs;
+-	if (RPC_IS_SOFTCONN(task)) {
++	if (RPC_IS_SOFTCONN(task) && !rpc_check_connected(task->tk_rqstp)) {
+ 		rpc_exit(task, -ETIMEDOUT);
+ 		return;
+ 	}
 +
-+		if ((0 == mnt->mnt_sb->s_op->statfs(mnt->mnt_root, &stfs)) &&	\
-+				(stfs.f_namelen > 0) && (stfs.f_namelen < INT_MAX)) {
-+			nbuf_max = (uint32_t)stfs.f_namelen + 1;
-+		}
-+	}
-+
- 	if (d_is_dir(result)) {
- 		/*
- 		 * This request is for a directory.
-@@ -455,7 +466,14 @@ struct dentry *exportfs_decode_fh(struct vfsmount *mnt, struct fid *fid,
- 		 * filesystem root.
- 		 */
- 		if (result->d_flags & DCACHE_DISCONNECTED) {
-+			char *nbuf = (char *)kzalloc(nbuf_max, GFP_KERNEL);
-+			if (NULL == nbuf) {
-+				err = -ENOMEM;
-+				goto err_result;
-+			}
-+
- 			err = reconnect_path(mnt, result, nbuf);
-+			kfree(nbuf);
- 			if (err)
- 				goto err_result;
- 		}
-@@ -471,6 +489,7 @@ struct dentry *exportfs_decode_fh(struct vfsmount *mnt, struct fid *fid,
- 		 * It's not a directory.  Life is a little more complicated.
- 		 */
- 		struct dentry *target_dir, *nresult;
-+		char *nbuf = NULL;
- 
- 		/*
- 		 * See if either the dentry we just got from the filesystem
-@@ -501,6 +520,12 @@ struct dentry *exportfs_decode_fh(struct vfsmount *mnt, struct fid *fid,
- 		if (IS_ERR(target_dir))
- 			goto err_result;
- 
-+		nbuf = (char *)kzalloc(nbuf_max, GFP_KERNEL);
-+		if (NULL == nbuf) {
-+			err = -ENOMEM;
-+			goto err_result;
-+		}
-+
- 		/*
- 		 * And as usual we need to make sure the parent directory is
- 		 * connected to the filesystem root.  The VFS really doesn't
-@@ -509,6 +534,7 @@ struct dentry *exportfs_decode_fh(struct vfsmount *mnt, struct fid *fid,
- 		err = reconnect_path(mnt, target_dir, nbuf);
- 		if (err) {
- 			dput(target_dir);
-+			kfree(nbuf);
- 			goto err_result;
- 		}
- 
-@@ -532,6 +558,8 @@ struct dentry *exportfs_decode_fh(struct vfsmount *mnt, struct fid *fid,
- 			}
- 		}
- 
-+		kfree(nbuf);
-+
- 		/*
- 		 * At this point we are done with the parent, but it's pinned
- 		 * by the child dentry anyway.
+ 	if (RPC_IS_SOFT(task)) {
+ 		if (clnt->cl_chatty) {
+ 			printk(KERN_NOTICE "%s: server %s not responding, timed out\n",
 -- 
-1.8.3.1
+2.20.1
 
