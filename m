@@ -7,60 +7,60 @@ X-Spam-Status: No, score=-8.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
 	SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D5636C43381
-	for <linux-nfs@archiver.kernel.org>; Sat, 23 Mar 2019 16:02:39 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B9B81C43381
+	for <linux-nfs@archiver.kernel.org>; Sat, 23 Mar 2019 16:06:50 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 9C4B7206BA
-	for <linux-nfs@archiver.kernel.org>; Sat, 23 Mar 2019 16:02:39 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 6B76C20879
+	for <linux-nfs@archiver.kernel.org>; Sat, 23 Mar 2019 16:06:50 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="kuo/KB4+"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="kjSkKyrO"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727526AbfCWQCi (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sat, 23 Mar 2019 12:02:38 -0400
-Received: from mail-it1-f196.google.com ([209.85.166.196]:55615 "EHLO
+        id S1727457AbfCWQGt (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sat, 23 Mar 2019 12:06:49 -0400
+Received: from mail-it1-f196.google.com ([209.85.166.196]:36455 "EHLO
         mail-it1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727298AbfCWQCi (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 23 Mar 2019 12:02:38 -0400
-Received: by mail-it1-f196.google.com with SMTP id z126so7905503itd.5
-        for <linux-nfs@vger.kernel.org>; Sat, 23 Mar 2019 09:02:38 -0700 (PDT)
+        with ESMTP id S1727372AbfCWQGt (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 23 Mar 2019 12:06:49 -0400
+Received: by mail-it1-f196.google.com with SMTP id h9so7940752itl.1
+        for <linux-nfs@vger.kernel.org>; Sat, 23 Mar 2019 09:06:49 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:subject:date:message-id:mime-version
          :content-transfer-encoding;
-        bh=uJyEfztZDd1sv3Ok/PqOr9k1S8uMgnBCG5cZDPOhzkI=;
-        b=kuo/KB4+OZ6E/q6VvuUGPay9bvPm+cEYfi4f4yYiGyWoZi3hqUageLzOev3zuFEs+3
-         NEzh3p0MqEcXhE2mxXpeA9KU0RHNV0hfzrPpmxUnETh+iQmVO33vtHCjLyYptFNRIL7g
-         bTozNQf04ce4lCO9VOkw0Zn/A53R2mWl6zQfcpo4flA9ZN//7UeBWBc00ULVUw6B4t66
-         Kc8/Kvox094hZD/GhbT57H7b1Py9xEOO3IhbI/WCzwpBHjSnlVbKPHFDjd8cBGL/fClm
-         8VwAQ4xq5u1ownziVJ4NlhmVGQCSXwmruzyZdgSNXB+Zjl7/I++1+C0reE+YoraLXueh
-         2+aw==
+        bh=qQqwycziG6B+bSmp/KTPC+TXgExeaBqaS9wUvVR2lio=;
+        b=kjSkKyrOyVVdHo3rDxxmhFagykVjTGLkiQxbr+i6KGRQyhMx2kutvL2VRNlGsrfoJB
+         E0H8PF3VhRIs8B5IxSKNRlFuX3y/t8RUXRx951oICjV39BmZp0zXOr641PmVMFK3PHjw
+         OP1ienYVa7M2ysCRjCkbw40e1RmwYGLSr+jcZa7zAQdyLgcXCQ/9TaOIl2Da4mu0Xugu
+         PzK4244xNwKWyMKgAkZU9TlNfwUGAqieywlnOZ57s7t2r2lTQXkX8VioONX3xfVfSpe9
+         5x7mn+PwTlib88Lvz0lQTjeFR9BM0Wrd0xSsd8Gdh9hS3gdJib+bsNPByhomtJYCTs5S
+         bLow==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:subject:date:message-id:mime-version
          :content-transfer-encoding;
-        bh=uJyEfztZDd1sv3Ok/PqOr9k1S8uMgnBCG5cZDPOhzkI=;
-        b=LUxpNcWJVAh71VUlGlhVz2nHwx8I3VXjE6jswM7n/6ANtOIj3JmF8rRHO5l8FOM2U6
-         /t6d0/savXSRaZugTRHCN3t8VXlYNwTwA89p9cKhFqw0XDKajFO2AGlg18UAZnwaQ8Wm
-         zadNzuHKF4M9IoDwX+LlVy/N2dq5WcnVs6FUbEpo2FF22QOuWgCcoT8tuefn4GgYh2B6
-         CPJomSusjD5B94zi67S5mwoD8EacgG0c63rWitnovELZwgtMo64Wgt4B3HbbGYP0p5LK
-         UpyQ5fPGJuQaBFFCxL4MHBqMEZdX+7GYY4tSQUNMIGChnNCOVfXN+HaDgJgtkWmuCtdk
-         wShg==
-X-Gm-Message-State: APjAAAWtD+SsdxWvGDXJVJ9tGUfHG6pC6eI1BsrndZHhIURK5/OC77Bd
-        QCdKZzWl3x1i8vQaO523UPdXeb8=
-X-Google-Smtp-Source: APXvYqxXlqyhhPaSIiJXVmxXH/tY2GcGsOk9ZxtWY2SUF4Tn1JcvCsjeld+NNipdNWi8kde7N8/NlQ==
-X-Received: by 2002:a24:4355:: with SMTP id s82mr5062945itb.176.1553356957047;
-        Sat, 23 Mar 2019 09:02:37 -0700 (PDT)
+        bh=qQqwycziG6B+bSmp/KTPC+TXgExeaBqaS9wUvVR2lio=;
+        b=sqX8SK4XU+vsCUepPKb/utu44Wb27jFNz8C92GsO3tCyvlXOBqfQIVmVhOkrx8fSIb
+         0yX++XsBU6bvfg09Cux/0w7NQypoxqFNZcvL3nGOK6tQ/H2VEz3YDcThCgHKL3pq+yzx
+         UwxnU93blCv++ahFvy/BI6Ltji3Bsueej9PjNIdFIMvbCNAmwztccw8oL5dO3cLCj7Uj
+         xfIw5RV78nkRElJ9sxJz5hBk/95Bg7jHLzI6TIKJuGiO+opPiNEqyXA9Z1xGTsm8/n7E
+         yBYTs/cUgvHWOP+Wyn/5Sqpvi3hDQEG+/klHRsoau/FFBwmb1PawSFhNH9UrhK2d7+Ca
+         Es4Q==
+X-Gm-Message-State: APjAAAWg2nMt4BtlXv/lOKm+XgmQzDOYsN4+VekalgoLmORebrj+1O44
+        lKXdvW2UA+IKVXUG9+LyUVnb1Ic=
+X-Google-Smtp-Source: APXvYqzeKAksU6l6EIFJ+ZwmLvnmvg2hSCPH/Kos8m+Z2otJh4+es5Ig2VJikqJOF2/IDchditHSKw==
+X-Received: by 2002:a24:eb0e:: with SMTP id h14mr2471085itj.100.1553357208285;
+        Sat, 23 Mar 2019 09:06:48 -0700 (PDT)
 Received: from localhost.localdomain (c-68-40-189-247.hsd1.mi.comcast.net. [68.40.189.247])
-        by smtp.gmail.com with ESMTPSA id u13sm4272473iog.80.2019.03.23.09.02.36
+        by smtp.gmail.com with ESMTPSA id z22sm4540230ioc.68.2019.03.23.09.06.47
         for <linux-nfs@vger.kernel.org>
         (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
-        Sat, 23 Mar 2019 09:02:36 -0700 (PDT)
+        Sat, 23 Mar 2019 09:06:47 -0700 (PDT)
 From:   Trond Myklebust <trondmy@gmail.com>
 X-Google-Original-From: Trond Myklebust <trond.myklebust@hammerspace.com>
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH v2] SUNRPC: Don't let RPC_SOFTCONN tasks time out if the transport is connected
-Date:   Sat, 23 Mar 2019 11:59:10 -0400
-Message-Id: <20190323155910.23092-1-trond.myklebust@hammerspace.com>
+Subject: [PATCH] pNFS/flexfiles: Fix layoutstats handling during read failovers
+Date:   Sat, 23 Mar 2019 12:03:21 -0400
+Message-Id: <20190323160321.23340-1-trond.myklebust@hammerspace.com>
 X-Mailer: git-send-email 2.20.1
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
@@ -69,48 +69,46 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-If the transport is still connected, then we do want to allow
-RPC_SOFTCONN tasks to retry. They should time out if and only if
-the connection is broken.
+During a read failover, we may end up changing the value of
+the pgio_mirror_idx, so make sure that we record the layout
+stats before that update.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- net/sunrpc/clnt.c | 12 +++++++++++-
- 1 file changed, 11 insertions(+), 1 deletion(-)
+ fs/nfs/flexfilelayout/flexfilelayout.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
 
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index 228970e6e52b..187d10443a15 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -2311,6 +2311,15 @@ call_status(struct rpc_task *task)
- 	rpc_exit(task, status);
- }
- 
-+static bool
-+rpc_check_connected(const struct rpc_rqst *req)
-+{
-+	/* No allocated request or transport? return true */
-+	if (!req || !req->rq_xprt)
-+		return true;
-+	return xprt_connected(req->rq_xprt);
-+}
-+
- static void
- rpc_check_timeout(struct rpc_task *task)
+diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
+index f9264e1922a2..6673d4ff5a2a 100644
+--- a/fs/nfs/flexfilelayout/flexfilelayout.c
++++ b/fs/nfs/flexfilelayout/flexfilelayout.c
+@@ -1289,6 +1289,7 @@ static void ff_layout_io_track_ds_error(struct pnfs_layout_segment *lseg,
+ static int ff_layout_read_done_cb(struct rpc_task *task,
+ 				struct nfs_pgio_header *hdr)
  {
-@@ -2322,10 +2331,11 @@ rpc_check_timeout(struct rpc_task *task)
- 	dprintk("RPC: %5u call_timeout (major)\n", task->tk_pid);
- 	task->tk_timeouts++;
++	int new_idx = hdr->pgio_mirror_idx;
+ 	int err;
  
--	if (RPC_IS_SOFTCONN(task)) {
-+	if (RPC_IS_SOFTCONN(task) && !rpc_check_connected(task->tk_rqstp)) {
- 		rpc_exit(task, -ETIMEDOUT);
- 		return;
- 	}
-+
- 	if (RPC_IS_SOFT(task)) {
- 		if (clnt->cl_chatty) {
- 			printk(KERN_NOTICE "%s: server %s not responding, timed out\n",
+ 	trace_nfs4_pnfs_read(hdr, task->tk_status);
+@@ -1307,7 +1308,7 @@ static int ff_layout_read_done_cb(struct rpc_task *task,
+ 	case -NFS4ERR_RESET_TO_PNFS:
+ 		if (ff_layout_choose_best_ds_for_read(hdr->lseg,
+ 					hdr->pgio_mirror_idx + 1,
+-					&hdr->pgio_mirror_idx))
++					&new_idx))
+ 			goto out_layouterror;
+ 		set_bit(NFS_IOHDR_RESEND_PNFS, &hdr->flags);
+ 		return task->tk_status;
+@@ -1320,7 +1321,9 @@ static int ff_layout_read_done_cb(struct rpc_task *task,
+ 
+ 	return 0;
+ out_layouterror:
++	ff_layout_read_record_layoutstats_done(task, hdr);
+ 	ff_layout_send_layouterror(hdr->lseg);
++	hdr->pgio_mirror_idx = new_idx;
+ out_eagain:
+ 	rpc_restart_call_prepare(task);
+ 	return -EAGAIN;
 -- 
 2.20.1
 
