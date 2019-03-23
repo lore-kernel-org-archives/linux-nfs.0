@@ -1,193 +1,91 @@
-Return-Path: <SRS0=31iP=RZ=vger.kernel.org=linux-nfs-owner@kernel.org>
+Return-Path: <SRS0=9F0h=R2=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
 X-Spam-Status: No, score=-1.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_PASS,URIBL_BLOCKED autolearn=unavailable
-	autolearn_force=no version=3.4.0
+	MAILING_LIST_MULTI,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id BFA70C10F03
-	for <linux-nfs@archiver.kernel.org>; Fri, 22 Mar 2019 22:55:26 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 473DCC43381
+	for <linux-nfs@archiver.kernel.org>; Sat, 23 Mar 2019 02:44:19 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 978F5218E2
-	for <linux-nfs@archiver.kernel.org>; Fri, 22 Mar 2019 22:55:26 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 18516218A2
+	for <linux-nfs@archiver.kernel.org>; Sat, 23 Mar 2019 02:44:19 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727918AbfCVWzZ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 22 Mar 2019 18:55:25 -0400
-Received: from mx0b-001b2d01.pphosted.com ([148.163.158.5]:40360 "EHLO
-        mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-FAIL)
-        by vger.kernel.org with ESMTP id S1728196AbfCVWzX (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Mar 2019 18:55:23 -0400
-Received: from pps.filterd (m0098416.ppops.net [127.0.0.1])
-        by mx0b-001b2d01.pphosted.com (8.16.0.27/8.16.0.27) with SMTP id x2MMrxTr166375
-        for <linux-nfs@vger.kernel.org>; Fri, 22 Mar 2019 18:55:22 -0400
-Received: from e06smtp04.uk.ibm.com (e06smtp04.uk.ibm.com [195.75.94.100])
-        by mx0b-001b2d01.pphosted.com with ESMTP id 2rd5x06hqn-1
-        (version=TLSv1.2 cipher=AES256-GCM-SHA384 bits=256 verify=NOT)
-        for <linux-nfs@vger.kernel.org>; Fri, 22 Mar 2019 18:55:21 -0400
-Received: from localhost
-        by e06smtp04.uk.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-        for <linux-nfs@vger.kernel.org> from <zohar@linux.ibm.com>;
-        Fri, 22 Mar 2019 22:55:10 -0000
-Received: from b06cxnps3075.portsmouth.uk.ibm.com (9.149.109.195)
-        by e06smtp04.uk.ibm.com (192.168.101.134) with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted;
-        (version=TLSv1/SSLv3 cipher=AES256-GCM-SHA384 bits=256/256)
-        Fri, 22 Mar 2019 22:55:08 -0000
-Received: from b06wcsmtp001.portsmouth.uk.ibm.com (b06wcsmtp001.portsmouth.uk.ibm.com [9.149.105.160])
-        by b06cxnps3075.portsmouth.uk.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id x2MMtGKZ53870750
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Fri, 22 Mar 2019 22:55:17 GMT
-Received: from b06wcsmtp001.portsmouth.uk.ibm.com (unknown [127.0.0.1])
-        by IMSVA (Postfix) with ESMTP id DEC4DA4054;
-        Fri, 22 Mar 2019 22:55:16 +0000 (GMT)
-Received: from b06wcsmtp001.portsmouth.uk.ibm.com (unknown [127.0.0.1])
-        by IMSVA (Postfix) with ESMTP id 092F3A405B;
-        Fri, 22 Mar 2019 22:55:16 +0000 (GMT)
-Received: from localhost.localdomain (unknown [9.80.94.31])
-        by b06wcsmtp001.portsmouth.uk.ibm.com (Postfix) with ESMTP;
-        Fri, 22 Mar 2019 22:55:15 +0000 (GMT)
-Subject: Re: [PATCH v2 3/5] NFSD: Remove ima_file_check call
-From:   Mimi Zohar <zohar@linux.ibm.com>
-To:     Chuck Lever <chuck.lever@oracle.com>
-Cc:     Bruce Fields <bfields@fieldses.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-integrity@vger.kernel.org,
-        "Serge E. Hallyn" <serge@hallyn.com>
-Date:   Fri, 22 Mar 2019 18:55:05 -0400
-In-Reply-To: <D2C155AD-7888-43CB-A25A-461FF474BDB7@oracle.com>
-References: <20190307151838.11306.94183.stgit@manet.1015granger.net>
-         <20190307152854.11306.84006.stgit@manet.1015granger.net>
-         <20190308211016.GB27011@fieldses.org>
-         <ECE4FD20-840C-4047-9454-27BDF0A905EA@oracle.com>
-         <20190308212310.GB28002@fieldses.org>
-         <872F3DFD-E1A7-443E-B666-25C5931F0748@oracle.com>
-         <1553027371.4899.116.camel@linux.ibm.com>
-         <0E02D70A-A5E9-4B27-9922-521D5A0755A3@oracle.com>
-         <1553168687.4899.396.camel@linux.ibm.com>
-         <D2C155AD-7888-43CB-A25A-461FF474BDB7@oracle.com>
-Content-Type: text/plain; charset="UTF-8"
-X-Mailer: Evolution 3.20.5 (3.20.5-1.fc24) 
-Mime-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-TM-AS-GCONF: 00
-x-cbid: 19032222-0016-0000-0000-000002661AD0
-X-IBM-AV-DETECTION: SAVI=unused REMOTE=unused XFE=unused
-x-cbparentid: 19032222-0017-0000-0000-000032C14259
-Message-Id: <1553295305.5291.40.camel@linux.ibm.com>
-X-Proofpoint-Virus-Version: vendor=fsecure engine=2.50.10434:,, definitions=2019-03-22_13:,,
- signatures=0
-X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 priorityscore=1501
- malwarescore=0 suspectscore=0 phishscore=0 bulkscore=0 spamscore=0
- clxscore=1015 lowpriorityscore=0 mlxscore=0 impostorscore=0
- mlxlogscore=999 adultscore=0 classifier=spam adjust=0 reason=mlx
- scancount=1 engine=8.0.1-1810050000 definitions=main-1903220163
+        id S1727982AbfCWCoS (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 22 Mar 2019 22:44:18 -0400
+Received: from www262.sakura.ne.jp ([202.181.97.72]:40151 "EHLO
+        www262.sakura.ne.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727900AbfCWCoS (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Mar 2019 22:44:18 -0400
+Received: from fsav405.sakura.ne.jp (fsav405.sakura.ne.jp [133.242.250.104])
+        by www262.sakura.ne.jp (8.15.2/8.15.2) with ESMTP id x2N2iFYO088513;
+        Sat, 23 Mar 2019 11:44:15 +0900 (JST)
+        (envelope-from penguin-kernel@i-love.sakura.ne.jp)
+Received: from www262.sakura.ne.jp (202.181.97.72)
+ by fsav405.sakura.ne.jp (F-Secure/fsigk_smtp/530/fsav405.sakura.ne.jp);
+ Sat, 23 Mar 2019 11:44:15 +0900 (JST)
+X-Virus-Status: clean(F-Secure/fsigk_smtp/530/fsav405.sakura.ne.jp)
+Received: from [192.168.1.8] (softbank126094122116.bbtec.net [126.94.122.116])
+        (authenticated bits=0)
+        by www262.sakura.ne.jp (8.15.2/8.15.2) with ESMTPSA id x2N2iBSh088461
+        (version=TLSv1.2 cipher=AES256-SHA bits=256 verify=NO);
+        Sat, 23 Mar 2019 11:44:15 +0900 (JST)
+        (envelope-from penguin-kernel@i-love.sakura.ne.jp)
+Subject: Re: mount.nfs: Protocol error after upgrade to linux/master
+To:     Kees Cook <keescook@chromium.org>
+Cc:     Casey Schaufler <casey@schaufler-ca.com>,
+        Jakub Kicinski <jakub.kicinski@netronome.com>,
+        linux-security-module <linux-security-module@vger.kernel.org>,
+        Trond Myklebust <trond.myklebust@hammerspace.com>,
+        "open list:NFS, SUNRPC, AND..." <linux-nfs@vger.kernel.org>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        LKML <linux-kernel@vger.kernel.org>
+References: <20190315110555.0807d015@cakuba.netronome.com>
+ <20190315120105.5541ad46@cakuba.netronome.com>
+ <20190315165440.53b9db3c@cakuba.netronome.com>
+ <CAGXu5jKHRPuaALQcPXvpDeuVgZR+EeRqo9Qj4j3kYatb3HUSSA@mail.gmail.com>
+ <CAGXu5jL-e7bDEXfpUuT-HyFarR-8T0djXChR0cuzTwFQPQ0tOw@mail.gmail.com>
+ <f23d0fad-dc72-0e53-cac6-31abfd12a050@I-love.SAKURA.ne.jp>
+ <bee1a774-461a-2535-a640-bbe65291e909@schaufler-ca.com>
+ <2bf23acd-22c4-a260-7648-845887a409d5@i-love.sakura.ne.jp>
+ <CAGXu5jKj-Pq4krHmKd__4MoXBe1FK399cDZnSxdPigZo78tPfA@mail.gmail.com>
+ <e20bf21e-77b0-6403-51b6-3f174d45529e@i-love.sakura.ne.jp>
+ <CAGXu5jKVQ=-mdMWsefuNDagwF3pQEiosb4niRx-gBKCmRK_h-g@mail.gmail.com>
+From:   Tetsuo Handa <penguin-kernel@i-love.sakura.ne.jp>
+Message-ID: <47335573-08f1-0efc-e51a-e2b6a6b69a01@i-love.sakura.ne.jp>
+Date:   Sat, 23 Mar 2019 11:44:12 +0900
+User-Agent: Mozilla/5.0 (Windows NT 6.3; WOW64; rv:60.0) Gecko/20100101
+ Thunderbird/60.5.3
+MIME-Version: 1.0
+In-Reply-To: <CAGXu5jKVQ=-mdMWsefuNDagwF3pQEiosb4niRx-gBKCmRK_h-g@mail.gmail.com>
+Content-Type: text/plain; charset=utf-8
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Thu, 2019-03-21 at 09:04 -0500, Chuck Lever wrote:
-> 
-> > On Mar 21, 2019, at 6:44 AM, Mimi Zohar <zohar@linux.ibm.com> wrote:
-> > On Wed, 2019-03-20 at 08:40 -0500, Chuck Lever wrote:
-> >>> On Mar 19, 2019, at 3:29 PM, Mimi Zohar <zohar@linux.ibm.com> wrote:
-> >>> On Fri, 2019-03-08 at 16:29 -0500, Chuck Lever wrote:
-> >>> Thanks Serge for bringing this thread to my attention.  Sorry for the
-> >>>>> On Mar 8, 2019, at 4:23 PM, Bruce Fields <bfields@fieldses.org> wrote:
-> >>>>> On Fri, Mar 08, 2019 at 04:11:06PM -0500, Chuck Lever wrote:
-> >>>>>>> On Mar 8, 2019, at 4:10 PM, bfields@fieldses.org wrote:
-> >>>>>>> On Thu, Mar 07, 2019 at 10:28:54AM -0500, Chuck Lever wrote:
-> >>>>>>>> The NFS server needs to allow NFS clients to perform their own
-> >>>>>>>> attestation and measurement.
-> >>> 
-> >>> Measurement and attestation is only one aspect.  The other aspect is
-> >>> verifying the integrity of files.  Shouldn't the NFS server verify the
-> >>> integrity of a file before allowing it to be served (eg. malware)?
-> >> 
-> >> Hi Mimi, thanks for the review.
-> >> 
-> >> Architecturally, the server is not using the file's data, it is
-> >> merely part of the filesystem that stores it. But that said, there
-> >> are several concrete reasons why I feel an NFS server should not be
-> >> involved in measurement/attestation, but only with storing file
-> >> content and IMA metadata.
-> > 
-> > "Remote attestation" is the process of verifying the measurement list
-> > against the TPM PCRs, based on a TPM quote.  I think you meant
-> > "measurement/appraisal".
-> > 
-> >> 
-> >> 1. The broadest attack surface for a remote filesystem is modification
-> >> of data in flight. Attestation of the file on the server is not going
-> >> to defend against that attack, only attestation on the client will do
-> >> that. Is there a good reason to pay the cost of double attestation?
-> > 
-> > Doesn't the server have a responsibility to provide files that have
-> > not been unintentionally or maliciously altered?
-> 
-> It's a design goal of any filesystem to present unaltered file data
-> to applications. But the responsibility is end-to-end. Adding extra
-> checks in the middle introduce a cost. 
+On 2019/03/23 7:45, Kees Cook wrote:
+> It breaks the backward-compat for the "security=" line. If a system is
+> booted with CONFIG_LSM="minors...,apparmor" and "security=selinux",
+> neither apparmor nor selinux will be initialized. The logic on
+> "security=..." depends on the other LSMs being present in the list.
 
-Files are measured/appraised/audited based on the IMA policy.  Have
-you measured the performance cost of measuring and appraising the
-files being served?  Unless a policy has been supplied, the
-performance impact, if any, would be limited to walking the IMA policy
-rules.
+Really? The logic on "security=..." does not depend on LSM_FLAG_LEGACY_MAJOR
+LSMs being present in the CONFIG_LSM= list, for ordered_lsm_parse() does
 
-> Measuring on the client is
-> sufficient, and it is equivalent to what local filesystems do (and,
-> it allows each client to apply its own security policy).
+  (Step 1) Enable LSM_ORDER_FIRST module (i.e. capability).
 
-I'm not arguing with you about an end-to-end file integrity solution.
- That is the goal, but one that assumes this proposed work, based on
-fs-verity signatures.
+  (Step 2) Disable LSM_FLAG_LEGACY_MAJOR modules which was not specified
+           by "security=" parameter when "security=" parameter was specified.
 
-> I'm going to claim here without proof that there is little value in
-> using IMA on an NFS server that serves NFS clients that are not
-> IMA-aware. :-)
+  (Step 3) Enable modules specified by "lsm=" parameter (or CONFIG_LSM= settings
+           if "lsm=" parameter was not specified).
 
-For systems that don't or haven't implemented the proposed end-to-end
-file integrity solution, verifying the file integrity on the server is
-all the more important.
+  (Step 4) Enable up to one LSM_FLAG_LEGACY_MAJOR module which was specified
+           by "security=" parameter when "security=" parameter was specified.
 
-> 
-> >> 2. It is possible (perhaps even likely) that the NFS server and a
-> >> client of that server will have different IMA policies and even
-> >> different file signing authorities.
-> > 
-> > That doesn't negate the due diligence on the server's part of
-> > preventing the spread of malware.
-> 
-> Commercial NFS servers (like NetApp filers) perform malware and
-> integrity checking via a scrubbing agent rather than checking in a
-> hot path. Filesystems are not only responsible for leaving data
-> unchanged, they also have performance requirements.
+  (Step 5) Disable all unused modules.
 
-Any userspace application leaves a window of opportunity between the
-time the file has been created/modified and the time that the
-application verifies it.  This is one of the main reason for IMA being
- in the kernel.
-
-> 
-> >> A third, perhaps related, reason is that NFS can run on non-Linux NFS
-> >> servers which would not have any attestation at all. An NFS client
-> >> should not have to rely on the server for attestation, but should
-> >> trust only its own measurement of each file, which would be done as
-> >> late as possible before use.
-> > 
-> > The ima_file_check() hook can also audit the file, providing
-> > additional forensic information (eg. the file hash).
-> 
-> IIUC, you are talking about troubleshooting, which should be
-> rare. That can be done with tools on the server if needed, but
-> IMO can be avoided in performance-sensitive paths.
-
-No, this isn't about "troubleshooting", but about auditing the files
-served and using the file hashes for forensic investigations.[1][2]
-
-Mimi
-
-[1] Commit e7c568e0fd0c ("ima: audit log hashes")
-[2] https://www.fireeye.com/blog/threat-research/2016/11/extending_linux_exec.html
-
+and (Step 4) will compensate for lack of that module in (Step 3).
