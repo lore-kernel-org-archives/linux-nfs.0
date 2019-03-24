@@ -1,67 +1,61 @@
-Return-Path: <SRS0=9F0h=R2=vger.kernel.org=linux-nfs-owner@kernel.org>
+Return-Path: <SRS0=r/5G=R3=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,USER_AGENT_GIT
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5F846C43381
-	for <linux-nfs@archiver.kernel.org>; Sat, 23 Mar 2019 16:11:06 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B32C0C43381
+	for <linux-nfs@archiver.kernel.org>; Sun, 24 Mar 2019 21:34:23 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 21DA42087F
-	for <linux-nfs@archiver.kernel.org>; Sat, 23 Mar 2019 16:11:06 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="RdL+MdXw"
+	by mail.kernel.org (Postfix) with ESMTP id 7F7E02083D
+	for <linux-nfs@archiver.kernel.org>; Sun, 24 Mar 2019 21:34:23 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727482AbfCWQLF (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sat, 23 Mar 2019 12:11:05 -0400
-Received: from mail-io1-f67.google.com ([209.85.166.67]:42488 "EHLO
-        mail-io1-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727457AbfCWQLF (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 23 Mar 2019 12:11:05 -0400
-Received: by mail-io1-f67.google.com with SMTP id c4so4169708ioh.9
-        for <linux-nfs@vger.kernel.org>; Sat, 23 Mar 2019 09:11:04 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=from:to:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=p26Z7Z+FmRU5ZRlLmn8ApFSgWRmUiFCNTk7z8m3c6bg=;
-        b=RdL+MdXwtzf0WvqapFzmbzzi5duexIAmhg5IXce/+70FiI/hC4CGJgs8WtlljX2aMP
-         T4FGLucCrFhR6G+N2oUfbXZWrF33Ca/Mqcr56/id2splYlrK2RE+PyDngS76tr2OiMUA
-         /6sYZw+A33EvoiMxiaVgc5kasItiw8IIsY63czxGcqyCP4hBINf35xGHRorBGggwpsYU
-         vV15ikTqNhDewCaQbyWu0cJsAbbF0zJMyfGWfbNjaaUe2iIyxx0mxqmvxwR+Vp7s7zLN
-         zPvYXqVPSl40nhO+7OB1zoapQf2mN4uLqGz+qRLuXgRqt1SV03KGeQh8vMeMJsjyEpjM
-         XASw==
+        id S1727137AbfCXVeW (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sun, 24 Mar 2019 17:34:22 -0400
+Received: from youngberry.canonical.com ([91.189.89.112]:53361 "EHLO
+        youngberry.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726317AbfCXVeW (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 24 Mar 2019 17:34:22 -0400
+Received: from mail-pf1-f199.google.com ([209.85.210.199])
+        by youngberry.canonical.com with esmtps (TLS1.0:RSA_AES_128_CBC_SHA1:16)
+        (Exim 4.76)
+        (envelope-from <matthew.ruffell@canonical.com>)
+        id 1h8Al2-00016A-DO
+        for linux-nfs@vger.kernel.org; Sun, 24 Mar 2019 21:34:20 +0000
+Received: by mail-pf1-f199.google.com with SMTP id u8so7770274pfm.6
+        for <linux-nfs@vger.kernel.org>; Sun, 24 Mar 2019 14:34:20 -0700 (PDT)
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:to:subject:date:message-id:mime-version
+        h=x-gm-message-state:from:to:cc:subject:date:message-id:mime-version
          :content-transfer-encoding;
-        bh=p26Z7Z+FmRU5ZRlLmn8ApFSgWRmUiFCNTk7z8m3c6bg=;
-        b=XYIk61RMx5ROQ3m7lz98P1lFFGDtNSNJmQnOexFXdFeQrFsCDErr1fUzcYw4xRvcls
-         cx8KfetYnysBq6HfFwXX0mok2v6Js1NxJ5iqLIzRlsU7Y2y5XsLRfkPvHKz6dN+OzXBX
-         PJaA6XUgWKxMcP9AIhKwGQKGU+gA2O7ILvmzbCGhMNjxbYxxQlE7NJWrj8oG/aLLOmh/
-         jrNP2ccr5IyURDoxCeRFJscnu7XWUxeY8KALrt4Yu65ykLu75R+cJUKvsQoVnMT8FsR/
-         8gdghxIYtztQ1mGbNdtmvHlZOnobSlht6mSuZh0AQI06+NsVx0QeHDhyH/kyf/lffqYn
-         R4mg==
-X-Gm-Message-State: APjAAAVd1QQBKdMq95xJ7gLbgfXjMCU4p2VSWSLTcG9SAGv8zK0OgNJD
-        dudLlw3G+ix210VPZM95clT2xQA=
-X-Google-Smtp-Source: APXvYqwmnECudYclNj1d1z511yPF4LyzZqrncUPXl/KJAYF9w2DLBDRSaZJ7UStsgozFUVkdaEGyPA==
-X-Received: by 2002:a6b:f419:: with SMTP id i25mr11342909iog.216.1553357464109;
-        Sat, 23 Mar 2019 09:11:04 -0700 (PDT)
-Received: from localhost.localdomain (c-68-40-189-247.hsd1.mi.comcast.net. [68.40.189.247])
-        by smtp.gmail.com with ESMTPSA id o9sm3035586itb.23.2019.03.23.09.11.03
-        for <linux-nfs@vger.kernel.org>
-        (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
-        Sat, 23 Mar 2019 09:11:03 -0700 (PDT)
-From:   Trond Myklebust <trondmy@gmail.com>
-X-Google-Original-From: Trond Myklebust <trond.myklebust@hammerspace.com>
+        bh=BBYKiRwdSqkJNhaTTgz9JXV8nM2yEJgzmL1+st9fvKg=;
+        b=HESMWWzfT8R1xkButQ+ThmiDzeUVLxnBo0q3tkg61HG21dti3DrEnymIIpSr1ExASj
+         7J2i0tkqfk+BepexxgWIiI7kZLAJDvOXH9KQAQKUx1AcwDsNSmTFEKhWxJ/WBIEM6DMM
+         gpSAMtI7jAEDLRRHjLab7KSWsOJeHJYv7bTfl5DvHmK36Plqnz0XRu0tOSNtHtAnODsn
+         lSuB/fQxyzM4pbW4T37TR+nArVZdGm1SnKcTHooASntbS5HkWh7Updlt8aJ10OT8EyY9
+         U3iZ8xFIX6lABbgbh3r12j8CbMrp1qb2pzxZ34ogJ+kf3fzBlUBiECSVe8zEVda8xYwN
+         Y2Hw==
+X-Gm-Message-State: APjAAAXHChcEvKmQE2U4R/W/ecA+ybCy0CGJHfNITUKrK9mx+2eS2emZ
+        LosF3jwbtc2YJYJ6ZUFjWbrOSzD3ivLN8TmMwDK1swxBFCG4FOLpAyq9A+s89DZTxJlytVmd9yI
+        4Ulh9e++zWzwhynrwRri019vTd6UxIeL2uCLd5w==
+X-Received: by 2002:a17:902:7b93:: with SMTP id w19mr21579216pll.141.1553463258833;
+        Sun, 24 Mar 2019 14:34:18 -0700 (PDT)
+X-Google-Smtp-Source: APXvYqwivZhui9TMyhpiNoUvDV8oVR/DKKag0ljQ9BhhmlbLdOjLJX0RrVPx85IScrg0RSZ/yXCe/A==
+X-Received: by 2002:a17:902:7b93:: with SMTP id w19mr21579206pll.141.1553463258702;
+        Sun, 24 Mar 2019 14:34:18 -0700 (PDT)
+Received: from localhost.localdomain (222-154-101-5-fibre.sparkbb.co.nz. [222.154.101.5])
+        by smtp.gmail.com with ESMTPSA id i16sm20360598pgk.51.2019.03.24.14.34.16
+        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Sun, 24 Mar 2019 14:34:18 -0700 (PDT)
+From:   Matthew Ruffell <matthew.ruffell@canonical.com>
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH] NFS: Fix a typo in nfs_init_timeout_values()
-Date:   Sat, 23 Mar 2019 12:07:37 -0400
-Message-Id: <20190323160737.23609-1-trond.myklebust@hammerspace.com>
-X-Mailer: git-send-email 2.20.1
+Cc:     Matthew Ruffell <matthew.ruffell@canonical.com>
+Subject: [PATCH] nfsiostat: replace 'list' reserved word
+Date:   Mon, 25 Mar 2019 10:33:18 +1300
+Message-Id: <20190324213318.18296-1-matthew.ruffell@canonical.com>
+X-Mailer: git-send-email 2.19.1
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
@@ -69,29 +63,45 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Specifying a retrans=0 mount parameter to a NFS/TCP mount, is
-inadvertently causing the NFS client to rewrite any specified
-timeout parameter to the default of 60 seconds.
+list is a reserved word in python and should not be used as a variable
+name. Changing list to devicelist for list_nfs_mounts()
 
-Fixes: a956beda19a6 ("NFS: Allow the mount option retrans=0")
-Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
+Fixes: https://bugs.launchpad.net/ubuntu/+source/nfs-utils/+bug/1821261
+
+Signed-off-by: Matthew Ruffell <matthew.ruffell@canonical.com>
 ---
- fs/nfs/client.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ tools/nfs-iostat/nfs-iostat.py | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index fb1cf1a4bda2..90d71fda65ce 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -453,7 +453,7 @@ void nfs_init_timeout_values(struct rpc_timeout *to, int proto,
- 	case XPRT_TRANSPORT_RDMA:
- 		if (retrans == NFS_UNSPEC_RETRANS)
- 			to->to_retries = NFS_DEF_TCP_RETRANS;
--		if (timeo == NFS_UNSPEC_TIMEO || to->to_retries == 0)
-+		if (timeo == NFS_UNSPEC_TIMEO || to->to_initval == 0)
- 			to->to_initval = NFS_DEF_TCP_TIMEO * HZ / 10;
- 		if (to->to_initval > NFS_MAX_TCP_TIMEOUT)
- 			to->to_initval = NFS_MAX_TCP_TIMEOUT;
+diff --git a/tools/nfs-iostat/nfs-iostat.py b/tools/nfs-iostat/nfs-iostat.py
+index 7cbe543..dec0e86 100644
+--- a/tools/nfs-iostat/nfs-iostat.py
++++ b/tools/nfs-iostat/nfs-iostat.py
+@@ -493,20 +493,20 @@ def list_nfs_mounts(givenlist, mountstats):
+        return a full list if the given list is empty -
+        may return an empty list if none found
+     """
+-    list = []
++    devicelist = []
+     if len(givenlist) > 0:
+         for device in givenlist:
+             stats = DeviceData()
+             stats.parse_stats(mountstats[device])
+             if stats.is_nfs_mountpoint():
+-                list += [device]
++                devicelist += [device]
+     else:
+         for device, descr in mountstats.items():
+             stats = DeviceData()
+             stats.parse_stats(descr)
+             if stats.is_nfs_mountpoint():
+-                list += [device]
+-    return list
++                devicelist += [device]
++    return devicelist
+ 
+ def iostat_command(name):
+     """iostat-like command for NFS mount points
 -- 
-2.20.1
+2.19.1
 
