@@ -6,546 +6,364 @@ X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 12904C10F05
-	for <linux-nfs@archiver.kernel.org>; Tue, 26 Mar 2019 22:07:36 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4ADD0C4360F
+	for <linux-nfs@archiver.kernel.org>; Tue, 26 Mar 2019 22:07:34 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id CC57A2075D
-	for <linux-nfs@archiver.kernel.org>; Tue, 26 Mar 2019 22:07:35 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 015972075D
+	for <linux-nfs@archiver.kernel.org>; Tue, 26 Mar 2019 22:07:34 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1731644AbfCZWHf (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 26 Mar 2019 18:07:35 -0400
-Received: from mx1.redhat.com ([209.132.183.28]:41704 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1731859AbfCZWHc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        id S1731491AbfCZWHc (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Tue, 26 Mar 2019 18:07:32 -0400
-Received: from smtp.corp.redhat.com (int-mx03.intmail.prod.int.phx2.redhat.com [10.5.11.13])
+Received: from mx1.redhat.com ([209.132.183.28]:42888 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1731535AbfCZWHc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 26 Mar 2019 18:07:32 -0400
+Received: from smtp.corp.redhat.com (int-mx07.intmail.prod.int.phx2.redhat.com [10.5.11.22])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 0BC5330FE5D2;
-        Tue, 26 Mar 2019 22:07:32 +0000 (UTC)
+        by mx1.redhat.com (Postfix) with ESMTPS id 7B76A307D978;
+        Tue, 26 Mar 2019 22:07:31 +0000 (UTC)
 Received: from coeurl.usersys.redhat.com (ovpn-122-200.rdu2.redhat.com [10.10.122.200])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id B8BF017DC5;
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 30B2C1001DD1;
         Tue, 26 Mar 2019 22:07:31 +0000 (UTC)
 Received: by coeurl.usersys.redhat.com (Postfix, from userid 1000)
-        id E92CB2134A; Tue, 26 Mar 2019 18:07:30 -0400 (EDT)
+        id CD4B620D22; Tue, 26 Mar 2019 18:07:30 -0400 (EDT)
 From:   Scott Mayhew <smayhew@redhat.com>
 To:     steved@redhat.com
 Cc:     bfields@fieldses.org, jlayton@kernel.org, linux-nfs@vger.kernel.org
-Subject: [nfs-utils PATCH RFC v3 8/8] nfsdcld: add a facility for migrating from older client tracking methods
-Date:   Tue, 26 Mar 2019 18:07:30 -0400
-Message-Id: <20190326220730.3763-9-smayhew@redhat.com>
+Subject: [nfs-utils PATCH RFC v3 2/8] nfsdcld: move nfsdcld to its own directory
+Date:   Tue, 26 Mar 2019 18:07:24 -0400
+Message-Id: <20190326220730.3763-3-smayhew@redhat.com>
 In-Reply-To: <20190326220730.3763-1-smayhew@redhat.com>
 References: <20190326220730.3763-1-smayhew@redhat.com>
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.13
-X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.47]); Tue, 26 Mar 2019 22:07:32 +0000 (UTC)
+X-Scanned-By: MIMEDefang 2.84 on 10.5.11.22
+X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.48]); Tue, 26 Mar 2019 22:07:31 +0000 (UTC)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-This patch adds a one-time "upgrade" when using nfsdcld for the first
-time.  During initialization of the database, we try to copy records
-from the old nfdscltrack database and from the legacy v4recovery
-directory (although we don't expect to find records in both places).
-
-nfsdcltrack stores the client name string so the handling of those
-records is straightforward.  Legacy records are md5 hashes of the client
-name string, so we prefix them with "hash:" as way to let knfsd know
-that this is a legacy record.  knfsd will need a fallback check in the
-event that it cannot find a reclaim record using the client name string.
-
-Upon receipt of the first "GraceDone" upcall we clean out any records
-from the old nfsdcltrack database and delete any subdirectories under
-the v4recovery directory.
+The schema for the db used by nfsdcld is going to diverge quite a bit
+from that used by nfsdcltrack.  It will be easier if the programs are
+kept in separate directories.
 
 Signed-off-by: Scott Mayhew <smayhew@redhat.com>
 ---
- utils/nfsdcld/Makefile.am    |   4 +-
- utils/nfsdcld/cld-internal.h |   3 +
- utils/nfsdcld/legacy.c       | 180 +++++++++++++++++++++++
- utils/nfsdcld/legacy.h       |  24 ++++
- utils/nfsdcld/nfsdcld.c      |  13 ++
- utils/nfsdcld/sqlite.c       | 272 +++++++++++++++++++++++++++++++++++
- utils/nfsdcld/sqlite.h       |   2 +
- 7 files changed, 496 insertions(+), 2 deletions(-)
- create mode 100644 utils/nfsdcld/legacy.c
- create mode 100644 utils/nfsdcld/legacy.h
+ .gitignore                                 |   2 +-
+ configure.ac                               |  23 +
+ utils/Makefile.am                          |   4 +
+ utils/nfsdcld/Makefile.am                  |  19 +
+ utils/{nfsdcltrack => nfsdcld}/nfsdcld.c   |   0
+ utils/{nfsdcltrack => nfsdcld}/nfsdcld.man |   0
+ utils/nfsdcld/sqlite.c                     | 601 +++++++++++++++++++++
+ utils/nfsdcld/sqlite.h                     |  32 ++
+ utils/nfsdcltrack/Makefile.am              |   7 +-
+ 9 files changed, 682 insertions(+), 6 deletions(-)
+ create mode 100644 utils/nfsdcld/Makefile.am
+ rename utils/{nfsdcltrack => nfsdcld}/nfsdcld.c (100%)
+ rename utils/{nfsdcltrack => nfsdcld}/nfsdcld.man (100%)
+ create mode 100644 utils/nfsdcld/sqlite.c
+ create mode 100644 utils/nfsdcld/sqlite.h
 
+diff --git a/.gitignore b/.gitignore
+index d4f4f34..e97b31f 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -54,7 +54,7 @@ utils/rquotad/rquotad
+ utils/rquotad/rquota.h
+ utils/rquotad/rquota_xdr.c
+ utils/showmount/showmount
+-utils/nfsdcltrack/nfsdcld
++utils/nfsdcld/nfsdcld
+ utils/nfsdcltrack/nfsdcltrack
+ utils/statd/statd
+ tools/locktest/testlk
+diff --git a/configure.ac b/configure.ac
+index 4bf5aea..8598d50 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -242,6 +242,12 @@ else
+ 	AM_CONDITIONAL(MOUNT_CONFIG, [test "$enable_mount" = "yes"])
+ fi
+ 
++AC_ARG_ENABLE(nfsdcld,
++	[AC_HELP_STRING([--disable-nfsdcld],
++			[disable NFSv4 clientid tracking daemon @<:@default=no@:>@])],
++	enable_nfsdcld=$enableval,
++	enable_nfsdcld="yes")
++
+ AC_ARG_ENABLE(nfsdcltrack,
+ 	[AC_HELP_STRING([--disable-nfsdcltrack],
+ 			[disable NFSv4 clientid tracking programs @<:@default=no@:>@])],
+@@ -321,6 +327,20 @@ if test "$enable_nfsv4" = yes; then
+   dnl Check for sqlite3
+   AC_SQLITE3_VERS
+ 
++  if test "$enable_nfsdcld" = "yes"; then
++	AC_CHECK_HEADERS([libgen.h sys/inotify.h], ,
++		AC_MSG_ERROR([Cannot find header needed for nfsdcld]))
++
++    case $libsqlite3_cv_is_recent in
++    yes) ;;
++    unknown)
++      dnl do not fail when cross-compiling
++      AC_MSG_WARN([assuming sqlite is at least v3.3]) ;;
++    *)
++      AC_MSG_ERROR([nfsdcld requires sqlite-devel]) ;;
++    esac
++  fi
++
+   if test "$enable_nfsdcltrack" = "yes"; then
+ 	AC_CHECK_HEADERS([libgen.h sys/inotify.h], ,
+ 		AC_MSG_ERROR([Cannot find header needed for nfsdcltrack]))
+@@ -336,6 +356,7 @@ if test "$enable_nfsv4" = yes; then
+   fi
+ 
+ else
++  enable_nfsdcld="no"
+   enable_nfsdcltrack="no"
+ fi
+ 
+@@ -346,6 +367,7 @@ if test "$enable_nfsv41" = yes; then
+ fi
+ 
+ dnl enable nfsidmap when its support by libnfsidmap
++AM_CONDITIONAL(CONFIG_NFSDCLD, [test "$enable_nfsdcld" = "yes" ])
+ AM_CONDITIONAL(CONFIG_NFSDCLTRACK, [test "$enable_nfsdcltrack" = "yes" ])
+ 
+ 
+@@ -623,6 +645,7 @@ AC_CONFIG_FILES([
+ 	tools/nfsconf/Makefile
+ 	utils/Makefile
+ 	utils/blkmapd/Makefile
++	utils/nfsdcld/Makefile
+ 	utils/nfsdcltrack/Makefile
+ 	utils/exportfs/Makefile
+ 	utils/gssd/Makefile
+diff --git a/utils/Makefile.am b/utils/Makefile.am
+index 0a5b062..4c930a4 100644
+--- a/utils/Makefile.am
++++ b/utils/Makefile.am
+@@ -19,6 +19,10 @@ if CONFIG_MOUNT
+ OPTDIRS += mount
+ endif
+ 
++if CONFIG_NFSDCLD
++OPTDIRS += nfsdcld
++endif
++
+ if CONFIG_NFSDCLTRACK
+ OPTDIRS += nfsdcltrack
+ endif
 diff --git a/utils/nfsdcld/Makefile.am b/utils/nfsdcld/Makefile.am
-index d1da749..2c4e5a1 100644
---- a/utils/nfsdcld/Makefile.am
+new file mode 100644
+index 0000000..8239be8
+--- /dev/null
 +++ b/utils/nfsdcld/Makefile.am
-@@ -10,10 +10,10 @@ EXTRA_DIST	= $(man8_MANS)
- AM_CFLAGS	+= -D_LARGEFILE64_SOURCE
- sbin_PROGRAMS	= nfsdcld
- 
--nfsdcld_SOURCES = nfsdcld.c sqlite.c
-+nfsdcld_SOURCES = nfsdcld.c sqlite.c legacy.c
- nfsdcld_LDADD = ../../support/nfs/libnfs.la $(LIBEVENT) $(LIBSQLITE) $(LIBCAP)
- 
--noinst_HEADERS	= sqlite.h cld-internal.h
-+noinst_HEADERS	= sqlite.h cld-internal.h legacy.h
- 
- MAINTAINERCLEANFILES = Makefile.in
- 
-diff --git a/utils/nfsdcld/cld-internal.h b/utils/nfsdcld/cld-internal.h
-index a90cced..76e97db 100644
---- a/utils/nfsdcld/cld-internal.h
-+++ b/utils/nfsdcld/cld-internal.h
-@@ -26,5 +26,8 @@ struct cld_client {
- 
- uint64_t current_epoch;
- uint64_t recovery_epoch;
-+int first_time;
-+int num_cltrack_records;
-+int num_legacy_records;
- 
- #endif /* _CLD_INTERNAL_H_ */
-diff --git a/utils/nfsdcld/legacy.c b/utils/nfsdcld/legacy.c
-new file mode 100644
-index 0000000..f0ca316
---- /dev/null
-+++ b/utils/nfsdcld/legacy.c
-@@ -0,0 +1,180 @@
-+/*
-+ * This program is free software; you can redistribute it and/or
-+ * modify it under the terms of the GNU General Public License
-+ * as published by the Free Software Foundation; either version 2
-+ * of the License, or (at your option) any later version.
-+ *
-+ * This program is distributed in the hope that it will be useful,
-+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
-+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+ * GNU General Public License for more details.
-+ *
-+ * You should have received a copy of the GNU General Public License
-+ * along with this program; if not, write to the Free Software
-+ * Foundation, Inc., 51 Franklin Street, Fifth Floor,
-+ * Boston, MA 02110-1301, USA.
-+ */
+@@ -0,0 +1,19 @@
++## Process this file with automake to produce Makefile.in
 +
-+#include <stdio.h>
-+#include <dirent.h>
-+#include <string.h>
-+#include <unistd.h>
-+#include <stdint.h>
-+#include <fcntl.h>
-+#include <errno.h>
-+#include <sys/types.h>
-+#include <sys/stat.h>
-+#include "cld.h"
-+#include "sqlite.h"
-+#include "xlog.h"
-+#include "legacy.h"
++# These binaries go in /sbin (not /usr/sbin), and that cannot be
++# overridden at config time. The kernel "knows" the /sbin name.
++sbindir = /sbin
 +
-+#define NFSD_RECDIR_FILE "/proc/fs/nfsd/nfsv4recoverydir"
++man8_MANS	= nfsdcld.man
++EXTRA_DIST	= $(man8_MANS)
 +
-+/*
-+ * Loads client records from the v4recovery directory into the database.
-+ * Records are prefixed with the string "hash:" and include the '\0' byte.
-+ *
-+ * Called during database initialization as part of a one-time "upgrade".
-+ */
-+void
-+legacy_load_clients_from_recdir(int *num_records)
-+{
-+	int fd;
-+	DIR *v4recovery;
-+	struct dirent *entry;
-+	char recdirname[PATH_MAX];
-+	char buf[NFS4_OPAQUE_LIMIT];
-+	struct stat st;
-+	char *nl;
++AM_CFLAGS	+= -D_LARGEFILE64_SOURCE
++sbin_PROGRAMS	= nfsdcld
 +
-+	fd = open(NFSD_RECDIR_FILE, O_RDONLY);
-+	if (fd < 0) {
-+		xlog(D_GENERAL, "Unable to open %s: %m", NFSD_RECDIR_FILE);
-+		return;
-+	}
-+	if (read(fd, recdirname, PATH_MAX) < 0) {
-+		xlog(D_GENERAL, "Unable to read from %s: %m", NFSD_RECDIR_FILE);
-+		return;
-+	}
-+	close(fd);
-+	/* the output from the proc file isn't null-terminated */
-+	nl = strchr(recdirname, '\n');
-+	if (!nl)
-+		return;
-+	*nl = '\0';
-+	if (stat(recdirname, &st) < 0) {
-+		xlog(D_GENERAL, "Unable to stat %s: %d", recdirname, errno);
-+		return;
-+	}
-+	if (!S_ISDIR(st.st_mode)) {
-+		xlog(D_GENERAL, "%s is not a directory: mode=0%o", recdirname
-+				, st.st_mode);
-+		return;
-+	}
-+	v4recovery = opendir(recdirname);
-+	if (!v4recovery)
-+		return;
-+	while ((entry = readdir(v4recovery))) {
-+		int ret;
++nfsdcld_SOURCES = nfsdcld.c sqlite.c
++nfsdcld_LDADD = ../../support/nfs/libnfs.la $(LIBEVENT) $(LIBSQLITE) $(LIBCAP)
 +
-+		/* skip "." and ".." */
-+		if (entry->d_name[0] == '.') {
-+			switch (entry->d_name[1]) {
-+			case '\0':
-+				continue;
-+			case '.':
-+				if (entry->d_name[2] == '\0')
-+					continue;
-+			}
-+		}
-+		/* prefix legacy records with the string "hash:" */
-+		ret = snprintf(buf, sizeof(buf), "hash:%s", entry->d_name);
-+		/* if there's a problem, then skip this entry */
-+		if (ret < 0 || (size_t)ret >= sizeof(buf)) {
-+			xlog(L_WARNING, "%s: unable to build client string for %s!",
-+				__func__, entry->d_name);
-+			continue;
-+		}
-+		/* legacy client records need to include the null terminator */
-+		ret = sqlite_insert_client((unsigned char *)buf, strlen(buf) + 1);
-+		if (ret)
-+			xlog(L_WARNING, "%s: unable to insert %s: %d", __func__,
-+				entry->d_name, ret);
-+		else
-+			(*num_records)++;
-+	}
-+	closedir(v4recovery);
-+}
++noinst_HEADERS	= sqlite.h
 +
-+/*
-+ * Cleans out the v4recovery directory.
-+ *
-+ * Called upon receipt of the first "GraceDone" upcall only.
-+ */
-+void
-+legacy_clear_recdir(void)
-+{
-+	int fd;
-+	DIR *v4recovery;
-+	struct dirent *entry;
-+	char recdirname[PATH_MAX];
-+	char dirname[PATH_MAX];
-+	struct stat st;
-+	char *nl;
++MAINTAINERCLEANFILES = Makefile.in
 +
-+	fd = open(NFSD_RECDIR_FILE, O_RDONLY);
-+	if (fd < 0) {
-+		xlog(D_GENERAL, "Unable to open %s: %m", NFSD_RECDIR_FILE);
-+		return;
-+	}
-+	if (read(fd, recdirname, PATH_MAX) < 0) {
-+		xlog(D_GENERAL, "Unable to read from %s: %m", NFSD_RECDIR_FILE);
-+		return;
-+	}
-+	close(fd);
-+	/* the output from the proc file isn't null-terminated */
-+	nl = strchr(recdirname, '\n');
-+	if (!nl)
-+		return;
-+	*nl = '\0';
-+	if (stat(recdirname, &st) < 0) {
-+		xlog(D_GENERAL, "Unable to stat %s: %d", recdirname, errno);
-+		return;
-+	}
-+	if (!S_ISDIR(st.st_mode)) {
-+		xlog(D_GENERAL, "%s is not a directory: mode=0%o", recdirname
-+				, st.st_mode);
-+		return;
-+	}
-+	v4recovery = opendir(recdirname);
-+	if (!v4recovery)
-+		return;
-+	while ((entry = readdir(v4recovery))) {
-+		int len;
-+
-+		/* skip "." and ".." */
-+		if (entry->d_name[0] == '.') {
-+			switch (entry->d_name[1]) {
-+			case '\0':
-+				continue;
-+			case '.':
-+				if (entry->d_name[2] == '\0')
-+					continue;
-+			}
-+		}
-+		len = snprintf(dirname, sizeof(dirname), "%s/%s", recdirname,
-+				entry->d_name);
-+		/* if there's a problem, then skip this entry */
-+		if (len < 0 || (size_t)len >= sizeof(dirname)) {
-+			xlog(L_WARNING, "%s: unable to build filename for %s!",
-+				__func__, entry->d_name);
-+			continue;
-+		}
-+		len = rmdir(dirname);
-+		if (len)
-+			xlog(L_WARNING, "%s: unable to rmdir %s: %d", __func__,
-+				dirname, len);
-+	}
-+	closedir(v4recovery);
-+}
-diff --git a/utils/nfsdcld/legacy.h b/utils/nfsdcld/legacy.h
-new file mode 100644
-index 0000000..8988f6e
---- /dev/null
-+++ b/utils/nfsdcld/legacy.h
-@@ -0,0 +1,24 @@
-+/*
-+ * This program is free software; you can redistribute it and/or
-+ * modify it under the terms of the GNU General Public License
-+ * as published by the Free Software Foundation; either version 2
-+ * of the License, or (at your option) any later version.
-+ *
-+ * This program is distributed in the hope that it will be useful,
-+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
-+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+ * GNU General Public License for more details.
-+ *
-+ * You should have received a copy of the GNU General Public License
-+ * along with this program; if not, write to the Free Software
-+ * Foundation, Inc., 51 Franklin Street, Fifth Floor,
-+ * Boston, MA 02110-1301, USA.
-+ */
-+
-+#ifndef _LEGACY_H_
-+#define _LEGACY_H_
-+
-+void legacy_load_clients_from_recdir(int *);
-+void legacy_clear_recdir(void);
-+
-+#endif /* _LEGACY_H_ */
-diff --git a/utils/nfsdcld/nfsdcld.c b/utils/nfsdcld/nfsdcld.c
-index 313c68f..cbf71fc 100644
---- a/utils/nfsdcld/nfsdcld.c
-+++ b/utils/nfsdcld/nfsdcld.c
-@@ -46,6 +46,7 @@
- #include "sqlite.h"
- #include "../mount/version.h"
- #include "conffile.h"
-+#include "legacy.h"
- 
- #ifndef DEFAULT_PIPEFS_DIR
- #define DEFAULT_PIPEFS_DIR NFS_STATEDIR "/rpc_pipefs"
-@@ -510,6 +511,15 @@ cld_gracedone(struct cld_client *clnt)
- 
- 	ret = sqlite_grace_done();
- 
-+	if (first_time) {
-+		if (num_cltrack_records > 0)
-+			sqlite_delete_cltrack_records();
-+		if (num_legacy_records > 0)
-+			legacy_clear_recdir();
-+		sqlite_first_time_done();
-+		first_time = 0;
-+	}
-+
- reply:
- 	/* set up reply: downcall with 0 status */
- 	cmsg->cm_status = ret ? -EREMOTEIO : ret;
-@@ -642,6 +652,9 @@ main(int argc, char **argv)
- 	char *storagedir = CLD_DEFAULT_STORAGEDIR;
- 	struct cld_client clnt;
- 	char *s;
-+	first_time = 0;
-+	num_cltrack_records = 0;
-+	num_legacy_records = 0;
- 
- 	memset(&clnt, 0, sizeof(clnt));
- 
+diff --git a/utils/nfsdcltrack/nfsdcld.c b/utils/nfsdcld/nfsdcld.c
+similarity index 100%
+rename from utils/nfsdcltrack/nfsdcld.c
+rename to utils/nfsdcld/nfsdcld.c
+diff --git a/utils/nfsdcltrack/nfsdcld.man b/utils/nfsdcld/nfsdcld.man
+similarity index 100%
+rename from utils/nfsdcltrack/nfsdcld.man
+rename to utils/nfsdcld/nfsdcld.man
 diff --git a/utils/nfsdcld/sqlite.c b/utils/nfsdcld/sqlite.c
-index 6e4eb66..faa62f9 100644
---- a/utils/nfsdcld/sqlite.c
+new file mode 100644
+index 0000000..c59f777
+--- /dev/null
 +++ b/utils/nfsdcld/sqlite.c
-@@ -64,8 +64,11 @@
- #include "sqlite.h"
- #include "cld.h"
- #include "cld-internal.h"
-+#include "conffile.h"
-+#include "legacy.h"
- 
- #define CLD_SQLITE_LATEST_SCHEMA_VERSION 3
-+#define CLTRACK_DEFAULT_STORAGEDIR NFS_STATEDIR "/nfsdcltrack"
- 
- /* in milliseconds */
- #define CLD_SQLITE_BUSY_TIMEOUT 10000
-@@ -73,6 +76,7 @@
- /* private data structures */
- 
- /* global variables */
-+static char *cltrack_storagedir = CLTRACK_DEFAULT_STORAGEDIR;
- 
- /* reusable pathname and sql command buffer */
- static char buf[PATH_MAX];
-@@ -135,6 +139,37 @@ out:
- 	return ret;
- }
- 
+@@ -0,0 +1,601 @@
++/*
++ * Copyright (C) 2011  Red Hat, Jeff Layton <jlayton@redhat.com>
++ *
++ * This program is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU General Public License
++ * as published by the Free Software Foundation; either version 2
++ * of the License, or (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, Inc., 51 Franklin Street, Fifth Floor,
++ * Boston, MA 02110-1301, USA.
++ */
++
++/*
++ * Explanation:
++ *
++ * This file contains the code to manage the sqlite backend database for the
++ * nfsdcltrack usermodehelper upcall program.
++ *
++ * The main database is called main.sqlite and contains the following tables:
++ *
++ * parameters: simple key/value pairs for storing database info
++ *
++ * clients: an "id" column containing a BLOB with the long-form clientid as
++ * 	    sent by the client, a "time" column containing a timestamp (in
++ * 	    epoch seconds) of when the record was last updated, and a
++ * 	    "has_session" column containing a boolean value indicating
++ * 	    whether the client has sessions (v4.1+) or not (v4.0).
++ */
++
++#ifdef HAVE_CONFIG_H
++#include "config.h"
++#endif /* HAVE_CONFIG_H */
++
++#include <dirent.h>
++#include <errno.h>
++#include <event.h>
++#include <stdbool.h>
++#include <string.h>
++#include <sys/stat.h>
++#include <sys/types.h>
++#include <fcntl.h>
++#include <unistd.h>
++#include <sqlite3.h>
++#include <linux/limits.h>
++
++#include "xlog.h"
++#include "sqlite.h"
++
++#define CLTRACK_SQLITE_LATEST_SCHEMA_VERSION 2
++
++/* in milliseconds */
++#define CLTRACK_SQLITE_BUSY_TIMEOUT 10000
++
++/* private data structures */
++
++/* global variables */
++
++/* reusable pathname and sql command buffer */
++static char buf[PATH_MAX];
++
++/* global database handle */
++static sqlite3 *dbh;
++
++/* forward declarations */
++
++/* make a directory, ignoring EEXIST errors unless it's not a directory */
 +static int
-+sqlite_query_first_time(int *first_time)
++mkdir_if_not_exist(const char *dirname)
++{
++	int ret;
++	struct stat statbuf;
++
++	ret = mkdir(dirname, S_IRWXU);
++	if (ret && errno != EEXIST)
++		return -errno;
++
++	ret = stat(dirname, &statbuf);
++	if (ret)
++		return -errno;
++
++	if (!S_ISDIR(statbuf.st_mode))
++		ret = -ENOTDIR;
++
++	return ret;
++}
++
++static int
++sqlite_query_schema_version(void)
 +{
 +	int ret;
 +	sqlite3_stmt *stmt = NULL;
 +
 +	/* prepare select query */
 +	ret = sqlite3_prepare_v2(dbh,
-+		"SELECT value FROM parameters WHERE key == \"first_time\";",
++		"SELECT value FROM parameters WHERE key == \"version\";",
 +		 -1, &stmt, NULL);
 +	if (ret != SQLITE_OK) {
 +		xlog(D_GENERAL, "Unable to prepare select statement: %s",
 +			sqlite3_errmsg(dbh));
++		ret = 0;
 +		goto out;
 +	}
 +
-+	/* query first_time */
++	/* query schema version */
 +	ret = sqlite3_step(stmt);
 +	if (ret != SQLITE_ROW) {
 +		xlog(D_GENERAL, "Select statement execution failed: %s",
 +				sqlite3_errmsg(dbh));
++		ret = 0;
 +		goto out;
 +	}
 +
-+	*first_time = sqlite3_column_int(stmt, 0);
-+	ret = 0;
++	ret = sqlite3_column_int(stmt, 0);
 +out:
 +	sqlite3_finalize(stmt);
 +	return ret;
 +}
 +
- static int
- sqlite_maindb_update_schema(int oldversion)
- {
-@@ -229,6 +264,18 @@ sqlite_maindb_update_schema(int oldversion)
- 		goto rollback;
- 	}
- 
-+	ret = sqlite_query_first_time(&first_time);
-+	if (ret != SQLITE_OK) {
-+		/* insert first_time into parameters table */
-+		ret = sqlite3_exec(dbh, "INSERT OR FAIL INTO parameters "
-+					"values (\"first_time\", \"1\");",
-+					NULL, NULL, &err);
-+		if (ret != SQLITE_OK) {
-+			xlog(L_ERROR, "Unable to insert into parameter table: %s", err);
-+			goto rollback;
-+		}
-+	}
-+
- 	ret = sqlite3_exec(dbh, "COMMIT TRANSACTION;", NULL, NULL, &err);
- 	if (ret != SQLITE_OK) {
- 		xlog(L_ERROR, "Unable to commit transaction: %s", err);
-@@ -338,6 +385,15 @@ sqlite_maindb_init_v3(void)
- 		goto rollback;
- 	}
- 
-+	/* insert first_time into parameters table */
-+	ret = sqlite3_exec(dbh, "INSERT OR FAIL INTO parameters "
-+				"values (\"first_time\", \"1\");",
-+				NULL, NULL, &err);
-+	if (ret != SQLITE_OK) {
-+		xlog(L_ERROR, "Unable to insert into parameter table: %s", err);
-+		goto rollback;
-+	}
-+
- 	ret = sqlite3_exec(dbh, "COMMIT TRANSACTION;", NULL, NULL, &err);
- 	if (ret != SQLITE_OK) {
- 		xlog(L_ERROR, "Unable to commit transaction: %s", err);
-@@ -391,6 +447,153 @@ out:
- 	return ret;
- }
- 
 +static int
-+sqlite_attach_db(const char *path)
-+{
-+	int ret;
-+	char dbpath[PATH_MAX];
-+	struct stat stb;
-+	sqlite3_stmt *stmt = NULL;
-+
-+	ret = snprintf(dbpath, PATH_MAX - 1, "%s/main.sqlite", path);
-+	if (ret < 0)
-+		return ret;
-+
-+	dbpath[PATH_MAX - 1] = '\0';
-+	ret = stat(dbpath, &stb);
-+	if (ret < 0)
-+		return ret;
-+
-+	xlog(D_GENERAL, "attaching %s", dbpath);
-+	ret = sqlite3_prepare_v2(dbh, "ATTACH DATABASE ? AS attached;",
-+			-1, &stmt, NULL);
-+	if (ret != SQLITE_OK) {
-+		xlog(L_ERROR, "%s: unable to prepare attach statement: %s",
-+				__func__, sqlite3_errmsg(dbh));
-+		return ret;
-+	}
-+
-+	ret = sqlite3_bind_text(stmt, 1, dbpath, strlen(dbpath), SQLITE_STATIC);
-+	if (ret != SQLITE_OK) {
-+		xlog(L_ERROR, "%s: bind text failed: %s",
-+				__func__, sqlite3_errmsg(dbh));
-+		return ret;
-+	}
-+
-+	ret = sqlite3_step(stmt);
-+	if (ret == SQLITE_DONE)
-+		ret = SQLITE_OK;
-+	else
-+		xlog(L_ERROR, "%s: unexpected return code from attach: %s",
-+				__func__, sqlite3_errmsg(dbh));
-+
-+	sqlite3_finalize(stmt);
-+	stmt = NULL;
-+	return ret;
-+}
-+
-+static int
-+sqlite_detach_db(void)
-+{
-+	int ret;
-+	char *err = NULL;
-+
-+	xlog(D_GENERAL, "detaching database");
-+	ret = sqlite3_exec(dbh, "DETACH DATABASE attached;", NULL, NULL, &err);
-+	if (ret != SQLITE_OK) {
-+		xlog(L_ERROR, "Unable to detach attached db: %s", err);
-+	}
-+
-+	sqlite3_free(err);
-+	return ret;
-+}
-+
-+/*
-+ * Copies client records from the nfsdcltrack database as part of a one-time
-+ * "upgrade".
-+ *
-+ * Returns a non-zero sqlite error code, or SQLITE_OK (aka 0).
-+ * Returns the number of records copied via "num_rec".
-+ */
-+static int
-+sqlite_copy_cltrack_records(int *num_rec)
++sqlite_maindb_update_v1_to_v2(void)
 +{
 +	int ret, ret2;
-+	char *s;
-+	char *err = NULL;
-+	sqlite3_stmt *stmt = NULL;
++	char *err;
 +
-+	s = conf_get_str("nfsdcltrack", "storagedir");
-+	if (s)
-+		cltrack_storagedir = s;
-+	ret = sqlite_attach_db(cltrack_storagedir);
-+	if (ret)
-+		goto out;
++	/* begin transaction */
 +	ret = sqlite3_exec(dbh, "BEGIN EXCLUSIVE TRANSACTION;", NULL, NULL,
 +				&err);
 +	if (ret != SQLITE_OK) {
 +		xlog(L_ERROR, "Unable to begin transaction: %s", err);
 +		goto rollback;
 +	}
-+	ret = snprintf(buf, sizeof(buf), "DELETE FROM \"rec-%016lx\";",
-+			current_epoch);
++
++	/*
++	 * Check schema version again. This time, under an exclusive
++	 * transaction to guard against racing DB setup attempts
++	 */
++	ret = sqlite_query_schema_version();
++	switch (ret) {
++	case 1:
++		/* Still at v1 -- do conversion */
++		break;
++	case CLTRACK_SQLITE_LATEST_SCHEMA_VERSION:
++		/* Someone else raced in and set it up */
++		ret = 0;
++		goto rollback;
++	default:
++		/* Something went wrong -- fail! */
++		ret = -EINVAL;
++		goto rollback;
++	}
++
++	/* create v2 clients table */
++	ret = sqlite3_exec(dbh, "ALTER TABLE clients ADD COLUMN "
++				"has_session INTEGER;",
++				NULL, NULL, &err);
++	if (ret != SQLITE_OK) {
++		xlog(L_ERROR, "Unable to update clients table: %s", err);
++		goto rollback;
++	}
++
++	ret = snprintf(buf, sizeof(buf), "UPDATE parameters SET value = %d "
++			"WHERE key = \"version\";",
++			CLTRACK_SQLITE_LATEST_SCHEMA_VERSION);
 +	if (ret < 0) {
 +		xlog(L_ERROR, "sprintf failed!");
 +		goto rollback;
@@ -554,150 +372,488 @@ index 6e4eb66..faa62f9 100644
 +		ret = -EINVAL;
 +		goto rollback;
 +	}
++
 +	ret = sqlite3_exec(dbh, (const char *)buf, NULL, NULL, &err);
 +	if (ret != SQLITE_OK) {
-+		xlog(L_ERROR, "Unable to clear records from current epoch: %s", err);
++		xlog(L_ERROR, "Unable to update schema version: %s", err);
 +		goto rollback;
 +	}
-+	ret = snprintf(buf, sizeof(buf), "INSERT INTO \"rec-%016lx\" "
-+				"SELECT id FROM attached.clients;",
-+				current_epoch);
-+	if (ret < 0) {
-+		xlog(L_ERROR, "sprintf failed!");
-+		goto rollback;
-+	} else if ((size_t)ret >= sizeof(buf)) {
-+		xlog(L_ERROR, "sprintf output too long! (%d chars)", ret);
-+		ret = -EINVAL;
-+		goto rollback;
-+	}
-+	ret = sqlite3_prepare_v2(dbh, buf, -1, &stmt, NULL);
-+	if (ret != SQLITE_OK) {
-+		xlog(L_ERROR, "%s: insert statement prepare failed: %s",
-+			__func__, sqlite3_errmsg(dbh));
-+		goto rollback;
-+	}
-+	ret = sqlite3_step(stmt);
-+	if (ret != SQLITE_DONE) {
-+		xlog(L_ERROR, "%s: unexpected return code from insert: %s",
-+				__func__, sqlite3_errmsg(dbh));
-+		goto rollback;
-+	}
-+	*num_rec = sqlite3_changes(dbh);
++
 +	ret = sqlite3_exec(dbh, "COMMIT TRANSACTION;", NULL, NULL, &err);
 +	if (ret != SQLITE_OK) {
 +		xlog(L_ERROR, "Unable to commit transaction: %s", err);
 +		goto rollback;
 +	}
-+cleanup:
-+	sqlite3_finalize(stmt);
-+	sqlite3_free(err);
-+	sqlite_detach_db();
 +out:
-+	xlog(D_GENERAL, "%s: returning %d", __func__, ret);
++	sqlite3_free(err);
 +	return ret;
 +rollback:
-+	*num_rec = 0;
 +	ret2 = sqlite3_exec(dbh, "ROLLBACK TRANSACTION;", NULL, NULL, &err);
 +	if (ret2 != SQLITE_OK)
 +		xlog(L_ERROR, "Unable to rollback transaction: %s", err);
-+	goto cleanup;
++	goto out;
 +}
 +
- /* Open the database and set up the database handle for it */
- int
- sqlite_prepare_dbh(const char *topdir)
-@@ -465,6 +668,23 @@ sqlite_prepare_dbh(const char *topdir)
- 
- 	ret = sqlite_startup_query_grace();
- 
-+	ret = sqlite_query_first_time(&first_time);
-+	if (ret)
-+		goto out_close;
-+
-+	/* one-time "upgrade" from older client tracking methods */
-+	if (first_time) {
-+		sqlite_copy_cltrack_records(&num_cltrack_records);
-+		xlog(D_GENERAL, "%s: num_cltrack_records = %d\n",
-+			__func__, num_cltrack_records);
-+		legacy_load_clients_from_recdir(&num_legacy_records);
-+		xlog(D_GENERAL, "%s: num_legacy_records = %d\n",
-+			__func__, num_legacy_records);
-+		if (num_cltrack_records > 0 && num_legacy_records > 0)
-+			xlog(L_WARNING, "%s: first-time upgrade detected "
-+				"both cltrack and legacy records!\n", __func__);
-+	}
-+
- 	return ret;
- out_close:
- 	sqlite3_close(dbh);
-@@ -835,3 +1055,55 @@ sqlite_iterate_recovery(int (*cb)(struct cld_client *clnt), struct cld_client *c
- 	sqlite3_finalize(stmt);
- 	return ret;
- }
-+
 +/*
-+ * Cleans out the old nfsdcltrack database.
-+ *
-+ * Called upon receipt of the first "GraceDone" upcall only.
++ * Start an exclusive transaction and recheck the DB schema version. If it's
++ * still zero (indicating a new database) then set it up. If that all works,
++ * then insert schema version into the parameters table and commit the
++ * transaction. On any error, rollback the transaction.
 + */
-+int
-+sqlite_delete_cltrack_records(void)
++static int
++sqlite_maindb_init_v2(void)
 +{
-+	int ret;
-+	char *s;
++	int ret, ret2;
 +	char *err = NULL;
 +
-+	s = conf_get_str("nfsdcltrack", "storagedir");
-+	if (s)
-+		cltrack_storagedir = s;
-+	ret = sqlite_attach_db(cltrack_storagedir);
-+	if (ret)
-+		goto out;
-+	ret = sqlite3_exec(dbh, "DELETE FROM attached.clients;",
++	/* Start a transaction */
++	ret = sqlite3_exec(dbh, "BEGIN EXCLUSIVE TRANSACTION;", NULL, NULL,
++				&err);
++	if (ret != SQLITE_OK) {
++		xlog(L_ERROR, "Unable to begin transaction: %s", err);
++		return ret;
++	}
++
++	/*
++	 * Check schema version again. This time, under an exclusive
++	 * transaction to guard against racing DB setup attempts
++	 */
++	ret = sqlite_query_schema_version();
++	switch (ret) {
++	case 0:
++		/* Query failed again -- set up DB */
++		break;
++	case CLTRACK_SQLITE_LATEST_SCHEMA_VERSION:
++		/* Someone else raced in and set it up */
++		ret = 0;
++		goto rollback;
++	default:
++		/* Something went wrong -- fail! */
++		ret = -EINVAL;
++		goto rollback;
++	}
++
++	ret = sqlite3_exec(dbh, "CREATE TABLE parameters "
++				"(key TEXT PRIMARY KEY, value TEXT);",
 +				NULL, NULL, &err);
 +	if (ret != SQLITE_OK) {
-+		xlog(L_ERROR, "Unable to clear records from cltrack db: %s",
-+				err);
++		xlog(L_ERROR, "Unable to create parameter table: %s", err);
++		goto rollback;
 +	}
-+	sqlite_detach_db();
++
++	/* create the "clients" table */
++	ret = sqlite3_exec(dbh, "CREATE TABLE clients (id BLOB PRIMARY KEY, "
++				"time INTEGER, has_session INTEGER);",
++				NULL, NULL, &err);
++	if (ret != SQLITE_OK) {
++		xlog(L_ERROR, "Unable to create clients table: %s", err);
++		goto rollback;
++	}
++
++
++	/* insert version into parameters table */
++	ret = snprintf(buf, sizeof(buf), "INSERT OR FAIL INTO parameters "
++			"values (\"version\", \"%d\");",
++			CLTRACK_SQLITE_LATEST_SCHEMA_VERSION);
++	if (ret < 0) {
++		xlog(L_ERROR, "sprintf failed!");
++		goto rollback;
++	} else if ((size_t)ret >= sizeof(buf)) {
++		xlog(L_ERROR, "sprintf output too long! (%d chars)", ret);
++		ret = -EINVAL;
++		goto rollback;
++	}
++
++	ret = sqlite3_exec(dbh, (const char *)buf, NULL, NULL, &err);
++	if (ret != SQLITE_OK) {
++		xlog(L_ERROR, "Unable to insert into parameter table: %s", err);
++		goto rollback;
++	}
++
++	ret = sqlite3_exec(dbh, "COMMIT TRANSACTION;", NULL, NULL, &err);
++	if (ret != SQLITE_OK) {
++		xlog(L_ERROR, "Unable to commit transaction: %s", err);
++		goto rollback;
++	}
 +out:
 +	sqlite3_free(err);
 +	return ret;
++
++rollback:
++	/* Attempt to rollback the transaction */
++	ret2 = sqlite3_exec(dbh, "ROLLBACK TRANSACTION;", NULL, NULL, &err);
++	if (ret2 != SQLITE_OK)
++		xlog(L_ERROR, "Unable to rollback transaction: %s", err);
++	goto out;
++}
++
++/* Open the database and set up the database handle for it */
++int
++sqlite_prepare_dbh(const char *topdir)
++{
++	int ret;
++
++	/* Do nothing if the database handle is already set up */
++	if (dbh)
++		return 0;
++
++	ret = snprintf(buf, PATH_MAX - 1, "%s/main.sqlite", topdir);
++	if (ret < 0)
++		return ret;
++
++	buf[PATH_MAX - 1] = '\0';
++
++	/* open a new DB handle */
++	ret = sqlite3_open(buf, &dbh);
++	if (ret != SQLITE_OK) {
++		/* try to create the dir */
++		ret = mkdir_if_not_exist(topdir);
++		if (ret)
++			goto out_close;
++
++		/* retry open */
++		ret = sqlite3_open(buf, &dbh);
++		if (ret != SQLITE_OK)
++			goto out_close;
++	}
++
++	/* set busy timeout */
++	ret = sqlite3_busy_timeout(dbh, CLTRACK_SQLITE_BUSY_TIMEOUT);
++	if (ret != SQLITE_OK) {
++		xlog(L_ERROR, "Unable to set sqlite busy timeout: %s",
++				sqlite3_errmsg(dbh));
++		goto out_close;
++	}
++
++	ret = sqlite_query_schema_version();
++	switch (ret) {
++	case CLTRACK_SQLITE_LATEST_SCHEMA_VERSION:
++		/* DB is already set up. Do nothing */
++		ret = 0;
++		break;
++	case 1:
++		/* Old DB -- update to new schema */
++		ret = sqlite_maindb_update_v1_to_v2();
++		if (ret)
++			goto out_close;
++		break;
++	case 0:
++		/* Query failed -- try to set up new DB */
++		ret = sqlite_maindb_init_v2();
++		if (ret)
++			goto out_close;
++		break;
++	default:
++		/* Unknown DB version -- downgrade? Fail */
++		xlog(L_ERROR, "Unsupported database schema version! "
++			"Expected %d, got %d.",
++			CLTRACK_SQLITE_LATEST_SCHEMA_VERSION, ret);
++		ret = -EINVAL;
++		goto out_close;
++	}
++
++	return ret;
++out_close:
++	sqlite3_close(dbh);
++	dbh = NULL;
++	return ret;
 +}
 +
 +/*
-+ * Sets first_time to 0 in the parameters table to ensure we only
-+ * copy old client tracking records into the database one time.
++ * Create a client record
 + *
-+ * Called upon receipt of the first "GraceDone" upcall only.
++ * Returns a non-zero sqlite error code, or SQLITE_OK (aka 0)
 + */
 +int
-+sqlite_first_time_done(void)
++sqlite_insert_client(const unsigned char *clname, const size_t namelen,
++			const bool has_session, const bool zerotime)
++{
++	int ret;
++	sqlite3_stmt *stmt = NULL;
++
++	if (zerotime)
++		ret = sqlite3_prepare_v2(dbh, "INSERT OR REPLACE INTO clients "
++				"VALUES (?, 0, ?);", -1, &stmt, NULL);
++	else
++		ret = sqlite3_prepare_v2(dbh, "INSERT OR REPLACE INTO clients "
++				"VALUES (?, strftime('%s', 'now'), ?);", -1,
++				&stmt, NULL);
++
++	if (ret != SQLITE_OK) {
++		xlog(L_ERROR, "%s: insert statement prepare failed: %s",
++			__func__, sqlite3_errmsg(dbh));
++		return ret;
++	}
++
++	ret = sqlite3_bind_blob(stmt, 1, (const void *)clname, namelen,
++				SQLITE_STATIC);
++	if (ret != SQLITE_OK) {
++		xlog(L_ERROR, "%s: bind blob failed: %s", __func__,
++				sqlite3_errmsg(dbh));
++		goto out_err;
++	}
++
++	ret = sqlite3_bind_int(stmt, 2, (int)has_session);
++	if (ret != SQLITE_OK) {
++		xlog(L_ERROR, "%s: bind int failed: %s", __func__,
++				sqlite3_errmsg(dbh));
++		goto out_err;
++	}
++
++	ret = sqlite3_step(stmt);
++	if (ret == SQLITE_DONE)
++		ret = SQLITE_OK;
++	else
++		xlog(L_ERROR, "%s: unexpected return code from insert: %s",
++				__func__, sqlite3_errmsg(dbh));
++
++out_err:
++	xlog(D_GENERAL, "%s: returning %d", __func__, ret);
++	sqlite3_finalize(stmt);
++	return ret;
++}
++
++/* Remove a client record */
++int
++sqlite_remove_client(const unsigned char *clname, const size_t namelen)
++{
++	int ret;
++	sqlite3_stmt *stmt = NULL;
++
++	ret = sqlite3_prepare_v2(dbh, "DELETE FROM clients WHERE id==?", -1,
++				 &stmt, NULL);
++	if (ret != SQLITE_OK) {
++		xlog(L_ERROR, "%s: statement prepare failed: %s",
++				__func__, sqlite3_errmsg(dbh));
++		goto out_err;
++	}
++
++	ret = sqlite3_bind_blob(stmt, 1, (const void *)clname, namelen,
++				SQLITE_STATIC);
++	if (ret != SQLITE_OK) {
++		xlog(L_ERROR, "%s: bind blob failed: %s", __func__,
++				sqlite3_errmsg(dbh));
++		goto out_err;
++	}
++
++	ret = sqlite3_step(stmt);
++	if (ret == SQLITE_DONE)
++		ret = SQLITE_OK;
++	else
++		xlog(L_ERROR, "%s: unexpected return code from delete: %d",
++				__func__, ret);
++
++out_err:
++	xlog(D_GENERAL, "%s: returning %d", __func__, ret);
++	sqlite3_finalize(stmt);
++	return ret;
++}
++
++/*
++ * Is the given clname in the clients table? If so, then update its timestamp
++ * and return success. If the record isn't present, or the update fails, then
++ * return an error.
++ */
++int
++sqlite_check_client(const unsigned char *clname, const size_t namelen,
++			const bool has_session)
++{
++	int ret;
++	sqlite3_stmt *stmt = NULL;
++
++	ret = sqlite3_prepare_v2(dbh, "SELECT count(*) FROM clients WHERE "
++				      "id==?", -1, &stmt, NULL);
++	if (ret != SQLITE_OK) {
++		xlog(L_ERROR, "%s: unable to prepare update statement: %s",
++				__func__, sqlite3_errmsg(dbh));
++		goto out_err;
++	}
++
++	ret = sqlite3_bind_blob(stmt, 1, (const void *)clname, namelen,
++				SQLITE_STATIC);
++	if (ret != SQLITE_OK) {
++		xlog(L_ERROR, "%s: bind blob failed: %s",
++				__func__, sqlite3_errmsg(dbh));
++		goto out_err;
++	}
++
++	ret = sqlite3_step(stmt);
++	if (ret != SQLITE_ROW) {
++		xlog(L_ERROR, "%s: unexpected return code from select: %d",
++				__func__, ret);
++		goto out_err;
++	}
++
++	ret = sqlite3_column_int(stmt, 0);
++	xlog(D_GENERAL, "%s: select returned %d rows", __func__, ret);
++	if (ret != 1) {
++		ret = -EACCES;
++		goto out_err;
++	}
++
++	/* Only update timestamp for v4.0 clients */
++	if (has_session) {
++		ret = SQLITE_OK;
++		goto out_err;
++	}
++
++	sqlite3_finalize(stmt);
++	stmt = NULL;
++	ret = sqlite3_prepare_v2(dbh, "UPDATE OR FAIL clients SET "
++				      "time=strftime('%s', 'now') WHERE id==?",
++				 -1, &stmt, NULL);
++	if (ret != SQLITE_OK) {
++		xlog(L_ERROR, "%s: unable to prepare update statement: %s",
++				__func__, sqlite3_errmsg(dbh));
++		goto out_err;
++	}
++
++	ret = sqlite3_bind_blob(stmt, 1, (const void *)clname, namelen,
++				SQLITE_STATIC);
++	if (ret != SQLITE_OK) {
++		xlog(L_ERROR, "%s: bind blob failed: %s",
++				__func__, sqlite3_errmsg(dbh));
++		goto out_err;
++	}
++
++	ret = sqlite3_step(stmt);
++	if (ret == SQLITE_DONE)
++		ret = SQLITE_OK;
++	else
++		xlog(L_ERROR, "%s: unexpected return code from update: %s",
++				__func__, sqlite3_errmsg(dbh));
++
++out_err:
++	xlog(D_GENERAL, "%s: returning %d", __func__, ret);
++	sqlite3_finalize(stmt);
++	return ret;
++}
++
++/*
++ * remove any client records that were not reclaimed since grace_start.
++ */
++int
++sqlite_remove_unreclaimed(time_t grace_start)
 +{
 +	int ret;
 +	char *err = NULL;
 +
-+	ret = sqlite3_exec(dbh, "UPDATE parameters SET value = \"0\" "
-+				"WHERE key = \"first_time\";",
-+				NULL, NULL, &err);
-+	if (ret != SQLITE_OK)
-+		xlog(L_ERROR, "Unable to clear first_time: %s", err);
++	ret = snprintf(buf, sizeof(buf), "DELETE FROM clients WHERE time < %ld",
++			grace_start);
++	if (ret < 0) {
++		return ret;
++	} else if ((size_t)ret >= sizeof(buf)) {
++		ret = -EINVAL;
++		return ret;
++	}
 +
++	ret = sqlite3_exec(dbh, buf, NULL, NULL, &err);
++	if (ret != SQLITE_OK)
++		xlog(L_ERROR, "%s: delete failed: %s", __func__, err);
++
++	xlog(D_GENERAL, "%s: returning %d", __func__, ret);
 +	sqlite3_free(err);
 +	return ret;
 +}
++
++/*
++ * Are there any clients that are possibly still reclaiming? Return a positive
++ * integer (usually number of clients) if so. If not, then return 0. On any
++ * error, return non-zero.
++ */
++int
++sqlite_query_reclaiming(const time_t grace_start)
++{
++	int ret;
++	sqlite3_stmt *stmt = NULL;
++
++	ret = sqlite3_prepare_v2(dbh, "SELECT count(*) FROM clients WHERE "
++				      "time < ? OR has_session != 1", -1, &stmt, NULL);
++	if (ret != SQLITE_OK) {
++		xlog(L_ERROR, "%s: unable to prepare select statement: %s",
++				__func__, sqlite3_errmsg(dbh));
++		return ret;
++	}
++
++	ret = sqlite3_bind_int64(stmt, 1, (sqlite3_int64)grace_start);
++	if (ret != SQLITE_OK) {
++		xlog(L_ERROR, "%s: bind int64 failed: %s",
++				__func__, sqlite3_errmsg(dbh));
++		return ret;
++	}
++
++	ret = sqlite3_step(stmt);
++	if (ret != SQLITE_ROW) {
++		xlog(L_ERROR, "%s: unexpected return code from select: %s",
++				__func__, sqlite3_errmsg(dbh));
++		return ret;
++	}
++
++	ret = sqlite3_column_int(stmt, 0);
++	sqlite3_finalize(stmt);
++	xlog(D_GENERAL, "%s: there are %d clients that have not completed "
++			"reclaim", __func__, ret);
++	return ret;
++}
 diff --git a/utils/nfsdcld/sqlite.h b/utils/nfsdcld/sqlite.h
-index 757e5cc..7741382 100644
---- a/utils/nfsdcld/sqlite.h
+new file mode 100644
+index 0000000..06e7c04
+--- /dev/null
 +++ b/utils/nfsdcld/sqlite.h
-@@ -29,5 +29,7 @@ int sqlite_check_client(const unsigned char *clname, const size_t namelen);
- int sqlite_grace_start(void);
- int sqlite_grace_done(void);
- int sqlite_iterate_recovery(int (*cb)(struct cld_client *clnt), struct cld_client *clnt);
-+int sqlite_delete_cltrack_records(void);
-+int sqlite_first_time_done(void);
+@@ -0,0 +1,32 @@
++/*
++ * Copyright (C) 2011  Red Hat, Jeff Layton <jlayton@redhat.com>
++ *
++ * This program is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU General Public License
++ * as published by the Free Software Foundation; either version 2
++ * of the License, or (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, Inc., 51 Franklin Street, Fifth Floor,
++ * Boston, MA 02110-1301, USA.
++ */
++
++#ifndef _SQLITE_H_
++#define _SQLITE_H_
++
++int sqlite_prepare_dbh(const char *topdir);
++int sqlite_insert_client(const unsigned char *clname, const size_t namelen,
++				const bool has_session, const bool zerotime);
++int sqlite_remove_client(const unsigned char *clname, const size_t namelen);
++int sqlite_check_client(const unsigned char *clname, const size_t namelen,
++				const bool has_session);
++int sqlite_remove_unreclaimed(const time_t grace_start);
++int sqlite_query_reclaiming(const time_t grace_start);
++
++#endif /* _SQLITE_H */
+diff --git a/utils/nfsdcltrack/Makefile.am b/utils/nfsdcltrack/Makefile.am
+index 0f599c0..2f7fe3d 100644
+--- a/utils/nfsdcltrack/Makefile.am
++++ b/utils/nfsdcltrack/Makefile.am
+@@ -4,14 +4,11 @@
+ # overridden at config time. The kernel "knows" the /sbin name.
+ sbindir = /sbin
  
- #endif /* _SQLITE_H */
+-man8_MANS	= nfsdcld.man nfsdcltrack.man
++man8_MANS	= nfsdcltrack.man
+ EXTRA_DIST	= $(man8_MANS)
+ 
+ AM_CFLAGS	+= -D_LARGEFILE64_SOURCE
+-sbin_PROGRAMS	= nfsdcld nfsdcltrack
+-
+-nfsdcld_SOURCES = nfsdcld.c sqlite.c
+-nfsdcld_LDADD = ../../support/nfs/libnfs.la $(LIBEVENT) $(LIBSQLITE) $(LIBCAP)
++sbin_PROGRAMS	= nfsdcltrack
+ 
+ noinst_HEADERS	= sqlite.h
+ 
 -- 
 2.17.2
 
