@@ -6,147 +6,143 @@ X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B7ACFC43381
-	for <linux-nfs@archiver.kernel.org>; Tue, 26 Mar 2019 22:06:34 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id CF0F8C4360F
+	for <linux-nfs@archiver.kernel.org>; Tue, 26 Mar 2019 22:07:32 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 919B42075D
-	for <linux-nfs@archiver.kernel.org>; Tue, 26 Mar 2019 22:06:34 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id A68F32087E
+	for <linux-nfs@archiver.kernel.org>; Tue, 26 Mar 2019 22:07:32 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1731770AbfCZWGd (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 26 Mar 2019 18:06:33 -0400
-Received: from mx1.redhat.com ([209.132.183.28]:61401 "EHLO mx1.redhat.com"
+        id S1731827AbfCZWHb (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 26 Mar 2019 18:07:31 -0400
+Received: from mx1.redhat.com ([209.132.183.28]:46764 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1731828AbfCZWGb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 26 Mar 2019 18:06:31 -0400
+        id S1731491AbfCZWHb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 26 Mar 2019 18:07:31 -0400
 Received: from smtp.corp.redhat.com (int-mx04.intmail.prod.int.phx2.redhat.com [10.5.11.14])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 6140F3082E91;
-        Tue, 26 Mar 2019 22:06:31 +0000 (UTC)
+        by mx1.redhat.com (Postfix) with ESMTPS id 5462830B4ACE;
+        Tue, 26 Mar 2019 22:07:31 +0000 (UTC)
 Received: from coeurl.usersys.redhat.com (ovpn-122-200.rdu2.redhat.com [10.10.122.200])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 45C7888B2B;
-        Tue, 26 Mar 2019 22:06:31 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 361732A2BF;
+        Tue, 26 Mar 2019 22:07:31 +0000 (UTC)
 Received: by coeurl.usersys.redhat.com (Postfix, from userid 1000)
-        id 1FD4B21345; Tue, 26 Mar 2019 18:06:30 -0400 (EDT)
+        id D688021343; Tue, 26 Mar 2019 18:07:30 -0400 (EDT)
 From:   Scott Mayhew <smayhew@redhat.com>
-To:     bfields@fieldses.org, jlayton@kernel.org
-Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH RFC v3 5/5] nfsd: handle legacy client tracking records sent by nfsdcld
-Date:   Tue, 26 Mar 2019 18:06:30 -0400
-Message-Id: <20190326220630.2911-6-smayhew@redhat.com>
-In-Reply-To: <20190326220630.2911-1-smayhew@redhat.com>
-References: <20190326220630.2911-1-smayhew@redhat.com>
+To:     steved@redhat.com
+Cc:     bfields@fieldses.org, jlayton@kernel.org, linux-nfs@vger.kernel.org
+Subject: [nfs-utils PATCH RFC v3 4/8] nfsdcld: remove some unused functions
+Date:   Tue, 26 Mar 2019 18:07:26 -0400
+Message-Id: <20190326220730.3763-5-smayhew@redhat.com>
+In-Reply-To: <20190326220730.3763-1-smayhew@redhat.com>
+References: <20190326220730.3763-1-smayhew@redhat.com>
 X-Scanned-By: MIMEDefang 2.79 on 10.5.11.14
-X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.46]); Tue, 26 Mar 2019 22:06:31 +0000 (UTC)
+X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.49]); Tue, 26 Mar 2019 22:07:31 +0000 (UTC)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-The new nfsdcld will do a one-time "upgrade" where it searches for
-records from nfsdcltrack and the legacy tracking during startup.
-Legacy records will be prefixed with the string "hash:", which we need
-to strip off before adding to the reclaim_str_hashtbl.  When legacy
-records are encountered, set the new cn_has_legacy flag in the cld_net.
-When this flag is set, if the search for a reclaim record based on the
-client name string fails, then do a second search based on the hash of
-the name string.
-
-Note that if there are legacy records then the grace period will not
-be lifted early via the tracking of RECLAIM_COMPLETEs.
+Get rid of sqlite_query_reclaiming() and sqlite_remove_unreclaimed(),
+which are not used.
 
 Signed-off-by: Scott Mayhew <smayhew@redhat.com>
 ---
- fs/nfsd/nfs4recover.c | 39 +++++++++++++++++++++++++++++++++++----
- 1 file changed, 35 insertions(+), 4 deletions(-)
+ utils/nfsdcld/sqlite.c | 67 ------------------------------------------
+ utils/nfsdcld/sqlite.h |  2 --
+ 2 files changed, 69 deletions(-)
 
-diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
-index d60001da1dbf..3a123c88120a 100644
---- a/fs/nfsd/nfs4recover.c
-+++ b/fs/nfsd/nfs4recover.c
-@@ -731,6 +731,7 @@ struct cld_net {
- 	spinlock_t		 cn_lock;
- 	struct list_head	 cn_list;
- 	unsigned int		 cn_xid;
-+	bool			 cn_has_legacy;
- };
- 
- struct cld_upcall {
-@@ -787,6 +788,7 @@ __cld_pipe_inprogress_downcall(const struct cld_msg __user *cmsg,
- 	uint8_t cmd;
- 	struct xdr_netobj name;
- 	uint16_t namelen;
-+	struct cld_net *cn = nn->cld_net;
- 
- 	if (get_user(cmd, &cmsg->cm_cmd)) {
- 		dprintk("%s: error when copying cmd from userspace", __func__);
-@@ -799,6 +801,11 @@ __cld_pipe_inprogress_downcall(const struct cld_msg __user *cmsg,
- 		if (IS_ERR_OR_NULL(name.data))
- 			return -EFAULT;
- 		name.len = namelen;
-+		if (name.len > 5 && memcmp(name.data, "hash:", 5) == 0) {
-+			name.len = name.len - 5;
-+			memmove(name.data, name.data + 5, name.len);
-+			cn->cn_has_legacy = true;
-+		}
- 		if (!nfs4_client_to_reclaim(name, nn)) {
- 			kfree(name.data);
- 			return -EFAULT;
-@@ -969,6 +976,7 @@ __nfsd4_init_cld_pipe(struct net *net)
- 	}
- 
- 	cn->cn_pipe->dentry = dentry;
-+	cn->cn_has_legacy = false;
- 	nn->cld_net = cn;
- 	return 0;
- 
-@@ -1171,6 +1179,10 @@ nfsd4_cld_check(struct nfs4_client *clp)
- {
- 	struct nfs4_client_reclaim *crp;
- 	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
-+	struct cld_net *cn = nn->cld_net;
-+	int status;
-+	char dname[HEXDIR_LEN];
-+	struct xdr_netobj name;
- 
- 	/* did we already find that this client is stable? */
- 	if (test_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags))
-@@ -1178,12 +1190,31 @@ nfsd4_cld_check(struct nfs4_client *clp)
- 
- 	/* look for it in the reclaim hashtable otherwise */
- 	crp = nfsd4_find_reclaim_client(clp->cl_name, nn);
--	if (crp) {
--		crp->cr_clp = clp;
--		return 0;
--	}
-+	if (crp)
-+		goto found;
-+
-+	if (cn->cn_has_legacy) {
-+		status = nfs4_make_rec_clidname(dname, &clp->cl_name);
-+		if (status)
-+			return -ENOENT;
-+
-+		name.data = kmemdup(dname, HEXDIR_LEN, GFP_KERNEL);
-+		if (!name.data) {
-+			dprintk("%s: failed to allocate memory for name.data!\n",
-+				__func__);
-+			return -ENOENT;
-+		}
-+		name.len = HEXDIR_LEN;
-+		crp = nfsd4_find_reclaim_client(name, nn);
-+		kfree(name.data);
-+		if (crp)
-+			goto found;
- 
-+	}
- 	return -ENOENT;
-+found:
-+	crp->cr_clp = clp;
-+	return 0;
+diff --git a/utils/nfsdcld/sqlite.c b/utils/nfsdcld/sqlite.c
+index 82140ea..6e4eb66 100644
+--- a/utils/nfsdcld/sqlite.c
++++ b/utils/nfsdcld/sqlite.c
+@@ -628,73 +628,6 @@ out_err:
+ 	return ret;
  }
  
- static int
+-/*
+- * remove any client records that were not reclaimed since grace_start.
+- */
+-int
+-sqlite_remove_unreclaimed(time_t grace_start)
+-{
+-	int ret;
+-	char *err = NULL;
+-
+-	ret = snprintf(buf, sizeof(buf), "DELETE FROM clients WHERE time < %ld",
+-			grace_start);
+-	if (ret < 0) {
+-		return ret;
+-	} else if ((size_t)ret >= sizeof(buf)) {
+-		ret = -EINVAL;
+-		return ret;
+-	}
+-
+-	ret = sqlite3_exec(dbh, buf, NULL, NULL, &err);
+-	if (ret != SQLITE_OK)
+-		xlog(L_ERROR, "%s: delete failed: %s", __func__, err);
+-
+-	xlog(D_GENERAL, "%s: returning %d", __func__, ret);
+-	sqlite3_free(err);
+-	return ret;
+-}
+-
+-/*
+- * Are there any clients that are possibly still reclaiming? Return a positive
+- * integer (usually number of clients) if so. If not, then return 0. On any
+- * error, return non-zero.
+- */
+-int
+-sqlite_query_reclaiming(const time_t grace_start)
+-{
+-	int ret;
+-	sqlite3_stmt *stmt = NULL;
+-
+-	ret = sqlite3_prepare_v2(dbh, "SELECT count(*) FROM clients WHERE "
+-				      "time < ? OR has_session != 1", -1, &stmt, NULL);
+-	if (ret != SQLITE_OK) {
+-		xlog(L_ERROR, "%s: unable to prepare select statement: %s",
+-				__func__, sqlite3_errmsg(dbh));
+-		return ret;
+-	}
+-
+-	ret = sqlite3_bind_int64(stmt, 1, (sqlite3_int64)grace_start);
+-	if (ret != SQLITE_OK) {
+-		xlog(L_ERROR, "%s: bind int64 failed: %s",
+-				__func__, sqlite3_errmsg(dbh));
+-		return ret;
+-	}
+-
+-	ret = sqlite3_step(stmt);
+-	if (ret != SQLITE_ROW) {
+-		xlog(L_ERROR, "%s: unexpected return code from select: %s",
+-				__func__, sqlite3_errmsg(dbh));
+-		return ret;
+-	}
+-
+-	ret = sqlite3_column_int(stmt, 0);
+-	sqlite3_finalize(stmt);
+-	xlog(D_GENERAL, "%s: there are %d clients that have not completed "
+-			"reclaim", __func__, ret);
+-	return ret;
+-}
+-
+ int
+ sqlite_grace_start(void)
+ {
+diff --git a/utils/nfsdcld/sqlite.h b/utils/nfsdcld/sqlite.h
+index 5c56f75..757e5cc 100644
+--- a/utils/nfsdcld/sqlite.h
++++ b/utils/nfsdcld/sqlite.h
+@@ -26,8 +26,6 @@ int sqlite_prepare_dbh(const char *topdir);
+ int sqlite_insert_client(const unsigned char *clname, const size_t namelen);
+ int sqlite_remove_client(const unsigned char *clname, const size_t namelen);
+ int sqlite_check_client(const unsigned char *clname, const size_t namelen);
+-int sqlite_remove_unreclaimed(const time_t grace_start);
+-int sqlite_query_reclaiming(const time_t grace_start);
+ int sqlite_grace_start(void);
+ int sqlite_grace_done(void);
+ int sqlite_iterate_recovery(int (*cb)(struct cld_client *clnt), struct cld_client *clnt);
 -- 
 2.17.2
 
