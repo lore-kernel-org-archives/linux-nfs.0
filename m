@@ -2,112 +2,68 @@ Return-Path: <SRS0=uQmJ=R5=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-6.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,SPF_PASS,URIBL_BLOCKED
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B0621C43381
-	for <linux-nfs@archiver.kernel.org>; Tue, 26 Mar 2019 22:07:32 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id AD8F2C43381
+	for <linux-nfs@archiver.kernel.org>; Tue, 26 Mar 2019 22:25:03 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 848F920896
-	for <linux-nfs@archiver.kernel.org>; Tue, 26 Mar 2019 22:07:32 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 77EAE208E4
+	for <linux-nfs@archiver.kernel.org>; Tue, 26 Mar 2019 22:25:03 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=default; t=1553639103;
+	bh=aUULyc+DiuHrD+5Kdvg4BctRjE9mcqkfZX20gIdKojE=;
+	h=Subject:From:In-Reply-To:References:Date:To:Cc:List-ID:From;
+	b=rutv0NOGZUlRxK9ljErB2Fp+MXQEZf0+KNwJGN7GgBw3k/R9uyiXmxHLgyhGKuTNu
+	 PwFszkKDvjhDAXxaqOqK9s1z1J3KuzrSPZGTJb3lNZY7g+J/APjP6e4MFWZDhjzZUq
+	 J4xYjGSlaBHeVo7hegAGyY0SeVdAwHM/2xUek6yk=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1731764AbfCZWHb (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 26 Mar 2019 18:07:31 -0400
-Received: from mx1.redhat.com ([209.132.183.28]:32096 "EHLO mx1.redhat.com"
+        id S1731824AbfCZWZC (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 26 Mar 2019 18:25:02 -0400
+Received: from mail.kernel.org ([198.145.29.99]:39720 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726277AbfCZWHb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 26 Mar 2019 18:07:31 -0400
-Received: from smtp.corp.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 3784D307E053;
-        Tue, 26 Mar 2019 22:07:31 +0000 (UTC)
-Received: from coeurl.usersys.redhat.com (ovpn-122-200.rdu2.redhat.com [10.10.122.200])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 1B45D60CC0;
-        Tue, 26 Mar 2019 22:07:31 +0000 (UTC)
-Received: by coeurl.usersys.redhat.com (Postfix, from userid 1000)
-        id C420620C2E; Tue, 26 Mar 2019 18:07:30 -0400 (EDT)
-From:   Scott Mayhew <smayhew@redhat.com>
-To:     steved@redhat.com
-Cc:     bfields@fieldses.org, jlayton@kernel.org, linux-nfs@vger.kernel.org
-Subject: [nfs-utils PATCH RFC v3 0/8] restore nfsdcld
-Date:   Tue, 26 Mar 2019 18:07:22 -0400
-Message-Id: <20190326220730.3763-1-smayhew@redhat.com>
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.12
-X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.42]); Tue, 26 Mar 2019 22:07:31 +0000 (UTC)
+        id S1726782AbfCZWZC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 26 Mar 2019 18:25:02 -0400
+Subject: Re: [GIT PULL] Please pull NFS client fixes
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=default; t=1553639102;
+        bh=aUULyc+DiuHrD+5Kdvg4BctRjE9mcqkfZX20gIdKojE=;
+        h=From:In-Reply-To:References:Date:To:Cc:From;
+        b=FOy2P7QC9vyly/7Q1XLKtGa/P6IgIa0Z+ThyWs6O1WwHVcrTFHiUWd+yqu4bPOdd9
+         3U/WLAzEgJfOWU7gwxwLFxeCHsNF/0cUU1kAKqJcxBz8EoVF60gi2lYZLqMPvHrRsx
+         tUjBhWfTM53PZcGyxZ9fR998AuLwLjwbMy1t7Zys=
+From:   pr-tracker-bot@kernel.org
+In-Reply-To: <938c564de7930769feacf1403fae0c9511f10993.camel@hammerspace.com>
+References: <938c564de7930769feacf1403fae0c9511f10993.camel@hammerspace.com>
+X-PR-Tracked-List-Id: <linux-nfs.vger.kernel.org>
+X-PR-Tracked-Message-Id: <938c564de7930769feacf1403fae0c9511f10993.camel@hammerspace.com>
+X-PR-Tracked-Remote: git://git.linux-nfs.org/projects/trondmy/linux-nfs.git
+ tags/nfs-for-5.1-3
+X-PR-Tracked-Commit-Id: 01f2f5b82a2b523ae76af53f2ff43c48dde10a00
+X-PR-Merge-Tree: torvalds/linux.git
+X-PR-Merge-Refname: refs/heads/master
+X-PR-Merge-Commit-Id: 14c741de93861749dfb60b4964028541f5c506ca
+Message-Id: <155363910207.25306.7118243450185118149.pr-tracker-bot@kernel.org>
+Date:   Tue, 26 Mar 2019 22:25:02 +0000
+To:     Trond Myklebust <trondmy@hammerspace.com>
+Cc:     "torvalds@linux-foundation.org" <torvalds@linux-foundation.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-When nfsdcld was released, it was quickly deprecated in favor of the
-nfsdcltrack usermodehelper, so as to not require another running daemon.
-The nfsdcld code was removed from nfs-utils in 2012.  That prevents
-NFSv4 clients from reclaiming locks from nfsd's running in containers,
-since neither nfsdcltrack nor the legacy client tracking code work in
-containers.  These patches restore the nfsdcld code.
+The pull request you sent on Tue, 26 Mar 2019 20:12:07 +0000:
 
-These patches are intended to go alongside some kernel patches that
-introduce an enhancement that allows nfsd to "slurp" up the client
-records during client tracking initialization and store them internally
-in hash table.  This enables nfsd to check whether an NFSv4 client is
-allowed to reclaim without having to do an upcall to nfsdcld.  It also
-allows nfsd to decide to end the v4 grace period early if the number of
-RECLAIM_COMPLETE operations it has received from "known" clients is
-equal to the number of entries in the hash table.  It also allows nfsd
-to skip the v4 grace period altogether if it knows there are no clients
-allowed to reclaim.
+> git://git.linux-nfs.org/projects/trondmy/linux-nfs.git tags/nfs-for-5.1-3
 
-The new nfsdcld code will work with older kernels, however in that case
-there is no ability for nfsd to exit the grace period early or skip the
-grace period altogether.
+has been merged into torvalds/linux.git:
+https://git.kernel.org/torvalds/c/14c741de93861749dfb60b4964028541f5c506ca
 
-v3:
-- removed PathExists restriction from the nfsdcld.service file
-- added the ability to do a one-time upgrade from older client tracking
-  methods (i.e. nfsdcltrack and/or the legacy v4recovery dir)
-v2:
-- Use sqlite3_column_int64() instead of sqlite3_column_int() to query
-  the current & recovery values from the grace table
-- Uncommented the nfsdcld section header in nfs.conf
-
-Scott Mayhew (8):
-  Revert "nfsdcltrack: remove the nfsdcld daemon"
-  nfsdcld: move nfsdcld to its own directory
-  nfsdcld: a few enhancements
-  nfsdcld: remove some unused functions
-  nfsdcld: the -p option should specify the rpc_pipefs mountpoint
-  nfsdcld: add /etc/nfs.conf support
-  systemd: add a unit file for nfsdcld
-  nfsdcld: add a facility for migrating from older client tracking
-    methods
-
- .gitignore                   |    1 +
- configure.ac                 |   23 +
- nfs.conf                     |    4 +
- support/include/cld.h        |    1 +
- systemd/nfs-server.service   |    2 +
- systemd/nfsdcld.service      |   10 +
- utils/Makefile.am            |    4 +
- utils/nfsdcld/Makefile.am    |   19 +
- utils/nfsdcld/cld-internal.h |   33 +
- utils/nfsdcld/legacy.c       |  180 ++++++
- utils/nfsdcld/legacy.h       |   24 +
- utils/nfsdcld/nfsdcld.c      |  774 ++++++++++++++++++++++++
- utils/nfsdcld/nfsdcld.man    |  199 ++++++
- utils/nfsdcld/sqlite.c       | 1109 ++++++++++++++++++++++++++++++++++
- utils/nfsdcld/sqlite.h       |   35 ++
- 15 files changed, 2418 insertions(+)
- create mode 100644 systemd/nfsdcld.service
- create mode 100644 utils/nfsdcld/Makefile.am
- create mode 100644 utils/nfsdcld/cld-internal.h
- create mode 100644 utils/nfsdcld/legacy.c
- create mode 100644 utils/nfsdcld/legacy.h
- create mode 100644 utils/nfsdcld/nfsdcld.c
- create mode 100644 utils/nfsdcld/nfsdcld.man
- create mode 100644 utils/nfsdcld/sqlite.c
- create mode 100644 utils/nfsdcld/sqlite.h
+Thank you!
 
 -- 
-2.17.2
-
+Deet-doot-dot, I am a bot.
+https://korg.wiki.kernel.org/userdoc/prtracker
