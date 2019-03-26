@@ -6,138 +6,129 @@ X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 525F5C10F05
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 806D5C10F0A
 	for <linux-nfs@archiver.kernel.org>; Tue, 26 Mar 2019 22:07:33 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 27E372075D
+	by mail.kernel.org (Postfix) with ESMTP id 53FB52087E
 	for <linux-nfs@archiver.kernel.org>; Tue, 26 Mar 2019 22:07:33 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726277AbfCZWHc (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S1731880AbfCZWHc (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Tue, 26 Mar 2019 18:07:32 -0400
-Received: from mx1.redhat.com ([209.132.183.28]:44381 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:46772 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1731779AbfCZWHb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 26 Mar 2019 18:07:31 -0400
-Received: from smtp.corp.redhat.com (int-mx06.intmail.prod.int.phx2.redhat.com [10.5.11.16])
+        id S1726277AbfCZWHc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 26 Mar 2019 18:07:32 -0400
+Received: from smtp.corp.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id A2ED5307EA9F;
+        by mx1.redhat.com (Postfix) with ESMTPS id AE9F1307CDD5;
         Tue, 26 Mar 2019 22:07:31 +0000 (UTC)
 Received: from coeurl.usersys.redhat.com (ovpn-122-200.rdu2.redhat.com [10.10.122.200])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 871E65C644;
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 8E2C9600C1;
         Tue, 26 Mar 2019 22:07:31 +0000 (UTC)
 Received: by coeurl.usersys.redhat.com (Postfix, from userid 1000)
-        id DAE9921345; Tue, 26 Mar 2019 18:07:30 -0400 (EDT)
+        id DFB3321347; Tue, 26 Mar 2019 18:07:30 -0400 (EDT)
 From:   Scott Mayhew <smayhew@redhat.com>
 To:     steved@redhat.com
 Cc:     bfields@fieldses.org, jlayton@kernel.org, linux-nfs@vger.kernel.org
-Subject: [nfs-utils PATCH RFC v3 5/8] nfsdcld: the -p option should specify the rpc_pipefs mountpoint
-Date:   Tue, 26 Mar 2019 18:07:27 -0400
-Message-Id: <20190326220730.3763-6-smayhew@redhat.com>
+Subject: [nfs-utils PATCH RFC v3 6/8] nfsdcld: add /etc/nfs.conf support
+Date:   Tue, 26 Mar 2019 18:07:28 -0400
+Message-Id: <20190326220730.3763-7-smayhew@redhat.com>
 In-Reply-To: <20190326220730.3763-1-smayhew@redhat.com>
 References: <20190326220730.3763-1-smayhew@redhat.com>
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.16
-X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.44]); Tue, 26 Mar 2019 22:07:31 +0000 (UTC)
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.11
+X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.49]); Tue, 26 Mar 2019 22:07:31 +0000 (UTC)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Change the -p option to specify the rpc_pipefs mountpoint rather than
-the full path to the cld pipe file.  This is consistent with other
-daemons that use the rpc_pipefs filesystem.
-
 Signed-off-by: Scott Mayhew <smayhew@redhat.com>
 ---
- utils/nfsdcld/nfsdcld.c   | 17 ++++++++++-------
- utils/nfsdcld/nfsdcld.man |  9 ++++-----
- 2 files changed, 14 insertions(+), 12 deletions(-)
+ nfs.conf                  |  4 ++++
+ utils/nfsdcld/nfsdcld.c   | 13 +++++++++++++
+ utils/nfsdcld/nfsdcld.man | 15 +++++++++++++++
+ 3 files changed, 32 insertions(+)
 
+diff --git a/nfs.conf b/nfs.conf
+index 796bee4..aabf300 100644
+--- a/nfs.conf
++++ b/nfs.conf
+@@ -34,6 +34,10 @@
+ # state-directory-path=/var/lib/nfs
+ # ha-callout=
+ #
++[nfsdcld]
++# debug=0
++# storagedir=/var/lib/nfs/nfsdcld
++#
+ [nfsdcltrack]
+ # debug=0
+ # storagedir=/var/lib/nfs/nfsdcltrack
 diff --git a/utils/nfsdcld/nfsdcld.c b/utils/nfsdcld/nfsdcld.c
-index 9b1ad98..272c7c5 100644
+index 272c7c5..313c68f 100644
 --- a/utils/nfsdcld/nfsdcld.c
 +++ b/utils/nfsdcld/nfsdcld.c
-@@ -46,11 +46,11 @@
+@@ -45,6 +45,7 @@
+ #include "cld-internal.h"
  #include "sqlite.h"
  #include "../mount/version.h"
++#include "conffile.h"
  
--#ifndef PIPEFS_DIR
--#define PIPEFS_DIR NFS_STATEDIR "/rpc_pipefs"
-+#ifndef DEFAULT_PIPEFS_DIR
-+#define DEFAULT_PIPEFS_DIR NFS_STATEDIR "/rpc_pipefs"
- #endif
+ #ifndef DEFAULT_PIPEFS_DIR
+ #define DEFAULT_PIPEFS_DIR NFS_STATEDIR "/rpc_pipefs"
+@@ -640,6 +641,7 @@ main(int argc, char **argv)
+ 	char *progname;
+ 	char *storagedir = CLD_DEFAULT_STORAGEDIR;
+ 	struct cld_client clnt;
++	char *s;
  
--#define DEFAULT_CLD_PATH	PIPEFS_DIR "/nfsd/cld"
-+#define DEFAULT_CLD_PATH	"/nfsd/cld"
+ 	memset(&clnt, 0, sizeof(clnt));
  
- #ifndef CLD_DEFAULT_STORAGEDIR
- #define CLD_DEFAULT_STORAGEDIR NFS_STATEDIR "/nfsdcld"
-@@ -63,7 +63,8 @@
- /* private data structures */
+@@ -653,6 +655,17 @@ main(int argc, char **argv)
+ 	xlog_syslog(0);
+ 	xlog_stderr(1);
  
- /* global variables */
--static char *pipepath = DEFAULT_CLD_PATH;
-+static char pipefs_dir[PATH_MAX] = DEFAULT_PIPEFS_DIR;
-+static char pipepath[PATH_MAX];
- static int 		inotify_fd = -1;
- static struct event	pipedir_event;
- static bool old_kernel = false;
-@@ -73,7 +74,7 @@ static struct option longopts[] =
- 	{ "help", 0, NULL, 'h' },
- 	{ "foreground", 0, NULL, 'F' },
- 	{ "debug", 0, NULL, 'd' },
--	{ "pipe", 1, NULL, 'p' },
-+	{ "pipefsdir", 1, NULL, 'p' },
- 	{ "storagedir", 1, NULL, 's' },
- 	{ NULL, 0, 0, 0 },
- };
-@@ -84,7 +85,7 @@ static void cldcb(int UNUSED(fd), short which, void *data);
- static void
- usage(char *progname)
- {
--	printf("%s [ -hFd ] [ -p pipe ] [ -s dir ]\n", progname);
-+	printf("%s [ -hFd ] [ -p pipefsdir ] [ -s storagedir ]\n", progname);
- }
- 
- static int
-@@ -663,7 +664,7 @@ main(int argc, char **argv)
- 			foreground = true;
- 			break;
- 		case 'p':
--			pipepath = optarg;
-+			strlcpy(pipefs_dir, optarg, sizeof(pipefs_dir));
- 			break;
- 		case 's':
- 			storagedir = optarg;
-@@ -674,6 +675,8 @@ main(int argc, char **argv)
- 		}
- 	}
- 
-+	strlcpy(pipepath, pipefs_dir, sizeof(pipepath));
-+	strlcat(pipepath, DEFAULT_CLD_PATH, sizeof(pipepath));
- 
- 	xlog_open(progname);
- 	if (!foreground) {
++	conf_init_file(NFS_CONFFILE);
++	s = conf_get_str("general", "pipefs-directory");
++	if (s)
++		strlcpy(pipefs_dir, s, sizeof(pipefs_dir));
++	s = conf_get_str("nfsdcld", "storagedir");
++	if (s)
++		storagedir = s;
++	rc = conf_get_num("nfsdcld", "debug", 0);
++	if (rc > 0)
++		xlog_config(D_ALL, 1);
++
+ 	/* process command-line options */
+ 	while ((arg = getopt_long(argc, argv, "hdFp:s:", longopts,
+ 				  NULL)) != EOF) {
 diff --git a/utils/nfsdcld/nfsdcld.man b/utils/nfsdcld/nfsdcld.man
-index 9ddaf64..b607ba6 100644
+index b607ba6..c271d14 100644
 --- a/utils/nfsdcld/nfsdcld.man
 +++ b/utils/nfsdcld/nfsdcld.man
-@@ -155,11 +155,10 @@ Enable debug level logging.
- .IP "\fB\-F\fR, \fB\-\-foreground\fR" 4
- .IX Item "-F, --foreground"
- Runs the daemon in the foreground and prints all output to stderr
--.IP "\fB\-p\fR \fIpipe\fR, \fB\-\-pipe\fR=\fIpipe\fR" 4
--.IX Item "-p pipe, --pipe=pipe"
--Location of the \*(L"cld\*(R" upcall pipe. The default value is
--\&\fI/var/lib/nfs/rpc_pipefs/nfsd/cld\fR. If the pipe does not exist when the
--daemon starts then it will wait for it to be created.
-+.IP "\fB\-p\fR \fIpath\fR, \fB\-\-pipefsdir\fR=\fIpath\fR" 4
-+.IX Item "-p path, --pipefsdir=path"
-+Location of the rpc_pipefs filesystem. The default value is
-+\&\fI/var/lib/nfs/rpc_pipefs\fR.
- .IP "\fB\-s\fR \fIstorage_dir\fR, \fB\-\-storagedir\fR=\fIstorage_dir\fR" 4
+@@ -163,6 +163,21 @@ Location of the rpc_pipefs filesystem. The default value is
  .IX Item "-s storagedir, --storagedir=storage_dir"
  Directory where stable storage information should be kept. The default
+ value is \fI/var/lib/nfs/nfsdcld\fR.
++.SH "CONFIGURATION FILE"
++.IX Header "CONFIGURATION FILE"
++The following values are recognized in the \fB[nfsdcld]\fR section
++of the \fI/etc/nfs.conf\fR configuration file:
++.IP "\fBstoragedir\fR" 4
++.IX Item "storagedir"
++Equivalent to \fB\-s\fR/\fB\-\-storagedir\fR.
++.IP "\fBdebug\fR" 4
++.IX Item "debug"
++Setting "debug = 1" is equivalent to \fB\-d\fR/\fB\-\-debug\fR.
++.LP
++In addition, the following value is recognized from the \fB[general]\fR section:
++.IP "\fBpipefs\-directory\fR" 4
++.IX Item "pipefs-directory"
++Equivalent to \fB\-p\fR/\fB\-\-pipefsdir\fR.
+ .SH "NOTES"
+ .IX Header "NOTES"
+ The Linux kernel NFSv4 server has historically tracked this information
 -- 
 2.17.2
 
