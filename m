@@ -6,138 +6,101 @@ X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 62136C43381
-	for <linux-nfs@archiver.kernel.org>; Tue, 26 Mar 2019 13:57:45 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 169C1C43381
+	for <linux-nfs@archiver.kernel.org>; Tue, 26 Mar 2019 14:11:14 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 3DFA22084B
-	for <linux-nfs@archiver.kernel.org>; Tue, 26 Mar 2019 13:57:45 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id D52622075D
+	for <linux-nfs@archiver.kernel.org>; Tue, 26 Mar 2019 14:11:13 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726277AbfCZN5o (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 26 Mar 2019 09:57:44 -0400
-Received: from mx1.redhat.com ([209.132.183.28]:35556 "EHLO mx1.redhat.com"
+        id S1728279AbfCZOLN (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 26 Mar 2019 10:11:13 -0400
+Received: from mx1.redhat.com ([209.132.183.28]:55392 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726175AbfCZN5o (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 26 Mar 2019 09:57:44 -0400
-Received: from smtp.corp.redhat.com (int-mx03.intmail.prod.int.phx2.redhat.com [10.5.11.13])
+        id S1726277AbfCZOLN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 26 Mar 2019 10:11:13 -0400
+Received: from smtp.corp.redhat.com (int-mx06.intmail.prod.int.phx2.redhat.com [10.5.11.16])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id A616030833A0;
-        Tue, 26 Mar 2019 13:57:43 +0000 (UTC)
+        by mx1.redhat.com (Postfix) with ESMTPS id 25FEE3092656;
+        Tue, 26 Mar 2019 14:11:13 +0000 (UTC)
 Received: from localhost.localdomain.com (unknown [10.76.0.95])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 4F0B017A78;
-        Tue, 26 Mar 2019 13:57:41 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 1F8D05F9C9;
+        Tue, 26 Mar 2019 14:11:11 +0000 (UTC)
 From:   Kenneth D'souza <kdsouza@redhat.com>
 To:     linux-nfs@vger.kernel.org
 Cc:     bfields@fieldses.org
-Subject: [PATCH]  nfs4_getfacl: Add new option -c/--omit-header to not display comment header.
-Date:   Tue, 26 Mar 2019 19:27:40 +0530
-Message-Id: <20190326135740.16558-1-kdsouza@redhat.com>
+Subject: [PATCH] nfs4_setfacl: Skip comment field while reading ACE(s).
+Date:   Tue, 26 Mar 2019 19:41:09 +0530
+Message-Id: <20190326141109.16844-1-kdsouza@redhat.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.13
-X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.44]); Tue, 26 Mar 2019 13:57:43 +0000 (UTC)
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.16
+X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.43]); Tue, 26 Mar 2019 14:11:13 +0000 (UTC)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-With this patch the filename will not be printed.
+With commit 6630629bb661a7f48fb9856f7fd9616ce1499efa an additional field for filename
+was added due to which nfs4_setfacl failed to handle comments while reading ACE(s)
+from nfs4_getfacl output.
+This patch resolves the issue by skipping comment header.
 
-    $ nfs4_getfacl /test/
-    # file: /test/
-    A::OWNER@:rwaDxtTcCy
-    A::GROUP@:rwaDxtcy
-    A::EVERYONE@:rwaDxtcy
+ With fix:
 
-    $ nfs4_getfacl -c /test/
+ $ nfs4_setfacl --test -s "$(nfs4_getfacl  file1)" file2
+ Skipping comment # file: file1
+ ## Test mode only - the resulting ACL for "/test/file2":
+ A::OWNER@:rwatTcCy
+ A:g:GROUP@:rtcy
+ A::EVERYONE@:rtcy
 
-    A::OWNER@:rwaDxtTcCy
-    A::GROUP@:rwaDxtcy
-    A::EVERYONE@:rwaDxtcy
+ Without fix:
+
+ $ nfs4_setfacl --test -s "$(nfs4_getfacl  file1)" file2
+ Failed while inserting ACE(s).
 
 Signed-off-by: Kenneth D'souza <kdsouza@redhat.com>
 ---
- man/man1/nfs4_getfacl.1     |  6 ++++++
- nfs4_getfacl/nfs4_getfacl.c | 13 ++++++++++---
- 2 files changed, 16 insertions(+), 3 deletions(-)
+ libnfs4acl/nfs4_insert_string_aces.c | 16 ++++++++++------
+ 1 file changed, 10 insertions(+), 6 deletions(-)
 
-diff --git a/man/man1/nfs4_getfacl.1 b/man/man1/nfs4_getfacl.1
-index 83067c9..001723e 100644
---- a/man/man1/nfs4_getfacl.1
-+++ b/man/man1/nfs4_getfacl.1
-@@ -28,6 +28,12 @@ flag is specified,
- .B nfs4_getfacl
- will list the NFSv4 ACLs of all files and directories recursively.
+diff --git a/libnfs4acl/nfs4_insert_string_aces.c b/libnfs4acl/nfs4_insert_string_aces.c
+index 5a482d5..50b7bbf 100644
+--- a/libnfs4acl/nfs4_insert_string_aces.c
++++ b/libnfs4acl/nfs4_insert_string_aces.c
+@@ -45,21 +45,25 @@ int nfs4_insert_string_aces(struct nfs4_acl *acl, const char *acl_spec, unsigned
+ 	if ((s = sp = strdup(acl_spec)) == NULL)
+ 		goto out_failed;
  
-+If the
-+.BR -c / --omit-header
-+flag is specified,
-+.B nfs4_getfacl 
-+will not display the comment header (Do not print filename).
 +
- The output format for an NFSv4 file ACL, e.g., is:
- .RS
- .nf
-diff --git a/nfs4_getfacl/nfs4_getfacl.c b/nfs4_getfacl/nfs4_getfacl.c
-index 5a9c911..8194e6f 100644
---- a/nfs4_getfacl/nfs4_getfacl.c
-+++ b/nfs4_getfacl/nfs4_getfacl.c
-@@ -46,6 +46,7 @@ static void usage(int);
- static void more_help();
- static char *execname;
- static void print_acl_from_path();
-+static int ignore_comment = 0;
+ 	while ((ssp = strsep(&sp, ",\t\n\r")) != NULL) {
+ 		if (!strlen(ssp))
+ 			continue;
  
- static int recursive(const char *fpath, const struct stat *sb, int tflag, struct FTW *ftwbuf)
- {
-@@ -57,6 +58,7 @@ static struct option long_options[] = {
-         {"more-help",    0, 0, 'H' },
-         {"help",         0, 0, 'h' },
-         {"recursive",     0, 0, 'R' },
-+	{"omit-header", 0, 0, 'c'},
-         { NULL,          0, 0, 0,  },
- };
+-		if ((ace = nfs4_ace_from_string(ssp, acl->is_directory)) == NULL)
+-			goto out_failed;
++		if(*ssp == '#')
++			printf("Skipping comment %s\n", ssp);
++		else {
++			if ((ace = nfs4_ace_from_string(ssp, acl->is_directory)) == NULL)
++				goto out_failed;
  
-@@ -73,7 +75,7 @@ int main(int argc, char **argv)
- 		goto out;
+-		if (nfs4_insert_ace_at(acl, ace, index++)) {
+-			free(ace);
+-			goto out_failed;
++			if (nfs4_insert_ace_at(acl, ace, index++)) {
++				free(ace);
++				goto out_failed;
++			}
+ 		}
  	}
- 
--	while ((opt = getopt_long(argc, argv, "HR?h", long_options, NULL)) != -1) {
-+	while ((opt = getopt_long(argc, argv, "HR?hc", long_options, NULL)) != -1) {
- 		switch(opt) {
- 			case 'H':
- 				more_help();
-@@ -83,7 +85,9 @@ int main(int argc, char **argv)
- 			case 'R':
- 				do_recursive = 1;
- 				break;
+ 	if (acl->naces == 0)
+ 		goto out_failed;
 -
-+			case 'c':
-+				ignore_comment = 1; /* Do not display the comment header */
-+				break;
- 			default:
- 				usage(1);
- 				res = 0;
-@@ -115,7 +119,10 @@ static void print_acl_from_path(const char *fpath)
- 	struct nfs4_acl *acl;
- 	acl = nfs4_acl_for_path(fpath);
- 	if (acl != NULL) {
-+		if(ignore_comment == 0)
- 		printf("\n# file: %s\n", fpath);
-+		else
-+			printf("\n");
- 		nfs4_print_acl(stdout, acl);
- 		nfs4_free_acl(acl);
- 	}
-@@ -125,7 +132,7 @@ static void usage(int label)
- {
- 	if (label)
- 		fprintf(stderr, "%s %s -- get NFSv4 file or directory access control lists.\n", execname, VERSION);
--	fprintf(stderr, "Usage: %s [-R] file ...\n  -H, --more-help\tdisplay ACL format information\n  -?, -h, --help\tdisplay this help text\n  -R --recursive\trecurse into subdirectories\n", execname);
-+	fprintf(stderr, "Usage: %s [-R] file ...\n  -H, --more-help\tdisplay ACL format information\n  -?, -h, --help\tdisplay this help text\n  -R --recursive\trecurse into subdirectories\n  -c, --omit-header\tDo not display the comment header (Do not print filename)\n", execname);
- }
- 
- static void more_help()
+ out:
+ 	if (s)
+ 		free(s);
 -- 
 2.20.1
 
