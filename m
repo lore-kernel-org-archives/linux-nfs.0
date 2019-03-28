@@ -2,163 +2,184 @@ Return-Path: <SRS0=umLH=R7=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0C9B1C10F06
-	for <linux-nfs@archiver.kernel.org>; Thu, 28 Mar 2019 20:56:36 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 88FF1C43381
+	for <linux-nfs@archiver.kernel.org>; Thu, 28 Mar 2019 21:02:26 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id CCDB821855
-	for <linux-nfs@archiver.kernel.org>; Thu, 28 Mar 2019 20:56:35 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="UxZsp5xy"
+	by mail.kernel.org (Postfix) with ESMTP id 57FBB21850
+	for <linux-nfs@archiver.kernel.org>; Thu, 28 Mar 2019 21:02:26 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726472AbfC1U4f (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 28 Mar 2019 16:56:35 -0400
-Received: from mail-it1-f194.google.com ([209.85.166.194]:52711 "EHLO
-        mail-it1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727227AbfC1U4e (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Mar 2019 16:56:34 -0400
-Received: by mail-it1-f194.google.com with SMTP id g17so471796ita.2
-        for <linux-nfs@vger.kernel.org>; Thu, 28 Mar 2019 13:56:33 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=from:to:subject:date:message-id:in-reply-to:references:mime-version
-         :content-transfer-encoding;
-        bh=AbEMLia4utK6mPwIGrGFCMFUy10D6UYWZy3EdSHjtO8=;
-        b=UxZsp5xyqXFFjVOJAAV9pLGYPbPtf62/vEtAztmfb3P+MVDsIXl+TcOcqV7CtIMQc9
-         IMxRVQ3OSaKSEPxFfm324XhSyV7wxd5CdsfZgQdhR6SITr31a4HcIVg1+ZL6GAeQ0bqp
-         R+QTHd91cd7ITNfMGco6I26cMFDtLRFxyvrW+UtJZJ1d8wpGuehGBYOP8IdnWFAdjBup
-         lIPQH6BOWLCmtXCXfJ+Kviya2IYuwxIdUaxZGik8A4VyBhxEu54GWVqwSjeojVR5fV14
-         12IhTQTSiYLdawEL24RWwHZzM0xxMrDnfZT7ktvTlLUpPIBZF2Nr0Ijnqw8ALFPK5sj1
-         EdWw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:to:subject:date:message-id:in-reply-to
-         :references:mime-version:content-transfer-encoding;
-        bh=AbEMLia4utK6mPwIGrGFCMFUy10D6UYWZy3EdSHjtO8=;
-        b=uhdVhkebJFFNEzRPk80oRFR2+jTH3Eupxgwf/FzypE2z5tqy+kuErwvXjDo9qCIbaW
-         y9+7rySxIccid8wbnBqZAuTlpWUit6XVhOSFWYec6+bgQEfIaLFvdw+7CEHKkVnbQY+g
-         JSgrg4rF6yUGd2FjFeDzC5cPWqxCfz2wRLQkeakYTkPDFKmb/pXUTfHumrjAJ6Ecx1ou
-         9MuxI00E1ZMQTMSJ8K3sdDe/EfUSKwacSpxvVh0RomfKmIhTCD3F0wdEn9xXSdYeMFdv
-         vWywzR6GWv2f5cjJEMG1Zkty6OoWdTZtPJA9j+Zw5MGaEAlLVqJ4AyDjK/XDQys+y9HM
-         Vh/w==
-X-Gm-Message-State: APjAAAWUTnemLehV/Nq2cshUGZHEnv1MVIBxHZa3uOCuGksWAXVCbvDP
-        UYcNEQygwkXFCLCsNWsgrLWqxFM=
-X-Google-Smtp-Source: APXvYqxtfwn7EaRHHComtdA3/zXUIsp+h8MvvWCim0RZvr1XfBuyt6nGg+WG0hBYH4IYwFo+pEeacg==
-X-Received: by 2002:a24:290d:: with SMTP id p13mr1725289itp.178.1553806593092;
-        Thu, 28 Mar 2019 13:56:33 -0700 (PDT)
-Received: from localhost.localdomain (c-68-40-189-247.hsd1.mi.comcast.net. [68.40.189.247])
-        by smtp.gmail.com with ESMTPSA id t67sm1084750ita.35.2019.03.28.13.56.32
-        for <linux-nfs@vger.kernel.org>
-        (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
-        Thu, 28 Mar 2019 13:56:32 -0700 (PDT)
-From:   Trond Myklebust <trondmy@gmail.com>
-X-Google-Original-From: Trond Myklebust <trond.myklebust@hammerspace.com>
-To:     linux-nfs@vger.kernel.org
-Subject: [PATCH 25/25] NFS: Remove redundant open context from nfs_page
-Date:   Thu, 28 Mar 2019 16:52:39 -0400
-Message-Id: <20190328205239.29674-26-trond.myklebust@hammerspace.com>
-X-Mailer: git-send-email 2.20.1
-In-Reply-To: <20190328205239.29674-25-trond.myklebust@hammerspace.com>
-References: <20190328205239.29674-1-trond.myklebust@hammerspace.com>
- <20190328205239.29674-2-trond.myklebust@hammerspace.com>
- <20190328205239.29674-3-trond.myklebust@hammerspace.com>
- <20190328205239.29674-4-trond.myklebust@hammerspace.com>
- <20190328205239.29674-5-trond.myklebust@hammerspace.com>
- <20190328205239.29674-6-trond.myklebust@hammerspace.com>
- <20190328205239.29674-7-trond.myklebust@hammerspace.com>
- <20190328205239.29674-8-trond.myklebust@hammerspace.com>
- <20190328205239.29674-9-trond.myklebust@hammerspace.com>
- <20190328205239.29674-10-trond.myklebust@hammerspace.com>
- <20190328205239.29674-11-trond.myklebust@hammerspace.com>
- <20190328205239.29674-12-trond.myklebust@hammerspace.com>
- <20190328205239.29674-13-trond.myklebust@hammerspace.com>
- <20190328205239.29674-14-trond.myklebust@hammerspace.com>
- <20190328205239.29674-15-trond.myklebust@hammerspace.com>
- <20190328205239.29674-16-trond.myklebust@hammerspace.com>
- <20190328205239.29674-17-trond.myklebust@hammerspace.com>
- <20190328205239.29674-18-trond.myklebust@hammerspace.com>
- <20190328205239.29674-19-trond.myklebust@hammerspace.com>
- <20190328205239.29674-20-trond.myklebust@hammerspace.com>
- <20190328205239.29674-21-trond.myklebust@hammerspace.com>
- <20190328205239.29674-22-trond.myklebust@hammerspace.com>
- <20190328205239.29674-23-trond.myklebust@hammerspace.com>
- <20190328205239.29674-24-trond.myklebust@hammerspace.com>
- <20190328205239.29674-25-trond.myklebust@hammerspace.com>
+        id S1726242AbfC1VCZ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 28 Mar 2019 17:02:25 -0400
+Received: from gateway30.websitewelcome.com ([192.185.180.41]:38970 "EHLO
+        gateway30.websitewelcome.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1727227AbfC1VCZ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Mar 2019 17:02:25 -0400
+X-Greylist: delayed 1232 seconds by postgrey-1.27 at vger.kernel.org; Thu, 28 Mar 2019 17:02:24 EDT
+Received: from cm10.websitewelcome.com (cm10.websitewelcome.com [100.42.49.4])
+        by gateway30.websitewelcome.com (Postfix) with ESMTP id 679782692D
+        for <linux-nfs@vger.kernel.org>; Thu, 28 Mar 2019 15:41:52 -0500 (CDT)
+Received: from gator4166.hostgator.com ([108.167.133.22])
+        by cmsmtp with SMTP
+        id 9bqShLWbU2PzO9bqShdrTR; Thu, 28 Mar 2019 15:41:52 -0500
+X-Authority-Reason: nr=8
+Received: from [189.250.117.246] (port=38392 helo=[192.168.1.76])
+        by gator4166.hostgator.com with esmtpsa (TLSv1.2:ECDHE-RSA-AES128-GCM-SHA256:128)
+        (Exim 4.91)
+        (envelope-from <gustavo@embeddedor.com>)
+        id 1h9bqR-000R0h-Rn; Thu, 28 Mar 2019 15:41:52 -0500
+Subject: Re: [PATCH net-next] xprtrdma: Use struct_size() in kzalloc()
+To:     Chuck Lever <chuck.lever@oracle.com>
+Cc:     Trond Myklebust <trond.myklebust@hammerspace.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Bruce Fields <bfields@fieldses.org>,
+        Jeff Layton <jlayton@kernel.org>,
+        "David S. Miller" <davem@davemloft.net>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org
+References: <20190131004622.GA30261@embeddedor>
+ <07CB966E-A946-4956-8480-C0FC13E13E4E@oracle.com>
+From:   "Gustavo A. R. Silva" <gustavo@embeddedor.com>
+Openpgp: preference=signencrypt
+Autocrypt: addr=gustavo@embeddedor.com; keydata=
+ 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
+ VtSixD1uOgytAP7RWS474w==
+Message-ID: <ad9eccc7-afd2-3419-b886-6210eeabd5b5@embeddedor.com>
+Date:   Thu, 28 Mar 2019 15:41:49 -0500
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101
+ Thunderbird/60.5.1
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+In-Reply-To: <07CB966E-A946-4956-8480-C0FC13E13E4E@oracle.com>
+Content-Type: text/plain; charset=utf-8
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
+X-AntiAbuse: This header was added to track abuse, please include it with any abuse report
+X-AntiAbuse: Primary Hostname - gator4166.hostgator.com
+X-AntiAbuse: Original Domain - vger.kernel.org
+X-AntiAbuse: Originator/Caller UID/GID - [47 12] / [47 12]
+X-AntiAbuse: Sender Address Domain - embeddedor.com
+X-BWhitelist: no
+X-Source-IP: 189.250.117.246
+X-Source-L: No
+X-Exim-ID: 1h9bqR-000R0h-Rn
+X-Source: 
+X-Source-Args: 
+X-Source-Dir: 
+X-Source-Sender: ([192.168.1.76]) [189.250.117.246]:38392
+X-Source-Auth: gustavo@embeddedor.com
+X-Email-Count: 12
+X-Source-Cap: Z3V6aWRpbmU7Z3V6aWRpbmU7Z2F0b3I0MTY2Lmhvc3RnYXRvci5jb20=
+X-Local-Domain: yes
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-The lock context already references and tracks the open context, so
-take the opportunity to save some space in struct nfs_page.
+Hi all,
 
-Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
----
- fs/nfs/pagelist.c        | 7 +------
- include/linux/nfs_page.h | 3 +--
- 2 files changed, 2 insertions(+), 8 deletions(-)
+Friendly ping:
 
-diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-index ce6440b79328..5d5ac5df93e2 100644
---- a/fs/nfs/pagelist.c
-+++ b/fs/nfs/pagelist.c
-@@ -325,7 +325,6 @@ __nfs_create_request(struct nfs_lock_context *l_ctx, struct page *page,
- 	req->wb_offset  = offset;
- 	req->wb_pgbase	= pgbase;
- 	req->wb_bytes   = count;
--	req->wb_context = get_nfs_open_context(ctx);
- 	kref_init(&req->wb_kref);
- 	req->wb_nio = 0;
- 	return req;
-@@ -414,8 +413,8 @@ void nfs_unlock_and_release_request(struct nfs_page *req)
- static void nfs_clear_request(struct nfs_page *req)
- {
- 	struct page *page = req->wb_page;
--	struct nfs_open_context *ctx = req->wb_context;
- 	struct nfs_lock_context *l_ctx = req->wb_lock_context;
-+	struct nfs_open_context *ctx = l_ctx->open_context;
- 
- 	if (page != NULL) {
- 		put_page(page);
-@@ -430,10 +429,6 @@ static void nfs_clear_request(struct nfs_page *req)
- 		nfs_put_lock_context(l_ctx);
- 		req->wb_lock_context = NULL;
- 	}
--	if (ctx != NULL) {
--		put_nfs_open_context(ctx);
--		req->wb_context = NULL;
--	}
- }
- 
- /**
-diff --git a/include/linux/nfs_page.h b/include/linux/nfs_page.h
-index 1ea13e94feb7..0bbd587fac6a 100644
---- a/include/linux/nfs_page.h
-+++ b/include/linux/nfs_page.h
-@@ -42,7 +42,6 @@ struct nfs_inode;
- struct nfs_page {
- 	struct list_head	wb_list;	/* Defines state of page: */
- 	struct page		*wb_page;	/* page to read in/write out */
--	struct nfs_open_context	*wb_context;	/* File state context info */
- 	struct nfs_lock_context	*wb_lock_context;	/* lock context info */
- 	pgoff_t			wb_index;	/* Offset >> PAGE_SHIFT */
- 	unsigned int		wb_offset,	/* Offset & ~PAGE_MASK */
-@@ -203,7 +202,7 @@ loff_t req_offset(struct nfs_page *req)
- static inline struct nfs_open_context *
- nfs_req_openctx(struct nfs_page *req)
- {
--	return req->wb_context;
-+	return req->wb_lock_context->open_context;
- }
- 
- #endif /* _LINUX_NFS_PAGE_H */
--- 
-2.20.1
+Who can take this?
 
+Thanks
+--
+Gustavo
+
+On 1/31/19 8:11 AM, Chuck Lever wrote:
+> 
+> 
+>> On Jan 30, 2019, at 7:46 PM, Gustavo A. R. Silva <gustavo@embeddedor.com> wrote:
+>>
+>> One of the more common cases of allocation size calculations is finding
+>> the size of a structure that has a zero-sized array at the end, along
+>> with memory for some number of elements for that array. For example:
+>>
+>> struct foo {
+>>    int stuff;
+>>    struct boo entry[];
+>> };
+>>
+>> instance = kzalloc(sizeof(struct foo) + count * sizeof(struct boo), GFP_KERNEL);
+>>
+>> Instead of leaving these open-coded and prone to type mistakes, we can
+>> now use the new struct_size() helper:
+>>
+>> instance = kzalloc(struct_size(instance, entry, count), GFP_KERNEL);
+>>
+>> This code was detected with the help of Coccinelle.
+>>
+>> Signed-off-by: Gustavo A. R. Silva <gustavo@embeddedor.com>
+> 
+> Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
+> 
+> 
+>> ---
+>> net/sunrpc/xprtrdma/verbs.c | 3 +--
+>> 1 file changed, 1 insertion(+), 2 deletions(-)
+>>
+>> diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+>> index 4994e75945b8..9e8cf7456840 100644
+>> --- a/net/sunrpc/xprtrdma/verbs.c
+>> +++ b/net/sunrpc/xprtrdma/verbs.c
+>> @@ -811,8 +811,7 @@ static struct rpcrdma_sendctx *rpcrdma_sendctx_create(struct rpcrdma_ia *ia)
+>> {
+>> 	struct rpcrdma_sendctx *sc;
+>>
+>> -	sc = kzalloc(sizeof(*sc) +
+>> -		     ia->ri_max_send_sges * sizeof(struct ib_sge),
+>> +	sc = kzalloc(struct_size(sc, sc_sges, ia->ri_max_send_sges),
+>> 		     GFP_KERNEL);
+>> 	if (!sc)
+>> 		return NULL;
+>> -- 
+>> 2.20.1
+>>
+> 
+> --
+> Chuck Lever
+> 
+> 
+> 
