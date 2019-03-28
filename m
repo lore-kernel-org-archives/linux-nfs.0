@@ -8,62 +8,62 @@ X-Spam-Status: No, score=-8.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9081EC4360F
-	for <linux-nfs@archiver.kernel.org>; Thu, 28 Mar 2019 20:56:22 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 60762C43381
+	for <linux-nfs@archiver.kernel.org>; Thu, 28 Mar 2019 20:56:23 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 5FF3121850
-	for <linux-nfs@archiver.kernel.org>; Thu, 28 Mar 2019 20:56:22 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 3198E21850
+	for <linux-nfs@archiver.kernel.org>; Thu, 28 Mar 2019 20:56:23 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="RYeSRdl3"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="sf78+BTY"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726248AbfC1U4V (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 28 Mar 2019 16:56:21 -0400
-Received: from mail-it1-f193.google.com ([209.85.166.193]:40012 "EHLO
-        mail-it1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726410AbfC1U4V (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Mar 2019 16:56:21 -0400
-Received: by mail-it1-f193.google.com with SMTP id y63so461120itb.5
-        for <linux-nfs@vger.kernel.org>; Thu, 28 Mar 2019 13:56:20 -0700 (PDT)
+        id S1726290AbfC1U4W (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 28 Mar 2019 16:56:22 -0400
+Received: from mail-it1-f195.google.com ([209.85.166.195]:39033 "EHLO
+        mail-it1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726410AbfC1U4W (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Mar 2019 16:56:22 -0400
+Received: by mail-it1-f195.google.com with SMTP id 139so464867ita.4
+        for <linux-nfs@vger.kernel.org>; Thu, 28 Mar 2019 13:56:21 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:subject:date:message-id:in-reply-to:references:mime-version
          :content-transfer-encoding;
-        bh=b6G+C8SO9TL5MeUKf+3KSVuLgQ+ThPmE5k1NYTZSeVo=;
-        b=RYeSRdl3tU1kuyCQaXjuZ90P8Uu9uKG8v/O7Lo5UiOCXJjibTR2n6aJyGm5WMpzhNK
-         DrYe3VP151IUAJ/sWlGv1sjX+jEL3CvF4iWks95XWbkVE2DVcdohZa/lXbGxdQgmMZA3
-         3jG0VNwjH7f1zgs1maLJIjbRveAg21EUMPbEQZfnhOlmmtUuAR1hxYUCy+bYsmEWAonA
-         to86HPffv17e/R8cODwtSbYlBEliSqCpMtymEg1WT+991CfBEY/tQB7d40WebK17SWDU
-         ZbkaimJzxXTEmJGM70hrJttru75QiRmJK98zmrsjy58LTjv6hKrMALA7BYVEvaqJCdCr
-         ct3g==
+        bh=mwfeG0Gf7M/QU7b8u/ldks9fFNeQ/gAOdGtccXlhHH0=;
+        b=sf78+BTYX3PLCDzj7Zj55MfzQCA/PaZBdmLvZP2zLMm5YlBserI6fG0ojHb26AA7yp
+         mh6mYvAcfSSDJ4veSL13f6zX+1x35CD1WxQkG/5eCQaWZpuj0xBLG2QOwlNAfKryPbIL
+         EryJ/b9rj2zm7d2Ob6RNWaitqV3pM1ZNzMUd7Pq6oQnnvTH4wC1AQZvujgVtMpb+DkwG
+         XB613I9zkPSdDVNocIdaBW/ULDQkJYrbMfdsSdmWeTwtwalWOJXUbZOA31/GaC/Dlh1c
+         YgOG6NFRPc58Shz/f+E1Xkr77Ceiptd3hI2t3NxPaTaDelpjN624/wSZBGUBry/3Pdm9
+         rvJw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=b6G+C8SO9TL5MeUKf+3KSVuLgQ+ThPmE5k1NYTZSeVo=;
-        b=EF2OZAyzrjyKBpYzFqb1zRpwCBVbVSf7Jc/NPRTDxmne9qoIiHd549Dy03a1kwEVez
-         ZUmWCKODtcZDRja2VaLqLXaRPRHDwCZj3LwodF3XGvA3TfCjbVTCOurpSff5CB9AInwJ
-         yWBpkL8v1YF8RgqkJsSEoxZHWlgsIGh4l1X4m7IN8kGJC6bOSu5aV6hezBSqD1CdsUH4
-         7ZaWKRgsxz0nVFu1ucCKF9m23I8oMIer41omhaeWftYFAdXV5CF/ogakuxGBdr0rN9vf
-         r5GcB9/x6VxHQ1dSTZ/vR5tXM2MI+lbZiVyfx7lVJt9ucxREjTwl1ujahueAoPMCXGvm
-         /fRQ==
-X-Gm-Message-State: APjAAAVHyHsbpfQzl9IrNvRwYBWEG63vy4KHsGTL8eywGhTDFyRmrOrg
-        3wNVHmPfjxevHmKiF+dxqAMih+I=
-X-Google-Smtp-Source: APXvYqyei6KAxwwblhDYUPZrMWeLOG1ol44iLNg9rPeAc1Dbumjzhcr6hwhO2mqD/FIVrGp7OPD0jw==
-X-Received: by 2002:a24:35d4:: with SMTP id k203mr1755628ita.89.1553806580149;
-        Thu, 28 Mar 2019 13:56:20 -0700 (PDT)
+        bh=mwfeG0Gf7M/QU7b8u/ldks9fFNeQ/gAOdGtccXlhHH0=;
+        b=IJiLTaZ38xL6xBHwL6KXC/T2Vpg/bBNn/jT2/a/U57sGgmQUCfv59cLL1Dpcsp66Xr
+         F/0JmNTSvNk8ueJhtccau1miLAOjy9NVN0yvNS762mMAzfB5Ib1c5LNJSfOdfnbCuWs/
+         Mz5GrPLyoXsb5RKzxYvfFvYN8yI+XUGyTRk4oHUve9Sy0IONefyUWitPDP1sQNgXAWWM
+         vYFYz9liSpn+2y5z1mUFxIDzk+9FxKXGQVikxo2DClJmw4bLcJmsxvltCeV296/S/dhU
+         Lmr9adwqrLq2mluAVMI7OFye0hsijKlHsrK+5knQxfmLqM2BqpoaBi155ZA/PAlL2ZWo
+         v/Lw==
+X-Gm-Message-State: APjAAAWIO2ghUw9qLFerkaj3m7y5k7KXWyOBzaaiMsA7/oMaYzEdyxME
+        mR0HdETj+hd8logHAMqF7XIGiuc=
+X-Google-Smtp-Source: APXvYqyaCQqG2vS4Fc8T2Va9Da+e0C9iODZw1nrAwpfJZ4jf3fEBjOWIf2b4AWM/+9Lq86fQ0sgwTQ==
+X-Received: by 2002:a24:df87:: with SMTP id r129mr1726270itg.178.1553806581274;
+        Thu, 28 Mar 2019 13:56:21 -0700 (PDT)
 Received: from localhost.localdomain (c-68-40-189-247.hsd1.mi.comcast.net. [68.40.189.247])
-        by smtp.gmail.com with ESMTPSA id t67sm1084750ita.35.2019.03.28.13.56.19
+        by smtp.gmail.com with ESMTPSA id t67sm1084750ita.35.2019.03.28.13.56.20
         for <linux-nfs@vger.kernel.org>
         (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
-        Thu, 28 Mar 2019 13:56:19 -0700 (PDT)
+        Thu, 28 Mar 2019 13:56:20 -0700 (PDT)
 From:   Trond Myklebust <trondmy@gmail.com>
 X-Google-Original-From: Trond Myklebust <trond.myklebust@hammerspace.com>
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH 13/25] NFS: Consider ETIMEDOUT to be a fatal error
-Date:   Thu, 28 Mar 2019 16:52:27 -0400
-Message-Id: <20190328205239.29674-14-trond.myklebust@hammerspace.com>
+Subject: [PATCH 14/25] NFS: Move internal constants out of uapi/linux/nfs_mount.h
+Date:   Thu, 28 Mar 2019 16:52:28 -0400
+Message-Id: <20190328205239.29674-15-trond.myklebust@hammerspace.com>
 X-Mailer: git-send-email 2.20.1
-In-Reply-To: <20190328205239.29674-13-trond.myklebust@hammerspace.com>
+In-Reply-To: <20190328205239.29674-14-trond.myklebust@hammerspace.com>
 References: <20190328205239.29674-1-trond.myklebust@hammerspace.com>
  <20190328205239.29674-2-trond.myklebust@hammerspace.com>
  <20190328205239.29674-3-trond.myklebust@hammerspace.com>
@@ -77,6 +77,7 @@ References: <20190328205239.29674-1-trond.myklebust@hammerspace.com>
  <20190328205239.29674-11-trond.myklebust@hammerspace.com>
  <20190328205239.29674-12-trond.myklebust@hammerspace.com>
  <20190328205239.29674-13-trond.myklebust@hammerspace.com>
+ <20190328205239.29674-14-trond.myklebust@hammerspace.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
@@ -84,28 +85,53 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-When we introduce the 'softerr' mount option, we will see the RPC
-layer returning ETIMEDOUT errors if the server is unresponsive. We
-want to consider those errors to be fatal on par with the EIO errors
-that are returned by ordinary 'soft' timeouts..
+When the label says "for internal use only", then it doesn't belong
+in the 'uapi' subtree.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/internal.h | 1 +
- 1 file changed, 1 insertion(+)
+ include/linux/nfs_fs_sb.h      | 9 +++++++++
+ include/uapi/linux/nfs_mount.h | 9 ---------
+ 2 files changed, 9 insertions(+), 9 deletions(-)
 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index c7cf23ae6597..3cefd0ed01be 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -766,6 +766,7 @@ static inline bool nfs_error_is_fatal(int err)
- 	case -ESTALE:
- 	case -E2BIG:
- 	case -ENOMEM:
-+	case -ETIMEDOUT:
- 		return true;
- 	default:
- 		return false;
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index c827d31298cc..013ac5b54a09 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -139,6 +139,15 @@ struct nfs_server {
+ 	struct nfs_iostats __percpu *io_stats;	/* I/O statistics */
+ 	atomic_long_t		writeback;	/* number of writeback pages */
+ 	int			flags;		/* various flags */
++
++/* The following are for internal use only. Also see uapi/linux/nfs_mount.h */
++#define NFS_MOUNT_LOOKUP_CACHE_NONEG	0x10000
++#define NFS_MOUNT_LOOKUP_CACHE_NONE	0x20000
++#define NFS_MOUNT_NORESVPORT		0x40000
++#define NFS_MOUNT_LEGACY_INTERFACE	0x80000
++#define NFS_MOUNT_LOCAL_FLOCK		0x100000
++#define NFS_MOUNT_LOCAL_FCNTL		0x200000
++
+ 	unsigned int		caps;		/* server capabilities */
+ 	unsigned int		rsize;		/* read size */
+ 	unsigned int		rpages;		/* read size (in pages) */
+diff --git a/include/uapi/linux/nfs_mount.h b/include/uapi/linux/nfs_mount.h
+index e44e00616ab5..e3bcfc6aa3b0 100644
+--- a/include/uapi/linux/nfs_mount.h
++++ b/include/uapi/linux/nfs_mount.h
+@@ -66,13 +66,4 @@ struct nfs_mount_data {
+ #define NFS_MOUNT_UNSHARED	0x8000	/* 5 */
+ #define NFS_MOUNT_FLAGMASK	0xFFFF
+ 
+-/* The following are for internal use only */
+-#define NFS_MOUNT_LOOKUP_CACHE_NONEG	0x10000
+-#define NFS_MOUNT_LOOKUP_CACHE_NONE	0x20000
+-#define NFS_MOUNT_NORESVPORT		0x40000
+-#define NFS_MOUNT_LEGACY_INTERFACE	0x80000
+-
+-#define NFS_MOUNT_LOCAL_FLOCK	0x100000
+-#define NFS_MOUNT_LOCAL_FCNTL	0x200000
+-
+ #endif
 -- 
 2.20.1
 
