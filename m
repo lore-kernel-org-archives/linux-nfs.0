@@ -2,94 +2,169 @@ Return-Path: <SRS0=umLH=R7=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED
+X-Spam-Status: No, score=-2.9 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS,USER_AGENT_GIT
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A17FCC10F0A
-	for <linux-nfs@archiver.kernel.org>; Thu, 28 Mar 2019 20:06:07 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id EB0F3C43381
+	for <linux-nfs@archiver.kernel.org>; Thu, 28 Mar 2019 20:56:09 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 7B3E420811
-	for <linux-nfs@archiver.kernel.org>; Thu, 28 Mar 2019 20:06:07 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id B06242184E
+	for <linux-nfs@archiver.kernel.org>; Thu, 28 Mar 2019 20:56:09 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="aDYSHrjT"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726669AbfC1UGG (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 28 Mar 2019 16:06:06 -0400
-Received: from mx1.redhat.com ([209.132.183.28]:57354 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726660AbfC1UGG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 28 Mar 2019 16:06:06 -0400
-Received: from smtp.corp.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id F0A73307EA9F;
-        Thu, 28 Mar 2019 20:06:05 +0000 (UTC)
-Received: from madhat.boston.devel.redhat.com (ovpn-117-220.phx2.redhat.com [10.3.117.220])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 83A8361090;
-        Thu, 28 Mar 2019 20:06:05 +0000 (UTC)
-Subject: Re: [PATCH] nfsiostat: replace 'list' reserved word
-To:     Matthew Ruffell <matthew.ruffell@canonical.com>,
-        linux-nfs@vger.kernel.org
-References: <20190324213318.18296-1-matthew.ruffell@canonical.com>
-From:   Steve Dickson <SteveD@RedHat.com>
-Message-ID: <d5103bda-5c81-5e7c-afe6-1b9e18c60d8b@RedHat.com>
-Date:   Thu, 28 Mar 2019 16:06:05 -0400
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101
- Thunderbird/60.6.0
+        id S1727530AbfC1U4I (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 28 Mar 2019 16:56:08 -0400
+Received: from mail-it1-f196.google.com ([209.85.166.196]:52643 "EHLO
+        mail-it1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727182AbfC1U4I (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Mar 2019 16:56:08 -0400
+Received: by mail-it1-f196.google.com with SMTP id g17so470052ita.2
+        for <linux-nfs@vger.kernel.org>; Thu, 28 Mar 2019 13:56:07 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=from:to:subject:date:message-id:mime-version
+         :content-transfer-encoding;
+        bh=ttCKUm0K0mJUnyym+Nx3C5IJyRODOkatSCyxBmB888Y=;
+        b=aDYSHrjTtutMkI6pjqR2TGrn1KO6eWEdtpMXePcmdR/coI58scH+Ufa2Rx0kUADZq1
+         peOhaVczU6xCF2q5L0B2/2s5N31AG6iZM4AFzFfgt4MLCGNjoXU2lK5EV5Pu0qWqrtbJ
+         wPiXjRRtIXw2mpPvpQQ08Bp/MFvQUmV3DW1w2FMNbEg3hbnk5pd0Xz/WfAiBzlgs26gU
+         /m5tVZlO8i64Y/aNdOtcFOBbpUGe0zM+d0z3uqcrDWtIa4tbjSn+LAVCKub2F3rmtTYt
+         DXZuhY2Wc5rnp/tzvxjbZWIgXKWP554oNqWxSGp4H/2pYE8iy451YndlKF9vWgURWmw0
+         jKhQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:from:to:subject:date:message-id:mime-version
+         :content-transfer-encoding;
+        bh=ttCKUm0K0mJUnyym+Nx3C5IJyRODOkatSCyxBmB888Y=;
+        b=UCl1OP79QI31uINkiU+8honxNW5PoYnfSQF1jpPRTuHit4YMmetOus7e64AS+L+A1O
+         K/CuRtKI/X6ucz6WdN2UhdCoVc25FmHxJ1vccTl5oOlH/SJ0zu2zXFYYk7tZKVhNsBj1
+         K0WgQrIDcVNYq3BF4FJD3M6yyq9IoYf++WoP56eaXOHJDxSA/Q19MoJtDnrKRzKrsW/0
+         YOpceon0SzfXHh34tT3EwenYBQnfuZL+zRtuP2PePnP82bYqJuLCf2p0ozj3XP5na2u/
+         Id+cwcEDSlo4MbRsPDs+fYl7Yoex25JZUWY/GEr3zXnmF9QerDpJsBpON+Ok9XsIdQ5m
+         3jdg==
+X-Gm-Message-State: APjAAAWfwPbZfCx0zlwL+U9R6crtej2vj7kO6HT2PpV63e3ML57f7ndi
+        D0c2NhDhs8voQU4fZ+YCQQo2Km8=
+X-Google-Smtp-Source: APXvYqwa41lGV7pP/F7L9zMMuCbIS2P7zy+t0iakFyjHQMIPO1L29Vbgh9MT7TMHmXoAhD1We0ja6A==
+X-Received: by 2002:a02:3787:: with SMTP id r129mr34201623jar.27.1553806566905;
+        Thu, 28 Mar 2019 13:56:06 -0700 (PDT)
+Received: from localhost.localdomain (c-68-40-189-247.hsd1.mi.comcast.net. [68.40.189.247])
+        by smtp.gmail.com with ESMTPSA id t67sm1084750ita.35.2019.03.28.13.56.05
+        for <linux-nfs@vger.kernel.org>
+        (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
+        Thu, 28 Mar 2019 13:56:05 -0700 (PDT)
+From:   Trond Myklebust <trondmy@gmail.com>
+X-Google-Original-From: Trond Myklebust <trond.myklebust@hammerspace.com>
+To:     linux-nfs@vger.kernel.org
+Subject: [PATCH 00/25] Fix up soft mounts for NFSv4.x
+Date:   Thu, 28 Mar 2019 16:52:14 -0400
+Message-Id: <20190328205239.29674-1-trond.myklebust@hammerspace.com>
+X-Mailer: git-send-email 2.20.1
 MIME-Version: 1.0
-In-Reply-To: <20190324213318.18296-1-matthew.ruffell@canonical.com>
-Content-Type: text/plain; charset=utf-8
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.12
-X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.44]); Thu, 28 Mar 2019 20:06:06 +0000 (UTC)
+Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
+This patchset aims to make soft mounts a viable option for NFSv4 clients
+by minimising the risk of false positive timeouts, while allowing for
+faster failover of reads and writes once a timeout is actually observed.
 
+The patches rely on the NFS server correctly implementing the contract
+specified in RFC7530 section 3.1.1 with respect to not dropping requests
+while the transport connection is up. When this is the case, the client
+can safely assume that if the request has not received a reply after
+transmitting a RPC request, it is not because the request was dropped,
+but rather is due to congestion, or slow processing on the server.
+IOW: as long as the connection remains up, there is no need for requests
+to time out.
 
-On 3/24/19 5:33 PM, Matthew Ruffell wrote:
-> list is a reserved word in python and should not be used as a variable
-> name. Changing list to devicelist for list_nfs_mounts()
-> 
-> Fixes: https://bugs.launchpad.net/ubuntu/+source/nfs-utils/+bug/1821261
-> 
-> Signed-off-by: Matthew Ruffell <matthew.ruffell@canonical.com>
-Committed...
+The patches break down roughly as follows:
+- A set of patches to clean up the RPC engine timeouts, and ensure they
+  are accurate.
+- A set of patches to change the 'soft' mount semantics for NFSv4.x.
+- A set of patches to add a new 'softerr' mount option that works like
+  soft, but explicitly signals timeouts using the ETIMEDOUT error code
+  rather than using EIO. This allows applications to tune their
+  behaviour (e.g. by failing over to a different server) if a timeout
+  occurs.
+- A set of patches to change the NFS error reporting so that it matches
+  that of local filesystems w.r.t. guarantees that filesystem errors are
+  seen once and once only.
+- A patch to ensure the safe interruption of NFS4ERR_DELAYed operations
+- A patch to ensure that pNFS operations can be forced to break out
+  of layout error cycles after a certain number of retries.
+- A few cleanups...
 
-steved.
-> ---
->  tools/nfs-iostat/nfs-iostat.py | 8 ++++----
->  1 file changed, 4 insertions(+), 4 deletions(-)
-> 
-> diff --git a/tools/nfs-iostat/nfs-iostat.py b/tools/nfs-iostat/nfs-iostat.py
-> index 7cbe543..dec0e86 100644
-> --- a/tools/nfs-iostat/nfs-iostat.py
-> +++ b/tools/nfs-iostat/nfs-iostat.py
-> @@ -493,20 +493,20 @@ def list_nfs_mounts(givenlist, mountstats):
->         return a full list if the given list is empty -
->         may return an empty list if none found
->      """
-> -    list = []
-> +    devicelist = []
->      if len(givenlist) > 0:
->          for device in givenlist:
->              stats = DeviceData()
->              stats.parse_stats(mountstats[device])
->              if stats.is_nfs_mountpoint():
-> -                list += [device]
-> +                devicelist += [device]
->      else:
->          for device, descr in mountstats.items():
->              stats = DeviceData()
->              stats.parse_stats(descr)
->              if stats.is_nfs_mountpoint():
-> -                list += [device]
-> -    return list
-> +                devicelist += [device]
-> +    return devicelist
->  
->  def iostat_command(name):
->      """iostat-like command for NFS mount points
-> 
+Trond Myklebust (25):
+  SUNRPC: Fix up task signalling
+  SUNRPC: Refactor rpc_restart_call/rpc_restart_call_prepare
+  SUNRPC: Refactor xprt_request_wait_receive()
+  SUNRPC: Refactor rpc_sleep_on()
+  SUNRPC: Remove unused argument 'action' from rpc_sleep_on_priority()
+  SUNRPC: Add function rpc_sleep_on_timeout()
+  SUNRPC: Fix up tracking of timeouts
+  SUNRPC: Ensure that the transport layer respect major timeouts
+  SUNRPC: Add tracking of RPC level errors
+  SUNRPC: Make "no retrans timeout" soft tasks behave like softconn for
+    timeouts
+  SUNRPC: Start the first major timeout calculation at task creation
+  SUNRPC: Add the 'softerr' rpc_client flag
+  NFS: Consider ETIMEDOUT to be a fatal error
+  NFS: Move internal constants out of uapi/linux/nfs_mount.h
+  NFS: Add a mount option "softerr" to allow clients to see ETIMEDOUT
+    errors
+  NFS: Don't interrupt file writeout due to fatal errors
+  NFS: Don't call generic_error_remove_page() while holding locks
+  NFS: Don't inadvertently clear writeback errors
+  NFS: Replace custom error reporting mechanism with generic one
+  NFS: Fix up NFS I/O subrequest creation
+  NFS: Remove unused argument from nfs_create_request()
+  pNFS: Add tracking to limit the number of pNFS retries
+  NFS: Allow signal interruption of NFS4ERR_DELAYed operations
+  NFS: Add a helper to return a pointer to the open context of a struct
+    nfs_page
+  NFS: Remove redundant open context from nfs_page
+
+ fs/lockd/clntproc.c                        |   4 +-
+ fs/nfs/client.c                            |   2 +
+ fs/nfs/direct.c                            |  11 +-
+ fs/nfs/file.c                              |  31 +---
+ fs/nfs/filelayout/filelayout.c             |   4 +-
+ fs/nfs/flexfilelayout/flexfilelayout.c     |  14 +-
+ fs/nfs/internal.h                          |   7 +-
+ fs/nfs/nfs4_fs.h                           |   1 +
+ fs/nfs/nfs4file.c                          |   2 +-
+ fs/nfs/nfs4proc.c                          | 159 +++++++++++++++------
+ fs/nfs/pagelist.c                          | 122 +++++++++-------
+ fs/nfs/pnfs.c                              |   4 +-
+ fs/nfs/pnfs.h                              |   4 +-
+ fs/nfs/read.c                              |   6 +-
+ fs/nfs/super.c                             |  15 +-
+ fs/nfs/write.c                             |  67 +++++----
+ fs/nfsd/nfs4callback.c                     |   4 +-
+ include/linux/nfs_fs.h                     |   1 -
+ include/linux/nfs_fs_sb.h                  |  10 ++
+ include/linux/nfs_page.h                   |  12 +-
+ include/linux/sunrpc/clnt.h                |   2 +
+ include/linux/sunrpc/sched.h               |  19 ++-
+ include/linux/sunrpc/xprt.h                |   6 +-
+ include/trace/events/sunrpc.h              |   8 +-
+ include/uapi/linux/nfs_mount.h             |   9 --
+ net/sunrpc/auth_gss/auth_gss.c             |   5 +-
+ net/sunrpc/clnt.c                          | 105 ++++++++------
+ net/sunrpc/debugfs.c                       |   2 +-
+ net/sunrpc/rpcb_clnt.c                     |   3 +-
+ net/sunrpc/sched.c                         | 152 +++++++++++++++-----
+ net/sunrpc/xprt.c                          | 146 ++++++++++++-------
+ net/sunrpc/xprtrdma/svc_rdma_backchannel.c |   2 +-
+ net/sunrpc/xprtrdma/transport.c            |   2 +-
+ net/sunrpc/xprtsock.c                      |   9 +-
+ 34 files changed, 619 insertions(+), 331 deletions(-)
+
+-- 
+2.20.1
+
