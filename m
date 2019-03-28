@@ -2,149 +2,531 @@ Return-Path: <SRS0=umLH=R7=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-12.0 required=3.0
+	tests=HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
+	MENTIONS_GIT_HOSTING,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 77734C43381
-	for <linux-nfs@archiver.kernel.org>; Thu, 28 Mar 2019 13:32:09 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 481EDC43381
+	for <linux-nfs@archiver.kernel.org>; Thu, 28 Mar 2019 16:00:35 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 422382075E
-	for <linux-nfs@archiver.kernel.org>; Thu, 28 Mar 2019 13:32:09 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="KmdKtXce"
+	by mail.kernel.org (Postfix) with ESMTP id 08E9C20823
+	for <linux-nfs@archiver.kernel.org>; Thu, 28 Mar 2019 16:00:35 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1725939AbfC1NcI (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 28 Mar 2019 09:32:08 -0400
-Received: from mail-io1-f67.google.com ([209.85.166.67]:40366 "EHLO
-        mail-io1-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725948AbfC1NcI (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Mar 2019 09:32:08 -0400
-Received: by mail-io1-f67.google.com with SMTP id d201so17212170iof.7
-        for <linux-nfs@vger.kernel.org>; Thu, 28 Mar 2019 06:32:07 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
-         :cc;
-        bh=8httFPoOHR0qsPFm/C2XpR7+EmZiy9pM8FBDRARYiTg=;
-        b=KmdKtXceM6ViEgxLz9c+cXkixjgLkJ2VBo6/5nJrZpzkk/yE7fqHU/BfAGJcY1S5Gk
-         7ALsKeu+f4wJSdIPtpSx6cx0ozrqWpvxnDNDyZ5I0XHwe9IINg7b/pf8OsX96H87CPF/
-         DTt67tta5B6yqSLUOTpPfUrQngr/WZ1eNL8qRH0Z2uSvFs73vcDYM/Im0X8uOtOYLGIp
-         erM5eAG+9PcNRqtxktaOKXQ+FhL/h/AW5shjnJM1sD2VRLjPdR/BlhJurG0nMBali6VR
-         xyVZdJLAkQDhWtec0cHOgM3O4+WXIyXvRLe2f70hgHXndPg7ZKGcuZlEvxzAcS0zqovQ
-         zcrA==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
-         :message-id:subject:to:cc;
-        bh=8httFPoOHR0qsPFm/C2XpR7+EmZiy9pM8FBDRARYiTg=;
-        b=AyjgwXHtUKCzDhAM/ujSAGL21wTudGhKsfo+8vQetio9LxgRUzh91s9TKylmB5GD7p
-         CUiyHnIeaRS8V5WYLOAAAjcCRNrfwsPsJ3UVcvnnlJYwMIyrLgBO4xhHC2HVlzzPS/nS
-         IzUpmGJgI+YFTBVuzXIM+J8PPtHc6ob6oBr0wu5eyBQxatmE6Y9hBb0kdmZmju1Nlfs5
-         e+mgomTwjZCt1fJ3HE4esewzxvTK59FAx7ppT3IaIe2RzBEqsk9oqMJrfd+j8fWSLGZ1
-         MU2MNuffKkIW/oGMVGarKbyvifRYqmNlIZZpiA4FOzwUoMX5IRkJ3RwCJ9DhpM4ohqCF
-         j1iQ==
-X-Gm-Message-State: APjAAAUA+Ngz7bPZlIaMv9uDEttfN7aDBKyz6GpBj5H5GbgKt1XsgOsB
-        TjXniEXrfHYOKqA/qCH7MHIJVybmGSpy4eSRCA==
-X-Google-Smtp-Source: APXvYqzhXhh3HzssN/qtBU77CHoWHpxOfDpDDNWkIyGq8Yb6UT+qLp+7glv2p1qcdJdfKVukuw2rhPPmbrXUDedMOms=
-X-Received: by 2002:a6b:ed0c:: with SMTP id n12mr15303494iog.259.1553779927205;
- Thu, 28 Mar 2019 06:32:07 -0700 (PDT)
+        id S1725816AbfC1QAe (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 28 Mar 2019 12:00:34 -0400
+Received: from mx1.redhat.com ([209.132.183.28]:40090 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726252AbfC1QAe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 28 Mar 2019 12:00:34 -0400
+Received: from smtp.corp.redhat.com (int-mx06.intmail.prod.int.phx2.redhat.com [10.5.11.16])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id 67CF6C067C22;
+        Thu, 28 Mar 2019 16:00:33 +0000 (UTC)
+Received: from madhat.boston.devel.redhat.com (madhat.boston.devel.redhat.com [10.19.60.33])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id EC5795C223;
+        Thu, 28 Mar 2019 16:00:32 +0000 (UTC)
+Subject: Re: [PATCH] [cthon04] add tests.init.sh to generate right tests.init
+ file
+To:     "Jianhong.Yin" <yin-jianhong@163.com>
+Cc:     linux-nfs@vger.kernel.org, Jianhong Yin <jiyin@redhat.com>
+References: <20190326025625.4206-1-yin-jianhong@163.com>
+From:   Steve Dickson <SteveD@RedHat.com>
+Message-ID: <b9e971b2-0414-a5a7-6a6a-91cb0c584983@RedHat.com>
+Date:   Thu, 28 Mar 2019 12:00:32 -0400
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101
+ Thunderbird/60.6.0
 MIME-Version: 1.0
-References: <23B588B3-C119-4036-B60B-7872A52129F4@zentai.name> <YT1PR01MB35469D45DD321F14EFAD0536DD580@YT1PR01MB3546.CANPRD01.PROD.OUTLOOK.COM>
-In-Reply-To: <YT1PR01MB35469D45DD321F14EFAD0536DD580@YT1PR01MB3546.CANPRD01.PROD.OUTLOOK.COM>
-From:   Trond Myklebust <trondmy@gmail.com>
-Date:   Thu, 28 Mar 2019 09:31:56 -0400
-Message-ID: <CAABAsM6vfAdQij121_QiNN5trsDipnEK5SJTsGPVvaaOq_v98w@mail.gmail.com>
-Subject: Re: [PATCH] Add EMFILE to nfsd errors
-To:     Rick Macklem <rmacklem@uoguelph.ca>
-Cc:     Armin Zentai <armin@zentai.name>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Jeff Layton <jlayton@kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+In-Reply-To: <20190326025625.4206-1-yin-jianhong@163.com>
+Content-Type: text/plain; charset=utf-8
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.16
+X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.32]); Thu, 28 Mar 2019 16:00:33 +0000 (UTC)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Wed, 27 Mar 2019 at 17:25, Rick Macklem <rmacklem@uoguelph.ca> wrote:
->
-> I don't believe that EMFILE is specified as an NFS error in the RFCs?
->
 
-Agreed. Applying this patch would lead to a NFS protocol violation
-that most clients would be unprepared for. For instance, I believe the
-Linux client would end up mapping it to EIO as an unrecognised status
-code. Other clients may map it to something different, or may even end
-up falling over.
 
-Cheers,
-  Trond
+On 3/25/19 10:56 PM, Jianhong.Yin wrote:
+> recently nfsometer->cthon04 tests always fail on RHEL-8 and Fedora
+> 
+> before, tests.init is used as both shell script and Makefile
+> it's hard to dynamic config to compile successfully on both RHEL-7
+> and RHEL-8.
+> 
+> so I think introduce a generater to get right tests.init is better
+> 
+> Signed-off-by: Jianhong Yin <jiyin@redhat.com>
+Committed... 
 
-> rick
->
-> ________________________________________
-> From: linux-nfs-owner@vger.kernel.org <linux-nfs-owner@vger.kernel.org> on behalf of Armin Zentai <armin@zentai.name>
-> Sent: Wednesday, March 27, 2019 3:03:43 PM
-> To: linux-nfs@vger.kernel.org; J. Bruce Fields; Jeff Layton
-> Subject: [PATCH] Add EMFILE to nfsd errors
->
-> This patch adds the EMFILE to nfsd errors for better error output.
->
-> I've encountered a hard-to-debug situation, when I used a fuse under an NFS export, because of a 'too many open files' error.
->
-> Before the patch nfsd warns with this message:
-> 'nfsd4_process_open2 failed to open newly-created file! status=5'  (5: EIO)
->
-> After the patch:
-> 'nfsd4_process_open2 failed to open newly-created file! status=24' (24: EMFILE)
->
-> Also the client returns with EREMOTEIO instead of EIO, which indicates a server error from the NFS client side.
->
-> Signed-off-by: Armin ZENTAI <armin@zentai.name>
+steved.
 > ---
->  fs/nfsd/nfsd.h           | 1 +
->  fs/nfsd/nfsproc.c        | 1 +
->  include/uapi/linux/nfs.h | 1 +
->  3 files changed, 3 insertions(+)
->
-> diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
-> index 066899929863..19a269d75fb5 100644
-> --- a/fs/nfsd/nfsd.h
-> +++ b/fs/nfsd/nfsd.h
-> @@ -217,6 +217,7 @@ void                nfsd_lockd_shutdown(void);
->  #define        nfserr_cb_path_down     cpu_to_be32(NFSERR_CB_PATH_DOWN)
->  #define        nfserr_locked           cpu_to_be32(NFSERR_LOCKED)
->  #define        nfserr_wrongsec         cpu_to_be32(NFSERR_WRONGSEC)
-> +#define nfserr_emfile                  cpu_to_be32(NFSERR_EMFILE)
->  #define nfserr_badiomode               cpu_to_be32(NFS4ERR_BADIOMODE)
->  #define nfserr_badlayout               cpu_to_be32(NFS4ERR_BADLAYOUT)
->  #define nfserr_bad_session_digest      cpu_to_be32(NFS4ERR_BAD_SESSION_DIGEST)
-> diff --git a/fs/nfsd/nfsproc.c b/fs/nfsd/nfsproc.c
-> index 0d20fd161225..ff9e883c7829 100644
-> --- a/fs/nfsd/nfsproc.c
-> +++ b/fs/nfsd/nfsproc.c
-> @@ -810,6 +810,7 @@ nfserrno (int errno)
->                 { nfserr_serverfault, -ENFILE },
->                 { nfserr_io, -EUCLEAN },
->                 { nfserr_perm, -ENOKEY },
-> +               { nfserr_emfile, -EMFILE },
->         };
->         int     i;
->
-> diff --git a/include/uapi/linux/nfs.h b/include/uapi/linux/nfs.h
-> index 946cb62d64b0..dcb0ea33f2db 100644
-> --- a/include/uapi/linux/nfs.h
-> +++ b/include/uapi/linux/nfs.h
-> @@ -57,6 +57,7 @@
->         NFSERR_NOTDIR = 20,             /* v2 v3 v4 */
->         NFSERR_ISDIR = 21,              /* v2 v3 v4 */
->         NFSERR_INVAL = 22,              /* v2 v3 v4 */
-> +       NFSERR_EMFILE = 24,             /* v2 v3 v4 */
->         NFSERR_FBIG = 27,               /* v2 v3 v4 */
->         NFSERR_NOSPC = 28,              /* v2 v3 v4 */
->         NFSERR_ROFS = 30,               /* v2 v3 v4 */
-> --
-> 2.11.0
->
+> based on git://git.linux-nfs.org/projects/steved/cthon04.git
+> test pass on RHEL-8 RHEL-7 RHEL-6 RHEL-5 and RHEL-4
+> 
+>  .gitignore                    |   1 +
+>  Makefile                      |   8 +-
+>  README                        |   3 +
+>  tests.init => tests.init.orig |   0
+>  tests.init.sh                 | 390 ++++++++++++++++++++++++++++++++++
+>  5 files changed, 401 insertions(+), 1 deletion(-)
+>  rename tests.init => tests.init.orig (100%)
+>  create mode 100755 tests.init.sh
+> 
+> diff --git a/.gitignore b/.gitignore
+> index 0956596..67f57f3 100644
+> --- a/.gitignore
+> +++ b/.gitignore
+> @@ -1,4 +1,5 @@
+>  */*.o
+> +tests.init
+>  basic/test1
+>  basic/test2
+>  basic/test3
+> diff --git a/Makefile b/Makefile
+> index 05859bb..9fd76d9 100644
+> --- a/Makefile
+> +++ b/Makefile
+> @@ -7,12 +7,14 @@
+>  # 'make dist DESTDIR=path'	copies sources to path
+>  # 'make tar DESTDIR=path'       runs make dist and then packs the directory 
+>  # 'make rpm DESTDIR=path'       runs make tar and runs rpmbuild -ta on it 
+> -	
+>  
+>  DESTDIR=/no/such/path
+>  COPYFILES=runtests tests.init server domount.c README READWIN.txt Testitems \
+>  	getopt.c tests.h unixdos.h cthon04.spec
+>  
+> +# generate tests.init file
+> +$(shell ./tests.init.sh)
+> +
+>  include tests.init
+>  
+>  all: domount getopt
+> @@ -73,3 +75,7 @@ rpm: tar
+>  mknewdirs:
+>  	-mkdir $(DESTDIR)/basic $(DESTDIR)/general $(DESTDIR)/special \
+>  	       $(DESTDIR)/tools $(DESTDIR)/lock
+> +
+> +.PHONY: tests.init
+> +tests.init:
+> +	sh ./tests.init.sh
+> diff --git a/README b/README
+> index 28367fa..3e20792 100644
+> --- a/README
+> +++ b/README
+> @@ -540,6 +540,9 @@ None were found.
+>  See READWIN.txt for information about running the tests under DOS or
+>  Windows.
+>  
+> +Changes for 2019 include the following:
+> +
+> +1. Add tests.init.sh to generate tests.init file.
+>  
+>  Changes for 2004 include the following:
+>  
+> diff --git a/tests.init b/tests.init.orig
+> similarity index 100%
+> rename from tests.init
+> rename to tests.init.orig
+> diff --git a/tests.init.sh b/tests.init.sh
+> new file mode 100755
+> index 0000000..a8a856c
+> --- /dev/null
+> +++ b/tests.init.sh
+> @@ -0,0 +1,390 @@
+> +#!/bin/sh
+> +
+> +OS=${1:-Linux}
+> +FSTYPE=$${2:-nfs}
+> +Initfile=tests.init
+> +
+> +cat <<\EOF >$Initfile
+> +#
+> +#       @(#)tests.init	1.26 2003/12/30 Connectathon testsuite
+> +#
+> +MNTOPTIONS="rw,hard,intr"
+> +# Dummy MNTPOINT definition; should get overriden by server script.
+> +MNTPOINT="/mnt"
+> +
+> +SERVER=""
+> +SERVPATH="/server"
+> +TEST="-a"
+> +TESTARG="-t"
+> +
+> +EOF
+> +
+> +# set MOUNTCMD and UMOUNTCMD
+> +echo "# set MOUNTCMD and UMOUNTCMD" >>$Initfile
+> +case $OS in
+> +SVR3)
+> +cat <<\EOF >>$Initfile
+> +# Use this mount command if using:
+> +#	SVR3
+> +MOUNTCMD='./domount -f NFS,$MNTOPTIONS $SERVER\:$SERVPATH $MNTPOINT'
+> +EOF
+> +;;
+> +SVR4|Solaris2.x)
+> +cat <<\EOF >>$Initfile
+> +# Use this mount command if using:
+> +#	SVR4
+> +#	Solaris 2.x
+> +MOUNTCMD='./domount -F nfs -o $MNTOPTIONS $SERVER\:$SERVPATH $MNTPOINT'
+> +CFSMOUNTCMD='./domount -F cachefs -o $MNTOPTIONS $SERVER\:$SERVPATH $MNTPOINT'
+> +EOF
+> +;;
+> +BSD|SunOS4.x|Tru64UNIX|HPUX|Linux|AIX|MacOSX)
+> +cat <<\EOF >>$Initfile
+> +# Use this mount command if using:
+> +#	BSD
+> +#	SunOS 4.X
+> +#	Tru64 UNIX
+> +#	HPUX
+> +#	Linux
+> +#	AIX
+> +#	Mac OS X
+> +# At least some BSD systems don't recognize "hard" (since that's the
+> +# default), so you might also want to use this definition of MNTOPTIONS.
+> +MNTOPTIONS="rw,intr"
+> +MOUNTCMD='./domount -o $MNTOPTIONS $SERVER\:$SERVPATH $MNTPOINT'
+> +EOF
+> +;;
+> +DG/UX)
+> +cat <<\EOF >>$Initfile
+> +# Use this mount command if using:
+> +#	DG/UX
+> +MOUNTCMD='./domount -t nfs -o $MNTOPTIONS $SERVER\:$SERVPATH $MNTPOINT'
+> +EOF
+> +;;
+> +esac
+> +
+> +if test $FSTYPE = cifs; then
+> +	cat <<\EOF >>$Initfile
+> +# Use this mount command if using:
+> +#	SMB/CIFS
+> +MOUNTCMD='./domount -t cifs -o $MNTOPTIONS //$SERVER/$SERVPATH $MNTPOINT'
+> +EOF
+> +fi
+> +cat <<\EOF >>$Initfile
+> +UMOUNTCMD='./domount -u $MNTPOINT'
+> +
+> +EOF
+> +
+> +# set DASHN and BLC
+> +echo "# set DASHN and BLC" >>$Initfile
+> +case $OS in
+> +SVR3|SVR4|Solaris2.x|HPUX)
+> +cat <<\EOF >>$Initfile
+> +# Use the next two lines if using:
+> +#	SVR3
+> +#	SVR4
+> +#	Solaris 2.x
+> +#	HPUX
+> +DASHN=
+> +BLC=\\c
+> +EOF
+> +;;
+> +BSD|SunOS4.x|Linux|Tru64UNIX|MacOSX)
+> +cat <<\EOF >>$Initfile
+> +# Use the next two lines if using:
+> +#	BSD
+> +#	SunOS 4.X
+> +#	Linux
+> +#	Tru64 UNIX
+> +#	Mac OS X
+> +DASHN=-n
+> +BLC=
+> +EOF
+> +;;
+> +esac
+> +
+> +# set PATH
+> +echo >>$Initfile
+> +echo -e "# set PATH" >>$Initfile
+> +case $OS in
+> +Solaris2.x)
+> +cat <<\EOF >>$Initfile
+> +# Use this path for:
+> +#	Solaris 2.x
+> +PATH=/opt/SUNWspro/bin:/usr/ccs/bin:/sbin:/bin:/usr/bin:/usr/ucb:/etc:.
+> +
+> +# Use this path for:
+> +#	Solaris 2.x with GCC
+> +#PATH=/opt/gnu/bin:/usr/ccs/bin:/sbin:/bin:/usr/bin:/usr/ucb:/etc:.
+> +
+> +EOF
+> +;;
+> +
+> +HPUX)
+> +cat <<\EOF >>$Initfile
+> +# Use this path for:
+> +#	HPUX
+> +PATH=/bin:/usr/bin:/etc:/usr/etc:/usr/local/bin:/usr/contrib/bin:.
+> +
+> +EOF
+> +;;
+> +
+> +BSD|SunOS4.x)
+> +cat <<\EOF >>$Initfile
+> +# Use this path for:
+> +#	BSD
+> +#	SunOS 4.X
+> +PATH=/bin:/usr/bin:/usr/ucb:/etc:/usr/etc:.
+> +
+> +EOF
+> +;;
+> +
+> +Tru64UNIX|SVR4|Linux)
+> +cat <<\EOF >>$Initfile
+> +# Use this path for:
+> +#	Tru64 UNIX
+> +#	SVR4
+> +#	Linux
+> +PATH=/bin:/usr/bin:/usr/ucb:/usr/ccs/bin:/sbin:/usr/sbin:.
+> +
+> +EOF
+> +;;
+> +
+> +DG/UX)
+> +cat <<\EOF >>$Initfile
+> +# Use this path for:
+> +#	DG/UX
+> +PATH=/bin:/usr/bin:/usr/ucb:/etc:/usr/etc:.
+> +
+> +EOF
+> +;;
+> +
+> +IRIX)
+> +cat <<\EOF >>$Initfile
+> +# Use this path for:
+> +#	IRIX
+> +PATH=/bin:/usr/bin:/usr/bsd:/etc:/usr/etc:.
+> +
+> +EOF
+> +;;
+> +
+> +AIX)
+> +cat <<\EOF >>$Initfile
+> +# Use this path for:
+> +#	AIX
+> +PATH=/usr/bin:/etc:/usr/sbin:/usr/ucb:/usr/bin/X11:/sbin:.
+> +
+> +EOF
+> +;;
+> +
+> +MacOSX)
+> +cat <<\EOF >>$Initfile
+> +# Use this path for:
+> +#	Mac OS X
+> +PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/X11R6/bin:.
+> +EOF
+> +;;
+> +esac
+> +
+> +#===============================================================================
+> +
+> +cat <<\EOF >>$Initfile
+> +# -----------------------------------------------
+> +# Defines for various variables used in scripts and makefiles.
+> +#
+> +# Do not remove the following three lines.  They may be overridden by
+> +# other configuration parameters lower in this file, but these three
+> +# variables must be defined.
+> +CC=cc
+> +CFLAGS=
+> +LIBS=
+> +LOCKTESTS=tlock
+> +EOF
+> +
+> +case $OS in
+> +SVR3)
+> +cat <<\EOF >>$Initfile
+> +# Use with SVR3 systems.
+> +# Add -TR2 to CFLAGS for use on Amdahl UTS systems.
+> +CFLAGS=-DSVR3
+> +LIBS=`echo -lrpc -lsocket`
+> +EOF
+> +;;
+> +
+> +BSD)
+> +cat <<\EOF >>$Initfile
+> +# Use with BSD systems.
+> +CC=gcc
+> +CFLAGS=`echo -Duse_directs -DBSD`
+> +MOUNT=/sbin/mount
+> +UMOUNT=/sbin/umount
+> +EOF
+> +;;
+> +
+> +SVR4)
+> +cat <<\EOF >>$Initfile
+> +# Use with SVR4 systems.
+> +CFLAGS=-DSVR4
+> +LIBS=`echo -lsocket -lnsl`
+> +EOF
+> +;;
+> +
+> +SunOS4.x)
+> +cat <<\EOF >>$Initfile
+> +# Use with SunOS 4.X systems
+> +CC=/usr/5bin/cc
+> +CFLAGS=`echo -DSUNOS4X -DNEED_STRERROR`
+> +EOF
+> +;;
+> +
+> +Solaris2.x)
+> +cat <<\EOF >>$Initfile
+> +# Use with Solaris 2.x systems.  Need the 5.0 C compiler (or later)
+> +# for 64-bit mode.
+> +#CC=/opt/SUNWspro/bin/cc
+> +# Use this with GCC
+> +#CC=/opt/gnu/bin/gcc
+> +# Use this through Solaris 2.6.  For Solaris 2.7 and later, use
+> +# this for 32-bit mode applications.
+> +#CFLAGS=`echo -DSVR4 -DMMAP -DSOLARIS2X -DSTDARG`
+> +# Use this with gcc (32-bit binaries):
+> +#CFLAGS=`echo -DSVR4 -DMMAP -DSOLARIS2X -DSTDARG -mcpu=ultrasparc`
+> +# For Solaris 2.7 and later, use this for 64-bit mode applications
+> +# (Sun compiler).
+> +#CFLAGS=`echo -DSVR4 -DMMAP -DSOLARIS2X -DSTDARG -xO0 -xarch=v9 -dalign -Xt -L/usr/lib/sparcv9`
+> +# Use this to make 64-bit binaries with gcc (3.1 or later; untested): 
+> +#CFLAGS=`echo -DSVR4 -DMMAP -DSOLARIS2X -DSTDARG -m64`
+> +LIBS=`echo -lsocket -lnsl`
+> +# Use this through Solaris 2.5.1.
+> +#LOCKTESTS=`echo tlock`
+> +# Use with 2.6 and later systems, 32-bit mode.
+> +LOCKTESTS=`echo tlocklfs tlock64`
+> +# Use with 2.7 and later, 64-bit mode.
+> +#LOCKTESTS=`echo tlocklfs`
+> +EOF
+> +;;
+> +
+> +Tru64UNIX)
+> +cat <<\EOF >>$Initfile
+> +# Use with Tru64 UNIX systems
+> +#CFLAGS=`echo -O -DTRU64 -DOSF1 -DMMAP -DSTDARG`
+> +# use the following instead of the above if using gcc
+> +#CFLAGS=`echo -O -DTRU64 -DOSF1 -DMMAP -DSTDARG -fwritable-strings`
+> +# 64-bit binaries with gcc (3.1 or later; untested):
+> +#CFLAGS=`echo -O -DTRU64 -DOSF1 -DMMAP -DSTDARG -fwritable-strings -m64`
+> +#MOUNT=/sbin/mount
+> +#UMOUNT=/sbin/umount
+> +EOF
+> +;;
+> +
+> +HPUX10B)
+> +cat <<\EOF >>$Initfile
+> +# Use with HPUX systems, 10.00 and earlier.
+> +CFLAGS=-DHPUX
+> +CC=/bin/cc
+> +RM=/bin/rm
+> +MAKE=/bin/make
+> +EOF
+> +;;
+> +
+> +HPUX10a)
+> +cat <<\EOF >>$Initfile
+> +# Use with HPUX 10.01.
+> +CFLAGS=`echo -Ae -DHPUX`
+> +CC=/opt/ansic/bin/cc
+> +RM=/bin/rm
+> +MAKE=/usr/bin/make
+> +EOF
+> +;;
+> +
+> +HPUX11-32)
+> +cat <<\EOF >>$Initfile
+> +# Use with HPUX 11.0, 32-bit machines.
+> +CFLAGS=`echo -Ae -DHPUX -D_PSTAT64 -D_LARGEFILE64_SOURCE -DPORTMAP`
+> +CC=/opt/ansic/bin/cc
+> +LIBS=`echo -lnsl`
+> +RM=/bin/rm
+> +MAKE=/usr/bin/make
+> +EOF
+> +;;
+> +
+> +HPUX11-64)
+> +cat <<\EOF >>$Initfile
+> +# Use with HPUX 11.0, 64-bit machines.
+> +CFLAGS=`echo -Ae -DHPUX -D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE`
+> +CC=/opt/ansic/bin/cc
+> +RM=/bin/rm
+> +MAKE=/usr/bin/make
+> +EOF
+> +;;
+> +
+> +DG/UX)
+> +cat <<\EOF >>$Initfile
+> +# Use with DG/UX systems.
+> +CFLAGS=-DSVR4
+> +LIBS=`echo -lsocket -lnsl`
+> +EOF
+> +;;
+> +
+> +IRIX)
+> +cat <<\EOF >>$Initfile
+> +# Use with IRIX systems. Use HAVE_SOCKLEN_T for IRIX >= 6.5.19. 
+> +CFLAGS=`echo -g -DHAVE_SOCKLEN_T -DSTDARG -DSVR4 -DIRIX -DMMAP`
+> +EOF
+> +;;
+> +
+> +AIX)
+> +cat <<\EOF >>$Initfile
+> +# Use with AIX.
+> +CC=gcc
+> +CFLAGS=`echo -DAIX -DSTDARG -D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE`
+> +LOCKTESTS=`echo tlocklfs`
+> +EOF
+> +;;
+> +
+> +MacOSX)
+> +cat <<\EOF >>$Initfile
+> +# Use with Mac OS X
+> +CFLAGS=`echo -DMACOSX -DNATIVE64 -DLARGE_LOCKS`
+> +MOUNT=/sbin/mount
+> +UMOUNT=/sbin/umount
+> +LOCKTESTS=`echo tlock`
+> +EOF
+> +;;
+> +
+> +Linux)
+> +cat <<\EOF >>$Initfile
+> +MOUNT=/bin/mount
+> +UMOUNT=/bin/umount
+> +LOCKTESTS=`echo tlocklfs tlock64`
+> +
+> +# Use with Linux if your distro doesn't provide a "cc".
+> +CC=gcc
+> +
+> +# Use with Linux 2.2 / GNU libc 2.0
+> +#CFLAGS=`echo -DLINUX -DGLIBC=20 -DMMAP -DSTDARG -fwritable-strings`
+> +#LIBS=`echo -lnsl`
+> +
+> +# Use with Linux 2.4 / GNU libc 2.2
+> +#CFLAGS=`echo -DLINUX -DGLIBC=22 -DMMAP -DSTDARG -fwritable-strings`
+> +#LIBS=`echo -lnsl`
+> +
+> +# Use with Linux 2.6 / gcc 4.0
+> +CFLAGS=`echo -DLINUX -DHAVE_SOCKLEN_T -DGLIBC=22 -DMMAP -DSTDARG`
+> +LIBS=`echo -lnsl`
+> +
+> +EOF
+> +
+> +if [ glibc-2.26 = `{ rpm -qf /etc/ld.so.conf; echo glibc-2.26; } | sort | head -n1` ]; then
+> +	cat <<\EOF >>$Initfile
+> +# Use with Linux glibc > 2.26
+> +CFLAGS=`echo -DLINUX -DHAVE_SOCKLEN_T -DGLIBC=22 -DMMAP -DSTDARG`
+> +CFLAGS+=`pkg-config --cflags libtirpc`
+> +LIBS=`pkg-config --libs libtirpc`
+> +EOF
+> +fi
+> +
+> +;;
+> +esac
+> +
+> +
+> 
