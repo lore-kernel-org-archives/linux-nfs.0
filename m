@@ -1,115 +1,141 @@
-Return-Path: <SRS0=umLH=R7=vger.kernel.org=linux-nfs-owner@kernel.org>
+Return-Path: <SRS0=26It=SA=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_PASS,USER_AGENT_MUTT autolearn=ham autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-11.7 required=3.0 tests=FREEMAIL_FORGED_FROMDOMAIN,
+	FREEMAIL_FROM,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
+	MENTIONS_GIT_HOSTING,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2192CC43381
-	for <linux-nfs@archiver.kernel.org>; Thu, 28 Mar 2019 21:17:29 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8CAD0C43381
+	for <linux-nfs@archiver.kernel.org>; Fri, 29 Mar 2019 06:04:37 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id F12E121850
-	for <linux-nfs@archiver.kernel.org>; Thu, 28 Mar 2019 21:17:28 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 5DA7420811
+	for <linux-nfs@archiver.kernel.org>; Fri, 29 Mar 2019 06:04:37 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726700AbfC1VR2 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 28 Mar 2019 17:17:28 -0400
-Received: from fieldses.org ([173.255.197.46]:59522 "EHLO fieldses.org"
+        id S1728545AbfC2GEg (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 29 Mar 2019 02:04:36 -0400
+Received: from mx1.redhat.com ([209.132.183.28]:39544 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726172AbfC1VR2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 28 Mar 2019 17:17:28 -0400
-Received: by fieldses.org (Postfix, from userid 2815)
-        id AF4691CEA; Thu, 28 Mar 2019 17:17:26 -0400 (EDT)
-Date:   Thu, 28 Mar 2019 17:17:26 -0400
-From:   "J. Bruce Fields" <bfields@fieldses.org>
-To:     Scott Mayhew <smayhew@redhat.com>
-Cc:     jlayton@kernel.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH RFC v3 0/5] un-deprecate nfsdcld
-Message-ID: <20190328211726.GA31938@fieldses.org>
-References: <20190326220630.2911-1-smayhew@redhat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20190326220630.2911-1-smayhew@redhat.com>
-User-Agent: Mutt/1.5.21 (2010-09-15)
+        id S1727641AbfC2GEg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 29 Mar 2019 02:04:36 -0400
+Received: from smtp.corp.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id 0DF44308FBB4;
+        Fri, 29 Mar 2019 06:04:36 +0000 (UTC)
+Received: from dhcp-12-115.nay.redhat.com (dhcp-12-115.nay.redhat.com [10.66.12.115])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 5D2EB83B8E;
+        Fri, 29 Mar 2019 06:04:34 +0000 (UTC)
+From:   "Jianhong.Yin" <yin-jianhong@163.com>
+To:     steved@redhat.com
+Cc:     ben@swartzlander.org, linux-nfs@vger.kernel.org,
+        "Jianhong.Yin" <yin-jianhong@163.com>
+Subject: [PATCH] [cthon04] fix typo and fix make failure on ubuntu
+Date:   Fri, 29 Mar 2019 14:04:28 +0800
+Message-Id: <20190329060428.28870-1-yin-jianhong@163.com>
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.11
+X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.43]); Fri, 29 Mar 2019 06:04:36 +0000 (UTC)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Thanks!  It looks good to me on a first skim, but I probably won't get a
-proper look at it till next week.
+there's not rpm command on Debian/Ubuntu, get glibc version by
+'ldd --version' instead 'rpm -qf /path/file'
 
-You say "RFC"--are there still known issue that you're working on?
+based on git://git.linux-nfs.org/projects/steved/cthon04.git
+test pass on:
+  RHEL-8 RHEL-7 RHEL-6 RHEL-5 and RHEL-4
+  Debian-9 Ubuntu-18.10
+  OpenSUSE Tumbleweed
+  Slackware 14.2
 
---b.
+Signed-off-by: Jianhong Yin <yin-jianhong@163.com>
+---
+ tests.init.sh | 22 ++++++++++++----------
+ 1 file changed, 12 insertions(+), 10 deletions(-)
 
-On Tue, Mar 26, 2019 at 06:06:25PM -0400, Scott Mayhew wrote:
-> When nfsdcld was released, it was quickly deprecated in favor of the
-> nfsdcltrack usermodehelper, so as to not require another running daemon.
-> That prevents NFSv4 clients from reclaiming locks from nfsd's running in
-> containers, since neither nfsdcltrack nor the legacy client tracking
-> code work in containers.  These patches un-deprecate the use of nfsdcld
-> for NFSv4 client tracking.
-> 
-> These patches are intended to go alongside some nfs-utils patches that
-> introduce an enhancement that allows nfsd to "slurp" up the client
-> records during client tracking initialization and store them internally
-> in hash table.  This enables nfsd to check whether an NFSv4 client is
-> allowed to reclaim without having to do an upcall to nfsdcld.  It also
-> allows nfsd to decide to end the v4 grace period early if the number of
-> RECLAIM_COMPLETE operations it has received from "known" clients is
-> equal to the number of entries in the hash table.  It also allows nfsd
-> to skip the v4 grace period altogether if it knows there are no clients
-> allowed to reclaim.
-> 
-> There is a fallback to allow nfsd to continue to work with older nfsdcld
-> daemons in the event that any are out in the wild (unlikely).
-> Everything should work fine except nfsd will not be able to exit the
-> grace period early or skip the grace period altogether.
-> 
-> v3:
-> - nfs4_state_start_net() now calls nfsd4_end_grace() instead of
->   open-coding it
-> - Removed some unnecessary initializations of nr_reclaim_complete
-> - Removed dec_reclaim_complete() altogether.  If we're calling
->   expire_client() as a result of receiving a DESTROY_CLIENTID or
->   SETCLIENTID_CONFIRM then we wouldn't want to decrement the count.  And
->   laundromat thread never expires clients due to loss of lease until the
->   grace period is over (the laundromat gets rescheduled by 1 second as
->   long as clients are reclaiming during that 1 second, for up to 2x the
->   original grace period in total).  So dec_reclaim_complete() is
->   unnecessary.
-> - Changed the preference order of client tracking methods.  The new
->   order is 1) new nfdscld, 2) old nfsdcld, 3) nfsdcltrack, 4) legacy
->   v4recovery directory.
-> - Added some special handling of legacy records sent by nfsdcld in the
->   GraceStart downcalls.  nfsdcld will do a one-time "upgrade" from old
->   tracking methods.  No changes are needed to accomodate nfsdcltrack
->   records, but legacy records will be prefixed with the string "hash:", 
->   and in the event that we do have legacy records in the
->   reclaim_str_hashtbl we may need to do a second lookup using the hash
->   in the event that a lookup using the client name string fails.
-> 
-> v2:
-> - Addressed some coding style issues in nfsd4_create_clid_dir() &
->   nfsd4_remove_clid_dir()
-> 
-> Scott Mayhew (5):
->   nfsd: make nfs4_client_reclaim use an xdr_netobj instead of a fixed
->     char array
->   nfsd: un-deprecate nfsdcld
->   nfsd: keep a tally of RECLAIM_COMPLETE operations when using nfsdcld
->   nfsd: re-order client tracking method selection
->   nfsd: handle legacy client tracking records sent by nfsdcld
-> 
->  fs/nfsd/netns.h               |   3 +
->  fs/nfsd/nfs4recover.c         | 436 +++++++++++++++++++++++++++++++---
->  fs/nfsd/nfs4state.c           |  63 +++--
->  fs/nfsd/nfsctl.c              |   1 +
->  fs/nfsd/state.h               |   8 +-
->  include/uapi/linux/nfsd/cld.h |   1 +
->  6 files changed, 457 insertions(+), 55 deletions(-)
-> 
-> -- 
-> 2.17.2
+diff --git a/tests.init.sh b/tests.init.sh
+index 778206f..db96f4a 100755
+--- a/tests.init.sh
++++ b/tests.init.sh
+@@ -1,7 +1,7 @@
+ #!/bin/sh
+ 
+-OS=${1:-Linux}
+-FSTYPE=$${2:-nfs}
++OS=${1:-`uname -s`}
++FSTYPE=${2:-nfs}
+ Initfile=tests.init
+ 
+ cat <<\EOF >$Initfile
+@@ -38,7 +38,7 @@ MOUNTCMD='./domount -F nfs -o $MNTOPTIONS $SERVER\:$SERVPATH $MNTPOINT'
+ CFSMOUNTCMD='./domount -F cachefs -o $MNTOPTIONS $SERVER\:$SERVPATH $MNTPOINT'
+ EOF
+ ;;
+-BSD|SunOS4.x|Tru64UNIX|HPUX|Linux|AIX|MacOSX)
++*BSD|SunOS4.x|Tru64UNIX|HPUX|Linux|AIX|MacOSX)
+ cat <<\EOF >>$Initfile
+ # Use this mount command if using:
+ #	BSD
+@@ -89,7 +89,7 @@ DASHN=
+ BLC=\\c
+ EOF
+ ;;
+-BSD|SunOS4.x|Linux|Tru64UNIX|MacOSX)
++*BSD|SunOS4.x|Linux|Tru64UNIX|MacOSX)
+ cat <<\EOF >>$Initfile
+ # Use the next two lines if using:
+ #	BSD
+@@ -105,7 +105,7 @@ esac
+ 
+ # set PATH
+ echo >>$Initfile
+-echo -e "# set PATH" >>$Initfile
++echo "# set PATH" >>$Initfile
+ case $OS in
+ Solaris2.x)
+ cat <<\EOF >>$Initfile
+@@ -129,7 +129,7 @@ PATH=/bin:/usr/bin:/etc:/usr/etc:/usr/local/bin:/usr/contrib/bin:.
+ EOF
+ ;;
+ 
+-BSD|SunOS4.x)
++*BSD|SunOS4.x)
+ cat <<\EOF >>$Initfile
+ # Use this path for:
+ #	BSD
+@@ -211,10 +211,10 @@ LIBS=`echo -lrpc -lsocket`
+ EOF
+ ;;
+ 
+-BSD)
++*BSD)
+ cat <<\EOF >>$Initfile
+ # Use with BSD systems.
+-CC=gcc
++CC=cc
+ CFLAGS=`echo -Duse_directs -DBSD`
+ MOUNT=/sbin/mount
+ UMOUNT=/sbin/umount
+@@ -375,7 +375,10 @@ LIBS=`echo -lnsl`
+ 
+ EOF
+ 
+-if [ glibc-2.26 = `{ rpm -qf /etc/ld.so.conf; echo glibc-2.26; } | sort | head -n1` ]; then
++glibc_version_base=2.26
++glibc_version_current=`ldd --version|sed -n '1{s/.* //;p}'`
++glibc_version_older=`{ echo $glibc_version_base; echo $glibc_version_current; } | sort | head -n1`
++if [ "$glibc_version_older" = "$glibc_version_base" ]; then
+ 	cat <<\EOF >>$Initfile
+ # Use with Linux glibc > 2.26
+ CFLAGS=`echo -DLINUX -DHAVE_SOCKLEN_T -DGLIBC=22 -DMMAP -DSTDARG`
+@@ -387,4 +390,3 @@ fi
+ ;;
+ esac
+ 
+-
+-- 
+2.17.2
+
