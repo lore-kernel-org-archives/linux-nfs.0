@@ -5,68 +5,70 @@ X-Spam-Level:
 X-Spam-Status: No, score=-8.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+	SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 86B76C4360F
-	for <linux-nfs@archiver.kernel.org>; Fri, 29 Mar 2019 22:02:02 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 68FF4C10F0A
+	for <linux-nfs@archiver.kernel.org>; Fri, 29 Mar 2019 22:02:03 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 541462184D
-	for <linux-nfs@archiver.kernel.org>; Fri, 29 Mar 2019 22:02:02 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 34A7B2184D
+	for <linux-nfs@archiver.kernel.org>; Fri, 29 Mar 2019 22:02:03 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="XsW+wnrZ"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="J0tc/tSn"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1730241AbfC2WCB (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 29 Mar 2019 18:02:01 -0400
-Received: from mail-it1-f181.google.com ([209.85.166.181]:51106 "EHLO
-        mail-it1-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1730137AbfC2WCB (ORCPT
+        id S1730267AbfC2WCC (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 29 Mar 2019 18:02:02 -0400
+Received: from mail-it1-f195.google.com ([209.85.166.195]:37016 "EHLO
+        mail-it1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1730144AbfC2WCB (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Mar 2019 18:02:01 -0400
-Received: by mail-it1-f181.google.com with SMTP id m137so6224378ita.0
-        for <linux-nfs@vger.kernel.org>; Fri, 29 Mar 2019 15:02:00 -0700 (PDT)
+Received: by mail-it1-f195.google.com with SMTP id u65so6272019itc.2
+        for <linux-nfs@vger.kernel.org>; Fri, 29 Mar 2019 15:02:01 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:subject:date:message-id:in-reply-to:references:mime-version
          :content-transfer-encoding;
-        bh=itCHmiCshLTM2+BHulEM3xFyqyjflEgWdjjcXgdFrpU=;
-        b=XsW+wnrZDIseJtJ3izG8raPm0zqq5PJt3SESDkaKsxe1lTaPI90baqLOVMpHSAVfVR
-         vMoUZIN36spv2joptMZ8VdN+q4p92sWWWmRiLiEYSJt8i4GvZNOw1wJASXOP+BM0rVB5
-         I4BKWTzbd2PlW6DraWlhZSyL2Xz/D1us7wTy/fHCEnThiMZk7NhEeQt3Ol11AMDw70zY
-         XfJSQJPuJfUe0ZABPKNs0N7PSl6aWQxJqKVCJ7hioHDG9dkaItFaBGAauLeKyeNZA80K
-         DqJ40jyW6hjoaRzcoD9NFCjjMDcOgNHrEHv/iHeoYr+OcUR6uusnt4wlUFF30fVOzRKj
-         jEDg==
+        bh=ktOAA/pUjssSdbRV9doPBG+n+qDrux7xMAI8mmDNi3Y=;
+        b=J0tc/tSnrkWDiMwzt0U5AhA6fBOJcs0RB94wB1T61tN7ANuA/CPIdPzC8Uuj2sGzP2
+         /ApewWPivLd3Ncph9FQB9MfHboQvVJ2t5/jZnx033m7xZR/csSXX/Jr3L38DpSug5QDH
+         R703Uw/yLMzkmrqq1Q6jCRRo2BNk4iOVbmv2wX3Kc+UOxtB197e4WaQ2gQ3KPLCwkTb/
+         7OIrkdA/bG87vsbdZL7oqjISkyfYEA7gPHUGkdbl5Pxso6059M4RdUuaNB752VQ+l+Lz
+         0kiPYghmL8kvpjsV4/9t5sU0pXD/o2s4M2GyFhlZSSfdLy0Z4nvRgPlhC9z0+AKy8+b2
+         wlpg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=itCHmiCshLTM2+BHulEM3xFyqyjflEgWdjjcXgdFrpU=;
-        b=S0S+3Lg/5Ach7QLFhJ6CzWCvx/ggSpdMkVGF76JJYZgawgfcuYRdxBYatgGAMniLwA
-         orxI2jIcIY9jmOAYbC05Z9Ze5tUARXXut8ffnMnHfobtfcJcif/OEA7SmdLAlS7pDYNv
-         sybYCJ2L/Kp50y477z83gIUnMnanRJcMskKWY9JxUDUXiGCl+fsYIMvEYYx9qCrJPy+Q
-         /J90yIdIXSuvQ7Kd301FD7AAbfe1vAnTREUTaUW1cBOrzDoFFUMrfTYwBZWXkf/w1HFE
-         /0sKTc/11TfPl2jvd0fqDHMR/ViNlaEcUXGHEys6BnWaLzplm7Ql4cc7ayqzahkR8m18
-         sglA==
-X-Gm-Message-State: APjAAAUpwyIqrRlnshETLladhtFydiTCp+kyi81gdF117KnK1m7Fj575
-        bdgOEF2iATlXbWBArvmeoJ0MTV8=
-X-Google-Smtp-Source: APXvYqz65mhCAkDi3i2p/cWpLF0RN+g0a0bDNRHhGoimuMgsnZTnWQZVTlPmPwgj6MU50Tj/1tMcVA==
-X-Received: by 2002:a24:68cb:: with SMTP id v194mr5620563itb.145.1553896919819;
-        Fri, 29 Mar 2019 15:01:59 -0700 (PDT)
+        bh=ktOAA/pUjssSdbRV9doPBG+n+qDrux7xMAI8mmDNi3Y=;
+        b=OF76khHcEz50V4kyRVnGOMJrk2hn4J06AuCnJPHHHsWdHzqBlwlNAlkzx2U4Q/wVAA
+         94B24PRQ1q92RyPIYmVgB41N6BV2FejZiqwgfg7fjEYNoTJSdyXzjOOPoJBtn70nQ/FR
+         vyAmXwKcCuTsNB0jsQslMmjiI05iQG3AEdQoLbJy16WCphUdK9i4Pul+5jhjpdOHDzgS
+         NxxnBM5vhRyRxtXf+RVaABVnbMOO/eNeTSJaI0tIc1Ewql+lUb/RIVc1iMMZGSJNW5Lu
+         Wjl3p0rX1Vn1I8/qq2HKRU+sCewjxWPQYr2kTSgiV0C3LkETcACXC5INIy1t+8Ab7GcQ
+         wv3g==
+X-Gm-Message-State: APjAAAWrkLcZ3C0rpP0NQaQizUfH7OVNf5YqrQ4DKjpv4GkpSuybGU/e
+        cl8tgrfXRBIujNHCc6i7lNRzwg0=
+X-Google-Smtp-Source: APXvYqwvkUkYVnj4SvkDil12e/vZ/B+Lk8n5Rn2PH2Biv0bQhB39y5lwfWzyLggoUX6vHpLPr0Hw8g==
+X-Received: by 2002:a24:dc41:: with SMTP id q62mr6571803itg.94.1553896920576;
+        Fri, 29 Mar 2019 15:02:00 -0700 (PDT)
 Received: from localhost.localdomain (c-68-40-189-247.hsd1.mi.comcast.net. [68.40.189.247])
         by smtp.gmail.com with ESMTPSA id v20sm1376796ioh.17.2019.03.29.15.01.59
         for <linux-nfs@vger.kernel.org>
         (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
-        Fri, 29 Mar 2019 15:01:59 -0700 (PDT)
+        Fri, 29 Mar 2019 15:02:00 -0700 (PDT)
 From:   Trond Myklebust <trondmy@gmail.com>
 X-Google-Original-From: Trond Myklebust <trond.myklebust@hammerspace.com>
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH v2 04/28] SUNRPC: Refactor rpc_sleep_on()
-Date:   Fri, 29 Mar 2019 17:59:24 -0400
-Message-Id: <20190329215948.107328-5-trond.myklebust@hammerspace.com>
+Subject: [PATCH v2 05/28] SUNRPC: Remove unused argument 'action' from rpc_sleep_on_priority()
+Date:   Fri, 29 Mar 2019 17:59:25 -0400
+Message-Id: <20190329215948.107328-6-trond.myklebust@hammerspace.com>
 X-Mailer: git-send-email 2.20.1
-In-Reply-To: <20190329215948.107328-4-trond.myklebust@hammerspace.com>
+In-Reply-To: <20190329215948.107328-5-trond.myklebust@hammerspace.com>
 References: <20190329215948.107328-1-trond.myklebust@hammerspace.com>
  <20190329215948.107328-2-trond.myklebust@hammerspace.com>
  <20190329215948.107328-3-trond.myklebust@hammerspace.com>
  <20190329215948.107328-4-trond.myklebust@hammerspace.com>
+ <20190329215948.107328-5-trond.myklebust@hammerspace.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
@@ -74,96 +76,63 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-rpc_sleep_on() does not need to set the task->tk_callback under the
-queue lock, so move that out.
-Also refactor the check for whether the task is active.
+None of the callers set the 'action' argument, so let's just remove it.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- net/sunrpc/sched.c | 40 ++++++++++++++++++++++++----------------
- 1 file changed, 24 insertions(+), 16 deletions(-)
+ fs/nfs/nfs4proc.c            | 2 +-
+ include/linux/sunrpc/sched.h | 1 -
+ net/sunrpc/sched.c           | 7 +++----
+ 3 files changed, 4 insertions(+), 6 deletions(-)
 
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 741ff8c9c6ed..222eccd8a715 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -1008,7 +1008,7 @@ int nfs4_setup_sequence(struct nfs_client *client,
+ out_sleep:
+ 	if (args->sa_privileged)
+ 		rpc_sleep_on_priority(&tbl->slot_tbl_waitq, task,
+-				NULL, RPC_PRIORITY_PRIVILEGED);
++				RPC_PRIORITY_PRIVILEGED);
+ 	else
+ 		rpc_sleep_on(&tbl->slot_tbl_waitq, task, NULL);
+ 	spin_unlock(&tbl->slot_tbl_lock);
+diff --git a/include/linux/sunrpc/sched.h b/include/linux/sunrpc/sched.h
+index 852ca0f2c56c..541b89d41afb 100644
+--- a/include/linux/sunrpc/sched.h
++++ b/include/linux/sunrpc/sched.h
+@@ -231,7 +231,6 @@ void		rpc_sleep_on(struct rpc_wait_queue *, struct rpc_task *,
+ 					rpc_action action);
+ void		rpc_sleep_on_priority(struct rpc_wait_queue *,
+ 					struct rpc_task *,
+-					rpc_action action,
+ 					int priority);
+ void rpc_wake_up_queued_task_on_wq(struct workqueue_struct *wq,
+ 		struct rpc_wait_queue *queue,
 diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
-index 3d6cb91ba598..8e96a841dd11 100644
+index 8e96a841dd11..04170c08b2cf 100644
 --- a/net/sunrpc/sched.c
 +++ b/net/sunrpc/sched.c
-@@ -362,7 +362,6 @@ static void rpc_make_runnable(struct workqueue_struct *wq,
-  */
- static void __rpc_sleep_on_priority(struct rpc_wait_queue *q,
- 		struct rpc_task *task,
--		rpc_action action,
- 		unsigned char queue_priority)
- {
- 	dprintk("RPC: %5u sleep_on(queue \"%s\" time %lu)\n",
-@@ -372,27 +371,39 @@ static void __rpc_sleep_on_priority(struct rpc_wait_queue *q,
- 
- 	__rpc_add_wait_queue(q, task, queue_priority);
- 
--	WARN_ON_ONCE(task->tk_callback != NULL);
--	task->tk_callback = action;
- 	__rpc_add_timer(q, task);
- }
- 
--void rpc_sleep_on(struct rpc_wait_queue *q, struct rpc_task *task,
--				rpc_action action)
-+static void rpc_set_tk_callback(struct rpc_task *task, rpc_action action)
-+{
-+	if (action && !WARN_ON_ONCE(task->tk_callback != NULL))
-+		task->tk_callback = action;
-+}
-+
-+static bool rpc_sleep_check_activated(struct rpc_task *task)
- {
- 	/* We shouldn't ever put an inactive task to sleep */
--	WARN_ON_ONCE(!RPC_IS_ACTIVATED(task));
--	if (!RPC_IS_ACTIVATED(task)) {
-+	if (WARN_ON_ONCE(!RPC_IS_ACTIVATED(task))) {
- 		task->tk_status = -EIO;
- 		rpc_put_task_async(task);
--		return;
-+		return false;
- 	}
-+	return true;
-+}
-+
-+void rpc_sleep_on(struct rpc_wait_queue *q, struct rpc_task *task,
-+				rpc_action action)
-+{
-+	if (!rpc_sleep_check_activated(task))
-+		return;
-+
-+	rpc_set_tk_callback(task, action);
- 
- 	/*
- 	 * Protect the queue operations.
- 	 */
- 	spin_lock_bh(&q->lock);
--	__rpc_sleep_on_priority(q, task, action, task->tk_priority);
-+	__rpc_sleep_on_priority(q, task, task->tk_priority);
- 	spin_unlock_bh(&q->lock);
- }
+@@ -409,18 +409,17 @@ void rpc_sleep_on(struct rpc_wait_queue *q, struct rpc_task *task,
  EXPORT_SYMBOL_GPL(rpc_sleep_on);
-@@ -400,19 +411,16 @@ EXPORT_SYMBOL_GPL(rpc_sleep_on);
- void rpc_sleep_on_priority(struct rpc_wait_queue *q, struct rpc_task *task,
- 		rpc_action action, int priority)
- {
--	/* We shouldn't ever put an inactive task to sleep */
--	WARN_ON_ONCE(!RPC_IS_ACTIVATED(task));
--	if (!RPC_IS_ACTIVATED(task)) {
--		task->tk_status = -EIO;
--		rpc_put_task_async(task);
-+	if (!rpc_sleep_check_activated(task))
- 		return;
--	}
-+
-+	rpc_set_tk_callback(task, action);
  
+ void rpc_sleep_on_priority(struct rpc_wait_queue *q, struct rpc_task *task,
+-		rpc_action action, int priority)
++		int priority)
+ {
+ 	if (!rpc_sleep_check_activated(task))
+ 		return;
+ 
+-	rpc_set_tk_callback(task, action);
+-
++	priority -= RPC_PRIORITY_LOW;
  	/*
  	 * Protect the queue operations.
  	 */
  	spin_lock_bh(&q->lock);
--	__rpc_sleep_on_priority(q, task, action, priority - RPC_PRIORITY_LOW);
-+	__rpc_sleep_on_priority(q, task, priority - RPC_PRIORITY_LOW);
+-	__rpc_sleep_on_priority(q, task, priority - RPC_PRIORITY_LOW);
++	__rpc_sleep_on_priority(q, task, priority);
  	spin_unlock_bh(&q->lock);
  }
  EXPORT_SYMBOL_GPL(rpc_sleep_on_priority);
