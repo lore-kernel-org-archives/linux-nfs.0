@@ -5,64 +5,65 @@ X-Spam-Level:
 X-Spam-Status: No, score=-8.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+	SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 69961C10F05
-	for <linux-nfs@archiver.kernel.org>; Fri, 29 Mar 2019 22:02:18 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 30D0AC4360F
+	for <linux-nfs@archiver.kernel.org>; Fri, 29 Mar 2019 22:02:19 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 2BC052184D
+	by mail.kernel.org (Postfix) with ESMTP id E6DDE2184D
 	for <linux-nfs@archiver.kernel.org>; Fri, 29 Mar 2019 22:02:18 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="pNPspRDe"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="RhLP3CKu"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1730367AbfC2WCR (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 29 Mar 2019 18:02:17 -0400
-Received: from mail-it1-f196.google.com ([209.85.166.196]:55546 "EHLO
+        id S1730369AbfC2WCS (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 29 Mar 2019 18:02:18 -0400
+Received: from mail-it1-f196.google.com ([209.85.166.196]:38975 "EHLO
         mail-it1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1730357AbfC2WCR (ORCPT
+        with ESMTP id S1730108AbfC2WCR (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Mar 2019 18:02:17 -0400
-Received: by mail-it1-f196.google.com with SMTP id z126so6167715itd.5
-        for <linux-nfs@vger.kernel.org>; Fri, 29 Mar 2019 15:02:16 -0700 (PDT)
+Received: by mail-it1-f196.google.com with SMTP id 139so6261039ita.4
+        for <linux-nfs@vger.kernel.org>; Fri, 29 Mar 2019 15:02:17 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:subject:date:message-id:in-reply-to:references:mime-version
          :content-transfer-encoding;
-        bh=DCXLhS5/3tUUdZhpeepOV5pEwBq2CK21UuGwNrJC8co=;
-        b=pNPspRDe8MTS4pVaT1exUmjrDADspB2Y5KCH/txCwUrQt+03aT64BhOK9y5zN1WlYe
-         O99/+IIx6S0fIS7V6OnQXMuxkkDK6DytVLLMXBuaeJUQ2LRGH8O39gpTesg+049seAYx
-         HZFu7ls8WsOzLAjJsj+jkRf99FfdjNekdXUymiBDiysebS46adRIma74sX/hpEXvT4ID
-         aSQWDwgw3FakAMGP5Pn8TjsRAyjmWzrZ/dlfwREJz/sLLYcNeg2tAS7v+RFnZ2G/kK1T
-         eFW1R6lmjhqq6jFfpXFATcLZyb7Jc6ej5ZLAF/ekOT4cAfYZgyN6hGU44LkLcTeFLZHO
-         UDoA==
+        bh=A0pqpnca7neEiVllfRIXwjV3so8zdwWFSbpHOdCP0xI=;
+        b=RhLP3CKuthVXob0v4DRYUXqHouEfMsRHnCd8iHL6mQ3+wNyzoUJg1zzyjEo9k0SIVY
+         Wz2HbfHMrju+k9ACz42NTvac2RLdj8Ibhur0MXtHOsIIOwiDakBOZxxYEpds3sbh6c5J
+         qrMoJrE2qZaMVkjNHsP6hTE6OcV+0wLd9LElyqx/dIp8QaK+WES2XjmStGaAYaoLSgVY
+         orUHRe5CeriaAdjkC46fx+nLG7VJ71JVGL+hJGDjp2hRAbTeX7Wu/RDi2QDcbhqy9v3a
+         Gop7QUIpv9Ke35QSYGav7qWPKr73BNw7GePFSdefQ2jy7x66d4Adc09E1p2H53lHelgn
+         xjLA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=DCXLhS5/3tUUdZhpeepOV5pEwBq2CK21UuGwNrJC8co=;
-        b=SnNKRbmm6Ww20tctIdr1WI9qlx2hJoX+0F3uOPU/sO0ixVTCb4XBwr9yjQTNuoY7Fd
-         cytztQzrmpUMbNYwMasJC7UWVEKctsBnT0BAOhQ6/0Tu1iJNqdFc9bD8Wo2xGTyEI5SC
-         OORdi6I1VNaeVrW1Z3FoTA+GOMCNQW/FbnBtZCRVHyjhiXuItEy4J1o23fVb4JN2VTCh
-         WOPuBGT9X/Txrw+8fTFrDVxB5r5q43VFoAh2Z21ssgKH0EzyrXqPFtGPeID3yXwoSKaS
-         90mGHu7zJX25zVyqx1AFqxhwyV7s0v1zZnYvOgcvEZwp9oPtfQUWRKWaHGiHlvYKugcw
-         o/kw==
-X-Gm-Message-State: APjAAAWITu0MC+5ka9vw7e0XCemoMTuUu761ygqvBkxDqzyCutSPEf2m
-        OHGs47Or6AHX9wUkgjeCUG0ionE=
-X-Google-Smtp-Source: APXvYqySoDgA83EC1Bu9BPFtculpVYjOi8UyxioUF7P+etA4rtANe5cwH0iQtGPaG5goKli5s6WXgQ==
-X-Received: by 2002:a24:69c4:: with SMTP id e187mr6131948itc.12.1553896935555;
-        Fri, 29 Mar 2019 15:02:15 -0700 (PDT)
+        bh=A0pqpnca7neEiVllfRIXwjV3so8zdwWFSbpHOdCP0xI=;
+        b=hywvB0U4GWmFYW+yuZNps3h8M3ji9bOL3XPZrfCLn5ZMxzraugNfaYUe3KG8Q0h4ZF
+         5RMy4g3iVmqpsAfiYv+qzfvbJ5tZG0DU6e/JeF53EG3GJPXmlFibAh5kcX7R4/PeCn9n
+         ljrw4SYLJnrMostUvIGGNv4/KUBaFCglFhMz37SJcMi6ZpkywLKnRIljFQUBv7/ImMpx
+         a4n80+DSpATMYFBzCQ9d9izFVOw7YlHbYXgqYwUlYZ8DqOeA/JGuiLvyHFWDU090FDkg
+         iTGlq5R3Ejdnd+vd2XQ7qG4ExqO1Xy37Yfgk1QzgzwoLoJ3dVc9JZhUB1AHy183+vfXz
+         vS/Q==
+X-Gm-Message-State: APjAAAUC+HglqDT922/IMVarSoMgr3+1UdtNQZ6MSME10i4ZWMeamN5t
+        RLCZyN40dhw92ou6jG1i0XkeVP0=
+X-Google-Smtp-Source: APXvYqxAYdHNryCxDnC/ffdT6ozXdX/ZBbVDbwwr0tVf7xaRiLbKfAOXsRacL8mh5+Lh6kkW+V3R0A==
+X-Received: by 2002:a24:2b8c:: with SMTP id h134mr6413725ita.15.1553896936369;
+        Fri, 29 Mar 2019 15:02:16 -0700 (PDT)
 Received: from localhost.localdomain (c-68-40-189-247.hsd1.mi.comcast.net. [68.40.189.247])
-        by smtp.gmail.com with ESMTPSA id v20sm1376796ioh.17.2019.03.29.15.02.14
+        by smtp.gmail.com with ESMTPSA id v20sm1376796ioh.17.2019.03.29.15.02.15
         for <linux-nfs@vger.kernel.org>
         (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
-        Fri, 29 Mar 2019 15:02:14 -0700 (PDT)
+        Fri, 29 Mar 2019 15:02:15 -0700 (PDT)
 From:   Trond Myklebust <trondmy@gmail.com>
 X-Google-Original-From: Trond Myklebust <trond.myklebust@hammerspace.com>
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH v2 23/28] NFS: Fix up NFS I/O subrequest creation
-Date:   Fri, 29 Mar 2019 17:59:43 -0400
-Message-Id: <20190329215948.107328-24-trond.myklebust@hammerspace.com>
+Subject: [PATCH v2 24/28] NFS: Remove unused argument from nfs_create_request()
+Date:   Fri, 29 Mar 2019 17:59:44 -0400
+Message-Id: <20190329215948.107328-25-trond.myklebust@hammerspace.com>
 X-Mailer: git-send-email 2.20.1
-In-Reply-To: <20190329215948.107328-23-trond.myklebust@hammerspace.com>
+In-Reply-To: <20190329215948.107328-24-trond.myklebust@hammerspace.com>
 References: <20190329215948.107328-1-trond.myklebust@hammerspace.com>
  <20190329215948.107328-2-trond.myklebust@hammerspace.com>
  <20190329215948.107328-3-trond.myklebust@hammerspace.com>
@@ -86,6 +87,7 @@ References: <20190329215948.107328-1-trond.myklebust@hammerspace.com>
  <20190329215948.107328-21-trond.myklebust@hammerspace.com>
  <20190329215948.107328-22-trond.myklebust@hammerspace.com>
  <20190329215948.107328-23-trond.myklebust@hammerspace.com>
+ <20190329215948.107328-24-trond.myklebust@hammerspace.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
@@ -93,163 +95,152 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-We require all NFS I/O subrequests to duplicate the lock context as well
-as the open context.
+All the callers of nfs_create_request() are now creating page group
+heads, so we can remove the redundant 'last' page argument.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/pagelist.c | 93 ++++++++++++++++++++++++++++-------------------
- 1 file changed, 55 insertions(+), 38 deletions(-)
+ fs/nfs/direct.c          |  4 ++--
+ fs/nfs/pagelist.c        | 16 ++++++++--------
+ fs/nfs/read.c            |  4 ++--
+ fs/nfs/write.c           |  2 +-
+ include/linux/nfs_page.h |  1 -
+ 5 files changed, 13 insertions(+), 14 deletions(-)
 
+diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+index 0fd811ac08b5..2d301a1a73e2 100644
+--- a/fs/nfs/direct.c
++++ b/fs/nfs/direct.c
+@@ -492,7 +492,7 @@ static ssize_t nfs_direct_read_schedule_iovec(struct nfs_direct_req *dreq,
+ 			struct nfs_page *req;
+ 			unsigned int req_len = min_t(size_t, bytes, PAGE_SIZE - pgbase);
+ 			/* XXX do we need to do the eof zeroing found in async_filler? */
+-			req = nfs_create_request(dreq->ctx, pagevec[i], NULL,
++			req = nfs_create_request(dreq->ctx, pagevec[i],
+ 						 pgbase, req_len);
+ 			if (IS_ERR(req)) {
+ 				result = PTR_ERR(req);
+@@ -899,7 +899,7 @@ static ssize_t nfs_direct_write_schedule_iovec(struct nfs_direct_req *dreq,
+ 			struct nfs_page *req;
+ 			unsigned int req_len = min_t(size_t, bytes, PAGE_SIZE - pgbase);
+ 
+-			req = nfs_create_request(dreq->ctx, pagevec[i], NULL,
++			req = nfs_create_request(dreq->ctx, pagevec[i],
+ 						 pgbase, req_len);
+ 			if (IS_ERR(req)) {
+ 				result = PTR_ERR(req);
 diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-index e9f39fa5964b..66a5c5d4a777 100644
+index 66a5c5d4a777..b8301c40dd78 100644
 --- a/fs/nfs/pagelist.c
 +++ b/fs/nfs/pagelist.c
-@@ -295,25 +295,13 @@ nfs_page_group_destroy(struct kref *kref)
- 		nfs_release_request(head);
- }
+@@ -297,8 +297,8 @@ nfs_page_group_destroy(struct kref *kref)
  
--/**
-- * nfs_create_request - Create an NFS read/write request.
-- * @ctx: open context to use
-- * @page: page to write
-- * @last: last nfs request created for this page group or NULL if head
-- * @offset: starting offset within the page for the write
-- * @count: number of bytes to read/write
-- *
-- * The page must be locked by the caller. This makes sure we never
-- * create two different requests for the same page.
-- * User should ensure it is safe to sleep in this function.
-- */
--struct nfs_page *
--nfs_create_request(struct nfs_open_context *ctx, struct page *page,
--		   struct nfs_page *last, unsigned int offset,
--		   unsigned int count)
-+static struct nfs_page *
-+__nfs_create_request(struct nfs_lock_context *l_ctx, struct page *page,
-+		   struct nfs_page *last, unsigned int pgbase,
-+		   unsigned int offset, unsigned int count)
+ static struct nfs_page *
+ __nfs_create_request(struct nfs_lock_context *l_ctx, struct page *page,
+-		   struct nfs_page *last, unsigned int pgbase,
+-		   unsigned int offset, unsigned int count)
++		   unsigned int pgbase, unsigned int offset,
++		   unsigned int count)
  {
  	struct nfs_page		*req;
--	struct nfs_lock_context *l_ctx;
-+	struct nfs_open_context *ctx = l_ctx->open_context;
- 
- 	if (test_bit(NFS_CONTEXT_BAD, &ctx->flags))
- 		return ERR_PTR(-EBADF);
-@@ -322,13 +310,8 @@ nfs_create_request(struct nfs_open_context *ctx, struct page *page,
- 	if (req == NULL)
- 		return ERR_PTR(-ENOMEM);
- 
--	/* get lock context early so we can deal with alloc failures */
--	l_ctx = nfs_get_lock_context(ctx);
--	if (IS_ERR(l_ctx)) {
--		nfs_page_free(req);
--		return ERR_CAST(l_ctx);
--	}
- 	req->wb_lock_context = l_ctx;
-+	refcount_inc(&l_ctx->count);
- 	atomic_inc(&l_ctx->io_count);
- 
- 	/* Initialize the request struct. Initially, we assume a
-@@ -340,7 +323,7 @@ nfs_create_request(struct nfs_open_context *ctx, struct page *page,
- 		get_page(page);
- 	}
- 	req->wb_offset  = offset;
--	req->wb_pgbase	= offset;
-+	req->wb_pgbase	= pgbase;
+ 	struct nfs_open_context *ctx = l_ctx->open_context;
+@@ -327,7 +327,6 @@ __nfs_create_request(struct nfs_lock_context *l_ctx, struct page *page,
  	req->wb_bytes   = count;
  	req->wb_context = get_nfs_open_context(ctx);
  	kref_init(&req->wb_kref);
-@@ -348,6 +331,49 @@ nfs_create_request(struct nfs_open_context *ctx, struct page *page,
+-	nfs_page_group_init(req, last);
  	return req;
  }
  
-+/**
-+ * nfs_create_request - Create an NFS read/write request.
-+ * @ctx: open context to use
-+ * @page: page to write
-+ * @last: last nfs request created for this page group or NULL if head
-+ * @offset: starting offset within the page for the write
-+ * @count: number of bytes to read/write
-+ *
-+ * The page must be locked by the caller. This makes sure we never
-+ * create two different requests for the same page.
-+ * User should ensure it is safe to sleep in this function.
-+ */
-+struct nfs_page *
-+nfs_create_request(struct nfs_open_context *ctx, struct page *page,
-+		   struct nfs_page *last, unsigned int offset,
-+		   unsigned int count)
-+{
-+	struct nfs_lock_context *l_ctx = nfs_get_lock_context(ctx);
-+	struct nfs_page *ret;
-+
-+	if (IS_ERR(l_ctx))
-+		return ERR_CAST(l_ctx);
-+	ret = __nfs_create_request(l_ctx, page, last, offset, offset, count);
-+	nfs_put_lock_context(l_ctx);
-+	return ret;
-+}
-+
-+static struct nfs_page *
-+nfs_create_subreq(struct nfs_page *req, struct nfs_page *last,
-+		  unsigned int pgbase, unsigned int offset,
-+		  unsigned int count)
-+{
-+	struct nfs_page *ret;
-+
-+	ret = __nfs_create_request(req->wb_lock_context, req->wb_page, last,
-+			pgbase, offset, count);
-+	if (!IS_ERR(ret)) {
-+		nfs_lock_request(ret);
-+		ret->wb_index = req->wb_index;
-+	}
-+	return ret;
-+}
-+
- /**
-  * nfs_unlock_request - Unlock request and wake up sleepers.
-  * @req: pointer to request
-@@ -1049,14 +1075,10 @@ static int __nfs_pageio_add_request(struct nfs_pageio_descriptor *desc,
- 		pgbase += subreq->wb_bytes;
+@@ -335,7 +334,6 @@ __nfs_create_request(struct nfs_lock_context *l_ctx, struct page *page,
+  * nfs_create_request - Create an NFS read/write request.
+  * @ctx: open context to use
+  * @page: page to write
+- * @last: last nfs request created for this page group or NULL if head
+  * @offset: starting offset within the page for the write
+  * @count: number of bytes to read/write
+  *
+@@ -345,15 +343,16 @@ __nfs_create_request(struct nfs_lock_context *l_ctx, struct page *page,
+  */
+ struct nfs_page *
+ nfs_create_request(struct nfs_open_context *ctx, struct page *page,
+-		   struct nfs_page *last, unsigned int offset,
+-		   unsigned int count)
++		   unsigned int offset, unsigned int count)
+ {
+ 	struct nfs_lock_context *l_ctx = nfs_get_lock_context(ctx);
+ 	struct nfs_page *ret;
  
- 		if (bytes_left) {
--			subreq = nfs_create_request(req->wb_context,
--					req->wb_page,
--					subreq, pgbase, bytes_left);
-+			subreq = nfs_create_subreq(req, subreq, pgbase,
-+					offset, bytes_left);
- 			if (IS_ERR(subreq))
- 				goto err_ptr;
--			nfs_lock_request(subreq);
--			subreq->wb_offset  = offset;
--			subreq->wb_index = req->wb_index;
- 		}
- 	} while (bytes_left > 0);
+ 	if (IS_ERR(l_ctx))
+ 		return ERR_CAST(l_ctx);
+-	ret = __nfs_create_request(l_ctx, page, last, offset, offset, count);
++	ret = __nfs_create_request(l_ctx, page, offset, offset, count);
++	if (!IS_ERR(ret))
++		nfs_page_group_init(ret, NULL);
+ 	nfs_put_lock_context(l_ctx);
+ 	return ret;
+ }
+@@ -365,11 +364,12 @@ nfs_create_subreq(struct nfs_page *req, struct nfs_page *last,
+ {
+ 	struct nfs_page *ret;
  
-@@ -1158,19 +1180,14 @@ int nfs_pageio_add_request(struct nfs_pageio_descriptor *desc,
- 			     lastreq = lastreq->wb_this_page)
- 				;
+-	ret = __nfs_create_request(req->wb_lock_context, req->wb_page, last,
++	ret = __nfs_create_request(req->wb_lock_context, req->wb_page,
+ 			pgbase, offset, count);
+ 	if (!IS_ERR(ret)) {
+ 		nfs_lock_request(ret);
+ 		ret->wb_index = req->wb_index;
++		nfs_page_group_init(ret, last);
+ 	}
+ 	return ret;
+ }
+diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+index 1d95a60b2586..fad1333dbf71 100644
+--- a/fs/nfs/read.c
++++ b/fs/nfs/read.c
+@@ -118,7 +118,7 @@ int nfs_readpage_async(struct nfs_open_context *ctx, struct inode *inode,
+ 	len = nfs_page_length(page);
+ 	if (len == 0)
+ 		return nfs_return_empty_page(page);
+-	new = nfs_create_request(ctx, page, NULL, 0, len);
++	new = nfs_create_request(ctx, page, 0, len);
+ 	if (IS_ERR(new)) {
+ 		unlock_page(page);
+ 		return PTR_ERR(new);
+@@ -363,7 +363,7 @@ readpage_async_filler(void *data, struct page *page)
+ 	if (len == 0)
+ 		return nfs_return_empty_page(page);
  
--			dupreq = nfs_create_request(req->wb_context,
--					req->wb_page, lastreq, pgbase, bytes);
-+			dupreq = nfs_create_subreq(req, lastreq,
-+					pgbase, offset, bytes);
+-	new = nfs_create_request(desc->ctx, page, NULL, 0, len);
++	new = nfs_create_request(desc->ctx, page, 0, len);
+ 	if (IS_ERR(new))
+ 		goto out_error;
  
-+			nfs_page_group_unlock(req);
- 			if (IS_ERR(dupreq)) {
--				nfs_page_group_unlock(req);
- 				desc->pg_error = PTR_ERR(dupreq);
- 				goto out_failed;
- 			}
--
--			nfs_lock_request(dupreq);
--			nfs_page_group_unlock(req);
--			dupreq->wb_offset = offset;
--			dupreq->wb_index = req->wb_index;
- 		} else
- 			dupreq = req;
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 627a2b6ed1fe..0712d886ff08 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -1171,7 +1171,7 @@ static struct nfs_page * nfs_setup_write_request(struct nfs_open_context* ctx,
+ 	req = nfs_try_to_update_request(inode, page, offset, bytes);
+ 	if (req != NULL)
+ 		goto out;
+-	req = nfs_create_request(ctx, page, NULL, offset, bytes);
++	req = nfs_create_request(ctx, page, offset, bytes);
+ 	if (IS_ERR(req))
+ 		goto out;
+ 	nfs_inode_add_request(inode, req);
+diff --git a/include/linux/nfs_page.h b/include/linux/nfs_page.h
+index ad69430fd0eb..b7d0f15615c2 100644
+--- a/include/linux/nfs_page.h
++++ b/include/linux/nfs_page.h
+@@ -114,7 +114,6 @@ struct nfs_pageio_descriptor {
  
+ extern	struct nfs_page *nfs_create_request(struct nfs_open_context *ctx,
+ 					    struct page *page,
+-					    struct nfs_page *last,
+ 					    unsigned int offset,
+ 					    unsigned int count);
+ extern	void nfs_release_request(struct nfs_page *);
 -- 
 2.20.1
 
