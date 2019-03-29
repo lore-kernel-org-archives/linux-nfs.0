@@ -2,69 +2,70 @@ Return-Path: <SRS0=26It=SA=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.0 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+X-Spam-Status: No, score=-8.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_PASS,UNWANTED_LANGUAGE_BODY,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
-	autolearn_force=no version=3.4.0
+	SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 76F7DC10F05
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D5D8BC4360F
 	for <linux-nfs@archiver.kernel.org>; Fri, 29 Mar 2019 22:02:00 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 2F9E82184D
+	by mail.kernel.org (Postfix) with ESMTP id A0FAB2184D
 	for <linux-nfs@archiver.kernel.org>; Fri, 29 Mar 2019 22:02:00 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="J8/iopV8"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="t531HpBi"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1730235AbfC2WB7 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 29 Mar 2019 18:01:59 -0400
-Received: from mail-it1-f196.google.com ([209.85.166.196]:34921 "EHLO
+        id S1730237AbfC2WCA (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 29 Mar 2019 18:02:00 -0400
+Received: from mail-it1-f196.google.com ([209.85.166.196]:52864 "EHLO
         mail-it1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1730144AbfC2WB7 (ORCPT
+        with ESMTP id S1730137AbfC2WB7 (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Mar 2019 18:01:59 -0400
-Received: by mail-it1-f196.google.com with SMTP id w15so6293436itc.0
-        for <linux-nfs@vger.kernel.org>; Fri, 29 Mar 2019 15:01:58 -0700 (PDT)
+Received: by mail-it1-f196.google.com with SMTP id g17so6188303ita.2
+        for <linux-nfs@vger.kernel.org>; Fri, 29 Mar 2019 15:01:59 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:subject:date:message-id:in-reply-to:references:mime-version
          :content-transfer-encoding;
-        bh=xExJh72js22X6EmLvhYclmaSv1mMe/EiKVhznFesUJA=;
-        b=J8/iopV8Nsu2cPIJfSlkwbFaX05DrcOZpfMgoUbsCIeu3RlOLhZ5LYyGwuipz6FcYF
-         IVCfPLzBbbERN8UESuHx5kbWNHtJfj+xjCTDBaFavytMWurFDZr8xpRXBgbvvQja/VPH
-         mWqPV7sK6FkomeE6wJqQJSE4jTVhD35tMV/FmkCfqgujqoKa6MboJRp+xHwvqyy9+RXV
-         kQZ4hTEG4nyQPlBUr1d6O9ppe5fOlZdlPawVEt5B6FGlbrSM2+euDXX4x58bOKVyt2Nx
-         0hmH+wITZM6SkSxzzfR5mst+9xa65KgB6j7WmFAEDZaN/KqZUUMeTGfaT3KS72o+IeXi
-         ugQg==
+        bh=zz773VegMbcU2sacF+d/IbwCEchGH41iyaN0Z+U7NKQ=;
+        b=t531HpBiKz31qKYv8XYdUN8KI0aACgJeMrEB0/KuHsSMfpiT7twJF1LHgnlvAErfYo
+         88kQFdu4Q75lUuq+63xsdSzHpSUiI+zs8nLhTZ6clpKPo7++h7fOyfzhknvGTCmnuObi
+         dzoPxJtkiph/RxsSH166s6kBuddb9fZsAozHuiW1oYdwV8O1M6e2WLmGdSUuFRdQoHZc
+         Hmk+TDux7btTGjxnY43c7aUlr7rdQg//3be27RqpZJoNtWbUQSZWGuyeKbpJLsyntNuz
+         lhOVLUO3cEuxIzMjnSrkCeBanCB48WOxQx/j3qJOYRqhKxS+dna0uK+t/SluP8y/KPCA
+         xGgQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=xExJh72js22X6EmLvhYclmaSv1mMe/EiKVhznFesUJA=;
-        b=agviWSjLyrNoENP1pisdyEiifcgIzj9aJnYneWzMZIbWArYxMEVNNM3asds21wWcJa
-         BqKwiN3F40OyFLhJK2rJfEDnQQwWYLKKkl4eznz6LjtgGmZwoWiydG06sgRe0Fva2JRj
-         h9dPDHSk4Z2kVcwI//eTZecMlB243MP9vCaFRk5KfDs3aSGNFlhrTeaYY+xwyKlVvHgA
-         EjWd9jSA4vH5Zq9H0cGYY/RhJF8Xq51l/04GrT6Z+aREMjYxUu7crRPvVxNW6HJmiBph
-         o1FmHZo+oFbp6aT+ZmWGOsqXzQboKoFBxO+5fYtPTpXPSVPWtFqowzUuzow1ONrG+n6F
-         qRAw==
-X-Gm-Message-State: APjAAAUvswy108x/NWs4w6ZsiCo0mUsX2jcO9kZSZbO9spg7wSMVskFQ
-        7IvqcpjxURCycPzii5FtGTxTeZg=
-X-Google-Smtp-Source: APXvYqzFdMmyxJtU79lIOWUB0S47qNlH4iWDXAm8WEoxF2Q4v9ovzb4uSKftc+o2eKHOikZFwo93TA==
-X-Received: by 2002:a24:12:: with SMTP id 18mr6341523ita.117.1553896917472;
-        Fri, 29 Mar 2019 15:01:57 -0700 (PDT)
+        bh=zz773VegMbcU2sacF+d/IbwCEchGH41iyaN0Z+U7NKQ=;
+        b=VCFzfeugAPqYGi3RDvxKL1wVJRtpmr0cZug6t5gqh3AHomRAfG6m9e6KWXlNPQ+YA0
+         V4MQxAfbn1XDzr+qAPPGN1xlX0JVv21lyXhqJKtJ/+8VMEQSaL5P8fLdvc6Zkr6zBhiM
+         oqyW8BmAkGfi6q/d+Pyt1oWU+8RbusECyDE6RP0es0v+pkDqW/n1qIwG09tSsMzkMYpF
+         cc1MmNorYMIrBItGzgioDKoMIBTUVvEUgwEOIvjC8ztPGQGmVgGPby/uLd36CbDJuCOG
+         CbKSDGz5oopSPUV78WoTWLNCE91wmI2Oty6Ts+cF1jRN9ckHlw8cikSp7WVkBlAD9e2Y
+         Ryhw==
+X-Gm-Message-State: APjAAAXH45utnXjghigOzDv+n1/xpxv+SFAEmEp1Udk1+/JpMUrNWtZ/
+        GLiT2XHhiAo7Jult9dDvlTeqnN4=
+X-Google-Smtp-Source: APXvYqw9Zpanc0qkxUaUJ0E7ztrbKqI0u/4+pdUekJgBCWfEBXohR3qt6RDw+0BSDTRnVDIiQG6bhg==
+X-Received: by 2002:a24:2101:: with SMTP id e1mr6379116ita.151.1553896918223;
+        Fri, 29 Mar 2019 15:01:58 -0700 (PDT)
 Received: from localhost.localdomain (c-68-40-189-247.hsd1.mi.comcast.net. [68.40.189.247])
-        by smtp.gmail.com with ESMTPSA id v20sm1376796ioh.17.2019.03.29.15.01.56
+        by smtp.gmail.com with ESMTPSA id v20sm1376796ioh.17.2019.03.29.15.01.57
         for <linux-nfs@vger.kernel.org>
         (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
-        Fri, 29 Mar 2019 15:01:56 -0700 (PDT)
+        Fri, 29 Mar 2019 15:01:57 -0700 (PDT)
 From:   Trond Myklebust <trondmy@gmail.com>
 X-Google-Original-From: Trond Myklebust <trond.myklebust@hammerspace.com>
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH v2 01/28] SUNRPC: Fix up task signalling
-Date:   Fri, 29 Mar 2019 17:59:21 -0400
-Message-Id: <20190329215948.107328-2-trond.myklebust@hammerspace.com>
+Subject: [PATCH v2 02/28] SUNRPC: Refactor rpc_restart_call/rpc_restart_call_prepare
+Date:   Fri, 29 Mar 2019 17:59:22 -0400
+Message-Id: <20190329215948.107328-3-trond.myklebust@hammerspace.com>
 X-Mailer: git-send-email 2.20.1
-In-Reply-To: <20190329215948.107328-1-trond.myklebust@hammerspace.com>
+In-Reply-To: <20190329215948.107328-2-trond.myklebust@hammerspace.com>
 References: <20190329215948.107328-1-trond.myklebust@hammerspace.com>
+ <20190329215948.107328-2-trond.myklebust@hammerspace.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
@@ -72,278 +73,68 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-The RPC_TASK_KILLED flag should really not be set from another context
-because it can clobber data in the struct task when task->tk_flags is
-changed non-atomically.
-Let's therefore swap out RPC_TASK_KILLED with an atomic flag, and add
-a function to set that flag and safely wake up the task.
+Clean up.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/lockd/clntproc.c           |  4 ++--
- fs/nfsd/nfs4callback.c        |  4 ++--
- include/linux/sunrpc/sched.h  |  6 ++++--
- include/trace/events/sunrpc.h |  6 +++---
- net/sunrpc/clnt.c             | 14 ++------------
- net/sunrpc/sched.c            | 28 +++++++++++++++++++++++-----
- net/sunrpc/xprt.c             |  4 ++++
- 7 files changed, 40 insertions(+), 26 deletions(-)
+ net/sunrpc/clnt.c | 30 +++++++++++++++++-------------
+ 1 file changed, 17 insertions(+), 13 deletions(-)
 
-diff --git a/fs/lockd/clntproc.c b/fs/lockd/clntproc.c
-index e8a004097d18..d9c32d1a20c0 100644
---- a/fs/lockd/clntproc.c
-+++ b/fs/lockd/clntproc.c
-@@ -715,7 +715,7 @@ static void nlmclnt_unlock_callback(struct rpc_task *task, void *data)
- 	struct nlm_rqst	*req = data;
- 	u32 status = ntohl(req->a_res.status);
- 
--	if (RPC_ASSASSINATED(task))
-+	if (RPC_SIGNALLED(task))
- 		goto die;
- 
- 	if (task->tk_status < 0) {
-@@ -783,7 +783,7 @@ static void nlmclnt_cancel_callback(struct rpc_task *task, void *data)
- 	struct nlm_rqst	*req = data;
- 	u32 status = ntohl(req->a_res.status);
- 
--	if (RPC_ASSASSINATED(task))
-+	if (RPC_SIGNALLED(task))
- 		goto die;
- 
- 	if (task->tk_status < 0) {
-diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index d219159b98af..f7494be8dbe2 100644
---- a/fs/nfsd/nfs4callback.c
-+++ b/fs/nfsd/nfs4callback.c
-@@ -1032,7 +1032,7 @@ static bool nfsd4_cb_sequence_done(struct rpc_task *task, struct nfsd4_callback
- 		 * the submission code will error out, so we don't need to
- 		 * handle that case here.
- 		 */
--		if (task->tk_flags & RPC_TASK_KILLED)
-+		if (RPC_SIGNALLED(task))
- 			goto need_restart;
- 
- 		return true;
-@@ -1081,7 +1081,7 @@ static bool nfsd4_cb_sequence_done(struct rpc_task *task, struct nfsd4_callback
- 	dprintk("%s: freed slot, new seqid=%d\n", __func__,
- 		clp->cl_cb_session->se_cb_seq_nr);
- 
--	if (task->tk_flags & RPC_TASK_KILLED)
-+	if (RPC_SIGNALLED(task))
- 		goto need_restart;
- out:
- 	return ret;
-diff --git a/include/linux/sunrpc/sched.h b/include/linux/sunrpc/sched.h
-index ec861cd0cfe8..852ca0f2c56c 100644
---- a/include/linux/sunrpc/sched.h
-+++ b/include/linux/sunrpc/sched.h
-@@ -125,7 +125,6 @@ struct rpc_task_setup {
- #define RPC_CALL_MAJORSEEN	0x0020		/* major timeout seen */
- #define RPC_TASK_ROOTCREDS	0x0040		/* force root creds */
- #define RPC_TASK_DYNAMIC	0x0080		/* task was kmalloc'ed */
--#define RPC_TASK_KILLED		0x0100		/* task was killed */
- #define RPC_TASK_SOFT		0x0200		/* Use soft timeouts */
- #define RPC_TASK_SOFTCONN	0x0400		/* Fail if can't connect */
- #define RPC_TASK_SENT		0x0800		/* message was sent */
-@@ -135,7 +134,6 @@ struct rpc_task_setup {
- 
- #define RPC_IS_ASYNC(t)		((t)->tk_flags & RPC_TASK_ASYNC)
- #define RPC_IS_SWAPPER(t)	((t)->tk_flags & RPC_TASK_SWAPPER)
--#define RPC_ASSASSINATED(t)	((t)->tk_flags & RPC_TASK_KILLED)
- #define RPC_IS_SOFT(t)		((t)->tk_flags & (RPC_TASK_SOFT|RPC_TASK_TIMEOUT))
- #define RPC_IS_SOFTCONN(t)	((t)->tk_flags & RPC_TASK_SOFTCONN)
- #define RPC_WAS_SENT(t)		((t)->tk_flags & RPC_TASK_SENT)
-@@ -146,6 +144,7 @@ struct rpc_task_setup {
- #define RPC_TASK_NEED_XMIT	3
- #define RPC_TASK_NEED_RECV	4
- #define RPC_TASK_MSG_PIN_WAIT	5
-+#define RPC_TASK_SIGNALLED	6
- 
- #define RPC_IS_RUNNING(t)	test_bit(RPC_TASK_RUNNING, &(t)->tk_runstate)
- #define rpc_set_running(t)	set_bit(RPC_TASK_RUNNING, &(t)->tk_runstate)
-@@ -169,6 +168,8 @@ struct rpc_task_setup {
- 
- #define RPC_IS_ACTIVATED(t)	test_bit(RPC_TASK_ACTIVE, &(t)->tk_runstate)
- 
-+#define RPC_SIGNALLED(t)	test_bit(RPC_TASK_SIGNALLED, &(t)->tk_runstate)
-+
- /*
-  * Task priorities.
-  * Note: if you change these, you must also change
-@@ -217,6 +218,7 @@ struct rpc_task *rpc_run_task(const struct rpc_task_setup *);
- struct rpc_task *rpc_run_bc_task(struct rpc_rqst *req);
- void		rpc_put_task(struct rpc_task *);
- void		rpc_put_task_async(struct rpc_task *);
-+void		rpc_signal_task(struct rpc_task *);
- void		rpc_exit_task(struct rpc_task *);
- void		rpc_exit(struct rpc_task *, int);
- void		rpc_release_calldata(const struct rpc_call_ops *, void *);
-diff --git a/include/trace/events/sunrpc.h b/include/trace/events/sunrpc.h
-index 7e899e635d33..5e3b77d9daa7 100644
---- a/include/trace/events/sunrpc.h
-+++ b/include/trace/events/sunrpc.h
-@@ -82,7 +82,6 @@ TRACE_DEFINE_ENUM(RPC_TASK_SWAPPER);
- TRACE_DEFINE_ENUM(RPC_CALL_MAJORSEEN);
- TRACE_DEFINE_ENUM(RPC_TASK_ROOTCREDS);
- TRACE_DEFINE_ENUM(RPC_TASK_DYNAMIC);
--TRACE_DEFINE_ENUM(RPC_TASK_KILLED);
- TRACE_DEFINE_ENUM(RPC_TASK_SOFT);
- TRACE_DEFINE_ENUM(RPC_TASK_SOFTCONN);
- TRACE_DEFINE_ENUM(RPC_TASK_SENT);
-@@ -97,7 +96,6 @@ TRACE_DEFINE_ENUM(RPC_TASK_NO_RETRANS_TIMEOUT);
- 		{ RPC_CALL_MAJORSEEN, "MAJORSEEN" },			\
- 		{ RPC_TASK_ROOTCREDS, "ROOTCREDS" },			\
- 		{ RPC_TASK_DYNAMIC, "DYNAMIC" },			\
--		{ RPC_TASK_KILLED, "KILLED" },				\
- 		{ RPC_TASK_SOFT, "SOFT" },				\
- 		{ RPC_TASK_SOFTCONN, "SOFTCONN" },			\
- 		{ RPC_TASK_SENT, "SENT" },				\
-@@ -111,6 +109,7 @@ TRACE_DEFINE_ENUM(RPC_TASK_ACTIVE);
- TRACE_DEFINE_ENUM(RPC_TASK_NEED_XMIT);
- TRACE_DEFINE_ENUM(RPC_TASK_NEED_RECV);
- TRACE_DEFINE_ENUM(RPC_TASK_MSG_PIN_WAIT);
-+TRACE_DEFINE_ENUM(RPC_TASK_SIGNALLED);
- 
- #define rpc_show_runstate(flags)					\
- 	__print_flags(flags, "|",					\
-@@ -119,7 +118,8 @@ TRACE_DEFINE_ENUM(RPC_TASK_MSG_PIN_WAIT);
- 		{ (1UL << RPC_TASK_ACTIVE), "ACTIVE" },			\
- 		{ (1UL << RPC_TASK_NEED_XMIT), "NEED_XMIT" },		\
- 		{ (1UL << RPC_TASK_NEED_RECV), "NEED_RECV" },		\
--		{ (1UL << RPC_TASK_MSG_PIN_WAIT), "MSG_PIN_WAIT" })
-+		{ (1UL << RPC_TASK_MSG_PIN_WAIT), "MSG_PIN_WAIT" },	\
-+		{ (1UL << RPC_TASK_SIGNALLED), "SIGNALLED" })
- 
- DECLARE_EVENT_CLASS(rpc_task_running,
- 
 diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index 187d10443a15..30f5995c6a68 100644
+index 30f5995c6a68..88b4685e7977 100644
 --- a/net/sunrpc/clnt.c
 +++ b/net/sunrpc/clnt.c
-@@ -827,14 +827,8 @@ void rpc_killall_tasks(struct rpc_clnt *clnt)
- 	 * Spin lock all_tasks to prevent changes...
- 	 */
- 	spin_lock(&clnt->cl_lock);
--	list_for_each_entry(rovr, &clnt->cl_tasks, tk_task) {
--		if (!RPC_IS_ACTIVATED(rovr))
--			continue;
--		if (!(rovr->tk_flags & RPC_TASK_KILLED)) {
--			rovr->tk_flags |= RPC_TASK_KILLED;
--			rpc_exit(rovr, -EIO);
--		}
--	}
-+	list_for_each_entry(rovr, &clnt->cl_tasks, tk_task)
-+		rpc_signal_task(rovr);
- 	spin_unlock(&clnt->cl_lock);
+@@ -1464,20 +1464,13 @@ void rpc_force_rebind(struct rpc_clnt *clnt)
  }
- EXPORT_SYMBOL_GPL(rpc_killall_tasks);
-@@ -1477,8 +1471,6 @@ EXPORT_SYMBOL_GPL(rpc_force_rebind);
- int
- rpc_restart_call_prepare(struct rpc_task *task)
+ EXPORT_SYMBOL_GPL(rpc_force_rebind);
+ 
+-/*
+- * Restart an (async) RPC call from the call_prepare state.
+- * Usually called from within the exit handler.
+- */
+-int
+-rpc_restart_call_prepare(struct rpc_task *task)
++static int
++__rpc_restart_call(struct rpc_task *task, void (*action)(struct rpc_task *))
  {
--	if (RPC_ASSASSINATED(task))
--		return 0;
- 	task->tk_action = call_start;
+-	task->tk_action = call_start;
  	task->tk_status = 0;
- 	if (task->tk_ops->rpc_call_prepare != NULL)
-@@ -1494,8 +1486,6 @@ EXPORT_SYMBOL_GPL(rpc_restart_call_prepare);
+-	if (task->tk_ops->rpc_call_prepare != NULL)
+-		task->tk_action = rpc_prepare_task;
++	task->tk_action = action;
+ 	return 1;
+ }
+-EXPORT_SYMBOL_GPL(rpc_restart_call_prepare);
+ 
+ /*
+  * Restart an (async) RPC call. Usually called from within the
+@@ -1486,12 +1479,23 @@ EXPORT_SYMBOL_GPL(rpc_restart_call_prepare);
  int
  rpc_restart_call(struct rpc_task *task)
  {
--	if (RPC_ASSASSINATED(task))
--		return 0;
- 	task->tk_action = call_start;
- 	task->tk_status = 0;
- 	return 1;
-diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
-index 28956c70100a..3d6cb91ba598 100644
---- a/net/sunrpc/sched.c
-+++ b/net/sunrpc/sched.c
-@@ -759,8 +759,7 @@ static void
- rpc_reset_task_statistics(struct rpc_task *task)
- {
- 	task->tk_timeouts = 0;
--	task->tk_flags &= ~(RPC_CALL_MAJORSEEN|RPC_TASK_KILLED|RPC_TASK_SENT);
--
-+	task->tk_flags &= ~(RPC_CALL_MAJORSEEN|RPC_TASK_SENT);
- 	rpc_init_task_statistics(task);
+-	task->tk_action = call_start;
+-	task->tk_status = 0;
+-	return 1;
++	return __rpc_restart_call(task, call_start);
  }
+ EXPORT_SYMBOL_GPL(rpc_restart_call);
  
-@@ -773,7 +772,6 @@ void rpc_exit_task(struct rpc_task *task)
- 	if (task->tk_ops->rpc_call_done != NULL) {
- 		task->tk_ops->rpc_call_done(task, task->tk_calldata);
- 		if (task->tk_action != NULL) {
--			WARN_ON(RPC_ASSASSINATED(task));
- 			/* Always release the RPC slot and buffer memory */
- 			xprt_release(task);
- 			rpc_reset_task_statistics(task);
-@@ -781,6 +779,19 @@ void rpc_exit_task(struct rpc_task *task)
- 	}
- }
- 
-+void rpc_signal_task(struct rpc_task *task)
++/*
++ * Restart an (async) RPC call from the call_prepare state.
++ * Usually called from within the exit handler.
++ */
++int
++rpc_restart_call_prepare(struct rpc_task *task)
 +{
-+	struct rpc_wait_queue *queue;
-+
-+	if (!RPC_IS_ACTIVATED(task))
-+		return;
-+	set_bit(RPC_TASK_SIGNALLED, &task->tk_runstate);
-+	smp_mb__after_atomic();
-+	queue = READ_ONCE(task->tk_waitqueue);
-+	if (queue)
-+		rpc_wake_up_queued_task_set_status(queue, task, -ERESTARTSYS);
++	if (task->tk_ops->rpc_call_prepare != NULL)
++		return __rpc_restart_call(task, rpc_prepare_task);
++	return rpc_restart_call(task);
 +}
++EXPORT_SYMBOL_GPL(rpc_restart_call_prepare);
 +
- void rpc_exit(struct rpc_task *task, int status)
+ const char
+ *rpc_proc_name(const struct rpc_task *task)
  {
- 	task->tk_status = status;
-@@ -836,6 +847,13 @@ static void __rpc_execute(struct rpc_task *task)
- 		 */
- 		if (!RPC_IS_QUEUED(task))
- 			continue;
-+
-+		/*
-+		 * Signalled tasks should exit rather than sleep.
-+		 */
-+		if (RPC_SIGNALLED(task))
-+			rpc_exit(task, -ERESTARTSYS);
-+
- 		/*
- 		 * The queue->lock protects against races with
- 		 * rpc_make_runnable().
-@@ -861,7 +879,7 @@ static void __rpc_execute(struct rpc_task *task)
- 		status = out_of_line_wait_on_bit(&task->tk_runstate,
- 				RPC_TASK_QUEUED, rpc_wait_bit_killable,
- 				TASK_KILLABLE);
--		if (status == -ERESTARTSYS) {
-+		if (status < 0) {
- 			/*
- 			 * When a sync task receives a signal, it exits with
- 			 * -ERESTARTSYS. In order to catch any callbacks that
-@@ -869,7 +887,7 @@ static void __rpc_execute(struct rpc_task *task)
- 			 * break the loop here, but go around once more.
- 			 */
- 			dprintk("RPC: %5u got signal\n", task->tk_pid);
--			task->tk_flags |= RPC_TASK_KILLED;
-+			set_bit(RPC_TASK_SIGNALLED, &task->tk_runstate);
- 			rpc_exit(task, -ERESTARTSYS);
- 		}
- 		dprintk("RPC: %5u sync task resuming\n", task->tk_pid);
-diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-index d7117d241460..3a4156cb0134 100644
---- a/net/sunrpc/xprt.c
-+++ b/net/sunrpc/xprt.c
-@@ -1337,6 +1337,10 @@ xprt_request_transmit(struct rpc_rqst *req, struct rpc_task *snd_task)
- 			if (status < 0)
- 				goto out_dequeue;
- 		}
-+		if (RPC_SIGNALLED(task)) {
-+			status = -ERESTARTSYS;
-+			goto out_dequeue;
-+		}
- 	}
- 
- 	/*
 -- 
 2.20.1
 
