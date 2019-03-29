@@ -2,66 +2,69 @@ Return-Path: <SRS0=26It=SA=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+X-Spam-Status: No, score=-6.0 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS,USER_AGENT_GIT
-	autolearn=ham autolearn_force=no version=3.4.0
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_PASS,UNWANTED_LANGUAGE_BODY,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id BE1F1C43381
-	for <linux-nfs@archiver.kernel.org>; Fri, 29 Mar 2019 22:01:59 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 76F7DC10F05
+	for <linux-nfs@archiver.kernel.org>; Fri, 29 Mar 2019 22:02:00 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 763BF2184D
-	for <linux-nfs@archiver.kernel.org>; Fri, 29 Mar 2019 22:01:59 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 2F9E82184D
+	for <linux-nfs@archiver.kernel.org>; Fri, 29 Mar 2019 22:02:00 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="p4IWJ5JU"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="J8/iopV8"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1730220AbfC2WB6 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 29 Mar 2019 18:01:58 -0400
-Received: from mail-io1-f66.google.com ([209.85.166.66]:42033 "EHLO
-        mail-io1-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1730137AbfC2WB6 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Mar 2019 18:01:58 -0400
-Received: by mail-io1-f66.google.com with SMTP id c4so2977509ioh.9
-        for <linux-nfs@vger.kernel.org>; Fri, 29 Mar 2019 15:01:57 -0700 (PDT)
+        id S1730235AbfC2WB7 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 29 Mar 2019 18:01:59 -0400
+Received: from mail-it1-f196.google.com ([209.85.166.196]:34921 "EHLO
+        mail-it1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1730144AbfC2WB7 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Mar 2019 18:01:59 -0400
+Received: by mail-it1-f196.google.com with SMTP id w15so6293436itc.0
+        for <linux-nfs@vger.kernel.org>; Fri, 29 Mar 2019 15:01:58 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
-        h=from:to:subject:date:message-id:mime-version
+        h=from:to:subject:date:message-id:in-reply-to:references:mime-version
          :content-transfer-encoding;
-        bh=dPA/uMKkT+Dt8NUk8ayNFLADkFmDjfvxqU7iyB/MaX0=;
-        b=p4IWJ5JU7MKByTmr8OihxvmFw37lq85Oksn2fPWBTjDBXw8FRjH0stz8puHnHexhE8
-         D47Ph0NsgMWdcuZ3vfx4ZfjyaJ+1aCBbo5lwCzFfSoH67tWsdSNZcwyizX7NzKHr5xDa
-         s3lASVUxQke3zmNfanjoPlXYM7slzcC8gvhed78HfLp1PDoNU8V+hoggayYNU8aF7dEm
-         bmGz933WOispAIAxTLqAGAC3A5bPiAipXpaMlyWGGRCC+sF7VXqToPOwvSvYpLekNSTn
-         a78WowNrWvxT0FfXqpYZmvPHmL6LLmg/BngimLbt0XlBtX5peJaAo998NYAPbIwJ9wfd
-         gCHQ==
+        bh=xExJh72js22X6EmLvhYclmaSv1mMe/EiKVhznFesUJA=;
+        b=J8/iopV8Nsu2cPIJfSlkwbFaX05DrcOZpfMgoUbsCIeu3RlOLhZ5LYyGwuipz6FcYF
+         IVCfPLzBbbERN8UESuHx5kbWNHtJfj+xjCTDBaFavytMWurFDZr8xpRXBgbvvQja/VPH
+         mWqPV7sK6FkomeE6wJqQJSE4jTVhD35tMV/FmkCfqgujqoKa6MboJRp+xHwvqyy9+RXV
+         kQZ4hTEG4nyQPlBUr1d6O9ppe5fOlZdlPawVEt5B6FGlbrSM2+euDXX4x58bOKVyt2Nx
+         0hmH+wITZM6SkSxzzfR5mst+9xa65KgB6j7WmFAEDZaN/KqZUUMeTGfaT3KS72o+IeXi
+         ugQg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:to:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=dPA/uMKkT+Dt8NUk8ayNFLADkFmDjfvxqU7iyB/MaX0=;
-        b=G4np+A16zS8/VvNa7zstUPhMp0Rp2zf69I0FL7ycdXbQqpnXC0u9q3DlS6+oSvclNr
-         Vu+YC0lW4cB4W6o/EXPmSdf+nxmI2yhgxJbn0gRI2T6pdBMbVxaiqL3XqbkW2xsfLAjD
-         /TBFKs6nSrLf5mbwRYm7vjZ4s2cDs9FpQ7XHkJ1b/uXKW/xT6homWRy9bLbWsi8gloeV
-         MLbkKNIlUcMWIjyPVbHGWfUpTQ5vAL+krB+cjlALDDdyewfdqxCMj0ZAR+uwSuaS1lAN
-         7kbj+oPdV/VxRtWdztvCME3Vbb06GzTyZZnlqqIy4kiyWyciyFNV4K2NlJr7xDA8MAxp
-         AEew==
-X-Gm-Message-State: APjAAAWAYvbCYtcSkF7q43q+nDEVN3gejp2tlO+lVrl+reomN6KxcnTk
-        n9dxGd/6vOSrbkvcszSWVkKq20Q=
-X-Google-Smtp-Source: APXvYqw2xVM8E/BI7uw6tbOMNrzQd/bI+m4cG/rmhIe/FWsNEHWzUyg4T1LkppJNFt1BTDzwwxqmnw==
-X-Received: by 2002:a5e:df06:: with SMTP id f6mr3060226ioq.199.1553896916662;
-        Fri, 29 Mar 2019 15:01:56 -0700 (PDT)
+        h=x-gm-message-state:from:to:subject:date:message-id:in-reply-to
+         :references:mime-version:content-transfer-encoding;
+        bh=xExJh72js22X6EmLvhYclmaSv1mMe/EiKVhznFesUJA=;
+        b=agviWSjLyrNoENP1pisdyEiifcgIzj9aJnYneWzMZIbWArYxMEVNNM3asds21wWcJa
+         BqKwiN3F40OyFLhJK2rJfEDnQQwWYLKKkl4eznz6LjtgGmZwoWiydG06sgRe0Fva2JRj
+         h9dPDHSk4Z2kVcwI//eTZecMlB243MP9vCaFRk5KfDs3aSGNFlhrTeaYY+xwyKlVvHgA
+         EjWd9jSA4vH5Zq9H0cGYY/RhJF8Xq51l/04GrT6Z+aREMjYxUu7crRPvVxNW6HJmiBph
+         o1FmHZo+oFbp6aT+ZmWGOsqXzQboKoFBxO+5fYtPTpXPSVPWtFqowzUuzow1ONrG+n6F
+         qRAw==
+X-Gm-Message-State: APjAAAUvswy108x/NWs4w6ZsiCo0mUsX2jcO9kZSZbO9spg7wSMVskFQ
+        7IvqcpjxURCycPzii5FtGTxTeZg=
+X-Google-Smtp-Source: APXvYqzFdMmyxJtU79lIOWUB0S47qNlH4iWDXAm8WEoxF2Q4v9ovzb4uSKftc+o2eKHOikZFwo93TA==
+X-Received: by 2002:a24:12:: with SMTP id 18mr6341523ita.117.1553896917472;
+        Fri, 29 Mar 2019 15:01:57 -0700 (PDT)
 Received: from localhost.localdomain (c-68-40-189-247.hsd1.mi.comcast.net. [68.40.189.247])
-        by smtp.gmail.com with ESMTPSA id v20sm1376796ioh.17.2019.03.29.15.01.55
+        by smtp.gmail.com with ESMTPSA id v20sm1376796ioh.17.2019.03.29.15.01.56
         for <linux-nfs@vger.kernel.org>
         (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
-        Fri, 29 Mar 2019 15:01:55 -0700 (PDT)
+        Fri, 29 Mar 2019 15:01:56 -0700 (PDT)
 From:   Trond Myklebust <trondmy@gmail.com>
 X-Google-Original-From: Trond Myklebust <trond.myklebust@hammerspace.com>
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH v2 00/28] Fix up soft mounts for NFSv4.x
-Date:   Fri, 29 Mar 2019 17:59:20 -0400
-Message-Id: <20190329215948.107328-1-trond.myklebust@hammerspace.com>
+Subject: [PATCH v2 01/28] SUNRPC: Fix up task signalling
+Date:   Fri, 29 Mar 2019 17:59:21 -0400
+Message-Id: <20190329215948.107328-2-trond.myklebust@hammerspace.com>
 X-Mailer: git-send-email 2.20.1
+In-Reply-To: <20190329215948.107328-1-trond.myklebust@hammerspace.com>
+References: <20190329215948.107328-1-trond.myklebust@hammerspace.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
@@ -69,117 +72,278 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-This patchset aims to make soft mounts a viable option for NFSv4 clients
-by minimising the risk of false positive timeouts, while allowing for
-faster failover of reads and writes once a timeout is actually observed.
+The RPC_TASK_KILLED flag should really not be set from another context
+because it can clobber data in the struct task when task->tk_flags is
+changed non-atomically.
+Let's therefore swap out RPC_TASK_KILLED with an atomic flag, and add
+a function to set that flag and safely wake up the task.
 
-The patches rely on the NFS server correctly implementing the contract
-specified in RFC7530 section 3.1.1 with respect to not dropping requests
-while the transport connection is up. When this is the case, the client
-can safely assume that if the request has not received a reply after
-transmitting a RPC request, it is not because the request was dropped,
-but rather is due to congestion, or slow processing on the server.
-IOW: as long as the connection remains up, there is no need for requests
-to time out.
+Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
+---
+ fs/lockd/clntproc.c           |  4 ++--
+ fs/nfsd/nfs4callback.c        |  4 ++--
+ include/linux/sunrpc/sched.h  |  6 ++++--
+ include/trace/events/sunrpc.h |  6 +++---
+ net/sunrpc/clnt.c             | 14 ++------------
+ net/sunrpc/sched.c            | 28 +++++++++++++++++++++++-----
+ net/sunrpc/xprt.c             |  4 ++++
+ 7 files changed, 40 insertions(+), 26 deletions(-)
 
-The patches break down roughly as follows:
-- A set of patches to clean up the RPC engine timeouts, and ensure they
-  are accurate.
-- A set of patches to change the 'soft' mount semantics for NFSv4.x.
-- A set of patches to add a new 'softerr' mount option that works like
-  soft, but explicitly signals timeouts using the ETIMEDOUT error code
-  rather than using EIO. This allows applications to tune their
-  behaviour (e.g. by failing over to a different server) if a timeout
-  occurs.
-- A set of patches to change the NFS error reporting so that it matches
-  that of local filesystems w.r.t. guarantees that filesystem errors are
-  seen once and once only.
-- A patch to ensure the safe interruption of NFS4ERR_DELAYed operations
-- A patch to ensure that pNFS operations can be forced to break out
-  of layout error cycles after a certain number of retries.
-- A few cleanups...
-
--------
-Changes since v1:
-- Change NFSv4 soft timeout condition to prevent all requests from
-  timing out when the connection is still up, instead of just the
-  ones that have been sent.
-- RPC queue timer cleanups
-- Ratelimit the "server not responding" messages
-
-
-*** BLURB HERE ***
-
-Trond Myklebust (28):
-  SUNRPC: Fix up task signalling
-  SUNRPC: Refactor rpc_restart_call/rpc_restart_call_prepare
-  SUNRPC: Refactor xprt_request_wait_receive()
-  SUNRPC: Refactor rpc_sleep_on()
-  SUNRPC: Remove unused argument 'action' from rpc_sleep_on_priority()
-  SUNRPC: Add function rpc_sleep_on_timeout()
-  SUNRPC: Fix up tracking of timeouts
-  SUNRPC: Simplify queue timeouts using timer_reduce()
-  SUNRPC: Declare RPC timers as TIMER_DEFERRABLE
-  SUNRPC: Ensure that the transport layer respect major timeouts
-  SUNRPC: Add tracking of RPC level errors
-  SUNRPC: Make "no retrans timeout" soft tasks behave like softconn for
-    timeouts
-  SUNRPC: Start the first major timeout calculation at task creation
-  SUNRPC: Ensure to ratelimit the "server not responding" syslog
-    messages
-  SUNRPC: Add the 'softerr' rpc_client flag
-  NFS: Consider ETIMEDOUT to be a fatal error
-  NFS: Move internal constants out of uapi/linux/nfs_mount.h
-  NFS: Add a mount option "softerr" to allow clients to see ETIMEDOUT
-    errors
-  NFS: Don't interrupt file writeout due to fatal errors
-  NFS: Don't call generic_error_remove_page() while holding locks
-  NFS: Don't inadvertently clear writeback errors
-  NFS: Replace custom error reporting mechanism with generic one
-  NFS: Fix up NFS I/O subrequest creation
-  NFS: Remove unused argument from nfs_create_request()
-  pNFS: Add tracking to limit the number of pNFS retries
-  NFS: Allow signal interruption of NFS4ERR_DELAYed operations
-  NFS: Add a helper to return a pointer to the open context of a struct
-    nfs_page
-  NFS: Remove redundant open context from nfs_page
-
- fs/lockd/clntproc.c                        |   4 +-
- fs/nfs/client.c                            |   2 +
- fs/nfs/direct.c                            |  11 +-
- fs/nfs/file.c                              |  31 +---
- fs/nfs/filelayout/filelayout.c             |   4 +-
- fs/nfs/flexfilelayout/flexfilelayout.c     |  14 +-
- fs/nfs/internal.h                          |   7 +-
- fs/nfs/nfs4_fs.h                           |   1 +
- fs/nfs/nfs4file.c                          |   2 +-
- fs/nfs/nfs4proc.c                          | 159 +++++++++++++++------
- fs/nfs/pagelist.c                          | 122 +++++++++-------
- fs/nfs/pnfs.c                              |   4 +-
- fs/nfs/pnfs.h                              |   4 +-
- fs/nfs/read.c                              |   6 +-
- fs/nfs/super.c                             |  15 +-
- fs/nfs/write.c                             |  67 +++++----
- fs/nfsd/nfs4callback.c                     |   4 +-
- include/linux/nfs_fs.h                     |   1 -
- include/linux/nfs_fs_sb.h                  |  10 ++
- include/linux/nfs_page.h                   |  12 +-
- include/linux/sunrpc/clnt.h                |   2 +
- include/linux/sunrpc/sched.h               |  20 ++-
- include/linux/sunrpc/xprt.h                |   6 +-
- include/trace/events/sunrpc.h              |   8 +-
- include/uapi/linux/nfs_mount.h             |   9 --
- net/sunrpc/auth_gss/auth_gss.c             |   5 +-
- net/sunrpc/clnt.c                          | 116 +++++++++------
- net/sunrpc/debugfs.c                       |   2 +-
- net/sunrpc/rpcb_clnt.c                     |   3 +-
- net/sunrpc/sched.c                         | 158 +++++++++++++++-----
- net/sunrpc/xprt.c                          | 150 ++++++++++++-------
- net/sunrpc/xprtrdma/svc_rdma_backchannel.c |   2 +-
- net/sunrpc/xprtrdma/transport.c            |   2 +-
- net/sunrpc/xprtsock.c                      |   9 +-
- 34 files changed, 631 insertions(+), 341 deletions(-)
-
+diff --git a/fs/lockd/clntproc.c b/fs/lockd/clntproc.c
+index e8a004097d18..d9c32d1a20c0 100644
+--- a/fs/lockd/clntproc.c
++++ b/fs/lockd/clntproc.c
+@@ -715,7 +715,7 @@ static void nlmclnt_unlock_callback(struct rpc_task *task, void *data)
+ 	struct nlm_rqst	*req = data;
+ 	u32 status = ntohl(req->a_res.status);
+ 
+-	if (RPC_ASSASSINATED(task))
++	if (RPC_SIGNALLED(task))
+ 		goto die;
+ 
+ 	if (task->tk_status < 0) {
+@@ -783,7 +783,7 @@ static void nlmclnt_cancel_callback(struct rpc_task *task, void *data)
+ 	struct nlm_rqst	*req = data;
+ 	u32 status = ntohl(req->a_res.status);
+ 
+-	if (RPC_ASSASSINATED(task))
++	if (RPC_SIGNALLED(task))
+ 		goto die;
+ 
+ 	if (task->tk_status < 0) {
+diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+index d219159b98af..f7494be8dbe2 100644
+--- a/fs/nfsd/nfs4callback.c
++++ b/fs/nfsd/nfs4callback.c
+@@ -1032,7 +1032,7 @@ static bool nfsd4_cb_sequence_done(struct rpc_task *task, struct nfsd4_callback
+ 		 * the submission code will error out, so we don't need to
+ 		 * handle that case here.
+ 		 */
+-		if (task->tk_flags & RPC_TASK_KILLED)
++		if (RPC_SIGNALLED(task))
+ 			goto need_restart;
+ 
+ 		return true;
+@@ -1081,7 +1081,7 @@ static bool nfsd4_cb_sequence_done(struct rpc_task *task, struct nfsd4_callback
+ 	dprintk("%s: freed slot, new seqid=%d\n", __func__,
+ 		clp->cl_cb_session->se_cb_seq_nr);
+ 
+-	if (task->tk_flags & RPC_TASK_KILLED)
++	if (RPC_SIGNALLED(task))
+ 		goto need_restart;
+ out:
+ 	return ret;
+diff --git a/include/linux/sunrpc/sched.h b/include/linux/sunrpc/sched.h
+index ec861cd0cfe8..852ca0f2c56c 100644
+--- a/include/linux/sunrpc/sched.h
++++ b/include/linux/sunrpc/sched.h
+@@ -125,7 +125,6 @@ struct rpc_task_setup {
+ #define RPC_CALL_MAJORSEEN	0x0020		/* major timeout seen */
+ #define RPC_TASK_ROOTCREDS	0x0040		/* force root creds */
+ #define RPC_TASK_DYNAMIC	0x0080		/* task was kmalloc'ed */
+-#define RPC_TASK_KILLED		0x0100		/* task was killed */
+ #define RPC_TASK_SOFT		0x0200		/* Use soft timeouts */
+ #define RPC_TASK_SOFTCONN	0x0400		/* Fail if can't connect */
+ #define RPC_TASK_SENT		0x0800		/* message was sent */
+@@ -135,7 +134,6 @@ struct rpc_task_setup {
+ 
+ #define RPC_IS_ASYNC(t)		((t)->tk_flags & RPC_TASK_ASYNC)
+ #define RPC_IS_SWAPPER(t)	((t)->tk_flags & RPC_TASK_SWAPPER)
+-#define RPC_ASSASSINATED(t)	((t)->tk_flags & RPC_TASK_KILLED)
+ #define RPC_IS_SOFT(t)		((t)->tk_flags & (RPC_TASK_SOFT|RPC_TASK_TIMEOUT))
+ #define RPC_IS_SOFTCONN(t)	((t)->tk_flags & RPC_TASK_SOFTCONN)
+ #define RPC_WAS_SENT(t)		((t)->tk_flags & RPC_TASK_SENT)
+@@ -146,6 +144,7 @@ struct rpc_task_setup {
+ #define RPC_TASK_NEED_XMIT	3
+ #define RPC_TASK_NEED_RECV	4
+ #define RPC_TASK_MSG_PIN_WAIT	5
++#define RPC_TASK_SIGNALLED	6
+ 
+ #define RPC_IS_RUNNING(t)	test_bit(RPC_TASK_RUNNING, &(t)->tk_runstate)
+ #define rpc_set_running(t)	set_bit(RPC_TASK_RUNNING, &(t)->tk_runstate)
+@@ -169,6 +168,8 @@ struct rpc_task_setup {
+ 
+ #define RPC_IS_ACTIVATED(t)	test_bit(RPC_TASK_ACTIVE, &(t)->tk_runstate)
+ 
++#define RPC_SIGNALLED(t)	test_bit(RPC_TASK_SIGNALLED, &(t)->tk_runstate)
++
+ /*
+  * Task priorities.
+  * Note: if you change these, you must also change
+@@ -217,6 +218,7 @@ struct rpc_task *rpc_run_task(const struct rpc_task_setup *);
+ struct rpc_task *rpc_run_bc_task(struct rpc_rqst *req);
+ void		rpc_put_task(struct rpc_task *);
+ void		rpc_put_task_async(struct rpc_task *);
++void		rpc_signal_task(struct rpc_task *);
+ void		rpc_exit_task(struct rpc_task *);
+ void		rpc_exit(struct rpc_task *, int);
+ void		rpc_release_calldata(const struct rpc_call_ops *, void *);
+diff --git a/include/trace/events/sunrpc.h b/include/trace/events/sunrpc.h
+index 7e899e635d33..5e3b77d9daa7 100644
+--- a/include/trace/events/sunrpc.h
++++ b/include/trace/events/sunrpc.h
+@@ -82,7 +82,6 @@ TRACE_DEFINE_ENUM(RPC_TASK_SWAPPER);
+ TRACE_DEFINE_ENUM(RPC_CALL_MAJORSEEN);
+ TRACE_DEFINE_ENUM(RPC_TASK_ROOTCREDS);
+ TRACE_DEFINE_ENUM(RPC_TASK_DYNAMIC);
+-TRACE_DEFINE_ENUM(RPC_TASK_KILLED);
+ TRACE_DEFINE_ENUM(RPC_TASK_SOFT);
+ TRACE_DEFINE_ENUM(RPC_TASK_SOFTCONN);
+ TRACE_DEFINE_ENUM(RPC_TASK_SENT);
+@@ -97,7 +96,6 @@ TRACE_DEFINE_ENUM(RPC_TASK_NO_RETRANS_TIMEOUT);
+ 		{ RPC_CALL_MAJORSEEN, "MAJORSEEN" },			\
+ 		{ RPC_TASK_ROOTCREDS, "ROOTCREDS" },			\
+ 		{ RPC_TASK_DYNAMIC, "DYNAMIC" },			\
+-		{ RPC_TASK_KILLED, "KILLED" },				\
+ 		{ RPC_TASK_SOFT, "SOFT" },				\
+ 		{ RPC_TASK_SOFTCONN, "SOFTCONN" },			\
+ 		{ RPC_TASK_SENT, "SENT" },				\
+@@ -111,6 +109,7 @@ TRACE_DEFINE_ENUM(RPC_TASK_ACTIVE);
+ TRACE_DEFINE_ENUM(RPC_TASK_NEED_XMIT);
+ TRACE_DEFINE_ENUM(RPC_TASK_NEED_RECV);
+ TRACE_DEFINE_ENUM(RPC_TASK_MSG_PIN_WAIT);
++TRACE_DEFINE_ENUM(RPC_TASK_SIGNALLED);
+ 
+ #define rpc_show_runstate(flags)					\
+ 	__print_flags(flags, "|",					\
+@@ -119,7 +118,8 @@ TRACE_DEFINE_ENUM(RPC_TASK_MSG_PIN_WAIT);
+ 		{ (1UL << RPC_TASK_ACTIVE), "ACTIVE" },			\
+ 		{ (1UL << RPC_TASK_NEED_XMIT), "NEED_XMIT" },		\
+ 		{ (1UL << RPC_TASK_NEED_RECV), "NEED_RECV" },		\
+-		{ (1UL << RPC_TASK_MSG_PIN_WAIT), "MSG_PIN_WAIT" })
++		{ (1UL << RPC_TASK_MSG_PIN_WAIT), "MSG_PIN_WAIT" },	\
++		{ (1UL << RPC_TASK_SIGNALLED), "SIGNALLED" })
+ 
+ DECLARE_EVENT_CLASS(rpc_task_running,
+ 
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 187d10443a15..30f5995c6a68 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -827,14 +827,8 @@ void rpc_killall_tasks(struct rpc_clnt *clnt)
+ 	 * Spin lock all_tasks to prevent changes...
+ 	 */
+ 	spin_lock(&clnt->cl_lock);
+-	list_for_each_entry(rovr, &clnt->cl_tasks, tk_task) {
+-		if (!RPC_IS_ACTIVATED(rovr))
+-			continue;
+-		if (!(rovr->tk_flags & RPC_TASK_KILLED)) {
+-			rovr->tk_flags |= RPC_TASK_KILLED;
+-			rpc_exit(rovr, -EIO);
+-		}
+-	}
++	list_for_each_entry(rovr, &clnt->cl_tasks, tk_task)
++		rpc_signal_task(rovr);
+ 	spin_unlock(&clnt->cl_lock);
+ }
+ EXPORT_SYMBOL_GPL(rpc_killall_tasks);
+@@ -1477,8 +1471,6 @@ EXPORT_SYMBOL_GPL(rpc_force_rebind);
+ int
+ rpc_restart_call_prepare(struct rpc_task *task)
+ {
+-	if (RPC_ASSASSINATED(task))
+-		return 0;
+ 	task->tk_action = call_start;
+ 	task->tk_status = 0;
+ 	if (task->tk_ops->rpc_call_prepare != NULL)
+@@ -1494,8 +1486,6 @@ EXPORT_SYMBOL_GPL(rpc_restart_call_prepare);
+ int
+ rpc_restart_call(struct rpc_task *task)
+ {
+-	if (RPC_ASSASSINATED(task))
+-		return 0;
+ 	task->tk_action = call_start;
+ 	task->tk_status = 0;
+ 	return 1;
+diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
+index 28956c70100a..3d6cb91ba598 100644
+--- a/net/sunrpc/sched.c
++++ b/net/sunrpc/sched.c
+@@ -759,8 +759,7 @@ static void
+ rpc_reset_task_statistics(struct rpc_task *task)
+ {
+ 	task->tk_timeouts = 0;
+-	task->tk_flags &= ~(RPC_CALL_MAJORSEEN|RPC_TASK_KILLED|RPC_TASK_SENT);
+-
++	task->tk_flags &= ~(RPC_CALL_MAJORSEEN|RPC_TASK_SENT);
+ 	rpc_init_task_statistics(task);
+ }
+ 
+@@ -773,7 +772,6 @@ void rpc_exit_task(struct rpc_task *task)
+ 	if (task->tk_ops->rpc_call_done != NULL) {
+ 		task->tk_ops->rpc_call_done(task, task->tk_calldata);
+ 		if (task->tk_action != NULL) {
+-			WARN_ON(RPC_ASSASSINATED(task));
+ 			/* Always release the RPC slot and buffer memory */
+ 			xprt_release(task);
+ 			rpc_reset_task_statistics(task);
+@@ -781,6 +779,19 @@ void rpc_exit_task(struct rpc_task *task)
+ 	}
+ }
+ 
++void rpc_signal_task(struct rpc_task *task)
++{
++	struct rpc_wait_queue *queue;
++
++	if (!RPC_IS_ACTIVATED(task))
++		return;
++	set_bit(RPC_TASK_SIGNALLED, &task->tk_runstate);
++	smp_mb__after_atomic();
++	queue = READ_ONCE(task->tk_waitqueue);
++	if (queue)
++		rpc_wake_up_queued_task_set_status(queue, task, -ERESTARTSYS);
++}
++
+ void rpc_exit(struct rpc_task *task, int status)
+ {
+ 	task->tk_status = status;
+@@ -836,6 +847,13 @@ static void __rpc_execute(struct rpc_task *task)
+ 		 */
+ 		if (!RPC_IS_QUEUED(task))
+ 			continue;
++
++		/*
++		 * Signalled tasks should exit rather than sleep.
++		 */
++		if (RPC_SIGNALLED(task))
++			rpc_exit(task, -ERESTARTSYS);
++
+ 		/*
+ 		 * The queue->lock protects against races with
+ 		 * rpc_make_runnable().
+@@ -861,7 +879,7 @@ static void __rpc_execute(struct rpc_task *task)
+ 		status = out_of_line_wait_on_bit(&task->tk_runstate,
+ 				RPC_TASK_QUEUED, rpc_wait_bit_killable,
+ 				TASK_KILLABLE);
+-		if (status == -ERESTARTSYS) {
++		if (status < 0) {
+ 			/*
+ 			 * When a sync task receives a signal, it exits with
+ 			 * -ERESTARTSYS. In order to catch any callbacks that
+@@ -869,7 +887,7 @@ static void __rpc_execute(struct rpc_task *task)
+ 			 * break the loop here, but go around once more.
+ 			 */
+ 			dprintk("RPC: %5u got signal\n", task->tk_pid);
+-			task->tk_flags |= RPC_TASK_KILLED;
++			set_bit(RPC_TASK_SIGNALLED, &task->tk_runstate);
+ 			rpc_exit(task, -ERESTARTSYS);
+ 		}
+ 		dprintk("RPC: %5u sync task resuming\n", task->tk_pid);
+diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+index d7117d241460..3a4156cb0134 100644
+--- a/net/sunrpc/xprt.c
++++ b/net/sunrpc/xprt.c
+@@ -1337,6 +1337,10 @@ xprt_request_transmit(struct rpc_rqst *req, struct rpc_task *snd_task)
+ 			if (status < 0)
+ 				goto out_dequeue;
+ 		}
++		if (RPC_SIGNALLED(task)) {
++			status = -ERESTARTSYS;
++			goto out_dequeue;
++		}
+ 	}
+ 
+ 	/*
 -- 
 2.20.1
 
