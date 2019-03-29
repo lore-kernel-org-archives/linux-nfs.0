@@ -8,62 +8,62 @@ X-Spam-Status: No, score=-8.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 96B8EC4360F
-	for <linux-nfs@archiver.kernel.org>; Fri, 29 Mar 2019 22:02:05 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DAAB7C43381
+	for <linux-nfs@archiver.kernel.org>; Fri, 29 Mar 2019 22:02:06 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 683942184D
-	for <linux-nfs@archiver.kernel.org>; Fri, 29 Mar 2019 22:02:05 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id A76D72184D
+	for <linux-nfs@archiver.kernel.org>; Fri, 29 Mar 2019 22:02:06 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="RHTat0Yj"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="C2zaM40q"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1730144AbfC2WCE (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 29 Mar 2019 18:02:04 -0400
-Received: from mail-it1-f194.google.com ([209.85.166.194]:38945 "EHLO
-        mail-it1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1730303AbfC2WCE (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Mar 2019 18:02:04 -0400
-Received: by mail-it1-f194.google.com with SMTP id 139so6260273ita.4
-        for <linux-nfs@vger.kernel.org>; Fri, 29 Mar 2019 15:02:03 -0700 (PDT)
+        id S1730330AbfC2WCF (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 29 Mar 2019 18:02:05 -0400
+Received: from mail-it1-f196.google.com ([209.85.166.196]:53676 "EHLO
+        mail-it1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1730316AbfC2WCF (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Mar 2019 18:02:05 -0400
+Received: by mail-it1-f196.google.com with SMTP id y204so6194560itf.3
+        for <linux-nfs@vger.kernel.org>; Fri, 29 Mar 2019 15:02:04 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:subject:date:message-id:in-reply-to:references:mime-version
          :content-transfer-encoding;
-        bh=byabvxxmICV7URMFFD2mJ+S6tFfR9tedVIX8kLsaKcA=;
-        b=RHTat0YjsHIW9mm+HVbrMn5Cvexzk1aUDokUt81AZHukBh/RiDnuMdy8BQBlRUAnMf
-         O9WEJkFI2k7UKPGZ0kDNkaRBZdZi1Ng0w//QvRxDpsM+X3RckJ3UcESmRVX91C5aBERB
-         cyMRL7cGlyDezOunNxEBWv6iUfbEciaJiEan4r3Y2vrnvA/uDFN8BCd9WYcz7+KTkvXV
-         GyF0vFQGPr6vpN33atRQ24Kny89GzwOdhy5PFUdK5gRn2tu+3fdyxGZmrS7R/CjFIPg7
-         yamHLbWjyUqZyGXjfpc2nQ8runUAlzUyG8iacggmngaWcXXiVJ4kpFZ5AzbFgdj4d6gs
-         XTQQ==
+        bh=S8Onab4jgnKym3AwxLtKfsy6Qv+7ShLULekC3tNO+mQ=;
+        b=C2zaM40qKQsrmEvJ0zEIbhVcHgcvvKhO5NNCtXapDAXkUYcFBlAK+04VbDVjXk2y2y
+         8OYeyvmaGc0Gt1XRfgIzwSEXzljBLMZwzCbz+yAmNFvIPdKFU1uvOiV2BWcVDjP3jHPb
+         D19lWGFdPRGPVKHr/dbRUUXH7qlOP5Qf6+QjAJ4vIxuIJfUsYmtt2uF+Y9v3XCEjOzmN
+         qrbPj15iN6fZp2aNwC4VuCVPQGniCKdoFWE+3L6iPbKEa5volFiAE+IfhBaKNBHc6d6w
+         ECllYVVGFB4SJJdg0Kii/tCBGqUx6FffIDnYeMYuah5CzsSL60Bo9h71Vmsehq90kXKn
+         jmDA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=byabvxxmICV7URMFFD2mJ+S6tFfR9tedVIX8kLsaKcA=;
-        b=pTmjpis3ZNu7yIMi4Jv2Rm0Qa3b29m0sHzuBVjQ3o2XeMUAAwZqy00aeimtGS3/J3N
-         9FgCTCsP0HttumnIfXeqQ9Wf/FGpA0F3qyHNmLY4h7pDfrM0fF+NhLPPS/a+a+Pkgy0j
-         hBQlvKJrPvNarqI6L0P7300ptR7lVJ8apWompAM8JDvn4nDTFBzehsHbnGD6BGLjhUk3
-         6N5QSzm/vM/bK5GJU/0dNas5rL919NrjGIS6FWwcfcrVrm89AsyIjiEMvL1GErFWjEMh
-         kFXQ+c6DMgIzQv0o78PIzn9UI1jcL63sZHq+qkzpl4nLlv8s/CwZRLcog0t1FZ0oASQ3
-         krHA==
-X-Gm-Message-State: APjAAAUwGkX2+4a3NIsgPMaMqezNaeRBq04926RN4DNmJir4ZAlbC/1K
-        AdM7RXHZMPhX5TjrSF7FOiPGovc=
-X-Google-Smtp-Source: APXvYqxOOYuvUScZ8cGa4ptvJIZ8cQy27FZ4ObhSJDPmIoZ+QZD4N3XJj49L3CXPZq+RCaQue7cwvQ==
-X-Received: by 2002:a05:6638:61a:: with SMTP id g26mr3905730jar.83.1553896922886;
-        Fri, 29 Mar 2019 15:02:02 -0700 (PDT)
+        bh=S8Onab4jgnKym3AwxLtKfsy6Qv+7ShLULekC3tNO+mQ=;
+        b=T301jDM/t1SqX1ur3GFTUpfQnJnRz8XsW9quDMB35ISY4pisOWRsaeSFa3YRBHPzji
+         toVzlH5toXxH2YInN/eJGYYFUGJodaFsdyaIikUeFak+AGBaWdYA+lhC0eAW5nFK/kWD
+         Ya1t7EeUrJnFejh1rAGQkWKYNySWyUtOg+WpBKU/712urwZCBUbD76xck+fg2Cv6/cKD
+         7JjyFQ/7KM97/0x05d0xNIkMKEIVTmeuLJeJ4jYWm5lXiuNKE5F8rDxWN1/Fz88//Y0p
+         xUwGEduzryE9KpXAcrT6/XmltiQ6elAuyMvKABaDVntjwT3ZM3FOufHweSsKNxf6M6AY
+         1Vog==
+X-Gm-Message-State: APjAAAUezQU/cf59Q034hWQuE094ojdf/zr6fGoUxFef4xYpkHZP0bTf
+        QSl9Q8Calo3cSIXBDvnHAJTiWdQ=
+X-Google-Smtp-Source: APXvYqwGqNGJ2DUJC341jug2sWx+MZumNe9s0nqIzt3jlTETlGSp04G23DrF2/pxxg+xry/FBgz6jA==
+X-Received: by 2002:a02:bb04:: with SMTP id y4mr37486716jan.67.1553896923664;
+        Fri, 29 Mar 2019 15:02:03 -0700 (PDT)
 Received: from localhost.localdomain (c-68-40-189-247.hsd1.mi.comcast.net. [68.40.189.247])
         by smtp.gmail.com with ESMTPSA id v20sm1376796ioh.17.2019.03.29.15.02.02
         for <linux-nfs@vger.kernel.org>
         (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
-        Fri, 29 Mar 2019 15:02:02 -0700 (PDT)
+        Fri, 29 Mar 2019 15:02:03 -0700 (PDT)
 From:   Trond Myklebust <trondmy@gmail.com>
 X-Google-Original-From: Trond Myklebust <trond.myklebust@hammerspace.com>
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH v2 08/28] SUNRPC: Simplify queue timeouts using timer_reduce()
-Date:   Fri, 29 Mar 2019 17:59:28 -0400
-Message-Id: <20190329215948.107328-9-trond.myklebust@hammerspace.com>
+Subject: [PATCH v2 09/28] SUNRPC: Declare RPC timers as TIMER_DEFERRABLE
+Date:   Fri, 29 Mar 2019 17:59:29 -0400
+Message-Id: <20190329215948.107328-10-trond.myklebust@hammerspace.com>
 X-Mailer: git-send-email 2.20.1
-In-Reply-To: <20190329215948.107328-8-trond.myklebust@hammerspace.com>
+In-Reply-To: <20190329215948.107328-9-trond.myklebust@hammerspace.com>
 References: <20190329215948.107328-1-trond.myklebust@hammerspace.com>
  <20190329215948.107328-2-trond.myklebust@hammerspace.com>
  <20190329215948.107328-3-trond.myklebust@hammerspace.com>
@@ -72,6 +72,7 @@ References: <20190329215948.107328-1-trond.myklebust@hammerspace.com>
  <20190329215948.107328-6-trond.myklebust@hammerspace.com>
  <20190329215948.107328-7-trond.myklebust@hammerspace.com>
  <20190329215948.107328-8-trond.myklebust@hammerspace.com>
+ <20190329215948.107328-9-trond.myklebust@hammerspace.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
@@ -79,50 +80,44 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Simplify the setting of queue timeouts by using the timer_reduce()
-function.
+Don't wake idle CPUs only for the purpose of servicing an RPC
+queue timeout.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- include/linux/sunrpc/sched.h | 1 -
- net/sunrpc/sched.c           | 6 ++----
- 2 files changed, 2 insertions(+), 5 deletions(-)
+ net/sunrpc/sched.c | 4 +++-
+ net/sunrpc/xprt.c  | 4 +++-
+ 2 files changed, 6 insertions(+), 2 deletions(-)
 
-diff --git a/include/linux/sunrpc/sched.h b/include/linux/sunrpc/sched.h
-index 0b7d333f624e..c41f5f498b3b 100644
---- a/include/linux/sunrpc/sched.h
-+++ b/include/linux/sunrpc/sched.h
-@@ -183,7 +183,6 @@ struct rpc_task_setup {
- struct rpc_timer {
- 	struct timer_list timer;
- 	struct list_head list;
--	unsigned long expires;
- };
- 
- /*
 diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
-index 40944c34a9e4..301e0f7f1dc9 100644
+index 301e0f7f1dc9..1a12fb03e611 100644
 --- a/net/sunrpc/sched.c
 +++ b/net/sunrpc/sched.c
-@@ -92,8 +92,7 @@ __rpc_disable_timer(struct rpc_wait_queue *queue, struct rpc_task *task)
- static void
- rpc_set_queue_timer(struct rpc_wait_queue *queue, unsigned long expires)
- {
--	queue->timer_list.expires = expires;
--	mod_timer(&queue->timer_list.timer, expires);
-+	timer_reduce(&queue->timer_list.timer, expires);
+@@ -249,7 +249,9 @@ static void __rpc_init_priority_wait_queue(struct rpc_wait_queue *queue, const c
+ 	queue->maxpriority = nr_queues - 1;
+ 	rpc_reset_waitqueue_priority(queue);
+ 	queue->qlen = 0;
+-	timer_setup(&queue->timer_list.timer, __rpc_queue_timer_fn, 0);
++	timer_setup(&queue->timer_list.timer,
++			__rpc_queue_timer_fn,
++			TIMER_DEFERRABLE);
+ 	INIT_LIST_HEAD(&queue->timer_list.list);
+ 	rpc_assign_waitqueue_name(queue, qname);
  }
- 
- /*
-@@ -107,8 +106,7 @@ __rpc_add_timer(struct rpc_wait_queue *queue, struct rpc_task *task,
- 		task->tk_pid, jiffies_to_msecs(timeout - jiffies));
- 
- 	task->tk_timeout = timeout;
--	if (list_empty(&queue->timer_list.list) || time_before(timeout, queue->timer_list.expires))
--		rpc_set_queue_timer(queue, timeout);
-+	rpc_set_queue_timer(queue, timeout);
- 	list_add(&task->u.tk_wait.timer_list, &queue->timer_list.list);
- }
+diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+index 7c3623b17493..36af1a1929af 100644
+--- a/net/sunrpc/xprt.c
++++ b/net/sunrpc/xprt.c
+@@ -1842,7 +1842,9 @@ struct rpc_xprt *xprt_create_transport(struct xprt_create *args)
+ 		xprt->idle_timeout = 0;
+ 	INIT_WORK(&xprt->task_cleanup, xprt_autoclose);
+ 	if (xprt_has_timer(xprt))
+-		timer_setup(&xprt->timer, xprt_init_autodisconnect, 0);
++		timer_setup(&xprt->timer,
++				xprt_init_autodisconnect,
++				TIMER_DEFERRABLE);
+ 	else
+ 		timer_setup(&xprt->timer, NULL, 0);
  
 -- 
 2.20.1
