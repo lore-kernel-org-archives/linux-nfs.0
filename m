@@ -8,62 +8,62 @@ X-Spam-Status: No, score=-8.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C905BC10F05
-	for <linux-nfs@archiver.kernel.org>; Fri, 29 Mar 2019 22:02:13 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5B119C4360F
+	for <linux-nfs@archiver.kernel.org>; Fri, 29 Mar 2019 22:02:14 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 8D68F218A5
-	for <linux-nfs@archiver.kernel.org>; Fri, 29 Mar 2019 22:02:13 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 292812184D
+	for <linux-nfs@archiver.kernel.org>; Fri, 29 Mar 2019 22:02:14 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="jdDWNP6l"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="QrsXP6y/"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1730356AbfC2WCN (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S1730359AbfC2WCN (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Fri, 29 Mar 2019 18:02:13 -0400
-Received: from mail-it1-f195.google.com ([209.85.166.195]:55534 "EHLO
-        mail-it1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1730345AbfC2WCM (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Mar 2019 18:02:12 -0400
-Received: by mail-it1-f195.google.com with SMTP id z126so6167427itd.5
-        for <linux-nfs@vger.kernel.org>; Fri, 29 Mar 2019 15:02:11 -0700 (PDT)
+Received: from mail-it1-f196.google.com ([209.85.166.196]:50958 "EHLO
+        mail-it1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1730357AbfC2WCN (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Mar 2019 18:02:13 -0400
+Received: by mail-it1-f196.google.com with SMTP id m137so6225068ita.0
+        for <linux-nfs@vger.kernel.org>; Fri, 29 Mar 2019 15:02:12 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:subject:date:message-id:in-reply-to:references:mime-version
          :content-transfer-encoding;
-        bh=mwfeG0Gf7M/QU7b8u/ldks9fFNeQ/gAOdGtccXlhHH0=;
-        b=jdDWNP6lcBPJvSonbOBjtWkXBFOGHkpQEcuHZBDR6WbkS8qa/BbeONb3sx2i8zd787
-         YPXAml7Sq8Yp+W02lEPifT+HKYQsnUkNwS0J8TEcaXFKemLIxO8ejBjHjIv+1YWbY4fQ
-         WZy8hMeUS1OLBLqvWsczDEEheShhd+UvROK0tmEj6rnKgiYr4/uIYWcRkdkFQfRqFaIG
-         GmMJ8aYtneOuTg1olJGUxZcKqt5oLJz+vg8U1hgmasueqD97i6flUt9n+/YvqM6W8UZI
-         mOA2A5cltEQqwK/DKZtOCwCioD4R35El0s6nCAGj6zeuS2dLfvK8k9yM6MwYvRQJlycR
-         gNxg==
+        bh=futTz9n1Zb8qTHM6ECvOcoOZEmkx2PkZxVlTq3i2Q1M=;
+        b=QrsXP6y/61F45IqiURjNbQW7cWZ2UKvNmLQlilaq4PLFkmSPVAbXtewmTajPYMhkwW
+         pIZ4OgSAnd9gyC2ailoWx2CuZomidmQ7hr3fqqpxfv3OKiJHXji3GJ7Ja/VjZjz+ZShD
+         stJi7uLW2pEg1JOMlj/KeDKUh4PRAq8eYZcR/JD59MsHgjpV42p7krKyHoVX1UfdHgAI
+         RbxOliKwiwGwm31tX7anbiRIl/bjSS4u9Njyj/LnE4kTqLOcP9YCPTqTLKIbkumvZZSQ
+         3DjEl9yYq7naxhkH0wU8yQCK/LFegGLKN6s1MrbhpOL/cbTpZcYOnWvDW9fXSohAeZBa
+         w8Vg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=mwfeG0Gf7M/QU7b8u/ldks9fFNeQ/gAOdGtccXlhHH0=;
-        b=RcF1Cs2ARcgdYLVR5AC1B7G3/+gqdeJWXch5vUYpPfmI0+ptGOn+/hCEX4IKAsXVpa
-         QU9LqlokuaGnn4z4Gxjk1CQz+qVRMEIPHENFkQWsZPGKGD3BINRQ50JPX76iLB0pqtF8
-         8LpXqceXhBDx5UgGwB3uDaRkPpmL4O60dxvmh4+XLED9OQhJbbnpVUW+eoZ03GSRJOLP
-         m6YsG4FZA62UF2NCbOgC8sM7UTFTrAk+OXQG2XFzZS4kL3QiNvaJp2wPEw6TWIx3dI4d
-         oV2Qxqz3SXuLkghWdgXBq59dAVB4HzJOEm/dIQdO4j61FRHG8iDMi0pWr1a6MdA1fAnm
-         h8Aw==
-X-Gm-Message-State: APjAAAVqM1aprw1VFcHtlmluH1iWkITxRvREL3hLbISvImscFZpsFGvC
-        a8K9M0QEKmzJAwu0JHyBYApCEeM=
-X-Google-Smtp-Source: APXvYqwuPDl65I9rQeEjlHELakJLQT7ITbA2+yakuikIt0wH5JO0ozikiLt8JcvKL9SkpGd2D2V0Qg==
-X-Received: by 2002:a02:9108:: with SMTP id a8mr16553192jag.107.1553896930853;
-        Fri, 29 Mar 2019 15:02:10 -0700 (PDT)
+        bh=futTz9n1Zb8qTHM6ECvOcoOZEmkx2PkZxVlTq3i2Q1M=;
+        b=JtsQHZAXgXicR+1OLebevfh2zfZw0WrLFxu7B3c2DTv68rbQciNCb2sFnvD+O4lT3J
+         9WU9S/pmkD2jzxdQFDgkNSIY+yzfykwUuVb/XnrI0uLaWIWzF3pPSYNizs20oY/x6/7+
+         v2IjaeufPcSt3IvEONT4MUbcHuZh6NHThu88aFQ/F2Zxb/iEFypMLSeogwlUn+M6P0yT
+         JN6xd1PF51sqtPRQa89FyQHaKjtWqd4bm52QljVRayPi+Vj7m1QOkZaW56MDb3xPXfDy
+         wF8bFcAsESivHaiEdQvfRBkDGnI7suPzeWKa+tBEzwx+RMG/YjoNAlRo4KRfM6deT5UD
+         cA2g==
+X-Gm-Message-State: APjAAAWH1IRHeBw2/pGNAhFM7IziPXrRl7P0TTrAMkj9/IyWeiEqBx3N
+        Weiwn9T8Qv+LAy+7BAQPjekn5bA=
+X-Google-Smtp-Source: APXvYqwci2uXdqKxqeN7UtVP0AnJD6Y+XKojsxa28E0BLRhbNbggYvUshw965hB4y7dhKzWToOtgiw==
+X-Received: by 2002:a24:5a01:: with SMTP id v1mr6252322ita.0.1553896931678;
+        Fri, 29 Mar 2019 15:02:11 -0700 (PDT)
 Received: from localhost.localdomain (c-68-40-189-247.hsd1.mi.comcast.net. [68.40.189.247])
         by smtp.gmail.com with ESMTPSA id v20sm1376796ioh.17.2019.03.29.15.02.10
         for <linux-nfs@vger.kernel.org>
         (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
-        Fri, 29 Mar 2019 15:02:10 -0700 (PDT)
+        Fri, 29 Mar 2019 15:02:11 -0700 (PDT)
 From:   Trond Myklebust <trondmy@gmail.com>
 X-Google-Original-From: Trond Myklebust <trond.myklebust@hammerspace.com>
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH v2 17/28] NFS: Move internal constants out of uapi/linux/nfs_mount.h
-Date:   Fri, 29 Mar 2019 17:59:37 -0400
-Message-Id: <20190329215948.107328-18-trond.myklebust@hammerspace.com>
+Subject: [PATCH v2 18/28] NFS: Add a mount option "softerr" to allow clients to see ETIMEDOUT errors
+Date:   Fri, 29 Mar 2019 17:59:38 -0400
+Message-Id: <20190329215948.107328-19-trond.myklebust@hammerspace.com>
 X-Mailer: git-send-email 2.20.1
-In-Reply-To: <20190329215948.107328-17-trond.myklebust@hammerspace.com>
+In-Reply-To: <20190329215948.107328-18-trond.myklebust@hammerspace.com>
 References: <20190329215948.107328-1-trond.myklebust@hammerspace.com>
  <20190329215948.107328-2-trond.myklebust@hammerspace.com>
  <20190329215948.107328-3-trond.myklebust@hammerspace.com>
@@ -81,6 +81,7 @@ References: <20190329215948.107328-1-trond.myklebust@hammerspace.com>
  <20190329215948.107328-15-trond.myklebust@hammerspace.com>
  <20190329215948.107328-16-trond.myklebust@hammerspace.com>
  <20190329215948.107328-17-trond.myklebust@hammerspace.com>
+ <20190329215948.107328-18-trond.myklebust@hammerspace.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
@@ -88,53 +89,99 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-When the label says "for internal use only", then it doesn't belong
-in the 'uapi' subtree.
+Add a mount option that exposes the ETIMEDOUT errors that occur during
+soft timeouts to the application. This allows aware applications to
+distinguish between server disk IO errors and client timeout errors.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- include/linux/nfs_fs_sb.h      | 9 +++++++++
- include/uapi/linux/nfs_mount.h | 9 ---------
- 2 files changed, 9 insertions(+), 9 deletions(-)
+ fs/nfs/client.c           |  2 ++
+ fs/nfs/super.c            | 15 ++++++++++++---
+ include/linux/nfs_fs_sb.h |  1 +
+ 3 files changed, 15 insertions(+), 3 deletions(-)
 
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 90d71fda65ce..f74638c5e5b4 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -598,6 +598,8 @@ int nfs_init_server_rpcclient(struct nfs_server *server,
+ 			sizeof(server->client->cl_timeout_default));
+ 	server->client->cl_timeout = &server->client->cl_timeout_default;
+ 	server->client->cl_softrtry = 0;
++	if (server->flags & NFS_MOUNT_SOFTERR)
++		server->client->cl_softerr = 1;
+ 	if (server->flags & NFS_MOUNT_SOFT)
+ 		server->client->cl_softrtry = 1;
+ 
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 23790c7b2289..61cae26dbf78 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -78,7 +78,7 @@
+ 
+ enum {
+ 	/* Mount options that take no arguments */
+-	Opt_soft, Opt_hard,
++	Opt_soft, Opt_softerr, Opt_hard,
+ 	Opt_posix, Opt_noposix,
+ 	Opt_cto, Opt_nocto,
+ 	Opt_ac, Opt_noac,
+@@ -125,6 +125,7 @@ static const match_table_t nfs_mount_option_tokens = {
+ 	{ Opt_sloppy, "sloppy" },
+ 
+ 	{ Opt_soft, "soft" },
++	{ Opt_softerr, "softerr" },
+ 	{ Opt_hard, "hard" },
+ 	{ Opt_deprecated, "intr" },
+ 	{ Opt_deprecated, "nointr" },
+@@ -628,7 +629,8 @@ static void nfs_show_mount_options(struct seq_file *m, struct nfs_server *nfss,
+ 		const char *str;
+ 		const char *nostr;
+ 	} nfs_info[] = {
+-		{ NFS_MOUNT_SOFT, ",soft", ",hard" },
++		{ NFS_MOUNT_SOFT, ",soft", "" },
++		{ NFS_MOUNT_SOFTERR, ",softerr", "" },
+ 		{ NFS_MOUNT_POSIX, ",posix", "" },
+ 		{ NFS_MOUNT_NOCTO, ",nocto", "" },
+ 		{ NFS_MOUNT_NOAC, ",noac", "" },
+@@ -658,6 +660,8 @@ static void nfs_show_mount_options(struct seq_file *m, struct nfs_server *nfss,
+ 		seq_printf(m, ",acdirmin=%u", nfss->acdirmin/HZ);
+ 	if (nfss->acdirmax != NFS_DEF_ACDIRMAX*HZ || showdefaults)
+ 		seq_printf(m, ",acdirmax=%u", nfss->acdirmax/HZ);
++	if (!(nfss->flags & (NFS_MOUNT_SOFT|NFS_MOUNT_SOFTERR)))
++			seq_puts(m, ",hard");
+ 	for (nfs_infop = nfs_info; nfs_infop->flag; nfs_infop++) {
+ 		if (nfss->flags & nfs_infop->flag)
+ 			seq_puts(m, nfs_infop->str);
+@@ -1239,10 +1243,15 @@ static int nfs_parse_mount_options(char *raw,
+ 		 */
+ 		case Opt_soft:
+ 			mnt->flags |= NFS_MOUNT_SOFT;
++			mnt->flags &= ~NFS_MOUNT_SOFTERR;
+ 			break;
+-		case Opt_hard:
++		case Opt_softerr:
++			mnt->flags |= NFS_MOUNT_SOFTERR;
+ 			mnt->flags &= ~NFS_MOUNT_SOFT;
+ 			break;
++		case Opt_hard:
++			mnt->flags &= ~(NFS_MOUNT_SOFT|NFS_MOUNT_SOFTERR);
++			break;
+ 		case Opt_posix:
+ 			mnt->flags |= NFS_MOUNT_POSIX;
+ 			break;
 diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index c827d31298cc..013ac5b54a09 100644
+index 013ac5b54a09..0fbc5d3c5e53 100644
 --- a/include/linux/nfs_fs_sb.h
 +++ b/include/linux/nfs_fs_sb.h
-@@ -139,6 +139,15 @@ struct nfs_server {
- 	struct nfs_iostats __percpu *io_stats;	/* I/O statistics */
- 	atomic_long_t		writeback;	/* number of writeback pages */
- 	int			flags;		/* various flags */
-+
-+/* The following are for internal use only. Also see uapi/linux/nfs_mount.h */
-+#define NFS_MOUNT_LOOKUP_CACHE_NONEG	0x10000
-+#define NFS_MOUNT_LOOKUP_CACHE_NONE	0x20000
-+#define NFS_MOUNT_NORESVPORT		0x40000
-+#define NFS_MOUNT_LEGACY_INTERFACE	0x80000
-+#define NFS_MOUNT_LOCAL_FLOCK		0x100000
-+#define NFS_MOUNT_LOCAL_FCNTL		0x200000
-+
+@@ -147,6 +147,7 @@ struct nfs_server {
+ #define NFS_MOUNT_LEGACY_INTERFACE	0x80000
+ #define NFS_MOUNT_LOCAL_FLOCK		0x100000
+ #define NFS_MOUNT_LOCAL_FCNTL		0x200000
++#define NFS_MOUNT_SOFTERR		0x400000
+ 
  	unsigned int		caps;		/* server capabilities */
  	unsigned int		rsize;		/* read size */
- 	unsigned int		rpages;		/* read size (in pages) */
-diff --git a/include/uapi/linux/nfs_mount.h b/include/uapi/linux/nfs_mount.h
-index e44e00616ab5..e3bcfc6aa3b0 100644
---- a/include/uapi/linux/nfs_mount.h
-+++ b/include/uapi/linux/nfs_mount.h
-@@ -66,13 +66,4 @@ struct nfs_mount_data {
- #define NFS_MOUNT_UNSHARED	0x8000	/* 5 */
- #define NFS_MOUNT_FLAGMASK	0xFFFF
- 
--/* The following are for internal use only */
--#define NFS_MOUNT_LOOKUP_CACHE_NONEG	0x10000
--#define NFS_MOUNT_LOOKUP_CACHE_NONE	0x20000
--#define NFS_MOUNT_NORESVPORT		0x40000
--#define NFS_MOUNT_LEGACY_INTERFACE	0x80000
--
--#define NFS_MOUNT_LOCAL_FLOCK	0x100000
--#define NFS_MOUNT_LOCAL_FCNTL	0x200000
--
- #endif
 -- 
 2.20.1
 
