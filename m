@@ -2,215 +2,125 @@ Return-Path: <SRS0=xBSR=SD=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-7.6 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,FAKE_REPLY_C,HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,SPF_PASS,UNPARSEABLE_RELAY,
+	URIBL_BLOCKED,USER_AGENT_MUTT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8CD3BC43381
-	for <linux-nfs@archiver.kernel.org>; Mon,  1 Apr 2019 01:20:39 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1C873C43381
+	for <linux-nfs@archiver.kernel.org>; Mon,  1 Apr 2019 06:36:45 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 5855220870
-	for <linux-nfs@archiver.kernel.org>; Mon,  1 Apr 2019 01:20:39 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id DE59B20896
+	for <linux-nfs@archiver.kernel.org>; Mon,  1 Apr 2019 06:36:44 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="toZNPcGl"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726893AbfDABUi (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 31 Mar 2019 21:20:38 -0400
-Received: from mx2.suse.de ([195.135.220.15]:55494 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726196AbfDABUi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sun, 31 Mar 2019 21:20:38 -0400
-X-Virus-Scanned: by amavisd-new at test-mx.suse.de
-Received: from relay2.suse.de (unknown [195.135.220.254])
-        by mx1.suse.de (Postfix) with ESMTP id 71A24AE3F;
-        Mon,  1 Apr 2019 01:20:36 +0000 (UTC)
-From:   NeilBrown <neilb@suse.com>
-To:     Murphy Zhou <jencce.kernel@gmail.com>, linux-nfs@vger.kernel.org
-Date:   Mon, 01 Apr 2019 12:20:28 +1100
-Cc:     bfields@fieldses.org, jlayton@kernel.org,
-        Murphy Zhou <jencce.kernel@gmail.com>
-Subject: Re: [PATCH] nfsd/nfsd3_proc_readdir: check before encoding on temporary page
-In-Reply-To: <20190329142332.12010-1-jencce.kernel@gmail.com>
-References: <20190329142332.12010-1-jencce.kernel@gmail.com>
-Message-ID: <875zry34ir.fsf@notabene.neil.brown.name>
+        id S1727377AbfDAGgo (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 1 Apr 2019 02:36:44 -0400
+Received: from aserp2130.oracle.com ([141.146.126.79]:53190 "EHLO
+        aserp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727076AbfDAGgo (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Apr 2019 02:36:44 -0400
+Received: from pps.filterd (aserp2130.oracle.com [127.0.0.1])
+        by aserp2130.oracle.com (8.16.0.27/8.16.0.27) with SMTP id x316T30o152900;
+        Mon, 1 Apr 2019 06:36:39 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=date : from : to : cc
+ : subject : message-id : mime-version : content-type : in-reply-to;
+ s=corp-2018-07-02; bh=hQITIU83Ky5O5zvQyjzbVhK7av+LdkkOo6UJu1jc148=;
+ b=toZNPcGlmVECMReC2CzXdfIx4q6y5gV+X8By9vqe8uWKd9zymSKijUNgSW7UybCZrRbR
+ jWIhbyu9PzjLMId8DanDDJ+ZzlBIt01ljPOCtwzknKZGhB6vt3Oc9MTurIh4Zpt2kNDb
+ JZBUjhl6Bia4F8Q0MWt+NfIeb11Dh4OxWa3Sdm17+08jRpVsIm9KmySTyemIXUSi/TSw
+ fq4oHtYivbQNeP4wXMLqC51RBcKoDU+5uWV8OYnC0kTaJK3fZbpVdRn92wzudWtMBRuB
+ MlN18WDDjT1fYZiq42Hvnrk2nnljVPr2/a8cOfhmqrUXV/sWe6fKE1yPIyNh8lE4LpfF Hg== 
+Received: from userv0021.oracle.com (userv0021.oracle.com [156.151.31.71])
+        by aserp2130.oracle.com with ESMTP id 2rhwycw2a7-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Mon, 01 Apr 2019 06:36:39 +0000
+Received: from aserv0121.oracle.com (aserv0121.oracle.com [141.146.126.235])
+        by userv0021.oracle.com (8.14.4/8.14.4) with ESMTP id x316ablx008960
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Mon, 1 Apr 2019 06:36:38 GMT
+Received: from abhmp0007.oracle.com (abhmp0007.oracle.com [141.146.116.13])
+        by aserv0121.oracle.com (8.14.4/8.13.8) with ESMTP id x316ab9u032138;
+        Mon, 1 Apr 2019 06:36:37 GMT
+Received: from kadam (/41.202.241.37)
+        by default (Oracle Beehive Gateway v4.0)
+        with ESMTP ; Sun, 31 Mar 2019 23:36:36 -0700
+Date:   Mon, 1 Apr 2019 09:36:27 +0300
+From:   Dan Carpenter <dan.carpenter@oracle.com>
+To:     kbuild@01.org, Trond Myklebust <trondmy@gmail.com>
+Cc:     kbuild-all@01.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 19/25] NFS: Replace custom error reporting mechanism with
+ generic one
+Message-ID: <20190401063627.GW32613@kadam>
 MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20190328205239.29674-20-trond.myklebust@hammerspace.com>
+User-Agent: Mutt/1.9.4 (2018-02-28)
+X-Proofpoint-Virus-Version: vendor=nai engine=5900 definitions=9213 signatures=668685
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 priorityscore=1501 malwarescore=0
+ suspectscore=0 phishscore=0 bulkscore=0 spamscore=0 clxscore=1011
+ lowpriorityscore=0 mlxscore=0 impostorscore=0 mlxlogscore=877 adultscore=0
+ classifier=spam adjust=0 reason=mlx scancount=1 engine=8.0.1-1810050000
+ definitions=main-1904010048
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
---=-=-=
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+Hi Trond,
 
-On Fri, Mar 29 2019, Murphy Zhou wrote:
+url:    https://github.com/0day-ci/linux/commits/Trond-Myklebust/Fix-up-soft-mounts-for-NFSv4-x/20190331-130454
+base:   git://git.linux-nfs.org/projects/trondmy/linux-nfs.git linux-next
 
-> After this commit
->   f875a79 nfsd: allow nfsv3 readdir request to be larger.
-> nfsv3 readdir request size can be larger than PAGE_SIZE. So if the
-> request and the directory are large enough, we can run out of pages
-> in rq_respages. Then the temporary page we are encoding on is a
-> random page, Oops happen.
->
-> Listing a directory with 30000 files in it can trigger the panic.
->
-> Fixing this by ensuring the temporary page resides in rq_respages.
-> And when counting how many bytes left currently from buffer to the
-> end of the page which buffer is pointing to, aka len1, do not
-> assume that curr_page_addr is at the beginning of the same page.
-> Also, update resp->count by going through all pages. Because the
-> pages may not be sequential, the old way is not safe.
->
-> Fixes: f875a79 "nfsd: allow nfsv3 readdir request to be larger"
-> Signed-off-by: Murphy Zhou <jencce.kernel@gmail.com>
-
-Hi,
- thanks for finding these problems and submitting a patch.  Clearly I
- should have tested better :-(
-
-> ---
->  fs/nfsd/nfs3proc.c | 17 +++++++++++++++--
->  fs/nfsd/nfs3xdr.c  |  8 +++++---
->  2 files changed, 20 insertions(+), 5 deletions(-)
->
-> diff --git a/fs/nfsd/nfs3proc.c b/fs/nfsd/nfs3proc.c
-> index 8f933e84cec1..9bc32af4e2da 100644
-> --- a/fs/nfsd/nfs3proc.c
-> +++ b/fs/nfsd/nfs3proc.c
-> @@ -442,7 +442,9 @@ nfsd3_proc_readdir(struct svc_rqst *rqstp)
->  	struct nfsd3_readdirargs *argp =3D rqstp->rq_argp;
->  	struct nfsd3_readdirres  *resp =3D rqstp->rq_resp;
->  	__be32		nfserr;
-> -	int		count;
-> +	int		count =3D 0;
-> +	struct page	**p;
-> +	caddr_t		page_addr =3D NULL;
->=20=20
->  	dprintk("nfsd: READDIR(3)  %s %d bytes at %d\n",
->  				SVCFH_fmt(&argp->fh),
-> @@ -462,7 +464,18 @@ nfsd3_proc_readdir(struct svc_rqst *rqstp)
->  	nfserr =3D nfsd_readdir(rqstp, &resp->fh, (loff_t*) &argp->cookie,=20
->  					&resp->common, nfs3svc_encode_entry);
->  	memcpy(resp->verf, argp->verf, 8);
-> -	resp->count =3D resp->buffer - argp->buffer;
-> +	count =3D 0;
-> +	for (p =3D rqstp->rq_respages + 1; p < rqstp->rq_next_page; p++) {
-> +		page_addr =3D page_address(*p);
-> +
-> +		if (((caddr_t)resp->buffer >=3D page_addr) &&
-> +		    ((caddr_t)resp->buffer < page_addr + PAGE_SIZE)) {
-> +			count +=3D (caddr_t)resp->buffer - page_addr;
-> +			break;
-> +		}
-> +		count +=3D PAGE_SIZE;
-> +	}
-> +	resp->count =3D count >> 2;
->  	if (resp->offset) {
->  		loff_t offset =3D argp->cookie;
-
-This section makes perfect sense.  You have copied code from
-nfsd3_proc_readdirplus() int nfsd3_proc_readdir().  This is needed
-because readdir doesn't limit replies to PAGE_SIZE any more.
-
->=20=20
-> diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
-> index 93fea246f676..1fabf1952bdb 100644
-> --- a/fs/nfsd/nfs3xdr.c
-> +++ b/fs/nfsd/nfs3xdr.c
-> @@ -953,6 +953,7 @@ encode_entry(struct readdir_cd *ccd, const char *name=
-, int namlen,
->  			break;
->  	}
->=20=20
-> +
-
-Adding blank lines is best avoided.
-
->  	if ((caddr_t)(cd->buffer + elen) < (curr_page_addr + PAGE_SIZE)) {
->  		/* encode entry in current page */
->=20=20
-> @@ -961,11 +962,12 @@ encode_entry(struct readdir_cd *ccd, const char *na=
-me, int namlen,
->  		if (plus)
->  			p =3D encode_entryplus_baggage(cd, p, name, namlen, ino);
->  		num_entry_words =3D p - cd->buffer;
-> -	} else if (*(page+1) !=3D NULL) {
-> +	} else if (*(page+1) !=3D NULL && (page+1) < cd->rqstp->rq_next_page) {
-
-Adding the test against rq_next_page looks correct.
-nfs3svc_decode_readdirplusargs increments ->rq_next_page over enough
-pages to cover the request count.
-However nfs4svc_decode_readdirargs doesn't!  So it will not advance
-rq_next_page properly.  We need to fix that to make it like
-nfs3svc_decode_readdirplusargs().
-
-But I don't think this test should be needed.  svc_alloc_arg() NULL-
-terminates the ->rq_pages array which ->rq_next_page points in to.
-
-So I think this test is correct as it stands, but
-nfs4svc_decode_readdirargs() needs to be fixed.
-
->  		/* temporarily encode entry into next page, then move back to
->  		 * current and next page in rq_respages[] */
->  		__be32 *p1, *tmp;
->  		int len1, len2;
-> +		caddr_t	tmp_page_addr =3D NULL;
->=20=20
->  		/* grab next page for temporary storage of entry */
->  		p1 =3D tmp =3D page_address(*(page+1));
-> @@ -977,7 +979,8 @@ encode_entry(struct readdir_cd *ccd, const char *name=
-, int namlen,
->=20=20
->  		/* determine entry word length and lengths to go in pages */
->  		num_entry_words =3D p1 - tmp;
-> -		len1 =3D curr_page_addr + PAGE_SIZE - (caddr_t)cd->buffer;
-> +		tmp_page_addr =3D (caddr_t)((unsigned long)cd->buffer & PAGE_MASK);
-> +		len1 =3D tmp_page_addr + PAGE_SIZE - (caddr_t)cd->buffer;
-
-I think tmp_page_addr will always be the same as curr_page_addr.
-At least, it will when nfs4svc_decode_readdirargs() is fixed.
-
-Could you please revert the changed you've made to nfs3xdr.c (keeping
-the change to nfsd3_proc_readdir()), and fix nfs4svc_decode_readdirargs
-to be more like nfs4svc_decode_readdirplusargs, and see if that fixed
-the problem?
-
-Thanks a lot,
-NeilBrown
+New smatch warnings:
+fs/nfs/write.c:1849 nfs_commit_release_pages() error: we previously assumed 'req->wb_page' could be null (see line 1840)
+fs/nfs/write.c:1850 nfs_commit_release_pages() warn: variable dereferenced before check 'req->wb_page' (see line 1849)
 
 
->  		if ((num_entry_words << 2) < len1) {
->  			/* the actual number of words in the entry is less
->  			 * than elen and can still fit in the current page
-> @@ -1026,7 +1029,6 @@ encode_entry(struct readdir_cd *ccd, const char *na=
-me, int namlen,
->  	cd->buffer =3D p;
->  	cd->common.err =3D nfs_ok;
->  	return 0;
-> -
->  }
->=20=20
->  int
-> --=20
-> 2.21.0
+# https://github.com/0day-ci/linux/commit/2f2cfd52810bf732da40334bf590dbadda75d6cf
+git remote add linux-review https://github.com/0day-ci/linux
+git remote update linux-review
+git checkout 2f2cfd52810bf732da40334bf590dbadda75d6cf
+vim +1849 fs/nfs/write.c
 
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
+c9d8f89d9 Trond Myklebust 2008-04-15  1829  
+f453a54a0 Fred Isaman     2012-04-20  1830  static void nfs_commit_release_pages(struct nfs_commit_data *data)
+c9d8f89d9 Trond Myklebust 2008-04-15  1831  {
+c9d8f89d9 Trond Myklebust 2008-04-15  1832  	struct nfs_page	*req;
+c9d8f89d9 Trond Myklebust 2008-04-15  1833  	int status = data->task.tk_status;
+f453a54a0 Fred Isaman     2012-04-20  1834  	struct nfs_commit_info cinfo;
+353db7966 NeilBrown       2014-09-24  1835  	struct nfs_server *nfss;
+788e7a89a Trond Myklebust 2006-03-20  1836  
+^1da177e4 Linus Torvalds  2005-04-16  1837  	while (!list_empty(&data->pages)) {
+^1da177e4 Linus Torvalds  2005-04-16  1838  		req = nfs_list_entry(data->pages.next);
+^1da177e4 Linus Torvalds  2005-04-16  1839  		nfs_list_remove_request(req);
+67911c8f1 Anna Schumaker  2016-01-19 @1840  		if (req->wb_page)
+                                                            ^^^^^^^^^^^^
 
------BEGIN PGP SIGNATURE-----
+d6d6dc7cd Fred Isaman     2012-03-08  1841  			nfs_clear_page_commit(req->wb_page);
+^1da177e4 Linus Torvalds  2005-04-16  1842  
+1e8968c5b Niels de Vos    2013-12-17  1843  		dprintk("NFS:       commit (%s/%llu %d@%lld)",
+3d4ff43d8 Al Viro         2011-06-22  1844  			req->wb_context->dentry->d_sb->s_id,
+2b0143b5c David Howells   2015-03-17  1845  			(unsigned long long)NFS_FILEID(d_inode(req->wb_context->dentry)),
+^1da177e4 Linus Torvalds  2005-04-16  1846  			req->wb_bytes,
+^1da177e4 Linus Torvalds  2005-04-16  1847  			(long long)req_offset(req));
+c9d8f89d9 Trond Myklebust 2008-04-15  1848  		if (status < 0) {
+2f2cfd528 Trond Myklebust 2019-03-28 @1849  			nfs_mapping_set_error(req->wb_page, status);
+                                                                                      ^^^^^^^^^^^^
+Dereferenced inside function probably?
 
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlyhZ1wACgkQOeye3VZi
-gbl8FxAAu5O3yH0RY7KqNR+oh1qHTfqAoXu4QFQ0rfryP8001ukQkbu0fkTlNaNj
-ZjYXXbNTq4TIs8by80yqdKt4J4EFWUp/nD3atFIB75dSVZcO14j5asClnQWGx1tX
-BX4l28wjVYKZs62LNd0iXgJnlojDbmI6RD5n21YwidX+xmcnSn+iFb0d1Z8j0Piw
-WccAsHJwnvgCqLLnxpZfMyGqLHRY0P/UfYCj27KjKlb15seZtBqj/B3YofjY1Ux5
-96P53aRldu4zDG0DNFlkMsX6PRe2EjwpZn/KPrQRmkNuziKwHsTp6X4PFFSr4eyE
-ZI6as3rE8xund9J6Rdj+kzKnKVSYLXCIqK+ygk+xHmBug1XailsQr3WTg/rDcKOQ
-HicnnWu305WQyrhiVDm/J0Ym+TGzDPoxISG7GYhW2HKuOvtLG4urp18xNKg4HMfw
-wYqtwpw7Lbe5q8V9pHM0nXb7xy9I0UGCQVh1EvvRNk58wbiQq7GYyBVrdvIoUqAT
-00mYHzT0NL4atYurki4NoHBkzbZ6TUiCfcl6+T82A7iolkEuyE7pIuuM0nCo8ah2
-uSs0Hf3tf9dYlGOdqpPxuxLFueSyYQXAVgeLl3/XJ/XHSKACocekycy+8lEx4i5a
-4u1rjKAvoiHH2GV3+FGvAznPBVzUnCE3at0PJbsnU3pjDos5eX8=
-=CGxm
------END PGP SIGNATURE-----
---=-=-=--
+38a33101d Kinglong Mee    2017-03-09 @1850  			if (req->wb_page)
+                                                                    ^^^^^^^^^^^^
+Too late.
+
+^1da177e4 Linus Torvalds  2005-04-16  1851  				nfs_inode_remove_request(req);
+ddeaa6379 Joe Perches     2016-10-15  1852  			dprintk_cont(", error = %d\n", status);
+^1da177e4 Linus Torvalds  2005-04-16  1853  			goto next;
+^1da177e4 Linus Torvalds  2005-04-16  1854  		}
+^1da177e4 Linus Torvalds  2005-04-16  1855  
+
+---
+0-DAY kernel test infrastructure                Open Source Technology Center
+https://lists.01.org/pipermail/kbuild-all                   Intel Corporation
