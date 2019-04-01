@@ -2,71 +2,86 @@ Return-Path: <SRS0=xBSR=SD=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-0.9 required=3.0 tests=FROM_EXCESS_BASE64,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-1.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
+	SPF_PASS,UNPARSEABLE_RELAY autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id CF312C43381
-	for <linux-nfs@archiver.kernel.org>; Mon,  1 Apr 2019 09:38:07 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 04ACBC10F05
+	for <linux-nfs@archiver.kernel.org>; Mon,  1 Apr 2019 16:22:06 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id A3B85213A2
-	for <linux-nfs@archiver.kernel.org>; Mon,  1 Apr 2019 09:38:07 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id C457921473
+	for <linux-nfs@archiver.kernel.org>; Mon,  1 Apr 2019 16:22:05 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="drGr3G7c"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1725882AbfDAJiG (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 1 Apr 2019 05:38:06 -0400
-Received: from smtp66.cstnet.cn ([159.226.251.66]:56658 "EHLO cstnet.cn"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1725880AbfDAJiG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 1 Apr 2019 05:38:06 -0400
-X-Greylist: delayed 426 seconds by postgrey-1.27 at vger.kernel.org; Mon, 01 Apr 2019 05:38:06 EDT
-Received: by ajax-webmail-APP-20 (Coremail) ; Mon, 1 Apr 2019 17:30:32 +0800
- (GMT+08:00)
-X-Originating-IP: [124.16.85.84]
-Date:   Mon, 1 Apr 2019 17:30:32 +0800 (GMT+08:00)
-X-CM-HeaderCharset: UTF-8
-From:   =?UTF-8?B?5piT5p6X?= <yilin@iie.ac.cn>
+        id S1726854AbfDAQWD (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 1 Apr 2019 12:22:03 -0400
+Received: from aserp2130.oracle.com ([141.146.126.79]:45966 "EHLO
+        aserp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727032AbfDAQWD (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Apr 2019 12:22:03 -0400
+Received: from pps.filterd (aserp2130.oracle.com [127.0.0.1])
+        by aserp2130.oracle.com (8.16.0.27/8.16.0.27) with SMTP id x31GIYUt089880
+        for <linux-nfs@vger.kernel.org>; Mon, 1 Apr 2019 16:22:01 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=to : from : subject :
+ message-id : date : mime-version : content-type :
+ content-transfer-encoding; s=corp-2018-07-02;
+ bh=rRA8KFhCJ4e2PhHqpq73WVPHvMmHN+3ZebfKmrIn2ic=;
+ b=drGr3G7cz1U54qZhYYtJdwQmTKxwa5ObTEkuO7mgx+IC8e0V+2LEiKJFOuWSb3qZlIKT
+ ZiMBblzm7f1HshljeHyrGYsCeUvgBC9ORM6IrYgLOQyqUXLMdfRg9zKdF5zuyCg8xi/r
+ /ebK0QxYuI6JnIYxXURcEkxt6xj9KAmO7/8UoXLPfpOoxbZ5nYrTA++tFQw3gM522gMl
+ plRa62YYoFW2QEg59/aynGE1WeAFfcNaS5j1wqA6AncVsULJpah3jHYK7a2LzTv+WtFt
+ 27vVgaJzyuj4Y3HTsN0a7t8CCgM1QWTRVYsCL8piJc/VzB7hpTeOUk+02X7jK1X0vpYY GA== 
+Received: from userv0021.oracle.com (userv0021.oracle.com [156.151.31.71])
+        by aserp2130.oracle.com with ESMTP id 2rhwyd08px-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK)
+        for <linux-nfs@vger.kernel.org>; Mon, 01 Apr 2019 16:22:01 +0000
+Received: from userv0122.oracle.com (userv0122.oracle.com [156.151.31.75])
+        by userv0021.oracle.com (8.14.4/8.14.4) with ESMTP id x31GLoXp020251
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK)
+        for <linux-nfs@vger.kernel.org>; Mon, 1 Apr 2019 16:21:50 GMT
+Received: from abhmp0001.oracle.com (abhmp0001.oracle.com [141.146.116.7])
+        by userv0122.oracle.com (8.14.4/8.14.4) with ESMTP id x31GLo2S015990
+        for <linux-nfs@vger.kernel.org>; Mon, 1 Apr 2019 16:21:50 GMT
+Received: from bradley.us.oracle.com (/10.152.12.111)
+        by default (Oracle Beehive Gateway v4.0)
+        with ESMTP ; Mon, 01 Apr 2019 09:21:50 -0700
 To:     linux-nfs@vger.kernel.org
-Subject: =?UTF-8?Q?should_the_svc=5Fxprt=5Fget_called_after_th?=
- =?UTF-8?Q?e_object_assigned_to_a_global_variable=EF=BC=9F?=
-X-Priority: 3
-X-Mailer: Coremail Webmail Server Version XT5.0.5 build 20161025(89512.9021)
- Copyright (c) 2002-2019 www.mailtech.cn cstnet
-Content-Transfer-Encoding: base64
-Content-Type: text/plain; charset=UTF-8
+From:   "Bradley C. Kuszmaul" <bradley.kuszmaul@oracle.com>
+Subject: directory delegations
+Message-ID: <2065755c-f888-9c62-f6e5-f143d42c51ee@oracle.com>
+Date:   Mon, 1 Apr 2019 12:21:49 -0400
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101
+ Thunderbird/60.4.0
 MIME-Version: 1.0
-Message-ID: <47cb2860.1503.169d83c6bae.Coremail.yilin@iie.ac.cn>
-X-Coremail-Locale: zh_CN
-X-CM-TRANSID: 2gCowAC3qFE42qFcGhYgAA--.22020W
-X-CM-SenderInfo: p1lox0o6llvhldfou0/1tbiCQMHAFlo+4BBqwABss
-X-Coremail-Antispam: 1Ur529EdanIXcx71UUUUU7IcSsGvfJ3iIAIbVAYjsxI4VW7Jw
-        CS07vEb4IE77IF4wCS07vE1I0E4x80FVAKz4kxMIAIbVAFxVCaYxvI4VCIwcAKzIAtYxBI
-        daVFxhVjvjDU=
+Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Transfer-Encoding: 8bit
+Content-Language: en-US
+X-Proofpoint-Virus-Version: vendor=nai engine=5900 definitions=9214 signatures=668685
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 priorityscore=1501 malwarescore=0
+ suspectscore=1 phishscore=0 bulkscore=0 spamscore=0 clxscore=1011
+ lowpriorityscore=0 mlxscore=0 impostorscore=0 mlxlogscore=719 adultscore=0
+ classifier=spam adjust=0 reason=mlx scancount=1 engine=8.0.1-1810050000
+ definitions=main-1904010108
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-SGksIGFsbDoKICAgIHdoZW4gYW5hbHl6aW5nIHRoZSB2NS4xIHNvdXJjZSBjb2RlLCBJIG5vdGlj
-ZSB0aGF0IGluIGZ1bmN0aW9uIG5mc2Q0X3Byb2Nlc3NfY2JfdXBkYXRlLCAKdGhlIG9iamVjdCBj
-LT5jbl94cHJ0IGFzc2lnbmVkIHRvIGEgbG9jYWwgdmFyaWFibGUgY29ubi5jYl94cHJ0IHdpdGgg
-YSByZWZjb3VudCBpbmNyZWFzZWQ6CiAgICAgIGlmIChjKSB7CgkJc3ZjX3hwcnRfZ2V0KGMtPmNu
-X3hwcnQpOwoJCWNvbm4uY2JfeHBydCA9IGMtPmNuX3hwcnQ7CgkJc2VzID0gYy0+Y25fc2Vzc2lv
-bjsKCX0KCmFuZCB0aGUgdmFyaWFibGUgY29ubi5jYl94cHJ0IHdpbGwgYmUgYXNzaWduZWQgdG8g
-YSBnbG9iYWwgb2JqZWN0IGNscC0+Y2xfY2JfY29ubi5jYl94cHJ0IAppbiBjYWxsZWUgc2V0dXBf
-Y2FsbGJhY2tfY2xpZW50IHdpdGggYSBjb25kaXRpb24gdGhhdCBjbHAtPmNsX21pbm9ydmVyc2lv
-biAhPSAwOgoKICAgICAgIGlmIChjbHAtPmNsX21pbm9ydmVyc2lvbiA9PSAwKSB7CgkJaWYgKCFj
-bHAtPmNsX2NyZWQuY3JfcHJpbmNpcGFsICYmCgkJCQkoY2xwLT5jbF9jcmVkLmNyX2ZsYXZvciA+
-PSBSUENfQVVUSF9HU1NfS1JCNSkpCgkJCXJldHVybiAtRUlOVkFMOwoJCWFyZ3MuY2xpZW50X25h
-bWUgPSBjbHAtPmNsX2NyZWQuY3JfcHJpbmNpcGFsOwoJCWFyZ3MucHJvZ251bWJlcgk9IGNvbm4t
-PmNiX3Byb2c7CgkJYXJncy5wcm90b2NvbCA9IFhQUlRfVFJBTlNQT1JUX1RDUDsKCQlhcmdzLmF1
-dGhmbGF2b3IgPSBjbHAtPmNsX2NyZWQuY3JfZmxhdm9yOwoJCWNscC0+Y2xfY2JfaWRlbnQgPSBj
-b25uLT5jYl9pZGVudDsKCX0gZWxzZSB7CgkJaWYgKCFjb25uLT5jYl94cHJ0KQoJCQlyZXR1cm4g
-LUVJTlZBTDsKCQljbHAtPmNsX2NiX2Nvbm4uY2JfeHBydCA9IGNvbm4tPmNiX3hwcnQ7CgkJY2xw
-LT5jbF9jYl9zZXNzaW9uID0gc2VzOwoJCWFyZ3MuYmNfeHBydCA9IGNvbm4tPmNiX3hwcnQ7CgkJ
-YXJncy5wcm9nbnVtYmVyID0gY2xwLT5jbF9jYl9zZXNzaW9uLT5zZV9jYl9wcm9nOwoJCWFyZ3Mu
-cHJvdG9jb2wgPSBjb25uLT5jYl94cHJ0LT54cHRfY2xhc3MtPnhjbF9pZGVudCB8CgkJCQlYUFJU
-X1RSQU5TUE9SVF9CQzsKCQlhcmdzLmF1dGhmbGF2b3IgPSBzZXMtPnNlX2NiX3NlYy5mbGF2b3I7
-Cgl9Cgp3aGF0IGlmIHRoZSBjbF9taW5vcnZlcnNpb24gZXF1YWxzIDAgPyB0aGUgYy0+Y25feHBy
-dCdzIHJlZmNvdW50IHdpbGwgaW5jcmVhc2VkIHdpdGhvdXQgYSBhc3NpZ25tZW50LiAKQ2FuIGl0
-IGJlIGVuc3VyZWQgdGhhdCB0aGUgY2xfbWlub3J2ZXJzaW9uIHdvbid0IGJlIHplcm8gd2l0aCB0
-aGUgcmVmY291bnQgaW5jcmVtZW50PwoKQmVzdCBSZWdhcmRzCgpMaW4gWWk=
+Hi, I'm the architect for Oracle's File Storage Service.   FSS is 
+basically a big scalable NFS server that runs in Oracle's cloud.
+
+Our metadata operations have higher latency than a vanilla NFS server 
+(e.g., a Linux NFS server serving a XFS stored on a block device), and 
+we suspect that directory delegations would make a big performance 
+improvement.
+
+I understand, however, that essentially no one implements directory 
+delegations.
+
+Can anyone fill me in on the current thinking of the future of support 
+for directory delegations in the Linux NFS client?
+
+-Bradley
+
+
