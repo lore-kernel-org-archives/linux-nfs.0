@@ -2,369 +2,121 @@ Return-Path: <SRS0=5sV6=SF=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,USER_AGENT_MUTT
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-1.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS,
+	URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3E242C4360F
-	for <linux-nfs@archiver.kernel.org>; Wed,  3 Apr 2019 01:03:12 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id CA57FC4360F
+	for <linux-nfs@archiver.kernel.org>; Wed,  3 Apr 2019 02:03:01 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 0E08D206DF
-	for <linux-nfs@archiver.kernel.org>; Wed,  3 Apr 2019 01:03:12 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 542C9206B7
+	for <linux-nfs@archiver.kernel.org>; Wed,  3 Apr 2019 02:03:01 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (1024-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="Vgi01k0Q"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726130AbfDCBDL (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 2 Apr 2019 21:03:11 -0400
-Received: from mx1.redhat.com ([209.132.183.28]:49548 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726071AbfDCBDL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 2 Apr 2019 21:03:11 -0400
-Received: from smtp.corp.redhat.com (int-mx06.intmail.prod.int.phx2.redhat.com [10.5.11.16])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id B2F73307D91F;
-        Wed,  3 Apr 2019 01:03:10 +0000 (UTC)
-Received: from parsley.fieldses.org (ovpn-121-10.rdu2.redhat.com [10.10.121.10])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 1405B5C708;
-        Wed,  3 Apr 2019 01:03:10 +0000 (UTC)
-Received: by parsley.fieldses.org (Postfix, from userid 2815)
-        id 121A6180A39; Tue,  2 Apr 2019 21:03:09 -0400 (EDT)
-Date:   Tue, 2 Apr 2019 21:03:09 -0400
-From:   "J. Bruce Fields" <bfields@redhat.com>
-To:     Trond Myklebust <trondmy@gmail.com>
-Cc:     linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 5/5] nfsd: knfsd must use the container user namespace
-Message-ID: <20190403010307.GB11222@parsley.fieldses.org>
-References: <20190402234411.28204-1-trond.myklebust@hammerspace.com>
- <20190402234411.28204-2-trond.myklebust@hammerspace.com>
- <20190402234411.28204-3-trond.myklebust@hammerspace.com>
- <20190402234411.28204-4-trond.myklebust@hammerspace.com>
- <20190402234411.28204-5-trond.myklebust@hammerspace.com>
- <20190402234411.28204-6-trond.myklebust@hammerspace.com>
+        id S1726797AbfDCCDA (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 2 Apr 2019 22:03:00 -0400
+Received: from mail-eopbgr710104.outbound.protection.outlook.com ([40.107.71.104]:6077
+        "EHLO NAM05-BY2-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1726157AbfDCCC7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 2 Apr 2019 22:02:59 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=hammerspace.com;
+ s=selector1;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=sqgtOHYHBbFJAzxVWlaAGCQ9DHghqgRpIEttlnDg8hU=;
+ b=Vgi01k0QHJcs9cAOIhbM7zQOLF8FfDouQts/KQwQIEVLE1uBRiAraJZFpIrzeTkdH3N6NENPHvQG3e8xXI2P5YlEkgEAchWIU9Dlf5x5Y0dnf21ebLpjlthRZhYGjDklYq+4n0Iki0ML3F5S9bONt1edl5iD0/deij3e7fNUT8A=
+Received: from SN6PR13MB2494.namprd13.prod.outlook.com (52.135.95.148) by
+ SN6PR13MB2319.namprd13.prod.outlook.com (52.135.94.26) with Microsoft SMTP
+ Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ 15.20.1771.10; Wed, 3 Apr 2019 02:02:54 +0000
+Received: from SN6PR13MB2494.namprd13.prod.outlook.com
+ ([fe80::30dc:67e2:d25a:f1d3]) by SN6PR13MB2494.namprd13.prod.outlook.com
+ ([fe80::30dc:67e2:d25a:f1d3%6]) with mapi id 15.20.1771.007; Wed, 3 Apr 2019
+ 02:02:54 +0000
+From:   Trond Myklebust <trondmy@hammerspace.com>
+To:     "bfields@fieldses.org" <bfields@fieldses.org>
+CC:     "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "bradley.kuszmaul@oracle.com" <bradley.kuszmaul@oracle.com>
+Subject: Re: directory delegations
+Thread-Topic: directory delegations
+Thread-Index: AQHU6KcNiRPQ7r4+DEebmwXdEDXzDKYpDBcAgAAU+ICAACXbAIAAJEkAgAAryACAABpogA==
+Date:   Wed, 3 Apr 2019 02:02:54 +0000
+Message-ID: <ec8d33473da41b3bde45f5ef1b4a02b98a535ac5.camel@hammerspace.com>
+References: <2065755c-f888-9c62-f6e5-f143d42c51ee@oracle.com>
+         <20190402161116.GA2828@fieldses.org>
+         <2f1f6582-3672-1361-4392-80cb1e62e19c@oracle.com>
+         <20190402194148.GA5269@fieldses.org>
+         <58230e155813e866cb057e6543ab7e61f51fedf6.camel@hammerspace.com>
+         <20190403002822.GA7667@fieldses.org>
+In-Reply-To: <20190403002822.GA7667@fieldses.org>
+Accept-Language: en-US, en-GB
+Content-Language: en-US
+X-MS-Has-Attach: 
+X-MS-TNEF-Correlator: 
+authentication-results: spf=none (sender IP is )
+ smtp.mailfrom=trondmy@hammerspace.com; 
+x-originating-ip: [63.235.104.78]
+x-ms-publictraffictype: Email
+x-ms-office365-filtering-correlation-id: 1c64b967-ce11-4a25-1e58-08d6b7d87c63
+x-microsoft-antispam: BCL:0;PCL:0;RULEID:(2390118)(7020095)(4652040)(8989299)(5600139)(711020)(4605104)(4534185)(4627221)(201703031133081)(201702281549075)(8990200)(2017052603328)(7193020);SRVR:SN6PR13MB2319;
+x-ms-traffictypediagnostic: SN6PR13MB2319:
+x-ms-exchange-purlcount: 2
+x-microsoft-antispam-prvs: <SN6PR13MB2319A373939A06E4BB9C3992B8570@SN6PR13MB2319.namprd13.prod.outlook.com>
+x-forefront-prvs: 0996D1900D
+x-forefront-antispam-report: SFV:NSPM;SFS:(10019020)(376002)(136003)(366004)(39830400003)(396003)(346002)(189003)(199004)(2501003)(2906002)(71200400001)(71190400001)(118296001)(66066001)(256004)(106356001)(81166006)(1730700003)(105586002)(93886005)(99286004)(6916009)(3480700005)(81156014)(316002)(8936002)(8676002)(54906003)(2351001)(25786009)(561944003)(7736002)(221733001)(2616005)(4326008)(6246003)(6486002)(6306002)(5640700003)(5660300002)(6436002)(486006)(6512007)(53936002)(305945005)(7116003)(97736004)(476003)(229853002)(11346002)(446003)(68736007)(36756003)(26005)(14454004)(6506007)(86362001)(102836004)(966005)(6116002)(186003)(478600001)(76176011)(3846002)(111123002);DIR:OUT;SFP:1102;SCL:1;SRVR:SN6PR13MB2319;H:SN6PR13MB2494.namprd13.prod.outlook.com;FPR:;SPF:None;LANG:en;PTR:InfoNoRecords;MX:1;A:1;
+received-spf: None (protection.outlook.com: hammerspace.com does not designate
+ permitted sender hosts)
+x-ms-exchange-senderadcheck: 1
+x-microsoft-antispam-message-info: hfb5cEc/sdjlija5CRJNPA9Elo+vYWNDe3OWmUfyHfrdlX+jA3f7QQDgawSc9+AlRb7Y6smOVMVLB3ctWZ0sCNVQApTdztT+Z2aBwmZ6neGGrUJg6wC/Nurz8SERn7JmcmKlKzB8TIE0g42pZWANAhmEpkrFZYYJvAgpCHNZTq3PTqik4/ADhRCEfrXp32dDPw4FVpXrGM3j71VnAB08bcx7E1SJq4TYGGwpuZ79iYTJ1qWLtJVYBG54C/QgYsiR5G1d+qCXfKVGEMtgjSRRko+zEH+5iqqNrjnzd3K2Z5QGR8F3g4qdeu8q8qnIUal0JL+E4OPctszdj6ZlyN+S0TftwmsbPCzcG/Ps96MQObiueje80dCE4FhhF0ODZFF71HHmL9aE6E70cNZj7hdDxUka2hNdgVZBkWFOX/T99/I=
+Content-Type: text/plain; charset="utf-8"
+Content-ID: <54536D16728F824DB7C25653833EDC85@namprd13.prod.outlook.com>
+Content-Transfer-Encoding: base64
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20190402234411.28204-6-trond.myklebust@hammerspace.com>
-User-Agent: Mutt/1.11.3 (2019-02-01)
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.16
-X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.48]); Wed, 03 Apr 2019 01:03:10 +0000 (UTC)
+X-OriginatorOrg: hammerspace.com
+X-MS-Exchange-CrossTenant-Network-Message-Id: 1c64b967-ce11-4a25-1e58-08d6b7d87c63
+X-MS-Exchange-CrossTenant-originalarrivaltime: 03 Apr 2019 02:02:54.5592
+ (UTC)
+X-MS-Exchange-CrossTenant-fromentityheader: Hosted
+X-MS-Exchange-CrossTenant-id: 0d4fed5c-3a70-46fe-9430-ece41741f59e
+X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: SN6PR13MB2319
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Tue, Apr 02, 2019 at 04:44:11PM -0700, Trond Myklebust wrote:
-> Convert knfsd to use the user namespace of the container that started
-> the server processes.
-
-The container that created the socket, right?  The processes are still
-shared.
-
---b.
-
-> 
-> Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
-> ---
->  fs/nfsd/export.c    | 18 ++++++++++--------
->  fs/nfsd/nfs3xdr.c   | 21 +++++++++++----------
->  fs/nfsd/nfs4idmap.c |  8 ++++----
->  fs/nfsd/nfs4xdr.c   |  5 +++--
->  fs/nfsd/nfsd.h      |  7 +++++++
->  fs/nfsd/nfsxdr.c    | 17 +++++++++--------
->  6 files changed, 44 insertions(+), 32 deletions(-)
-> 
-> diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
-> index 802993d8912f..baa01956a5b3 100644
-> --- a/fs/nfsd/export.c
-> +++ b/fs/nfsd/export.c
-> @@ -570,13 +570,13 @@ static int svc_export_parse(struct cache_detail *cd, char *mesg, int mlen)
->  		err = get_int(&mesg, &an_int);
->  		if (err)
->  			goto out3;
-> -		exp.ex_anon_uid= make_kuid(&init_user_ns, an_int);
-> +		exp.ex_anon_uid= make_kuid(current_user_ns(), an_int);
->  
->  		/* anon gid */
->  		err = get_int(&mesg, &an_int);
->  		if (err)
->  			goto out3;
-> -		exp.ex_anon_gid= make_kgid(&init_user_ns, an_int);
-> +		exp.ex_anon_gid= make_kgid(current_user_ns(), an_int);
->  
->  		/* fsid */
->  		err = get_int(&mesg, &an_int);
-> @@ -1170,15 +1170,17 @@ static void show_secinfo(struct seq_file *m, struct svc_export *exp)
->  static void exp_flags(struct seq_file *m, int flag, int fsid,
->  		kuid_t anonu, kgid_t anong, struct nfsd4_fs_locations *fsloc)
->  {
-> +	struct user_namespace *userns = m->file->f_cred->user_ns;
-> +
->  	show_expflags(m, flag, NFSEXP_ALLFLAGS);
->  	if (flag & NFSEXP_FSID)
->  		seq_printf(m, ",fsid=%d", fsid);
-> -	if (!uid_eq(anonu, make_kuid(&init_user_ns, (uid_t)-2)) &&
-> -	    !uid_eq(anonu, make_kuid(&init_user_ns, 0x10000-2)))
-> -		seq_printf(m, ",anonuid=%u", from_kuid(&init_user_ns, anonu));
-> -	if (!gid_eq(anong, make_kgid(&init_user_ns, (gid_t)-2)) &&
-> -	    !gid_eq(anong, make_kgid(&init_user_ns, 0x10000-2)))
-> -		seq_printf(m, ",anongid=%u", from_kgid(&init_user_ns, anong));
-> +	if (!uid_eq(anonu, make_kuid(userns, (uid_t)-2)) &&
-> +	    !uid_eq(anonu, make_kuid(userns, 0x10000-2)))
-> +		seq_printf(m, ",anonuid=%u", from_kuid_munged(userns, anonu));
-> +	if (!gid_eq(anong, make_kgid(userns, (gid_t)-2)) &&
-> +	    !gid_eq(anong, make_kgid(userns, 0x10000-2)))
-> +		seq_printf(m, ",anongid=%u", from_kgid_munged(userns, anong));
->  	if (fsloc && fsloc->locations_count > 0) {
->  		char *loctype = (fsloc->migrated) ? "refer" : "replicas";
->  		int i;
-> diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
-> index 93fea246f676..9c9d0dffbb32 100644
-> --- a/fs/nfsd/nfs3xdr.c
-> +++ b/fs/nfsd/nfs3xdr.c
-> @@ -96,7 +96,7 @@ decode_filename(__be32 *p, char **namp, unsigned int *lenp)
->  }
->  
->  static __be32 *
-> -decode_sattr3(__be32 *p, struct iattr *iap)
-> +decode_sattr3(__be32 *p, struct iattr *iap, struct user_namespace *userns)
->  {
->  	u32	tmp;
->  
-> @@ -107,12 +107,12 @@ decode_sattr3(__be32 *p, struct iattr *iap)
->  		iap->ia_mode = ntohl(*p++);
->  	}
->  	if (*p++) {
-> -		iap->ia_uid = make_kuid(&init_user_ns, ntohl(*p++));
-> +		iap->ia_uid = make_kuid(userns, ntohl(*p++));
->  		if (uid_valid(iap->ia_uid))
->  			iap->ia_valid |= ATTR_UID;
->  	}
->  	if (*p++) {
-> -		iap->ia_gid = make_kgid(&init_user_ns, ntohl(*p++));
-> +		iap->ia_gid = make_kgid(userns, ntohl(*p++));
->  		if (gid_valid(iap->ia_gid))
->  			iap->ia_valid |= ATTR_GID;
->  	}
-> @@ -165,12 +165,13 @@ static __be32 *
->  encode_fattr3(struct svc_rqst *rqstp, __be32 *p, struct svc_fh *fhp,
->  	      struct kstat *stat)
->  {
-> +	struct user_namespace *userns = nfsd_user_namespace(rqstp);
->  	struct timespec ts;
->  	*p++ = htonl(nfs3_ftypes[(stat->mode & S_IFMT) >> 12]);
->  	*p++ = htonl((u32) (stat->mode & S_IALLUGO));
->  	*p++ = htonl((u32) stat->nlink);
-> -	*p++ = htonl((u32) from_kuid(&init_user_ns, stat->uid));
-> -	*p++ = htonl((u32) from_kgid(&init_user_ns, stat->gid));
-> +	*p++ = htonl((u32) from_kuid_munged(userns, stat->uid));
-> +	*p++ = htonl((u32) from_kgid_munged(userns, stat->gid));
->  	if (S_ISLNK(stat->mode) && stat->size > NFS3_MAXPATHLEN) {
->  		p = xdr_encode_hyper(p, (u64) NFS3_MAXPATHLEN);
->  	} else {
-> @@ -325,7 +326,7 @@ nfs3svc_decode_sattrargs(struct svc_rqst *rqstp, __be32 *p)
->  	p = decode_fh(p, &args->fh);
->  	if (!p)
->  		return 0;
-> -	p = decode_sattr3(p, &args->attrs);
-> +	p = decode_sattr3(p, &args->attrs, nfsd_user_namespace(rqstp));
->  
->  	if ((args->check_guard = ntohl(*p++)) != 0) { 
->  		struct timespec time; 
-> @@ -455,7 +456,7 @@ nfs3svc_decode_createargs(struct svc_rqst *rqstp, __be32 *p)
->  	switch (args->createmode = ntohl(*p++)) {
->  	case NFS3_CREATE_UNCHECKED:
->  	case NFS3_CREATE_GUARDED:
-> -		p = decode_sattr3(p, &args->attrs);
-> +		p = decode_sattr3(p, &args->attrs, nfsd_user_namespace(rqstp));
->  		break;
->  	case NFS3_CREATE_EXCLUSIVE:
->  		args->verf = p;
-> @@ -476,7 +477,7 @@ nfs3svc_decode_mkdirargs(struct svc_rqst *rqstp, __be32 *p)
->  	if (!(p = decode_fh(p, &args->fh)) ||
->  	    !(p = decode_filename(p, &args->name, &args->len)))
->  		return 0;
-> -	p = decode_sattr3(p, &args->attrs);
-> +	p = decode_sattr3(p, &args->attrs, nfsd_user_namespace(rqstp));
->  
->  	return xdr_argsize_check(rqstp, p);
->  }
-> @@ -491,7 +492,7 @@ nfs3svc_decode_symlinkargs(struct svc_rqst *rqstp, __be32 *p)
->  	if (!(p = decode_fh(p, &args->ffh)) ||
->  	    !(p = decode_filename(p, &args->fname, &args->flen)))
->  		return 0;
-> -	p = decode_sattr3(p, &args->attrs);
-> +	p = decode_sattr3(p, &args->attrs, nfsd_user_namespace(rqstp));
->  
->  	args->tlen = ntohl(*p++);
->  
-> @@ -519,7 +520,7 @@ nfs3svc_decode_mknodargs(struct svc_rqst *rqstp, __be32 *p)
->  
->  	if (args->ftype == NF3BLK  || args->ftype == NF3CHR
->  	 || args->ftype == NF3SOCK || args->ftype == NF3FIFO)
-> -		p = decode_sattr3(p, &args->attrs);
-> +		p = decode_sattr3(p, &args->attrs, nfsd_user_namespace(rqstp));
->  
->  	if (args->ftype == NF3BLK || args->ftype == NF3CHR) {
->  		args->major = ntohl(*p++);
-> diff --git a/fs/nfsd/nfs4idmap.c b/fs/nfsd/nfs4idmap.c
-> index bf137fec33ff..2961016097ac 100644
-> --- a/fs/nfsd/nfs4idmap.c
-> +++ b/fs/nfsd/nfs4idmap.c
-> @@ -634,7 +634,7 @@ nfsd_map_name_to_uid(struct svc_rqst *rqstp, const char *name, size_t namelen,
->  		return nfserr_inval;
->  
->  	status = do_name_to_id(rqstp, IDMAP_TYPE_USER, name, namelen, &id);
-> -	*uid = make_kuid(&init_user_ns, id);
-> +	*uid = make_kuid(nfsd_user_namespace(rqstp), id);
->  	if (!uid_valid(*uid))
->  		status = nfserr_badowner;
->  	return status;
-> @@ -651,7 +651,7 @@ nfsd_map_name_to_gid(struct svc_rqst *rqstp, const char *name, size_t namelen,
->  		return nfserr_inval;
->  
->  	status = do_name_to_id(rqstp, IDMAP_TYPE_GROUP, name, namelen, &id);
-> -	*gid = make_kgid(&init_user_ns, id);
-> +	*gid = make_kgid(nfsd_user_namespace(rqstp), id);
->  	if (!gid_valid(*gid))
->  		status = nfserr_badowner;
->  	return status;
-> @@ -660,13 +660,13 @@ nfsd_map_name_to_gid(struct svc_rqst *rqstp, const char *name, size_t namelen,
->  __be32 nfsd4_encode_user(struct xdr_stream *xdr, struct svc_rqst *rqstp,
->  			 kuid_t uid)
->  {
-> -	u32 id = from_kuid(&init_user_ns, uid);
-> +	u32 id = from_kuid_munged(nfsd_user_namespace(rqstp), uid);
->  	return encode_name_from_id(xdr, rqstp, IDMAP_TYPE_USER, id);
->  }
->  
->  __be32 nfsd4_encode_group(struct xdr_stream *xdr, struct svc_rqst *rqstp,
->  			  kgid_t gid)
->  {
-> -	u32 id = from_kgid(&init_user_ns, gid);
-> +	u32 id = from_kgid_munged(nfsd_user_namespace(rqstp), gid);
->  	return encode_name_from_id(xdr, rqstp, IDMAP_TYPE_GROUP, id);
->  }
-> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-> index 3de42a729093..0a8063c94c79 100644
-> --- a/fs/nfsd/nfs4xdr.c
-> +++ b/fs/nfsd/nfs4xdr.c
-> @@ -521,6 +521,7 @@ nfsd4_decode_access(struct nfsd4_compoundargs *argp, struct nfsd4_access *access
->  static __be32 nfsd4_decode_cb_sec(struct nfsd4_compoundargs *argp, struct nfsd4_cb_sec *cbs)
->  {
->  	DECODE_HEAD;
-> +	struct user_namespace *userns = nfsd_user_namespace(argp->rqstp);
->  	u32 dummy, uid, gid;
->  	char *machine_name;
->  	int i;
-> @@ -563,8 +564,8 @@ static __be32 nfsd4_decode_cb_sec(struct nfsd4_compoundargs *argp, struct nfsd4_
->  			dummy = be32_to_cpup(p++);
->  			READ_BUF(dummy * 4);
->  			if (cbs->flavor == (u32)(-1)) {
-> -				kuid_t kuid = make_kuid(&init_user_ns, uid);
-> -				kgid_t kgid = make_kgid(&init_user_ns, gid);
-> +				kuid_t kuid = make_kuid(userns, uid);
-> +				kgid_t kgid = make_kgid(userns, gid);
->  				if (uid_valid(kuid) && gid_valid(kgid)) {
->  					cbs->uid = kuid;
->  					cbs->gid = kgid;
-> diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
-> index d200c8680259..24187b5dd638 100644
-> --- a/fs/nfsd/nfsd.h
-> +++ b/fs/nfsd/nfsd.h
-> @@ -17,6 +17,7 @@
->  #include <linux/nfs3.h>
->  #include <linux/nfs4.h>
->  #include <linux/sunrpc/svc.h>
-> +#include <linux/sunrpc/svc_xprt.h>
->  #include <linux/sunrpc/msg_prot.h>
->  
->  #include <uapi/linux/nfsd/debug.h>
-> @@ -112,6 +113,12 @@ static inline int nfsd_v4client(struct svc_rqst *rq)
->  {
->  	return rq->rq_prog == NFS_PROGRAM && rq->rq_vers == 4;
->  }
-> +static inline struct user_namespace *
-> +nfsd_user_namespace(const struct svc_rqst *rqstp)
-> +{
-> +	const struct cred *cred = rqstp->rq_xprt->xpt_cred;
-> +	return cred ? cred->user_ns : &init_user_ns;
-> +}
->  
->  /* 
->   * NFSv4 State
-> diff --git a/fs/nfsd/nfsxdr.c b/fs/nfsd/nfsxdr.c
-> index 6b2e8b73d36e..b51fe515f06f 100644
-> --- a/fs/nfsd/nfsxdr.c
-> +++ b/fs/nfsd/nfsxdr.c
-> @@ -71,7 +71,7 @@ decode_filename(__be32 *p, char **namp, unsigned int *lenp)
->  }
->  
->  static __be32 *
-> -decode_sattr(__be32 *p, struct iattr *iap)
-> +decode_sattr(__be32 *p, struct iattr *iap, struct user_namespace *userns)
->  {
->  	u32	tmp, tmp1;
->  
-> @@ -86,12 +86,12 @@ decode_sattr(__be32 *p, struct iattr *iap)
->  		iap->ia_mode = tmp;
->  	}
->  	if ((tmp = ntohl(*p++)) != (u32)-1) {
-> -		iap->ia_uid = make_kuid(&init_user_ns, tmp);
-> +		iap->ia_uid = make_kuid(userns, tmp);
->  		if (uid_valid(iap->ia_uid))
->  			iap->ia_valid |= ATTR_UID;
->  	}
->  	if ((tmp = ntohl(*p++)) != (u32)-1) {
-> -		iap->ia_gid = make_kgid(&init_user_ns, tmp);
-> +		iap->ia_gid = make_kgid(userns, tmp);
->  		if (gid_valid(iap->ia_gid))
->  			iap->ia_valid |= ATTR_GID;
->  	}
-> @@ -129,6 +129,7 @@ static __be32 *
->  encode_fattr(struct svc_rqst *rqstp, __be32 *p, struct svc_fh *fhp,
->  	     struct kstat *stat)
->  {
-> +	struct user_namespace *userns = nfsd_user_namespace(rqstp);
->  	struct dentry	*dentry = fhp->fh_dentry;
->  	int type;
->  	struct timespec64 time;
-> @@ -139,8 +140,8 @@ encode_fattr(struct svc_rqst *rqstp, __be32 *p, struct svc_fh *fhp,
->  	*p++ = htonl(nfs_ftypes[type >> 12]);
->  	*p++ = htonl((u32) stat->mode);
->  	*p++ = htonl((u32) stat->nlink);
-> -	*p++ = htonl((u32) from_kuid(&init_user_ns, stat->uid));
-> -	*p++ = htonl((u32) from_kgid(&init_user_ns, stat->gid));
-> +	*p++ = htonl((u32) from_kuid_munged(userns, stat->uid));
-> +	*p++ = htonl((u32) from_kgid_munged(userns, stat->gid));
->  
->  	if (S_ISLNK(type) && stat->size > NFS_MAXPATHLEN) {
->  		*p++ = htonl(NFS_MAXPATHLEN);
-> @@ -216,7 +217,7 @@ nfssvc_decode_sattrargs(struct svc_rqst *rqstp, __be32 *p)
->  	p = decode_fh(p, &args->fh);
->  	if (!p)
->  		return 0;
-> -	p = decode_sattr(p, &args->attrs);
-> +	p = decode_sattr(p, &args->attrs, nfsd_user_namespace(rqstp));
->  
->  	return xdr_argsize_check(rqstp, p);
->  }
-> @@ -319,7 +320,7 @@ nfssvc_decode_createargs(struct svc_rqst *rqstp, __be32 *p)
->  	if (   !(p = decode_fh(p, &args->fh))
->  	    || !(p = decode_filename(p, &args->name, &args->len)))
->  		return 0;
-> -	p = decode_sattr(p, &args->attrs);
-> +	p = decode_sattr(p, &args->attrs, nfsd_user_namespace(rqstp));
->  
->  	return xdr_argsize_check(rqstp, p);
->  }
-> @@ -398,7 +399,7 @@ nfssvc_decode_symlinkargs(struct svc_rqst *rqstp, __be32 *p)
->  			return 0;
->  		p += xdrlen;
->  	}
-> -	decode_sattr(p, &args->attrs);
-> +	decode_sattr(p, &args->attrs, nfsd_user_namespace(rqstp));
->  
->  	return 1;
->  }
-> -- 
-> 2.20.1
-> 
+T24gVHVlLCAyMDE5LTA0LTAyIGF0IDIwOjI4IC0wNDAwLCBiZmllbGRzQGZpZWxkc2VzLm9yZyB3
+cm90ZToNCj4gT24gVHVlLCBBcHIgMDIsIDIwMTkgYXQgMDk6NTE6NDJQTSArMDAwMCwgVHJvbmQg
+TXlrbGVidXN0IHdyb3RlOg0KPiA+IE9uIFR1ZSwgMjAxOS0wNC0wMiBhdCAxNTo0MSAtMDQwMCwg
+Si4gQnJ1Y2UgRmllbGRzIHdyb3RlOg0KPiA+ID4gT24gVHVlLCBBcHIgMDIsIDIwMTkgYXQgMDE6
+MjY6MTlQTSAtMDQwMCwgQnJhZGxleSBDLiBLdXN6bWF1bA0KPiA+ID4gd3JvdGU6DQo+ID4gPiA+
+IE15IHNpbXBsZSBtb2RlbCBvZiBtZXRhZGF0YSBvcGVyYXRpb25zIGlzIHRvIHVudGFyIHNvbWV0
+aGluZw0KPiA+ID4gPiBsaWtlDQo+ID4gPiA+IHRoZSBsaW51eCBzb3VyY2VzLg0KPiA+ID4gPiAN
+Cj4gPiA+ID4gRWFjaCBmaWxlIGluY3VycyBhIExPT0tVUCwgQ1JFQVRFLCBTRVRBVFRSLCBhbmQg
+V1JJVEUsIGVhY2ggb2YNCj4gPiA+ID4gd2hpY2gNCj4gPiA+ID4gaXMgZmFpcmx5IGhpZ2ggbGF0
+ZW5jeSAoZXZlbiB0aGUgV1JJVEUgZW5kcyB1cCBiZWluZyBkb25lDQo+ID4gPiA+IGVzc2VudGlh
+bGx5IHN5bmNocm9ub3VzbHkgYmVjYXVzZSB0YXIgY2xvc2VzIHRoZSBmaWxlIGFmdGVyIGl0cw0K
+PiA+ID4gPiB3cml0ZSgyKSBjYWxsLikNCj4gPiA+IA0KPiA+ID4gQW4gb3JkaW5hcnkgZmlsZSB3
+cml0ZSBkZWxlZ2F0aW9uIGNhbiBoZWxwIHdpdGggc29tZSBvZiB0aGF0Lg0KPiA+ID4gDQo+ID4g
+PiA+IEkgZ3Vlc3MgZGlyZWN0b3J5IGRlbGVnYXRpb25zIG1pZ2h0IHNhdmUgdGhlIGNvc3Qgb2Yg
+TE9PS1VQLg0KPiA+ID4gPiANCj4gPiA+ID4gSXMgdGhlcmUgYW55IGhvcGUgZm9yIGdldHRpbmcg
+d3JpdGUgZGVsZWdhdGlvbnM/DQo+ID4gPiA+IA0KPiA+ID4gPiBXaGF0IG90aGVyIHN0ZXBzIG1p
+Z2h0IGJlIHBvc3NpYmxlPw0KPiA+ID4gDQo+ID4gPiBUcm9uZCwgd2Fzbid0IHRoZXJlIGEgZHJh
+ZnQgZGVzY3JpYmluZyB5b3VyIGlkZWEgdGhhdCBhIHNlcnZlcg0KPiA+ID4gc2hvdWxkDQo+ID4g
+PiBiZQ0KPiA+ID4gYWJsZSB0byBncmFudCBhIHdyaXRlIGRlbGVnYXRpb24gb24gY3JlYXRlIGFu
+ZCBkZWxheSB0aGUgc3luYz8gIEkNCj4gPiA+IGNhbid0DQo+ID4gPiBmaW5kIGl0IHJpZ2h0IG5v
+dy4NCj4gPiANCj4gPiBEbyB5b3UgbWVhbiB0aGlzIG9uZT8gDQo+ID4gaHR0cHM6Ly90b29scy5p
+ZXRmLm9yZy9odG1sL2RyYWZ0LWhheW5lcy1uZnN2NC1kZWxzdGlkLTAwDQo+IA0KPiBNYXliZSBp
+dCdzIHRvbyBzdWJ0bGUgZm9yIG1lLiAgV2hhdCdzIHRoZSBwYXJ0IHRoYXQgYWxsb3dzIGRlbGF5
+aW5nDQo+IHN5bmMNCj4gb24gY3JlYXRlPw0KPiANCg0KVGhlIGNyZWF0ZSBpdHNlbGYgbmVlZHMg
+dG8gYmUgc3luYywgYnV0IHRoZSBhdHRyaWJ1dGUgZGVsZWdhdGlvbnMgbWVhbg0KdGhhdCB0aGUg
+Y2xpZW50LCBub3QgdGhlIHNlcnZlciwgaXMgYXV0aG9yaXRhdGl2ZSBmb3IgdGhlIHRpbWVzdGFt
+cHMuDQpTbyB0aGUgY2xpZW50IG5vdyBvd25zIHRoZSBhdGltZSBhbmQgbXRpbWUsIGFuZCBqdXN0
+IHNldHMgdGhlbSBhcyBwYXJ0DQpvZiB0aGUgKGFzeW5jaHJvbm91cykgZGVsZWdyZXR1cm4gc29t
+ZSB0aW1lIGFmdGVyIHlvdSBhcmUgZG9uZSB3cml0aW5nLg0KDQpXZXJlIHlvdSBwZXJoYXBzIHRo
+aW5raW5nIGFib3V0IHRoaXMgZWFybGllciBwcm9wb3NhbD8gDQpodHRwczovL3Rvb2xzLmlldGYu
+b3JnL2h0bWwvZHJhZnQtbXlrbGVidXN0LW5mc3Y0LXVuc3RhYmxlLWZpbGUtY3JlYXRpb24tMDEN
+Cg0KQ2hlZXJzDQogIFRyb25kDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xp
+ZW50IG1haW50YWluZXIsIEhhbW1lcnNwYWNlDQp0cm9uZC5teWtsZWJ1c3RAaGFtbWVyc3BhY2Uu
+Y29tDQoNCg0K
