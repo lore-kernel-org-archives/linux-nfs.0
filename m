@@ -3,35 +3,34 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
 X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS autolearn=ham
-	autolearn_force=no version=3.4.0
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1A025C4360F
-	for <linux-nfs@archiver.kernel.org>; Thu,  4 Apr 2019 22:21:35 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 65783C4360F
+	for <linux-nfs@archiver.kernel.org>; Thu,  4 Apr 2019 22:48:00 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id D60E02177E
-	for <linux-nfs@archiver.kernel.org>; Thu,  4 Apr 2019 22:21:34 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 2F818217D4
+	for <linux-nfs@archiver.kernel.org>; Thu,  4 Apr 2019 22:48:00 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729833AbfDDWVe (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 4 Apr 2019 18:21:34 -0400
-Received: from mx2.suse.de ([195.135.220.15]:45820 "EHLO mx1.suse.de"
+        id S1730447AbfDDWr7 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 4 Apr 2019 18:47:59 -0400
+Received: from mx2.suse.de ([195.135.220.15]:50124 "EHLO mx1.suse.de"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1727441AbfDDWVe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 4 Apr 2019 18:21:34 -0400
+        id S1730437AbfDDWr7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 4 Apr 2019 18:47:59 -0400
 X-Virus-Scanned: by amavisd-new at test-mx.suse.de
 Received: from relay2.suse.de (unknown [195.135.220.254])
-        by mx1.suse.de (Postfix) with ESMTP id AB5D4AD07;
-        Thu,  4 Apr 2019 22:21:31 +0000 (UTC)
+        by mx1.suse.de (Postfix) with ESMTP id 142BCAF68;
+        Thu,  4 Apr 2019 22:47:57 +0000 (UTC)
 From:   NeilBrown <neilb@suse.com>
-To:     "J. Bruce Fields" <bfields@fieldses.org>,
-        Vasily Averin <vvs@virtuozzo.com>
-Date:   Fri, 05 Apr 2019 09:21:23 +1100
-Cc:     Jeff Layton <jlayton@kernel.org>, linux-nfs@vger.kernel.org,
-        Pavel Tikhomirov <ptikhomirov@virtuozzo.com>
-Subject: Re: [PATCH 0/1] cache_head leak in sunrpc_cache_lookup()
-In-Reply-To: <87zhtso38v.fsf@notabene.neil.brown.name>
-References: <d6bac5b8-9ee9-289c-7e85-0d4b6f55c931@virtuozzo.com> <20181128233514.GC24160@fieldses.org> <87zhtso38v.fsf@notabene.neil.brown.name>
-Message-ID: <87sguxza1o.fsf@notabene.neil.brown.name>
+To:     Murphy Zhou <jencce.kernel@gmail.com>, linux-nfs@vger.kernel.org
+Date:   Fri, 05 Apr 2019 09:47:51 +1100
+Cc:     bfields@fieldses.org, jlayton@kernel.org,
+        Murphy Zhou <jencce.kernel@gmail.com>
+Subject: Re: [PATCH v2] nfsd/nfsd3_proc_readdir: fix buffer count and page pointers
+In-Reply-To: <20190404065711.19763-1-jencce.kernel@gmail.com>
+References: <20190404065711.19763-1-jencce.kernel@gmail.com>
+Message-ID: <87mul5z8tk.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
 Content-Type: multipart/signed; boundary="=-=-=";
         micalg=pgp-sha256; protocol="application/pgp-signature"
@@ -44,130 +43,126 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 Content-Type: text/plain
 Content-Transfer-Encoding: quoted-printable
 
-On Thu, Nov 29 2018, NeilBrown wrote:
+On Thu, Apr 04 2019, Murphy Zhou wrote:
 
-> On Wed, Nov 28 2018, J. Bruce Fields wrote:
+> After this commit
+>   f875a79 nfsd: allow nfsv3 readdir request to be larger.
+> nfsv3 readdir request size can be larger than PAGE_SIZE. So if the
+> directory been read is large enough, we can use multiple pages
+> in rq_respages. Update buffer count and page pointers like we do
+> in readdirplus to make this happen.
 >
->> On Wed, Nov 28, 2018 at 11:45:46AM +0300, Vasily Averin wrote:
->>> Dear all, we have found memory leak on OpenVz7 node and believe it
->>> affects mainline too.
->>>=20
->>> sunrpc_cache_lookup() removes exprired cache_head from hash, however
->>> if it waits for reply on submitted cache_request both of them can leak
->>> forever, nobody cleans unhashed cache_heads.
->>>=20
->>> Originally we had claim on busy loop device of stopped container, that
->>> had executed nfs server inside.  Device was kept by mount that was
->>> detached from already destroyed mount namespace.  By using crash
->>> search we have found some structure with path struct related to our
->>> mount.  Finally we have found that it was alive svc_export struct used
->>> by to alive cache_request, however both of them pointed to already
->>> freed cache_detail.
->>>=20
->>> We decided that cache_detail was correctly freed during destroy of net
->>> namespace, however svc_export with taken path struct, cache_request
->>> and some other structures seems was leaked forever.
->>>=20
->>> This could  happen only if cache_head of svc_export was removed from
->>> hash on cache_detail before its destroy. Finally we have found that it
->>> could happen when sunrpc_cache_lookup() removes expired cache_head
->>> from hash.
->>>=20
->>> Usually it works correctly and cache_put(freeme) frees expired
->>> cache_head.  However in our case cache_head have an extra reference
->>> counter from stalled cache_request.  Becasue of cache_head was removed
->>> from hash of cache_detail it cannot be found in cache_clean() and its
->>> cache_request cannot be freed in cache_dequeue(). Memory leaks
->>> forever, exactly like we observed.
->>>=20
->>> After may attempts we have reproduced this situation on OpenVz7
->>> kernel, however our reproducer is quite long and complex.
->>> Unfortunately we still did not reproduced this problem on mainline
->>> kernel and did not validated the patch yet.
->>>=20
->>> It would be great if someone advised us some simple way to trigger
->>> described scenario.
->>
->> I think you should be able to produce hung upcalls by flushing the cache
->> (exportfs -f), then stopping mountd, then trying to access the
->> filesystem from a client.  Does that help?
->>
->>> We are not sure that our patch is correct, please let us know if our
->>> analyze missed something.
->>
->> It looks OK to me, but it would be helpful to have Neil's review too.
+> Now listing a directory within 3000 files will panic because we
+> are counting in a wrong way and would write on random page.
 >
-> Yes, it makes sense to me.
->  Reviewed-by: NeilBrown <neilb@suse.com>
+> Fixes: f875a79 "nfsd: allow nfsv3 readdir request to be larger"
+> Signed-off-by: Murphy Zhou <jencce.kernel@gmail.com>
+> ---
+>
+> v2:
+>   fix nfs3svc_decode_readdirargs to set page pointers like decode_readdir=
+plusargs
+>   do not test pointers in encode_entry as we've fixed them when decoding
+>
+>  fs/nfsd/nfs3proc.c | 17 +++++++++++++++--
+>  fs/nfsd/nfs3xdr.c  | 11 +++++++++--
+>  2 files changed, 24 insertions(+), 4 deletions(-)
+>
+> diff --git a/fs/nfsd/nfs3proc.c b/fs/nfsd/nfs3proc.c
+> index 8f933e8..9bc32af 100644
+> --- a/fs/nfsd/nfs3proc.c
+> +++ b/fs/nfsd/nfs3proc.c
+> @@ -442,7 +442,9 @@
+>  	struct nfsd3_readdirargs *argp =3D rqstp->rq_argp;
+>  	struct nfsd3_readdirres  *resp =3D rqstp->rq_resp;
+>  	__be32		nfserr;
+> -	int		count;
+> +	int		count =3D 0;
+> +	struct page	**p;
+> +	caddr_t		page_addr =3D NULL;
+>=20=20
+>  	dprintk("nfsd: READDIR(3)  %s %d bytes at %d\n",
+>  				SVCFH_fmt(&argp->fh),
+> @@ -462,7 +464,18 @@
+>  	nfserr =3D nfsd_readdir(rqstp, &resp->fh, (loff_t*) &argp->cookie,=20
+>  					&resp->common, nfs3svc_encode_entry);
+>  	memcpy(resp->verf, argp->verf, 8);
+> -	resp->count =3D resp->buffer - argp->buffer;
+> +	count =3D 0;
 
-Unfortunately I was wrong.  See below.
+Thanks - looks good.
+Setting 'count' to zero a second time looks a bit clumsy, but that is a
+minor detail.
 
+ Reviewed-by: NeilBrown <neilb@suse.com>
+
+Thanks,
 NeilBrown
 
-From: NeilBrown <neilb@suse.com>
-Subject: [PATCH] sunrpc: don't mark uninitialised items as VALID.
 
-A recent commit added a call to cache_fresh_locked()
-when an expired item was found.
-The call sets the CACHE_VALID flag, so it is important
-that the item actually is valid.
-There are two ways it could be valid:
-1/ If ->update has been called to fill in relevant content
-2/ If CACHE_NEGATIVE is set, to say that content doesn't exist.
-
-An expired item that is waiting for an update will be neither.
-Setting CACHE_VALID will mean that a subsequent call to cache_put()
-will be likely to dereference uninitialised pointers.
-
-So we must make sure the item is valid, and we already have code to do
-that in try_to_negate_entry().  This takes the hash lock and so cannot
-be used directly, so take out the two lines that we need and use them.
-
-Now cache_fresh_locked() is certain to be called only on
-a valid item.
-
-Cc: stable@kernel.org # 2.6.35
-Fixes: 4ecd55ea0742 ("sunrpc: fix cache_head leak due to queued request")
-Signed-off-by: NeilBrown <neilb@suse.com>
-=2D--
- net/sunrpc/cache.c | 2 ++
- 1 file changed, 2 insertions(+)
-
-diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
-index 12bb23b8e0c5..f5f8ce8c3443 100644
-=2D-- a/net/sunrpc/cache.c
-+++ b/net/sunrpc/cache.c
-@@ -105,6 +105,8 @@ static struct cache_head *sunrpc_cache_add_entry(struct=
- cache_detail *detail,
- 			if (cache_is_expired(detail, tmp)) {
- 				hlist_del_init_rcu(&tmp->cache_list);
- 				detail->entries --;
-+				if (cache_is_valid(tmp) =3D=3D -EAGAIN)
-+					set_bit(CACHE_NEGATIVE, &h->flags);
- 				cache_fresh_locked(tmp, 0, detail);
- 				freeme =3D tmp;
- 				break;
-=2D-=20
-2.14.0.rc0.dirty
-
+> +	for (p =3D rqstp->rq_respages + 1; p < rqstp->rq_next_page; p++) {
+> +		page_addr =3D page_address(*p);
+> +
+> +		if (((caddr_t)resp->buffer >=3D page_addr) &&
+> +		    ((caddr_t)resp->buffer < page_addr + PAGE_SIZE)) {
+> +			count +=3D (caddr_t)resp->buffer - page_addr;
+> +			break;
+> +		}
+> +		count +=3D PAGE_SIZE;
+> +	}
+> +	resp->count =3D count >> 2;
+>  	if (resp->offset) {
+>  		loff_t offset =3D argp->cookie;
+>=20=20
+> diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
+> index 93fea24..8d78912 100644
+> --- a/fs/nfsd/nfs3xdr.c
+> +++ b/fs/nfsd/nfs3xdr.c
+> @@ -573,6 +573,7 @@ void fill_post_wcc(struct svc_fh *fhp)
+>  nfs3svc_decode_readdirargs(struct svc_rqst *rqstp, __be32 *p)
+>  {
+>  	struct nfsd3_readdirargs *args =3D rqstp->rq_argp;
+> +	int len;
+>  	u32 max_blocksize =3D svc_max_payload(rqstp);
+>=20=20
+>  	p =3D decode_fh(p, &args->fh);
+> @@ -582,8 +583,14 @@ void fill_post_wcc(struct svc_fh *fhp)
+>  	args->verf   =3D p; p +=3D 2;
+>  	args->dircount =3D ~0;
+>  	args->count  =3D ntohl(*p++);
+> -	args->count  =3D min_t(u32, args->count, max_blocksize);
+> -	args->buffer =3D page_address(*(rqstp->rq_next_page++));
+> +	len =3D args->count  =3D min_t(u32, args->count, max_blocksize);
+> +
+> +	while (len > 0) {
+> +		struct page *p =3D *(rqstp->rq_next_page++);
+> +		if (!args->buffer)
+> +			args->buffer =3D page_address(p);
+> +		len -=3D PAGE_SIZE;
+> +	}
+>=20=20
+>  	return xdr_argsize_check(rqstp, p);
+>  }
+> --=20
+> 1.8.3.1
 
 --=-=-=
 Content-Type: application/pgp-signature; name="signature.asc"
 
 -----BEGIN PGP SIGNATURE-----
 
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlymg2MACgkQOeye3VZi
-gblvaA/+NxUWbnZk2JA/7nkLFZ/rE65ku/wi661AVVmZxcQODWeQOcbvxCmeJtjc
-mdTapZ1c4F9Z4nYqQoju3MN+ndT1lzQVGq2bLQ6t0cGQXfo0Ui7QHHSrbi9x9ytN
-jOcoi5QxpcxoO1zo0ATYTkfcouwWHZ58EHmbFHvC+Op9HEf+GM3n0hjaiy2OGW+1
-sApeSzhXvHEFU4homHnzWKH8sgiuEAPihpND2y7L0EiVFg+wOeEnLqmsDRbo91vx
-PYWShfUbE3kxx9QlUOaJ+0F7EIgCzUeUiI7JEN6jwOtvjwqE26ocdzE2sd4rx36O
-Z8PlmAKM9kIC5+9Abo7BG7DV0urD7e7k9fzmxAqz0tMLJvLGQOBxnHAzFd3qyQaT
-fCyYpXuIAMiX4+dPPc9le7lhms5pBF8olL1RTWw/4ojfSgNvAgmAjj988PURfs8+
-SuSA+5xJ5INdozb1hII5VWjuMf+XyZjPZ7oad90KI+EaOAh9X3OG/WuxHG2zYBso
-h7th5EWb91nqeJBWgbjiC5HC1FwSVfS+FyamznAAIoZc8cPtuc/vPExu/KQvhBtJ
-xpUSak9QUJGrcLl5jngCCnnHMJLpB3Dp4dYP0iMS3WolBZt+h2ZuW+RouuCiDoug
-MRxwjJNYfOYgybS4kwUpDzz4BhzRm3zWjk8lMshtLNf8L6tUaVA=
-=pme7
+iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlymiZcACgkQOeye3VZi
+gblYfg/+NKg/eo27bXoxV/W5DmX9V/7csFBAYVkx+FmAah9Own0x3JTZSl41Njbp
+xW2AnRhv4hXdPfzF1+w9WLQTUbNn2I6sc+PRvvh/mahF5Bjs7uawmbfTnILAdNWf
+JN4FR+ySkhQ9ZAVKnR8L4oGCQOEOdgflF/Sb3HMkdLZHj5B0H7gd5nokFnigw3li
+oYu+7eX+fQBlTLPmggsMtx0uDEwJpa37RRYOYkYEaTXPJykSNFtqmeZ8pTyyQ+ID
+aqNkfw1F05lMCOOKbmrZxYQB/GmUSYk/67U9CkAlMP2cdJlJ7QJC5GuxmUkV7Sjc
+Nj2ASpFkhwQBBQisEg8FBwM+zKtTkje34se0nKicsg7bRQ5x6Rk9p2QyrEa1oOQ9
+7ClEdDZQXOSbffU2umi2IM9btPH1DZl428Jy2783gG8hzWGBIqWgj0f+ufEgPaGA
+/a2xgXZIF60WUuaB8qFUIHu3MkprThllhos2v9FGdR3DhOcsU6obtVtRHXKJbk2E
+evZ2XjKCYXn0uIhx1r56DP5pA4LmZm8soExTNlmR/nW9Q1FEAraAClkjPXDpEv/A
+lsAonHyb9rnMb7kYQB6p9zRqWBoRLS54TQk65fsm7a2I3osVWHju78b0PVjf+4Lv
+4PWHj5tBxQjzZX4/02i8x3lAabgGcARcaghB1s285hsoo/kKiyM=
+=d2/7
 -----END PGP SIGNATURE-----
 --=-=-=--
