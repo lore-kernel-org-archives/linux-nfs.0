@@ -2,226 +2,380 @@ Return-Path: <SRS0=4THU=SH=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.5 required=3.0 tests=DKIM_ADSP_CUSTOM_MED,
-	DKIM_INVALID,DKIM_SIGNED,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-7.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,UNPARSEABLE_RELAY,URIBL_BLOCKED
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 56A8CC282CE
-	for <linux-nfs@archiver.kernel.org>; Fri,  5 Apr 2019 19:42:20 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B63CAC282CE
+	for <linux-nfs@archiver.kernel.org>; Fri,  5 Apr 2019 19:42:26 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 152082171F
-	for <linux-nfs@archiver.kernel.org>; Fri,  5 Apr 2019 19:42:20 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 5D4482171F
+	for <linux-nfs@archiver.kernel.org>; Fri,  5 Apr 2019 19:42:26 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="NPfiuIPW"
+	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="ri8hnTyO"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1731589AbfDETmT (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 5 Apr 2019 15:42:19 -0400
-Received: from mail-io1-f66.google.com ([209.85.166.66]:45699 "EHLO
-        mail-io1-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1731183AbfDETmT (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Apr 2019 15:42:19 -0400
-Received: by mail-io1-f66.google.com with SMTP id s7so5960725iom.12
-        for <linux-nfs@vger.kernel.org>; Fri, 05 Apr 2019 12:42:18 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=sender:message-id:subject:from:to:date:in-reply-to:references
-         :user-agent:mime-version:content-transfer-encoding;
-        bh=HqGReXiTRd8rVMPDQAYdtnmPEfW0Me0b7Q4rx2q5OUs=;
-        b=NPfiuIPWqjdb0KfoVHIhYQ6Tb/LROiK/0BMYbRdU0CHUotHfwOOXZRmv4eEIJQquhS
-         gXGCzRsofcIpDZiAh+p7X8jdRUQPp/3fd8F/xksHLV4Ncb4+3vkj2onwXClX9tECIhE3
-         S5J5hCVBYot/7haBHfpfrweRoYAor61nB0fZFuOdoMqgq5FjvOHB4rQezaaMh/DcTwgE
-         N7pgqEtoy45AsZxxFktmwTsbzirBaLIy5UC2v8pzfaZgrZkvlNc7CYf+Qa7rDQaR+o46
-         c4qAxzLnTjtWtPftxn1oQ4Tvv403e6ka1qKcyzCqJaG/sT3ugX6/eTkvR3uEv+zX6or6
-         2fyA==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:sender:message-id:subject:from:to:date
-         :in-reply-to:references:user-agent:mime-version
-         :content-transfer-encoding;
-        bh=HqGReXiTRd8rVMPDQAYdtnmPEfW0Me0b7Q4rx2q5OUs=;
-        b=icR5Wkaqyg38jgxSiqCTJnJqp9UN0W9oKNvgn6qJVpP4Sm2CVys2h2E+bqXuhEskx8
-         VSxjLtz3CQFls+08EYn3miDXuMxkWnbyTFyhlkh37i/SO4p5Wc3qRad+uhjHDe1xPjbp
-         cV7aa2lzV+T5X7aSX7cJ4qrVIXTGPVLFsJ2Qcb0jqmT8CGjGkT5TJJyuZCulsVo8E2Cm
-         HLOklEAaXSVoSaTlwAvS8dKmrgK8R1M466hnP0e2OXBa35pLxAngUqPpaZrTkCxDu60U
-         RdHqYhwax0GrBV1WK7DAri+LscYIbIfU1HKBpeMzLw+1RZNWcBYgyR/cGnvMhJAO+IQH
-         WEdA==
-X-Gm-Message-State: APjAAAU/jIW28mQscLvURfuk8OmTMJvO1yFYs1hcu4sCDboHlqfv6J01
-        o+UJ53mmbjHWOJnEBX9sW6Q=
-X-Google-Smtp-Source: APXvYqyWTvPGreRJDOu3rnXzwVTZtxeiP02bV7eat49ApIlMbRe5E2xCb49RykeyL4DFwe5GZdl09w==
-X-Received: by 2002:a5d:840d:: with SMTP id i13mr2439216ion.186.1554493337825;
-        Fri, 05 Apr 2019 12:42:17 -0700 (PDT)
-Received: from gouda.nowheycreamery.com (c-73-145-169-100.hsd1.mi.comcast.net. [73.145.169.100])
-        by smtp.googlemail.com with ESMTPSA id o9sm1478032itb.23.2019.04.05.12.42.16
-        (version=TLS1_3 cipher=AEAD-AES256-GCM-SHA384 bits=256/256);
-        Fri, 05 Apr 2019 12:42:16 -0700 (PDT)
-Message-ID: <c92a3c3d629636a0ce88a04098565345ce5ed5d8.camel@gmail.com>
-Subject: Re: [PATCH v2 28/28] NFS: Remove redundant open context from
- nfs_page
-From:   Anna Schumaker <schumaker.anna@gmail.com>
-To:     Trond Myklebust <trondmy@gmail.com>, linux-nfs@vger.kernel.org
-Date:   Fri, 05 Apr 2019 15:42:15 -0400
-In-Reply-To: <20190329215948.107328-29-trond.myklebust@hammerspace.com>
-References: <20190329215948.107328-1-trond.myklebust@hammerspace.com>
-         <20190329215948.107328-2-trond.myklebust@hammerspace.com>
-         <20190329215948.107328-3-trond.myklebust@hammerspace.com>
-         <20190329215948.107328-4-trond.myklebust@hammerspace.com>
-         <20190329215948.107328-5-trond.myklebust@hammerspace.com>
-         <20190329215948.107328-6-trond.myklebust@hammerspace.com>
-         <20190329215948.107328-7-trond.myklebust@hammerspace.com>
-         <20190329215948.107328-8-trond.myklebust@hammerspace.com>
-         <20190329215948.107328-9-trond.myklebust@hammerspace.com>
-         <20190329215948.107328-10-trond.myklebust@hammerspace.com>
-         <20190329215948.107328-11-trond.myklebust@hammerspace.com>
-         <20190329215948.107328-12-trond.myklebust@hammerspace.com>
-         <20190329215948.107328-13-trond.myklebust@hammerspace.com>
-         <20190329215948.107328-14-trond.myklebust@hammerspace.com>
-         <20190329215948.107328-15-trond.myklebust@hammerspace.com>
-         <20190329215948.107328-16-trond.myklebust@hammerspace.com>
-         <20190329215948.107328-17-trond.myklebust@hammerspace.com>
-         <20190329215948.107328-18-trond.myklebust@hammerspace.com>
-         <20190329215948.107328-19-trond.myklebust@hammerspace.com>
-         <20190329215948.107328-20-trond.myklebust@hammerspace.com>
-         <20190329215948.107328-21-trond.myklebust@hammerspace.com>
-         <20190329215948.107328-22-trond.myklebust@hammerspace.com>
-         <20190329215948.107328-23-trond.myklebust@hammerspace.com>
-         <20190329215948.107328-24-trond.myklebust@hammerspace.com>
-         <20190329215948.107328-25-trond.myklebust@hammerspace.com>
-         <20190329215948.107328-26-trond.myklebust@hammerspace.com>
-         <20190329215948.107328-27-trond.myklebust@hammerspace.com>
-         <20190329215948.107328-28-trond.myklebust@hammerspace.com>
-         <20190329215948.107328-29-trond.myklebust@hammerspace.com>
-Content-Type: text/plain; charset="UTF-8"
-User-Agent: Evolution 3.32.0 
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
+        id S1731676AbfDETmZ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 5 Apr 2019 15:42:25 -0400
+Received: from userp2130.oracle.com ([156.151.31.86]:39926 "EHLO
+        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1731183AbfDETmZ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Apr 2019 15:42:25 -0400
+Received: from pps.filterd (userp2130.oracle.com [127.0.0.1])
+        by userp2130.oracle.com (8.16.0.27/8.16.0.27) with SMTP id x35JXWoT010210;
+        Fri, 5 Apr 2019 19:42:18 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=content-type :
+ mime-version : subject : from : in-reply-to : date : cc :
+ content-transfer-encoding : message-id : references : to;
+ s=corp-2018-07-02; bh=/rJZbmTbemDc29OQXnlgtOrriZ+VRn+zJqZbe93+Pow=;
+ b=ri8hnTyOJuRo8daG2KUMX0MkCJILPBtZ7DvL8FcgewuDQ+qULO+o9373VQi0kJorz4TW
+ 7SKSykyBVt9mPCfD0vW0IaUNU9OXRXQMI0B6MqoKLo9kNB8IvPUU8h8mjaQP7T4tMdvj
+ dEkGCoj3c4omVx86LEPNCHSBu1rMdZ4onAN4R6345tQOz/ZJGbMAlhXxOpBv99fTntcD
+ LxrVJOyNbp25/HnXDQ4bQTco+ySqBWDwIbFANpfirv0f+mJff/nyDA+sFtArS9w06n7d
+ HjEZvboxqKSCbMYxVCXFvNKo3vvIU1apfPF3c6GHHIgiw2khp1gFU+5rqBA1Oab+a56I iA== 
+Received: from userp3020.oracle.com (userp3020.oracle.com [156.151.31.79])
+        by userp2130.oracle.com with ESMTP id 2rhyvtpqwf-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Fri, 05 Apr 2019 19:42:18 +0000
+Received: from pps.filterd (userp3020.oracle.com [127.0.0.1])
+        by userp3020.oracle.com (8.16.0.27/8.16.0.27) with SMTP id x35JfgKw187582;
+        Fri, 5 Apr 2019 19:42:18 GMT
+Received: from userv0122.oracle.com (userv0122.oracle.com [156.151.31.75])
+        by userp3020.oracle.com with ESMTP id 2rp369j0b3-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Fri, 05 Apr 2019 19:42:17 +0000
+Received: from abhmp0019.oracle.com (abhmp0019.oracle.com [141.146.116.25])
+        by userv0122.oracle.com (8.14.4/8.14.4) with ESMTP id x35JgFBZ001396;
+        Fri, 5 Apr 2019 19:42:16 GMT
+Received: from anon-dhcp-171.1015granger.net (/68.61.232.219)
+        by default (Oracle Beehive Gateway v4.0)
+        with ESMTP ; Fri, 05 Apr 2019 12:42:15 -0700
+Content-Type: text/plain;
+        charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 12.2 \(3445.102.3\))
+Subject: Re: [PATCH v1 20/23] NFS: Account for XDR pad of buf->pages
+From:   Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <CAN-5tyFN90xdKBvFmH2kYa2gQtW2EmVa59Q+w=M4yvHR9euuVQ@mail.gmail.com>
+Date:   Fri, 5 Apr 2019 15:42:14 -0400
+Cc:     Anna Schumaker <anna.schumaker@netapp.com>,
+        linux-rdma <linux-rdma@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Transfer-Encoding: quoted-printable
+Message-Id: <19341226-AE0F-4C94-B7CD-AE14CCB456AF@oracle.com>
+References: <20190211161920.2817.20881.stgit@manet.1015granger.net>
+ <20190211162525.2817.60645.stgit@manet.1015granger.net>
+ <CAN-5tyH1zAuW7AxoZc+psRWWQT0S9J3wDu+iDgLg4=qGTvUufA@mail.gmail.com>
+ <0157F163-7554-413C-ACCA-FE6646C04716@oracle.com>
+ <CAN-5tyHSH75TVSok+RXdXoq6bOVse__E4AMCzuSnmYrTgzH_Vg@mail.gmail.com>
+ <5AC0653D-3D4E-4C0C-BFE3-616BF32589CB@oracle.com>
+ <CAN-5tyFN90xdKBvFmH2kYa2gQtW2EmVa59Q+w=M4yvHR9euuVQ@mail.gmail.com>
+To:     Olga Kornievskaia <aglo@umich.edu>
+X-Mailer: Apple Mail (2.3445.102.3)
+X-Proofpoint-Virus-Version: vendor=nai engine=5900 definitions=9218 signatures=668685
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 suspectscore=0 malwarescore=0
+ phishscore=0 bulkscore=0 spamscore=0 mlxscore=0 mlxlogscore=999
+ adultscore=0 classifier=spam adjust=0 reason=mlx scancount=1
+ engine=8.0.1-1810050000 definitions=main-1904050130
+X-Proofpoint-Virus-Version: vendor=nai engine=5900 definitions=9218 signatures=668685
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 priorityscore=1501 malwarescore=0
+ suspectscore=0 phishscore=0 bulkscore=0 spamscore=0 clxscore=1015
+ lowpriorityscore=0 mlxscore=0 impostorscore=0 mlxlogscore=999 adultscore=0
+ classifier=spam adjust=0 reason=mlx scancount=1 engine=8.0.1-1810050000
+ definitions=main-1904050130
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hi Trond,
 
-I'm having some trouble with xfstests generic/464 after applying this patch.
-Here is the oops I'm getting, I'm able to reproduce it fairly easily against all
-NFS versions: 
 
-[   41.182015] BUG: unable to handle kernel NULL pointer dereference at
-0000000000000048
-[   41.182051] #PF error: [normal kernel read fault]
-[   41.182071] PGD 0 P4D 0 
-[   41.182086] Oops: 0000 [#1] PREEMPT SMP PTI
-[   41.182104] CPU: 1 PID: 14515 Comm: kworker/1:6 Not tainted 5.1.0-rc3-ANNA+
-#5292
-[   41.182131] Hardware name: Bochs Bochs, BIOS Bochs 01/01/2011
-[   41.182174] Workqueue: nfsiod rpc_async_release [sunrpc]
-[   41.182209] RIP: 0010:__put_nfs_open_context+0xd/0x110 [nfs]
-[   41.182227] Code: f8 ba a8 00 00 00 be c0 0c 00 00 e8 5d c0 58 f7 48 89 c3 48
-85 c0 74 c5 e9 15 ff ff ff 0f 1f 44 00 00 41 56 41 55 41 54 55 53 <48> 8b 47 48
-48 8b 68 30 4c 8b 60 68 f0 ff 0f 0f 88 14 53 01 00 74
-[   41.182267] RSP: 0018:ffffae5f04b6be30 EFLAGS: 00010246
-[   41.182279] RAX: 0000000000000000 RBX: ffffa22aae71a680 RCX: 0000000000000000
-[   41.182295] RDX: ffffffffb9205dc8 RSI: 0000000000000000 RDI: 0000000000000000
-[   41.182311] RBP: 0000000000000801 R08: ffffa22aa5ca0000 R09: ffffa22aba267800
-[   41.182327] R10: 0000000000000000 R11: 0000000000000000 R12: ffffce5effd1c200
-[   41.182351] R13: 0000000000000000 R14: ffffa22aad2aa6c0 R15: 0ffffce5effd1c20
-[   41.182378] FS:  0000000000000000(0000) GS:ffffa22abcb00000(0000)
-knlGS:0000000000000000
-[   41.182411] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-[   41.182435] CR2: 0000000000000048 CR3: 00000000af972005 CR4: 0000000000160ee0
-[   41.182468] Call Trace:
-[   41.182495]  nfs_commitdata_release+0x15/0x30 [nfs]
-[   41.182536]  rpc_free_task+0x39/0x70 [sunrpc]
-[   41.182571]  rpc_async_release+0x29/0x40 [sunrpc]
-[   41.182594]  process_one_work+0x1eb/0x410
-[   41.182611]  worker_thread+0x2d/0x3d0
-[   41.182621]  ? process_one_work+0x410/0x410
-[   41.182632]  kthread+0x112/0x130
-[   41.182641]  ? kthread_park+0x80/0x80
-[   41.182652]  ret_from_fork+0x35/0x40
-[   41.182662] Modules linked in: nfsv3 nfs fscache rpcrdma ib_isert
-iscsi_target_mod ib_iser libiscsi scsi_transport_iscsi ib_srpt target_core_mod
-ib_srp scsi_transport_srp ib_ipoib rdma_ucm ib_uverbs ib_umad rdma_cm cfg80211
-ib_cm iw_cm rfkill 8021q mrp ib_core crct10dif_pclmul crc32_pclmul joydev
-mousedev crc32c_intel ghash_clmulni_intel aesni_intel input_leds led_class
-psmouse aes_x86_64 evdev crypto_simd cryptd glue_helper mac_hid intel_agp
-intel_gtt i2c_piix4 pcspkr nfsd auth_rpcgss nfs_acl lockd grace sunrpc ip_tables
-x_tables ata_generic pata_acpi serio_raw atkbd libps2 ata_piix libata scsi_mod
-floppy i8042 serio xfs virtio_balloon virtio_gpu drm_kms_helper syscopyarea
-sysfillrect sysimgblt fb_sys_fops ttm drm virtio_net net_failover failover
-agpgart virtio_pci virtio_blk virtio_ring virtio
-[   41.182827] CR2: 0000000000000048
-[   41.182836] ---[ end trace 19c8b9d2801d26ce ]---
+> On Apr 5, 2019, at 3:27 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
+>=20
+> On Fri, Apr 5, 2019 at 3:23 PM Chuck Lever <chuck.lever@oracle.com> =
+wrote:
+>>=20
+>>=20
+>>=20
+>>> On Apr 5, 2019, at 3:17 PM, Olga Kornievskaia <aglo@umich.edu> =
+wrote:
+>>>=20
+>>> On Fri, Apr 5, 2019 at 1:51 PM Chuck Lever <chuck.lever@oracle.com> =
+wrote:
+>>>>=20
+>>>>=20
+>>>>=20
+>>>>> On Apr 5, 2019, at 1:36 PM, Olga Kornievskaia <aglo@umich.edu> =
+wrote:
+>>>>>=20
+>>>>> Hi Chuck,
+>>>>>=20
+>>>>> This patch break ACLs. After applying this patch nfs4_getfacl =
+fails
+>>>>> (it fails within xdr and returns ENOTSUPP). Any ideas why?
+>>>>=20
+>>>> Possibly the macro that defines the maximum size of the reply
+>>>> is incorrect.
+>>>>=20
+>>>=20
+>>> This also breaks FS_LOCATION. I'm going to go on the limb here and =
+say
+>>> that it probably breaks whatever else it modified.
+>>=20
+>> It modifies READ, READDIR, and READLINK. Are those broken?
+>=20
+> I don't know how to test READLINK.. but I think READ/READDIR work OK
+> otherwise folks would have noticed it (I gather ACL and FS_LOCATION
+> testing doesn't happen frequently).
 
-Let me know if you need any more information!
+I guess I don't have any NFSv4 ACL or FS_LOCATIONS regressions
+tests in my automated unit tests.
 
-Anna
 
-On Fri, 2019-03-29 at 17:59 -0400, Trond Myklebust wrote:
-> The lock context already references and tracks the open context, so
-> take the opportunity to save some space in struct nfs_page.
-> 
-> Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
-> ---
->  fs/nfs/pagelist.c        | 7 +------
->  include/linux/nfs_page.h | 3 +--
->  2 files changed, 2 insertions(+), 8 deletions(-)
-> 
-> diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-> index ce6440b79328..5d5ac5df93e2 100644
-> --- a/fs/nfs/pagelist.c
-> +++ b/fs/nfs/pagelist.c
-> @@ -325,7 +325,6 @@ __nfs_create_request(struct nfs_lock_context *l_ctx,
-> struct page *page,
->  	req->wb_offset  = offset;
->  	req->wb_pgbase	= pgbase;
->  	req->wb_bytes   = count;
-> -	req->wb_context = get_nfs_open_context(ctx);
->  	kref_init(&req->wb_kref);
->  	req->wb_nio = 0;
->  	return req;
-> @@ -414,8 +413,8 @@ void nfs_unlock_and_release_request(struct nfs_page *req)
->  static void nfs_clear_request(struct nfs_page *req)
->  {
->  	struct page *page = req->wb_page;
-> -	struct nfs_open_context *ctx = req->wb_context;
->  	struct nfs_lock_context *l_ctx = req->wb_lock_context;
-> +	struct nfs_open_context *ctx = l_ctx->open_context;
->  
->  	if (page != NULL) {
->  		put_page(page);
-> @@ -430,10 +429,6 @@ static void nfs_clear_request(struct nfs_page *req)
->  		nfs_put_lock_context(l_ctx);
->  		req->wb_lock_context = NULL;
->  	}
-> -	if (ctx != NULL) {
-> -		put_nfs_open_context(ctx);
-> -		req->wb_context = NULL;
-> -	}
->  }
->  
->  /**
-> diff --git a/include/linux/nfs_page.h b/include/linux/nfs_page.h
-> index 1ea13e94feb7..0bbd587fac6a 100644
-> --- a/include/linux/nfs_page.h
-> +++ b/include/linux/nfs_page.h
-> @@ -42,7 +42,6 @@ struct nfs_inode;
->  struct nfs_page {
->  	struct list_head	wb_list;	/* Defines state of page: */
->  	struct page		*wb_page;	/* page to read in/write out
-> */
-> -	struct nfs_open_context	*wb_context;	/* File state context info */
->  	struct nfs_lock_context	*wb_lock_context;	/* lock context info
-> */
->  	pgoff_t			wb_index;	/* Offset >> PAGE_SHIFT */
->  	unsigned int		wb_offset,	/* Offset & ~PAGE_MASK */
-> @@ -203,7 +202,7 @@ loff_t req_offset(struct nfs_page *req)
->  static inline struct nfs_open_context *
->  nfs_req_openctx(struct nfs_page *req)
->  {
-> -	return req->wb_context;
-> +	return req->wb_lock_context->open_context;
->  }
->  
->  #endif /* _LINUX_NFS_PAGE_H */
+>>> The question is: can't we just revert it??
+>>=20
+>> Why not "root cause" it first?
+>=20
+> I'm trying :-/ I was just fishing to see how important the change was.
+
+Try reverting just this hunk:
+
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index d0fa18d..6d9d5e2 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -284,14 +284,14 @@ static int decode_layoutget(struct xdr_stream =
+*xdr, struct rpc_rqst *req,
+#define decode_delegreturn_maxsz (op_decode_hdr_maxsz)
+#define encode_getacl_maxsz	(encode_getattr_maxsz)
+#define decode_getacl_maxsz	(op_decode_hdr_maxsz + \
+-				 nfs4_fattr_bitmap_maxsz + 1)
++				 nfs4_fattr_bitmap_maxsz + 1 + 1)
+#define encode_setacl_maxsz	(op_encode_hdr_maxsz + \
+				 encode_stateid_maxsz + 3)
+#define decode_setacl_maxsz	(decode_setattr_maxsz)
+#define encode_fs_locations_maxsz \
+				(encode_getattr_maxsz)
+#define decode_fs_locations_maxsz \
+-				(0)
++				(1)
+#define encode_secinfo_maxsz	(op_encode_hdr_maxsz + nfs4_name_maxsz)
+#define decode_secinfo_maxsz	(op_decode_hdr_maxsz + 1 + =
+((NFS_MAX_SECFLAVORS * (16 + GSS_OID_MAX_LEN)) / 4))
+
+
+>>>>> On Mon, Feb 11, 2019 at 11:25 AM Chuck Lever =
+<chuck.lever@oracle.com> wrote:
+>>>>>>=20
+>>>>>> Certain NFS results (eg. READLINK) might expect a data payload =
+that
+>>>>>> is not an exact multiple of 4 bytes. In this case, XDR encoding
+>>>>>> is required to pad that payload so its length on the wire is a
+>>>>>> multiple of 4 bytes. The constants that define the maximum size =
+of
+>>>>>> each NFS result do not appear to account for this extra word.
+>>>>>>=20
+>>>>>> In each case where the data payload is to be received into pages:
+>>>>>>=20
+>>>>>> - 1 word is added to the size of the receive buffer allocated by
+>>>>>> call_allocate
+>>>>>>=20
+>>>>>> - rpc_inline_rcv_pages subtracts 1 word from @hdrsize so that the
+>>>>>> extra buffer space falls into the rcv_buf's tail iovec
+>>>>>>=20
+>>>>>> - If buf->pagelen is word-aligned, an XDR pad is not needed and
+>>>>>> is thus removed from the tail
+>>>>>>=20
+>>>>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>>>>>> ---
+>>>>>> fs/nfs/nfs2xdr.c  |    6 +++---
+>>>>>> fs/nfs/nfs3xdr.c  |   10 +++++-----
+>>>>>> fs/nfs/nfs4xdr.c  |   15 ++++++++-------
+>>>>>> net/sunrpc/clnt.c |    6 +++++-
+>>>>>> net/sunrpc/xdr.c  |    2 ++
+>>>>>> 5 files changed, 23 insertions(+), 16 deletions(-)
+>>>>>>=20
+>>>>>> diff --git a/fs/nfs/nfs2xdr.c b/fs/nfs/nfs2xdr.c
+>>>>>> index 1dcd0fe..a7ed29d 100644
+>>>>>> --- a/fs/nfs/nfs2xdr.c
+>>>>>> +++ b/fs/nfs/nfs2xdr.c
+>>>>>> @@ -56,11 +56,11 @@
+>>>>>>=20
+>>>>>> #define NFS_attrstat_sz                (1+NFS_fattr_sz)
+>>>>>> #define NFS_diropres_sz                =
+(1+NFS_fhandle_sz+NFS_fattr_sz)
+>>>>>> -#define NFS_readlinkres_sz     (2)
+>>>>>> -#define NFS_readres_sz         (1+NFS_fattr_sz+1)
+>>>>>> +#define NFS_readlinkres_sz     (2+1)
+>>>>>> +#define NFS_readres_sz         (1+NFS_fattr_sz+1+1)
+>>>>>> #define NFS_writeres_sz         (NFS_attrstat_sz)
+>>>>>> #define NFS_stat_sz            (1)
+>>>>>> -#define NFS_readdirres_sz      (1)
+>>>>>> +#define NFS_readdirres_sz      (1+1)
+>>>>>> #define NFS_statfsres_sz       (1+NFS_info_sz)
+>>>>>>=20
+>>>>>> static int nfs_stat_to_errno(enum nfs_stat);
+>>>>>> diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
+>>>>>> index a54dcf4..110358f 100644
+>>>>>> --- a/fs/nfs/nfs3xdr.c
+>>>>>> +++ b/fs/nfs/nfs3xdr.c
+>>>>>> @@ -69,13 +69,13 @@
+>>>>>> #define NFS3_removeres_sz      (NFS3_setattrres_sz)
+>>>>>> #define NFS3_lookupres_sz      (1+NFS3_fh_sz+(2 * =
+NFS3_post_op_attr_sz))
+>>>>>> #define NFS3_accessres_sz      (1+NFS3_post_op_attr_sz+1)
+>>>>>> -#define NFS3_readlinkres_sz    (1+NFS3_post_op_attr_sz+1)
+>>>>>> -#define NFS3_readres_sz                =
+(1+NFS3_post_op_attr_sz+3)
+>>>>>> +#define NFS3_readlinkres_sz    (1+NFS3_post_op_attr_sz+1+1)
+>>>>>> +#define NFS3_readres_sz                =
+(1+NFS3_post_op_attr_sz+3+1)
+>>>>>> #define NFS3_writeres_sz       (1+NFS3_wcc_data_sz+4)
+>>>>>> #define NFS3_createres_sz      =
+(1+NFS3_fh_sz+NFS3_post_op_attr_sz+NFS3_wcc_data_sz)
+>>>>>> #define NFS3_renameres_sz      (1+(2 * NFS3_wcc_data_sz))
+>>>>>> #define NFS3_linkres_sz                =
+(1+NFS3_post_op_attr_sz+NFS3_wcc_data_sz)
+>>>>>> -#define NFS3_readdirres_sz     (1+NFS3_post_op_attr_sz+2)
+>>>>>> +#define NFS3_readdirres_sz     (1+NFS3_post_op_attr_sz+2+1)
+>>>>>> #define NFS3_fsstatres_sz      (1+NFS3_post_op_attr_sz+13)
+>>>>>> #define NFS3_fsinfores_sz      (1+NFS3_post_op_attr_sz+12)
+>>>>>> #define NFS3_pathconfres_sz    (1+NFS3_post_op_attr_sz+6)
+>>>>>> @@ -85,7 +85,7 @@
+>>>>>> #define ACL3_setaclargs_sz     (NFS3_fh_sz+1+ \
+>>>>>>                              XDR_QUADLEN(NFS_ACL_INLINE_BUFSIZE))
+>>>>>> #define ACL3_getaclres_sz      (1+NFS3_post_op_attr_sz+1+ \
+>>>>>> -                               =
+XDR_QUADLEN(NFS_ACL_INLINE_BUFSIZE))
+>>>>>> +                               =
+XDR_QUADLEN(NFS_ACL_INLINE_BUFSIZE)+1)
+>>>>>> #define ACL3_setaclres_sz      (1+NFS3_post_op_attr_sz)
+>>>>>>=20
+>>>>>> static int nfs3_stat_to_errno(enum nfs_stat);
+>>>>>> @@ -1629,7 +1629,7 @@ static int nfs3_xdr_dec_read3res(struct =
+rpc_rqst *req, struct xdr_stream *xdr,
+>>>>>>      result->op_status =3D status;
+>>>>>>      if (status !=3D NFS3_OK)
+>>>>>>              goto out_status;
+>>>>>> -       result->replen =3D 3 + ((xdr_stream_pos(xdr) - pos) >> =
+2);
+>>>>>> +       result->replen =3D 4 + ((xdr_stream_pos(xdr) - pos) >> =
+2);
+>>>>>>      error =3D decode_read3resok(xdr, result);
+>>>>>> out:
+>>>>>>      return error;
+>>>>>> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+>>>>>> index d0fa18d..6d9d5e2 100644
+>>>>>> --- a/fs/nfs/nfs4xdr.c
+>>>>>> +++ b/fs/nfs/nfs4xdr.c
+>>>>>> @@ -215,14 +215,14 @@ static int decode_layoutget(struct =
+xdr_stream *xdr, struct rpc_rqst *req,
+>>>>>>                               nfs4_fattr_bitmap_maxsz)
+>>>>>> #define encode_read_maxsz      (op_encode_hdr_maxsz + \
+>>>>>>                               encode_stateid_maxsz + 3)
+>>>>>> -#define decode_read_maxsz      (op_decode_hdr_maxsz + 2)
+>>>>>> +#define decode_read_maxsz      (op_decode_hdr_maxsz + 2 + 1)
+>>>>>> #define encode_readdir_maxsz   (op_encode_hdr_maxsz + \
+>>>>>>                               2 + encode_verifier_maxsz + 5 + \
+>>>>>>                              nfs4_label_maxsz)
+>>>>>> #define decode_readdir_maxsz   (op_decode_hdr_maxsz + \
+>>>>>> -                                decode_verifier_maxsz)
+>>>>>> +                                decode_verifier_maxsz + 1)
+>>>>>> #define encode_readlink_maxsz  (op_encode_hdr_maxsz)
+>>>>>> -#define decode_readlink_maxsz  (op_decode_hdr_maxsz + 1)
+>>>>>> +#define decode_readlink_maxsz  (op_decode_hdr_maxsz + 1 + 1)
+>>>>>> #define encode_write_maxsz     (op_encode_hdr_maxsz + \
+>>>>>>                               encode_stateid_maxsz + 4)
+>>>>>> #define decode_write_maxsz     (op_decode_hdr_maxsz + \
+>>>>>> @@ -284,14 +284,14 @@ static int decode_layoutget(struct =
+xdr_stream *xdr, struct rpc_rqst *req,
+>>>>>> #define decode_delegreturn_maxsz (op_decode_hdr_maxsz)
+>>>>>> #define encode_getacl_maxsz    (encode_getattr_maxsz)
+>>>>>> #define decode_getacl_maxsz    (op_decode_hdr_maxsz + \
+>>>>>> -                                nfs4_fattr_bitmap_maxsz + 1)
+>>>>>> +                                nfs4_fattr_bitmap_maxsz + 1 + 1)
+>>>>>> #define encode_setacl_maxsz    (op_encode_hdr_maxsz + \
+>>>>>>                               encode_stateid_maxsz + 3)
+>>>>>> #define decode_setacl_maxsz    (decode_setattr_maxsz)
+>>>>>> #define encode_fs_locations_maxsz \
+>>>>>>                              (encode_getattr_maxsz)
+>>>>>> #define decode_fs_locations_maxsz \
+>>>>>> -                               (0)
+>>>>>> +                               (1)
+>>>>>> #define encode_secinfo_maxsz   (op_encode_hdr_maxsz + =
+nfs4_name_maxsz)
+>>>>>> #define decode_secinfo_maxsz   (op_decode_hdr_maxsz + 1 + =
+((NFS_MAX_SECFLAVORS * (16 + GSS_OID_MAX_LEN)) / 4))
+>>>>>>=20
+>>>>>> @@ -392,12 +392,13 @@ static int decode_layoutget(struct =
+xdr_stream *xdr, struct rpc_rqst *req,
+>>>>>>                              1 /* opaque devaddr4 length */ + \
+>>>>>>                                /* devaddr4 payload is read into =
+page */ \
+>>>>>>                              1 /* notification bitmap length */ + =
+\
+>>>>>> -                               1 /* notification bitmap, word 0 =
+*/)
+>>>>>> +                               1 /* notification bitmap, word 0 =
+*/ + \
+>>>>>> +                               1 /* possible XDR padding */)
+>>>>>> #define encode_layoutget_maxsz (op_encode_hdr_maxsz + 10 + \
+>>>>>>                              encode_stateid_maxsz)
+>>>>>> #define decode_layoutget_maxsz (op_decode_hdr_maxsz + 8 + \
+>>>>>>                              decode_stateid_maxsz + \
+>>>>>> -                               XDR_QUADLEN(PNFS_LAYOUT_MAXSIZE))
+>>>>>> +                               XDR_QUADLEN(PNFS_LAYOUT_MAXSIZE) =
++ 1)
+>>>>>> #define encode_layoutcommit_maxsz (op_encode_hdr_maxsz +          =
+\
+>>>>>>                              2 /* offset */ + \
+>>>>>>                              2 /* length */ + \
+>>>>>> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+>>>>>> index f780605..4ea38b0 100644
+>>>>>> --- a/net/sunrpc/clnt.c
+>>>>>> +++ b/net/sunrpc/clnt.c
+>>>>>> @@ -1177,7 +1177,11 @@ void rpc_prepare_reply_pages(struct =
+rpc_rqst *req, struct page **pages,
+>>>>>>                           unsigned int base, unsigned int len,
+>>>>>>                           unsigned int hdrsize)
+>>>>>> {
+>>>>>> -       hdrsize +=3D RPC_REPHDRSIZE + =
+req->rq_cred->cr_auth->au_rslack;
+>>>>>> +       /* Subtract one to force an extra word of buffer space =
+for the
+>>>>>> +        * payload's XDR pad to fall into the rcv_buf's tail =
+iovec.
+>>>>>> +        */
+>>>>>> +       hdrsize +=3D RPC_REPHDRSIZE + =
+req->rq_cred->cr_auth->au_rslack - 1;
+>>>>>> +
+>>>>>>      xdr_inline_pages(&req->rq_rcv_buf, hdrsize << 2, pages, =
+base, len);
+>>>>>>      trace_rpc_reply_pages(req);
+>>>>>> }
+>>>>>> diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
+>>>>>> index 7cca515..aa8177d 100644
+>>>>>> --- a/net/sunrpc/xdr.c
+>>>>>> +++ b/net/sunrpc/xdr.c
+>>>>>> @@ -189,6 +189,8 @@ __be32 *xdr_encode_opaque(__be32 *p, const =
+void *ptr, unsigned int nbytes)
+>>>>>>=20
+>>>>>>      tail->iov_base =3D buf + offset;
+>>>>>>      tail->iov_len =3D buflen - offset;
+>>>>>> +       if ((xdr->page_len & 3) =3D=3D 0)
+>>>>>> +               tail->iov_len -=3D sizeof(__be32);
+>>>>>>=20
+>>>>>>      xdr->buflen +=3D len;
+>>>>>> }
+>>>>>>=20
+>>>>=20
+>>>> --
+>>>> Chuck Lever
+>>=20
+>> --
+>> Chuck Lever
+
+--
+Chuck Lever
+
+
 
