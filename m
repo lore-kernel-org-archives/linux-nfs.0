@@ -2,380 +2,406 @@ Return-Path: <SRS0=4THU=SH=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,UNPARSEABLE_RELAY,URIBL_BLOCKED
+X-Spam-Status: No, score=-8.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,USER_AGENT_MUTT
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B63CAC282CE
-	for <linux-nfs@archiver.kernel.org>; Fri,  5 Apr 2019 19:42:26 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DDF6CC282CE
+	for <linux-nfs@archiver.kernel.org>; Fri,  5 Apr 2019 20:11:47 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 5D4482171F
-	for <linux-nfs@archiver.kernel.org>; Fri,  5 Apr 2019 19:42:26 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="ri8hnTyO"
+	by mail.kernel.org (Postfix) with ESMTP id A75EE206BA
+	for <linux-nfs@archiver.kernel.org>; Fri,  5 Apr 2019 20:11:47 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1731676AbfDETmZ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 5 Apr 2019 15:42:25 -0400
-Received: from userp2130.oracle.com ([156.151.31.86]:39926 "EHLO
-        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1731183AbfDETmZ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Apr 2019 15:42:25 -0400
-Received: from pps.filterd (userp2130.oracle.com [127.0.0.1])
-        by userp2130.oracle.com (8.16.0.27/8.16.0.27) with SMTP id x35JXWoT010210;
-        Fri, 5 Apr 2019 19:42:18 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=content-type :
- mime-version : subject : from : in-reply-to : date : cc :
- content-transfer-encoding : message-id : references : to;
- s=corp-2018-07-02; bh=/rJZbmTbemDc29OQXnlgtOrriZ+VRn+zJqZbe93+Pow=;
- b=ri8hnTyOJuRo8daG2KUMX0MkCJILPBtZ7DvL8FcgewuDQ+qULO+o9373VQi0kJorz4TW
- 7SKSykyBVt9mPCfD0vW0IaUNU9OXRXQMI0B6MqoKLo9kNB8IvPUU8h8mjaQP7T4tMdvj
- dEkGCoj3c4omVx86LEPNCHSBu1rMdZ4onAN4R6345tQOz/ZJGbMAlhXxOpBv99fTntcD
- LxrVJOyNbp25/HnXDQ4bQTco+ySqBWDwIbFANpfirv0f+mJff/nyDA+sFtArS9w06n7d
- HjEZvboxqKSCbMYxVCXFvNKo3vvIU1apfPF3c6GHHIgiw2khp1gFU+5rqBA1Oab+a56I iA== 
-Received: from userp3020.oracle.com (userp3020.oracle.com [156.151.31.79])
-        by userp2130.oracle.com with ESMTP id 2rhyvtpqwf-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Fri, 05 Apr 2019 19:42:18 +0000
-Received: from pps.filterd (userp3020.oracle.com [127.0.0.1])
-        by userp3020.oracle.com (8.16.0.27/8.16.0.27) with SMTP id x35JfgKw187582;
-        Fri, 5 Apr 2019 19:42:18 GMT
-Received: from userv0122.oracle.com (userv0122.oracle.com [156.151.31.75])
-        by userp3020.oracle.com with ESMTP id 2rp369j0b3-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Fri, 05 Apr 2019 19:42:17 +0000
-Received: from abhmp0019.oracle.com (abhmp0019.oracle.com [141.146.116.25])
-        by userv0122.oracle.com (8.14.4/8.14.4) with ESMTP id x35JgFBZ001396;
-        Fri, 5 Apr 2019 19:42:16 GMT
-Received: from anon-dhcp-171.1015granger.net (/68.61.232.219)
-        by default (Oracle Beehive Gateway v4.0)
-        with ESMTP ; Fri, 05 Apr 2019 12:42:15 -0700
-Content-Type: text/plain;
-        charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 12.2 \(3445.102.3\))
-Subject: Re: [PATCH v1 20/23] NFS: Account for XDR pad of buf->pages
-From:   Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <CAN-5tyFN90xdKBvFmH2kYa2gQtW2EmVa59Q+w=M4yvHR9euuVQ@mail.gmail.com>
-Date:   Fri, 5 Apr 2019 15:42:14 -0400
-Cc:     Anna Schumaker <anna.schumaker@netapp.com>,
-        linux-rdma <linux-rdma@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Transfer-Encoding: quoted-printable
-Message-Id: <19341226-AE0F-4C94-B7CD-AE14CCB456AF@oracle.com>
-References: <20190211161920.2817.20881.stgit@manet.1015granger.net>
- <20190211162525.2817.60645.stgit@manet.1015granger.net>
- <CAN-5tyH1zAuW7AxoZc+psRWWQT0S9J3wDu+iDgLg4=qGTvUufA@mail.gmail.com>
- <0157F163-7554-413C-ACCA-FE6646C04716@oracle.com>
- <CAN-5tyHSH75TVSok+RXdXoq6bOVse__E4AMCzuSnmYrTgzH_Vg@mail.gmail.com>
- <5AC0653D-3D4E-4C0C-BFE3-616BF32589CB@oracle.com>
- <CAN-5tyFN90xdKBvFmH2kYa2gQtW2EmVa59Q+w=M4yvHR9euuVQ@mail.gmail.com>
-To:     Olga Kornievskaia <aglo@umich.edu>
-X-Mailer: Apple Mail (2.3445.102.3)
-X-Proofpoint-Virus-Version: vendor=nai engine=5900 definitions=9218 signatures=668685
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 suspectscore=0 malwarescore=0
- phishscore=0 bulkscore=0 spamscore=0 mlxscore=0 mlxlogscore=999
- adultscore=0 classifier=spam adjust=0 reason=mlx scancount=1
- engine=8.0.1-1810050000 definitions=main-1904050130
-X-Proofpoint-Virus-Version: vendor=nai engine=5900 definitions=9218 signatures=668685
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 priorityscore=1501 malwarescore=0
- suspectscore=0 phishscore=0 bulkscore=0 spamscore=0 clxscore=1015
- lowpriorityscore=0 mlxscore=0 impostorscore=0 mlxlogscore=999 adultscore=0
- classifier=spam adjust=0 reason=mlx scancount=1 engine=8.0.1-1810050000
- definitions=main-1904050130
+        id S1726471AbfDEULr (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 5 Apr 2019 16:11:47 -0400
+Received: from fieldses.org ([173.255.197.46]:60794 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726352AbfDEULr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 5 Apr 2019 16:11:47 -0400
+Received: by fieldses.org (Postfix, from userid 2815)
+        id C3025571; Fri,  5 Apr 2019 16:11:45 -0400 (EDT)
+Date:   Fri, 5 Apr 2019 16:11:45 -0400
+From:   "J. Bruce Fields" <bfields@fieldses.org>
+To:     Scott Mayhew <smayhew@redhat.com>
+Cc:     jlayton@kernel.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH RFC v3 2/5] nfsd: un-deprecate nfsdcld
+Message-ID: <20190405201145.GB8397@fieldses.org>
+References: <20190326220630.2911-1-smayhew@redhat.com>
+ <20190326220630.2911-3-smayhew@redhat.com>
+ <20190405185400.GA8397@fieldses.org>
+ <20190405192653.GB3773@coeurl.usersys.redhat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20190405192653.GB3773@coeurl.usersys.redhat.com>
+User-Agent: Mutt/1.5.21 (2010-09-15)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
+On Fri, Apr 05, 2019 at 03:26:53PM -0400, Scott Mayhew wrote:
+> On Fri, 05 Apr 2019, J. Bruce Fields wrote:
+> 
+> > On Tue, Mar 26, 2019 at 06:06:27PM -0400, Scott Mayhew wrote:
+> > > When nfsdcld was released, it was quickly deprecated in favor of the
+> > > nfsdcltrack usermodehelper, so as to not require another running daemon.
+> > > That prevents NFSv4 clients from reclaiming locks from nfsd's running in
+> > > containers, since neither nfsdcltrack nor the legacy client tracking
+> > > code work in containers.
+> > > 
+> > > This commit un-deprecates the use of nfsdcld, with one twist: we will
+> > > populate the reclaim_str_hashtbl on startup.
+> > > 
+> > > During client tracking initialization, do an upcall ("GraceStart") to
+> > > nfsdcld to get a list of clients from the database.  nfsdcld will do
+> > > one downcall with a status of -EINPROGRESS for each client record in
+> > > the database, which in turn will cause an nfs4_client_reclaim to be
+> > > added to the reclaim_str_hashtbl.  When complete, nfsdcld will do a
+> > > final downcall with a status of 0.
+> > > 
+> > > This will save nfsd from having to do an upcall to the daemon during
+> > > nfs4_check_open_reclaim() processing.
+> > > 
+> > > Even though nfsdcld was quickly deprecated, there is a very small chance
+> > > of old nfsdcld daemons running in the wild.  These will respond to the
+> > > new "GraceStart" upcall with -EOPNOTSUPP, in which case we will log a
+> > > message and fall back to the original nfsdcld tracking ops (now called
+> > > nfsd4_cld_tracking_ops_v0).
+> > > 
+> > > Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+> > > ---
+> > >  fs/nfsd/nfs4recover.c         | 225 ++++++++++++++++++++++++++++++++--
+> > >  include/uapi/linux/nfsd/cld.h |   1 +
+> > >  2 files changed, 218 insertions(+), 8 deletions(-)
+> > > 
+> > > diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
+> > > index 2243b909b407..89c2a27956d0 100644
+> > > --- a/fs/nfsd/nfs4recover.c
+> > > +++ b/fs/nfsd/nfs4recover.c
+> > > @@ -779,6 +779,34 @@ cld_pipe_upcall(struct rpc_pipe *pipe, struct cld_msg *cmsg)
+> > >  	return ret;
+> > >  }
+> > >  
+> > > +static ssize_t
+> > > +__cld_pipe_inprogress_downcall(const struct cld_msg __user *cmsg,
+> > > +		struct nfsd_net *nn)
+> > > +{
+> > > +	uint8_t cmd;
+> > > +	struct xdr_netobj name;
+> > > +	uint16_t namelen;
+> > > +
+> > > +	if (get_user(cmd, &cmsg->cm_cmd)) {
+> > > +		dprintk("%s: error when copying cmd from userspace", __func__);
+> > > +		return -EFAULT;
+> > > +	}
+> > > +	if (cmd == Cld_GraceStart) {
+> > > +		if (get_user(namelen, &cmsg->cm_u.cm_name.cn_len))
+> > > +			return -EFAULT;
+> > > +		name.data = memdup_user(&cmsg->cm_u.cm_name.cn_id, namelen);
+> > > +		if (IS_ERR_OR_NULL(name.data))
+> > > +			return -EFAULT;
+> > > +		name.len = namelen;
+> > > +		if (!nfs4_client_to_reclaim(name, nn)) {
+> > > +			kfree(name.data);
+> > > +			return -EFAULT;
+> > > +		}
+> > > +		return sizeof(*cmsg);
+> > > +	}
+> > > +	return -EFAULT;
+> > > +}
+> > > +
+> > >  static ssize_t
+> > >  cld_pipe_downcall(struct file *filp, const char __user *src, size_t mlen)
+> > >  {
+> > > @@ -788,6 +816,7 @@ cld_pipe_downcall(struct file *filp, const char __user *src, size_t mlen)
+> > >  	struct nfsd_net *nn = net_generic(file_inode(filp)->i_sb->s_fs_info,
+> > >  						nfsd_net_id);
+> > >  	struct cld_net *cn = nn->cld_net;
+> > > +	int16_t status;
+> > >  
+> > >  	if (mlen != sizeof(*cmsg)) {
+> > >  		dprintk("%s: got %zu bytes, expected %zu\n", __func__, mlen,
+> > > @@ -801,13 +830,24 @@ cld_pipe_downcall(struct file *filp, const char __user *src, size_t mlen)
+> > >  		return -EFAULT;
+> > >  	}
+> > >  
+> > > +	/*
+> > > +	 * copy the status so we know whether to remove the upcall from the
+> > > +	 * list (for -EINPROGRESS, we just want to make sure the xid is
+> > > +	 * valid, not remove the upcall from the list)
+> > > +	 */
+> > > +	if (get_user(status, &cmsg->cm_status)) {
+> > > +		dprintk("%s: error when copying status from userspace", __func__);
+> > > +		return -EFAULT;
+> > > +	}
+> > > +
+> > >  	/* walk the list and find corresponding xid */
+> > >  	cup = NULL;
+> > >  	spin_lock(&cn->cn_lock);
+> > >  	list_for_each_entry(tmp, &cn->cn_list, cu_list) {
+> > >  		if (get_unaligned(&tmp->cu_msg.cm_xid) == xid) {
+> > >  			cup = tmp;
+> > > -			list_del_init(&cup->cu_list);
+> > > +			if (status != -EINPROGRESS)
+> > > +				list_del_init(&cup->cu_list);
+> > >  			break;
+> > >  		}
+> > >  	}
+> > > @@ -819,6 +859,9 @@ cld_pipe_downcall(struct file *filp, const char __user *src, size_t mlen)
+> > >  		return -EINVAL;
+> > >  	}
+> > >  
+> > > +	if (status == -EINPROGRESS)
+> > > +		return __cld_pipe_inprogress_downcall(cmsg, nn);
+> > > +
+> > >  	if (copy_from_user(&cup->cu_msg, src, mlen) != 0)
+> > >  		return -EFAULT;
+> > >  
+> > > @@ -1065,9 +1108,14 @@ nfsd4_cld_remove(struct nfs4_client *clp)
+> > >  				"record from stable storage: %d\n", ret);
+> > >  }
+> > >  
+> > > -/* Check for presence of a record, and update its timestamp */
+> > > +/*
+> > > + * For older nfsdcld's that do not allow us to "slurp" the clients
+> > > + * from the tracking database during startup.
+> > > + *
+> > > + * Check for presence of a record, and update its timestamp
+> > > + */
+> > >  static int
+> > > -nfsd4_cld_check(struct nfs4_client *clp)
+> > > +nfsd4_cld_check_v0(struct nfs4_client *clp)
+> > >  {
+> > >  	int ret;
+> > >  	struct cld_upcall *cup;
+> > > @@ -1100,8 +1148,61 @@ nfsd4_cld_check(struct nfs4_client *clp)
+> > >  	return ret;
+> > >  }
+> > >  
+> > > +/*
+> > > + * For newer nfsdcld's that allow us to "slurp" the clients
+> > > + * from the tracking database during startup.
+> > > + *
+> > > + * Check for presence of a record in the reclaim_str_hashtbl
+> > > + */
+> > > +static int
+> > > +nfsd4_cld_check(struct nfs4_client *clp)
+> > > +{
+> > > +	struct nfs4_client_reclaim *crp;
+> > > +	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
+> > > +
+> > > +	/* did we already find that this client is stable? */
+> > > +	if (test_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags))
+> > > +		return 0;
+> > > +
+> > > +	/* look for it in the reclaim hashtable otherwise */
+> > > +	crp = nfsd4_find_reclaim_client(clp->cl_name, nn);
+> > > +	if (crp) {
+> > > +		crp->cr_clp = clp;
+> > > +		return 0;
+> > > +	}
+> > > +
+> > > +	return -ENOENT;
+> > 
+> > Does this need to set NFSD4_CLIENT_STABLE as well, like
+> > nfsd4_cld_check_v0 does?
+> 
+> No - all we've checked here is the reclaim_str_hashtbl, which is
+> populated from the table for the recovery epoch in nfsdcld's database.
+> The stable flag gets set once we've done a 'create' upcall, which causes
+> nfsdcld to write a record to the table for the current epoch.  If the
+> stable flag is already set then we don't even do that upcall.
 
+OK, sorry, I think I get it now....
 
-> On Apr 5, 2019, at 3:27 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
->=20
-> On Fri, Apr 5, 2019 at 3:23 PM Chuck Lever <chuck.lever@oracle.com> =
-wrote:
->>=20
->>=20
->>=20
->>> On Apr 5, 2019, at 3:17 PM, Olga Kornievskaia <aglo@umich.edu> =
-wrote:
->>>=20
->>> On Fri, Apr 5, 2019 at 1:51 PM Chuck Lever <chuck.lever@oracle.com> =
-wrote:
->>>>=20
->>>>=20
->>>>=20
->>>>> On Apr 5, 2019, at 1:36 PM, Olga Kornievskaia <aglo@umich.edu> =
-wrote:
->>>>>=20
->>>>> Hi Chuck,
->>>>>=20
->>>>> This patch break ACLs. After applying this patch nfs4_getfacl =
-fails
->>>>> (it fails within xdr and returns ENOTSUPP). Any ideas why?
->>>>=20
->>>> Possibly the macro that defines the maximum size of the reply
->>>> is incorrect.
->>>>=20
->>>=20
->>> This also breaks FS_LOCATION. I'm going to go on the limb here and =
-say
->>> that it probably breaks whatever else it modified.
->>=20
->> It modifies READ, READDIR, and READLINK. Are those broken?
->=20
-> I don't know how to test READLINK.. but I think READ/READDIR work OK
-> otherwise folks would have noticed it (I gather ACL and FS_LOCATION
-> testing doesn't happen frequently).
+--b.
 
-I guess I don't have any NFSv4 ACL or FS_LOCATIONS regressions
-tests in my automated unit tests.
-
-
->>> The question is: can't we just revert it??
->>=20
->> Why not "root cause" it first?
->=20
-> I'm trying :-/ I was just fishing to see how important the change was.
-
-Try reverting just this hunk:
-
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index d0fa18d..6d9d5e2 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -284,14 +284,14 @@ static int decode_layoutget(struct xdr_stream =
-*xdr, struct rpc_rqst *req,
-#define decode_delegreturn_maxsz (op_decode_hdr_maxsz)
-#define encode_getacl_maxsz	(encode_getattr_maxsz)
-#define decode_getacl_maxsz	(op_decode_hdr_maxsz + \
--				 nfs4_fattr_bitmap_maxsz + 1)
-+				 nfs4_fattr_bitmap_maxsz + 1 + 1)
-#define encode_setacl_maxsz	(op_encode_hdr_maxsz + \
-				 encode_stateid_maxsz + 3)
-#define decode_setacl_maxsz	(decode_setattr_maxsz)
-#define encode_fs_locations_maxsz \
-				(encode_getattr_maxsz)
-#define decode_fs_locations_maxsz \
--				(0)
-+				(1)
-#define encode_secinfo_maxsz	(op_encode_hdr_maxsz + nfs4_name_maxsz)
-#define decode_secinfo_maxsz	(op_decode_hdr_maxsz + 1 + =
-((NFS_MAX_SECFLAVORS * (16 + GSS_OID_MAX_LEN)) / 4))
-
-
->>>>> On Mon, Feb 11, 2019 at 11:25 AM Chuck Lever =
-<chuck.lever@oracle.com> wrote:
->>>>>>=20
->>>>>> Certain NFS results (eg. READLINK) might expect a data payload =
-that
->>>>>> is not an exact multiple of 4 bytes. In this case, XDR encoding
->>>>>> is required to pad that payload so its length on the wire is a
->>>>>> multiple of 4 bytes. The constants that define the maximum size =
-of
->>>>>> each NFS result do not appear to account for this extra word.
->>>>>>=20
->>>>>> In each case where the data payload is to be received into pages:
->>>>>>=20
->>>>>> - 1 word is added to the size of the receive buffer allocated by
->>>>>> call_allocate
->>>>>>=20
->>>>>> - rpc_inline_rcv_pages subtracts 1 word from @hdrsize so that the
->>>>>> extra buffer space falls into the rcv_buf's tail iovec
->>>>>>=20
->>>>>> - If buf->pagelen is word-aligned, an XDR pad is not needed and
->>>>>> is thus removed from the tail
->>>>>>=20
->>>>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->>>>>> ---
->>>>>> fs/nfs/nfs2xdr.c  |    6 +++---
->>>>>> fs/nfs/nfs3xdr.c  |   10 +++++-----
->>>>>> fs/nfs/nfs4xdr.c  |   15 ++++++++-------
->>>>>> net/sunrpc/clnt.c |    6 +++++-
->>>>>> net/sunrpc/xdr.c  |    2 ++
->>>>>> 5 files changed, 23 insertions(+), 16 deletions(-)
->>>>>>=20
->>>>>> diff --git a/fs/nfs/nfs2xdr.c b/fs/nfs/nfs2xdr.c
->>>>>> index 1dcd0fe..a7ed29d 100644
->>>>>> --- a/fs/nfs/nfs2xdr.c
->>>>>> +++ b/fs/nfs/nfs2xdr.c
->>>>>> @@ -56,11 +56,11 @@
->>>>>>=20
->>>>>> #define NFS_attrstat_sz                (1+NFS_fattr_sz)
->>>>>> #define NFS_diropres_sz                =
-(1+NFS_fhandle_sz+NFS_fattr_sz)
->>>>>> -#define NFS_readlinkres_sz     (2)
->>>>>> -#define NFS_readres_sz         (1+NFS_fattr_sz+1)
->>>>>> +#define NFS_readlinkres_sz     (2+1)
->>>>>> +#define NFS_readres_sz         (1+NFS_fattr_sz+1+1)
->>>>>> #define NFS_writeres_sz         (NFS_attrstat_sz)
->>>>>> #define NFS_stat_sz            (1)
->>>>>> -#define NFS_readdirres_sz      (1)
->>>>>> +#define NFS_readdirres_sz      (1+1)
->>>>>> #define NFS_statfsres_sz       (1+NFS_info_sz)
->>>>>>=20
->>>>>> static int nfs_stat_to_errno(enum nfs_stat);
->>>>>> diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
->>>>>> index a54dcf4..110358f 100644
->>>>>> --- a/fs/nfs/nfs3xdr.c
->>>>>> +++ b/fs/nfs/nfs3xdr.c
->>>>>> @@ -69,13 +69,13 @@
->>>>>> #define NFS3_removeres_sz      (NFS3_setattrres_sz)
->>>>>> #define NFS3_lookupres_sz      (1+NFS3_fh_sz+(2 * =
-NFS3_post_op_attr_sz))
->>>>>> #define NFS3_accessres_sz      (1+NFS3_post_op_attr_sz+1)
->>>>>> -#define NFS3_readlinkres_sz    (1+NFS3_post_op_attr_sz+1)
->>>>>> -#define NFS3_readres_sz                =
-(1+NFS3_post_op_attr_sz+3)
->>>>>> +#define NFS3_readlinkres_sz    (1+NFS3_post_op_attr_sz+1+1)
->>>>>> +#define NFS3_readres_sz                =
-(1+NFS3_post_op_attr_sz+3+1)
->>>>>> #define NFS3_writeres_sz       (1+NFS3_wcc_data_sz+4)
->>>>>> #define NFS3_createres_sz      =
-(1+NFS3_fh_sz+NFS3_post_op_attr_sz+NFS3_wcc_data_sz)
->>>>>> #define NFS3_renameres_sz      (1+(2 * NFS3_wcc_data_sz))
->>>>>> #define NFS3_linkres_sz                =
-(1+NFS3_post_op_attr_sz+NFS3_wcc_data_sz)
->>>>>> -#define NFS3_readdirres_sz     (1+NFS3_post_op_attr_sz+2)
->>>>>> +#define NFS3_readdirres_sz     (1+NFS3_post_op_attr_sz+2+1)
->>>>>> #define NFS3_fsstatres_sz      (1+NFS3_post_op_attr_sz+13)
->>>>>> #define NFS3_fsinfores_sz      (1+NFS3_post_op_attr_sz+12)
->>>>>> #define NFS3_pathconfres_sz    (1+NFS3_post_op_attr_sz+6)
->>>>>> @@ -85,7 +85,7 @@
->>>>>> #define ACL3_setaclargs_sz     (NFS3_fh_sz+1+ \
->>>>>>                              XDR_QUADLEN(NFS_ACL_INLINE_BUFSIZE))
->>>>>> #define ACL3_getaclres_sz      (1+NFS3_post_op_attr_sz+1+ \
->>>>>> -                               =
-XDR_QUADLEN(NFS_ACL_INLINE_BUFSIZE))
->>>>>> +                               =
-XDR_QUADLEN(NFS_ACL_INLINE_BUFSIZE)+1)
->>>>>> #define ACL3_setaclres_sz      (1+NFS3_post_op_attr_sz)
->>>>>>=20
->>>>>> static int nfs3_stat_to_errno(enum nfs_stat);
->>>>>> @@ -1629,7 +1629,7 @@ static int nfs3_xdr_dec_read3res(struct =
-rpc_rqst *req, struct xdr_stream *xdr,
->>>>>>      result->op_status =3D status;
->>>>>>      if (status !=3D NFS3_OK)
->>>>>>              goto out_status;
->>>>>> -       result->replen =3D 3 + ((xdr_stream_pos(xdr) - pos) >> =
-2);
->>>>>> +       result->replen =3D 4 + ((xdr_stream_pos(xdr) - pos) >> =
-2);
->>>>>>      error =3D decode_read3resok(xdr, result);
->>>>>> out:
->>>>>>      return error;
->>>>>> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
->>>>>> index d0fa18d..6d9d5e2 100644
->>>>>> --- a/fs/nfs/nfs4xdr.c
->>>>>> +++ b/fs/nfs/nfs4xdr.c
->>>>>> @@ -215,14 +215,14 @@ static int decode_layoutget(struct =
-xdr_stream *xdr, struct rpc_rqst *req,
->>>>>>                               nfs4_fattr_bitmap_maxsz)
->>>>>> #define encode_read_maxsz      (op_encode_hdr_maxsz + \
->>>>>>                               encode_stateid_maxsz + 3)
->>>>>> -#define decode_read_maxsz      (op_decode_hdr_maxsz + 2)
->>>>>> +#define decode_read_maxsz      (op_decode_hdr_maxsz + 2 + 1)
->>>>>> #define encode_readdir_maxsz   (op_encode_hdr_maxsz + \
->>>>>>                               2 + encode_verifier_maxsz + 5 + \
->>>>>>                              nfs4_label_maxsz)
->>>>>> #define decode_readdir_maxsz   (op_decode_hdr_maxsz + \
->>>>>> -                                decode_verifier_maxsz)
->>>>>> +                                decode_verifier_maxsz + 1)
->>>>>> #define encode_readlink_maxsz  (op_encode_hdr_maxsz)
->>>>>> -#define decode_readlink_maxsz  (op_decode_hdr_maxsz + 1)
->>>>>> +#define decode_readlink_maxsz  (op_decode_hdr_maxsz + 1 + 1)
->>>>>> #define encode_write_maxsz     (op_encode_hdr_maxsz + \
->>>>>>                               encode_stateid_maxsz + 4)
->>>>>> #define decode_write_maxsz     (op_decode_hdr_maxsz + \
->>>>>> @@ -284,14 +284,14 @@ static int decode_layoutget(struct =
-xdr_stream *xdr, struct rpc_rqst *req,
->>>>>> #define decode_delegreturn_maxsz (op_decode_hdr_maxsz)
->>>>>> #define encode_getacl_maxsz    (encode_getattr_maxsz)
->>>>>> #define decode_getacl_maxsz    (op_decode_hdr_maxsz + \
->>>>>> -                                nfs4_fattr_bitmap_maxsz + 1)
->>>>>> +                                nfs4_fattr_bitmap_maxsz + 1 + 1)
->>>>>> #define encode_setacl_maxsz    (op_encode_hdr_maxsz + \
->>>>>>                               encode_stateid_maxsz + 3)
->>>>>> #define decode_setacl_maxsz    (decode_setattr_maxsz)
->>>>>> #define encode_fs_locations_maxsz \
->>>>>>                              (encode_getattr_maxsz)
->>>>>> #define decode_fs_locations_maxsz \
->>>>>> -                               (0)
->>>>>> +                               (1)
->>>>>> #define encode_secinfo_maxsz   (op_encode_hdr_maxsz + =
-nfs4_name_maxsz)
->>>>>> #define decode_secinfo_maxsz   (op_decode_hdr_maxsz + 1 + =
-((NFS_MAX_SECFLAVORS * (16 + GSS_OID_MAX_LEN)) / 4))
->>>>>>=20
->>>>>> @@ -392,12 +392,13 @@ static int decode_layoutget(struct =
-xdr_stream *xdr, struct rpc_rqst *req,
->>>>>>                              1 /* opaque devaddr4 length */ + \
->>>>>>                                /* devaddr4 payload is read into =
-page */ \
->>>>>>                              1 /* notification bitmap length */ + =
-\
->>>>>> -                               1 /* notification bitmap, word 0 =
-*/)
->>>>>> +                               1 /* notification bitmap, word 0 =
-*/ + \
->>>>>> +                               1 /* possible XDR padding */)
->>>>>> #define encode_layoutget_maxsz (op_encode_hdr_maxsz + 10 + \
->>>>>>                              encode_stateid_maxsz)
->>>>>> #define decode_layoutget_maxsz (op_decode_hdr_maxsz + 8 + \
->>>>>>                              decode_stateid_maxsz + \
->>>>>> -                               XDR_QUADLEN(PNFS_LAYOUT_MAXSIZE))
->>>>>> +                               XDR_QUADLEN(PNFS_LAYOUT_MAXSIZE) =
-+ 1)
->>>>>> #define encode_layoutcommit_maxsz (op_encode_hdr_maxsz +          =
-\
->>>>>>                              2 /* offset */ + \
->>>>>>                              2 /* length */ + \
->>>>>> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
->>>>>> index f780605..4ea38b0 100644
->>>>>> --- a/net/sunrpc/clnt.c
->>>>>> +++ b/net/sunrpc/clnt.c
->>>>>> @@ -1177,7 +1177,11 @@ void rpc_prepare_reply_pages(struct =
-rpc_rqst *req, struct page **pages,
->>>>>>                           unsigned int base, unsigned int len,
->>>>>>                           unsigned int hdrsize)
->>>>>> {
->>>>>> -       hdrsize +=3D RPC_REPHDRSIZE + =
-req->rq_cred->cr_auth->au_rslack;
->>>>>> +       /* Subtract one to force an extra word of buffer space =
-for the
->>>>>> +        * payload's XDR pad to fall into the rcv_buf's tail =
-iovec.
->>>>>> +        */
->>>>>> +       hdrsize +=3D RPC_REPHDRSIZE + =
-req->rq_cred->cr_auth->au_rslack - 1;
->>>>>> +
->>>>>>      xdr_inline_pages(&req->rq_rcv_buf, hdrsize << 2, pages, =
-base, len);
->>>>>>      trace_rpc_reply_pages(req);
->>>>>> }
->>>>>> diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
->>>>>> index 7cca515..aa8177d 100644
->>>>>> --- a/net/sunrpc/xdr.c
->>>>>> +++ b/net/sunrpc/xdr.c
->>>>>> @@ -189,6 +189,8 @@ __be32 *xdr_encode_opaque(__be32 *p, const =
-void *ptr, unsigned int nbytes)
->>>>>>=20
->>>>>>      tail->iov_base =3D buf + offset;
->>>>>>      tail->iov_len =3D buflen - offset;
->>>>>> +       if ((xdr->page_len & 3) =3D=3D 0)
->>>>>> +               tail->iov_len -=3D sizeof(__be32);
->>>>>>=20
->>>>>>      xdr->buflen +=3D len;
->>>>>> }
->>>>>>=20
->>>>=20
->>>> --
->>>> Chuck Lever
->>=20
->> --
->> Chuck Lever
-
---
-Chuck Lever
-
-
-
+> 
+> -Scott
+> > 
+> > --b.
+> > 
+> > > +}
+> > > +
+> > > +static int
+> > > +nfsd4_cld_grace_start(struct nfsd_net *nn)
+> > > +{
+> > > +	int ret;
+> > > +	struct cld_upcall *cup;
+> > > +	struct cld_net *cn = nn->cld_net;
+> > > +
+> > > +	cup = alloc_cld_upcall(cn);
+> > > +	if (!cup) {
+> > > +		ret = -ENOMEM;
+> > > +		goto out_err;
+> > > +	}
+> > > +
+> > > +	cup->cu_msg.cm_cmd = Cld_GraceStart;
+> > > +	ret = cld_pipe_upcall(cn->cn_pipe, &cup->cu_msg);
+> > > +	if (!ret)
+> > > +		ret = cup->cu_msg.cm_status;
+> > > +
+> > > +	free_cld_upcall(cup);
+> > > +out_err:
+> > > +	if (ret)
+> > > +		dprintk("%s: Unable to get clients from userspace: %d\n",
+> > > +			__func__, ret);
+> > > +	return ret;
+> > > +}
+> > > +
+> > > +/* For older nfsdcld's that need cm_gracetime */
+> > >  static void
+> > > -nfsd4_cld_grace_done(struct nfsd_net *nn)
+> > > +nfsd4_cld_grace_done_v0(struct nfsd_net *nn)
+> > >  {
+> > >  	int ret;
+> > >  	struct cld_upcall *cup;
+> > > @@ -1125,11 +1226,118 @@ nfsd4_cld_grace_done(struct nfsd_net *nn)
+> > >  		printk(KERN_ERR "NFSD: Unable to end grace period: %d\n", ret);
+> > >  }
+> > >  
+> > > -static const struct nfsd4_client_tracking_ops nfsd4_cld_tracking_ops = {
+> > > +/*
+> > > + * For newer nfsdcld's that do not need cm_gracetime.  We also need to call
+> > > + * nfs4_release_reclaim() to clear out the reclaim_str_hashtbl.
+> > > + */
+> > > +static void
+> > > +nfsd4_cld_grace_done(struct nfsd_net *nn)
+> > > +{
+> > > +	int ret;
+> > > +	struct cld_upcall *cup;
+> > > +	struct cld_net *cn = nn->cld_net;
+> > > +
+> > > +	cup = alloc_cld_upcall(cn);
+> > > +	if (!cup) {
+> > > +		ret = -ENOMEM;
+> > > +		goto out_err;
+> > > +	}
+> > > +
+> > > +	cup->cu_msg.cm_cmd = Cld_GraceDone;
+> > > +	ret = cld_pipe_upcall(cn->cn_pipe, &cup->cu_msg);
+> > > +	if (!ret)
+> > > +		ret = cup->cu_msg.cm_status;
+> > > +
+> > > +	free_cld_upcall(cup);
+> > > +out_err:
+> > > +	nfs4_release_reclaim(nn);
+> > > +	if (ret)
+> > > +		printk(KERN_ERR "NFSD: Unable to end grace period: %d\n", ret);
+> > > +}
+> > > +
+> > > +static int
+> > > +nfs4_cld_state_init(struct net *net)
+> > > +{
+> > > +	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
+> > > +	int i;
+> > > +
+> > > +	nn->reclaim_str_hashtbl = kmalloc_array(CLIENT_HASH_SIZE,
+> > > +						sizeof(struct list_head),
+> > > +						GFP_KERNEL);
+> > > +	if (!nn->reclaim_str_hashtbl)
+> > > +		return -ENOMEM;
+> > > +
+> > > +	for (i = 0; i < CLIENT_HASH_SIZE; i++)
+> > > +		INIT_LIST_HEAD(&nn->reclaim_str_hashtbl[i]);
+> > > +	nn->reclaim_str_hashtbl_size = 0;
+> > > +
+> > > +	return 0;
+> > > +}
+> > > +
+> > > +static void
+> > > +nfs4_cld_state_shutdown(struct net *net)
+> > > +{
+> > > +	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
+> > > +
+> > > +	kfree(nn->reclaim_str_hashtbl);
+> > > +}
+> > > +
+> > > +static int
+> > > +nfsd4_cld_tracking_init(struct net *net)
+> > > +{
+> > > +	int status;
+> > > +	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
+> > > +
+> > > +	status = nfs4_cld_state_init(net);
+> > > +	if (status)
+> > > +		return status;
+> > > +
+> > > +	status = nfsd4_init_cld_pipe(net);
+> > > +	if (status)
+> > > +		goto err_shutdown;
+> > > +
+> > > +	status = nfsd4_cld_grace_start(nn);
+> > > +	if (status) {
+> > > +		if (status == -EOPNOTSUPP)
+> > > +			printk(KERN_WARNING "NFSD: Please upgrade nfsdcld.\n");
+> > > +		nfs4_release_reclaim(nn);
+> > > +		goto err_remove;
+> > > +	}
+> > > +	return 0;
+> > > +
+> > > +err_remove:
+> > > +	nfsd4_remove_cld_pipe(net);
+> > > +err_shutdown:
+> > > +	nfs4_cld_state_shutdown(net);
+> > > +	return status;
+> > > +}
+> > > +
+> > > +static void
+> > > +nfsd4_cld_tracking_exit(struct net *net)
+> > > +{
+> > > +	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
+> > > +
+> > > +	nfs4_release_reclaim(nn);
+> > > +	nfsd4_remove_cld_pipe(net);
+> > > +	nfs4_cld_state_shutdown(net);
+> > > +}
+> > > +
+> > > +/* For older nfsdcld's */
+> > > +static const struct nfsd4_client_tracking_ops nfsd4_cld_tracking_ops_v0 = {
+> > >  	.init		= nfsd4_init_cld_pipe,
+> > >  	.exit		= nfsd4_remove_cld_pipe,
+> > >  	.create		= nfsd4_cld_create,
+> > >  	.remove		= nfsd4_cld_remove,
+> > > +	.check		= nfsd4_cld_check_v0,
+> > > +	.grace_done	= nfsd4_cld_grace_done_v0,
+> > > +};
+> > > +
+> > > +/* For newer nfsdcld's */
+> > > +static const struct nfsd4_client_tracking_ops nfsd4_cld_tracking_ops = {
+> > > +	.init		= nfsd4_cld_tracking_init,
+> > > +	.exit		= nfsd4_cld_tracking_exit,
+> > > +	.create		= nfsd4_cld_create,
+> > > +	.remove		= nfsd4_cld_remove,
+> > >  	.check		= nfsd4_cld_check,
+> > >  	.grace_done	= nfsd4_cld_grace_done,
+> > >  };
+> > > @@ -1514,9 +1722,10 @@ nfsd4_client_tracking_init(struct net *net)
+> > >  
+> > >  	/* Finally, try to use nfsdcld */
+> > >  	nn->client_tracking_ops = &nfsd4_cld_tracking_ops;
+> > > -	printk(KERN_WARNING "NFSD: the nfsdcld client tracking upcall will be "
+> > > -			"removed in 3.10. Please transition to using "
+> > > -			"nfsdcltrack.\n");
+> > > +	status = nn->client_tracking_ops->init(net);
+> > > +	if (!status)
+> > > +		return status;
+> > > +	nn->client_tracking_ops = &nfsd4_cld_tracking_ops_v0;
+> > >  do_init:
+> > >  	status = nn->client_tracking_ops->init(net);
+> > >  	if (status) {
+> > > diff --git a/include/uapi/linux/nfsd/cld.h b/include/uapi/linux/nfsd/cld.h
+> > > index f8f5cccad749..b1e9de4f07d5 100644
+> > > --- a/include/uapi/linux/nfsd/cld.h
+> > > +++ b/include/uapi/linux/nfsd/cld.h
+> > > @@ -36,6 +36,7 @@ enum cld_command {
+> > >  	Cld_Remove,		/* remove record of this cm_id */
+> > >  	Cld_Check,		/* is this cm_id allowed? */
+> > >  	Cld_GraceDone,		/* grace period is complete */
+> > > +	Cld_GraceStart,
+> > >  };
+> > >  
+> > >  /* representation of long-form NFSv4 client ID */
+> > > -- 
+> > > 2.17.2
