@@ -8,62 +8,62 @@ X-Spam-Status: No, score=-8.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9B257C10F0E
-	for <linux-nfs@archiver.kernel.org>; Sun,  7 Apr 2019 18:01:49 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1EF1DC282DD
+	for <linux-nfs@archiver.kernel.org>; Sun,  7 Apr 2019 18:01:50 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 7043120896
+	by mail.kernel.org (Postfix) with ESMTP id D156C20896
 	for <linux-nfs@archiver.kernel.org>; Sun,  7 Apr 2019 18:01:49 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="d3Zyf7l7"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="tdFI3cee"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726493AbfDGSBs (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 7 Apr 2019 14:01:48 -0400
-Received: from mail-it1-f194.google.com ([209.85.166.194]:40284 "EHLO
-        mail-it1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726489AbfDGSBs (ORCPT
+        id S1726494AbfDGSBt (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sun, 7 Apr 2019 14:01:49 -0400
+Received: from mail-io1-f68.google.com ([209.85.166.68]:39240 "EHLO
+        mail-io1-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726487AbfDGSBs (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Sun, 7 Apr 2019 14:01:48 -0400
-Received: by mail-it1-f194.google.com with SMTP id k64so17314997itb.5
-        for <linux-nfs@vger.kernel.org>; Sun, 07 Apr 2019 11:01:48 -0700 (PDT)
+Received: by mail-io1-f68.google.com with SMTP id e13so9080038ioq.6
+        for <linux-nfs@vger.kernel.org>; Sun, 07 Apr 2019 11:01:47 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references
          :mime-version:content-transfer-encoding;
-        bh=QVHC9nXN/OYYOsgPjLV9ouq+Ky6WPum+S8eGKpHpCo4=;
-        b=d3Zyf7l7sSrOEQABkHtDP6dU4qcYN/vgzfNIHUMePEyo20s34ZFB1TziZ99Ufm6c/4
-         fIAd4QExam4WCyynd2OyKQbBTKRoUcVGDjpuPuharA6Os0NHuUAZYfcjWsF+0OKQkMEl
-         o5W/DGF8HOv1d3A9nvKCG7WA1zZxrIClOa9OqOSnNIFKn2gYYA2LKYeMLHq2sA+42Ut6
-         115qciUIv7uru5ZI6uQBfuKl6tTWR3DCJclLZA2Y+c4v1aergMuqQKKKFbL5FC0GPiP0
-         5duT70qmHHPOdPGJoqL0TWsYtT7FUonbqj1J7bSlLS/Ex0MKxRaStLIIPyMqvNa9BwOl
-         8bLA==
+        bh=sk5hEwmNGuRpQ8mqJ0jredgsQ1DuWta1EVnnWPCejy0=;
+        b=tdFI3ceeAutAiLQtVVYp77sPlIADaMBdQunbT83VUx2QxgX21cUBb/fpfRndaTUIpe
+         7WfbLXN6X60ShnYr39ukB4wCG47gcMSXfFBtjzx46wnmsllr82/1YpZJDAoId88XMQ4r
+         Sn00ZLuEnU+s/HD+g9+c0lGYpX2O0yfBelDKAzfVBDhpFSqoyIPRbE4caFFu1XQOftiL
+         qTY+oYgCmOQAGXWbNGvINHAO/UbpMlX4z3tnwU1ecJbs9Sr3k1kfI5W3ke1Vo+b1FQqc
+         R/9Mx2bDJE06F7L4lf1Fn9HLN0Pn/zJelH7NXYiQgW95UwgZt4AYMSluahMaAlVEOLDk
+         hAZw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=QVHC9nXN/OYYOsgPjLV9ouq+Ky6WPum+S8eGKpHpCo4=;
-        b=h77ugu33sHABj6mAjbaxz4WpXpo8voZZpesCVLCAoAGQdCggg9DFA8R8XUc/+/m04C
-         JYLeFkZ0eTVbtxB1/BNlOOFoGV7xYgGH7Mb95sT3bQ1H74ZXAYUyvGELWOE2wZqa3JmE
-         ZO1LNLdZ/M1zXDQtet5dzWwphb+BrgrGpr5QrAG2naa8P0o/hIyLGlp1gGLzhiKJZM9Y
-         eyaNO2qeg/275qNE52CuwJfoVpqYO+APDAUYaHKwtM7SfwgYR4sUPMxJzwETsRKFWBQv
-         Lpr3ZE2ZHrLA8D3Wo/RBDafy1dklOrZ755W7lZjDBD4Ad36uQgfKIqffAOHeI+wDLQG8
-         1dhg==
-X-Gm-Message-State: APjAAAX65M9LoSP+SxeyuZUjPIhWK8jvWxyaAuhou9RXzCCJk+OXNXz1
-        g/kh8uXn6qkB+JXlLJBJww==
-X-Google-Smtp-Source: APXvYqyxXgjbyLAyzbPsM3BbNbLSzJ/FEPrk3p8gYXvJyABlNm1PxJUmkpjWB6EoNkL8o2UPgPloWw==
-X-Received: by 2002:a24:5f8c:: with SMTP id r134mr18120105itb.110.1554660107577;
-        Sun, 07 Apr 2019 11:01:47 -0700 (PDT)
+        bh=sk5hEwmNGuRpQ8mqJ0jredgsQ1DuWta1EVnnWPCejy0=;
+        b=TnfDh7YZVzRJBfc+Cl3il5CgX7gMsZfefJOkdFI8G1ogr2trhH/v1veqi0EFy+o4Pq
+         zmewe2xiACnN/H4tGkIOc8EQ4dwuIlZKiy8oPqu5TYVb32j39kaicnXSwE7uqriTOnlC
+         mpxiWkvoNGcp8wCfMHoOIJ+zrP2hP9MZlC+jQeKmxgyA0qTEcCS2557f4IgIx4g7UH2Q
+         UwTF9oaPQYJub4RLTP0f7WvwR2P7NBQzjAXpEUzYmaho8d2nFEWFsMvJ2aM9gqOOcmhM
+         qc8dqyMvjxBKUhTclZQs8zS+zyzw84OZnxAw4E7caNfxhLtwBPKlDPbM5EdQ5VwZSlM0
+         Lyug==
+X-Gm-Message-State: APjAAAW37VSNoZ/oln6cCMWQWrnQgipSCgMi0ePqKc279ltFBg+O2Pt9
+        Dre89ev/2BA7ecD9ksbAgkjwxqk=
+X-Google-Smtp-Source: APXvYqwL6yVPP88gbc/dJoLmP0sv8dfHj+fsoit4VRKO4zuGjCY6q9LYCH9IR2Zs+DuLmdmGOVD+0Q==
+X-Received: by 2002:a5d:8b41:: with SMTP id c1mr16513891iot.173.1554660106757;
+        Sun, 07 Apr 2019 11:01:46 -0700 (PDT)
 Received: from localhost.localdomain (c-68-40-189-247.hsd1.mi.comcast.net. [68.40.189.247])
-        by smtp.gmail.com with ESMTPSA id m6sm10807362ioj.36.2019.04.07.11.01.46
+        by smtp.gmail.com with ESMTPSA id m6sm10807362ioj.36.2019.04.07.11.01.45
         (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
         Sun, 07 Apr 2019 11:01:46 -0700 (PDT)
 From:   Trond Myklebust <trondmy@gmail.com>
 X-Google-Original-From: Trond Myklebust <trond.myklebust@hammerspace.com>
 To:     Anna Schumaker <Anna.Schumaker@netapp.com>
 Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH v3 27/29] NFS: Ensure that all nfs lock contexts have a valid open context
-Date:   Sun,  7 Apr 2019 13:59:10 -0400
-Message-Id: <20190407175912.23528-28-trond.myklebust@hammerspace.com>
+Subject: [PATCH v3 26/29] NFS: Allow signal interruption of NFS4ERR_DELAYed operations
+Date:   Sun,  7 Apr 2019 13:59:09 -0400
+Message-Id: <20190407175912.23528-27-trond.myklebust@hammerspace.com>
 X-Mailer: git-send-email 2.20.1
-In-Reply-To: <20190407175912.23528-27-trond.myklebust@hammerspace.com>
+In-Reply-To: <20190407175912.23528-26-trond.myklebust@hammerspace.com>
 References: <20190407175912.23528-1-trond.myklebust@hammerspace.com>
  <20190407175912.23528-2-trond.myklebust@hammerspace.com>
  <20190407175912.23528-3-trond.myklebust@hammerspace.com>
@@ -90,7 +90,6 @@ References: <20190407175912.23528-1-trond.myklebust@hammerspace.com>
  <20190407175912.23528-24-trond.myklebust@hammerspace.com>
  <20190407175912.23528-25-trond.myklebust@hammerspace.com>
  <20190407175912.23528-26-trond.myklebust@hammerspace.com>
- <20190407175912.23528-27-trond.myklebust@hammerspace.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
@@ -98,45 +97,388 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Force the lock context to keep a reference to the parent open
-context so that we can guarantee the validity of the latter.
+If the server is unable to immediately execute an RPC call, and returns
+an NFS4ERR_DELAY then we can assume it is safe to interrupt the operation
+in order to handle ordinary signals. This allows the application to
+service timer interrupts that would otherwise have to wait until the
+server is again able to respond.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/inode.c | 13 +++++++++----
- 1 file changed, 9 insertions(+), 4 deletions(-)
+ fs/nfs/nfs4_fs.h  |   1 +
+ fs/nfs/nfs4proc.c | 139 ++++++++++++++++++++++++++++++++++------------
+ 2 files changed, 106 insertions(+), 34 deletions(-)
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 414a90d48493..efc45f22c581 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -885,10 +885,14 @@ struct nfs_lock_context *nfs_get_lock_context(struct nfs_open_context *ctx)
- 		spin_lock(&inode->i_lock);
- 		res = __nfs_find_lock_context(ctx);
- 		if (res == NULL) {
--			list_add_tail_rcu(&new->list, &ctx->lock_context.list);
--			new->open_context = ctx;
--			res = new;
--			new = NULL;
-+			new->open_context = get_nfs_open_context(ctx);
-+			if (new->open_context) {
-+				list_add_tail_rcu(&new->list,
-+						&ctx->lock_context.list);
-+				res = new;
-+				new = NULL;
-+			} else
-+				res = ERR_PTR(-EBADF);
- 		}
- 		spin_unlock(&inode->i_lock);
- 		kfree(new);
-@@ -906,6 +910,7 @@ void nfs_put_lock_context(struct nfs_lock_context *l_ctx)
- 		return;
- 	list_del_rcu(&l_ctx->list);
- 	spin_unlock(&inode->i_lock);
-+	put_nfs_open_context(ctx);
- 	kfree_rcu(l_ctx, rcu_head);
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index 06ac3d9ac7c6..8a38a254f516 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -206,6 +206,7 @@ struct nfs4_exception {
+ 	unsigned char delay : 1,
+ 		      recovering : 1,
+ 		      retry : 1;
++	bool interruptible;
+ };
+ 
+ struct nfs4_state_recovery_ops {
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 96b988689f0e..c29cbef6b53f 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -400,17 +400,32 @@ static long nfs4_update_delay(long *timeout)
+ 	return ret;
  }
- EXPORT_SYMBOL_GPL(nfs_put_lock_context);
+ 
+-static int nfs4_delay(struct rpc_clnt *clnt, long *timeout)
++static int nfs4_delay_killable(long *timeout)
+ {
+-	int res = 0;
+-
+ 	might_sleep();
+ 
+ 	freezable_schedule_timeout_killable_unsafe(
+ 		nfs4_update_delay(timeout));
+-	if (fatal_signal_pending(current))
+-		res = -ERESTARTSYS;
+-	return res;
++	if (!__fatal_signal_pending(current))
++		return 0;
++	return -EINTR;
++}
++
++static int nfs4_delay_interruptible(long *timeout)
++{
++	might_sleep();
++
++	freezable_schedule_timeout_interruptible(nfs4_update_delay(timeout));
++	if (!signal_pending(current))
++		return 0;
++	return __fatal_signal_pending(current) ? -EINTR :-ERESTARTSYS;
++}
++
++static int nfs4_delay(long *timeout, bool interruptible)
++{
++	if (interruptible)
++		return nfs4_delay_interruptible(timeout);
++	return nfs4_delay_killable(timeout);
+ }
+ 
+ /* This is the error handling routine for processes that are allowed
+@@ -546,7 +561,8 @@ int nfs4_handle_exception(struct nfs_server *server, int errorcode, struct nfs4_
+ 
+ 	ret = nfs4_do_handle_exception(server, errorcode, exception);
+ 	if (exception->delay) {
+-		ret = nfs4_delay(server->client, &exception->timeout);
++		ret = nfs4_delay(&exception->timeout,
++				exception->interruptible);
+ 		goto out_retry;
+ 	}
+ 	if (exception->recovering) {
+@@ -3066,7 +3082,9 @@ static struct nfs4_state *nfs4_do_open(struct inode *dir,
+ 					int *opened)
+ {
+ 	struct nfs_server *server = NFS_SERVER(dir);
+-	struct nfs4_exception exception = { };
++	struct nfs4_exception exception = {
++		.interruptible = true,
++	};
+ 	struct nfs4_state *res;
+ 	struct nfs4_open_createattrs c = {
+ 		.label = label,
+@@ -3679,7 +3697,9 @@ static int _nfs4_server_capabilities(struct nfs_server *server, struct nfs_fh *f
+ 
+ int nfs4_server_capabilities(struct nfs_server *server, struct nfs_fh *fhandle)
+ {
+-	struct nfs4_exception exception = { };
++	struct nfs4_exception exception = {
++		.interruptible = true,
++	};
+ 	int err;
+ 	do {
+ 		err = nfs4_handle_exception(server,
+@@ -3721,7 +3741,9 @@ static int _nfs4_lookup_root(struct nfs_server *server, struct nfs_fh *fhandle,
+ static int nfs4_lookup_root(struct nfs_server *server, struct nfs_fh *fhandle,
+ 		struct nfs_fsinfo *info)
+ {
+-	struct nfs4_exception exception = { };
++	struct nfs4_exception exception = {
++		.interruptible = true,
++	};
+ 	int err;
+ 	do {
+ 		err = _nfs4_lookup_root(server, fhandle, info);
+@@ -3948,7 +3970,9 @@ static int nfs4_proc_getattr(struct nfs_server *server, struct nfs_fh *fhandle,
+ 				struct nfs_fattr *fattr, struct nfs4_label *label,
+ 				struct inode *inode)
+ {
+-	struct nfs4_exception exception = { };
++	struct nfs4_exception exception = {
++		.interruptible = true,
++	};
+ 	int err;
+ 	do {
+ 		err = _nfs4_proc_getattr(server, fhandle, fattr, label, inode);
+@@ -4071,7 +4095,9 @@ static int nfs4_proc_lookup_common(struct rpc_clnt **clnt, struct inode *dir,
+ 				   const struct qstr *name, struct nfs_fh *fhandle,
+ 				   struct nfs_fattr *fattr, struct nfs4_label *label)
+ {
+-	struct nfs4_exception exception = { };
++	struct nfs4_exception exception = {
++		.interruptible = true,
++	};
+ 	struct rpc_clnt *client = *clnt;
+ 	int err;
+ 	do {
+@@ -4175,7 +4201,9 @@ static int _nfs4_proc_lookupp(struct inode *inode,
+ static int nfs4_proc_lookupp(struct inode *inode, struct nfs_fh *fhandle,
+ 			     struct nfs_fattr *fattr, struct nfs4_label *label)
+ {
+-	struct nfs4_exception exception = { };
++	struct nfs4_exception exception = {
++		.interruptible = true,
++	};
+ 	int err;
+ 	do {
+ 		err = _nfs4_proc_lookupp(inode, fhandle, fattr, label);
+@@ -4222,7 +4250,9 @@ static int _nfs4_proc_access(struct inode *inode, struct nfs_access_entry *entry
+ 
+ static int nfs4_proc_access(struct inode *inode, struct nfs_access_entry *entry)
+ {
+-	struct nfs4_exception exception = { };
++	struct nfs4_exception exception = {
++		.interruptible = true,
++	};
+ 	int err;
+ 	do {
+ 		err = _nfs4_proc_access(inode, entry);
+@@ -4277,7 +4307,9 @@ static int _nfs4_proc_readlink(struct inode *inode, struct page *page,
+ static int nfs4_proc_readlink(struct inode *inode, struct page *page,
+ 		unsigned int pgbase, unsigned int pglen)
+ {
+-	struct nfs4_exception exception = { };
++	struct nfs4_exception exception = {
++		.interruptible = true,
++	};
+ 	int err;
+ 	do {
+ 		err = _nfs4_proc_readlink(inode, page, pgbase, pglen);
+@@ -4353,7 +4385,9 @@ _nfs4_proc_remove(struct inode *dir, const struct qstr *name, u32 ftype)
+ 
+ static int nfs4_proc_remove(struct inode *dir, struct dentry *dentry)
+ {
+-	struct nfs4_exception exception = { };
++	struct nfs4_exception exception = {
++		.interruptible = true,
++	};
+ 	struct inode *inode = d_inode(dentry);
+ 	int err;
+ 
+@@ -4374,7 +4408,9 @@ static int nfs4_proc_remove(struct inode *dir, struct dentry *dentry)
+ 
+ static int nfs4_proc_rmdir(struct inode *dir, const struct qstr *name)
+ {
+-	struct nfs4_exception exception = { };
++	struct nfs4_exception exception = {
++		.interruptible = true,
++	};
+ 	int err;
+ 
+ 	do {
+@@ -4533,7 +4569,9 @@ static int _nfs4_proc_link(struct inode *inode, struct inode *dir, const struct
+ 
+ static int nfs4_proc_link(struct inode *inode, struct inode *dir, const struct qstr *name)
+ {
+-	struct nfs4_exception exception = { };
++	struct nfs4_exception exception = {
++		.interruptible = true,
++	};
+ 	int err;
+ 	do {
+ 		err = nfs4_handle_exception(NFS_SERVER(inode),
+@@ -4640,7 +4678,9 @@ static int _nfs4_proc_symlink(struct inode *dir, struct dentry *dentry,
+ static int nfs4_proc_symlink(struct inode *dir, struct dentry *dentry,
+ 		struct page *page, unsigned int len, struct iattr *sattr)
+ {
+-	struct nfs4_exception exception = { };
++	struct nfs4_exception exception = {
++		.interruptible = true,
++	};
+ 	struct nfs4_label l, *label = NULL;
+ 	int err;
+ 
+@@ -4679,7 +4719,9 @@ static int nfs4_proc_mkdir(struct inode *dir, struct dentry *dentry,
+ 		struct iattr *sattr)
+ {
+ 	struct nfs_server *server = NFS_SERVER(dir);
+-	struct nfs4_exception exception = { };
++	struct nfs4_exception exception = {
++		.interruptible = true,
++	};
+ 	struct nfs4_label l, *label = NULL;
+ 	int err;
+ 
+@@ -4739,7 +4781,9 @@ static int _nfs4_proc_readdir(struct dentry *dentry, const struct cred *cred,
+ static int nfs4_proc_readdir(struct dentry *dentry, const struct cred *cred,
+ 		u64 cookie, struct page **pages, unsigned int count, bool plus)
+ {
+-	struct nfs4_exception exception = { };
++	struct nfs4_exception exception = {
++		.interruptible = true,
++	};
+ 	int err;
+ 	do {
+ 		err = _nfs4_proc_readdir(dentry, cred, cookie,
+@@ -4790,7 +4834,9 @@ static int nfs4_proc_mknod(struct inode *dir, struct dentry *dentry,
+ 		struct iattr *sattr, dev_t rdev)
+ {
+ 	struct nfs_server *server = NFS_SERVER(dir);
+-	struct nfs4_exception exception = { };
++	struct nfs4_exception exception = {
++		.interruptible = true,
++	};
+ 	struct nfs4_label l, *label = NULL;
+ 	int err;
+ 
+@@ -4832,7 +4878,9 @@ static int _nfs4_proc_statfs(struct nfs_server *server, struct nfs_fh *fhandle,
+ 
+ static int nfs4_proc_statfs(struct nfs_server *server, struct nfs_fh *fhandle, struct nfs_fsstat *fsstat)
+ {
+-	struct nfs4_exception exception = { };
++	struct nfs4_exception exception = {
++		.interruptible = true,
++	};
+ 	int err;
+ 	do {
+ 		err = nfs4_handle_exception(server,
+@@ -4863,7 +4911,9 @@ static int _nfs4_do_fsinfo(struct nfs_server *server, struct nfs_fh *fhandle,
+ 
+ static int nfs4_do_fsinfo(struct nfs_server *server, struct nfs_fh *fhandle, struct nfs_fsinfo *fsinfo)
+ {
+-	struct nfs4_exception exception = { };
++	struct nfs4_exception exception = {
++		.interruptible = true,
++	};
+ 	unsigned long now = jiffies;
+ 	int err;
+ 
+@@ -4925,7 +4975,9 @@ static int _nfs4_proc_pathconf(struct nfs_server *server, struct nfs_fh *fhandle
+ static int nfs4_proc_pathconf(struct nfs_server *server, struct nfs_fh *fhandle,
+ 		struct nfs_pathconf *pathconf)
+ {
+-	struct nfs4_exception exception = { };
++	struct nfs4_exception exception = {
++		.interruptible = true,
++	};
+ 	int err;
+ 
+ 	do {
+@@ -5494,7 +5546,9 @@ static ssize_t __nfs4_get_acl_uncached(struct inode *inode, void *buf, size_t bu
+ 
+ static ssize_t nfs4_get_acl_uncached(struct inode *inode, void *buf, size_t buflen)
+ {
+-	struct nfs4_exception exception = { };
++	struct nfs4_exception exception = {
++		.interruptible = true,
++	};
+ 	ssize_t ret;
+ 	do {
+ 		ret = __nfs4_get_acl_uncached(inode, buf, buflen);
+@@ -5628,7 +5682,9 @@ static int _nfs4_get_security_label(struct inode *inode, void *buf,
+ static int nfs4_get_security_label(struct inode *inode, void *buf,
+ 					size_t buflen)
+ {
+-	struct nfs4_exception exception = { };
++	struct nfs4_exception exception = {
++		.interruptible = true,
++	};
+ 	int err;
+ 
+ 	if (!nfs_server_capable(inode, NFS_CAP_SECURITY_LABEL))
+@@ -6269,7 +6325,9 @@ static int _nfs4_proc_getlk(struct nfs4_state *state, int cmd, struct file_lock
+ 
+ static int nfs4_proc_getlk(struct nfs4_state *state, int cmd, struct file_lock *request)
+ {
+-	struct nfs4_exception exception = { };
++	struct nfs4_exception exception = {
++		.interruptible = true,
++	};
+ 	int err;
+ 
+ 	do {
+@@ -6833,6 +6891,7 @@ static int nfs4_proc_setlk(struct nfs4_state *state, int cmd, struct file_lock *
+ 	struct nfs4_exception exception = {
+ 		.state = state,
+ 		.inode = state->inode,
++		.interruptible = true,
+ 	};
+ 	int err;
+ 
+@@ -7246,7 +7305,9 @@ int nfs4_proc_fs_locations(struct rpc_clnt *client, struct inode *dir,
+ 			   struct nfs4_fs_locations *fs_locations,
+ 			   struct page *page)
+ {
+-	struct nfs4_exception exception = { };
++	struct nfs4_exception exception = {
++		.interruptible = true,
++	};
+ 	int err;
+ 	do {
+ 		err = _nfs4_proc_fs_locations(client, dir, name,
+@@ -7389,7 +7450,9 @@ int nfs4_proc_get_locations(struct inode *inode,
+ 	struct nfs_client *clp = server->nfs_client;
+ 	const struct nfs4_mig_recovery_ops *ops =
+ 					clp->cl_mvops->mig_recovery_ops;
+-	struct nfs4_exception exception = { };
++	struct nfs4_exception exception = {
++		.interruptible = true,
++	};
+ 	int status;
+ 
+ 	dprintk("%s: FSID %llx:%llx on \"%s\"\n", __func__,
+@@ -7513,7 +7576,9 @@ int nfs4_proc_fsid_present(struct inode *inode, const struct cred *cred)
+ 	struct nfs_client *clp = server->nfs_client;
+ 	const struct nfs4_mig_recovery_ops *ops =
+ 					clp->cl_mvops->mig_recovery_ops;
+-	struct nfs4_exception exception = { };
++	struct nfs4_exception exception = {
++		.interruptible = true,
++	};
+ 	int status;
+ 
+ 	dprintk("%s: FSID %llx:%llx on \"%s\"\n", __func__,
+@@ -7579,7 +7644,9 @@ static int _nfs4_proc_secinfo(struct inode *dir, const struct qstr *name, struct
+ int nfs4_proc_secinfo(struct inode *dir, const struct qstr *name,
+ 		      struct nfs4_secinfo_flavors *flavors)
+ {
+-	struct nfs4_exception exception = { };
++	struct nfs4_exception exception = {
++		.interruptible = true,
++	};
+ 	int err;
+ 	do {
+ 		err = -NFS4ERR_WRONGSEC;
+@@ -9269,7 +9336,9 @@ static int
+ nfs41_proc_secinfo_no_name(struct nfs_server *server, struct nfs_fh *fhandle,
+ 			   struct nfs_fsinfo *info, struct nfs4_secinfo_flavors *flavors)
+ {
+-	struct nfs4_exception exception = { };
++	struct nfs4_exception exception = {
++		.interruptible = true,
++	};
+ 	int err;
+ 	do {
+ 		/* first try using integrity protection */
+@@ -9436,7 +9505,9 @@ static int nfs41_test_stateid(struct nfs_server *server,
+ 		nfs4_stateid *stateid,
+ 		const struct cred *cred)
+ {
+-	struct nfs4_exception exception = { };
++	struct nfs4_exception exception = {
++		.interruptible = true,
++	};
+ 	int err;
+ 	do {
+ 		err = _nfs41_test_stateid(server, stateid, cred);
 -- 
 2.20.1
 
