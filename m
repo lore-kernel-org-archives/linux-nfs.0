@@ -5,65 +5,64 @@ X-Spam-Level:
 X-Spam-Status: No, score=-8.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no
-	version=3.4.0
+	SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1ABD9C282DD
-	for <linux-nfs@archiver.kernel.org>; Sun,  7 Apr 2019 18:01:38 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 73898C282DD
+	for <linux-nfs@archiver.kernel.org>; Sun,  7 Apr 2019 18:01:39 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id E4FF720896
-	for <linux-nfs@archiver.kernel.org>; Sun,  7 Apr 2019 18:01:37 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 4C30420896
+	for <linux-nfs@archiver.kernel.org>; Sun,  7 Apr 2019 18:01:39 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="XwJV8cEt"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="hHK7sFxi"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726461AbfDGSBh (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 7 Apr 2019 14:01:37 -0400
-Received: from mail-io1-f66.google.com ([209.85.166.66]:35610 "EHLO
-        mail-io1-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726457AbfDGSBh (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 7 Apr 2019 14:01:37 -0400
-Received: by mail-io1-f66.google.com with SMTP id p16so9116608iod.2
-        for <linux-nfs@vger.kernel.org>; Sun, 07 Apr 2019 11:01:36 -0700 (PDT)
+        id S1726465AbfDGSBi (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sun, 7 Apr 2019 14:01:38 -0400
+Received: from mail-it1-f194.google.com ([209.85.166.194]:37826 "EHLO
+        mail-it1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726457AbfDGSBi (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 7 Apr 2019 14:01:38 -0400
+Received: by mail-it1-f194.google.com with SMTP id u65so17358242itc.2
+        for <linux-nfs@vger.kernel.org>; Sun, 07 Apr 2019 11:01:37 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references
          :mime-version:content-transfer-encoding;
-        bh=uwZFtudjPJpcLf+agJX+83JrXTBVJ0C9DPLRNaWadmQ=;
-        b=XwJV8cEtZ3upj2SHMTt2MpQFIgDb/rtW2XVqn+TSIYAc/961/aUlj6InjIM0mm6tR8
-         SrIJW/dVi+M53pBiB+O6rilCL6c7ySB3V0imoBE2dfqFkzePeqqQYlf4ycYqOcfa0tws
-         eALM4JtFdRMC11TEEA2s10gD7H0vxv7vZ+eqL8RRYfw+hUGTvLjzM1SebIviD2yDZoDi
-         ldWjraShjtGZ3LlAu2G2r1HEmFruYr+rip6npJekh6k8/fi6vwLndK4Zzoczi2QiQfIY
-         txt3ThJ4XG80EEu3brftrZU1aEST7wyEn4ZgENsu4CPU6QhpjaG4FMvutogoiHpqRuG8
-         UkNQ==
+        bh=b6G+C8SO9TL5MeUKf+3KSVuLgQ+ThPmE5k1NYTZSeVo=;
+        b=hHK7sFxi5g84YmzNC/pSxdknoh01cPuDAmSbjvrGNv1bBzq20faIzZspA4fuZYDO+Z
+         JDlW5Hgw6HEJVKULjBstPn6ZlQqjZa/kD0RMFgXe5joOrpMcAlAPLaCXsSOxTHFGkPBZ
+         Sm0lVMclu5PNiHesZL2zFvFL2YyJh6BVExdgDDRGDHqWsSy9zsPWJVOi1z75FGm1Msmv
+         sAUXFk6Hv1Jd0w5ONj1to9X9QCxx9891mia0OTtegqmDt9oOTpNtTy051tqFl5T9s8K+
+         R6+eJjN8/WmCwmKjCTY3OrRPnwaq/eUA1ZugMZfjwi1qRXnY0S0iYCKPt2PcV348q4Fp
+         Ef8g==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=uwZFtudjPJpcLf+agJX+83JrXTBVJ0C9DPLRNaWadmQ=;
-        b=r/YmaQ9xqof2BXy+x1LEXL1JRPOPnVh3LXMs+d+RTH46Cvgq0VD/7MzDhOaR2UGt6A
-         slT+tH7p0htuBO5njY221btnvNfIAdImtzUbKYnGoAzHIeu8EC95pal7+bkNYHc/pvR7
-         jkmD55He+UVcKliJsqUPOA67iPVB0F87sjhmH+3d/kUjaaWr6FGfdzF/IDVGAld7SgNG
-         PDVibZjbjfVx2ekzHlMfyRwpRVNjjQTfjSIa+R/p3+8swaailh/4EvXThEGM6LQLrEJR
-         d7ShfwHcqCw7RnUCYHlU0xx3tUh/eU3pgl+WAC/DhkeEcAk5/UvT5mUsH0leydgQ93+Q
-         vFQg==
-X-Gm-Message-State: APjAAAWnH7zJ5yyHkaZmVl5XsjFPMdXQzpehkgO3Gs8/0Jx1O2JBoPBZ
-        Dxc8KferL9eHzv4x4x8IJw==
-X-Google-Smtp-Source: APXvYqxZLbBAmCUjoHWm/T08qQ6Qb70aimQJ3BcOGzVEXV96OdgXLYjolDTNMUpy9LsfocZhE9k/cw==
-X-Received: by 2002:a5d:8594:: with SMTP id f20mr6814467ioj.38.1554660095882;
-        Sun, 07 Apr 2019 11:01:35 -0700 (PDT)
+        bh=b6G+C8SO9TL5MeUKf+3KSVuLgQ+ThPmE5k1NYTZSeVo=;
+        b=Iz9SkYvao5r/L9qUajQ0QammKf5pj1xDqhSFWx/d+qjsRd8ffsO/Fn8G9pftKoiGJT
+         tBOkWDmHLd7BqnuA0+5SB3nkOsZE/L4ZH2sASXxV/QdkX2hy8Vl7t0Y2tPIMnva2VUVv
+         tM4GCSMd4fDSeelHp0uOJ9cF0Dh/17yClF7CMS0Pq2NPZzn5RgcIhjyB/fGW4nwPQEkz
+         bj6D40caYZ+xUW5c03n+KEJeWtIkBmcNCO27XHSps0Tmxf+ef2gVvzcWcB1kpbpq3Bm5
+         XaJB9PLGQ6hAXIHwERZCtCeI3he8TSxoH0fKWL+Hg/G+H/73LZ0+yHJBbchf7EGQ/rLb
+         POUA==
+X-Gm-Message-State: APjAAAVDqul4z60x3ilfmxBa9kH5yxOP+718djDubj+6M3cQfBP8Q/pX
+        ETr2B/gRciJtMIZ/pqWgdW09lXI=
+X-Google-Smtp-Source: APXvYqxdoDA98HILgFT5BaRNXMbtO+2oq+PCz6kv+iVKHfhNy+vH+lt1shI108kPk1HftlWFlLXJGA==
+X-Received: by 2002:a24:1749:: with SMTP id 70mr17848235ith.50.1554660097047;
+        Sun, 07 Apr 2019 11:01:37 -0700 (PDT)
 Received: from localhost.localdomain (c-68-40-189-247.hsd1.mi.comcast.net. [68.40.189.247])
-        by smtp.gmail.com with ESMTPSA id m6sm10807362ioj.36.2019.04.07.11.01.34
+        by smtp.gmail.com with ESMTPSA id m6sm10807362ioj.36.2019.04.07.11.01.35
         (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
-        Sun, 07 Apr 2019 11:01:35 -0700 (PDT)
+        Sun, 07 Apr 2019 11:01:36 -0700 (PDT)
 From:   Trond Myklebust <trondmy@gmail.com>
 X-Google-Original-From: Trond Myklebust <trond.myklebust@hammerspace.com>
 To:     Anna Schumaker <Anna.Schumaker@netapp.com>
 Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH v3 15/29] SUNRPC: Add the 'softerr' rpc_client flag
-Date:   Sun,  7 Apr 2019 13:58:58 -0400
-Message-Id: <20190407175912.23528-16-trond.myklebust@hammerspace.com>
+Subject: [PATCH v3 16/29] NFS: Consider ETIMEDOUT to be a fatal error
+Date:   Sun,  7 Apr 2019 13:58:59 -0400
+Message-Id: <20190407175912.23528-17-trond.myklebust@hammerspace.com>
 X-Mailer: git-send-email 2.20.1
-In-Reply-To: <20190407175912.23528-15-trond.myklebust@hammerspace.com>
+In-Reply-To: <20190407175912.23528-16-trond.myklebust@hammerspace.com>
 References: <20190407175912.23528-1-trond.myklebust@hammerspace.com>
  <20190407175912.23528-2-trond.myklebust@hammerspace.com>
  <20190407175912.23528-3-trond.myklebust@hammerspace.com>
@@ -79,6 +78,7 @@ References: <20190407175912.23528-1-trond.myklebust@hammerspace.com>
  <20190407175912.23528-13-trond.myklebust@hammerspace.com>
  <20190407175912.23528-14-trond.myklebust@hammerspace.com>
  <20190407175912.23528-15-trond.myklebust@hammerspace.com>
+ <20190407175912.23528-16-trond.myklebust@hammerspace.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
@@ -86,69 +86,28 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Add the 'softerr' rpc client flag that sets the RPC_TASK_TIMEOUT
-flag on all new rpc tasks that are attached to that rpc client.
+When we introduce the 'softerr' mount option, we will see the RPC
+layer returning ETIMEDOUT errors if the server is unresponsive. We
+want to consider those errors to be fatal on par with the EIO errors
+that are returned by ordinary 'soft' timeouts..
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- include/linux/sunrpc/clnt.h | 2 ++
- net/sunrpc/clnt.c           | 8 +++++++-
- 2 files changed, 9 insertions(+), 1 deletion(-)
+ fs/nfs/internal.h | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
-index 98bc9883b230..943762acfcd4 100644
---- a/include/linux/sunrpc/clnt.h
-+++ b/include/linux/sunrpc/clnt.h
-@@ -50,6 +50,7 @@ struct rpc_clnt {
- 	struct rpc_iostats *	cl_metrics;	/* per-client statistics */
- 
- 	unsigned int		cl_softrtry : 1,/* soft timeouts */
-+				cl_softerr  : 1,/* Timeouts return errors */
- 				cl_discrtry : 1,/* disconnect before retry */
- 				cl_noretranstimeo: 1,/* No retransmit timeouts */
- 				cl_autobind : 1,/* use getport() */
-@@ -144,6 +145,7 @@ struct rpc_add_xprt_test {
- #define RPC_CLNT_CREATE_INFINITE_SLOTS	(1UL << 7)
- #define RPC_CLNT_CREATE_NO_IDLE_TIMEOUT	(1UL << 8)
- #define RPC_CLNT_CREATE_NO_RETRANS_TIMEOUT	(1UL << 9)
-+#define RPC_CLNT_CREATE_SOFTERR		(1UL << 10)
- 
- struct rpc_clnt *rpc_create(struct rpc_create_args *args);
- struct rpc_clnt	*rpc_bind_new_program(struct rpc_clnt *,
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index c0b79d307579..fb809e1912e3 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -484,8 +484,11 @@ static struct rpc_clnt *rpc_create_xprt(struct rpc_create_args *args,
- 	}
- 
- 	clnt->cl_softrtry = 1;
--	if (args->flags & RPC_CLNT_CREATE_HARDRTRY)
-+	if (args->flags & (RPC_CLNT_CREATE_HARDRTRY|RPC_CLNT_CREATE_SOFTERR)) {
- 		clnt->cl_softrtry = 0;
-+		if (args->flags & RPC_CLNT_CREATE_SOFTERR)
-+			clnt->cl_softerr = 1;
-+	}
- 
- 	if (args->flags & RPC_CLNT_CREATE_AUTOBIND)
- 		clnt->cl_autobind = 1;
-@@ -623,6 +626,7 @@ static struct rpc_clnt *__rpc_clone_client(struct rpc_create_args *args,
- 	/* Turn off autobind on clones */
- 	new->cl_autobind = 0;
- 	new->cl_softrtry = clnt->cl_softrtry;
-+	new->cl_softerr = clnt->cl_softerr;
- 	new->cl_noretranstimeo = clnt->cl_noretranstimeo;
- 	new->cl_discrtry = clnt->cl_discrtry;
- 	new->cl_chatty = clnt->cl_chatty;
-@@ -1001,6 +1005,8 @@ void rpc_task_set_client(struct rpc_task *task, struct rpc_clnt *clnt)
- 		atomic_inc(&clnt->cl_count);
- 		if (clnt->cl_softrtry)
- 			task->tk_flags |= RPC_TASK_SOFT;
-+		if (clnt->cl_softerr)
-+			task->tk_flags |= RPC_TASK_TIMEOUT;
- 		if (clnt->cl_noretranstimeo)
- 			task->tk_flags |= RPC_TASK_NO_RETRANS_TIMEOUT;
- 		if (atomic_read(&clnt->cl_swapper))
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index c7cf23ae6597..3cefd0ed01be 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -766,6 +766,7 @@ static inline bool nfs_error_is_fatal(int err)
+ 	case -ESTALE:
+ 	case -E2BIG:
+ 	case -ENOMEM:
++	case -ETIMEDOUT:
+ 		return true;
+ 	default:
+ 		return false;
 -- 
 2.20.1
 
