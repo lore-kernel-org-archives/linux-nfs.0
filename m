@@ -7,62 +7,62 @@ X-Spam-Status: No, score=-8.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
 	SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id AC34AC282DE
-	for <linux-nfs@archiver.kernel.org>; Sun,  7 Apr 2019 18:01:34 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1F422C282DD
+	for <linux-nfs@archiver.kernel.org>; Sun,  7 Apr 2019 18:01:36 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 8345120896
-	for <linux-nfs@archiver.kernel.org>; Sun,  7 Apr 2019 18:01:34 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id E301C20896
+	for <linux-nfs@archiver.kernel.org>; Sun,  7 Apr 2019 18:01:35 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="FKlxIiQm"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="A8StWPQr"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726438AbfDGSBe (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 7 Apr 2019 14:01:34 -0400
-Received: from mail-it1-f194.google.com ([209.85.166.194]:38899 "EHLO
-        mail-it1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726415AbfDGSBd (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 7 Apr 2019 14:01:33 -0400
-Received: by mail-it1-f194.google.com with SMTP id f22so17364063ita.3
-        for <linux-nfs@vger.kernel.org>; Sun, 07 Apr 2019 11:01:33 -0700 (PDT)
+        id S1726456AbfDGSBf (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sun, 7 Apr 2019 14:01:35 -0400
+Received: from mail-it1-f193.google.com ([209.85.166.193]:55256 "EHLO
+        mail-it1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726415AbfDGSBf (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 7 Apr 2019 14:01:35 -0400
+Received: by mail-it1-f193.google.com with SMTP id a190so17229772ite.4
+        for <linux-nfs@vger.kernel.org>; Sun, 07 Apr 2019 11:01:34 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references
          :mime-version:content-transfer-encoding;
-        bh=YiggeHe5Ur0/gP4LNTHnltg0CL5XFAPcOjWyE4a6Zn4=;
-        b=FKlxIiQmhc+4TsRbit3oqEk/cImfhG7E1rC0bmZdCisHMMSFitAXe8rxBCwEr5fa19
-         hXSakTQkUaFFaFqbe35S30HG5i7oRhWx9RklEMmEUjVeJvD1J7d8mQPgstGxiL8CEDtO
-         NHaMNuT1cRY6uJbk0kOC/nmJQyr87OICbDEt9Sj7qPoSgmtwi76Y+G0K6gmgV6wH/mTh
-         JE+mq7ynNCRPcyPeYoHLaQjOIMHQUNq8qYs30n7fAvHV3IxdaG9XaA5wvzY1vXB/wHmZ
-         ENYrHk2DhdHsuiBAjIrU/fE3Pf/XqrSdkpTMhGUjJMsLb1Z7YsFuZ5FOzszU4+cdeoCh
-         9QyA==
+        bh=9TX7g4S7xzkondKf38t9AGk7m6l2VTWuVMxzRXlwvv0=;
+        b=A8StWPQrdvsPMGc98yx+7rccYuuIjU9JYx2/6oUnaVcrBqPD3JQn0v7/HvqrJucXt2
+         NIeeJ1h3m29nBUHYqvWeUQVrhuD+yhsiKNNPkB5z2ECNSsMIs0Y6O6zaO71enfFZfdV8
+         H0sfg7m8qbtuuQsBY+iNQAlbvYslq+efStTigR7yC1nw7fa7zwuw+Mwqglx90O8/KBuH
+         oWLTJdMwfrwxGBCZc7RNvQFn+1y4OaqPoyNWGfUIf2Ltw8ea9QXZ2GfEowZOvpWec9zJ
+         5i9c5JbjvmxXjtljDkYnIr7ocEFHE0f+zHVyLDZnjfjy+5mbbuU4307saWln6/E6FsEW
+         oFiw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=YiggeHe5Ur0/gP4LNTHnltg0CL5XFAPcOjWyE4a6Zn4=;
-        b=PwIRWh9chNKdRLeSMjL7LZvcqSIKYh4DlaPVAmSE1NqVuw97g0xwNEFmdJw56puQz7
-         3VG1Y3bbrfQBYCHOy2cqMfk/kGIEIWdQL7FreEFmHvu8O3ye6fS3MGEz/oGLUp78wCty
-         5y2yCgJtml7qb7WkHpWkA+5WzzYPwtQInqv0mfGNZUBs07Y0zt4rZZoGiWRl624IwbOq
-         TscNpbvPK/uNOC3lauLRPK2J4/Wyem3nSo0erVHhQyID5q2dYZtylywiNwkIsBLKbN/j
-         pyG3BxvKbwqPJBTUHD9UbrUshyrtt+s1vMA2ppBEKiBPmEZtknGKf7n+heAQS/ogJrA3
-         9pbw==
-X-Gm-Message-State: APjAAAUksFLUwkvrlUWS6MES10cpw/E2t2+0S3CUcGqxnOjP+GqNxiXq
-        zEjUqbuaiq0ONoVPp7ALVg==
-X-Google-Smtp-Source: APXvYqwlviSHxauAq8iWlqRjsMFwaDtAiqDcsaqEOLS5X1CQl19T3+PBTVm/12a2oog0jnO9Y8zhig==
-X-Received: by 2002:a24:ac56:: with SMTP id m22mr14332671iti.25.1554660092518;
-        Sun, 07 Apr 2019 11:01:32 -0700 (PDT)
+        bh=9TX7g4S7xzkondKf38t9AGk7m6l2VTWuVMxzRXlwvv0=;
+        b=MHD0Z4bxUIVSGCDyeR9UoDwb9KZqldLx+CaXNugW9g3ePLok8Pwsnlbsekuf0iDvQ8
+         BKMLaoMxI/ASRtn+ioFTFQCgTuLVPuFo2+40SP2RyQ/wxcNh0DTl8z9Sfo1UnV7mGXFS
+         /im/Af9kxYm8XFC0MpSxJ32EwePa7bi7mmhIPBH9MxDhKibc7T2uaHa4bMGPnSvTGVKS
+         WYIIFmOX3T3QsKmXcIrEE4huzhQBhs6IITkFb++/guQFOxp0e9iioF4efOYyy3AMyIBR
+         oh/Jv39aASt3yxFPQIb1qhCc/whgIyQlIMtVwY2ym66ts6GPMmc8wYvk5paJ3pV/taGE
+         w+4A==
+X-Gm-Message-State: APjAAAWL68/eRPFFBjF0GjYQMESeLQklyzuot66GrSvyMamMFfUE7952
+        zhs1d0DaiBbpLODRXqKSWQ==
+X-Google-Smtp-Source: APXvYqwOcMaRRFD2fu7HJtz3xKg+K9Md9t13hPC4YdhmWsOSHY6LQiFGVH4fyEpCBO/NZVQP7XQX/Q==
+X-Received: by 2002:a24:205:: with SMTP id 5mr16800418itu.150.1554660093612;
+        Sun, 07 Apr 2019 11:01:33 -0700 (PDT)
 Received: from localhost.localdomain (c-68-40-189-247.hsd1.mi.comcast.net. [68.40.189.247])
-        by smtp.gmail.com with ESMTPSA id m6sm10807362ioj.36.2019.04.07.11.01.31
+        by smtp.gmail.com with ESMTPSA id m6sm10807362ioj.36.2019.04.07.11.01.32
         (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
-        Sun, 07 Apr 2019 11:01:31 -0700 (PDT)
+        Sun, 07 Apr 2019 11:01:32 -0700 (PDT)
 From:   Trond Myklebust <trondmy@gmail.com>
 X-Google-Original-From: Trond Myklebust <trond.myklebust@hammerspace.com>
 To:     Anna Schumaker <Anna.Schumaker@netapp.com>
 Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH v3 12/29] SUNRPC: Make "no retrans timeout" soft tasks behave like softconn for timeouts
-Date:   Sun,  7 Apr 2019 13:58:55 -0400
-Message-Id: <20190407175912.23528-13-trond.myklebust@hammerspace.com>
+Subject: [PATCH v3 13/29] SUNRPC: Start the first major timeout calculation at task creation
+Date:   Sun,  7 Apr 2019 13:58:56 -0400
+Message-Id: <20190407175912.23528-14-trond.myklebust@hammerspace.com>
 X-Mailer: git-send-email 2.20.1
-In-Reply-To: <20190407175912.23528-12-trond.myklebust@hammerspace.com>
+In-Reply-To: <20190407175912.23528-13-trond.myklebust@hammerspace.com>
 References: <20190407175912.23528-1-trond.myklebust@hammerspace.com>
  <20190407175912.23528-2-trond.myklebust@hammerspace.com>
  <20190407175912.23528-3-trond.myklebust@hammerspace.com>
@@ -75,6 +75,7 @@ References: <20190407175912.23528-1-trond.myklebust@hammerspace.com>
  <20190407175912.23528-10-trond.myklebust@hammerspace.com>
  <20190407175912.23528-11-trond.myklebust@hammerspace.com>
  <20190407175912.23528-12-trond.myklebust@hammerspace.com>
+ <20190407175912.23528-13-trond.myklebust@hammerspace.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
@@ -82,38 +83,99 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-If a soft NFSv4 request is sent, then we don't need it to time out unless
-the connection breaks. The reason is that as long as the connection is
-unbroken, the protocol states that the server is not allowed to drop the
-request.  IOW: as long as the connection remains unbroken, the client may
-assume that all transmitted RPC requests are being processed by the server,
-and that retransmissions and timeouts of those requests are unwarranted.
+When calculating the major timeout for a new task, when we know that the
+connection has been broken, use the task->tk_start to ensure that we also
+take into account the time spent waiting for a slot or session slot. This
+ensures that we fail over soft requests relatively quickly once the
+connection has actually been broken, and the first requests have
+started to fail.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- net/sunrpc/clnt.c | 9 +++++++++
- 1 file changed, 9 insertions(+)
+ net/sunrpc/xprt.c | 44 ++++++++++++++++++++++++++++++++++----------
+ 1 file changed, 34 insertions(+), 10 deletions(-)
 
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index a9e5e81c67be..c921a5aff790 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -2344,6 +2344,15 @@ rpc_check_timeout(struct rpc_task *task)
- 	}
+diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+index 642cc0f64e44..bc1c8247750d 100644
+--- a/net/sunrpc/xprt.c
++++ b/net/sunrpc/xprt.c
+@@ -569,18 +569,44 @@ bool xprt_write_space(struct rpc_xprt *xprt)
+ }
+ EXPORT_SYMBOL_GPL(xprt_write_space);
  
- 	if (RPC_IS_SOFT(task)) {
-+		/*
-+		 * Once a "no retrans timeout" soft tasks (a.k.a NFSv4) has
-+		 * been sent, it should time out only if the transport
-+		 * connection gets terminally broken.
-+		 */
-+		if ((task->tk_flags & RPC_TASK_NO_RETRANS_TIMEOUT) &&
-+		    rpc_check_connected(task->tk_rqstp))
-+			return;
+-static void xprt_reset_majortimeo(struct rpc_rqst *req)
++static unsigned long xprt_abs_ktime_to_jiffies(ktime_t abstime)
++{
++	s64 delta = ktime_to_ns(ktime_get() - abstime);
++	return likely(delta >= 0) ?
++		jiffies - nsecs_to_jiffies(delta) :
++		jiffies + nsecs_to_jiffies(-delta);
++}
 +
- 		if (clnt->cl_chatty) {
- 			printk(KERN_NOTICE "%s: server %s not responding, timed out\n",
- 				clnt->cl_program->name,
++static unsigned long xprt_calc_majortimeo(struct rpc_rqst *req)
+ {
+ 	const struct rpc_timeout *to = req->rq_task->tk_client->cl_timeout;
++	unsigned long majortimeo = req->rq_timeout;
+ 
+-	req->rq_majortimeo = req->rq_timeout;
+ 	if (to->to_exponential)
+-		req->rq_majortimeo <<= to->to_retries;
++		majortimeo <<= to->to_retries;
++	else
++		majortimeo += to->to_increment * to->to_retries;
++	if (majortimeo > to->to_maxval || majortimeo == 0)
++		majortimeo = to->to_maxval;
++	return majortimeo;
++}
++
++static void xprt_reset_majortimeo(struct rpc_rqst *req)
++{
++	req->rq_majortimeo += xprt_calc_majortimeo(req);
++}
++
++static void xprt_init_majortimeo(struct rpc_task *task, struct rpc_rqst *req)
++{
++	unsigned long time_init;
++	struct rpc_xprt *xprt = req->rq_xprt;
++
++	if (likely(xprt && xprt_connected(xprt)))
++		time_init = jiffies;
+ 	else
+-		req->rq_majortimeo += to->to_increment * to->to_retries;
+-	if (req->rq_majortimeo > to->to_maxval || req->rq_majortimeo == 0)
+-		req->rq_majortimeo = to->to_maxval;
+-	req->rq_majortimeo += jiffies;
++		time_init = xprt_abs_ktime_to_jiffies(task->tk_start);
++	req->rq_timeout = task->tk_client->cl_timeout->to_initval;
++	req->rq_majortimeo = time_init + xprt_calc_majortimeo(req);
+ }
+ 
+ /**
+@@ -997,7 +1023,6 @@ xprt_request_enqueue_receive(struct rpc_task *task)
+ 	set_bit(RPC_TASK_NEED_RECV, &task->tk_runstate);
+ 	spin_unlock(&xprt->queue_lock);
+ 
+-	xprt_reset_majortimeo(req);
+ 	/* Turn off autodisconnect */
+ 	del_singleshot_timer_sync(&xprt->timer);
+ }
+@@ -1631,7 +1656,6 @@ xprt_request_init(struct rpc_task *task)
+ 	struct rpc_xprt *xprt = task->tk_xprt;
+ 	struct rpc_rqst	*req = task->tk_rqstp;
+ 
+-	req->rq_timeout = task->tk_client->cl_timeout->to_initval;
+ 	req->rq_task	= task;
+ 	req->rq_xprt    = xprt;
+ 	req->rq_buffer  = NULL;
+@@ -1644,7 +1668,7 @@ xprt_request_init(struct rpc_task *task)
+ 	req->rq_snd_buf.bvec = NULL;
+ 	req->rq_rcv_buf.bvec = NULL;
+ 	req->rq_release_snd_buf = NULL;
+-	xprt_reset_majortimeo(req);
++	xprt_init_majortimeo(task, req);
+ 	dprintk("RPC: %5u reserved req %p xid %08x\n", task->tk_pid,
+ 			req, ntohl(req->rq_xid));
+ }
 -- 
 2.20.1
 
