@@ -2,98 +2,107 @@ Return-Path: <SRS0=JsnX=SK=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-6.8 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B075AC10F13
-	for <linux-nfs@archiver.kernel.org>; Mon,  8 Apr 2019 18:51:48 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 695F4C10F14
+	for <linux-nfs@archiver.kernel.org>; Mon,  8 Apr 2019 20:00:35 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 7A1112083E
-	for <linux-nfs@archiver.kernel.org>; Mon,  8 Apr 2019 18:51:48 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 35B8620880
+	for <linux-nfs@archiver.kernel.org>; Mon,  8 Apr 2019 20:00:35 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="tIcFCfAG"
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="UB2/h5v+"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726615AbfDHSvr (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 8 Apr 2019 14:51:47 -0400
-Received: from mail-eopbgr820107.outbound.protection.outlook.com ([40.107.82.107]:13269
-        "EHLO NAM01-SN1-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726373AbfDHSvr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 8 Apr 2019 14:51:47 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=hammerspace.com;
- s=selector1;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=b3eH/CEEuMUmFdYKkdxQI4O3w6wb+Xag9mBH/oc93L4=;
- b=tIcFCfAGFSQGIt0zTqQAmv5We62fmLWWtqebrZzHkwZr2Xp8RyW1tG45HJDPGYjKavlhhQeuevao/hD0YqmMUyxnYSGg1o6r2W5txg4bDeud+H8rLH62EZYifcWcWiOWLPW8sxlny4mnWR++syORSav+QXbBUItaNm6cnUPCtkE=
-Received: from SN6PR13MB2494.namprd13.prod.outlook.com (52.135.95.148) by
- SN6PR13MB2560.namprd13.prod.outlook.com (52.135.96.20) with Microsoft SMTP
- Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- 15.20.1792.11; Mon, 8 Apr 2019 18:51:44 +0000
-Received: from SN6PR13MB2494.namprd13.prod.outlook.com
- ([fe80::30dc:67e2:d25a:f1d3]) by SN6PR13MB2494.namprd13.prod.outlook.com
- ([fe80::30dc:67e2:d25a:f1d3%6]) with mapi id 15.20.1792.007; Mon, 8 Apr 2019
- 18:51:44 +0000
-From:   Trond Myklebust <trondmy@hammerspace.com>
-To:     "bfields@fieldses.org" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "daniel@zonque.org" <daniel@zonque.org>,
-        "jlayton@kernel.org" <jlayton@kernel.org>
-CC:     "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-Subject: Re: 5.1.0-rc4: Oops in __rpc_execute() when trying to boot from NFS
-Thread-Topic: 5.1.0-rc4: Oops in __rpc_execute() when trying to boot from NFS
-Thread-Index: AQHU7i3XWMBYs7+7DEGG17GL2cVEYaYym9UA
-Date:   Mon, 8 Apr 2019 18:51:43 +0000
-Message-ID: <ce6d2388a9214f95cc38de5ec225cba26cf63b0d.camel@hammerspace.com>
-References: <0412f79c-61a8-bfa4-26ce-1083a59d31e8@zonque.org>
-In-Reply-To: <0412f79c-61a8-bfa4-26ce-1083a59d31e8@zonque.org>
-Accept-Language: en-US, en-GB
-Content-Language: en-US
-X-MS-Has-Attach: 
-X-MS-TNEF-Correlator: 
-authentication-results: spf=none (sender IP is )
- smtp.mailfrom=trondmy@hammerspace.com; 
-x-originating-ip: [68.40.189.247]
-x-ms-publictraffictype: Email
-x-ms-office365-filtering-correlation-id: ac19ccd4-1eca-4b1a-1c1f-08d6bc533eca
-x-microsoft-antispam: BCL:0;PCL:0;RULEID:(2390118)(7020095)(4652040)(8989299)(4534185)(4627221)(201703031133081)(201702281549075)(8990200)(5600139)(711020)(4605104)(2017052603328)(7193020);SRVR:SN6PR13MB2560;
-x-ms-traffictypediagnostic: SN6PR13MB2560:
-x-microsoft-antispam-prvs: <SN6PR13MB256021EF703D35952CAAB742B82C0@SN6PR13MB2560.namprd13.prod.outlook.com>
-x-forefront-prvs: 0001227049
-x-forefront-antispam-report: SFV:NSPM;SFS:(10019020)(39830400003)(346002)(366004)(136003)(376002)(396003)(199004)(189003)(6506007)(478600001)(256004)(106356001)(105586002)(6436002)(14454004)(446003)(110136005)(4326008)(102836004)(316002)(229853002)(118296001)(6486002)(36756003)(2501003)(97736004)(186003)(99286004)(26005)(305945005)(71200400001)(8676002)(2201001)(68736007)(2906002)(76176011)(4744005)(6246003)(81156014)(5660300002)(8936002)(486006)(53936002)(25786009)(81166006)(66066001)(3846002)(6512007)(6116002)(476003)(2616005)(11346002)(7736002)(71190400001)(86362001);DIR:OUT;SFP:1102;SCL:1;SRVR:SN6PR13MB2560;H:SN6PR13MB2494.namprd13.prod.outlook.com;FPR:;SPF:None;LANG:en;PTR:InfoNoRecords;A:1;MX:1;
-received-spf: None (protection.outlook.com: hammerspace.com does not designate
- permitted sender hosts)
-x-ms-exchange-senderadcheck: 1
-x-microsoft-antispam-message-info: 1USVAKoMJb0ZiRZlmF9EAANfCD8TeBMRl5NX8TjKUcDyqXN1g77YdTQ0pdFjqm0Z9mJcNCtYbY1XmDEQS3PY2Cylx35WrRM/mKNCrcmJxQpLwma660MscLktEJSQVqaAIpV2aRnok4H6NkjQTGC5m6459PjzXT2gsmlhHTvKAX+nbDdP14g47qlsfFbHH7HLY9dMTzVOGsyz3LcZtiBlCF715ikzZ8KU8y2kfWeQiVpbG+Bp2HExam8NxjIIQH2JbkPXYHubBaguZ5wayMVFMCdq8ksjn4X0RnBIFlvmvSbcp5o6+Q55MORRmog3IUm8yeL3lyMsJm8pJvGvXTThnsZ3OI9OzWHDaaOpjOYgNmXaZMQlm+kduA7tMEjbH5/iOlFtNFcZ+7krp2Fgzq725TgaoyzlxAJGmeW6rpBwvq4=
-Content-Type: text/plain; charset="utf-8"
-Content-ID: <50A9D1076D58E645BDEE029947E3DAFB@namprd13.prod.outlook.com>
-Content-Transfer-Encoding: base64
+        id S1726523AbfDHUAe (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 8 Apr 2019 16:00:34 -0400
+Received: from mail-io1-f67.google.com ([209.85.166.67]:42429 "EHLO
+        mail-io1-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726220AbfDHUAe (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Apr 2019 16:00:34 -0400
+Received: by mail-io1-f67.google.com with SMTP id c4so12154577ioh.9
+        for <linux-nfs@vger.kernel.org>; Mon, 08 Apr 2019 13:00:33 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=sender:subject:from:to:cc:date:message-id:user-agent:mime-version
+         :content-transfer-encoding;
+        bh=SLPiNUK9YXOo6JDOo5+fg1lpErdlRYRmJskzrwKo4Vs=;
+        b=UB2/h5v+h5hCQEC9/6khlgk3VHzyEgV8JXJ2cz3Oh5PJWM2W2mlkMFQ8tYTL5h4eXT
+         0A4g8IilmwdiakigVA5cygoJz+WpIkXV2DsFK8wJ/n/hqtZc3T/E2QxUFlREnYrmRhPw
+         13UCcgV34aihpoiWz3SI3PoTaeWPdpI5az4o6b9SZS4rfNfKvifFn5b6+M+Da3KcDYpi
+         +y+nv4+YcNnRu9WsStiGHkXiQSghbrQOq43i/RFADchNMLk34fzdnqVaiYYVrrafBszm
+         bRQY0lHVyCyL+dyGfhvqml/sf1xtPIgwJsNtBxHjr1B8tvqhh3a+zkYoxN+Desru7coi
+         ekSA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:sender:subject:from:to:cc:date:message-id
+         :user-agent:mime-version:content-transfer-encoding;
+        bh=SLPiNUK9YXOo6JDOo5+fg1lpErdlRYRmJskzrwKo4Vs=;
+        b=ZUzM95/a2W326iJpCEIo6o56pUdahWhmtnTqc1zFM+uW47UO1TlFbSCM6O2H9wSWhp
+         quOX1AYN59kbqku7zGJ2Ql+p316UoaznvKv1I5bsLkszULSTW5gptDnu3utDXXLlsuiC
+         AZ1ev0nPE7I2hsD2nkUAd44BA5dRqbUGRZtRSx7KcXPTCYY+qsLmt9sTLycs5LRug9V/
+         uGdNxyCdo9fZ4s9xr2qhEccq7Xt5B74nBNGh+Aes5a6xNdyNURQabWP9Dbo4Ks+CFQb9
+         8+6xXP6vpH3XwjafBDDn10DehBfeJFJQVPkdPur38y/E9TQ+0rcJ4Z4xHmdOi7iZ0fy+
+         7CZg==
+X-Gm-Message-State: APjAAAW5rMFIYyV7FClloGmQ/k7ZaD2NH8cKY9PHnhv9d+7UsrTW7HpZ
+        QZXxXoeJlL/OJ591Lra2wRogJ8vo
+X-Google-Smtp-Source: APXvYqwgesG2wJmdZDdJlKhmatMjHhNeanS61Ll093aNVg6zTNNB+cAKgv8B8UMIVRsJEHxuq0BysA==
+X-Received: by 2002:a5e:d618:: with SMTP id w24mr22196107iom.164.1554753633007;
+        Mon, 08 Apr 2019 13:00:33 -0700 (PDT)
+Received: from gateway.1015granger.net (c-68-61-232-219.hsd1.mi.comcast.net. [68.61.232.219])
+        by smtp.gmail.com with ESMTPSA id e27sm13268210ioc.14.2019.04.08.13.00.31
+        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Mon, 08 Apr 2019 13:00:32 -0700 (PDT)
+Received: from manet.1015granger.net (manet.1015granger.net [192.168.1.51])
+        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id x38K0UMc031202;
+        Mon, 8 Apr 2019 20:00:30 GMT
+Subject: [PATCH v1] NFS: Fix handling of reply page vector
+From:   Chuck Lever <chuck.lever@oracle.com>
+To:     kolga@netapp.com
+Cc:     linux-nfs@vger.kernel.org
+Date:   Mon, 08 Apr 2019 16:00:30 -0400
+Message-ID: <20190408200030.16366.22026.stgit@manet.1015granger.net>
+User-Agent: StGit/0.17.1-dirty
 MIME-Version: 1.0
-X-OriginatorOrg: hammerspace.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: ac19ccd4-1eca-4b1a-1c1f-08d6bc533eca
-X-MS-Exchange-CrossTenant-originalarrivaltime: 08 Apr 2019 18:51:43.9823
- (UTC)
-X-MS-Exchange-CrossTenant-fromentityheader: Hosted
-X-MS-Exchange-CrossTenant-id: 0d4fed5c-3a70-46fe-9430-ece41741f59e
-X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: SN6PR13MB2560
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-T24gTW9uLCAyMDE5LTA0LTA4IGF0IDE5OjAxICswMjAwLCBEYW5pZWwgTWFjayB3cm90ZToNCj4g
-SGksDQo+IA0KPiBJJ20gc2VlaW5nIHRoZSBPb3BzIGJlbG93IHdoZW4gdHJ5aW5nIHRvIGJvb3Qg
-NS4xLjAtcmM0IG9uIGFuIEFSTQ0KPiBQWEEzeHgNCj4gcGxhdGZvcm0uIHY1LjAgZGlkIG5vdCBz
-aG93IHRoaXMgZWZmZWN0IHdpdGggdGhlIHNhbWUgY21kbGluZS4NCj4gDQo+IFJlbGV2YW50IGJp
-dHMgZnJvbSB0aGUgY29uZmlnIGFyZToNCj4gDQo+IENPTkZJR19ORlNfRlM9eQ0KPiBDT05GSUdf
-TkZTX1YyPXkNCj4gQ09ORklHX05GU19WMz15DQo+ICMgQ09ORklHX05GU19WM19BQ0wgaXMgbm90
-IHNldA0KPiAjIENPTkZJR19ORlNfVjQgaXMgbm90IHNldA0KPiAjIENPTkZJR19ORlNfU1dBUCBp
-cyBub3Qgc2V0DQo+IENPTkZJR19ST09UX05GUz15DQo+IENPTkZJR19ORlNfRlNDQUNIRT15DQo+
-ICMgQ09ORklHX05GU0QgaXMgbm90IHNldA0KPiBDT05GSUdfTkZTX0NPTU1PTj15DQo+IA0KPiBB
-bnl0aGluZyBlbHNlIEkgY2FuIHByb3ZpZGU/IEkgY291bGQgYmlzZWN0IHRoZSBpc3N1ZSBpZiB0
-aGF0IGhlbHBzLg0KPiANCg0KUGxlYXNlIGRvIGJpc2VjdCBpZiB0aGF0IGlzIGF0IGFsbCBwcmFj
-dGljYWwuIEknbSBoYXZpbmcgdHJvdWJsZQ0KaW50ZXJwcmV0aW5nIHRoaXMgT29wcy4NCg0KVGhh
-bmtzIQ0KICBUcm9uZA0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFp
-bnRhaW5lciwgSGFtbWVyc3BhY2UNCnRyb25kLm15a2xlYnVzdEBoYW1tZXJzcGFjZS5jb20NCg0K
-DQo=
+NFSv4 GETACL and FS_LOCATIONS requests stopped working in v5.1-rc.
+
+These two need the extra padding to be added directly to the reply
+length.
+
+Reported-by: Olga Kornievskaia <aglo@umich.edu>
+Fixes: 02ef04e432ba ("NFS: Account for XDR pad of buf->pages")
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+ fs/nfs/nfs4xdr.c |    4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index cfcabc3..6024461 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -2589,7 +2589,7 @@ static void nfs4_xdr_enc_getacl(struct rpc_rqst *req, struct xdr_stream *xdr,
+ 			ARRAY_SIZE(nfs4_acl_bitmap), &hdr);
+ 
+ 	rpc_prepare_reply_pages(req, args->acl_pages, 0,
+-				args->acl_len, replen);
++				args->acl_len, replen + 1);
+ 	encode_nops(&hdr);
+ }
+ 
+@@ -2811,7 +2811,7 @@ static void nfs4_xdr_enc_fs_locations(struct rpc_rqst *req,
+ 	}
+ 
+ 	rpc_prepare_reply_pages(req, (struct page **)&args->page, 0,
+-				PAGE_SIZE, replen);
++				PAGE_SIZE, replen + 1);
+ 	encode_nops(&hdr);
+ }
+ 
+
