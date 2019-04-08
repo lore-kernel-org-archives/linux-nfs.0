@@ -2,103 +2,356 @@ Return-Path: <SRS0=JsnX=SK=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-4.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-7.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
+	SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 17F17C10F14
-	for <linux-nfs@archiver.kernel.org>; Mon,  8 Apr 2019 15:20:53 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7482BC10F13
+	for <linux-nfs@archiver.kernel.org>; Mon,  8 Apr 2019 15:22:07 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id B9FE220883
-	for <linux-nfs@archiver.kernel.org>; Mon,  8 Apr 2019 15:20:52 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 10F9F20883
+	for <linux-nfs@archiver.kernel.org>; Mon,  8 Apr 2019 15:22:07 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="NYYG8Ynn"
+	dkim=pass (2048-bit key) header.d=umich.edu header.i=@umich.edu header.b="Mhcn4kbu"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727529AbfDHPUw (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 8 Apr 2019 11:20:52 -0400
-Received: from mail-eopbgr800092.outbound.protection.outlook.com ([40.107.80.92]:12544
-        "EHLO NAM03-DM3-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1727356AbfDHPUv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 8 Apr 2019 11:20:51 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=hammerspace.com;
- s=selector1;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=VkgxvSegJ1myofcBCA36yskUKEFooXpfCBceWuGZCaU=;
- b=NYYG8YnnT1v7ca47hyxFo44D2ebhOFlvKNCv2KSWqILTh9Rxlb8HzPYMkOIj6eUgqzAe6nnoqi6FxLsVE4UDTet4WTB4xV4JhalKXUC6FjPz9qF3cyHPyOxuf3HS8RKqUpok7EiLCIMYtUaReoajOuqrbagS7UUSJ/pUHJheMNU=
-Received: from SN6PR13MB2494.namprd13.prod.outlook.com (52.135.95.148) by
- SN6PR13MB2318.namprd13.prod.outlook.com (52.135.94.25) with Microsoft SMTP
- Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- 15.20.1792.10; Mon, 8 Apr 2019 15:20:48 +0000
-Received: from SN6PR13MB2494.namprd13.prod.outlook.com
- ([fe80::30dc:67e2:d25a:f1d3]) by SN6PR13MB2494.namprd13.prod.outlook.com
- ([fe80::30dc:67e2:d25a:f1d3%6]) with mapi id 15.20.1792.007; Mon, 8 Apr 2019
- 15:20:48 +0000
-From:   Trond Myklebust <trondmy@hammerspace.com>
-To:     "bfields@redhat.com" <bfields@redhat.com>
-CC:     "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v2] nfsd: Don't release the callback slot unless it was
- actually held
-Thread-Topic: [PATCH v2] nfsd: Don't release the callback slot unless it was
- actually held
-Thread-Index: AQHU68guSUpusONVv0Gu5SenJuNaWaYyZbYA
-Date:   Mon, 8 Apr 2019 15:20:48 +0000
-Message-ID: <4bf043aa23b4230bf41fbcd5611b3baff4977f1d.camel@hammerspace.com>
-References: <20190405155437.5545-1-trond.myklebust@hammerspace.com>
-In-Reply-To: <20190405155437.5545-1-trond.myklebust@hammerspace.com>
-Accept-Language: en-US, en-GB
-Content-Language: en-US
-X-MS-Has-Attach: 
-X-MS-TNEF-Correlator: 
-authentication-results: spf=none (sender IP is )
- smtp.mailfrom=trondmy@hammerspace.com; 
-x-originating-ip: [68.40.189.247]
-x-ms-publictraffictype: Email
-x-ms-office365-filtering-correlation-id: 710f1a85-b7bf-471a-495c-08d6bc35c76a
-x-microsoft-antispam: BCL:0;PCL:0;RULEID:(2390118)(7020095)(4652040)(8989299)(4534185)(4627221)(201703031133081)(201702281549075)(8990200)(5600139)(711020)(4605104)(2017052603328)(7193020);SRVR:SN6PR13MB2318;
-x-ms-traffictypediagnostic: SN6PR13MB2318:
-x-microsoft-antispam-prvs: <SN6PR13MB231849C33A17C2AC29607D52B82C0@SN6PR13MB2318.namprd13.prod.outlook.com>
-x-forefront-prvs: 0001227049
-x-forefront-antispam-report: SFV:NSPM;SFS:(10019020)(396003)(366004)(346002)(376002)(39830400003)(136003)(199004)(189003)(6916009)(256004)(99286004)(25786009)(6116002)(6436002)(5660300002)(5640700003)(4326008)(476003)(486006)(3846002)(97736004)(2616005)(305945005)(7736002)(53936002)(86362001)(446003)(36756003)(316002)(11346002)(2351001)(2906002)(6512007)(106356001)(6486002)(6246003)(186003)(66066001)(229853002)(118296001)(105586002)(81166006)(2501003)(68736007)(71190400001)(76176011)(71200400001)(26005)(81156014)(102836004)(8676002)(14454004)(6506007)(8936002)(1730700003)(478600001);DIR:OUT;SFP:1102;SCL:1;SRVR:SN6PR13MB2318;H:SN6PR13MB2494.namprd13.prod.outlook.com;FPR:;SPF:None;LANG:en;PTR:InfoNoRecords;A:1;MX:1;
-received-spf: None (protection.outlook.com: hammerspace.com does not designate
- permitted sender hosts)
-x-ms-exchange-senderadcheck: 1
-x-microsoft-antispam-message-info: ouK1Bb++nRzZuIoI2ThTttA8CA6YxYheUgYNzQ/2YCygTlqeeF4Se/zWLODInmKyzl9dUNmfc0gw8OTIXr+7ttNv1eT+SFum+nmNJJZ2eB0IDwdOvfwW+t9SF92bVDA8P5JzNycZCSW43CWWy3p7XvFlzj0bB/xE4ERWak7LxRb/nAnW2GAEnqjcQKY3ubeP+O+wiLm+cpuA/N40BKJB9nQLBeWCxBBbzZSZ6kPjzZJn+QA0RO41kNMAxV95/7pWEfQuf9SL09j6+QT1eCoXgv7m782CiQnMmKFBDgWCgTcqo2646Ui7BMrjESuNZM54TgHm3G/S2R0WFOHuZDaFHeMuCv+cddAjwqqHZ1Jrza0YyrfJ6Qgd8UIYR1XMwId13SX/kaxo+JWb+VaU+QD7QKdB8KlE4p9kf16r0rJkhjI=
-Content-Type: text/plain; charset="utf-8"
-Content-ID: <84101AC74DC1BD4DB5AC0925DC180B16@namprd13.prod.outlook.com>
-Content-Transfer-Encoding: base64
+        id S1727478AbfDHPWG (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 8 Apr 2019 11:22:06 -0400
+Received: from mail-ua1-f67.google.com ([209.85.222.67]:40745 "EHLO
+        mail-ua1-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727196AbfDHPWG (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Apr 2019 11:22:06 -0400
+Received: by mail-ua1-f67.google.com with SMTP id b8so4422177uaq.7;
+        Mon, 08 Apr 2019 08:22:05 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=umich.edu; s=google-2016-06-03;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc;
+        bh=UcRt9aUg2xxekN75CbfievZBTldXhrFFsSh6p2QfFzk=;
+        b=Mhcn4kbu+xQBbxA2NZIiNnParWV6a4xnIDY6LvNiXFXOIS2g2OvIoVR4CfXaK/u1SR
+         AaDcS4NDmuO92Ccyo/4ILlCZ6YtaYZNszoMQMeWKThWObddn+0owtiie4i9ap5g/36Gn
+         PHDkwoIo9foftMxzAksuc/E1pxsQXBFVEJ7mXXst1yFBRhfKY6VjUJzD68xhELH7KAnY
+         TlBf7+vJQlYVhlat3AoOUgZDF//fEk4r8JTguhSD3/xnU7BntFigAWd6cWZchZpv5vqv
+         uSkAfS9z64gL9P0dDRIyfCppmrnBOUk1NiGgX6p1jLQj8U05aO/ouQRP/t/ZgYKoJghj
+         0tyg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=UcRt9aUg2xxekN75CbfievZBTldXhrFFsSh6p2QfFzk=;
+        b=FnoKiNxaf/VSxK56xgqfRgfWrvH20PgHyjJwB9gDb7wjtPWCBTtGAslW8xbp8mBQgv
+         mLFhqvQYbBSi/GPQ8cfBLIo8m8DJ3veBffEQ5oBt68qtzNS7PnoMzm/ssl9rTjXO11BC
+         TmAbtALnVCYH9ZCSGXmTFTvWIpktL3BBIbMzLahkqGRFmMm0to9e1RJtdd5xmjrswR4d
+         q7hi7Vj2bS/iemm23w/hImWQ2TLhs0Ox7syKZPB0WrKNBExg1QYIgT2O64WBNa15ByMS
+         8H5vv4S2cxm6jFA5jbYZ7go+fmGqfsRPwj4PkYdH9O4uSE2EuOf5EDfPHn0YOB709usV
+         IFkQ==
+X-Gm-Message-State: APjAAAVi3z7QWJwQkjLjDnps1yebQ+ncYQGtjUKfn2cQWk/cjzJxIZj/
+        6gd0BaaGDl5CHUFD0KmOrwGCgaCvTKOWqdrzUjLn3A==
+X-Google-Smtp-Source: APXvYqwapnc7ieJ+g6eTukwcV2N5p9yuKUkZTyCJ8raBiu3hgX1omIpLKaHyxnfpekkbJnHzs894+ZR9BMdm3qygysI=
+X-Received: by 2002:ab0:6994:: with SMTP id t20mr5958894uaq.105.1554736924659;
+ Mon, 08 Apr 2019 08:22:04 -0700 (PDT)
 MIME-Version: 1.0
-X-OriginatorOrg: hammerspace.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: 710f1a85-b7bf-471a-495c-08d6bc35c76a
-X-MS-Exchange-CrossTenant-originalarrivaltime: 08 Apr 2019 15:20:48.3573
- (UTC)
-X-MS-Exchange-CrossTenant-fromentityheader: Hosted
-X-MS-Exchange-CrossTenant-id: 0d4fed5c-3a70-46fe-9430-ece41741f59e
-X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: SN6PR13MB2318
+References: <20190211161920.2817.20881.stgit@manet.1015granger.net>
+ <20190211162525.2817.60645.stgit@manet.1015granger.net> <CAN-5tyH1zAuW7AxoZc+psRWWQT0S9J3wDu+iDgLg4=qGTvUufA@mail.gmail.com>
+ <0157F163-7554-413C-ACCA-FE6646C04716@oracle.com> <CAN-5tyHSH75TVSok+RXdXoq6bOVse__E4AMCzuSnmYrTgzH_Vg@mail.gmail.com>
+ <5AC0653D-3D4E-4C0C-BFE3-616BF32589CB@oracle.com> <CAN-5tyFN90xdKBvFmH2kYa2gQtW2EmVa59Q+w=M4yvHR9euuVQ@mail.gmail.com>
+ <19341226-AE0F-4C94-B7CD-AE14CCB456AF@oracle.com> <CAN-5tyE6rgj90=bCcX82fW34i1SNSSLcLVHbjBo5dmQaXzoTwA@mail.gmail.com>
+ <1E4939AD-F0AE-47EF-81E2-B919FB203B76@oracle.com>
+In-Reply-To: <1E4939AD-F0AE-47EF-81E2-B919FB203B76@oracle.com>
+From:   Olga Kornievskaia <aglo@umich.edu>
+Date:   Mon, 8 Apr 2019 11:21:53 -0400
+Message-ID: <CAN-5tyGtStnutmCk20Kug4FP_TWYFE5ZG3sLbDDjaVQbZnEWGA@mail.gmail.com>
+Subject: Re: [PATCH v1 20/23] NFS: Account for XDR pad of buf->pages
+To:     Chuck Lever <chuck.lever@oracle.com>
+Cc:     Anna Schumaker <anna.schumaker@netapp.com>,
+        linux-rdma <linux-rdma@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-T24gRnJpLCAyMDE5LTA0LTA1IGF0IDA4OjU0IC0wNzAwLCBUcm9uZCBNeWtsZWJ1c3Qgd3JvdGU6
-DQo+IElmIHRoZXJlIGFyZSBtdWx0aXBsZSBjYWxsYmFja3MgcXVldWVkLCB3YWl0aW5nIGZvciB0
-aGUgY2FsbGJhY2sNCj4gc2xvdCB3aGVuIHRoZSBjYWxsYmFjayBnZXRzIHNodXQgZG93biwgdGhl
-biB0aGV5IGFsbCBjdXJyZW50bHkNCj4gZW5kIHVwIGFjdGluZyBhcyBpZiB0aGV5IGhvbGQgdGhl
-IHNsb3QsIGFuZCBjYWxsDQo+IG5mc2Q0X2NiX3NlcXVlbmNlX2RvbmUoKSByZXN1bHRpbmcgaW4g
-aW50ZXJlc3Rpbmcgc2lkZS1lZmZlY3RzLg0KPiANCj4gSW4gYWRkaXRpb24sIHRoZSAncmV0cnlf
-bm93YWl0JyBwYXRoIGluIG5mc2Q0X2NiX3NlcXVlbmNlX2RvbmUoKQ0KPiBjYXVzZXMgYSBsb29w
-IGJhY2sgdG8gbmZzZDRfY2JfcHJlcGFyZSgpIHdpdGhvdXQgZmlyc3QgZnJlZWluZyB0aGUNCj4g
-c2xvdCwgd2hpY2ggY2F1c2VzIGEgZGVhZGxvY2sgd2hlbiBuZnNkNDFfY2JfZ2V0X3Nsb3QoKSBn
-ZXRzIGNhbGxlZA0KPiBhIHNlY29uZCB0aW1lLg0KPiANCj4gVGhpcyBwYXRjaCB0aGVyZWZvcmUg
-YWRkcyBhIGJvb2xlYW4gdG8gdHJhY2sgd2hldGhlciBvciBub3QgdGhlDQo+IGNhbGxiYWNrIGRp
-ZCBwaWNrIHVwIHRoZSBzbG90LCBzbyB0aGF0IGl0IGNhbiBkbyB0aGUgcmlnaHQgdGhpbmcNCj4g
-aW4gdGhlc2UgMiBjYXNlcy4NCj4gDQo+IFNpZ25lZC1vZmYtYnk6IFRyb25kIE15a2xlYnVzdCA8
-dHJvbmQubXlrbGVidXN0QGhhbW1lcnNwYWNlLmNvbT4NCj4gLS0tDQo+IHYyOiB0cnkgdG8gcmVz
-dGFydCB0aGUgY2FsbGJhY2sgaWYgd2UgaGl0IG5mc2Q0X2NiX3NlcXVlbmNlX2RvbmUoKQ0KPiAg
-ICAgd2l0aG91dCBhIHNsb3QuDQo+IA0KPiANCg0KSGkgQnJ1Y2UsDQoNClNob3VsZCB0aGlzIHBh
-dGNoIHBlcmhhcHMgYmUgY29uc2lkZXJlZCBmb3Igc3RhYmxlPyBUaGUgY2FsbGJhY2sgc2xvdA0K
-bGVhayBpcyBwZXJtYW5lbnQgKG9yIGF0IGxlYXN0IGZvciB0aGUgbGlmZXRpbWUgb2YgdGhlIG5m
-czRfY2xpZW50KS4NCg0KQ2hlZXJzDQogIFRyb25kDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpM
-aW51eCBORlMgY2xpZW50IG1haW50YWluZXIsIEhhbW1lcnNwYWNlDQp0cm9uZC5teWtsZWJ1c3RA
-aGFtbWVyc3BhY2UuY29tDQoNCg0K
+On Mon, Apr 8, 2019 at 10:43 AM Chuck Lever <chuck.lever@oracle.com> wrote:
+>
+>
+>
+> > On Apr 8, 2019, at 10:36 AM, Olga Kornievskaia <aglo@umich.edu> wrote:
+> >
+> > On Fri, Apr 5, 2019 at 3:42 PM Chuck Lever <chuck.lever@oracle.com> wrote:
+> >>
+> >>
+> >>
+> >>> On Apr 5, 2019, at 3:27 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
+> >>>
+> >>> On Fri, Apr 5, 2019 at 3:23 PM Chuck Lever <chuck.lever@oracle.com> wrote:
+> >>>>
+> >>>>
+> >>>>
+> >>>>> On Apr 5, 2019, at 3:17 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
+> >>>>>
+> >>>>> On Fri, Apr 5, 2019 at 1:51 PM Chuck Lever <chuck.lever@oracle.com> wrote:
+> >>>>>>
+> >>>>>>
+> >>>>>>
+> >>>>>>> On Apr 5, 2019, at 1:36 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
+> >>>>>>>
+> >>>>>>> Hi Chuck,
+> >>>>>>>
+> >>>>>>> This patch break ACLs. After applying this patch nfs4_getfacl fails
+> >>>>>>> (it fails within xdr and returns ENOTSUPP). Any ideas why?
+> >>>>>>
+> >>>>>> Possibly the macro that defines the maximum size of the reply
+> >>>>>> is incorrect.
+> >>>>>>
+> >>>>>
+> >>>>> This also breaks FS_LOCATION. I'm going to go on the limb here and say
+> >>>>> that it probably breaks whatever else it modified.
+> >>>>
+> >>>> It modifies READ, READDIR, and READLINK. Are those broken?
+> >>>
+> >>> I don't know how to test READLINK.. but I think READ/READDIR work OK
+> >>> otherwise folks would have noticed it (I gather ACL and FS_LOCATION
+> >>> testing doesn't happen frequently).
+> >>
+> >> I guess I don't have any NFSv4 ACL or FS_LOCATIONS regressions
+> >> tests in my automated unit tests.
+> >>
+> >>
+> >>>>> The question is: can't we just revert it??
+> >>>>
+> >>>> Why not "root cause" it first?
+> >>>
+> >>> I'm trying :-/ I was just fishing to see how important the change was.
+> >>
+> >> Try reverting just this hunk:
+> >
+> > That doesn't help. It seems to be this piece that's causing issues
+> > hdrsize += RPC_REPHDRSIZE + req->rq_cred->cr_auth->au_rslack - 1
+> >
+> > With this there is an extra byte (in front) in the buffer when (ACL)
+> > operation is decoded.
+>
+> How do you know there isn't a latent bug in the getfacl decoder?
+
+I don't. All I know is that it passed tests before and now it doesn't.
+
+> How are you reproducing this issue? I can try it here later today.
+
+The issue was found running xfstest nfs/001. However, you don't need
+that: (1) mount (2) nfs4_getfacl <file>
+
+To understand a patch, does it fix a problem with READLINK or is the
+an optimization?
+
+>
+>
+> >> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+> >> index d0fa18d..6d9d5e2 100644
+> >> --- a/fs/nfs/nfs4xdr.c
+> >> +++ b/fs/nfs/nfs4xdr.c
+> >> @@ -284,14 +284,14 @@ static int decode_layoutget(struct xdr_stream *xdr, struct rpc_rqst *req,
+> >> #define decode_delegreturn_maxsz (op_decode_hdr_maxsz)
+> >> #define encode_getacl_maxsz     (encode_getattr_maxsz)
+> >> #define decode_getacl_maxsz     (op_decode_hdr_maxsz + \
+> >> -                                nfs4_fattr_bitmap_maxsz + 1)
+> >> +                                nfs4_fattr_bitmap_maxsz + 1 + 1)
+> >> #define encode_setacl_maxsz     (op_encode_hdr_maxsz + \
+> >>                                 encode_stateid_maxsz + 3)
+> >> #define decode_setacl_maxsz     (decode_setattr_maxsz)
+> >> #define encode_fs_locations_maxsz \
+> >>                                (encode_getattr_maxsz)
+> >> #define decode_fs_locations_maxsz \
+> >> -                               (0)
+> >> +                               (1)
+> >> #define encode_secinfo_maxsz    (op_encode_hdr_maxsz + nfs4_name_maxsz)
+> >> #define decode_secinfo_maxsz    (op_decode_hdr_maxsz + 1 + ((NFS_MAX_SECFLAVORS * (16 + GSS_OID_MAX_LEN)) / 4))
+> >>
+> >>
+> >>>>>>> On Mon, Feb 11, 2019 at 11:25 AM Chuck Lever <chuck.lever@oracle.com> wrote:
+> >>>>>>>>
+> >>>>>>>> Certain NFS results (eg. READLINK) might expect a data payload that
+> >>>>>>>> is not an exact multiple of 4 bytes. In this case, XDR encoding
+> >>>>>>>> is required to pad that payload so its length on the wire is a
+> >>>>>>>> multiple of 4 bytes. The constants that define the maximum size of
+> >>>>>>>> each NFS result do not appear to account for this extra word.
+> >>>>>>>>
+> >>>>>>>> In each case where the data payload is to be received into pages:
+> >>>>>>>>
+> >>>>>>>> - 1 word is added to the size of the receive buffer allocated by
+> >>>>>>>> call_allocate
+> >>>>>>>>
+> >>>>>>>> - rpc_inline_rcv_pages subtracts 1 word from @hdrsize so that the
+> >>>>>>>> extra buffer space falls into the rcv_buf's tail iovec
+> >>>>>>>>
+> >>>>>>>> - If buf->pagelen is word-aligned, an XDR pad is not needed and
+> >>>>>>>> is thus removed from the tail
+> >>>>>>>>
+> >>>>>>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> >>>>>>>> ---
+> >>>>>>>> fs/nfs/nfs2xdr.c  |    6 +++---
+> >>>>>>>> fs/nfs/nfs3xdr.c  |   10 +++++-----
+> >>>>>>>> fs/nfs/nfs4xdr.c  |   15 ++++++++-------
+> >>>>>>>> net/sunrpc/clnt.c |    6 +++++-
+> >>>>>>>> net/sunrpc/xdr.c  |    2 ++
+> >>>>>>>> 5 files changed, 23 insertions(+), 16 deletions(-)
+> >>>>>>>>
+> >>>>>>>> diff --git a/fs/nfs/nfs2xdr.c b/fs/nfs/nfs2xdr.c
+> >>>>>>>> index 1dcd0fe..a7ed29d 100644
+> >>>>>>>> --- a/fs/nfs/nfs2xdr.c
+> >>>>>>>> +++ b/fs/nfs/nfs2xdr.c
+> >>>>>>>> @@ -56,11 +56,11 @@
+> >>>>>>>>
+> >>>>>>>> #define NFS_attrstat_sz                (1+NFS_fattr_sz)
+> >>>>>>>> #define NFS_diropres_sz                (1+NFS_fhandle_sz+NFS_fattr_sz)
+> >>>>>>>> -#define NFS_readlinkres_sz     (2)
+> >>>>>>>> -#define NFS_readres_sz         (1+NFS_fattr_sz+1)
+> >>>>>>>> +#define NFS_readlinkres_sz     (2+1)
+> >>>>>>>> +#define NFS_readres_sz         (1+NFS_fattr_sz+1+1)
+> >>>>>>>> #define NFS_writeres_sz         (NFS_attrstat_sz)
+> >>>>>>>> #define NFS_stat_sz            (1)
+> >>>>>>>> -#define NFS_readdirres_sz      (1)
+> >>>>>>>> +#define NFS_readdirres_sz      (1+1)
+> >>>>>>>> #define NFS_statfsres_sz       (1+NFS_info_sz)
+> >>>>>>>>
+> >>>>>>>> static int nfs_stat_to_errno(enum nfs_stat);
+> >>>>>>>> diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
+> >>>>>>>> index a54dcf4..110358f 100644
+> >>>>>>>> --- a/fs/nfs/nfs3xdr.c
+> >>>>>>>> +++ b/fs/nfs/nfs3xdr.c
+> >>>>>>>> @@ -69,13 +69,13 @@
+> >>>>>>>> #define NFS3_removeres_sz      (NFS3_setattrres_sz)
+> >>>>>>>> #define NFS3_lookupres_sz      (1+NFS3_fh_sz+(2 * NFS3_post_op_attr_sz))
+> >>>>>>>> #define NFS3_accessres_sz      (1+NFS3_post_op_attr_sz+1)
+> >>>>>>>> -#define NFS3_readlinkres_sz    (1+NFS3_post_op_attr_sz+1)
+> >>>>>>>> -#define NFS3_readres_sz                (1+NFS3_post_op_attr_sz+3)
+> >>>>>>>> +#define NFS3_readlinkres_sz    (1+NFS3_post_op_attr_sz+1+1)
+> >>>>>>>> +#define NFS3_readres_sz                (1+NFS3_post_op_attr_sz+3+1)
+> >>>>>>>> #define NFS3_writeres_sz       (1+NFS3_wcc_data_sz+4)
+> >>>>>>>> #define NFS3_createres_sz      (1+NFS3_fh_sz+NFS3_post_op_attr_sz+NFS3_wcc_data_sz)
+> >>>>>>>> #define NFS3_renameres_sz      (1+(2 * NFS3_wcc_data_sz))
+> >>>>>>>> #define NFS3_linkres_sz                (1+NFS3_post_op_attr_sz+NFS3_wcc_data_sz)
+> >>>>>>>> -#define NFS3_readdirres_sz     (1+NFS3_post_op_attr_sz+2)
+> >>>>>>>> +#define NFS3_readdirres_sz     (1+NFS3_post_op_attr_sz+2+1)
+> >>>>>>>> #define NFS3_fsstatres_sz      (1+NFS3_post_op_attr_sz+13)
+> >>>>>>>> #define NFS3_fsinfores_sz      (1+NFS3_post_op_attr_sz+12)
+> >>>>>>>> #define NFS3_pathconfres_sz    (1+NFS3_post_op_attr_sz+6)
+> >>>>>>>> @@ -85,7 +85,7 @@
+> >>>>>>>> #define ACL3_setaclargs_sz     (NFS3_fh_sz+1+ \
+> >>>>>>>>                             XDR_QUADLEN(NFS_ACL_INLINE_BUFSIZE))
+> >>>>>>>> #define ACL3_getaclres_sz      (1+NFS3_post_op_attr_sz+1+ \
+> >>>>>>>> -                               XDR_QUADLEN(NFS_ACL_INLINE_BUFSIZE))
+> >>>>>>>> +                               XDR_QUADLEN(NFS_ACL_INLINE_BUFSIZE)+1)
+> >>>>>>>> #define ACL3_setaclres_sz      (1+NFS3_post_op_attr_sz)
+> >>>>>>>>
+> >>>>>>>> static int nfs3_stat_to_errno(enum nfs_stat);
+> >>>>>>>> @@ -1629,7 +1629,7 @@ static int nfs3_xdr_dec_read3res(struct rpc_rqst *req, struct xdr_stream *xdr,
+> >>>>>>>>     result->op_status = status;
+> >>>>>>>>     if (status != NFS3_OK)
+> >>>>>>>>             goto out_status;
+> >>>>>>>> -       result->replen = 3 + ((xdr_stream_pos(xdr) - pos) >> 2);
+> >>>>>>>> +       result->replen = 4 + ((xdr_stream_pos(xdr) - pos) >> 2);
+> >>>>>>>>     error = decode_read3resok(xdr, result);
+> >>>>>>>> out:
+> >>>>>>>>     return error;
+> >>>>>>>> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+> >>>>>>>> index d0fa18d..6d9d5e2 100644
+> >>>>>>>> --- a/fs/nfs/nfs4xdr.c
+> >>>>>>>> +++ b/fs/nfs/nfs4xdr.c
+> >>>>>>>> @@ -215,14 +215,14 @@ static int decode_layoutget(struct xdr_stream *xdr, struct rpc_rqst *req,
+> >>>>>>>>                              nfs4_fattr_bitmap_maxsz)
+> >>>>>>>> #define encode_read_maxsz      (op_encode_hdr_maxsz + \
+> >>>>>>>>                              encode_stateid_maxsz + 3)
+> >>>>>>>> -#define decode_read_maxsz      (op_decode_hdr_maxsz + 2)
+> >>>>>>>> +#define decode_read_maxsz      (op_decode_hdr_maxsz + 2 + 1)
+> >>>>>>>> #define encode_readdir_maxsz   (op_encode_hdr_maxsz + \
+> >>>>>>>>                              2 + encode_verifier_maxsz + 5 + \
+> >>>>>>>>                             nfs4_label_maxsz)
+> >>>>>>>> #define decode_readdir_maxsz   (op_decode_hdr_maxsz + \
+> >>>>>>>> -                                decode_verifier_maxsz)
+> >>>>>>>> +                                decode_verifier_maxsz + 1)
+> >>>>>>>> #define encode_readlink_maxsz  (op_encode_hdr_maxsz)
+> >>>>>>>> -#define decode_readlink_maxsz  (op_decode_hdr_maxsz + 1)
+> >>>>>>>> +#define decode_readlink_maxsz  (op_decode_hdr_maxsz + 1 + 1)
+> >>>>>>>> #define encode_write_maxsz     (op_encode_hdr_maxsz + \
+> >>>>>>>>                              encode_stateid_maxsz + 4)
+> >>>>>>>> #define decode_write_maxsz     (op_decode_hdr_maxsz + \
+> >>>>>>>> @@ -284,14 +284,14 @@ static int decode_layoutget(struct xdr_stream *xdr, struct rpc_rqst *req,
+> >>>>>>>> #define decode_delegreturn_maxsz (op_decode_hdr_maxsz)
+> >>>>>>>> #define encode_getacl_maxsz    (encode_getattr_maxsz)
+> >>>>>>>> #define decode_getacl_maxsz    (op_decode_hdr_maxsz + \
+> >>>>>>>> -                                nfs4_fattr_bitmap_maxsz + 1)
+> >>>>>>>> +                                nfs4_fattr_bitmap_maxsz + 1 + 1)
+> >>>>>>>> #define encode_setacl_maxsz    (op_encode_hdr_maxsz + \
+> >>>>>>>>                              encode_stateid_maxsz + 3)
+> >>>>>>>> #define decode_setacl_maxsz    (decode_setattr_maxsz)
+> >>>>>>>> #define encode_fs_locations_maxsz \
+> >>>>>>>>                             (encode_getattr_maxsz)
+> >>>>>>>> #define decode_fs_locations_maxsz \
+> >>>>>>>> -                               (0)
+> >>>>>>>> +                               (1)
+> >>>>>>>> #define encode_secinfo_maxsz   (op_encode_hdr_maxsz + nfs4_name_maxsz)
+> >>>>>>>> #define decode_secinfo_maxsz   (op_decode_hdr_maxsz + 1 + ((NFS_MAX_SECFLAVORS * (16 + GSS_OID_MAX_LEN)) / 4))
+> >>>>>>>>
+> >>>>>>>> @@ -392,12 +392,13 @@ static int decode_layoutget(struct xdr_stream *xdr, struct rpc_rqst *req,
+> >>>>>>>>                             1 /* opaque devaddr4 length */ + \
+> >>>>>>>>                               /* devaddr4 payload is read into page */ \
+> >>>>>>>>                             1 /* notification bitmap length */ + \
+> >>>>>>>> -                               1 /* notification bitmap, word 0 */)
+> >>>>>>>> +                               1 /* notification bitmap, word 0 */ + \
+> >>>>>>>> +                               1 /* possible XDR padding */)
+> >>>>>>>> #define encode_layoutget_maxsz (op_encode_hdr_maxsz + 10 + \
+> >>>>>>>>                             encode_stateid_maxsz)
+> >>>>>>>> #define decode_layoutget_maxsz (op_decode_hdr_maxsz + 8 + \
+> >>>>>>>>                             decode_stateid_maxsz + \
+> >>>>>>>> -                               XDR_QUADLEN(PNFS_LAYOUT_MAXSIZE))
+> >>>>>>>> +                               XDR_QUADLEN(PNFS_LAYOUT_MAXSIZE) + 1)
+> >>>>>>>> #define encode_layoutcommit_maxsz (op_encode_hdr_maxsz +          \
+> >>>>>>>>                             2 /* offset */ + \
+> >>>>>>>>                             2 /* length */ + \
+> >>>>>>>> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+> >>>>>>>> index f780605..4ea38b0 100644
+> >>>>>>>> --- a/net/sunrpc/clnt.c
+> >>>>>>>> +++ b/net/sunrpc/clnt.c
+> >>>>>>>> @@ -1177,7 +1177,11 @@ void rpc_prepare_reply_pages(struct rpc_rqst *req, struct page **pages,
+> >>>>>>>>                          unsigned int base, unsigned int len,
+> >>>>>>>>                          unsigned int hdrsize)
+> >>>>>>>> {
+> >>>>>>>> -       hdrsize += RPC_REPHDRSIZE + req->rq_cred->cr_auth->au_rslack;
+> >>>>>>>> +       /* Subtract one to force an extra word of buffer space for the
+> >>>>>>>> +        * payload's XDR pad to fall into the rcv_buf's tail iovec.
+> >>>>>>>> +        */
+> >>>>>>>> +       hdrsize += RPC_REPHDRSIZE + req->rq_cred->cr_auth->au_rslack - 1;
+> >>>>>>>> +
+> >>>>>>>>     xdr_inline_pages(&req->rq_rcv_buf, hdrsize << 2, pages, base, len);
+> >>>>>>>>     trace_rpc_reply_pages(req);
+> >>>>>>>> }
+> >>>>>>>> diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
+> >>>>>>>> index 7cca515..aa8177d 100644
+> >>>>>>>> --- a/net/sunrpc/xdr.c
+> >>>>>>>> +++ b/net/sunrpc/xdr.c
+> >>>>>>>> @@ -189,6 +189,8 @@ __be32 *xdr_encode_opaque(__be32 *p, const void *ptr, unsigned int nbytes)
+> >>>>>>>>
+> >>>>>>>>     tail->iov_base = buf + offset;
+> >>>>>>>>     tail->iov_len = buflen - offset;
+> >>>>>>>> +       if ((xdr->page_len & 3) == 0)
+> >>>>>>>> +               tail->iov_len -= sizeof(__be32);
+> >>>>>>>>
+> >>>>>>>>     xdr->buflen += len;
+> >>>>>>>> }
+> >>>>>>>>
+> >>>>>>
+> >>>>>> --
+> >>>>>> Chuck Lever
+> >>>>
+> >>>> --
+> >>>> Chuck Lever
+> >>
+> >> --
+> >> Chuck Lever
+>
+> --
+> Chuck Lever
+>
+>
+>
