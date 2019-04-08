@@ -2,47 +2,67 @@ Return-Path: <SRS0=JsnX=SK=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-0.5 required=3.0 tests=DKIM_ADSP_CUSTOM_MED,
+	DKIM_INVALID,DKIM_SIGNED,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A5FD6C10F13
-	for <linux-nfs@archiver.kernel.org>; Mon,  8 Apr 2019 18:13:58 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 837B6C10F13
+	for <linux-nfs@archiver.kernel.org>; Mon,  8 Apr 2019 18:15:06 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 6A99C2084C
-	for <linux-nfs@archiver.kernel.org>; Mon,  8 Apr 2019 18:13:58 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 49B702084C
+	for <linux-nfs@archiver.kernel.org>; Mon,  8 Apr 2019 18:15:06 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="fd1r4Yif"
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="qnslTvZY"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727044AbfDHSN5 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 8 Apr 2019 14:13:57 -0400
-Received: from mail-eopbgr730111.outbound.protection.outlook.com ([40.107.73.111]:4224
-        "EHLO NAM05-DM3-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726415AbfDHSN5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 8 Apr 2019 14:13:57 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=hammerspace.com;
- s=selector1;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=eB2rDg26L+zl87YxwNQhF4tb3FNxuy5lU1kxooxp8cw=;
- b=fd1r4YifZVUq2wK84wOU7BTVm4S2+nCIqzmsAh1NWO5pUENcNDbeN3vCvY4HhQ2sgq929Grx8OvCKDcDpnydWOlcJnEjcH3b0c6/NAhFBdJ+3pFPXJj++VvRftUCgTjCcpf1FgJxgHL0QWl/FHX5r2Imww00S6idA2KlqqoiaKM=
-Received: from SN6PR13MB2494.namprd13.prod.outlook.com (52.135.95.148) by
- SN6PR13MB2512.namprd13.prod.outlook.com (52.135.95.154) with Microsoft SMTP
- Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- 15.20.1792.8; Mon, 8 Apr 2019 18:13:53 +0000
-Received: from SN6PR13MB2494.namprd13.prod.outlook.com
- ([fe80::30dc:67e2:d25a:f1d3]) by SN6PR13MB2494.namprd13.prod.outlook.com
- ([fe80::30dc:67e2:d25a:f1d3%6]) with mapi id 15.20.1792.007; Mon, 8 Apr 2019
- 18:13:53 +0000
-From:   Trond Myklebust <trondmy@hammerspace.com>
-To:     "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "schumaker.anna@gmail.com" <schumaker.anna@gmail.com>
-Subject: Re: [PATCH v2 28/28] NFS: Remove redundant open context from nfs_page
-Thread-Topic: [PATCH v2 28/28] NFS: Remove redundant open context from
+        id S1726403AbfDHSPF (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 8 Apr 2019 14:15:05 -0400
+Received: from mail-it1-f193.google.com ([209.85.166.193]:53170 "EHLO
+        mail-it1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726220AbfDHSPF (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Apr 2019 14:15:05 -0400
+Received: by mail-it1-f193.google.com with SMTP id x132so644928itf.2
+        for <linux-nfs@vger.kernel.org>; Mon, 08 Apr 2019 11:15:05 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=sender:message-id:subject:from:to:date:in-reply-to:references
+         :user-agent:mime-version:content-transfer-encoding;
+        bh=ISXFPg+Gv8HTEmwkNh6axgfdIfhJxVO1PpHNkUfEdkg=;
+        b=qnslTvZYvthkJOPAnQkv7TGgTejdSJmr2YUd5dtv5ZeuKsaddcAI5Ng9mj+7GAiNy8
+         1Yv3j7iXGjZniMfugRtrOduI3tRR65njRnGBfhsfFswzLPmKvcntjYXTxL1TiXJY8HMP
+         U3JswlmW6mrhf0I6XIvvHRpmAO15TwhAvUV3dferbXLiAuXd0LX0ivrMShuGOLH2798m
+         9sY6in++BYfNrDHu48hBd+T3mZuQDjG9EJNZ4h77tZb1BynI+cPn83QAMyROloQ/0OwO
+         1P5dZN5E7s5eDx09/X6Dq+pZDBFxyCh04zN1wo3N7yqiQkjD5+Mve9yy03Dt1TeiSbYz
+         edkg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:sender:message-id:subject:from:to:date
+         :in-reply-to:references:user-agent:mime-version
+         :content-transfer-encoding;
+        bh=ISXFPg+Gv8HTEmwkNh6axgfdIfhJxVO1PpHNkUfEdkg=;
+        b=DxQW7dsBxSuPbR3K6neZ7//JPQZ8YnF+yBF7K6oHxqPqaL+5sRaYilb61jA358KZbl
+         ecTNFPAhqv8T8uPW3IxrqV3uHLo9kykBC5tJ+LP7GvAHNJN/Wlt/5LNvgUuMaMqA3TgM
+         hJDF1eHpM95ZseonDwOS32moNMv5fzUnCgHWxEmqXJdu6NDWPLvybRXwjdZ1N2KE6UWn
+         AH2ktUjQe5h8G6cg99moWZaxSQZTHmJwlH/+qSVsvSB2z5YmacB72tnMlq7o8l0xgB9F
+         lf+P9vlcNnkKnRNLX5c+rbMse96mUwzDsAB72SulZGcJgM2/uBUSBKBJRjwSwY8VZpkC
+         jUEw==
+X-Gm-Message-State: APjAAAUCHl5dnVJ5iK1NK1wBqQ8utez8YZnssBfIiebY6xsZdN8KgI8J
+        8voI6pidekKMWCTr0gj4gbtlPJpedZM=
+X-Google-Smtp-Source: APXvYqwoEQr83GLtnkaCgh8qWDCWUCGWG/lVUvpTIrmeJRny9FLodlhhAUb9HHOweYV+0FQ5Yfpbuw==
+X-Received: by 2002:a24:f947:: with SMTP id l68mr19537246ith.128.1554747304364;
+        Mon, 08 Apr 2019 11:15:04 -0700 (PDT)
+Received: from gouda.nowheycreamery.com (d28-23-121-75.dim.wideopenwest.com. [23.28.75.121])
+        by smtp.googlemail.com with ESMTPSA id d138sm5403284itc.15.2019.04.08.11.15.03
+        (version=TLS1_3 cipher=AEAD-AES256-GCM-SHA384 bits=256/256);
+        Mon, 08 Apr 2019 11:15:03 -0700 (PDT)
+Message-ID: <b0a37e92321b5ef2f461a3eab79a8e4dd3afd96d.camel@gmail.com>
+Subject: Re: [PATCH v2 28/28] NFS: Remove redundant open context from
  nfs_page
-Thread-Index: AQHU5nsWqA/xigu8WUiGoN8r6re6H6YuAmGAgAE2uACAA1YpgIAAEWkA
-Date:   Mon, 8 Apr 2019 18:13:53 +0000
-Message-ID: <745990f6eedb24b4c59cb653d70b6b7da81aca9e.camel@hammerspace.com>
+From:   Anna Schumaker <schumaker.anna@gmail.com>
+To:     Trond Myklebust <trondmy@hammerspace.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Date:   Mon, 08 Apr 2019 14:15:02 -0400
+In-Reply-To: <745990f6eedb24b4c59cb653d70b6b7da81aca9e.camel@hammerspace.com>
 References: <20190329215948.107328-1-trond.myklebust@hammerspace.com>
          <20190329215948.107328-2-trond.myklebust@hammerspace.com>
          <20190329215948.107328-3-trond.myklebust@hammerspace.com>
@@ -75,94 +95,101 @@ References: <20190329215948.107328-1-trond.myklebust@hammerspace.com>
          <c92a3c3d629636a0ce88a04098565345ce5ed5d8.camel@gmail.com>
          <9498d534b8e59f903bf750183a08d22a6ae7ba9a.camel@hammerspace.com>
          <89770990a66eb25000248daaf2b0b8fcf105c8d7.camel@gmail.com>
-In-Reply-To: <89770990a66eb25000248daaf2b0b8fcf105c8d7.camel@gmail.com>
-Accept-Language: en-US, en-GB
-Content-Language: en-US
-X-MS-Has-Attach: 
-X-MS-TNEF-Correlator: 
-authentication-results: spf=none (sender IP is )
- smtp.mailfrom=trondmy@hammerspace.com; 
-x-originating-ip: [68.40.189.247]
-x-ms-publictraffictype: Email
-x-ms-office365-filtering-correlation-id: 2590abcf-59ca-4701-2b55-08d6bc4df57f
-x-microsoft-antispam: BCL:0;PCL:0;RULEID:(2390118)(7020095)(4652040)(8989299)(4534185)(4627221)(201703031133081)(201702281549075)(8990200)(5600139)(711020)(4605104)(2017052603328)(7193020);SRVR:SN6PR13MB2512;
-x-ms-traffictypediagnostic: SN6PR13MB2512:
-x-microsoft-antispam-prvs: <SN6PR13MB2512E813D0FCF6CB677D16F4B82C0@SN6PR13MB2512.namprd13.prod.outlook.com>
-x-forefront-prvs: 0001227049
-x-forefront-antispam-report: SFV:NSPM;SFS:(10019020)(136003)(396003)(39830400003)(376002)(366004)(346002)(199004)(189003)(51234002)(14444005)(256004)(68736007)(106356001)(105586002)(97736004)(305945005)(7736002)(66066001)(36756003)(8676002)(86362001)(81166006)(81156014)(8936002)(2501003)(71190400001)(6506007)(99286004)(110136005)(11346002)(6436002)(5660300002)(476003)(2616005)(316002)(229853002)(6486002)(2906002)(118296001)(486006)(478600001)(186003)(93886005)(14454004)(26005)(102836004)(53936002)(6512007)(6246003)(6116002)(25786009)(3846002)(45080400002)(446003)(76176011)(71200400001);DIR:OUT;SFP:1102;SCL:1;SRVR:SN6PR13MB2512;H:SN6PR13MB2494.namprd13.prod.outlook.com;FPR:;SPF:None;LANG:en;PTR:InfoNoRecords;A:1;MX:1;
-received-spf: None (protection.outlook.com: hammerspace.com does not designate
- permitted sender hosts)
-x-ms-exchange-senderadcheck: 1
-x-microsoft-antispam-message-info: u02bUZSMLhVU2DROjbca/WmTf3s3oa75P4ObBWah1yQscbC32voAtzyTEitH5Skmi2EyjxEtzFx8N0J0VxvF0nBFjlpixphuUqB1mYYqWLTcKCvlutBpoaouoW5MCvA0zQICqt88sQumRgioX2Fiwera1wODG2C+KRYUVpUGFW/S52Txt4ptDCA/Q7diHV4jthU4Y8j90WaBKcpMLNrfQkM4ggsmZhr63bNAZQz0le0jJ29TUE0ZSAZkVKs7CMre5n+rixUWzwqTt3KKKl7dL3mW76TXxeC+OAfQaFkKvqkIZYMglbzizs1F+6nhofCtkuI9Q0OPPtRM1Mq81bOwkcrzaMVmoy3QHBELSM0FgIAuedtaA3+Iz8iAlLlAoz7v5jyxWV4Eg5RoyebpiN3etmAhSVl9QSxV6W+AXCER2ek=
-Content-Type: text/plain; charset="utf-8"
-Content-ID: <576219AFB0AEF24380312A2183C63593@namprd13.prod.outlook.com>
-Content-Transfer-Encoding: base64
+         <745990f6eedb24b4c59cb653d70b6b7da81aca9e.camel@hammerspace.com>
+Content-Type: text/plain; charset="UTF-8"
+User-Agent: Evolution 3.32.0 
 MIME-Version: 1.0
-X-OriginatorOrg: hammerspace.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: 2590abcf-59ca-4701-2b55-08d6bc4df57f
-X-MS-Exchange-CrossTenant-originalarrivaltime: 08 Apr 2019 18:13:53.4628
- (UTC)
-X-MS-Exchange-CrossTenant-fromentityheader: Hosted
-X-MS-Exchange-CrossTenant-id: 0d4fed5c-3a70-46fe-9430-ece41741f59e
-X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: SN6PR13MB2512
+Content-Transfer-Encoding: 7bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-T24gTW9uLCAyMDE5LTA0LTA4IGF0IDEzOjExIC0wNDAwLCBBbm5hIFNjaHVtYWtlciB3cm90ZToN
-Cj4gT24gU2F0LCAyMDE5LTA0LTA2IGF0IDE0OjE0ICswMDAwLCBUcm9uZCBNeWtsZWJ1c3Qgd3Jv
-dGU6DQo+ID4gSGkgQW5uYQ0KPiA+IA0KPiA+IE9uIEZyaSwgMjAxOS0wNC0wNSBhdCAxNTo0MiAt
-MDQwMCwgQW5uYSBTY2h1bWFrZXIgd3JvdGU6DQo+ID4gPiBIaSBUcm9uZCwNCj4gPiA+IA0KPiA+
-ID4gSSdtIGhhdmluZyBzb21lIHRyb3VibGUgd2l0aCB4ZnN0ZXN0cyBnZW5lcmljLzQ2NCBhZnRl
-ciBhcHBseWluZw0KPiA+ID4gdGhpcw0KPiA+ID4gcGF0Y2guDQo+ID4gPiBIZXJlIGlzIHRoZSBv
-b3BzIEknbSBnZXR0aW5nLCBJJ20gYWJsZSB0byByZXByb2R1Y2UgaXQgZmFpcmx5DQo+ID4gPiBl
-YXNpbHkNCj4gPiA+IGFnYWluc3QgYWxsDQo+ID4gPiBORlMgdmVyc2lvbnM6IA0KPiA+ID4gDQo+
-ID4gPiBbICAgNDEuMTgyMDE1XSBCVUc6IHVuYWJsZSB0byBoYW5kbGUga2VybmVsIE5VTEwgcG9p
-bnRlcg0KPiA+ID4gZGVyZWZlcmVuY2UNCj4gPiA+IGF0DQo+ID4gPiAwMDAwMDAwMDAwMDAwMDQ4
-DQo+ID4gPiBbICAgNDEuMTgyMDUxXSAjUEYgZXJyb3I6IFtub3JtYWwga2VybmVsIHJlYWQgZmF1
-bHRdDQo+ID4gPiBbICAgNDEuMTgyMDcxXSBQR0QgMCBQNEQgMCANCj4gPiA+IFsgICA0MS4xODIw
-ODZdIE9vcHM6IDAwMDAgWyMxXSBQUkVFTVBUIFNNUCBQVEkNCj4gPiA+IFsgICA0MS4xODIxMDRd
-IENQVTogMSBQSUQ6IDE0NTE1IENvbW06IGt3b3JrZXIvMTo2IE5vdCB0YWludGVkDQo+ID4gPiA1
-LjEuMC0NCj4gPiA+IHJjMy1BTk5BKw0KPiA+ID4gIzUyOTINCj4gPiA+IFsgICA0MS4xODIxMzFd
-IEhhcmR3YXJlIG5hbWU6IEJvY2hzIEJvY2hzLCBCSU9TIEJvY2hzIDAxLzAxLzIwMTENCj4gPiA+
-IFsgICA0MS4xODIxNzRdIFdvcmtxdWV1ZTogbmZzaW9kIHJwY19hc3luY19yZWxlYXNlIFtzdW5y
-cGNdDQo+ID4gPiBbICAgNDEuMTgyMjA5XSBSSVA6IDAwMTA6X19wdXRfbmZzX29wZW5fY29udGV4
-dCsweGQvMHgxMTAgW25mc10NCj4gPiA+IFsgICA0MS4xODIyMjddIENvZGU6IGY4IGJhIGE4IDAw
-IDAwIDAwIGJlIGMwIDBjIDAwIDAwIGU4IDVkIGMwIDU4DQo+ID4gPiBmNw0KPiA+ID4gNDggODkg
-YzMgNDgNCj4gPiA+IDg1IGMwIDc0IGM1IGU5IDE1IGZmIGZmIGZmIDBmIDFmIDQ0IDAwIDAwIDQx
-IDU2IDQxIDU1IDQxIDU0IDU1IDUzDQo+ID4gPiA8NDg+IDhiIDQ3IDQ4DQo+ID4gPiA0OCA4YiA2
-OCAzMCA0YyA4YiA2MCA2OCBmMCBmZiAwZiAwZiA4OCAxNCA1MyAwMSAwMCA3NA0KPiA+ID4gWyAg
-IDQxLjE4MjI2N10gUlNQOiAwMDE4OmZmZmZhZTVmMDRiNmJlMzAgRUZMQUdTOiAwMDAxMDI0Ng0K
-PiA+ID4gWyAgIDQxLjE4MjI3OV0gUkFYOiAwMDAwMDAwMDAwMDAwMDAwIFJCWDogZmZmZmEyMmFh
-ZTcxYTY4MCBSQ1g6DQo+ID4gPiAwMDAwMDAwMDAwMDAwMDAwDQo+ID4gPiBbICAgNDEuMTgyMjk1
-XSBSRFg6IGZmZmZmZmZmYjkyMDVkYzggUlNJOiAwMDAwMDAwMDAwMDAwMDAwIFJESToNCj4gPiA+
-IDAwMDAwMDAwMDAwMDAwMDANCj4gPiA+IFsgICA0MS4xODIzMTFdIFJCUDogMDAwMDAwMDAwMDAw
-MDgwMSBSMDg6IGZmZmZhMjJhYTVjYTAwMDAgUjA5Og0KPiA+ID4gZmZmZmEyMmFiYTI2NzgwMA0K
-PiA+ID4gWyAgIDQxLjE4MjMyN10gUjEwOiAwMDAwMDAwMDAwMDAwMDAwIFIxMTogMDAwMDAwMDAw
-MDAwMDAwMCBSMTI6DQo+ID4gPiBmZmZmY2U1ZWZmZDFjMjAwDQo+ID4gPiBbICAgNDEuMTgyMzUx
-XSBSMTM6IDAwMDAwMDAwMDAwMDAwMDAgUjE0OiBmZmZmYTIyYWFkMmFhNmMwIFIxNToNCj4gPiA+
-IDBmZmZmY2U1ZWZmZDFjMjANCj4gPiA+IFsgICA0MS4xODIzNzhdIEZTOiAgMDAwMDAwMDAwMDAw
-MDAwMCgwMDAwKQ0KPiA+ID4gR1M6ZmZmZmEyMmFiY2IwMDAwMCgwMDAwKQ0KPiA+ID4ga25sR1M6
-MDAwMDAwMDAwMDAwMDAwMA0KPiA+ID4gWyAgIDQxLjE4MjQxMV0gQ1M6ICAwMDEwIERTOiAwMDAw
-IEVTOiAwMDAwIENSMDogMDAwMDAwMDA4MDA1MDAzMw0KPiA+ID4gWyAgIDQxLjE4MjQzNV0gQ1Iy
-OiAwMDAwMDAwMDAwMDAwMDQ4IENSMzogMDAwMDAwMDBhZjk3MjAwNSBDUjQ6DQo+ID4gPiAwMDAw
-MDAwMDAwMTYwZWUwDQo+ID4gPiBbICAgNDEuMTgyNDY4XSBDYWxsIFRyYWNlOg0KPiA+ID4gWyAg
-IDQxLjE4MjQ5NV0gIG5mc19jb21taXRkYXRhX3JlbGVhc2UrMHgxNS8weDMwIFtuZnNdDQo+ID4g
-PiBbICAgNDEuMTgyNTM2XSAgcnBjX2ZyZWVfdGFzaysweDM5LzB4NzAgW3N1bnJwY10NCj4gPiA+
-IFsgICA0MS4xODI1NzFdICBycGNfYXN5bmNfcmVsZWFzZSsweDI5LzB4NDAgW3N1bnJwY10NCj4g
-PiA+IFsgICA0MS4xODI1OTRdICBwcm9jZXNzX29uZV93b3JrKzB4MWViLzB4NDEwDQo+ID4gPiBb
-ICAgNDEuMTgyNjExXSAgd29ya2VyX3RocmVhZCsweDJkLzB4M2QwDQo+ID4gPiBbICAgNDEuMTgy
-NjIxXSAgPyBwcm9jZXNzX29uZV93b3JrKzB4NDEwLzB4NDEwDQo+ID4gPiBbICAgNDEuMTgyNjMy
-XSAga3RocmVhZCsweDExMi8weDEzMA0KPiA+ID4gWyAgIDQxLjE4MjY0MV0gID8ga3RocmVhZF9w
-YXJrKzB4ODAvMHg4MA0KPiA+ID4gWyAgIDQxLjE4MjY1Ml0gIHJldF9mcm9tX2ZvcmsrMHgzNS8w
-eDQwDQo+ID4gPiBbICAgNDEuMTgyNjYyXSBNb2R1bGVzIGxpbmtlZCBpbjogbmZzdjMgbmZzIGZz
-Y2FjaGUgcnBjcmRtYQ0KPiA+ID4gaWJfaXNlcnQNCj4gPiA+IA0KPiA+IA0KPiA+IERvZXMgdGhl
-IGZvbGxvd2luZyBwYXRjaCBoZWxwIHRvIGZpeCB0aGlzPw0KPiANCj4gVGhpcyBwYXRjaCBkb2Vz
-IGZpeCB0aGUgcHJvYmxlbS4gVGhhbmtzIQ0KPiANCg0KQ29vbCEgSSBzZW50IGEgdjMgcGF0Y2hz
-ZXQgdXBkYXRlIGxhc3QgbmlnaHQgd2l0aCB0aGlzIHBhdGNoIGNvcnJlY3RseQ0KcG9zaXRpb25l
-ZCBzbyBpdCB3b24ndCBjYXVzZSBiaXNlY3Rpb24gaXNzdWVzLCBhbmQgd2l0aCAyIG90aGVyDQpi
-dWdmaXhlcy4gSG9wZWZ1bGx5LCB0aGF0IGlzIHRoZSBmaW5hbCBpdGVyYXRpb24gb2YgdGhlIHBh
-dGNoc2V0Lg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFp
-bmVyLCBIYW1tZXJzcGFjZQ0KdHJvbmQubXlrbGVidXN0QGhhbW1lcnNwYWNlLmNvbQ0KDQoNCg==
+On Mon, 2019-04-08 at 18:13 +0000, Trond Myklebust wrote:
+> On Mon, 2019-04-08 at 13:11 -0400, Anna Schumaker wrote:
+> > On Sat, 2019-04-06 at 14:14 +0000, Trond Myklebust wrote:
+> > > Hi Anna
+> > > 
+> > > On Fri, 2019-04-05 at 15:42 -0400, Anna Schumaker wrote:
+> > > > Hi Trond,
+> > > > 
+> > > > I'm having some trouble with xfstests generic/464 after applying
+> > > > this
+> > > > patch.
+> > > > Here is the oops I'm getting, I'm able to reproduce it fairly
+> > > > easily
+> > > > against all
+> > > > NFS versions: 
+> > > > 
+> > > > [   41.182015] BUG: unable to handle kernel NULL pointer
+> > > > dereference
+> > > > at
+> > > > 0000000000000048
+> > > > [   41.182051] #PF error: [normal kernel read fault]
+> > > > [   41.182071] PGD 0 P4D 0 
+> > > > [   41.182086] Oops: 0000 [#1] PREEMPT SMP PTI
+> > > > [   41.182104] CPU: 1 PID: 14515 Comm: kworker/1:6 Not tainted
+> > > > 5.1.0-
+> > > > rc3-ANNA+
+> > > > #5292
+> > > > [   41.182131] Hardware name: Bochs Bochs, BIOS Bochs 01/01/2011
+> > > > [   41.182174] Workqueue: nfsiod rpc_async_release [sunrpc]
+> > > > [   41.182209] RIP: 0010:__put_nfs_open_context+0xd/0x110 [nfs]
+> > > > [   41.182227] Code: f8 ba a8 00 00 00 be c0 0c 00 00 e8 5d c0 58
+> > > > f7
+> > > > 48 89 c3 48
+> > > > 85 c0 74 c5 e9 15 ff ff ff 0f 1f 44 00 00 41 56 41 55 41 54 55 53
+> > > > <48> 8b 47 48
+> > > > 48 8b 68 30 4c 8b 60 68 f0 ff 0f 0f 88 14 53 01 00 74
+> > > > [   41.182267] RSP: 0018:ffffae5f04b6be30 EFLAGS: 00010246
+> > > > [   41.182279] RAX: 0000000000000000 RBX: ffffa22aae71a680 RCX:
+> > > > 0000000000000000
+> > > > [   41.182295] RDX: ffffffffb9205dc8 RSI: 0000000000000000 RDI:
+> > > > 0000000000000000
+> > > > [   41.182311] RBP: 0000000000000801 R08: ffffa22aa5ca0000 R09:
+> > > > ffffa22aba267800
+> > > > [   41.182327] R10: 0000000000000000 R11: 0000000000000000 R12:
+> > > > ffffce5effd1c200
+> > > > [   41.182351] R13: 0000000000000000 R14: ffffa22aad2aa6c0 R15:
+> > > > 0ffffce5effd1c20
+> > > > [   41.182378] FS:  0000000000000000(0000)
+> > > > GS:ffffa22abcb00000(0000)
+> > > > knlGS:0000000000000000
+> > > > [   41.182411] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+> > > > [   41.182435] CR2: 0000000000000048 CR3: 00000000af972005 CR4:
+> > > > 0000000000160ee0
+> > > > [   41.182468] Call Trace:
+> > > > [   41.182495]  nfs_commitdata_release+0x15/0x30 [nfs]
+> > > > [   41.182536]  rpc_free_task+0x39/0x70 [sunrpc]
+> > > > [   41.182571]  rpc_async_release+0x29/0x40 [sunrpc]
+> > > > [   41.182594]  process_one_work+0x1eb/0x410
+> > > > [   41.182611]  worker_thread+0x2d/0x3d0
+> > > > [   41.182621]  ? process_one_work+0x410/0x410
+> > > > [   41.182632]  kthread+0x112/0x130
+> > > > [   41.182641]  ? kthread_park+0x80/0x80
+> > > > [   41.182652]  ret_from_fork+0x35/0x40
+> > > > [   41.182662] Modules linked in: nfsv3 nfs fscache rpcrdma
+> > > > ib_isert
+> > > > 
+> > > 
+> > > Does the following patch help to fix this?
+> > 
+> > This patch does fix the problem. Thanks!
+> > 
+> 
+> Cool! I sent a v3 patchset update last night with this patch correctly
+> positioned so it won't cause bisection issues, and with 2 other
+> bugfixes. Hopefully, that is the final iteration of the patchset.
+
+Sounds good. I'll look through them again and then add them to my linux-next.
+
+Anna
+
+> 
+> -- 
+> Trond Myklebust
+> Linux NFS client maintainer, Hammerspace
+> trond.myklebust@hammerspace.com
+> 
+> 
+
