@@ -8,65 +8,66 @@ X-Spam-Status: No, score=-8.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id DBA12C282CE
-	for <linux-nfs@archiver.kernel.org>; Tue,  9 Apr 2019 16:15:55 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id AE3A2C10F0E
+	for <linux-nfs@archiver.kernel.org>; Tue,  9 Apr 2019 16:15:56 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 9F77A21473
-	for <linux-nfs@archiver.kernel.org>; Tue,  9 Apr 2019 16:15:55 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 815FC21473
+	for <linux-nfs@archiver.kernel.org>; Tue,  9 Apr 2019 16:15:56 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="NKBaJwm5"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="ITVwMtSd"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726570AbfDIQPz (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S1726530AbfDIQPz (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Tue, 9 Apr 2019 12:15:55 -0400
-Received: from mail-io1-f65.google.com ([209.85.166.65]:42948 "EHLO
-        mail-io1-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726515AbfDIQPy (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Apr 2019 12:15:54 -0400
-Received: by mail-io1-f65.google.com with SMTP id c4so14786337ioh.9
-        for <linux-nfs@vger.kernel.org>; Tue, 09 Apr 2019 09:15:54 -0700 (PDT)
+Received: from mail-it1-f195.google.com ([209.85.166.195]:55663 "EHLO
+        mail-it1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726515AbfDIQPz (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Apr 2019 12:15:55 -0400
+Received: by mail-it1-f195.google.com with SMTP id y134so5834957itc.5
+        for <linux-nfs@vger.kernel.org>; Tue, 09 Apr 2019 09:15:55 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references
          :mime-version:content-transfer-encoding;
-        bh=ivpBSLoDOFOrgVV/dJW5L/pN3weHFcG8YFXsm5dSNqk=;
-        b=NKBaJwm5FNTJTFb6wGmvGuoDIfCXbXxFIRXrv17gIeKWXtxeKSsLGkLWp8gZiE14qC
-         WHMQ7n345e3w/v6P17At4cgzYk6Xd7OR8b/w69KnqRSbYIT4CzYfeLuC4JJ+facUrKuY
-         CtdmAIuRVCfFCTq/jlgSE9Lx+S57IwHyk/n7DzANbxv+Fk+Y/GcdCFWXAihhbk8zS1YN
-         J4lDStuXRMRQrP8ra0WyoA8L+SiJmiPpC7efkDjXphVIRPtOwE/5LgpKra2JWDl6e9m/
-         y48yX/1V8bTujUgpF+IM5B/FGYI+3yr4zF0YBWE1sbK/B1dJSk7Q6Lu0+Nt+gcsnij3f
-         3U4A==
+        bh=n7erfCjlP/3or6EgiH+wakce9kz8CJXGcwa4+Dblv3A=;
+        b=ITVwMtSdkU+0ppz9zqFMuvjwDHLE39mEWzexOVlR8yQa+06Zdgf2mTU9x7d8zcooJT
+         g1ZEiE2ltM+FMJGroP2Z7X3NJeVQgbkZblCIK/hhoXCMo07MpdVQcNWlOAorRBhP285u
+         MMXaSOaRiwx05Dw17+Cfl/Zhmv+oFzNLsizUPRaFRFdx5Df3mobXjAf2SHHca233FPOF
+         VieKVuld58GIBdVfmhBb9ssDDHvbYhU66VL/9fSbEGluHe0uZ5wJ3j3MxAhw/3w2/Z68
+         WsHhLCQCZBHCiRBcaZF3sBe/eiOtnSZcG9Q66lwS5Z8wSZ+iQd8y6Z+mzmdTJyqyRj4B
+         VpJg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=ivpBSLoDOFOrgVV/dJW5L/pN3weHFcG8YFXsm5dSNqk=;
-        b=miS0Pxgh+j86N288+1nL0BDnjm6gUJLRS3byKUqaJiW5PvYc96O8Bi25bzSCBlV191
-         kQMZjZ1vyBZDy/frPswTeLJWhaTeBj+hMrHaTHcmCRblLyqDR877hhBipLOx7LhUlP6J
-         NL2IdKCZBEh1HX9d1ZLnibQEtHhPSjm+IUgHZa9ruARnl5p5M1Y7o0FiwKNv0LV4JaDv
-         smZ7o5jcQZLCIkYL4PaRlknJ7IiBBU2A9obiRGWvM4g/FFIH3n1RgDnR4t1YhikSBQkp
-         OSsq/zemHaT96AgE0ZI8OSARDH7NpqfaOFXdKkQ4RI1MfiYE1HI+bCvl9C5srDbOvlQG
-         xT9Q==
-X-Gm-Message-State: APjAAAUvm6bvjYu5CqcPqSsx6XPjhsekF++I1a416FhKAvq+QToVxU4R
-        /jxeqEdcbfAjh+cYy4+Ok84g+/k=
-X-Google-Smtp-Source: APXvYqyonPInRxbAMGQl2hwLQwS/48+nL2yvk8JmSyXJ1spifByiYwVKYRs1Boi9uh0ZxldkZOgtnw==
-X-Received: by 2002:a5d:85d5:: with SMTP id e21mr2348037ios.27.1554826553335;
-        Tue, 09 Apr 2019 09:15:53 -0700 (PDT)
+        bh=n7erfCjlP/3or6EgiH+wakce9kz8CJXGcwa4+Dblv3A=;
+        b=uXZERaRQ7/Y9A7hqSVNRt1S5V91WnY9KQ+QHen5wXk/DDhHS1YjpkPLLz0Km+sXG1e
+         XO1/mHjScmHhh0dubGGL7Py7U4pFjACEJS8sdDCYf6aZyY/1aFVYkTaqfhLThxtnSyWb
+         aEBD2PNqJE4TGp6bOBC6lyKezzwACYcnWvU5UOAON+YMibPOPgBW4aoJHlj4KV9QwXWI
+         eTSPvGmv0v4rVYbrGLkGUpToBtx619imhn6DL0Wt3Mdb8t9Vq0Ac2o3gB0a39bD3cOMf
+         RKtaUSf92PUhXp4DkKd1EtGsKslhLIOkTE6oBogCEciHJxw6eWep0iavJigEWEQH69RV
+         /aPQ==
+X-Gm-Message-State: APjAAAVwtsFOvXWIlRoNjksd3/U6BZ/xC02eTFsdHdU53x1MBGKOdpiE
+        sSDwCa0d7KHU9qhIYgvn6MODjLk=
+X-Google-Smtp-Source: APXvYqzsRT9Ouomx7KxuMVH54F/dPkYGzUnejBOY7RHwTwQsVVeFoFLiIr6xcFWB1BVbkew88LWMNg==
+X-Received: by 2002:a24:4149:: with SMTP id x70mr25886323ita.145.1554826554537;
+        Tue, 09 Apr 2019 09:15:54 -0700 (PDT)
 Received: from localhost.localdomain (c-68-40-189-247.hsd1.mi.comcast.net. [68.40.189.247])
-        by smtp.gmail.com with ESMTPSA id d133sm7402425ita.5.2019.04.09.09.15.52
+        by smtp.gmail.com with ESMTPSA id d133sm7402425ita.5.2019.04.09.09.15.53
         (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
-        Tue, 09 Apr 2019 09:15:52 -0700 (PDT)
+        Tue, 09 Apr 2019 09:15:53 -0700 (PDT)
 From:   Trond Myklebust <trondmy@gmail.com>
 X-Google-Original-From: Trond Myklebust <trond.myklebust@hammerspace.com>
 To:     "J. Bruce Fields" <bfields@redhat.com>
 Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH v2 3/6] lockd: Pass the user cred from knfsd when starting the lockd server
-Date:   Tue,  9 Apr 2019 12:13:39 -0400
-Message-Id: <20190409161342.34338-4-trond.myklebust@hammerspace.com>
+Subject: [PATCH v2 4/6] SUNRPC: Fix the server AUTH_UNIX userspace mappings
+Date:   Tue,  9 Apr 2019 12:13:40 -0400
+Message-Id: <20190409161342.34338-5-trond.myklebust@hammerspace.com>
 X-Mailer: git-send-email 2.20.1
-In-Reply-To: <20190409161342.34338-3-trond.myklebust@hammerspace.com>
+In-Reply-To: <20190409161342.34338-4-trond.myklebust@hammerspace.com>
 References: <20190409161342.34338-1-trond.myklebust@hammerspace.com>
  <20190409161342.34338-2-trond.myklebust@hammerspace.com>
  <20190409161342.34338-3-trond.myklebust@hammerspace.com>
+ <20190409161342.34338-4-trond.myklebust@hammerspace.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
@@ -74,181 +75,78 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-When starting up a new knfsd server, pass the user cred to the
-supporting lockd server.
+gid_parse() is part of a downcall, so uids and gids should be assumed
+encoded using the current user namespace.
+svcauth_unix_accept() is, on the other hand, decoding uids and gids from
+the wire, so we assume those are encoded to match the user namespace of
+the server process.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/lockd/clntlock.c        |  4 ++--
- fs/lockd/svc.c             | 28 ++++++++++++++++------------
- fs/nfs/client.c            |  1 +
- fs/nfsd/nfssvc.c           |  2 +-
- include/linux/lockd/bind.h |  3 ++-
- 5 files changed, 22 insertions(+), 16 deletions(-)
+ net/sunrpc/svcauth_unix.c | 15 +++++++++------
+ 1 file changed, 9 insertions(+), 6 deletions(-)
 
-diff --git a/fs/lockd/clntlock.c b/fs/lockd/clntlock.c
-index c2a128678e6e..d61b72b693cf 100644
---- a/fs/lockd/clntlock.c
-+++ b/fs/lockd/clntlock.c
-@@ -56,7 +56,7 @@ struct nlm_host *nlmclnt_init(const struct nlmclnt_initdata *nlm_init)
- 	u32 nlm_version = (nlm_init->nfs_version == 2) ? 1 : 4;
- 	int status;
+diff --git a/net/sunrpc/svcauth_unix.c b/net/sunrpc/svcauth_unix.c
+index fb9041b92f72..f92ef79c8ea5 100644
+--- a/net/sunrpc/svcauth_unix.c
++++ b/net/sunrpc/svcauth_unix.c
+@@ -500,7 +500,7 @@ static int unix_gid_parse(struct cache_detail *cd,
+ 	rv = get_int(&mesg, &id);
+ 	if (rv)
+ 		return -EINVAL;
+-	uid = make_kuid(&init_user_ns, id);
++	uid = make_kuid(current_user_ns(), id);
+ 	ug.uid = uid;
  
--	status = lockd_up(nlm_init->net);
-+	status = lockd_up(nlm_init->net, nlm_init->cred);
- 	if (status < 0)
- 		return ERR_PTR(status);
- 
-@@ -241,7 +241,7 @@ reclaimer(void *ptr)
- 	allow_signal(SIGKILL);
- 
- 	down_write(&host->h_rwsem);
--	lockd_up(net);	/* note: this cannot fail as lockd is already running */
-+	lockd_up(net, NULL);	/* note: this cannot fail as lockd is already running */
- 
- 	dprintk("lockd: reclaiming locks for host %s\n", host->h_name);
- 
-diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-index 82aa0f35e43d..3056f3a0c270 100644
---- a/fs/lockd/svc.c
-+++ b/fs/lockd/svc.c
-@@ -188,9 +188,9 @@ lockd(void *vrqstp)
- 
- static int create_lockd_listener(struct svc_serv *serv, const char *name,
- 				 struct net *net, const int family,
--				 const unsigned short port)
-+				 const unsigned short port,
-+				 const struct cred *cred)
+ 	expiry = get_expiry(&mesg);
+@@ -522,7 +522,7 @@ static int unix_gid_parse(struct cache_detail *cd,
+ 		err = -EINVAL;
+ 		if (rv)
+ 			goto out;
+-		kgid = make_kgid(&init_user_ns, gid);
++		kgid = make_kgid(current_user_ns(), gid);
+ 		if (!gid_valid(kgid))
+ 			goto out;
+ 		ug.gi->gid[i] = kgid;
+@@ -555,7 +555,7 @@ static int unix_gid_show(struct seq_file *m,
+ 			 struct cache_detail *cd,
+ 			 struct cache_head *h)
  {
--	const struct cred *cred = current_cred();
- 	struct svc_xprt *xprt;
+-	struct user_namespace *user_ns = &init_user_ns;
++	struct user_namespace *user_ns = m->file->f_cred->user_ns;
+ 	struct unix_gid *ug;
+ 	int i;
+ 	int glen;
+@@ -796,6 +796,7 @@ svcauth_unix_accept(struct svc_rqst *rqstp, __be32 *authp)
+ 	struct kvec	*argv = &rqstp->rq_arg.head[0];
+ 	struct kvec	*resv = &rqstp->rq_res.head[0];
+ 	struct svc_cred	*cred = &rqstp->rq_cred;
++	struct user_namespace *userns;
+ 	u32		slen, i;
+ 	int		len   = argv->iov_len;
  
- 	xprt = svc_find_xprt(serv, name, net, family, 0);
-@@ -202,15 +202,17 @@ static int create_lockd_listener(struct svc_serv *serv, const char *name,
- }
- 
- static int create_lockd_family(struct svc_serv *serv, struct net *net,
--			       const int family)
-+			       const int family, const struct cred *cred)
- {
- 	int err;
- 
--	err = create_lockd_listener(serv, "udp", net, family, nlm_udpport);
-+	err = create_lockd_listener(serv, "udp", net, family, nlm_udpport,
-+			cred);
- 	if (err < 0)
- 		return err;
- 
--	return create_lockd_listener(serv, "tcp", net, family, nlm_tcpport);
-+	return create_lockd_listener(serv, "tcp", net, family, nlm_tcpport,
-+			cred);
- }
- 
- /*
-@@ -223,16 +225,17 @@ static int create_lockd_family(struct svc_serv *serv, struct net *net,
-  * Returns zero if all listeners are available; otherwise a
-  * negative errno value is returned.
-  */
--static int make_socks(struct svc_serv *serv, struct net *net)
-+static int make_socks(struct svc_serv *serv, struct net *net,
-+		const struct cred *cred)
- {
- 	static int warned;
- 	int err;
- 
--	err = create_lockd_family(serv, net, PF_INET);
-+	err = create_lockd_family(serv, net, PF_INET, cred);
- 	if (err < 0)
- 		goto out_err;
- 
--	err = create_lockd_family(serv, net, PF_INET6);
-+	err = create_lockd_family(serv, net, PF_INET6, cred);
- 	if (err < 0 && err != -EAFNOSUPPORT)
- 		goto out_err;
- 
-@@ -247,7 +250,8 @@ static int make_socks(struct svc_serv *serv, struct net *net)
- 	return err;
- }
- 
--static int lockd_up_net(struct svc_serv *serv, struct net *net)
-+static int lockd_up_net(struct svc_serv *serv, struct net *net,
-+		const struct cred *cred)
- {
- 	struct lockd_net *ln = net_generic(net, lockd_net_id);
- 	int error;
-@@ -259,7 +263,7 @@ static int lockd_up_net(struct svc_serv *serv, struct net *net)
- 	if (error)
- 		goto err_bind;
- 
--	error = make_socks(serv, net);
-+	error = make_socks(serv, net, cred);
- 	if (error < 0)
- 		goto err_bind;
- 	set_grace_period(net);
-@@ -462,7 +466,7 @@ static struct svc_serv *lockd_create_svc(void)
- /*
-  * Bring up the lockd process if it's not already up.
-  */
--int lockd_up(struct net *net)
-+int lockd_up(struct net *net, const struct cred *cred)
- {
- 	struct svc_serv *serv;
- 	int error;
-@@ -475,7 +479,7 @@ int lockd_up(struct net *net)
- 		goto err_create;
+@@ -816,8 +817,10 @@ svcauth_unix_accept(struct svc_rqst *rqstp, __be32 *authp)
+ 	 * (export-specific) anonymous id by nfsd_setuser.
+ 	 * Supplementary gid's will be left alone.
+ 	 */
+-	cred->cr_uid = make_kuid(&init_user_ns, svc_getnl(argv)); /* uid */
+-	cred->cr_gid = make_kgid(&init_user_ns, svc_getnl(argv)); /* gid */
++	userns = (rqstp->rq_xprt && rqstp->rq_xprt->xpt_cred) ?
++		rqstp->rq_xprt->xpt_cred->user_ns : &init_user_ns;
++	cred->cr_uid = make_kuid(userns, svc_getnl(argv)); /* uid */
++	cred->cr_gid = make_kgid(userns, svc_getnl(argv)); /* gid */
+ 	slen = svc_getnl(argv);			/* gids length */
+ 	if (slen > UNX_NGROUPS || (len -= (slen + 2)*4) < 0)
+ 		goto badcred;
+@@ -825,7 +828,7 @@ svcauth_unix_accept(struct svc_rqst *rqstp, __be32 *authp)
+ 	if (cred->cr_group_info == NULL)
+ 		return SVC_CLOSE;
+ 	for (i = 0; i < slen; i++) {
+-		kgid_t kgid = make_kgid(&init_user_ns, svc_getnl(argv));
++		kgid_t kgid = make_kgid(userns, svc_getnl(argv));
+ 		cred->cr_group_info->gid[i] = kgid;
  	}
- 
--	error = lockd_up_net(serv, net);
-+	error = lockd_up_net(serv, net, cred);
- 	if (error < 0) {
- 		lockd_unregister_notifiers();
- 		goto err_put;
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 90d71fda65ce..92d07d99829d 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -552,6 +552,7 @@ static int nfs_start_lockd(struct nfs_server *server)
- 					1 : 0,
- 		.net		= clp->cl_net,
- 		.nlmclnt_ops 	= clp->cl_nfs_mod->rpc_ops->nlmclnt_ops,
-+		.cred		= current_cred(),
- 	};
- 
- 	if (nlm_init.nfs_version > 3)
-diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index 32e4d8a334e3..18d94ea984ba 100644
---- a/fs/nfsd/nfssvc.c
-+++ b/fs/nfsd/nfssvc.c
-@@ -364,7 +364,7 @@ static int nfsd_startup_net(int nrservs, struct net *net, const struct cred *cre
- 		goto out_socks;
- 
- 	if (nfsd_needs_lockd(nn) && !nn->lockd_up) {
--		ret = lockd_up(net);
-+		ret = lockd_up(net, cred);
- 		if (ret)
- 			goto out_socks;
- 		nn->lockd_up = 1;
-diff --git a/include/linux/lockd/bind.h b/include/linux/lockd/bind.h
-index 053a4ef3d431..0520c0cd73f4 100644
---- a/include/linux/lockd/bind.h
-+++ b/include/linux/lockd/bind.h
-@@ -46,6 +46,7 @@ struct nlmclnt_initdata {
- 	int			noresvport;
- 	struct net		*net;
- 	const struct nlmclnt_operations	*nlmclnt_ops;
-+	const struct cred	*cred;
- };
- 
- /*
-@@ -75,7 +76,7 @@ struct nlmclnt_operations {
- };
- 
- extern int	nlmclnt_proc(struct nlm_host *host, int cmd, struct file_lock *fl, void *data);
--extern int	lockd_up(struct net *net);
-+extern int	lockd_up(struct net *net, const struct cred *cred);
- extern void	lockd_down(struct net *net);
- 
- #endif /* LINUX_LOCKD_BIND_H */
+ 	groups_sort(cred->cr_group_info);
 -- 
 2.20.1
 
