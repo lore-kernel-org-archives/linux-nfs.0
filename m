@@ -1,195 +1,182 @@
-Return-Path: <SRS0=JsnX=SK=vger.kernel.org=linux-nfs-owner@kernel.org>
+Return-Path: <SRS0=QgGt=SL=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,UNPARSEABLE_RELAY,URIBL_BLOCKED
+X-Spam-Status: No, score=-1.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 83F3DC10F13
-	for <linux-nfs@archiver.kernel.org>; Mon,  8 Apr 2019 21:31:55 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D5F86C10F0E
+	for <linux-nfs@archiver.kernel.org>; Tue,  9 Apr 2019 09:26:15 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 4471A20857
-	for <linux-nfs@archiver.kernel.org>; Mon,  8 Apr 2019 21:31:55 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 5C97A20833
+	for <linux-nfs@archiver.kernel.org>; Tue,  9 Apr 2019 09:26:15 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="EjTZJnfj"
+	dkim=pass (1024-bit key) header.d=spinetix.com header.i=@spinetix.com header.b="uYumGMJZ"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726741AbfDHVby (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 8 Apr 2019 17:31:54 -0400
-Received: from userp2130.oracle.com ([156.151.31.86]:57776 "EHLO
-        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726349AbfDHVby (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Apr 2019 17:31:54 -0400
-Received: from pps.filterd (userp2130.oracle.com [127.0.0.1])
-        by userp2130.oracle.com (8.16.0.27/8.16.0.27) with SMTP id x38LTK4O089548;
-        Mon, 8 Apr 2019 21:31:50 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=content-type :
- mime-version : subject : from : in-reply-to : date : cc :
- content-transfer-encoding : message-id : references : to;
- s=corp-2018-07-02; bh=edw9ZaemIui69KcxQi6FSyIUYq39c6ZKv35hxaRxwLQ=;
- b=EjTZJnfjLN5nHJUuFxuEGgF1ZV+naHnxMpJDVGXZGvx0eP0ZD0CVLPbNgHHwHCfvFNCa
- RUug2VAG4dEhVcR+iOFS3EB/agOsqd0RYzbRuW2geeh7OgSpLMX9ohOJ0ObrOhm6k9+7
- UC9lB2ismWErmy7nDL5kgYLNkexnlHFm5pd9NRu9VAqN27eztsAt29AVAa1nK0xFL1Ct
- fM9oXqL5nb8DzHOWq5Q718d4jgA2aHty7cyIHatlMAehLowCWXG7DfV7AxYGPjLz+W8a
- JS0VLHqvhaOdDfFpaxvrv7GXGZetAz6hgVEIsTCGugLge38QWUUoHELxNVZL9ISJD19r Gw== 
-Received: from aserp3030.oracle.com (aserp3030.oracle.com [141.146.126.71])
-        by userp2130.oracle.com with ESMTP id 2rpkhss8u8-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Mon, 08 Apr 2019 21:31:50 +0000
-Received: from pps.filterd (aserp3030.oracle.com [127.0.0.1])
-        by aserp3030.oracle.com (8.16.0.27/8.16.0.27) with SMTP id x38LTWoj071287;
-        Mon, 8 Apr 2019 21:29:49 GMT
-Received: from userv0122.oracle.com (userv0122.oracle.com [156.151.31.75])
-        by aserp3030.oracle.com with ESMTP id 2rpj5a776f-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Mon, 08 Apr 2019 21:29:49 +0000
-Received: from abhmp0003.oracle.com (abhmp0003.oracle.com [141.146.116.9])
-        by userv0122.oracle.com (8.14.4/8.14.4) with ESMTP id x38LTjxK022749;
-        Mon, 8 Apr 2019 21:29:48 GMT
-Received: from anon-dhcp-171.1015granger.net (/68.61.232.219)
-        by default (Oracle Beehive Gateway v4.0)
-        with ESMTP ; Mon, 08 Apr 2019 14:29:45 -0700
-Content-Type: text/plain;
-        charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 12.2 \(3445.102.3\))
-Subject: Re: [PATCH v1] NFS: Fix handling of reply page vector
-From:   Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <aa8a63d9bfc6d76800ef00bfa3b6921e312cfd44.camel@hammerspace.com>
-Date:   Mon, 8 Apr 2019 17:29:43 -0400
-Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Olga Kornievskaia <kolga@netapp.com>
-Content-Transfer-Encoding: quoted-printable
-Message-Id: <09085DBD-FFBD-4ACD-86CE-428F49916F61@oracle.com>
-References: <20190408200030.16366.22026.stgit@manet.1015granger.net>
- <bede7559be11f283e9f37db2da0b47ddf869a468.camel@hammerspace.com>
- <B28ACEA4-BB35-4137-A81F-50A1D2974F6A@oracle.com>
- <aa8a63d9bfc6d76800ef00bfa3b6921e312cfd44.camel@hammerspace.com>
-To:     Trond Myklebust <trondmy@hammerspace.com>
-X-Mailer: Apple Mail (2.3445.102.3)
-X-Proofpoint-Virus-Version: vendor=nai engine=5900 definitions=9221 signatures=668685
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 suspectscore=0 malwarescore=0
- phishscore=0 bulkscore=0 spamscore=0 mlxscore=0 mlxlogscore=999
- adultscore=0 classifier=spam adjust=0 reason=mlx scancount=1
- engine=8.0.1-1810050000 definitions=main-1904080157
-X-Proofpoint-Virus-Version: vendor=nai engine=5900 definitions=9221 signatures=668685
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 priorityscore=1501 malwarescore=0
- suspectscore=0 phishscore=0 bulkscore=0 spamscore=0 clxscore=1015
- lowpriorityscore=0 mlxscore=0 impostorscore=0 mlxlogscore=999 adultscore=0
- classifier=spam adjust=0 reason=mlx scancount=1 engine=8.0.1-1810050000
- definitions=main-1904080157
+        id S1726091AbfDIJ0O (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 9 Apr 2019 05:26:14 -0400
+Received: from mail-eopbgr10056.outbound.protection.outlook.com ([40.107.1.56]:26272
+        "EHLO EUR02-HE1-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1726387AbfDIJ0O (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 9 Apr 2019 05:26:14 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=spinetix.com;
+ s=selector1;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=20tXrmj6GEsgJRDBFeg+uqazEAnEQ7U4j6aqT0xFC40=;
+ b=uYumGMJZbLfBnLPyXVPYL40jMtWbOOaLbETgTgcqhb0Hf1z3g49l4vmcTSoqLrwRqlxJ1AuoaMdEN9bVdgwiEVEIgAl7nzSOWomWPDpX1kVJWpbOysHqH+P2Cpcn1XKeg3BWHGCNsHXmYstdA34YkrA01ObpWjLRcrEoboht/24=
+Received: from VI1PR01MB5167.eurprd01.prod.exchangelabs.com (20.178.120.225)
+ by VI1PR01MB4733.eurprd01.prod.exchangelabs.com (20.178.11.83) with Microsoft
+ SMTP Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ 15.20.1771.19; Tue, 9 Apr 2019 09:26:08 +0000
+Received: from VI1PR01MB5167.eurprd01.prod.exchangelabs.com
+ ([fe80::d15f:49aa:fe02:511c]) by VI1PR01MB5167.eurprd01.prod.exchangelabs.com
+ ([fe80::d15f:49aa:fe02:511c%4]) with mapi id 15.20.1771.021; Tue, 9 Apr 2019
+ 09:26:08 +0000
+From:   Diego Santa Cruz <Diego.SantaCruz@spinetix.com>
+To:     Trond Myklebust <trond.myklebust@hammerspace.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>
+CC:     "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Write access check not correct on world writable directories
+ (regression)
+Thread-Topic: Write access check not correct on world writable directories
+ (regression)
+Thread-Index: AdTurF3PJLe1IvUXS+qxCgYbn/IAGg==
+Date:   Tue, 9 Apr 2019 09:26:08 +0000
+Message-ID: <VI1PR01MB5167A74BA4409EE4C27B592F882D0@VI1PR01MB5167.eurprd01.prod.exchangelabs.com>
+Accept-Language: en-GB, fr-CH, fr-FR, en-US
+Content-Language: en-US
+X-MS-Has-Attach: yes
+X-MS-TNEF-Correlator: 
+authentication-results: spf=none (sender IP is )
+ smtp.mailfrom=Diego.SantaCruz@spinetix.com; 
+x-originating-ip: [46.14.255.78]
+x-ms-publictraffictype: Email
+x-ms-office365-filtering-correlation-id: e018573e-b8f5-4c69-a760-08d6bccd65e7
+x-microsoft-antispam: BCL:0;PCL:0;RULEID:(2390118)(7020095)(4652040)(7021145)(8989299)(4534185)(7022145)(4603075)(4627221)(201702281549075)(8990200)(7048125)(7024125)(7027125)(7023125)(5600139)(711020)(4605104)(2017052603328)(49563074)(7193020);SRVR:VI1PR01MB4733;
+x-ms-traffictypediagnostic: VI1PR01MB4733:
+x-microsoft-antispam-prvs: <VI1PR01MB4733DC0DD70D8155F7ED6EDD882D0@VI1PR01MB4733.eurprd01.prod.exchangelabs.com>
+x-forefront-prvs: 000227DA0C
+x-forefront-antispam-report: SFV:NSPM;SFS:(10009020)(376002)(396003)(346002)(136003)(39840400004)(366004)(199004)(189003)(4326008)(316002)(186003)(52536014)(476003)(7696005)(8936002)(2906002)(97736004)(486006)(99936001)(110136005)(305945005)(99286004)(74316002)(55016002)(26005)(5660300002)(53936002)(66066001)(7736002)(14444005)(5024004)(256004)(8676002)(81156014)(81166006)(9686003)(68736007)(106356001)(71190400001)(3846002)(6436002)(105586002)(72206003)(86362001)(508600001)(25786009)(6506007)(102836004)(71200400001)(33656002)(14454004)(6116002);DIR:OUT;SFP:1101;SCL:1;SRVR:VI1PR01MB4733;H:VI1PR01MB5167.eurprd01.prod.exchangelabs.com;FPR:;SPF:None;LANG:en;PTR:InfoNoRecords;A:1;MX:1;
+received-spf: None (protection.outlook.com: spinetix.com does not designate
+ permitted sender hosts)
+x-ms-exchange-senderadcheck: 1
+x-microsoft-antispam-message-info: TBLN7Rh+aAQbzTdEaTfGLbtIHbpkVGdfyaKg43ydqEyBknDyCI50e5D33vepfmXLFfOJQkmd+vOoTp5rKXMJQhr/OW/92P3C82l34fgtdYCeMmzje+tjHG8Z9P7NFM//lN5k6HrbL1Lb8ddRO3g/V0yLYvdGZ2PjneLZwWpkr8s8lj+CciOs+u7mogAUrMOHtV70S8/eu8fPfvnt3clD3rfPyDc3eXap2E3n8oTROCNIU94Hp+yU7CoU+XR8DN+KLmUur4qs9S5Kg+0VWCCxHzFBcI4j4IeUGX/Mdr+e0ZHrC+TAsjGN4nLrSHH7g68cM741+oTGY8beyRCZZwuJ0AWmE7VSdnO5XulprjhXvdzP3N6aID6hHoNMyZWhrYa+1uMHHjdcZnp8ku1tmDnBbyK7HN7oe6u2cNnBGXtXoFg=
+Content-Type: multipart/mixed;
+        boundary="_002_VI1PR01MB5167A74BA4409EE4C27B592F882D0VI1PR01MB5167eurp_"
+MIME-Version: 1.0
+X-OriginatorOrg: spinetix.com
+X-MS-Exchange-CrossTenant-Network-Message-Id: e018573e-b8f5-4c69-a760-08d6bccd65e7
+X-MS-Exchange-CrossTenant-originalarrivaltime: 09 Apr 2019 09:26:08.2351
+ (UTC)
+X-MS-Exchange-CrossTenant-fromentityheader: Hosted
+X-MS-Exchange-CrossTenant-id: 5f4034fa-ed2d-4840-a93f-acb1e9633b93
+X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: VI1PR01MB4733
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
+--_002_VI1PR01MB5167A74BA4409EE4C27B592F882D0VI1PR01MB5167eurp_
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: quoted-printable
 
+Hello,
 
-> On Apr 8, 2019, at 5:23 PM, Trond Myklebust <trondmy@hammerspace.com> =
-wrote:
->=20
-> On Mon, 2019-04-08 at 16:58 -0400, Chuck Lever wrote:
->>> On Apr 8, 2019, at 4:38 PM, Trond Myklebust <
->>> trondmy@hammerspace.com> wrote:
->>>=20
->>> On Mon, 2019-04-08 at 16:00 -0400, Chuck Lever wrote:
->>>> NFSv4 GETACL and FS_LOCATIONS requests stopped working in v5.1-
->>>> rc.
->>>>=20
->>>> These two need the extra padding to be added directly to the
->>>> reply
->>>> length.
->>>>=20
->>>> Reported-by: Olga Kornievskaia <aglo@umich.edu>
->>>> Fixes: 02ef04e432ba ("NFS: Account for XDR pad of buf->pages")
->>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->>>> ---
->>>> fs/nfs/nfs4xdr.c |    4 ++--
->>>> 1 file changed, 2 insertions(+), 2 deletions(-)
->>>>=20
->>>> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
->>>> index cfcabc3..6024461 100644
->>>> --- a/fs/nfs/nfs4xdr.c
->>>> +++ b/fs/nfs/nfs4xdr.c
->>>> @@ -2589,7 +2589,7 @@ static void nfs4_xdr_enc_getacl(struct
->>>> rpc_rqst
->>>> *req, struct xdr_stream *xdr,
->>>> 			ARRAY_SIZE(nfs4_acl_bitmap), &hdr);
->>>>=20
->>>> 	rpc_prepare_reply_pages(req, args->acl_pages, 0,
->>>> -				args->acl_len, replen);
->>>> +				args->acl_len, replen + 1);
->>>> 	encode_nops(&hdr);
->>>> }
->>>>=20
->>>> @@ -2811,7 +2811,7 @@ static void
->>>> nfs4_xdr_enc_fs_locations(struct
->>>> rpc_rqst *req,
->>>> 	}
->>>>=20
->>>> 	rpc_prepare_reply_pages(req, (struct page **)&args->page, 0,
->>>> -				PAGE_SIZE, replen);
->>>> +				PAGE_SIZE, replen + 1);
->>>> 	encode_nops(&hdr);
->>>> }
->>>>=20
->>>=20
->>> I'm having trouble with the math here. Why are we pre-emptively
->>> subtracting a word from the tail? The header constants are always
->>> 4-bit=20
->>> aligned because they are calculated as a word count, so I'm not
->>> understanding why we need commit 02ef04e432ba at all.
->>>=20
->>> Can you please explain, Chuck?
->>=20
->> The goal is to allocate a reply buffer that is just large enough
->> to fit the expected reply, and ensure that the variable-length
->> payload will start exactly where the xdr_buf's pages begin.
->>=20
->> In cases where the payload length is not aligned to four bytes,
->> an extra quad has to be allocated in the tail. So, the total
->> reply length is increased by one quad so there is enough space
->> for the XDR pad bytes in the tail.
->>=20
-> Right, but we should never hit that problem because the proc->p_arglen
-> and proc->p_replen are always in units of 32-bit words.
+I have encountered a problem with access(dir, W_OK) calls and world writabl=
+e directories on NFS which are not owner by the calling user. The call retu=
+rns EACCES, even though the user can create files in the directory. I use N=
+FSv3, but this may also impact other NFS versions.
 
-But buf->pages aren't. The point is to accommodate XDR padding
-of the data payload, which goes into the page cache. You want
-just the data to go into the page cache, and the padding to
-land in the tail.
+Test case, on an NFSv3 mounted directory is:
+1. Create world writable directory as root: sudo mkdir -m 777 testdir
+2. Test that normal user can create a file: rm -f testdir/foo && touch test=
+dir/foo
+3. Test for writability with access: strace -o log test -w testdir && echo =
+PASS || echo FAIL
+4. Checking the strace log shows that access("testdir", W_OK) fails with EA=
+CCES
 
+I am using the linux-intel kernel 4.19.13, but I traced this to commit ecbb=
+903c56745 in linux master (NFS: Be more careful about mapping file permissi=
+ons), that went into kernel 4.13. The test works fine in earlier kernels. T=
+he problem does not always show up on directories owned by the calling user=
+, but it may be due to attribute caching or similar.
 
-> IOW: the functions that allocate memory, will always do so in full
-> words, hence it should not be necessary for xdr_inline_pages() to
-> adjust that allocation.
->=20
-> The one thing that we _might_ want to do if we're to do anything at =
-all
-> is to perhaps adjust tail->iov_base by (xdr->page_len & 3) bytes to
-> ensure that we have word-aligned data in the tail.
->=20
-> i.e. capture the padding in the remaining bytes in that first word, so
-> that xdr_read_pages() sets word aligned values for xdr->p and =
-xdr->end.
+I am not very NFS savvy but as far as I understand the commit above changed=
+ the tests in nfs_access_calc_mask() from "any bit in mask is set" to "all =
+bits in mask are set". The mask for writable directories is ACCESS_MODIFY, =
+ACCESS_EXTEND, ACCESS_DELETE but from what I see in a network capture the r=
+esponse from the NFS server is lacking the ACCESS_DELETE bit.
 
-I'm in favor of hiding the details of that in the generic
-XDR code, and I probably should have taken that step in
-02ef04e432ba.
+The attached patch reverts the tests in nfs_access_calc_mask() to "any bit =
+in mask is set", which makes the test case work again, but I am not sure it=
+ is entirely correct to change all the tests, or if it would be more approp=
+riate to drop ACCESS_DELETE from the NFS_DIR_MAY_WRITE mask. The patch appl=
+ies cleanly on current linux master.
 
-So I think we should add a quad to the tail whenever the
-expected size of the data payload (ie, payload that goes into
-the page cache) is going to be non-word aligned. Otherwise
-the tail doesn't need that space. In those cases, the tail
-can be eliminated.
+I checked the NFSv3 and NFSv4 RFCs, but it is not clear to me if ACCESS_DEL=
+ETE is for the directory itself or its children. In any case my NFS server =
+is omitting ACCESS_DELETE from the response (it is a Synology running Linux=
+ kernel 3.10.105).
 
-The reason to do that is that then the RDMA transport does
-not need to register a 4-byte memory region for the XDR
-padding.
+Sincerely,
 
+Diego
 
 --
-Chuck Lever
+Diego Santa Cruz, PhD
+Technology Architect
+T +41 21 341 15 50
+diego.santacruz@spinetix.com
+spinetix.com
 
 
 
+--_002_VI1PR01MB5167A74BA4409EE4C27B592F882D0VI1PR01MB5167eurp_
+Content-Type: application/octet-stream;
+	name="0001-NFS-fix-regression-introduced-in-ecbb903c567.patch"
+Content-Description: 0001-NFS-fix-regression-introduced-in-ecbb903c567.patch
+Content-Disposition: attachment;
+	filename="0001-NFS-fix-regression-introduced-in-ecbb903c567.patch";
+	size=1863; creation-date="Tue, 09 Apr 2019 07:13:53 GMT";
+	modification-date="Tue, 09 Apr 2019 07:13:53 GMT"
+Content-Transfer-Encoding: base64
+
+RnJvbSBmMTgxZTQ4MGUzYjc5YWYxZTY0YTk1OWQyOGVjYTgwMzg3MjA1NGRjIE1vbiBTZXAgMTcg
+MDA6MDA6MDAgMjAwMQpGcm9tOiBEaWVnbyBTYW50YSBDcnV6IDxEaWVnby5TYW50YUNydXpAc3Bp
+bmV0aXguY29tPgpEYXRlOiBUdWUsIDkgQXByIDIwMTkgMDc6MDI6NDEgKzAwMDAKU3ViamVjdDog
+W1BBVENIXSBORlM6IGZpeCByZWdyZXNzaW9uIGludHJvZHVjZWQgaW4gZWNiYjkwM2M1NjcKCkNv
+bW1pdCBlY2JiOTAzYzU2NyAoTkZTOiBCZSBtb3JlIGNhcmVmdWwgYWJvdXQgbWFwcGluZyBmaWxl
+IHBlcm1pc3Npb25zKQpicmVha3MgdGhlIGFjY2VzcyhkaXIsIFdfT0spIHRlc3Qgb24gd29ybGQg
+d3JpdGFibGUgZGlyZWN0b3JpZXMgd2hvc2UKb3duZXIgaXMgbm90IHRoZSBjYWxsaW5nIHVzZXIs
+IGF0IGxlYXN0IG9uIE5GU3YzLgoKQmVmb3JlIHRoYXQgY29tbWl0IGlmIGFueSBvZiB0aGUgQUND
+RVNTX01PRElGWSwgQUNDRVNTX0VYVEVORCBvcgpBQ0NFU1NfREVMRVRFIGJpdHMgd2FzIHNldCB0
+aGUgZGlyZWN0b3J5IHdhcyBjb25zaWRlcmVkIHdyaXRhYmxlLCBidXQKdGhhdCBjb21taXQgY2hh
+bmdlZCBpdCB0byBiZSB0aGF0IGFsbCB0aG9zZSBiaXRzIG11c3QgYmUgc2V0LgpTaW1pbGFybHkg
+Zm9yIGZpbGVzLCBwcmV2aW91c2x5IGFueSBvZiB0aGUgQUNDRVNTX01PRElGWSBhbmQgQUNDRVNT
+X0VYVEVORApiaXRzIHdhcyBlbm91Z2gsIGJ1dCBub3cgYm90aCBvZiB0aGVtIGlzIHJlcXVpcmVk
+LgoKVGhpcyBjaGFuZ2VzIHRoZSBkaXJlY3RvcnkgYW5kIGZpbGUgd3JpdGUgdGVzdHMgYmFjayB0
+byBjaGVjayB0aGF0IGFueSBvZgp0aGUgYml0cyBpcyBzZXQuCgpTaWduZWQtb2ZmLWJ5OiBEaWVn
+byBTYW50YSBDcnV6IDxEaWVnby5TYW50YUNydXpAc3BpbmV0aXguY29tPgotLS0KIGZzL25mcy9k
+aXIuYyB8IDggKysrKy0tLS0KIDEgZmlsZSBjaGFuZ2VkLCA0IGluc2VydGlvbnMoKyksIDQgZGVs
+ZXRpb25zKC0pCgpkaWZmIC0tZ2l0IGEvZnMvbmZzL2Rpci5jIGIvZnMvbmZzL2Rpci5jCmluZGV4
+IDhiZmFhNjU4YjJjMS4uNWQ4N2Q3OGMyZjA2IDEwMDY0NAotLS0gYS9mcy9uZnMvZGlyLmMKKysr
+IGIvZnMvbmZzL2Rpci5jCkBAIC0yNDEwLDE0ICsyNDEwLDE0IEBAIG5mc19hY2Nlc3NfY2FsY19t
+YXNrKHUzMiBhY2Nlc3NfcmVzdWx0LCB1bW9kZV90IHVtb2RlKQogCWlmIChhY2Nlc3NfcmVzdWx0
+ICYgTkZTX01BWV9SRUFEKQogCQltYXNrIHw9IE1BWV9SRUFEOwogCWlmIChTX0lTRElSKHVtb2Rl
+KSkgewotCQlpZiAoKGFjY2Vzc19yZXN1bHQgJiBORlNfRElSX01BWV9XUklURSkgPT0gTkZTX0RJ
+Ul9NQVlfV1JJVEUpCisJCWlmIChhY2Nlc3NfcmVzdWx0ICYgTkZTX0RJUl9NQVlfV1JJVEUpCiAJ
+CQltYXNrIHw9IE1BWV9XUklURTsKLQkJaWYgKChhY2Nlc3NfcmVzdWx0ICYgTkZTX01BWV9MT09L
+VVApID09IE5GU19NQVlfTE9PS1VQKQorCQlpZiAoYWNjZXNzX3Jlc3VsdCAmIE5GU19NQVlfTE9P
+S1VQKQogCQkJbWFzayB8PSBNQVlfRVhFQzsKIAl9IGVsc2UgaWYgKFNfSVNSRUcodW1vZGUpKSB7
+Ci0JCWlmICgoYWNjZXNzX3Jlc3VsdCAmIE5GU19GSUxFX01BWV9XUklURSkgPT0gTkZTX0ZJTEVf
+TUFZX1dSSVRFKQorCQlpZiAoYWNjZXNzX3Jlc3VsdCAmIE5GU19GSUxFX01BWV9XUklURSkKIAkJ
+CW1hc2sgfD0gTUFZX1dSSVRFOwotCQlpZiAoKGFjY2Vzc19yZXN1bHQgJiBORlNfTUFZX0VYRUNV
+VEUpID09IE5GU19NQVlfRVhFQ1VURSkKKwkJaWYgKGFjY2Vzc19yZXN1bHQgJiBORlNfTUFZX0VY
+RUNVVEUpCiAJCQltYXNrIHw9IE1BWV9FWEVDOwogCX0gZWxzZSBpZiAoYWNjZXNzX3Jlc3VsdCAm
+IE5GU19NQVlfV1JJVEUpCiAJCQltYXNrIHw9IE1BWV9XUklURTsK
+
+--_002_VI1PR01MB5167A74BA4409EE4C27B592F882D0VI1PR01MB5167eurp_--
