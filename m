@@ -5,66 +5,66 @@ X-Spam-Level:
 X-Spam-Status: No, score=-8.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+	SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0C25EC10F0E
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7A4D1C282DA
 	for <linux-nfs@archiver.kernel.org>; Tue,  9 Apr 2019 16:15:54 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id D12BD21473
-	for <linux-nfs@archiver.kernel.org>; Tue,  9 Apr 2019 16:15:53 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 3599921473
+	for <linux-nfs@archiver.kernel.org>; Tue,  9 Apr 2019 16:15:54 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="rcQY7cuT"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="USPxJfEP"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726539AbfDIQPx (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S1726035AbfDIQPx (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Tue, 9 Apr 2019 12:15:53 -0400
-Received: from mail-io1-f67.google.com ([209.85.166.67]:43639 "EHLO
-        mail-io1-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726530AbfDIQPx (ORCPT
+Received: from mail-io1-f66.google.com ([209.85.166.66]:35556 "EHLO
+        mail-io1-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726515AbfDIQPx (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Apr 2019 12:15:53 -0400
-Received: by mail-io1-f67.google.com with SMTP id x3so14771626iol.10
+Received: by mail-io1-f66.google.com with SMTP id p16so14821110iod.2
         for <linux-nfs@vger.kernel.org>; Tue, 09 Apr 2019 09:15:52 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references
          :mime-version:content-transfer-encoding;
-        bh=IDkn36GQmmIg4vIlUt5+QqXnWkgyNKdUA6K/9tbYIS0=;
-        b=rcQY7cuTERxEaxSTOdodvTshFjv/vsW3hQdm5f+zvhfm19nhfgwWQ2b3DyDWf10bOT
-         kmsk8336oX0Ft74/u8fHKst7GQI71/x0B7b6Hi4zXgS4yHb9heBDoxgCAqnsQUcAtBF/
-         eF8PgBgJG9MJ5Ltl2MAczlaLYyxR1Qjz1i98IzboGpoph4Nfs9e38ujytopoTSUZ28lm
-         2xK4eeOt1lfH7SsggFKRN1viaVu7wKqzX4kCWiLFr/PM+Aw0ra91ojoSspSxiyqJg+AD
-         Kr/9TBTkCcwxxjOWETBtfhmtTMhmh0TW0dcs/p6XfuKr/X6+SoG3KyxYBAR+MX/k4WLK
-         mMZA==
+        bh=d/GUKI3rcD2gDfQS8qZmzLKDTuaeV/TH6FqpueCS6hA=;
+        b=USPxJfEPoJZ4WzkCy2k9krz8+JdrUd6r7wLHNXaWe9HqRfyjOH9MOlkozZrOdFVchd
+         8DTSVRwxxDhM+Sjv8v1d4Xy2/iMmZI2ouus91xZ6qLWRJ/7CMT3CmgTRnXmx7B8uUfRI
+         gjnndzXxuMkqs9DBbb10YK5XSMkI9PMCBFMbNDMynPLu/2IN0yte/Y3fEj0usCeW5A/5
+         B76i8vbRw1ANLLdbWByyWCo50hNIDi4wMLBYStI/CqV05A57fdEAU2iigePJiuHHMjZa
+         qz8hR0Ucdz31xRIxKW/KTBRLHbYfKTsXrUoKtB7qLNlDyuOoWoDO//npFiHxeQ/ZzOoz
+         QJlw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=IDkn36GQmmIg4vIlUt5+QqXnWkgyNKdUA6K/9tbYIS0=;
-        b=Gz9uJUi8HdIZfBeJm/mrs8TvGSJl/tq45/TJ5SLYrhKiYSPIapszOKeptxrODzR1E9
-         hKjQ7SqKS2NnPesysxlo7rG/p0a1MOWo/nzTpAd9z41CJSDJcLGehD6eEXQR61qrkZQd
-         8eThyJpEcZHF5IcP78S9xI0fZQKO8KPt+YM3duxZLwAy1VnlZ1IO6lbYB0QBPX/VYesx
-         Rk3JgmpOeGGZGwjaBlQSfBIZZGljWfvrjZsboyWA4MGWeYiNfUHZf4HjSFXaZK7lDhXo
-         3UAEiRfhWIOxzJTaqAJrBU7+Lh6cv2FR49IrAFsQfE+BzWr8T54dXrWWQMut7Oe4XnOG
-         Hmbw==
-X-Gm-Message-State: APjAAAX438OMbKIr+H/bRSR3aGrH/0lIug0fFn44GNaCsWdMXjXRIgSe
-        8f9nt4nM+Ivtjm7sXOAQtQ==
-X-Google-Smtp-Source: APXvYqzsnGkctH396/UWlEmvW3W2Gv9uvIGvLs5PtZIlezetjGUOE7RBJ0FmJLWX7E6z4wTBmtJoyQ==
-X-Received: by 2002:a6b:3c0e:: with SMTP id k14mr25390788iob.162.1554826552047;
-        Tue, 09 Apr 2019 09:15:52 -0700 (PDT)
-Received: from localhost.localdomain (c-68-40-189-247.hsd1.mi.comcast.net. [68.40.189.247])
-        by smtp.gmail.com with ESMTPSA id d133sm7402425ita.5.2019.04.09.09.15.51
-        (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
+        bh=d/GUKI3rcD2gDfQS8qZmzLKDTuaeV/TH6FqpueCS6hA=;
+        b=JFocqzzBForoHkSQeRXXj6ujt4Qx4/Z854Y5FJddFpQZi5qHsUFLFcVjGk1bcnIqSw
+         AdOZlWM3i4mxsjZPA04vrhEGr5CQUI3fauKVngP9oc/0jT1jQA8wehCrplrFrd1LLyKH
+         rpxZYuIuB8rxppAHORgZ9NGzwPyH6EgZ55oPFpr0kVkx/cJRfT5d0SW2cgU/odf7wtHd
+         PMiJVxuZysBPrI3FRV1Xtv9Mkm2wyyzf3hukU7t+o62O+Mz2u67tLobY3gWw5ltPFNxo
+         EhwRA3fnrL6Y/LQj86LtL3dX8dBHf/DI0drfGwzP6PKO7ellmdd9lmVJoLsLeyFxlbez
+         VX3w==
+X-Gm-Message-State: APjAAAWDU4uI4JqLeYwJj4Kp3gOmFo9xuFgsHD2dg7Pb+Ef5Mzh7rc9k
+        r/ueStNolXMXQeGXwyZ9CA==
+X-Google-Smtp-Source: APXvYqyoJznMlGXCSRi1wApCSpuLS9Kha2XGfIBpW8wd4a5dL8p+ft4cBH0SFuNntgdq+sFlBV0dOA==
+X-Received: by 2002:a5d:97da:: with SMTP id k26mr24052929ios.46.1554826551231;
         Tue, 09 Apr 2019 09:15:51 -0700 (PDT)
+Received: from localhost.localdomain (c-68-40-189-247.hsd1.mi.comcast.net. [68.40.189.247])
+        by smtp.gmail.com with ESMTPSA id d133sm7402425ita.5.2019.04.09.09.15.50
+        (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
+        Tue, 09 Apr 2019 09:15:50 -0700 (PDT)
 From:   Trond Myklebust <trondmy@gmail.com>
 X-Google-Original-From: Trond Myklebust <trond.myklebust@hammerspace.com>
 To:     "J. Bruce Fields" <bfields@redhat.com>
 Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH v2 2/6] SUNRPC: Temporary sockets should inherit the cred from their parent
-Date:   Tue,  9 Apr 2019 12:13:38 -0400
-Message-Id: <20190409161342.34338-3-trond.myklebust@hammerspace.com>
+Subject: [PATCH v2 1/6] SUNRPC: Cache the process user cred in the RPC server listener
+Date:   Tue,  9 Apr 2019 12:13:37 -0400
+Message-Id: <20190409161342.34338-2-trond.myklebust@hammerspace.com>
 X-Mailer: git-send-email 2.20.1
-In-Reply-To: <20190409161342.34338-2-trond.myklebust@hammerspace.com>
+In-Reply-To: <20190409161342.34338-1-trond.myklebust@hammerspace.com>
 References: <20190409161342.34338-1-trond.myklebust@hammerspace.com>
- <20190409161342.34338-2-trond.myklebust@hammerspace.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
@@ -72,31 +72,330 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Temporary sockets should inherit the credential (and hence the user
-namespace) from the parent listener transport.
+In order to be able to interpret uids and gids correctly in knfsd, we
+should cache the user namespace of the process that created the RPC
+server's listener. To do so, we refcount the credential of that process.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- net/sunrpc/svc_xprt.c | 5 +++--
- 1 file changed, 3 insertions(+), 2 deletions(-)
+ fs/lockd/svc.c                  |  3 ++-
+ fs/nfs/callback.c               |  7 +++++--
+ fs/nfsd/nfsctl.c                | 16 ++++++++--------
+ fs/nfsd/nfsd.h                  |  2 +-
+ fs/nfsd/nfssvc.c                | 14 +++++++-------
+ include/linux/sunrpc/svc_xprt.h |  4 +++-
+ include/linux/sunrpc/svcsock.h  |  3 ++-
+ net/sunrpc/svc_xprt.c           | 12 ++++++++----
+ net/sunrpc/svcsock.c            |  4 +++-
+ 9 files changed, 39 insertions(+), 26 deletions(-)
 
+diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+index 96bb74c919f9..82aa0f35e43d 100644
+--- a/fs/lockd/svc.c
++++ b/fs/lockd/svc.c
+@@ -190,12 +190,13 @@ static int create_lockd_listener(struct svc_serv *serv, const char *name,
+ 				 struct net *net, const int family,
+ 				 const unsigned short port)
+ {
++	const struct cred *cred = current_cred();
+ 	struct svc_xprt *xprt;
+ 
+ 	xprt = svc_find_xprt(serv, name, net, family, 0);
+ 	if (xprt == NULL)
+ 		return svc_create_xprt(serv, name, net, family, port,
+-						SVC_SOCK_DEFAULTS);
++						SVC_SOCK_DEFAULTS, cred);
+ 	svc_xprt_put(xprt);
+ 	return 0;
+ }
+diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+index 15c9575e0e7a..7817ad94a6ba 100644
+--- a/fs/nfs/callback.c
++++ b/fs/nfs/callback.c
+@@ -41,11 +41,13 @@ static struct svc_program nfs4_callback_program;
+ 
+ static int nfs4_callback_up_net(struct svc_serv *serv, struct net *net)
+ {
++	const struct cred *cred = current_cred();
+ 	int ret;
+ 	struct nfs_net *nn = net_generic(net, nfs_net_id);
+ 
+ 	ret = svc_create_xprt(serv, "tcp", net, PF_INET,
+-				nfs_callback_set_tcpport, SVC_SOCK_ANONYMOUS);
++				nfs_callback_set_tcpport, SVC_SOCK_ANONYMOUS,
++				cred);
+ 	if (ret <= 0)
+ 		goto out_err;
+ 	nn->nfs_callback_tcpport = ret;
+@@ -53,7 +55,8 @@ static int nfs4_callback_up_net(struct svc_serv *serv, struct net *net)
+ 		nn->nfs_callback_tcpport, PF_INET, net->ns.inum);
+ 
+ 	ret = svc_create_xprt(serv, "tcp", net, PF_INET6,
+-				nfs_callback_set_tcpport, SVC_SOCK_ANONYMOUS);
++				nfs_callback_set_tcpport, SVC_SOCK_ANONYMOUS,
++				cred);
+ 	if (ret > 0) {
+ 		nn->nfs_callback_tcpport6 = ret;
+ 		dprintk("NFS: Callback listener port = %u (af %u, net %x)\n",
+diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+index 2dc5a73cc464..4f9d9ea9ddfd 100644
+--- a/fs/nfsd/nfsctl.c
++++ b/fs/nfsd/nfsctl.c
+@@ -439,7 +439,7 @@ static ssize_t write_threads(struct file *file, char *buf, size_t size)
+ 			return rv;
+ 		if (newthreads < 0)
+ 			return -EINVAL;
+-		rv = nfsd_svc(newthreads, net);
++		rv = nfsd_svc(newthreads, net, file->f_cred);
+ 		if (rv < 0)
+ 			return rv;
+ 	} else
+@@ -717,7 +717,7 @@ static ssize_t __write_ports_names(char *buf, struct net *net)
+  * a socket of a supported family/protocol, and we use it as an
+  * nfsd listener.
+  */
+-static ssize_t __write_ports_addfd(char *buf, struct net *net)
++static ssize_t __write_ports_addfd(char *buf, struct net *net, const struct cred *cred)
+ {
+ 	char *mesg = buf;
+ 	int fd, err;
+@@ -736,7 +736,7 @@ static ssize_t __write_ports_addfd(char *buf, struct net *net)
+ 	if (err != 0)
+ 		return err;
+ 
+-	err = svc_addsock(nn->nfsd_serv, fd, buf, SIMPLE_TRANSACTION_LIMIT);
++	err = svc_addsock(nn->nfsd_serv, fd, buf, SIMPLE_TRANSACTION_LIMIT, cred);
+ 	if (err < 0) {
+ 		nfsd_destroy(net);
+ 		return err;
+@@ -751,7 +751,7 @@ static ssize_t __write_ports_addfd(char *buf, struct net *net)
+  * A transport listener is added by writing it's transport name and
+  * a port number.
+  */
+-static ssize_t __write_ports_addxprt(char *buf, struct net *net)
++static ssize_t __write_ports_addxprt(char *buf, struct net *net, const struct cred *cred)
+ {
+ 	char transport[16];
+ 	struct svc_xprt *xprt;
+@@ -769,12 +769,12 @@ static ssize_t __write_ports_addxprt(char *buf, struct net *net)
+ 		return err;
+ 
+ 	err = svc_create_xprt(nn->nfsd_serv, transport, net,
+-				PF_INET, port, SVC_SOCK_ANONYMOUS);
++				PF_INET, port, SVC_SOCK_ANONYMOUS, cred);
+ 	if (err < 0)
+ 		goto out_err;
+ 
+ 	err = svc_create_xprt(nn->nfsd_serv, transport, net,
+-				PF_INET6, port, SVC_SOCK_ANONYMOUS);
++				PF_INET6, port, SVC_SOCK_ANONYMOUS, cred);
+ 	if (err < 0 && err != -EAFNOSUPPORT)
+ 		goto out_close;
+ 
+@@ -799,10 +799,10 @@ static ssize_t __write_ports(struct file *file, char *buf, size_t size,
+ 		return __write_ports_names(buf, net);
+ 
+ 	if (isdigit(buf[0]))
+-		return __write_ports_addfd(buf, net);
++		return __write_ports_addfd(buf, net, file->f_cred);
+ 
+ 	if (isalpha(buf[0]))
+-		return __write_ports_addxprt(buf, net);
++		return __write_ports_addxprt(buf, net, file->f_cred);
+ 
+ 	return -EINVAL;
+ }
+diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
+index 6bae2554b2b2..d200c8680259 100644
+--- a/fs/nfsd/nfsd.h
++++ b/fs/nfsd/nfsd.h
+@@ -73,7 +73,7 @@ extern const struct seq_operations nfs_exports_op;
+ /*
+  * Function prototypes.
+  */
+-int		nfsd_svc(int nrservs, struct net *net);
++int		nfsd_svc(int nrservs, struct net *net, const struct cred *cred);
+ int		nfsd_dispatch(struct svc_rqst *rqstp, __be32 *statp);
+ 
+ int		nfsd_nrthreads(struct net *);
+diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+index 520757774614..32e4d8a334e3 100644
+--- a/fs/nfsd/nfssvc.c
++++ b/fs/nfsd/nfssvc.c
+@@ -283,7 +283,7 @@ int nfsd_nrthreads(struct net *net)
+ 	return rv;
+ }
+ 
+-static int nfsd_init_socks(struct net *net)
++static int nfsd_init_socks(struct net *net, const struct cred *cred)
+ {
+ 	int error;
+ 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
+@@ -292,12 +292,12 @@ static int nfsd_init_socks(struct net *net)
+ 		return 0;
+ 
+ 	error = svc_create_xprt(nn->nfsd_serv, "udp", net, PF_INET, NFS_PORT,
+-					SVC_SOCK_DEFAULTS);
++					SVC_SOCK_DEFAULTS, cred);
+ 	if (error < 0)
+ 		return error;
+ 
+ 	error = svc_create_xprt(nn->nfsd_serv, "tcp", net, PF_INET, NFS_PORT,
+-					SVC_SOCK_DEFAULTS);
++					SVC_SOCK_DEFAULTS, cred);
+ 	if (error < 0)
+ 		return error;
+ 
+@@ -348,7 +348,7 @@ static bool nfsd_needs_lockd(struct nfsd_net *nn)
+ 	return nfsd_vers(nn, 2, NFSD_TEST) || nfsd_vers(nn, 3, NFSD_TEST);
+ }
+ 
+-static int nfsd_startup_net(int nrservs, struct net *net)
++static int nfsd_startup_net(int nrservs, struct net *net, const struct cred *cred)
+ {
+ 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
+ 	int ret;
+@@ -359,7 +359,7 @@ static int nfsd_startup_net(int nrservs, struct net *net)
+ 	ret = nfsd_startup_generic(nrservs);
+ 	if (ret)
+ 		return ret;
+-	ret = nfsd_init_socks(net);
++	ret = nfsd_init_socks(net, cred);
+ 	if (ret)
+ 		goto out_socks;
+ 
+@@ -697,7 +697,7 @@ int nfsd_set_nrthreads(int n, int *nthreads, struct net *net)
+  * this is the first time nrservs is nonzero.
+  */
+ int
+-nfsd_svc(int nrservs, struct net *net)
++nfsd_svc(int nrservs, struct net *net, const struct cred *cred)
+ {
+ 	int	error;
+ 	bool	nfsd_up_before;
+@@ -719,7 +719,7 @@ nfsd_svc(int nrservs, struct net *net)
+ 
+ 	nfsd_up_before = nn->nfsd_net_up;
+ 
+-	error = nfsd_startup_net(nrservs, net);
++	error = nfsd_startup_net(nrservs, net, cred);
+ 	if (error)
+ 		goto out_destroy;
+ 	error = nn->nfsd_serv->sv_ops->svo_setup(nn->nfsd_serv,
+diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
+index b3f9577e17d6..ea6f46be9cb7 100644
+--- a/include/linux/sunrpc/svc_xprt.h
++++ b/include/linux/sunrpc/svc_xprt.h
+@@ -86,6 +86,7 @@ struct svc_xprt {
+ 	struct list_head	xpt_users;	/* callbacks on free */
+ 
+ 	struct net		*xpt_net;
++	const struct cred	*xpt_cred;
+ 	struct rpc_xprt		*xpt_bc_xprt;	/* NFSv4.1 backchannel */
+ 	struct rpc_xprt_switch	*xpt_bc_xps;	/* NFSv4.1 backchannel */
+ };
+@@ -119,7 +120,8 @@ void	svc_unreg_xprt_class(struct svc_xprt_class *);
+ void	svc_xprt_init(struct net *, struct svc_xprt_class *, struct svc_xprt *,
+ 		      struct svc_serv *);
+ int	svc_create_xprt(struct svc_serv *, const char *, struct net *,
+-			const int, const unsigned short, int);
++			const int, const unsigned short, int,
++			const struct cred *);
+ void	svc_xprt_do_enqueue(struct svc_xprt *xprt);
+ void	svc_xprt_enqueue(struct svc_xprt *xprt);
+ void	svc_xprt_put(struct svc_xprt *xprt);
+diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
+index 119718a922f2..771baadaee9d 100644
+--- a/include/linux/sunrpc/svcsock.h
++++ b/include/linux/sunrpc/svcsock.h
+@@ -59,7 +59,8 @@ void		svc_drop(struct svc_rqst *);
+ void		svc_sock_update_bufs(struct svc_serv *serv);
+ bool		svc_alien_sock(struct net *net, int fd);
+ int		svc_addsock(struct svc_serv *serv, const int fd,
+-					char *name_return, const size_t len);
++					char *name_return, const size_t len,
++					const struct cred *cred);
+ void		svc_init_xprt_sock(void);
+ void		svc_cleanup_xprt_sock(void);
+ struct svc_xprt *svc_sock_create(struct svc_serv *serv, int prot);
 diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index b76ee83d4d43..9429b28e9ba0 100644
+index 61530b1b7754..b76ee83d4d43 100644
 --- a/net/sunrpc/svc_xprt.c
 +++ b/net/sunrpc/svc_xprt.c
-@@ -786,9 +786,10 @@ static int svc_handle_xprt(struct svc_rqst *rqstp, struct svc_xprt *xprt)
- 		__module_get(xprt->xpt_class->xcl_owner);
- 		svc_check_conn_limits(xprt->xpt_server);
- 		newxpt = xprt->xpt_ops->xpo_accept(xprt);
--		if (newxpt)
-+		if (newxpt) {
-+			newxpt->xpt_cred = get_cred(xprt->xpt_cred);
- 			svc_add_new_temp_xprt(serv, newxpt);
--		else
-+		} else
- 			module_put(xprt->xpt_class->xcl_owner);
- 	} else if (svc_xprt_reserve_slot(rqstp, xprt)) {
- 		/* XPT_DATA|XPT_DEFERRED case: */
+@@ -136,6 +136,7 @@ static void svc_xprt_free(struct kref *kref)
+ 	struct module *owner = xprt->xpt_class->xcl_owner;
+ 	if (test_bit(XPT_CACHE_AUTH, &xprt->xpt_flags))
+ 		svcauth_unix_info_release(xprt);
++	put_cred(xprt->xpt_cred);
+ 	put_net(xprt->xpt_net);
+ 	/* See comment on corresponding get in xs_setup_bc_tcp(): */
+ 	if (xprt->xpt_bc_xprt)
+@@ -252,7 +253,8 @@ void svc_add_new_perm_xprt(struct svc_serv *serv, struct svc_xprt *new)
+ 
+ static int _svc_create_xprt(struct svc_serv *serv, const char *xprt_name,
+ 			    struct net *net, const int family,
+-			    const unsigned short port, int flags)
++			    const unsigned short port, int flags,
++			    const struct cred *cred)
+ {
+ 	struct svc_xprt_class *xcl;
+ 
+@@ -273,6 +275,7 @@ static int _svc_create_xprt(struct svc_serv *serv, const char *xprt_name,
+ 			module_put(xcl->xcl_owner);
+ 			return PTR_ERR(newxprt);
+ 		}
++		newxprt->xpt_cred = get_cred(cred);
+ 		svc_add_new_perm_xprt(serv, newxprt);
+ 		newport = svc_xprt_local_port(newxprt);
+ 		return newport;
+@@ -286,15 +289,16 @@ static int _svc_create_xprt(struct svc_serv *serv, const char *xprt_name,
+ 
+ int svc_create_xprt(struct svc_serv *serv, const char *xprt_name,
+ 		    struct net *net, const int family,
+-		    const unsigned short port, int flags)
++		    const unsigned short port, int flags,
++		    const struct cred *cred)
+ {
+ 	int err;
+ 
+ 	dprintk("svc: creating transport %s[%d]\n", xprt_name, port);
+-	err = _svc_create_xprt(serv, xprt_name, net, family, port, flags);
++	err = _svc_create_xprt(serv, xprt_name, net, family, port, flags, cred);
+ 	if (err == -EPROTONOSUPPORT) {
+ 		request_module("svc%s", xprt_name);
+-		err = _svc_create_xprt(serv, xprt_name, net, family, port, flags);
++		err = _svc_create_xprt(serv, xprt_name, net, family, port, flags, cred);
+ 	}
+ 	if (err < 0)
+ 		dprintk("svc: transport %s not found, err %d\n",
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index 43590a968b73..540fde2804d0 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -1332,13 +1332,14 @@ EXPORT_SYMBOL_GPL(svc_alien_sock);
+  * @fd: file descriptor of the new listener
+  * @name_return: pointer to buffer to fill in with name of listener
+  * @len: size of the buffer
++ * @cred: credential
+  *
+  * Fills in socket name and returns positive length of name if successful.
+  * Name is terminated with '\n'.  On error, returns a negative errno
+  * value.
+  */
+ int svc_addsock(struct svc_serv *serv, const int fd, char *name_return,
+-		const size_t len)
++		const size_t len, const struct cred *cred)
+ {
+ 	int err = 0;
+ 	struct socket *so = sockfd_lookup(fd, &err);
+@@ -1371,6 +1372,7 @@ int svc_addsock(struct svc_serv *serv, const int fd, char *name_return,
+ 	salen = kernel_getsockname(svsk->sk_sock, sin);
+ 	if (salen >= 0)
+ 		svc_xprt_set_local(&svsk->sk_xprt, sin, salen);
++	svsk->sk_xprt.xpt_cred = get_cred(cred);
+ 	svc_add_new_perm_xprt(serv, &svsk->sk_xprt);
+ 	return svc_one_sock_name(svsk, name_return, len);
+ out:
 -- 
 2.20.1
 
