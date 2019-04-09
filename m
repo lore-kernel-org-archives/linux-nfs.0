@@ -2,109 +2,134 @@ Return-Path: <SRS0=QgGt=SL=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-1.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 56747C10F0E
-	for <linux-nfs@archiver.kernel.org>; Tue,  9 Apr 2019 16:55:53 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A2BF8C10F0E
+	for <linux-nfs@archiver.kernel.org>; Tue,  9 Apr 2019 17:54:19 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 1F47E2133D
-	for <linux-nfs@archiver.kernel.org>; Tue,  9 Apr 2019 16:55:52 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="NEi9xX3z"
+	by mail.kernel.org (Postfix) with ESMTP id 80987206B7
+	for <linux-nfs@archiver.kernel.org>; Tue,  9 Apr 2019 17:54:19 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726471AbfDIQzv (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 9 Apr 2019 12:55:51 -0400
-Received: from mail-eopbgr740118.outbound.protection.outlook.com ([40.107.74.118]:9872
-        "EHLO NAM01-BN3-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726372AbfDIQzv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 9 Apr 2019 12:55:51 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=hammerspace.com;
- s=selector1;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=E2cUhCm23qRD1aYjvdD1+BJDluQKcgD47q7UsH37E+k=;
- b=NEi9xX3zf+0/B9HCPi9yT2CRnN/YBYrJxd5T3Vbb+YLxAOVDatrRGvRfjhbEZ6r/XFC1oUIsqiOE6Qdt4i3CbB7aAQIhpgVI3CepLfw3ErsLj2MzxCquKGGSdvAEMg0rEB34bcKJDWZGdmBSxU5SzlbU3Ai8trTjLZCOPDFt2ng=
-Received: from SN6PR13MB2494.namprd13.prod.outlook.com (52.135.95.148) by
- SN6PR13MB2541.namprd13.prod.outlook.com (52.135.95.159) with Microsoft SMTP
- Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- 15.20.1792.8; Tue, 9 Apr 2019 16:55:47 +0000
-Received: from SN6PR13MB2494.namprd13.prod.outlook.com
- ([fe80::30dc:67e2:d25a:f1d3]) by SN6PR13MB2494.namprd13.prod.outlook.com
- ([fe80::30dc:67e2:d25a:f1d3%6]) with mapi id 15.20.1792.007; Tue, 9 Apr 2019
- 16:55:47 +0000
-From:   Trond Myklebust <trondmy@hammerspace.com>
-To:     "bfields@fieldses.org" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "daniel@zonque.org" <daniel@zonque.org>,
-        "jlayton@kernel.org" <jlayton@kernel.org>
-CC:     "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+        id S1726513AbfDIRyS (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 9 Apr 2019 13:54:18 -0400
+Received: from mail.bugwerft.de ([46.23.86.59]:37334 "EHLO mail.bugwerft.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726383AbfDIRyS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 9 Apr 2019 13:54:18 -0400
+Received: from [192.168.178.170] (pD95EF7A7.dip0.t-ipconnect.de [217.94.247.167])
+        by mail.bugwerft.de (Postfix) with ESMTPSA id 14ADE2A9DC0;
+        Tue,  9 Apr 2019 17:52:39 +0000 (UTC)
 Subject: Re: 5.1.0-rc4: Oops in __rpc_execute() when trying to boot from NFS
-Thread-Topic: 5.1.0-rc4: Oops in __rpc_execute() when trying to boot from NFS
-Thread-Index: AQHU7i3XWMBYs7+7DEGG17GL2cVEYaYym9UAgAFpbICAAAiIgA==
-Date:   Tue, 9 Apr 2019 16:55:47 +0000
-Message-ID: <7bdd83d7c2442d8096612ad3f821af556dd96015.camel@hammerspace.com>
+To:     Trond Myklebust <trondmy@hammerspace.com>,
+        "bfields@fieldses.org" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "jlayton@kernel.org" <jlayton@kernel.org>
+Cc:     "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
 References: <0412f79c-61a8-bfa4-26ce-1083a59d31e8@zonque.org>
-         <ce6d2388a9214f95cc38de5ec225cba26cf63b0d.camel@hammerspace.com>
-         <4f4bb4a9-f752-f9f4-41cd-5c41d6191308@zonque.org>
-In-Reply-To: <4f4bb4a9-f752-f9f4-41cd-5c41d6191308@zonque.org>
-Accept-Language: en-US, en-GB
-Content-Language: en-US
-X-MS-Has-Attach: 
-X-MS-TNEF-Correlator: 
-authentication-results: spf=none (sender IP is )
- smtp.mailfrom=trondmy@hammerspace.com; 
-x-originating-ip: [68.40.189.247]
-x-ms-publictraffictype: Email
-x-ms-office365-filtering-correlation-id: 5fbf2e87-2761-4deb-a882-08d6bd0c3701
-x-microsoft-antispam: BCL:0;PCL:0;RULEID:(2390118)(7020095)(4652040)(8989299)(4534185)(4627221)(201703031133081)(201702281549075)(8990200)(5600139)(711020)(4605104)(2017052603328)(7193020);SRVR:SN6PR13MB2541;
-x-ms-traffictypediagnostic: SN6PR13MB2541:
-x-microsoft-antispam-prvs: <SN6PR13MB25412C1953C9A50ECEA2193EB82D0@SN6PR13MB2541.namprd13.prod.outlook.com>
-x-forefront-prvs: 000227DA0C
-x-forefront-antispam-report: SFV:NSPM;SFS:(10019020)(396003)(346002)(136003)(39830400003)(376002)(366004)(189003)(199004)(4326008)(316002)(68736007)(305945005)(25786009)(110136005)(8676002)(5660300002)(256004)(53936002)(6436002)(97736004)(7736002)(6486002)(2906002)(105586002)(6512007)(229853002)(36756003)(66066001)(6246003)(118296001)(476003)(26005)(486006)(71190400001)(53546011)(446003)(2201001)(186003)(14454004)(71200400001)(11346002)(102836004)(8936002)(86362001)(2616005)(478600001)(99286004)(76176011)(81166006)(81156014)(6116002)(6506007)(3846002)(106356001)(2501003);DIR:OUT;SFP:1102;SCL:1;SRVR:SN6PR13MB2541;H:SN6PR13MB2494.namprd13.prod.outlook.com;FPR:;SPF:None;LANG:en;PTR:InfoNoRecords;MX:1;A:1;
-received-spf: None (protection.outlook.com: hammerspace.com does not designate
- permitted sender hosts)
-x-ms-exchange-senderadcheck: 1
-x-microsoft-antispam-message-info: f6BovXALnDApYuSH1xLNp0RbUtSXt1F2e+67ZD/FZav+dwQict1sXMLPiQBONHNbKqyKbWhJjOqbh/0MMJl5OoNfE5A0IZwLh3OTmDc8uObq1HvyI1uxjF6reu0nR3ox8IYw3PvWLB9T9qcI35OjRgVIK4/WvfWGewKXJgEmpaT/QzfqNE9mirK/ZJEUC4DPFJLK1RRjbLyORnq2iXk1P97JXWgoSkfkjvIXeynMBD0cCAVjJzTTdwjEibUoNv8uNxNY7CdsSpD3y4O3jnndX0VgMiS0xPDKKlrniPZ9a2oJyWDKO278lMOfzIuZ4ki2OvLIZ8n56lXjUL750n/01f/FYpdZCUPFn5iUcjCqgSq0YvmKG/QYLLv/zR+GxowSJohvsm9V+m3dl3CCj7KdxHFL0aNHpbfNf0YQWvre0jY=
-Content-Type: text/plain; charset="utf-8"
-Content-ID: <AFE9597EC239D64B979D4C5D921DF074@namprd13.prod.outlook.com>
-Content-Transfer-Encoding: base64
+ <ce6d2388a9214f95cc38de5ec225cba26cf63b0d.camel@hammerspace.com>
+ <4f4bb4a9-f752-f9f4-41cd-5c41d6191308@zonque.org>
+ <7bdd83d7c2442d8096612ad3f821af556dd96015.camel@hammerspace.com>
+From:   Daniel Mack <daniel@zonque.org>
+Openpgp: preference=signencrypt
+Autocrypt: addr=daniel@zonque.org; prefer-encrypt=mutual; keydata=
+ mQINBFJqOksBEADTAqNa32jIMmtknN+kbl2QCQ+O8onAyfBXW2+ULByC+54ELTsKnuAChxYB
+ pimYqixmqbD9f7PrnU4/zAEMr8yJaTLp1uFHN1Qivx268wVlFBP+rnhULsiwcsJVWWIeeUxR
+ Fk6V7K8RQMGsk0jwTfF+zHfKc7qPIMVh7peZalyIn6giqcQKM6SNrsCjLKlIachR/SstmMOG
+ 5sXkykOh0pqgqj0aDzs2H9UYJyuA1OTkrN8AwA6SgwbZxRThdgbFKY7WaBPALcGK+89OCtwE
+ UV6SIF9cUd0EvaqyawJbjPGRFJ4KckAfZYRdRWtd+2njeC9hehfB/mQVDBzHtquSO6HPKqt/
+ 4hDtQDXv4qAyBNDi50uXmORKxSJkcFlBGAl0RGOCcegilCfjQHX6XHPXbAfuoJGYyt1i4Iuy
+ Doz5KVxm0SPftRNfg5eVKm3akIEdR1HI315866/QInkinngZ8BItVj+B89pwcbMcaG4cFcB8
+ 4sWOLDPiGob2oaMe88y3whxVW8a+PAyfvesLJFeLGfjtBOO1sGtUa/qudcqS74oyfqVmRz+V
+ sxEQ9xW9MZsZuvZYNT9nHGAP4ekpAs/ZGYX2sraU8394EDhKb2tkQz952D7BH2/xrGleOar2
+ BnkuCR/M9iS2BPNTYZEYQfIdj7NI3Qbn4vKtM3IMnPWRFS7ZuQARAQABtB9EYW5pZWwgTWFj
+ ayA8ZGFuaWVsQHpvbnF1ZS5vcmc+iQI7BBMBAgAlAhsDBgsJCAcDAgYVCAIJCgsEFgIDAQIe
+ AQIXgAIZAQUCWom+IAAKCRC6YTEa/GNUJDAiD/42ybmeJ4r9yEmdgJraRiDDdcMTPuDwRICQ
+ oxiMBph+eBjdveCaG4K2IjbUouhXKXVAiugSbyHWL9vcBzcPIy+mcxCSf0BC6BCzhR60ontC
+ GTZAGNXVL98RhlnDGtFBPKZfXy1V8LaAe9puyBysv3/RAanc85B6Rv0bMRh/1nKf2rQWHmM5
+ bnPrxSDh2X3CJEMCCtoTo5jZ3YnkZae7DmVL/0JWGrCPfTXrBsJi+EVNFy2D57DdAWFbcl8C
+ eiQrwBPfVomQTQ0EgLl8gC2V1UxjgdBy3Vpf0MIjlNvE0Lv3MPCwV3X33+07wtpGK7DzJY8N
+ MI+Woe/Qp49QenYL2Xx/R7frfdIG4HAnUaeIGR+1PGqbX9Kc3htKIP9DV3j9xLHkIfhI+2HH
+ HEptLuoewPS2egdtJo4LNWM7WMquJcve/dMae2MWlLfPQiTTy8RUPd8PtTSxrmUAYwGzAPYQ
+ JATxoi/g02BtwsxNxp9gN9tlPEdP+0O2vptN3leADrt6nW495TlbuYwJaz4VPGrkziKpV9HU
+ KgGaRwr0/RpONO4TFk6wTIa2Tak/y8s7rfnr+t7OVp7gG7/CKozRZMv/YijQhelMk4D6E6UI
+ oE5ZQ7bkBRZj0V3fkFl7FM1wzk1WJ2jUhw3wNIy5vQ36rTCoeLDEVpZO1MeVh09FbEDJkBu5
+ SrkCDQRSajpLARAA4lEVCaGHcCIhxLSxvPjgzj7BzpmPaJbMd92DeKtUcB2vHhhuqa0WQSGO
+ jKlaQdTqowVIQ974snsmNNwF5w8mss46T1X+2WS7YKAyn4dDScukY54thYthOkOn4DbKV6S0
+ 4IV30DL9/5iQHszl9FNY7MIdvwMM7ozxJYrUv+wKcfOBh4zbFisXCu+jPobyKe+5XurJXXZ9
+ 2aSDkrKPT9zKSUz+fElb/mL7o4NCeQcK5yvKMgj1MqT7O+V5F3gM/bh0srNMxL8w27pgYm6e
+ O99M3vNkRd+qyXOsc6dLqgSkxsoRuWVX8vJROi6gMdn7O/AZ85t5paFIj5rqRJyYTPDRKN2Z
+ ayT+ZPlF14b6LaodbPbZXEwiPfGhUwuVSwUjKHjcJMLLi5vq62fq1X/cCi2midjFY6nQsSn9
+ Mldx6v7JJWW8hvlnw+smduhg0UCfwx0KCI9wSPE2MUbm6KKS4DwAPbi0WCeUcNzRUxTCAs6c
+ a9EOH0qsEAH7vwLzCf5lFiTMolhDJLZrsYvS1MBN4FxsyC7MMW2j4rMk2v0STORRGNY5oxrn
+ LAO52ns135O2A22Mnhqo+ssjhJQAvEr5f13/qUEP0w79Qg9BUE5yfwJsalhgVfEvKabrNDKu
+ a7UqNZ5lJZO2TdCi7OYl34WEnS3e+3qY2oHSL5n4kLiT/v+/1U0AEQEAAYkCHwQYAQIACQIb
+ DAUCV6sTCAAKCRC6YTEa/GNUJHw5D/4luZ1GFCPW8kqkmpBUFTVjZqOhhT+z0KnrBsisJSOH
+ VR8MraCDWHo/u4PTgqwF38PvyeZ4jXTXv+5FYjN6sJ8ydnfsUOORoM/KUafXmAug3zafqFd9
+ CzELh8FutTRYncoJMmL2HAbHqQRZlcFj6mKYFKqN+pA3tPbl3QpDORxMzeSn0J4sQeaVkIw2
+ inqYKTW+7vMi9/toMBNPEJPgSG77opYcEVjtDCPeAermjt6Ypqb0NyvE7zHLXpw3zcIA+Zge
+ 0VIIW5bXco8520SJfDCKlS3IJlxOGgLVbcWwMayhO8cw8kWHg4KqjWQPvfsuhALGUidfhC3h
+ L/o+2sOPZXT09OIR4arkuWH7xPF2X+L13TJ52OqVt0ERX5D9/7AwTArpCK6Vr3hybscBwFdW
+ DduIc9DAFQ4AzQuURhAP2wHBmayrVDdtwtZVxyO6b6G2brkdbCpFEzeg66Q1jp/R5GXgNMBi
+ qkqS7nnXncMTx6jmMAxHQ3XoXzPIZmBvWmD9Z0gCyTU6lSFSiGLO7KegnaRgBlJX/kmZ7Xfu
+ YbiKOFbQ6XDctinOnZW5HFQiNQ+qkkx/CEcC1tXPY+JMjmA43KfCtwCjZbmi/bmb1JHJNZ9O
+ H/iGc7WLxMDmqqBiZcQMQ0fcvv9Pj/NM8qNTDPtWeMwHV1p5s/U9nT8E35Hvbwx1Zg==
+Message-ID: <78dbd13a-9a91-9a67-eaa6-ea7f0190898b@zonque.org>
+Date:   Tue, 9 Apr 2019 19:54:15 +0200
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101
+ Thunderbird/60.6.0
 MIME-Version: 1.0
-X-OriginatorOrg: hammerspace.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: 5fbf2e87-2761-4deb-a882-08d6bd0c3701
-X-MS-Exchange-CrossTenant-originalarrivaltime: 09 Apr 2019 16:55:47.7945
- (UTC)
-X-MS-Exchange-CrossTenant-fromentityheader: Hosted
-X-MS-Exchange-CrossTenant-id: 0d4fed5c-3a70-46fe-9430-ece41741f59e
-X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: SN6PR13MB2541
+In-Reply-To: <7bdd83d7c2442d8096612ad3f821af556dd96015.camel@hammerspace.com>
+Content-Type: text/plain; charset=utf-8
+Content-Language: en-US
+Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-T24gVHVlLCAyMDE5LTA0LTA5IGF0IDE4OjI1ICswMjAwLCBEYW5pZWwgTWFjayB3cm90ZToNCj4g
-T24gOC80LzIwMTkgODo1MSBQTSwgVHJvbmQgTXlrbGVidXN0IHdyb3RlOg0KPiA+IE9uIE1vbiwg
-MjAxOS0wNC0wOCBhdCAxOTowMSArMDIwMCwgRGFuaWVsIE1hY2sgd3JvdGU6DQo+ID4gPiBIaSwN
-Cj4gPiA+IA0KPiA+ID4gSSdtIHNlZWluZyB0aGUgT29wcyBiZWxvdyB3aGVuIHRyeWluZyB0byBi
-b290IDUuMS4wLXJjNCBvbiBhbiBBUk0NCj4gPiA+IFBYQTN4eA0KPiA+ID4gcGxhdGZvcm0uIHY1
-LjAgZGlkIG5vdCBzaG93IHRoaXMgZWZmZWN0IHdpdGggdGhlIHNhbWUgY21kbGluZS4NCj4gPiA+
-IA0KPiA+IFBsZWFzZSBkbyBiaXNlY3QgaWYgdGhhdCBpcyBhdCBhbGwgcHJhY3RpY2FsLiBJJ20g
-aGF2aW5nIHRyb3VibGUNCj4gPiBpbnRlcnByZXRpbmcgdGhpcyBPb3BzLg0KPiANCj4gSGVyZSB5
-b3UgZ286DQo+IA0KPiAwMDlhODJmNjQzNzQ5MGMyNjI1ODRkNjVhMTQwOTRhODE4YmNiNzQ3IGlz
-IHRoZSBmaXJzdCBiYWQgY29tbWl0DQo+IGNvbW1pdCAwMDlhODJmNjQzNzQ5MGMyNjI1ODRkNjVh
-MTQwOTRhODE4YmNiNzQ3DQo+IEF1dGhvcjogVHJvbmQgTXlrbGVidXN0IDx0cm9uZC5teWtsZWJ1
-c3RAaGFtbWVyc3BhY2UuY29tPg0KPiBEYXRlOiAgIFNhdCBNYXIgOSAxMjowNzoxNyAyMDE5IC0w
-NTAwDQo+IA0KPiAgICAgU1VOUlBDOiBNaWNyby1vcHRpbWlzZSB3aGVuIHRoZSB0YXNrIGlzIGtu
-b3duIG5vdCB0byBiZSBzbGVlcGluZw0KPiANCj4gICAgIEluIGNhc2VzIHdoZXJlIHdlIGtub3cg
-dGhlIHRhc2sgaXMgbm90IHNsZWVwaW5nLCB0cnkgdG8gb3B0aW1pc2UNCj4gICAgIGF3YXkgdGhl
-IGluZGlyZWN0IGNhbGwgdG8gdGFzay0+dGtfYWN0aW9uKCkgYnkgcmVwbGFjaW5nIGl0IHdpdGgN
-Cj4gICAgIGEgZGlyZWN0IGNhbGwuDQo+ICAgICBPbmx5IGNoYW5nZSB0YWlsIGNhbGxzLCB0byBh
-bGxvdyBnY2MgdG8gcGVyZm9ybSB0YWlsIGNhbGwNCj4gICAgIGVsaW1pbmF0aW9uLg0KDQpBaC4u
-LiBJdCBsb29rcyBsaWtlIHdlIGV4cGxpY2l0bHkgdHVybiBvZmYgdGFpbCBjYWxsIG9wdGltaXNh
-dGlvbiBpbg0Kc29tZSBBUk0gY29uZmlncywgc28gdGhpcyBtaWdodCBiZSBhIHN0YWNrIG92ZXJm
-bG93Lg0KDQpEb2VzIHlvdXIgY29uZmlnIGZpbGUgaGF2ZSBUSFVNQjJfQVZPSURfUl9BUk1fVEhN
-X0pVTVAxMSBzZXQ/DQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1h
-aW50YWluZXIsIEhhbW1lcnNwYWNlDQp0cm9uZC5teWtsZWJ1c3RAaGFtbWVyc3BhY2UuY29tDQoN
-Cg0K
+On 9/4/2019 6:55 PM, Trond Myklebust wrote:
+> On Tue, 2019-04-09 at 18:25 +0200, Daniel Mack wrote:
+>> On 8/4/2019 8:51 PM, Trond Myklebust wrote:
+>>> On Mon, 2019-04-08 at 19:01 +0200, Daniel Mack wrote:
+>>>> Hi,
+>>>>
+>>>> I'm seeing the Oops below when trying to boot 5.1.0-rc4 on an ARM
+>>>> PXA3xx
+>>>> platform. v5.0 did not show this effect with the same cmdline.
+>>>>
+>>> Please do bisect if that is at all practical. I'm having trouble
+>>> interpreting this Oops.
+>>
+>> Here you go:
+>>
+>> 009a82f6437490c262584d65a14094a818bcb747 is the first bad commit
+>> commit 009a82f6437490c262584d65a14094a818bcb747
+>> Author: Trond Myklebust <trond.myklebust@hammerspace.com>
+>> Date:   Sat Mar 9 12:07:17 2019 -0500
+>>
+>>     SUNRPC: Micro-optimise when the task is known not to be sleeping
+>>
+>>     In cases where we know the task is not sleeping, try to optimise
+>>     away the indirect call to task->tk_action() by replacing it with
+>>     a direct call.
+>>     Only change tail calls, to allow gcc to perform tail call
+>>     elimination.
+> 
+> Ah... It looks like we explicitly turn off tail call optimisation in
+> some ARM configs, so this might be a stack overflow.
+> 
+> Does your config file have THUMB2_AVOID_R_ARM_THM_JUMP11 set?
+
+Nope. I don't even have THUMB2_KERNEL.
+
+In the meantime, I tried to trace that with some printks, but the bug
+appears evasive, and the backtrace changes as soon as I modify the
+timing. Hmm.
+
+Happy to test patches if you have any idea.
+
+
+Thanks,
+Daniel
