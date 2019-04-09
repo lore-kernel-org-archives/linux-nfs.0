@@ -8,63 +8,65 @@ X-Spam-Status: No, score=-8.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7A4D1C282DA
-	for <linux-nfs@archiver.kernel.org>; Tue,  9 Apr 2019 16:15:54 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DBA12C282CE
+	for <linux-nfs@archiver.kernel.org>; Tue,  9 Apr 2019 16:15:55 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 3599921473
-	for <linux-nfs@archiver.kernel.org>; Tue,  9 Apr 2019 16:15:54 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 9F77A21473
+	for <linux-nfs@archiver.kernel.org>; Tue,  9 Apr 2019 16:15:55 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="USPxJfEP"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="NKBaJwm5"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726035AbfDIQPx (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 9 Apr 2019 12:15:53 -0400
-Received: from mail-io1-f66.google.com ([209.85.166.66]:35556 "EHLO
-        mail-io1-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726515AbfDIQPx (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Apr 2019 12:15:53 -0400
-Received: by mail-io1-f66.google.com with SMTP id p16so14821110iod.2
-        for <linux-nfs@vger.kernel.org>; Tue, 09 Apr 2019 09:15:52 -0700 (PDT)
+        id S1726570AbfDIQPz (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 9 Apr 2019 12:15:55 -0400
+Received: from mail-io1-f65.google.com ([209.85.166.65]:42948 "EHLO
+        mail-io1-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726515AbfDIQPy (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Apr 2019 12:15:54 -0400
+Received: by mail-io1-f65.google.com with SMTP id c4so14786337ioh.9
+        for <linux-nfs@vger.kernel.org>; Tue, 09 Apr 2019 09:15:54 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references
          :mime-version:content-transfer-encoding;
-        bh=d/GUKI3rcD2gDfQS8qZmzLKDTuaeV/TH6FqpueCS6hA=;
-        b=USPxJfEPoJZ4WzkCy2k9krz8+JdrUd6r7wLHNXaWe9HqRfyjOH9MOlkozZrOdFVchd
-         8DTSVRwxxDhM+Sjv8v1d4Xy2/iMmZI2ouus91xZ6qLWRJ/7CMT3CmgTRnXmx7B8uUfRI
-         gjnndzXxuMkqs9DBbb10YK5XSMkI9PMCBFMbNDMynPLu/2IN0yte/Y3fEj0usCeW5A/5
-         B76i8vbRw1ANLLdbWByyWCo50hNIDi4wMLBYStI/CqV05A57fdEAU2iigePJiuHHMjZa
-         qz8hR0Ucdz31xRIxKW/KTBRLHbYfKTsXrUoKtB7qLNlDyuOoWoDO//npFiHxeQ/ZzOoz
-         QJlw==
+        bh=ivpBSLoDOFOrgVV/dJW5L/pN3weHFcG8YFXsm5dSNqk=;
+        b=NKBaJwm5FNTJTFb6wGmvGuoDIfCXbXxFIRXrv17gIeKWXtxeKSsLGkLWp8gZiE14qC
+         WHMQ7n345e3w/v6P17At4cgzYk6Xd7OR8b/w69KnqRSbYIT4CzYfeLuC4JJ+facUrKuY
+         CtdmAIuRVCfFCTq/jlgSE9Lx+S57IwHyk/n7DzANbxv+Fk+Y/GcdCFWXAihhbk8zS1YN
+         J4lDStuXRMRQrP8ra0WyoA8L+SiJmiPpC7efkDjXphVIRPtOwE/5LgpKra2JWDl6e9m/
+         y48yX/1V8bTujUgpF+IM5B/FGYI+3yr4zF0YBWE1sbK/B1dJSk7Q6Lu0+Nt+gcsnij3f
+         3U4A==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=d/GUKI3rcD2gDfQS8qZmzLKDTuaeV/TH6FqpueCS6hA=;
-        b=JFocqzzBForoHkSQeRXXj6ujt4Qx4/Z854Y5FJddFpQZi5qHsUFLFcVjGk1bcnIqSw
-         AdOZlWM3i4mxsjZPA04vrhEGr5CQUI3fauKVngP9oc/0jT1jQA8wehCrplrFrd1LLyKH
-         rpxZYuIuB8rxppAHORgZ9NGzwPyH6EgZ55oPFpr0kVkx/cJRfT5d0SW2cgU/odf7wtHd
-         PMiJVxuZysBPrI3FRV1Xtv9Mkm2wyyzf3hukU7t+o62O+Mz2u67tLobY3gWw5ltPFNxo
-         EhwRA3fnrL6Y/LQj86LtL3dX8dBHf/DI0drfGwzP6PKO7ellmdd9lmVJoLsLeyFxlbez
-         VX3w==
-X-Gm-Message-State: APjAAAWDU4uI4JqLeYwJj4Kp3gOmFo9xuFgsHD2dg7Pb+Ef5Mzh7rc9k
-        r/ueStNolXMXQeGXwyZ9CA==
-X-Google-Smtp-Source: APXvYqyoJznMlGXCSRi1wApCSpuLS9Kha2XGfIBpW8wd4a5dL8p+ft4cBH0SFuNntgdq+sFlBV0dOA==
-X-Received: by 2002:a5d:97da:: with SMTP id k26mr24052929ios.46.1554826551231;
-        Tue, 09 Apr 2019 09:15:51 -0700 (PDT)
+        bh=ivpBSLoDOFOrgVV/dJW5L/pN3weHFcG8YFXsm5dSNqk=;
+        b=miS0Pxgh+j86N288+1nL0BDnjm6gUJLRS3byKUqaJiW5PvYc96O8Bi25bzSCBlV191
+         kQMZjZ1vyBZDy/frPswTeLJWhaTeBj+hMrHaTHcmCRblLyqDR877hhBipLOx7LhUlP6J
+         NL2IdKCZBEh1HX9d1ZLnibQEtHhPSjm+IUgHZa9ruARnl5p5M1Y7o0FiwKNv0LV4JaDv
+         smZ7o5jcQZLCIkYL4PaRlknJ7IiBBU2A9obiRGWvM4g/FFIH3n1RgDnR4t1YhikSBQkp
+         OSsq/zemHaT96AgE0ZI8OSARDH7NpqfaOFXdKkQ4RI1MfiYE1HI+bCvl9C5srDbOvlQG
+         xT9Q==
+X-Gm-Message-State: APjAAAUvm6bvjYu5CqcPqSsx6XPjhsekF++I1a416FhKAvq+QToVxU4R
+        /jxeqEdcbfAjh+cYy4+Ok84g+/k=
+X-Google-Smtp-Source: APXvYqyonPInRxbAMGQl2hwLQwS/48+nL2yvk8JmSyXJ1spifByiYwVKYRs1Boi9uh0ZxldkZOgtnw==
+X-Received: by 2002:a5d:85d5:: with SMTP id e21mr2348037ios.27.1554826553335;
+        Tue, 09 Apr 2019 09:15:53 -0700 (PDT)
 Received: from localhost.localdomain (c-68-40-189-247.hsd1.mi.comcast.net. [68.40.189.247])
-        by smtp.gmail.com with ESMTPSA id d133sm7402425ita.5.2019.04.09.09.15.50
+        by smtp.gmail.com with ESMTPSA id d133sm7402425ita.5.2019.04.09.09.15.52
         (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
-        Tue, 09 Apr 2019 09:15:50 -0700 (PDT)
+        Tue, 09 Apr 2019 09:15:52 -0700 (PDT)
 From:   Trond Myklebust <trondmy@gmail.com>
 X-Google-Original-From: Trond Myklebust <trond.myklebust@hammerspace.com>
 To:     "J. Bruce Fields" <bfields@redhat.com>
 Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH v2 1/6] SUNRPC: Cache the process user cred in the RPC server listener
-Date:   Tue,  9 Apr 2019 12:13:37 -0400
-Message-Id: <20190409161342.34338-2-trond.myklebust@hammerspace.com>
+Subject: [PATCH v2 3/6] lockd: Pass the user cred from knfsd when starting the lockd server
+Date:   Tue,  9 Apr 2019 12:13:39 -0400
+Message-Id: <20190409161342.34338-4-trond.myklebust@hammerspace.com>
 X-Mailer: git-send-email 2.20.1
-In-Reply-To: <20190409161342.34338-1-trond.myklebust@hammerspace.com>
+In-Reply-To: <20190409161342.34338-3-trond.myklebust@hammerspace.com>
 References: <20190409161342.34338-1-trond.myklebust@hammerspace.com>
+ <20190409161342.34338-2-trond.myklebust@hammerspace.com>
+ <20190409161342.34338-3-trond.myklebust@hammerspace.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
@@ -72,330 +74,181 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-In order to be able to interpret uids and gids correctly in knfsd, we
-should cache the user namespace of the process that created the RPC
-server's listener. To do so, we refcount the credential of that process.
+When starting up a new knfsd server, pass the user cred to the
+supporting lockd server.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/lockd/svc.c                  |  3 ++-
- fs/nfs/callback.c               |  7 +++++--
- fs/nfsd/nfsctl.c                | 16 ++++++++--------
- fs/nfsd/nfsd.h                  |  2 +-
- fs/nfsd/nfssvc.c                | 14 +++++++-------
- include/linux/sunrpc/svc_xprt.h |  4 +++-
- include/linux/sunrpc/svcsock.h  |  3 ++-
- net/sunrpc/svc_xprt.c           | 12 ++++++++----
- net/sunrpc/svcsock.c            |  4 +++-
- 9 files changed, 39 insertions(+), 26 deletions(-)
+ fs/lockd/clntlock.c        |  4 ++--
+ fs/lockd/svc.c             | 28 ++++++++++++++++------------
+ fs/nfs/client.c            |  1 +
+ fs/nfsd/nfssvc.c           |  2 +-
+ include/linux/lockd/bind.h |  3 ++-
+ 5 files changed, 22 insertions(+), 16 deletions(-)
 
+diff --git a/fs/lockd/clntlock.c b/fs/lockd/clntlock.c
+index c2a128678e6e..d61b72b693cf 100644
+--- a/fs/lockd/clntlock.c
++++ b/fs/lockd/clntlock.c
+@@ -56,7 +56,7 @@ struct nlm_host *nlmclnt_init(const struct nlmclnt_initdata *nlm_init)
+ 	u32 nlm_version = (nlm_init->nfs_version == 2) ? 1 : 4;
+ 	int status;
+ 
+-	status = lockd_up(nlm_init->net);
++	status = lockd_up(nlm_init->net, nlm_init->cred);
+ 	if (status < 0)
+ 		return ERR_PTR(status);
+ 
+@@ -241,7 +241,7 @@ reclaimer(void *ptr)
+ 	allow_signal(SIGKILL);
+ 
+ 	down_write(&host->h_rwsem);
+-	lockd_up(net);	/* note: this cannot fail as lockd is already running */
++	lockd_up(net, NULL);	/* note: this cannot fail as lockd is already running */
+ 
+ 	dprintk("lockd: reclaiming locks for host %s\n", host->h_name);
+ 
 diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-index 96bb74c919f9..82aa0f35e43d 100644
+index 82aa0f35e43d..3056f3a0c270 100644
 --- a/fs/lockd/svc.c
 +++ b/fs/lockd/svc.c
-@@ -190,12 +190,13 @@ static int create_lockd_listener(struct svc_serv *serv, const char *name,
+@@ -188,9 +188,9 @@ lockd(void *vrqstp)
+ 
+ static int create_lockd_listener(struct svc_serv *serv, const char *name,
  				 struct net *net, const int family,
- 				 const unsigned short port)
+-				 const unsigned short port)
++				 const unsigned short port,
++				 const struct cred *cred)
  {
-+	const struct cred *cred = current_cred();
+-	const struct cred *cred = current_cred();
  	struct svc_xprt *xprt;
  
  	xprt = svc_find_xprt(serv, name, net, family, 0);
- 	if (xprt == NULL)
- 		return svc_create_xprt(serv, name, net, family, port,
--						SVC_SOCK_DEFAULTS);
-+						SVC_SOCK_DEFAULTS, cred);
- 	svc_xprt_put(xprt);
- 	return 0;
- }
-diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-index 15c9575e0e7a..7817ad94a6ba 100644
---- a/fs/nfs/callback.c
-+++ b/fs/nfs/callback.c
-@@ -41,11 +41,13 @@ static struct svc_program nfs4_callback_program;
- 
- static int nfs4_callback_up_net(struct svc_serv *serv, struct net *net)
- {
-+	const struct cred *cred = current_cred();
- 	int ret;
- 	struct nfs_net *nn = net_generic(net, nfs_net_id);
- 
- 	ret = svc_create_xprt(serv, "tcp", net, PF_INET,
--				nfs_callback_set_tcpport, SVC_SOCK_ANONYMOUS);
-+				nfs_callback_set_tcpport, SVC_SOCK_ANONYMOUS,
-+				cred);
- 	if (ret <= 0)
- 		goto out_err;
- 	nn->nfs_callback_tcpport = ret;
-@@ -53,7 +55,8 @@ static int nfs4_callback_up_net(struct svc_serv *serv, struct net *net)
- 		nn->nfs_callback_tcpport, PF_INET, net->ns.inum);
- 
- 	ret = svc_create_xprt(serv, "tcp", net, PF_INET6,
--				nfs_callback_set_tcpport, SVC_SOCK_ANONYMOUS);
-+				nfs_callback_set_tcpport, SVC_SOCK_ANONYMOUS,
-+				cred);
- 	if (ret > 0) {
- 		nn->nfs_callback_tcpport6 = ret;
- 		dprintk("NFS: Callback listener port = %u (af %u, net %x)\n",
-diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index 2dc5a73cc464..4f9d9ea9ddfd 100644
---- a/fs/nfsd/nfsctl.c
-+++ b/fs/nfsd/nfsctl.c
-@@ -439,7 +439,7 @@ static ssize_t write_threads(struct file *file, char *buf, size_t size)
- 			return rv;
- 		if (newthreads < 0)
- 			return -EINVAL;
--		rv = nfsd_svc(newthreads, net);
-+		rv = nfsd_svc(newthreads, net, file->f_cred);
- 		if (rv < 0)
- 			return rv;
- 	} else
-@@ -717,7 +717,7 @@ static ssize_t __write_ports_names(char *buf, struct net *net)
-  * a socket of a supported family/protocol, and we use it as an
-  * nfsd listener.
-  */
--static ssize_t __write_ports_addfd(char *buf, struct net *net)
-+static ssize_t __write_ports_addfd(char *buf, struct net *net, const struct cred *cred)
- {
- 	char *mesg = buf;
- 	int fd, err;
-@@ -736,7 +736,7 @@ static ssize_t __write_ports_addfd(char *buf, struct net *net)
- 	if (err != 0)
- 		return err;
- 
--	err = svc_addsock(nn->nfsd_serv, fd, buf, SIMPLE_TRANSACTION_LIMIT);
-+	err = svc_addsock(nn->nfsd_serv, fd, buf, SIMPLE_TRANSACTION_LIMIT, cred);
- 	if (err < 0) {
- 		nfsd_destroy(net);
- 		return err;
-@@ -751,7 +751,7 @@ static ssize_t __write_ports_addfd(char *buf, struct net *net)
-  * A transport listener is added by writing it's transport name and
-  * a port number.
-  */
--static ssize_t __write_ports_addxprt(char *buf, struct net *net)
-+static ssize_t __write_ports_addxprt(char *buf, struct net *net, const struct cred *cred)
- {
- 	char transport[16];
- 	struct svc_xprt *xprt;
-@@ -769,12 +769,12 @@ static ssize_t __write_ports_addxprt(char *buf, struct net *net)
- 		return err;
- 
- 	err = svc_create_xprt(nn->nfsd_serv, transport, net,
--				PF_INET, port, SVC_SOCK_ANONYMOUS);
-+				PF_INET, port, SVC_SOCK_ANONYMOUS, cred);
- 	if (err < 0)
- 		goto out_err;
- 
- 	err = svc_create_xprt(nn->nfsd_serv, transport, net,
--				PF_INET6, port, SVC_SOCK_ANONYMOUS);
-+				PF_INET6, port, SVC_SOCK_ANONYMOUS, cred);
- 	if (err < 0 && err != -EAFNOSUPPORT)
- 		goto out_close;
- 
-@@ -799,10 +799,10 @@ static ssize_t __write_ports(struct file *file, char *buf, size_t size,
- 		return __write_ports_names(buf, net);
- 
- 	if (isdigit(buf[0]))
--		return __write_ports_addfd(buf, net);
-+		return __write_ports_addfd(buf, net, file->f_cred);
- 
- 	if (isalpha(buf[0]))
--		return __write_ports_addxprt(buf, net);
-+		return __write_ports_addxprt(buf, net, file->f_cred);
- 
- 	return -EINVAL;
- }
-diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
-index 6bae2554b2b2..d200c8680259 100644
---- a/fs/nfsd/nfsd.h
-+++ b/fs/nfsd/nfsd.h
-@@ -73,7 +73,7 @@ extern const struct seq_operations nfs_exports_op;
- /*
-  * Function prototypes.
-  */
--int		nfsd_svc(int nrservs, struct net *net);
-+int		nfsd_svc(int nrservs, struct net *net, const struct cred *cred);
- int		nfsd_dispatch(struct svc_rqst *rqstp, __be32 *statp);
- 
- int		nfsd_nrthreads(struct net *);
-diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index 520757774614..32e4d8a334e3 100644
---- a/fs/nfsd/nfssvc.c
-+++ b/fs/nfsd/nfssvc.c
-@@ -283,7 +283,7 @@ int nfsd_nrthreads(struct net *net)
- 	return rv;
+@@ -202,15 +202,17 @@ static int create_lockd_listener(struct svc_serv *serv, const char *name,
  }
  
--static int nfsd_init_socks(struct net *net)
-+static int nfsd_init_socks(struct net *net, const struct cred *cred)
- {
- 	int error;
- 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
-@@ -292,12 +292,12 @@ static int nfsd_init_socks(struct net *net)
- 		return 0;
- 
- 	error = svc_create_xprt(nn->nfsd_serv, "udp", net, PF_INET, NFS_PORT,
--					SVC_SOCK_DEFAULTS);
-+					SVC_SOCK_DEFAULTS, cred);
- 	if (error < 0)
- 		return error;
- 
- 	error = svc_create_xprt(nn->nfsd_serv, "tcp", net, PF_INET, NFS_PORT,
--					SVC_SOCK_DEFAULTS);
-+					SVC_SOCK_DEFAULTS, cred);
- 	if (error < 0)
- 		return error;
- 
-@@ -348,7 +348,7 @@ static bool nfsd_needs_lockd(struct nfsd_net *nn)
- 	return nfsd_vers(nn, 2, NFSD_TEST) || nfsd_vers(nn, 3, NFSD_TEST);
- }
- 
--static int nfsd_startup_net(int nrservs, struct net *net)
-+static int nfsd_startup_net(int nrservs, struct net *net, const struct cred *cred)
- {
- 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
- 	int ret;
-@@ -359,7 +359,7 @@ static int nfsd_startup_net(int nrservs, struct net *net)
- 	ret = nfsd_startup_generic(nrservs);
- 	if (ret)
- 		return ret;
--	ret = nfsd_init_socks(net);
-+	ret = nfsd_init_socks(net, cred);
- 	if (ret)
- 		goto out_socks;
- 
-@@ -697,7 +697,7 @@ int nfsd_set_nrthreads(int n, int *nthreads, struct net *net)
-  * this is the first time nrservs is nonzero.
-  */
- int
--nfsd_svc(int nrservs, struct net *net)
-+nfsd_svc(int nrservs, struct net *net, const struct cred *cred)
- {
- 	int	error;
- 	bool	nfsd_up_before;
-@@ -719,7 +719,7 @@ nfsd_svc(int nrservs, struct net *net)
- 
- 	nfsd_up_before = nn->nfsd_net_up;
- 
--	error = nfsd_startup_net(nrservs, net);
-+	error = nfsd_startup_net(nrservs, net, cred);
- 	if (error)
- 		goto out_destroy;
- 	error = nn->nfsd_serv->sv_ops->svo_setup(nn->nfsd_serv,
-diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
-index b3f9577e17d6..ea6f46be9cb7 100644
---- a/include/linux/sunrpc/svc_xprt.h
-+++ b/include/linux/sunrpc/svc_xprt.h
-@@ -86,6 +86,7 @@ struct svc_xprt {
- 	struct list_head	xpt_users;	/* callbacks on free */
- 
- 	struct net		*xpt_net;
-+	const struct cred	*xpt_cred;
- 	struct rpc_xprt		*xpt_bc_xprt;	/* NFSv4.1 backchannel */
- 	struct rpc_xprt_switch	*xpt_bc_xps;	/* NFSv4.1 backchannel */
- };
-@@ -119,7 +120,8 @@ void	svc_unreg_xprt_class(struct svc_xprt_class *);
- void	svc_xprt_init(struct net *, struct svc_xprt_class *, struct svc_xprt *,
- 		      struct svc_serv *);
- int	svc_create_xprt(struct svc_serv *, const char *, struct net *,
--			const int, const unsigned short, int);
-+			const int, const unsigned short, int,
-+			const struct cred *);
- void	svc_xprt_do_enqueue(struct svc_xprt *xprt);
- void	svc_xprt_enqueue(struct svc_xprt *xprt);
- void	svc_xprt_put(struct svc_xprt *xprt);
-diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
-index 119718a922f2..771baadaee9d 100644
---- a/include/linux/sunrpc/svcsock.h
-+++ b/include/linux/sunrpc/svcsock.h
-@@ -59,7 +59,8 @@ void		svc_drop(struct svc_rqst *);
- void		svc_sock_update_bufs(struct svc_serv *serv);
- bool		svc_alien_sock(struct net *net, int fd);
- int		svc_addsock(struct svc_serv *serv, const int fd,
--					char *name_return, const size_t len);
-+					char *name_return, const size_t len,
-+					const struct cred *cred);
- void		svc_init_xprt_sock(void);
- void		svc_cleanup_xprt_sock(void);
- struct svc_xprt *svc_sock_create(struct svc_serv *serv, int prot);
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index 61530b1b7754..b76ee83d4d43 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -136,6 +136,7 @@ static void svc_xprt_free(struct kref *kref)
- 	struct module *owner = xprt->xpt_class->xcl_owner;
- 	if (test_bit(XPT_CACHE_AUTH, &xprt->xpt_flags))
- 		svcauth_unix_info_release(xprt);
-+	put_cred(xprt->xpt_cred);
- 	put_net(xprt->xpt_net);
- 	/* See comment on corresponding get in xs_setup_bc_tcp(): */
- 	if (xprt->xpt_bc_xprt)
-@@ -252,7 +253,8 @@ void svc_add_new_perm_xprt(struct svc_serv *serv, struct svc_xprt *new)
- 
- static int _svc_create_xprt(struct svc_serv *serv, const char *xprt_name,
- 			    struct net *net, const int family,
--			    const unsigned short port, int flags)
-+			    const unsigned short port, int flags,
-+			    const struct cred *cred)
- {
- 	struct svc_xprt_class *xcl;
- 
-@@ -273,6 +275,7 @@ static int _svc_create_xprt(struct svc_serv *serv, const char *xprt_name,
- 			module_put(xcl->xcl_owner);
- 			return PTR_ERR(newxprt);
- 		}
-+		newxprt->xpt_cred = get_cred(cred);
- 		svc_add_new_perm_xprt(serv, newxprt);
- 		newport = svc_xprt_local_port(newxprt);
- 		return newport;
-@@ -286,15 +289,16 @@ static int _svc_create_xprt(struct svc_serv *serv, const char *xprt_name,
- 
- int svc_create_xprt(struct svc_serv *serv, const char *xprt_name,
- 		    struct net *net, const int family,
--		    const unsigned short port, int flags)
-+		    const unsigned short port, int flags,
-+		    const struct cred *cred)
+ static int create_lockd_family(struct svc_serv *serv, struct net *net,
+-			       const int family)
++			       const int family, const struct cred *cred)
  {
  	int err;
  
- 	dprintk("svc: creating transport %s[%d]\n", xprt_name, port);
--	err = _svc_create_xprt(serv, xprt_name, net, family, port, flags);
-+	err = _svc_create_xprt(serv, xprt_name, net, family, port, flags, cred);
- 	if (err == -EPROTONOSUPPORT) {
- 		request_module("svc%s", xprt_name);
--		err = _svc_create_xprt(serv, xprt_name, net, family, port, flags);
-+		err = _svc_create_xprt(serv, xprt_name, net, family, port, flags, cred);
- 	}
+-	err = create_lockd_listener(serv, "udp", net, family, nlm_udpport);
++	err = create_lockd_listener(serv, "udp", net, family, nlm_udpport,
++			cred);
  	if (err < 0)
- 		dprintk("svc: transport %s not found, err %d\n",
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 43590a968b73..540fde2804d0 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -1332,13 +1332,14 @@ EXPORT_SYMBOL_GPL(svc_alien_sock);
-  * @fd: file descriptor of the new listener
-  * @name_return: pointer to buffer to fill in with name of listener
-  * @len: size of the buffer
-+ * @cred: credential
-  *
-  * Fills in socket name and returns positive length of name if successful.
-  * Name is terminated with '\n'.  On error, returns a negative errno
-  * value.
+ 		return err;
+ 
+-	return create_lockd_listener(serv, "tcp", net, family, nlm_tcpport);
++	return create_lockd_listener(serv, "tcp", net, family, nlm_tcpport,
++			cred);
+ }
+ 
+ /*
+@@ -223,16 +225,17 @@ static int create_lockd_family(struct svc_serv *serv, struct net *net,
+  * Returns zero if all listeners are available; otherwise a
+  * negative errno value is returned.
   */
- int svc_addsock(struct svc_serv *serv, const int fd, char *name_return,
--		const size_t len)
-+		const size_t len, const struct cred *cred)
+-static int make_socks(struct svc_serv *serv, struct net *net)
++static int make_socks(struct svc_serv *serv, struct net *net,
++		const struct cred *cred)
  {
- 	int err = 0;
- 	struct socket *so = sockfd_lookup(fd, &err);
-@@ -1371,6 +1372,7 @@ int svc_addsock(struct svc_serv *serv, const int fd, char *name_return,
- 	salen = kernel_getsockname(svsk->sk_sock, sin);
- 	if (salen >= 0)
- 		svc_xprt_set_local(&svsk->sk_xprt, sin, salen);
-+	svsk->sk_xprt.xpt_cred = get_cred(cred);
- 	svc_add_new_perm_xprt(serv, &svsk->sk_xprt);
- 	return svc_one_sock_name(svsk, name_return, len);
- out:
+ 	static int warned;
+ 	int err;
+ 
+-	err = create_lockd_family(serv, net, PF_INET);
++	err = create_lockd_family(serv, net, PF_INET, cred);
+ 	if (err < 0)
+ 		goto out_err;
+ 
+-	err = create_lockd_family(serv, net, PF_INET6);
++	err = create_lockd_family(serv, net, PF_INET6, cred);
+ 	if (err < 0 && err != -EAFNOSUPPORT)
+ 		goto out_err;
+ 
+@@ -247,7 +250,8 @@ static int make_socks(struct svc_serv *serv, struct net *net)
+ 	return err;
+ }
+ 
+-static int lockd_up_net(struct svc_serv *serv, struct net *net)
++static int lockd_up_net(struct svc_serv *serv, struct net *net,
++		const struct cred *cred)
+ {
+ 	struct lockd_net *ln = net_generic(net, lockd_net_id);
+ 	int error;
+@@ -259,7 +263,7 @@ static int lockd_up_net(struct svc_serv *serv, struct net *net)
+ 	if (error)
+ 		goto err_bind;
+ 
+-	error = make_socks(serv, net);
++	error = make_socks(serv, net, cred);
+ 	if (error < 0)
+ 		goto err_bind;
+ 	set_grace_period(net);
+@@ -462,7 +466,7 @@ static struct svc_serv *lockd_create_svc(void)
+ /*
+  * Bring up the lockd process if it's not already up.
+  */
+-int lockd_up(struct net *net)
++int lockd_up(struct net *net, const struct cred *cred)
+ {
+ 	struct svc_serv *serv;
+ 	int error;
+@@ -475,7 +479,7 @@ int lockd_up(struct net *net)
+ 		goto err_create;
+ 	}
+ 
+-	error = lockd_up_net(serv, net);
++	error = lockd_up_net(serv, net, cred);
+ 	if (error < 0) {
+ 		lockd_unregister_notifiers();
+ 		goto err_put;
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 90d71fda65ce..92d07d99829d 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -552,6 +552,7 @@ static int nfs_start_lockd(struct nfs_server *server)
+ 					1 : 0,
+ 		.net		= clp->cl_net,
+ 		.nlmclnt_ops 	= clp->cl_nfs_mod->rpc_ops->nlmclnt_ops,
++		.cred		= current_cred(),
+ 	};
+ 
+ 	if (nlm_init.nfs_version > 3)
+diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+index 32e4d8a334e3..18d94ea984ba 100644
+--- a/fs/nfsd/nfssvc.c
++++ b/fs/nfsd/nfssvc.c
+@@ -364,7 +364,7 @@ static int nfsd_startup_net(int nrservs, struct net *net, const struct cred *cre
+ 		goto out_socks;
+ 
+ 	if (nfsd_needs_lockd(nn) && !nn->lockd_up) {
+-		ret = lockd_up(net);
++		ret = lockd_up(net, cred);
+ 		if (ret)
+ 			goto out_socks;
+ 		nn->lockd_up = 1;
+diff --git a/include/linux/lockd/bind.h b/include/linux/lockd/bind.h
+index 053a4ef3d431..0520c0cd73f4 100644
+--- a/include/linux/lockd/bind.h
++++ b/include/linux/lockd/bind.h
+@@ -46,6 +46,7 @@ struct nlmclnt_initdata {
+ 	int			noresvport;
+ 	struct net		*net;
+ 	const struct nlmclnt_operations	*nlmclnt_ops;
++	const struct cred	*cred;
+ };
+ 
+ /*
+@@ -75,7 +76,7 @@ struct nlmclnt_operations {
+ };
+ 
+ extern int	nlmclnt_proc(struct nlm_host *host, int cmd, struct file_lock *fl, void *data);
+-extern int	lockd_up(struct net *net);
++extern int	lockd_up(struct net *net, const struct cred *cred);
+ extern void	lockd_down(struct net *net);
+ 
+ #endif /* LINUX_LOCKD_BIND_H */
 -- 
 2.20.1
 
