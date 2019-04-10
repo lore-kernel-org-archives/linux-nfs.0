@@ -6,63 +6,62 @@ X-Spam-Status: No, score=-6.8 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
 	SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 866D6C10F11
-	for <linux-nfs@archiver.kernel.org>; Wed, 10 Apr 2019 20:07:17 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C0749C10F11
+	for <linux-nfs@archiver.kernel.org>; Wed, 10 Apr 2019 20:07:23 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 4CA452075B
-	for <linux-nfs@archiver.kernel.org>; Wed, 10 Apr 2019 20:07:17 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 7A78B2075B
+	for <linux-nfs@archiver.kernel.org>; Wed, 10 Apr 2019 20:07:23 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="b5ZkQY5Z"
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="RMlgj2i3"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726677AbfDJUHQ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 10 Apr 2019 16:07:16 -0400
-Received: from mail-it1-f193.google.com ([209.85.166.193]:54280 "EHLO
-        mail-it1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726676AbfDJUHQ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Apr 2019 16:07:16 -0400
-Received: by mail-it1-f193.google.com with SMTP id a190so5650700ite.4;
-        Wed, 10 Apr 2019 13:07:15 -0700 (PDT)
+        id S1726676AbfDJUHX (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 10 Apr 2019 16:07:23 -0400
+Received: from mail-io1-f66.google.com ([209.85.166.66]:36372 "EHLO
+        mail-io1-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726630AbfDJUHW (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Apr 2019 16:07:22 -0400
+Received: by mail-io1-f66.google.com with SMTP id f6so3311259iop.3;
+        Wed, 10 Apr 2019 13:07:21 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=sender:subject:from:to:date:message-id:in-reply-to:references
          :user-agent:mime-version:content-transfer-encoding;
-        bh=snr8z6i87QWdT9D3/dpQn/TAuX5AFIwkNjR5xX7wWrU=;
-        b=b5ZkQY5Z3WXqQNiFE+qNbwvHqLZnavEVLbk+LHUcPekQvS61c1YtRgbPxmwkEJnl8H
-         bzOVxEcRzDB8nMtV71vTKJqfF5bCfVbgTO6mDy78Wb8CBj/quR0HLwNBrPZrx+7qm+vM
-         BsLIPVvPAELANDp4f9kaZknbny3XFoDNbNKCU0GHE9DD1gThdL62G70ppwvBf9lAXGJ2
-         r89GKLjmx3rlNLDnb1foTCuealU/xw0BMfNOU1TnNusN3pAdaSIXXYQuLDO3s9WGXPlc
-         J2g8cmlAf527uKD8Ud4dA5wAqJNVbPMIUZ/QrYtv9Zp0Ku/Du4/YVsqhbFjgP6kmGSSW
-         zb/g==
+        bh=toDQ46RdjQDAf3jPzbjmNedils0Y9a1AZ0vpnGko7D4=;
+        b=RMlgj2i3pf7KF85zuG1/FnZx4uMtx7AgXqMT7HmmEE9xgMg75JIKYAN79gVfYMxGvF
+         CUK2BEi1Ur/jZos+ly4eOo0sAE9sbSQMPra7svrTIz5w0RDikmvnsdWxqWiTSdEQmDYw
+         q+0nYEdeeDlVISiLWezG0blhMWC/hG7Aj2yLgbkUTNJZmH6rpc86AlXLg23aMAkZnILr
+         wzOeqLbqzQbBskZUG+7c0xL8VxHa6pzW7DorWA9lo+lYkl/ulggSvY5f1PgCSHo9bT5V
+         FEKFeDHC+zWmJobalq9/KKB0oZ6bJoVA7q+1tNKIQYontlPlvXiRy/ZiKFKeJHxLF+fl
+         truA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:sender:subject:from:to:date:message-id
          :in-reply-to:references:user-agent:mime-version
          :content-transfer-encoding;
-        bh=snr8z6i87QWdT9D3/dpQn/TAuX5AFIwkNjR5xX7wWrU=;
-        b=ZffVil9vNhbAM8XMvT3zh2RguYfLYkph1elURdFhLzjxWwrjKXGYOPC+OnBUPf/+pa
-         4twc2yEJaD+VUP2u0VMN+3PBHU3Y5cAVQm3v5LSo/3+OyJq1B3FUlmakLAP0b7P87ft7
-         dJEP9x/IGsXOnJruBoZGSxK5o7ogYHTKjT0WRE3er/fB3c0+nMxwtcQIuCmxANBkENYO
-         XccAT4jCSeikbLwESFV4xTCgkN88U9XkbxTYnU1s90j+7BRH2s+RDvp94WDN1TdmJmq7
-         m3nroh+uuEnmgfI985D4TS5UIxoNU9qrFssw/OsfvOwk92tnbW1Id9EVQFvw54CQHHOt
-         zZAA==
-X-Gm-Message-State: APjAAAXC9+BaVlb8uf87DKJV4bbch+m1ghdafckVRkdgTs4sIxnUJXxN
-        52iw9sDt9gBnyBmcBlzsjx4bxNRL
-X-Google-Smtp-Source: APXvYqzsOqz7eXPLgv+mVOVrQhT9wzAlVVPlS3Up17rLvu1UfkGlk4UN5nUIBAL1qRBgBZvU0+3edA==
-X-Received: by 2002:a24:5e53:: with SMTP id h80mr5300803itb.48.1554926835280;
-        Wed, 10 Apr 2019 13:07:15 -0700 (PDT)
+        bh=toDQ46RdjQDAf3jPzbjmNedils0Y9a1AZ0vpnGko7D4=;
+        b=UOcgsYpJYn/q/ubYFxnvmM8u/DjrKxVYFSVg25YHR8pKY5rSg7IMbx79ERFuCH+Z3A
+         CJq5LcQtZf0qDAPrztxDtYPAeD6K6U3jH/GyYFWmlTeDzLznuD2QMZtDOgjuMMEFKTmG
+         oErGw/XEqBnPiM3lNvQ8B57zTLgDIU4hIJ24XFSTDyBu6IJU8qSYE6yOMdyP3281U2Jv
+         kDz4JDV4iNSZ52/uHQaDBhI5Q5hnOMXoBPwC7/HVZYvtzr8ZY1Nf50tizwYPD0BrxTDh
+         EqyFqPa1Ama6ZaqJpbLolkpXRXQdHz6NURuHJTSFzYck+NVzR5/LMmvgrRcA9Gna0nSr
+         cFtA==
+X-Gm-Message-State: APjAAAW2J7TsJ9OpTxsSUK8pNM7iHWotB/u4UD/QCqGgzF1j2F1HsZwJ
+        4NGvKZdqH0cHP9ZIrEc+wNM7Cqf3
+X-Google-Smtp-Source: APXvYqyQy5tsClbEiomdYohtk3WESGgEp+U2qCZiBBrCuegMTMPyZ6vUqhXQ4q4iv4uGmEc9c244sw==
+X-Received: by 2002:a5e:8202:: with SMTP id l2mr8993213iom.144.1554926840650;
+        Wed, 10 Apr 2019 13:07:20 -0700 (PDT)
 Received: from gateway.1015granger.net (c-68-61-232-219.hsd1.mi.comcast.net. [68.61.232.219])
-        by smtp.gmail.com with ESMTPSA id f17sm1460944itb.13.2019.04.10.13.07.14
+        by smtp.gmail.com with ESMTPSA id a23sm8128048ios.20.2019.04.10.13.07.20
         (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Wed, 10 Apr 2019 13:07:14 -0700 (PDT)
+        Wed, 10 Apr 2019 13:07:20 -0700 (PDT)
 Received: from manet.1015granger.net (manet.1015granger.net [192.168.1.51])
-        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id x3AK7EkO004528;
-        Wed, 10 Apr 2019 20:07:14 GMT
-Subject: [PATCH v1 08/19] xprtrdma: De-duplicate "allocate new,
- free old regbuf"
+        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id x3AK7JGj004531;
+        Wed, 10 Apr 2019 20:07:19 GMT
+Subject: [PATCH v1 09/19] xprtrdma: Clean up regbuf helpers
 From:   Chuck Lever <chuck.lever@oracle.com>
 To:     linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date:   Wed, 10 Apr 2019 16:07:14 -0400
-Message-ID: <20190410200714.11522.56247.stgit@manet.1015granger.net>
+Date:   Wed, 10 Apr 2019 16:07:19 -0400
+Message-ID: <20190410200719.11522.11724.stgit@manet.1015granger.net>
 In-Reply-To: <20190410200446.11522.21145.stgit@manet.1015granger.net>
 References: <20190410200446.11522.21145.stgit@manet.1015granger.net>
 User-Agent: StGit/0.17.1-dirty
@@ -74,145 +73,381 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Clean up by providing an API to do this common task.
+For code legibility, clean up the function names to be consistent
+with the pattern: "rpcrdma" _ object-type _ action
 
-At this point, the difference between rpcrdma_get_sendbuf and
-rpcrdma_get_recvbuf has become tiny. These can be collapsed into a
-single helper.
+Also rpcrdma_regbuf_alloc and rpcrdma_regbuf_free no longer have any
+callers outside of verbs.c, and can thus be made static.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/transport.c |   59 ++++++++-------------------------------
- net/sunrpc/xprtrdma/verbs.c     |   25 +++++++++++++++++
- net/sunrpc/xprtrdma/xprt_rdma.h |    2 +
- 3 files changed, 39 insertions(+), 47 deletions(-)
+ net/sunrpc/xprtrdma/rpc_rdma.c  |   47 ++++++++++-----------
+ net/sunrpc/xprtrdma/verbs.c     |   88 +++++++++++++++++----------------------
+ net/sunrpc/xprtrdma/xprt_rdma.h |   27 ++++++++----
+ 3 files changed, 80 insertions(+), 82 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index 09a4693..47d2e00 100644
---- a/net/sunrpc/xprtrdma/transport.c
-+++ b/net/sunrpc/xprtrdma/transport.c
-@@ -585,52 +585,15 @@ void xprt_rdma_close(struct rpc_xprt *xprt)
- 	rpc_wake_up_next(&xprt->backlog);
- }
+diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
+index 31032c7..20b0df7 100644
+--- a/net/sunrpc/xprtrdma/rpc_rdma.c
++++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+@@ -536,22 +536,21 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
  
+ /* Prepare an SGE for the RPC-over-RDMA transport header.
+  */
 -static bool
--rpcrdma_get_sendbuf(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req,
--		    size_t size, gfp_t flags)
-+static bool rpcrdma_check_regbuf(struct rpcrdma_xprt *r_xprt,
-+				 struct rpcrdma_regbuf *rb, size_t size,
-+				 gfp_t flags)
+-rpcrdma_prepare_hdr_sge(struct rpcrdma_ia *ia, struct rpcrdma_req *req,
+-			u32 len)
++static bool rpcrdma_prepare_hdr_sge(struct rpcrdma_xprt *r_xprt,
++				    struct rpcrdma_req *req, u32 len)
  {
--	struct rpcrdma_regbuf *rb;
--
--	if (likely(rdmab_length(req->rl_sendbuf) >= size))
--		return true;
--
--	rb = rpcrdma_alloc_regbuf(size, DMA_TO_DEVICE, flags);
--	if (!rb)
--		return false;
--
--	rpcrdma_free_regbuf(req->rl_sendbuf);
--	r_xprt->rx_stats.hardway_register_count += size;
--	req->rl_sendbuf = rb;
--	return true;
--}
--
--/* The rq_rcv_buf is used only if a Reply chunk is necessary.
-- * The decision to use a Reply chunk is made later in
-- * rpcrdma_marshal_req. This buffer is registered at that time.
-- *
-- * Otherwise, the associated RPC Reply arrives in a separate
-- * Receive buffer, arbitrarily chosen by the HCA. The buffer
-- * allocated here for the RPC Reply is not utilized in that
-- * case. See rpcrdma_inline_fixup.
-- *
-- * A regbuf is used here to remember the buffer size.
-- */
--static bool
--rpcrdma_get_recvbuf(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req,
--		    size_t size, gfp_t flags)
--{
--	struct rpcrdma_regbuf *rb;
--
--	if (likely(rdmab_length(req->rl_recvbuf) >= size))
--		return true;
--
--	rb = rpcrdma_alloc_regbuf(size, DMA_NONE, flags);
--	if (!rb)
--		return false;
--
--	rpcrdma_free_regbuf(req->rl_recvbuf);
--	r_xprt->rx_stats.hardway_register_count += size;
--	req->rl_recvbuf = rb;
-+	if (unlikely(rdmab_length(rb) < size)) {
-+		if (!rpcrdma_regbuf_realloc(rb, size, flags))
-+			return false;
-+		r_xprt->rx_stats.hardway_register_count += size;
-+	}
+ 	struct rpcrdma_sendctx *sc = req->rl_sendctx;
+ 	struct rpcrdma_regbuf *rb = req->rl_rdmabuf;
+ 	struct ib_sge *sge = sc->sc_sges;
+ 
+-	if (!rpcrdma_dma_map_regbuf(ia, rb))
++	if (!rpcrdma_regbuf_dma_map(r_xprt, rb))
+ 		goto out_regbuf;
+ 	sge->addr = rdmab_addr(rb);
+ 	sge->length = len;
+ 	sge->lkey = rdmab_lkey(rb);
+ 
+-	ib_dma_sync_single_for_device(rdmab_device(rb), sge->addr,
+-				      sge->length, DMA_TO_DEVICE);
++	ib_dma_sync_single_for_device(rdmab_device(rb), sge->addr, sge->length,
++				      DMA_TO_DEVICE);
+ 	sc->sc_wr.num_sge++;
  	return true;
- }
  
-@@ -655,9 +618,11 @@ void xprt_rdma_close(struct rpc_xprt *xprt)
- 	if (RPC_IS_SWAPPER(task))
- 		flags = __GFP_MEMALLOC | GFP_NOWAIT | __GFP_NOWARN;
+@@ -563,22 +562,21 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
+ /* Prepare the Send SGEs. The head and tail iovec, and each entry
+  * in the page list, gets its own SGE.
+  */
+-static bool
+-rpcrdma_prepare_msg_sges(struct rpcrdma_ia *ia, struct rpcrdma_req *req,
+-			 struct xdr_buf *xdr, enum rpcrdma_chunktype rtype)
++static bool rpcrdma_prepare_msg_sges(struct rpcrdma_xprt *r_xprt,
++				     struct rpcrdma_req *req,
++				     struct xdr_buf *xdr,
++				     enum rpcrdma_chunktype rtype)
+ {
+ 	struct rpcrdma_sendctx *sc = req->rl_sendctx;
+ 	unsigned int sge_no, page_base, len, remaining;
+ 	struct rpcrdma_regbuf *rb = req->rl_sendbuf;
+-	struct ib_device *device = ia->ri_device;
+ 	struct ib_sge *sge = sc->sc_sges;
+-	u32 lkey = ia->ri_pd->local_dma_lkey;
+ 	struct page *page, **ppages;
  
--	if (!rpcrdma_get_sendbuf(r_xprt, req, rqst->rq_callsize, flags))
-+	if (!rpcrdma_check_regbuf(r_xprt, req->rl_sendbuf, rqst->rq_callsize,
-+				  flags))
- 		goto out_fail;
--	if (!rpcrdma_get_recvbuf(r_xprt, req, rqst->rq_rcvsize, flags))
-+	if (!rpcrdma_check_regbuf(r_xprt, req->rl_recvbuf, rqst->rq_rcvsize,
-+				  flags))
- 		goto out_fail;
+ 	/* The head iovec is straightforward, as it is already
+ 	 * DMA-mapped. Sync the content that has changed.
+ 	 */
+-	if (!rpcrdma_dma_map_regbuf(ia, rb))
++	if (!rpcrdma_regbuf_dma_map(r_xprt, rb))
+ 		goto out_regbuf;
+ 	sge_no = 1;
+ 	sge[sge_no].addr = rdmab_addr(rb);
+@@ -626,13 +624,14 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
+ 				goto out_mapping_overflow;
  
- 	rqst->rq_buffer = rdmab_data(req->rl_sendbuf);
+ 			len = min_t(u32, PAGE_SIZE - page_base, remaining);
+-			sge[sge_no].addr = ib_dma_map_page(device, *ppages,
+-							   page_base, len,
+-							   DMA_TO_DEVICE);
+-			if (ib_dma_mapping_error(device, sge[sge_no].addr))
++			sge[sge_no].addr =
++				ib_dma_map_page(rdmab_device(rb), *ppages,
++						page_base, len, DMA_TO_DEVICE);
++			if (ib_dma_mapping_error(rdmab_device(rb),
++						 sge[sge_no].addr))
+ 				goto out_mapping_err;
+ 			sge[sge_no].length = len;
+-			sge[sge_no].lkey = lkey;
++			sge[sge_no].lkey = rdmab_lkey(rb);
+ 
+ 			sc->sc_unmap_count++;
+ 			ppages++;
+@@ -653,13 +652,13 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
+ 
+ map_tail:
+ 		sge_no++;
+-		sge[sge_no].addr = ib_dma_map_page(device, page,
+-						   page_base, len,
+-						   DMA_TO_DEVICE);
+-		if (ib_dma_mapping_error(device, sge[sge_no].addr))
++		sge[sge_no].addr =
++			ib_dma_map_page(rdmab_device(rb), page, page_base, len,
++					DMA_TO_DEVICE);
++		if (ib_dma_mapping_error(rdmab_device(rb), sge[sge_no].addr))
+ 			goto out_mapping_err;
+ 		sge[sge_no].length = len;
+-		sge[sge_no].lkey = lkey;
++		sge[sge_no].lkey = rdmab_lkey(rb);
+ 		sc->sc_unmap_count++;
+ 	}
+ 
+@@ -707,11 +706,11 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
+ 	req->rl_sendctx->sc_req = req;
+ 	__clear_bit(RPCRDMA_REQ_F_TX_RESOURCES, &req->rl_flags);
+ 
+-	if (!rpcrdma_prepare_hdr_sge(&r_xprt->rx_ia, req, hdrlen))
++	if (!rpcrdma_prepare_hdr_sge(r_xprt, req, hdrlen))
+ 		return -EIO;
+ 
+ 	if (rtype != rpcrdma_areadch)
+-		if (!rpcrdma_prepare_msg_sges(&r_xprt->rx_ia, req, xdr, rtype))
++		if (!rpcrdma_prepare_msg_sges(r_xprt, req, xdr, rtype))
+ 			return -EIO;
+ 
+ 	return 0;
 diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index e4644fd..c691939 100644
+index c691939..127c1f6 100644
 --- a/net/sunrpc/xprtrdma/verbs.c
 +++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -1400,6 +1400,31 @@ struct rpcrdma_regbuf *
+@@ -76,7 +76,11 @@
+ static void rpcrdma_sendctx_put_locked(struct rpcrdma_sendctx *sc);
+ static void rpcrdma_mrs_create(struct rpcrdma_xprt *r_xprt);
+ static void rpcrdma_mrs_destroy(struct rpcrdma_buffer *buf);
+-static void rpcrdma_dma_unmap_regbuf(struct rpcrdma_regbuf *rb);
++static struct rpcrdma_regbuf *
++rpcrdma_regbuf_alloc(size_t size, enum dma_data_direction direction,
++		     gfp_t flags);
++static void rpcrdma_regbuf_dma_unmap(struct rpcrdma_regbuf *rb);
++static void rpcrdma_regbuf_free(struct rpcrdma_regbuf *rb);
+ static void rpcrdma_post_recvs(struct rpcrdma_xprt *r_xprt, bool temp);
+ 
+ /* Wait for outstanding transport work to finish.
+@@ -437,11 +441,11 @@ static void rpcrdma_xprt_drain(struct rpcrdma_xprt *r_xprt)
+ 	 * mappings and MRs are gone.
+ 	 */
+ 	list_for_each_entry(rep, &buf->rb_recv_bufs, rr_list)
+-		rpcrdma_dma_unmap_regbuf(rep->rr_rdmabuf);
++		rpcrdma_regbuf_dma_unmap(rep->rr_rdmabuf);
+ 	list_for_each_entry(req, &buf->rb_allreqs, rl_all) {
+-		rpcrdma_dma_unmap_regbuf(req->rl_rdmabuf);
+-		rpcrdma_dma_unmap_regbuf(req->rl_sendbuf);
+-		rpcrdma_dma_unmap_regbuf(req->rl_recvbuf);
++		rpcrdma_regbuf_dma_unmap(req->rl_rdmabuf);
++		rpcrdma_regbuf_dma_unmap(req->rl_sendbuf);
++		rpcrdma_regbuf_dma_unmap(req->rl_recvbuf);
+ 	}
+ 	rpcrdma_mrs_destroy(buf);
+ 	ib_dealloc_pd(ia->ri_pd);
+@@ -1014,17 +1018,17 @@ struct rpcrdma_req *rpcrdma_req_create(struct rpcrdma_xprt *r_xprt, size_t size,
+ 	if (req == NULL)
+ 		goto out1;
+ 
+-	rb = rpcrdma_alloc_regbuf(RPCRDMA_HDRBUF_SIZE, DMA_TO_DEVICE, flags);
++	rb = rpcrdma_regbuf_alloc(RPCRDMA_HDRBUF_SIZE, DMA_TO_DEVICE, flags);
+ 	if (!rb)
+ 		goto out2;
+ 	req->rl_rdmabuf = rb;
+ 	xdr_buf_init(&req->rl_hdrbuf, rdmab_data(rb), rdmab_length(rb));
+ 
+-	req->rl_sendbuf = rpcrdma_alloc_regbuf(size, DMA_TO_DEVICE, flags);
++	req->rl_sendbuf = rpcrdma_regbuf_alloc(size, DMA_TO_DEVICE, flags);
+ 	if (!req->rl_sendbuf)
+ 		goto out3;
+ 
+-	req->rl_recvbuf = rpcrdma_alloc_regbuf(size, DMA_NONE, flags);
++	req->rl_recvbuf = rpcrdma_regbuf_alloc(size, DMA_NONE, flags);
+ 	if (!req->rl_recvbuf)
+ 		goto out4;
+ 
+@@ -1055,7 +1059,7 @@ static bool rpcrdma_rep_create(struct rpcrdma_xprt *r_xprt, bool temp)
+ 	if (rep == NULL)
+ 		goto out;
+ 
+-	rep->rr_rdmabuf = rpcrdma_alloc_regbuf(cdata->inline_rsize,
++	rep->rr_rdmabuf = rpcrdma_regbuf_alloc(cdata->inline_rsize,
+ 					       DMA_FROM_DEVICE, GFP_KERNEL);
+ 	if (!rep->rr_rdmabuf)
+ 		goto out_free;
+@@ -1138,7 +1142,7 @@ static bool rpcrdma_rep_create(struct rpcrdma_xprt *r_xprt, bool temp)
+ 
+ static void rpcrdma_rep_destroy(struct rpcrdma_rep *rep)
+ {
+-	rpcrdma_free_regbuf(rep->rr_rdmabuf);
++	rpcrdma_regbuf_free(rep->rr_rdmabuf);
+ 	kfree(rep);
+ }
+ 
+@@ -1154,9 +1158,9 @@ static void rpcrdma_rep_destroy(struct rpcrdma_rep *rep)
+ {
+ 	list_del(&req->rl_all);
+ 
+-	rpcrdma_free_regbuf(req->rl_recvbuf);
+-	rpcrdma_free_regbuf(req->rl_sendbuf);
+-	rpcrdma_free_regbuf(req->rl_rdmabuf);
++	rpcrdma_regbuf_free(req->rl_recvbuf);
++	rpcrdma_regbuf_free(req->rl_sendbuf);
++	rpcrdma_regbuf_free(req->rl_rdmabuf);
+ 	kfree(req);
+ }
+ 
+@@ -1366,20 +1370,14 @@ struct rpcrdma_req *
+ 	}
+ }
+ 
+-/**
+- * rpcrdma_alloc_regbuf - allocate and DMA-map memory for SEND/RECV buffers
+- * @size: size of buffer to be allocated, in bytes
+- * @direction: direction of data movement
+- * @flags: GFP flags
+- *
+- * Returns a pointer to a rpcrdma_regbuf object, or NULL.
++/* Returns a pointer to a rpcrdma_regbuf object, or NULL.
+  *
+  * xprtrdma uses a regbuf for posting an outgoing RDMA SEND, or for
+  * receiving the payload of RDMA RECV operations. During Long Calls
+  * or Replies they may be registered externally via frwr_map.
+  */
+-struct rpcrdma_regbuf *
+-rpcrdma_alloc_regbuf(size_t size, enum dma_data_direction direction,
++static struct rpcrdma_regbuf *
++rpcrdma_regbuf_alloc(size_t size, enum dma_data_direction direction,
+ 		     gfp_t flags)
+ {
+ 	struct rpcrdma_regbuf *rb;
+@@ -1416,7 +1414,7 @@ bool rpcrdma_regbuf_realloc(struct rpcrdma_regbuf *rb, size_t size, gfp_t flags)
+ 	if (!buf)
+ 		return false;
+ 
+-	rpcrdma_dma_unmap_regbuf(rb);
++	rpcrdma_regbuf_dma_unmap(rb);
+ 	kfree(rb->rg_data);
+ 
+ 	rb->rg_data = buf;
+@@ -1425,34 +1423,33 @@ bool rpcrdma_regbuf_realloc(struct rpcrdma_regbuf *rb, size_t size, gfp_t flags)
  }
  
  /**
-+ * rpcrdma_regbuf_realloc - re-allocate a SEND/RECV buffer
-+ * @rb: regbuf to reallocate
-+ * @size: size of buffer to be allocated, in bytes
-+ * @flags: GFP flags
-+ *
-+ * Returns true if reallocation was successful. If false is
-+ * returned, @rb is left untouched.
-+ */
-+bool rpcrdma_regbuf_realloc(struct rpcrdma_regbuf *rb, size_t size, gfp_t flags)
-+{
-+	void *buf;
-+
-+	buf = kmalloc(size, flags);
-+	if (!buf)
-+		return false;
-+
-+	rpcrdma_dma_unmap_regbuf(rb);
-+	kfree(rb->rg_data);
-+
-+	rb->rg_data = buf;
-+	rb->rg_iov.length = size;
-+	return true;
-+}
-+
-+/**
-  * __rpcrdma_map_regbuf - DMA-map a regbuf
-  * @ia: controlling rpcrdma_ia
+- * __rpcrdma_map_regbuf - DMA-map a regbuf
+- * @ia: controlling rpcrdma_ia
++ * __rpcrdma_regbuf_dma_map - DMA-map a regbuf
++ * @r_xprt: controlling transport instance
   * @rb: regbuf to be mapped
++ *
++ * Returns true if the buffer is now DMA mapped to @r_xprt's device
+  */
+-bool
+-__rpcrdma_dma_map_regbuf(struct rpcrdma_ia *ia, struct rpcrdma_regbuf *rb)
++bool __rpcrdma_regbuf_dma_map(struct rpcrdma_xprt *r_xprt,
++			      struct rpcrdma_regbuf *rb)
+ {
+-	struct ib_device *device = ia->ri_device;
++	struct ib_device *device = r_xprt->rx_ia.ri_device;
+ 
+ 	if (rb->rg_direction == DMA_NONE)
+ 		return false;
+ 
+-	rb->rg_iov.addr = ib_dma_map_single(device,
+-					    rdmab_data(rb),
+-					    rdmab_length(rb),
+-					    rb->rg_direction);
++	rb->rg_iov.addr = ib_dma_map_single(device, rdmab_data(rb),
++					    rdmab_length(rb), rb->rg_direction);
+ 	if (ib_dma_mapping_error(device, rdmab_addr(rb))) {
+ 		trace_xprtrdma_dma_maperr(rdmab_addr(rb));
+ 		return false;
+ 	}
+ 
+ 	rb->rg_device = device;
+-	rb->rg_iov.lkey = ia->ri_pd->local_dma_lkey;
++	rb->rg_iov.lkey = r_xprt->rx_ia.ri_pd->local_dma_lkey;
+ 	return true;
+ }
+ 
+-static void
+-rpcrdma_dma_unmap_regbuf(struct rpcrdma_regbuf *rb)
++static void rpcrdma_regbuf_dma_unmap(struct rpcrdma_regbuf *rb)
+ {
+ 	if (!rb)
+ 		return;
+@@ -1460,19 +1457,14 @@ bool rpcrdma_regbuf_realloc(struct rpcrdma_regbuf *rb, size_t size, gfp_t flags)
+ 	if (!rpcrdma_regbuf_is_mapped(rb))
+ 		return;
+ 
+-	ib_dma_unmap_single(rb->rg_device, rdmab_addr(rb),
+-			    rdmab_length(rb), rb->rg_direction);
++	ib_dma_unmap_single(rb->rg_device, rdmab_addr(rb), rdmab_length(rb),
++			    rb->rg_direction);
+ 	rb->rg_device = NULL;
+ }
+ 
+-/**
+- * rpcrdma_free_regbuf - deregister and free registered buffer
+- * @rb: regbuf to be deregistered and freed
+- */
+-void
+-rpcrdma_free_regbuf(struct rpcrdma_regbuf *rb)
++static void rpcrdma_regbuf_free(struct rpcrdma_regbuf *rb)
+ {
+-	rpcrdma_dma_unmap_regbuf(rb);
++	rpcrdma_regbuf_dma_unmap(rb);
+ 	if (rb)
+ 		kfree(rb->rg_data);
+ 	kfree(rb);
+@@ -1547,11 +1539,9 @@ bool rpcrdma_regbuf_realloc(struct rpcrdma_regbuf *rb, size_t size, gfp_t flags)
+ 		}
+ 
+ 		rb = rep->rr_rdmabuf;
+-		if (!rpcrdma_regbuf_is_mapped(rb)) {
+-			if (!__rpcrdma_dma_map_regbuf(&r_xprt->rx_ia, rb)) {
+-				rpcrdma_recv_buffer_put(rep);
+-				break;
+-			}
++		if (!rpcrdma_regbuf_dma_map(r_xprt, rb)) {
++			rpcrdma_recv_buffer_put(rep);
++			break;
+ 		}
+ 
+ 		trace_xprtrdma_post_recv(rep->rr_recv_wr.wr_cqe);
 diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index 202294a..a484ab3 100644
+index a484ab3..9871cd9 100644
 --- a/net/sunrpc/xprtrdma/xprt_rdma.h
 +++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -552,6 +552,8 @@ struct rpcrdma_req *rpcrdma_req_create(struct rpcrdma_xprt *r_xprt, size_t size,
+@@ -550,25 +550,34 @@ struct rpcrdma_req *rpcrdma_req_create(struct rpcrdma_xprt *r_xprt, size_t size,
+ void rpcrdma_buffer_put(struct rpcrdma_req *);
+ void rpcrdma_recv_buffer_put(struct rpcrdma_rep *);
  
- struct rpcrdma_regbuf *rpcrdma_alloc_regbuf(size_t, enum dma_data_direction,
- 					    gfp_t);
-+bool rpcrdma_regbuf_realloc(struct rpcrdma_regbuf *rb, size_t size,
-+			    gfp_t flags);
- bool __rpcrdma_dma_map_regbuf(struct rpcrdma_ia *, struct rpcrdma_regbuf *);
- void rpcrdma_free_regbuf(struct rpcrdma_regbuf *);
+-struct rpcrdma_regbuf *rpcrdma_alloc_regbuf(size_t, enum dma_data_direction,
+-					    gfp_t);
+ bool rpcrdma_regbuf_realloc(struct rpcrdma_regbuf *rb, size_t size,
+ 			    gfp_t flags);
+-bool __rpcrdma_dma_map_regbuf(struct rpcrdma_ia *, struct rpcrdma_regbuf *);
+-void rpcrdma_free_regbuf(struct rpcrdma_regbuf *);
++bool __rpcrdma_regbuf_dma_map(struct rpcrdma_xprt *r_xprt,
++			      struct rpcrdma_regbuf *rb);
  
+-static inline bool
+-rpcrdma_regbuf_is_mapped(struct rpcrdma_regbuf *rb)
++/**
++ * rpcrdma_regbuf_is_mapped - check if buffer is DMA mapped
++ *
++ * Returns true if the buffer is now mapped to rb->rg_device.
++ */
++static inline bool rpcrdma_regbuf_is_mapped(struct rpcrdma_regbuf *rb)
+ {
+ 	return rb->rg_device != NULL;
+ }
+ 
+-static inline bool
+-rpcrdma_dma_map_regbuf(struct rpcrdma_ia *ia, struct rpcrdma_regbuf *rb)
++/**
++ * rpcrdma_regbuf_dma_map - DMA-map a regbuf
++ * @r_xprt: controlling transport instance
++ * @rb: regbuf to be mapped
++ *
++ * Returns true if the buffer is currently DMA mapped.
++ */
++static inline bool rpcrdma_regbuf_dma_map(struct rpcrdma_xprt *r_xprt,
++					  struct rpcrdma_regbuf *rb)
+ {
+ 	if (likely(rpcrdma_regbuf_is_mapped(rb)))
+ 		return true;
+-	return __rpcrdma_dma_map_regbuf(ia, rb);
++	return __rpcrdma_regbuf_dma_map(r_xprt, rb);
+ }
+ 
+ /*
 
