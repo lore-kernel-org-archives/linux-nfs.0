@@ -6,63 +6,62 @@ X-Spam-Status: No, score=-6.8 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
 	SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 37C61C10F11
-	for <linux-nfs@archiver.kernel.org>; Wed, 10 Apr 2019 20:07:33 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DC447C10F11
+	for <linux-nfs@archiver.kernel.org>; Wed, 10 Apr 2019 20:07:38 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 058652075B
-	for <linux-nfs@archiver.kernel.org>; Wed, 10 Apr 2019 20:07:33 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id AB5FA2075B
+	for <linux-nfs@archiver.kernel.org>; Wed, 10 Apr 2019 20:07:38 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="YL+dylZ6"
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="l1PSeR9M"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726630AbfDJUHc (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 10 Apr 2019 16:07:32 -0400
-Received: from mail-it1-f193.google.com ([209.85.166.193]:35071 "EHLO
-        mail-it1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726527AbfDJUHc (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Apr 2019 16:07:32 -0400
-Received: by mail-it1-f193.google.com with SMTP id w15so5644205itc.0;
-        Wed, 10 Apr 2019 13:07:31 -0700 (PDT)
+        id S1726527AbfDJUHh (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 10 Apr 2019 16:07:37 -0400
+Received: from mail-io1-f65.google.com ([209.85.166.65]:37077 "EHLO
+        mail-io1-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726041AbfDJUHh (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Apr 2019 16:07:37 -0400
+Received: by mail-io1-f65.google.com with SMTP id x7so3317005ioh.4;
+        Wed, 10 Apr 2019 13:07:37 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=sender:subject:from:to:date:message-id:in-reply-to:references
          :user-agent:mime-version:content-transfer-encoding;
-        bh=Cr96/Hl1X30wUkSboDTPUY+7mirgh5yOh7X3lSrBBeY=;
-        b=YL+dylZ6SKL6eg8xVamQvkO26FMfKZ3z4PvHj//LXwLQAD5G4ZvPjYlhPqEczC1D5l
-         6aGcpS1auiqLrBTr68DMd4Bbc4kfvJRjk82u6ojiWS8GExWmBApW2DpuJ+pGySk6hEWY
-         5pBKdIP5UQdN0311XCE/+zy9Iu5CzCugcj5r5AMk3ULw6ry0N21WdL7dG9WftoQ/7aod
-         dNCmfi8cB+Cyfx3L7G0w7Q7Ol4YytWB5qpkQUuqP5TK3BTb5IO3XD+z+ERvkiiqbOit5
-         yC59hew+Y9EoMaGTY0nN2ffbF8QQtap+Oxd9Nms7VUBZqP2sh06PdJRJQg6iDqdVLezA
-         DSdw==
+        bh=sVsWomdvb2KsEbnQQRQDATsMY0fxPPPWJG8nZv6v2HY=;
+        b=l1PSeR9MAJKYpEA2z6tF/q93+U6gzPVEkWprKg7Uv5Lv3jF3Zb0FxnCtYZ/ilKwm6t
+         IeXyuQmjwb3he58rTjcixtt4v3ovAVwabEOogIEwzfmtQ9opnU8QPtJ+UuZdsZcLAscH
+         k9em19DxrGHPXP/YY/1ZwNMXkbcYMHp6//6cBNDljIPcWyHK+SdwPxcWMmWKx0Yb+Gfl
+         SFeZyezsm6GPjz1lWPY9oTWCMG2y1khqjVdEQZpYQ3FLPCpRt0UvQQSqz7FMe4+dmeBh
+         Lb+gvMd7tpxF9bQ8Z8Ii2iBG3T5ufaY3jV7YJI3bASLm5dgwTfwfDn38s+tc5COMsCx7
+         juUA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:sender:subject:from:to:date:message-id
          :in-reply-to:references:user-agent:mime-version
          :content-transfer-encoding;
-        bh=Cr96/Hl1X30wUkSboDTPUY+7mirgh5yOh7X3lSrBBeY=;
-        b=Zd3QFWnQzIpXpxFZ9PBTOk5WZqoMmseF6td5U1rz/DdNsiF3Kd1jVRMTIxVi25s9lQ
-         gwH5uLLLNOoEQYBHVUCSM3hm/aVT+WYrkGXwBnUuTajBp5yRGMzF1amEGFgnayPol+Gt
-         L8fqxmnNhC9RcB/Gs6x6uTBNMDAaI6MgKXRS9Ql8DphB/eVAtmXSHYYe0L0yQo3MvFCQ
-         r1QSfpAX0TrRjcDdHqeCb/Rmn2boZO+K9Pm73DaoMr8Q1cCVmcRADKsGTd0AAiQvaegI
-         lBeMgr50sjbJTMocVEsYW4kh+rQXWzJdttpA5lsYTJ4qT4gg5btYvQhwfXrjx2y/Tgxq
-         DaMA==
-X-Gm-Message-State: APjAAAW4lnNOONTB42aIxIJg21xlLn+ZcA4nqThS+fBZUWQ+5Z29PfKU
-        NJ4HGduPynEotjCSgAsENnJoHBFj
-X-Google-Smtp-Source: APXvYqwwJTu7UIeOMscgWjEbmON7ZGaLGxOihPCAKOJO8YV8TKo8DPLF5TM9SLl9a6HFUx4KQGOEoA==
-X-Received: by 2002:a24:52c2:: with SMTP id d185mr4754297itb.94.1554926851372;
-        Wed, 10 Apr 2019 13:07:31 -0700 (PDT)
+        bh=sVsWomdvb2KsEbnQQRQDATsMY0fxPPPWJG8nZv6v2HY=;
+        b=uC2wk2s/pPfcreo1yjLMZNX+UvHw2w4sFOTzlgnR02rKE+rnM4h+ktZGHYVr/O3LIe
+         AU56VD4WjXQHGWtkdF4rKiovvSvpE+SdldS1OsIqZGmqraQRWI6Wpv3W2XRXyef3KdUJ
+         2TYRYPztkqsqCPtxRRXrLGYajPO6ZepOVSnWXXeLKXik08fD0t7dT75ScoF+nJ66ltn0
+         oCKZqd2kdslFGCgVN95A8e9xiEk9nR+1EMRCOl6UWFK5LG3pGohhRvwYy/V2EQ/lTIGG
+         5oR8H9IsfTfh4U/zMLo1ZQF/ZipUjTiCqTVy9AzGdXn30edCCzfdD/vQcArCfeDBI1B1
+         qdfg==
+X-Gm-Message-State: APjAAAXOl96QQTbsMDyKY4p+eo2mITWBmFUm/RE1NVk5aohutNkX4FGf
+        q3Zkl+UTQKRVWkTx4AUAmTpJq8mD
+X-Google-Smtp-Source: APXvYqxwcsKIKcUITvbyHlKiOeG73wUACtJCWNvdQ+XVD1u4JzkGPMP+EY7UrNzkTdpXQA3hdt+aBA==
+X-Received: by 2002:a5d:81c2:: with SMTP id t2mr27344884iol.183.1554926856738;
+        Wed, 10 Apr 2019 13:07:36 -0700 (PDT)
 Received: from gateway.1015granger.net (c-68-61-232-219.hsd1.mi.comcast.net. [68.61.232.219])
-        by smtp.gmail.com with ESMTPSA id v19sm14549579iol.27.2019.04.10.13.07.30
+        by smtp.gmail.com with ESMTPSA id i11sm14066509ioh.58.2019.04.10.13.07.36
         (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Wed, 10 Apr 2019 13:07:30 -0700 (PDT)
+        Wed, 10 Apr 2019 13:07:36 -0700 (PDT)
 Received: from manet.1015granger.net (manet.1015granger.net [192.168.1.51])
-        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id x3AK7UjI004537;
-        Wed, 10 Apr 2019 20:07:30 GMT
-Subject: [PATCH v1 11/19] xprtrdma: Increase maximum number of backchannel
- request
+        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id x3AK7ZiC004540;
+        Wed, 10 Apr 2019 20:07:35 GMT
+Subject: [PATCH v1 12/19] xprtrdma: Trace marshaling failures
 From:   Chuck Lever <chuck.lever@oracle.com>
 To:     linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date:   Wed, 10 Apr 2019 16:07:30 -0400
-Message-ID: <20190410200730.11522.38203.stgit@manet.1015granger.net>
+Date:   Wed, 10 Apr 2019 16:07:35 -0400
+Message-ID: <20190410200735.11522.54541.stgit@manet.1015granger.net>
 In-Reply-To: <20190410200446.11522.21145.stgit@manet.1015granger.net>
 References: <20190410200446.11522.21145.stgit@manet.1015granger.net>
 User-Agent: StGit/0.17.1-dirty
@@ -74,34 +73,63 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Reflects the change introduced in commit 067c46967160 ("NFSv4.1:
-Bump the default callback session slot count to 16").
+Record an event when rpcrdma_marshal_req returns a non-zero return
+value to help track down why an xprt close might have occurred.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/xprt_rdma.h |    8 +++++---
- 1 file changed, 5 insertions(+), 3 deletions(-)
+ include/trace/events/rpcrdma.h |   27 +++++++++++++++++++++++++++
+ net/sunrpc/xprtrdma/rpc_rdma.c |    1 +
+ 2 files changed, 28 insertions(+)
 
-diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index 9871cd9..f1bbe36 100644
---- a/net/sunrpc/xprtrdma/xprt_rdma.h
-+++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -103,12 +103,14 @@ struct rpcrdma_ep {
+diff --git a/include/trace/events/rpcrdma.h b/include/trace/events/rpcrdma.h
+index 962975b..df9851cb 100644
+--- a/include/trace/events/rpcrdma.h
++++ b/include/trace/events/rpcrdma.h
+@@ -511,6 +511,33 @@
+ 	)
+ );
  
- /* Pre-allocate extra Work Requests for handling backward receives
-  * and sends. This is a fixed value because the Work Queues are
-- * allocated when the forward channel is set up.
-+ * allocated when the forward channel is set up, long before the
-+ * backchannel is provisioned. This value is two times
-+ * NFS4_DEF_CB_SLOT_TABLE_SIZE.
-  */
- #if defined(CONFIG_SUNRPC_BACKCHANNEL)
--#define RPCRDMA_BACKWARD_WRS		(8)
-+#define RPCRDMA_BACKWARD_WRS (32)
- #else
--#define RPCRDMA_BACKWARD_WRS		(0)
-+#define RPCRDMA_BACKWARD_WRS (0)
- #endif
++TRACE_EVENT(xprtrdma_marshal_failed,
++	TP_PROTO(const struct rpc_rqst *rqst,
++		 int ret
++	),
++
++	TP_ARGS(rqst, ret),
++
++	TP_STRUCT__entry(
++		__field(unsigned int, task_id)
++		__field(unsigned int, client_id)
++		__field(u32, xid)
++		__field(int, ret)
++	),
++
++	TP_fast_assign(
++		__entry->task_id = rqst->rq_task->tk_pid;
++		__entry->client_id = rqst->rq_task->tk_client->cl_clid;
++		__entry->xid = be32_to_cpu(rqst->rq_xid);
++		__entry->ret = ret;
++	),
++
++	TP_printk("task:%u@%u xid=0x%08x: ret=%d",
++		__entry->task_id, __entry->client_id, __entry->xid,
++		__entry->ret
++	)
++);
++
+ TRACE_EVENT(xprtrdma_post_send,
+ 	TP_PROTO(
+ 		const struct rpcrdma_req *req,
+diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
+index 20b0df7..a3eb299 100644
+--- a/net/sunrpc/xprtrdma/rpc_rdma.c
++++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+@@ -875,6 +875,7 @@ static bool rpcrdma_prepare_msg_sges(struct rpcrdma_xprt *r_xprt,
+ 	return 0;
  
- /* Registered buffer -- registered kmalloc'd memory for RDMA SEND/RECV
+ out_err:
++	trace_xprtrdma_marshal_failed(rqst, ret);
+ 	switch (ret) {
+ 	case -EAGAIN:
+ 		xprt_wait_for_buffer_space(rqst->rq_xprt);
 
