@@ -6,62 +6,62 @@ X-Spam-Status: No, score=-6.8 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
 	SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C99C7C10F11
-	for <linux-nfs@archiver.kernel.org>; Wed, 10 Apr 2019 20:07:44 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4F117C10F11
+	for <linux-nfs@archiver.kernel.org>; Wed, 10 Apr 2019 20:07:49 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 806182075B
-	for <linux-nfs@archiver.kernel.org>; Wed, 10 Apr 2019 20:07:44 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 1C2142075B
+	for <linux-nfs@archiver.kernel.org>; Wed, 10 Apr 2019 20:07:49 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="Qchmh3V2"
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="o+E9TYNz"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726708AbfDJUHo (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 10 Apr 2019 16:07:44 -0400
-Received: from mail-it1-f193.google.com ([209.85.166.193]:54058 "EHLO
-        mail-it1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726023AbfDJUHn (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Apr 2019 16:07:43 -0400
-Received: by mail-it1-f193.google.com with SMTP id y204so5656604itf.3;
-        Wed, 10 Apr 2019 13:07:42 -0700 (PDT)
+        id S1726712AbfDJUHs (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 10 Apr 2019 16:07:48 -0400
+Received: from mail-io1-f65.google.com ([209.85.166.65]:44045 "EHLO
+        mail-io1-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726023AbfDJUHs (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Apr 2019 16:07:48 -0400
+Received: by mail-io1-f65.google.com with SMTP id u12so3265450iop.11;
+        Wed, 10 Apr 2019 13:07:47 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=sender:subject:from:to:date:message-id:in-reply-to:references
          :user-agent:mime-version:content-transfer-encoding;
-        bh=O9auhoJVrkCGLffBKaXBwKCaPsLgcn8Wa8IbSyMN3EI=;
-        b=Qchmh3V2QA56BK2bXr4UCoSytIWhER4Auv0yPc7S2VpAIB9MpvMI7PjBwWgZ0Mefcw
-         HCct3eUxj6NX6Tjmft2+n1H85P1vi0Ce9s8msh2TCxqrq2ZJjxG5t41PTyp74QubIDZl
-         xim/CBU9jUiuLsZ2beD15xX5mcsNTjjYOLpVvS0tNmw46honZm9zUj+ww2a0jzATZ4Fk
-         EB0YzccU1UyDtzZHKPp7Tv9FSHEflRJNDLDsu2w5BOpkISPKAIQ7b7yMdng38OsPhMRM
-         Te/NNzHVmeaQWXRw7HY1DkQQPQbGjqlOtIZ3pXu4KeL12PU4OklY1CKASO6t5TLptEgP
-         cZkA==
+        bh=mC/IJvzXc0Q60See7Yv3rAr29/a24UFvFcDPZ5PzIeo=;
+        b=o+E9TYNzl8yoqiEgGzH1ZVeMrHCTApKIzlKtKPJdxcQzSc0Z+SfJngF5XCm1F6WZcR
+         JJw8Yo+I9VcCxOmbmdB9pRWyi75IUvJ9XUESAXp0hUe5ZALb5u4YBX4/5upMRJcy3dxP
+         tqi7k0jfiIYAuLrWS2Nzsi9d3Khh8QOxxfNsofNL40fa3Izvt4ngF63sB/6kv8tHt5NE
+         aMmbRVNN60cpgzGJo+/loynBhbuD7xQiNmaYWPYk9w0pQFYl2hfsrbtqA/HcfyrGIV/z
+         o5m1MyYqgnSgxSGkpI5E3LVzZ0dzW2/jmGhevxecOmM+86rH7T3ifVNiLarL6JNfJaKq
+         UYmA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:sender:subject:from:to:date:message-id
          :in-reply-to:references:user-agent:mime-version
          :content-transfer-encoding;
-        bh=O9auhoJVrkCGLffBKaXBwKCaPsLgcn8Wa8IbSyMN3EI=;
-        b=hicvWcbyzqlvBr+XUzJqGSV5l7G+7SgIAIU56JAG0kQaqEiqgqU15S9KK6l/VIciUz
-         7zdr/0roWb+EbTTK1+EC2brRnFBEBhlogRt0WzMgYmGNngHYN5Uvgg+Aw5fQyvwnUXz2
-         LzkZbCv98eEKjjgViLl9IaI8Zv5vGDZTbHlJz8IffoJMoAuhxD6JjIGbC32mYicgp1Gd
-         DLfxmDgQt+9P6fvtZYvKODMZuZXJ2+sfhj/PfpRr6iCBpXC3EzGqCQ+ciV6fWuk6/ySq
-         wLWUII88m5ylXDve/RKwV6rd3fsWTsTbzDAYAdqPAyT4IMbHhKtNCb9VDH/BW2ZlOoqT
-         UydA==
-X-Gm-Message-State: APjAAAUXjLKNViesnwsDiKhmRMje1SfWE0JyDC7V2AwijVna/UGO5PIc
-        lIYWMBSnO7ClkjmzhYB5kdlyhTLC
-X-Google-Smtp-Source: APXvYqwk8PZCJmbsXvv/BkIbO3Ue90cBGkuogqzSGk8Wzrw+ufRz3r5DcVjBrd0iq3j582mTqK4OCA==
-X-Received: by 2002:a24:25cf:: with SMTP id g198mr4982255itg.141.1554926862125;
-        Wed, 10 Apr 2019 13:07:42 -0700 (PDT)
+        bh=mC/IJvzXc0Q60See7Yv3rAr29/a24UFvFcDPZ5PzIeo=;
+        b=SF86WFIjRyOP2SPPtHD7ckA8f08+n7NiUT/cMYHcZ7Np7+rx5D9oIOoWDGRqaKMnRX
+         8nLHQh4hA5zZp3Av4Nq+I9mo1cOeF5PfbIdBMiD4UTAB1NenLsbn/Q+ZJZp1b8Wzk8pE
+         eFrzO3u49gxHVqY27OR73/7aj6+ayL2nxEfLD4bJuh6ODaP9x2yx0b7ap8YNfisTTeqL
+         SQy2MkWqzv9LEFtzZIyTXVOpbj38Wx+ZAD+NfMZ24yjW0hClFI3BxQqiuKs8rSVZJeMP
+         YkR4nQjm7f4folb5JKCa1OK4vKfY3tFDBpPj4fIlDLX6j3IAGg5CjIRCI4TPARQOrPsx
+         tYEg==
+X-Gm-Message-State: APjAAAVxcTw75A7vzTNvMD5W1dp0nvuK5kvnKTn/rAFOlDrDt3P+Yjd9
+        xONntKYuabA9iY2VKHJigWQGyDHC
+X-Google-Smtp-Source: APXvYqx5GvfICK+H7wsY5mpwyncT+wuqv2Ip502hxRg39JxFvvdKjcPETEAIJeGeGACCu9O2nEZndg==
+X-Received: by 2002:a6b:7e04:: with SMTP id i4mr30443419iom.137.1554926867523;
+        Wed, 10 Apr 2019 13:07:47 -0700 (PDT)
 Received: from gateway.1015granger.net (c-68-61-232-219.hsd1.mi.comcast.net. [68.61.232.219])
-        by smtp.gmail.com with ESMTPSA id x68sm1560235ita.40.2019.04.10.13.07.41
+        by smtp.gmail.com with ESMTPSA id c92sm1446779itd.26.2019.04.10.13.07.46
         (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Wed, 10 Apr 2019 13:07:41 -0700 (PDT)
+        Wed, 10 Apr 2019 13:07:47 -0700 (PDT)
 Received: from manet.1015granger.net (manet.1015granger.net [192.168.1.51])
-        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id x3AK7eWQ004543;
-        Wed, 10 Apr 2019 20:07:40 GMT
-Subject: [PATCH v1 13/19] xprtrdma: Clean up sendctx functions
+        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id x3AK7ks7004546;
+        Wed, 10 Apr 2019 20:07:46 GMT
+Subject: [PATCH v1 14/19] xprtrdma: More Send completion batching
 From:   Chuck Lever <chuck.lever@oracle.com>
 To:     linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date:   Wed, 10 Apr 2019 16:07:40 -0400
-Message-ID: <20190410200740.11522.82723.stgit@manet.1015granger.net>
+Date:   Wed, 10 Apr 2019 16:07:46 -0400
+Message-ID: <20190410200746.11522.64034.stgit@manet.1015granger.net>
 In-Reply-To: <20190410200446.11522.21145.stgit@manet.1015granger.net>
 References: <20190410200446.11522.21145.stgit@manet.1015granger.net>
 User-Agent: StGit/0.17.1-dirty
@@ -73,188 +73,55 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Minor clean-ups I've stumbled on since sendctx was merged last year.
-In particular, making Send completion processing more efficient
-appears to have a measurable impact on IOPS throughput.
+Instead of using a fixed number, allow the amount of Send completion
+batching to vary based on the client's maximum credit limit.
 
-Note: test_and_clear_bit() returns a value, thus an explicit memory
-barrier is not necessary.
+- A larger default gives a small boost to IOPS throughput
+
+- Reducing it based on max_requests gives a safe result when the
+  max credit limit is cranked down (eg. when the device has a small
+  max_qp_wr).
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/rpc_rdma.c  |   27 ++++++++++++---------------
- net/sunrpc/xprtrdma/verbs.c     |   17 ++++++++---------
- net/sunrpc/xprtrdma/xprt_rdma.h |    5 +++--
- 3 files changed, 23 insertions(+), 26 deletions(-)
+ net/sunrpc/xprtrdma/verbs.c     |    4 +---
+ net/sunrpc/xprtrdma/xprt_rdma.h |   10 ----------
+ 2 files changed, 1 insertion(+), 13 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index a3eb299..fcd29a4 100644
---- a/net/sunrpc/xprtrdma/rpc_rdma.c
-+++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -508,30 +508,26 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
- }
- 
- /**
-- * rpcrdma_unmap_sendctx - DMA-unmap Send buffers
-+ * rpcrdma_sendctx_unmap - DMA-unmap Send buffer
-  * @sc: sendctx containing SGEs to unmap
-  *
-  */
--void
--rpcrdma_unmap_sendctx(struct rpcrdma_sendctx *sc)
-+void rpcrdma_sendctx_unmap(struct rpcrdma_sendctx *sc)
- {
--	struct rpcrdma_ia *ia = &sc->sc_xprt->rx_ia;
- 	struct ib_sge *sge;
--	unsigned int count;
- 
- 	/* The first two SGEs contain the transport header and
- 	 * the inline buffer. These are always left mapped so
- 	 * they can be cheaply re-used.
- 	 */
--	sge = &sc->sc_sges[2];
--	for (count = sc->sc_unmap_count; count; ++sge, --count)
--		ib_dma_unmap_page(ia->ri_device,
--				  sge->addr, sge->length, DMA_TO_DEVICE);
-+	for (sge = &sc->sc_sges[2]; sc->sc_unmap_count;
-+	     ++sge, --sc->sc_unmap_count)
-+		ib_dma_unmap_page(sc->sc_device, sge->addr, sge->length,
-+				  DMA_TO_DEVICE);
- 
--	if (test_and_clear_bit(RPCRDMA_REQ_F_TX_RESOURCES, &sc->sc_req->rl_flags)) {
--		smp_mb__after_atomic();
-+	if (test_and_clear_bit(RPCRDMA_REQ_F_TX_RESOURCES,
-+			       &sc->sc_req->rl_flags))
- 		wake_up_bit(&sc->sc_req->rl_flags, RPCRDMA_REQ_F_TX_RESOURCES);
--	}
- }
- 
- /* Prepare an SGE for the RPC-over-RDMA transport header.
-@@ -578,6 +574,7 @@ static bool rpcrdma_prepare_msg_sges(struct rpcrdma_xprt *r_xprt,
- 	 */
- 	if (!rpcrdma_regbuf_dma_map(r_xprt, rb))
- 		goto out_regbuf;
-+	sc->sc_device = rdmab_device(rb);
- 	sge_no = 1;
- 	sge[sge_no].addr = rdmab_addr(rb);
- 	sge[sge_no].length = xdr->head[0].iov_len;
-@@ -673,12 +670,12 @@ static bool rpcrdma_prepare_msg_sges(struct rpcrdma_xprt *r_xprt,
- 	return false;
- 
- out_mapping_overflow:
--	rpcrdma_unmap_sendctx(sc);
-+	rpcrdma_sendctx_unmap(sc);
- 	pr_err("rpcrdma: too many Send SGEs (%u)\n", sge_no);
- 	return false;
- 
- out_mapping_err:
--	rpcrdma_unmap_sendctx(sc);
-+	rpcrdma_sendctx_unmap(sc);
- 	trace_xprtrdma_dma_maperr(sge[sge_no].addr);
- 	return false;
- }
-@@ -698,7 +695,7 @@ static bool rpcrdma_prepare_msg_sges(struct rpcrdma_xprt *r_xprt,
- 			  struct rpcrdma_req *req, u32 hdrlen,
- 			  struct xdr_buf *xdr, enum rpcrdma_chunktype rtype)
- {
--	req->rl_sendctx = rpcrdma_sendctx_get_locked(&r_xprt->rx_buf);
-+	req->rl_sendctx = rpcrdma_sendctx_get_locked(r_xprt);
- 	if (!req->rl_sendctx)
- 		return -EAGAIN;
- 	req->rl_sendctx->sc_wr.num_sge = 0;
 diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 127c1f6..378b460 100644
+index 378b460..f65d17a 100644
 --- a/net/sunrpc/xprtrdma/verbs.c
 +++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -870,20 +870,20 @@ static unsigned long rpcrdma_sendctx_next(struct rpcrdma_buffer *buf,
+@@ -521,9 +521,7 @@ static void rpcrdma_xprt_drain(struct rpcrdma_xprt *r_xprt)
+ 		ep->rep_attr.cap.max_send_sge,
+ 		ep->rep_attr.cap.max_recv_sge);
  
- /**
-  * rpcrdma_sendctx_get_locked - Acquire a send context
-- * @buf: transport buffers from which to acquire an unused context
-+ * @r_xprt: controlling transport instance
-  *
-  * Returns pointer to a free send completion context; or NULL if
-  * the queue is empty.
-  *
-  * Usage: Called to acquire an SGE array before preparing a Send WR.
-  *
-- * The caller serializes calls to this function (per rpcrdma_buffer),
-- * and provides an effective memory barrier that flushes the new value
-+ * The caller serializes calls to this function (per transport), and
-+ * provides an effective memory barrier that flushes the new value
-  * of rb_sc_head.
-  */
--struct rpcrdma_sendctx *rpcrdma_sendctx_get_locked(struct rpcrdma_buffer *buf)
-+struct rpcrdma_sendctx *rpcrdma_sendctx_get_locked(struct rpcrdma_xprt *r_xprt)
- {
--	struct rpcrdma_xprt *r_xprt;
-+	struct rpcrdma_buffer *buf = &r_xprt->rx_buf;
- 	struct rpcrdma_sendctx *sc;
- 	unsigned long next_head;
- 
-@@ -908,7 +908,6 @@ struct rpcrdma_sendctx *rpcrdma_sendctx_get_locked(struct rpcrdma_buffer *buf)
- 	 * backing up. Cause the caller to pause and try again.
- 	 */
- 	set_bit(RPCRDMA_BUF_F_EMPTY_SCQ, &buf->rb_flags);
--	r_xprt = container_of(buf, struct rpcrdma_xprt, rx_buf);
- 	r_xprt->rx_stats.empty_sendctx_q++;
- 	return NULL;
- }
-@@ -920,7 +919,7 @@ struct rpcrdma_sendctx *rpcrdma_sendctx_get_locked(struct rpcrdma_buffer *buf)
-  * Usage: Called from Send completion to return a sendctxt
-  * to the queue.
-  *
-- * The caller serializes calls to this function (per rpcrdma_buffer).
-+ * The caller serializes calls to this function (per transport).
-  */
- static void
- rpcrdma_sendctx_put_locked(struct rpcrdma_sendctx *sc)
-@@ -928,7 +927,7 @@ struct rpcrdma_sendctx *rpcrdma_sendctx_get_locked(struct rpcrdma_buffer *buf)
- 	struct rpcrdma_buffer *buf = &sc->sc_xprt->rx_buf;
- 	unsigned long next_tail;
- 
--	/* Unmap SGEs of previously completed by unsignaled
-+	/* Unmap SGEs of previously completed but unsignaled
- 	 * Sends by walking up the queue until @sc is found.
- 	 */
- 	next_tail = buf->rb_sc_tail;
-@@ -936,7 +935,7 @@ struct rpcrdma_sendctx *rpcrdma_sendctx_get_locked(struct rpcrdma_buffer *buf)
- 		next_tail = rpcrdma_sendctx_next(buf, next_tail);
- 
- 		/* ORDER: item must be accessed _before_ tail is updated */
--		rpcrdma_unmap_sendctx(buf->rb_sc_ctxs[next_tail]);
-+		rpcrdma_sendctx_unmap(buf->rb_sc_ctxs[next_tail]);
- 
- 	} while (buf->rb_sc_ctxs[next_tail] != sc);
- 
+-	/* set trigger for requesting send completion */
+-	ep->rep_send_batch = min_t(unsigned int, RPCRDMA_MAX_SEND_BATCH,
+-				   cdata->max_requests >> 2);
++	ep->rep_send_batch = cdata->max_requests >> 3;
+ 	ep->rep_send_count = ep->rep_send_batch;
+ 	init_waitqueue_head(&ep->rep_connect_wait);
+ 	ep->rep_receive_count = 0;
 diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index f1bbe36..7d82c91 100644
+index 7d82c91..5063fa7 100644
 --- a/net/sunrpc/xprtrdma/xprt_rdma.h
 +++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -225,6 +225,7 @@ enum {
- struct rpcrdma_sendctx {
- 	struct ib_send_wr	sc_wr;
- 	struct ib_cqe		sc_cqe;
-+	struct ib_device	*sc_device;
- 	struct rpcrdma_xprt	*sc_xprt;
- 	struct rpcrdma_req	*sc_req;
- 	unsigned int		sc_unmap_count;
-@@ -536,7 +537,7 @@ struct rpcrdma_req *rpcrdma_req_create(struct rpcrdma_xprt *r_xprt, size_t size,
- void rpcrdma_req_destroy(struct rpcrdma_req *req);
- int rpcrdma_buffer_create(struct rpcrdma_xprt *);
- void rpcrdma_buffer_destroy(struct rpcrdma_buffer *);
--struct rpcrdma_sendctx *rpcrdma_sendctx_get_locked(struct rpcrdma_buffer *buf);
-+struct rpcrdma_sendctx *rpcrdma_sendctx_get_locked(struct rpcrdma_xprt *r_xprt);
+@@ -232,16 +232,6 @@ struct rpcrdma_sendctx {
+ 	struct ib_sge		sc_sges[];
+ };
  
- struct rpcrdma_mr *rpcrdma_mr_get(struct rpcrdma_xprt *r_xprt);
- void rpcrdma_mr_put(struct rpcrdma_mr *mr);
-@@ -625,7 +626,7 @@ int rpcrdma_prepare_send_sges(struct rpcrdma_xprt *r_xprt,
- 			      struct rpcrdma_req *req, u32 hdrlen,
- 			      struct xdr_buf *xdr,
- 			      enum rpcrdma_chunktype rtype);
--void rpcrdma_unmap_sendctx(struct rpcrdma_sendctx *sc);
-+void rpcrdma_sendctx_unmap(struct rpcrdma_sendctx *sc);
- int rpcrdma_marshal_req(struct rpcrdma_xprt *r_xprt, struct rpc_rqst *rqst);
- void rpcrdma_set_max_header_sizes(struct rpcrdma_xprt *);
- void rpcrdma_reply_handler(struct rpcrdma_rep *rep);
+-/* Limit the number of SGEs that can be unmapped during one
+- * Send completion. This caps the amount of work a single
+- * completion can do before returning to the provider.
+- *
+- * Setting this to zero disables Send completion batching.
+- */
+-enum {
+-	RPCRDMA_MAX_SEND_BATCH = 7,
+-};
+-
+ /*
+  * struct rpcrdma_mr - external memory region metadata
+  *
 
