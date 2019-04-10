@@ -2,160 +2,115 @@ Return-Path: <SRS0=wtRa=SM=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-5.8 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,
+	SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 030D1C282CE
-	for <linux-nfs@archiver.kernel.org>; Wed, 10 Apr 2019 13:34:09 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4DCE2C10F11
+	for <linux-nfs@archiver.kernel.org>; Wed, 10 Apr 2019 20:06:36 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id CF92120820
-	for <linux-nfs@archiver.kernel.org>; Wed, 10 Apr 2019 13:34:08 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 1740C2075B
+	for <linux-nfs@archiver.kernel.org>; Wed, 10 Apr 2019 20:06:35 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="X3Lgk1gx"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727659AbfDJNeI convert rfc822-to-8bit (ORCPT
-        <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 10 Apr 2019 09:34:08 -0400
-Received: from mail-qt1-f195.google.com ([209.85.160.195]:36753 "EHLO
-        mail-qt1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727171AbfDJNeI (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Apr 2019 09:34:08 -0400
-Received: by mail-qt1-f195.google.com with SMTP id s15so2839589qtn.3
-        for <linux-nfs@vger.kernel.org>; Wed, 10 Apr 2019 06:34:07 -0700 (PDT)
+        id S1726093AbfDJUGe (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 10 Apr 2019 16:06:34 -0400
+Received: from mail-it1-f196.google.com ([209.85.166.196]:53849 "EHLO
+        mail-it1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726014AbfDJUGe (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Apr 2019 16:06:34 -0400
+Received: by mail-it1-f196.google.com with SMTP id y204so5650374itf.3;
+        Wed, 10 Apr 2019 13:06:33 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=sender:subject:from:to:date:message-id:user-agent:mime-version
+         :content-transfer-encoding;
+        bh=OxCps9zsrElThrABQq+/26TdY0x6Lcb2YhUJ+AMzJag=;
+        b=X3Lgk1gxqFmu6GwDP7GxAjycuzmeMmgyJmnSAjo1H2ug7sQOWAnMM/ZSH6n7qr168m
+         Z26i55AfJYVJznxiHHcL9rrhBV3XmYTHyw7WAlrm7mEPffhoHsNQFUdJ6Cfo1R6msMa3
+         NIC07lDhJO6Kx+YFwF87eLq1bI81JTOCkilVCqqoJCurpwQv+2cddFpnewbbf0wgbcLr
+         tB0nPCUJVPfsp/SZBt+V/fqde485GEqDFXnjKpOr3hsYaWWv8Kq0Dr3zYfmoaGOXbe0K
+         J7k+C4KjggFjAxyrMQJkjqFTJzXdmMCj+/zD1suLDaIlhFrjeAWiYJWdnF9yCKWFW062
+         h+Eg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
-         :message-id:subject:to:cc:content-transfer-encoding;
-        bh=pt9vCpQy53rtW+xZ3gkUPbvHc7QXFmCcBUt6DawJJPc=;
-        b=A5Waurk07RZlcml6IlT+t3ULIUNknOBgR/arFNTmVEFpbTJbbj6m+6BlKgnz5CuwAe
-         1EjODKo7ilgKtmtjPqDe4w9E6fcK5naTqnk7Bz2dqXDRxsz75boMBjT63ska8TU1+mYZ
-         GhQi2KokVc4xjuyLEQCMgdBw2fIwM/9onmmqKfmI7V9ojsbVd9ocMT8wo3G8jI2WVRAj
-         D9GjY4gcjWeZgSvdyXWUEgWSI8xQMGx+8w0xOqEU/Xfpv0HC7WkxxDpP+ITNYQl/Yz1C
-         oRyQ4PwXwqc+qF2iTjqS2ZHkuj0Nvl5KAZ2VbuiMx1yR4TkheLgnLE0tAgbClnx5xFR9
-         RheA==
-X-Gm-Message-State: APjAAAXuCVIC93377Ffy6uaVpj9UpUTMjrO+Dk+3OTBWkkThLMwZnFGJ
-        pal90Z4UmGkkKJ6cTpNPC8donR/fN7M1sAlTF4uZOfAZ3VU=
-X-Google-Smtp-Source: APXvYqwNeP7vSe9gvE/hV9FW6H81JqXijVxM9rB5CfRNcTtNbFlSTWzMXs6FolX20+QbWvQAaCzVPZeGbg1U4/+Hzhg=
-X-Received: by 2002:ac8:1bba:: with SMTP id z55mr35583223qtj.354.1554903246666;
- Wed, 10 Apr 2019 06:34:06 -0700 (PDT)
+        h=x-gm-message-state:sender:subject:from:to:date:message-id
+         :user-agent:mime-version:content-transfer-encoding;
+        bh=OxCps9zsrElThrABQq+/26TdY0x6Lcb2YhUJ+AMzJag=;
+        b=oVWCdsCiJGO7z+YGJSy1qwOvfF1Fr5Hn8ZWncMc/XpINeqW3K6fwEBnEfEdXXfCbKZ
+         yX+ILub1ONEXaVWDUA2pgcMwk8prbU1zKL4hAKQ3NSIuTzU8PLgmtQhMf3JgfR3B6IwI
+         iaxtNqUZWbrdyVXGB5i9+uLt/lvDutvqj5f7MbBRRmmgEZHLI2fSEPFRBE0iVsaxvDHN
+         l3r0Bx7q2lBs4VLGQWaEYwhnHdkMfec3fn/aIfsj7GdZVMqK7UTEHX8KAmOqFOPiKjH5
+         DwLyTLY7I16am1M0y0U+ghLfodVsjzzTGNa6WnVqs2zwpIDxn40dW18FZpeseUiLvzPV
+         mUwQ==
+X-Gm-Message-State: APjAAAVrKyViR8W708p9TmvhJn6Nysc8tjnZa+WcHI3FoaLwlEb7zTkW
+        qDGtk8P8U43XxE015e3A5e/ZbRsR
+X-Google-Smtp-Source: APXvYqyfY3HCZ1+eNYQn6WmZSwQUDgoLJO0rKoM/mu2dHqMLEej99BmRthbxXCDZpL4juuK8HQxO3A==
+X-Received: by 2002:a05:660c:10:: with SMTP id q16mr4849538itj.149.1554926793175;
+        Wed, 10 Apr 2019 13:06:33 -0700 (PDT)
+Received: from gateway.1015granger.net (c-68-61-232-219.hsd1.mi.comcast.net. [68.61.232.219])
+        by smtp.gmail.com with ESMTPSA id b82sm1647916itd.12.2019.04.10.13.06.32
+        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Wed, 10 Apr 2019 13:06:32 -0700 (PDT)
+Received: from manet.1015granger.net (manet.1015granger.net [192.168.1.51])
+        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id x3AK6Vc9004503;
+        Wed, 10 Apr 2019 20:06:31 GMT
+Subject: [PATCH v1 00/19] Proposed NFS/RDMA patches for v5.2
+From:   Chuck Lever <chuck.lever@oracle.com>
+To:     linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Date:   Wed, 10 Apr 2019 16:06:31 -0400
+Message-ID: <20190410200446.11522.21145.stgit@manet.1015granger.net>
+User-Agent: StGit/0.17.1-dirty
 MIME-Version: 1.0
-References: <20190326135740.16558-1-kdsouza@redhat.com> <20190409203427.GC29099@fieldses.org>
- <CAA_-hQ+fhGCiue4aGZiDtdHy1_grHCnSPa8q8-bMdnxE-PP=AA@mail.gmail.com> <20190410132607.GA2714@fieldses.org>
-In-Reply-To: <20190410132607.GA2714@fieldses.org>
-From:   Kenneth Dsouza <kdsouza@redhat.com>
-Date:   Wed, 10 Apr 2019 19:03:54 +0530
-Message-ID: <CAA_-hQKa0Am2T1xDw0RFOVg5FB__DJUDfFfsKZoeVns3QwD5DQ@mail.gmail.com>
-Subject: Re: [PATCH] nfs4_getfacl: Add new option -c/--omit-header to not
- display comment header.
-To:     "J. Bruce Fields" <bfields@fieldses.org>
-Cc:     linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Thanks! Should we also add the below entries similar to getfacl?
+For review, this is a series of minor clean-ups, bug fixes, and
+performance optimizations.
 
-$ nfs4_getfacl /test/
-# file: /test/
-# owner: test
-# group: test
-A::OWNER@:rwaDxtTcCy
-A::GROUP@:rwaDxtcy
-A::EVERYONE@:rwaDxtcy
+See also:
 
-On Wed, Apr 10, 2019 at 6:56 PM J. Bruce Fields <bfields@fieldses.org> wrote:
->
-> On Wed, Apr 10, 2019 at 03:07:11PM +0530, Kenneth Dsouza wrote:
-> > On Wed, Apr 10, 2019 at 2:04 AM J. Bruce Fields <bfields@fieldses.org> wrote:
-> > >
-> > > Thanks, applying with some fixes:
-> > >
-> > > On Tue, Mar 26, 2019 at 07:27:40PM +0530, Kenneth D'souza wrote:
-> > > > With this patch the filename will not be printed.
-> > > >
-> > > >     $ nfs4_getfacl /test/
-> > > >     # file: /test/
-> > > >     A::OWNER@:rwaDxtTcCy
-> > > >     A::GROUP@:rwaDxtcy
-> > > >     A::EVERYONE@:rwaDxtcy
-> > > >
-> > > >     $ nfs4_getfacl -c /test/
-> > > >
-> > > >     A::OWNER@:rwaDxtTcCy
-> > > >     A::GROUP@:rwaDxtcy
-> > > >     A::EVERYONE@:rwaDxtcy
-> > >
-> > > I don't see any reason for that blank line, I've removed it.
-> > >
-> > I added the blank line so we print acl for each file on a new line
-> > when -c is used.
->
-> OK, it does make sense to have a blank line between multiple ACLs.
->
-> Again I'd rather adopt the same behavior has getfacl/setfacl whenever we
-> can.  Looks like getfacl just appends a blank line regardless of whether
-> -c is used or whether the are multiple ACLs:
->
->         [bfields@patate ~]$ getfacl .
->         # file: .
->         # owner: bfields
->         # group: bfields
->         user::rwx
->         group::--x
->         other::--x
->
->         [bfields@patate ~]$
->
-> I've added that to print_acl_from_path().
->
-> --b.
->
-> > # nfs4_getfacl -Rc /test
-> >
-> > A::OWNER@:rwaDxtTcCy
-> > A::GROUP@:rwaDxtcy
-> > A::EVERYONE@:rwaDxtcy
-> >
-> > A::OWNER@:rwatTcCy
-> > A::GROUP@:tcy
-> > A::EVERYONE@:tcy
-> >
-> > A::OWNER@:rwaDxtTcCy
-> > A::GROUP@:rxtcy
-> > A::EVERYONE@:rxtcy
-> >
-> >
-> > > > @@ -115,7 +119,10 @@ static void print_acl_from_path(const char *fpath)
-> > > >       struct nfs4_acl *acl;
-> > > >       acl = nfs4_acl_for_path(fpath);
-> > > >       if (acl != NULL) {
-> > > > +             if(ignore_comment == 0)
-> > > >               printf("\n# file: %s\n", fpath);
-> > >
-> > > This needs to be indented.
-> > >
-> > > > +             else
-> > > > +                     printf("\n");
-> > >
-> > > I've removed the "else" clause.
-> > >
-> > > And fixed a couple minor whitespace issues.
-> > >
-> > > --b.
-> > >
-> > > >               nfs4_print_acl(stdout, acl);
-> > > >               nfs4_free_acl(acl);
-> > > >       }
-> > > > @@ -125,7 +132,7 @@ static void usage(int label)
-> > > >  {
-> > > >       if (label)
-> > > >               fprintf(stderr, "%s %s -- get NFSv4 file or directory access control lists.\n", execname, VERSION);
-> > > > -     fprintf(stderr, "Usage: %s [-R] file ...\n  -H, --more-help\tdisplay ACL format information\n  -?, -h, --help\tdisplay this help text\n  -R --recursive\trecurse into subdirectories\n", execname);
-> > > > +     fprintf(stderr, "Usage: %s [-R] file ...\n  -H, --more-help\tdisplay ACL format information\n  -?, -h, --help\tdisplay this help text\n  -R --recursive\trecurse into subdirectories\n  -c, --omit-header\tDo not display the comment header (Do not print filename)\n", execname);
-> > > >  }
-> > > >
-> > > >  static void more_help()
-> > > > --
-> > > > 2.20.1
+http://git.linux-nfs.org/?p=cel/cel-2.6.git;a=shortlog;h=refs/heads/nfs-for-5.2
+
+---
+
+Chuck Lever (19):
+      SUNRPC: Avoid digging into the ATOMIC pool
+      xprtrdma: Fix an frwr_map recovery nit
+      xprtrdma: Defer completion only when local invalidation is needed
+      xprtrdma: Clean up rpcrdma_create_req()
+      xprtrdma: Clean up rpcrdma_create_rep() and rpcrdma_destroy_rep()
+      xprtrdma: rpcrdma_regbuf alignment
+      xprtrdma: Allocate req's regbufs at xprt create time
+      xprtrdma: De-duplicate "allocate new, free old regbuf"
+      xprtrdma: Clean up regbuf helpers
+      xprtrdma: Backchannel can use GFP_KERNEL allocations
+      xprtrdma: Increase maximum number of backchannel request
+      xprtrdma: Trace marshaling failures
+      xprtrdma: Clean up sendctx functions
+      xprtrdma: More Send completion batching
+      xprtrdma: Eliminate rpcrdma_ia::ri_device
+      SUNRPC: Update comments based on recent changes
+      xprtrdma: Remove rpcrdma_create_data_internal::rsize and wsize
+      xprtrdma: Aggregate the inline settings in struct rpcrdma_ep
+      xprtrdma: Eliminate struct rpcrdma_create_data_internal
+
+
+ include/trace/events/rpcrdma.h    |   27 +++
+ net/sunrpc/socklib.c              |    2 
+ net/sunrpc/xprt.c                 |    4 
+ net/sunrpc/xprtrdma/backchannel.c |  120 +++++---------
+ net/sunrpc/xprtrdma/frwr_ops.c    |   40 ++---
+ net/sunrpc/xprtrdma/rpc_rdma.c    |  146 +++++++++--------
+ net/sunrpc/xprtrdma/transport.c   |  103 ++----------
+ net/sunrpc/xprtrdma/verbs.c       |  327 +++++++++++++++++++++----------------
+ net/sunrpc/xprtrdma/xprt_rdma.h   |  114 ++++++-------
+ 9 files changed, 430 insertions(+), 453 deletions(-)
+
+--
+Chuck Lever
