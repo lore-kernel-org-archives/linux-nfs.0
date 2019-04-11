@@ -1,400 +1,101 @@
-Return-Path: <SRS0=wtRa=SM=vger.kernel.org=linux-nfs-owner@kernel.org>
+Return-Path: <SRS0=kagm=SN=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.8 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
+X-Spam-Status: No, score=-8.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
+	SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 11AA5C10F11
-	for <linux-nfs@archiver.kernel.org>; Wed, 10 Apr 2019 20:08:17 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 42489C10F13
+	for <linux-nfs@archiver.kernel.org>; Thu, 11 Apr 2019 16:27:57 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id CC9E12075B
-	for <linux-nfs@archiver.kernel.org>; Wed, 10 Apr 2019 20:08:16 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 0D3A52133D
+	for <linux-nfs@archiver.kernel.org>; Thu, 11 Apr 2019 16:27:57 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="h4RLKabd"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="b6YPHZEB"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726777AbfDJUIQ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 10 Apr 2019 16:08:16 -0400
-Received: from mail-it1-f195.google.com ([209.85.166.195]:37356 "EHLO
-        mail-it1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726023AbfDJUIQ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Apr 2019 16:08:16 -0400
-Received: by mail-it1-f195.google.com with SMTP id u65so5633838itc.2;
-        Wed, 10 Apr 2019 13:08:15 -0700 (PDT)
+        id S1726536AbfDKQ14 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 11 Apr 2019 12:27:56 -0400
+Received: from mail-yw1-f68.google.com ([209.85.161.68]:36404 "EHLO
+        mail-yw1-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726264AbfDKQ14 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Apr 2019 12:27:56 -0400
+Received: by mail-yw1-f68.google.com with SMTP id u197so2283646ywf.3
+        for <linux-nfs@vger.kernel.org>; Thu, 11 Apr 2019 09:27:55 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
-        h=sender:subject:from:to:date:message-id:in-reply-to:references
-         :user-agent:mime-version:content-transfer-encoding;
-        bh=SQOcRIha1h6PgQkew6rEQCWSDTey1olx2u7VNyGqhi8=;
-        b=h4RLKabdkO694zCBA6bzmWuxOht7NZtKYjUS3tzYG+7ds6jjw+IIlbX1snIf8tbG8D
-         jd23ZJpP3aCTEBuOtnwZjywSp7WYGUrT52/A19FEWpSPpz8y2PFyGM1fbYb1WpLdzZ8/
-         mRt/FSnvPrimqm4F62UvSiDVjH4IAYrGuHpg8Z2n4HwSJrSItredluZJu9UYVAErqaA9
-         6p+p6kJRQfdaMqhE7h3+E9kl6GEJOOyrgHJRNYmiKCuuoU+CZXm4EXtWlLjma4D9W12M
-         4m7/resSLlaGd2avqv9BAOn/vUhuTBdVtOXiBbXOaE7kTeCkeZtMZfGK5dgT7/ghtStd
-         T+JA==
+        h=from:to:cc:subject:date:message-id;
+        bh=N4Jdg0FEpMUQlut5JKMsC7NOF920ZqV+sp4wA7FnW14=;
+        b=b6YPHZEBRsfK44O0QwF8j2jXKlG9Unjqr+uUIQe9SHMOxCtRiXwrOcf2S7/mXtM2cf
+         c1SdGY92Z74oOn5i8KQEcJXQmYSd/XF1N/l/cIxRjjihL5uqhl6gnZ8ibgl6h4qPL9mE
+         iUHpVXm3Vm1iSe8v93hfWnWiFhhR1rHwD2odxS5CA8t9kS0sFwUYE4/ZEml19EuWcTp9
+         LyRwawf8Sno7oNakeU15UchMzp5akmeIaORoYJnLeg6m92gHPSasNTDCdemGSVe8ih8B
+         tPphySzYN+ncze4UJbj//QhR6kk9Cfkte5F4N1jXNnJyHCtMXy6FOuXfczBC3OozBpLL
+         x77g==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:sender:subject:from:to:date:message-id
-         :in-reply-to:references:user-agent:mime-version
-         :content-transfer-encoding;
-        bh=SQOcRIha1h6PgQkew6rEQCWSDTey1olx2u7VNyGqhi8=;
-        b=acuWvAF24OLH3cRj5iyoSstfYi5X9vJNY0FKWoOii61yqFGEJwPyPEiiEMhsQO5pZm
-         +KIP7pjkpcFZJax6WfIIYmR6Ysxv17pgQ269xp37xUbJQZ9tyvrADng7iEw1LOupmuyR
-         FzQ656n2wsgy5Zv0MK4GRjIBnmjSvkeK5qRpZ/4PhvA8ybinH90BFWyp4/vNbNRvqF+4
-         m0kd+r1btEXcixzln7HaVFNLWAwAdSJP3J0qJDvTBLAAuPQ0yyIjRJhPifRlqEo2Zdsn
-         njuJ3jkSMefVdEV6SvneOhS+xXZoOVzAYAJbuzkE/xvFhB+N3ppwjA9VI5Fs6odV32lC
-         FpHQ==
-X-Gm-Message-State: APjAAAVXP6zCLgLtatXYGENeIkc5aS2sFC66rBqreZIG6RO6drpzuxi5
-        MZoeH9dpjI+Ej38lhYu7tjhI6t1L
-X-Google-Smtp-Source: APXvYqzW1GpN1KLO9GJm6hUXvc3sp186zSwgy4/xCLsx5trx9XMS3yVZnJAt7Zmx7de+TOqGEof4sA==
-X-Received: by 2002:a24:2c3:: with SMTP id 186mr4631563itu.88.1554926894669;
-        Wed, 10 Apr 2019 13:08:14 -0700 (PDT)
-Received: from gateway.1015granger.net (c-68-61-232-219.hsd1.mi.comcast.net. [68.61.232.219])
-        by smtp.gmail.com with ESMTPSA id a16sm1495189itc.36.2019.04.10.13.08.14
-        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Wed, 10 Apr 2019 13:08:14 -0700 (PDT)
-Received: from manet.1015granger.net (manet.1015granger.net [192.168.1.51])
-        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id x3AK8DWg004561;
-        Wed, 10 Apr 2019 20:08:13 GMT
-Subject: [PATCH v1 19/19] xprtrdma: Eliminate struct
- rpcrdma_create_data_internal
-From:   Chuck Lever <chuck.lever@oracle.com>
-To:     linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date:   Wed, 10 Apr 2019 16:08:13 -0400
-Message-ID: <20190410200813.11522.2798.stgit@manet.1015granger.net>
-In-Reply-To: <20190410200446.11522.21145.stgit@manet.1015granger.net>
-References: <20190410200446.11522.21145.stgit@manet.1015granger.net>
-User-Agent: StGit/0.17.1-dirty
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
+        h=x-gm-message-state:from:to:cc:subject:date:message-id;
+        bh=N4Jdg0FEpMUQlut5JKMsC7NOF920ZqV+sp4wA7FnW14=;
+        b=A3aSOIi3eTrW7HowNw+lkyJBit2s4Wpn1WQaFnHPYuipztWWo66O3jmIttxBG96Ra1
+         qUsFUnmj8ak9dQLx5yGOwDGRjgw1UhJGqoSznkOA1EyRA+P+sFR0N9RUKfS9qJK74yEU
+         AIpAwAu+Ojcd/rfl9nY2Xt/RfblxRiDYMWVhIsGGONDPrKEkM9RjzmhQDfhZsGdxs5h4
+         kFreRfDoVmf2e2CT5RvB5JfPeavyXH9I8ZYnX1P8N+uTkhlC5kkOaCJbFcRc3AyQ6svs
+         Yq/8A83vQbz6fhoRpE1P3ENRIeuI+UZC37glQkkUGyMLMZs7icR9ZIOhGti4aq+LkNiZ
+         TnIw==
+X-Gm-Message-State: APjAAAUxwXB/DdYACh8ZWSR/O51zPhwnbWuBCYGLV/Fr9+d1DTShbYiT
+        Iz4uax/2dAkiytmDacstJe8=
+X-Google-Smtp-Source: APXvYqxc6PPyOH12JxTHujR85JOcrLUmMZ70XE6EPTTIp5TyXV802QwEAUGHq4LDDfrcdBD+14qSNA==
+X-Received: by 2002:a81:344b:: with SMTP id b72mr40393477ywa.38.1555000075283;
+        Thu, 11 Apr 2019 09:27:55 -0700 (PDT)
+Received: from localhost.localdomain ([97.101.44.244])
+        by smtp.gmail.com with ESMTPSA id k189sm13331150ywa.48.2019.04.11.09.27.54
+        (version=TLS1 cipher=AES128-SHA bits=128/128);
+        Thu, 11 Apr 2019 09:27:54 -0700 (PDT)
+From:   Olga Kornievskaia <olga.kornievskaia@gmail.com>
+To:     trond.myklebust@hammerspace.com, anna.schumaker@netapp.com
+Cc:     linux-nfs@vger.kernel.org
+Subject: [PATCH 1/1] NFSv4.1 fix incorrect return value in copy_file_range
+Date:   Thu, 11 Apr 2019 12:27:47 -0400
+Message-Id: <20190411162747.4360-1-olga.kornievskaia@gmail.com>
+X-Mailer: git-send-email 2.10.1 (Apple Git-78)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Clean up.
+From: Olga Kornievskaia <kolga@netapp.com>
 
-Move the remaining field in rpcrdma_create_data_internal so the
-structure can be removed.
+When VFS calls copy_file_range on a 4.0 mount (and when in and out
+file is the same), we need to return ENOTSUPP instead of EINVAL.
+Since no COPY operation is defined in 4.0, then like 3.0, it should
+fallback to doing do_splice_direct().
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Otherwise xfstest generic/075,091,112,263 fail.
+
+Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
 ---
- net/sunrpc/xprtrdma/frwr_ops.c  |   21 +++++++----------
- net/sunrpc/xprtrdma/transport.c |   27 +++-------------------
- net/sunrpc/xprtrdma/verbs.c     |   47 +++++++++++++++++++++++----------------
- net/sunrpc/xprtrdma/xprt_rdma.h |   21 ++++-------------
- 4 files changed, 46 insertions(+), 70 deletions(-)
+ fs/nfs/nfs4file.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
 
-diff --git a/net/sunrpc/xprtrdma/frwr_ops.c b/net/sunrpc/xprtrdma/frwr_ops.c
-index 7cd2718..1d369b6 100644
---- a/net/sunrpc/xprtrdma/frwr_ops.c
-+++ b/net/sunrpc/xprtrdma/frwr_ops.c
-@@ -194,12 +194,11 @@ int frwr_init_mr(struct rpcrdma_ia *ia, struct rpcrdma_mr *mr)
-  * frwr_open - Prepare an endpoint for use with FRWR
-  * @ia: interface adapter this endpoint will use
-  * @ep: endpoint to prepare
-- * @cdata: transport parameters
-  *
-  * On success, sets:
-  *	ep->rep_attr.cap.max_send_wr
-  *	ep->rep_attr.cap.max_recv_wr
-- *	cdata->max_requests
-+ *	ep->rep_max_requests
-  *	ia->ri_max_segs
-  *
-  * And these FRWR-related fields:
-@@ -208,8 +207,7 @@ int frwr_init_mr(struct rpcrdma_ia *ia, struct rpcrdma_mr *mr)
-  *
-  * On failure, a negative errno is returned.
-  */
--int frwr_open(struct rpcrdma_ia *ia, struct rpcrdma_ep *ep,
--	      struct rpcrdma_create_data_internal *cdata)
-+int frwr_open(struct rpcrdma_ia *ia, struct rpcrdma_ep *ep)
+diff --git a/fs/nfs/nfs4file.c b/fs/nfs/nfs4file.c
+index 45b2322..9a222b0 100644
+--- a/fs/nfs/nfs4file.c
++++ b/fs/nfs/nfs4file.c
+@@ -133,6 +133,12 @@ static ssize_t nfs4_copy_file_range(struct file *file_in, loff_t pos_in,
+ 				    struct file *file_out, loff_t pos_out,
+ 				    size_t count, unsigned int flags)
  {
- 	struct ib_device_attr *attrs = &ia->ri_id->device->attrs;
- 	int max_qp_wr, depth, delta;
-@@ -258,19 +256,18 @@ int frwr_open(struct rpcrdma_ia *ia, struct rpcrdma_ep *ep,
- 	max_qp_wr -= 1;
- 	if (max_qp_wr < RPCRDMA_MIN_SLOT_TABLE)
- 		return -ENOMEM;
--	if (cdata->max_requests > max_qp_wr)
--		cdata->max_requests = max_qp_wr;
--	ep->rep_attr.cap.max_send_wr = cdata->max_requests * depth;
-+	if (ep->rep_max_requests > max_qp_wr)
-+		ep->rep_max_requests = max_qp_wr;
-+	ep->rep_attr.cap.max_send_wr = ep->rep_max_requests * depth;
- 	if (ep->rep_attr.cap.max_send_wr > max_qp_wr) {
--		cdata->max_requests = max_qp_wr / depth;
--		if (!cdata->max_requests)
-+		ep->rep_max_requests = max_qp_wr / depth;
-+		if (!ep->rep_max_requests)
- 			return -EINVAL;
--		ep->rep_attr.cap.max_send_wr = cdata->max_requests *
--					       depth;
-+		ep->rep_attr.cap.max_send_wr = ep->rep_max_requests * depth;
- 	}
- 	ep->rep_attr.cap.max_send_wr += RPCRDMA_BACKWARD_WRS;
- 	ep->rep_attr.cap.max_send_wr += 1; /* for ib_drain_sq */
--	ep->rep_attr.cap.max_recv_wr = cdata->max_requests;
-+	ep->rep_attr.cap.max_recv_wr = ep->rep_max_requests;
- 	ep->rep_attr.cap.max_recv_wr += RPCRDMA_BACKWARD_WRS;
- 	ep->rep_attr.cap.max_recv_wr += 1; /* for ib_drain_rq */
- 
-diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index 4e5b8fe..f0b13a9 100644
---- a/net/sunrpc/xprtrdma/transport.c
-+++ b/net/sunrpc/xprtrdma/transport.c
-@@ -68,7 +68,7 @@
-  * tunables
-  */
- 
--static unsigned int xprt_rdma_slot_table_entries = RPCRDMA_DEF_SLOT_TABLE;
-+unsigned int xprt_rdma_slot_table_entries = RPCRDMA_DEF_SLOT_TABLE;
- unsigned int xprt_rdma_max_inline_read = RPCRDMA_DEF_INLINE;
- unsigned int xprt_rdma_max_inline_write = RPCRDMA_DEF_INLINE;
- unsigned int xprt_rdma_memreg_strategy		= RPCRDMA_FRWR;
-@@ -288,7 +288,7 @@
- 
- 	cancel_delayed_work_sync(&r_xprt->rx_connect_worker);
- 
--	rpcrdma_ep_destroy(&r_xprt->rx_ep, &r_xprt->rx_ia);
-+	rpcrdma_ep_destroy(r_xprt);
- 	rpcrdma_buffer_destroy(&r_xprt->rx_buf);
- 	rpcrdma_ia_close(&r_xprt->rx_ia);
- 
-@@ -311,10 +311,8 @@
- static struct rpc_xprt *
- xprt_setup_rdma(struct xprt_create *args)
- {
--	struct rpcrdma_create_data_internal cdata;
- 	struct rpc_xprt *xprt;
- 	struct rpcrdma_xprt *new_xprt;
--	struct rpcrdma_ep *new_ep;
- 	struct sockaddr *sap;
- 	int rc;
- 
-@@ -349,29 +347,12 @@
- 		xprt_set_bound(xprt);
- 	xprt_rdma_format_addresses(xprt, sap);
- 
--	cdata.max_requests = xprt_rdma_slot_table_entries;
--
--	/*
--	 * Create new transport instance, which includes initialized
--	 *  o ia
--	 *  o endpoint
--	 *  o buffers
--	 */
--
- 	new_xprt = rpcx_to_rdmax(xprt);
--
- 	rc = rpcrdma_ia_open(new_xprt);
- 	if (rc)
- 		goto out1;
- 
--	/*
--	 * initialize and create ep
--	 */
--	new_xprt->rx_data = cdata;
--	new_ep = &new_xprt->rx_ep;
--
--	rc = rpcrdma_ep_create(&new_xprt->rx_ep,
--				&new_xprt->rx_ia, &new_xprt->rx_data);
-+	rc = rpcrdma_ep_create(new_xprt);
- 	if (rc)
- 		goto out2;
- 
-@@ -402,7 +383,7 @@
- 	rpcrdma_buffer_destroy(&new_xprt->rx_buf);
- 	rc = -ENODEV;
- out3:
--	rpcrdma_ep_destroy(new_ep, &new_xprt->rx_ia);
-+	rpcrdma_ep_destroy(new_xprt);
- out2:
- 	rpcrdma_ia_close(&new_xprt->rx_ia);
- out1:
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index b419906..c65edcf 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -476,18 +476,22 @@ static void rpcrdma_xprt_drain(struct rpcrdma_xprt *r_xprt)
- 	ia->ri_pd = NULL;
- }
- 
--/*
-- * Create unconnected endpoint.
-+/**
-+ * rpcrdma_ep_create - Create unconnected endpoint
-+ * @r_xprt: transport to instantiate
-+ *
-+ * Returns zero on success, or a negative errno.
-  */
--int
--rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
--		  struct rpcrdma_create_data_internal *cdata)
-+int rpcrdma_ep_create(struct rpcrdma_xprt *r_xprt)
- {
-+	struct rpcrdma_ep *ep = &r_xprt->rx_ep;
-+	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
- 	struct rpcrdma_connect_private *pmsg = &ep->rep_cm_private;
- 	struct ib_cq *sendcq, *recvcq;
- 	unsigned int max_sge;
- 	int rc;
- 
-+	ep->rep_max_requests = xprt_rdma_slot_table_entries;
- 	ep->rep_inline_send = xprt_rdma_max_inline_write;
- 	ep->rep_inline_recv = xprt_rdma_max_inline_read;
- 
-@@ -499,7 +503,7 @@ static void rpcrdma_xprt_drain(struct rpcrdma_xprt *r_xprt)
- 	}
- 	ia->ri_max_send_sges = max_sge;
- 
--	rc = frwr_open(ia, ep, cdata);
-+	rc = frwr_open(ia, ep);
- 	if (rc)
- 		return rc;
- 
-@@ -521,7 +525,7 @@ static void rpcrdma_xprt_drain(struct rpcrdma_xprt *r_xprt)
- 		ep->rep_attr.cap.max_send_sge,
- 		ep->rep_attr.cap.max_recv_sge);
- 
--	ep->rep_send_batch = cdata->max_requests >> 3;
-+	ep->rep_send_batch = ep->rep_max_requests >> 3;
- 	ep->rep_send_count = ep->rep_send_batch;
- 	init_waitqueue_head(&ep->rep_connect_wait);
- 	ep->rep_receive_count = 0;
-@@ -584,16 +588,16 @@ static void rpcrdma_xprt_drain(struct rpcrdma_xprt *r_xprt)
- 	return rc;
- }
- 
--/*
-- * rpcrdma_ep_destroy
-+/**
-+ * rpcrdma_ep_destroy - Disconnect and destroy endpoint.
-+ * @r_xprt: transport instance to shut down
-  *
-- * Disconnect and destroy endpoint. After this, the only
-- * valid operations on the ep are to free it (if dynamically
-- * allocated) or re-create it.
-  */
--void
--rpcrdma_ep_destroy(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
-+void rpcrdma_ep_destroy(struct rpcrdma_xprt *r_xprt)
- {
-+	struct rpcrdma_ep *ep = &r_xprt->rx_ep;
-+	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
++	struct nfs_server *server = NFS_SERVER(file_inode(file_in);
++	struct nfs_client *client = server->nfs_client;
 +
- 	if (ia->ri_id && ia->ri_id->qp) {
- 		rpcrdma_ep_disconnect(ep, ia);
- 		rdma_destroy_qp(ia->ri_id);
-@@ -623,7 +627,7 @@ static void rpcrdma_xprt_drain(struct rpcrdma_xprt *r_xprt)
- 		goto out1;
- 
- 	rc = -ENOMEM;
--	err = rpcrdma_ep_create(ep, ia, &r_xprt->rx_data);
-+	err = rpcrdma_ep_create(r_xprt);
- 	if (err) {
- 		pr_err("rpcrdma: rpcrdma_ep_create returned %d\n", err);
- 		goto out2;
-@@ -640,7 +644,7 @@ static void rpcrdma_xprt_drain(struct rpcrdma_xprt *r_xprt)
- 	return 0;
- 
- out3:
--	rpcrdma_ep_destroy(ep, ia);
-+	rpcrdma_ep_destroy(r_xprt);
- out2:
- 	rpcrdma_ia_close(ia);
- out1:
-@@ -1082,14 +1086,19 @@ static bool rpcrdma_rep_create(struct rpcrdma_xprt *r_xprt, bool temp)
- 	return false;
- }
- 
--int
--rpcrdma_buffer_create(struct rpcrdma_xprt *r_xprt)
-+/**
-+ * rpcrdma_buffer_create - Create initial set of req/rep objects
-+ * @r_xprt: transport instance to (re)initialize
-+ *
-+ * Returns zero on success, otherwise a negative errno.
-+ */
-+int rpcrdma_buffer_create(struct rpcrdma_xprt *r_xprt)
- {
- 	struct rpcrdma_buffer *buf = &r_xprt->rx_buf;
- 	int i, rc;
- 
- 	buf->rb_flags = 0;
--	buf->rb_max_requests = r_xprt->rx_data.max_requests;
-+	buf->rb_max_requests = r_xprt->rx_ep.rep_max_requests;
- 	buf->rb_bc_srv_max_requests = 0;
- 	spin_lock_init(&buf->rb_mrlock);
- 	spin_lock_init(&buf->rb_lock);
-diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index 9beb7fc..618d97b 100644
---- a/net/sunrpc/xprtrdma/xprt_rdma.h
-+++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -97,6 +97,7 @@ struct rpcrdma_ep {
- 	wait_queue_head_t 	rep_connect_wait;
- 	struct rpcrdma_connect_private	rep_cm_private;
- 	struct rdma_conn_param	rep_remote_cma;
-+	unsigned int		rep_max_requests;	/* set by /proc */
- 	unsigned int		rep_inline_send;	/* negotiated */
- 	unsigned int		rep_inline_recv;	/* negotiated */
- 	int			rep_receive_count;
-@@ -414,16 +415,6 @@ enum {
- };
- 
- /*
-- * Internal structure for transport instance creation. This
-- * exists primarily for modularity.
-- *
-- * This data should be set with mount options
-- */
--struct rpcrdma_create_data_internal {
--	unsigned int	max_requests;	/* max requests (slots) in flight */
--};
--
--/*
-  * Statistics for RPCRDMA
-  */
- struct rpcrdma_stats {
-@@ -467,7 +458,6 @@ struct rpcrdma_xprt {
- 	struct rpcrdma_ia	rx_ia;
- 	struct rpcrdma_ep	rx_ep;
- 	struct rpcrdma_buffer	rx_buf;
--	struct rpcrdma_create_data_internal rx_data;
- 	struct delayed_work	rx_connect_worker;
- 	struct rpcrdma_stats	rx_stats;
- };
-@@ -507,9 +497,8 @@ struct rpcrdma_xprt {
- /*
-  * Endpoint calls - xprtrdma/verbs.c
-  */
--int rpcrdma_ep_create(struct rpcrdma_ep *, struct rpcrdma_ia *,
--				struct rpcrdma_create_data_internal *);
--void rpcrdma_ep_destroy(struct rpcrdma_ep *, struct rpcrdma_ia *);
-+int rpcrdma_ep_create(struct rpcrdma_xprt *r_xprt);
-+void rpcrdma_ep_destroy(struct rpcrdma_xprt *r_xprt);
- int rpcrdma_ep_connect(struct rpcrdma_ep *, struct rpcrdma_ia *);
- void rpcrdma_ep_disconnect(struct rpcrdma_ep *, struct rpcrdma_ia *);
- 
-@@ -583,8 +572,7 @@ static inline bool rpcrdma_regbuf_dma_map(struct rpcrdma_xprt *r_xprt,
- /* Memory registration calls xprtrdma/frwr_ops.c
-  */
- bool frwr_is_supported(struct ib_device *device);
--int frwr_open(struct rpcrdma_ia *ia, struct rpcrdma_ep *ep,
--	      struct rpcrdma_create_data_internal *cdata);
-+int frwr_open(struct rpcrdma_ia *ia, struct rpcrdma_ep *ep);
- int frwr_init_mr(struct rpcrdma_ia *ia, struct rpcrdma_mr *mr);
- void frwr_release_mr(struct rpcrdma_mr *mr);
- size_t frwr_maxpages(struct rpcrdma_xprt *r_xprt);
-@@ -629,6 +617,7 @@ static inline void rpcrdma_set_xdrlen(struct xdr_buf *xdr, size_t len)
- 
- /* RPC/RDMA module init - xprtrdma/transport.c
-  */
-+extern unsigned int xprt_rdma_slot_table_entries;
- extern unsigned int xprt_rdma_max_inline_read;
- extern unsigned int xprt_rdma_max_inline_write;
- void xprt_rdma_format_addresses(struct rpc_xprt *xprt, struct sockaddr *sap);
++	if (client->cl_minorversion < 1)
++		return -EOPNOTSUPP;
++
+ 	if (file_inode(file_in) == file_inode(file_out))
+ 		return -EINVAL;
+ 	return nfs42_proc_copy(file_in, pos_in, file_out, pos_out, count);
+-- 
+1.8.3.1
 
