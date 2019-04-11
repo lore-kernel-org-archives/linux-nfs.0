@@ -2,134 +2,142 @@ Return-Path: <SRS0=kagm=SN=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-1.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E9DA4C10F13
-	for <linux-nfs@archiver.kernel.org>; Thu, 11 Apr 2019 16:53:51 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 62F8BC10F13
+	for <linux-nfs@archiver.kernel.org>; Thu, 11 Apr 2019 17:01:53 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id B45632133D
-	for <linux-nfs@archiver.kernel.org>; Thu, 11 Apr 2019 16:53:51 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 251812075B
+	for <linux-nfs@archiver.kernel.org>; Thu, 11 Apr 2019 17:01:53 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="XTteXNnK"
+	dkim=pass (2048-bit key) header.d=umich.edu header.i=@umich.edu header.b="nGByEDBQ"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726615AbfDKQxv (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 11 Apr 2019 12:53:51 -0400
-Received: from mail-vk1-f193.google.com ([209.85.221.193]:36619 "EHLO
-        mail-vk1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726603AbfDKQxv (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Apr 2019 12:53:51 -0400
-Received: by mail-vk1-f193.google.com with SMTP id w140so1527405vkd.3
-        for <linux-nfs@vger.kernel.org>; Thu, 11 Apr 2019 09:53:50 -0700 (PDT)
+        id S1726536AbfDKRBw (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 11 Apr 2019 13:01:52 -0400
+Received: from mail-ua1-f46.google.com ([209.85.222.46]:43419 "EHLO
+        mail-ua1-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726106AbfDKRBw (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Apr 2019 13:01:52 -0400
+Received: by mail-ua1-f46.google.com with SMTP id n16so2266394uae.10
+        for <linux-nfs@vger.kernel.org>; Thu, 11 Apr 2019 10:01:51 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
-         :cc;
-        bh=2CjcvI2FVcDcnBXA+EwMCHhCKlO4eovah90G5YkmvvY=;
-        b=XTteXNnKkH3kuhMKOCZsgzPfIoOP2EuQy5rvlVSRqBCvyju+83MlO6K0H1B62aNeLw
-         skDa49XnAJxSuIKMowXc87Y83RStS7+dgBSUO7Ok2Bw63aeyQTQzWXmKnsWpJSZO4Kgp
-         TC4zYSADD7yzwR6akOtY3hNKwV92h/rw/rjpUWcx+XN+dDuhi0G12u4kN6ts3Oglff2T
-         IrZe5zbtj1KKs/0VKDSBmFBBEFmqLwq+RhBiz36C6vBKNinEQXJX5EECKYbxF2iKbDJN
-         QyOaiU2bglTXDy0FkcxXr+c9rvYJciI3BX1DvApQgxyQP28Qatqg0T37MleuNG4t3K23
-         bNgQ==
+        d=umich.edu; s=google-2016-06-03;
+        h=mime-version:from:date:message-id:subject:to
+         :content-transfer-encoding;
+        bh=P6a+gsB0rOPUF+XguAtuj9IucRvzbv81qd9OuC6IBNY=;
+        b=nGByEDBQZfO3gns3MhTfbdCST1NkDKaAX3pIWDyANTpIkPNRBiOMGu4+njxeYJCWWc
+         jdqglHM635M4tjt2/dWim5LlbkaarEGA4FNgAzi4d7ACyuGac2Wh4jZbRRI+zxyivyyY
+         PzNuGPp1U1qPNHWKlcXkR97+VTbaDJujWlqp0YCCwL+Z0mvAcPkC++tyqL7BrlK9xtxw
+         /SLreutajXmwvcSkGzlqUSWrOHinlWT3G8UoWmmlf0HY0v/AKsUPE+3ywF9EqSoW7JV2
+         v/yfbdA13qwYLtOTQlg2in46np1e1fFFnMT+2y4NIcH/fS5pMkevFbiOzCayy4Z6c8JE
+         IGJA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
-         :message-id:subject:to:cc;
-        bh=2CjcvI2FVcDcnBXA+EwMCHhCKlO4eovah90G5YkmvvY=;
-        b=blP7Jd5ZnTGr+6kC4+0btqHWh6ClvajKtrh5v7wblv+CUfi5sKZh4LANuPrO6ClWvO
-         vGV5IyxqsBAbHpoSJFUkdZgsKlHpnR7p+DY30wICxcN05ufTOajCDEhzQHE2/y85CzYj
-         y7LrSHIxQNyqH6EYHKhabrd0nRE/ppn3edi1Q3QpP7zB2OkJ4ieGdZCEuBv1rq9qnnIM
-         unvr/L48KwmyimZRM42BQQLH91p63dxX93YRkVTbzOep/p2PsGvBYkHGjIGSr7l/HKls
-         I18DWANOUV81GXJyQYGa3j9dhbljkgcEOqeccwuLD4eLpLgy6GZ459x3RbLDjxM1725S
-         2/og==
-X-Gm-Message-State: APjAAAWqAJXyDx9j36lHpg27qc0xlzk86ffWh8aUJze4iE2DWy0mJcW6
-        UhMVPENsFfAYU8QiMAi52a8buuutAKvsgy+/Gm8=
-X-Google-Smtp-Source: APXvYqwa++suj5KAitIjVoHAlT7b5TVU83OYtD6hd+A/FY4FX6qSoQtY+UqTX0KR683yMQoc9Nyr8nlkISxyVPZ0iDU=
-X-Received: by 2002:ac5:c383:: with SMTP id s3mr25616479vkk.65.1555001630034;
- Thu, 11 Apr 2019 09:53:50 -0700 (PDT)
+        h=x-gm-message-state:mime-version:from:date:message-id:subject:to
+         :content-transfer-encoding;
+        bh=P6a+gsB0rOPUF+XguAtuj9IucRvzbv81qd9OuC6IBNY=;
+        b=OMaKG739uPS1h182KWqUNU2xB8pDYkLCIVq6i5Nc/057WII6+YLaAYpbEkzOFmFptG
+         GKLUlVt2LaHqx7nU8+I1E3UAjbJIpOxTslXuS/1R08MUf2iyNZGx76/jN8LGNj8tfxAp
+         YMwGjCjHO70AKxsLmJPcUPBkYNmGoEV7rg5PmM3PLCpTqIYBweWU2lzW5lMqLb4dodum
+         5FK39tLOoY/xjM3Go/zeAv2vO2l5HLEoQ7ZAcY80BoYpLrntpCSeSGPJuL6eB4Ug2iaG
+         PdR/PirliNIyr45QoQ7XSMuf2EJTtOY64Mb6wOXcMm+6La4kxak955kKPYFEA7SXeryo
+         gmww==
+X-Gm-Message-State: APjAAAWM4do3wIb8a9HCj7nu0bqFJ7xYQpK30+LQladR33hMaiR0nyhV
+        kKJL97kMHxx+dSD2+FQzp3Yf2+VL3lYeMFlVFsWKdBU3
+X-Google-Smtp-Source: APXvYqyHjC8q4/H8eBFJfVjJcV3AwMWp8I1gWkGX5AQYSmuNhtBSplJFcYe9/fm5mRe555+AzoGj7KUJ+aOiluxtKWM=
+X-Received: by 2002:ab0:c01:: with SMTP id a1mr7516284uak.116.1555002110792;
+ Thu, 11 Apr 2019 10:01:50 -0700 (PDT)
 MIME-Version: 1.0
-References: <20190411162747.4360-1-olga.kornievskaia@gmail.com>
- <0de6cbcd86a69d2e19e4adc2cd70822ce0ae557a.camel@hammerspace.com> <CAN-5tyGz1Vd6_p3pVtv8+zw5YQ+vTNH=MtYAQyg_mQ67632nBA@mail.gmail.com>
-In-Reply-To: <CAN-5tyGz1Vd6_p3pVtv8+zw5YQ+vTNH=MtYAQyg_mQ67632nBA@mail.gmail.com>
-From:   Olga Kornievskaia <olga.kornievskaia@gmail.com>
-Date:   Thu, 11 Apr 2019 12:53:39 -0400
-Message-ID: <CAN-5tyGrqQLpwdLPsFofUeSCDHY0Spt80YBu0au5m16mi4yPAA@mail.gmail.com>
-Subject: Re: [PATCH 1/1] NFSv4.1 fix incorrect return value in copy_file_range
-To:     Trond Myklebust <trondmy@hammerspace.com>
-Cc:     "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+From:   Olga Kornievskaia <aglo@umich.edu>
+Date:   Thu, 11 Apr 2019 13:01:39 -0400
+Message-ID: <CAN-5tyHGLTFmd1t9Bn4VqbLFsnvTMJYd-dBzrn9mP-Tn7g8XVg@mail.gmail.com>
+Subject: discuss NFS xfstest failures
+To:     linux-nfs <linux-nfs@vger.kernel.org>
 Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Thu, Apr 11, 2019 at 12:52 PM Olga Kornievskaia
-<olga.kornievskaia@gmail.com> wrote:
->
-> On Thu, Apr 11, 2019 at 12:46 PM Trond Myklebust
-> <trondmy@hammerspace.com> wrote:
-> >
-> > On Thu, 2019-04-11 at 12:27 -0400, Olga Kornievskaia wrote:
-> > > From: Olga Kornievskaia <kolga@netapp.com>
-> > >
-> > > When VFS calls copy_file_range on a 4.0 mount (and when in and out
-> > > file is the same), we need to return ENOTSUPP instead of EINVAL.
-> > > Since no COPY operation is defined in 4.0, then like 3.0, it should
-> > > fallback to doing do_splice_direct().
-> > >
-> > > Otherwise xfstest generic/075,091,112,263 fail.
-> > >
-> > > Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
-> > > ---
-> > >  fs/nfs/nfs4file.c | 6 ++++++
-> > >  1 file changed, 6 insertions(+)
-> > >
-> > > diff --git a/fs/nfs/nfs4file.c b/fs/nfs/nfs4file.c
-> > > index 45b2322..9a222b0 100644
-> > > --- a/fs/nfs/nfs4file.c
-> > > +++ b/fs/nfs/nfs4file.c
-> > > @@ -133,6 +133,12 @@ static ssize_t nfs4_copy_file_range(struct file
-> > > *file_in, loff_t pos_in,
-> > >                                   struct file *file_out, loff_t
-> > > pos_out,
-> > >                                   size_t count, unsigned int flags)
-> > >  {
-> > > +     struct nfs_server *server = NFS_SERVER(file_inode(file_in);
-> > > +     struct nfs_client *client = server->nfs_client;
-> > > +
-> > > +     if (client->cl_minorversion < 1)
-> > > +             return -EOPNOTSUPP;
-> > > +
-> > >       if (file_inode(file_in) == file_inode(file_out))
-> > >               return -EINVAL;
-> > >       return nfs42_proc_copy(file_in, pos_in, file_out, pos_out,
-> > > count);
-> >
-> > Let's please just move the test for NFS_CAP_COPY from nfs42_proc_copy()
-> > into the above function.
->
-> But the return order of errors here for different conditions matter.
-> For 4.1+ mounts, if in == out, we'd expect EINVAL even if server isn't
-> capable. But we can't just put the in == out first because for 4.0, we
-> need to always return EOPNOTSUPP.
+Hi folks,
 
-Urgh, I just realized a problem in my own check. It needs to be < 2 as
-there is no COPY in 4.1.
+We have some output at the wiki --
+https://wiki.linux-nfs.org/wiki/index.php/Xfstests -- capturing a data
+point of failures (for 4.16 kernel). However, I see many more failures
+with the current (5.1-rc1). Wiki output should probably be updated
+since xfstest has now 500+ tests. I have done my best to go over the
+failures and provide some summary and comments. I'd like to see if the
+community has any comments. Anybody else would like to share their
+outputs from the xfstests that show other failures?
 
-> > BTW: Why do we return -EINVAL in the file_in == file_out case? Is there
-> > any reason why we shouldn't just return EOPNOTSUPP there too in order
-> > to let splice() fulfil the operation?
->
-> Yes: in == out -> EINVAL is a spec requirement.
->
-> >
-> > --
-> > Trond Myklebust
-> > Linux NFS client maintainer, Hammerspace
-> > trond.myklebust@hammerspace.com
-> >
-> >
+nfsv4.1
+Failures: generic/035 generic/075 generic/091 generic/112 generic/263
+generic/294 generic/465 generic/484 nfs/001
+Failed 9 of 429 tests
+nfsv4.0
+Failures: generic/035 generic/075 generic/091 generic/112 generic/263
+generic/294 generic/426 generic/465 generic/467 generic/477
+generic/484
+Failed 11 of 429 tests
+nfsv3
+Failures: generic/035 generic/258 generic/294 generic/465 generic/467
+generic/477 generic/484
+Failed 7 of 429 tests
+
+I will first list the ones that are not on the wiki (and grouped by version=
+):
+
+nfs4.1
+--- [FIXED] nfs/001 =E2=80=93 a regression problem has been resolved with t=
+he
+latest patch from Chuck addressing the issue.
+--- [EXPECTED] generic/075, generic/091, generic/112, generic/263 =E2=80=93
+expected failure. Because copy_file_range() is called and passes in as
+input and output the same file which is not allowed by the NFSv4.2
+spec.
+--- [VFS problem] generic/484 this is a VFS failure not to preserve
+the lock across execve (as the NFS is just a hook into the VFS)
+--- [VFS problem] generic/294 this is again VFS issue that for returns
+an error that the test doesn=E2=80=99t expect (test expects EEXIST and gets
+ROFS). This error is set by the VFS function finish_open(). However, I
+do see some test itself weirdness. The test attempts to remount to a
+read-only FS in the middle. Which only translates to new PUTROOTFH. A
+test tries to create a file which translates to an NFS operation that
+succeeds but the internally VFS fails it as ROFS but file is left
+created on the file server.
+
+nfs4.0
+--- [FIXED] generic/075, generic/091, generic/112, generic/263 =E2=80=93 in
+4.0 same function is called and same check that in and out file is the
+same and get EINVAL error failing the test. There is a proposed fix
+upstream.
+--- generic/484 same as 4.1
+--- generic/294 same as 4.1
+
+The next tests were present in wiki
+--- [EXPECTED] generic/258 (v3) failure only. This is expected because
+nfstime3 spec structure defines seconds as =E2=80=9Cu32=E2=80=9D and nfstes=
+t4 spec
+structure defines as =E2=80=9Cu64=E2=80=9D. So when a large timestamp is se=
+t in the
+test, v3 wraps it around.
+--- [?] generic 426/467/477 (open by handle failures all in v4.0 and
+2-out-of-3 in v3, all pass in 4.1. note 426 passes in v3 which is
+surprising and makes me think why should 4.0 fail in this case).
+Perhaps because 4.0 doesn't support CLAIM_FH this could be considered
+expected. but something is fishy here.
+--- generic/035 not quiet sure of the exact reason so let's call it expecte=
+d
+--- generic/465 not quiet sure of the exact reason so let's call it expecte=
+d
+
+As an example, wiki listed a test which probably should have
+definitely been running since it's NFS (but wasn't due to a missed
+step in a setup)
+"nfs/001 [not run] nfs4_setfacl utility required, skipped this test"
+It makes me question how many other [not run] tests could also
+problems and should have run. Anybody has any ideas how we can get a
+'golden' output of what tests are applicable to NFS?
