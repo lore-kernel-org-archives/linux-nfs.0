@@ -2,171 +2,141 @@ Return-Path: <SRS0=/Mrm=SR=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
-	SPF_PASS,UNPARSEABLE_RELAY autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-7.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
+	SIGNED_OFF_BY,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7509EC10F0E
-	for <linux-nfs@archiver.kernel.org>; Mon, 15 Apr 2019 15:05:08 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3A78FC10F0E
+	for <linux-nfs@archiver.kernel.org>; Mon, 15 Apr 2019 16:08:58 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 40A6C20880
-	for <linux-nfs@archiver.kernel.org>; Mon, 15 Apr 2019 15:05:08 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id C764720880
+	for <linux-nfs@archiver.kernel.org>; Mon, 15 Apr 2019 16:08:57 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="nkU9U29E"
+	dkim=pass (1024-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="tX/zjdHU"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727252AbfDOPFH (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 15 Apr 2019 11:05:07 -0400
-Received: from userp2130.oracle.com ([156.151.31.86]:44850 "EHLO
-        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726298AbfDOPFH (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Apr 2019 11:05:07 -0400
-Received: from pps.filterd (userp2130.oracle.com [127.0.0.1])
-        by userp2130.oracle.com (8.16.0.27/8.16.0.27) with SMTP id x3FExJ0N184336;
-        Mon, 15 Apr 2019 15:05:04 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=from : content-type :
- content-transfer-encoding : mime-version : subject : message-id : date :
- cc : to; s=corp-2018-07-02;
- bh=M1fULTiOZpv7SoV3LqiVEGqsIGOTkQZMFgBzM5XoZX8=;
- b=nkU9U29E/8wRHGCmq/i5hd7NEBzM0IFL2fL+aV4PZZ9GJ8CKq8SIuYRMjTtTNmSL1PCp
- 8idlnPn0qjbXOZwx8W6JLqhMJzySLsOVcIGn+vYh4oqoy2BwvUQnRN29ZxclZF60+VO4
- 8HZ3ZPvvPOfmKYNE+ngAum5sgMF8ruU2agiLyujXNFQU9x5W5lqX6tuZdYUeEM3fkHio
- bFq7YlDUhz3UPuG/+/kjrHQDNCCIW/4qJ9UgzUmh0bEzooSopNuXvnDhwvtUXv1/wpvn
- rs9PA3/s2ZhrdotTAk02yT3NdVF67Cu94VG8mpXiJojD8X6OCSbZ0J85zcrzjVuJ45kg 1A== 
-Received: from userp3020.oracle.com (userp3020.oracle.com [156.151.31.79])
-        by userp2130.oracle.com with ESMTP id 2ru76t781d-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Mon, 15 Apr 2019 15:05:03 +0000
-Received: from pps.filterd (userp3020.oracle.com [127.0.0.1])
-        by userp3020.oracle.com (8.16.0.27/8.16.0.27) with SMTP id x3FF4KY5065524;
-        Mon, 15 Apr 2019 15:05:03 GMT
-Received: from aserv0121.oracle.com (aserv0121.oracle.com [141.146.126.235])
-        by userp3020.oracle.com with ESMTP id 2rubq5t0dx-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Mon, 15 Apr 2019 15:05:03 +0000
-Received: from abhmp0017.oracle.com (abhmp0017.oracle.com [141.146.116.23])
-        by aserv0121.oracle.com (8.14.4/8.13.8) with ESMTP id x3FF4wsk004791;
-        Mon, 15 Apr 2019 15:05:02 GMT
-Received: from anon-dhcp-171.1015granger.net (/68.61.232.219)
-        by default (Oracle Beehive Gateway v4.0)
-        with ESMTP ; Mon, 15 Apr 2019 08:04:58 -0700
-From:   Chuck Lever <chuck.lever@oracle.com>
-Content-Type: text/plain;
-        charset=us-ascii
-Content-Transfer-Encoding: quoted-printable
-Mime-Version: 1.0 (Mac OS X Mail 12.4 \(3445.104.8\))
-Subject: error=Invalid slot
-Message-Id: <2996CEEE-0A1A-4C15-AA8B-A97E917D7924@oracle.com>
-Date:   Mon, 15 Apr 2019 11:04:57 -0400
-Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-To:     Trond Myklebust <trondmy@hammerspace.com>
-X-Mailer: Apple Mail (2.3445.104.8)
-X-Proofpoint-Virus-Version: vendor=nai engine=5900 definitions=9227 signatures=668685
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 suspectscore=0 malwarescore=0
- phishscore=0 bulkscore=0 spamscore=0 mlxscore=0 mlxlogscore=829
- adultscore=0 classifier=spam adjust=0 reason=mlx scancount=1
- engine=8.0.1-1810050000 definitions=main-1904150104
-X-Proofpoint-Virus-Version: vendor=nai engine=5900 definitions=9227 signatures=668685
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 suspectscore=0 malwarescore=0
- phishscore=0 bulkscore=0 spamscore=0 mlxscore=0 lowpriorityscore=0
- mlxlogscore=855 adultscore=0 classifier=spam adjust=0 reason=mlx
- scancount=1 engine=8.0.1-1810050000 definitions=main-1904150104
+        id S1727832AbfDOQIv (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 15 Apr 2019 12:08:51 -0400
+Received: from mail-eopbgr700131.outbound.protection.outlook.com ([40.107.70.131]:1438
+        "EHLO NAM04-SN1-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1727882AbfDOQF7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 15 Apr 2019 12:05:59 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=hammerspace.com;
+ s=selector1;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=7TBqMf/f1hxUYrmpSUHM5PbZPQ2yr2LqBOVSzQeNINk=;
+ b=tX/zjdHUpj3F5uah93U8Q6G98pxMNCabSg8TXe6UK0J/17TaOyYgKufGp/60XcU+Mp8jJFRC+HX5EafrmE7gIo68PBwyGHISqw3bBpL7AgbiSgFpkeH1zycESbIJYz7DVkeGn1Q58xJjf5ob93gWxsGiF0S3bNJRLvik+9yvUlY=
+Received: from SN6PR13MB2494.namprd13.prod.outlook.com (52.135.95.148) by
+ SN6PR13MB2447.namprd13.prod.outlook.com (52.135.95.27) with Microsoft SMTP
+ Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ 15.20.1813.9; Mon, 15 Apr 2019 16:05:56 +0000
+Received: from SN6PR13MB2494.namprd13.prod.outlook.com
+ ([fe80::30dc:67e2:d25a:f1d3]) by SN6PR13MB2494.namprd13.prod.outlook.com
+ ([fe80::30dc:67e2:d25a:f1d3%6]) with mapi id 15.20.1813.009; Mon, 15 Apr 2019
+ 16:05:56 +0000
+From:   Trond Myklebust <trondmy@hammerspace.com>
+To:     "chuck.lever@oracle.com" <chuck.lever@oracle.com>
+CC:     "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: error=Invalid slot
+Thread-Topic: error=Invalid slot
+Thread-Index: AQHU85ydVB0rnpfSJkGGMtmyhXgDYKY9YvYA
+Date:   Mon, 15 Apr 2019 16:05:55 +0000
+Message-ID: <76d240e019d0ccc35bce05c1edb1ca104d7c18bf.camel@hammerspace.com>
+References: <2996CEEE-0A1A-4C15-AA8B-A97E917D7924@oracle.com>
+In-Reply-To: <2996CEEE-0A1A-4C15-AA8B-A97E917D7924@oracle.com>
+Accept-Language: en-US, en-GB
+Content-Language: en-US
+X-MS-Has-Attach: 
+X-MS-TNEF-Correlator: 
+authentication-results: spf=none (sender IP is )
+ smtp.mailfrom=trondmy@hammerspace.com; 
+x-originating-ip: [68.40.189.247]
+x-ms-publictraffictype: Email
+x-ms-office365-filtering-correlation-id: bec5c3b5-af1c-4d9b-7813-08d6c1bc3e2c
+x-microsoft-antispam: BCL:0;PCL:0;RULEID:(2390118)(7020095)(4652040)(8989299)(4534185)(4627221)(201703031133081)(201702281549075)(8990200)(5600140)(711020)(4605104)(2017052603328)(7193020);SRVR:SN6PR13MB2447;
+x-ms-traffictypediagnostic: SN6PR13MB2447:
+x-microsoft-antispam-prvs: <SN6PR13MB2447603836E90796E9DAF7C3B82B0@SN6PR13MB2447.namprd13.prod.outlook.com>
+x-forefront-prvs: 000800954F
+x-forefront-antispam-report: SFV:NSPM;SFS:(10019020)(366004)(39830400003)(376002)(396003)(136003)(346002)(189003)(199004)(2616005)(99286004)(66066001)(76176011)(8676002)(36756003)(118296001)(476003)(2351001)(7736002)(229853002)(3480700005)(316002)(53936002)(105586002)(6916009)(6246003)(14454004)(8936002)(11346002)(305945005)(4326008)(81156014)(81166006)(478600001)(446003)(86362001)(106356001)(53546011)(68736007)(6506007)(256004)(486006)(14444005)(5640700003)(6512007)(3846002)(6116002)(71200400001)(71190400001)(2501003)(25786009)(2906002)(102836004)(186003)(97736004)(5660300002)(26005)(6436002)(6486002);DIR:OUT;SFP:1102;SCL:1;SRVR:SN6PR13MB2447;H:SN6PR13MB2494.namprd13.prod.outlook.com;FPR:;SPF:None;LANG:en;PTR:InfoNoRecords;MX:1;A:1;
+received-spf: None (protection.outlook.com: hammerspace.com does not designate
+ permitted sender hosts)
+x-ms-exchange-senderadcheck: 1
+x-microsoft-antispam-message-info: +vkG+M3erTiRW+vZHs9EKghVKqMb1F0gjaT1zueKfQ6pERYRCZnozYVYGxq/KbzzlspXwgbyKu8j3sM/FLLA/oOh4oVgfUHojwDMFyI4YZ6GYbm/yJH1yjVw3Df04EliyfE9uaEYnjYEJud2TFmWzPPhTnbAJuztv09VYXrqGkJtUBJ+6VrYWLDSLYc6Vq+tv/Jnc9SqDxXIoV3QVJHjRMiKmzzpInIiaIWSvZ7304YQFXUpCbTLZW6ZdbksCxTMHfzPSCcixSPBrs9VaDyWdupbL5/Zicv77MB0OzWfsaIYKrnKf2JDpZZJbK4i+uEgJKIJt+Mt62p9myNq/h73L2kLACMtu48HT3DCB5pH51ss4tp1agQIUJoLpxZND58TfDC2lwJsRpskKKL2uEKrD8g9RBSe86IDXX0v5OetFAo=
+Content-Type: text/plain; charset="utf-8"
+Content-ID: <535D46C800680F498B7943BD137455E4@namprd13.prod.outlook.com>
+Content-Transfer-Encoding: base64
+MIME-Version: 1.0
+X-OriginatorOrg: hammerspace.com
+X-MS-Exchange-CrossTenant-Network-Message-Id: bec5c3b5-af1c-4d9b-7813-08d6c1bc3e2c
+X-MS-Exchange-CrossTenant-originalarrivaltime: 15 Apr 2019 16:05:55.9487
+ (UTC)
+X-MS-Exchange-CrossTenant-fromentityheader: Hosted
+X-MS-Exchange-CrossTenant-id: 0d4fed5c-3a70-46fe-9430-ece41741f59e
+X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: SN6PR13MB2447
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Just happened again. Any thoughts about where I should start looking?
-
-Mon Apr 15 11:01:40 EDT 2019
-4k100test: (g=3D0): rw=3Drandread, bs=3D(R) 4096B-4096B, (W) =
-4096B-4096B, (T) 4096B-4096B, ioengine=3Dlibaio, iodepth=3D1024
-...
-fio-3.1
-Starting 12 processes
-4k100test: Laying out IO file (1 file / 1024MiB)
-fio: native_fallocate call failed: Operation not supported
-4k100test: Laying out IO file (1 file / 1024MiB)
-fio: native_fallocate call failed: Operation not supported
-4k100test: Laying out IO file (1 file / 1024MiB)
-fio: native_fallocate call failed: Operation not supported
-4k100test: Laying out IO file (1 file / 1024MiB)
-fio: native_fallocate call failed: Operation not supported
-4k100test: Laying out IO file (1 file / 1024MiB)
-fio: native_fallocate call failed: Operation not supported
-4k100test: Laying out IO file (1 file / 1024MiB)
-fio: native_fallocate call failed: Operation not supported
-4k100test: Laying out IO file (1 file / 1024MiB)
-fio: native_fallocate call failed: Operation not supported
-4k100test: Laying out IO file (1 file / 1024MiB)
-fio: native_fallocate call failed: Operation not supported
-4k100test: Laying out IO file (1 file / 1024MiB)
-fio: native_fallocate call failed: Operation not supported
-4k100test: Laying out IO file (1 file / 1024MiB)
-fio: native_fallocate call failed: Operation not supported
-4k100test: Laying out IO file (1 file / 1024MiB)
-fio: native_fallocate call failed: Operation not supported
-4k100test: Laying out IO file (1 file / 1024MiB)
-fio: native_fallocate call failed: Operation not supported
-fio: io_u error on file 4k100test.7.0: Invalid slot: read =
-offset=3D938229760, buflen=3D4096
-fio: pid=3D2653, err=3D57/file:io_u.c:1756, func=3Dio_u error, =
-error=3DInvalid slot
-fio: io_u error on file 4k100test.10.0: Invalid slot: read =
-offset=3D331800576, buflen=3D40963s]
-fio: pid=3D2650, err=3D57/file:io_u.c:1756, func=3Dio_u error, =
-error=3DInvalid slot
-Jobs: 10 (f=3D10): =
-[r(2),X(1),r(2),X(1),r(6)][100.0%][r=3D617MiB/s,w=3D0KiB/s][r=3D158k,w=3D0=
- IOPS][eta 00m:00s]
-4k100test: (groupid=3D0, jobs=3D12): err=3D57 (file:io_u.c:1756, =
-func=3Dio_u error, error=3DInvalid slot): pid=3D2648: Mon Apr 15 =
-11:02:25 2019
-   read: IOPS=3D157k, BW=3D613MiB/s (643MB/s)(11.4GiB/19024msec)
-    slat (usec): min=3D2, max=3D9808, avg=3D 7.36, stdev=3D30.80
-    clat (usec): min=3D43, max=3D1236.1k, avg=3D74443.93, stdev=3D85310.03=
-
-     lat (usec): min=3D134, max=3D1236.1k, avg=3D74451.53, =
-stdev=3D85309.77
-    clat percentiles (usec):
-     |  1.00th=3D[   807],  5.00th=3D[  1287], 10.00th=3D[  1647], =
-20.00th=3D[  2376],
-     | 30.00th=3D[  3490], 40.00th=3D[  8160], 50.00th=3D[ 69731], =
-60.00th=3D[ 76022],
-     | 70.00th=3D[ 80217], 80.00th=3D[139461], 90.00th=3D[181404], =
-95.00th=3D[233833],
-     | 99.00th=3D[375391], 99.50th=3D[438305], 99.90th=3D[549454], =
-99.95th=3D[616563],
-     | 99.99th=3D[750781]
-   bw (  KiB/s): min=3D46941, max=3D70036, per=3D8.73%, avg=3D54819.99, =
-stdev=3D4131.49, samples=3D430
-   iops        : min=3D11735, max=3D17509, avg=3D13704.80, =
-stdev=3D1032.88, samples=3D430
-  lat (usec)   : 50=3D0.01%, 100=3D0.01%, 250=3D0.01%, 500=3D0.14%, =
-750=3D0.63%
-  lat (usec)   : 1000=3D1.48%
-  lat (msec)   : 2=3D12.84%, 4=3D17.70%, 10=3D7.87%, 20=3D0.77%, =
-50=3D0.21%
-  lat (msec)   : 100=3D34.04%, 250=3D20.30%, 500=3D3.82%, 750=3D0.20%, =
-1000=3D0.01%
-  lat (msec)   : 2000=3D0.01%
-  cpu          : usr=3D2.04%, sys=3D7.06%, ctx=3D698855, majf=3D0, =
-minf=3D6299
-  IO depths    : 1=3D0.1%, 2=3D0.1%, 4=3D0.1%, 8=3D0.1%, 16=3D0.1%, =
-32=3D0.1%, >=3D64=3D100.0%
-     submit    : 0=3D0.0%, 4=3D100.0%, 8=3D0.0%, 16=3D0.0%, 32=3D0.0%, =
-64=3D0.0%, >=3D64=3D0.0%
-     complete  : 0=3D0.1%, 4=3D100.0%, 8=3D0.0%, 16=3D0.0%, 32=3D0.0%, =
-64=3D0.0%, >=3D64=3D0.1%
-     issued rwt: total=3D2986716,0,0, short=3D0,0,0, dropped=3D0,0,0
-     latency   : target=3D0, window=3D0, percentile=3D100.00%, =
-depth=3D1024
-
-Run status group 0 (all jobs):
-   READ: bw=3D613MiB/s (643MB/s), 613MiB/s-613MiB/s (643MB/s-643MB/s), =
-io=3D11.4GiB (12.2GB), run=3D19024-19024msec
-
---
-Chuck Lever
-
-
-
+SGkgQ2h1Y2ssDQoNCg0KT24gTW9uLCAyMDE5LTA0LTE1IGF0IDExOjA0IC0wNDAwLCBDaHVjayBM
+ZXZlciB3cm90ZToNCj4gSnVzdCBoYXBwZW5lZCBhZ2Fpbi4gQW55IHRob3VnaHRzIGFib3V0IHdo
+ZXJlIEkgc2hvdWxkIHN0YXJ0IGxvb2tpbmc/DQo+IA0KPiBNb24gQXByIDE1IDExOjAxOjQwIEVE
+VCAyMDE5DQo+IDRrMTAwdGVzdDogKGc9MCk6IHJ3PXJhbmRyZWFkLCBicz0oUikgNDA5NkItNDA5
+NkIsIChXKSA0MDk2Qi00MDk2QiwNCj4gKFQpIDQwOTZCLTQwOTZCLCBpb2VuZ2luZT1saWJhaW8s
+IGlvZGVwdGg9MTAyNA0KPiAuLi4NCj4gZmlvLTMuMQ0KPiBTdGFydGluZyAxMiBwcm9jZXNzZXMN
+Cj4gNGsxMDB0ZXN0OiBMYXlpbmcgb3V0IElPIGZpbGUgKDEgZmlsZSAvIDEwMjRNaUIpDQo+IGZp
+bzogbmF0aXZlX2ZhbGxvY2F0ZSBjYWxsIGZhaWxlZDogT3BlcmF0aW9uIG5vdCBzdXBwb3J0ZWQN
+Cj4gNGsxMDB0ZXN0OiBMYXlpbmcgb3V0IElPIGZpbGUgKDEgZmlsZSAvIDEwMjRNaUIpDQo+IGZp
+bzogbmF0aXZlX2ZhbGxvY2F0ZSBjYWxsIGZhaWxlZDogT3BlcmF0aW9uIG5vdCBzdXBwb3J0ZWQN
+Cj4gNGsxMDB0ZXN0OiBMYXlpbmcgb3V0IElPIGZpbGUgKDEgZmlsZSAvIDEwMjRNaUIpDQo+IGZp
+bzogbmF0aXZlX2ZhbGxvY2F0ZSBjYWxsIGZhaWxlZDogT3BlcmF0aW9uIG5vdCBzdXBwb3J0ZWQN
+Cj4gNGsxMDB0ZXN0OiBMYXlpbmcgb3V0IElPIGZpbGUgKDEgZmlsZSAvIDEwMjRNaUIpDQo+IGZp
+bzogbmF0aXZlX2ZhbGxvY2F0ZSBjYWxsIGZhaWxlZDogT3BlcmF0aW9uIG5vdCBzdXBwb3J0ZWQN
+Cj4gNGsxMDB0ZXN0OiBMYXlpbmcgb3V0IElPIGZpbGUgKDEgZmlsZSAvIDEwMjRNaUIpDQo+IGZp
+bzogbmF0aXZlX2ZhbGxvY2F0ZSBjYWxsIGZhaWxlZDogT3BlcmF0aW9uIG5vdCBzdXBwb3J0ZWQN
+Cj4gNGsxMDB0ZXN0OiBMYXlpbmcgb3V0IElPIGZpbGUgKDEgZmlsZSAvIDEwMjRNaUIpDQo+IGZp
+bzogbmF0aXZlX2ZhbGxvY2F0ZSBjYWxsIGZhaWxlZDogT3BlcmF0aW9uIG5vdCBzdXBwb3J0ZWQN
+Cj4gNGsxMDB0ZXN0OiBMYXlpbmcgb3V0IElPIGZpbGUgKDEgZmlsZSAvIDEwMjRNaUIpDQo+IGZp
+bzogbmF0aXZlX2ZhbGxvY2F0ZSBjYWxsIGZhaWxlZDogT3BlcmF0aW9uIG5vdCBzdXBwb3J0ZWQN
+Cj4gNGsxMDB0ZXN0OiBMYXlpbmcgb3V0IElPIGZpbGUgKDEgZmlsZSAvIDEwMjRNaUIpDQo+IGZp
+bzogbmF0aXZlX2ZhbGxvY2F0ZSBjYWxsIGZhaWxlZDogT3BlcmF0aW9uIG5vdCBzdXBwb3J0ZWQN
+Cj4gNGsxMDB0ZXN0OiBMYXlpbmcgb3V0IElPIGZpbGUgKDEgZmlsZSAvIDEwMjRNaUIpDQo+IGZp
+bzogbmF0aXZlX2ZhbGxvY2F0ZSBjYWxsIGZhaWxlZDogT3BlcmF0aW9uIG5vdCBzdXBwb3J0ZWQN
+Cj4gNGsxMDB0ZXN0OiBMYXlpbmcgb3V0IElPIGZpbGUgKDEgZmlsZSAvIDEwMjRNaUIpDQo+IGZp
+bzogbmF0aXZlX2ZhbGxvY2F0ZSBjYWxsIGZhaWxlZDogT3BlcmF0aW9uIG5vdCBzdXBwb3J0ZWQN
+Cj4gNGsxMDB0ZXN0OiBMYXlpbmcgb3V0IElPIGZpbGUgKDEgZmlsZSAvIDEwMjRNaUIpDQo+IGZp
+bzogbmF0aXZlX2ZhbGxvY2F0ZSBjYWxsIGZhaWxlZDogT3BlcmF0aW9uIG5vdCBzdXBwb3J0ZWQN
+Cj4gNGsxMDB0ZXN0OiBMYXlpbmcgb3V0IElPIGZpbGUgKDEgZmlsZSAvIDEwMjRNaUIpDQo+IGZp
+bzogbmF0aXZlX2ZhbGxvY2F0ZSBjYWxsIGZhaWxlZDogT3BlcmF0aW9uIG5vdCBzdXBwb3J0ZWQN
+Cj4gZmlvOiBpb191IGVycm9yIG9uIGZpbGUgNGsxMDB0ZXN0LjcuMDogSW52YWxpZCBzbG90OiBy
+ZWFkDQo+IG9mZnNldD05MzgyMjk3NjAsIGJ1Zmxlbj00MDk2DQoNCkRvZXMgdGhlIGZvbGxvd2lu
+ZyBwYXRjaCBmaXggdGhlIHJhY2U/DQoNCjg8LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0NCkZyb20gNGM4NzU5ZWFmYWQ5YmI3ZWEyNjI2YTUzMjk2ZTMwNjE4YWVlZmNjNyBN
+b24gU2VwIDE3IDAwOjAwOjAwIDIwMDENCkZyb206IFRyb25kIE15a2xlYnVzdCA8dHJvbmQubXlr
+bGVidXN0QGhhbW1lcnNwYWNlLmNvbT4NCkRhdGU6IE1vbiwgMTUgQXByIDIwMTkgMTE6NTQ6MTMg
+LTA0MDANClN1YmplY3Q6IFtQQVRDSF0gU1VOUlBDOiBJZ25vcmUgcXVldWUgdHJhbnNtaXNzaW9u
+IGVycm9ycyBvbiBzdWNjZXNzZnVsDQogdHJhbnNtaXNzaW9uDQoNCklmIGEgcmVxdWVzdCB0cmFu
+c21pc3Npb24gZmFpbHMgZHVlIHRvIHdyaXRlIHNwYWNlIG9yIHNsb3QgdW5hdmFpbGFiaWxpdHkN
+CmVycm9ycywgYnV0IHRoZSBxdWV1ZWQgdGFzayB0aGVuIGdldHMgdHJhbnNtaXR0ZWQgYmVmb3Jl
+IGl0IGhhcyB0aW1lIHRvDQpwcm9jZXNzIHRoZSBlcnJvciBpbiBjYWxsX3RyYW5zbWl0X3N0YXR1
+cygpIG9yIGNhbGxfYmNfdHJhbnNtaXRfc3RhdHVzKCksDQp3ZSBuZWVkIHRvIHN1cHByZXNzIHRo
+ZSB0cmFuc21pc3Npb24gZXJyb3IgY29kZSB0byBwcmV2ZW50IGl0IGZyb20gbGVha2luZw0Kb3V0
+IG9mIHRoZSBSUEMgbGF5ZXIuDQoNClJlcG9ydGVkLWJ5OiBDaHVjayBMZXZlciA8Y2h1Y2subGV2
+ZXJAb3JhY2xlLmNvbT4NClNpZ25lZC1vZmYtYnk6IFRyb25kIE15a2xlYnVzdCA8dHJvbmQubXlr
+bGVidXN0QGhhbW1lcnNwYWNlLmNvbT4NCi0tLQ0KIG5ldC9zdW5ycGMvY2xudC5jIHwgNyArKysr
+Ky0tDQogMSBmaWxlIGNoYW5nZWQsIDUgaW5zZXJ0aW9ucygrKSwgMiBkZWxldGlvbnMoLSkNCg0K
+ZGlmZiAtLWdpdCBhL25ldC9zdW5ycGMvY2xudC5jIGIvbmV0L3N1bnJwYy9jbG50LmMNCmluZGV4
+IGZhOTAwYmI0NGNkNS4uMzY5YTI2NDhkYWZjIDEwMDY0NA0KLS0tIGEvbmV0L3N1bnJwYy9jbG50
+LmMNCisrKyBiL25ldC9zdW5ycGMvY2xudC5jDQpAQCAtMjEwMSw4ICsyMTAxLDggQEAgY2FsbF90
+cmFuc21pdF9zdGF0dXMoc3RydWN0IHJwY190YXNrICp0YXNrKQ0KIAkgKiB0ZXN0IGZpcnN0Lg0K
+IAkgKi8NCiAJaWYgKHJwY190YXNrX3RyYW5zbWl0dGVkKHRhc2spKSB7DQotCQlpZiAodGFzay0+
+dGtfc3RhdHVzID09IDApDQotCQkJeHBydF9yZXF1ZXN0X3dhaXRfcmVjZWl2ZSh0YXNrKTsNCisJ
+CXRhc2stPnRrX3N0YXR1cyA9IDA7DQorCQl4cHJ0X3JlcXVlc3Rfd2FpdF9yZWNlaXZlKHRhc2sp
+Ow0KIAkJcmV0dXJuOw0KIAl9DQogDQpAQCAtMjE4Nyw2ICsyMTg3LDkgQEAgY2FsbF9iY190cmFu
+c21pdF9zdGF0dXMoc3RydWN0IHJwY190YXNrICp0YXNrKQ0KIHsNCiAJc3RydWN0IHJwY19ycXN0
+ICpyZXEgPSB0YXNrLT50a19ycXN0cDsNCiANCisJaWYgKHJwY190YXNrX3RyYW5zbWl0dGVkKHRh
+c2spKQ0KKwkJdGFzay0+dGtfc3RhdHVzID0gMDsNCisNCiAJZHByaW50X3N0YXR1cyh0YXNrKTsN
+CiANCiAJc3dpdGNoICh0YXNrLT50a19zdGF0dXMpIHsNCi0tIA0KMi4yMC4xDQoNCi0tIA0KVHJv
+bmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIsIEhhbW1lcnNwYWNlDQp0
+cm9uZC5teWtsZWJ1c3RAaGFtbWVyc3BhY2UuY29tDQoNCg0K
