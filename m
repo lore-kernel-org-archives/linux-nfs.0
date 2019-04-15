@@ -7,83 +7,82 @@ X-Spam-Status: No, score=-8.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
 	SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 76D5BC10F13
-	for <linux-nfs@archiver.kernel.org>; Mon, 15 Apr 2019 02:08:41 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8FE3FC10F13
+	for <linux-nfs@archiver.kernel.org>; Mon, 15 Apr 2019 02:11:43 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 33ED0206B6
-	for <linux-nfs@archiver.kernel.org>; Mon, 15 Apr 2019 02:08:41 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 5305820645
+	for <linux-nfs@archiver.kernel.org>; Mon, 15 Apr 2019 02:11:43 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="TMIccGRc"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="WmVaChhV"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726201AbfDOCIk (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 14 Apr 2019 22:08:40 -0400
-Received: from mail-pl1-f194.google.com ([209.85.214.194]:34854 "EHLO
-        mail-pl1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725975AbfDOCIk (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 14 Apr 2019 22:08:40 -0400
-Received: by mail-pl1-f194.google.com with SMTP id w24so7772092plp.2
-        for <linux-nfs@vger.kernel.org>; Sun, 14 Apr 2019 19:08:40 -0700 (PDT)
+        id S1726201AbfDOCLm (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sun, 14 Apr 2019 22:11:42 -0400
+Received: from mail-pg1-f194.google.com ([209.85.215.194]:41547 "EHLO
+        mail-pg1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725975AbfDOCLm (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 14 Apr 2019 22:11:42 -0400
+Received: by mail-pg1-f194.google.com with SMTP id f6so7792764pgs.8
+        for <linux-nfs@vger.kernel.org>; Sun, 14 Apr 2019 19:11:42 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:subject:date:message-id;
-        bh=qHTMmpQUn70KBpHgIMtpHRkO3d4j2b7JBWh5Kw5zQTw=;
-        b=TMIccGRcaJZjJJq5DvQpXN6M6sZK8bH0Y3oy7zV6PaYwPA1HLywH7gppqBxz1HRNzI
-         DmmWPaaQ+pJrpAKxis2s+3VfPdsC0YPQmlt46Ev1xZJoOshkE6MaUyuECBXn5K8m4Qz/
-         4rXoX7uQnrEOxMnMVFIVMes130HRUzxiHEkt3tDMOo6l5icAUO4RHV196NOxvuMsyY14
-         CwxJo616IIVjPk5bMTaRtUAhs0Jvico3sHH5/BNDaY1mwbPROlMMcsDASYnuRNCK20+x
-         wWTNzZS+Tp0DQs1NcvYCHq1uhDpR7LTUPEICECluAz8Klu8a6WnyG8jBOUzLJxixdOEn
-         qjhg==
+        bh=KgUDnxMhlk9mMQ2pEKDSklqTS0g+cr/3614GyQDPklw=;
+        b=WmVaChhVkwj45gKkRTdXzdeIfvdiB0RbB9VQbojz3F8jQixQgbi3al9DTUFMndfvOt
+         nWsiVicnBkZNF+2QrjL72vr19UVPBGUEEqmsl4rhz55M2gJZWZfBw5IK3tthyIX2CZm4
+         Kx9/iABqaVeZM+einaReUzg6wme/VVBKKgzWc6t3soYE5b6LbbxuplbZ+iV8c3DBo3YO
+         z2JjA334Y13Px7+oSCjVBvDg9Y3pjcaPo8D+3Kj+SzHRgsLqN7t1rlcbHqRLEuDPdXX+
+         bQWb5elWEVFXUv5c6WUJDg3yIWaRjTTHngHKD9cSNOkRSGOxEbY/K1N/Q+em6jmGwFyy
+         h9yw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:subject:date:message-id;
-        bh=qHTMmpQUn70KBpHgIMtpHRkO3d4j2b7JBWh5Kw5zQTw=;
-        b=VTaVTXEe541Q0zLE4pOQxyCn5MsNhhJ6dh9ljO0CM9NT7RC8mXWtQdbv1Za3veF7t2
-         VQRNAmIFt6PuWRRyJozkp3gmr1wjLj1dONLNf05kkMUvPLZqpCHdXfWZ1+REg2IlHk6i
-         pnF9/PVrbmGKop8aRKf2vBD79rbrbYj4QyR9z8aaQ3WZvifAP9Yes0zfVBT75m2k6EjO
-         5+5LfcVIDn/tCpoo84kXr2AHbeONH/BYEOy/iPRAZCvZ4XOd+Js5KoSFj2uxxWfemaaM
-         JT5VhB3OSFwEXgyMWuCmOJpGTq56a2Hv1VNptot1T6p6qnpB6Zfs+8uSbNSH6tOdOybd
-         ZTvQ==
-X-Gm-Message-State: APjAAAWG7ESY8ZwBRNNkMcwCj8NATAg4eO0vdZ7G3g5qtYvBJT+uITqo
-        BWP2qqN+CEyOOP6JHXot0srApDrk/BQ=
-X-Google-Smtp-Source: APXvYqwUNpQgM/ruu52d8sIMP+Jgs8LJyCYOFmf/CUxamdwgn+4dNLuGXuzUjKpMbnDOBd5Hx4ctUA==
-X-Received: by 2002:a17:902:201:: with SMTP id 1mr72785758plc.89.1555294119504;
-        Sun, 14 Apr 2019 19:08:39 -0700 (PDT)
+        bh=KgUDnxMhlk9mMQ2pEKDSklqTS0g+cr/3614GyQDPklw=;
+        b=nE841mXbQNmNCNo0PRzYl+sGN/UpNymQPoebpgEZqygeHc4AEde0E7g34I8N27afVG
+         8gcFtvD/02UmVyo1MfQwuvHuFAYiXszfIFER0mJFD9FuhCg3+nP4qk9C3QyRs30R4cIi
+         sHYh7AHSJ2A0hDhKwtfc7l7lIAL4y+3FeD362wJDc7dZ5oWy5f32cAote1eCpwxmE7+c
+         k7Rkn1U10fNxJqMpvQH16epQpQL/zj2G5tRHoCorIXjAVALhH8B7eTw9cd9uAjhO7Z4E
+         YMch2ppRgb1cS4h1byLKBS0drSJ3x1LkWxeHHft1QFjIbihMMHG2r288rxjgPOeH71Hy
+         +Czg==
+X-Gm-Message-State: APjAAAXF2sFj/UK+FwCPyfhYdyfRhqkyqvU4bzuSfPpN/U6q32mDc/TY
+        UaYwWrb5x/ifY8aH82zAlLD8vJg5yXA=
+X-Google-Smtp-Source: APXvYqxUZc+GU0maMnmyAJtNGxQesVDWtfMph4ZR382ftYunRrTKZW8c7tA7mroP0l9xEktI3GwNww==
+X-Received: by 2002:a62:ed16:: with SMTP id u22mr72720981pfh.47.1555294301656;
+        Sun, 14 Apr 2019 19:11:41 -0700 (PDT)
 Received: from mangix-pc.lan (76-14-106-140.rk.wavecable.com. [76.14.106.140])
-        by smtp.gmail.com with ESMTPSA id t21sm30689890pfe.22.2019.04.14.19.08.38
+        by smtp.gmail.com with ESMTPSA id 6sm35180283pfp.143.2019.04.14.19.11.40
         for <linux-nfs@vger.kernel.org>
         (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Sun, 14 Apr 2019 19:08:38 -0700 (PDT)
+        Sun, 14 Apr 2019 19:11:41 -0700 (PDT)
 From:   Rosen Penev <rosenp@gmail.com>
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH] mount: Add missing cast to getsockname
-Date:   Sun, 14 Apr 2019 19:08:38 -0700
-Message-Id: <20190415020838.924-1-rosenp@gmail.com>
+Subject: [PATCH] idmapd: Add missing libgen header
+Date:   Sun, 14 Apr 2019 19:11:40 -0700
+Message-Id: <20190415021140.1388-1-rosenp@gmail.com>
 X-Mailer: git-send-email 2.17.1
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Otherwise compilation can fail with incompatible pointer type.
+Otherwise compilation can fail with an implicit declaration of basename.
 
 Signed-off-by: Rosen Penev <rosenp@gmail.com>
 ---
- utils/mount/network.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ utils/idmapd/idmapd.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/utils/mount/network.c b/utils/mount/network.c
-index fc21110..e166a82 100644
---- a/utils/mount/network.c
-+++ b/utils/mount/network.c
-@@ -1062,7 +1062,7 @@ int clnt_ping(struct sockaddr_in *saddr, const unsigned long prog,
- 	if (caddr) {
- 		/* Get the address of our end of this connection */
- 		socklen_t len = sizeof(*caddr);
--		if (getsockname(sock, caddr, &len) != 0)
-+		if (getsockname(sock, (struct sockaddr *) caddr, &len) != 0)
- 			caddr->sin_family = 0;
- 	}
+diff --git a/utils/idmapd/idmapd.c b/utils/idmapd/idmapd.c
+index 91c0253..62e37b8 100644
+--- a/utils/idmapd/idmapd.c
++++ b/utils/idmapd/idmapd.c
+@@ -59,6 +59,7 @@
+ #include <grp.h>
+ #include <limits.h>
+ #include <ctype.h>
++#include <libgen.h>
+ #include <nfsidmap.h>
  
+ #ifdef HAVE_CONFIG_H
 -- 
 2.17.1
 
