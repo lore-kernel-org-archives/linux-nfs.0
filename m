@@ -2,100 +2,343 @@ Return-Path: <SRS0=Vlol=SS=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.8 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0E678C10F13
-	for <linux-nfs@archiver.kernel.org>; Tue, 16 Apr 2019 13:38:46 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3BFCBC10F13
+	for <linux-nfs@archiver.kernel.org>; Tue, 16 Apr 2019 14:25:52 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id CE254217F9
-	for <linux-nfs@archiver.kernel.org>; Tue, 16 Apr 2019 13:38:45 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="UXfr4FId"
+	by mail.kernel.org (Postfix) with ESMTP id 0005A20693
+	for <linux-nfs@archiver.kernel.org>; Tue, 16 Apr 2019 14:25:51 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727902AbfDPNip (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 16 Apr 2019 09:38:45 -0400
-Received: from mail-it1-f196.google.com ([209.85.166.196]:56259 "EHLO
-        mail-it1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726751AbfDPNip (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Apr 2019 09:38:45 -0400
-Received: by mail-it1-f196.google.com with SMTP id y134so32980604itc.5;
-        Tue, 16 Apr 2019 06:38:44 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=sender:subject:from:to:date:message-id:in-reply-to:references
-         :user-agent:mime-version:content-transfer-encoding;
-        bh=Kbvt0+GLH4AETSLDGCMvyv9BMJPUeHtyW2KtBML5y9c=;
-        b=UXfr4FIdL740tuZqzCGr5lwsiQIgzve4O0XTX6yu4wO48VcMTY0xauJJXyjyFurZu4
-         X+3xORrU/hQYrczbwmuQ0uKJOMUaHrpqXyUfpOj1MArjQ0QcaZn8iA5SNBzp52Mi+N2v
-         mGc6cmDrci2zyGOPuSm5Opfc/7hSN/N03WwdXRQXACxa71JhJVOAcxnqZi7SjAptaaWU
-         abhJk6sI9x6Isloa2IJw+hOgYGa2qgK8inYqzXg784BltgxDwQ9qR/RmE5on++Xfi1XB
-         nvabBcQ5NouQXN3J657H4t7kh3TSrAxP/TGaiwLz6G7MtMRZox/q/xusr8LCVomwrW3b
-         aTuA==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:sender:subject:from:to:date:message-id
-         :in-reply-to:references:user-agent:mime-version
-         :content-transfer-encoding;
-        bh=Kbvt0+GLH4AETSLDGCMvyv9BMJPUeHtyW2KtBML5y9c=;
-        b=nyjPuWY5gl5+YugI4QWpbp/++U8Potcfwn7CLq/4oIALvC+trMg20hHZV7TTee80Vl
-         Zi3fnEuI35Wdl6MYDEZ3duZUZ97yTqwRKyAItZCr7AvJl4qIM39x8rBJxuGe4bTUftjP
-         BeXCX5quqyzR0C+zsObjTXPd0+GRF67eBVRTucikKyDLCetdyR8E9xhdyseNcBhpOtQk
-         X3cVUQZ17q0dZ3iChpWt0ry29Q/CPIwBb8nqDlzaO54dz+3d+ceaoWtlQtVSPVpQR+Co
-         rjYQJYo6U4Mq5eXqwuXYJvfsHQ+M5G1fiiEeZbMhE7vJ4z6UjYsg2TRfppGUMtzPEA6L
-         DqaQ==
-X-Gm-Message-State: APjAAAVDZ23S3cAL4xQMywEZojwtXYKbm2U6iQBSox5g0cvNQ1aGq1qf
-        7Saakq/0kK5IeXIbMs8rTbZelI7K
-X-Google-Smtp-Source: APXvYqyjLEvFvJHLZvmoFoH+NLatPpWViYHirzeJGQSKQtYIOqyIGF1MY8scMWcAmvWr2FTrhcv7Lw==
-X-Received: by 2002:a24:5dc8:: with SMTP id w191mr28976178ita.136.1555421924209;
-        Tue, 16 Apr 2019 06:38:44 -0700 (PDT)
-Received: from gateway.1015granger.net (c-68-61-232-219.hsd1.mi.comcast.net. [68.61.232.219])
-        by smtp.gmail.com with ESMTPSA id b8sm9837347itb.20.2019.04.16.06.38.43
-        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Tue, 16 Apr 2019 06:38:43 -0700 (PDT)
-Received: from manet.1015granger.net (manet.1015granger.net [192.168.1.51])
-        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id x3GDchFJ021259;
-        Tue, 16 Apr 2019 13:38:43 GMT
-Subject: [PATCH v2 21/21] xprtrdma: Remove stale comment
-From:   Chuck Lever <chuck.lever@oracle.com>
-To:     linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date:   Tue, 16 Apr 2019 09:38:43 -0400
-Message-ID: <20190416133842.23113.11169.stgit@manet.1015granger.net>
-In-Reply-To: <20190416133156.23113.91846.stgit@manet.1015granger.net>
-References: <20190416133156.23113.91846.stgit@manet.1015granger.net>
-User-Agent: StGit/0.17.1-dirty
+        id S1726576AbfDPOZv (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 16 Apr 2019 10:25:51 -0400
+Received: from mx1.redhat.com ([209.132.183.28]:38442 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726215AbfDPOZv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 16 Apr 2019 10:25:51 -0400
+Received: from smtp.corp.redhat.com (int-mx05.intmail.prod.int.phx2.redhat.com [10.5.11.15])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id 4F5E83088A60
+        for <linux-nfs@vger.kernel.org>; Tue, 16 Apr 2019 14:25:50 +0000 (UTC)
+Received: from madhat.boston.devel.redhat.com (madhat.boston.devel.redhat.com [10.19.60.33])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id C16D55D707;
+        Tue, 16 Apr 2019 14:25:49 +0000 (UTC)
+Subject: Re: [PATCH] nfs-utils: Modify nfs.conf in-place instead of replacing
+ the file
+To:     Justin Mitchell <jumitche@redhat.com>, linux-nfs@vger.kernel.org
+References: <1553099972.8215.40.camel@redhat.com>
+From:   Steve Dickson <SteveD@RedHat.com>
+Message-ID: <0a615707-186d-1783-27a9-3be42dc30296@RedHat.com>
+Date:   Tue, 16 Apr 2019 10:25:49 -0400
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101
+ Thunderbird/60.6.1
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+In-Reply-To: <1553099972.8215.40.camel@redhat.com>
+Content-Type: text/plain; charset=utf-8
+Content-Language: en-US
 Content-Transfer-Encoding: 7bit
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.15
+X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.47]); Tue, 16 Apr 2019 14:25:50 +0000 (UTC)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-The comment hasn't been accurate for several years.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
- net/sunrpc/xprtrdma/xprt_rdma.h |    7 -------
- 1 file changed, 7 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index 803f097..f4ea29e 100644
---- a/net/sunrpc/xprtrdma/xprt_rdma.h
-+++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -239,13 +239,6 @@ struct rpcrdma_sendctx {
-  *
-  * An external memory region is any buffer or page that is registered
-  * on the fly (ie, not pre-registered).
-- *
-- * Each rpcrdma_buffer has a list of free MWs anchored in rb_mrs. During
-- * call_allocate, rpcrdma_buffer_get() assigns one to each segment in
-- * an rpcrdma_req. Then rpcrdma_register_external() grabs these to keep
-- * track of registration metadata while each RPC is pending.
-- * rpcrdma_deregister_external() uses this metadata to unmap and
-- * release these resources when an RPC is complete.
-  */
- enum rpcrdma_frwr_state {
- 	FRWR_IS_INVALID,	/* ready to be used */
+On 3/20/19 12:39 PM, Justin Mitchell wrote:
+> When changes are written to nfs.conf the old method of building a new file
+> and then switching them leaves less opportunities for race conditions
+> against 3rd party tools but loses any existing permissions, ownerships,
+> attributes, etc. This patch instead uses an advisory flock to guard the
+> contents whilst it reads, modifies, and then rewrites the existing file.
+> 
+> Signed-off-by: Justin Mitchell <jumitche@redhat.com>
+Committed... 
 
+steved.
+> ---
+>  support/nfs/conffile.c | 134 +++++++++++++++++++++++++++----------------------
+>  1 file changed, 74 insertions(+), 60 deletions(-)
+> 
+> diff --git a/support/nfs/conffile.c b/support/nfs/conffile.c
+> index 77c5790..d8f2e8e 100644
+> --- a/support/nfs/conffile.c
+> +++ b/support/nfs/conffile.c
+> @@ -50,6 +50,7 @@
+>  #include <err.h>
+>  #include <syslog.h>
+>  #include <libgen.h>
+> +#include <sys/file.h>
+>  
+>  #include "conffile.h"
+>  #include "xlog.h"
+> @@ -504,6 +505,17 @@ conf_readfile(const char *path)
+>  			return NULL;
+>  		}
+>  
+> +		/* Grab a shared lock to ensure its not mid-rewrite */
+> +		if (flock(fd, LOCK_SH)) {
+> +			xlog_warn("conf_readfile: attempt to grab read lock failed: %s",
+> +				strerror(errno));
+> +			goto fail;
+> +		}
+> +
+> +		/* only after we have the lock, check the file size ready to read it */
+> +		sz = lseek(fd, 0, SEEK_END);
+> +		lseek(fd, 0, SEEK_SET);
+> +
+>  		new_conf_addr = malloc(sz+1);
+>  		if (!new_conf_addr) {
+>  			xlog_warn("conf_readfile: malloc (%lu) failed", (unsigned long)sz);
+> @@ -1583,6 +1595,17 @@ flush_outqueue(struct tailhead *queue, FILE *fout)
+>  	return 0;
+>  }
+>  
+> +/* append one queue to another */
+> +static void
+> +append_queue(struct tailhead *inq, struct tailhead *outq)
+> +{
+> +	while (inq->tqh_first != NULL) {
+> +		struct outbuffer *ob = inq->tqh_first;
+> +		TAILQ_REMOVE(inq, ob, link);
+> +		TAILQ_INSERT_TAIL(outq, ob, link);
+> +	}
+> +}
+> +
+>  /* read one line of text from a file, growing the buffer as necessary */
+>  static int
+>  read_line(char **buff, int *buffsize, FILE *in)
+> @@ -1723,6 +1746,16 @@ is_folded(const char *line)
+>  	return false;
+>  }
+>  
+> +static int
+> +lock_file(FILE *f)
+> +{
+> +	int ret;
+> +	ret = flock(fileno(f), LOCK_EX);
+> +	if (ret) 
+> +		xlog(L_ERROR, "Error could not lock the file");
+> +	return ret;
+> +}
+> +
+>  /***
+>   * Write a value to an nfs.conf style filename
+>   *
+> @@ -1733,15 +1766,14 @@ int
+>  conf_write(const char *filename, const char *section, const char *arg,
+>  	   const char *tag, const char *value)
+>  {
+> -	int fdout = -1;
+> -	char *outpath = NULL;
+> -	FILE *outfile = NULL;
+>  	FILE *infile = NULL;
+>  	int ret = 1;
+>  	struct tailhead outqueue;
+> +	struct tailhead inqueue;
+>  	char * buff = NULL;
+>  	int buffsize = 0;
+>  
+> +	TAILQ_INIT(&inqueue);
+>  	TAILQ_INIT(&outqueue);
+>  
+>  	if (!filename) {
+> @@ -1754,26 +1786,7 @@ conf_write(const char *filename, const char *section, const char *arg,
+>  		return ret;
+>  	}
+>  
+> -	if (asprintf(&outpath, "%s.XXXXXX", filename) == -1) {
+> -		xlog(L_ERROR, "conf_write: error composing temp filename");
+> -		return ret;
+> -	}
+> -
+> -	fdout = mkstemp(outpath);
+> -	if (fdout < 0) {
+> -		xlog(L_ERROR, "conf_write: open temp file %s failed: %s",
+> -			 outpath, strerror(errno));
+> -		goto cleanup;
+> -	}
+> -
+> -	outfile = fdopen(fdout, "w");
+> -	if (!outfile) {
+> -		xlog(L_ERROR, "conf_write: fdopen temp file failed: %s",
+> -			 strerror(errno));
+> -		goto cleanup;
+> -	}
+> -
+> -	infile = fopen(filename, "r");
+> +	infile = fopen(filename, "r+");
+>  	if (!infile) {
+>  		if (!value) {
+>  			xlog_warn("conf_write: config file \"%s\" not found, nothing to do", filename);
+> @@ -1782,18 +1795,29 @@ conf_write(const char *filename, const char *section, const char *arg,
+>  		}
+>  
+>  		xlog_warn("conf_write: config file \"%s\" not found, creating.", filename);
+> -		if (append_line(&outqueue, NULL, make_section(section, arg)))
+> +		infile = fopen(filename, "wx");
+> +		if (!infile) {
+> +			xlog(L_ERROR, "conf_write: Error creating config file \"%s\".", filename);
+> +			goto cleanup;
+> +		}
+> +
+> +		if (lock_file(infile))
+>  			goto cleanup;
+>  
+> -		if (append_line(&outqueue, NULL, make_tagline(tag, value)))
+> +		if (append_line(&inqueue, NULL, make_section(section, arg)))
+>  			goto cleanup;
+>  
+> -		if (flush_outqueue(&outqueue, outfile))
+> +		if (append_line(&inqueue, NULL, make_tagline(tag, value)))
+>  			goto cleanup;
+> +
+> +		append_queue(&inqueue, &outqueue);
+>  	} else {
+>  		bool found = false;
+>  		int err = 0;
+>  
+> +		if (lock_file(infile))
+> +			goto cleanup;
+> +
+>  		buffsize = 4096;
+>  		buff = calloc(1, buffsize);
+>  		if (buff == NULL) {
+> @@ -1808,7 +1832,7 @@ conf_write(const char *filename, const char *section, const char *arg,
+>  			/* read in one section worth of lines */
+>  			do {
+>  				if (*buff != '\0') {
+> -					if (append_line(&outqueue, NULL, strdup(buff)))
+> +					if (append_line(&inqueue, NULL, strdup(buff)))
+>  						goto cleanup;
+>  				}
+>  
+> @@ -1816,7 +1840,7 @@ conf_write(const char *filename, const char *section, const char *arg,
+>  			} while (err == 0 && buff[0] != '[');
+>  
+>  			/* find the section header */
+> -			where = TAILQ_FIRST(&outqueue);
+> +			where = TAILQ_FIRST(&inqueue);
+>  			while (where != NULL) {
+>  				if (where->text != NULL && where->text[0] == '[')
+>  					break;
+> @@ -1864,7 +1888,7 @@ conf_write(const char *filename, const char *section, const char *arg,
+>  					/* remove current tag */
+>  					do {
+>  						struct outbuffer *next = TAILQ_NEXT(where, link);
+> -						TAILQ_REMOVE(&outqueue, where, link);
+> +						TAILQ_REMOVE(&inqueue, where, link);
+>  						if (is_folded(where->text))
+>  							again = true;
+>  						else
+> @@ -1876,14 +1900,14 @@ conf_write(const char *filename, const char *section, const char *arg,
+>  
+>  					/* insert new tag */
+>  					if (value) {
+> -						if (append_line(&outqueue, prev, make_tagline(tag, value)))
+> +						if (append_line(&inqueue, prev, make_tagline(tag, value)))
+>  							goto cleanup;
+>  					}
+>  				} else
+>  				/* no existing assignment found and we need to add one */
+>  				if (value) {
+>  					/* rewind past blank lines and comments */
+> -					struct outbuffer *tail = TAILQ_LAST(&outqueue, tailhead);
+> +					struct outbuffer *tail = TAILQ_LAST(&inqueue, tailhead);
+>  
+>  					/* comments immediately before a section usually relate
+>  					 * to the section below them */
+> @@ -1895,7 +1919,7 @@ conf_write(const char *filename, const char *section, const char *arg,
+>  						tail = TAILQ_PREV(tail, tailhead, link);
+>  
+>  					/* now add the tag here */
+> -					if (append_line(&outqueue, tail, make_tagline(tag, value)))
+> +					if (append_line(&inqueue, tail, make_tagline(tag, value)))
+>  						goto cleanup;
+>  
+>  					found = true;
+> @@ -1905,49 +1929,45 @@ conf_write(const char *filename, const char *section, const char *arg,
+>  			/* EOF and correct section not found, so add one */
+>  			if (err && !found && value) {
+>  				/* did the last section end in a blank line */
+> -				struct outbuffer *tail = TAILQ_LAST(&outqueue, tailhead);
+> +				struct outbuffer *tail = TAILQ_LAST(&inqueue, tailhead);
+>  				if (tail && !is_empty(tail->text)) {
+>  					/* no, so add one for clarity */
+> -					if (append_line(&outqueue, NULL, strdup("\n")))
+> +					if (append_line(&inqueue, NULL, strdup("\n")))
+>  						goto cleanup;
+>  				}
+>  
+>  				/* add the new section header */
+> -				if (append_line(&outqueue, NULL, make_section(section, arg)))
+> +				if (append_line(&inqueue, NULL, make_section(section, arg)))
+>  					goto cleanup;
+>  
+>  				/* now add the tag */
+> -				if (append_line(&outqueue, NULL, make_tagline(tag, value)))
+> +				if (append_line(&inqueue, NULL, make_tagline(tag, value)))
+>  					goto cleanup;
+>  			}
+>  
+> -			/* we are done with this section, write it out */
+> -			if (flush_outqueue(&outqueue, outfile))
+> -				goto cleanup;
+> +			/* we are done with this section, move it to the out queue */
+> +			append_queue(&inqueue, &outqueue);
+>  		} while(err == 0);
+>  	}
+>  
+> -	if (infile) {
+> -		fclose(infile);
+> -		infile = NULL;
+> -	}
+> +	/* now rewind and overwrite the file with the updated data */
+> +	rewind(infile);
+>  
+> -	fdout = -1;
+> -	if (fclose(outfile)) {
+> -		xlog(L_ERROR, "Error writing config file: %s", strerror(errno));
+> +	if (ftruncate(fileno(infile), 0)) {
+> +		xlog(L_ERROR, "Error truncating config file");
+>  		goto cleanup;
+>  	}
+>  
+> -	/* now swap the old file for the new one */
+> -	if (rename(outpath, filename)) {
+> -		xlog(L_ERROR, "Error updating config file: %s: %s\n", filename, strerror(errno));
+> -		ret = 1;
+> -	} else {
+> -		ret = 0;
+> -		free(outpath);
+> -		outpath = NULL;
+> +	if (flush_outqueue(&outqueue, infile))
+> +		goto cleanup;
+> +
+> +	if (infile) {
+> +		fclose(infile);
+> +		infile = NULL;
+>  	}
+>  
+> +	ret = 0;
+> +
+>  cleanup:
+>  	flush_outqueue(&outqueue, NULL);
+>  
+> @@ -1955,11 +1975,5 @@ cleanup:
+>  		free(buff);
+>  	if (infile)
+>  		fclose(infile);
+> -	if (fdout != -1)
+> -		close(fdout);
+> -	if (outpath) {
+> -		unlink(outpath);
+> -		free(outpath);
+> -	}
+>  	return ret;
+>  }
+> 
