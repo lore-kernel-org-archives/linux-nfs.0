@@ -6,62 +6,63 @@ X-Spam-Status: No, score=-6.8 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
 	SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id CD279C10F13
-	for <linux-nfs@archiver.kernel.org>; Tue, 16 Apr 2019 13:37:10 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 45D14C10F13
+	for <linux-nfs@archiver.kernel.org>; Tue, 16 Apr 2019 13:37:15 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 9A4C6217F9
-	for <linux-nfs@archiver.kernel.org>; Tue, 16 Apr 2019 13:37:10 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 12841217F9
+	for <linux-nfs@archiver.kernel.org>; Tue, 16 Apr 2019 13:37:15 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="fnxxPLu4"
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="oKc+ZipZ"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726645AbfDPNhK (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 16 Apr 2019 09:37:10 -0400
-Received: from mail-it1-f193.google.com ([209.85.166.193]:40800 "EHLO
-        mail-it1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726576AbfDPNhJ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Apr 2019 09:37:09 -0400
-Received: by mail-it1-f193.google.com with SMTP id k64so8891562itb.5;
-        Tue, 16 Apr 2019 06:37:09 -0700 (PDT)
+        id S1726576AbfDPNhO (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 16 Apr 2019 09:37:14 -0400
+Received: from mail-it1-f196.google.com ([209.85.166.196]:37691 "EHLO
+        mail-it1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725861AbfDPNhO (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Apr 2019 09:37:14 -0400
+Received: by mail-it1-f196.google.com with SMTP id u65so32506879itc.2;
+        Tue, 16 Apr 2019 06:37:13 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=sender:subject:from:to:date:message-id:in-reply-to:references
          :user-agent:mime-version:content-transfer-encoding;
-        bh=TDIS49it7CovxgFPNsYlURa4c8OOVx10i8Vi5zHgfrA=;
-        b=fnxxPLu4HMqGqfKz0cBJz3yHSDhWe+1QIQLEuFQ27s0RpRErlhKzg+atCyMcdZMvbl
-         9OkMi9XkeoWww2mc1TxPnQ5HfTZwmYI9owbnWMXr6a0ASiHgfxbx2bmhnb8vhCCDV94k
-         p6bVnlj258QQuC9BmrwiUuV70sfJJmjSLLRGuNB20/vi48g0c82I6m5pyiQFcFasreKa
-         zU0QIaIvN7PZMvFwzzY7+ytVJ/uV10++qy+krg4yDo27i2V9mctA0Pefj+vSHMPx3vAj
-         2G3Sop5ddtV0qXbZ7ZjGzENMkWXG1oPtM+eeU+vWXUzLp3jvA3FF9n8QJIDAp/3xnfrr
-         E0Ng==
+        bh=fTNkHA9SntrXpaG1oEfTXMmMhUnHC1ermDjhZi8zbWo=;
+        b=oKc+ZipZw5bTvPciw3Reg6TGvDwIzEnOc6Y+kWzTQHgu4C3Oyu4+GlTEuzkSdI6l5X
+         56itFrGp5YLqWA9q62kJeuUkKSH0gFaGIszh5T938lF/nR6N9Ld6WDl0EaR9iVZDcvPu
+         wP8CgltziYLvECwbd6eqs/HwzSeKwFlymOuQoWkVnKosqNxlOMSBihqTZv8WiPn6RjX/
+         rMncd2CCGjyHWYX7w4HhcaBCQrOJvA3uWOUFXAmat+kw+99yhoGKFuDsjsGXRWpdW46z
+         gWLRhe+Od8tqaIw2vaFTeJhJqIct9FM2yR58+GVec+U30l3++Le9yWrr7m2ubGhLJXnI
+         oWcQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:sender:subject:from:to:date:message-id
          :in-reply-to:references:user-agent:mime-version
          :content-transfer-encoding;
-        bh=TDIS49it7CovxgFPNsYlURa4c8OOVx10i8Vi5zHgfrA=;
-        b=JZEf7ROxGypLjhE3DKKcR+jCeegLzMjc71kxRTFpjznVF0X0UqnM2k/70uNanS0Az8
-         hhrWBDbVJhU4YYfDqPgpKio7rjHSHOJcf49X4ZJFTBIZouwZvv5UyjsRrTTmGaHdS2/w
-         eR2l5IRTAe86QV5EZ/xpqhwTrvppcHAr2c9KxC6tAGVweC9mrGYS2bYwvqy8oca6NG/3
-         9hDwe/nKbPZoPR2ExAycn9jpEbB1WOOHtwS3iZdFhThCg9Kb/wYRalrHQ1wMMbtLJiBz
-         MZn+4gWxFtHiBbXs0l/seacsRKpNEkBOghAZRSwhyJ2boSuqwgU+Z8UEGnp9kdTwBfcE
-         HQ6A==
-X-Gm-Message-State: APjAAAUC4Y5utH213rpP/gr/jK/Hkq5Lr3ds6HpPHd13ukdEXGYWB9qf
-        DubD5rjzDY8NDfOCZc8t614A4jPK
-X-Google-Smtp-Source: APXvYqwdDlR3O9sy3g6QZDnN1izwVCjPaQL5jb9mJl3yMViORaYn0Z4x5ZqAnMj8NUpqUqHeflodQw==
-X-Received: by 2002:a05:660c:95:: with SMTP id t21mr30355276itj.6.1555421828377;
-        Tue, 16 Apr 2019 06:37:08 -0700 (PDT)
+        bh=fTNkHA9SntrXpaG1oEfTXMmMhUnHC1ermDjhZi8zbWo=;
+        b=JlzyhpT6ehEbFTYPtDkBU9DGydcurhCJwSJRHStvcQH8PUeyIsdcbX77aWB3AWNYNU
+         9M198vibGbCqneuo+oyM+0nzsIo9FhgGSvYPI0nHICkgEABnNHa2yJPZ/JTcTPZfG8l2
+         vNwWJSulvYF4xKuB18vNHiXyoc6kBOwpop6ZYe5HYZvaGvbqCj1qbnz2W3gICcKklduA
+         N20KSqKMhD5oDCWAZCnBEvK9bvYiACGShigwNyIanPeUGAjot3GzhF4Sm80E9lOim4XG
+         mJQYIjZfCnVvnDicyx/LPX8Z5MeLDP+gifR+AR3SVhHZ9z61zCejs0aNAIcgcZkG3mjz
+         qhtg==
+X-Gm-Message-State: APjAAAWcAUuYxuiV51ZQXapnurOkzPwHyREze4WbV8w0QzPGXKkgiidm
+        OutIKTOaBs9m3tO3nBOpLaTs2wjR
+X-Google-Smtp-Source: APXvYqz7SnWQXvp6g5PUKnurwU/S7y3Cm8ifeV8qI9TtU6rV85VyZuk8UC1EUX5Xyq+dNckjr7Ui2Q==
+X-Received: by 2002:a24:3d94:: with SMTP id n142mr27552402itn.147.1555421833473;
+        Tue, 16 Apr 2019 06:37:13 -0700 (PDT)
 Received: from gateway.1015granger.net (c-68-61-232-219.hsd1.mi.comcast.net. [68.61.232.219])
-        by smtp.gmail.com with ESMTPSA id y11sm9605562ita.14.2019.04.16.06.37.07
+        by smtp.gmail.com with ESMTPSA id n184sm14885056itc.28.2019.04.16.06.37.12
         (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Tue, 16 Apr 2019 06:37:07 -0700 (PDT)
+        Tue, 16 Apr 2019 06:37:13 -0700 (PDT)
 Received: from manet.1015granger.net (manet.1015granger.net [192.168.1.51])
-        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id x3GDb63j021205;
-        Tue, 16 Apr 2019 13:37:06 GMT
-Subject: [PATCH v2 03/21] xprtrdma: Clean up rpcrdma_create_req()
+        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id x3GDbC7P021208;
+        Tue, 16 Apr 2019 13:37:12 GMT
+Subject: [PATCH v2 04/21] xprtrdma: Clean up rpcrdma_create_rep() and
+ rpcrdma_destroy_rep()
 From:   Chuck Lever <chuck.lever@oracle.com>
 To:     linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date:   Tue, 16 Apr 2019 09:37:06 -0400
-Message-ID: <20190416133706.23113.32437.stgit@manet.1015granger.net>
+Date:   Tue, 16 Apr 2019 09:37:12 -0400
+Message-ID: <20190416133712.23113.29186.stgit@manet.1015granger.net>
 In-Reply-To: <20190416133156.23113.91846.stgit@manet.1015granger.net>
 References: <20190416133156.23113.91846.stgit@manet.1015granger.net>
 User-Agent: StGit/0.17.1-dirty
@@ -73,112 +74,113 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Eventually, I'd like to invoke rpcrdma_create_req() during the
-call_reserve step. Memory allocation there probably needs to use
-GFP_NOIO. Therefore a set of GFP flags needs to be passed in.
-
-As an additional clean up, just return a pointer or NULL, because
-the only error return code here is -ENOMEM.
-
-Lastly, clean up the function names to be consistent with the
-pattern: "rpcrdma" _ object-type _ action
+For code legibility, clean up the function names to be consistent
+with the pattern: "rpcrdma" _ object-type _ action
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/backchannel.c |    6 +++---
- net/sunrpc/xprtrdma/verbs.c       |   29 ++++++++++++++++-------------
- net/sunrpc/xprtrdma/xprt_rdma.h   |    3 ++-
- 3 files changed, 21 insertions(+), 17 deletions(-)
+ net/sunrpc/xprtrdma/verbs.c |   25 +++++++++----------------
+ 1 file changed, 9 insertions(+), 16 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/backchannel.c b/net/sunrpc/xprtrdma/backchannel.c
-index d79b18c..713961a 100644
---- a/net/sunrpc/xprtrdma/backchannel.c
-+++ b/net/sunrpc/xprtrdma/backchannel.c
-@@ -31,9 +31,9 @@ static int rpcrdma_bc_setup_reqs(struct rpcrdma_xprt *r_xprt,
- 		struct rpcrdma_regbuf *rb;
- 		size_t size;
- 
--		req = rpcrdma_create_req(r_xprt);
--		if (IS_ERR(req))
--			return PTR_ERR(req);
-+		req = rpcrdma_req_create(r_xprt, GFP_KERNEL);
-+		if (!req)
-+			return -ENOMEM;
- 		rqst = &req->rl_slot;
- 
- 		rqst->rq_xprt = xprt;
 diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 30cfc0e..71fc41f 100644
+index 71fc41f..caa6a5d 100644
 --- a/net/sunrpc/xprtrdma/verbs.c
 +++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -996,22 +996,27 @@ struct rpcrdma_sendctx *rpcrdma_sendctx_get_locked(struct rpcrdma_buffer *buf)
- 	rpcrdma_mrs_create(r_xprt);
+@@ -76,7 +76,6 @@
+ static void rpcrdma_sendctx_put_locked(struct rpcrdma_sendctx *sc);
+ static void rpcrdma_mrs_create(struct rpcrdma_xprt *r_xprt);
+ static void rpcrdma_mrs_destroy(struct rpcrdma_buffer *buf);
+-static int rpcrdma_create_rep(struct rpcrdma_xprt *r_xprt, bool temp);
+ static void rpcrdma_dma_unmap_regbuf(struct rpcrdma_regbuf *rb);
+ static void rpcrdma_post_recvs(struct rpcrdma_xprt *r_xprt, bool temp);
+ 
+@@ -1029,25 +1028,20 @@ struct rpcrdma_req *rpcrdma_req_create(struct rpcrdma_xprt *r_xprt, gfp_t flags)
+ 	return req;
  }
  
--struct rpcrdma_req *
--rpcrdma_create_req(struct rpcrdma_xprt *r_xprt)
-+/**
-+ * rpcrdma_req_create - Allocate an rpcrdma_req object
-+ * @r_xprt: controlling r_xprt
-+ * @flags: GFP flags passed to memory allocators
-+ *
-+ * Returns an allocated and fully initialized rpcrdma_req or NULL.
-+ */
-+struct rpcrdma_req *rpcrdma_req_create(struct rpcrdma_xprt *r_xprt, gfp_t flags)
+-static int
+-rpcrdma_create_rep(struct rpcrdma_xprt *r_xprt, bool temp)
++static bool rpcrdma_rep_create(struct rpcrdma_xprt *r_xprt, bool temp)
  {
- 	struct rpcrdma_buffer *buffer = &r_xprt->rx_buf;
- 	struct rpcrdma_regbuf *rb;
- 	struct rpcrdma_req *req;
+ 	struct rpcrdma_create_data_internal *cdata = &r_xprt->rx_data;
+ 	struct rpcrdma_buffer *buf = &r_xprt->rx_buf;
+ 	struct rpcrdma_rep *rep;
+-	int rc;
  
--	req = kzalloc(sizeof(*req), GFP_KERNEL);
-+	req = kzalloc(sizeof(*req), flags);
- 	if (req == NULL)
--		return ERR_PTR(-ENOMEM);
-+		return NULL;
+-	rc = -ENOMEM;
+ 	rep = kzalloc(sizeof(*rep), GFP_KERNEL);
+ 	if (rep == NULL)
+ 		goto out;
  
--	rb = rpcrdma_alloc_regbuf(RPCRDMA_HDRBUF_SIZE,
--				  DMA_TO_DEVICE, GFP_KERNEL);
-+	rb = rpcrdma_alloc_regbuf(RPCRDMA_HDRBUF_SIZE, DMA_TO_DEVICE, flags);
- 	if (IS_ERR(rb)) {
- 		kfree(req);
--		return ERR_PTR(-ENOMEM);
-+		return NULL;
+ 	rep->rr_rdmabuf = rpcrdma_alloc_regbuf(cdata->inline_rsize,
+ 					       DMA_FROM_DEVICE, GFP_KERNEL);
+-	if (IS_ERR(rep->rr_rdmabuf)) {
+-		rc = PTR_ERR(rep->rr_rdmabuf);
++	if (IS_ERR(rep->rr_rdmabuf))
+ 		goto out_free;
+-	}
+ 	xdr_buf_init(&rep->rr_hdrbuf, rep->rr_rdmabuf->rg_base,
+ 		     rdmab_length(rep->rr_rdmabuf));
+ 
+@@ -1063,12 +1057,12 @@ struct rpcrdma_req *rpcrdma_req_create(struct rpcrdma_xprt *r_xprt, gfp_t flags)
+ 	spin_lock(&buf->rb_lock);
+ 	list_add(&rep->rr_list, &buf->rb_recv_bufs);
+ 	spin_unlock(&buf->rb_lock);
+-	return 0;
++	return true;
+ 
+ out_free:
+ 	kfree(rep);
+ out:
+-	return rc;
++	return false;
+ }
+ 
+ int
+@@ -1124,8 +1118,7 @@ struct rpcrdma_req *rpcrdma_req_create(struct rpcrdma_xprt *r_xprt, gfp_t flags)
+ 	return rc;
+ }
+ 
+-static void
+-rpcrdma_destroy_rep(struct rpcrdma_rep *rep)
++static void rpcrdma_rep_destroy(struct rpcrdma_rep *rep)
+ {
+ 	rpcrdma_free_regbuf(rep->rr_rdmabuf);
+ 	kfree(rep);
+@@ -1205,7 +1198,7 @@ struct rpcrdma_req *rpcrdma_req_create(struct rpcrdma_xprt *r_xprt, gfp_t flags)
+ 		rep = list_first_entry(&buf->rb_recv_bufs,
+ 				       struct rpcrdma_rep, rr_list);
+ 		list_del(&rep->rr_list);
+-		rpcrdma_destroy_rep(rep);
++		rpcrdma_rep_destroy(rep);
  	}
- 	req->rl_rdmabuf = rb;
- 	xdr_buf_init(&req->rl_hdrbuf, rb->rg_base, rdmab_length(rb));
-@@ -1086,16 +1091,14 @@ struct rpcrdma_req *
  
- 	INIT_LIST_HEAD(&buf->rb_send_bufs);
- 	INIT_LIST_HEAD(&buf->rb_allreqs);
-+
-+	rc = -ENOMEM;
- 	for (i = 0; i < buf->rb_max_requests; i++) {
- 		struct rpcrdma_req *req;
- 
--		req = rpcrdma_create_req(r_xprt);
--		if (IS_ERR(req)) {
--			dprintk("RPC:       %s: request buffer %d alloc"
--				" failed\n", __func__, i);
--			rc = PTR_ERR(req);
-+		req = rpcrdma_req_create(r_xprt, GFP_KERNEL);
-+		if (!req)
- 			goto out;
--		}
- 		list_add(&req->rl_list, &buf->rb_send_bufs);
+ 	while (!list_empty(&buf->rb_send_bufs)) {
+@@ -1334,7 +1327,7 @@ struct rpcrdma_req *
  	}
+ 	spin_unlock(&buffers->rb_lock);
+ 	if (rep)
+-		rpcrdma_destroy_rep(rep);
++		rpcrdma_rep_destroy(rep);
+ }
  
-diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index 10f6593..539558f 100644
---- a/net/sunrpc/xprtrdma/xprt_rdma.h
-+++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -528,7 +528,8 @@ int rpcrdma_ep_post(struct rpcrdma_ia *, struct rpcrdma_ep *,
  /*
-  * Buffer calls - xprtrdma/verbs.c
-  */
--struct rpcrdma_req *rpcrdma_create_req(struct rpcrdma_xprt *);
-+struct rpcrdma_req *rpcrdma_req_create(struct rpcrdma_xprt *r_xprt,
-+				       gfp_t flags);
- void rpcrdma_req_destroy(struct rpcrdma_req *req);
- int rpcrdma_buffer_create(struct rpcrdma_xprt *);
- void rpcrdma_buffer_destroy(struct rpcrdma_buffer *);
+@@ -1351,7 +1344,7 @@ struct rpcrdma_req *
+ 		list_add(&rep->rr_list, &buffers->rb_recv_bufs);
+ 		spin_unlock(&buffers->rb_lock);
+ 	} else {
+-		rpcrdma_destroy_rep(rep);
++		rpcrdma_rep_destroy(rep);
+ 	}
+ }
+ 
+@@ -1500,7 +1493,7 @@ struct rpcrdma_regbuf *
+ 			list_del(&rep->rr_list);
+ 		spin_unlock(&buf->rb_lock);
+ 		if (!rep) {
+-			if (rpcrdma_create_rep(r_xprt, temp))
++			if (!rpcrdma_rep_create(r_xprt, temp))
+ 				break;
+ 			continue;
+ 		}
 
