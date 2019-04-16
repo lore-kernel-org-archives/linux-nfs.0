@@ -2,75 +2,113 @@ Return-Path: <SRS0=Vlol=SS=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-7.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,SPF_PASS,URIBL_BLOCKED,
+	USER_AGENT_MUTT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8024BC10F13
-	for <linux-nfs@archiver.kernel.org>; Tue, 16 Apr 2019 18:28:21 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id AB5DBC10F13
+	for <linux-nfs@archiver.kernel.org>; Tue, 16 Apr 2019 19:35:49 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 563702075B
-	for <linux-nfs@archiver.kernel.org>; Tue, 16 Apr 2019 18:28:21 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 729A6206BA
+	for <linux-nfs@archiver.kernel.org>; Tue, 16 Apr 2019 19:35:49 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728108AbfDPS2U (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 16 Apr 2019 14:28:20 -0400
-Received: from mx1.redhat.com ([209.132.183.28]:57954 "EHLO mx1.redhat.com"
+        id S1727136AbfDPTft (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 16 Apr 2019 15:35:49 -0400
+Received: from fieldses.org ([173.255.197.46]:39496 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1728032AbfDPS2U (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 16 Apr 2019 14:28:20 -0400
-Received: from smtp.corp.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 93FA2C13070F;
-        Tue, 16 Apr 2019 18:28:20 +0000 (UTC)
-Received: from madhat.boston.devel.redhat.com (ovpn-117-181.phx2.redhat.com [10.3.117.181])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 4978860C76;
-        Tue, 16 Apr 2019 18:28:20 +0000 (UTC)
-Subject: Re: [PATCH] mount: Add missing cast to getsockname
-To:     Rosen Penev <rosenp@gmail.com>, linux-nfs@vger.kernel.org
-References: <20190415020838.924-1-rosenp@gmail.com>
-From:   Steve Dickson <SteveD@RedHat.com>
-Message-ID: <ee4c0c64-4a3b-555b-2299-251e1c76774e@RedHat.com>
-Date:   Tue, 16 Apr 2019 14:28:19 -0400
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101
- Thunderbird/60.6.1
+        id S1726860AbfDPTfs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 16 Apr 2019 15:35:48 -0400
+Received: by fieldses.org (Postfix, from userid 2815)
+        id 578511E19; Tue, 16 Apr 2019 15:35:48 -0400 (EDT)
+Date:   Tue, 16 Apr 2019 15:35:48 -0400
+To:     Olga Kornievskaia <aglo@umich.edu>
+Cc:     linux-nfs <linux-nfs@vger.kernel.org>
+Subject: Re: discuss NFS xfstest failures
+Message-ID: <20190416193548.GA6662@fieldses.org>
+References: <CAN-5tyHGLTFmd1t9Bn4VqbLFsnvTMJYd-dBzrn9mP-Tn7g8XVg@mail.gmail.com>
 MIME-Version: 1.0
-In-Reply-To: <20190415020838.924-1-rosenp@gmail.com>
-Content-Type: text/plain; charset=utf-8
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.12
-X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.31]); Tue, 16 Apr 2019 18:28:20 +0000 (UTC)
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <CAN-5tyHGLTFmd1t9Bn4VqbLFsnvTMJYd-dBzrn9mP-Tn7g8XVg@mail.gmail.com>
+User-Agent: Mutt/1.5.21 (2010-09-15)
+From:   bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-
-
-On 4/14/19 10:08 PM, Rosen Penev wrote:
-> Otherwise compilation can fail with incompatible pointer type.
+On Thu, Apr 11, 2019 at 01:01:39PM -0400, Olga Kornievskaia wrote:
+> Hi folks,
 > 
-> Signed-off-by: Rosen Penev <rosenp@gmail.com>
-Committed.... 
+> We have some output at the wiki --
+> https://wiki.linux-nfs.org/wiki/index.php/Xfstests -- capturing a data
+> point of failures (for 4.16 kernel). However, I see many more failures
+> with the current (5.1-rc1). Wiki output should probably be updated
+> since xfstest has now 500+ tests. I have done my best to go over the
+> failures and provide some summary and comments. I'd like to see if the
+> community has any comments. Anybody else would like to share their
+> outputs from the xfstests that show other failures?
 
-steved.
+For what it's worth, I keep a list in testd/data/xfstests-failed with
+some minimal comments:
 
-> ---
->  utils/mount/network.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
-> 
-> diff --git a/utils/mount/network.c b/utils/mount/network.c
-> index fc21110..e166a82 100644
-> --- a/utils/mount/network.c
-> +++ b/utils/mount/network.c
-> @@ -1062,7 +1062,7 @@ int clnt_ping(struct sockaddr_in *saddr, const unsigned long prog,
->  	if (caddr) {
->  		/* Get the address of our end of this connection */
->  		socklen_t len = sizeof(*caddr);
-> -		if (getsockname(sock, caddr, &len) != 0)
-> +		if (getsockname(sock, (struct sockaddr *) caddr, &len) != 0)
->  			caddr->sin_family = 0;
->  	}
->  
-> 
+	git://linux-nfs.org/~bfields/testd.git
+
+Current contents appended.  As you can see there's a lot that's known
+unsupported features, but also a lot that I just haven't looked into
+yet.
+
+--b.
+
+# http://people.redhat.com/bcodding/nfs/2016/10/07/nfs_xfstest_generic/
+generic/035
+generic/087
+generic/294
+generic/306
+# We don't support all fallocate modes
+generic/031
+generic/017
+generic/062
+generic/071
+generic/422
+generic/469
+generic/499
+# no fiemap
+generic/032
+generic/094
+generic/225
+generic/425
+# no xattrs
+generic/037
+generic/337
+generic/377
+generic/403
+generic/454
+# NFSv4+ doesn't support system.posix_acl_access xattr:
+generic/053
+generic/105
+# xfstests used to skip this, not sure why it stopped:
+generic/064
+# no support for fs freezing
+generic/068
+generic/491
+# needs root?
+generic/184
+generic/434
+# FIBMAP unsupported
+generic/519
+# ---- need further triage:
+generic/033
+generic/088 # intermittent ?
+generic/089 # intermittent ?
+generic/126
+generic/277
+generic/423
+generic/426
+generic/465
+generic/478
+# "record lock is not preserved across execve(2)"
+generic/484
+# need a larger device?
+generic/485
+generic/486
