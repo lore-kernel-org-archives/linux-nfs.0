@@ -6,339 +6,81 @@ X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3BFCBC10F13
-	for <linux-nfs@archiver.kernel.org>; Tue, 16 Apr 2019 14:25:52 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5F201C10F13
+	for <linux-nfs@archiver.kernel.org>; Tue, 16 Apr 2019 14:34:53 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 0005A20693
-	for <linux-nfs@archiver.kernel.org>; Tue, 16 Apr 2019 14:25:51 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 2F52C20656
+	for <linux-nfs@archiver.kernel.org>; Tue, 16 Apr 2019 14:34:53 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726576AbfDPOZv (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 16 Apr 2019 10:25:51 -0400
-Received: from mx1.redhat.com ([209.132.183.28]:38442 "EHLO mx1.redhat.com"
+        id S1729598AbfDPOew (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 16 Apr 2019 10:34:52 -0400
+Received: from mx1.redhat.com ([209.132.183.28]:42070 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726215AbfDPOZv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 16 Apr 2019 10:25:51 -0400
-Received: from smtp.corp.redhat.com (int-mx05.intmail.prod.int.phx2.redhat.com [10.5.11.15])
+        id S1729597AbfDPOew (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 16 Apr 2019 10:34:52 -0400
+Received: from smtp.corp.redhat.com (int-mx08.intmail.prod.int.phx2.redhat.com [10.5.11.23])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 4F5E83088A60
-        for <linux-nfs@vger.kernel.org>; Tue, 16 Apr 2019 14:25:50 +0000 (UTC)
+        by mx1.redhat.com (Postfix) with ESMTPS id 702784623E;
+        Tue, 16 Apr 2019 14:34:52 +0000 (UTC)
 Received: from madhat.boston.devel.redhat.com (madhat.boston.devel.redhat.com [10.19.60.33])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id C16D55D707;
-        Tue, 16 Apr 2019 14:25:49 +0000 (UTC)
-Subject: Re: [PATCH] nfs-utils: Modify nfs.conf in-place instead of replacing
- the file
-To:     Justin Mitchell <jumitche@redhat.com>, linux-nfs@vger.kernel.org
-References: <1553099972.8215.40.camel@redhat.com>
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 26CA319C6A;
+        Tue, 16 Apr 2019 14:34:52 +0000 (UTC)
+Subject: Re: [PATCH] nfs-utils: nfsidmap fail to build if no --with-pluginpath
+ specified
+To:     Yongcheng Yang <yongcheng.yang@gmail.com>
+Cc:     linux-nfs@vger.kernel.org
+References: <20190402091651.17186-1-yongcheng.yang@gmail.com>
 From:   Steve Dickson <SteveD@RedHat.com>
-Message-ID: <0a615707-186d-1783-27a9-3be42dc30296@RedHat.com>
-Date:   Tue, 16 Apr 2019 10:25:49 -0400
+Message-ID: <95e49187-6d99-4168-1bb1-4a3f6f2500ee@RedHat.com>
+Date:   Tue, 16 Apr 2019 10:34:51 -0400
 User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101
  Thunderbird/60.6.1
 MIME-Version: 1.0
-In-Reply-To: <1553099972.8215.40.camel@redhat.com>
+In-Reply-To: <20190402091651.17186-1-yongcheng.yang@gmail.com>
 Content-Type: text/plain; charset=utf-8
 Content-Language: en-US
 Content-Transfer-Encoding: 7bit
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.15
-X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.47]); Tue, 16 Apr 2019 14:25:50 +0000 (UTC)
+X-Scanned-By: MIMEDefang 2.84 on 10.5.11.23
+X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.29]); Tue, 16 Apr 2019 14:34:52 +0000 (UTC)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
+Hello,
 
-
-On 3/20/19 12:39 PM, Justin Mitchell wrote:
-> When changes are written to nfs.conf the old method of building a new file
-> and then switching them leaves less opportunities for race conditions
-> against 3rd party tools but loses any existing permissions, ownerships,
-> attributes, etc. This patch instead uses an advisory flock to guard the
-> contents whilst it reads, modifies, and then rewrites the existing file.
+On 4/2/19 5:16 AM, Yongcheng Yang wrote:
+> The var "pkgplugindir" will be empty if no pluginpath provided.
+> Makefile "-rpath $(pkgplugindir)" will then get failed.
 > 
-> Signed-off-by: Justin Mitchell <jumitche@redhat.com>
-Committed... 
+> Signed-off-by: Yongcheng Yang <yongcheng.yang@gmail.com>
+> ---
+>  support/nfsidmap/Makefile.am | 4 ++++
+>  1 file changed, 4 insertions(+)
+> 
+> diff --git a/support/nfsidmap/Makefile.am b/support/nfsidmap/Makefile.am
+> index cdbeb4c..9c21fa3 100644
+> --- a/support/nfsidmap/Makefile.am
+> +++ b/support/nfsidmap/Makefile.am
+> @@ -1,4 +1,8 @@
+> +if PATH_PLUGINS
+>  pkgplugindir=$(PATH_PLUGINS)
+> +else
+> +pkgplugindir=$(libdir)/libnfsidmap
+> +endif
+>  
+>  if ENABLE_LDAP
+>  UMICH_LDAP_LIB = umich_ldap.la
+> 
+The only way I see a failure is when ./configure --with-pluginpath= 
+without a path which is wrong... 
+
+./configure --with-pluginpath=/usr/lib/libnfsidmap seems to work
+just fine
+
+I thinking it is better to error out when a path is not given
+then to gloss over but used a default.
 
 steved.
-> ---
->  support/nfs/conffile.c | 134 +++++++++++++++++++++++++++----------------------
->  1 file changed, 74 insertions(+), 60 deletions(-)
-> 
-> diff --git a/support/nfs/conffile.c b/support/nfs/conffile.c
-> index 77c5790..d8f2e8e 100644
-> --- a/support/nfs/conffile.c
-> +++ b/support/nfs/conffile.c
-> @@ -50,6 +50,7 @@
->  #include <err.h>
->  #include <syslog.h>
->  #include <libgen.h>
-> +#include <sys/file.h>
->  
->  #include "conffile.h"
->  #include "xlog.h"
-> @@ -504,6 +505,17 @@ conf_readfile(const char *path)
->  			return NULL;
->  		}
->  
-> +		/* Grab a shared lock to ensure its not mid-rewrite */
-> +		if (flock(fd, LOCK_SH)) {
-> +			xlog_warn("conf_readfile: attempt to grab read lock failed: %s",
-> +				strerror(errno));
-> +			goto fail;
-> +		}
-> +
-> +		/* only after we have the lock, check the file size ready to read it */
-> +		sz = lseek(fd, 0, SEEK_END);
-> +		lseek(fd, 0, SEEK_SET);
-> +
->  		new_conf_addr = malloc(sz+1);
->  		if (!new_conf_addr) {
->  			xlog_warn("conf_readfile: malloc (%lu) failed", (unsigned long)sz);
-> @@ -1583,6 +1595,17 @@ flush_outqueue(struct tailhead *queue, FILE *fout)
->  	return 0;
->  }
->  
-> +/* append one queue to another */
-> +static void
-> +append_queue(struct tailhead *inq, struct tailhead *outq)
-> +{
-> +	while (inq->tqh_first != NULL) {
-> +		struct outbuffer *ob = inq->tqh_first;
-> +		TAILQ_REMOVE(inq, ob, link);
-> +		TAILQ_INSERT_TAIL(outq, ob, link);
-> +	}
-> +}
-> +
->  /* read one line of text from a file, growing the buffer as necessary */
->  static int
->  read_line(char **buff, int *buffsize, FILE *in)
-> @@ -1723,6 +1746,16 @@ is_folded(const char *line)
->  	return false;
->  }
->  
-> +static int
-> +lock_file(FILE *f)
-> +{
-> +	int ret;
-> +	ret = flock(fileno(f), LOCK_EX);
-> +	if (ret) 
-> +		xlog(L_ERROR, "Error could not lock the file");
-> +	return ret;
-> +}
-> +
->  /***
->   * Write a value to an nfs.conf style filename
->   *
-> @@ -1733,15 +1766,14 @@ int
->  conf_write(const char *filename, const char *section, const char *arg,
->  	   const char *tag, const char *value)
->  {
-> -	int fdout = -1;
-> -	char *outpath = NULL;
-> -	FILE *outfile = NULL;
->  	FILE *infile = NULL;
->  	int ret = 1;
->  	struct tailhead outqueue;
-> +	struct tailhead inqueue;
->  	char * buff = NULL;
->  	int buffsize = 0;
->  
-> +	TAILQ_INIT(&inqueue);
->  	TAILQ_INIT(&outqueue);
->  
->  	if (!filename) {
-> @@ -1754,26 +1786,7 @@ conf_write(const char *filename, const char *section, const char *arg,
->  		return ret;
->  	}
->  
-> -	if (asprintf(&outpath, "%s.XXXXXX", filename) == -1) {
-> -		xlog(L_ERROR, "conf_write: error composing temp filename");
-> -		return ret;
-> -	}
-> -
-> -	fdout = mkstemp(outpath);
-> -	if (fdout < 0) {
-> -		xlog(L_ERROR, "conf_write: open temp file %s failed: %s",
-> -			 outpath, strerror(errno));
-> -		goto cleanup;
-> -	}
-> -
-> -	outfile = fdopen(fdout, "w");
-> -	if (!outfile) {
-> -		xlog(L_ERROR, "conf_write: fdopen temp file failed: %s",
-> -			 strerror(errno));
-> -		goto cleanup;
-> -	}
-> -
-> -	infile = fopen(filename, "r");
-> +	infile = fopen(filename, "r+");
->  	if (!infile) {
->  		if (!value) {
->  			xlog_warn("conf_write: config file \"%s\" not found, nothing to do", filename);
-> @@ -1782,18 +1795,29 @@ conf_write(const char *filename, const char *section, const char *arg,
->  		}
->  
->  		xlog_warn("conf_write: config file \"%s\" not found, creating.", filename);
-> -		if (append_line(&outqueue, NULL, make_section(section, arg)))
-> +		infile = fopen(filename, "wx");
-> +		if (!infile) {
-> +			xlog(L_ERROR, "conf_write: Error creating config file \"%s\".", filename);
-> +			goto cleanup;
-> +		}
-> +
-> +		if (lock_file(infile))
->  			goto cleanup;
->  
-> -		if (append_line(&outqueue, NULL, make_tagline(tag, value)))
-> +		if (append_line(&inqueue, NULL, make_section(section, arg)))
->  			goto cleanup;
->  
-> -		if (flush_outqueue(&outqueue, outfile))
-> +		if (append_line(&inqueue, NULL, make_tagline(tag, value)))
->  			goto cleanup;
-> +
-> +		append_queue(&inqueue, &outqueue);
->  	} else {
->  		bool found = false;
->  		int err = 0;
->  
-> +		if (lock_file(infile))
-> +			goto cleanup;
-> +
->  		buffsize = 4096;
->  		buff = calloc(1, buffsize);
->  		if (buff == NULL) {
-> @@ -1808,7 +1832,7 @@ conf_write(const char *filename, const char *section, const char *arg,
->  			/* read in one section worth of lines */
->  			do {
->  				if (*buff != '\0') {
-> -					if (append_line(&outqueue, NULL, strdup(buff)))
-> +					if (append_line(&inqueue, NULL, strdup(buff)))
->  						goto cleanup;
->  				}
->  
-> @@ -1816,7 +1840,7 @@ conf_write(const char *filename, const char *section, const char *arg,
->  			} while (err == 0 && buff[0] != '[');
->  
->  			/* find the section header */
-> -			where = TAILQ_FIRST(&outqueue);
-> +			where = TAILQ_FIRST(&inqueue);
->  			while (where != NULL) {
->  				if (where->text != NULL && where->text[0] == '[')
->  					break;
-> @@ -1864,7 +1888,7 @@ conf_write(const char *filename, const char *section, const char *arg,
->  					/* remove current tag */
->  					do {
->  						struct outbuffer *next = TAILQ_NEXT(where, link);
-> -						TAILQ_REMOVE(&outqueue, where, link);
-> +						TAILQ_REMOVE(&inqueue, where, link);
->  						if (is_folded(where->text))
->  							again = true;
->  						else
-> @@ -1876,14 +1900,14 @@ conf_write(const char *filename, const char *section, const char *arg,
->  
->  					/* insert new tag */
->  					if (value) {
-> -						if (append_line(&outqueue, prev, make_tagline(tag, value)))
-> +						if (append_line(&inqueue, prev, make_tagline(tag, value)))
->  							goto cleanup;
->  					}
->  				} else
->  				/* no existing assignment found and we need to add one */
->  				if (value) {
->  					/* rewind past blank lines and comments */
-> -					struct outbuffer *tail = TAILQ_LAST(&outqueue, tailhead);
-> +					struct outbuffer *tail = TAILQ_LAST(&inqueue, tailhead);
->  
->  					/* comments immediately before a section usually relate
->  					 * to the section below them */
-> @@ -1895,7 +1919,7 @@ conf_write(const char *filename, const char *section, const char *arg,
->  						tail = TAILQ_PREV(tail, tailhead, link);
->  
->  					/* now add the tag here */
-> -					if (append_line(&outqueue, tail, make_tagline(tag, value)))
-> +					if (append_line(&inqueue, tail, make_tagline(tag, value)))
->  						goto cleanup;
->  
->  					found = true;
-> @@ -1905,49 +1929,45 @@ conf_write(const char *filename, const char *section, const char *arg,
->  			/* EOF and correct section not found, so add one */
->  			if (err && !found && value) {
->  				/* did the last section end in a blank line */
-> -				struct outbuffer *tail = TAILQ_LAST(&outqueue, tailhead);
-> +				struct outbuffer *tail = TAILQ_LAST(&inqueue, tailhead);
->  				if (tail && !is_empty(tail->text)) {
->  					/* no, so add one for clarity */
-> -					if (append_line(&outqueue, NULL, strdup("\n")))
-> +					if (append_line(&inqueue, NULL, strdup("\n")))
->  						goto cleanup;
->  				}
->  
->  				/* add the new section header */
-> -				if (append_line(&outqueue, NULL, make_section(section, arg)))
-> +				if (append_line(&inqueue, NULL, make_section(section, arg)))
->  					goto cleanup;
->  
->  				/* now add the tag */
-> -				if (append_line(&outqueue, NULL, make_tagline(tag, value)))
-> +				if (append_line(&inqueue, NULL, make_tagline(tag, value)))
->  					goto cleanup;
->  			}
->  
-> -			/* we are done with this section, write it out */
-> -			if (flush_outqueue(&outqueue, outfile))
-> -				goto cleanup;
-> +			/* we are done with this section, move it to the out queue */
-> +			append_queue(&inqueue, &outqueue);
->  		} while(err == 0);
->  	}
->  
-> -	if (infile) {
-> -		fclose(infile);
-> -		infile = NULL;
-> -	}
-> +	/* now rewind and overwrite the file with the updated data */
-> +	rewind(infile);
->  
-> -	fdout = -1;
-> -	if (fclose(outfile)) {
-> -		xlog(L_ERROR, "Error writing config file: %s", strerror(errno));
-> +	if (ftruncate(fileno(infile), 0)) {
-> +		xlog(L_ERROR, "Error truncating config file");
->  		goto cleanup;
->  	}
->  
-> -	/* now swap the old file for the new one */
-> -	if (rename(outpath, filename)) {
-> -		xlog(L_ERROR, "Error updating config file: %s: %s\n", filename, strerror(errno));
-> -		ret = 1;
-> -	} else {
-> -		ret = 0;
-> -		free(outpath);
-> -		outpath = NULL;
-> +	if (flush_outqueue(&outqueue, infile))
-> +		goto cleanup;
-> +
-> +	if (infile) {
-> +		fclose(infile);
-> +		infile = NULL;
->  	}
->  
-> +	ret = 0;
-> +
->  cleanup:
->  	flush_outqueue(&outqueue, NULL);
->  
-> @@ -1955,11 +1975,5 @@ cleanup:
->  		free(buff);
->  	if (infile)
->  		fclose(infile);
-> -	if (fdout != -1)
-> -		close(fdout);
-> -	if (outpath) {
-> -		unlink(outpath);
-> -		free(outpath);
-> -	}
->  	return ret;
->  }
-> 
+
