@@ -1,93 +1,76 @@
-Return-Path: <SRS0=Vlol=SS=vger.kernel.org=linux-nfs-owner@kernel.org>
+Return-Path: <SRS0=8+CZ=ST=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_PASS,USER_AGENT_MUTT autolearn=ham autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-0.7 required=3.0 tests=DKIM_ADSP_CUSTOM_MED,
+	FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 575FCC10F13
-	for <linux-nfs@archiver.kernel.org>; Tue, 16 Apr 2019 20:46:06 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E53BFC10F12
+	for <linux-nfs@archiver.kernel.org>; Wed, 17 Apr 2019 09:22:52 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 206072075B
-	for <linux-nfs@archiver.kernel.org>; Tue, 16 Apr 2019 20:46:06 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id AFB8E20835
+	for <linux-nfs@archiver.kernel.org>; Wed, 17 Apr 2019 09:22:52 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728000AbfDPUqF (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 16 Apr 2019 16:46:05 -0400
-Received: from fieldses.org ([173.255.197.46]:39552 "EHLO fieldses.org"
+        id S1728143AbfDQJWw (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 17 Apr 2019 05:22:52 -0400
+Received: from mx1.redhat.com ([209.132.183.28]:38096 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727136AbfDPUqF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 16 Apr 2019 16:46:05 -0400
-Received: by fieldses.org (Postfix, from userid 2815)
-        id 218493EB; Tue, 16 Apr 2019 16:46:05 -0400 (EDT)
-Date:   Tue, 16 Apr 2019 16:46:05 -0400
-To:     Bruno Santos <bacmsantos@gmail.com>
-Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: Fwd: nfs v4.2 leaking file descriptors
-Message-ID: <20190416204605.GB6662@fieldses.org>
-References: <CANUurQovk32SFS_jDMpgmM-CktFJGF1yd5Fv_JOW2BFe4DsJPg@mail.gmail.com>
- <CANUurQr77yK5q6cKc3oFEeLE0ZdyEDDHmyiWCAWsWqVjfGGgjw@mail.gmail.com>
+        id S1728108AbfDQJWv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 17 Apr 2019 05:22:51 -0400
+Received: from smtp.corp.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id E0DBF3084212
+        for <linux-nfs@vger.kernel.org>; Wed, 17 Apr 2019 09:22:51 +0000 (UTC)
+Received: from yoyang-pc.usersys.redhat.com (dhcp-12-206.nay.redhat.com [10.66.12.206])
+        by smtp.corp.redhat.com (Postfix) with ESMTPS id C05D560148;
+        Wed, 17 Apr 2019 09:22:50 +0000 (UTC)
+Date:   Wed, 17 Apr 2019 17:22:47 +0800
+From:   Yongcheng Yang <yongcheng.yang@gmail.com>
+To:     Steve Dickson <SteveD@redhat.com>
+Cc:     linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfs-utils: nfsidmap fail to build if no
+ --with-pluginpath specified
+Message-ID: <20190417092246.GA5865@yoyang-pc.usersys.redhat.com>
+References: <20190402091651.17186-1-yongcheng.yang@gmail.com>
+ <95e49187-6d99-4168-1bb1-4a3f6f2500ee@RedHat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <CANUurQr77yK5q6cKc3oFEeLE0ZdyEDDHmyiWCAWsWqVjfGGgjw@mail.gmail.com>
-User-Agent: Mutt/1.5.21 (2010-09-15)
-From:   bfields@fieldses.org (J. Bruce Fields)
+In-Reply-To: <95e49187-6d99-4168-1bb1-4a3f6f2500ee@RedHat.com>
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.11
+X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.40]); Wed, 17 Apr 2019 09:22:51 +0000 (UTC)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Mon, Apr 15, 2019 at 06:00:56PM +0100, Bruno Santos wrote:
-> We have a debian stretch HPC cluster(#1 SMP Debian 4.9.130-2
-> (2018-10-27)). One of the machines mounts a couple of drives from a
-> Dell compellent system and shares it across a 10GB network to 4
-> different machines.
-> 
-> We had the nfs server crashing a few weeks ago because the file-max
-> limit had been reached. At the time we increased the number of file
-> handles it can handle and been monitoring since. We have noticed that
-> the number of entries on that machine keeps increasing though and
-> despite our best efforts we have been unable identify the cause.
-> Anything I can find related to this is from a well known bug in 2011
-> and nothing afterwards. We are assuming this is caused but a leak of
-> file handles on the nfs side but not sure.
-> 
-> Does anyone has anyway of figuring out what is causing this? Output
-> from the file-ne, lsof, etc is below.
+Hi SteveD,
 
-Off the top of my head, the only idea I have is to try watching
-
-	grep nfsd4 /proc/slabinfo
-
-and see if any of those objects are also leaking.
-
---b.
-
+On Tue, Apr 16, 2019 at 10:34:51AM -0400, Steve Dickson wrote:
+> The only way I see a failure is when ./configure --with-pluginpath= 
+> without a path which is wrong... 
 > 
-> Thank you very much for any help you can provide.
+> ./configure --with-pluginpath=/usr/lib/libnfsidmap seems to work
+> just fine
 > 
-> Best regards,
-> Bruno Santos
+> I thinking it is better to error out when a path is not given
+> then to gloss over but used a default.
 > 
-> :~# while :;do echo "$(date): $(cat /proc/sys/fs/file-nr)";sleep
-> 30;done
-> Mon 15 Apr 17:23:11 BST 2019: 2466176   0       4927726
-> Mon 15 Apr 17:23:41 BST 2019: 2466176   0       4927726
-> Mon 15 Apr 17:24:11 BST 2019: 2466336   0       4927726
-> Mon 15 Apr 17:24:41 BST 2019: 2466240   0       4927726
-> Mon 15 Apr 17:25:11 BST 2019: 2466560   0       4927726
-> Mon 15 Apr 17:25:41 BST 2019: 2466336   0       4927726
-> Mon 15 Apr 17:26:11 BST 2019: 2466400   0       4927726
-> Mon 15 Apr 17:26:41 BST 2019: 2466432   0       4927726
-> Mon 15 Apr 17:27:11 BST 2019: 2466688   0       4927726
-> Mon 15 Apr 17:27:41 BST 2019: 2466624   0       4927726
-> Mon 15 Apr 17:28:11 BST 2019: 2466784   0       4927726
-> Mon 15 Apr 17:28:41 BST 2019: 2466688   0       4927726
-> Mon 15 Apr 17:29:11 BST 2019: 2466816   0       4927726
-> Mon 15 Apr 17:29:42 BST 2019: 2466752   0       4927726
-> Mon 15 Apr 17:30:12 BST 2019: 2467072   0       4927726
-> Mon 15 Apr 17:30:42 BST 2019: 2466880   0       4927726
+> steved.
 > 
-> ~# lsof|wc -l
-> 3428
+
+From what you comments, there should be a plugin path assigned by
+default if the user is not aware of it, correct?
+
+Surely "./configure --with-pluginpath=/usr/lib/libnfsidmap" can work.
+But I didn't know the specific exact path before.
+
+I was just using "./configure" without any options and find out that
+it's empty. (Please find my previous full logs)
+
+Agree with you we should "use a default" one when path is not given.
+
+Thanks,
+Yongcheng
