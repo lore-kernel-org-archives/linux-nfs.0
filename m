@@ -2,125 +2,129 @@ Return-Path: <SRS0=DJTG=SU=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,USER_AGENT_MUTT
+X-Spam-Status: No, score=-1.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 90ED3C10F0E
-	for <linux-nfs@archiver.kernel.org>; Thu, 18 Apr 2019 21:37:31 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2F486C10F0E
+	for <linux-nfs@archiver.kernel.org>; Thu, 18 Apr 2019 22:03:14 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 683AB2054F
-	for <linux-nfs@archiver.kernel.org>; Thu, 18 Apr 2019 21:37:31 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id E75A7205ED
+	for <linux-nfs@archiver.kernel.org>; Thu, 18 Apr 2019 22:03:13 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (1024-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="MRKRELBk"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1725853AbfDRVha (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 18 Apr 2019 17:37:30 -0400
-Received: from fieldses.org ([173.255.197.46]:41946 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725815AbfDRVha (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 18 Apr 2019 17:37:30 -0400
-Received: by fieldses.org (Postfix, from userid 2815)
-        id 0F71E1E28; Thu, 18 Apr 2019 17:37:30 -0400 (EDT)
-Date:   Thu, 18 Apr 2019 17:37:30 -0400
-From:   "J. Bruce Fields" <bfields@fieldses.org>
-To:     Scott Mayhew <smayhew@redhat.com>
-Cc:     jlayton@kernel.org, linux-nfs@vger.kernel.org
+        id S1725872AbfDRWDN (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 18 Apr 2019 18:03:13 -0400
+Received: from mail-eopbgr680094.outbound.protection.outlook.com ([40.107.68.94]:19627
+        "EHLO NAM04-BN3-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1725824AbfDRWDN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 18 Apr 2019 18:03:13 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=hammerspace.com;
+ s=selector1;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=Sp7CyXmZhCm22T0/jVfWAU/dNrXDxyQ3U4/1JYR1D58=;
+ b=MRKRELBkXfqi9lg0E6/CPXFytwBgtw3PmTd1CAJIzayq9bsyDZ0TkWIGC/0SZCr5x8PstsBlJZxMZQBq4BC3nAjVHxO7O+6NpT8B0k1YfbHANjMBVbaYMXVzI8C7NQUkqeiihho7Kd5WuVz1/DoV+ys2Zlw98gLnnf+NFF+YvRs=
+Received: from SN6PR13MB2494.namprd13.prod.outlook.com (52.135.95.148) by
+ SN6PR13MB2495.namprd13.prod.outlook.com (52.135.95.149) with Microsoft SMTP
+ Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ 15.20.1835.6; Thu, 18 Apr 2019 22:03:09 +0000
+Received: from SN6PR13MB2494.namprd13.prod.outlook.com
+ ([fe80::48d2:c5de:2651:4c30]) by SN6PR13MB2494.namprd13.prod.outlook.com
+ ([fe80::48d2:c5de:2651:4c30%2]) with mapi id 15.20.1835.003; Thu, 18 Apr 2019
+ 22:03:09 +0000
+From:   Trond Myklebust <trondmy@hammerspace.com>
+To:     "bfields@fieldses.org" <bfields@fieldses.org>,
+        "smayhew@redhat.com" <smayhew@redhat.com>
+CC:     "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "jlayton@kernel.org" <jlayton@kernel.org>
 Subject: Re: [PATCH] nfsd: CB_RECALL can race with FREE_STATEID
-Message-ID: <20190418213730.GA1891@fieldses.org>
+Thread-Topic: [PATCH] nfsd: CB_RECALL can race with FREE_STATEID
+Thread-Index: AQHU9eoA+LnbIrF7jEWsGwkuP/UCjKZCBqYAgABeNgCAABRRgA==
+Date:   Thu, 18 Apr 2019 22:03:09 +0000
+Message-ID: <15806b00f7ba569a109549eb551bb116d981226d.camel@hammerspace.com>
 References: <20190418132400.24161-1-smayhew@redhat.com>
- <20190418151312.GB29274@fieldses.org>
- <20190418205024.GB15226@coeurl.usersys.redhat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
+         <20190418151312.GB29274@fieldses.org>
+         <20190418205024.GB15226@coeurl.usersys.redhat.com>
 In-Reply-To: <20190418205024.GB15226@coeurl.usersys.redhat.com>
-User-Agent: Mutt/1.5.21 (2010-09-15)
+Accept-Language: en-US, en-GB
+Content-Language: en-US
+X-MS-Has-Attach: 
+X-MS-TNEF-Correlator: 
+authentication-results: spf=none (sender IP is )
+ smtp.mailfrom=trondmy@hammerspace.com; 
+x-originating-ip: [68.40.189.247]
+x-ms-publictraffictype: Email
+x-ms-office365-filtering-correlation-id: 69f8c798-24fb-45ca-a1e5-08d6c449a4d9
+x-microsoft-antispam: BCL:0;PCL:0;RULEID:(2390118)(7020095)(4652040)(8989299)(5600141)(711020)(4605104)(4534185)(4627221)(201703031133081)(201702281549075)(8990200)(2017052603328)(7193020);SRVR:SN6PR13MB2495;
+x-ms-traffictypediagnostic: SN6PR13MB2495:
+x-microsoft-antispam-prvs: <SN6PR13MB24950689C506BBB21D1942F6B8260@SN6PR13MB2495.namprd13.prod.outlook.com>
+x-forefront-prvs: 0011612A55
+x-forefront-antispam-report: SFV:NSPM;SFS:(10019020)(346002)(376002)(136003)(396003)(366004)(39830400003)(199004)(189003)(316002)(305945005)(7736002)(6506007)(102836004)(186003)(3846002)(26005)(36756003)(66476007)(118296001)(91956017)(66446008)(73956011)(110136005)(66556008)(64756008)(14454004)(256004)(97736004)(229853002)(2501003)(8676002)(8936002)(5660300002)(4326008)(71190400001)(71200400001)(6486002)(86362001)(81166006)(81156014)(446003)(11346002)(476003)(2616005)(2906002)(6436002)(478600001)(486006)(6116002)(66066001)(53936002)(76176011)(6246003)(99286004)(6512007)(25786009)(68736007)(54906003)(66946007)(76116006);DIR:OUT;SFP:1102;SCL:1;SRVR:SN6PR13MB2495;H:SN6PR13MB2494.namprd13.prod.outlook.com;FPR:;SPF:None;LANG:en;PTR:InfoNoRecords;A:1;MX:1;
+received-spf: None (protection.outlook.com: hammerspace.com does not designate
+ permitted sender hosts)
+x-ms-exchange-senderadcheck: 1
+x-microsoft-antispam-message-info: LbB/X/G3YO1UkTOVesCH+FOm/dXQhtfRIHfld/F/0dItRZsx5qryazWyNe7B9T2EE50wVyktIFB1HRF7IplZTXbarRtVO3KVQ9U0kTBIVGhR6I8aaRFBPq8babC0K/KHVFGWz4phmt2+IQpwUgV+EVM6X8Ou5iFKXbjKkeVDq95ar1hp5Be6wBIEiShU/WzColRSrXdQteB6FbEXL5kUoROVtQs8wmY7oQWFLISW7Rz2Lke3L++BiAfQmABDgqsOfd9Xy+Bg+uRap1uxTwlwQlR54udhPM+Lj7Q39cAXO1Gnptt9h7XBhogOFKQYNMkwPfhhEtXFOWhnJvrxh9+1k8lW0myqVdDEMnQE/kq6hZwptCKj5PkqzpV8Hw/Z18C5swlAW1x5YAuMfYY/99Uvm71e545hiI3IaCi0MmEBurY=
+Content-Type: text/plain; charset="utf-8"
+Content-ID: <FDFEE4DF9E076F4AAA41AA1C3EE59117@namprd13.prod.outlook.com>
+Content-Transfer-Encoding: base64
+MIME-Version: 1.0
+X-OriginatorOrg: hammerspace.com
+X-MS-Exchange-CrossTenant-Network-Message-Id: 69f8c798-24fb-45ca-a1e5-08d6c449a4d9
+X-MS-Exchange-CrossTenant-originalarrivaltime: 18 Apr 2019 22:03:09.5225
+ (UTC)
+X-MS-Exchange-CrossTenant-fromentityheader: Hosted
+X-MS-Exchange-CrossTenant-id: 0d4fed5c-3a70-46fe-9430-ece41741f59e
+X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: SN6PR13MB2495
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Thu, Apr 18, 2019 at 04:50:24PM -0400, Scott Mayhew wrote:
-> On Thu, 18 Apr 2019, J. Bruce Fields wrote:
-> 
-> > On Thu, Apr 18, 2019 at 09:24:00AM -0400, Scott Mayhew wrote:
-> > > While trying to track down some issues involving large numbers of
-> > > delegations being recalled/revoked, I caught the server setting
-> > > SEQ4_STATUS_CB_PATH_DOWN while the client was actively responding to
-> > > CB_RECALLs.  It turns out that the client had already done a
-> > > TEST_STATEID and FREE_STATEID for a delegation being recalled by the
-> > > time it received the CB_RECALL.
-> > 
-> > That's interesting, thanks!
-> > 
-> > This exception seems awfully narrow, though.
-> > 
-> > If we get back any NFS-level error at all, then I think the callback
-> > channel is working (am I wrong?)
-> 
-> Correct, if the client replies with either NFS4ERR_DELAY or
-> NFS4ERR_BAD_STATEID, the server will retry 1 time (see dl_retries).
-> After that, we fall thru and nfsd4_cb_recall_done() returns -1 which
-> causes the SEQ4_STATUS_CB_PATH_DOWN flag to be set.
-> 
-> > and telling the client to set up a new
-> > one is probably not going to help.  The best we can do is probably just
-> > give up
-> 
-> That's what the patch is essentially doing.  Or are you saying don't
-> even bother with the checks but still return 1 so we don't set the
-> SEQ4_STATUS_CB_PATH_DOWN flag?
-
-Right, I don't see any point returning -1 (which ends up setting
-CB_PATH_DOWN) in any case where we get an nfs-level error.  If the
-client got so far as returning an error, then the callback path is
-working.
-
-I'm not sure exactly what errors *should* result in CB_PATH_DOWN,
-though.  ETIMEDOUT, ENOTCONN, EIO?  And maybe we should be checking for
-those in nfsd4_cb_done, and do away with the convention that -1 means
-CB_PATH_DOWN.  I don't think there's a reason individual callback ops
-would need different rules for when to mark the callback channel down.
-
---b.
-
-> 
-> > and let the client deal with the ensuing
-> > RECALLABLE_STATE_REVOKED flag.
-> 
-> The client's already dealing with the RECALLABLE_STATE_REVOKED flag,
-> that's why it sent a TEST_STATEID and FREE_STATEID before it got this
-> particular CB_RECALL.  The idea behind the patch is to not give the
-> state manager on the client additional work by setting CB_PATH_DOWN when
-> the callback channel is clearly working...
-> 
-> -Scott
-> > 
-> > --b.
-> > 
-> > > 
-> > > Signed-off-by: Scott Mayhew <smayhew@redhat.com>
-> > > ---
-> > >  fs/nfsd/nfs4state.c | 8 ++++++++
-> > >  1 file changed, 8 insertions(+)
-> > > 
-> > > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> > > index 6a45fb00c5fc..e88e429133a8 100644
-> > > --- a/fs/nfsd/nfs4state.c
-> > > +++ b/fs/nfsd/nfs4state.c
-> > > @@ -3958,6 +3958,14 @@ static int nfsd4_cb_recall_done(struct nfsd4_callback *cb,
-> > >  			rpc_delay(task, 2 * HZ);
-> > >  			return 0;
-> > >  		}
-> > > +		/*
-> > > +		 * Race: client may have done a FREE_STATEID before
-> > > +		 * receiving the CB_RECALL.
-> > > +		 */
-> > > +		if (dp->dl_stid.sc_type == NFS4_REVOKED_DELEG_STID &&
-> > > +				refcount_read(&dp->dl_stid.sc_count) == 1 &&
-> > > +				list_empty(&dp->dl_recall_lru))
-> > > +			return 1;
-> > >  		/*FALLTHRU*/
-> > >  	default:
-> > >  		return -1;
-> > > -- 
-> > > 2.17.2
+T24gVGh1LCAyMDE5LTA0LTE4IGF0IDE2OjUwIC0wNDAwLCBTY290dCBNYXloZXcgd3JvdGU6DQo+
+IE9uIFRodSwgMTggQXByIDIwMTksIEouIEJydWNlIEZpZWxkcyB3cm90ZToNCj4gDQo+ID4gT24g
+VGh1LCBBcHIgMTgsIDIwMTkgYXQgMDk6MjQ6MDBBTSAtMDQwMCwgU2NvdHQgTWF5aGV3IHdyb3Rl
+Og0KPiA+ID4gV2hpbGUgdHJ5aW5nIHRvIHRyYWNrIGRvd24gc29tZSBpc3N1ZXMgaW52b2x2aW5n
+IGxhcmdlIG51bWJlcnMgb2YNCj4gPiA+IGRlbGVnYXRpb25zIGJlaW5nIHJlY2FsbGVkL3Jldm9r
+ZWQsIEkgY2F1Z2h0IHRoZSBzZXJ2ZXIgc2V0dGluZw0KPiA+ID4gU0VRNF9TVEFUVVNfQ0JfUEFU
+SF9ET1dOIHdoaWxlIHRoZSBjbGllbnQgd2FzIGFjdGl2ZWx5IHJlc3BvbmRpbmcNCj4gPiA+IHRv
+DQo+ID4gPiBDQl9SRUNBTExzLiAgSXQgdHVybnMgb3V0IHRoYXQgdGhlIGNsaWVudCBoYWQgYWxy
+ZWFkeSBkb25lIGENCj4gPiA+IFRFU1RfU1RBVEVJRCBhbmQgRlJFRV9TVEFURUlEIGZvciBhIGRl
+bGVnYXRpb24gYmVpbmcgcmVjYWxsZWQgYnkNCj4gPiA+IHRoZQ0KPiA+ID4gdGltZSBpdCByZWNl
+aXZlZCB0aGUgQ0JfUkVDQUxMLg0KPiA+IA0KPiA+IFRoYXQncyBpbnRlcmVzdGluZywgdGhhbmtz
+IQ0KPiA+IA0KPiA+IFRoaXMgZXhjZXB0aW9uIHNlZW1zIGF3ZnVsbHkgbmFycm93LCB0aG91Z2gu
+DQo+ID4gDQo+ID4gSWYgd2UgZ2V0IGJhY2sgYW55IE5GUy1sZXZlbCBlcnJvciBhdCBhbGwsIHRo
+ZW4gSSB0aGluayB0aGUNCj4gPiBjYWxsYmFjaw0KPiA+IGNoYW5uZWwgaXMgd29ya2luZyAoYW0g
+SSB3cm9uZz8pDQo+IA0KPiBDb3JyZWN0LCBpZiB0aGUgY2xpZW50IHJlcGxpZXMgd2l0aCBlaXRo
+ZXIgTkZTNEVSUl9ERUxBWSBvcg0KPiBORlM0RVJSX0JBRF9TVEFURUlELCB0aGUgc2VydmVyIHdp
+bGwgcmV0cnkgMSB0aW1lIChzZWUgZGxfcmV0cmllcykuDQo+IEFmdGVyIHRoYXQsIHdlIGZhbGwg
+dGhydSBhbmQgbmZzZDRfY2JfcmVjYWxsX2RvbmUoKSByZXR1cm5zIC0xIHdoaWNoDQo+IGNhdXNl
+cyB0aGUgU0VRNF9TVEFUVVNfQ0JfUEFUSF9ET1dOIGZsYWcgdG8gYmUgc2V0Lg0KDQpUaGVyZSBp
+cyBubyBoYW5kbGluZyBvZiBORlM0RVJSX0RFTEFZIGluIG5mc2Q0X2NiX3JlY2FsbF9kb25lKCku
+DQoNCkFzIGZhciBhcyBJIGNhbiBzZWUsIHRoZXJlZm9yZSwgaWYgdGhlIGNsaWVudCByZXR1cm5z
+IE5GUzRFUlJfREVMQVkNCih3aGljaCBpdCB1c3VhbGx5IGRvZXMgaWYgaXQgaXMgYWxyZWFkeSBp
+biB0aGUgcHJvY2VzcyBvZiByZXR1cm5pbmcgdGhlDQpkZWxlZ2F0aW9uKSB0aGVuIHRoZSByZWNh
+bGwgd2lsbCBmYWlsIGltbWVkaWF0ZWx5Lg0KDQo+ID4gYW5kIHRlbGxpbmcgdGhlIGNsaWVudCB0
+byBzZXQgdXAgYSBuZXcNCj4gPiBvbmUgaXMgcHJvYmFibHkgbm90IGdvaW5nIHRvIGhlbHAuICBU
+aGUgYmVzdCB3ZSBjYW4gZG8gaXMgcHJvYmFibHkNCj4gPiBqdXN0DQo+ID4gZ2l2ZSB1cA0KPiAN
+Cj4gVGhhdCdzIHdoYXQgdGhlIHBhdGNoIGlzIGVzc2VudGlhbGx5IGRvaW5nLiAgT3IgYXJlIHlv
+dSBzYXlpbmcgZG9uJ3QNCj4gZXZlbiBib3RoZXIgd2l0aCB0aGUgY2hlY2tzIGJ1dCBzdGlsbCBy
+ZXR1cm4gMSBzbyB3ZSBkb24ndCBzZXQgdGhlDQo+IFNFUTRfU1RBVFVTX0NCX1BBVEhfRE9XTiBm
+bGFnPw0KPiANCj4gPiBhbmQgbGV0IHRoZSBjbGllbnQgZGVhbCB3aXRoIHRoZSBlbnN1aW5nDQo+
+ID4gUkVDQUxMQUJMRV9TVEFURV9SRVZPS0VEIGZsYWcuDQo+IA0KPiBUaGUgY2xpZW50J3MgYWxy
+ZWFkeSBkZWFsaW5nIHdpdGggdGhlIFJFQ0FMTEFCTEVfU1RBVEVfUkVWT0tFRCBmbGFnLA0KPiB0
+aGF0J3Mgd2h5IGl0IHNlbnQgYSBURVNUX1NUQVRFSUQgYW5kIEZSRUVfU1RBVEVJRCBiZWZvcmUg
+aXQgZ290IHRoaXMNCj4gcGFydGljdWxhciBDQl9SRUNBTEwuICBUaGUgaWRlYSBiZWhpbmQgdGhl
+IHBhdGNoIGlzIHRvIG5vdCBnaXZlIHRoZQ0KPiBzdGF0ZSBtYW5hZ2VyIG9uIHRoZSBjbGllbnQg
+YWRkaXRpb25hbCB3b3JrIGJ5IHNldHRpbmcgQ0JfUEFUSF9ET1dODQo+IHdoZW4NCj4gdGhlIGNh
+bGxiYWNrIGNoYW5uZWwgaXMgY2xlYXJseSB3b3JraW5nLi4uDQo+IA0KDQpFaXRoZXIgd2F5LCB0
+aGUgTGludXggY2xpZW50IHdpbGwgaWdub3JlIGFueSBmdXJ0aGVyIHNlcXVlbmNlIGZsYWdzDQp1
+bnRpbCBpdCBpcyBkb25lIHdpdGggdGhlIHJlY292ZXJ5IG9mIHRoZSBSRUNBTExBQkxFX1NUQVRF
+X1JFVk9LRUQNCmZsYWcuIFRoZSByZWFzb24gaXMgdGhhdCB0aGUgZmxhZ3MgYXJlIGVkZ2UgdHJp
+Z2dlcmVkIChpLmUuIHRoZXkgZG9uJ3QNCmNsZWFyIHVudGlsIHRoZSBzdGF0ZSBjaGFuZ2VzKSwg
+YW5kIHNvIHdlIG5lZWQgdG8gYmUgYWJsZSB0byBwZXJmb3JtIGENCmZ1bGwgcmVjb3ZlcnkgYmVm
+b3JlIHdlIGNhbiBjaGVjayB0aGVtIGFnYWluLg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGlu
+dXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBIYW1tZXJzcGFjZQ0KdHJvbmQubXlrbGVidXN0QGhh
+bW1lcnNwYWNlLmNvbQ0KDQoNCg==
