@@ -2,181 +2,125 @@ Return-Path: <SRS0=DJTG=SU=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS
+X-Spam-Status: No, score=-8.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,USER_AGENT_MUTT
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4AF36C10F0E
-	for <linux-nfs@archiver.kernel.org>; Thu, 18 Apr 2019 21:31:29 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 90ED3C10F0E
+	for <linux-nfs@archiver.kernel.org>; Thu, 18 Apr 2019 21:37:31 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id CB6332054F
-	for <linux-nfs@archiver.kernel.org>; Thu, 18 Apr 2019 21:31:28 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="GT1d8azz"
+	by mail.kernel.org (Postfix) with ESMTP id 683AB2054F
+	for <linux-nfs@archiver.kernel.org>; Thu, 18 Apr 2019 21:37:31 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2388360AbfDRVb2 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 18 Apr 2019 17:31:28 -0400
-Received: from mail-eopbgr740099.outbound.protection.outlook.com ([40.107.74.99]:40431
-        "EHLO NAM01-BN3-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1731565AbfDRVb2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 18 Apr 2019 17:31:28 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=hammerspace.com;
- s=selector1;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=GEfOj+rRKDCLT9RDT3+6AsGDfFOAXhIQYMTH4+cAfQE=;
- b=GT1d8azzTwy4Jiz/gX7pj7C47+rIeL67wNRpm7rrd9B/AntIXm9Ont6kM1TyOYAANaG2NS+dydSiMOwQ4Nb7gIvvhms54lKiNkvEXBIoxpEUZRBO1xva84kDCqexpUE7FXoA8yn3k0g7C1i+2J2rc0N+0ulkkgtAi0BlZP4eMhg=
-Received: from SN6PR13MB2494.namprd13.prod.outlook.com (52.135.95.148) by
- SN6PR13MB2335.namprd13.prod.outlook.com (52.135.94.30) with Microsoft SMTP
- Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- 15.20.1813.9; Thu, 18 Apr 2019 21:31:23 +0000
-Received: from SN6PR13MB2494.namprd13.prod.outlook.com
- ([fe80::48d2:c5de:2651:4c30]) by SN6PR13MB2494.namprd13.prod.outlook.com
- ([fe80::48d2:c5de:2651:4c30%2]) with mapi id 15.20.1835.003; Thu, 18 Apr 2019
- 21:31:23 +0000
-From:   Trond Myklebust <trondmy@hammerspace.com>
-To:     "smayhew@redhat.com" <smayhew@redhat.com>
-CC:     "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: Question about open(CLAIM_FH)
-Thread-Topic: Question about open(CLAIM_FH)
-Thread-Index: AQHU9evf84hrBN7rMkSy4LhuOmeSbqZB/O+AgABmGwCAAA0/gA==
-Date:   Thu, 18 Apr 2019 21:31:23 +0000
-Message-ID: <4751d341a626cf26e60e0b8c3564171c115c1335.camel@hammerspace.com>
-References: <20190418133728.GS3773@coeurl.usersys.redhat.com>
-         <213d4ead8a7ae890dadc7785d59117e798f94748.camel@hammerspace.com>
-         <20190418204356.GA15226@coeurl.usersys.redhat.com>
-In-Reply-To: <20190418204356.GA15226@coeurl.usersys.redhat.com>
-Accept-Language: en-US, en-GB
-Content-Language: en-US
-X-MS-Has-Attach: 
-X-MS-TNEF-Correlator: 
-authentication-results: spf=none (sender IP is )
- smtp.mailfrom=trondmy@hammerspace.com; 
-x-originating-ip: [68.40.189.247]
-x-ms-publictraffictype: Email
-x-ms-office365-filtering-correlation-id: 7f5f94da-82eb-4f64-5bf8-08d6c44534f2
-x-microsoft-antispam: BCL:0;PCL:0;RULEID:(2390118)(7020095)(4652040)(8989299)(4534185)(4627221)(201703031133081)(201702281549075)(8990200)(5600141)(711020)(4605104)(2017052603328)(7193020);SRVR:SN6PR13MB2335;
-x-ms-traffictypediagnostic: SN6PR13MB2335:
-x-microsoft-antispam-prvs: <SN6PR13MB2335813771FB6A6588EACFB2B8260@SN6PR13MB2335.namprd13.prod.outlook.com>
-x-forefront-prvs: 0011612A55
-x-forefront-antispam-report: SFV:NSPM;SFS:(10019020)(396003)(346002)(376002)(366004)(136003)(39830400003)(189003)(199004)(305945005)(7736002)(6916009)(25786009)(229853002)(6486002)(6436002)(97736004)(2351001)(2501003)(66446008)(73956011)(76116006)(66066001)(66946007)(64756008)(478600001)(14454004)(118296001)(86362001)(5640700003)(53936002)(6246003)(2906002)(36756003)(71190400001)(71200400001)(6512007)(256004)(76176011)(14444005)(8676002)(11346002)(446003)(4326008)(81156014)(81166006)(5660300002)(186003)(1730700003)(8936002)(316002)(476003)(102836004)(2616005)(99286004)(486006)(6506007)(68736007)(26005)(6116002)(3846002)(66476007)(66556008);DIR:OUT;SFP:1102;SCL:1;SRVR:SN6PR13MB2335;H:SN6PR13MB2494.namprd13.prod.outlook.com;FPR:;SPF:None;LANG:en;PTR:InfoNoRecords;MX:1;A:1;
-received-spf: None (protection.outlook.com: hammerspace.com does not designate
- permitted sender hosts)
-x-ms-exchange-senderadcheck: 1
-x-microsoft-antispam-message-info: uc46nZxvDo1+48naCHbTjqtjRzA5raKyJ+QZkxEB9F3d6SlpqZ1IvknPcTIIPhnNepQlMXoSpBydWVewifZoeF6WDX7AjrQ5HnrCQsrOlmVNXNMLPnVRslN6L2FTZj2WKzovk3yvGC31fTSBgen42ZV0hBLrD5IWsHpMsPqUI0sXp4Jvhi35HRgY/SVKjSCRbjULXL59yTR1sQbTbom+6sReOlOip2XcTs2WXYgZ+CqkhLRoSiyHfdHsqjzWzwWC/KVj2ol1eGQsCGK/28gxvKMn4fhe7+81QYujIPAREb6Efla/rYUfAyK8MLFAiPl/SiE7Bc2zLMJss/Veifs8qET61tPXao2owx8l25zqR/NI39GNUuoZ/YKaU0QpwU1joUNEywX5nG6WxuqMaPg55Tc8fpa/IAXK8EPw29Wxirw=
-Content-Type: text/plain; charset="utf-8"
-Content-ID: <65F9FC85124D5C47ADA0A4C9C81B8390@namprd13.prod.outlook.com>
-Content-Transfer-Encoding: base64
+        id S1725853AbfDRVha (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 18 Apr 2019 17:37:30 -0400
+Received: from fieldses.org ([173.255.197.46]:41946 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1725815AbfDRVha (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 18 Apr 2019 17:37:30 -0400
+Received: by fieldses.org (Postfix, from userid 2815)
+        id 0F71E1E28; Thu, 18 Apr 2019 17:37:30 -0400 (EDT)
+Date:   Thu, 18 Apr 2019 17:37:30 -0400
+From:   "J. Bruce Fields" <bfields@fieldses.org>
+To:     Scott Mayhew <smayhew@redhat.com>
+Cc:     jlayton@kernel.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfsd: CB_RECALL can race with FREE_STATEID
+Message-ID: <20190418213730.GA1891@fieldses.org>
+References: <20190418132400.24161-1-smayhew@redhat.com>
+ <20190418151312.GB29274@fieldses.org>
+ <20190418205024.GB15226@coeurl.usersys.redhat.com>
 MIME-Version: 1.0
-X-OriginatorOrg: hammerspace.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: 7f5f94da-82eb-4f64-5bf8-08d6c44534f2
-X-MS-Exchange-CrossTenant-originalarrivaltime: 18 Apr 2019 21:31:23.8218
- (UTC)
-X-MS-Exchange-CrossTenant-fromentityheader: Hosted
-X-MS-Exchange-CrossTenant-id: 0d4fed5c-3a70-46fe-9430-ece41741f59e
-X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: SN6PR13MB2335
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20190418205024.GB15226@coeurl.usersys.redhat.com>
+User-Agent: Mutt/1.5.21 (2010-09-15)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-T24gVGh1LCAyMDE5LTA0LTE4IGF0IDE2OjQzIC0wNDAwLCBTY290dCBNYXloZXcgd3JvdGU6DQo+
-IE9uIFRodSwgMTggQXByIDIwMTksIFRyb25kIE15a2xlYnVzdCB3cm90ZToNCj4gDQo+ID4gSGkg
-U2NvdHQsDQo+ID4gDQo+ID4gT24gVGh1LCAyMDE5LTA0LTE4IGF0IDA5OjM3IC0wNDAwLCBTY290
-dCBNYXloZXcgd3JvdGU6DQo+ID4gPiBXaGVuIHRoZSBjbGllbnQgZG9lcyBhbiBvcGVuKENMQUlN
-X0ZIKSBhbmQgdGhlIHNlcnZlciBhbHJlYWR5IGhhcw0KPiA+ID4gb3Blbg0KPiA+ID4gc3RhdGUg
-Zm9yIHRoYXQgb3BlbiBvd25lciBhbmQgZmlsZSwgd2hhdCdzIHN1cHBvc2VkIHRvIGhhcHBlbj8N
-Cj4gPiA+IEN1cnJlbnRseSB0aGUgc2VydmVyIHJldHVybnMgdGhlIGV4aXN0aW5nIHN0YXRlaWQg
-d2l0aCB0aGUgc2VxaWQNCj4gPiA+IGJ1bXBlZCwNCj4gPiA+IGJ1dCBpdCBsb29rcyBsaWtlIHRo
-ZSBjbGllbnQgaXMgZXhwZWN0aW5nIGEgbmV3IHN0YXRlaWQgKEknbQ0KPiA+ID4gc2VlaW5nDQo+
-ID4gPiB0aGUNCj4gPiA+IHN0YXRlIG1hbmFnZXIgc3BlbmRpbmcgYSBsb3Qgb2YgdGltZSB3YWl0
-aW5nIGluDQo+ID4gPiBuZnNfc2V0X29wZW5fc3RhdGVpZF9sb2NrZWQoKSBkdWUgdG8gTkZTX1NU
-QVRFX0NIQU5HRV9XQUlUIGJlaW5nDQo+ID4gPiBzZXQNCj4gPiA+IGluDQo+ID4gPiB0aGUgc3Rh
-dGUgZmxhZ3MgYnkgbmZzX25lZWRfdXBkYXRlX29wZW5fc3RhdGVpZCgpKS4NCj4gPiA+IA0KPiA+
-ID4gTG9va2luZyBhdCByZmM1NjYxIHNlY3Rpb24gMTguMTYuMywgSSBzZWU6DQo+ID4gPiANCj4g
-PiA+ICAgIHwgQ0xBSU1fTlVMTCwgQ0xBSU1fRkggfCBGb3IgdGhlIGNsaWVudCwgdGhpcyBpcyBh
-IG5ldyBPUEVODQo+ID4gPiByZXF1ZXN0IHwNCj4gPiA+ICAgIHwgICAgICAgICAgICAgICAgICAg
-ICAgfCBhbmQgdGhlcmUgaXMgbm8gcHJldmlvdXMgc3RhdGUNCj4gPiA+IGFzc29jaWF0ZWQgIHwN
-Cj4gPiA+ICAgIHwgICAgICAgICAgICAgICAgICAgICAgfCB3aXRoIHRoZSBmaWxlIGZvciB0aGUN
-Cj4gPiA+IGNsaWVudC4gIFdpdGggICAgICAgIHwNCj4gPiA+ICAgIHwgICAgICAgICAgICAgICAg
-ICAgICAgfCBDTEFJTV9OVUxMLCB0aGUgZmlsZSBpcyBpZGVudGlmaWVkIGJ5DQo+ID4gPiB0aGUg
-IHwNCj4gPiA+ICAgIHwgICAgICAgICAgICAgICAgICAgICAgfCBjdXJyZW50IGZpbGVoYW5kbGUg
-YW5kIHRoZQ0KPiA+ID4gc3BlY2lmaWVkICAgICAgIHwNCj4gPiA+ICAgIHwgICAgICAgICAgICAg
-ICAgICAgICAgfCBjb21wb25lbnQgbmFtZS4gIFdpdGggQ0xBSU1fRkggKG5ldw0KPiA+ID4gdG8g
-ICAgIHwNCj4gPiA+ICAgIHwgICAgICAgICAgICAgICAgICAgICAgfCBORlN2NC4xKSwgdGhlIGZp
-bGUgaXMgaWRlbnRpZmllZCBieQ0KPiA+ID4ganVzdCAgIHwNCj4gPiA+ICAgIHwgICAgICAgICAg
-ICAgICAgICAgICAgfCB0aGUgY3VycmVudCBmaWxlaGFuZGxlLiAgDQo+ID4gPiANCj4gPiA+IFNv
-IGl0IHNlZW1zIGxpa2UgbWF5YmUgdGhlIHNlcnZlciBzaG91bGQgYmUgdG9zc2luZyB0aGUgb2xk
-IHN0YXRlDQo+ID4gPiBhbmQNCj4gPiA+IHJldHVybmluZyBhIG5ldyBzdGF0ZWlkPw0KPiA+ID4g
-DQo+ID4gDQo+ID4gTm8uIEFzIGZhciBhcyB0aGUgcHJvdG9jb2wgaXMgY29uY2VybmVkLCB0aGUg
-b25seSBkaWZmZXJlbmNlDQo+ID4gYmV0d2Vlbg0KPiA+IENMQUlNX05VTEwgYW5kIENMQUlNX0ZI
-IGlzIHRocm91Z2ggaG93IHRoZSBjbGllbnQgaWRlbnRpZmllcyB0aGUNCj4gPiBmaWxlDQo+ID4g
-KGluIHRoZSBmaXJzdCBjYXNlLCB0aHJvdWdoIGFuIGltcGxpY2l0IGxvb2t1cCwgYW5kIGluIHRo
-ZSBzZWNvbmQNCj4gPiBjYXNlDQo+ID4gdGhyb3VnaCBhIGZpbGUgaGFuZGxlKS4gVGhlIGNsaWVu
-dCBzaG91bGQgYmUgZnJlZSB0byBpbnRlcm1peCB0aGUNCj4gPiB0d28NCj4gPiB0eXBlcyBvZiBP
-UEVOLCBhbmQgaXQgc2hvdWxkIGV4cGVjdCB0aGUgcmVzdWx0aW5nIHN0YXRlaWRzIHRvDQo+ID4g
-ZGVwZW5kDQo+ID4gb25seSBvbiB3aGV0aGVyIG9yIG5vdCB0aGUgb3Blbl9vd25lciBtYXRjaGVz
-LiBJZiB0aGUgb3Blbl9vd25lcg0KPiA+IG1hdGNoZXMgYW4gZXhpc3Rpbmcgc3RhdGVpZCwgdGhl
-biB0aGF0IHN0YXRlaWQgaXMgYnVtcGVkIGFuZA0KPiA+IHJldHVybmVkLg0KPiA+IA0KPiA+IEkn
-bSBub3QgYXdhcmUgb2YgYW55IGV4cGVjdGF0aW9uIGluIHRoZSBjbGllbnQgdGhhdCB0aGlzIHNo
-b3VsZCBub3QNCj4gPiBiZQ0KPiA+IHRoZSBjYXNlLCBzbyBpZiB5b3UgYXJlIHNlZWluZyBkaWZm
-ZXJlbnQgYmVoYXZpb3VyLCB0aGVuIHNvbWV0aGluZw0KPiA+IGVsc2UNCj4gPiBtdXN0IGJlIGF0
-IHdvcmsgaGVyZS4gSXMgdGhlIGNsaWVudCBwZXJoYXBzIG1vdW50aW5nIHRoZSBzYW1lDQo+ID4g
-ZmlsZXN5c3RlbSBpbiB0d28gZGlmZmVyZW50IHBsYWNlcyBpbiBzdWNoIGEgd2F5IHRoYXQgdGhl
-IHN1cGVyDQo+ID4gYmxvY2sNCj4gPiBpcyBub3QgYmVpbmcgc2hhcmVkPw0KPiANCj4gTm8sIGl0
-J3MganVzdCBhIHNpbmdsZSA0LjEgbW91bnQgdy8gdGhlIGRlZmF1bHQgbW91bnQgb3B0aW9ucy4N
-Cj4gDQo+IEZvciBhIGJpdCBvZiBiYWNrZ3JvdW5kLCBJJ3ZlIGJlZW4gdHJ5aW5nIHRvIHRyYWNr
-IGRvd24gYSBwcm9ibGVtIGluDQo+IFJIRUwgd2hlcmUgdGhlIFNFUTRfU1RBVFVTX1JFQ0FMTEFC
-TEVfU1RBVEVfUkVWT0tFRCBmbGFncyBpcyBnZXR0aW5nDQo+IHBlcm1hbmVudGx5IHNldCBiZWNh
-dXNlIHRoZSBuZnM0X2NsaWVudC0+Y2xfcmV2b2tlZCBsaXN0IG9uIHRoZQ0KPiBzZXJ2ZXINCj4g
-aXMgbm9uLWVtcHR5Li4uIHlldCB0aGVyZSdzIG5vIGxvbmdlciBvcGVuIHN0YXRlIG9uIHRoZSBj
-bGllbnQuIA0KPiANCj4gSSBjYW4gcmVwcm9kdWNlIGl0IHByZXR0eSBlYXNpbHkgaW4gUkhFTCB1
-c2luZyAyIFZNcywgZWFjaCB3aXRoIDItNA0KPiBDUFVzDQo+IGFuZCA0LThHIG9mIG1lbW9yeS4g
-IFRoZSBzZXJ2ZXIgaGFzIDY0IG5mc2QgdGhyZWFkcyBhbmQgYSAxNSBzZWNvbmQNCj4gbGVhc2Ug
-dGltZS4NCj4gDQo+IE9uIHRoZSBjbGllbnQgSSdtIHJ1bm5pbmcgdGhlIGZvbGxvd2luZyB0byBh
-ZGQgYSAxMG1zIGRlbGF5IHRvDQo+IENCX1JFQ0FMTA0KPiByZXBsaWVzOg0KPiAjIHN0YXAgLWd2
-ZSAnZ2xvYmFsIGNvdW50ID0gMDsgcHJvYmUNCj4gbW9kdWxlKCJuZnN2NCIpLmZ1bmN0aW9uKCJu
-ZnM0X2NhbGxiYWNrX3JlY2FsbCIpIHsgcHJpbnRmKCIlczogJWRcbiIsDQo+IHBwZnVuYygpLCAr
-K2NvdW50KTsgbWRlbGF5KDEwKTsgfScNCj4gDQo+IHRoZW4gaW4gYW5vdGhlciB3aW5kb3cgSSBv
-cGVuIGEgYnVuY2ggb2YgZmlsZXM6DQo+ICMgZm9yIGkgaW4gYHNlcSAtdyAxIDUwMDBgOyBkbyBz
-bGVlcCAybSA8L21udC90L2RpcjEvZmlsZS4kaSAmIGRvbmUNCj4gDQo+IChOb3RlOiBJIGFscmVh
-ZHkgY3JlYXRlZCB0aGUgZmlsZXMgYWhlYWQgb2YgdGltZSkNCj4gDQo+IEFzIHNvb24gYXMgdGhl
-IGJhc2ggcHJvbXB0IHJldHVybnMgb24gdGhlIGNsaWVudCwgSSBydW4gdGhlIGZvbGxvd2luZw0K
-PiBvbg0KPiB0aGUgc2VydmVyOg0KPiAjIGZvciBpIGluIGBzZXEgLXcgMSA1MDAwYDsgZG8gZGF0
-ZSA+L2V4cG9ydC9kaXIxL2ZpbGUuJGkgJiBkb25lDQo+IA0KPiBBdCB0aGF0IHBvaW50LCBhbnkg
-ZnVydGhlciBTRVFVRU5DRSBvcHMgd2lsbCBoYXZlIHRoZSByZWNhbGxhYmxlDQo+IHN0YXRlDQo+
-IHJldm9rZWQgZmxhZyBzZXQgb24gdGhlIGNsaWVudCB1bnRpbCB0aGUgZnMgaXMgdW5tb3VudGVk
-Lg0KPiANCj4gSWYgSSBydW4gdGhlIHNhbWUgc3RlcHMgb24gRmVkb3JhIGNsaWVudHMgd2l0aCBy
-ZWNlbnQga2VybmVscywgSQ0KPiBkb24ndA0KPiBoYXZlIHRoZSBwcm9ibGVtIHdpdGggdGhlIHJl
-Y2FsbGFibGUgc3RhdGUgcmV2b2tlZCBmbGFnLCBidXQgSSdtDQo+IGdldHRpbmcNCj4gc29tZSBv
-dGhlciBzdHJhbmdlbmVzcy4gIEV2ZXJ5dGhpbmcgc3RhcnRzIG91dCBmaW5lIHdpdGgNCj4gbmZz
-X3JlYXBfZXhwaXJlZF9kZWxlZ2F0aW9ucygpIGRvaW5nIFRFU1RfU1RBVEVJRCBhbmQgRlJFRV9T
-VEFURUlELA0KPiBidXQNCj4gb25jZSB0aGUgc3RhdGUgbWFuYWdlciBzdGFydHMgY2FsbGluZ3Mg
-bmZzNDFfb3Blbl9leHBpcmVkKCksIHRoaW5ncw0KPiBzb3J0DQo+IG9mIGdyaW5kIHRvIGEgaGFs
-dCBhbmQgSSBzZWUgMSBPUEVOIGFuZCAxIG9yIDIgVEVTVF9TVEFURUlEIG9wcyBldmVyeQ0KPiA1
-DQo+IHNlY29uZHMgaW4gd2lyZXNoYXJrLiAgSXQgc3RheXMgdGhhdCB3YXkgdW50aWwgdGhlIGZp
-bGVzIGFyZSBjbG9zZWQNCj4gb24NCj4gdGhlIGNsaWVudCwgd2hlbiBJIHNlZSBhIHNsZXcgb2Yg
-REVMRUdSRVRVUk5zIGFuZCBGUkVFX1NUQVRFSURzLi4uDQo+IGJ1dA0KPiBJJ20gb25seSBzZWVp
-bmcgMyBvciA0IENMT1NFIG9wcy4gIElmIEkgcG9rZSBhcm91bmQgaW4gY3Jhc2ggb24gdGhlDQo+
-IHNlcnZlciwgSSBzZWUgYSB0b24gb2Ygb3BlbiBzdGF0ZWlkczoNCj4gDQo+IGNyYXNoPiBlcHl0
-aG9uIGZzL25mc2QvcHJpbnQtY2xpZW50LXN0YXRlLWluZm8ucHkNCj4gbmZzZF9uZXQgPSAweGZm
-ZmY5M2U0NzM1MTEwMDANCj4gICAgICAgICBuZnM0X2NsaWVudCA9IDB4ZmZmZjkzZTNmNzk1NDk4
-MA0KPiAgICAgICAgICAgICAgICAgbmZzNF9zdGF0ZW93bmVyID0gMHhmZmZmOTNlNDA1OGNjMzYw
-IG51bV9zdGF0ZWlkcyA9DQo+IDQ5OTcgPC0tLS0gb25seSAzIENMT1NFIG9wcyB3ZXJlIHJlY2Vp
-dmVkDQo+ICAgICAgICAgICAgICAgICBudW1fb3Blbm93bmVycyA9IDENCj4gICAgICAgICAgICAg
-ICAgIG51bV9sYXlvdXRzID0gMA0KPiAgICAgICAgICAgICAgICAgbnVtX2RlbGVnYXRpb25zID0g
-MA0KPiAgICAgICAgICAgICAgICAgbnVtX3Nlc3Npb25zID0gMQ0KPiAgICAgICAgICAgICAgICAg
-bnVtX2NvcGllcyA9IDANCj4gICAgICAgICAgICAgICAgIG51bV9yZXZva2VkID0gMA0KPiAgICAg
-ICAgICAgICAgICAgY2xfY2Jfd2FpdHFfcWxlbiA9IDANCj4gDQo+IFRob3NlIHN0YXRlaWRzIHN0
-aWNrIGFyb3VuZCB1bnRpbCB0aGUgZnMgaXMgdW5tb3VudGVkIChhbmQgdGhlDQo+IERFU1RST1lf
-U1RBVEVJRCBvcHMgcmV0dXJuIE5GUzRFUlJfQ0xJRU5USURfQlVTWSB3aGlsZSBkb2luZyBzbyku
-DQo+IA0KPiBCb3RoIFZNcyBhcmUgcnVubmluZyA1LjAuNi0yMDAuZmMyOS54ODZfNjQsIGJ1dCB0
-aGUgc2VydmVyIGFsc28gaGFzDQo+IHRoZQ0KPiAibmZzZDogRG9uJ3QgcmVsZWFzZSB0aGUgY2Fs
-bGJhY2sgc2xvdCB1bmxlc3MgaXQgd2FzIGFjdHVhbGx5IGhlbGQiDQo+IHBhdGNoIHlvdSBzZW50
-IGEgZmV3IHdlZWtzIGFnbyBhcyB3ZWxsIGFzIHRoZSAibmZzZDogQ0JfUkVDQUxMIGNhbg0KPiBy
-YWNlDQo+IHdpdGggRlJFRV9TVEFURUlEIiBwYXRjaCBJIHNlbnQgdG9kYXkuDQoNCkFyZSB0aGUg
-Y2FsbHMgdG8gbmZzNDFfb3Blbl9leHBpcmVkKCkgc3VjY2VlZGluZz8gSXQgc291bmRzIGxpa2Ug
-dGhleQ0KbWlnaHQgbm90IGJlLg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNs
-aWVudCBtYWludGFpbmVyLCBIYW1tZXJzcGFjZQ0KdHJvbmQubXlrbGVidXN0QGhhbW1lcnNwYWNl
-LmNvbQ0KDQoNCg==
+On Thu, Apr 18, 2019 at 04:50:24PM -0400, Scott Mayhew wrote:
+> On Thu, 18 Apr 2019, J. Bruce Fields wrote:
+> 
+> > On Thu, Apr 18, 2019 at 09:24:00AM -0400, Scott Mayhew wrote:
+> > > While trying to track down some issues involving large numbers of
+> > > delegations being recalled/revoked, I caught the server setting
+> > > SEQ4_STATUS_CB_PATH_DOWN while the client was actively responding to
+> > > CB_RECALLs.  It turns out that the client had already done a
+> > > TEST_STATEID and FREE_STATEID for a delegation being recalled by the
+> > > time it received the CB_RECALL.
+> > 
+> > That's interesting, thanks!
+> > 
+> > This exception seems awfully narrow, though.
+> > 
+> > If we get back any NFS-level error at all, then I think the callback
+> > channel is working (am I wrong?)
+> 
+> Correct, if the client replies with either NFS4ERR_DELAY or
+> NFS4ERR_BAD_STATEID, the server will retry 1 time (see dl_retries).
+> After that, we fall thru and nfsd4_cb_recall_done() returns -1 which
+> causes the SEQ4_STATUS_CB_PATH_DOWN flag to be set.
+> 
+> > and telling the client to set up a new
+> > one is probably not going to help.  The best we can do is probably just
+> > give up
+> 
+> That's what the patch is essentially doing.  Or are you saying don't
+> even bother with the checks but still return 1 so we don't set the
+> SEQ4_STATUS_CB_PATH_DOWN flag?
+
+Right, I don't see any point returning -1 (which ends up setting
+CB_PATH_DOWN) in any case where we get an nfs-level error.  If the
+client got so far as returning an error, then the callback path is
+working.
+
+I'm not sure exactly what errors *should* result in CB_PATH_DOWN,
+though.  ETIMEDOUT, ENOTCONN, EIO?  And maybe we should be checking for
+those in nfsd4_cb_done, and do away with the convention that -1 means
+CB_PATH_DOWN.  I don't think there's a reason individual callback ops
+would need different rules for when to mark the callback channel down.
+
+--b.
+
+> 
+> > and let the client deal with the ensuing
+> > RECALLABLE_STATE_REVOKED flag.
+> 
+> The client's already dealing with the RECALLABLE_STATE_REVOKED flag,
+> that's why it sent a TEST_STATEID and FREE_STATEID before it got this
+> particular CB_RECALL.  The idea behind the patch is to not give the
+> state manager on the client additional work by setting CB_PATH_DOWN when
+> the callback channel is clearly working...
+> 
+> -Scott
+> > 
+> > --b.
+> > 
+> > > 
+> > > Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+> > > ---
+> > >  fs/nfsd/nfs4state.c | 8 ++++++++
+> > >  1 file changed, 8 insertions(+)
+> > > 
+> > > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> > > index 6a45fb00c5fc..e88e429133a8 100644
+> > > --- a/fs/nfsd/nfs4state.c
+> > > +++ b/fs/nfsd/nfs4state.c
+> > > @@ -3958,6 +3958,14 @@ static int nfsd4_cb_recall_done(struct nfsd4_callback *cb,
+> > >  			rpc_delay(task, 2 * HZ);
+> > >  			return 0;
+> > >  		}
+> > > +		/*
+> > > +		 * Race: client may have done a FREE_STATEID before
+> > > +		 * receiving the CB_RECALL.
+> > > +		 */
+> > > +		if (dp->dl_stid.sc_type == NFS4_REVOKED_DELEG_STID &&
+> > > +				refcount_read(&dp->dl_stid.sc_count) == 1 &&
+> > > +				list_empty(&dp->dl_recall_lru))
+> > > +			return 1;
+> > >  		/*FALLTHRU*/
+> > >  	default:
+> > >  		return -1;
+> > > -- 
+> > > 2.17.2
