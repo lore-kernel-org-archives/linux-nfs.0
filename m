@@ -4,101 +4,98 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-9.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+	SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 011F3C282CE
-	for <linux-nfs@archiver.kernel.org>; Mon, 22 Apr 2019 16:34:30 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id ECB80C282CE
+	for <linux-nfs@archiver.kernel.org>; Mon, 22 Apr 2019 19:44:16 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id BD880214AE
-	for <linux-nfs@archiver.kernel.org>; Mon, 22 Apr 2019 16:34:29 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id B9B2D218FF
+	for <linux-nfs@archiver.kernel.org>; Mon, 22 Apr 2019 19:44:16 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1555950869;
-	bh=0PkiT99TqIXGtWCzH1VP7uqeerenrH5VZ7io2KGU7AY=;
+	s=default; t=1555962256;
+	bh=YVAge1jwdxc8jahHy6wegdv2f2qIzEVhckJcPKeB2t4=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=b6oaCVZvahMhX8OjRxeTve7K0wXF05pTbsFFpMGLz6XYPEIb9hBIUJjLNRcLo3T8e
-	 lblXSHlbwhv6uvn4/bJPGdImJQqQtNim5AuYrOGXlQw1A12qwdlRskwdNj8ZbGQEjF
-	 T1h7OZLcc0ggrLCYVIns2wLdKbDpHfEKGDQAgLuc=
+	b=n3QEk/Ayhmy/5mFeqs4dSAr9ZmFVh1mykSxyufP+mM2LLdxfH3bgHT5GOGSHfwhCA
+	 FPlAFFTx/yccC2thybpCf0vLXu6xaY59Nd6eAaQx4GSpTfvyTJoCXYIZaGsBmbblZL
+	 sj6B18mfnhNkWs1Ci7Vxuwx/q5nkN5h8lJP6x5aY=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727463AbfDVQe3 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 22 Apr 2019 12:34:29 -0400
-Received: from mail.kernel.org ([198.145.29.99]:48720 "EHLO mail.kernel.org"
+        id S1728929AbfDVToP (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 22 Apr 2019 15:44:15 -0400
+Received: from mail.kernel.org ([198.145.29.99]:45226 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727347AbfDVQe3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 22 Apr 2019 12:34:29 -0400
-Received: from tleilax.poochiereds.net (cpe-71-70-156-158.nc.res.rr.com [71.70.156.158])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        id S1728886AbfDVToP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 22 Apr 2019 15:44:15 -0400
+Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id AA3F221738;
-        Mon, 22 Apr 2019 16:34:27 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 45940218D9;
+        Mon, 22 Apr 2019 19:44:13 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1555950868;
-        bh=0PkiT99TqIXGtWCzH1VP7uqeerenrH5VZ7io2KGU7AY=;
+        s=default; t=1555962254;
+        bh=YVAge1jwdxc8jahHy6wegdv2f2qIzEVhckJcPKeB2t4=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=IWXM6/aMV76bj9HPYCC2tINs5KDbhZBzZeFZfMlr8dTCStcCQoso4W/OAuS8Vc4mc
-         Ry/3+XfBK4ZEPTbh55zDbLQmuYLlv6cuLd8YNJo45mahMLRkHySCApLgX994V086NC
-         +0jRuqWhJ863VDAgrIP7wlkWx9jD17bhkxAsDyeU=
-From:   Jeff Layton <jlayton@kernel.org>
-To:     bfields@fieldses.org
-Cc:     slawek1211@gmail.com, neilb@suse.com, linux-nfs@vger.kernel.org
-Subject: [PATCH v2 2/2] nfsd: wake blocked file lock waiters before sending callback
-Date:   Mon, 22 Apr 2019 12:34:24 -0400
-Message-Id: <20190422163424.19402-3-jlayton@kernel.org>
-X-Mailer: git-send-email 2.20.1
-In-Reply-To: <20190422163424.19402-1-jlayton@kernel.org>
-References: <20190422163424.19402-1-jlayton@kernel.org>
+        b=iAmSpuowSJQs/bYsRx/SnSXxRKVHi44cfhmX1h4RKYbegMMh5eG34fabs360Upv8p
+         RnenQxiIazyeZ1E6vOauQfQbcc5YOLhoscsFoK25Yo92QBP47WSgMk2aaiqk38Y1eC
+         hiDpN3MgyPkF2xcA7vpA4pSU28ZVInqglIRj7qmI=
+From:   Sasha Levin <sashal@kernel.org>
+To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
+Cc:     Alakesh Haloi <alakesh.haloi@gmail.com>,
+        Trond Myklebust <trond.myklebust@hammerspace.com>,
+        Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org,
+        netdev@vger.kernel.org
+Subject: [PATCH AUTOSEL 5.0 67/98] SUNRPC: fix uninitialized variable warning
+Date:   Mon, 22 Apr 2019 15:41:34 -0400
+Message-Id: <20190422194205.10404-67-sashal@kernel.org>
+X-Mailer: git-send-email 2.19.1
+In-Reply-To: <20190422194205.10404-1-sashal@kernel.org>
+References: <20190422194205.10404-1-sashal@kernel.org>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+X-stable: review
+X-Patchwork-Hint: Ignore
 Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-When a blocked NFS lock is "awoken" we send a callback to the server and
-then wake any hosts waiting on it. If a client attempts to get a lock
-and then drops off the net, we could end up waiting for a long time
-until we end up waking locks blocked on that request.
+From: Alakesh Haloi <alakesh.haloi@gmail.com>
 
-Add a new "prepare" phase for CB_NOTIFY_LOCK callbacks, and have it
-call locks_delete_block to wake any lock requests waiting on the
-one for which we're sending the callback before it is sent.
+[ Upstream commit 01f2f5b82a2b523ae76af53f2ff43c48dde10a00 ]
 
-URL: https://bugzilla.kernel.org/show_bug.cgi?id=203363
-Fixes: 16306a61d3b7 ("fs/locks: always delete_block after waiting.")
-Reported-by: Slawomir Pryczek <slawek1211@gmail.com>
-Cc: Neil Brown <neilb@suse.com>
-Cc: stable@vger.kernel.org
-Signed-off-by: Jeff Layton <jlayton@kernel.org>
+Avoid following compiler warning on uninitialized variable
+
+net/sunrpc/xprtsock.c: In function ‘xs_read_stream_request.constprop’:
+net/sunrpc/xprtsock.c:525:10: warning: ‘read’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+   return read;
+          ^~~~
+net/sunrpc/xprtsock.c:529:23: warning: ‘ret’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+  return ret < 0 ? ret : read;
+         ~~~~~~~~~~~~~~^~~~~~
+
+Signed-off-by: Alakesh Haloi <alakesh.haloi@gmail.com>
+Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
+Signed-off-by: Sasha Levin (Microsoft) <sashal@kernel.org>
 ---
- fs/nfsd/nfs4state.c | 9 +++++++++
- 1 file changed, 9 insertions(+)
+ net/sunrpc/xprtsock.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index e87e15df2044..f056b1d3fecd 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -298,6 +298,14 @@ remove_blocked_locks(struct nfs4_lockowner *lo)
- 	}
- }
- 
-+static void
-+nfsd4_cb_notify_lock_prepare(struct nfsd4_callback *cb)
-+{
-+	struct nfsd4_blocked_lock	*nbl = container_of(cb,
-+						struct nfsd4_blocked_lock, nbl_cb);
-+	locks_delete_block(&nbl->nbl_lock);
-+}
-+
- static int
- nfsd4_cb_notify_lock_done(struct nfsd4_callback *cb, struct rpc_task *task)
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 7754aa3e434f..f88c2bd1335a 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -486,8 +486,8 @@ xs_read_stream_request(struct sock_xprt *transport, struct msghdr *msg,
+ 		int flags, struct rpc_rqst *req)
  {
-@@ -325,6 +333,7 @@ nfsd4_cb_notify_lock_release(struct nfsd4_callback *cb)
- }
+ 	struct xdr_buf *buf = &req->rq_private_buf;
+-	size_t want, read;
+-	ssize_t ret;
++	size_t want, uninitialized_var(read);
++	ssize_t uninitialized_var(ret);
  
- static const struct nfsd4_callback_ops nfsd4_cb_notify_lock_ops = {
-+	.prepare	= nfsd4_cb_notify_lock_prepare,
- 	.done		= nfsd4_cb_notify_lock_done,
- 	.release	= nfsd4_cb_notify_lock_release,
- };
+ 	xs_read_header(transport, buf);
+ 
 -- 
-2.20.1
+2.19.1
 
