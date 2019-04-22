@@ -2,88 +2,106 @@ Return-Path: <SRS0=DK+G=SY=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_PASS,USER_AGENT_GIT autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-8.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,USER_AGENT_MUTT
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id EF661C10F11
-	for <linux-nfs@archiver.kernel.org>; Mon, 22 Apr 2019 20:02:25 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D4390C10F11
+	for <linux-nfs@archiver.kernel.org>; Mon, 22 Apr 2019 20:03:18 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id B23C520643
-	for <linux-nfs@archiver.kernel.org>; Mon, 22 Apr 2019 20:02:25 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1555963345;
-	bh=iYt5ffE12cbBWNM5S116Rv+nqlEF8gxIB7L2AfMpXKw=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=Ddc/xN9643cNhjYy2h8kAciGRZyZqmgYss6y73/fxjd7GoaXPXgzvBE9rWRxU2SrQ
-	 aZ7WGVtV9+UWRKw3NGNdshrXMzb13j/Y25EQQKQjLD43p/Ax0JLo51nMGERc1d+TMq
-	 j0wdagMSjQhm+zpuLCQAQkVIB+/Q1daL9f3v4Fho=
+	by mail.kernel.org (Postfix) with ESMTP id 92913204EC
+	for <linux-nfs@archiver.kernel.org>; Mon, 22 Apr 2019 20:03:18 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1732041AbfDVUCU (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 22 Apr 2019 16:02:20 -0400
-Received: from mail.kernel.org ([198.145.29.99]:49020 "EHLO mail.kernel.org"
+        id S1729924AbfDVUDQ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 22 Apr 2019 16:03:16 -0400
+Received: from fieldses.org ([173.255.197.46]:46498 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1730039AbfDVTqm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 22 Apr 2019 15:46:42 -0400
-Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
-        (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 3A89C218FE;
-        Mon, 22 Apr 2019 19:46:41 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1555962401;
-        bh=iYt5ffE12cbBWNM5S116Rv+nqlEF8gxIB7L2AfMpXKw=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=BzIqk++7OGml4zn/EhQkrE06MYm+8TSUvDQ1p3WHkYHa2yGGRVCP6DweuRGZ1pyuB
-         v/QJ4y1n1yjujdN1NLHEaAKbTYRFmirz9o52kzpqGB6ujmkhQP2VF5oWDPRYNCrmWB
-         geokwF/qvuKBROS3ItHm9KiX1TF8FExlpV8CJFgA=
-From:   Sasha Levin <sashal@kernel.org>
-To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org
-Subject: [PATCH AUTOSEL 4.19 39/68] NFS: Fix a typo in nfs_init_timeout_values()
-Date:   Mon, 22 Apr 2019 15:44:47 -0400
-Message-Id: <20190422194516.11634-39-sashal@kernel.org>
-X-Mailer: git-send-email 2.19.1
-In-Reply-To: <20190422194516.11634-1-sashal@kernel.org>
-References: <20190422194516.11634-1-sashal@kernel.org>
+        id S1729921AbfDVTqJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 22 Apr 2019 15:46:09 -0400
+Received: by fieldses.org (Postfix, from userid 2815)
+        id 169FF1C9D; Mon, 22 Apr 2019 15:46:08 -0400 (EDT)
+Date:   Mon, 22 Apr 2019 15:46:08 -0400
+From:   "J. Bruce Fields" <bfields@fieldses.org>
+To:     Jeff Layton <jlayton@kernel.org>
+Cc:     slawek1211@gmail.com, neilb@suse.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2 2/2] nfsd: wake blocked file lock waiters before
+ sending callback
+Message-ID: <20190422194608.GB25280@fieldses.org>
+References: <20190422163424.19402-1-jlayton@kernel.org>
+ <20190422163424.19402-3-jlayton@kernel.org>
 MIME-Version: 1.0
-X-stable: review
-X-Patchwork-Hint: Ignore
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20190422163424.19402-3-jlayton@kernel.org>
+User-Agent: Mutt/1.5.21 (2010-09-15)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Trond Myklebust <trond.myklebust@hammerspace.com>
+On Mon, Apr 22, 2019 at 12:34:24PM -0400, Jeff Layton wrote:
+> When a blocked NFS lock is "awoken" we send a callback to the server and
+> then wake any hosts waiting on it. If a client attempts to get a lock
+> and then drops off the net, we could end up waiting for a long time
+> until we end up waking locks blocked on that request.
+> 
+> Add a new "prepare" phase for CB_NOTIFY_LOCK callbacks, and have it
+> call locks_delete_block to wake any lock requests waiting on the
+> one for which we're sending the callback before it is sent.
 
-[ Upstream commit 5a698243930c441afccec04e4d5dc8febfd2b775 ]
+How about this for the wording of that last sentence:
 
-Specifying a retrans=0 mount parameter to a NFS/TCP mount, is
-inadvertently causing the NFS client to rewrite any specified
-timeout parameter to the default of 60 seconds.
+	So, wake any other waiting lock requests before sending the
+	callback.  Do this by calling locks_delete_block in a new
+	"prepare" phase for CB_NOTIFY_LOCK callbacks.
 
-Fixes: a956beda19a6 ("NFS: Allow the mount option retrans=0")
-Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
-Signed-off-by: Sasha Levin (Microsoft) <sashal@kernel.org>
----
- fs/nfs/client.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Come to think of that, the second sentence is redundant with the code; I
+think I'll just go with the first.
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 96d5f8135eb9..751ca65da8a3 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -459,7 +459,7 @@ void nfs_init_timeout_values(struct rpc_timeout *to, int proto,
- 	case XPRT_TRANSPORT_RDMA:
- 		if (retrans == NFS_UNSPEC_RETRANS)
- 			to->to_retries = NFS_DEF_TCP_RETRANS;
--		if (timeo == NFS_UNSPEC_TIMEO || to->to_retries == 0)
-+		if (timeo == NFS_UNSPEC_TIMEO || to->to_initval == 0)
- 			to->to_initval = NFS_DEF_TCP_TIMEO * HZ / 10;
- 		if (to->to_initval > NFS_MAX_TCP_TIMEOUT)
- 			to->to_initval = NFS_MAX_TCP_TIMEOUT;
--- 
-2.19.1
+Committing with that.
 
+Thanks for working this out, and thanks to Slawomir Pryczek for the
+reproducer.
+
+--b.
+
+> 
+> URL: https://bugzilla.kernel.org/show_bug.cgi?id=203363
+> Fixes: 16306a61d3b7 ("fs/locks: always delete_block after waiting.")
+> Reported-by: Slawomir Pryczek <slawek1211@gmail.com>
+> Cc: Neil Brown <neilb@suse.com>
+> Cc: stable@vger.kernel.org
+> Signed-off-by: Jeff Layton <jlayton@kernel.org>
+> ---
+>  fs/nfsd/nfs4state.c | 9 +++++++++
+>  1 file changed, 9 insertions(+)
+> 
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index e87e15df2044..f056b1d3fecd 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -298,6 +298,14 @@ remove_blocked_locks(struct nfs4_lockowner *lo)
+>  	}
+>  }
+>  
+> +static void
+> +nfsd4_cb_notify_lock_prepare(struct nfsd4_callback *cb)
+> +{
+> +	struct nfsd4_blocked_lock	*nbl = container_of(cb,
+> +						struct nfsd4_blocked_lock, nbl_cb);
+> +	locks_delete_block(&nbl->nbl_lock);
+> +}
+> +
+>  static int
+>  nfsd4_cb_notify_lock_done(struct nfsd4_callback *cb, struct rpc_task *task)
+>  {
+> @@ -325,6 +333,7 @@ nfsd4_cb_notify_lock_release(struct nfsd4_callback *cb)
+>  }
+>  
+>  static const struct nfsd4_callback_ops nfsd4_cb_notify_lock_ops = {
+> +	.prepare	= nfsd4_cb_notify_lock_prepare,
+>  	.done		= nfsd4_cb_notify_lock_done,
+>  	.release	= nfsd4_cb_notify_lock_release,
+>  };
+> -- 
+> 2.20.1
