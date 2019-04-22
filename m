@@ -6,47 +6,47 @@ X-Spam-Status: No, score=-9.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
 	SPF_PASS,USER_AGENT_GIT autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D355BC282E1
-	for <linux-nfs@archiver.kernel.org>; Mon, 22 Apr 2019 19:58:23 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id EF661C10F11
+	for <linux-nfs@archiver.kernel.org>; Mon, 22 Apr 2019 20:02:25 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 96B1B20643
-	for <linux-nfs@archiver.kernel.org>; Mon, 22 Apr 2019 19:58:23 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id B23C520643
+	for <linux-nfs@archiver.kernel.org>; Mon, 22 Apr 2019 20:02:25 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1555963103;
-	bh=JpA2mO2WMpN+Rom/s1oZfZbNv8BEv/pZVkOnXty7Dq8=;
+	s=default; t=1555963345;
+	bh=iYt5ffE12cbBWNM5S116Rv+nqlEF8gxIB7L2AfMpXKw=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=O2EdTiXS/h1l91GNSkC0ttKfhVFTh/Zi35zZfkL1nZeDSjMiYdslsC9+5/w+IDgBY
-	 eTAR+t+BAiU+f5aB+/+5JoEkLIjsx51lWyXD2FxhTirpXDS7VDYNmP6CQqVgjxat48
-	 MFqySXYNnT9SvMysrWBJQtLhEs8GM4Jii9Xn/ZsQ=
+	b=Ddc/xN9643cNhjYy2h8kAciGRZyZqmgYss6y73/fxjd7GoaXPXgzvBE9rWRxU2SrQ
+	 aZ7WGVtV9+UWRKw3NGNdshrXMzb13j/Y25EQQKQjLD43p/Ax0JLo51nMGERc1d+TMq
+	 j0wdagMSjQhm+zpuLCQAQkVIB+/Q1daL9f3v4Fho=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1730525AbfDVTsX (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 22 Apr 2019 15:48:23 -0400
-Received: from mail.kernel.org ([198.145.29.99]:51578 "EHLO mail.kernel.org"
+        id S1732041AbfDVUCU (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 22 Apr 2019 16:02:20 -0400
+Received: from mail.kernel.org ([198.145.29.99]:49020 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1730522AbfDVTsX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 22 Apr 2019 15:48:23 -0400
+        id S1730039AbfDVTqm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 22 Apr 2019 15:46:42 -0400
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id D69EC218FD;
-        Mon, 22 Apr 2019 19:48:21 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 3A89C218FE;
+        Mon, 22 Apr 2019 19:46:41 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1555962502;
-        bh=JpA2mO2WMpN+Rom/s1oZfZbNv8BEv/pZVkOnXty7Dq8=;
+        s=default; t=1555962401;
+        bh=iYt5ffE12cbBWNM5S116Rv+nqlEF8gxIB7L2AfMpXKw=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=zn2Fj5Utiz/M/GzeBShDFCtO1HZsDp9D4mDcdbSnMt9M0cnFQL2Ap7EnmAPs4Rd1I
-         Yhah4uCyteFyyYXqICzt7dVIH8q/oMIzB0Fb64tAodF32iRtXEoKtXaOVwupH8UGe8
-         nNIr2vWHeyX3q7sjsXuFuDYFwPHuec9urPsWQ+p0=
+        b=BzIqk++7OGml4zn/EhQkrE06MYm+8TSUvDQ1p3WHkYHa2yGGRVCP6DweuRGZ1pyuB
+         v/QJ4y1n1yjujdN1NLHEaAKbTYRFmirz9o52kzpqGB6ujmkhQP2VF5oWDPRYNCrmWB
+         geokwF/qvuKBROS3ItHm9KiX1TF8FExlpV8CJFgA=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
 Cc:     Trond Myklebust <trond.myklebust@hammerspace.com>,
         Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org
-Subject: [PATCH AUTOSEL 4.14 25/43] NFS: Fix a typo in nfs_init_timeout_values()
-Date:   Mon, 22 Apr 2019 15:47:09 -0400
-Message-Id: <20190422194727.12495-25-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 4.19 39/68] NFS: Fix a typo in nfs_init_timeout_values()
+Date:   Mon, 22 Apr 2019 15:44:47 -0400
+Message-Id: <20190422194516.11634-39-sashal@kernel.org>
 X-Mailer: git-send-email 2.19.1
-In-Reply-To: <20190422194727.12495-1-sashal@kernel.org>
-References: <20190422194727.12495-1-sashal@kernel.org>
+In-Reply-To: <20190422194516.11634-1-sashal@kernel.org>
+References: <20190422194516.11634-1-sashal@kernel.org>
 MIME-Version: 1.0
 X-stable: review
 X-Patchwork-Hint: Ignore
@@ -72,7 +72,7 @@ Signed-off-by: Sasha Levin (Microsoft) <sashal@kernel.org>
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 7d6ddfd60271..a98d64a6eda5 100644
+index 96d5f8135eb9..751ca65da8a3 100644
 --- a/fs/nfs/client.c
 +++ b/fs/nfs/client.c
 @@ -459,7 +459,7 @@ void nfs_init_timeout_values(struct rpc_timeout *to, int proto,
