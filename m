@@ -5,66 +5,68 @@ X-Spam-Level:
 X-Spam-Status: No, score=-8.9 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+	SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7F3FAC282CE
-	for <linux-nfs@archiver.kernel.org>; Wed, 24 Apr 2019 21:49:04 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 89B17C282E1
+	for <linux-nfs@archiver.kernel.org>; Wed, 24 Apr 2019 21:49:05 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 4CB3420811
-	for <linux-nfs@archiver.kernel.org>; Wed, 24 Apr 2019 21:49:04 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 5636820811
+	for <linux-nfs@archiver.kernel.org>; Wed, 24 Apr 2019 21:49:05 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="vfjUKByE"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="cirC+Vpj"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1730678AbfDXVtD (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 24 Apr 2019 17:49:03 -0400
-Received: from mail-it1-f196.google.com ([209.85.166.196]:37567 "EHLO
-        mail-it1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1730434AbfDXVtD (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Apr 2019 17:49:03 -0400
-Received: by mail-it1-f196.google.com with SMTP id u65so8862857itc.2
-        for <linux-nfs@vger.kernel.org>; Wed, 24 Apr 2019 14:49:02 -0700 (PDT)
+        id S1730680AbfDXVtE (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 24 Apr 2019 17:49:04 -0400
+Received: from mail-io1-f68.google.com ([209.85.166.68]:43483 "EHLO
+        mail-io1-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1730434AbfDXVtE (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Apr 2019 17:49:04 -0400
+Received: by mail-io1-f68.google.com with SMTP id v9so1390223iol.10
+        for <linux-nfs@vger.kernel.org>; Wed, 24 Apr 2019 14:49:03 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references
          :mime-version:content-transfer-encoding;
-        bh=R63oqmCe/PAVwiH1GBW3mRb97Dqey6ZDltfdJjAD2iE=;
-        b=vfjUKByEL5ryIKkoFjHVsjIHe6UbyiuAnB25VPTuG+eJxnd+r2rTLivC43Njnw9/EC
-         nJTsAKyawXgyuEG9Hm9QnJ2GDao73uKVbf0JcaRFdI+yC6guzK/eFRqIgc6qD8odUqbE
-         29kwuj0969tRtxLh+7Wzh3UUw8nkcEZjnsSy45zilGvlqqWi114RMsZKX011kgXLQkuP
-         dUOfpVqXcxsW/19saEZRFjLrnSsdMyUHKpvonynOmEri1YkjMGWTAZkbVxG+oFnU20uu
-         d47G5QxBy2Va/bVdNDsaaKZYcrxYH8sbv35qWoiQNf0YuEv+mKg2hcd5otKII4dUHpOh
-         vsMQ==
+        bh=1NpdRXbuR8e+I/hY3Bv0iQOCSMyOS0Ch4jG5GoOuBiQ=;
+        b=cirC+Vpj8MLy2pwt/6RdS08L1I87bKJ5unWXMQ1Aw7Si7dwxlUUxO/zDsvC85XqWq1
+         yt7yTovagm72mJ+Ztz8G5Jp3Zd3+1ZygRa/AGjOqtyJ7IqbhwiAWf8GvqgE3LW3h3mtd
+         UQUjKiI2KmHEXJC+WUVhNz7mVCu3L8Ma7UhIz4OKOBQk+8LieXsBHz0K/HSBEhm7wfpq
+         WImLpXoum3FRbPPGuGI3YxvXFHfE/xPPdzw0e/3D6ssClOQDIp3KmEUjm008vnEUdU4w
+         ZjzOD9qnjNfS7d3jfFPdq4UWR3Xaiy/sLkSLflMZz2QBcoSIr77hT8l9mw4jGg8WSq1A
+         +P5Q==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=R63oqmCe/PAVwiH1GBW3mRb97Dqey6ZDltfdJjAD2iE=;
-        b=kihpNKhn3GhPMi/BGUraEUbRcT9hZ5nG9PC1+PX8ahEmIQDK55D7dL6kEMTG25XHY3
-         n62HJrn2qZ+QxEOQrH9nTE3cXRDgr4SBo+Q16RYeZRGFDWD1McDu24BNfL9LPzNy+ieU
-         kidESrCVg1HVDG008ipBEBY/XmOU+L5viB6NcbrMvAhrlrBWsQegsQJ6n06qHI+CKkeL
-         HR9xoIBP/v2S5G6Qpv/Muy3sWvA7LQYDDuw3oYfv8NeruOHRM99rVjjyBIGpTVIfHA3c
-         ITBjXpnpPQMUzH+0BxapRCuy4Wy7GlXTLLdLzu7HiN+ocBIEcOsbiOTOSsaBFx6f/JJz
-         CUBw==
-X-Gm-Message-State: APjAAAUIERb1xs0q757ogCri2ZskC7nYw2+ungPXqh5o8gRD3rRocPm1
-        cvWPO+BhD851ItcpgTTyyEosYgA=
-X-Google-Smtp-Source: APXvYqwnfxRw2U4/Pvuppn0jekDcytuxDWmBvZp81/flJfg4Jh5M8k4DKRQXQe0zTU8FsPf0dGVDFA==
-X-Received: by 2002:a24:7d04:: with SMTP id b4mr1078174itc.73.1556142542240;
-        Wed, 24 Apr 2019 14:49:02 -0700 (PDT)
+        bh=1NpdRXbuR8e+I/hY3Bv0iQOCSMyOS0Ch4jG5GoOuBiQ=;
+        b=AIOdCNqyZdiYIcyH8Fr7GXfdmw5x70kLAl2mp4b8B3oiLp9wH/oFl4NOCJYpg+/Uja
+         MD1XmHMlqU1eNmTINU0P3+UY9F/42vrgg8TAVeLcJt+6Yh1yvDS4zCKYYdZQsRTfa1GN
+         6Ao8oWXFEGTG7hpVtiObnk57eC1TBT6H5ZTE/TNPqZCHy3BMsOGH00EgOvwGo8WJ6jFk
+         Y/LWbO4LsqgkElDhBZf9YPpASelavn1vwUh1mwkCCIrg2p6VstXp96VgqtfwckE6gi26
+         +wE7hy8erpWJ3iBn5cZg3aTMvEgw32p6SRFsAcdBdLd9lm+OvNDZ6eQM7KxVi+oozoXG
+         eLyA==
+X-Gm-Message-State: APjAAAWcJF858gz46+VMn9Gxj4Sk5ACCX6NQxR0uXOrG1a5u82WMRWzt
+        JKx+ArsLcrUMzNHzklnJ5cB6jBc=
+X-Google-Smtp-Source: APXvYqx8ydjL+r69IrRKFwuEoBHGtAOAAa10L77NA8g5kOkQRX1H2T8A5s9bwZQ/7uQrXi3TcAjLFg==
+X-Received: by 2002:a6b:dc18:: with SMTP id s24mr20646448ioc.218.1556142543255;
+        Wed, 24 Apr 2019 14:49:03 -0700 (PDT)
 Received: from localhost.localdomain (c-68-40-189-247.hsd1.mi.comcast.net. [68.40.189.247])
-        by smtp.gmail.com with ESMTPSA id x10sm9838282ita.4.2019.04.24.14.49.01
+        by smtp.gmail.com with ESMTPSA id x10sm9838282ita.4.2019.04.24.14.49.02
         (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
-        Wed, 24 Apr 2019 14:49:01 -0700 (PDT)
+        Wed, 24 Apr 2019 14:49:02 -0700 (PDT)
 From:   Trond Myklebust <trondmy@gmail.com>
 X-Google-Original-From: Trond Myklebust <trond.myklebust@hammerspace.com>
 To:     Anna Schumaker <Anna.Schumaker@netapp.com>
 Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH 2/9] NFS: Store the credential of the mount process in the nfs_server
-Date:   Wed, 24 Apr 2019 17:46:43 -0400
-Message-Id: <20190424214650.4658-3-trond.myklebust@hammerspace.com>
+Subject: [PATCH 3/9] SUNRPC: Use the client user namespace when encoding creds
+Date:   Wed, 24 Apr 2019 17:46:44 -0400
+Message-Id: <20190424214650.4658-4-trond.myklebust@hammerspace.com>
 X-Mailer: git-send-email 2.21.0
-In-Reply-To: <20190424214650.4658-2-trond.myklebust@hammerspace.com>
+In-Reply-To: <20190424214650.4658-3-trond.myklebust@hammerspace.com>
 References: <20190424214650.4658-1-trond.myklebust@hammerspace.com>
  <20190424214650.4658-2-trond.myklebust@hammerspace.com>
+ <20190424214650.4658-3-trond.myklebust@hammerspace.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
@@ -72,141 +74,88 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Store the credential of the mount process so that we can determine
-information such as the user namespace.
+When encoding AUTH_UNIX creds and AUTH_GSS upcalls, use the user namespace
+of the process that created the rpc client.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/client.c           | 8 +++++++-
- fs/nfs/internal.h         | 1 +
- fs/nfs/nfs3client.c       | 1 +
- fs/nfs/nfs4client.c       | 6 ++++++
- include/linux/nfs_fs_sb.h | 3 +++
- 5 files changed, 18 insertions(+), 1 deletion(-)
+ net/sunrpc/auth_gss/auth_gss.c | 11 ++++++++---
+ net/sunrpc/auth_unix.c         |  9 +++++----
+ 2 files changed, 13 insertions(+), 7 deletions(-)
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 3ce44d5088a2..d1c003dd7e43 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -500,7 +500,7 @@ int nfs_create_rpc_client(struct nfs_client *clp,
- 		.program	= &nfs_program,
- 		.version	= clp->rpc_ops->version,
- 		.authflavor	= flavor,
--		.cred		= current_cred(),
-+		.cred		= cl_init->cred,
- 	};
+diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+index 3fd56c0c90ae..e3601dc6c180 100644
+--- a/net/sunrpc/auth_gss/auth_gss.c
++++ b/net/sunrpc/auth_gss/auth_gss.c
+@@ -412,7 +412,10 @@ gss_upcall_callback(struct rpc_task *task)
  
- 	if (test_bit(NFS_CS_DISCRTRY, &clp->cl_flags))
-@@ -653,6 +653,7 @@ static int nfs_init_server(struct nfs_server *server,
- 		.proto = data->nfs_server.protocol,
- 		.net = data->net,
- 		.timeparms = &timeparms,
-+		.cred = server->cred,
- 	};
- 	struct nfs_client *clp;
- 	int error;
-@@ -921,6 +922,7 @@ void nfs_free_server(struct nfs_server *server)
- 	ida_destroy(&server->lockowner_id);
- 	ida_destroy(&server->openowner_id);
- 	nfs_free_iostats(server->io_stats);
-+	put_cred(server->cred);
- 	kfree(server);
- 	nfs_release_automount_timer();
- }
-@@ -941,6 +943,8 @@ struct nfs_server *nfs_create_server(struct nfs_mount_info *mount_info,
- 	if (!server)
- 		return ERR_PTR(-ENOMEM);
- 
-+	server->cred = get_cred(current_cred());
+ static void gss_encode_v0_msg(struct gss_upcall_msg *gss_msg)
+ {
+-	uid_t uid = from_kuid(&init_user_ns, gss_msg->uid);
++	struct user_namespace *userns = gss_msg->auth->client->cl_cred ?
++		gss_msg->auth->client->cl_cred->user_ns : &init_user_ns;
 +
- 	error = -ENOMEM;
- 	fattr = nfs_alloc_fattr();
- 	if (fattr == NULL)
-@@ -1007,6 +1011,8 @@ struct nfs_server *nfs_clone_server(struct nfs_server *source,
- 	if (!server)
- 		return ERR_PTR(-ENOMEM);
++	uid_t uid = from_kuid_munged(userns, gss_msg->uid);
+ 	memcpy(gss_msg->databuf, &uid, sizeof(uid));
+ 	gss_msg->msg.data = gss_msg->databuf;
+ 	gss_msg->msg.len = sizeof(uid);
+@@ -424,13 +427,15 @@ static int gss_encode_v1_msg(struct gss_upcall_msg *gss_msg,
+ 				const char *service_name,
+ 				const char *target_name)
+ {
++	struct user_namespace *userns = gss_msg->auth->client->cl_cred ?
++		gss_msg->auth->client->cl_cred->user_ns : &init_user_ns;
+ 	struct gss_api_mech *mech = gss_msg->auth->mech;
+ 	char *p = gss_msg->databuf;
+ 	size_t buflen = sizeof(gss_msg->databuf);
+ 	int len;
  
-+	server->cred = get_cred(source->cred);
-+
- 	error = -ENOMEM;
- 	fattr_fsinfo = nfs_alloc_fattr();
- 	if (fattr_fsinfo == NULL)
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index c7cf23ae6597..22af82091421 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -84,6 +84,7 @@ struct nfs_client_initdata {
- 	u32 minorversion;
- 	struct net *net;
- 	const struct rpc_timeout *timeparms;
-+	const struct cred *cred;
- };
+ 	len = scnprintf(p, buflen, "mech=%s uid=%d", mech->gm_name,
+-			from_kuid(&init_user_ns, gss_msg->uid));
++			from_kuid_munged(userns, gss_msg->uid));
+ 	buflen -= len;
+ 	p += len;
+ 	gss_msg->msg.len = len;
+@@ -707,7 +712,7 @@ gss_pipe_downcall(struct file *filp, const char __user *src, size_t mlen)
+ 		goto err;
+ 	}
  
- /*
-diff --git a/fs/nfs/nfs3client.c b/fs/nfs/nfs3client.c
-index 7879f2a0fcfd..1afdb0f7473f 100644
---- a/fs/nfs/nfs3client.c
-+++ b/fs/nfs/nfs3client.c
-@@ -91,6 +91,7 @@ struct nfs_client *nfs3_set_ds_client(struct nfs_server *mds_srv,
- 		.proto = ds_proto,
- 		.net = mds_clp->cl_net,
- 		.timeparms = &ds_timeout,
-+		.cred = mds_srv->cred,
- 	};
- 	struct nfs_client *clp;
- 	char buf[INET6_ADDRSTRLEN + 1];
-diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
-index 1339ede979af..3ce246346f02 100644
---- a/fs/nfs/nfs4client.c
-+++ b/fs/nfs/nfs4client.c
-@@ -870,6 +870,7 @@ static int nfs4_set_client(struct nfs_server *server,
- 		.minorversion = minorversion,
- 		.net = net,
- 		.timeparms = timeparms,
-+		.cred = server->cred,
- 	};
- 	struct nfs_client *clp;
+-	uid = make_kuid(&init_user_ns, id);
++	uid = make_kuid(current_user_ns(), id);
+ 	if (!uid_valid(uid)) {
+ 		err = -EINVAL;
+ 		goto err;
+diff --git a/net/sunrpc/auth_unix.c b/net/sunrpc/auth_unix.c
+index d4018e5a24c5..e7df1f782b2e 100644
+--- a/net/sunrpc/auth_unix.c
++++ b/net/sunrpc/auth_unix.c
+@@ -107,6 +107,8 @@ unx_marshal(struct rpc_task *task, struct xdr_stream *xdr)
+ 	__be32		*p, *cred_len, *gidarr_len;
+ 	int		i;
+ 	struct group_info *gi = cred->cr_cred->group_info;
++	struct user_namespace *userns = clnt->cl_cred ?
++		clnt->cl_cred->user_ns : &init_user_ns;
  
-@@ -931,6 +932,7 @@ struct nfs_client *nfs4_set_ds_client(struct nfs_server *mds_srv,
- 		.minorversion = minor_version,
- 		.net = mds_clp->cl_net,
- 		.timeparms = &ds_timeout,
-+		.cred = mds_srv->cred,
- 	};
- 	char buf[INET6_ADDRSTRLEN + 1];
+ 	/* Credential */
  
-@@ -1107,6 +1109,8 @@ struct nfs_server *nfs4_create_server(struct nfs_mount_info *mount_info,
- 	if (!server)
- 		return ERR_PTR(-ENOMEM);
+@@ -122,14 +124,13 @@ unx_marshal(struct rpc_task *task, struct xdr_stream *xdr)
+ 	p = xdr_reserve_space(xdr, 3 * sizeof(*p));
+ 	if (!p)
+ 		goto marshal_failed;
+-	*p++ = cpu_to_be32(from_kuid(&init_user_ns, cred->cr_cred->fsuid));
+-	*p++ = cpu_to_be32(from_kgid(&init_user_ns, cred->cr_cred->fsgid));
++	*p++ = cpu_to_be32(from_kuid_munged(userns, cred->cr_cred->fsuid));
++	*p++ = cpu_to_be32(from_kgid_munged(userns, cred->cr_cred->fsgid));
  
-+	server->cred = get_cred(current_cred());
-+
- 	auth_probe = mount_info->parsed->auth_info.flavor_len < 1;
- 
- 	/* set up the general RPC client */
-@@ -1143,6 +1147,8 @@ struct nfs_server *nfs4_create_referral_server(struct nfs_clone_mount *data,
- 	parent_server = NFS_SB(data->sb);
- 	parent_client = parent_server->nfs_client;
- 
-+	server->cred = get_cred(parent_server->cred);
-+
- 	/* Initialise the client representation from the parent server */
- 	nfs_server_copy_userdata(server, parent_server);
- 
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index c827d31298cc..add00f12a340 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -231,6 +231,9 @@ struct nfs_server {
- 
- 	/* XDR related information */
- 	unsigned int		read_hdrsize;
-+
-+	/* User namespace info */
-+	const struct cred	*cred;
- };
- 
- /* Server capabilities */
+ 	gidarr_len = p++;
+ 	if (gi)
+ 		for (i = 0; i < UNX_NGROUPS && i < gi->ngroups; i++)
+-			*p++ = cpu_to_be32(from_kgid(&init_user_ns,
+-						     gi->gid[i]));
++			*p++ = cpu_to_be32(from_kgid_munged(userns, gi->gid[i]));
+ 	*gidarr_len = cpu_to_be32(p - gidarr_len - 1);
+ 	*cred_len = cpu_to_be32((p - cred_len - 1) << 2);
+ 	p = xdr_reserve_space(xdr, (p - gidarr_len - 1) << 2);
 -- 
 2.21.0
 
