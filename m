@@ -2,147 +2,161 @@ Return-Path: <SRS0=08pM=S2=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED,
-	USER_AGENT_MUTT autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-6.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,SPF_PASS autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 36944C282E1
-	for <linux-nfs@archiver.kernel.org>; Wed, 24 Apr 2019 15:47:37 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2B360C10F11
+	for <linux-nfs@archiver.kernel.org>; Wed, 24 Apr 2019 16:13:28 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 0AF0321902
-	for <linux-nfs@archiver.kernel.org>; Wed, 24 Apr 2019 15:47:37 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id EC1C7208E4
+	for <linux-nfs@archiver.kernel.org>; Wed, 24 Apr 2019 16:13:27 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1731057AbfDXPrg (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 24 Apr 2019 11:47:36 -0400
-Received: from fieldses.org ([173.255.197.46]:49166 "EHLO fieldses.org"
+        id S1731056AbfDXQN1 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 24 Apr 2019 12:13:27 -0400
+Received: from mx1.redhat.com ([209.132.183.28]:40408 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1730627AbfDXPrg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 24 Apr 2019 11:47:36 -0400
-Received: by fieldses.org (Postfix, from userid 2815)
-        id 2C74CABE; Wed, 24 Apr 2019 11:47:35 -0400 (EDT)
-Date:   Wed, 24 Apr 2019 11:47:35 -0400
-From:   "J. Bruce Fields" <bfields@fieldses.org>
-To:     Steve Dickson <SteveD@RedHat.com>
-Cc:     NeilBrown <neilb@suse.com>, Jeff Layton <jlayton@kernel.org>,
-        slawek1211@gmail.com, linux-nfs@vger.kernel.org,
-        linux-cifs@vger.kernel.org, Steve French <smfrench@gmail.com>
-Subject: Re: [PATCH v2 1/2] nfsd: wake waiters blocked on file_lock before
- deleting it
-Message-ID: <20190424154735.GC20542@fieldses.org>
-References: <20190422163424.19402-1-jlayton@kernel.org>
- <20190422163424.19402-2-jlayton@kernel.org>
- <87wojl61s5.fsf@notabene.neil.brown.name>
- <20190424135854.GB20542@fieldses.org>
- <2b131f18-1df4-790c-a548-3155a0677c34@RedHat.com>
+        id S1730818AbfDXQN0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 24 Apr 2019 12:13:26 -0400
+Received: from smtp.corp.redhat.com (int-mx08.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id E602F13823A;
+        Wed, 24 Apr 2019 16:13:25 +0000 (UTC)
+Received: from warthog.procyon.org.uk (ovpn-121-98.rdu2.redhat.com [10.10.121.98])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 2A474272DA;
+        Wed, 24 Apr 2019 16:13:22 +0000 (UTC)
+Subject: [PATCH 00/11] keys: Namespacing
+From:   David Howells <dhowells@redhat.com>
+To:     ebiederm@xmission.com
+Cc:     linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org,
+        netdev@vger.kernel.org, linux-afs@lists.infradead.org,
+        Jann Horn <jannh@google.com>, keyrings@vger.kernel.org,
+        dhowells@redhat.com, linux-security-module@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        dwalsh@redhat.com, vgoyal@redhat.com
+Date:   Wed, 24 Apr 2019 17:13:22 +0100
+Message-ID: <155612240208.8564.13865046977065545591.stgit@warthog.procyon.org.uk>
+User-Agent: StGit/unknown-version
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <2b131f18-1df4-790c-a548-3155a0677c34@RedHat.com>
-User-Agent: Mutt/1.5.21 (2010-09-15)
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+X-Scanned-By: MIMEDefang 2.84 on 10.5.11.23
+X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.38]); Wed, 24 Apr 2019 16:13:26 +0000 (UTC)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Wed, Apr 24, 2019 at 11:29:59AM -0400, Steve Dickson wrote:
-> 
-> 
-> On 4/24/19 9:58 AM, J. Bruce Fields wrote:
-> > Steve, see Neil's comment, is there a cifs bug here?
-> Looking into it... 
 
-I was thinking Steve French, though I'm sure he wouldn't mind if you
-fixed cifs bugs.  Too many Steves!
+Here are some patches to make keys and keyrings more namespace aware.  Note
+that the branch is dependent on security/next-general.
 
---b.
+Firstly some miscellaneous patches to make the process easier:
 
-> 
-> steved.
-> > 
-> > --b.
-> > 
-> > On Tue, Apr 23, 2019 at 09:47:06AM +1000, NeilBrown wrote:
-> >> On Mon, Apr 22 2019, Jeff Layton wrote:
-> >>
-> >>> After a blocked nfsd file_lock request is deleted, knfsd will send a
-> >>> callback to the client and then free the request. Commit 16306a61d3b7
-> >>> ("fs/locks: always delete_block after waiting.") changed it such that
-> >>> locks_delete_block is always called on a request after it is awoken,
-> >>> but that patch missed fixing up blocked nfsd request handling.
-> >>>
-> >>> Call locks_delete_block on the block to wake up any locks still blocked
-> >>> on the nfsd lock request before freeing it. Some of its callers already
-> >>> do this however, so just remove those calls.
-> >>>
-> >>> URL: https://bugzilla.kernel.org/show_bug.cgi?id=203363
-> >>> Fixes: 16306a61d3b7 ("fs/locks: always delete_block after waiting.")
-> >>> Reported-by: Slawomir Pryczek <slawek1211@gmail.com>
-> >>> Cc: Neil Brown <neilb@suse.com>
-> >>> Cc: stable@vger.kernel.org
-> >>> Signed-off-by: Jeff Layton <jlayton@kernel.org>
-> >>> ---
-> >>>  fs/nfsd/nfs4state.c | 3 +--
-> >>>  1 file changed, 1 insertion(+), 2 deletions(-)
-> >>>
-> >>> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> >>> index 6a45fb00c5fc..e87e15df2044 100644
-> >>> --- a/fs/nfsd/nfs4state.c
-> >>> +++ b/fs/nfsd/nfs4state.c
-> >>> @@ -265,6 +265,7 @@ find_or_allocate_block(struct nfs4_lockowner *lo, struct knfsd_fh *fh,
-> >>>  static void
-> >>>  free_blocked_lock(struct nfsd4_blocked_lock *nbl)
-> >>>  {
-> >>> +	locks_delete_block(&nbl->nbl_lock);
-> >>>  	locks_release_private(&nbl->nbl_lock);
-> >>
-> >> Thanks for tracking this down.
-> >>
-> >> An implication of this bug and fix is that we need to be particularly
-> >> careful to make sure locks_delete_block() is called on all relevant
-> >> paths.
-> >> Can we make that easier?  My first thought was to include the call in
-> >> locks_release_private, but lockd calls the two quite separately and it
-> >> certainly seems appropriate that locks_delete_block should be called
-> >> asap, but locks_release_private() can be delayed.
-> >>
-> >> Also cifs calls locks_delete_block, but never calls
-> >> locks_release_private, so it wouldn't help there.
-> >>
-> >> Looking at cifs, I think there is a call missing there too.
-> >> cifs_posix_lock_set() *doesn't* always call locks_delete_block() after
-> >> waiting.  In particular, if ->can_cache_brlcks becomes true while
-> >> waiting then I don't think the behaviour is right.... though I'm not
-> >> sure it is right for other reasons.  It looks like the return value
-> >> should be 1 in that case, but it'll be zero.
-> >>
-> >> But back to my question about making it easier, move the BUG_ON()
-> >> calls from locks_free_lock() into locks_release_private().
-> >>
-> >> ??
-> >>
-> >> Thanks,
-> >> NeilBrown
-> >>
-> >>
-> >>>  	kfree(nbl);
-> >>>  }
-> >>> @@ -293,7 +294,6 @@ remove_blocked_locks(struct nfs4_lockowner *lo)
-> >>>  		nbl = list_first_entry(&reaplist, struct nfsd4_blocked_lock,
-> >>>  					nbl_lru);
-> >>>  		list_del_init(&nbl->nbl_lru);
-> >>> -		locks_delete_block(&nbl->nbl_lock);
-> >>>  		free_blocked_lock(nbl);
-> >>>  	}
-> >>>  }
-> >>> @@ -4863,7 +4863,6 @@ nfs4_laundromat(struct nfsd_net *nn)
-> >>>  		nbl = list_first_entry(&reaplist,
-> >>>  					struct nfsd4_blocked_lock, nbl_lru);
-> >>>  		list_del_init(&nbl->nbl_lru);
-> >>> -		locks_delete_block(&nbl->nbl_lock);
-> >>>  		free_blocked_lock(nbl);
-> >>>  	}
-> >>>  out:
-> >>> -- 
-> >>> 2.20.1
-> > 
-> > 
+ (1) Invalidate rather than revoke request_key() authentication keys to
+     recycle them more quickly.
+
+ (2) Remove request_key_async*() as they aren't used and would have to be
+     namespaced.
+
+ (3) Simplify key index_key handling so that the word-sized chunks
+     assoc_array requires don't have to be shifted about, making it easier
+     to add more bits into the key.
+
+ (4) Cache the hash value so that we don't have to calculate on every key
+     we examine during a search (it involves a bunch of multiplications).
+
+ (5) Allow keying_search() to search non-recursively.
+
+Then the main patches:
+
+ (6) Make it so that keyring names are per-user_namespace from the point of
+     view of KEYCTL_JOIN_SESSION_KEYRING so that they're not accessible
+     cross-user_namespace.
+
+ (7) Move the user and user-session keyrings to the user_namespace rather
+     than the user_struct.  This prevents them propagating directly across
+     user_namespaces boundaries (ie. the KEY_SPEC_* flags will only pick
+     from the current user_namespace).
+
+ (8) Make it possible to include the target namespace in which the key shall
+     operate in the index_key.  This will allow the possibility of multiple
+     keys with the same description, but different target domains to be held
+     in the same keyring.
+
+ (9) Make it so that keys are implicitly invalidated by removal of a domain
+     tag, causing them to be garbage collected.
+
+(10) Institute a network namespace domain tag that allows keys to be
+     differentiated by the network namespace in which they operate.  New keys
+     that are of a type marked 'KEY_TYPE_NET_DOMAIN' are assigned the network
+     domain in force when they are created.
+
+(11) Make it so that the desired network namespace can be handed down into the
+     request_key() mechanism.  This allows AFS, NFS, etc. to request keys
+     specific to the network namespace of the superblock.
+
+     This also means that the keys in the DNS record cache are thenceforth
+     namespaced, provided network filesystems pass the appropriate network
+     namespace down into dns_query().
+
+     For DNS, AFS and NFS are good; CIFS and Ceph are not.  Other cache
+     keyrings, such as idmapper keyrings, also need to set the domain tag.
+
+
+The patches can be found on the following branch:
+
+	https://git.kernel.org/pub/scm/linux/kernel/git/dhowells/linux-fs.git/log/?h=keys-namespace
+
+David
+---
+David Howells (11):
+      keys: Invalidate used request_key authentication keys
+      keys: Kill off request_key_async{,_with_auxdata}
+      keys: Simplify key description management
+      keys: Cache the hash value to avoid lots of recalculation
+      keys: Add a 'recurse' flag for keyring searches
+      keys: Namespace keyring names
+      keys: Move the user and user-session keyrings to the user_namespace
+      keys: Include target namespace in match criteria
+      keys: Garbage collect keys for which the domain has been removed
+      keys: Network namespace domain tag
+      keys: Pass the network namespace into request_key mechanism
+
+
+ Documentation/security/keys/core.rst     |   10 +
+ certs/blacklist.c                        |    2 
+ crypto/asymmetric_keys/asymmetric_type.c |    2 
+ fs/afs/addr_list.c                       |    4 
+ fs/afs/dynroot.c                         |    7 -
+ fs/cifs/dns_resolve.c                    |    3 
+ fs/nfs/dns_resolve.c                     |    2 
+ include/linux/dns_resolver.h             |    3 
+ include/linux/key-type.h                 |    3 
+ include/linux/key.h                      |   49 ++++--
+ include/linux/sched/user.h               |   14 --
+ include/linux/user_namespace.h           |    8 +
+ include/net/net_namespace.h              |    4 
+ kernel/user.c                            |   10 -
+ kernel/user_namespace.c                  |    9 -
+ lib/digsig.c                             |    2 
+ net/ceph/messenger.c                     |    3 
+ net/core/net_namespace.c                 |   18 ++
+ net/dns_resolver/dns_key.c               |    1 
+ net/dns_resolver/dns_query.c             |    6 -
+ net/rxrpc/key.c                          |    6 -
+ net/rxrpc/security.c                     |    2 
+ security/integrity/digsig_asymmetric.c   |    4 
+ security/keys/gc.c                       |    2 
+ security/keys/internal.h                 |   10 +
+ security/keys/key.c                      |    9 +
+ security/keys/keyctl.c                   |    4 
+ security/keys/keyring.c                  |  263 +++++++++++++++++-------------
+ security/keys/persistent.c               |   10 +
+ security/keys/proc.c                     |    3 
+ security/keys/process_keys.c             |  252 ++++++++++++++++++-----------
+ security/keys/request_key.c              |  114 +++++++------
+ security/keys/request_key_auth.c         |    3 
+ 33 files changed, 502 insertions(+), 340 deletions(-)
+
