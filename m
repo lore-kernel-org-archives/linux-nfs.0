@@ -2,101 +2,127 @@ Return-Path: <SRS0=08pM=S2=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.8 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-7.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1890DC10F11
-	for <linux-nfs@archiver.kernel.org>; Wed, 24 Apr 2019 13:40:45 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8BBD3C10F11
+	for <linux-nfs@archiver.kernel.org>; Wed, 24 Apr 2019 13:48:14 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id DBF3121773
-	for <linux-nfs@archiver.kernel.org>; Wed, 24 Apr 2019 13:40:44 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="WHtcll+I"
+	by mail.kernel.org (Postfix) with ESMTP id 5AFA5218D2
+	for <linux-nfs@archiver.kernel.org>; Wed, 24 Apr 2019 13:48:14 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=default; t=1556113694;
+	bh=n88aMz6pFtTGlg0CCGpnIxsIOq+t1ShnZTefBtlursU=;
+	h=References:In-Reply-To:From:Date:Subject:To:Cc:List-ID:From;
+	b=QsX2hxTfjuY0/nVLrfcxdH6WsOMlqNz4qdE/EBUysLbsGla5SkYQmlt6Gutacq4bu
+	 w6KEL0gMujvDP2qXhwE37YxOGeCawsJmfTikm/kp/kUkx+KiOf54Q3htaGSmn8Jb0W
+	 5T9Urg00G96R5yMWqQPiOkTQ/gTh9pB4qUVmDik8=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1730484AbfDXNko (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 24 Apr 2019 09:40:44 -0400
-Received: from mail-io1-f66.google.com ([209.85.166.66]:33388 "EHLO
-        mail-io1-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727755AbfDXNko (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Apr 2019 09:40:44 -0400
-Received: by mail-io1-f66.google.com with SMTP id u12so5270550iop.0;
-        Wed, 24 Apr 2019 06:40:43 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=sender:subject:from:to:cc:date:message-id:in-reply-to:references
-         :user-agent:mime-version:content-transfer-encoding;
-        bh=/wd0eRcXetS/kbSQtf2qtr0ehl30Kq76/qdpsU9VXMI=;
-        b=WHtcll+IeUhYEMcdLxG6GM31ahzwfc0Z2GkxIMVlTVf3QGwb7sv4GW82DNRWHjuHwN
-         xZ935QNVbiMcJhrHOyI0zIQzy4VlR4o6o3jyWYNlX9S7TFRFiwbdUCzrcJ5cRmfhxw7n
-         fAB6v+BStUHwI0XBI0n/uQ13w5GJ+Ay9ln3U9Gw+RJu3Pn4nDWcbsBte+8jpJ/YKedx0
-         Xyi8+Cyl1hQoK9kSj5hBk9iXKPbTluzyiPFpfUwgtSYoGa2OLuA1fsn1qD4f9zJbtbyp
-         TN783oo0HdMvnPCt2YGEEFYih3FIjQ9AIl+KpXW75UBWH/0w0Qd+itf9VUVjaL73foPo
-         Zsgg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:sender:subject:from:to:cc:date:message-id
-         :in-reply-to:references:user-agent:mime-version
-         :content-transfer-encoding;
-        bh=/wd0eRcXetS/kbSQtf2qtr0ehl30Kq76/qdpsU9VXMI=;
-        b=tvoU5VIqUXaCS7rzwQ6BMhpzoUvfnjCKSwaEYxyaKMHn/oKbE7upnITLqYeT45mr8C
-         Qtmd0sx09KKzPgjh5R4sY5g1mWfW+k5aIgpZbQ2N0WCHwCrmm+Deeo3YkMk3JfYfKkNV
-         FDINJj6MiMV4Af+1VPQrhmVCeFiGmk1HyDyvztmLUM0qiAIEyDs2NE5uzHtMUqpIjKAW
-         PWI+FhjCX7rYkAO92j7Y6MKzbg2Ltp2lA+ljAMOjRYAMBIY5m3+WgkW4Mf0zDXekTPJU
-         LIJ1CRhUB6PnvywdV0PQmQcltnwPh7z2DKmSxOk6p337yrbnm02e2DGWQsepHbUPdyNl
-         69fQ==
-X-Gm-Message-State: APjAAAVdy+hljcJBeFR6pnfDWG/ccxwg1BO5Km0UGnNxXnmcSefUL3Al
-        PmRk+rCYRTocpNBdx+3cfD0=
-X-Google-Smtp-Source: APXvYqwaLSm3zvFUrE7BctuwvikheNeevcqJaxwIZv6bURtBqvah6psy7c7uSwzWmwSxL6nP+cZxZg==
-X-Received: by 2002:a6b:e502:: with SMTP id y2mr9454078ioc.73.1556113243226;
-        Wed, 24 Apr 2019 06:40:43 -0700 (PDT)
-Received: from gateway.1015granger.net (c-68-61-232-219.hsd1.mi.comcast.net. [68.61.232.219])
-        by smtp.gmail.com with ESMTPSA id b1sm8783790itd.12.2019.04.24.06.40.42
-        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Wed, 24 Apr 2019 06:40:42 -0700 (PDT)
-Received: from manet.1015granger.net (manet.1015granger.net [192.168.1.51])
-        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id x3ODefBd011340;
-        Wed, 24 Apr 2019 13:40:41 GMT
-Subject: [PATCH v3 21/21] xprtrdma: Remove stale comment
-From:   Chuck Lever <chuck.lever@oracle.com>
-To:     anna.schumaker@netapp.com
-Cc:     linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date:   Wed, 24 Apr 2019 09:40:41 -0400
-Message-ID: <20190424134041.5077.18063.stgit@manet.1015granger.net>
-In-Reply-To: <20190424133516.5077.67283.stgit@manet.1015granger.net>
-References: <20190424133516.5077.67283.stgit@manet.1015granger.net>
-User-Agent: StGit/0.17.1-dirty
+        id S1726524AbfDXNsN (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 24 Apr 2019 09:48:13 -0400
+Received: from mail.kernel.org ([198.145.29.99]:46478 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1725978AbfDXNsN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 24 Apr 2019 09:48:13 -0400
+Received: from mail-ed1-f52.google.com (mail-ed1-f52.google.com [209.85.208.52])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+        (No client certificate requested)
+        by mail.kernel.org (Postfix) with ESMTPSA id 1DBB921900
+        for <linux-nfs@vger.kernel.org>; Wed, 24 Apr 2019 13:48:12 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=default; t=1556113692;
+        bh=n88aMz6pFtTGlg0CCGpnIxsIOq+t1ShnZTefBtlursU=;
+        h=References:In-Reply-To:From:Date:Subject:To:Cc:From;
+        b=YI47D50MJmO56GeILZOT8QJ61KmVDcw5TXirNOuvKc+wpvfix9BifmZyB5NA41WiC
+         LLHG1MF2Rh166oBauPRpXh1nApom40QH+OtIu4gi18ThOQiMW+ydw7qHJN+pnJyACH
+         CNXXCrg+J4CPF2OjcA3Y06GptYhzVrFrhF3pV1tM=
+Received: by mail-ed1-f52.google.com with SMTP id g6so15973844edc.8
+        for <linux-nfs@vger.kernel.org>; Wed, 24 Apr 2019 06:48:12 -0700 (PDT)
+X-Gm-Message-State: APjAAAVLn4Ku25WwQtycsDkqK+DwErsWog3NnjI4edHmqw3Cbz/vo0kX
+        xLOYEBrlOD4EifQl8xjP6II5BHyxxh4a9XgmSmNMNg==
+X-Google-Smtp-Source: APXvYqxK/M3zg3Ht1zx6LjSVSJO54/ubORrzCw5X+bg0rJsoAn7UIQ0G7kVJOM5jms48jCSG3XzYp8XsFljeKIwGRPs=
+X-Received: by 2002:a50:9317:: with SMTP id m23mr20443937eda.114.1556113690630;
+ Wed, 24 Apr 2019 06:48:10 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
+References: <20190422163424.19402-1-jlayton@kernel.org> <20190422163424.19402-2-jlayton@kernel.org>
+ <87wojl61s5.fsf@notabene.neil.brown.name> <CAOhYWN+qtb3fRRbxJBMOCyyivc5-rYAfeVZ362HxWjett+UGHQ@mail.gmail.com>
+ <87r29s5fiv.fsf@notabene.neil.brown.name>
+In-Reply-To: <87r29s5fiv.fsf@notabene.neil.brown.name>
+From:   Jeff Layton <jlayton@kernel.org>
+Date:   Wed, 24 Apr 2019 09:47:59 -0400
+X-Gmail-Original-Message-ID: <CAOhYWN+wgm9gVPkGW=jh+WUt0T_Nn1zs=BZAKt8y-b50dWM4zw@mail.gmail.com>
+Message-ID: <CAOhYWN+wgm9gVPkGW=jh+WUt0T_Nn1zs=BZAKt8y-b50dWM4zw@mail.gmail.com>
+Subject: Re: [PATCH] locks: move checks from locks_free_lock() to locks_release_private()
+To:     NeilBrown <neilb@suse.com>
+Cc:     Bruce Fields <bfields@fieldses.org>, slawek1211@gmail.com,
+        "open list:NFS, SUNRPC, AND..." <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-The comment hasn't been accurate for several years.
+On Tue, Apr 23, 2019 at 10:00 PM NeilBrown <neilb@suse.com> wrote:
+>
+>
+> Code that allocates locks using locks_alloc_lock() will free it
+> using locks_free_lock(), and will benefit from the BUG_ON()
+> consistency checks therein.
+>
+> However some code (nfsd and lockd) allocate a lock embedded in
+> some other data structure, and so free the lock themselves after
+> calling locks_release_private().  This path does not benefit from
+> the consistency checks.
+>
+> To help catch future errors, move the BUG_ON() checks to
+> locks_release_private() - which locks_free_lock() already calls.
+> This ensures that all users for locks will find out if the lock
+> isn't detached properly before being free.
+>
+> Signed-off-by: NeilBrown <neilb@suse.com>
+> ---
+>  fs/locks.c | 12 ++++++------
+>  1 file changed, 6 insertions(+), 6 deletions(-)
+>
+> diff --git a/fs/locks.c b/fs/locks.c
+> index 71d0c6c2aac5..456a3782c6ca 100644
+> --- a/fs/locks.c
+> +++ b/fs/locks.c
+> @@ -352,6 +352,12 @@ EXPORT_SYMBOL_GPL(locks_alloc_lock);
+>
+>  void locks_release_private(struct file_lock *fl)
+>  {
+> +       BUG_ON(waitqueue_active(&fl->fl_wait));
+> +       BUG_ON(!list_empty(&fl->fl_list));
+> +       BUG_ON(!list_empty(&fl->fl_blocked_requests));
+> +       BUG_ON(!list_empty(&fl->fl_blocked_member));
+> +       BUG_ON(!hlist_unhashed(&fl->fl_link));
+> +
+>         if (fl->fl_ops) {
+>                 if (fl->fl_ops->fl_release_private)
+>                         fl->fl_ops->fl_release_private(fl);
+> @@ -371,12 +377,6 @@ EXPORT_SYMBOL_GPL(locks_release_private);
+>  /* Free a lock which is not in use. */
+>  void locks_free_lock(struct file_lock *fl)
+>  {
+> -       BUG_ON(waitqueue_active(&fl->fl_wait));
+> -       BUG_ON(!list_empty(&fl->fl_list));
+> -       BUG_ON(!list_empty(&fl->fl_blocked_requests));
+> -       BUG_ON(!list_empty(&fl->fl_blocked_member));
+> -       BUG_ON(!hlist_unhashed(&fl->fl_link));
+> -
+>         locks_release_private(fl);
+>         kmem_cache_free(filelock_cache, fl);
+>  }
+> --
+> 2.14.0.rc0.dirty
+>
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
- net/sunrpc/xprtrdma/xprt_rdma.h |    7 -------
- 1 file changed, 7 deletions(-)
+Looks good to me. Bruce, would you mind picking this up for the next
+merge window? I don't have any other file locking patches queued up
+for v5.2, and I hate to send Linus a PR for just this.
 
-diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index 9e98ee0..d1e0749 100644
---- a/net/sunrpc/xprtrdma/xprt_rdma.h
-+++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -239,13 +239,6 @@ struct rpcrdma_sendctx {
-  *
-  * An external memory region is any buffer or page that is registered
-  * on the fly (ie, not pre-registered).
-- *
-- * Each rpcrdma_buffer has a list of free MWs anchored in rb_mrs. During
-- * call_allocate, rpcrdma_buffer_get() assigns one to each segment in
-- * an rpcrdma_req. Then rpcrdma_register_external() grabs these to keep
-- * track of registration metadata while each RPC is pending.
-- * rpcrdma_deregister_external() uses this metadata to unmap and
-- * release these resources when an RPC is complete.
-  */
- enum rpcrdma_frwr_state {
- 	FRWR_IS_INVALID,	/* ready to be used */
+Either way:
 
+Reviewed-by: Jeff Layton <jlayton@kernel.org>
