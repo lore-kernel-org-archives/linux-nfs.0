@@ -2,199 +2,201 @@ Return-Path: <SRS0=LIrp=S3=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-5.9 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,
+	SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8E59DC43218
-	for <linux-nfs@archiver.kernel.org>; Thu, 25 Apr 2019 18:05:04 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id AFACFC43219
+	for <linux-nfs@archiver.kernel.org>; Thu, 25 Apr 2019 18:11:48 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 2ADCD206BF
-	for <linux-nfs@archiver.kernel.org>; Thu, 25 Apr 2019 18:05:05 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 1DF9120685
+	for <linux-nfs@archiver.kernel.org>; Thu, 25 Apr 2019 18:11:49 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="RBqL21n2"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1730231AbfDYSFD (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 25 Apr 2019 14:05:03 -0400
-Received: from mail-qt1-f193.google.com ([209.85.160.193]:44904 "EHLO
-        mail-qt1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1730225AbfDYSFD (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Apr 2019 14:05:03 -0400
-Received: by mail-qt1-f193.google.com with SMTP id s10so1093292qtc.11
-        for <linux-nfs@vger.kernel.org>; Thu, 25 Apr 2019 11:05:02 -0700 (PDT)
+        id S1728233AbfDYSLr (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 25 Apr 2019 14:11:47 -0400
+Received: from mail-yb1-f193.google.com ([209.85.219.193]:37307 "EHLO
+        mail-yb1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726758AbfDYSLr (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Apr 2019 14:11:47 -0400
+Received: by mail-yb1-f193.google.com with SMTP id p134so340628ybc.4;
+        Thu, 25 Apr 2019 11:11:46 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc:content-transfer-encoding;
+        bh=oHd7Fi5DcKd5oM8boGoQwTbbekylxHPnNsnaqcBOneM=;
+        b=RBqL21n2IWt5/9AMQqteMPZzJ2AV/K7r4Cv7F4JY4Hmy1WNqApBbGs8axEH276Nz0T
+         iv+wY7pDqEbgjaGKyV2GsGF0Wh3RiINXDR5lTJI1Z1xcF582QyETEck53ak6gs7bumGu
+         YDkQ8lavypNc16zYZJNfpyVRyJVW3gdCoMD17nuMYaRsgs0CdH9lO9iWgGRpJZNplw3u
+         Q6kx0RcTd2C0x5EdYTnLf3pjv5IWsd/cqhnbSjaE5QNfchXX8kwVc5icUTcBcWtN4lYF
+         9R8bDRtqACnHdOwG5kH7LudppSGbyTHzbKd0wbnfYmoEM38jK7hH1wKYJksKrBGNuICI
+         eLSA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:message-id:subject:from:to:cc:date:in-reply-to
-         :references:user-agent:mime-version:content-transfer-encoding;
-        bh=ldpRpgCWBKKVSKykR5KEInYM/UNI+DvkAvjxNm2Zw14=;
-        b=UTCC9CXONfRbhRI+QHdGMIgETON+MV6NoFnq3Bf8Ww68kDXZ2DskOP6veFvvWNT9Tp
-         wDTYOQ4xvF/4v3eCPR3Wb4x4Dszhx7oVDzFNnLbVvzFEqDUMeP6Jd+8Sk2NFVxkqqRcC
-         VOnZt1ZREGI21Ewl0PSSxEzM4nWbz7viYSrkEkn/4pFRhX2Kge7KmlNiHFII/RatZ/8/
-         hVaqmlu9Bpo1F3GPwQrH2j7ns38m4QLGmMq+RduWe6Z+cLjYscTkFxNVQAC4Qz4CRPUy
-         YfYlq/N7+C8r/tl+t4v8RxM6rva1suNYgSl7TM/XVhlw4ekdF8liHona6c7B5mywPGYw
-         FlEA==
-X-Gm-Message-State: APjAAAWwgAAtf0J6/M2tUc8XYfKg4vdMUw3w7elf3ZS3i15O8KbM5YAc
-        TuWzpOX9mp6sfSkRpA3F+2U9OA==
-X-Google-Smtp-Source: APXvYqzoDHEQpSns9Vwp0vPL6e78OL526eJ6JFClUbLxmOT6IXuKkQYcOqV37yHkE0gskULGeAJHdw==
-X-Received: by 2002:a0c:fe69:: with SMTP id b9mr6896606qvv.11.1556215501674;
-        Thu, 25 Apr 2019 11:05:01 -0700 (PDT)
-Received: from tleilax.poochiereds.net (cpe-2606-A000-1100-202A-0-0-0-83B.dyn6.twc.com. [2606:a000:1100:202a::83b])
-        by smtp.gmail.com with ESMTPSA id w58sm10649429qtw.93.2019.04.25.11.05.00
-        (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
-        Thu, 25 Apr 2019 11:05:01 -0700 (PDT)
-Message-ID: <d26e7611f4e610bff81a16abbb88ca1c5ed70c91.camel@redhat.com>
-Subject: Re: [PATCH 08/10] nfsd4: add file to display list of client's opens
-From:   Jeff Layton <jlayton@redhat.com>
-To:     "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org
-Cc:     linux-fsdevel@vger.kernel.org, abe@purdue.edu,
-        lsof-l@lists.purdue.edu, util-linux@vger.kernel.org
-Date:   Thu, 25 Apr 2019 14:04:59 -0400
-In-Reply-To: <1556201060-7947-9-git-send-email-bfields@redhat.com>
-References: <1556201060-7947-1-git-send-email-bfields@redhat.com>
-         <1556201060-7947-9-git-send-email-bfields@redhat.com>
-Content-Type: text/plain; charset="UTF-8"
-User-Agent: Evolution 3.30.5 (3.30.5-1.fc29) 
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc:content-transfer-encoding;
+        bh=oHd7Fi5DcKd5oM8boGoQwTbbekylxHPnNsnaqcBOneM=;
+        b=WZLNS9K8EsPRYnvGQm+SVJRuVuX42NpSwzGH1xhnFimLwmZyNEZsZ1Yv7xKISwdLUA
+         evsAAdE95NSwx8bD/9hbaJ56jf8thLSfmasufFo+vxJOwWdSmpVVogcakaBkkW1D2u02
+         ppee72/BkX2c452zpg5+kCKQ2f8g7+myKxA3KQAsreFMgLIxKX6sJaXrOscBUQJZ0TjS
+         8K34aKFFrubS1Cc66k4vTDMjlfIAHJuZCmcCm2KKVs153D6nvtAjE0ZhibIaYuzolQXY
+         l4Ss2Qyh28uCItwT+4gQFZuwwVlayKu8DnzJttZlkiGl9fayP4OmkHtlN7CCUJGjh8/P
+         7O6g==
+X-Gm-Message-State: APjAAAXevkWumtP6RtUB1qo0MLOIARjvBfQWvlEcr97hJzvc9K/jvwFy
+        F8H+Mkh+Fx311ho68dAoj/zjwVCc/Yvbb7ESe06J+aUn
+X-Google-Smtp-Source: APXvYqzizY4ktsfc7B83TWAYZy6fYlvHDCBCAWoisaCpCyn1ob901nn14s0koMuy/e2ZKELrkH8Qd9SKKSQGlsxJNnw=
+X-Received: by 2002:a5b:48a:: with SMTP id n10mr33146015ybp.320.1556215906035;
+ Thu, 25 Apr 2019 11:11:46 -0700 (PDT)
 MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
+References: <379106947f859bdf5db4c6f9c4ab8c44f7423c08.camel@kernel.org>
+ <CAOQ4uxgewN=j3ju5MSowEvwhK1HqKG3n1hBRUQTi1W5asaO1dQ@mail.gmail.com>
+ <20190208155052.GB20573@fieldses.org> <CAOQ4uxg9NGPRpMZt0KgH9HUKMRpn0dFta7EnP1WioRb917n4+A@mail.gmail.com>
+ <20190208221239.GA199180@jra3> <CAOQ4uxjxQoCWqfp+f91--tyR81PREsssT=RV9uRgCQFs+yk7mw@mail.gmail.com>
+ <20190214210652.GC9216@fieldses.org> <20190305214748.GD27437@fieldses.org>
+ <20190306151150.GC2426@fieldses.org> <1ade4724a4e505baf7b7c23a76e44d58b931da1f.camel@kernel.org>
+ <20190306210743.GE19279@jra3> <F00A0481-0AC7-411E-8353-BF104713F524@samba.org>
+ <5ebdb58b-26d9-c0f2-bd67-883bc4678ac7@samba.org>
+In-Reply-To: <5ebdb58b-26d9-c0f2-bd67-883bc4678ac7@samba.org>
+From:   Amir Goldstein <amir73il@gmail.com>
+Date:   Thu, 25 Apr 2019 21:11:34 +0300
+Message-ID: <CAOQ4uxiBLw_L=SqCjLU6W60LbtWiLaBh=5Cb4HnSAFqCW0z1WA@mail.gmail.com>
+Subject: Re: Better interop for NFS/SMB file share mode/reservation
+To:     Stefan Metzmacher <metze@samba.org>
+Cc:     =?UTF-8?B?UmFscGggQsO2aG1l?= <slow@samba.org>,
+        Jeremy Allison <jra@samba.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Volker.Lendecke@sernet.de, devel@lists.nfs-ganesha.org,
+        Jeff Layton <jlayton@kernel.org>,
+        samba-technical <samba-technical@lists.samba.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Thu, 2019-04-25 at 10:04 -0400, J. Bruce Fields wrote:
-> From: "J. Bruce Fields" <bfields@redhat.com>
-> 
-> Add a nfsd/clients/#/opens file to list some information about all the
-> opens held by the given client.
-> 
-> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> ---
->  fs/nfsd/nfs4state.c | 100 +++++++++++++++++++++++++++++++++++++++++++-
->  1 file changed, 98 insertions(+), 2 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 928705fc8ff5..829d1e5440d3 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -684,7 +684,8 @@ struct nfs4_stid *nfs4_alloc_stid(struct nfs4_client *cl, struct kmem_cache *sla
->  
->  	idr_preload(GFP_KERNEL);
->  	spin_lock(&cl->cl_lock);
-> -	new_id = idr_alloc_cyclic(&cl->cl_stateids, stid, 0, 0, GFP_NOWAIT);
-> +	/* Reserving 0 for start of file in nfsdfs "opens" file: */
-> +	new_id = idr_alloc_cyclic(&cl->cl_stateids, stid, 1, 0, GFP_NOWAIT);
->  	spin_unlock(&cl->cl_lock);
->  	idr_preload_end();
->  	if (new_id < 0)
-> @@ -2223,9 +2224,104 @@ static const struct file_operations client_info_fops = {
->  	.release	= single_release,
->  };
->  
-> +static void *opens_start(struct seq_file *s, loff_t *pos)
-> +	__acquires(&clp->cl_lock)
-> +{
-> +	struct nfs4_client *clp = s->private;
-> +	unsigned long id = *pos;
-> +	void *ret;
-> +
-> +	spin_lock(&clp->cl_lock);
-> +	ret = idr_get_next_ul(&clp->cl_stateids, &id);
-> +	*pos = id;
-> +	return ret;
-> +}
-> +
-> +static void *opens_next(struct seq_file *s, void *v, loff_t *pos)
-> +{
-> +	struct nfs4_client *clp = s->private;
-> +	unsigned long id = *pos;
-> +	void *ret;
-> +
-> +	id = *pos;
-> +	id++;
-> +	ret = idr_get_next_ul(&clp->cl_stateids, &id);
-> +	*pos = id;
-> +	return ret;
-> +}
-> +
-> +static void opens_stop(struct seq_file *s, void *v)
-> +	__releases(&clp->cl_lock)
-> +{
-> +	struct nfs4_client *clp = s->private;
-> +
-> +	spin_unlock(&clp->cl_lock);
-> +}
-> +
-> +static int opens_show(struct seq_file *s, void *v)
-> +{
-> +	struct nfs4_stid *st = v;
-> +	struct nfs4_ol_stateid *os;
-> +	u64 stateid;
-> +
-> +	if (st->sc_type != NFS4_OPEN_STID)
-> +		return 0; /* XXX: or SEQ_SKIP? */
-> +	os = openlockstateid(st);
-> +	/* XXX: get info about file, etc., here */
-> +
-> +	memcpy(&stateid, &st->sc_stateid, sizeof(stateid));
-> +	seq_printf(s, "stateid: %llx\n", stateid);
-> +	return 0;
-> +}
+On Thu, Mar 7, 2019 at 1:04 PM Stefan Metzmacher <metze@samba.org> wrote:
+>
+> Am 06.03.19 um 22:25 schrieb Ralph B=C3=B6hme via samba-technical:
+> >
+> > Jeremy Allison wrote:
+> >> On Wed, Mar 06, 2019 at 03:31:08PM -0500, Jeff Layton wrote:
+> >>> On Wed, 2019-03-06 at 10:11 -0500, J. Bruce Fields wrote:
+> >>>>
+> >>>> Jeff, wasn't there some work (on Ceph maybe?) on a userspace delegat=
+ion
+> >>>> API?  Is that close to what's needed?
+> >>>>
+> >>>
+> >>> Here's the C headers for that stuff:
+> >>>
+> >>>    https://github.com/ceph/ceph/blob/7ba6bece4187eda5d05a9b84211fe6ba=
+8dd287bd/src/include/cephfs/libcephfs.h#L1734
+> >>>
+> >>> It's simple enough and works for us in ganesha, and I think we can
+> >>> probably adapt it to samba without too much difficulty. The callback
+> >>> doesn't seem like it'll do for a kernel API though -- you'd almost
+> >>> certainly need to do something different there (signals? inotify?).
+> >>
+> >> SMB3 leases have R/RW and Handle-based leases.
+> >
+> > Just to be precise: SMB2.1+ has R, RH, RW and RWH leases.
+> >
+> >> Handle leases allow multiple opens of the same pathname
+> >> that get different handles to share the lease, allowing
+> >> a client redirector to delay opens or closes locally
+> >> so long as it has a handle lease.
+> >
+> > That'a a propertly of leases in general, not just H-leases. The client =
+provides a lease key which is a GUID with each lease request
+> >
+> >>
+> >> Here are the semantics:
+> >>
+> >> https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-smb2/d=
+8df943d-6ad7-4b30-9f58-96ae90fc6204
+> >>
+> >> I'm not sure a simple file-descriptor based API is
+> >> enough for us. Can he have a uuid or token based
+> >> API instead where the server can chose what fd's
+> >> to cover with a token ?
+> >
+> > Yes, that would be ideal.
 
-More bikeshedding: should we have a "states" file instead of an "opens"
-file and print a different set of output for each stateid type?
+Getting back to this.
+Thanks all for the valuable inputs.
 
-> +
-> +static struct seq_operations opens_seq_ops = {
-> +	.start = opens_start,
-> +	.next = opens_next,
-> +	.stop = opens_stop,
-> +	.show = opens_show
-> +};
-> +
-> +static int client_opens_open(struct inode *inode, struct file *file)
-> +{
-> +	struct nfsdfs_client *nc;
-> +	struct seq_file *s;
-> +	struct nfs4_client *clp;
-> +	int ret;
-> +
-> +	nc = get_nfsdfs_client(inode);
-> +	if (!nc)
-> +		return -ENXIO;
-> +	clp = container_of(nc, struct nfs4_client, cl_nfsdfs);
-> +
-> +	ret = seq_open(file, &opens_seq_ops);
-> +	if (ret)
-> +		return ret;
-> +	s = file->private_data;
-> +	s->private = clp;
-> +	return 0;
-> +}
-> +
-> +static int client_opens_release(struct inode *inode, struct file *file)
-> +{
-> +	struct seq_file *m = file->private_data;
-> +	struct nfs4_client *clp = m->private;
-> +
-> +	/* XXX: alternatively, we could get/drop in seq start/stop */
-> +	drop_client(clp);
-> +	return 0;
-> +}
-> +
-> +static const struct file_operations client_opens_fops = {
-> +	.open		= client_opens_open,
-> +	.read		= seq_read,
-> +	.llseek		= seq_lseek,
-> +	.release	= client_opens_release,
-> +};
-> +
->  static const struct tree_descr client_files[] = {
->  	[0] = {"info", &client_info_fops, S_IRUSR},
-> -	[1] = {""},
-> +	[1] = {"open", &client_opens_fops, S_IRUSR},
-> +	[2] = {""},
->  };
->  
->  static struct nfs4_client *create_client(struct xdr_netobj name,
+Next week is LSF/MM and I was assigned a 30 minute slot on filesystems trac=
+k
+to discuss "NFS/SMB file share".
 
--- 
-Jeff Layton <jlayton@redhat.com>
+So let me try to echo what I read on this thread and how I understand what =
+APIs
+samba needs from the kernel.
 
+>
+> If we want to design an useful API, we also need to think about
+> all features:
+> - file oplock/leases
+
+Kernel can have a flavor of leases which are not broken
+by opens from threads of the process holding the lease.
+Bruce has some patches along those lines for knfsd and SMB R/RW
+leases could use this flavor if it was exported to userspace?
+
+For SMB RH/RWH leases and Ganesha delegations, server
+could keep track of its own handles/clients and break leases within the
+same process without involving the kernel.
+Am I wrong?
+
+> - directory leases
+
+I have WIP on fsnotify directory pre modification hooks.
+There is opposition from fsnotify maintainer to add new userspace
+APIs that can create kernel->user->kernel deadlocks, like the
+deadlocks currently reported with fanotify permission events.
+
+Need to see if we can find a middle ground between
+"post modification notifications" and "pre modification permission"
+API, somewhere along the lines of regular file lease breaking API.
+
+> - share modes
+
+Volker told me he thinks samba can enforce share modes by
+a single daemon policing all opens in the system with fanotify.
+I think he is right. If anyone thinks differently please speak up.
+
+> - disconnected handles (for durable and persistent handles),
+>   which exists within the kernel for a while and can be reattached
+>   to process, using some kind of cookie and the same euid
+
+So this interface exists in the kernel.
+Nothing more required from the kernel API. Right?
+
+> - the API needs ways to use epoll in order to do async opens
+>   and lease breaks. For opens the model of async socket connects
+>   could be used. Leases could have a signalfd-style api.
+
+I should hope that the new AIO API (http://kernel.dk/io_uring.pdf)
+would solve those problems as well as other issues that
+samba has w.r.t dispatching AIO.
+
+>
+> We may not need everything at once, but we should have the full picture
+> in mind. And we need working code in kernel and userspace that passes
+> all tests (we may need to add additional test). Otherwise the kernel
+> creates new syscalls, which wouldn't be used by Samba in the end.
+>
+
+Tested interfaces - good idea ;-)
+
+If anyone has any comments about my view of required new interfaces,
+or important things that I missed, please say so before Tuesday!
+
+Thanks,
+Amir.
