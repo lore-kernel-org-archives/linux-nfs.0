@@ -2,32 +2,32 @@ Return-Path: <SRS0=LIrp=S3=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,USER_AGENT_GIT
+X-Spam-Status: No, score=-6.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_PASS,USER_AGENT_GIT
 	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5E10BC4321A
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 82899C31D99
 	for <linux-nfs@archiver.kernel.org>; Thu, 25 Apr 2019 14:04:31 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 558F6206BA
+	by mail.kernel.org (Postfix) with ESMTP id 77D1320717
 	for <linux-nfs@archiver.kernel.org>; Thu, 25 Apr 2019 14:04:31 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726731AbfDYOEZ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 25 Apr 2019 10:04:25 -0400
-Received: from fieldses.org ([173.255.197.46]:50908 "EHLO fieldses.org"
+        id S1728053AbfDYOE2 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 25 Apr 2019 10:04:28 -0400
+Received: from fieldses.org ([173.255.197.46]:50958 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727780AbfDYOEY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 25 Apr 2019 10:04:24 -0400
+        id S1728162AbfDYOEZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 25 Apr 2019 10:04:25 -0400
 Received: by fieldses.org (Postfix, from userid 2815)
-        id D43967CC; Thu, 25 Apr 2019 10:04:22 -0400 (EDT)
+        id 06213254F; Thu, 25 Apr 2019 10:04:23 -0400 (EDT)
 From:   "J. Bruce Fields" <bfields@redhat.com>
 To:     linux-nfs@vger.kernel.org
 Cc:     linux-fsdevel@vger.kernel.org, abe@purdue.edu,
         lsof-l@lists.purdue.edu, util-linux@vger.kernel.org,
         jlayton@redhat.com, "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 05/10] nfsd: make client/ directory names small ints
-Date:   Thu, 25 Apr 2019 10:04:15 -0400
-Message-Id: <1556201060-7947-6-git-send-email-bfields@redhat.com>
+Subject: [PATCH 10/10] nfsd: add more information to client info file
+Date:   Thu, 25 Apr 2019 10:04:20 -0400
+Message-Id: <1556201060-7947-11-git-send-email-bfields@redhat.com>
 X-Mailer: git-send-email 1.8.3.1
 In-Reply-To: <1556201060-7947-1-git-send-email-bfields@redhat.com>
 References: <1556201060-7947-1-git-send-email-bfields@redhat.com>
@@ -38,66 +38,31 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: "J. Bruce Fields" <bfields@redhat.com>
 
-We want clientid's on the wire to be randomized for reasons explained in
-ebd7c72c63ac "nfsd: randomize SETCLIENTID reply to help distinguish
-servers".  But I'd rather have mostly small integers for the clients/
-directory.
+Add ip address, full client-provided identifier, and minor version.
+There's much more that could possibly be useful but this is a start.
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+As with open owners, client identifiers are opaque binary data, but some
+client happen to include some useful information in ascii.
 ---
- fs/nfsd/netns.h     | 1 +
- fs/nfsd/nfs4state.c | 2 +-
- fs/nfsd/nfsctl.c    | 5 +++--
- 3 files changed, 5 insertions(+), 3 deletions(-)
+ fs/nfsd/nfs4state.c | 5 +++++
+ 1 file changed, 5 insertions(+)
 
-diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
-index 46d956676480..888b2891960e 100644
---- a/fs/nfsd/netns.h
-+++ b/fs/nfsd/netns.h
-@@ -121,6 +121,7 @@ struct nfsd_net {
- 	 */
- 	unsigned int max_connections;
- 
-+	u32 clientid_base;
- 	u32 clientid_counter;
- 	u32 clverifier_counter;
- 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index dfcb90743861..de99bfe3e6e2 100644
+index f53621a65e60..39e1956b1bd2 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -2221,7 +2221,7 @@ static struct nfs4_client *create_client(struct xdr_netobj name,
- 	clp->cl_cb_session = NULL;
- 	clp->net = net;
- 	clp->cl_nfsd_dentry = nfsd_client_mkdir(nn, &clp->cl_nfsdfs,
--						clp->cl_clientid.cl_id);
-+			clp->cl_clientid.cl_id - nn->clientid_base);
- 	if (!clp->cl_nfsd_dentry) {
- 		free_client(clp);
- 		return NULL;
-diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index 8a2261cdefee..edf4dada42bf 100644
---- a/fs/nfsd/nfsctl.c
-+++ b/fs/nfsd/nfsctl.c
-@@ -1212,7 +1212,7 @@ struct dentry *nfsd_client_mkdir(struct nfsd_net *nn, struct nfsdfs_client *ncl,
- {
- 	char name[11];
+@@ -2208,6 +2208,11 @@ static int client_info_show(struct seq_file *m, void *v)
+ 	clp = container_of(nc, struct nfs4_client, cl_nfsdfs);
+ 	memcpy(&clid, &clp->cl_clientid, sizeof(clid));
+ 	seq_printf(m, "clientid: %llx\n", clid);
++	seq_printf(m, "address: %pISpc\n", (struct sockaddr *)&clp->cl_addr);
++	seq_printf(m, "name: ");
++	seq_escape_mem(m, clp->cl_name.data, clp->cl_name.len,
++			ESCAPE_NP|ESCAPE_HEX|ESCAPE_NOHIGH, NULL);
++	seq_printf(m, "\nminor version: %d\n", clp->cl_minorversion);
+ 	drop_client(clp);
  
--	sprintf(name, "%d", id++);
-+	sprintf(name, "%u", id);
- 
- 	return nfsd_mkdir(nn->nfsd_client_dir, ncl, name);
- }
-@@ -1350,7 +1350,8 @@ static __net_init int nfsd_init_net(struct net *net)
- 	nn->nfsd4_grace = 90;
- 	nn->somebody_reclaimed = false;
- 	nn->clverifier_counter = prandom_u32();
--	nn->clientid_counter = prandom_u32();
-+	nn->clientid_base = prandom_u32();
-+	nn->clientid_counter = nn->clientid_base + 1;
- 	nn->s2s_cp_cl_id = nn->clientid_counter++;
- 
- 	atomic_set(&nn->ntf_refcnt, 0);
+ 	return 0;
 -- 
 2.20.1
 
