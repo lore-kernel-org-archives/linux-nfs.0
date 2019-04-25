@@ -2,132 +2,190 @@ Return-Path: <SRS0=LIrp=S3=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-1.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 54CD5C43218
-	for <linux-nfs@archiver.kernel.org>; Thu, 25 Apr 2019 16:48:59 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id F0D29C43219
+	for <linux-nfs@archiver.kernel.org>; Thu, 25 Apr 2019 17:02:34 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id AA080206BF
-	for <linux-nfs@archiver.kernel.org>; Thu, 25 Apr 2019 16:48:59 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="YcQmWuZ8"
+	by mail.kernel.org (Postfix) with ESMTP id 75D9620684
+	for <linux-nfs@archiver.kernel.org>; Thu, 25 Apr 2019 17:02:35 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726071AbfDYQs6 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 25 Apr 2019 12:48:58 -0400
-Received: from mail-eopbgr740090.outbound.protection.outlook.com ([40.107.74.90]:52960
-        "EHLO NAM01-BN3-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726020AbfDYQs6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 25 Apr 2019 12:48:58 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=hammerspace.com;
- s=selector1;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=nojZVJUBO+3EPzRsrI0mXsF14DIxHcP5wgIrEiejBuk=;
- b=YcQmWuZ8hH1WasrdOWaz4bAE/hJFw/erAdquDafbY+1S//dExTftliIzcn4/apH4eFtLJ/V4GDoOcW7kIILG90+Cd8+0+lCfRl+yBL7nBaQw2tgU2C9mtCmJsK/UvnUVYMBKLnJOjirJ1Mvgyx9EJ2U8lyCAcACPdP9QNkTpq/8=
-Received: from SN6PR13MB2494.namprd13.prod.outlook.com (52.135.95.148) by
- SN6PR13MB2287.namprd13.prod.outlook.com (52.135.94.18) with Microsoft SMTP
- Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- 15.20.1856.6; Thu, 25 Apr 2019 16:48:55 +0000
-Received: from SN6PR13MB2494.namprd13.prod.outlook.com
- ([fe80::396d:aed6:eeb4:2511]) by SN6PR13MB2494.namprd13.prod.outlook.com
- ([fe80::396d:aed6:eeb4:2511%7]) with mapi id 15.20.1856.004; Thu, 25 Apr 2019
- 16:48:55 +0000
-From:   Trond Myklebust <trondmy@hammerspace.com>
-To:     "bfields@fieldses.org" <bfields@fieldses.org>
-CC:     "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "Anna.Schumaker@netapp.com" <Anna.Schumaker@netapp.com>
-Subject: Re: [PATCH 6/9] NFSv4: Convert the NFS client idmapper to use the
- container user namespace
-Thread-Topic: [PATCH 6/9] NFSv4: Convert the NFS client idmapper to use the
- container user namespace
-Thread-Index: AQHU+ueMW9/YXGY8FEO55fCIdOiQ4KZM8a2AgAAHtwCAAAlPgIAAEp6AgAABUQCAAAEWgA==
-Date:   Thu, 25 Apr 2019 16:48:54 +0000
-Message-ID: <67d3d9af243a0c4efa37c08532f5c0f5157bdb91.camel@hammerspace.com>
-References: <20190424214650.4658-2-trond.myklebust@hammerspace.com>
-         <20190424214650.4658-3-trond.myklebust@hammerspace.com>
-         <20190424214650.4658-4-trond.myklebust@hammerspace.com>
-         <20190424214650.4658-5-trond.myklebust@hammerspace.com>
-         <20190424214650.4658-6-trond.myklebust@hammerspace.com>
-         <20190424214650.4658-7-trond.myklebust@hammerspace.com>
-         <20190425143243.GA8133@fieldses.org>
-         <e94c2488d89ae13675f9931d013a3d711459ecad.camel@hammerspace.com>
-         <20190425153339.GB8133@fieldses.org>
-         <e3553fd56047430f171a3c285150b56d5fc69ccd.camel@hammerspace.com>
-         <20190425164500.GA9015@fieldses.org>
-In-Reply-To: <20190425164500.GA9015@fieldses.org>
-Accept-Language: en-US, en-GB
-Content-Language: en-US
-X-MS-Has-Attach: 
-X-MS-TNEF-Correlator: 
-authentication-results: spf=none (sender IP is )
- smtp.mailfrom=trondmy@hammerspace.com; 
-x-originating-ip: [68.40.189.247]
-x-ms-publictraffictype: Email
-x-ms-office365-filtering-correlation-id: f5f9fe85-a87b-488b-250e-08d6c99de787
-x-microsoft-antispam: BCL:0;PCL:0;RULEID:(2390118)(7020095)(4652040)(8989299)(4534185)(4627221)(201703031133081)(201702281549075)(8990200)(5600141)(711020)(4605104)(2017052603328)(7193020);SRVR:SN6PR13MB2287;
-x-ms-traffictypediagnostic: SN6PR13MB2287:
-x-microsoft-antispam-prvs: <SN6PR13MB22875317AD5FDCD190A3DBDFB83D0@SN6PR13MB2287.namprd13.prod.outlook.com>
-x-ms-oob-tlc-oobclassifiers: OLM:8882;
-x-forefront-prvs: 0018A2705B
-x-forefront-antispam-report: SFV:NSPM;SFS:(10019020)(396003)(136003)(366004)(39830400003)(376002)(346002)(189003)(199004)(66476007)(66556008)(66446008)(7736002)(3846002)(6116002)(6246003)(66946007)(73956011)(76116006)(91956017)(6916009)(446003)(11346002)(256004)(64756008)(99286004)(5660300002)(6512007)(97736004)(2906002)(93886005)(305945005)(36756003)(53936002)(14454004)(86362001)(229853002)(316002)(5640700003)(71200400001)(71190400001)(6436002)(476003)(66066001)(25786009)(6486002)(486006)(2616005)(8936002)(1730700003)(81166006)(81156014)(26005)(8676002)(6506007)(478600001)(4326008)(2351001)(2501003)(54906003)(186003)(68736007)(118296001)(102836004)(76176011);DIR:OUT;SFP:1102;SCL:1;SRVR:SN6PR13MB2287;H:SN6PR13MB2494.namprd13.prod.outlook.com;FPR:;SPF:None;LANG:en;PTR:InfoNoRecords;MX:1;A:1;
-received-spf: None (protection.outlook.com: hammerspace.com does not designate
- permitted sender hosts)
-x-ms-exchange-senderadcheck: 1
-x-microsoft-antispam-message-info: 0sd2MStjMetPyLtSrW5AIZEkDqp/ee4AIIPMd5VrDvzAJLZ+VmGju/XSegYzfyptIKagDDsnUKgDvZvv2+gHkMng/RREQw874OVMqAb20XTBX2E/mzDl+bVC+swxeJjMkj9rCxqU58GGl7lPu9hPmPNRJI03tRcEkA2J8LO7mI06zW2YN39jNpziTmWCQQ1ET7l4EjqTfVGBTMk39BoczCH/2085Iq+J6EQ8MmKI6OT6akVpZybniMSsSrdTjY5moOe52IpY0z6jxV7R6n7V5fMteJlJ10cIOVOgzNJ30a4QbuZJoldJiravXjUHf3OsVXBB6KvmREnKngAJ0W8MJNB1O7iff4uPdET3CYlN/y85sJ7QkYRwpGvIeVspanINO/47/1+kvmuhjUnO224R0gRrOdSSVmE1zbhAbthJaIw=
-Content-Type: text/plain; charset="utf-8"
-Content-ID: <3A3C3DFF2625D045A6C153219EA23492@namprd13.prod.outlook.com>
-Content-Transfer-Encoding: base64
+        id S1726866AbfDYRCe (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 25 Apr 2019 13:02:34 -0400
+Received: from mail-qt1-f193.google.com ([209.85.160.193]:33186 "EHLO
+        mail-qt1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726684AbfDYRCd (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Apr 2019 13:02:33 -0400
+Received: by mail-qt1-f193.google.com with SMTP id g7so954033qtc.0
+        for <linux-nfs@vger.kernel.org>; Thu, 25 Apr 2019 10:02:33 -0700 (PDT)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:message-id:subject:from:to:cc:date:in-reply-to
+         :references:user-agent:mime-version:content-transfer-encoding;
+        bh=x+jpAuPAGlFiSiQ8d2loDQCUGdlzGfe40YYNJOgp3Ww=;
+        b=Omf3E59ol3G2Su0OKGcMaXv1lAlJ+UnoOEy4B3vYue9ZdCZ/PpG9x0UW9e3pzLf8ps
+         PCymGvbYyWKVgpmAgoUsmHMFQVHP8Zdj+xx4W03Cs/J0Mo9Lnkc2bbT9ehTnJfSl2sTm
+         bIGjbcvook4HvbM5OprHQu4/UkAvL9jPc5F5FuFusQmF4BukMrUuqdZzY8JTdUPxd68K
+         H458dwJ1WfMu/EPbzRj9+7rkmQ4LZ2uVDY7LAoEM6hkB8sU0elw4cUSr+VKBjduu2aMA
+         rFp+j69RtPg/cTCFqxeXme8xY6PajyRg+buc+hfe4eRp4uFw6NVRztuWoZ9gumJInjMm
+         MlMg==
+X-Gm-Message-State: APjAAAVG93s8wdOaHzvvjQnXvc4GPNjEvqXCGTX/Vj7UGB2FiGPK5Ox/
+        eotI8txm+kKcYIeLakIr+apoqg==
+X-Google-Smtp-Source: APXvYqyaOLiUA1dCMQqZ715atKqlWbKITSwL9xmLiUGVtVhuRUCqeislGHWMqam2NiFqi5ZmTZHhxA==
+X-Received: by 2002:aed:20c4:: with SMTP id 62mr30379468qtb.256.1556211752441;
+        Thu, 25 Apr 2019 10:02:32 -0700 (PDT)
+Received: from tleilax.poochiereds.net (cpe-2606-A000-1100-202A-0-0-0-83B.dyn6.twc.com. [2606:a000:1100:202a::83b])
+        by smtp.gmail.com with ESMTPSA id s193sm4748161qke.4.2019.04.25.10.02.31
+        (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
+        Thu, 25 Apr 2019 10:02:31 -0700 (PDT)
+Message-ID: <8d8bb81a1d0299395ec6c75a86d4ce0e7d6a53c6.camel@redhat.com>
+Subject: Re: [PATCH 00/10] exposing knfsd opens to userspace
+From:   Jeff Layton <jlayton@redhat.com>
+To:     "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org
+Cc:     linux-fsdevel@vger.kernel.org, abe@purdue.edu,
+        lsof-l@lists.purdue.edu, util-linux@vger.kernel.org
+Date:   Thu, 25 Apr 2019 13:02:30 -0400
+In-Reply-To: <1556201060-7947-1-git-send-email-bfields@redhat.com>
+References: <1556201060-7947-1-git-send-email-bfields@redhat.com>
+Content-Type: text/plain; charset="UTF-8"
+User-Agent: Evolution 3.30.5 (3.30.5-1.fc29) 
 MIME-Version: 1.0
-X-OriginatorOrg: hammerspace.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: f5f9fe85-a87b-488b-250e-08d6c99de787
-X-MS-Exchange-CrossTenant-originalarrivaltime: 25 Apr 2019 16:48:54.8867
- (UTC)
-X-MS-Exchange-CrossTenant-fromentityheader: Hosted
-X-MS-Exchange-CrossTenant-id: 0d4fed5c-3a70-46fe-9430-ece41741f59e
-X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: SN6PR13MB2287
+Content-Transfer-Encoding: 7bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-T24gVGh1LCAyMDE5LTA0LTI1IGF0IDEyOjQ1IC0wNDAwLCBiZmllbGRzQGZpZWxkc2VzLm9yZyB3
-cm90ZToNCj4gT24gVGh1LCBBcHIgMjUsIDIwMTkgYXQgMDQ6NDA6MThQTSArMDAwMCwgVHJvbmQg
-TXlrbGVidXN0IHdyb3RlOg0KPiA+IE9uIFRodSwgMjAxOS0wNC0yNSBhdCAxMTozMyAtMDQwMCwg
-YmZpZWxkc0BmaWVsZHNlcy5vcmcgd3JvdGU6DQo+ID4gPiBPbiBUaHUsIEFwciAyNSwgMjAxOSBh
-dCAwMzowMDoyMlBNICswMDAwLCBUcm9uZCBNeWtsZWJ1c3Qgd3JvdGU6DQo+ID4gPiA+IFRoZSBh
-c3N1bXB0aW9uIGlzIHRoYXQgaWYgeW91IGhhdmUgZW5vdWdoIHByaXZpbGVnZXMgdG8gbW91bnQg
-YQ0KPiA+ID4gPiBmaWxlc3lzdGVtIHVzaW5nIHRoZSBORlMgY2xpZW50LCB0aGVuIHlvdSB3b3Vs
-ZCBhbHNvIGhhdmUNCj4gPiA+ID4gZW5vdWdoDQo+ID4gPiA+IHByaXZpbGVnZXMgdG8gcnVuIGEg
-dXNlcnNwYWNlIGNsaWVudCwgc28gdGhlcmUgaXMgbGl0dGxlIHBvaW50DQo+ID4gPiA+IGluDQo+
-ID4gPiA+IHJlc3RyaWN0aW5nIHRoZSBORlMgY2xpZW50Lg0KPiA+ID4gPiANCj4gPiA+ID4gU28g
-dGhlIGd1aWRpbmcgcHJpbmNpcGxlIGlzIHRoYXQgYSBORlMgY2xpZW50IG1vdW50IHRoYXQgaXMN
-Cj4gPiA+ID4gc3RhcnRlZA0KPiA+ID4gPiBpbg0KPiA+ID4gPiBhIGNvbnRhaW5lciBzaG91bGQg
-YmVoYXZlIGFzIGlmIGl0IHdlcmUgc3RhcnRlZCBieSBhIHByb2Nlc3MgaW4NCj4gPiA+ID4gYQ0K
-PiA+ID4gPiAicmVhbA0KPiA+ID4gPiBWTSIuIFRoYXQgbWVhbnMgdGhhdCB0aGUgcm9vdCB1aWQv
-Z2lkIGluIHRoZSBjb250YWluZXIgbWFwcyB0bw0KPiA+ID4gPiBhDQo+ID4gPiA+IHJvb3QNCj4g
-PiA+ID4gdWlkL2dpZCBvbiB0aGUgd2lyZS4NCj4gPiA+ID4gRGl0dG8sIGlmIHRoZXJlIGlzIGEg
-bmVlZCB0byBydW4gdGhlIGlkbWFwcGVyIGluIHRoZSBjb250YWluZXIsDQo+ID4gPiA+IHRoZW4N
-Cj4gPiA+ID4gdGhlIGV4cGVjdGF0aW9uIGlzIHRoYXQgcHJvY2Vzc2VzIHJ1bm5pbmcgYXMgJ3Vz
-ZXInIHdpdGggdWlkDQo+ID4gPiA+ICd1JywNCj4gPiA+ID4gd2lsbA0KPiA+ID4gPiBzZWUgdGhl
-aXIgY3JlZHMgbWFwcGVkIGNvcnJlY3RseSBieSB0aGUgaWRtYXBwZXIuIEFnYWluLCB0aGF0J3MN
-Cj4gPiA+ID4gd2hhdA0KPiA+ID4gPiB5b3Ugd291bGQgc2VlIGlmIHRoZSBwcm9jZXNzIHdlcmUg
-cnVubmluZyBpbiBhIFZNIGluc3RlYWQgb2YgYQ0KPiA+ID4gPiBjb250YWluZXIuDQo+ID4gPiA+
-IA0KPiA+ID4gPiBEb2VzIHRoYXQgYWxsIG1ha2Ugc2Vuc2U/DQo+ID4gPiANCj4gPiA+IFllcywg
-dGhhbmtzIQ0KPiA+ID4gDQo+ID4gPiBJIHRob3VnaHQgdGhlcmUgd2FzIGEgcHJvYmxlbSB0aGF0
-IHRoZSBpZG1hcHBlciBkZXBlbmRlZCBvbg0KPiA+ID4ga2V5cmluZyB1c2VybW9kZWhlbHBlciBj
-YWxscyB0aGF0IGl0IHdhcyBoYXJkIHRvIHBhc3MgbmFtZXNwYWNlDQo+ID4gPiBpbmZvcm1hdGlv
-biB0by4gIERpZCB0aGF0IGdldCBmaXhlZCBhbmQgSSBtaXNzZWQgaXQgb3Igb3IgZm9yZ290Pw0K
-PiA+IA0KPiA+IE5vLCB5b3UgYXJlIGNvcnJlY3QsIGFuZCBzbyB3ZSBhc3N1bWUgdGhlIGNvbnRh
-aW5lciBpcyB1c2luZw0KPiA+IHJwYy5pZG1hcGQNCj4gPiAoYW5kIHJwYy5nc3NkKSBpZiBpdCBp
-cyBydW5uaW5nIE5GU3Y0IHdpdGggUlBDU0VDX0dTUy4NCj4gPiANCj4gPiBJZiB0aGUga2V5cmlu
-ZyB1cGNhbGwgZ2V0cyBmaXhlZCwgdGhlbiB3ZSBtYXkgYWxsb3cgaXQgdG8gYmUgdXNlZA0KPiA+
-IGluDQo+ID4gZnV0dXJlIGtlcm5lbHMuDQo+IA0KPiBPSywgZ290IGl0LiAgSXMgdGhlcmUgYW55
-dGhpbmcgd2UgbG9zZSBieSB1c2luZw0KPiBpZG1hcGQ/ICAoSURNQVBfTkFNRVNaDQo+IG1pZ2h0
-IGJlIGEgbGltaXRhdGlvbj8pDQoNCklETUFQX05BTUVTWiBzaG91bGQgYmUgc2V0IHRvIDEyOCBi
-eSBkZWZhdWx0LCBzbyBzaG91bGQgd29yayBmb3IgbW9zdA0KY2FzZXMuIEkgZG9uJ3QgdGhpbmsg
-dGhlcmUgYXJlIGFueSBmdXJ0aGVyIGxpbWl0YXRpb25zLg0KDQotLSANClRyb25kIE15a2xlYnVz
-dA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBIYW1tZXJzcGFjZQ0KdHJvbmQubXlrbGVi
-dXN0QGhhbW1lcnNwYWNlLmNvbQ0KDQoNCg==
+On Thu, 2019-04-25 at 10:04 -0400, J. Bruce Fields wrote:
+> From: "J. Bruce Fields" <bfields@redhat.com>
+> 
+> The following patches expose information about NFSv4 opens held by knfsd
+> on behalf of NFSv4 clients.  Those are currently invisible to userspace,
+> unlike locks (/proc/locks) and local proccesses' opens (/proc/<pid>/).
+> 
+> The approach is to add a new directory /proc/fs/nfsd/clients/ with
+> subdirectories for each active NFSv4 client.  Each subdirectory has an
+> "info" file with some basic information to help identify the client and
+> an "opens" directory that lists the opens held by that client.
+> 
+> I got it working by cobbling together some poorly-understood code I
+> found in libfs, rpc_pipefs and elsewhere.  If anyone wants to wade in
+> and tell me what I've got wrong, they're more than welcome, but at this
+> stage I'm more curious for feedback on the interface.
+> 
+> I'm also cc'ing people responsible for lsof and util-linux in case they
+> have any opinions.
+> 
+> Currently these pseudofiles look like:
+> 
+>   # find /proc/fs/nfsd/clients -type f|xargs tail 
+>   ==> /proc/fs/nfsd/clients/3741/opens <==
+>   5cc0cd36/6debfb50/00000001/00000001	rw	--	fd:10:13649	'open id:\x00\x00\x00&\x00\x00\x00\x00\x00\x00\x0b\xb7\x89%\xfc\xef'
+>   5cc0cd36/6debfb50/00000003/00000001	r-	--	fd:10:13650	'open id:\x00\x00\x00&\x00\x00\x00\x00\x00\x00\x0b\xb7\x89%\xfc\xef'
+> 
+>   ==> /proc/fs/nfsd/clients/3741/info <==
+>   clientid: 6debfb505cc0cd36
+>   address: 192.168.122.36:0
+>   name: Linux NFSv4.2 test2.fieldses.org
+>   minor version: 2
+> 
+> Each line of the "opens" file is tab-delimited and describes one open,
+> and the fields are stateid, open access bits, deny bits,
+> major:minor:ino, and open owner.
+> 
+
+Nice work! We've needed this for a long time.
+
+One thing we need to consider here from the get-go though is what sort
+of ABI guarantee you want for this format. People _will_ write scripts
+that scrape this info, so we should take that into account up front.
+
+
+> So, some random questions:
+> 
+> 	- I just copied the major:minor:ino thing from /proc/locks, I
+> 	  suspect we would have picked something different to identify
+> 	  inodes if /proc/locks were done now.  (Mount id and inode?
+> 	  Something else?)
+> 
+
+That does make it easy to correlate with the info in /proc/locks.
+
+We'd have a dentry here by virtue of the nfs4_file. Should we print a
+path in addition to this?
+
+> 	- The open owner is just an opaque blob of binary data, but
+> 	  clients may choose to include some useful asci-encoded
+> 	  information, so I'm formatting them as strings with non-ascii
+> 	  stuff escaped.  For example, pynfs usually uses the name of
+> 	  the test as the open owner.  But as you see above, the ascii
+> 	  content of the Linux client's open owners is less useful.
+> 	  Also, there's no way I know of to map them back to a file
+> 	  description or process or anything else useful on the client,
+> 	  so perhaps they're of limited interest.
+> 
+> 	- I'm not sure about the stateid either.  I did think it might
+> 	  be useful just as a unique identifier for each line.
+> 	  (Actually for that it'd be enough to take just the third of
+> 	  those four numbers making up the stateid--maybe that would be
+> 	  better.)
+> 
+
+It'd be ideal to be able to easily correlate this info with what
+wireshark displays. Does wireshark display hashes for openowners? I know
+it does for stateids. If so, generating the same hash would be really
+nice.
+
+That said, waybe it's best to just dump the raw info out here though and
+rely on some postprocessing scripts for viewing it?
+
+> In the "info" file, the "name" line is the client identifier/client
+> owner provided by the client, which (like the stateowner) is just opaque
+> binary data, though as you can see here the Linux client is providing a
+> readable ascii string.
+> 
+> There's probably a lot more we could add to that info file eventually.
+> 
+> Other stuff to add next:
+> 
+> 	- nfsd/clients/#/kill that you can write to to revoke all a
+> 	  client's state if it's wedged somehow.
+
+That would also be neat. We have a bit of code to support today that in
+the fault injection code, but it'll need some cleanup and wiring it into
+a knob here would be better.
+
+> 	- lists of locks and delegations; lower priority since most of
+> 	  that information is already in /proc/locks.
+
+Agreed.
+
+> J. Bruce Fields (10):
+>   nfsd: persist nfsd filesystem across mounts
+>   nfsd: rename cl_refcount
+>   nfsd4: use reference count to free client
+>   nfsd: add nfsd/clients directory
+>   nfsd: make client/ directory names small ints
+>   rpc: replace rpc_filelist by tree_descr
+>   nfsd4: add a client info file
+>   nfsd4: add file to display list of client's opens
+>   nfsd: expose some more information about NFSv4 opens
+>   nfsd: add more information to client info file
+> 
+>  fs/nfsd/netns.h                |   6 +
+>  fs/nfsd/nfs4state.c            | 228 ++++++++++++++++++++++++++++++---
+>  fs/nfsd/nfsctl.c               | 225 +++++++++++++++++++++++++++++++-
+>  fs/nfsd/nfsd.h                 |  11 ++
+>  fs/nfsd/state.h                |   9 +-
+>  fs/seq_file.c                  |  17 +++
+>  include/linux/seq_file.h       |   2 +
+>  include/linux/string_helpers.h |   1 +
+>  lib/string_helpers.c           |   5 +-
+>  net/sunrpc/rpc_pipe.c          |  37 ++----
+>  10 files changed, 491 insertions(+), 50 deletions(-)
+> 
+
+-- 
+Jeff Layton <jlayton@redhat.com>
+
