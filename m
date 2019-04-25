@@ -2,89 +2,106 @@ Return-Path: <SRS0=LIrp=S3=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,USER_AGENT_GIT
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A0C99C43218
-	for <linux-nfs@archiver.kernel.org>; Thu, 25 Apr 2019 13:36:55 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 08FB4C4321A
+	for <linux-nfs@archiver.kernel.org>; Thu, 25 Apr 2019 14:04:25 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 6A4A0206BF
-	for <linux-nfs@archiver.kernel.org>; Thu, 25 Apr 2019 13:36:55 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id F1754206BA
+	for <linux-nfs@archiver.kernel.org>; Thu, 25 Apr 2019 14:04:24 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1725977AbfDYNgy (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 25 Apr 2019 09:36:54 -0400
-Received: from mx1.redhat.com ([209.132.183.28]:39480 "EHLO mx1.redhat.com"
+        id S1727391AbfDYOEX (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 25 Apr 2019 10:04:23 -0400
+Received: from fieldses.org ([173.255.197.46]:50856 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725935AbfDYNgy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 25 Apr 2019 09:36:54 -0400
-Received: from smtp.corp.redhat.com (int-mx05.intmail.prod.int.phx2.redhat.com [10.5.11.15])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 57414308A11E;
-        Thu, 25 Apr 2019 13:36:54 +0000 (UTC)
-Received: from idlethread.redhat.com (ovpn-116-36.ams2.redhat.com [10.36.116.36])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id D9FC95D719;
-        Thu, 25 Apr 2019 13:36:52 +0000 (UTC)
-From:   Roberto Bergantinos Corpas <rbergant@redhat.com>
+        id S1727212AbfDYOEX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 25 Apr 2019 10:04:23 -0400
+Received: by fieldses.org (Postfix, from userid 2815)
+        id AB575BD7; Thu, 25 Apr 2019 10:04:22 -0400 (EDT)
+From:   "J. Bruce Fields" <bfields@redhat.com>
 To:     linux-nfs@vger.kernel.org
-Cc:     trond.myklebust@hammerspace.com, anna.schumaker@netapp.com
-Subject: [PATCH] NFS: make nfs_match_client killable
-Date:   Thu, 25 Apr 2019 15:36:51 +0200
-Message-Id: <20190425133651.17618-1-rbergant@redhat.com>
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.15
-X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.44]); Thu, 25 Apr 2019 13:36:54 +0000 (UTC)
+Cc:     linux-fsdevel@vger.kernel.org, abe@purdue.edu,
+        lsof-l@lists.purdue.edu, util-linux@vger.kernel.org,
+        jlayton@redhat.com, "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 01/10] nfsd: persist nfsd filesystem across mounts
+Date:   Thu, 25 Apr 2019 10:04:11 -0400
+Message-Id: <1556201060-7947-2-git-send-email-bfields@redhat.com>
+X-Mailer: git-send-email 1.8.3.1
+In-Reply-To: <1556201060-7947-1-git-send-email-bfields@redhat.com>
+References: <1556201060-7947-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-    Actually we don't do anything with return value from
-    nfs_wait_client_init_complete in nfs_match_client, as a
-    consequence if we get a fatal signal and client is not
-    fully initialised, we'll loop to "again" label
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-    This has been proven to cause soft lockups on some scenarios
-    (no-carrier but configured network interfaces)
+Keep around one internal mount of the nfsd filesystem so that we can
+e.g. add stuff to it when clients come and go, regardless of whether
+anyone has it mounted.
 
-Signed-off-by: Roberto Bergantinos Corpas <rbergant@redhat.com>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/nfs/client.c | 7 ++++++-
- 1 file changed, 6 insertions(+), 1 deletion(-)
+ fs/nfsd/netns.h  |  3 +++
+ fs/nfsd/nfsctl.c | 13 +++++++++++++
+ 2 files changed, 16 insertions(+)
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 90d71fda65ce..350cfa561e0e 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -284,6 +284,7 @@ static struct nfs_client *nfs_match_client(const struct nfs_client_initdata *dat
- 	struct nfs_client *clp;
- 	const struct sockaddr *sap = data->addr;
- 	struct nfs_net *nn = net_generic(data->net, nfs_net_id);
-+	int error;
+diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
+index 32cb8c027483..cce335e1ec98 100644
+--- a/fs/nfsd/netns.h
++++ b/fs/nfsd/netns.h
+@@ -55,6 +55,9 @@ struct nfsd_net {
+ 	bool grace_ended;
+ 	time_t boot_time;
  
- again:
- 	list_for_each_entry(clp, &nn->nfs_client_list, cl_share_link) {
-@@ -296,8 +297,10 @@ static struct nfs_client *nfs_match_client(const struct nfs_client_initdata *dat
- 		if (clp->cl_cons_state > NFS_CS_READY) {
- 			refcount_inc(&clp->cl_count);
- 			spin_unlock(&nn->nfs_client_lock);
--			nfs_wait_client_init_complete(clp);
-+			error = nfs_wait_client_init_complete(clp);
- 			nfs_put_client(clp);
-+			if (error < 0)
-+				return ERR_PTR(error);
- 			spin_lock(&nn->nfs_client_lock);
- 			goto again;
- 		}
-@@ -407,6 +410,8 @@ struct nfs_client *nfs_get_client(const struct nfs_client_initdata *cl_init)
- 		clp = nfs_match_client(cl_init);
- 		if (clp) {
- 			spin_unlock(&nn->nfs_client_lock);
-+			if (IS_ERR(clp))
-+				return clp;
- 			if (new)
- 				new->rpc_ops->free_client(new);
- 			return nfs_found_client(cl_init, clp);
++	/* internal mount of the "nfsd" pseudofilesystem: */
++	struct vfsmount *nfsd_mnt;
++
+ 	/*
+ 	 * reclaim_str_hashtbl[] holds known client info from previous reset/reboot
+ 	 * used in reboot/reset lease grace period processing
+diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+index f2feb2d11bae..8d2062428569 100644
+--- a/fs/nfsd/nfsctl.c
++++ b/fs/nfsd/nfsctl.c
+@@ -1231,6 +1231,7 @@ unsigned int nfsd_net_id;
+ static __net_init int nfsd_init_net(struct net *net)
+ {
+ 	int retval;
++	struct vfsmount *mnt;
+ 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
+ 
+ 	retval = nfsd_export_init(net);
+@@ -1248,8 +1249,17 @@ static __net_init int nfsd_init_net(struct net *net)
+ 
+ 	atomic_set(&nn->ntf_refcnt, 0);
+ 	init_waitqueue_head(&nn->ntf_wq);
++
++	mnt =  vfs_kern_mount(&nfsd_fs_type, SB_KERNMOUNT, "nfsd", NULL);
++	if (IS_ERR(mnt)) {
++		retval = PTR_ERR(mnt);
++		goto out_mount_err;
++	}
++	nn->nfsd_mnt = mnt;
+ 	return 0;
+ 
++out_mount_err:
++	nfsd_idmap_shutdown(net);
+ out_idmap_error:
+ 	nfsd_export_shutdown(net);
+ out_export_error:
+@@ -1258,6 +1268,9 @@ static __net_init int nfsd_init_net(struct net *net)
+ 
+ static __net_exit void nfsd_exit_net(struct net *net)
+ {
++	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
++
++	mntput(nn->nfsd_mnt);
+ 	nfsd_idmap_shutdown(net);
+ 	nfsd_export_shutdown(net);
+ }
 -- 
-2.14.5
+2.20.1
 
