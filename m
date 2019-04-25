@@ -2,115 +2,181 @@ Return-Path: <SRS0=LIrp=S3=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,USER_AGENT_GIT
-	autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-8.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED,
+	USER_AGENT_MUTT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 317C3C4321A
-	for <linux-nfs@archiver.kernel.org>; Thu, 25 Apr 2019 14:04:41 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D0F0CC43218
+	for <linux-nfs@archiver.kernel.org>; Thu, 25 Apr 2019 14:32:44 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 1E663206BA
-	for <linux-nfs@archiver.kernel.org>; Thu, 25 Apr 2019 14:04:41 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id DE3AF2067D
+	for <linux-nfs@archiver.kernel.org>; Thu, 25 Apr 2019 14:32:44 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727806AbfDYOEX (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 25 Apr 2019 10:04:23 -0400
-Received: from fieldses.org ([173.255.197.46]:50866 "EHLO fieldses.org"
+        id S1725959AbfDYOcn (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 25 Apr 2019 10:32:43 -0400
+Received: from fieldses.org ([173.255.197.46]:51016 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726006AbfDYOEX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 25 Apr 2019 10:04:23 -0400
+        id S1725900AbfDYOcn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 25 Apr 2019 10:32:43 -0400
 Received: by fieldses.org (Postfix, from userid 2815)
-        id C0D361C9D; Thu, 25 Apr 2019 10:04:22 -0400 (EDT)
-From:   "J. Bruce Fields" <bfields@redhat.com>
-To:     linux-nfs@vger.kernel.org
-Cc:     linux-fsdevel@vger.kernel.org, abe@purdue.edu,
-        lsof-l@lists.purdue.edu, util-linux@vger.kernel.org,
-        jlayton@redhat.com, "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 03/10] nfsd4: use reference count to free client
-Date:   Thu, 25 Apr 2019 10:04:13 -0400
-Message-Id: <1556201060-7947-4-git-send-email-bfields@redhat.com>
-X-Mailer: git-send-email 1.8.3.1
-In-Reply-To: <1556201060-7947-1-git-send-email-bfields@redhat.com>
-References: <1556201060-7947-1-git-send-email-bfields@redhat.com>
+        id 5E6471C83; Thu, 25 Apr 2019 10:32:43 -0400 (EDT)
+Date:   Thu, 25 Apr 2019 10:32:43 -0400
+To:     Trond Myklebust <trondmy@gmail.com>
+Cc:     Anna Schumaker <Anna.Schumaker@netapp.com>,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 6/9] NFSv4: Convert the NFS client idmapper to use the
+ container user namespace
+Message-ID: <20190425143243.GA8133@fieldses.org>
+References: <20190424214650.4658-1-trond.myklebust@hammerspace.com>
+ <20190424214650.4658-2-trond.myklebust@hammerspace.com>
+ <20190424214650.4658-3-trond.myklebust@hammerspace.com>
+ <20190424214650.4658-4-trond.myklebust@hammerspace.com>
+ <20190424214650.4658-5-trond.myklebust@hammerspace.com>
+ <20190424214650.4658-6-trond.myklebust@hammerspace.com>
+ <20190424214650.4658-7-trond.myklebust@hammerspace.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20190424214650.4658-7-trond.myklebust@hammerspace.com>
+User-Agent: Mutt/1.5.21 (2010-09-15)
+From:   bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On Wed, Apr 24, 2019 at 05:46:47PM -0400, Trond Myklebust wrote:
+> When mapping NFS identities using the NFSv4 idmapper, we want to substitute
+> for the uids and gids that would normally go on the wire as part of a
+> NFSv3 request. So we use the same mapping in the NFSv4 upcall as we
+> use in the NFSv3 RPC call (i.e. the mapping stored in the rpc_clnt cred).
 
-Keep a second reference count which is what is really used to decide
-when to free the client's memory.  File objects under nfsd/client/ will
-hold these references.
+I'm a little lost.  Do I have it right that the following id's are all
+the same?:
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4state.c | 26 +++++++++++++++++++++-----
- fs/nfsd/state.h     |  1 +
- 2 files changed, 22 insertions(+), 5 deletions(-)
+	- id's used on the wire
+	- id's used in NFSv4 idmapper upcalls
+	- id's used in the namespace of the mounting process
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 9dab61bbd256..83d0ee329e14 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -1869,6 +1869,24 @@ static struct nfs4_client *alloc_client(struct xdr_netobj name)
- 	return NULL;
- }
- 
-+static void __free_client(struct kref *k)
-+{
-+	struct nfs4_client *clp = container_of(k, struct nfs4_client, cl_ref);
-+
-+	free_svc_cred(&clp->cl_cred);
-+	kfree(clp->cl_ownerstr_hashtbl);
-+	kfree(clp->cl_name.data);
-+	idr_destroy(&clp->cl_stateids);
-+	if (clp->cl_nfsd_dentry)
-+		nfsd_client_rmdir(clp->cl_nfsd_dentry);
-+	kmem_cache_free(client_slab, clp);
-+}
-+
-+void drop_client(struct nfs4_client *clp)
-+{
-+	kref_put(&clp->cl_ref, __free_client);
-+}
-+
- static void
- free_client(struct nfs4_client *clp)
- {
-@@ -1881,11 +1899,7 @@ free_client(struct nfs4_client *clp)
- 		free_session(ses);
- 	}
- 	rpc_destroy_wait_queue(&clp->cl_cb_waitq);
--	free_svc_cred(&clp->cl_cred);
--	kfree(clp->cl_ownerstr_hashtbl);
--	kfree(clp->cl_name.data);
--	idr_destroy(&clp->cl_stateids);
--	kmem_cache_free(client_slab, clp);
-+	drop_client(clp);
- }
- 
- /* must be called under the client_lock */
-@@ -2195,6 +2209,8 @@ static struct nfs4_client *create_client(struct xdr_netobj name,
- 		free_client(clp);
- 		return NULL;
- 	}
-+
-+	kref_init(&clp->cl_ref);
- 	nfsd4_init_cb(&clp->cl_cb_null, clp, NULL, NFSPROC4_CLNT_CB_NULL);
- 	clp->cl_time = get_seconds();
- 	clear_bit(0, &clp->cl_cb_slot_busy);
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index aa9f1676e88a..aa26ae520fb6 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -347,6 +347,7 @@ struct nfs4_client {
- 	u32			cl_exchange_flags;
- 	/* number of rpc's in progress over an associated session: */
- 	atomic_t		cl_rpc_users;
-+	struct kref		cl_ref;
- 	struct nfs4_op_map      cl_spo_must_allow;
- 
- 	/* for nfs41 callbacks */
--- 
-2.20.1
+And is it assumed that those are all in one namespace?  So different
+containers can't use different on-the-wire id's?
 
+--b.
+
+> 
+> Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
+> ---
+>  fs/nfs/nfs4idmap.c | 27 ++++++++++++++++++++-------
+>  1 file changed, 20 insertions(+), 7 deletions(-)
+> 
+> diff --git a/fs/nfs/nfs4idmap.c b/fs/nfs/nfs4idmap.c
+> index bf34ddaa2ad7..4884fdae28fb 100644
+> --- a/fs/nfs/nfs4idmap.c
+> +++ b/fs/nfs/nfs4idmap.c
+> @@ -69,8 +69,16 @@ struct idmap {
+>  	struct rpc_pipe		*idmap_pipe;
+>  	struct idmap_legacy_upcalldata *idmap_upcall_data;
+>  	struct mutex		idmap_mutex;
+> +	const struct cred	*cred;
+>  };
+>  
+> +static struct user_namespace *idmap_userns(const struct idmap *idmap)
+> +{
+> +	if (idmap && idmap->cred)
+> +		return idmap->cred->user_ns;
+> +	return &init_user_ns;
+> +}
+> +
+>  /**
+>   * nfs_fattr_init_names - initialise the nfs_fattr owner_name/group_name fields
+>   * @fattr: fully initialised struct nfs_fattr
+> @@ -271,14 +279,15 @@ static struct key *nfs_idmap_request_key(const char *name, size_t namelen,
+>  					 const char *type, struct idmap *idmap)
+>  {
+>  	char *desc;
+> -	struct key *rkey;
+> +	struct key *rkey = ERR_PTR(-EAGAIN);
+>  	ssize_t ret;
+>  
+>  	ret = nfs_idmap_get_desc(name, namelen, type, strlen(type), &desc);
+>  	if (ret < 0)
+>  		return ERR_PTR(ret);
+>  
+> -	rkey = request_key(&key_type_id_resolver, desc, "");
+> +	if (!idmap->cred || idmap->cred->user_ns == &init_user_ns)
+> +		rkey = request_key(&key_type_id_resolver, desc, "");
+>  	if (IS_ERR(rkey)) {
+>  		mutex_lock(&idmap->idmap_mutex);
+>  		rkey = request_key_with_auxdata(&key_type_id_resolver_legacy,
+> @@ -452,6 +461,9 @@ nfs_idmap_new(struct nfs_client *clp)
+>  	if (idmap == NULL)
+>  		return -ENOMEM;
+>  
+> +	mutex_init(&idmap->idmap_mutex);
+> +	idmap->cred = get_cred(clp->cl_rpcclient->cl_cred);
+> +
+>  	rpc_init_pipe_dir_object(&idmap->idmap_pdo,
+>  			&nfs_idmap_pipe_dir_object_ops,
+>  			idmap);
+> @@ -462,7 +474,6 @@ nfs_idmap_new(struct nfs_client *clp)
+>  		goto err;
+>  	}
+>  	idmap->idmap_pipe = pipe;
+> -	mutex_init(&idmap->idmap_mutex);
+>  
+>  	error = rpc_add_pipe_dir_object(clp->cl_net,
+>  			&clp->cl_rpcclient->cl_pipedir_objects,
+> @@ -475,6 +486,7 @@ nfs_idmap_new(struct nfs_client *clp)
+>  err_destroy_pipe:
+>  	rpc_destroy_pipe_data(idmap->idmap_pipe);
+>  err:
+> +	put_cred(idmap->cred);
+>  	kfree(idmap);
+>  	return error;
+>  }
+> @@ -491,6 +503,7 @@ nfs_idmap_delete(struct nfs_client *clp)
+>  			&clp->cl_rpcclient->cl_pipedir_objects,
+>  			&idmap->idmap_pdo);
+>  	rpc_destroy_pipe_data(idmap->idmap_pipe);
+> +	put_cred(idmap->cred);
+>  	kfree(idmap);
+>  }
+>  
+> @@ -735,7 +748,7 @@ int nfs_map_name_to_uid(const struct nfs_server *server, const char *name, size_
+>  	if (!nfs_map_string_to_numeric(name, namelen, &id))
+>  		ret = nfs_idmap_lookup_id(name, namelen, "uid", &id, idmap);
+>  	if (ret == 0) {
+> -		*uid = make_kuid(&init_user_ns, id);
+> +		*uid = make_kuid(idmap_userns(idmap), id);
+>  		if (!uid_valid(*uid))
+>  			ret = -ERANGE;
+>  	}
+> @@ -752,7 +765,7 @@ int nfs_map_group_to_gid(const struct nfs_server *server, const char *name, size
+>  	if (!nfs_map_string_to_numeric(name, namelen, &id))
+>  		ret = nfs_idmap_lookup_id(name, namelen, "gid", &id, idmap);
+>  	if (ret == 0) {
+> -		*gid = make_kgid(&init_user_ns, id);
+> +		*gid = make_kgid(idmap_userns(idmap), id);
+>  		if (!gid_valid(*gid))
+>  			ret = -ERANGE;
+>  	}
+> @@ -766,7 +779,7 @@ int nfs_map_uid_to_name(const struct nfs_server *server, kuid_t uid, char *buf,
+>  	int ret = -EINVAL;
+>  	__u32 id;
+>  
+> -	id = from_kuid(&init_user_ns, uid);
+> +	id = from_kuid_munged(idmap_userns(idmap), uid);
+>  	if (!(server->caps & NFS_CAP_UIDGID_NOMAP))
+>  		ret = nfs_idmap_lookup_name(id, "user", buf, buflen, idmap);
+>  	if (ret < 0)
+> @@ -780,7 +793,7 @@ int nfs_map_gid_to_group(const struct nfs_server *server, kgid_t gid, char *buf,
+>  	int ret = -EINVAL;
+>  	__u32 id;
+>  
+> -	id = from_kgid(&init_user_ns, gid);
+> +	id = from_kgid_munged(idmap_userns(idmap), gid);
+>  	if (!(server->caps & NFS_CAP_UIDGID_NOMAP))
+>  		ret = nfs_idmap_lookup_name(id, "group", buf, buflen, idmap);
+>  	if (ret < 0)
+> -- 
+> 2.21.0
