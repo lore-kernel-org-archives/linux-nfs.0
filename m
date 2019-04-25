@@ -2,33 +2,35 @@ Return-Path: <SRS0=LIrp=S3=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
+X-Spam-Status: No, score=-9.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,USER_AGENT_GIT
 	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 45575C4321B
-	for <linux-nfs@archiver.kernel.org>; Thu, 25 Apr 2019 14:04:36 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D8493C43219
+	for <linux-nfs@archiver.kernel.org>; Thu, 25 Apr 2019 14:04:38 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 39A1D206BA
-	for <linux-nfs@archiver.kernel.org>; Thu, 25 Apr 2019 14:04:36 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id C9728206BA
+	for <linux-nfs@archiver.kernel.org>; Thu, 25 Apr 2019 14:04:38 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729257AbfDYOEd (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S1729064AbfDYOEd (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Thu, 25 Apr 2019 10:04:33 -0400
-Received: from fieldses.org ([173.255.197.46]:50854 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:50906 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726710AbfDYOEY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        id S1727541AbfDYOEY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
         Thu, 25 Apr 2019 10:04:24 -0400
 Received: by fieldses.org (Postfix, from userid 2815)
-        id A73321C83; Thu, 25 Apr 2019 10:04:22 -0400 (EDT)
+        id DAEEE201A; Thu, 25 Apr 2019 10:04:22 -0400 (EDT)
 From:   "J. Bruce Fields" <bfields@redhat.com>
 To:     linux-nfs@vger.kernel.org
 Cc:     linux-fsdevel@vger.kernel.org, abe@purdue.edu,
         lsof-l@lists.purdue.edu, util-linux@vger.kernel.org,
         jlayton@redhat.com, "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 00/10] exposing knfsd opens to userspace
-Date:   Thu, 25 Apr 2019 10:04:10 -0400
-Message-Id: <1556201060-7947-1-git-send-email-bfields@redhat.com>
+Subject: [PATCH 06/10] rpc: replace rpc_filelist by tree_descr
+Date:   Thu, 25 Apr 2019 10:04:16 -0400
+Message-Id: <1556201060-7947-7-git-send-email-bfields@redhat.com>
 X-Mailer: git-send-email 1.8.3.1
+In-Reply-To: <1556201060-7947-1-git-send-email-bfields@redhat.com>
+References: <1556201060-7947-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
@@ -36,103 +38,141 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: "J. Bruce Fields" <bfields@redhat.com>
 
-The following patches expose information about NFSv4 opens held by knfsd
-on behalf of NFSv4 clients.  Those are currently invisible to userspace,
-unlike locks (/proc/locks) and local proccesses' opens (/proc/<pid>/).
+Use a common structure instead of defining our own here.
 
-The approach is to add a new directory /proc/fs/nfsd/clients/ with
-subdirectories for each active NFSv4 client.  Each subdirectory has an
-"info" file with some basic information to help identify the client and
-an "opens" directory that lists the opens held by that client.
+The only difference is using an int instead of umode_t for the mode
+field; I haven't tried to figure out why tree_descr uses int.
 
-I got it working by cobbling together some poorly-understood code I
-found in libfs, rpc_pipefs and elsewhere.  If anyone wants to wade in
-and tell me what I've got wrong, they're more than welcome, but at this
-stage I'm more curious for feedback on the interface.
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ net/sunrpc/rpc_pipe.c | 37 ++++++++++++++-----------------------
+ 1 file changed, 14 insertions(+), 23 deletions(-)
 
-I'm also cc'ing people responsible for lsof and util-linux in case they
-have any opinions.
-
-Currently these pseudofiles look like:
-
-  # find /proc/fs/nfsd/clients -type f|xargs tail 
-  ==> /proc/fs/nfsd/clients/3741/opens <==
-  5cc0cd36/6debfb50/00000001/00000001	rw	--	fd:10:13649	'open id:\x00\x00\x00&\x00\x00\x00\x00\x00\x00\x0b\xb7\x89%\xfc\xef'
-  5cc0cd36/6debfb50/00000003/00000001	r-	--	fd:10:13650	'open id:\x00\x00\x00&\x00\x00\x00\x00\x00\x00\x0b\xb7\x89%\xfc\xef'
-
-  ==> /proc/fs/nfsd/clients/3741/info <==
-  clientid: 6debfb505cc0cd36
-  address: 192.168.122.36:0
-  name: Linux NFSv4.2 test2.fieldses.org
-  minor version: 2
-
-Each line of the "opens" file is tab-delimited and describes one open,
-and the fields are stateid, open access bits, deny bits,
-major:minor:ino, and open owner.
-
-So, some random questions:
-
-	- I just copied the major:minor:ino thing from /proc/locks, I
-	  suspect we would have picked something different to identify
-	  inodes if /proc/locks were done now.  (Mount id and inode?
-	  Something else?)
-
-	- The open owner is just an opaque blob of binary data, but
-	  clients may choose to include some useful asci-encoded
-	  information, so I'm formatting them as strings with non-ascii
-	  stuff escaped.  For example, pynfs usually uses the name of
-	  the test as the open owner.  But as you see above, the ascii
-	  content of the Linux client's open owners is less useful.
-	  Also, there's no way I know of to map them back to a file
-	  description or process or anything else useful on the client,
-	  so perhaps they're of limited interest.
-
-	- I'm not sure about the stateid either.  I did think it might
-	  be useful just as a unique identifier for each line.
-	  (Actually for that it'd be enough to take just the third of
-	  those four numbers making up the stateid--maybe that would be
-	  better.)
-
-In the "info" file, the "name" line is the client identifier/client
-owner provided by the client, which (like the stateowner) is just opaque
-binary data, though as you can see here the Linux client is providing a
-readable ascii string.
-
-There's probably a lot more we could add to that info file eventually.
-
-Other stuff to add next:
-
-	- nfsd/clients/#/kill that you can write to to revoke all a
-	  client's state if it's wedged somehow.
-	- lists of locks and delegations; lower priority since most of
-	  that information is already in /proc/locks.
-
---b.
-
-J. Bruce Fields (10):
-  nfsd: persist nfsd filesystem across mounts
-  nfsd: rename cl_refcount
-  nfsd4: use reference count to free client
-  nfsd: add nfsd/clients directory
-  nfsd: make client/ directory names small ints
-  rpc: replace rpc_filelist by tree_descr
-  nfsd4: add a client info file
-  nfsd4: add file to display list of client's opens
-  nfsd: expose some more information about NFSv4 opens
-  nfsd: add more information to client info file
-
- fs/nfsd/netns.h                |   6 +
- fs/nfsd/nfs4state.c            | 228 ++++++++++++++++++++++++++++++---
- fs/nfsd/nfsctl.c               | 225 +++++++++++++++++++++++++++++++-
- fs/nfsd/nfsd.h                 |  11 ++
- fs/nfsd/state.h                |   9 +-
- fs/seq_file.c                  |  17 +++
- include/linux/seq_file.h       |   2 +
- include/linux/string_helpers.h |   1 +
- lib/string_helpers.c           |   5 +-
- net/sunrpc/rpc_pipe.c          |  37 ++----
- 10 files changed, 491 insertions(+), 50 deletions(-)
-
+diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
+index 69663681bf9d..9af9f4c8fa1e 100644
+--- a/net/sunrpc/rpc_pipe.c
++++ b/net/sunrpc/rpc_pipe.c
+@@ -460,15 +460,6 @@ static const struct file_operations rpc_info_operations = {
+ };
+ 
+ 
+-/*
+- * Description of fs contents.
+- */
+-struct rpc_filelist {
+-	const char *name;
+-	const struct file_operations *i_fop;
+-	umode_t mode;
+-};
+-
+ static struct inode *
+ rpc_get_inode(struct super_block *sb, umode_t mode)
+ {
+@@ -648,7 +639,7 @@ static struct dentry *__rpc_lookup_create_exclusive(struct dentry *parent,
+  * FIXME: This probably has races.
+  */
+ static void __rpc_depopulate(struct dentry *parent,
+-			     const struct rpc_filelist *files,
++			     const struct tree_descr *files,
+ 			     int start, int eof)
+ {
+ 	struct inode *dir = d_inode(parent);
+@@ -680,7 +671,7 @@ static void __rpc_depopulate(struct dentry *parent,
+ }
+ 
+ static void rpc_depopulate(struct dentry *parent,
+-			   const struct rpc_filelist *files,
++			   const struct tree_descr *files,
+ 			   int start, int eof)
+ {
+ 	struct inode *dir = d_inode(parent);
+@@ -691,7 +682,7 @@ static void rpc_depopulate(struct dentry *parent,
+ }
+ 
+ static int rpc_populate(struct dentry *parent,
+-			const struct rpc_filelist *files,
++			const struct tree_descr *files,
+ 			int start, int eof,
+ 			void *private)
+ {
+@@ -711,7 +702,7 @@ static int rpc_populate(struct dentry *parent,
+ 			case S_IFREG:
+ 				err = __rpc_create(dir, dentry,
+ 						files[i].mode,
+-						files[i].i_fop,
++						files[i].ops,
+ 						private);
+ 				break;
+ 			case S_IFDIR:
+@@ -1015,10 +1006,10 @@ enum {
+ 	RPCAUTH_EOF
+ };
+ 
+-static const struct rpc_filelist authfiles[] = {
++static const struct tree_descr authfiles[] = {
+ 	[RPCAUTH_info] = {
+ 		.name = "info",
+-		.i_fop = &rpc_info_operations,
++		.ops = &rpc_info_operations,
+ 		.mode = S_IFREG | 0400,
+ 	},
+ };
+@@ -1076,20 +1067,20 @@ int rpc_remove_client_dir(struct rpc_clnt *rpc_client)
+ 	return rpc_rmdir_depopulate(dentry, rpc_clntdir_depopulate);
+ }
+ 
+-static const struct rpc_filelist cache_pipefs_files[3] = {
++static const struct tree_descr cache_pipefs_files[3] = {
+ 	[0] = {
+ 		.name = "channel",
+-		.i_fop = &cache_file_operations_pipefs,
++		.ops = &cache_file_operations_pipefs,
+ 		.mode = S_IFREG | 0600,
+ 	},
+ 	[1] = {
+ 		.name = "content",
+-		.i_fop = &content_file_operations_pipefs,
++		.ops = &content_file_operations_pipefs,
+ 		.mode = S_IFREG | 0400,
+ 	},
+ 	[2] = {
+ 		.name = "flush",
+-		.i_fop = &cache_flush_operations_pipefs,
++		.ops = &cache_flush_operations_pipefs,
+ 		.mode = S_IFREG | 0600,
+ 	},
+ };
+@@ -1145,7 +1136,7 @@ enum {
+ 	RPCAUTH_RootEOF
+ };
+ 
+-static const struct rpc_filelist files[] = {
++static const struct tree_descr files[] = {
+ 	[RPCAUTH_lockd] = {
+ 		.name = "lockd",
+ 		.mode = S_IFDIR | 0555,
+@@ -1242,7 +1233,7 @@ void rpc_put_sb_net(const struct net *net)
+ }
+ EXPORT_SYMBOL_GPL(rpc_put_sb_net);
+ 
+-static const struct rpc_filelist gssd_dummy_clnt_dir[] = {
++static const struct tree_descr gssd_dummy_clnt_dir[] = {
+ 	[0] = {
+ 		.name = "clntXX",
+ 		.mode = S_IFDIR | 0555,
+@@ -1277,10 +1268,10 @@ rpc_dummy_info_show(struct seq_file *m, void *v)
+ }
+ DEFINE_SHOW_ATTRIBUTE(rpc_dummy_info);
+ 
+-static const struct rpc_filelist gssd_dummy_info_file[] = {
++static const struct tree_descr gssd_dummy_info_file[] = {
+ 	[0] = {
+ 		.name = "info",
+-		.i_fop = &rpc_dummy_info_fops,
++		.ops = &rpc_dummy_info_fops,
+ 		.mode = S_IFREG | 0400,
+ 	},
+ };
 -- 
 2.20.1
 
