@@ -1,121 +1,85 @@
-Return-Path: <SRS0=LIrp=S3=vger.kernel.org=linux-nfs-owner@kernel.org>
+Return-Path: <SRS0=vcFy=S4=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-2.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_PASS,USER_AGENT_MUTT autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 47E30C43218
-	for <linux-nfs@archiver.kernel.org>; Thu, 25 Apr 2019 23:20:20 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C63E5C43219
+	for <linux-nfs@archiver.kernel.org>; Fri, 26 Apr 2019 01:18:06 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 6E08B20717
-	for <linux-nfs@archiver.kernel.org>; Thu, 25 Apr 2019 23:20:20 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id A174C20878
+	for <linux-nfs@archiver.kernel.org>; Fri, 26 Apr 2019 01:18:06 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728158AbfDYXUT (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 25 Apr 2019 19:20:19 -0400
-Received: from mx2.suse.de ([195.135.220.15]:60208 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1727562AbfDYXUT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 25 Apr 2019 19:20:19 -0400
-X-Virus-Scanned: by amavisd-new at test-mx.suse.de
-Received: from relay2.suse.de (unknown [195.135.220.254])
-        by mx1.suse.de (Postfix) with ESMTP id A53B3AF6E;
-        Thu, 25 Apr 2019 23:20:16 +0000 (UTC)
-From:   NeilBrown <neilb@suse.com>
-To:     Andreas Dilger <adilger@dilger.ca>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Date:   Fri, 26 Apr 2019 09:20:06 +1000
-Cc:     linux-nfs <linux-nfs@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>, abe@purdue.edu,
-        lsof-l@lists.purdue.edu, util-linux@vger.kernel.org,
-        Jeff Layton <jlayton@redhat.com>,
-        James Simmons <uja.ornl@gmail.com>
-Subject: Re: [PATCH 00/10] exposing knfsd opens to userspace
-In-Reply-To: <B37B2837-E8C8-41EA-9A2D-3F8B93304FDD@dilger.ca>
-References: <1556201060-7947-1-git-send-email-bfields@redhat.com> <B37B2837-E8C8-41EA-9A2D-3F8B93304FDD@dilger.ca>
-Message-ID: <87lfzx65ax.fsf@notabene.neil.brown.name>
+        id S1729501AbfDZBSF (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 25 Apr 2019 21:18:05 -0400
+Received: from fieldses.org ([173.255.197.46]:52054 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1727782AbfDZBSF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 25 Apr 2019 21:18:05 -0400
+Received: by fieldses.org (Postfix, from userid 2815)
+        id 8816A1C98; Thu, 25 Apr 2019 21:18:04 -0400 (EDT)
+Date:   Thu, 25 Apr 2019 21:18:04 -0400
+From:   "J. Bruce Fields" <bfields@fieldses.org>
+To:     Andreas Dilger <adilger@dilger.ca>
+Cc:     Jeff Layton <jlayton@redhat.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        linux-nfs <linux-nfs@vger.kernel.org>,
+        linux-fsdevel@vger.kernel.org, abe@purdue.edu,
+        lsof-l@lists.purdue.edu, util-linux@vger.kernel.org
+Subject: Re: [PATCH 08/10] nfsd4: add file to display list of client's opens
+Message-ID: <20190426011804.GA12457@fieldses.org>
+References: <1556201060-7947-1-git-send-email-bfields@redhat.com>
+ <1556201060-7947-9-git-send-email-bfields@redhat.com>
+ <d26e7611f4e610bff81a16abbb88ca1c5ed70c91.camel@redhat.com>
+ <20190425201413.GB9889@fieldses.org>
+ <7F460FEA-BD69-4559-926C-5C1B0CF90E3C@dilger.ca>
 MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <7F460FEA-BD69-4559-926C-5C1B0CF90E3C@dilger.ca>
+User-Agent: Mutt/1.5.21 (2010-09-15)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
---=-=-=
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+On Thu, Apr 25, 2019 at 11:14:23PM +0200, Andreas Dilger wrote:
+> On Apr 25, 2019, at 10:14 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> > 
+> > On Thu, Apr 25, 2019 at 02:04:59PM -0400, Jeff Layton wrote:
+> >> More bikeshedding: should we have a "states" file instead of an "opens"
+> >> file and print a different set of output for each stateid type?
+> > 
+> > Sure.  The format of the file could be something like
+> > 
+> > 	<stateid> open rw -- <openowner>...
+> > 	<stateid> lock r 0-EOF <lockowner>...
+> > 	<stateid> deleg r
+> > 
+> > I wonder if we could put owners on separate lines and do some
+> > heirarchical thing to show owner-stateid relationships?  Hm.  That's
+> > kind of appealing but more work.
+> 
+> My suggestion here would be to use YAML-formatted output rather than
+> space/tab separated positional fields.  That can still be made human
+> readable, but also machine parseable and extensible if formatted properly.
 
-On Thu, Apr 25 2019, Andreas Dilger wrote:
+Well, anything we do will be machine-parseable.  But I can believe YAML
+would make future extension easier.  It doesn't look like it would be
+more complicated to generate.  It uses C-style escaping (like \x32) so
+there'd be no change to how we format binary blobs.
 
-> On Apr 25, 2019, at 4:04 PM, J. Bruce Fields <bfields@redhat.com> wrote:
->>=20
->> From: "J. Bruce Fields" <bfields@redhat.com>
->>=20
->> The following patches expose information about NFSv4 opens held by knfsd
->> on behalf of NFSv4 clients.  Those are currently invisible to userspace,
->> unlike locks (/proc/locks) and local proccesses' opens (/proc/<pid>/).
->>=20
->> The approach is to add a new directory /proc/fs/nfsd/clients/ with
->> subdirectories for each active NFSv4 client.  Each subdirectory has an
->> "info" file with some basic information to help identify the client and
->> an "opens" directory that lists the opens held by that client.
->>=20
->> I got it working by cobbling together some poorly-understood code I
->> found in libfs, rpc_pipefs and elsewhere.  If anyone wants to wade in
->> and tell me what I've got wrong, they're more than welcome, but at this
->> stage I'm more curious for feedback on the interface.
->
-> Is this in procfs, sysfs, or a separate NFSD-specific filesystem?
-> My understanding is that "complex" files are verboten in procfs and sysfs?
-> We've been going through a lengthy process to move files out of procfs
-> into sysfs and debugfs as a result (while trying to maintain some kind of
-> compatibility in the user tools), but if it is possible to use a separate
-> filesystem to hold all of the stats/parameters I'd much rather do that
-> than use debugfs (which has become root-access-only in newer kernels).
+The field names make it a tad more verbose but I guess it's not too bad.
 
-/proc/fs/nfsd is the (standard) mount point for a separate NFSD-specific
-filesystem, originally created to replace the nfsd-specific
-systemcall.
-So the nfsd developers have a fair degree of latitude as to what can go
-in there.
+> Something like the following (use https://yaml-online-parser.appspot.com/
+> to validate the formatting):
+> 
+> - <stateid>: { state: open, mode: rw, owner: <openowner> }
+> - <stateid>: { state: lock, mode: r, start: 0, end: EOF, owner: <openowner> }
 
-But I *don't* think it is a good idea to follow this pattern.  Creating
-a separate control filesystem for every different module that thinks it
-has different needs doesn't scale well.  We could end up with dozens of
-tiny filesystems that all need to be mounted at just the right place.  I
-don't think that is healthy for Linus.
+I haven't noticed other kernel interfaces using YAML.  But I guess I'm
+not coming up with any real objection.
 
-Nor do I think we should be stuffing stuff into debugfs that isn't
-really for debugging.  That isn't healthy either.
-
-If sysfs doesn't meet our needs, then we need to raise that in
-appropriate fora and present a clear case and try to build consensus -
-because if we see a problem, then it is likely that others do to.
-
-This is all presumably in the context of Lustre and while lustre is
-out-of-tree we don't have a lot of leverage.  So I wouldn't consider
-pursuing anything here until we get back upstream.
-
-NeilBrown
-
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlzCQKcACgkQOeye3VZi
-gblmoRAAvxEWtmGXHnuYRl8pPrshc7vA/9rtQp0ee08p93/xlhQgxKzhRkJzLTFO
-wj2dbz+GxWG+/PRIVoEtZaGWfPRGZJeH1VPUmPmaz1MmUNg3VbPUYsHUjgYLLl3+
-kohgvjK81qalrwlqtmFLX6H2coRIuPDNLtC1E+wZEa2M1XL01sBOxa+9dJ6jYy1n
-wGzoHeRAxDojmsmgCJysB6U7Ih4BtgXCA0P7M+sUcZ+DznG2ZVww4MdY1W6NMJbX
-lR/VfXwdI2bpJLeZx3e6EFa5Jge52VBagKelmH/qfUbTyuYr80SL8Gmrw1YA1oOU
-QlBy+EJ4pL6BZkxNdb3gfQpb3MFgBpavv4G8Eb6aNkbsv8sEEYBPHoteAqTzS8Bg
-x2YJkW++sSwyIXq4mRoZrgfXqZj/rk0ncZ/84BqQeqdwe+FCsb9uCz75f4Nj6/TP
-Ln2h8+fgXhci/fu+oYoW+OXwSgxnmSnsMnEIFd85OcrYcjSK7Ar/lKrM3/kXWnaf
-U99IrlC6SmBvlQdiSyy8nivgds6xwLjBp3G8TGoYkUNd9HpqayvRHM/6p2RrzxxV
-sDZkOdTeb73/7GX5AT/GaLPNbuJlp0n5U1WSz38wSRBSSD6dGPyJtHq/RlRcGHui
-F+l0wdXVLFlCcrYXTfOrxva/Fa507NnHWyOWtLGDNnPGzf37a0Y=
-=IBjP
------END PGP SIGNATURE-----
---=-=-=--
+--b.
