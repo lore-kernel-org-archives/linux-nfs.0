@@ -4,48 +4,48 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-9.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
-	autolearn_force=no version=3.4.0
+	SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id CDF8CC43218
-	for <linux-nfs@archiver.kernel.org>; Sat, 27 Apr 2019 01:52:22 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A4D29C43219
+	for <linux-nfs@archiver.kernel.org>; Sat, 27 Apr 2019 01:52:24 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id A0BD7205F4
-	for <linux-nfs@archiver.kernel.org>; Sat, 27 Apr 2019 01:52:22 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 6FFED205F4
+	for <linux-nfs@archiver.kernel.org>; Sat, 27 Apr 2019 01:52:24 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1556329942;
-	bh=LBPOy+aYm6EozNKiSve1wb8hu6nj+X4x5OXp2mALJmI=;
+	s=default; t=1556329944;
+	bh=hEnqImhXGxwi9ohDIM48bLSHkPxvtvNR//kCRBXQHb0=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=EF+4sslrhaIW9u5B7is1q7JHaFHXlRmbYOiyHBvPUNvnLDdZospUtc67E+zl9VjAK
-	 sO3PUdbd5MXOcIb0BCN6QHYhbkS90qgi8h/N/ZyK5qUIjNj1wXskS2aGyb7AKY9Jms
-	 uFyRjIw8XLnxTp3o1Zv14qbDr1hQRORWo9Jg8yoQ=
+	b=SEXSuB2Sd0CTIFEJoKokRpt6B2PB1rd8av0GQMzdejEjnwNDL3o1RyDYFdaXjOtYd
+	 asQ19CCbR/tkh6zfMurk66SwU+UcB9KwOQ5mwHx+z7zuHvdvN+A160I2gX78Li/kpC
+	 WTwbLP2x4qaiTkeDT9kJC+E/cuE15Jyn1h9ALcbY=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728034AbfD0Bkh (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 26 Apr 2019 21:40:37 -0400
-Received: from mail.kernel.org ([198.145.29.99]:44290 "EHLO mail.kernel.org"
+        id S1727697AbfD0BwX (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 26 Apr 2019 21:52:23 -0400
+Received: from mail.kernel.org ([198.145.29.99]:44244 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727463AbfD0Bkh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 26 Apr 2019 21:40:37 -0400
+        id S1728019AbfD0Bkf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 26 Apr 2019 21:40:35 -0400
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id A3F5E215EA;
-        Sat, 27 Apr 2019 01:40:35 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 79CC721537;
+        Sat, 27 Apr 2019 01:40:34 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1556329236;
-        bh=LBPOy+aYm6EozNKiSve1wb8hu6nj+X4x5OXp2mALJmI=;
+        s=default; t=1556329235;
+        bh=hEnqImhXGxwi9ohDIM48bLSHkPxvtvNR//kCRBXQHb0=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=uewF0XUsycI3XNwt6csXkdOdxsWV0b3KNGCZ07c3FnqLODcuKIMfc6x6scSXYluwg
-         Eh4BjlzooOh/PJqBjVP5BikEgB2EN2KOuLo/WzZBeeHS21pJvqKjivOJGeWGPXPEM0
-         7mc6quDA+jqIg2Dsx2gOUl1VIXrr2NOH5atZ/qsI=
+        b=zXxIzcVNZ1YI8ACubin/WEHd1GQGqlR/3MQIP46+1E9tlpnsJal1hGxs2EyXvu0qT
+         blm3kbF13SpDFLwy50sAKAWiPCztqKjK6GKIr398d1kmaObDH82oYXVd/HJjua+w2b
+         AaqxIFGJE2RWIpYO4ZWmBtBymfLOG0fs9Okq4pss=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     Olga Kornievskaia <kolga@netapp.com>,
+Cc:     Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>,
         Trond Myklebust <trond.myklebust@hammerspace.com>,
         Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.0 73/79] NFSv4.1 fix incorrect return value in copy_file_range
-Date:   Fri, 26 Apr 2019 21:38:32 -0400
-Message-Id: <20190427013838.6596-73-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 5.0 72/79] NFS: Forbid setting AF_INET6 to "struct sockaddr_in"->sin_family.
+Date:   Fri, 26 Apr 2019 21:38:31 -0400
+Message-Id: <20190427013838.6596-72-sashal@kernel.org>
 X-Mailer: git-send-email 2.19.1
 In-Reply-To: <20190427013838.6596-1-sashal@kernel.org>
 References: <20190427013838.6596-1-sashal@kernel.org>
@@ -58,60 +58,45 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Olga Kornievskaia <kolga@netapp.com>
+From: Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>
 
-[ Upstream commit 0769663b4f580566ef6cdf366f3073dbe8022c39 ]
+[ Upstream commit 7c2bd9a39845bfb6d72ddb55ce737650271f6f96 ]
 
-According to the NFSv4.2 spec if the input and output file is the
-same file, operation should fail with EINVAL. However, linux
-copy_file_range() system call has no such restrictions. Therefore,
-in such case let's return EOPNOTSUPP and allow VFS to fallback
-to doing do_splice_direct(). Also when copy_file_range is called
-on an NFSv4.0 or 4.1 mount (ie., a server that doesn't support
-COPY functionality), we also need to return EOPNOTSUPP and
-fallback to a regular copy.
+syzbot is reporting uninitialized value at rpc_sockaddr2uaddr() [1]. This
+is because syzbot is setting AF_INET6 to "struct sockaddr_in"->sin_family
+(which is embedded into user-visible "struct nfs_mount_data" structure)
+despite nfs23_validate_mount_data() cannot pass sizeof(struct sockaddr_in6)
+bytes of AF_INET6 address to rpc_sockaddr2uaddr().
 
-Fixes xfstest generic/075, generic/091, generic/112, generic/263
-for all NFSv4.x versions.
+Since "struct nfs_mount_data" structure is user-visible, we can't change
+"struct nfs_mount_data" to use "struct sockaddr_storage". Therefore,
+assuming that everybody is using AF_INET family when passing address via
+"struct nfs_mount_data"->addr, reject if its sin_family is not AF_INET.
 
-Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+[1] https://syzkaller.appspot.com/bug?id=599993614e7cbbf66bc2656a919ab2a95fb5d75c
+
+Reported-by: syzbot <syzbot+047a11c361b872896a4f@syzkaller.appspotmail.com>
+Signed-off-by: Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- fs/nfs/nfs42proc.c | 3 ---
- fs/nfs/nfs4file.c  | 4 +++-
- 2 files changed, 3 insertions(+), 4 deletions(-)
+ fs/nfs/super.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
-index fed06fd9998d..94f98e190e63 100644
---- a/fs/nfs/nfs42proc.c
-+++ b/fs/nfs/nfs42proc.c
-@@ -329,9 +329,6 @@ ssize_t nfs42_proc_copy(struct file *src, loff_t pos_src,
- 	};
- 	ssize_t err, err2;
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 0570391eaa16..15c025c1a305 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -2041,7 +2041,8 @@ static int nfs23_validate_mount_data(void *options,
+ 		memcpy(sap, &data->addr, sizeof(data->addr));
+ 		args->nfs_server.addrlen = sizeof(data->addr);
+ 		args->nfs_server.port = ntohs(data->addr.sin_port);
+-		if (!nfs_verify_server_address(sap))
++		if (sap->sa_family != AF_INET ||
++		    !nfs_verify_server_address(sap))
+ 			goto out_no_address;
  
--	if (!nfs_server_capable(file_inode(dst), NFS_CAP_COPY))
--		return -EOPNOTSUPP;
--
- 	src_lock = nfs_get_lock_context(nfs_file_open_context(src));
- 	if (IS_ERR(src_lock))
- 		return PTR_ERR(src_lock);
-diff --git a/fs/nfs/nfs4file.c b/fs/nfs/nfs4file.c
-index 45b2322e092d..00d17198ee12 100644
---- a/fs/nfs/nfs4file.c
-+++ b/fs/nfs/nfs4file.c
-@@ -133,8 +133,10 @@ static ssize_t nfs4_copy_file_range(struct file *file_in, loff_t pos_in,
- 				    struct file *file_out, loff_t pos_out,
- 				    size_t count, unsigned int flags)
- {
-+	if (!nfs_server_capable(file_inode(file_out), NFS_CAP_COPY))
-+		return -EOPNOTSUPP;
- 	if (file_inode(file_in) == file_inode(file_out))
--		return -EINVAL;
-+		return -EOPNOTSUPP;
- 	return nfs42_proc_copy(file_in, pos_in, file_out, pos_out, count);
- }
- 
+ 		if (!(data->flags & NFS_MOUNT_TCP))
 -- 
 2.19.1
 
