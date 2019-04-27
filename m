@@ -7,48 +7,48 @@ X-Spam-Status: No, score=-9.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 68957C4321A
-	for <linux-nfs@archiver.kernel.org>; Sat, 27 Apr 2019 01:46:48 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6C6BBC4321A
+	for <linux-nfs@archiver.kernel.org>; Sat, 27 Apr 2019 01:49:05 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 32ECF208CB
-	for <linux-nfs@archiver.kernel.org>; Sat, 27 Apr 2019 01:46:48 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 3598620873
+	for <linux-nfs@archiver.kernel.org>; Sat, 27 Apr 2019 01:49:05 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1556329608;
-	bh=///dZjT54zwiOyXToeS1aK7+O5zTcc6Kr8S21+1ePjU=;
+	s=default; t=1556329745;
+	bh=ebZ2JQFsRBywP2cfhViDCO5K5tyo5Vy6F15psqCltzw=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=Q8kuK/dJpwQE6ex4ylQg5vgXj2dPv3ZgNntzf3GVauWlpZPt0SxJkACJO5NOms38E
-	 HP3Jaz4b4rWou2PQd5tfVlSfjvy+NVWORUCEsx2+EWyMvMHbHgCO3ZYubbO1KvO7VG
-	 5Rk0mMTzI72R5zXpwzP1tl1Ny6ZriK5GGYVbd/sg=
+	b=kPxRN6QrFrjtS+1zoF7heCeX36gwbPNSKUD9dvP4wEL8GNQ1thXeEW/XHlxt1lhln
+	 osGJSuQhBI3ZlMHmdeqESc9BFMge8loLWqq8X3Lr8scp9mkRm2hCHznbfI5SVPJgW6
+	 w/yqKLi3HGOMXzJZHpzimE5DJ4qV7Z3e5exsR7h8=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728753AbfD0BnT (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 26 Apr 2019 21:43:19 -0400
-Received: from mail.kernel.org ([198.145.29.99]:47464 "EHLO mail.kernel.org"
+        id S1728522AbfD0Bs6 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 26 Apr 2019 21:48:58 -0400
+Received: from mail.kernel.org ([198.145.29.99]:46296 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1728744AbfD0BnS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 26 Apr 2019 21:43:18 -0400
+        id S1727981AbfD0BmM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 26 Apr 2019 21:42:12 -0400
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id BD38B215EA;
-        Sat, 27 Apr 2019 01:43:16 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 0642E208CB;
+        Sat, 27 Apr 2019 01:42:10 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1556329397;
-        bh=///dZjT54zwiOyXToeS1aK7+O5zTcc6Kr8S21+1ePjU=;
+        s=default; t=1556329331;
+        bh=ebZ2JQFsRBywP2cfhViDCO5K5tyo5Vy6F15psqCltzw=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=sWR8LzzdjLSEjQL86xLLGN4hgePmy88SxKao0BWqPZnB1upEN28tIyemh/qevLrkQ
-         8H0WkyrDXV8bNmPOFgydwZvJ1BkwumNZRd+PSzFirqJ9WDq5ibgCtCDjjVXKCNlFlH
-         HMLFMiojODGZ6MERmYSozUVYGgl8cFcQltLdqI2s=
+        b=T5N3UUjDN8oGFEBlZSMmMSaJmTmntCuUj0mRLOLc0pBx4RlmOJkyBAb7TRWPB7Fo7
+         Bud1toKm1n+18LqpCMM8+vAliTRavX6RdDinsu76Sd1iDJg7vSRmPLGy2Q8AGSr101
+         z1Ic0yMh6yt9YjDzqcZ1GngKXjlGqXGPX8nvYKHs=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
 Cc:     Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>,
         Trond Myklebust <trond.myklebust@hammerspace.com>,
         Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org
-Subject: [PATCH AUTOSEL 4.14 29/32] NFS: Forbid setting AF_INET6 to "struct sockaddr_in"->sin_family.
-Date:   Fri, 26 Apr 2019 21:42:20 -0400
-Message-Id: <20190427014224.8274-29-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 4.19 48/53] NFS: Forbid setting AF_INET6 to "struct sockaddr_in"->sin_family.
+Date:   Fri, 26 Apr 2019 21:40:45 -0400
+Message-Id: <20190427014051.7522-48-sashal@kernel.org>
 X-Mailer: git-send-email 2.19.1
-In-Reply-To: <20190427014224.8274-1-sashal@kernel.org>
-References: <20190427014224.8274-1-sashal@kernel.org>
+In-Reply-To: <20190427014051.7522-1-sashal@kernel.org>
+References: <20190427014051.7522-1-sashal@kernel.org>
 MIME-Version: 1.0
 X-stable: review
 X-Patchwork-Hint: Ignore
@@ -84,10 +84,10 @@ Signed-off-by: Sasha Levin <sashal@kernel.org>
  1 file changed, 2 insertions(+), 1 deletion(-)
 
 diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 77d8d03344c8..f464f8d9060c 100644
+index 6b666d187907..6df9b85caf20 100644
 --- a/fs/nfs/super.c
 +++ b/fs/nfs/super.c
-@@ -2044,7 +2044,8 @@ static int nfs23_validate_mount_data(void *options,
+@@ -2052,7 +2052,8 @@ static int nfs23_validate_mount_data(void *options,
  		memcpy(sap, &data->addr, sizeof(data->addr));
  		args->nfs_server.addrlen = sizeof(data->addr);
  		args->nfs_server.port = ntohs(data->addr.sin_port);
