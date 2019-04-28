@@ -2,307 +2,147 @@ Return-Path: <SRS0=fIcc=S6=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-0.9 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-1.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 09A51C43218
-	for <linux-nfs@archiver.kernel.org>; Sun, 28 Apr 2019 13:46:05 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 252FAC43218
+	for <linux-nfs@archiver.kernel.org>; Sun, 28 Apr 2019 15:06:21 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id CE20020843
-	for <linux-nfs@archiver.kernel.org>; Sun, 28 Apr 2019 13:46:04 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id D0A6C206A3
+	for <linux-nfs@archiver.kernel.org>; Sun, 28 Apr 2019 15:06:20 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="RB6LK2bm"
+	dkim=pass (1024-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="Vs/Sgj41"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726652AbfD1NqD (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 28 Apr 2019 09:46:03 -0400
-Received: from mail-yb1-f196.google.com ([209.85.219.196]:34759 "EHLO
-        mail-yb1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726606AbfD1NqD (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 28 Apr 2019 09:46:03 -0400
-Received: by mail-yb1-f196.google.com with SMTP id a3so2905482ybr.1;
-        Sun, 28 Apr 2019 06:46:02 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
-         :cc;
-        bh=b4xsFFRfHe6kxba1lM9EAXBYTG1zOBqgyT4vgDv6Wuk=;
-        b=RB6LK2bm4FmooOmmxmEQgkxpC55STLa8bYkKhloIVPDeK+pkonUC++Ue/Vi3/Gim8q
-         QdoH0kTLL20ZyMgj0pvsQJY43VGoYaKUdT0pEiCe7oRsoY2gLCXUqIZbucWQ5pdm9TO8
-         17mX8utvJDWmLP98PE16P0izPRr4flogn51uvNIxNTdmelvSYGBc33RyQkow9XeYvffh
-         Q7gkcBD0pUSuF91tDwYxJR36rmrJWT+kMpvCB6fnNTn+rc4xhJYbA+fw6/gE3DRzHyA2
-         rGLqL1E0zawM9MnXPS/j0qh+DIujLzCqsp4aVqhyJfyd46qUZ5XLCZTHchr33JirGZMM
-         OQ3g==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
-         :message-id:subject:to:cc;
-        bh=b4xsFFRfHe6kxba1lM9EAXBYTG1zOBqgyT4vgDv6Wuk=;
-        b=NcEmMxGE2Np4kDg8b1P185xtJ0KEZ48GSCipzLkLsglGTmNQav6tfek6Ikxt9s8yLo
-         aAb74B0mkprME0PPGDynceDc9j9qFwkmEUx9Egj3JOiu5EbvDTLuxrDECL+Hd767l2lk
-         ErYVF3EuEZm2f5sztejYL05mdzecQS4pRfpmM0gqqjYTDBXi8bWaHakVO8MHa/cMmNR8
-         wPHI2Otewwq+7vSwAG/jP4eOKST11bW1s9hUpu8e2CfR/3WAWaMvnpDOCTm3h5ojRWHe
-         w8w6ir8ZVDSRvvmOH1zkcPpmin7j+3xsEdYY8gP7v9sC8zu99FcjSkMXsik7U6RsjnaB
-         Gr5A==
-X-Gm-Message-State: APjAAAWJRgw1y1dTK9nx0hXbdKqBdvWenecCVAUNBZN7nBIqD71HCbRq
-        ogeeHw4cpuGFZvwTnmnQH1eUHYrk/X7WHExIAxo=
-X-Google-Smtp-Source: APXvYqxlQ+nFpHDhCuCm2GyvwAD3FP9l5X32QqZIuhgeDd1tawv5iCtlVua/s/Mp5AZgVE7jdxt9pz8vCWLzzA6aRFE=
-X-Received: by 2002:a25:b883:: with SMTP id w3mr3404367ybj.337.1556459162048;
- Sun, 28 Apr 2019 06:46:02 -0700 (PDT)
-MIME-Version: 1.0
-References: <CAOQ4uxjQdLrZXkpP30Pq_=Cckcb=mADrEwQUXmsG92r-gn2y5w@mail.gmail.com>
- <379106947f859bdf5db4c6f9c4ab8c44f7423c08.camel@kernel.org>
- <CAOQ4uxgewN=j3ju5MSowEvwhK1HqKG3n1hBRUQTi1W5asaO1dQ@mail.gmail.com>
- <930108f76b89c93b2f1847003d9e060f09ba1a17.camel@kernel.org>
- <CAOQ4uxgQsRaEOxz1aYzP1_1fzRpQbOm2-wuzG=ABAphPB=7Mxg@mail.gmail.com>
- <20190426140023.GB25827@fieldses.org> <CAOQ4uxhuxoEsoBbvenJ8eLGstPc4AH-msrxDC-tBFRhvDxRSNg@mail.gmail.com>
- <20190426145006.GD25827@fieldses.org> <e69d149c80187b84833fec369ad8a51247871f26.camel@kernel.org>
- <CAOQ4uxjt+MkufaJWoqWSYZbejWa1nJEe8YYRroEBSb1jHjzkwQ@mail.gmail.com> <8504a05f2b0462986b3a323aec83a5b97aae0a03.camel@kernel.org>
-In-Reply-To: <8504a05f2b0462986b3a323aec83a5b97aae0a03.camel@kernel.org>
-From:   Amir Goldstein <amir73il@gmail.com>
-Date:   Sun, 28 Apr 2019 09:45:50 -0400
-Message-ID: <CAOQ4uxi6fQdp_RQKHp-i6Q-m-G1+384_DafF3QzYcUq4guLd6w@mail.gmail.com>
+        id S1726374AbfD1PGU (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sun, 28 Apr 2019 11:06:20 -0400
+Received: from mail-eopbgr720139.outbound.protection.outlook.com ([40.107.72.139]:6171
+        "EHLO NAM05-CO1-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1726741AbfD1PGT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sun, 28 Apr 2019 11:06:19 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=hammerspace.com;
+ s=selector1;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=nUvZ4Wcpe0l9ur/LMZEcPtGF2X6JFoMEKm6F7L4YaAI=;
+ b=Vs/Sgj41sSvsocA5Zw2IA3lsqMF1pOZ/gMyp2NWkpcWRYZ0HbBkXhIAS9gJivR1C3wd0BfpqFbdc0WmhkNKNsb1zxdBBWJH/akxy2EbQDsNpZW9ZU+mcOShA+5iNHkMlBqAY68YD5IwSu0IwFBAVOOD2SRN+hZZWJNkjptDhHJY=
+Received: from SN6PR13MB2494.namprd13.prod.outlook.com (52.135.95.148) by
+ SN6PR13MB2367.namprd13.prod.outlook.com (52.135.94.147) with Microsoft SMTP
+ Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ 15.20.1856.6; Sun, 28 Apr 2019 15:06:14 +0000
+Received: from SN6PR13MB2494.namprd13.prod.outlook.com
+ ([fe80::396d:aed6:eeb4:2511]) by SN6PR13MB2494.namprd13.prod.outlook.com
+ ([fe80::396d:aed6:eeb4:2511%7]) with mapi id 15.20.1856.008; Sun, 28 Apr 2019
+ 15:06:14 +0000
+From:   Trond Myklebust <trondmy@hammerspace.com>
+To:     "jlayton@kernel.org" <jlayton@kernel.org>,
+        "amir73il@gmail.com" <amir73il@gmail.com>
+CC:     "bfields@fieldses.org" <bfields@fieldses.org>,
+        "samba-technical@lists.samba.org" <samba-technical@lists.samba.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "Volker.Lendecke@sernet.de" <Volker.Lendecke@sernet.de>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        "pshilov@microsoft.com" <pshilov@microsoft.com>
 Subject: Re: Better interop for NFS/SMB file share mode/reservation
-To:     Jeff Layton <jlayton@kernel.org>
-Cc:     "J. Bruce Fields" <bfields@fieldses.org>,
-        Volker.Lendecke@sernet.de,
-        samba-technical <samba-technical@lists.samba.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Pavel Shilovskiy <pshilov@microsoft.com>
-Content-Type: text/plain; charset="UTF-8"
+Thread-Topic: Better interop for NFS/SMB file share mode/reservation
+Thread-Index: AQHUv6BUED9wy3m1tE24F/mnamgiLqXV4DAAgAAaggCAABW6AIB63KrUgAEKN4CAABrTAIAAFnQA
+Date:   Sun, 28 Apr 2019 15:06:13 +0000
+Message-ID: <1d5265510116ece75d6eb7af6314e6709e551c6e.camel@hammerspace.com>
+References: <CAOQ4uxjQdLrZXkpP30Pq_=Cckcb=mADrEwQUXmsG92r-gn2y5w@mail.gmail.com>
+         <379106947f859bdf5db4c6f9c4ab8c44f7423c08.camel@kernel.org>
+         <CAOQ4uxgewN=j3ju5MSowEvwhK1HqKG3n1hBRUQTi1W5asaO1dQ@mail.gmail.com>
+         <930108f76b89c93b2f1847003d9e060f09ba1a17.camel@kernel.org>
+         <CAOQ4uxgQsRaEOxz1aYzP1_1fzRpQbOm2-wuzG=ABAphPB=7Mxg@mail.gmail.com>
+         <20190426140023.GB25827@fieldses.org>
+         <CAOQ4uxhuxoEsoBbvenJ8eLGstPc4AH-msrxDC-tBFRhvDxRSNg@mail.gmail.com>
+         <20190426145006.GD25827@fieldses.org>
+         <e69d149c80187b84833fec369ad8a51247871f26.camel@kernel.org>
+         <CAOQ4uxjt+MkufaJWoqWSYZbejWa1nJEe8YYRroEBSb1jHjzkwQ@mail.gmail.com>
+         <8504a05f2b0462986b3a323aec83a5b97aae0a03.camel@kernel.org>
+         <CAOQ4uxi6fQdp_RQKHp-i6Q-m-G1+384_DafF3QzYcUq4guLd6w@mail.gmail.com>
+In-Reply-To: <CAOQ4uxi6fQdp_RQKHp-i6Q-m-G1+384_DafF3QzYcUq4guLd6w@mail.gmail.com>
+Accept-Language: en-US, en-GB
+Content-Language: en-US
+X-MS-Has-Attach: 
+X-MS-TNEF-Correlator: 
+authentication-results: spf=none (sender IP is )
+ smtp.mailfrom=trondmy@hammerspace.com; 
+x-originating-ip: [68.40.189.247]
+x-ms-publictraffictype: Email
+x-ms-office365-filtering-correlation-id: 601cc55e-cfe5-43ce-029d-08d6cbeb0eaa
+x-microsoft-antispam: BCL:0;PCL:0;RULEID:(2390118)(7020095)(4652040)(8989299)(4534185)(4627221)(201703031133081)(201702281549075)(8990200)(5600141)(711020)(4605104)(2017052603328)(7193020);SRVR:SN6PR13MB2367;
+x-ms-traffictypediagnostic: SN6PR13MB2367:
+x-microsoft-antispam-prvs: <SN6PR13MB2367166092EBAA7CB1045268B8380@SN6PR13MB2367.namprd13.prod.outlook.com>
+x-ms-oob-tlc-oobclassifiers: OLM:5516;
+x-forefront-prvs: 0021920B5A
+x-forefront-antispam-report: SFV:NSPM;SFS:(10019020)(39830400003)(136003)(346002)(376002)(366004)(396003)(199004)(189003)(53546011)(25786009)(64756008)(66476007)(66556008)(478600001)(66446008)(86362001)(91956017)(2906002)(102836004)(71200400001)(97736004)(8676002)(36756003)(5660300002)(71190400001)(93886005)(6506007)(256004)(3846002)(76116006)(66946007)(4326008)(6116002)(14444005)(73956011)(14454004)(54906003)(229853002)(6246003)(81166006)(81156014)(316002)(99286004)(8936002)(6486002)(76176011)(6436002)(110136005)(186003)(476003)(2616005)(7736002)(305945005)(11346002)(486006)(53936002)(561944003)(68736007)(6512007)(26005)(118296001)(446003)(2501003)(66066001);DIR:OUT;SFP:1102;SCL:1;SRVR:SN6PR13MB2367;H:SN6PR13MB2494.namprd13.prod.outlook.com;FPR:;SPF:None;LANG:en;PTR:InfoNoRecords;A:1;MX:1;
+received-spf: None (protection.outlook.com: hammerspace.com does not designate
+ permitted sender hosts)
+x-ms-exchange-senderadcheck: 1
+x-microsoft-antispam-message-info: RubVM6gnwXPMunA7SZOz1pbLU8zgIdFkO5SE5ElShqJN4KauWpHt9bMq9k0Ty9b7OfHNl99CN/Q/pWiA4fKDaVqMRMs02Nzx9UT8H7VcxPJckACp36sP5ZiGJH4wQbAw07ERelA2x2CtmqoecrO5925Lj9mMw2b24buq1tEtAu3ri4r6UE2/MUxvRHaH3XsDI8dUSJiaS1ur+SUWv3DKSUoWkCa03odwRh8ADP55xPIFmE1XALxGYIob3exdtxy5rIG78j9kJdtjz/HLIUw2EE9d0yEEznKKB3G0Je3mRpb5qXU7wh37v60WMO9of0kQ6urVhbp8E9l9jxytT+P0VLrcvbEtb9VAx4+xFzDWVDYqiw9BBByzMVsPiiTbGshgYPCSKR5CXg+nC9j4NSXwzrK7dDdg9kr7c3xAe/PhIdk=
+Content-Type: text/plain; charset="utf-8"
+Content-ID: <FD77D35C01F5A449A58CCF6BFE0C9C2C@namprd13.prod.outlook.com>
+Content-Transfer-Encoding: base64
+MIME-Version: 1.0
+X-OriginatorOrg: hammerspace.com
+X-MS-Exchange-CrossTenant-Network-Message-Id: 601cc55e-cfe5-43ce-029d-08d6cbeb0eaa
+X-MS-Exchange-CrossTenant-originalarrivaltime: 28 Apr 2019 15:06:14.0441
+ (UTC)
+X-MS-Exchange-CrossTenant-fromentityheader: Hosted
+X-MS-Exchange-CrossTenant-id: 0d4fed5c-3a70-46fe-9430-ece41741f59e
+X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: SN6PR13MB2367
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Sun, Apr 28, 2019 at 8:09 AM Jeff Layton <jlayton@kernel.org> wrote:
->
-> On Sat, 2019-04-27 at 16:16 -0400, Amir Goldstein wrote:
-> > [adding back samba/nfs and fsdevel]
-> >
->
-> cc'ing Pavel too -- he did a bunch of work in this area a few years ago.
->
-> > On Fri, Apr 26, 2019 at 6:22 PM Jeff Layton <jlayton@kernel.org> wrote:
-> > > On Fri, 2019-04-26 at 10:50 -0400, J. Bruce Fields wrote:
-> > > > On Fri, Apr 26, 2019 at 04:11:00PM +0200, Amir Goldstein wrote:
-> > > > > On Fri, Apr 26, 2019, 4:00 PM J. Bruce Fields <bfields@fieldses.org> wrote:
-> > > > >
-> > > > > > On Fri, Apr 26, 2019 at 03:50:46PM +0200, Amir Goldstein wrote:
-> > > > > > > On Fri, Feb 8, 2019, 5:03 PM Jeff Layton <jlayton@kernel.org> wrote:
-> > > > > > > > Share/deny open semantics are pretty similar across NFS and SMB (by
-> > > > > > > > design, really). If you intend to solve that use-case, what you really
-> > > > > > > > want is whole-file, shared/exclusive locks that are set atomically with
-> > > > > > > > the open call. O_EXLOCK and O_SHLOCK seem like a reasonable fit there.
-> > > > > > > >
-> > > > > > > > Then you could have SMB and NFS servers set these flags when opening
-> > > > > > > > files, and deal with the occasional denial at open time. Other
-> > > > > > > > applications won't be aware of them of course, but that's probably fine
-> > > > > > > > for most use-cases where you want this sort of protocol interop.
-> > > > > > >
-> > > > > > > Sorry for posting off list. Airport emails...
-> > > > > > > I looked at implemeting O_EXLOCK and O_SHLOCK and it looks doable.
-> > > > > > >
-> > > > > > > I was wondering if there is an inherent reason not to allow an exclusive
-> > > > > > > lock on a file that is open read-only.
-> > > > > > >
-> > > > > > > Samba seems to need it and currently flock and ofd locks won't allow it.
-> > > > > > > Do you thing it will be ok to allow it with O_EXLOCK?
-> > > > > >
-> > > > > > Somebody could deny everyone access to a shared resource that everyone
-> > > > > > needs to make progress, like /etc/passwd or a shared library.
-> > > > > >
-> > > > > > Have you looked at Pavel Shilovsky's O_DENY patches?  He had the feature
-> > > > > > off by default, with a mount option provided to turn it on.
-> > > > > >
-> > > > >
-> > > > > O_EXLOCK is advisory. It only aquired flock or ofd lock atomically with
-> > > > > open.
-> > > >
-> > > > Whoops, got it.
-> > > >
-> > > > Is that really adequate for open share locks, though?
-> > > >
-> > > > I assumed that Windows apps depend on the assumption that they're
-> > > > mandatory.  So e.g. if you can get a DENY_READ open on a shared library
-> > > > then you know you can update it without the risk of making someone else
-> > > > crash.
-> > > >
-> > >
-> > > I think this is (slightly) better than doing it internally like we do
-> > > today and would give you coherent locking between NFS and SMB. Other
-> > > applications wouldn't see them, but for a NAS-style deployment, that's
-> > > probably ok.
-> > >
-> >
-> > We can do a little bit better.
-> > We can make sure that O_DENY_WRITE (named for convenience) fails
-> > if file is currently open for write by anyone and similarly for O_DENY_READ.
-> > But if we cannot deny future non-cooperative opens what's the point?....
-> >
->
-> As you said in another mail, the main interest here is in getting
-> NFS+SMB semantics right. If the exported filesystem is _only_ available
-> via NFS+SMB, then do we need to deny non-cooperative opens?
->
-
-We do not.
-
-> > > Any open by samba or nfsd would need to start setting O_SHLOCK, and deny
-> > > mode opens would have to set O_EXLOCK. We would actually need 2 per
-> > > inode though (one for read and one for write).
-> > >
-> >
-> > ...the point is that O_DENY_NONE does not need to be implemented with
-> > a new type of lock object (O_WR_SHLOCK) its enough that it checks there
-> > are no relevant exclusive locks and the then inode->i_writecount and
-> > inode->i_readcount already provide enough context to cooperate with
-> > O_DENY_WRITE and O_DENY_READ.
-> >
->
-> That would work, if the goal is to have deny modes affect all opens. We
-> could also do this on the opt-in basis that I was suggesting with a new
-> set of counters in struct file_lock_context.
->
-
-Ok.
-
-> > I need to see if incrementing inode->i_readcount on O_RDWR opens is
-> > possible (right now it only counts O_RDONLY opens).
-> >
-> > > I think these should probably be in their own "namespace" too. They
-> > > could use the same semantics as flock, but should sit on their own list
-> > > in file_lock_context.
-> > >
-> >
-> > I would much rather that they didn't. The reason is that new open flags
-> > are a backward compat problem. The way I want to solve it is this API:
-> >
-> > // On new kernel this will acquire OFD F_WRLCK atomically...
-> > fd = open(..., O_RDWR | O_EXLOCK);
-> > // ...check if it did acquire OFD lock
-> > fcntl(fd,  F_OFD_GETLK, ...);
-> >
-> > We'd need at least one new l_type F_EX_RDLCK and maybe also a new
-> > semantic F_EX_RDWRLCK, although similar in conflicts to F_WRLCK it can be
-> > acquired without FMODE_WRITE. Though I personally thing we can do without
-> > it if the only way to acquire F_WRLCK on readonly file is via new open flag.
-> >
->
-> I don't think that will work at all. Share/deny modes are entirely
-> orthogonal to byte-range locks in both NFS and SMB. Consider:
->
-> Two clients open a file with O_RDWR | | O_SHARE_WRITE | O_SHARE_READ.
-> One of them now wants to set byte-range write lock on the file. That
-> should be allowed, but now it'll be denied, because the other client
-> will effectively hold a whole-file readlock on it.
->
-
-Got it. flock semantics (as Pavel chose) are a better fit.
-It only does not support O_SHARE_WRITE | O_DENY_READ naively,
-but easy to add.
-
-> There is also the problem that read and write deny modes are orthogonal
-> to one other, so you have to have a way to deal with them independently.
->
-> I'd suggest an API like this:
->
-> // open read/write and deny read/write
-> fd = open(..., O_RDWR | O_DENY_READ | O_DENY_WRITE);
-> // test for flags with F_GETFL
-> flags = fcntl(fd, F_GETFL);
->
-> That would also allow you to use F_SETFL to change those flags on an
-> existing fd.
->
-
-Nice. If only old kernel wouldn't give out in F_GETFL any garbage flags
-you piled on open.
-That's why I wanted a different way to check if lock is taken and thought
-of F_OFD_GETLK as a natural candidate.
-
-We can play this game:
-
-// New kernel doesn't copy O_TEST to f_flags
-#define O_DENY_READ O_TEST | __O_DENY_READ
-fd = open(..., O_RDWR | O_DENY_READ);
-flags = fcntl(fd, F_GETFL);
-if ((flags & O_DENY_READ) && !(flags & O_TEST))
-
-A bit ugly, but if its wrapped in a library function
-get_open_flags() who cares...
-
-> > > That said, we could also look at a vfs-level mount option that would
-> > > make the kernel enforce these for any opener. That could also be useful,
-> > > and shouldn't be too hard to implement. Maybe even make it a vfsmount-
-> > > level option (like -o ro is).
-> > >
-> >
-> > Yeh, I am humbly going to leave this struggle to someone else.
-> > Not important enough IMO and completely independent effort to the
-> > advisory atomic open&lock API.
->
-> Having the kernel allow setting deny modes on any open call is a non-
-> starter, for the reasons Bruce outlined earlier. This _must_ be
-> restricted in some fashion or we'll be opening up a ginormous DoS
-> mechanism.
->
-> My proposal was to make this only be enforced by applications that
-> explicitly opt-in by setting O_SH*/O_EX* flags. It wouldn't be too
-> difficult to also allow them to be enforced on a per-fs basis via mount
-> option or something. Maybe we could expand the meaning of '-o mand' ?
->
-> How would you propose that we restrict this?
->
-
-Our communication channel is broken.
-I did not intend to propose any implicit locking.
-If samba and nfsd can opt-in with O_SHARE flags, I do not
-understand why a mount option is helpful for the cause of
-samba/nfsd interop.
-
-If someone else is interested in samba/local interop than
-yes, a mount option like suggested by Pavel could be a good option,
-but it is an orthogonal effort IMO.
-
-
-> > > If you're denied, what error should you get back when you try to open
-> > > it? It should be something distinct. We may even want to add new error
-> > > codes for this.
-> >
-> > IMO EBUSY does the job. Its distinct because open is not expected
-> > to return EBUSY for regular files/dirs and when open is expected to
-> > return EBUSY for blockdev its for the exact same use case (i.e.
-> > exclusive write open is acquired by userspace tools).
->
-> That works for me.
-
-From Pavel's v6 cover letter:
-"Make nfs code return -EBUSY for share conflicts (was -EACCESS)."
-;-)
-
->
-> We should probably have a close look at the work that Pavel did several
-> years ago too. It has almost certainly bitrotted by now, but it may
-> serve as a starting point (and he may he may have valuable input here).
-
-I looked at the patches. There's good stuff in there.
-Once we agree on the specifications I can rip some code off ;-)
-
-A lot of the work in Pavel's patches evolves around making the
-mount option work and respecting O_DENYDELETE.
-IMO, that is not a good use of up-streaming effort, because:
-- NFS won't ask for deny delete
-- IMO, Windows applications should be used to being denied
-  a DENY_DELETE and fall back to SHARE_DELETE
-
-So while implementing DENYDELETE may fall into a category of making
-samba server behave more like Windows server, I don't think it falls into
-the category of better samba/nfs interop.
-
-It is something that we can add later if anyone really cares about.
-
-Thanks,
-Amir.
+T24gU3VuLCAyMDE5LTA0LTI4IGF0IDA5OjQ1IC0wNDAwLCBBbWlyIEdvbGRzdGVpbiB3cm90ZToN
+Cj4gT24gU3VuLCBBcHIgMjgsIDIwMTkgYXQgODowOSBBTSBKZWZmIExheXRvbiA8amxheXRvbkBr
+ZXJuZWwub3JnPg0KPiB3cm90ZToNCj4gPiBPbiBTYXQsIDIwMTktMDQtMjcgYXQgMTY6MTYgLTA0
+MDAsIEFtaXIgR29sZHN0ZWluIHdyb3RlOg0KPiA+ID4gW2FkZGluZyBiYWNrIHNhbWJhL25mcyBh
+bmQgZnNkZXZlbF0NCj4gPiA+IA0KPiA+IA0KPiA+IGNjJ2luZyBQYXZlbCB0b28gLS0gaGUgZGlk
+IGEgYnVuY2ggb2Ygd29yayBpbiB0aGlzIGFyZWEgYSBmZXcgeWVhcnMNCj4gPiBhZ28uDQo+ID4g
+DQo+ID4gPiBPbiBGcmksIEFwciAyNiwgMjAxOSBhdCA2OjIyIFBNIEplZmYgTGF5dG9uIDxqbGF5
+dG9uQGtlcm5lbC5vcmc+DQo+ID4gPiB3cm90ZToNCj4gPiA+ID4gT24gRnJpLCAyMDE5LTA0LTI2
+IGF0IDEwOjUwIC0wNDAwLCBKLiBCcnVjZSBGaWVsZHMgd3JvdGU6DQo+ID4gPiA+ID4gT24gRnJp
+LCBBcHIgMjYsIDIwMTkgYXQgMDQ6MTE6MDBQTSArMDIwMCwgQW1pciBHb2xkc3RlaW4NCj4gPiA+
+ID4gPiB3cm90ZToNCj4gPiA+ID4gPiA+IE9uIEZyaSwgQXByIDI2LCAyMDE5LCA0OjAwIFBNIEou
+IEJydWNlIEZpZWxkcyA8DQo+ID4gPiA+ID4gPiBiZmllbGRzQGZpZWxkc2VzLm9yZz4gd3JvdGU6
+DQo+ID4gPiA+ID4gPiANCj4gPiA+ID4gVGhhdCBzYWlkLCB3ZSBjb3VsZCBhbHNvIGxvb2sgYXQg
+YSB2ZnMtbGV2ZWwgbW91bnQgb3B0aW9uIHRoYXQNCj4gPiA+ID4gd291bGQNCj4gPiA+ID4gbWFr
+ZSB0aGUga2VybmVsIGVuZm9yY2UgdGhlc2UgZm9yIGFueSBvcGVuZXIuIFRoYXQgY291bGQgYWxz
+bw0KPiA+ID4gPiBiZSB1c2VmdWwsDQo+ID4gPiA+IGFuZCBzaG91bGRuJ3QgYmUgdG9vIGhhcmQg
+dG8gaW1wbGVtZW50LiBNYXliZSBldmVuIG1ha2UgaXQgYQ0KPiA+ID4gPiB2ZnNtb3VudC0NCj4g
+PiA+ID4gbGV2ZWwgb3B0aW9uIChsaWtlIC1vIHJvIGlzKS4NCj4gPiA+ID4gDQo+ID4gPiANCj4g
+PiA+IFllaCwgSSBhbSBodW1ibHkgZ29pbmcgdG8gbGVhdmUgdGhpcyBzdHJ1Z2dsZSB0byBzb21l
+b25lIGVsc2UuDQo+ID4gPiBOb3QgaW1wb3J0YW50IGVub3VnaCBJTU8gYW5kIGNvbXBsZXRlbHkg
+aW5kZXBlbmRlbnQgZWZmb3J0IHRvIHRoZQ0KPiA+ID4gYWR2aXNvcnkgYXRvbWljIG9wZW4mbG9j
+ayBBUEkuDQo+ID4gDQo+ID4gSGF2aW5nIHRoZSBrZXJuZWwgYWxsb3cgc2V0dGluZyBkZW55IG1v
+ZGVzIG9uIGFueSBvcGVuIGNhbGwgaXMgYQ0KPiA+IG5vbi0NCj4gPiBzdGFydGVyLCBmb3IgdGhl
+IHJlYXNvbnMgQnJ1Y2Ugb3V0bGluZWQgZWFybGllci4gVGhpcyBfbXVzdF8gYmUNCj4gPiByZXN0
+cmljdGVkIGluIHNvbWUgZmFzaGlvbiBvciB3ZSdsbCBiZSBvcGVuaW5nIHVwIGEgZ2lub3Jtb3Vz
+IERvUw0KPiA+IG1lY2hhbmlzbS4NCj4gPiANCj4gPiBNeSBwcm9wb3NhbCB3YXMgdG8gbWFrZSB0
+aGlzIG9ubHkgYmUgZW5mb3JjZWQgYnkgYXBwbGljYXRpb25zIHRoYXQNCj4gPiBleHBsaWNpdGx5
+IG9wdC1pbiBieSBzZXR0aW5nIE9fU0gqL09fRVgqIGZsYWdzLiBJdCB3b3VsZG4ndCBiZSB0b28N
+Cj4gPiBkaWZmaWN1bHQgdG8gYWxzbyBhbGxvdyB0aGVtIHRvIGJlIGVuZm9yY2VkIG9uIGEgcGVy
+LWZzIGJhc2lzIHZpYQ0KPiA+IG1vdW50DQo+ID4gb3B0aW9uIG9yIHNvbWV0aGluZy4gTWF5YmUg
+d2UgY291bGQgZXhwYW5kIHRoZSBtZWFuaW5nIG9mICctbyBtYW5kJw0KPiA+ID8NCj4gPiANCj4g
+PiBIb3cgd291bGQgeW91IHByb3Bvc2UgdGhhdCB3ZSByZXN0cmljdCB0aGlzPw0KPiA+IA0KPiAN
+Cj4gT3VyIGNvbW11bmljYXRpb24gY2hhbm5lbCBpcyBicm9rZW4uDQo+IEkgZGlkIG5vdCBpbnRl
+bmQgdG8gcHJvcG9zZSBhbnkgaW1wbGljaXQgbG9ja2luZy4NCj4gSWYgc2FtYmEgYW5kIG5mc2Qg
+Y2FuIG9wdC1pbiB3aXRoIE9fU0hBUkUgZmxhZ3MsIEkgZG8gbm90DQo+IHVuZGVyc3RhbmQgd2h5
+IGEgbW91bnQgb3B0aW9uIGlzIGhlbHBmdWwgZm9yIHRoZSBjYXVzZSBvZg0KPiBzYW1iYS9uZnNk
+IGludGVyb3AuDQo+IA0KPiBJZiBzb21lb25lIGVsc2UgaXMgaW50ZXJlc3RlZCBpbiBzYW1iYS9s
+b2NhbCBpbnRlcm9wIHRoYW4NCj4geWVzLCBhIG1vdW50IG9wdGlvbiBsaWtlIHN1Z2dlc3RlZCBi
+eSBQYXZlbCBjb3VsZCBiZSBhIGdvb2Qgb3B0aW9uLA0KPiBidXQgaXQgaXMgYW4gb3J0aG9nb25h
+bCBlZmZvcnQgSU1PLg0KDQpJZiBhbiBORlMgY2xpZW50ICdvcHRzIGluJyB0byBzZXQgc2hhcmUg
+ZGVueSwgdGhlbiB0aGF0IHN0aWxsIG1ha2VzIGl0DQphIG5vbi1vcHRpb25hbCBsb2NrIGZvciB0
+aGUgb3RoZXIgTkZTIGNsaWVudHMsIGJlY2F1c2UgYWxsIG9yZGluYXJ5DQpvcGVuKCkgY2FsbHMg
+d2lsbCBiZSBnYXRlZCBieSB0aGUgc2VydmVyIHdoZXRoZXIgb3Igbm90IHRoZWlyDQphcHBsaWNh
+dGlvbiBzcGVjaWZpZXMgdGhlIE9fU0hBUkUgZmxhZy4gVGhlcmUgaXMgbm8gZmxhZyBpbiB0aGUg
+TkZTDQpwcm90b2NvbCB0aGF0IGNvdWxkIHRlbGwgdGhlIHNlcnZlciB0byBpZ25vcmUgZGVueSBt
+b2Rlcy4NCg0KSU9XOiBpdCB3b3VsZCBzdWZmaWNlIGZvciAxIGNsaWVudCB0byB1c2UgT19TSEFS
+RXxPX0RFTlkqIHRvIG9wdCBhbGwNCnRoZSBvdGhlciBjbGllbnRzIGluLg0KDQotLSANClRyb25k
+IE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBIYW1tZXJzcGFjZQ0KdHJv
+bmQubXlrbGVidXN0QGhhbW1lcnNwYWNlLmNvbQ0KDQoNCg==
