@@ -2,239 +2,225 @@ Return-Path: <SRS0=nN68=TA=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-4.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,
-	UNWANTED_LANGUAGE_BODY autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-2.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_PASS,URIBL_BLOCKED,USER_AGENT_MUTT autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 958B1C04AA6
-	for <linux-nfs@archiver.kernel.org>; Tue, 30 Apr 2019 15:08:34 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 97BAEC43219
+	for <linux-nfs@archiver.kernel.org>; Tue, 30 Apr 2019 18:44:17 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 72A6421707
-	for <linux-nfs@archiver.kernel.org>; Tue, 30 Apr 2019 15:08:34 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 64C8221670
+	for <linux-nfs@archiver.kernel.org>; Tue, 30 Apr 2019 18:44:17 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726181AbfD3PIJ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 30 Apr 2019 11:08:09 -0400
-Received: from mx1.redhat.com ([209.132.183.28]:49010 "EHLO mx1.redhat.com"
+        id S1727096AbfD3SoQ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 30 Apr 2019 14:44:16 -0400
+Received: from mx1.redhat.com ([209.132.183.28]:42778 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726050AbfD3PII (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 30 Apr 2019 11:08:08 -0400
+        id S1726767AbfD3SoQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 30 Apr 2019 14:44:16 -0400
 Received: from smtp.corp.redhat.com (int-mx03.intmail.prod.int.phx2.redhat.com [10.5.11.13])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id A6B48F74BC;
-        Tue, 30 Apr 2019 15:08:07 +0000 (UTC)
-Received: from warthog.procyon.org.uk (ovpn-120-61.rdu2.redhat.com [10.10.120.61])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 48F8E7C825;
-        Tue, 30 Apr 2019 15:08:05 +0000 (UTC)
-Organization: Red Hat UK Ltd. Registered Address: Red Hat UK Ltd, Amberley
- Place, 107-111 Peascod Street, Windsor, Berkshire, SI4 1TE, United
- Kingdom.
- Registered in England and Wales under Company Registration No. 3798903
-Subject: [PATCH 10/11] keys: Network namespace domain tag [ver #2]
-From:   David Howells <dhowells@redhat.com>
-To:     ebiederm@xmission.com
-Cc:     netdev@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-cifs@vger.kernel.org, linux-afs@lists.infradead.org,
-        keyrings@vger.kernel.org, dhowells@redhat.com,
-        linux-security-module@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        dwalsh@redhat.com, vgoyal@redhat.com
-Date:   Tue, 30 Apr 2019 16:08:04 +0100
-Message-ID: <155663688450.31331.10931596489401135897.stgit@warthog.procyon.org.uk>
-In-Reply-To: <155663679069.31331.3777091898004242996.stgit@warthog.procyon.org.uk>
-References: <155663679069.31331.3777091898004242996.stgit@warthog.procyon.org.uk>
-User-Agent: StGit/unknown-version
+        by mx1.redhat.com (Postfix) with ESMTPS id E827D356E7;
+        Tue, 30 Apr 2019 18:44:15 +0000 (UTC)
+Received: from coeurl.usersys.redhat.com (ovpn-122-85.rdu2.redhat.com [10.10.122.85])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id EF65C438A;
+        Tue, 30 Apr 2019 18:44:14 +0000 (UTC)
+Received: by coeurl.usersys.redhat.com (Postfix, from userid 1000)
+        id 1FE1D21BE8; Tue, 30 Apr 2019 14:44:14 -0400 (EDT)
+Date:   Tue, 30 Apr 2019 14:44:14 -0400
+From:   Scott Mayhew <smayhew@redhat.com>
+To:     Trond Myklebust <trondmy@hammerspace.com>
+Cc:     "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: Question about open(CLAIM_FH)
+Message-ID: <20190430184414.GE15226@coeurl.usersys.redhat.com>
+References: <20190418133728.GS3773@coeurl.usersys.redhat.com>
+ <213d4ead8a7ae890dadc7785d59117e798f94748.camel@hammerspace.com>
+ <20190418204356.GA15226@coeurl.usersys.redhat.com>
+ <4751d341a626cf26e60e0b8c3564171c115c1335.camel@hammerspace.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <4751d341a626cf26e60e0b8c3564171c115c1335.camel@hammerspace.com>
+User-Agent: Mutt/1.11.3 (2019-02-01)
 X-Scanned-By: MIMEDefang 2.79 on 10.5.11.13
-X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.38]); Tue, 30 Apr 2019 15:08:07 +0000 (UTC)
+X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.30]); Tue, 30 Apr 2019 18:44:16 +0000 (UTC)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Create key domain tags for network namespaces and make it possible to
-automatically tag keys that are used by networked services (e.g. AF_RXRPC,
-AFS, DNS) with the default network namespace if not set by the caller.
+On Thu, 18 Apr 2019, Trond Myklebust wrote:
 
-This allows keys with the same description but in different namespaces to
-coexist within a keyring.
+> On Thu, 2019-04-18 at 16:43 -0400, Scott Mayhew wrote:
+> > On Thu, 18 Apr 2019, Trond Myklebust wrote:
+> > 
+> > > Hi Scott,
+> > > 
+> > > On Thu, 2019-04-18 at 09:37 -0400, Scott Mayhew wrote:
+> > > > When the client does an open(CLAIM_FH) and the server already has
+> > > > open
+> > > > state for that open owner and file, what's supposed to happen?
+> > > > Currently the server returns the existing stateid with the seqid
+> > > > bumped,
+> > > > but it looks like the client is expecting a new stateid (I'm
+> > > > seeing
+> > > > the
+> > > > state manager spending a lot of time waiting in
+> > > > nfs_set_open_stateid_locked() due to NFS_STATE_CHANGE_WAIT being
+> > > > set
+> > > > in
+> > > > the state flags by nfs_need_update_open_stateid()).
+> > > > 
+> > > > Looking at rfc5661 section 18.16.3, I see:
+> > > > 
+> > > >    | CLAIM_NULL, CLAIM_FH | For the client, this is a new OPEN
+> > > > request |
+> > > >    |                      | and there is no previous state
+> > > > associated  |
+> > > >    |                      | with the file for the
+> > > > client.  With        |
+> > > >    |                      | CLAIM_NULL, the file is identified by
+> > > > the  |
+> > > >    |                      | current filehandle and the
+> > > > specified       |
+> > > >    |                      | component name.  With CLAIM_FH (new
+> > > > to     |
+> > > >    |                      | NFSv4.1), the file is identified by
+> > > > just   |
+> > > >    |                      | the current filehandle.  
+> > > > 
+> > > > So it seems like maybe the server should be tossing the old state
+> > > > and
+> > > > returning a new stateid?
+> > > > 
+> > > 
+> > > No. As far as the protocol is concerned, the only difference
+> > > between
+> > > CLAIM_NULL and CLAIM_FH is through how the client identifies the
+> > > file
+> > > (in the first case, through an implicit lookup, and in the second
+> > > case
+> > > through a file handle). The client should be free to intermix the
+> > > two
+> > > types of OPEN, and it should expect the resulting stateids to
+> > > depend
+> > > only on whether or not the open_owner matches. If the open_owner
+> > > matches an existing stateid, then that stateid is bumped and
+> > > returned.
+> > > 
+> > > I'm not aware of any expectation in the client that this should not
+> > > be
+> > > the case, so if you are seeing different behaviour, then something
+> > > else
+> > > must be at work here. Is the client perhaps mounting the same
+> > > filesystem in two different places in such a way that the super
+> > > block
+> > > is not being shared?
+> > 
+> > No, it's just a single 4.1 mount w/ the default mount options.
+> > 
+> > For a bit of background, I've been trying to track down a problem in
+> > RHEL where the SEQ4_STATUS_RECALLABLE_STATE_REVOKED flags is getting
+> > permanently set because the nfs4_client->cl_revoked list on the
+> > server
+> > is non-empty... yet there's no longer open state on the client. 
+> > 
+> > I can reproduce it pretty easily in RHEL using 2 VMs, each with 2-4
+> > CPUs
+> > and 4-8G of memory.  The server has 64 nfsd threads and a 15 second
+> > lease time.
+> > 
+> > On the client I'm running the following to add a 10ms delay to
+> > CB_RECALL
+> > replies:
+> > # stap -gve 'global count = 0; probe
+> > module("nfsv4").function("nfs4_callback_recall") { printf("%s: %d\n",
+> > ppfunc(), ++count); mdelay(10); }'
+> > 
+> > then in another window I open a bunch of files:
+> > # for i in `seq -w 1 5000`; do sleep 2m </mnt/t/dir1/file.$i & done
+> > 
+> > (Note: I already created the files ahead of time)
+> > 
+> > As soon as the bash prompt returns on the client, I run the following
+> > on
+> > the server:
+> > # for i in `seq -w 1 5000`; do date >/export/dir1/file.$i & done
+> > 
+> > At that point, any further SEQUENCE ops will have the recallable
+> > state
+> > revoked flag set on the client until the fs is unmounted.
+> > 
+> > If I run the same steps on Fedora clients with recent kernels, I
+> > don't
+> > have the problem with the recallable state revoked flag, but I'm
+> > getting
+> > some other strangeness.  Everything starts out fine with
+> > nfs_reap_expired_delegations() doing TEST_STATEID and FREE_STATEID,
+> > but
+> > once the state manager starts callings nfs41_open_expired(), things
+> > sort
+> > of grind to a halt and I see 1 OPEN and 1 or 2 TEST_STATEID ops every
+> > 5
+> > seconds in wireshark.  It stays that way until the files are closed
+> > on
+> > the client, when I see a slew of DELEGRETURNs and FREE_STATEIDs...
+> > but
+> > I'm only seeing 3 or 4 CLOSE ops.  If I poke around in crash on the
+> > server, I see a ton of open stateids:
+> > 
+> > crash> epython fs/nfsd/print-client-state-info.py
+> > nfsd_net = 0xffff93e473511000
+> >         nfs4_client = 0xffff93e3f7954980
+> >                 nfs4_stateowner = 0xffff93e4058cc360 num_stateids =
+> > 4997 <---- only 3 CLOSE ops were received
+> >                 num_openowners = 1
+> >                 num_layouts = 0
+> >                 num_delegations = 0
+> >                 num_sessions = 1
+> >                 num_copies = 0
+> >                 num_revoked = 0
+> >                 cl_cb_waitq_qlen = 0
+> > 
+> > Those stateids stick around until the fs is unmounted (and the
+> > DESTROY_STATEID ops return NFS4ERR_CLIENTID_BUSY while doing so).
+> > 
+> > Both VMs are running 5.0.6-200.fc29.x86_64, but the server also has
+> > the
+> > "nfsd: Don't release the callback slot unless it was actually held"
+> > patch you sent a few weeks ago as well as the "nfsd: CB_RECALL can
+> > race
+> > with FREE_STATEID" patch I sent today.
+> 
+> Are the calls to nfs41_open_expired() succeeding? It sounds like they
+> might not be.
 
-Signed-off-by: David Howells <dhowells@redhat.com>
-cc: netdev@vger.kernel.org
-cc: linux-nfs@vger.kernel.org
-cc: linux-cifs@vger.kernel.org
-cc: linux-afs@lists.infradead.org
----
+They're succeeding, they're just taking 5 seconds each. 
 
- include/linux/key-type.h    |    3 +++
- include/linux/key.h         |    1 +
- include/net/net_namespace.h |    4 ++++
- net/core/net_namespace.c    |   19 +++++++++++++++++++
- net/dns_resolver/dns_key.c  |    1 +
- net/rxrpc/key.c             |    2 ++
- security/keys/keyring.c     |    7 ++++++-
- 7 files changed, 36 insertions(+), 1 deletion(-)
+To make matters worse, due to the aggressive lease time on the server,
+the client was doing a SEQUENCE op periodically while the OPENs were
+occurring.  The SEQUENCE replies also had the RECALLABLE_STATE_REVOKED
+flag set, and since they weren't coming from the state manager the
+nfs4_slot->privileged field was unset, so we'd wind up calling
+nfs41_handle_recallable_state_revoked() again, undoing what little
+progress was made.  Bumping the lease time to 20 seconds made that go
+away, but the overall problem is still there.
 
-diff --git a/include/linux/key-type.h b/include/linux/key-type.h
-index e49d1de0614e..2148a6bf58f1 100644
---- a/include/linux/key-type.h
-+++ b/include/linux/key-type.h
-@@ -74,6 +74,9 @@ struct key_type {
- 	 */
- 	size_t def_datalen;
- 
-+	unsigned int flags;
-+#define KEY_TYPE_NET_DOMAIN	0x00000001 /* Keys of this type have a net namespace domain */
-+
- 	/* vet a description */
- 	int (*vet_description)(const char *description);
- 
-diff --git a/include/linux/key.h b/include/linux/key.h
-index c22e64b9bd91..24db72f3839e 100644
---- a/include/linux/key.h
-+++ b/include/linux/key.h
-@@ -440,6 +440,7 @@ extern void key_init(void);
- #define key_init()			do { } while(0)
- #define key_free_user_ns(ns)		do { } while(0)
- #define key_put_subject(s)		do { } while(0)
-+#define key_remove_domain(d)		do { } while(0)
- 
- #endif /* CONFIG_KEYS */
- #endif /* __KERNEL__ */
-diff --git a/include/net/net_namespace.h b/include/net/net_namespace.h
-index a68ced28d8f4..b96de08a3ace 100644
---- a/include/net/net_namespace.h
-+++ b/include/net/net_namespace.h
-@@ -45,6 +45,7 @@ struct net_generic;
- struct uevent_sock;
- struct netns_ipvs;
- struct bpf_prog;
-+struct key_subject;
- 
- 
- #define NETDEV_HASHBITS    8
-@@ -70,6 +71,9 @@ struct net {
- 						 */
- 	struct llist_node	cleanup_list;	/* namespaces on death row */
- 
-+#ifdef CONFIG_KEYS
-+	struct key_tag		*key_domain;	/* Key domain of operation tag */
-+#endif
- 	struct user_namespace   *user_ns;	/* Owning user namespace */
- 	struct ucounts		*ucounts;
- 	spinlock_t		nsid_lock;
-diff --git a/net/core/net_namespace.c b/net/core/net_namespace.c
-index 17f36317363d..a7b38f1d5762 100644
---- a/net/core/net_namespace.c
-+++ b/net/core/net_namespace.c
-@@ -38,9 +38,16 @@ EXPORT_SYMBOL_GPL(net_namespace_list);
- DECLARE_RWSEM(net_rwsem);
- EXPORT_SYMBOL_GPL(net_rwsem);
- 
-+#ifdef CONFIG_KEYS
-+static struct key_tag init_net_key_domain = { .usage = REFCOUNT_INIT(1) };
-+#endif
-+
- struct net init_net = {
- 	.count		= REFCOUNT_INIT(1),
- 	.dev_base_head	= LIST_HEAD_INIT(init_net.dev_base_head),
-+#ifdef CONFIG_KEYS
-+	.key_domain	= &init_net_key_domain,
-+#endif
- };
- EXPORT_SYMBOL(init_net);
- 
-@@ -385,10 +392,21 @@ static struct net *net_alloc(void)
- 	if (!net)
- 		goto out_free;
- 
-+#ifdef CONFIG_KEYS
-+	net->key_domain = kzalloc(sizeof(struct key_tag), GFP_KERNEL);
-+	if (!net->key_domain)
-+		goto out_free_2;
-+	refcount_set(&net->key_domain->usage, 1);
-+#endif
-+
- 	rcu_assign_pointer(net->gen, ng);
- out:
- 	return net;
- 
-+#ifdef CONFIG_KEYS
-+out_free_2:
-+	kmem_cache_free(net_cachep, net);
-+#endif
- out_free:
- 	kfree(ng);
- 	goto out;
-@@ -565,6 +583,7 @@ static void cleanup_net(struct work_struct *work)
- 	list_for_each_entry_safe(net, tmp, &net_exit_list, exit_list) {
- 		list_del_init(&net->exit_list);
- 		dec_net_namespaces(net->ucounts);
-+		key_remove_domain(net->key_domain);
- 		put_user_ns(net->user_ns);
- 		net_drop_ns(net);
- 	}
-diff --git a/net/dns_resolver/dns_key.c b/net/dns_resolver/dns_key.c
-index a65d553e730d..3e1a90669006 100644
---- a/net/dns_resolver/dns_key.c
-+++ b/net/dns_resolver/dns_key.c
-@@ -314,6 +314,7 @@ static long dns_resolver_read(const struct key *key,
- 
- struct key_type key_type_dns_resolver = {
- 	.name		= "dns_resolver",
-+	.flags		= KEY_TYPE_NET_DOMAIN,
- 	.preparse	= dns_resolver_preparse,
- 	.free_preparse	= dns_resolver_free_preparse,
- 	.instantiate	= generic_key_instantiate,
-diff --git a/net/rxrpc/key.c b/net/rxrpc/key.c
-index e7f6b8823eb6..2722189ec273 100644
---- a/net/rxrpc/key.c
-+++ b/net/rxrpc/key.c
-@@ -43,6 +43,7 @@ static long rxrpc_read(const struct key *, char __user *, size_t);
-  */
- struct key_type key_type_rxrpc = {
- 	.name		= "rxrpc",
-+	.flags		= KEY_TYPE_NET_DOMAIN,
- 	.preparse	= rxrpc_preparse,
- 	.free_preparse	= rxrpc_free_preparse,
- 	.instantiate	= generic_key_instantiate,
-@@ -58,6 +59,7 @@ EXPORT_SYMBOL(key_type_rxrpc);
-  */
- struct key_type key_type_rxrpc_s = {
- 	.name		= "rxrpc_s",
-+	.flags		= KEY_TYPE_NET_DOMAIN,
- 	.vet_description = rxrpc_vet_description_s,
- 	.preparse	= rxrpc_preparse_s,
- 	.free_preparse	= rxrpc_free_preparse_s,
-diff --git a/security/keys/keyring.c b/security/keys/keyring.c
-index d2ad27535624..ffa368594a03 100644
---- a/security/keys/keyring.c
-+++ b/security/keys/keyring.c
-@@ -17,10 +17,12 @@
- #include <linux/seq_file.h>
- #include <linux/err.h>
- #include <linux/user_namespace.h>
-+#include <linux/nsproxy.h>
- #include <keys/keyring-type.h>
- #include <keys/user-type.h>
- #include <linux/assoc_array_priv.h>
- #include <linux/uaccess.h>
-+#include <net/net_namespace.h>
- #include "internal.h"
- 
- /*
-@@ -220,7 +222,10 @@ void key_set_index_key(struct keyring_index_key *index_key)
- 
- 	memcpy(index_key->desc, index_key->description, n);
- 
--	index_key->domain_tag = &default_domain_tag;
-+	if (index_key->type->flags & KEY_TYPE_NET_DOMAIN)
-+		index_key->domain_tag = current->nsproxy->net_ns->key_domain;
-+	else
-+		index_key->domain_tag = &default_domain_tag;
- 	hash_key_type_and_desc(index_key);
- }
- 
+Is it really necessary for nfs41_handle_recallable_state_revoked() to
+mark all open state as needing recovery?  After all, the only state that
+can be revoked are layouts and delegations.  If I change
+nfs41_handle_recallable_state_revoked(), so that instead of calling
+nfs41_handle_some_state_revoked() we instead call
+nfs_mark_test_expired_all_delegations() and
+nfs4_schedule_state_manager(), then the problem seems to go away.
 
+-Scott
+
+> 
+> -- 
+> Trond Myklebust
+> Linux NFS client maintainer, Hammerspace
+> trond.myklebust@hammerspace.com
+> 
+> 
