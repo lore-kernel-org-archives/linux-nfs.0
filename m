@@ -2,39 +2,39 @@ Return-Path: <SRS0=33mF=TB=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.8 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS,USER_AGENT_GIT
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-8.8 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A9DA3C04AA8
-	for <linux-nfs@archiver.kernel.org>; Wed,  1 May 2019 16:07:19 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8715DC04AA9
+	for <linux-nfs@archiver.kernel.org>; Wed,  1 May 2019 16:07:22 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 7A6192089E
-	for <linux-nfs@archiver.kernel.org>; Wed,  1 May 2019 16:07:19 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 554422089E
+	for <linux-nfs@archiver.kernel.org>; Wed,  1 May 2019 16:07:22 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="lhopa3nn"
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="Zc62yhd/"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726473AbfEAQHS (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 1 May 2019 12:07:18 -0400
-Received: from bombadil.infradead.org ([198.137.202.133]:35032 "EHLO
+        id S1726654AbfEAQHU (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 1 May 2019 12:07:20 -0400
+Received: from bombadil.infradead.org ([198.137.202.133]:35312 "EHLO
         bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726388AbfEAQHS (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 1 May 2019 12:07:18 -0400
+        with ESMTP id S1726472AbfEAQHU (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 1 May 2019 12:07:20 -0400
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=bombadil.20170209; h=Content-Transfer-Encoding:
-        MIME-Version:Message-Id:Date:Subject:Cc:To:From:Sender:Reply-To:Content-Type:
-        Content-ID:Content-Description:Resent-Date:Resent-From:Resent-Sender:
-        Resent-To:Resent-Cc:Resent-Message-ID:In-Reply-To:References:List-Id:
-        List-Help:List-Unsubscribe:List-Subscribe:List-Post:List-Owner:List-Archive;
-         bh=BmsOCWOL+giQZS37PMaeMlSUUcjDPMjoPtCe2tkT52w=; b=lhopa3nnuzOqrafzg9Kkz+1vj
-        zRcrs1JNVduVklckswJUOJDeGXueBDJQqfe1bSXKFFYz+EsgYkSK7QTDiq3dyTN5Zu8rRkrb/ofe5
-        iy9J+NYQ3/g3/e7Zat5sBySIWPF6fPyuj2jZ6mPvZrOwkVDcX0us/ysxTVD3wQzLoAtP/7/+Ys2/w
-        pPThqLdy0UCS/EfbjlATohXf8BTo98B+eFvbYkSIsp0MfV8tc20cD0hvWpavUXG2l7N44tjLh3AQv
-        JF2JvKvOFoXfDZCheLkQDFGqx0qyb9unfIa7+drB+xOUy2K53E4eWNNsYhLcV5F7gFtvRxhMTTIhR
-        NT/oC7BdA==;
+        MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
+        :Reply-To:Content-Type:Content-ID:Content-Description:Resent-Date:Resent-From
+        :Resent-Sender:Resent-To:Resent-Cc:Resent-Message-ID:List-Id:List-Help:
+        List-Unsubscribe:List-Subscribe:List-Post:List-Owner:List-Archive;
+        bh=AzdtBbFHCjWd7P3mgIv4y6C+GQMKPuM0dPoXcWBi+4k=; b=Zc62yhd/KNhOnoD4Oz0HVxIUGJ
+        ECU+tSIb3iXx8Z3M+eD4di90/kAmhkssjjPMj9GHJP4XjlmteyGVje11Wn7gL/JwVChII6z7AowcK
+        MthBbZ+89ENfqzGjZbWywKtyYxVuDh+sfFWmuPgZW+uc5LZni8tEJPG3n7q4xTtM25jG6BG9j0k6c
+        fmpWrrX5SIoI0bzLo8wI/GNU6Upekohnlk8P2MBJZW7MCPOzlCInSikzRv1NXhI+8NHPXFRYwEte3
+        G1cuS7x/BJjBWjSfd7c+o/BL0+efM51xjYubSnmdNSaSB7mHr1BRIFXx0g6OQXDnyjUu37GscR0qu
+        ZnWid9CA==;
 Received: from adsl-173-228-226-134.prtc.net ([173.228.226.134] helo=localhost)
         by bombadil.infradead.org with esmtpsa (Exim 4.90_1 #2 (Red Hat Linux))
-        id 1hLrlJ-0008Km-QG; Wed, 01 May 2019 16:07:14 +0000
+        id 1hLrlM-0008L9-Sy; Wed, 01 May 2019 16:07:17 +0000
 From:   Christoph Hellwig <hch@lst.de>
 To:     Andrew Morton <akpm@linux-foundation.org>
 Cc:     Sami Tolvanen <samitolvanen@google.com>,
@@ -42,10 +42,12 @@ Cc:     Sami Tolvanen <samitolvanen@google.com>,
         Nick Desaulniers <ndesaulniers@google.com>,
         linux-mtd@lists.infradead.org, linux-nfs@vger.kernel.org,
         linux-mm@kvack.org, linux-kernel@vger.kernel.org
-Subject: fix filler_t callback type mismatches
-Date:   Wed,  1 May 2019 12:06:32 -0400
-Message-Id: <20190501160636.30841-1-hch@lst.de>
+Subject: [PATCH 2/4] mm: don't cast ->readpage to filler_t for do_read_cache_page
+Date:   Wed,  1 May 2019 12:06:34 -0400
+Message-Id: <20190501160636.30841-3-hch@lst.de>
 X-Mailer: git-send-email 2.20.1
+In-Reply-To: <20190501160636.30841-1-hch@lst.de>
+References: <20190501160636.30841-1-hch@lst.de>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
@@ -54,9 +56,57 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Casting mapping->a_ops->readpage to filler_t causes an indirect call
-type mismatch with Control-Flow Integrity checking. This change fixes
-the mismatch in read_cache_page_gfp and read_mapping_page by adding
-using a NULL filler argument as an indication to call ->readpage
-directly, and by passing the right parameter callbacks in nfs and jffs2.
+We can just pass a NULL filler and do the right thing inside of
+do_read_cache_page based on the NULL parameter.
+
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+---
+ include/linux/pagemap.h |  3 +--
+ mm/filemap.c            | 10 ++++++----
+ 2 files changed, 7 insertions(+), 6 deletions(-)
+
+diff --git a/include/linux/pagemap.h b/include/linux/pagemap.h
+index bcf909d0de5f..f52c3a2074cd 100644
+--- a/include/linux/pagemap.h
++++ b/include/linux/pagemap.h
+@@ -386,8 +386,7 @@ extern int read_cache_pages(struct address_space *mapping,
+ static inline struct page *read_mapping_page(struct address_space *mapping,
+ 				pgoff_t index, void *data)
+ {
+-	filler_t *filler = (filler_t *)mapping->a_ops->readpage;
+-	return read_cache_page(mapping, index, filler, data);
++	return read_cache_page(mapping, index, NULL, data);
+ }
+ 
+ /*
+diff --git a/mm/filemap.c b/mm/filemap.c
+index a2fc59f56f50..51f5b02c299a 100644
+--- a/mm/filemap.c
++++ b/mm/filemap.c
+@@ -2866,7 +2866,11 @@ static struct page *do_read_cache_page(struct address_space *mapping,
+ 		}
+ 
+ filler:
+-		err = filler(data, page);
++		if (filler)
++			err = filler(data, page);
++		else
++			err = mapping->a_ops->readpage(data, page);
++
+ 		if (err < 0) {
+ 			put_page(page);
+ 			return ERR_PTR(err);
+@@ -2978,9 +2982,7 @@ struct page *read_cache_page_gfp(struct address_space *mapping,
+ 				pgoff_t index,
+ 				gfp_t gfp)
+ {
+-	filler_t *filler = (filler_t *)mapping->a_ops->readpage;
+-
+-	return do_read_cache_page(mapping, index, filler, NULL, gfp);
++	return do_read_cache_page(mapping, index, NULL, NULL, gfp);
+ }
+ EXPORT_SYMBOL(read_cache_page_gfp);
+ 
+-- 
+2.20.1
 
