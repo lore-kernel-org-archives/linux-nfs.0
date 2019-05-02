@@ -5,80 +5,89 @@ X-Spam-Level:
 X-Spam-Status: No, score=-1.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	MAILING_LIST_MULTI,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D908AC43219
-	for <linux-nfs@archiver.kernel.org>; Thu,  2 May 2019 17:44:20 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8089DC43219
+	for <linux-nfs@archiver.kernel.org>; Thu,  2 May 2019 17:53:26 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id AB20620652
-	for <linux-nfs@archiver.kernel.org>; Thu,  2 May 2019 17:44:20 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 6116620652
+	for <linux-nfs@archiver.kernel.org>; Thu,  2 May 2019 17:53:26 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726437AbfEBRoT (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 2 May 2019 13:44:19 -0400
-Received: from mail-oi1-f193.google.com ([209.85.167.193]:34093 "EHLO
-        mail-oi1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726417AbfEBRoT (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 2 May 2019 13:44:19 -0400
-Received: by mail-oi1-f193.google.com with SMTP id v10so2415885oib.1
-        for <linux-nfs@vger.kernel.org>; Thu, 02 May 2019 10:44:19 -0700 (PDT)
+        id S1726276AbfEBRxZ convert rfc822-to-8bit (ORCPT
+        <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 2 May 2019 13:53:25 -0400
+Received: from mail-ot1-f66.google.com ([209.85.210.66]:36229 "EHLO
+        mail-ot1-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726175AbfEBRxZ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 2 May 2019 13:53:25 -0400
+Received: by mail-ot1-f66.google.com with SMTP id b18so2910819otq.3
+        for <linux-nfs@vger.kernel.org>; Thu, 02 May 2019 10:53:25 -0700 (PDT)
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:mime-version:references:in-reply-to:from:date
-         :message-id:subject:to:cc;
-        bh=A/BTpe1GCpx8WOaWkORwszZW4OhHJBOv4flBT0vFDKI=;
-        b=G+SbHNaYvdpokaobh6WMVcA+W9N+7idk9JNjFeUFAYCr+8id1U66vhYalNdqn3bu+o
-         E5HgKuT70oPmiYvsUqmdo7k0elZU8y4dACaaazh6dCwM0vrxnSnPDT+0GmBAHLuOmBk4
-         dJbFFNDa8njrFF7qeV9ZHw451oY5jr62CXoUVdiiSjDUZp7wYdUd32ROWTNx48XFM6gh
-         0ghYPGiXAbhNwAh0355pJ/H4gXTdSmi5AJl6bvRhRTFGkte3Srjb2Lt6egX63VKKNnq9
-         BJSUmcPEEf6UmaI0Mx9T8bsauhQVPO4LJeUBpG8JCF5PLy+Lnz86tjoqfmA4SgyUxFZj
-         IzXA==
-X-Gm-Message-State: APjAAAW/ILh2gyoIsSaitl7kY6N25FpZaBLyCzzVEnl4NBNzPyBi/5fz
-        TE+jaEhpV3S77QDABVllMpL2C0E5Y0VO5ggSjmiSxA==
-X-Google-Smtp-Source: APXvYqzkCKVtwDFTAmTjZnr+9E8F6X9oBSJfpx707teMwX2ZIYfEr+1PfRcpNtXqB1Leic/fKOicG15VnaqrRwMWYU0=
-X-Received: by 2002:aca:47c8:: with SMTP id u191mr1503973oia.72.1556819058630;
- Thu, 02 May 2019 10:44:18 -0700 (PDT)
+         :message-id:subject:to:cc:content-transfer-encoding;
+        bh=GBDNR7dZoJr86zYykorTJ/IjzJwi83xXzsZS+RvPfCM=;
+        b=OvqWuB+R9F6pHQmOPsPeh4KcEdPwRtp+uoCAWbJOz2th4T5PMPm5X9C4/fSgx/rOxW
+         R777wtTXBtqVqC2liFHBQ7tQH6w3BBJphzAO8tMkOBHjBeN1YYEDwt239shmsEB4iHO6
+         FGb36xh0UQ4GSHdiTdk3uNqRVNOwopY+DUj8xFXJ0VlNnAh8R5ae+xM5x40cFL2nGYZV
+         lFJs+TYkEAAyUAoPGFdoPew4EzzHl9uHS8C9YYeELa3zRz5eYCnb0vcFo3Fvjwya2R9b
+         TniLSMxG077/1vW0iTk0bPb8oH6DoqDvD3TBv8LJaKsToPzjf58Nx25BJOy+GPZFMQo4
+         Ztsw==
+X-Gm-Message-State: APjAAAWsxK5ucVAULH2CnsRxNVZisCfTTaSfM5rZM3ECncz0LyL05u0W
+        6SIrHRPd68X7p4xLYzPQ4H4IonwDwH5NeUrBJxHi5g==
+X-Google-Smtp-Source: APXvYqzST1Dup9n2jNMYyXmGV8wykLPR0kBeWfOpX/RmNcI7EMUp4H3q7uEXhTXI757a8zkKf8qMd/e6iIelmwu8cxc=
+X-Received: by 2002:a9d:61c6:: with SMTP id h6mr3337115otk.316.1556819604755;
+ Thu, 02 May 2019 10:53:24 -0700 (PDT)
 MIME-Version: 1.0
-References: <CAJfpeguwUtRWRGmNmimNp-FXzWqMCCQMb24iWPu0w_J0_rOnnw@mail.gmail.com>
- <20161205151933.GA17517@fieldses.org> <CAJfpegtpkavseTFLspaC7svbvHRq-0-7jvyh63+DK5iWHTGnaQ@mail.gmail.com>
- <20161205162559.GB17517@fieldses.org> <CAHpGcMKHjic6L+J0qvMYNG9hVCcDO1hEpx4BiEk0ZCKDV39BmA@mail.gmail.com>
- <266c571f-e4e2-7c61-5ee2-8ece0c2d06e9@web.de> <CAHpGcMKmtppfn7PVrGKEEtVphuLV=YQ2GDYKOqje4ZANhzSgDw@mail.gmail.com>
- <CAHpGcMKjscfhmrAhwGes0ag2xTkbpFvCO6eiLL_rHz87XE-ZmA@mail.gmail.com>
+References: <CAHpGcMKjscfhmrAhwGes0ag2xTkbpFvCO6eiLL_rHz87XE-ZmA@mail.gmail.com>
  <CAJfpegvRFGOc31gVuYzanzWJ=mYSgRgtAaPhYNxZwHin3Wc0Gw@mail.gmail.com>
  <CAHc6FU4JQ28BFZE9_8A06gtkMvvKDzFmw9=ceNPYvnMXEimDMw@mail.gmail.com>
  <20161206185806.GC31197@fieldses.org> <87bm0l4nra.fsf@notabene.neil.brown.name>
  <CAOQ4uxjYEjqbLcVYoUaPzp-jqY_3tpPBhO7cE7kbq63XrPRQLQ@mail.gmail.com>
- <875zqt4igg.fsf@notabene.neil.brown.name> <8f3ba729-ed44-7bed-5ff8-b962547e5582@math.utexas.edu>
-In-Reply-To: <8f3ba729-ed44-7bed-5ff8-b962547e5582@math.utexas.edu>
+ <875zqt4igg.fsf@notabene.neil.brown.name> <CAHc6FU52OCCGUnHXOCFTv1diP_5i4yZvF6fAth9=aynwS+twQg@mail.gmail.com>
+ <CAJfpegsthQn_=3AQJf7ojxoQBpHMA3dz1fCBjNZXsCA1E0oqnw@mail.gmail.com>
+ <CAHpGcML0KuoGSyXyyDnXHkSp3nDnSjJPeZeWEmt8CXxQeojxwg@mail.gmail.com> <20190502171603.GA1778@fieldses.org>
+In-Reply-To: <20190502171603.GA1778@fieldses.org>
 From:   Andreas Gruenbacher <agruenba@redhat.com>
-Date:   Thu, 2 May 2019 19:44:07 +0200
-Message-ID: <CAHc6FU4czPQ8xxv5efvhkizU3obpV_05VEWYKydXDDDYcp8j=w@mail.gmail.com>
+Date:   Thu, 2 May 2019 19:53:13 +0200
+Message-ID: <CAHc6FU5fBorvOCkxvX58hEKmDgwu+-m_RDwEWDY36XpH1F03Hw@mail.gmail.com>
 Subject: Re: [PATCH] overlayfs: ignore empty NFSv4 ACLs in ext4 upperdir
-To:     "Goetz, Patrick G" <pgoetz@math.utexas.edu>
-Cc:     NeilBrown <neilb@suse.com>, Amir Goldstein <amir73il@gmail.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Miklos Szeredi <miklos@szeredi.hu>,
-        =?UTF-8?Q?Andreas_Gr=C3=BCnbacher?= <andreas.gruenbacher@gmail.com>,
+To:     "J. Bruce Fields" <bfields@fieldses.org>
+Cc:     =?UTF-8?Q?Andreas_Gr=C3=BCnbacher?= <andreas.gruenbacher@gmail.com>,
+        Miklos Szeredi <miklos@szeredi.hu>, NeilBrown <neilb@suse.com>,
+        Amir Goldstein <amir73il@gmail.com>,
         Patrick Plagwitz <Patrick_Plagwitz@web.de>,
         "linux-unionfs@vger.kernel.org" <linux-unionfs@vger.kernel.org>,
         Linux NFS list <linux-nfs@vger.kernel.org>,
         Linux FS-devel Mailing List <linux-fsdevel@vger.kernel.org>,
         Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
 Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Thu, 2 May 2019 at 19:27, Goetz, Patrick G <pgoetz@math.utexas.edu> wrote:
-> On 5/1/19 10:57 PM, NeilBrown wrote:
-> > Support some day support for nfs4 acls were added to ext4 (not a totally
-> > ridiculous suggestion).  We would then want NFS to allow it's ACLs to be
-> > copied up.
+On Thu, 2 May 2019 at 19:16, J. Bruce Fields <bfields@fieldses.org> wrote:
+> On Thu, May 02, 2019 at 05:08:14PM +0200, Andreas Grünbacher wrote:
+> > You'll still see permissions that differ from what the filesystem
+> > enforces, and copy-up would change that behavior.
 >
-> Is there some reason why there hasn't been a greater effort to add NFSv4
-> ACL support to the mainstream linux filesystems?  I have to support a
-> hybrid linux/windows environment and not having these ACLs on ext4 is a
-> daily headache for me.
+> That's always true, and this issue isn't really specific to NFSv4 ACLs
+> (or ACLs at all), it already exists with just mode bits.  The client
+> doesn't know how principals may be mapped on the server, doesn't know
+> group membership, etc.
+>
+> That's the usual model, anyway.  Permissions are almost entirely the
+> server's responsibility, and we just provide a few attributes to set/get
+> those server-side permissions.
 
-The patches for implementing that have been rejected over and over
-again, and nobody is working on them anymore.
+Sure, if the client and server don't share the same user and group
+databases, ACLs can get a very different meaning.
 
 Andreas
+
+> The overlayfs/NFS case is different, I think: the nfs filesystem may be
+> just a static read-only template for a filesystem that's only ever used
+> by clients, and for all I know maybe permissions should only be
+> interpreted on the client side in that case.
+>
+> --b.
