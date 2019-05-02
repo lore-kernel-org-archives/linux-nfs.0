@@ -2,75 +2,70 @@ Return-Path: <SRS0=hurI=TC=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_PASS,USER_AGENT_MUTT autolearn=ham autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 35920C43219
-	for <linux-nfs@archiver.kernel.org>; Thu,  2 May 2019 17:16:05 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 642F3C43219
+	for <linux-nfs@archiver.kernel.org>; Thu,  2 May 2019 17:31:10 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id F3E1120652
-	for <linux-nfs@archiver.kernel.org>; Thu,  2 May 2019 17:16:04 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 35CD0205F4
+	for <linux-nfs@archiver.kernel.org>; Thu,  2 May 2019 17:31:10 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726304AbfEBRQE (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 2 May 2019 13:16:04 -0400
-Received: from fieldses.org ([173.255.197.46]:52264 "EHLO fieldses.org"
+        id S1726175AbfEBRbJ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 2 May 2019 13:31:09 -0400
+Received: from mx1.redhat.com ([209.132.183.28]:45580 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725951AbfEBRQE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 2 May 2019 13:16:04 -0400
-Received: by fieldses.org (Postfix, from userid 2815)
-        id 9E9321BE3; Thu,  2 May 2019 13:16:03 -0400 (EDT)
-Date:   Thu, 2 May 2019 13:16:03 -0400
-From:   "J. Bruce Fields" <bfields@fieldses.org>
-To:     Andreas =?utf-8?Q?Gr=C3=BCnbacher?= 
-        <andreas.gruenbacher@gmail.com>
-Cc:     Miklos Szeredi <miklos@szeredi.hu>,
-        Andreas Gruenbacher <agruenba@redhat.com>,
-        NeilBrown <neilb@suse.com>, Amir Goldstein <amir73il@gmail.com>,
-        Patrick Plagwitz <Patrick_Plagwitz@web.de>,
-        "linux-unionfs@vger.kernel.org" <linux-unionfs@vger.kernel.org>,
-        Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux FS-devel Mailing List <linux-fsdevel@vger.kernel.org>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
-Subject: Re: [PATCH] overlayfs: ignore empty NFSv4 ACLs in ext4 upperdir
-Message-ID: <20190502171603.GA1778@fieldses.org>
-References: <CAHpGcMKjscfhmrAhwGes0ag2xTkbpFvCO6eiLL_rHz87XE-ZmA@mail.gmail.com>
- <CAJfpegvRFGOc31gVuYzanzWJ=mYSgRgtAaPhYNxZwHin3Wc0Gw@mail.gmail.com>
- <CAHc6FU4JQ28BFZE9_8A06gtkMvvKDzFmw9=ceNPYvnMXEimDMw@mail.gmail.com>
- <20161206185806.GC31197@fieldses.org>
- <87bm0l4nra.fsf@notabene.neil.brown.name>
- <CAOQ4uxjYEjqbLcVYoUaPzp-jqY_3tpPBhO7cE7kbq63XrPRQLQ@mail.gmail.com>
- <875zqt4igg.fsf@notabene.neil.brown.name>
- <CAHc6FU52OCCGUnHXOCFTv1diP_5i4yZvF6fAth9=aynwS+twQg@mail.gmail.com>
- <CAJfpegsthQn_=3AQJf7ojxoQBpHMA3dz1fCBjNZXsCA1E0oqnw@mail.gmail.com>
- <CAHpGcML0KuoGSyXyyDnXHkSp3nDnSjJPeZeWEmt8CXxQeojxwg@mail.gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Disposition: inline
-Content-Transfer-Encoding: 8bit
-In-Reply-To: <CAHpGcML0KuoGSyXyyDnXHkSp3nDnSjJPeZeWEmt8CXxQeojxwg@mail.gmail.com>
-User-Agent: Mutt/1.5.21 (2010-09-15)
+        id S1726145AbfEBRbJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 2 May 2019 13:31:09 -0400
+Received: from smtp.corp.redhat.com (int-mx08.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id 6BDB880472;
+        Thu,  2 May 2019 17:31:09 +0000 (UTC)
+Received: from coeurl.usersys.redhat.com (ovpn-122-85.rdu2.redhat.com [10.10.122.85])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 2BB53A233;
+        Thu,  2 May 2019 17:31:09 +0000 (UTC)
+Received: by coeurl.usersys.redhat.com (Postfix, from userid 1000)
+        id B445021003; Thu,  2 May 2019 13:31:08 -0400 (EDT)
+From:   Scott Mayhew <smayhew@redhat.com>
+To:     trond.myklebust@hammerspace.com, anna.schumaker@netapp.com
+Cc:     linux-nfs@vger.kernel.org
+Subject: [PATCH] NFSv4: don't mark all open state for recovery when handling recallable state revoked flag
+Date:   Thu,  2 May 2019 13:31:08 -0400
+Message-Id: <20190502173108.8796-1-smayhew@redhat.com>
+X-Scanned-By: MIMEDefang 2.84 on 10.5.11.23
+X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.28]); Thu, 02 May 2019 17:31:09 +0000 (UTC)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Thu, May 02, 2019 at 05:08:14PM +0200, Andreas Grünbacher wrote:
-> You'll still see permissions that differ from what the filesystem
-> enforces, and copy-up would change that behavior.
+Only delegations and layouts can be recalled, so it shouldn't be
+necessary to recover all opens when handling the status bit
+SEQ4_STATUS_RECALLABLE_STATE_REVOKED.  We'll still wind up calling
+nfs41_open_expired() when a TEST_STATEID returns NFS4ERR_DELEG_REVOKED.
 
-That's always true, and this issue isn't really specific to NFSv4 ACLs
-(or ACLs at all), it already exists with just mode bits.  The client
-doesn't know how principals may be mapped on the server, doesn't know
-group membership, etc.
+Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+---
+ fs/nfs/nfs4state.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-That's the usual model, anyway.  Permissions are almost entirely the
-server's responsibility, and we just provide a few attributes to set/get
-those server-side permissions.
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index 3de36479ed7a..4db9bcf93fad 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -2346,8 +2346,8 @@ static void nfs41_handle_recallable_state_revoked(struct nfs_client *clp)
+ {
+ 	/* FIXME: For now, we destroy all layouts. */
+ 	pnfs_destroy_all_layouts(clp);
+-	/* FIXME: For now, we test all delegations+open state+locks. */
+-	nfs41_handle_some_state_revoked(clp);
++	nfs_mark_test_expired_all_delegations(clp);
++	nfs4_schedule_state_manager(clp);
+ 	dprintk("%s: Recallable state revoked on server %s!\n", __func__,
+ 			clp->cl_hostname);
+ }
+-- 
+2.17.2
 
-The overlayfs/NFS case is different, I think: the nfs filesystem may be
-just a static read-only template for a filesystem that's only ever used
-by clients, and for all I know maybe permissions should only be
-interpreted on the client side in that case.
-
---b.
