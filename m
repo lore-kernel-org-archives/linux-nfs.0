@@ -2,87 +2,54 @@ Return-Path: <SRS0=+BBy=TN=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS autolearn=ham
+X-Spam-Status: No, score=-1.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_PASS,UNPARSEABLE_RELAY autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D2C95C04A6B
-	for <linux-nfs@archiver.kernel.org>; Mon, 13 May 2019 01:52:18 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3BB33C04AB1
+	for <linux-nfs@archiver.kernel.org>; Mon, 13 May 2019 06:49:50 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 9F798208E3
-	for <linux-nfs@archiver.kernel.org>; Mon, 13 May 2019 01:52:18 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 1919320879
+	for <linux-nfs@archiver.kernel.org>; Mon, 13 May 2019 06:49:50 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727183AbfEMBwS (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 12 May 2019 21:52:18 -0400
-Received: from szxga04-in.huawei.com ([45.249.212.190]:7628 "EHLO huawei.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1727054AbfEMBwS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sun, 12 May 2019 21:52:18 -0400
-Received: from DGGEMS409-HUB.china.huawei.com (unknown [172.30.72.59])
-        by Forcepoint Email with ESMTP id 0ADC0248A3493BF3EB84;
-        Mon, 13 May 2019 09:48:40 +0800 (CST)
-Received: from [127.0.0.1] (10.184.189.120) by DGGEMS409-HUB.china.huawei.com
- (10.3.19.209) with Microsoft SMTP Server id 14.3.439.0; Mon, 13 May 2019
- 09:48:36 +0800
-Subject: Re: [PATCH] NFS4: Fix v4.0 client state corruption when mount
-To:     <trond.myklebust@hammerspace.com>, <nna.schumaker@netapp.com>,
-        <linux-nfs@vger.kernel.org>
-References: <1557115023-86769-1-git-send-email-zhangxiaoxu5@huawei.com>
-From:   "zhangxiaoxu (A)" <zhangxiaoxu5@huawei.com>
-Message-ID: <066b843e-33cc-e8a3-ad2b-f8d257d8a4df@huawei.com>
-Date:   Mon, 13 May 2019 09:48:26 +0800
-User-Agent: Mozilla/5.0 (Windows NT 6.1; WOW64; rv:60.0) Gecko/20100101
- Thunderbird/60.0
+        id S1727572AbfEMGtt (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 13 May 2019 02:49:49 -0400
+Received: from out30-56.freemail.mail.aliyun.com ([115.124.30.56]:34454 "EHLO
+        out30-56.freemail.mail.aliyun.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1725866AbfEMGtt (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 13 May 2019 02:49:49 -0400
+X-Alimail-AntiSpam: AC=PASS;BC=-1|-1;BR=01201311R821e4;CH=green;DM=||false|;FP=0|-1|-1|-1|0|-1|-1|-1;HT=e01e04395;MF=wuyihao@linux.alibaba.com;NM=1;PH=DS;RN=6;SR=0;TI=SMTPD_---0TRZiBTY_1557730186;
+Received: from ali-186590dcce93-2.local(mailfrom:wuyihao@linux.alibaba.com fp:SMTPD_---0TRZiBTY_1557730186)
+          by smtp.aliyun-inc.com(127.0.0.1);
+          Mon, 13 May 2019 14:49:46 +0800
+To:     linux-nfs@vger.kernel.org, Jeff Layton <jlayton@kernel.org>,
+        "J. Bruce Fields" <bfields@fieldses.org>
+Cc:     Joseph Qi <joseph.qi@linux.alibaba.com>, caspar@linux.alibaba.com
+From:   Yihao Wu <wuyihao@linux.alibaba.com>
+Subject: [PATCH v2 0/2] Fix two bugs CB_NOTIFY_LOCK failing to wake a water
+Message-ID: <346806ac-2018-b780-4939-87f29648017c@linux.alibaba.com>
+Date:   Mon, 13 May 2019 14:49:46 +0800
+User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.14; rv:60.0)
+ Gecko/20100101 Thunderbird/60.6.1
 MIME-Version: 1.0
-In-Reply-To: <1557115023-86769-1-git-send-email-zhangxiaoxu5@huawei.com>
-Content-Type: text/plain; charset="utf-8"; format=flowed
+Content-Type: text/plain; charset=utf-8
 Content-Language: en-US
 Content-Transfer-Encoding: 7bit
-X-Originating-IP: [10.184.189.120]
-X-CFilter-Loop: Reflected
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-ping.
+This patch set fix bugs related to CB_NOTIFY_LOCK. These bugs cause
+poor performance in locking operation. And this patchset should also fix
+the failure when running xfstests generic/089 on a NFSv4.1 filesystem.
 
-On 5/6/2019 11:57 AM, ZhangXiaoxu wrote:
-> stat command with soft mount never return after server is stopped.
-> 
-> When alloc a new client, the state of the client will be set to
-> NFS4CLNT_LEASE_EXPIRED.
-> 
-> When the server is stopped, the state manager will work, and accord
-> the state to recover. But the state is NFS4CLNT_LEASE_EXPIRED, it
-> will drain the slot table and lead other task to wait queue, until
-> the client recovered. Then the stat command is hung.
-> 
-> When discover server trunking, the client will renew the lease,
-> but check the client state, it lead the client state corruption.
-> 
-> So, we need to call state manager to recover it when detect server
-> ip trunking.
-> 
-> Signed-off-by: ZhangXiaoxu <zhangxiaoxu5@huawei.com>
-> ---
->   fs/nfs/nfs4state.c | 4 ++++
->   1 file changed, 4 insertions(+)
-> 
-> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-> index 3de3647..f502f1c 100644
-> --- a/fs/nfs/nfs4state.c
-> +++ b/fs/nfs/nfs4state.c
-> @@ -159,6 +159,10 @@ int nfs40_discover_server_trunking(struct nfs_client *clp,
->   		/* Sustain the lease, even if it's empty.  If the clientid4
->   		 * goes stale it's of no use for trunking discovery. */
->   		nfs4_schedule_state_renewal(*result);
-> +
-> +		/* If the client state need to recover, do it. */
-> +		if (clp->cl_state)
-> +			nfs4_schedule_state_manager(clp);
->   	}
->   out:
->   	return status;
-> 
+Yihao Wu (2):
+  NFSv4.1: Again fix a race where CB_NOTIFY_LOCK fails to wake a waiter
+  NFSv4.1: Fix bug only first CB_NOTIFY_LOCK is handled
 
+ fs/nfs/nfs4proc.c | 31 ++++++++++++-------------------
+ 1 file changed, 12 insertions(+), 19 deletions(-)
+
+-- 
+1.8.3.1
