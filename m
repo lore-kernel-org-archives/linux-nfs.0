@@ -2,60 +2,79 @@ Return-Path: <SRS0=+BBy=TN=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_PASS,USER_AGENT_MUTT autolearn=ham autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-9.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,USER_AGENT_GIT
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D29D5C04AA7
-	for <linux-nfs@archiver.kernel.org>; Mon, 13 May 2019 13:44:58 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 20302C04AB1
+	for <linux-nfs@archiver.kernel.org>; Mon, 13 May 2019 15:27:07 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id AE07320879
-	for <linux-nfs@archiver.kernel.org>; Mon, 13 May 2019 13:44:58 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id F18282147A
+	for <linux-nfs@archiver.kernel.org>; Mon, 13 May 2019 15:27:06 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729133AbfEMNo6 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 13 May 2019 09:44:58 -0400
-Received: from fieldses.org ([173.255.197.46]:58336 "EHLO fieldses.org"
+        id S1729542AbfEMP1G (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 13 May 2019 11:27:06 -0400
+Received: from fieldses.org ([173.255.197.46]:58466 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1728755AbfEMNo5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 13 May 2019 09:44:57 -0400
+        id S1727458AbfEMP1F (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 13 May 2019 11:27:05 -0400
 Received: by fieldses.org (Postfix, from userid 2815)
-        id 6E19F1DCB; Mon, 13 May 2019 09:44:57 -0400 (EDT)
-Date:   Mon, 13 May 2019 09:44:57 -0400
-From:   "J. Bruce Fields" <bfields@fieldses.org>
-To:     Jeff Layton <jlayton@kernel.org>
-Cc:     steved@redhat.com, linux-nfs@vger.kernel.org, jfajerski@suse.com
-Subject: Re: [PATCH] manpage: explain why showmount doesn't really work
- against a v4-only server
-Message-ID: <20190513134457.GA13359@fieldses.org>
-References: <20190510215445.1823-1-jlayton@kernel.org>
- <20190511135442.GA15721@fieldses.org>
- <593884facebf2ebcafcbe577845a961abbaa9928.camel@kernel.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <593884facebf2ebcafcbe577845a961abbaa9928.camel@kernel.org>
-User-Agent: Mutt/1.5.21 (2010-09-15)
+        id 7B5FD2014; Mon, 13 May 2019 11:27:05 -0400 (EDT)
+From:   "J. Bruce Fields" <bfields@redhat.com>
+To:     linux-nfs@vger.kernel.org
+Cc:     "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 2/2] nfsd: fh_drop_write in nfsd_unlink
+Date:   Mon, 13 May 2019 11:27:03 -0400
+Message-Id: <1557761223-14483-3-git-send-email-bfields@redhat.com>
+X-Mailer: git-send-email 1.8.3.1
+In-Reply-To: <1557761223-14483-1-git-send-email-bfields@redhat.com>
+References: <1557761223-14483-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Mon, May 13, 2019 at 09:29:42AM -0400, Jeff Layton wrote:
-> Yeah, that certainly wouldn't hurt. I'd suggest we add that in a
-> separate patch though.
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Agreed.
+fh_want_write() can now be called twice, but I'm also fixing up the
+callers not to do that.
 
-> We will need to spell this out in the manpage either way. At least with
-> ganesha, you can export some filesystems via v3 and others via v4 only,
-> and the MNT service there will only report the v3 ones. In that case,
-> you have a reachable service, but the v4-only filesystems will be
-> missing from showmount's output.
+Other cases include setattr and create.
 
-That doesn't sound like a great idea to me, but maybe you have no choice
-if for some reason you want to allow simultaneous support for v3-only
-clients and for filesystems that require long filehandles?  Ugh.
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/vfs.c | 8 +++++---
+ 1 file changed, 5 insertions(+), 3 deletions(-)
 
-Anyway, this kind of warning doesn't have to catch every odd case.
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index 7dc98e14655d..fc24ee47eab5 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -1786,12 +1786,12 @@ nfsd_unlink(struct svc_rqst *rqstp, struct svc_fh *fhp, int type,
+ 	rdentry = lookup_one_len(fname, dentry, flen);
+ 	host_err = PTR_ERR(rdentry);
+ 	if (IS_ERR(rdentry))
+-		goto out_nfserr;
++		goto out_drop_write;
+ 
+ 	if (d_really_is_negative(rdentry)) {
+ 		dput(rdentry);
+-		err = nfserr_noent;
+-		goto out;
++		host_err = -ENOENT;
++		goto out_drop_write;
+ 	}
+ 
+ 	if (!type)
+@@ -1805,6 +1805,8 @@ nfsd_unlink(struct svc_rqst *rqstp, struct svc_fh *fhp, int type,
+ 		host_err = commit_metadata(fhp);
+ 	dput(rdentry);
+ 
++out_drop_write:
++	fh_drop_write(fhp);
+ out_nfserr:
+ 	err = nfserrno(host_err);
+ out:
+-- 
+2.21.0
 
---b.
