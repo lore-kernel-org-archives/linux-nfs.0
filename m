@@ -1,96 +1,92 @@
-Return-Path: <SRS0=JCjy=TL=vger.kernel.org=linux-nfs-owner@kernel.org>
+Return-Path: <SRS0=+BBy=TN=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.4 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_PASS,USER_AGENT_MUTT autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9C9A3C04AB1
-	for <linux-nfs@archiver.kernel.org>; Sat, 11 May 2019 13:54:44 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9CAE4C04A6B
+	for <linux-nfs@archiver.kernel.org>; Mon, 13 May 2019 01:51:04 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 787D52173B
-	for <linux-nfs@archiver.kernel.org>; Sat, 11 May 2019 13:54:44 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 74900208C0
+	for <linux-nfs@archiver.kernel.org>; Mon, 13 May 2019 01:51:04 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726259AbfEKNyn (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sat, 11 May 2019 09:54:43 -0400
-Received: from fieldses.org ([173.255.197.46]:56178 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726240AbfEKNyn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sat, 11 May 2019 09:54:43 -0400
-Received: by fieldses.org (Postfix, from userid 2815)
-        id 83CA61DCB; Sat, 11 May 2019 09:54:42 -0400 (EDT)
-Date:   Sat, 11 May 2019 09:54:42 -0400
-To:     Jeff Layton <jlayton@kernel.org>
-Cc:     steved@redhat.com, linux-nfs@vger.kernel.org, jfajerski@suse.com
-Subject: Re: [PATCH] manpage: explain why showmount doesn't really work
- against a v4-only server
-Message-ID: <20190511135442.GA15721@fieldses.org>
-References: <20190510215445.1823-1-jlayton@kernel.org>
+        id S1727132AbfEMBvD (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sun, 12 May 2019 21:51:03 -0400
+Received: from szxga05-in.huawei.com ([45.249.212.191]:7744 "EHLO huawei.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1727054AbfEMBvD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sun, 12 May 2019 21:51:03 -0400
+Received: from DGGEMS405-HUB.china.huawei.com (unknown [172.30.72.58])
+        by Forcepoint Email with ESMTP id C5890FD6C62FC409CD23;
+        Mon, 13 May 2019 09:49:00 +0800 (CST)
+Received: from [127.0.0.1] (10.184.189.120) by DGGEMS405-HUB.china.huawei.com
+ (10.3.19.205) with Microsoft SMTP Server id 14.3.439.0; Mon, 13 May 2019
+ 09:48:59 +0800
+Subject: Re: [PATCH] SUNRPC: task should be exit if encode return EKEYEXPIRED
+ more times
+From:   "zhangxiaoxu (A)" <zhangxiaoxu5@huawei.com>
+To:     <trond.myklebust@hammerspace.com>, <anna.schumaker@netapp.com>,
+        <bfields@fieldses.org>, <jlayton@kernel.org>,
+        <davem@davemloft.net>, <linux-nfs@vger.kernel.org>
+References: <1556530351-81780-1-git-send-email-zhangxiaoxu5@huawei.com>
+ <dd163a59-eb34-242a-052d-eb0ac4d4a9e8@huawei.com>
+Message-ID: <f3fcad81-1a0f-a59b-d67b-7d8a541be2c8@huawei.com>
+Date:   Mon, 13 May 2019 09:48:49 +0800
+User-Agent: Mozilla/5.0 (Windows NT 6.1; WOW64; rv:60.0) Gecko/20100101
+ Thunderbird/60.0
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20190510215445.1823-1-jlayton@kernel.org>
-User-Agent: Mutt/1.5.21 (2010-09-15)
-From:   bfields@fieldses.org (J. Bruce Fields)
+In-Reply-To: <dd163a59-eb34-242a-052d-eb0ac4d4a9e8@huawei.com>
+Content-Type: text/plain; charset="utf-8"; format=flowed
+Content-Language: en-US
+Content-Transfer-Encoding: 8bit
+X-Originating-IP: [10.184.189.120]
+X-CFilter-Loop: Reflected
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Fri, May 10, 2019 at 05:54:45PM -0400, Jeff Layton wrote:
-> From: Jeff Layton <jlayton@redhat.com>
+ping.
+
+On 5/4/2019 2:15 PM, zhangxiaoxu (A) wrote:
+> ping.
 > 
-> I occasionally see people that expect valid info when running showmount
-> against a server that may export some or all filesystems via NFSv4.
-> Let's make it clear that it only works by talking to the remote MNT
-> service, and that that may not be available from a v4-only server.
+> On 4/29/2019 5:32 PM, ZhangXiaoxu wrote:
+>> If the rpc.gssd always return cred success, but now the cred is
+>> expired, then the task will loop in call_refresh and call_transmit.
+>>
+>> Exit the rpc task after retry.
+>>
+>> Signed-off-by: ZhangXiaoxu <zhangxiaoxu5@huawei.com>
+>> ---
+>>   net/sunrpc/clnt.c | 9 ++++++++-
+>>   1 file changed, 8 insertions(+), 1 deletion(-)
+>>
+>> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+>> index 8ff11dc..a32d3f1 100644
+>> --- a/net/sunrpc/clnt.c
+>> +++ b/net/sunrpc/clnt.c
+>> @@ -1793,7 +1793,14 @@ call_encode(struct rpc_task *task)
+>>               rpc_delay(task, HZ >> 4);
+>>               break;
+>>           case -EKEYEXPIRED:
+>> -            task->tk_action = call_refresh;
+>> +            if (!task->tk_cred_retry) {
+>> +                rpc_exit(task, task->tk_status);
+>> +            } else {
+>> +                task->tk_action = call_refresh;
+>> +                task->tk_cred_retry--;
+>> +                dprintk("RPC: %5u %s: retry refresh creds\n",
+>> +                    task->tk_pid, __func__);
+>> +            }
+>>               break;
+>>           default:
+>>               rpc_exit(task, task->tk_status);
+>>
+> 
+> 
+> .
+> 
 
-Looks fine.
-
-I wonder if it'd also be helpful for showmount to detect this case and
-say something.  E.g. the following (not even compileable, but you get
-the idea).
-
-We've also talked about trying to cobble together an export list by
-scanning the root filesystem over NFSv4, but that's likely to be
-complicated and wouldn't give all the same results without further
-protocol extensions anyway, so I think that idea's dead.
-
---b.
-
-diff --git a/utils/showmount/showmount.c b/utils/showmount/showmount.c
-index 394f5284a219..de9a6d38783a 100644
---- a/utils/showmount/showmount.c
-+++ b/utils/showmount/showmount.c
-@@ -115,6 +115,22 @@ static CLIENT *nfs_get_mount_client(const char *hostname, rpcvers_t vers)
- 	exit(1);
- }
- 
-+void warn_if_v4_only(char *hostname)
-+{
-+	struct sockaddr_in server_addr, client_addr;
-+
-+	if (fill_ipv4_sockaddr(hostname, &serveraddr))
-+		return;
-+	server_addr.sin_port = htnos(NFS_PORT);
-+	client_addr.sin_family = 0;
-+	client_addr.sin_addr.s_addr = 0;
-+	clnt_ping(&server_addr, NFS_PROGRAM, 4, "tcp", &client_addr);
-+
-+	if (rpc.createerr == RPC_SUCCESS)
-+		printf("Server responding to NFSv4 but not MNT; try mounting "
-+			"%s:/ instead of showmount", hostname);
-+}
-+
- int main(int argc, char **argv)
- {
- 	char hostname_buf[MAXHOSTLEN];
-@@ -199,6 +215,7 @@ int main(int argc, char **argv)
- 		fprintf(stderr, "%s: unable to create RPC auth handle.\n",
- 				program_name);
- 		clnt_destroy(mclient);
-+		warn_if_v4_only(hostname);
- 		exit(1);
- 	}
- 	total_timeout.tv_sec = TOTAL_TIMEOUT;
