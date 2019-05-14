@@ -2,90 +2,105 @@ Return-Path: <SRS0=m2Mz=TO=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 93603C04AB4
-	for <linux-nfs@archiver.kernel.org>; Tue, 14 May 2019 20:04:20 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id EF0ACC04AB6
+	for <linux-nfs@archiver.kernel.org>; Tue, 14 May 2019 20:45:24 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 6042B2086A
-	for <linux-nfs@archiver.kernel.org>; Tue, 14 May 2019 20:04:20 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id BFDBD20850
+	for <linux-nfs@archiver.kernel.org>; Tue, 14 May 2019 20:45:24 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="tiCdkSQx"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726089AbfENUET (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 14 May 2019 16:04:19 -0400
-Received: from mx1.redhat.com ([209.132.183.28]:56988 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726044AbfENUET (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 14 May 2019 16:04:19 -0400
-Received: from smtp.corp.redhat.com (int-mx05.intmail.prod.int.phx2.redhat.com [10.5.11.15])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id AC80A5D5E6
-        for <linux-nfs@vger.kernel.org>; Tue, 14 May 2019 20:04:19 +0000 (UTC)
-Received: from madhat.boston.devel.redhat.com.redhat.com (ovpn-116-241.phx2.redhat.com [10.3.116.241])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 52DAD5D6A6
-        for <linux-nfs@vger.kernel.org>; Tue, 14 May 2019 20:04:19 +0000 (UTC)
-From:   Steve Dickson <steved@redhat.com>
-To:     Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH] mount: Report correct error in the fall_back cases.
-Date:   Tue, 14 May 2019 16:04:18 -0400
-Message-Id: <20190514200418.19902-1-steved@redhat.com>
+        id S1726211AbfENUpY (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 14 May 2019 16:45:24 -0400
+Received: from mail-it1-f196.google.com ([209.85.166.196]:54148 "EHLO
+        mail-it1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726134AbfENUpY (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 14 May 2019 16:45:24 -0400
+Received: by mail-it1-f196.google.com with SMTP id m141so1140066ita.3
+        for <linux-nfs@vger.kernel.org>; Tue, 14 May 2019 13:45:23 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=from:to:cc:subject:date:message-id:in-reply-to:references
+         :mime-version:content-transfer-encoding;
+        bh=0106F+OIYuqVEg46cY8S9oFV/iyDhlYutv2OgfNUAlo=;
+        b=tiCdkSQxIAHKjBLpNf2brYkBehQrE7qKRql2fvJbkxhezbkN5u1/8eMwXisCaHuocN
+         eebBlCCOGdF8lLQRj8oQDpRVMyuYptoXBc5hxcv+5bHBvuVbY+f/nezyQZPpExEkKx6C
+         WUl0/scGv/3VI0+VUHh1/WgJsyDu2hQs3oKs3i11mv71brk2QaH2rGKNurqBiirOyMIO
+         Vl2tGtgPh7ygZnbIpev4gLWuxivqtMY7y7WFvPnH3e52APd2g4yHppbvMs8mvDhSSN5n
+         tbVFLf2Oc6pIOQXqIwofgvImvoedOW2WHIHomdMigiRUHcj5dqVtIVF2dASdluKZXjOQ
+         T5rg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
+         :references:mime-version:content-transfer-encoding;
+        bh=0106F+OIYuqVEg46cY8S9oFV/iyDhlYutv2OgfNUAlo=;
+        b=dEsLZ9mU+eVU2y+nBOyo7vx3mg5vxII0JLkPLkndSvqKoD+wk1xWXGLKsNSdLvb3wu
+         FdubzVSsnMufz6mwWq6awpDKwcXFcdO7vXKuQq5eRUsScYa2XFjMYdp/+8xAExV5YnwC
+         MP2MBgmfYZsU9YrHCVTzHRCEXc/3oRShIiZ/al79yMFCtA4ys9n04tk+De/zBUmuAdzi
+         OsXXS5to5ZxjQIm8jRc57yLoaPPRgBdErgKA9cgyT9Mi15AgAxUFKKXfS+LX6lQb5oYF
+         lmetT2NMfPDqBxw3M3cgnBizb2fFDYEOi1due6SZs03KsTuG7kfkpoGmLCmu77rjP+u6
+         23uQ==
+X-Gm-Message-State: APjAAAXSIupSmA9Jrk4rFzUeTomN8BVyVKu7yY42KyecEt/3tiyxerxA
+        9YIHui94cZYNieJmtpSYvA==
+X-Google-Smtp-Source: APXvYqwemRpqtgDEJuTL36NgIoc4zI6W28S37cWk61q7uwiHuY3tcb/0qBaCknczSHFgUe7gBoz/sg==
+X-Received: by 2002:a05:660c:552:: with SMTP id w18mr4864150itk.26.1557866723189;
+        Tue, 14 May 2019 13:45:23 -0700 (PDT)
+Received: from localhost.localdomain ([172.56.10.94])
+        by smtp.gmail.com with ESMTPSA id r139sm64943ita.22.2019.05.14.13.45.21
+        (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
+        Tue, 14 May 2019 13:45:22 -0700 (PDT)
+From:   Trond Myklebust <trondmy@gmail.com>
+X-Google-Original-From: Trond Myklebust <trond.myklebust@hammerspace.com>
+To:     steved@redhat.com
+Cc:     linux-nfs@vger.kernel.org
+Subject: [RFC PATCH 1/5] mountd: Ensure we don't share cache file descriptors among processes.
+Date:   Tue, 14 May 2019 16:41:49 -0400
+Message-Id: <20190514204153.79603-2-trond.myklebust@hammerspace.com>
+X-Mailer: git-send-email 2.21.0
+In-Reply-To: <20190514204153.79603-1-trond.myklebust@hammerspace.com>
+References: <20190514204153.79603-1-trond.myklebust@hammerspace.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.15
-X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.39]); Tue, 14 May 2019 20:04:19 +0000 (UTC)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-In mount auto negotiation, a v3 mount is tried
-when the v4 fails with error that could mean
-v4 is not supported.
+Sharing cache descriptors without using locking can be very bad.
 
-When the v3 mount fails, the original v4 failure
-should be used to set the errno, not the v3 failure.
-
-Fixes:https://bugzilla.redhat.com/show_bug.cgi?id=1709961
-Signed-off-by: Steve Dickson <steved@redhat.com>
+Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- utils/mount/stropts.c | 15 +++++++++++++--
- 1 file changed, 13 insertions(+), 2 deletions(-)
+ utils/mountd/mountd.c | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
 
-diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-index 1bb7a73..901f995 100644
---- a/utils/mount/stropts.c
-+++ b/utils/mount/stropts.c
-@@ -889,7 +889,7 @@ out:
-  */
- static int nfs_autonegotiate(struct nfsmount_info *mi)
- {
--	int result;
-+	int result, olderrno;
+diff --git a/utils/mountd/mountd.c b/utils/mountd/mountd.c
+index fb7bba4cd390..88a207b3a85a 100644
+--- a/utils/mountd/mountd.c
++++ b/utils/mountd/mountd.c
+@@ -836,8 +836,6 @@ main(int argc, char **argv)
+ 	if (!foreground)
+ 		closeall(3);
  
- 	result = nfs_try_mount_v4(mi);
- check_result:
-@@ -949,7 +949,18 @@ fall_back:
- 	if (mi->version.v_mode == V_GENERAL)
- 		/* v2,3 fallback not allowed */
- 		return result;
--	return nfs_try_mount_v3v2(mi, FALSE);
-+
-+	/*
-+	 * Save the original errno in case the v3 
-+	 * mount fails from one of the fall_back cases. 
-+	 * Report the first failure not the v3 mount failure
-+	 */
-+	olderrno = errno;
-+	if ((result = nfs_try_mount_v3v2(mi, FALSE)))
-+		return result;
-+
-+	errno = olderrno;
-+	return result;
- }
+-	cache_open();
+-
+ 	unregister_services();
+ 	if (version2()) {
+ 		listeners += nfs_svc_create("mountd", MOUNTPROG,
+@@ -888,6 +886,9 @@ main(int argc, char **argv)
+ 	if (num_threads > 1)
+ 		fork_workers();
  
- /*
++	/* Open files now to avoid sharing descriptors among forked processes */
++	cache_open();
++
+ 	xlog(L_NOTICE, "Version " VERSION " starting");
+ 	my_svc_run();
+ 
 -- 
-2.20.1
+2.21.0
 
