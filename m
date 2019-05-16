@@ -6,27 +6,27 @@ X-Spam-Status: No, score=-9.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,USER_AGENT_GIT
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 43EF2C04E53
-	for <linux-nfs@archiver.kernel.org>; Thu, 16 May 2019 01:46:37 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id CA292C04E87
+	for <linux-nfs@archiver.kernel.org>; Thu, 16 May 2019 01:46:38 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 1584C20843
-	for <linux-nfs@archiver.kernel.org>; Thu, 16 May 2019 01:46:37 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id A8CDE20873
+	for <linux-nfs@archiver.kernel.org>; Thu, 16 May 2019 01:46:38 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726794AbfEPBqg (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 15 May 2019 21:46:36 -0400
-Received: from fieldses.org ([173.255.197.46]:33070 "EHLO fieldses.org"
+        id S1726995AbfEPBqh (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 15 May 2019 21:46:37 -0400
+Received: from fieldses.org ([173.255.197.46]:33118 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726998AbfEPBUX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 15 May 2019 21:20:23 -0400
+        id S1727014AbfEPBWY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 15 May 2019 21:22:24 -0400
 Received: by fieldses.org (Postfix, from userid 2815)
-        id 580471E67; Wed, 15 May 2019 21:20:23 -0400 (EDT)
+        id 8652849E0; Wed, 15 May 2019 21:20:23 -0400 (EDT)
 From:   "J. Bruce Fields" <bfields@redhat.com>
 To:     linux-nfs@vger.kernel.org
 Cc:     linux-fsdevel@vger.kernel.org,
         "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 01/12] nfsd: persist nfsd filesystem across mounts
-Date:   Wed, 15 May 2019 21:20:07 -0400
-Message-Id: <1557969619-17157-3-git-send-email-bfields@redhat.com>
+Subject: [PATCH 09/12] nfsd4: add file to display list of client's opens
+Date:   Wed, 15 May 2019 21:20:16 -0400
+Message-Id: <1557969619-17157-12-git-send-email-bfields@redhat.com>
 X-Mailer: git-send-email 1.8.3.1
 In-Reply-To: <1557969619-17157-1-git-send-email-bfields@redhat.com>
 References: <1557969619-17157-1-git-send-email-bfields@redhat.com>
@@ -37,70 +37,188 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: "J. Bruce Fields" <bfields@redhat.com>
 
-Keep around one internal mount of the nfsd filesystem so that we can
-e.g. add stuff to it when clients come and go, regardless of whether
-anyone has it mounted.
+Add a nfsd/clients/#/opens file to list some information about all the
+opens held by the given client, including open modes, device numbers,
+inode numbers, and open owners.
+
+Open owners are totally opaque but seem to sometimes have some useful
+ascii strings included, so passing through printable ascii characters
+and escaping the rest seems useful while still being machine-readable.
 
 Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/nfsd/netns.h  |  3 +++
- fs/nfsd/nfsctl.c | 13 +++++++++++++
- 2 files changed, 16 insertions(+)
+ fs/nfsd/nfs4state.c | 149 +++++++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 147 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
-index 32cb8c027483..cce335e1ec98 100644
---- a/fs/nfsd/netns.h
-+++ b/fs/nfsd/netns.h
-@@ -55,6 +55,9 @@ struct nfsd_net {
- 	bool grace_ended;
- 	time_t boot_time;
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 876c035d2a91..4025b3c692fd 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -685,7 +685,8 @@ struct nfs4_stid *nfs4_alloc_stid(struct nfs4_client *cl, struct kmem_cache *sla
  
-+	/* internal mount of the "nfsd" pseudofilesystem: */
-+	struct vfsmount *nfsd_mnt;
+ 	idr_preload(GFP_KERNEL);
+ 	spin_lock(&cl->cl_lock);
+-	new_id = idr_alloc_cyclic(&cl->cl_stateids, stid, 0, 0, GFP_NOWAIT);
++	/* Reserving 0 for start of file in nfsdfs "states" file: */
++	new_id = idr_alloc_cyclic(&cl->cl_stateids, stid, 1, 0, GFP_NOWAIT);
+ 	spin_unlock(&cl->cl_lock);
+ 	idr_preload_end();
+ 	if (new_id < 0)
+@@ -2241,9 +2242,153 @@ static const struct file_operations client_info_fops = {
+ 	.release	= single_release,
+ };
+ 
++static void *states_start(struct seq_file *s, loff_t *pos)
++	__acquires(&clp->cl_lock)
++{
++	struct nfs4_client *clp = s->private;
++	unsigned long id = *pos;
++	void *ret;
 +
- 	/*
- 	 * reclaim_str_hashtbl[] holds known client info from previous reset/reboot
- 	 * used in reboot/reset lease grace period processing
-diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index f2feb2d11bae..8d2062428569 100644
---- a/fs/nfsd/nfsctl.c
-+++ b/fs/nfsd/nfsctl.c
-@@ -1231,6 +1231,7 @@ unsigned int nfsd_net_id;
- static __net_init int nfsd_init_net(struct net *net)
- {
- 	int retval;
-+	struct vfsmount *mnt;
- 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
- 
- 	retval = nfsd_export_init(net);
-@@ -1248,8 +1249,17 @@ static __net_init int nfsd_init_net(struct net *net)
- 
- 	atomic_set(&nn->ntf_refcnt, 0);
- 	init_waitqueue_head(&nn->ntf_wq);
++	spin_lock(&clp->cl_lock);
++	ret = idr_get_next_ul(&clp->cl_stateids, &id);
++	*pos = id;
++	return ret;
++}
 +
-+	mnt =  vfs_kern_mount(&nfsd_fs_type, SB_KERNMOUNT, "nfsd", NULL);
-+	if (IS_ERR(mnt)) {
-+		retval = PTR_ERR(mnt);
-+		goto out_mount_err;
++static void *states_next(struct seq_file *s, void *v, loff_t *pos)
++{
++	struct nfs4_client *clp = s->private;
++	unsigned long id = *pos;
++	void *ret;
++
++	id = *pos;
++	id++;
++	ret = idr_get_next_ul(&clp->cl_stateids, &id);
++	*pos = id;
++	return ret;
++}
++
++static void states_stop(struct seq_file *s, void *v)
++	__releases(&clp->cl_lock)
++{
++	struct nfs4_client *clp = s->private;
++
++	spin_unlock(&clp->cl_lock);
++}
++
++static void nfs4_show_superblock(struct seq_file *s, struct file *f)
++{
++	struct inode *inode = file_inode(f);
++
++	seq_printf(s, "superblock: \"%02x:%02x:%ld\"",
++					MAJOR(inode->i_sb->s_dev),
++					 MINOR(inode->i_sb->s_dev),
++					 inode->i_ino);
++}
++
++static void nfs4_show_owner(struct seq_file *s, struct nfs4_stateowner *oo)
++{
++	seq_printf(s, "owner: ");
++	seq_quote_mem(s, oo->so_owner.data, oo->so_owner.len);
++}
++
++static int nfs4_show_open(struct seq_file *s, struct nfs4_stid *st)
++{
++	struct nfs4_ol_stateid *ols;
++	struct nfs4_file *nf;
++	struct file *file;
++	struct nfs4_stateowner *oo;
++	unsigned int access, deny;
++
++	if (st->sc_type != NFS4_OPEN_STID && st->sc_type != NFS4_LOCK_STID)
++		return 0; /* XXX: or SEQ_SKIP? */
++	ols = openlockstateid(st);
++	oo = ols->st_stateowner;
++	nf = st->sc_file;
++	file = find_any_file(nf);
++
++	seq_printf(s, "- 0x%16phN: { type: open, ", &st->sc_stateid);
++
++	access = bmap_to_share_mode(ols->st_access_bmap);
++	deny   = bmap_to_share_mode(ols->st_deny_bmap);
++
++	seq_printf(s, "access: \%s\%s, ",
++		access & NFS4_SHARE_ACCESS_READ ? "r" : "-",
++		access & NFS4_SHARE_ACCESS_WRITE ? "w" : "-");
++	seq_printf(s, "deny: \%s\%s, ",
++		deny & NFS4_SHARE_ACCESS_READ ? "r" : "-",
++		deny & NFS4_SHARE_ACCESS_WRITE ? "w" : "-");
++
++	nfs4_show_superblock(s, file);
++	seq_printf(s, ", ");
++	nfs4_show_owner(s, oo);
++	seq_printf(s, " }\n");
++
++	fput(file);
++
++	return 0;
++}
++
++static int states_show(struct seq_file *s, void *v)
++{
++	struct nfs4_stid *st = v;
++
++	switch (st->sc_type) {
++	case NFS4_OPEN_STID:
++		return nfs4_show_open(s, st);
++	default:
++		return 0; /* XXX: or SEQ_SKIP? */
 +	}
-+	nn->nfsd_mnt = mnt;
- 	return 0;
- 
-+out_mount_err:
-+	nfsd_idmap_shutdown(net);
- out_idmap_error:
- 	nfsd_export_shutdown(net);
- out_export_error:
-@@ -1258,6 +1268,9 @@ static __net_init int nfsd_init_net(struct net *net)
- 
- static __net_exit void nfsd_exit_net(struct net *net)
- {
-+	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
++}
 +
-+	mntput(nn->nfsd_mnt);
- 	nfsd_idmap_shutdown(net);
- 	nfsd_export_shutdown(net);
- }
++static struct seq_operations states_seq_ops = {
++	.start = states_start,
++	.next = states_next,
++	.stop = states_stop,
++	.show = states_show
++};
++
++static int client_states_open(struct inode *inode, struct file *file)
++{
++	struct nfsdfs_client *nc;
++	struct seq_file *s;
++	struct nfs4_client *clp;
++	int ret;
++
++	nc = get_nfsdfs_client(inode);
++	if (!nc)
++		return -ENXIO;
++	clp = container_of(nc, struct nfs4_client, cl_nfsdfs);
++
++	ret = seq_open(file, &states_seq_ops);
++	if (ret)
++		return ret;
++	s = file->private_data;
++	s->private = clp;
++	return 0;
++}
++
++static int client_opens_release(struct inode *inode, struct file *file)
++{
++	struct seq_file *m = file->private_data;
++	struct nfs4_client *clp = m->private;
++
++	/* XXX: alternatively, we could get/drop in seq start/stop */
++	drop_client(clp);
++	return 0;
++}
++
++static const struct file_operations client_states_fops = {
++	.open		= client_states_open,
++	.read		= seq_read,
++	.llseek		= seq_lseek,
++	.release	= client_opens_release,
++};
++
+ static const struct tree_descr client_files[] = {
+ 	[0] = {"info", &client_info_fops, S_IRUSR},
+-	[1] = {""},
++	[1] = {"states", &client_states_fops, S_IRUSR},
++	[3] = {""},
+ };
+ 
+ static struct nfs4_client *create_client(struct xdr_netobj name,
 -- 
 2.21.0
 
