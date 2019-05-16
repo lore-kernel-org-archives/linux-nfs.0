@@ -2,32 +2,31 @@ Return-Path: <SRS0=MwxH=TQ=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,
-	UNWANTED_LANGUAGE_BODY,USER_AGENT_GIT autolearn=ham autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-9.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,USER_AGENT_GIT
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E8F35C072AD
-	for <linux-nfs@archiver.kernel.org>; Thu, 16 May 2019 01:48:12 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 42515C04E84
+	for <linux-nfs@archiver.kernel.org>; Thu, 16 May 2019 01:48:14 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id C828D20873
-	for <linux-nfs@archiver.kernel.org>; Thu, 16 May 2019 01:48:12 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 1471C2087E
+	for <linux-nfs@archiver.kernel.org>; Thu, 16 May 2019 01:48:14 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726969AbfEPBqj (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 15 May 2019 21:46:39 -0400
-Received: from fieldses.org ([173.255.197.46]:33116 "EHLO fieldses.org"
+        id S1727004AbfEPBqi (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 15 May 2019 21:46:38 -0400
+Received: from fieldses.org ([173.255.197.46]:33120 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727010AbfEPBWY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        id S1727018AbfEPBWY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
         Wed, 15 May 2019 21:22:24 -0400
 Received: by fieldses.org (Postfix, from userid 2815)
-        id 8179F20AE; Wed, 15 May 2019 21:20:23 -0400 (EDT)
+        id 89CBB50A2; Wed, 15 May 2019 21:20:23 -0400 (EDT)
 From:   "J. Bruce Fields" <bfields@redhat.com>
 To:     linux-nfs@vger.kernel.org
 Cc:     linux-fsdevel@vger.kernel.org,
         "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 08/12] nfsd: add more information to client info file
-Date:   Wed, 15 May 2019 21:20:15 -0400
-Message-Id: <1557969619-17157-11-git-send-email-bfields@redhat.com>
+Subject: [PATCH 10/12] nfsd: show lock and deleg stateids
+Date:   Wed, 15 May 2019 21:20:17 -0400
+Message-Id: <1557969619-17157-13-git-send-email-bfields@redhat.com>
 X-Mailer: git-send-email 1.8.3.1
 In-Reply-To: <1557969619-17157-1-git-send-email-bfields@redhat.com>
 References: <1557969619-17157-1-git-send-email-bfields@redhat.com>
@@ -38,103 +37,99 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: "J. Bruce Fields" <bfields@redhat.com>
 
-Add ip address, full client-provided identifier, and minor version.
-There's much more that could possibly be useful but this is a start.
-
-As with open owners, client identifiers are opaque binary data, but some
-clients happen to include useful information in ascii.
+These entries are pretty minimal for now.
 
 Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/nfsd/nfs4state.c      | 18 ++++++++++++++++++
- fs/seq_file.c            | 17 +++++++++++++++++
- include/linux/seq_file.h |  2 ++
- 3 files changed, 37 insertions(+)
+ fs/nfsd/nfs4state.c | 59 +++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 59 insertions(+)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index c665ce9af773..876c035d2a91 100644
+index 4025b3c692fd..652e0544e058 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -42,6 +42,7 @@
- #include <linux/sunrpc/svcauth_gss.h>
- #include <linux/sunrpc/addr.h>
- #include <linux/jhash.h>
-+#include <linux/string_helpers.h>
- #include "xdr4.h"
- #include "xdr4cb.h"
- #include "vfs.h"
-@@ -2193,6 +2194,19 @@ find_stateid_by_type(struct nfs4_client *cl, stateid_t *t, char typemask)
- 	return s;
- }
+@@ -2323,12 +2323,66 @@ static int nfs4_show_open(struct seq_file *s, struct nfs4_stid *st)
+ 	seq_printf(s, ", ");
+ 	nfs4_show_owner(s, oo);
+ 	seq_printf(s, " }\n");
++	fput(file);
++
++	return 0;
++}
++
++static int nfs4_show_lock(struct seq_file *s, struct nfs4_stid *st)
++{
++	struct nfs4_ol_stateid *ols;
++	struct nfs4_file *nf;
++	struct file *file;
++	struct nfs4_stateowner *oo;
  
-+static void seq_escape_quotable_mem(struct seq_file *m, char *data, int len)
-+{
-+	/* List taken from kstrdup_quotable: */
-+	seq_escape_mem(m, data, len, ESCAPE_HEX, "\f\n\r\t\v\a\e\\\"");
-+}
++	ols = openlockstateid(st);
++	oo = ols->st_stateowner;
++	nf = st->sc_file;
++	file = find_any_file(nf);
 +
-+static void seq_quote_mem(struct seq_file *m, char *data, int len)
-+{
-+	seq_printf(m, "\"");
-+	seq_escape_quotable_mem(m, data, len);
-+	seq_printf(m, "\"");
-+}
++	seq_printf(s, "- 0x%16phN: { type: lock, ", &st->sc_stateid);
 +
- static int client_info_show(struct seq_file *m, void *v)
- {
- 	struct inode *inode = m->private;
-@@ -2206,6 +2220,10 @@ static int client_info_show(struct seq_file *m, void *v)
- 	clp = container_of(nc, struct nfs4_client, cl_nfsdfs);
- 	memcpy(&clid, &clp->cl_clientid, sizeof(clid));
- 	seq_printf(m, "clientid: %llx\n", clid);
-+	seq_printf(m, "address: %pISpc\n", (struct sockaddr *)&clp->cl_addr);
-+	seq_printf(m, "name: ");
-+	seq_quote_mem(m, clp->cl_name.data, clp->cl_name.len);
-+	seq_printf(m, "\nminor version: %d\n", clp->cl_minorversion);
- 	drop_client(clp);
++	/*
++	 * Note: a lock stateid isn't really the same thing as a lock,
++	 * it's the locking state held by one owner on a file, and there
++	 * may be multiple (or no) lock ranges associated with it.
++	 * (Same for the matter is true of open stateids.)
++	 */
++
++	nfs4_show_superblock(s, file);
++	/* XXX: open stateid? */
++	seq_printf(s, ", ");
++	nfs4_show_owner(s, oo);
++	seq_printf(s, " }\n");
+ 	fput(file);
  
  	return 0;
-diff --git a/fs/seq_file.c b/fs/seq_file.c
-index 1dea7a8a5255..bb646e0c5b9c 100644
---- a/fs/seq_file.c
-+++ b/fs/seq_file.c
-@@ -383,6 +383,23 @@ void seq_escape(struct seq_file *m, const char *s, const char *esc)
  }
- EXPORT_SYMBOL(seq_escape);
  
-+/**
-+ * seq_escape_mem - copy data to buffer, escaping some characters
-+ *
-+ * See string_escape_mem for explanations of the arguments.
-+ */
-+void seq_escape_mem(struct seq_file *m, const char *src, size_t isz,
-+		    unsigned int flags, const char *only)
++static int nfs4_show_deleg(struct seq_file *s, struct nfs4_stid *st)
 +{
-+	char *buf;
-+	size_t size = seq_get_buf(m, &buf);
-+	int ret;
++	struct nfs4_delegation *ds;
++	struct nfs4_file *nf;
++	struct file *file;
 +
-+	ret = string_escape_mem(src, isz, buf, size, flags, only);
-+	seq_commit(m, ret < size ? ret : -1);
++	ds = delegstateid(st);
++	nf = st->sc_file;
++	file = nf->fi_deleg_file;
++
++	seq_printf(s, "- 0x%16phN: { type: deleg, ", &st->sc_stateid);
++
++	/* Kinda dead code as long as we only support read delegs: */
++	seq_printf(s, "access: %s, ",
++		ds->dl_type == NFS4_OPEN_DELEGATE_READ ? "r" : "w");
++
++	/* XXX: lease time, whether it's being recalled. */
++
++	nfs4_show_superblock(s, file);
++	seq_printf(s, " }\n");
++
++	return 0;
 +}
-+EXPORT_SYMBOL(seq_escape_mem);
 +
- void seq_vprintf(struct seq_file *m, const char *f, va_list args)
+ static int states_show(struct seq_file *s, void *v)
  {
- 	int len;
-diff --git a/include/linux/seq_file.h b/include/linux/seq_file.h
-index a121982af0f5..de6ace9e5e6b 100644
---- a/include/linux/seq_file.h
-+++ b/include/linux/seq_file.h
-@@ -127,6 +127,8 @@ void seq_put_hex_ll(struct seq_file *m, const char *delimiter,
- 		    unsigned long long v, unsigned int width);
+ 	struct nfs4_stid *st = v;
+@@ -2336,9 +2390,14 @@ static int states_show(struct seq_file *s, void *v)
+ 	switch (st->sc_type) {
+ 	case NFS4_OPEN_STID:
+ 		return nfs4_show_open(s, st);
++	case NFS4_LOCK_STID:
++		return nfs4_show_lock(s, st);
++	case NFS4_DELEG_STID:
++		return nfs4_show_deleg(s, st);
+ 	default:
+ 		return 0; /* XXX: or SEQ_SKIP? */
+ 	}
++	/* XXX: copy stateids? */
+ }
  
- void seq_escape(struct seq_file *m, const char *s, const char *esc);
-+void seq_escape_mem(struct seq_file *m, const char *src, size_t isz,
-+		    unsigned int flags, const char *only);
- 
- void seq_hex_dump(struct seq_file *m, const char *prefix_str, int prefix_type,
- 		  int rowsize, int groupsize, const void *buf, size_t len,
+ static struct seq_operations states_seq_ops = {
 -- 
 2.21.0
 
