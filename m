@@ -6,27 +6,27 @@ X-Spam-Status: No, score=-9.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,USER_AGENT_GIT
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id CA292C04E87
-	for <linux-nfs@archiver.kernel.org>; Thu, 16 May 2019 01:46:38 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B1F2EC04E84
+	for <linux-nfs@archiver.kernel.org>; Thu, 16 May 2019 01:46:39 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id A8CDE20873
-	for <linux-nfs@archiver.kernel.org>; Thu, 16 May 2019 01:46:38 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 91B8620873
+	for <linux-nfs@archiver.kernel.org>; Thu, 16 May 2019 01:46:39 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726995AbfEPBqh (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 15 May 2019 21:46:37 -0400
-Received: from fieldses.org ([173.255.197.46]:33118 "EHLO fieldses.org"
+        id S1727007AbfEPBqi (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 15 May 2019 21:46:38 -0400
+Received: from fieldses.org ([173.255.197.46]:33108 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727014AbfEPBWY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        id S1727004AbfEPBWY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
         Wed, 15 May 2019 21:22:24 -0400
 Received: by fieldses.org (Postfix, from userid 2815)
-        id 8652849E0; Wed, 15 May 2019 21:20:23 -0400 (EDT)
+        id 712CA2FC1; Wed, 15 May 2019 21:20:23 -0400 (EDT)
 From:   "J. Bruce Fields" <bfields@redhat.com>
 To:     linux-nfs@vger.kernel.org
 Cc:     linux-fsdevel@vger.kernel.org,
         "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 09/12] nfsd4: add file to display list of client's opens
-Date:   Wed, 15 May 2019 21:20:16 -0400
-Message-Id: <1557969619-17157-12-git-send-email-bfields@redhat.com>
+Subject: [PATCH 04/12] nfsd: add nfsd/clients directory
+Date:   Wed, 15 May 2019 21:20:11 -0400
+Message-Id: <1557969619-17157-7-git-send-email-bfields@redhat.com>
 X-Mailer: git-send-email 1.8.3.1
 In-Reply-To: <1557969619-17157-1-git-send-email-bfields@redhat.com>
 References: <1557969619-17157-1-git-send-email-bfields@redhat.com>
@@ -37,188 +37,311 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: "J. Bruce Fields" <bfields@redhat.com>
 
-Add a nfsd/clients/#/opens file to list some information about all the
-opens held by the given client, including open modes, device numbers,
-inode numbers, and open owners.
-
-Open owners are totally opaque but seem to sometimes have some useful
-ascii strings included, so passing through printable ascii characters
-and escaping the rest seems useful while still being machine-readable.
+I plan to expose some information about nfsv4 clients here.
 
 Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/nfsd/nfs4state.c | 149 +++++++++++++++++++++++++++++++++++++++++++-
- 1 file changed, 147 insertions(+), 2 deletions(-)
+ fs/nfsd/netns.h     |   2 +
+ fs/nfsd/nfs4state.c |  23 ++++++----
+ fs/nfsd/nfsctl.c    | 108 +++++++++++++++++++++++++++++++++++++++++++-
+ fs/nfsd/nfsd.h      |   9 ++++
+ fs/nfsd/state.h     |   6 ++-
+ 5 files changed, 138 insertions(+), 10 deletions(-)
 
+diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
+index cce335e1ec98..46d956676480 100644
+--- a/fs/nfsd/netns.h
++++ b/fs/nfsd/netns.h
+@@ -58,6 +58,8 @@ struct nfsd_net {
+ 	/* internal mount of the "nfsd" pseudofilesystem: */
+ 	struct vfsmount *nfsd_mnt;
+ 
++	struct dentry *nfsd_client_dir;
++
+ 	/*
+ 	 * reclaim_str_hashtbl[] holds known client info from previous reset/reboot
+ 	 * used in reboot/reset lease grace period processing
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 876c035d2a91..4025b3c692fd 100644
+index 83d0ee329e14..dfcb90743861 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -685,7 +685,8 @@ struct nfs4_stid *nfs4_alloc_stid(struct nfs4_client *cl, struct kmem_cache *sla
+@@ -1871,20 +1871,19 @@ static struct nfs4_client *alloc_client(struct xdr_netobj name)
  
- 	idr_preload(GFP_KERNEL);
- 	spin_lock(&cl->cl_lock);
--	new_id = idr_alloc_cyclic(&cl->cl_stateids, stid, 0, 0, GFP_NOWAIT);
-+	/* Reserving 0 for start of file in nfsdfs "states" file: */
-+	new_id = idr_alloc_cyclic(&cl->cl_stateids, stid, 1, 0, GFP_NOWAIT);
- 	spin_unlock(&cl->cl_lock);
- 	idr_preload_end();
- 	if (new_id < 0)
-@@ -2241,9 +2242,153 @@ static const struct file_operations client_info_fops = {
- 	.release	= single_release,
+ static void __free_client(struct kref *k)
+ {
+-	struct nfs4_client *clp = container_of(k, struct nfs4_client, cl_ref);
++	struct nfsdfs_client *c = container_of(k, struct nfsdfs_client, cl_ref);
++	struct nfs4_client *clp = container_of(c, struct nfs4_client, cl_nfsdfs);
+ 
+ 	free_svc_cred(&clp->cl_cred);
+ 	kfree(clp->cl_ownerstr_hashtbl);
+ 	kfree(clp->cl_name.data);
+ 	idr_destroy(&clp->cl_stateids);
+-	if (clp->cl_nfsd_dentry)
+-		nfsd_client_rmdir(clp->cl_nfsd_dentry);
+ 	kmem_cache_free(client_slab, clp);
+ }
+ 
+ void drop_client(struct nfs4_client *clp)
+ {
+-	kref_put(&clp->cl_ref, __free_client);
++	kref_put(&clp->cl_nfsdfs.cl_ref, __free_client);
+ }
+ 
+ static void
+@@ -1899,6 +1898,8 @@ free_client(struct nfs4_client *clp)
+ 		free_session(ses);
+ 	}
+ 	rpc_destroy_wait_queue(&clp->cl_cb_waitq);
++	if (clp->cl_nfsd_dentry)
++		nfsd_client_rmdir(clp->cl_nfsd_dentry);
+ 	drop_client(clp);
+ }
+ 
+@@ -2199,6 +2200,7 @@ static struct nfs4_client *create_client(struct xdr_netobj name,
+ 	struct sockaddr *sa = svc_addr(rqstp);
+ 	int ret;
+ 	struct net *net = SVC_NET(rqstp);
++	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
+ 
+ 	clp = alloc_client(name);
+ 	if (clp == NULL)
+@@ -2209,8 +2211,8 @@ static struct nfs4_client *create_client(struct xdr_netobj name,
+ 		free_client(clp);
+ 		return NULL;
+ 	}
+-
+-	kref_init(&clp->cl_ref);
++	gen_clid(clp, nn);
++	kref_init(&clp->cl_nfsdfs.cl_ref);
+ 	nfsd4_init_cb(&clp->cl_cb_null, clp, NULL, NFSPROC4_CLNT_CB_NULL);
+ 	clp->cl_time = get_seconds();
+ 	clear_bit(0, &clp->cl_cb_slot_busy);
+@@ -2218,6 +2220,12 @@ static struct nfs4_client *create_client(struct xdr_netobj name,
+ 	rpc_copy_addr((struct sockaddr *) &clp->cl_addr, sa);
+ 	clp->cl_cb_session = NULL;
+ 	clp->net = net;
++	clp->cl_nfsd_dentry = nfsd_client_mkdir(nn, &clp->cl_nfsdfs,
++						clp->cl_clientid.cl_id);
++	if (!clp->cl_nfsd_dentry) {
++		free_client(clp);
++		return NULL;
++	}
+ 	return clp;
+ }
+ 
+@@ -2661,7 +2669,6 @@ nfsd4_exchange_id(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	new->cl_spo_must_allow.u.words[0] = exid->spo_must_allow[0];
+ 	new->cl_spo_must_allow.u.words[1] = exid->spo_must_allow[1];
+ 
+-	gen_clid(new, nn);
+ 	add_to_unconfirmed(new);
+ 	swap(new, conf);
+ out_copy:
+@@ -3404,7 +3411,7 @@ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		copy_clid(new, conf);
+ 		gen_confirm(new, nn);
+ 	} else /* case 4 (new client) or cases 2, 3 (client reboot): */
+-		gen_clid(new, nn);
++		;
+ 	new->cl_minorversion = 0;
+ 	gen_callback(new, setclid, rqstp);
+ 	add_to_unconfirmed(new);
+diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+index 8d2062428569..8a2261cdefee 100644
+--- a/fs/nfsd/nfsctl.c
++++ b/fs/nfsd/nfsctl.c
+@@ -15,6 +15,7 @@
+ #include <linux/sunrpc/gss_krb5_enctypes.h>
+ #include <linux/sunrpc/rpc_pipe_fs.h>
+ #include <linux/module.h>
++#include <linux/fsnotify.h>
+ 
+ #include "idmap.h"
+ #include "nfsd.h"
+@@ -52,6 +53,7 @@ enum {
+ 	NFSD_RecoveryDir,
+ 	NFSD_V4EndGrace,
+ #endif
++	NFSD_MaxReserved
  };
  
-+static void *states_start(struct seq_file *s, loff_t *pos)
-+	__acquires(&clp->cl_lock)
+ /*
+@@ -1146,8 +1148,99 @@ static ssize_t write_v4_end_grace(struct file *file, char *buf, size_t size)
+  *	populating the filesystem.
+  */
+ 
++/* Basically copying rpc_get_inode. */
++static struct inode *nfsd_get_inode(struct super_block *sb, umode_t mode)
 +{
-+	struct nfs4_client *clp = s->private;
-+	unsigned long id = *pos;
-+	void *ret;
-+
-+	spin_lock(&clp->cl_lock);
-+	ret = idr_get_next_ul(&clp->cl_stateids, &id);
-+	*pos = id;
-+	return ret;
++	struct inode *inode = new_inode(sb);
++	if (!inode)
++		return NULL;
++	/* Following advice from simple_fill_super documentation: */
++	inode->i_ino = iunique(sb, NFSD_MaxReserved);
++	inode->i_mode = mode;
++	inode->i_atime = inode->i_mtime = inode->i_ctime = current_time(inode);
++	switch (mode & S_IFMT) {
++	case S_IFDIR:
++		inode->i_fop = &simple_dir_operations;
++		inode->i_op = &simple_dir_inode_operations;
++		inc_nlink(inode);
++	default:
++		break;
++	}
++	return inode;
 +}
 +
-+static void *states_next(struct seq_file *s, void *v, loff_t *pos)
++static int __nfsd_mkdir(struct inode *dir, struct dentry *dentry, umode_t mode)
 +{
-+	struct nfs4_client *clp = s->private;
-+	unsigned long id = *pos;
-+	void *ret;
++	struct inode *inode;
 +
-+	id = *pos;
-+	id++;
-+	ret = idr_get_next_ul(&clp->cl_stateids, &id);
-+	*pos = id;
-+	return ret;
-+}
-+
-+static void states_stop(struct seq_file *s, void *v)
-+	__releases(&clp->cl_lock)
-+{
-+	struct nfs4_client *clp = s->private;
-+
-+	spin_unlock(&clp->cl_lock);
-+}
-+
-+static void nfs4_show_superblock(struct seq_file *s, struct file *f)
-+{
-+	struct inode *inode = file_inode(f);
-+
-+	seq_printf(s, "superblock: \"%02x:%02x:%ld\"",
-+					MAJOR(inode->i_sb->s_dev),
-+					 MINOR(inode->i_sb->s_dev),
-+					 inode->i_ino);
-+}
-+
-+static void nfs4_show_owner(struct seq_file *s, struct nfs4_stateowner *oo)
-+{
-+	seq_printf(s, "owner: ");
-+	seq_quote_mem(s, oo->so_owner.data, oo->so_owner.len);
-+}
-+
-+static int nfs4_show_open(struct seq_file *s, struct nfs4_stid *st)
-+{
-+	struct nfs4_ol_stateid *ols;
-+	struct nfs4_file *nf;
-+	struct file *file;
-+	struct nfs4_stateowner *oo;
-+	unsigned int access, deny;
-+
-+	if (st->sc_type != NFS4_OPEN_STID && st->sc_type != NFS4_LOCK_STID)
-+		return 0; /* XXX: or SEQ_SKIP? */
-+	ols = openlockstateid(st);
-+	oo = ols->st_stateowner;
-+	nf = st->sc_file;
-+	file = find_any_file(nf);
-+
-+	seq_printf(s, "- 0x%16phN: { type: open, ", &st->sc_stateid);
-+
-+	access = bmap_to_share_mode(ols->st_access_bmap);
-+	deny   = bmap_to_share_mode(ols->st_deny_bmap);
-+
-+	seq_printf(s, "access: \%s\%s, ",
-+		access & NFS4_SHARE_ACCESS_READ ? "r" : "-",
-+		access & NFS4_SHARE_ACCESS_WRITE ? "w" : "-");
-+	seq_printf(s, "deny: \%s\%s, ",
-+		deny & NFS4_SHARE_ACCESS_READ ? "r" : "-",
-+		deny & NFS4_SHARE_ACCESS_WRITE ? "w" : "-");
-+
-+	nfs4_show_superblock(s, file);
-+	seq_printf(s, ", ");
-+	nfs4_show_owner(s, oo);
-+	seq_printf(s, " }\n");
-+
-+	fput(file);
-+
++	inode = nfsd_get_inode(dir->i_sb, mode);
++	if (!inode)
++		return -ENOMEM;
++	d_add(dentry, inode);
++	inc_nlink(dir);
++	fsnotify_mkdir(dir, dentry);
 +	return 0;
 +}
 +
-+static int states_show(struct seq_file *s, void *v)
++static struct dentry *nfsd_mkdir(struct dentry *parent, struct nfsdfs_client *ncl, char *name)
 +{
-+	struct nfs4_stid *st = v;
++	struct inode *dir = parent->d_inode;
++	struct dentry *dentry;
++	int ret = -ENOMEM;
 +
-+	switch (st->sc_type) {
-+	case NFS4_OPEN_STID:
-+		return nfs4_show_open(s, st);
-+	default:
-+		return 0; /* XXX: or SEQ_SKIP? */
++	inode_lock(dir);
++	dentry = d_alloc_name(parent, name);
++	if (!dentry)
++		goto out_err;
++	ret = __nfsd_mkdir(d_inode(parent), dentry, S_IFDIR | 0600);
++	if (ret)
++		goto out_err;
++	if (ncl) {
++		d_inode(dentry)->i_private = ncl;
++		kref_get(&ncl->cl_ref);
 +	}
++out:
++	inode_unlock(dir);
++	return dentry;
++out_err:
++	dentry = ERR_PTR(ret);
++	goto out;
 +}
 +
-+static struct seq_operations states_seq_ops = {
-+	.start = states_start,
-+	.next = states_next,
-+	.stop = states_stop,
-+	.show = states_show
-+};
-+
-+static int client_states_open(struct inode *inode, struct file *file)
++/* on success, returns positive number unique to that client. */
++struct dentry *nfsd_client_mkdir(struct nfsd_net *nn, struct nfsdfs_client *ncl, u32 id)
 +{
-+	struct nfsdfs_client *nc;
-+	struct seq_file *s;
-+	struct nfs4_client *clp;
++	char name[11];
++
++	sprintf(name, "%d", id++);
++
++	return nfsd_mkdir(nn->nfsd_client_dir, ncl, name);
++}
++
++/* Taken from __rpc_rmdir: */
++void nfsd_client_rmdir(struct dentry *dentry)
++{
++	struct inode *dir = d_inode(dentry->d_parent);
++	struct inode *inode = d_inode(dentry);
++	struct nfsdfs_client *ncl = inode->i_private;
 +	int ret;
 +
-+	nc = get_nfsdfs_client(inode);
-+	if (!nc)
-+		return -ENXIO;
-+	clp = container_of(nc, struct nfs4_client, cl_nfsdfs);
++	inode->i_private = NULL;
++	synchronize_rcu();
++	kref_put(&ncl->cl_ref, ncl->cl_release);
++	dget(dentry);
++	ret = simple_rmdir(dir, dentry);
++	WARN_ON_ONCE(ret);
++	d_delete(dentry);
++}
 +
-+	ret = seq_open(file, &states_seq_ops);
+ static int nfsd_fill_super(struct super_block * sb, void * data, int silent)
+ {
++	struct nfsd_net *nn = net_generic(current->nsproxy->net_ns,
++							nfsd_net_id);
++	struct dentry *dentry;
++	int ret;
++
+ 	static const struct tree_descr nfsd_files[] = {
+ 		[NFSD_List] = {"exports", &exports_nfsd_operations, S_IRUGO},
+ 		[NFSD_Export_features] = {"export_features",
+@@ -1177,7 +1270,20 @@ static int nfsd_fill_super(struct super_block * sb, void * data, int silent)
+ 		/* last one */ {""}
+ 	};
+ 	get_net(sb->s_fs_info);
+-	return simple_fill_super(sb, 0x6e667364, nfsd_files);
++	ret = simple_fill_super(sb, 0x6e667364, nfsd_files);
 +	if (ret)
 +		return ret;
-+	s = file->private_data;
-+	s->private = clp;
++	dentry = nfsd_mkdir(sb->s_root, NULL, "clients");
++	if (IS_ERR(dentry)) {
++		/* XXX: test: */
++		d_genocide(sb->s_root);
++		shrink_dcache_parent(sb->s_root);
++		dput(sb->s_root);
++		return PTR_ERR(dentry);
++	}
++	nn->nfsd_client_dir = dentry;
 +	return 0;
-+}
 +
-+static int client_opens_release(struct inode *inode, struct file *file)
-+{
-+	struct seq_file *m = file->private_data;
-+	struct nfs4_client *clp = m->private;
-+
-+	/* XXX: alternatively, we could get/drop in seq start/stop */
-+	drop_client(clp);
-+	return 0;
-+}
-+
-+static const struct file_operations client_states_fops = {
-+	.open		= client_states_open,
-+	.read		= seq_read,
-+	.llseek		= seq_lseek,
-+	.release	= client_opens_release,
+ }
+ 
+ static struct dentry *nfsd_mount(struct file_system_type *fs_type,
+diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
+index 066899929863..fe7418c2b88f 100644
+--- a/fs/nfsd/nfsd.h
++++ b/fs/nfsd/nfsd.h
+@@ -21,6 +21,7 @@
+ 
+ #include <uapi/linux/nfsd/debug.h>
+ 
++#include "netns.h"
+ #include "stats.h"
+ #include "export.h"
+ 
+@@ -85,6 +86,14 @@ int		nfsd_pool_stats_release(struct inode *, struct file *);
+ 
+ void		nfsd_destroy(struct net *net);
+ 
++struct nfsdfs_client {
++	struct kref cl_ref;
++	void (*cl_release)(struct kref *kref);
 +};
 +
- static const struct tree_descr client_files[] = {
- 	[0] = {"info", &client_info_fops, S_IRUSR},
--	[1] = {""},
-+	[1] = {"states", &client_states_fops, S_IRUSR},
-+	[3] = {""},
- };
++struct dentry *nfsd_client_mkdir(struct nfsd_net *nn, struct nfsdfs_client *ncl, u32 id);
++void nfsd_client_rmdir(struct dentry *dentry);
++
+ #if defined(CONFIG_NFSD_V2_ACL) || defined(CONFIG_NFSD_V3_ACL)
+ #ifdef CONFIG_NFSD_V2_ACL
+ extern const struct svc_version nfsd_acl_version2;
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index aa26ae520fb6..5a999e4b766e 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -39,6 +39,7 @@
+ #include <linux/refcount.h>
+ #include <linux/sunrpc/svc_xprt.h>
+ #include "nfsfh.h"
++#include "nfsd.h"
  
- static struct nfs4_client *create_client(struct xdr_netobj name,
+ typedef struct {
+ 	u32             cl_boot;
+@@ -347,9 +348,12 @@ struct nfs4_client {
+ 	u32			cl_exchange_flags;
+ 	/* number of rpc's in progress over an associated session: */
+ 	atomic_t		cl_rpc_users;
+-	struct kref		cl_ref;
++	struct nfsdfs_client	cl_nfsdfs;
+ 	struct nfs4_op_map      cl_spo_must_allow;
+ 
++	/* debugging info directory under nfsd/clients/ : */
++	struct dentry		*cl_nfsd_dentry;
++
+ 	/* for nfs41 callbacks */
+ 	/* We currently support a single back channel with a single slot */
+ 	unsigned long		cl_cb_slot_busy;
 -- 
 2.21.0
 
