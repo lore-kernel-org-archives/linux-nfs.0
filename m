@@ -4,29 +4,29 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-9.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,USER_AGENT_GIT
-	autolearn=unavailable autolearn_force=no version=3.4.0
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7559AC04E84
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 544E0C04E87
 	for <linux-nfs@archiver.kernel.org>; Thu, 16 May 2019 01:48:18 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 5282B2087E
+	by mail.kernel.org (Postfix) with ESMTP id 304A520873
 	for <linux-nfs@archiver.kernel.org>; Thu, 16 May 2019 01:48:18 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726827AbfEPBqg (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S1726870AbfEPBqg (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Wed, 15 May 2019 21:46:36 -0400
-Received: from fieldses.org ([173.255.197.46]:33068 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:33074 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726996AbfEPBUX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 15 May 2019 21:20:23 -0400
+        id S1727000AbfEPBUY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 15 May 2019 21:20:24 -0400
 Received: by fieldses.org (Postfix, from userid 2815)
-        id 4BAF88BF; Wed, 15 May 2019 21:20:23 -0400 (EDT)
+        id 65D232632; Wed, 15 May 2019 21:20:23 -0400 (EDT)
 From:   "J. Bruce Fields" <bfields@redhat.com>
 To:     linux-nfs@vger.kernel.org
 Cc:     linux-fsdevel@vger.kernel.org,
         "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 1/2] nfsd: allow fh_want_write to be called twice
-Date:   Wed, 15 May 2019 21:20:06 -0400
-Message-Id: <1557969619-17157-2-git-send-email-bfields@redhat.com>
+Subject: [PATCH 02/12] nfsd: rename cl_refcount
+Date:   Wed, 15 May 2019 21:20:09 -0400
+Message-Id: <1557969619-17157-5-git-send-email-bfields@redhat.com>
 X-Mailer: git-send-email 1.8.3.1
 In-Reply-To: <1557969619-17157-1-git-send-email-bfields@redhat.com>
 References: <1557969619-17157-1-git-send-email-bfields@redhat.com>
@@ -37,46 +37,150 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: "J. Bruce Fields" <bfields@redhat.com>
 
-A fuzzer recently triggered lockdep warnings about potential sb_writers
-deadlocks caused by fh_want_write().
+Rename this to a more descriptive name.
 
-Looks like we aren't careful to pair each fh_want_write() with an
-fh_drop_write().
-
-It's not normally a problem since fh_put() will call fh_drop_write() for
-us.  And was OK for NFSv3 where we'd do one operation that might call
-fh_want_write(), and then put the filehandle.
-
-But an NFSv4 protocol fuzzer can do weird things like call unlink twice
-in a compound, and then we get into trouble.
-
-I'm a little worried about this approach of just leaving everything to
-fh_put().  But I think there are probably a lot of
-fh_want_write()/fh_drop_write() imbalances so for now I think we need it
-to be more forgiving.
+Also, I'm going to want a second refcount with a slightly different use.
 
 Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/nfsd/vfs.h | 5 ++++-
- 1 file changed, 4 insertions(+), 1 deletion(-)
+ fs/nfsd/nfs4state.c | 26 +++++++++++++-------------
+ fs/nfsd/state.h     |  2 +-
+ 2 files changed, 14 insertions(+), 14 deletions(-)
 
-diff --git a/fs/nfsd/vfs.h b/fs/nfsd/vfs.h
-index a7e107309f76..db351247892d 100644
---- a/fs/nfsd/vfs.h
-+++ b/fs/nfsd/vfs.h
-@@ -120,8 +120,11 @@ void		nfsd_put_raparams(struct file *file, struct raparms *ra);
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 6a45fb00c5fc..9dab61bbd256 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -137,7 +137,7 @@ static __be32 get_client_locked(struct nfs4_client *clp)
  
- static inline int fh_want_write(struct svc_fh *fh)
+ 	if (is_client_expired(clp))
+ 		return nfserr_expired;
+-	atomic_inc(&clp->cl_refcount);
++	atomic_inc(&clp->cl_rpc_users);
+ 	return nfs_ok;
+ }
+ 
+@@ -169,7 +169,7 @@ static void put_client_renew_locked(struct nfs4_client *clp)
+ 
+ 	lockdep_assert_held(&nn->client_lock);
+ 
+-	if (!atomic_dec_and_test(&clp->cl_refcount))
++	if (!atomic_dec_and_test(&clp->cl_rpc_users))
+ 		return;
+ 	if (!is_client_expired(clp))
+ 		renew_client_locked(clp);
+@@ -179,7 +179,7 @@ static void put_client_renew(struct nfs4_client *clp)
  {
--	int ret = mnt_want_write(fh->fh_export->ex_path.mnt);
-+	int ret;
+ 	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
  
-+	if (fh->fh_want_write)
-+		return 0;
-+	ret = mnt_want_write(fh->fh_export->ex_path.mnt);
- 	if (!ret)
- 		fh->fh_want_write = true;
- 	return ret;
+-	if (!atomic_dec_and_lock(&clp->cl_refcount, &nn->client_lock))
++	if (!atomic_dec_and_lock(&clp->cl_rpc_users, &nn->client_lock))
+ 		return;
+ 	if (!is_client_expired(clp))
+ 		renew_client_locked(clp);
+@@ -1847,7 +1847,7 @@ static struct nfs4_client *alloc_client(struct xdr_netobj name)
+ 	clp->cl_name.len = name.len;
+ 	INIT_LIST_HEAD(&clp->cl_sessions);
+ 	idr_init(&clp->cl_stateids);
+-	atomic_set(&clp->cl_refcount, 0);
++	atomic_set(&clp->cl_rpc_users, 0);
+ 	clp->cl_cb_state = NFSD4_CB_UNKNOWN;
+ 	INIT_LIST_HEAD(&clp->cl_idhash);
+ 	INIT_LIST_HEAD(&clp->cl_openowners);
+@@ -1926,7 +1926,7 @@ unhash_client(struct nfs4_client *clp)
+ 
+ static __be32 mark_client_expired_locked(struct nfs4_client *clp)
+ {
+-	if (atomic_read(&clp->cl_refcount))
++	if (atomic_read(&clp->cl_rpc_users))
+ 		return nfserr_jukebox;
+ 	unhash_client_locked(clp);
+ 	return nfs_ok;
+@@ -4066,7 +4066,7 @@ static __be32 lookup_clientid(clientid_t *clid,
+ 		spin_unlock(&nn->client_lock);
+ 		return nfserr_expired;
+ 	}
+-	atomic_inc(&found->cl_refcount);
++	atomic_inc(&found->cl_rpc_users);
+ 	spin_unlock(&nn->client_lock);
+ 
+ 	/* Cache the nfs4_client in cstate! */
+@@ -6550,7 +6550,7 @@ nfs4_check_open_reclaim(clientid_t *clid,
+ static inline void
+ put_client(struct nfs4_client *clp)
+ {
+-	atomic_dec(&clp->cl_refcount);
++	atomic_dec(&clp->cl_rpc_users);
+ }
+ 
+ static struct nfs4_client *
+@@ -6668,7 +6668,7 @@ nfsd_inject_add_lock_to_list(struct nfs4_ol_stateid *lst,
+ 		return;
+ 
+ 	lockdep_assert_held(&nn->client_lock);
+-	atomic_inc(&clp->cl_refcount);
++	atomic_inc(&clp->cl_rpc_users);
+ 	list_add(&lst->st_locks, collect);
+ }
+ 
+@@ -6697,7 +6697,7 @@ static u64 nfsd_foreach_client_lock(struct nfs4_client *clp, u64 max,
+ 				 * Despite the fact that these functions deal
+ 				 * with 64-bit integers for "count", we must
+ 				 * ensure that it doesn't blow up the
+-				 * clp->cl_refcount. Throw a warning if we
++				 * clp->cl_rpc_users. Throw a warning if we
+ 				 * start to approach INT_MAX here.
+ 				 */
+ 				WARN_ON_ONCE(count == (INT_MAX / 2));
+@@ -6821,7 +6821,7 @@ nfsd_foreach_client_openowner(struct nfs4_client *clp, u64 max,
+ 		if (func) {
+ 			func(oop);
+ 			if (collect) {
+-				atomic_inc(&clp->cl_refcount);
++				atomic_inc(&clp->cl_rpc_users);
+ 				list_add(&oop->oo_perclient, collect);
+ 			}
+ 		}
+@@ -6829,7 +6829,7 @@ nfsd_foreach_client_openowner(struct nfs4_client *clp, u64 max,
+ 		/*
+ 		 * Despite the fact that these functions deal with
+ 		 * 64-bit integers for "count", we must ensure that
+-		 * it doesn't blow up the clp->cl_refcount. Throw a
++		 * it doesn't blow up the clp->cl_rpc_users. Throw a
+ 		 * warning if we start to approach INT_MAX here.
+ 		 */
+ 		WARN_ON_ONCE(count == (INT_MAX / 2));
+@@ -6959,7 +6959,7 @@ static u64 nfsd_find_all_delegations(struct nfs4_client *clp, u64 max,
+ 			if (dp->dl_time != 0)
+ 				continue;
+ 
+-			atomic_inc(&clp->cl_refcount);
++			atomic_inc(&clp->cl_rpc_users);
+ 			WARN_ON(!unhash_delegation_locked(dp));
+ 			list_add(&dp->dl_recall_lru, victims);
+ 		}
+@@ -6967,7 +6967,7 @@ static u64 nfsd_find_all_delegations(struct nfs4_client *clp, u64 max,
+ 		/*
+ 		 * Despite the fact that these functions deal with
+ 		 * 64-bit integers for "count", we must ensure that
+-		 * it doesn't blow up the clp->cl_refcount. Throw a
++		 * it doesn't blow up the clp->cl_rpc_users. Throw a
+ 		 * warning if we start to approach INT_MAX here.
+ 		 */
+ 		WARN_ON_ONCE(count == (INT_MAX / 2));
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 396c76755b03..aa9f1676e88a 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -346,7 +346,7 @@ struct nfs4_client {
+ 	struct nfsd4_clid_slot	cl_cs_slot;	/* create_session slot */
+ 	u32			cl_exchange_flags;
+ 	/* number of rpc's in progress over an associated session: */
+-	atomic_t		cl_refcount;
++	atomic_t		cl_rpc_users;
+ 	struct nfs4_op_map      cl_spo_must_allow;
+ 
+ 	/* for nfs41 callbacks */
 -- 
 2.21.0
 
