@@ -2,31 +2,32 @@ Return-Path: <SRS0=MwxH=TQ=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,USER_AGENT_GIT
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-6.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,
+	UNWANTED_LANGUAGE_BODY,USER_AGENT_GIT autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C9EBAC04E87
-	for <linux-nfs@archiver.kernel.org>; Thu, 16 May 2019 01:48:11 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E8F35C072AD
+	for <linux-nfs@archiver.kernel.org>; Thu, 16 May 2019 01:48:12 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 9C9FB20873
-	for <linux-nfs@archiver.kernel.org>; Thu, 16 May 2019 01:48:11 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id C828D20873
+	for <linux-nfs@archiver.kernel.org>; Thu, 16 May 2019 01:48:12 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726970AbfEPBqj (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S1726969AbfEPBqj (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Wed, 15 May 2019 21:46:39 -0400
-Received: from fieldses.org ([173.255.197.46]:33110 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:33116 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727005AbfEPBWY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        id S1727010AbfEPBWY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
         Wed, 15 May 2019 21:22:24 -0400
 Received: by fieldses.org (Postfix, from userid 2815)
-        id 74ED340CA; Wed, 15 May 2019 21:20:23 -0400 (EDT)
+        id 8179F20AE; Wed, 15 May 2019 21:20:23 -0400 (EDT)
 From:   "J. Bruce Fields" <bfields@redhat.com>
 To:     linux-nfs@vger.kernel.org
 Cc:     linux-fsdevel@vger.kernel.org,
         "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 05/12] nfsd: make client/ directory names small ints
-Date:   Wed, 15 May 2019 21:20:12 -0400
-Message-Id: <1557969619-17157-8-git-send-email-bfields@redhat.com>
+Subject: [PATCH 08/12] nfsd: add more information to client info file
+Date:   Wed, 15 May 2019 21:20:15 -0400
+Message-Id: <1557969619-17157-11-git-send-email-bfields@redhat.com>
 X-Mailer: git-send-email 1.8.3.1
 In-Reply-To: <1557969619-17157-1-git-send-email-bfields@redhat.com>
 References: <1557969619-17157-1-git-send-email-bfields@redhat.com>
@@ -37,66 +38,103 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: "J. Bruce Fields" <bfields@redhat.com>
 
-We want clientid's on the wire to be randomized for reasons explained in
-ebd7c72c63ac "nfsd: randomize SETCLIENTID reply to help distinguish
-servers".  But I'd rather have mostly small integers for the clients/
-directory.
+Add ip address, full client-provided identifier, and minor version.
+There's much more that could possibly be useful but this is a start.
+
+As with open owners, client identifiers are opaque binary data, but some
+clients happen to include useful information in ascii.
 
 Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/nfsd/netns.h     | 1 +
- fs/nfsd/nfs4state.c | 2 +-
- fs/nfsd/nfsctl.c    | 5 +++--
- 3 files changed, 5 insertions(+), 3 deletions(-)
+ fs/nfsd/nfs4state.c      | 18 ++++++++++++++++++
+ fs/seq_file.c            | 17 +++++++++++++++++
+ include/linux/seq_file.h |  2 ++
+ 3 files changed, 37 insertions(+)
 
-diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
-index 46d956676480..888b2891960e 100644
---- a/fs/nfsd/netns.h
-+++ b/fs/nfsd/netns.h
-@@ -121,6 +121,7 @@ struct nfsd_net {
- 	 */
- 	unsigned int max_connections;
- 
-+	u32 clientid_base;
- 	u32 clientid_counter;
- 	u32 clverifier_counter;
- 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index dfcb90743861..de99bfe3e6e2 100644
+index c665ce9af773..876c035d2a91 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -2221,7 +2221,7 @@ static struct nfs4_client *create_client(struct xdr_netobj name,
- 	clp->cl_cb_session = NULL;
- 	clp->net = net;
- 	clp->cl_nfsd_dentry = nfsd_client_mkdir(nn, &clp->cl_nfsdfs,
--						clp->cl_clientid.cl_id);
-+			clp->cl_clientid.cl_id - nn->clientid_base);
- 	if (!clp->cl_nfsd_dentry) {
- 		free_client(clp);
- 		return NULL;
-diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index 8a2261cdefee..edf4dada42bf 100644
---- a/fs/nfsd/nfsctl.c
-+++ b/fs/nfsd/nfsctl.c
-@@ -1212,7 +1212,7 @@ struct dentry *nfsd_client_mkdir(struct nfsd_net *nn, struct nfsdfs_client *ncl,
- {
- 	char name[11];
- 
--	sprintf(name, "%d", id++);
-+	sprintf(name, "%u", id);
- 
- 	return nfsd_mkdir(nn->nfsd_client_dir, ncl, name);
+@@ -42,6 +42,7 @@
+ #include <linux/sunrpc/svcauth_gss.h>
+ #include <linux/sunrpc/addr.h>
+ #include <linux/jhash.h>
++#include <linux/string_helpers.h>
+ #include "xdr4.h"
+ #include "xdr4cb.h"
+ #include "vfs.h"
+@@ -2193,6 +2194,19 @@ find_stateid_by_type(struct nfs4_client *cl, stateid_t *t, char typemask)
+ 	return s;
  }
-@@ -1350,7 +1350,8 @@ static __net_init int nfsd_init_net(struct net *net)
- 	nn->nfsd4_grace = 90;
- 	nn->somebody_reclaimed = false;
- 	nn->clverifier_counter = prandom_u32();
--	nn->clientid_counter = prandom_u32();
-+	nn->clientid_base = prandom_u32();
-+	nn->clientid_counter = nn->clientid_base + 1;
- 	nn->s2s_cp_cl_id = nn->clientid_counter++;
  
- 	atomic_set(&nn->ntf_refcnt, 0);
++static void seq_escape_quotable_mem(struct seq_file *m, char *data, int len)
++{
++	/* List taken from kstrdup_quotable: */
++	seq_escape_mem(m, data, len, ESCAPE_HEX, "\f\n\r\t\v\a\e\\\"");
++}
++
++static void seq_quote_mem(struct seq_file *m, char *data, int len)
++{
++	seq_printf(m, "\"");
++	seq_escape_quotable_mem(m, data, len);
++	seq_printf(m, "\"");
++}
++
+ static int client_info_show(struct seq_file *m, void *v)
+ {
+ 	struct inode *inode = m->private;
+@@ -2206,6 +2220,10 @@ static int client_info_show(struct seq_file *m, void *v)
+ 	clp = container_of(nc, struct nfs4_client, cl_nfsdfs);
+ 	memcpy(&clid, &clp->cl_clientid, sizeof(clid));
+ 	seq_printf(m, "clientid: %llx\n", clid);
++	seq_printf(m, "address: %pISpc\n", (struct sockaddr *)&clp->cl_addr);
++	seq_printf(m, "name: ");
++	seq_quote_mem(m, clp->cl_name.data, clp->cl_name.len);
++	seq_printf(m, "\nminor version: %d\n", clp->cl_minorversion);
+ 	drop_client(clp);
+ 
+ 	return 0;
+diff --git a/fs/seq_file.c b/fs/seq_file.c
+index 1dea7a8a5255..bb646e0c5b9c 100644
+--- a/fs/seq_file.c
++++ b/fs/seq_file.c
+@@ -383,6 +383,23 @@ void seq_escape(struct seq_file *m, const char *s, const char *esc)
+ }
+ EXPORT_SYMBOL(seq_escape);
+ 
++/**
++ * seq_escape_mem - copy data to buffer, escaping some characters
++ *
++ * See string_escape_mem for explanations of the arguments.
++ */
++void seq_escape_mem(struct seq_file *m, const char *src, size_t isz,
++		    unsigned int flags, const char *only)
++{
++	char *buf;
++	size_t size = seq_get_buf(m, &buf);
++	int ret;
++
++	ret = string_escape_mem(src, isz, buf, size, flags, only);
++	seq_commit(m, ret < size ? ret : -1);
++}
++EXPORT_SYMBOL(seq_escape_mem);
++
+ void seq_vprintf(struct seq_file *m, const char *f, va_list args)
+ {
+ 	int len;
+diff --git a/include/linux/seq_file.h b/include/linux/seq_file.h
+index a121982af0f5..de6ace9e5e6b 100644
+--- a/include/linux/seq_file.h
++++ b/include/linux/seq_file.h
+@@ -127,6 +127,8 @@ void seq_put_hex_ll(struct seq_file *m, const char *delimiter,
+ 		    unsigned long long v, unsigned int width);
+ 
+ void seq_escape(struct seq_file *m, const char *s, const char *esc);
++void seq_escape_mem(struct seq_file *m, const char *src, size_t isz,
++		    unsigned int flags, const char *only);
+ 
+ void seq_hex_dump(struct seq_file *m, const char *prefix_str, int prefix_type,
+ 		  int rowsize, int groupsize, const void *buf, size_t len,
 -- 
 2.21.0
 
