@@ -2,80 +2,91 @@ Return-Path: <SRS0=MwxH=TQ=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,USER_AGENT_GIT
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-2.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_PASS,URIBL_BLOCKED,USER_AGENT_MUTT autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 137F8C04E87
-	for <linux-nfs@archiver.kernel.org>; Thu, 16 May 2019 01:48:21 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 41706C04E84
+	for <linux-nfs@archiver.kernel.org>; Thu, 16 May 2019 01:48:23 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id E619720873
-	for <linux-nfs@archiver.kernel.org>; Thu, 16 May 2019 01:48:20 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 1E6C420873
+	for <linux-nfs@archiver.kernel.org>; Thu, 16 May 2019 01:48:23 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726998AbfEPBqg (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 15 May 2019 21:46:36 -0400
-Received: from fieldses.org ([173.255.197.46]:33072 "EHLO fieldses.org"
+        id S1727526AbfEPBqf (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 15 May 2019 21:46:35 -0400
+Received: from fieldses.org ([173.255.197.46]:33026 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726999AbfEPBUX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 15 May 2019 21:20:23 -0400
+        id S1726422AbfEPAke (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 15 May 2019 20:40:34 -0400
 Received: by fieldses.org (Postfix, from userid 2815)
-        id 5E8171E3A; Wed, 15 May 2019 21:20:23 -0400 (EDT)
-From:   "J. Bruce Fields" <bfields@redhat.com>
-To:     linux-nfs@vger.kernel.org
-Cc:     linux-fsdevel@vger.kernel.org,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 2/2] nfsd: fh_drop_write in nfsd_unlink
-Date:   Wed, 15 May 2019 21:20:08 -0400
-Message-Id: <1557969619-17157-4-git-send-email-bfields@redhat.com>
-X-Mailer: git-send-email 1.8.3.1
-In-Reply-To: <1557969619-17157-1-git-send-email-bfields@redhat.com>
-References: <1557969619-17157-1-git-send-email-bfields@redhat.com>
+        id CC88DBCE; Wed, 15 May 2019 20:40:32 -0400 (EDT)
+Date:   Wed, 15 May 2019 20:40:32 -0400
+From:   "J. Bruce Fields" <bfields@fieldses.org>
+To:     Andreas Dilger <adilger@dilger.ca>
+Cc:     Jeff Layton <jlayton@redhat.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        linux-nfs <linux-nfs@vger.kernel.org>,
+        linux-fsdevel@vger.kernel.org, abe@purdue.edu,
+        lsof-l@lists.purdue.edu, util-linux@vger.kernel.org
+Subject: Re: [PATCH 08/10] nfsd4: add file to display list of client's opens
+Message-ID: <20190516004032.GA16284@fieldses.org>
+References: <1556201060-7947-1-git-send-email-bfields@redhat.com>
+ <1556201060-7947-9-git-send-email-bfields@redhat.com>
+ <d26e7611f4e610bff81a16abbb88ca1c5ed70c91.camel@redhat.com>
+ <20190425201413.GB9889@fieldses.org>
+ <7F460FEA-BD69-4559-926C-5C1B0CF90E3C@dilger.ca>
+ <20190426011804.GA12457@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: inline
+Content-Transfer-Encoding: 8bit
+In-Reply-To: <20190426011804.GA12457@fieldses.org>
+User-Agent: Mutt/1.5.21 (2010-09-15)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On Thu, Apr 25, 2019 at 09:18:04PM -0400, J. Bruce Fields wrote:
+> On Thu, Apr 25, 2019 at 11:14:23PM +0200, Andreas Dilger wrote:
+> > On Apr 25, 2019, at 10:14 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> > > 
+> > > On Thu, Apr 25, 2019 at 02:04:59PM -0400, Jeff Layton wrote:
+> > >> More bikeshedding: should we have a "states" file instead of an "opens"
+> > >> file and print a different set of output for each stateid type?
+> > > 
+> > > Sure.  The format of the file could be something like
+> > > 
+> > > 	<stateid> open rw -- <openowner>...
+> > > 	<stateid> lock r 0-EOF <lockowner>...
+> > > 	<stateid> deleg r
+> > > 
+> > > I wonder if we could put owners on separate lines and do some
+> > > heirarchical thing to show owner-stateid relationships?  Hm.  That's
+> > > kind of appealing but more work.
+> > 
+> > My suggestion here would be to use YAML-formatted output rather than
+> > space/tab separated positional fields.  That can still be made human
+> > readable, but also machine parseable and extensible if formatted properly.
+> 
+> Well, anything we do will be machine-parseable.  But I can believe YAML
+> would make future extension easier.  It doesn't look like it would be
+> more complicated to generate.  It uses C-style escaping (like \x32) so
+> there'd be no change to how we format binary blobs.
+> 
+> The field names make it a tad more verbose but I guess it's not too bad.
 
-fh_want_write() can now be called twice, but I'm also fixing up the
-callers not to do that.
+OK, I tried changing "opens" to "states" and using YAML.  Example output:
 
-Other cases include setattr and create.
+- 0x020000006a5fdc5c4ad09d9e01000000: { type: open, access: rw, deny: --, superblock: "fd:10:13649", owner: "open id:\x00\x00\x00&\x00\x00\x00\x00\x00\x0046��QH " }
+- 0x010000006a5fdc5c4ad09d9e03000000: { type: open, access: r-, deny: --, superblock: "fd:10:13650", owner: "open id:\x00\x00\x00&\x00\x00\x00\x00\x00\x0046��QH" }
+- 0x010000006a5fdc5c4ad09d9e04000000: { type: deleg, access: r, superblock: "fd:10:13650" }
+- 0x010000006a5fdc5c4ad09d9e06000000: { type: lock, superblock: "fd:10:13649", owner: "lock id:\x00\x00\x00&\x00\x00\x00\x00\x00\x00\x00\x00" }
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/vfs.c | 8 +++++---
- 1 file changed, 5 insertions(+), 3 deletions(-)
+The parser Andreas suggested (https://yaml-online-parser.appspot.com/)
+accepts these.  It also thinks strings are always in a unicode encoding
+of some kind, which they aren't.  The owners are arbitrary series of
+bytes but I'd like at least any ascii parts to be human readable, and
+I'm a little stuck on how to do that.
 
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index 7dc98e14655d..fc24ee47eab5 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -1786,12 +1786,12 @@ nfsd_unlink(struct svc_rqst *rqstp, struct svc_fh *fhp, int type,
- 	rdentry = lookup_one_len(fname, dentry, flen);
- 	host_err = PTR_ERR(rdentry);
- 	if (IS_ERR(rdentry))
--		goto out_nfserr;
-+		goto out_drop_write;
- 
- 	if (d_really_is_negative(rdentry)) {
- 		dput(rdentry);
--		err = nfserr_noent;
--		goto out;
-+		host_err = -ENOENT;
-+		goto out_drop_write;
- 	}
- 
- 	if (!type)
-@@ -1805,6 +1805,8 @@ nfsd_unlink(struct svc_rqst *rqstp, struct svc_fh *fhp, int type,
- 		host_err = commit_metadata(fhp);
- 	dput(rdentry);
- 
-+out_drop_write:
-+	fh_drop_write(fhp);
- out_nfserr:
- 	err = nfserrno(host_err);
- out:
--- 
-2.21.0
-
+--b.
