@@ -1,159 +1,106 @@
-Return-Path: <SRS0=I2eK=TP=vger.kernel.org=linux-nfs-owner@kernel.org>
+Return-Path: <SRS0=MwxH=TQ=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS,
-	URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,USER_AGENT_GIT
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id AD5D0C04E53
-	for <linux-nfs@archiver.kernel.org>; Wed, 15 May 2019 20:16:48 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 43EF2C04E53
+	for <linux-nfs@archiver.kernel.org>; Thu, 16 May 2019 01:46:37 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 220D720449
-	for <linux-nfs@archiver.kernel.org>; Wed, 15 May 2019 20:16:48 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="YzE394ab"
+	by mail.kernel.org (Postfix) with ESMTP id 1584C20843
+	for <linux-nfs@archiver.kernel.org>; Thu, 16 May 2019 01:46:37 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726908AbfEOUQr (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 15 May 2019 16:16:47 -0400
-Received: from mail-eopbgr690095.outbound.protection.outlook.com ([40.107.69.95]:7143
-        "EHLO NAM04-CO1-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726302AbfEOUQr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 15 May 2019 16:16:47 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=hammerspace.com;
- s=selector1;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=S7yX8eznsfdRmjUhpXp5DQ+K8bEftUKTCHTldGE4Hr4=;
- b=YzE394abWd0Pl9KAZLOOkwHM141M4IxJsXUReNsjQVoC60Fol8of8OxQpJkhzY3nd53+GSHoPL5tOp2Q18QaaVURKRJZOzKSVziKBsC1/YgT2BJD0dTnW4i1XpqAqeFK9mqnEKPKFLCwl3dt75BLfKLSYJqnkMoGXyoJe8JeNCk=
-Received: from BN6PR13MB1844.namprd13.prod.outlook.com (10.171.180.8) by
- BN6PR13MB3219.namprd13.prod.outlook.com (10.255.130.78) with Microsoft SMTP
- Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- 15.20.1900.6; Wed, 15 May 2019 20:16:40 +0000
-Received: from BN6PR13MB1844.namprd13.prod.outlook.com
- ([fe80::281c:9b1c:5cdd:bad7]) by BN6PR13MB1844.namprd13.prod.outlook.com
- ([fe80::281c:9b1c:5cdd:bad7%10]) with mapi id 15.20.1900.010; Wed, 15 May
- 2019 20:16:40 +0000
-From:   Trond Myklebust <trondmy@hammerspace.com>
-To:     "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "aglo@umich.edu" <aglo@umich.edu>
-Subject: Re: 5.1 sunrpc kernel oops
-Thread-Topic: 5.1 sunrpc kernel oops
-Thread-Index: AQHVC1VHbU1atck7/kyF6QohJJqrNKZsn4kA
-Date:   Wed, 15 May 2019 20:16:40 +0000
-Message-ID: <4d163d6c991c407c91a8838dde5f11f8840257cd.camel@hammerspace.com>
-References: <CAN-5tyFGd+OGOkBL_9R3xHv9Np_DQWmUau8=up6wRmx8p7qkWA@mail.gmail.com>
-In-Reply-To: <CAN-5tyFGd+OGOkBL_9R3xHv9Np_DQWmUau8=up6wRmx8p7qkWA@mail.gmail.com>
-Accept-Language: en-US, en-GB
-Content-Language: en-US
-X-MS-Has-Attach: 
-X-MS-TNEF-Correlator: 
-authentication-results: spf=none (sender IP is )
- smtp.mailfrom=trondmy@hammerspace.com; 
-x-originating-ip: [209.17.40.36]
-x-ms-publictraffictype: Email
-x-ms-office365-filtering-correlation-id: 68f2e938-ebf8-4455-2af2-08d6d9723de4
-x-microsoft-antispam: BCL:0;PCL:0;RULEID:(2390118)(7020095)(4652040)(8989299)(4534185)(4627221)(201703031133081)(201702281549075)(8990200)(5600141)(711020)(4605104)(2017052603328)(7193020);SRVR:BN6PR13MB3219;
-x-ms-traffictypediagnostic: BN6PR13MB3219:
-x-microsoft-antispam-prvs: <BN6PR13MB32190B93BD19EAF24FA4FDB8B8090@BN6PR13MB3219.namprd13.prod.outlook.com>
-x-ms-oob-tlc-oobclassifiers: OLM:9508;
-x-forefront-prvs: 0038DE95A2
-x-forefront-antispam-report: SFV:NSPM;SFS:(10019020)(376002)(366004)(346002)(396003)(39830400003)(136003)(189003)(199004)(51234002)(99286004)(2171002)(81166006)(81156014)(66066001)(6246003)(305945005)(7736002)(14444005)(256004)(5660300002)(110136005)(68736007)(8676002)(6486002)(53936002)(118296001)(229853002)(6436002)(6116002)(3846002)(36756003)(14454004)(26005)(446003)(25786009)(102836004)(6506007)(2906002)(316002)(7116003)(6512007)(66946007)(73956011)(8936002)(76116006)(71200400001)(71190400001)(486006)(2501003)(91956017)(186003)(66476007)(45080400002)(66556008)(66446008)(64756008)(2616005)(76176011)(86362001)(476003)(11346002)(478600001);DIR:OUT;SFP:1102;SCL:1;SRVR:BN6PR13MB3219;H:BN6PR13MB1844.namprd13.prod.outlook.com;FPR:;SPF:None;LANG:en;PTR:InfoNoRecords;MX:1;A:1;
-received-spf: None (protection.outlook.com: hammerspace.com does not designate
- permitted sender hosts)
-x-ms-exchange-senderadcheck: 1
-x-microsoft-antispam-message-info: LWkQKc/aQ4iPre9Q+b/ls+10Eew5CR0WI1lXI9Lv91pi4c9Cgus1HoXgwy2D4MNuVgNqaG+4+6QbW1Bz0s2SXOIlW0dtg9BkD5BW33eH+JjJwE+SMp3DT3rtGDwt9dh9gjb9a/ndz+K/fX8AQsWQMErrU0ZUJxGf9NS7wLdbZy0ufN/UWusA+umeqKEpmkZfxuY6bNj7gkqWjbkkC/PWmLO9KKjvPPB8uUB+xap9o23ZdWx0YVLAKvtJy7OVowzqDS479UyIzmdLl0lDYJK5PCVgXUG8WrZ/CGm7yg+yMcbnXKunl7N9c3x0WxoRF6A1c8Emc6Kk8LbSON3Xvv/CjmoFClmzriImTwS4bZj1tHyinYjbzvT9L4ECulEhs7yuzJ47e7Mw8Rrq7jj/utPJLxgWEoHdztwselFsZIa9bwE=
-Content-Type: text/plain; charset="utf-8"
-Content-ID: <23EC49153682E2468ED13E1F554FFFEF@namprd13.prod.outlook.com>
-Content-Transfer-Encoding: base64
-MIME-Version: 1.0
-X-OriginatorOrg: hammerspace.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: 68f2e938-ebf8-4455-2af2-08d6d9723de4
-X-MS-Exchange-CrossTenant-originalarrivaltime: 15 May 2019 20:16:40.5484
- (UTC)
-X-MS-Exchange-CrossTenant-fromentityheader: Hosted
-X-MS-Exchange-CrossTenant-id: 0d4fed5c-3a70-46fe-9430-ece41741f59e
-X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: BN6PR13MB3219
+        id S1726794AbfEPBqg (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 15 May 2019 21:46:36 -0400
+Received: from fieldses.org ([173.255.197.46]:33070 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726998AbfEPBUX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 15 May 2019 21:20:23 -0400
+Received: by fieldses.org (Postfix, from userid 2815)
+        id 580471E67; Wed, 15 May 2019 21:20:23 -0400 (EDT)
+From:   "J. Bruce Fields" <bfields@redhat.com>
+To:     linux-nfs@vger.kernel.org
+Cc:     linux-fsdevel@vger.kernel.org,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 01/12] nfsd: persist nfsd filesystem across mounts
+Date:   Wed, 15 May 2019 21:20:07 -0400
+Message-Id: <1557969619-17157-3-git-send-email-bfields@redhat.com>
+X-Mailer: git-send-email 1.8.3.1
+In-Reply-To: <1557969619-17157-1-git-send-email-bfields@redhat.com>
+References: <1557969619-17157-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-T24gV2VkLCAyMDE5LTA1LTE1IGF0IDE1OjM0IC0wNDAwLCBPbGdhIEtvcm5pZXZza2FpYSB3cm90
-ZToNCj4gU291bmRzIGxpa2Ugd2UgY2FuJ3QgZG86DQo+ICAgICAgICAgY29uc3Qgc3RydWN0IHJw
-Y190aW1lb3V0ICp0byA9IHJlcS0+cnFfdGFzay0+dGtfY2xpZW50LQ0KPiA+Y2xfdGltZW91dDsN
-Cj4gDQo+IFBlcmhhcHM6DQo+IGNvbnN0IHN0cnVjdCBycGNfdGltZW91dCAqdG87DQo+IGFuZCBj
-aGVjayB0aGF0IGlmICghcmVxLT5ycV90YXNrIHx8ICFyZXEtPnJxX3Rhc2stPnRrX2NsaWVudCkg
-cmV0dXJuDQo+IDA7DQo+IA0KPiBKdXN0IGEgZ3Vlc3MuIFRob3VnaHRzPw0KDQpBbGwgY2FsbGVy
-cyBvZiBjYWxsX2RlY29kZSgpIG11c3QgaGF2ZSByZXEtPnJxX3Rhc2sgc2V0LCBiZWNhdXNlIHRo
-ZXJlDQpyZXF1ZXN0IG11c3QgaGF2ZSBzZW50IGFuIFJQQyBjYWxsIChzbyBhIHNsb3QgbXVzdCBi
-ZSBhbGxvY2F0ZWQpIGFuZCBzbw0Kd2UgbXVzdCBoYXZlIGEgdGFzayBhcyB0aGUgYXJndW1lbnQu
-DQoNCkknbSBub3Qgc3VyZSBhYm91dCB0YXNrLT50a19jbGllbnQuIEkgZmVlbCB0aGF0IHNob3Vs
-ZCBhbHdheXMgYmUgc2V0DQpoZXJlIChhZ2Fpbiwgc2luY2UgdGhpcyBpcyBhIHJlcGx5KSBidXQg
-aXQgaXMgcG9zc2libGUgdGhlcmUgbWlnaHQgYmUNCnNvbWUgY29kZSBwYXRoIHdoZXJlIHdlJ3Jl
-IG5vdCBzZXR0aW5nIHRoYXQuIEknZCBsaWtlIHRvIHVuZGVyc3RhbmQNCmhvdywgdGhvdWdoOiBp
-dCBjZXJ0YWlubHkgaXNuJ3QgdGhlIHVzdWFsIGJhY2tjaGFubmVsIHJlcXVlc3QuDQoNCj4gDQo+
-IFszNzI0Ny4yOTE2MTddIEJVRzogdW5hYmxlIHRvIGhhbmRsZSBrZXJuZWwgTlVMTCBwb2ludGVy
-IGRlcmVmZXJlbmNlDQo+IGF0IDAwMDAwMDAwMDAwMDAwOTgNCj4gWzM3MjQ3LjI5NjIwMF0gI1BG
-IGVycm9yOiBbbm9ybWFsIGtlcm5lbCByZWFkIGZhdWx0XQ0KPiBbMzcyNDcuMjk4MTEwXSBQR0Qg
-MCBQNEQgMA0KPiBbMzcyNDcuMjk5MjY0XSBPb3BzOiAwMDAwIFsjMV0gU01QIFBUSQ0KPiBbMzcy
-NDcuMzAwNzI5XSBDUFU6IDEgUElEOiAyMzg3MCBDb21tOiBrd29ya2VyL3UyNTY6MSBOb3QgdGFp
-bnRlZA0KPiA1LjEuMCsgIzE3Mg0KPiBbMzcyNDcuMzAzNTQ3XSBIYXJkd2FyZSBuYW1lOiBWTXdh
-cmUsIEluYy4gVk13YXJlIFZpcnR1YWwNCj4gUGxhdGZvcm0vNDQwQlggRGVza3RvcCBSZWZlcmVu
-Y2UgUGxhdGZvcm0sIEJJT1MgNi4wMCAwNC8xMy8yMDE4DQo+IFszNzI0Ny4zMTE3NzBdIFdvcmtx
-dWV1ZTogcnBjaW9kIHJwY19hc3luY19zY2hlZHVsZSBbc3VucnBjXQ0KPiBbMzcyNDcuMzEzOTU4
-XSBSSVA6IDAwMTA6eHBydF9hZGp1c3RfdGltZW91dCsweDkvMHgxMTAgW3N1bnJwY10NCj4gWzM3
-MjQ3LjMxNjIyMF0gQ29kZTogYzcgYzcgMjAgMGQgNTAgYzAgMzEgYzAgZTggNjggMDAgZTIgZmMg
-NDEgYzcgNDUNCj4gMDQgZjQgZmYgZmYgZmYgZWIgYzkgNjYgMmUgMGYgMWYgODQgMDAgMDAgMDAg
-MDAgMDAgMGYgMWYgNDQgMDAgMDAgNDENCj4gNTQgNTUgNTMgPDQ4PiA4YiA4NyA5OCAwMCAwMCAw
-MCA0OCA4OSBmYiA0YyA4YiAyNyA0OCA4YiA4MCBhOCAwMCAwMA0KPiAwMA0KPiA0OCA4Yg0KPiBb
-MzcyNDcuMzIzNjI1XSBSU1A6IDAwMTg6ZmZmZmIwYWI4NGY1ZmQ2OCBFRkxBR1M6IDAwMDEwMjA3
-DQo+IFszNzI0Ny4zMjU2NzZdIFJBWDogMDAwMDAwMDBmZmZmZmZmNSBSQlg6IGZmZmY5ZTBmZjEw
-NDI4MDAgUkNYOg0KPiAwMDAwMDAwMDAwMDAwMDAzDQo+IFszNzI0Ny4zMjg0MzNdIFJEWDogZmZm
-ZjllMGZmMTFiYWFjMCBSU0k6IDAwMDAwMDAwZmZmZmZlMDEgUkRJOg0KPiAwMDAwMDAwMDAwMDAw
-MDAwDQo+IFszNzI0Ny4zMzEyMDZdIFJCUDogZmZmZjllMGZlMjBjYjIwMCBSMDg6IGZmZmY5ZTBm
-ZjExYmFhYzAgUjA5Og0KPiBmZmZmOWUwZmYxMWJhYWMwDQo+IFszNzI0Ny4zMzQwMzhdIFIxMDog
-ZmZmZjllMGZmMTFiYWFiOCBSMTE6IDAwMDAwMDAwMDAwMDAwMDMgUjEyOg0KPiBmZmZmOWUxMDM5
-YjU1MDUwDQo+IFszNzI0Ny4zMzcwOThdIFIxMzogZmZmZjllMGZmMTA0MjgzMCBSMTQ6IDAwMDAw
-MDAwMDAwMDAwMDAgUjE1Og0KPiAwMDAwMDAwMDAwMDAwMDAxDQo+IFszNzI0Ny4zMzk5NjZdIEZT
-OiAgMDAwMDAwMDAwMDAwMDAwMCgwMDAwKSBHUzpmZmZmOWUxMDNiYzQwMDAwKDAwMDApDQo+IGtu
-bEdTOjAwMDAwMDAwMDAwMDAwMDANCj4gWzM3MjQ3LjM0MzI2MV0gQ1M6ICAwMDEwIERTOiAwMDAw
-IEVTOiAwMDAwIENSMDogMDAwMDAwMDA4MDA1MDAzMw0KPiBbMzcyNDcuMzQ1NjY5XSBDUjI6IDAw
-MDAwMDAwMDAwMDAwOTggQ1IzOiAwMDAwMDAwMDc2MDNhMDAyIENSNDoNCj4gMDAwMDAwMDAwMDE2
-MDZlMA0KPiBbMzcyNDcuMzQ4NTY0XSBDYWxsIFRyYWNlOg0KPiBbMzcyNDcuMzUxMDM0XSAgcnBj
-X2NoZWNrX3RpbWVvdXQrMHgxZC8weDE0MCBbc3VucnBjXQ0KPiBbMzcyNDcuMzUzMDA1XSAgY2Fs
-bF9kZWNvZGUrMHgxM2UvMHgxZjAgW3N1bnJwY10NCj4gWzM3MjQ3LjM1NDg5M10gID8gcnBjX2No
-ZWNrX3RpbWVvdXQrMHgxNDAvMHgxNDAgW3N1bnJwY10NCj4gWzM3MjQ3LjM1NzE0M10gIF9fcnBj
-X2V4ZWN1dGUrMHg3ZS8weDNkMCBbc3VucnBjXQ0KPiBbMzcyNDcuMzU5MTA0XSAgcnBjX2FzeW5j
-X3NjaGVkdWxlKzB4MjkvMHg0MCBbc3VucnBjXQ0KPiBbMzcyNDcuMzYyNTY1XSAgcHJvY2Vzc19v
-bmVfd29yaysweDE2Yi8weDM3MA0KPiBbMzcyNDcuMzY1NTk4XSAgd29ya2VyX3RocmVhZCsweDQ5
-LzB4M2YwDQo+IFszNzI0Ny4zNjcxNjRdICBrdGhyZWFkKzB4ZjUvMHgxMzANCj4gWzM3MjQ3LjM2
-ODQ1M10gID8gbWF4X2FjdGl2ZV9zdG9yZSsweDgwLzB4ODANCj4gWzM3MjQ3LjM3MDA4N10gID8g
-a3RocmVhZF9iaW5kKzB4MTAvMHgxMA0KPiBbMzcyNDcuMzcyNTA1XSAgcmV0X2Zyb21fZm9yaysw
-eDFmLzB4MzANCj4gWzM3MjQ3LjM3NDY5NV0gTW9kdWxlcyBsaW5rZWQgaW46IG5mc3YzIGN0cyBy
-cGNzZWNfZ3NzX2tyYjUgbmZzdjQNCj4gZG5zX3Jlc29sdmVyIG5mcyByZmNvbW0gZnVzZSBpcDZ0
-X3JwZmlsdGVyIGlwdF9SRUpFQ1QgbmZfcmVqZWN0X2lwdjQNCj4gaXA2dF9SRUpFQ1QgbmZfcmVq
-ZWN0X2lwdjYgeHRfY29ubnRyYWNrIG5mX2Nvbm50cmFjayBuZl9kZWZyYWdfaXB2Ng0KPiBuZl9k
-ZWZyYWdfaXB2NCBlYnRhYmxlX25hdCBlYnRhYmxlX2Jyb3V0ZSBicmlkZ2Ugc3RwIGxsYw0KPiBp
-cDZ0YWJsZV9tYW5nbGUgaXA2dGFibGVfc2VjdXJpdHkgaXA2dGFibGVfcmF3IGlwdGFibGVfbWFu
-Z2xlDQo+IGlwdGFibGVfc2VjdXJpdHkgaXB0YWJsZV9yYXcgZWJ0YWJsZV9maWx0ZXIgZWJ0YWJs
-ZXMgaXA2dGFibGVfZmlsdGVyDQo+IGlwNl90YWJsZXMgaXB0YWJsZV9maWx0ZXIgYm5lcCBzbmRf
-c2VxX21pZGkgc25kX3NlcV9taWRpX2V2ZW50DQo+IGNyY3QxMGRpZl9wY2xtdWwgY3JjMzJfcGNs
-bXVsIGdoYXNoX2NsbXVsbmlfaW50ZWwgYWVzbmlfaW50ZWwNCj4gY3J5cHRvX3NpbWQgY3J5cHRk
-IGdsdWVfaGVscGVyIHZtd19iYWxsb29uIHNuZF9lbnMxMzcxIHNuZF9hYzk3X2NvZGVjDQo+IHV2
-Y3ZpZGVvIGFjOTdfYnVzIHNuZF9zZXEgcGNzcGtyIGJ0dXNiIGJ0cnRsIGJ0YmNtIHZpZGVvYnVm
-Ml92bWFsbG9jDQo+IHNuZF9wY20gdmlkZW9idWYyX21lbW9wcyBidGludGVsIHZpZGVvYnVmMl92
-NGwyIHZpZGVvZGV2IGJsdWV0b290aA0KPiBzbmRfdGltZXIgc25kX3Jhd21pZGkgdm13X3ZtY2kg
-c25kX3NlcV9kZXZpY2UgcmZraWxsIHZpZGVvYnVmMl9jb21tb24NCj4gc25kIGVjZGhfZ2VuZXJp
-YyBpMmNfcGlpeDQgc291bmRjb3JlIG5mc2QgbmZzX2FjbCBsb2NrZCBhdXRoX3JwY2dzcw0KPiBn
-cmFjZSBzdW5ycGMgaXBfdGFibGVzIHhmcyBsaWJjcmMzMmMgc3JfbW9kIGNkcm9tIHNkX21vZCBh
-dGFfZ2VuZXJpYw0KPiBwYXRhX2FjcGkgdm13Z2Z4IGRybV9rbXNfaGVscGVyIHN5c2NvcHlhcmVh
-IHN5c2ZpbGxyZWN0IHN5c2ltZ2JsdA0KPiBmYl9zeXNfZm9wcw0KPiBbMzcyNDcuMzg5Nzc0XSAg
-dHRtIGNyYzMyY19pbnRlbCBkcm0gc2VyaW9fcmF3IGFoY2kgYXRhX3BpaXggbGliYWhjaQ0KPiBs
-aWJhdGEgbXB0c3BpIHNjc2lfdHJhbnNwb3J0X3NwaSBlMTAwMCBtcHRzY3NpaCBtcHRiYXNlIGky
-Y19jb3JlDQo+IGRtX21pcnJvciBkbV9yZWdpb25faGFzaCBkbV9sb2cgZG1fbW9kDQo+IFszNzI0
-Ny40Mzc4NTldIENSMjogMDAwMDAwMDAwMDAwMDA5OA0KPiBbMzcyNDcuNDYyMjYzXSAtLS1bIGVu
-ZCB0cmFjZSAwZDlhODVmMGRmMmNlZjllIF0tLS0NCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51
-eCBORlMgY2xpZW50IG1haW50YWluZXIsIEhhbW1lcnNwYWNlDQp0cm9uZC5teWtsZWJ1c3RAaGFt
-bWVyc3BhY2UuY29tDQoNCg0K
+From: "J. Bruce Fields" <bfields@redhat.com>
+
+Keep around one internal mount of the nfsd filesystem so that we can
+e.g. add stuff to it when clients come and go, regardless of whether
+anyone has it mounted.
+
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/netns.h  |  3 +++
+ fs/nfsd/nfsctl.c | 13 +++++++++++++
+ 2 files changed, 16 insertions(+)
+
+diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
+index 32cb8c027483..cce335e1ec98 100644
+--- a/fs/nfsd/netns.h
++++ b/fs/nfsd/netns.h
+@@ -55,6 +55,9 @@ struct nfsd_net {
+ 	bool grace_ended;
+ 	time_t boot_time;
+ 
++	/* internal mount of the "nfsd" pseudofilesystem: */
++	struct vfsmount *nfsd_mnt;
++
+ 	/*
+ 	 * reclaim_str_hashtbl[] holds known client info from previous reset/reboot
+ 	 * used in reboot/reset lease grace period processing
+diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+index f2feb2d11bae..8d2062428569 100644
+--- a/fs/nfsd/nfsctl.c
++++ b/fs/nfsd/nfsctl.c
+@@ -1231,6 +1231,7 @@ unsigned int nfsd_net_id;
+ static __net_init int nfsd_init_net(struct net *net)
+ {
+ 	int retval;
++	struct vfsmount *mnt;
+ 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
+ 
+ 	retval = nfsd_export_init(net);
+@@ -1248,8 +1249,17 @@ static __net_init int nfsd_init_net(struct net *net)
+ 
+ 	atomic_set(&nn->ntf_refcnt, 0);
+ 	init_waitqueue_head(&nn->ntf_wq);
++
++	mnt =  vfs_kern_mount(&nfsd_fs_type, SB_KERNMOUNT, "nfsd", NULL);
++	if (IS_ERR(mnt)) {
++		retval = PTR_ERR(mnt);
++		goto out_mount_err;
++	}
++	nn->nfsd_mnt = mnt;
+ 	return 0;
+ 
++out_mount_err:
++	nfsd_idmap_shutdown(net);
+ out_idmap_error:
+ 	nfsd_export_shutdown(net);
+ out_export_error:
+@@ -1258,6 +1268,9 @@ static __net_init int nfsd_init_net(struct net *net)
+ 
+ static __net_exit void nfsd_exit_net(struct net *net)
+ {
++	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
++
++	mntput(nn->nfsd_mnt);
+ 	nfsd_idmap_shutdown(net);
+ 	nfsd_export_shutdown(net);
+ }
+-- 
+2.21.0
+
