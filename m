@@ -6,27 +6,27 @@ X-Spam-Status: No, score=-9.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,USER_AGENT_GIT
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 42515C04E84
-	for <linux-nfs@archiver.kernel.org>; Thu, 16 May 2019 01:48:14 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4C9BDC04E87
+	for <linux-nfs@archiver.kernel.org>; Thu, 16 May 2019 01:48:15 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 1471C2087E
-	for <linux-nfs@archiver.kernel.org>; Thu, 16 May 2019 01:48:14 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 2A02D20873
+	for <linux-nfs@archiver.kernel.org>; Thu, 16 May 2019 01:48:15 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727004AbfEPBqi (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 15 May 2019 21:46:38 -0400
-Received: from fieldses.org ([173.255.197.46]:33120 "EHLO fieldses.org"
+        id S1727014AbfEPBqh (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 15 May 2019 21:46:37 -0400
+Received: from fieldses.org ([173.255.197.46]:33114 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727018AbfEPBWY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        id S1727007AbfEPBWY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
         Wed, 15 May 2019 21:22:24 -0400
 Received: by fieldses.org (Postfix, from userid 2815)
-        id 89CBB50A2; Wed, 15 May 2019 21:20:23 -0400 (EDT)
+        id 7D32242A6; Wed, 15 May 2019 21:20:23 -0400 (EDT)
 From:   "J. Bruce Fields" <bfields@redhat.com>
 To:     linux-nfs@vger.kernel.org
 Cc:     linux-fsdevel@vger.kernel.org,
         "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 10/12] nfsd: show lock and deleg stateids
-Date:   Wed, 15 May 2019 21:20:17 -0400
-Message-Id: <1557969619-17157-13-git-send-email-bfields@redhat.com>
+Subject: [PATCH 07/12] nfsd: copy client's address including port number to cl_addr
+Date:   Wed, 15 May 2019 21:20:14 -0400
+Message-Id: <1557969619-17157-10-git-send-email-bfields@redhat.com>
 X-Mailer: git-send-email 1.8.3.1
 In-Reply-To: <1557969619-17157-1-git-send-email-bfields@redhat.com>
 References: <1557969619-17157-1-git-send-email-bfields@redhat.com>
@@ -37,99 +37,27 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: "J. Bruce Fields" <bfields@redhat.com>
 
-These entries are pretty minimal for now.
+rpc_copy_addr() copies only the IP address and misses any port numbers.
+It seems potentially useful to keep the port number around too.
 
 Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/nfsd/nfs4state.c | 59 +++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 59 insertions(+)
+ fs/nfsd/nfs4state.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 4025b3c692fd..652e0544e058 100644
+index 928705fc8ff5..c665ce9af773 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -2323,12 +2323,66 @@ static int nfs4_show_open(struct seq_file *s, struct nfs4_stid *st)
- 	seq_printf(s, ", ");
- 	nfs4_show_owner(s, oo);
- 	seq_printf(s, " }\n");
-+	fput(file);
-+
-+	return 0;
-+}
-+
-+static int nfs4_show_lock(struct seq_file *s, struct nfs4_stid *st)
-+{
-+	struct nfs4_ol_stateid *ols;
-+	struct nfs4_file *nf;
-+	struct file *file;
-+	struct nfs4_stateowner *oo;
- 
-+	ols = openlockstateid(st);
-+	oo = ols->st_stateowner;
-+	nf = st->sc_file;
-+	file = find_any_file(nf);
-+
-+	seq_printf(s, "- 0x%16phN: { type: lock, ", &st->sc_stateid);
-+
-+	/*
-+	 * Note: a lock stateid isn't really the same thing as a lock,
-+	 * it's the locking state held by one owner on a file, and there
-+	 * may be multiple (or no) lock ranges associated with it.
-+	 * (Same for the matter is true of open stateids.)
-+	 */
-+
-+	nfs4_show_superblock(s, file);
-+	/* XXX: open stateid? */
-+	seq_printf(s, ", ");
-+	nfs4_show_owner(s, oo);
-+	seq_printf(s, " }\n");
- 	fput(file);
- 
- 	return 0;
- }
- 
-+static int nfs4_show_deleg(struct seq_file *s, struct nfs4_stid *st)
-+{
-+	struct nfs4_delegation *ds;
-+	struct nfs4_file *nf;
-+	struct file *file;
-+
-+	ds = delegstateid(st);
-+	nf = st->sc_file;
-+	file = nf->fi_deleg_file;
-+
-+	seq_printf(s, "- 0x%16phN: { type: deleg, ", &st->sc_stateid);
-+
-+	/* Kinda dead code as long as we only support read delegs: */
-+	seq_printf(s, "access: %s, ",
-+		ds->dl_type == NFS4_OPEN_DELEGATE_READ ? "r" : "w");
-+
-+	/* XXX: lease time, whether it's being recalled. */
-+
-+	nfs4_show_superblock(s, file);
-+	seq_printf(s, " }\n");
-+
-+	return 0;
-+}
-+
- static int states_show(struct seq_file *s, void *v)
- {
- 	struct nfs4_stid *st = v;
-@@ -2336,9 +2390,14 @@ static int states_show(struct seq_file *s, void *v)
- 	switch (st->sc_type) {
- 	case NFS4_OPEN_STID:
- 		return nfs4_show_open(s, st);
-+	case NFS4_LOCK_STID:
-+		return nfs4_show_lock(s, st);
-+	case NFS4_DELEG_STID:
-+		return nfs4_show_deleg(s, st);
- 	default:
- 		return 0; /* XXX: or SEQ_SKIP? */
- 	}
-+	/* XXX: copy stateids? */
- }
- 
- static struct seq_operations states_seq_ops = {
+@@ -2252,7 +2252,7 @@ static struct nfs4_client *create_client(struct xdr_netobj name,
+ 	clp->cl_time = get_seconds();
+ 	clear_bit(0, &clp->cl_cb_slot_busy);
+ 	copy_verf(clp, verf);
+-	rpc_copy_addr((struct sockaddr *) &clp->cl_addr, sa);
++	memcpy(&clp->cl_addr, sa, sizeof(struct sockaddr_storage));
+ 	clp->cl_cb_session = NULL;
+ 	clp->net = net;
+ 	clp->cl_nfsd_dentry = nfsd_client_mkdir(nn, &clp->cl_nfsdfs,
 -- 
 2.21.0
 
