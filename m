@@ -2,122 +2,218 @@ Return-Path: <SRS0=7+z+=TU=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-1.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
+	URIBL_BLOCKED autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 90297C04AAC
-	for <linux-nfs@archiver.kernel.org>; Mon, 20 May 2019 13:12:58 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4242AC072A4
+	for <linux-nfs@archiver.kernel.org>; Mon, 20 May 2019 13:36:27 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 6FFAE20815
-	for <linux-nfs@archiver.kernel.org>; Mon, 20 May 2019 13:12:58 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 0F084213F2
+	for <linux-nfs@archiver.kernel.org>; Mon, 20 May 2019 13:36:27 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="p8xO4hzB"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1730513AbfETNM5 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 20 May 2019 09:12:57 -0400
-Received: from mx1.redhat.com ([209.132.183.28]:43174 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1730458AbfETNM5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 20 May 2019 09:12:57 -0400
-Received: from smtp.corp.redhat.com (int-mx04.intmail.prod.int.phx2.redhat.com [10.5.11.14])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 6C7C53086222;
-        Mon, 20 May 2019 13:12:51 +0000 (UTC)
-Received: from [10.10.66.2] (ovpn-66-2.rdu2.redhat.com [10.10.66.2])
-        by smtp.corp.redhat.com (Postfix) with ESMTPS id 92D245DE73;
-        Mon, 20 May 2019 13:12:46 +0000 (UTC)
-From:   "Benjamin Coddington" <bcodding@redhat.com>
-To:     "Xuewei Zhang" <xueweiz@google.com>, jlayton@kernel.org
-Cc:     bfields@fieldses.org, "Grigor Avagyan" <grigora@google.com>,
-        "Trevor Bourget" <bourget@google.com>,
-        "Nauman Rafique" <nauman@google.com>,
-        trond.myklebust@hammerspace.com, anna.schumaker@netapp.com,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] lockd: Show pid of lockd for remote locks
-Date:   Mon, 20 May 2019 09:12:45 -0400
-Message-ID: <C5CB1B1E-59BD-4DB6-82D8-CE8E641CAC5A@redhat.com>
-In-Reply-To: <CAPtwhKoF0XTuFa5msGB_eiiwRcJA0kK7eu6Rw6-b-5+8Qy0DDw@mail.gmail.com>
-References: <CAPtwhKrJw54DmfVdP4ADd3w5QPv0cRP+kr1Atn58QOFL5xBGbA@mail.gmail.com>
- <3A924C3F-A161-4EE2-A74E-2EE1B6D2CA14@redhat.com>
- <CAPtwhKoF0XTuFa5msGB_eiiwRcJA0kK7eu6Rw6-b-5+8Qy0DDw@mail.gmail.com>
+        id S1730340AbfETNgZ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 20 May 2019 09:36:25 -0400
+Received: from mail-yb1-f195.google.com ([209.85.219.195]:37384 "EHLO
+        mail-yb1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725951AbfETNgY (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 20 May 2019 09:36:24 -0400
+Received: by mail-yb1-f195.google.com with SMTP id z12so153352ybr.4;
+        Mon, 20 May 2019 06:36:23 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc;
+        bh=RJAnFoSa3j9LASmywgs5KN5MvU/rxFP1PvW6zwXyemU=;
+        b=p8xO4hzBN9m/8acf9YeANieDNiOTVbzuugZuvszRBpXGxi0LWqgoJVCWXYYDR5LnBw
+         GnQRBO77n34IOPhPGbVWuf38SOweivDFZ+hLyiI9dUHBGO6mEK4bYpt5VZSW5D/yOTbl
+         ZAXI/KKGSzowryav59SnV7iMwJUSiiiyw6ZZ0jkGX1dSsp5V2/6zlJlqUMmgE+0+C5S9
+         fx+4lTG5ZkLYsaOU/xEoNQw1e/UjVzP424UCW/4IxdroLpmZorql8+KWJfEogFSaU83s
+         ceUDdsqXvV/8JfdkVRw0s3MjLbs1MZk28OtgX8fkuzLd2Fbe+aEQqHVqm5nO+N0azB+q
+         /jCQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=RJAnFoSa3j9LASmywgs5KN5MvU/rxFP1PvW6zwXyemU=;
+        b=oCBXrSv3nT0s0tICu5bgmuoBvgGLCSFqd6HrmHCUkW48CLrWCgg1tbOEmSEuLGmywC
+         SwdIIyLXNEtifOWAWmKBj+9fkTSCqUsISUG52zJPcrjIEl8A/9Gmx5aLFoZ6UgoxEgOj
+         B/RNTBTviU3jn44rZDEta6B8MgqIyVG0O3ofGLp5mt8UpQX2KLnOcxihgloNehMRTUv2
+         DEEHMOtBb0cO4pnneBfu2R6JzSz49eCFBDrlIsnmhmxioCjys/i/HqjHxMBcXEx4pT0m
+         zkcClDWgesStWqiQS58bpFiCvZbm+uzbiCdax7j44efqmb7XIdK3qiV6QbamePZ6rVU5
+         l8sw==
+X-Gm-Message-State: APjAAAUgMSkKVHM6pxPo0Lsg0fRGqeRVQ9hIfV9WksP07LhnXXaWiXdZ
+        3vxdsaY0PNy+s3dn0dUyr3cTzoo2FU5bYHynnIs=
+X-Google-Smtp-Source: APXvYqxAWNDFMVo1nWZ8IE/8/QMU8cHNHHEKvEsoUZxuYGHXtHxHebTKxfAZaQ2uPz73XLFNAHXL1r07NfLcOboso7E=
+X-Received: by 2002:a25:cb0c:: with SMTP id b12mr11943199ybg.144.1558359383123;
+ Mon, 20 May 2019 06:36:23 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; format=flowed
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.14
-X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.42]); Mon, 20 May 2019 13:12:57 +0000 (UTC)
+References: <20181203083416.28978-1-david@fromorbit.com> <20181203083416.28978-2-david@fromorbit.com>
+ <CAOQ4uxhOQY8M5rbgHKREN5qpeDGHv0-xK3r37Lj6XfqFoE4qjg@mail.gmail.com>
+ <20181204151332.GA32245@infradead.org> <20181204212948.GO6311@dastard>
+ <CAN-5tyGU=y5JO5UNcmn3rX1gRyK_UxjQvQ+kCsP34_NT2-mQ_A@mail.gmail.com>
+ <20181204223102.GR6311@dastard> <CAOQ4uxhPoJ2vOwGN7PFWkD6+_zdTeMAhT4KphnyktaQ23zqvBw@mail.gmail.com>
+ <CAN-5tyGN8LPAxxjApBifbs6+eAgOVE8G1x3vawSMfT2Ufo7Bpw@mail.gmail.com>
+In-Reply-To: <CAN-5tyGN8LPAxxjApBifbs6+eAgOVE8G1x3vawSMfT2Ufo7Bpw@mail.gmail.com>
+From:   Amir Goldstein <amir73il@gmail.com>
+Date:   Mon, 20 May 2019 16:36:12 +0300
+Message-ID: <CAOQ4uxgvCz+-snW8h-M-q2KqaPSk-oMYRVn2gWeMNg2jrMP_zg@mail.gmail.com>
+Subject: Re: [PATCH 01/11] vfs: copy_file_range source range over EOF should fail
+To:     Olga Kornievskaia <olga.kornievskaia@gmail.com>
+Cc:     Dave Chinner <david@fromorbit.com>,
+        Christoph Hellwig <hch@infradead.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        linux-xfs <linux-xfs@vger.kernel.org>,
+        linux-nfs <linux-nfs@vger.kernel.org>,
+        overlayfs <linux-unionfs@vger.kernel.org>,
+        ceph-devel@vger.kernel.org, CIFS <linux-cifs@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On 18 May 2019, at 22:15, Xuewei Zhang wrote:
-
-> On Sat, May 18, 2019 at 5:09 AM Benjamin Coddington 
-> <bcodding@redhat.com> wrote:
->>
->> On 17 May 2019, at 17:45, Xuewei Zhang wrote:
->>> Seems this patch introduced a bug in how lock protocol handles
->>> GRANTED_MSG in nfs.
->>
->> Yes, you're right: it's broken, and broken badly because we find 
->> conflicting
->> locks based on lockd's fl_pid and lockd's fl_owner, which is 
->> current->files.
->> That means that clients are not differentiated, and that means that 
->> v3 locks
->> are broken.
+On Mon, May 20, 2019 at 4:12 PM Olga Kornievskaia
+<olga.kornievskaia@gmail.com> wrote:
 >
-> Thanks a lot for the quick response and confirming the problem!
+> On Mon, May 20, 2019 at 5:10 AM Amir Goldstein <amir73il@gmail.com> wrote:
+> >
+> > On Wed, Dec 5, 2018 at 12:31 AM Dave Chinner <david@fromorbit.com> wrote:
+> > >
+> > > On Tue, Dec 04, 2018 at 04:47:18PM -0500, Olga Kornievskaia wrote:
+> > > > On Tue, Dec 4, 2018 at 4:35 PM Dave Chinner <david@fromorbit.com> wrote:
+> > > > >
+> > > > > On Tue, Dec 04, 2018 at 07:13:32AM -0800, Christoph Hellwig wrote:
+> > > > > > On Mon, Dec 03, 2018 at 02:46:20PM +0200, Amir Goldstein wrote:
+> > > > > > > > From: Dave Chinner <dchinner@redhat.com>
+> > > > > > > >
+> > > > > > > > The man page says:
+> > > > > > > >
+> > > > > > > > EINVAL Requested range extends beyond the end of the source file
+> > > > > > > >
+> > > > > > > > But the current behaviour is that copy_file_range does a short
+> > > > > > > > copy up to the source file EOF. Fix the kernel behaviour to match
+> > > > > > > > the behaviour described in the man page.
+> > > > > >
+> > > > > > I think the behavior implemented is a lot more useful than the one
+> > > > > > documented..
+> > > > >
+> > > > > The current behaviour is really nasty. Because copy_file_range() can
+> > > > > return short copies, the caller has to implement a loop to ensure
+> > > > > the range hey want get copied.  When the source range you are
+> > > > > trying to copy overlaps source EOF, this loop:
+> > > > >
+> > > > >         while (len > 0) {
+> > > > >                 ret = copy_file_range(... len ...)
+> > > > >                 ...
+> > > > >                 off_in += ret;
+> > > > >                 off_out += ret;
+> > > > >                 len -= ret;
+> > > > >         }
+> > > > >
+> > > > > Currently the fallback code copies up to the end of the source file
+> > > > > on the first copy and then fails the second copy with EINVAL because
+> > > > > the source range is now completely beyond EOF.
+> > > > >
+> > > > > So, from an application perspective, did the copy succeed or did it
+> > > > > fail?
+> > > > >
+> > > > > Existing tools that exercise copy_file_range (like xfs_io) consider
+> > > > > this a failure, because the second copy_file_range() call returns
+> > > > > EINVAL and not some "there is no more to copy" marker like read()
+> > > > > returning 0 bytes when attempting to read beyond EOF.
+> > > > >
+> > > > > IOWs, we cannot tell the difference between a real error and a short
+> > > > > copy because the input range spans EOF and it was silently
+> > > > > shortened. That's the API problem we need to fix here - the existing
+> > > > > behaviour is really crappy for applications. Erroring out
+> > > > > immmediately is one solution, and it's what the man page says should
+> > > > > happen so that is what I implemented.
+> > > > >
+> > > > > Realistically, though, I think an attempt to read beyond EOF for the
+> > > > > copy should result in behaviour like read() (i.e. return 0 bytes),
+> > > > > not EINVAL. The existing behaviour needs to change, though.
+> > > >
+> > > > There are two checks to consider
+> > > > 1. pos_in >= EOF should return EINVAL
+> > > > 2. however what's perhaps should be relaxed is pos_in+len >= EOF
+> > > > should return a short copy.
+> > > >
+> > > > Having check#1 enforced allows to us to differentiate between a real
+> > > > error and a short copy.
+> > >
+> > > That's what the code does right now and *exactly what I'm trying to
+> > > fix* because it EINVAL is ambiguous and not an indicator that we've
+> > > reached the end of the source file. EINVAL can indicate several
+> > > different errors, so it really has to be treated as a "copy failed"
+> > > error by applications.
+> > >
+> > > Have a look at read/pread() - they return 0 in this case to indicate
+> > > a short read, and the value of zero is explicitly defined as meaning
+> > > "read position is beyond EOF".  Applications know straight away that
+> > > there is no more data to be read and there was no error, so can
+> > > terminate on a successful short read.
+> > >
+> > > We need to allow applications to terminate copy loops on a
+> > > successful short copy. IOWs, applications need to either:
+> > >
+> > >         - get an immediate error saying the range is invalid rather
+> > >           than doing a short copy (as per the man page); or
+> > >         - have an explicit marker to say "no more data to be copied"
+> > >
+> > > Applications need the "no more data to copy" case to be explicit and
+> > > unambiguous so they can make sane decisions about whether a short
+> > > copy was successful because the file was shorter than expected or
+> > > whether a short copy was a result of a real error being encountered.
+> > > The current behaviour is largely unusable for applications because
+> > > they have to guess at the reason for EINVAL part way through a
+> > > copy....
+> > >
+> >
+> > Dave,
+> >
+> > I went a head and implemented the desired behavior.
+> > However, while testing I observed that the desired behavior is already
+> > the existing behavior. For example, trying to copy 10 bytes from a 2 bytes file,
+> > xfs_io copy loop ends as expected:
+> > copy_file_range(4, [0], 3, [0], 10, 0)  = 2
+> > copy_file_range(4, [2], 3, [2], 8, 0)   = 0
+> >
+> > This was tested on ext4 and xfs with reflink on recent kernel as well as on
+> > v4.20-rc1 (era of original patch set).
+> >
+> > Where and how did you observe the EINVAL behavior described above?
+> > (besides man page that is). There are even xfstests (which you modified)
+> > that verify the return 0 for past EOF behavior.
+> >
+> > For now, I am just dropping this patch from the patch series.
+> > Let me know if I am missing something.
 >
->>
->> I'd really like to see the fl_pid value make sense on the server when 
->> we
->> show it to userspace, so I think that we should stuff the svid in 
->> fl_owner.
->>
->> Clearly I need to be more careful making changes here, so I am going 
->> to take
->> my time fixing this, and I won't get to it until Monday. A revert 
->> would get
->> us back to safe behavior.
+> The was fixing inconsistency in what the man page specified (ie., it
+> must fail with EINVAL if offsets are out of range) which was never
+> enforced by the code. The patch then could be to fix the existing
+> semantics (man page) of the system call.
 >
-> From my limited understanding, b8eee0e90f97 ("lockd: Show pid of lockd
-> for remote locks")
-> exists only for fixing lockd in 9d5b86ac13c5 ("fs/locks: Remove
-> fl_nspid and use fs-specific...").
+> Copy file range range is not only read and write but rather
+> lseek+read+write and if somebody specifies an incorrect offset to the
+
+Nope. it is like either read+write or pread+pwrite.
+
+> lseek the system call should fail. Thus I still think that copy file
+> range should enforce that specifying a source offset beyond the end of
+> the file should fail with EINVAL.
+
+You appear to be out numbered by reviewers that think copy_file_range(2)
+should behave like pread(2) and return 0 when offf_in >= size_in.
+
 >
-> But I don't see anything wrong in 9d5b86ac13c5 ("fs/locks: Remove
-> fl_nspid and use fs-specific..."). Could you let me know what's the
-> problem? Thanks a lot!
->
-> If 9d5b86ac13c5 ("fs/locks: Remove fl_nspid and use fs-specific...")
-> is correct, we
-> probably don't need to add another fixing patch. Perhaps reverting 
-> b8eee0e90f97
-> ("lockd: Show pid of lockd for remote locks") would be the best way 
-> then.
+> If the copy file range returned 0 bytes does it mean it's a stopping
+> condition, not according to the current semantics.
 
-I think we have an existing problem:  the NLM server is setting fl_owner 
-to
-current->files and (before the bad patch) fl_pid to svid.
+Yes. Same as read(2)/pread(2).
 
-That means that we can't tell the difference between locks from 
-different
-clients that may have the same svid.  The bad patch just made the 
-problem
-far more likely to occur, that's what you're now noticing.
-
-What needs to happen is that we generate our own fl_owner_t based on the
-nlm_host and svid, so that we end up with unique fl_owner for each
-client/svid pair, the same way that nlmclnt does.  That way the nlm 
-server
-can let the kernel do the lock matching based on unique fl_owner for 
-each
-client/svid.
-
-The mech in clntproc.c for all this can probably be shared, so I'll try 
-to
-make that common code.
-
-Jeff, any words of wisdom?
-
-Ben
+Thanks,
+Amir.
