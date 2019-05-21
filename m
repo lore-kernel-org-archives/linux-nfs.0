@@ -1,49 +1,85 @@
 Return-Path: <SRS0=hQzF=TV=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
-X-Spam-Level: **
-X-Spam-Status: No, score=2.5 required=3.0 tests=DATE_IN_PAST_24_48,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,PRICE_CATALOG,SPF_HELO_NONE,
-	SPF_PASS autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Level: 
+X-Spam-Status: No, score=-8.6 required=3.0 tests=DKIMWL_WL_MED,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
+	SPF_HELO_NONE,SPF_PASS,USER_IN_DEF_DKIM_WL autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A11D5C072B5
-	for <linux-nfs@archiver.kernel.org>; Tue, 21 May 2019 21:43:44 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 622B7C072B5
+	for <linux-nfs@archiver.kernel.org>; Tue, 21 May 2019 22:34:08 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 7FF17217F9
-	for <linux-nfs@archiver.kernel.org>; Tue, 21 May 2019 21:43:44 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 1FB27217D7
+	for <linux-nfs@archiver.kernel.org>; Tue, 21 May 2019 22:34:08 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b="gZiSytRZ"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728150AbfEUVno (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 21 May 2019 17:43:44 -0400
-Received: from [159.89.172.223] ([159.89.172.223]:57886 "EHLO
-        mail.boombf2am.ga" rhost-flags-FAIL-FAIL-OK-OK) by vger.kernel.org
-        with ESMTP id S1728036AbfEUVnn (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 21 May 2019 17:43:43 -0400
-Received: by mail.boombf2am.ga (Postfix, from userid 48)
-        id B50A256D47F; Mon, 20 May 2019 13:31:53 +0000 (UTC)
-To:     linux-nfs@vger.kernel.org
-Subject: Inquiry 20/May/2019
-X-PHP-Originating-Script: 0:nfhdgeds.php
-From:   Daniel Murray <sinara-group@bk.ru>
-Reply-To: sinara-group@list.ru
+        id S1726017AbfEUWeH (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 21 May 2019 18:34:07 -0400
+Received: from mail-wm1-f66.google.com ([209.85.128.66]:55235 "EHLO
+        mail-wm1-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725797AbfEUWeH (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 21 May 2019 18:34:07 -0400
+Received: by mail-wm1-f66.google.com with SMTP id i3so200806wml.4
+        for <linux-nfs@vger.kernel.org>; Tue, 21 May 2019 15:34:06 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=google.com; s=20161025;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc;
+        bh=9GWcKqoDzLDXpuafuimVQQMnRPipngjrMHYv31zMHFQ=;
+        b=gZiSytRZ2/MBQ+JfyxlEs9mEw9A2TwotShpoyy+V3WexLSafViChsXEPLQXQLlnswK
+         TvJlPfncV5KtBkOmkHJ00kYEvT0Ncxuq3B9uFrQj4RAEyzAWTZkAxCl+8UANz35jMurB
+         y5SAfWQvb1OKtbM7JOa9ZPAZ5yA9FZFGuey7kq8RAihLQMDidtjk5MHhH5PiVtpt26QU
+         3FDtPY2KJuw0buEjfRaZeIYN/vmiKOuWZ0gNVygsHuLNVI1vHyMkGig2DD8POlM5LO6b
+         Ajmicgu0X/O4RTnmSOQNC4rixevRRbEdhjeed2HBL2l9XrCN7POVIn6m2/EiAW5VIZH4
+         Y6OQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=9GWcKqoDzLDXpuafuimVQQMnRPipngjrMHYv31zMHFQ=;
+        b=HlsM21zq/C/KK/58in7xD+Fc58EAC3YturhZPkR9ncY8639MHjW/Nd8OVIWesPg6Tv
+         7DTL2zzv9dUOav9fiYyFyuFZyd/CR48VLiSDzPe1J/055w0ivQElqHqrluExLgTQ+EAb
+         MdK1UZDyJ7avjghX6RgTHWgCC8MczFx/4AxqnX4dsiYFQnTsDp8C97/BAaj3Kn8W8CcS
+         MhMufAvoUjLWf5wUtDKEAyVxxJ8yokIJYw65+M285A9WvBTU+dDkWX3p+i3EFaf5zcpa
+         7to8d497QOShgixkRDsVzUN45+uf78J1xuZpaejhXClSk/A5CxsPL0tQKfLHpVDwKIzJ
+         YeJw==
+X-Gm-Message-State: APjAAAWzkAEar6SpmH4HcYiWn7oMnp1JhvisCF7bGm64PHKFBhTSlc1V
+        m1jraDPdSViy79QXB0yk8Vzkb1qS171GH2cvBPLV+A==
+X-Google-Smtp-Source: APXvYqwoK+hC4sSEvGKh3AcnlNsW+s/hNWKeMVcRYxg1LW6nPdfvN6FDfJsSqa5PHdu2cu5qQLSMBFe2RUCLuagdb8E=
+X-Received: by 2002:a7b:ce8c:: with SMTP id q12mr4679655wmj.34.1558478044744;
+ Tue, 21 May 2019 15:34:04 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type:   text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7BIT
-Message-Id: <20190520143703.B50A256D47F@mail.boombf2am.ga>
-Date:   Mon, 20 May 2019 13:31:53 +0000 (UTC)
+References: <952928a350da64fd8de3e1a79deb8cc23552972f.1558362681.git.bcodding@redhat.com>
+ <20190521155821.GD9499@fieldses.org> <A6640E39-5B5D-4CF3-8131-62F8106ED2E0@redhat.com>
+In-Reply-To: <A6640E39-5B5D-4CF3-8131-62F8106ED2E0@redhat.com>
+From:   Xuewei Zhang <xueweiz@google.com>
+Date:   Tue, 21 May 2019 15:33:53 -0700
+Message-ID: <CAPtwhKp=qezMw4DfWkettC37wvYd+-6e0=isVdMx51_gFbi8bw@mail.gmail.com>
+Subject: Re: [PATCH] Revert "lockd: Show pid of lockd for remote locks"
+To:     Benjamin Coddington <bcodding@redhat.com>
+Cc:     "J . Bruce Fields" <bfields@fieldses.org>,
+        linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hi,friend,
+On Tue, May 21, 2019 at 1:45 PM Benjamin Coddington <bcodding@redhat.com> wrote:
+>
+> On 21 May 2019, at 11:58, J . Bruce Fields wrote:
+>
+> > On Mon, May 20, 2019 at 10:33:07AM -0400, Benjamin Coddington wrote:
+> >> This reverts most of commit b8eee0e90f97 ("lockd: Show pid of lockd for
+> >> remote locks"), which caused remote locks to not be differentiated between
+> >> remote processes for NLM.
 
-This is Daniel Murray and i am from Sinara Group Co.Ltd in Russia.
-We are glad to know about your company from the web and we are interested in your products.
-Could you kindly send us your Latest catalog and price list for our trial order.
+I just tested this today to be sure. And yes, this revert fixes the
+problem we observed.
 
-Best Regards,
+Reviewed-by: Xuewei Zhang <xueweiz@google.com>
 
-Daniel Murray
-Purchasing Manager
-
-
+Best regards,
+Xuewei
