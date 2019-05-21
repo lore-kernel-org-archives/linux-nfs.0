@@ -8,64 +8,68 @@ X-Spam-Status: No, score=-9.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 689C7C04E87
-	for <linux-nfs@archiver.kernel.org>; Tue, 21 May 2019 12:49:16 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id CB3CDC04AAF
+	for <linux-nfs@archiver.kernel.org>; Tue, 21 May 2019 12:49:19 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 288782173E
-	for <linux-nfs@archiver.kernel.org>; Tue, 21 May 2019 12:49:16 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 9423B2173E
+	for <linux-nfs@archiver.kernel.org>; Tue, 21 May 2019 12:49:19 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="vTuWr3fR"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="mbbuhIXg"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727819AbfEUMtP (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 21 May 2019 08:49:15 -0400
-Received: from mail-io1-f66.google.com ([209.85.166.66]:35551 "EHLO
-        mail-io1-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727251AbfEUMtP (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 21 May 2019 08:49:15 -0400
-Received: by mail-io1-f66.google.com with SMTP id p2so13831020iol.2
-        for <linux-nfs@vger.kernel.org>; Tue, 21 May 2019 05:49:14 -0700 (PDT)
+        id S1727976AbfEUMtT (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 21 May 2019 08:49:19 -0400
+Received: from mail-io1-f67.google.com ([209.85.166.67]:36744 "EHLO
+        mail-io1-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727812AbfEUMtS (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 21 May 2019 08:49:18 -0400
+Received: by mail-io1-f67.google.com with SMTP id e19so13833559iob.3
+        for <linux-nfs@vger.kernel.org>; Tue, 21 May 2019 05:49:17 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references
          :mime-version:content-transfer-encoding;
-        bh=WTJIEF64GQ5WaLkZVqyDs/M6F2K2o7LdsId5gPgoX24=;
-        b=vTuWr3fRsYPqMPJemTJnJAa97fd0TYf9EJbq1F4apLVyF3MjRPjOxoFpHgVQnm17Qg
-         no7bKM3OuNpjBBleUYHYAkdx+ZNGhxTIVKBAicsm2arxSNMgrsTeMjBf21+uxlP0PpB3
-         RKyYtmB4xP3s7WUJ8AFuMCmFFc80dnaMAk6+pQjvBLT5AYeMfXc8PFrlFYflbqPzlcCE
-         9BP85XLrpFZM8tSozOl2V/HD3VkPMxCoo5T8NBJfOUkCfa0qNDQIRGfuzG09jNf7c+p7
-         siF+3nhG5zyiAPpm1YA92WGDGLIY9El1Svtn+wnMzIkg+EBUPTNR6+p6N2hQ32ucjTRT
-         Ytxw==
+        bh=GLr9Jev1vzFH2WxtXzDL6iC0Z9XJSGhBflc8iGqtz0M=;
+        b=mbbuhIXgMro0QiEdIcNthIsiAgUwKUBuf2Zw+JLwUXUv0sNL9T8iuKWQ9iYDIkcfAt
+         TJ9kKymKSNA3aDP316rKyshzA9Lce+5fXTpPdSUvmCnJkGd5XZkl+HTdPZvfQvDZ9KCu
+         pKQVor/+Q1vLuPuYYBsjtCNd0LuAwH2JKvpZlt/m2lYVjfZ/4lPksF0jvJeEisxAe9sP
+         6NRsngRGaljQa6fp1KSwuHYdWsSpSdOK6mGnHO49QOrELFKj5wj7yk3yEovYqGzK4Md1
+         LfR3kMxuQTqmbylfwLSkkJvhDtwlXQ01cPmeDa3jWLPFzeR7xRZwIBqG+VNW0tFe72rw
+         zp+A==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=WTJIEF64GQ5WaLkZVqyDs/M6F2K2o7LdsId5gPgoX24=;
-        b=IVgmiHqbm2iZKW/sIOLJrf6jGsMqx2VMwhOF6uB+c9sH3C0gNss8tZ2PaJ5FcZabsE
-         C/wGanJVbvHGnJAFSs6uu91Ch/v6rOOHvYwmUbNj0eD/oW5IhEtJ1LmxzWaS3KlQLkp9
-         O2YepX++vBCijLkiqnUrxtJSmn2fUI4J9hgItO8pQ4M2kA3GugfCiQnySDHFKcK8GVa5
-         0bdM4oWMroMNIlDLM9RAvxX4B7638E08mwqWLM4oOrvHZuhc07paG075vlucD+I6sGWO
-         RHEznO+sETbIzagsNNnQeOBrDxdO0ATyTiPo+1b0gbDDlc1JQYnPbGEPuxx8YW/6qeDB
-         2jlw==
-X-Gm-Message-State: APjAAAXy42UkZnotv7tZj3eat9AEUgWwKuTwRDFH29raRYfEKLPvYQcq
-        Z9ZEbHuTUNFXgTyfi0haJg==
-X-Google-Smtp-Source: APXvYqx8cdJn+RYKoE60GRy6VxOV5b6V64mBhiz4TMHIP2bI5TQ4HJE9oVszKkIaK2akEL7ZUzSEQg==
-X-Received: by 2002:a6b:f719:: with SMTP id k25mr4837004iog.129.1558442953786;
-        Tue, 21 May 2019 05:49:13 -0700 (PDT)
+        bh=GLr9Jev1vzFH2WxtXzDL6iC0Z9XJSGhBflc8iGqtz0M=;
+        b=WSIU3lKMXfj2Z9t6zlN0dXV6X24covVznbuKLGksas98s48tYEc7+xM+eRGggv0Zic
+         gGuvS2jM8HFoTjgVJTK5W+d5OojMoSTv0P7e3TiJUkQnEL7RudWTs/Pwu+OmPCqF+IYE
+         E8M06orWCZ56Knrb/66gkOak1oJEld91WAHcQojOySqjtIB7+zMOXwRLgcLCT4LftKWl
+         L5RePRVlpFyyVn3cCoZoU6mUawqei0Iaby4UxJ3wErRiAfB6+GAidYbhU8CqIxuakuVe
+         UM5tUPxNkhT/9e07Oq3LCetHZUvpCa++kTkL5LMC/gM5CcFLl1t7EVLubkVvnHx3N5T2
+         N2xw==
+X-Gm-Message-State: APjAAAXqja3kwo4fs3/WpLJIMZIHXe3/kTKjvyA8YbqID6jHrB9YSlp+
+        JfU5Mu+gzi2Atqrc2xLmo3ZTda4=
+X-Google-Smtp-Source: APXvYqyDwurOJsnLd5Jq8g2sjUxAnz1sR7lENjUfEPMG/DoP77TusXDwVIZVFXz/HeD4zwQZsvzqag==
+X-Received: by 2002:a5e:d50e:: with SMTP id e14mr10541868iom.224.1558442956868;
+        Tue, 21 May 2019 05:49:16 -0700 (PDT)
 Received: from localhost.localdomain (c-68-40-189-247.hsd1.mi.comcast.net. [68.40.189.247])
-        by smtp.gmail.com with ESMTPSA id v139sm1693180itb.25.2019.05.21.05.49.12
+        by smtp.gmail.com with ESMTPSA id v139sm1693180itb.25.2019.05.21.05.49.16
         (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
-        Tue, 21 May 2019 05:49:12 -0700 (PDT)
+        Tue, 21 May 2019 05:49:16 -0700 (PDT)
 From:   Trond Myklebust <trondmy@gmail.com>
 X-Google-Original-From: Trond Myklebust <trond.myklebust@hammerspace.com>
 To:     SteveD@redhat.com
 Cc:     linux-nfs@vger.kernel.org
-Subject: [RFC PATCH v2 2/7] Add a simple workqueue mechanism
-Date:   Tue, 21 May 2019 08:46:56 -0400
-Message-Id: <20190521124701.61849-3-trond.myklebust@hammerspace.com>
+Subject: [RFC PATCH v2 6/7] Add support for the nfsd rootdir configuration option to rpc.mountd
+Date:   Tue, 21 May 2019 08:47:00 -0400
+Message-Id: <20190521124701.61849-7-trond.myklebust@hammerspace.com>
 X-Mailer: git-send-email 2.21.0
-In-Reply-To: <20190521124701.61849-2-trond.myklebust@hammerspace.com>
+In-Reply-To: <20190521124701.61849-6-trond.myklebust@hammerspace.com>
 References: <20190521124701.61849-1-trond.myklebust@hammerspace.com>
  <20190521124701.61849-2-trond.myklebust@hammerspace.com>
+ <20190521124701.61849-3-trond.myklebust@hammerspace.com>
+ <20190521124701.61849-4-trond.myklebust@hammerspace.com>
+ <20190521124701.61849-5-trond.myklebust@hammerspace.com>
+ <20190521124701.61849-6-trond.myklebust@hammerspace.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
@@ -73,365 +77,345 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Add a simple workqueue mechanism to allow us to run threads that are
-subject to chroot(), and have them operate on the knfsd kernel daemon.
+Ensure that I/O to those pseudo files that resolve filehandles and exports
+go through the chrooted threads, so that we can use paths that are relative
+to the nfsd root directory.
+Ensure that any stat() or lstat() calls go through their nfsd_path_*
+equivalent so that they too can be resolved correctly.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- aclocal/libpthread.m4       |  13 +-
- configure.ac                |   6 +-
- support/include/Makefile.am |   1 +
- support/include/workqueue.h |  18 +++
- support/misc/Makefile.am    |   2 +-
- support/misc/workqueue.c    | 228 ++++++++++++++++++++++++++++++++++++
- utils/mountd/Makefile.am    |   3 +-
- 7 files changed, 262 insertions(+), 9 deletions(-)
- create mode 100644 support/include/workqueue.h
- create mode 100644 support/misc/workqueue.c
+ nfs.conf                  |  1 +
+ support/misc/mountpoint.c |  5 ++-
+ systemd/nfs.conf.man      |  3 +-
+ utils/mountd/cache.c      | 79 ++++++++++++++++++++++++++++-----------
+ utils/mountd/mountd.c     |  8 ++--
+ utils/nfsd/nfsd.man       |  6 +++
+ 6 files changed, 74 insertions(+), 28 deletions(-)
 
-diff --git a/aclocal/libpthread.m4 b/aclocal/libpthread.m4
-index e87d2a0c2dc5..55e046e38cd1 100644
---- a/aclocal/libpthread.m4
-+++ b/aclocal/libpthread.m4
-@@ -3,11 +3,12 @@ dnl
- AC_DEFUN([AC_LIBPTHREAD], [
+diff --git a/nfs.conf b/nfs.conf
+index 27e962c8a2a9..4d3bc512c4be 100644
+--- a/nfs.conf
++++ b/nfs.conf
+@@ -60,6 +60,7 @@
+ # vers4.1=y
+ # vers4.2=y
+ # rdma=n
++# root_dir=/export
+ #
+ [statd]
+ # debug=0
+diff --git a/support/misc/mountpoint.c b/support/misc/mountpoint.c
+index 9f9ce44ec1e3..9723dcede79d 100644
+--- a/support/misc/mountpoint.c
++++ b/support/misc/mountpoint.c
+@@ -7,6 +7,7 @@
+ #include "xcommon.h"
+ #include <sys/stat.h>
+ #include "misc.h"
++#include "nfsd_path.h"
  
-     dnl Check for library, but do not add -lpthreads to LIBS
--    AC_CHECK_LIB([pthread], [pthread_create], [LIBPTHREAD=-lpthread],
--                 [AC_MSG_ERROR([libpthread not found.])])
--  AC_SUBST(LIBPTHREAD)
--
--  AC_CHECK_HEADERS([pthread.h], ,
--                   [AC_MSG_ERROR([libpthread headers not found.])])
-+    AC_CHECK_LIB([pthread], [pthread_create],
-+		[AC_DEFINE([HAVE_LIBPTHREAD], [1],
-+				[Define to 1 if you have libpthread.])
-+		AC_CHECK_HEADERS([pthread.h], [],
-+				[AC_MSG_ERROR([libpthread headers not found.])])
-+		 AC_SUBST([LIBPTHREAD],[-lpthread])],
-+                 [$1])
+ int
+ is_mountpoint(char *path)
+@@ -26,8 +27,8 @@ is_mountpoint(char *path)
+ 	dotdot = xmalloc(strlen(path)+4);
  
- ])dnl
-diff --git a/configure.ac b/configure.ac
-index 4d7096193d0b..c6c2d73b06dd 100644
---- a/configure.ac
-+++ b/configure.ac
-@@ -320,6 +320,10 @@ AC_CHECK_FUNC([getservbyname], ,
+ 	strcat(strcpy(dotdot, path), "/..");
+-	if (lstat(path, &stb) != 0 ||
+-	    lstat(dotdot, &pstb) != 0)
++	if (nfsd_path_lstat(path, &stb) != 0 ||
++	    nfsd_path_lstat(dotdot, &pstb) != 0)
+ 		rv = 0;
+ 	else
+ 		if (stb.st_dev != pstb.st_dev ||
+diff --git a/systemd/nfs.conf.man b/systemd/nfs.conf.man
+index e3654a3c2c2b..a88799769365 100644
+--- a/systemd/nfs.conf.man
++++ b/systemd/nfs.conf.man
+@@ -136,7 +136,8 @@ Recognized values:
+ .BR vers4.0 ,
+ .BR vers4.1 ,
+ .BR vers4.2 ,
+-.BR rdma .
++.BR rdma ,
++.BR root_dir .
  
- AC_CHECK_LIB([crypt], [crypt], [LIBCRYPT="-lcrypt"])
- 
-+AC_CHECK_HEADERS([sched.h], [], [])
-+AC_CHECK_FUNCS([unshare], [] , [])
-+AC_LIBPTHREAD([])
-+
- if test "$enable_nfsv4" = yes; then
-   dnl check for libevent libraries and headers
-   AC_LIBEVENT
-@@ -417,7 +421,7 @@ if test "$enable_gss" = yes; then
-   AC_KERBEROS_V5
- 
-   dnl Check for pthreads
--  AC_LIBPTHREAD
-+  AC_LIBPTHREAD([AC_MSG_ERROR([libpthread not found.])])
- 
-   dnl librpcsecgss already has a dependency on libgssapi,
-   dnl but we need to make sure we get the right version
-diff --git a/support/include/Makefile.am b/support/include/Makefile.am
-index 599f500e2b40..df5e47836d29 100644
---- a/support/include/Makefile.am
-+++ b/support/include/Makefile.am
-@@ -19,6 +19,7 @@ noinst_HEADERS = \
- 	sockaddr.h \
- 	tcpwrapper.h \
- 	v4root.h \
-+	workqueue.h \
- 	xio.h \
- 	xlog.h \
- 	xmalloc.h \
-diff --git a/support/include/workqueue.h b/support/include/workqueue.h
-new file mode 100644
-index 000000000000..518be82f1b34
---- /dev/null
-+++ b/support/include/workqueue.h
-@@ -0,0 +1,18 @@
-+/*
-+ * Copyright (C) 2019 Trond Myklebust <trond.myklebust@hammerspace.com>
-+ */
-+#ifndef WORKQUEUE_H
-+#define WORKQUEUE_H
-+
-+struct xthread_workqueue;
-+
-+struct xthread_workqueue *xthread_workqueue_alloc(void);
-+void xthread_workqueue_shutdown(struct xthread_workqueue *wq);
-+
-+void xthread_work_run_sync(struct xthread_workqueue *wq,
-+		void (*fn)(void *), void *data);
-+
-+void xthread_workqueue_chroot(struct xthread_workqueue *wq,
-+		const char *path);
-+
-+#endif
-diff --git a/support/misc/Makefile.am b/support/misc/Makefile.am
-index 8936b0d64e45..d0bff8feb6ae 100644
---- a/support/misc/Makefile.am
-+++ b/support/misc/Makefile.am
-@@ -1,6 +1,6 @@
- ## Process this file with automake to produce Makefile.in
- 
- noinst_LIBRARIES = libmisc.a
--libmisc_a_SOURCES = tcpwrapper.c from_local.c mountpoint.c file.c
-+libmisc_a_SOURCES = tcpwrapper.c from_local.c mountpoint.c file.c workqueue.c
- 
- MAINTAINERCLEANFILES = Makefile.in
-diff --git a/support/misc/workqueue.c b/support/misc/workqueue.c
-new file mode 100644
-index 000000000000..b8d03446f2c7
---- /dev/null
-+++ b/support/misc/workqueue.c
-@@ -0,0 +1,228 @@
-+#include <stdlib.h>
-+#include <unistd.h>
-+
-+#include "config.h"
+ Version and protocol values are Boolean values as described above,
+ and are also used by
+diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
+index bdbd1904eb76..6e15ecd986aa 100644
+--- a/utils/mountd/cache.c
++++ b/utils/mountd/cache.c
+@@ -27,17 +27,21 @@
+ #include <grp.h>
+ #include <mntent.h>
+ #include "misc.h"
++#include "nfsd_path.h"
+ #include "nfslib.h"
+ #include "exportfs.h"
+ #include "mountd.h"
+ #include "fsloc.h"
+ #include "pseudoflavors.h"
 +#include "workqueue.h"
-+#include "xlog.h"
+ #include "xcommon.h"
+ 
+ #ifdef USE_BLKID
+ #include "blkid/blkid.h"
+ #endif
+ 
++static struct xthread_workqueue *cache_workqueue;
 +
-+#if defined(HAVE_SCHED_H) && defined(HAVE_LIBPTHREAD) && defined(HAVE_UNSHARE)
-+#include <sched.h>
-+#include <pthread.h>
-+
-+struct xwork_struct {
-+	struct xwork_struct *next;
-+	void (*fn)(void *);
-+	void *data;
-+};
-+
-+struct xwork_queue {
-+	struct xwork_struct *head;
-+	struct xwork_struct **tail;
-+
-+	unsigned char shutdown : 1;
-+};
-+
-+static void xwork_queue_init(struct xwork_queue *queue)
+ /*
+  * Invoked by RPC service loop
+  */
+@@ -55,6 +59,34 @@ enum nfsd_fsid {
+ 	FSID_UUID16_INUM,
+ };
+ 
++static ssize_t cache_read(int fd, char *buf, size_t len)
 +{
-+	queue->head = NULL;
-+	queue->tail = &queue->head;
-+	queue->shutdown = 0;
++	if (cache_workqueue)
++		return xthread_read(cache_workqueue, fd, buf, len);
++	return read(fd, buf, len);
 +}
 +
-+static void xwork_enqueue(struct xwork_queue *queue,
-+		struct xwork_struct *entry)
++static ssize_t cache_write(int fd, const char *buf, size_t len)
 +{
-+	entry->next = NULL;
-+	*queue->tail = entry;
-+	queue->tail = &entry->next;
++	if (cache_workqueue)
++		return xthread_write(cache_workqueue, fd, buf, len);
++	return write(fd, buf, len);
 +}
 +
-+static struct xwork_struct *xwork_dequeue(struct xwork_queue *queue)
++static void
++cache_setup_workqueue(void)
 +{
-+	struct xwork_struct *entry = NULL;
-+	if (queue->head) {
-+		entry = queue->head;
-+		queue->head = entry->next;
-+		if (!queue->head)
-+			queue->tail = &queue->head;
-+	}
-+	return entry;
-+}
++	const char *chroot;
 +
-+struct xthread_work {
-+	struct xwork_struct work;
-+
-+	pthread_cond_t cond;
-+};
-+
-+struct xthread_workqueue {
-+	struct xwork_queue queue;
-+
-+	pthread_mutex_t mutex;
-+	pthread_cond_t cond;
-+};
-+
-+static void xthread_workqueue_init(struct xthread_workqueue *wq)
-+{
-+	xwork_queue_init(&wq->queue);
-+	pthread_mutex_init(&wq->mutex, NULL);
-+	pthread_cond_init(&wq->cond, NULL);
-+}
-+
-+static void xthread_workqueue_fini(struct xthread_workqueue *wq)
-+{
-+	pthread_cond_destroy(&wq->cond);
-+	pthread_mutex_destroy(&wq->mutex);
-+}
-+
-+static int xthread_work_enqueue(struct xthread_workqueue *wq,
-+		struct xthread_work *work)
-+{
-+	xwork_enqueue(&wq->queue, &work->work);
-+	pthread_cond_signal(&wq->cond);
-+	return 0;
-+}
-+
-+static struct xthread_work *xthread_work_dequeue(struct xthread_workqueue *wq)
-+{
-+	return (struct xthread_work *)xwork_dequeue(&wq->queue);
-+}
-+
-+static void xthread_workqueue_do_work(struct xthread_workqueue *wq)
-+{
-+	struct xthread_work *work;
-+
-+	pthread_mutex_lock(&wq->mutex);
-+	/* Signal the caller that we're up and running */
-+	pthread_cond_signal(&wq->cond);
-+	for (;;) {
-+		work = xthread_work_dequeue(wq);
-+		if (work) {
-+			work->work.fn(work->work.data);
-+			pthread_cond_signal(&work->cond);
-+			continue;
-+		}
-+		if (wq->queue.shutdown)
-+			break;
-+		pthread_cond_wait(&wq->cond, &wq->mutex);
-+	}
-+	pthread_mutex_unlock(&wq->mutex);
-+}
-+
-+void xthread_workqueue_shutdown(struct xthread_workqueue *wq)
-+{
-+	pthread_mutex_lock(&wq->mutex);
-+	wq->queue.shutdown = 1;
-+	pthread_cond_signal(&wq->cond);
-+	pthread_mutex_unlock(&wq->mutex);
-+}
-+
-+static void xthread_workqueue_free(struct xthread_workqueue *wq)
-+{
-+	xthread_workqueue_fini(wq);
-+	free(wq);
-+}
-+
-+static void xthread_workqueue_cleanup(void *data)
-+{
-+	xthread_workqueue_free(data);
-+}
-+
-+static void *xthread_workqueue_worker(void *data)
-+{
-+	pthread_cleanup_push(xthread_workqueue_cleanup, data);
-+	xthread_workqueue_do_work(data);
-+	pthread_cleanup_pop(1);
-+	return NULL;
-+}
-+
-+struct xthread_workqueue *xthread_workqueue_alloc(void)
-+{
-+	struct xthread_workqueue *ret;
-+	pthread_t thread;
-+
-+	ret = malloc(sizeof(*ret));
-+	if (ret) {
-+		xthread_workqueue_init(ret);
-+
-+		pthread_mutex_lock(&ret->mutex);
-+		if (pthread_create(&thread, NULL,
-+					xthread_workqueue_worker,
-+					ret) == 0) {
-+			/* Wait for thread to start */
-+			pthread_cond_wait(&ret->cond, &ret->mutex);
-+			pthread_mutex_unlock(&ret->mutex);
-+			return ret;
-+		}
-+		pthread_mutex_unlock(&ret->mutex);
-+		xthread_workqueue_free(ret);
-+		ret = NULL;
-+	}
-+	return NULL;
-+}
-+
-+void xthread_work_run_sync(struct xthread_workqueue *wq,
-+		void (*fn)(void *), void *data)
-+{
-+	struct xthread_work work = {
-+		{
-+			NULL,
-+			fn,
-+			data
-+		},
-+		PTHREAD_COND_INITIALIZER,
-+	};
-+	pthread_mutex_lock(&wq->mutex);
-+	xthread_work_enqueue(wq, &work);
-+	pthread_cond_wait(&work.cond, &wq->mutex);
-+	pthread_mutex_unlock(&wq->mutex);
-+	pthread_cond_destroy(&work.cond);
-+}
-+
-+static void xthread_workqueue_do_chroot(void *data)
-+{
-+	const char *path = data;
-+
-+	if (unshare(CLONE_FS) != 0) {
-+		xlog_err("unshare() failed: %m");
++	chroot = nfsd_path_nfsd_rootdir();
++	if (!chroot)
 +		return;
-+	}
-+	if (chroot(path) != 0)
-+		xlog_err("chroot() failed: %m");
++	cache_workqueue = xthread_workqueue_alloc();
++	if (!cache_workqueue)
++		return;
++	xthread_workqueue_chroot(cache_workqueue, chroot);
 +}
 +
-+void xthread_workqueue_chroot(struct xthread_workqueue *wq,
-+		const char *path)
-+{
-+	xthread_work_run_sync(wq, xthread_workqueue_do_chroot, (void *)path);
-+}
+ /*
+  * Support routines for text-based upcalls.
+  * Fields are separated by spaces.
+@@ -221,7 +253,7 @@ static const char *get_uuid_blkdev(char *path)
+ 	if (cache == NULL)
+ 		blkid_get_cache(&cache, NULL);
+ 
+-	if (stat(path, &stb) != 0)
++	if (nfsd_path_stat(path, &stb) != 0)
+ 		return NULL;
+ 	devname = blkid_devno_to_devname(stb.st_dev);
+ 	if (!devname)
+@@ -373,21 +405,22 @@ static char *next_mnt(void **v, char *p)
+ 	FILE *f;
+ 	struct mntent *me;
+ 	size_t l = strlen(p);
++	char *mnt_dir = NULL;
 +
-+#else
+ 	if (*v == NULL) {
+ 		f = setmntent("/etc/mtab", "r");
+ 		*v = f;
+ 	} else
+ 		f = *v;
+-	while ((me = getmntent(f)) != NULL && l > 1 &&
+-	       (strncmp(me->mnt_dir, p, l) != 0 ||
+-		me->mnt_dir[l] != '/'))
+-		;
+-	if (me == NULL) {
+-		endmntent(f);
+-		*v = NULL;
+-		return NULL;
++	while ((me = getmntent(f)) != NULL && l > 1) {
++		mnt_dir = nfsd_path_strip_root(me->mnt_dir);
 +
-+struct xthread_workqueue {
-+};
++		if (strncmp(mnt_dir, p, l) == 0 && mnt_dir[l] != '/')
++			return mnt_dir;
+ 	}
+-	return me->mnt_dir;
++	endmntent(f);
++	*v = NULL;
++	return NULL;
+ }
+ 
+ /* same_path() check is two paths refer to the same directory.
+@@ -458,9 +491,9 @@ fallback:
+ 	 * bind-mounted in two places and both are exported, it
+ 	 * could give a false positive
+ 	 */
+-	if (lstat(p, &sc) != 0)
++	if (nfsd_path_lstat(p, &sc) != 0)
+ 		return 0;
+-	if (lstat(parent, &sp) != 0)
++	if (nfsd_path_lstat(parent, &sp) != 0)
+ 		return 0;
+ 	if (sc.st_dev != sp.st_dev)
+ 		return 0;
+@@ -610,7 +643,7 @@ static bool match_fsid(struct parsed_fsid *parsed, nfs_export *exp, char *path)
+ 	int type;
+ 	char u[16];
+ 
+-	if (stat(path, &stb) != 0)
++	if (nfsd_path_stat(path, &stb) != 0)
+ 		return false;
+ 	if (!S_ISDIR(stb.st_mode) && !S_ISREG(stb.st_mode))
+ 		return false;
+@@ -692,7 +725,7 @@ static void nfsd_fh(int f)
+ 	char buf[RPC_CHAN_BUF_SIZE], *bp;
+ 	int blen;
+ 
+-	blen = read(f, buf, sizeof(buf));
++	blen = cache_read(f, buf, sizeof(buf));
+ 	if (blen <= 0 || buf[blen-1] != '\n') return;
+ 	buf[blen-1] = 0;
+ 
+@@ -829,7 +862,7 @@ static void nfsd_fh(int f)
+ 	if (found)
+ 		qword_add(&bp, &blen, found_path);
+ 	qword_addeol(&bp, &blen);
+-	if (blen <= 0 || write(f, buf, bp - buf) != bp - buf)
++	if (blen <= 0 || cache_write(f, buf, bp - buf) != bp - buf)
+ 		xlog(L_ERROR, "nfsd_fh: error writing reply");
+ out:
+ 	if (found_path)
+@@ -921,7 +954,7 @@ static int dump_to_cache(int f, char *buf, int buflen, char *domain,
+ 		qword_adduint(&bp, &blen, now + ttl);
+ 	qword_addeol(&bp, &blen);
+ 	if (blen <= 0) return -1;
+-	if (write(f, buf, bp - buf) != bp - buf) return -1;
++	if (cache_write(f, buf, bp - buf) != bp - buf) return -1;
+ 	return 0;
+ }
+ 
+@@ -1298,7 +1331,7 @@ static void nfsd_export(int f)
+ 	char buf[RPC_CHAN_BUF_SIZE], *bp;
+ 	int blen;
+ 
+-	blen = read(f, buf, sizeof(buf));
++	blen = cache_read(f, buf, sizeof(buf));
+ 	if (blen <= 0 || buf[blen-1] != '\n') return;
+ 	buf[blen-1] = 0;
+ 
+@@ -1381,6 +1414,8 @@ extern int manage_gids;
+ void cache_open(void) 
+ {
+ 	int i;
 +
-+static struct xthread_workqueue ret;
-+
-+struct xthread_workqueue *xthread_workqueue_alloc(void)
-+{
-+	return &ret;
-+}
-+
-+void xthread_workqueue_shutdown(struct xthread_workqueue *wq)
-+{
-+}
-+
-+void xthread_work_run_sync(struct xthread_workqueue *wq,
-+		void (*fn)(void *), void *data)
-+{
-+	fn(data);
-+}
-+
-+void xthread_workqueue_chroot(struct xthread_workqueue *wq,
-+		const char *path)
-+{
-+	xlog_err("Unable to run as chroot");
-+}
-+
-+#endif /* defined(HAVE_SCHED_H) && defined(HAVE_LIBPTHREAD) && defined(HAVE_UNSHARE) */
-diff --git a/utils/mountd/Makefile.am b/utils/mountd/Makefile.am
-index 73eeb3f35070..18610f18238c 100644
---- a/utils/mountd/Makefile.am
-+++ b/utils/mountd/Makefile.am
-@@ -19,7 +19,8 @@ mountd_LDADD = ../../support/export/libexport.a \
- 	       ../../support/nfs/libnfs.la \
- 	       ../../support/misc/libmisc.a \
- 	       $(OPTLIBS) \
--	       $(LIBBSD) $(LIBWRAP) $(LIBNSL) $(LIBBLKID) $(LIBTIRPC)
-+	       $(LIBBSD) $(LIBWRAP) $(LIBNSL) $(LIBBLKID) $(LIBTIRPC) \
-+	       $(LIBPTHREAD)
- mountd_CPPFLAGS = $(AM_CPPFLAGS) $(CPPFLAGS) \
- 		  -I$(top_builddir)/support/include \
- 		  -I$(top_srcdir)/support/export
++	cache_setup_workqueue();
+ 	for (i=0; cachelist[i].cache_name; i++ ) {
+ 		char path[100];
+ 		if (!manage_gids && cachelist[i].cache_handle == auth_unix_gid)
+@@ -1456,7 +1491,7 @@ static int cache_export_ent(char *buf, int buflen, char *domain, struct exporten
+ 		if (strlen(path) <= l || path[l] != '/' ||
+ 		    strncmp(exp->e_path, path, l) != 0)
+ 			break;
+-		if (stat(exp->e_path, &stb) != 0)
++		if (nfsd_path_stat(exp->e_path, &stb) != 0)
+ 			break;
+ 		dev = stb.st_dev;
+ 		while(path[l] == '/') {
+@@ -1469,7 +1504,7 @@ static int cache_export_ent(char *buf, int buflen, char *domain, struct exporten
+ 				l++;
+ 			c = path[l];
+ 			path[l] = 0;
+-			err2 = lstat(path, &stb);
++			err2 = nfsd_path_lstat(path, &stb);
+ 			path[l] = c;
+ 			if (err2 < 0)
+ 				break;
+@@ -1508,7 +1543,7 @@ int cache_export(nfs_export *exp, char *path)
+ 	qword_adduint(&bp, &blen, time(0) + exp->m_export.e_ttl);
+ 	qword_add(&bp, &blen, exp->m_client->m_hostname);
+ 	qword_addeol(&bp, &blen);
+-	if (blen <= 0 || write(f, buf, bp - buf) != bp - buf) blen = -1;
++	if (blen <= 0 || cache_write(f, buf, bp - buf) != bp - buf) blen = -1;
+ 	close(f);
+ 	if (blen < 0) return -1;
+ 
+@@ -1546,12 +1581,12 @@ cache_get_filehandle(nfs_export *exp, int len, char *p)
+ 	qword_add(&bp, &blen, p);
+ 	qword_addint(&bp, &blen, len);
+ 	qword_addeol(&bp, &blen);
+-	if (blen <= 0 || write(f, buf, bp - buf) != bp - buf) {
++	if (blen <= 0 || cache_write(f, buf, bp - buf) != bp - buf) {
+ 		close(f);
+ 		return NULL;
+ 	}
+ 	bp = buf;
+-	blen = read(f, buf, sizeof(buf));
++	blen = cache_read(f, buf, sizeof(buf));
+ 	close(f);
+ 
+ 	if (blen <= 0 || buf[blen-1] != '\n')
+diff --git a/utils/mountd/mountd.c b/utils/mountd/mountd.c
+index 88a207b3a85a..db9891269051 100644
+--- a/utils/mountd/mountd.c
++++ b/utils/mountd/mountd.c
+@@ -29,6 +29,7 @@
+ #include "mountd.h"
+ #include "rpcmisc.h"
+ #include "pseudoflavors.h"
++#include "nfsd_path.h"
+ #include "nfslib.h"
+ 
+ extern void my_svc_run(void);
+@@ -374,7 +375,7 @@ mount_pathconf_2_svc(struct svc_req *rqstp, dirpath *path, ppathcnf *res)
+ 	exp = auth_authenticate("pathconf", sap, p);
+ 	if (exp == NULL)
+ 		return 1;
+-	else if (stat(p, &stb) < 0) {
++	else if (nfsd_path_stat(p, &stb) < 0) {
+ 		xlog(L_WARNING, "can't stat exported dir %s: %s",
+ 				p, strerror(errno));
+ 		return 1;
+@@ -483,7 +484,7 @@ get_rootfh(struct svc_req *rqstp, dirpath *path, nfs_export **expret,
+ 		*error = MNT3ERR_ACCES;
+ 		return NULL;
+ 	}
+-	if (stat(p, &stb) < 0) {
++	if (nfsd_path_stat(p, &stb) < 0) {
+ 		xlog(L_WARNING, "can't stat exported dir %s: %s",
+ 				p, strerror(errno));
+ 		if (errno == ENOENT)
+@@ -497,7 +498,7 @@ get_rootfh(struct svc_req *rqstp, dirpath *path, nfs_export **expret,
+ 		*error = MNT3ERR_NOTDIR;
+ 		return NULL;
+ 	}
+-	if (stat(exp->m_export.e_path, &estb) < 0) {
++	if (nfsd_path_stat(exp->m_export.e_path, &estb) < 0) {
+ 		xlog(L_WARNING, "can't stat export point %s: %s",
+ 		     p, strerror(errno));
+ 		*error = MNT3ERR_NOENT;
+@@ -886,6 +887,7 @@ main(int argc, char **argv)
+ 	if (num_threads > 1)
+ 		fork_workers();
+ 
++	nfsd_path_init();
+ 	/* Open files now to avoid sharing descriptors among forked processes */
+ 	cache_open();
+ 
+diff --git a/utils/nfsd/nfsd.man b/utils/nfsd/nfsd.man
+index d83ef869d26e..1f3bdf75a2b4 100644
+--- a/utils/nfsd/nfsd.man
++++ b/utils/nfsd/nfsd.man
+@@ -167,6 +167,12 @@ Setting these to "off" or similar will disable the selected minor
+ versions.  Setting to "on" will enable them.  The default values
+ are determined by the kernel, and usually minor versions default to
+ being enabled once the implementation is sufficiently complete.
++.B root_dir
++Setting this to a valid path causes the nfs server to act as if the
++supplied path is being prefixed to all the exported entries. For
++instance, if "root_dir=/my/root", and there is an entry in /etc/exports
++for '/filesystem', then the client can mount '/filesystem', but the
++actual path on the server will resolve to '/my/root/filesystem'.
+ 
+ .SH NOTES
+ If the program is built with TI-RPC support, it will enable any protocol and
 -- 
 2.21.0
 
