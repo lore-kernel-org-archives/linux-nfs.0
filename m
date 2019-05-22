@@ -7,49 +7,48 @@ X-Spam-Status: No, score=-9.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 99514C282CE
-	for <linux-nfs@archiver.kernel.org>; Wed, 22 May 2019 19:21:23 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id BEB81C282DC
+	for <linux-nfs@archiver.kernel.org>; Wed, 22 May 2019 19:25:46 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 6D081217D9
-	for <linux-nfs@archiver.kernel.org>; Wed, 22 May 2019 19:21:23 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 871EA217D9
+	for <linux-nfs@archiver.kernel.org>; Wed, 22 May 2019 19:25:46 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1558552883;
-	bh=0UCL52sMqSGxS7cfWNuiFXECeJ8AXVSDRIFJhr4+Kj8=;
+	s=default; t=1558553146;
+	bh=aU4CXQ1D+LlLoIV1mmGR+NNarxByWPbHFnIBHyz5C9o=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=up1JiktqVzerHjHmzFowHEM4yCN9xUFth2h88I/eJfUrh0YhKTKUhhYPfQyz9LmVY
-	 NPKddrva0yxOL1vG8mFr0oS1RgSejaoP70qi+vfty7PjuPkAPwY1C4Xc4WXYjG+IP/
-	 Ka5iub6l1WZJIL3ICEUFdN7b3gQbLKs4O9j0nZfo=
+	b=kJgoMMzfiv2xFprcXsl0x8sCn6hQCRGtqMc5vLSrLWkQV3+YTDQzweaA3/i8/JjI3
+	 hXsaR1w2jS7kNtqhCuyvZLMeAaFcQ4gZ0V/tptjvyVo72muXBIJ/MzHA07fzvqplm/
+	 +g4hPg58f2O8r8aAviLgPysSmWWUov5WfIEmqvyY=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729737AbfEVTVV (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 22 May 2019 15:21:21 -0400
-Received: from mail.kernel.org ([198.145.29.99]:41734 "EHLO mail.kernel.org"
+        id S1731726AbfEVTZp (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 22 May 2019 15:25:45 -0400
+Received: from mail.kernel.org ([198.145.29.99]:47100 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1729832AbfEVTVV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 22 May 2019 15:21:21 -0400
+        id S1731719AbfEVTZo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 22 May 2019 15:25:44 -0400
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id DA164217D4;
-        Wed, 22 May 2019 19:21:19 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 002D3217D9;
+        Wed, 22 May 2019 19:25:42 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1558552880;
-        bh=0UCL52sMqSGxS7cfWNuiFXECeJ8AXVSDRIFJhr4+Kj8=;
+        s=default; t=1558553143;
+        bh=aU4CXQ1D+LlLoIV1mmGR+NNarxByWPbHFnIBHyz5C9o=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=ab8scxmO8ryaZxhvUHdQfWJkBPO3uN8ayAHOIIVMp5ibg2cAJAgqIon3HgDCEa5UC
-         mMPwP8iUc83h4irvT1UYM7EV81F35sW02kJtZWvjgGhm2k+mYdvhintI/FOQpksqW1
-         UOyxzuIn1UUGCGRzE/voBOqj/ezb+v8+Bsa23U1M=
+        b=enJDO+kb2GKPbQbcZI3C4IEVISQaE2+mPHYbhG8lVDiiRw25WasNNxX8uxvcgsv87
+         TyqF5RlnNB1UbY7GgrPxcOz41fgEIjM3aiDomxB9UY6JZ8mGc3FMMjkxyS13Ak0257
+         2jCP32KXALZ8aXP9uLCkrP9DHY+NSSioY6R8HrTY=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     Roberto Bergantinos Corpas <rbergant@redhat.com>,
-        Benjamin Coddington <bcodding@redhat.com>,
+Cc:     Xiaoli Feng <fengxiaoli0714@gmail.com>,
         Anna Schumaker <Anna.Schumaker@Netapp.com>,
         Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.1 004/375] NFS: make nfs_match_client killable
-Date:   Wed, 22 May 2019 15:15:04 -0400
-Message-Id: <20190522192115.22666-4-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 5.0 073/317] Fix nfs4.2 return -EINVAL when do dedupe operation
+Date:   Wed, 22 May 2019 15:19:34 -0400
+Message-Id: <20190522192338.23715-73-sashal@kernel.org>
 X-Mailer: git-send-email 2.20.1
-In-Reply-To: <20190522192115.22666-1-sashal@kernel.org>
-References: <20190522192115.22666-1-sashal@kernel.org>
+In-Reply-To: <20190522192338.23715-1-sashal@kernel.org>
+References: <20190522192338.23715-1-sashal@kernel.org>
 MIME-Version: 1.0
 X-stable: review
 X-Patchwork-Hint: Ignore
@@ -59,59 +58,42 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Roberto Bergantinos Corpas <rbergant@redhat.com>
+From: Xiaoli Feng <fengxiaoli0714@gmail.com>
 
-[ Upstream commit 950a578c6128c2886e295b9c7ecb0b6b22fcc92b ]
+[ Upstream commit ce96e888fe48ecfa868c9a39adc03292c78a80ff ]
 
-    Actually we don't do anything with return value from
-    nfs_wait_client_init_complete in nfs_match_client, as a
-    consequence if we get a fatal signal and client is not
-    fully initialised, we'll loop to "again" label
+dedupe_file_range operations is combiled into remap_file_range.
+But in nfs42_remap_file_range, it's skiped for dedupe operations.
+Before this patch:
+  # dd if=/dev/zero of=nfs/file bs=1M count=1
+  # xfs_io -c "dedupe nfs/file 4k 64k 4k" nfs/file
+  XFS_IOC_FILE_EXTENT_SAME: Invalid argument
+After this patch:
+  # dd if=/dev/zero of=nfs/file bs=1M count=1
+  # xfs_io -c "dedupe nfs/file 4k 64k 4k" nfs/file
+  deduped 4096/4096 bytes at offset 65536
+  4 KiB, 1 ops; 0.0046 sec (865.988 KiB/sec and 216.4971 ops/sec)
 
-    This has been proven to cause soft lockups on some scenarios
-    (no-carrier but configured network interfaces)
-
-Signed-off-by: Roberto Bergantinos Corpas <rbergant@redhat.com>
-Reviewed-by: Benjamin Coddington <bcodding@redhat.com>
+Signed-off-by: Xiaoli Feng <fengxiaoli0714@gmail.com>
 Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- fs/nfs/client.c | 7 ++++++-
- 1 file changed, 6 insertions(+), 1 deletion(-)
+ fs/nfs/nfs4file.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 90d71fda65cec..350cfa561e0e8 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -284,6 +284,7 @@ static struct nfs_client *nfs_match_client(const struct nfs_client_initdata *dat
- 	struct nfs_client *clp;
- 	const struct sockaddr *sap = data->addr;
- 	struct nfs_net *nn = net_generic(data->net, nfs_net_id);
-+	int error;
+diff --git a/fs/nfs/nfs4file.c b/fs/nfs/nfs4file.c
+index 00d17198ee12a..f10b660805fc4 100644
+--- a/fs/nfs/nfs4file.c
++++ b/fs/nfs/nfs4file.c
+@@ -187,7 +187,7 @@ static loff_t nfs42_remap_file_range(struct file *src_file, loff_t src_off,
+ 	bool same_inode = false;
+ 	int ret;
  
- again:
- 	list_for_each_entry(clp, &nn->nfs_client_list, cl_share_link) {
-@@ -296,8 +297,10 @@ static struct nfs_client *nfs_match_client(const struct nfs_client_initdata *dat
- 		if (clp->cl_cons_state > NFS_CS_READY) {
- 			refcount_inc(&clp->cl_count);
- 			spin_unlock(&nn->nfs_client_lock);
--			nfs_wait_client_init_complete(clp);
-+			error = nfs_wait_client_init_complete(clp);
- 			nfs_put_client(clp);
-+			if (error < 0)
-+				return ERR_PTR(error);
- 			spin_lock(&nn->nfs_client_lock);
- 			goto again;
- 		}
-@@ -407,6 +410,8 @@ struct nfs_client *nfs_get_client(const struct nfs_client_initdata *cl_init)
- 		clp = nfs_match_client(cl_init);
- 		if (clp) {
- 			spin_unlock(&nn->nfs_client_lock);
-+			if (IS_ERR(clp))
-+				return clp;
- 			if (new)
- 				new->rpc_ops->free_client(new);
- 			return nfs_found_client(cl_init, clp);
+-	if (remap_flags & ~REMAP_FILE_ADVISORY)
++	if (remap_flags & ~(REMAP_FILE_DEDUP | REMAP_FILE_ADVISORY))
+ 		return -EINVAL;
+ 
+ 	/* check alignment w.r.t. clone_blksize */
 -- 
 2.20.1
 
