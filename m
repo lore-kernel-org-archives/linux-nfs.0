@@ -4,52 +4,52 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-9.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 19357C282CE
-	for <linux-nfs@archiver.kernel.org>; Wed, 22 May 2019 19:42:13 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3E7C1C282DD
+	for <linux-nfs@archiver.kernel.org>; Wed, 22 May 2019 19:50:38 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id DFC5320675
-	for <linux-nfs@archiver.kernel.org>; Wed, 22 May 2019 19:42:12 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 105022081C
+	for <linux-nfs@archiver.kernel.org>; Wed, 22 May 2019 19:50:38 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1558554133;
-	bh=GWGQ7LyqMyF3msz3Dc3HSkHmIgeqCWLKj8slZybAwT8=;
+	s=default; t=1558554638;
+	bh=lrtK3RdajsN6tX9e2swMgqkaRZIoycmTMyYl7uCGNYg=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=SjUZoWJDBiRYQwnWUgtArNjYY5dyUQEkuvBUtySpoPsrvlyPq9nVouRAQ7WHe1M1n
-	 /MAicfE6EOtEMpCxxQesnK349DTE35yv16/28OOvC+d4UpRG9Bm1h1Wy4tn/IpHPJR
-	 B3V7M0Q2MOE3KKZ+FZauXBYJBbRqn3ykS1lkuOEg=
+	b=gNP6a8HS/HzNFwjdjWiyQ/jwYLZeOHv+KHFxZvPwrouzchepT9YOgM+dUCM2P9Guj
+	 hWl6DeuUj8OgX59nfRPDlH+/bdKbAJaDJPf8RH4GHb32bpzB+NFq8Este8X7DIpbEo
+	 eNWQInDELzxnd2snZfksSPs9Y8ikW8qHBvSleBRU=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1731116AbfEVT2s (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 22 May 2019 15:28:48 -0400
-Received: from mail.kernel.org ([198.145.29.99]:51554 "EHLO mail.kernel.org"
+        id S1732223AbfEVTuc (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 22 May 2019 15:50:32 -0400
+Received: from mail.kernel.org ([198.145.29.99]:48140 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1732637AbfEVT2r (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 22 May 2019 15:28:47 -0400
+        id S1732018AbfEVT0e (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 22 May 2019 15:26:34 -0400
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id B4E9720879;
-        Wed, 22 May 2019 19:28:45 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 40B03217F9;
+        Wed, 22 May 2019 19:26:33 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1558553326;
-        bh=GWGQ7LyqMyF3msz3Dc3HSkHmIgeqCWLKj8slZybAwT8=;
+        s=default; t=1558553194;
+        bh=lrtK3RdajsN6tX9e2swMgqkaRZIoycmTMyYl7uCGNYg=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=dxblzuLMjcRqvcET937BxUAIHRpUSADG45B2UZQN+tudQXfdgd//w/f5GrjMzGQWp
-         +4G5Z6D7P8WJBAKwcAoNaszmirMvQ/dhgDWynvvsgnltTl3c6oDuS3coGnf6zAXwL8
-         mTnWl1DmjaR/OvUTWarzCymxiFl4sA7j9/923jW0=
+        b=VUOYJJVM752Vm6X/oHrqa0mBcLEJkZVk9h6EtkOD52WOXdOqLvxjZqzLPWLZlurAF
+         YOEti47821RLZUC182UIWKOvjlZ0Weml2g51HveHj4bDgMINTJtCR4CQk/3UFEeDk0
+         5DlltgTBZ+j6D4hJKC2/iCY/89nhN/vD25fGxB9E=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
 Cc:     Roberto Bergantinos Corpas <rbergant@redhat.com>,
         Benjamin Coddington <bcodding@redhat.com>,
         Anna Schumaker <Anna.Schumaker@Netapp.com>,
         Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org
-Subject: [PATCH AUTOSEL 4.14 003/167] NFS: make nfs_match_client killable
-Date:   Wed, 22 May 2019 15:25:58 -0400
-Message-Id: <20190522192842.25858-3-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 4.19 003/244] NFS: make nfs_match_client killable
+Date:   Wed, 22 May 2019 15:22:29 -0400
+Message-Id: <20190522192630.24917-3-sashal@kernel.org>
 X-Mailer: git-send-email 2.20.1
-In-Reply-To: <20190522192842.25858-1-sashal@kernel.org>
-References: <20190522192842.25858-1-sashal@kernel.org>
+In-Reply-To: <20190522192630.24917-1-sashal@kernel.org>
+References: <20190522192630.24917-1-sashal@kernel.org>
 MIME-Version: 1.0
 X-stable: review
 X-Patchwork-Hint: Ignore
@@ -80,7 +80,7 @@ Signed-off-by: Sasha Levin <sashal@kernel.org>
  1 file changed, 6 insertions(+), 1 deletion(-)
 
 diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index a98d64a6eda5c..65da2c105f434 100644
+index 751ca65da8a35..846d45cb1a3c8 100644
 --- a/fs/nfs/client.c
 +++ b/fs/nfs/client.c
 @@ -290,6 +290,7 @@ static struct nfs_client *nfs_match_client(const struct nfs_client_initdata *dat
@@ -93,7 +93,7 @@ index a98d64a6eda5c..65da2c105f434 100644
  	list_for_each_entry(clp, &nn->nfs_client_list, cl_share_link) {
 @@ -302,8 +303,10 @@ static struct nfs_client *nfs_match_client(const struct nfs_client_initdata *dat
  		if (clp->cl_cons_state > NFS_CS_READY) {
- 			atomic_inc(&clp->cl_count);
+ 			refcount_inc(&clp->cl_count);
  			spin_unlock(&nn->nfs_client_lock);
 -			nfs_wait_client_init_complete(clp);
 +			error = nfs_wait_client_init_complete(clp);
