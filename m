@@ -6,144 +6,137 @@ X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8C3B6C282E1
-	for <linux-nfs@archiver.kernel.org>; Thu, 23 May 2019 14:29:06 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 0070FC282DE
+	for <linux-nfs@archiver.kernel.org>; Thu, 23 May 2019 14:29:07 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 6B7D721773
+	by mail.kernel.org (Postfix) with ESMTP id D3A2620851
 	for <linux-nfs@archiver.kernel.org>; Thu, 23 May 2019 14:29:06 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1730729AbfEWO3F (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 23 May 2019 10:29:05 -0400
-Received: from mx1.redhat.com ([209.132.183.28]:51388 "EHLO mx1.redhat.com"
+        id S1730757AbfEWO3G (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 23 May 2019 10:29:06 -0400
+Received: from mx1.redhat.com ([209.132.183.28]:52816 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1730757AbfEWO3F (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 23 May 2019 10:29:05 -0400
-Received: from smtp.corp.redhat.com (int-mx08.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+        id S1730818AbfEWO3G (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 23 May 2019 10:29:06 -0400
+Received: from smtp.corp.redhat.com (int-mx04.intmail.prod.int.phx2.redhat.com [10.5.11.14])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 577103003C7F;
+        by mx1.redhat.com (Postfix) with ESMTPS id 5C876C05B03F;
         Thu, 23 May 2019 14:29:05 +0000 (UTC)
 Received: from bcodding.csb (ovpn-66-2.rdu2.redhat.com [10.10.66.2])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 0F77E2E02C;
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 1916136F9;
         Thu, 23 May 2019 14:29:05 +0000 (UTC)
 Received: by bcodding.csb (Postfix, from userid 24008)
-        id D2AC4109C3D1; Thu, 23 May 2019 10:28:41 -0400 (EDT)
+        id BD634109C3CC; Thu, 23 May 2019 10:28:41 -0400 (EDT)
 From:   Benjamin Coddington <bcodding@redhat.com>
 To:     "J . Bruce Fields" <bfields@redhat.com>, jlayton@kernel.org
 Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH 4/5] lockd: Show pid of lockd for remote locks
-Date:   Thu, 23 May 2019 10:28:40 -0400
-Message-Id: <e8edb927378e9872f3e42238e9d9765ccbfcb2bc.1558620385.git.bcodding@redhat.com>
+Subject: [PATCH 1/5] lockd: prepare nlm_lockowner for use by the server
+Date:   Thu, 23 May 2019 10:28:37 -0400
+Message-Id: <b9e00c87d9664e0a1ca675ddeaa88fa40335a88c.1558620385.git.bcodding@redhat.com>
 In-Reply-To: <cover.1558620385.git.bcodding@redhat.com>
 References: <cover.1558620385.git.bcodding@redhat.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 2.84 on 10.5.11.23
-X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.44]); Thu, 23 May 2019 14:29:05 +0000 (UTC)
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.14
+X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.31]); Thu, 23 May 2019 14:29:05 +0000 (UTC)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Use the pid of lockd instead of the remote lock's svid for the fl_pid for
-local POSIX locks.  This allows proper enumeration of which local process
-owns which lock.  The svid is meaningless to local lock readers.
+The nlm_lockowner structure that the client uses to track locks is
+generally useful to the server as well.  Very similar functions to handle
+allocation and tracking of the nlm_lockowner will follow. Rename the client
+fuctions for clarity.
 
 Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
 ---
- fs/lockd/svc4proc.c | 1 +
- fs/lockd/svclock.c  | 4 ++--
- fs/lockd/svcproc.c  | 1 +
- fs/lockd/xdr.c      | 2 --
- fs/lockd/xdr4.c     | 2 --
- 5 files changed, 4 insertions(+), 6 deletions(-)
+ fs/lockd/clntproc.c | 21 +++++++++++----------
+ 1 file changed, 11 insertions(+), 10 deletions(-)
 
-diff --git a/fs/lockd/svc4proc.c b/fs/lockd/svc4proc.c
-index 90d328d61933..54c11b0863d1 100644
---- a/fs/lockd/svc4proc.c
-+++ b/fs/lockd/svc4proc.c
-@@ -46,6 +46,7 @@ nlm4svc_retrieve_args(struct svc_rqst *rqstp, struct nlm_args *argp,
+diff --git a/fs/lockd/clntproc.c b/fs/lockd/clntproc.c
+index d9c32d1a20c0..529f0be547bc 100644
+--- a/fs/lockd/clntproc.c
++++ b/fs/lockd/clntproc.c
+@@ -46,13 +46,14 @@ void nlmclnt_next_cookie(struct nlm_cookie *c)
+ 	c->len=4;
+ }
  
- 		/* Set up the missing parts of the file_lock structure */
- 		lock->fl.fl_file  = file->f_file;
-+		lock->fl.fl_pid = current->tgid;
- 		lock->fl.fl_lmops = &nlmsvc_lock_operations;
- 		nlmsvc_locks_init_private(&lock->fl, host, (pid_t)lock->svid);
- 		if (!lock->fl.fl_owner) {
-diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
-index 56c5fa75950c..bc714c42fc4b 100644
---- a/fs/lockd/svclock.c
-+++ b/fs/lockd/svclock.c
-@@ -432,7 +432,7 @@ static int nlmsvc_setgrantargs(struct nlm_rqst *call, struct nlm_lock *lock)
+-static struct nlm_lockowner *nlm_get_lockowner(struct nlm_lockowner *lockowner)
++static struct nlm_lockowner *
++nlmclnt_get_lockowner(struct nlm_lockowner *lockowner)
+ {
+ 	refcount_inc(&lockowner->count);
+ 	return lockowner;
+ }
  
- 	/* set default data area */
- 	call->a_args.lock.oh.data = call->a_owner;
--	call->a_args.lock.svid = lock->fl.fl_pid;
-+	call->a_args.lock.svid = ((struct nlm_lockowner *)lock->fl.fl_owner)->pid;
+-static void nlm_put_lockowner(struct nlm_lockowner *lockowner)
++void nlmclnt_put_lockowner(struct nlm_lockowner *lockowner)
+ {
+ 	if (!refcount_dec_and_lock(&lockowner->count, &lockowner->host->h_lock))
+ 		return;
+@@ -81,28 +82,28 @@ static inline uint32_t __nlm_alloc_pid(struct nlm_host *host)
+ 	return res;
+ }
  
- 	if (lock->oh.len > NLMCLNT_OHSIZE) {
- 		void *data = kmalloc(lock->oh.len, GFP_KERNEL);
-@@ -634,7 +634,7 @@ nlmsvc_testlock(struct svc_rqst *rqstp, struct nlm_file *file,
- 	conflock->caller = "somehost";	/* FIXME */
- 	conflock->len = strlen(conflock->caller);
- 	conflock->oh.len = 0;		/* don't return OH info */
--	conflock->svid = lock->fl.fl_pid;
-+	conflock->svid = ((struct nlm_lockowner *)lock->fl.fl_owner)->pid;
- 	conflock->fl.fl_type = lock->fl.fl_type;
- 	conflock->fl.fl_start = lock->fl.fl_start;
- 	conflock->fl.fl_end = lock->fl.fl_end;
-diff --git a/fs/lockd/svcproc.c b/fs/lockd/svcproc.c
-index 665b7adad3c4..a24e6d942f89 100644
---- a/fs/lockd/svcproc.c
-+++ b/fs/lockd/svcproc.c
-@@ -76,6 +76,7 @@ nlmsvc_retrieve_args(struct svc_rqst *rqstp, struct nlm_args *argp,
+-static struct nlm_lockowner *__nlm_find_lockowner(struct nlm_host *host, fl_owner_t owner)
++static struct nlm_lockowner *__nlmclnt_find_lockowner(struct nlm_host *host, fl_owner_t owner)
+ {
+ 	struct nlm_lockowner *lockowner;
+ 	list_for_each_entry(lockowner, &host->h_lockowners, list) {
+ 		if (lockowner->owner != owner)
+ 			continue;
+-		return nlm_get_lockowner(lockowner);
++		return nlmclnt_get_lockowner(lockowner);
+ 	}
+ 	return NULL;
+ }
  
- 		/* Set up the missing parts of the file_lock structure */
- 		lock->fl.fl_file  = file->f_file;
-+		lock->fl.fl_pid = current->tgid;
- 		lock->fl.fl_lmops = &nlmsvc_lock_operations;
- 		nlmsvc_locks_init_private(&lock->fl, host, (pid_t)lock->svid);
- 		if (!lock->fl.fl_owner) {
-diff --git a/fs/lockd/xdr.c b/fs/lockd/xdr.c
-index ec717ae41ee3..982629f7b120 100644
---- a/fs/lockd/xdr.c
-+++ b/fs/lockd/xdr.c
-@@ -126,7 +126,6 @@ nlm_decode_lock(__be32 *p, struct nlm_lock *lock)
- 	lock->svid  = ntohl(*p++);
+-static struct nlm_lockowner *nlm_find_lockowner(struct nlm_host *host, fl_owner_t owner)
++static struct nlm_lockowner *nlmclnt_find_lockowner(struct nlm_host *host, fl_owner_t owner)
+ {
+ 	struct nlm_lockowner *res, *new = NULL;
  
- 	locks_init_lock(fl);
--	fl->fl_pid   = (pid_t)lock->svid;
- 	fl->fl_flags = FL_POSIX;
- 	fl->fl_type  = F_RDLCK;		/* as good as anything else */
- 	start = ntohl(*p++);
-@@ -268,7 +267,6 @@ nlmsvc_decode_shareargs(struct svc_rqst *rqstp, __be32 *p)
- 	memset(lock, 0, sizeof(*lock));
- 	locks_init_lock(&lock->fl);
- 	lock->svid = ~(u32) 0;
--	lock->fl.fl_pid = (pid_t)lock->svid;
+ 	spin_lock(&host->h_lock);
+-	res = __nlm_find_lockowner(host, owner);
++	res = __nlmclnt_find_lockowner(host, owner);
+ 	if (res == NULL) {
+ 		spin_unlock(&host->h_lock);
+ 		new = kmalloc(sizeof(*new), GFP_KERNEL);
+ 		spin_lock(&host->h_lock);
+-		res = __nlm_find_lockowner(host, owner);
++		res = __nlmclnt_find_lockowner(host, owner);
+ 		if (res == NULL && new != NULL) {
+ 			res = new;
+ 			refcount_set(&new->count, 1);
+@@ -456,7 +457,7 @@ static void nlmclnt_locks_copy_lock(struct file_lock *new, struct file_lock *fl)
+ {
+ 	spin_lock(&fl->fl_u.nfs_fl.owner->host->h_lock);
+ 	new->fl_u.nfs_fl.state = fl->fl_u.nfs_fl.state;
+-	new->fl_u.nfs_fl.owner = nlm_get_lockowner(fl->fl_u.nfs_fl.owner);
++	new->fl_u.nfs_fl.owner = nlmclnt_get_lockowner(fl->fl_u.nfs_fl.owner);
+ 	list_add_tail(&new->fl_u.nfs_fl.list, &fl->fl_u.nfs_fl.owner->host->h_granted);
+ 	spin_unlock(&fl->fl_u.nfs_fl.owner->host->h_lock);
+ }
+@@ -466,7 +467,7 @@ static void nlmclnt_locks_release_private(struct file_lock *fl)
+ 	spin_lock(&fl->fl_u.nfs_fl.owner->host->h_lock);
+ 	list_del(&fl->fl_u.nfs_fl.list);
+ 	spin_unlock(&fl->fl_u.nfs_fl.owner->host->h_lock);
+-	nlm_put_lockowner(fl->fl_u.nfs_fl.owner);
++	nlmclnt_put_lockowner(fl->fl_u.nfs_fl.owner);
+ }
  
- 	if (!(p = nlm_decode_cookie(p, &argp->cookie))
- 	 || !(p = xdr_decode_string_inplace(p, &lock->caller,
-diff --git a/fs/lockd/xdr4.c b/fs/lockd/xdr4.c
-index 45741adfe041..5fa9f48a9dba 100644
---- a/fs/lockd/xdr4.c
-+++ b/fs/lockd/xdr4.c
-@@ -118,7 +118,6 @@ nlm4_decode_lock(__be32 *p, struct nlm_lock *lock)
- 	lock->svid  = ntohl(*p++);
- 
- 	locks_init_lock(fl);
--	fl->fl_pid   = (pid_t)lock->svid;
- 	fl->fl_flags = FL_POSIX;
- 	fl->fl_type  = F_RDLCK;		/* as good as anything else */
- 	p = xdr_decode_hyper(p, &start);
-@@ -265,7 +264,6 @@ nlm4svc_decode_shareargs(struct svc_rqst *rqstp, __be32 *p)
- 	memset(lock, 0, sizeof(*lock));
- 	locks_init_lock(&lock->fl);
- 	lock->svid = ~(u32) 0;
--	lock->fl.fl_pid = (pid_t)lock->svid;
- 
- 	if (!(p = nlm4_decode_cookie(p, &argp->cookie))
- 	 || !(p = xdr_decode_string_inplace(p, &lock->caller,
+ static const struct file_lock_operations nlmclnt_lock_ops = {
+@@ -477,7 +478,7 @@ static const struct file_lock_operations nlmclnt_lock_ops = {
+ static void nlmclnt_locks_init_private(struct file_lock *fl, struct nlm_host *host)
+ {
+ 	fl->fl_u.nfs_fl.state = 0;
+-	fl->fl_u.nfs_fl.owner = nlm_find_lockowner(host, fl->fl_owner);
++	fl->fl_u.nfs_fl.owner = nlmclnt_find_lockowner(host, fl->fl_owner);
+ 	INIT_LIST_HEAD(&fl->fl_u.nfs_fl.list);
+ 	fl->fl_ops = &nlmclnt_lock_ops;
+ }
 -- 
 2.20.1
 
