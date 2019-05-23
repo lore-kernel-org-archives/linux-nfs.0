@@ -6,382 +6,128 @@ X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id CEDE3C282DD
-	for <linux-nfs@archiver.kernel.org>; Thu, 23 May 2019 14:46:14 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 88B19C282DD
+	for <linux-nfs@archiver.kernel.org>; Thu, 23 May 2019 14:46:36 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 99EF7206BA
-	for <linux-nfs@archiver.kernel.org>; Thu, 23 May 2019 14:46:14 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 6823E206BA
+	for <linux-nfs@archiver.kernel.org>; Thu, 23 May 2019 14:46:36 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1730792AbfEWOqM (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 23 May 2019 10:46:12 -0400
-Received: from mx1.redhat.com ([209.132.183.28]:43771 "EHLO mx1.redhat.com"
+        id S1730760AbfEWOqf (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 23 May 2019 10:46:35 -0400
+Received: from mx1.redhat.com ([209.132.183.28]:60182 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1730818AbfEWOqM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 23 May 2019 10:46:12 -0400
-Received: from smtp.corp.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+        id S1730757AbfEWOqf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 23 May 2019 10:46:35 -0400
+Received: from smtp.corp.redhat.com (int-mx03.intmail.prod.int.phx2.redhat.com [10.5.11.13])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 13A243003097;
-        Thu, 23 May 2019 14:46:12 +0000 (UTC)
+        by mx1.redhat.com (Postfix) with ESMTPS id 13B8686671;
+        Thu, 23 May 2019 14:46:35 +0000 (UTC)
 Received: from bcodding.csb (ovpn-66-2.rdu2.redhat.com [10.10.66.2])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id BADDA63B82;
-        Thu, 23 May 2019 14:46:11 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTP id CCBEC6402B;
+        Thu, 23 May 2019 14:46:34 +0000 (UTC)
 Received: by bcodding.csb (Postfix, from userid 24008)
-        id D0585109C3CF; Thu, 23 May 2019 10:45:48 -0400 (EDT)
+        id E5442108CFFE; Thu, 23 May 2019 10:45:48 -0400 (EDT)
 From:   Benjamin Coddington <bcodding@redhat.com>
 To:     "J . Bruce Fields" <bfields@redhat.com>, jlayton@kernel.org
 Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH 2/5] lockd: Convert NLM service fl_owner to nlm_lockowner
-Date:   Thu, 23 May 2019 10:45:45 -0400
-Message-Id: <46bd6914ab3775668a76986ca50fed9860dfe0a9.1558622651.git.bcodding@redhat.com>
+Subject: [PATCH 5/5] locks: Cleanup lm_compare_owner and lm_owner_key
+Date:   Thu, 23 May 2019 10:45:48 -0400
+Message-Id: <3df28964bd778c0f786457ccbcbb899229cb6bfa.1558622651.git.bcodding@redhat.com>
 In-Reply-To: <cover.1558622651.git.bcodding@redhat.com>
 References: <cover.1558622651.git.bcodding@redhat.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.11
-X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.46]); Thu, 23 May 2019 14:46:12 +0000 (UTC)
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.13
+X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.26]); Thu, 23 May 2019 14:46:35 +0000 (UTC)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Do as the NLM client: allocate and track a struct nlm_lockowner for use as
-the fl_owner for locks created by the NLM sever.  This allows us to keep
-the svid within this structure for matching locks, and will allow us to
-track the pid of lockd in a future patch.  It should also allow easier
-reference of the nlm_host in conflicting locks, and simplify lock hashing
-and comparison.
+After the update to use nlm_lockowners for the NLM server, there are no
+more users of lm_compare_owner and lm_owner_key.
 
 Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
 ---
- fs/lockd/svc4proc.c         | 13 ++++-
- fs/lockd/svclock.c          | 96 +++++++++++++++++++++++++++++++++++++
- fs/lockd/svcproc.c          | 13 ++++-
- fs/lockd/svcsubs.c          |  2 +-
- fs/lockd/xdr.c              |  1 -
- fs/lockd/xdr4.c             |  1 -
- include/linux/lockd/lockd.h |  2 +
- 7 files changed, 123 insertions(+), 5 deletions(-)
+ Documentation/filesystems/Locking | 14 --------------
+ fs/locks.c                        |  5 -----
+ include/linux/fs.h                |  2 --
+ 3 files changed, 21 deletions(-)
 
-diff --git a/fs/lockd/svc4proc.c b/fs/lockd/svc4proc.c
-index 1bddf70d9656..90d328d61933 100644
---- a/fs/lockd/svc4proc.c
-+++ b/fs/lockd/svc4proc.c
-@@ -46,8 +46,13 @@ nlm4svc_retrieve_args(struct svc_rqst *rqstp, struct nlm_args *argp,
+diff --git a/Documentation/filesystems/Locking b/Documentation/filesystems/Locking
+index dac435575384..204dd3ea36bb 100644
+--- a/Documentation/filesystems/Locking
++++ b/Documentation/filesystems/Locking
+@@ -361,8 +361,6 @@ so fl_release_private called on a lease should not block.
  
- 		/* Set up the missing parts of the file_lock structure */
- 		lock->fl.fl_file  = file->f_file;
--		lock->fl.fl_owner = (fl_owner_t) host;
- 		lock->fl.fl_lmops = &nlmsvc_lock_operations;
-+		nlmsvc_locks_init_private(&lock->fl, host, (pid_t)lock->svid);
-+		if (!lock->fl.fl_owner) {
-+			/* lockowner allocation has failed */
-+			nlmsvc_release_host(host);
-+			return -ENOMEM;
-+		}
- 	}
+ ----------------------- lock_manager_operations ---------------------------
+ prototypes:
+-	int (*lm_compare_owner)(struct file_lock *, struct file_lock *);
+-	unsigned long (*lm_owner_key)(struct file_lock *);
+ 	void (*lm_notify)(struct file_lock *);  /* unblock callback */
+ 	int (*lm_grant)(struct file_lock *, struct file_lock *, int);
+ 	void (*lm_break)(struct file_lock *); /* break_lease callback */
+@@ -371,23 +369,11 @@ prototypes:
+ locking rules:
  
- 	return 0;
-@@ -94,6 +99,7 @@ __nlm4svc_proc_test(struct svc_rqst *rqstp, struct nlm_res *resp)
- 	else
- 		dprintk("lockd: TEST4        status %d\n", ntohl(resp->status));
+ 			inode->i_lock	blocked_lock_lock	may block
+-lm_compare_owner:	yes[1]		maybe			no
+-lm_owner_key		yes[1]		yes			no
+ lm_notify:		yes		yes			no
+ lm_grant:		no		no			no
+ lm_break:		yes		no			no
+ lm_change		yes		no			no
  
-+	nlmsvc_release_lockowner(&argp->lock);
- 	nlmsvc_release_host(host);
- 	nlm_release_file(file);
- 	return rc;
-@@ -142,6 +148,7 @@ __nlm4svc_proc_lock(struct svc_rqst *rqstp, struct nlm_res *resp)
- 	else
- 		dprintk("lockd: LOCK         status %d\n", ntohl(resp->status));
- 
-+	nlmsvc_release_lockowner(&argp->lock);
- 	nlmsvc_release_host(host);
- 	nlm_release_file(file);
- 	return rc;
-@@ -178,6 +185,7 @@ __nlm4svc_proc_cancel(struct svc_rqst *rqstp, struct nlm_res *resp)
- 	resp->status = nlmsvc_cancel_blocked(SVC_NET(rqstp), file, &argp->lock);
- 
- 	dprintk("lockd: CANCEL        status %d\n", ntohl(resp->status));
-+	nlmsvc_release_lockowner(&argp->lock);
- 	nlmsvc_release_host(host);
- 	nlm_release_file(file);
- 	return rpc_success;
-@@ -217,6 +225,7 @@ __nlm4svc_proc_unlock(struct svc_rqst *rqstp, struct nlm_res *resp)
- 	resp->status = nlmsvc_unlock(SVC_NET(rqstp), file, &argp->lock);
- 
- 	dprintk("lockd: UNLOCK        status %d\n", ntohl(resp->status));
-+	nlmsvc_release_lockowner(&argp->lock);
- 	nlmsvc_release_host(host);
- 	nlm_release_file(file);
- 	return rpc_success;
-@@ -365,6 +374,7 @@ nlm4svc_proc_share(struct svc_rqst *rqstp)
- 	resp->status = nlmsvc_share_file(host, file, argp);
- 
- 	dprintk("lockd: SHARE         status %d\n", ntohl(resp->status));
-+	nlmsvc_release_lockowner(&argp->lock);
- 	nlmsvc_release_host(host);
- 	nlm_release_file(file);
- 	return rpc_success;
-@@ -399,6 +409,7 @@ nlm4svc_proc_unshare(struct svc_rqst *rqstp)
- 	resp->status = nlmsvc_unshare_file(host, file, argp);
- 
- 	dprintk("lockd: UNSHARE       status %d\n", ntohl(resp->status));
-+	nlmsvc_release_lockowner(&argp->lock);
- 	nlmsvc_release_host(host);
- 	nlm_release_file(file);
- 	return rpc_success;
-diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
-index ea719cdd6a36..34c6ee85274e 100644
---- a/fs/lockd/svclock.c
-+++ b/fs/lockd/svclock.c
-@@ -332,6 +332,93 @@ void nlmsvc_traverse_blocks(struct nlm_host *host,
- 	mutex_unlock(&file->f_mutex);
+-[1]:	->lm_compare_owner and ->lm_owner_key are generally called with
+-*an* inode->i_lock held. It may not be the i_lock of the inode
+-associated with either file_lock argument! This is the case with deadlock
+-detection, since the code has to chase down the owners of locks that may
+-be entirely unrelated to the one on which the lock is being acquired.
+-For deadlock detection however, the blocked_lock_lock is also held. The
+-fact that these locks are held ensures that the file_locks do not
+-disappear out from under you while doing the comparison or generating an
+-owner key.
+-
+ --------------------------- buffer_head -----------------------------------
+ prototypes:
+ 	void (*b_end_io)(struct buffer_head *bh, int uptodate);
+diff --git a/fs/locks.c b/fs/locks.c
+index 8af49f89ac2f..a647182496ee 100644
+--- a/fs/locks.c
++++ b/fs/locks.c
+@@ -657,9 +657,6 @@ static inline int locks_overlap(struct file_lock *fl1, struct file_lock *fl2)
+  */
+ static int posix_same_owner(struct file_lock *fl1, struct file_lock *fl2)
+ {
+-	if (fl1->fl_lmops && fl1->fl_lmops->lm_compare_owner)
+-		return fl2->fl_lmops == fl1->fl_lmops &&
+-			fl1->fl_lmops->lm_compare_owner(fl1, fl2);
+ 	return fl1->fl_owner == fl2->fl_owner;
  }
  
-+static struct nlm_lockowner *
-+nlmsvc_get_lockowner(struct nlm_lockowner *lockowner)
-+{
-+	refcount_inc(&lockowner->count);
-+	return lockowner;
-+}
-+
-+static void nlmsvc_put_lockowner(struct nlm_lockowner *lockowner)
-+{
-+	if (!refcount_dec_and_lock(&lockowner->count, &lockowner->host->h_lock))
-+		return;
-+	list_del(&lockowner->list);
-+	spin_unlock(&lockowner->host->h_lock);
-+	nlmsvc_release_host(lockowner->host);
-+	kfree(lockowner);
-+}
-+
-+static struct nlm_lockowner *__nlmsvc_find_lockowner(struct nlm_host *host, pid_t pid)
-+{
-+	struct nlm_lockowner *lockowner;
-+	list_for_each_entry(lockowner, &host->h_lockowners, list) {
-+		if (lockowner->pid != pid)
-+			continue;
-+		return nlmsvc_get_lockowner(lockowner);
-+	}
-+	return NULL;
-+}
-+
-+static struct nlm_lockowner *nlmsvc_find_lockowner(struct nlm_host *host, pid_t pid)
-+{
-+	struct nlm_lockowner *res, *new = NULL;
-+
-+	spin_lock(&host->h_lock);
-+	res = __nlmsvc_find_lockowner(host, pid);
-+
-+	if (res == NULL) {
-+		spin_unlock(&host->h_lock);
-+		new = kmalloc(sizeof(*res), GFP_KERNEL);
-+		spin_lock(&host->h_lock);
-+		res = __nlmsvc_find_lockowner(host, pid);
-+		if (res == NULL && new != NULL) {
-+			res = new;
-+			/* fs/locks.c will manage the refcount through lock_ops */
-+			refcount_set(&new->count, 1);
-+			new->pid = pid;
-+			new->host = nlm_get_host(host);
-+			list_add(&new->list, &host->h_lockowners);
-+			new = NULL;
-+		}
-+	}
-+
-+	spin_unlock(&host->h_lock);
-+	kfree(new);
-+	return res;
-+}
-+
-+void
-+nlmsvc_release_lockowner(struct nlm_lock *lock)
-+{
-+	if (lock->fl.fl_owner)
-+		nlmsvc_put_lockowner(lock->fl.fl_owner);
-+}
-+
-+static void nlmsvc_locks_copy_lock(struct file_lock *new, struct file_lock *fl)
-+{
-+	struct nlm_lockowner *nlm_lo = (struct nlm_lockowner *)fl->fl_owner;
-+	new->fl_owner = nlmsvc_get_lockowner(nlm_lo);
-+}
-+
-+static void nlmsvc_locks_release_private(struct file_lock *fl)
-+{
-+	nlmsvc_put_lockowner((struct nlm_lockowner *)fl->fl_owner);
-+}
-+
-+const struct file_lock_operations nlmsvc_lock_ops = {
-+	.fl_copy_lock = nlmsvc_locks_copy_lock,
-+	.fl_release_private = nlmsvc_locks_release_private,
-+};
-+
-+void nlmsvc_locks_init_private(struct file_lock *fl, struct nlm_host *host,
-+						pid_t pid)
-+{
-+	fl->fl_owner = nlmsvc_find_lockowner(host, pid);
-+	if (fl->fl_owner != NULL)
-+		fl->fl_ops = &nlmsvc_lock_ops;
-+}
-+
- /*
-  * Initialize arguments for GRANTED call. The nlm_rqst structure
-  * has been cleared already.
-@@ -509,6 +596,7 @@ nlmsvc_testlock(struct svc_rqst *rqstp, struct nlm_file *file,
+@@ -700,8 +697,6 @@ static void locks_delete_global_locks(struct file_lock *fl)
+ static unsigned long
+ posix_owner_key(struct file_lock *fl)
  {
- 	int			error;
- 	__be32			ret;
-+	struct nlm_lockowner	*test_owner;
+-	if (fl->fl_lmops && fl->fl_lmops->lm_owner_key)
+-		return fl->fl_lmops->lm_owner_key(fl);
+ 	return (unsigned long)fl->fl_owner;
+ }
  
- 	dprintk("lockd: nlmsvc_testlock(%s/%ld, ty=%d, %Ld-%Ld)\n",
- 				locks_inode(file->f_file)->i_sb->s_id,
-@@ -522,6 +610,9 @@ nlmsvc_testlock(struct svc_rqst *rqstp, struct nlm_file *file,
- 		goto out;
- 	}
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index f7fdfe93e25d..0fa010bb7b6a 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -1019,8 +1019,6 @@ struct file_lock_operations {
+ };
  
-+	/* If there's a conflicting lock, remember to clean up the test lock */
-+	test_owner = (struct nlm_lockowner *)lock->fl.fl_owner;
-+
- 	error = vfs_test_lock(file->f_file, &lock->fl);
- 	if (error) {
- 		/* We can't currently deal with deferred test requests */
-@@ -548,6 +639,11 @@ nlmsvc_testlock(struct svc_rqst *rqstp, struct nlm_file *file,
- 	conflock->fl.fl_start = lock->fl.fl_start;
- 	conflock->fl.fl_end = lock->fl.fl_end;
- 	locks_release_private(&lock->fl);
-+
-+	/* Clean up the test lock */
-+	lock->fl.fl_owner = NULL;
-+	nlmsvc_put_lockowner(test_owner);
-+
- 	ret = nlm_lck_denied;
- out:
- 	return ret;
-diff --git a/fs/lockd/svcproc.c b/fs/lockd/svcproc.c
-index ea77c66d3cc3..665b7adad3c4 100644
---- a/fs/lockd/svcproc.c
-+++ b/fs/lockd/svcproc.c
-@@ -76,8 +76,13 @@ nlmsvc_retrieve_args(struct svc_rqst *rqstp, struct nlm_args *argp,
- 
- 		/* Set up the missing parts of the file_lock structure */
- 		lock->fl.fl_file  = file->f_file;
--		lock->fl.fl_owner = (fl_owner_t) host;
- 		lock->fl.fl_lmops = &nlmsvc_lock_operations;
-+		nlmsvc_locks_init_private(&lock->fl, host, (pid_t)lock->svid);
-+		if (!lock->fl.fl_owner) {
-+			/* lockowner allocation has failed */
-+			nlmsvc_release_host(host);
-+			return -ENOMEM;
-+		}
- 	}
- 
- 	return 0;
-@@ -125,6 +130,7 @@ __nlmsvc_proc_test(struct svc_rqst *rqstp, struct nlm_res *resp)
- 		dprintk("lockd: TEST          status %d vers %d\n",
- 			ntohl(resp->status), rqstp->rq_vers);
- 
-+	nlmsvc_release_lockowner(&argp->lock);
- 	nlmsvc_release_host(host);
- 	nlm_release_file(file);
- 	return rc;
-@@ -173,6 +179,7 @@ __nlmsvc_proc_lock(struct svc_rqst *rqstp, struct nlm_res *resp)
- 	else
- 		dprintk("lockd: LOCK         status %d\n", ntohl(resp->status));
- 
-+	nlmsvc_release_lockowner(&argp->lock);
- 	nlmsvc_release_host(host);
- 	nlm_release_file(file);
- 	return rc;
-@@ -210,6 +217,7 @@ __nlmsvc_proc_cancel(struct svc_rqst *rqstp, struct nlm_res *resp)
- 	resp->status = cast_status(nlmsvc_cancel_blocked(net, file, &argp->lock));
- 
- 	dprintk("lockd: CANCEL        status %d\n", ntohl(resp->status));
-+	nlmsvc_release_lockowner(&argp->lock);
- 	nlmsvc_release_host(host);
- 	nlm_release_file(file);
- 	return rpc_success;
-@@ -250,6 +258,7 @@ __nlmsvc_proc_unlock(struct svc_rqst *rqstp, struct nlm_res *resp)
- 	resp->status = cast_status(nlmsvc_unlock(net, file, &argp->lock));
- 
- 	dprintk("lockd: UNLOCK        status %d\n", ntohl(resp->status));
-+	nlmsvc_release_lockowner(&argp->lock);
- 	nlmsvc_release_host(host);
- 	nlm_release_file(file);
- 	return rpc_success;
-@@ -408,6 +417,7 @@ nlmsvc_proc_share(struct svc_rqst *rqstp)
- 	resp->status = cast_status(nlmsvc_share_file(host, file, argp));
- 
- 	dprintk("lockd: SHARE         status %d\n", ntohl(resp->status));
-+	nlmsvc_release_lockowner(&argp->lock);
- 	nlmsvc_release_host(host);
- 	nlm_release_file(file);
- 	return rpc_success;
-@@ -442,6 +452,7 @@ nlmsvc_proc_unshare(struct svc_rqst *rqstp)
- 	resp->status = cast_status(nlmsvc_unshare_file(host, file, argp));
- 
- 	dprintk("lockd: UNSHARE       status %d\n", ntohl(resp->status));
-+	nlmsvc_release_lockowner(&argp->lock);
- 	nlmsvc_release_host(host);
- 	nlm_release_file(file);
- 	return rpc_success;
-diff --git a/fs/lockd/svcsubs.c b/fs/lockd/svcsubs.c
-index 899360ba3b84..4ee04b725042 100644
---- a/fs/lockd/svcsubs.c
-+++ b/fs/lockd/svcsubs.c
-@@ -179,7 +179,7 @@ nlm_traverse_locks(struct nlm_host *host, struct nlm_file *file,
- 		/* update current lock count */
- 		file->f_locks++;
- 
--		lockhost = (struct nlm_host *) fl->fl_owner;
-+		lockhost = ((struct nlm_lockowner *)fl->fl_owner)->host;
- 		if (match(lockhost, host)) {
- 			struct file_lock lock = *fl;
- 
-diff --git a/fs/lockd/xdr.c b/fs/lockd/xdr.c
-index 7147e4aebecc..ec717ae41ee3 100644
---- a/fs/lockd/xdr.c
-+++ b/fs/lockd/xdr.c
-@@ -126,7 +126,6 @@ nlm_decode_lock(__be32 *p, struct nlm_lock *lock)
- 	lock->svid  = ntohl(*p++);
- 
- 	locks_init_lock(fl);
--	fl->fl_owner = current->files;
- 	fl->fl_pid   = (pid_t)lock->svid;
- 	fl->fl_flags = FL_POSIX;
- 	fl->fl_type  = F_RDLCK;		/* as good as anything else */
-diff --git a/fs/lockd/xdr4.c b/fs/lockd/xdr4.c
-index 7ed9edf9aed4..45741adfe041 100644
---- a/fs/lockd/xdr4.c
-+++ b/fs/lockd/xdr4.c
-@@ -118,7 +118,6 @@ nlm4_decode_lock(__be32 *p, struct nlm_lock *lock)
- 	lock->svid  = ntohl(*p++);
- 
- 	locks_init_lock(fl);
--	fl->fl_owner = current->files;
- 	fl->fl_pid   = (pid_t)lock->svid;
- 	fl->fl_flags = FL_POSIX;
- 	fl->fl_type  = F_RDLCK;		/* as good as anything else */
-diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
-index c9b422dde542..d294dde9e546 100644
---- a/include/linux/lockd/lockd.h
-+++ b/include/linux/lockd/lockd.h
-@@ -282,6 +282,7 @@ void		  nlmsvc_traverse_blocks(struct nlm_host *, struct nlm_file *,
- 					nlm_host_match_fn_t match);
- void		  nlmsvc_grant_reply(struct nlm_cookie *, __be32);
- void		  nlmsvc_release_call(struct nlm_rqst *);
-+void		  nlmsvc_locks_init_private(struct file_lock *, struct nlm_host *, pid_t);
- 
- /*
-  * File handling for the server personality
-@@ -289,6 +290,7 @@ void		  nlmsvc_release_call(struct nlm_rqst *);
- __be32		  nlm_lookup_file(struct svc_rqst *, struct nlm_file **,
- 					struct nfs_fh *);
- void		  nlm_release_file(struct nlm_file *);
-+void		  nlmsvc_release_lockowner(struct nlm_lock *);
- void		  nlmsvc_mark_resources(struct net *);
- void		  nlmsvc_free_host_resources(struct nlm_host *);
- void		  nlmsvc_invalidate_all(void);
+ struct lock_manager_operations {
+-	int (*lm_compare_owner)(struct file_lock *, struct file_lock *);
+-	unsigned long (*lm_owner_key)(struct file_lock *);
+ 	fl_owner_t (*lm_get_owner)(fl_owner_t);
+ 	void (*lm_put_owner)(fl_owner_t);
+ 	void (*lm_notify)(struct file_lock *);	/* unblock callback */
 -- 
 2.20.1
 
