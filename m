@@ -2,85 +2,87 @@ Return-Path: <SRS0=OKGc=TX=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 29A43C282DD
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 57B87C46460
 	for <linux-nfs@archiver.kernel.org>; Thu, 23 May 2019 14:29:06 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id F358E217D9
-	for <linux-nfs@archiver.kernel.org>; Thu, 23 May 2019 14:29:05 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 2A4A02177E
+	for <linux-nfs@archiver.kernel.org>; Thu, 23 May 2019 14:29:06 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1730826AbfEWO3F (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S1730790AbfEWO3F (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Thu, 23 May 2019 10:29:05 -0400
-Received: from mx1.redhat.com ([209.132.183.28]:37046 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:46518 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1730790AbfEWO3F (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        id S1730729AbfEWO3F (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
         Thu, 23 May 2019 10:29:05 -0400
-Received: from smtp.corp.redhat.com (int-mx05.intmail.prod.int.phx2.redhat.com [10.5.11.15])
+Received: from smtp.corp.redhat.com (int-mx04.intmail.prod.int.phx2.redhat.com [10.5.11.14])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 57A5B3092656;
+        by mx1.redhat.com (Postfix) with ESMTPS id 44C4A3082B64;
         Thu, 23 May 2019 14:29:05 +0000 (UTC)
 Received: from bcodding.csb (ovpn-66-2.rdu2.redhat.com [10.10.66.2])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 0EC3D5B681;
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 077BC5DE00;
         Thu, 23 May 2019 14:29:05 +0000 (UTC)
 Received: by bcodding.csb (Postfix, from userid 24008)
-        id B9335109C3CB; Thu, 23 May 2019 10:28:41 -0400 (EDT)
+        id CB0C6109C3D0; Thu, 23 May 2019 10:28:41 -0400 (EDT)
 From:   Benjamin Coddington <bcodding@redhat.com>
 To:     "J . Bruce Fields" <bfields@redhat.com>, jlayton@kernel.org
 Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH 0/5] NLM fl_pid fixup
-Date:   Thu, 23 May 2019 10:28:36 -0400
-Message-Id: <cover.1558620385.git.bcodding@redhat.com>
+Subject: [PATCH 3/5] lockd: Remove lm_compare_owner and lm_owner_key
+Date:   Thu, 23 May 2019 10:28:39 -0400
+Message-Id: <a196b9f5534c3c099fa49e01ba0906306540e993.1558620385.git.bcodding@redhat.com>
+In-Reply-To: <cover.1558620385.git.bcodding@redhat.com>
+References: <cover.1558620385.git.bcodding@redhat.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.15
-X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.43]); Thu, 23 May 2019 14:29:05 +0000 (UTC)
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.14
+X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.45]); Thu, 23 May 2019 14:29:05 +0000 (UTC)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-This series aims to correct the fl_pid value for locks held by the NLM
-server, or lockd.  It applies onto the revert of the previous attempt to fix
-this problem sent ealier this week: '[PATCH] Revert "lockd: Show pid of
-lockd for remote locks"'.
+Now that the NLM server allocates an nlm_lockowner for fl_owner, there's
+no need for special hashing or comparison.
 
-The problem with the earlier attempt was that we discarded the svid, and so
-we couldn't distinguish remote lockowners on each host.  It is necessary to
-turn the svid and host into a distinct owner.
+Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
+---
+ fs/lockd/svclock.c | 18 ------------------
+ 1 file changed, 18 deletions(-)
 
-We can take a page from the NLM client and make an allocation to track the
-svid and host together, which is what we do here.  The mechanisms to do so
-aren't quite similar enough to generalize, but I did share the nlm_lockowner
-structure.  There is one field unsed on the server: nlm_lockowner.owner.
-
-It turns out that the LTP's testcases/network/nfsv4/locks/locktests.c was
-useful for testing this, as it coordinates locking tests amongst NFS
-clients.
-
-Benjamin Coddington (5):
-  lockd: prepare nlm_lockowner for use by the server
-  lockd: Convert NLM service fl_owner to nlm_lockowner
-  lockd: Remove lm_compare_owner and lm_owner_key
-  lockd: Show pid of lockd for remote locks
-  locks: Cleanup lm_compare_owner and lm_owner_key
-
- Documentation/filesystems/Locking |  14 ----
- fs/lockd/clntproc.c               |  21 +++---
- fs/lockd/svc4proc.c               |  14 +++-
- fs/lockd/svclock.c                | 118 +++++++++++++++++++++++++-----
- fs/lockd/svcproc.c                |  14 +++-
- fs/lockd/svcsubs.c                |   2 +-
- fs/lockd/xdr.c                    |   3 -
- fs/lockd/xdr4.c                   |   3 -
- fs/locks.c                        |   5 --
- include/linux/fs.h                |   2 -
- include/linux/lockd/lockd.h       |   2 +
- 11 files changed, 138 insertions(+), 60 deletions(-)
-
+diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
+index 193b36c741fe..56c5fa75950c 100644
+--- a/fs/lockd/svclock.c
++++ b/fs/lockd/svclock.c
+@@ -788,25 +788,7 @@ nlmsvc_notify_blocked(struct file_lock *fl)
+ 	printk(KERN_WARNING "lockd: notification for unknown block!\n");
+ }
+ 
+-static int nlmsvc_same_owner(struct file_lock *fl1, struct file_lock *fl2)
+-{
+-	return fl1->fl_owner == fl2->fl_owner && fl1->fl_pid == fl2->fl_pid;
+-}
+-
+-/*
+- * Since NLM uses two "keys" for tracking locks, we need to hash them down
+- * to one for the blocked_hash. Here, we're just xor'ing the host address
+- * with the pid in order to create a key value for picking a hash bucket.
+- */
+-static unsigned long
+-nlmsvc_owner_key(struct file_lock *fl)
+-{
+-	return (unsigned long)fl->fl_owner ^ (unsigned long)fl->fl_pid;
+-}
+-
+ const struct lock_manager_operations nlmsvc_lock_operations = {
+-	.lm_compare_owner = nlmsvc_same_owner,
+-	.lm_owner_key = nlmsvc_owner_key,
+ 	.lm_notify = nlmsvc_notify_blocked,
+ 	.lm_grant = nlmsvc_grant_deferred,
+ };
 -- 
 2.20.1
 
