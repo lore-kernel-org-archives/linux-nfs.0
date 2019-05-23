@@ -4,234 +4,234 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS
-	autolearn=unavailable autolearn_force=no version=3.4.0
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5E8B1C282E1
-	for <linux-nfs@archiver.kernel.org>; Thu, 23 May 2019 16:19:08 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B164AC282DD
+	for <linux-nfs@archiver.kernel.org>; Thu, 23 May 2019 17:43:01 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 33DD92175B
-	for <linux-nfs@archiver.kernel.org>; Thu, 23 May 2019 16:19:08 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 836142177E
+	for <linux-nfs@archiver.kernel.org>; Thu, 23 May 2019 17:43:01 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1731249AbfEWQSx (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 23 May 2019 12:18:53 -0400
-Received: from mx1.redhat.com ([209.132.183.28]:52812 "EHLO mx1.redhat.com"
+        id S1731243AbfEWRnB (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 23 May 2019 13:43:01 -0400
+Received: from mx1.redhat.com ([209.132.183.28]:46048 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1731107AbfEWQSx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 23 May 2019 12:18:53 -0400
-Received: from smtp.corp.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+        id S1731217AbfEWRnA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 23 May 2019 13:43:00 -0400
+Received: from smtp.corp.redhat.com (int-mx04.intmail.prod.int.phx2.redhat.com [10.5.11.14])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 71540308FBA9;
-        Thu, 23 May 2019 16:18:52 +0000 (UTC)
-Received: from warthog.procyon.org.uk (ovpn-121-142.rdu2.redhat.com [10.10.121.142])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id D6568604CC;
-        Thu, 23 May 2019 16:18:50 +0000 (UTC)
-Organization: Red Hat UK Ltd. Registered Address: Red Hat UK Ltd, Amberley
- Place, 107-111 Peascod Street, Windsor, Berkshire, SI4 1TE, United
- Kingdom.
- Registered in England and Wales under Company Registration No. 3798903
-Subject: [PATCH 21/23] NFS: Add a small buffer in nfs_fs_context to avoid
- string dup
-From:   David Howells <dhowells@redhat.com>
-To:     trond.myklebust@hammerspace.com, anna.schumaker@netapp.com
-Cc:     Al Viro <viro@zeniv.linux.org.uk>, dhowells@redhat.com,
-        viro@zeniv.linux.org.uk, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
-Date:   Thu, 23 May 2019 17:18:50 +0100
-Message-ID: <155862832993.26654.13644247168126569903.stgit@warthog.procyon.org.uk>
-In-Reply-To: <155862813755.26654.563679411147031501.stgit@warthog.procyon.org.uk>
-References: <155862813755.26654.563679411147031501.stgit@warthog.procyon.org.uk>
-User-Agent: StGit/unknown-version
+        by mx1.redhat.com (Postfix) with ESMTPS id 85D1D300602A;
+        Thu, 23 May 2019 17:43:00 +0000 (UTC)
+Received: from madhat.boston.devel.redhat.com (ovpn-116-47.phx2.redhat.com [10.3.116.47])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 2502768363;
+        Thu, 23 May 2019 17:43:00 +0000 (UTC)
+Subject: Re: [nfs-utils:nfsidmap PATCH v2] Add LDAP_tls_reqcert tunable to
+ idmapd.conf.
+To:     Srikrishan Malik <srikrishanmalik@gmail.com>
+Cc:     linux-nfs@vger.kernel.org
+References: <0a9cbe6a-3c24-08d5-7383-f32bd8be4e09@RedHat.com>
+ <20190523161014.60182-1-srikrishanmalik@gmail.com>
+From:   Steve Dickson <SteveD@RedHat.com>
+Message-ID: <5d801096-fcc0-5da9-eae1-1134802bf084@RedHat.com>
+Date:   Thu, 23 May 2019 13:42:59 -0400
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101
+ Thunderbird/60.6.1
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+In-Reply-To: <20190523161014.60182-1-srikrishanmalik@gmail.com>
+Content-Type: text/plain; charset=utf-8
+Content-Language: en-US
 Content-Transfer-Encoding: 7bit
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.11
-X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.43]); Thu, 23 May 2019 16:18:52 +0000 (UTC)
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.14
+X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.40]); Thu, 23 May 2019 17:43:00 +0000 (UTC)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Add a small buffer in nfs_fs_context to avoid string duplication when
-parsing numbers.  Also make the parsing function wrapper place the parsed
-integer directly in the appropriate nfs_fs_context struct member.
 
-Signed-off-by: David Howells <dhowells@redhat.com>
-Signed-off-by: Al Viro <viro@zeniv.linux.org.uk>
----
 
- fs/nfs/fs_context.c |   82 +++++++++++++++++++--------------------------------
- fs/nfs/internal.h   |    2 +
- 2 files changed, 32 insertions(+), 52 deletions(-)
+On 5/23/19 12:10 PM, Srikrishan Malik wrote:
+> This tunable will control the checks on server certs for a TLS session
+> similar to ldap.conf(5).
+> LDAP_ca_cert can be skipped if LDAP_tls_reqcert is set to "never"
+> 
+> Signed-off-by: Srikrishan Malik <srikrishanmalik@gmail.com>
+> ---
+>  support/nfsidmap/idmapd.conf   |  8 ++++-
+>  support/nfsidmap/idmapd.conf.5 | 11 ++++++-
+>  support/nfsidmap/umich_ldap.c  | 57 ++++++++++++++++++++++++++++------
+>  3 files changed, 64 insertions(+), 12 deletions(-)
+Thank you for the updates... Committed!!
 
-diff --git a/fs/nfs/fs_context.c b/fs/nfs/fs_context.c
-index c7796fb76732..5ba534127c0b 100644
---- a/fs/nfs/fs_context.c
-+++ b/fs/nfs/fs_context.c
-@@ -467,27 +467,22 @@ static int nfs_get_option_str(substring_t args[], char **option)
- 	return !*option;
- }
- 
--static int nfs_get_option_ul(substring_t args[], unsigned long *option)
-+static int nfs_get_option_ui(struct nfs_fs_context *ctx,
-+			     substring_t args[], unsigned int *option)
- {
--	int rc;
--	char *string;
--
--	string = match_strdup(args);
--	if (string == NULL)
--		return -ENOMEM;
--	rc = kstrtoul(string, 10, option);
--	kfree(string);
--
--	return rc;
-+	match_strlcpy(ctx->buf, args, sizeof(ctx->buf));
-+	return kstrtouint(ctx->buf, 10, option);
- }
- 
--static int nfs_get_option_ul_bound(substring_t args[], unsigned long *option,
--		unsigned long l_bound, unsigned long u_bound)
-+static int nfs_get_option_ui_bound(struct nfs_fs_context *ctx,
-+				   substring_t args[], unsigned int *option,
-+				   unsigned int l_bound, unsigned u_bound)
- {
- 	int ret;
- 
--	ret = nfs_get_option_ul(args, option);
--	if (ret != 0)
-+	match_strlcpy(ctx->buf, args, sizeof(ctx->buf));
-+	ret = kstrtouint(ctx->buf, 10, option);
-+	if (ret < 0)
- 		return ret;
- 	if (*option < l_bound || *option > u_bound)
- 		return -ERANGE;
-@@ -500,7 +495,6 @@ static int nfs_get_option_ul_bound(substring_t args[], unsigned long *option,
- static int nfs_fs_context_parse_option(struct nfs_fs_context *ctx, char *p)
- {
- 	substring_t args[MAX_OPT_ARGS];
--	unsigned long option;
- 	char *string;
- 	int token, rc;
- 
-@@ -608,86 +602,70 @@ static int nfs_fs_context_parse_option(struct nfs_fs_context *ctx, char *p)
- 		 * options that take numeric values
- 		 */
- 	case Opt_port:
--		if (nfs_get_option_ul(args, &option) ||
--		    option > USHRT_MAX)
-+		if (nfs_get_option_ui_bound(ctx, args, &ctx->nfs_server.port,
-+					    0, USHRT_MAX))
- 			goto out_invalid_value;
--		ctx->nfs_server.port = option;
- 		break;
- 	case Opt_rsize:
--		if (nfs_get_option_ul(args, &option))
-+		if (nfs_get_option_ui(ctx, args, &ctx->rsize))
- 			goto out_invalid_value;
--		ctx->rsize = option;
- 		break;
- 	case Opt_wsize:
--		if (nfs_get_option_ul(args, &option))
-+		if (nfs_get_option_ui(ctx, args, &ctx->wsize))
- 			goto out_invalid_value;
--		ctx->wsize = option;
- 		break;
- 	case Opt_bsize:
--		if (nfs_get_option_ul(args, &option))
-+		if (nfs_get_option_ui(ctx, args, &ctx->bsize))
- 			goto out_invalid_value;
--		ctx->bsize = option;
- 		break;
- 	case Opt_timeo:
--		if (nfs_get_option_ul_bound(args, &option, 1, INT_MAX))
-+		if (nfs_get_option_ui_bound(ctx, args, &ctx->timeo, 1, INT_MAX))
- 			goto out_invalid_value;
--		ctx->timeo = option;
- 		break;
- 	case Opt_retrans:
--		if (nfs_get_option_ul_bound(args, &option, 0, INT_MAX))
-+		if (nfs_get_option_ui_bound(ctx, args, &ctx->retrans, 0, INT_MAX))
- 			goto out_invalid_value;
--		ctx->retrans = option;
- 		break;
- 	case Opt_acregmin:
--		if (nfs_get_option_ul(args, &option))
-+		if (nfs_get_option_ui(ctx, args, &ctx->acregmin))
- 			goto out_invalid_value;
--		ctx->acregmin = option;
- 		break;
- 	case Opt_acregmax:
--		if (nfs_get_option_ul(args, &option))
-+		if (nfs_get_option_ui(ctx, args, &ctx->acregmax))
- 			goto out_invalid_value;
--		ctx->acregmax = option;
- 		break;
- 	case Opt_acdirmin:
--		if (nfs_get_option_ul(args, &option))
-+		if (nfs_get_option_ui(ctx, args, &ctx->acdirmin))
- 			goto out_invalid_value;
--		ctx->acdirmin = option;
- 		break;
- 	case Opt_acdirmax:
--		if (nfs_get_option_ul(args, &option))
-+		if (nfs_get_option_ui(ctx, args, &ctx->acdirmax))
- 			goto out_invalid_value;
--		ctx->acdirmax = option;
- 		break;
- 	case Opt_actimeo:
--		if (nfs_get_option_ul(args, &option))
-+		if (nfs_get_option_ui(ctx, args, &ctx->acdirmax))
- 			goto out_invalid_value;
- 		ctx->acregmin = ctx->acregmax =
--			ctx->acdirmin = ctx->acdirmax = option;
-+			ctx->acdirmin = ctx->acdirmax;
- 		break;
- 	case Opt_namelen:
--		if (nfs_get_option_ul(args, &option))
-+		if (nfs_get_option_ui(ctx, args, &ctx->namlen))
- 			goto out_invalid_value;
--		ctx->namlen = option;
- 		break;
- 	case Opt_mountport:
--		if (nfs_get_option_ul(args, &option) ||
--		    option > USHRT_MAX)
-+		if (nfs_get_option_ui_bound(ctx, args, &ctx->mount_server.port,
-+					    0, USHRT_MAX))
- 			goto out_invalid_value;
--		ctx->mount_server.port = option;
- 		break;
- 	case Opt_mountvers:
--		if (nfs_get_option_ul(args, &option) ||
--		    option < NFS_MNT_VERSION ||
--		    option > NFS_MNT3_VERSION)
-+		if (nfs_get_option_ui_bound(ctx, args, &ctx->mount_server.version,
-+					    NFS_MNT_VERSION, NFS_MNT3_VERSION))
- 			goto out_invalid_value;
--		ctx->mount_server.version = option;
- 		break;
- 	case Opt_minorversion:
--		if (nfs_get_option_ul(args, &option))
--			goto out_invalid_value;
--		if (option > NFS4_MAX_MINOR_VERSION)
-+		if (nfs_get_option_ui_bound(ctx, args, &ctx->minorversion,
-+					    0, NFS4_MAX_MINOR_VERSION))
- 			goto out_invalid_value;
--		ctx->minorversion = option;
- 		break;
- 
- 		/*
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index c4a1203163ba..6efdbedeeee8 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -129,6 +129,8 @@ struct nfs_fs_context {
- 
- 	void			*lsm_opts;
- 	struct net		*net;
-+
-+	char			buf[32];	/* Parse buffer */
- };
- 
- /* mount_clnt.c */
-
+steved.
+> 
+> diff --git a/support/nfsidmap/idmapd.conf b/support/nfsidmap/idmapd.conf
+> index f07286c3..b673c7d7 100644
+> --- a/support/nfsidmap/idmapd.conf
+> +++ b/support/nfsidmap/idmapd.conf
+> @@ -101,7 +101,13 @@ LDAP_base = dc=local,dc=domain,dc=edu
+>  # Set to true to enable SSL - anything else is not enabled
+>  #LDAP_use_ssl = false
+>  
+> -# You must specify a CA certificate location if you enable SSL
+> +# Controls the LDAP server certificate validation behavior
+> +# It can take the same values as ldap.conf(5)'s TLS_REQCERT
+> +# tunable
+> +#LDAP_tls_reqcert = "hard"
+> +
+> +# Location of CA certificate, mandatory if LDAP_tls_reqcert
+> +# is not set to "never"
+>  #LDAP_ca_cert = /etc/ldapca.cert
+>  
+>  # Objectclass mapping information
+> diff --git a/support/nfsidmap/idmapd.conf.5 b/support/nfsidmap/idmapd.conf.5
+> index 9a6457e2..61fbb613 100644
+> --- a/support/nfsidmap/idmapd.conf.5
+> +++ b/support/nfsidmap/idmapd.conf.5
+> @@ -195,7 +195,16 @@ Set to "true" to enable SSL communication with the LDAP server.
+>  Location of a trusted CA certificate used when SSL is enabled
+>  (Required if
+>  .B LDAP_use_ssl
+> -is true)
+> +is true and
+> +.B LDAP_tls_reqcert
+> +is not set to never)
+> +.TP
+> +.B LDAP_tls_reqcert
+> +Controls the LDAP server certificate validation behavior.
+> +It can take the same values as ldap.conf(5)'s
+> +.B TLS_REQCERT
+> +tunable.
+> +(Default: "hard")
+>  .TP
+>  .B NFSv4_person_objectclass
+>  The object class name for people accounts in your local LDAP schema
+> diff --git a/support/nfsidmap/umich_ldap.c b/support/nfsidmap/umich_ldap.c
+> index 10d1d979..b7445c37 100644
+> --- a/support/nfsidmap/umich_ldap.c
+> +++ b/support/nfsidmap/umich_ldap.c
+> @@ -100,6 +100,7 @@ struct umich_ldap_info {
+>  	char *passwd;		/* Password to use when binding to directory */
+>  	int use_ssl;		/* SSL flag */
+>  	char *ca_cert;		/* File location of the ca_cert */
+> +	int tls_reqcert;	/* req and validate server cert */
+>  	int memberof_for_groups;/* Use 'memberof' attribute when
+>  				   looking up user groups */
+>  	int ldap_timeout;	/* Timeout in seconds for searches
+> @@ -118,6 +119,7 @@ static struct umich_ldap_info ldap_info = {
+>  	.passwd = NULL,
+>  	.use_ssl = 0,
+>  	.ca_cert = NULL,
+> +	.tls_reqcert = LDAP_OPT_X_TLS_HARD,
+>  	.memberof_for_groups = 0,
+>  	.ldap_timeout = DEFAULT_UMICH_SEARCH_TIMEOUT,
+>  };
+> @@ -153,7 +155,7 @@ ldap_init_and_bind(LDAP **pld,
+>  	LDAPAPIInfo apiinfo = {.ldapai_info_version = LDAP_API_INFO_VERSION};
+>  
+>  	snprintf(server_url, sizeof(server_url), "%s://%s:%d",
+> -		 (linfo->use_ssl && linfo->ca_cert) ? "ldaps" : "ldap",
+> +		 (linfo->use_ssl) ? "ldaps" : "ldap",
+>  		 linfo->server, linfo->port);
+>  
+>  	/*
+> @@ -208,9 +210,8 @@ ldap_init_and_bind(LDAP **pld,
+>  	}
+>  
+>  	/* Set option to to use SSL/TLS if requested */
+> -	if (linfo->use_ssl && linfo->ca_cert) {
+> +	if (linfo->use_ssl) {
+>  		int tls_type = LDAP_OPT_X_TLS_HARD;
+> -
+>  		lerr = ldap_set_option(ld, LDAP_OPT_X_TLS, &tls_type);
+>  		if (lerr != LDAP_SUCCESS) {
+>  			IDMAP_LOG(2, ("ldap_init_and_bind: setting SSL "
+> @@ -218,11 +219,23 @@ ldap_init_and_bind(LDAP **pld,
+>  				  ldap_err2string(lerr), lerr));
+>  			goto out;
+>  		}
+> -		lerr = ldap_set_option(NULL, LDAP_OPT_X_TLS_CACERTFILE,
+> -				       linfo->ca_cert);
+> +
+> +		if (linfo->ca_cert != NULL) {
+> +			lerr = ldap_set_option(NULL, LDAP_OPT_X_TLS_CACERTFILE,
+> +					       linfo->ca_cert);
+> +			if (lerr != LDAP_SUCCESS) {
+> +				IDMAP_LOG(2, ("ldap_init_and_bind: setting CA "
+> +					  "certificate file failed : %s (%d)",
+> +					  ldap_err2string(lerr), lerr));
+> +				goto out;
+> +			}
+> +		}
+> +
+> +		lerr = ldap_set_option(NULL, LDAP_OPT_X_TLS_REQUIRE_CERT,
+> +				       &linfo->tls_reqcert);
+>  		if (lerr != LDAP_SUCCESS) {
+> -			IDMAP_LOG(2, ("ldap_init_and_bind: setting CA "
+> -				  "certificate file failed : %s (%d)",
+> +			IDMAP_LOG(2, ("ldap_init_and_bind: setting "
+> +				      "req CA cert failed : %s(%d)",
+>  				  ldap_err2string(lerr), lerr));
+>  			goto out;
+>  		}
+> @@ -1098,7 +1111,7 @@ out_err:
+>  static int
+>  umichldap_init(void)
+>  {
+> -	char *tssl, *canonicalize, *memberof;
+> +	char *tssl, *canonicalize, *memberof, *cert_req;
+>  	char missing_msg[128] = "";
+>  	char *server_in, *canon_name;
+>  
+> @@ -1119,6 +1132,24 @@ umichldap_init(void)
+>  	else
+>  		ldap_info.use_ssl = 0;
+>  	ldap_info.ca_cert = conf_get_str(LDAP_SECTION, "LDAP_CA_CERT");
+> +	cert_req = conf_get_str(LDAP_SECTION, "LDAP_tls_reqcert");
+> +	if (cert_req != NULL) {
+> +		if (strcasecmp(cert_req, "hard") == 0)
+> +			ldap_info.tls_reqcert = LDAP_OPT_X_TLS_HARD;
+> +		else if (strcasecmp(cert_req, "demand") == 0)
+> +			ldap_info.tls_reqcert = LDAP_OPT_X_TLS_DEMAND;
+> +		else if (strcasecmp(cert_req, "try") == 0)
+> +			ldap_info.tls_reqcert = LDAP_OPT_X_TLS_TRY;
+> +		else if (strcasecmp(cert_req, "allow") == 0)
+> +			ldap_info.tls_reqcert = LDAP_OPT_X_TLS_ALLOW;
+> +		else if (strcasecmp(cert_req, "never") == 0)
+> +			ldap_info.tls_reqcert = LDAP_OPT_X_TLS_NEVER;
+> +		else {
+> +			IDMAP_LOG(0, ("umichldap_init: Invalid value(%s) for "
+> +				      "LDAP_tls_reqcert."));
+> +			goto fail;
+> +		}
+> +	}
+>  	/* vary the default port depending on whether they use SSL or not */
+>  	ldap_info.port = conf_get_num(LDAP_SECTION, "LDAP_port",
+>  				      (ldap_info.use_ssl) ?
+> @@ -1230,9 +1261,12 @@ umichldap_init(void)
+>  	if (ldap_info.group_tree == NULL || strlen(ldap_info.group_tree) == 0)
+>  		ldap_info.group_tree = ldap_info.base;
+>  
+> -	if (ldap_info.use_ssl && ldap_info.ca_cert == NULL) {
+> +	if (ldap_info.use_ssl &&
+> +	    ldap_info.tls_reqcert != LDAP_OPT_X_TLS_NEVER &&
+> +	    ldap_info.ca_cert == NULL) {
+>  		IDMAP_LOG(0, ("umichldap_init: You must specify LDAP_ca_cert "
+> -			  "with LDAP_use_ssl=yes"));
+> +			  "with LDAP_use_ssl=yes and "
+> +			  "LDAP_tls_reqcert not set to \"never\""));
+>  		goto fail;
+>  	}
+>  
+> @@ -1257,6 +1291,9 @@ umichldap_init(void)
+>  		  ldap_info.use_ssl ? "yes" : "no"));
+>  	IDMAP_LOG(1, ("umichldap_init: ca_cert : %s",
+>  		  ldap_info.ca_cert ? ldap_info.ca_cert : "<not-supplied>"));
+> +	IDMAP_LOG(1, ("umichldap_init: tls_reqcert : %s(%d)",
+> +		  cert_req ? cert_req : "<not-supplied>",
+> +		  ldap_info.tls_reqcert));
+>  	IDMAP_LOG(1, ("umichldap_init: use_memberof_for_groups : %s",
+>  		  ldap_info.memberof_for_groups ? "yes" : "no"));
+>  
+> 
