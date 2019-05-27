@@ -2,47 +2,119 @@ Return-Path: <SRS0=sIaT=T3=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=0.9 required=3.0 tests=DATE_IN_PAST_06_12,
-	DKIM_ADSP_NXDOMAIN,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
-	SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-8.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
+	URIBL_BLOCKED,USER_AGENT_MUTT autolearn=unavailable autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 921D3C04AB3
-	for <linux-nfs@archiver.kernel.org>; Mon, 27 May 2019 20:47:11 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3371DC04AB3
+	for <linux-nfs@archiver.kernel.org>; Mon, 27 May 2019 22:29:27 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 7212C2075E
-	for <linux-nfs@archiver.kernel.org>; Mon, 27 May 2019 20:47:11 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 0C7D720815
+	for <linux-nfs@archiver.kernel.org>; Mon, 27 May 2019 22:29:26 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726975AbfE0UrK (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 27 May 2019 16:47:10 -0400
-Received: from dolcegabbana.com ([198.23.132.36]:33851 "EHLO petraband.com"
-        rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1727090AbfE0UrK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 27 May 2019 16:47:10 -0400
-To:     linux-nfs@vger.kernel.org
-Subject: Need traffic for your website?
-Message-ID: <b2e074072b911df880e8f735779799b0@walkeralextra.tech>
-Date:   Mon, 27 May 2019 11:38:29 +0200
-From:   "Alex Walker" <schutz@walkeralextra.tech>
-Reply-To: fanfenqi@sina.com
+        id S1727018AbfE0W30 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 27 May 2019 18:29:26 -0400
+Received: from mail106.syd.optusnet.com.au ([211.29.132.42]:44441 "EHLO
+        mail106.syd.optusnet.com.au" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1726905AbfE0W30 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 27 May 2019 18:29:26 -0400
+X-Greylist: delayed 1444 seconds by postgrey-1.27 at vger.kernel.org; Mon, 27 May 2019 18:29:23 EDT
+Received: from dread.disaster.area (pa49-180-144-61.pa.nsw.optusnet.com.au [49.180.144.61])
+        by mail106.syd.optusnet.com.au (Postfix) with ESMTPS id 4A54A3DCEE1;
+        Tue, 28 May 2019 08:05:14 +1000 (AEST)
+Received: from dave by dread.disaster.area with local (Exim 4.92)
+        (envelope-from <david@fromorbit.com>)
+        id 1hVNk1-0006hz-7b; Tue, 28 May 2019 08:05:13 +1000
+Date:   Tue, 28 May 2019 08:05:13 +1000
+From:   Dave Chinner <david@fromorbit.com>
+To:     Luis Henriques <lhenriques@suse.com>
+Cc:     Amir Goldstein <amir73il@gmail.com>,
+        "Darrick J . Wong" <darrick.wong@oracle.com>,
+        Christoph Hellwig <hch@lst.de>,
+        Olga Kornievskaia <olga.kornievskaia@gmail.com>,
+        Al Viro <viro@zeniv.linux.org.uk>,
+        linux-fsdevel@vger.kernel.org, linux-xfs@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
+        ceph-devel@vger.kernel.org, linux-api@vger.kernel.org,
+        Dave Chinner <dchinner@redhat.com>
+Subject: Re: [PATCH v2 6/8] vfs: copy_file_range should update file timestamps
+Message-ID: <20190527220513.GB29573@dread.disaster.area>
+References: <20190526061100.21761-1-amir73il@gmail.com>
+ <20190526061100.21761-7-amir73il@gmail.com>
+ <20190527143539.GA14980@hermes.olymp>
 MIME-Version: 1.0
-Content-Type: text/plain; format=flowed; charset="UTF-8"
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20190527143539.GA14980@hermes.olymp>
+User-Agent: Mutt/1.10.1 (2018-07-13)
+X-Optus-CM-Score: 0
+X-Optus-CM-Analysis: v=2.2 cv=FNpr/6gs c=1 sm=1 tr=0 cx=a_idp_d
+        a=8RU0RCro9O0HS2ezTvitPg==:117 a=8RU0RCro9O0HS2ezTvitPg==:17
+        a=jpOVt7BSZ2e4Z31A5e1TngXxSK0=:19 a=kj9zAlcOel0A:10 a=E5NmQfObTbMA:10
+        a=20KFwNOVAAAA:8 a=pGLkceISAAAA:8 a=7-415B0cAAAA:8 a=6473QJAXGLPk3sUS-KIA:9
+        a=CjuIK1q_8ugA:10 a=biEYGPWJfzWAr4FL6Ov7:22
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hi
+On Mon, May 27, 2019 at 03:35:39PM +0100, Luis Henriques wrote:
+> On Sun, May 26, 2019 at 09:10:57AM +0300, Amir Goldstein wrote:
+> > From: Dave Chinner <dchinner@redhat.com>
+> > 
+> > Timestamps are not updated right now, so programs looking for
+> > timestamp updates for file modifications (like rsync) will not
+> > detect that files have changed. We are also accessing the source
+> > data when doing a copy (but not when cloning) so we need to update
+> > atime on the source file as well.
+> > 
+> > Signed-off-by: Dave Chinner <dchinner@redhat.com>
+> > Signed-off-by: Amir Goldstein <amir73il@gmail.com>
+> > ---
+> >  fs/read_write.c | 10 ++++++++++
+> >  1 file changed, 10 insertions(+)
+> > 
+> > diff --git a/fs/read_write.c b/fs/read_write.c
+> > index e16bcafc0da2..4b23a86aacd9 100644
+> > --- a/fs/read_write.c
+> > +++ b/fs/read_write.c
+> > @@ -1576,6 +1576,16 @@ int generic_copy_file_range_prep(struct file *file_in, struct file *file_out)
+> >  
+> >  	WARN_ON_ONCE(!inode_is_locked(file_inode(file_out)));
+> >  
+> > +	/* Update source timestamps, because we are accessing file data */
+> > +	file_accessed(file_in);
+> > +
+> > +	/* Update destination timestamps, since we can alter file contents. */
+> > +	if (!(file_out->f_mode & FMODE_NOCMTIME)) {
+> > +		ret = file_update_time(file_out);
+> > +		if (ret)
+> > +			return ret;
+> > +	}
+> > +
+> 
+> Is this the right place for updating the timestamps?  I see that in same
+> cases we may be updating the timestamp even if there was an error and no
+> copy was performed.  For example, if file_remove_privs fails.
 
-Do you need traffic for your website, or ecommerce store?
-We can bring 1-2 thousands of visitors to your website daily.
+It's the same place we do it for read - file_accessed() is called
+before we do the IO - and the same place for write -
+file_update_time() is called before we copy data into the pagecache
+or do direct IO. As such, it really doesn't matter if it is before
+or after file_remove_privs() - the IO can still fail for many
+reasons after we've updated the timestamps and in some of the
+failure cases (e.g. we failed the sync at the end of an O_DSYNC
+buffered write) we still want the timestamps to be modified because
+the data and/or user visible metadata /may/ have been changed.
 
-No matter what you are selling, products or service. Getting more traffic
-is the key to your business.
+cfr operates under the same constraints as read() and write(), so we
+need to update the timestamps up front regardless of whether the
+copy ends up succeeding or not....
 
-Please reply if interested, we will go options for you.
+Cheers,
 
-Thanks,
-Alex Walker
-Whatsapp: +8617199402387
-
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
