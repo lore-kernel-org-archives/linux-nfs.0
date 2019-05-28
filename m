@@ -7,57 +7,58 @@ X-Spam-Status: No, score=-6.9 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
 	SPF_HELO_NONE,SPF_PASS autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id CF857C072B1
-	for <linux-nfs@archiver.kernel.org>; Tue, 28 May 2019 16:37:10 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2B312C04AB6
+	for <linux-nfs@archiver.kernel.org>; Tue, 28 May 2019 16:39:25 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id A63032166E
-	for <linux-nfs@archiver.kernel.org>; Tue, 28 May 2019 16:37:10 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 04B3B216FD
+	for <linux-nfs@archiver.kernel.org>; Tue, 28 May 2019 16:39:25 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="VGw9h+5S"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="DM21Whm2"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726937AbfE1QhI (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 28 May 2019 12:37:08 -0400
-Received: from mail-yb1-f195.google.com ([209.85.219.195]:36348 "EHLO
-        mail-yb1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726362AbfE1QhH (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 28 May 2019 12:37:07 -0400
-Received: by mail-yb1-f195.google.com with SMTP id y2so5310828ybo.3;
-        Tue, 28 May 2019 09:37:07 -0700 (PDT)
+        id S1726827AbfE1QjW (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 28 May 2019 12:39:22 -0400
+Received: from mail-yw1-f65.google.com ([209.85.161.65]:38766 "EHLO
+        mail-yw1-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726600AbfE1QjW (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 28 May 2019 12:39:22 -0400
+Received: by mail-yw1-f65.google.com with SMTP id b74so8150721ywe.5;
+        Tue, 28 May 2019 09:39:21 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=mime-version:references:in-reply-to:from:date:message-id:subject:to
          :cc;
-        bh=PYyoMvDm/dXGRe/O4V7JuzdN8o4UlUgeVG3yspmetXo=;
-        b=VGw9h+5SH8G2eQBLA4yzErLGp2JcQz5xkbxQhD17r2EyO4n3JzIrewbU9I6o6WONw+
-         Mugd6wgNJT9XNvgGJT/WIeboXrmaLDPR45HipqdaZbOIVLZcrOLkcglAUq8Kc2QmXlSV
-         s4e7wBZAeV9aFiknfm+jQaohyzMx3FIkXPtYUnMx3UCuonMt/FtPqMBdXuMupYe31rsT
-         MvsTYmpTrm95yu80x68xgVtFk12/7AcIrwnq6iPGNMy8h4BUb9Fo/al5ZshH2YCM5KIU
-         MBHrjChha7QRDMatUFEQhQ2LMObbsKY/AIe7bsF1pqIxjcCsB91CkmJboWNIHzpnS4ew
-         iwPw==
+        bh=kml4jUoEmHUUXVU1c7AViVp4FPM02sigk8d9DK0mLzY=;
+        b=DM21Whm2L3cVgyx84wQDA/8HkSa3vmE2RxWxa5lp22AbmIh2SpsoPqlgSRhCAdo+1Y
+         GSQKZy3B9olrPkd5nzl/C9vPni8uIlJ40X918/v46kgdqtCNBSS5pnQhRusLxSDgqgdJ
+         Vz9xt9/xpSuhTF+1KPioCUJcj/3eYoaNwR1a1cbIkjekkhqdmefpIXUUoPY+Ua+XoSba
+         b4hbU81lTdQWnjhTUPyvPW5yeErG2zuI2lQfUn3rk7x1j7m0bUuyJYyZcM2WSNX8cLnF
+         fns0Q0rjh8OUnnU6Rf6M7mAenmCWWYHHwO53c40vof3mdC9ACND2uFlU+QjrPgY+9WAr
+         BsyQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:mime-version:references:in-reply-to:from:date
          :message-id:subject:to:cc;
-        bh=PYyoMvDm/dXGRe/O4V7JuzdN8o4UlUgeVG3yspmetXo=;
-        b=d/dE1b3H4v6blKnu1qrsoxbbsmsviOI9EFNYjb4Rps2ajHaUXCRFiIAqQwKiYygjji
-         QczPv4xzkJb47T8RfeGhZZAnG5c4KIqr2I3rKECGA694nkexFtl+9SQiKclHUAnAfobF
-         q7skc2ZQDIaKtWxmsJa6NUazOYvcV9tA1RD9gEPTILeSCuj8GeDn4d+qplWydvBJsoLq
-         CnstKHpJeT0i4Q/V8zhqDc16SPHiPtRHvV6LFfQNCK2wFSdS+4AOM8Tn7MI3YXF2BQTQ
-         bAeTE2IGcGrUdcUiEc40yuBdoejUPXO5KzhHE/wZQZQkiMPV+uyiOttqXQ3NieSX7Tom
-         6lTw==
-X-Gm-Message-State: APjAAAXU4AXZRr/Q8WpwbEHoOrD44rav7SHW+jjWKkYGnGDrwqksEdFc
-        s4vUiIAlH4yOX216pmcU5YiJsy7OoQWsDQrp0JM=
-X-Google-Smtp-Source: APXvYqzNmXIBn6/oTpIvfmHhHyE9ZsSfbV4ffVVj9wkSHo/L8B4c8X2QTwsa87MpFpK8M5ofJUZjdRtBA0rjxm3gF1g=
-X-Received: by 2002:a25:d946:: with SMTP id q67mr2138643ybg.126.1559061426538;
- Tue, 28 May 2019 09:37:06 -0700 (PDT)
+        bh=kml4jUoEmHUUXVU1c7AViVp4FPM02sigk8d9DK0mLzY=;
+        b=lqP4bF5V1bpXT950u7LnImQSOl7H2vrrCLbCLyISRCfILIqftTHeqnqvSty11/6hSp
+         sMsJM/jyniY16OdiHzpzenn18pupbPqnihvNYSPbPZJuwEEOA9yIO2znCUxO/n9NK6Ly
+         OWURA4LXCXTAoyRYdOLF3VIcDSWNC1zy4nF8zoe6tUsAKECBVZKgUpFsMVkfBNXJeIYa
+         WoZoQPPU/r3TuF7mWt9fTlmn8vlm8m1HIvgH6Vbm+f+PsLou5ugR9xSaTxfAe4Pfpuh/
+         zNykLYZN7ixwLwJhDM9CNI+kqVRKjTErPt5SCN8iycpZ5w9lB3pGKEuVIHZWJCDZZD37
+         HSrg==
+X-Gm-Message-State: APjAAAUBYHS0XoI4n/YEhy1aHlCuhlhE5R3ZiWBBAqzWJ2TvdHPcgATp
+        T3VOT3ahVbcWYMWFXXsWjrDTTQXb6bdRQpooy1Q8GA==
+X-Google-Smtp-Source: APXvYqzlubAJ/K4Y7oaRG7mSHMdyNuXaFC7wQy8zL7nH/3Jiqu85o1NpFnI0umEUqiUpBhKMxrjWEotS0Soa3Ydrm4k=
+X-Received: by 2002:a81:1186:: with SMTP id 128mr50033634ywr.181.1559061561339;
+ Tue, 28 May 2019 09:39:21 -0700 (PDT)
 MIME-Version: 1.0
-References: <20190526061100.21761-1-amir73il@gmail.com> <20190526061100.21761-7-amir73il@gmail.com>
- <20190528163020.GF5221@magnolia>
-In-Reply-To: <20190528163020.GF5221@magnolia>
+References: <20190526061100.21761-1-amir73il@gmail.com> <20190526061100.21761-5-amir73il@gmail.com>
+ <20190528161829.GD5221@magnolia> <CAOQ4uxjRJmiwM4L9ZFHi8rfjX87-xJ=+9HSeTgUyRyTUnkF6PA@mail.gmail.com>
+ <20190528163110.GG5221@magnolia>
+In-Reply-To: <20190528163110.GG5221@magnolia>
 From:   Amir Goldstein <amir73il@gmail.com>
-Date:   Tue, 28 May 2019 19:36:55 +0300
-Message-ID: <CAOQ4uxh1Tk+ZN+hiEJLsSFP8Q=RNPEaJ_FDG_XkzkrtBXBL65A@mail.gmail.com>
-Subject: Re: [PATCH v2 6/8] vfs: copy_file_range should update file timestamps
+Date:   Tue, 28 May 2019 19:39:10 +0300
+Message-ID: <CAOQ4uxg4JEyzKCd-OGiox-mLth2At7hFM-WDGfqdVc2WTBr3cA@mail.gmail.com>
+Subject: Re: [PATCH v2 4/8] vfs: add missing checks to copy_file_range
 To:     "Darrick J. Wong" <darrick.wong@oracle.com>
 Cc:     Dave Chinner <david@fromorbit.com>, Christoph Hellwig <hch@lst.de>,
         Olga Kornievskaia <olga.kornievskaia@gmail.com>,
@@ -74,51 +75,78 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Tue, May 28, 2019 at 7:30 PM Darrick J. Wong <darrick.wong@oracle.com> wrote:
+On Tue, May 28, 2019 at 7:31 PM Darrick J. Wong <darrick.wong@oracle.com> wrote:
 >
-> On Sun, May 26, 2019 at 09:10:57AM +0300, Amir Goldstein wrote:
-> > From: Dave Chinner <dchinner@redhat.com>
+> On Tue, May 28, 2019 at 07:26:29PM +0300, Amir Goldstein wrote:
+> > On Tue, May 28, 2019 at 7:18 PM Darrick J. Wong <darrick.wong@oracle.com> wrote:
+> > >
+> > > On Sun, May 26, 2019 at 09:10:55AM +0300, Amir Goldstein wrote:
+> > > > Like the clone and dedupe interfaces we've recently fixed, the
+> > > > copy_file_range() implementation is missing basic sanity, limits and
+> > > > boundary condition tests on the parameters that are passed to it
+> > > > from userspace. Create a new "generic_copy_file_checks()" function
+> > > > modelled on the generic_remap_checks() function to provide this
+> > > > missing functionality.
+> > > >
+> > > > [Amir] Shorten copy length instead of checking pos_in limits
+> > > > because input file size already abides by the limits.
+> > > >
+> > > > Signed-off-by: Dave Chinner <dchinner@redhat.com>
+> > > > Signed-off-by: Amir Goldstein <amir73il@gmail.com>
+> > > > ---
+> > > >  fs/read_write.c    |  3 ++-
+> > > >  include/linux/fs.h |  3 +++
+> > > >  mm/filemap.c       | 53 ++++++++++++++++++++++++++++++++++++++++++++++
+> > > >  3 files changed, 58 insertions(+), 1 deletion(-)
+> > > >
+> > > > diff --git a/fs/read_write.c b/fs/read_write.c
+> > > > index f1900bdb3127..b0fb1176b628 100644
+> > > > --- a/fs/read_write.c
+> > > > +++ b/fs/read_write.c
+> > > > @@ -1626,7 +1626,8 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
+> > > >       if (file_inode(file_in)->i_sb != file_inode(file_out)->i_sb)
+> > > >               return -EXDEV;
+> > > >
+> > > > -     ret = generic_file_rw_checks(file_in, file_out);
+> > > > +     ret = generic_copy_file_checks(file_in, pos_in, file_out, pos_out, &len,
+> > > > +                                    flags);
+> > > >       if (unlikely(ret))
+> > > >               return ret;
+> > > >
+> > > > diff --git a/include/linux/fs.h b/include/linux/fs.h
+> > > > index 89b9b73eb581..e4d382c4342a 100644
+> > > > --- a/include/linux/fs.h
+> > > > +++ b/include/linux/fs.h
+> > > > @@ -3050,6 +3050,9 @@ extern int generic_remap_checks(struct file *file_in, loff_t pos_in,
+> > > >                               struct file *file_out, loff_t pos_out,
+> > > >                               loff_t *count, unsigned int remap_flags);
+> > > >  extern int generic_file_rw_checks(struct file *file_in, struct file *file_out);
+> > > > +extern int generic_copy_file_checks(struct file *file_in, loff_t pos_in,
+> > > > +                                 struct file *file_out, loff_t pos_out,
+> > > > +                                 size_t *count, unsigned int flags);
+> > > >  extern ssize_t generic_file_read_iter(struct kiocb *, struct iov_iter *);
+> > > >  extern ssize_t __generic_file_write_iter(struct kiocb *, struct iov_iter *);
+> > > >  extern ssize_t generic_file_write_iter(struct kiocb *, struct iov_iter *);
+> > > > diff --git a/mm/filemap.c b/mm/filemap.c
+> > > > index 798aac92cd76..1852fbf08eeb 100644
+> > > > --- a/mm/filemap.c
+> > > > +++ b/mm/filemap.c
+> > > > @@ -3064,6 +3064,59 @@ int generic_file_rw_checks(struct file *file_in, struct file *file_out)
+> > > >       return 0;
+> > > >  }
+> > > >
+> > > > +/*
+> > > > + * Performs necessary checks before doing a file copy
+> > > > + *
+> > > > + * Can adjust amount of bytes to copy
+> > >
+> > > That's the @req_count parameter, correct?
 > >
-> > Timestamps are not updated right now, so programs looking for
-> > timestamp updates for file modifications (like rsync) will not
-> > detect that files have changed. We are also accessing the source
-> > data when doing a copy (but not when cloning) so we need to update
-> > atime on the source file as well.
-> >
-> > Signed-off-by: Dave Chinner <dchinner@redhat.com>
-> > Signed-off-by: Amir Goldstein <amir73il@gmail.com>
-> > ---
-> >  fs/read_write.c | 10 ++++++++++
-> >  1 file changed, 10 insertions(+)
-> >
-> > diff --git a/fs/read_write.c b/fs/read_write.c
-> > index e16bcafc0da2..4b23a86aacd9 100644
-> > --- a/fs/read_write.c
-> > +++ b/fs/read_write.c
-> > @@ -1576,6 +1576,16 @@ int generic_copy_file_range_prep(struct file *file_in, struct file *file_out)
-> >
-> >       WARN_ON_ONCE(!inode_is_locked(file_inode(file_out)));
-> >
-> > +     /* Update source timestamps, because we are accessing file data */
-> > +     file_accessed(file_in);
-> > +
-> > +     /* Update destination timestamps, since we can alter file contents. */
-> > +     if (!(file_out->f_mode & FMODE_NOCMTIME)) {
-> > +             ret = file_update_time(file_out);
-> > +             if (ret)
-> > +                     return ret;
-> > +     }
-> > +
-> >       /*
-> >        * Clear the security bits if the process is not being run by root.
-> >        * This keeps people from modifying setuid and setgid binaries.
+> > Correct. Same as generic_remap_checks()
 >
-> Should the file_update_time and file_remove_privs calls be factored into
-> a separate small function to be called by generic_{copy,remap}_range_prep?
+> Ok.  Would you mind updating the comment?
 >
-
-Ok. same helper could be called also after copy when inode is not locked
-throughout the copy.
+OK.
 
 Thanks,
 Amir.
