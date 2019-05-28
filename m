@@ -2,99 +2,106 @@ Return-Path: <SRS0=hGXo=T4=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
-	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-8.9 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E4085C04AB6
-	for <linux-nfs@archiver.kernel.org>; Tue, 28 May 2019 20:11:04 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 42412C072B1
+	for <linux-nfs@archiver.kernel.org>; Tue, 28 May 2019 20:33:33 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id A263020989
-	for <linux-nfs@archiver.kernel.org>; Tue, 28 May 2019 20:11:04 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 1CD8820B7C
+	for <linux-nfs@archiver.kernel.org>; Tue, 28 May 2019 20:33:33 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=umich.edu header.i=@umich.edu header.b="qcB/Zw/A"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="RjGBVQz6"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726963AbfE1ULE (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 28 May 2019 16:11:04 -0400
-Received: from mail-vs1-f66.google.com ([209.85.217.66]:36180 "EHLO
-        mail-vs1-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726619AbfE1ULE (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 28 May 2019 16:11:04 -0400
-Received: by mail-vs1-f66.google.com with SMTP id l20so140589vsp.3
-        for <linux-nfs@vger.kernel.org>; Tue, 28 May 2019 13:11:03 -0700 (PDT)
+        id S1726511AbfE1Udc (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 28 May 2019 16:33:32 -0400
+Received: from mail-it1-f196.google.com ([209.85.166.196]:54336 "EHLO
+        mail-it1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726812AbfE1Udc (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 28 May 2019 16:33:32 -0400
+Received: by mail-it1-f196.google.com with SMTP id h20so6577528itk.4
+        for <linux-nfs@vger.kernel.org>; Tue, 28 May 2019 13:33:32 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=umich.edu; s=google-2016-06-03;
-        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
-         :cc;
-        bh=cPAIY+whBLSRKV6IzZSSuzLjBaWPb1OznTe1vF3VBng=;
-        b=qcB/Zw/AmUhz2sOvUMDD8oWtDbVtR9WCoWuhqk1sLCgOHEjXm0RKj4L9l3p+WZfA2C
-         T6hrZoUnwak6WrlK2HuYDNVQjozJPGJayBVJ+ehCOtScfBZ3FjxuPnn0tUQb4+fVe638
-         SMgkmTKze6qWTjMVE9l61vLB8cnvg6UKxC9iF0ctLvXz40tys4LJ/2y5BpZHnr1uUEky
-         1t7+RNKEHF1W3xmHaA4w+mKnSzbS+vI2ymQVm/y3IYDOMtZFxhBTQOS8YGKSCHzLklzp
-         b4/kyPvdqyQFrTK+Rq8egOM2UyeAqn7Cwj0TfGSBxhSnwCfBfshVcY0wg4j48P19hp6A
-         makw==
+        d=gmail.com; s=20161025;
+        h=from:to:cc:subject:date:message-id:in-reply-to:references
+         :mime-version:content-transfer-encoding;
+        bh=0106F+OIYuqVEg46cY8S9oFV/iyDhlYutv2OgfNUAlo=;
+        b=RjGBVQz6NQpznw+aHfsqdPr9Xz9oHWvf3xvIyy2anhUJCWl1lE45KaD83Z1PvUDy6K
+         W8VPN6IVx9CwhExI0TMC9M1vUu2TSko3HOApaIBKcXMsdaO9oy+1K32hI0Y6fsZpfypP
+         wTOd9cWD2MJBeyGjTjEXlF/tKRGjTB+lVnvQ0adn6acdjy0d7iiGLq5Dk0NHN8/IvR04
+         tAOc0nQ5sN/ZMrn2lPQSChz2eZgkVJzwwaBSBOR3J3+IhgUmGqf8XKNhR+GOvZsNjnUd
+         sAemyw1aqXSdY2faFV30St/ocUbMW87QBA5QK6xsmnwWiYqla3o7B9Mhb34za2F08Hr/
+         mM6Q==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
-         :message-id:subject:to:cc;
-        bh=cPAIY+whBLSRKV6IzZSSuzLjBaWPb1OznTe1vF3VBng=;
-        b=kmc8KDgNTaeeE04Tm6JpCC8fLDlf6GuWuWqYccAqcOeD0fl4WZcPm9Dtsr6mibt937
-         SJS8US+Oc56kLHTyTbPVdOwj2TgYGjFOwXD24Hu17HwOxakcFzZPl5d+y7Ortf+aQob8
-         MMKBfAWdC1QlS6RzYKeN+eo0pzwYL9Ffzx0n8SJF5hh3o5EirIoYfmWLGTeywJL3jnf0
-         lSE8EzQsvIX00IqiqPiZdP0uG+EELW0tbdHjeEzt56t6gctwHmfEAaKfi+U3PZzo4dFK
-         QSdGgGfUm57IkAGWFFnIJxehaoGD8+yduCvub/4oRcQDCEy8ixfweBDh2YNETa28HZRT
-         YRBw==
-X-Gm-Message-State: APjAAAW8fwlmcdCLGinIe56k5yCge1BaUaqeIN22ffN9AUJWD/kJrh3k
-        OGSuJXeLXE+7nXchpzzPGwzvpuMRGb+HIh1nii4=
-X-Google-Smtp-Source: APXvYqwWouQtVRoN8syuzlSCcjjolonabHN7eJUT2WgwapIqotpIkGwdh6ph6Ury5utzIjhdPNdJy4ghu/y+KO+6SiY=
-X-Received: by 2002:a67:f610:: with SMTP id k16mr68907012vso.85.1559074263116;
- Tue, 28 May 2019 13:11:03 -0700 (PDT)
+        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
+         :references:mime-version:content-transfer-encoding;
+        bh=0106F+OIYuqVEg46cY8S9oFV/iyDhlYutv2OgfNUAlo=;
+        b=cVkmvmZkJT0HajoNgLAxXPEX03reuK6yYELobf4Ptb3TTGhXFmzd1slXNBWC1Iixf4
+         dOAYEZZnHqROp/oBaKroIo6Gs1/rugn2wnpClr7qIn6wcEJZMj8HgRaulvRSh1tEHdBU
+         WcPvZAam4DtmZXKQDvh8WjGqnLYXxAS2LCZve1/llvfv4Nq3sjOhWX+RYUiyGq0MXFVY
+         90KGgb0/pPJdd3SCxEoga1PkFIlVmoN78OYi5LatbGnYkBtXL0fw6KGK7shvwFUtLnEI
+         vHxOzD8iaqQLSUS+3RRwlU7slJ0arGPWANEsgccZcbWQNvlOoedtG33zAVLdn4SaMNvZ
+         wLWQ==
+X-Gm-Message-State: APjAAAX8paVGImEdpbG7FjdCdUcMcKzKse620Oxcugt7oFFQgXGFWAhl
+        9rsH5+qiqUPqmqYqa1zGoPgl+jg=
+X-Google-Smtp-Source: APXvYqwCQmDcMfqwTpYfJh9aJExL11azF+EB1WPCOKtpyriZx8b7cggxaq04OytGJvcrWrJxVzAsDw==
+X-Received: by 2002:a24:d405:: with SMTP id x5mr4460074itg.85.1559075611356;
+        Tue, 28 May 2019 13:33:31 -0700 (PDT)
+Received: from localhost.localdomain (50-124-247-140.alma.mi.frontiernet.net. [50.124.247.140])
+        by smtp.gmail.com with ESMTPSA id i141sm53089ite.20.2019.05.28.13.33.30
+        (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
+        Tue, 28 May 2019 13:33:30 -0700 (PDT)
+From:   Trond Myklebust <trondmy@gmail.com>
+X-Google-Original-From: Trond Myklebust <trond.myklebust@hammerspace.com>
+To:     SteveD@redhat.com
+Cc:     linux-nfs@vger.kernel.org
+Subject: [PATCH v3 01/11] mountd: Ensure we don't share cache file descriptors among processes.
+Date:   Tue, 28 May 2019 16:31:12 -0400
+Message-Id: <20190528203122.11401-2-trond.myklebust@hammerspace.com>
+X-Mailer: git-send-email 2.21.0
+In-Reply-To: <20190528203122.11401-1-trond.myklebust@hammerspace.com>
+References: <20190528203122.11401-1-trond.myklebust@hammerspace.com>
 MIME-Version: 1.0
-References: <20190503111841.4391-1-trond.myklebust@hammerspace.com>
- <20190503111841.4391-2-trond.myklebust@hammerspace.com> <20190503111841.4391-3-trond.myklebust@hammerspace.com>
- <20190503111841.4391-4-trond.myklebust@hammerspace.com> <20190503111841.4391-5-trond.myklebust@hammerspace.com>
- <20190503111841.4391-6-trond.myklebust@hammerspace.com>
-In-Reply-To: <20190503111841.4391-6-trond.myklebust@hammerspace.com>
-From:   Olga Kornievskaia <aglo@umich.edu>
-Date:   Tue, 28 May 2019 16:10:52 -0400
-Message-ID: <CAN-5tyGDV1O=kfay2iu0g6cFkDRfFQrBTn-wfQowyGrAMY5fBw@mail.gmail.com>
-Subject: Re: [RFC PATCH 5/5] SUNRPC: Reduce the priority of the xprtiod queue
-To:     Trond Myklebust <trondmy@gmail.com>
-Cc:     Chuck Lever <chuck.lever@oracle.com>,
-        linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Fri, May 3, 2019 at 7:24 AM Trond Myklebust <trondmy@gmail.com> wrote:
->
-> Allow more time for softirqd
->
-> Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
-> ---
->  net/sunrpc/sched.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
->
-> diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
-> index c7e81336620c..6b37c9a4b48f 100644
-> --- a/net/sunrpc/sched.c
-> +++ b/net/sunrpc/sched.c
-> @@ -1253,7 +1253,7 @@ static int rpciod_start(void)
->                 goto out_failed;
->         rpciod_workqueue = wq;
->         /* Note: highpri because network receive is latency sensitive */
-> -       wq = alloc_workqueue("xprtiod", WQ_UNBOUND|WQ_MEM_RECLAIM|WQ_HIGHPRI, 0);
+Sharing cache descriptors without using locking can be very bad.
 
-I thought we needed UNBOUND otherwise there was performance
-degradation for read IO.
+Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
+---
+ utils/mountd/mountd.c | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
 
-> +       wq = alloc_workqueue("xprtiod", WQ_MEM_RECLAIM | WQ_UNBOUND, 0);
->         if (!wq)
->                 goto free_rpciod;
->         xprtiod_workqueue = wq;
-> --
-> 2.21.0
->
+diff --git a/utils/mountd/mountd.c b/utils/mountd/mountd.c
+index fb7bba4cd390..88a207b3a85a 100644
+--- a/utils/mountd/mountd.c
++++ b/utils/mountd/mountd.c
+@@ -836,8 +836,6 @@ main(int argc, char **argv)
+ 	if (!foreground)
+ 		closeall(3);
+ 
+-	cache_open();
+-
+ 	unregister_services();
+ 	if (version2()) {
+ 		listeners += nfs_svc_create("mountd", MOUNTPROG,
+@@ -888,6 +886,9 @@ main(int argc, char **argv)
+ 	if (num_threads > 1)
+ 		fork_workers();
+ 
++	/* Open files now to avoid sharing descriptors among forked processes */
++	cache_open();
++
+ 	xlog(L_NOTICE, "Version " VERSION " starting");
+ 	my_svc_run();
+ 
+-- 
+2.21.0
+
