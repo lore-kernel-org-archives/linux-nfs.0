@@ -8,69 +8,67 @@ X-Spam-Status: No, score=-8.9 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 46741C282E5
-	for <linux-nfs@archiver.kernel.org>; Tue, 28 May 2019 20:33:39 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 81F6EC04E84
+	for <linux-nfs@archiver.kernel.org>; Tue, 28 May 2019 20:33:37 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 2070E20B7C
-	for <linux-nfs@archiver.kernel.org>; Tue, 28 May 2019 20:33:39 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 57B5220B7C
+	for <linux-nfs@archiver.kernel.org>; Tue, 28 May 2019 20:33:37 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="fddSIUaK"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="W6Rif6RO"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727327AbfE1Udi (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 28 May 2019 16:33:38 -0400
-Received: from mail-io1-f67.google.com ([209.85.166.67]:32919 "EHLO
-        mail-io1-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727326AbfE1Udi (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 28 May 2019 16:33:38 -0400
-Received: by mail-io1-f67.google.com with SMTP id u13so8233114iop.0
-        for <linux-nfs@vger.kernel.org>; Tue, 28 May 2019 13:33:37 -0700 (PDT)
+        id S1727274AbfE1Udg (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 28 May 2019 16:33:36 -0400
+Received: from mail-it1-f195.google.com ([209.85.166.195]:54342 "EHLO
+        mail-it1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727075AbfE1Udg (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 28 May 2019 16:33:36 -0400
+Received: by mail-it1-f195.google.com with SMTP id h20so6577788itk.4
+        for <linux-nfs@vger.kernel.org>; Tue, 28 May 2019 13:33:36 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references
          :mime-version:content-transfer-encoding;
-        bh=Dr8LTDNKO45rO36gvIhPaB8D1XPrwcjls5cN6OG5laE=;
-        b=fddSIUaKkpHK5usq50YhQOG0cKr07mx93O0D6bGhfHraewvpsVk+Db1rM/o7q+BI37
-         dSRtOjZ1RSMcddmV7Ebc/liNEFzEjx5488ArYF0C2fDQinsfTyYFe8QuwR5i2/TpIUD3
-         CSTHeUwcBSDf5/BNt/+1NLnlViMEAYkW4fbXDgsJuxgpROCMhpMrA1P1N1ziiHBPxAmb
-         b5r9eoy/w4m74PlOM+J+/CJwwRlbtlO4PbpzoUqMDuqQ5OTV/Eu/tKcLWzlylNxju1Gm
-         z706THHpBXXtR3oMvlLMDHyBP4d3roCzk+JBqR/bHg0D6B5HZdoG5WViwNOVDGEj0Ifv
-         DN2A==
+        bh=D3/TxchU2n2gzIYFsg7JMYu+zzAMXglufU3zmYXuRPo=;
+        b=W6Rif6RO7xt43y6PWH7P/ll2Lp2yUXIRb2NfC3F9gc656KzDaCGYJoYnZo3gE6yhPS
+         UzLAQpG+PJmNLTOc6J19QJSJDIJoHSA0vatEG2ORML9xswcPrxasmdcJhrTGnQGaioUU
+         ygCpybsoNc1EjlRlqvyum9dlM0YyPuvThN9Gpop+yGQffSHO43x/t/oVunTc4O2qIHCf
+         kGmTJtlIZi2QFm1bUKUt1nmZugvmUUVbZ40uOO1qdqlV+kaTRHTF+eH3v5ds58XqciEX
+         SBygKHzzndGQq/nKVNwP27Wc/6kimpZiLQ7pJhH/eu1aGT3MI9R9lTtAWJll48pT7Kja
+         yxoQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=Dr8LTDNKO45rO36gvIhPaB8D1XPrwcjls5cN6OG5laE=;
-        b=BeagZJZ9QWyXYen1W1U2fI5p+yUfSTOE2BcomqM9Q3eZNAkeNjo5bPrBR4Zk56ZoUq
-         8aRO8hCBDAl6dQ1HEDYZAE2fvef6tMYwYspKNQm+hhEuivL33SiGMzBVBSiqAAsTi0dU
-         ES99FaX6aBljaaEt9lIl+Scxlsbd+c1vFWvHC4k5WNwaOGWo/DcEmnNmWBEEIbBN7Lyw
-         Xjc23B3mC7jUSJfK3Q5BGjbNP3J1e7Sk4nqKIWHisfrVYsrHB3CpinkAzbX+uSK/KlSD
-         TTc9Ad/V0QGzvAgle4t3pOI8zDGJgMBDoo13ZGRhLPW/09bOtWr8uP896scwl6ffYEjV
-         HKsw==
-X-Gm-Message-State: APjAAAWtp34UVKs27giB2JwsTaxc+SlbmaDzM0uDul2coJyStExTF1vZ
-        Ll6MWYmh8uHdVgYKPL9fAQ==
-X-Google-Smtp-Source: APXvYqyW97lSgHOP+axYT7ks4XMVNq/N52Pa2VDEsIxbQ5DcaVwQbOXgY3uvuvZnhgiM2m0SW66veQ==
-X-Received: by 2002:a5d:80d1:: with SMTP id h17mr22428882ior.58.1559075617002;
-        Tue, 28 May 2019 13:33:37 -0700 (PDT)
+        bh=D3/TxchU2n2gzIYFsg7JMYu+zzAMXglufU3zmYXuRPo=;
+        b=oGyqAV23nR139CYwKjkFM78/VZieDAY4TybQRryrXLUeVLUmNC1rYVefiNJHg1eBoe
+         6AB6kJJpD4+hZqWKxVb8igUQQDO7ZJ4bpfH48cY5nnCsk4aX800M1VBNFIAwctZLv0qC
+         Tbu8xkdMAMYEVj40B8L81teR/gDBBPSQwFvuS/dyGglxwdXNBj0JeCaHMTA1plgB5QgY
+         w+G/x9Aw0UUS0yUrGD8gMC5SZHJQsuSUNKWp+6i4ZT8KJH2ZrviPY5OxdbrcFNhHz/EM
+         yNmWjElEmPsbvLhmOfATWgvF62QjeDE0TEBTrZUMoFd+wpgha/aCQ7zW30xcLVKKIuuW
+         eIEQ==
+X-Gm-Message-State: APjAAAWon41Ng4unnVMD7SKV3wqw2Jw11rqxDGe02+mxNSnKp962axzm
+        RkRA7YWHQKLIz5CtHNNlQF2kX+Y=
+X-Google-Smtp-Source: APXvYqw3ZphSZBY82lzccLETPo+16wo1huFJ2UjRTE6Y+Mq8C5+aTslHBODOfVSZWG8hRNACFUYM+A==
+X-Received: by 2002:a05:660c:8a:: with SMTP id t10mr4611146itj.152.1559075615505;
+        Tue, 28 May 2019 13:33:35 -0700 (PDT)
 Received: from localhost.localdomain (50-124-247-140.alma.mi.frontiernet.net. [50.124.247.140])
-        by smtp.gmail.com with ESMTPSA id i141sm53089ite.20.2019.05.28.13.33.36
+        by smtp.gmail.com with ESMTPSA id i141sm53089ite.20.2019.05.28.13.33.34
         (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
-        Tue, 28 May 2019 13:33:36 -0700 (PDT)
+        Tue, 28 May 2019 13:33:34 -0700 (PDT)
 From:   Trond Myklebust <trondmy@gmail.com>
 X-Google-Original-From: Trond Myklebust <trond.myklebust@hammerspace.com>
 To:     SteveD@redhat.com
 Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH v3 07/11] Add a helper to return the real path given an export entry
-Date:   Tue, 28 May 2019 16:31:18 -0400
-Message-Id: <20190528203122.11401-8-trond.myklebust@hammerspace.com>
+Subject: [PATCH v3 05/11] Use xstat() with no synchronisation if available
+Date:   Tue, 28 May 2019 16:31:16 -0400
+Message-Id: <20190528203122.11401-6-trond.myklebust@hammerspace.com>
 X-Mailer: git-send-email 2.21.0
-In-Reply-To: <20190528203122.11401-7-trond.myklebust@hammerspace.com>
+In-Reply-To: <20190528203122.11401-5-trond.myklebust@hammerspace.com>
 References: <20190528203122.11401-1-trond.myklebust@hammerspace.com>
  <20190528203122.11401-2-trond.myklebust@hammerspace.com>
  <20190528203122.11401-3-trond.myklebust@hammerspace.com>
  <20190528203122.11401-4-trond.myklebust@hammerspace.com>
  <20190528203122.11401-5-trond.myklebust@hammerspace.com>
- <20190528203122.11401-6-trond.myklebust@hammerspace.com>
- <20190528203122.11401-7-trond.myklebust@hammerspace.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
@@ -78,136 +76,126 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Add a helper that can prepend the nfsd root directory path in order
-to allow mountd to perform its comparisons with mtab etc.
+We normally expect the exported system to be stable, so don't
+revalidate attributes.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- support/export/export.c    | 24 ++++++++++++++++++++++++
- support/include/exportfs.h |  1 +
- support/include/nfslib.h   |  1 +
- support/misc/nfsd_path.c   |  4 +++-
- support/nfs/exports.c      |  4 ++++
- 5 files changed, 33 insertions(+), 1 deletion(-)
+ configure.ac         |  2 +-
+ support/misc/xstat.c | 72 ++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 73 insertions(+), 1 deletion(-)
 
-diff --git a/support/export/export.c b/support/export/export.c
-index fbe68e84e5b3..82bbb54c5e9e 100644
---- a/support/export/export.c
-+++ b/support/export/export.c
-@@ -20,6 +20,7 @@
- #include "xmalloc.h"
- #include "nfslib.h"
- #include "exportfs.h"
-+#include "nfsd_path.h"
+diff --git a/configure.ac b/configure.ac
+index e870862a8abb..50002b4a5677 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -321,7 +321,7 @@ AC_CHECK_FUNC([getservbyname], ,
+ AC_CHECK_LIB([crypt], [crypt], [LIBCRYPT="-lcrypt"])
  
- exp_hash_table exportlist[MCL_MAXTYPES] = {{NULL, {{NULL,NULL}, }}, }; 
- static int export_hash(char *);
-@@ -30,6 +31,28 @@ static void	export_add(nfs_export *exp);
- static int	export_check(const nfs_export *exp, const struct addrinfo *ai,
- 				const char *path);
+ AC_CHECK_HEADERS([sched.h], [], [])
+-AC_CHECK_FUNCS([unshare fstatat], [] , [])
++AC_CHECK_FUNCS([unshare fstatat statx], [] , [])
+ AC_LIBPTHREAD([])
  
-+/* Return a real path for the export. */
+ if test "$enable_nfsv4" = yes; then
+diff --git a/support/misc/xstat.c b/support/misc/xstat.c
+index d092f73dfd65..fa047880cfd0 100644
+--- a/support/misc/xstat.c
++++ b/support/misc/xstat.c
+@@ -1,21 +1,93 @@
++#include <errno.h>
+ #include <sys/types.h>
+ #include <fcntl.h>
+ #include <sys/stat.h>
++#include <sys/sysmacros.h>
+ #include <unistd.h>
+ 
+ #include "config.h"
+ #include "xstat.h"
+ 
+ #ifdef HAVE_FSTATAT
++#ifdef HAVE_STATX
++
 +static void
-+exportent_mkrealpath(struct exportent *eep)
++statx_copy(struct stat *stbuf, const struct statx *stxbuf)
 +{
-+	const char *chroot = nfsd_path_nfsd_rootdir();
-+	char *ret = NULL;
-+
-+	if (chroot)
-+		ret = nfsd_path_prepend_dir(chroot, eep->e_path);
-+	if (!ret)
-+		ret = xstrdup(eep->e_path);
-+	eep->e_realpath = ret;
++	stbuf->st_dev = makedev(stxbuf->stx_dev_major, stxbuf->stx_dev_minor);
++	stbuf->st_ino = stxbuf->stx_ino;
++	stbuf->st_mode = stxbuf->stx_mode;
++	stbuf->st_nlink = stxbuf->stx_nlink;
++	stbuf->st_uid = stxbuf->stx_uid;
++	stbuf->st_gid = stxbuf->stx_gid;
++	stbuf->st_rdev = makedev(stxbuf->stx_rdev_major, stxbuf->stx_rdev_minor);
++	stbuf->st_size = stxbuf->stx_size;
++	stbuf->st_blksize = stxbuf->stx_blksize;
++	stbuf->st_blocks = stxbuf->stx_blocks;
++	stbuf->st_atim.tv_sec = stxbuf->stx_atime.tv_sec;
++	stbuf->st_atim.tv_nsec = stxbuf->stx_atime.tv_nsec;
++	stbuf->st_mtim.tv_sec = stxbuf->stx_mtime.tv_sec;
++	stbuf->st_mtim.tv_nsec = stxbuf->stx_mtime.tv_nsec;
++	stbuf->st_ctim.tv_sec = stxbuf->stx_ctime.tv_sec;
++	stbuf->st_ctim.tv_nsec = stxbuf->stx_ctime.tv_nsec;
 +}
 +
-+char *
-+exportent_realpath(struct exportent *eep)
++static int
++statx_do_stat(int fd, const char *pathname, struct stat *statbuf, int flags)
 +{
-+	if (!eep->e_realpath)
-+		exportent_mkrealpath(eep);
-+	return eep->e_realpath;
++	static int statx_supported = 1;
++	struct statx stxbuf;
++	int ret;
++
++	if (statx_supported) {
++		ret = statx(fd, pathname, flags,
++				STATX_BASIC_STATS,
++				&stxbuf);
++		if (ret == 0) {
++			statx_copy(statbuf, &stxbuf);
++			return 0;
++		}
++		if (errno == ENOSYS)
++			statx_supported = 0;
++	} else
++		errno = ENOSYS;
++	return -1;
 +}
 +
- void
- exportent_release(struct exportent *eep)
++static int
++statx_stat_nosync(int fd, const char *pathname, struct stat *statbuf, int flags)
++{
++	return statx_do_stat(fd, pathname, statbuf, flags | AT_STATX_DONT_SYNC);
++}
++
++#else
++
++static int
++statx_stat_nosync(int fd, const char *pathname, struct stat *statbuf, int flags)
++{
++	errno = ENOSYS;
++	return -1;
++}
++
++#endif /* HAVE_STATX */
+ 
+ int xlstat(const char *pathname, struct stat *statbuf)
  {
-@@ -39,6 +62,7 @@ exportent_release(struct exportent *eep)
- 	free(eep->e_fslocdata);
- 	free(eep->e_uuid);
- 	xfree(eep->e_hostname);
-+	xfree(eep->e_realpath);
++	if (statx_stat_nosync(AT_FDCWD, pathname, statbuf, AT_NO_AUTOMOUNT|
++				AT_SYMLINK_NOFOLLOW) == 0)
++		return 0;
++	else if (errno != ENOSYS)
++		return -1;
+ 	return fstatat(AT_FDCWD, pathname, statbuf, AT_NO_AUTOMOUNT |
+ 			AT_SYMLINK_NOFOLLOW);
  }
  
- static void
-diff --git a/support/include/exportfs.h b/support/include/exportfs.h
-index 4e0d9d132b4c..daa7e2a06d82 100644
---- a/support/include/exportfs.h
-+++ b/support/include/exportfs.h
-@@ -171,5 +171,6 @@ struct export_features {
- 
- struct export_features *get_export_features(void);
- void fix_pseudoflavor_flags(struct exportent *ep);
-+char *exportent_realpath(struct exportent *eep);
- 
- #endif /* EXPORTFS_H */
-diff --git a/support/include/nfslib.h b/support/include/nfslib.h
-index b09fce42e677..84d8270b330f 100644
---- a/support/include/nfslib.h
-+++ b/support/include/nfslib.h
-@@ -84,6 +84,7 @@ struct exportent {
- 	char *		e_uuid;
- 	struct sec_entry e_secinfo[SECFLAVOR_COUNT+1];
- 	unsigned int	e_ttl;
-+	char *		e_realpath;
- };
- 
- struct rmtabent {
-diff --git a/support/misc/nfsd_path.c b/support/misc/nfsd_path.c
-index 55bca9bdf4bd..8ddafd65ab76 100644
---- a/support/misc/nfsd_path.c
-+++ b/support/misc/nfsd_path.c
-@@ -81,9 +81,11 @@ nfsd_path_prepend_dir(const char *dir, const char *pathname)
- 		dirlen--;
- 	if (!dirlen)
- 		return NULL;
-+	while (pathname[0] == '/')
-+		pathname++;
- 	len = dirlen + strlen(pathname) + 1;
- 	ret = xmalloc(len + 1);
--	snprintf(ret, len, "%.*s/%s", (int)dirlen, dir, pathname);
-+	snprintf(ret, len+1, "%.*s/%s", (int)dirlen, dir, pathname);
- 	return ret;
+ int xstat(const char *pathname, struct stat *statbuf)
+ {
++	if (statx_stat_nosync(AT_FDCWD, pathname, statbuf, AT_NO_AUTOMOUNT) == 0)
++		return 0;
++	else if (errno != ENOSYS)
++		return -1;
+ 	return fstatat(AT_FDCWD, pathname, statbuf, AT_NO_AUTOMOUNT);
  }
  
-diff --git a/support/nfs/exports.c b/support/nfs/exports.c
-index 5f4cb9568814..3ecfde797e3b 100644
---- a/support/nfs/exports.c
-+++ b/support/nfs/exports.c
-@@ -155,6 +155,7 @@ getexportent(int fromkernel, int fromexports)
- 	}
- 
- 	xfree(ee.e_hostname);
-+	xfree(ee.e_realpath);
- 	ee = def_ee;
- 
- 	/* Check for default client */
-@@ -358,6 +359,7 @@ dupexportent(struct exportent *dst, struct exportent *src)
- 	if (src->e_uuid)
- 		dst->e_uuid = strdup(src->e_uuid);
- 	dst->e_hostname = NULL;
-+	dst->e_realpath = NULL;
- }
- 
- struct exportent *
-@@ -369,6 +371,8 @@ mkexportent(char *hname, char *path, char *options)
- 
- 	xfree(ee.e_hostname);
- 	ee.e_hostname = xstrdup(hname);
-+	xfree(ee.e_realpath);
-+	ee.e_realpath = NULL;
- 
- 	if (strlen(path) >= sizeof(ee.e_path)) {
- 		xlog(L_ERROR, "path name %s too long", path);
 -- 
 2.21.0
 
