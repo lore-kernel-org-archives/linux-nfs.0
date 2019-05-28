@@ -5,52 +5,52 @@ X-Spam-Level:
 X-Spam-Status: No, score=-8.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
 	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,T_DKIMWL_WL_HIGH,UNPARSEABLE_RELAY,
-	USER_AGENT_MUTT autolearn=unavailable autolearn_force=no version=3.4.0
+	USER_AGENT_MUTT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A3F3CC072B1
-	for <linux-nfs@archiver.kernel.org>; Tue, 28 May 2019 16:26:50 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 82FB7C04AB6
+	for <linux-nfs@archiver.kernel.org>; Tue, 28 May 2019 16:31:01 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 6A2B72166E
-	for <linux-nfs@archiver.kernel.org>; Tue, 28 May 2019 16:26:50 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 582662166E
+	for <linux-nfs@archiver.kernel.org>; Tue, 28 May 2019 16:31:01 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="efMbIJfO"
+	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="Ehem25LI"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726708AbfE1Q0s (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 28 May 2019 12:26:48 -0400
-Received: from userp2120.oracle.com ([156.151.31.85]:52752 "EHLO
-        userp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726313AbfE1Q0s (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 28 May 2019 12:26:48 -0400
-Received: from pps.filterd (userp2120.oracle.com [127.0.0.1])
-        by userp2120.oracle.com (8.16.0.27/8.16.0.27) with SMTP id x4SGDgSS161106;
-        Tue, 28 May 2019 16:25:57 GMT
+        id S1726982AbfE1Qa7 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 28 May 2019 12:30:59 -0400
+Received: from userp2130.oracle.com ([156.151.31.86]:41272 "EHLO
+        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726512AbfE1Qa7 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 28 May 2019 12:30:59 -0400
+Received: from pps.filterd (userp2130.oracle.com [127.0.0.1])
+        by userp2130.oracle.com (8.16.0.27/8.16.0.27) with SMTP id x4SGSqLD165919;
+        Tue, 28 May 2019 16:30:23 GMT
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=date : from : to : cc
  : subject : message-id : references : mime-version : content-type :
  in-reply-to; s=corp-2018-07-02;
- bh=hx2vbgFlPWg0pATA4dyIp86RZ6zf7/0wKbEWhZGmDvo=;
- b=efMbIJfOzK55xuUxc3yaBfW5u6VwnzkWf6wdE//yngZ2fA3fNktEWNxl4sKBd9VtCcY4
- ZvHTegR6hVVZkuZiLe4FuqltjYxxmVXYf50XB+NKVRncfV2Qh6QgOHwbDy0VO5qrBFNE
- p7+s6GtVyRLkX3sNWP/ZgCpaQ5Vs4Zpph1kny7YlYg6snAl935YpNXOgKuyLUb7G2n0g
- J76PqI4qw0U30xgh8zigyTi8lSl8k9bodUrVWdXRd5ptjtRqDrAJDebhaxSxzpYMsfd6
- FOIGWp6tswn90qa6Do9Z3sD6zTSOZEeie1u2BNX5FSMKqUORS8yXJjtQwvaTCoWrRdEI qg== 
-Received: from aserp3030.oracle.com (aserp3030.oracle.com [141.146.126.71])
-        by userp2120.oracle.com with ESMTP id 2spxbq4aqx-1
+ bh=HQqsHP2Dch/+MMnMHvEsTt40LqVZM8h2XtzGgJE1mMA=;
+ b=Ehem25LI9rEryKwf4rBZ011znJfXqOsPCd2LiprEaJA+kEiOk4XMCvuYfvQhBzaO7/9T
+ 4tH487f8vtr57f98UXIJMxargkVycTv8TCPi3OSWIqRr5W8s9BHGh5HSq1ALGSupM5vs
+ ieq6ERpMWF7aPhJUGlrvjsRYnpNJS0WJtS+Mh/o0NzhmWZeUZCf+IiD55cPgbs7Pgnq3
+ ls9JREHlwRYa1G7IzlwD0m1lEIIw/15eyY8WKQH2RhHzyX4T5d911w9rXHYFawY1f/zd
+ 29HaqLP3qiPCynGZs1Zb4LV/BstnmV3wvMlNBFizxqnixMs3U9iKtFqnVvT1RjRond/i HA== 
+Received: from aserp3020.oracle.com (aserp3020.oracle.com [141.146.126.70])
+        by userp2130.oracle.com with ESMTP id 2spw4tcev7-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Tue, 28 May 2019 16:25:57 +0000
-Received: from pps.filterd (aserp3030.oracle.com [127.0.0.1])
-        by aserp3030.oracle.com (8.16.0.27/8.16.0.27) with SMTP id x4SGPnfU126357;
-        Tue, 28 May 2019 16:25:56 GMT
-Received: from aserv0121.oracle.com (aserv0121.oracle.com [141.146.126.235])
-        by aserp3030.oracle.com with ESMTP id 2srbdww1dp-1
+        Tue, 28 May 2019 16:30:23 +0000
+Received: from pps.filterd (aserp3020.oracle.com [127.0.0.1])
+        by aserp3020.oracle.com (8.16.0.27/8.16.0.27) with SMTP id x4SGULxg170997;
+        Tue, 28 May 2019 16:30:23 GMT
+Received: from aserv0122.oracle.com (aserv0122.oracle.com [141.146.126.236])
+        by aserp3020.oracle.com with ESMTP id 2sqh7378da-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Tue, 28 May 2019 16:25:56 +0000
+        Tue, 28 May 2019 16:30:22 +0000
 Received: from abhmp0009.oracle.com (abhmp0009.oracle.com [141.146.116.15])
-        by aserv0121.oracle.com (8.14.4/8.13.8) with ESMTP id x4SGPtM2013151;
-        Tue, 28 May 2019 16:25:55 GMT
+        by aserv0122.oracle.com (8.14.4/8.14.4) with ESMTP id x4SGUMGw009191;
+        Tue, 28 May 2019 16:30:22 GMT
 Received: from localhost (/67.169.218.210)
         by default (Oracle Beehive Gateway v4.0)
-        with ESMTP ; Tue, 28 May 2019 09:25:55 -0700
-Date:   Tue, 28 May 2019 09:25:53 -0700
+        with ESMTP ; Tue, 28 May 2019 09:30:22 -0700
+Date:   Tue, 28 May 2019 09:30:20 -0700
 From:   "Darrick J. Wong" <darrick.wong@oracle.com>
 To:     Amir Goldstein <amir73il@gmail.com>
 Cc:     Dave Chinner <david@fromorbit.com>, Christoph Hellwig <hch@lst.de>,
@@ -61,208 +61,76 @@ Cc:     Dave Chinner <david@fromorbit.com>, Christoph Hellwig <hch@lst.de>,
         linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
         ceph-devel@vger.kernel.org, linux-api@vger.kernel.org,
         Dave Chinner <dchinner@redhat.com>
-Subject: Re: [PATCH v2 5/8] vfs: copy_file_range needs to strip setuid bits
-Message-ID: <20190528162553.GE5221@magnolia>
+Subject: Re: [PATCH v2 6/8] vfs: copy_file_range should update file timestamps
+Message-ID: <20190528163020.GF5221@magnolia>
 References: <20190526061100.21761-1-amir73il@gmail.com>
- <20190526061100.21761-6-amir73il@gmail.com>
+ <20190526061100.21761-7-amir73il@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20190526061100.21761-6-amir73il@gmail.com>
+In-Reply-To: <20190526061100.21761-7-amir73il@gmail.com>
 User-Agent: Mutt/1.9.4 (2018-02-28)
 X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9270 signatures=668687
 X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 suspectscore=0 malwarescore=0
  phishscore=0 bulkscore=0 spamscore=0 mlxscore=0 mlxlogscore=999
  adultscore=0 classifier=spam adjust=0 reason=mlx scancount=1
- engine=8.0.1-1810050000 definitions=main-1905280104
+ engine=8.0.1-1810050000 definitions=main-1905280105
 X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9270 signatures=668687
 X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 priorityscore=1501 malwarescore=0
  suspectscore=0 phishscore=0 bulkscore=0 spamscore=0 clxscore=1015
  lowpriorityscore=0 mlxscore=0 impostorscore=0 mlxlogscore=999 adultscore=0
  classifier=spam adjust=0 reason=mlx scancount=1 engine=8.0.1-1810050000
- definitions=main-1905280104
+ definitions=main-1905280105
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Sun, May 26, 2019 at 09:10:56AM +0300, Amir Goldstein wrote:
-> The file we are copying data into needs to have its setuid bit
-> stripped before we start the data copy so that unprivileged users
-> can't copy data into executables that are run with root privs.
+On Sun, May 26, 2019 at 09:10:57AM +0300, Amir Goldstein wrote:
+> From: Dave Chinner <dchinner@redhat.com>
 > 
-> [Amir] Introduce the helper generic_copy_file_range_prep() modelled
-> after generic_remap_file_range_prep(). Helper is called by filesystem
-> before the copy_file_range operation and with output inode locked.
+> Timestamps are not updated right now, so programs looking for
+> timestamp updates for file modifications (like rsync) will not
+> detect that files have changed. We are also accessing the source
+> data when doing a copy (but not when cloning) so we need to update
+> atime on the source file as well.
 > 
-> For ceph and for default generic_copy_file_range() implementation there
-> is no inode lock held throughout the copy operation, so we do best
-> effort and remove setuid bit before copy starts. This does not protect
-> suid file from changing if suid bit is set after copy started.
-
-Maybe we try to remove suid once more at the end of
-generic_copy_file_range if the copy succeeds?  It'd still be racy, but I
-can't (currently, having drank no coffee yet) think of a general way to
-hold both inodes locked during the entire copy operation.
-
---D
-
 > Signed-off-by: Dave Chinner <dchinner@redhat.com>
 > Signed-off-by: Amir Goldstein <amir73il@gmail.com>
 > ---
->  fs/ceph/file.c     |  9 +++++++++
->  fs/cifs/cifsfs.c   |  9 ++++++---
->  fs/fuse/file.c     |  4 ++++
->  fs/nfs/nfs42proc.c |  8 +++++---
->  fs/read_write.c    | 31 +++++++++++++++++++++++++++++++
->  include/linux/fs.h |  2 ++
->  6 files changed, 57 insertions(+), 6 deletions(-)
+>  fs/read_write.c | 10 ++++++++++
+>  1 file changed, 10 insertions(+)
 > 
-> diff --git a/fs/ceph/file.c b/fs/ceph/file.c
-> index e87f7b2023af..54cfc877a6ef 100644
-> --- a/fs/ceph/file.c
-> +++ b/fs/ceph/file.c
-> @@ -1947,6 +1947,15 @@ static ssize_t __ceph_copy_file_range(struct file *src_file, loff_t src_off,
->  		goto out;
->  	}
+> diff --git a/fs/read_write.c b/fs/read_write.c
+> index e16bcafc0da2..4b23a86aacd9 100644
+> --- a/fs/read_write.c
+> +++ b/fs/read_write.c
+> @@ -1576,6 +1576,16 @@ int generic_copy_file_range_prep(struct file *file_in, struct file *file_out)
 >  
-> +	/* Should inode lock be held throughout the copy operation? */
-> +	inode_lock(dst_inode);
-> +	ret = generic_copy_file_range_prep(src_file, dst_file);
-> +	inode_unlock(dst_inode);
-> +	if (ret < 0) {
-> +		dout("failed to copy from src to dst file (%zd)\n", ret);
-> +		goto out;
+>  	WARN_ON_ONCE(!inode_is_locked(file_inode(file_out)));
+>  
+> +	/* Update source timestamps, because we are accessing file data */
+> +	file_accessed(file_in);
+> +
+> +	/* Update destination timestamps, since we can alter file contents. */
+> +	if (!(file_out->f_mode & FMODE_NOCMTIME)) {
+> +		ret = file_update_time(file_out);
+> +		if (ret)
+> +			return ret;
 > +	}
 > +
 >  	/*
->  	 * We need FILE_WR caps for dst_ci and FILE_RD for src_ci as other
->  	 * clients may have dirty data in their caches.  And OSDs know nothing
-> diff --git a/fs/cifs/cifsfs.c b/fs/cifs/cifsfs.c
-> index c65823270313..e103b499aaa8 100644
-> --- a/fs/cifs/cifsfs.c
-> +++ b/fs/cifs/cifsfs.c
-> @@ -1096,6 +1096,10 @@ ssize_t cifs_file_copychunk_range(unsigned int xid,
->  		goto out;
->  	}
->  
-> +	rc = -EOPNOTSUPP;
-> +	if (!target_tcon->ses->server->ops->copychunk_range)
-> +		goto out;
-> +
->  	/*
->  	 * Note: cifs case is easier than btrfs since server responsible for
->  	 * checks for proper open modes and file type and if it wants
-> @@ -1107,11 +1111,10 @@ ssize_t cifs_file_copychunk_range(unsigned int xid,
->  	/* should we flush first and last page first */
->  	truncate_inode_pages(&target_inode->i_data, 0);
->  
-> -	if (target_tcon->ses->server->ops->copychunk_range)
-> +	rc = generic_copy_file_range_prep(src_file, dst_file);
-> +	if (!rc)
->  		rc = target_tcon->ses->server->ops->copychunk_range(xid,
->  			smb_file_src, smb_file_target, off, len, destoff);
-> -	else
-> -		rc = -EOPNOTSUPP;
->  
->  	/* force revalidate of size and timestamps of target file now
->  	 * that target is updated on the server
-> diff --git a/fs/fuse/file.c b/fs/fuse/file.c
-> index e03901ae729b..3531d4a3d9ec 100644
-> --- a/fs/fuse/file.c
-> +++ b/fs/fuse/file.c
-> @@ -3128,6 +3128,10 @@ static ssize_t __fuse_copy_file_range(struct file *file_in, loff_t pos_in,
->  
->  	inode_lock(inode_out);
->  
-> +	err = generic_copy_file_range_prep(file_in, file_out);
-> +	if (err)
-> +		goto out;
-> +
->  	if (fc->writeback_cache) {
->  		err = filemap_write_and_wait_range(inode_out->i_mapping,
->  						   pos_out, pos_out + len);
-> diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
-> index 5196bfa7894d..b387951e1d86 100644
-> --- a/fs/nfs/nfs42proc.c
-> +++ b/fs/nfs/nfs42proc.c
-> @@ -345,9 +345,11 @@ ssize_t nfs42_proc_copy(struct file *src, loff_t pos_src,
->  
->  	do {
->  		inode_lock(file_inode(dst));
-> -		err = _nfs42_proc_copy(src, src_lock,
-> -				dst, dst_lock,
-> -				&args, &res);
-> +		err = generic_copy_file_range_prep(src, dst);
-> +		if (!err)
-> +			err = _nfs42_proc_copy(src, src_lock,
-> +					       dst, dst_lock,
-> +					       &args, &res);
->  		inode_unlock(file_inode(dst));
->  
->  		if (err >= 0)
-> diff --git a/fs/read_write.c b/fs/read_write.c
-> index b0fb1176b628..e16bcafc0da2 100644
-> --- a/fs/read_write.c
-> +++ b/fs/read_write.c
-> @@ -1565,6 +1565,28 @@ COMPAT_SYSCALL_DEFINE4(sendfile64, int, out_fd, int, in_fd,
->  }
->  #endif
->  
-> +/*
-> + * Prepare inodes for copy from @file_in to @file_out.
-> + *
-> + * Caller must hold output inode lock.
-> + */
-> +int generic_copy_file_range_prep(struct file *file_in, struct file *file_out)
-> +{
-> +	int ret;
-> +
-> +	WARN_ON_ONCE(!inode_is_locked(file_inode(file_out)));
-> +
-> +	/*
-> +	 * Clear the security bits if the process is not being run by root.
-> +	 * This keeps people from modifying setuid and setgid binaries.
-> +	 */
-> +	ret = file_remove_privs(file_out);
-> +
-> +	return ret;
-> +
-> +}
-> +EXPORT_SYMBOL(generic_copy_file_range_prep);
-> +
->  /**
->   * generic_copy_file_range - copy data between two files
->   * @file_in:	file structure to read from
-> @@ -1590,6 +1612,15 @@ ssize_t generic_copy_file_range(struct file *file_in, loff_t pos_in,
->  				struct file *file_out, loff_t pos_out,
->  				size_t len, unsigned int flags)
->  {
-> +	int ret;
-> +
-> +	/* Should inode lock be held throughout the copy operation? */
-> +	inode_lock(file_inode(file_out));
-> +	ret = generic_copy_file_range_prep(file_in, file_out);
-> +	inode_unlock(file_inode(file_out));
-> +	if (ret)
-> +		return ret;
-> +
->  	return do_splice_direct(file_in, &pos_in, file_out, &pos_out,
->  				len > MAX_RW_COUNT ? MAX_RW_COUNT : len, 0);
->  }
-> diff --git a/include/linux/fs.h b/include/linux/fs.h
-> index e4d382c4342a..3e03a96d9ab6 100644
-> --- a/include/linux/fs.h
-> +++ b/include/linux/fs.h
-> @@ -1889,6 +1889,8 @@ extern ssize_t vfs_readv(struct file *, const struct iovec __user *,
->  		unsigned long, loff_t *, rwf_t);
->  extern ssize_t vfs_copy_file_range(struct file *, loff_t , struct file *,
->  				   loff_t, size_t, unsigned int);
-> +extern int generic_copy_file_range_prep(struct file *file_in,
-> +					struct file *file_out);
->  extern ssize_t generic_copy_file_range(struct file *file_in, loff_t pos_in,
->  				       struct file *file_out, loff_t pos_out,
->  				       size_t len, unsigned int flags);
+>  	 * Clear the security bits if the process is not being run by root.
+>  	 * This keeps people from modifying setuid and setgid binaries.
+
+Should the file_update_time and file_remove_privs calls be factored into
+a separate small function to be called by generic_{copy,remap}_range_prep?
+
+Looks ok otherwise,
+Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
+
+--D
+
 > -- 
 > 2.17.1
 > 
