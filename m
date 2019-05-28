@@ -8,66 +8,64 @@ X-Spam-Status: No, score=-8.9 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C5B81C04AB6
-	for <linux-nfs@archiver.kernel.org>; Tue, 28 May 2019 20:33:36 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4398CC072B1
+	for <linux-nfs@archiver.kernel.org>; Tue, 28 May 2019 20:33:35 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 9622B20B7C
-	for <linux-nfs@archiver.kernel.org>; Tue, 28 May 2019 20:33:36 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 0A57420B7C
+	for <linux-nfs@archiver.kernel.org>; Tue, 28 May 2019 20:33:35 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="iQ6I35QK"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="GOGqf0dc"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727180AbfE1Udg (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 28 May 2019 16:33:36 -0400
-Received: from mail-io1-f66.google.com ([209.85.166.66]:42047 "EHLO
-        mail-io1-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727075AbfE1Udf (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 28 May 2019 16:33:35 -0400
-Received: by mail-io1-f66.google.com with SMTP id g16so16904000iom.9
-        for <linux-nfs@vger.kernel.org>; Tue, 28 May 2019 13:33:35 -0700 (PDT)
+        id S1727146AbfE1Ude (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 28 May 2019 16:33:34 -0400
+Received: from mail-io1-f65.google.com ([209.85.166.65]:40367 "EHLO
+        mail-io1-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726812AbfE1Ude (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 28 May 2019 16:33:34 -0400
+Received: by mail-io1-f65.google.com with SMTP id n5so10767088ioc.7
+        for <linux-nfs@vger.kernel.org>; Tue, 28 May 2019 13:33:33 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references
          :mime-version:content-transfer-encoding;
-        bh=4XqEpVzB6pdIBPKKe3DYeMe1MU19xVZqtRve9/VfUHc=;
-        b=iQ6I35QK3hPJCfSvb0yUaES4rKWOUrIb+vx2XV5zZTtmCptxKIo3INyGkHUKfZ5FQ8
-         mscTHJVCdHj+xbkYZ5RmWRtc7QWkLAO+fjlethW4ft8QfXMEap+oy3/ftpdhqHovEeZO
-         /LuqKs1KGnNQ9qGnMqI6VZubcH4r45J7KYwNm8LvQeFHZLai61dmOEZ6olLrdUidydbX
-         6RQbGj0dRgwqKVM96JLUcQPXAhwzBNJQceEYhQpSh1DXdqc7GPErvK627LgTfxzM/zI5
-         Wl36QmuUF2cMM8C9WLdBM4vo185c0e08eIDDt13pctxDx01YmuGaSNfJ3iAJSwMgj3ul
-         vmZw==
+        bh=WTJIEF64GQ5WaLkZVqyDs/M6F2K2o7LdsId5gPgoX24=;
+        b=GOGqf0dc+EiLh3kOA0ZdMppBUs7iVSudCTGNZAV+K5UTDY4h5GKcZxtx94w7abl7E3
+         a7i2OGTLIzpCw96AXguw4DpZ5qIJ22+G+Rf0vqqj2Dr3V61Qm5QcDJITv+GvPU1IQ7i3
+         beq5oego4xk+40LjqhiAs5gJd9zi3Hfs6aiP5ENmL6P8NvP4hQjSCzu+/lA3b94xq4oQ
+         Pd6wOCOSOxR8Mj6ojSGJA8xjfUXDayJEIXmNt97mZkh5WGtlDMMlh6fVQ2pyiXDK4ONY
+         IeUl6Sj8MEgXvVWGLHPmYIJpIm5pmg0uZ3Zu0xzE20jfo3mXwGiNoWsxOjBHHiGZ7efh
+         tU6g==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=4XqEpVzB6pdIBPKKe3DYeMe1MU19xVZqtRve9/VfUHc=;
-        b=lzDCIFxWzxjQLi8NnFpqIPnWLrKJ7OXFNMkiTTMtalcEXoXRrBW2zl3cUDxo1h1VHS
-         +pIQuwUt3icSEdcdfG/vRmzZnR26PtJs96oJZAwAO9ZLeeZ2/EfFjp9hrZBL4uTzJCQM
-         i7TXLpX1tk+XTNxVvNG1vq7KNCqvjVM2vr9QFAhqBzA5Ah+uvkzFmuzAD0Q50o9M7JaI
-         lJM1SaMTGTsTgyXFfNPSF396mPBLiIoeCmveS9+9XTQ1t36257pZgh5lTz7ieH/OANhe
-         uSCaGoOU0SLPweqGEg/QCsb9PrTcxxLcVbnvF55DLgUooBGvN52ecaIWzllPfCCNjTG0
-         My2A==
-X-Gm-Message-State: APjAAAURJ1n2qOlYsXhZdtb+B9zpCCoGlps/+IlRd6o1oGGwcsnAZGxm
-        M6oi3vIn/hLWD01Bo41QbBWcSo4=
-X-Google-Smtp-Source: APXvYqwi7mklIZla9K+l5hI73gwd6F6x57dE08C05vnf2MWJUUVmlGbWL8T0sTOzmFfgV676Oket7Q==
-X-Received: by 2002:a6b:fb09:: with SMTP id h9mr8636285iog.19.1559075614547;
-        Tue, 28 May 2019 13:33:34 -0700 (PDT)
+        bh=WTJIEF64GQ5WaLkZVqyDs/M6F2K2o7LdsId5gPgoX24=;
+        b=DRGfam5q8JpusxO/sF/8nR88dfc5RRGqgZNGXtqTenmM2QCCTlxDJkoYDvcG7H+lYJ
+         /Pte+VuOoZjnwoDHvkRC1/6/fAIPOmIxnc/m90oslNXtN30XU8W+grqfTmhyJwlbaoQO
+         a6pUfCsQ64s3Awrs8hT09r/C2AHQ90tLuqWIIBkjeiJKsFWS31QNA+1989Tx7kbrbaRd
+         ghP3RdjDBqemP/yGXWQwR4i0ZUAhwjtNv0m7QzsDchkal/4fV9oZmv79oABgiyZpBUNP
+         4jUrpKCSZ5XVOXPqG7jzpf31z4yMKlturfFXunZlk4/Ayh0rqzySPIfeIE4cIr4Y+fGi
+         0LHw==
+X-Gm-Message-State: APjAAAUKhiYAirVF6HbCR3SO+Q752WdKPzOOGY7mPYEwV3+HKCLtTVZ2
+        Ud8jxEp991Zawj4vHGySQQ==
+X-Google-Smtp-Source: APXvYqzEN+PdZOBI8vhXTKA/UHcUJziAmxF8HB8PMFVCDx6VygaDXNuKJhHnbUMSRwQTUQ8AemXCeA==
+X-Received: by 2002:a5d:968e:: with SMTP id m14mr40478686ion.49.1559075612399;
+        Tue, 28 May 2019 13:33:32 -0700 (PDT)
 Received: from localhost.localdomain (50-124-247-140.alma.mi.frontiernet.net. [50.124.247.140])
-        by smtp.gmail.com with ESMTPSA id i141sm53089ite.20.2019.05.28.13.33.33
+        by smtp.gmail.com with ESMTPSA id i141sm53089ite.20.2019.05.28.13.33.31
         (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
-        Tue, 28 May 2019 13:33:33 -0700 (PDT)
+        Tue, 28 May 2019 13:33:31 -0700 (PDT)
 From:   Trond Myklebust <trondmy@gmail.com>
 X-Google-Original-From: Trond Myklebust <trond.myklebust@hammerspace.com>
 To:     SteveD@redhat.com
 Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH v3 04/11] Add utilities for resolving nfsd paths and stat()ing them
-Date:   Tue, 28 May 2019 16:31:15 -0400
-Message-Id: <20190528203122.11401-5-trond.myklebust@hammerspace.com>
+Subject: [PATCH v3 02/11] Add a simple workqueue mechanism
+Date:   Tue, 28 May 2019 16:31:13 -0400
+Message-Id: <20190528203122.11401-3-trond.myklebust@hammerspace.com>
 X-Mailer: git-send-email 2.21.0
-In-Reply-To: <20190528203122.11401-4-trond.myklebust@hammerspace.com>
+In-Reply-To: <20190528203122.11401-2-trond.myklebust@hammerspace.com>
 References: <20190528203122.11401-1-trond.myklebust@hammerspace.com>
  <20190528203122.11401-2-trond.myklebust@hammerspace.com>
- <20190528203122.11401-3-trond.myklebust@hammerspace.com>
- <20190528203122.11401-4-trond.myklebust@hammerspace.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
@@ -75,323 +73,365 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Add helper functions that can resolve nfsd paths by prepending the
-necessary prefix if the admin has specified a root path in the
-nfs.conf file.
+Add a simple workqueue mechanism to allow us to run threads that are
+subject to chroot(), and have them operate on the knfsd kernel daemon.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- configure.ac                |   2 +-
- support/include/Makefile.am |   2 +
- support/include/nfsd_path.h |  16 ++++
- support/include/xstat.h     |  11 +++
- support/misc/Makefile.am    |   3 +-
- support/misc/nfsd_path.c    | 168 ++++++++++++++++++++++++++++++++++++
- support/misc/xstat.c        |  33 +++++++
- 7 files changed, 233 insertions(+), 2 deletions(-)
- create mode 100644 support/include/nfsd_path.h
- create mode 100644 support/include/xstat.h
- create mode 100644 support/misc/nfsd_path.c
- create mode 100644 support/misc/xstat.c
+ aclocal/libpthread.m4       |  13 +-
+ configure.ac                |   6 +-
+ support/include/Makefile.am |   1 +
+ support/include/workqueue.h |  18 +++
+ support/misc/Makefile.am    |   2 +-
+ support/misc/workqueue.c    | 228 ++++++++++++++++++++++++++++++++++++
+ utils/mountd/Makefile.am    |   3 +-
+ 7 files changed, 262 insertions(+), 9 deletions(-)
+ create mode 100644 support/include/workqueue.h
+ create mode 100644 support/misc/workqueue.c
 
+diff --git a/aclocal/libpthread.m4 b/aclocal/libpthread.m4
+index e87d2a0c2dc5..55e046e38cd1 100644
+--- a/aclocal/libpthread.m4
++++ b/aclocal/libpthread.m4
+@@ -3,11 +3,12 @@ dnl
+ AC_DEFUN([AC_LIBPTHREAD], [
+ 
+     dnl Check for library, but do not add -lpthreads to LIBS
+-    AC_CHECK_LIB([pthread], [pthread_create], [LIBPTHREAD=-lpthread],
+-                 [AC_MSG_ERROR([libpthread not found.])])
+-  AC_SUBST(LIBPTHREAD)
+-
+-  AC_CHECK_HEADERS([pthread.h], ,
+-                   [AC_MSG_ERROR([libpthread headers not found.])])
++    AC_CHECK_LIB([pthread], [pthread_create],
++		[AC_DEFINE([HAVE_LIBPTHREAD], [1],
++				[Define to 1 if you have libpthread.])
++		AC_CHECK_HEADERS([pthread.h], [],
++				[AC_MSG_ERROR([libpthread headers not found.])])
++		 AC_SUBST([LIBPTHREAD],[-lpthread])],
++                 [$1])
+ 
+ ])dnl
 diff --git a/configure.ac b/configure.ac
-index c6c2d73b06dd..e870862a8abb 100644
+index 4d7096193d0b..c6c2d73b06dd 100644
 --- a/configure.ac
 +++ b/configure.ac
-@@ -321,7 +321,7 @@ AC_CHECK_FUNC([getservbyname], ,
+@@ -320,6 +320,10 @@ AC_CHECK_FUNC([getservbyname], ,
+ 
  AC_CHECK_LIB([crypt], [crypt], [LIBCRYPT="-lcrypt"])
  
- AC_CHECK_HEADERS([sched.h], [], [])
--AC_CHECK_FUNCS([unshare], [] , [])
-+AC_CHECK_FUNCS([unshare fstatat], [] , [])
- AC_LIBPTHREAD([])
- 
++AC_CHECK_HEADERS([sched.h], [], [])
++AC_CHECK_FUNCS([unshare], [] , [])
++AC_LIBPTHREAD([])
++
  if test "$enable_nfsv4" = yes; then
+   dnl check for libevent libraries and headers
+   AC_LIBEVENT
+@@ -417,7 +421,7 @@ if test "$enable_gss" = yes; then
+   AC_KERBEROS_V5
+ 
+   dnl Check for pthreads
+-  AC_LIBPTHREAD
++  AC_LIBPTHREAD([AC_MSG_ERROR([libpthread not found.])])
+ 
+   dnl librpcsecgss already has a dependency on libgssapi,
+   dnl but we need to make sure we get the right version
 diff --git a/support/include/Makefile.am b/support/include/Makefile.am
-index df5e47836d29..1373891a7c76 100644
+index 599f500e2b40..df5e47836d29 100644
 --- a/support/include/Makefile.am
 +++ b/support/include/Makefile.am
-@@ -10,6 +10,7 @@ noinst_HEADERS = \
- 	misc.h \
- 	nfs_mntent.h \
- 	nfs_paths.h \
-+	nfsd_path.h \
- 	nfslib.h \
- 	nfsrpc.h \
- 	nls.h \
-@@ -24,6 +25,7 @@ noinst_HEADERS = \
+@@ -19,6 +19,7 @@ noinst_HEADERS = \
+ 	sockaddr.h \
+ 	tcpwrapper.h \
+ 	v4root.h \
++	workqueue.h \
+ 	xio.h \
  	xlog.h \
  	xmalloc.h \
- 	xcommon.h \
-+	xstat.h \
- 	conffile.h
- 
- MAINTAINERCLEANFILES = Makefile.in
-diff --git a/support/include/nfsd_path.h b/support/include/nfsd_path.h
+diff --git a/support/include/workqueue.h b/support/include/workqueue.h
 new file mode 100644
-index 000000000000..db9b41a179ad
+index 000000000000..518be82f1b34
 --- /dev/null
-+++ b/support/include/nfsd_path.h
-@@ -0,0 +1,16 @@
++++ b/support/include/workqueue.h
+@@ -0,0 +1,18 @@
 +/*
 + * Copyright (C) 2019 Trond Myklebust <trond.myklebust@hammerspace.com>
 + */
-+#ifndef NFSD_PATH_H
-+#define NFSD_PATH_H
++#ifndef WORKQUEUE_H
++#define WORKQUEUE_H
 +
-+void 		nfsd_path_init(void);
++struct xthread_workqueue;
 +
-+const char *	nfsd_path_nfsd_rootdir(void);
-+char *		nfsd_path_strip_root(char *pathname);
-+char *		nfsd_path_prepend_dir(const char *dir, const char *pathname);
++struct xthread_workqueue *xthread_workqueue_alloc(void);
++void xthread_workqueue_shutdown(struct xthread_workqueue *wq);
 +
-+int 		nfsd_path_stat(const char *pathname, struct stat *statbuf);
-+int 		nfsd_path_lstat(const char *pathname, struct stat *statbuf);
++void xthread_work_run_sync(struct xthread_workqueue *wq,
++		void (*fn)(void *), void *data);
 +
-+#endif
-diff --git a/support/include/xstat.h b/support/include/xstat.h
-new file mode 100644
-index 000000000000..f1241bbfdc0e
---- /dev/null
-+++ b/support/include/xstat.h
-@@ -0,0 +1,11 @@
-+/*
-+ * Copyright (C) 2019 Trond Myklebust <trond.myklebust@hammerspace.com>
-+ */
-+#ifndef XSTAT_H
-+#define XSTAT_H
++void xthread_workqueue_chroot(struct xthread_workqueue *wq,
++		const char *path);
 +
-+struct stat;
-+
-+int xlstat(const char *pathname, struct stat *statbuf);
-+int xstat(const char *pathname, struct stat *statbuf);
 +#endif
 diff --git a/support/misc/Makefile.am b/support/misc/Makefile.am
-index d0bff8feb6ae..f9993e3ac897 100644
+index 8936b0d64e45..d0bff8feb6ae 100644
 --- a/support/misc/Makefile.am
 +++ b/support/misc/Makefile.am
-@@ -1,6 +1,7 @@
+@@ -1,6 +1,6 @@
  ## Process this file with automake to produce Makefile.in
  
  noinst_LIBRARIES = libmisc.a
--libmisc_a_SOURCES = tcpwrapper.c from_local.c mountpoint.c file.c workqueue.c
-+libmisc_a_SOURCES = tcpwrapper.c from_local.c mountpoint.c file.c \
-+		    nfsd_path.c workqueue.c xstat.c
+-libmisc_a_SOURCES = tcpwrapper.c from_local.c mountpoint.c file.c
++libmisc_a_SOURCES = tcpwrapper.c from_local.c mountpoint.c file.c workqueue.c
  
  MAINTAINERCLEANFILES = Makefile.in
-diff --git a/support/misc/nfsd_path.c b/support/misc/nfsd_path.c
+diff --git a/support/misc/workqueue.c b/support/misc/workqueue.c
 new file mode 100644
-index 000000000000..fe2c011b1521
+index 000000000000..b8d03446f2c7
 --- /dev/null
-+++ b/support/misc/nfsd_path.c
-@@ -0,0 +1,168 @@
-+#include <errno.h>
-+#include <sys/types.h>
-+#include <sys/stat.h>
++++ b/support/misc/workqueue.c
+@@ -0,0 +1,228 @@
++#include <stdlib.h>
 +#include <unistd.h>
 +
 +#include "config.h"
-+#include "conffile.h"
-+#include "xmalloc.h"
-+#include "xlog.h"
-+#include "xstat.h"
-+#include "nfsd_path.h"
 +#include "workqueue.h"
++#include "xlog.h"
 +
-+static struct xthread_workqueue *nfsd_wq;
++#if defined(HAVE_SCHED_H) && defined(HAVE_LIBPTHREAD) && defined(HAVE_UNSHARE)
++#include <sched.h>
++#include <pthread.h>
 +
-+static int
-+nfsd_path_isslash(const char *path)
-+{
-+	return path[0] == '/' && path[1] == '/';
-+}
-+
-+static int
-+nfsd_path_isdot(const char *path)
-+{
-+	return path[0] == '.' && path[1] == '/';
-+}
-+
-+static const char *
-+nfsd_path_strip(const char *path)
-+{
-+	if (!path || *path == '\0')
-+		goto out;
-+	for (;;) {
-+		if (nfsd_path_isslash(path)) {
-+			path++;
-+			continue;
-+		}
-+		if (nfsd_path_isdot(path)) {
-+			path += 2;
-+			continue;
-+		}
-+		break;
-+	}
-+out:
-+	return path;
-+}
-+
-+const char *
-+nfsd_path_nfsd_rootdir(void)
-+{
-+	const char *rootdir;
-+
-+	rootdir = nfsd_path_strip(conf_get_str("exports", "rootdir"));
-+	if (!rootdir || rootdir[0] ==  '\0')
-+		return NULL;
-+	if (rootdir[0] == '/' && rootdir[1] == '\0')
-+		return NULL;
-+	return rootdir;
-+}
-+
-+char *
-+nfsd_path_strip_root(char *pathname)
-+{
-+	const char *dir = nfsd_path_nfsd_rootdir();
-+	char *ret;
-+
-+	ret = strstr(pathname, dir);
-+	if (!ret || ret != pathname)
-+		return pathname;
-+	return pathname + strlen(dir);
-+}
-+
-+char *
-+nfsd_path_prepend_dir(const char *dir, const char *pathname)
-+{
-+	size_t len, dirlen;
-+	char *ret;
-+
-+	dirlen = strlen(dir);
-+	while (dirlen > 0 && dir[dirlen - 1] == '/')
-+		dirlen--;
-+	if (!dirlen)
-+		return NULL;
-+	len = dirlen + strlen(pathname) + 1;
-+	ret = xmalloc(len + 1);
-+	snprintf(ret, len, "%.*s/%s", (int)dirlen, dir, pathname);
-+	return ret;
-+}
-+
-+static void
-+nfsd_setup_workqueue(void)
-+{
-+	const char *rootdir = nfsd_path_nfsd_rootdir();
-+
-+	if (!rootdir)
-+		return;
-+	nfsd_wq = xthread_workqueue_alloc();
-+	if (!nfsd_wq)
-+		return;
-+	xthread_workqueue_chroot(nfsd_wq, rootdir);
-+}
-+
-+void
-+nfsd_path_init(void)
-+{
-+	nfsd_setup_workqueue();
-+}
-+
-+struct nfsd_stat_data {
-+	const char *pathname;
-+	struct stat *statbuf;
-+	int ret;
-+	int err;
++struct xwork_struct {
++	struct xwork_struct *next;
++	void (*fn)(void *);
++	void *data;
 +};
 +
-+static void
-+nfsd_statfunc(void *data)
-+{
-+	struct nfsd_stat_data *d = data;
++struct xwork_queue {
++	struct xwork_struct *head;
++	struct xwork_struct **tail;
 +
-+	d->ret = xstat(d->pathname, d->statbuf);
-+	if (d->ret < 0)
-+		d->err = errno;
++	unsigned char shutdown : 1;
++};
++
++static void xwork_queue_init(struct xwork_queue *queue)
++{
++	queue->head = NULL;
++	queue->tail = &queue->head;
++	queue->shutdown = 0;
 +}
 +
-+static void
-+nfsd_lstatfunc(void *data)
++static void xwork_enqueue(struct xwork_queue *queue,
++		struct xwork_struct *entry)
 +{
-+	struct nfsd_stat_data *d = data;
-+
-+	d->ret = xlstat(d->pathname, d->statbuf);
-+	if (d->ret < 0)
-+		d->err = errno;
++	entry->next = NULL;
++	*queue->tail = entry;
++	queue->tail = &entry->next;
 +}
 +
-+static int
-+nfsd_run_stat(struct xthread_workqueue *wq,
-+		void (*func)(void *),
-+		const char *pathname,
-+		struct stat *statbuf)
++static struct xwork_struct *xwork_dequeue(struct xwork_queue *queue)
 +{
-+	struct nfsd_stat_data data = {
-+		pathname,
-+		statbuf,
-+		0,
-+		0
++	struct xwork_struct *entry = NULL;
++	if (queue->head) {
++		entry = queue->head;
++		queue->head = entry->next;
++		if (!queue->head)
++			queue->tail = &queue->head;
++	}
++	return entry;
++}
++
++struct xthread_work {
++	struct xwork_struct work;
++
++	pthread_cond_t cond;
++};
++
++struct xthread_workqueue {
++	struct xwork_queue queue;
++
++	pthread_mutex_t mutex;
++	pthread_cond_t cond;
++};
++
++static void xthread_workqueue_init(struct xthread_workqueue *wq)
++{
++	xwork_queue_init(&wq->queue);
++	pthread_mutex_init(&wq->mutex, NULL);
++	pthread_cond_init(&wq->cond, NULL);
++}
++
++static void xthread_workqueue_fini(struct xthread_workqueue *wq)
++{
++	pthread_cond_destroy(&wq->cond);
++	pthread_mutex_destroy(&wq->mutex);
++}
++
++static int xthread_work_enqueue(struct xthread_workqueue *wq,
++		struct xthread_work *work)
++{
++	xwork_enqueue(&wq->queue, &work->work);
++	pthread_cond_signal(&wq->cond);
++	return 0;
++}
++
++static struct xthread_work *xthread_work_dequeue(struct xthread_workqueue *wq)
++{
++	return (struct xthread_work *)xwork_dequeue(&wq->queue);
++}
++
++static void xthread_workqueue_do_work(struct xthread_workqueue *wq)
++{
++	struct xthread_work *work;
++
++	pthread_mutex_lock(&wq->mutex);
++	/* Signal the caller that we're up and running */
++	pthread_cond_signal(&wq->cond);
++	for (;;) {
++		work = xthread_work_dequeue(wq);
++		if (work) {
++			work->work.fn(work->work.data);
++			pthread_cond_signal(&work->cond);
++			continue;
++		}
++		if (wq->queue.shutdown)
++			break;
++		pthread_cond_wait(&wq->cond, &wq->mutex);
++	}
++	pthread_mutex_unlock(&wq->mutex);
++}
++
++void xthread_workqueue_shutdown(struct xthread_workqueue *wq)
++{
++	pthread_mutex_lock(&wq->mutex);
++	wq->queue.shutdown = 1;
++	pthread_cond_signal(&wq->cond);
++	pthread_mutex_unlock(&wq->mutex);
++}
++
++static void xthread_workqueue_free(struct xthread_workqueue *wq)
++{
++	xthread_workqueue_fini(wq);
++	free(wq);
++}
++
++static void xthread_workqueue_cleanup(void *data)
++{
++	xthread_workqueue_free(data);
++}
++
++static void *xthread_workqueue_worker(void *data)
++{
++	pthread_cleanup_push(xthread_workqueue_cleanup, data);
++	xthread_workqueue_do_work(data);
++	pthread_cleanup_pop(1);
++	return NULL;
++}
++
++struct xthread_workqueue *xthread_workqueue_alloc(void)
++{
++	struct xthread_workqueue *ret;
++	pthread_t thread;
++
++	ret = malloc(sizeof(*ret));
++	if (ret) {
++		xthread_workqueue_init(ret);
++
++		pthread_mutex_lock(&ret->mutex);
++		if (pthread_create(&thread, NULL,
++					xthread_workqueue_worker,
++					ret) == 0) {
++			/* Wait for thread to start */
++			pthread_cond_wait(&ret->cond, &ret->mutex);
++			pthread_mutex_unlock(&ret->mutex);
++			return ret;
++		}
++		pthread_mutex_unlock(&ret->mutex);
++		xthread_workqueue_free(ret);
++		ret = NULL;
++	}
++	return NULL;
++}
++
++void xthread_work_run_sync(struct xthread_workqueue *wq,
++		void (*fn)(void *), void *data)
++{
++	struct xthread_work work = {
++		{
++			NULL,
++			fn,
++			data
++		},
++		PTHREAD_COND_INITIALIZER,
 +	};
-+	xthread_work_run_sync(wq, func, &data);
-+	if (data.ret < 0)
-+		errno = data.err;
-+	return data.ret;
++	pthread_mutex_lock(&wq->mutex);
++	xthread_work_enqueue(wq, &work);
++	pthread_cond_wait(&work.cond, &wq->mutex);
++	pthread_mutex_unlock(&wq->mutex);
++	pthread_cond_destroy(&work.cond);
 +}
 +
-+int
-+nfsd_path_stat(const char *pathname, struct stat *statbuf)
++static void xthread_workqueue_do_chroot(void *data)
 +{
-+	if (!nfsd_wq)
-+		return xstat(pathname, statbuf);
-+	return nfsd_run_stat(nfsd_wq, nfsd_statfunc, pathname, statbuf);
++	const char *path = data;
++
++	if (unshare(CLONE_FS) != 0) {
++		xlog_err("unshare() failed: %m");
++		return;
++	}
++	if (chroot(path) != 0)
++		xlog_err("chroot() failed: %m");
 +}
 +
-+int
-+nfsd_path_lstat(const char *pathname, struct stat *statbuf)
++void xthread_workqueue_chroot(struct xthread_workqueue *wq,
++		const char *path)
 +{
-+	if (!nfsd_wq)
-+		return xlstat(pathname, statbuf);
-+	return nfsd_run_stat(nfsd_wq, nfsd_lstatfunc, pathname, statbuf);
-+}
-diff --git a/support/misc/xstat.c b/support/misc/xstat.c
-new file mode 100644
-index 000000000000..d092f73dfd65
---- /dev/null
-+++ b/support/misc/xstat.c
-@@ -0,0 +1,33 @@
-+#include <sys/types.h>
-+#include <fcntl.h>
-+#include <sys/stat.h>
-+#include <unistd.h>
-+
-+#include "config.h"
-+#include "xstat.h"
-+
-+#ifdef HAVE_FSTATAT
-+
-+int xlstat(const char *pathname, struct stat *statbuf)
-+{
-+	return fstatat(AT_FDCWD, pathname, statbuf, AT_NO_AUTOMOUNT |
-+			AT_SYMLINK_NOFOLLOW);
-+}
-+
-+int xstat(const char *pathname, struct stat *statbuf)
-+{
-+	return fstatat(AT_FDCWD, pathname, statbuf, AT_NO_AUTOMOUNT);
++	xthread_work_run_sync(wq, xthread_workqueue_do_chroot, (void *)path);
 +}
 +
 +#else
 +
-+int xlstat(const char *pathname, struct stat *statbuf)
++struct xthread_workqueue {
++};
++
++static struct xthread_workqueue ret;
++
++struct xthread_workqueue *xthread_workqueue_alloc(void)
 +{
-+	return lstat(pathname, statbuf);
++	return &ret;
 +}
 +
-+int xstat(const char *pathname, struct stat *statbuf)
++void xthread_workqueue_shutdown(struct xthread_workqueue *wq)
 +{
-+	return stat(pathname, statbuf);
 +}
-+#endif
++
++void xthread_work_run_sync(struct xthread_workqueue *wq,
++		void (*fn)(void *), void *data)
++{
++	fn(data);
++}
++
++void xthread_workqueue_chroot(struct xthread_workqueue *wq,
++		const char *path)
++{
++	xlog_err("Unable to run as chroot");
++}
++
++#endif /* defined(HAVE_SCHED_H) && defined(HAVE_LIBPTHREAD) && defined(HAVE_UNSHARE) */
+diff --git a/utils/mountd/Makefile.am b/utils/mountd/Makefile.am
+index 73eeb3f35070..18610f18238c 100644
+--- a/utils/mountd/Makefile.am
++++ b/utils/mountd/Makefile.am
+@@ -19,7 +19,8 @@ mountd_LDADD = ../../support/export/libexport.a \
+ 	       ../../support/nfs/libnfs.la \
+ 	       ../../support/misc/libmisc.a \
+ 	       $(OPTLIBS) \
+-	       $(LIBBSD) $(LIBWRAP) $(LIBNSL) $(LIBBLKID) $(LIBTIRPC)
++	       $(LIBBSD) $(LIBWRAP) $(LIBNSL) $(LIBBLKID) $(LIBTIRPC) \
++	       $(LIBPTHREAD)
+ mountd_CPPFLAGS = $(AM_CPPFLAGS) $(CPPFLAGS) \
+ 		  -I$(top_builddir)/support/include \
+ 		  -I$(top_srcdir)/support/export
 -- 
 2.21.0
 
