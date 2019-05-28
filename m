@@ -2,175 +2,180 @@ Return-Path: <SRS0=hGXo=T4=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.8 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-7.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
+	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,T_DKIMWL_WL_HIGH,UNPARSEABLE_RELAY,
+	URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 74631C04AB6
-	for <linux-nfs@archiver.kernel.org>; Tue, 28 May 2019 18:22:00 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DB57FC04AB6
+	for <linux-nfs@archiver.kernel.org>; Tue, 28 May 2019 19:04:02 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 5287C20989
-	for <linux-nfs@archiver.kernel.org>; Tue, 28 May 2019 18:22:00 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id B318520717
+	for <linux-nfs@archiver.kernel.org>; Tue, 28 May 2019 19:04:02 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="F+pKe2tR"
+	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="U+FX2h3p"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727961AbfE1SVv (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 28 May 2019 14:21:51 -0400
-Received: from mail-it1-f193.google.com ([209.85.166.193]:37213 "EHLO
-        mail-it1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727428AbfE1SVv (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 28 May 2019 14:21:51 -0400
-Received: by mail-it1-f193.google.com with SMTP id s16so537370ita.2;
-        Tue, 28 May 2019 11:21:50 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=sender:subject:from:to:date:message-id:in-reply-to:references
-         :user-agent:mime-version:content-transfer-encoding;
-        bh=m9Pkw4CV2aVA90rqOBAJOqo5SGoCQ+VOLkxHnhH2bO0=;
-        b=F+pKe2tRjOAstateAoDOmO5RRgQxDA7PraZVKTdDusHf98TVJs8r0BnogvdF4D5HbD
-         JlpLJEeU8o6+SI+skUb+TCd0dV4Pue/XaKXKxJxhBpoIXhS4ynik/rKNxgpuSP1+dYOH
-         n4wOne0soQcpFnimDZbwGug+IsDoVLGw0Dp/goErt0InaS6FR/NRBI06fzxnZvncxGZi
-         EXueY6SKvWBEHf2RDlewls3JPgEzvamAwo3kHr0VJ4RTYpkO/vucP1vz0fyoZj5MAIW2
-         PSSURKUFVUzYvtukEYcZUVMxj+1LrS1KxaVCM5E5Jd6UvkpBzCl4HrlH39oE/jB57wI3
-         rJ0g==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:sender:subject:from:to:date:message-id
-         :in-reply-to:references:user-agent:mime-version
-         :content-transfer-encoding;
-        bh=m9Pkw4CV2aVA90rqOBAJOqo5SGoCQ+VOLkxHnhH2bO0=;
-        b=abjdChhMpVhxuI9rWmG32hZFsnWNIY7zVNB0e3lGf642OlPAmGvI8qIHCHwfXSbOv6
-         /4QaTQFz2hJLpG23QaCvqNwQXVqC0megMvzUQZ3WVafaCeoPw/4M2quezIYNn1Exupq5
-         wTFQbKLRvIPQ5tHEKzSQX+eVc4Q4Q73MKxtQkzwdk6UuApUFkpVlqIuBwkK+GmEEAmge
-         arWuZnwgPehecnQF7ZasXT8GJ1hfcVJVZ5O9SEQLzYguEsg+UBNtkKiZcgH4xi8WF5Ej
-         lkcJlJ0SxIEHLHepyo5W4CUH8xDhNjLVtlqgf12EokHFgj5o9X90TSfZAenMpANntGT0
-         ry1A==
-X-Gm-Message-State: APjAAAVa051XA6gS7pklyvjHzFq2VYu14bz0jsDxjh0XArVYD0j8B5Ua
-        JaknmlcVUnAxikGTpItnD1f9mouJ
-X-Google-Smtp-Source: APXvYqzqrGkWs3q7V9VB9LDnEm1zFKjOYkH9v4aUA4eO7W+OuysarCbJ0q6L8Lulf5vmMQiOnAjeTg==
-X-Received: by 2002:a24:4794:: with SMTP id t142mr4239355itb.121.1559067709965;
-        Tue, 28 May 2019 11:21:49 -0700 (PDT)
-Received: from gateway.1015granger.net (c-68-61-232-219.hsd1.mi.comcast.net. [68.61.232.219])
-        by smtp.gmail.com with ESMTPSA id 199sm1530028itk.21.2019.05.28.11.21.49
-        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Tue, 28 May 2019 11:21:49 -0700 (PDT)
-Received: from manet.1015granger.net (manet.1015granger.net [192.168.1.51])
-        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id x4SILmaJ014546;
-        Tue, 28 May 2019 18:21:48 GMT
-Subject: [PATCH RFC 11/12] xprtrdma: Refactor chunk encoding
+        id S1726526AbfE1TEB (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 28 May 2019 15:04:01 -0400
+Received: from userp2130.oracle.com ([156.151.31.86]:52496 "EHLO
+        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726452AbfE1TEB (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 28 May 2019 15:04:01 -0400
+Received: from pps.filterd (userp2130.oracle.com [127.0.0.1])
+        by userp2130.oracle.com (8.16.0.27/8.16.0.27) with SMTP id x4SIx0QB100194;
+        Tue, 28 May 2019 19:03:58 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=content-type :
+ mime-version : subject : from : in-reply-to : date : cc :
+ content-transfer-encoding : message-id : references : to;
+ s=corp-2018-07-02; bh=7/hDi0qTYa4JisZUQMogkkmi0jv/asin5TlKOQ7VUOQ=;
+ b=U+FX2h3pBX66Xe6xa9/cyiavfubGVQqpWMQdLIdM8LakV3hZ1os0EfPT8bZcvmnnnwBe
+ gy9ZIAw5+x2k/limrJdg+di6NyRiRDV3Rxhi+NIUzRSELlZchVUASIdjVKWCcQtjrx8h
+ rO57DJxklg41oWMcDkWEBtKD7ivVmkp9zpYqXnxCiThxQZbECq4gxc1QGlVtTXhkIrEd
+ 8qkAwjkCzXhb1kU0AMcFym9irA4yC/YsDxiz7I94osEoW7RYFHl9TpntTgyUYED8u09g
+ LAjsbkh88LXyEsGJ+5pVVuV9nnlQ3edfE+fRFksjAnAfSCW8oXAcEVlgjVwpms2phG1r sg== 
+Received: from userp3030.oracle.com (userp3030.oracle.com [156.151.31.80])
+        by userp2130.oracle.com with ESMTP id 2spw4tda97-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Tue, 28 May 2019 19:03:58 +0000
+Received: from pps.filterd (userp3030.oracle.com [127.0.0.1])
+        by userp3030.oracle.com (8.16.0.27/8.16.0.27) with SMTP id x4SJ3NO3091186;
+        Tue, 28 May 2019 19:03:58 GMT
+Received: from userv0121.oracle.com (userv0121.oracle.com [156.151.31.72])
+        by userp3030.oracle.com with ESMTP id 2ss1fn1umt-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Tue, 28 May 2019 19:03:58 +0000
+Received: from abhmp0007.oracle.com (abhmp0007.oracle.com [141.146.116.13])
+        by userv0121.oracle.com (8.14.4/8.13.8) with ESMTP id x4SJ3vNQ010312;
+        Tue, 28 May 2019 19:03:57 GMT
+Received: from anon-dhcp-171.1015granger.net (/68.61.232.219)
+        by default (Oracle Beehive Gateway v4.0)
+        with ESMTP ; Tue, 28 May 2019 12:03:57 -0700
+Content-Type: text/plain;
+        charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 12.4 \(3445.104.11\))
+Subject: Re: [RFC PATCH 5/5] SUNRPC: Reduce the priority of the xprtiod queue
 From:   Chuck Lever <chuck.lever@oracle.com>
-To:     linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date:   Tue, 28 May 2019 14:21:48 -0400
-Message-ID: <20190528182148.19012.78763.stgit@manet.1015granger.net>
-In-Reply-To: <20190528181018.19012.61210.stgit@manet.1015granger.net>
-References: <20190528181018.19012.61210.stgit@manet.1015granger.net>
-User-Agent: StGit/0.17.1-dirty
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
+In-Reply-To: <65D12050-BF24-4922-A287-3A4D981BD635@oracle.com>
+Date:   Tue, 28 May 2019 15:03:56 -0400
+Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Transfer-Encoding: quoted-printable
+Message-Id: <12C94CD2-5E07-4C12-B7F6-78B433327361@oracle.com>
+References: <20190503111841.4391-1-trond.myklebust@hammerspace.com>
+ <20190503111841.4391-2-trond.myklebust@hammerspace.com>
+ <20190503111841.4391-3-trond.myklebust@hammerspace.com>
+ <20190503111841.4391-4-trond.myklebust@hammerspace.com>
+ <20190503111841.4391-5-trond.myklebust@hammerspace.com>
+ <20190503111841.4391-6-trond.myklebust@hammerspace.com>
+ <65D12050-BF24-4922-A287-3A4D981BD635@oracle.com>
+To:     Trond Myklebust <trondmy@gmail.com>
+X-Mailer: Apple Mail (2.3445.104.11)
+X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9271 signatures=668687
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 suspectscore=2 malwarescore=0
+ phishscore=0 bulkscore=0 spamscore=0 mlxscore=0 mlxlogscore=999
+ adultscore=0 classifier=spam adjust=0 reason=mlx scancount=1
+ engine=8.0.1-1810050000 definitions=main-1905280119
+X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9271 signatures=668687
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 priorityscore=1501 malwarescore=0
+ suspectscore=2 phishscore=0 bulkscore=0 spamscore=0 clxscore=1015
+ lowpriorityscore=0 mlxscore=0 impostorscore=0 mlxlogscore=999 adultscore=0
+ classifier=spam adjust=0 reason=mlx scancount=1 engine=8.0.1-1810050000
+ definitions=main-1905280119
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Clean up.
+Following up on this. Now with even more data!
 
-Move the "not present" case into the individual chunk encoders. This
-improves code organization and readability.
+> On May 6, 2019, at 4:41 PM, Chuck Lever <chuck.lever@oracle.com> =
+wrote:
+>=20
+>=20
+>> On May 3, 2019, at 7:18 AM, Trond Myklebust <trondmy@gmail.com> =
+wrote:
+>>=20
+>> Allow more time for softirqd
+>=20
+> Have you thought about performance tests for this one?
 
-The reason for the original organization was to optimize for the
-case where there there are no chunks. The optimization turned out to
-be inconsequential.
+I tested this series on my 12-core two-socket client using a variety
+of tests including iozone, fio, and fstests. The network under test
+is 56Gb InfiniBand (TCP uses IPoIB). I tested both TCP and RDMA.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
- net/sunrpc/xprtrdma/rpc_rdma.c |   36 ++++++++++++++++--------------------
- 1 file changed, 16 insertions(+), 20 deletions(-)
+With lock debugging and memory leak testing enabled, I did not see
+any functional regressions or new leaks or crashes. Thus IMO this
+series is "safe to apply."
 
-diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index 6de90d4..310614f 100644
---- a/net/sunrpc/xprtrdma/rpc_rdma.c
-+++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -366,6 +366,9 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
- 	unsigned int pos;
- 	int nsegs;
- 
-+	if (rtype == rpcrdma_noch)
-+		goto done;
-+
- 	pos = rqst->rq_snd_buf.head[0].iov_len;
- 	if (rtype == rpcrdma_areadch)
- 		pos = 0;
-@@ -389,7 +392,8 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
- 		nsegs -= mr->mr_nents;
- 	} while (nsegs);
- 
--	return 0;
-+done:
-+	return encode_item_not_present(xdr);
- }
- 
- /* Register and XDR encode the Write list. Supports encoding a list
-@@ -417,6 +421,9 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
- 	int nsegs, nchunks;
- 	__be32 *segcount;
- 
-+	if (wtype != rpcrdma_writech)
-+		goto done;
-+
- 	seg = req->rl_segments;
- 	nsegs = rpcrdma_convert_iovs(r_xprt, &rqst->rq_rcv_buf,
- 				     rqst->rq_rcv_buf.head[0].iov_len,
-@@ -451,7 +458,8 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
- 	/* Update count of segments in this Write chunk */
- 	*segcount = cpu_to_be32(nchunks);
- 
--	return 0;
-+done:
-+	return encode_item_not_present(xdr);
- }
- 
- /* Register and XDR encode the Reply chunk. Supports encoding an array
-@@ -476,6 +484,9 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
- 	int nsegs, nchunks;
- 	__be32 *segcount;
- 
-+	if (wtype != rpcrdma_replych)
-+		return encode_item_not_present(xdr);
-+
- 	seg = req->rl_segments;
- 	nsegs = rpcrdma_convert_iovs(r_xprt, &rqst->rq_rcv_buf, 0, wtype, seg);
- 	if (nsegs < 0)
-@@ -859,28 +870,13 @@ static bool rpcrdma_prepare_msg_sges(struct rpcrdma_xprt *r_xprt,
- 	 * send a Call message with a Position Zero Read chunk and a
- 	 * regular Read chunk at the same time.
- 	 */
--	if (rtype != rpcrdma_noch) {
--		ret = rpcrdma_encode_read_list(r_xprt, req, rqst, rtype);
--		if (ret)
--			goto out_err;
--	}
--	ret = encode_item_not_present(xdr);
-+	ret = rpcrdma_encode_read_list(r_xprt, req, rqst, rtype);
- 	if (ret)
- 		goto out_err;
--
--	if (wtype == rpcrdma_writech) {
--		ret = rpcrdma_encode_write_list(r_xprt, req, rqst, wtype);
--		if (ret)
--			goto out_err;
--	}
--	ret = encode_item_not_present(xdr);
-+	ret = rpcrdma_encode_write_list(r_xprt, req, rqst, wtype);
- 	if (ret)
- 		goto out_err;
--
--	if (wtype != rpcrdma_replych)
--		ret = encode_item_not_present(xdr);
--	else
--		ret = rpcrdma_encode_reply_chunk(r_xprt, req, rqst, wtype);
-+	ret = rpcrdma_encode_reply_chunk(r_xprt, req, rqst, wtype);
- 	if (ret)
- 		goto out_err;
- 
+With TCP, I saw no change in performance between a "stock" kernel
+and one with all five patches in this series applied, as, IIRC,
+you predicted.
+
+The following discussion is based on testing with NFS/RDMA.
+
+With RDMA, I saw an improvement of 5-10% in IOPS rate between the
+"stock" kernel and a kernel with the first four patches applied. When
+the fifth patch is applied, I saw IOPS throughput significantly worse
+than "stock" -- like 20% worse.
+
+I also studied average RPC execution time (the "execute" metric) with
+the "stock" kernel, the one with four patches applied, and with the
+one where all five are applied. The workload is 100% 4KB READs with
+an iodepth of 1024 in order to saturate the transmit queue.
+
+With four patches, the execute time is about 2.5 msec faster (average
+execution time is around 75 msec due to the large backlog this test
+generates). With five patches, it's slower than "stock" by 12 msec.
+
+I also saw a 30 usec improvement in the average latency of
+xprt_complete_rqst with the four patch series.
+
+As far as I can tell, the benefit of this series comes mostly from
+the third patch, which changes spin_lock_bh(&xprt->transport_lock) to
+spin_lock(&xprt->transport_lock). When the xprtiod work queue is
+lowered in priority in 5/5, that benefit vanishes.
+
+I am still confused about why 5/5 is needed. I did not see any soft
+lockups without this patch applied when using RDMA. Is the issue
+with xprtsock's use of xprtiod for handling incoming TCP receives?
+
+I still have some things I'd like to look at. One thing I haven't
+yet tried is looking at lock_stat, which would confirm or refute
+my theory that this is all about the transport_lock, for instance.
+
+
+>> Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
+>> ---
+>> net/sunrpc/sched.c | 2 +-
+>> 1 file changed, 1 insertion(+), 1 deletion(-)
+>>=20
+>> diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
+>> index c7e81336620c..6b37c9a4b48f 100644
+>> --- a/net/sunrpc/sched.c
+>> +++ b/net/sunrpc/sched.c
+>> @@ -1253,7 +1253,7 @@ static int rpciod_start(void)
+>> 		goto out_failed;
+>> 	rpciod_workqueue =3D wq;
+>> 	/* Note: highpri because network receive is latency sensitive */
+>=20
+> The above comment should be deleted as well.
+>=20
+>=20
+>> -	wq =3D alloc_workqueue("xprtiod", =
+WQ_UNBOUND|WQ_MEM_RECLAIM|WQ_HIGHPRI, 0);
+>> +	wq =3D alloc_workqueue("xprtiod", WQ_MEM_RECLAIM | WQ_UNBOUND, =
+0);
+>> 	if (!wq)
+>> 		goto free_rpciod;
+>> 	xprtiod_workqueue =3D wq;
+>=20
+> --
+> Chuck Lever
+>=20
+>=20
+>=20
+
+--
+Chuck Lever
+
+
 
