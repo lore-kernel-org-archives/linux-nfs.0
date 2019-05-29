@@ -8,52 +8,52 @@ X-Spam-Status: No, score=-8.9 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4DD29C28CC1
-	for <linux-nfs@archiver.kernel.org>; Wed, 29 May 2019 17:44:09 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3CB5EC28CC2
+	for <linux-nfs@archiver.kernel.org>; Wed, 29 May 2019 17:44:10 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 298C823FF3
-	for <linux-nfs@archiver.kernel.org>; Wed, 29 May 2019 17:44:09 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 1859223FF1
+	for <linux-nfs@archiver.kernel.org>; Wed, 29 May 2019 17:44:10 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="PebP4+cL"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="QN4dIaN9"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727404AbfE2Rnt (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 29 May 2019 13:43:49 -0400
-Received: from mail-wm1-f67.google.com ([209.85.128.67]:36412 "EHLO
+        id S1727341AbfE2Rno (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 29 May 2019 13:43:44 -0400
+Received: from mail-wm1-f67.google.com ([209.85.128.67]:53583 "EHLO
         mail-wm1-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727400AbfE2Rns (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 29 May 2019 13:43:48 -0400
-Received: by mail-wm1-f67.google.com with SMTP id v22so2188603wml.1;
-        Wed, 29 May 2019 10:43:46 -0700 (PDT)
+        with ESMTP id S1727195AbfE2Rnn (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 29 May 2019 13:43:43 -0400
+Received: by mail-wm1-f67.google.com with SMTP id d17so2249047wmb.3;
+        Wed, 29 May 2019 10:43:41 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references;
-        bh=rlDX58TIMkSnxlZYvBJZ2TZQKYpka5ehiNgustkWnZY=;
-        b=PebP4+cLhsmj4O+1azOWcIfAVONfFzTh1sA9YSTYEBAqybToCfE37RpBbr7J9ptozi
-         RmOGNtC0UuYTmEP3nYBBuEw10G2PIKqbSZRnlYGH3pdBC1WbUqM9effRhKKC7ZCZWxR+
-         mn9v/TgTQtecIOFKq2sRrcpKuoU5myZ0nXvAQ1jyxpkh+PMs5uvaMTLWgp8sAUHUAo3G
-         l/vLcINnzwiZcdCt1d9y2Ylo03GCaKy0nFJ8d/moT6PxaRTh/ZNXEd6+9NQhxWgzPVTo
-         Cn34hQiE6iWkVGyGyscRfsy7yvxqigDx8JMxip1JXYtHhjMx6rgv0h5iDL+sgsCUQpgy
-         JeHg==
+        bh=NeKDiq+5p2NPB+OcuE01UzrlB5njM3yLN2qd6AodpeU=;
+        b=QN4dIaN9QMaFtoyG1MUp3LUKUh3ugT/NLU0caZNTFXyG+VEwCFfSZ7mD8R4ExD6UXl
+         gOYwKkKWru9NBTMqz2dLCYd6divEv4VxRn9L/xfgmYsnWPWYanKR+5T9cqVr77JQ3DVA
+         UCbWv1SoobyBKVlV1UospEjByMAApeveSG6P9pQcvZogWrw1GCLzEYMjEp9ICab6sVwe
+         MleSETzpiVcMoSl5TEaM8Zm1KYTpW4jXrNVb/TouiRehBOhM0cwE4OyzbFIGSVb7DVr6
+         kFpAfSEkd0ruju3U1cz31YBgfo9fjbsnDy9f+1MmnvzAotmiLbvk8C9MTyzaf3aMauOn
+         ciRg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references;
-        bh=rlDX58TIMkSnxlZYvBJZ2TZQKYpka5ehiNgustkWnZY=;
-        b=BZ4v7xrF/WV99P6LtNx/1Lu6DZfHxxREy8hQu+LmP8Avp/QF9iVSjtFeMJZ6qiXrtt
-         EdaMeKEtFyIw+SOFDwFQnyyQe8Yv6LEjNH2ZVubwCK7WNJUM6ITxv20E8p8JzqFHhCuR
-         uY+zddWK0UJ0Hh6bJ2Irqd0MGozS14VKG/3t5AIJa35/v3SMiY+1fY8X2qvD7Frtf1ob
-         DsA9DHdcz2+IOdj8HXIoJsesNftf9rooG1pu7c7t7XLak+U322yzBL5AZnzEqMTYETTu
-         mdUgyi2oIIuSoZJwuSR1omoTol9wXEjxapSh9KG7c/Z5IIH+5by+EPjmjtvmssff/T+T
-         VlqA==
-X-Gm-Message-State: APjAAAWcNWRrsCp/VUj4Zh8Oc418dIpRv2PqttcRuNSlWa5FBWtHChYt
-        /ZQC1MxAu3YuDflZ91N8vjzgoFIaP5g=
-X-Google-Smtp-Source: APXvYqyZnP/ym9Cj9u95IdXYn2JeWpOXl96aMvy78ul3u/IC+OGJ1gY7fQFBpkU10Ayxtspk+rk0RA==
-X-Received: by 2002:a1c:eb0c:: with SMTP id j12mr7503798wmh.55.1559151825614;
-        Wed, 29 May 2019 10:43:45 -0700 (PDT)
+        bh=NeKDiq+5p2NPB+OcuE01UzrlB5njM3yLN2qd6AodpeU=;
+        b=jPUXmQHgtbS4Rq/9GGDNd8yiKDBwCN5vGFMt1tlBDJNOn7PboKaXLl0fqXdFrFCIZO
+         AJHPUVY3N2pY1c0KisD7xylSogObIcX9MZBU481GDB7hNf85YlvGfdD46kQ2eFjb7gro
+         S5UMnbDiLptyg3TU1xGL3kWXER4/UE1uDrCEwskMStmrTHk7QFKCHE6Jy07/6gLacr2f
+         W2TGPCcU74KGHRfrF0P9NgPtbwMgtgYUtOPvoDF4KpYZIdM48IzFWnvyqfR8tjJsmHfW
+         +aE0O46pyvcO97XKAEQiQJ3ViR0LRFSIbrZw2nkf+R68dDqiRpSIh5ygwPXG/LBpwJh/
+         oPsA==
+X-Gm-Message-State: APjAAAWIPEMpvO/3y09BEpMSQTnO5xrXlnDGAh1/qMD84Duh0toc4dXR
+        adtmM9BKCcQ5xspwqv1Xdq0=
+X-Google-Smtp-Source: APXvYqz6bZyxgncHyHvCPAhLhQv5wGfs/oioqGtZDHF7raSCBLoHpEbnJUrWfw3hcdK4BYBLS9qb7w==
+X-Received: by 2002:a05:600c:23cf:: with SMTP id p15mr7996691wmb.31.1559151815769;
+        Wed, 29 May 2019 10:43:35 -0700 (PDT)
 Received: from localhost.localdomain ([5.102.238.208])
-        by smtp.gmail.com with ESMTPSA id k125sm31702wmb.34.2019.05.29.10.43.43
+        by smtp.gmail.com with ESMTPSA id k125sm31702wmb.34.2019.05.29.10.43.34
         (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Wed, 29 May 2019 10:43:45 -0700 (PDT)
+        Wed, 29 May 2019 10:43:35 -0700 (PDT)
 From:   Amir Goldstein <amir73il@gmail.com>
 To:     "Darrick J . Wong" <darrick.wong@oracle.com>
 Cc:     Dave Chinner <david@fromorbit.com>, Christoph Hellwig <hch@lst.de>,
@@ -64,9 +64,9 @@ Cc:     Dave Chinner <david@fromorbit.com>, Christoph Hellwig <hch@lst.de>,
         linux-fsdevel@vger.kernel.org, linux-api@vger.kernel.org,
         ceph-devel@vger.kernel.org, linux-nfs@vger.kernel.org,
         linux-cifs@vger.kernel.org
-Subject: [PATCH v3 09/13] ceph: copy_file_range needs to strip setuid bits and update timestamps
-Date:   Wed, 29 May 2019 20:43:13 +0300
-Message-Id: <20190529174318.22424-10-amir73il@gmail.com>
+Subject: [PATCH v3 04/13] vfs: remove redundant checks from generic_remap_checks()
+Date:   Wed, 29 May 2019 20:43:08 +0300
+Message-Id: <20190529174318.22424-5-amir73il@gmail.com>
 X-Mailer: git-send-email 2.17.1
 In-Reply-To: <20190529174318.22424-1-amir73il@gmail.com>
 References: <20190529174318.22424-1-amir73il@gmail.com>
@@ -75,53 +75,90 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Because ceph doesn't hold destination inode lock throughout the copy,
-strip setuid bits before and after copy.
+The access limit checks on input file range in generic_remap_checks()
+are redundant because the input file size is guaranteied to be within
+limits and pos+len are already checked to be within input file size.
 
-The destination inode mtime is updated before and after the copy and the
-source inode atime is updated after the copy, similar to the filesystem
-->read_iter() implementation.
+Beyond the fact that the check cannot fail, if it would have failed,
+it could return -EFBIG for input file range error. There is no precedent
+for that. -EFBIG is returned in syscalls that would change file length.
+
+With that call removed, we can fold generic_access_check_limits() into
+generic_write_check_limits().
 
 Signed-off-by: Amir Goldstein <amir73il@gmail.com>
 ---
- fs/ceph/file.c | 17 +++++++++++++++++
- 1 file changed, 17 insertions(+)
+ mm/filemap.c | 33 ++++++++++++---------------------
+ 1 file changed, 12 insertions(+), 21 deletions(-)
 
-diff --git a/fs/ceph/file.c b/fs/ceph/file.c
-index e87f7b2023af..8a70708e1aca 100644
---- a/fs/ceph/file.c
-+++ b/fs/ceph/file.c
-@@ -1947,6 +1947,15 @@ static ssize_t __ceph_copy_file_range(struct file *src_file, loff_t src_off,
- 		goto out;
+diff --git a/mm/filemap.c b/mm/filemap.c
+index a38619a4a6af..44361928bbb0 100644
+--- a/mm/filemap.c
++++ b/mm/filemap.c
+@@ -2895,24 +2895,11 @@ EXPORT_SYMBOL(read_cache_page_gfp);
+  * LFS limits.  If pos is under the limit it becomes a short access.  If it
+  * exceeds the limit we return -EFBIG.
+  */
+-static int generic_access_check_limits(struct file *file, loff_t pos,
+-				       loff_t *count)
+-{
+-	struct inode *inode = file->f_mapping->host;
+-	loff_t max_size = inode->i_sb->s_maxbytes;
+-
+-	if (!(file->f_flags & O_LARGEFILE))
+-		max_size = MAX_NON_LFS;
+-
+-	if (unlikely(pos >= max_size))
+-		return -EFBIG;
+-	*count = min(*count, max_size - pos);
+-	return 0;
+-}
+-
+ static int generic_write_check_limits(struct file *file, loff_t pos,
+ 				      loff_t *count)
+ {
++	struct inode *inode = file->f_mapping->host;
++	loff_t max_size = inode->i_sb->s_maxbytes;
+ 	loff_t limit = rlimit(RLIMIT_FSIZE);
+ 
+ 	if (limit != RLIM_INFINITY) {
+@@ -2923,7 +2910,15 @@ static int generic_write_check_limits(struct file *file, loff_t pos,
+ 		*count = min(*count, limit - pos);
  	}
  
-+	/* Should dst_inode lock be held throughout the copy operation? */
-+	inode_lock(dst_inode);
-+	ret = file_modified(dst_file);
-+	inode_unlock(dst_inode);
-+	if (ret < 0) {
-+		dout("failed to modify dst file before copy (%zd)\n", ret);
-+		goto out;
-+	}
+-	return generic_access_check_limits(file, pos, count);
++	if (!(file->f_flags & O_LARGEFILE))
++		max_size = MAX_NON_LFS;
 +
- 	/*
- 	 * We need FILE_WR caps for dst_ci and FILE_RD for src_ci as other
- 	 * clients may have dirty data in their caches.  And OSDs know nothing
-@@ -2097,6 +2106,14 @@ static ssize_t __ceph_copy_file_range(struct file *src_file, loff_t src_off,
- out:
- 	ceph_free_cap_flush(prealloc_cf);
- 
-+	file_accessed(src_file);
-+	/* To be on the safe side, remove privs also after copy */
-+	inode_lock(dst_inode);
-+	err = file_modified(dst_file);
-+	inode_unlock(dst_inode);
-+	if (err < 0)
-+		dout("failed to modify dst file after copy (%zd)\n", err);
++	if (unlikely(pos >= max_size))
++		return -EFBIG;
 +
- 	return ret;
++	*count = min(*count, max_size - pos);
++
++	return 0;
  }
  
+ /*
+@@ -2963,7 +2958,7 @@ EXPORT_SYMBOL(generic_write_checks);
+ /*
+  * Performs necessary checks before doing a clone.
+  *
+- * Can adjust amount of bytes to clone.
++ * Can adjust amount of bytes to clone via @req_count argument.
+  * Returns appropriate error code that caller should return or
+  * zero in case the clone should be allowed.
+  */
+@@ -3001,10 +2996,6 @@ int generic_remap_checks(struct file *file_in, loff_t pos_in,
+ 		return -EINVAL;
+ 	count = min(count, size_in - (uint64_t)pos_in);
+ 
+-	ret = generic_access_check_limits(file_in, pos_in, &count);
+-	if (ret)
+-		return ret;
+-
+ 	ret = generic_write_check_limits(file_out, pos_out, &count);
+ 	if (ret)
+ 		return ret;
 -- 
 2.17.1
 
