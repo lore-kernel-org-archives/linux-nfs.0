@@ -8,52 +8,52 @@ X-Spam-Status: No, score=-8.9 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D4CECC28CC1
-	for <linux-nfs@archiver.kernel.org>; Wed, 29 May 2019 17:43:53 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 027F7C28CC0
+	for <linux-nfs@archiver.kernel.org>; Wed, 29 May 2019 17:43:56 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id B0D9E23FF1
-	for <linux-nfs@archiver.kernel.org>; Wed, 29 May 2019 17:43:53 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id D1ED223FF1
+	for <linux-nfs@archiver.kernel.org>; Wed, 29 May 2019 17:43:55 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="QHweU0W6"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="JUf3gpx4"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727448AbfE2Rnw (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 29 May 2019 13:43:52 -0400
-Received: from mail-wm1-f65.google.com ([209.85.128.65]:51785 "EHLO
-        mail-wm1-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727345AbfE2Rnu (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 29 May 2019 13:43:50 -0400
-Received: by mail-wm1-f65.google.com with SMTP id f10so2260117wmb.1;
-        Wed, 29 May 2019 10:43:48 -0700 (PDT)
+        id S1727468AbfE2Rnx (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 29 May 2019 13:43:53 -0400
+Received: from mail-wr1-f68.google.com ([209.85.221.68]:42156 "EHLO
+        mail-wr1-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726018AbfE2Rnw (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 29 May 2019 13:43:52 -0400
+Received: by mail-wr1-f68.google.com with SMTP id l2so2379619wrb.9;
+        Wed, 29 May 2019 10:43:51 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references;
-        bh=LuX5OE/4xeK/rXyfFoIQSO2O4Y7R4fvZmK/kzW/AyOc=;
-        b=QHweU0W6vis1g3FWDAwkvTc+uYcEbVGnabnUr7ydLPiaQ3VrO88OCdIzY5BuI3zQoG
-         LlTWKvE2bVVaHzwMESE8R+eWV49mdBnzRpu3tpoknpTd2dNdkmUPS5XIgA5DzCU1Jr0F
-         z53LCTl/JAES+/k0/yaedPqY29A3bBCwhnnhYM8MyWD4c9T0x34U3HEIr4F0olVyCOTv
-         v77+R6+7M3jiLcAW0VAXG0qjm9J3aL63EY7HqcxAbHCk2WTIKfFC0lZ4vG1RkfzwKBCf
-         kDG90wvjrRHn6eUW72BWo6Rd7gCydWt6cPZiQwyLRa6I+X/BHVUsBljW3xIctCi34JQn
-         CAOg==
+        bh=HN28jzdWIDmYfqKHB1OqlcDa2tkQLMvz+g74LeD+kio=;
+        b=JUf3gpx4X+xBASgixo3psABkDGhXiKV7Lv6aCmi3cIY5g3UvcqkbbvIo4LEBHHlOcM
+         47HvlL4K1Cfr3ZCYRlFlQMk169fxuc4V9OE11x9tSy5YsvifN+2+3lazi2lND22my4/4
+         vd26PGS+5Js9jWQid+RCNzQaf/Cxq14XwTGKpzF/Q1Bka7r0NBU4GOkAB1YemhBS82Bd
+         Lb9aAjs9AjZ7/j02/iDPiRAipCy9DyKOAKm748nAnJr525j6GQIkn1vJLKJPSxueSVCR
+         /PoGsscocZt9StBbSuN5VS082vCWGMzYH/2Eb9v2UTVF6paGYYjXEs0W0yHzHIGdVPtu
+         C46w==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references;
-        bh=LuX5OE/4xeK/rXyfFoIQSO2O4Y7R4fvZmK/kzW/AyOc=;
-        b=Acg6sMW8W6Dews3VO6/A+AyqB38Cd3m7Aq9mgkPyjGsmmpMwva5MSX4LH7+8HT0sn9
-         kUEF09TADT2M9PQxvGREqMG2YS47tAYLR88Ak1jwnm1CuWH+voSEF2yABOR9l5yC8roL
-         o1Hd+yVh7RKx6c4wXG//CycjccgmlsRb2Zj6rHApbmIpqyEmgCmr/LkqR1lcvnrCbRFN
-         K2mRFBD4X+I4nCBF37mgOE+/9Tw8VL0P6YvqLc6y6BfIc30xx1om31K7/xrkNKPUx+w4
-         9RiCvcbkrbNQRtYQshJWimskIDYZXpCLvF7yU6k8N04APkewCRfGXD3RbjDTWabZD7bK
-         xMtA==
-X-Gm-Message-State: APjAAAWncXOTdnFpR8r6Ql7VJL9Rfb4R3FOmcvHqmMJq3qfLYZw4Z5zU
-        zSZ96ZIgRvQ1v2IGEnOBrzI=
-X-Google-Smtp-Source: APXvYqxMVTsGcUrsWM2pHjICaDWZ1YGun6kQavpkUgEVYAdBg5XpQfH588VNTDt/ZqGP9JxDTC8tTA==
-X-Received: by 2002:a1c:9904:: with SMTP id b4mr7585387wme.1.1559151827378;
-        Wed, 29 May 2019 10:43:47 -0700 (PDT)
+        bh=HN28jzdWIDmYfqKHB1OqlcDa2tkQLMvz+g74LeD+kio=;
+        b=MS3J53CKNFFz2rSBpksU06XDAGDj5zEwBl97iWik1SdEGEpAu2hHiKo+yeEmArIUdH
+         lVEdbH+QoprW0X1IMQcPfUtTLbUfKvZEyepItdQ6QjxR6pUsEu0l0We+CMDP4UeQeOxb
+         kTHBgPvlK9+tKT5LA4QixKCRxlZNGa6TjE4ZXh7uVD+wiALxQLko4Dde1GHWKU7lx/vp
+         WhMoxl6fMWMFPIveljlgAIdfjq2zvi8GpNgM/V0ksTdqUzcixcWRMogRtSZl0/SOYpPI
+         gAf8s+A2QWO4oqNnn/WLPUeXtLXSkF+RtITh+807gT7Pfn16DXb+jUsKAvb1bvl0TlRT
+         0bsA==
+X-Gm-Message-State: APjAAAVTvoCspflraceM8mhM/vJyv87EVG6nZE5hambx2Ehn6+94HYzl
+        B60kVO5j7/HCi8OZDQrjpBk=
+X-Google-Smtp-Source: APXvYqy4vphWl+uJOQFfpvp7RUdNvXC3EMyYKCKKMmpEfRH0EaEwUWjRn9WIuethzwglftoWN3AHHA==
+X-Received: by 2002:a5d:54cc:: with SMTP id x12mr35442527wrv.303.1559151830843;
+        Wed, 29 May 2019 10:43:50 -0700 (PDT)
 Received: from localhost.localdomain ([5.102.238.208])
-        by smtp.gmail.com with ESMTPSA id k125sm31702wmb.34.2019.05.29.10.43.45
+        by smtp.gmail.com with ESMTPSA id k125sm31702wmb.34.2019.05.29.10.43.49
         (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Wed, 29 May 2019 10:43:46 -0700 (PDT)
+        Wed, 29 May 2019 10:43:50 -0700 (PDT)
 From:   Amir Goldstein <amir73il@gmail.com>
 To:     "Darrick J . Wong" <darrick.wong@oracle.com>
 Cc:     Dave Chinner <david@fromorbit.com>, Christoph Hellwig <hch@lst.de>,
@@ -64,9 +64,9 @@ Cc:     Dave Chinner <david@fromorbit.com>, Christoph Hellwig <hch@lst.de>,
         linux-fsdevel@vger.kernel.org, linux-api@vger.kernel.org,
         ceph-devel@vger.kernel.org, linux-nfs@vger.kernel.org,
         linux-cifs@vger.kernel.org
-Subject: [PATCH v3 10/13] cifs: copy_file_range needs to strip setuid bits and update timestamps
-Date:   Wed, 29 May 2019 20:43:14 +0300
-Message-Id: <20190529174318.22424-11-amir73il@gmail.com>
+Subject: [PATCH v3 12/13] nfs: copy_file_range needs to strip setuid bits and update timestamps
+Date:   Wed, 29 May 2019 20:43:16 +0300
+Message-Id: <20190529174318.22424-13-amir73il@gmail.com>
 X-Mailer: git-send-email 2.17.1
 In-Reply-To: <20190529174318.22424-1-amir73il@gmail.com>
 References: <20190529174318.22424-1-amir73il@gmail.com>
@@ -75,47 +75,35 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-cifs has both source and destination inodes locked throughout the copy.
-Like ->write_iter(), we update mtime and strip setuid bits of destination
-file before copy and like ->read_iter(), we update atime of source file
-after copy.
+Like ->write_iter(), we update mtime and strip setuid of dst file before
+copy and like ->read_iter(), we update atime of src file after copy.
 
 Signed-off-by: Amir Goldstein <amir73il@gmail.com>
 ---
- fs/cifs/cifsfs.c | 11 ++++++++---
- 1 file changed, 8 insertions(+), 3 deletions(-)
+ fs/nfs/nfs42proc.c | 9 ++++++---
+ 1 file changed, 6 insertions(+), 3 deletions(-)
 
-diff --git a/fs/cifs/cifsfs.c b/fs/cifs/cifsfs.c
-index c65823270313..ab6c5c24146d 100644
---- a/fs/cifs/cifsfs.c
-+++ b/fs/cifs/cifsfs.c
-@@ -1096,6 +1096,10 @@ ssize_t cifs_file_copychunk_range(unsigned int xid,
- 		goto out;
- 	}
+diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
+index 5196bfa7894d..c37a8e5116c6 100644
+--- a/fs/nfs/nfs42proc.c
++++ b/fs/nfs/nfs42proc.c
+@@ -345,10 +345,13 @@ ssize_t nfs42_proc_copy(struct file *src, loff_t pos_src,
  
-+	rc = -EOPNOTSUPP;
-+	if (!target_tcon->ses->server->ops->copychunk_range)
-+		goto out;
-+
- 	/*
- 	 * Note: cifs case is easier than btrfs since server responsible for
- 	 * checks for proper open modes and file type and if it wants
-@@ -1107,11 +1111,12 @@ ssize_t cifs_file_copychunk_range(unsigned int xid,
- 	/* should we flush first and last page first */
- 	truncate_inode_pages(&target_inode->i_data, 0);
+ 	do {
+ 		inode_lock(file_inode(dst));
+-		err = _nfs42_proc_copy(src, src_lock,
+-				dst, dst_lock,
+-				&args, &res);
++		err = file_modified(dst);
++		if (!err)
++			err = _nfs42_proc_copy(src, src_lock,
++					       dst, dst_lock,
++					       &args, &res);
+ 		inode_unlock(file_inode(dst));
++		file_accessed(src);
  
--	if (target_tcon->ses->server->ops->copychunk_range)
-+	rc = file_modified(dst_file);
-+	if (!rc)
- 		rc = target_tcon->ses->server->ops->copychunk_range(xid,
- 			smb_file_src, smb_file_target, off, len, destoff);
--	else
--		rc = -EOPNOTSUPP;
-+
-+	file_accessed(src_file);
- 
- 	/* force revalidate of size and timestamps of target file now
- 	 * that target is updated on the server
+ 		if (err >= 0)
+ 			break;
 -- 
 2.17.1
 
