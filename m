@@ -8,52 +8,52 @@ X-Spam-Status: No, score=-8.9 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3CB5EC28CC2
-	for <linux-nfs@archiver.kernel.org>; Wed, 29 May 2019 17:44:10 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B609BC28CC1
+	for <linux-nfs@archiver.kernel.org>; Wed, 29 May 2019 17:44:11 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 1859223FF1
-	for <linux-nfs@archiver.kernel.org>; Wed, 29 May 2019 17:44:10 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 8849323FF1
+	for <linux-nfs@archiver.kernel.org>; Wed, 29 May 2019 17:44:11 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="QN4dIaN9"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="cD+1CJrn"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727341AbfE2Rno (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 29 May 2019 13:43:44 -0400
-Received: from mail-wm1-f67.google.com ([209.85.128.67]:53583 "EHLO
-        mail-wm1-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727195AbfE2Rnn (ORCPT
+        id S1726205AbfE2Rnn (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 29 May 2019 13:43:43 -0400
+Received: from mail-wm1-f68.google.com ([209.85.128.68]:53585 "EHLO
+        mail-wm1-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727233AbfE2Rnn (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Wed, 29 May 2019 13:43:43 -0400
-Received: by mail-wm1-f67.google.com with SMTP id d17so2249047wmb.3;
-        Wed, 29 May 2019 10:43:41 -0700 (PDT)
+Received: by mail-wm1-f68.google.com with SMTP id d17so2249085wmb.3;
+        Wed, 29 May 2019 10:43:42 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references;
-        bh=NeKDiq+5p2NPB+OcuE01UzrlB5njM3yLN2qd6AodpeU=;
-        b=QN4dIaN9QMaFtoyG1MUp3LUKUh3ugT/NLU0caZNTFXyG+VEwCFfSZ7mD8R4ExD6UXl
-         gOYwKkKWru9NBTMqz2dLCYd6divEv4VxRn9L/xfgmYsnWPWYanKR+5T9cqVr77JQ3DVA
-         UCbWv1SoobyBKVlV1UospEjByMAApeveSG6P9pQcvZogWrw1GCLzEYMjEp9ICab6sVwe
-         MleSETzpiVcMoSl5TEaM8Zm1KYTpW4jXrNVb/TouiRehBOhM0cwE4OyzbFIGSVb7DVr6
-         kFpAfSEkd0ruju3U1cz31YBgfo9fjbsnDy9f+1MmnvzAotmiLbvk8C9MTyzaf3aMauOn
-         ciRg==
+        bh=mWDe89ODCpcP6HYYy/yqf+cljHqldogh+/AgsrEHfwE=;
+        b=cD+1CJrnj5cSe1wCIpAFwua2MN1kN1xNg3hIT6ATRPZEleePpBS6eGUWulB1qlMP1/
+         Ddr+gyrC56II0jJ0mgCgLIHbYpIvw9Uaoe35riq+AN93RuLHGQu72fjZVk3oqne9Wl+a
+         sFfqjNZWNIrSKacCT5jz5DzGMxohKbXopTtjeRxkeMfIWjQJexxCmL17wfht1kbQ0/kE
+         u1NOszql8jNhqMOcQO8sYBy9Q68Pnu+PhxaKS7z/iWim9WlT01meShp9XkP3LSxieuyg
+         pHfItlQiK/im4jO8Ue5CcjCo4tKicYkzQVAcyZ97HWBzBCNCpfC50cefJIS6Q8wCnxh8
+         9bOw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references;
-        bh=NeKDiq+5p2NPB+OcuE01UzrlB5njM3yLN2qd6AodpeU=;
-        b=jPUXmQHgtbS4Rq/9GGDNd8yiKDBwCN5vGFMt1tlBDJNOn7PboKaXLl0fqXdFrFCIZO
-         AJHPUVY3N2pY1c0KisD7xylSogObIcX9MZBU481GDB7hNf85YlvGfdD46kQ2eFjb7gro
-         S5UMnbDiLptyg3TU1xGL3kWXER4/UE1uDrCEwskMStmrTHk7QFKCHE6Jy07/6gLacr2f
-         W2TGPCcU74KGHRfrF0P9NgPtbwMgtgYUtOPvoDF4KpYZIdM48IzFWnvyqfR8tjJsmHfW
-         +aE0O46pyvcO97XKAEQiQJ3ViR0LRFSIbrZw2nkf+R68dDqiRpSIh5ygwPXG/LBpwJh/
-         oPsA==
-X-Gm-Message-State: APjAAAWIPEMpvO/3y09BEpMSQTnO5xrXlnDGAh1/qMD84Duh0toc4dXR
-        adtmM9BKCcQ5xspwqv1Xdq0=
-X-Google-Smtp-Source: APXvYqz6bZyxgncHyHvCPAhLhQv5wGfs/oioqGtZDHF7raSCBLoHpEbnJUrWfw3hcdK4BYBLS9qb7w==
-X-Received: by 2002:a05:600c:23cf:: with SMTP id p15mr7996691wmb.31.1559151815769;
-        Wed, 29 May 2019 10:43:35 -0700 (PDT)
+        bh=mWDe89ODCpcP6HYYy/yqf+cljHqldogh+/AgsrEHfwE=;
+        b=aFtoHqoN44phN5OJUAEr2WAo7OkNAP780VnpnjkvMHeYFjTTb+cTVbTuN+P1JL7jKh
+         ADPl5+01G+LAFREY6BCx5to2IX4shbif/lVhD4LErFp09acqMEzndnK+7lOCNTcI/MHc
+         /12TEdkMXmCEgsxrezvy82Csqv7NrVwNL4s8qagbuxjwOSv/30C29S7mh6YaXyc7o3l7
+         9lPV04LbECoP3neMVcrE80H++955zwVsGri57Rgi8NAg8iyhA32fY6JgAZRKMxPPtl5Z
+         j392EDX4j4jxu4RWQPde1oL/VpKaW8cb35kpEZz7YJWT1Jr1dagrbWep99Rr43dkQDK4
+         feGQ==
+X-Gm-Message-State: APjAAAVtaPJkmcaQSEeerfPgN3eKU6EbN8T1pTBWZ7uJQro55q01FjLZ
+        wX23RNxRfkwr0wOkxoDWKC0=
+X-Google-Smtp-Source: APXvYqwIlp98ADVdrSYvWbdeg9HNHHdS9VwKtmNUodON5E/WEaVY9+Ztcp9OWHWCflaplsQIscHC1A==
+X-Received: by 2002:a1c:cb49:: with SMTP id b70mr8135774wmg.80.1559151821622;
+        Wed, 29 May 2019 10:43:41 -0700 (PDT)
 Received: from localhost.localdomain ([5.102.238.208])
-        by smtp.gmail.com with ESMTPSA id k125sm31702wmb.34.2019.05.29.10.43.34
+        by smtp.gmail.com with ESMTPSA id k125sm31702wmb.34.2019.05.29.10.43.40
         (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Wed, 29 May 2019 10:43:35 -0700 (PDT)
+        Wed, 29 May 2019 10:43:41 -0700 (PDT)
 From:   Amir Goldstein <amir73il@gmail.com>
 To:     "Darrick J . Wong" <darrick.wong@oracle.com>
 Cc:     Dave Chinner <david@fromorbit.com>, Christoph Hellwig <hch@lst.de>,
@@ -64,9 +64,9 @@ Cc:     Dave Chinner <david@fromorbit.com>, Christoph Hellwig <hch@lst.de>,
         linux-fsdevel@vger.kernel.org, linux-api@vger.kernel.org,
         ceph-devel@vger.kernel.org, linux-nfs@vger.kernel.org,
         linux-cifs@vger.kernel.org
-Subject: [PATCH v3 04/13] vfs: remove redundant checks from generic_remap_checks()
-Date:   Wed, 29 May 2019 20:43:08 +0300
-Message-Id: <20190529174318.22424-5-amir73il@gmail.com>
+Subject: [PATCH v3 07/13] xfs: use file_modified() helper
+Date:   Wed, 29 May 2019 20:43:11 +0300
+Message-Id: <20190529174318.22424-8-amir73il@gmail.com>
 X-Mailer: git-send-email 2.17.1
 In-Reply-To: <20190529174318.22424-1-amir73il@gmail.com>
 References: <20190529174318.22424-1-amir73il@gmail.com>
@@ -75,90 +75,40 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-The access limit checks on input file range in generic_remap_checks()
-are redundant because the input file size is guaranteied to be within
-limits and pos+len are already checked to be within input file size.
-
-Beyond the fact that the check cannot fail, if it would have failed,
-it could return -EFBIG for input file range error. There is no precedent
-for that. -EFBIG is returned in syscalls that would change file length.
-
-With that call removed, we can fold generic_access_check_limits() into
-generic_write_check_limits().
+Note that by using the helper, the order of calling file_remove_privs()
+after file_update_mtime() in xfs_file_aio_write_checks() has changed.
 
 Signed-off-by: Amir Goldstein <amir73il@gmail.com>
 ---
- mm/filemap.c | 33 ++++++++++++---------------------
- 1 file changed, 12 insertions(+), 21 deletions(-)
+ fs/xfs/xfs_file.c | 15 +--------------
+ 1 file changed, 1 insertion(+), 14 deletions(-)
 
-diff --git a/mm/filemap.c b/mm/filemap.c
-index a38619a4a6af..44361928bbb0 100644
---- a/mm/filemap.c
-+++ b/mm/filemap.c
-@@ -2895,24 +2895,11 @@ EXPORT_SYMBOL(read_cache_page_gfp);
-  * LFS limits.  If pos is under the limit it becomes a short access.  If it
-  * exceeds the limit we return -EFBIG.
-  */
--static int generic_access_check_limits(struct file *file, loff_t pos,
--				       loff_t *count)
--{
--	struct inode *inode = file->f_mapping->host;
--	loff_t max_size = inode->i_sb->s_maxbytes;
+diff --git a/fs/xfs/xfs_file.c b/fs/xfs/xfs_file.c
+index 76748255f843..916a35cae5e9 100644
+--- a/fs/xfs/xfs_file.c
++++ b/fs/xfs/xfs_file.c
+@@ -367,20 +367,7 @@ xfs_file_aio_write_checks(
+ 	 * lock above.  Eventually we should look into a way to avoid
+ 	 * the pointless lock roundtrip.
+ 	 */
+-	if (likely(!(file->f_mode & FMODE_NOCMTIME))) {
+-		error = file_update_time(file);
+-		if (error)
+-			return error;
+-	}
 -
--	if (!(file->f_flags & O_LARGEFILE))
--		max_size = MAX_NON_LFS;
--
--	if (unlikely(pos >= max_size))
--		return -EFBIG;
--	*count = min(*count, max_size - pos);
+-	/*
+-	 * If we're writing the file then make sure to clear the setuid and
+-	 * setgid bits if the process is not being run by root.  This keeps
+-	 * people from modifying setuid and setgid binaries.
+-	 */
+-	if (!IS_NOSEC(inode))
+-		return file_remove_privs(file);
 -	return 0;
--}
--
- static int generic_write_check_limits(struct file *file, loff_t pos,
- 				      loff_t *count)
- {
-+	struct inode *inode = file->f_mapping->host;
-+	loff_t max_size = inode->i_sb->s_maxbytes;
- 	loff_t limit = rlimit(RLIMIT_FSIZE);
- 
- 	if (limit != RLIM_INFINITY) {
-@@ -2923,7 +2910,15 @@ static int generic_write_check_limits(struct file *file, loff_t pos,
- 		*count = min(*count, limit - pos);
- 	}
- 
--	return generic_access_check_limits(file, pos, count);
-+	if (!(file->f_flags & O_LARGEFILE))
-+		max_size = MAX_NON_LFS;
-+
-+	if (unlikely(pos >= max_size))
-+		return -EFBIG;
-+
-+	*count = min(*count, max_size - pos);
-+
-+	return 0;
++	return file_modified(file);
  }
  
- /*
-@@ -2963,7 +2958,7 @@ EXPORT_SYMBOL(generic_write_checks);
- /*
-  * Performs necessary checks before doing a clone.
-  *
-- * Can adjust amount of bytes to clone.
-+ * Can adjust amount of bytes to clone via @req_count argument.
-  * Returns appropriate error code that caller should return or
-  * zero in case the clone should be allowed.
-  */
-@@ -3001,10 +2996,6 @@ int generic_remap_checks(struct file *file_in, loff_t pos_in,
- 		return -EINVAL;
- 	count = min(count, size_in - (uint64_t)pos_in);
- 
--	ret = generic_access_check_limits(file_in, pos_in, &count);
--	if (ret)
--		return ret;
--
- 	ret = generic_write_check_limits(file_out, pos_out, &count);
- 	if (ret)
- 		return ret;
+ static int
 -- 
 2.17.1
 
