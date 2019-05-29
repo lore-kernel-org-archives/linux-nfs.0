@@ -8,52 +8,52 @@ X-Spam-Status: No, score=-8.9 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B5CEEC28CC0
-	for <linux-nfs@archiver.kernel.org>; Wed, 29 May 2019 17:44:00 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id ED04FC28CC1
+	for <linux-nfs@archiver.kernel.org>; Wed, 29 May 2019 17:44:06 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 8E37F23FF1
-	for <linux-nfs@archiver.kernel.org>; Wed, 29 May 2019 17:44:00 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id BEBE523FF1
+	for <linux-nfs@archiver.kernel.org>; Wed, 29 May 2019 17:44:06 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="b0k7Uhky"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="kf/RbiJQ"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727506AbfE2Rn7 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 29 May 2019 13:43:59 -0400
-Received: from mail-wr1-f67.google.com ([209.85.221.67]:42154 "EHLO
-        mail-wr1-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727421AbfE2Rnv (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 29 May 2019 13:43:51 -0400
-Received: by mail-wr1-f67.google.com with SMTP id l2so2379570wrb.9;
-        Wed, 29 May 2019 10:43:49 -0700 (PDT)
+        id S1727527AbfE2RoD (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 29 May 2019 13:44:03 -0400
+Received: from mail-wr1-f68.google.com ([209.85.221.68]:33367 "EHLO
+        mail-wr1-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727469AbfE2Rn7 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 29 May 2019 13:43:59 -0400
+Received: by mail-wr1-f68.google.com with SMTP id d9so2423637wrx.0;
+        Wed, 29 May 2019 10:43:57 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references;
-        bh=iB8gfO01UWVOvIbXC1SgRvasH8gb3p1b2pcn/FSICGQ=;
-        b=b0k7Uhky+yocLh7DQ5oosoZKI7/cqVQKaU4lK18qqSzkTiwbokIBbcPe+8QkWpRXa8
-         /SdwMHVqdJZQqTm1Fq1HdJTbttYNaiTx80cqXKZKTcxiAlH7x47tQiZtgM09gOqMUU4c
-         dOG8N4gYpx+jTYmeNj39drvhVoHEmrwIeEvk/HncoD+JQ42uuDcCp/FazXiOnmjbmA0y
-         Qyws70g4mdHlzhfgWhGdgY/dMtF8JmkPZiaOrD7l5uW8qrY61bJjm1qranskdKzNJQKa
-         7EVtbBYF9DG+lINa//bbPNSWhu3w6ZQMnKrFNN3ZOzT9LC9pbEW5SVAV44T0KHYzwOYb
-         DcMA==
+        bh=WwUXFPt91WsbqtPlQqDtW6uVrMZ3xNSrz8TFzSKWF9s=;
+        b=kf/RbiJQg7mY7JWj8U88yy+RrZJtDkshcjme8EVPKqvUbPAssOTDRnNP1VNAJ0h5Gc
+         dMWRtByZJr1qKG5Q5uI1w97m56tFxUwmXjOVmyVVC8qlW4dYeec1BKvRZzNLrHr1CNQ0
+         5gNMS4EgXXIOzDl+0ogkbeD68WZt6N6Pvg71HoUBeKMJNIcHe4rKQP5qL4ef+hvvCGq3
+         nQgv3BPv+/4x5MP6SgimEh+I2+6CkR6rKuaGOJinoqZJXPyZJwyL7jDdmROGnlQ2YoXg
+         3KBkdGqgoKoHuXtfwPByykh2zARsr6aaj3dRjfxMGeopSAmzPys3JebTBaKr907nctYO
+         +1Fg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references;
-        bh=iB8gfO01UWVOvIbXC1SgRvasH8gb3p1b2pcn/FSICGQ=;
-        b=kpnlOT/7+5r0Ewo6ThMmk0KjjbrF64+XosP/4yYxy3MBcwI84b3ojsus4EwSTuEwpP
-         u1bnVn7Dl4nqJ7sdB+l304rHwjschwt050RVBblQ//7f7gOts9YezS/VleehbElM8eXL
-         xASgZr/grByxK8LcSJrec+Mcked0v0S+7OB1g4GAPT/BtJRS4t/U/t+cjAbcy8JG/JJE
-         sCqQN5H4uOP5w3BMfWIpSkywjYdmyC7uPUTTjUJLxrh3oWuYVzGvnKcaznLhUc7mkTKp
-         azaA0EdL9HTONDlFnGPiFnuBYUb3/jBPJDDqGWTa7amD7ozMBR/ENlNJzhwZ2bTD+w/l
-         yohQ==
-X-Gm-Message-State: APjAAAXy8y1Bpvj7ngqIYQ6Y7ynqh8C1p58NCZRHh8QZR8B8ewbe1eFE
-        PSKrGi0A09pA+DWVIglHdoc=
-X-Google-Smtp-Source: APXvYqwJOJ4izTFnolZmkhfQaBuL6JfpKe4IKnghtgloYRwVTP4nUzDRTpo9aL+/5u/O6Q118FCXnA==
-X-Received: by 2002:adf:db4c:: with SMTP id f12mr4020367wrj.243.1559151829055;
-        Wed, 29 May 2019 10:43:49 -0700 (PDT)
+        bh=WwUXFPt91WsbqtPlQqDtW6uVrMZ3xNSrz8TFzSKWF9s=;
+        b=aDtcho74Fc/WehzZZM+QrYOjVhA4gVKRr/vIi/Go5gL5rKISr/qvNOsYK789oyoimF
+         ziiGi3W7L6jwhyZqFMfFEtLO9Lp9mQSY4URj2g4EyjZp8dyjyFYzEgOfd7K38wvDCdzP
+         TsYUTYMpgy9I0U9SnLNVTlEEKGfyupsFWz9tCMW5GaDuZTGT//Ae3XDh5dWG1AV3Xfyg
+         /E/VA2OrPLhKZHTfwoW52KvBjWeWfJeblhyGzDD4M8ZEWczPYwzTC/iGWZFwk2hxzXvg
+         SK4hszL72OENbNqWtFzYYIVa/pe0rq/1oLdE8ifk3e3uoYvjISBN3V05VFjnp52JMadU
+         ddSQ==
+X-Gm-Message-State: APjAAAWmwgpgah5y4p6/RXRnz1ZwIma3MiyRXhX3AzLoim2pvu7J507B
+        xNjyYtA+yVsh8GBcM9hAPqs2yXnV2aU=
+X-Google-Smtp-Source: APXvYqyiizi1bOIdpKqtlzXoIQKQkDk0I9v+OMY7YcuXQtTDJ6jKNhalBgGr3FYtY4ncHATZsZrOKg==
+X-Received: by 2002:adf:e2c7:: with SMTP id d7mr45926208wrj.272.1559151834922;
+        Wed, 29 May 2019 10:43:54 -0700 (PDT)
 Received: from localhost.localdomain ([5.102.238.208])
-        by smtp.gmail.com with ESMTPSA id k125sm31702wmb.34.2019.05.29.10.43.47
+        by smtp.gmail.com with ESMTPSA id k125sm31702wmb.34.2019.05.29.10.43.53
         (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Wed, 29 May 2019 10:43:48 -0700 (PDT)
+        Wed, 29 May 2019 10:43:54 -0700 (PDT)
 From:   Amir Goldstein <amir73il@gmail.com>
 To:     "Darrick J . Wong" <darrick.wong@oracle.com>
 Cc:     Dave Chinner <david@fromorbit.com>, Christoph Hellwig <hch@lst.de>,
@@ -63,10 +63,10 @@ Cc:     Dave Chinner <david@fromorbit.com>, Christoph Hellwig <hch@lst.de>,
         Al Viro <viro@zeniv.linux.org.uk>,
         linux-fsdevel@vger.kernel.org, linux-api@vger.kernel.org,
         ceph-devel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-cifs@vger.kernel.org
-Subject: [PATCH v3 11/13] fuse: copy_file_range needs to strip setuid bits and update timestamps
-Date:   Wed, 29 May 2019 20:43:15 +0300
-Message-Id: <20190529174318.22424-12-amir73il@gmail.com>
+        linux-cifs@vger.kernel.org, Dave Chinner <dchinner@redhat.com>
+Subject: [PATCH v3 14/13] man-pages: copy_file_range updates
+Date:   Wed, 29 May 2019 20:43:18 +0300
+Message-Id: <20190529174318.22424-15-amir73il@gmail.com>
 X-Mailer: git-send-email 2.17.1
 In-Reply-To: <20190529174318.22424-1-amir73il@gmail.com>
 References: <20190529174318.22424-1-amir73il@gmail.com>
@@ -75,37 +75,184 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Like ->write_iter(), we update mtime and strip setuid of dst file before
-copy and like ->read_iter(), we update atime of src file after copy.
+Update with all the missing errors the syscall can return, the
+behaviour the syscall should have w.r.t. to copies within single
+files, etc.
 
+[Amir] Copying beyond EOF returns zero.
+
+Signed-off-by: Dave Chinner <dchinner@redhat.com>
 Signed-off-by: Amir Goldstein <amir73il@gmail.com>
 ---
- fs/fuse/file.c | 5 +++++
- 1 file changed, 5 insertions(+)
+ man2/copy_file_range.2 | 91 ++++++++++++++++++++++++++++++++++++------
+ 1 file changed, 78 insertions(+), 13 deletions(-)
 
-diff --git a/fs/fuse/file.c b/fs/fuse/file.c
-index e03901ae729b..7f33d68f66d9 100644
---- a/fs/fuse/file.c
-+++ b/fs/fuse/file.c
-@@ -3128,6 +3128,10 @@ static ssize_t __fuse_copy_file_range(struct file *file_in, loff_t pos_in,
+diff --git a/man2/copy_file_range.2 b/man2/copy_file_range.2
+index 2438b63c8..9f9b081a7 100644
+--- a/man2/copy_file_range.2
++++ b/man2/copy_file_range.2
+@@ -42,9 +42,9 @@ without the additional cost of transferring data from the kernel to user space
+ and then back into the kernel.
+ It copies up to
+ .I len
+-bytes of data from file descriptor
++bytes of data from the source file descriptor
+ .I fd_in
+-to file descriptor
++to the target file descriptor
+ .IR fd_out ,
+ overwriting any data that exists within the requested range of the target file.
+ .PP
+@@ -74,6 +74,12 @@ is not changed, but
+ .I off_in
+ is adjusted appropriately.
+ .PP
++.I fd_in
++and
++.I fd_out
++can refer to the same file.
++If they refer to the same file, then the source and target ranges are not
++allowed to overlap.
+ .PP
+ The
+ .I flags
+@@ -84,6 +90,11 @@ Upon successful completion,
+ .BR copy_file_range ()
+ will return the number of bytes copied between files.
+ This could be less than the length originally requested.
++If the file offset of
++.I fd_in
++is at or past the end of file, no bytes are copied, and
++.BR copy_file_range ()
++returns zero.
+ .PP
+ On error,
+ .BR copy_file_range ()
+@@ -93,12 +104,16 @@ is set to indicate the error.
+ .SH ERRORS
+ .TP
+ .B EBADF
+-One or more file descriptors are not valid; or
++One or more file descriptors are not valid.
++.TP
++.B EBADF
+ .I fd_in
+ is not open for reading; or
+ .I fd_out
+-is not open for writing; or
+-the
++is not open for writing.
++.TP
++.B EBADF
++The
+ .B O_APPEND
+ flag is set for the open file description (see
+ .BR open (2))
+@@ -106,24 +121,52 @@ referred to by the file descriptor
+ .IR fd_out .
+ .TP
+ .B EFBIG
+-An attempt was made to write a file that exceeds the implementation-defined
+-maximum file size or the process's file size limit,
+-or to write at a position past the maximum allowed offset.
++An attempt was made to write at a position past the maximum file offset the
++kernel supports.
++.TP
++.B EFBIG
++An attempt was made to write a range that exceeds the allowed maximum file size.
++The maximum file size differs between filesystem implementations and can be
++different from the maximum allowed file offset.
++.TP
++.B EFBIG
++An attempt was made to write beyond the process's file size resource limit.
++This may also result in the process receiving a
++.I SIGXFSZ
++signal.
+ .TP
+ .B EINVAL
+-Requested range extends beyond the end of the source file; or the
++The
+ .I flags
+ argument is not 0.
+ .TP
+-.B EIO
+-A low-level I/O error occurred while copying.
++.B EINVAL
++.I fd_in
++and
++.I fd_out
++refer to the same file and the source and target ranges overlap.
++.TP
++.B EINVAL
++Either
++.I fd_in
++or
++.I fd_out
++is not a regular file.
+ .TP
+ .B EISDIR
++Either
+ .I fd_in
+ or
+ .I fd_out
+ refers to a directory.
+ .TP
++.B EOVERFLOW
++The requested source or destination range is too large to represent in the
++specified data types.
++.TP
++.B EIO
++A low-level I/O error occurred while copying.
++.TP
+ .B ENOMEM
+ Out of memory.
+ .TP
+@@ -133,13 +176,35 @@ There is not enough space on the target filesystem to complete the copy.
+ .B EXDEV
+ The files referred to by
+ .IR file_in " and " file_out
+-are not on the same mounted filesystem.
++are not on the same mounted filesystem (pre Linux 5.3).
++.TP
++.B TXTBSY
++Either
++.I fd_in
++or
++.I fd_out
++refers to an active swap file.
++.TP
++.B EPERM
++.I fd_out
++refers to an immutable file.
++.TP
++.B EACCES
++The user does not have write permissions for the destination file.
+ .SH VERSIONS
+ The
+ .BR copy_file_range ()
+ system call first appeared in Linux 4.5, but glibc 2.27 provides a user-space
+ emulation when it is not available.
+ .\" https://sourceware.org/git/?p=glibc.git;a=commit;f=posix/unistd.h;h=bad7a0c81f501fbbcc79af9eaa4b8254441c4a1f
++.PP
++A major rework of the kernel implementation occurred in 5.3.
++Areas of the API that weren't clearly defined were clarified and the API bounds
++are much more strictly checked than on earlier kernels.
++Applications should target the behaviour and requirements of 5.3 kernels.
++.PP
++First support for cross-filesystem copies was introduced in Linux 5.3.
++Older kernels will return -EXDEV when cross-filesystem copies are attempted.
+ .SH CONFORMING TO
+ The
+ .BR copy_file_range ()
+@@ -224,7 +289,7 @@ main(int argc, char **argv)
+         }
  
- 	inode_lock(inode_out);
+         len \-= ret;
+-    } while (len > 0);
++    } while (len > 0 && ret > 0);
  
-+	err = file_modified(file_out);
-+	if (err)
-+		goto out;
-+
- 	if (fc->writeback_cache) {
- 		err = filemap_write_and_wait_range(inode_out->i_mapping,
- 						   pos_out, pos_out + len);
-@@ -3169,6 +3173,7 @@ static ssize_t __fuse_copy_file_range(struct file *file_in, loff_t pos_in,
- 		clear_bit(FUSE_I_SIZE_UNSTABLE, &fi_out->state);
- 
- 	inode_unlock(inode_out);
-+	file_accessed(file_in);
- 
- 	return err;
- }
+     close(fd_in);
+     close(fd_out);
 -- 
 2.17.1
 
