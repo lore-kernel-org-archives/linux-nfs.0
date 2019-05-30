@@ -1,125 +1,102 @@
-Return-Path: <SRS0=EpnZ=T5=vger.kernel.org=linux-nfs-owner@kernel.org>
+Return-Path: <SRS0=zqKC=T6=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	URIBL_BLOCKED,USER_AGENT_MUTT autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-1.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,
+	SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C4955C46470
-	for <linux-nfs@archiver.kernel.org>; Wed, 29 May 2019 21:41:55 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 769C9C28CC0
+	for <linux-nfs@archiver.kernel.org>; Thu, 30 May 2019 00:40:44 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id A78D02422E
-	for <linux-nfs@archiver.kernel.org>; Wed, 29 May 2019 21:41:55 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 46B1C243B0
+	for <linux-nfs@archiver.kernel.org>; Thu, 30 May 2019 00:40:44 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=permerror (0-bit key) header.d=prgmr.com header.i=@prgmr.com header.b="aOXJi5lJ"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726462AbfE2Vly (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 29 May 2019 17:41:54 -0400
-Received: from mail106.syd.optusnet.com.au ([211.29.132.42]:41277 "EHLO
-        mail106.syd.optusnet.com.au" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726205AbfE2Vly (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 29 May 2019 17:41:54 -0400
-Received: from dread.disaster.area (pa49-180-144-61.pa.nsw.optusnet.com.au [49.180.144.61])
-        by mail106.syd.optusnet.com.au (Postfix) with ESMTPS id 282863DB93C;
-        Thu, 30 May 2019 07:41:48 +1000 (AEST)
-Received: from dave by dread.disaster.area with local (Exim 4.92)
-        (envelope-from <david@fromorbit.com>)
-        id 1hW6KP-0007gQ-KE; Thu, 30 May 2019 07:41:45 +1000
-Date:   Thu, 30 May 2019 07:41:45 +1000
-From:   Dave Chinner <david@fromorbit.com>
-To:     Amir Goldstein <amir73il@gmail.com>
-Cc:     "Darrick J. Wong" <darrick.wong@oracle.com>,
-        Christoph Hellwig <hch@lst.de>,
-        linux-xfs <linux-xfs@vger.kernel.org>,
-        Olga Kornievskaia <olga.kornievskaia@gmail.com>,
-        Luis Henriques <lhenriques@suse.com>,
-        Al Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        linux-api@vger.kernel.org, ceph-devel@vger.kernel.org,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        CIFS <linux-cifs@vger.kernel.org>
-Subject: Re: [PATCH v3 06/13] vfs: introduce file_modified() helper
-Message-ID: <20190529214145.GC29573@dread.disaster.area>
-References: <20190529174318.22424-1-amir73il@gmail.com>
- <20190529174318.22424-7-amir73il@gmail.com>
- <20190529182748.GF5231@magnolia>
- <CAOQ4uxgsMLTPtYaQwwNHo3NrzXz9u=YGc2v6Pg8TSo7-xFrqQQ@mail.gmail.com>
+        id S1726617AbfE3Akn (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 29 May 2019 20:40:43 -0400
+Received: from mail.prgmr.com ([71.19.149.6]:60060 "EHLO mail.prgmr.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726527AbfE3Akn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 29 May 2019 20:40:43 -0400
+Received: from turtle.mx (96-92-68-116-static.hfc.comcastbusiness.net [96.92.68.116])
+        (Authenticated sender: adp)
+        by mail.prgmr.com (Postfix) with ESMTPSA id 0605628C00B
+        for <linux-nfs@vger.kernel.org>; Thu, 30 May 2019 01:38:26 -0400 (EDT)
+DKIM-Filter: OpenDKIM Filter v2.11.0 mail.prgmr.com 0605628C00B
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=prgmr.com;
+        s=default; t=1559194707;
+        bh=iuloNs8wIVZA7gyks+IViCH3L+wBferKpveIH3UwHw0=;
+        h=Date:From:To:Subject:References:In-Reply-To:From;
+        b=aOXJi5lJQoYYWMwyquKSIdpgSTujrLf5lJRsG59NM+GkdZZWS012mWbUj1oParj6A
+         Drx6ZzZuOuZX0U6DbkxIVbFFmSPkXp+jp/2vtmGwJC0VUI0R07Mc2x47ll0kizQmZi
+         qFXLRcSp8CCVwyriknB4UXcZs1Wm1QbPRyzHWo8w=
+Received: (qmail 18344 invoked by uid 1353); 30 May 2019 00:41:46 -0000
+Date:   Wed, 29 May 2019 18:41:46 -0600
+From:   Alan Post <adp@prgmr.com>
+To:     "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: User process NFS write hang followed by automount hang requiring
+ reboot
+Message-ID: <20190530004146.GV4158@turtle.email>
+References: <20190520223324.GL4158@turtle.email>
+ <c10084e889df77fc2b6a6c9a04b232faae3a80bc.camel@hammerspace.com>
+ <20190524173155.GQ4158@turtle.email>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <CAOQ4uxgsMLTPtYaQwwNHo3NrzXz9u=YGc2v6Pg8TSo7-xFrqQQ@mail.gmail.com>
-User-Agent: Mutt/1.10.1 (2018-07-13)
-X-Optus-CM-Score: 0
-X-Optus-CM-Analysis: v=2.2 cv=D+Q3ErZj c=1 sm=1 tr=0 cx=a_idp_d
-        a=8RU0RCro9O0HS2ezTvitPg==:117 a=8RU0RCro9O0HS2ezTvitPg==:17
-        a=jpOVt7BSZ2e4Z31A5e1TngXxSK0=:19 a=kj9zAlcOel0A:10 a=E5NmQfObTbMA:10
-        a=yPCof4ZbAAAA:8 a=pGLkceISAAAA:8 a=7-415B0cAAAA:8 a=uk_6IFGgYTW1qpM8YJcA:9
-        a=CjuIK1q_8ugA:10 a=biEYGPWJfzWAr4FL6Ov7:22
+In-Reply-To: <20190524173155.GQ4158@turtle.email>
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Wed, May 29, 2019 at 10:08:44PM +0300, Amir Goldstein wrote:
-> On Wed, May 29, 2019 at 9:27 PM Darrick J. Wong <darrick.wong@oracle.com> wrote:
-> >
-> > On Wed, May 29, 2019 at 08:43:10PM +0300, Amir Goldstein wrote:
-> > > The combination of file_remove_privs() and file_update_mtime() is
-> > > quite common in filesystem ->write_iter() methods.
-> > >
-> > > Modelled after the helper file_accessed(), introduce file_modified()
-> > > and use it from generic_remap_file_range_prep().
-> > >
-> > > Note that the order of calling file_remove_privs() before
-> > > file_update_mtime() in the helper was matched to the more common order by
-> > > filesystems and not the current order in generic_remap_file_range_prep().
-> > >
-> > > Signed-off-by: Amir Goldstein <amir73il@gmail.com>
-> > > ---
-> > >  fs/inode.c         | 20 ++++++++++++++++++++
-> > >  fs/read_write.c    | 21 +++------------------
-> > >  include/linux/fs.h |  2 ++
-> > >  3 files changed, 25 insertions(+), 18 deletions(-)
-> > >
-> > > diff --git a/fs/inode.c b/fs/inode.c
-> > > index df6542ec3b88..2885f2f2c7a5 100644
-> > > --- a/fs/inode.c
-> > > +++ b/fs/inode.c
-> > > @@ -1899,6 +1899,26 @@ int file_update_time(struct file *file)
-> > >  }
-> > >  EXPORT_SYMBOL(file_update_time);
-> > >
-> > > +/* Caller must hold the file's inode lock */
-> > > +int file_modified(struct file *file)
-> > > +{
-> > > +     int err;
-> > > +
-> > > +     /*
-> > > +      * Clear the security bits if the process is not being run by root.
-> > > +      * This keeps people from modifying setuid and setgid binaries.
-> > > +      */
-> > > +     err = file_remove_privs(file);
-> > > +     if (err)
-> > > +             return err;
-> > > +
-> > > +     if (likely(file->f_mode & FMODE_NOCMTIME))
-> >
-> > I would not have thought NOCMTIME is likely?
-> >
-> > Maybe it is for io requests coming from overlayfs, but for regular uses
-> > I don't think that's true.
+On Fri, May 24, 2019 at 11:31:55AM -0600, Alan Post wrote:
+> On Tue, May 21, 2019 at 03:46:03PM +0000, Trond Myklebust wrote:
+> > Have you tried upgrading to 4.19.44? There is a fix that went in not
+> > too long ago that deals with a request leak that can cause stack traces
+> > like the above that wait forever.
+> > 
 > 
-> Nope that's a typo. Good spotting.
-> Overlayfs doesn't set FMODE_NOCMTIME (yet). Only xfs does from
-> XFS_IOC_OPEN_BY_HANDLE, but I think Dave said that is a deprecated
-> API. so should have been very_unlikely().
+> Following up on this.  I have set aside a rack of machines and put
+> Linux 4.19.44 on them.  They ran jobs overnight and will do the
+> same over the long weekend (Memorial day in the US).  Given the
+> error rate (both over time and over submitted jobs) we see across
+> the cluster this well be enough time to draw a conclusion as to
+> whether 4.19.44 exhibits this hang.
+> 
 
-It is most definitely not a deprecated API. I don't know where you
-got that idea from. It's used explicitly by the xfs utilities to
-perform invisible IO. Anyone who runs xfs_fsr or xfsdump or has an
-application that links to libhandle is using XFS_IOC_OPEN_BY_HANDLE
-and FMODE_NOCMTIME....
+In the six days I've run Linux 4.19.44 on a single rack, I've seen
+no occurrences of this hang.  Given the incident rate for this
+issue across the cluster over the same period of time, I would have
+expected to see one on two incidents on the rack running 4.19.44.
 
--Dave.
+This is promising--I'm going to deploy 4.19.44 to another rack
+by the end of the day Friday May 31st and hope for more of the
+same.
+
+I wondered upthread whether the following commits were what you
+had in mind when you asked about 4.19.44:
+
+    63b0ee126f7e: NFS: Fix an I/O request leakage in nfs_do_recoalesce
+    be74fddc976e: NFS: Fix I/O request leakages
+
+Confirming that it is these patches and no others has become
+topical for me: my upstream is now providing a 4.19.37 build,
+and I note these two patches are included since 4.19.31 and so
+are presumably in my now-available upstream 4.19.37 build.
+
+If I could trouble you to confirm whether or not this is the
+complete set of patches you had in mind for the 4.19 branch
+after 4.19.28 when you recommended I try 4.19.44 I would
+appreciate it.
+
+Lurking on the list for the past week or two and watching
+everyone's work has been inspiring.  Thank you again.  I'll report
+back no later than next week.
+
+-A
 -- 
-Dave Chinner
-david@fromorbit.com
+Alan Post | Xen VPS hosting for the technically adept
+PO Box 61688 | Sunnyvale, CA 94088-1681 | https://prgmr.com/
+email: adp@prgmr.com
