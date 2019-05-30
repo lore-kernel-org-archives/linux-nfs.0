@@ -3,34 +3,34 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
 X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS
-	autolearn=ham autolearn_force=no version=3.4.0
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
+	URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 55BC5C28CC0
-	for <linux-nfs@archiver.kernel.org>; Thu, 30 May 2019 00:43:50 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DCD12C28CC0
+	for <linux-nfs@archiver.kernel.org>; Thu, 30 May 2019 00:43:55 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 350D1243B0
-	for <linux-nfs@archiver.kernel.org>; Thu, 30 May 2019 00:43:50 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id B22F7243B0
+	for <linux-nfs@archiver.kernel.org>; Thu, 30 May 2019 00:43:55 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726720AbfE3Ant (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 29 May 2019 20:43:49 -0400
-Received: from mx2.suse.de ([195.135.220.15]:46538 "EHLO mx1.suse.de"
+        id S1726809AbfE3Anz (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 29 May 2019 20:43:55 -0400
+Received: from mx2.suse.de ([195.135.220.15]:46562 "EHLO mx1.suse.de"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726527AbfE3Ant (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 29 May 2019 20:43:49 -0400
+        id S1726527AbfE3Anz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 29 May 2019 20:43:55 -0400
 X-Virus-Scanned: by amavisd-new at test-mx.suse.de
 Received: from relay2.suse.de (unknown [195.135.220.254])
-        by mx1.suse.de (Postfix) with ESMTP id C26D6AC2C;
-        Thu, 30 May 2019 00:43:47 +0000 (UTC)
+        by mx1.suse.de (Postfix) with ESMTP id 2D744AC4F;
+        Thu, 30 May 2019 00:43:54 +0000 (UTC)
 From:   NeilBrown <neilb@suse.com>
 To:     Olga Kornievskaia <aglo@umich.edu>,
         Chuck Lever <chuck.lever@oracle.com>,
         Schumaker Anna <Anna.Schumaker@netapp.com>,
         Trond Myklebust <trondmy@hammerspace.com>
 Date:   Thu, 30 May 2019 10:41:28 +1000
-Subject: [PATCH 7/9] NFSv4: Allow multiple connections to NFSv4.x servers
+Subject: [PATCH 8/9] pNFS: Allow multiple connections to the DS
 Cc:     linux-nfs@vger.kernel.org
-Message-ID: <155917688881.3988.15202717018849539621.stgit@noble.brown>
+Message-ID: <155917688885.3988.14415976491019492843.stgit@noble.brown>
 In-Reply-To: <155917564898.3988.6096672032831115016.stgit@noble.brown>
 References: <155917564898.3988.6096672032831115016.stgit@noble.brown>
 User-Agent: StGit/0.17.1-dirty
@@ -44,105 +44,42 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-If the user specifies the -onconnect=<number> mount option, then set up
-<number> connections to the server. The connections will all go to the
-same IP address.
+If the user specifies -onconnect=<number> mount option, then set up
+<number> connections to the pNFS data server as well. The connections
+will all go to the same IP address.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 Signed-off-by: NeilBrown <neilb@suse.com>
 ---
- fs/nfs/client.c     |    2 ++
- fs/nfs/internal.h   |    1 +
- fs/nfs/nfs4client.c |   10 ++++++++--
- 3 files changed, 11 insertions(+), 2 deletions(-)
+ fs/nfs/nfs3client.c |    1 +
+ fs/nfs/nfs4client.c |    3 +++
+ 2 files changed, 4 insertions(+)
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 3d04cb0b839e..9005643b0db4 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -179,6 +179,7 @@ struct nfs_client *nfs_alloc_client(const struct nfs_client_initdata *cl_init)
- 	clp->cl_rpcclient = ERR_PTR(-EINVAL);
- 
- 	clp->cl_proto = cl_init->proto;
-+	clp->cl_nconnect = cl_init->nconnect;
- 	clp->cl_net = get_net(cl_init->net);
- 
- 	clp->cl_principal = "*";
-@@ -497,6 +498,7 @@ int nfs_create_rpc_client(struct nfs_client *clp,
- 	struct rpc_create_args args = {
- 		.net		= clp->cl_net,
- 		.protocol	= clp->cl_proto,
-+		.nconnect	= clp->cl_nconnect,
- 		.address	= (struct sockaddr *)&clp->cl_addr,
- 		.addrsize	= clp->cl_addrlen,
- 		.timeout	= cl_init->timeparms,
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index bba09dace5d6..4a49dc1495c5 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -82,6 +82,7 @@ struct nfs_client_initdata {
- 	struct nfs_subversion *nfs_mod;
- 	int proto;
- 	u32 minorversion;
-+	unsigned int nconnect;
- 	struct net *net;
- 	const struct rpc_timeout *timeparms;
- 	const struct cred *cred;
-diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
-index 81b9b6d7927a..401a76290e55 100644
---- a/fs/nfs/nfs4client.c
-+++ b/fs/nfs/nfs4client.c
-@@ -859,7 +859,8 @@ static int nfs4_set_client(struct nfs_server *server,
- 		const size_t addrlen,
- 		const char *ip_addr,
- 		int proto, const struct rpc_timeout *timeparms,
--		u32 minorversion, struct net *net)
-+		u32 minorversion, unsigned int nconnect,
-+		struct net *net)
- {
- 	struct nfs_client_initdata cl_init = {
- 		.hostname = hostname,
-@@ -872,6 +873,7 @@ static int nfs4_set_client(struct nfs_server *server,
- 		.net = net,
- 		.timeparms = timeparms,
- 		.cred = server->cred,
-+		.nconnect = nconnect,
+diff --git a/fs/nfs/nfs3client.c b/fs/nfs/nfs3client.c
+index fb0c425b5d45..c6987077ad15 100644
+--- a/fs/nfs/nfs3client.c
++++ b/fs/nfs/nfs3client.c
+@@ -93,6 +93,7 @@ struct nfs_client *nfs3_set_ds_client(struct nfs_server *mds_srv,
+ 		.net = mds_clp->cl_net,
+ 		.timeparms = &ds_timeout,
+ 		.cred = mds_srv->cred,
++		.nconnect = mds_clp->cl_nconnect,
  	};
  	struct nfs_client *clp;
+ 	char buf[INET6_ADDRSTRLEN + 1];
+diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+index 401a76290e55..0b15ee54b13c 100644
+--- a/fs/nfs/nfs4client.c
++++ b/fs/nfs/nfs4client.c
+@@ -943,6 +943,9 @@ struct nfs_client *nfs4_set_ds_client(struct nfs_server *mds_srv,
+ 		return ERR_PTR(-EINVAL);
+ 	cl_init.hostname = buf;
  
-@@ -1074,6 +1076,7 @@ static int nfs4_init_server(struct nfs_server *server,
- 			data->nfs_server.protocol,
- 			&timeparms,
- 			data->minorversion,
-+			data->nfs_server.nconnect,
- 			data->net);
- 	if (error < 0)
- 		return error;
-@@ -1163,6 +1166,7 @@ struct nfs_server *nfs4_create_referral_server(struct nfs_clone_mount *data,
- 				XPRT_TRANSPORT_RDMA,
- 				parent_server->client->cl_timeout,
- 				parent_client->cl_mvops->minor_version,
-+				parent_client->cl_nconnect,
- 				parent_client->cl_net);
- 	if (!error)
- 		goto init_server;
-@@ -1176,6 +1180,7 @@ struct nfs_server *nfs4_create_referral_server(struct nfs_clone_mount *data,
- 				XPRT_TRANSPORT_TCP,
- 				parent_server->client->cl_timeout,
- 				parent_client->cl_mvops->minor_version,
-+				parent_client->cl_nconnect,
- 				parent_client->cl_net);
- 	if (error < 0)
- 		goto error;
-@@ -1271,7 +1276,8 @@ int nfs4_update_server(struct nfs_server *server, const char *hostname,
- 	set_bit(NFS_MIG_TSM_POSSIBLE, &server->mig_status);
- 	error = nfs4_set_client(server, hostname, sap, salen, buf,
- 				clp->cl_proto, clnt->cl_timeout,
--				clp->cl_minorversion, net);
-+				clp->cl_minorversion,
-+				clp->cl_nconnect, net);
- 	clear_bit(NFS_MIG_TSM_POSSIBLE, &server->mig_status);
- 	if (error != 0) {
- 		nfs_server_insert_lists(server);
++	if (mds_clp->cl_nconnect > 1)
++		cl_init.nconnect = mds_clp->cl_nconnect;
++
+ 	if (mds_srv->flags & NFS_MOUNT_NORESVPORT)
+ 		__set_bit(NFS_CS_NORESVPORT, &cl_init.init_flags);
+ 
 
 
