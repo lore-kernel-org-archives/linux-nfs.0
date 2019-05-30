@@ -2,101 +2,139 @@ Return-Path: <SRS0=zqKC=T6=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,
-	SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-6.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 769C9C28CC0
-	for <linux-nfs@archiver.kernel.org>; Thu, 30 May 2019 00:40:44 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 39354C28CC0
+	for <linux-nfs@archiver.kernel.org>; Thu, 30 May 2019 00:43:06 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 46B1C243B0
-	for <linux-nfs@archiver.kernel.org>; Thu, 30 May 2019 00:40:44 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=permerror (0-bit key) header.d=prgmr.com header.i=@prgmr.com header.b="aOXJi5lJ"
+	by mail.kernel.org (Postfix) with ESMTP id 0FFD0243B0
+	for <linux-nfs@archiver.kernel.org>; Thu, 30 May 2019 00:43:06 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726617AbfE3Akn (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 29 May 2019 20:40:43 -0400
-Received: from mail.prgmr.com ([71.19.149.6]:60060 "EHLO mail.prgmr.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726527AbfE3Akn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 29 May 2019 20:40:43 -0400
-Received: from turtle.mx (96-92-68-116-static.hfc.comcastbusiness.net [96.92.68.116])
-        (Authenticated sender: adp)
-        by mail.prgmr.com (Postfix) with ESMTPSA id 0605628C00B
-        for <linux-nfs@vger.kernel.org>; Thu, 30 May 2019 01:38:26 -0400 (EDT)
-DKIM-Filter: OpenDKIM Filter v2.11.0 mail.prgmr.com 0605628C00B
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=prgmr.com;
-        s=default; t=1559194707;
-        bh=iuloNs8wIVZA7gyks+IViCH3L+wBferKpveIH3UwHw0=;
-        h=Date:From:To:Subject:References:In-Reply-To:From;
-        b=aOXJi5lJQoYYWMwyquKSIdpgSTujrLf5lJRsG59NM+GkdZZWS012mWbUj1oParj6A
-         Drx6ZzZuOuZX0U6DbkxIVbFFmSPkXp+jp/2vtmGwJC0VUI0R07Mc2x47ll0kizQmZi
-         qFXLRcSp8CCVwyriknB4UXcZs1Wm1QbPRyzHWo8w=
-Received: (qmail 18344 invoked by uid 1353); 30 May 2019 00:41:46 -0000
-Date:   Wed, 29 May 2019 18:41:46 -0600
-From:   Alan Post <adp@prgmr.com>
-To:     "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: User process NFS write hang followed by automount hang requiring
- reboot
-Message-ID: <20190530004146.GV4158@turtle.email>
-References: <20190520223324.GL4158@turtle.email>
- <c10084e889df77fc2b6a6c9a04b232faae3a80bc.camel@hammerspace.com>
- <20190524173155.GQ4158@turtle.email>
+        id S1726658AbfE3AnF (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 29 May 2019 20:43:05 -0400
+Received: from mx2.suse.de ([195.135.220.15]:46376 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1726527AbfE3AnF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 29 May 2019 20:43:05 -0400
+X-Virus-Scanned: by amavisd-new at test-mx.suse.de
+Received: from relay2.suse.de (unknown [195.135.220.254])
+        by mx1.suse.de (Postfix) with ESMTP id 6C34FAC66;
+        Thu, 30 May 2019 00:43:03 +0000 (UTC)
+From:   NeilBrown <neilb@suse.com>
+To:     Olga Kornievskaia <aglo@umich.edu>,
+        Chuck Lever <chuck.lever@oracle.com>,
+        Schumaker Anna <Anna.Schumaker@netapp.com>,
+        Trond Myklebust <trondmy@hammerspace.com>
+Date:   Thu, 30 May 2019 10:41:28 +1000
+Subject: [PATCH 0/9] Multiple network connections for a single NFS mount.
+Cc:     linux-nfs@vger.kernel.org
+Message-ID: <155917564898.3988.6096672032831115016.stgit@noble.brown>
+User-Agent: StGit/0.17.1-dirty
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20190524173155.GQ4158@turtle.email>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Fri, May 24, 2019 at 11:31:55AM -0600, Alan Post wrote:
-> On Tue, May 21, 2019 at 03:46:03PM +0000, Trond Myklebust wrote:
-> > Have you tried upgrading to 4.19.44? There is a fix that went in not
-> > too long ago that deals with a request leak that can cause stack traces
-> > like the above that wait forever.
-> > 
-> 
-> Following up on this.  I have set aside a rack of machines and put
-> Linux 4.19.44 on them.  They ran jobs overnight and will do the
-> same over the long weekend (Memorial day in the US).  Given the
-> error rate (both over time and over submitted jobs) we see across
-> the cluster this well be enough time to draw a conclusion as to
-> whether 4.19.44 exhibits this hang.
-> 
+This patch set is based on the patches in the multipath_tcp branch of
+ git://git.linux-nfs.org/projects/trondmy/nfs-2.6.git
 
-In the six days I've run Linux 4.19.44 on a single rack, I've seen
-no occurrences of this hang.  Given the incident rate for this
-issue across the cluster over the same period of time, I would have
-expected to see one on two incidents on the rack running 4.19.44.
+I'd like to add my voice to those supporting this work and wanting to
+see it land.
+We have had customers/partners wanting this sort of functionality for
+years.  In SLES releases prior to SLE15, we've provide a
+"nosharetransport" mount option, so that several filesystem could be
+mounted from the same server and each would get its own TCP
+connection.
+In SLE15 we are using this 'nconnect' feature, which is much nicer.
 
-This is promising--I'm going to deploy 4.19.44 to another rack
-by the end of the day Friday May 31st and hope for more of the
-same.
+Partners have assured us that it improves total throughput,
+particularly with bonded networks, but we haven't had any concrete
+data until Olga Kornievskaia provided some concrete test data - thanks
+Olga!
 
-I wondered upthread whether the following commits were what you
-had in mind when you asked about 4.19.44:
+My understanding, as I explain in one of the patches, is that parallel
+hardware is normally utilized by distributing flows, rather than
+packets.  This avoid out-of-order deliver of packets in a flow.
+So multiple flows are needed to utilizes parallel hardware.
 
-    63b0ee126f7e: NFS: Fix an I/O request leakage in nfs_do_recoalesce
-    be74fddc976e: NFS: Fix I/O request leakages
+An earlier version of this patch set was posted in April 2017 and
+Chuck raised two issues:
+ 1/ mountstats only reports on one xprt per mount
+ 2/ session establishment needs to happen on a single xprt, as you
+    cannot bind other xprts to the session until the session is
+    established.
+I've added patches to address these, and also to add the extra xprts
+to the debugfs info.
 
-Confirming that it is these patches and no others has become
-topical for me: my upstream is now providing a 4.19.37 build,
-and I note these two patches are included since 4.19.31 and so
-are presumably in my now-available upstream 4.19.37 build.
+I've also re-arrange the patches a bit, merged two, and remove the
+restriction to TCP and NFSV4.x,x>=1.  Discussions seemed to suggest
+these restrictions were not needed, I can see no need.
 
-If I could trouble you to confirm whether or not this is the
-complete set of patches you had in mind for the 4.19 branch
-after 4.19.28 when you recommended I try 4.19.44 I would
-appreciate it.
+There is a bug with the load balancing code from Trond's tree.
+While an xprt is attached to a client, the queuelen is incremented.
+Some requests (particularly BIND_CONN_TO_SESSION) pass in an xprt,
+and the queuelen was not incremented in this case, but it was
+decremented.  This causes it to go 'negative' and havoc results.
 
-Lurking on the list for the past week or two and watching
-everyone's work has been inspiring.  Thank you again.  I'll report
-back no later than next week.
+I wonder if the last three patches (*Allow multiple connection*) could
+be merged into a single patch.
 
--A
--- 
-Alan Post | Xen VPS hosting for the technically adept
-PO Box 61688 | Sunnyvale, CA 94088-1681 | https://prgmr.com/
-email: adp@prgmr.com
+I haven't given much thought to automatically determining the optimal
+number of connections, but I doubt it can be done transparently with
+any reliability.  When adding a connection improves throughput, then
+it was almost certainly a good thing to do. When adding a connection
+doesn't improve throughput, the implications are less obvious.
+My feeling is that a protocol enhancement where the serve suggests an
+upper limit and the client increases toward that limit when it notices
+xmit backlog, would be about the best we could do.  But we would need
+a lot more experience with the functionality first.
+
+Comments most welcome.  I'd love to see this, or something similar,
+merged.
+
+Thanks,
+NeilBrown
+
+---
+
+NeilBrown (4):
+      NFS: send state management on a single connection.
+      SUNRPC: enhance rpc_clnt_show_stats() to report on all xprts.
+      SUNRPC: add links for all client xprts to debugfs
+
+Trond Myklebust (5):
+      SUNRPC: Add basic load balancing to the transport switch
+      SUNRPC: Allow creation of RPC clients with multiple connections
+      NFS: Add a mount option to specify number of TCP connections to use
+      NFSv4: Allow multiple connections to NFSv4.x servers
+      pNFS: Allow multiple connections to the DS
+      NFS: Allow multiple connections to a NFSv2 or NFSv3 server
+
+
+ fs/nfs/client.c                      |    3 +
+ fs/nfs/internal.h                    |    2 +
+ fs/nfs/nfs3client.c                  |    1 
+ fs/nfs/nfs4client.c                  |   13 ++++-
+ fs/nfs/nfs4proc.c                    |   22 +++++---
+ fs/nfs/super.c                       |   12 ++++
+ include/linux/nfs_fs_sb.h            |    1 
+ include/linux/sunrpc/clnt.h          |    1 
+ include/linux/sunrpc/sched.h         |    1 
+ include/linux/sunrpc/xprt.h          |    1 
+ include/linux/sunrpc/xprtmultipath.h |    2 +
+ net/sunrpc/clnt.c                    |   98 ++++++++++++++++++++++++++++++++--
+ net/sunrpc/debugfs.c                 |   46 ++++++++++------
+ net/sunrpc/sched.c                   |    3 +
+ net/sunrpc/stats.c                   |   15 +++--
+ net/sunrpc/sunrpc.h                  |    3 +
+ net/sunrpc/xprtmultipath.c           |   23 +++++++-
+ 17 files changed, 204 insertions(+), 43 deletions(-)
+
+--
+Signature
+
