@@ -6,32 +6,31 @@ X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 27BDFC28CC0
-	for <linux-nfs@archiver.kernel.org>; Thu, 30 May 2019 00:43:43 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 55BC5C28CC0
+	for <linux-nfs@archiver.kernel.org>; Thu, 30 May 2019 00:43:50 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 07936243B0
-	for <linux-nfs@archiver.kernel.org>; Thu, 30 May 2019 00:43:43 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 350D1243B0
+	for <linux-nfs@archiver.kernel.org>; Thu, 30 May 2019 00:43:50 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726715AbfE3Anm (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 29 May 2019 20:43:42 -0400
-Received: from mx2.suse.de ([195.135.220.15]:46470 "EHLO mx1.suse.de"
+        id S1726720AbfE3Ant (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 29 May 2019 20:43:49 -0400
+Received: from mx2.suse.de ([195.135.220.15]:46538 "EHLO mx1.suse.de"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726527AbfE3Anm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 29 May 2019 20:43:42 -0400
+        id S1726527AbfE3Ant (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 29 May 2019 20:43:49 -0400
 X-Virus-Scanned: by amavisd-new at test-mx.suse.de
 Received: from relay2.suse.de (unknown [195.135.220.254])
-        by mx1.suse.de (Postfix) with ESMTP id 77BABAC66;
-        Thu, 30 May 2019 00:43:41 +0000 (UTC)
+        by mx1.suse.de (Postfix) with ESMTP id C26D6AC2C;
+        Thu, 30 May 2019 00:43:47 +0000 (UTC)
 From:   NeilBrown <neilb@suse.com>
 To:     Olga Kornievskaia <aglo@umich.edu>,
         Chuck Lever <chuck.lever@oracle.com>,
         Schumaker Anna <Anna.Schumaker@netapp.com>,
         Trond Myklebust <trondmy@hammerspace.com>
 Date:   Thu, 30 May 2019 10:41:28 +1000
-Subject: [PATCH 6/9] NFS: Add a mount option to specify number of TCP
- connections to use
+Subject: [PATCH 7/9] NFSv4: Allow multiple connections to NFSv4.x servers
 Cc:     linux-nfs@vger.kernel.org
-Message-ID: <155917688876.3988.2056442739107972319.stgit@noble.brown>
+Message-ID: <155917688881.3988.15202717018849539621.stgit@noble.brown>
 In-Reply-To: <155917564898.3988.6096672032831115016.stgit@noble.brown>
 References: <155917564898.3988.6096672032831115016.stgit@noble.brown>
 User-Agent: StGit/0.17.1-dirty
@@ -45,95 +44,105 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-Allow the user to specify that the client should use multiple connections
-to the server. For the moment, this functionality will be limited to
-TCP and to NFSv4.x (x>0).
-
-The value is not yet copied through from parsed data to the
-nfs_client, later patches will do that.
+If the user specifies the -onconnect=<number> mount option, then set up
+<number> connections to the server. The connections will all go to the
+same IP address.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 Signed-off-by: NeilBrown <neilb@suse.com>
 ---
- fs/nfs/internal.h         |    1 +
- fs/nfs/super.c            |   12 ++++++++++++
- include/linux/nfs_fs_sb.h |    1 +
- 3 files changed, 14 insertions(+)
+ fs/nfs/client.c     |    2 ++
+ fs/nfs/internal.h   |    1 +
+ fs/nfs/nfs4client.c |   10 ++++++++--
+ 3 files changed, 11 insertions(+), 2 deletions(-)
 
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 3d04cb0b839e..9005643b0db4 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -179,6 +179,7 @@ struct nfs_client *nfs_alloc_client(const struct nfs_client_initdata *cl_init)
+ 	clp->cl_rpcclient = ERR_PTR(-EINVAL);
+ 
+ 	clp->cl_proto = cl_init->proto;
++	clp->cl_nconnect = cl_init->nconnect;
+ 	clp->cl_net = get_net(cl_init->net);
+ 
+ 	clp->cl_principal = "*";
+@@ -497,6 +498,7 @@ int nfs_create_rpc_client(struct nfs_client *clp,
+ 	struct rpc_create_args args = {
+ 		.net		= clp->cl_net,
+ 		.protocol	= clp->cl_proto,
++		.nconnect	= clp->cl_nconnect,
+ 		.address	= (struct sockaddr *)&clp->cl_addr,
+ 		.addrsize	= clp->cl_addrlen,
+ 		.timeout	= cl_init->timeparms,
 diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 498fab72f70b..bba09dace5d6 100644
+index bba09dace5d6..4a49dc1495c5 100644
 --- a/fs/nfs/internal.h
 +++ b/fs/nfs/internal.h
-@@ -123,6 +123,7 @@ struct nfs_parsed_mount_data {
- 		char			*export_path;
- 		int			port;
- 		unsigned short		protocol;
-+		unsigned short		nconnect;
- 	} nfs_server;
+@@ -82,6 +82,7 @@ struct nfs_client_initdata {
+ 	struct nfs_subversion *nfs_mod;
+ 	int proto;
+ 	u32 minorversion;
++	unsigned int nconnect;
+ 	struct net *net;
+ 	const struct rpc_timeout *timeparms;
+ 	const struct cred *cred;
+diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+index 81b9b6d7927a..401a76290e55 100644
+--- a/fs/nfs/nfs4client.c
++++ b/fs/nfs/nfs4client.c
+@@ -859,7 +859,8 @@ static int nfs4_set_client(struct nfs_server *server,
+ 		const size_t addrlen,
+ 		const char *ip_addr,
+ 		int proto, const struct rpc_timeout *timeparms,
+-		u32 minorversion, struct net *net)
++		u32 minorversion, unsigned int nconnect,
++		struct net *net)
+ {
+ 	struct nfs_client_initdata cl_init = {
+ 		.hostname = hostname,
+@@ -872,6 +873,7 @@ static int nfs4_set_client(struct nfs_server *server,
+ 		.net = net,
+ 		.timeparms = timeparms,
+ 		.cred = server->cred,
++		.nconnect = nconnect,
+ 	};
+ 	struct nfs_client *clp;
  
- 	void			*lsm_opts;
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index f88ddac2dcdf..bd3ba1d323ea 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -77,6 +77,8 @@
- #define NFS_DEFAULT_VERSION 2
- #endif
- 
-+#define NFS_MAX_CONNECTIONS 16
-+
- enum {
- 	/* Mount options that take no arguments */
- 	Opt_soft, Opt_softerr, Opt_hard,
-@@ -108,6 +110,7 @@ enum {
- 	Opt_nfsvers,
- 	Opt_sec, Opt_proto, Opt_mountproto, Opt_mounthost,
- 	Opt_addr, Opt_mountaddr, Opt_clientaddr,
-+	Opt_nconnect,
- 	Opt_lookupcache,
- 	Opt_fscache_uniq,
- 	Opt_local_lock,
-@@ -181,6 +184,8 @@ static const match_table_t nfs_mount_option_tokens = {
- 	{ Opt_mounthost, "mounthost=%s" },
- 	{ Opt_mountaddr, "mountaddr=%s" },
- 
-+	{ Opt_nconnect, "nconnect=%s" },
-+
- 	{ Opt_lookupcache, "lookupcache=%s" },
- 	{ Opt_fscache_uniq, "fsc=%s" },
- 	{ Opt_local_lock, "local_lock=%s" },
-@@ -673,6 +678,8 @@ static void nfs_show_mount_options(struct seq_file *m, struct nfs_server *nfss,
- 	seq_printf(m, ",proto=%s",
- 		   rpc_peeraddr2str(nfss->client, RPC_DISPLAY_NETID));
- 	rcu_read_unlock();
-+	if (clp->cl_nconnect > 0)
-+		seq_printf(m, ",nconnect=%u", clp->cl_nconnect);
- 	if (version == 4) {
- 		if (nfss->port != NFS_PORT)
- 			seq_printf(m, ",port=%u", nfss->port);
-@@ -1549,6 +1556,11 @@ static int nfs_parse_mount_options(char *raw,
- 			if (mnt->mount_server.addrlen == 0)
- 				goto out_invalid_address;
- 			break;
-+		case Opt_nconnect:
-+			if (nfs_get_option_ul_bound(args, &option, 1, NFS_MAX_CONNECTIONS))
-+				goto out_invalid_value;
-+			mnt->nfs_server.nconnect = option;
-+			break;
- 		case Opt_lookupcache:
- 			string = match_strdup(args);
- 			if (string == NULL)
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index 1e78032a174b..a87fe854f008 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -58,6 +58,7 @@ struct nfs_client {
- 	struct nfs_subversion *	cl_nfs_mod;	/* pointer to nfs version module */
- 
- 	u32			cl_minorversion;/* NFSv4 minorversion */
-+	unsigned int		cl_nconnect;	/* Number of connections */
- 	const char *		cl_principal;  /* used for machine cred */
- 
- #if IS_ENABLED(CONFIG_NFS_V4)
+@@ -1074,6 +1076,7 @@ static int nfs4_init_server(struct nfs_server *server,
+ 			data->nfs_server.protocol,
+ 			&timeparms,
+ 			data->minorversion,
++			data->nfs_server.nconnect,
+ 			data->net);
+ 	if (error < 0)
+ 		return error;
+@@ -1163,6 +1166,7 @@ struct nfs_server *nfs4_create_referral_server(struct nfs_clone_mount *data,
+ 				XPRT_TRANSPORT_RDMA,
+ 				parent_server->client->cl_timeout,
+ 				parent_client->cl_mvops->minor_version,
++				parent_client->cl_nconnect,
+ 				parent_client->cl_net);
+ 	if (!error)
+ 		goto init_server;
+@@ -1176,6 +1180,7 @@ struct nfs_server *nfs4_create_referral_server(struct nfs_clone_mount *data,
+ 				XPRT_TRANSPORT_TCP,
+ 				parent_server->client->cl_timeout,
+ 				parent_client->cl_mvops->minor_version,
++				parent_client->cl_nconnect,
+ 				parent_client->cl_net);
+ 	if (error < 0)
+ 		goto error;
+@@ -1271,7 +1276,8 @@ int nfs4_update_server(struct nfs_server *server, const char *hostname,
+ 	set_bit(NFS_MIG_TSM_POSSIBLE, &server->mig_status);
+ 	error = nfs4_set_client(server, hostname, sap, salen, buf,
+ 				clp->cl_proto, clnt->cl_timeout,
+-				clp->cl_minorversion, net);
++				clp->cl_minorversion,
++				clp->cl_nconnect, net);
+ 	clear_bit(NFS_MIG_TSM_POSSIBLE, &server->mig_status);
+ 	if (error != 0) {
+ 		nfs_server_insert_lists(server);
 
 
