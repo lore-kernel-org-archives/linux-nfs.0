@@ -2,54 +2,66 @@ Return-Path: <SRS0=b6pt=T7=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,
-	USER_AGENT_MUTT autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-6.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,SPF_HELO_NONE,SPF_PASS,
+	T_DKIMWL_WL_HIGH,URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7161BC04AB6
-	for <linux-nfs@archiver.kernel.org>; Fri, 31 May 2019 20:39:45 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C8C27C04AB6
+	for <linux-nfs@archiver.kernel.org>; Fri, 31 May 2019 20:55:03 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 4B9F726EF6
-	for <linux-nfs@archiver.kernel.org>; Fri, 31 May 2019 20:39:45 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 9C5E526E6A
+	for <linux-nfs@archiver.kernel.org>; Fri, 31 May 2019 20:55:03 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=default; t=1559336103;
+	bh=hOWJaY8yysZrmHbu84fuOUV74anOlK996ZbSDhvpSHI=;
+	h=Subject:From:In-Reply-To:References:Date:To:Cc:List-ID:From;
+	b=tOUohA+PBVedLAUkhmCUagKL4S5bln5hpb1Ej6DIt7WnRbRwKWbr2TO0z5HysavI4
+	 OtlqdLv/brgcdi8+IQJCWkHwFooU59hwvIHyS69yeVenkeQ8lR1lykXFVyMNeuJjwq
+	 9/l+WjWLCbap/rXtxZiVAZPNzMyjFbp/BDXxFmys=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726711AbfEaUjo (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 31 May 2019 16:39:44 -0400
-Received: from fieldses.org ([173.255.197.46]:42596 "EHLO fieldses.org"
+        id S1726817AbfEaUzC (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 31 May 2019 16:55:02 -0400
+Received: from mail.kernel.org ([198.145.29.99]:41774 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726695AbfEaUjo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 31 May 2019 16:39:44 -0400
-Received: by fieldses.org (Postfix, from userid 2815)
-        id 0687D37E; Fri, 31 May 2019 16:39:44 -0400 (EDT)
-Date:   Fri, 31 May 2019 16:39:44 -0400
-To:     Linus Torvalds <torvalds@linux-foundation.org>
-Cc:     linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [GIT PULL] nfsd bugfix for 5.2
-Message-ID: <20190531203944.GB5334@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-User-Agent: Mutt/1.5.21 (2010-09-15)
-From:   bfields@fieldses.org (J. Bruce Fields)
+        id S1726676AbfEaUzC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 31 May 2019 16:55:02 -0400
+Subject: Re: [GIT PULL] nfsd bugfix for 5.2
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=default; t=1559336102;
+        bh=hOWJaY8yysZrmHbu84fuOUV74anOlK996ZbSDhvpSHI=;
+        h=From:In-Reply-To:References:Date:To:Cc:From;
+        b=Kzrk2Yc2eFLPXHmNNG1PvhiWWuYLF0aiguPJTtfQLZPHIW9ybCbRxdOg3Sfzb1EtL
+         i54riw+M1yF2+U343KVRh4gwt356OUYwwAfz8GUH6piDbEz7yQ7y1BtGnv+1sp/LBo
+         4BwKb4PpKF7eZRxl8xzOFNRTpIAEp5FufYnkMExc=
+From:   pr-tracker-bot@kernel.org
+In-Reply-To: <20190531203944.GB5334@fieldses.org>
+References: <20190531203944.GB5334@fieldses.org>
+X-PR-Tracked-List-Id: <linux-nfs.vger.kernel.org>
+X-PR-Tracked-Message-Id: <20190531203944.GB5334@fieldses.org>
+X-PR-Tracked-Remote: git://linux-nfs.org/~bfields/linux.git tags/nfsd-5.2-1
+X-PR-Tracked-Commit-Id: 141731d15d6eb2fd9aaefbf9b935ce86ae243074
+X-PR-Merge-Tree: torvalds/linux.git
+X-PR-Merge-Refname: refs/heads/master
+X-PR-Merge-Commit-Id: 3ab4436f688c2d2f221793953cd05435ca84261c
+Message-Id: <155933610210.3628.13222773936955967586.pr-tracker-bot@kernel.org>
+Date:   Fri, 31 May 2019 20:55:02 +0000
+To:     bfields@fieldses.org (J. Bruce Fields)
+Cc:     Linus Torvalds <torvalds@linux-foundation.org>,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Please pull:
+The pull request you sent on Fri, 31 May 2019 16:39:44 -0400:
 
-  git://linux-nfs.org/~bfields/linux.git tags/nfsd-5.2-1
+> git://linux-nfs.org/~bfields/linux.git tags/nfsd-5.2-1
 
-This reverts a minor fix which could cause us to treat conflicting NLM
-locks as nonconflicting.
+has been merged into torvalds/linux.git:
+https://git.kernel.org/torvalds/c/3ab4436f688c2d2f221793953cd05435ca84261c
 
-We have proper fix queued up for 5.3.  In the meantime, a quick revert
-seems best for 5.2 and stable.
+Thank you!
 
---b.
-
-Benjamin Coddington (1):
-      Revert "lockd: Show pid of lockd for remote locks"
-
- fs/lockd/xdr.c  | 4 ++--
- fs/lockd/xdr4.c | 4 ++--
- 2 files changed, 4 insertions(+), 4 deletions(-)
+-- 
+Deet-doot-dot, I am a bot.
+https://korg.wiki.kernel.org/userdoc/prtracker
