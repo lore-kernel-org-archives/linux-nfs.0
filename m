@@ -2,114 +2,234 @@ Return-Path: <SRS0=b6pt=T7=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.9 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-8.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
+	USER_AGENT_MUTT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5EB54C04AB6
-	for <linux-nfs@archiver.kernel.org>; Fri, 31 May 2019 16:47:47 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id BCA03C04AB6
+	for <linux-nfs@archiver.kernel.org>; Fri, 31 May 2019 19:34:25 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 37EF92229C
-	for <linux-nfs@archiver.kernel.org>; Fri, 31 May 2019 16:47:47 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="hZUB8Bfi"
+	by mail.kernel.org (Postfix) with ESMTP id 92AF826E61
+	for <linux-nfs@archiver.kernel.org>; Fri, 31 May 2019 19:34:25 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726852AbfEaQrn (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 31 May 2019 12:47:43 -0400
-Received: from mail-wm1-f66.google.com ([209.85.128.66]:40688 "EHLO
-        mail-wm1-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727108AbfEaQrY (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 31 May 2019 12:47:24 -0400
-Received: by mail-wm1-f66.google.com with SMTP id u16so1107866wmc.5;
-        Fri, 31 May 2019 09:47:23 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=from:to:cc:subject:date:message-id:in-reply-to:references;
-        bh=AoxRD2reTRu3UbtqGj5ISPmNh4fBERakEl1ic6Mj7VQ=;
-        b=hZUB8BfixI6FKtOwYyF+FSnRfKr2MZ4wIS/cQvwhtnNQCb1qHeECQGh3BbI6we792p
-         Dc/5aKNKNr1fLOSkH67ZHzHrHTF0Bi0xOIn4ONkwRvgesYmoHafemuJwuqNweOuNrPg7
-         npQhL4lIaznHXmf0xQUXpgp0EE5PbK31m61CBosRlZqGc0ELjzfbCosv7k9T1cejiCHZ
-         6wSK7t5qpfUSx8k4SJLTU/Y0wzJXsUkWrH2RyvlTcVP5esHqKA6YahGJeym5iPWx8oip
-         xsdJA/uHHS9zBPWaUYkALGkuQ9XOqhCK0sILULAUY9ojLNCCrXhZ8fqPr+2Qaxy0ugeu
-         LiuA==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
-         :references;
-        bh=AoxRD2reTRu3UbtqGj5ISPmNh4fBERakEl1ic6Mj7VQ=;
-        b=J/poo/edfIuckqoE+6k6vnemL4tqbuEcvTyldsBHpYvMvFXykaK06+Pd8PTE1SdUyj
-         2YDcBRl5IideJC7rULggz+59qAHMMp0rArchIDAxA61WYMYrtlpc2LDj7dz946Wbn9mp
-         hfM4Z9M/+xpU9e5Ptk0batrkR+R/k7QK5pX2v7uiWV/Php+z5kuxTcrIGvlt3hiHzzE1
-         +OrqZXyfDiAiW866VolQv8YRH6D/D2tHRYT83Tzd33cM/yNOTOkQGOGbSlraGlsZ4m1L
-         61Tdgdjvqk53HlwfC1Z7syZGGgZR6o7ohqa/81stcr11XOGduAG0SBuNDjZVWVRlI26T
-         kmKw==
-X-Gm-Message-State: APjAAAWWfqWheLF9IOpXRYlbcPP/mNiXlETl2DkZLdqZUnOubpQw//BY
-        D6g8P/d3/s5OPFpUUNd+RP8=
-X-Google-Smtp-Source: APXvYqwtkQxzoxWnfxYDSEJu7tBG9jmgGjQzb8U7LiEzTUjCh93ZAES7osPXOwBo4hmJn/Gr18ak4A==
-X-Received: by 2002:a1c:cc02:: with SMTP id h2mr6323602wmb.13.1559321242531;
-        Fri, 31 May 2019 09:47:22 -0700 (PDT)
-Received: from localhost.localdomain ([5.102.238.208])
-        by smtp.gmail.com with ESMTPSA id n5sm7669593wrj.27.2019.05.31.09.47.20
-        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Fri, 31 May 2019 09:47:21 -0700 (PDT)
-From:   Amir Goldstein <amir73il@gmail.com>
-To:     "Darrick J . Wong" <darrick.wong@oracle.com>
-Cc:     Dave Chinner <david@fromorbit.com>, Christoph Hellwig <hch@lst.de>,
-        linux-xfs@vger.kernel.org,
+        id S1727307AbfEaTeZ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 31 May 2019 15:34:25 -0400
+Received: from fieldses.org ([173.255.197.46]:42478 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1727199AbfEaTeY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 31 May 2019 15:34:24 -0400
+Received: by fieldses.org (Postfix, from userid 2815)
+        id 006861E29; Fri, 31 May 2019 15:34:23 -0400 (EDT)
+Date:   Fri, 31 May 2019 15:34:23 -0400
+To:     Amir Goldstein <amir73il@gmail.com>
+Cc:     "Darrick J . Wong" <darrick.wong@oracle.com>,
+        Dave Chinner <david@fromorbit.com>,
+        Christoph Hellwig <hch@lst.de>,
         Olga Kornievskaia <olga.kornievskaia@gmail.com>,
         Luis Henriques <lhenriques@suse.com>,
         Al Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel@vger.kernel.org, linux-api@vger.kernel.org,
-        ceph-devel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-cifs@vger.kernel.org
-Subject: [PATCH v4 7/9] xfs: use file_modified() helper
-Date:   Fri, 31 May 2019 19:46:59 +0300
-Message-Id: <20190531164701.15112-8-amir73il@gmail.com>
-X-Mailer: git-send-email 2.17.1
-In-Reply-To: <20190531164701.15112-1-amir73il@gmail.com>
-References: <20190531164701.15112-1-amir73il@gmail.com>
+        linux-fsdevel@vger.kernel.org, linux-xfs@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
+        ceph-devel@vger.kernel.org, linux-api@vger.kernel.org,
+        Dave Chinner <dchinner@redhat.com>
+Subject: Re: [PATCH v2 5/8] vfs: copy_file_range needs to strip setuid bits
+Message-ID: <20190531193423.GA3812@fieldses.org>
+References: <20190526061100.21761-1-amir73il@gmail.com>
+ <20190526061100.21761-6-amir73il@gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20190526061100.21761-6-amir73il@gmail.com>
+User-Agent: Mutt/1.5.21 (2010-09-15)
+From:   bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Note that by using the helper, the order of calling file_remove_privs()
-after file_update_mtime() in xfs_file_aio_write_checks() has changed.
+On Sun, May 26, 2019 at 09:10:56AM +0300, Amir Goldstein wrote:
+> The file we are copying data into needs to have its setuid bit
+> stripped before we start the data copy so that unprivileged users
+> can't copy data into executables that are run with root privs.
+> 
+> [Amir] Introduce the helper generic_copy_file_range_prep() modelled
+> after generic_remap_file_range_prep(). Helper is called by filesystem
+> before the copy_file_range operation and with output inode locked.
+> 
+> For ceph and for default generic_copy_file_range() implementation there
+> is no inode lock held throughout the copy operation, so we do best
+> effort and remove setuid bit before copy starts. This does not protect
+> suid file from changing if suid bit is set after copy started.
 
-Signed-off-by: Amir Goldstein <amir73il@gmail.com>
-Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
----
- fs/xfs/xfs_file.c | 15 +--------------
- 1 file changed, 1 insertion(+), 14 deletions(-)
+I'm not sure what it would accomplish to make setuid-clearing atomic
+with the write.
 
-diff --git a/fs/xfs/xfs_file.c b/fs/xfs/xfs_file.c
-index 76748255f843..916a35cae5e9 100644
---- a/fs/xfs/xfs_file.c
-+++ b/fs/xfs/xfs_file.c
-@@ -367,20 +367,7 @@ xfs_file_aio_write_checks(
- 	 * lock above.  Eventually we should look into a way to avoid
- 	 * the pointless lock roundtrip.
- 	 */
--	if (likely(!(file->f_mode & FMODE_NOCMTIME))) {
--		error = file_update_time(file);
--		if (error)
--			return error;
--	}
--
--	/*
--	 * If we're writing the file then make sure to clear the setuid and
--	 * setgid bits if the process is not being run by root.  This keeps
--	 * people from modifying setuid and setgid binaries.
--	 */
--	if (!IS_NOSEC(inode))
--		return file_remove_privs(file);
--	return 0;
-+	return file_modified(file);
- }
- 
- static int
--- 
-2.17.1
+If an attacker could write concurrently with your setting the setuid
+bit, then they could probably also perform the write just before you set
+the setuid bit.
 
+I think clearing it at the start is all that's necessary, unless I'm
+missing something.
+
+--b.
+
+
+> 
+> Signed-off-by: Dave Chinner <dchinner@redhat.com>
+> Signed-off-by: Amir Goldstein <amir73il@gmail.com>
+> ---
+>  fs/ceph/file.c     |  9 +++++++++
+>  fs/cifs/cifsfs.c   |  9 ++++++---
+>  fs/fuse/file.c     |  4 ++++
+>  fs/nfs/nfs42proc.c |  8 +++++---
+>  fs/read_write.c    | 31 +++++++++++++++++++++++++++++++
+>  include/linux/fs.h |  2 ++
+>  6 files changed, 57 insertions(+), 6 deletions(-)
+> 
+> diff --git a/fs/ceph/file.c b/fs/ceph/file.c
+> index e87f7b2023af..54cfc877a6ef 100644
+> --- a/fs/ceph/file.c
+> +++ b/fs/ceph/file.c
+> @@ -1947,6 +1947,15 @@ static ssize_t __ceph_copy_file_range(struct file *src_file, loff_t src_off,
+>  		goto out;
+>  	}
+>  
+> +	/* Should inode lock be held throughout the copy operation? */
+> +	inode_lock(dst_inode);
+> +	ret = generic_copy_file_range_prep(src_file, dst_file);
+> +	inode_unlock(dst_inode);
+> +	if (ret < 0) {
+> +		dout("failed to copy from src to dst file (%zd)\n", ret);
+> +		goto out;
+> +	}
+> +
+>  	/*
+>  	 * We need FILE_WR caps for dst_ci and FILE_RD for src_ci as other
+>  	 * clients may have dirty data in their caches.  And OSDs know nothing
+> diff --git a/fs/cifs/cifsfs.c b/fs/cifs/cifsfs.c
+> index c65823270313..e103b499aaa8 100644
+> --- a/fs/cifs/cifsfs.c
+> +++ b/fs/cifs/cifsfs.c
+> @@ -1096,6 +1096,10 @@ ssize_t cifs_file_copychunk_range(unsigned int xid,
+>  		goto out;
+>  	}
+>  
+> +	rc = -EOPNOTSUPP;
+> +	if (!target_tcon->ses->server->ops->copychunk_range)
+> +		goto out;
+> +
+>  	/*
+>  	 * Note: cifs case is easier than btrfs since server responsible for
+>  	 * checks for proper open modes and file type and if it wants
+> @@ -1107,11 +1111,10 @@ ssize_t cifs_file_copychunk_range(unsigned int xid,
+>  	/* should we flush first and last page first */
+>  	truncate_inode_pages(&target_inode->i_data, 0);
+>  
+> -	if (target_tcon->ses->server->ops->copychunk_range)
+> +	rc = generic_copy_file_range_prep(src_file, dst_file);
+> +	if (!rc)
+>  		rc = target_tcon->ses->server->ops->copychunk_range(xid,
+>  			smb_file_src, smb_file_target, off, len, destoff);
+> -	else
+> -		rc = -EOPNOTSUPP;
+>  
+>  	/* force revalidate of size and timestamps of target file now
+>  	 * that target is updated on the server
+> diff --git a/fs/fuse/file.c b/fs/fuse/file.c
+> index e03901ae729b..3531d4a3d9ec 100644
+> --- a/fs/fuse/file.c
+> +++ b/fs/fuse/file.c
+> @@ -3128,6 +3128,10 @@ static ssize_t __fuse_copy_file_range(struct file *file_in, loff_t pos_in,
+>  
+>  	inode_lock(inode_out);
+>  
+> +	err = generic_copy_file_range_prep(file_in, file_out);
+> +	if (err)
+> +		goto out;
+> +
+>  	if (fc->writeback_cache) {
+>  		err = filemap_write_and_wait_range(inode_out->i_mapping,
+>  						   pos_out, pos_out + len);
+> diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
+> index 5196bfa7894d..b387951e1d86 100644
+> --- a/fs/nfs/nfs42proc.c
+> +++ b/fs/nfs/nfs42proc.c
+> @@ -345,9 +345,11 @@ ssize_t nfs42_proc_copy(struct file *src, loff_t pos_src,
+>  
+>  	do {
+>  		inode_lock(file_inode(dst));
+> -		err = _nfs42_proc_copy(src, src_lock,
+> -				dst, dst_lock,
+> -				&args, &res);
+> +		err = generic_copy_file_range_prep(src, dst);
+> +		if (!err)
+> +			err = _nfs42_proc_copy(src, src_lock,
+> +					       dst, dst_lock,
+> +					       &args, &res);
+>  		inode_unlock(file_inode(dst));
+>  
+>  		if (err >= 0)
+> diff --git a/fs/read_write.c b/fs/read_write.c
+> index b0fb1176b628..e16bcafc0da2 100644
+> --- a/fs/read_write.c
+> +++ b/fs/read_write.c
+> @@ -1565,6 +1565,28 @@ COMPAT_SYSCALL_DEFINE4(sendfile64, int, out_fd, int, in_fd,
+>  }
+>  #endif
+>  
+> +/*
+> + * Prepare inodes for copy from @file_in to @file_out.
+> + *
+> + * Caller must hold output inode lock.
+> + */
+> +int generic_copy_file_range_prep(struct file *file_in, struct file *file_out)
+> +{
+> +	int ret;
+> +
+> +	WARN_ON_ONCE(!inode_is_locked(file_inode(file_out)));
+> +
+> +	/*
+> +	 * Clear the security bits if the process is not being run by root.
+> +	 * This keeps people from modifying setuid and setgid binaries.
+> +	 */
+> +	ret = file_remove_privs(file_out);
+> +
+> +	return ret;
+> +
+> +}
+> +EXPORT_SYMBOL(generic_copy_file_range_prep);
+> +
+>  /**
+>   * generic_copy_file_range - copy data between two files
+>   * @file_in:	file structure to read from
+> @@ -1590,6 +1612,15 @@ ssize_t generic_copy_file_range(struct file *file_in, loff_t pos_in,
+>  				struct file *file_out, loff_t pos_out,
+>  				size_t len, unsigned int flags)
+>  {
+> +	int ret;
+> +
+> +	/* Should inode lock be held throughout the copy operation? */
+> +	inode_lock(file_inode(file_out));
+> +	ret = generic_copy_file_range_prep(file_in, file_out);
+> +	inode_unlock(file_inode(file_out));
+> +	if (ret)
+> +		return ret;
+> +
+>  	return do_splice_direct(file_in, &pos_in, file_out, &pos_out,
+>  				len > MAX_RW_COUNT ? MAX_RW_COUNT : len, 0);
+>  }
+> diff --git a/include/linux/fs.h b/include/linux/fs.h
+> index e4d382c4342a..3e03a96d9ab6 100644
+> --- a/include/linux/fs.h
+> +++ b/include/linux/fs.h
+> @@ -1889,6 +1889,8 @@ extern ssize_t vfs_readv(struct file *, const struct iovec __user *,
+>  		unsigned long, loff_t *, rwf_t);
+>  extern ssize_t vfs_copy_file_range(struct file *, loff_t , struct file *,
+>  				   loff_t, size_t, unsigned int);
+> +extern int generic_copy_file_range_prep(struct file *file_in,
+> +					struct file *file_out);
+>  extern ssize_t generic_copy_file_range(struct file *file_in, loff_t pos_in,
+>  				       struct file *file_out, loff_t pos_out,
+>  				       size_t len, unsigned int flags);
+> -- 
+> 2.17.1
