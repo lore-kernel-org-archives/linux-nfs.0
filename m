@@ -3,63 +3,137 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
 X-Spam-Status: No, score=-1.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no
-	version=3.4.0
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4347EC04AB6
-	for <linux-nfs@archiver.kernel.org>; Fri, 31 May 2019 10:48:45 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id EA969C04AB6
+	for <linux-nfs@archiver.kernel.org>; Fri, 31 May 2019 12:42:08 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 15F66267B5
-	for <linux-nfs@archiver.kernel.org>; Fri, 31 May 2019 10:48:45 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id CA242268E9
+	for <linux-nfs@archiver.kernel.org>; Fri, 31 May 2019 12:42:08 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726330AbfEaKso convert rfc822-to-8bit (ORCPT
-        <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 31 May 2019 06:48:44 -0400
-Received: from mx2.suse.de ([195.135.220.15]:47070 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726233AbfEaKso (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 31 May 2019 06:48:44 -0400
-X-Virus-Scanned: by amavisd-new at test-mx.suse.de
-Received: from relay2.suse.de (unknown [195.135.220.254])
-        by mx1.suse.de (Postfix) with ESMTP id 8AF04AD05;
-        Fri, 31 May 2019 10:48:42 +0000 (UTC)
-From:   =?utf-8?Q?Aur=C3=A9lien?= Aptel <aaptel@suse.com>
-To:     "Darrick J. Wong" <darrick.wong@oracle.com>, sfrench@samba.org,
-        anna.schumaker@netapp.com, trond.myklebust@hammerspace.com,
-        fengxiaoli0714@gmail.com
-Cc:     fstests@vger.kernel.org, Murphy Zhou <xzhou@redhat.com>,
-        linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>
-Subject: Re: NFS & CIFS support dedupe now?? Was: Re: [PATCH] generic/517: notrun on NFS due to unaligned dedupe in test
-In-Reply-To: <20190530155851.GB5383@magnolia>
-References: <20190530094147.14512-1-xzhou@redhat.com> <20190530152606.GA5383@magnolia> <20190530155851.GB5383@magnolia>
-Date:   Fri, 31 May 2019 12:48:40 +0200
-Message-ID: <87woi6yk53.fsf@suse.com>
+        id S1726386AbfEaMmI (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 31 May 2019 08:42:08 -0400
+Received: from p3plsmtpa12-09.prod.phx3.secureserver.net ([68.178.252.238]:41579
+        "EHLO p3plsmtpa12-09.prod.phx3.secureserver.net" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1726330AbfEaMmI (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 31 May 2019 08:42:08 -0400
+X-Greylist: delayed 309 seconds by postgrey-1.27 at vger.kernel.org; Fri, 31 May 2019 08:42:08 EDT
+Received: from [192.168.0.56] ([24.218.182.144])
+        by :SMTPAUTH: with ESMTPSA
+        id Wgp6hEKUtP4EqWgp6hef4J; Fri, 31 May 2019 05:39:53 -0700
+Subject: Re: [PATCH 0/9] Multiple network connections for a single NFS mount.
+To:     NeilBrown <neilb@suse.com>, Olga Kornievskaia <aglo@umich.edu>
+Cc:     Chuck Lever <chuck.lever@oracle.com>,
+        Schumaker Anna <Anna.Schumaker@netapp.com>,
+        Trond Myklebust <trondmy@hammerspace.com>,
+        linux-nfs <linux-nfs@vger.kernel.org>
+References: <155917564898.3988.6096672032831115016.stgit@noble.brown>
+ <1df23ebc-ffe5-1a57-c40a-d5e9a45c8498@talpey.com>
+ <CAN-5tyHUah=fAsiSLb=n__q5HxRy3qeS83evf-vB59r4cpYgsw@mail.gmail.com>
+ <9b64b9d9-b7cf-c818-28e2-58b3a821d39d@talpey.com>
+ <87pnnztvo1.fsf@notabene.neil.brown.name>
+ <f44dd718-6e4c-d068-f24a-9949cda5c2e8@talpey.com>
+ <87ef4fxsm1.fsf@notabene.neil.brown.name>
+From:   Tom Talpey <tom@talpey.com>
+Message-ID: <b4795a49-4941-2b71-8219-626e49bd40da@talpey.com>
+Date:   Fri, 31 May 2019 08:39:51 -0400
+User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64; rv:60.0) Gecko/20100101
+ Thunderbird/60.7.0
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 8BIT
+In-Reply-To: <87ef4fxsm1.fsf@notabene.neil.brown.name>
+Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
+X-CMAE-Envelope: MS4wfBbeEY/qsg59fQP+U4sNvThsEdE0g2pslBA9vhP5eMeP3EHweah2KKO/D6QSVJhfkuNBnR7M76NorHLLN6aWSWeWHEsQ30QU5xeU8edL8c8t26+awbqZ
+ +ruzeoDj24ngaaAgOkGk338os+t++MXCI0GMkSCqiDTKk0EqiC/L0WDk+rtw6Kj1gT6o7XHBDMT0h2GZmVwDBYN5i8IRSpddsaxa/e4O4r/K1WAE7kBJYEFB
+ YkAnvYnv4I4CiGaHN0oNlQRWHGju9wj/Ab39OSJh+CB/9OSUJ5xbGaYnZUYSwSbdPi9rdmgllWCva6FccVN7qbSTyWN3iQFArVzs7UN/rV8=
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-"Darrick J. Wong" <darrick.wong@oracle.com> writes:
-> (Not sure about cifs, since I don't have a Windows Server handy)
->
-> I'm not an expert in CIFS or NFS, so I'm asking: do either support
-> dedupe or is this a kernel bug?
+On 5/30/2019 10:31 PM, NeilBrown wrote:
+> On Thu, May 30 2019, Tom Talpey wrote:
+> 
+>> On 5/30/2019 6:38 PM, NeilBrown wrote:
+>>> On Thu, May 30 2019, Tom Talpey wrote:
+>>>
+>>>> On 5/30/2019 1:20 PM, Olga Kornievskaia wrote:
+>>>>> On Thu, May 30, 2019 at 1:05 PM Tom Talpey <tom@talpey.com> wrote:
+>>>>>>
+>>>>>> On 5/29/2019 8:41 PM, NeilBrown wrote:
+>>>>>>> I've also re-arrange the patches a bit, merged two, and remove the
+>>>>>>> restriction to TCP and NFSV4.x,x>=1.  Discussions seemed to suggest
+>>>>>>> these restrictions were not needed, I can see no need.
+>>>>>>
+>>>>>> I believe the need is for the correctness of retries. Because NFSv2,
+>>>>>> NFSv3 and NFSv4.0 have no exactly-once semantics of their own, server
+>>>>>> duplicate request caches are important (although often imperfect).
+>>>>>> These caches use client XID's, source ports and addresses, sometimes
+>>>>>> in addition to other methods, to detect retry. Existing clients are
+>>>>>> careful to reconnect with the same source port, to ensure this. And
+>>>>>> existing servers won't change.
+>>>>>
+>>>>> Retries are already bound to the same connection so there shouldn't be
+>>>>> an issue of a retransmission coming from a different source port.
+>>>>
+>>>> So, there's no path redundancy? If any connection is lost and can't
+>>>> be reestablished, the requests on that connection will time out?
+>>>
+>>> Path redundancy happens lower down in the stack.  Presumably a bonding
+>>> driver will divert flows to a working path when one path fails.
+>>> NFS doesn't see paths at all.  It just sees TCP connections - each with
+>>> the same source and destination address.  How these are associated, from
+>>> time to time, with different hardware is completely transparent to NFS.
+>>
+>> But, you don't propose to constrain this to bonded connections. So
+>> NFS will create connections on whatever collection of NICs which are
+>> locally, and if these aren't bonded, well, the issues become visible.
+> 
+> If a client had multiple network interfaces with different addresses,
+> and several of them had routes to the selected server IP, then this
+> might result in the multiple connections to the server having different
+> local addresses (as well as different local ports) - I don't know the
+> network layer well enough to be sure if this is possible, but it seems
+> credible.
+> 
+> If one of these interfaces then went down, and there was no automatic
+> routing reconfiguration in place to restore connectivity through a
+> different interface, then the TCP connection would timeout and break.
+> The xprt would then try to reconnect using the same source port and
+> destination address - it doesn't provide an explicit source address, but
+> lets the network layer provide one.
+> This would presumably result in a connection with a different source
+> address.  So requests would continue to flow on the xprt, but they might
+> miss the DRC as the source address would be different.
+> 
+> If you have a configuration like this (multi-homed client with
+> multiple interfaces that can reach the server with equal weight), then
+> you already have a possible problem of missing the DRC if one interface
+> goes down a new connection is established from another one.  nconnect
+> doesn't change that.
+> 
+> So I still don't see any problem.
+> 
+> If I've misunderstood you, please provide a detailed description of the
+> sort of configuration where you think a problem might arise.
 
-AFAIK, the SMB protocol has 2 ioctl to do server side copies:
-- FSCTL_SRV_COPYCHUNK [1] generic
-- FSCTL_DUPLICATE_EXTENTS_TO_FILE [2], only supported on windows "new" CoW
-  filesystem ReFS
+You nailed it. But, I disagree that there won't be a problem. NFSv4.1
+and up will be fine, but NFS versions which rely on a heuristic, space
+limited DRC, will not.
 
-Cheers,
+Tom.
 
-1:https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-smb2/cd0162e4-7650-4293-8a2a-d696923203ef
-2:https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-smb2/4f08d2f8-bd17-4181-9cec-54c4f6a1b439
--- 
-Aurélien Aptel / SUSE Labs Samba Team
-GPG: 1839 CB5F 9F5B FB9B AA97  8C99 03C8 A49B 521B D5D3
-SUSE Linux GmbH, Maxfeldstraße 5, 90409 Nürnberg, Germany
-GF: Felix Imendörffer, Mary Higgins, Sri Rasiah HRB 21284 (AG Nürnberg)
+
+> 
+>>
+>> BTW, RDMA NICs are never bonded.
+> 
+> I've come across the concept of "Multi-Rail", but I cannot say that I
+> fully understand it yet.  I suspect you would need more than nconnect to
+> make proper use of multi-rail RDMA
+> 
+> Thanks,
+> NeilBrown
+> 
