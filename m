@@ -5,55 +5,55 @@ X-Spam-Level:
 X-Spam-Status: No, score=-8.9 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B4409C04AB6
-	for <linux-nfs@archiver.kernel.org>; Fri, 31 May 2019 16:47:39 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 03226C28CC2
+	for <linux-nfs@archiver.kernel.org>; Fri, 31 May 2019 16:47:42 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 89BC62229C
-	for <linux-nfs@archiver.kernel.org>; Fri, 31 May 2019 16:47:39 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id D13EF2229C
+	for <linux-nfs@archiver.kernel.org>; Fri, 31 May 2019 16:47:41 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="XwdbJXZD"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="cdHWOU+n"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727124AbfEaQr1 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 31 May 2019 12:47:27 -0400
-Received: from mail-wm1-f66.google.com ([209.85.128.66]:36176 "EHLO
+        id S1726924AbfEaQri (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 31 May 2019 12:47:38 -0400
+Received: from mail-wm1-f66.google.com ([209.85.128.66]:34960 "EHLO
         mail-wm1-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726791AbfEaQrX (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 31 May 2019 12:47:23 -0400
-Received: by mail-wm1-f66.google.com with SMTP id v22so6350709wml.1;
-        Fri, 31 May 2019 09:47:20 -0700 (PDT)
+        with ESMTP id S1726791AbfEaQr2 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 31 May 2019 12:47:28 -0400
+Received: by mail-wm1-f66.google.com with SMTP id c6so3429041wml.0;
+        Fri, 31 May 2019 09:47:27 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references;
-        bh=jGXSvLa7NNCoOVvlvMxKeItWZVCcyVMKXFY2Xr6oVfM=;
-        b=XwdbJXZDONlGTsiGHQlCU9tuovtGGMRRnMtHaj8HzeH3pB7ZlJ4kKQm5PlwcCgXoxS
-         r3Pbcy63CkUe1x2o3uOclLYLEfb9QJasjsEarxAqxFIQRanhGb9AYoyZYEGk9M0ob+YJ
-         9gSWG922Bafz2y12P7T8ISgOiFq0CampMVDrryxwOlBHh8J7hOgGoY2BgFY5uTAcY6vA
-         wKlMjFV1f+DBMRlEh3v61jPS3NA2+6IG9bjGH6BZVJxFwdL79ASXP4sa9y/agNMaJyOY
-         /WvXqvIyDKujS8a4byEXP+r0Kz56D3gs045G1CtYH1XVW290b86B/kbkfnMQCKOINLNc
-         DeQQ==
+        bh=HRG15X28X6wLonYTWAY6EmVHhxYS6KtDUNRAcBO9y7g=;
+        b=cdHWOU+n5BJ1iIXZj596n6F7J0DaRYo/l9Q9ZkRKB58Hy9KKixfylYue3GMy8EUVeA
+         lVW+aVOAWJkROkcM4kwa7yX4bIaXRZHxJY4qJxXJJY0f2i/N7s1bMruD2G3Te75el3Oz
+         qdm7gLaE50S+GKI61kLrS5r3YZkOQkdRyYiyY9VFw2PYZx/YRMRyI0dNkEds7nCJYfhi
+         3ZxdnMYYWrXhQixn2ndazZmOo82Q/+x2VC2vE6bw8U9WJRpHfG7Updc1i1VICHYKdNg0
+         k8UNn5IdUuzpCOwfK0mRDvXEYN+O/TczVc2/DDhtZD6cupGIW6odrFuW9gYqQPcnJ8yi
+         nuAg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references;
-        bh=jGXSvLa7NNCoOVvlvMxKeItWZVCcyVMKXFY2Xr6oVfM=;
-        b=C8Oyc13coVtT399eWPulwOkZ9abJBgpLw3BxZFp2Cg6ucNFgD3yh15YCuozQF8I5ml
-         lR6KfGO2zcqW1UKo3p/nAxrn9AUokMiJvmuZ3DccESn4Nt94kdbffXLioy8PLz6wYqqb
-         JeVTYfBnbrcClK1YF+gz1aHIvrlkBWVGggqsRM5di8Itiwn6G6ZUTtDV7WINWtDXheP/
-         N+4OPqZc4CPrAaOHgxIQdJ0hdsLDhC6hQHF5m5OOix5V5vbSpD97P9o2FYk2RofcZfnk
-         7fANlBgEt3YVZK+uhc28WDQJ/T4t0+eOkMqdlOUs9OHJYgCjE2RUqjl02zolbOyeJCSW
-         JHDA==
-X-Gm-Message-State: APjAAAULY3ikgCto8nwa/76HA6rX8NsPKTMjzQwNoqpr2S+NmzseFz0k
-        7bRU5l5GBWNdCzh1tUDvUDU=
-X-Google-Smtp-Source: APXvYqwHKCdYfvR2HLz+xaIUZ1eV2cOfULE8MIAz9Yk42YD3i5z7576EF9U2LJ+AQNXtv18H+34TJg==
-X-Received: by 2002:a1c:7f10:: with SMTP id a16mr6398399wmd.30.1559321240180;
-        Fri, 31 May 2019 09:47:20 -0700 (PDT)
+        bh=HRG15X28X6wLonYTWAY6EmVHhxYS6KtDUNRAcBO9y7g=;
+        b=ZELYVDvzGZVbblLhydMUpBnCWKU/OnyKVK6fPoEtzba+IMDjVxJPcZRgyj6ClsrrlN
+         n6YU+cT13qd+HDkC4JLxUs41Ly/+IWfe3y8atAyhL96uKj1aeSkCcopwsFdIVw4A6Yzx
+         LBOAOKFMBAV+UQu6CtdZK52R7M8C8812IpLE0Qu0/nOQKQjGHGBIDOAaWPrc/NbNmIE3
+         rVN0sk5qxcRiHE7IyC/UrCeA/n8FFcHcRxdPyoJ43ssJTXVrFa85AvET4uqm1WGdW0Bc
+         NNEpmU6rWN5YoMNi+dS+aYrKnD6lksSaah5i5wqI8/RDB3MX56nf249R2X6mamVEh90y
+         oarA==
+X-Gm-Message-State: APjAAAWszJLB2LDsRKZ17shzoJnExxNxMp+9MioG3NajZpQishiWMWBU
+        F2s98IS75oEMoJ8FDOh4yjc=
+X-Google-Smtp-Source: APXvYqwWgIYQ2clqTkQy9eygreKjNGojYUYCr7ZzWiQwEdeft9nzlvN4fuQ1DUcp3eNqfXaqES0nVA==
+X-Received: by 2002:a1c:f712:: with SMTP id v18mr6653743wmh.143.1559321246752;
+        Fri, 31 May 2019 09:47:26 -0700 (PDT)
 Received: from localhost.localdomain ([5.102.238.208])
-        by smtp.gmail.com with ESMTPSA id n5sm7669593wrj.27.2019.05.31.09.47.18
+        by smtp.gmail.com with ESMTPSA id n5sm7669593wrj.27.2019.05.31.09.47.25
         (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Fri, 31 May 2019 09:47:19 -0700 (PDT)
+        Fri, 31 May 2019 09:47:26 -0700 (PDT)
 From:   Amir Goldstein <amir73il@gmail.com>
 To:     "Darrick J . Wong" <darrick.wong@oracle.com>
 Cc:     Dave Chinner <david@fromorbit.com>, Christoph Hellwig <hch@lst.de>,
@@ -64,9 +64,9 @@ Cc:     Dave Chinner <david@fromorbit.com>, Christoph Hellwig <hch@lst.de>,
         linux-fsdevel@vger.kernel.org, linux-api@vger.kernel.org,
         ceph-devel@vger.kernel.org, linux-nfs@vger.kernel.org,
         linux-cifs@vger.kernel.org
-Subject: [PATCH v4 6/9] vfs: introduce file_modified() helper
-Date:   Fri, 31 May 2019 19:46:58 +0300
-Message-Id: <20190531164701.15112-7-amir73il@gmail.com>
+Subject: [PATCH v4 9/9] fuse: copy_file_range needs to strip setuid bits and update timestamps
+Date:   Fri, 31 May 2019 19:47:01 +0300
+Message-Id: <20190531164701.15112-10-amir73il@gmail.com>
 X-Mailer: git-send-email 2.17.1
 In-Reply-To: <20190531164701.15112-1-amir73il@gmail.com>
 References: <20190531164701.15112-1-amir73il@gmail.com>
@@ -75,100 +75,38 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-The combination of file_remove_privs() and file_update_mtime() is
-quite common in filesystem ->write_iter() methods.
-
-Modelled after the helper file_accessed(), introduce file_modified()
-and use it from generic_remap_file_range_prep().
-
-Note that the order of calling file_remove_privs() before
-file_update_mtime() in the helper was matched to the more common order by
-filesystems and not the current order in generic_remap_file_range_prep().
+Like ->write_iter(), we update mtime and strip setuid of dst file before
+copy and like ->read_iter(), we update atime of src file after copy.
 
 Signed-off-by: Amir Goldstein <amir73il@gmail.com>
+Acked-by: Miklos Szeredi <miklos@szeredi.hu>
 ---
- fs/inode.c         | 20 ++++++++++++++++++++
- fs/read_write.c    | 21 +++------------------
- include/linux/fs.h |  2 ++
- 3 files changed, 25 insertions(+), 18 deletions(-)
+ fs/fuse/file.c | 5 +++++
+ 1 file changed, 5 insertions(+)
 
-diff --git a/fs/inode.c b/fs/inode.c
-index df6542ec3b88..4348cfb14562 100644
---- a/fs/inode.c
-+++ b/fs/inode.c
-@@ -1899,6 +1899,26 @@ int file_update_time(struct file *file)
- }
- EXPORT_SYMBOL(file_update_time);
+diff --git a/fs/fuse/file.c b/fs/fuse/file.c
+index 569baf286835..eab00cd089e8 100644
+--- a/fs/fuse/file.c
++++ b/fs/fuse/file.c
+@@ -3131,6 +3131,10 @@ static ssize_t __fuse_copy_file_range(struct file *file_in, loff_t pos_in,
  
-+/* Caller must hold the file's inode lock */
-+int file_modified(struct file *file)
-+{
-+	int err;
-+
-+	/*
-+	 * Clear the security bits if the process is not being run by root.
-+	 * This keeps people from modifying setuid and setgid binaries.
-+	 */
-+	err = file_remove_privs(file);
+ 	inode_lock(inode_out);
+ 
++	err = file_modified(file_out);
 +	if (err)
-+		return err;
++		goto out;
 +
-+	if (unlikely(file->f_mode & FMODE_NOCMTIME))
-+		return 0;
-+
-+	return file_update_time(file);
-+}
-+EXPORT_SYMBOL(file_modified);
-+
- int inode_needs_sync(struct inode *inode)
- {
- 	if (IS_SYNC(inode))
-diff --git a/fs/read_write.c b/fs/read_write.c
-index b0fb1176b628..cec7e7b1f693 100644
---- a/fs/read_write.c
-+++ b/fs/read_write.c
-@@ -1980,25 +1980,10 @@ int generic_remap_file_range_prep(struct file *file_in, loff_t pos_in,
- 		return ret;
+ 	if (fc->writeback_cache) {
+ 		err = filemap_write_and_wait_range(inode_out->i_mapping,
+ 						   pos_out, pos_out + len);
+@@ -3172,6 +3176,7 @@ static ssize_t __fuse_copy_file_range(struct file *file_in, loff_t pos_in,
+ 		clear_bit(FUSE_I_SIZE_UNSTABLE, &fi_out->state);
  
- 	/* If can't alter the file contents, we're done. */
--	if (!(remap_flags & REMAP_FILE_DEDUP)) {
--		/* Update the timestamps, since we can alter file contents. */
--		if (!(file_out->f_mode & FMODE_NOCMTIME)) {
--			ret = file_update_time(file_out);
--			if (ret)
--				return ret;
--		}
-+	if (!(remap_flags & REMAP_FILE_DEDUP))
-+		ret = file_modified(file_out);
+ 	inode_unlock(inode_out);
++	file_accessed(file_in);
  
--		/*
--		 * Clear the security bits if the process is not being run by
--		 * root.  This keeps people from modifying setuid and setgid
--		 * binaries.
--		 */
--		ret = file_remove_privs(file_out);
--		if (ret)
--			return ret;
--	}
--
--	return 0;
-+	return ret;
+ 	return err;
  }
- EXPORT_SYMBOL(generic_remap_file_range_prep);
- 
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index e4d382c4342a..79ffa2958bd8 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -2177,6 +2177,8 @@ static inline void file_accessed(struct file *file)
- 		touch_atime(&file->f_path);
- }
- 
-+extern int file_modified(struct file *file);
-+
- int sync_inode(struct inode *inode, struct writeback_control *wbc);
- int sync_inode_metadata(struct inode *inode, int wait);
- 
 -- 
 2.17.1
 
