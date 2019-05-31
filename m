@@ -8,52 +8,52 @@ X-Spam-Status: No, score=-8.9 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 057D5C28CC2
-	for <linux-nfs@archiver.kernel.org>; Fri, 31 May 2019 16:47:26 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8EF70C04AB6
+	for <linux-nfs@archiver.kernel.org>; Fri, 31 May 2019 16:47:27 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id D330823A82
-	for <linux-nfs@archiver.kernel.org>; Fri, 31 May 2019 16:47:25 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 5EF3E243A9
+	for <linux-nfs@archiver.kernel.org>; Fri, 31 May 2019 16:47:27 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="tRhizwQU"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="sWNCZqzh"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727111AbfEaQrX (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 31 May 2019 12:47:23 -0400
-Received: from mail-wm1-f67.google.com ([209.85.128.67]:40685 "EHLO
-        mail-wm1-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727090AbfEaQrW (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 31 May 2019 12:47:22 -0400
-Received: by mail-wm1-f67.google.com with SMTP id u16so1107745wmc.5;
-        Fri, 31 May 2019 09:47:19 -0700 (PDT)
+        id S1727086AbfEaQrS (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 31 May 2019 12:47:18 -0400
+Received: from mail-wm1-f68.google.com ([209.85.128.68]:54356 "EHLO
+        mail-wm1-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727003AbfEaQrS (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 31 May 2019 12:47:18 -0400
+Received: by mail-wm1-f68.google.com with SMTP id g135so3260669wme.4;
+        Fri, 31 May 2019 09:47:15 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references;
-        bh=GmLRwLyr1TL2SZV/3Hd0cBEDiPM6bKDbyVa4EFRX9Nw=;
-        b=tRhizwQUhrX+aMyNwadDebnZmz5EGLojFJbg/LvY+WEbk+XlLXHoxRHmmGytYm/NUW
-         73hrgn+WmYuXQAYRnzb/NzC9Pf259gT8xVUdkLXr2kcSAV5kJl19PcV0UZlYD75/EwZk
-         JPEIvN9Iq238lc82xLRf/Pc6f/Hi4motCGr4x3pjXjsVAyyIA/Cv7jyjLz29LVFVzddk
-         q2/i1cxnMNlKAHSOcoBJwgOjcVdGOspDEZEHYUjejVmDj9Dvg7nMqDEqWsw3tWdMIvXi
-         SpGFGR3YL5mFmR2smqs8Q/i6pc7y6H3cXrLg86KDGMmf/svdQEjREPMxR93PdcVH63uv
-         IdCg==
+        bh=zD+G66icCrS83U+p0kj1jVa8Ed5aOLuiZE56AA1YrhI=;
+        b=sWNCZqzhaJm/4HJauaa9QW9+p0kio32kz/pibNec/NwcF9x/RJ+iU6qoSJV6D/Ebqb
+         2FmHHDFY7nZBdh4GOkQ4zu3rb9YhT7P5gh9SE21RqNNsFqyq1Uj+2Gw0wpBqTtoU2Xpt
+         N0JjE+xNZ2BMjjfk1HBrFfv39id1kMivh6VnLLR+QlPzMstZRlcihQZpjeQ6VS/4MGvp
+         ua4/Ug/pPLL5RaGR4qnRpkYq09vHvo+A1tpsrZ354Mg4B1wFy0JnoQ2unzUUHM/MO4NN
+         PBAUZoym1D92/fJDtMl0laheZ4rOzMFtMquVzjmvPrUa0wEeGrRboqMRLA3Ch2CA8QKw
+         PrwQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references;
-        bh=GmLRwLyr1TL2SZV/3Hd0cBEDiPM6bKDbyVa4EFRX9Nw=;
-        b=EQqaQJEsR1/Gbdp/cnz3KV9VtEit8U0jx9nOR/r6f4xCmWLQ14MIntPF2stzVcMnAA
-         X12tIm6pw9haaFXjfsXz8eJcRKN5FAxYpKIYKDixPeG3+LsAmtXRLW0t5KGtakqGMaqW
-         YxxtxdRwoROCb4wGuJV9yYFokNbrfVBTwG5OiN6lGXAeAmLgYPX/mARm6+l7bxSg4k4k
-         NDCWQHSgYSjZoEiH33zUzlCEtvzZvDOwOby77b5i3yGvXzflmA+m6BnFfFMJed6KbkSR
-         FDJdCipVHPyHEMuQHe9u+MhDjsUC3Mq9rnw1dqKD5hluyYzBGKxk3Jvr9TYTiIAIWl4W
-         vLtA==
-X-Gm-Message-State: APjAAAXg1GaxCflGpNB6Fmdt2t1fMIvgeZSQMzvXFs/b2354ksysuGpd
-        v2naoEwD0K6dsZH3Ldp0n5w=
-X-Google-Smtp-Source: APXvYqx4DhdAGt74ECyqU8faH377pazZGlGYfEzIKGE6g7bwR6OOr+jqfTSunXQ0eDP/29u+PaCTPQ==
-X-Received: by 2002:a7b:c043:: with SMTP id u3mr5757205wmc.56.1559321238387;
-        Fri, 31 May 2019 09:47:18 -0700 (PDT)
+        bh=zD+G66icCrS83U+p0kj1jVa8Ed5aOLuiZE56AA1YrhI=;
+        b=GOCEF75zEKg1MsnYGwlcrbG0iShYapiIYFdyvRYqup7XGzZetk5ab4SiCre05h1/29
+         4A2Oz/lMLw0mjRYAvycm8Kv09Lw5Pg7bBQSm8Vy3ScqAqziwkXc6DCQM4fSmyFV6wqkc
+         LotYHbGoBPLAq+CQ/5acaW4kXr7uPMU/8NqXGVMZzvb2z8NmrCGuoiCb7QxZJWpBCHi4
+         ZU2I5lomImoZegbjelP5RJDjuuxqwn4bLoNwPSDV8c46Ue3yau0aJFx18UJF2GTGt+xV
+         ZRwV0SypDmNJr9CW3BZWTeb37QSI0uDl5n0Oo00Rmei+HrQYfDTO6n+G6SdLO+P2cTPz
+         gnRQ==
+X-Gm-Message-State: APjAAAWvtFkjHZ3S4nKkHDqEwgeLRHb4/19Ab0WMv3yFa6rSSnM2nXq3
+        nMqqobTFX5FqFlYxUf3z+VM=
+X-Google-Smtp-Source: APXvYqzgtgOxhQAEKCd6LXP6m3DrP2CcaEho6Vi6DDXxj5zFoCxQu0yF0irMj6KB+Uhd6FqZRklExg==
+X-Received: by 2002:a1c:700b:: with SMTP id l11mr6355720wmc.106.1559321234671;
+        Fri, 31 May 2019 09:47:14 -0700 (PDT)
 Received: from localhost.localdomain ([5.102.238.208])
-        by smtp.gmail.com with ESMTPSA id n5sm7669593wrj.27.2019.05.31.09.47.16
+        by smtp.gmail.com with ESMTPSA id n5sm7669593wrj.27.2019.05.31.09.47.12
         (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Fri, 31 May 2019 09:47:17 -0700 (PDT)
+        Fri, 31 May 2019 09:47:14 -0700 (PDT)
 From:   Amir Goldstein <amir73il@gmail.com>
 To:     "Darrick J . Wong" <darrick.wong@oracle.com>
 Cc:     Dave Chinner <david@fromorbit.com>, Christoph Hellwig <hch@lst.de>,
@@ -63,10 +63,10 @@ Cc:     Dave Chinner <david@fromorbit.com>, Christoph Hellwig <hch@lst.de>,
         Al Viro <viro@zeniv.linux.org.uk>,
         linux-fsdevel@vger.kernel.org, linux-api@vger.kernel.org,
         ceph-devel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-cifs@vger.kernel.org, Dave Chinner <dchinner@redhat.com>
-Subject: [PATCH v4 5/9] vfs: add missing checks to copy_file_range
-Date:   Fri, 31 May 2019 19:46:57 +0300
-Message-Id: <20190531164701.15112-6-amir73il@gmail.com>
+        linux-cifs@vger.kernel.org
+Subject: [PATCH v4 3/9] vfs: introduce generic_file_rw_checks()
+Date:   Fri, 31 May 2019 19:46:55 +0300
+Message-Id: <20190531164701.15112-4-amir73il@gmail.com>
 X-Mailer: git-send-email 2.17.1
 In-Reply-To: <20190531164701.15112-1-amir73il@gmail.com>
 References: <20190531164701.15112-1-amir73il@gmail.com>
@@ -75,111 +75,138 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Like the clone and dedupe interfaces we've recently fixed, the
-copy_file_range() implementation is missing basic sanity, limits and
-boundary condition tests on the parameters that are passed to it
-from userspace. Create a new "generic_copy_file_checks()" function
-modelled on the generic_remap_checks() function to provide this
-missing functionality.
+Factor out helper with some checks on in/out file that are
+common to clone_file_range and copy_file_range.
 
-[Amir] Shorten copy length instead of checking pos_in limits
-because input file size already abides by the limits.
-
-Signed-off-by: Dave Chinner <dchinner@redhat.com>
+Suggested-by: Darrick J. Wong <darrick.wong@oracle.com>
 Signed-off-by: Amir Goldstein <amir73il@gmail.com>
 Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- fs/read_write.c    |  3 ++-
- include/linux/fs.h |  3 +++
- mm/filemap.c       | 53 ++++++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 58 insertions(+), 1 deletion(-)
+ fs/read_write.c    | 38 +++++++++++---------------------------
+ include/linux/fs.h |  1 +
+ mm/filemap.c       | 24 ++++++++++++++++++++++++
+ 3 files changed, 36 insertions(+), 27 deletions(-)
 
 diff --git a/fs/read_write.c b/fs/read_write.c
-index f1900bdb3127..b0fb1176b628 100644
+index b63dcb4e4fe9..f1900bdb3127 100644
 --- a/fs/read_write.c
 +++ b/fs/read_write.c
-@@ -1626,7 +1626,8 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
- 	if (file_inode(file_in)->i_sb != file_inode(file_out)->i_sb)
- 		return -EXDEV;
+@@ -1617,17 +1617,18 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
+ 			    struct file *file_out, loff_t pos_out,
+ 			    size_t len, unsigned int flags)
+ {
+-	struct inode *inode_in = file_inode(file_in);
+-	struct inode *inode_out = file_inode(file_out);
+ 	ssize_t ret;
  
--	ret = generic_file_rw_checks(file_in, file_out);
-+	ret = generic_copy_file_checks(file_in, pos_in, file_out, pos_out, &len,
-+				       flags);
+ 	if (flags != 0)
+ 		return -EINVAL;
+ 
+-	if (S_ISDIR(inode_in->i_mode) || S_ISDIR(inode_out->i_mode))
+-		return -EISDIR;
+-	if (!S_ISREG(inode_in->i_mode) || !S_ISREG(inode_out->i_mode))
+-		return -EINVAL;
++	/* this could be relaxed once a method supports cross-fs copies */
++	if (file_inode(file_in)->i_sb != file_inode(file_out)->i_sb)
++		return -EXDEV;
++
++	ret = generic_file_rw_checks(file_in, file_out);
++	if (unlikely(ret))
++		return ret;
+ 
+ 	ret = rw_verify_area(READ, file_in, &pos_in, len);
+ 	if (unlikely(ret))
+@@ -1637,15 +1638,6 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
  	if (unlikely(ret))
  		return ret;
  
+-	if (!(file_in->f_mode & FMODE_READ) ||
+-	    !(file_out->f_mode & FMODE_WRITE) ||
+-	    (file_out->f_flags & O_APPEND))
+-		return -EBADF;
+-
+-	/* this could be relaxed once a method supports cross-fs copies */
+-	if (inode_in->i_sb != inode_out->i_sb)
+-		return -EXDEV;
+-
+ 	if (len == 0)
+ 		return 0;
+ 
+@@ -2013,29 +2005,21 @@ loff_t do_clone_file_range(struct file *file_in, loff_t pos_in,
+ 			   struct file *file_out, loff_t pos_out,
+ 			   loff_t len, unsigned int remap_flags)
+ {
+-	struct inode *inode_in = file_inode(file_in);
+-	struct inode *inode_out = file_inode(file_out);
+ 	loff_t ret;
+ 
+ 	WARN_ON_ONCE(remap_flags & REMAP_FILE_DEDUP);
+ 
+-	if (S_ISDIR(inode_in->i_mode) || S_ISDIR(inode_out->i_mode))
+-		return -EISDIR;
+-	if (!S_ISREG(inode_in->i_mode) || !S_ISREG(inode_out->i_mode))
+-		return -EINVAL;
+-
+ 	/*
+ 	 * FICLONE/FICLONERANGE ioctls enforce that src and dest files are on
+ 	 * the same mount. Practically, they only need to be on the same file
+ 	 * system.
+ 	 */
+-	if (inode_in->i_sb != inode_out->i_sb)
++	if (file_inode(file_in)->i_sb != file_inode(file_out)->i_sb)
+ 		return -EXDEV;
+ 
+-	if (!(file_in->f_mode & FMODE_READ) ||
+-	    !(file_out->f_mode & FMODE_WRITE) ||
+-	    (file_out->f_flags & O_APPEND))
+-		return -EBADF;
++	ret = generic_file_rw_checks(file_in, file_out);
++	if (ret < 0)
++		return ret;
+ 
+ 	if (!file_in->f_op->remap_file_range)
+ 		return -EOPNOTSUPP;
 diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 89b9b73eb581..e4d382c4342a 100644
+index ea17858310ff..89b9b73eb581 100644
 --- a/include/linux/fs.h
 +++ b/include/linux/fs.h
-@@ -3050,6 +3050,9 @@ extern int generic_remap_checks(struct file *file_in, loff_t pos_in,
+@@ -3049,6 +3049,7 @@ extern ssize_t generic_write_checks(struct kiocb *, struct iov_iter *);
+ extern int generic_remap_checks(struct file *file_in, loff_t pos_in,
  				struct file *file_out, loff_t pos_out,
  				loff_t *count, unsigned int remap_flags);
- extern int generic_file_rw_checks(struct file *file_in, struct file *file_out);
-+extern int generic_copy_file_checks(struct file *file_in, loff_t pos_in,
-+				    struct file *file_out, loff_t pos_out,
-+				    size_t *count, unsigned int flags);
++extern int generic_file_rw_checks(struct file *file_in, struct file *file_out);
  extern ssize_t generic_file_read_iter(struct kiocb *, struct iov_iter *);
  extern ssize_t __generic_file_write_iter(struct kiocb *, struct iov_iter *);
  extern ssize_t generic_file_write_iter(struct kiocb *, struct iov_iter *);
 diff --git a/mm/filemap.c b/mm/filemap.c
-index 44361928bbb0..aac71aef4c61 100644
+index df2006ba0cfa..a38619a4a6af 100644
 --- a/mm/filemap.c
 +++ b/mm/filemap.c
-@@ -3056,6 +3056,59 @@ int generic_file_rw_checks(struct file *file_in, struct file *file_out)
+@@ -3041,6 +3041,30 @@ int generic_remap_checks(struct file *file_in, loff_t pos_in,
  	return 0;
  }
  
++
 +/*
-+ * Performs necessary checks before doing a file copy
-+ *
-+ * Can adjust amount of bytes to copy via @req_count argument.
-+ * Returns appropriate error code that caller should return or
-+ * zero in case the copy should be allowed.
++ * Performs common checks before doing a file copy/clone
++ * from @file_in to @file_out.
 + */
-+int generic_copy_file_checks(struct file *file_in, loff_t pos_in,
-+			     struct file *file_out, loff_t pos_out,
-+			     size_t *req_count, unsigned int flags)
++int generic_file_rw_checks(struct file *file_in, struct file *file_out)
 +{
 +	struct inode *inode_in = file_inode(file_in);
 +	struct inode *inode_out = file_inode(file_out);
-+	uint64_t count = *req_count;
-+	loff_t size_in;
-+	int ret;
 +
-+	ret = generic_file_rw_checks(file_in, file_out);
-+	if (ret)
-+		return ret;
-+
-+	/* Don't touch certain kinds of inodes */
-+	if (IS_IMMUTABLE(inode_out))
-+		return -EPERM;
-+
-+	if (IS_SWAPFILE(inode_in) || IS_SWAPFILE(inode_out))
-+		return -ETXTBSY;
-+
-+	/* Ensure offsets don't wrap. */
-+	if (pos_in + count < pos_in || pos_out + count < pos_out)
-+		return -EOVERFLOW;
-+
-+	/* Shorten the copy to EOF */
-+	size_in = i_size_read(inode_in);
-+	if (pos_in >= size_in)
-+		count = 0;
-+	else
-+		count = min(count, size_in - (uint64_t)pos_in);
-+
-+	ret = generic_write_check_limits(file_out, pos_out, &count);
-+	if (ret)
-+		return ret;
-+
-+	/* Don't allow overlapped copying within the same file. */
-+	if (inode_in == inode_out &&
-+	    pos_out + count > pos_in &&
-+	    pos_out < pos_in + count)
++	/* Don't copy dirs, pipes, sockets... */
++	if (S_ISDIR(inode_in->i_mode) || S_ISDIR(inode_out->i_mode))
++		return -EISDIR;
++	if (!S_ISREG(inode_in->i_mode) || !S_ISREG(inode_out->i_mode))
 +		return -EINVAL;
 +
-+	*req_count = count;
++	if (!(file_in->f_mode & FMODE_READ) ||
++	    !(file_out->f_mode & FMODE_WRITE) ||
++	    (file_out->f_flags & O_APPEND))
++		return -EBADF;
++
 +	return 0;
 +}
 +
