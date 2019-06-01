@@ -4,47 +4,48 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-9.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,
-	SPF_PASS,T_DKIMWL_WL_HIGH,USER_AGENT_GIT autolearn=ham autolearn_force=no
-	version=3.4.0
+	SPF_PASS,T_DKIMWL_WL_HIGH,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C4D41C28CC1
-	for <linux-nfs@archiver.kernel.org>; Sat,  1 Jun 2019 13:29:44 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id CA7D5C28CC1
+	for <linux-nfs@archiver.kernel.org>; Sat,  1 Jun 2019 13:30:18 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 8E06A2745F
-	for <linux-nfs@archiver.kernel.org>; Sat,  1 Jun 2019 13:29:44 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 95DFC2745B
+	for <linux-nfs@archiver.kernel.org>; Sat,  1 Jun 2019 13:30:18 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1559395784;
-	bh=CcNoyl25ugdYGqhwEHjvBlDa8GmSANSblKB56TyjuJs=;
+	s=default; t=1559395818;
+	bh=2u4dtYYCfBMkyXk9hND4YOWvxFui6Ydq4Lq2VEZEErk=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=jZEH7i61XrPO0iyxOdT8oJTe7PtpR+CwVo2+DaVd+Vw3R45a1vb/zhpQqD6/6ITZF
-	 xmy72QUnOeZYBfmDhFzxBr3uO9wJW3Ti4ladWgbUDBCxsP0vi5lTRhRcySo5GlcfJ6
-	 SPD1bW0lYT7Xqicc3KZnIDzEljFT3B72IDPfw/HQ=
+	b=C5W8frf8IzsMnUFa8cgt2BmWtrNRcVxkqOmbrA9/ktkeHzs+ifkEbPJRP+4t1rq/0
+	 b2AndSrkgxgYkNIwDs7BgNTfY+iSCZKWoqpHtmtQEtCMEtL3qBA3rx+dKW2AY8DYoo
+	 4HDJ5iGPOLthig/XnZU3j+7Eaw88PQ7ZGt5njDJQ=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729301AbfFAN3n (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sat, 1 Jun 2019 09:29:43 -0400
-Received: from mail.kernel.org ([198.145.29.99]:57338 "EHLO mail.kernel.org"
+        id S1729706AbfFAN01 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sat, 1 Jun 2019 09:26:27 -0400
+Received: from mail.kernel.org ([198.145.29.99]:56866 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1729861AbfFAN0s (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sat, 1 Jun 2019 09:26:48 -0400
+        id S1729702AbfFAN01 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sat, 1 Jun 2019 09:26:27 -0400
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 052FC273A3;
-        Sat,  1 Jun 2019 13:26:46 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id E1696273C0;
+        Sat,  1 Jun 2019 13:26:25 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1559395607;
-        bh=CcNoyl25ugdYGqhwEHjvBlDa8GmSANSblKB56TyjuJs=;
+        s=default; t=1559395586;
+        bh=2u4dtYYCfBMkyXk9hND4YOWvxFui6Ydq4Lq2VEZEErk=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=oLjIaJ100eAiBF+vRlMLj6JOwKpFj/oIYSwwrcpRdLlI9vkRBbb5YFD6guxVEUj4C
-         yMGkcConOnWuR3lgCV3O1a/rnaxowLYCOWHNfRJYNfLu4C2wNTqyXwwA5WJU3XihF/
-         YnWQHMnJbXtIhGxMyowv0buU3jXme/Uoc9Y5EA70=
+        b=U2d0omDgKlJnm8wyQVSwWclDKiAMimIrweaFkGxbhdmgeZoW6R8K7Di4xW202JrSd
+         P+jU/WKeyM6d05gTK8DWkKwGpnnWIxEX2Umk4SNG4WL+0U2E3SehYR6EwiGqWxlYEn
+         7IKzXwgjU80ZPzsMWb2JoKQwClkMLYPuV+0+TukA=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     "J. Bruce Fields" <bfields@redhat.com>,
+Cc:     ZhangXiaoxu <zhangxiaoxu5@huawei.com>,
+        Anna Schumaker <Anna.Schumaker@Netapp.com>,
         Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org
-Subject: [PATCH AUTOSEL 4.4 26/56] nfsd: allow fh_want_write to be called twice
-Date:   Sat,  1 Jun 2019 09:25:30 -0400
-Message-Id: <20190601132600.27427-26-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 4.4 12/56] NFS4: Fix v4.0 client state corruption when mount
+Date:   Sat,  1 Jun 2019 09:25:16 -0400
+Message-Id: <20190601132600.27427-12-sashal@kernel.org>
 X-Mailer: git-send-email 2.20.1
 In-Reply-To: <20190601132600.27427-1-sashal@kernel.org>
 References: <20190601132600.27427-1-sashal@kernel.org>
@@ -57,51 +58,49 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+From: ZhangXiaoxu <zhangxiaoxu5@huawei.com>
 
-[ Upstream commit 0b8f62625dc309651d0efcb6a6247c933acd8b45 ]
+[ Upstream commit f02f3755dbd14fb935d24b14650fff9ba92243b8 ]
 
-A fuzzer recently triggered lockdep warnings about potential sb_writers
-deadlocks caused by fh_want_write().
+stat command with soft mount never return after server is stopped.
 
-Looks like we aren't careful to pair each fh_want_write() with an
-fh_drop_write().
+When alloc a new client, the state of the client will be set to
+NFS4CLNT_LEASE_EXPIRED.
 
-It's not normally a problem since fh_put() will call fh_drop_write() for
-us.  And was OK for NFSv3 where we'd do one operation that might call
-fh_want_write(), and then put the filehandle.
+When the server is stopped, the state manager will work, and accord
+the state to recover. But the state is NFS4CLNT_LEASE_EXPIRED, it
+will drain the slot table and lead other task to wait queue, until
+the client recovered. Then the stat command is hung.
 
-But an NFSv4 protocol fuzzer can do weird things like call unlink twice
-in a compound, and then we get into trouble.
+When discover server trunking, the client will renew the lease,
+but check the client state, it lead the client state corruption.
 
-I'm a little worried about this approach of just leaving everything to
-fh_put().  But I think there are probably a lot of
-fh_want_write()/fh_drop_write() imbalances so for now I think we need it
-to be more forgiving.
+So, we need to call state manager to recover it when detect server
+ip trunking.
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Signed-off-by: ZhangXiaoxu <zhangxiaoxu5@huawei.com>
+Cc: stable@vger.kernel.org
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- fs/nfsd/vfs.h | 5 ++++-
- 1 file changed, 4 insertions(+), 1 deletion(-)
+ fs/nfs/nfs4state.c | 4 ++++
+ 1 file changed, 4 insertions(+)
 
-diff --git a/fs/nfsd/vfs.h b/fs/nfsd/vfs.h
-index fcfc48cbe1360..128d6e216fd77 100644
---- a/fs/nfsd/vfs.h
-+++ b/fs/nfsd/vfs.h
-@@ -109,8 +109,11 @@ void		nfsd_put_raparams(struct file *file, struct raparms *ra);
- 
- static inline int fh_want_write(struct svc_fh *fh)
- {
--	int ret = mnt_want_write(fh->fh_export->ex_path.mnt);
-+	int ret;
- 
-+	if (fh->fh_want_write)
-+		return 0;
-+	ret = mnt_want_write(fh->fh_export->ex_path.mnt);
- 	if (!ret)
- 		fh->fh_want_write = true;
- 	return ret;
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index 44f5cea496994..5be61affeefd8 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -140,6 +140,10 @@ int nfs40_discover_server_trunking(struct nfs_client *clp,
+ 		/* Sustain the lease, even if it's empty.  If the clientid4
+ 		 * goes stale it's of no use for trunking discovery. */
+ 		nfs4_schedule_state_renewal(*result);
++
++		/* If the client state need to recover, do it. */
++		if (clp->cl_state)
++			nfs4_schedule_state_manager(clp);
+ 	}
+ out:
+ 	return status;
 -- 
 2.20.1
 
