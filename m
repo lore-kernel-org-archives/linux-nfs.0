@@ -2,66 +2,70 @@ Return-Path: <SRS0=2G4p=UC=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.9 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+X-Spam-Status: No, score=-8.9 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
-	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 71556C28CC6
-	for <linux-nfs@archiver.kernel.org>; Mon,  3 Jun 2019 17:15:57 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A6788C28CC6
+	for <linux-nfs@archiver.kernel.org>; Mon,  3 Jun 2019 17:15:59 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 3FAF7275F1
-	for <linux-nfs@archiver.kernel.org>; Mon,  3 Jun 2019 17:15:57 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 815CB275EB
+	for <linux-nfs@archiver.kernel.org>; Mon,  3 Jun 2019 17:15:59 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="aR/0LNtq"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="Vue87Z9+"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728994AbfFCRP4 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 3 Jun 2019 13:15:56 -0400
-Received: from mail-io1-f67.google.com ([209.85.166.67]:40022 "EHLO
-        mail-io1-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728992AbfFCRP4 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Jun 2019 13:15:56 -0400
-Received: by mail-io1-f67.google.com with SMTP id n5so14946964ioc.7
-        for <linux-nfs@vger.kernel.org>; Mon, 03 Jun 2019 10:15:55 -0700 (PDT)
+        id S1729078AbfFCRP6 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 3 Jun 2019 13:15:58 -0400
+Received: from mail-it1-f195.google.com ([209.85.166.195]:39751 "EHLO
+        mail-it1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1729031AbfFCRP5 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Jun 2019 13:15:57 -0400
+Received: by mail-it1-f195.google.com with SMTP id j204so22482183ite.4
+        for <linux-nfs@vger.kernel.org>; Mon, 03 Jun 2019 10:15:57 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
-        h=from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=wcZ5yl1HJczSvlUQPeLHZE4rdRSX1XxQJSe9mqKqWLE=;
-        b=aR/0LNtqCUwyef/wukHEFC2gbPU6GLzFWnMlum6TLCndbP1egR3oB9NCyCShLCvU98
-         n9rnYiUPv/O6TJJRpJohD6KtBrC4aWJR3mrqMB6IeWLd/1+jsDq6g+L9A8KaAPXyBd+F
-         YDjqcDjUHDG0JHot4Pv8xoAgt64isFjjpfN5Q8F3LU2AxrNH1+gmZmPFtSrY6eAMLwyl
-         5lHCMcaoE2VoJDoKUD0e0Ddzy00tbiRKBUfgJGKZaFpFNOBvjd1am77qRLzQY+C0Vjal
-         hggGeVP9aE+K/pZp1U3OucN30sxBGL1nHRVVzittaIw6cuXiVy/Xs7Y0nyxrsLo9tuN2
-         ddnw==
+        h=from:to:cc:subject:date:message-id:in-reply-to:references
+         :mime-version:content-transfer-encoding;
+        bh=54eXN7xcmcx5yI3W1cCqULRllgy5g2GJtxxP9B6eUlU=;
+        b=Vue87Z9+wKhPUx22cv1MMj9KcgiBhGjP3NxmET8NwQtdydsbYU+C2Y7rg2jC5vsALW
+         0Ww7DpF6ta1Fw6bCzqOomhgMHlP0fvl8onn1Wb/JgDgweCckYshpY95jWfvRmzT0idB5
+         mAArlFEUoNMqGFL9BwLlNRCSs5JElYul56FWlbhfBsZ2r3QAf9Q/LC6zpIzD2mccgrk2
+         4fu2gyapaaOr7iiecrh+HiQtE8VIjR38UMxflo902lsBThXzk2PP6HzD4TtVxyHUj7A6
+         Vp6cFIiIgG/MXlnzg+MudLfiQqvolB5ighghNx7ojbl1ngemdUg8PnZp7YwHrgSEmiPj
+         X0/g==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=wcZ5yl1HJczSvlUQPeLHZE4rdRSX1XxQJSe9mqKqWLE=;
-        b=oplfUbJ7hU//uc98yKx46xPxrgKhb1HECUv9MGf5ZG7rV3DCvEQDAoJD0JdAANCwhE
-         CeAb9lXq3MejDqWAXOgO6CNSC/SUMRNRPiQwk3qIobo/TXQnz5DxSkpgDjOR/VstfWDX
-         /vAajok9UM0eUg8oflNVLY7ACLHUnkP5CXfzqn0YHlsfazfs0ZmxfLuSP5zlUANjUW5r
-         VJDAFk4ia+Ax297av6phR+gRX/xS4RTp7C3kyxortxJ6nrrsyA0jw+4imIis7XW2yJM5
-         YZDvB9GPS5eFwErt0WE73c+BXvI8PIpU2G9QbksdJpwJI3kojlwksmNQg6JeJW5+K6YJ
-         VvnQ==
-X-Gm-Message-State: APjAAAVgKsLhuJIHDJYKOM2b1ZsanJXcA5xdsYeHziRMTFGjEEULKGjy
-        QhCpwCk92bQgSjNuQ0v6WQ==
-X-Google-Smtp-Source: APXvYqwmvryVoQFolCHH1y73CfNfOjZVo519uxnsmPcop18MJhspkkZy+Uh8TfA39x+qVmHnEfhRog==
-X-Received: by 2002:a6b:3e57:: with SMTP id l84mr18420077ioa.164.1559582154794;
-        Mon, 03 Jun 2019 10:15:54 -0700 (PDT)
+        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
+         :references:mime-version:content-transfer-encoding;
+        bh=54eXN7xcmcx5yI3W1cCqULRllgy5g2GJtxxP9B6eUlU=;
+        b=CZGGyetdfYtKkiBrxsftCxbPF1nY9/3Ckumqd+lz8Pgw0UfKvuGXkEEuY7EElcCmyK
+         HmKjLO/7pJH+BEKf/f6ZBBT2+6OggSciL1+EU1fARUrsaHtHIrbBQdBTmGbEpR9BrKVs
+         nYtQI08ctQqZ0m3Limp6+Uf43g80mAGhTutv05yLbePXUUUWxd2xQAXMnIgFUCR4YjRc
+         +67xdM2KoTT2vZMWmR8ArOhv0AVIlSt9EkQqTG/BYonfFhWGlBvmXYhshu7B1GbPx1rR
+         ltwy1CmYnKJJgCga6a9oqZ2aI6Npniw9rhl3b9H2yiL+eTxFz5jPkpb2IUADHephOq+0
+         yi7A==
+X-Gm-Message-State: APjAAAWLyKMYBDWya2fhb2EM3B97OGa+SP4P31am3GER1O949V2x+oel
+        bRBo+OQ6DWEBqw41FJ4GWlUhG/Q=
+X-Google-Smtp-Source: APXvYqzy5m9NUcbwSEdQiZeUWdu8MlNmDsWkEcuBlyCir3gMP628fIJC56Mu7ucbBYfoof3AL+ZkQw==
+X-Received: by 2002:a02:7715:: with SMTP id g21mr17853440jac.24.1559582156589;
+        Mon, 03 Jun 2019 10:15:56 -0700 (PDT)
 Received: from localhost.localdomain (50-36-175-138.alma.mi.frontiernet.net. [50.36.175.138])
-        by smtp.gmail.com with ESMTPSA id b8sm1971375ioj.16.2019.06.03.10.15.53
+        by smtp.gmail.com with ESMTPSA id b8sm1971375ioj.16.2019.06.03.10.15.55
         (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
-        Mon, 03 Jun 2019 10:15:54 -0700 (PDT)
+        Mon, 03 Jun 2019 10:15:55 -0700 (PDT)
 From:   Trond Myklebust <trondmy@gmail.com>
 X-Google-Original-From: Trond Myklebust <trond.myklebust@hammerspace.com>
 To:     Steve Dickson <SteveD@redhat.com>
 Cc:     "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org
-Subject: [PATCH 0/3] Incremental against [exports] rootdir patchset
-Date:   Mon,  3 Jun 2019 13:12:24 -0400
-Message-Id: <20190603171227.29148-1-trond.myklebust@hammerspace.com>
+Subject: [PATCH 2/3] mountd: Ensure nfsd_path_strip_root() uses the canonicalised path
+Date:   Mon,  3 Jun 2019 13:12:26 -0400
+Message-Id: <20190603171227.29148-3-trond.myklebust@hammerspace.com>
 X-Mailer: git-send-email 2.21.0
+In-Reply-To: <20190603171227.29148-2-trond.myklebust@hammerspace.com>
+References: <20190603171227.29148-1-trond.myklebust@hammerspace.com>
+ <20190603171227.29148-2-trond.myklebust@hammerspace.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
@@ -69,19 +73,52 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-These patches fix up a couple of bugs and issues against the [exports]
-rootdir patchset for nfs-utils.
+When attempting to strip the root path, we should first canonicalise
+the root pathname.
 
-Trond Myklebust (3):
-  mountd: Fix up incorrect comparison in next_mnt()
-  mountd: Ensure nfsd_path_strip_root() uses the canonicalised path
-  mountd: Canonicalise the rootdir in exportent_mkrealpath()
-
- support/export/export.c  | 12 ++++++++++--
+Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
+---
  support/misc/nfsd_path.c | 17 +++++++++++++----
- utils/mountd/cache.c     |  2 +-
- 3 files changed, 24 insertions(+), 7 deletions(-)
+ 1 file changed, 13 insertions(+), 4 deletions(-)
 
+diff --git a/support/misc/nfsd_path.c b/support/misc/nfsd_path.c
+index 2f41a793c534..9b38dd96007f 100644
+--- a/support/misc/nfsd_path.c
++++ b/support/misc/nfsd_path.c
+@@ -1,6 +1,7 @@
+ #include <errno.h>
+ #include <sys/types.h>
+ #include <sys/stat.h>
++#include <limits.h>
+ #include <stdlib.h>
+ #include <unistd.h>
+ 
+@@ -62,13 +63,21 @@ nfsd_path_nfsd_rootdir(void)
+ char *
+ nfsd_path_strip_root(char *pathname)
+ {
++	char buffer[PATH_MAX];
+ 	const char *dir = nfsd_path_nfsd_rootdir();
+ 	char *ret;
+ 
+-	ret = strstr(pathname, dir);
+-	if (!ret || ret != pathname)
+-		return pathname;
+-	return pathname + strlen(dir);
++	if (!dir)
++		goto out;
++	if (realpath(dir, buffer)) {
++		ret = strstr(pathname, buffer);
++		if (ret == pathname)
++			return pathname + strlen(dir);
++	} else
++		xlog(D_GENERAL, "%s: failed to resolve path %s: %m",
++				__func__, dir);
++out:
++	return pathname;
+ }
+ 
+ char *
 -- 
 2.21.0
 
