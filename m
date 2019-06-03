@@ -2,97 +2,447 @@ Return-Path: <SRS0=2G4p=UC=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.9 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-0.8 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
+	URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1C4FAC28CC6
-	for <linux-nfs@archiver.kernel.org>; Mon,  3 Jun 2019 17:16:03 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DBDA5C04AB5
+	for <linux-nfs@archiver.kernel.org>; Mon,  3 Jun 2019 17:49:44 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id EC4F2275EB
-	for <linux-nfs@archiver.kernel.org>; Mon,  3 Jun 2019 17:16:02 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 9C23B270F1
+	for <linux-nfs@archiver.kernel.org>; Mon,  3 Jun 2019 17:49:44 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="oXfU8Kd+"
+	dkim=fail reason="signature verification failed" (1024-bit key) header.d=fmap.me header.i=@fmap.me header.b="DA/p7e96"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726823AbfFCRQC (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 3 Jun 2019 13:16:02 -0400
-Received: from mail-it1-f195.google.com ([209.85.166.195]:35421 "EHLO
-        mail-it1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728993AbfFCRP4 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Jun 2019 13:15:56 -0400
-Received: by mail-it1-f195.google.com with SMTP id n189so9385524itd.0
-        for <linux-nfs@vger.kernel.org>; Mon, 03 Jun 2019 10:15:56 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=from:to:cc:subject:date:message-id:in-reply-to:references
-         :mime-version:content-transfer-encoding;
-        bh=GT8X+EsNYBb5UMZWBMZ2Z4O0Ne33KByhJ3ztwwgYRAs=;
-        b=oXfU8Kd+U3YooLaIdo2/Uk53G9kxv6p6ODuXkBiZM8GzLU3MvCCrosJ2j4JL+MHojs
-         /72WbxaLQlHQXcZrM9Y/BCT8+XU3tFJqi6sX3kW8qwrCEtf+dCGCoI+tAE+hJ3ZmanQq
-         zishqNcmHAo93zyHAigQMrqhXRytR7ngC5JRV8KWSWzGLv2v6kYWQds3XKZ0nnrNdT4+
-         VColuGs3k5QIercFxjE97kcyOWqKlGcxdvlT0t/3zyNvblteJUefn++kb1DtYVd2gKxV
-         dTOLJbr0HK1LVessxeYmZEWP4ml+qWQboqKQzfZeF/fXb9JasWX2VQfRaap3kgjxhIw+
-         BRcw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
-         :references:mime-version:content-transfer-encoding;
-        bh=GT8X+EsNYBb5UMZWBMZ2Z4O0Ne33KByhJ3ztwwgYRAs=;
-        b=lwcJCDTZsyoVtjzWo6f5NRS+pESGMIIsPYylIl6sfoGZ9ZNeS2Xi66DEEcWEemntEQ
-         ns35cyq1APkg7OTSWxpYXpHYKYkrOcE71sFRQ20YG+RVHaG2Zj3TldEXiyC4E8i5y7P3
-         fpRYku4FCO7hRGjJ5APgpWpPasiINy647U8cuzExQUxPnzoheDx/7lYV9jqBbJhWImgz
-         4sl4t0A1CUezDnZqazUr+L8Cqd3NlqSe5pwYlORC78tuSSL90p8REdjw7zBOgvvJ15WJ
-         5nVrSp/N8Sln1BXfto/U1oljF1yxJxyFLgUmF/3Rc53uunm4PVcaG6ijfTuoGi4bj1/O
-         Rl9g==
-X-Gm-Message-State: APjAAAX5AbF4cygK1EKNAtFVXfCe3YgwV8CdQMy4q5b/oDKwhCY+1Tep
-        TXv+21ZkdrD7KaYQ8l8eNL4HSEI=
-X-Google-Smtp-Source: APXvYqxnKPEb4K6rViVc8FY38myUuvCBqLU4L170ybmlL4AX+lnZZgDtxxwtUi91xiejLHorikLsRg==
-X-Received: by 2002:a02:c95a:: with SMTP id u26mr2423772jao.15.1559582155559;
-        Mon, 03 Jun 2019 10:15:55 -0700 (PDT)
-Received: from localhost.localdomain (50-36-175-138.alma.mi.frontiernet.net. [50.36.175.138])
-        by smtp.gmail.com with ESMTPSA id b8sm1971375ioj.16.2019.06.03.10.15.54
-        (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
-        Mon, 03 Jun 2019 10:15:55 -0700 (PDT)
-From:   Trond Myklebust <trondmy@gmail.com>
-X-Google-Original-From: Trond Myklebust <trond.myklebust@hammerspace.com>
-To:     Steve Dickson <SteveD@redhat.com>
-Cc:     "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org
-Subject: [PATCH 1/3] mountd: Fix up incorrect comparison in next_mnt()
-Date:   Mon,  3 Jun 2019 13:12:25 -0400
-Message-Id: <20190603171227.29148-2-trond.myklebust@hammerspace.com>
-X-Mailer: git-send-email 2.21.0
-In-Reply-To: <20190603171227.29148-1-trond.myklebust@hammerspace.com>
-References: <20190603171227.29148-1-trond.myklebust@hammerspace.com>
+        id S1726211AbfFCRtn (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 3 Jun 2019 13:49:43 -0400
+Received: from fmap.me ([51.75.121.85]:35888 "EHLO fmap.me"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1727230AbfFCRtm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 3 Jun 2019 13:49:42 -0400
+X-Greylist: delayed 608 seconds by postgrey-1.27 at vger.kernel.org; Mon, 03 Jun 2019 13:49:40 EDT
+To:     steved@redhat.com
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=fmap.me; s=mail;
+        t=1559583571; h=from:from:sender:reply-to:subject:subject:date:date:
+         message-id:message-id:to:to:cc:cc:mime-version:mime-version:
+         content-type:content-type:content-transfer-encoding:in-reply-to:
+         references:openpgp:autocrypt; bh=rIUFEPQmfSyFGvwJ1RszmddCo0nE7QS/fdpi57Qv52A=;
+        b=DA/p7e96OfVB3cKw6QCAHItLYs2o5e9d754ZarUP2+BZQzgqyyyxco46qen9kUnbdqh47c
+        HL5Uom9/AxVPCQb1whWZlsI7raT3GTNMXh/Dwj1zmNeKtXH+IWKhYNH0YJ/ZfBDsubnxrK
+        EFKdJWPz/723ZJvlHpM3pdOqs8ZoHG4=
+Cc:     linux-nfs@vger.kernel.org
+From:   Nikolay Amiantov <ab@fmap.me>
+Subject: nfs-utils v2.3.4: tests fail to build
+Message-ID: <3f65e5e6-4343-ae8c-7cbd-aaf60787501d@fmap.me>
+Date:   Mon, 3 Jun 2019 20:39:30 +0300
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: multipart/mixed;
+ boundary="------------7426ECB91D08A2392B66C2C0"
+Content-Language: en-US
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-We want to ensure that we compare the full name of the last component.
+This is a multi-part message in MIME format.
+--------------7426ECB91D08A2392B66C2C0
+Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Transfer-Encoding: 7bit
 
-Reported-by: "J. Bruce Fields" <bfields@redhat.com>
-Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
----
- utils/mountd/cache.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Hi,
 
-diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
-index d818c971bded..d616d526667e 100644
---- a/utils/mountd/cache.c
-+++ b/utils/mountd/cache.c
-@@ -400,7 +400,7 @@ static char *next_mnt(void **v, char *p)
- 	while ((me = getmntent(f)) != NULL && l > 1) {
- 		mnt_dir = nfsd_path_strip_root(me->mnt_dir);
- 
--		if (strncmp(mnt_dir, p, l) == 0 && mnt_dir[l] != '/')
-+		if (strncmp(mnt_dir, p, l) == 0 && mnt_dir[l] == '/')
- 			return mnt_dir;
- 	}
- 	endmntent(f);
--- 
-2.21.0
+During the build of recent nfs-utils `make check` fails with link
+errors. We build it in an isolated sandbox with Nix on NixOS but
+I tried to build it outside of a sandbox too.
 
+Attached is the build log.
+
+I've been advised to drop an email to you at [1] which was
+my initial guess on where to send this bug. I mentioned there it's
+a regression but upon further inspection this problem was there
+at least on 2.3.3, just masked by something else.
+
+1: https://bugzilla.kernel.org/show_bug.cgi?id=203793
+
+--
+Nikolay.
+
+
+--------------7426ECB91D08A2392B66C2C0
+Content-Type: text/x-log;
+ name="check.log"
+Content-Transfer-Encoding: quoted-printable
+Content-Disposition: attachment;
+ filename="check.log"
+
+check flags: SHELL=3D/nix/store/x0mlaj4z4ciycaycfwc36l1932mwywfj-bash-4.4=
+-p23/bin/bash sbindir=3D\$\(out\)/bin generator_dir=3D\$\(out\)/etc/syste=
+md/system-generators VERBOSE=3Dy check
+Making check in support
+make[1]: Entering directory '/build/nfs-utils-2.3.4/support'
+Making check in export
+make[2]: Entering directory '/build/nfs-utils-2.3.4/support/export'
+make  check-am
+make[3]: Entering directory '/build/nfs-utils-2.3.4/support/export'
+make[3]: Nothing to be done for 'check-am'.
+make[3]: Leaving directory '/build/nfs-utils-2.3.4/support/export'
+make[2]: Leaving directory '/build/nfs-utils-2.3.4/support/export'
+Making check in include
+make[2]: Entering directory '/build/nfs-utils-2.3.4/support/include'
+Making check in nfs
+make[3]: Entering directory '/build/nfs-utils-2.3.4/support/include/nfs'
+make[3]: Nothing to be done for 'check'.
+make[3]: Leaving directory '/build/nfs-utils-2.3.4/support/include/nfs'
+Making check in rpcsvc
+make[3]: Entering directory '/build/nfs-utils-2.3.4/support/include/rpcsv=
+c'
+make[3]: Nothing to be done for 'check'.
+make[3]: Leaving directory '/build/nfs-utils-2.3.4/support/include/rpcsvc=
+'
+Making check in sys
+make[3]: Entering directory '/build/nfs-utils-2.3.4/support/include/sys'
+Making check in fs
+make[4]: Entering directory '/build/nfs-utils-2.3.4/support/include/sys/f=
+s'
+make[4]: Nothing to be done for 'check'.
+make[4]: Leaving directory '/build/nfs-utils-2.3.4/support/include/sys/fs=
+'
+make[4]: Entering directory '/build/nfs-utils-2.3.4/support/include/sys'
+make[4]: Nothing to be done for 'check-am'.
+make[4]: Leaving directory '/build/nfs-utils-2.3.4/support/include/sys'
+make[3]: Leaving directory '/build/nfs-utils-2.3.4/support/include/sys'
+make[3]: Entering directory '/build/nfs-utils-2.3.4/support/include'
+make[3]: Leaving directory '/build/nfs-utils-2.3.4/support/include'
+make[2]: Leaving directory '/build/nfs-utils-2.3.4/support/include'
+Making check in misc
+make[2]: Entering directory '/build/nfs-utils-2.3.4/support/misc'
+make[2]: Nothing to be done for 'check'.
+make[2]: Leaving directory '/build/nfs-utils-2.3.4/support/misc'
+Making check in nfs
+make[2]: Entering directory '/build/nfs-utils-2.3.4/support/nfs'
+make[2]: Nothing to be done for 'check'.
+make[2]: Leaving directory '/build/nfs-utils-2.3.4/support/nfs'
+Making check in nsm
+make[2]: Entering directory '/build/nfs-utils-2.3.4/support/nsm'
+make  check-am
+make[3]: Entering directory '/build/nfs-utils-2.3.4/support/nsm'
+make[3]: Nothing to be done for 'check-am'.
+make[3]: Leaving directory '/build/nfs-utils-2.3.4/support/nsm'
+make[2]: Leaving directory '/build/nfs-utils-2.3.4/support/nsm'
+Making check in nfsidmap
+make[2]: Entering directory '/build/nfs-utils-2.3.4/support/nfsidmap'
+make[2]: Nothing to be done for 'check'.
+make[2]: Leaving directory '/build/nfs-utils-2.3.4/support/nfsidmap'
+make[2]: Entering directory '/build/nfs-utils-2.3.4/support'
+make[2]: Nothing to be done for 'check-am'.
+make[2]: Leaving directory '/build/nfs-utils-2.3.4/support'
+make[1]: Leaving directory '/build/nfs-utils-2.3.4/support'
+Making check in tools
+make[1]: Entering directory '/build/nfs-utils-2.3.4/tools'
+Making check in locktest
+make[2]: Entering directory '/build/nfs-utils-2.3.4/tools/locktest'
+make[2]: Nothing to be done for 'check'.
+make[2]: Leaving directory '/build/nfs-utils-2.3.4/tools/locktest'
+Making check in rpcdebug
+make[2]: Entering directory '/build/nfs-utils-2.3.4/tools/rpcdebug'
+make[2]: Nothing to be done for 'check'.
+make[2]: Leaving directory '/build/nfs-utils-2.3.4/tools/rpcdebug'
+Making check in nlmtest
+make[2]: Entering directory '/build/nfs-utils-2.3.4/tools/nlmtest'
+make[2]: Nothing to be done for 'check'.
+make[2]: Leaving directory '/build/nfs-utils-2.3.4/tools/nlmtest'
+Making check in mountstats
+make[2]: Entering directory '/build/nfs-utils-2.3.4/tools/mountstats'
+make[2]: Nothing to be done for 'check'.
+make[2]: Leaving directory '/build/nfs-utils-2.3.4/tools/mountstats'
+Making check in nfs-iostat
+make[2]: Entering directory '/build/nfs-utils-2.3.4/tools/nfs-iostat'
+make[2]: Nothing to be done for 'check'.
+make[2]: Leaving directory '/build/nfs-utils-2.3.4/tools/nfs-iostat'
+Making check in nfsconf
+make[2]: Entering directory '/build/nfs-utils-2.3.4/tools/nfsconf'
+make[2]: Nothing to be done for 'check'.
+make[2]: Leaving directory '/build/nfs-utils-2.3.4/tools/nfsconf'
+make[2]: Entering directory '/build/nfs-utils-2.3.4/tools'
+make[2]: Nothing to be done for 'check-am'.
+make[2]: Leaving directory '/build/nfs-utils-2.3.4/tools'
+make[1]: Leaving directory '/build/nfs-utils-2.3.4/tools'
+Making check in utils
+make[1]: Entering directory '/build/nfs-utils-2.3.4/utils'
+Making check in exportfs
+make[2]: Entering directory '/build/nfs-utils-2.3.4/utils/exportfs'
+make[2]: Nothing to be done for 'check'.
+make[2]: Leaving directory '/build/nfs-utils-2.3.4/utils/exportfs'
+Making check in mountd
+make[2]: Entering directory '/build/nfs-utils-2.3.4/utils/mountd'
+make[2]: Nothing to be done for 'check'.
+make[2]: Leaving directory '/build/nfs-utils-2.3.4/utils/mountd'
+Making check in nfsd
+make[2]: Entering directory '/build/nfs-utils-2.3.4/utils/nfsd'
+make[2]: Nothing to be done for 'check'.
+make[2]: Leaving directory '/build/nfs-utils-2.3.4/utils/nfsd'
+Making check in nfsstat
+make[2]: Entering directory '/build/nfs-utils-2.3.4/utils/nfsstat'
+make[2]: Nothing to be done for 'check'.
+make[2]: Leaving directory '/build/nfs-utils-2.3.4/utils/nfsstat'
+Making check in showmount
+make[2]: Entering directory '/build/nfs-utils-2.3.4/utils/showmount'
+make[2]: Nothing to be done for 'check'.
+make[2]: Leaving directory '/build/nfs-utils-2.3.4/utils/showmount'
+Making check in statd
+make[2]: Entering directory '/build/nfs-utils-2.3.4/utils/statd'
+make  check-am
+make[3]: Entering directory '/build/nfs-utils-2.3.4/utils/statd'
+make[3]: Nothing to be done for 'check-am'.
+make[3]: Leaving directory '/build/nfs-utils-2.3.4/utils/statd'
+make[2]: Leaving directory '/build/nfs-utils-2.3.4/utils/statd'
+Making check in idmapd
+make[2]: Entering directory '/build/nfs-utils-2.3.4/utils/idmapd'
+make[2]: Nothing to be done for 'check'.
+make[2]: Leaving directory '/build/nfs-utils-2.3.4/utils/idmapd'
+Making check in nfsidmap
+make[2]: Entering directory '/build/nfs-utils-2.3.4/utils/nfsidmap'
+make[2]: Nothing to be done for 'check'.
+make[2]: Leaving directory '/build/nfs-utils-2.3.4/utils/nfsidmap'
+Making check in blkmapd
+make[2]: Entering directory '/build/nfs-utils-2.3.4/utils/blkmapd'
+make[2]: Nothing to be done for 'check'.
+make[2]: Leaving directory '/build/nfs-utils-2.3.4/utils/blkmapd'
+Making check in gssd
+make[2]: Entering directory '/build/nfs-utils-2.3.4/utils/gssd'
+make[2]: Nothing to be done for 'check'.
+make[2]: Leaving directory '/build/nfs-utils-2.3.4/utils/gssd'
+Making check in mount
+make[2]: Entering directory '/build/nfs-utils-2.3.4/utils/mount'
+make[2]: Nothing to be done for 'check'.
+make[2]: Leaving directory '/build/nfs-utils-2.3.4/utils/mount'
+Making check in nfsdcld
+make[2]: Entering directory '/build/nfs-utils-2.3.4/utils/nfsdcld'
+make[2]: Nothing to be done for 'check'.
+make[2]: Leaving directory '/build/nfs-utils-2.3.4/utils/nfsdcld'
+Making check in nfsdcltrack
+make[2]: Entering directory '/build/nfs-utils-2.3.4/utils/nfsdcltrack'
+make[2]: Nothing to be done for 'check'.
+make[2]: Leaving directory '/build/nfs-utils-2.3.4/utils/nfsdcltrack'
+make[2]: Entering directory '/build/nfs-utils-2.3.4/utils'
+make[2]: Nothing to be done for 'check-am'.
+make[2]: Leaving directory '/build/nfs-utils-2.3.4/utils'
+make[1]: Leaving directory '/build/nfs-utils-2.3.4/utils'
+Making check in linux-nfs
+make[1]: Entering directory '/build/nfs-utils-2.3.4/linux-nfs'
+make[1]: Nothing to be done for 'check'.
+make[1]: Leaving directory '/build/nfs-utils-2.3.4/linux-nfs'
+Making check in tests
+make[1]: Entering directory '/build/nfs-utils-2.3.4/tests'
+Making check in nsm_client
+make[2]: Entering directory '/build/nfs-utils-2.3.4/tests/nsm_client'
+make  check-am
+make[3]: Entering directory '/build/nfs-utils-2.3.4/tests/nsm_client'
+make  nsm_client
+make[4]: Entering directory '/build/nfs-utils-2.3.4/tests/nsm_client'
+gcc -DHAVE_CONFIG_H -I. -I../../support/include  -I/nix/store/g7npajykv5j=
+rap80a1ldsnmvr4lyr7ap-libtirpc-1.1.4-dev/include/tirpc -D_GNU_SOURCE -pip=
+e  -Wall  -Wextra  -Werror=3Dstrict-prototypes  -Werror=3Dmissing-prototy=
+pes  -Werror=3Dmissing-declarations  -Werror=3Dformat=3D2  -Werror=3Dunde=
+f  -Werror=3Dmissing-include-dirs  -Werror=3Dstrict-aliasing=3D2  -Werror=
+=3Dinit-self  -Werror=3Dimplicit-function-declaration  -Werror=3Dreturn-t=
+ype  -Werror=3Dswitch  -Werror=3Doverflow  -Werror=3Dparentheses  -Werror=
+=3Daggregate-return  -Werror=3Dunused-result  -Wno-cast-function-type  -f=
+no-strict-aliasing  -Werror=3Dformat-overflow=3D2 -Werror=3Dint-conversio=
+n -Werror=3Dincompatible-pointer-types -Werror=3Dmisleading-indentation -=
+g -O2 -c -o nlm_sm_inter_clnt.o nlm_sm_inter_clnt.c
+gcc -DHAVE_CONFIG_H -I. -I../../support/include  -I/nix/store/g7npajykv5j=
+rap80a1ldsnmvr4lyr7ap-libtirpc-1.1.4-dev/include/tirpc -D_GNU_SOURCE -pip=
+e  -Wall  -Wextra  -Werror=3Dstrict-prototypes  -Werror=3Dmissing-prototy=
+pes  -Werror=3Dmissing-declarations  -Werror=3Dformat=3D2  -Werror=3Dunde=
+f  -Werror=3Dmissing-include-dirs  -Werror=3Dstrict-aliasing=3D2  -Werror=
+=3Dinit-self  -Werror=3Dimplicit-function-declaration  -Werror=3Dreturn-t=
+ype  -Werror=3Dswitch  -Werror=3Doverflow  -Werror=3Dparentheses  -Werror=
+=3Daggregate-return  -Werror=3Dunused-result  -Wno-cast-function-type  -f=
+no-strict-aliasing  -Werror=3Dformat-overflow=3D2 -Werror=3Dint-conversio=
+n -Werror=3Dincompatible-pointer-types -Werror=3Dmisleading-indentation -=
+g -O2 -c -o nlm_sm_inter_svc.o nlm_sm_inter_svc.c
+nlm_sm_inter_svc.c:20:1: warning: no previous prototype for 'nlm_sm_prog_=
+3' [-Wmissing-prototypes]
+ nlm_sm_prog_3(struct svc_req *rqstp, register SVCXPRT *transp)
+ ^~~~~~~~~~~~~
+nlm_sm_inter_svc.c:61:1: warning: no previous prototype for 'nlm_sm_prog_=
+4' [-Wmissing-prototypes]
+ nlm_sm_prog_4(struct svc_req *rqstp, register SVCXPRT *transp)
+ ^~~~~~~~~~~~~
+cc1: warning: unrecognized command line option '-Wno-cast-function-type'
+gcc -DHAVE_CONFIG_H -I. -I../../support/include  -I/nix/store/g7npajykv5j=
+rap80a1ldsnmvr4lyr7ap-libtirpc-1.1.4-dev/include/tirpc -D_GNU_SOURCE -pip=
+e  -Wall  -Wextra  -Werror=3Dstrict-prototypes  -Werror=3Dmissing-prototy=
+pes  -Werror=3Dmissing-declarations  -Werror=3Dformat=3D2  -Werror=3Dunde=
+f  -Werror=3Dmissing-include-dirs  -Werror=3Dstrict-aliasing=3D2  -Werror=
+=3Dinit-self  -Werror=3Dimplicit-function-declaration  -Werror=3Dreturn-t=
+ype  -Werror=3Dswitch  -Werror=3Doverflow  -Werror=3Dparentheses  -Werror=
+=3Daggregate-return  -Werror=3Dunused-result  -Wno-cast-function-type  -f=
+no-strict-aliasing  -Werror=3Dformat-overflow=3D2 -Werror=3Dint-conversio=
+n -Werror=3Dincompatible-pointer-types -Werror=3Dmisleading-indentation -=
+g -O2 -c -o nlm_sm_inter_xdr.o nlm_sm_inter_xdr.c
+nlm_sm_inter_xdr.c: In function 'xdr_nlm_sm_notify':
+nlm_sm_inter_xdr.c:13:6: warning: unused variable 'i' [-Wunused-variable]=
+
+  int i;
+      ^
+nlm_sm_inter_xdr.c:11:20: warning: unused variable 'buf' [-Wunused-variab=
+le]
+  register int32_t *buf;
+                    ^~~
+nlm_sm_inter_xdr.c: At top level:
+cc1: warning: unrecognized command line option '-Wno-cast-function-type'
+gcc -DHAVE_CONFIG_H -I. -I../../support/include  -I/nix/store/g7npajykv5j=
+rap80a1ldsnmvr4lyr7ap-libtirpc-1.1.4-dev/include/tirpc -D_GNU_SOURCE -pip=
+e  -Wall  -Wextra  -Werror=3Dstrict-prototypes  -Werror=3Dmissing-prototy=
+pes  -Werror=3Dmissing-declarations  -Werror=3Dformat=3D2  -Werror=3Dunde=
+f  -Werror=3Dmissing-include-dirs  -Werror=3Dstrict-aliasing=3D2  -Werror=
+=3Dinit-self  -Werror=3Dimplicit-function-declaration  -Werror=3Dreturn-t=
+ype  -Werror=3Dswitch  -Werror=3Doverflow  -Werror=3Dparentheses  -Werror=
+=3Daggregate-return  -Werror=3Dunused-result  -Wno-cast-function-type  -f=
+no-strict-aliasing  -Werror=3Dformat-overflow=3D2 -Werror=3Dint-conversio=
+n -Werror=3Dincompatible-pointer-types -Werror=3Dmisleading-indentation -=
+g -O2 -c -o nsm_client.o nsm_client.c
+nsm_client.c: In function 'hex2bin':
+nsm_client.c:104:24: warning: comparison between signed and unsigned inte=
+ger expressions [-Wsign-compare]
+  for (i =3D 0; *src && i < dstlen; i++) {
+                        ^
+nsm_client.c: In function 'bin2hex':
+nsm_client.c:122:16: warning: comparison between signed and unsigned inte=
+ger expressions [-Wsign-compare]
+  for (i =3D 0; i < srclen; i++)
+                ^
+nsm_client.c: In function 'sim_killer':
+nsm_client.c:430:28: warning: unused parameter 'sig' [-Wunused-parameter]=
+
+ static void sim_killer(int sig)
+                            ^~~
+nsm_client.c: In function 'nlm_sm_notify_4_svc':
+nsm_client.c:450:71: warning: unused parameter 'rqstp' [-Wunused-paramete=
+r]
+ void *nlm_sm_notify_4_svc(struct nlm_sm_notify *argp, struct svc_req *rq=
+stp)
+                                                                       ^~=
+~~~
+nsm_client.c: In function 'main':
+nsm_client.c:143:4: warning: this statement may fall through [-Wimplicit-=
+fallthrough=3D]
+    strncpy(host, optarg, sizeof(host));
+    ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+nsm_client.c:144:3: note: here
+   case 'n':
+   ^~~~
+nsm_client.c:145:4: warning: this statement may fall through [-Wimplicit-=
+fallthrough=3D]
+    strncpy(my_name, optarg, sizeof(my_name));
+    ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+nsm_client.c:146:3: note: here
+   case 'P':
+   ^~~~
+nsm_client.c:147:12: warning: this statement may fall through [-Wimplicit=
+-fallthrough=3D]
+    my_prog =3D atoi(optarg);
+    ~~~~~~~~^~~~~~~~~~~~~~
+nsm_client.c:148:3: note: here
+   case 'v':
+   ^~~~
+nsm_client.c: At top level:
+cc1: warning: unrecognized command line option '-Wno-cast-function-type'
+/nix/store/x0mlaj4z4ciycaycfwc36l1932mwywfj-bash-4.4-p23/bin/bash ../../l=
+ibtool  --tag=3DCC   --mode=3Dlink gcc -pipe  -Wall  -Wextra  -Werror=3Ds=
+trict-prototypes  -Werror=3Dmissing-prototypes  -Werror=3Dmissing-declara=
+tions  -Werror=3Dformat=3D2  -Werror=3Dundef  -Werror=3Dmissing-include-d=
+irs  -Werror=3Dstrict-aliasing=3D2  -Werror=3Dinit-self  -Werror=3Dimplic=
+it-function-declaration  -Werror=3Dreturn-type  -Werror=3Dswitch  -Werror=
+=3Doverflow  -Werror=3Dparentheses  -Werror=3Daggregate-return  -Werror=3D=
+unused-result  -Wno-cast-function-type  -fno-strict-aliasing  -Werror=3Df=
+ormat-overflow=3D2 -Werror=3Dint-conversion -Werror=3Dincompatible-pointe=
+r-types -Werror=3Dmisleading-indentation -g -O2   -o nsm_client nlm_sm_in=
+ter_clnt.o nlm_sm_inter_svc.o nlm_sm_inter_xdr.o  nsm_client.o ../../supp=
+ort/nfs/.libs/libnfs.a ../../support/nsm/libnsm.a -lcap -L/nix/store/6ab4=
+zf1x3n5v8z4x7rzw166zyv4ygy67-libtirpc-1.1.4/lib -ltirpc -lresolv
+libtool: link: gcc -pipe -Wall -Wextra -Werror=3Dstrict-prototypes -Werro=
+r=3Dmissing-prototypes -Werror=3Dmissing-declarations -Werror=3Dformat=3D=
+2 -Werror=3Dundef -Werror=3Dmissing-include-dirs -Werror=3Dstrict-aliasin=
+g=3D2 -Werror=3Dinit-self -Werror=3Dimplicit-function-declaration -Werror=
+=3Dreturn-type -Werror=3Dswitch -Werror=3Doverflow -Werror=3Dparentheses =
+-Werror=3Daggregate-return -Werror=3Dunused-result -Wno-cast-function-typ=
+e -fno-strict-aliasing -Werror=3Dformat-overflow=3D2 -Werror=3Dint-conver=
+sion -Werror=3Dincompatible-pointer-types -Werror=3Dmisleading-indentatio=
+n -g -O2 -o nsm_client nlm_sm_inter_clnt.o nlm_sm_inter_svc.o nlm_sm_inte=
+r_xdr.o nsm_client.o  ../../support/nfs/.libs/libnfs.a ../../support/nsm/=
+libnsm.a -lcap -L/nix/store/6ab4zf1x3n5v8z4x7rzw166zyv4ygy67-libtirpc-1.1=
+=2E4/lib /nix/store/6ab4zf1x3n5v8z4x7rzw166zyv4ygy67-libtirpc-1.1.4/lib/l=
+ibtirpc.so -lresolv -Wl,-rpath -Wl,/nix/store/6ab4zf1x3n5v8z4x7rzw166zyv4=
+ygy67-libtirpc-1.1.4/lib -Wl,-rpath -Wl,/nix/store/6ab4zf1x3n5v8z4x7rzw16=
+6zyv4ygy67-libtirpc-1.1.4/lib
+make[4]: Leaving directory '/build/nfs-utils-2.3.4/tests/nsm_client'
+make[3]: Leaving directory '/build/nfs-utils-2.3.4/tests/nsm_client'
+make[2]: Leaving directory '/build/nfs-utils-2.3.4/tests/nsm_client'
+make[2]: Entering directory '/build/nfs-utils-2.3.4/tests'
+make  statdb_dump
+make[3]: Entering directory '/build/nfs-utils-2.3.4/tests'
+gcc -DHAVE_CONFIG_H -I. -I../support/include  -I/nix/store/g7npajykv5jrap=
+80a1ldsnmvr4lyr7ap-libtirpc-1.1.4-dev/include/tirpc -D_GNU_SOURCE -pipe  =
+-Wall  -Wextra  -Werror=3Dstrict-prototypes  -Werror=3Dmissing-prototypes=
+  -Werror=3Dmissing-declarations  -Werror=3Dformat=3D2  -Werror=3Dundef  =
+-Werror=3Dmissing-include-dirs  -Werror=3Dstrict-aliasing=3D2  -Werror=3D=
+init-self  -Werror=3Dimplicit-function-declaration  -Werror=3Dreturn-type=
+  -Werror=3Dswitch  -Werror=3Doverflow  -Werror=3Dparentheses  -Werror=3D=
+aggregate-return  -Werror=3Dunused-result  -Wno-cast-function-type  -fno-=
+strict-aliasing  -Werror=3Dformat-overflow=3D2 -Werror=3Dint-conversion -=
+Werror=3Dincompatible-pointer-types -Werror=3Dmisleading-indentation -g -=
+O2 -c -o statdb_dump.o statdb_dump.c
+statdb_dump.c: In function 'dump_host':
+statdb_dump.c:38:17: warning: unused parameter 'timestamp' [-Wunused-para=
+meter]
+    const time_t timestamp)
+                 ^~~~~~~~~
+statdb_dump.c: In function 'main':
+statdb_dump.c:91:10: warning: unused parameter 'argc' [-Wunused-parameter=
+]
+ main(int argc, char **argv)
+          ^~~~
+statdb_dump.c: At top level:
+cc1: warning: unrecognized command line option '-Wno-cast-function-type'
+/nix/store/x0mlaj4z4ciycaycfwc36l1932mwywfj-bash-4.4-p23/bin/bash ../libt=
+ool  --tag=3DCC   --mode=3Dlink gcc -pipe  -Wall  -Wextra  -Werror=3Dstri=
+ct-prototypes  -Werror=3Dmissing-prototypes  -Werror=3Dmissing-declaratio=
+ns  -Werror=3Dformat=3D2  -Werror=3Dundef  -Werror=3Dmissing-include-dirs=
+  -Werror=3Dstrict-aliasing=3D2  -Werror=3Dinit-self  -Werror=3Dimplicit-=
+function-declaration  -Werror=3Dreturn-type  -Werror=3Dswitch  -Werror=3D=
+overflow  -Werror=3Dparentheses  -Werror=3Daggregate-return  -Werror=3Dun=
+used-result  -Wno-cast-function-type  -fno-strict-aliasing  -Werror=3Dfor=
+mat-overflow=3D2 -Werror=3Dint-conversion -Werror=3Dincompatible-pointer-=
+types -Werror=3Dmisleading-indentation -g -O2   -o statdb_dump statdb_dum=
+p.o ../support/nfs/.libs/libnfs.a ../support/nsm/libnsm.a -lcap -lresolv
+libtool: link: gcc -pipe -Wall -Wextra -Werror=3Dstrict-prototypes -Werro=
+r=3Dmissing-prototypes -Werror=3Dmissing-declarations -Werror=3Dformat=3D=
+2 -Werror=3Dundef -Werror=3Dmissing-include-dirs -Werror=3Dstrict-aliasin=
+g=3D2 -Werror=3Dinit-self -Werror=3Dimplicit-function-declaration -Werror=
+=3Dreturn-type -Werror=3Dswitch -Werror=3Doverflow -Werror=3Dparentheses =
+-Werror=3Daggregate-return -Werror=3Dunused-result -Wno-cast-function-typ=
+e -fno-strict-aliasing -Werror=3Dformat-overflow=3D2 -Werror=3Dint-conver=
+sion -Werror=3Dincompatible-pointer-types -Werror=3Dmisleading-indentatio=
+n -g -O2 -o statdb_dump statdb_dump.o  ../support/nfs/.libs/libnfs.a ../s=
+upport/nsm/libnsm.a -lcap -lresolv
+/nix/store/2dfjlvp38xzkyylwpavnh61azi0d168b-binutils-2.31.1/bin/ld: ../su=
+pport/nsm/libnsm.a(file.o): in function `nsm_make_pathname':
+/build/nfs-utils-2.3.4/support/nsm/file.c:174: undefined reference to `ge=
+neric_make_pathname'
+/nix/store/2dfjlvp38xzkyylwpavnh61azi0d168b-binutils-2.31.1/bin/ld: /buil=
+d/nfs-utils-2.3.4/support/nsm/file.c:174: undefined reference to `generic=
+_make_pathname'
+/nix/store/2dfjlvp38xzkyylwpavnh61azi0d168b-binutils-2.31.1/bin/ld: /buil=
+d/nfs-utils-2.3.4/support/nsm/file.c:174: undefined reference to `generic=
+_make_pathname'
+/nix/store/2dfjlvp38xzkyylwpavnh61azi0d168b-binutils-2.31.1/bin/ld: ../su=
+pport/nsm/libnsm.a(file.o): in function `nsm_setup_pathnames':
+/build/nfs-utils-2.3.4/support/nsm/file.c:279: undefined reference to `ge=
+neric_setup_basedir'
+collect2: error: ld returned 1 exit status
+
+
+--------------7426ECB91D08A2392B66C2C0--
