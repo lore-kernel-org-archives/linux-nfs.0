@@ -8,65 +8,63 @@ X-Spam-Status: No, score=-8.9 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C982EC04AB5
-	for <linux-nfs@archiver.kernel.org>; Mon,  3 Jun 2019 17:16:00 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1C4FAC28CC6
+	for <linux-nfs@archiver.kernel.org>; Mon,  3 Jun 2019 17:16:03 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id A51DE275EB
-	for <linux-nfs@archiver.kernel.org>; Mon,  3 Jun 2019 17:16:00 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id EC4F2275EB
+	for <linux-nfs@archiver.kernel.org>; Mon,  3 Jun 2019 17:16:02 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="O+PWbM4X"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="oXfU8Kd+"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729031AbfFCRP7 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 3 Jun 2019 13:15:59 -0400
-Received: from mail-io1-f66.google.com ([209.85.166.66]:41254 "EHLO
-        mail-io1-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726823AbfFCRP6 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Jun 2019 13:15:58 -0400
-Received: by mail-io1-f66.google.com with SMTP id w25so14926258ioc.8
-        for <linux-nfs@vger.kernel.org>; Mon, 03 Jun 2019 10:15:58 -0700 (PDT)
+        id S1726823AbfFCRQC (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 3 Jun 2019 13:16:02 -0400
+Received: from mail-it1-f195.google.com ([209.85.166.195]:35421 "EHLO
+        mail-it1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1728993AbfFCRP4 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Jun 2019 13:15:56 -0400
+Received: by mail-it1-f195.google.com with SMTP id n189so9385524itd.0
+        for <linux-nfs@vger.kernel.org>; Mon, 03 Jun 2019 10:15:56 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references
          :mime-version:content-transfer-encoding;
-        bh=j1UkUfTZsFI//kdDQAkgjA8sveaR01sXEVy3hYpGpgU=;
-        b=O+PWbM4X5IO/s7or71I4Nisp4D6ldT9VlOAVIMGioG4xDqAmF7IXYEQ1d1E8u+aX7R
-         CAHFlj8LZgomtIi0XTt4AVICdFclpp2hhEgwuPbtRDuYnK8W85xF0AMT306NxpZRUjji
-         VAeon4QPwE5oIYKfyUgjTOs5ZkaGcK8f7RZYMxBxxTVcVoaLc44n21YGCH+IRDvTjB3B
-         sh65XncYpp2CsqYyl/sprfCekuKM9rkDkKTycRv6OUrb20XpfzLs+ZBKWRARjF4ERD+j
-         Av0bzhwxKDKWPGj6+66er6SPppIos+ANEp/FtHZ3g+jtzHVRTSvlfJnks2rFTWkHZYPD
-         YIog==
+        bh=GT8X+EsNYBb5UMZWBMZ2Z4O0Ne33KByhJ3ztwwgYRAs=;
+        b=oXfU8Kd+U3YooLaIdo2/Uk53G9kxv6p6ODuXkBiZM8GzLU3MvCCrosJ2j4JL+MHojs
+         /72WbxaLQlHQXcZrM9Y/BCT8+XU3tFJqi6sX3kW8qwrCEtf+dCGCoI+tAE+hJ3ZmanQq
+         zishqNcmHAo93zyHAigQMrqhXRytR7ngC5JRV8KWSWzGLv2v6kYWQds3XKZ0nnrNdT4+
+         VColuGs3k5QIercFxjE97kcyOWqKlGcxdvlT0t/3zyNvblteJUefn++kb1DtYVd2gKxV
+         dTOLJbr0HK1LVessxeYmZEWP4ml+qWQboqKQzfZeF/fXb9JasWX2VQfRaap3kgjxhIw+
+         BRcw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=j1UkUfTZsFI//kdDQAkgjA8sveaR01sXEVy3hYpGpgU=;
-        b=gtH0tNT5V9CIInvpCn3IsiN0qjLt7f/ZTOfV6n8ow0Nahp3FyLUqU6DxZ/ISkh2Ml4
-         dHMTMSHP0H2Ph+BghZ7n4gGJUnuL+ZlypFj4A2iQctuN3oSAFKTughVXm1+HaY3ILZrS
-         +3ZijloE8opX3WnETkV8rpZZADK44VbC9ZU4S4iEaMowJJTq0co9YL1v6lJ8jp/d2AXR
-         YCayCVOMsaemtQJqTYIbj+c7/i80l1wIAt3MVBggonuUPA+U5rGrdIbW1IIyX2WnVqhm
-         JnbT27bzCvA0leAYx0T0TbmOkGxfvzuUGFkWj8j8RxfqQSFc/yzS3j+w0nhso5+jeRa4
-         SJgg==
-X-Gm-Message-State: APjAAAWIt2epoX+j4CY0LSPLvQY1NJOYwj0WFsVq4xvg1gPAA5mMwuNW
-        x+AgVuk9oPjeJhCUDgWeAQAbd9s=
-X-Google-Smtp-Source: APXvYqxVK8DlWi0F9zjydtMLkKHQYdYkxdVnueulwP3Xm2u4AvUnwiQEkxDuqN03lq0fCI8w8/8EqA==
-X-Received: by 2002:a6b:7d49:: with SMTP id d9mr11490728ioq.50.1559582157600;
-        Mon, 03 Jun 2019 10:15:57 -0700 (PDT)
+        bh=GT8X+EsNYBb5UMZWBMZ2Z4O0Ne33KByhJ3ztwwgYRAs=;
+        b=lwcJCDTZsyoVtjzWo6f5NRS+pESGMIIsPYylIl6sfoGZ9ZNeS2Xi66DEEcWEemntEQ
+         ns35cyq1APkg7OTSWxpYXpHYKYkrOcE71sFRQ20YG+RVHaG2Zj3TldEXiyC4E8i5y7P3
+         fpRYku4FCO7hRGjJ5APgpWpPasiINy647U8cuzExQUxPnzoheDx/7lYV9jqBbJhWImgz
+         4sl4t0A1CUezDnZqazUr+L8Cqd3NlqSe5pwYlORC78tuSSL90p8REdjw7zBOgvvJ15WJ
+         5nVrSp/N8Sln1BXfto/U1oljF1yxJxyFLgUmF/3Rc53uunm4PVcaG6ijfTuoGi4bj1/O
+         Rl9g==
+X-Gm-Message-State: APjAAAX5AbF4cygK1EKNAtFVXfCe3YgwV8CdQMy4q5b/oDKwhCY+1Tep
+        TXv+21ZkdrD7KaYQ8l8eNL4HSEI=
+X-Google-Smtp-Source: APXvYqxnKPEb4K6rViVc8FY38myUuvCBqLU4L170ybmlL4AX+lnZZgDtxxwtUi91xiejLHorikLsRg==
+X-Received: by 2002:a02:c95a:: with SMTP id u26mr2423772jao.15.1559582155559;
+        Mon, 03 Jun 2019 10:15:55 -0700 (PDT)
 Received: from localhost.localdomain (50-36-175-138.alma.mi.frontiernet.net. [50.36.175.138])
-        by smtp.gmail.com with ESMTPSA id b8sm1971375ioj.16.2019.06.03.10.15.56
+        by smtp.gmail.com with ESMTPSA id b8sm1971375ioj.16.2019.06.03.10.15.54
         (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
-        Mon, 03 Jun 2019 10:15:56 -0700 (PDT)
+        Mon, 03 Jun 2019 10:15:55 -0700 (PDT)
 From:   Trond Myklebust <trondmy@gmail.com>
 X-Google-Original-From: Trond Myklebust <trond.myklebust@hammerspace.com>
 To:     Steve Dickson <SteveD@redhat.com>
 Cc:     "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org
-Subject: [PATCH 3/3] mountd: Canonicalise the rootdir in exportent_mkrealpath()
-Date:   Mon,  3 Jun 2019 13:12:27 -0400
-Message-Id: <20190603171227.29148-4-trond.myklebust@hammerspace.com>
+Subject: [PATCH 1/3] mountd: Fix up incorrect comparison in next_mnt()
+Date:   Mon,  3 Jun 2019 13:12:25 -0400
+Message-Id: <20190603171227.29148-2-trond.myklebust@hammerspace.com>
 X-Mailer: git-send-email 2.21.0
-In-Reply-To: <20190603171227.29148-3-trond.myklebust@hammerspace.com>
+In-Reply-To: <20190603171227.29148-1-trond.myklebust@hammerspace.com>
 References: <20190603171227.29148-1-trond.myklebust@hammerspace.com>
- <20190603171227.29148-2-trond.myklebust@hammerspace.com>
- <20190603171227.29148-3-trond.myklebust@hammerspace.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
@@ -74,51 +72,27 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Ensure that we canonicalise the export path when generating the
-real path.
+We want to ensure that we compare the full name of the last component.
 
+Reported-by: "J. Bruce Fields" <bfields@redhat.com>
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- support/export/export.c | 12 ++++++++++--
- 1 file changed, 10 insertions(+), 2 deletions(-)
+ utils/mountd/cache.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/support/export/export.c b/support/export/export.c
-index 82bbb54c5e9e..c753f68e4d63 100644
---- a/support/export/export.c
-+++ b/support/export/export.c
-@@ -14,6 +14,7 @@
- #include <sys/types.h>
- #include <sys/param.h>
- #include <netinet/in.h>
-+#include <limits.h>
- #include <stdlib.h>
- #include <dirent.h>
- #include <errno.h>
-@@ -21,6 +22,7 @@
- #include "nfslib.h"
- #include "exportfs.h"
- #include "nfsd_path.h"
-+#include "xlog.h"
+diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
+index d818c971bded..d616d526667e 100644
+--- a/utils/mountd/cache.c
++++ b/utils/mountd/cache.c
+@@ -400,7 +400,7 @@ static char *next_mnt(void **v, char *p)
+ 	while ((me = getmntent(f)) != NULL && l > 1) {
+ 		mnt_dir = nfsd_path_strip_root(me->mnt_dir);
  
- exp_hash_table exportlist[MCL_MAXTYPES] = {{NULL, {{NULL,NULL}, }}, }; 
- static int export_hash(char *);
-@@ -38,8 +40,14 @@ exportent_mkrealpath(struct exportent *eep)
- 	const char *chroot = nfsd_path_nfsd_rootdir();
- 	char *ret = NULL;
- 
--	if (chroot)
--		ret = nfsd_path_prepend_dir(chroot, eep->e_path);
-+	if (chroot) {
-+		char buffer[PATH_MAX];
-+		if (realpath(chroot, buffer))
-+			ret = nfsd_path_prepend_dir(buffer, eep->e_path);
-+		else
-+			xlog(D_GENERAL, "%s: failed to resolve path %s: %m",
-+					__func__, chroot);
-+	}
- 	if (!ret)
- 		ret = xstrdup(eep->e_path);
- 	eep->e_realpath = ret;
+-		if (strncmp(mnt_dir, p, l) == 0 && mnt_dir[l] != '/')
++		if (strncmp(mnt_dir, p, l) == 0 && mnt_dir[l] == '/')
+ 			return mnt_dir;
+ 	}
+ 	endmntent(f);
 -- 
 2.21.0
 
