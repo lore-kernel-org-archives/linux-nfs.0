@@ -2,129 +2,63 @@ Return-Path: <SRS0=lMqp=UF=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+X-Spam-Status: No, score=-9.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
+	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4FC99C04AB5
-	for <linux-nfs@archiver.kernel.org>; Thu,  6 Jun 2019 13:44:04 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 0883BC04AB5
+	for <linux-nfs@archiver.kernel.org>; Thu,  6 Jun 2019 14:40:07 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 15BD32067C
-	for <linux-nfs@archiver.kernel.org>; Thu,  6 Jun 2019 13:44:04 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id CFE7220684
+	for <linux-nfs@archiver.kernel.org>; Thu,  6 Jun 2019 14:40:06 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727009AbfFFNoD (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 6 Jun 2019 09:44:03 -0400
-Received: from relay.sw.ru ([185.231.240.75]:33160 "EHLO relay.sw.ru"
+        id S1728776AbfFFOkG (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 6 Jun 2019 10:40:06 -0400
+Received: from fieldses.org ([173.255.197.46]:36504 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726092AbfFFNoD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 6 Jun 2019 09:44:03 -0400
-Received: from [172.16.25.169]
-        by relay.sw.ru with esmtp (Exim 4.91)
-        (envelope-from <ktkhai@virtuozzo.com>)
-        id 1hYsgC-0008Uh-Hh; Thu, 06 Jun 2019 16:43:44 +0300
-Subject: Re: KASAN: use-after-free Read in unregister_shrinker
-To:     "J. Bruce Fields" <bfields@fieldses.org>
-Cc:     syzbot <syzbot+83a43746cebef3508b49@syzkaller.appspotmail.com>,
-        akpm@linux-foundation.org, bfields@redhat.com,
-        chris@chrisdown.name, daniel.m.jordan@oracle.com, guro@fb.com,
-        hannes@cmpxchg.org, jlayton@kernel.org, laoar.shao@gmail.com,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        linux-nfs@vger.kernel.org, mgorman@techsingularity.net,
-        mhocko@suse.com, sfr@canb.auug.org.au,
-        syzkaller-bugs@googlegroups.com, yang.shi@linux.alibaba.com
-References: <0000000000005a4b99058a97f42e@google.com>
- <b67a0f5d-c508-48a7-7643-b4251c749985@virtuozzo.com>
- <20190606131334.GA24822@fieldses.org>
-From:   Kirill Tkhai <ktkhai@virtuozzo.com>
-Message-ID: <275f77ad-1962-6a60-e60b-6b8845f12c34@virtuozzo.com>
-Date:   Thu, 6 Jun 2019 16:43:44 +0300
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101
- Thunderbird/60.7.0
-MIME-Version: 1.0
-In-Reply-To: <20190606131334.GA24822@fieldses.org>
-Content-Type: text/plain; charset=utf-8
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
+        id S1728508AbfFFOkG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 6 Jun 2019 10:40:06 -0400
+Received: by fieldses.org (Postfix, from userid 2815)
+        id D0A391E29; Thu,  6 Jun 2019 10:40:05 -0400 (EDT)
+From:   "J. Bruce Fields" <bfields@redhat.com>
+To:     linux-nfs@vger.kernel.org
+Cc:     "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 2/2] nfsd4: remove outdated nfsd4_decode_time comment
+Date:   Thu,  6 Jun 2019 10:40:04 -0400
+Message-Id: <1559832004-26631-2-git-send-email-bfields@redhat.com>
+X-Mailer: git-send-email 1.8.3.1
+In-Reply-To: <1559832004-26631-1-git-send-email-bfields@redhat.com>
+References: <1559832004-26631-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On 06.06.2019 16:13, J. Bruce Fields wrote:
-> On Thu, Jun 06, 2019 at 10:47:43AM +0300, Kirill Tkhai wrote:
->> This may be connected with that shrinker unregistering is forgotten on error path.
-> 
-> I was wondering about that too.  Seems like it would be hard to hit
-> reproduceably though: one of the later allocations would have to fail,
-> then later you'd have to create another namespace and this time have a
-> later module's init fail.
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Yes, it's had to bump into this in real life.
+Commit bf8d909705e "nfsd: Decode and send 64bit time values" fixed the
+code without updating the comment.
 
-AFAIU, syzbot triggers such the problem by using fault-injections
-on allocation places should_failslab()->should_fail(). It's possible
-to configure a specific slab, so the allocations will fail with
-requested probability.
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4xdr.c | 4 ----
+ 1 file changed, 4 deletions(-)
+
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 73e6753fb213..548a5a843b67 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -269,10 +269,6 @@ static char *savemem(struct nfsd4_compoundargs *argp, __be32 *p, int nbytes)
+ 	return ret;
+ }
  
-> This is the patch I have, which also fixes a (probably less important)
-> failure to free the slab cache.
-> 
-> --b.
-> 
-> commit 17c869b35dc9
-> Author: J. Bruce Fields <bfields@redhat.com>
-> Date:   Wed Jun 5 18:03:52 2019 -0400
-> 
->     nfsd: fix cleanup of nfsd_reply_cache_init on failure
->     
->     Make sure everything is cleaned up on failure.
->     
->     Especially important for the shrinker, which will otherwise eventually
->     be freed while still referred to by global data structures.
->     
->     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> 
-> diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
-> index ea39497205f0..3dcac164e010 100644
-> --- a/fs/nfsd/nfscache.c
-> +++ b/fs/nfsd/nfscache.c
-> @@ -157,12 +157,12 @@ int nfsd_reply_cache_init(struct nfsd_net *nn)
->  	nn->nfsd_reply_cache_shrinker.seeks = 1;
->  	status = register_shrinker(&nn->nfsd_reply_cache_shrinker);
->  	if (status)
-> -		return status;
-> +		goto out_nomem;
->  
->  	nn->drc_slab = kmem_cache_create("nfsd_drc",
->  				sizeof(struct svc_cacherep), 0, 0, NULL);
->  	if (!nn->drc_slab)
-> -		goto out_nomem;
-> +		goto out_shrinker;
->  
->  	nn->drc_hashtbl = kcalloc(hashsize,
->  				sizeof(*nn->drc_hashtbl), GFP_KERNEL);
-> @@ -170,7 +170,7 @@ int nfsd_reply_cache_init(struct nfsd_net *nn)
->  		nn->drc_hashtbl = vzalloc(array_size(hashsize,
->  						 sizeof(*nn->drc_hashtbl)));
->  		if (!nn->drc_hashtbl)
-> -			goto out_nomem;
-> +			goto out_slab;
->  	}
->  
->  	for (i = 0; i < hashsize; i++) {
-> @@ -180,6 +180,10 @@ int nfsd_reply_cache_init(struct nfsd_net *nn)
->  	nn->drc_hashsize = hashsize;
->  
->  	return 0;
-> +out_slab:
-> +	kmem_cache_destroy(nn->drc_slab);
-> +out_shrinker:
-> +	unregister_shrinker(&nn->nfsd_reply_cache_shrinker);
->  out_nomem:
->  	printk(KERN_ERR "nfsd: failed to allocate reply cache\n");
->  	return -ENOMEM;
-
-Looks OK for me. Feel free to add my reviewed-by if you want.
-
-Reviewed-by: Kirill Tkhai <ktkhai@virtuozzo.com>
+-/*
+- * We require the high 32 bits of 'seconds' to be 0, and
+- * we ignore all 32 bits of 'nseconds'.
+- */
+ static __be32
+ nfsd4_decode_time(struct nfsd4_compoundargs *argp, struct timespec64 *tv)
+ {
+-- 
+2.21.0
 
