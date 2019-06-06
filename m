@@ -2,137 +2,180 @@ Return-Path: <SRS0=lMqp=UF=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-14.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
+	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,T_DKIMWL_WL_MED,URIBL_BLOCKED,
+	USER_IN_DEF_DKIM_WL autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4DB50C28EB4
-	for <linux-nfs@archiver.kernel.org>; Thu,  6 Jun 2019 14:40:07 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7A7CDC04AB5
+	for <linux-nfs@archiver.kernel.org>; Thu,  6 Jun 2019 14:41:01 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 31F2720684
-	for <linux-nfs@archiver.kernel.org>; Thu,  6 Jun 2019 14:40:07 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 428F0207E0
+	for <linux-nfs@archiver.kernel.org>; Thu,  6 Jun 2019 14:41:01 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b="sCbqy9Il"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728508AbfFFOkG (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 6 Jun 2019 10:40:06 -0400
-Received: from fieldses.org ([173.255.197.46]:36502 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1728011AbfFFOkG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 6 Jun 2019 10:40:06 -0400
-Received: by fieldses.org (Postfix, from userid 2815)
-        id C8DD11C95; Thu,  6 Jun 2019 10:40:05 -0400 (EDT)
-From:   "J. Bruce Fields" <bfields@redhat.com>
-To:     linux-nfs@vger.kernel.org
-Cc:     "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 1/2] nfsd: use 64-bit seconds fields in nfsd v4 code
-Date:   Thu,  6 Jun 2019 10:40:03 -0400
-Message-Id: <1559832004-26631-1-git-send-email-bfields@redhat.com>
-X-Mailer: git-send-email 1.8.3.1
+        id S1728011AbfFFOlA (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 6 Jun 2019 10:41:00 -0400
+Received: from mail-io1-f67.google.com ([209.85.166.67]:36186 "EHLO
+        mail-io1-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727603AbfFFOlA (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Jun 2019 10:41:00 -0400
+Received: by mail-io1-f67.google.com with SMTP id h6so395614ioh.3
+        for <linux-nfs@vger.kernel.org>; Thu, 06 Jun 2019 07:40:59 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=google.com; s=20161025;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc;
+        bh=qRHFQx4rk/WQV+W1bUpqDxQ0lUZEI/eFyBpWg1hk11Q=;
+        b=sCbqy9Il3Out2uZPEuDkEDVkIvng7aW0ineP0yjFozNXPOloupyWTAbt2WypG90mH2
+         RO8VsxvONEY6+lOd57nEUJshWUBcTFa4IkigR9dm1Tf3DkipfnQEDvxo9Opwgz/kXNUS
+         DmfwsDfBQINnUWZ0Xoz1mLZvPk4JJIu5YNhrczzgp/VL2bPoWMOSqbNGpzr8ixIvUQ6M
+         V9vloCuM2sAIC1VdTIvssvKJA6lBX9B+Tqrhtdc0OZYZB24Z7LzEBoEXD0s6IamPEOWM
+         W5OA0EUvwGXsDqIoNEx40vD+nBZGfdTKV5o4U5ZsLduig2WAsLA4QAk+CITyXaYhUObi
+         8iXw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=qRHFQx4rk/WQV+W1bUpqDxQ0lUZEI/eFyBpWg1hk11Q=;
+        b=BpRDaXTYbRGhriFe0YLVrJjCtlfQblHy/1MgL+zxrKEnK6P2fEhnfvmCIyFQDI55DM
+         DL0zVJzAB17H2iU/exvrsy6pmqZX5r9Kp1RlWEvPUjROhOrCkSqwny9tba/kQOKrR0e+
+         zu2J7G/WtcEj86O6z2aylWMakru2O5uDLO2nBe5WsVKN8PQcs5YyU1pvguUUhZTr8Odf
+         ymqBB7oufb6g3V1R9wrHvyidLwFcd55CnXsCgGT1/Z6hAYSwbPd5AB05n+1y42d5ZWj6
+         mDc37WOVOiof7UmbkUBKX87GqyZblUXl7trUEZK5uDEHRWKzLIVUjDGTR0+4P8KJupTZ
+         BTMQ==
+X-Gm-Message-State: APjAAAWSZsJ1QxdtZwJJZ4VzlsAzi+6TABhdSSahQJhO8gIxZPTFaVox
+        yxh+xfP/LEIMk37eX5/MB+mgyO5hPWJxqkdDGQq6zA==
+X-Google-Smtp-Source: APXvYqzKErRjMjB/Lu1mV96B+n+Cf6+/oCq0PF53kEaSxsxhJvuN0Qd+FEtZW9TaI4V1DZGCc+oSBw0knpFzAe36NbU=
+X-Received: by 2002:a6b:e711:: with SMTP id b17mr28649615ioh.3.1559832059117;
+ Thu, 06 Jun 2019 07:40:59 -0700 (PDT)
+MIME-Version: 1.0
+References: <0000000000005a4b99058a97f42e@google.com> <b67a0f5d-c508-48a7-7643-b4251c749985@virtuozzo.com>
+ <20190606131334.GA24822@fieldses.org> <275f77ad-1962-6a60-e60b-6b8845f12c34@virtuozzo.com>
+In-Reply-To: <275f77ad-1962-6a60-e60b-6b8845f12c34@virtuozzo.com>
+From:   Dmitry Vyukov <dvyukov@google.com>
+Date:   Thu, 6 Jun 2019 16:40:46 +0200
+Message-ID: <CACT4Y+aJQ6J5WdviD+cOmDoHt2Dj=Q4uZ4vHbCfHe+_TCEY6-Q@mail.gmail.com>
+Subject: Re: KASAN: use-after-free Read in unregister_shrinker
+To:     Kirill Tkhai <ktkhai@virtuozzo.com>
+Cc:     "J. Bruce Fields" <bfields@fieldses.org>,
+        syzbot <syzbot+83a43746cebef3508b49@syzkaller.appspotmail.com>,
+        Andrew Morton <akpm@linux-foundation.org>, bfields@redhat.com,
+        chris@chrisdown.name, Daniel Jordan <daniel.m.jordan@oracle.com>,
+        guro@fb.com, Johannes Weiner <hannes@cmpxchg.org>,
+        Jeff Layton <jlayton@kernel.org>, laoar.shao@gmail.com,
+        LKML <linux-kernel@vger.kernel.org>,
+        Linux-MM <linux-mm@kvack.org>, linux-nfs@vger.kernel.org,
+        Mel Gorman <mgorman@techsingularity.net>,
+        Michal Hocko <mhocko@suse.com>,
+        Stephen Rothwell <sfr@canb.auug.org.au>,
+        syzkaller-bugs <syzkaller-bugs@googlegroups.com>,
+        yang.shi@linux.alibaba.com
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On Thu, Jun 6, 2019 at 3:43 PM Kirill Tkhai <ktkhai@virtuozzo.com> wrote:
+>
+> On 06.06.2019 16:13, J. Bruce Fields wrote:
+> > On Thu, Jun 06, 2019 at 10:47:43AM +0300, Kirill Tkhai wrote:
+> >> This may be connected with that shrinker unregistering is forgotten on error path.
+> >
+> > I was wondering about that too.  Seems like it would be hard to hit
+> > reproduceably though: one of the later allocations would have to fail,
+> > then later you'd have to create another namespace and this time have a
+> > later module's init fail.
+>
+> Yes, it's had to bump into this in real life.
+>
+> AFAIU, syzbot triggers such the problem by using fault-injections
+> on allocation places should_failslab()->should_fail(). It's possible
+> to configure a specific slab, so the allocations will fail with
+> requested probability.
 
-After commit 95582b008388 "vfs: change inode times to use struct
-timespec64" there are spots in the NFSv4 decoding where we decode the
-protocol into a struct timeval and then convert that into a timeval64.
+No fault injection was involved in triggering of this bug.
+Fault injection is clearly visible in console log as "INJECTING
+FAILURE at this stack track" splats and also for bugs with repros it
+would be noted in the syzkaller repro as "fault_call": N. So somehow
+this bug was triggered as is.
 
-That's unnecesary in the NFSv4 case since the on-the-wire protocol also
-uses 64-bit values.  So just fix up our code to use timeval64 everywhere.
+But overall syzkaller can do better then the old probabilistic
+injection. The probabilistic injection tend to both under-test what we
+want to test and also crash some system services. syzkaller uses the
+new "systematic fault injection" that allows to test specifically each
+failure site separately in each syscall separately.
+All kernel testing systems should use it. Also in couple with KASAN,
+KMEMLEAK, LOCKDEP. It's indispensable in finding kernel bugs.
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/blocklayout.c |  8 +++-----
- fs/nfsd/nfs4xdr.c     | 13 ++++---------
- fs/nfsd/xdr4.h        |  2 +-
- 3 files changed, 8 insertions(+), 15 deletions(-)
 
-diff --git a/fs/nfsd/blocklayout.c b/fs/nfsd/blocklayout.c
-index 4fb1f72a25fb..66d4c55eb48e 100644
---- a/fs/nfsd/blocklayout.c
-+++ b/fs/nfsd/blocklayout.c
-@@ -121,15 +121,13 @@ nfsd4_block_commit_blocks(struct inode *inode, struct nfsd4_layoutcommit *lcp,
- {
- 	loff_t new_size = lcp->lc_last_wr + 1;
- 	struct iattr iattr = { .ia_valid = 0 };
--	struct timespec ts;
- 	int error;
- 
--	ts = timespec64_to_timespec(inode->i_mtime);
- 	if (lcp->lc_mtime.tv_nsec == UTIME_NOW ||
--	    timespec_compare(&lcp->lc_mtime, &ts) < 0)
--		lcp->lc_mtime = timespec64_to_timespec(current_time(inode));
-+	    timespec64_compare(&lcp->lc_mtime, &inode->i_mtime) < 0)
-+		lcp->lc_mtime = current_time(inode);
- 	iattr.ia_valid |= ATTR_ATIME | ATTR_CTIME | ATTR_MTIME;
--	iattr.ia_atime = iattr.ia_ctime = iattr.ia_mtime = timespec_to_timespec64(lcp->lc_mtime);
-+	iattr.ia_atime = iattr.ia_ctime = iattr.ia_mtime = lcp->lc_mtime;
- 
- 	if (new_size > i_size_read(inode)) {
- 		iattr.ia_valid |= ATTR_SIZE;
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 52c4f6daa649..73e6753fb213 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -274,14 +274,12 @@ static char *savemem(struct nfsd4_compoundargs *argp, __be32 *p, int nbytes)
-  * we ignore all 32 bits of 'nseconds'.
-  */
- static __be32
--nfsd4_decode_time(struct nfsd4_compoundargs *argp, struct timespec *tv)
-+nfsd4_decode_time(struct nfsd4_compoundargs *argp, struct timespec64 *tv)
- {
- 	DECODE_HEAD;
--	u64 sec;
- 
- 	READ_BUF(12);
--	p = xdr_decode_hyper(p, &sec);
--	tv->tv_sec = sec;
-+	p = xdr_decode_hyper(p, &tv->tv_sec);
- 	tv->tv_nsec = be32_to_cpup(p++);
- 	if (tv->tv_nsec >= (u32)1000000000)
- 		return nfserr_inval;
-@@ -320,7 +318,6 @@ nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval,
- 		   struct iattr *iattr, struct nfs4_acl **acl,
- 		   struct xdr_netobj *label, int *umask)
- {
--	struct timespec ts;
- 	int expected_len, len = 0;
- 	u32 dummy32;
- 	char *buf;
-@@ -422,8 +419,7 @@ nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval,
- 		switch (dummy32) {
- 		case NFS4_SET_TO_CLIENT_TIME:
- 			len += 12;
--			status = nfsd4_decode_time(argp, &ts);
--			iattr->ia_atime = timespec_to_timespec64(ts);
-+			status = nfsd4_decode_time(argp, &iattr->ia_atime);
- 			if (status)
- 				return status;
- 			iattr->ia_valid |= (ATTR_ATIME | ATTR_ATIME_SET);
-@@ -442,8 +438,7 @@ nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval,
- 		switch (dummy32) {
- 		case NFS4_SET_TO_CLIENT_TIME:
- 			len += 12;
--			status = nfsd4_decode_time(argp, &ts);
--			iattr->ia_mtime = timespec_to_timespec64(ts);
-+			status = nfsd4_decode_time(argp, &iattr->ia_mtime);
- 			if (status)
- 				return status;
- 			iattr->ia_valid |= (ATTR_MTIME | ATTR_MTIME_SET);
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index feeb6d4bdffd..c2b631eefc6d 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -472,7 +472,7 @@ struct nfsd4_layoutcommit {
- 	u32			lc_reclaim;	/* request */
- 	u32			lc_newoffset;	/* request */
- 	u64			lc_last_wr;	/* request */
--	struct timespec		lc_mtime;	/* request */
-+	struct timespec64	lc_mtime;	/* request */
- 	u32			lc_layout_type;	/* request */
- 	u32			lc_up_len;	/* layout length */
- 	void			*lc_up_layout;	/* decoded by callback */
--- 
-2.21.0
 
+> > This is the patch I have, which also fixes a (probably less important)
+> > failure to free the slab cache.
+> >
+> > --b.
+> >
+> > commit 17c869b35dc9
+> > Author: J. Bruce Fields <bfields@redhat.com>
+> > Date:   Wed Jun 5 18:03:52 2019 -0400
+> >
+> >     nfsd: fix cleanup of nfsd_reply_cache_init on failure
+> >
+> >     Make sure everything is cleaned up on failure.
+> >
+> >     Especially important for the shrinker, which will otherwise eventually
+> >     be freed while still referred to by global data structures.
+> >
+> >     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> >
+> > diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
+> > index ea39497205f0..3dcac164e010 100644
+> > --- a/fs/nfsd/nfscache.c
+> > +++ b/fs/nfsd/nfscache.c
+> > @@ -157,12 +157,12 @@ int nfsd_reply_cache_init(struct nfsd_net *nn)
+> >       nn->nfsd_reply_cache_shrinker.seeks = 1;
+> >       status = register_shrinker(&nn->nfsd_reply_cache_shrinker);
+> >       if (status)
+> > -             return status;
+> > +             goto out_nomem;
+> >
+> >       nn->drc_slab = kmem_cache_create("nfsd_drc",
+> >                               sizeof(struct svc_cacherep), 0, 0, NULL);
+> >       if (!nn->drc_slab)
+> > -             goto out_nomem;
+> > +             goto out_shrinker;
+> >
+> >       nn->drc_hashtbl = kcalloc(hashsize,
+> >                               sizeof(*nn->drc_hashtbl), GFP_KERNEL);
+> > @@ -170,7 +170,7 @@ int nfsd_reply_cache_init(struct nfsd_net *nn)
+> >               nn->drc_hashtbl = vzalloc(array_size(hashsize,
+> >                                                sizeof(*nn->drc_hashtbl)));
+> >               if (!nn->drc_hashtbl)
+> > -                     goto out_nomem;
+> > +                     goto out_slab;
+> >       }
+> >
+> >       for (i = 0; i < hashsize; i++) {
+> > @@ -180,6 +180,10 @@ int nfsd_reply_cache_init(struct nfsd_net *nn)
+> >       nn->drc_hashsize = hashsize;
+> >
+> >       return 0;
+> > +out_slab:
+> > +     kmem_cache_destroy(nn->drc_slab);
+> > +out_shrinker:
+> > +     unregister_shrinker(&nn->nfsd_reply_cache_shrinker);
+> >  out_nomem:
+> >       printk(KERN_ERR "nfsd: failed to allocate reply cache\n");
+> >       return -ENOMEM;
+>
+> Looks OK for me. Feel free to add my reviewed-by if you want.
+>
+> Reviewed-by: Kirill Tkhai <ktkhai@virtuozzo.com>
+>
+> --
+> You received this message because you are subscribed to the Google Groups "syzkaller-bugs" group.
+> To unsubscribe from this group and stop receiving emails from it, send an email to syzkaller-bugs+unsubscribe@googlegroups.com.
+> To view this discussion on the web visit https://groups.google.com/d/msgid/syzkaller-bugs/275f77ad-1962-6a60-e60b-6b8845f12c34%40virtuozzo.com.
+> For more options, visit https://groups.google.com/d/optout.
