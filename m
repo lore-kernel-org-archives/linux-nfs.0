@@ -6,29 +6,27 @@ X-Spam-Status: No, score=-9.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
 	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0883BC04AB5
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4DB50C28EB4
 	for <linux-nfs@archiver.kernel.org>; Thu,  6 Jun 2019 14:40:07 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id CFE7220684
-	for <linux-nfs@archiver.kernel.org>; Thu,  6 Jun 2019 14:40:06 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 31F2720684
+	for <linux-nfs@archiver.kernel.org>; Thu,  6 Jun 2019 14:40:07 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728776AbfFFOkG (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S1728508AbfFFOkG (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Thu, 6 Jun 2019 10:40:06 -0400
-Received: from fieldses.org ([173.255.197.46]:36504 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:36502 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1728508AbfFFOkG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        id S1728011AbfFFOkG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
         Thu, 6 Jun 2019 10:40:06 -0400
 Received: by fieldses.org (Postfix, from userid 2815)
-        id D0A391E29; Thu,  6 Jun 2019 10:40:05 -0400 (EDT)
+        id C8DD11C95; Thu,  6 Jun 2019 10:40:05 -0400 (EDT)
 From:   "J. Bruce Fields" <bfields@redhat.com>
 To:     linux-nfs@vger.kernel.org
 Cc:     "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 2/2] nfsd4: remove outdated nfsd4_decode_time comment
-Date:   Thu,  6 Jun 2019 10:40:04 -0400
-Message-Id: <1559832004-26631-2-git-send-email-bfields@redhat.com>
+Subject: [PATCH 1/2] nfsd: use 64-bit seconds fields in nfsd v4 code
+Date:   Thu,  6 Jun 2019 10:40:03 -0400
+Message-Id: <1559832004-26631-1-git-send-email-bfields@redhat.com>
 X-Mailer: git-send-email 1.8.3.1
-In-Reply-To: <1559832004-26631-1-git-send-email-bfields@redhat.com>
-References: <1559832004-26631-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
@@ -36,29 +34,105 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: "J. Bruce Fields" <bfields@redhat.com>
 
-Commit bf8d909705e "nfsd: Decode and send 64bit time values" fixed the
-code without updating the comment.
+After commit 95582b008388 "vfs: change inode times to use struct
+timespec64" there are spots in the NFSv4 decoding where we decode the
+protocol into a struct timeval and then convert that into a timeval64.
+
+That's unnecesary in the NFSv4 case since the on-the-wire protocol also
+uses 64-bit values.  So just fix up our code to use timeval64 everywhere.
 
 Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/nfsd/nfs4xdr.c | 4 ----
- 1 file changed, 4 deletions(-)
+ fs/nfsd/blocklayout.c |  8 +++-----
+ fs/nfsd/nfs4xdr.c     | 13 ++++---------
+ fs/nfsd/xdr4.h        |  2 +-
+ 3 files changed, 8 insertions(+), 15 deletions(-)
 
+diff --git a/fs/nfsd/blocklayout.c b/fs/nfsd/blocklayout.c
+index 4fb1f72a25fb..66d4c55eb48e 100644
+--- a/fs/nfsd/blocklayout.c
++++ b/fs/nfsd/blocklayout.c
+@@ -121,15 +121,13 @@ nfsd4_block_commit_blocks(struct inode *inode, struct nfsd4_layoutcommit *lcp,
+ {
+ 	loff_t new_size = lcp->lc_last_wr + 1;
+ 	struct iattr iattr = { .ia_valid = 0 };
+-	struct timespec ts;
+ 	int error;
+ 
+-	ts = timespec64_to_timespec(inode->i_mtime);
+ 	if (lcp->lc_mtime.tv_nsec == UTIME_NOW ||
+-	    timespec_compare(&lcp->lc_mtime, &ts) < 0)
+-		lcp->lc_mtime = timespec64_to_timespec(current_time(inode));
++	    timespec64_compare(&lcp->lc_mtime, &inode->i_mtime) < 0)
++		lcp->lc_mtime = current_time(inode);
+ 	iattr.ia_valid |= ATTR_ATIME | ATTR_CTIME | ATTR_MTIME;
+-	iattr.ia_atime = iattr.ia_ctime = iattr.ia_mtime = timespec_to_timespec64(lcp->lc_mtime);
++	iattr.ia_atime = iattr.ia_ctime = iattr.ia_mtime = lcp->lc_mtime;
+ 
+ 	if (new_size > i_size_read(inode)) {
+ 		iattr.ia_valid |= ATTR_SIZE;
 diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 73e6753fb213..548a5a843b67 100644
+index 52c4f6daa649..73e6753fb213 100644
 --- a/fs/nfsd/nfs4xdr.c
 +++ b/fs/nfsd/nfs4xdr.c
-@@ -269,10 +269,6 @@ static char *savemem(struct nfsd4_compoundargs *argp, __be32 *p, int nbytes)
- 	return ret;
- }
- 
--/*
-- * We require the high 32 bits of 'seconds' to be 0, and
-- * we ignore all 32 bits of 'nseconds'.
-- */
+@@ -274,14 +274,12 @@ static char *savemem(struct nfsd4_compoundargs *argp, __be32 *p, int nbytes)
+  * we ignore all 32 bits of 'nseconds'.
+  */
  static __be32
- nfsd4_decode_time(struct nfsd4_compoundargs *argp, struct timespec64 *tv)
+-nfsd4_decode_time(struct nfsd4_compoundargs *argp, struct timespec *tv)
++nfsd4_decode_time(struct nfsd4_compoundargs *argp, struct timespec64 *tv)
  {
+ 	DECODE_HEAD;
+-	u64 sec;
+ 
+ 	READ_BUF(12);
+-	p = xdr_decode_hyper(p, &sec);
+-	tv->tv_sec = sec;
++	p = xdr_decode_hyper(p, &tv->tv_sec);
+ 	tv->tv_nsec = be32_to_cpup(p++);
+ 	if (tv->tv_nsec >= (u32)1000000000)
+ 		return nfserr_inval;
+@@ -320,7 +318,6 @@ nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval,
+ 		   struct iattr *iattr, struct nfs4_acl **acl,
+ 		   struct xdr_netobj *label, int *umask)
+ {
+-	struct timespec ts;
+ 	int expected_len, len = 0;
+ 	u32 dummy32;
+ 	char *buf;
+@@ -422,8 +419,7 @@ nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval,
+ 		switch (dummy32) {
+ 		case NFS4_SET_TO_CLIENT_TIME:
+ 			len += 12;
+-			status = nfsd4_decode_time(argp, &ts);
+-			iattr->ia_atime = timespec_to_timespec64(ts);
++			status = nfsd4_decode_time(argp, &iattr->ia_atime);
+ 			if (status)
+ 				return status;
+ 			iattr->ia_valid |= (ATTR_ATIME | ATTR_ATIME_SET);
+@@ -442,8 +438,7 @@ nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval,
+ 		switch (dummy32) {
+ 		case NFS4_SET_TO_CLIENT_TIME:
+ 			len += 12;
+-			status = nfsd4_decode_time(argp, &ts);
+-			iattr->ia_mtime = timespec_to_timespec64(ts);
++			status = nfsd4_decode_time(argp, &iattr->ia_mtime);
+ 			if (status)
+ 				return status;
+ 			iattr->ia_valid |= (ATTR_MTIME | ATTR_MTIME_SET);
+diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+index feeb6d4bdffd..c2b631eefc6d 100644
+--- a/fs/nfsd/xdr4.h
++++ b/fs/nfsd/xdr4.h
+@@ -472,7 +472,7 @@ struct nfsd4_layoutcommit {
+ 	u32			lc_reclaim;	/* request */
+ 	u32			lc_newoffset;	/* request */
+ 	u64			lc_last_wr;	/* request */
+-	struct timespec		lc_mtime;	/* request */
++	struct timespec64	lc_mtime;	/* request */
+ 	u32			lc_layout_type;	/* request */
+ 	u32			lc_up_len;	/* layout length */
+ 	void			*lc_up_layout;	/* decoded by callback */
 -- 
 2.21.0
 
