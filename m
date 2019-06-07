@@ -1,245 +1,110 @@
-Return-Path: <SRS0=lMqp=UF=vger.kernel.org=linux-nfs-owner@kernel.org>
+Return-Path: <SRS0=MvfM=UG=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
-	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,T_DKIMWL_WL_HIGH,UNPARSEABLE_RELAY,
+X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
 	URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 04353C04AB5
-	for <linux-nfs@archiver.kernel.org>; Thu,  6 Jun 2019 18:33:45 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 90DF0C2BCA1
+	for <linux-nfs@archiver.kernel.org>; Fri,  7 Jun 2019 10:37:55 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id CB59E20872
-	for <linux-nfs@archiver.kernel.org>; Thu,  6 Jun 2019 18:33:44 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="l2hA1WK1"
+	by mail.kernel.org (Postfix) with ESMTP id 6BD3720B7C
+	for <linux-nfs@archiver.kernel.org>; Fri,  7 Jun 2019 10:37:55 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728223AbfFFSdo (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 6 Jun 2019 14:33:44 -0400
-Received: from userp2130.oracle.com ([156.151.31.86]:35442 "EHLO
-        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726837AbfFFSdi (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Jun 2019 14:33:38 -0400
-Received: from pps.filterd (userp2130.oracle.com [127.0.0.1])
-        by userp2130.oracle.com (8.16.0.27/8.16.0.27) with SMTP id x56ISr1D110235;
-        Thu, 6 Jun 2019 18:33:33 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=content-type :
- mime-version : subject : from : in-reply-to : date : cc :
- content-transfer-encoding : message-id : references : to;
- s=corp-2018-07-02; bh=/4qI0pF6nyiwAnWSVs/s/VMqczMTvFbdOpCK9GVIR0A=;
- b=l2hA1WK1UjXycYzvFUbMXipUuZWuCnItvJhkHr1Tza7gFlZqhWTvfOYaf+HaD8s9eOo/
- T1QyulkZdUKF7dQysBJxc6LNasgtYyjK4e0XJUGkz9W8v8vCReULiHsi5ZCebZS6txxX
- cFyW5OU44Xz2LjiMDcDK7Fg+KCwoslb99eN9oUd7hOmHviAiWz+askiXeifxxUUU0p+U
- V6rpgGAGxS/i1LW+cZpbkyKrnpT1UxZ7u2dkpYtgO5WLK77ObEvz15xqocq6Jj1+Rmuu
- RwHOHlKBFxRMYa++GGh1NHILHhZxfC/2OMghINm+wRJBGXnjXnWXhVKay+XehoKfmrmd qA== 
-Received: from userp3030.oracle.com (userp3030.oracle.com [156.151.31.80])
-        by userp2130.oracle.com with ESMTP id 2sugstt7yj-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Thu, 06 Jun 2019 18:33:32 +0000
-Received: from pps.filterd (userp3030.oracle.com [127.0.0.1])
-        by userp3030.oracle.com (8.16.0.27/8.16.0.27) with SMTP id x56IX8tq070550;
-        Thu, 6 Jun 2019 18:33:32 GMT
-Received: from userv0121.oracle.com (userv0121.oracle.com [156.151.31.72])
-        by userp3030.oracle.com with ESMTP id 2swngmnv9s-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Thu, 06 Jun 2019 18:33:32 +0000
-Received: from abhmp0015.oracle.com (abhmp0015.oracle.com [141.146.116.21])
-        by userv0121.oracle.com (8.14.4/8.13.8) with ESMTP id x56IXVl3001830;
-        Thu, 6 Jun 2019 18:33:31 GMT
-Received: from anon-dhcp-171.1015granger.net (/68.61.232.219)
-        by default (Oracle Beehive Gateway v4.0)
-        with ESMTP ; Thu, 06 Jun 2019 11:33:31 -0700
-Content-Type: text/plain;
-        charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 12.4 \(3445.104.11\))
-Subject: Re: [PATCH RFC] svcrdma: Ignore source port when computing DRC hash
-From:   Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <CAN-5tyEUHrDkj7MKfYeN5LsFwZEtaLsHYMX20UQMShHtQa-QsA@mail.gmail.com>
-Date:   Thu, 6 Jun 2019 14:33:30 -0400
-Cc:     linux-rdma <linux-rdma@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Transfer-Encoding: quoted-printable
-Message-Id: <52A2AF4C-1858-486E-8A9B-94392E7E18BD@oracle.com>
-References: <20190605121518.2150.26479.stgit@klimt.1015granger.net>
- <CAN-5tyH5r_cq9qYF3E2BaNK1Xr0RLsxQFCOGQqXhGb8Rk2xMXw@mail.gmail.com>
- <DD7B8184-4124-4307-BD7F-98F6231361DF@oracle.com>
- <CAN-5tyEUHrDkj7MKfYeN5LsFwZEtaLsHYMX20UQMShHtQa-QsA@mail.gmail.com>
-To:     Olga Kornievskaia <aglo@umich.edu>
-X-Mailer: Apple Mail (2.3445.104.11)
-X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9280 signatures=668687
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 suspectscore=0 malwarescore=0
- phishscore=0 bulkscore=0 spamscore=0 mlxscore=0 mlxlogscore=999
- adultscore=0 classifier=spam adjust=0 reason=mlx scancount=1
- engine=8.0.1-1810050000 definitions=main-1906060125
-X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9280 signatures=668687
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 priorityscore=1501 malwarescore=0
- suspectscore=0 phishscore=0 bulkscore=0 spamscore=0 clxscore=1015
- lowpriorityscore=0 mlxscore=0 impostorscore=0 mlxlogscore=999 adultscore=0
- classifier=spam adjust=0 reason=mlx scancount=1 engine=8.0.1-1810050000
- definitions=main-1906060124
+        id S1728068AbfFGKhy (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 7 Jun 2019 06:37:54 -0400
+Received: from mx1.redhat.com ([209.132.183.28]:53276 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726584AbfFGKhy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 7 Jun 2019 06:37:54 -0400
+Received: from smtp.corp.redhat.com (int-mx06.intmail.prod.int.phx2.redhat.com [10.5.11.16])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id 280A23D37;
+        Fri,  7 Jun 2019 10:37:54 +0000 (UTC)
+Received: from bcodding.csb (ovpn-66-2.rdu2.redhat.com [10.10.66.2])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id A7A4482268;
+        Fri,  7 Jun 2019 10:37:53 +0000 (UTC)
+Received: by bcodding.csb (Postfix, from userid 24008)
+        id 5F490109C550; Fri,  7 Jun 2019 06:37:30 -0400 (EDT)
+From:   Benjamin Coddington <bcodding@redhat.com>
+To:     trond.myklebust@hammerspace.com, anna.schumaker@netapp.com
+Cc:     linux-nfs@vger.kernel.org
+Subject: [PATCH] NFS4: Only set creation opendata if O_CREAT
+Date:   Fri,  7 Jun 2019 06:37:30 -0400
+Message-Id: <f30e28659d74b2d1ad06fc806174a5364748b51a.1559903672.git.bcodding@redhat.com>
+MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.16
+X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.29]); Fri, 07 Jun 2019 10:37:54 +0000 (UTC)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
+We can end up in nfs4_opendata_alloc during task exit, in which case
+current->fs has already been cleaned up.  This leads to a crash in
+current_umask().
 
+Fix this by only setting creation opendata if we are actually doing an open
+with O_CREAT.  We can drop the check for NULL nfs4_open_createattrs, since
+O_CREAT will never be set for the recovery path.
 
-> On Jun 6, 2019, at 2:13 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
->=20
-> On Wed, Jun 5, 2019 at 1:28 PM Chuck Lever <chuck.lever@oracle.com> =
-wrote:
->>=20
->>=20
->>=20
->>> On Jun 5, 2019, at 11:57 AM, Olga Kornievskaia <aglo@umich.edu> =
-wrote:
->>>=20
->>> On Wed, Jun 5, 2019 at 8:15 AM Chuck Lever <chuck.lever@oracle.com> =
-wrote:
->>>>=20
->>>> The DRC is not working at all after an RPC/RDMA transport =
-reconnect.
->>>> The problem is that the new connection uses a different source =
-port,
->>>> which defeats DRC hash.
->>>>=20
->>>> An NFS/RDMA client's source port is meaningless for RDMA =
-transports.
->>>> The transport layer typically sets the source port value on the
->>>> connection to a random ephemeral port. The server already ignores =
-it
->>>> for the "secure port" check. See commit 16e4d93f6de7 ("NFSD: Ignore
->>>> client's source port on RDMA transports").
->>>>=20
->>>> I'm not sure why I never noticed this before.
->>>=20
->>> Hi Chuck,
->>>=20
->>> I have a question: is the reason for choosing this fix as oppose to
->>> fixing the client because it's server's responsibility to design a =
-DRC
->>> differently for the NFSoRDMA?
->>=20
->> The server DRC implementation is not specified in any standard.
->> The server implementation can use whatever works the best. The
->> current Linux DRC implementation is useless for NFS/RDMA, because
->> the clients have to disconnect before they send retransmissions.
->>=20
->> If someone knows a way that a client side RDMA consumer can specify
->> the source port that is presented to a server, then we can make
->> that change too.
->=20
-> Ok I see you point about this being difficult on the client. Various
-> implementations take different approaches even on RoCE itself:
-> 1. software RoCE does
->        /* pick a source UDP port number for this QP based on
->         * the source QPN. this spreads traffic for different QPs
->         * across different NIC RX queues (while using a single
->         * flow for a given QP to maintain packet order).
->         * the port number must be in the Dynamic Ports range
->         * (0xc000 - 0xffff).
->         */
->        qp->src_port =3D RXE_ROCE_V2_SPORT +
->                (hash_32_generic(qp_num(qp), 14) & 0x3fff);
->=20
-> When I allow the connection to be re-established I can confirm that a
-> new UDP source port is gotten).
->=20
-> 2. bnxt_re (broadband net extreme) seems to always use the same source =
-port:
-> qp->qp1_hdr.udp.sport =3D htons(0x8CD1);
->=20
-> 3. mlx4 seems to always use the same source port:
-> sqp->ud_header.udp.sport =3D htons(MLX4_ROCEV2_QP1_SPORT);
->=20
-> 4. mlx5 also seems to be pick the same port:
-> return cpu_to_be16(MLX5_CAP_ROCE(dev->mdev, r_roce_min_src_udp_port));
->=20
-> I have a CX5 card and I see that the source port is always 49513. So
-> if you use Mellanox cards or this other card, DNC implementations are
-> safe?
+Suggested-by: Trond Myklebust <trondmy@hammerspace.com>
+Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
+---
+ fs/nfs/nfs4proc.c | 20 +++++++++++---------
+ 1 file changed, 11 insertions(+), 9 deletions(-)
 
-Thanks for looking into this.
-
-Not sure that's the same source port that is visible to the
-NFS server's transport accept logic. That's the one that
-matters to the DRC. Certainly IB fabrics wouldn't have an IP
-source port like this.
-
-For RoCE (and perhaps iWARP) that port number would be the
-same for all transports from the client. Still not useful
-for adding entropy to a DRC entry hash.
-
-@@ -211,9 +211,14 @@ static void handle_connect_req(struct rdma_cm_id =
-*new_cma_id,
-        /* Save client advertised inbound read limit for use later in =
-accept. */
-        newxprt->sc_ord =3D param->initiator_depth;
-=20
-        /* Set the local and remote addresses in the transport */
-        sa =3D (struct sockaddr =
-*)&newxprt->sc_cm_id->route.addr.dst_addr;
-
-Can you add a printk to your server to show the port value
-in cm_id->route.addr.dst_addr?
-
-
-> I also see that there is nothing in the verbs API thru which we
-> interact with the RDMA drivers will allow us to set the port.
-
-I suspect this would be part of the RDMA Connection Manager
-interface, not part of the RDMA driver code.
-
-
-> Unless
-> we can ask the linux implementation to augment some structures to
-> allow us to set and query that port or is that unreasonable because
-> it's not in the standard API.
->=20
->>=20
->>=20
->>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->>>> Cc: stable@vger.kernel.org
->>>> ---
->>>> net/sunrpc/xprtrdma/svc_rdma_transport.c |    7 ++++++-
->>>> 1 file changed, 6 insertions(+), 1 deletion(-)
->>>>=20
->>>> diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c =
-b/net/sunrpc/xprtrdma/svc_rdma_transport.c
->>>> index 027a3b0..1b3700b 100644
->>>> --- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
->>>> +++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
->>>> @@ -211,9 +211,14 @@ static void handle_connect_req(struct =
-rdma_cm_id *new_cma_id,
->>>>       /* Save client advertised inbound read limit for use later in =
-accept. */
->>>>       newxprt->sc_ord =3D param->initiator_depth;
->>>>=20
->>>> -       /* Set the local and remote addresses in the transport */
->>>>       sa =3D (struct sockaddr =
-*)&newxprt->sc_cm_id->route.addr.dst_addr;
->>>>       svc_xprt_set_remote(&newxprt->sc_xprt, sa, svc_addr_len(sa));
->>>> +       /* The remote port is arbitrary and not under the control =
-of the
->>>> +        * ULP. Set it to a fixed value so that the DRC continues =
-to work
->>>> +        * after a reconnect.
->>>> +        */
->>>> +       rpc_set_port((struct sockaddr =
-*)&newxprt->sc_xprt.xpt_remote, 0);
->>>> +
->>>>       sa =3D (struct sockaddr =
-*)&newxprt->sc_cm_id->route.addr.src_addr;
->>>>       svc_xprt_set_local(&newxprt->sc_xprt, sa, svc_addr_len(sa));
->>>>=20
->>>>=20
->>=20
->> --
->> Chuck Lever
-
---
-Chuck Lever
-
-
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index c29cbef6b53f..a07b5477d059 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -1256,10 +1256,20 @@ static struct nfs4_opendata *nfs4_opendata_alloc(struct dentry *dentry,
+ 	atomic_inc(&sp->so_count);
+ 	p->o_arg.open_flags = flags;
+ 	p->o_arg.fmode = fmode & (FMODE_READ|FMODE_WRITE);
+-	p->o_arg.umask = current_umask();
+ 	p->o_arg.claim = nfs4_map_atomic_open_claim(server, claim);
+ 	p->o_arg.share_access = nfs4_map_atomic_open_share(server,
+ 			fmode, flags);
++	if (flags & O_CREAT) {
++		p->o_arg.umask = current_umask();
++		p->o_arg.label = nfs4_label_copy(p->a_label, label);
++		if (c->sattr != NULL && c->sattr->ia_valid != 0) {
++			p->o_arg.u.attrs = &p->attrs;
++			memcpy(&p->attrs, c->sattr, sizeof(p->attrs));
++
++			memcpy(p->o_arg.u.verifier.data, c->verf,
++					sizeof(p->o_arg.u.verifier.data));
++		}
++	}
+ 	/* don't put an ACCESS op in OPEN compound if O_EXCL, because ACCESS
+ 	 * will return permission denied for all bits until close */
+ 	if (!(flags & O_EXCL)) {
+@@ -1283,7 +1293,6 @@ static struct nfs4_opendata *nfs4_opendata_alloc(struct dentry *dentry,
+ 	p->o_arg.server = server;
+ 	p->o_arg.bitmask = nfs4_bitmask(server, label);
+ 	p->o_arg.open_bitmap = &nfs4_fattr_bitmap[0];
+-	p->o_arg.label = nfs4_label_copy(p->a_label, label);
+ 	switch (p->o_arg.claim) {
+ 	case NFS4_OPEN_CLAIM_NULL:
+ 	case NFS4_OPEN_CLAIM_DELEGATE_CUR:
+@@ -1296,13 +1305,6 @@ static struct nfs4_opendata *nfs4_opendata_alloc(struct dentry *dentry,
+ 	case NFS4_OPEN_CLAIM_DELEG_PREV_FH:
+ 		p->o_arg.fh = NFS_FH(d_inode(dentry));
+ 	}
+-	if (c != NULL && c->sattr != NULL && c->sattr->ia_valid != 0) {
+-		p->o_arg.u.attrs = &p->attrs;
+-		memcpy(&p->attrs, c->sattr, sizeof(p->attrs));
+-
+-		memcpy(p->o_arg.u.verifier.data, c->verf,
+-				sizeof(p->o_arg.u.verifier.data));
+-	}
+ 	p->c_arg.fh = &p->o_res.fh;
+ 	p->c_arg.stateid = &p->o_res.stateid;
+ 	p->c_arg.seqid = p->o_arg.seqid;
+-- 
+2.20.1
 
