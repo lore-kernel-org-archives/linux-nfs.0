@@ -6,63 +6,53 @@ X-Spam-Status: No, score=-0.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id F06A7C28CC7
-	for <linux-nfs@archiver.kernel.org>; Mon, 10 Jun 2019 13:53:26 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B8CA2C064E1
+	for <linux-nfs@archiver.kernel.org>; Mon, 10 Jun 2019 14:14:54 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id CCD2520679
-	for <linux-nfs@archiver.kernel.org>; Mon, 10 Jun 2019 13:53:26 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 9BCC0207E0
+	for <linux-nfs@archiver.kernel.org>; Mon, 10 Jun 2019 14:14:54 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2390435AbfFJNx0 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 10 Jun 2019 09:53:26 -0400
-Received: from mx1.redhat.com ([209.132.183.28]:39686 "EHLO mx1.redhat.com"
+        id S2390784AbfFJOOx (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 10 Jun 2019 10:14:53 -0400
+Received: from mx1.redhat.com ([209.132.183.28]:3671 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2390306AbfFJNx0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 10 Jun 2019 09:53:26 -0400
-Received: from smtp.corp.redhat.com (int-mx05.intmail.prod.int.phx2.redhat.com [10.5.11.15])
+        id S2390716AbfFJOOx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 10 Jun 2019 10:14:53 -0400
+Received: from smtp.corp.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 38617308219E;
-        Mon, 10 Jun 2019 13:53:26 +0000 (UTC)
-Received: from madhat.boston.devel.redhat.com (ovpn-116-83.phx2.redhat.com [10.3.116.83])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id CCA6C5D6A9;
-        Mon, 10 Jun 2019 13:53:25 +0000 (UTC)
-Subject: Re: [PATCH 0/3] Incremental against [exports] rootdir patchset
-To:     Trond Myklebust <trondmy@gmail.com>
-Cc:     "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org
-References: <20190603171227.29148-1-trond.myklebust@hammerspace.com>
-From:   Steve Dickson <SteveD@RedHat.com>
-Message-ID: <418e1908-a552-faa7-5eee-7edbb8dfe251@RedHat.com>
-Date:   Mon, 10 Jun 2019 09:53:25 -0400
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101
- Thunderbird/60.7.0
+        by mx1.redhat.com (Postfix) with ESMTPS id 91864308794F;
+        Mon, 10 Jun 2019 14:14:48 +0000 (UTC)
+Received: from [10.10.66.2] (ovpn-66-2.rdu2.redhat.com [10.10.66.2])
+        by smtp.corp.redhat.com (Postfix) with ESMTPS id CD17760BF1;
+        Mon, 10 Jun 2019 14:14:46 +0000 (UTC)
+From:   "Benjamin Coddington" <bcodding@redhat.com>
+To:     "Trond Myklebust" <trondmy@hammerspace.com>
+Cc:     linux-nfs@vger.kernel.org, anna.schumaker@netapp.com
+Subject: Re: client skips revalidation if holding a delegation
+Date:   Mon, 10 Jun 2019 10:14:46 -0400
+Message-ID: <243407AC-A416-4FF2-A09B-B1362C6206D9@redhat.com>
+In-Reply-To: <7289561F-686E-4425-B0CE-F3E5800C033D@redhat.com>
+References: <6C2EF3B8-568A-41F0-B134-52996457DD7D@redhat.com>
+ <c133a2ed862bf5714210aa5a44190ddaecfa188f.camel@hammerspace.com>
+ <CFD3CE5E-5081-4A4D-B67E-41D9E7A3D5C5@redhat.com>
+ <a595b6962b2e083fef8ad2d3534e1d0964995560.camel@hammerspace.com>
+ <7289561F-686E-4425-B0CE-F3E5800C033D@redhat.com>
 MIME-Version: 1.0
-In-Reply-To: <20190603171227.29148-1-trond.myklebust@hammerspace.com>
-Content-Type: text/plain; charset=utf-8
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.15
-X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.47]); Mon, 10 Jun 2019 13:53:26 +0000 (UTC)
+Content-Type: text/plain
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.12
+X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.45]); Mon, 10 Jun 2019 14:14:53 +0000 (UTC)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
+On 4 Jun 2019, at 15:00, Benjamin Coddington wrote:
 
+> At least now I can spend some time on it and not feel aimless, thanks for
+> the closer look.
 
-On 6/3/19 1:12 PM, Trond Myklebust wrote:
-> These patches fix up a couple of bugs and issues against the [exports]
-> rootdir patchset for nfs-utils.
-> 
-> Trond Myklebust (3):
->   mountd: Fix up incorrect comparison in next_mnt()
->   mountd: Ensure nfsd_path_strip_root() uses the canonicalised path
->   mountd: Canonicalise the rootdir in exportent_mkrealpath()
-> 
->  support/export/export.c  | 12 ++++++++++--
->  support/misc/nfsd_path.c | 17 +++++++++++++----
->  utils/mountd/cache.c     |  2 +-
->  3 files changed, 24 insertions(+), 7 deletions(-)
-> 
-Committed!
+I am not finding a reliable way to fix this and retain the optimization.  I
+will send a patch to remove it.
 
-steved.
+Ben
