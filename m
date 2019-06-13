@@ -2,68 +2,132 @@ Return-Path: <SRS0=cy8Q=UM=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-6.7 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
+	URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9A6A8C31E45
-	for <linux-nfs@archiver.kernel.org>; Thu, 13 Jun 2019 15:25:18 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 66F05C468B0
+	for <linux-nfs@archiver.kernel.org>; Thu, 13 Jun 2019 15:25:22 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 7AD902082C
-	for <linux-nfs@archiver.kernel.org>; Thu, 13 Jun 2019 15:25:18 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 4AB942082C
+	for <linux-nfs@archiver.kernel.org>; Thu, 13 Jun 2019 15:25:22 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1733106AbfFMPZN (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 13 Jun 2019 11:25:13 -0400
-Received: from mx1.redhat.com ([209.132.183.28]:42634 "EHLO mx1.redhat.com"
+        id S1731584AbfFMPZV (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 13 Jun 2019 11:25:21 -0400
+Received: from mx1.redhat.com ([209.132.183.28]:38612 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1731567AbfFMMDR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 13 Jun 2019 08:03:17 -0400
+        id S1731556AbfFMMDQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 13 Jun 2019 08:03:16 -0400
 Received: from smtp.corp.redhat.com (int-mx07.intmail.prod.int.phx2.redhat.com [10.5.11.22])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 0FAE43079B9D;
-        Thu, 13 Jun 2019 12:03:17 +0000 (UTC)
-Received: from f29-node1.dwysocha.net (dhcp145-42.rdu.redhat.com [10.13.145.42])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id B03BC1001B19;
+        by mx1.redhat.com (Postfix) with ESMTPS id 31B06780EB;
         Thu, 13 Jun 2019 12:03:16 +0000 (UTC)
+Received: from f29-node1.dwysocha.net (dhcp145-42.rdu.redhat.com [10.13.145.42])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id D31A71001B21;
+        Thu, 13 Jun 2019 12:03:15 +0000 (UTC)
 From:   Dave Wysochanski <dwysocha@redhat.com>
 To:     chuck.lever@oracle.com, SteveD@RedHat.com
 Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH 3/3] mountstats: Check for RPC iostats version >= 1.1 with error counts
-Date:   Thu, 13 Jun 2019 08:03:14 -0400
-Message-Id: <20190613120314.1864-3-dwysocha@redhat.com>
-In-Reply-To: <20190613120314.1864-1-dwysocha@redhat.com>
+Subject: [PATCHv2 1/3] nfsiostat: Add error counts to output when RPC iostats version >= 1.1
+Date:   Thu, 13 Jun 2019 08:03:12 -0400
+Message-Id: <20190613120314.1864-1-dwysocha@redhat.com>
+In-Reply-To: <20190612190229.31811-1-dwysocha@redhat.com>
 References: <20190612190229.31811-1-dwysocha@redhat.com>
- <20190613120314.1864-1-dwysocha@redhat.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 X-Scanned-By: MIMEDefang 2.84 on 10.5.11.22
-X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.41]); Thu, 13 Jun 2019 12:03:17 +0000 (UTC)
+X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.27]); Thu, 13 Jun 2019 12:03:16 +0000 (UTC)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Add explicit check for statsvers instead of array based check.
+With RPC iostats 1.1 there is a new metric which counts the RPCs
+completing with errors (tk_status < 0).  Add these to the output at
+the end of the line.  This increases the length of an output line
+to 136 columns from 120, but keeps consistent format and spacing:
+
+read:              ops/s            kB/s           kB/op         retrans    avg RTT (ms)    avg exe (ms)  avg queue (ms)          errors
+                   0.000           0.106         512.316        0 (0.0%)          17.500          17.500           0.000        0 (0.0%)
+write:             ops/s            kB/s           kB/op         retrans    avg RTT (ms)    avg exe (ms)  avg queue (ms)          errors
+                   0.001           0.476         512.398        0 (0.0%)           1.667           5.778           3.889       1 (11.1%)
 
 Signed-off-by: Dave Wysochanski <dwysocha@redhat.com>
 ---
- tools/mountstats/mountstats.py | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ tools/nfs-iostat/nfs-iostat.py | 15 +++++++++++++--
+ tools/nfs-iostat/nfsiostat.man |  8 ++++++++
+ 2 files changed, 21 insertions(+), 2 deletions(-)
+ mode change 100644 => 100755 tools/nfs-iostat/nfs-iostat.py
 
-diff --git a/tools/mountstats/mountstats.py b/tools/mountstats/mountstats.py
-index 5f13bf8e..2ebbf945 100755
---- a/tools/mountstats/mountstats.py
-+++ b/tools/mountstats/mountstats.py
-@@ -476,7 +476,7 @@ class DeviceData:
-                 if retrans != 0:
-                     print('\t%d retrans (%d%%)' % (retrans, ((retrans * 100) / count)), end=' ')
-                     print('\t%d major timeouts' % stats[3], end='')
--                if len(stats) >= 10 and stats[9] != 0:
-+                if self.__rpc_data['statsvers'] >= 1.1 and stats[9] != 0:
-                     print('\t%d errors (%d%%)' % (stats[9], ((stats[9] * 100) / count)))
-                 else:
-                     print('')
+diff --git a/tools/nfs-iostat/nfs-iostat.py b/tools/nfs-iostat/nfs-iostat.py
+old mode 100644
+new mode 100755
+index dec0e861..ef840efe
+--- a/tools/nfs-iostat/nfs-iostat.py
++++ b/tools/nfs-iostat/nfs-iostat.py
+@@ -329,6 +329,8 @@ class DeviceData:
+         queued_for = float(rpc_stats[5])
+         rtt = float(rpc_stats[6])
+         exe = float(rpc_stats[7])
++        if self.__rpc_data['statsvers'] >= 1.1:
++            errs = float(rpc_stats[8])
+ 
+         # prevent floating point exceptions
+         if ops != 0:
+@@ -337,6 +339,8 @@ class DeviceData:
+             rtt_per_op = rtt / ops
+             exe_per_op = exe / ops
+             queued_for_per_op = queued_for / ops
++            if self.__rpc_data['statsvers'] >= 1.1:
++                errs_percent = (errs * 100) / ops
+         else:
+             kb_per_op = 0.0
+             retrans_percent = 0.0
+@@ -352,7 +356,10 @@ class DeviceData:
+         print(format('retrans', '>16s'), end='')
+         print(format('avg RTT (ms)', '>16s'), end='')
+         print(format('avg exe (ms)', '>16s'), end='')
+-        print(format('avg queue (ms)', '>16s'))
++        print(format('avg queue (ms)', '>16s'), end='')
++        if self.__rpc_data['statsvers'] >= 1.1:
++            print(format('errors', '>16s'), end='')
++        print()
+ 
+         print(format((ops / sample_time), '>24.3f'), end='')
+         print(format((kilobytes / sample_time), '>16.3f'), end='')
+@@ -361,7 +368,11 @@ class DeviceData:
+         print(format(retransmits, '>16'), end='')
+         print(format(rtt_per_op, '>16.3f'), end='')
+         print(format(exe_per_op, '>16.3f'), end='')
+-        print(format(queued_for_per_op, '>16.3f'))
++        print(format(queued_for_per_op, '>16.3f'), end='')
++        if self.__rpc_data['statsvers'] >= 1.1:
++            errors = '{0:>10.0f} ({1:>3.1f}%)'.format(errs, errs_percent).strip()
++            print(format(errors, '>16'), end='')
++        print()
+ 
+     def ops(self, sample_time):
+         sends = float(self.__rpc_data['rpcsends'])
+diff --git a/tools/nfs-iostat/nfsiostat.man b/tools/nfs-iostat/nfsiostat.man
+index 9ae94c5f..940c0431 100644
+--- a/tools/nfs-iostat/nfsiostat.man
++++ b/tools/nfs-iostat/nfsiostat.man
+@@ -97,6 +97,14 @@ This is the duration from the time the NFS client created the RPC request task t
+ .RE
+ .RE
+ .RE
++.RS 8
++- \fBerrors\fR
++.RS
++This is the number of operations that completed with an error status (status < 0).  This count is only available on kernels with RPC iostats version 1.1 or above.
++.RS
++.RE
++.RE
++.RE
+ .TP
+ Note that if an interval is used as argument to \fBnfsiostat\fR, then the diffrence from previous interval will be displayed, otherwise the results will be from the time that the share was mounted.
+ 
 -- 
 2.20.1
 
