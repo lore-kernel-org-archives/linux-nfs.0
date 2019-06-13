@@ -1,133 +1,105 @@
-Return-Path: <SRS0=It5l=UL=vger.kernel.org=linux-nfs-owner@kernel.org>
+Return-Path: <SRS0=cy8Q=UM=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-8.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
+	USER_AGENT_MUTT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 94F8AC31E46
-	for <linux-nfs@archiver.kernel.org>; Wed, 12 Jun 2019 19:11:41 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 00FECC31E45
+	for <linux-nfs@archiver.kernel.org>; Thu, 13 Jun 2019 14:59:44 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 6F01620B7C
-	for <linux-nfs@archiver.kernel.org>; Wed, 12 Jun 2019 19:11:41 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id CEB53207E0
+	for <linux-nfs@archiver.kernel.org>; Thu, 13 Jun 2019 14:59:43 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727188AbfFLTLl (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 12 Jun 2019 15:11:41 -0400
-Received: from mail-qt1-f196.google.com ([209.85.160.196]:34778 "EHLO
-        mail-qt1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726167AbfFLTLk (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 12 Jun 2019 15:11:40 -0400
-Received: by mail-qt1-f196.google.com with SMTP id m29so19746685qtu.1
-        for <linux-nfs@vger.kernel.org>; Wed, 12 Jun 2019 12:11:40 -0700 (PDT)
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:message-id:subject:from:to:cc:date:in-reply-to
-         :references:mime-version:content-transfer-encoding;
-        bh=zCNL4D6m3dTHA7BiGkQ5ouIyeWDrjEJa3TvbE5sI89Y=;
-        b=mP5YzLEflWiTp355ixfDwfyF5e2cLSE1K1iicIZzwqjLpSWcR3zmAplGCqZoBWhbHV
-         qgzfvufNE04iG7Ej4yuKsbPxrfAez/M9MWGVyXrJsNUJepVE/ryFrcevHZCcdt22E10e
-         +gvskkSc1auhvRyQZXewygV7iDnUpbRkAXUS6ogbAQsGe3duw0Rr3NDqtMYkTe+MQVzq
-         oxhb7C6C5NwAekVQYXRN7oguFXbFwkNlctqpVfPy9YoZfFM4woNhWc2C9GKk/4rNxxz/
-         NEZP5jZmEIeyITBcJwNPFoWoOt11SPuPu9VWtOOQ10s6Xth/eGZyNpRY+yMboerK/QBr
-         +Ijg==
-X-Gm-Message-State: APjAAAWQkQpRDRXqJZddHpcTE8Ub/tI/Odxy3m1LNnp8zDM+FdrwQd4+
-        xgOh8YjXxKRjaVjU6IgHV5Sh6bQ47r4=
-X-Google-Smtp-Source: APXvYqxhftwTjK15dy78Mm6cn3cmJt/xGoSE5HoaHYY7OUqj64G3k7Rx9BA54IW0NyigN2DQZR/Kjw==
-X-Received: by 2002:a0c:b902:: with SMTP id u2mr210866qvf.151.1560366699902;
-        Wed, 12 Jun 2019 12:11:39 -0700 (PDT)
-Received: from dhcp-12-212-173.gsslab.rdu.redhat.com (nat-pool-rdu-t.redhat.com. [66.187.233.202])
-        by smtp.gmail.com with ESMTPSA id r40sm379173qtr.57.2019.06.12.12.11.38
-        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Wed, 12 Jun 2019 12:11:38 -0700 (PDT)
-Message-ID: <829626a0e3e51cd58048f5ef02a846cae4fe5b63.camel@redhat.com>
-Subject: Re: [PATCH] NFSv4: Add lease_time and lease_expired to 'nfs4:' line
- of mountstats
-From:   Dave Wysochanski <dwysocha@redhat.com>
-To:     Trond Myklebust <trondmy@hammerspace.com>,
-        Anna Schumaker <Anna.Schumaker@netapp.com>
-Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Date:   Wed, 12 Jun 2019 15:11:37 -0400
-In-Reply-To: <230AB123-B417-4F6F-A50C-053B9B3E0C19@oracle.com>
-References: <1558127201-7481-1-git-send-email-dwysocha@redhat.com>
-         <230AB123-B417-4F6F-A50C-053B9B3E0C19@oracle.com>
-Content-Type: text/plain; charset="UTF-8"
-X-Mailer: Evolution 3.28.5 (3.28.5-2.el7) 
-Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
+        id S1732607AbfFMO7n (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 13 Jun 2019 10:59:43 -0400
+Received: from fieldses.org ([173.255.197.46]:52438 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1732605AbfFMOvu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 13 Jun 2019 10:51:50 -0400
+Received: by fieldses.org (Postfix, from userid 2815)
+        id 04208BC5; Thu, 13 Jun 2019 10:51:50 -0400 (EDT)
+Date:   Thu, 13 Jun 2019 10:51:49 -0400
+To:     Benjamin Coddington <bcodding@redhat.com>
+Cc:     trond.myklebust@hammerspace.com, anna.schumaker@netapp.com,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] NFS: Don't skip lookup when holding a delegation
+Message-ID: <20190613145149.GD2145@fieldses.org>
+References: <bcb2d38fe9c9bb15aeb9baa811aeb9a8697ea141.1560348835.git.bcodding@redhat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <bcb2d38fe9c9bb15aeb9baa811aeb9a8697ea141.1560348835.git.bcodding@redhat.com>
+User-Agent: Mutt/1.5.21 (2010-09-15)
+From:   bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Mon, 2019-05-20 at 11:10 -0400, Chuck Lever wrote:
-> > On May 17, 2019, at 5:06 PM, Dave Wysochanski <dwysocha@redhat.com>
-> > wrote:
-> > 
-> > On the NFS client there is no low-impact way to determine the nfs4
-> > lease time or whether the lease is expired, so add these to
-> > mountstats
-> > with times displayed in seconds.
-> > 
-> > If the lease is not expired, display lease_expired=0. Otherwise,
-> > display lease_expired=seconds_since_expired, similar to 'age:' line
-> > in mountstats.
-> > 
-> > Signed-off-by: Dave Wysochanski <dwysocha@redhat.com>
-> > ---
-> > fs/nfs/super.c | 11 +++++++++++
-> > 1 file changed, 11 insertions(+)
-> > 
-> > diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-> > index c27ac96..6e52f0c 100644
-> > --- a/fs/nfs/super.c
-> > +++ b/fs/nfs/super.c
-> > @@ -730,6 +730,16 @@ int nfs_show_options(struct seq_file *m,
-> > struct dentry *root)
-> > EXPORT_SYMBOL_GPL(nfs_show_options);
-> > 
-> > #if IS_ENABLED(CONFIG_NFS_V4)
-> > +static void show_lease(struct seq_file *m, struct nfs_server
-> > *server)
-> > +{
-> > +	struct nfs_client *clp = server->nfs_client;
-> > +	unsigned long expire;
-> > +
-> > +	seq_printf(m, ",lease_time=%ld", clp->cl_lease_time / HZ);
-> > +	expire = clp->cl_last_renewal + clp->cl_lease_time;
-> > +	seq_printf(m, ",lease_expired=%ld",
-> > +		   time_after(expire, jiffies) ?  0 : (jiffies -
-> > expire) / HZ);
-> > +}
-> > #ifdef CONFIG_NFS_V4_1
-> > static void show_sessions(struct seq_file *m, struct nfs_server
-> > *server)
-> > {
-> > @@ -838,6 +848,7 @@ int nfs_show_stats(struct seq_file *m, struct
-> > dentry *root)
-> > 		seq_printf(m, ",acl=0x%x", nfss->acl_bitmask);
-> > 		show_sessions(m, nfss);
-> > 		show_pnfs(m, nfss);
-> > +		show_lease(m, nfss);
-> > 	}
-> > #endif
-> > 
-> > -- 
-> > 1.8.3.1
-> > 
+On Wed, Jun 12, 2019 at 10:45:13AM -0400, Benjamin Coddington wrote:
+> If we skip lookup revalidation while holding a delegation, we might miss
+> that the file has changed directories on the server.
+
+The delegation should prevent the file disappearing from this directory,
+so if I've been following the discussion, the bug was due to overlooking
+the case where the change happened before we got the delegation.  Given
+that history it seems worth calling out that case specifically?
+
+Maybe a comment along the lines of:
+
+		/*
+		 * Note that the file can't move while we hold a
+		 * delegation.  But this dentry could have been cached
+		 * before we got a delegation.  So it's only safe to
+		 * skip revalidation when the parent directory is
+		 * unchanged:
+		 */
+
+But maybe there's a pithier way to say that.
+
+--b.
+
+> The directory's
+> change attribute should still be checked against the dentry's d_time to
+> perform a complete revalidation.
 > 
-> I didn't look closely at the patch content, but IMO this is a good
-> observability enhancement.
+> Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
+> ---
+>  fs/nfs/dir.c | 10 ++++------
+>  1 file changed, 4 insertions(+), 6 deletions(-)
 > 
-> 
-> 
-
-Thanks Chuck.  Trond or Anna do you have any concerns about this patch?
-
-I didn't bump NFS_IOSTAT_VERS as I understand that only covers the
-counts not the other lines in nfs_show_stats, correct?
-
-Thanks.
-
-
-
+> diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+> index a71d0b42d160..10cc684dc082 100644
+> --- a/fs/nfs/dir.c
+> +++ b/fs/nfs/dir.c
+> @@ -1269,12 +1269,13 @@ nfs_do_lookup_revalidate(struct inode *dir, struct dentry *dentry,
+>  		goto out_bad;
+>  	}
+>  
+> -	if (NFS_PROTO(dir)->have_delegation(inode, FMODE_READ))
+> -		return nfs_lookup_revalidate_delegated(dir, dentry, inode);
+> -
+>  	/* Force a full look up iff the parent directory has changed */
+>  	if (!(flags & (LOOKUP_EXCL | LOOKUP_REVAL)) &&
+>  	    nfs_check_verifier(dir, dentry, flags & LOOKUP_RCU)) {
+> +
+> +		if (NFS_PROTO(dir)->have_delegation(inode, FMODE_READ))
+> +			return nfs_lookup_revalidate_delegated(dir, dentry, inode);
+> +
+>  		error = nfs_lookup_verify_inode(inode, flags);
+>  		if (error) {
+>  			if (error == -ESTALE)
+> @@ -1707,9 +1708,6 @@ nfs4_do_lookup_revalidate(struct inode *dir, struct dentry *dentry,
+>  	if (inode == NULL)
+>  		goto full_reval;
+>  
+> -	if (NFS_PROTO(dir)->have_delegation(inode, FMODE_READ))
+> -		return nfs_lookup_revalidate_delegated(dir, dentry, inode);
+> -
+>  	/* NFS only supports OPEN on regular files */
+>  	if (!S_ISREG(inode->i_mode))
+>  		goto full_reval;
+> -- 
+> 2.20.1
