@@ -2,81 +2,89 @@ Return-Path: <SRS0=PSJf=US=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-0.9 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,
-	SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-0.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 09B20C31E5B
-	for <linux-nfs@archiver.kernel.org>; Wed, 19 Jun 2019 00:06:22 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 84DEDC31E49
+	for <linux-nfs@archiver.kernel.org>; Wed, 19 Jun 2019 12:38:05 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id D06D720B1F
-	for <linux-nfs@archiver.kernel.org>; Wed, 19 Jun 2019 00:06:21 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=permerror (0-bit key) header.d=prgmr.com header.i=@prgmr.com header.b="ZtVBNcPY"
+	by mail.kernel.org (Postfix) with ESMTP id 61A86206E0
+	for <linux-nfs@archiver.kernel.org>; Wed, 19 Jun 2019 12:38:05 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1725988AbfFSAGV (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 18 Jun 2019 20:06:21 -0400
-Received: from mail.prgmr.com ([71.19.149.6]:52534 "EHLO mail.prgmr.com"
+        id S1731711AbfFSMiE (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 19 Jun 2019 08:38:04 -0400
+Received: from mx1.redhat.com ([209.132.183.28]:39922 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725913AbfFSAGV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 18 Jun 2019 20:06:21 -0400
-Received: from turtle.mx (96-92-68-116-static.hfc.comcastbusiness.net [96.92.68.116])
-        (Authenticated sender: adp)
-        by mail.prgmr.com (Postfix) with ESMTPSA id 087F628C002
-        for <linux-nfs@vger.kernel.org>; Wed, 19 Jun 2019 01:03:38 -0400 (EDT)
-DKIM-Filter: OpenDKIM Filter v2.11.0 mail.prgmr.com 087F628C002
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=prgmr.com;
-        s=default; t=1560920619;
-        bh=Xjj9Zv4HD7Z7rMmQFxYm51gsQ2pNoJOwv55SviarFb0=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=ZtVBNcPYYuzduIo0gbHv8N3qz2ALCVl4ASWGWULneygVZoSbnNOL5UfcDLlwz6z4O
-         UwCY6RDpAkXGoYcf5zL6B7j1Iv27r8wtCd2d0uV9h1z2ovf9p7cEv7CMJy9zV48KIi
-         3Z4Am1Rwy+6EVIunZC1A39hsEz1i0z2LWSxTvlds=
-Received: (qmail 22267 invoked by uid 1353); 19 Jun 2019 00:07:46 -0000
-Date:   Tue, 18 Jun 2019 18:07:46 -0600
-From:   Alan Post <adp@prgmr.com>
-To:     Benjamin Coddington <bcodding@redhat.com>
+        id S1727457AbfFSMiE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 19 Jun 2019 08:38:04 -0400
+Received: from smtp.corp.redhat.com (int-mx03.intmail.prod.int.phx2.redhat.com [10.5.11.13])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id 3674A81F01;
+        Wed, 19 Jun 2019 12:38:04 +0000 (UTC)
+Received: from [10.10.66.2] (ovpn-66-2.rdu2.redhat.com [10.10.66.2])
+        by smtp.corp.redhat.com (Postfix) with ESMTPS id CD1A6183C4;
+        Wed, 19 Jun 2019 12:38:03 +0000 (UTC)
+From:   "Benjamin Coddington" <bcodding@redhat.com>
+To:     "Alan Post" <adp@prgmr.com>
 Cc:     linux-nfs <linux-nfs@vger.kernel.org>
 Subject: Re: User process NFS write hang in wait_on_commit with kworker
-Message-ID: <20190619000746.GT4158@turtle.email>
+Date:   Wed, 19 Jun 2019 08:38:02 -0400
+Message-ID: <25608EB2-87F0-4196-BEF9-8AB8FC72270B@redhat.com>
+In-Reply-To: <20190619000746.GT4158@turtle.email>
 References: <20190618000613.GR4158@turtle.email>
  <6DE07E49-D450-4BF7-BC61-0973A14CD81B@redhat.com>
+ <20190619000746.GT4158@turtle.email>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <6DE07E49-D450-4BF7-BC61-0973A14CD81B@redhat.com>
+Content-Type: text/plain
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.13
+X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.25]); Wed, 19 Jun 2019 12:38:04 +0000 (UTC)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Tue, Jun 18, 2019 at 11:29:16AM -0400, Benjamin Coddington wrote:
-> I think that your transport or NFS server is dropping the response to an
-> RPC.  The NFS client will not retransmit on an established connection.
-> 
-> What server are you using?  Any middle boxes on the network that could be
-> transparently dropping transmissions (less likely, but I have seen them)?
-> 
+On 18 Jun 2019, at 20:07, Alan Post wrote:
 
-I've found 8 separate NFS client hangs of the sort I reported here,
-and in all cases the same NFS server was involved: an Ubuntu Trusty
-system running 4.4.0.  I've been upgrading all of these NFS servers,
-haven't done this one yet--the complicity of NFS hangs I've been
-seeing have slowed me down.
+> On Tue, Jun 18, 2019 at 11:29:16AM -0400, Benjamin Coddington wrote:
+>> I think that your transport or NFS server is dropping the response to an
+>> RPC.  The NFS client will not retransmit on an established connection.
+>>
+>> What server are you using?  Any middle boxes on the network that could be
+>> transparently dropping transmissions (less likely, but I have seen them)?
+>>
+>
+> I've found 8 separate NFS client hangs of the sort I reported here,
+> and in all cases the same NFS server was involved: an Ubuntu Trusty
+> system running 4.4.0.  I've been upgrading all of these NFS servers,
+> haven't done this one yet--the complicity of NFS hangs I've been
+> seeing have slowed me down.
+>
+> Of the 8 NFS clients with a hang to this server, about half are in
+> the same computer room where packets only transit rack switches, with
+> the other half also going through a computer room router.
+>
+> I see positive dropped and overrun packet counts on the NFS server
+> interface, along with a similar magnitude of pause counts on the
+> switch port for the NFS server.  Given the occurences of this issue
+> only this rack switch and a redundant pair of top-of-rack switches in
+> the rack with the NFS server are in-common between all 8 NFS clients
+> with write hangs.
 
-Of the 8 NFS clients with a hang to this server, about half are in
-the same computer room where packets only transit rack switches, with
-the other half also going through a computer room router.
+TCP drops or overruns should not be a problem since the TCP layer will
+retransmit packets that are not acked.  The issue would be if the NFS
+server is perhaps silently dropping a response to an IO RPC.  Or, an
+intelligent middle-box that keeps its own stateful transparent TCP handling
+between client and server existed (you clearly don't have that here).
 
-I see positive dropped and overrun packet counts on the NFS server
-interface, along with a similar magnitude of pause counts on the
-switch port for the NFS server.  Given the occurences of this issue
-only this rack switch and a redundant pair of top-of-rack switches in
-the rack with the NFS server are in-common between all 8 NFS clients
-with write hangs.
+So I recall some knfsd issues dropping replies in that era of kernel
+versions when the GSS sequencing grew out of a window.  Are you using a
+sec=krb5* on these mounts, or is it all sec=sys?  Perhaps that's the problem
+you are seeing.  Again, just some guessing.
 
--A
--- 
-Alan Post | Xen VPS hosting for the technically adept
-PO Box 61688 | Sunnyvale, CA 94088-1681 | https://prgmr.com/
-email: adp@prgmr.com
+Verifying this is the problem could be done by setting up some rolling
+network captures.. but sometimes it can be hard to not have the capture
+fill up with continuing traffic from other processes.
+
+Ben
