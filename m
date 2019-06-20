@@ -2,31 +2,33 @@ Return-Path: <SRS0=L7au=UT=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.7 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-8.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
+	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0D2F5C48BE5
+	by smtp.lore.kernel.org (Postfix) with ESMTP id CAD31C48BE3
 	for <linux-nfs@archiver.kernel.org>; Thu, 20 Jun 2019 14:51:28 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id E2B0F2083B
-	for <linux-nfs@archiver.kernel.org>; Thu, 20 Jun 2019 14:51:27 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id AE9EF2083B
+	for <linux-nfs@archiver.kernel.org>; Thu, 20 Jun 2019 14:51:28 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726796AbfFTOv1 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S1726740AbfFTOv1 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Thu, 20 Jun 2019 10:51:27 -0400
-Received: from fieldses.org ([173.255.197.46]:43432 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:43458 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726654AbfFTOvV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        id S1726866AbfFTOvV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
         Thu, 20 Jun 2019 10:51:21 -0400
 Received: by fieldses.org (Postfix, from userid 2815)
-        id E37291E19; Thu, 20 Jun 2019 10:51:20 -0400 (EDT)
+        id 22B75607F; Thu, 20 Jun 2019 10:51:21 -0400 (EDT)
 From:   "J. Bruce Fields" <bfields@redhat.com>
 To:     linux-nfs@vger.kernel.org
 Cc:     "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 00/16] exposing knfsd client state to userspace
-Date:   Thu, 20 Jun 2019 10:50:59 -0400
-Message-Id: <1561042275-12723-1-git-send-email-bfields@redhat.com>
+Subject: [PATCH 08/16] nfsd: escape high characters in binary data
+Date:   Thu, 20 Jun 2019 10:51:07 -0400
+Message-Id: <1561042275-12723-9-git-send-email-bfields@redhat.com>
 X-Mailer: git-send-email 1.8.3.1
+In-Reply-To: <1561042275-12723-1-git-send-email-bfields@redhat.com>
+References: <1561042275-12723-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
@@ -34,97 +36,111 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: "J. Bruce Fields" <bfields@redhat.com>
 
-Changes since last time:
-	- added display of client implementation ID
-	- changed display of binary data to escape anything nonprintable
-	  or nonascii
-	- some minor cleanup and patch reshuffling
+I'm exposing some information about NFS clients in pseudofiles.  I
+expect to eventually have simple tools to help read those pseudofiles.
 
-I'm happy enough with at this point and hoping to merge it for 5.3.
+But it's also helpful if the raw files are human-readable to the extent
+possible.  It aids debugging and makes them usable on systems that don't
+have the latest nfs-utils.
 
-Recapping discussion from last time:
+A minor challenge there is opaque client-generated protocol objects like
+state owners and client identifiers.  Some clients generate those to
+include handy information in plain ascii.  But they may also include
+arbitrary byte sequences.
 
-The following patches expose information about NFSv4 state held by knfsd
-on behalf of NFSv4 clients.  This is especially important for opens,
-which are currently invisible to userspace on the server, unlike locks
-(/proc/locks) and local processes' opens (under /proc/<pid>/).
+I think the simplest approach is to limit to isprint(c) && isascii(c)
+and escape everything else.
 
-The approach is to add a new directory /proc/fs/nfsd/clients/ with
-subdirectories for each active NFSv4 client.  Each subdirectory has an
-"info" file with some basic information to help identify the client and
-a "states" directory that lists the open state held by that client.
+That means you can just cat the file and get something that looks OK.
+Also, I'm trying to keep these files legal YAML, which requires them to
+UTF-8, and this is a simple way to guarantee that.
 
-Currently these pseudofiles look like:
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/seq_file.c                  | 11 +++++++++++
+ include/linux/seq_file.h       |  1 +
+ include/linux/string_helpers.h |  3 +++
+ lib/string_helpers.c           | 19 +++++++++++++++++++
+ 4 files changed, 34 insertions(+)
 
-# find /proc/fs/nfsd/clients -type f|xargs tail
-==> /proc/fs/nfsd/clients/3/ctl <==
-tail: error reading '/proc/fs/nfsd/clients/3/ctl': Invalid argument
-
-==> /proc/fs/nfsd/clients/3/states <==
-- 0x01000000f58f0b5d2898a19801000000: { type: open, access: r-, deny: --, superblock: "fd:10:13649", owner: "open id:\x00\x00\x00&\x00\x00\x00\x00\x00\x00\x02x\xac\xd0 \x09" }
-- 0x01000000f58f0b5d2898a19802000000: { type: deleg, access: r, superblock: "fd:10:13649" }
-- 0x01000000f58f0b5d2898a19803000000: { type: open, access: r-, deny: --, superblock: "fd:10:13650", owner: "open id:\x00\x00\x00&\x00\x00\x00\x00\x00\x00\x02x\xac\xd0 \x09" }
-- 0x01000000f58f0b5d2898a19804000000: { type: deleg, access: r, superblock: "fd:10:13650" }
-
-==> /proc/fs/nfsd/clients/3/info <==
-clientid: 0x98a198285d0b8ff5
-address: "192.168.122.36:935"
-name: "Linux NFSv4.2 test2.fieldses.org"
-minor version: 2
-Implementation domain: "kernel.org"
-Implementation name: "Linux 5.2.0-rc1-00017-ge73cab140ec0 #2263 SMP PREEMPT Tue Jun 18 16:54:41 EDT 2019 x86_64"
-Implementation time: [0, 0]
-
-The "ctl" file is not readable; all you can do is write "expire\n" to it
-to force the server to revoke all that client's state.
-
-The "info" and "states" files are meant to be valid YAML.
-
-Possibly also todo, though I think none have to be done before merging:
-	- add some information about krb5 principals to the clients
-	  file.
-	- add information about the stateids used to represent
-	  asynchronous copies.  They're a little different from the
-	  other stateids and might end up in a separate "copies" file,
-	- this duplicates some functionality of the little-used fault
-	  injection code; could we replace it entirely?
-	- some of the bits of filesystem code could probably be shared
-	  with rpc_pipefs and libfs.
-
---b.
-
-J. Bruce Fields (16):
-  nfsd: persist nfsd filesystem across mounts
-  nfsd: rename cl_refcount
-  nfsd4: use reference count to free client
-  nfsd: add nfsd/clients directory
-  nfsd: make client/ directory names small ints
-  nfsd4: add a client info file
-  nfsd: copy client's address including port number to cl_addr
-  nfsd: escape high characters in binary data
-  nfsd: add more information to client info file
-  nfsd4: add file to display list of client's opens
-  nfsd: show lock and deleg stateids
-  nfsd4: show layout stateids
-  nfsd: create get_nfsdfs_clp helper
-  nfsd: allow forced expiration of NFSv4 clients
-  nfsd: create xdr_netobj_dup helper
-  nfsd: decode implementation id
-
- fs/nfsd/netns.h                |   6 +
- fs/nfsd/nfs4state.c            | 453 ++++++++++++++++++++++++++++++---
- fs/nfsd/nfs4xdr.c              |  21 +-
- fs/nfsd/nfsctl.c               | 221 +++++++++++++++-
- fs/nfsd/nfsd.h                 |  11 +
- fs/nfsd/state.h                |  11 +-
- fs/nfsd/xdr4.h                 |   3 +
- fs/seq_file.c                  |  11 +
- include/linux/seq_file.h       |   1 +
- include/linux/string_helpers.h |   3 +
- include/linux/sunrpc/xdr.h     |   7 +
- lib/string_helpers.c           |  19 ++
- 12 files changed, 723 insertions(+), 44 deletions(-)
-
+diff --git a/fs/seq_file.c b/fs/seq_file.c
+index abe27ec43176..04f09689cd6d 100644
+--- a/fs/seq_file.c
++++ b/fs/seq_file.c
+@@ -384,6 +384,17 @@ void seq_escape(struct seq_file *m, const char *s, const char *esc)
+ }
+ EXPORT_SYMBOL(seq_escape);
+ 
++void seq_escape_mem_ascii(struct seq_file *m, const char *src, size_t isz)
++{
++	char *buf;
++	size_t size = seq_get_buf(m, &buf);
++	int ret;
++
++	ret = string_escape_mem_ascii(src, isz, buf, size);
++	seq_commit(m, ret < size ? ret : -1);
++}
++EXPORT_SYMBOL(seq_escape_mem_ascii);
++
+ void seq_vprintf(struct seq_file *m, const char *f, va_list args)
+ {
+ 	int len;
+diff --git a/include/linux/seq_file.h b/include/linux/seq_file.h
+index a121982af0f5..5998e1f4ff06 100644
+--- a/include/linux/seq_file.h
++++ b/include/linux/seq_file.h
+@@ -127,6 +127,7 @@ void seq_put_hex_ll(struct seq_file *m, const char *delimiter,
+ 		    unsigned long long v, unsigned int width);
+ 
+ void seq_escape(struct seq_file *m, const char *s, const char *esc);
++void seq_escape_mem_ascii(struct seq_file *m, const char *src, size_t isz);
+ 
+ void seq_hex_dump(struct seq_file *m, const char *prefix_str, int prefix_type,
+ 		  int rowsize, int groupsize, const void *buf, size_t len,
+diff --git a/include/linux/string_helpers.h b/include/linux/string_helpers.h
+index d23c5030901a..c28955132234 100644
+--- a/include/linux/string_helpers.h
++++ b/include/linux/string_helpers.h
+@@ -54,6 +54,9 @@ static inline int string_unescape_any_inplace(char *buf)
+ int string_escape_mem(const char *src, size_t isz, char *dst, size_t osz,
+ 		unsigned int flags, const char *only);
+ 
++int string_escape_mem_ascii(const char *src, size_t isz, char *dst,
++					size_t osz);
++
+ static inline int string_escape_mem_any_np(const char *src, size_t isz,
+ 		char *dst, size_t osz, const char *only)
+ {
+diff --git a/lib/string_helpers.c b/lib/string_helpers.c
+index 29c490e5d478..9ca19918ca26 100644
+--- a/lib/string_helpers.c
++++ b/lib/string_helpers.c
+@@ -539,6 +539,25 @@ int string_escape_mem(const char *src, size_t isz, char *dst, size_t osz,
+ }
+ EXPORT_SYMBOL(string_escape_mem);
+ 
++int string_escape_mem_ascii(const char *src, size_t isz, char *dst,
++					size_t osz)
++{
++	char *p = dst;
++	char *end = p + osz;
++
++	while (isz--) {
++		unsigned char c = *src++;
++
++		if (!isprint(c) || !isascii(c) || c == '"' || c == '\\')
++			escape_hex(c, &p, end);
++		else
++			escape_passthrough(c, &p, end);
++	}
++
++	return p - dst;
++}
++EXPORT_SYMBOL(string_escape_mem_ascii);
++
+ /*
+  * Return an allocated string that has been escaped of special characters
+  * and double quotes, making it safe to log in quotes.
 -- 
 2.21.0
 
