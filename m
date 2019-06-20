@@ -2,33 +2,31 @@ Return-Path: <SRS0=L7au=UT=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-2.7 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5D568C48BE4
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 0D2F5C48BE5
 	for <linux-nfs@archiver.kernel.org>; Thu, 20 Jun 2019 14:51:28 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 411482083B
-	for <linux-nfs@archiver.kernel.org>; Thu, 20 Jun 2019 14:51:28 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id E2B0F2083B
+	for <linux-nfs@archiver.kernel.org>; Thu, 20 Jun 2019 14:51:27 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726654AbfFTOv1 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S1726796AbfFTOv1 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Thu, 20 Jun 2019 10:51:27 -0400
-Received: from fieldses.org ([173.255.197.46]:43436 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:43432 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726740AbfFTOvV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        id S1726654AbfFTOvV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
         Thu, 20 Jun 2019 10:51:21 -0400
 Received: by fieldses.org (Postfix, from userid 2815)
-        id 00456206B; Thu, 20 Jun 2019 10:51:20 -0400 (EDT)
+        id E37291E19; Thu, 20 Jun 2019 10:51:20 -0400 (EDT)
 From:   "J. Bruce Fields" <bfields@redhat.com>
 To:     linux-nfs@vger.kernel.org
 Cc:     "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 02/16] nfsd: rename cl_refcount
-Date:   Thu, 20 Jun 2019 10:51:01 -0400
-Message-Id: <1561042275-12723-3-git-send-email-bfields@redhat.com>
+Subject: [PATCH 00/16] exposing knfsd client state to userspace
+Date:   Thu, 20 Jun 2019 10:50:59 -0400
+Message-Id: <1561042275-12723-1-git-send-email-bfields@redhat.com>
 X-Mailer: git-send-email 1.8.3.1
-In-Reply-To: <1561042275-12723-1-git-send-email-bfields@redhat.com>
-References: <1561042275-12723-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
@@ -36,151 +34,97 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: "J. Bruce Fields" <bfields@redhat.com>
 
-Rename this to a more descriptive name: it counts the number of
-in-progress rpc's referencing this client.
+Changes since last time:
+	- added display of client implementation ID
+	- changed display of binary data to escape anything nonprintable
+	  or nonascii
+	- some minor cleanup and patch reshuffling
 
-Next I'm going to add a second refcount with a slightly different use.
+I'm happy enough with at this point and hoping to merge it for 5.3.
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4state.c | 26 +++++++++++++-------------
- fs/nfsd/state.h     |  2 +-
- 2 files changed, 14 insertions(+), 14 deletions(-)
+Recapping discussion from last time:
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 618e66078ee5..2a13b6cbb695 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -138,7 +138,7 @@ static __be32 get_client_locked(struct nfs4_client *clp)
- 
- 	if (is_client_expired(clp))
- 		return nfserr_expired;
--	atomic_inc(&clp->cl_refcount);
-+	atomic_inc(&clp->cl_rpc_users);
- 	return nfs_ok;
- }
- 
-@@ -170,7 +170,7 @@ static void put_client_renew_locked(struct nfs4_client *clp)
- 
- 	lockdep_assert_held(&nn->client_lock);
- 
--	if (!atomic_dec_and_test(&clp->cl_refcount))
-+	if (!atomic_dec_and_test(&clp->cl_rpc_users))
- 		return;
- 	if (!is_client_expired(clp))
- 		renew_client_locked(clp);
-@@ -180,7 +180,7 @@ static void put_client_renew(struct nfs4_client *clp)
- {
- 	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
- 
--	if (!atomic_dec_and_lock(&clp->cl_refcount, &nn->client_lock))
-+	if (!atomic_dec_and_lock(&clp->cl_rpc_users, &nn->client_lock))
- 		return;
- 	if (!is_client_expired(clp))
- 		renew_client_locked(clp);
-@@ -1857,7 +1857,7 @@ static struct nfs4_client *alloc_client(struct xdr_netobj name)
- 	clp->cl_name.len = name.len;
- 	INIT_LIST_HEAD(&clp->cl_sessions);
- 	idr_init(&clp->cl_stateids);
--	atomic_set(&clp->cl_refcount, 0);
-+	atomic_set(&clp->cl_rpc_users, 0);
- 	clp->cl_cb_state = NFSD4_CB_UNKNOWN;
- 	INIT_LIST_HEAD(&clp->cl_idhash);
- 	INIT_LIST_HEAD(&clp->cl_openowners);
-@@ -1936,7 +1936,7 @@ unhash_client(struct nfs4_client *clp)
- 
- static __be32 mark_client_expired_locked(struct nfs4_client *clp)
- {
--	if (atomic_read(&clp->cl_refcount))
-+	if (atomic_read(&clp->cl_rpc_users))
- 		return nfserr_jukebox;
- 	unhash_client_locked(clp);
- 	return nfs_ok;
-@@ -4092,7 +4092,7 @@ static __be32 lookup_clientid(clientid_t *clid,
- 		spin_unlock(&nn->client_lock);
- 		return nfserr_expired;
- 	}
--	atomic_inc(&found->cl_refcount);
-+	atomic_inc(&found->cl_rpc_users);
- 	spin_unlock(&nn->client_lock);
- 
- 	/* Cache the nfs4_client in cstate! */
-@@ -6584,7 +6584,7 @@ nfs4_check_open_reclaim(clientid_t *clid,
- static inline void
- put_client(struct nfs4_client *clp)
- {
--	atomic_dec(&clp->cl_refcount);
-+	atomic_dec(&clp->cl_rpc_users);
- }
- 
- static struct nfs4_client *
-@@ -6702,7 +6702,7 @@ nfsd_inject_add_lock_to_list(struct nfs4_ol_stateid *lst,
- 		return;
- 
- 	lockdep_assert_held(&nn->client_lock);
--	atomic_inc(&clp->cl_refcount);
-+	atomic_inc(&clp->cl_rpc_users);
- 	list_add(&lst->st_locks, collect);
- }
- 
-@@ -6731,7 +6731,7 @@ static u64 nfsd_foreach_client_lock(struct nfs4_client *clp, u64 max,
- 				 * Despite the fact that these functions deal
- 				 * with 64-bit integers for "count", we must
- 				 * ensure that it doesn't blow up the
--				 * clp->cl_refcount. Throw a warning if we
-+				 * clp->cl_rpc_users. Throw a warning if we
- 				 * start to approach INT_MAX here.
- 				 */
- 				WARN_ON_ONCE(count == (INT_MAX / 2));
-@@ -6855,7 +6855,7 @@ nfsd_foreach_client_openowner(struct nfs4_client *clp, u64 max,
- 		if (func) {
- 			func(oop);
- 			if (collect) {
--				atomic_inc(&clp->cl_refcount);
-+				atomic_inc(&clp->cl_rpc_users);
- 				list_add(&oop->oo_perclient, collect);
- 			}
- 		}
-@@ -6863,7 +6863,7 @@ nfsd_foreach_client_openowner(struct nfs4_client *clp, u64 max,
- 		/*
- 		 * Despite the fact that these functions deal with
- 		 * 64-bit integers for "count", we must ensure that
--		 * it doesn't blow up the clp->cl_refcount. Throw a
-+		 * it doesn't blow up the clp->cl_rpc_users. Throw a
- 		 * warning if we start to approach INT_MAX here.
- 		 */
- 		WARN_ON_ONCE(count == (INT_MAX / 2));
-@@ -6993,7 +6993,7 @@ static u64 nfsd_find_all_delegations(struct nfs4_client *clp, u64 max,
- 			if (dp->dl_time != 0)
- 				continue;
- 
--			atomic_inc(&clp->cl_refcount);
-+			atomic_inc(&clp->cl_rpc_users);
- 			WARN_ON(!unhash_delegation_locked(dp));
- 			list_add(&dp->dl_recall_lru, victims);
- 		}
-@@ -7001,7 +7001,7 @@ static u64 nfsd_find_all_delegations(struct nfs4_client *clp, u64 max,
- 		/*
- 		 * Despite the fact that these functions deal with
- 		 * 64-bit integers for "count", we must ensure that
--		 * it doesn't blow up the clp->cl_refcount. Throw a
-+		 * it doesn't blow up the clp->cl_rpc_users. Throw a
- 		 * warning if we start to approach INT_MAX here.
- 		 */
- 		WARN_ON_ONCE(count == (INT_MAX / 2));
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 0b74d371ed67..f79ad7202e82 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -347,7 +347,7 @@ struct nfs4_client {
- 	struct nfsd4_clid_slot	cl_cs_slot;	/* create_session slot */
- 	u32			cl_exchange_flags;
- 	/* number of rpc's in progress over an associated session: */
--	atomic_t		cl_refcount;
-+	atomic_t		cl_rpc_users;
- 	struct nfs4_op_map      cl_spo_must_allow;
- 
- 	/* for nfs41 callbacks */
+The following patches expose information about NFSv4 state held by knfsd
+on behalf of NFSv4 clients.  This is especially important for opens,
+which are currently invisible to userspace on the server, unlike locks
+(/proc/locks) and local processes' opens (under /proc/<pid>/).
+
+The approach is to add a new directory /proc/fs/nfsd/clients/ with
+subdirectories for each active NFSv4 client.  Each subdirectory has an
+"info" file with some basic information to help identify the client and
+a "states" directory that lists the open state held by that client.
+
+Currently these pseudofiles look like:
+
+# find /proc/fs/nfsd/clients -type f|xargs tail
+==> /proc/fs/nfsd/clients/3/ctl <==
+tail: error reading '/proc/fs/nfsd/clients/3/ctl': Invalid argument
+
+==> /proc/fs/nfsd/clients/3/states <==
+- 0x01000000f58f0b5d2898a19801000000: { type: open, access: r-, deny: --, superblock: "fd:10:13649", owner: "open id:\x00\x00\x00&\x00\x00\x00\x00\x00\x00\x02x\xac\xd0 \x09" }
+- 0x01000000f58f0b5d2898a19802000000: { type: deleg, access: r, superblock: "fd:10:13649" }
+- 0x01000000f58f0b5d2898a19803000000: { type: open, access: r-, deny: --, superblock: "fd:10:13650", owner: "open id:\x00\x00\x00&\x00\x00\x00\x00\x00\x00\x02x\xac\xd0 \x09" }
+- 0x01000000f58f0b5d2898a19804000000: { type: deleg, access: r, superblock: "fd:10:13650" }
+
+==> /proc/fs/nfsd/clients/3/info <==
+clientid: 0x98a198285d0b8ff5
+address: "192.168.122.36:935"
+name: "Linux NFSv4.2 test2.fieldses.org"
+minor version: 2
+Implementation domain: "kernel.org"
+Implementation name: "Linux 5.2.0-rc1-00017-ge73cab140ec0 #2263 SMP PREEMPT Tue Jun 18 16:54:41 EDT 2019 x86_64"
+Implementation time: [0, 0]
+
+The "ctl" file is not readable; all you can do is write "expire\n" to it
+to force the server to revoke all that client's state.
+
+The "info" and "states" files are meant to be valid YAML.
+
+Possibly also todo, though I think none have to be done before merging:
+	- add some information about krb5 principals to the clients
+	  file.
+	- add information about the stateids used to represent
+	  asynchronous copies.  They're a little different from the
+	  other stateids and might end up in a separate "copies" file,
+	- this duplicates some functionality of the little-used fault
+	  injection code; could we replace it entirely?
+	- some of the bits of filesystem code could probably be shared
+	  with rpc_pipefs and libfs.
+
+--b.
+
+J. Bruce Fields (16):
+  nfsd: persist nfsd filesystem across mounts
+  nfsd: rename cl_refcount
+  nfsd4: use reference count to free client
+  nfsd: add nfsd/clients directory
+  nfsd: make client/ directory names small ints
+  nfsd4: add a client info file
+  nfsd: copy client's address including port number to cl_addr
+  nfsd: escape high characters in binary data
+  nfsd: add more information to client info file
+  nfsd4: add file to display list of client's opens
+  nfsd: show lock and deleg stateids
+  nfsd4: show layout stateids
+  nfsd: create get_nfsdfs_clp helper
+  nfsd: allow forced expiration of NFSv4 clients
+  nfsd: create xdr_netobj_dup helper
+  nfsd: decode implementation id
+
+ fs/nfsd/netns.h                |   6 +
+ fs/nfsd/nfs4state.c            | 453 ++++++++++++++++++++++++++++++---
+ fs/nfsd/nfs4xdr.c              |  21 +-
+ fs/nfsd/nfsctl.c               | 221 +++++++++++++++-
+ fs/nfsd/nfsd.h                 |  11 +
+ fs/nfsd/state.h                |  11 +-
+ fs/nfsd/xdr4.h                 |   3 +
+ fs/seq_file.c                  |  11 +
+ include/linux/seq_file.h       |   1 +
+ include/linux/string_helpers.h |   3 +
+ include/linux/sunrpc/xdr.h     |   7 +
+ lib/string_helpers.c           |  19 ++
+ 12 files changed, 723 insertions(+), 44 deletions(-)
+
 -- 
 2.21.0
 
