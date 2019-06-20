@@ -7,24 +7,24 @@ X-Spam-Status: No, score=-8.7 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3D19BC43613
-	for <linux-nfs@archiver.kernel.org>; Thu, 20 Jun 2019 12:49:06 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D216CC48BE3
+	for <linux-nfs@archiver.kernel.org>; Thu, 20 Jun 2019 12:49:07 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 1D42620675
-	for <linux-nfs@archiver.kernel.org>; Thu, 20 Jun 2019 12:49:06 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id B1E9C20675
+	for <linux-nfs@archiver.kernel.org>; Thu, 20 Jun 2019 12:49:07 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1731876AbfFTMsz (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S1726838AbfFTMsz (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Thu, 20 Jun 2019 08:48:55 -0400
-Received: from szxga06-in.huawei.com ([45.249.212.32]:34032 "EHLO huawei.com"
+Received: from szxga06-in.huawei.com ([45.249.212.32]:34034 "EHLO huawei.com"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726931AbfFTMsx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 20 Jun 2019 08:48:53 -0400
+        id S1726757AbfFTMsy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 20 Jun 2019 08:48:54 -0400
 Received: from DGGEMS401-HUB.china.huawei.com (unknown [172.30.72.59])
-        by Forcepoint Email with ESMTP id 0CDF27CEA37C667575BA;
+        by Forcepoint Email with ESMTP id 017E69432391C7476A9E;
         Thu, 20 Jun 2019 20:48:48 +0800 (CST)
 Received: from use12-sp2.huawei.com (10.67.189.174) by
  DGGEMS401-HUB.china.huawei.com (10.3.19.201) with Microsoft SMTP Server id
- 14.3.439.0; Thu, 20 Jun 2019 20:48:39 +0800
+ 14.3.439.0; Thu, 20 Jun 2019 20:48:38 +0800
 From:   Xiaoming Ni <nixiaoming@huawei.com>
 To:     <trond.myklebust@hammerspace.com>, <anna.schumaker@netapp.com>,
         <bfields@fieldses.org>, <jlayton@kernel.org>,
@@ -39,12 +39,10 @@ CC:     <nixiaoming@huawei.com>, <dylix.dailei@huawei.com>,
         <paulmck@linux.vnet.ibm.com>, <linux-kernel@vger.kernel.org>,
         <linux-nfs@vger.kernel.org>, <netdev@vger.kernel.org>,
         <stable@kernel.org>
-Subject: [PATCH v2 3/3] kernel/notifier.c: remove blocking_notifier_chain_cond_register()
-Date:   Thu, 20 Jun 2019 20:48:34 +0800
-Message-ID: <1561034914-106990-3-git-send-email-nixiaoming@huawei.com>
+Subject: [PATCH v2 1/3] kernel/notifier.c: avoid duplicate registration
+Date:   Thu, 20 Jun 2019 20:48:32 +0800
+Message-ID: <1561034914-106990-1-git-send-email-nixiaoming@huawei.com>
 X-Mailer: git-send-email 1.8.5.6
-In-Reply-To: <1561034914-106990-1-git-send-email-nixiaoming@huawei.com>
-References: <1561034914-106990-1-git-send-email-nixiaoming@huawei.com>
 MIME-Version: 1.0
 Content-Type: text/plain
 X-Originating-IP: [10.67.189.174]
@@ -54,82 +52,55 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-blocking_notifier_chain_cond_register() does not consider
-system_booting state, which is the only difference between this
-function and blocking_notifier_cain_register(). This can be a bug
-and is a piece of duplicate code.
+Registering the same notifier to a hook repeatedly can cause the hook
+list to form a ring or lose other members of the list.
 
-Delete blocking_notifier_chain_cond_register()
+case1: An infinite loop in notifier_chain_register() can cause soft lockup
+        atomic_notifier_chain_register(&test_notifier_list, &test1);
+        atomic_notifier_chain_register(&test_notifier_list, &test1);
+        atomic_notifier_chain_register(&test_notifier_list, &test2);
+
+case2: An infinite loop in notifier_chain_register() can cause soft lockup
+        atomic_notifier_chain_register(&test_notifier_list, &test1);
+        atomic_notifier_chain_register(&test_notifier_list, &test1);
+        atomic_notifier_call_chain(&test_notifier_list, 0, NULL);
+
+case3: lose other hook test2
+        atomic_notifier_chain_register(&test_notifier_list, &test1);
+        atomic_notifier_chain_register(&test_notifier_list, &test2);
+        atomic_notifier_chain_register(&test_notifier_list, &test1);
+
+case4: Unregister returns 0, but the hook is still in the linked list,
+        and it is not really registered. If you call notifier_call_chain
+        after ko is unloaded, it will trigger oops.
+
+If the system is configured with softlockup_panic and the same
+hook is repeatedly registered on the panic_notifier_list, it
+will cause a loop panic.
+
+Add a check in notifier_chain_register() to avoid duplicate registration
 
 Signed-off-by: Xiaoming Ni <nixiaoming@huawei.com>
 ---
- include/linux/notifier.h |  4 ----
- kernel/notifier.c        | 23 -----------------------
- net/sunrpc/rpc_pipe.c    |  2 +-
- 3 files changed, 1 insertion(+), 28 deletions(-)
+ kernel/notifier.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
 
-diff --git a/include/linux/notifier.h b/include/linux/notifier.h
-index 0096a05..0189476 100644
---- a/include/linux/notifier.h
-+++ b/include/linux/notifier.h
-@@ -150,10 +150,6 @@ extern int raw_notifier_chain_register(struct raw_notifier_head *nh,
- extern int srcu_notifier_chain_register(struct srcu_notifier_head *nh,
- 		struct notifier_block *nb);
- 
--extern int blocking_notifier_chain_cond_register(
--		struct blocking_notifier_head *nh,
--		struct notifier_block *nb);
--
- extern int atomic_notifier_chain_unregister(struct atomic_notifier_head *nh,
- 		struct notifier_block *nb);
- extern int blocking_notifier_chain_unregister(struct blocking_notifier_head *nh,
 diff --git a/kernel/notifier.c b/kernel/notifier.c
-index e3d221f..63d7501 100644
+index d9f5081..30bedb8 100644
 --- a/kernel/notifier.c
 +++ b/kernel/notifier.c
-@@ -221,29 +221,6 @@ int blocking_notifier_chain_register(struct blocking_notifier_head *nh,
- EXPORT_SYMBOL_GPL(blocking_notifier_chain_register);
- 
- /**
-- *	blocking_notifier_chain_cond_register - Cond add notifier to a blocking notifier chain
-- *	@nh: Pointer to head of the blocking notifier chain
-- *	@n: New entry in notifier chain
-- *
-- *	Adds a notifier to a blocking notifier chain, only if not already
-- *	present in the chain.
-- *	Must be called in process context.
-- *
-- *	Currently always returns zero.
-- */
--int blocking_notifier_chain_cond_register(struct blocking_notifier_head *nh,
--		struct notifier_block *n)
--{
--	int ret;
--
--	down_write(&nh->rwsem);
--	ret = notifier_chain_register(&nh->head, n);
--	up_write(&nh->rwsem);
--	return ret;
--}
--EXPORT_SYMBOL_GPL(blocking_notifier_chain_cond_register);
--
--/**
-  *	blocking_notifier_chain_unregister - Remove notifier from a blocking notifier chain
-  *	@nh: Pointer to head of the blocking notifier chain
-  *	@n: Entry to remove from notifier chain
-diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-index 126d314..1287f80 100644
---- a/net/sunrpc/rpc_pipe.c
-+++ b/net/sunrpc/rpc_pipe.c
-@@ -50,7 +50,7 @@
- 
- int rpc_pipefs_notifier_register(struct notifier_block *nb)
+@@ -23,7 +23,10 @@ static int notifier_chain_register(struct notifier_block **nl,
+ 		struct notifier_block *n)
  {
--	return blocking_notifier_chain_cond_register(&rpc_pipefs_notifier_list, nb);
-+	return blocking_notifier_chain_register(&rpc_pipefs_notifier_list, nb);
- }
- EXPORT_SYMBOL_GPL(rpc_pipefs_notifier_register);
- 
+ 	while ((*nl) != NULL) {
+-		WARN_ONCE(((*nl) == n), "double register detected");
++		if (unlikely((*nl) == n)) {
++			WARN(1, "double register detected");
++			return 0;
++		}
+ 		if (n->priority > (*nl)->priority)
+ 			break;
+ 		nl = &((*nl)->next);
 -- 
 1.8.5.6
 
