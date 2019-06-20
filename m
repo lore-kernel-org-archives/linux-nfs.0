@@ -6,26 +6,26 @@ X-Spam-Status: No, score=-8.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
 	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E4056C4646C
-	for <linux-nfs@archiver.kernel.org>; Thu, 20 Jun 2019 14:51:23 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 53231C48BE3
+	for <linux-nfs@archiver.kernel.org>; Thu, 20 Jun 2019 14:51:24 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id C812F2083B
-	for <linux-nfs@archiver.kernel.org>; Thu, 20 Jun 2019 14:51:23 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 36B382083B
+	for <linux-nfs@archiver.kernel.org>; Thu, 20 Jun 2019 14:51:24 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726786AbfFTOvX (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S1731712AbfFTOvX (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Thu, 20 Jun 2019 10:51:23 -0400
-Received: from fieldses.org ([173.255.197.46]:43458 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:43460 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1731712AbfFTOvW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        id S1726921AbfFTOvW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
         Thu, 20 Jun 2019 10:51:22 -0400
 Received: by fieldses.org (Postfix, from userid 2815)
-        id 3DBC76082; Thu, 20 Jun 2019 10:51:21 -0400 (EDT)
+        id 2A18A67C4; Thu, 20 Jun 2019 10:51:21 -0400 (EDT)
 From:   "J. Bruce Fields" <bfields@redhat.com>
 To:     linux-nfs@vger.kernel.org
 Cc:     "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 15/16] nfsd: create xdr_netobj_dup helper
-Date:   Thu, 20 Jun 2019 10:51:14 -0400
-Message-Id: <1561042275-12723-16-git-send-email-bfields@redhat.com>
+Subject: [PATCH 10/16] nfsd4: add file to display list of client's opens
+Date:   Thu, 20 Jun 2019 10:51:09 -0400
+Message-Id: <1561042275-12723-11-git-send-email-bfields@redhat.com>
 X-Mailer: git-send-email 1.8.3.1
 In-Reply-To: <1561042275-12723-1-git-send-email-bfields@redhat.com>
 References: <1561042275-12723-1-git-send-email-bfields@redhat.com>
@@ -36,82 +36,188 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: "J. Bruce Fields" <bfields@redhat.com>
 
-Move some repeated code to a common helper.  No change in behavior.
+Add a nfsd/clients/#/opens file to list some information about all the
+opens held by the given client, including open modes, device numbers,
+inode numbers, and open owners.
+
+Open owners are totally opaque but seem to sometimes have some useful
+ascii strings included, so passing through printable ascii characters
+and escaping the rest seems useful while still being machine-readable.
 
 Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/nfsd/nfs4state.c        | 11 ++++-------
- include/linux/sunrpc/xdr.h |  7 +++++++
- 2 files changed, 11 insertions(+), 7 deletions(-)
+ fs/nfsd/nfs4state.c | 149 +++++++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 147 insertions(+), 2 deletions(-)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 12e370e62453..8f35e440ef14 100644
+index 430cea90a715..ad9487afd3c5 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -1857,7 +1857,7 @@ static struct nfs4_client *alloc_client(struct xdr_netobj name)
- 	clp = kmem_cache_zalloc(client_slab, GFP_KERNEL);
- 	if (clp == NULL)
- 		return NULL;
--	clp->cl_name.data = kmemdup(name.data, name.len, GFP_KERNEL);
-+	xdr_netobj_dup(&clp->cl_name, &name, GFP_KERNEL);
- 	if (clp->cl_name.data == NULL)
- 		goto err_no_name;
- 	clp->cl_ownerstr_hashtbl = kmalloc_array(OWNER_HASH_SIZE,
-@@ -1867,7 +1867,6 @@ static struct nfs4_client *alloc_client(struct xdr_netobj name)
- 		goto err_no_hashtbl;
- 	for (i = 0; i < OWNER_HASH_SIZE; i++)
- 		INIT_LIST_HEAD(&clp->cl_ownerstr_hashtbl[i]);
--	clp->cl_name.len = name.len;
- 	INIT_LIST_HEAD(&clp->cl_sessions);
- 	idr_init(&clp->cl_stateids);
- 	atomic_set(&clp->cl_rpc_users, 0);
-@@ -4000,12 +3999,11 @@ static inline void *alloc_stateowner(struct kmem_cache *slab, struct xdr_netobj
- 	if (!sop)
- 		return NULL;
+@@ -695,7 +695,8 @@ struct nfs4_stid *nfs4_alloc_stid(struct nfs4_client *cl, struct kmem_cache *sla
  
--	sop->so_owner.data = kmemdup(owner->data, owner->len, GFP_KERNEL);
-+	xdr_netobj_dup(&sop->so_owner, owner, GFP_KERNEL);
- 	if (!sop->so_owner.data) {
- 		kmem_cache_free(slab, sop);
- 		return NULL;
- 	}
--	sop->so_owner.len = owner->len;
+ 	idr_preload(GFP_KERNEL);
+ 	spin_lock(&cl->cl_lock);
+-	new_id = idr_alloc_cyclic(&cl->cl_stateids, stid, 0, 0, GFP_NOWAIT);
++	/* Reserving 0 for start of file in nfsdfs "states" file: */
++	new_id = idr_alloc_cyclic(&cl->cl_stateids, stid, 1, 0, GFP_NOWAIT);
+ 	spin_unlock(&cl->cl_lock);
+ 	idr_preload_end();
+ 	if (new_id < 0)
+@@ -2256,9 +2257,153 @@ static const struct file_operations client_info_fops = {
+ 	.release	= single_release,
+ };
  
- 	INIT_LIST_HEAD(&sop->so_stateids);
- 	sop->so_client = clp;
-@@ -6093,12 +6091,11 @@ nfs4_set_lock_denied(struct file_lock *fl, struct nfsd4_lock_denied *deny)
- 
- 	if (fl->fl_lmops == &nfsd_posix_mng_ops) {
- 		lo = (struct nfs4_lockowner *) fl->fl_owner;
--		deny->ld_owner.data = kmemdup(lo->lo_owner.so_owner.data,
--					lo->lo_owner.so_owner.len, GFP_KERNEL);
-+		xdr_netobj_dup(&deny->ld_owner, &lo->lo_owner.so_owner,
-+						GFP_KERNEL);
- 		if (!deny->ld_owner.data)
- 			/* We just don't care that much */
- 			goto nevermind;
--		deny->ld_owner.len = lo->lo_owner.so_owner.len;
- 		deny->ld_clientid = lo->lo_owner.so_client->cl_clientid;
- 	} else {
- nevermind:
-diff --git a/include/linux/sunrpc/xdr.h b/include/linux/sunrpc/xdr.h
-index 9ee3970ba59c..8a87d8bcb197 100644
---- a/include/linux/sunrpc/xdr.h
-+++ b/include/linux/sunrpc/xdr.h
-@@ -164,6 +164,13 @@ xdr_decode_opaque_fixed(__be32 *p, void *ptr, unsigned int len)
- 	return p + XDR_QUADLEN(len);
- }
- 
-+static inline void xdr_netobj_dup(struct xdr_netobj *dst,
-+				  struct xdr_netobj *src, gfp_t gfp_mask)
++static void *states_start(struct seq_file *s, loff_t *pos)
++	__acquires(&clp->cl_lock)
 +{
-+	dst->data = kmemdup(src->data, src->len, gfp_mask);
-+	dst->len = src->len;
++	struct nfs4_client *clp = s->private;
++	unsigned long id = *pos;
++	void *ret;
++
++	spin_lock(&clp->cl_lock);
++	ret = idr_get_next_ul(&clp->cl_stateids, &id);
++	*pos = id;
++	return ret;
 +}
 +
- /*
-  * Adjust kvec to reflect end of xdr'ed data (RPC client XDR)
-  */
++static void *states_next(struct seq_file *s, void *v, loff_t *pos)
++{
++	struct nfs4_client *clp = s->private;
++	unsigned long id = *pos;
++	void *ret;
++
++	id = *pos;
++	id++;
++	ret = idr_get_next_ul(&clp->cl_stateids, &id);
++	*pos = id;
++	return ret;
++}
++
++static void states_stop(struct seq_file *s, void *v)
++	__releases(&clp->cl_lock)
++{
++	struct nfs4_client *clp = s->private;
++
++	spin_unlock(&clp->cl_lock);
++}
++
++static void nfs4_show_superblock(struct seq_file *s, struct file *f)
++{
++	struct inode *inode = file_inode(f);
++
++	seq_printf(s, "superblock: \"%02x:%02x:%ld\"",
++					MAJOR(inode->i_sb->s_dev),
++					 MINOR(inode->i_sb->s_dev),
++					 inode->i_ino);
++}
++
++static void nfs4_show_owner(struct seq_file *s, struct nfs4_stateowner *oo)
++{
++	seq_printf(s, "owner: ");
++	seq_quote_mem(s, oo->so_owner.data, oo->so_owner.len);
++}
++
++static int nfs4_show_open(struct seq_file *s, struct nfs4_stid *st)
++{
++	struct nfs4_ol_stateid *ols;
++	struct nfs4_file *nf;
++	struct file *file;
++	struct nfs4_stateowner *oo;
++	unsigned int access, deny;
++
++	if (st->sc_type != NFS4_OPEN_STID && st->sc_type != NFS4_LOCK_STID)
++		return 0; /* XXX: or SEQ_SKIP? */
++	ols = openlockstateid(st);
++	oo = ols->st_stateowner;
++	nf = st->sc_file;
++	file = find_any_file(nf);
++
++	seq_printf(s, "- 0x%16phN: { type: open, ", &st->sc_stateid);
++
++	access = bmap_to_share_mode(ols->st_access_bmap);
++	deny   = bmap_to_share_mode(ols->st_deny_bmap);
++
++	seq_printf(s, "access: \%s\%s, ",
++		access & NFS4_SHARE_ACCESS_READ ? "r" : "-",
++		access & NFS4_SHARE_ACCESS_WRITE ? "w" : "-");
++	seq_printf(s, "deny: \%s\%s, ",
++		deny & NFS4_SHARE_ACCESS_READ ? "r" : "-",
++		deny & NFS4_SHARE_ACCESS_WRITE ? "w" : "-");
++
++	nfs4_show_superblock(s, file);
++	seq_printf(s, ", ");
++	nfs4_show_owner(s, oo);
++	seq_printf(s, " }\n");
++
++	fput(file);
++
++	return 0;
++}
++
++static int states_show(struct seq_file *s, void *v)
++{
++	struct nfs4_stid *st = v;
++
++	switch (st->sc_type) {
++	case NFS4_OPEN_STID:
++		return nfs4_show_open(s, st);
++	default:
++		return 0; /* XXX: or SEQ_SKIP? */
++	}
++}
++
++static struct seq_operations states_seq_ops = {
++	.start = states_start,
++	.next = states_next,
++	.stop = states_stop,
++	.show = states_show
++};
++
++static int client_states_open(struct inode *inode, struct file *file)
++{
++	struct nfsdfs_client *nc;
++	struct seq_file *s;
++	struct nfs4_client *clp;
++	int ret;
++
++	nc = get_nfsdfs_client(inode);
++	if (!nc)
++		return -ENXIO;
++	clp = container_of(nc, struct nfs4_client, cl_nfsdfs);
++
++	ret = seq_open(file, &states_seq_ops);
++	if (ret)
++		return ret;
++	s = file->private_data;
++	s->private = clp;
++	return 0;
++}
++
++static int client_opens_release(struct inode *inode, struct file *file)
++{
++	struct seq_file *m = file->private_data;
++	struct nfs4_client *clp = m->private;
++
++	/* XXX: alternatively, we could get/drop in seq start/stop */
++	drop_client(clp);
++	return 0;
++}
++
++static const struct file_operations client_states_fops = {
++	.open		= client_states_open,
++	.read		= seq_read,
++	.llseek		= seq_lseek,
++	.release	= client_opens_release,
++};
++
+ static const struct tree_descr client_files[] = {
+ 	[0] = {"info", &client_info_fops, S_IRUSR},
+-	[1] = {""},
++	[1] = {"states", &client_states_fops, S_IRUSR},
++	[3] = {""},
+ };
+ 
+ static struct nfs4_client *create_client(struct xdr_netobj name,
 -- 
 2.21.0
 
