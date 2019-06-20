@@ -2,97 +2,104 @@ Return-Path: <SRS0=L7au=UT=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-8.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
+	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C2FE0C43613
-	for <linux-nfs@archiver.kernel.org>; Thu, 20 Jun 2019 14:49:51 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 29CF7C43613
+	for <linux-nfs@archiver.kernel.org>; Thu, 20 Jun 2019 14:51:22 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 9CCB82083B
-	for <linux-nfs@archiver.kernel.org>; Thu, 20 Jun 2019 14:49:51 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="N4HO22bm"
+	by mail.kernel.org (Postfix) with ESMTP id F21672083B
+	for <linux-nfs@archiver.kernel.org>; Thu, 20 Jun 2019 14:51:21 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726649AbfFTOtv (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 20 Jun 2019 10:49:51 -0400
-Received: from mail-io1-f67.google.com ([209.85.166.67]:34105 "EHLO
-        mail-io1-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726551AbfFTOtv (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 20 Jun 2019 10:49:51 -0400
-Received: by mail-io1-f67.google.com with SMTP id k8so163122iot.1
-        for <linux-nfs@vger.kernel.org>; Thu, 20 Jun 2019 07:49:50 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=B6dH/sM7Wc8glPTF6o57Mt2MUGYTntayEUbhoPZsDhU=;
-        b=N4HO22bmL0GQReDjVIZ2LpSg/fufe22ecLRMbO+dGeuAveKKHIxXikR47mgmc9As7r
-         AmWsjTIRMJw2NH+GjkfxmeOEjL6GXU+ocy30dPRu/nuTfEjN48D7CX9mMGrH8l6vJEPb
-         bMepQMSirdraLEBM22t4sg4b6IrPrNUNu60qaYQo2PyqI7lfnwrND/UNTWRIN0cpUMKL
-         Ri/TP3sYKrrI9Nav8yaxXJjA8pGT+ahTLAp9bFw+NOt9Yw6+gIRnJaY7ouoO1sWXLCQh
-         AweCuzT9FxOSfaFTSppHIpyTjmxMoMgSsQz71f5RDfAO8kDgyX61B0HnbGsBNGZmBSAV
-         IbKw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=B6dH/sM7Wc8glPTF6o57Mt2MUGYTntayEUbhoPZsDhU=;
-        b=reBcMxsrKGd5L61wQvXSaAOqJuFh00ue3kT/VUQjmkC85arWPGEUT/ICfK8BDVG/T8
-         9eV7YZqx2WsjrXmCJE9hbxKWW9A4nYXNIT0OqPdMFn6MVlkw31174xZ8hRFTLvRlKZrL
-         kB/l0c4WlgnbLPk0k27Y8qsavhD7VlVVtXgT8KL+b0XHs47l8b2kxiSwI6UWWoSdT22I
-         w9np2lE01unmLDbghRk2hfsG3rz1SOFehQYn2HSQq5VeoI7VEwC4rk6wu5wAq5XWfHQK
-         iFjGl8vQmwxevdvK3bu40KU2YIkYHE5+wpW+LziarIvOeeT/CKw/Jn8d3+7bUGy1LTG9
-         LEiQ==
-X-Gm-Message-State: APjAAAUVrDfEc6rTFeL9xrqi018aeY48/ygQqVMcKI1A9Q+WeZQ/k4Mt
-        bExTRJAP0gOUNGuQBR0J+w==
-X-Google-Smtp-Source: APXvYqym/oQplmVkLADTKcOJaYZaKQ0azwnlpSZ1HNjC97zdTb2GFN05Amq3gV9Zghm4Q2/uooKbaA==
-X-Received: by 2002:a6b:7d49:: with SMTP id d9mr30290572ioq.50.1561042189834;
-        Thu, 20 Jun 2019 07:49:49 -0700 (PDT)
-Received: from localhost.localdomain (c-68-40-189-247.hsd1.mi.comcast.net. [68.40.189.247])
-        by smtp.gmail.com with ESMTPSA id b8sm39416ioj.16.2019.06.20.07.49.48
-        (version=TLS1_3 cipher=AEAD-AES256-GCM-SHA384 bits=256/256);
-        Thu, 20 Jun 2019 07:49:49 -0700 (PDT)
-From:   Trond Myklebust <trondmy@gmail.com>
-X-Google-Original-From: Trond Myklebust <trond.myklebust@hammerspace.com>
-To:     Anna Schumaker <anna.schumaker@netapp.com>
-Cc:     Ido Schimmel <idosch@idosch.org>, linux-nfs@vger.kernel.org
-Subject: [PATCH] SUNRPC: Fix a credential refcount leak
-Date:   Thu, 20 Jun 2019 10:47:40 -0400
-Message-Id: <20190620144740.4169-1-trond.myklebust@hammerspace.com>
-X-Mailer: git-send-email 2.21.0
-MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+        id S1726760AbfFTOvV (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 20 Jun 2019 10:51:21 -0400
+Received: from fieldses.org ([173.255.197.46]:43434 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726661AbfFTOvV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 20 Jun 2019 10:51:21 -0400
+Received: by fieldses.org (Postfix, from userid 2815)
+        id EAF371E3B; Thu, 20 Jun 2019 10:51:20 -0400 (EDT)
+From:   "J. Bruce Fields" <bfields@redhat.com>
+To:     linux-nfs@vger.kernel.org
+Cc:     "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 01/16] nfsd: persist nfsd filesystem across mounts
+Date:   Thu, 20 Jun 2019 10:51:00 -0400
+Message-Id: <1561042275-12723-2-git-send-email-bfields@redhat.com>
+X-Mailer: git-send-email 1.8.3.1
+In-Reply-To: <1561042275-12723-1-git-send-email-bfields@redhat.com>
+References: <1561042275-12723-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-All callers of __rpc_clone_client() pass in a value for args->cred,
-meaning that the credential gets assigned and referenced in
-the call to rpc_new_client().
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Reported-by: Ido Schimmel <idosch@idosch.org>
-Fixes: 79caa5fad47c ("SUNRPC: Cache cred of process creating the rpc_client")
-Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
+Keep around one internal mount of the nfsd filesystem so that we can add
+stuff to it when clients come and go, regardless of whether anyone has
+it mounted.
+
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- net/sunrpc/clnt.c | 1 -
- 1 file changed, 1 deletion(-)
+ fs/nfsd/netns.h  |  3 +++
+ fs/nfsd/nfsctl.c | 13 +++++++++++++
+ 2 files changed, 16 insertions(+)
 
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index 627a87a71f8b..010e59cf2ae0 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -634,7 +634,6 @@ static struct rpc_clnt *__rpc_clone_client(struct rpc_create_args *args,
- 	new->cl_discrtry = clnt->cl_discrtry;
- 	new->cl_chatty = clnt->cl_chatty;
- 	new->cl_principal = clnt->cl_principal;
--	new->cl_cred = get_cred(clnt->cl_cred);
- 	return new;
+diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
+index 789abc4dd1d2..e7890e87d30b 100644
+--- a/fs/nfsd/netns.h
++++ b/fs/nfsd/netns.h
+@@ -55,6 +55,9 @@ struct nfsd_net {
+ 	bool grace_ended;
+ 	time_t boot_time;
  
- out_err:
++	/* internal mount of the "nfsd" pseudofilesystem: */
++	struct vfsmount *nfsd_mnt;
++
+ 	/*
+ 	 * reclaim_str_hashtbl[] holds known client info from previous reset/reboot
+ 	 * used in reboot/reset lease grace period processing
+diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+index 90972e1fd785..ab1fb81b7f5e 100644
+--- a/fs/nfsd/nfsctl.c
++++ b/fs/nfsd/nfsctl.c
+@@ -1231,6 +1231,7 @@ unsigned int nfsd_net_id;
+ static __net_init int nfsd_init_net(struct net *net)
+ {
+ 	int retval;
++	struct vfsmount *mnt;
+ 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
+ 
+ 	retval = nfsd_export_init(net);
+@@ -1251,8 +1252,17 @@ static __net_init int nfsd_init_net(struct net *net)
+ 
+ 	atomic_set(&nn->ntf_refcnt, 0);
+ 	init_waitqueue_head(&nn->ntf_wq);
++
++	mnt =  vfs_kern_mount(&nfsd_fs_type, SB_KERNMOUNT, "nfsd", NULL);
++	if (IS_ERR(mnt)) {
++		retval = PTR_ERR(mnt);
++		goto out_mount_err;
++	}
++	nn->nfsd_mnt = mnt;
+ 	return 0;
+ 
++out_mount_err:
++	nfsd_idmap_shutdown(net);
+ out_idmap_error:
+ 	nfsd_export_shutdown(net);
+ out_export_error:
+@@ -1261,6 +1271,9 @@ static __net_init int nfsd_init_net(struct net *net)
+ 
+ static __net_exit void nfsd_exit_net(struct net *net)
+ {
++	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
++
++	mntput(nn->nfsd_mnt);
+ 	nfsd_idmap_shutdown(net);
+ 	nfsd_export_shutdown(net);
+ 	nfsd_netns_free_versions(net_generic(net, nfsd_net_id));
 -- 
 2.21.0
 
