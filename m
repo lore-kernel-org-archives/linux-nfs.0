@@ -6,26 +6,26 @@ X-Spam-Status: No, score=-8.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
 	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7FE5BC43613
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A1EE5C48BE6
 	for <linux-nfs@archiver.kernel.org>; Thu, 20 Jun 2019 14:51:25 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 630712083B
+	by mail.kernel.org (Postfix) with ESMTP id 85DA72083B
 	for <linux-nfs@archiver.kernel.org>; Thu, 20 Jun 2019 14:51:25 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726921AbfFTOvY (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 20 Jun 2019 10:51:24 -0400
-Received: from fieldses.org ([173.255.197.46]:43452 "EHLO fieldses.org"
+        id S1727144AbfFTOvW (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 20 Jun 2019 10:51:22 -0400
+Received: from fieldses.org ([173.255.197.46]:43440 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727552AbfFTOvX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 20 Jun 2019 10:51:23 -0400
+        id S1726757AbfFTOvV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 20 Jun 2019 10:51:21 -0400
 Received: by fieldses.org (Postfix, from userid 2815)
-        id 420D66805; Thu, 20 Jun 2019 10:51:21 -0400 (EDT)
+        id 0FBEF59A7; Thu, 20 Jun 2019 10:51:21 -0400 (EDT)
 From:   "J. Bruce Fields" <bfields@redhat.com>
 To:     linux-nfs@vger.kernel.org
 Cc:     "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 16/16] nfsd: decode implementation id
-Date:   Thu, 20 Jun 2019 10:51:15 -0400
-Message-Id: <1561042275-12723-17-git-send-email-bfields@redhat.com>
+Subject: [PATCH 04/16] nfsd: add nfsd/clients directory
+Date:   Thu, 20 Jun 2019 10:51:03 -0400
+Message-Id: <1561042275-12723-5-git-send-email-bfields@redhat.com>
 X-Mailer: git-send-email 1.8.3.1
 In-Reply-To: <1561042275-12723-1-git-send-email-bfields@redhat.com>
 References: <1561042275-12723-1-git-send-email-bfields@redhat.com>
@@ -36,156 +36,306 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: "J. Bruce Fields" <bfields@redhat.com>
 
-Decode the implementation ID and display in nfsd/clients/#/info.  It may
-be help identify the client.  It won't be used otherwise.
-
-(When this went into the protocol, I thought the implementation ID would
-be a slippery slope towards implementation-specific workarounds as with
-the http user-agent.  But I guess I was wrong, the risk seems pretty low
-now.)
+I plan to expose some information about nfsv4 clients here.
 
 Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/nfsd/nfs4state.c | 30 ++++++++++++++++++++++++++++++
- fs/nfsd/nfs4xdr.c   | 21 +++++++++------------
- fs/nfsd/state.h     |  4 ++++
- fs/nfsd/xdr4.h      |  3 +++
- 4 files changed, 46 insertions(+), 12 deletions(-)
+ fs/nfsd/netns.h     |   2 +
+ fs/nfsd/nfs4state.c |  23 ++++++----
+ fs/nfsd/nfsctl.c    | 103 +++++++++++++++++++++++++++++++++++++++++++-
+ fs/nfsd/nfsd.h      |   9 ++++
+ fs/nfsd/state.h     |   6 ++-
+ 5 files changed, 133 insertions(+), 10 deletions(-)
 
+diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
+index e7890e87d30b..cee843e8e440 100644
+--- a/fs/nfsd/netns.h
++++ b/fs/nfsd/netns.h
+@@ -58,6 +58,8 @@ struct nfsd_net {
+ 	/* internal mount of the "nfsd" pseudofilesystem: */
+ 	struct vfsmount *nfsd_mnt;
+ 
++	struct dentry *nfsd_client_dir;
++
+ 	/*
+ 	 * reclaim_str_hashtbl[] holds known client info from previous reset/reboot
+ 	 * used in reboot/reset lease grace period processing
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 8f35e440ef14..4fcbb5d809a6 100644
+index d2ea41add566..cf081a8d6b6b 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -1899,6 +1899,8 @@ static void __free_client(struct kref *k)
+@@ -1881,20 +1881,19 @@ static struct nfs4_client *alloc_client(struct xdr_netobj name)
+ 
+ static void __free_client(struct kref *k)
+ {
+-	struct nfs4_client *clp = container_of(k, struct nfs4_client, cl_ref);
++	struct nfsdfs_client *c = container_of(k, struct nfsdfs_client, cl_ref);
++	struct nfs4_client *clp = container_of(c, struct nfs4_client, cl_nfsdfs);
+ 
  	free_svc_cred(&clp->cl_cred);
  	kfree(clp->cl_ownerstr_hashtbl);
  	kfree(clp->cl_name.data);
-+	kfree(clp->cl_nii_domain.data);
-+	kfree(clp->cl_nii_name.data);
  	idr_destroy(&clp->cl_stateids);
+-	if (clp->cl_nfsd_dentry)
+-		nfsd_client_rmdir(clp->cl_nfsd_dentry);
  	kmem_cache_free(client_slab, clp);
  }
-@@ -2261,6 +2263,15 @@ static int client_info_show(struct seq_file *m, void *v)
- 	seq_printf(m, "name: ");
- 	seq_quote_mem(m, clp->cl_name.data, clp->cl_name.len);
- 	seq_printf(m, "\nminor version: %d\n", clp->cl_minorversion);
-+	if (clp->cl_nii_domain.data) {
-+		seq_printf(m, "Implementation domain: ");
-+		seq_quote_mem(m, clp->cl_nii_domain.data,
-+					clp->cl_nii_domain.len);
-+		seq_printf(m, "\nImplementation name: ");
-+		seq_quote_mem(m, clp->cl_nii_name.data, clp->cl_nii_name.len);
-+		seq_printf(m, "\nImplementation time: [%ld, %ld]\n",
-+			clp->cl_nii_time.tv_sec, clp->cl_nii_time.tv_nsec);
-+	}
- 	drop_client(clp);
  
- 	return 0;
-@@ -2901,6 +2912,22 @@ static bool client_has_state(struct nfs4_client *clp)
- 		|| !list_empty(&clp->async_copies);
+ void drop_client(struct nfs4_client *clp)
+ {
+-	kref_put(&clp->cl_ref, __free_client);
++	kref_put(&clp->cl_nfsdfs.cl_ref, __free_client);
  }
  
-+static __be32 copy_impl_id(struct nfs4_client *clp,
-+				struct nfsd4_exchange_id *exid)
+ static void
+@@ -1909,6 +1908,8 @@ free_client(struct nfs4_client *clp)
+ 		free_session(ses);
+ 	}
+ 	rpc_destroy_wait_queue(&clp->cl_cb_waitq);
++	if (clp->cl_nfsd_dentry)
++		nfsd_client_rmdir(clp->cl_nfsd_dentry);
+ 	drop_client(clp);
+ }
+ 
+@@ -2220,6 +2221,7 @@ static struct nfs4_client *create_client(struct xdr_netobj name,
+ 	struct sockaddr *sa = svc_addr(rqstp);
+ 	int ret;
+ 	struct net *net = SVC_NET(rqstp);
++	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
+ 
+ 	clp = alloc_client(name);
+ 	if (clp == NULL)
+@@ -2230,8 +2232,8 @@ static struct nfs4_client *create_client(struct xdr_netobj name,
+ 		free_client(clp);
+ 		return NULL;
+ 	}
+-
+-	kref_init(&clp->cl_ref);
++	gen_clid(clp, nn);
++	kref_init(&clp->cl_nfsdfs.cl_ref);
+ 	nfsd4_init_cb(&clp->cl_cb_null, clp, NULL, NFSPROC4_CLNT_CB_NULL);
+ 	clp->cl_time = get_seconds();
+ 	clear_bit(0, &clp->cl_cb_slot_busy);
+@@ -2239,6 +2241,12 @@ static struct nfs4_client *create_client(struct xdr_netobj name,
+ 	rpc_copy_addr((struct sockaddr *) &clp->cl_addr, sa);
+ 	clp->cl_cb_session = NULL;
+ 	clp->net = net;
++	clp->cl_nfsd_dentry = nfsd_client_mkdir(nn, &clp->cl_nfsdfs,
++						clp->cl_clientid.cl_id);
++	if (!clp->cl_nfsd_dentry) {
++		free_client(clp);
++		return NULL;
++	}
+ 	return clp;
+ }
+ 
+@@ -2683,7 +2691,6 @@ nfsd4_exchange_id(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	new->cl_spo_must_allow.u.words[0] = exid->spo_must_allow[0];
+ 	new->cl_spo_must_allow.u.words[1] = exid->spo_must_allow[1];
+ 
+-	gen_clid(new, nn);
+ 	add_to_unconfirmed(new);
+ 	swap(new, conf);
+ out_copy:
+@@ -3427,7 +3434,7 @@ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		copy_clid(new, conf);
+ 		gen_confirm(new, nn);
+ 	} else /* case 4 (new client) or cases 2, 3 (client reboot): */
+-		gen_clid(new, nn);
++		;
+ 	new->cl_minorversion = 0;
+ 	gen_callback(new, setclid, rqstp);
+ 	add_to_unconfirmed(new);
+diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+index ab1fb81b7f5e..638a25648dcb 100644
+--- a/fs/nfsd/nfsctl.c
++++ b/fs/nfsd/nfsctl.c
+@@ -15,6 +15,7 @@
+ #include <linux/sunrpc/gss_krb5_enctypes.h>
+ #include <linux/sunrpc/rpc_pipe_fs.h>
+ #include <linux/module.h>
++#include <linux/fsnotify.h>
+ 
+ #include "idmap.h"
+ #include "nfsd.h"
+@@ -52,6 +53,7 @@ enum {
+ 	NFSD_RecoveryDir,
+ 	NFSD_V4EndGrace,
+ #endif
++	NFSD_MaxReserved
+ };
+ 
+ /*
+@@ -1146,8 +1148,99 @@ static ssize_t write_v4_end_grace(struct file *file, char *buf, size_t size)
+  *	populating the filesystem.
+  */
+ 
++/* Basically copying rpc_get_inode. */
++static struct inode *nfsd_get_inode(struct super_block *sb, umode_t mode)
 +{
-+	if (!exid->nii_domain.data)
-+		return 0;
-+	xdr_netobj_dup(&clp->cl_nii_domain, &exid->nii_domain, GFP_KERNEL);
-+	if (!clp->cl_nii_domain.data)
-+		return nfserr_jukebox;
-+	xdr_netobj_dup(&clp->cl_nii_name, &exid->nii_name, GFP_KERNEL);
-+	if (!clp->cl_nii_name.data)
-+		return nfserr_jukebox;
-+	clp->cl_nii_time.tv_sec = exid->nii_time.tv_sec;
-+	clp->cl_nii_time.tv_nsec = exid->nii_time.tv_nsec;
++	struct inode *inode = new_inode(sb);
++	if (!inode)
++		return NULL;
++	/* Following advice from simple_fill_super documentation: */
++	inode->i_ino = iunique(sb, NFSD_MaxReserved);
++	inode->i_mode = mode;
++	inode->i_atime = inode->i_mtime = inode->i_ctime = current_time(inode);
++	switch (mode & S_IFMT) {
++	case S_IFDIR:
++		inode->i_fop = &simple_dir_operations;
++		inode->i_op = &simple_dir_inode_operations;
++		inc_nlink(inode);
++	default:
++		break;
++	}
++	return inode;
++}
++
++static int __nfsd_mkdir(struct inode *dir, struct dentry *dentry, umode_t mode)
++{
++	struct inode *inode;
++
++	inode = nfsd_get_inode(dir->i_sb, mode);
++	if (!inode)
++		return -ENOMEM;
++	d_add(dentry, inode);
++	inc_nlink(dir);
++	fsnotify_mkdir(dir, dentry);
 +	return 0;
 +}
 +
- __be32
- nfsd4_exchange_id(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		union nfsd4_op_u *u)
-@@ -2927,6 +2954,9 @@ nfsd4_exchange_id(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	new = create_client(exid->clname, rqstp, &verf);
- 	if (new == NULL)
- 		return nfserr_jukebox;
-+	status = copy_impl_id(new, exid);
-+	if (status)
-+		goto out_nolock;
- 
- 	switch (exid->spa_how) {
- 	case SP4_MACH_CRED:
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 52c4f6daa649..3bb147822205 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -1398,7 +1398,6 @@ nfsd4_decode_exchange_id(struct nfsd4_compoundargs *argp,
- 		goto xdr_error;
- 	}
- 
--	/* Ignore Implementation ID */
- 	READ_BUF(4);    /* nfs_impl_id4 array length */
- 	dummy = be32_to_cpup(p++);
- 
-@@ -1406,21 +1405,19 @@ nfsd4_decode_exchange_id(struct nfsd4_compoundargs *argp,
- 		goto xdr_error;
- 
- 	if (dummy == 1) {
--		/* nii_domain */
--		READ_BUF(4);
--		dummy = be32_to_cpup(p++);
--		READ_BUF(dummy);
--		p += XDR_QUADLEN(dummy);
-+		status = nfsd4_decode_opaque(argp, &exid->nii_domain);
-+		if (status)
-+			goto xdr_error;
- 
- 		/* nii_name */
--		READ_BUF(4);
--		dummy = be32_to_cpup(p++);
--		READ_BUF(dummy);
--		p += XDR_QUADLEN(dummy);
-+		status = nfsd4_decode_opaque(argp, &exid->nii_name);
-+		if (status)
-+			goto xdr_error;
- 
- 		/* nii_date */
--		READ_BUF(12);
--		p += 3;
-+		status = nfsd4_decode_time(argp, &exid->nii_time);
-+		if (status)
-+			goto xdr_error;
- 	}
- 	DECODE_TAIL;
++static struct dentry *nfsd_mkdir(struct dentry *parent, struct nfsdfs_client *ncl, char *name)
++{
++	struct inode *dir = parent->d_inode;
++	struct dentry *dentry;
++	int ret = -ENOMEM;
++
++	inode_lock(dir);
++	dentry = d_alloc_name(parent, name);
++	if (!dentry)
++		goto out_err;
++	ret = __nfsd_mkdir(d_inode(parent), dentry, S_IFDIR | 0600);
++	if (ret)
++		goto out_err;
++	if (ncl) {
++		d_inode(dentry)->i_private = ncl;
++		kref_get(&ncl->cl_ref);
++	}
++out:
++	inode_unlock(dir);
++	return dentry;
++out_err:
++	dentry = ERR_PTR(ret);
++	goto out;
++}
++
++/* on success, returns positive number unique to that client. */
++struct dentry *nfsd_client_mkdir(struct nfsd_net *nn, struct nfsdfs_client *ncl, u32 id)
++{
++	char name[11];
++
++	sprintf(name, "%d", id++);
++
++	return nfsd_mkdir(nn->nfsd_client_dir, ncl, name);
++}
++
++/* Taken from __rpc_rmdir: */
++void nfsd_client_rmdir(struct dentry *dentry)
++{
++	struct inode *dir = d_inode(dentry->d_parent);
++	struct inode *inode = d_inode(dentry);
++	struct nfsdfs_client *ncl = inode->i_private;
++	int ret;
++
++	inode->i_private = NULL;
++	synchronize_rcu();
++	kref_put(&ncl->cl_ref, ncl->cl_release);
++	dget(dentry);
++	ret = simple_rmdir(dir, dentry);
++	WARN_ON_ONCE(ret);
++	d_delete(dentry);
++}
++
+ static int nfsd_fill_super(struct super_block * sb, void * data, int silent)
+ {
++	struct nfsd_net *nn = net_generic(current->nsproxy->net_ns,
++							nfsd_net_id);
++	struct dentry *dentry;
++	int ret;
++
+ 	static const struct tree_descr nfsd_files[] = {
+ 		[NFSD_List] = {"exports", &exports_nfsd_operations, S_IRUGO},
+ 		[NFSD_Export_features] = {"export_features",
+@@ -1177,7 +1270,15 @@ static int nfsd_fill_super(struct super_block * sb, void * data, int silent)
+ 		/* last one */ {""}
+ 	};
+ 	get_net(sb->s_fs_info);
+-	return simple_fill_super(sb, 0x6e667364, nfsd_files);
++	ret = simple_fill_super(sb, 0x6e667364, nfsd_files);
++	if (ret)
++		return ret;
++	dentry = nfsd_mkdir(sb->s_root, NULL, "clients");
++	if (IS_ERR(dentry))
++		return PTR_ERR(dentry);
++	nn->nfsd_client_dir = dentry;
++	return 0;
++
  }
+ 
+ static struct dentry *nfsd_mount(struct file_system_type *fs_type,
+diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
+index 24187b5dd638..85525dcbf77d 100644
+--- a/fs/nfsd/nfsd.h
++++ b/fs/nfsd/nfsd.h
+@@ -22,6 +22,7 @@
+ 
+ #include <uapi/linux/nfsd/debug.h>
+ 
++#include "netns.h"
+ #include "stats.h"
+ #include "export.h"
+ 
+@@ -86,6 +87,14 @@ int		nfsd_pool_stats_release(struct inode *, struct file *);
+ 
+ void		nfsd_destroy(struct net *net);
+ 
++struct nfsdfs_client {
++	struct kref cl_ref;
++	void (*cl_release)(struct kref *kref);
++};
++
++struct dentry *nfsd_client_mkdir(struct nfsd_net *nn, struct nfsdfs_client *ncl, u32 id);
++void nfsd_client_rmdir(struct dentry *dentry);
++
+ #if defined(CONFIG_NFSD_V2_ACL) || defined(CONFIG_NFSD_V3_ACL)
+ #ifdef CONFIG_NFSD_V2_ACL
+ extern const struct svc_version nfsd_acl_version2;
 diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 81852cbf6b0a..8cb20cab012b 100644
+index 8eacdbc50cd7..81852cbf6b0a 100644
 --- a/fs/nfsd/state.h
 +++ b/fs/nfsd/state.h
-@@ -317,6 +317,10 @@ struct nfs4_client {
- 	clientid_t		cl_clientid;	/* generated by server */
- 	nfs4_verifier		cl_confirm;	/* generated by server */
- 	u32			cl_minorversion;
-+	/* NFSv4.1 client implementation id: */
-+	struct xdr_netobj	cl_nii_domain;
-+	struct xdr_netobj	cl_nii_name;
-+	struct timespec		cl_nii_time;
+@@ -39,6 +39,7 @@
+ #include <linux/refcount.h>
+ #include <linux/sunrpc/svc_xprt.h>
+ #include "nfsfh.h"
++#include "nfsd.h"
  
- 	/* for v4.0 and v4.1 callbacks: */
- 	struct nfs4_cb_conn	cl_cb_conn;
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index feeb6d4bdffd..a5222fc9ea44 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -410,6 +410,9 @@ struct nfsd4_exchange_id {
- 	int		spa_how;
- 	u32             spo_must_enforce[3];
- 	u32             spo_must_allow[3];
-+	struct xdr_netobj nii_domain;
-+	struct xdr_netobj nii_name;
-+	struct timespec nii_time;
- };
+ typedef struct {
+ 	u32             cl_boot;
+@@ -348,9 +349,12 @@ struct nfs4_client {
+ 	u32			cl_exchange_flags;
+ 	/* number of rpc's in progress over an associated session: */
+ 	atomic_t		cl_rpc_users;
+-	struct kref		cl_ref;
++	struct nfsdfs_client	cl_nfsdfs;
+ 	struct nfs4_op_map      cl_spo_must_allow;
  
- struct nfsd4_sequence {
++	/* debugging info directory under nfsd/clients/ : */
++	struct dentry		*cl_nfsd_dentry;
++
+ 	/* for nfs41 callbacks */
+ 	/* We currently support a single back channel with a single slot */
+ 	unsigned long		cl_cb_slot_busy;
 -- 
 2.21.0
 
