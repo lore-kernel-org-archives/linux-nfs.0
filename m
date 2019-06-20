@@ -2,145 +2,83 @@ Return-Path: <SRS0=L7au=UT=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-5.2 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,
+	SPF_PASS,URIBL_BLOCKED,USER_AGENT_MUTT autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id CAD31C48BE3
-	for <linux-nfs@archiver.kernel.org>; Thu, 20 Jun 2019 14:51:28 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id AEE3AC43613
+	for <linux-nfs@archiver.kernel.org>; Thu, 20 Jun 2019 15:35:19 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id AE9EF2083B
-	for <linux-nfs@archiver.kernel.org>; Thu, 20 Jun 2019 14:51:28 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 7037F2070B
+	for <linux-nfs@archiver.kernel.org>; Thu, 20 Jun 2019 15:35:19 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="xVzh8kdW"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726740AbfFTOv1 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 20 Jun 2019 10:51:27 -0400
-Received: from fieldses.org ([173.255.197.46]:43458 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726866AbfFTOvV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 20 Jun 2019 10:51:21 -0400
-Received: by fieldses.org (Postfix, from userid 2815)
-        id 22B75607F; Thu, 20 Jun 2019 10:51:21 -0400 (EDT)
-From:   "J. Bruce Fields" <bfields@redhat.com>
-To:     linux-nfs@vger.kernel.org
-Cc:     "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 08/16] nfsd: escape high characters in binary data
-Date:   Thu, 20 Jun 2019 10:51:07 -0400
-Message-Id: <1561042275-12723-9-git-send-email-bfields@redhat.com>
-X-Mailer: git-send-email 1.8.3.1
-In-Reply-To: <1561042275-12723-1-git-send-email-bfields@redhat.com>
-References: <1561042275-12723-1-git-send-email-bfields@redhat.com>
+        id S1726760AbfFTPfT (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 20 Jun 2019 11:35:19 -0400
+Received: from out4-smtp.messagingengine.com ([66.111.4.28]:60105 "EHLO
+        out4-smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1726654AbfFTPfS (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 20 Jun 2019 11:35:18 -0400
+Received: from compute3.internal (compute3.nyi.internal [10.202.2.43])
+        by mailout.nyi.internal (Postfix) with ESMTP id 007E922359;
+        Thu, 20 Jun 2019 11:35:18 -0400 (EDT)
+Received: from mailfrontend1 ([10.202.2.162])
+  by compute3.internal (MEProxy); Thu, 20 Jun 2019 11:35:18 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
+        messagingengine.com; h=cc:content-type:date:from:in-reply-to
+        :message-id:mime-version:references:subject:to:x-me-proxy
+        :x-me-proxy:x-me-sender:x-me-sender:x-sasl-enc; s=fm3; bh=SFSTH3
+        yRd/RrcGfRQj2v2FL3rPg816B7mDskq6jxmr4=; b=xVzh8kdW/jtXTkoNFhddC6
+        jt9y5Pa/PvqwkiDP29x8jBa4mMIYrLvIHlaC5Ys+VXnwdrI9PfXuMRUO2ZUWV518
+        sj3E79ZhfP2EBCaScJAAwr+CGy5yoIISHaN6di7wzlPQRbzoiblzotmPjJ0c8Iw9
+        lk9j9ZcUc1d3xB69h34NB7+ST6SXItggC+5FDNf/Z3YcBtOPhPeYXvw0yCVbBLkh
+        kUL5SpjJo27YG1gmwbIiOwBdMmcbLbIsW/iqFE9wXiC75WK0YxlUkj3c1OoC6gt1
+        BRN13K7g1XnZZeOcVDAH3Crb87wp7SV9IA7x5eVfCARh/69cxokbyXk3/nWm+1NA
+        ==
+X-ME-Sender: <xms:tacLXTzn4N4mkEegamzxw8vvJUNo3tzYVC_T_nuKQvHNbS0zHyt21Q>
+X-ME-Proxy-Cause: gggruggvucftvghtrhhoucdtuddrgeduvddrtdeggdelfecutefuodetggdotefrodftvf
+    curfhrohhfihhlvgemucfhrghsthforghilhdpqfgfvfdpuffrtefokffrpgfnqfghnecu
+    uegrihhlohhuthemuceftddtnecusecvtfgvtghiphhivghnthhsucdlqddutddtmdenuc
+    fjughrpeffhffvuffkfhggtggujggfsehttdertddtredvnecuhfhrohhmpefkughoucfu
+    tghhihhmmhgvlhcuoehiughoshgthhesihguohhstghhrdhorhhgqeenucfkphepudelfe
+    drgeejrdduieehrddvhedunecurfgrrhgrmhepmhgrihhlfhhrohhmpehiughoshgthhes
+    ihguohhstghhrdhorhhgnecuvehluhhsthgvrhfuihiivgeptd
+X-ME-Proxy: <xmx:tacLXUD4-sW6hdkfCf9FYWRX28Gi8zGWyfd2FEUO6SJLfaf6gXs3AA>
+    <xmx:tacLXcBShGwstviBDEqjJlUA1SlXLXW0iiRoNgNsSyilP1qSJTBzNQ>
+    <xmx:tacLXf5SykGl47c_aq8JgzIA8r-yOu-W1UqvX9DEpvpfl4WvU1dztg>
+    <xmx:tacLXXOhDjgaDtDuyJIGuNJ-a0LOe9a0vMg0y1Lj9kQwbpW01Fe5nQ>
+Received: from localhost (unknown [193.47.165.251])
+        by mail.messagingengine.com (Postfix) with ESMTPA id E46BD80061;
+        Thu, 20 Jun 2019 11:35:16 -0400 (EDT)
+Date:   Thu, 20 Jun 2019 18:35:14 +0300
+From:   Ido Schimmel <idosch@idosch.org>
+To:     Trond Myklebust <trondmy@gmail.com>
+Cc:     Anna Schumaker <anna.schumaker@netapp.com>,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] SUNRPC: Fix a credential refcount leak
+Message-ID: <20190620153514.GA30458@splinter>
+References: <20190620144740.4169-1-trond.myklebust@hammerspace.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20190620144740.4169-1-trond.myklebust@hammerspace.com>
+User-Agent: Mutt/1.11.3 (2019-02-01)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On Thu, Jun 20, 2019 at 10:47:40AM -0400, Trond Myklebust wrote:
+> All callers of __rpc_clone_client() pass in a value for args->cred,
+> meaning that the credential gets assigned and referenced in
+> the call to rpc_new_client().
+> 
+> Reported-by: Ido Schimmel <idosch@idosch.org>
+> Fixes: 79caa5fad47c ("SUNRPC: Cache cred of process creating the rpc_client")
+> Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-I'm exposing some information about NFS clients in pseudofiles.  I
-expect to eventually have simple tools to help read those pseudofiles.
+Tested-by: Ido Schimmel <idosch@mellanox.com>
 
-But it's also helpful if the raw files are human-readable to the extent
-possible.  It aids debugging and makes them usable on systems that don't
-have the latest nfs-utils.
-
-A minor challenge there is opaque client-generated protocol objects like
-state owners and client identifiers.  Some clients generate those to
-include handy information in plain ascii.  But they may also include
-arbitrary byte sequences.
-
-I think the simplest approach is to limit to isprint(c) && isascii(c)
-and escape everything else.
-
-That means you can just cat the file and get something that looks OK.
-Also, I'm trying to keep these files legal YAML, which requires them to
-UTF-8, and this is a simple way to guarantee that.
-
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/seq_file.c                  | 11 +++++++++++
- include/linux/seq_file.h       |  1 +
- include/linux/string_helpers.h |  3 +++
- lib/string_helpers.c           | 19 +++++++++++++++++++
- 4 files changed, 34 insertions(+)
-
-diff --git a/fs/seq_file.c b/fs/seq_file.c
-index abe27ec43176..04f09689cd6d 100644
---- a/fs/seq_file.c
-+++ b/fs/seq_file.c
-@@ -384,6 +384,17 @@ void seq_escape(struct seq_file *m, const char *s, const char *esc)
- }
- EXPORT_SYMBOL(seq_escape);
- 
-+void seq_escape_mem_ascii(struct seq_file *m, const char *src, size_t isz)
-+{
-+	char *buf;
-+	size_t size = seq_get_buf(m, &buf);
-+	int ret;
-+
-+	ret = string_escape_mem_ascii(src, isz, buf, size);
-+	seq_commit(m, ret < size ? ret : -1);
-+}
-+EXPORT_SYMBOL(seq_escape_mem_ascii);
-+
- void seq_vprintf(struct seq_file *m, const char *f, va_list args)
- {
- 	int len;
-diff --git a/include/linux/seq_file.h b/include/linux/seq_file.h
-index a121982af0f5..5998e1f4ff06 100644
---- a/include/linux/seq_file.h
-+++ b/include/linux/seq_file.h
-@@ -127,6 +127,7 @@ void seq_put_hex_ll(struct seq_file *m, const char *delimiter,
- 		    unsigned long long v, unsigned int width);
- 
- void seq_escape(struct seq_file *m, const char *s, const char *esc);
-+void seq_escape_mem_ascii(struct seq_file *m, const char *src, size_t isz);
- 
- void seq_hex_dump(struct seq_file *m, const char *prefix_str, int prefix_type,
- 		  int rowsize, int groupsize, const void *buf, size_t len,
-diff --git a/include/linux/string_helpers.h b/include/linux/string_helpers.h
-index d23c5030901a..c28955132234 100644
---- a/include/linux/string_helpers.h
-+++ b/include/linux/string_helpers.h
-@@ -54,6 +54,9 @@ static inline int string_unescape_any_inplace(char *buf)
- int string_escape_mem(const char *src, size_t isz, char *dst, size_t osz,
- 		unsigned int flags, const char *only);
- 
-+int string_escape_mem_ascii(const char *src, size_t isz, char *dst,
-+					size_t osz);
-+
- static inline int string_escape_mem_any_np(const char *src, size_t isz,
- 		char *dst, size_t osz, const char *only)
- {
-diff --git a/lib/string_helpers.c b/lib/string_helpers.c
-index 29c490e5d478..9ca19918ca26 100644
---- a/lib/string_helpers.c
-+++ b/lib/string_helpers.c
-@@ -539,6 +539,25 @@ int string_escape_mem(const char *src, size_t isz, char *dst, size_t osz,
- }
- EXPORT_SYMBOL(string_escape_mem);
- 
-+int string_escape_mem_ascii(const char *src, size_t isz, char *dst,
-+					size_t osz)
-+{
-+	char *p = dst;
-+	char *end = p + osz;
-+
-+	while (isz--) {
-+		unsigned char c = *src++;
-+
-+		if (!isprint(c) || !isascii(c) || c == '"' || c == '\\')
-+			escape_hex(c, &p, end);
-+		else
-+			escape_passthrough(c, &p, end);
-+	}
-+
-+	return p - dst;
-+}
-+EXPORT_SYMBOL(string_escape_mem_ascii);
-+
- /*
-  * Return an allocated string that has been escaped of special characters
-  * and double quotes, making it safe to log in quotes.
--- 
-2.21.0
-
+Thanks a lot!
