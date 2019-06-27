@@ -4,32 +4,32 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-3.5 required=3.0 tests=CHARSET_FARAWAY_HEADER,
 	FROM_EXCESS_BASE64,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS autolearn=ham
-	autolearn_force=no version=3.4.0
+	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0DAD2C48BE4
-	for <linux-nfs@archiver.kernel.org>; Thu, 27 Jun 2019 18:30:32 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 0807AC48BE4
+	for <linux-nfs@archiver.kernel.org>; Thu, 27 Jun 2019 18:31:27 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id E7738205F4
-	for <linux-nfs@archiver.kernel.org>; Thu, 27 Jun 2019 18:30:31 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id DF754205F4
+	for <linux-nfs@archiver.kernel.org>; Thu, 27 Jun 2019 18:31:26 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726441AbfF0Sab (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 27 Jun 2019 14:30:31 -0400
-Received: from smtp3.jd.com ([59.151.64.88]:2124 "EHLO smtp3.jd.com"
+        id S1726426AbfF0Sb0 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 27 Jun 2019 14:31:26 -0400
+Received: from smtp3.jd.com ([59.151.64.88]:2125 "EHLO smtp3.jd.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726539AbfF0Sab (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 27 Jun 2019 14:30:31 -0400
-Received: from BJMAILD1MBX38.360buyAD.local (172.31.0.38) by
- BJMAILD1MBX49.360buyAD.local (172.31.0.49) with Microsoft SMTP Server
+        id S1726482AbfF0Sb0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 27 Jun 2019 14:31:26 -0400
+Received: from BJMAILD1MBX34.360buyAD.local (172.31.0.34) by
+ BJMAILD1MBX47.360buyAD.local (172.31.0.47) with Microsoft SMTP Server
  (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256_P256) id
- 15.1.1466.3; Fri, 28 Jun 2019 02:30:27 +0800
+ 15.1.1415.2; Fri, 28 Jun 2019 02:16:12 +0800
 Received: from BJMAILD1MBX36.360buyAD.local (172.31.0.36) by
- BJMAILD1MBX38.360buyAD.local (172.31.0.38) with Microsoft SMTP Server
+ BJMAILD1MBX34.360buyAD.local (172.31.0.34) with Microsoft SMTP Server
  (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256_P256) id
- 15.1.1415.2; Fri, 28 Jun 2019 02:30:27 +0800
+ 15.1.1415.2; Fri, 28 Jun 2019 02:16:12 +0800
 Received: from BJMAILD1MBX36.360buyAD.local ([fe80::2116:e90b:d89d:e893]) by
  BJMAILD1MBX36.360buyAD.local ([fe80::2116:e90b:d89d:e893%24]) with mapi id
- 15.01.1415.002; Fri, 28 Jun 2019 02:30:27 +0800
+ 15.01.1415.002; Fri, 28 Jun 2019 02:16:12 +0800
 From:   =?gb2312?B?u8bA1g==?= <huangle1@jd.com>
 To:     "bfields@fieldses.org" <bfields@fieldses.org>,
         "jlayton@kernel.org" <jlayton@kernel.org>,
@@ -37,9 +37,9 @@ To:     "bfields@fieldses.org" <bfields@fieldses.org>,
         "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
 Subject: [PATCH] nfsd4: fix a deadlock on state owner replay mutex
 Thread-Topic: [PATCH] nfsd4: fix a deadlock on state owner replay mutex
-Thread-Index: AQHVLRYrJwxAvKxXXkKWwBVCcQfpAw==
-Date:   Thu, 27 Jun 2019 18:30:27 +0000
-Message-ID: <720b91b1204b4c73be1b6ec2ff44dbab@jd.com>
+Thread-Index: AQHVLRO5+DwH6sZb20Kr9KpGEIfK+A==
+Date:   Thu, 27 Jun 2019 18:16:12 +0000
+Message-ID: <a14e4c797451401cb360e1f9d1bad63c@jd.com>
 Accept-Language: zh-CN, en-US
 Content-Language: zh-CN
 X-MS-Has-Attach: 
@@ -111,4 +111,4 @@ dGVpZCAqcykNCiAJICovDQogCW5mczRfaW5jX2FuZF9jb3B5X3N0YXRlaWQoJmNsb3NlLT5jbF9z
 dGF0ZWlkLCAmc3RwLT5zdF9zdGlkKTsNCiANCi0JbmZzZDRfY2xvc2Vfb3Blbl9zdGF0ZWlkKHN0
 cCk7DQorCW5mc2Q0X2Nsb3NlX29wZW5fc3RhdGVpZChjc3RhdGUsIHN0cCk7DQogCW11dGV4X3Vu
 bG9jaygmc3RwLT5zdF9tdXRleCk7DQogDQogCS8qIHY0LjErIHN1Z2dlc3RzIHRoYXQgd2Ugc2Vu
-ZCBhIHNwZWNpYWwgc3RhdGVpZCBpbiBoZXJlLCBzaW5jZSB0aGU=
+ZCBhIHNwZWNpYWwgc3RhdGVpZCBpbiBoZXJlLCBzaW5jZSB0aGUNCg==
