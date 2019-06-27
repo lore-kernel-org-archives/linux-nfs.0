@@ -1,76 +1,90 @@
-Return-Path: <SRS0=CxR0=UZ=vger.kernel.org=linux-nfs-owner@kernel.org>
+Return-Path: <SRS0=9rdx=U2=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 873B9C48BD3
-	for <linux-nfs@archiver.kernel.org>; Wed, 26 Jun 2019 20:30:32 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7C339C48BD6
+	for <linux-nfs@archiver.kernel.org>; Thu, 27 Jun 2019 00:35:40 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 513322085A
-	for <linux-nfs@archiver.kernel.org>; Wed, 26 Jun 2019 20:30:32 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 49BFC217F4
+	for <linux-nfs@archiver.kernel.org>; Thu, 27 Jun 2019 00:35:40 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=default; t=1561595740;
+	bh=B3CZpFCZfujO0wRU1Z+VFM6p3mkeCatXZXup9oVpGio=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
+	b=Ocy7D6JaVoGJydhvQjsf2iomTQPTxmlm9CF7mP2qF7v7c/OpDo+x6gBcQdxarRwKP
+	 SYpVB+Qaed6eU/RjY23Yc8Yz4rFB+z1+v+aShoXMAB5I0EJQyvvU/gNX3z71c/9WxB
+	 sH8ESPdUAks7g6ydZuoTHnkGxZg4Bj8WKuoI2Ju8=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726239AbfFZUab (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 26 Jun 2019 16:30:31 -0400
-Received: from mx1.redhat.com ([209.132.183.28]:57818 "EHLO mx1.redhat.com"
+        id S1727834AbfF0Afe (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 26 Jun 2019 20:35:34 -0400
+Received: from mail.kernel.org ([198.145.29.99]:40010 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726227AbfFZUab (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 26 Jun 2019 16:30:31 -0400
-Received: from smtp.corp.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        id S1727558AbfF0Afb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 26 Jun 2019 20:35:31 -0400
+Received: from sasha-vm.mshome.net (unknown [107.242.116.147])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id A648C308794D;
-        Wed, 26 Jun 2019 20:30:26 +0000 (UTC)
-Received: from dwysocha.rdu.csb (dhcp-12-212-173.gsslab.rdu.redhat.com [10.12.212.173])
-        by smtp.corp.redhat.com (Postfix) with ESMTPS id 6B37260BE5;
-        Wed, 26 Jun 2019 20:30:25 +0000 (UTC)
-From:   Dave Wysochanski <dwysocha@redhat.com>
-To:     trondmy@hammerspace.com
-Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH] SUNRPC: Fix possible autodisconnect during connect due to old last_used
-Date:   Wed, 26 Jun 2019 16:30:24 -0400
-Message-Id: <1561581024-28238-1-git-send-email-dwysocha@redhat.com>
-In-Reply-To: <566e3eb7b501d48a2989461c316b66c03c56b129.camel@hammerspace.com>
-References: <566e3eb7b501d48a2989461c316b66c03c56b129.camel@hammerspace.com>
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.12
-X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.45]); Wed, 26 Jun 2019 20:30:31 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 9A2D72184E;
+        Thu, 27 Jun 2019 00:35:28 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=default; t=1561595731;
+        bh=B3CZpFCZfujO0wRU1Z+VFM6p3mkeCatXZXup9oVpGio=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=xkxuG/47mX08DNMWhf9Rz77pLYSi/UUM2aQuNsGdiPzR2u/OeQ9iMBn7733F50r3S
+         Di5O/gLHS3iBtjIirc9EGIR9oSqXgEFU5mDuqgtVZTDHmFnneMng+rC0tebPTFfbfq
+         N1EBhDezXSgof7GG61F4ghDfX2nyj1wTc2bKiea4=
+From:   Sasha Levin <sashal@kernel.org>
+To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
+Cc:     Lin Yi <teroincn@163.com>,
+        Anna Schumaker <Anna.Schumaker@Netapp.com>,
+        Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org,
+        netdev@vger.kernel.org
+Subject: [PATCH AUTOSEL 5.1 95/95] net :sunrpc :clnt :Fix xps refcount imbalance on the error path
+Date:   Wed, 26 Jun 2019 20:30:20 -0400
+Message-Id: <20190627003021.19867-95-sashal@kernel.org>
+X-Mailer: git-send-email 2.20.1
+In-Reply-To: <20190627003021.19867-1-sashal@kernel.org>
+References: <20190627003021.19867-1-sashal@kernel.org>
+MIME-Version: 1.0
+X-stable: review
+X-Patchwork-Hint: Ignore
+Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Ensure last_used is updated before calling mod_timer inside
-xprt_schedule_autodisconnect.  This avoids a possible xprt_autoclose
-firing immediately after a successful connect when xprt_unlock_connect
-calls xprt_schedule_autodisconnect with an old value of last_used.
+From: Lin Yi <teroincn@163.com>
 
-Signed-off-by: Dave Wysochanski <dwysocha@redhat.com>
+[ Upstream commit b96226148491505318228ac52624956bd98f9e0c ]
+
+rpc_clnt_add_xprt take a reference to struct rpc_xprt_switch, but forget
+to release it before return, may lead to a memory leak.
+
+Signed-off-by: Lin Yi <teroincn@163.com>
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- net/sunrpc/xprt.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ net/sunrpc/clnt.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-index f6c82b1..871b904 100644
---- a/net/sunrpc/xprt.c
-+++ b/net/sunrpc/xprt.c
-@@ -750,6 +750,7 @@ void xprt_conditional_disconnect(struct rpc_xprt *xprt, unsigned int cookie)
- xprt_schedule_autodisconnect(struct rpc_xprt *xprt)
- 	__must_hold(&xprt->transport_lock)
- {
-+	xprt->last_used = jiffies;
- 	if (RB_EMPTY_ROOT(&xprt->recv_queue) && xprt_has_timer(xprt))
- 		mod_timer(&xprt->timer, xprt->last_used + xprt->idle_timeout);
- }
-@@ -1774,7 +1775,6 @@ void xprt_release(struct rpc_task *task)
- 	xprt->ops->release_xprt(xprt, task);
- 	if (xprt->ops->release_request)
- 		xprt->ops->release_request(task);
--	xprt->last_used = jiffies;
- 	xprt_schedule_autodisconnect(xprt);
- 	spin_unlock_bh(&xprt->transport_lock);
- 	if (req->rq_buffer)
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index ea8d5aed1e2c..b3654d3d346f 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -2766,6 +2766,7 @@ int rpc_clnt_add_xprt(struct rpc_clnt *clnt,
+ 	xprt = xprt_iter_xprt(&clnt->cl_xpi);
+ 	if (xps == NULL || xprt == NULL) {
+ 		rcu_read_unlock();
++		xprt_switch_put(xps);
+ 		return -EAGAIN;
+ 	}
+ 	resvport = xprt->resvport;
 -- 
-1.8.3.1
+2.20.1
 
