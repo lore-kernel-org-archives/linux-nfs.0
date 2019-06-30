@@ -8,64 +8,64 @@ X-Spam-Status: No, score=-9.9 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id CD8B0C46478
-	for <linux-nfs@archiver.kernel.org>; Sun, 30 Jun 2019 13:55:14 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B1C33C5B57E
+	for <linux-nfs@archiver.kernel.org>; Sun, 30 Jun 2019 13:55:15 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id A5EB320663
-	for <linux-nfs@archiver.kernel.org>; Sun, 30 Jun 2019 13:55:14 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 8A52620663
+	for <linux-nfs@archiver.kernel.org>; Sun, 30 Jun 2019 13:55:15 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="cpemW+jE"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="JJjGknHa"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726738AbfF3NzM (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 30 Jun 2019 09:55:12 -0400
-Received: from mail-io1-f67.google.com ([209.85.166.67]:43651 "EHLO
-        mail-io1-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726720AbfF3NzL (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 30 Jun 2019 09:55:11 -0400
-Received: by mail-io1-f67.google.com with SMTP id k20so22674815ios.10;
-        Sun, 30 Jun 2019 06:55:10 -0700 (PDT)
+        id S1726667AbfF3NzI (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sun, 30 Jun 2019 09:55:08 -0400
+Received: from mail-io1-f66.google.com ([209.85.166.66]:43635 "EHLO
+        mail-io1-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726686AbfF3NzH (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 30 Jun 2019 09:55:07 -0400
+Received: by mail-io1-f66.google.com with SMTP id k20so22674626ios.10;
+        Sun, 30 Jun 2019 06:55:07 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references
          :mime-version:content-transfer-encoding;
-        bh=g7zMd74bx/Xv7Zo5LdqAAYGmxxP86dBYLwSFhXla2k0=;
-        b=cpemW+jE3e178p22/H+i7g/JuqMcfZ6eaQcOnkyduHjBnXtPPMw+US65sXF2jC68o2
-         ac6qVvfGaQAleA0e40/4yiNZdYAGUMAgE3l4CJBGMlEmsat+a2Rz+L5F34zjiotyihWm
-         NcCqnXZPevoW1pEJlIP7PItqc8uWWyhZx3AGbBJK6RPbDFZKB4fet0JJxqni6hCYMXTR
-         PYlvf4aBPG+g49H+hvKzUj4RTlU3mLInRznLMOEBZ0/eYb3WFdv0zftjdB8VRZM5JW7e
-         +5sKEH5SrHllyu67/KT8NBI3Lott7Q1GQE319If7zHtDIdwzW5sbAe6a7ZawpBJFzhTa
-         5t3w==
+        bh=K87fDM8/y72meQszbi80TqLaOGaG74Zl56DNy4VX618=;
+        b=JJjGknHaHPWp8u7ZRJTHiLMCeezkf5hr3sqWXgtJdpV5KvFU+tZwZuyrVJ5MYkIabc
+         etg1x+6HoEHg7AgDN/X+gLCNnAu4GiwuN1wzf6Zj5nltZNkpeQs2sAcpe0o1iirLh0Vd
+         l+Bg/bofmijgM7j3UHMukhxC3zoG+6f0E8RfMCiEAD9rCzluBC/CYVkxc0uosxRI1Hd9
+         AZQOht1VzVtomizSjUgaUwctX/fJ4r4SooBYCYSX0FLX3DWE7yH5we0p/eundMrDnWJj
+         BjLSpOBEOgJDNCqrZ4C1GEv0lySq14QjQP8HtEAKvxRwZGBMT/vMc7hA+cCstQyrbxvi
+         KuPw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=g7zMd74bx/Xv7Zo5LdqAAYGmxxP86dBYLwSFhXla2k0=;
-        b=PiKQG6U4FnlLWqB4/wD0rhHoyplkPRhGqY+bTbprAuDwhHMPz7Qdy5iVivWQ1/zLZ/
-         q/g35qsB31GM9Le//dRNvOVgBL5tRr8FnAZpI4pMbJ8o3GzwFavhHcAXVJjzGpRDykTg
-         v3riDf7eEtKOddYZ3g05nG1q46ghWzpDaUw78hD6Yc5yIVMuL777ijP1d5YNdz1tD4aO
-         BEAe0i3dNuAGy44nlLmORSKPKFTCDAYELhZJIes9B0POKtbyhsvd1RWi3DdTZuirQM7Y
-         SCKYcGix8EJotKXw6Q83AP5LHDdv2rITeoWMMQy6DQs+ti5doMXnu285fXFNNZiZhwRY
-         R+9A==
-X-Gm-Message-State: APjAAAXRz0Xwfn3nDMxIAtjfGCWOrKW5UV4hZK0yfcLRKQu8nYQnfGjJ
-        4w9u2eOjus/R8nraOUx4LA==
-X-Google-Smtp-Source: APXvYqyUJdKamF/PYeWSYcxbDJX5H1HYb2xAkKbwvSyOTG8IbofYpvFnHLN7NN8doDmwXE7+MXGFZg==
-X-Received: by 2002:a6b:fb10:: with SMTP id h16mr238711iog.195.1561902910221;
-        Sun, 30 Jun 2019 06:55:10 -0700 (PDT)
+        bh=K87fDM8/y72meQszbi80TqLaOGaG74Zl56DNy4VX618=;
+        b=gqLgiX94udA1iup8CtDDekqwtlNxBWm0rrtMXDiJw+BO+4ozGX/qmxhvlf6I71YuFq
+         YWt4+an97DKYW3ipksBOkoARUtRq6ZwkJ9Qt3JtCjPDb1tiuuwmNDuuCJLUWGnTRmUH5
+         ccaJNLZ4S63JvQmGFANO9ffMeGRhE+9RxwJQlu8N3MyXhjZLopZ+KtzBEq6dBEfBGy9I
+         05dA6JhhPHtScXC3cEjiuhUCnOZ1uAwN2B/fWVZKUOEpsVyBfmMEeOtKsqHbgYEMmPSP
+         OzP4sMi7pciAtxRKsKiEBweH8X6JjOhxtk9QU1bgtEh04vf1HG/azyZ2WOk208Cvf2l6
+         uCaw==
+X-Gm-Message-State: APjAAAWBJAKwIKAHluPGTAfwsGlcLKsilDgIBtu3s19AB+r7clfvKXVS
+        /HrDCB3Cz+LeNTCTdFbfLA==
+X-Google-Smtp-Source: APXvYqzgN7y/v72vMOlJ8rrjF4cc230GuEkIf95iRPg9JFBA2zmGefrWcW6wgQWzUqVrj1WeJk6aYw==
+X-Received: by 2002:a5d:8845:: with SMTP id t5mr17871154ios.37.1561902906525;
+        Sun, 30 Jun 2019 06:55:06 -0700 (PDT)
 Received: from localhost.localdomain (50-124-245-189.alma.mi.frontiernet.net. [50.124.245.189])
-        by smtp.gmail.com with ESMTPSA id z17sm11930378iol.73.2019.06.30.06.55.09
+        by smtp.gmail.com with ESMTPSA id z17sm11930378iol.73.2019.06.30.06.55.05
         (version=TLS1_3 cipher=AEAD-AES256-GCM-SHA384 bits=256/256);
-        Sun, 30 Jun 2019 06:55:09 -0700 (PDT)
+        Sun, 30 Jun 2019 06:55:06 -0700 (PDT)
 From:   Trond Myklebust <trondmy@gmail.com>
 X-Google-Original-From: Trond Myklebust <trond.myklebust@hammerspace.com>
 To:     "J. Bruce Fields" <bfields@redhat.com>,
         Chuck Lever <chuck.lever@oracle.com>
 Cc:     Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org,
         linux-fsdevel@vger.kernel.org
-Subject: [PATCH 15/16] nfsd: Fix up some unused variable warnings
-Date:   Sun, 30 Jun 2019 09:52:39 -0400
-Message-Id: <20190630135240.7490-16-trond.myklebust@hammerspace.com>
+Subject: [PATCH 12/16] nfsd: have nfsd_test_lock use the nfsd_file cache
+Date:   Sun, 30 Jun 2019 09:52:36 -0400
+Message-Id: <20190630135240.7490-13-trond.myklebust@hammerspace.com>
 X-Mailer: git-send-email 2.21.0
-In-Reply-To: <20190630135240.7490-15-trond.myklebust@hammerspace.com>
+In-Reply-To: <20190630135240.7490-12-trond.myklebust@hammerspace.com>
 References: <20190630135240.7490-1-trond.myklebust@hammerspace.com>
  <20190630135240.7490-2-trond.myklebust@hammerspace.com>
  <20190630135240.7490-3-trond.myklebust@hammerspace.com>
@@ -78,9 +78,6 @@ References: <20190630135240.7490-1-trond.myklebust@hammerspace.com>
  <20190630135240.7490-10-trond.myklebust@hammerspace.com>
  <20190630135240.7490-11-trond.myklebust@hammerspace.com>
  <20190630135240.7490-12-trond.myklebust@hammerspace.com>
- <20190630135240.7490-13-trond.myklebust@hammerspace.com>
- <20190630135240.7490-14-trond.myklebust@hammerspace.com>
- <20190630135240.7490-15-trond.myklebust@hammerspace.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
@@ -88,69 +85,35 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
+From: Jeff Layton <jeff.layton@primarydata.com>
+
+Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfsd/nfs4xdr.c | 11 ++++-------
- 1 file changed, 4 insertions(+), 7 deletions(-)
+ fs/nfsd/nfs4state.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 80bace0271bb..91e0386fd724 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -1431,7 +1431,6 @@ nfsd4_decode_create_session(struct nfsd4_compoundargs *argp,
- 			    struct nfsd4_create_session *sess)
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index efd63bfbbcd0..1031f767f878 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -6210,11 +6210,11 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+  */
+ static __be32 nfsd_test_lock(struct svc_rqst *rqstp, struct svc_fh *fhp, struct file_lock *lock)
  {
- 	DECODE_HEAD;
--	u32 dummy;
- 
- 	READ_BUF(16);
- 	COPYMEM(&sess->clientid, 8);
-@@ -1440,7 +1439,7 @@ nfsd4_decode_create_session(struct nfsd4_compoundargs *argp,
- 
- 	/* Fore channel attrs */
- 	READ_BUF(28);
--	dummy = be32_to_cpup(p++); /* headerpadsz is always 0 */
-+	p++; /* headerpadsz is always 0 */
- 	sess->fore_channel.maxreq_sz = be32_to_cpup(p++);
- 	sess->fore_channel.maxresp_sz = be32_to_cpup(p++);
- 	sess->fore_channel.maxresp_cached = be32_to_cpup(p++);
-@@ -1457,7 +1456,7 @@ nfsd4_decode_create_session(struct nfsd4_compoundargs *argp,
- 
- 	/* Back channel attrs */
- 	READ_BUF(28);
--	dummy = be32_to_cpup(p++); /* headerpadsz is always 0 */
-+	p++; /* headerpadsz is always 0 */
- 	sess->back_channel.maxreq_sz = be32_to_cpup(p++);
- 	sess->back_channel.maxresp_sz = be32_to_cpup(p++);
- 	sess->back_channel.maxresp_cached = be32_to_cpup(p++);
-@@ -1749,7 +1748,6 @@ static __be32
- nfsd4_decode_copy(struct nfsd4_compoundargs *argp, struct nfsd4_copy *copy)
- {
- 	DECODE_HEAD;
--	unsigned int tmp;
- 
- 	status = nfsd4_decode_stateid(argp, &copy->cp_src_stateid);
- 	if (status)
-@@ -1764,7 +1762,7 @@ nfsd4_decode_copy(struct nfsd4_compoundargs *argp, struct nfsd4_copy *copy)
- 	p = xdr_decode_hyper(p, &copy->cp_count);
- 	p++; /* ca_consecutive: we always do consecutive copies */
- 	copy->cp_synchronous = be32_to_cpup(p++);
--	tmp = be32_to_cpup(p); /* Source server list not supported */
-+	/* tmp = be32_to_cpup(p); Source server list not supported */
- 
- 	DECODE_TAIL;
+-	struct file *file;
+-	__be32 err = nfsd_open(rqstp, fhp, S_IFREG, NFSD_MAY_READ, &file);
++	struct nfsd_file *nf;
++	__be32 err = nfsd_file_acquire(rqstp, fhp, NFSD_MAY_READ, &nf);
+ 	if (!err) {
+-		err = nfserrno(vfs_test_lock(file, lock));
+-		fput(file);
++		err = nfserrno(vfs_test_lock(nf->nf_file, lock));
++		nfsd_file_put(nf);
+ 	}
+ 	return err;
  }
-@@ -3230,9 +3228,8 @@ nfsd4_encode_create(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_
- 	if (!p)
- 		return nfserr_resource;
- 	encode_cinfo(p, &create->cr_cinfo);
--	nfserr = nfsd4_encode_bitmap(xdr, create->cr_bmval[0],
-+	return nfsd4_encode_bitmap(xdr, create->cr_bmval[0],
- 			create->cr_bmval[1], create->cr_bmval[2]);
--	return 0;
- }
- 
- static __be32
 -- 
 2.21.0
 
