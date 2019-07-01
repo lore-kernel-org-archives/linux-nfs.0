@@ -7,54 +7,54 @@ X-Spam-Status: No, score=-5.0 required=3.0 tests=DATE_IN_PAST_96_XX,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
 	SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D5085C4CEC5
-	for <linux-nfs@archiver.kernel.org>; Thu, 12 Sep 2019 17:29:12 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1537FC4CEC6
+	for <linux-nfs@archiver.kernel.org>; Thu, 12 Sep 2019 17:29:13 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id AC4742081B
+	by mail.kernel.org (Postfix) with ESMTP id E2B7A2081B
 	for <linux-nfs@archiver.kernel.org>; Thu, 12 Sep 2019 17:29:12 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=amazon.com header.i=@amazon.com header.b="snpCTgDs"
+	dkim=pass (1024-bit key) header.d=amazon.com header.i=@amazon.com header.b="MBxdy4m+"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2387663AbfILR3L (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 12 Sep 2019 13:29:11 -0400
-Received: from smtp-fw-9102.amazon.com ([207.171.184.29]:6371 "EHLO
+        id S2387666AbfILR3M (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 12 Sep 2019 13:29:12 -0400
+Received: from smtp-fw-9102.amazon.com ([207.171.184.29]:2868 "EHLO
         smtp-fw-9102.amazon.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2387657AbfILR3K (ORCPT
+        with ESMTP id S2387644AbfILR3K (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Sep 2019 13:29:10 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
   d=amazon.com; i=@amazon.com; q=dns/txt; s=amazon201209;
   t=1568309350; x=1599845350;
   h=message-id:in-reply-to:references:from:date:subject:to:
    mime-version;
-  bh=JMkvGmAhLWg/y+NV5rC4rx1Y69PlrlwOYvitXPDQCFU=;
-  b=snpCTgDseER3rI6ezPMrFPdpHbpdE1a+v4zZ2bzlOePVmvf2QINxu39K
-   8WdNGn6/Z+pBEr2iKxT3CKt9F2phJlvS23aQIF5qKPdwzYdgreQZVQIDN
-   TzNdIp2Z8Ds0m1EI92APVOPjchFZSMqH/hLlRiNMVl7ip5wpjmZFQ4eV4
-   c=;
+  bh=Ew39LdvWu7jGojy6HuYqJR3Sb4scMbXC/rPTCjgYoMI=;
+  b=MBxdy4m+JZ26JVRVnb5x6QgPvhK6H1lFWdZWZnZWUUvnx1AjD3cD0+0F
+   2ZN364n/XFJEhOsOg/Doo5HeOk+fDl7Nmt++NEDCeBkkKuhhJyaPO+Hk+
+   2vQMtnPfNfXqJBs1L5PTg1HvWJ3RmJtennZ8bYEOCsNEONzX6nZlDrM+/
+   U=;
 X-IronPort-AV: E=Sophos;i="5.64,497,1559520000"; 
-   d="scan'208";a="702191779"
-Received: from sea3-co-svc-lb6-vlan3.sea.amazon.com (HELO email-inbound-relay-1d-74cf8b49.us-east-1.amazon.com) ([10.47.22.38])
+   d="scan'208";a="702191780"
+Received: from sea3-co-svc-lb6-vlan3.sea.amazon.com (HELO email-inbound-relay-2c-168cbb73.us-west-2.amazon.com) ([10.47.22.38])
   by smtp-border-fw-out-9102.sea19.amazon.com with ESMTP; 12 Sep 2019 17:28:58 +0000
-Received: from EX13MTAUEA001.ant.amazon.com (iad55-ws-svc-p15-lb9-vlan2.iad.amazon.com [10.40.159.162])
-        by email-inbound-relay-1d-74cf8b49.us-east-1.amazon.com (Postfix) with ESMTPS id A2E56C0837;
-        Thu, 12 Sep 2019 17:28:52 +0000 (UTC)
-Received: from EX13D14UEE001.ant.amazon.com (10.43.62.238) by
- EX13MTAUEA001.ant.amazon.com (10.43.61.82) with Microsoft SMTP Server (TLS)
+Received: from EX13MTAUEB001.ant.amazon.com (pdx4-ws-svc-p6-lb7-vlan2.pdx.amazon.com [10.170.41.162])
+        by email-inbound-relay-2c-168cbb73.us-west-2.amazon.com (Postfix) with ESMTPS id 2C346A20F6;
+        Thu, 12 Sep 2019 17:28:53 +0000 (UTC)
+Received: from EX13D04UEB001.ant.amazon.com (10.43.60.125) by
+ EX13MTAUEB001.ant.amazon.com (10.43.60.129) with Microsoft SMTP Server (TLS)
  id 15.0.1367.3; Thu, 12 Sep 2019 17:28:52 +0000
-Received: from EX13MTAUEE001.ant.amazon.com (10.43.62.200) by
- EX13D14UEE001.ant.amazon.com (10.43.62.238) with Microsoft SMTP Server (TLS)
- id 15.0.1367.3; Thu, 12 Sep 2019 17:28:51 +0000
+Received: from EX13MTAUEB001.ant.amazon.com (10.43.60.96) by
+ EX13D04UEB001.ant.amazon.com (10.43.60.125) with Microsoft SMTP Server (TLS)
+ id 15.0.1367.3; Thu, 12 Sep 2019 17:28:52 +0000
 Received: from kaos-source-ops-60003.pdx1.corp.amazon.com (10.36.133.164) by
- mail-relay.amazon.com (10.43.62.226) with Microsoft SMTP Server id
- 15.0.1367.3 via Frontend Transport; Thu, 12 Sep 2019 17:28:51 +0000
+ mail-relay.amazon.com (10.43.60.129) with Microsoft SMTP Server id
+ 15.0.1367.3 via Frontend Transport; Thu, 12 Sep 2019 17:28:52 +0000
 Received: by kaos-source-ops-60003.pdx1.corp.amazon.com (Postfix, from userid 6262777)
-        id E3658C0557; Thu, 12 Sep 2019 17:28:49 +0000 (UTC)
-Message-ID: <ca85022779012228d7df42c5122c52b1afca1f8c.1568309119.git.fllinden@amazon.com>
+        id E6940C0571; Thu, 12 Sep 2019 17:28:49 +0000 (UTC)
+Message-ID: <ada9fde50c51a81f3a5473b7d0f1c3921932d2c8.1568309119.git.fllinden@amazon.com>
 In-Reply-To: <cover.1568309119.git.fllinden@amazon.com>
 References: <cover.1568309119.git.fllinden@amazon.com>
 From:   Frank van der Linden <fllinden@amazon.com>
-Date:   Tue, 27 Aug 2019 16:01:06 +0000
-Subject: [RFC PATCH 12/35] NFSv4.2: query the extended attribute access bits
+Date:   Mon, 1 Jul 2019 17:56:01 +0000
+Subject: [RFC PATCH 02/35] nfs/nfsd: basic NFS4 extended attribute definitions
 To:     <linux-nfs@vger.kernel.org>, <linux-fsdevel@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain
@@ -63,47 +63,136 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-RFC 8276 defines seperate ACCESS bits for extended attribute checking.
-Query them in nfs_do_access and opendata.
+Add definitions for the new operations, errors and flag as defined
+in RFC 8276 (File System Extended Attributes in NFSv4).
+
+Since this increments LAST_NFS4_OP/LAST_NFS42_OP, the nfsd code
+now "knows" about this op, so add enotsup decode entry points.
 
 Signed-off-by: Frank van der Linden <fllinden@amazon.com>
 ---
- fs/nfs/dir.c      | 4 ++++
- fs/nfs/nfs4proc.c | 6 ++++++
- 2 files changed, 10 insertions(+)
+ fs/nfsd/nfs4xdr.c         |  6 ++++++
+ include/linux/nfs4.h      | 27 ++++++++++++++++++++++++++-
+ include/linux/nfs_fs.h    |  3 +++
+ include/uapi/linux/nfs4.h |  3 +++
+ 4 files changed, 38 insertions(+), 1 deletion(-)
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index e7f4c25de362..78bc808addc9 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -2498,6 +2498,10 @@ static int nfs_do_access(struct inode *inode, const struct cred *cred, int mask)
- 	 * Determine which access bits we want to ask for...
- 	 */
- 	cache.mask = NFS_ACCESS_READ | NFS_ACCESS_MODIFY | NFS_ACCESS_EXTEND;
-+	if (nfs_server_capable(inode, NFS_CAP_XATTR)) {
-+		cache.mask |= NFS_ACCESS_XAREAD | NFS_ACCESS_XAWRITE |
-+		    NFS_ACCESS_XALIST;
-+	}
- 	if (S_ISDIR(inode->i_mode))
- 		cache.mask |= NFS_ACCESS_DELETE | NFS_ACCESS_LOOKUP;
- 	else
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index dad22450546d..029b07fef37f 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -1313,6 +1313,12 @@ static struct nfs4_opendata *nfs4_opendata_alloc(struct dentry *dentry,
- 				NFS4_ACCESS_MODIFY |
- 				NFS4_ACCESS_EXTEND |
- 				NFS4_ACCESS_EXECUTE;
-+#ifdef CONFIG_NFS_V4_XATTR
-+			if (server->caps & NFS_CAP_XATTR)
-+				p->o_arg.access |= NFS4_ACCESS_XAREAD |
-+				    NFS4_ACCESS_XAWRITE |
-+				    NFS4_ACCESS_XALIST;
-+#endif
- 		}
- 	}
- 	p->o_arg.clientid = server->nfs_client->cl_clientid;
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 442811809f3d..f2090f7fed42 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -1875,6 +1875,12 @@ static const nfsd4_dec nfsd4_dec_ops[] = {
+ 	[OP_SEEK]		= (nfsd4_dec)nfsd4_decode_seek,
+ 	[OP_WRITE_SAME]		= (nfsd4_dec)nfsd4_decode_notsupp,
+ 	[OP_CLONE]		= (nfsd4_dec)nfsd4_decode_clone,
++
++        /* Placeholders for RFC 8276 extended atributes operations */
++        [OP_GETXATTR]           = (nfsd4_dec)nfsd4_decode_notsupp,
++        [OP_SETXATTR]           = (nfsd4_dec)nfsd4_decode_notsupp,
++        [OP_LISTXATTRS]         = (nfsd4_dec)nfsd4_decode_notsupp,
++        [OP_REMOVEXATTR]        = (nfsd4_dec)nfsd4_decode_notsupp,
+ };
+ 
+ static inline bool
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index fd59904a282c..4aaa67e1dbad 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -149,6 +149,12 @@ enum nfs_opnum4 {
+ 	OP_WRITE_SAME = 70,
+ 	OP_CLONE = 71,
+ 
++	/* xattr support (RFC8726) */
++	OP_GETXATTR                = 72,
++	OP_SETXATTR                = 73,
++	OP_LISTXATTRS              = 74,
++	OP_REMOVEXATTR             = 75,
++
+ 	OP_ILLEGAL = 10044,
+ };
+ 
+@@ -158,7 +164,7 @@ Needs to be updated if more operations are defined in future.*/
+ #define FIRST_NFS4_OP	OP_ACCESS
+ #define LAST_NFS40_OP	OP_RELEASE_LOCKOWNER
+ #define LAST_NFS41_OP	OP_RECLAIM_COMPLETE
+-#define LAST_NFS42_OP	OP_CLONE
++#define LAST_NFS42_OP	OP_REMOVEXATTR
+ #define LAST_NFS4_OP	LAST_NFS42_OP
+ 
+ enum nfsstat4 {
+@@ -279,6 +285,10 @@ enum nfsstat4 {
+ 	NFS4ERR_WRONG_LFS = 10092,
+ 	NFS4ERR_BADLABEL = 10093,
+ 	NFS4ERR_OFFLOAD_NO_REQS = 10094,
++
++	/* xattr (RFC8276) */
++	NFS4ERR_NOXATTR        = 10095,
++	NFS4ERR_XATTR2BIG      = 10096,
+ };
+ 
+ static inline bool seqid_mutating_err(u32 err)
+@@ -451,6 +461,7 @@ enum change_attr_type4 {
+ #define FATTR4_WORD2_CHANGE_ATTR_TYPE	(1UL << 15)
+ #define FATTR4_WORD2_SECURITY_LABEL     (1UL << 16)
+ #define FATTR4_WORD2_MODE_UMASK		(1UL << 17)
++#define FATTR4_WORD2_XATTR_SUPPORT	(1UL << 18)
+ 
+ /* MDS threshold bitmap bits */
+ #define THRESHOLD_RD                    (1UL << 0)
+@@ -539,6 +550,11 @@ enum {
+ 
+ 	NFSPROC4_CLNT_LOOKUPP,
+ 	NFSPROC4_CLNT_LAYOUTERROR,
++
++	NFSPROC4_CLNT_GETXATTR,
++	NFSPROC4_CLNT_SETXATTR,
++	NFSPROC4_CLNT_LISTXATTRS,
++	NFSPROC4_CLNT_REMOVEXATTR,
+ };
+ 
+ /* nfs41 types */
+@@ -674,4 +690,13 @@ struct nfs4_op_map {
+ 	} u;
+ };
+ 
++/*
++ * Options for setxattr. These match the flags for setxattr(2).
++ */
++enum nfs4_setxattr_options {
++	SETXATTR4_EITHER      = 0,
++	SETXATTR4_CREATE      = 1,
++	SETXATTR4_REPLACE     = 2,
++};
++
+ #endif
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index 0a11712a80e3..e87c894d1960 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -207,6 +207,9 @@ struct nfs4_copy_state {
+ #define NFS_ACCESS_EXTEND      0x0008
+ #define NFS_ACCESS_DELETE      0x0010
+ #define NFS_ACCESS_EXECUTE     0x0020
++#define NFS_ACCESS_XAREAD      0x0040
++#define NFS_ACCESS_XAWRITE     0x0080
++#define NFS_ACCESS_XALIST      0x0100
+ 
+ /*
+  * Cache validity bit flags
+diff --git a/include/uapi/linux/nfs4.h b/include/uapi/linux/nfs4.h
+index 8572930cf5b0..bf197e99b98f 100644
+--- a/include/uapi/linux/nfs4.h
++++ b/include/uapi/linux/nfs4.h
+@@ -33,6 +33,9 @@
+ #define NFS4_ACCESS_EXTEND      0x0008
+ #define NFS4_ACCESS_DELETE      0x0010
+ #define NFS4_ACCESS_EXECUTE     0x0020
++#define NFS4_ACCESS_XAREAD      0x0040
++#define NFS4_ACCESS_XAWRITE     0x0080
++#define NFS4_ACCESS_XALIST      0x0100
+ 
+ #define NFS4_FH_PERSISTENT		0x0000
+ #define NFS4_FH_NOEXPIRE_WITH_OPEN	0x0001
 -- 
 2.17.2
 
