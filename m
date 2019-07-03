@@ -2,123 +2,89 @@ Return-Path: <SRS0=RxI+=VA=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.4 required=3.0 tests=DATE_IN_PAST_03_06,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=ham autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-8.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
+	USER_AGENT_SANE_1 autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B7C77C5B57D
-	for <linux-nfs@archiver.kernel.org>; Wed,  3 Jul 2019 01:36:02 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id F231EC5B578
+	for <linux-nfs@archiver.kernel.org>; Wed,  3 Jul 2019 08:18:19 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 7ACE52063F
-	for <linux-nfs@archiver.kernel.org>; Wed,  3 Jul 2019 01:36:02 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id D0D792184C
+	for <linux-nfs@archiver.kernel.org>; Wed,  3 Jul 2019 08:18:19 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727350AbfGCBgC (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 2 Jul 2019 21:36:02 -0400
-Received: from mx3.molgen.mpg.de ([141.14.17.11]:51903 "EHLO mx1.molgen.mpg.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726963AbfGCBgB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 2 Jul 2019 21:36:01 -0400
-Received: from [192.168.0.3] (ip5f5bf2d3.dynamic.kabel-deutschland.de [95.91.242.211])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
-        (No client certificate requested)
-        (Authenticated sender: pmenzel)
-        by mx.molgen.mpg.de (Postfix) with ESMTPSA id E667F2067CFE0;
-        Tue,  2 Jul 2019 23:59:48 +0200 (CEST)
-Subject: Regression caused by commit c54f24e3 (nfsd: fix performance-limiting
- session calculation)
-From:   Paul Menzel <pmenzel@molgen.mpg.de>
-To:     "J. Bruce Fields" <bfields@redhat.com>,
-        Jeff Layton <jlayton@kernel.org>
-References: <20190702165107.93C8A2067CFDD@mx.molgen.mpg.de>
- <8c3e0249-b17f-4bd2-4a46-afd4d35f4763@molgen.mpg.de>
-Cc:     Chris Tracy <ctracy@engr.scu.edu>, linux-nfs@vger.kernel.org,
-        LKML <linux-kernel@vger.kernel.org>, it+linux-nfs@molgen.mpg.de
-Message-ID: <0b5fdd56-d570-c787-cd56-7e6d0ba65225@molgen.mpg.de>
-Date:   Tue, 2 Jul 2019 23:59:48 +0200
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101
- Thunderbird/60.7.2
+        id S1727046AbfGCISS (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 3 Jul 2019 04:18:18 -0400
+Received: from mail3-relais-sop.national.inria.fr ([192.134.164.104]:26565
+        "EHLO mail3-relais-sop.national.inria.fr" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1727045AbfGCISS (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 3 Jul 2019 04:18:18 -0400
+X-IronPort-AV: E=Sophos;i="5.63,446,1557180000"; 
+   d="scan'208";a="312254589"
+Received: from vaio-julia.rsr.lip6.fr ([132.227.76.33])
+  by mail3-relais-sop.national.inria.fr with ESMTP/TLS/DHE-RSA-AES256-GCM-SHA384; 03 Jul 2019 10:18:16 +0200
+Date:   Wed, 3 Jul 2019 10:18:15 +0200 (CEST)
+From:   Julia Lawall <julia.lawall@lip6.fr>
+X-X-Sender: jll@hadrien
+To:     Markus Elfring <Markus.Elfring@web.de>
+cc:     linux-nfs@vger.kernel.org,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Trond Myklebust <trond.myklebust@hammerspace.com>,
+        LKML <linux-kernel@vger.kernel.org>,
+        kernel-janitors@vger.kernel.org
+Subject: Re: [PATCH] NFS: Less function calls in show_pnfs()
+In-Reply-To: <d2f73c3e-a55f-5fb7-a8f8-0dc3ce8ff8a5@web.de>
+Message-ID: <alpine.DEB.2.20.1907031018000.4456@hadrien>
+References: <d2f73c3e-a55f-5fb7-a8f8-0dc3ce8ff8a5@web.de>
+User-Agent: Alpine 2.20 (DEB 67 2015-01-07)
 MIME-Version: 1.0
-In-Reply-To: <8c3e0249-b17f-4bd2-4a46-afd4d35f4763@molgen.mpg.de>
-Content-Type: text/plain; charset=utf-8; format=flowed
-Content-Language: en-US
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Dear Bruce,
 
 
-Could it be that commit c54f24e3 (nfsd: fix performance-limiting session 
-calculation) causes a regression on big memory machines (1 TB)?
+On Tue, 2 Jul 2019, Markus Elfring wrote:
 
-> From c54f24e338ed2a35218f117a4a1afb5f9e2b4e64 Mon Sep 17 00:00:00 2001
-> From: "J. Bruce Fields" <bfields@redhat.com>
-> Date: Thu, 21 Feb 2019 10:47:00 -0500
-> Subject: [PATCH] nfsd: fix performance-limiting session calculation
-> 
-> We're unintentionally limiting the number of slots per nfsv4.1 session
-> to 10.  Often more than 10 simultaneous RPCs are needed for the best
-> performance.
-> 
-> This calculation was meant to prevent any one client from using up more
-> than a third of the limit we set for total memory use across all clients
-> and sessions.  Instead, it's limiting the client to a third of the
-> maximum for a single session.
-> 
-> Fix this.
-> 
-> Reported-by: Chris Tracy <ctracy@engr.scu.edu>
-> Cc: stable@vger.kernel.org
-> Fixes: de766e570413 "nfsd: give out fewer session slots as limit approaches"
-> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> From: Markus Elfring <elfring@users.sourceforge.net>
+> Date: Tue, 2 Jul 2019 16:30:53 +0200
+>
+> Reduce function calls for data output into a sequence.
+>
+> This issue was detected by using the Coccinelle software.
+>
+> Signed-off-by: Markus Elfring <elfring@users.sourceforge.net>
 > ---
->  fs/nfsd/nfs4state.c | 8 ++++----
->  1 file changed, 4 insertions(+), 4 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index fb3c9844c82a..6a45fb00c5fc 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -1544,16 +1544,16 @@ static u32 nfsd4_get_drc_mem(struct nfsd4_channel_attrs *ca)
+>  fs/nfs/super.c | 9 ++++-----
+>  1 file changed, 4 insertions(+), 5 deletions(-)
+>
+> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+> index f88ddac2dcdf..c301cd585b3b 100644
+> --- a/fs/nfs/super.c
+> +++ b/fs/nfs/super.c
+> @@ -749,11 +749,10 @@ static void show_sessions(struct seq_file *m, struct nfs_server *server) {}
+>  #ifdef CONFIG_NFS_V4_1
+>  static void show_pnfs(struct seq_file *m, struct nfs_server *server)
 >  {
->  	u32 slotsize = slot_bytes(ca);
->  	u32 num = ca->maxreqs;
-> -	int avail;
-> +	unsigned long avail, total_avail;
->  
->  	spin_lock(&nfsd_drc_lock);
-> -	avail = min((unsigned long)NFSD_MAX_MEM_PER_SESSION,
-> -		    nfsd_drc_max_mem - nfsd_drc_mem_used);
-> +	total_avail = nfsd_drc_max_mem - nfsd_drc_mem_used;
-> +	avail = min((unsigned long)NFSD_MAX_MEM_PER_SESSION, total_avail);
->  	/*
->  	 * Never use more than a third of the remaining memory,
->  	 * unless it's the only way to give this client a slot:
->  	 */
-> -	avail = clamp_t(int, avail, slotsize, avail/3);
-> +	avail = clamp_t(int, avail, slotsize, total_avail/3);
->  	num = min_t(int, num, avail / slotsize);
->  	nfsd_drc_mem_used += num * slotsize;
->  	spin_unlock(&nfsd_drc_lock);
+> -	seq_printf(m, ",pnfs=");
+> -	if (server->pnfs_curr_ld)
+> -		seq_printf(m, "%s", server->pnfs_curr_ld->name);
+> -	else
+> -		seq_printf(m, "not configured");
+> +	seq_printf(m, ",pnfs=%s",
+> +		   server->pnfs_curr_ld
+> +		   ? server->pnfs_curr_ld->name
+> +		   : "not configured");
 
-Booting a 80 threads, 1 TB server with Linux 4.19.56 and Linux 5.2-rc7 
-causes connections problems for the clients. The problems do not happen 
-on servers with just 96 GB memory for example. Bisecting points to the 
-two commits below (and I can only continue tomorrow).
+Unreadable.
 
-c54f24e338ed2a35218f117a4a1afb5f9e2b4e64 (nfsd: fix performance-limiting 
-session calculation)
-8127d82705998568b52ac724e28e00941538083d (NFS: Don't recoalesce on error 
-in nfs_pageio_complete_mirror())
+julia
 
-If you have things I could do to verify this besides reverting it
-tomorrow, please tell. It’d be great if it could be fixed before Linux
-5.2 is released.
-
-
-Kind regards,
-
-Paul
+>  }
+>
+>  static void show_implementation_id(struct seq_file *m, struct nfs_server *nfss)
+> --
+> 2.22.0
+>
+>
