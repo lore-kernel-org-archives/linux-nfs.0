@@ -2,133 +2,87 @@ Return-Path: <SRS0=RxI+=VA=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-11.0 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PULL_REQUEST,MAILING_LIST_MULTI,
-	MENTIONS_GIT_HOSTING,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=ham
+X-Spam-Status: No, score=-2.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=no
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A5E25C06510
-	for <linux-nfs@archiver.kernel.org>; Wed,  3 Jul 2019 00:33:30 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8E979C5B57D
+	for <linux-nfs@archiver.kernel.org>; Wed,  3 Jul 2019 01:35:16 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 60C2E218A4
-	for <linux-nfs@archiver.kernel.org>; Wed,  3 Jul 2019 00:33:30 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=netapp.onmicrosoft.com header.i=@netapp.onmicrosoft.com header.b="jgrflCAW"
+	by mail.kernel.org (Postfix) with ESMTP id 5FDB12063F
+	for <linux-nfs@archiver.kernel.org>; Wed,  3 Jul 2019 01:35:16 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727325AbfGCAd3 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 2 Jul 2019 20:33:29 -0400
-Received: from mail-eopbgr780085.outbound.protection.outlook.com ([40.107.78.85]:27713
-        "EHLO NAM03-BY2-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1727127AbfGCAd2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 2 Jul 2019 20:33:28 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
- d=netapp.onmicrosoft.com; s=selector2-netapp-onmicrosoft-com;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=InuIGeQYX4OnOaooMnLaUU/WhOkkmHfo3tQCUiCKsiU=;
- b=jgrflCAW0Wj15A5wjbH7lOjkEOSc6imQCRO1SOylIjYjWjg5BYiGwxFZIBQDFpfrA3hmFjk2aQ+i8e2yD71Ie5ebY6hYfCfl+7MiZXpOs4AMbewiErVCgSduextKou+i8kFTwPpHF79z8nUczwoJt3rWPUW/qonQWzYhTma2Lic=
-Received: from CY4PR06MB3479.namprd06.prod.outlook.com (10.175.117.23) by
- CY4PR06MB2887.namprd06.prod.outlook.com (10.175.117.139) with Microsoft SMTP
- Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- 15.20.2052.16; Tue, 2 Jul 2019 20:35:25 +0000
-Received: from CY4PR06MB3479.namprd06.prod.outlook.com
- ([fe80::4910:c5de:ec74:995]) by CY4PR06MB3479.namprd06.prod.outlook.com
- ([fe80::4910:c5de:ec74:995%2]) with mapi id 15.20.2032.018; Tue, 2 Jul 2019
- 20:35:25 +0000
-From:   "Schumaker, Anna" <Anna.Schumaker@netapp.com>
-To:     "trondmy@hammerspace.com" <trondmy@hammerspace.com>
-CC:     "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>
-Subject: [GIT PULL] Please pull NFSoRDMA updates for Linux 5.3
-Thread-Topic: [GIT PULL] Please pull NFSoRDMA updates for Linux 5.3
-Thread-Index: AQHVMRWtUitNYWZf40a4s7CQZrEEUw==
-Date:   Tue, 2 Jul 2019 20:35:25 +0000
-Message-ID: <b2cabbe76eecc8db717cccd84067d78f8c3a7d0f.camel@netapp.com>
-Accept-Language: en-US
-Content-Language: en-US
-X-MS-Has-Attach: 
-X-MS-TNEF-Correlator: 
-user-agent: Evolution 3.32.3 
-authentication-results: spf=none (sender IP is )
- smtp.mailfrom=Anna.Schumaker@netapp.com; 
-x-originating-ip: [23.28.75.121]
-x-ms-publictraffictype: Email
-x-ms-office365-filtering-correlation-id: 4c336e4f-fba2-49a9-27e2-08d6ff2cd051
-x-microsoft-antispam: BCL:0;PCL:0;RULEID:(2390118)(7020095)(4652040)(8989299)(4534185)(4627221)(201703031133081)(201702281549075)(8990200)(5600148)(711020)(4605104)(1401327)(2017052603328)(7193020);SRVR:CY4PR06MB2887;
-X-MS-TrafficTypeDiagnostic: CY4PR06MB2887:|CY4PR06MB2887:|CY4PR06MB2887:|CY4PR06MB2887:
-x-microsoft-antispam-prvs: <CY4PR06MB28876FAC6DCDA5F9A581D806F8F80@CY4PR06MB2887.namprd06.prod.outlook.com>
-x-ms-oob-tlc-oobclassifiers: OLM:1013;
-x-forefront-prvs: 008663486A
-x-forefront-antispam-report: SFV:NSPM;SFS:(10009020)(4636009)(366004)(39860400002)(346002)(376002)(136003)(396003)(189003)(199004)(486006)(316002)(86362001)(476003)(2616005)(4326008)(6916009)(186003)(26005)(3846002)(6116002)(14454004)(2351001)(25786009)(118296001)(2501003)(14444005)(256004)(478600001)(58126008)(54906003)(72206003)(99286004)(6486002)(6436002)(5660300002)(1730700003)(8936002)(5640700003)(6512007)(66066001)(2906002)(71200400001)(68736007)(15650500001)(66476007)(64756008)(91956017)(76116006)(73956011)(71190400001)(66946007)(66446008)(66556008)(53936002)(305945005)(36756003)(7736002)(8676002)(102836004)(81156014)(81166006)(6506007);DIR:OUT;SFP:1101;SCL:1;SRVR:CY4PR06MB2887;H:CY4PR06MB3479.namprd06.prod.outlook.com;FPR:;SPF:None;LANG:en;PTR:InfoNoRecords;MX:1;A:1;
-received-spf: None (protection.outlook.com: netapp.com does not designate
- permitted sender hosts)
-x-ms-exchange-senderadcheck: 1
-x-microsoft-antispam-message-info: 4DX/sxawhNEgNWZTIGddz6RgYzUTw7+ACTsIjG9BKt3AjQ4N9TE0WRwvjmQfP/9+bRJ7ZGM2ZrQ3Mg/E0hjsfjp32+e+O3m0N0ePMe30ZQaN/K21WxKKQcmaFMyTA37wzmbKpCfWLMkwIfS9S2TqvKVyOlYotnsxMqqHnWFeyjY85J/PITYwCzQSvH2BsWyTP3EcqD/cgErbZCKhZvZCLVS9tsyJZsXmgAbBcBjopFhfnt8OIw6VCcLIc72gi7ktubw5WOsb5xuIvlrQfRQfSvV8BIQWOYmUeDO6zdN92u0Kv/FqNqNGVsPmyDAsVp6Vo7oEli5HRthoIaUzPVcbqP5BlCltshH7AyKNrRmZ7hCSPD+kmN3IUmMXevzE7VdjyX1Diwb7OEytpEnDoR8IC+xMR9IPypqo4LUJLeMOEo0=
-Content-Type: text/plain; charset="utf-8"
-Content-ID: <CD2783FBF8DD8B4BB90922EFB979A863@namprd06.prod.outlook.com>
-Content-Transfer-Encoding: base64
+        id S1727107AbfGCBfP (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 2 Jul 2019 21:35:15 -0400
+Received: from mail.cn.fujitsu.com ([183.91.158.132]:57932 "EHLO
+        heian.cn.fujitsu.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+        with ESMTP id S1727080AbfGCBfP (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 2 Jul 2019 21:35:15 -0400
+X-IronPort-AV: E=Sophos;i="5.63,445,1557158400"; 
+   d="scan'208";a="70587071"
+Received: from unknown (HELO cn.fujitsu.com) ([10.167.33.5])
+  by heian.cn.fujitsu.com with ESMTP; 03 Jul 2019 09:35:13 +0800
+Received: from G08CNEXCHPEKD03.g08.fujitsu.local (unknown [10.167.33.85])
+        by cn.fujitsu.com (Postfix) with ESMTP id EDFA14CDDD3F;
+        Wed,  3 Jul 2019 09:35:14 +0800 (CST)
+Received: from [10.167.226.33] (10.167.226.33) by
+ G08CNEXCHPEKD03.g08.fujitsu.local (10.167.33.89) with Microsoft SMTP Server
+ (TLS) id 14.3.439.0; Wed, 3 Jul 2019 09:35:19 +0800
+From:   Su Yanjun <suyj.fnst@cn.fujitsu.com>
+Subject: [Problem]testOpenUpgradeLock test failed in nfsv4.0 in 5.2.0-rc7
+To:     <ffilzlnx@mindspring.com>
+CC:     <linux-nfs@vger.kernel.org>, <linux-kernel@vger.kernel.org>
+Message-ID: <a4ff6e56-09d6-1943-8d71-91eaa418bd1e@cn.fujitsu.com>
+Date:   Wed, 3 Jul 2019 09:34:02 +0800
+User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64; rv:60.0) Gecko/20100101
+ Thunderbird/60.7.0
 MIME-Version: 1.0
-X-MS-Exchange-CrossTenant-Network-Message-Id: 4c336e4f-fba2-49a9-27e2-08d6ff2cd051
-X-MS-Exchange-CrossTenant-originalarrivaltime: 02 Jul 2019 20:35:25.7316
- (UTC)
-X-MS-Exchange-CrossTenant-fromentityheader: Hosted
-X-MS-Exchange-CrossTenant-id: 4b0911a0-929b-4715-944b-c03745165b3a
-X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
-X-MS-Exchange-CrossTenant-userprincipalname: bjschuma@netapp.com
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: CY4PR06MB2887
-X-OriginatorOrg: netapp.com
+Content-Type: text/plain; charset="utf-8"; format=flowed
+Content-Transfer-Encoding: 8bit
+X-Originating-IP: [10.167.226.33]
+X-yoursite-MailScanner-ID: EDFA14CDDD3F.ADFC4
+X-yoursite-MailScanner: Found to be clean
+X-yoursite-MailScanner-From: suyj.fnst@cn.fujitsu.com
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-SGkgVHJvbmQsDQoNClRoZSBmb2xsb3dpbmcgY2hhbmdlcyBzaW5jZSBjb21taXQNCjllMGJhYmYy
-YzA2YzczY2RhMmMwY2QzN2ExNjUzZDgyM2FkYjQwZWM6DQoNCiAgTGludXggNS4yLXJjNSAoMjAx
-OS0wNi0xNiAwODo0OTo0NSAtMTAwMCkNCg0KYXJlIGF2YWlsYWJsZSBpbiB0aGUgR2l0IHJlcG9z
-aXRvcnkgYXQ6DQoNCiAgZ2l0Oi8vZ2l0LmxpbnV4LW5mcy5vcmcvcHJvamVjdHMvYW5uYS9saW51
-eC1uZnMuZ2l0IHRhZ3MvbmZzLXJkbWEtDQpmb3ItNS4zLTENCg0KZm9yIHlvdSB0byBmZXRjaCBj
-aGFuZ2VzIHVwIHRvDQoxYThmMWVkM2ViMWFjMmZkZGMxZDJjNzUyOTRkYjA4YWNlODhjMWNiOg0K
-DQogIE5GUzogUmVjb3JkIHRhc2ssIGNsaWVudCBJRCwgYW5kIFhJRCBpbiB4ZHJfc3RhdHVzIHRy
-YWNlIHBvaW50cw0KKDIwMTktMDctMDIgMTY6Mjk6MjIgLTA0MDApDQoNClRoYW5rcywNCkFubmEN
-Cg0KLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLQ0KQ2h1Y2sgTGV2ZXIgKDE5KToNCiAgICAgIHhwcnRyZG1hOiBGaXggYSBCVUcg
-d2hlbiB0cmFjaW5nIGlzIGVuYWJsZWQgd2l0aCBORlN2NC4xIG9uIFJETUENCiAgICAgIHhwcnRy
-ZG1hOiBGaXggdXNlLWFmdGVyLWZyZWUgaW4gcnBjcmRtYV9wb3N0X3JlY3ZzDQogICAgICB4cHJ0
-cmRtYTogUmVwbGFjZSB1c2Ugb2YgeGRyX3N0cmVhbV9wb3MgaW4gcnBjcmRtYV9tYXJzaGFsX3Jl
-cQ0KICAgICAgeHBydHJkbWE6IEZpeCBvY2Nhc2lvbmFsIHRyYW5zcG9ydCBkZWFkbG9jaw0KICAg
-ICAgeHBydHJkbWE6IFJlbW92ZSB0aGUgUlBDUkRNQV9SRVFfRl9QRU5ESU5HIGZsYWcNCiAgICAg
-IHhwcnRyZG1hOiBSZW1vdmUgZnJfc3RhdGUNCiAgICAgIHhwcnRyZG1hOiBBZGQgbWVjaGFuaXNt
-IHRvIHBsYWNlIE1ScyBiYWNrIG9uIHRoZSBmcmVlIGxpc3QNCiAgICAgIHhwcnRyZG1hOiBSZWR1
-Y2UgY29udGV4dCBzd2l0Y2hpbmcgZHVlIHRvIExvY2FsIEludmFsaWRhdGlvbg0KICAgICAgeHBy
-dHJkbWE6IFdha2UgUlBDcyBkaXJlY3RseSBpbiBycGNyZG1hX3djX3NlbmQgcGF0aA0KICAgICAg
-eHBydHJkbWE6IFNpbXBsaWZ5IHJwY3JkbWFfcmVwX2NyZWF0ZQ0KICAgICAgeHBydHJkbWE6IFN0
-cmVhbWxpbmUgcnBjcmRtYV9wb3N0X3JlY3ZzDQogICAgICB4cHJ0cmRtYTogUmVmYWN0b3IgY2h1
-bmsgZW5jb2RpbmcNCiAgICAgIHhwcnRyZG1hOiBSZW1vdmUgcnBjcmRtYV9yZXE6OnJsX2J1ZmZl
-cg0KICAgICAgeHBydHJkbWE6IE1vZGVybml6ZSBvcHMtPmNvbm5lY3QNCiAgICAgIE5GUzQ6IEFk
-ZCBhIHRyYWNlIGV2ZW50IHRvIHJlY29yZCBpbnZhbGlkIENCIHNlcXVlbmNlIElEcw0KICAgICAg
-TkZTOiBGaXggc2hvd19uZnNfZXJyb3JzIG1hY3JvcyBhZ2Fpbg0KICAgICAgTkZTOiBEaXNwbGF5
-IHN5bWJvbGljIHN0YXR1cyBjb2RlIG5hbWVzIGluIHRyYWNlIGxvZw0KICAgICAgTkZTOiBVcGRh
-dGUgc3ltYm9saWMgZmxhZ3MgZGlzcGxheWVkIGJ5IHRyYWNlIGV2ZW50cw0KICAgICAgTkZTOiBS
-ZWNvcmQgdGFzaywgY2xpZW50IElELCBhbmQgWElEIGluIHhkcl9zdGF0dXMgdHJhY2UgcG9pbnRz
-DQoNCiBmcy9uZnMvY2FsbGJhY2tfcHJvYy5jICAgICAgICAgIHwgIDI4ICsrKysrKysrLS0tDQog
-ZnMvbmZzL25mczJ4ZHIuYyAgICAgICAgICAgICAgICB8ICAgMiArLQ0KIGZzL25mcy9uZnMzeGRy
-LmMgICAgICAgICAgICAgICAgfCAgIDIgKy0NCiBmcy9uZnMvbmZzNHRyYWNlLmggICAgICAgICAg
-ICAgIHwgMjA3DQorKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysr
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLQ0KLS0tLQ0KIGZzL25mcy9uZnM0eGRyLmMgICAgICAg
-ICAgICAgICAgfCAgIDIgKy0NCiBmcy9uZnMvbmZzdHJhY2UuaCAgICAgICAgICAgICAgIHwgMjMz
-DQorKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysr
-KysrKysrKy0tLS0tLS0tLQ0KLS0tLS0tLS0tLS0tLQ0KIGluY2x1ZGUvbGludXgvc3VucnBjL3hw
-cnQuaCAgICAgfCAgIDMgKysNCiBpbmNsdWRlL3RyYWNlL2V2ZW50cy9ycGNyZG1hLmggIHwgIDkw
-ICsrKysrKysrKysrKysrKysrKysrKysrKystLS0tLS0tDQotDQogbmV0L3N1bnJwYy9zY2hlZC5j
-ICAgICAgICAgICAgICB8ICAgMSArDQogbmV0L3N1bnJwYy94cHJ0LmMgICAgICAgICAgICAgICB8
-ICAzMiArKysrKysrKysrKysNCiBuZXQvc3VucnBjL3hwcnRyZG1hL2Zyd3Jfb3BzLmMgIHwgMzI3
-DQorKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysr
-KysrKysrKysrKysrKysrKw0KKysrKysrKy0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0NCiBuZXQvc3VucnBjL3hwcnRyZG1hL3JwY19yZG1hLmMgIHwgMTQ4ICsrKysrKysr
-KysrKysrKysrKysrKysrLS0tLS0tLS0tDQotLS0tLS0tLS0tLS0tLS0tLS0tLS0NCiBuZXQvc3Vu
-cnBjL3hwcnRyZG1hL3RyYW5zcG9ydC5jIHwgIDgzICsrKysrKysrKysrKysrKysrKysrKysrLS0t
-LS0tLQ0KIG5ldC9zdW5ycGMveHBydHJkbWEvdmVyYnMuYyAgICAgfCAxMTUgKysrKysrKysrKysr
-KysrKysrKy0tLS0tLS0tLS0tLS0NCi0tLS0tLS0tLS0NCiBuZXQvc3VucnBjL3hwcnRyZG1hL3hw
-cnRfcmRtYS5oIHwgIDQ0ICsrKysrLS0tLS0tLS0tLS0NCiBuZXQvc3VucnBjL3hwcnRzb2NrLmMg
-ICAgICAgICAgIHwgIDIzICstLS0tLS0tLQ0KIDE2IGZpbGVzIGNoYW5nZWQsIDgzNyBpbnNlcnRp
-b25zKCspLCA1MDMgZGVsZXRpb25zKC0pDQo=
+Hi Frank
+
+We tested the pynfs of NFSv4.0 on the latest version of the kernel 
+(5.2.0-rc7).
+I encountered a problem while testing st_lock.testOpenUpgradeLock. The 
+problem is now as follows:
+**************************************************
+LOCK24 st_lock.testOpenUpgradeLock : FAILURE
+            OP_LOCK should return NFS4_OK, instead got
+            NFS4ERR_BAD_SEQID
+**************************************************
+Is this normal?
+
+The case is as follows:
+Def testOpenUpgradeLock(t, env):
+     """Try open, lock, open, downgrade, close
+
+     FLAGS: all lock
+     CODE: LOCK24
+     """
+     c= env.c1
+     C.init_connection()
+     Os = open_sequence(c, t.code, lockowner="lockowner_LOCK24")
+     Os.open(OPEN4_SHARE_ACCESS_READ)
+     Os.lock(READ_LT)
+     Os.open(OPEN4_SHARE_ACCESS_WRITE)
+     Os.unlock()
+     Os.downgrade(OPEN4_SHARE_ACCESS_WRITE)
+     Os.lock(WRITE_LT)
+     Os.close()
+
+After investigation, there was an error in unlock->lock. When unlocking, 
+the lockowner of the file was not released, causing an error when 
+locking again.
+Will nfs4.0 support 1) open-> 2) lock-> 3) unlock-> 4) lock this function?
+
+
+
