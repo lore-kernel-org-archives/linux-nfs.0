@@ -2,149 +2,121 @@ Return-Path: <SRS0=k6XJ=VC=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-11.0 required=3.0
-	tests=HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PULL_REQUEST,MAILING_LIST_MULTI,
-	MENTIONS_GIT_HOSTING,SPF_HELO_NONE,SPF_PASS autolearn=unavailable
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-1.0 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
+	autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D136CC468AA
-	for <linux-nfs@archiver.kernel.org>; Fri,  5 Jul 2019 21:30:47 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9FBBFC5B57D
+	for <linux-nfs@archiver.kernel.org>; Fri,  5 Jul 2019 22:59:17 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id B4B34216E3
-	for <linux-nfs@archiver.kernel.org>; Fri,  5 Jul 2019 21:30:47 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 6DF2A20863
+	for <linux-nfs@archiver.kernel.org>; Fri,  5 Jul 2019 22:59:17 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="fJnqdd4u"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727874AbfGEVan convert rfc822-to-8bit (ORCPT
-        <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 5 Jul 2019 17:30:43 -0400
-Received: from mx1.redhat.com ([209.132.183.28]:56964 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727217AbfGEVan (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 5 Jul 2019 17:30:43 -0400
-Received: from smtp.corp.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 10022308FEC0;
-        Fri,  5 Jul 2019 21:30:43 +0000 (UTC)
-Received: from warthog.procyon.org.uk (ovpn-120-9.rdu2.redhat.com [10.10.120.9])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id BAF9618A41;
-        Fri,  5 Jul 2019 21:30:40 +0000 (UTC)
-Organization: Red Hat UK Ltd. Registered Address: Red Hat UK Ltd, Amberley
-        Place, 107-111 Peascod Street, Windsor, Berkshire, SI4 1TE, United
-        Kingdom.
-        Registered in England and Wales under Company Registration No. 3798903
-From:   David Howells <dhowells@redhat.com>
-To:     torvalds@linux-foundation.org
-cc:     dhowells@redhat.com, jmorris@namei.org, keyrings@vger.kernel.org,
-        netdev@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-cifs@vger.kernel.org, linux-afs@lists.infradead.org,
-        linux-fsdevel@vger.kernel.org, linux-integrity@vger.kernel.org,
-        linux-security-module@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [GIT PULL] Keys: Set 4 - Key ACLs for 5.3
+        id S1726001AbfGEW7Q (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 5 Jul 2019 18:59:16 -0400
+Received: from mail-io1-f51.google.com ([209.85.166.51]:38466 "EHLO
+        mail-io1-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725878AbfGEW7Q (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Jul 2019 18:59:16 -0400
+Received: by mail-io1-f51.google.com with SMTP id j6so22259031ioa.5
+        for <linux-nfs@vger.kernel.org>; Fri, 05 Jul 2019 15:59:16 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=mime-version:from:date:message-id:subject:to;
+        bh=xq7BB+bsSEWd0N0pJFZrd5Ww5QbCsUBYzVS0nSKu2vE=;
+        b=fJnqdd4u+GvLvDY6tnKFc7omMg09VgM7smCVuL/5OH9wGjcgwMtNGbyoX7Svc2BIim
+         Eepl0qSYzRiSPMlCzJwlcl0FHPGIuKojvWt7kvjuMi2Mujg/j4fjm19tM9e4flEyDSXm
+         941BM73VIG67zblg5/81rE4IlYG2xfwyefONWop7PjWgAcU70uGWO8wYPoFk2fjuj4NC
+         X5M6Srzn5Hqm10my9Eoj7VZeBMiOdFHHAuX/uP1vXDFRAkpMA0UT2Ytd+x04QVUpZVjV
+         JW50I0Lcd6gSovyIxU7qU6AEdWS/b76ACwmWmV3YSQcdSFzRsqG20GredEBUe2upGCnK
+         puKQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:from:date:message-id:subject:to;
+        bh=xq7BB+bsSEWd0N0pJFZrd5Ww5QbCsUBYzVS0nSKu2vE=;
+        b=jSaWR24p8AqThSCg1Hwjj9QeAcR9wJVN7o8zl3AqIaeNriwTHoIabmx6NLgsowoTtU
+         6KeACeyniMRM/aU1+hyfukFwncSbILZiG+6YmbNaeqNPvgMIo7PmLbsU83oh9/ULvsBY
+         kkh/fWyb3R9MOIIebQuIB6XvrvpXBuuKjTr6gSwdqYYn3GgE3CVRy58YYDhtHXdUIDeC
+         2ebZDuvzHN2z6+lrawlYGJkoAP47bc2hUgb8ggK0EbEkWy+Sl0MFtsU6qurtsn7d4uX6
+         f2XnM++BgIa2epe8UG4nATrnODRD11LeCRNL5CnM54GU03YfcYUtqsRSVEYI0dXynzb2
+         Vg7w==
+X-Gm-Message-State: APjAAAU68pnqFNtgGo836/pS0SqXh/yB1s330nWLXWoDvrFN3ExoiITe
+        UwlqPvO0QwKGnFecjH+z9bTefYtwpsMYoW6UCaDjIGbllu4=
+X-Google-Smtp-Source: APXvYqxaS8KiH7d5xtSoasV9AEbhBcoMwhD00B1t4yPeQ6ncM/oXb+ix6lJVaV6qb7i4jRthOIeA0LY0NVcaQr8y/LQ=
+X-Received: by 2002:a6b:7602:: with SMTP id g2mr330402iom.82.1562367555467;
+ Fri, 05 Jul 2019 15:59:15 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-ID: <28476.1562362239.1@warthog.procyon.org.uk>
-Content-Transfer-Encoding: 8BIT
-Date:   Fri, 05 Jul 2019 22:30:39 +0100
-Message-ID: <28477.1562362239@warthog.procyon.org.uk>
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.11
-X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.49]); Fri, 05 Jul 2019 21:30:43 +0000 (UTC)
+From:   John Bartoszewski <john.bartoszewski@gmail.com>
+Date:   Fri, 5 Jul 2019 16:59:02 -0600
+Message-ID: <CAMttjSSQibhZ4ekSMVRF0jeREA9n9s6puAJcOTR2vyn=W2W5sg@mail.gmail.com>
+Subject: zfs server slow mounting ( mtab ?)
+To:     linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hi Linus,
+Hello,
 
-Here's my fourth block of keyrings changes for the next merge window.  They
-change the permissions model used by keys and keyrings to be based on an
-internal ACL by the following means:
+I'm trying to setup a nfs server with over 3500+ zfs datasets
+being exported. Only NFSv3 is needed.
 
- (1) Replace the permissions mask internally with an ACL that contains a
-     list of ACEs, each with a specific subject with a permissions mask.
-     Potted default ACLs are available for new keys and keyrings.
+The OS had a 4.4.172 kernel and nfs-utils 1.30. With these versions
+when a client tried to mount an exported dataset, rpc.mountd spiked to
+100% for several minutes, the kernel produced a bug and a trace
+output, and the client never finished.
 
-     ACE subjects can be macroised to indicate the UID and GID specified on
-     the key (which remain).  Future commits will be able to add additional
-     subject types, such as specific UIDs or domain tags/namespaces.
+I have built a 4.19.56 kernel, libevent 2.1.10, util-linux 2.34 (for
+libblkid), and nfs-utils 2.4.1. With this setup rpc.mountd does spike
+to 100%, but at least a mount finishes, but it takes about 5 minutes.
 
-     Also split a number of permissions to give finer control.  Examples
-     include splitting the revocation permit from the change-attributes
-     permit, thereby allowing someone to be granted permission to revoke a
-     key without allowing them to change the owner; also the ability to
-     join a keyring is split from the ability to link to it, thereby
-     stopping a process accessing a keyring by joining it and thus
-     acquiring use of possessor permits.
+nfs-utils was configured with:
+./configure --disable-tirpc  --disable-nfsv4 --disable-nfsv41
+--disable-gss --disable-ipv6
 
- (2) Provide a keyctl to allow the granting or denial of one or more
-     permits to a specific subject.  Direct access to the ACL is not
-     granted, and the ACL cannot be viewed.
+Stracing the new rpc.mountd it appears all the time is spent reading
+the mtab.
 
-David
----
-The following changes since commit a58946c158a040068e7c94dc1d58bbd273258068:
+Below is some of the output from:
+/sbin/rpc.mountd --foreground --debug all
 
-  keys: Pass the network namespace into request_key mechanism (2019-06-27 23:02:12 +0100)
+rpc.mountd: nfsd_fh: found 0x6173d50 path /
+rpc.mountd: auth_unix_ip: inbuf 'nfsd 10.222.33.24'
+rpc.mountd: auth_unix_ip: client 0x1d5bbb0 '10.222.33.0/24'
+rpc.mountd: auth_unix_ip: inbuf 'nfsd 10.222.33.254'
+rpc.mountd: auth_unix_ip: client 0x1d5bbb0 '10.222.33.0/24'
+rpc.mountd: nfsd_export: inbuf '10.222.33.0/24 /nfsexport'
+rpc.mountd: nfsd_export: found 0x6174260 path /nfsexport
+rpc.mountd: nfsd_fh: inbuf '10.222.33.0/24 7
+\x43000a00000000001ce354a654a34fd4a09f9b59f6aebb11'
+rpc.mountd: nfsd_fh: found 0x6174270 path /nfsexport
+rpc.mountd: nfsd_export: inbuf '10.222.33.0/24 /nfsexport/home'
+rpc.mountd: nfsd_export: found 0x4cf8bc0 path /nfsexport/home
+rpc.mountd: Received NULL request from 10.222.33.254
+rpc.mountd: Received NULL request from 10.222.33.254
+rpc.mountd: Received MNT3(/nfsexport/home/timmy) request from 10.222.33.254
+rpc.mountd: authenticated mount request from 10.222.33.254:694 for
+/nfsexport/home/timmy (/nfsexport/home/timmy)
+rpc.mountd: nfsd_fh: inbuf '10.222.33.0/24 6 \x947e3e1400c9c79b0000000000000000'
+rpc.mountd: nfsd_fh: found 0x4e54390 path /nfsexport/home/timmy
 
-are available in the Git repository at:
+As you can see it searches for /, then /nfsexport, then /nfsexport/home,
+and finally /nfsexport/home/timmy
 
-  git://git.kernel.org/pub/scm/linux/kernel/git/dhowells/linux-fs.git tags/keys-acl-20190703
+But when zfs populates the mtab, the top level of the datasets
+( /nfsexport ) is at the bottom of the mtab, 3500 lines down.
+The next level is also at the bottom. So getmntent has to
+read the mtab stream through several times. Actually:
+open("/etc/mtab", O_RDONLY|O_CLOEXEC)   = 10
+is called 50000 times during this one mount attempt.
 
-for you to fetch changes up to 7a1ade847596dadc94b37e49f8c03f167fd71748:
+Are they any suggestions anyone can make to help out?
 
-  keys: Provide KEYCTL_GRANT_PERMISSION (2019-07-03 13:05:22 +0100)
+More extensive output can be made available.
 
-----------------------------------------------------------------
-Keyrings ACL
-
-----------------------------------------------------------------
-David Howells (2):
-      keys: Replace uid/gid/perm permissions checking with an ACL
-      keys: Provide KEYCTL_GRANT_PERMISSION
-
- Documentation/security/keys/core.rst               | 128 ++++++--
- Documentation/security/keys/request-key.rst        |   9 +-
- certs/blacklist.c                                  |   7 +-
- certs/system_keyring.c                             |  12 +-
- drivers/md/dm-crypt.c                              |   2 +-
- drivers/nvdimm/security.c                          |   2 +-
- fs/afs/security.c                                  |   2 +-
- fs/cifs/cifs_spnego.c                              |  25 +-
- fs/cifs/cifsacl.c                                  |  28 +-
- fs/cifs/connect.c                                  |   4 +-
- fs/crypto/keyinfo.c                                |   2 +-
- fs/ecryptfs/ecryptfs_kernel.h                      |   2 +-
- fs/ecryptfs/keystore.c                             |   2 +-
- fs/fscache/object-list.c                           |   2 +-
- fs/nfs/nfs4idmap.c                                 |  30 +-
- fs/ubifs/auth.c                                    |   2 +-
- include/linux/key.h                                | 121 +++----
- include/uapi/linux/keyctl.h                        |  65 ++++
- lib/digsig.c                                       |   2 +-
- net/ceph/ceph_common.c                             |   2 +-
- net/dns_resolver/dns_key.c                         |  12 +-
- net/dns_resolver/dns_query.c                       |  15 +-
- net/rxrpc/key.c                                    |  19 +-
- net/wireless/reg.c                                 |   6 +-
- security/integrity/digsig.c                        |  31 +-
- security/integrity/digsig_asymmetric.c             |   2 +-
- security/integrity/evm/evm_crypto.c                |   2 +-
- security/integrity/ima/ima_mok.c                   |  13 +-
- security/integrity/integrity.h                     |   6 +-
- .../integrity/platform_certs/platform_keyring.c    |  14 +-
- security/keys/compat.c                             |   2 +
- security/keys/encrypted-keys/encrypted.c           |   2 +-
- security/keys/encrypted-keys/masterkey_trusted.c   |   2 +-
- security/keys/gc.c                                 |   2 +-
- security/keys/internal.h                           |  16 +-
- security/keys/key.c                                |  29 +-
- security/keys/keyctl.c                             | 104 ++++--
- security/keys/keyring.c                            |  27 +-
- security/keys/permission.c                         | 361 +++++++++++++++++++--
- security/keys/persistent.c                         |  27 +-
- security/keys/proc.c                               |  22 +-
- security/keys/process_keys.c                       |  86 +++--
- security/keys/request_key.c                        |  34 +-
- security/keys/request_key_auth.c                   |  15 +-
- security/selinux/hooks.c                           |  16 +-
- security/smack/smack_lsm.c                         |   3 +-
- 46 files changed, 992 insertions(+), 325 deletions(-)
+Thanks,
+John
