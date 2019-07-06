@@ -2,181 +2,176 @@ Return-Path: <SRS0=C94k=VD=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,
-	SPF_PASS,URIBL_BLOCKED,USER_AGENT_SANE_1 autolearn=ham autolearn_force=no
-	version=3.4.0
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A7EA0C0650E
-	for <linux-nfs@archiver.kernel.org>; Sat,  6 Jul 2019 16:55:28 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 260C0C48BD5
+	for <linux-nfs@archiver.kernel.org>; Sat,  6 Jul 2019 18:55:04 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 68122206A2
-	for <linux-nfs@archiver.kernel.org>; Sat,  6 Jul 2019 16:55:28 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id ED1A52083B
+	for <linux-nfs@archiver.kernel.org>; Sat,  6 Jul 2019 18:55:03 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="aok8kHj1"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="ksNCQqic"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726743AbfGFQz1 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sat, 6 Jul 2019 12:55:27 -0400
-Received: from mail-wm1-f48.google.com ([209.85.128.48]:54688 "EHLO
-        mail-wm1-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726702AbfGFQz1 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 6 Jul 2019 12:55:27 -0400
-Received: by mail-wm1-f48.google.com with SMTP id p74so8883987wme.4;
-        Sat, 06 Jul 2019 09:55:24 -0700 (PDT)
+        id S1726966AbfGFSzD (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sat, 6 Jul 2019 14:55:03 -0400
+Received: from mail-io1-f66.google.com ([209.85.166.66]:42225 "EHLO
+        mail-io1-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726969AbfGFSzC (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 6 Jul 2019 14:55:02 -0400
+Received: by mail-io1-f66.google.com with SMTP id u19so25988778ior.9
+        for <linux-nfs@vger.kernel.org>; Sat, 06 Jul 2019 11:55:02 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
-        h=date:from:to:cc:subject:message-id:mime-version:content-disposition
-         :user-agent;
-        bh=CHvEJVpnUTpEucTZAESaqgprel+L7cKgKdvDS7CIeuo=;
-        b=aok8kHj1nJmFCVDYgUfeuFSO3ANNqq47dUqVU6JR4U6XgL5mlLyhoalRMYWlynQ0DM
-         wzPSlV8AlzuSROicmK9+/uk5xeAHkf+YQcX467jECsz4EtQmKClrSsPZdz+27AkZsjnn
-         7a/7SaRxpoDfsZexztuy0Gp0w+iMDJC54cJBvMoBaCCsWeZTNfv4GZWJkCP3q2NhpiRH
-         KResuQ+eAkx65CZnf4By+tWWQjMJF6/FlKXitHLWjRVqcky9TyM5vaPR8MegRTIKfyev
-         rWEy8HdQq/aYL/SHZRzVnzo/Ma8cxB6kRsJ9w+vj3WqOMBWYyztWpTYUEZ1eVBeFthAx
-         wblg==
+        h=from:to:cc:subject:date:message-id:in-reply-to:references
+         :mime-version:content-transfer-encoding;
+        bh=wO6raJIQQ4+pygU0RevYLFTwQqkys77MRwhfIB1KQK8=;
+        b=ksNCQqicO43650HHjG7psoZNBgbtLfY9hKUgaRmzwE2E6KPBSuMgtIPfvHaVQJ+ma1
+         09KjO2iitzElN8LDdE3A59a7PcAEzs0zYLGSGMbUrqntsH8CIJamuUoU50Txqmx5CGBQ
+         SzLw+gFopbJuq1ECWeMrx1jkTWxVkdh78na4WBkzCnXD8/xoD/XgDj/8toOfxcTBqtZe
+         kvHukUdpcOZcJGOK+x/O5DdFxq3NvhSZ4nawLm7ud7aevoG+pudo7yZpM70SqCk4fb9h
+         vwyTU+0PguO0LEoEDPdDiFRJ7zc9a9PJLNZ+jbl14Yh1JnRS4IFiPFr87MGbl0azLCm/
+         42nQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:date:from:to:cc:subject:message-id:mime-version
-         :content-disposition:user-agent;
-        bh=CHvEJVpnUTpEucTZAESaqgprel+L7cKgKdvDS7CIeuo=;
-        b=MaCTKJaLcFFuA/yEwFDfwjfFw+l8WzOatU3WJ1SKM3rU/18+x6+183lLCw+ePx9yjw
-         YukQccIeVc3nEz5WlUwVOBIwyks1Rd1WZ5Vdm/hMEzavneNMbH15XKY8pyXJxpNlgEKy
-         7ZO+KOsG3AvQ1MYhRKW6jhADdsDVG933g80zCgt9xD2/sk1DRF//xDIlMir0E3pGHH37
-         vhweJgqSLqk8z1XA5OMCJRIgRIwmY8yiZmZJSl+PrihtDxJK7zL7x5w5Pfmi8FYdu7EV
-         fzB+/6aYvM9DhlG0h/GbCfH36LdB/O5iH63t2BMN7aw9j+Qf2CH0qiMJu6ofIuWxvTr9
-         +xrA==
-X-Gm-Message-State: APjAAAXb8rzaWMtkPMB7riCqL4cz6vwNg8CocLsJ9wIBwE8nZTB4xIU7
-        cwKc+6LKEoNPK/HZVzP1iDE0igY=
-X-Google-Smtp-Source: APXvYqxCUZ/ISGFTqEpRp+iWpA3L82Jo4pRIeTjvtvvkFTNDf0Wed0Dh1/DA8Pq/TSGusBRQ9w74Kg==
-X-Received: by 2002:a1c:a1c5:: with SMTP id k188mr8636557wme.102.1562432123781;
-        Sat, 06 Jul 2019 09:55:23 -0700 (PDT)
-Received: from avx2 ([46.53.252.147])
-        by smtp.gmail.com with ESMTPSA id p26sm18099800wrp.58.2019.07.06.09.55.22
-        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Sat, 06 Jul 2019 09:55:23 -0700 (PDT)
-Date:   Sat, 6 Jul 2019 19:55:21 +0300
-From:   Alexey Dobriyan <adobriyan@gmail.com>
-To:     davem@davemloft.net
-Cc:     netdev@vger.kernel.org, netfilter-devel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, j.vosburgh@gmail.com, vfalico@gmail.com,
-        andy@greyhouse.net, pablo@netfilter.org, kadlec@netfilter.org,
-        fw@strlen.de, bfields@fieldses.org, chuck.lever@oracle.com
-Subject: [PATCH 2/2] net: apply proc_net_mkdir() harder
-Message-ID: <20190706165521.GB10550@avx2>
+        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
+         :references:mime-version:content-transfer-encoding;
+        bh=wO6raJIQQ4+pygU0RevYLFTwQqkys77MRwhfIB1KQK8=;
+        b=NA43XbC6Geqh1Ox6a2R4nK/Z/hAWHB8PqA2fSGNbXB8ExRxOAEB/1KlbbKeDrXVz9i
+         Y/eMemYD45jSGeRTunMhgvAObxWgNd4vVBFPLF47RGj68OIiZS8QFuB72nb9O1LNTaSP
+         wHiZzru46wcUJamXI5qhaMslWt+0X7Ytezo561azMn3qXGKnSwSb57f7UfMJjHRhnVJz
+         VjOYsFI5gLG0Zs5povzvV9+PoohILUPxHpLUlM/TgRTxP1LT9cVH6qUEjFvcZFdaT0K8
+         JupRl23nnFG8LwojmWFsvXavBaOhjvk0qk5JssiAQ8jfAB6FFXxhhfu9qeKpAo0jYvTc
+         5pFA==
+X-Gm-Message-State: APjAAAWxteyMMp7FUe5y2M/rZX7C3WaR4WIQhP8tJK2fzmnjJ0ifE4Ne
+        D1zVXOw8QBMSbQGYSusklaBCKbfXIg==
+X-Google-Smtp-Source: APXvYqxqh47cp3Z9vl5qMQl6Kv8zOqI6LUGhmosGvX9AzX+wr/Ni2hHG3nCpt1t5tpXS0f9uwtuhZA==
+X-Received: by 2002:a5d:94d7:: with SMTP id y23mr10704790ior.296.1562439301480;
+        Sat, 06 Jul 2019 11:55:01 -0700 (PDT)
+Received: from localhost.localdomain (50-124-245-189.alma.mi.frontiernet.net. [50.124.245.189])
+        by smtp.gmail.com with ESMTPSA id x22sm9117780ioh.87.2019.07.06.11.55.00
+        (version=TLS1_3 cipher=AEAD-AES256-GCM-SHA384 bits=256/256);
+        Sat, 06 Jul 2019 11:55:01 -0700 (PDT)
+From:   Trond Myklebust <trondmy@gmail.com>
+X-Google-Original-From: Trond Myklebust <trond.myklebust@hammerspace.com>
+To:     linux-nfs@vger.kernel.org
+Cc:     Liguang Zhang <zhangliguang@linux.alibaba.com>
+Subject: [PATCH 2/3] NFS: Reduce stack usage in nfs_readdir()
+Date:   Sat,  6 Jul 2019 14:52:51 -0400
+Message-Id: <20190706185252.32488-2-trond.myklebust@hammerspace.com>
+X-Mailer: git-send-email 2.21.0
+In-Reply-To: <20190706185252.32488-1-trond.myklebust@hammerspace.com>
+References: <20190706185252.32488-1-trond.myklebust@hammerspace.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Disposition: inline
-User-Agent: Mutt/1.10.1 (2018-07-13)
+Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: "Hallsmark, Per" <Per.Hallsmark@windriver.com>
+64 pointers is 512bytes on a typical 64-bit system.
 
-proc_net_mkdir() should be used to create stuff under /proc/net,
-so that dentry revalidation kicks in.
-
-See
-
-	commit 1fde6f21d90f8ba5da3cb9c54ca991ed72696c43
-	proc: fix /proc/net/* after setns(2)
-
-	[added more chunks --adobriyan]
-
-Signed-off-by: "Hallsmark, Per" <Per.Hallsmark@windriver.com>
-Signed-off-by: Alexey Dobriyan <adobriyan@gmail.com>
+Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
+ fs/nfs/dir.c | 29 +++++++++++++++++++----------
+ 1 file changed, 19 insertions(+), 10 deletions(-)
 
- drivers/net/bonding/bond_procfs.c  |    2 +-
- net/core/pktgen.c                  |    2 +-
- net/ipv4/netfilter/ipt_CLUSTERIP.c |    2 +-
- net/ipv6/proc.c                    |    2 +-
- net/netfilter/xt_hashlimit.c       |    4 ++--
- net/netfilter/xt_recent.c          |    2 +-
- net/sunrpc/stats.c                 |    2 +-
- 7 files changed, 8 insertions(+), 8 deletions(-)
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index e44f3c9fad5b..6ccf0e6c9c84 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -646,12 +646,12 @@ void nfs_readdir_rapages_init(nfs_readdir_descriptor_t *desc)
+ static
+ int nfs_readdir_xdr_to_array(nfs_readdir_descriptor_t *desc, struct page *page, struct inode *inode)
+ {
+-	struct page *pages[NFS_MAX_READDIR_PAGES];
++	const unsigned int array_size = NFS_MAX_READDIR_PAGES;
++	struct page **pages;
+ 	struct nfs_entry entry;
+ 	struct file	*file = desc->file;
+ 	struct nfs_cache_array *array;
+ 	int status = -ENOMEM;
+-	unsigned int array_size = ARRAY_SIZE(pages);
+ 
+ 	/*
+ 	 * This means we hit readdir rdpages miss, the preallocated rdpages
+@@ -674,12 +674,17 @@ int nfs_readdir_xdr_to_array(nfs_readdir_descriptor_t *desc, struct page *page,
+ 		goto out;
+ 	}
+ 
+-	array = kmap(page);
+-	memset(array, 0, sizeof(struct nfs_cache_array));
++	pages = kmalloc_array(array_size, sizeof(*pages), GFP_KERNEL);
++	if (!pages)
++		goto out_release_array;
+ 
+ 	status = nfs_readdir_alloc_pages(pages, array_size);
+ 	if (status < 0)
+ 		goto out_release_array;
++
++	array = kmap(page);
++	memset(array, 0, sizeof(struct nfs_cache_array));
++
+ 	do {
+ 		unsigned int pglen;
+ 		status = nfs_readdir_xdr_filler(pages, desc, &entry, file, inode);
+@@ -695,9 +700,10 @@ int nfs_readdir_xdr_to_array(nfs_readdir_descriptor_t *desc, struct page *page,
+ 		}
+ 	} while (!array->eof);
+ 
++	kunmap(page);
+ 	nfs_readdir_free_pages(pages, array_size);
+ out_release_array:
+-	kunmap(page);
++	kfree(pages);
+ 	nfs4_label_free(entry.label);
+ out:
+ 	nfs_free_fattr(entry.fattr);
+@@ -896,10 +902,9 @@ static int nfs_readdir(struct file *file, struct dir_context *ctx)
+ {
+ 	struct dentry	*dentry = file_dentry(file);
+ 	struct inode	*inode = d_inode(dentry);
+-	nfs_readdir_descriptor_t my_desc,
+-			*desc = &my_desc;
+ 	struct nfs_open_dir_context *dir_ctx = file->private_data;
+-	int res = 0;
++	nfs_readdir_descriptor_t *desc;
++	int res = -ENOMEM;
+ 	unsigned int max_rapages = NFS_MAX_READDIR_RAPAGES;
+ 
+ 	dfprintk(FILE, "NFS: readdir(%pD2) starting at cookie %llu\n",
+@@ -912,7 +917,9 @@ static int nfs_readdir(struct file *file, struct dir_context *ctx)
+ 	 * to either find the entry with the appropriate number or
+ 	 * revalidate the cookie.
+ 	 */
+-	memset(desc, 0, sizeof(*desc));
++	desc = kzalloc(sizeof(*desc), GFP_KERNEL);
++	if (!desc)
++		goto free_desc;
+ 
+ 	desc->file = file;
+ 	desc->ctx = ctx;
+@@ -922,7 +929,7 @@ static int nfs_readdir(struct file *file, struct dir_context *ctx)
+ 
+ 	res = nfs_readdir_alloc_pages(desc->pvec.pages, max_rapages);
+ 	if (res < 0)
+-		return -ENOMEM;
++		goto free_desc;
+ 
+ 	nfs_readdir_rapages_init(desc);
+ 
+@@ -964,6 +971,8 @@ static int nfs_readdir(struct file *file, struct dir_context *ctx)
+ 	nfs_readdir_free_pages(desc->pvec.pages, max_rapages);
+ 	if (res > 0)
+ 		res = 0;
++free_desc:
++	kfree(desc);
+ 	dfprintk(FILE, "NFS: readdir(%pD2) returns %d\n", file, res);
+ 	return res;
+ }
+-- 
+2.21.0
 
---- a/drivers/net/bonding/bond_procfs.c
-+++ b/drivers/net/bonding/bond_procfs.c
-@@ -293,7 +293,7 @@ void bond_remove_proc_entry(struct bonding *bond)
- void __net_init bond_create_proc_dir(struct bond_net *bn)
- {
- 	if (!bn->proc_dir) {
--		bn->proc_dir = proc_mkdir(DRV_NAME, bn->net->proc_net);
-+		bn->proc_dir = proc_net_mkdir(bn->net, DRV_NAME, bn->net->proc_net);
- 		if (!bn->proc_dir)
- 			pr_warn("Warning: Cannot create /proc/net/%s\n",
- 				DRV_NAME);
---- a/net/core/pktgen.c
-+++ b/net/core/pktgen.c
-@@ -3791,7 +3791,7 @@ static int __net_init pg_net_init(struct net *net)
- 	pn->net = net;
- 	INIT_LIST_HEAD(&pn->pktgen_threads);
- 	pn->pktgen_exiting = false;
--	pn->proc_dir = proc_mkdir(PG_PROC_DIR, pn->net->proc_net);
-+	pn->proc_dir = proc_net_mkdir(pn->net, PG_PROC_DIR, pn->net->proc_net);
- 	if (!pn->proc_dir) {
- 		pr_warn("cannot create /proc/net/%s\n", PG_PROC_DIR);
- 		return -ENODEV;
---- a/net/ipv4/netfilter/ipt_CLUSTERIP.c
-+++ b/net/ipv4/netfilter/ipt_CLUSTERIP.c
-@@ -828,7 +828,7 @@ static int clusterip_net_init(struct net *net)
- 		return ret;
- 
- #ifdef CONFIG_PROC_FS
--	cn->procdir = proc_mkdir("ipt_CLUSTERIP", net->proc_net);
-+	cn->procdir = proc_net_mkdir(net, "ipt_CLUSTERIP", net->proc_net);
- 	if (!cn->procdir) {
- 		nf_unregister_net_hook(net, &cip_arp_ops);
- 		pr_err("Unable to proc dir entry\n");
---- a/net/ipv6/proc.c
-+++ b/net/ipv6/proc.c
-@@ -282,7 +282,7 @@ static int __net_init ipv6_proc_init_net(struct net *net)
- 			snmp6_seq_show, NULL))
- 		goto proc_snmp6_fail;
- 
--	net->mib.proc_net_devsnmp6 = proc_mkdir("dev_snmp6", net->proc_net);
-+	net->mib.proc_net_devsnmp6 = proc_net_mkdir(net, "dev_snmp6", net->proc_net);
- 	if (!net->mib.proc_net_devsnmp6)
- 		goto proc_dev_snmp6_fail;
- 	return 0;
---- a/net/netfilter/xt_hashlimit.c
-+++ b/net/netfilter/xt_hashlimit.c
-@@ -1237,11 +1237,11 @@ static int __net_init hashlimit_proc_net_init(struct net *net)
- {
- 	struct hashlimit_net *hashlimit_net = hashlimit_pernet(net);
- 
--	hashlimit_net->ipt_hashlimit = proc_mkdir("ipt_hashlimit", net->proc_net);
-+	hashlimit_net->ipt_hashlimit = proc_net_mkdir(net, "ipt_hashlimit", net->proc_net);
- 	if (!hashlimit_net->ipt_hashlimit)
- 		return -ENOMEM;
- #if IS_ENABLED(CONFIG_IP6_NF_IPTABLES)
--	hashlimit_net->ip6t_hashlimit = proc_mkdir("ip6t_hashlimit", net->proc_net);
-+	hashlimit_net->ip6t_hashlimit = proc_net_mkdir(net, "ip6t_hashlimit", net->proc_net);
- 	if (!hashlimit_net->ip6t_hashlimit) {
- 		remove_proc_entry("ipt_hashlimit", net->proc_net);
- 		return -ENOMEM;
---- a/net/netfilter/xt_recent.c
-+++ b/net/netfilter/xt_recent.c
-@@ -629,7 +629,7 @@ static int __net_init recent_proc_net_init(struct net *net)
- {
- 	struct recent_net *recent_net = recent_pernet(net);
- 
--	recent_net->xt_recent = proc_mkdir("xt_recent", net->proc_net);
-+	recent_net->xt_recent = proc_net_mkdir(net, "xt_recent", net->proc_net);
- 	if (!recent_net->xt_recent)
- 		return -ENOMEM;
- 	return 0;
---- a/net/sunrpc/stats.c
-+++ b/net/sunrpc/stats.c
-@@ -323,7 +323,7 @@ int rpc_proc_init(struct net *net)
- 
- 	dprintk("RPC:       registering /proc/net/rpc\n");
- 	sn = net_generic(net, sunrpc_net_id);
--	sn->proc_net_rpc = proc_mkdir("rpc", net->proc_net);
-+	sn->proc_net_rpc = proc_net_mkdir(net, "rpc", net->proc_net);
- 	if (sn->proc_net_rpc == NULL)
- 		return -ENOMEM;
- 
