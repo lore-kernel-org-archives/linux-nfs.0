@@ -1,93 +1,68 @@
-Return-Path: <SRS0=k6XJ=VC=vger.kernel.org=linux-nfs-owner@kernel.org>
+Return-Path: <SRS0=C94k=VD=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_SANE_1
-	autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-6.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,
+	SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 02ACFC5B57D
-	for <linux-nfs@archiver.kernel.org>; Fri,  5 Jul 2019 23:54:00 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id AC5AAC5B57D
+	for <linux-nfs@archiver.kernel.org>; Sat,  6 Jul 2019 02:35:04 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id C984420830
-	for <linux-nfs@archiver.kernel.org>; Fri,  5 Jul 2019 23:53:59 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 7B5CD216E3
+	for <linux-nfs@archiver.kernel.org>; Sat,  6 Jul 2019 02:35:04 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=default; t=1562380504;
+	bh=ClYPlsLkGJ0ky7+3uGwX+CqeUFrp4gTbfIxB86npQH0=;
+	h=Subject:From:In-Reply-To:References:Date:To:Cc:List-ID:From;
+	b=zBDebe38EJtYSyHwV0gx/g48LSTNBiJvdiugP5bN5s7yqweEVRsgzsYKJel4KrE7N
+	 Cb9XB1cQHU7zFjd/FvkMwP9nsm1Gd72on0goOMS+nths5M4eNt6xEGkhB0oF6xg2j6
+	 CRWaejZ6nchtf059d79tjBHxCvPEWjGevz2+FFYk=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726177AbfGEXx7 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 5 Jul 2019 19:53:59 -0400
-Received: from p3plsmtpa07-07.prod.phx3.secureserver.net ([173.201.192.236]:33013
-        "EHLO p3plsmtpa07-07.prod.phx3.secureserver.net" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726069AbfGEXx7 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Jul 2019 19:53:59 -0400
-Received: from [192.168.0.56] ([24.218.182.144])
-        by :SMTPAUTH: with ESMTPSA
-        id jY1eheS2r0qbejY1ehZXOi; Fri, 05 Jul 2019 16:53:58 -0700
-Subject: Re: User process NFS write hang in wait_on_commit with kworker
-To:     Alan Post <adp@prgmr.com>, linux-nfs <linux-nfs@vger.kernel.org>
-References: <20190618000613.GR4158@turtle.email>
- <6DE07E49-D450-4BF7-BC61-0973A14CD81B@redhat.com>
- <20190619000746.GT4158@turtle.email>
- <25608EB2-87F0-4196-BEF9-8AB8FC72270B@redhat.com>
- <20190621204723.GU4158@turtle.email> <20190628183324.GJ4158@turtle.email>
- <35045385-2C77-4BA0-8641-2AE4E73E04A4@redhat.com>
- <20190703213221.GB4158@turtle.email>
-From:   Tom Talpey <tom@talpey.com>
-Message-ID: <a6ccb336-4ce6-b313-660e-ac4c1f033c54@talpey.com>
-Date:   Fri, 5 Jul 2019 19:53:56 -0400
-User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64; rv:60.0) Gecko/20100101
- Thunderbird/60.7.2
-MIME-Version: 1.0
-In-Reply-To: <20190703213221.GB4158@turtle.email>
-Content-Type: text/plain; charset=utf-8; format=flowed
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
-X-CMAE-Envelope: MS4wfGSOmIS4Fj337AXW9UHdXegZsbJYmOuAywbi0qYLPTQCPh/Yd6T0zWhR9HrvshaGJwfTtpMq0lZPrxMPTcn6VZB+9V80Qb6i1dK/L8rVq7Am+WI4zxwC
- R98WqSplIejDY4kwuM7CzTbqpWx9B+ZZqft4k4ErbCAm08WDPzXQ3xw/4JBXod37MqSFpp7wZXk252HzEYSAB3J7jZQajMyaS/o=
+        id S1726069AbfGFCfD (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 5 Jul 2019 22:35:03 -0400
+Received: from mail.kernel.org ([198.145.29.99]:48388 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726005AbfGFCfD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 5 Jul 2019 22:35:03 -0400
+Subject: Re: [GIT PULL] nfsd bugfixes for 5.2
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=default; t=1562380502;
+        bh=ClYPlsLkGJ0ky7+3uGwX+CqeUFrp4gTbfIxB86npQH0=;
+        h=From:In-Reply-To:References:Date:To:Cc:From;
+        b=j/j6Dj9I2RxkhjWFrabffKYGabTyojsDtLPa2u1LQ157iiUFw3IRIZTHM8bJREcok
+         VJ9HddL+LBCd7MUT+JM1g80GIxlTQi0AS1VasINjt+tTX3VGlvl5rJ3OGjf9NYlilK
+         V4gdrp8xs5cQPnd96ZI8i6pZZcoosoHiPYVfQYqc=
+From:   pr-tracker-bot@kernel.org
+In-Reply-To: <20190705174037.GA4203@fieldses.org>
+References: <20190705174037.GA4203@fieldses.org>
+X-PR-Tracked-List-Id: <linux-nfs.vger.kernel.org>
+X-PR-Tracked-Message-Id: <20190705174037.GA4203@fieldses.org>
+X-PR-Tracked-Remote: git://linux-nfs.org/~bfields/linux.git tags/nfsd-5.2-2
+X-PR-Tracked-Commit-Id: 3b2d4dcf71c4a91b420f835e52ddea8192300a3b
+X-PR-Merge-Tree: torvalds/linux.git
+X-PR-Merge-Refname: refs/heads/master
+X-PR-Merge-Commit-Id: a8f46b5afe1c0a83c3013a339e6aeccc2f37342d
+Message-Id: <156238050256.5324.1208784276842590540.pr-tracker-bot@kernel.org>
+Date:   Sat, 06 Jul 2019 02:35:02 +0000
+To:     bfields@fieldses.org (J. Bruce Fields)
+Cc:     Linus Torvalds <torvalds@linux-foundation.org>,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        Chuck Lever <chuck.lever@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On 7/3/2019 5:32 PM, Alan Post wrote:
-> On Tue, Jul 02, 2019 at 05:55:10AM -0400, Benjamin Coddington wrote:
->>> As far as I understand it, for a particular xid, there should be a
->>> call and a reply.  The approach I took then was to pull out these
->>> fields from my capture and ignore RPC calls where both are present
->>> in my capture.  It seems this is simplistic, as the number of RPC
->>> calls I have without an attendant reply isn't lining up with my
->>> incident window.
->>
->> Does your capture report dropped packets?  If so, maybe you need to increase
->> the capture buffer.
->>
-> 
-> I'm not certain, but I do have a capture on both the NFS server and
-> the NFS client--comparing them would show me if I was under most
-> circumstances.  Good catch.
-> 
->>> In one example, I have a series of READ calls which cease
->>> generating RPC reply messages as the offset for the file continues
->>> to increases.  After a couple/few dozen messages, the RPC replies
->>> continue as they were.  Is there a normal or routine explanation
->>> for this?
->>>
->>> RFC 5531 and the NetworkTracing page on wiki.linux-nfs.org have
->>> been quite helpful bringing me up to speed.  If any of you have
->>> advice or guidance or can clarify my understanding of how the
->>> call/reply RPC mechanism works I appreciate it.
->>
->> Seems like you understand it.  Do you have specific questions?
->>
-> 
-> Is it true that for each RPC call there is an RPC reply with the
-> same xid?  Is it a-priori an error if an otherwise correct RPC
-> call is not eventually paired with an RPC reply?
+The pull request you sent on Fri, 5 Jul 2019 13:40:37 -0400:
 
-Absolutely yes. Not replying would be like a local procedure never
-returning.
+> git://linux-nfs.org/~bfields/linux.git tags/nfsd-5.2-2
 
-But remember XIDs are not globally unique. They are only unique within
-some limited span of time for the connection they were issued on. This
-is typically only a problem on very high IOPS workloads, or over long
-spans of time.
+has been merged into torvalds/linux.git:
+https://git.kernel.org/torvalds/c/a8f46b5afe1c0a83c3013a339e6aeccc2f37342d
 
-Tom.
+Thank you!
+
+-- 
+Deet-doot-dot, I am a bot.
+https://korg.wiki.kernel.org/userdoc/prtracker
