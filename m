@@ -2,33 +2,36 @@ Return-Path: <SRS0=uELa=VE=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-4.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=no
+X-Spam-Status: No, score=-10.0 required=3.0
+	tests=HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
+	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B8358C48BE1
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8D95CC48BE3
 	for <linux-nfs@archiver.kernel.org>; Sun,  7 Jul 2019 19:26:31 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 94D642075B
+	by mail.kernel.org (Postfix) with ESMTP id 736842075B
 	for <linux-nfs@archiver.kernel.org>; Sun,  7 Jul 2019 19:26:31 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726044AbfGGT0a (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S1726962AbfGGT0a (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Sun, 7 Jul 2019 15:26:30 -0400
-Received: from mx3.molgen.mpg.de ([141.14.17.11]:43649 "EHLO mx1.molgen.mpg.de"
+Received: from mx3.molgen.mpg.de ([141.14.17.11]:42203 "EHLO mx1.molgen.mpg.de"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726962AbfGGT0a (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        id S1727409AbfGGT0a (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
         Sun, 7 Jul 2019 15:26:30 -0400
 Received: from theinternet.molgen.mpg.de (theinternet.molgen.mpg.de [141.14.31.7])
-        by mx.molgen.mpg.de (Postfix) with ESMTP id DE5FD2000C012;
-        Sun,  7 Jul 2019 21:26:27 +0200 (CEST)
+        by mx.molgen.mpg.de (Postfix) with ESMTP id 1315420669593;
+        Sun,  7 Jul 2019 21:26:28 +0200 (CEST)
 From:   Donald Buczek <buczek@molgen.mpg.de>
 To:     linux-nfs@vger.kernel.org, trond.myklebust@hammerspace.com,
         anna.schumaker@netapp.com
 Cc:     Donald Buczek <buczek@molgen.mpg.de>
-Subject: [PATCH V2 0/4] nfs4.0: Refetch lease_time after clientID reset
-Date:   Sun,  7 Jul 2019 21:26:06 +0200
-Message-Id: <20190707192610.14335-1-buczek@molgen.mpg.de>
+Subject: [PATCH V2 3/4] nfs4: Rename nfs41_setup_state_renewal
+Date:   Sun,  7 Jul 2019 21:26:09 +0200
+Message-Id: <20190707192610.14335-4-buczek@molgen.mpg.de>
 X-Mailer: git-send-email 2.22.0
+In-Reply-To: <20190707192610.14335-1-buczek@molgen.mpg.de>
+References: <20190707192610.14335-1-buczek@molgen.mpg.de>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
@@ -36,44 +39,36 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-V2: Make sure, code doesn't depend on CONFIG_NFS_V4_1. I've scattered
-#endifs and #ifdefs into the source instead of moving code into other
-areas to be more friendly to git. Tell me if you prefer otherwise.
+The function nfs41_setup_state_renewal is useful to the nfs 4.0 client
+as well, so rename the function to nfs4_setup_state_renewal.
 
-Currently, nfs mounts with vers=4.0 do not pick up a updated
-lease_time after a restart of the nfs server. This was discussed in
-the thread "4.0 client and server restart with decreased lease time" on
-linux-nfs [1].
+Signed-off-by: Donald Buczek <buczek@molgen.mpg.de>
+---
+ fs/nfs/nfs4state.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-This patch set fixes the issue for nsf4.0 clients so that hey behave as
-nfs4.1 and nfs4.2 clients do.  After a new clientID is established, the
-lease_time is re-fetched and used.
-
-Tested with
-
-    CONFIG_NFS_V4=m CONFIG_NFS_V4_1=y CONFIG_NFS_V4_2=y   : mount
-    CONFIG_NFS_V4=m CONFIG_NFS_V4_1=y CONFIG_NFS_V4_2=y   : mount vers=4.0
-    CONFIG_NFS_V4=m CONFIG_NFS_V4_1=y CONFIG_NFS_V4_2=n   : mount
-    CONFIG_NFS_V4=m CONFIG_NFS_V4_1=y CONFIG_NFS_V4_2=n   : mount vers=4.0
-    CONFIG_NFS_V4=m CONFIG_NFS_V4_1=n CONFIG_NFS_V4_2=n   : mount
-
-and several restarts of the nfs server with changed leases times, which
-were picked up by the client.
-
-[1] https://marc.info/?t=154954022700002&r=1&w=2
-
-Donald Buczek (4):
-  nfs: Fix copy-and-paste error in debug message
-  nfs4: Make nfs4_proc_get_lease_time available for nfs4.0
-  nfs4: Rename nfs41_setup_state_renewal
-  nfs4.0: Refetch lease_time after clientid update
-
- fs/nfs/nfs4_fs.h   |  4 ++--
- fs/nfs/nfs4proc.c  |  6 +++++-
- fs/nfs/nfs4state.c | 46 +++++++++++++++++++++++-----------------------
- fs/nfs/nfs4xdr.c   | 14 ++++++++++++--
- 4 files changed, 42 insertions(+), 28 deletions(-)
-
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index e2e3c4f04d3e..778ebfb00d13 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -286,7 +286,7 @@ static int nfs4_begin_drain_session(struct nfs_client *clp)
+ 
+ #if defined(CONFIG_NFS_V4_1)
+ 
+-static int nfs41_setup_state_renewal(struct nfs_client *clp)
++static int nfs4_setup_state_renewal(struct nfs_client *clp)
+ {
+ 	int status;
+ 	struct nfs_fsinfo fsinfo;
+@@ -313,7 +313,7 @@ static void nfs41_finish_session_reset(struct nfs_client *clp)
+ 	clear_bit(NFS4CLNT_SESSION_RESET, &clp->cl_state);
+ 	/* create_session negotiated new slot table */
+ 	clear_bit(NFS4CLNT_BIND_CONN_TO_SESSION, &clp->cl_state);
+-	nfs41_setup_state_renewal(clp);
++	nfs4_setup_state_renewal(clp);
+ }
+ 
+ int nfs41_init_clientid(struct nfs_client *clp, const struct cred *cred)
 -- 
 2.22.0
 
