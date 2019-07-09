@@ -2,72 +2,108 @@ Return-Path: <SRS0=3zAd=VG=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	URIBL_BLOCKED,USER_AGENT_SANE_1 autolearn=unavailable autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-5.3 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B7C77C73C46
-	for <linux-nfs@archiver.kernel.org>; Tue,  9 Jul 2019 17:33:20 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 59FBDC73C64
+	for <linux-nfs@archiver.kernel.org>; Tue,  9 Jul 2019 23:33:55 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 9C1E02087F
-	for <linux-nfs@archiver.kernel.org>; Tue,  9 Jul 2019 17:33:20 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 311AE2082A
+	for <linux-nfs@archiver.kernel.org>; Tue,  9 Jul 2019 23:33:55 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726602AbfGIRdO (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 9 Jul 2019 13:33:14 -0400
-Received: from mga11.intel.com ([192.55.52.93]:18911 "EHLO mga11.intel.com"
+        id S1726957AbfGIXdy (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 9 Jul 2019 19:33:54 -0400
+Received: from fieldses.org ([173.255.197.46]:52792 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726335AbfGIRdN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 9 Jul 2019 13:33:13 -0400
-X-Amp-Result: UNKNOWN
-X-Amp-Original-Verdict: FILE UNKNOWN
-X-Amp-File-Uploaded: False
-Received: from fmsmga002.fm.intel.com ([10.253.24.26])
-  by fmsmga102.fm.intel.com with ESMTP/TLS/DHE-RSA-AES256-GCM-SHA384; 09 Jul 2019 10:33:13 -0700
-X-ExtLoop1: 1
-X-IronPort-AV: E=Sophos;i="5.63,470,1557212400"; 
-   d="scan'208";a="192760185"
-Received: from lkp-server01.sh.intel.com (HELO lkp-server01) ([10.239.97.150])
-  by fmsmga002.fm.intel.com with ESMTP; 09 Jul 2019 10:33:12 -0700
-Received: from kbuild by lkp-server01 with local (Exim 4.89)
-        (envelope-from <lkp@intel.com>)
-        id 1hktzL-0007sG-UM; Wed, 10 Jul 2019 01:33:11 +0800
-Date:   Wed, 10 Jul 2019 01:32:17 +0800
-From:   kbuild test robot <lkp@intel.com>
-To:     "J. Bruce Fields" <bfields@redhat.com>
-Cc:     kbuild-all@01.org, Jeff Layton <jlayton@kernel.org>,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [RFC PATCH linux-next] nfsd: force_expire_client() can be static
-Message-ID: <20190709173217.GA70574@lkp-kbuild04>
-References: <201907100149.XLk4C7WJ%lkp@intel.com>
+        id S1726951AbfGIXdy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 9 Jul 2019 19:33:54 -0400
+Received: by fieldses.org (Postfix, from userid 2815)
+        id A988D1C9D; Tue,  9 Jul 2019 19:33:53 -0400 (EDT)
+Date:   Tue, 9 Jul 2019 19:33:53 -0400
+From:   "J. Bruce Fields" <bfields@fieldses.org>
+To:     Joe Perches <joe@perches.com>
+Cc:     Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH 8/8] nfsd: Fix misuse of strlcpy
+Message-ID: <20190709233353.GA1536@fieldses.org>
+References: <cover.1562283944.git.joe@perches.com>
+ <b51141d12de77eb22101e81f9eb2c9cc44104d7a.1562283944.git.joe@perches.com>
+ <20190709031404.GD14439@fieldses.org>
+ <9a5dedb0c9221743033f28974820e8dd724e388d.camel@perches.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <201907100149.XLk4C7WJ%lkp@intel.com>
-X-Patchwork-Hint: ignore
-User-Agent: Mutt/1.5.23 (2014-03-12)
+In-Reply-To: <9a5dedb0c9221743033f28974820e8dd724e388d.camel@perches.com>
+User-Agent: Mutt/1.5.21 (2010-09-15)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
+On Mon, Jul 08, 2019 at 10:40:50PM -0700, Joe Perches wrote:
+> On Mon, 2019-07-08 at 23:14 -0400, J. Bruce Fields wrote:
+> > On Thu, Jul 04, 2019 at 04:57:48PM -0700, Joe Perches wrote:
+> > > Probable cut&paste typo - use the correct field size.
+> > 
+> > Huh, that's been there forever, I wonder why we haven't seen crashes?
+> > Oh, I see, name and authname both have the same size.
+> > 
+> > Anyway, makes sense, thanks.  Will apply for 5.3.
+> > 
+> > (Unless someone else is getting this; I didn't get copied on the rest of
+> > the series.)
+> 
+> It's generally hard to cc everyone on treewide fixes like this.
+> 
+> There's no good mechanism I know of.
+> vger mailing lists reject emails with too many addressees.
 
-Fixes: 89c905beccbb ("nfsd: allow forced expiration of NFSv4 clients")
-Signed-off-by: kbuild test robot <lkp@intel.com>
----
- nfs4state.c |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Yeah.  I guess what I don't understand is why this patch is part of a
+series at all.  It makes me wonder if there's some dependency I missed
+or if the 0/8 mail actually asked somebody else to apply it.
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index e6229bf..9012d78 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -2505,7 +2505,7 @@ static const struct file_operations client_states_fops = {
-  * so the caller has a guarantee that the client's locks are gone by
-  * the time the write returns:
-  */
--void force_expire_client(struct nfs4_client *clp)
-+static void force_expire_client(struct nfs4_client *clp)
- {
- 	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
- 	bool already_expired;
+Whatever, I guess I'm being silly, it clearly stands alone.  Applying
+for 5.3.
+
+> Do you have an opinion on adding the stracpy macro which
+> could avoid many of these defects?
+
+I don't have an opinion.
+
+--b.
+
+
+> ---
+>  include/linux/string.h | 16 ++++++++++++++++
+>  1 file changed, 16 insertions(+)
+> 
+> diff --git a/include/linux/string.h b/include/linux/string.h
+> index 4deb11f7976b..ef01bd6f19df 100644
+> --- a/include/linux/string.h
+> +++ b/include/linux/string.h
+> @@ -35,6 +35,22 @@ ssize_t strscpy(char *, const char *, size_t);
+>  /* Wraps calls to strscpy()/memset(), no arch specific code required */
+>  ssize_t strscpy_pad(char *dest, const char *src, size_t count);
+>  
+> +#define stracpy(to, from)					\
+> +({								\
+> +	size_t size = ARRAY_SIZE(to);				\
+> +	BUILD_BUG_ON(!__same_type(typeof(*to), char));		\
+> +								\
+> +	strscpy(to, from, size);				\
+> +})
+> +
+> +#define stracpy_pad(to, from)					\
+> +({								\
+> +	size_t size = ARRAY_SIZE(to);				\
+> +	BUILD_BUG_ON(!__same_type(typeof(*to), char));		\
+> +								\
+> +	strscpy_pad(to, from, size);				\
+> +})
+> +
+>  #ifndef __HAVE_ARCH_STRCAT
+>  extern char * strcat(char *, const char *);
+>  #endif
+> 
+> 
