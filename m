@@ -2,88 +2,131 @@ Return-Path: <SRS0=lz79=VM=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-0.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
-	autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 73450C7618A
-	for <linux-nfs@archiver.kernel.org>; Mon, 15 Jul 2019 05:56:53 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D838EC76192
+	for <linux-nfs@archiver.kernel.org>; Mon, 15 Jul 2019 13:25:01 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 3488B20868
-	for <linux-nfs@archiver.kernel.org>; Mon, 15 Jul 2019 05:56:53 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id B116E2067C
+	for <linux-nfs@archiver.kernel.org>; Mon, 15 Jul 2019 13:25:01 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=elastifile-com.20150623.gappssmtp.com header.i=@elastifile-com.20150623.gappssmtp.com header.b="DflHkV/N"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="U+t7QLG6"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1725787AbfGOF4w (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 15 Jul 2019 01:56:52 -0400
-Received: from mail-io1-f69.google.com ([209.85.166.69]:44826 "EHLO
-        mail-io1-f69.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725385AbfGOF4w (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Jul 2019 01:56:52 -0400
-Received: by mail-io1-f69.google.com with SMTP id s9so18739749iob.11
-        for <linux-nfs@vger.kernel.org>; Sun, 14 Jul 2019 22:56:51 -0700 (PDT)
+        id S1730194AbfGONZA (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 15 Jul 2019 09:25:00 -0400
+Received: from mail-io1-f67.google.com ([209.85.166.67]:36433 "EHLO
+        mail-io1-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1730272AbfGONY6 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Jul 2019 09:24:58 -0400
+Received: by mail-io1-f67.google.com with SMTP id o9so34072928iom.3
+        for <linux-nfs@vger.kernel.org>; Mon, 15 Jul 2019 06:24:58 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=elastifile-com.20150623.gappssmtp.com; s=20150623;
-        h=mime-version:from:date:message-id:subject:to;
-        bh=JEGL9vL5k2zIpfsw1wym/aMjvVSZu3SnJxjoHLqwbSc=;
-        b=DflHkV/NPuagXGoxxF5wtoMoiU5rmBpaL9HvkKlDiJ4qZgsYT7FNt/to6aBCkwpC3D
-         Ml/gDP6qugbFDoaLfKrspo7VMfZWb3pFRmGHfiOtjs3frfALbjoySW31BU/FHNodbrd3
-         tXWoHaxMqFZ/lfl/bjqZsqRaw9uyGyZ6z9Bi5TB1nqhElp0QxEUBVDAVfO+om5nGKqJ9
-         b0IG4WX32iDdFZiJqRUcaE+qOWzCdf7n0dRQUD09AarDJGPjbuTxC4ZiwK6Ww4SNg88T
-         KhKtLNnAzPmw2W/RvrcO1TG7bgz+RuHKHDbPS+9dskq/VY8cfndOIZUyqB3hWcYjw2cE
-         X1hw==
+        d=gmail.com; s=20161025;
+        h=from:to:subject:date:message-id:mime-version
+         :content-transfer-encoding;
+        bh=CdYU/O8CFhrdiPZEZj0Xlb3lnE3rS8rxH8pxRH42d50=;
+        b=U+t7QLG6H8xyaybODmHIVt0382eD96YC69o+wgecnzb6ZzGfH6Qkf3NysCxyE/e9PU
+         f3AjV9szERRESIY6gTh/UnbWlmqOsKi6CbTzpSpdXAdf6rEedZdbs9UrdFOc7UNBMVZo
+         1P7UOgtFiXjv8olAe2XpgB5A1nPMZS6P+rr70Lacl0QtnJgfZyNLF+iKjwpzMRgaQqnv
+         rW8sTEhc7vAfay4LyutBdFEwICVPDM+IfXZOOP4j56lYmRYDF1uVCnzVSKShlV1yrGnO
+         Q7fLHk3gGyn0o2SSX6AmdbON1b0cgQ3MVySVpzAPZdKyQrB3mY1CVV1T4NS4IuNu5FHr
+         raqw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:mime-version:from:date:message-id:subject:to;
-        bh=JEGL9vL5k2zIpfsw1wym/aMjvVSZu3SnJxjoHLqwbSc=;
-        b=oN/R5j1x7OTcutJG1cCgQITCZExKiCDs+exdEXF7tD3CY1MwtCbQTlmW+P5Lh3bcD+
-         OnTbGYlAzm8idm9QbcTUfmmdF/gYJCEnUzyqsJ7yUO6Ohmb9VmeCPSmheVRz2B4BUaX1
-         Cwgqklt1EX/XW6oF5PJCRIp8Q3a6CNY3uKeVWpV8ijbfjZ/06S9dz/J03SMUIbxHMaih
-         JAe0Ov2BV8yJHa0u9te7dIggSYC2uK8UuOBMhkXVnn5QmGtDFMTIkLtk+dtwe/+74Ivs
-         fK3EslxFe85EGFNDMtF6zslVW/JMrzo/uygLBF9av75bJaH1+t9YDd2Jrx4wmc1VtJzc
-         miLg==
-X-Gm-Message-State: APjAAAX7LAGj+0Iy+g8pRf+245S3TceHkKhECZLEIwyK3FboRlPLlUpg
-        rvzv5hBE8XJsTpSEZgMGixLhY98zZJG7DCFqKpbOdSBE
-X-Google-Smtp-Source: APXvYqzyzhAK0oN9n9m/pugEsyIHWfFWxkngLD9iiXmWHQStA40kBECRmjhm4WKK6vqGc2Tx5J8Edo/xCtBc12EmyOE=
-X-Received: by 2002:a02:1c0a:: with SMTP id c10mr26522638jac.69.1563170211087;
- Sun, 14 Jul 2019 22:56:51 -0700 (PDT)
-MIME-Version: 1.0
-From:   Noam Lewis <noam.lewis@elastifile.com>
-Date:   Mon, 15 Jul 2019 08:56:14 +0300
-Message-ID: <CALDUuiDyf5mfNVLeTKHNkU+bTbsKLOoHw_rZm1khcaiep-cEDQ@mail.gmail.com>
-Subject: large directory iteration (getdents) over NFS mount resets due to stat
+        h=x-gm-message-state:from:to:subject:date:message-id:mime-version
+         :content-transfer-encoding;
+        bh=CdYU/O8CFhrdiPZEZj0Xlb3lnE3rS8rxH8pxRH42d50=;
+        b=HHtEsCA/dvvxGKAESTf1UAkmEeh989XX85OUEvR2IhKYi4MHH3Q2Ey2zLoqjS/gYE8
+         ravp/0yuziuMA4DusYbT83apbeqcBEKgzm58Bud7+gWu63uXHWjBbIhVe5/4Pe+MLS4A
+         nxyH5v///wczJ3x8BlQv25rd6uyox2tqMD4o/92aL8YI27/s4Uapf/IZlOiZn8fRAZ5H
+         fhsY42T4kADAHEFW9GTv1ssjxtLwrRJbq/+UrBZbHmZD/S+3r4aTu77szvFyiaRYr8Zl
+         jOjtjOZhvOT5HhOPHaHKe/9kK9kkHhbsQc2WOAPXRMl64o99PEJ5NlsMjZBMaUSOrBUt
+         TUsg==
+X-Gm-Message-State: APjAAAWOHHzjGA4nfovI6pfnI3mp0Qz9lHslGOHsg0Z0j3djRxVSeWmh
+        YeqljfxqyOemQFT1+Z5mlOQljpo=
+X-Google-Smtp-Source: APXvYqxlScRMXg9mVST/TUY3bqo3JBl06cE7atpiTsc666rBfVTfrrWxvYRPfzRpeddtTEg+fLpEzQ==
+X-Received: by 2002:a05:6638:303:: with SMTP id w3mr15791693jap.103.1563197097173;
+        Mon, 15 Jul 2019 06:24:57 -0700 (PDT)
+Received: from localhost.localdomain (c-68-40-189-247.hsd1.mi.comcast.net. [68.40.189.247])
+        by smtp.gmail.com with ESMTPSA id l5sm34354261ioq.83.2019.07.15.06.24.55
+        for <linux-nfs@vger.kernel.org>
+        (version=TLS1_3 cipher=AEAD-AES256-GCM-SHA384 bits=256/256);
+        Mon, 15 Jul 2019 06:24:56 -0700 (PDT)
+From:   Trond Myklebust <trondmy@gmail.com>
+X-Google-Original-From: Trond Myklebust <trond.myklebust@hammerspace.com>
 To:     linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
+Subject: [PATCH] NFSv4: Validate the stateid before applying it to state recovery
+Date:   Mon, 15 Jul 2019 09:22:48 -0400
+Message-Id: <20190715132248.28498-1-trond.myklebust@hammerspace.com>
+X-Mailer: git-send-email 2.21.0
+MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-I've encountered a problem while iterating large directories via an NFS mount.
+If the stateid is the zero or invalid stateid, then it is pointless
+to attempt to use it for recovery. In that case, try to fall back
+to using the open state stateid, or just doing a general recovery
+of all state on a given inode.
 
-Scenario:
+Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
+---
+ fs/nfs/nfs4proc.c | 21 +++++++++++++++++++--
+ 1 file changed, 19 insertions(+), 2 deletions(-)
 
-1. Linux NFS client iterates a directory with many (millions) of
-files, e.g. via getdents() until all entries are done. In my case,
-READDIRPLUS is being used under the hood. Trivial reproduction is to
-run: ls -la
-2. At the same time, run the stat tool on a file inside that directory.
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 95e02a92e932..24b267e0c0d5 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -462,6 +462,22 @@ static int nfs4_delay(long *timeout, bool interruptible)
+ 	return nfs4_delay_killable(timeout);
+ }
+ 
++static const nfs4_stateid *
++nfs4_recoverable_stateid(const nfs4_stateid *stateid)
++{
++	if (!stateid)
++		return NULL;
++	switch (stateid->type) {
++	case NFS4_OPEN_STATEID_TYPE:
++	case NFS4_LOCK_STATEID_TYPE:
++	case NFS4_DELEGATION_STATEID_TYPE:
++		return stateid;
++	default:
++		break;
++	}
++	return NULL;
++}
++
+ /* This is the error handling routine for processes that are allowed
+  * to sleep.
+  */
+@@ -470,7 +486,7 @@ static int nfs4_do_handle_exception(struct nfs_server *server,
+ {
+ 	struct nfs_client *clp = server->nfs_client;
+ 	struct nfs4_state *state = exception->state;
+-	const nfs4_stateid *stateid = exception->stateid;
++	const nfs4_stateid *stateid;
+ 	struct inode *inode = exception->inode;
+ 	int ret = errorcode;
+ 
+@@ -478,8 +494,9 @@ static int nfs4_do_handle_exception(struct nfs_server *server,
+ 	exception->recovering = 0;
+ 	exception->retry = 0;
+ 
++	stateid = nfs4_recoverable_stateid(exception->stateid);
+ 	if (stateid == NULL && state != NULL)
+-		stateid = &state->stateid;
++		stateid = nfs4_recoverable_stateid(&state->stateid);
+ 
+ 	switch(errorcode) {
+ 		case 0:
+-- 
+2.21.0
 
-The directory on the server is not being modified anywhere (on this
-client or any other client).
-
-Result: the next or ongoing getdents will get stuck for a long time
-(tens of seconds to minutes). It appears to be re-iterating some of
-the work it already did, by going back to a previous NFS READDIRPLUS
-cookie.
-
-
-Things I've tried as workarounds:
-- Mounting with nordirplus - the iteration doesn't seem to reset or at
-least getdents doesn't get stuck, but now I have tons of LOOKUPs, as
-expected.
-- Setting actimeo=(large number) doesn't affect the behavior
-
-Questions:
-1. Why does the stat command cause this?
-2. How can I avoid the reset, i.e. ensure forward progress of the dir iteration?
