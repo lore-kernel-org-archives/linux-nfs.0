@@ -8,53 +8,53 @@ X-Spam-Status: No, score=-9.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 95A44C7618B
-	for <linux-nfs@archiver.kernel.org>; Wed, 24 Jul 2019 04:26:41 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 10C94C7618F
+	for <linux-nfs@archiver.kernel.org>; Wed, 24 Jul 2019 04:26:48 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 628F620644
-	for <linux-nfs@archiver.kernel.org>; Wed, 24 Jul 2019 04:26:41 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id D31CB20644
+	for <linux-nfs@archiver.kernel.org>; Wed, 24 Jul 2019 04:26:47 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="JkQ04mWE"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="BFNUQlsl"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726786AbfGXE0b (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 24 Jul 2019 00:26:31 -0400
-Received: from mail-pl1-f196.google.com ([209.85.214.196]:40826 "EHLO
-        mail-pl1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726410AbfGXEZc (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Jul 2019 00:25:32 -0400
-Received: by mail-pl1-f196.google.com with SMTP id a93so21418454pla.7;
-        Tue, 23 Jul 2019 21:25:31 -0700 (PDT)
+        id S1726390AbfGXEZb (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 24 Jul 2019 00:25:31 -0400
+Received: from mail-pl1-f195.google.com ([209.85.214.195]:34213 "EHLO
+        mail-pl1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726316AbfGXEZ3 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Jul 2019 00:25:29 -0400
+Received: by mail-pl1-f195.google.com with SMTP id i2so21482631plt.1;
+        Tue, 23 Jul 2019 21:25:28 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references
          :mime-version:content-transfer-encoding;
-        bh=BJP8QYXxp7VfUt7Eaw5PwJTw08pU7M/uVeuocSBpfVU=;
-        b=JkQ04mWEAa/01zFb0tlIM6Uj/lB55wPCkF6GMvnL5gHq24gOeLxpu2syudv1ZeubVR
-         o/2/SbGfs0MBuqHwUIG/UqiIYwjvwRdM1smByZv+PMbXD0dTKJlqPSntSI4p9XbD0/EP
-         dCEFzTMQ+3jKQsrfKqZebfyOsyegrsrPG3hntSrqUGy/c3DI5jDFIn00D4+KacGWHwyg
-         5+f61ycblG2ySUuAZOjASXUKEg6G7NHj0n1tTzQ86l9qr5EKD1HA2V/yosWmHzLAWWAj
-         WxbUEPr8ZwbT/LJAb0AztRPHVuEiMh11F1nlDvqA1UHHjZuRTFB0keSEGorINX0fFgb2
-         sO/w==
+        bh=CtboR7Ufy9O9fDFcRIuCIk1t8EIvDdcqQ3tCIzPpVTU=;
+        b=BFNUQlsly9hFNZnfDRf69ho0wDvCVUqoj8dGJpNcOiGYgy46obMbORHEMN/I5tUQuy
+         K86xGPjY4b4QO+54v/Zv7nQ40O3fVB4kil84sULCnYrDgJVTXlsEFmALWYldAbZAgMBP
+         fvIXv3sy0T/Ns+lBLfXM4dLPELbccf6aa9owKLeIZQZMk4ea+nMOdmYcBOB36dALtS4z
+         0SnWHD/Ra8zQZlPYXX9NedMId4XeBIsKRL/2j4wXYAsw4ctlt6Th0vAum9effAlS+CNc
+         g0HRax01vlO2YL0JWYjboqvm7PfjfxsTzbm2nbAhIfIebOVYGUr1FquaKAPIEQbTrE+e
+         0YTg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=BJP8QYXxp7VfUt7Eaw5PwJTw08pU7M/uVeuocSBpfVU=;
-        b=thFSL7sx+r4akzxXmiEiA2LrLmSrS9j5zLA+uw2lkNI3L4Apc86cvdqIuxGvixua93
-         duDNYw+/Pc4iL2C/Ad6rfKQb+Q2NI8gA5V3CXQuwE3YthEp4BjHaFNg6T78UtRiPCFJ6
-         1Dfc5u6MWa4n7AEiL8VqokdDjh2Aef8J2fCRVlD5L9n1zAWTw4PmeFdotycXAOOIpkal
-         mRU1KFYM1+783i7E4MdDyY/U15XwuMzcDCsjWQ6/6mcm9+8pDqowRpeaQIBFsTB8pkzn
-         ewxnhyrH9DpyBMwQUs7EI1IowHQ8dLePK9c9GKhQ1n5dZdg1YltIO7DnhNTnycfw2aP5
-         sy4A==
-X-Gm-Message-State: APjAAAU7VCyAr9Bo2cxQSduPNOD1zAXPdJmX6NL2jGq7peXohtXEdC01
-        2m72QEVJRJAYucQEIXGTr4Y=
-X-Google-Smtp-Source: APXvYqwp+g/SqY8cK+RhyrKnPd9NNEiEh2F/BoaBOdfDPn2MZtzIjgPt3GPtA4VFQfpQXahpL/YYYg==
-X-Received: by 2002:a17:902:ac85:: with SMTP id h5mr84794603plr.198.1563942331371;
-        Tue, 23 Jul 2019 21:25:31 -0700 (PDT)
+        bh=CtboR7Ufy9O9fDFcRIuCIk1t8EIvDdcqQ3tCIzPpVTU=;
+        b=DGgaTpaQ44/dNT0RGpfVhyiNyCI+atbx/yYS62gUPiAbwoblGbIUKFgBg/SoGrA1OF
+         uURIjf2vKwUIlbIkugvm6g38wHrd0f8tYz+PI8xxW2q6WhAuBGEvU9gcDfAhlQ0/OrRF
+         r9N2hZDAE5jCE/t9tLVnKEkWgF2XuId+x7ydjVMKZrcBvIQW3Lo98Eusvet9vcMvUqxm
+         L+kqwBxzfU28a9Bbu+5rbMtYbkYs9IicGtosyOFG3jbqSp0c7MsW0+si0d36p7mE1j8+
+         AVgRTOasuBzki1TsqYfrZhI2j0YRm+oAh5qG1Xq34yagm5hT4rcPBL+Jxb3z+lMewBXH
+         OHHg==
+X-Gm-Message-State: APjAAAWBro4S/E6UiKux7c7uwvnnT4WqNgGgtj9fuswNTbtHOYwRykGS
+        6Dthta66I8haQq5Nc6AZfEZ5tgx5
+X-Google-Smtp-Source: APXvYqw2fBb16YWxNCvrkJttPP2qps3nLx7+Bn7G811lLUhuqyz8ucaB8iJLC4by+I8yTQYjbx90Ag==
+X-Received: by 2002:a17:902:2ec5:: with SMTP id r63mr82774537plb.21.1563942328383;
+        Tue, 23 Jul 2019 21:25:28 -0700 (PDT)
 Received: from blueforge.nvidia.com (searspoint.nvidia.com. [216.228.112.21])
-        by smtp.gmail.com with ESMTPSA id a15sm34153364pgw.3.2019.07.23.21.25.29
+        by smtp.gmail.com with ESMTPSA id a15sm34153364pgw.3.2019.07.23.21.25.27
         (version=TLS1_3 cipher=AEAD-AES256-GCM-SHA384 bits=256/256);
-        Tue, 23 Jul 2019 21:25:30 -0700 (PDT)
+        Tue, 23 Jul 2019 21:25:27 -0700 (PDT)
 From:   john.hubbard@gmail.com
 X-Google-Original-From: jhubbard@nvidia.com
 To:     Andrew Morton <akpm@linux-foundation.org>
@@ -84,12 +84,10 @@ Cc:     Alexander Viro <viro@zeniv.linux.org.uk>,
         Johannes Thumshirn <jthumshirn@suse.de>,
         Ming Lei <ming.lei@redhat.com>,
         Dave Chinner <david@fromorbit.com>,
-        Boaz Harrosh <boaz@plexistor.com>,
-        Paolo Bonzini <pbonzini@redhat.com>,
-        Stefan Hajnoczi <stefanha@redhat.com>
-Subject: [PATCH 07/12] vhost-scsi: convert put_page() to put_user_page*()
-Date:   Tue, 23 Jul 2019 21:25:13 -0700
-Message-Id: <20190724042518.14363-8-jhubbard@nvidia.com>
+        Boaz Harrosh <boaz@plexistor.com>
+Subject: [PATCH 05/12] block_dev: convert put_page() to put_user_page*()
+Date:   Tue, 23 Jul 2019 21:25:11 -0700
+Message-Id: <20190724042518.14363-6-jhubbard@nvidia.com>
 X-Mailer: git-send-email 2.22.0
 In-Reply-To: <20190724042518.14363-1-jhubbard@nvidia.com>
 References: <20190724042518.14363-1-jhubbard@nvidia.com>
@@ -105,18 +103,18 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 From: Jérôme Glisse <jglisse@redhat.com>
 
 For pages that were retained via get_user_pages*(), release those pages
-via the new put_user_page*() routines, instead of via put_page().
+via the new put_user_page*() routines, instead of via put_page() or
+release_pages().
 
 This is part a tree-wide conversion, as described in commit fc1d8e7cca2d
 ("mm: introduce put_user_page*(), placeholder versions").
 
 Changes from Jérôme's original patch:
 
-* Changed a WARN_ON to a BUG_ON.
+* reworked to be compatible with recent bio_release_pages() changes.
 
 Signed-off-by: Jérôme Glisse <jglisse@redhat.com>
 Signed-off-by: John Hubbard <jhubbard@nvidia.com>
-Cc: virtualization@lists.linux-foundation.org
 Cc: linux-fsdevel@vger.kernel.org
 Cc: linux-block@vger.kernel.org
 Cc: linux-mm@kvack.org
@@ -131,56 +129,121 @@ Cc: Dave Chinner <david@fromorbit.com>
 Cc: Jason Gunthorpe <jgg@ziepe.ca>
 Cc: Matthew Wilcox <willy@infradead.org>
 Cc: Boaz Harrosh <boaz@plexistor.com>
-Cc: Miklos Szeredi <miklos@szeredi.hu>
-Cc: "Michael S. Tsirkin" <mst@redhat.com>
-Cc: Jason Wang <jasowang@redhat.com>
-Cc: Paolo Bonzini <pbonzini@redhat.com>
-Cc: Stefan Hajnoczi <stefanha@redhat.com>
 ---
- drivers/vhost/scsi.c | 13 ++++++++++---
- 1 file changed, 10 insertions(+), 3 deletions(-)
+ block/bio.c         | 13 +++++++++++++
+ fs/block_dev.c      | 22 +++++++++++++++++-----
+ include/linux/bio.h |  8 ++++++++
+ 3 files changed, 38 insertions(+), 5 deletions(-)
 
-diff --git a/drivers/vhost/scsi.c b/drivers/vhost/scsi.c
-index a9caf1bc3c3e..282565ab5e3f 100644
---- a/drivers/vhost/scsi.c
-+++ b/drivers/vhost/scsi.c
-@@ -329,11 +329,11 @@ static void vhost_scsi_release_cmd(struct se_cmd *se_cmd)
+diff --git a/block/bio.c b/block/bio.c
+index 74f9eba2583b..3b9f66e64bc1 100644
+--- a/block/bio.c
++++ b/block/bio.c
+@@ -1746,6 +1746,19 @@ void bio_check_pages_dirty(struct bio *bio)
+ 	__bio_check_pages_dirty(bio, false);
+ }
  
- 	if (tv_cmd->tvc_sgl_count) {
- 		for (i = 0; i < tv_cmd->tvc_sgl_count; i++)
--			put_page(sg_page(&tv_cmd->tvc_sgl[i]));
-+			put_user_page(sg_page(&tv_cmd->tvc_sgl[i]));
- 	}
- 	if (tv_cmd->tvc_prot_sgl_count) {
- 		for (i = 0; i < tv_cmd->tvc_prot_sgl_count; i++)
--			put_page(sg_page(&tv_cmd->tvc_prot_sgl[i]));
-+			put_user_page(sg_page(&tv_cmd->tvc_prot_sgl[i]));
- 	}
- 
- 	vhost_scsi_put_inflight(tv_cmd->inflight);
-@@ -630,6 +630,13 @@ vhost_scsi_map_to_sgl(struct vhost_scsi_cmd *cmd,
- 	size_t offset;
- 	unsigned int npages = 0;
- 
-+	/*
-+	 * Here in all cases we should have an IOVEC which use GUP. If that is
-+	 * not the case then we will wrongly call put_user_page() and the page
-+	 * refcount will go wrong (this is in vhost_scsi_release_cmd())
-+	 */
-+	WARN_ON(!iov_iter_get_pages_use_gup(iter));
++enum bio_rp_flags_t bio_rp_flags(struct iov_iter *iter, bool mark_dirty)
++{
++	enum bio_rp_flags_t flags = BIO_RP_NORMAL;
 +
- 	bytes = iov_iter_get_pages(iter, pages, LONG_MAX,
- 				VHOST_SCSI_PREALLOC_UPAGES, &offset);
- 	/* No pages were pinned */
-@@ -681,7 +688,7 @@ vhost_scsi_iov_to_sgl(struct vhost_scsi_cmd *cmd, bool write,
- 			while (p < sg) {
- 				struct page *page = sg_page(p++);
- 				if (page)
--					put_page(page);
-+					put_user_page(page);
- 			}
- 			return ret;
- 		}
++	if (mark_dirty)
++		flags |= BIO_RP_MARK_DIRTY;
++
++	if (iov_iter_get_pages_use_gup(iter))
++		flags |= BIO_RP_FROM_GUP;
++
++	return flags;
++}
++
+ void update_io_ticks(struct hd_struct *part, unsigned long now)
+ {
+ 	unsigned long stamp;
+diff --git a/fs/block_dev.c b/fs/block_dev.c
+index 9fe6616f8788..d53abaf31e54 100644
+--- a/fs/block_dev.c
++++ b/fs/block_dev.c
+@@ -259,7 +259,7 @@ __blkdev_direct_IO_simple(struct kiocb *iocb, struct iov_iter *iter,
+ 	}
+ 	__set_current_state(TASK_RUNNING);
+ 
+-	bio_release_pages(&bio, bio_rp_dirty_flag(should_dirty));
++	bio_release_pages(&bio, bio_rp_flags(iter, should_dirty));
+ 	if (unlikely(bio.bi_status))
+ 		ret = blk_status_to_errno(bio.bi_status);
+ 
+@@ -295,7 +295,7 @@ static int blkdev_iopoll(struct kiocb *kiocb, bool wait)
+ 	return blk_poll(q, READ_ONCE(kiocb->ki_cookie), wait);
+ }
+ 
+-static void blkdev_bio_end_io(struct bio *bio)
++static void _blkdev_bio_end_io(struct bio *bio, bool from_gup)
+ {
+ 	struct blkdev_dio *dio = bio->bi_private;
+ 	bool should_dirty = dio->should_dirty;
+@@ -327,13 +327,23 @@ static void blkdev_bio_end_io(struct bio *bio)
+ 	}
+ 
+ 	if (should_dirty) {
+-		bio_check_pages_dirty(bio);
++		__bio_check_pages_dirty(bio, from_gup);
+ 	} else {
+-		bio_release_pages(bio, BIO_RP_NORMAL);
++		bio_release_pages(bio, bio_rp_gup_flag(from_gup));
+ 		bio_put(bio);
+ 	}
+ }
+ 
++static void blkdev_bio_end_io(struct bio *bio)
++{
++	_blkdev_bio_end_io(bio, false);
++}
++
++static void blkdev_bio_from_gup_end_io(struct bio *bio)
++{
++	_blkdev_bio_end_io(bio, true);
++}
++
+ static ssize_t
+ __blkdev_direct_IO(struct kiocb *iocb, struct iov_iter *iter, int nr_pages)
+ {
+@@ -380,7 +390,9 @@ __blkdev_direct_IO(struct kiocb *iocb, struct iov_iter *iter, int nr_pages)
+ 		bio->bi_iter.bi_sector = pos >> 9;
+ 		bio->bi_write_hint = iocb->ki_hint;
+ 		bio->bi_private = dio;
+-		bio->bi_end_io = blkdev_bio_end_io;
++		bio->bi_end_io = iov_iter_get_pages_use_gup(iter) ?
++				 blkdev_bio_from_gup_end_io :
++				 blkdev_bio_end_io;
+ 		bio->bi_ioprio = iocb->ki_ioprio;
+ 
+ 		ret = bio_iov_iter_get_pages(bio, iter);
+diff --git a/include/linux/bio.h b/include/linux/bio.h
+index d68a40c2c9d4..b9460d1a4679 100644
+--- a/include/linux/bio.h
++++ b/include/linux/bio.h
+@@ -452,6 +452,13 @@ static inline enum bio_rp_flags_t bio_rp_dirty_flag(bool mark_dirty)
+ 	return mark_dirty ? BIO_RP_MARK_DIRTY : BIO_RP_NORMAL;
+ }
+ 
++static inline enum bio_rp_flags_t bio_rp_gup_flag(bool from_gup)
++{
++	return from_gup ? BIO_RP_FROM_GUP : BIO_RP_NORMAL;
++}
++
++enum bio_rp_flags_t bio_rp_flags(struct iov_iter *iter, bool mark_dirty);
++
+ void bio_release_pages(struct bio *bio, enum bio_rp_flags_t flags);
+ struct rq_map_data;
+ extern struct bio *bio_map_user_iov(struct request_queue *,
+@@ -463,6 +470,7 @@ extern struct bio *bio_copy_kern(struct request_queue *, void *, unsigned int,
+ 				 gfp_t, int);
+ extern void bio_set_pages_dirty(struct bio *bio);
+ extern void bio_check_pages_dirty(struct bio *bio);
++void __bio_check_pages_dirty(struct bio *bio, bool from_gup);
+ 
+ void generic_start_io_acct(struct request_queue *q, int op,
+ 				unsigned long sectors, struct hd_struct *part);
 -- 
 2.22.0
 
