@@ -2,101 +2,164 @@ Return-Path: <SRS0=uOgE=VV=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.6 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
-	USER_AGENT_SANE_1 autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 560E5C76186
-	for <linux-nfs@archiver.kernel.org>; Wed, 24 Jul 2019 02:51:11 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 41BE5C7618F
+	for <linux-nfs@archiver.kernel.org>; Wed, 24 Jul 2019 04:25:27 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 21A8D229F5
-	for <linux-nfs@archiver.kernel.org>; Wed, 24 Jul 2019 02:51:11 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1563936671;
-	bh=58GvADylPQ9DbBziu9oSNZ/UR9579iHMOg2RDGDnwqw=;
-	h=Date:From:To:Cc:Subject:List-ID:From;
-	b=k+Ac9YAOccvLGD7QqZsgZCu8YNyCS2bneIDAHAa86j0XEfpgWCCjP2ECJVZpMGaSe
-	 RpGR4AHSm7AT9b5gvJWJBWtO0SzW9xh6/hjGrnqcmaRrbQmRvJzIT4Mm5vkuwIfHJT
-	 aF7JVHTiDgnaENfz8v0rBb2EMebhxbWSlXoaUqIM=
+	by mail.kernel.org (Postfix) with ESMTP id 0F2FD22387
+	for <linux-nfs@archiver.kernel.org>; Wed, 24 Jul 2019 04:25:27 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="KG/F7Sd5"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1725899AbfGXCvK (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 23 Jul 2019 22:51:10 -0400
-Received: from mail.kernel.org ([198.145.29.99]:47474 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725827AbfGXCvK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 23 Jul 2019 22:51:10 -0400
-Received: from sol.localdomain (c-24-5-143-220.hsd1.ca.comcast.net [24.5.143.220])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 06C33229F3;
-        Wed, 24 Jul 2019 02:51:08 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1563936669;
-        bh=58GvADylPQ9DbBziu9oSNZ/UR9579iHMOg2RDGDnwqw=;
-        h=Date:From:To:Cc:Subject:From;
-        b=Ntaqi3vurk28SUcUUFpVXaq7Yq++lilbOtifesJz/yTBeeTOuSZC9uPoc6etauNQe
-         ZgcEojF97wEHJ+WQwv28c++Hf9Yb3fuJ8qBe5UpCnIYRqxmI1QN6Wl2Tqgw1VLRNx0
-         S8UVlwc9NqzndoUusjemaiR4JMtZaLQsNON9M/ng=
-Date:   Tue, 23 Jul 2019 19:51:07 -0700
-From:   Eric Biggers <ebiggers@kernel.org>
-To:     linux-nfs@vger.kernel.org, netdev@vger.kernel.org,
-        Trond Myklebust <trond.myklebust@hammerspace.com>,
+        id S1726183AbfGXEZ0 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 24 Jul 2019 00:25:26 -0400
+Received: from mail-pg1-f194.google.com ([209.85.215.194]:46538 "EHLO
+        mail-pg1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726139AbfGXEZZ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Jul 2019 00:25:25 -0400
+Received: by mail-pg1-f194.google.com with SMTP id k189so1468509pgk.13;
+        Tue, 23 Jul 2019 21:25:24 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=from:to:cc:subject:date:message-id:in-reply-to:references
+         :mime-version:content-transfer-encoding;
+        bh=qETbyvDGXmWMmkqN4sOdgKXeFkWOntX3r/NRFgCZoWE=;
+        b=KG/F7Sd5J79dEipElYhdvyhMIk0TxQlRtZu9bi85rUwY/TE5KUGgUZYMnF+3jcDsXr
+         jk+YAZfWVg6gnp2IiqLCse5lUUZrgh27wRKMfQRWXUdRnaO5ZlXDztHkfwCA1gRbK+Qa
+         Vdl/mcDwYDvc/aIthkQn3dHIfadxoz9OGVoTMkITstrb8gRinr4GRivAlsVYAzJkRXx3
+         qijzZ8AyOYgc5Vk4JND+9sG/qLIVyx5s39WeHO+RM9Ey6ODD5O8kuqfL85vwwK9Febym
+         eFolpJZ4Wkv3lsIz5mVKSWu4wewrN05ykT4POz6d2Mi/mkYtEQg5LGvW/0qsyHcM4WB5
+         F1og==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
+         :references:mime-version:content-transfer-encoding;
+        bh=qETbyvDGXmWMmkqN4sOdgKXeFkWOntX3r/NRFgCZoWE=;
+        b=mDTylZHWeSo6qrwvCcaaiEvWc5nYOZAPJIEhmSGBd2+3uYQ9fqvcSgOQXKMtWaLtZZ
+         uG+ul3tT5lrgX6P7vY2Oj5dRKQRb3w2JYwJj7edw/TgGdQDx5U+7EXgDS15AuTiRdWTk
+         WlUrHvz5teCYDMTj4yHLxtB3VIfvVkPUOgMcEpm0o/AXgp4Nf9AtwdY11wRmIgIQ4eTs
+         u4m4XHCx3bi1XbDX9QO0tvJNqyMJZBTuRtAIiP1aVOTqpWoZ61IcDRoQzI90qi9Y7dg4
+         D3V+frb/PFrG88bAUa5OArCSScHGnjLLGcIzGtOlUmZCf97hSubyGDV2+DMprowr8dM0
+         1z7g==
+X-Gm-Message-State: APjAAAU4HJTAQZiWrf0O120A4wP01gpn3YeIAagFeudhIO2z3ZfjKqPO
+        WD4CpY+PZSWNwxE4vQ/6mEo=
+X-Google-Smtp-Source: APXvYqxkwpMUKWSZK/4NQcFDw+bDP7yRS/NluRzHQboqTdh3aehK42NKuj/IACv1wat7jP2wWUy+ng==
+X-Received: by 2002:a65:4489:: with SMTP id l9mr81979980pgq.207.1563942324157;
+        Tue, 23 Jul 2019 21:25:24 -0700 (PDT)
+Received: from blueforge.nvidia.com (searspoint.nvidia.com. [216.228.112.21])
+        by smtp.gmail.com with ESMTPSA id a15sm34153364pgw.3.2019.07.23.21.25.22
+        (version=TLS1_3 cipher=AEAD-AES256-GCM-SHA384 bits=256/256);
+        Tue, 23 Jul 2019 21:25:23 -0700 (PDT)
+From:   john.hubbard@gmail.com
+X-Google-Original-From: jhubbard@nvidia.com
+To:     Andrew Morton <akpm@linux-foundation.org>
+Cc:     Alexander Viro <viro@zeniv.linux.org.uk>,
         Anna Schumaker <anna.schumaker@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        "David S. Miller" <davem@davemloft.net>
-Cc:     linux-kernel@vger.kernel.org, syzkaller-bugs@googlegroups.com
-Subject: Reminder: 1 open syzbot bug in "net/sunrpc" subsystem
-Message-ID: <20190724025107.GM643@sol.localdomain>
-Mail-Followup-To: linux-nfs@vger.kernel.org, netdev@vger.kernel.org,
+        "David S . Miller" <davem@davemloft.net>,
+        Dominique Martinet <asmadeus@codewreck.org>,
+        Eric Van Hensbergen <ericvh@gmail.com>,
+        Jason Gunthorpe <jgg@ziepe.ca>,
+        Jason Wang <jasowang@redhat.com>, Jens Axboe <axboe@kernel.dk>,
+        Latchesar Ionkov <lucho@ionkov.net>,
+        "Michael S . Tsirkin" <mst@redhat.com>,
+        Miklos Szeredi <miklos@szeredi.hu>,
         Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        "David S. Miller" <davem@davemloft.net>,
-        linux-kernel@vger.kernel.org, syzkaller-bugs@googlegroups.com
+        Christoph Hellwig <hch@lst.de>,
+        Matthew Wilcox <willy@infradead.org>, linux-mm@kvack.org,
+        LKML <linux-kernel@vger.kernel.org>, ceph-devel@vger.kernel.org,
+        kvm@vger.kernel.org, linux-block@vger.kernel.org,
+        linux-cifs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org,
+        netdev@vger.kernel.org, samba-technical@lists.samba.org,
+        v9fs-developer@lists.sourceforge.net,
+        virtualization@lists.linux-foundation.org,
+        =?UTF-8?q?J=C3=A9r=C3=B4me=20Glisse?= <jglisse@redhat.com>,
+        John Hubbard <jhubbard@nvidia.com>, Jan Kara <jack@suse.cz>,
+        Dan Williams <dan.j.williams@intel.com>,
+        Johannes Thumshirn <jthumshirn@suse.de>,
+        Ming Lei <ming.lei@redhat.com>,
+        Dave Chinner <david@fromorbit.com>
+Subject: [PATCH 02/12] iov_iter: add helper to test if an iter would use GUP v2
+Date:   Tue, 23 Jul 2019 21:25:08 -0700
+Message-Id: <20190724042518.14363-3-jhubbard@nvidia.com>
+X-Mailer: git-send-email 2.22.0
+In-Reply-To: <20190724042518.14363-1-jhubbard@nvidia.com>
+References: <20190724042518.14363-1-jhubbard@nvidia.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-User-Agent: Mutt/1.12.1 (2019-06-15)
+Content-Type: text/plain; charset=UTF-8
+X-NVConfidentiality: public
+Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-[This email was generated by a script.  Let me know if you have any suggestions
-to make it better, or if you want it re-generated with the latest status.]
+From: Jérôme Glisse <jglisse@redhat.com>
 
-Of the currently open syzbot reports against the upstream kernel, I've manually
-marked 1 of them as possibly being a bug in the "net/sunrpc" subsystem.
+Add a helper to test if call to iov_iter_get_pages*() with a given
+iter would result in calls to GUP (get_user_pages*()). We want to
+use different tracking of page references if they are coming from
+GUP (get_user_pages*()) and thus  we need to know when GUP is used
+for a given iter.
 
-If you believe this bug is no longer valid, please close the syzbot report by
-sending a '#syz fix', '#syz dup', or '#syz invalid' command in reply to the
-original thread, as explained at https://goo.gl/tpsmEJ#status
+Changes since Jérôme's original patch:
 
-If you believe I misattributed this bug to the "net/sunrpc" subsystem, please
-let me know, and if possible forward the report to the correct people or mailing
-list.
+* iov_iter_get_pages_use_gup(): do not return true for the ITER_PIPE
+case, because iov_iter_get_pages() calls pipe_get_pages(), which in
+turn uses get_page(), not get_user_pages().
 
-Here is the bug:
+* Remove some obsolete code, as part of rebasing onto Linux 5.3.
 
---------------------------------------------------------------------------------
-Title:              linux-next test error: WARNING in remove_proc_entry
-Last occurred:      69 days ago
-Reported:           71 days ago
-Branches:           linux-next
-Dashboard link:     https://syzkaller.appspot.com/bug?id=0b23d0049d5af6699d68ff17e2db121569b78fd4
-Original thread:    https://lkml.kernel.org/lkml/00000000000055d6590588bf90bf@google.com/T/#u
+* Fix up the kerneldoc comment to "Return:" rather than "Returns:",
+and a few other grammatical tweaks.
 
-Unfortunately, this bug does not have a reproducer.
+Signed-off-by: Jérôme Glisse <jglisse@redhat.com>
+Signed-off-by: John Hubbard <jhubbard@nvidia.com>
+Cc: linux-fsdevel@vger.kernel.org
+Cc: linux-block@vger.kernel.org
+Cc: linux-mm@kvack.org
+Cc: John Hubbard <jhubbard@nvidia.com>
+Cc: Jan Kara <jack@suse.cz>
+Cc: Dan Williams <dan.j.williams@intel.com>
+Cc: Alexander Viro <viro@zeniv.linux.org.uk>
+Cc: Johannes Thumshirn <jthumshirn@suse.de>
+Cc: Christoph Hellwig <hch@lst.de>
+Cc: Jens Axboe <axboe@kernel.dk>
+Cc: Ming Lei <ming.lei@redhat.com>
+Cc: Dave Chinner <david@fromorbit.com>
+Cc: Jason Gunthorpe <jgg@ziepe.ca>
+Cc: Matthew Wilcox <willy@infradead.org>
+---
+ include/linux/uio.h | 11 +++++++++++
+ 1 file changed, 11 insertions(+)
 
-No one has replied to the original thread for this bug yet.
-
-If you fix this bug, please add the following tag to the commit:
-    Reported-by: syzbot+4887e9dd9042fae2a9c2@syzkaller.appspotmail.com
-
-If you send any email or patch for this bug, please consider replying to the
-original thread.  For the git send-email command to use, or tips on how to reply
-if the thread isn't in your mailbox, see the "Reply instructions" at
-https://lkml.kernel.org/r/00000000000055d6590588bf90bf@google.com
+diff --git a/include/linux/uio.h b/include/linux/uio.h
+index ab5f523bc0df..2a179af8e5a7 100644
+--- a/include/linux/uio.h
++++ b/include/linux/uio.h
+@@ -86,6 +86,17 @@ static inline unsigned char iov_iter_rw(const struct iov_iter *i)
+ 	return i->type & (READ | WRITE);
+ }
+ 
++/**
++ * iov_iter_get_pages_use_gup - report if iov_iter_get_pages(i) uses GUP
++ * @i: iterator
++ * Return: true if a call to iov_iter_get_pages*() with the iter provided in
++ *          the argument would result in the use of get_user_pages*()
++ */
++static inline bool iov_iter_get_pages_use_gup(const struct iov_iter *i)
++{
++	return iov_iter_type(i) == ITER_IOVEC;
++}
++
+ /*
+  * Total number of bytes covered by an iovec.
+  *
+-- 
+2.22.0
 
