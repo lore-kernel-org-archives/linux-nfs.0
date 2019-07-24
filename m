@@ -2,62 +2,38 @@ Return-Path: <SRS0=uOgE=VV=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
-	USER_AGENT_GIT autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-2.4 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=no autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A06A7C7618B
-	for <linux-nfs@archiver.kernel.org>; Wed, 24 Jul 2019 04:27:47 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 496AAC7618B
+	for <linux-nfs@archiver.kernel.org>; Wed, 24 Jul 2019 04:35:06 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 6B16120644
-	for <linux-nfs@archiver.kernel.org>; Wed, 24 Jul 2019 04:27:47 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 1EBAD21841
+	for <linux-nfs@archiver.kernel.org>; Wed, 24 Jul 2019 04:35:06 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="drt6EjFd"
+	dkim=pass (2048-bit key) header.d=nvidia.com header.i=@nvidia.com header.b="Li1yuMA+"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726026AbfGXEZW (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 24 Jul 2019 00:25:22 -0400
-Received: from mail-pf1-f195.google.com ([209.85.210.195]:39785 "EHLO
-        mail-pf1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725810AbfGXEZW (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Jul 2019 00:25:22 -0400
-Received: by mail-pf1-f195.google.com with SMTP id f17so16235614pfn.6;
-        Tue, 23 Jul 2019 21:25:21 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=czbKIXOb/Go0XhMRs2MEN6VnTG6u3MuZundQHh6fuSE=;
-        b=drt6EjFdosCAcMEHtdm6+Wwi0M6mSxOzFkxqawZr6IPXLSVzqb/W29XJdPWwpIC0hK
-         6O36OujVLFyXEay6jApmdcKGKaFf8ZHrynwkSnL37TGZQHVi5dSIejM/BVPUxQ7VV65S
-         fWBfNJcl5fT06CyStqADu0QhfKQgev+DV1jB/43XtDAQrRVBT4D8hAHyS32+/jE194Ee
-         9IJK8BdynnPV24hoHobSOouQX3yA4+C8Ogba9Jjmu1EUBDg3exofJAkPMZ4BVkwyR1FN
-         DpKTuGd8V6acalOBWqjEaikoQcAKX4Ix3w6DkaRL7W59P9w2XZ6f+kz4iv47D5f4dYHi
-         ARbw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=czbKIXOb/Go0XhMRs2MEN6VnTG6u3MuZundQHh6fuSE=;
-        b=Rw/FoVxyf7G530+xTrSsfsezIOn56PVIzMdw5uSPJCWXG7DRQtalifYk5M5c9+EhLv
-         O52MtOven3BP6beICwYTanQ0SvpycyZFDGwo9811B3Y1AGpN76gSsI9DOmv379PCYhu4
-         7vgpaOHAMwvR7+caYQplJ/QN4562GuqHgXHmGmeOD1mr7GEUx2UPNPHuvM+vKj1ZOltD
-         5lIi3g5wdyyg5VXhNRFKtXwPdCJCtcI5DZPXB9bHENHHqOTH7oiODHFRqVpNky+ZabI/
-         swUXb9D6Rr4k1/OPeyJngqfX64qAOVmdwUP/Vj9E1oFRW4BAndYbEcAhIS+jNSAT/WaS
-         I9ww==
-X-Gm-Message-State: APjAAAVN1VhOyoqLz9R6b2/m+bXT5auNuPEOYanYrK8iQ4AVv+nB3sZ2
-        iWqUG7k5/DG8qXrtoPw3DpQ=
-X-Google-Smtp-Source: APXvYqwbbPiJvrG7YMdt1a1WYUqGY2Z5kAsIWFPe6nz2zmmLERZ6mi3tyMsrNzYm3HTPDg7yUokVfw==
-X-Received: by 2002:a65:6288:: with SMTP id f8mr74189986pgv.292.1563942321242;
-        Tue, 23 Jul 2019 21:25:21 -0700 (PDT)
-Received: from blueforge.nvidia.com (searspoint.nvidia.com. [216.228.112.21])
-        by smtp.gmail.com with ESMTPSA id a15sm34153364pgw.3.2019.07.23.21.25.19
-        (version=TLS1_3 cipher=AEAD-AES256-GCM-SHA384 bits=256/256);
-        Tue, 23 Jul 2019 21:25:20 -0700 (PDT)
-From:   john.hubbard@gmail.com
-X-Google-Original-From: jhubbard@nvidia.com
-To:     Andrew Morton <akpm@linux-foundation.org>
-Cc:     Alexander Viro <viro@zeniv.linux.org.uk>,
+        id S1726108AbfGXEe7 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 24 Jul 2019 00:34:59 -0400
+Received: from hqemgate16.nvidia.com ([216.228.121.65]:19691 "EHLO
+        hqemgate16.nvidia.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725813AbfGXEe6 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Jul 2019 00:34:58 -0400
+Received: from hqpgpgate101.nvidia.com (Not Verified[216.228.121.13]) by hqemgate16.nvidia.com (using TLS: TLSv1.2, DES-CBC3-SHA)
+        id <B5d37dfee0000>; Tue, 23 Jul 2019 21:34:55 -0700
+Received: from hqmail.nvidia.com ([172.20.161.6])
+  by hqpgpgate101.nvidia.com (PGP Universal service);
+  Tue, 23 Jul 2019 21:34:57 -0700
+X-PGP-Universal: processed;
+        by hqpgpgate101.nvidia.com on Tue, 23 Jul 2019 21:34:57 -0700
+Received: from [10.110.48.28] (172.20.13.39) by HQMAIL107.nvidia.com
+ (172.20.187.13) with Microsoft SMTP Server (TLS) id 15.0.1473.3; Wed, 24 Jul
+ 2019 04:34:56 +0000
+Subject: Re: [PATCH 07/12] vhost-scsi: convert put_page() to put_user_page*()
+To:     <john.hubbard@gmail.com>, Andrew Morton <akpm@linux-foundation.org>
+CC:     Alexander Viro <viro@zeniv.linux.org.uk>,
         Anna Schumaker <anna.schumaker@netapp.com>,
         "David S . Miller" <davem@davemloft.net>,
         Dominique Martinet <asmadeus@codewreck.org>,
@@ -69,111 +45,88 @@ Cc:     Alexander Viro <viro@zeniv.linux.org.uk>,
         Miklos Szeredi <miklos@szeredi.hu>,
         Trond Myklebust <trond.myklebust@hammerspace.com>,
         Christoph Hellwig <hch@lst.de>,
-        Matthew Wilcox <willy@infradead.org>, linux-mm@kvack.org,
-        LKML <linux-kernel@vger.kernel.org>, ceph-devel@vger.kernel.org,
-        kvm@vger.kernel.org, linux-block@vger.kernel.org,
-        linux-cifs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org,
-        netdev@vger.kernel.org, samba-technical@lists.samba.org,
-        v9fs-developer@lists.sourceforge.net,
-        virtualization@lists.linux-foundation.org,
-        John Hubbard <jhubbard@nvidia.com>
-Subject: [PATCH 00/12] block/bio, fs: convert put_page() to put_user_page*()
-Date:   Tue, 23 Jul 2019 21:25:06 -0700
-Message-Id: <20190724042518.14363-1-jhubbard@nvidia.com>
-X-Mailer: git-send-email 2.22.0
+        Matthew Wilcox <willy@infradead.org>, <linux-mm@kvack.org>,
+        LKML <linux-kernel@vger.kernel.org>,
+        <ceph-devel@vger.kernel.org>, <kvm@vger.kernel.org>,
+        <linux-block@vger.kernel.org>, <linux-cifs@vger.kernel.org>,
+        <linux-fsdevel@vger.kernel.org>, <linux-nfs@vger.kernel.org>,
+        <linux-rdma@vger.kernel.org>, <netdev@vger.kernel.org>,
+        <samba-technical@lists.samba.org>,
+        <v9fs-developer@lists.sourceforge.net>,
+        <virtualization@lists.linux-foundation.org>,
+        =?UTF-8?B?SsOpcsO0bWUgR2xpc3Nl?= <jglisse@redhat.com>,
+        Jan Kara <jack@suse.cz>,
+        Dan Williams <dan.j.williams@intel.com>,
+        Johannes Thumshirn <jthumshirn@suse.de>,
+        Ming Lei <ming.lei@redhat.com>,
+        Dave Chinner <david@fromorbit.com>,
+        Boaz Harrosh <boaz@plexistor.com>,
+        Paolo Bonzini <pbonzini@redhat.com>,
+        Stefan Hajnoczi <stefanha@redhat.com>
+References: <20190724042518.14363-1-jhubbard@nvidia.com>
+ <20190724042518.14363-8-jhubbard@nvidia.com>
+From:   John Hubbard <jhubbard@nvidia.com>
+X-Nvconfidentiality: public
+Message-ID: <de40950e-0801-b830-4c48-56e84de0c82b@nvidia.com>
+Date:   Tue, 23 Jul 2019 21:34:56 -0700
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101
+ Thunderbird/60.8.0
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-X-NVConfidentiality: public
-Content-Transfer-Encoding: 8bit
+In-Reply-To: <20190724042518.14363-8-jhubbard@nvidia.com>
+X-Originating-IP: [172.20.13.39]
+X-ClientProxiedBy: HQMAIL107.nvidia.com (172.20.187.13) To
+ HQMAIL107.nvidia.com (172.20.187.13)
+Content-Type: text/plain; charset="utf-8"
+Content-Language: en-US
+Content-Transfer-Encoding: quoted-printable
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=nvidia.com; s=n1;
+        t=1563942895; bh=5ycCVDmY+zemv5AT9YYK21afucrRr/p3DH8wHXRCnZg=;
+        h=X-PGP-Universal:Subject:To:CC:References:From:X-Nvconfidentiality:
+         Message-ID:Date:User-Agent:MIME-Version:In-Reply-To:
+         X-Originating-IP:X-ClientProxiedBy:Content-Type:Content-Language:
+         Content-Transfer-Encoding;
+        b=Li1yuMA+fDKyuz/M4SCCN59d7ctSse1jfSTWQ3iZlTsXSlRURMkhcccjz+NjkScvQ
+         OT79Q+110UzH6ATtOAZE9TFWQjw4BLnCG5aUr/CalDFE2cW6KgzaPkPaa2VXwXXnY7
+         5/pADAmNdIG6y4v4o+nIoM+vpWxQn4IxAHbuuW5oIOtDNzIl/y2OpjmtWUHEk+W1aZ
+         olqi7E7lxyXO7wuTmjE0Zl5xPzM6XAPVnnMYc1B16d5wLkxA+Bss3XKDZ67aQwvlKh
+         DZPWPt41q1dZKdSXT2fR0lvzoisF0pX9tRbjvzPB2h5VmCo5KF3WlKIvbrQsfpbBjq
+         ftxyscOjUOrMA==
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: John Hubbard <jhubbard@nvidia.com>
+On 7/23/19 9:25 PM, john.hubbard@gmail.com wrote:
+> From: J=C3=A9r=C3=B4me Glisse <jglisse@redhat.com>
+>=20
+> For pages that were retained via get_user_pages*(), release those pages
+> via the new put_user_page*() routines, instead of via put_page().
+>=20
+> This is part a tree-wide conversion, as described in commit fc1d8e7cca2d
+> ("mm: introduce put_user_page*(), placeholder versions").
+>=20
+> Changes from J=C3=A9r=C3=B4me's original patch:
+>=20
+> * Changed a WARN_ON to a BUG_ON.
+>=20
 
-Hi,
+Clearly, the above commit log has it backwards (this is quite my night
+for typos).  Please read that as "changed a BUG_ON to a WARN_ON".
 
-This is mostly Jerome's work, converting the block/bio and related areas
-to call put_user_page*() instead of put_page(). Because I've changed
-Jerome's patches, in some cases significantly, I'd like to get his
-feedback before we actually leave him listed as the author (he might
-want to disown some or all of these).
+I'll correct the commit description in next iteration of this patchset.
 
-I added a new patch, in order to make this work with Christoph Hellwig's
-recent overhaul to bio_release_pages(): "block: bio_release_pages: use
-flags arg instead of bool".
+...
 
-I've started the series with a patch that I've posted in another
-series ("mm/gup: add make_dirty arg to put_user_pages_dirty_lock()"[1]),
-because I'm not sure which of these will go in first, and this allows each
-to stand alone.
+> +	/*
+> +	 * Here in all cases we should have an IOVEC which use GUP. If that is
+> +	 * not the case then we will wrongly call put_user_page() and the page
+> +	 * refcount will go wrong (this is in vhost_scsi_release_cmd())
+> +	 */
+> +	WARN_ON(!iov_iter_get_pages_use_gup(iter));
+> +
+...
 
-Testing: not much beyond build and boot testing has been done yet. And
-I'm not set up to even exercise all of it (especially the IB parts) at
-run time.
-
-Anyway, changes here are:
-
-* Store, in the iov_iter, a "came from gup (get_user_pages)" parameter.
-  Then, use the new iov_iter_get_pages_use_gup() to retrieve it when
-  it is time to release the pages. That allows choosing between put_page()
-  and put_user_page*().
-
-* Pass in one more piece of information to bio_release_pages: a "from_gup"
-  parameter. Similar use as above.
-
-* Change the block layer, and several file systems, to use
-  put_user_page*().
-
-[1] https://lore.kernel.org/r/20190724012606.25844-2-jhubbard@nvidia.com
-    And please note the correction email that I posted as a follow-up,
-    if you're looking closely at that patch. :) The fixed version is
-    included here.
-
-John Hubbard (3):
-  mm/gup: add make_dirty arg to put_user_pages_dirty_lock()
-  block: bio_release_pages: use flags arg instead of bool
-  fs/ceph: fix a build warning: returning a value from void function
-
-Jérôme Glisse (9):
-  iov_iter: add helper to test if an iter would use GUP v2
-  block: bio_release_pages: convert put_page() to put_user_page*()
-  block_dev: convert put_page() to put_user_page*()
-  fs/nfs: convert put_page() to put_user_page*()
-  vhost-scsi: convert put_page() to put_user_page*()
-  fs/cifs: convert put_page() to put_user_page*()
-  fs/fuse: convert put_page() to put_user_page*()
-  fs/ceph: convert put_page() to put_user_page*()
-  9p/net: convert put_page() to put_user_page*()
-
- block/bio.c                                |  81 ++++++++++++---
- drivers/infiniband/core/umem.c             |   5 +-
- drivers/infiniband/hw/hfi1/user_pages.c    |   5 +-
- drivers/infiniband/hw/qib/qib_user_pages.c |   5 +-
- drivers/infiniband/hw/usnic/usnic_uiom.c   |   5 +-
- drivers/infiniband/sw/siw/siw_mem.c        |   8 +-
- drivers/vhost/scsi.c                       |  13 ++-
- fs/block_dev.c                             |  22 +++-
- fs/ceph/debugfs.c                          |   2 +-
- fs/ceph/file.c                             |  62 ++++++++---
- fs/cifs/cifsglob.h                         |   3 +
- fs/cifs/file.c                             |  22 +++-
- fs/cifs/misc.c                             |  19 +++-
- fs/direct-io.c                             |   2 +-
- fs/fuse/dev.c                              |  22 +++-
- fs/fuse/file.c                             |  53 +++++++---
- fs/nfs/direct.c                            |  10 +-
- include/linux/bio.h                        |  22 +++-
- include/linux/mm.h                         |   5 +-
- include/linux/uio.h                        |  11 ++
- mm/gup.c                                   | 115 +++++++++------------
- net/9p/trans_common.c                      |  14 ++-
- net/9p/trans_common.h                      |   3 +-
- net/9p/trans_virtio.c                      |  18 +++-
- 24 files changed, 357 insertions(+), 170 deletions(-)
-
--- 
-2.22.0
-
+thanks,
+--=20
+John Hubbard
+NVIDIA
