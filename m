@@ -2,87 +2,136 @@ Return-Path: <SRS0=JCn4=V5=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-0.9 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
+	URIBL_BLOCKED autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C136CC19759
-	for <linux-nfs@archiver.kernel.org>; Thu,  1 Aug 2019 13:32:44 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 16BF3C433FF
+	for <linux-nfs@archiver.kernel.org>; Thu,  1 Aug 2019 14:12:25 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 9A9C320679
-	for <linux-nfs@archiver.kernel.org>; Thu,  1 Aug 2019 13:32:44 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id DA54620838
+	for <linux-nfs@archiver.kernel.org>; Thu,  1 Aug 2019 14:12:24 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="KtN/g7Dn"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729985AbfHANcn (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 1 Aug 2019 09:32:43 -0400
-Received: from mx1.redhat.com ([209.132.183.28]:42068 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1728578AbfHANcn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 1 Aug 2019 09:32:43 -0400
-Received: from smtp.corp.redhat.com (int-mx05.intmail.prod.int.phx2.redhat.com [10.5.11.15])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id B1C28A3B4E
-        for <linux-nfs@vger.kernel.org>; Thu,  1 Aug 2019 13:32:43 +0000 (UTC)
-Received: from jumitche.remote.csb (unknown [10.33.36.114])
-        by smtp.corp.redhat.com (Postfix) with ESMTPS id 0D6A45D6B2;
-        Thu,  1 Aug 2019 13:32:42 +0000 (UTC)
-Message-ID: <1564666361.8625.10.camel@redhat.com>
-Subject: [PATCH] nfs-utils: Fix the error handling if the lseek fails
-From:   Alice J Mitchell <ajmitchell@redhat.com>
-To:     linux-nfs@vger.kernel.org
-Cc:     Steve Dickson <steved@redhat.com>
-Date:   Thu, 01 Aug 2019 14:32:41 +0100
+        id S1731423AbfHAOMY (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 1 Aug 2019 10:12:24 -0400
+Received: from mail-vs1-f68.google.com ([209.85.217.68]:38279 "EHLO
+        mail-vs1-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727970AbfHAOMY (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Aug 2019 10:12:24 -0400
+Received: by mail-vs1-f68.google.com with SMTP id k9so48936410vso.5
+        for <linux-nfs@vger.kernel.org>; Thu, 01 Aug 2019 07:12:23 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc;
+        bh=9S7qpbFl4yBtopJaOaatFH506QberXO5oeFctRULGXE=;
+        b=KtN/g7Dns4wV3rSS4imnZHHIVkIl3KTYi/zbghtxU7GnOOSXRajrt1BizT98ySv2Uv
+         WgEa1FNY+0xoM8e6R93zOIZC8U+Ifb6Qs8Ud/dJUzuoQaio8q6MqlPrBBVCWRCKJHhq9
+         vwmnafA2m6v0lqyrxb2NcXNt2qB5xI7vAH/asK12lhuiSI253avcqW2qmk1nvKGpXIAc
+         m9G31TlTLgPtqP3Ya91PcJk1JVQ/qOY7WlQaoDe7pGAyPspSCr6Ch5NpKrdkyHN58JB/
+         J+MKoVHfVR1I1IheXjFTfwWh1XqndhBl1zAMojJ2OnoohfReJBLTGgoi69RBBwQqjn9W
+         3M1A==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=9S7qpbFl4yBtopJaOaatFH506QberXO5oeFctRULGXE=;
+        b=tsXDiq6QPzAP6tMb061YQPAk6Y4umNIOCpoHn85vwJFrsTanO76aU5Vdw7BWsZxU3K
+         UaybEtVqeTsBjOqE+QycoTYdAXFfasYgt8Vjs9XB0vAHoMJ/Ud4egCGRMvHNn6/AK/7k
+         9ihXUkPR3AYGO9DMeJG1VsDH2Ow1fr3p7huP635kFIuvSlb+n6lkASCx3JOHKCDiptnn
+         6gyStcIp8doXk6mJoZpbWLRSDTUXcmxa1YfKn6XuTh/ItfdAREu/4WLQgb8u+0OIYKUe
+         cL+ld9X7eSrRI0zBPxZ5+Gn3ukpfTVJNn8ehEFWGz08EA0ZYcIdMMLiCtgvw2vXFs+7Y
+         xpMw==
+X-Gm-Message-State: APjAAAW89+pMugYBDz7F61+q0tebgl13aZxucOBc/fLe5dZzHpXpdMr8
+        nMUcS1qZC9oOyCyLLq7v+3q3Jw82J/dSO7Y5t+Q=
+X-Google-Smtp-Source: APXvYqzOS9+EsmDtHOXgai33EIk9TpEphYofRbaQKH5Lt7N+dtScZo/6dz67jsIJvEs7rgcFh2Gd0zRUfJr71wqLNRk=
+X-Received: by 2002:a67:8907:: with SMTP id l7mr82856951vsd.194.1564668742897;
+ Thu, 01 Aug 2019 07:12:22 -0700 (PDT)
+MIME-Version: 1.0
+References: <20190708192352.12614-1-olga.kornievskaia@gmail.com>
+ <20190708192352.12614-6-olga.kornievskaia@gmail.com> <20190719220116.GA24373@fieldses.org>
+ <CAN-5tyHdxBcEH0xPV2814nUMEHPCsQ9iD_A7K=W3ZeE6b4OJxg@mail.gmail.com>
+ <20190723205846.GB19559@fieldses.org> <CAN-5tyFTRr9KPYAzq-EaOMqDeJU31-qHGsLyCmEtd18OMxCFNQ@mail.gmail.com>
+ <CAN-5tyEbwjPNbXKWXv+3=geisjH-i=xKWRqgyXa3v9Xk=OvdEw@mail.gmail.com> <20190731215118.GA13311@parsley.fieldses.org>
+In-Reply-To: <20190731215118.GA13311@parsley.fieldses.org>
+From:   Olga Kornievskaia <olga.kornievskaia@gmail.com>
+Date:   Thu, 1 Aug 2019 10:12:11 -0400
+Message-ID: <CAN-5tyGz5M1eMFC=CJUEdTB7cAq-PRis8SJMEnrcr4Svmmy03w@mail.gmail.com>
+Subject: Re: [PATCH v4 5/8] NFSD check stateids against copy stateids
+To:     "J. Bruce Fields" <bfields@redhat.com>
+Cc:     "J. Bruce Fields" <bfields@fieldses.org>,
+        linux-nfs <linux-nfs@vger.kernel.org>
 Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.15
-X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.30]); Thu, 01 Aug 2019 13:32:43 +0000 (UTC)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-The error case when lseek returns a negative value was not correctly handled,
-and the error cleanup routine was potentially leaking memory also.
+On Wed, Jul 31, 2019 at 5:51 PM J. Bruce Fields <bfields@redhat.com> wrote:
+>
+> On Wed, Jul 31, 2019 at 05:10:01PM -0400, Olga Kornievskaia wrote:
+> > I'm having difficulty with this patch because there is no good way to
+> > know when the copy_notify stateid can be freed. What I can propose is
+> > to have the linux client send a FREE_STATEID with the copy_notify
+> > stateid and use that as the trigger to free the state. In that case,
+> > I'll keep a reference on the parent until the FREE_STATEID is
+> > received.
+> >
+> > This is not in the spec (though seems like a good idea to tell the
+> > source server it's ok to clean up) so other implementations might not
+> > choose this approach so we'll have problems with stateids sticking
+> > around.
+>
+> https://tools.ietf.org/html/rfc7862#page-71
+>
+>         "If the cnr_lease_time expires while the destination server is
+>         still reading the source file, the destination server is allowed
+>         to finish reading the file.  If the cnr_lease_time expires
+>         before the destination server uses READ or READ_PLUS to begin
+>         the transfer, the source server can use NFS4ERR_PARTNER_NO_AUTH
+>         to inform the destination server that the cnr_lease_time has
+>         expired."
+>
+> The spec doesn't really define what "is allowed to finish reading the
+> file" means, but I think the source server should decide somehow whether
+> the target's done.  And "hasn't sent a read in cnr_lease_time" seems
+> like a pretty good conservative definition that would be easy to
+> enforce.
 
-Signed-off-by: Alice J Mitchell <ajmitchell@redhat.com>
----
- support/nfs/conffile.c | 8 +++++++-
- 1 file changed, 7 insertions(+), 1 deletion(-)
+"hasn't send a read in cnr_lease_time" is already enforced.
 
-diff --git a/support/nfs/conffile.c b/support/nfs/conffile.c
-index b6400be..6ba8a35 100644
---- a/support/nfs/conffile.c
-+++ b/support/nfs/conffile.c
-@@ -500,7 +500,7 @@ conf_readfile(const char *path)
- 
- 	if ((stat (path, &sb) == 0) || (errno != ENOENT)) {
- 		char *new_conf_addr = NULL;
--		size_t sz = sb.st_size;
-+		off_t sz;
- 		int fd = open (path, O_RDONLY, 0);
- 
- 		if (fd == -1) {
-@@ -517,6 +517,11 @@ conf_readfile(const char *path)
- 
- 		/* only after we have the lock, check the file size ready to read it */
- 		sz = lseek(fd, 0, SEEK_END);
-+		if (sz < 0) {
-+			xlog_warn("conf_readfile: unable to determine file size: %s",
-+				  strerror(errno));
-+			goto fail;
-+		}
- 		lseek(fd, 0, SEEK_SET);
- 
- 		new_conf_addr = malloc(sz+1);
-@@ -2162,6 +2167,7 @@ conf_write(const char *filename, const char *section, const char *arg,
- 	ret = 0;
- 
- cleanup:
-+	flush_outqueue(&inqueue, NULL);
- 	flush_outqueue(&outqueue, NULL);
- 
- 	if (buff)
--- 
-1.8.3.1
+The problem is when the copy did start in normal time, it might take
+unknown time to complete. If we limit copies to all be done with in a
+cnr_lease_time or even some number of that, we'll get into problems
+when files are large enough or network is slow enough that it will
+make this method unusable.
 
+> Worst case, if the network goes down for a couple minutes and
+> the target tries to pick up a copy where it left off, it'll get
+> PARTNER_NO_AUTH.  I assume that results in the same error being returned
+> the client, at which point the client knows that the copy_notify stateid
+> may have installed and can do what it chooses to recover (like send a
+> new copy_notify).
+
+Yes the client recovers but the cost of setting up the source server
+to destination is huge so any retries would kill the performance.
+
+>
+> The FREE_STATEID might also be a good idea, but I guess we can't count
+> on it.
+>
+> Maybe the spec could use some errata to clarify that FREE_STATEID is
+> allowed on copy_notify stateids, that clients should send it when
+> they're done, and that servers are allowed to expire copy_notify
+> stateid's even after their first use.
+
+FREE_STATEID is for a stateid which a copy_notify (or copy) stateid is
+so I don't see anything that really needs any extra stating. I think
+what's needed is specifying that for COPY_NOTIFY a client must do a
+FREE_STATEID when its done with a stateid.
+
+>
+> --b.
