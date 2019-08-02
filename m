@@ -8,53 +8,53 @@ X-Spam-Status: No, score=-9.9 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5B9B0C19759
-	for <linux-nfs@archiver.kernel.org>; Fri,  2 Aug 2019 02:22:50 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1A095C19759
+	for <linux-nfs@archiver.kernel.org>; Fri,  2 Aug 2019 02:22:54 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 326B0206A3
-	for <linux-nfs@archiver.kernel.org>; Fri,  2 Aug 2019 02:22:50 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id E0F83206A3
+	for <linux-nfs@archiver.kernel.org>; Fri,  2 Aug 2019 02:22:53 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="hP1EduyK"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="R1dyNzOz"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2390958AbfHBCU4 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 1 Aug 2019 22:20:56 -0400
-Received: from mail-pf1-f193.google.com ([209.85.210.193]:35025 "EHLO
-        mail-pf1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2390941AbfHBCUw (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Aug 2019 22:20:52 -0400
-Received: by mail-pf1-f193.google.com with SMTP id u14so35170057pfn.2;
-        Thu, 01 Aug 2019 19:20:51 -0700 (PDT)
+        id S1731437AbfHBCUz (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 1 Aug 2019 22:20:55 -0400
+Received: from mail-pg1-f195.google.com ([209.85.215.195]:42278 "EHLO
+        mail-pg1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2390798AbfHBCUs (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Aug 2019 22:20:48 -0400
+Received: by mail-pg1-f195.google.com with SMTP id t132so35228380pgb.9;
+        Thu, 01 Aug 2019 19:20:48 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references
          :mime-version:content-transfer-encoding;
-        bh=XDFswRI13oGzit66yuxshlgOj+nOKd4gwJhAdxr7MGM=;
-        b=hP1EduyKMG+yuXrF7KrLXpEWytv06HPkyhEngT/TxypVjl15UFdBSQ01HK831DacB6
-         y18d2lzANesimTaq9XDZY67ictckhnVqIa+djvmZG+RwwqwovWVosZPm2hXdPP8mZbc0
-         0yKrCu+VZPWp1BX7LdN24uYM7pD4/H1JhmD/G5vWAzU3HcQxPlc6uryb9qFNED1nmvuy
-         vlc0Xyq/DfVAu1bkczBpbXVhlvoDYp/Xx1PasljpvjsnXilMO1dGN5gCe8VOPhx84A7a
-         m7JqyBz4DRJG/5S/1NCOJ5bKHp9eLh6RG6N9nPftC1UPm2sven5C2Ciggp1fXGl7R4y9
-         0EuQ==
+        bh=lKIFYbXGeRFczJ7GPuSawhtMV9YIx2+MYUTps7oOTAE=;
+        b=R1dyNzOze/eqllrUqxRpjhDn38RC7VsduB92QlfhFLYwuwka43d0Yt9myEGcw6WlZm
+         fYIT193clb3cCKkKRa4gQjk01O64tt0BXAAw6nkursyUCEWzk96M/WL6vzziPZU6IL+r
+         rvITeJdAvAjJK8q/L91CFM+eVayVF1xEXzXBIhRNt9HdhEGbz9zWiE6QknGvjT5Q+PbG
+         0FUQwvdG6OLHf8hS8zvFCr0JHd7YtbTEpJO3//HXWtUvFA/ZCzXGA0y95q3Jed0ZzVaE
+         Qk7ZxouFXvlN6jsSJv67cehYgfxqrCWaOQlJqOD886yacjrOWwt50AkY8+51bO/ECErB
+         IQTg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=XDFswRI13oGzit66yuxshlgOj+nOKd4gwJhAdxr7MGM=;
-        b=sURmNL/n87UpE9rzITiaE0R72mcL4/DfoufbILtuNTHhz6wjDzWuYFSY6PK69x0Qr+
-         kxkJ8apfcVg2O2yhd1Trw7tS/ICwtSBwi1V2ZG/6zcuR0+xxLwdMPLTfPVhFRrMRZKoM
-         5QWbPxF4OZD9yDVZy5cOZikPd1IzlkslMRzxBmYepHpuKtZlc4Y9lwS0a8pkWUQme/jO
-         5vxVZtmZrhTU/a+FblSPO1egcOlQH6t065F6TPEFCF0ZrtDkysGD0qpZOrhZ681i2DPk
-         ifpPpMEV638ZX6HwksAHPzpayhdjFEAHcq6OYLPy1zbspN31eHCcsamLwzhyW7DXs4g4
-         KoZw==
-X-Gm-Message-State: APjAAAVTZYUlnx2uzvMhAmsX1Q92nVGs6BozX8t3ktqo8QSoFSE8vMEb
-        9/e7zwkvGVctjRW09fGlbjM=
-X-Google-Smtp-Source: APXvYqxrGBxtmn7yAK9mdNxfQbE+IWGBlk1o9qGDinrparVfdT4goa6Xy1ipLTWrwKQoX2yj/q+h8w==
-X-Received: by 2002:aa7:8218:: with SMTP id k24mr54831158pfi.221.1564712450876;
-        Thu, 01 Aug 2019 19:20:50 -0700 (PDT)
+        bh=lKIFYbXGeRFczJ7GPuSawhtMV9YIx2+MYUTps7oOTAE=;
+        b=J/5RQTeDkCxrDL7vZJ0SOeKoqy/DmaJUKzLiNIkBnaIRkn/RJxhavyem4+BHcrzMrh
+         GXLwLBV4/vuoHVWL9DIHwF0Tx/IimwHRmwkpGRTLMGLrLxFl12LQSNDKn+Jz4L+QfEFJ
+         MLDZ8Nl+douyzvUa2eBzglIsHZXHjZGhFtJZAbjjDWuOlysoqm0wh29zT7Drldr3lgK3
+         kEMqmDe2kQq3GoL+MXVr4syZBWlovoxxcBm2V0LBfaAaNPCf4U+6JJcEUOfFPbazV6Zo
+         AmXtOZmO5zeVb+UFpCKXvPvrBRZkkJjB/jpVpUTaS6TPbEMMOBUv12JsARW7LY1tUs7c
+         ml5A==
+X-Gm-Message-State: APjAAAWeTexhYzUpCiwZx+rrz0xfhpYY674jRrHBgj4HgMk8xZxxcpIw
+        MxB6/DdOu04tJbDoUJLhXyU=
+X-Google-Smtp-Source: APXvYqxwmSe9JrA8Nqe8Cu6LF/8yd68XYfT17/pT9PHXIhg3Pa3JuYgXApqhYkPrHPsf3+6NRlbhyg==
+X-Received: by 2002:a17:90a:601:: with SMTP id j1mr1872789pjj.96.1564712447882;
+        Thu, 01 Aug 2019 19:20:47 -0700 (PDT)
 Received: from blueforge.nvidia.com (searspoint.nvidia.com. [216.228.112.21])
-        by smtp.gmail.com with ESMTPSA id u9sm38179744pgc.5.2019.08.01.19.20.49
+        by smtp.gmail.com with ESMTPSA id u9sm38179744pgc.5.2019.08.01.19.20.46
         (version=TLS1_3 cipher=AEAD-AES256-GCM-SHA384 bits=256/256);
-        Thu, 01 Aug 2019 19:20:50 -0700 (PDT)
+        Thu, 01 Aug 2019 19:20:47 -0700 (PDT)
 From:   john.hubbard@gmail.com
 X-Google-Original-From: jhubbard@nvidia.com
 To:     Andrew Morton <akpm@linux-foundation.org>
@@ -78,10 +78,15 @@ Cc:     Christoph Hellwig <hch@infradead.org>,
         netdev@vger.kernel.org, rds-devel@oss.oracle.com,
         sparclinux@vger.kernel.org, x86@kernel.org,
         xen-devel@lists.xenproject.org, John Hubbard <jhubbard@nvidia.com>,
-        Mel Gorman <mgorman@suse.de>, Vlastimil Babka <vbabka@suse.cz>
-Subject: [PATCH 25/34] mm/frame_vector.c: convert put_page() to put_user_page*()
-Date:   Thu,  1 Aug 2019 19:19:56 -0700
-Message-Id: <20190802022005.5117-26-jhubbard@nvidia.com>
+        Peter Zijlstra <peterz@infradead.org>,
+        Ingo Molnar <mingo@redhat.com>,
+        Arnaldo Carvalho de Melo <acme@kernel.org>,
+        Alexander Shishkin <alexander.shishkin@linux.intel.com>,
+        Jiri Olsa <jolsa@redhat.com>,
+        Namhyung Kim <namhyung@kernel.org>
+Subject: [PATCH 23/34] uprobes: convert put_page() to put_user_page*()
+Date:   Thu,  1 Aug 2019 19:19:54 -0700
+Message-Id: <20190802022005.5117-24-jhubbard@nvidia.com>
 X-Mailer: git-send-email 2.22.0
 In-Reply-To: <20190802022005.5117-1-jhubbard@nvidia.com>
 References: <20190802022005.5117-1-jhubbard@nvidia.com>
@@ -102,37 +107,48 @@ release_pages().
 This is part a tree-wide conversion, as described in commit fc1d8e7cca2d
 ("mm: introduce put_user_page*(), placeholder versions").
 
-Cc: Dan Williams <dan.j.williams@intel.com>
-Cc: Jan Kara <jack@suse.cz>
-Cc: Mel Gorman <mgorman@suse.de>
-Cc: Vlastimil Babka <vbabka@suse.cz>
+Cc: Peter Zijlstra <peterz@infradead.org>
+Cc: Ingo Molnar <mingo@redhat.com>
+Cc: Arnaldo Carvalho de Melo <acme@kernel.org>
+Cc: Alexander Shishkin <alexander.shishkin@linux.intel.com>
+Cc: Jiri Olsa <jolsa@redhat.com>
+Cc: Namhyung Kim <namhyung@kernel.org>
 Signed-off-by: John Hubbard <jhubbard@nvidia.com>
 ---
- mm/frame_vector.c | 4 +---
- 1 file changed, 1 insertion(+), 3 deletions(-)
+ kernel/events/uprobes.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/mm/frame_vector.c b/mm/frame_vector.c
-index c64dca6e27c2..f590badac776 100644
---- a/mm/frame_vector.c
-+++ b/mm/frame_vector.c
-@@ -120,7 +120,6 @@ EXPORT_SYMBOL(get_vaddr_frames);
-  */
- void put_vaddr_frames(struct frame_vector *vec)
- {
--	int i;
- 	struct page **pages;
- 
- 	if (!vec->got_ref)
-@@ -133,8 +132,7 @@ void put_vaddr_frames(struct frame_vector *vec)
- 	 */
- 	if (WARN_ON(IS_ERR(pages)))
- 		goto out;
--	for (i = 0; i < vec->nr_frames; i++)
--		put_page(pages[i]);
-+	put_user_pages(pages, vec->nr_frames);
- 	vec->got_ref = false;
+diff --git a/kernel/events/uprobes.c b/kernel/events/uprobes.c
+index 84fa00497c49..4a575de8cec8 100644
+--- a/kernel/events/uprobes.c
++++ b/kernel/events/uprobes.c
+@@ -397,7 +397,7 @@ __update_ref_ctr(struct mm_struct *mm, unsigned long vaddr, short d)
+ 	ret = 0;
  out:
- 	vec->nr_frames = 0;
+ 	kunmap_atomic(kaddr);
+-	put_page(page);
++	put_user_page(page);
+ 	return ret;
+ }
+ 
+@@ -504,7 +504,7 @@ int uprobe_write_opcode(struct arch_uprobe *auprobe, struct mm_struct *mm,
+ 	ret = __replace_page(vma, vaddr, old_page, new_page);
+ 	put_page(new_page);
+ put_old:
+-	put_page(old_page);
++	put_user_page(old_page);
+ 
+ 	if (unlikely(ret == -EAGAIN))
+ 		goto retry;
+@@ -1981,7 +1981,7 @@ static int is_trap_at_addr(struct mm_struct *mm, unsigned long vaddr)
+ 		return result;
+ 
+ 	copy_from_page(page, vaddr, &opcode, UPROBE_SWBP_INSN_SIZE);
+-	put_page(page);
++	put_user_page(page);
+  out:
+ 	/* This needs to return true for any variant of the trap insn */
+ 	return is_trap_insn(&opcode);
 -- 
 2.22.0
 
