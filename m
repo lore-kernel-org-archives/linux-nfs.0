@@ -1,184 +1,211 @@
-Return-Path: <SRS0=JCn4=V5=vger.kernel.org=linux-nfs-owner@kernel.org>
+Return-Path: <SRS0=W+du=V6=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.3 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
-	URIBL_BLOCKED,USER_AGENT_SANE_1 autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.9 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 08A59C32753
-	for <linux-nfs@archiver.kernel.org>; Thu,  1 Aug 2019 22:47:44 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9DDF5C41514
+	for <linux-nfs@archiver.kernel.org>; Fri,  2 Aug 2019 02:17:10 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id D102E206A2
-	for <linux-nfs@archiver.kernel.org>; Thu,  1 Aug 2019 22:47:43 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 6BBF42083B
+	for <linux-nfs@archiver.kernel.org>; Fri,  2 Aug 2019 02:17:10 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=yahoo.com header.i=@yahoo.com header.b="Q/YLkPED"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="ri/g8fH5"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1732187AbfHAWrn (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 1 Aug 2019 18:47:43 -0400
-Received: from sonic310-23.consmr.mail.bf2.yahoo.com ([74.6.135.197]:33131
-        "EHLO sonic310-23.consmr.mail.bf2.yahoo.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S2390011AbfHAWrm (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Aug 2019 18:47:42 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=yahoo.com; s=s2048; t=1564699660; bh=6YSbzxaYbbI2za0z0UJM/CZ9BnwuD1cLXy4W29jbFZU=; h=Subject:To:Cc:References:From:Date:In-Reply-To:From:Subject; b=Q/YLkPED4Q1riJktwf+b1RbBcnVWnljxpWP0qtGn5HYaTK+xqscE42lolyIhoFoI3SekIJIy8tHp24d7g9DiAF3yi2eSbhXdWAivZsBY/hL2ApnM+JqO2fNCkz5J/efEiRGnFs5z+TVelthOTp+OpyLWE6wtS4auHfUixabWpEFyXHsUI5hfuUTTRcF2M2zpAOgmYLl06gL9WW1QUd/phuC9+EbWAb72nmd4cD62j7MZC6rHm06ooKOFqOYL2vl39pr5jx7ePrFg1qqE653IbR+gDwoxQV8C62hNkscfMElJNtZB+gDFavz1kutogNmoEZkFZC3oShInl/NmnE1Ruw==
-X-YMail-OSG: ejBA5t8VM1lBJ_DAetGYvdRHAY6RQQ.uohDyxlDc0nvZDL7wRvtBFajK2F6rByP
- blacm2rJqdj0AJ.YXRg9cANXayL4U__cE1Hjjp5UdE04lqQEilOiwyTMiupsD1aZvcQ9TwQLbJl9
- VPIzGUD7oxcsorYA5xEQafG60axCI2Oee4xCH5KKuLIogp8.clzOS76Pox8gKKs6ZgWYPsbDi5Rt
- 6aCLOp7HB0jnp2lMhOmUVSbJgZwJY8EkvQNkPi09K4CYjqAjGye8V034D_eW_B6j7lHWHbA6Jlda
- wmN.8gMbzplC6i4JXJMn3D2AKGvu_GeuEHBANPnvEW20wKf7VK2PxvwHCXvYhhc2_bjgOcrcDEBJ
- n8gwo4fpPkUkwAItm.IE_O_A6j1CTDo7_RveuWLWEuVa..eeGjZxshrmDUUW.8_kb1894HFjl5O.
- vTBB7ISIEyIfLIL4FF1bFbDOJvgrR3Aa_0U3hbV4fsflWncDWzgCoEv5zZjLuI7w7aPAH6v8vErc
- 4Vq3qO7ZbOj3MzNaSg_7NNXc1Ck36VsaYy5g_op6VkXYPDG2ReOHzIMumdV8LdpI9OIOfRotco4B
- 9sCHTv1BO9Ry1.br9ISvAaDkhjv1ePIlWmHkaf3u3aLe5LhzJBGlvdx6EAxkENnlWwDi3ubyFhZo
- P5qVhydAdoUMk79Q3iQc0Dn2jDWxDeFYXig_oCGlq6MkhHyeFfQBDF2F1Jw.0iQ1IJA8.L7NM4_G
- Ky7H_Ry_KvdUFhMWcyibNRCmkz91i538j_Yf2Nk92VyzTvKLbWvLYQcA8L0ea3sEWrLiJtdjwi2l
- ygHLA7Rve3rGn9kWzx25VRYcmSJMeg8uEUFEVvPnCodoMdZaCf8FrofgNyJKyK6zGY0H0_cvwcui
- I.lCeAAM8Se3F7nPPZR1kBGuuU8gzkxICXVJEUjaeqEedOv6mlVCJXxlN1OiO_lHhGkztutNPgBE
- GcRLIRyt6Sw1Xj9xRKomAzHltXMk6l_p.CuTV7mIh0Ij2Ih.6_N1GflS0g2tWRkymf_7kkj5vx5O
- yldyoZbop7sIWM8bZmGxQQC9FKf07F.3YLYc5TTLe1oVLFcWf.Ma9Yibwn0BpkKEkYAQVgkBNqSM
- SFghRfj.E_O55so341W54FGjtrIRvqVcZ7atJWhQBJtqsrWjCzfGHWdmECMEzAfK53GLHSH8DnwC
- jJpffVLvCRQEyL21KY3dzDGYuB9ok6gAgZF4cpwSNYdZ7bBYeqZYwfbqPc0UIl6hDNknfjjGXL1_
- .MhKx7yjNdOJsjmT8m1LrEJRaae8Fs.X_868MgTFz4dgCX0liu1tDrNumET38dETqSbDb
-Received: from sonic.gate.mail.ne1.yahoo.com by sonic310.consmr.mail.bf2.yahoo.com with HTTP; Thu, 1 Aug 2019 22:47:40 +0000
-Received: by smtp429.mail.bf1.yahoo.com (Oath Hermes SMTP Server) with ESMTPA ID f11d18598ab68f031a1507e18e5d7b9f;
-          Thu, 01 Aug 2019 22:47:37 +0000 (UTC)
-Subject: Re: Security labeling in NFS4 - who owns it?
-To:     Paul Moore <paul@paul-moore.com>
-Cc:     linux-nfs@vger.kernel.org,
-        Linux Security Module list 
-        <linux-security-module@vger.kernel.org>,
-        SELinux <selinux@vger.kernel.org>,
-        Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        casey@schaufler-ca.com
-References: <2d7f0c7e-a82a-5adb-df94-3ac4fa6b0dfe@schaufler-ca.com>
- <CAHC9VhQRUGbU70p8p+zoxqgAF-W92Zz=rOjFB68JsaitrfQt_g@mail.gmail.com>
-From:   Casey Schaufler <casey@schaufler-ca.com>
-Openpgp: preference=signencrypt
-Autocrypt: addr=casey@schaufler-ca.com; keydata=
- mQINBFzV9HABEAC/mmv3jeJyF7lR7QhILYg1+PeBLIMZv7KCzBSc/4ZZipoWdmr77Lel/RxQ
- 1PrNx0UaM5r6Hj9lJmJ9eg4s/TUBSP67mTx+tsZ1RhG78/WFf9aBe8MSXxY5cu7IUwo0J/CG
- vdSqACKyYPV5eoTJmnMxalu8/oVUHyPnKF3eMGgE0mKOFBUMsb2pLS/enE4QyxhcZ26jeeS6
- 3BaqDl1aTXGowM5BHyn7s9LEU38x/y2ffdqBjd3au2YOlvZ+XUkzoclSVfSR29bomZVVyhMB
- h1jTmX4Ac9QjpwsxihT8KNGvOM5CeCjQyWcW/g8LfWTzOVF9lzbx6IfEZDDoDem4+ZiPsAXC
- SWKBKil3npdbgb8MARPes2DpuhVm8yfkJEQQmuLYv8GPiJbwHQVLZGQAPBZSAc7IidD2zbf9
- XAw1/SJGe1poxOMfuSBsfKxv9ba2i8hUR+PH7gWwkMQaQ97B1yXYxVEkpG8Y4MfE5Vd3bjJU
- kvQ/tOBUCw5zwyIRC9+7zr1zYi/3hk+OG8OryZ5kpILBNCo+aePeAJ44znrySarUqS69tuXd
- a3lMPHUJJpUpIwSKQ5UuYYkWlWwENEWSefpakFAIwY4YIBkzoJ/t+XJHE1HTaJnRk6SWpeDf
- CreF3+LouP4njyeLEjVIMzaEpwROsw++BX5i5vTXJB+4UApTAQARAQABtChDYXNleSBTY2hh
- dWZsZXIgPGNhc2V5QHNjaGF1Zmxlci1jYS5jb20+iQJUBBMBCAA+FiEEC+9tH1YyUwIQzUIe
- OKUVfIxDyBEFAlzV9HACGwMFCRLMAwAFCwkIBwIGFQoJCAsCBBYCAwECHgECF4AACgkQOKUV
- fIxDyBG6ag/6AiRl8yof47YOEVHlrmewbpnlBTaYNfJ5cZflNRKRX6t4bp1B2YV1whlDTpiL
- vNOwFkh+ZE0eI5M4x8Gw2Oiok+4Q5liA9PHTozQYF+Ia+qdL5EehfbLGoEBqklpGvG3h8JsO
- 7SvONJuFDgvab/U/UriDYycJwzwKZuhVtK9EMpnTtUDyP3DY+Q8h7MWsniNBLVXnh4yBIEJg
- SSgDn3COpZoFTPGKE+rIzioo/GJe8CTa2g+ZggJiY/myWTS3quG0FMvwvNYvZ4I2g6uxSl7n
- bZVqAZgqwoTAv1HSXIAn9muwZUJL03qo25PFi2gQmX15BgJKQcV5RL0GHFHRThDS3IyadOgK
- P2j78P8SddTN73EmsG5OoyzwZAxXfck9A512BfVESqapHurRu2qvMoUkQaW/2yCeRQwGTsFj
- /rr0lnOBkyC6wCmPSKXe3dT2mnD5KnCkjn7KxLqexKt4itGjJz4/ynD/qh+gL7IPbifrQtVH
- JI7cr0fI6Tl8V6efurk5RjtELsAlSR6fKV7hClfeDEgLpigHXGyVOsynXLr59uE+g/+InVic
- jKueTq7LzFd0BiduXGO5HbGyRKw4MG5DNQvC//85EWmFUnDlD3WHz7Hicg95D+2IjD2ZVXJy
- x3LTfKWdC8bU8am1fi+d6tVEFAe/KbUfe+stXkgmfB7pxqW5Ag0EXNX0cAEQAPIEYtPebJzT
- wHpKLu1/j4jQcke06Kmu5RNuj1pEje7kX5IKzQSs+CPH0NbSNGvrA4dNGcuDUTNHgb5Be9hF
- zVqRCEvF2j7BFbrGe9jqMBWHuWheQM8RRoa2UMwQ704mRvKr4sNPh01nKT52ASbWpBPYG3/t
- WbYaqfgtRmCxBnqdOx5mBJIBh9Q38i63DjQgdNcsTx2qS7HFuFyNef5LCf3jogcbmZGxG/b7
- yF4OwmGsVc8ufvlKo5A9Wm+tnRjLr/9Mn9vl5Xa/tQDoPxz26+aWz7j1in7UFzAarcvqzsdM
- Em6S7uT+qy5jcqyuipuenDKYF/yNOVSNnsiFyQTFqCPCpFihOnuaWqfmdeUOQHCSo8fD4aRF
- emsuxqcsq0Jp2ODq73DOTsdFxX2ESXYoFt3Oy7QmIxeEgiHBzdKU2bruIB5OVaZ4zWF+jusM
- Uh+jh+44w9DZkDNjxRAA5CxPlmBIn1OOYt1tsphrHg1cH1fDLK/pDjsJZkiH8EIjhckOtGSb
- aoUUMMJ85nVhN1EbU/A3DkWCVFEA//Vu1+BckbSbJKE7Hl6WdW19BXOZ7v3jo1q6lWwcFYth
- esJfk3ZPPJXuBokrFH8kqnEQ9W2QgrjDX3et2WwZFLOoOCItWxT0/1QO4ikcef/E7HXQf/ij
- Dxf9HG2o5hOlMIAkJq/uLNMvABEBAAGJAjwEGAEIACYWIQQL720fVjJTAhDNQh44pRV8jEPI
- EQUCXNX0cAIbDAUJEswDAAAKCRA4pRV8jEPIEWkzEACKFUnpp+wIVHpckMfBqN8BE5dUbWJc
- GyQ7wXWajLtlPdw1nNw0Wrv+ob2RCT7qQlUo6GRLcvj9Fn5tR4hBvR6D3m8aR0AGHbcC62cq
- I7LjaSDP5j/em4oVL2SMgNTrXgE2w33JMGjAx9oBzkxmKUqprhJomPwmfDHMJ0t7y39Da724
- oLPTkQDpJL1kuraM9TC5NyLe1+MyIxqM/8NujoJbWeQUgGjn9uxQAil7o/xSCjrWCP3kZDID
- vd5ZaHpdl8e1mTExQoKr4EWgaMjmD/a3hZ/j3KfTVNpM2cLfD/QwTMaC2fkK8ExMsz+rUl1H
- icmcmpptCwOSgwSpPY1Zfio6HvEJp7gmDwMgozMfwQuT9oxyFTxn1X3rn1IoYQF3P8gsziY5
- qtTxy2RrgqQFm/hr8gM78RhP54UPltIE96VywviFzDZehMvuwzW//fxysIoK97Y/KBZZOQs+
- /T+Bw80Pwk/dqQ8UmIt2ffHEgwCTbkSm711BejapWCfklxkMZDp16mkxSt2qZovboVjXnfuq
- wQ1QL4o4t1hviM7LyoflsCLnQFJh6RSBhBpKQinMJl/z0A6NYDkQi6vEGMDBWX/M2vk9Jvwa
- v0cEBfY3Z5oFgkh7BUORsu1V+Hn0fR/Lqq/Pyq+nTR26WzGDkolLsDr3IH0TiAVH5ZuPxyz6
- abzjfg==
-Message-ID: <0f1da018-97d0-f51d-09d7-4a609ca65aa4@schaufler-ca.com>
-Date:   Thu, 1 Aug 2019 15:47:35 -0700
-User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64; rv:60.0) Gecko/20100101
- Thunderbird/60.8.0
+        id S2390674AbfHBCRE (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 1 Aug 2019 22:17:04 -0400
+Received: from mail-pf1-f194.google.com ([209.85.210.194]:38226 "EHLO
+        mail-pf1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1728255AbfHBCRD (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Aug 2019 22:17:03 -0400
+Received: by mail-pf1-f194.google.com with SMTP id y15so35157527pfn.5;
+        Thu, 01 Aug 2019 19:17:01 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=from:to:cc:subject:date:message-id:in-reply-to:references
+         :mime-version:content-transfer-encoding;
+        bh=qSYlns3rxzw4u/DyjG2ivKH4pSlvpz3tTvNpv+Vzl0A=;
+        b=ri/g8fH5EMbaRGeRCBUMa0gqvf5sZKxxRTcoGNlKvndtobuEMarAmuyiWR0Or0yt3d
+         ZgeLr0P+kW4cqW28KQH/rOYsII5pR9Pk0M0WFYUApB7SKz6vEgjXY+F34hxONagLYY9L
+         Py6Blyj3NR1ZdTatlTm5llaJcajjxdcYrAkl23WVqTVg9XAD+0Qg+cC1rauwop+vVeNx
+         bVVFBfM1nAEvoH8ncIKlerRWnqRBlhjzlfCDLJ981KoDXyQRyzFGpLUw/iRcSWFkJ5xl
+         t+5zV5laKnX+3Bq/BiZ3lREDjIqp5Q8qRulPXvOqGHi7pfUVWIrfUbywjbnDPsqYnoHP
+         +z/w==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
+         :references:mime-version:content-transfer-encoding;
+        bh=qSYlns3rxzw4u/DyjG2ivKH4pSlvpz3tTvNpv+Vzl0A=;
+        b=XZMe4VWepSzRYP8UfKwIQgcNVPi7T4oWjUKoJ/zaLDDn9OKiQ/4TFUtBI9K0iBeWFu
+         GshMR9aCMIazDL2sP9SlMzF2d60qV7HsniUuLNuzIr93tQ2c0P3vfYQvH6XPdmiLZfzY
+         cVbmpIs0FqXAjbQp/24n7DNFkbwon6xycMfrH8WryCEQwGMw9CwC5HMeX/oEPwny9i4q
+         Q9SQ4OuuDWKkC+5uW+5whsaV/Pn4gBSfTn3DFjHDWyLCHSjG++1WP/WrCNz8ijslmXAw
+         LvA3tDHg//dawpNGtEqmA7+X+5GNk1PV5Rs97z1b9uotfNu/LPZcr297Gy24RssPy5QJ
+         ECDQ==
+X-Gm-Message-State: APjAAAW9ErcAfOpiOx8HQwtIH0T4zToF5mWK8tf1miYJQmEB1pG8GpJ4
+        xhL6yvGSwLkZC3QiKNE1BSU=
+X-Google-Smtp-Source: APXvYqzbu0fqyx1S9wHk9TZWdOKFNLR8W4aJ20JQpVBVWnaUPwqEe+RFqTrVv58Rvjaf0s5gNM1HPA==
+X-Received: by 2002:a17:90a:ba93:: with SMTP id t19mr1809345pjr.139.1564712221494;
+        Thu, 01 Aug 2019 19:17:01 -0700 (PDT)
+Received: from blueforge.nvidia.com (searspoint.nvidia.com. [216.228.112.21])
+        by smtp.gmail.com with ESMTPSA id p187sm118200292pfg.89.2019.08.01.19.16.59
+        (version=TLS1_3 cipher=AEAD-AES256-GCM-SHA384 bits=256/256);
+        Thu, 01 Aug 2019 19:17:00 -0700 (PDT)
+From:   john.hubbard@gmail.com
+X-Google-Original-From: jhubbard@nvidia.com
+To:     Andrew Morton <akpm@linux-foundation.org>
+Cc:     Christoph Hellwig <hch@infradead.org>,
+        Dan Williams <dan.j.williams@intel.com>,
+        Dave Chinner <david@fromorbit.com>,
+        Dave Hansen <dave.hansen@linux.intel.com>,
+        Ira Weiny <ira.weiny@intel.com>, Jan Kara <jack@suse.cz>,
+        Jason Gunthorpe <jgg@ziepe.ca>,
+        =?UTF-8?q?J=C3=A9r=C3=B4me=20Glisse?= <jglisse@redhat.com>,
+        LKML <linux-kernel@vger.kernel.org>,
+        amd-gfx@lists.freedesktop.org, ceph-devel@vger.kernel.org,
+        devel@driverdev.osuosl.org, devel@lists.orangefs.org,
+        dri-devel@lists.freedesktop.org, intel-gfx@lists.freedesktop.org,
+        kvm@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
+        linux-block@vger.kernel.org, linux-crypto@vger.kernel.org,
+        linux-fbdev@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-media@vger.kernel.org, linux-mm@kvack.org,
+        linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org,
+        linux-rpi-kernel@lists.infradead.org, linux-xfs@vger.kernel.org,
+        netdev@vger.kernel.org, rds-devel@oss.oracle.com,
+        sparclinux@vger.kernel.org, x86@kernel.org,
+        xen-devel@lists.xenproject.org, John Hubbard <jhubbard@nvidia.com>,
+        Santosh Shilimkar <santosh.shilimkar@oracle.com>,
+        "David S . Miller" <davem@davemloft.net>
+Subject: [PATCH 02/34] net/rds: convert put_page() to put_user_page*()
+Date:   Thu,  1 Aug 2019 19:16:21 -0700
+Message-Id: <20190802021653.4882-3-jhubbard@nvidia.com>
+X-Mailer: git-send-email 2.22.0
+In-Reply-To: <20190802021653.4882-1-jhubbard@nvidia.com>
+References: <20190802021653.4882-1-jhubbard@nvidia.com>
 MIME-Version: 1.0
-In-Reply-To: <CAHC9VhQRUGbU70p8p+zoxqgAF-W92Zz=rOjFB68JsaitrfQt_g@mail.gmail.com>
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
-Content-Language: en-US
+X-NVConfidentiality: public
+Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On 8/1/2019 3:02 PM, Paul Moore wrote:
-> On Thu, Aug 1, 2019 at 3:39 PM Casey Schaufler <casey@schaufler-ca.com>=
- wrote:
->> As part of my work on LSM stacking I've encountered some issues with
->> the Linux implementation of NFS4 security labels. For example, the LFS=
+From: John Hubbard <jhubbard@nvidia.com>
 
->> data is ignored, so even if the client and server are willing to ident=
-ify
->> the kind of information they are passing, the identity information isn=
-'t
->> available. The code asks if attributes requested are mandatory access
->> control attributes, but cannot differentiate between which of the poss=
-ible
->> security attribute the other end is providing.
->>
->> Is anyone actively owing the NFS labeling code? I'd like to bounce an
->> idea or two around before committing too much time to my ideas of
->> solutions.
-> I guess it all depends on what you mean by "own".  Historically it has
-> been a mix of the NFS and SELinux folks that have worked on it and
-> contributed patches, with code sprinkled between the two subsystems
-> (and possibly elsewhere too).
->
-> I suspect a better question would be: who should you work with to
-> discuss issues the labeled NFS code?  I don't want to assume too much,
-> but I think you know the answer to that one already ;)
+For pages that were retained via get_user_pages*(), release those pages
+via the new put_user_page*() routines, instead of via put_page() or
+release_pages().
 
-I know you have many balls in the air and don't want to pester you
-with every issue, but since you (sort of) volunteered ...
+This is part a tree-wide conversion, as described in commit fc1d8e7cca2d
+("mm: introduce put_user_page*(), placeholder versions").
 
-The labeled NFS code provides support for a single "security label".
-When an extended attribute (xattr) is requested on an NFS4.2 or later
-filesystem the NFS code calls security_ismaclabel(attrname) to determine
-if the requested attrname is recognized as the name of the one attribute
-whose value is maintained as the "security label". This works swimmingly
-so long as all the NFS servers and all the NFS clients are sharing the
-same attrname.
+Cc: Santosh Shilimkar <santosh.shilimkar@oracle.com>
+Cc: David S. Miller <davem@davemloft.net>
+Cc: netdev@vger.kernel.org
+Cc: linux-rdma@vger.kernel.org
+Cc: rds-devel@oss.oracle.com
+Signed-off-by: John Hubbard <jhubbard@nvidia.com>
+---
+ net/rds/info.c    |  5 ++---
+ net/rds/message.c |  2 +-
+ net/rds/rdma.c    | 15 +++++++--------
+ 3 files changed, 10 insertions(+), 12 deletions(-)
 
-On a system with multiple security modules that provide ismaclabel hooks
-we encounter ambiguity. If SELinux and Smack are both available
-security_ismaclabel("selinux") and security_ismaclabel("SMACK64") will
-both return success, and the NFS xattr code will set/get the network
-resident value for either. Of course, only one can be correct, but there
-does not appear to be any way to determine which it is. The protocol
-provides an "LFS" to identify format the data being transmitted, but
-it is not used in the Linux implementation.
-
-It is reasonable (to the extent running SELinux and Smack together is
-reasonable) for a program to ask for all the security attributes on a
-file. It would be perfectly reasonable for a program like ls or systemd
-to ask for both values.
-
-There's an easy workaround, which is to assume that the first security
-module that provides the ismaclabel hook will be the NFS using LSM.
-Or, that the last security module with a hook gets the data. A slightly
-more difficult option is to have a mount option ( -o nfslsm=3Dselinux )
-or a system wide setting (echo selinux > /sys/kernel/security/nfslsm)
-or some other way to tell the system which to do.
-
-Adding LFS management could be tricky in light of the compatibility
-issues that will arise when talking to a server that doesn't do it.
-
-I'm looking at it makes sense to "fix" the NFS implementation
-to identify the data format with the LFS value. That is probably a
-bigger job than I want to take on. If not, I solicit opinions regarding
-which of the workarounds is most likely to be agreeable.
-=C2=A0
-
+diff --git a/net/rds/info.c b/net/rds/info.c
+index 03f6fd56d237..ca6af2889adf 100644
+--- a/net/rds/info.c
++++ b/net/rds/info.c
+@@ -162,7 +162,6 @@ int rds_info_getsockopt(struct socket *sock, int optname, char __user *optval,
+ 	struct rds_info_lengths lens;
+ 	unsigned long nr_pages = 0;
+ 	unsigned long start;
+-	unsigned long i;
+ 	rds_info_func func;
+ 	struct page **pages = NULL;
+ 	int ret;
+@@ -235,8 +234,8 @@ int rds_info_getsockopt(struct socket *sock, int optname, char __user *optval,
+ 		ret = -EFAULT;
+ 
+ out:
+-	for (i = 0; pages && i < nr_pages; i++)
+-		put_page(pages[i]);
++	if (pages)
++		put_user_pages(pages, nr_pages);
+ 	kfree(pages);
+ 
+ 	return ret;
+diff --git a/net/rds/message.c b/net/rds/message.c
+index 50f13f1d4ae0..d7b0d266c437 100644
+--- a/net/rds/message.c
++++ b/net/rds/message.c
+@@ -404,7 +404,7 @@ static int rds_message_zcopy_from_user(struct rds_message *rm, struct iov_iter *
+ 			int i;
+ 
+ 			for (i = 0; i < rm->data.op_nents; i++)
+-				put_page(sg_page(&rm->data.op_sg[i]));
++				put_user_page(sg_page(&rm->data.op_sg[i]));
+ 			mmp = &rm->data.op_mmp_znotifier->z_mmp;
+ 			mm_unaccount_pinned_pages(mmp);
+ 			ret = -EFAULT;
+diff --git a/net/rds/rdma.c b/net/rds/rdma.c
+index 916f5ec373d8..6762e8696b99 100644
+--- a/net/rds/rdma.c
++++ b/net/rds/rdma.c
+@@ -162,8 +162,7 @@ static int rds_pin_pages(unsigned long user_addr, unsigned int nr_pages,
+ 				  pages);
+ 
+ 	if (ret >= 0 && ret < nr_pages) {
+-		while (ret--)
+-			put_page(pages[ret]);
++		put_user_pages(pages, ret);
+ 		ret = -EFAULT;
+ 	}
+ 
+@@ -276,7 +275,7 @@ static int __rds_rdma_map(struct rds_sock *rs, struct rds_get_mr_args *args,
+ 
+ 	if (IS_ERR(trans_private)) {
+ 		for (i = 0 ; i < nents; i++)
+-			put_page(sg_page(&sg[i]));
++			put_user_page(sg_page(&sg[i]));
+ 		kfree(sg);
+ 		ret = PTR_ERR(trans_private);
+ 		goto out;
+@@ -464,9 +463,10 @@ void rds_rdma_free_op(struct rm_rdma_op *ro)
+ 		 * to local memory */
+ 		if (!ro->op_write) {
+ 			WARN_ON(!page->mapping && irqs_disabled());
+-			set_page_dirty(page);
++			put_user_pages_dirty_lock(&page, 1, true);
++		} else {
++			put_user_page(page);
+ 		}
+-		put_page(page);
+ 	}
+ 
+ 	kfree(ro->op_notifier);
+@@ -481,8 +481,7 @@ void rds_atomic_free_op(struct rm_atomic_op *ao)
+ 	/* Mark page dirty if it was possibly modified, which
+ 	 * is the case for a RDMA_READ which copies from remote
+ 	 * to local memory */
+-	set_page_dirty(page);
+-	put_page(page);
++	put_user_pages_dirty_lock(&page, 1, true);
+ 
+ 	kfree(ao->op_notifier);
+ 	ao->op_notifier = NULL;
+@@ -867,7 +866,7 @@ int rds_cmsg_atomic(struct rds_sock *rs, struct rds_message *rm,
+ 	return ret;
+ err:
+ 	if (page)
+-		put_page(page);
++		put_user_page(page);
+ 	rm->atomic.op_active = 0;
+ 	kfree(rm->atomic.op_notifier);
+ 
+-- 
+2.22.0
 
