@@ -8,53 +8,53 @@ X-Spam-Status: No, score=-9.9 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1B2E5C433FF
-	for <linux-nfs@archiver.kernel.org>; Fri,  2 Aug 2019 02:24:38 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 08B40C433FF
+	for <linux-nfs@archiver.kernel.org>; Fri,  2 Aug 2019 02:24:55 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id E691520840
-	for <linux-nfs@archiver.kernel.org>; Fri,  2 Aug 2019 02:24:37 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id D1B432083B
+	for <linux-nfs@archiver.kernel.org>; Fri,  2 Aug 2019 02:24:54 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="lOZaOBHn"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="XcvG9Oty"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2389438AbfHBCYb (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 1 Aug 2019 22:24:31 -0400
-Received: from mail-pl1-f195.google.com ([209.85.214.195]:40256 "EHLO
-        mail-pl1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2390887AbfHBCUn (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Aug 2019 22:20:43 -0400
-Received: by mail-pl1-f195.google.com with SMTP id a93so32956633pla.7;
-        Thu, 01 Aug 2019 19:20:42 -0700 (PDT)
+        id S2389412AbfHBCYs (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 1 Aug 2019 22:24:48 -0400
+Received: from mail-pg1-f196.google.com ([209.85.215.196]:39900 "EHLO
+        mail-pg1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2390865AbfHBCUk (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Aug 2019 22:20:40 -0400
+Received: by mail-pg1-f196.google.com with SMTP id u17so35241237pgi.6;
+        Thu, 01 Aug 2019 19:20:39 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references
          :mime-version:content-transfer-encoding;
-        bh=py067aGaFWqYQnWW3CrL2Yk9VWIyNl4WEpwUsrZ7LgI=;
-        b=lOZaOBHnHG96U7CUpGeMR/TMYtjEa4y/ygakLmz0BtnL+pIOpa3C2toztsy8fW4gwW
-         tSTtviLJ7HOi9DtUi5KI4XY0WPu2eSdUBZVMSVezuKPLNyCDQwUs6J0/BBBZ+6xhu24Z
-         FFakCBm8lWNZ+G5ej5b+50tyKMtD+b21oulPMq7HB8nLNBdaEf18LO4IyZXO6FYAkAZH
-         Gf/avj3rVBNxZL42D+4KJvp1yOXbbtpENzFq10jG7FxODtHOFfbvskOX/bZ+DtIk1XsS
-         LtXAfdLjn1YTVqg0w1Z1LAlYkVjy6XQT7mshmHFnFkvQYLq3O8bZzk73cr7CrbSrM5zf
-         ODTw==
+        bh=0y5rJgolnpdx1vwnOpLTxW7O4fuw+3wJL+gU2Q7/qgc=;
+        b=XcvG9OtyU86jk5JnQKO48GBJW89xfPHHxg+Ne0d0GJwSK2IuihtMCJFR8pabDqBzEF
+         DuPSfNePU528rZ6hBUi+QFYoZILMY8tdggEmTr3mN7PzDRJ7a6OmrfV2tsrS8kf2+6HI
+         Zo6kU0MY4gjn6C4vTTeXk9IHVKARwawE7INoHfJ5sfq56uo1gVj3e8g1oiz6b7OI/wgS
+         KnIyWK9Z49VV7ULXr41yNDN0bWyja3EYTBz6mLtPsaZCe7aB+yHXvCTEBAOwbU3wp1bf
+         uiomAHYjSX4K0Tach88phQCyk3zfRucll/enDp2U+3MmHAZ/atNajIitsMHfeEHfycq9
+         ft2g==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=py067aGaFWqYQnWW3CrL2Yk9VWIyNl4WEpwUsrZ7LgI=;
-        b=SL/bais7NVPH29Z/8a4FEePoGBBgQ1pTySc/RHcHorDatt1/g7FdafoTokYC1v3O/F
-         ESYEpKpzH0s+NHjHI7tLp9B3S3XZAL0WX0tHDjmmUfgIxbpcWpO/7MTI3h/Z7qyUuFwk
-         MetwbhV37c4cM1ERZgDI/0K8gl+ecGcrCosc8O0mhilbKepA6k/a+9OWmqET2Lk95Em8
-         Y42LhYNyN1K/NC1cewhPkIr6aSogjbLPeCAx5iX+OBpCb3uqrO4YEPxJjoOBdVq49Xyh
-         tlWNB7h2iFtpSeb9XmhBczTqDPmwsk4o4Kb+nghSMBenoqPSMLp76AOSgoYFC0MBNBkc
-         paQg==
-X-Gm-Message-State: APjAAAWQ1Q6mbjSJeVV6uItnNly9RyMSWQNM0ILwR1+gDCNUcFaLF50R
-        l+MpYUJIxNeitVKSXOg+izE=
-X-Google-Smtp-Source: APXvYqxy0BkUtbl8ULTboF2upH0nHFnxM+Cu1b4hTcaSsJxULdUpLCIdwe/mZoVo5hGjgo4EZJg93Q==
-X-Received: by 2002:a17:902:f46:: with SMTP id 64mr130019975ply.235.1564712441986;
-        Thu, 01 Aug 2019 19:20:41 -0700 (PDT)
+        bh=0y5rJgolnpdx1vwnOpLTxW7O4fuw+3wJL+gU2Q7/qgc=;
+        b=oF40EQAHQazFru3n+0SQS2GqdTuxmyS5asVTXRj9LrwSiHxPXjMBO09jZt1bKA/f/S
+         PSuYBKN5RVVltawn9iQ9DQ2mLWS+Ny51vTMHUy3X+JxJ8mopA8QqX9zH78DImQ+/ztax
+         Fp86cOPwks8TwDdZZzr1h/9R4iJtU7KGo4HMtTUeOL0/QgDAYiMmmgaBdhWtIOqv2OXK
+         1TntABk2SpuFJC6PhGjqV2spzia/DUGTblLQBmCbGiuy1cjSl2ug+llYxfFGp06bYd9k
+         KsB857o6Yn/8RicaKzX+Gr1un4cZpb5QmbpI5wl9ZWZopC1gVp/npcmlPxJJJm0KBQ/Y
+         H+bw==
+X-Gm-Message-State: APjAAAVo3nGdreQ/UWzgQnV/9/5SCRGv068e57l2kwDsPdkCLD1pptaV
+        PUD7ttqQoz46l9gjsWReSI0=
+X-Google-Smtp-Source: APXvYqwl6c8l8akPJ/a0xk+3KepmeSM3zSOQCzHQzAg87pSWv9yrqkhky05R7WwjG4AiAw2gALdPbw==
+X-Received: by 2002:a17:90a:b908:: with SMTP id p8mr1903028pjr.94.1564712438974;
+        Thu, 01 Aug 2019 19:20:38 -0700 (PDT)
 Received: from blueforge.nvidia.com (searspoint.nvidia.com. [216.228.112.21])
-        by smtp.gmail.com with ESMTPSA id u9sm38179744pgc.5.2019.08.01.19.20.40
+        by smtp.gmail.com with ESMTPSA id u9sm38179744pgc.5.2019.08.01.19.20.37
         (version=TLS1_3 cipher=AEAD-AES256-GCM-SHA384 bits=256/256);
-        Thu, 01 Aug 2019 19:20:41 -0700 (PDT)
+        Thu, 01 Aug 2019 19:20:38 -0700 (PDT)
 From:   john.hubbard@gmail.com
 X-Google-Original-From: jhubbard@nvidia.com
 To:     Andrew Morton <akpm@linux-foundation.org>
@@ -78,12 +78,10 @@ Cc:     Christoph Hellwig <hch@infradead.org>,
         netdev@vger.kernel.org, rds-devel@oss.oracle.com,
         sparclinux@vger.kernel.org, x86@kernel.org,
         xen-devel@lists.xenproject.org, John Hubbard <jhubbard@nvidia.com>,
-        Al Viro <viro@zeniv.linux.org.uk>,
-        Kees Cook <keescook@chromium.org>,
-        Rob Herring <robh@kernel.org>
-Subject: [PATCH 19/34] fsl_hypervisor: convert put_page() to put_user_page*()
-Date:   Thu,  1 Aug 2019 19:19:50 -0700
-Message-Id: <20190802022005.5117-20-jhubbard@nvidia.com>
+        Alex Williamson <alex.williamson@redhat.com>
+Subject: [PATCH 17/34] vfio: convert put_page() to put_user_page*()
+Date:   Thu,  1 Aug 2019 19:19:48 -0700
+Message-Id: <20190802022005.5117-18-jhubbard@nvidia.com>
 X-Mailer: git-send-email 2.22.0
 In-Reply-To: <20190802022005.5117-1-jhubbard@nvidia.com>
 References: <20190802022005.5117-1-jhubbard@nvidia.com>
@@ -104,37 +102,49 @@ release_pages().
 This is part a tree-wide conversion, as described in commit fc1d8e7cca2d
 ("mm: introduce put_user_page*(), placeholder versions").
 
-This changes the release code slightly, because each page slot in the
-page_list[] array is no longer checked for NULL. However, that check
-was wrong anyway, because the get_user_pages() pattern of usage here
-never allowed for NULL entries within a range of pinned pages.
+Note that this effectively changes the code's behavior in
+qp_release_pages(): it now ultimately calls set_page_dirty_lock(),
+instead of set_page_dirty(). This is probably more accurate.
 
-Cc: Al Viro <viro@zeniv.linux.org.uk>
-Cc: Kees Cook <keescook@chromium.org>
-Cc: Rob Herring <robh@kernel.org>
+As Christophe Hellwig put it, "set_page_dirty() is only safe if we are
+dealing with a file backed page where we have reference on the inode it
+hangs off." [1]
+
+[1] https://lore.kernel.org/r/20190723153640.GB720@lst.de
+
+Cc: Alex Williamson <alex.williamson@redhat.com>
+Cc: kvm@vger.kernel.org
 Signed-off-by: John Hubbard <jhubbard@nvidia.com>
 ---
- drivers/virt/fsl_hypervisor.c | 7 ++-----
- 1 file changed, 2 insertions(+), 5 deletions(-)
+ drivers/vfio/vfio_iommu_type1.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
 
-diff --git a/drivers/virt/fsl_hypervisor.c b/drivers/virt/fsl_hypervisor.c
-index 93d5bebf9572..a8f78d572c45 100644
---- a/drivers/virt/fsl_hypervisor.c
-+++ b/drivers/virt/fsl_hypervisor.c
-@@ -292,11 +292,8 @@ static long ioctl_memcpy(struct fsl_hv_ioctl_memcpy __user *p)
- 		virt_to_phys(sg_list), num_pages);
- 
- exit:
--	if (pages) {
--		for (i = 0; i < num_pages; i++)
--			if (pages[i])
--				put_page(pages[i]);
--	}
-+	if (pages)
-+		put_user_pages(pages, num_pages);
- 
- 	kfree(sg_list_unaligned);
- 	kfree(pages);
+diff --git a/drivers/vfio/vfio_iommu_type1.c b/drivers/vfio/vfio_iommu_type1.c
+index 054391f30fa8..5a5461a14299 100644
+--- a/drivers/vfio/vfio_iommu_type1.c
++++ b/drivers/vfio/vfio_iommu_type1.c
+@@ -320,9 +320,9 @@ static int put_pfn(unsigned long pfn, int prot)
+ {
+ 	if (!is_invalid_reserved_pfn(pfn)) {
+ 		struct page *page = pfn_to_page(pfn);
+-		if (prot & IOMMU_WRITE)
+-			SetPageDirty(page);
+-		put_page(page);
++		bool dirty = prot & IOMMU_WRITE;
++
++		put_user_pages_dirty_lock(&page, 1, dirty);
+ 		return 1;
+ 	}
+ 	return 0;
+@@ -356,7 +356,7 @@ static int vaddr_get_pfn(struct mm_struct *mm, unsigned long vaddr,
+ 		 */
+ 		if (ret > 0 && vma_is_fsdax(vmas[0])) {
+ 			ret = -EOPNOTSUPP;
+-			put_page(page[0]);
++			put_user_page(page[0]);
+ 		}
+ 	}
+ 	up_read(&mm->mmap_sem);
 -- 
 2.22.0
 
