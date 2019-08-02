@@ -8,53 +8,53 @@ X-Spam-Status: No, score=-9.9 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D7249C433FF
-	for <linux-nfs@archiver.kernel.org>; Fri,  2 Aug 2019 02:24:17 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 15C3EC433FF
+	for <linux-nfs@archiver.kernel.org>; Fri,  2 Aug 2019 02:24:31 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id AEAE62083B
-	for <linux-nfs@archiver.kernel.org>; Fri,  2 Aug 2019 02:24:17 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id DCBA1206A3
+	for <linux-nfs@archiver.kernel.org>; Fri,  2 Aug 2019 02:24:30 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="hA+dHc1d"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="nL5gA8Hk"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2389433AbfHBCYQ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 1 Aug 2019 22:24:16 -0400
-Received: from mail-pf1-f195.google.com ([209.85.210.195]:36965 "EHLO
-        mail-pf1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2390898AbfHBCUo (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Aug 2019 22:20:44 -0400
-Received: by mail-pf1-f195.google.com with SMTP id 19so35148529pfa.4;
-        Thu, 01 Aug 2019 19:20:43 -0700 (PDT)
+        id S2390903AbfHBCUn (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 1 Aug 2019 22:20:43 -0400
+Received: from mail-pl1-f196.google.com ([209.85.214.196]:36745 "EHLO
+        mail-pl1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2390798AbfHBCUl (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Aug 2019 22:20:41 -0400
+Received: by mail-pl1-f196.google.com with SMTP id k8so33033470plt.3;
+        Thu, 01 Aug 2019 19:20:40 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references
          :mime-version:content-transfer-encoding;
-        bh=NpCZQ4VK8hzAbP37Qxye6UhXG/4cH2zDttwN2tDhLJk=;
-        b=hA+dHc1dKtzF01UNAT1GCb910It9M6OYeo1UwisVEiPximZ0Uizqhd58Gx7EN+cwqG
-         oOXAC9GpXS9cMgyPAFeZsWw6yiG5HTsH6dTfrkzHKXhkxbTehvYO/DkXd3o8uGT1hUxz
-         8W3I7PS2I6VpD8By/LG/APt7ortKYREWRihQ/MahJgv1XZqDU9aXSO+0f9WVFU4wcOzF
-         PifhANph7r1h1aR2sJtcNbzpatSVDPr8LOmoCCwtkUnv/6xTTuq0KjPRlt5jI5AQn0Bo
-         qGRQZk7nx9WeapKs5M+9pdwyKPbEullYlAI/CW2M7lTdWIAU5bo5Tw/OmRhRr64X9QFj
-         r+xA==
+        bh=Zk7mJfsjIPJK9Qgsn0u5osZJajJrXebF0c1tZrgdgoI=;
+        b=nL5gA8HkBp1qUXL8uSk44yRPDpQM1GzztnKY+vjFkpLO4+ej8Ho3KCm6C4y+E5m8LE
+         h9Iaftsjh1UsJUr+Pb21bHX0tSSHXapiGzhmehbpJMXTX/8OVSokepo7ZYp/sAOufRJM
+         Dn+Q/LNbJL1I2nNGcQbJ8ZQUaKHbOXUsbWTmj876BCAWOoZWZ6NdZCYaUx//X8gLE1Fe
+         Ao4iR+EL7uUQrdQvqWcLAimsvB7jPrqJUl8VTCYTJSYJDpeTKlwz9tVoL0Kex6hlm0oH
+         POKBdW3YOuZavjeRiRdEl20H0UanKpKGw2d45prgvnfRqnKjFtcxDl+Dci+NMwFW+1GP
+         a0XA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=NpCZQ4VK8hzAbP37Qxye6UhXG/4cH2zDttwN2tDhLJk=;
-        b=BGU04f1tPQIEAI8So7W7hrvDA5qn+hWxqIhH8lgwXodHmdPZbjAnf28pxkUgRBDw7O
-         cNFremxENQLKihW6TpA6PnW0Xp+CBGLA5ippRT2vBoxLPe+D8+3a8p7Rn69d/tr5G1jo
-         7i4t0yKihiUMW5eF2dqnjk4kRIIC2Dm3XRR/rVmYZ07k7y2VOt5oE74zPQc60oVRJeAi
-         5WGza9gQR5aUOowrRE5WJIKKYeqq+wd7BNbSdX6f4aE2NZSQlUAJ1blwqA59hRZ03Rxc
-         AMJxpJIu4kzuQF4UyqZ5ruO294ekpG1pDgWe+rlHHm9LJVEjBTwLYgAfAFsspn6k+g9g
-         vDMg==
-X-Gm-Message-State: APjAAAVPeDRb4gozhNeMof+Kksw6loQ3ZA/OvHHAH0NsSR2/SzrNwig7
-        nUUg1wLVio9Tz9Kx3t4y92w=
-X-Google-Smtp-Source: APXvYqwoCf/Pdnvn5s1n1tJ64nDODMRXeExgk7vpJhyWgRCwW2Xl8gxjUqSaBtscPD/0WWSuL29y+g==
-X-Received: by 2002:a62:fb18:: with SMTP id x24mr55563811pfm.231.1564712443423;
-        Thu, 01 Aug 2019 19:20:43 -0700 (PDT)
+        bh=Zk7mJfsjIPJK9Qgsn0u5osZJajJrXebF0c1tZrgdgoI=;
+        b=TqWGNxAa9xTzZ6eTxQtVeXu0BqbtE5RovYv1uXo2HtK9iBvecz6PZX/FBw9eAVpLMH
+         9B1tbz2k3ycmBKA/CZ2+tZlMZEEDUq+ytS9rJ2dS/PhAMA3vvK/fsKJ08lA6ZBbgb06x
+         RwhQ3NeSe8rnbQ2WQD2spuerX6VX5mY2XnOdNhy7AE3hozcafrXW4aJZ7nM0oNR5DsxJ
+         A5ZWo526LXllNbwpxrAH4SWvjOglFfBlI0y2j1DO28u5qTisAP1nnyp7T+TYsGHIQkxC
+         8Lp8UjWv2nxhxntPyAJuWT3438v6k6FEyCqqavjrjWPGJp7vDIw9UQlccp0eqgkl/o1S
+         6rSQ==
+X-Gm-Message-State: APjAAAWLCv6BlwngHn5AckS0e+Js3dH7M6wJNrx/ZbSwSK9PlvIJe9j5
+        SHKlpOKqUW4KkyhMoD6hm70=
+X-Google-Smtp-Source: APXvYqztsbUVpJnR1pWJXE324fW+SugJBxHHKLNQRZirN/VnD1v0OsiDr/qT4pG5Y0OOV3QlfOZRKQ==
+X-Received: by 2002:a17:902:830c:: with SMTP id bd12mr131600821plb.237.1564712440479;
+        Thu, 01 Aug 2019 19:20:40 -0700 (PDT)
 Received: from blueforge.nvidia.com (searspoint.nvidia.com. [216.228.112.21])
-        by smtp.gmail.com with ESMTPSA id u9sm38179744pgc.5.2019.08.01.19.20.42
+        by smtp.gmail.com with ESMTPSA id u9sm38179744pgc.5.2019.08.01.19.20.39
         (version=TLS1_3 cipher=AEAD-AES256-GCM-SHA384 bits=256/256);
-        Thu, 01 Aug 2019 19:20:42 -0700 (PDT)
+        Thu, 01 Aug 2019 19:20:40 -0700 (PDT)
 From:   john.hubbard@gmail.com
 X-Google-Original-From: jhubbard@nvidia.com
 To:     Andrew Morton <akpm@linux-foundation.org>
@@ -78,11 +78,14 @@ Cc:     Christoph Hellwig <hch@infradead.org>,
         netdev@vger.kernel.org, rds-devel@oss.oracle.com,
         sparclinux@vger.kernel.org, x86@kernel.org,
         xen-devel@lists.xenproject.org, John Hubbard <jhubbard@nvidia.com>,
-        Boris Ostrovsky <boris.ostrovsky@oracle.com>,
-        Juergen Gross <jgross@suse.com>
-Subject: [PATCH 20/34] xen: convert put_page() to put_user_page*()
-Date:   Thu,  1 Aug 2019 19:19:51 -0700
-Message-Id: <20190802022005.5117-21-jhubbard@nvidia.com>
+        Bartlomiej Zolnierkiewicz <b.zolnierkie@samsung.com>,
+        Kees Cook <keescook@chromium.org>,
+        Al Viro <viro@zeniv.linux.org.uk>,
+        Bhumika Goyal <bhumirks@gmail.com>,
+        Arvind Yadav <arvind.yadav.cs@gmail.com>
+Subject: [PATCH 18/34] fbdev/pvr2fb: convert put_page() to put_user_page*()
+Date:   Thu,  1 Aug 2019 19:19:49 -0700
+Message-Id: <20190802022005.5117-19-jhubbard@nvidia.com>
 X-Mailer: git-send-email 2.22.0
 In-Reply-To: <20190802022005.5117-1-jhubbard@nvidia.com>
 References: <20190802022005.5117-1-jhubbard@nvidia.com>
@@ -103,52 +106,32 @@ release_pages().
 This is part a tree-wide conversion, as described in commit fc1d8e7cca2d
 ("mm: introduce put_user_page*(), placeholder versions").
 
-Cc: Boris Ostrovsky <boris.ostrovsky@oracle.com>
-Cc: Juergen Gross <jgross@suse.com>
-Cc: xen-devel@lists.xenproject.org
+Cc: Bartlomiej Zolnierkiewicz <b.zolnierkie@samsung.com>
+Cc: Kees Cook <keescook@chromium.org>
+Cc: Al Viro <viro@zeniv.linux.org.uk>
+Cc: Bhumika Goyal <bhumirks@gmail.com>
+Cc: Arvind Yadav <arvind.yadav.cs@gmail.com>
+Cc: dri-devel@lists.freedesktop.org
+Cc: linux-fbdev@vger.kernel.org
 Signed-off-by: John Hubbard <jhubbard@nvidia.com>
 ---
- drivers/xen/gntdev.c  | 5 +----
- drivers/xen/privcmd.c | 7 +------
- 2 files changed, 2 insertions(+), 10 deletions(-)
+ drivers/video/fbdev/pvr2fb.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
 
-diff --git a/drivers/xen/gntdev.c b/drivers/xen/gntdev.c
-index 4c339c7e66e5..2586b3df2bb6 100644
---- a/drivers/xen/gntdev.c
-+++ b/drivers/xen/gntdev.c
-@@ -864,10 +864,7 @@ static int gntdev_get_page(struct gntdev_copy_batch *batch, void __user *virt,
+diff --git a/drivers/video/fbdev/pvr2fb.c b/drivers/video/fbdev/pvr2fb.c
+index 7ff4b6b84282..0e4f9aa6444d 100644
+--- a/drivers/video/fbdev/pvr2fb.c
++++ b/drivers/video/fbdev/pvr2fb.c
+@@ -700,8 +700,7 @@ static ssize_t pvr2fb_write(struct fb_info *info, const char *buf,
+ 	ret = count;
  
- static void gntdev_put_pages(struct gntdev_copy_batch *batch)
- {
--	unsigned int i;
--
--	for (i = 0; i < batch->nr_pages; i++)
--		put_page(batch->pages[i]);
-+	put_user_pages(batch->pages, batch->nr_pages);
- 	batch->nr_pages = 0;
- }
- 
-diff --git a/drivers/xen/privcmd.c b/drivers/xen/privcmd.c
-index 2f5ce7230a43..29e461dbee2d 100644
---- a/drivers/xen/privcmd.c
-+++ b/drivers/xen/privcmd.c
-@@ -611,15 +611,10 @@ static int lock_pages(
- 
- static void unlock_pages(struct page *pages[], unsigned int nr_pages)
- {
--	unsigned int i;
--
- 	if (!pages)
- 		return;
- 
--	for (i = 0; i < nr_pages; i++) {
--		if (pages[i])
--			put_page(pages[i]);
--	}
+ out_unmap:
+-	for (i = 0; i < nr_pages; i++)
+-		put_page(pages[i]);
 +	put_user_pages(pages, nr_pages);
- }
  
- static long privcmd_ioctl_dm_op(struct file *file, void __user *udata)
+ 	kfree(pages);
+ 
 -- 
 2.22.0
 
