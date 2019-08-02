@@ -8,53 +8,53 @@ X-Spam-Status: No, score=-9.9 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5B1FBC41514
-	for <linux-nfs@archiver.kernel.org>; Fri,  2 Aug 2019 02:23:22 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 0A4D6C433FF
+	for <linux-nfs@archiver.kernel.org>; Fri,  2 Aug 2019 02:23:39 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 33371206A3
-	for <linux-nfs@archiver.kernel.org>; Fri,  2 Aug 2019 02:23:22 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id D64C12083B
+	for <linux-nfs@archiver.kernel.org>; Fri,  2 Aug 2019 02:23:38 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="SN9JCWjR"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="IdQZjyJh"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2389444AbfHBCXO (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 1 Aug 2019 22:23:14 -0400
-Received: from mail-pl1-f194.google.com ([209.85.214.194]:37949 "EHLO
-        mail-pl1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2390951AbfHBCUx (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Aug 2019 22:20:53 -0400
-Received: by mail-pl1-f194.google.com with SMTP id az7so32986139plb.5;
-        Thu, 01 Aug 2019 19:20:52 -0700 (PDT)
+        id S2389310AbfHBCXh (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 1 Aug 2019 22:23:37 -0400
+Received: from mail-pf1-f196.google.com ([209.85.210.196]:41089 "EHLO
+        mail-pf1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2390928AbfHBCUu (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Aug 2019 22:20:50 -0400
+Received: by mail-pf1-f196.google.com with SMTP id m30so35165086pff.8;
+        Thu, 01 Aug 2019 19:20:49 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references
          :mime-version:content-transfer-encoding;
-        bh=o8Q8kE8hzW/DwKrVVZh1taN77rkNxpuim/5zYvIGd0I=;
-        b=SN9JCWjRa62SDUJKkHaVdcwHX85kw/BYyJx1Oz6MKq1tPWuA+R+kvOX6gTDvC/TGzM
-         WuYG+JBQhglp5JUL5bE3kcONL91y/gVNfG1/TEEmXEUkwsc3IV9ZwlZo4fZZ39RQbUrI
-         einldN97i3VjPzZmNrk7Gi70UVvHdYeVSXiOY7z0rmJg1OD2RJX0hB2kTyBbOVlbD4F/
-         wFv0bPm5s1TrbkD6/tFvn6bnIJfGHM4gcvzjJiA5o2aPM4xOIDqOY4iccbO2F7+VYayI
-         O0zTQo6na3+rAYAFM80xDRcL3DANvgDbjQbLbpyWsZCgQEzyIKagAyXZm1uNkiwXdu5u
-         s1Rw==
+        bh=rRiJNzkH0bRoPJKYXoQcsROADD9YH4USeXVLEsmAa1E=;
+        b=IdQZjyJhMTiA3ru+rOrbTXLCRfg1Iz7YPF+8DSWpdWDcWtOO1jwAD+njJSqb4AFsL3
+         BoorK7WVXpk5wvzf+3MNWsWlqvxT2AU71m913kuKWpgnoA+0ZYT8hPv0DG2k2t5CL0So
+         4HfYIB1+xctKU8nZMy0TNVHkmmwgfvFDwPBOEjDSZMguKyYiKdAvH/kYmRGOOCm1PmW7
+         4QVOBE2D85KD1ebTOdlBPaqm/TGzFf20gzANQLnGH2MHePv/KbpSRa5elxYK3OTWVg7W
+         lX3umVSebAxAiH6LaR7v6UhLbExl0YmQ1qyvKE73k3aH42K6tSy55ZxlEvZWhHEAZhKs
+         EwnQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=o8Q8kE8hzW/DwKrVVZh1taN77rkNxpuim/5zYvIGd0I=;
-        b=TE2WOLSUyT3HsTwoB3Yo0b9wqsuIQcUG/cWgyFyDh0cGZDcnqJvjwIGDxl/TLwcAd7
-         RtZolpFYT1HlEu7vBTqId77/vqrp2v7WLez8Rk0TqdeAPhVbFs1F8iOzbILG0xXmbXb6
-         pLOb9U3GOuFsNomipyXZcrPepK0EevBG9FcneKkXSuBdjPZayvSCud0+GCPUZELtOXLu
-         U71WmIw/6n2+lZFsSRSaDHOjND2/78dFzNTN7hnz91R62BU/px8Bx1S4SRBqpess7aDZ
-         wJ//Bd7Sgepfz6m4vqG2uwOLwKPP3YJ3iyWIysllnW1+DxiWg6LLOpI/yWpRo1wYDUA/
-         g3KQ==
-X-Gm-Message-State: APjAAAWMtUrEi1DTERDgTdzsskxKVvH6uiAfV1TwX2kKqQa0dRftQ3OA
-        /PYVC7jsMEJaFU4gn1j87jI=
-X-Google-Smtp-Source: APXvYqz1YTjVZYS+LesWuf1AG7NOEG7XNcFlAKVjP+75gMoI5m//7o/WseaBl+rAw+Wa9I/u7wQNfg==
-X-Received: by 2002:a17:902:740a:: with SMTP id g10mr129917590pll.82.1564712452476;
-        Thu, 01 Aug 2019 19:20:52 -0700 (PDT)
+        bh=rRiJNzkH0bRoPJKYXoQcsROADD9YH4USeXVLEsmAa1E=;
+        b=AbFwA1Uu+pcF8pEqEcAUrfocBm9hf+Tk7+jwXDXXUrHTiLrZXC+GUuxOLrULgU8uRz
+         jeJhDDLqhap1RAhWfFeODvxoZqlhxzMDMQkQPrrvsNEz9fud1nR49+orx+NGCMQxvM5W
+         DtLpW46RLQf57SQe2XerKvyzgUZC6+Ahhtlq7r+qbA1H9NjwJ4SxDMw1pG7VmiKpiOWt
+         PQMe456cyul85gR/OXG1kO7kQjT5/JI/R3Zv6Ewf9HTr942sMbCplSpTBk7BOq02eCc7
+         j90AMOFeibWqqj1YX68qQxW+4GBgoLbMMfcWONpQ8UP1u04rZyAZ+Bmo1MtI9sFW9dnX
+         YUhQ==
+X-Gm-Message-State: APjAAAVdVKyaoyEQK6+PgS9APZcr6UMgm26WQetGxI2qPUPJwoSXti0Q
+        yJvu2JHTI39aBt/22QkhpHg=
+X-Google-Smtp-Source: APXvYqyQ9NWbm7e7UjvOHtMhAwjS+tkI0uFYNRjX3KlyXdyqOSjy3adbw2n2ONz+amcM+RqqbPvknQ==
+X-Received: by 2002:a17:90a:cb15:: with SMTP id z21mr1894788pjt.87.1564712449418;
+        Thu, 01 Aug 2019 19:20:49 -0700 (PDT)
 Received: from blueforge.nvidia.com (searspoint.nvidia.com. [216.228.112.21])
-        by smtp.gmail.com with ESMTPSA id u9sm38179744pgc.5.2019.08.01.19.20.50
+        by smtp.gmail.com with ESMTPSA id u9sm38179744pgc.5.2019.08.01.19.20.47
         (version=TLS1_3 cipher=AEAD-AES256-GCM-SHA384 bits=256/256);
-        Thu, 01 Aug 2019 19:20:51 -0700 (PDT)
+        Thu, 01 Aug 2019 19:20:48 -0700 (PDT)
 From:   john.hubbard@gmail.com
 X-Google-Original-From: jhubbard@nvidia.com
 To:     Andrew Morton <akpm@linux-foundation.org>
@@ -78,15 +78,13 @@ Cc:     Christoph Hellwig <hch@infradead.org>,
         netdev@vger.kernel.org, rds-devel@oss.oracle.com,
         sparclinux@vger.kernel.org, x86@kernel.org,
         xen-devel@lists.xenproject.org, John Hubbard <jhubbard@nvidia.com>,
-        Dan Carpenter <dan.carpenter@oracle.com>,
-        Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
-        Keith Busch <keith.busch@intel.com>,
-        "Kirill A . Shutemov" <kirill.shutemov@linux.intel.com>,
-        "Michael S . Tsirkin" <mst@redhat.com>,
-        YueHaibing <yuehaibing@huawei.com>
-Subject: [PATCH 26/34] mm/gup_benchmark.c: convert put_page() to put_user_page*()
-Date:   Thu,  1 Aug 2019 19:19:57 -0700
-Message-Id: <20190802022005.5117-27-jhubbard@nvidia.com>
+        Thomas Gleixner <tglx@linutronix.de>,
+        Ingo Molnar <mingo@redhat.com>,
+        Peter Zijlstra <peterz@infradead.org>,
+        Darren Hart <dvhart@infradead.org>
+Subject: [PATCH 24/34] futex: convert put_page() to put_user_page*()
+Date:   Thu,  1 Aug 2019 19:19:55 -0700
+Message-Id: <20190802022005.5117-25-jhubbard@nvidia.com>
 X-Mailer: git-send-email 2.22.0
 In-Reply-To: <20190802022005.5117-1-jhubbard@nvidia.com>
 References: <20190802022005.5117-1-jhubbard@nvidia.com>
@@ -107,30 +105,64 @@ release_pages().
 This is part a tree-wide conversion, as described in commit fc1d8e7cca2d
 ("mm: introduce put_user_page*(), placeholder versions").
 
-Cc: Dan Carpenter <dan.carpenter@oracle.com>
-Cc: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Cc: Keith Busch <keith.busch@intel.com>
-Cc: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
-Cc: Michael S. Tsirkin <mst@redhat.com>
-Cc: YueHaibing <yuehaibing@huawei.com>
+Cc: Thomas Gleixner <tglx@linutronix.de>
+Cc: Ingo Molnar <mingo@redhat.com>
+Cc: Peter Zijlstra <peterz@infradead.org>
+Cc: Darren Hart <dvhart@infradead.org>
 Signed-off-by: John Hubbard <jhubbard@nvidia.com>
 ---
- mm/gup_benchmark.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ kernel/futex.c | 10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
 
-diff --git a/mm/gup_benchmark.c b/mm/gup_benchmark.c
-index 7dd602d7f8db..515ac8eeb6ee 100644
---- a/mm/gup_benchmark.c
-+++ b/mm/gup_benchmark.c
-@@ -79,7 +79,7 @@ static int __gup_benchmark_ioctl(unsigned int cmd,
- 	for (i = 0; i < nr_pages; i++) {
- 		if (!pages[i])
- 			break;
--		put_page(pages[i]);
-+		put_user_page(pages[i]);
+diff --git a/kernel/futex.c b/kernel/futex.c
+index 6d50728ef2e7..4b4cae58ec57 100644
+--- a/kernel/futex.c
++++ b/kernel/futex.c
+@@ -623,7 +623,7 @@ get_futex_key(u32 __user *uaddr, int fshared, union futex_key *key, enum futex_a
+ 		lock_page(page);
+ 		shmem_swizzled = PageSwapCache(page) || page->mapping;
+ 		unlock_page(page);
+-		put_page(page);
++		put_user_page(page);
+ 
+ 		if (shmem_swizzled)
+ 			goto again;
+@@ -675,7 +675,7 @@ get_futex_key(u32 __user *uaddr, int fshared, union futex_key *key, enum futex_a
+ 
+ 		if (READ_ONCE(page->mapping) != mapping) {
+ 			rcu_read_unlock();
+-			put_page(page);
++			put_user_page(page);
+ 
+ 			goto again;
+ 		}
+@@ -683,7 +683,7 @@ get_futex_key(u32 __user *uaddr, int fshared, union futex_key *key, enum futex_a
+ 		inode = READ_ONCE(mapping->host);
+ 		if (!inode) {
+ 			rcu_read_unlock();
+-			put_page(page);
++			put_user_page(page);
+ 
+ 			goto again;
+ 		}
+@@ -702,7 +702,7 @@ get_futex_key(u32 __user *uaddr, int fshared, union futex_key *key, enum futex_a
+ 		 */
+ 		if (!atomic_inc_not_zero(&inode->i_count)) {
+ 			rcu_read_unlock();
+-			put_page(page);
++			put_user_page(page);
+ 
+ 			goto again;
+ 		}
+@@ -723,7 +723,7 @@ get_futex_key(u32 __user *uaddr, int fshared, union futex_key *key, enum futex_a
  	}
- 	end_time = ktime_get();
- 	gup->put_delta_usec = ktime_us_delta(end_time, start_time);
+ 
+ out:
+-	put_page(page);
++	put_user_page(page);
+ 	return err;
+ }
+ 
 -- 
 2.22.0
 
