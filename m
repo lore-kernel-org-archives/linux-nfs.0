@@ -2,158 +2,105 @@ Return-Path: <SRS0=Vt5f=V7=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.4 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1
-	autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-5.2 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_SANE_1 autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 96488C433FF
-	for <linux-nfs@archiver.kernel.org>; Sat,  3 Aug 2019 01:41:49 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E45B4C433FF
+	for <linux-nfs@archiver.kernel.org>; Sat,  3 Aug 2019 07:07:04 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 6CDA120880
-	for <linux-nfs@archiver.kernel.org>; Sat,  3 Aug 2019 01:41:49 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=nvidia.com header.i=@nvidia.com header.b="OLRFKsHo"
+	by mail.kernel.org (Postfix) with ESMTP id BA19A2166E
+	for <linux-nfs@archiver.kernel.org>; Sat,  3 Aug 2019 07:07:04 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=default; t=1564816024;
+	bh=fAm+JJVlEEdZsZEnQU6VmG7AlISaD9fVfUjXl/e9MGA=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To:List-ID:From;
+	b=QhpJ0IS9Xi4WA8tDCGDjmuGl4RbRMLkbljVoibHXe4xkdLkpCw82V9w0RY0iBkkQt
+	 xmS7qLK7h266d+PkrK3DphO5sBV6AYcKNIwYUmXqe1jgNPIPE1X/moMtOhcpvnuQPU
+	 0aj1bB0SmuWL4i/Y1bMXcGXu3W7UXnsB9vR0+Qbc=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2403755AbfHCBlm (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 2 Aug 2019 21:41:42 -0400
-Received: from hqemgate14.nvidia.com ([216.228.121.143]:14532 "EHLO
-        hqemgate14.nvidia.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2387864AbfHCBll (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Aug 2019 21:41:41 -0400
-Received: from hqpgpgate102.nvidia.com (Not Verified[216.228.121.13]) by hqemgate14.nvidia.com (using TLS: TLSv1.2, DES-CBC3-SHA)
-        id <B5d44e6540001>; Fri, 02 Aug 2019 18:41:40 -0700
-Received: from hqmail.nvidia.com ([172.20.161.6])
-  by hqpgpgate102.nvidia.com (PGP Universal service);
-  Fri, 02 Aug 2019 18:41:39 -0700
-X-PGP-Universal: processed;
-        by hqpgpgate102.nvidia.com on Fri, 02 Aug 2019 18:41:39 -0700
-Received: from [10.110.48.28] (10.124.1.5) by HQMAIL107.nvidia.com
- (172.20.187.13) with Microsoft SMTP Server (TLS) id 15.0.1473.3; Sat, 3 Aug
- 2019 01:41:38 +0000
-Subject: Re: [PATCH 31/34] nfs: convert put_page() to put_user_page*()
-To:     Calum Mackay <calum.mackay@oracle.com>, <john.hubbard@gmail.com>,
-        Andrew Morton <akpm@linux-foundation.org>
-CC:     Christoph Hellwig <hch@infradead.org>,
-        Dan Williams <dan.j.williams@intel.com>,
+        id S1727241AbfHCHGy (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sat, 3 Aug 2019 03:06:54 -0400
+Received: from mail.kernel.org ([198.145.29.99]:40672 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1727206AbfHCHGx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sat, 3 Aug 2019 03:06:53 -0400
+Received: from localhost (83-86-89-107.cable.dynamic.v4.ziggo.nl [83.86.89.107])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by mail.kernel.org (Postfix) with ESMTPSA id 756402173E;
+        Sat,  3 Aug 2019 07:06:51 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=default; t=1564816011;
+        bh=fAm+JJVlEEdZsZEnQU6VmG7AlISaD9fVfUjXl/e9MGA=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+        b=EvBQbY6tUIAsZP4MFxGmLRqZJjlnz59fmNMbvE0jfno1B+JXE+PNryIyzSAnXbr8N
+         +lgw4Y3y5zL8NJKrLYjFHjBcr6/6qlTB3yc6rbylv5fVS7aSSqYd41B1eBmWwcN4jJ
+         e48QvmU3i/Btia6YyxF5rYYxbA6/qQXbJH8nGzR0=
+Date:   Sat, 3 Aug 2019 09:06:40 +0200
+From:   Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+To:     john.hubbard@gmail.com
+Cc:     Andrew Morton <akpm@linux-foundation.org>,
+        linux-fbdev@vger.kernel.org, Jan Kara <jack@suse.cz>,
+        kvm@vger.kernel.org, Dave Hansen <dave.hansen@linux.intel.com>,
         Dave Chinner <david@fromorbit.com>,
-        Dave Hansen <dave.hansen@linux.intel.com>,
-        Ira Weiny <ira.weiny@intel.com>, Jan Kara <jack@suse.cz>,
-        Jason Gunthorpe <jgg@ziepe.ca>,
-        =?UTF-8?B?SsOpcsO0bWUgR2xpc3Nl?= <jglisse@redhat.com>,
-        LKML <linux-kernel@vger.kernel.org>,
-        <amd-gfx@lists.freedesktop.org>, <ceph-devel@vger.kernel.org>,
-        <devel@driverdev.osuosl.org>, <devel@lists.orangefs.org>,
-        <dri-devel@lists.freedesktop.org>,
-        <intel-gfx@lists.freedesktop.org>, <kvm@vger.kernel.org>,
-        <linux-arm-kernel@lists.infradead.org>,
-        <linux-block@vger.kernel.org>, <linux-crypto@vger.kernel.org>,
-        <linux-fbdev@vger.kernel.org>, <linux-fsdevel@vger.kernel.org>,
-        <linux-media@vger.kernel.org>, <linux-mm@kvack.org>,
-        <linux-nfs@vger.kernel.org>, <linux-rdma@vger.kernel.org>,
-        <linux-rpi-kernel@lists.infradead.org>,
-        <linux-xfs@vger.kernel.org>, <netdev@vger.kernel.org>,
-        <rds-devel@oss.oracle.com>, <sparclinux@vger.kernel.org>,
-        <x86@kernel.org>, <xen-devel@lists.xenproject.org>,
-        Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>
+        dri-devel@lists.freedesktop.org, linux-mm@kvack.org,
+        sparclinux@vger.kernel.org, ceph-devel@vger.kernel.org,
+        devel@driverdev.osuosl.org, rds-devel@oss.oracle.com,
+        linux-rdma@vger.kernel.org, x86@kernel.org,
+        amd-gfx@lists.freedesktop.org,
+        Christoph Hellwig <hch@infradead.org>,
+        Jason Gunthorpe <jgg@ziepe.ca>, xen-devel@lists.xenproject.org,
+        devel@lists.orangefs.org, linux-media@vger.kernel.org,
+        Arnd Bergmann <arnd@arndb.de>,
+        "Guilherme G. Piccoli" <gpiccoli@linux.vnet.ibm.com>,
+        John Hubbard <jhubbard@nvidia.com>,
+        intel-gfx@lists.freedesktop.org, linux-block@vger.kernel.org,
+        =?iso-8859-1?B?Suly9G1l?= Glisse <jglisse@redhat.com>,
+        linux-rpi-kernel@lists.infradead.org,
+        Dan Williams <dan.j.williams@intel.com>,
+        linux-arm-kernel@lists.infradead.org, linux-nfs@vger.kernel.org,
+        netdev@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>,
+        linux-xfs@vger.kernel.org, linux-crypto@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org,
+        Frank Haverkamp <haver@linux.vnet.ibm.com>
+Subject: Re: [PATCH 10/34] genwqe: convert put_page() to put_user_page*()
+Message-ID: <20190803070640.GB2508@kroah.com>
 References: <20190802022005.5117-1-jhubbard@nvidia.com>
- <20190802022005.5117-32-jhubbard@nvidia.com>
- <1738cb1e-15d8-0bbe-5362-341664f6efc8@oracle.com>
-X-Nvconfidentiality: public
-From:   John Hubbard <jhubbard@nvidia.com>
-Message-ID: <db136399-ed87-56ea-bd6e-e5d29b145eda@nvidia.com>
-Date:   Fri, 2 Aug 2019 18:41:38 -0700
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101
- Thunderbird/60.8.0
+ <20190802022005.5117-11-jhubbard@nvidia.com>
 MIME-Version: 1.0
-In-Reply-To: <1738cb1e-15d8-0bbe-5362-341664f6efc8@oracle.com>
-X-Originating-IP: [10.124.1.5]
-X-ClientProxiedBy: HQMAIL104.nvidia.com (172.18.146.11) To
- HQMAIL107.nvidia.com (172.20.187.13)
-Content-Type: text/plain; charset="utf-8"
-Content-Language: en-US
-Content-Transfer-Encoding: quoted-printable
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=nvidia.com; s=n1;
-        t=1564796500; bh=zc1wJBCk6oa4TZJ5kpnxYLs8I/mCQFC0KqXiV/MQqAc=;
-        h=X-PGP-Universal:Subject:To:CC:References:X-Nvconfidentiality:From:
-         Message-ID:Date:User-Agent:MIME-Version:In-Reply-To:
-         X-Originating-IP:X-ClientProxiedBy:Content-Type:Content-Language:
-         Content-Transfer-Encoding;
-        b=OLRFKsHoXBw1TGfx4yjE0Mz6/NwSHjUP/99RYZUV8BmAJcU3vy970b00AWaqBbqwn
-         eDliId8mLescIf+v3MwQ2SrvN7VrnEwLTirEIw8jXzAjeXgqN3dtxI2Suyrp0L+f3G
-         YPfLBq5YLuEzykUeYyNQ/IXUTk0ew3pKoxF86cxfpvc0Iih+8axjrF9wmXCYOssEh/
-         dFyCupj1u3LqFaTu0iXYZzaL8I/Fkdd+Hdao45WQIFetVoCK43sV9CCZfHZ6uY+1an
-         0Rm4XSFjiP2H1hfdLpXkesSoEJK75cPPtD+8sANcEv6R5DjbxYeg7dbcB8wnnzerOG
-         BX10+9E+Fxe0Q==
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20190802022005.5117-11-jhubbard@nvidia.com>
+User-Agent: Mutt/1.12.1 (2019-06-15)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On 8/2/19 6:27 PM, Calum Mackay wrote:
-> On 02/08/2019 3:20 am, john.hubbard@gmail.com wrote:
-...=20
-> Since it's static, and only called twice, might it be better to change it=
-s two callers [nfs_direct_{read,write}_schedule_iovec()] to call put_user_p=
-ages() directly, and remove nfs_direct_release_pages() entirely?
->=20
-> thanks,
-> calum.
->=20
->=20
->> =C2=A0 =C2=A0 void nfs_init_cinfo_from_dreq(struct nfs_commit_info *cinf=
-o,
->>
-=20
-Hi Calum,
+On Thu, Aug 01, 2019 at 07:19:41PM -0700, john.hubbard@gmail.com wrote:
+> From: John Hubbard <jhubbard@nvidia.com>
+> 
+> For pages that were retained via get_user_pages*(), release those pages
+> via the new put_user_page*() routines, instead of via put_page() or
+> release_pages().
+> 
+> This is part a tree-wide conversion, as described in commit fc1d8e7cca2d
+> ("mm: introduce put_user_page*(), placeholder versions").
+> 
+> This changes the release code slightly, because each page slot in the
+> page_list[] array is no longer checked for NULL. However, that check
+> was wrong anyway, because the get_user_pages() pattern of usage here
+> never allowed for NULL entries within a range of pinned pages.
+> 
+> Cc: Frank Haverkamp <haver@linux.vnet.ibm.com>
+> Cc: "Guilherme G. Piccoli" <gpiccoli@linux.vnet.ibm.com>
+> Cc: Arnd Bergmann <arnd@arndb.de>
+> Cc: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+> Signed-off-by: John Hubbard <jhubbard@nvidia.com>
+> ---
+>  drivers/misc/genwqe/card_utils.c | 17 +++--------------
+>  1 file changed, 3 insertions(+), 14 deletions(-)
 
-Absolutely! Is it OK to add your reviewed-by, with the following incrementa=
-l
-patch made to this one?
-
-diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-index b00b89dda3c5..c0c1b9f2c069 100644
---- a/fs/nfs/direct.c
-+++ b/fs/nfs/direct.c
-@@ -276,11 +276,6 @@ ssize_t nfs_direct_IO(struct kiocb *iocb, struct iov_i=
-ter *iter)
-        return nfs_file_direct_write(iocb, iter);
- }
-=20
--static void nfs_direct_release_pages(struct page **pages, unsigned int npa=
-ges)
--{
--       put_user_pages(pages, npages);
--}
--
- void nfs_init_cinfo_from_dreq(struct nfs_commit_info *cinfo,
-                              struct nfs_direct_req *dreq)
- {
-@@ -510,7 +505,7 @@ static ssize_t nfs_direct_read_schedule_iovec(struct nf=
-s_direct_req *dreq,
-                        pos +=3D req_len;
-                        dreq->bytes_left -=3D req_len;
-                }
--               nfs_direct_release_pages(pagevec, npages);
-+               put_user_pages(pagevec, npages);
-                kvfree(pagevec);
-                if (result < 0)
-                        break;
-@@ -933,7 +928,7 @@ static ssize_t nfs_direct_write_schedule_iovec(struct n=
-fs_direct_req *dreq,
-                        pos +=3D req_len;
-                        dreq->bytes_left -=3D req_len;
-                }
--               nfs_direct_release_pages(pagevec, npages);
-+               put_user_pages(pagevec, npages);
-                kvfree(pagevec);
-                if (result < 0)
-                        break;
-
-
-
-thanks,
---=20
-John Hubbard
-NVIDIA
+Acked-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
