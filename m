@@ -8,53 +8,53 @@ X-Spam-Status: No, score=-9.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id DEC2AC32759
-	for <linux-nfs@archiver.kernel.org>; Sun,  4 Aug 2019 22:50:12 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4AD2DC32757
+	for <linux-nfs@archiver.kernel.org>; Sun,  4 Aug 2019 22:50:28 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id AE6ED217F4
-	for <linux-nfs@archiver.kernel.org>; Sun,  4 Aug 2019 22:50:12 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 210AF217F5
+	for <linux-nfs@archiver.kernel.org>; Sun,  4 Aug 2019 22:50:28 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="M7iDvAmP"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="YPOY1YFd"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727824AbfHDWuL (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 4 Aug 2019 18:50:11 -0400
-Received: from mail-pg1-f194.google.com ([209.85.215.194]:42565 "EHLO
-        mail-pg1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727800AbfHDWuJ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 4 Aug 2019 18:50:09 -0400
-Received: by mail-pg1-f194.google.com with SMTP id t132so38660098pgb.9;
-        Sun, 04 Aug 2019 15:50:08 -0700 (PDT)
+        id S1727883AbfHDWuP (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sun, 4 Aug 2019 18:50:15 -0400
+Received: from mail-pf1-f196.google.com ([209.85.210.196]:46133 "EHLO
+        mail-pf1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727833AbfHDWuM (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 4 Aug 2019 18:50:12 -0400
+Received: by mail-pf1-f196.google.com with SMTP id c3so15459771pfa.13;
+        Sun, 04 Aug 2019 15:50:11 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references
          :mime-version:content-transfer-encoding;
-        bh=Sx0x91HVjVXCVkLMMHrdncyqT4rW2sU28Vf+3l+oloA=;
-        b=M7iDvAmPBRpGJcJpcoqgvaoi3nLFkyQK4dkSIj4ojX3FvseJtfjnZyfckr18kI2oDa
-         LHzSPof56TngxWHSp0ym44XehwQNp0Dvit6wm4Dt65OPXwL2baR6+4zLMuIAexRHFzmx
-         ZFMgjeYMSC1sErMdOV/WNMAc2Iu4rRWK81eLPAWfZwZdfeXx16tZd5680zs185LTKzUq
-         VYv2LHkMnMPv4yg/Pui3fxt3Z+TxPOd1GexxLj8LbBhnNpT3XVb8jW9mQwG5C5+4ClkN
-         g/MAUKuZK56HuoBkHT35BiifdFKR3pPYOWepAjU+8QcCzdVYmtG3jMaPBQTkt/nS1dsZ
-         WZ9Q==
+        bh=rv0dCo+fqAQ13SgPxACDlFOa16RsKjSPlFe+eBoZNRU=;
+        b=YPOY1YFdr7iX/mwZQqcGNXlBs0EVKoyeBFEUqInEu6rA0ndI8Mif+0ZPJeKKJ5iFwE
+         NKOF3uvUa5VJ+UGiH9nbc87NqjJWsSl0scr9GeK88ydFUly3DCHseKqxTpEd0IfXvu5q
+         jcaFXkdAdHJL26lkS0kDgmBvj/6IRTs5wSna3kfRs+vwcKzTL9APp6Wsc+o3ppVF+IRl
+         wjQCOTSjcDQ7GQjBBXsLdt+Iue6eXN2thWrje4Rt9XoDAoEpWZdNECCtZUxO8cwujSm4
+         fowCwuwgU3C+BFfj4zTJJ1Y4PbaxN4OhvtwxUy9pYDnCK6XNpmRXg/q/Jb/Qj5fLadYM
+         mSpA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=Sx0x91HVjVXCVkLMMHrdncyqT4rW2sU28Vf+3l+oloA=;
-        b=rd4bPfUAbGVSxor4WaiOV0rV6Zuazuc40QWA7Z4d/N8lccOuDRqZXpGQGlh9YA1NUO
-         sXF2lvkkXHUqhR2q8QOniB4f5TuzINFVDdboxqdE6JgfMxdnOp6AEb42unIjSzbjQRNC
-         q2R95cuixvmRLQkBk+LxFtY8rt7nolqszU4jhN8GEiCBR+AnQD4CYpD6sLSq/wYUOIVY
-         6wl4np9oPDlCkl1O5qmCzwoqZW9TfqiZ1nhfcZb/ESvaVjHAJX4eeFUit5WTbHyHLhZ/
-         dV2Yf8emnClP2nPGLE6jpDdz1mq5j2dxxp43Du24uq0gWQKdQc9DKvnwEWfdHosON/5m
-         fTBA==
-X-Gm-Message-State: APjAAAVCouOw6l4AzO6xbPBNoUGkubQyyxguZWLjMpengPwihzsOWXql
-        6vxJYkeWEPFi2BIm8uYLMZA=
-X-Google-Smtp-Source: APXvYqzdBAOi64WyR4vf0DFOxQNVALmaSa46GoCIBIpjxflBtAErOscOmlieUmCz4Qhdah1mimse2w==
-X-Received: by 2002:a63:7358:: with SMTP id d24mr133542074pgn.224.1564959008549;
-        Sun, 04 Aug 2019 15:50:08 -0700 (PDT)
+        bh=rv0dCo+fqAQ13SgPxACDlFOa16RsKjSPlFe+eBoZNRU=;
+        b=p0RQPw7V2j67sPntsztBCkUfSg+ohRh26pa9tq+N/cj3pn5qoSfZXrl1tLS4GP4lMr
+         fV4r+nP5BO/yOC7MVqUC8T4dV21RKl5A6FSaavJ3cBeqQ5DBN5doCuCkBoCSXpLrl1kS
+         SRDFFdfRmorr7KwKWoKn0zn3SZheLUen/OXqyG1O5xb3QPxHbVgdQSNuvDvd2/M3aisj
+         GgQzL0/X2/t6oEbFpoSD9aw5a/K0ESOuB6xiptsPzEq6PGYoAJVfvG3PhtSo8DmGLYGM
+         ejPcZyFBPruaSjYRpWILGamBCqmtXcOxqnLt281WhnL4IC+SY8n4eHQpbZ0/LMQwsZ1S
+         Ya+w==
+X-Gm-Message-State: APjAAAV4icaxZdRyeaZLoRFBfoW4nX/Ky8boHz28hclItFGhY3JlHk14
+        8JITuTgjUAM18vJcxPrD6RI=
+X-Google-Smtp-Source: APXvYqxvM1qX7vPDXvngph7SDjRt5A72CS0QHjJHMrDwzL+npYmbY1LXNKjG2Jciqo+k4AO5Wz8/Mw==
+X-Received: by 2002:a17:90a:b883:: with SMTP id o3mr15076411pjr.50.1564959011569;
+        Sun, 04 Aug 2019 15:50:11 -0700 (PDT)
 Received: from blueforge.nvidia.com (searspoint.nvidia.com. [216.228.112.21])
-        by smtp.gmail.com with ESMTPSA id r6sm35946836pjb.22.2019.08.04.15.50.07
+        by smtp.gmail.com with ESMTPSA id r6sm35946836pjb.22.2019.08.04.15.50.10
         (version=TLS1_3 cipher=AEAD-AES256-GCM-SHA384 bits=256/256);
-        Sun, 04 Aug 2019 15:50:08 -0700 (PDT)
+        Sun, 04 Aug 2019 15:50:11 -0700 (PDT)
 From:   john.hubbard@gmail.com
 X-Google-Original-From: jhubbard@nvidia.com
 To:     Andrew Morton <akpm@linux-foundation.org>
@@ -78,12 +78,15 @@ Cc:     Christoph Hellwig <hch@infradead.org>,
         netdev@vger.kernel.org, rds-devel@oss.oracle.com,
         sparclinux@vger.kernel.org, x86@kernel.org,
         xen-devel@lists.xenproject.org, John Hubbard <jhubbard@nvidia.com>,
-        Calum Mackay <calum.mackay@oracle.com>,
-        Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>
-Subject: [PATCH v2 31/34] fs/nfs: convert put_page() to put_user_page*()
-Date:   Sun,  4 Aug 2019 15:49:12 -0700
-Message-Id: <20190804224915.28669-32-jhubbard@nvidia.com>
+        Peter Zijlstra <peterz@infradead.org>,
+        Ingo Molnar <mingo@redhat.com>,
+        Arnaldo Carvalho de Melo <acme@kernel.org>,
+        Alexander Shishkin <alexander.shishkin@linux.intel.com>,
+        Jiri Olsa <jolsa@redhat.com>,
+        Namhyung Kim <namhyung@kernel.org>
+Subject: [PATCH v2 33/34] kernel/events/core.c: convert put_page() to put_user_page*()
+Date:   Sun,  4 Aug 2019 15:49:14 -0700
+Message-Id: <20190804224915.28669-34-jhubbard@nvidia.com>
 X-Mailer: git-send-email 2.22.0
 In-Reply-To: <20190804224915.28669-1-jhubbard@nvidia.com>
 References: <20190804224915.28669-1-jhubbard@nvidia.com>
@@ -104,51 +107,30 @@ release_pages().
 This is part a tree-wide conversion, as described in commit fc1d8e7cca2d
 ("mm: introduce put_user_page*(), placeholder versions").
 
-Cc: Calum Mackay <calum.mackay@oracle.com>
-Cc: Trond Myklebust <trond.myklebust@hammerspace.com>
-Cc: Anna Schumaker <anna.schumaker@netapp.com>
-Cc: linux-nfs@vger.kernel.org
+Cc: Peter Zijlstra <peterz@infradead.org>
+Cc: Ingo Molnar <mingo@redhat.com>
+Cc: Arnaldo Carvalho de Melo <acme@kernel.org>
+Cc: Alexander Shishkin <alexander.shishkin@linux.intel.com>
+Cc: Jiri Olsa <jolsa@redhat.com>
+Cc: Namhyung Kim <namhyung@kernel.org>
 Signed-off-by: John Hubbard <jhubbard@nvidia.com>
 ---
- fs/nfs/direct.c | 11 ++---------
- 1 file changed, 2 insertions(+), 9 deletions(-)
+ kernel/events/core.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-index 0cb442406168..c0c1b9f2c069 100644
---- a/fs/nfs/direct.c
-+++ b/fs/nfs/direct.c
-@@ -276,13 +276,6 @@ ssize_t nfs_direct_IO(struct kiocb *iocb, struct iov_iter *iter)
- 	return nfs_file_direct_write(iocb, iter);
- }
+diff --git a/kernel/events/core.c b/kernel/events/core.c
+index 0463c1151bae..7be52bbbfe87 100644
+--- a/kernel/events/core.c
++++ b/kernel/events/core.c
+@@ -6426,7 +6426,7 @@ static u64 perf_virt_to_phys(u64 virt)
+ 			phys_addr = page_to_phys(p) + virt % PAGE_SIZE;
  
--static void nfs_direct_release_pages(struct page **pages, unsigned int npages)
--{
--	unsigned int i;
--	for (i = 0; i < npages; i++)
--		put_page(pages[i]);
--}
--
- void nfs_init_cinfo_from_dreq(struct nfs_commit_info *cinfo,
- 			      struct nfs_direct_req *dreq)
- {
-@@ -512,7 +505,7 @@ static ssize_t nfs_direct_read_schedule_iovec(struct nfs_direct_req *dreq,
- 			pos += req_len;
- 			dreq->bytes_left -= req_len;
- 		}
--		nfs_direct_release_pages(pagevec, npages);
-+		put_user_pages(pagevec, npages);
- 		kvfree(pagevec);
- 		if (result < 0)
- 			break;
-@@ -935,7 +928,7 @@ static ssize_t nfs_direct_write_schedule_iovec(struct nfs_direct_req *dreq,
- 			pos += req_len;
- 			dreq->bytes_left -= req_len;
- 		}
--		nfs_direct_release_pages(pagevec, npages);
-+		put_user_pages(pagevec, npages);
- 		kvfree(pagevec);
- 		if (result < 0)
- 			break;
+ 		if (p)
+-			put_page(p);
++			put_user_page(p);
+ 	}
+ 
+ 	return phys_addr;
 -- 
 2.22.0
 
