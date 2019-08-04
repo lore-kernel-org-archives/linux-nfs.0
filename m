@@ -8,53 +8,53 @@ X-Spam-Status: No, score=-9.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 36155C433FF
-	for <linux-nfs@archiver.kernel.org>; Sun,  4 Aug 2019 22:54:59 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3EBE5C433FF
+	for <linux-nfs@archiver.kernel.org>; Sun,  4 Aug 2019 22:55:23 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 0BCD920880
-	for <linux-nfs@archiver.kernel.org>; Sun,  4 Aug 2019 22:54:59 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 0BD1720880
+	for <linux-nfs@archiver.kernel.org>; Sun,  4 Aug 2019 22:55:23 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="Vl3ziFls"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="QsDIsK9f"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727361AbfHDWtm (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 4 Aug 2019 18:49:42 -0400
-Received: from mail-pg1-f193.google.com ([209.85.215.193]:42534 "EHLO
-        mail-pg1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727247AbfHDWth (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 4 Aug 2019 18:49:37 -0400
-Received: by mail-pg1-f193.google.com with SMTP id t132so38659688pgb.9;
-        Sun, 04 Aug 2019 15:49:37 -0700 (PDT)
+        id S1727250AbfHDWti (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sun, 4 Aug 2019 18:49:38 -0400
+Received: from mail-pf1-f195.google.com ([209.85.210.195]:40436 "EHLO
+        mail-pf1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727067AbfHDWtc (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 4 Aug 2019 18:49:32 -0400
+Received: by mail-pf1-f195.google.com with SMTP id p184so38593505pfp.7;
+        Sun, 04 Aug 2019 15:49:32 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references
          :mime-version:content-transfer-encoding;
-        bh=34zW6BJN89MycamN6XZc+aPi3iIpUXsyW4mngm2d11Q=;
-        b=Vl3ziFlsVP8d5c8y0YmW6fDZsGTWTBWfBuMUsCvUNMfO41hPRu5nz6knOx+9Exr4dm
-         faLIZ6PGv5svewcMn6NrpUtC2sVsC+7jyMTiSPQOkMWSlMNBGkEc5Hzdhl1GLUQ+lU00
-         s8/u7LPhlwjUp5vP9Cq58ZxyRYaJggFlYisUFFtIS444ycMw8U/APZaIEYWga3Yussps
-         tKIhHu6BLxxDR9A3QUeopRp/JQJFEZSB+ASswX2FluN7nR+bVi9w3B9Wm/JRet3KnCM9
-         BzOgVm6BdbLPf53jqaXQstPr6PLJxFbgM+ClIPWs4p2Wp5bWVtpTaVjy3ylfOWo6XjbI
-         VLCQ==
+        bh=51+On65LrNSvXr2lp5EjmvkWwZiof+VzaE7I05DxrV4=;
+        b=QsDIsK9f5PFinVSypvUnfmtXaz3kPWnYRiMB+PRzxsxoVwE1/PGQPLzli5akhJljj8
+         QOVfD3ESRzP4SmFLgRw8ezjrLknuphEkET2wTeMPtNXVFRvcIEp8+hl2krxX0FhUKmfA
+         FRVi5e/1Sd4ss6uRAZ/WTu2/Fdxsq5+uVpAz9kYcpHza4AYNfJ0v5Fv4Qq1jCOLlPy1H
+         nf4XWPgdgkGPokpib4Th3GTGYdM/mIIHrXhq16b9yHFMzXKgGdn6k4irDUbg4quFTiHg
+         KhiWe4DxW1uTVha/j+uVAZq73ruzBvFGvmOtPz78/ybeCNmcmkWr/Nh3pU4xyYgYNctD
+         P1LQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=34zW6BJN89MycamN6XZc+aPi3iIpUXsyW4mngm2d11Q=;
-        b=WD2++toZrTPeY0hWKVCFoQg9J8pLj6+JQwcf083rLQ7ZwBM5MjOAk4fk79xvXi7600
-         o2SHdA1p5bARhftAIk1jCqkbsH9+7aHswzhA+KD9er3vbHSndUi/dByky8qZAcZcd3Kq
-         xL/TmzJ8zD+xIuKg9OLvMri+5XsOZpF9XkzlzxxyiYxzuiVYEOB7dymmU/wcczhM83he
-         XwHkdMYw13AfWIlTSWss+c+z3i1aLTVVgg8ddImB/5kOozFUgVmBo3W6Yba5XwH0KvhE
-         FWbGuLTuB95ECXN07LiM/ZSpgWCIU8+1U4LsvS3QfU0NpBje1fz/O4OGW09kcqUgRYHq
-         hNVw==
-X-Gm-Message-State: APjAAAV69j+uKDvFCr+JZjq8TR92LjRYt1VPDjHBOcC+nfGqmdZZpXKH
-        aoZh4OBJM532y0yt1RrsiQg=
-X-Google-Smtp-Source: APXvYqzZzuc1CJxZdFJgWU/FwmUoZ/p878RlqbCeEzJ5+atuTCZn+89D3JrxmbErf1XY9IXgA3NZ2A==
-X-Received: by 2002:a17:90a:f498:: with SMTP id bx24mr15350312pjb.91.1564958976783;
-        Sun, 04 Aug 2019 15:49:36 -0700 (PDT)
+        bh=51+On65LrNSvXr2lp5EjmvkWwZiof+VzaE7I05DxrV4=;
+        b=qA7wzuBR/F1v5kTSs9KbDcuQeYxW6mI+//4lVEnGwcXaCK7wynyxuocKxjF2apQqUe
+         EUmxDYjHAsrgJ7WGDKyKUtaLK1qea5bamJV8B5EN295jeeP1QYL9djwPiMFAg02YQ49c
+         mMj+G/KBj1Leu8KziWTkn/3nGXDvf3EYn/9eY518HOs5Vm0vM0QW1PytXs+lrhY8XwZ5
+         gjnrNwNz0ZOWAjWlRJ3mwd7RhsYkMk57huDgakWNStFR0cKXhrnL6rl476dYMGbZJ3d1
+         sYQLmUy19hZrYz0EuV5pKxhq94NAcDL4U3Fg4CV7AxXeG8gNRDMncPV6QxculwtG7bvH
+         YpuQ==
+X-Gm-Message-State: APjAAAXrn2MQ67Oh0VDKOZOQ1LQOdK6zForT+IGscRhceJzDJ2L9cGDe
+        OTPt9mxx9eEcELUujOUZe5Y=
+X-Google-Smtp-Source: APXvYqwvBDogXJUfkkciG6MhUnx/OJ8ZeMIFfpBlRE5wKf4uSOTmFfk+/5+dEgtOxTw0423kYep5pg==
+X-Received: by 2002:a17:90a:384d:: with SMTP id l13mr15518641pjf.86.1564958971827;
+        Sun, 04 Aug 2019 15:49:31 -0700 (PDT)
 Received: from blueforge.nvidia.com (searspoint.nvidia.com. [216.228.112.21])
-        by smtp.gmail.com with ESMTPSA id r6sm35946836pjb.22.2019.08.04.15.49.35
+        by smtp.gmail.com with ESMTPSA id r6sm35946836pjb.22.2019.08.04.15.49.30
         (version=TLS1_3 cipher=AEAD-AES256-GCM-SHA384 bits=256/256);
-        Sun, 04 Aug 2019 15:49:36 -0700 (PDT)
+        Sun, 04 Aug 2019 15:49:31 -0700 (PDT)
 From:   john.hubbard@gmail.com
 X-Google-Original-From: jhubbard@nvidia.com
 To:     Andrew Morton <akpm@linux-foundation.org>
@@ -78,14 +78,11 @@ Cc:     Christoph Hellwig <hch@infradead.org>,
         netdev@vger.kernel.org, rds-devel@oss.oracle.com,
         sparclinux@vger.kernel.org, x86@kernel.org,
         xen-devel@lists.xenproject.org, John Hubbard <jhubbard@nvidia.com>,
-        Sudeep Dutt <sudeep.dutt@intel.com>,
-        Ashutosh Dixit <ashutosh.dixit@intel.com>,
-        Arnd Bergmann <arnd@arndb.de>, Joerg Roedel <jroedel@suse.de>,
-        Robin Murphy <robin.murphy@arm.com>,
-        Zhen Lei <thunder.leizhen@huawei.com>
-Subject: [PATCH v2 11/34] scif: convert put_page() to put_user_page*()
-Date:   Sun,  4 Aug 2019 15:48:52 -0700
-Message-Id: <20190804224915.28669-12-jhubbard@nvidia.com>
+        Andy Walls <awalls@md.metrocast.net>,
+        Mauro Carvalho Chehab <mchehab@kernel.org>
+Subject: [PATCH v2 08/34] media/ivtv: convert put_page() to put_user_page*()
+Date:   Sun,  4 Aug 2019 15:48:49 -0700
+Message-Id: <20190804224915.28669-9-jhubbard@nvidia.com>
 X-Mailer: git-send-email 2.22.0
 In-Reply-To: <20190804224915.28669-1-jhubbard@nvidia.com>
 References: <20190804224915.28669-1-jhubbard@nvidia.com>
@@ -106,55 +103,111 @@ release_pages().
 This is part a tree-wide conversion, as described in commit fc1d8e7cca2d
 ("mm: introduce put_user_page*(), placeholder versions").
 
-Cc: Sudeep Dutt <sudeep.dutt@intel.com>
-Cc: Ashutosh Dixit <ashutosh.dixit@intel.com>
-Cc: Arnd Bergmann <arnd@arndb.de>
-Cc: Joerg Roedel <jroedel@suse.de>
-Cc: Robin Murphy <robin.murphy@arm.com>
-Cc: Zhen Lei <thunder.leizhen@huawei.com>
+Cc: Andy Walls <awalls@md.metrocast.net>
+Cc: Mauro Carvalho Chehab <mchehab@kernel.org>
+Cc: linux-media@vger.kernel.org
 Signed-off-by: John Hubbard <jhubbard@nvidia.com>
 ---
- drivers/misc/mic/scif/scif_rma.c | 17 ++++++++---------
- 1 file changed, 8 insertions(+), 9 deletions(-)
+ drivers/media/pci/ivtv/ivtv-udma.c | 14 ++++----------
+ drivers/media/pci/ivtv/ivtv-yuv.c  | 11 +++--------
+ 2 files changed, 7 insertions(+), 18 deletions(-)
 
-diff --git a/drivers/misc/mic/scif/scif_rma.c b/drivers/misc/mic/scif/scif_rma.c
-index 01e27682ea30..d84ed9466920 100644
---- a/drivers/misc/mic/scif/scif_rma.c
-+++ b/drivers/misc/mic/scif/scif_rma.c
-@@ -113,13 +113,14 @@ static int scif_destroy_pinned_pages(struct scif_pinned_pages *pin)
- 	int writeable = pin->prot & SCIF_PROT_WRITE;
- 	int kernel = SCIF_MAP_KERNEL & pin->map_flags;
+diff --git a/drivers/media/pci/ivtv/ivtv-udma.c b/drivers/media/pci/ivtv/ivtv-udma.c
+index 5f8883031c9c..7c7f33c2412b 100644
+--- a/drivers/media/pci/ivtv/ivtv-udma.c
++++ b/drivers/media/pci/ivtv/ivtv-udma.c
+@@ -92,7 +92,7 @@ int ivtv_udma_setup(struct ivtv *itv, unsigned long ivtv_dest_addr,
+ {
+ 	struct ivtv_dma_page_info user_dma;
+ 	struct ivtv_user_dma *dma = &itv->udma;
+-	int i, err;
++	int err;
  
--	for (j = 0; j < pin->nr_pages; j++) {
--		if (pin->pages[j] && !kernel) {
-+	if (kernel) {
-+		for (j = 0; j < pin->nr_pages; j++) {
- 			if (writeable)
--				SetPageDirty(pin->pages[j]);
-+				set_page_dirty_lock(pin->pages[j]);
- 			put_page(pin->pages[j]);
+ 	IVTV_DEBUG_DMA("ivtv_udma_setup, dst: 0x%08x\n", (unsigned int)ivtv_dest_addr);
+ 
+@@ -119,8 +119,7 @@ int ivtv_udma_setup(struct ivtv *itv, unsigned long ivtv_dest_addr,
+ 		IVTV_DEBUG_WARN("failed to map user pages, returned %d instead of %d\n",
+ 			   err, user_dma.page_count);
+ 		if (err >= 0) {
+-			for (i = 0; i < err; i++)
+-				put_page(dma->map[i]);
++			put_user_pages(dma->map, err);
+ 			return -EINVAL;
  		}
--	}
-+	} else
-+		put_user_pages_dirty_lock(pin->pages, pin->nr_pages, writeable);
+ 		return err;
+@@ -130,9 +129,7 @@ int ivtv_udma_setup(struct ivtv *itv, unsigned long ivtv_dest_addr,
  
- 	scif_free(pin->pages,
- 		  pin->nr_pages * sizeof(*pin->pages));
-@@ -1385,11 +1386,9 @@ int __scif_pin_pages(void *addr, size_t len, int *out_prot,
- 				if (ulimit)
- 					__scif_dec_pinned_vm_lock(mm, nr_pages);
- 				/* Roll back any pinned pages */
--				for (i = 0; i < pinned_pages->nr_pages; i++) {
--					if (pinned_pages->pages[i])
--						put_page(
--						pinned_pages->pages[i]);
--				}
-+				put_user_pages(pinned_pages->pages,
-+					       pinned_pages->nr_pages);
-+
- 				prot &= ~SCIF_PROT_WRITE;
- 				try_upgrade = false;
- 				goto retry;
+ 	/* Fill SG List with new values */
+ 	if (ivtv_udma_fill_sg_list(dma, &user_dma, 0) < 0) {
+-		for (i = 0; i < dma->page_count; i++) {
+-			put_page(dma->map[i]);
+-		}
++		put_user_pages(dma->map, dma->page_count);
+ 		dma->page_count = 0;
+ 		return -ENOMEM;
+ 	}
+@@ -153,7 +150,6 @@ int ivtv_udma_setup(struct ivtv *itv, unsigned long ivtv_dest_addr,
+ void ivtv_udma_unmap(struct ivtv *itv)
+ {
+ 	struct ivtv_user_dma *dma = &itv->udma;
+-	int i;
+ 
+ 	IVTV_DEBUG_INFO("ivtv_unmap_user_dma\n");
+ 
+@@ -170,9 +166,7 @@ void ivtv_udma_unmap(struct ivtv *itv)
+ 	ivtv_udma_sync_for_cpu(itv);
+ 
+ 	/* Release User Pages */
+-	for (i = 0; i < dma->page_count; i++) {
+-		put_page(dma->map[i]);
+-	}
++	put_user_pages(dma->map, dma->page_count);
+ 	dma->page_count = 0;
+ }
+ 
+diff --git a/drivers/media/pci/ivtv/ivtv-yuv.c b/drivers/media/pci/ivtv/ivtv-yuv.c
+index cd2fe2d444c0..2c61a11d391d 100644
+--- a/drivers/media/pci/ivtv/ivtv-yuv.c
++++ b/drivers/media/pci/ivtv/ivtv-yuv.c
+@@ -30,7 +30,6 @@ static int ivtv_yuv_prep_user_dma(struct ivtv *itv, struct ivtv_user_dma *dma,
+ 	struct yuv_playback_info *yi = &itv->yuv_info;
+ 	u8 frame = yi->draw_frame;
+ 	struct yuv_frame_info *f = &yi->new_frame_info[frame];
+-	int i;
+ 	int y_pages, uv_pages;
+ 	unsigned long y_buffer_offset, uv_buffer_offset;
+ 	int y_decode_height, uv_decode_height, y_size;
+@@ -81,8 +80,7 @@ static int ivtv_yuv_prep_user_dma(struct ivtv *itv, struct ivtv_user_dma *dma,
+ 				 uv_pages, uv_dma.page_count);
+ 
+ 			if (uv_pages >= 0) {
+-				for (i = 0; i < uv_pages; i++)
+-					put_page(dma->map[y_pages + i]);
++				put_user_pages(&dma->map[y_pages], uv_pages);
+ 				rc = -EFAULT;
+ 			} else {
+ 				rc = uv_pages;
+@@ -93,8 +91,7 @@ static int ivtv_yuv_prep_user_dma(struct ivtv *itv, struct ivtv_user_dma *dma,
+ 				 y_pages, y_dma.page_count);
+ 		}
+ 		if (y_pages >= 0) {
+-			for (i = 0; i < y_pages; i++)
+-				put_page(dma->map[i]);
++			put_user_pages(dma->map, y_pages);
+ 			/*
+ 			 * Inherit the -EFAULT from rc's
+ 			 * initialization, but allow it to be
+@@ -112,9 +109,7 @@ static int ivtv_yuv_prep_user_dma(struct ivtv *itv, struct ivtv_user_dma *dma,
+ 	/* Fill & map SG List */
+ 	if (ivtv_udma_fill_sg_list (dma, &uv_dma, ivtv_udma_fill_sg_list (dma, &y_dma, 0)) < 0) {
+ 		IVTV_DEBUG_WARN("could not allocate bounce buffers for highmem userspace buffers\n");
+-		for (i = 0; i < dma->page_count; i++) {
+-			put_page(dma->map[i]);
+-		}
++		put_user_pages(dma->map, dma->page_count);
+ 		dma->page_count = 0;
+ 		return -ENOMEM;
+ 	}
 -- 
 2.22.0
 
