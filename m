@@ -8,53 +8,53 @@ X-Spam-Status: No, score=-9.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id EAD49C19759
-	for <linux-nfs@archiver.kernel.org>; Sun,  4 Aug 2019 22:51:37 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 732D4C433FF
+	for <linux-nfs@archiver.kernel.org>; Sun,  4 Aug 2019 22:51:45 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id C13FD2075C
-	for <linux-nfs@archiver.kernel.org>; Sun,  4 Aug 2019 22:51:37 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 4A3E72075C
+	for <linux-nfs@archiver.kernel.org>; Sun,  4 Aug 2019 22:51:45 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="M2L6YAdx"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="AV7uFQE9"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728087AbfHDWv3 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 4 Aug 2019 18:51:29 -0400
-Received: from mail-pl1-f196.google.com ([209.85.214.196]:37359 "EHLO
-        mail-pl1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727752AbfHDWuG (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 4 Aug 2019 18:50:06 -0400
-Received: by mail-pl1-f196.google.com with SMTP id b3so35710608plr.4;
-        Sun, 04 Aug 2019 15:50:06 -0700 (PDT)
+        id S1727721AbfHDWuD (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sun, 4 Aug 2019 18:50:03 -0400
+Received: from mail-pg1-f193.google.com ([209.85.215.193]:39851 "EHLO
+        mail-pg1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727659AbfHDWt6 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 4 Aug 2019 18:49:58 -0400
+Received: by mail-pg1-f193.google.com with SMTP id u17so38667310pgi.6;
+        Sun, 04 Aug 2019 15:49:57 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references
          :mime-version:content-transfer-encoding;
-        bh=P44t64b1Yt2CczJo6SOAPYnnEfAXhRMhGjbg0YSdFKY=;
-        b=M2L6YAdxRG9wjsRrCe6Hi1BWSuOg3nnT/7fZiBi9EPm8FKwRKPZG/qe2iVkh5HnVN4
-         aOY3UbjkBBnyU76TUmUntE+kZe6hTFiJw358fIRHno09JT1X6eXkCbDzppqL0p2wk4as
-         lvnBxcaafGoFzaHDQmz1tjx1PupzVr+3Bwm67hS0uZ1vXhGSeRklj059Ttpi/TbXqeOB
-         q+Wl+DhD48e6x3JgIGWaWg109om0eB6fx6VWuDjwbuhJAY9G+Qx7/vpxnkVUdLKuN2o0
-         4E0MKgE+4sHPl7NeWK7fjvH31HAT3/QXcQRRRT0MdjjRb3hC4ZkOnyD0xdYCwRJ/SF1P
-         5dnQ==
+        bh=rRiJNzkH0bRoPJKYXoQcsROADD9YH4USeXVLEsmAa1E=;
+        b=AV7uFQE9YUuDd+D7n/raE3+Vd4+M3WfHMpSGBy7Po/eVbcIBoj8uNAj9DUgT5bKiPy
+         NOFpz/m3dZOdwDIxZQeVlxsCTnZ92dZxKMNJ/rR2X1bMUek0j8TGq+u0eAdIPX6nv7Xg
+         3xla0EEXNbB0lWncn+d/ABroqlg3T2U7E2b5B9Xg8cDDZKP8nXSMimiXqXtFe+tBDXhV
+         ARezJERjiP3GeR4zOW6+cUq9Pz5Hkpr43jELcaC0lfmmiiWVj3OueADfK4ODHerMWl3x
+         WKZ0WyFn5raZ50oDfnPOKa2jV6SJBQSgxKSa9LR9P0FGYWA2KC5auYEx1XvMz/0dUJhq
+         D/Mg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=P44t64b1Yt2CczJo6SOAPYnnEfAXhRMhGjbg0YSdFKY=;
-        b=J6Rns9fGg2VWa++4EJwclj0+AE/1ADvaRmapRt1LMLAAYe+/Eu8Fr9Td1hYIEyr3+P
-         E+kNNLKdhWqEGbt4clbhsid4VB9lkKT4FtiQol3/516JXboAOhKK+b5AK3DlV9jrlZh5
-         MZRedid2X0P1X4XQLhjm0dU48VL5NPoNyrIKXlRzpk+t/wX/AgMRrmMm00XYLlQ2R1ie
-         lw0zgKRryGHeoiIa/sGnwx69XOh2G3Jhh3Yl1gv1DDzjOdLqRSk0hlMaMcV4Nl0/PMRr
-         I6ILRnY0YbTFF6X8EpgCtq6gPF8o8agd1j4aCry3ky/TP3Ll14d4PD4H8sx8ChyIlb9C
-         vtpQ==
-X-Gm-Message-State: APjAAAUH/vOaQAR/oKevOMOWGh7aBFd8HiJ93VcAil/LxpLwcqH6PjcE
-        5jcPBei5EbmgyKAC6VB/U64=
-X-Google-Smtp-Source: APXvYqwAR1ooAm+K3YiNJXFD4tuydWLDFWaO0CLJ4VvvN+1W/RZGreelHnJEnGprjIniv/pPljEZRw==
-X-Received: by 2002:a17:902:7202:: with SMTP id ba2mr144069047plb.266.1564959005550;
-        Sun, 04 Aug 2019 15:50:05 -0700 (PDT)
+        bh=rRiJNzkH0bRoPJKYXoQcsROADD9YH4USeXVLEsmAa1E=;
+        b=tlFCr6MMhwQz69uYx7FcMx9XjInPjpkFBqaLqTz/vig6cDyxWbs7ZLKlwvsd7/t89L
+         hAw5RlIbOQUoxfOSR+Uxf9wjXynbCoTH+7SAGsRYewQhddrVyDWe6/c2224Lcj1nrbu6
+         DASNp2yUKDvTaK//vBm6q+tLmy49dR9to/zxwsOljT0YZOfdS8Az9qt3iMUJwvuU3v2X
+         lIFD+SybfukIkp44Nd7FTv6SJUJDaKsXeCaSns8FvCsmwhM/0qXgjTUBPMjYkylOd1oY
+         mSDNa7jinQrkuLTjxpDjKeJU3GjL0wYsjQtzqi7U2YE72mf3N0tZ3Dz8vB2twLNkBVpy
+         us1g==
+X-Gm-Message-State: APjAAAV+/MBuObVtwDvrojh9XyyVDcjA42r6YD1rRD915qDivqanLJ8K
+        J1/9ZLg2tvYFPKywPXkF86s=
+X-Google-Smtp-Source: APXvYqxM1jqqH644LscYZh1fOmR6SQroZ5U0oF421RZK6m1nNZ1H1tDwWIOHK+9da6OAru/hIya3FA==
+X-Received: by 2002:a63:61cf:: with SMTP id v198mr17505607pgb.217.1564958997274;
+        Sun, 04 Aug 2019 15:49:57 -0700 (PDT)
 Received: from blueforge.nvidia.com (searspoint.nvidia.com. [216.228.112.21])
-        by smtp.gmail.com with ESMTPSA id r6sm35946836pjb.22.2019.08.04.15.50.03
+        by smtp.gmail.com with ESMTPSA id r6sm35946836pjb.22.2019.08.04.15.49.55
         (version=TLS1_3 cipher=AEAD-AES256-GCM-SHA384 bits=256/256);
-        Sun, 04 Aug 2019 15:50:05 -0700 (PDT)
+        Sun, 04 Aug 2019 15:49:56 -0700 (PDT)
 From:   john.hubbard@gmail.com
 X-Google-Original-From: jhubbard@nvidia.com
 To:     Andrew Morton <akpm@linux-foundation.org>
@@ -78,18 +78,13 @@ Cc:     Christoph Hellwig <hch@infradead.org>,
         netdev@vger.kernel.org, rds-devel@oss.oracle.com,
         sparclinux@vger.kernel.org, x86@kernel.org,
         xen-devel@lists.xenproject.org, John Hubbard <jhubbard@nvidia.com>,
-        Al Viro <viro@zeniv.linux.org.uk>,
-        Andrea Arcangeli <aarcange@redhat.com>,
-        Christopher Yeoh <cyeoh@au1.ibm.com>,
-        Heiko Carstens <heiko.carstens@de.ibm.com>,
-        Ingo Molnar <mingo@kernel.org>, Jann Horn <jann@thejh.net>,
-        Lorenzo Stoakes <lstoakes@gmail.com>,
-        Mathieu Desnoyers <mathieu.desnoyers@efficios.com>,
-        Mike Rapoport <rppt@linux.vnet.ibm.com>,
-        Rashika Kheria <rashika.kheria@gmail.com>
-Subject: [PATCH v2 29/34] mm/process_vm_access.c: convert put_page() to put_user_page*()
-Date:   Sun,  4 Aug 2019 15:49:10 -0700
-Message-Id: <20190804224915.28669-30-jhubbard@nvidia.com>
+        Thomas Gleixner <tglx@linutronix.de>,
+        Ingo Molnar <mingo@redhat.com>,
+        Peter Zijlstra <peterz@infradead.org>,
+        Darren Hart <dvhart@infradead.org>
+Subject: [PATCH v2 24/34] futex: convert put_page() to put_user_page*()
+Date:   Sun,  4 Aug 2019 15:49:05 -0700
+Message-Id: <20190804224915.28669-25-jhubbard@nvidia.com>
 X-Mailer: git-send-email 2.22.0
 In-Reply-To: <20190804224915.28669-1-jhubbard@nvidia.com>
 References: <20190804224915.28669-1-jhubbard@nvidia.com>
@@ -110,69 +105,64 @@ release_pages().
 This is part a tree-wide conversion, as described in commit fc1d8e7cca2d
 ("mm: introduce put_user_page*(), placeholder versions").
 
-Cc: Al Viro <viro@zeniv.linux.org.uk>
-Cc: Andrea Arcangeli <aarcange@redhat.com>
-Cc: Christopher Yeoh <cyeoh@au1.ibm.com>
-Cc: Dave Hansen <dave.hansen@linux.intel.com>
-Cc: Heiko Carstens <heiko.carstens@de.ibm.com>
-Cc: Ingo Molnar <mingo@kernel.org>
-Cc: Jann Horn <jann@thejh.net>
-Cc: Lorenzo Stoakes <lstoakes@gmail.com>
-Cc: Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
-Cc: Mike Rapoport <rppt@linux.vnet.ibm.com>
-Cc: Rashika Kheria <rashika.kheria@gmail.com>
+Cc: Thomas Gleixner <tglx@linutronix.de>
+Cc: Ingo Molnar <mingo@redhat.com>
+Cc: Peter Zijlstra <peterz@infradead.org>
+Cc: Darren Hart <dvhart@infradead.org>
 Signed-off-by: John Hubbard <jhubbard@nvidia.com>
 ---
- mm/process_vm_access.c | 18 +++++++++---------
- 1 file changed, 9 insertions(+), 9 deletions(-)
+ kernel/futex.c | 10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
 
-diff --git a/mm/process_vm_access.c b/mm/process_vm_access.c
-index 357aa7bef6c0..4d29d54ec93f 100644
---- a/mm/process_vm_access.c
-+++ b/mm/process_vm_access.c
-@@ -96,7 +96,7 @@ static int process_vm_rw_single_vec(unsigned long addr,
- 		flags |= FOLL_WRITE;
+diff --git a/kernel/futex.c b/kernel/futex.c
+index 6d50728ef2e7..4b4cae58ec57 100644
+--- a/kernel/futex.c
++++ b/kernel/futex.c
+@@ -623,7 +623,7 @@ get_futex_key(u32 __user *uaddr, int fshared, union futex_key *key, enum futex_a
+ 		lock_page(page);
+ 		shmem_swizzled = PageSwapCache(page) || page->mapping;
+ 		unlock_page(page);
+-		put_page(page);
++		put_user_page(page);
  
- 	while (!rc && nr_pages && iov_iter_count(iter)) {
--		int pages = min(nr_pages, max_pages_per_loop);
-+		int pinned_pages = min(nr_pages, max_pages_per_loop);
- 		int locked = 1;
- 		size_t bytes;
+ 		if (shmem_swizzled)
+ 			goto again;
+@@ -675,7 +675,7 @@ get_futex_key(u32 __user *uaddr, int fshared, union futex_key *key, enum futex_a
  
-@@ -106,14 +106,15 @@ static int process_vm_rw_single_vec(unsigned long addr,
- 		 * current/current->mm
+ 		if (READ_ONCE(page->mapping) != mapping) {
+ 			rcu_read_unlock();
+-			put_page(page);
++			put_user_page(page);
+ 
+ 			goto again;
+ 		}
+@@ -683,7 +683,7 @@ get_futex_key(u32 __user *uaddr, int fshared, union futex_key *key, enum futex_a
+ 		inode = READ_ONCE(mapping->host);
+ 		if (!inode) {
+ 			rcu_read_unlock();
+-			put_page(page);
++			put_user_page(page);
+ 
+ 			goto again;
+ 		}
+@@ -702,7 +702,7 @@ get_futex_key(u32 __user *uaddr, int fshared, union futex_key *key, enum futex_a
  		 */
- 		down_read(&mm->mmap_sem);
--		pages = get_user_pages_remote(task, mm, pa, pages, flags,
--					      process_pages, NULL, &locked);
-+		pinned_pages = get_user_pages_remote(task, mm, pa, pinned_pages,
-+						     flags, process_pages, NULL,
-+						     &locked);
- 		if (locked)
- 			up_read(&mm->mmap_sem);
--		if (pages <= 0)
-+		if (pinned_pages <= 0)
- 			return -EFAULT;
+ 		if (!atomic_inc_not_zero(&inode->i_count)) {
+ 			rcu_read_unlock();
+-			put_page(page);
++			put_user_page(page);
  
--		bytes = pages * PAGE_SIZE - start_offset;
-+		bytes = pinned_pages * PAGE_SIZE - start_offset;
- 		if (bytes > len)
- 			bytes = len;
- 
-@@ -122,10 +123,9 @@ static int process_vm_rw_single_vec(unsigned long addr,
- 					 vm_write);
- 		len -= bytes;
- 		start_offset = 0;
--		nr_pages -= pages;
--		pa += pages * PAGE_SIZE;
--		while (pages)
--			put_page(process_pages[--pages]);
-+		nr_pages -= pinned_pages;
-+		pa += pinned_pages * PAGE_SIZE;
-+		put_user_pages(process_pages, pinned_pages);
+ 			goto again;
+ 		}
+@@ -723,7 +723,7 @@ get_futex_key(u32 __user *uaddr, int fshared, union futex_key *key, enum futex_a
  	}
  
- 	return rc;
+ out:
+-	put_page(page);
++	put_user_page(page);
+ 	return err;
+ }
+ 
 -- 
 2.22.0
 
