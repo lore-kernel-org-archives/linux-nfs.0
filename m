@@ -5,56 +5,56 @@ X-Spam-Level:
 X-Spam-Status: No, score=-9.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C4189C433FF
-	for <linux-nfs@archiver.kernel.org>; Sun,  4 Aug 2019 22:53:59 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 65B61C433FF
+	for <linux-nfs@archiver.kernel.org>; Sun,  4 Aug 2019 22:54:28 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 991E420880
-	for <linux-nfs@archiver.kernel.org>; Sun,  4 Aug 2019 22:53:59 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 364A420880
+	for <linux-nfs@archiver.kernel.org>; Sun,  4 Aug 2019 22:54:28 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="L35X2QFh"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="JnEMIs3n"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727917AbfHDWxx (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 4 Aug 2019 18:53:53 -0400
-Received: from mail-pf1-f195.google.com ([209.85.210.195]:42541 "EHLO
-        mail-pf1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727485AbfHDWtr (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 4 Aug 2019 18:49:47 -0400
-Received: by mail-pf1-f195.google.com with SMTP id q10so38581858pff.9;
-        Sun, 04 Aug 2019 15:49:46 -0700 (PDT)
+        id S1727636AbfHDWyP (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sun, 4 Aug 2019 18:54:15 -0400
+Received: from mail-pf1-f194.google.com ([209.85.210.194]:33395 "EHLO
+        mail-pf1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727430AbfHDWto (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 4 Aug 2019 18:49:44 -0400
+Received: by mail-pf1-f194.google.com with SMTP id g2so38603333pfq.0;
+        Sun, 04 Aug 2019 15:49:43 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references
          :mime-version:content-transfer-encoding;
-        bh=1X33MY8P1PVcaLkCZcp6PkXiHV9wvPThIXgNE9TFbj4=;
-        b=L35X2QFh0M4JIQvOmPagjixwdLqggClkiY/ITRED3vd5cYmML5rpnhsQYVeJG55L7X
-         lfpM/Rw8+9+KW1xLlbUjjd2pEukAuHL9FPW2brNIFLNAAe+xFNLiBhvXwHgfebwSPh6b
-         PQimMsMZnxgRdBC8pyrRMZ9Xs902qjGDWwSRlQpLzHZkXMK6vYaJ7jNHAlwygvXZxKWD
-         HRNszvS/yLW3PMoeuHrejzjB7JHf9PJVVvjCC1Gi8OYeSyaj8QqsLJjtyVPXxwKbhU1l
-         56SfAsWTx6H5Myy0JvyaDz6KAPklX1grAzJq4JD5PKOSOMwKa+X4MP3JYOJahIqu806a
-         4oGw==
+        bh=JsaN0a6ImilSblrGqgWWjtVL4aaUVqoBD3LMggUShuU=;
+        b=JnEMIs3nTK87TbKIsk78nYiw0PTY0ejtc4/1iVy6auz4dRHpNyRxFRwH1QA1daWzTN
+         aXj9jYYTXz8+AYgGcMfTPEBfeFGtB4kpRaO8Pk0E6cwtra6dbEcp5zLBIuE/7ypkwlfT
+         SpsJZfWDoouD9Zux+JSra/B270Q5FO6OQn2iMY62H9YA77q4YnCIt/dO49LC8oE1+DV3
+         b+TloTS62XLmGXLlvmUrAcvGMvg3D8t/Jyb83QK6eNN0dmLM2VXZUouulBv1uv5lB+bU
+         bCC0pVKtYc9eHNJ+luk9voAPhlxcPRRn3LwajJw/0mnVI63KipX9TSVsdQUN1tD1p56o
+         UI1Q==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=1X33MY8P1PVcaLkCZcp6PkXiHV9wvPThIXgNE9TFbj4=;
-        b=oCPGFPSDS4T7TX3IEnMmJTOghSrlU2eHc69u5U1uO2wXrueTSkjXppMxtYOCb/ZOgm
-         Dcr3zX0+GN0oQPZXwCxktjZiKDYQ9OOvBh9YQdBhZuiKkBTilqfyc5w4NGmFuw+D81KN
-         jy9UM3ntP0gTs0m6tAkbnSWKUoWUDrt7hJOmuzo9t4sF1VDdIsBObVr++ywRlCtW1cz8
-         ml4vTUxYOCGDZaFaq3h01SrqbWWffpcapz9MZBTa8yMVLA0duWckmCBr+lQFtDE9xtAX
-         xux1aLH7woS3mBssCCa5fBMaTG380DVr44KNWlSohxIh0BpQ3Ko+rR4qkueH09r5slJd
-         HD1Q==
-X-Gm-Message-State: APjAAAVaIERQtzKGdWBEwK98gdO6JUtRA+7nApUHLOUfPhrQmeH2G4MF
-        aDzvaU5ykQRO9zoQNU77Eek=
-X-Google-Smtp-Source: APXvYqzQPIYoNRubdZIOtSxTDDzyPgcMaQ5zki3KNapO18w6JwMFrcpCjaVO/4MzoXfe6L31Al4dig==
-X-Received: by 2002:a65:6859:: with SMTP id q25mr22221333pgt.181.1564958986332;
-        Sun, 04 Aug 2019 15:49:46 -0700 (PDT)
+        bh=JsaN0a6ImilSblrGqgWWjtVL4aaUVqoBD3LMggUShuU=;
+        b=K4JM3PtCIeg8qsyl9CVTPir3l6NVJ2tqK+9yS9FEG1+QQCvqNWdvlcY/zH73vIzXjC
+         sNtSEo2wwqiklP3pursf0B1nIahEGb19IJH0cUbs/0lDhBToK+MIfKQ1VsVKF2SHgxBk
+         EcwytzQo9DCUKh8hoYSiY4Wvd4GznfY5/tZZWryf8B3bCeILTp95SMi5u4ygKSVSZCbK
+         vaeQnbaJppgzx3prd9SLWFfETLF46tQoCZ7QJdbx5fblmTZm59rCoy3511qBw86IrHwB
+         fZHbjUgSu5Q+eCG7qYUrI2ff/c0EL69dWhllLAhBLL+YtXb9WK1VLPT/xVwDZe1fkai/
+         2NVQ==
+X-Gm-Message-State: APjAAAUFKfHs85j/P4t4yfaNpahmx6hMwIT31q54KcQlfT7FsnoZk7tb
+        wE0qlwiVbjj8FS54x9Tod0A1k9Uv
+X-Google-Smtp-Source: APXvYqyPw77rNCbZJ7kQ+m4UN8hP7cU/4bhOvRnVoHevKNRjma2a+EIazJKEeGo0aqshVanFUuFV/w==
+X-Received: by 2002:aa7:8acb:: with SMTP id b11mr67847354pfd.109.1564958983244;
+        Sun, 04 Aug 2019 15:49:43 -0700 (PDT)
 Received: from blueforge.nvidia.com (searspoint.nvidia.com. [216.228.112.21])
-        by smtp.gmail.com with ESMTPSA id r6sm35946836pjb.22.2019.08.04.15.49.44
+        by smtp.gmail.com with ESMTPSA id r6sm35946836pjb.22.2019.08.04.15.49.41
         (version=TLS1_3 cipher=AEAD-AES256-GCM-SHA384 bits=256/256);
-        Sun, 04 Aug 2019 15:49:45 -0700 (PDT)
+        Sun, 04 Aug 2019 15:49:42 -0700 (PDT)
 From:   john.hubbard@gmail.com
 X-Google-Original-From: jhubbard@nvidia.com
 To:     Andrew Morton <akpm@linux-foundation.org>
@@ -78,10 +78,17 @@ Cc:     Christoph Hellwig <hch@infradead.org>,
         netdev@vger.kernel.org, rds-devel@oss.oracle.com,
         sparclinux@vger.kernel.org, x86@kernel.org,
         xen-devel@lists.xenproject.org, John Hubbard <jhubbard@nvidia.com>,
-        Alex Williamson <alex.williamson@redhat.com>
-Subject: [PATCH v2 17/34] vfio: convert put_page() to put_user_page*()
-Date:   Sun,  4 Aug 2019 15:48:58 -0700
-Message-Id: <20190804224915.28669-18-jhubbard@nvidia.com>
+        Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
+        Eric Anholt <eric@anholt.net>,
+        Stefan Wahren <stefan.wahren@i2se.com>,
+        Mihaela Muraru <mihaela.muraru21@gmail.com>,
+        Suniel Mahesh <sunil.m@techveda.org>,
+        Al Viro <viro@zeniv.linux.org.uk>,
+        Sidong Yang <realwakka@gmail.com>,
+        Kishore KP <kishore.p@techveda.org>
+Subject: [PATCH v2 15/34] staging/vc04_services: convert put_page() to put_user_page*()
+Date:   Sun,  4 Aug 2019 15:48:56 -0700
+Message-Id: <20190804224915.28669-16-jhubbard@nvidia.com>
 X-Mailer: git-send-email 2.22.0
 In-Reply-To: <20190804224915.28669-1-jhubbard@nvidia.com>
 References: <20190804224915.28669-1-jhubbard@nvidia.com>
@@ -102,49 +109,52 @@ release_pages().
 This is part a tree-wide conversion, as described in commit fc1d8e7cca2d
 ("mm: introduce put_user_page*(), placeholder versions").
 
-Note that this effectively changes the code's behavior in
-qp_release_pages(): it now ultimately calls set_page_dirty_lock(),
-instead of set_page_dirty(). This is probably more accurate.
+Acked-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
 
-As Christoph Hellwig put it, "set_page_dirty() is only safe if we are
-dealing with a file backed page where we have reference on the inode it
-hangs off." [1]
-
-[1] https://lore.kernel.org/r/20190723153640.GB720@lst.de
-
-Cc: Alex Williamson <alex.williamson@redhat.com>
-Cc: kvm@vger.kernel.org
+Cc: Eric Anholt <eric@anholt.net>
+Cc: Stefan Wahren <stefan.wahren@i2se.com>
+Cc: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Cc: Mihaela Muraru <mihaela.muraru21@gmail.com>
+Cc: Suniel Mahesh <sunil.m@techveda.org>
+Cc: Al Viro <viro@zeniv.linux.org.uk>
+Cc: Sidong Yang <realwakka@gmail.com>
+Cc: Kishore KP <kishore.p@techveda.org>
+Cc: linux-rpi-kernel@lists.infradead.org
+Cc: linux-arm-kernel@lists.infradead.org
+Cc: devel@driverdev.osuosl.org
 Signed-off-by: John Hubbard <jhubbard@nvidia.com>
 ---
- drivers/vfio/vfio_iommu_type1.c | 8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
+ .../vc04_services/interface/vchiq_arm/vchiq_2835_arm.c | 10 ++--------
+ 1 file changed, 2 insertions(+), 8 deletions(-)
 
-diff --git a/drivers/vfio/vfio_iommu_type1.c b/drivers/vfio/vfio_iommu_type1.c
-index 054391f30fa8..5a5461a14299 100644
---- a/drivers/vfio/vfio_iommu_type1.c
-+++ b/drivers/vfio/vfio_iommu_type1.c
-@@ -320,9 +320,9 @@ static int put_pfn(unsigned long pfn, int prot)
- {
- 	if (!is_invalid_reserved_pfn(pfn)) {
- 		struct page *page = pfn_to_page(pfn);
--		if (prot & IOMMU_WRITE)
--			SetPageDirty(page);
--		put_page(page);
-+		bool dirty = prot & IOMMU_WRITE;
-+
-+		put_user_pages_dirty_lock(&page, 1, dirty);
- 		return 1;
+diff --git a/drivers/staging/vc04_services/interface/vchiq_arm/vchiq_2835_arm.c b/drivers/staging/vc04_services/interface/vchiq_arm/vchiq_2835_arm.c
+index 61c69f353cdb..ec92b4c50e95 100644
+--- a/drivers/staging/vc04_services/interface/vchiq_arm/vchiq_2835_arm.c
++++ b/drivers/staging/vc04_services/interface/vchiq_arm/vchiq_2835_arm.c
+@@ -336,10 +336,7 @@ cleanup_pagelistinfo(struct vchiq_pagelist_info *pagelistinfo)
  	}
- 	return 0;
-@@ -356,7 +356,7 @@ static int vaddr_get_pfn(struct mm_struct *mm, unsigned long vaddr,
- 		 */
- 		if (ret > 0 && vma_is_fsdax(vmas[0])) {
- 			ret = -EOPNOTSUPP;
--			put_page(page[0]);
-+			put_user_page(page[0]);
+ 
+ 	if (pagelistinfo->pages_need_release) {
+-		unsigned int i;
+-
+-		for (i = 0; i < pagelistinfo->num_pages; i++)
+-			put_page(pagelistinfo->pages[i]);
++		put_user_pages(pagelistinfo->pages, pagelistinfo->num_pages);
+ 	}
+ 
+ 	dma_free_coherent(g_dev, pagelistinfo->pagelist_buffer_size,
+@@ -454,10 +451,7 @@ create_pagelist(char __user *buf, size_t count, unsigned short type)
+ 				       __func__, actual_pages, num_pages);
+ 
+ 			/* This is probably due to the process being killed */
+-			while (actual_pages > 0) {
+-				actual_pages--;
+-				put_page(pages[actual_pages]);
+-			}
++			put_user_pages(pages, actual_pages);
+ 			cleanup_pagelistinfo(pagelistinfo);
+ 			return NULL;
  		}
- 	}
- 	up_read(&mm->mmap_sem);
 -- 
 2.22.0
 
