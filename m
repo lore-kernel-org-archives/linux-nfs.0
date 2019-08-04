@@ -2,68 +2,68 @@ Return-Path: <SRS0=YLGR=WA=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
-	URIBL_BLOCKED,USER_AGENT_GIT autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-5.3 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,UNPARSEABLE_RELAY,USER_AGENT_SANE_1
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 15F9DC32750
-	for <linux-nfs@archiver.kernel.org>; Sun,  4 Aug 2019 22:57:09 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 01E06C41514
+	for <linux-nfs@archiver.kernel.org>; Sun,  4 Aug 2019 23:29:56 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id D562F2182B
-	for <linux-nfs@archiver.kernel.org>; Sun,  4 Aug 2019 22:57:08 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id CD81E2089F
+	for <linux-nfs@archiver.kernel.org>; Sun,  4 Aug 2019 23:29:55 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="B1sMPAcs"
+	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="Q8jHS5Ly"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726866AbfHDWtV (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 4 Aug 2019 18:49:21 -0400
-Received: from mail-pl1-f196.google.com ([209.85.214.196]:35553 "EHLO
-        mail-pl1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726766AbfHDWtU (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 4 Aug 2019 18:49:20 -0400
-Received: by mail-pl1-f196.google.com with SMTP id w24so35682099plp.2;
-        Sun, 04 Aug 2019 15:49:19 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=YZWsn+x3jxp8fDI44kijDFRG/svqEg676iUchgN7QlQ=;
-        b=B1sMPAcstI1puFk4w0cpCwyzsYpSCgnvkOWm4iaJnV8UBmRJR0FrVO7eeE2XgV7/DO
-         DR3tgluGLB1/vbyPlZSBhbH+uo9CrzBJ1Q1rSPrUCEwEtdEEdHEsEYUhdaEO6ERTThp5
-         mEExF0x3pWqACoKcpQ4jZSYPKI1ZJek74ypeshcY0SnsNOjJI1e96tP2zvVBSu1jKr+e
-         Ym/g1QeiNeLfwG1YUwV1crKOGP7UibjO/7uqLpqDUr9tSTViDlNhIsYnzcFJ7cH459WG
-         UptxQms1lJSvYFzHsJjq9KZpFUhZyY+WV1c+r9r6Bw6gMAdbrBCCcRHzjatxpXqpGNbN
-         SemQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=YZWsn+x3jxp8fDI44kijDFRG/svqEg676iUchgN7QlQ=;
-        b=sVMyLVLXBMyeX3jOJsBDWOD72fcsPOmIEsGXzpOjHCz4rbcCj8X/TiZdaMEqhRO4k5
-         m1Qf6uh+68xXTAG0Tu6jhwLYlho/zFoIIGq7rD+Dl5uMCahm0o0xm42dG/lIk/abakD7
-         zUAcJwck4jcB/UIsOlrVKueNwpA9848eRR3iv7cgTHc0W5oivneHbOjK6MgdT2a6uJGR
-         lvLwBwZuaWRB6aVmO4Xe0382IUZ9kcEXjNGlOY/nGYThneyBgMbdrKGo79aS+e5EZovl
-         QoGUL5nyvpVYS8eeaj7iOuOV0EnxQDOyQ/NOJXDARjY6Gc/39Zx0NDyTuo2M1dFC3Ggh
-         UUkA==
-X-Gm-Message-State: APjAAAWeYdN6oUavHHmr/hc2IfYdfsKsxoCC7WPPpe7sbN/NxQQYjm0H
-        dE37ovswcqE4Jyu9Egl9t2s=
-X-Google-Smtp-Source: APXvYqxKaZcQUZ6UkPpcjP3XTdHmlP5C8HsDSLXmXJQis54EHd1b2U7WGwbPzUzQrFqhwr6YKPwdiw==
-X-Received: by 2002:a17:902:a413:: with SMTP id p19mr142672660plq.134.1564958958984;
-        Sun, 04 Aug 2019 15:49:18 -0700 (PDT)
-Received: from blueforge.nvidia.com (searspoint.nvidia.com. [216.228.112.21])
-        by smtp.gmail.com with ESMTPSA id r6sm35946836pjb.22.2019.08.04.15.49.16
-        (version=TLS1_3 cipher=AEAD-AES256-GCM-SHA384 bits=256/256);
-        Sun, 04 Aug 2019 15:49:18 -0700 (PDT)
-From:   john.hubbard@gmail.com
-X-Google-Original-From: jhubbard@nvidia.com
-To:     Andrew Morton <akpm@linux-foundation.org>
-Cc:     Christoph Hellwig <hch@infradead.org>,
+        id S1726822AbfHDX3v (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sun, 4 Aug 2019 19:29:51 -0400
+Received: from aserp2120.oracle.com ([141.146.126.78]:55174 "EHLO
+        aserp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726422AbfHDX3u (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 4 Aug 2019 19:29:50 -0400
+Received: from pps.filterd (aserp2120.oracle.com [127.0.0.1])
+        by aserp2120.oracle.com (8.16.0.27/8.16.0.27) with SMTP id x74NNpc9062157;
+        Sun, 4 Aug 2019 23:28:16 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=cc : subject : to :
+ references : from : message-id : date : mime-version : in-reply-to :
+ content-type : content-transfer-encoding; s=corp-2018-07-02;
+ bh=Xv/Xmfe6YA+uiUXCTMOrvz+2cmMCgKpadUjchsyGSqE=;
+ b=Q8jHS5LyGioVRXkw2sEGxpCJ0g6RThcXNJNhQ+zIt1yN9QAbG9oidwXBknqGefI/Gzo9
+ By4AgfVTCnBhziiCIa41vp2Km7uJGUaiXbbnEbFOGJu/tindREq8cqQoMC9pE39KJmFC
+ pbJGax0NRp2J6BU7Wqa2MYOikJcTOlvo6BuaJMMnG/rkz+mFpRP2aBj29SOQtqfHNiyp
+ Oiqh3Pja48Hg208XzAKVGnWgaY0bM8E6Jd5XgoYoeEDXsXo8GsiLTw4ZRpe3pTL5xLes
+ aQ1Owfq77tOFIMZ2lazrtAcx+SAXXLqcnJIeXpem2RoPun+jIzPsLiAZSgR10i43pZcT 6Q== 
+Received: from aserp3030.oracle.com (aserp3030.oracle.com [141.146.126.71])
+        by aserp2120.oracle.com with ESMTP id 2u527pc4c4-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Sun, 04 Aug 2019 23:28:16 +0000
+Received: from pps.filterd (aserp3030.oracle.com [127.0.0.1])
+        by aserp3030.oracle.com (8.16.0.27/8.16.0.27) with SMTP id x74NRrau079768;
+        Sun, 4 Aug 2019 23:28:16 GMT
+Received: from pps.reinject (localhost [127.0.0.1])
+        by aserp3030.oracle.com with ESMTP id 2u50abah84-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL);
+        Sun, 04 Aug 2019 23:28:16 +0000
+Received: from aserp3030.oracle.com (aserp3030.oracle.com [127.0.0.1])
+        by pps.reinject (8.16.0.27/8.16.0.27) with SMTP id x74NSFYX079993;
+        Sun, 4 Aug 2019 23:28:15 GMT
+Received: from aserv0122.oracle.com (aserv0122.oracle.com [141.146.126.236])
+        by aserp3030.oracle.com with ESMTP id 2u50abah81-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Sun, 04 Aug 2019 23:28:15 +0000
+Received: from abhmp0008.oracle.com (abhmp0008.oracle.com [141.146.116.14])
+        by aserv0122.oracle.com (8.14.4/8.14.4) with ESMTP id x74NSAcc031730;
+        Sun, 4 Aug 2019 23:28:10 GMT
+Received: from mbp2018.cdmnet.org (/82.27.120.181)
+        by default (Oracle Beehive Gateway v4.0)
+        with ESMTP ; Sun, 04 Aug 2019 16:28:10 -0700
+Cc:     calum.mackay@oracle.com, Christoph Hellwig <hch@infradead.org>,
         Dan Williams <dan.j.williams@intel.com>,
         Dave Chinner <david@fromorbit.com>,
         Dave Hansen <dave.hansen@linux.intel.com>,
         Ira Weiny <ira.weiny@intel.com>, Jan Kara <jack@suse.cz>,
         Jason Gunthorpe <jgg@ziepe.ca>,
-        =?UTF-8?q?J=C3=A9r=C3=B4me=20Glisse?= <jglisse@redhat.com>,
+        =?UTF-8?B?SsOpcsO0bWUgR2xpc3Nl?= <jglisse@redhat.com>,
         LKML <linux-kernel@vger.kernel.org>,
         amd-gfx@lists.freedesktop.org, ceph-devel@vger.kernel.org,
         devel@driverdev.osuosl.org, devel@lists.orangefs.org,
@@ -76,179 +76,97 @@ Cc:     Christoph Hellwig <hch@infradead.org>,
         linux-rpi-kernel@lists.infradead.org, linux-xfs@vger.kernel.org,
         netdev@vger.kernel.org, rds-devel@oss.oracle.com,
         sparclinux@vger.kernel.org, x86@kernel.org,
-        xen-devel@lists.xenproject.org, John Hubbard <jhubbard@nvidia.com>
-Subject: [PATCH v2 00/34] put_user_pages(): miscellaneous call sites
-Date:   Sun,  4 Aug 2019 15:48:41 -0700
-Message-Id: <20190804224915.28669-1-jhubbard@nvidia.com>
-X-Mailer: git-send-email 2.22.0
+        xen-devel@lists.xenproject.org,
+        Trond Myklebust <trond.myklebust@hammerspace.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>
+Subject: Re: [PATCH 31/34] nfs: convert put_page() to put_user_page*()
+To:     John Hubbard <jhubbard@nvidia.com>, john.hubbard@gmail.com,
+        Andrew Morton <akpm@linux-foundation.org>
+References: <20190802022005.5117-1-jhubbard@nvidia.com>
+ <20190802022005.5117-32-jhubbard@nvidia.com>
+ <1738cb1e-15d8-0bbe-5362-341664f6efc8@oracle.com>
+ <db136399-ed87-56ea-bd6e-e5d29b145eda@nvidia.com>
+From:   Calum Mackay <calum.mackay@oracle.com>
+Organization: Oracle
+Message-ID: <03a81556-98a7-7edb-5989-b799ec99a072@oracle.com>
+Date:   Mon, 5 Aug 2019 00:28:01 +0100
+User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.14; rv:70.0)
+ Gecko/20100101 Thunderbird/70.0a1
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-X-NVConfidentiality: public
+In-Reply-To: <db136399-ed87-56ea-bd6e-e5d29b145eda@nvidia.com>
+Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Language: en-GB
 Content-Transfer-Encoding: 8bit
+X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9339 signatures=668685
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 priorityscore=1501 malwarescore=0
+ suspectscore=0 phishscore=0 bulkscore=0 spamscore=0 clxscore=1015
+ lowpriorityscore=0 mlxscore=0 impostorscore=0 mlxlogscore=999 adultscore=0
+ classifier=spam adjust=0 reason=mlx scancount=1 engine=8.0.1-1906280000
+ definitions=main-1908040274
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: John Hubbard <jhubbard@nvidia.com>
+On 03/08/2019 2:41 am, John Hubbard wrote:
+> On 8/2/19 6:27 PM, Calum Mackay wrote:
+>> On 02/08/2019 3:20 am, john.hubbard@gmail.com wrote:
+> ...
+>> Since it's static, and only called twice, might it be better to change its two callers [nfs_direct_{read,write}_schedule_iovec()] to call put_user_pages() directly, and remove nfs_direct_release_pages() entirely?
+>>
+>> thanks,
+>> calum.
+>>
+>>
+>>>      void nfs_init_cinfo_from_dreq(struct nfs_commit_info *cinfo,
+>>>
+>   
+> Hi Calum,
+> 
+> Absolutely! Is it OK to add your reviewed-by, with the following incremental
+> patch made to this one?
 
-Changes since v1:
+Thanks John; looks good.
 
-* 9 out of 34 patches have been reviewed or ack'd or changed:
-    * Picked up Keith's Reviewed-by for patch 26 (gup_benchmark).
-    * Picked up ACKs for patches 3, 10, 15, 16 (ceph, genwqe,
-      staging/vc04_services, drivers/tee).
+Reviewed-by: Calum Mackay <calum.mackay@oracle.com>
 
-* Patch 6 (i915): adjusted drivers/gpu/drm/i915/gem/i915_gem_userptr.c to
-  match the latest linux.git: the code has already been fixed in linux.git,
-  as of the latest -rc, to do a set_page_dirty_lock(), instead of
-  set_page_dirty(). So all that it needs now is a conversion to
-  put_user_page(). I've done that in a way (avoiding the changed API call)
-  that allows patch 6 to go up via either Andrew's -mm tree, or the drm
-  tree, just in case. See that patch's comments for slightly more detail.
-
-* Patch 20 (xen): applied Juergen's recommended fix, and speculatively
-  (pending his approval) added his Signed-off-by (also noted in the patch
-  comments).
-
-* Improved patch 31 (NFS) as recommended by Calum Mackay.
-
-* Includes the latest version of patch 1. (Patch 1 has been separately
-  reposted [3], with those updates. And it's included here in order to
-  make this series apply directly to linux.git, as noted in the original
-  cover letter below.)
-
-Cover letter from v1:
-
-These are best characterized as miscellaneous conversions: many (not all)
-call sites that don't involve biovec or iov_iter, nor mm/. It also leaves
-out a few call sites that require some more work. These are mostly pretty
-simple ones.
-
-It's probably best to send all of these via Andrew's -mm tree, assuming
-that there are no significant merge conflicts with ongoing work in other
-trees (which I doubt, given that these are small changes).
-
-These patches apply to the latest linux.git. Patch #1 is also already in
-Andrew's tree, but given the broad non-linux-mm Cc list, I thought it
-would be more convenient to just include that patch here, so that people
-can use linux.git as the base--even though these are probably destined
-for linux-mm.
-
-This is part a tree-wide conversion, as described in commit fc1d8e7cca2d
-("mm: introduce put_user_page*(), placeholder versions"). That commit
-has an extensive description of the problem and the planned steps to
-solve it, but the highlites are:
-
-1) Provide put_user_page*() routines, intended to be used
-for releasing pages that were pinned via get_user_pages*().
-
-2) Convert all of the call sites for get_user_pages*(), to
-invoke put_user_page*(), instead of put_page(). This involves dozens of
-call sites, and will take some time.
-
-3) After (2) is complete, use get_user_pages*() and put_user_page*() to
-implement tracking of these pages. This tracking will be separate from
-the existing struct page refcounting.
-
-4) Use the tracking and identification of these pages, to implement
-special handling (especially in writeback paths) when the pages are
-backed by a filesystem.
-
-And a few references, also from that commit:
-
-[1] https://lwn.net/Articles/774411/ : "DMA and get_user_pages()"
-[2] https://lwn.net/Articles/753027/ : "The Trouble with get_user_pages()"
-
-[3] "mm/gup: add make_dirty arg to put_user_pages_dirty_lock()"
-    https://lore.kernel.org/r/20190804214042.4564-1-jhubbard@nvidia.com
-
-Ira Weiny (1):
-  fs/binfmt_elf: convert put_page() to put_user_page*()
-
-John Hubbard (33):
-  mm/gup: add make_dirty arg to put_user_pages_dirty_lock()
-  net/rds: convert put_page() to put_user_page*()
-  net/ceph: convert put_page() to put_user_page*()
-  x86/kvm: convert put_page() to put_user_page*()
-  drm/etnaviv: convert release_pages() to put_user_pages()
-  drm/i915: convert put_page() to put_user_page*()
-  drm/radeon: convert put_page() to put_user_page*()
-  media/ivtv: convert put_page() to put_user_page*()
-  media/v4l2-core/mm: convert put_page() to put_user_page*()
-  genwqe: convert put_page() to put_user_page*()
-  scif: convert put_page() to put_user_page*()
-  vmci: convert put_page() to put_user_page*()
-  rapidio: convert put_page() to put_user_page*()
-  oradax: convert put_page() to put_user_page*()
-  staging/vc04_services: convert put_page() to put_user_page*()
-  drivers/tee: convert put_page() to put_user_page*()
-  vfio: convert put_page() to put_user_page*()
-  fbdev/pvr2fb: convert put_page() to put_user_page*()
-  fsl_hypervisor: convert put_page() to put_user_page*()
-  fs/exec.c: convert put_page() to put_user_page*()
-  xen: convert put_page() to put_user_page*()
-  orangefs: convert put_page() to put_user_page*()
-  uprobes: convert put_page() to put_user_page*()
-  futex: convert put_page() to put_user_page*()
-  mm/frame_vector.c: convert put_page() to put_user_page*()
-  mm/gup_benchmark.c: convert put_page() to put_user_page*()
-  mm/memory.c: convert put_page() to put_user_page*()
-  mm/madvise.c: convert put_page() to put_user_page*()
-  mm/process_vm_access.c: convert put_page() to put_user_page*()
-  crypt: convert put_page() to put_user_page*()
-  fs/nfs: convert put_page() to put_user_page*()
-  goldfish_pipe: convert put_page() to put_user_page*()
-  kernel/events/core.c: convert put_page() to put_user_page*()
-
- arch/x86/kvm/svm.c                            |   4 +-
- crypto/af_alg.c                               |   7 +-
- drivers/gpu/drm/etnaviv/etnaviv_gem.c         |   4 +-
- drivers/gpu/drm/i915/gem/i915_gem_userptr.c   |   6 +-
- drivers/gpu/drm/radeon/radeon_ttm.c           |   2 +-
- drivers/infiniband/core/umem.c                |   5 +-
- drivers/infiniband/hw/hfi1/user_pages.c       |   5 +-
- drivers/infiniband/hw/qib/qib_user_pages.c    |  13 +-
- drivers/infiniband/hw/usnic/usnic_uiom.c      |   5 +-
- drivers/infiniband/sw/siw/siw_mem.c           |  19 +--
- drivers/media/pci/ivtv/ivtv-udma.c            |  14 +--
- drivers/media/pci/ivtv/ivtv-yuv.c             |  11 +-
- drivers/media/v4l2-core/videobuf-dma-sg.c     |   3 +-
- drivers/misc/genwqe/card_utils.c              |  17 +--
- drivers/misc/mic/scif/scif_rma.c              |  17 ++-
- drivers/misc/vmw_vmci/vmci_context.c          |   2 +-
- drivers/misc/vmw_vmci/vmci_queue_pair.c       |  11 +-
- drivers/platform/goldfish/goldfish_pipe.c     |   9 +-
- drivers/rapidio/devices/rio_mport_cdev.c      |   9 +-
- drivers/sbus/char/oradax.c                    |   2 +-
- .../interface/vchiq_arm/vchiq_2835_arm.c      |  10 +-
- drivers/tee/tee_shm.c                         |  10 +-
- drivers/vfio/vfio_iommu_type1.c               |   8 +-
- drivers/video/fbdev/pvr2fb.c                  |   3 +-
- drivers/virt/fsl_hypervisor.c                 |   7 +-
- drivers/xen/privcmd.c                         |  32 ++---
- fs/binfmt_elf.c                               |   2 +-
- fs/binfmt_elf_fdpic.c                         |   2 +-
- fs/exec.c                                     |   2 +-
- fs/nfs/direct.c                               |  11 +-
- fs/orangefs/orangefs-bufmap.c                 |   7 +-
- include/linux/mm.h                            |   5 +-
- kernel/events/core.c                          |   2 +-
- kernel/events/uprobes.c                       |   6 +-
- kernel/futex.c                                |  10 +-
- mm/frame_vector.c                             |   4 +-
- mm/gup.c                                      | 115 ++++++++----------
- mm/gup_benchmark.c                            |   2 +-
- mm/madvise.c                                  |   2 +-
- mm/memory.c                                   |   2 +-
- mm/process_vm_access.c                        |  18 +--
- net/ceph/pagevec.c                            |   8 +-
- net/rds/info.c                                |   5 +-
- net/rds/message.c                             |   2 +-
- net/rds/rdma.c                                |  15 ++-
- virt/kvm/kvm_main.c                           |   4 +-
- 46 files changed, 164 insertions(+), 295 deletions(-)
-
--- 
-2.22.0
-
+> 
+> diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+> index b00b89dda3c5..c0c1b9f2c069 100644
+> --- a/fs/nfs/direct.c
+> +++ b/fs/nfs/direct.c
+> @@ -276,11 +276,6 @@ ssize_t nfs_direct_IO(struct kiocb *iocb, struct iov_iter *iter)
+>          return nfs_file_direct_write(iocb, iter);
+>   }
+>   
+> -static void nfs_direct_release_pages(struct page **pages, unsigned int npages)
+> -{
+> -       put_user_pages(pages, npages);
+> -}
+> -
+>   void nfs_init_cinfo_from_dreq(struct nfs_commit_info *cinfo,
+>                                struct nfs_direct_req *dreq)
+>   {
+> @@ -510,7 +505,7 @@ static ssize_t nfs_direct_read_schedule_iovec(struct nfs_direct_req *dreq,
+>                          pos += req_len;
+>                          dreq->bytes_left -= req_len;
+>                  }
+> -               nfs_direct_release_pages(pagevec, npages);
+> +               put_user_pages(pagevec, npages);
+>                  kvfree(pagevec);
+>                  if (result < 0)
+>                          break;
+> @@ -933,7 +928,7 @@ static ssize_t nfs_direct_write_schedule_iovec(struct nfs_direct_req *dreq,
+>                          pos += req_len;
+>                          dreq->bytes_left -= req_len;
+>                  }
+> -               nfs_direct_release_pages(pagevec, npages);
+> +               put_user_pages(pagevec, npages);
+>                  kvfree(pagevec);
+>                  if (result < 0)
+>                          break;
+> 
+> 
+> 
+> thanks,
+> 
