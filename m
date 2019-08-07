@@ -8,53 +8,53 @@ X-Spam-Status: No, score=-9.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4840EC433FF
-	for <linux-nfs@archiver.kernel.org>; Wed,  7 Aug 2019 01:36:59 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C725EC32754
+	for <linux-nfs@archiver.kernel.org>; Wed,  7 Aug 2019 01:37:13 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 1FDD32173C
-	for <linux-nfs@archiver.kernel.org>; Wed,  7 Aug 2019 01:36:59 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 9F89E217D9
+	for <linux-nfs@archiver.kernel.org>; Wed,  7 Aug 2019 01:37:13 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="oYwU8ETg"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="SyrfptYH"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1730203AbfHGBgv (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 6 Aug 2019 21:36:51 -0400
-Received: from mail-pl1-f195.google.com ([209.85.214.195]:38789 "EHLO
-        mail-pl1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1729807AbfHGBef (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Aug 2019 21:34:35 -0400
-Received: by mail-pl1-f195.google.com with SMTP id az7so38558663plb.5;
-        Tue, 06 Aug 2019 18:34:34 -0700 (PDT)
+        id S1729801AbfHGBee (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 6 Aug 2019 21:34:34 -0400
+Received: from mail-pg1-f195.google.com ([209.85.215.195]:43311 "EHLO
+        mail-pg1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1729743AbfHGBed (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Aug 2019 21:34:33 -0400
+Received: by mail-pg1-f195.google.com with SMTP id r26so6587190pgl.10;
+        Tue, 06 Aug 2019 18:34:31 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references
          :mime-version:content-transfer-encoding;
-        bh=P44t64b1Yt2CczJo6SOAPYnnEfAXhRMhGjbg0YSdFKY=;
-        b=oYwU8ETglc6KiHkcA0RyRS5vGqCW2i7AIOfUQ1rGo+vD39eROBW26/892d5mL8jCka
-         9NN3Xib7WtATsBiYJqkB3ezAv9jDjLgX0Nt2lJwKPO87RMwjfI/ercmqj2pogsz06Wb7
-         pt7t+tRi22lEyEbjwYG4pvxEn5EP2upJ7sBYXvkRkx1OZr8K8A0zsi1zsXDmxeKjKGdS
-         rd7sOAmNlVKLyRrCXgSP759pVqt58t0Qr3CX/SHM65KMfp9F8GOgkLwibGL9VUlsrg7f
-         RCrbiDazxsGGGqq8tug1r4v+hpbk+DodA1qAwxGhZjgi6TOY5xhcloApNp8UIjMczhiZ
-         1TFQ==
+        bh=GAYBkmVoEF3i3+udFKn42Z4HyLG0jAAiACtL32v96bk=;
+        b=SyrfptYHZmeMKLLq8uTuDSlh448/TZCFpG6Zn4FeLZy9cTZZGFbCJ1UNBJPoCIn+aW
+         ygsAzBiAVH0kcipZ4ihTHldNmhfD0znPMjSBKoUKvh0NP49BRvqIlmsIg6DT8KHAwPBe
+         4kKUVEJdNXvGigLmpKs15CkjDKUzxh1vmFZZWbslFSuyKlpacG3oD1RXF7xFsxcwBIbL
+         0fmLLMJWYpY6/OBVXor4D0pE1ZvktHc8OSEdcNEszsvYRmiqmzBZ8eGFZOKusFOHPIrj
+         /e89tRQCCSxcnEZ4JUtQARmnCroQo1zfhGtcxjcGVNa5FV+aQSWzJVN76YDHje0qrdo9
+         NXRg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=P44t64b1Yt2CczJo6SOAPYnnEfAXhRMhGjbg0YSdFKY=;
-        b=bsLJ3tXUXUWASIgmL+I0A4zQsCCo3ZAnnkIM6g4/UilS3ZEjcVvmSLvMd0dRklRr8X
-         hyoqDXH9DtMmY91+h8xoM7IhLK21oHfzvce+48oyfg5DM1mRqP2vGSXgch+xfa2y2bEt
-         7jlEbKHdHSBKD8Dfz5oH4WCD6wLpnEeCIjdro041sNyjHyFnFVpSRiEV88/z/1C3ZjOI
-         /NbxlGFL2ZdNby34elbdb68Q11lGLk3yHjOjV5tyOCvtGYIXIbe6P/JAALWPTzP9DgB3
-         auaffKQsvjqsnua5pSxLQrLRsi4CGpVPno1aW6XYEZUboF6FqbqdasoqBUcPmJL63SXk
-         +E7w==
-X-Gm-Message-State: APjAAAUslQu9CLEkPRDToRLK0yv8UX2Xtsbeg2a9DzXWKOASdfvWFL41
-        87McRU3aPO3EN9l1H4Q1OAE=
-X-Google-Smtp-Source: APXvYqw8+L1VoxRPbf6Y+c4qD8GNaA9eNx8R+zkKMbLiZR/mjctguTvKD53OkN4n/knnADLxacIAYA==
-X-Received: by 2002:a17:902:7782:: with SMTP id o2mr5960829pll.12.1565141674655;
-        Tue, 06 Aug 2019 18:34:34 -0700 (PDT)
+        bh=GAYBkmVoEF3i3+udFKn42Z4HyLG0jAAiACtL32v96bk=;
+        b=lJO8rtBVEwGgrUORHpOyjxTue4Pb0QLNu7657mTltZU5d3/+xsP5kCEVDW9nDMgSuu
+         ZYzutopVQf5F4E0ILnlNHEKQjXvHvyAaKEnYp2xIt/Xtz9JOC/jOGnPk5MuldADLGiBQ
+         cVRF68vj24re73iStc2SVOq8YlUDCmjyTUByidDQr35kb13UEKRuC7igJn2kWtiX4x1Y
+         noGUnH2um0mbRv62B46VUbgGaE25IiHXnnYtBK7qXztbTQW36uegeSof5w6+8OAiqGHx
+         148WGqJXSqOMaJt7jV6EgXxkXwZvHv8uoDAgBi7PHbz80XYLERoU2pH08eagFBU4jOW9
+         w50Q==
+X-Gm-Message-State: APjAAAXCVQjC+oZmS2iLNUCK01sVOeDd6mOX3bdd0aMDisXL3w+vb0+n
+        h1I2vjZsTz3D+S+s0k9dTmg=
+X-Google-Smtp-Source: APXvYqwmirpRx7sRgblxTdJDdZc3lNLPB7sz+os8JHE4peLsZYES+zILuE4KL76TUaGsLoa8NjKqJA==
+X-Received: by 2002:a62:ae02:: with SMTP id q2mr6578356pff.1.1565141671450;
+        Tue, 06 Aug 2019 18:34:31 -0700 (PDT)
 Received: from blueforge.nvidia.com (searspoint.nvidia.com. [216.228.112.21])
-        by smtp.gmail.com with ESMTPSA id u69sm111740800pgu.77.2019.08.06.18.34.32
+        by smtp.gmail.com with ESMTPSA id u69sm111740800pgu.77.2019.08.06.18.34.29
         (version=TLS1_3 cipher=AEAD-AES256-GCM-SHA384 bits=256/256);
-        Tue, 06 Aug 2019 18:34:34 -0700 (PDT)
+        Tue, 06 Aug 2019 18:34:30 -0700 (PDT)
 From:   john.hubbard@gmail.com
 X-Google-Original-From: jhubbard@nvidia.com
 To:     Andrew Morton <akpm@linux-foundation.org>
@@ -78,22 +78,22 @@ Cc:     Christoph Hellwig <hch@infradead.org>,
         netdev@vger.kernel.org, rds-devel@oss.oracle.com,
         sparclinux@vger.kernel.org, x86@kernel.org,
         xen-devel@lists.xenproject.org, John Hubbard <jhubbard@nvidia.com>,
-        Al Viro <viro@zeniv.linux.org.uk>,
-        Andrea Arcangeli <aarcange@redhat.com>,
-        Christopher Yeoh <cyeoh@au1.ibm.com>,
-        Heiko Carstens <heiko.carstens@de.ibm.com>,
-        Ingo Molnar <mingo@kernel.org>, Jann Horn <jann@thejh.net>,
-        Lorenzo Stoakes <lstoakes@gmail.com>,
-        Mathieu Desnoyers <mathieu.desnoyers@efficios.com>,
-        Mike Rapoport <rppt@linux.vnet.ibm.com>,
-        Rashika Kheria <rashika.kheria@gmail.com>
-Subject: [PATCH v3 31/41] mm/process_vm_access.c: convert put_page() to put_user_page*()
-Date:   Tue,  6 Aug 2019 18:33:30 -0700
-Message-Id: <20190807013340.9706-32-jhubbard@nvidia.com>
+        "Aneesh Kumar K . V" <aneesh.kumar@linux.ibm.com>,
+        Huang Ying <ying.huang@intel.com>,
+        Matthew Wilcox <willy@infradead.org>,
+        Michal Hocko <mhocko@suse.com>,
+        Peter Zijlstra <peterz@infradead.org>,
+        Rik van Riel <riel@surriel.com>,
+        Souptick Joarder <jrdr.linux@gmail.com>,
+        Will Deacon <will.deacon@arm.com>
+Subject: [PATCH v3 29/41] mm/memory.c: convert put_page() to put_user_page*()
+Date:   Tue,  6 Aug 2019 18:33:28 -0700
+Message-Id: <20190807013340.9706-30-jhubbard@nvidia.com>
 X-Mailer: git-send-email 2.22.0
 In-Reply-To: <20190807013340.9706-1-jhubbard@nvidia.com>
 References: <20190807013340.9706-1-jhubbard@nvidia.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 X-NVConfidentiality: public
 Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
@@ -110,69 +110,33 @@ release_pages().
 This is part a tree-wide conversion, as described in commit fc1d8e7cca2d
 ("mm: introduce put_user_page*(), placeholder versions").
 
-Cc: Al Viro <viro@zeniv.linux.org.uk>
-Cc: Andrea Arcangeli <aarcange@redhat.com>
-Cc: Christopher Yeoh <cyeoh@au1.ibm.com>
-Cc: Dave Hansen <dave.hansen@linux.intel.com>
-Cc: Heiko Carstens <heiko.carstens@de.ibm.com>
-Cc: Ingo Molnar <mingo@kernel.org>
-Cc: Jann Horn <jann@thejh.net>
-Cc: Lorenzo Stoakes <lstoakes@gmail.com>
-Cc: Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
-Cc: Mike Rapoport <rppt@linux.vnet.ibm.com>
-Cc: Rashika Kheria <rashika.kheria@gmail.com>
+Cc: Aneesh Kumar K.V <aneesh.kumar@linux.ibm.com>
+Cc: Huang Ying <ying.huang@intel.com>
+Cc: Jérôme Glisse <jglisse@redhat.com>
+Cc: Matthew Wilcox <willy@infradead.org>
+Cc: Michal Hocko <mhocko@suse.com>
+Cc: Peter Zijlstra <peterz@infradead.org>
+Cc: Rik van Riel <riel@surriel.com>
+Cc: Souptick Joarder <jrdr.linux@gmail.com>
+Cc: Will Deacon <will.deacon@arm.com>
 Signed-off-by: John Hubbard <jhubbard@nvidia.com>
 ---
- mm/process_vm_access.c | 18 +++++++++---------
- 1 file changed, 9 insertions(+), 9 deletions(-)
+ mm/memory.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/mm/process_vm_access.c b/mm/process_vm_access.c
-index 357aa7bef6c0..4d29d54ec93f 100644
---- a/mm/process_vm_access.c
-+++ b/mm/process_vm_access.c
-@@ -96,7 +96,7 @@ static int process_vm_rw_single_vec(unsigned long addr,
- 		flags |= FOLL_WRITE;
- 
- 	while (!rc && nr_pages && iov_iter_count(iter)) {
--		int pages = min(nr_pages, max_pages_per_loop);
-+		int pinned_pages = min(nr_pages, max_pages_per_loop);
- 		int locked = 1;
- 		size_t bytes;
- 
-@@ -106,14 +106,15 @@ static int process_vm_rw_single_vec(unsigned long addr,
- 		 * current/current->mm
- 		 */
- 		down_read(&mm->mmap_sem);
--		pages = get_user_pages_remote(task, mm, pa, pages, flags,
--					      process_pages, NULL, &locked);
-+		pinned_pages = get_user_pages_remote(task, mm, pa, pinned_pages,
-+						     flags, process_pages, NULL,
-+						     &locked);
- 		if (locked)
- 			up_read(&mm->mmap_sem);
--		if (pages <= 0)
-+		if (pinned_pages <= 0)
- 			return -EFAULT;
- 
--		bytes = pages * PAGE_SIZE - start_offset;
-+		bytes = pinned_pages * PAGE_SIZE - start_offset;
- 		if (bytes > len)
- 			bytes = len;
- 
-@@ -122,10 +123,9 @@ static int process_vm_rw_single_vec(unsigned long addr,
- 					 vm_write);
+diff --git a/mm/memory.c b/mm/memory.c
+index e2bb51b6242e..8870968496ea 100644
+--- a/mm/memory.c
++++ b/mm/memory.c
+@@ -4337,7 +4337,7 @@ int __access_remote_vm(struct task_struct *tsk, struct mm_struct *mm,
+ 						    buf, maddr + offset, bytes);
+ 			}
+ 			kunmap(page);
+-			put_page(page);
++			put_user_page(page);
+ 		}
  		len -= bytes;
- 		start_offset = 0;
--		nr_pages -= pages;
--		pa += pages * PAGE_SIZE;
--		while (pages)
--			put_page(process_pages[--pages]);
-+		nr_pages -= pinned_pages;
-+		pa += pinned_pages * PAGE_SIZE;
-+		put_user_pages(process_pages, pinned_pages);
- 	}
- 
- 	return rc;
+ 		buf += bytes;
 -- 
 2.22.0
 
