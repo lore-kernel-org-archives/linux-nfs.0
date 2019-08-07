@@ -8,53 +8,53 @@ X-Spam-Status: No, score=-9.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A53BEC32754
-	for <linux-nfs@archiver.kernel.org>; Wed,  7 Aug 2019 01:36:00 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2FC7CC32751
+	for <linux-nfs@archiver.kernel.org>; Wed,  7 Aug 2019 01:36:10 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 7D99C2173C
-	for <linux-nfs@archiver.kernel.org>; Wed,  7 Aug 2019 01:36:00 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 0146921743
+	for <linux-nfs@archiver.kernel.org>; Wed,  7 Aug 2019 01:36:10 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="gZINIBPp"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="hGadGekT"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1730328AbfHGBfy (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 6 Aug 2019 21:35:54 -0400
-Received: from mail-pf1-f194.google.com ([209.85.210.194]:33444 "EHLO
-        mail-pf1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1729976AbfHGBen (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Aug 2019 21:34:43 -0400
-Received: by mail-pf1-f194.google.com with SMTP id g2so42502724pfq.0;
-        Tue, 06 Aug 2019 18:34:42 -0700 (PDT)
+        id S1729963AbfHGBem (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 6 Aug 2019 21:34:42 -0400
+Received: from mail-pf1-f195.google.com ([209.85.210.195]:41343 "EHLO
+        mail-pf1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1729743AbfHGBei (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Aug 2019 21:34:38 -0400
+Received: by mail-pf1-f195.google.com with SMTP id m30so42508301pff.8;
+        Tue, 06 Aug 2019 18:34:38 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references
          :mime-version:content-transfer-encoding;
-        bh=cegKTIaYJ+tSle0YiC1yJpybmvJrVZXG5Xryw9OToL0=;
-        b=gZINIBPpiSlkU+80KFQT2S/tbeKnfN8Fqd69WGW6s9PoHlp7eF6XztSLcUxuW4oRoZ
-         aif7qo6403jD2jU7LBsHpubuYdPGQryF8kiw1ZTc3iFqoyXR++oshdcjJ7vxHU3SStmv
-         hRrnv/6QnmfU9YFS9vFfR/LY5o8S7tCbaokKkpmJCmaCQPMpBAUHfIH7veXkFUWyuI/D
-         QxXzz4jXTjDqbca8hg8XrnqAJ/u2yXOWeQAohMq1NTArxvWPC4Z+YJ1UfdhghSe68uD6
-         jg98gaM28Wf1Jgr/YOooV8Oz8uSBvPGIEINpe+ifSuk1KD3Z7HL09IvdAtxhoavy3yVQ
-         XT/w==
+        bh=66nLgLSrAAtLnk7heFQOXwTIycZbzywZGh2gpdUQtHA=;
+        b=hGadGekT36tWWF2x+rPXatg5Phju1cJkPhVohpTnvU9xcLgSYz3c/H9JfBuvb/eqpQ
+         gJm9ULhd1h25PBFy4ZlpC+tAGAEAzuKiPxwK1X6/dMDelBe1FYe+sUe691h23Hpm09qn
+         NtkXw7G9BBhwySB0UzQpKOHO5RlAvdX8JQycevy+XDQPWxcX8dLLfHqYFlfiIf28POCQ
+         XQLWbzezNK3qTnHI7eGrMbtyoSKY/W2T3jkcfT5nC0QYcZ+CMjkTw7ZL3pOdyAZGwJLx
+         tXBADMMsq1ukRK67JdNPKq0uGvf0IBEzyL0wmcyHhzZLuqxNXwAHA+z0PFrP2wNDYOQy
+         6sYA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=cegKTIaYJ+tSle0YiC1yJpybmvJrVZXG5Xryw9OToL0=;
-        b=kXtXjNb53Ij2iFhid+3+SixPAB5cfJtRFellFPfPMOvwZ5kvYCQnUV7UCeGUsgYJ3a
-         WVn2oSuIpaOM7wDKXgBuXdsQ+SCS6MtZzKQCXhiirbhA+UlbkV2WIpKIyrvOZI4G4g5v
-         OY6vw6zn+3wDyqXkpS7MuDmB3AVVaZ0zROfMiD9Mlqif058EziNClURXhhlPoLxMzyGF
-         nKeBvG0JilpyxiaYJA5xJcJbwkwWwjaSlLUPB6P06pmCkwWjRvRndlyFc+PizR4s6NO7
-         iUaA+n/mw5x2hsMcsUeV1Yhy2GcvTN6W35UqskuGhsSJINKgZr//mtAjNqTBGsPPIyXB
-         6rFg==
-X-Gm-Message-State: APjAAAVE7TAfJ6Biyb9h0YNwWBxLhLKWkmFvM2obtKNbYo4iHlzCjoB9
-        JrQyVC8SQ4jXEEXLhau2on8=
-X-Google-Smtp-Source: APXvYqzSNe/bSKcNensRQ/IJ84TBXlUJvFYUKsvrq7/hKNH55OC+L+xYYWdqI5nDZFgfOlgeKmaOXw==
-X-Received: by 2002:a65:6256:: with SMTP id q22mr5554856pgv.408.1565141682238;
-        Tue, 06 Aug 2019 18:34:42 -0700 (PDT)
+        bh=66nLgLSrAAtLnk7heFQOXwTIycZbzywZGh2gpdUQtHA=;
+        b=p2hgyYE49GJQtLUSoDuvLkCqPl0q/qdp6hVPxKnYY7dwpZ8evgmoD8wl5dw9k514jN
+         fzMnauhhUIuhHMG3qNOOQ40dLdOAJ6SZZQPOupdbiHX8MnKP2SUjJIPlzQPjkW1HV+Zr
+         7FtyTgblSFKEeDDFy4yz/IiQPNwbxPqUNzTkJG4/QXXUbiSDmfoPuMaEwBo0WnIlz0pS
+         BTY9ZVQhrbCKoOo9pPFuYA8SykjvKC8S40EQyy4dREzveE03XGpHfJB4GEJgrqx8l+aO
+         bunJNAR5Or1UBCpN5G8gLIXZcgiJwO+Gz13nwikg9C6Bn5spBnNYpPbzM0eDZ78Ixnuj
+         BRXw==
+X-Gm-Message-State: APjAAAXeMEFGyAFdCJTakNWlvl+omKR+07+FVBnH/0z7J1trPOBeqLsg
+        sTQXggNaOu9CV8oCcQYC66Y=
+X-Google-Smtp-Source: APXvYqxVqy6uPNA5pMhiCuVlDYKPDVYd5IZkwA2Cp9U8q1WFZ9BX6VmEjp+QCN9e6zqU7bkXXXxyWA==
+X-Received: by 2002:aa7:9197:: with SMTP id x23mr6650509pfa.95.1565141677758;
+        Tue, 06 Aug 2019 18:34:37 -0700 (PDT)
 Received: from blueforge.nvidia.com (searspoint.nvidia.com. [216.228.112.21])
-        by smtp.gmail.com with ESMTPSA id u69sm111740800pgu.77.2019.08.06.18.34.40
+        by smtp.gmail.com with ESMTPSA id u69sm111740800pgu.77.2019.08.06.18.34.36
         (version=TLS1_3 cipher=AEAD-AES256-GCM-SHA384 bits=256/256);
-        Tue, 06 Aug 2019 18:34:41 -0700 (PDT)
+        Tue, 06 Aug 2019 18:34:37 -0700 (PDT)
 From:   john.hubbard@gmail.com
 X-Google-Original-From: jhubbard@nvidia.com
 To:     Andrew Morton <akpm@linux-foundation.org>
@@ -77,10 +77,13 @@ Cc:     Christoph Hellwig <hch@infradead.org>,
         linux-rpi-kernel@lists.infradead.org, linux-xfs@vger.kernel.org,
         netdev@vger.kernel.org, rds-devel@oss.oracle.com,
         sparclinux@vger.kernel.org, x86@kernel.org,
-        xen-devel@lists.xenproject.org, John Hubbard <jhubbard@nvidia.com>
-Subject: [PATCH v3 36/41] fs/binfmt_elf: convert put_page() to put_user_page*()
-Date:   Tue,  6 Aug 2019 18:33:35 -0700
-Message-Id: <20190807013340.9706-37-jhubbard@nvidia.com>
+        xen-devel@lists.xenproject.org, John Hubbard <jhubbard@nvidia.com>,
+        Calum Mackay <calum.mackay@oracle.com>,
+        Trond Myklebust <trond.myklebust@hammerspace.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>
+Subject: [PATCH v3 33/41] fs/nfs: convert put_page() to put_user_page*()
+Date:   Tue,  6 Aug 2019 18:33:32 -0700
+Message-Id: <20190807013340.9706-34-jhubbard@nvidia.com>
 X-Mailer: git-send-email 2.22.0
 In-Reply-To: <20190807013340.9706-1-jhubbard@nvidia.com>
 References: <20190807013340.9706-1-jhubbard@nvidia.com>
@@ -92,7 +95,7 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Ira Weiny <ira.weiny@intel.com>
+From: John Hubbard <jhubbard@nvidia.com>
 
 For pages that were retained via get_user_pages*(), release those pages
 via the new put_user_page*() routines, instead of via put_page() or
@@ -101,42 +104,52 @@ release_pages().
 This is part a tree-wide conversion, as described in commit fc1d8e7cca2d
 ("mm: introduce put_user_page*(), placeholder versions").
 
-get_dump_page calls get_user_page so put_user_page must be used
-to match.
+Reviewed-by: Calum Mackay <calum.mackay@oracle.com>
 
-Signed-off-by: Ira Weiny <ira.weiny@intel.com>
+Cc: Trond Myklebust <trond.myklebust@hammerspace.com>
+Cc: Anna Schumaker <anna.schumaker@netapp.com>
+Cc: linux-nfs@vger.kernel.org
 Signed-off-by: John Hubbard <jhubbard@nvidia.com>
 ---
- fs/binfmt_elf.c       | 2 +-
- fs/binfmt_elf_fdpic.c | 2 +-
- 2 files changed, 2 insertions(+), 2 deletions(-)
+ fs/nfs/direct.c | 11 ++---------
+ 1 file changed, 2 insertions(+), 9 deletions(-)
 
-diff --git a/fs/binfmt_elf.c b/fs/binfmt_elf.c
-index d4e11b2e04f6..92e4a5ca99d8 100644
---- a/fs/binfmt_elf.c
-+++ b/fs/binfmt_elf.c
-@@ -2377,7 +2377,7 @@ static int elf_core_dump(struct coredump_params *cprm)
- 				void *kaddr = kmap(page);
- 				stop = !dump_emit(cprm, kaddr, PAGE_SIZE);
- 				kunmap(page);
--				put_page(page);
-+				put_user_page(page);
- 			} else
- 				stop = !dump_skip(cprm, PAGE_SIZE);
- 			if (stop)
-diff --git a/fs/binfmt_elf_fdpic.c b/fs/binfmt_elf_fdpic.c
-index d86ebd0dcc3d..321724b3be22 100644
---- a/fs/binfmt_elf_fdpic.c
-+++ b/fs/binfmt_elf_fdpic.c
-@@ -1511,7 +1511,7 @@ static bool elf_fdpic_dump_segments(struct coredump_params *cprm)
- 				void *kaddr = kmap(page);
- 				res = dump_emit(cprm, kaddr, PAGE_SIZE);
- 				kunmap(page);
--				put_page(page);
-+				put_user_page(page);
- 			} else {
- 				res = dump_skip(cprm, PAGE_SIZE);
- 			}
+diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+index 0cb442406168..c0c1b9f2c069 100644
+--- a/fs/nfs/direct.c
++++ b/fs/nfs/direct.c
+@@ -276,13 +276,6 @@ ssize_t nfs_direct_IO(struct kiocb *iocb, struct iov_iter *iter)
+ 	return nfs_file_direct_write(iocb, iter);
+ }
+ 
+-static void nfs_direct_release_pages(struct page **pages, unsigned int npages)
+-{
+-	unsigned int i;
+-	for (i = 0; i < npages; i++)
+-		put_page(pages[i]);
+-}
+-
+ void nfs_init_cinfo_from_dreq(struct nfs_commit_info *cinfo,
+ 			      struct nfs_direct_req *dreq)
+ {
+@@ -512,7 +505,7 @@ static ssize_t nfs_direct_read_schedule_iovec(struct nfs_direct_req *dreq,
+ 			pos += req_len;
+ 			dreq->bytes_left -= req_len;
+ 		}
+-		nfs_direct_release_pages(pagevec, npages);
++		put_user_pages(pagevec, npages);
+ 		kvfree(pagevec);
+ 		if (result < 0)
+ 			break;
+@@ -935,7 +928,7 @@ static ssize_t nfs_direct_write_schedule_iovec(struct nfs_direct_req *dreq,
+ 			pos += req_len;
+ 			dreq->bytes_left -= req_len;
+ 		}
+-		nfs_direct_release_pages(pagevec, npages);
++		put_user_pages(pagevec, npages);
+ 		kvfree(pagevec);
+ 		if (result < 0)
+ 			break;
 -- 
 2.22.0
 
