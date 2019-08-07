@@ -5,56 +5,56 @@ X-Spam-Level:
 X-Spam-Status: No, score=-9.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
-	version=3.4.0
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C962FC32757
-	for <linux-nfs@archiver.kernel.org>; Wed,  7 Aug 2019 01:34:54 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6E71BC606A9
+	for <linux-nfs@archiver.kernel.org>; Wed,  7 Aug 2019 01:35:14 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 9C18121743
-	for <linux-nfs@archiver.kernel.org>; Wed,  7 Aug 2019 01:34:54 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 3AE8621743
+	for <linux-nfs@archiver.kernel.org>; Wed,  7 Aug 2019 01:35:14 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="eabm6eV7"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="g67RvuXx"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1730188AbfHGBex (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 6 Aug 2019 21:34:53 -0400
-Received: from mail-pf1-f195.google.com ([209.85.210.195]:33457 "EHLO
-        mail-pf1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1730091AbfHGBev (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Aug 2019 21:34:51 -0400
-Received: by mail-pf1-f195.google.com with SMTP id g2so42502899pfq.0;
-        Tue, 06 Aug 2019 18:34:50 -0700 (PDT)
+        id S1730103AbfHGBeu (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 6 Aug 2019 21:34:50 -0400
+Received: from mail-pg1-f195.google.com ([209.85.215.195]:38796 "EHLO
+        mail-pg1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1730025AbfHGBeq (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Aug 2019 21:34:46 -0400
+Received: by mail-pg1-f195.google.com with SMTP id z14so5311476pga.5;
+        Tue, 06 Aug 2019 18:34:45 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references
          :mime-version:content-transfer-encoding;
-        bh=iyBF/TunLLNE9m64WGZW5xnvl+XVp1Tkb/4cWK4Q28U=;
-        b=eabm6eV7x6nJ3H6jB3OWHKTAjJ5hccshhWRSvyF8YaL4Xb3kcN3FPSj+mrT7hdf1FM
-         0MWhm5PqlQFyy6zw76EwLtyOlQEQTOAPUCRq2cKY8d4yFrfincU70ZRfebLbmlijIWR2
-         wTENuQ2R1ycfB8EIZdvDLYgUy7fahn8NbpOFjvcP7wPItsW4fy1klzu0bIomS6ZhLV9L
-         FATmBTkmPO3bz1bBRYsOrrqOVmLfRrGMChgnyEYGXYwKFOo3GWkjWYe147H72f0kIcVc
-         Tr73f17ZMCrLU+eCYt8HTv90LoBSVz+pg0lUMLNh1TQmkPNzI1sbpCYBSoNZ3shE6svq
-         cn7w==
+        bh=30MQZ7ywyXKAPoZ0MqYExKYsjkeLdKEHUByfnmRZCb0=;
+        b=g67RvuXxl/7UgwJ5Nsn5m7mCWAd1eJK19OdXPfHISavNg0/hlxqTRWRiZsiObbIxd1
+         z7nTlGaqHPYV4ywgcbsmss6gPc+YHifTLpOQY0K91PQUhyOYukJschqLsfaVLze8bLh+
+         aV53NaTAotE5e+jR4GjhaqKTLNaydraqrAumktndCtlF4SiNrqRjpIehSehjFa47DX/L
+         ADmdLxhsKJt3PHVHlUoQeH6o3x8T/NrnTA5b/OM8c9NkahQxV1Hajc7XXSthUzvuQiX4
+         tXYs8SD3Ckew9oHpIJy9DZatkhmnngs/Je/q+s3mKD0DprEGB/SuCd9kYNKpjjLfUk8q
+         m4IA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=iyBF/TunLLNE9m64WGZW5xnvl+XVp1Tkb/4cWK4Q28U=;
-        b=jxYZj1IpMxFlnfyQjbmcVYmRAXDbrRGaNsQo9KLj8UPFM2Ztimt9SzcQ8VejwQ6hp2
-         xEXXqR2TF1GpEHbubXsItY8AhqKbh5b3qieKSkp515efhI8Zau7JqkWpqdhRaVu/oqob
-         eFsa8R0hyqah/ymi78AMJzw3fiGee7JI0Eymws7uBpBioQsAK2JnkiazHRDM37h/GQt2
-         hUPZYVXOO37HMLZwy+BUoqxAHCl9GaC+IqC+dVzatOML7FSfN4dVLpEo4orzkIQ9cj7M
-         NW2ySjvlawz5T9H0ymhkxcj1KZceDmWjjhsELqj6NyZHranAzHZXU7DS2Wm1rDVG0ifX
-         aCsQ==
-X-Gm-Message-State: APjAAAUAR0O0DWusQDC1+F81F8nf6AV1eO3KwLs0Hw8lnA976z/M95EM
-        g28VuVh/pAEiCrIMZRLyr6Y=
-X-Google-Smtp-Source: APXvYqz3mrxPCB1S0CW+dxLuweNihe5G+Md2rLL8K5hOTJIrjMzyu1ZdPrsndXXUg8jjoSZHHVCyxA==
-X-Received: by 2002:a62:14c4:: with SMTP id 187mr6515801pfu.241.1565141690166;
-        Tue, 06 Aug 2019 18:34:50 -0700 (PDT)
+        bh=30MQZ7ywyXKAPoZ0MqYExKYsjkeLdKEHUByfnmRZCb0=;
+        b=f6QyoaEfbxuo9tTZknFSAJWqbXuIhDFPUwVE3hdKY/KhN0tssL28PgEds41wQe8rQ7
+         Mc2KMTcGIcN1oMTYw7EZDVWkX/ES3FEIFu5dyCFNbtAK2m0mxNL5X3YQMi3n0mMloYCf
+         hrxC1dfEzBW06UGbsrqBcqaaSnrzpJ7sVHF7/fuJjUabtXAChd5EYTU+261qU2AVgHek
+         mZbFsyWomhkVZqlLnAlgDt9jk5QdzHy25qQp3HMFLcHa+wASsDrLt+4o9RN5SQqYnb4f
+         nsBi2Quz0YLewB+ul/h2CVL7j+PDv6MgKZPozLm7HNNj3WHNOpEbJZtwwz/xcJLEUVnc
+         4OIg==
+X-Gm-Message-State: APjAAAVn0m9D4Y7TjhBzxMxE5E88b1AlbaoYmKoT6aJKB1EXWAHIYp6q
+        sy2AOcgFeJv4bhOy16WhWM0=
+X-Google-Smtp-Source: APXvYqw4IyvxT+a447mG7S7T32nq/0vx/OylsLzm55tU7UOjf2NCx+Dmal9oDg9eNuXVr0J1x2ZUyQ==
+X-Received: by 2002:a63:36cc:: with SMTP id d195mr5452828pga.157.1565141685421;
+        Tue, 06 Aug 2019 18:34:45 -0700 (PDT)
 Received: from blueforge.nvidia.com (searspoint.nvidia.com. [216.228.112.21])
-        by smtp.gmail.com with ESMTPSA id u69sm111740800pgu.77.2019.08.06.18.34.48
+        by smtp.gmail.com with ESMTPSA id u69sm111740800pgu.77.2019.08.06.18.34.43
         (version=TLS1_3 cipher=AEAD-AES256-GCM-SHA384 bits=256/256);
-        Tue, 06 Aug 2019 18:34:49 -0700 (PDT)
+        Tue, 06 Aug 2019 18:34:44 -0700 (PDT)
 From:   john.hubbard@gmail.com
 X-Google-Original-From: jhubbard@nvidia.com
 To:     Andrew Morton <akpm@linux-foundation.org>
@@ -78,17 +78,17 @@ Cc:     Christoph Hellwig <hch@infradead.org>,
         netdev@vger.kernel.org, rds-devel@oss.oracle.com,
         sparclinux@vger.kernel.org, x86@kernel.org,
         xen-devel@lists.xenproject.org, John Hubbard <jhubbard@nvidia.com>,
-        Daniel Black <daniel@linux.ibm.com>,
-        Matthew Wilcox <willy@infradead.org>,
-        Mike Kravetz <mike.kravetz@oracle.com>
-Subject: [PATCH v3 41/41] mm/ksm: convert put_page() to put_user_page*()
-Date:   Tue,  6 Aug 2019 18:33:40 -0700
-Message-Id: <20190807013340.9706-42-jhubbard@nvidia.com>
+        Benjamin Herrenschmidt <benh@kernel.crashing.org>,
+        Christoph Hellwig <hch@lst.de>,
+        Michael Ellerman <mpe@ellerman.id.au>,
+        linuxppc-dev@lists.ozlabs.org
+Subject: [PATCH v3 38/41] powerpc: convert put_page() to put_user_page*()
+Date:   Tue,  6 Aug 2019 18:33:37 -0700
+Message-Id: <20190807013340.9706-39-jhubbard@nvidia.com>
 X-Mailer: git-send-email 2.22.0
 In-Reply-To: <20190807013340.9706-1-jhubbard@nvidia.com>
 References: <20190807013340.9706-1-jhubbard@nvidia.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
 X-NVConfidentiality: public
 Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
@@ -105,79 +105,138 @@ release_pages().
 This is part a tree-wide conversion, as described in commit fc1d8e7cca2d
 ("mm: introduce put_user_page*(), placeholder versions").
 
-Cc: Dan Williams <dan.j.williams@intel.com>
-Cc: Daniel Black <daniel@linux.ibm.com>
-Cc: Jan Kara <jack@suse.cz>
-Cc: Jérôme Glisse <jglisse@redhat.com>
-Cc: Matthew Wilcox <willy@infradead.org>
-Cc: Mike Kravetz <mike.kravetz@oracle.com>
+Note that this effectively changes the code's behavior in
+mm_iommu_unpin(): it now ultimately calls set_page_dirty_lock(),
+instead of set_page_dirty(). This is probably more accurate.
+
+As Christoph Hellwig put it, "set_page_dirty() is only safe if we are
+dealing with a file backed page where we have reference on the inode it
+hangs off." [1]
+
+[1] https://lore.kernel.org/r/20190723153640.GB720@lst.de
+
+Cc: Benjamin Herrenschmidt <benh@kernel.crashing.org>
+Cc: Christoph Hellwig <hch@lst.de>
+Cc: Michael Ellerman <mpe@ellerman.id.au>
+Cc: linuxppc-dev@lists.ozlabs.org
 Signed-off-by: John Hubbard <jhubbard@nvidia.com>
 ---
- mm/ksm.c | 14 +++++++-------
- 1 file changed, 7 insertions(+), 7 deletions(-)
+ arch/powerpc/kvm/book3s_64_mmu_hv.c    |  4 ++--
+ arch/powerpc/kvm/book3s_64_mmu_radix.c | 19 ++++++++++++++-----
+ arch/powerpc/kvm/e500_mmu.c            |  3 +--
+ arch/powerpc/mm/book3s64/iommu_api.c   | 11 +++++------
+ 4 files changed, 22 insertions(+), 15 deletions(-)
 
-diff --git a/mm/ksm.c b/mm/ksm.c
-index 3dc4346411e4..e10ee4d5fdd8 100644
---- a/mm/ksm.c
-+++ b/mm/ksm.c
-@@ -456,7 +456,7 @@ static inline bool ksm_test_exit(struct mm_struct *mm)
-  * We use break_ksm to break COW on a ksm page: it's a stripped down
-  *
-  *	if (get_user_pages(addr, 1, 1, 1, &page, NULL) == 1)
-- *		put_page(page);
-+ *		put_user_page(page);
-  *
-  * but taking great care only to touch a ksm page, in a VM_MERGEABLE vma,
-  * in case the application has unmapped and remapped mm,addr meanwhile.
-@@ -483,7 +483,7 @@ static int break_ksm(struct vm_area_struct *vma, unsigned long addr)
- 					FAULT_FLAG_WRITE | FAULT_FLAG_REMOTE);
- 		else
- 			ret = VM_FAULT_WRITE;
--		put_page(page);
-+		put_user_page(page);
- 	} while (!(ret & (VM_FAULT_WRITE | VM_FAULT_SIGBUS | VM_FAULT_SIGSEGV | VM_FAULT_OOM)));
- 	/*
- 	 * We must loop because handle_mm_fault() may back out if there's
-@@ -568,7 +568,7 @@ static struct page *get_mergeable_page(struct rmap_item *rmap_item)
- 		flush_anon_page(vma, page, addr);
- 		flush_dcache_page(page);
- 	} else {
--		put_page(page);
-+		put_user_page(page);
- out:
- 		page = NULL;
+diff --git a/arch/powerpc/kvm/book3s_64_mmu_hv.c b/arch/powerpc/kvm/book3s_64_mmu_hv.c
+index 9a75f0e1933b..18646b738ce1 100644
+--- a/arch/powerpc/kvm/book3s_64_mmu_hv.c
++++ b/arch/powerpc/kvm/book3s_64_mmu_hv.c
+@@ -731,7 +731,7 @@ int kvmppc_book3s_hv_page_fault(struct kvm_run *run, struct kvm_vcpu *vcpu,
+ 		 * we have to drop the reference on the correct tail
+ 		 * page to match the get inside gup()
+ 		 */
+-		put_page(pages[0]);
++		put_user_page(pages[0]);
  	}
-@@ -1974,10 +1974,10 @@ struct rmap_item *unstable_tree_search_insert(struct rmap_item *rmap_item,
+ 	return ret;
  
- 		parent = *new;
- 		if (ret < 0) {
--			put_page(tree_page);
-+			put_user_page(tree_page);
- 			new = &parent->rb_left;
- 		} else if (ret > 0) {
--			put_page(tree_page);
-+			put_user_page(tree_page);
- 			new = &parent->rb_right;
- 		} else if (!ksm_merge_across_nodes &&
- 			   page_to_nid(tree_page) != nid) {
-@@ -1986,7 +1986,7 @@ struct rmap_item *unstable_tree_search_insert(struct rmap_item *rmap_item,
- 			 * it will be flushed out and put in the right unstable
- 			 * tree next time: only merge with it when across_nodes.
- 			 */
--			put_page(tree_page);
-+			put_user_page(tree_page);
- 			return NULL;
- 		} else {
- 			*tree_pagep = tree_page;
-@@ -2328,7 +2328,7 @@ static struct rmap_item *scan_get_next_rmap_item(struct page **page)
- 							&rmap_item->rmap_list;
- 					ksm_scan.address += PAGE_SIZE;
- 				} else
--					put_page(*page);
-+					put_user_page(*page);
- 				up_read(&mm->mmap_sem);
- 				return rmap_item;
- 			}
+@@ -1206,7 +1206,7 @@ void kvmppc_unpin_guest_page(struct kvm *kvm, void *va, unsigned long gpa,
+ 	unsigned long gfn;
+ 	int srcu_idx;
+ 
+-	put_page(page);
++	put_user_page(page);
+ 
+ 	if (!dirty)
+ 		return;
+diff --git a/arch/powerpc/kvm/book3s_64_mmu_radix.c b/arch/powerpc/kvm/book3s_64_mmu_radix.c
+index 2d415c36a61d..f53273fbfa2d 100644
+--- a/arch/powerpc/kvm/book3s_64_mmu_radix.c
++++ b/arch/powerpc/kvm/book3s_64_mmu_radix.c
+@@ -821,8 +821,12 @@ int kvmppc_book3s_instantiate_page(struct kvm_vcpu *vcpu,
+ 	 */
+ 	if (!ptep) {
+ 		local_irq_enable();
+-		if (page)
+-			put_page(page);
++		if (page) {
++			if (upgrade_write)
++				put_user_page(page);
++			else
++				put_page(page);
++		}
+ 		return RESUME_GUEST;
+ 	}
+ 	pte = *ptep;
+@@ -870,9 +874,14 @@ int kvmppc_book3s_instantiate_page(struct kvm_vcpu *vcpu,
+ 		*levelp = level;
+ 
+ 	if (page) {
+-		if (!ret && (pte_val(pte) & _PAGE_WRITE))
+-			set_page_dirty_lock(page);
+-		put_page(page);
++		bool dirty = !ret && (pte_val(pte) & _PAGE_WRITE);
++		if (upgrade_write)
++			put_user_pages_dirty_lock(&page, 1, dirty);
++		else {
++			if (dirty)
++				set_page_dirty_lock(page);
++			put_page(page);
++		}
+ 	}
+ 
+ 	/* Increment number of large pages if we (successfully) inserted one */
+diff --git a/arch/powerpc/kvm/e500_mmu.c b/arch/powerpc/kvm/e500_mmu.c
+index 2d910b87e441..67bb8d59d4b1 100644
+--- a/arch/powerpc/kvm/e500_mmu.c
++++ b/arch/powerpc/kvm/e500_mmu.c
+@@ -850,8 +850,7 @@ int kvm_vcpu_ioctl_config_tlb(struct kvm_vcpu *vcpu,
+  free_privs_first:
+ 	kfree(privs[0]);
+  put_pages:
+-	for (i = 0; i < num_pages; i++)
+-		put_page(pages[i]);
++	put_user_pages(pages, num_pages);
+  free_pages:
+ 	kfree(pages);
+ 	return ret;
+diff --git a/arch/powerpc/mm/book3s64/iommu_api.c b/arch/powerpc/mm/book3s64/iommu_api.c
+index b056cae3388b..e126193ba295 100644
+--- a/arch/powerpc/mm/book3s64/iommu_api.c
++++ b/arch/powerpc/mm/book3s64/iommu_api.c
+@@ -170,9 +170,8 @@ static long mm_iommu_do_alloc(struct mm_struct *mm, unsigned long ua,
+ 	return 0;
+ 
+ free_exit:
+-	/* free the reference taken */
+-	for (i = 0; i < pinned; i++)
+-		put_page(mem->hpages[i]);
++	/* free the references taken */
++	put_user_pages(mem->hpages, pinned);
+ 
+ 	vfree(mem->hpas);
+ 	kfree(mem);
+@@ -203,6 +202,7 @@ static void mm_iommu_unpin(struct mm_iommu_table_group_mem_t *mem)
+ {
+ 	long i;
+ 	struct page *page = NULL;
++	bool dirty = false;
+ 
+ 	if (!mem->hpas)
+ 		return;
+@@ -215,10 +215,9 @@ static void mm_iommu_unpin(struct mm_iommu_table_group_mem_t *mem)
+ 		if (!page)
+ 			continue;
+ 
+-		if (mem->hpas[i] & MM_IOMMU_TABLE_GROUP_PAGE_DIRTY)
+-			SetPageDirty(page);
++		dirty = mem->hpas[i] & MM_IOMMU_TABLE_GROUP_PAGE_DIRTY;
+ 
+-		put_page(page);
++		put_user_pages_dirty_lock(&page, 1, dirty);
+ 		mem->hpas[i] = 0;
+ 	}
+ }
 -- 
 2.22.0
 
