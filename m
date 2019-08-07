@@ -8,53 +8,53 @@ X-Spam-Status: No, score=-9.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0D236C41530
-	for <linux-nfs@archiver.kernel.org>; Wed,  7 Aug 2019 01:35:16 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C6D00C32751
+	for <linux-nfs@archiver.kernel.org>; Wed,  7 Aug 2019 01:35:26 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id D9353217D9
-	for <linux-nfs@archiver.kernel.org>; Wed,  7 Aug 2019 01:35:15 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 9F17921872
+	for <linux-nfs@archiver.kernel.org>; Wed,  7 Aug 2019 01:35:26 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="TH7xsIR8"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="UuxFmnJc"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1730085AbfHGBeu (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 6 Aug 2019 21:34:50 -0400
-Received: from mail-pl1-f195.google.com ([209.85.214.195]:45793 "EHLO
-        mail-pl1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1730008AbfHGBep (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Aug 2019 21:34:45 -0400
-Received: by mail-pl1-f195.google.com with SMTP id y8so38603236plr.12;
-        Tue, 06 Aug 2019 18:34:44 -0700 (PDT)
+        id S1730247AbfHGBfU (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 6 Aug 2019 21:35:20 -0400
+Received: from mail-pg1-f193.google.com ([209.85.215.193]:35691 "EHLO
+        mail-pg1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1730045AbfHGBet (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Aug 2019 21:34:49 -0400
+Received: by mail-pg1-f193.google.com with SMTP id n4so813395pgv.2;
+        Tue, 06 Aug 2019 18:34:48 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references
          :mime-version:content-transfer-encoding;
-        bh=S+0IdzDd5LiY8AHwrYdqvSEMzcb9gWZ2lznukLTa4fI=;
-        b=TH7xsIR8mdN6BLY7JG8/eF6RsdDCkk2cRD3dBopErpIToembDlJ6DvjPGThWxgNDHN
-         izZnY8v+rrCTqbMQXBbwMmFJJ4/nvmF6zRWW4Xs6qUrfZ8o0czAW/fGIDrwD7Q1ygI7M
-         9Zf8Re7QredxsFLkJT7ZLJf014g9dC9bvOiPKF2NgNaHSnsjvFjfZ4bBzwffrRrGp9/v
-         vlT+JVAmAuL0sqc4zONRKIioMJS5mLcrWMkUTsb2T5dvyeXECRBNXvR++1qedsjna65N
-         Bpeio/uU7dJ/a25yv6b3onr0A5BIr5z5tUmsUB0sHub+eppjPv5sJ1ZexYmVLUXkgvRa
-         bJaw==
+        bh=A5i3Rg5kn+067MlNxvjupwCb7OvZHoHIUYxhc992JlI=;
+        b=UuxFmnJcCEiWt0xY93+zMuXrIr0kVOIbVkqb6dZDNdX573lgx/iGModXW3xzK9pGPY
+         cX+tzVZPKgXMZcfG6ZQsPBSt7kseMu7toLWYUmZdBZq9AOoIRDIMFVmbrRQtXe8+kp+2
+         xuf5cY8DkN1gTDTxNyizBF6w883Echl9BWKspGn3wAfNIa3ZXNbfw60ziAuU+jfpWm00
+         aE3B42LRws0QrKz6yT/I5rdSznH6+bxJbanBI1rpoulc0fyM/bumlMmxK+EefqH3NUEF
+         FOd2q6meN4oVnduhVeiU1hQqU48TiRdVBcpR/X7lAMOhtHAMxLBvoHxdz/5tEjOACTof
+         BpeA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=S+0IdzDd5LiY8AHwrYdqvSEMzcb9gWZ2lznukLTa4fI=;
-        b=LRymV5gLf9ueWfhdXNeVK6k2qapEZreM12FOedqkw7boO4g3lHS6v12agEk9R0GuDh
-         HK2sxbay3SKEfJlGE7iPlhCC2FqguxGDha+/qBvLqvCxcS7wnDWdIPu3OERDy1+Yfews
-         BcrptiUnE9XCkBn3kNGcLs4Lm7X1cJoo7d/cS0au3brU1tno59bKX/ZuLp2yGcJwB6Z/
-         6vEbADfgHPFSQvfgr0CKsF6zfthsQsghCPDvOvvBgd0G9r3kI8t0ERjt17yDC7yyFXCb
-         1mVw9KcHWl/Z0CO2Kg4c2aDQjFuAcQ/7pF5VUqOwiavKeCqi9eAh1m7Qtrn3FLfmliLa
-         Ba4A==
-X-Gm-Message-State: APjAAAUFPN9o7Yly9kLnnR0M2d60FrmGDp4Ek16Ilg+gU2Dy347811XB
-        7GRHnZWpGRFdVZ17rJUwC84=
-X-Google-Smtp-Source: APXvYqwBIISXTWf4C+eZPMoIO/o34tgUz/S5eMQixOLDQAsdZlLcpYV/uzVG2wEPWDAc94LDsKhJ9w==
-X-Received: by 2002:a17:902:9a49:: with SMTP id x9mr5953327plv.282.1565141683818;
-        Tue, 06 Aug 2019 18:34:43 -0700 (PDT)
+        bh=A5i3Rg5kn+067MlNxvjupwCb7OvZHoHIUYxhc992JlI=;
+        b=H2ZUOiQ/JcARqDST7E2Nv/ZqN4L5/CPGmfKAvD1D+G1GZ663DCevNoO/i5CI6KJen7
+         KNO6bqFc6dFo7K/AtS25ZgFNiDbG0xhCBkCiOW2llhlTGzd9XhLxllfFlk7c86XExxgW
+         3TPi2ZAhOH0OSR1Tvfjt2DFujkJkNkKSvyV6+DQ651vpVAZ6eLOgSZSs5eChMCR5ASpb
+         YMbT/7Ik/sSN35ozW2ECFCMLCQxaWrLHFqmUVf1BQly2J3XfnRpoRuRPkbOnc+KT7oTN
+         KWbhZcIMgd680sq0MSn4Kn0DPQJ7c5dDT7nezA0hgq6eNdzGmJLjCKVJOraKFaazeNbE
+         CoLw==
+X-Gm-Message-State: APjAAAUfHFXJpnAKHlGZdxvoODsdCA9IHAGeJri+yOWZ58qDs8lvuk1u
+        Hhzkf1+aIejbcVjjgCgfOUo=
+X-Google-Smtp-Source: APXvYqxXaYo+gh0YYtTix+CeaO6wRH87rvrphHjKjanKlk0flLMZdWbR1kBDDX6DGd+bDWORU88dWA==
+X-Received: by 2002:a62:82c2:: with SMTP id w185mr6984715pfd.202.1565141688648;
+        Tue, 06 Aug 2019 18:34:48 -0700 (PDT)
 Received: from blueforge.nvidia.com (searspoint.nvidia.com. [216.228.112.21])
-        by smtp.gmail.com with ESMTPSA id u69sm111740800pgu.77.2019.08.06.18.34.42
+        by smtp.gmail.com with ESMTPSA id u69sm111740800pgu.77.2019.08.06.18.34.47
         (version=TLS1_3 cipher=AEAD-AES256-GCM-SHA384 bits=256/256);
-        Tue, 06 Aug 2019 18:34:43 -0700 (PDT)
+        Tue, 06 Aug 2019 18:34:48 -0700 (PDT)
 From:   john.hubbard@gmail.com
 X-Google-Original-From: jhubbard@nvidia.com
 To:     Andrew Morton <akpm@linux-foundation.org>
@@ -78,12 +78,17 @@ Cc:     Christoph Hellwig <hch@infradead.org>,
         netdev@vger.kernel.org, rds-devel@oss.oracle.com,
         sparclinux@vger.kernel.org, x86@kernel.org,
         xen-devel@lists.xenproject.org, John Hubbard <jhubbard@nvidia.com>,
-        Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>,
-        Kentaro Takeda <takedakn@nttdata.co.jp>,
-        linux-security-module@vger.kernel.org
-Subject: [PATCH v3 37/41] security/tomoyo: convert put_page() to put_user_page*()
-Date:   Tue,  6 Aug 2019 18:33:36 -0700
-Message-Id: <20190807013340.9706-38-jhubbard@nvidia.com>
+        Andrea Arcangeli <aarcange@redhat.com>,
+        Anshuman Khandual <anshuman.khandual@arm.com>,
+        David Rientjes <rientjes@google.com>,
+        Dominik Brodowski <linux@dominikbrodowski.net>,
+        "Kirill A . Shutemov" <kirill.shutemov@linux.intel.com>,
+        Michal Hocko <mhocko@suse.com>,
+        Vlastimil Babka <vbabka@suse.cz>,
+        zhong jiang <zhongjiang@huawei.com>
+Subject: [PATCH v3 40/41] mm/mempolicy.c: convert put_page() to put_user_page*()
+Date:   Tue,  6 Aug 2019 18:33:39 -0700
+Message-Id: <20190807013340.9706-41-jhubbard@nvidia.com>
 X-Mailer: git-send-email 2.22.0
 In-Reply-To: <20190807013340.9706-1-jhubbard@nvidia.com>
 References: <20190807013340.9706-1-jhubbard@nvidia.com>
@@ -104,28 +109,32 @@ release_pages().
 This is part a tree-wide conversion, as described in commit fc1d8e7cca2d
 ("mm: introduce put_user_page*(), placeholder versions").
 
-Acked-by: Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>
-
-Cc: Kentaro Takeda <takedakn@nttdata.co.jp>
-Cc: linux-security-module@vger.kernel.org
+Cc: Andrea Arcangeli <aarcange@redhat.com>
+Cc: Anshuman Khandual <anshuman.khandual@arm.com>
+Cc: David Rientjes <rientjes@google.com>
+Cc: Dominik Brodowski <linux@dominikbrodowski.net>
+Cc: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
+Cc: Michal Hocko <mhocko@suse.com>
+Cc: Vlastimil Babka <vbabka@suse.cz>
+Cc: zhong jiang <zhongjiang@huawei.com>
 Signed-off-by: John Hubbard <jhubbard@nvidia.com>
 ---
- security/tomoyo/domain.c | 2 +-
+ mm/mempolicy.c | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/security/tomoyo/domain.c b/security/tomoyo/domain.c
-index 8526a0a74023..6887beecfb6e 100644
---- a/security/tomoyo/domain.c
-+++ b/security/tomoyo/domain.c
-@@ -931,7 +931,7 @@ bool tomoyo_dump_page(struct linux_binprm *bprm, unsigned long pos,
+diff --git a/mm/mempolicy.c b/mm/mempolicy.c
+index f48693f75b37..76a8e935e2e6 100644
+--- a/mm/mempolicy.c
++++ b/mm/mempolicy.c
+@@ -832,7 +832,7 @@ static int lookup_node(struct mm_struct *mm, unsigned long addr)
+ 	err = get_user_pages_locked(addr & PAGE_MASK, 1, 0, &p, &locked);
+ 	if (err >= 0) {
+ 		err = page_to_nid(p);
+-		put_page(p);
++		put_user_page(p);
  	}
- 	/* Same with put_arg_page(page) in fs/exec.c */
- #ifdef CONFIG_MMU
--	put_page(page);
-+	put_user_page(page);
- #endif
- 	return true;
- }
+ 	if (locked)
+ 		up_read(&mm->mmap_sem);
 -- 
 2.22.0
 
