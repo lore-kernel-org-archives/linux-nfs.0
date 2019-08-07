@@ -8,53 +8,53 @@ X-Spam-Status: No, score=-9.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3E6E2C31E40
-	for <linux-nfs@archiver.kernel.org>; Wed,  7 Aug 2019 01:37:23 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4DAD9C433FF
+	for <linux-nfs@archiver.kernel.org>; Wed,  7 Aug 2019 01:37:46 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 14471216F4
-	for <linux-nfs@archiver.kernel.org>; Wed,  7 Aug 2019 01:37:23 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 25504205C9
+	for <linux-nfs@archiver.kernel.org>; Wed,  7 Aug 2019 01:37:46 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="tmsRy1Gq"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="X+oC46vd"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729857AbfHGBhQ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 6 Aug 2019 21:37:16 -0400
-Received: from mail-pf1-f196.google.com ([209.85.210.196]:38114 "EHLO
-        mail-pf1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1729781AbfHGBee (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Aug 2019 21:34:34 -0400
-Received: by mail-pf1-f196.google.com with SMTP id y15so42511811pfn.5;
-        Tue, 06 Aug 2019 18:34:33 -0700 (PDT)
+        id S1730150AbfHGBhe (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 6 Aug 2019 21:37:34 -0400
+Received: from mail-pg1-f193.google.com ([209.85.215.193]:36714 "EHLO
+        mail-pg1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1729712AbfHGBe3 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Aug 2019 21:34:29 -0400
+Received: by mail-pg1-f193.google.com with SMTP id l21so42540552pgm.3;
+        Tue, 06 Aug 2019 18:34:28 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references
          :mime-version:content-transfer-encoding;
-        bh=Puv5caB6Xd1AJbwd7nGzyFKNouoVWAfL+vJwz/b+4QQ=;
-        b=tmsRy1GqXUm98oxjqXOZPjsWspl9AXdfGLJi4f4YSRE4p2Xnzia+lP7gOvMdJeaaOV
-         ZMTpzk7cqa5s9Whlhun0Z7Axe9U+exCqGVHdHS/nwzXnj2PJKIWBdXJBCa3H/2BHiz19
-         BnEnordNgtmPL4Xz5g5gGRNQFD3awe5Sds/iOUIPfzMq0+Xzzslt2XeYTRCDaqUoB/tZ
-         5WSuCY8UmuqBDYfQsynPZOWWiAW9iVZeFmsUs+zlPeiO0OHcuVwV2drvqj8qlA8ICP6u
-         9yeV7By6zGvwf0U2BDyf/bSCue82V2u+FVMGjOFTaa85KNQg5C2wQoPnNjOXVsaihczq
-         TD/Q==
+        bh=XDFswRI13oGzit66yuxshlgOj+nOKd4gwJhAdxr7MGM=;
+        b=X+oC46vd7xsqyIlCfk9jfvvzV6KsruG8Ld3KbyZxbsoEi8/HO1GbnyS051djmD0t5e
+         IHHS/+1UxUZwPEi5YIHD09i1hw+sYQFPMWL5MXVDvXn8jTsvyuss+94LZL/cM8p3bjpq
+         d4b4EaFpAv2r0fuq82w4gX6G8xDhtpwliffNpgIRnaMzTN6SuMgZ7nNfOclK8ThivKOZ
+         7xyX43NI19Uw1hhV+vBLTAkRAlmFP4cWwG7rBuQsdFHL+GJXdhmd4ykYSxe8XYPo9VdG
+         z0ekXKuUssjo5Om7rTdk/VGJmbSK9hbVth13oi1xkOKAckGir4q2yshriVnE4uLo3fC5
+         EABw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=Puv5caB6Xd1AJbwd7nGzyFKNouoVWAfL+vJwz/b+4QQ=;
-        b=Q03DRZ3tf5A+pbE5S1gqyimCcMlVapdsNbpUNAzfKAbAOLU3/Slg0hoIUHcqdm6LdG
-         G0KevIBHZDlvbZ3s308sF3fyx/J/BIT/RIL83s7RAGcIh6boQ2MA+qds8z7/oXLPyt/n
-         612EqqlSFJaL+luiB4u/5uKiraEJxpMx/u61GxZq/L/i+0ND5jurTAARhlkekh3MeQlO
-         kVvQ2nTcFNqsIOFQ9tuLU/7IQpf2WRGGdLSpQQn++X9616zQjC+bvoPYrRNcudBLPxPC
-         /Veh5Ep/ZWvNEZR5579iT38Gn1iHfGQPuS3Q4JWzYfPlcJWdXB3qWhXvPdSntIDBKoZd
-         wBFQ==
-X-Gm-Message-State: APjAAAVCoekNwY4WL4EOYONwdXubukJVhB+ExI3OmZHO49R9p3cGiSY+
-        4NziCXdh4gp8+OtF3AkS1zA=
-X-Google-Smtp-Source: APXvYqw2Uz+wsO3yNwpRHMDLbJirCIxZ4A4X8U6+Fg2LdiPaNY42ayE9pYwjEAVQClZpIkVOBc80qg==
-X-Received: by 2002:a17:90a:e38f:: with SMTP id b15mr6129518pjz.85.1565141672902;
-        Tue, 06 Aug 2019 18:34:32 -0700 (PDT)
+        bh=XDFswRI13oGzit66yuxshlgOj+nOKd4gwJhAdxr7MGM=;
+        b=gBo+KwoVYsjc76HHLlqsGgAogwvM9fLz2h/UGTkqf0P9aC6n0eUn5mPZP5ZxSX7J0e
+         SskBfHRL7ZMFCVMaA0eKd+NiaohVNoQ8aAcBQXacl/gtcn5xvR6ZmouNmi/6uMcR7PyN
+         rxcUbtlDAMd1EHaDOS1B1CTw/Td2hMkoWu7NXggUNtK16fXx/vnok3E3YMSxYm1kYW7y
+         vs3We14/OX1gO2VYdcAgJR/Ccz11DJzF0vVgns+D85uZO8/3NK7sf4rd/3cG2/Sxys75
+         6Ol2yjPvwOPwyXshpLYrxqkaOV7NqR3AfhvMNMdBCNL0MwuUXrQkyGBTdypQ/evx92EV
+         e2Aw==
+X-Gm-Message-State: APjAAAUaUCTfN21jQdSoYvv/TYKn8duvkCwEENxiAdT1NqMrcB4/KDn0
+        O0THtrA2gTQm+Cax3QnW2A4=
+X-Google-Smtp-Source: APXvYqyNVjxjb1rRFJ4zL7VZgTd8hKKqHIiZI2K7th6msFTgZFcONMzTsZWyvyMWu34CEbDocoskag==
+X-Received: by 2002:a65:5202:: with SMTP id o2mr5279108pgp.29.1565141668202;
+        Tue, 06 Aug 2019 18:34:28 -0700 (PDT)
 Received: from blueforge.nvidia.com (searspoint.nvidia.com. [216.228.112.21])
-        by smtp.gmail.com with ESMTPSA id u69sm111740800pgu.77.2019.08.06.18.34.31
+        by smtp.gmail.com with ESMTPSA id u69sm111740800pgu.77.2019.08.06.18.34.26
         (version=TLS1_3 cipher=AEAD-AES256-GCM-SHA384 bits=256/256);
-        Tue, 06 Aug 2019 18:34:32 -0700 (PDT)
+        Tue, 06 Aug 2019 18:34:27 -0700 (PDT)
 From:   john.hubbard@gmail.com
 X-Google-Original-From: jhubbard@nvidia.com
 To:     Andrew Morton <akpm@linux-foundation.org>
@@ -78,17 +78,14 @@ Cc:     Christoph Hellwig <hch@infradead.org>,
         netdev@vger.kernel.org, rds-devel@oss.oracle.com,
         sparclinux@vger.kernel.org, x86@kernel.org,
         xen-devel@lists.xenproject.org, John Hubbard <jhubbard@nvidia.com>,
-        Daniel Black <daniel@linux.ibm.com>,
-        Matthew Wilcox <willy@infradead.org>,
-        Mike Kravetz <mike.kravetz@oracle.com>
-Subject: [PATCH v3 30/41] mm/madvise.c: convert put_page() to put_user_page*()
-Date:   Tue,  6 Aug 2019 18:33:29 -0700
-Message-Id: <20190807013340.9706-31-jhubbard@nvidia.com>
+        Mel Gorman <mgorman@suse.de>, Vlastimil Babka <vbabka@suse.cz>
+Subject: [PATCH v3 27/41] mm/frame_vector.c: convert put_page() to put_user_page*()
+Date:   Tue,  6 Aug 2019 18:33:26 -0700
+Message-Id: <20190807013340.9706-28-jhubbard@nvidia.com>
 X-Mailer: git-send-email 2.22.0
 In-Reply-To: <20190807013340.9706-1-jhubbard@nvidia.com>
 References: <20190807013340.9706-1-jhubbard@nvidia.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
 X-NVConfidentiality: public
 Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
@@ -106,29 +103,36 @@ This is part a tree-wide conversion, as described in commit fc1d8e7cca2d
 ("mm: introduce put_user_page*(), placeholder versions").
 
 Cc: Dan Williams <dan.j.williams@intel.com>
-Cc: Daniel Black <daniel@linux.ibm.com>
 Cc: Jan Kara <jack@suse.cz>
-Cc: Jérôme Glisse <jglisse@redhat.com>
-Cc: Matthew Wilcox <willy@infradead.org>
-Cc: Mike Kravetz <mike.kravetz@oracle.com>
+Cc: Mel Gorman <mgorman@suse.de>
+Cc: Vlastimil Babka <vbabka@suse.cz>
 Signed-off-by: John Hubbard <jhubbard@nvidia.com>
 ---
- mm/madvise.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ mm/frame_vector.c | 4 +---
+ 1 file changed, 1 insertion(+), 3 deletions(-)
 
-diff --git a/mm/madvise.c b/mm/madvise.c
-index 968df3aa069f..1c6881a761a5 100644
---- a/mm/madvise.c
-+++ b/mm/madvise.c
-@@ -672,7 +672,7 @@ static int madvise_inject_error(int behavior,
- 		 * routine is responsible for pinning the page to prevent it
- 		 * from being released back to the page allocator.
- 		 */
--		put_page(page);
-+		put_user_page(page);
- 		ret = memory_failure(pfn, 0);
- 		if (ret)
- 			return ret;
+diff --git a/mm/frame_vector.c b/mm/frame_vector.c
+index c64dca6e27c2..f590badac776 100644
+--- a/mm/frame_vector.c
++++ b/mm/frame_vector.c
+@@ -120,7 +120,6 @@ EXPORT_SYMBOL(get_vaddr_frames);
+  */
+ void put_vaddr_frames(struct frame_vector *vec)
+ {
+-	int i;
+ 	struct page **pages;
+ 
+ 	if (!vec->got_ref)
+@@ -133,8 +132,7 @@ void put_vaddr_frames(struct frame_vector *vec)
+ 	 */
+ 	if (WARN_ON(IS_ERR(pages)))
+ 		goto out;
+-	for (i = 0; i < vec->nr_frames; i++)
+-		put_page(pages[i]);
++	put_user_pages(pages, vec->nr_frames);
+ 	vec->got_ref = false;
+ out:
+ 	vec->nr_frames = 0;
 -- 
 2.22.0
 
