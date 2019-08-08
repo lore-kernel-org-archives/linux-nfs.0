@@ -2,467 +2,149 @@ Return-Path: <SRS0=SPQs=WE=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-3.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
+	USER_AGENT_GIT autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 008F5C32756
-	for <linux-nfs@archiver.kernel.org>; Thu,  8 Aug 2019 18:34:37 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6AC60C0650F
+	for <linux-nfs@archiver.kernel.org>; Thu,  8 Aug 2019 20:18:53 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id D5246217F4
-	for <linux-nfs@archiver.kernel.org>; Thu,  8 Aug 2019 18:34:36 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 3439E2173E
+	for <linux-nfs@archiver.kernel.org>; Thu,  8 Aug 2019 20:18:53 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="vX4Ej/WJ"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1732786AbfHHSeg (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 8 Aug 2019 14:34:36 -0400
-Received: from mx1.redhat.com ([209.132.183.28]:33200 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725535AbfHHSef (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 8 Aug 2019 14:34:35 -0400
-Received: from smtp.corp.redhat.com (int-mx06.intmail.prod.int.phx2.redhat.com [10.5.11.16])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id A576E3145426
-        for <linux-nfs@vger.kernel.org>; Thu,  8 Aug 2019 18:34:34 +0000 (UTC)
-Received: from coeurl.usersys.redhat.com (ovpn-121-91.rdu2.redhat.com [10.10.121.91])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 2D7685C231;
-        Thu,  8 Aug 2019 18:34:34 +0000 (UTC)
-Received: by coeurl.usersys.redhat.com (Postfix, from userid 1000)
-        id C3D4520D2C; Thu,  8 Aug 2019 14:34:33 -0400 (EDT)
-From:   Scott Mayhew <smayhew@redhat.com>
-To:     steved@redhat.com
+        id S2404509AbfHHUSw (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 8 Aug 2019 16:18:52 -0400
+Received: from mail-ot1-f65.google.com ([209.85.210.65]:35843 "EHLO
+        mail-ot1-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2404324AbfHHUSw (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 8 Aug 2019 16:18:52 -0400
+Received: by mail-ot1-f65.google.com with SMTP id r6so123774238oti.3
+        for <linux-nfs@vger.kernel.org>; Thu, 08 Aug 2019 13:18:51 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=from:to:cc:subject:date:message-id:mime-version
+         :content-transfer-encoding;
+        bh=7ZrKst6Z22aNLoclBaGsKJhDbkaWt/+Vox6zypZbPPY=;
+        b=vX4Ej/WJ8jXqqs49AE2PxqYZwpukoBObG2eKwk9fvdJlUI/dhzm3MiZwQCfhqAeIf8
+         VJHawdGuESNDfCYSFgsU954VsSVi/e4Cv8TigLUEr3L1Mbo8k3I/pQY0DXsmNdZ5APWH
+         exkKEK3/cGTLVx2kizYqXTJsiToEIuLdfDwQySHd0vey0Az3mEQAqOY18Yf0Z200ZM+g
+         H7owzqrGsEyDkDx6Vk7QW4bvI9YrMhkMH+jrrTdQygtldS1I93IpIZvd98H+iq/CPmoZ
+         HjMhw61sdkh8RLyQH7Qt5F39phrzihARGBAqWmu05No2mz4zZeOEk89fteLqXe/odKhF
+         H7qQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:from:to:cc:subject:date:message-id:mime-version
+         :content-transfer-encoding;
+        bh=7ZrKst6Z22aNLoclBaGsKJhDbkaWt/+Vox6zypZbPPY=;
+        b=Kr8K6GfHGUiNwxc8vRgFr2XTmGqsG01ePXe0bkKm56lHY/mCesWyMESBUtQkhJcsbT
+         C0NgBOKTKTQAFtjOyIZT+ktlvljytWzhtYIvPun4V3G6TWQAo7DFTsQecOUgSOMRWdOo
+         2h+5bg1qUZW/ZEtSaQP5zAkuJQy62xhSwiSmzKBIflWJYb6sDvGvyc23BE3lDqFY78tl
+         emwj2vxNkDbqRCiwONelcYtDLh8Jlo/2ygZ5t0b5rBmxtOJExzfmUVsic9Z2d7kBecPE
+         +7xdKSQnRm1PE0nLqq9p2OgqvGEo4XoeIdZH6colu9NVBoULni+L7QAVyFK6LCDjtRy5
+         dvRQ==
+X-Gm-Message-State: APjAAAWgH443K6m7u15rChaA7KCMEkdFvKlW74FhxOIrLiiIuE5MED3G
+        oCKfBJMrRvrCmeLBnVxKlSE=
+X-Google-Smtp-Source: APXvYqwGj0IFLI+GtJKBCHEaP0ordpfWmFYTST5Iojl+6WPicckgfrSu1R+w2183pOjnBFeu1NTOyA==
+X-Received: by 2002:a5e:c914:: with SMTP id z20mr11969024iol.272.1565295531252;
+        Thu, 08 Aug 2019 13:18:51 -0700 (PDT)
+Received: from Olgas-MBP-201.attlocal.net (172-10-226-31.lightspeed.livnmi.sbcglobal.net. [172.10.226.31])
+        by smtp.gmail.com with ESMTPSA id m20sm93590523ioh.4.2019.08.08.13.18.50
+        (version=TLS1 cipher=AES128-SHA bits=128/128);
+        Thu, 08 Aug 2019 13:18:50 -0700 (PDT)
+From:   Olga Kornievskaia <olga.kornievskaia@gmail.com>
+To:     bfields@redhat.com
 Cc:     linux-nfs@vger.kernel.org
-Subject: [nfs-utils PATCH RFC v2 3/4] Add a tool for manipulating the nfsdcld sqlite database schema.
-Date:   Thu,  8 Aug 2019 14:34:32 -0400
-Message-Id: <20190808183433.3557-4-smayhew@redhat.com>
-In-Reply-To: <20190808183433.3557-1-smayhew@redhat.com>
-References: <20190808183433.3557-1-smayhew@redhat.com>
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.16
-X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.49]); Thu, 08 Aug 2019 18:34:34 +0000 (UTC)
+Subject: [PATCH v5 0/9] server-side support for "inter" SSC copy
+Date:   Thu,  8 Aug 2019 16:18:39 -0400
+Message-Id: <20190808201848.36640-1-olga.kornievskaia@gmail.com>
+X-Mailer: git-send-email 2.10.1 (Apple Git-78)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-The "clddb-tool" is mainly for downgrading the nfsdcld sqlite database
-schema in the event that an admin wants to downgrade nfsdcld.  It also
-provides options for fixing corrupt table names (note newer versions of
-nfsdcld take care of this automatically) and for printing the contents
-of the database.
+This patch series adds support for NFSv4.2 copy offload feature
+allowing copy between two different NFS servers.
 
-Signed-off-by: Scott Mayhew <smayhew@redhat.com>
----
- configure.ac                    |   1 +
- tools/Makefile.am               |   4 +
- tools/clddb-tool/Makefile.am    |  13 ++
- tools/clddb-tool/clddb-tool.man |  83 ++++++++++
- tools/clddb-tool/clddb-tool.py  | 261 ++++++++++++++++++++++++++++++++
- 5 files changed, 362 insertions(+)
- create mode 100644 tools/clddb-tool/Makefile.am
- create mode 100644 tools/clddb-tool/clddb-tool.man
- create mode 100644 tools/clddb-tool/clddb-tool.py
+This functionality depends on the VFS ability to support generic
+copy_file_range() where a copy is done between an NFS file and
+a local file system. This is on top of Amir's VFS generic copy
+offload series.
 
-diff --git a/configure.ac b/configure.ac
-index 50002b4..954abfd 100644
---- a/configure.ac
-+++ b/configure.ac
-@@ -652,6 +652,7 @@ AC_CONFIG_FILES([
- 	tools/mountstats/Makefile
- 	tools/nfs-iostat/Makefile
- 	tools/nfsconf/Makefile
-+        tools/clddb-tool/Makefile
- 	utils/Makefile
- 	utils/blkmapd/Makefile
- 	utils/nfsdcld/Makefile
-diff --git a/tools/Makefile.am b/tools/Makefile.am
-index 4266da4..53e6117 100644
---- a/tools/Makefile.am
-+++ b/tools/Makefile.am
-@@ -8,6 +8,10 @@ endif
- 
- OPTDIRS += nfsconf
- 
-+if CONFIG_NFSDCLD
-+OPTDIRS += clddb-tool
-+endif
-+
- SUBDIRS = locktest rpcdebug nlmtest mountstats nfs-iostat $(OPTDIRS)
- 
- MAINTAINERCLEANFILES = Makefile.in
-diff --git a/tools/clddb-tool/Makefile.am b/tools/clddb-tool/Makefile.am
-new file mode 100644
-index 0000000..15a8fd4
---- /dev/null
-+++ b/tools/clddb-tool/Makefile.am
-@@ -0,0 +1,13 @@
-+## Process this file with automake to produce Makefile.in
-+PYTHON_FILES =  clddb-tool.py
-+
-+man8_MANS	= clddb-tool.man
-+
-+EXTRA_DIST	= $(man8_MANS) $(PYTHON_FILES)
-+
-+all-local: $(PYTHON_FILES)
-+
-+install-data-hook:
-+	$(INSTALL) -m 755 clddb-tool.py $(DESTDIR)$(sbindir)/clddb-tool
-+
-+MAINTAINERCLEANFILES=Makefile.in
-diff --git a/tools/clddb-tool/clddb-tool.man b/tools/clddb-tool/clddb-tool.man
-new file mode 100644
-index 0000000..e80b2c0
---- /dev/null
-+++ b/tools/clddb-tool/clddb-tool.man
-@@ -0,0 +1,83 @@
-+.\"
-+.\" clddb-tool(8)
-+.\"
-+.TH clddb-tool 8 "07 Aug 2019"
-+.SH NAME
-+clddb-tool \- Tool for manipulating the nfsdcld sqlite database
-+.SH SYNOPSIS
-+.B clddb-tool
-+.RB [ \-h | \-\-help ]
-+.P
-+.B clddb-tool
-+.RB [ \-p | \-\-path
-+.IR dbpath ]
-+.B fix-table-names
-+.RB [ \-h | \-\-help ]
-+.P
-+.B clddb-tool
-+.RB [ \-p | \-\-path
-+.IR dbpath ]
-+.B downgrade-schema
-+.RB [ \-h | \-\-help ]
-+.RB [ \-v | \-\-version
-+.IR to-version ]
-+.P
-+.B clddb-tool
-+.RB [ \-p | \-\-path
-+.IR dbpath ]
-+.B print
-+.RB [ \-h | \-\-help ]
-+.RB [ \-s | \-\-summary ]
-+.P
-+
-+.SH DESCRIPTION
-+.RB "The " clddb-tool " command is provided to perform some manipulation of the nfsdcld sqlite database schema and to print the contents of the database."
-+.SS Sub-commands
-+Valid
-+.B clddb-tool
-+subcommands are:
-+.IP "\fBfix-table-names\fP"
-+.RB "A previous version of " nfsdcld "(8) contained a bug that corrupted the reboot epoch table names.  This sub-command will fix those table names."
-+.IP "\fBdowngrade-schema\fP"
-+Downgrade the database schema.  Currently the schema can only to downgraded from version 4 to version 3.
-+.IP "\fBprint\fP"
-+Display the contents of the database.  Prints the schema version and the values of the current and recovery epochs.  If the
-+.BR \-s | \-\-summary
-+option is not given, also prints the clients in the reboot epoch tables.
-+.SH OPTIONS
-+.SS Options valid for all sub-commands
-+.TP
-+.B \-h, \-\-help
-+Show the help message and exit
-+.TP
-+\fB\-p \fIdbpath\fR, \fB\-\-path \fIdbpath\fR
-+Open the sqlite database located at
-+.I dbpath
-+instead of
-+.IR /var/lib/nfs/nfsdcld/main.sqlite ".  "
-+This is mainly for testing purposes.
-+.SS Options specific to the downgrade-schema sub-command
-+.TP
-+\fB\-v \fIto-version\fR, \fB\-\-version \fIto-version\fR
-+The schema version to downgrade to.  Currently the schema can only be downgraded to version 3.
-+.SS Options specific to the print sub-command
-+.TP
-+.B \-s, \-\-summary
-+Do not list the clients in the reboot epoch tables in the output.
-+.SH NOTES
-+The
-+.B clddb-tool
-+command will not allow the
-+.B fix-table-names
-+or
-+.B downgrade-schema
-+subcommands to be used if
-+.BR nfsdcld (8)
-+is running.
-+.SH FILES
-+.TP
-+.B /var/lib/nfs/nfsdcld/main.sqlite
-+.SH SEE ALSO
-+.BR nfsdcld (8)
-+.SH AUTHOR
-+Scott Mayhew <smayhew@redhat.com>
-diff --git a/tools/clddb-tool/clddb-tool.py b/tools/clddb-tool/clddb-tool.py
-new file mode 100644
-index 0000000..b34859d
---- /dev/null
-+++ b/tools/clddb-tool/clddb-tool.py
-@@ -0,0 +1,261 @@
-+#!/usr/bin/python3
-+"""Tool for manipulating the nfsdcld sqlite database
-+"""
-+
-+__copyright__ = """
-+Copyright (C) 2019 Scott Mayhew <smayhew@redhat.com>
-+
-+This program is free software; you can redistribute it and/or
-+modify it under the terms of the GNU General Public License
-+as published by the Free Software Foundation; either version 2
-+of the License, or (at your option) any later version.
-+
-+This program is distributed in the hope that it will be useful,
-+but WITHOUT ANY WARRANTY; without even the implied warranty of
-+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+GNU General Public License for more details.
-+
-+You should have received a copy of the GNU General Public License
-+along with this program; if not, write to the Free Software
-+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
-+MA  02110-1301, USA.
-+"""
-+
-+import argparse
-+import os
-+import sqlite3
-+import sys
-+
-+
-+class CldDb():
-+    def __init__(self, path):
-+        self.con = sqlite3.connect(path)
-+        self.con.row_factory = sqlite3.Row
-+        for row in self.con.execute('select value from parameters '
-+                                    'where key = "version"'):
-+            self.version = int(row['value'])
-+        for row in self.con.execute('select * from grace'):
-+            self.current = int(row['current'])
-+            self.recovery = int(row['recovery'])
-+
-+    def __del__(self):
-+        self.con.close()
-+
-+    def __str__(self):
-+        return ('Schema version: {self.version} '
-+                'current epoch: {self.current} '
-+                'recovery epoch: {self.recovery}'.format(self=self))
-+
-+    def _print_clients(self, epoch):
-+        if epoch:
-+            for row in self.con.execute('select * from "rec-{:016x}"'
-+                                        .format(epoch)):
-+                if self.version == 4:
-+                    print('id = {}, principal = {}'
-+                          .format(row['id'].decode(),
-+                                  row['principal'].decode()))
-+                else:
-+                    print('id = {}'.format(row['id'].decode()))
-+
-+    def print_current_clients(self):
-+        print('Clients in current epoch:')
-+        self._print_clients(self.current)
-+
-+    def print_recovery_clients(self):
-+        if self.recovery:
-+            print('Clients in recovery epoch:')
-+            self._print_clients(self.recovery)
-+
-+    def check_bad_table_names(self):
-+        bad_names = []
-+        for row in self.con.execute('select name from sqlite_master '
-+                                    'where type = "table" '
-+                                    'and name like "%rec-%" '
-+                                    'and length(name) < 20'):
-+            bad_names.append(row['name'])
-+        return bad_names
-+
-+    def fix_bad_table_names(self):
-+        try:
-+            self.con.execute('begin exclusive transaction')
-+            bad_names = self.check_bad_table_names()
-+            for bad_name in bad_names:
-+                epoch = int(bad_name.split('-')[1], base=16)
-+                if epoch == self.current or epoch == self.recovery:
-+                    if epoch == self.current:
-+                        which = 'current'
-+                    else:
-+                        which = 'recovery'
-+                    print('found invalid table name {} for {} epoch'
-+                          .format(bad_name, which))
-+                    self.con.execute('alter table "{}" '
-+                                     'rename to "rec-{:016x}"'
-+                                     .format(bad_name, epoch))
-+                    print('renamed to rec-{:016x}'.format(epoch))
-+                else:
-+                    print('found invalid table name {} for unknown epoch {}'
-+                          .format(bad_name, epoch))
-+                    self.con.execute('drop table "{}"'.format(bad_name))
-+                    print('dropped table {}'.format(bad_name))
-+        except sqlite3.Error:
-+            self.con.rollback()
-+        else:
-+            self.con.commit()
-+
-+    def has_princ_data(self):
-+        if self.version < 4:
-+            return False
-+        for row in self.con.execute('select count(*) '
-+                                    'from "rec-{:016x}" '
-+                                    'where principal not null'
-+                                    .format(self.current)):
-+            count = row[0]
-+        if self.recovery:
-+            for row in self.con.execute('select count(*) '
-+                                        'from "rec-{:016x}" '
-+                                        'where principal not null'
-+                                        .format(self.current)):
-+                count = count + row[0]
-+        if count:
-+            return True
-+        return False
-+
-+    def _downgrade_table_v4_to_v3(self, epoch):
-+        if not self.con.in_transaction:
-+            raise sqlite3.Error
-+        try:
-+            self.con.execute('create table "new_rec-{:016x}" '
-+                             '(id blob primary key)'.format(epoch))
-+            self.con.execute('insert into "new_rec-{:016x}" '
-+                             'select id from "rec-{:016x}"'
-+                             .format(epoch, epoch))
-+            self.con.execute('drop table "rec-{:016x}"'.format(epoch))
-+            self.con.execute('alter table "new_rec-{:016x}" '
-+                             'rename to "rec-{:016x}"'
-+                             .format(epoch, epoch))
-+        except sqlite3.Error:
-+            raise
-+
-+    def downgrade_schema_v4_to_v3(self):
-+        try:
-+            self.con.execute('begin exclusive transaction')
-+            for row in self.con.execute('select value from parameters '
-+                                        'where key = "version"'):
-+                version = int(row['value'])
-+            if version != self.version:
-+                raise sqlite3.Error
-+            for row in self.con.execute('select * from grace'):
-+                current = int(row['current'])
-+                recovery = int(row['recovery'])
-+            if current != self.current:
-+                raise sqlite3.Error
-+            if recovery != self.recovery:
-+                raise sqlite3.Error
-+            self._downgrade_table_v4_to_v3(current)
-+            if recovery:
-+                self._downgrade_table_v4_to_v3(recovery)
-+            self.con.execute('update parameters '
-+                             'set value = "3" '
-+                             'where key = "version"')
-+            self.version = 3
-+        except sqlite3.Error:
-+            self.con.rollback()
-+            print('Downgrade failed')
-+        else:
-+            self.con.commit()
-+            print('Downgrade successful')
-+
-+
-+def nfsdcld_active():
-+    rc = os.system('ps -C nfsdcld >/dev/null 2>/dev/null')
-+    if rc == 0:
-+        return True
-+    return False
-+
-+
-+def fix_table_names_command(db, args):
-+    if nfsdcld_active():
-+        print('Warning: nfsdcld is running!')
-+        ans = input('Continue? ')
-+        if ans.lower() not in ['y', 'yes']:
-+            print('Operation canceled.')
-+            return
-+    bad_names = db.check_bad_table_names()
-+    if not bad_names:
-+        print('No invalid table names found.')
-+        return
-+    db.fix_bad_table_names()
-+
-+
-+def downgrade_schema_command(db, args):
-+    if nfsdcld_active():
-+        print('Warning: nfsdcld is running!')
-+        ans = input('Continue? ')
-+        if ans.lower() not in ['y', 'yes']:
-+            print('Operation canceled')
-+            return
-+    if db.version != 4:
-+        print('Cannot downgrade database from schema version {}.'
-+              .format(db.version))
-+        return
-+    if args.version != 3:
-+        print('Cannot downgrade to version {}.'.format(args.version))
-+        return
-+    bad_names = db.check_bad_table_names()
-+    if bad_names:
-+        print('Invalid table names detected.')
-+        print('Please run "{} fix-table-names" before downgrading the schema.'
-+              .format(sys.argv[0]))
-+        return
-+    if db.has_princ_data():
-+        print('Warning: database has principal data, which will be erased.')
-+        ans = input('Continue? ')
-+        if ans.lower() not in ['y', 'yes']:
-+            print('Operation canceled')
-+            return
-+    db.downgrade_schema_v4_to_v3()
-+
-+
-+def print_command(db, args):
-+    print(str(db))
-+    if not args.summary:
-+        bad_names = db.check_bad_table_names()
-+        if bad_names:
-+            print('Invalid table names detected.')
-+            print('Please run "{} fix-table-names".'.format(sys.argv[0]))
-+            return
-+        db.print_current_clients()
-+        db.print_recovery_clients()
-+
-+
-+def main():
-+    parser = argparse.ArgumentParser()
-+    parser.add_argument('-p', '--path',
-+                        default='/var/lib/nfs/nfsdcld/main.sqlite',
-+                        help='path to the database '
-+                        '(default: /var/lib/nfs/nfsdcld/main.sqlite)')
-+    subparsers = parser.add_subparsers(help='sub-command help')
-+    fix_parser = subparsers.add_parser('fix-table-names',
-+                                       help='fix invalid table names')
-+    fix_parser.set_defaults(func=fix_table_names_command)
-+    downgrade_parser = subparsers.add_parser('downgrade-schema',
-+                                             help='downgrade database schema')
-+    downgrade_parser.add_argument('-v', '--version', type=int, choices=[3],
-+                                  default=3,
-+                                  help='version to downgrade to')
-+    downgrade_parser.set_defaults(func=downgrade_schema_command)
-+    print_parser = subparsers.add_parser('print',
-+                                         help='print database info')
-+    print_parser.add_argument('-s', '--summary', default=False,
-+                              action='store_true',
-+                              help='print summary only')
-+    print_parser.set_defaults(func=print_command)
-+    args = parser.parse_args()
-+    if not os.path.exists(args.path):
-+        return parser.print_usage()
-+    clddb = CldDb(args.path)
-+    return args.func(clddb, args)
-+
-+
-+if __name__ == '__main__':
-+    main()
+This feature is enabled by the kernel module parameter --
+inter_copy_offload_enable -- and by default is disabled. There is
+also a kernel compile configuration of NFSD_V4_2_INTER_SSC that
+adds dependency on the NFS client side functions called from the
+server.
+
+These patches work on top of existing async intra copy offload
+patches. For the "inter" SSC, the implementation only supports
+asynchronous inter copy.
+
+On the source server, upon receiving a COPY_NOTIFY, it generate a
+unique stateid that's kept in the global list. Upon receiving a READ
+with a stateid, the code checks the normal list of open stateid and
+now additionally, it'll check the copy state list as well before
+deciding to either fail with BAD_STATEID or find one that matches.
+The stored stateid is only valid to be used for the first time
+with a choosen lease period (90s currently). When the source server
+received an OFFLOAD_CANCEL, it will remove the stateid from the
+global list. Otherwise, the copy stateid is removed upon the removal
+of its "parent" stateid (open/lock/delegation stateid).
+
+On the destination server, upon receiving a COPY request, the server
+establishes the necessary clientid/session with the source server.
+It calls into the NFS client code to establish the necessary
+open stateid, filehandle, file description (without doing an NFS open).
+Then the server calls into the copy_file_range() to preform the copy
+where the source file will issue NFS READs and then do local file
+system writes (this depends on the VFS ability to do cross device
+copy_file_range().
+
+v5 fixes:
+-- Remove unused nl4_ulr/nl4_name types
+-- default to warn_on_once
+-- move 2 chucks of use of stid into previous patch
+-- in the idr store stateid ptr instead of copy or copy_notify
+-- add sc_type to distinguish copy and copy_notify stateid (for that need to re-work data structures to encapsulate stateid_t with sc_type)
+-- rework how initialization of copy and copy_notify stateid is done w respect to adding it to the global list
+-- during compound check to allow for stale_fh make sure that saved fh was set – done
+-- separated the copy_notify xdr code into its own patch
+-- need to insure the parent stateid is valid for copy_notify accesses. in
+preprocess_op take a reference on the parent stateid and hold it. on the 
+put_stid, check if there are any copy_notifies associated and account for them
+during decrementing a reference count. add to the laundromat, traversing copy
+notify list of the client pointer, if entry is passed a lease period, then
+remove it.
+
+Olga Kornievskaia (9):
+  NFSD fill-in netloc4 structure
+  NFSD add ca_source_server<> to COPY
+  NFSD return nfs4_stid in nfs4_preprocess_stateid_op
+  NFSD COPY_NOTIFY xdr
+  NFSD add COPY_NOTIFY operation
+  NFSD check stateids against copy stateids
+  NFSD generalize nfsd4_compound_state flag names
+  NFSD: allow inter server COPY to have a STALE source server fh
+  NFSD add nfs4 inter ssc to nfsd4_copy
+
+ fs/nfsd/Kconfig     |  10 ++
+ fs/nfsd/nfs4proc.c  | 453 +++++++++++++++++++++++++++++++++++++++++++++++-----
+ fs/nfsd/nfs4state.c | 179 ++++++++++++++++++---
+ fs/nfsd/nfs4xdr.c   | 154 +++++++++++++++++-
+ fs/nfsd/nfsd.h      |  32 ++++
+ fs/nfsd/nfsfh.h     |   5 +-
+ fs/nfsd/nfssvc.c    |   6 +
+ fs/nfsd/state.h     |  36 ++++-
+ fs/nfsd/xdr4.h      |  39 +++--
+ 9 files changed, 840 insertions(+), 74 deletions(-)
+
 -- 
-2.17.2
+1.8.3.1
 
