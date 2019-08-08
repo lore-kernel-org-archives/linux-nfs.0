@@ -6,231 +6,98 @@ X-Spam-Status: No, score=-6.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id AA203C433FF
-	for <linux-nfs@archiver.kernel.org>; Thu,  8 Aug 2019 18:34:35 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1AE1CC32754
+	for <linux-nfs@archiver.kernel.org>; Thu,  8 Aug 2019 18:34:36 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 8B0A0217D7
+	by mail.kernel.org (Postfix) with ESMTP id EAD5A217D7
 	for <linux-nfs@archiver.kernel.org>; Thu,  8 Aug 2019 18:34:35 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1733256AbfHHSef (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S1732327AbfHHSef (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Thu, 8 Aug 2019 14:34:35 -0400
-Received: from mx1.redhat.com ([209.132.183.28]:52090 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:8133 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1732327AbfHHSee (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        id S1731278AbfHHSee (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
         Thu, 8 Aug 2019 14:34:34 -0400
-Received: from smtp.corp.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
+Received: from smtp.corp.redhat.com (int-mx06.intmail.prod.int.phx2.redhat.com [10.5.11.16])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 5ACCD3172D8A
+        by mx1.redhat.com (Postfix) with ESMTPS id 4446F300BEA5
         for <linux-nfs@vger.kernel.org>; Thu,  8 Aug 2019 18:34:34 +0000 (UTC)
 Received: from coeurl.usersys.redhat.com (ovpn-121-91.rdu2.redhat.com [10.10.121.91])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 1642260BEC;
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 2A9205C21F;
         Thu,  8 Aug 2019 18:34:34 +0000 (UTC)
 Received: by coeurl.usersys.redhat.com (Postfix, from userid 1000)
-        id B83CB20773; Thu,  8 Aug 2019 14:34:33 -0400 (EDT)
+        id C89B020D2E; Thu,  8 Aug 2019 14:34:33 -0400 (EDT)
 From:   Scott Mayhew <smayhew@redhat.com>
 To:     steved@redhat.com
 Cc:     linux-nfs@vger.kernel.org
-Subject: [nfs-utils PATCH RFC v2 1/4] nfsdcld: add a "GetVersion" upcall
-Date:   Thu,  8 Aug 2019 14:34:30 -0400
-Message-Id: <20190808183433.3557-2-smayhew@redhat.com>
+Subject: [nfs-utils PATCH RFC v2 4/4] nfsdcld: update nfsdcld.man
+Date:   Thu,  8 Aug 2019 14:34:33 -0400
+Message-Id: <20190808183433.3557-5-smayhew@redhat.com>
 In-Reply-To: <20190808183433.3557-1-smayhew@redhat.com>
 References: <20190808183433.3557-1-smayhew@redhat.com>
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.12
-X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.41]); Thu, 08 Aug 2019 18:34:34 +0000 (UTC)
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.16
+X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.42]); Thu, 08 Aug 2019 18:34:34 +0000 (UTC)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Add a "GetVersion" upcall to allow the kernel to determine the maximum
-upcall version that nfsdcld supports.
+Added some historical information to the notes section, along with
+some information regarding upgrading and downgrading nfsdcld.
 
 Signed-off-by: Scott Mayhew <smayhew@redhat.com>
 ---
- support/include/cld.h        | 11 ++++++++-
- utils/nfsdcld/cld-internal.h |  4 ++-
- utils/nfsdcld/nfsdcld.c      | 47 ++++++++++++++++++++++++++++++------
- utils/nfsdcld/sqlite.c       |  2 +-
- 4 files changed, 53 insertions(+), 11 deletions(-)
+ utils/nfsdcld/nfsdcld.man | 32 +++++++++++++++++++++++++++-----
+ 1 file changed, 27 insertions(+), 5 deletions(-)
 
-diff --git a/support/include/cld.h b/support/include/cld.h
-index c1f5b70..00a40da 100644
---- a/support/include/cld.h
-+++ b/support/include/cld.h
-@@ -33,7 +33,8 @@ enum cld_command {
- 	Cld_Remove,		/* remove record of this cm_id */
- 	Cld_Check,		/* is this cm_id allowed? */
- 	Cld_GraceDone,		/* grace period is complete */
--	Cld_GraceStart,
-+	Cld_GraceStart,		/* grace start (upload client records) */
-+	Cld_GetVersion,		/* query max supported upcall version */
- };
- 
- /* representation of long-form NFSv4 client ID */
-@@ -51,7 +52,15 @@ struct cld_msg {
- 	union {
- 		int64_t		cm_gracetime;	/* grace period start time */
- 		struct cld_name	cm_name;
-+		uint8_t		cm_version;	/* for getting max version */
- 	} __attribute__((packed)) cm_u;
- } __attribute__((packed));
- 
-+struct cld_msg_hdr {
-+	uint8_t		cm_vers;		/* upcall version */
-+	uint8_t		cm_cmd;			/* upcall command */
-+	int16_t		cm_status;		/* return code */
-+	uint32_t	cm_xid;			/* transaction id */
-+} __attribute__((packed));
-+
- #endif /* !_NFSD_CLD_H */
-diff --git a/utils/nfsdcld/cld-internal.h b/utils/nfsdcld/cld-internal.h
-index 76e97db..f33cb04 100644
---- a/utils/nfsdcld/cld-internal.h
-+++ b/utils/nfsdcld/cld-internal.h
-@@ -21,7 +21,9 @@
- struct cld_client {
- 	int			cl_fd;
- 	struct event		cl_event;
--	struct cld_msg	cl_msg;
-+	union {
-+		struct cld_msg	cl_msg;
-+	} cl_u;
- };
- 
- uint64_t current_epoch;
-diff --git a/utils/nfsdcld/nfsdcld.c b/utils/nfsdcld/nfsdcld.c
-index cbf71fc..aa5594b 100644
---- a/utils/nfsdcld/nfsdcld.c
-+++ b/utils/nfsdcld/nfsdcld.c
-@@ -343,7 +343,7 @@ cld_not_implemented(struct cld_client *clnt)
- {
- 	int ret;
- 	ssize_t bsize, wsize;
--	struct cld_msg *cmsg = &clnt->cl_msg;
-+	struct cld_msg *cmsg = &clnt->cl_u.cl_msg;
- 
- 	xlog(D_GENERAL, "%s: downcalling with not implemented error", __func__);
- 
-@@ -365,12 +365,40 @@ cld_not_implemented(struct cld_client *clnt)
- 	}
- }
- 
-+static void
-+cld_get_version(struct cld_client *clnt)
-+{
-+	int ret;
-+	ssize_t bsize, wsize;
-+	struct cld_msg *cmsg = &clnt->cl_u.cl_msg;
-+
-+	xlog(D_GENERAL, "%s: version = %u.", __func__, UPCALL_VERSION);
-+
-+	cmsg->cm_u.cm_version = UPCALL_VERSION;
-+	cmsg->cm_status = 0;
-+
-+	bsize = sizeof(*cmsg);
-+
-+	xlog(D_GENERAL, "Doing downcall with status %d", cmsg->cm_status);
-+	wsize = atomicio((void *)write, clnt->cl_fd, cmsg, bsize);
-+	if (wsize != bsize) {
-+		xlog(L_ERROR, "%s: problem writing to cld pipe (%ld): %m",
-+			 __func__, wsize);
-+		ret = cld_pipe_open(clnt);
-+		if (ret) {
-+			xlog(L_FATAL, "%s: unable to reopen pipe: %d",
-+					__func__, ret);
-+			exit(ret);
-+		}
-+	}
-+}
-+
- static void
- cld_create(struct cld_client *clnt)
- {
- 	int ret;
- 	ssize_t bsize, wsize;
--	struct cld_msg *cmsg = &clnt->cl_msg;
-+	struct cld_msg *cmsg = &clnt->cl_u.cl_msg;
- 
- 	ret = cld_check_grace_period();
- 	if (ret)
-@@ -406,7 +434,7 @@ cld_remove(struct cld_client *clnt)
- {
- 	int ret;
- 	ssize_t bsize, wsize;
--	struct cld_msg *cmsg = &clnt->cl_msg;
-+	struct cld_msg *cmsg = &clnt->cl_u.cl_msg;
- 
- 	ret = cld_check_grace_period();
- 	if (ret)
-@@ -442,7 +470,7 @@ cld_check(struct cld_client *clnt)
- {
- 	int ret;
- 	ssize_t bsize, wsize;
--	struct cld_msg *cmsg = &clnt->cl_msg;
-+	struct cld_msg *cmsg = &clnt->cl_u.cl_msg;
- 
- 	/*
- 	 * If we get a check upcall at all, it means we're talking to an old
-@@ -489,7 +517,7 @@ cld_gracedone(struct cld_client *clnt)
- {
- 	int ret;
- 	ssize_t bsize, wsize;
--	struct cld_msg *cmsg = &clnt->cl_msg;
-+	struct cld_msg *cmsg = &clnt->cl_u.cl_msg;
- 
- 	/*
- 	 * If we got a "gracedone" upcall while we're not in grace, then
-@@ -543,7 +571,7 @@ reply:
- static int
- gracestart_callback(struct cld_client *clnt) {
- 	ssize_t bsize, wsize;
--	struct cld_msg *cmsg = &clnt->cl_msg;
-+	struct cld_msg *cmsg = &clnt->cl_u.cl_msg;
- 
- 	cmsg->cm_status = -EINPROGRESS;
- 
-@@ -562,7 +590,7 @@ cld_gracestart(struct cld_client *clnt)
- {
- 	int ret;
- 	ssize_t bsize, wsize;
--	struct cld_msg *cmsg = &clnt->cl_msg;
-+	struct cld_msg *cmsg = &clnt->cl_u.cl_msg;
- 
- 	xlog(D_GENERAL, "%s: updating grace epochs", __func__);
- 
-@@ -598,7 +626,7 @@ cldcb(int UNUSED(fd), short which, void *data)
- {
- 	ssize_t len;
- 	struct cld_client *clnt = data;
--	struct cld_msg *cmsg = &clnt->cl_msg;
-+	struct cld_msg *cmsg = &clnt->cl_u.cl_msg;
- 
- 	if (which != EV_READ)
- 		goto out;
-@@ -633,6 +661,9 @@ cldcb(int UNUSED(fd), short which, void *data)
- 	case Cld_GraceStart:
- 		cld_gracestart(clnt);
- 		break;
-+	case Cld_GetVersion:
-+		cld_get_version(clnt);
-+		break;
- 	default:
- 		xlog(L_WARNING, "%s: command %u is not yet implemented",
- 				__func__, cmsg->cm_cmd);
-diff --git a/utils/nfsdcld/sqlite.c b/utils/nfsdcld/sqlite.c
-index fa81df8..6525fc1 100644
---- a/utils/nfsdcld/sqlite.c
-+++ b/utils/nfsdcld/sqlite.c
-@@ -1152,7 +1152,7 @@ sqlite_iterate_recovery(int (*cb)(struct cld_client *clnt), struct cld_client *c
- {
- 	int ret;
- 	sqlite3_stmt *stmt = NULL;
--	struct cld_msg *cmsg = &clnt->cl_msg;
-+	struct cld_msg *cmsg = &clnt->cl_u.cl_msg;
- 
- 	if (recovery_epoch == 0) {
- 		xlog(D_GENERAL, "%s: not in grace!", __func__);
+diff --git a/utils/nfsdcld/nfsdcld.man b/utils/nfsdcld/nfsdcld.man
+index c271d14..4c2b1e8 100644
+--- a/utils/nfsdcld/nfsdcld.man
++++ b/utils/nfsdcld/nfsdcld.man
+@@ -185,15 +185,37 @@ on stable storage by manipulating information on the filesystem
+ directly, in the directory to which \fI/proc/fs/nfsd/nfsv4recoverydir\fR
+ points.
+ .PP
+-This daemon requires a kernel that supports the nfsdcld upcall. If the
+-kernel does not support the new upcall, or is using the legacy client
+-name tracking code then it will not create the pipe that nfsdcld uses to
+-talk to the kernel.
++This changed with the original introduction of \fBnfsdcld\fR upcall in kernel version 3.4,
++which was later deprecated in favor of the \fBnfsdcltrack\fR(8) usermodehelper
++program, support for which was added in kernel version 3.8.  However, since the
++usermodehelper upcall does not work in containers, support for a new version of
++the \fBnfsdcld\fR upcall was added in kernel version 5.2.
++.PP
++This daemon requires a kernel that supports the \fBnfsdcld\fR upcall. On older kernels, if
++the legacy client name tracking code was in use, then the kernel would not create the
++pipe that \fBnfsdcld\fR uses to talk to the kernel.  On newer kernels, nfsd attempts to
++initialize client tracking in the following order:  First, the \fBnfsdcld\fR upcall.  Second,
++the \fBnfsdcltrack\fR usermodehelper upcall.  Finally, the legacy client tracking.
+ .PP
+ This daemon should be run as root, as the pipe that it uses to communicate
+ with the kernel is only accessable by root. The daemon however does drop all
+ superuser capabilities after starting. Because of this, the \fIstoragedir\fR
+ should be owned by root, and be readable and writable by owner.
++.PP
++The daemon now supports different upcall versions to allow the kernel to pass additional
++data to be stored in the on-disk database.  The kernel will query the supported upcall
++version from \fBnfsdcld\fR during client tracking initialization.  A restart of \fBnfsd\fR is
++not necessary after upgrading \fBnfsdcld\fR, however \fBnfsd\fR will not use a later upcall
++version until restart.  A restart of \fBnfsd is necessary\fR after downgrading \fBnfsdcld\fR,
++to ensure that \fBnfsd\fR does not use an upcall version that \fBnfsdcld\fR does not support.
++Additionally, a downgrade of \fBnfsdcld\fR requires the schema of the on-disk database to
++be downgraded as well.  That can be accomplished using the \fBclddb-tool\fR(8) utility.
++.SH FILES
++.TP
++.B /var/lib/nfs/nfsdcld/main.sqlite
++.SH SEE ALSO
++.BR nfsdcltrack "(8), " clddb-tool (8)
+ .SH "AUTHORS"
+ .IX Header "AUTHORS"
+-The nfsdcld daemon was developed by Jeff Layton <jlayton@redhat.com>.
++The nfsdcld daemon was developed by Jeff Layton <jlayton@redhat.com>
++with modifications from Scott Mayhew <smayhew@redhat.com>.
 -- 
 2.17.2
 
