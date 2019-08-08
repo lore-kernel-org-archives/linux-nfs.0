@@ -2,102 +2,109 @@ Return-Path: <SRS0=SPQs=WE=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-0.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=no
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1AE1CC32754
-	for <linux-nfs@archiver.kernel.org>; Thu,  8 Aug 2019 18:34:36 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2A7F5C0650F
+	for <linux-nfs@archiver.kernel.org>; Thu,  8 Aug 2019 18:34:35 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id EAD5A217D7
+	by mail.kernel.org (Postfix) with ESMTP id 0615D217D7
 	for <linux-nfs@archiver.kernel.org>; Thu,  8 Aug 2019 18:34:35 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1732327AbfHHSef (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 8 Aug 2019 14:34:35 -0400
-Received: from mx1.redhat.com ([209.132.183.28]:8133 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1731278AbfHHSee (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        id S1733248AbfHHSee (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Thu, 8 Aug 2019 14:34:34 -0400
-Received: from smtp.corp.redhat.com (int-mx06.intmail.prod.int.phx2.redhat.com [10.5.11.16])
+Received: from mx1.redhat.com ([209.132.183.28]:33190 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1725535AbfHHSee (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 8 Aug 2019 14:34:34 -0400
+Received: from smtp.corp.redhat.com (int-mx08.intmail.prod.int.phx2.redhat.com [10.5.11.23])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 4446F300BEA5
+        by mx1.redhat.com (Postfix) with ESMTPS id 2CCFE30C3A1F
         for <linux-nfs@vger.kernel.org>; Thu,  8 Aug 2019 18:34:34 +0000 (UTC)
 Received: from coeurl.usersys.redhat.com (ovpn-121-91.rdu2.redhat.com [10.10.121.91])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 2A9205C21F;
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 13E0A19C69;
         Thu,  8 Aug 2019 18:34:34 +0000 (UTC)
 Received: by coeurl.usersys.redhat.com (Postfix, from userid 1000)
-        id C89B020D2E; Thu,  8 Aug 2019 14:34:33 -0400 (EDT)
+        id B439E20AAD; Thu,  8 Aug 2019 14:34:33 -0400 (EDT)
 From:   Scott Mayhew <smayhew@redhat.com>
 To:     steved@redhat.com
 Cc:     linux-nfs@vger.kernel.org
-Subject: [nfs-utils PATCH RFC v2 4/4] nfsdcld: update nfsdcld.man
-Date:   Thu,  8 Aug 2019 14:34:33 -0400
-Message-Id: <20190808183433.3557-5-smayhew@redhat.com>
-In-Reply-To: <20190808183433.3557-1-smayhew@redhat.com>
-References: <20190808183433.3557-1-smayhew@redhat.com>
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.16
-X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.42]); Thu, 08 Aug 2019 18:34:34 +0000 (UTC)
+Subject: [nfs-utils PATCH RFC v2 0/4] add principal to the data being tracked by nfsdcld
+Date:   Thu,  8 Aug 2019 14:34:29 -0400
+Message-Id: <20190808183433.3557-1-smayhew@redhat.com>
+X-Scanned-By: MIMEDefang 2.84 on 10.5.11.23
+X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.49]); Thu, 08 Aug 2019 18:34:34 +0000 (UTC)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Added some historical information to the notes section, along with
-some information regarding upgrading and downgrading nfsdcld.
+At the spring bakeathon, Chuck suggested that we should store the
+kerberos principal in addition to the client id string in nfsdcld.  The
+idea is to prevent an illegitimate client from reclaiming another
+client's opens by supplying that client's id string.  This is an initial
+attempt at doing that.
 
-Signed-off-by: Scott Mayhew <smayhew@redhat.com>
----
- utils/nfsdcld/nfsdcld.man | 32 +++++++++++++++++++++++++++-----
- 1 file changed, 27 insertions(+), 5 deletions(-)
+The first patch adds support for a "GetVersion" upcall which allows nfsd
+to determine the maximum message version that nfsdcld supports.  Right
+now it's based on the value of CLD_UPCALL_VERSION from cld.h, but I was
+thinking we may wish to add a command-line option (and an nfs.conf)
+option to make it possible to use a lower version than
+CLD_UPCALL_VERSION.  My thinking here is that an older nfsdcld daemon
+won't be compatible with the new database schema... rather than worrying
+about messing with downgrading the database, just use the command-line
+option to make it behave like an older daemon.
 
-diff --git a/utils/nfsdcld/nfsdcld.man b/utils/nfsdcld/nfsdcld.man
-index c271d14..4c2b1e8 100644
---- a/utils/nfsdcld/nfsdcld.man
-+++ b/utils/nfsdcld/nfsdcld.man
-@@ -185,15 +185,37 @@ on stable storage by manipulating information on the filesystem
- directly, in the directory to which \fI/proc/fs/nfsd/nfsv4recoverydir\fR
- points.
- .PP
--This daemon requires a kernel that supports the nfsdcld upcall. If the
--kernel does not support the new upcall, or is using the legacy client
--name tracking code then it will not create the pipe that nfsdcld uses to
--talk to the kernel.
-+This changed with the original introduction of \fBnfsdcld\fR upcall in kernel version 3.4,
-+which was later deprecated in favor of the \fBnfsdcltrack\fR(8) usermodehelper
-+program, support for which was added in kernel version 3.8.  However, since the
-+usermodehelper upcall does not work in containers, support for a new version of
-+the \fBnfsdcld\fR upcall was added in kernel version 5.2.
-+.PP
-+This daemon requires a kernel that supports the \fBnfsdcld\fR upcall. On older kernels, if
-+the legacy client name tracking code was in use, then the kernel would not create the
-+pipe that \fBnfsdcld\fR uses to talk to the kernel.  On newer kernels, nfsd attempts to
-+initialize client tracking in the following order:  First, the \fBnfsdcld\fR upcall.  Second,
-+the \fBnfsdcltrack\fR usermodehelper upcall.  Finally, the legacy client tracking.
- .PP
- This daemon should be run as root, as the pipe that it uses to communicate
- with the kernel is only accessable by root. The daemon however does drop all
- superuser capabilities after starting. Because of this, the \fIstoragedir\fR
- should be owned by root, and be readable and writable by owner.
-+.PP
-+The daemon now supports different upcall versions to allow the kernel to pass additional
-+data to be stored in the on-disk database.  The kernel will query the supported upcall
-+version from \fBnfsdcld\fR during client tracking initialization.  A restart of \fBnfsd\fR is
-+not necessary after upgrading \fBnfsdcld\fR, however \fBnfsd\fR will not use a later upcall
-+version until restart.  A restart of \fBnfsd is necessary\fR after downgrading \fBnfsdcld\fR,
-+to ensure that \fBnfsd\fR does not use an upcall version that \fBnfsdcld\fR does not support.
-+Additionally, a downgrade of \fBnfsdcld\fR requires the schema of the on-disk database to
-+be downgraded as well.  That can be accomplished using the \fBclddb-tool\fR(8) utility.
-+.SH FILES
-+.TP
-+.B /var/lib/nfs/nfsdcld/main.sqlite
-+.SH SEE ALSO
-+.BR nfsdcltrack "(8), " clddb-tool (8)
- .SH "AUTHORS"
- .IX Header "AUTHORS"
--The nfsdcld daemon was developed by Jeff Layton <jlayton@redhat.com>.
-+The nfsdcld daemon was developed by Jeff Layton <jlayton@redhat.com>
-+with modifications from Scott Mayhew <smayhew@redhat.com>.
+The second patch adds handling for the v2 Cld_Create and Cld_GraceStart
+upcalls, which can include the kerberos principal which we'll store
+along with the client id string in the database.  Note that if we're
+talking to an old kernel that does the v1 upcall, everything still works
+(we just ignore the new columns in the database).
+
+The third patch adds a tool for manipulating nfsdcld's database schema.
+It's mostly intended to be used to downgrade the database in the
+(hopefully rare) event that an admin would want to downgrade nfsdcld.
+It also provides the ability for fixing broken recovery table names
+(which nfsdcld also fixes automatically) as well as the ability to print
+the contents of the database.
+
+The final patch updates the nfsdcld man page.
+
+Questions:
+1. Why do we have a copy of cld.h in support/include?  It seems
+unnecessary... maybe we should get rid of it so that we're always
+using the cld.h from the kernel headers?
+2. Should there be a command line option to allow nfsdcld to advertise a
+lower upcall version to nfsd in the GetVersion upcall reply?
+
+Changes since v1:
+- added a tool for manipulating nfsdcld's sqlite database schema
+- updated the nfsdcld man page
+
+Scott Mayhew (4):
+  nfsdcld: add a "GetVersion" upcall
+  nfsdcld: add support for upcall version 2
+  Add a tool for manipulating the nfsdcld sqlite database schema.
+  nfsdcld: update nfsdcld.man
+
+ configure.ac                    |   1 +
+ support/include/cld.h           |  37 ++++-
+ tools/Makefile.am               |   4 +
+ tools/clddb-tool/Makefile.am    |  13 ++
+ tools/clddb-tool/clddb-tool.man |  83 ++++++++++
+ tools/clddb-tool/clddb-tool.py  | 261 ++++++++++++++++++++++++++++++++
+ utils/nfsdcld/cld-internal.h    |  13 +-
+ utils/nfsdcld/nfsdcld.c         | 140 ++++++++++++++---
+ utils/nfsdcld/nfsdcld.man       |  32 +++-
+ utils/nfsdcld/sqlite.c          | 238 ++++++++++++++++++++++++-----
+ utils/nfsdcld/sqlite.h          |   2 +
+ 11 files changed, 755 insertions(+), 69 deletions(-)
+ create mode 100644 tools/clddb-tool/Makefile.am
+ create mode 100644 tools/clddb-tool/clddb-tool.man
+ create mode 100644 tools/clddb-tool/clddb-tool.py
+
 -- 
 2.17.2
 
