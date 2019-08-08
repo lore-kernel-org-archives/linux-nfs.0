@@ -2,141 +2,235 @@ Return-Path: <SRS0=SPQs=WE=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.4 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=no autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-6.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0AFF7C433FF
-	for <linux-nfs@archiver.kernel.org>; Thu,  8 Aug 2019 18:18:54 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id AA203C433FF
+	for <linux-nfs@archiver.kernel.org>; Thu,  8 Aug 2019 18:34:35 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id CC1C621882
-	for <linux-nfs@archiver.kernel.org>; Thu,  8 Aug 2019 18:18:53 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=nvidia.com header.i=@nvidia.com header.b="Ne1ScLdQ"
+	by mail.kernel.org (Postfix) with ESMTP id 8B0A0217D7
+	for <linux-nfs@archiver.kernel.org>; Thu,  8 Aug 2019 18:34:35 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2390196AbfHHSSx (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 8 Aug 2019 14:18:53 -0400
-Received: from hqemgate14.nvidia.com ([216.228.121.143]:14243 "EHLO
-        hqemgate14.nvidia.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1731038AbfHHSSw (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 8 Aug 2019 14:18:52 -0400
-Received: from hqpgpgate102.nvidia.com (Not Verified[216.228.121.13]) by hqemgate14.nvidia.com (using TLS: TLSv1.2, DES-CBC3-SHA)
-        id <B5d4c678b0000>; Thu, 08 Aug 2019 11:18:52 -0700
-Received: from hqmail.nvidia.com ([172.20.161.6])
-  by hqpgpgate102.nvidia.com (PGP Universal service);
-  Thu, 08 Aug 2019 11:18:50 -0700
-X-PGP-Universal: processed;
-        by hqpgpgate102.nvidia.com on Thu, 08 Aug 2019 11:18:50 -0700
-Received: from [10.110.48.28] (10.124.1.5) by HQMAIL107.nvidia.com
- (172.20.187.13) with Microsoft SMTP Server (TLS) id 15.0.1473.3; Thu, 8 Aug
- 2019 18:18:49 +0000
-Subject: Re: [PATCH 00/34] put_user_pages(): miscellaneous call sites
-To:     "Weiny, Ira" <ira.weiny@intel.com>,
-        Michal Hocko <mhocko@kernel.org>
-CC:     Jan Kara <jack@suse.cz>, Matthew Wilcox <willy@infradead.org>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Christoph Hellwig <hch@infradead.org>,
-        "Williams, Dan J" <dan.j.williams@intel.com>,
-        Dave Chinner <david@fromorbit.com>,
-        Dave Hansen <dave.hansen@linux.intel.com>,
-        Jason Gunthorpe <jgg@ziepe.ca>,
-        =?UTF-8?B?SsOpcsO0bWUgR2xpc3Nl?= <jglisse@redhat.com>,
-        LKML <linux-kernel@vger.kernel.org>,
-        "amd-gfx@lists.freedesktop.org" <amd-gfx@lists.freedesktop.org>,
-        "ceph-devel@vger.kernel.org" <ceph-devel@vger.kernel.org>,
-        "devel@driverdev.osuosl.org" <devel@driverdev.osuosl.org>,
-        "devel@lists.orangefs.org" <devel@lists.orangefs.org>,
-        "dri-devel@lists.freedesktop.org" <dri-devel@lists.freedesktop.org>,
-        "intel-gfx@lists.freedesktop.org" <intel-gfx@lists.freedesktop.org>,
-        "kvm@vger.kernel.org" <kvm@vger.kernel.org>,
-        "linux-arm-kernel@lists.infradead.org" 
-        <linux-arm-kernel@lists.infradead.org>,
-        "linux-block@vger.kernel.org" <linux-block@vger.kernel.org>,
-        "linux-crypto@vger.kernel.org" <linux-crypto@vger.kernel.org>,
-        "linux-fbdev@vger.kernel.org" <linux-fbdev@vger.kernel.org>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-        "linux-media@vger.kernel.org" <linux-media@vger.kernel.org>,
-        "linux-mm@kvack.org" <linux-mm@kvack.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
-        "linux-rpi-kernel@lists.infradead.org" 
-        <linux-rpi-kernel@lists.infradead.org>,
-        "linux-xfs@vger.kernel.org" <linux-xfs@vger.kernel.org>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        "rds-devel@oss.oracle.com" <rds-devel@oss.oracle.com>,
-        "sparclinux@vger.kernel.org" <sparclinux@vger.kernel.org>,
-        "x86@kernel.org" <x86@kernel.org>,
-        "xen-devel@lists.xenproject.org" <xen-devel@lists.xenproject.org>
-References: <20190802022005.5117-1-jhubbard@nvidia.com>
- <20190802091244.GD6461@dhcp22.suse.cz>
- <20190802124146.GL25064@quack2.suse.cz>
- <20190802142443.GB5597@bombadil.infradead.org>
- <20190802145227.GQ25064@quack2.suse.cz>
- <076e7826-67a5-4829-aae2-2b90f302cebd@nvidia.com>
- <20190807083726.GA14658@quack2.suse.cz>
- <20190807084649.GQ11812@dhcp22.suse.cz>
- <20190808023637.GA1508@iweiny-DESK2.sc.intel.com>
- <e648a7f3-6a1b-c9ea-1121-7ab69b6b173d@nvidia.com>
- <2807E5FD2F6FDA4886F6618EAC48510E79E79644@CRSMSX101.amr.corp.intel.com>
-X-Nvconfidentiality: public
-From:   John Hubbard <jhubbard@nvidia.com>
-Message-ID: <b1b33292-d929-f9ff-dd75-02828228f35e@nvidia.com>
-Date:   Thu, 8 Aug 2019 11:18:49 -0700
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101
- Thunderbird/60.8.0
-MIME-Version: 1.0
-In-Reply-To: <2807E5FD2F6FDA4886F6618EAC48510E79E79644@CRSMSX101.amr.corp.intel.com>
-X-Originating-IP: [10.124.1.5]
-X-ClientProxiedBy: HQMAIL105.nvidia.com (172.20.187.12) To
- HQMAIL107.nvidia.com (172.20.187.13)
-Content-Type: text/plain; charset="utf-8"
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=nvidia.com; s=n1;
-        t=1565288332; bh=JXH0z+PATu5ChINAttu0xw8NI7VYrjVhdTogRmB3Q5s=;
-        h=X-PGP-Universal:Subject:To:CC:References:X-Nvconfidentiality:From:
-         Message-ID:Date:User-Agent:MIME-Version:In-Reply-To:
-         X-Originating-IP:X-ClientProxiedBy:Content-Type:Content-Language:
-         Content-Transfer-Encoding;
-        b=Ne1ScLdQ+tu5qOaISiLlk/MzD+D0tWGCUEcW8KATp/99KORz80qhTvSS0MA86k71v
-         1gG74XZNfpVRbFXyQsXs+wV66Ly/i7Omeym8buU22OwtUh/B674iBCJPOoXFe5hxmV
-         1e7OUBsDbdwXkl/h4Pjx1eOWT4qAVANZ24jESe93raeMkGLORABLpzcfJ+l/YUvFr/
-         bUBCYBUk9JXLyxcXRRJ6Qo5DLPNTbuOY1/JVx8JLOWf78tx+O5w4P2ZxYGmo4q53CG
-         aum+FjJWUhUsxhssDMyUyjXEHRPMBfcGtXYtpdJqmbhfodN4x0QDM6mw3fwyew2GF4
-         p5OXETBP5SbRg==
+        id S1733256AbfHHSef (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 8 Aug 2019 14:34:35 -0400
+Received: from mx1.redhat.com ([209.132.183.28]:52090 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1732327AbfHHSee (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 8 Aug 2019 14:34:34 -0400
+Received: from smtp.corp.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id 5ACCD3172D8A
+        for <linux-nfs@vger.kernel.org>; Thu,  8 Aug 2019 18:34:34 +0000 (UTC)
+Received: from coeurl.usersys.redhat.com (ovpn-121-91.rdu2.redhat.com [10.10.121.91])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 1642260BEC;
+        Thu,  8 Aug 2019 18:34:34 +0000 (UTC)
+Received: by coeurl.usersys.redhat.com (Postfix, from userid 1000)
+        id B83CB20773; Thu,  8 Aug 2019 14:34:33 -0400 (EDT)
+From:   Scott Mayhew <smayhew@redhat.com>
+To:     steved@redhat.com
+Cc:     linux-nfs@vger.kernel.org
+Subject: [nfs-utils PATCH RFC v2 1/4] nfsdcld: add a "GetVersion" upcall
+Date:   Thu,  8 Aug 2019 14:34:30 -0400
+Message-Id: <20190808183433.3557-2-smayhew@redhat.com>
+In-Reply-To: <20190808183433.3557-1-smayhew@redhat.com>
+References: <20190808183433.3557-1-smayhew@redhat.com>
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.12
+X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.41]); Thu, 08 Aug 2019 18:34:34 +0000 (UTC)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On 8/8/19 9:25 AM, Weiny, Ira wrote:
->>
->> On 8/7/19 7:36 PM, Ira Weiny wrote:
->>> On Wed, Aug 07, 2019 at 10:46:49AM +0200, Michal Hocko wrote:
->>>> On Wed 07-08-19 10:37:26, Jan Kara wrote:
->>>>> On Fri 02-08-19 12:14:09, John Hubbard wrote:
->>>>>> On 8/2/19 7:52 AM, Jan Kara wrote:
->>>>>>> On Fri 02-08-19 07:24:43, Matthew Wilcox wrote:
->>>>>>>> On Fri, Aug 02, 2019 at 02:41:46PM +0200, Jan Kara wrote:
->>>>>>>>> On Fri 02-08-19 11:12:44, Michal Hocko wrote:
->>>>>>>>>> On Thu 01-08-19 19:19:31, john.hubbard@gmail.com wrote:
->>   [...]
-> Yep I can do this.  I did not realize that Andrew had accepted any of this work.  I'll check out his tree.  But I don't think he is going to accept this series through his tree.  So what is the ETA on that landing in Linus' tree?
-> 
+Add a "GetVersion" upcall to allow the kernel to determine the maximum
+upcall version that nfsdcld supports.
 
-I'd expect it to go into 5.4, according to my understanding of how
-the release cycles are arranged.
+Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+---
+ support/include/cld.h        | 11 ++++++++-
+ utils/nfsdcld/cld-internal.h |  4 ++-
+ utils/nfsdcld/nfsdcld.c      | 47 ++++++++++++++++++++++++++++++------
+ utils/nfsdcld/sqlite.c       |  2 +-
+ 4 files changed, 53 insertions(+), 11 deletions(-)
 
-
-> To that point I'm still not sure who would take all this as I am now touching mm, procfs, rdma, ext4, and xfs.
-> 
-> I just thought I would chime in with my progress because I'm to a point where things are working and so I can submit the code but I'm not sure what I can/should depend on landing...  Also, now that 0day has run overnight it has found issues with this rebase so I need to clean those up...  Perhaps I will base on Andrew's tree prior to doing that...
-
-I'm certainly not the right person to answer, but in spite of that, I'd think
-Andrew's tree is a reasonable place for it. Sort of.
-
-thanks,
+diff --git a/support/include/cld.h b/support/include/cld.h
+index c1f5b70..00a40da 100644
+--- a/support/include/cld.h
++++ b/support/include/cld.h
+@@ -33,7 +33,8 @@ enum cld_command {
+ 	Cld_Remove,		/* remove record of this cm_id */
+ 	Cld_Check,		/* is this cm_id allowed? */
+ 	Cld_GraceDone,		/* grace period is complete */
+-	Cld_GraceStart,
++	Cld_GraceStart,		/* grace start (upload client records) */
++	Cld_GetVersion,		/* query max supported upcall version */
+ };
+ 
+ /* representation of long-form NFSv4 client ID */
+@@ -51,7 +52,15 @@ struct cld_msg {
+ 	union {
+ 		int64_t		cm_gracetime;	/* grace period start time */
+ 		struct cld_name	cm_name;
++		uint8_t		cm_version;	/* for getting max version */
+ 	} __attribute__((packed)) cm_u;
+ } __attribute__((packed));
+ 
++struct cld_msg_hdr {
++	uint8_t		cm_vers;		/* upcall version */
++	uint8_t		cm_cmd;			/* upcall command */
++	int16_t		cm_status;		/* return code */
++	uint32_t	cm_xid;			/* transaction id */
++} __attribute__((packed));
++
+ #endif /* !_NFSD_CLD_H */
+diff --git a/utils/nfsdcld/cld-internal.h b/utils/nfsdcld/cld-internal.h
+index 76e97db..f33cb04 100644
+--- a/utils/nfsdcld/cld-internal.h
++++ b/utils/nfsdcld/cld-internal.h
+@@ -21,7 +21,9 @@
+ struct cld_client {
+ 	int			cl_fd;
+ 	struct event		cl_event;
+-	struct cld_msg	cl_msg;
++	union {
++		struct cld_msg	cl_msg;
++	} cl_u;
+ };
+ 
+ uint64_t current_epoch;
+diff --git a/utils/nfsdcld/nfsdcld.c b/utils/nfsdcld/nfsdcld.c
+index cbf71fc..aa5594b 100644
+--- a/utils/nfsdcld/nfsdcld.c
++++ b/utils/nfsdcld/nfsdcld.c
+@@ -343,7 +343,7 @@ cld_not_implemented(struct cld_client *clnt)
+ {
+ 	int ret;
+ 	ssize_t bsize, wsize;
+-	struct cld_msg *cmsg = &clnt->cl_msg;
++	struct cld_msg *cmsg = &clnt->cl_u.cl_msg;
+ 
+ 	xlog(D_GENERAL, "%s: downcalling with not implemented error", __func__);
+ 
+@@ -365,12 +365,40 @@ cld_not_implemented(struct cld_client *clnt)
+ 	}
+ }
+ 
++static void
++cld_get_version(struct cld_client *clnt)
++{
++	int ret;
++	ssize_t bsize, wsize;
++	struct cld_msg *cmsg = &clnt->cl_u.cl_msg;
++
++	xlog(D_GENERAL, "%s: version = %u.", __func__, UPCALL_VERSION);
++
++	cmsg->cm_u.cm_version = UPCALL_VERSION;
++	cmsg->cm_status = 0;
++
++	bsize = sizeof(*cmsg);
++
++	xlog(D_GENERAL, "Doing downcall with status %d", cmsg->cm_status);
++	wsize = atomicio((void *)write, clnt->cl_fd, cmsg, bsize);
++	if (wsize != bsize) {
++		xlog(L_ERROR, "%s: problem writing to cld pipe (%ld): %m",
++			 __func__, wsize);
++		ret = cld_pipe_open(clnt);
++		if (ret) {
++			xlog(L_FATAL, "%s: unable to reopen pipe: %d",
++					__func__, ret);
++			exit(ret);
++		}
++	}
++}
++
+ static void
+ cld_create(struct cld_client *clnt)
+ {
+ 	int ret;
+ 	ssize_t bsize, wsize;
+-	struct cld_msg *cmsg = &clnt->cl_msg;
++	struct cld_msg *cmsg = &clnt->cl_u.cl_msg;
+ 
+ 	ret = cld_check_grace_period();
+ 	if (ret)
+@@ -406,7 +434,7 @@ cld_remove(struct cld_client *clnt)
+ {
+ 	int ret;
+ 	ssize_t bsize, wsize;
+-	struct cld_msg *cmsg = &clnt->cl_msg;
++	struct cld_msg *cmsg = &clnt->cl_u.cl_msg;
+ 
+ 	ret = cld_check_grace_period();
+ 	if (ret)
+@@ -442,7 +470,7 @@ cld_check(struct cld_client *clnt)
+ {
+ 	int ret;
+ 	ssize_t bsize, wsize;
+-	struct cld_msg *cmsg = &clnt->cl_msg;
++	struct cld_msg *cmsg = &clnt->cl_u.cl_msg;
+ 
+ 	/*
+ 	 * If we get a check upcall at all, it means we're talking to an old
+@@ -489,7 +517,7 @@ cld_gracedone(struct cld_client *clnt)
+ {
+ 	int ret;
+ 	ssize_t bsize, wsize;
+-	struct cld_msg *cmsg = &clnt->cl_msg;
++	struct cld_msg *cmsg = &clnt->cl_u.cl_msg;
+ 
+ 	/*
+ 	 * If we got a "gracedone" upcall while we're not in grace, then
+@@ -543,7 +571,7 @@ reply:
+ static int
+ gracestart_callback(struct cld_client *clnt) {
+ 	ssize_t bsize, wsize;
+-	struct cld_msg *cmsg = &clnt->cl_msg;
++	struct cld_msg *cmsg = &clnt->cl_u.cl_msg;
+ 
+ 	cmsg->cm_status = -EINPROGRESS;
+ 
+@@ -562,7 +590,7 @@ cld_gracestart(struct cld_client *clnt)
+ {
+ 	int ret;
+ 	ssize_t bsize, wsize;
+-	struct cld_msg *cmsg = &clnt->cl_msg;
++	struct cld_msg *cmsg = &clnt->cl_u.cl_msg;
+ 
+ 	xlog(D_GENERAL, "%s: updating grace epochs", __func__);
+ 
+@@ -598,7 +626,7 @@ cldcb(int UNUSED(fd), short which, void *data)
+ {
+ 	ssize_t len;
+ 	struct cld_client *clnt = data;
+-	struct cld_msg *cmsg = &clnt->cl_msg;
++	struct cld_msg *cmsg = &clnt->cl_u.cl_msg;
+ 
+ 	if (which != EV_READ)
+ 		goto out;
+@@ -633,6 +661,9 @@ cldcb(int UNUSED(fd), short which, void *data)
+ 	case Cld_GraceStart:
+ 		cld_gracestart(clnt);
+ 		break;
++	case Cld_GetVersion:
++		cld_get_version(clnt);
++		break;
+ 	default:
+ 		xlog(L_WARNING, "%s: command %u is not yet implemented",
+ 				__func__, cmsg->cm_cmd);
+diff --git a/utils/nfsdcld/sqlite.c b/utils/nfsdcld/sqlite.c
+index fa81df8..6525fc1 100644
+--- a/utils/nfsdcld/sqlite.c
++++ b/utils/nfsdcld/sqlite.c
+@@ -1152,7 +1152,7 @@ sqlite_iterate_recovery(int (*cb)(struct cld_client *clnt), struct cld_client *c
+ {
+ 	int ret;
+ 	sqlite3_stmt *stmt = NULL;
+-	struct cld_msg *cmsg = &clnt->cl_msg;
++	struct cld_msg *cmsg = &clnt->cl_u.cl_msg;
+ 
+ 	if (recovery_epoch == 0) {
+ 		xlog(D_GENERAL, "%s: not in grace!", __func__);
 -- 
-John Hubbard
-NVIDIA
+2.17.2
+
