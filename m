@@ -4,51 +4,51 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5248BC433FF
-	for <linux-nfs@archiver.kernel.org>; Wed, 14 Aug 2019 02:30:43 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A909DC433FF
+	for <linux-nfs@archiver.kernel.org>; Wed, 14 Aug 2019 02:34:46 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 2BE7A208C2
-	for <linux-nfs@archiver.kernel.org>; Wed, 14 Aug 2019 02:30:43 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 713E020842
+	for <linux-nfs@archiver.kernel.org>; Wed, 14 Aug 2019 02:34:46 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1565749843;
-	bh=Vxf6C7+2DjbhOpUmQcwQtXcjSX3sjy5ILHk3WPXZY0M=;
+	s=default; t=1565750086;
+	bh=v+WF0ZRVrM4VLB1uDTBTypBQtF7paU+fFtBRHVf9egE=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=Bo2sekISBGJOlah+WL/kTEeP0r03CkTjgycdIBZArzUHipskl9Zwro8KBmVeeOVWM
-	 1N6tX5Y4mHW2FR0Tjrig2tTiPi5ctvA3plT72sl50TJiLmtJyzIUEiqGO0USYOGCSv
-	 38jCbutxZ/4CGWbE+WTX8dO//Pdz0rbrRVWqlap0=
+	b=uDlCz1ICOxD5u5YL6BSdk5V7qxCtjPZJLezJjx9DwXw95/TQFoC9sWfXnvoGH+LPj
+	 Ow7hKWwLJSogUtwwHI5akZ1wMRPMd8dsWC9J8hpMybr1ejy4NubPZ4x3aoTcq9eK89
+	 DwXWdllnr59YnGzn7ekYa84xQGKfjo8a3+ctA1H8=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728162AbfHNCaf (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 13 Aug 2019 22:30:35 -0400
-Received: from mail.kernel.org ([198.145.29.99]:48374 "EHLO mail.kernel.org"
+        id S1728423AbfHNCNo (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 13 Aug 2019 22:13:44 -0400
+Received: from mail.kernel.org ([198.145.29.99]:45754 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1728054AbfHNCRC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 13 Aug 2019 22:17:02 -0400
+        id S1728416AbfHNCNo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 13 Aug 2019 22:13:44 -0400
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 1EE5720874;
-        Wed, 14 Aug 2019 02:17:01 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 2713320844;
+        Wed, 14 Aug 2019 02:13:43 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1565749021;
-        bh=Vxf6C7+2DjbhOpUmQcwQtXcjSX3sjy5ILHk3WPXZY0M=;
+        s=default; t=1565748823;
+        bh=v+WF0ZRVrM4VLB1uDTBTypBQtF7paU+fFtBRHVf9egE=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=Vj5XAGSZCZuWFwU3hEnqu5AWC1C4aR+VjSZZoM0okc5JKRLxPonZo6ZzKsETFtxW2
-         RefMke67fibmp06O0k71pS/zoCOni/GaAZTkc010pJvoGnv/ofA3c3OToHxNAbMJup
-         fVa+7tkJF1H4uj85X1tv6j9+iwnC03J/ib7vq4/Y=
+        b=yOtoZ6zPmd3DcIg0TImsztSamqcXG7IeM0AgiFstlcB4dykTSwkml5VZlzMwn/y+n
+         sajM/aJ/+qRlEl9gzBeYQa9yMHqcJ5lfWdr8FsCSXs58rT/b1Ehb4nG4vmSZdfNvEt
+         635rAu5w7tENQb3qDMtczeYA2kIQu933h/sXWbXQ=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
 Cc:     Trond Myklebust <trond.myklebust@hammerspace.com>,
         John Hubbard <jhubbard@nvidia.com>,
         Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org
-Subject: [PATCH AUTOSEL 4.19 40/68] NFSv4: Fix a potential sleep while atomic in nfs4_do_reclaim()
-Date:   Tue, 13 Aug 2019 22:15:18 -0400
-Message-Id: <20190814021548.16001-40-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 5.2 084/123] NFSv4: Fix a potential sleep while atomic in nfs4_do_reclaim()
+Date:   Tue, 13 Aug 2019 22:10:08 -0400
+Message-Id: <20190814021047.14828-84-sashal@kernel.org>
 X-Mailer: git-send-email 2.20.1
-In-Reply-To: <20190814021548.16001-1-sashal@kernel.org>
-References: <20190814021548.16001-1-sashal@kernel.org>
+In-Reply-To: <20190814021047.14828-1-sashal@kernel.org>
+References: <20190814021047.14828-1-sashal@kernel.org>
 MIME-Version: 1.0
 X-stable: review
 X-Patchwork-Hint: Ignore
@@ -92,12 +92,12 @@ Signed-off-by: Sasha Levin <sashal@kernel.org>
  3 files changed, 28 insertions(+), 7 deletions(-)
 
 diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index 63287d911c088..5b61520dce888 100644
+index 8a38a254f5162..235919156eddd 100644
 --- a/fs/nfs/nfs4_fs.h
 +++ b/fs/nfs/nfs4_fs.h
-@@ -469,7 +469,8 @@ static inline void nfs4_schedule_session_recovery(struct nfs4_session *session,
+@@ -465,7 +465,8 @@ static inline void nfs4_schedule_session_recovery(struct nfs4_session *session,
  
- extern struct nfs4_state_owner *nfs4_get_state_owner(struct nfs_server *, struct rpc_cred *, gfp_t);
+ extern struct nfs4_state_owner *nfs4_get_state_owner(struct nfs_server *, const struct cred *, gfp_t);
  extern void nfs4_put_state_owner(struct nfs4_state_owner *);
 -extern void nfs4_purge_state_owners(struct nfs_server *);
 +extern void nfs4_purge_state_owners(struct nfs_server *, struct list_head *);
@@ -106,10 +106,10 @@ index 63287d911c088..5b61520dce888 100644
  extern void nfs4_put_open_state(struct nfs4_state *);
  extern void nfs4_close_state(struct nfs4_state *, fmode_t);
 diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
-index 8f53455c47653..86991bcfbeb12 100644
+index 81b9b6d7927ac..208a236dc2350 100644
 --- a/fs/nfs/nfs4client.c
 +++ b/fs/nfs/nfs4client.c
-@@ -754,9 +754,12 @@ int nfs41_walk_client_list(struct nfs_client *new,
+@@ -758,9 +758,12 @@ int nfs41_walk_client_list(struct nfs_client *new,
  
  static void nfs4_destroy_server(struct nfs_server *server)
  {
@@ -124,10 +124,10 @@ index 8f53455c47653..86991bcfbeb12 100644
  
  /*
 diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 3ba2087469ac8..c36ef75f2054b 100644
+index 556ec916846f0..261de26d897f7 100644
 --- a/fs/nfs/nfs4state.c
 +++ b/fs/nfs/nfs4state.c
-@@ -628,24 +628,39 @@ void nfs4_put_state_owner(struct nfs4_state_owner *sp)
+@@ -624,24 +624,39 @@ void nfs4_put_state_owner(struct nfs4_state_owner *sp)
  /**
   * nfs4_purge_state_owners - Release all cached state owners
   * @server: nfs_server with cached state owners to release
@@ -171,7 +171,7 @@ index 3ba2087469ac8..c36ef75f2054b 100644
  		list_del(&sp->so_lru);
  		nfs4_free_state_owner(sp);
  	}
-@@ -1843,12 +1858,13 @@ static int nfs4_do_reclaim(struct nfs_client *clp, const struct nfs4_state_recov
+@@ -1864,12 +1879,13 @@ static int nfs4_do_reclaim(struct nfs_client *clp, const struct nfs4_state_recov
  	struct nfs4_state_owner *sp;
  	struct nfs_server *server;
  	struct rb_node *pos;
@@ -186,7 +186,7 @@ index 3ba2087469ac8..c36ef75f2054b 100644
  		spin_lock(&clp->cl_lock);
  		for (pos = rb_first(&server->state_owners);
  		     pos != NULL;
-@@ -1877,6 +1893,7 @@ static int nfs4_do_reclaim(struct nfs_client *clp, const struct nfs4_state_recov
+@@ -1898,6 +1914,7 @@ static int nfs4_do_reclaim(struct nfs_client *clp, const struct nfs4_state_recov
  		spin_unlock(&clp->cl_lock);
  	}
  	rcu_read_unlock();
