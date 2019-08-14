@@ -4,47 +4,47 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D9636C433FF
-	for <linux-nfs@archiver.kernel.org>; Wed, 14 Aug 2019 02:35:08 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2FE5BC32750
+	for <linux-nfs@archiver.kernel.org>; Wed, 14 Aug 2019 02:35:13 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id AFBAF20874
-	for <linux-nfs@archiver.kernel.org>; Wed, 14 Aug 2019 02:35:08 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id ED1BF20874
+	for <linux-nfs@archiver.kernel.org>; Wed, 14 Aug 2019 02:35:12 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1565750108;
-	bh=IWXx57Z3+ilWL0grl7SoS/dfxG4s6BcA1pj0NScVWL8=;
+	s=default; t=1565750113;
+	bh=QDA+wZbqL00DcUe7rHsoYGH18rcg7ZtglEbJHTJC1gQ=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=TBO7D85aUjxLPsXLm1ghaH7b35g1gDzGT8WCFp08jQpL5x+MALySKxu5gTa7IZ2Ei
-	 I3Otx6SK13SCGcsCyTicyJYSAG+hOaFxEI6QU2kGCJ1NMrIj6sX13tenfXwu0xYujQ
-	 RTzGkVMkvnnk4aJWAglrTdymBzK6dkYczX45ZN2E=
+	b=RY9c5E8EB2p6kbqgZOfM6KL37wtEEyniRLbjmxliArGhbK8fD0EkCvmiRHPIFUTRq
+	 vkhF+ggCZ7w4OeMOzIjkvkGiFOz63gK4oiU/je1oHhL1DhPnPLhDyImKyCNImzkAYi
+	 +XkyYFOOwJN/jbfqHRs2k2sqmG2zec/fmZlf7M4s=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728817AbfHNCfD (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 13 Aug 2019 22:35:03 -0400
-Received: from mail.kernel.org ([198.145.29.99]:45700 "EHLO mail.kernel.org"
+        id S1728598AbfHNCfM (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 13 Aug 2019 22:35:12 -0400
+Received: from mail.kernel.org ([198.145.29.99]:45692 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1728381AbfHNCNl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 13 Aug 2019 22:13:41 -0400
+        id S1728364AbfHNCNk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 13 Aug 2019 22:13:40 -0400
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 455D320844;
-        Wed, 14 Aug 2019 02:13:40 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 57CC321721;
+        Wed, 14 Aug 2019 02:13:39 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1565748820;
-        bh=IWXx57Z3+ilWL0grl7SoS/dfxG4s6BcA1pj0NScVWL8=;
+        s=default; t=1565748819;
+        bh=QDA+wZbqL00DcUe7rHsoYGH18rcg7ZtglEbJHTJC1gQ=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=cMD+aYnOZzrBmD3L/pU0J4Z7NdpFuaRXrJmh4mxMgsBGMIFKNsuWgwJ0VSsrvk/x3
-         yqSGaOlUE9P72WHcx9DyACNddcMNNlyi1FhmyPJPUBPrHgUmKWMHBoZfkycTBdTCuh
-         m3UyTllXv836ztfh8TchiWvlZtniyBTLtF2yQYU0=
+        b=Z1vnBWQqBYS01jtKAmZ1w3WUDtTi1yj/8ZcYxilOwx9Zn6cqXMFCQrKOiDVjlW/sZ
+         /hE1vFjcy2ka4m46fXR8e3AauodPPDuYdP8tB9qjDTwWaJmo4o3sJKI/uyFOxrwaQU
+         dB8yzs0czOglnd/OAbm5KT2O3rtdCiibKsz/t3IM=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
 Cc:     Trond Myklebust <trond.myklebust@hammerspace.com>,
         Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.2 081/123] NFSv4: When recovering state fails with EAGAIN, retry the same recovery
-Date:   Tue, 13 Aug 2019 22:10:05 -0400
-Message-Id: <20190814021047.14828-81-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 5.2 080/123] NFSv4: Fix a credential refcount leak in nfs41_check_delegation_stateid
+Date:   Tue, 13 Aug 2019 22:10:04 -0400
+Message-Id: <20190814021047.14828-80-sashal@kernel.org>
 X-Mailer: git-send-email 2.20.1
 In-Reply-To: <20190814021047.14828-1-sashal@kernel.org>
 References: <20190814021047.14828-1-sashal@kernel.org>
@@ -59,57 +59,31 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-[ Upstream commit c34fae003c79570b6c930b425fea3f0b7b1e7056 ]
+[ Upstream commit 8c39a39e28b86a4021d9be314ce01019bafa5fdc ]
 
-If the server returns with EAGAIN when we're trying to recover from
-a server reboot, we currently delay for 1 second, but then mark the
-stateid as needing recovery after the grace period has expired.
+It is unsafe to dereference delegation outside the rcu lock, and in
+any case, the refcount is guaranteed held if cred is non-zero.
 
-Instead, we should just retry the same recovery process immediately
-after the 1 second delay. Break out of the loop after 10 retries.
-
-Fixes: 35a61606a612 ("NFS: Reduce indentation of the switch statement...")
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- fs/nfs/nfs4state.c | 9 ++++++++-
- 1 file changed, 8 insertions(+), 1 deletion(-)
+ fs/nfs/nfs4proc.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
 
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index e2e3c4f04d3e0..556ec916846f0 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -1606,6 +1606,7 @@ static int __nfs4_reclaim_open_state(struct nfs4_state_owner *sp, struct nfs4_st
- static int nfs4_reclaim_open_state(struct nfs4_state_owner *sp, const struct nfs4_state_recovery_ops *ops)
- {
- 	struct nfs4_state *state;
-+	unsigned int loop = 0;
- 	int status = 0;
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 6418cb6c079bd..11a5aa46e64c3 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2749,8 +2749,7 @@ static void nfs41_check_delegation_stateid(struct nfs4_state *state)
+ 	if (status == -NFS4ERR_EXPIRED || status == -NFS4ERR_BAD_STATEID)
+ 		nfs_finish_clear_delegation_stateid(state, &stateid);
  
- 	/* Note: we rely on the sp->so_states list being ordered 
-@@ -1632,8 +1633,10 @@ static int nfs4_reclaim_open_state(struct nfs4_state_owner *sp, const struct nfs
+-	if (delegation->cred)
+-		put_cred(cred);
++	put_cred(cred);
+ }
  
- 		switch (status) {
- 		default:
--			if (status >= 0)
-+			if (status >= 0) {
-+				loop = 0;
- 				break;
-+			}
- 			printk(KERN_ERR "NFS: %s: unhandled error %d\n", __func__, status);
- 			/* Fall through */
- 		case -ENOENT:
-@@ -1647,6 +1650,10 @@ static int nfs4_reclaim_open_state(struct nfs4_state_owner *sp, const struct nfs
- 			break;
- 		case -EAGAIN:
- 			ssleep(1);
-+			if (loop++ < 10) {
-+				set_bit(ops->state_flag_bit, &state->flags);
-+				break;
-+			}
- 			/* Fall through */
- 		case -NFS4ERR_ADMIN_REVOKED:
- 		case -NFS4ERR_STALE_STATEID:
+ /**
 -- 
 2.20.1
 
