@@ -2,88 +2,119 @@ Return-Path: <SRS0=bJ3H=WK=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-0.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
+	autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2FE5BC32750
-	for <linux-nfs@archiver.kernel.org>; Wed, 14 Aug 2019 02:35:13 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 45350C32753
+	for <linux-nfs@archiver.kernel.org>; Wed, 14 Aug 2019 15:05:40 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id ED1BF20874
-	for <linux-nfs@archiver.kernel.org>; Wed, 14 Aug 2019 02:35:12 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1565750113;
-	bh=QDA+wZbqL00DcUe7rHsoYGH18rcg7ZtglEbJHTJC1gQ=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=RY9c5E8EB2p6kbqgZOfM6KL37wtEEyniRLbjmxliArGhbK8fD0EkCvmiRHPIFUTRq
-	 vkhF+ggCZ7w4OeMOzIjkvkGiFOz63gK4oiU/je1oHhL1DhPnPLhDyImKyCNImzkAYi
-	 +XkyYFOOwJN/jbfqHRs2k2sqmG2zec/fmZlf7M4s=
+	by mail.kernel.org (Postfix) with ESMTP id 11AE2214C6
+	for <linux-nfs@archiver.kernel.org>; Wed, 14 Aug 2019 15:05:40 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="TwsPsB1I"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728598AbfHNCfM (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 13 Aug 2019 22:35:12 -0400
-Received: from mail.kernel.org ([198.145.29.99]:45692 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1728364AbfHNCNk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 13 Aug 2019 22:13:40 -0400
-Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
-        (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 57CC321721;
-        Wed, 14 Aug 2019 02:13:39 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1565748819;
-        bh=QDA+wZbqL00DcUe7rHsoYGH18rcg7ZtglEbJHTJC1gQ=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=Z1vnBWQqBYS01jtKAmZ1w3WUDtTi1yj/8ZcYxilOwx9Zn6cqXMFCQrKOiDVjlW/sZ
-         /hE1vFjcy2ka4m46fXR8e3AauodPPDuYdP8tB9qjDTwWaJmo4o3sJKI/uyFOxrwaQU
-         dB8yzs0czOglnd/OAbm5KT2O3rtdCiibKsz/t3IM=
-From:   Sasha Levin <sashal@kernel.org>
-To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.2 080/123] NFSv4: Fix a credential refcount leak in nfs41_check_delegation_stateid
-Date:   Tue, 13 Aug 2019 22:10:04 -0400
-Message-Id: <20190814021047.14828-80-sashal@kernel.org>
-X-Mailer: git-send-email 2.20.1
-In-Reply-To: <20190814021047.14828-1-sashal@kernel.org>
-References: <20190814021047.14828-1-sashal@kernel.org>
+        id S1726509AbfHNPFj (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 14 Aug 2019 11:05:39 -0400
+Received: from mail-vs1-f66.google.com ([209.85.217.66]:34294 "EHLO
+        mail-vs1-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726166AbfHNPFj (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Aug 2019 11:05:39 -0400
+Received: by mail-vs1-f66.google.com with SMTP id b20so9261086vso.1
+        for <linux-nfs@vger.kernel.org>; Wed, 14 Aug 2019 08:05:38 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc;
+        bh=wRwWNn9o4WZ6EwbxoyDVY9KLhC75r1TZOaUMMjB/hFY=;
+        b=TwsPsB1I4mai5PTGQDrWqIyrq+FA4V1iLcmnqt8JOiHDhibjGdTvXhFje24mbGxg16
+         ZmDsJFV40Llm5Jn8zYJZBa7oND9LGYKNTIvkERI3EE+RRERnu1NM6EsiZkYdw/nDSw40
+         Wpuls1h38N7ZheAQ+cd5+7Uxl6hAQ+yW8M+TPYDdwsBz14OxcjkyLY6jYlKJVf3hIGj/
+         Eq1LAGPWX2Zx+ra+gJr5beJG40S/h1YJiUAXS7nwAJwc6KzZdve2KU580xemoiGlXw7A
+         3nN6RSIUQJX90hsQS8H67nQ+nCDQET3Wn2+inDrlvk13ShKosiTmZcqWzTh3b7xRImMo
+         A9cA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=wRwWNn9o4WZ6EwbxoyDVY9KLhC75r1TZOaUMMjB/hFY=;
+        b=iT5vC6vA5UDhdJ5lbYkxQQRVo5py6wEcIkIcheLTYoletlwsHZFj7cYH9fD1I+aQoB
+         GRFZRmuRD0dzgPSrnkrRyVs8V2inpss9OXHxTY7MslFuS9kR+eBi2py5bT9Kt5NQoPpL
+         SN8Sh8qkmjSRNmBPOrHKGVOqNphQogll2BMPjCVBxLJ8OhRkl+IWDLBvCG6cdplFF9W1
+         ztsnLfX+HnXkXrD31GHH9rhZVP9VFzkF5NUh2/Q0oPguNdDe+UhxJoHudYGKinrs8197
+         avJSkDdfcaUcbsuMmldtjhFsxrWOUq0nMdmsvq/bp0eEaqijV0BIb3QtszgPfM5wBD5u
+         BOmA==
+X-Gm-Message-State: APjAAAUJ+mBLbdrhELt+7kxK3QKr0/oPZHR4uj4m9K9beFniBUIpUdih
+        DXISakpM6MVLB10xv3vGCjGo+M/xhNUFQb5CJJ0=
+X-Google-Smtp-Source: APXvYqxepsSu4W7LUIuJppFVkNlv6Zt+sZmzBjeO0MbAyTM0kUDgT4m7xoxFLELIqLnZ68CEgpvqBmasGZ14UxXrKWs=
+X-Received: by 2002:a67:8e0a:: with SMTP id q10mr30599385vsd.215.1565795137972;
+ Wed, 14 Aug 2019 08:05:37 -0700 (PDT)
 MIME-Version: 1.0
-X-stable: review
-X-Patchwork-Hint: Ignore
-Content-Transfer-Encoding: 8bit
+References: <20190808201848.36640-1-olga.kornievskaia@gmail.com>
+ <20190808201848.36640-6-olga.kornievskaia@gmail.com> <CAN-5tyF6ZMf_jiKycK1rk9v7xATDb=j_e5d0QBp9LOgdvn-utA@mail.gmail.com>
+ <CAN-5tyEyvjJB+4_bKZmEYhv2KrVvk7dDvF27i6mx4naDt33Nww@mail.gmail.com>
+ <20190812200019.GB29812@parsley.fieldses.org> <CAN-5tyFpHHsH3n8u+qGyp7POdSRHesiKgd3-YQoE9jJSPBVYRw@mail.gmail.com>
+In-Reply-To: <CAN-5tyFpHHsH3n8u+qGyp7POdSRHesiKgd3-YQoE9jJSPBVYRw@mail.gmail.com>
+From:   Olga Kornievskaia <olga.kornievskaia@gmail.com>
+Date:   Wed, 14 Aug 2019 11:05:23 -0400
+Message-ID: <CAN-5tyEX=4pfntZudpfkN9Pr9OpZfpvKj+NyT-bBD9YJ5fsg7Q@mail.gmail.com>
+Subject: Re: [PATCH v5 5/9] NFSD add COPY_NOTIFY operation
+To:     "J. Bruce Fields" <bfields@redhat.com>
+Cc:     linux-nfs <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Trond Myklebust <trond.myklebust@hammerspace.com>
+On Tue, Aug 13, 2019 at 1:57 PM Olga Kornievskaia
+<olga.kornievskaia@gmail.com> wrote:
+>
+> On Mon, Aug 12, 2019 at 4:00 PM J. Bruce Fields <bfields@redhat.com> wrote:
+> >
+> > On Mon, Aug 12, 2019 at 03:16:47PM -0400, Olga Kornievskaia wrote:
+> > > On Mon, Aug 12, 2019 at 12:19 PM Olga Kornievskaia
+> > > <olga.kornievskaia@gmail.com> wrote:
+> > > > While this passes my testing, in theory this allows for the race that
+> > > > we get the copy notify size but then offload_cancel arrive and change
+> > > > the value. Then refcount_sub_and test_check would have an incorrect
+> > > > value (can subtract larger than an actual reference count). I have no
+> > > > solution for that as there is no refcount_sub_and_lock() that will
+> > > > allow to decrement by a multiple under a lock. Thoughts?
+> > >
+> > > I tried not to use the client's cl_lock but instead use a specific
+> > > lock to protect the copy notifies stateid on the stateid list. But
+> > > since stateid's reference counter (sc_count) is protected by it, I
+> > > think by getting rid of the special lock and using cl_lock will solve
+> > > the problem of coordinating access between the sc_count and the
+> > > copy_notify stateid list. Are the any problems with using such a big
+> > > lock?
+> >
+> > Probably not.  But it can be confusing when a single lock is used for
+> > several different things.  A comment explaining why you need it might
+> > help.
+>
+> While holding the client's cl_lock to manipulate the list of copy
+> notify stateids solves the refcount problem. It generates a different
+> problem for the laundromat thread. There, client list is traversed
+> already holding the cl_lock, so I can't call routines to free
+> copy_notify stateid because in turn it calls nfs4_put_stid() which
+> wants to take the cl_lock. Putting the copy_notify stateid on the
+> reaplist and then I lose a pointer to the client structure that I need
+> to take the lock. Then it seems the nfs4_cpntf_state structure would
+> need to keep a pointer to the client structure but then I get a
+> problem of making sure the nfs4_client structure isn't going away and
+> because it even a bigger mess.
+>
+> I think I need to remove the code in the laundromat that looks for the
+> not referenced copy_notifies stateid and just rely on cleaning on the
+> removal of the stateid (basically what I originally had). Or I need to
+> rely on the client to always send FREE_STATEID. I don't see other
+> options, do you?
 
-[ Upstream commit 8c39a39e28b86a4021d9be314ce01019bafa5fdc ]
+Ignore this Bruce. Trond gave me a good idea and gets me unstuck.
 
-It is unsafe to dereference delegation outside the rcu lock, and in
-any case, the refcount is guaranteed held if cred is non-zero.
-
-Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
-Signed-off-by: Sasha Levin <sashal@kernel.org>
----
- fs/nfs/nfs4proc.c | 3 +--
- 1 file changed, 1 insertion(+), 2 deletions(-)
-
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 6418cb6c079bd..11a5aa46e64c3 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -2749,8 +2749,7 @@ static void nfs41_check_delegation_stateid(struct nfs4_state *state)
- 	if (status == -NFS4ERR_EXPIRED || status == -NFS4ERR_BAD_STATEID)
- 		nfs_finish_clear_delegation_stateid(state, &stateid);
- 
--	if (delegation->cred)
--		put_cred(cred);
-+	put_cred(cred);
- }
- 
- /**
--- 
-2.20.1
-
+>
+> >
+> > --b.
