@@ -2,111 +2,97 @@ Return-Path: <SRS0=FHm4=WN=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	USER_AGENT_SANE_1 autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7D25DC3A59F
-	for <linux-nfs@archiver.kernel.org>; Sat, 17 Aug 2019 01:43:32 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 50D41C3A59B
+	for <linux-nfs@archiver.kernel.org>; Sat, 17 Aug 2019 21:24:47 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 5D8B02133F
-	for <linux-nfs@archiver.kernel.org>; Sat, 17 Aug 2019 01:43:32 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 112B721019
+	for <linux-nfs@archiver.kernel.org>; Sat, 17 Aug 2019 21:24:47 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="ZMdAUQLO"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726047AbfHQBnb (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 16 Aug 2019 21:43:31 -0400
-Received: from fieldses.org ([173.255.197.46]:36180 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726023AbfHQBnb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 16 Aug 2019 21:43:31 -0400
-Received: by fieldses.org (Postfix, from userid 2815)
-        id A80A763F; Fri, 16 Aug 2019 21:43:30 -0400 (EDT)
-Date:   Fri, 16 Aug 2019 21:43:30 -0400
-From:   "J. Bruce Fields" <bfields@fieldses.org>
-To:     Chuck Lever <chuck.lever@oracle.com>
-Cc:     linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
-Subject: Re: [PATCH 1/2] svcrdma: Remove svc_rdma_wq
-Message-ID: <20190817014330.GA14789@fieldses.org>
-References: <156599209136.1245.654792745471627630.stgit@seurat29.1015granger.net>
+        id S1726208AbfHQVYq (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sat, 17 Aug 2019 17:24:46 -0400
+Received: from mail-io1-f65.google.com ([209.85.166.65]:34538 "EHLO
+        mail-io1-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726163AbfHQVYq (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 17 Aug 2019 17:24:46 -0400
+Received: by mail-io1-f65.google.com with SMTP id s21so13262344ioa.1
+        for <linux-nfs@vger.kernel.org>; Sat, 17 Aug 2019 14:24:45 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=from:to:subject:date:message-id:mime-version
+         :content-transfer-encoding;
+        bh=qCGA2TmA+nMZ+Z1J35XJOhhry7QPJqY9FODU49e9HsU=;
+        b=ZMdAUQLOEUU4CZ1LX89/XB2JDfLozdorCsDfpcHWQkszb71M3KvjhGrplAtvtAbErO
+         wI+6q+b63SBHmVdM3o9SaK1oub6VhhscXAq3C2Mkdx2XXENWZAymkNplLJQgSNT0k3dw
+         cVwZJr0jVwfxAqMsj9G8YglZfgp28qPVUqEPx6sc2ToHORTSczmx9Z8gSsw5Zf7SW4w2
+         VjQnnoBSFDutizZc1dJ4Cd+teFGei+Qs45uPtKpVHF9jwXMXP0cJ49QbGv+BG5hEQHAp
+         02Acaapulguwihnc4dLakf1Ge7Ll3hLAUcOQwsxEkl5w1AgRfv24ZYTNwfL4wza6u1WY
+         T5Bg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:from:to:subject:date:message-id:mime-version
+         :content-transfer-encoding;
+        bh=qCGA2TmA+nMZ+Z1J35XJOhhry7QPJqY9FODU49e9HsU=;
+        b=OkUzcPzsoXmnsvofzl0Mrq94A6TZTlQzxRrLLphqv1uExAH2WZpgNQzWyCxJwsfPRV
+         BTWIjvvECts9E3/R0nuxWjv/RPtlUUa6snLLAY5AyYLsvwuRBpugeoCqCo6OBeCC89IW
+         flkRsTaJaodit7ryCl8/nHgz6w+fl92oGW2LoPTAaAY7E5SNnmrxt91XpojWvxZ8i6Wg
+         FdrDiCIQ9jUH4+p/6SE3yuabHTfBd1WlzbVE8Yhv7oxD9PSxO5O4s4e4PFN07cvwHf3p
+         qlGjIUu8hrllTvwlEWLdkdHe2/oUpVIMoG2CaIRmwMFtl8uPOKxpYb8gdJXK8PyTqWi9
+         f3aQ==
+X-Gm-Message-State: APjAAAVnEVNROpWcWCwpDLRbKGjG+87BJPiztdtaZAJwBXifbDKJVZRq
+        mVjGXCvXXnWeCZAL3688VH707uk=
+X-Google-Smtp-Source: APXvYqzNfwNhl7lnBmV5QSm2RjmxvAHW1KSjHDddNMSi7D9uc9TgHCV0sIkXN7CSiiN8pKxZSAlZ0w==
+X-Received: by 2002:a05:6638:637:: with SMTP id h23mr18507799jar.59.1566077084919;
+        Sat, 17 Aug 2019 14:24:44 -0700 (PDT)
+Received: from localhost.localdomain (c-68-40-189-247.hsd1.mi.comcast.net. [68.40.189.247])
+        by smtp.gmail.com with ESMTPSA id q3sm4609806ios.70.2019.08.17.14.24.44
+        for <linux-nfs@vger.kernel.org>
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Sat, 17 Aug 2019 14:24:44 -0700 (PDT)
+From:   Trond Myklebust <trondmy@gmail.com>
+X-Google-Original-From: Trond Myklebust <trond.myklebust@hammerspace.com>
+To:     linux-nfs@vger.kernel.org
+Subject: [PATCH 1/8] NFS: Fix initialisation of I/O result struct in nfs_pgio_rpcsetup
+Date:   Sat, 17 Aug 2019 17:22:10 -0400
+Message-Id: <20190817212217.22766-1-trond.myklebust@hammerspace.com>
+X-Mailer: git-send-email 2.21.0
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <156599209136.1245.654792745471627630.stgit@seurat29.1015granger.net>
-User-Agent: Mutt/1.5.21 (2010-09-15)
+Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Thanks!  Applying both for 5.4.
+Initialise the result count to 0 rather than initialising it to the
+argument count. The reason is that we want to ensure we record the
+I/O stats correctly in the case where an error is returned (for
+instance in the layoutstats).
 
---b.
+Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
+---
+ fs/nfs/pagelist.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-On Fri, Aug 16, 2019 at 05:48:36PM -0400, Chuck Lever wrote:
-> Clean up: the system workqueue will work just as well.
-> 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
->  include/linux/sunrpc/svc_rdma.h          |    1 -
->  net/sunrpc/xprtrdma/svc_rdma.c           |    7 -------
->  net/sunrpc/xprtrdma/svc_rdma_transport.c |    3 ++-
->  3 files changed, 2 insertions(+), 9 deletions(-)
-> 
-> diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
-> index 981f0d726ad4..edb39900fe04 100644
-> --- a/include/linux/sunrpc/svc_rdma.h
-> +++ b/include/linux/sunrpc/svc_rdma.h
-> @@ -200,7 +200,6 @@ extern struct svc_xprt_class svc_rdma_bc_class;
->  #endif
->  
->  /* svc_rdma.c */
-> -extern struct workqueue_struct *svc_rdma_wq;
->  extern int svc_rdma_init(void);
->  extern void svc_rdma_cleanup(void);
->  
-> diff --git a/net/sunrpc/xprtrdma/svc_rdma.c b/net/sunrpc/xprtrdma/svc_rdma.c
-> index abdb3004a1e3..97bca509a391 100644
-> --- a/net/sunrpc/xprtrdma/svc_rdma.c
-> +++ b/net/sunrpc/xprtrdma/svc_rdma.c
-> @@ -73,8 +73,6 @@ atomic_t rdma_stat_rq_prod;
->  atomic_t rdma_stat_sq_poll;
->  atomic_t rdma_stat_sq_prod;
->  
-> -struct workqueue_struct *svc_rdma_wq;
-> -
->  /*
->   * This function implements reading and resetting an atomic_t stat
->   * variable through read/write to a proc file. Any write to the file
-> @@ -230,7 +228,6 @@ static struct ctl_table svcrdma_root_table[] = {
->  void svc_rdma_cleanup(void)
->  {
->  	dprintk("SVCRDMA Module Removed, deregister RPC RDMA transport\n");
-> -	destroy_workqueue(svc_rdma_wq);
->  	if (svcrdma_table_header) {
->  		unregister_sysctl_table(svcrdma_table_header);
->  		svcrdma_table_header = NULL;
-> @@ -246,10 +243,6 @@ int svc_rdma_init(void)
->  	dprintk("\tmax_bc_requests  : %u\n", svcrdma_max_bc_requests);
->  	dprintk("\tmax_inline       : %d\n", svcrdma_max_req_size);
->  
-> -	svc_rdma_wq = alloc_workqueue("svc_rdma", 0, 0);
-> -	if (!svc_rdma_wq)
-> -		return -ENOMEM;
-> -
->  	if (!svcrdma_table_header)
->  		svcrdma_table_header =
->  			register_sysctl_table(svcrdma_root_table);
-> diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-> index 4d3db6ee7f09..30dbbc77ad16 100644
-> --- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
-> +++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-> @@ -630,8 +630,9 @@ static void svc_rdma_free(struct svc_xprt *xprt)
->  {
->  	struct svcxprt_rdma *rdma =
->  		container_of(xprt, struct svcxprt_rdma, sc_xprt);
-> +
->  	INIT_WORK(&rdma->sc_work, __svc_rdma_free);
-> -	queue_work(svc_rdma_wq, &rdma->sc_work);
-> +	schedule_work(&rdma->sc_work);
->  }
->  
->  static int svc_rdma_has_wspace(struct svc_xprt *xprt)
+diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+index 56cefa0ab804..20b3717cd7ca 100644
+--- a/fs/nfs/pagelist.c
++++ b/fs/nfs/pagelist.c
+@@ -590,7 +590,7 @@ static void nfs_pgio_rpcsetup(struct nfs_pgio_header *hdr,
+ 	}
+ 
+ 	hdr->res.fattr   = &hdr->fattr;
+-	hdr->res.count   = count;
++	hdr->res.count   = 0;
+ 	hdr->res.eof     = 0;
+ 	hdr->res.verf    = &hdr->verf;
+ 	nfs_fattr_init(&hdr->fattr);
+-- 
+2.21.0
+
