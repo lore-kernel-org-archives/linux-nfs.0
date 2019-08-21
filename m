@@ -2,75 +2,67 @@ Return-Path: <SRS0=+JPJ=WR=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,SPF_HELO_NONE,SPF_PASS
-	autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-6.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A2A6FC3A5A1
-	for <linux-nfs@archiver.kernel.org>; Wed, 21 Aug 2019 19:22:50 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 741EAC3A59E
+	for <linux-nfs@archiver.kernel.org>; Wed, 21 Aug 2019 20:35:03 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 769D32064A
-	for <linux-nfs@archiver.kernel.org>; Wed, 21 Aug 2019 19:22:50 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 4794C2339E
+	for <linux-nfs@archiver.kernel.org>; Wed, 21 Aug 2019 20:35:03 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=default; t=1566419703;
+	bh=f2vThZms9ade6ULNLIYBpJ1ksg1haTxzagrJMrBGACw=;
+	h=Subject:From:In-Reply-To:References:Date:To:Cc:List-ID:From;
+	b=CgcC1YUU+dZEA6/DmxQI+CaMBYQotWIYV1Ob9TAFoXt5c3S0JcnwLeSUnKtxd7bOy
+	 ypb8EYAsZEsO22Hu4xERwrXrIPpMMjyGuANonoStElKG/vto9bQZ/si41M8aJcZIAv
+	 CLh/ByixBevelJKQifj+HWqCkz2V7BmvMNIjpIKc=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729414AbfHUTWo convert rfc822-to-8bit (ORCPT
-        <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 21 Aug 2019 15:22:44 -0400
-Received: from mx1.redhat.com ([209.132.183.28]:34116 "EHLO mx1.redhat.com"
+        id S1729999AbfHUUfC (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 21 Aug 2019 16:35:02 -0400
+Received: from mail.kernel.org ([198.145.29.99]:42000 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727998AbfHUTWn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 21 Aug 2019 15:22:43 -0400
-Received: from smtp.corp.redhat.com (int-mx08.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id F0F5630833CB;
-        Wed, 21 Aug 2019 19:22:42 +0000 (UTC)
-Received: from warthog.procyon.org.uk (ovpn-120-255.rdu2.redhat.com [10.10.120.255])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id C53C04513;
-        Wed, 21 Aug 2019 19:22:39 +0000 (UTC)
-Organization: Red Hat UK Ltd. Registered Address: Red Hat UK Ltd, Amberley
-        Place, 107-111 Peascod Street, Windsor, Berkshire, SI4 1TE, United
-        Kingdom.
-        Registered in England and Wales under Company Registration No. 3798903
-From:   David Howells <dhowells@redhat.com>
-In-Reply-To: <1566402203.5162.12.camel@linux.ibm.com>
-References: <1566402203.5162.12.camel@linux.ibm.com> <1562814435.4014.11.camel@linux.ibm.com> <28477.1562362239@warthog.procyon.org.uk> <CAHk-=wjxoeMJfeBahnWH=9zShKp2bsVy527vo3_y8HfOdhwAAw@mail.gmail.com> <20190710194620.GA83443@gmail.com> <20190710201552.GB83443@gmail.com> <CAHk-=wiFti6=K2fyAYhx-PSX9ovQPJUNp0FMdV0pDaO_pSx9MQ@mail.gmail.com> <23498.1565962602@warthog.procyon.org.uk>
-To:     Mimi Zohar <zohar@linux.ibm.com>
-Cc:     dhowells@redhat.com,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        James Morris <jmorris@namei.org>, keyrings@vger.kernel.org,
-        Netdev <netdev@vger.kernel.org>, linux-nfs@vger.kernel.org,
-        CIFS <linux-cifs@vger.kernel.org>, linux-afs@lists.infradead.org,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        linux-integrity@vger.kernel.org,
-        LSM List <linux-security-module@vger.kernel.org>,
-        Linux List Kernel Mailing <linux-kernel@vger.kernel.org>
-Subject: Re: [GIT PULL] Keys: Set 4 - Key ACLs for 5.3
-MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-ID: <19087.1566415359.1@warthog.procyon.org.uk>
-Content-Transfer-Encoding: 8BIT
-Date:   Wed, 21 Aug 2019 20:22:39 +0100
-Message-ID: <19088.1566415359@warthog.procyon.org.uk>
-X-Scanned-By: MIMEDefang 2.84 on 10.5.11.23
-X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.44]); Wed, 21 Aug 2019 19:22:43 +0000 (UTC)
+        id S1729962AbfHUUfC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 21 Aug 2019 16:35:02 -0400
+Subject: Re: [GIT PULL] nfsd bugfixes for 5.3
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=default; t=1566419701;
+        bh=f2vThZms9ade6ULNLIYBpJ1ksg1haTxzagrJMrBGACw=;
+        h=From:In-Reply-To:References:Date:To:Cc:From;
+        b=xzqbnHsQmRYPjwrXdzw8uHtUga6MTUW3/HUBEdHV1bnXCDztSzkoeggrlMokqCatx
+         Wvw0w05qZ48fO3AGUfKx+O9i+4ymfG5aQqyuCSt5Z7FqY/TJxGIblUFi3cJl2nufOc
+         Y3EusHHUuDq6kbiuYJ89D/z+XzHK8ghScKBvsRMk=
+From:   pr-tracker-bot@kernel.org
+In-Reply-To: <20190821150646.GC22104@fieldses.org>
+References: <20190821150646.GC22104@fieldses.org>
+X-PR-Tracked-List-Id: <linux-nfs.vger.kernel.org>
+X-PR-Tracked-Message-Id: <20190821150646.GC22104@fieldses.org>
+X-PR-Tracked-Remote: git://linux-nfs.org/~bfields/linux.git tags/nfsd-5.3-1
+X-PR-Tracked-Commit-Id: 78e70e780b289ff59ec33a9f9c1fcecaf17a46e1
+X-PR-Merge-Tree: torvalds/linux.git
+X-PR-Merge-Refname: refs/heads/master
+X-PR-Merge-Commit-Id: 2babd34df2294a72df02dc4a3745df3408147eba
+Message-Id: <156641970165.4116.17330431153924630328.pr-tracker-bot@kernel.org>
+Date:   Wed, 21 Aug 2019 20:35:01 +0000
+To:     bfields@fieldses.org (J. Bruce Fields)
+Cc:     Linus Torvalds <torvalds@linux-foundation.org>,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-I added a bunch of tests to the keyutils testsuite, currently on my -next
-branch:
+The pull request you sent on Wed, 21 Aug 2019 11:06:46 -0400:
 
-	https://git.kernel.org/pub/scm/linux/kernel/git/dhowells/keyutils.git/log/?h=next
+> git://linux-nfs.org/~bfields/linux.git tags/nfsd-5.3-1
 
-See:
+has been merged into torvalds/linux.git:
+https://git.kernel.org/torvalds/c/2babd34df2294a72df02dc4a3745df3408147eba
 
-	Add a keyctl command for granting a permit on a key
-	Handle kernel having key/keyring ACLs
+Thank you!
 
-I've added manpages to describe the new bits, but I wonder whether I should
-add a manpage specifically to detail the permissions system.  It'll probably
-be useful when more advanced subjects become available, such as for specific
-UIDs and for containers-as-a-whole.
-
-David
+-- 
+Deet-doot-dot, I am a bot.
+https://korg.wiki.kernel.org/userdoc/prtracker
