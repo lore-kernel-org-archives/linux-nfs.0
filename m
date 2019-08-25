@@ -1,114 +1,122 @@
-Return-Path: <SRS0=6Zsw=WT=vger.kernel.org=linux-nfs-owner@kernel.org>
+Return-Path: <SRS0=eTXt=WV=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-0.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,UNPARSEABLE_RELAY autolearn=no
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-6.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0DBF2C3A5A4
-	for <linux-nfs@archiver.kernel.org>; Fri, 23 Aug 2019 22:44:57 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D2E18C3A5A1
+	for <linux-nfs@archiver.kernel.org>; Sun, 25 Aug 2019 10:12:47 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id E2FC621726
-	for <linux-nfs@archiver.kernel.org>; Fri, 23 Aug 2019 22:44:56 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 74B66217D7
+	for <linux-nfs@archiver.kernel.org>; Sun, 25 Aug 2019 10:12:47 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=zadara-com.20150623.gappssmtp.com header.i=@zadara-com.20150623.gappssmtp.com header.b="WRMep0Sf"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726050AbfHWWoz convert rfc822-to-8bit (ORCPT
-        <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 23 Aug 2019 18:44:55 -0400
-Received: from smtppost.atos.net ([193.56.114.176]:6622 "EHLO
-        smtppost.atos.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725283AbfHWWoz (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 23 Aug 2019 18:44:55 -0400
-Received: from mail3-ext.my-it-solutions.net (mail3-ext.my-it-solutions.net) by smarthost1.atos.net with smtp
-        (TLS: TLSv1/SSLv3,256bits,ECDHE-RSA-AES256-GCM-SHA384)
-         id 5e85_092c_8651aabb_d3a5_4b37_88f8_b83b9412f078;
-        Sat, 24 Aug 2019 00:31:20 +0200
-Received: from mail1-int.my-it-solutions.net ([10.92.32.11])
-        by mail3-ext.my-it-solutions.net (8.15.2/8.15.2) with ESMTPS id x7NMVKqX012445
-        (version=TLSv1.2 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK)
-        for <linux-nfs@vger.kernel.org>; Sat, 24 Aug 2019 00:31:20 +0200
-Received: from DEFTHW99ETTMSX.ww931.my-it-solutions.net ([10.86.142.101])
-        by mail1-int.my-it-solutions.net (8.15.2/8.15.2) with ESMTPS id x7NMVKec030662
-        (version=TLSv1.2 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
-        for <linux-nfs@vger.kernel.org>; Sat, 24 Aug 2019 00:31:20 +0200
-Received: from DEERLM99ETWMSX.ww931.my-it-solutions.net (10.86.142.45) by
- DEFTHW99ETTMSX.ww931.my-it-solutions.net (10.86.142.101) with Microsoft SMTP
- Server (TLS) id 14.3.439.0; Sat, 24 Aug 2019 00:31:20 +0200
-Received: from DEERLM99ETTMSX.ww931.my-it-solutions.net (10.86.142.105) by
- DEERLM99ETWMSX.ww931.my-it-solutions.net (10.86.142.45) with Microsoft SMTP
- Server (TLS) id 14.3.439.0; Sat, 24 Aug 2019 00:31:19 +0200
-Received: from EUR03-AM5-obe.outbound.protection.outlook.com (10.86.142.137)
- by hybridsmtp.it-solutions.atos.net (10.86.142.105) with Microsoft SMTP
- Server (TLS) id 14.3.439.0; Sat, 24 Aug 2019 00:31:18 +0200
-ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
- b=KsAzAP4oqo+/B1df1VqYFzkPv6K+2zK8iF8ceaKFmg9u2q1Ra36ZNA7q7C+Lm4yLFslpWCmfbYStwihqnvkJ07PXC4pgZ34FPIaKqCGJfhjsRQYyzACaRLp9T3u71FncMPbe7nDc5peqtG4hTQfJsy47GPuGrSk2P7hE5yhL/Q1fQRfSsq3yMh5wKvnlmq/Me1UmwAyLNyCNqp5PlLOu10uz7OVczJ4XI3IjtZI6QwVLKNcKdh9e65pm6u9bDEA2TQ01qg6gct1HTDhe9Oo7O6io0/ri6Bzc3SsKnkHzPJwCnJhkzjWyoE0RWPvgjJ1kR7x1w6SBIfsohLJ7jdjKHw==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
- s=arcselector9901;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=ZQlfYZXNgKYnpsUi1cWqJhY4Qy09WG41hqpSEYbcIZY=;
- b=MObeBIo6UMQxQwT0JJWPOSCd2bFcHygLDNd+QcykzUJOcuj8ZLfzAzcq0yTjnHS3f7Xwz/0Juw4KRlrqsQSScsbIWzqugpE3IJbgapkQAgkplJGOtzrfju+k3cXwjgJFrcRL+fpGrOUp/Q5PqpoyuYEOPS0NqTPOPeevZWL9+yRow0BamDGEPMNOTL1zB3BtAxvQSaJqqWUjo54aVU5lQvsHolMA+7hZ4J7laPLLcrkE6vkeb2YMoiOymL06sCpp8lRL7lmbU9tSnOpI5fIjk5Fqeld2I+4IEUjDV0jCowjRfUvIU7CLjo/qZT27xdhytFEFDtB+cnrSZhg2K1uEWw==
-ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
- smtp.mailfrom=atos.net; dmarc=pass action=none header.from=atos.net;
- dkim=pass header.d=atos.net; arc=none
-Received: from AM5PR0202MB2564.eurprd02.prod.outlook.com (10.173.88.135) by
- AM5PR0202MB2515.eurprd02.prod.outlook.com (10.173.88.145) with Microsoft SMTP
- Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- 15.20.2178.18; Fri, 23 Aug 2019 22:31:18 +0000
-Received: from AM5PR0202MB2564.eurprd02.prod.outlook.com
- ([fe80::411:ed7c:ed00:7bea]) by AM5PR0202MB2564.eurprd02.prod.outlook.com
- ([fe80::411:ed7c:ed00:7bea%12]) with mapi id 15.20.2178.020; Fri, 23 Aug 2019
- 22:31:18 +0000
-From:   "de Vandiere, Louis" <louis.devandiere@atos.net>
-To:     "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: RE: Maximum Number of ACL on NFSv4
-Thread-Topic: Maximum Number of ACL on NFSv4
-Thread-Index: AdVZ/zHAXlVbOFcuRg6ALmyIfYKMtQAAvtpw
-Date:   Fri, 23 Aug 2019 22:31:17 +0000
-Message-ID: <AM5PR0202MB2564E6F05627D0EF49D043DFE7A40@AM5PR0202MB2564.eurprd02.prod.outlook.com>
-References: <AM5PR0202MB25641230B578F7D080A67BA4E7A40@AM5PR0202MB2564.eurprd02.prod.outlook.com>
-In-Reply-To: <AM5PR0202MB25641230B578F7D080A67BA4E7A40@AM5PR0202MB2564.eurprd02.prod.outlook.com>
-Accept-Language: en-US
-Content-Language: en-US
-X-MS-Has-Attach: 
-X-MS-TNEF-Correlator: 
-authentication-results: spf=none (sender IP is )
- smtp.mailfrom=louis.devandiere@atos.net; 
-x-originating-ip: [70.122.228.231]
-x-ms-publictraffictype: Email
-x-ms-office365-filtering-correlation-id: 3f506012-9833-4642-e6e6-08d728199da8
-x-microsoft-antispam: BCL:0;PCL:0;RULEID:(2390118)(7020095)(4652040)(8989299)(4534185)(4627221)(201703031133081)(201702281549075)(8990200)(5600166)(711020)(4605104)(1401327)(2017052603328)(7193020);SRVR:AM5PR0202MB2515;
-x-ms-traffictypediagnostic: AM5PR0202MB2515:
-x-microsoft-antispam-prvs: <AM5PR0202MB2515F219D59E57600CA5CE7EE7A40@AM5PR0202MB2515.eurprd02.prod.outlook.com>
-x-ms-oob-tlc-oobclassifiers: OLM:9508;
-x-forefront-prvs: 0138CD935C
-x-forefront-antispam-report: SFV:NSPM;SFS:(10019020)(4636009)(346002)(136003)(396003)(376002)(39860400002)(366004)(42274003)(199004)(189003)(8676002)(81166006)(2501003)(8936002)(4744005)(3846002)(6916009)(66574012)(6116002)(2906002)(9686003)(476003)(11346002)(55016002)(5640700003)(6436002)(486006)(86362001)(25786009)(229853002)(6246003)(33656002)(66946007)(66476007)(66556008)(64756008)(66446008)(186003)(53936002)(26005)(66066001)(52536014)(76116006)(256004)(74316002)(14444005)(5660300002)(6506007)(71190400001)(71200400001)(102836004)(14454004)(446003)(2351001)(478600001)(2940100002)(99286004)(76176011)(7736002)(7696005)(316002)(305945005)(81156014);DIR:OUT;SFP:1102;SCL:1;SRVR:AM5PR0202MB2515;H:AM5PR0202MB2564.eurprd02.prod.outlook.com;FPR:;SPF:None;LANG:en;PTR:InfoNoRecords;A:1;MX:1;
-received-spf: None (protection.outlook.com: atos.net does not designate
- permitted sender hosts)
-x-ms-exchange-senderadcheck: 1
-x-microsoft-antispam-message-info: ihBunodv6c0CbRQqPajVMwbJLTgCJbOhSKkXImmO0ElY0ysqXwkoPGxpdaiMxDtIJcroEvMsQnOZ5l+HwkyeiNCk6nnsc4R4/NBb6Nrm9Xa9FuGPI8+G0Cy91UmcnXQsiqGJDph9aQ+WjDCbd/bhQeqHi6FGLviQ0HmsV4/nXdhftlxrEM1Gqc7TWWdQdhNa/Ca4QgNrT6hwr1nI3XiAt3SZmNOzvjRouCMWlJOkegs2vUhrSfFzkriOAxP8bKi2lhyfsNsW7NYrQZ+PIwXh/aUhpxY7jbZxgCtUBc1fhQlp1ty2HIIHS2T/fgOoEDiJjzeFlWxBPd/xqR43EaOLJysAiRoKKrJVpZNo1SKPhOM72kGPbrlCZL2vExpzxTb2runKYp1P0j1tbVo89pBHgvy4OMTqul1T75M76UiByA8=
-x-ms-exchange-transport-forked: True
-Content-Type: text/plain; charset="iso-8859-1"
-Content-Transfer-Encoding: 8BIT
+        id S1726182AbfHYKMq (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sun, 25 Aug 2019 06:12:46 -0400
+Received: from mail-io1-f65.google.com ([209.85.166.65]:33262 "EHLO
+        mail-io1-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725995AbfHYKMq (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 25 Aug 2019 06:12:46 -0400
+Received: by mail-io1-f65.google.com with SMTP id z3so30463378iog.0
+        for <linux-nfs@vger.kernel.org>; Sun, 25 Aug 2019 03:12:45 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=zadara-com.20150623.gappssmtp.com; s=20150623;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc;
+        bh=fMpyQvF6VzughydnrGZHt+I7Ql6B0+O3aZ99w06rrB0=;
+        b=WRMep0SfYrMDheaLekaO6LNsHOt0YTl0JHu32AtcogB8IE0Z7iIUvr8W48sMCW+qmM
+         wb8+vpr/pdO5Gaz/dqA48yD9ho8XMbgAxHTOTzb7OUpmbG9XsH+fCAysroGb5UgGgrPq
+         roIPdCnMho4fLhYpBqoXp/2dboGv35kxLWKOXu7DQTofp1H6QJb+QDTm2Q3tjeaSYvzD
+         K30hGbw/+mTXH8kYfi5hZZhkVMGcMUcHq/WfIZcA3yjDvWouGqk1UlZj6mynvHPrNyga
+         FGLAQEtDrIKGYcGNnX3SBqcnTTVI42QZT0aqvBUxuRP4H7F8afjfkT2wx5N79yRxTTId
+         y0iQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=fMpyQvF6VzughydnrGZHt+I7Ql6B0+O3aZ99w06rrB0=;
+        b=tmv3QgyBED3lIHDfHks8P2NK5SHGUmx2h8u/yM5Ut3CW7sUWqNqB1nOKKEKtOfMvzT
+         U7Nv4lf1XI5mjlVw3nishGxwdqGbCtMDzbQKs6FoHadjSslz0k51wrwAglaZPQmKE7DV
+         a5CKCMhFfqa55uTqV2xWDOxbbkF0N+5y/cIeeEJD50m3lg5zGT87QSceWMQTb6/fbtQT
+         mIzx+mpfjYpEDRMh1tHjeyR33yVu/nTgHKE5ucOLI5Sw126PwQN4S3fmrm8ZEBZXmk/d
+         rLaV9XLfrOcYH5pFZkQFT4BzgtyZwjzFTTLCM7BbNFBZmjI9BDlx/g2R/HlF+/svUHBs
+         TVAQ==
+X-Gm-Message-State: APjAAAWkxAOW29AM9QERyVTtApYDjwZuYrounz7t+TKYmrwR3De2ayN3
+        KkrJWc+wEFWfHAVBFEoI2YsASh3KfHJgE1cej1Fwtg==
+X-Google-Smtp-Source: APXvYqxr7+J1ckULATkxxljBqpvrUxVstFS1oYrb+2SWBrzUbjBu3cME5YdbOEUeT55SSyAsEpBjgwxKOZk24dgms1A=
+X-Received: by 2002:a02:3e86:: with SMTP id s128mr12524010jas.14.1566727965414;
+ Sun, 25 Aug 2019 03:12:45 -0700 (PDT)
 MIME-Version: 1.0
-X-MS-Exchange-CrossTenant-Network-Message-Id: 3f506012-9833-4642-e6e6-08d728199da8
-X-MS-Exchange-CrossTenant-originalarrivaltime: 23 Aug 2019 22:31:17.9510
- (UTC)
-X-MS-Exchange-CrossTenant-fromentityheader: Hosted
-X-MS-Exchange-CrossTenant-id: 33440fc6-b7c7-412c-bb73-0e70b0198d5a
-X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
-X-MS-Exchange-CrossTenant-userprincipalname: e4bjB/vb+GBBhr7q5NhUL/q8Kl4JRaSWAcIvCwW5/yfzVV3IsPU6PhAv5NXtHTQTNJyNbq6kZS9CFK13A7Qy3T5oMJ7FoRrknwKl2nNEBug=
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: AM5PR0202MB2515
-X-OriginatorOrg: atos.net
+References: <1566406146-7887-1-git-send-email-alex@zadara.com>
+In-Reply-To: <1566406146-7887-1-git-send-email-alex@zadara.com>
+From:   Alex Lyakas <alex@zadara.com>
+Date:   Sun, 25 Aug 2019 13:12:34 +0300
+Message-ID: <CAOcd+r0bXefi79dnwrwsDN1OecScfTjc8DYS5_9A8D5XKrh7QQ@mail.gmail.com>
+Subject: Re: [RFC-PATCH] nfsd: when unhashing openowners, increment
+ openowner's refcount
+To:     bfields@fieldses.org, chuck.lever@oracle.com
+Cc:     linux-nfs@vger.kernel.org, Shyam Kaushik <shyam@zadara.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hi,
+Hi Bruce, Chuck,
 
-I'm currently trying to apply hundreds of ACLs on file hosted on a NFSv4 server (nfs-utils-1.3.0-0.61.el7.x86_64 and nfs4-acl-tools.0.3.3-19.el7.x86_64). It appears that the limit I can apply is 207. After the limit is reached, the command "nfs4_setfacl -a" returned the error "Failed setxattr operation: File too large". The same problem happens if I use an ACL with more than 200 line in it. I did a little debugging session but I was not able to come up with an explanation on why I'm facing such an issue.
+You are listed as maintainers of nfsd. Can you please take a look at
+the below patch?
 
-On the other hand, I can apply hundreds of ACLs on XFS without issue. Do you know if it could be a bug with the nfs4-acl-tools package?
-Thank you for your support.
-Best,
-Louis de Vandière
+Thanks,
+Alex.
+
+On Wed, Aug 21, 2019 at 7:50 PM Alex Lyakas <alex@zadara.com> wrote:
+>
+> release_openowner() expects an extra refcnt taken for the openowner,
+> which it is releasing.
+>
+>  With nfsd_inject_forget_client_openowners() and nfsd_inject_forget_openowners(),
+> we unhash openowners and collect them into a reaplist. Later we call
+> nfsd_reap_openowners(), which calls release_openowner(), which releases all openowner's stateids.
+> Each OPEN stateid holds a refcnt on the openowner. Therefore, after releasing
+> the last OPEN stateid via its sc_free function, which is nfs4_free_ol_stateid,
+> nfs4_put_stateowner() will be called, which will realize its the last
+> refcnt for the openowner. As a result, openowner will be freed.
+> But later, release_openowner() will go ahead and call release_last_closed_stateid()
+> and nfs4_put_stateowner() on the same openowner which was just released.
+> This corrupts memory and causes random crashes.
+>
+> After we fixed this, we confirmed that the openowner is not freed
+> prematurely. It is freed by release_openowner() final call
+> to nfs4_put_stateowner().
+>
+> However, we still get (other) random crashes and memory corruptions
+> when nfsd_inject_forget_client_openowners() and
+> nfsd_inject_forget_openowners().
+> According to our analysis, we don't see any other refcount issues.
+> Can anybody from the community review these flows for other potentials issues?
+>
+> Signed-off-by: Alex Lyakas <alex@zadara.com>
+> ---
+>  fs/nfsd/nfs4state.c | 1 +
+>  1 file changed, 1 insertion(+)
+>
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 7857942..4e9afca 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -7251,6 +7251,7 @@ static u64 nfsd_foreach_client_lock(struct nfs4_client *clp, u64 max,
+>                         func(oop);
+>                         if (collect) {
+>                                 atomic_inc(&clp->cl_rpc_users);
+> +                               nfs4_get_stateowner(&oop->oo_owner);
+>                                 list_add(&oop->oo_perclient, collect);
+>                         }
+>                 }
+> --
+> 1.9.1
+>
