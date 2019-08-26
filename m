@@ -2,81 +2,106 @@ Return-Path: <SRS0=yNkr=WW=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.3 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=no
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1B7CCC3A5A1
-	for <linux-nfs@archiver.kernel.org>; Mon, 26 Aug 2019 00:39:25 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 277DCC3A59E
+	for <linux-nfs@archiver.kernel.org>; Mon, 26 Aug 2019 07:49:09 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id EA8E72080C
-	for <linux-nfs@archiver.kernel.org>; Mon, 26 Aug 2019 00:39:24 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id EC5A22087E
+	for <linux-nfs@archiver.kernel.org>; Mon, 26 Aug 2019 07:49:08 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=pks.im header.i=@pks.im header.b="4TOjsmhG";
+	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="bmLn8wRL"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726434AbfHZAjY (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 25 Aug 2019 20:39:24 -0400
-Received: from mail.cn.fujitsu.com ([183.91.158.132]:27338 "EHLO
-        heian.cn.fujitsu.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1726312AbfHZAjY (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 25 Aug 2019 20:39:24 -0400
-X-IronPort-AV: E=Sophos;i="5.64,431,1559491200"; 
-   d="scan'208";a="74253732"
-Received: from unknown (HELO cn.fujitsu.com) ([10.167.33.5])
-  by heian.cn.fujitsu.com with ESMTP; 26 Aug 2019 08:39:22 +0800
-Received: from G08CNEXCHPEKD03.g08.fujitsu.local (unknown [10.167.33.85])
-        by cn.fujitsu.com (Postfix) with ESMTP id EA3B44CE045C
-        for <linux-nfs@vger.kernel.org>; Mon, 26 Aug 2019 08:39:17 +0800 (CST)
-Received: from [10.167.226.33] (10.167.226.33) by
- G08CNEXCHPEKD03.g08.fujitsu.local (10.167.33.89) with Microsoft SMTP Server
- (TLS) id 14.3.439.0; Mon, 26 Aug 2019 08:39:35 +0800
-Subject: Re: NFS issues about aio and dio test
-From:   Su Yanjun <suyj.fnst@cn.fujitsu.com>
-To:     <linux-nfs@vger.kernel.org>
-CC:     <cuiyue-fnst@cn.fujitsu.com>
-References: <975395cc-62f2-843f-cc71-82339b2869cd@cn.fujitsu.com>
-Message-ID: <65ea4ea2-548f-1546-059a-af901bba2e87@cn.fujitsu.com>
-Date:   Mon, 26 Aug 2019 08:37:41 +0800
-User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64; rv:60.0) Gecko/20100101
- Thunderbird/60.7.0
+        id S1730103AbfHZHtI (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 26 Aug 2019 03:49:08 -0400
+Received: from wout3-smtp.messagingengine.com ([64.147.123.19]:42307 "EHLO
+        wout3-smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1727563AbfHZHtH (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 26 Aug 2019 03:49:07 -0400
+Received: from compute1.internal (compute1.nyi.internal [10.202.2.41])
+        by mailout.west.internal (Postfix) with ESMTP id 8FCAB38E
+        for <linux-nfs@vger.kernel.org>; Mon, 26 Aug 2019 03:49:06 -0400 (EDT)
+Received: from mailfrontend2 ([10.202.2.163])
+  by compute1.internal (MEProxy); Mon, 26 Aug 2019 03:49:06 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=pks.im; h=from
+        :to:cc:subject:date:message-id:in-reply-to:references
+        :mime-version:content-transfer-encoding; s=fm1; bh=lqLvFz7httVB3
+        363B7u+xSWugEcT9YQPU8nl/ICvCe8=; b=4TOjsmhGZlzPLYY13hsNpoTivsNRG
+        8MfP1Fw08ul+h+3NfjJqj6A8LbOuDtBGFJGj75OAPegsoZpqSRURYyw1nnNu95G6
+        yfi4a0P3u9Dcn+Dy+3JBNkTaJhqIHtv55Pkgn1cLlQRQ8oVXQkfTh57IWgW6sO46
+        b2XZqsbWrl5MgWm++UPFB7PT9K+decbsuhTZ9JuhMj7vG0Mtxx8i0BaqWpFkBPHb
+        JVxq2wWRIzt6TexWTsblvDyqlhwEHr/eomvWNqutNZLRZDDq4uZ/5Z7HPeTzyChb
+        AU0rKJci8oLLJ1zdqXhzFmTDjJ4TQ125Nh+nP98KpJRJykbeUtH/LGcLw==
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
+        messagingengine.com; h=cc:content-transfer-encoding:date:from
+        :in-reply-to:message-id:mime-version:references:subject:to
+        :x-me-proxy:x-me-proxy:x-me-sender:x-me-sender:x-sasl-enc; s=
+        fm3; bh=lqLvFz7httVB3363B7u+xSWugEcT9YQPU8nl/ICvCe8=; b=bmLn8wRL
+        WZ6vPbO8e30W4wpwFrem8U8qLEWkDMfA9BqzOaDSeq1kcIVorsjXcaDBIkqXVK+b
+        7vsXMXLFzuUTFJO+WTN0AQHQVtR+ipFJXUOJaacZG5cdGo2DZiVcDBhpJYm/G/mf
+        h6CFHJTgz79WFFmJSO7NzxHxSSdz5zAumIjeimQMSDk3ZM91gcvo+GE115lsy532
+        ZFM87l9g+VeZYHses3wdfIxKsDJGbMQRN7br3spUCp7b/79ebRC3yleCEOwAikDR
+        tSX4d4le5nkeaKfddjWeD4lI1sbyokyPmek1pSqKUCTu7i9Xv3VDPEZHLPBc/2P2
+        4KR5NSSsuyu+Bw==
+X-ME-Sender: <xms:8o5jXUvxLXKoTDVdCL7ibtp-NOne3T_2cVCFZlhQgornGF9mYhYwuQ>
+X-ME-Proxy-Cause: gggruggvucftvghtrhhoucdtuddrgeduvddrudehfedguddvhecutefuodetggdotefrod
+    ftvfcurfhrohhfihhlvgemucfhrghsthforghilhdpqfgfvfdpuffrtefokffrpgfnqfgh
+    necuuegrihhlohhuthemuceftddtnecunecujfgurhephffvufffkffojghfggfgsedtke
+    ertdertddtnecuhfhrohhmpefrrghtrhhitghkucfuthgvihhnhhgrrhguthcuoehpshes
+    phhkshdrihhmqeenucfkphepjeekrdehhedrvdefrddutdeknecurfgrrhgrmhepmhgrih
+    hlfhhrohhmpehpshesphhkshdrihhmnecuvehluhhsthgvrhfuihiivgeptd
+X-ME-Proxy: <xmx:8o5jXaSOkLZP8b1A-6dUfLcKRu8Q7yWUAfAo2sJ86eMbdDrQjw8aoQ>
+    <xmx:8o5jXWvOuFSUUCAFpEpvO9hMByJwGjanx-6se2oFx-WY2uDtQ_SUWA>
+    <xmx:8o5jXQw7O_sIL2ydDFTYNlpOczZR5lTrgq_Fhv6s8TrTUZkjHHHt4g>
+    <xmx:8o5jXS7VbXEpfJP26GWDSVy7SPAsyM-AAx-i5sue7hhKSVZ6qZNZEw>
+Received: from NSJAIL (x4e37176c.dyn.telefonica.de [78.55.23.108])
+        by mail.messagingengine.com (Postfix) with ESMTPA id 9BE69D60062
+        for <linux-nfs@vger.kernel.org>; Mon, 26 Aug 2019 03:49:05 -0400 (EDT)
+Received: from localhost (10.192.0.11 [10.192.0.11])
+        by NSJAIL (OpenSMTPD) with ESMTPSA id 7f6f5b3d (TLSv1.2:ECDHE-RSA-AES256-GCM-SHA384:256:NO);
+        Mon, 26 Aug 2019 07:49:01 +0000 (UTC)
+From:   Patrick Steinhardt <ps@pks.im>
+To:     linux-nfs@vger.kernel.org
+Cc:     Patrick Steinhardt <ps@pks.im>
+Subject: [PATCH 2/3] nfsdcld: add missing include for PATH_MAX
+Date:   Mon, 26 Aug 2019 09:48:51 +0200
+Message-Id: <15b474e6fa7aee12e64e4376f7716a232e40100a.1566805721.git.ps@pks.im>
+X-Mailer: git-send-email 2.23.0
+In-Reply-To: <6de0089348765e60bcdf59ef5813d7bb631c967f.1566805721.git.ps@pks.im>
+References: <6de0089348765e60bcdf59ef5813d7bb631c967f.1566805721.git.ps@pks.im>
 MIME-Version: 1.0
-In-Reply-To: <975395cc-62f2-843f-cc71-82339b2869cd@cn.fujitsu.com>
-Content-Type: text/plain; charset="utf-8"; format=flowed
 Content-Transfer-Encoding: 8bit
-X-Originating-IP: [10.167.226.33]
-X-yoursite-MailScanner-ID: EA3B44CE045C.ADA96
-X-yoursite-MailScanner: Found to be clean
-X-yoursite-MailScanner-From: suyj.fnst@cn.fujitsu.com
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Any ping?
+While glibc transitively includes <limits.h> and thus has PATH_MAX
+available, other libc implementations may not have the transitive
+include and thus miss the definition. Add an explicit include of
+<limits.h> to fix compilation with musl libc.
 
-在 2019/8/6 14:08, Su Yanjun 写道:
-> Hi,
->
-> When I tested xfstests generic/465 with NFS, there was something 
-> unexpected.
->
-> When memory of NFS server was 10G, test passed.
-> But when memory of NFS server was 4G, test failed.
->
-> Fail message was as below.
->     non-aio dio test
->     encounter an error: block 4 offset 0, content 62
->     aio-dio test
->     encounter an error: block 1 offset 0, content 62
->
-> All of the NFS versions(v3 v4.0 v4.1 v4.2) have  this problem.
-> Maybe something is wrong about NFS's I/O operation.
->
-> Thanks in advance.
->
->
->
->
->
->
->
+Signed-off-by: Patrick Steinhardt <ps@pks.im>
+---
+ utils/nfsdcld/legacy.c | 1 +
+ 1 file changed, 1 insertion(+)
 
+diff --git a/utils/nfsdcld/legacy.c b/utils/nfsdcld/legacy.c
+index f0ca3168..07f477ab 100644
+--- a/utils/nfsdcld/legacy.c
++++ b/utils/nfsdcld/legacy.c
+@@ -24,6 +24,7 @@
+ #include <errno.h>
+ #include <sys/types.h>
+ #include <sys/stat.h>
++#include <limits.h>
+ #include "cld.h"
+ #include "sqlite.h"
+ #include "xlog.h"
+-- 
+2.23.0
 
