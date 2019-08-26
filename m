@@ -7,55 +7,54 @@ X-Spam-Status: No, score=-5.0 required=3.0 tests=DATE_IN_PAST_96_XX,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
 	SPF_HELO_NONE,SPF_PASS autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D58EDC4CEC7
-	for <linux-nfs@archiver.kernel.org>; Thu, 12 Sep 2019 17:29:04 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7584EC4CEC8
+	for <linux-nfs@archiver.kernel.org>; Thu, 12 Sep 2019 17:29:05 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id AF25020856
-	for <linux-nfs@archiver.kernel.org>; Thu, 12 Sep 2019 17:29:04 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 496792081B
+	for <linux-nfs@archiver.kernel.org>; Thu, 12 Sep 2019 17:29:05 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=amazon.com header.i=@amazon.com header.b="JXZ3hdC9"
+	dkim=pass (1024-bit key) header.d=amazon.com header.i=@amazon.com header.b="D8YwtHd/"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2387602AbfILR3C (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 12 Sep 2019 13:29:02 -0400
+        id S2387611AbfILR2y (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 12 Sep 2019 13:28:54 -0400
 Received: from smtp-fw-6001.amazon.com ([52.95.48.154]:7948 "EHLO
         smtp-fw-6001.amazon.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2387621AbfILR2z (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Sep 2019 13:28:55 -0400
+        with ESMTP id S2387602AbfILR2x (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Sep 2019 13:28:53 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
   d=amazon.com; i=@amazon.com; q=dns/txt; s=amazon201209;
-  t=1568309335; x=1599845335;
+  t=1568309333; x=1599845333;
   h=message-id:in-reply-to:references:from:date:subject:to:
    mime-version;
-  bh=Z4E0AqIfFgbjUDhGUbLREjhsw6QurJUKx7DGtDCP9rU=;
-  b=JXZ3hdC9vex37Egs8PjzkKnOgm2rtP+/96dniQzxlC+aKP7I5MQUBB9c
-   ozkcf4sF7X3uQZCI2SnXphNz8z8KotiO7naB9X3dfh39ZIvluwBiGUINl
-   aZkG6NVzRcdDJQmTK3Y7IcQm5GKeQAsvGcRQmVcy/yslVHaQSA7JIDoyO
-   k=;
+  bh=3Lfc37RaSpRlLsat5fuUZVrZy5V506BDOaoJ2FCddtY=;
+  b=D8YwtHd/hWlLtrY5S5e97ME3eOc2RUBD7IyvyIZuGu5O9ZlWn3pTCbHZ
+   glsnj+lIc7R3yo4uGjTmLgDnq7CW3CiMxzoZQm3S6yZUNAO8/N4xIfJ9h
+   834ewJKkf09yriYTBOvZZanxxIwp8tgBp0lW/6kloqRCLPE0VjPBkmKlQ
+   E=;
 X-IronPort-AV: E=Sophos;i="5.64,497,1559520000"; 
-   d="scan'208";a="414961245"
-Received: from iad6-co-svc-p1-lb1-vlan3.amazon.com (HELO email-inbound-relay-1a-16acd5e0.us-east-1.amazon.com) ([10.124.125.6])
-  by smtp-border-fw-out-6001.iad6.amazon.com with ESMTP; 12 Sep 2019 17:28:53 +0000
-Received: from EX13MTAUWB001.ant.amazon.com (iad55-ws-svc-p15-lb9-vlan2.iad.amazon.com [10.40.159.162])
-        by email-inbound-relay-1a-16acd5e0.us-east-1.amazon.com (Postfix) with ESMTPS id 48631A3280;
+   d="scan'208";a="414961235"
+Received: from iad6-co-svc-p1-lb1-vlan3.amazon.com (HELO email-inbound-relay-1d-474bcd9f.us-east-1.amazon.com) ([10.124.125.6])
+  by smtp-border-fw-out-6001.iad6.amazon.com with ESMTP; 12 Sep 2019 17:28:52 +0000
+Received: from EX13MTAUEA001.ant.amazon.com (iad55-ws-svc-p15-lb9-vlan2.iad.amazon.com [10.40.159.162])
+        by email-inbound-relay-1d-474bcd9f.us-east-1.amazon.com (Postfix) with ESMTPS id 97093A2522;
         Thu, 12 Sep 2019 17:28:52 +0000 (UTC)
-Received: from EX13D01UWB002.ant.amazon.com (10.43.161.136) by
- EX13MTAUWB001.ant.amazon.com (10.43.161.207) with Microsoft SMTP Server (TLS)
+Received: from EX13D06UEA002.ant.amazon.com (10.43.61.198) by
+ EX13MTAUEA001.ant.amazon.com (10.43.61.82) with Microsoft SMTP Server (TLS)
  id 15.0.1367.3; Thu, 12 Sep 2019 17:28:52 +0000
-Received: from EX13MTAUWB001.ant.amazon.com (10.43.161.207) by
- EX13d01UWB002.ant.amazon.com (10.43.161.136) with Microsoft SMTP Server (TLS)
+Received: from EX13MTAUEA001.ant.amazon.com (10.43.61.82) by
+ EX13D06UEA002.ant.amazon.com (10.43.61.198) with Microsoft SMTP Server (TLS)
  id 15.0.1367.3; Thu, 12 Sep 2019 17:28:52 +0000
 Received: from kaos-source-ops-60003.pdx1.corp.amazon.com (10.36.133.164) by
- mail-relay.amazon.com (10.43.161.249) with Microsoft SMTP Server id
- 15.0.1367.3 via Frontend Transport; Thu, 12 Sep 2019 17:28:52 +0000
+ mail-relay.amazon.com (10.43.61.243) with Microsoft SMTP Server id
+ 15.0.1367.3 via Frontend Transport; Thu, 12 Sep 2019 17:28:51 +0000
 Received: by kaos-source-ops-60003.pdx1.corp.amazon.com (Postfix, from userid 6262777)
-        id E7B19C0581; Thu, 12 Sep 2019 17:28:49 +0000 (UTC)
-Message-ID: <26089a6ab4337ba6b5c39a6633e7cfac0cd12c2f.1568309119.git.fllinden@amazon.com>
+        id E4B57C0567; Thu, 12 Sep 2019 17:28:49 +0000 (UTC)
+Message-ID: <05d6bcef1c90fb3d635081d33071740ecffb6a8d.1568309119.git.fllinden@amazon.com>
 In-Reply-To: <cover.1568309119.git.fllinden@amazon.com>
 References: <cover.1568309119.git.fllinden@amazon.com>
 From:   Frank van der Linden <fllinden@amazon.com>
-Date:   Mon, 26 Aug 2019 22:32:34 +0000
-Subject: [RFC PATCH 07/35] NFSv4.2: define argument and response structures
- for xattr operations
+Date:   Mon, 26 Aug 2019 21:53:51 +0000
+Subject: [RFC PATCH 04/35] nfs: parse the {no}user_xattr option
 To:     <linux-nfs@vger.kernel.org>, <linux-fsdevel@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain
@@ -64,86 +63,57 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Define the argument and response structures that will be used for
-RFC 8276 extended attribute RPC calls.
+Parse the {no}user_xattr option to enable the optional NFS4.2 user
+extended attribute support.
 
 Signed-off-by: Frank van der Linden <fllinden@amazon.com>
 ---
- include/linux/nfs_xdr.h | 61 ++++++++++++++++++++++++++++++++++++++++-
- 1 file changed, 60 insertions(+), 1 deletion(-)
+ fs/nfs/super.c | 11 +++++++++++
+ 1 file changed, 11 insertions(+)
 
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index f289c024943d..9299a2465c02 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1480,7 +1480,66 @@ struct nfs42_seek_res {
- 	u32	sr_eof;
- 	u64	sr_offset;
- };
--#endif
-+
-+#ifdef CONFIG_NFS_V4_XATTR
-+struct nfs42_setxattrargs {
-+	struct nfs4_sequence_args	seq_args;
-+	struct nfs_fh *			fh;
-+	const char *			xattr_name;
-+	u32				xattr_flags;
-+	size_t				xattr_len;
-+	struct page **			xattr_pages;
-+};
-+
-+struct nfs42_setxattrres {
-+	struct nfs4_sequence_res	seq_res;
-+	struct nfs4_change_info		cinfo;
-+};
-+
-+struct nfs42_getxattrargs {
-+	struct nfs4_sequence_args 	seq_args;
-+	struct nfs_fh *			fh;
-+	const char *			xattr_name;
-+	size_t				xattr_len;
-+	struct page **			xattr_pages;
-+};
-+
-+struct nfs42_getxattrres {
-+	struct nfs4_sequence_res	seq_res;
-+	size_t				xattr_len;
-+};
-+
-+struct nfs42_listxattrsargs {
-+	struct nfs4_sequence_args	seq_args;
-+	struct nfs_fh *			fh;
-+	u32				count;
-+	u64				cookie;
-+	struct page **			xattr_pages;
-+};
-+
-+struct nfs42_listxattrsres {
-+	struct nfs4_sequence_res	seq_res;
-+	struct page *			scratch;
-+	void *				xattr_buf;
-+	size_t				xattr_len;
-+	u64				cookie;
-+	bool				eof;
-+	size_t				copied;
-+};
-+
-+struct nfs42_removexattrargs {
-+	struct nfs4_sequence_args	seq_args;
-+	struct nfs_fh *			fh;
-+	const char *			xattr_name;
-+};
-+
-+struct nfs42_removexattrres {
-+	struct nfs4_sequence_res	seq_res;
-+	struct nfs4_change_info		cinfo;
-+};
-+
-+#endif /* CONFIG_NFS_V4_XATTR */
-+#endif /* CONFIG_NFS_V4_2 */
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 703f595dce90..bbb93bc87887 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -93,6 +93,7 @@ enum {
+ 	Opt_resvport, Opt_noresvport,
+ 	Opt_fscache, Opt_nofscache,
+ 	Opt_migration, Opt_nomigration,
++	Opt_user_xattr, Opt_nouser_xattr,
  
- struct nfs_page;
+ 	/* Mount options that take integer arguments */
+ 	Opt_port,
+@@ -190,6 +191,9 @@ static const match_table_t nfs_mount_option_tokens = {
+ 	{ Opt_fscache_uniq, "fsc=%s" },
+ 	{ Opt_local_lock, "local_lock=%s" },
  
++	{ Opt_user_xattr, "user_xattr" },
++	{ Opt_nouser_xattr, "nouser_xattr" },
++
+ 	/* The following needs to be listed after all other options */
+ 	{ Opt_nfsvers, "v%s" },
+ 
+@@ -643,6 +647,7 @@ static void nfs_show_mount_options(struct seq_file *m, struct nfs_server *nfss,
+ 		{ NFS_MOUNT_NORDIRPLUS, ",nordirplus", "" },
+ 		{ NFS_MOUNT_UNSHARED, ",nosharecache", "" },
+ 		{ NFS_MOUNT_NORESVPORT, ",noresvport", "" },
++		{ NFS_MOUNT_USER_XATTR, ",user_xattr", "" },
+ 		{ 0, NULL, NULL }
+ 	};
+ 	const struct proc_nfs_info *nfs_infop;
+@@ -1316,6 +1321,12 @@ static int nfs_parse_mount_options(char *raw,
+ 		case Opt_noacl:
+ 			mnt->flags |= NFS_MOUNT_NOACL;
+ 			break;
++		case Opt_user_xattr:
++			mnt->flags |= NFS_MOUNT_USER_XATTR;
++			break;
++		case Opt_nouser_xattr:
++			mnt->flags &= ~NFS_MOUNT_USER_XATTR;
++			break;
+ 		case Opt_rdirplus:
+ 			mnt->flags &= ~NFS_MOUNT_NORDIRPLUS;
+ 			break;
 -- 
 2.17.2
 
