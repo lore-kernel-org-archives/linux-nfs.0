@@ -2,74 +2,77 @@ Return-Path: <SRS0=yNkr=WW=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-9.9 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
+	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5398FC3A5A5
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7F391C3A5A4
 	for <linux-nfs@archiver.kernel.org>; Mon, 26 Aug 2019 07:49:09 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 244342173E
+	by mail.kernel.org (Postfix) with ESMTP id 503D42087E
 	for <linux-nfs@archiver.kernel.org>; Mon, 26 Aug 2019 07:49:09 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=pks.im header.i=@pks.im header.b="sb9uXFe/";
-	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="WEng3x6q"
+	dkim=pass (2048-bit key) header.d=pks.im header.i=@pks.im header.b="KDwgnMwP";
+	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="P1If7wrf"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727563AbfHZHtI (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S1727674AbfHZHtI (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Mon, 26 Aug 2019 03:49:08 -0400
-Received: from wout3-smtp.messagingengine.com ([64.147.123.19]:54917 "EHLO
+Received: from wout3-smtp.messagingengine.com ([64.147.123.19]:41295 "EHLO
         wout3-smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1727674AbfHZHtI (ORCPT
+        by vger.kernel.org with ESMTP id S1730069AbfHZHtI (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Mon, 26 Aug 2019 03:49:08 -0400
 Received: from compute1.internal (compute1.nyi.internal [10.202.2.41])
-        by mailout.west.internal (Postfix) with ESMTP id 89037377
-        for <linux-nfs@vger.kernel.org>; Mon, 26 Aug 2019 03:49:06 -0400 (EDT)
+        by mailout.west.internal (Postfix) with ESMTP id 35074371
+        for <linux-nfs@vger.kernel.org>; Mon, 26 Aug 2019 03:49:07 -0400 (EDT)
 Received: from mailfrontend2 ([10.202.2.163])
-  by compute1.internal (MEProxy); Mon, 26 Aug 2019 03:49:06 -0400
+  by compute1.internal (MEProxy); Mon, 26 Aug 2019 03:49:07 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=pks.im; h=from
-        :to:cc:subject:date:message-id:mime-version
-        :content-transfer-encoding; s=fm1; bh=Ngx/N2sgJZBewYkvtYJmlECxAF
-        AHU1SdApns+TaMaTY=; b=sb9uXFe/uAJjBAZHJhgtus72tfGyIb3iRfxB/eSRh4
-        D8U7YykxljcsSuUrga6CHaueh6ggNKMfH8DUXgv7CAVNFTO1m8cH34fsAM9dvRbs
-        OZspchJyKb6E+r63zqbKd6BNJDYyGQsrrm+lbzglqY8C2bb6x3Xtd9UFg7JxyseX
-        3hLOGsSetICY8YDMqIDZr/khDDeLWTPb57iriviz/x17yVafZaKWEpiyks8ZqpcI
-        pm6gsmpqiJ1Y66wPQenOxl0iE0nvPvk+RDRFRfnNauwZNc5N2/3eGHImbkTfaIYW
-        r6gpns36eYU1F1MjAw2KrzRKEvuMIVL6XCLmfnye5yHA==
+        :to:cc:subject:date:message-id:in-reply-to:references
+        :mime-version:content-transfer-encoding; s=fm1; bh=yxN275zZzqZNJ
+        Ze4onyoq9326x4TC0jCdVT7QZYrB4k=; b=KDwgnMwPWoZ1/UbTqByGoMdEiDveF
+        u//g8NkGIIqOftdNMerk9DA1+cbi1pbFE64kUE0fJGzOocdfPGhH/enhrwS0ZBex
+        kyK4IRgbn63Dm851VmIx8blHEmJBkRN0Ve85bB9nV28HZ0xW3UPd3ISlMhMyE0lX
+        kwHNnIC0eySI+WjOCUUDm5UASmpfb0J1k7rR4TMji+DbXRmP3N38pCSjd1RXKZqD
+        mBihkFH38zaKIRvIxkEi68nMgkk/J1Zhksu0I6kY1GhsYJDwaoHx5tGK7BC+/oj0
+        OMGZnW7xaTjCB0RVh4joazjF6fcsab4TlRip4yiQhJFRWoaqI2hO8GiNQ==
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
         messagingengine.com; h=cc:content-transfer-encoding:date:from
-        :message-id:mime-version:subject:to:x-me-proxy:x-me-proxy
-        :x-me-sender:x-me-sender:x-sasl-enc; s=fm3; bh=Ngx/N2sgJZBewYkvt
-        YJmlECxAFAHU1SdApns+TaMaTY=; b=WEng3x6qxs+mxNGK82YstO0qimFQsotVg
-        h5Dmng+RpVvG3s+XII5LSSj8WXVJM+5cPRrM9iOyHGkoBb5TLvbOg+5jFrT3DABu
-        HoYEcb2yqrQKrF4OXLI8qnpIXlmU26AO5JS0BbLR6LdyDmE3k6Kn/YG8IkFX8Oxi
-        lmMWNyZ0AwisNcUR4BaZVZK0Vf83QtO2BnFGbw5hmc/gh1y/mnQGAAPjBegR2ZkE
-        xbqQKTaBoq24iJOJLnWwV/7/q1QJC6J7zO2iZaG3UJxRIgp3rZXhGoVz05gInm0p
-        kuXF/+nzIrXfY3PPNYyG0K5lpdl1qIC65QgKUnYYVyYF5BUX8/FlA==
-X-ME-Sender: <xms:8Y5jXW-5IndnI1CWWg8GAhNq4sx-M3Uu-0m3aKlnFrfGQ_psX0UA4g>
+        :in-reply-to:message-id:mime-version:references:subject:to
+        :x-me-proxy:x-me-proxy:x-me-sender:x-me-sender:x-sasl-enc; s=
+        fm3; bh=yxN275zZzqZNJZe4onyoq9326x4TC0jCdVT7QZYrB4k=; b=P1If7wrf
+        0GZ/jD3igleoCb8WBiRZwn7zrbvbLRhKNhp7c9TYJeFZxye8KOQdZ7wSV70lVDQd
+        DxU53BCer0xFvWML+5daxdzCMfjA3m8x//Z3hWZ9Rp2LTNHtCyACFdOAGB4qbpVe
+        LpHrHAq0Cl2IUG59PKEHyoi9Z9tBb5FhCgAvUvM0nK8lYcCMSm6jljfcXSnLOOyS
+        fejP+pTydy9J7bjGoUhw1LqyxtghXQvv03kB72O2gzwOXINSh/iuGTBcP0PN11ix
+        kW560tkGJm+XsAWmpfj/+1MiIiBxiJ5OTr5dctu+VunGvMCCkgsnpSIfzHTw0Kyv
+        EXEyS/oIIkEDfw==
+X-ME-Sender: <xms:8o5jXYTDON_1yx9Bbpt3KKOsNhYWobxMGn-IkWgXTO57Q1ak732bOQ>
 X-ME-Proxy-Cause: gggruggvucftvghtrhhoucdtuddrgeduvddrudehfedguddvhecutefuodetggdotefrod
     ftvfcurfhrohhfihhlvgemucfhrghsthforghilhdpqfgfvfdpuffrtefokffrpgfnqfgh
-    necuuegrihhlohhuthemuceftddtnecunecujfgurhephffvufffkffoggfgsedtkeertd
-    ertddtnecuhfhrohhmpefrrghtrhhitghkucfuthgvihhnhhgrrhguthcuoehpshesphhk
-    shdrihhmqeenucfkphepjeekrdehhedrvdefrddutdeknecurfgrrhgrmhepmhgrihhlfh
-    hrohhmpehpshesphhkshdrihhmnecuvehluhhsthgvrhfuihiivgeptd
-X-ME-Proxy: <xmx:8Y5jXSzByyJO6Cz1z49CcDguzecrotuXV7fkuiM9WYXLQVu9dxaiKA>
-    <xmx:8Y5jXVbOe0rU6mcW-yR6EnYs2sy_tBgWFRUPB2KMee3Ep5xXn9ZEdA>
-    <xmx:8Y5jXWr194C_njh1rrOKW-BGIhMDnK3YvFQXnSBvs5QGx22PZSpqtA>
-    <xmx:8o5jXXqYQAW9lL1xiO6Rog5v_rVRv8gXyqQVei91x_cXyIYc9wzhFQ>
+    necuuegrihhlohhuthemuceftddtnecunecujfgurhephffvufffkffojghfggfgsedtke
+    ertdertddtnecuhfhrohhmpefrrghtrhhitghkucfuthgvihhnhhgrrhguthcuoehpshes
+    phhkshdrihhmqeenucfkphepjeekrdehhedrvdefrddutdeknecurfgrrhgrmhepmhgrih
+    hlfhhrohhmpehpshesphhkshdrihhmnecuvehluhhsthgvrhfuihiivgeptd
+X-ME-Proxy: <xmx:8o5jXWZHZyFGOmdEwRVDumdYndbAhx6LPOzoMWjPY10xCyS7BS9N0Q>
+    <xmx:8o5jXQ_auJ-_S0DUoDHHFo5JcLxvJKposcIYbmV7Hp6X51o_kIKzoQ>
+    <xmx:8o5jXQldHTg-nERKwQxAUySSIdWwLQchfhincWACjiqapvXGkXquuQ>
+    <xmx:8o5jXWFmR_oEEpQVudl-DPau1fICaqBrZ9MZfrmouWd6_SDqzh3nBQ>
 Received: from NSJAIL (x4e37176c.dyn.telefonica.de [78.55.23.108])
-        by mail.messagingengine.com (Postfix) with ESMTPA id 09294D6005E
-        for <linux-nfs@vger.kernel.org>; Mon, 26 Aug 2019 03:49:04 -0400 (EDT)
+        by mail.messagingengine.com (Postfix) with ESMTPA id 3A2D0D6005B
+        for <linux-nfs@vger.kernel.org>; Mon, 26 Aug 2019 03:49:06 -0400 (EDT)
 Received: from localhost (10.192.0.11 [10.192.0.11])
-        by NSJAIL (OpenSMTPD) with ESMTPSA id db4080a9 (TLSv1.2:ECDHE-RSA-AES256-GCM-SHA384:256:NO);
+        by NSJAIL (OpenSMTPD) with ESMTPSA id 50c852a7 (TLSv1.2:ECDHE-RSA-AES256-GCM-SHA384:256:NO);
         Mon, 26 Aug 2019 07:49:01 +0000 (UTC)
 From:   Patrick Steinhardt <ps@pks.im>
 To:     linux-nfs@vger.kernel.org
 Cc:     Patrick Steinhardt <ps@pks.im>
-Subject: [PATCH 1/3] mount: fix compilation if __GLIBC__ is not defined
-Date:   Mon, 26 Aug 2019 09:48:50 +0200
-Message-Id: <6de0089348765e60bcdf59ef5813d7bb631c967f.1566805721.git.ps@pks.im>
+Subject: [PATCH 3/3] tests: add missing include for strerror(3P)
+Date:   Mon, 26 Aug 2019 09:48:52 +0200
+Message-Id: <7e2258fd221466a2974dcf7f0643c65168b429f8.1566805721.git.ps@pks.im>
 X-Mailer: git-send-email 2.23.0
+In-Reply-To: <6de0089348765e60bcdf59ef5813d7bb631c967f.1566805721.git.ps@pks.im>
+References: <6de0089348765e60bcdf59ef5813d7bb631c967f.1566805721.git.ps@pks.im>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
@@ -77,35 +80,26 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-As glibc versions before v2.24 couldn't safely include <linux/in6.h>,
-commit 8af595b7 (mount: support compiling with old glibc, 2017-07-26)
-introduced some preprocessor checks to special-case such old versions.
-While there is a check whether __GLIBC__ is defined at all, it only
-applies to the first comparison `__GLIBC__ < 2`, but doesn't apply to
-the second check due to operator precedence. Thus the preprocessor may
-use an undefined value and thus generate an error if __GLIBC__ is not
-defined.
-
-Fix the issue by wrapping the version check in braces.
+The function strerror(3P) is declared in <string.h>, but it is not
+included in "statdb_dump.c". Include it to fix compile errors.
 
 Signed-off-by: Patrick Steinhardt <ps@pks.im>
 ---
- utils/mount/network.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ tests/statdb_dump.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/utils/mount/network.c b/utils/mount/network.c
-index e166a823..6ac913d9 100644
---- a/utils/mount/network.c
-+++ b/utils/mount/network.c
-@@ -39,7 +39,7 @@
- #include <sys/socket.h>
- #include <sys/wait.h>
- #include <sys/stat.h>
--#if defined(__GLIBC__) && (__GLIBC__ < 2) || (__GLIBC__ == 2 && __GLIBC_MINOR__ < 24)
-+#if defined(__GLIBC__) && ((__GLIBC__ < 2) || (__GLIBC__ == 2 && __GLIBC_MINOR__ < 24))
- /* Cannot safely include linux/in6.h in old glibc, so hardcode the needed values */
- # define IPV6_PREFER_SRC_PUBLIC 2
- # define IPV6_ADDR_PREFERENCES 72
+diff --git a/tests/statdb_dump.c b/tests/statdb_dump.c
+index 92d63f29..3ac12bff 100644
+--- a/tests/statdb_dump.c
++++ b/tests/statdb_dump.c
+@@ -23,6 +23,7 @@
+ #include "config.h"
+ #endif
+ 
++#include <string.h>
+ #include <stdio.h>
+ #include <errno.h>
+ #include <arpa/inet.h>
 -- 
 2.23.0
 
