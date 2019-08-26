@@ -2,59 +2,60 @@ Return-Path: <SRS0=U+gK=XH=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.0 required=3.0 tests=DATE_IN_PAST_96_XX,
+X-Spam-Status: No, score=-2.2 required=3.0 tests=DATE_IN_PAST_96_XX,
 	DKIMWL_WL_HIGH,DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
+	SPF_HELO_NONE,SPF_PASS,UNWANTED_LANGUAGE_BODY autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9B329C4CEC8
-	for <linux-nfs@archiver.kernel.org>; Thu, 12 Sep 2019 17:46:02 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 418A8C4CEC9
+	for <linux-nfs@archiver.kernel.org>; Thu, 12 Sep 2019 17:46:04 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 7400F20830
-	for <linux-nfs@archiver.kernel.org>; Thu, 12 Sep 2019 17:46:02 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 1CB7920830
+	for <linux-nfs@archiver.kernel.org>; Thu, 12 Sep 2019 17:46:04 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=amazon.com header.i=@amazon.com header.b="fAIB0pLV"
+	dkim=pass (1024-bit key) header.d=amazon.com header.i=@amazon.com header.b="ObCje/Zq"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727735AbfILRqB (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 12 Sep 2019 13:46:01 -0400
-Received: from smtp-fw-33001.amazon.com ([207.171.190.10]:27379 "EHLO
+        id S1727908AbfILRqC (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 12 Sep 2019 13:46:02 -0400
+Received: from smtp-fw-33001.amazon.com ([207.171.190.10]:27366 "EHLO
         smtp-fw-33001.amazon.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726188AbfILRp5 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Sep 2019 13:45:57 -0400
+        with ESMTP id S1726099AbfILRp7 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Sep 2019 13:45:59 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
   d=amazon.com; i=@amazon.com; q=dns/txt; s=amazon201209;
-  t=1568310357; x=1599846357;
+  t=1568310358; x=1599846358;
   h=message-id:in-reply-to:references:from:date:subject:to:
    mime-version;
-  bh=mIfku6Drsc6ueHCyqdfnVWjm3DY4RS59WD5oOuIo6qc=;
-  b=fAIB0pLVBl566D/R18hihoj3RmH8OWwEyOyuHHuWppcJogKgeXBBDN32
-   CKv6QrVRZXxrj8lkteJ8Gl6WS3Yi4ssjceVfqyMlYiRsV3+qG4yCMb8iy
-   Lu6sO1YEZbPyA2n2ZTonEVRu0W59bNb1m6HGSMIhvjuxZq0ujSz+c3fB2
-   4=;
+  bh=Sdt5sp1epC3sAI9zltSbPQ8rCuqhEozsr8NHZP3mUaI=;
+  b=ObCje/ZqsByoQzSeiNw+ImIRRpxhbWKle285mzSRr4ikJwC8QO5YH07L
+   9WhCFaxAevBJOIEOqmD1xeTseFlGoBMA2UcxtDFx6grE09afvL7tHVP0s
+   FRqikm5AC1lyKd14jKBIzP+6ctokZKszIhJDghj5cysOQzmqV/hMzybHr
+   E=;
 X-IronPort-AV: E=Sophos;i="5.64,497,1559520000"; 
-   d="scan'208";a="831156452"
-Received: from sea3-co-svc-lb6-vlan2.sea.amazon.com (HELO email-inbound-relay-1e-57e1d233.us-east-1.amazon.com) ([10.47.22.34])
+   d="scan'208";a="831156454"
+Received: from sea3-co-svc-lb6-vlan2.sea.amazon.com (HELO email-inbound-relay-1a-af6a10df.us-east-1.amazon.com) ([10.47.22.34])
   by smtp-border-fw-out-33001.sea14.amazon.com with ESMTP; 12 Sep 2019 17:28:54 +0000
 Received: from EX13MTAUWB001.ant.amazon.com (iad55-ws-svc-p15-lb9-vlan3.iad.amazon.com [10.40.159.166])
-        by email-inbound-relay-1e-57e1d233.us-east-1.amazon.com (Postfix) with ESMTPS id 42B13141C76;
+        by email-inbound-relay-1a-af6a10df.us-east-1.amazon.com (Postfix) with ESMTPS id 6835AA1DD1;
         Thu, 12 Sep 2019 17:28:52 +0000 (UTC)
-Received: from EX13D07UWB001.ant.amazon.com (10.43.161.238) by
- EX13MTAUWB001.ant.amazon.com (10.43.161.249) with Microsoft SMTP Server (TLS)
- id 15.0.1367.3; Thu, 12 Sep 2019 17:28:52 +0000
+Received: from EX13D27UWB003.ant.amazon.com (10.43.161.195) by
+ EX13MTAUWB001.ant.amazon.com (10.43.161.207) with Microsoft SMTP Server (TLS)
+ id 15.0.1367.3; Thu, 12 Sep 2019 17:28:51 +0000
 Received: from EX13MTAUWB001.ant.amazon.com (10.43.161.207) by
- EX13D07UWB001.ant.amazon.com (10.43.161.238) with Microsoft SMTP Server (TLS)
- id 15.0.1367.3; Thu, 12 Sep 2019 17:28:52 +0000
+ EX13D27UWB003.ant.amazon.com (10.43.161.195) with Microsoft SMTP Server (TLS)
+ id 15.0.1367.3; Thu, 12 Sep 2019 17:28:51 +0000
 Received: from kaos-source-ops-60003.pdx1.corp.amazon.com (10.36.133.164) by
  mail-relay.amazon.com (10.43.161.249) with Microsoft SMTP Server id
- 15.0.1367.3 via Frontend Transport; Thu, 12 Sep 2019 17:28:52 +0000
+ 15.0.1367.3 via Frontend Transport; Thu, 12 Sep 2019 17:28:51 +0000
 Received: by kaos-source-ops-60003.pdx1.corp.amazon.com (Postfix, from userid 6262777)
-        id E7ED0C0522; Thu, 12 Sep 2019 17:28:49 +0000 (UTC)
-Message-ID: <c66bc3c8b4ac4ed35e4789976f3c2b9d1b187a74.1568309119.git.fllinden@amazon.com>
+        id E2D34C056B; Thu, 12 Sep 2019 17:28:49 +0000 (UTC)
+Message-ID: <ff05d2ee117ef26cb7337942afffe9305cba4857.1568309119.git.fllinden@amazon.com>
 In-Reply-To: <cover.1568309119.git.fllinden@amazon.com>
 References: <cover.1568309119.git.fllinden@amazon.com>
 From:   Frank van der Linden <fllinden@amazon.com>
-Date:   Mon, 2 Sep 2019 21:30:23 +0000
-Subject: [RFC PATCH 33/35] nfsd: add fattr support for user extended
+Date:   Mon, 26 Aug 2019 22:23:25 +0000
+Subject: [RFC PATCH 06/35] NFSv4.2: define and set initial limits for extended
  attributes
 To:     <linux-nfs@vger.kernel.org>, <linux-fsdevel@vger.kernel.org>
 MIME-Version: 1.0
@@ -64,36 +65,80 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Check if user extended attributes are supported for an inode,
-and return the answer when being queried for file attributes.
+Set limits for extended attributes (attribute value size and listxattr
+buffer size), based on the fs-independent limits (XATTR_*_MAX).
 
 Signed-off-by: Frank van der Linden <fllinden@amazon.com>
 ---
- fs/nfsd/nfs4xdr.c | 11 +++++++++++
- 1 file changed, 11 insertions(+)
+ fs/nfs/client.c           | 17 +++++++++++++++--
+ include/linux/nfs_fs_sb.h |  5 +++++
+ 2 files changed, 20 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index be57dc09a468..92b9a067c744 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -3149,6 +3149,17 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp,
- 	}
- #endif
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 30838304a0bf..4a988787049c 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -50,6 +50,7 @@
+ #include "nfs.h"
+ #include "netns.h"
+ #include "sysfs.h"
++#include "nfs42.h"
  
-+#ifdef CONFIG_NFSD_V4_XATTR
-+	if (bmval2 & FATTR4_WORD2_XATTR_SUPPORT) {
-+		p = xdr_reserve_space(xdr, 4);
-+		if (!p)
-+			goto out_resource;
-+		err = xattr_supported_namespace(d_inode(dentry),
-+						XATTR_USER_PREFIX);
-+		*p++ = cpu_to_be32(err == 0);
-+	}
-+#endif
+ #define NFSDBG_FACILITY		NFSDBG_CLIENT
+ 
+@@ -733,7 +734,7 @@ static int nfs_init_server(struct nfs_server *server,
+ static void nfs_server_set_fsinfo(struct nfs_server *server,
+ 				  struct nfs_fsinfo *fsinfo)
+ {
+-	unsigned long max_rpc_payload;
++	unsigned long max_rpc_payload, raw_max_rpc_payload;
+ 
+ 	/* Work out a lot of parameters */
+ 	if (server->rsize == 0)
+@@ -746,7 +747,9 @@ static void nfs_server_set_fsinfo(struct nfs_server *server,
+ 	if (fsinfo->wtmax >= 512 && server->wsize > fsinfo->wtmax)
+ 		server->wsize = nfs_block_size(fsinfo->wtmax, NULL);
+ 
+-	max_rpc_payload = nfs_block_size(rpc_max_payload(server->client), NULL);
++	raw_max_rpc_payload = rpc_max_payload(server->client);
++	max_rpc_payload = nfs_block_size(raw_max_rpc_payload, NULL);
 +
- 	attrlen = htonl(xdr->buf->len - attrlen_offset - 4);
- 	write_bytes_to_xdr_buf(xdr->buf, attrlen_offset, &attrlen, 4);
- 	status = nfs_ok;
+ 	if (server->rsize > max_rpc_payload)
+ 		server->rsize = max_rpc_payload;
+ 	if (server->rsize > NFS_MAX_FILE_IO_SIZE)
+@@ -779,6 +782,16 @@ static void nfs_server_set_fsinfo(struct nfs_server *server,
+ 	server->clone_blksize = fsinfo->clone_blksize;
+ 	/* We're airborne Set socket buffersize */
+ 	rpc_setbufsize(server->client, server->wsize + 100, server->rsize + 100);
++
++#ifdef CONFIG_NFS_V4_XATTR
++	/*
++	 * Defaults until limited by the session parameters.
++	 */
++	server->gxasize = min_t(unsigned, raw_max_rpc_payload, XATTR_SIZE_MAX);
++	server->sxasize = min_t(unsigned, raw_max_rpc_payload, XATTR_SIZE_MAX);
++	server->lxasize = min_t(unsigned, raw_max_rpc_payload,
++				nfs42_listxattr_xdrsize(XATTR_LIST_MAX));
++#endif
+ }
+ 
+ /*
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index 290d1c521226..db190a139d26 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -160,6 +160,11 @@ struct nfs_server {
+ 	unsigned int		dtsize;		/* readdir size */
+ 	unsigned short		port;		/* "port=" setting */
+ 	unsigned int		bsize;		/* server block size */
++#ifdef CONFIG_NFS_V4_XATTR
++	unsigned int		gxasize;	/* getxattr size */
++	unsigned int		sxasize;	/* setxattr size */
++	unsigned int		lxasize;	/* listxattr size */
++#endif
+ 	unsigned int		acregmin;	/* attr cache timeouts */
+ 	unsigned int		acregmax;
+ 	unsigned int		acdirmin;
 -- 
 2.17.2
 
