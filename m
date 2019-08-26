@@ -5,57 +5,57 @@ X-Spam-Level:
 X-Spam-Status: No, score=-5.0 required=3.0 tests=DATE_IN_PAST_96_XX,
 	DKIMWL_WL_HIGH,DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
+	SPF_HELO_NONE,SPF_PASS autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9B6B8C4CEC7
-	for <linux-nfs@archiver.kernel.org>; Thu, 12 Sep 2019 17:29:02 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 33DA5C4CEC6
+	for <linux-nfs@archiver.kernel.org>; Thu, 12 Sep 2019 17:29:03 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 736A92081B
-	for <linux-nfs@archiver.kernel.org>; Thu, 12 Sep 2019 17:29:02 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 0B7292081B
+	for <linux-nfs@archiver.kernel.org>; Thu, 12 Sep 2019 17:29:03 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=amazon.com header.i=@amazon.com header.b="L8KtES7U"
+	dkim=pass (1024-bit key) header.d=amazon.com header.i=@amazon.com header.b="c1nhCo3+"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2387639AbfILR3B (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 12 Sep 2019 13:29:01 -0400
-Received: from smtp-fw-2101.amazon.com ([72.21.196.25]:44607 "EHLO
-        smtp-fw-2101.amazon.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2387597AbfILR26 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Sep 2019 13:28:58 -0400
+        id S2387613AbfILR2y (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 12 Sep 2019 13:28:54 -0400
+Received: from smtp-fw-6001.amazon.com ([52.95.48.154]:7941 "EHLO
+        smtp-fw-6001.amazon.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2387601AbfILR2x (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Sep 2019 13:28:53 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
   d=amazon.com; i=@amazon.com; q=dns/txt; s=amazon201209;
-  t=1568309338; x=1599845338;
+  t=1568309333; x=1599845333;
   h=message-id:in-reply-to:references:from:date:subject:to:
    mime-version;
-  bh=+8uLLJBHkKd2f2TwaLb19UdDfsUlykAE/ru2EoaUj/s=;
-  b=L8KtES7U0WPhY0TPOJZ1xS6oRVxktalZsh4vuSIwk3YzliIMMguHJVnq
-   ED0Yq0YDgmYbDoVNzy2zUF4Hz/UVs3uAWzDQ86n/0quYNCZeqa0J5DOwY
-   aL3EDiP028z9i1RNXQHXtKbBnq+tKwfOE1a5y+DrjN43wVMdMlIedCVSL
-   k=;
+  bh=UiFv3SNJuY94P5tjOwzpJIDbJB9YBiEh3khbIHtxppM=;
+  b=c1nhCo3+pYZdbcfGY6SwpfBYHOu6q/DfQuIC/MdCNIs1kkwuNu2efOKy
+   DJGFZZzHNLvqTfqyMa2l+ZTRP/iqgsOMUCx/a4FftnqqavuebswD9jXLN
+   vqQ5atiRfho7cZqtst/PuE/w+6T5iBI3MtbhMxUR0FZmppAH2eltJaP1m
+   U=;
 X-IronPort-AV: E=Sophos;i="5.64,497,1559520000"; 
-   d="scan'208";a="750440670"
-Received: from iad6-co-svc-p1-lb1-vlan2.amazon.com (HELO email-inbound-relay-1a-e34f1ddc.us-east-1.amazon.com) ([10.124.125.2])
-  by smtp-border-fw-out-2101.iad2.amazon.com with ESMTP; 12 Sep 2019 17:28:53 +0000
-Received: from EX13MTAUWB001.ant.amazon.com (iad55-ws-svc-p15-lb9-vlan2.iad.amazon.com [10.40.159.162])
-        by email-inbound-relay-1a-e34f1ddc.us-east-1.amazon.com (Postfix) with ESMTPS id 1BEE8A2CAD;
+   d="scan'208";a="414961236"
+Received: from iad6-co-svc-p1-lb1-vlan3.amazon.com (HELO email-inbound-relay-1d-f273de60.us-east-1.amazon.com) ([10.124.125.6])
+  by smtp-border-fw-out-6001.iad6.amazon.com with ESMTP; 12 Sep 2019 17:28:52 +0000
+Received: from EX13MTAUEA001.ant.amazon.com (iad55-ws-svc-p15-lb9-vlan2.iad.amazon.com [10.40.159.162])
+        by email-inbound-relay-1d-f273de60.us-east-1.amazon.com (Postfix) with ESMTPS id ABBCAA2B72;
         Thu, 12 Sep 2019 17:28:52 +0000 (UTC)
-Received: from EX13D04UWB001.ant.amazon.com (10.43.161.46) by
- EX13MTAUWB001.ant.amazon.com (10.43.161.249) with Microsoft SMTP Server (TLS)
+Received: from EX13D04UEA003.ant.amazon.com (10.43.61.177) by
+ EX13MTAUEA001.ant.amazon.com (10.43.61.82) with Microsoft SMTP Server (TLS)
  id 15.0.1367.3; Thu, 12 Sep 2019 17:28:52 +0000
-Received: from EX13MTAUWB001.ant.amazon.com (10.43.161.207) by
- EX13D04UWB001.ant.amazon.com (10.43.161.46) with Microsoft SMTP Server (TLS)
+Received: from EX13MTAUEA001.ant.amazon.com (10.43.61.82) by
+ EX13D04UEA003.ant.amazon.com (10.43.61.177) with Microsoft SMTP Server (TLS)
  id 15.0.1367.3; Thu, 12 Sep 2019 17:28:52 +0000
 Received: from kaos-source-ops-60003.pdx1.corp.amazon.com (10.36.133.164) by
- mail-relay.amazon.com (10.43.161.249) with Microsoft SMTP Server id
+ mail-relay.amazon.com (10.43.61.243) with Microsoft SMTP Server id
  15.0.1367.3 via Frontend Transport; Thu, 12 Sep 2019 17:28:52 +0000
 Received: by kaos-source-ops-60003.pdx1.corp.amazon.com (Postfix, from userid 6262777)
-        id E6C6DC04C6; Thu, 12 Sep 2019 17:28:49 +0000 (UTC)
-Message-ID: <2afeb5330f488b70f7ae5495b2b0d56e75ee9392.1568309119.git.fllinden@amazon.com>
+        id E52E9C0574; Thu, 12 Sep 2019 17:28:49 +0000 (UTC)
+Message-ID: <f85e8d3bf54eb8308cc854e852b2368560fdb828.1568309119.git.fllinden@amazon.com>
 In-Reply-To: <cover.1568309119.git.fllinden@amazon.com>
 References: <cover.1568309119.git.fllinden@amazon.com>
 From:   Frank van der Linden <fllinden@amazon.com>
-Date:   Sat, 31 Aug 2019 02:12:53 +0000
-Subject: [RFC PATCH 21/35] xattr: modify vfs_{set,remove}xattr for NFS server
- use
+Date:   Mon, 26 Aug 2019 22:06:38 +0000
+Subject: [RFC PATCH 05/35] NFSv4.2: define a function to compute the maximum
+ XDR size for listxattr
 To:     <linux-nfs@vger.kernel.org>, <linux-fsdevel@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain
@@ -64,163 +64,54 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-To be called from the upcoming NFS server xattr code, the vfs_removexattr
-and vfs_setxattr need some modifications.
+RFC 8276 specifies the maximum return size of the LISTXATTRS operation
+as the XDR-encoded size of the entire reply.
 
-First, they need to grow a _locked variant, since the NFS server code
-will call this with i_rwsem held. It needs to do that in fh_lock to be
-able to atomically provide the before and after change attributes.
-
-Second, RFC 8276 (NFSv4 extended attribute support) specifies that
-delegations should be recalled (8.4.2.4, 8.4.4.4) when a SETXATTR
-or REMOVEXATTR operation is performed. So, like with other fs
-operations, try to break the delegation. The _locked version of
-these operations will not wait for the delegation to be successfully
-broken, instead returning an error if it wasn't, so that the NFS
-server code can return NFS4ERR_DELAY to the client (similar to
-what e.g. vfs_link does).
+Define a function that computes the maximum needed XDR size (minus the
+cookie and the attribute count, which are in the XDR buffer header), to
+have an upper bound to check against.
 
 Signed-off-by: Frank van der Linden <fllinden@amazon.com>
 ---
- fs/xattr.c            | 63 ++++++++++++++++++++++++++++++++++++++-----
- include/linux/xattr.h |  2 ++
- 2 files changed, 58 insertions(+), 7 deletions(-)
+ fs/nfs/nfs42.h | 20 ++++++++++++++++++++
+ 1 file changed, 20 insertions(+)
 
-diff --git a/fs/xattr.c b/fs/xattr.c
-index 90dd78f0eb27..58013bcbc333 100644
---- a/fs/xattr.c
-+++ b/fs/xattr.c
-@@ -204,10 +204,10 @@ int __vfs_setxattr_noperm(struct dentry *dentry, const char *name,
- 	return error;
- }
+diff --git a/fs/nfs/nfs42.h b/fs/nfs/nfs42.h
+index 901cca7542f9..935651345be7 100644
+--- a/fs/nfs/nfs42.h
++++ b/fs/nfs/nfs42.h
+@@ -6,6 +6,10 @@
+ #ifndef __LINUX_FS_NFS_NFS4_2_H
+ #define __LINUX_FS_NFS_NFS4_2_H
  
--
- int
--vfs_setxattr(struct dentry *dentry, const char *name, const void *value,
--		size_t size, int flags)
-+__vfs_setxattr_locked(struct dentry *dentry, const char *name,
-+		const void *value, size_t size, int flags,
-+		struct inode **delegated_inode)
- {
- 	struct inode *inode = dentry->d_inode;
- 	int error;
-@@ -216,15 +216,40 @@ vfs_setxattr(struct dentry *dentry, const char *name, const void *value,
- 	if (error)
- 		return error;
- 
--	inode_lock(inode);
- 	error = security_inode_setxattr(dentry, name, value, size, flags);
- 	if (error)
- 		goto out;
- 
-+	error = try_break_deleg(inode, delegated_inode);
-+	if (error)
-+		goto out;
++#ifdef CONFIG_NFS_V4_XATTR
++#include <linux/xattr.h>
++#endif
 +
- 	error = __vfs_setxattr_noperm(dentry, name, value, size, flags);
- 
- out:
-+	return error;
-+}
-+EXPORT_SYMBOL_GPL(__vfs_setxattr_locked);
-+
-+int
-+vfs_setxattr(struct dentry *dentry, const char *name, const void *value,
-+		size_t size, int flags)
-+{
-+	struct inode *inode = dentry->d_inode;
-+	struct inode *delegated_inode = NULL;
-+	int error;
-+
-+retry_deleg:
-+	inode_lock(inode);
-+	error = __vfs_setxattr_locked(dentry, name, value, size, flags,
-+	    &delegated_inode);
- 	inode_unlock(inode);
-+
-+	if (delegated_inode) {
-+		error = break_deleg_wait(&delegated_inode);
-+		if (!error)
-+			goto retry_deleg;
-+	}
- 	return error;
- }
- EXPORT_SYMBOL_GPL(vfs_setxattr);
-@@ -379,7 +404,8 @@ __vfs_removexattr(struct dentry *dentry, const char *name)
- EXPORT_SYMBOL(__vfs_removexattr);
- 
- int
--vfs_removexattr(struct dentry *dentry, const char *name)
-+__vfs_removexattr_locked(struct dentry *dentry, const char *name,
-+		struct inode **delegated_inode)
- {
- 	struct inode *inode = dentry->d_inode;
- 	int error;
-@@ -388,11 +414,14 @@ vfs_removexattr(struct dentry *dentry, const char *name)
- 	if (error)
- 		return error;
- 
--	inode_lock(inode);
- 	error = security_inode_removexattr(dentry, name);
- 	if (error)
- 		goto out;
- 
-+	error = try_break_deleg(inode, delegated_inode);
-+	if (error)
-+		goto out;
-+
- 	error = __vfs_removexattr(dentry, name);
- 
- 	if (!error) {
-@@ -401,12 +430,32 @@ vfs_removexattr(struct dentry *dentry, const char *name)
- 	}
- 
- out:
-+	return error;
-+}
-+EXPORT_SYMBOL_GPL(__vfs_removexattr_locked);
-+
-+int
-+vfs_removexattr(struct dentry *dentry, const char *name)
-+{
-+	struct inode *inode = dentry->d_inode;
-+	struct inode *delegated_inode = NULL;
-+	int error;
-+
-+retry_deleg:
-+	inode_lock(inode);
-+	error = __vfs_removexattr_locked(dentry, name, &delegated_inode);
- 	inode_unlock(inode);
-+
-+	if (delegated_inode) {
-+		error = break_deleg_wait(&delegated_inode);
-+		if (!error)
-+			goto retry_deleg;
-+	}
-+
- 	return error;
- }
- EXPORT_SYMBOL_GPL(vfs_removexattr);
- 
--
  /*
-  * Extended attribute SET operations
-  */
-diff --git a/include/linux/xattr.h b/include/linux/xattr.h
-index 6dad031be3c2..3a71ad716da5 100644
---- a/include/linux/xattr.h
-+++ b/include/linux/xattr.h
-@@ -51,8 +51,10 @@ ssize_t vfs_getxattr(struct dentry *, const char *, void *, size_t);
- ssize_t vfs_listxattr(struct dentry *d, char *list, size_t size);
- int __vfs_setxattr(struct dentry *, struct inode *, const char *, const void *, size_t, int);
- int __vfs_setxattr_noperm(struct dentry *, const char *, const void *, size_t, int);
-+int __vfs_setxattr_locked(struct dentry *, const char *, const void *, size_t, int, struct inode **);
- int vfs_setxattr(struct dentry *, const char *, const void *, size_t, int);
- int __vfs_removexattr(struct dentry *, const char *);
-+int __vfs_removexattr_locked(struct dentry *, const char *, struct inode **);
- int vfs_removexattr(struct dentry *, const char *);
+  * FIXME:  four LAYOUTSTATS calls per compound at most! Do we need to support
+  * more? Need to consider not to pre-alloc too much for a compound.
+@@ -24,4 +28,20 @@ int nfs42_proc_layouterror(struct pnfs_layout_segment *lseg,
+ 			   const struct nfs42_layout_error *errors,
+ 			   size_t n);
  
- ssize_t generic_listxattr(struct dentry *dentry, char *buffer, size_t buffer_size);
++#ifdef CONFIG_NFS_V4_XATTR
++/*
++ * Maximum XDR buffer size needed for a listxattr buffer of buflen size.
++ *
++ * The upper boundary is a buffer with all 1-byte sized attribute names.
++ * They would be 7 bytes long in the eventual buffer ("user.x\0"), and
++ * 8 bytes long XDR-encoded.
++ *
++ * Include the trailing eof word as well.
++ */
++static inline u32 nfs42_listxattr_xdrsize(u32 buflen)
++{
++	return ((buflen / (XATTR_USER_PREFIX_LEN + 2)) * 8) + 4;
++}
++#endif
++
+ #endif /* __LINUX_FS_NFS_NFS4_2_H */
 -- 
 2.17.2
 
