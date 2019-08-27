@@ -7,55 +7,54 @@ X-Spam-Status: No, score=-5.0 required=3.0 tests=DATE_IN_PAST_96_XX,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
 	SPF_HELO_NONE,SPF_PASS autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3525FC4CEC6
-	for <linux-nfs@archiver.kernel.org>; Thu, 12 Sep 2019 17:28:57 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B47E3C4CEC5
+	for <linux-nfs@archiver.kernel.org>; Thu, 12 Sep 2019 17:28:58 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 066F02081B
-	for <linux-nfs@archiver.kernel.org>; Thu, 12 Sep 2019 17:28:57 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 8DCF82081B
+	for <linux-nfs@archiver.kernel.org>; Thu, 12 Sep 2019 17:28:58 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=amazon.com header.i=@amazon.com header.b="qOIhTcpV"
+	dkim=pass (1024-bit key) header.d=amazon.com header.i=@amazon.com header.b="ZRp1T1k6"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2387623AbfILR2z (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 12 Sep 2019 13:28:55 -0400
-Received: from smtp-fw-6002.amazon.com ([52.95.49.90]:50455 "EHLO
-        smtp-fw-6002.amazon.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2387597AbfILR2y (ORCPT
+        id S2387626AbfILR25 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 12 Sep 2019 13:28:57 -0400
+Received: from smtp-fw-6001.amazon.com ([52.95.48.154]:7948 "EHLO
+        smtp-fw-6001.amazon.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2387610AbfILR2y (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Sep 2019 13:28:54 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
   d=amazon.com; i=@amazon.com; q=dns/txt; s=amazon201209;
-  t=1568309333; x=1599845333;
+  t=1568309334; x=1599845334;
   h=message-id:in-reply-to:references:from:date:subject:to:
    mime-version;
-  bh=X6pjsZ1DUM9WQsJBlFU42duzqbYXDrhxtlqUbntlemU=;
-  b=qOIhTcpVlsCW2W7B5AgKUr1apD5xuRnQ6hsQil/CUKuICIl4Hlg9pYiC
-   g61B2axlQ1tVRKzc+wjhMXnZgrMFfDqomeozf/VYFufnTjakVHPx6g0s9
-   7JcYt4uB5hRTPoL9TZyODwZ9zQk6atsf/4h2Hzp6ZTNXzVeLWUb5om0ff
-   4=;
+  bh=/7carR8TUg6wHC1wDHhlHNRUEsQ5JS9MirXg3rUQnNE=;
+  b=ZRp1T1k6FSRs8mTGIAY9ryncxI+781nKASTrbslw/8gGCkFB1KAlOvrm
+   Jr/K77ImL6TATjlFxmjVsanB3/o0uT9A/i9PatKffMVJ1WIvy2qX9RfgB
+   yy1+AjCcvoiE+44h0dZMvvw3A4XLScLewfsJzVtepXcFD2zUem8cLbWTz
+   g=;
 X-IronPort-AV: E=Sophos;i="5.64,497,1559520000"; 
-   d="scan'208";a="420869456"
-Received: from iad6-co-svc-p1-lb1-vlan3.amazon.com (HELO email-inbound-relay-2a-22cc717f.us-west-2.amazon.com) ([10.124.125.6])
-  by smtp-border-fw-out-6002.iad6.amazon.com with ESMTP; 12 Sep 2019 17:28:52 +0000
-Received: from EX13MTAUWC001.ant.amazon.com (pdx4-ws-svc-p6-lb7-vlan3.pdx.amazon.com [10.170.41.166])
-        by email-inbound-relay-2a-22cc717f.us-west-2.amazon.com (Postfix) with ESMTPS id DB77DA17EE;
-        Thu, 12 Sep 2019 17:28:51 +0000 (UTC)
-Received: from EX13D29UWC002.ant.amazon.com (10.43.162.254) by
- EX13MTAUWC001.ant.amazon.com (10.43.162.135) with Microsoft SMTP Server (TLS)
- id 15.0.1367.3; Thu, 12 Sep 2019 17:28:51 +0000
-Received: from EX13MTAUWC001.ant.amazon.com (10.43.162.135) by
- EX13D29UWC002.ant.amazon.com (10.43.162.254) with Microsoft SMTP Server (TLS)
- id 15.0.1367.3; Thu, 12 Sep 2019 17:28:51 +0000
+   d="scan'208";a="414961241"
+Received: from iad6-co-svc-p1-lb1-vlan3.amazon.com (HELO email-inbound-relay-1d-5dd976cd.us-east-1.amazon.com) ([10.124.125.6])
+  by smtp-border-fw-out-6001.iad6.amazon.com with ESMTP; 12 Sep 2019 17:28:53 +0000
+Received: from EX13MTAUWB001.ant.amazon.com (iad55-ws-svc-p15-lb9-vlan3.iad.amazon.com [10.40.159.166])
+        by email-inbound-relay-1d-5dd976cd.us-east-1.amazon.com (Postfix) with ESMTPS id 029AFA271F;
+        Thu, 12 Sep 2019 17:28:52 +0000 (UTC)
+Received: from EX13D02UWB003.ant.amazon.com (10.43.161.48) by
+ EX13MTAUWB001.ant.amazon.com (10.43.161.207) with Microsoft SMTP Server (TLS)
+ id 15.0.1367.3; Thu, 12 Sep 2019 17:28:52 +0000
+Received: from EX13MTAUWB001.ant.amazon.com (10.43.161.207) by
+ EX13D02UWB003.ant.amazon.com (10.43.161.48) with Microsoft SMTP Server (TLS)
+ id 15.0.1367.3; Thu, 12 Sep 2019 17:28:52 +0000
 Received: from kaos-source-ops-60003.pdx1.corp.amazon.com (10.36.133.164) by
- mail-relay.amazon.com (10.43.162.232) with Microsoft SMTP Server id
+ mail-relay.amazon.com (10.43.161.249) with Microsoft SMTP Server id
  15.0.1367.3 via Frontend Transport; Thu, 12 Sep 2019 17:28:51 +0000
 Received: by kaos-source-ops-60003.pdx1.corp.amazon.com (Postfix, from userid 6262777)
-        id E21C5C052C; Thu, 12 Sep 2019 17:28:49 +0000 (UTC)
-Message-ID: <792e90e6afd5fb2104ce9ed56c5e6c6f26eee6cc.1568309119.git.fllinden@amazon.com>
+        id E5A1DC056F; Thu, 12 Sep 2019 17:28:49 +0000 (UTC)
+Message-ID: <378aa1d4b918a6f021105564369b809ffe4d9184.1568309119.git.fllinden@amazon.com>
 In-Reply-To: <cover.1568309119.git.fllinden@amazon.com>
 References: <cover.1568309119.git.fllinden@amazon.com>
 From:   Frank van der Linden <fllinden@amazon.com>
-Date:   Tue, 27 Aug 2019 22:51:41 +0000
-Subject: [RFC PATCH 13/35] nfs: modify update_changeattr to deal with regular
- files
+Date:   Tue, 27 Aug 2019 15:46:07 +0000
+Subject: [RFC PATCH 11/35] nfs: define nfs_access_get_cached function
 To:     <linux-nfs@vger.kernel.org>, <linux-fsdevel@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain
@@ -64,186 +63,77 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Until now, change attributes in change_info form were only returned by
-directory operations. However, they are also used for the RFC 8276
-extended attribute operations, which work on both directories
-and regular files.  Modify update_changeattr to deal:
+The only consumer of nfs_access_get_cached_rcu and nfs_access_cached
+calls these static funtions in order to first try RCU access, and
+then locked access.
 
-* Rename it to nfs4_update_changeattr and make it non-static.
-* Don't always use INO_INVALID_DATA, this isn't needed for a
-  directory that only had its extended attributes changed by us.
-* Existing callers now always pass in INO_INVALID_DATA.
-
-For the current callers of this function, behavior is unchanged.
+Combine them in to a single function, and call that. Make this function
+available to the rest of the NFS code.
 
 Signed-off-by: Frank van der Linden <fllinden@amazon.com>
 ---
- fs/nfs/nfs4_fs.h  |  5 ++++
- fs/nfs/nfs4proc.c | 70 +++++++++++++++++++++++++++++------------------
- 2 files changed, 49 insertions(+), 26 deletions(-)
+ fs/nfs/dir.c           | 20 ++++++++++++++++----
+ include/linux/nfs_fs.h |  2 ++
+ 2 files changed, 18 insertions(+), 4 deletions(-)
 
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index 3564da1ba8a1..f684dcdc38bd 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -314,6 +314,11 @@ extern int nfs4_set_rw_stateid(nfs4_stateid *stateid,
- 
- extern int nfs4_proc_get_lease_time(struct nfs_client *clp,
- 		struct nfs_fsinfo *fsinfo);
-+extern void nfs4_update_changeattr(struct inode *dir,
-+				   struct nfs4_change_info *cinfo,
-+				   unsigned long timestamp,
-+				   unsigned long cache_validity);
-+
- #if defined(CONFIG_NFS_V4_1)
- extern int nfs41_sequence_done(struct rpc_task *, struct nfs4_sequence_res *);
- extern int nfs4_proc_create_session(struct nfs_client *, const struct cred *);
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 029b07fef37f..a8a6ddb34ad7 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -1130,37 +1130,48 @@ nfs4_dec_nlink_locked(struct inode *inode)
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index 0adfd8840110..e7f4c25de362 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -2285,7 +2285,7 @@ static struct nfs_access_entry *nfs_access_search_rbtree(struct inode *inode, co
+ 	return NULL;
  }
  
- static void
--update_changeattr_locked(struct inode *dir, struct nfs4_change_info *cinfo,
-+nfs4_update_changeattr_locked(struct inode *inode,
-+		struct nfs4_change_info *cinfo,
- 		unsigned long timestamp, unsigned long cache_validity)
+-static int nfs_access_get_cached(struct inode *inode, const struct cred *cred, struct nfs_access_entry *res, bool may_block)
++static int nfs_access_get_cached_locked(struct inode *inode, const struct cred *cred, struct nfs_access_entry *res, bool may_block)
  {
--	struct nfs_inode *nfsi = NFS_I(dir);
-+	struct nfs_inode *nfsi = NFS_I(inode);
- 
- 	nfsi->cache_validity |= NFS_INO_INVALID_CTIME
- 		| NFS_INO_INVALID_MTIME
--		| NFS_INO_INVALID_DATA
- 		| cache_validity;
--	if (cinfo->atomic && cinfo->before == inode_peek_iversion_raw(dir)) {
-+
-+	if (cinfo->atomic && cinfo->before == inode_peek_iversion_raw(inode)) {
- 		nfsi->cache_validity &= ~NFS_INO_REVAL_PAGECACHE;
- 		nfsi->attrtimeo_timestamp = jiffies;
- 	} else {
--		nfs_force_lookup_revalidate(dir);
--		if (cinfo->before != inode_peek_iversion_raw(dir))
-+		if (S_ISDIR(inode->i_mode)) {
-+			nfsi->cache_validity |= NFS_INO_INVALID_DATA;
-+			nfs_force_lookup_revalidate(inode);
-+		} else {
-+			if (!NFS_PROTO(inode)->have_delegation(inode,
-+							       FMODE_READ))
-+				nfsi->cache_validity |= NFS_INO_REVAL_PAGECACHE;
-+		}
-+
-+		if (cinfo->before != inode_peek_iversion_raw(inode))
- 			nfsi->cache_validity |= NFS_INO_INVALID_ACCESS |
--				NFS_INO_INVALID_ACL;
-+						NFS_INO_INVALID_ACL;
- 	}
--	inode_set_iversion_raw(dir, cinfo->after);
-+	inode_set_iversion_raw(inode, cinfo->after);
- 	nfsi->read_cache_jiffies = timestamp;
- 	nfsi->attr_gencount = nfs_inc_attr_generation_counter();
- 	nfsi->cache_validity &= ~NFS_INO_INVALID_CHANGE;
--	nfs_fscache_invalidate(dir);
-+
-+	if (nfsi->cache_validity & NFS_INO_INVALID_DATA)
-+		nfs_fscache_invalidate(inode);
+ 	struct nfs_inode *nfsi = NFS_I(inode);
+ 	struct nfs_access_entry *cache;
+@@ -2358,6 +2358,20 @@ static int nfs_access_get_cached_rcu(struct inode *inode, const struct cred *cre
+ 	return err;
  }
  
--static void
--update_changeattr(struct inode *dir, struct nfs4_change_info *cinfo,
-+void
-+nfs4_update_changeattr(struct inode *dir, struct nfs4_change_info *cinfo,
- 		unsigned long timestamp, unsigned long cache_validity)
++int nfs_access_get_cached(struct inode *inode, const struct cred *cred, struct
++nfs_access_entry *res, bool may_block)
++{
++	int status;
++
++	status = nfs_access_get_cached_rcu(inode, cred, res);
++	if (status != 0)
++		status = nfs_access_get_cached_locked(inode, cred, res,
++		    may_block);
++
++	return status;
++}
++EXPORT_SYMBOL_GPL(nfs_access_get_cached);
++
+ static void nfs_access_add_rbtree(struct inode *inode, struct nfs_access_entry *set)
  {
- 	spin_lock(&dir->i_lock);
--	update_changeattr_locked(dir, cinfo, timestamp, cache_validity);
-+	nfs4_update_changeattr_locked(dir, cinfo, timestamp, cache_validity);
- 	spin_unlock(&dir->i_lock);
- }
+ 	struct nfs_inode *nfsi = NFS_I(inode);
+@@ -2472,9 +2486,7 @@ static int nfs_do_access(struct inode *inode, const struct cred *cred, int mask)
  
-@@ -2620,8 +2631,9 @@ static int _nfs4_proc_open(struct nfs4_opendata *data,
- 			data->file_created = true;
- 		if (data->file_created ||
- 		    inode_peek_iversion_raw(dir) != o_res->cinfo.after)
--			update_changeattr(dir, &o_res->cinfo,
--					o_res->f_attr->time_start, 0);
-+			nfs4_update_changeattr(dir, &o_res->cinfo,
-+					o_res->f_attr->time_start,
-+					NFS_INO_INVALID_DATA);
- 	}
- 	if ((o_res->rflags & NFS4_OPEN_RESULT_LOCKTYPE_POSIX) == 0)
- 		server->caps &= ~NFS_CAP_POSIX_LOCK;
-@@ -4440,7 +4452,8 @@ _nfs4_proc_remove(struct inode *dir, const struct qstr *name, u32 ftype)
- 	status = nfs4_call_sync(server->client, server, &msg, &args.seq_args, &res.seq_res, 1);
- 	if (status == 0) {
- 		spin_lock(&dir->i_lock);
--		update_changeattr_locked(dir, &res.cinfo, timestamp, 0);
-+		nfs4_update_changeattr_locked(dir, &res.cinfo, timestamp,
-+					      NFS_INO_INVALID_DATA);
- 		/* Removing a directory decrements nlink in the parent */
- 		if (ftype == NF4DIR && dir->i_nlink > 2)
- 			nfs4_dec_nlink_locked(dir);
-@@ -4524,8 +4537,9 @@ static int nfs4_proc_unlink_done(struct rpc_task *task, struct inode *dir)
- 				    &data->timeout) == -EAGAIN)
- 		return 0;
- 	if (task->tk_status == 0)
--		update_changeattr(dir, &res->cinfo,
--				res->dir_attr->time_start, 0);
-+		nfs4_update_changeattr(dir, &res->cinfo,
-+				res->dir_attr->time_start,
-+				NFS_INO_INVALID_DATA);
- 	return 1;
- }
+ 	trace_nfs_access_enter(inode);
  
-@@ -4569,16 +4583,18 @@ static int nfs4_proc_rename_done(struct rpc_task *task, struct inode *old_dir,
- 	if (task->tk_status == 0) {
- 		if (new_dir != old_dir) {
- 			/* Note: If we moved a directory, nlink will change */
--			update_changeattr(old_dir, &res->old_cinfo,
-+			nfs4_update_changeattr(old_dir, &res->old_cinfo,
- 					res->old_fattr->time_start,
--					NFS_INO_INVALID_OTHER);
--			update_changeattr(new_dir, &res->new_cinfo,
-+					NFS_INO_INVALID_OTHER |
-+					    NFS_INO_INVALID_DATA);
-+			nfs4_update_changeattr(new_dir, &res->new_cinfo,
- 					res->new_fattr->time_start,
--					NFS_INO_INVALID_OTHER);
-+					NFS_INO_INVALID_OTHER |
-+					    NFS_INO_INVALID_DATA);
- 		} else
--			update_changeattr(old_dir, &res->old_cinfo,
-+			nfs4_update_changeattr(old_dir, &res->old_cinfo,
- 					res->old_fattr->time_start,
--					0);
-+					NFS_INO_INVALID_DATA);
- 	}
- 	return 1;
- }
-@@ -4619,7 +4635,8 @@ static int _nfs4_proc_link(struct inode *inode, struct inode *dir, const struct
+-	status = nfs_access_get_cached_rcu(inode, cred, &cache);
+-	if (status != 0)
+-		status = nfs_access_get_cached(inode, cred, &cache, may_block);
++	status = nfs_access_get_cached(inode, cred, &cache, may_block);
+ 	if (status == 0)
+ 		goto out_cached;
  
- 	status = nfs4_call_sync(server->client, server, &msg, &arg.seq_args, &res.seq_res, 1);
- 	if (!status) {
--		update_changeattr(dir, &res.cinfo, res.fattr->time_start, 0);
-+		nfs4_update_changeattr(dir, &res.cinfo, res.fattr->time_start,
-+				       NFS_INO_INVALID_DATA);
- 		status = nfs_post_op_update_inode(inode, res.fattr);
- 		if (!status)
- 			nfs_setsecurity(inode, res.fattr, res.label);
-@@ -4697,8 +4714,9 @@ static int nfs4_do_create(struct inode *dir, struct dentry *dentry, struct nfs4_
- 				    &data->arg.seq_args, &data->res.seq_res, 1);
- 	if (status == 0) {
- 		spin_lock(&dir->i_lock);
--		update_changeattr_locked(dir, &data->res.dir_cinfo,
--				data->res.fattr->time_start, 0);
-+		nfs4_update_changeattr_locked(dir, &data->res.dir_cinfo,
-+				data->res.fattr->time_start,
-+				NFS_INO_INVALID_DATA);
- 		/* Creating a directory bumps nlink in the parent */
- 		if (data->arg.ftype == NF4DIR)
- 			nfs4_inc_nlink_locked(dir);
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index e87c894d1960..dec76ec9808c 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -497,6 +497,8 @@ extern int nfs_instantiate(struct dentry *dentry, struct nfs_fh *fh,
+ 			struct nfs_fattr *fattr, struct nfs4_label *label);
+ extern int nfs_may_open(struct inode *inode, const struct cred *cred, int openflags);
+ extern void nfs_access_zap_cache(struct inode *inode);
++extern int nfs_access_get_cached(struct inode *inode, const struct cred *cred, struct nfs_access_entry *res,
++				 bool may_block);
+ 
+ /*
+  * linux/fs/nfs/symlink.c
 -- 
 2.17.2
 
