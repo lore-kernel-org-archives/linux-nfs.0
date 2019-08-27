@@ -5,57 +5,57 @@ X-Spam-Level:
 X-Spam-Status: No, score=-5.0 required=3.0 tests=DATE_IN_PAST_96_XX,
 	DKIMWL_WL_HIGH,DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
+	SPF_HELO_NONE,SPF_PASS autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 89994C4CEC5
-	for <linux-nfs@archiver.kernel.org>; Thu, 12 Sep 2019 17:28:55 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3525FC4CEC6
+	for <linux-nfs@archiver.kernel.org>; Thu, 12 Sep 2019 17:28:57 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 63871214AE
-	for <linux-nfs@archiver.kernel.org>; Thu, 12 Sep 2019 17:28:55 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 066F02081B
+	for <linux-nfs@archiver.kernel.org>; Thu, 12 Sep 2019 17:28:57 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=amazon.com header.i=@amazon.com header.b="beHXutpl"
+	dkim=pass (1024-bit key) header.d=amazon.com header.i=@amazon.com header.b="qOIhTcpV"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2387617AbfILR2y (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 12 Sep 2019 13:28:54 -0400
-Received: from smtp-fw-2101.amazon.com ([72.21.196.25]:44567 "EHLO
-        smtp-fw-2101.amazon.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2387598AbfILR2x (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Sep 2019 13:28:53 -0400
+        id S2387623AbfILR2z (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 12 Sep 2019 13:28:55 -0400
+Received: from smtp-fw-6002.amazon.com ([52.95.49.90]:50455 "EHLO
+        smtp-fw-6002.amazon.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2387597AbfILR2y (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Sep 2019 13:28:54 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
   d=amazon.com; i=@amazon.com; q=dns/txt; s=amazon201209;
   t=1568309333; x=1599845333;
   h=message-id:in-reply-to:references:from:date:subject:to:
    mime-version;
-  bh=AGAO4q+sahYkfsrmsJLVcWrv5VJxiw7TVhVh6xK5AXY=;
-  b=beHXutplI5rDNUk7DBJ6SuCpd1q4irB1Sz9bjzXsQApnUpwVx3TtKhv3
-   T2P6K6ukB+5A4KatdMSqgvAIIX6ly0+Od8Uy6oOIuFFgc5U47y0sChGEh
-   EqYuYj182FOfCvJvIeY4fZViscM+dPb7lTGRpbDxewCMXl/uJ7y6CzEs8
-   Y=;
+  bh=X6pjsZ1DUM9WQsJBlFU42duzqbYXDrhxtlqUbntlemU=;
+  b=qOIhTcpVlsCW2W7B5AgKUr1apD5xuRnQ6hsQil/CUKuICIl4Hlg9pYiC
+   g61B2axlQ1tVRKzc+wjhMXnZgrMFfDqomeozf/VYFufnTjakVHPx6g0s9
+   7JcYt4uB5hRTPoL9TZyODwZ9zQk6atsf/4h2Hzp6ZTNXzVeLWUb5om0ff
+   4=;
 X-IronPort-AV: E=Sophos;i="5.64,497,1559520000"; 
-   d="scan'208";a="750440659"
-Received: from iad6-co-svc-p1-lb1-vlan2.amazon.com (HELO email-inbound-relay-2a-d0be17ee.us-west-2.amazon.com) ([10.124.125.2])
-  by smtp-border-fw-out-2101.iad2.amazon.com with ESMTP; 12 Sep 2019 17:28:52 +0000
-Received: from EX13MTAUEB001.ant.amazon.com (pdx4-ws-svc-p6-lb7-vlan3.pdx.amazon.com [10.170.41.166])
-        by email-inbound-relay-2a-d0be17ee.us-west-2.amazon.com (Postfix) with ESMTPS id E9216A23A6;
+   d="scan'208";a="420869456"
+Received: from iad6-co-svc-p1-lb1-vlan3.amazon.com (HELO email-inbound-relay-2a-22cc717f.us-west-2.amazon.com) ([10.124.125.6])
+  by smtp-border-fw-out-6002.iad6.amazon.com with ESMTP; 12 Sep 2019 17:28:52 +0000
+Received: from EX13MTAUWC001.ant.amazon.com (pdx4-ws-svc-p6-lb7-vlan3.pdx.amazon.com [10.170.41.166])
+        by email-inbound-relay-2a-22cc717f.us-west-2.amazon.com (Postfix) with ESMTPS id DB77DA17EE;
         Thu, 12 Sep 2019 17:28:51 +0000 (UTC)
-Received: from EX13D01UEB002.ant.amazon.com (10.43.60.219) by
- EX13MTAUEB001.ant.amazon.com (10.43.60.96) with Microsoft SMTP Server (TLS)
+Received: from EX13D29UWC002.ant.amazon.com (10.43.162.254) by
+ EX13MTAUWC001.ant.amazon.com (10.43.162.135) with Microsoft SMTP Server (TLS)
  id 15.0.1367.3; Thu, 12 Sep 2019 17:28:51 +0000
-Received: from EX13MTAUEB001.ant.amazon.com (10.43.60.96) by
- EX13D01UEB002.ant.amazon.com (10.43.60.219) with Microsoft SMTP Server (TLS)
+Received: from EX13MTAUWC001.ant.amazon.com (10.43.162.135) by
+ EX13D29UWC002.ant.amazon.com (10.43.162.254) with Microsoft SMTP Server (TLS)
  id 15.0.1367.3; Thu, 12 Sep 2019 17:28:51 +0000
 Received: from kaos-source-ops-60003.pdx1.corp.amazon.com (10.36.133.164) by
- mail-relay.amazon.com (10.43.60.129) with Microsoft SMTP Server id
+ mail-relay.amazon.com (10.43.162.232) with Microsoft SMTP Server id
  15.0.1367.3 via Frontend Transport; Thu, 12 Sep 2019 17:28:51 +0000
 Received: by kaos-source-ops-60003.pdx1.corp.amazon.com (Postfix, from userid 6262777)
-        id E1935C053D; Thu, 12 Sep 2019 17:28:49 +0000 (UTC)
-Message-ID: <11fbf78833638e57b76950a74998b0c489fb3020.1568309119.git.fllinden@amazon.com>
+        id E21C5C052C; Thu, 12 Sep 2019 17:28:49 +0000 (UTC)
+Message-ID: <792e90e6afd5fb2104ce9ed56c5e6c6f26eee6cc.1568309119.git.fllinden@amazon.com>
 In-Reply-To: <cover.1568309119.git.fllinden@amazon.com>
 References: <cover.1568309119.git.fllinden@amazon.com>
 From:   Frank van der Linden <fllinden@amazon.com>
-Date:   Sat, 31 Aug 2019 19:00:31 +0000
-Subject: [RFC PATCH 22/35] nfsd: split off the write decode code in to a
- seperate function
+Date:   Tue, 27 Aug 2019 22:51:41 +0000
+Subject: [RFC PATCH 13/35] nfs: modify update_changeattr to deal with regular
+ files
 To:     <linux-nfs@vger.kernel.org>, <linux-fsdevel@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain
@@ -64,114 +64,186 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-nfs4_decode_write has code to parse incoming XDR write data in to
-a kvec head, and a list of pages.
+Until now, change attributes in change_info form were only returned by
+directory operations. However, they are also used for the RFC 8276
+extended attribute operations, which work on both directories
+and regular files.  Modify update_changeattr to deal:
 
-Put this code in to a seperate function, so that it can be used
-later by the xattr code, for setxattr. No functional change.
+* Rename it to nfs4_update_changeattr and make it non-static.
+* Don't always use INO_INVALID_DATA, this isn't needed for a
+  directory that only had its extended attributes changed by us.
+* Existing callers now always pass in INO_INVALID_DATA.
+
+For the current callers of this function, behavior is unchanged.
 
 Signed-off-by: Frank van der Linden <fllinden@amazon.com>
 ---
- fs/nfsd/nfs4xdr.c | 72 +++++++++++++++++++++++++++--------------------
- 1 file changed, 42 insertions(+), 30 deletions(-)
+ fs/nfs/nfs4_fs.h  |  5 ++++
+ fs/nfs/nfs4proc.c | 70 +++++++++++++++++++++++++++++------------------
+ 2 files changed, 49 insertions(+), 26 deletions(-)
 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index f2090f7fed42..25cd597f7b4e 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -248,6 +248,44 @@ svcxdr_dupstr(struct nfsd4_compoundargs *argp, void *buf, u32 len)
- 	return p;
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index 3564da1ba8a1..f684dcdc38bd 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -314,6 +314,11 @@ extern int nfs4_set_rw_stateid(nfs4_stateid *stateid,
+ 
+ extern int nfs4_proc_get_lease_time(struct nfs_client *clp,
+ 		struct nfs_fsinfo *fsinfo);
++extern void nfs4_update_changeattr(struct inode *dir,
++				   struct nfs4_change_info *cinfo,
++				   unsigned long timestamp,
++				   unsigned long cache_validity);
++
+ #if defined(CONFIG_NFS_V4_1)
+ extern int nfs41_sequence_done(struct rpc_task *, struct nfs4_sequence_res *);
+ extern int nfs4_proc_create_session(struct nfs_client *, const struct cred *);
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 029b07fef37f..a8a6ddb34ad7 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -1130,37 +1130,48 @@ nfs4_dec_nlink_locked(struct inode *inode)
  }
  
-+static __be32
-+svcxdr_construct_vector(struct nfsd4_compoundargs *argp, struct kvec *head,
-+                       struct page ***pagelist, u32 buflen)
-+{
-+	int avail;
-+	int len;
-+	int pages;
-+
-+	/* Sorry .. no magic macros for this.. *
-+	 * READ_BUF(write->wr_buflen);
-+	 * SAVEMEM(write->wr_buf, write->wr_buflen);
-+	 */
-+	avail = (char*)argp->end - (char*)argp->p;
-+	if (avail + argp->pagelen < buflen) {
-+		dprintk("NFSD: xdr error (%s:%d)\n",
-+			       __FILE__, __LINE__);
-+		return nfserr_bad_xdr;
-+	}
-+	head->iov_base = argp->p;
-+	head->iov_len = avail;
-+	*pagelist = argp->pagelist;
-+
-+	len = XDR_QUADLEN(buflen) << 2;
-+	if (len >= avail) {
-+	       len -= avail;
-+
-+	       pages = len >> PAGE_SHIFT;
-+	       argp->pagelist += pages;
-+	       argp->pagelen -= pages * PAGE_SIZE;
-+	       len -= pages * PAGE_SIZE;
-+
-+	       next_decode_page(argp);
-+	}
-+	argp->p += XDR_QUADLEN(len);
-+
-+	return 0;
-+}
-+
- /**
-  * savemem - duplicate a chunk of memory for later processing
-  * @argp: NFSv4 compound argument structure to be freed with
-@@ -1251,8 +1289,6 @@ nfsd4_decode_verify(struct nfsd4_compoundargs *argp, struct nfsd4_verify *verify
- static __be32
- nfsd4_decode_write(struct nfsd4_compoundargs *argp, struct nfsd4_write *write)
+ static void
+-update_changeattr_locked(struct inode *dir, struct nfs4_change_info *cinfo,
++nfs4_update_changeattr_locked(struct inode *inode,
++		struct nfs4_change_info *cinfo,
+ 		unsigned long timestamp, unsigned long cache_validity)
  {
--	int avail;
--	int len;
- 	DECODE_HEAD;
+-	struct nfs_inode *nfsi = NFS_I(dir);
++	struct nfs_inode *nfsi = NFS_I(inode);
  
- 	status = nfsd4_decode_stateid(argp, &write->wr_stateid);
-@@ -1265,34 +1301,10 @@ nfsd4_decode_write(struct nfsd4_compoundargs *argp, struct nfsd4_write *write)
- 		goto xdr_error;
- 	write->wr_buflen = be32_to_cpup(p++);
- 
--	/* Sorry .. no magic macros for this.. *
--	 * READ_BUF(write->wr_buflen);
--	 * SAVEMEM(write->wr_buf, write->wr_buflen);
--	 */
--	avail = (char*)argp->end - (char*)argp->p;
--	if (avail + argp->pagelen < write->wr_buflen) {
--		dprintk("NFSD: xdr error (%s:%d)\n",
--				__FILE__, __LINE__);
--		goto xdr_error;
--	}
--	write->wr_head.iov_base = p;
--	write->wr_head.iov_len = avail;
--	write->wr_pagelist = argp->pagelist;
--
--	len = XDR_QUADLEN(write->wr_buflen) << 2;
--	if (len >= avail) {
--		int pages;
--
--		len -= avail;
--
--		pages = len >> PAGE_SHIFT;
--		argp->pagelist += pages;
--		argp->pagelen -= pages * PAGE_SIZE;
--		len -= pages * PAGE_SIZE;
--
--		next_decode_page(argp);
--	}
--	argp->p += XDR_QUADLEN(len);
-+	status = svcxdr_construct_vector(argp, &write->wr_head,
-+					 &write->wr_pagelist, write->wr_buflen);
-+	if (status)
-+		return status;
- 
- 	DECODE_TAIL;
+ 	nfsi->cache_validity |= NFS_INO_INVALID_CTIME
+ 		| NFS_INO_INVALID_MTIME
+-		| NFS_INO_INVALID_DATA
+ 		| cache_validity;
+-	if (cinfo->atomic && cinfo->before == inode_peek_iversion_raw(dir)) {
++
++	if (cinfo->atomic && cinfo->before == inode_peek_iversion_raw(inode)) {
+ 		nfsi->cache_validity &= ~NFS_INO_REVAL_PAGECACHE;
+ 		nfsi->attrtimeo_timestamp = jiffies;
+ 	} else {
+-		nfs_force_lookup_revalidate(dir);
+-		if (cinfo->before != inode_peek_iversion_raw(dir))
++		if (S_ISDIR(inode->i_mode)) {
++			nfsi->cache_validity |= NFS_INO_INVALID_DATA;
++			nfs_force_lookup_revalidate(inode);
++		} else {
++			if (!NFS_PROTO(inode)->have_delegation(inode,
++							       FMODE_READ))
++				nfsi->cache_validity |= NFS_INO_REVAL_PAGECACHE;
++		}
++
++		if (cinfo->before != inode_peek_iversion_raw(inode))
+ 			nfsi->cache_validity |= NFS_INO_INVALID_ACCESS |
+-				NFS_INO_INVALID_ACL;
++						NFS_INO_INVALID_ACL;
+ 	}
+-	inode_set_iversion_raw(dir, cinfo->after);
++	inode_set_iversion_raw(inode, cinfo->after);
+ 	nfsi->read_cache_jiffies = timestamp;
+ 	nfsi->attr_gencount = nfs_inc_attr_generation_counter();
+ 	nfsi->cache_validity &= ~NFS_INO_INVALID_CHANGE;
+-	nfs_fscache_invalidate(dir);
++
++	if (nfsi->cache_validity & NFS_INO_INVALID_DATA)
++		nfs_fscache_invalidate(inode);
  }
+ 
+-static void
+-update_changeattr(struct inode *dir, struct nfs4_change_info *cinfo,
++void
++nfs4_update_changeattr(struct inode *dir, struct nfs4_change_info *cinfo,
+ 		unsigned long timestamp, unsigned long cache_validity)
+ {
+ 	spin_lock(&dir->i_lock);
+-	update_changeattr_locked(dir, cinfo, timestamp, cache_validity);
++	nfs4_update_changeattr_locked(dir, cinfo, timestamp, cache_validity);
+ 	spin_unlock(&dir->i_lock);
+ }
+ 
+@@ -2620,8 +2631,9 @@ static int _nfs4_proc_open(struct nfs4_opendata *data,
+ 			data->file_created = true;
+ 		if (data->file_created ||
+ 		    inode_peek_iversion_raw(dir) != o_res->cinfo.after)
+-			update_changeattr(dir, &o_res->cinfo,
+-					o_res->f_attr->time_start, 0);
++			nfs4_update_changeattr(dir, &o_res->cinfo,
++					o_res->f_attr->time_start,
++					NFS_INO_INVALID_DATA);
+ 	}
+ 	if ((o_res->rflags & NFS4_OPEN_RESULT_LOCKTYPE_POSIX) == 0)
+ 		server->caps &= ~NFS_CAP_POSIX_LOCK;
+@@ -4440,7 +4452,8 @@ _nfs4_proc_remove(struct inode *dir, const struct qstr *name, u32 ftype)
+ 	status = nfs4_call_sync(server->client, server, &msg, &args.seq_args, &res.seq_res, 1);
+ 	if (status == 0) {
+ 		spin_lock(&dir->i_lock);
+-		update_changeattr_locked(dir, &res.cinfo, timestamp, 0);
++		nfs4_update_changeattr_locked(dir, &res.cinfo, timestamp,
++					      NFS_INO_INVALID_DATA);
+ 		/* Removing a directory decrements nlink in the parent */
+ 		if (ftype == NF4DIR && dir->i_nlink > 2)
+ 			nfs4_dec_nlink_locked(dir);
+@@ -4524,8 +4537,9 @@ static int nfs4_proc_unlink_done(struct rpc_task *task, struct inode *dir)
+ 				    &data->timeout) == -EAGAIN)
+ 		return 0;
+ 	if (task->tk_status == 0)
+-		update_changeattr(dir, &res->cinfo,
+-				res->dir_attr->time_start, 0);
++		nfs4_update_changeattr(dir, &res->cinfo,
++				res->dir_attr->time_start,
++				NFS_INO_INVALID_DATA);
+ 	return 1;
+ }
+ 
+@@ -4569,16 +4583,18 @@ static int nfs4_proc_rename_done(struct rpc_task *task, struct inode *old_dir,
+ 	if (task->tk_status == 0) {
+ 		if (new_dir != old_dir) {
+ 			/* Note: If we moved a directory, nlink will change */
+-			update_changeattr(old_dir, &res->old_cinfo,
++			nfs4_update_changeattr(old_dir, &res->old_cinfo,
+ 					res->old_fattr->time_start,
+-					NFS_INO_INVALID_OTHER);
+-			update_changeattr(new_dir, &res->new_cinfo,
++					NFS_INO_INVALID_OTHER |
++					    NFS_INO_INVALID_DATA);
++			nfs4_update_changeattr(new_dir, &res->new_cinfo,
+ 					res->new_fattr->time_start,
+-					NFS_INO_INVALID_OTHER);
++					NFS_INO_INVALID_OTHER |
++					    NFS_INO_INVALID_DATA);
+ 		} else
+-			update_changeattr(old_dir, &res->old_cinfo,
++			nfs4_update_changeattr(old_dir, &res->old_cinfo,
+ 					res->old_fattr->time_start,
+-					0);
++					NFS_INO_INVALID_DATA);
+ 	}
+ 	return 1;
+ }
+@@ -4619,7 +4635,8 @@ static int _nfs4_proc_link(struct inode *inode, struct inode *dir, const struct
+ 
+ 	status = nfs4_call_sync(server->client, server, &msg, &arg.seq_args, &res.seq_res, 1);
+ 	if (!status) {
+-		update_changeattr(dir, &res.cinfo, res.fattr->time_start, 0);
++		nfs4_update_changeattr(dir, &res.cinfo, res.fattr->time_start,
++				       NFS_INO_INVALID_DATA);
+ 		status = nfs_post_op_update_inode(inode, res.fattr);
+ 		if (!status)
+ 			nfs_setsecurity(inode, res.fattr, res.label);
+@@ -4697,8 +4714,9 @@ static int nfs4_do_create(struct inode *dir, struct dentry *dentry, struct nfs4_
+ 				    &data->arg.seq_args, &data->res.seq_res, 1);
+ 	if (status == 0) {
+ 		spin_lock(&dir->i_lock);
+-		update_changeattr_locked(dir, &data->res.dir_cinfo,
+-				data->res.fattr->time_start, 0);
++		nfs4_update_changeattr_locked(dir, &data->res.dir_cinfo,
++				data->res.fattr->time_start,
++				NFS_INO_INVALID_DATA);
+ 		/* Creating a directory bumps nlink in the parent */
+ 		if (data->arg.ftype == NF4DIR)
+ 			nfs4_inc_nlink_locked(dir);
 -- 
 2.17.2
 
