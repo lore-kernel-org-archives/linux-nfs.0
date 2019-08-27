@@ -2,130 +2,139 @@ Return-Path: <SRS0=1vu2=WX=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-0.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,
-	SPF_PASS,URIBL_BLOCKED autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-8.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
+	URIBL_BLOCKED,USER_AGENT_SANE_1 autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 07992C3A5A3
-	for <linux-nfs@archiver.kernel.org>; Tue, 27 Aug 2019 15:01:10 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2C378C3A5A3
+	for <linux-nfs@archiver.kernel.org>; Tue, 27 Aug 2019 15:03:08 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id C1A0520828
-	for <linux-nfs@archiver.kernel.org>; Tue, 27 Aug 2019 15:01:09 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="AaKrJdw7"
+	by mail.kernel.org (Postfix) with ESMTP id 09BF520828
+	for <linux-nfs@archiver.kernel.org>; Tue, 27 Aug 2019 15:03:08 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1725987AbfH0PBJ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 27 Aug 2019 11:01:09 -0400
-Received: from mail-eopbgr800120.outbound.protection.outlook.com ([40.107.80.120]:29511
-        "EHLO NAM03-DM3-obe.outbound.protection.outlook.com"
+        id S1728612AbfH0PDH (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 27 Aug 2019 11:03:07 -0400
+Received: from mx2.suse.de ([195.135.220.15]:33840 "EHLO mx1.suse.de"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1725811AbfH0PBJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 27 Aug 2019 11:01:09 -0400
-ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
- b=gmxu7zmc6yiA2nQv8M8MvLQaSLOsBnDlFrTnmRN9iJEuOfHoxZpAZBRWovXIrzTlGGWyZ99w2CWIoam2FtLn1XLWbYx70qQ4i5DuqHesY4+xUCBA978AGEFzXA+Ny693eDNouQa5D8+YWfM4K9sPCtx3qJ5mtN1ZfiMG3ebsxdu3DacZSKWCzX6vkzY1n+IW0qXHOg6FsZ0n53VXGXohCgeMmbEA/ZL5jiEr53ix7urAuu02i96Uw+oDssfae/eb91Oaqsumks3fbpG2EvLdoSiurAIu2S5c/Rp85Z5DEtc+T/hHnCDSdbOf8SQ2nIP7J2f6U4gFYGJskSA2td9hbg==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
- s=arcselector9901;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=1Cs/tE3PIEIh4etZlTa+fAmJ45XFXVRKmXap0VyGVBM=;
- b=UbpfPJPZ9wsdr94QsDRDzneSac9xH+B3zpIHHMWF/Jv564YAMQ+bkS1qeAaE3xvnbzOrYMOCcmV9a6V3DqnPj2pVox5xMKriZzC0Pw8qpFEkLrEIUGp0yHj1na4Jk8Lzmah+cCft9c0DPllOdA5eHxZRj+rWtFJhQDmWnQ3zIxeDQO/e3aIf7kQtkpjcWLUqdIwOZhXB9Dy6Mj/pLee+EKbQ/8AxW4TBgiYclbyqnJMqfg/4S4jP2EC4g3iaOgXrVpwM9AV9AXDzHA8FEbkpG4KUcGikUHZNeMPBhVSeaI4YxSHHG16jDVE5H3HP9xAtAo72NlviNwZhb6Zc3KyYtA==
-ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
- smtp.mailfrom=hammerspace.com; dmarc=pass action=none
- header.from=hammerspace.com; dkim=pass header.d=hammerspace.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=hammerspace.com;
- s=selector2;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=1Cs/tE3PIEIh4etZlTa+fAmJ45XFXVRKmXap0VyGVBM=;
- b=AaKrJdw7NCzgNv/TOcPfAuCs0XEzmFvyBiyqSPp4VaMGQvgUx/NJReCqKCwzIa5I0Ty2jc/o+RNrfzrioyuHDuyPXm9yMTdxMzLiZm9QVT3aJedIahxmw9py7fXvlXA0Cp6/Nrx6HuX7CklGZ4i8fdbZ9bdg/yN5MUoUhjamLAg=
-Received: from DM5PR13MB1851.namprd13.prod.outlook.com (10.171.159.143) by
- DM5PR13MB0924.namprd13.prod.outlook.com (10.168.237.139) with Microsoft SMTP
- Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- 15.20.2199.12; Tue, 27 Aug 2019 14:59:34 +0000
-Received: from DM5PR13MB1851.namprd13.prod.outlook.com
- ([fe80::5d60:e645:84a2:be75]) by DM5PR13MB1851.namprd13.prod.outlook.com
- ([fe80::5d60:e645:84a2:be75%7]) with mapi id 15.20.2220.013; Tue, 27 Aug 2019
- 14:59:34 +0000
-From:   Trond Myklebust <trondmy@hammerspace.com>
-To:     "bfields@fieldses.org" <bfields@fieldses.org>,
-        "chuck.lever@oracle.com" <chuck.lever@oracle.com>
-CC:     "jlayton@redhat.com" <jlayton@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "bfields@redhat.com" <bfields@redhat.com>,
-        "jlayton@poochiereds.net" <jlayton@poochiereds.net>
-Subject: Re: [PATCH 0/3] Handling NFSv3 I/O errors in knfsd
-Thread-Topic: [PATCH 0/3] Handling NFSv3 I/O errors in knfsd
-Thread-Index: AQHVXC7WXUD5cV8FEUS4EYbsSk6I0qcN59MAgAAC84CAARwhgIAAD4MAgAABSoA=
-Date:   Tue, 27 Aug 2019 14:59:34 +0000
-Message-ID: <5e9d8bceb67d20f6e89f81cb7f2a4eca5e842bcf.camel@hammerspace.com>
-References: <20190826165021.81075-1-trond.myklebust@hammerspace.com>
-         <20190826205156.GA27834@fieldses.org>
-         <ef9f2791ef395d7c968a386ce0a32ea503d6478f.camel@hammerspace.com>
-         <61F77AD6-BD02-4322-B944-0DC263EB9BD8@oracle.com>
-         <20190827145456.GA9804@fieldses.org>
-In-Reply-To: <20190827145456.GA9804@fieldses.org>
-Accept-Language: en-US, en-GB
-Content-Language: en-US
-X-MS-Has-Attach: 
-X-MS-TNEF-Correlator: 
-authentication-results: spf=none (sender IP is )
- smtp.mailfrom=trondmy@hammerspace.com; 
-x-originating-ip: [68.40.189.247]
-x-ms-publictraffictype: Email
-x-ms-office365-filtering-correlation-id: 5dab0e8a-0488-4ec6-957f-08d72aff2c78
-x-microsoft-antispam: BCL:0;PCL:0;RULEID:(2390118)(7020095)(4652040)(8989299)(4534185)(4627221)(201703031133081)(201702281549075)(8990200)(5600166)(711020)(4605104)(1401327)(2017052603328)(7193020);SRVR:DM5PR13MB0924;
-x-ms-traffictypediagnostic: DM5PR13MB0924:
-x-microsoft-antispam-prvs: <DM5PR13MB092422E4694D9E51761D740AB8A00@DM5PR13MB0924.namprd13.prod.outlook.com>
-x-ms-oob-tlc-oobclassifiers: OLM:1091;
-x-forefront-prvs: 0142F22657
-x-forefront-antispam-report: SFV:NSPM;SFS:(10019020)(346002)(39840400004)(366004)(136003)(376002)(396003)(189003)(199004)(229853002)(6486002)(446003)(8676002)(14454004)(6246003)(2616005)(25786009)(118296001)(478600001)(186003)(71190400001)(71200400001)(66946007)(86362001)(11346002)(76116006)(91956017)(53936002)(66556008)(66066001)(64756008)(66446008)(66476007)(2906002)(81166006)(486006)(5660300002)(476003)(81156014)(26005)(8936002)(102836004)(3846002)(6116002)(6506007)(36756003)(4326008)(7736002)(54906003)(76176011)(2501003)(99286004)(110136005)(6512007)(316002)(256004)(6436002)(305945005)(17423001);DIR:OUT;SFP:1102;SCL:1;SRVR:DM5PR13MB0924;H:DM5PR13MB1851.namprd13.prod.outlook.com;FPR:;SPF:None;LANG:en;PTR:InfoNoRecords;MX:1;A:1;
-received-spf: None (protection.outlook.com: hammerspace.com does not designate
- permitted sender hosts)
-x-ms-exchange-senderadcheck: 1
-x-microsoft-antispam-message-info: c8in34tj8iuWAwdYMnU+M6R8OeEKyvRbZ5Tgpa+ejDaJWYVKNe4ckkUEAxPAjvztTR6B9KNgh1XDFwFfX6kAFNL8XW1b0NAaZYdXgkD2MABG0j1kq7xWzN4lJZfhvFNNB3Xb19CQMuwBFrZ5AOrVNXCh7dO6B/Sa7mnJ6uzyCbbClxwudnq62szq9iweqKprP97hiQNmRDwlMhZoKVaIYHWRk/QoS6/3gZlT5NJx0ZK51veJEUY6iQAIQ+wJSWssAmkEaYY/5F2XReiW0WyK+vvFdf39//Be//26P6E88ySKqBBTF6dFqq5sBTTtWg0IvSVArT7Lk9GmBN22oOsGL9EgfPIukZr1/JaPlRUol4Uzj+qaT5qY0X+N9YutHfCWijWhT0Q5vTrqkQv2DlSnQ54j3hwCwD5EgKkUC1Ue0x4=
-x-ms-exchange-transport-forked: True
-Content-Type: text/plain; charset="utf-8"
-Content-ID: <86289DAC2E5FE24AB9D03119D4CD90E3@namprd13.prod.outlook.com>
-Content-Transfer-Encoding: base64
+        id S1726955AbfH0PDH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 27 Aug 2019 11:03:07 -0400
+X-Virus-Scanned: by amavisd-new at test-mx.suse.de
+Received: from relay2.suse.de (unknown [195.135.220.254])
+        by mx1.suse.de (Postfix) with ESMTP id E5B54AEFB;
+        Tue, 27 Aug 2019 15:03:04 +0000 (UTC)
+Received: by quack2.suse.cz (Postfix, from userid 1000)
+        id 7C8D41E4362; Tue, 27 Aug 2019 17:03:04 +0200 (CEST)
+Date:   Tue, 27 Aug 2019 17:03:04 +0200
+From:   Jan Kara <jack@suse.cz>
+To:     Max Kellermann <mk@cm4all.com>
+Cc:     linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        trond.myklebust@hammerspace.com, bfields@redhat.com, tytso@mit.edu,
+        adilger.kernel@dilger.ca, hughd@google.com,
+        anna.schumaker@netapp.com, linux-kernel@vger.kernel.org,
+        stable@vger.kernel.org
+Subject: Re: [PATCH v2 3/4] linux/fs.h: fix umask on NFS with
+ CONFIG_FS_POSIX_ACL=n
+Message-ID: <20190827150304.GB10306@quack2.suse.cz>
+References: <20190713041200.18566-1-mk@cm4all.com>
+ <20190713041200.18566-3-mk@cm4all.com>
 MIME-Version: 1.0
-X-OriginatorOrg: hammerspace.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: 5dab0e8a-0488-4ec6-957f-08d72aff2c78
-X-MS-Exchange-CrossTenant-originalarrivaltime: 27 Aug 2019 14:59:34.6662
- (UTC)
-X-MS-Exchange-CrossTenant-fromentityheader: Hosted
-X-MS-Exchange-CrossTenant-id: 0d4fed5c-3a70-46fe-9430-ece41741f59e
-X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
-X-MS-Exchange-CrossTenant-userprincipalname: YqdOJwSndxmb1Sjbl9lKYQue5uRqWkDsPO1/1gutsme6i/wBcHCJMce4UYcVUSriB9EoZ5Mno1C4JQhF9Bx80g==
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: DM5PR13MB0924
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20190713041200.18566-3-mk@cm4all.com>
+User-Agent: Mutt/1.10.1 (2018-07-13)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-T24gVHVlLCAyMDE5LTA4LTI3IGF0IDEwOjU0IC0wNDAwLCBCcnVjZSBGaWVsZHMgd3JvdGU6DQo+
-IE9uIFR1ZSwgQXVnIDI3LCAyMDE5IGF0IDA5OjU5OjI1QU0gLTA0MDAsIENodWNrIExldmVyIHdy
-b3RlOg0KPiA+IFRoZSBzdHJhdGVneSBvZiBoYW5kbGluZyB0aGVzZSBlcnJvcnMgbW9yZSBjYXJl
-ZnVsbHkgc2VlbXMgZ29vZC4NCj4gPiBCdW1waW5nIHRoZSB3cml0ZS9jb21taXQgdmVyaWZpZXIg
-c28gdGhlIGNsaWVudCB3cml0ZXMgYWdhaW4gdG8NCj4gPiByZXRyaWV2ZSB0aGUgbGF0ZW50IGVy
-cm9yIGlzIGNsZXZlciENCj4gPiANCj4gPiBJdCdzIG5vdCBjbGVhciB0byBtZSB0aG91Z2ggdGhh
-dCB0aGUgTkZTdjMgcHJvdG9jb2wgY2FuIGRlYWwgd2l0aA0KPiA+IHRoZSBtdWx0aS1jbGllbnQg
-d3JpdGUgc2NlbmFyaW8sIHNpbmNlIGl0IGlzIHN0YXRlbGVzcy4gV2UgYXJlIG5vdw0KPiA+IG1h
-a2luZyBpdCBzdGF0ZWZ1bCBpbiBzb21lIHNlbnNlIGJ5IHByZXNlcnZpbmcgZXJyb3Igc3RhdGUg
-b24gdGhlDQo+ID4gc2VydmVyIGFjcm9zcyBORlMgcmVxdWVzdHMsIHdpdGhvdXQgaGF2aW5nIGFu
-eSBzZW5zZSBvZiBhbiBvcGVuDQo+ID4gZmlsZSBpbiB0aGUgcHJvdG9jb2wgaXRzZWxmLg0KPiA+
-IA0KPiA+IFdvdWxkIGFuICJhcHByb3hpbWF0aW9uIiB3aXRob3V0IG9wZW4gc3RhdGUgYmUgZ29v
-ZCBlbm91Z2g/DQo+IA0KPiBJIGZpZ3VyZSB0aGVyZSdzIGEgY29ycmVjdC1idXQtc2xvdyBhcHBy
-b2FjaCB3aGljaCBpcyB0byBpbmNyZW1lbnQNCj4gdGhlDQo+IHdyaXRlIHZlcmlmaWVyIGV2ZXJ5
-IHRpbWUgdGhlcmUncyBhIHdyaXRlIGVycm9yLiAgRG9lcyB0aGF0IHdvcms/ICBJZg0KPiB3cml0
-ZSBlcnJvcnMgYXJlIHJhcmUgZW5vdWdoLCBtYXliZSBpdCBkb2Vzbid0IG1hdHRlciB0aGF0IHRo
-YXQncw0KPiBzbG93Pw0KDQpIb3cgaXMgdGhhdCBkaWZmZXJlbnQgZnJvbSBjaGFuZ2luZyB0aGUg
-Ym9vdCB2ZXJpZmllcj8gQXJlIHlvdQ0KcHJvcG9zaW5nIHRvIHRyYWNrIHdyaXRlIHZlcmlmaWVy
-cyBvbiBhIHBlci1jbGllbnQgYmFzaXM/IFRoYXQgc2VlbXMNCm9uZXJvdXMgdG9vLg0KDQo+IFRo
-ZW4gdGhlcmUncyB2YXJpb3VzIGFwcHJveGltYXRpb25zIHlvdSBjb3VsZCB1c2UgKElQIGFkZHJl
-c3M/KSB0bw0KPiBndWVzcw0KPiB3aGVuIG9ubHkgb25lIGNsaWVudCdzIGFjY2Vzc2luZyB0aGUg
-ZmlsZS4gIFlvdSBzYXZlIGZvcmNpbmcgYWxsIHRoZQ0KPiBjbGllbnRzIHRvIHJlc2VuZCB3cml0
-ZXMgYXQgdGhlIGV4cGVuc2Ugb2Ygc29tZSBjb21wbGV4aXR5IGFuZA0KPiBjb3JyZWN0bmVzcy0t
-ZS5nLiwgbXVsdGlwbGUgY2xpZW50cyBiZWhpbmQgTkFUIG1pZ2h0IG5vdCBhbGwgZ2V0DQo+IHdy
-aXRlDQo+IGVycm9ycy4NCj4gDQo+IEFtIEkgdGhpbmtpbmcgYW9idXQgdGhpcyByaWdodD8NCg0K
-SSBhZ3JlZSB0aGF0IHRoZXJlIGFyZSBtdWx0aXBsZSBwcm9ibGVtcyB3aXRoIHRyYWNraW5nIG9u
-IGEgcGVyLWNsaWVudA0KYmFzaXMuDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMg
-Y2xpZW50IG1haW50YWluZXIsIEhhbW1lcnNwYWNlDQp0cm9uZC5teWtsZWJ1c3RAaGFtbWVyc3Bh
-Y2UuY29tDQoNCg0K
+Hello,
+
+On Sat 13-07-19 06:11:59, Max Kellermann wrote:
+> Make IS_POSIXACL() return false if POSIX ACL support is disabled and
+> ignore SB_POSIXACL/MS_POSIXACL.
+> 
+> Never skip applying the umask in namei.c and never bother to do any
+> ACL specific checks if the filesystem falsely indicates it has ACLs
+> enabled when the feature is completely disabled in the kernel.
+> 
+> This fixes a problem where the umask is always ignored in the NFS
+> client when compiled without CONFIG_FS_POSIX_ACL.  This is a 4 year
+> old regression caused by commit 013cdf1088d723 which itself was not
+> completely wrong, but failed to consider all the side effects by
+> misdesigned VFS code.
+> 
+> Prior to that commit, there were two places where the umask could be
+> applied, for example when creating a directory:
+> 
+>  1. in the VFS layer in SYSCALL_DEFINE3(mkdirat), but only if
+>     !IS_POSIXACL()
+> 
+>  2. again (unconditionally) in nfs3_proc_mkdir()
+> 
+> The first one does not apply, because even without
+> CONFIG_FS_POSIX_ACL, the NFS client sets MS_POSIXACL in
+> nfs_fill_super().
+> 
+> After that commit, (2.) was replaced by:
+> 
+>  2b. in posix_acl_create(), called by nfs3_proc_mkdir()
+> 
+> There's one branch in posix_acl_create() which applies the umask;
+> however, without CONFIG_FS_POSIX_ACL, posix_acl_create() is an empty
+> dummy function which does not apply the umask.
+> 
+> The approach chosen by this patch is to make IS_POSIXACL() always
+> return false when POSIX ACL support is disabled, so the umask always
+> gets applied by the VFS layer.  This is consistent with the (regular)
+> behavior of posix_acl_create(): that function returns early if
+> IS_POSIXACL() is false, before applying the umask.
+> 
+> Therefore, posix_acl_create() is responsible for applying the umask if
+> there is ACL support enabled in the file system (SB_POSIXACL), and the
+> VFS layer is responsible for all other cases (no SB_POSIXACL or no
+> CONFIG_FS_POSIX_ACL).
+> 
+> Signed-off-by: Max Kellermann <mk@cm4all.com>
+> Cc: stable@vger.kernel.org
+
+Thanks for the patch. This patch definitely looks good to me so feel free
+to add:
+
+Reviewed-by: Jan Kara <jack@suse.cz>
+
+I just wonder, do you really need patches 1 and 2? Doesn't this patch alone
+fix the problem? Because AFAIU the problem, this patch should be enough and
+indeed the logic "VFS is responsible for applying umask if !IS_POSIXACL and
+otherwise posix_acl_create() is responsible for it" looks the most logical
+to me. BTW, I think you should add VFS maintainer - Al Viro
+<viro@ZenIV.linux.org.uk> - to CC to merge the patch.
+
+								Honza
+
+> ---
+>  include/linux/fs.h | 5 +++++
+>  1 file changed, 5 insertions(+)
+> 
+> diff --git a/include/linux/fs.h b/include/linux/fs.h
+> index f7fdfe93e25d..5e9f3aa7ba26 100644
+> --- a/include/linux/fs.h
+> +++ b/include/linux/fs.h
+> @@ -1993,7 +1993,12 @@ static inline bool sb_rdonly(const struct super_block *sb) { return sb->s_flags
+>  #define IS_NOQUOTA(inode)	((inode)->i_flags & S_NOQUOTA)
+>  #define IS_APPEND(inode)	((inode)->i_flags & S_APPEND)
+>  #define IS_IMMUTABLE(inode)	((inode)->i_flags & S_IMMUTABLE)
+> +
+> +#ifdef CONFIG_FS_POSIX_ACL
+>  #define IS_POSIXACL(inode)	__IS_FLG(inode, SB_POSIXACL)
+> +#else
+> +#define IS_POSIXACL(inode)	0
+> +#endif
+>  
+>  #define IS_DEADDIR(inode)	((inode)->i_flags & S_DEAD)
+>  #define IS_NOCMTIME(inode)	((inode)->i_flags & S_NOCMTIME)
+> -- 
+> 2.20.1
+> 
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
