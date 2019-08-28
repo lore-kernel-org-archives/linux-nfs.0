@@ -2,77 +2,74 @@ Return-Path: <SRS0=/9w8=WY=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
-	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-3.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,
+	SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=no autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3420FC3A5A8
-	for <linux-nfs@archiver.kernel.org>; Wed, 28 Aug 2019 07:10:40 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 59439C41514
+	for <linux-nfs@archiver.kernel.org>; Wed, 28 Aug 2019 07:10:39 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 0C292217F5
-	for <linux-nfs@archiver.kernel.org>; Wed, 28 Aug 2019 07:10:40 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 3055320828
+	for <linux-nfs@archiver.kernel.org>; Wed, 28 Aug 2019 07:10:39 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=pks.im header.i=@pks.im header.b="id7RU7DG";
-	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="fIUBwwfs"
+	dkim=pass (2048-bit key) header.d=pks.im header.i=@pks.im header.b="aGaN3lcC";
+	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="P1BtiXT9"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726340AbfH1HKj (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 28 Aug 2019 03:10:39 -0400
-Received: from out1-smtp.messagingengine.com ([66.111.4.25]:58131 "EHLO
+        id S1726232AbfH1HKi (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 28 Aug 2019 03:10:38 -0400
+Received: from out1-smtp.messagingengine.com ([66.111.4.25]:41423 "EHLO
         out1-smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726444AbfH1HKi (ORCPT
+        by vger.kernel.org with ESMTP id S1726258AbfH1HKi (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Wed, 28 Aug 2019 03:10:38 -0400
 Received: from compute1.internal (compute1.nyi.internal [10.202.2.41])
-        by mailout.nyi.internal (Postfix) with ESMTP id 7B8242230F
-        for <linux-nfs@vger.kernel.org>; Wed, 28 Aug 2019 03:10:37 -0400 (EDT)
-Received: from mailfrontend1 ([10.202.2.162])
-  by compute1.internal (MEProxy); Wed, 28 Aug 2019 03:10:37 -0400
+        by mailout.nyi.internal (Postfix) with ESMTP id 1473922138
+        for <linux-nfs@vger.kernel.org>; Wed, 28 Aug 2019 03:10:36 -0400 (EDT)
+Received: from mailfrontend2 ([10.202.2.163])
+  by compute1.internal (MEProxy); Wed, 28 Aug 2019 03:10:36 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=pks.im; h=from
-        :to:cc:subject:date:message-id:in-reply-to:references
-        :mime-version:content-transfer-encoding; s=fm1; bh=ESxHxEDzwGVav
-        JtbQlSYJR8/RFA2T/9kB/XUMsaQgII=; b=id7RU7DGS4ssgUFO/i0CLnTiOdl8g
-        L5suLdZoPAlkLBjZtuNprGtsCgcMXvV8knZcZqPBKCxnhBAs6BLRo4c64C6cx0qi
-        bppNOzgJtL/7Ax6oVvQPkTmvqqJfsuHWdiZdQKEs1KfXc+vFPS/E4lrKZ9goqamt
-        7uMViGBkltRYiuLOh3UJduAWK+tMV4nf1mOY73t8jg/uADOUwiB9LgIk4j8d+YOC
-        roQ3i5FoOw0FK+jPMfQp6JwqzqzvMUFIZAYg2hxPr2JIlCpi3LxEB6CRDux3eEwo
-        y6yj/L2VN6DCQoCql/KGyvH8+7pCmhqIuSVw/VSNpZm6qm3oVeCnXs54w==
+        :to:cc:subject:date:message-id:mime-version
+        :content-transfer-encoding; s=fm1; bh=5SpWWxKolQCsrogR0KPoOW+a/g
+        T7H5pZ2jP6BYVBXJs=; b=aGaN3lcCV8M7NWkLsFmBKLOTOYJYkBuW4nW4IJrb1r
+        9Y//cnUCpNsUSn8U2UU/lPRBQCtUrTRF56zBjeoa5DUWKXb3qnV0IN6BsyjUJshw
+        R5EqRogv13clvGe1IEpWEkaHEsB6Vy27aLKliAM+xfsyEHzGq5EeIOEXJHMkGCZo
+        hrn3KuT4KYKnRyS4RhfL7rcn8PBlg1ubkVEMf+lpbwXfrpPJvyZajdzuaO+Wz7OH
+        M9R317u7VSgUnW3kNv5UuSg6mfYlaMcpfNLhHX53AHQtJ5kPWofj1kBMCnO6sO1b
+        zKos7HbRzmNOSnypD/taYiJi5XXDBln1AIHTx6ZIkxhA==
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
         messagingengine.com; h=cc:content-transfer-encoding:date:from
-        :in-reply-to:message-id:mime-version:references:subject:to
-        :x-me-proxy:x-me-proxy:x-me-sender:x-me-sender:x-sasl-enc; s=
-        fm3; bh=ESxHxEDzwGVavJtbQlSYJR8/RFA2T/9kB/XUMsaQgII=; b=fIUBwwfs
-        +/pqbK3mW3ct/zNU6eHx0bI80uZi65GD19ckfk5W6Lkb7wOsWdD+j0Vi31PL7gIq
-        F8IJslgdU55nSAMk8aaRfWlMgpST7OTmocoGws5o0C/40jmWeiUmdfAA/ZD3b0HK
-        kfBzIueIcUdJ5ijwkdRJHNqNT3kRBLaIeYXAhnCpI/1PxXgyiaPbLpZbx+0Ez7K4
-        FX7O5YfjyEP9USVSF5A//ex2knLCkic1oqb0V8Dcms3yljT3hVeU4mjLPr282Ox9
-        ThWTG6wx+Uzyz0fwEikWcB+7JrNRRz+ubpC3gVhtsTuLiCv56/eC31ZMZlqsTEgl
-        5wNSJhXnjbivCg==
-X-ME-Sender: <xms:7ShmXU1S-jDiH-nSzNxyRO-MMg2tWAnILOgZH8FzqUuhZcWHjRYz-g>
+        :message-id:mime-version:subject:to:x-me-proxy:x-me-proxy
+        :x-me-sender:x-me-sender:x-sasl-enc; s=fm3; bh=5SpWWxKolQCsrogR0
+        KPoOW+a/gT7H5pZ2jP6BYVBXJs=; b=P1BtiXT9BBvuHdG9O7bP5j+Oq+RUPdsCQ
+        uLlctS7ccxgjzenyd5cFTC/4p4iZqJA0NdZv9lSag11nLEb323g5laDOknkC20P8
+        pRvGqHzr2Vn50roBbRPgQZfoGD811yln1Hlb/k3aywgBGssaaPPZFdrLbGC/WNAV
+        U0WHtCEpB74cagBk9tx0K7lLrn/tmHGzPHRDz4srqB11VUDszQ5BaI37xqrqb2OU
+        MGU+pVi4si3/k90Sp+aE9d4uP4SVj7aUOgsHhzeSbQwW0hXpWa5Ex/l/OjgyFk08
+        7aHwYJSRNCjm/bvvoZjLY/DSWV/qsnakhvLn7nZN053nJAOAMcnaA==
+X-ME-Sender: <xms:6yhmXamk_W-2zrSGMzGG8aRbXXrT7obWC1I_2HgeYQJRAj_B65mRjQ>
 X-ME-Proxy-Cause: gggruggvucftvghtrhhoucdtuddrgeduvddrudehledgudduiecutefuodetggdotefrod
     ftvfcurfhrohhfihhlvgemucfhrghsthforghilhdpqfgfvfdpuffrtefokffrpgfnqfgh
-    necuuegrihhlohhuthemuceftddtnecunecujfgurhephffvufffkffojghfggfgsedtke
-    ertdertddtnecuhfhrohhmpefrrghtrhhitghkucfuthgvihhnhhgrrhguthcuoehpshes
-    phhkshdrihhmqeenucfkphepjeejrdduuddrudehhedrvdehheenucfrrghrrghmpehmrg
-    hilhhfrhhomhepphhssehpkhhsrdhimhenucevlhhushhtvghrufhiiigvpedt
-X-ME-Proxy: <xmx:7ShmXSH1KZ0gUAeb8afRg_-vtbPMrdkvTx9akHQ8aXjFBfjZkgI-Kw>
-    <xmx:7ShmXfdpXU8dFRSvE5yldXQ8581ZusTJLz9x_H39JLonoAPZ5tNLsg>
-    <xmx:7ShmXYR7YwcsfGAQZ67W4vCScRCWueMqDKe2FYgtBv3bMD7cGyDejg>
-    <xmx:7ShmXcPK9scaHzlbbfk5pjfUKJ0lTsWEQ4kVqudBoGBfayRj_7KcZw>
+    necuuegrihhlohhuthemuceftddtnecunecujfgurhephffvufffkffoggfgsedtkeertd
+    ertddtnecuhfhrohhmpefrrghtrhhitghkucfuthgvihhnhhgrrhguthcuoehpshesphhk
+    shdrihhmqeenucfkphepjeejrdduuddrudehhedrvdehheenucfrrghrrghmpehmrghilh
+    hfrhhomhepphhssehpkhhsrdhimhenucevlhhushhtvghrufhiiigvpedt
+X-ME-Proxy: <xmx:6yhmXZNow_giUUpWrmD4JwLi6r4uLf8krGmGH-ZzXYU0SIX9N5hv7A>
+    <xmx:6yhmXeOceVutTvIc0Bsqaw2KF7DBcggfALx18iB-YsiZEvPClCslLQ>
+    <xmx:6yhmXaiaQ5z-FEdg3loTQ2vw_qjg2AdoFb1bxaIPC9lurrD9NQ7V6Q>
+    <xmx:7ChmXdtcpQz6Ty4axThenFC5LPMwhIkFbdSsIQP6-pDIpm32n9-gbw>
 Received: from NSJAIL (x4d0b9bff.dyn.telefonica.de [77.11.155.255])
-        by mail.messagingengine.com (Postfix) with ESMTPA id CEE7280060
-        for <linux-nfs@vger.kernel.org>; Wed, 28 Aug 2019 03:10:36 -0400 (EDT)
+        by mail.messagingengine.com (Postfix) with ESMTPA id 50107D6005D
+        for <linux-nfs@vger.kernel.org>; Wed, 28 Aug 2019 03:10:35 -0400 (EDT)
 Received: from localhost (10.192.0.11 [10.192.0.11])
-        by NSJAIL (OpenSMTPD) with ESMTPSA id 5aa33a69 (TLSv1.2:ECDHE-RSA-AES256-GCM-SHA384:256:NO);
-        Wed, 28 Aug 2019 07:10:34 +0000 (UTC)
+        by NSJAIL (OpenSMTPD) with ESMTPSA id 8cc7902e (TLSv1.2:ECDHE-RSA-AES256-GCM-SHA384:256:NO);
+        Wed, 28 Aug 2019 07:10:33 +0000 (UTC)
 From:   Patrick Steinhardt <ps@pks.im>
 To:     linux-nfs@vger.kernel.org
 Cc:     Patrick Steinhardt <ps@pks.im>
-Subject: [PATCH 4/6] configure.ac: Add <sys/socket.h> header when checking sizeof(socklen_t)
-Date:   Wed, 28 Aug 2019 09:10:15 +0200
-Message-Id: <42879dea46c255025fb579dcf7b15335fd77291c.1566976047.git.ps@pks.im>
+Subject: [PATCH 0/6] Fixes for various compiler warnings
+Date:   Wed, 28 Aug 2019 09:10:11 +0200
+Message-Id: <cover.1566976047.git.ps@pks.im>
 X-Mailer: git-send-email 2.23.0
-In-Reply-To: <cover.1566976047.git.ps@pks.im>
-References: <cover.1566976047.git.ps@pks.im>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
@@ -80,40 +77,38 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-We're checking for various sizes in configure.ac, among them the size of
-the socklen_t type. If socklen_t's size is not found and thus reported
-to be zero, we will typedef our own socklen_t as "unsigned int".
+Hi,
 
-The check for socklen_t is insufficient, though. While the type is
-declared via <sys/socket.h>, we only search AC_INCLUDES_DEFAULT for its
-declaration, which doesn't include <sys/socket.h>. On musl libc, this
-causes us to not find the declaration and redeclare it with an
-incompatible type.
+here's some assorted fixes for compiler warnings I'm seeing on my
+platform. Most warnings are probably due to using musl libc, but
+the fixes should be the correct thing to do regardless. With this
+patchset, I can now compile nfs-utils with -Werror just fine.
 
-Fix the issue by searching both the default includes as well as
-<sys/socket.h>.
+Regards
+Patrick
 
-Signed-off-by: Patrick Steinhardt <ps@pks.im>
----
- configure.ac | 5 ++++-
- 1 file changed, 4 insertions(+), 1 deletion(-)
+Patrick Steinhardt (6):
+  Annotate unused fields with UNUSED
+  Use <fcntl.h> header instead of <sys/fcntl.h>
+  Use <poll.h> header instead of <sys/poll.h>
+  configure.ac: Add <sys/socket.h> header when checking
+    sizeof(socklen_t)
+  nfsd_path: Include missing header for `struct stat`
+  mountd: Use unsigned for filesystem type magic constants
 
-diff --git a/configure.ac b/configure.ac
-index 50002b4a..37096944 100644
---- a/configure.ac
-+++ b/configure.ac
-@@ -545,7 +545,10 @@ AC_CHECK_SIZEOF(short)
- AC_CHECK_SIZEOF(int)
- AC_CHECK_SIZEOF(long)
- AC_CHECK_SIZEOF(size_t)
--AC_CHECK_SIZEOF(socklen_t)
-+AC_CHECK_SIZEOF(socklen_t,, [AC_INCLUDES_DEFAULT
-+                             #ifdef HAVE_SYS_SOCKET_H
-+                             # include <sys/socket.h>
-+                             #endif])
- 
- 
- dnl *************************************************************
+ configure.ac                   | 5 ++++-
+ support/export/xtab.c          | 2 +-
+ support/include/nfsd_path.h    | 2 ++
+ support/misc/xstat.c           | 3 ++-
+ support/nfs/rmtab.c            | 2 +-
+ support/nfs/rpc_socket.c       | 3 ++-
+ support/nfs/svc_socket.c       | 2 +-
+ support/nfs/xio.c              | 2 +-
+ utils/gssd/svcgssd_main_loop.c | 2 +-
+ utils/mountd/cache.c           | 4 ++--
+ utils/statd/sm-notify.c        | 2 +-
+ 11 files changed, 18 insertions(+), 11 deletions(-)
+
 -- 
 2.23.0
 
