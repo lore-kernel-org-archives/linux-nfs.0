@@ -2,101 +2,134 @@ Return-Path: <SRS0=QzVm=W2=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-0.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=no
+X-Spam-Status: No, score=-0.8 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
+	SPF_HELO_NONE,SPF_PASS,UNPARSEABLE_RELAY,URIBL_BLOCKED autolearn=no
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1BFA0C3A59B
-	for <linux-nfs@archiver.kernel.org>; Fri, 30 Aug 2019 16:27:27 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 12CBFC3A59B
+	for <linux-nfs@archiver.kernel.org>; Fri, 30 Aug 2019 16:33:21 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id EAACA2186A
-	for <linux-nfs@archiver.kernel.org>; Fri, 30 Aug 2019 16:27:25 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id D95172073F
+	for <linux-nfs@archiver.kernel.org>; Fri, 30 Aug 2019 16:33:20 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="B4E034NE"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728178AbfH3Q1Z (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 30 Aug 2019 12:27:25 -0400
-Received: from mx1.redhat.com ([209.132.183.28]:38604 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1728166AbfH3Q1Z (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 30 Aug 2019 12:27:25 -0400
-Received: from smtp.corp.redhat.com (int-mx07.intmail.prod.int.phx2.redhat.com [10.5.11.22])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 01D4C3001839
-        for <linux-nfs@vger.kernel.org>; Fri, 30 Aug 2019 16:27:25 +0000 (UTC)
-Received: from coeurl.usersys.redhat.com (ovpn-121-35.rdu2.redhat.com [10.10.121.35])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id DB0AB1001281;
-        Fri, 30 Aug 2019 16:27:24 +0000 (UTC)
-Received: by coeurl.usersys.redhat.com (Postfix, from userid 1000)
-        id 8A9D620963; Fri, 30 Aug 2019 12:27:24 -0400 (EDT)
-From:   Scott Mayhew <smayhew@redhat.com>
-To:     steved@redhat.com
-Cc:     linux-nfs@vger.kernel.org
-Subject: [nfs-utils PATCH v2 0/4] add principal to the data being tracked by nfsdcld
-Date:   Fri, 30 Aug 2019 12:27:20 -0400
-Message-Id: <20190830162724.13862-1-smayhew@redhat.com>
-X-Scanned-By: MIMEDefang 2.84 on 10.5.11.22
-X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.40]); Fri, 30 Aug 2019 16:27:25 +0000 (UTC)
+        id S1727922AbfH3QdU (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 30 Aug 2019 12:33:20 -0400
+Received: from aserp2120.oracle.com ([141.146.126.78]:53032 "EHLO
+        aserp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727792AbfH3QdU (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 30 Aug 2019 12:33:20 -0400
+Received: from pps.filterd (aserp2120.oracle.com [127.0.0.1])
+        by aserp2120.oracle.com (8.16.0.27/8.16.0.27) with SMTP id x7UGX6Cg022227;
+        Fri, 30 Aug 2019 16:33:08 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=content-type :
+ mime-version : subject : from : in-reply-to : date : cc :
+ content-transfer-encoding : message-id : references : to;
+ s=corp-2019-08-05; bh=7F9jX+3JTIa1zj/Hv1wR+TjKUvAq2ErBXof15YLfvH8=;
+ b=B4E034NE7xCCqU2TL6QzXdbuiPGZjMgLvmXmEwq/+0GL6ow88KFbcl3pugUWE1vhsblA
+ OlhGjoSlr0wS3BDpSfrLs0rVkFb8GMA9syHQ161ICvw8UV0zzNeednUNBgmqq/E+rGqh
+ +yRyBfsoQLOEK2DhFNKn/KpcbLYSvUPHfx5wNHUqNe7YuStdUvlqz8ZLkVEtGBeZ5jg+
+ 2LOOtnulTqK9w4KKWI562xlnCoAxUw5KTm8YGPc44SYEwXCpor0lGlLI9SZ5QycLMD4q
+ rQ7liGDvh/7ZUITcwFBgnvdFZHJcpCkkZzmINxm2Gz+5w00y6sVQajBPC5Igb9WbRb5T iw== 
+Received: from userp3030.oracle.com (userp3030.oracle.com [156.151.31.80])
+        by aserp2120.oracle.com with ESMTP id 2uq7dng01c-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Fri, 30 Aug 2019 16:33:08 +0000
+Received: from pps.filterd (userp3030.oracle.com [127.0.0.1])
+        by userp3030.oracle.com (8.16.0.27/8.16.0.27) with SMTP id x7UGWum5145599;
+        Fri, 30 Aug 2019 16:33:07 GMT
+Received: from aserv0121.oracle.com (aserv0121.oracle.com [141.146.126.235])
+        by userp3030.oracle.com with ESMTP id 2upxabgq23-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Fri, 30 Aug 2019 16:33:03 +0000
+Received: from abhmp0014.oracle.com (abhmp0014.oracle.com [141.146.116.20])
+        by aserv0121.oracle.com (8.14.4/8.13.8) with ESMTP id x7UGWpw4004525;
+        Fri, 30 Aug 2019 16:32:51 GMT
+Received: from anon-dhcp-153.1015granger.net (/68.61.232.219)
+        by default (Oracle Beehive Gateway v4.0)
+        with ESMTP ; Fri, 30 Aug 2019 09:32:51 -0700
+Content-Type: text/plain;
+        charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 12.4 \(3445.104.11\))
+Subject: Re: [PATCH 0/2] nfsd: add principal to the data being tracked by
+ nfsdcld
+From:   Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20190830162631.13195-1-smayhew@redhat.com>
+Date:   Fri, 30 Aug 2019 12:32:50 -0400
+Cc:     Bruce Fields <bfields@fieldses.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Simo Sorce <simo@redhat.com>
+Content-Transfer-Encoding: 7bit
+Message-Id: <A732539C-837A-4764-8281-C26E4203DE25@oracle.com>
+References: <20190830162631.13195-1-smayhew@redhat.com>
+To:     Scott Mayhew <smayhew@redhat.com>
+X-Mailer: Apple Mail (2.3445.104.11)
+X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9365 signatures=668685
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 suspectscore=0 malwarescore=0
+ phishscore=0 bulkscore=0 spamscore=0 mlxscore=0 mlxlogscore=999
+ adultscore=0 classifier=spam adjust=0 reason=mlx scancount=1
+ engine=8.0.1-1906280000 definitions=main-1908300163
+X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9365 signatures=668685
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 priorityscore=1501 malwarescore=0
+ suspectscore=0 phishscore=0 bulkscore=0 spamscore=0 clxscore=1011
+ lowpriorityscore=0 mlxscore=0 impostorscore=0 mlxlogscore=999 adultscore=0
+ classifier=spam adjust=0 reason=mlx scancount=1 engine=8.0.1-1906280000
+ definitions=main-1908300163
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-At the spring bakeathon, Chuck suggested that we should store the
-kerberos principal in addition to the client id string in nfsdcld.  The
-idea is to prevent an illegitimate client from reclaiming another
-client's opens by supplying that client's id string.
+Simo, any comments or questions?
 
-The first patch adds support for a "GetVersion" upcall which allows nfsd
-to determine the maximum message version that nfsdcld supports.  Right
-now it's based on the value of CLD_UPCALL_VERSION from cld.h, but I was
-thinking we may wish to add a command-line option (and an nfs.conf)
-option to make it possible to use a lower version than
-CLD_UPCALL_VERSION.  My thinking here is that an older nfsdcld daemon
-won't be compatible with the new database schema... rather than worrying
-about messing with downgrading the database, just use the command-line
-option to make it behave like an older daemon.
+Patches can be found here:
 
-The second patch adds handling for the v2 Cld_Create and Cld_GraceStart
-upcalls, which can include the kerberos principal which we'll store
-along with the client id string in the database.  Note that if we're
-talking to an old kernel that does the v1 upcall, everything still works
-(we just ignore the new columns in the database).
+https://marc.info/?l=linux-nfs&m=156718239314526&w=2
 
-The third patch adds a tool for manipulating nfsdcld's database schema.
-It's mostly intended to be used to downgrade the database in the
-(hopefully rare) event that an admin would want to downgrade nfsdcld.
-It also provides the ability for fixing broken recovery table names
-(which nfsdcld also fixes automatically) as well as the ability to print
-the contents of the database.
+https://marc.info/?l=linux-nfs&m=156718239414527&w=2
 
-The final patch updates the nfsdcld man page.
 
-Changes since v1:
-- added a tool for manipulating nfsdcld's sqlite database schema
-- updated the nfsdcld man page
+> On Aug 30, 2019, at 12:26 PM, Scott Mayhew <smayhew@redhat.com> wrote:
+> 
+> At the spring bakeathon, Chuck suggested that we should store the
+> kerberos principal in addition to the client id string in nfsdcld.  The
+> idea is to prevent an illegitimate client from reclaiming another
+> client's opens by supplying that client's id string.
+> 
+> The first patch lays some groundwork for supporting multiple message
+> versions for the nfsdcld upcalls, adding fields for version and message
+> length to the nfsd4_client_tracking_ops (these fields are only used for
+> the nfsdcld upcalls and ignored for the other tracking methods), as well
+> as an upcall to get the maximum version supported by the userspace
+> daemon.
+> 
+> The second patch actually adds the v2 message, which adds the principal
+> (actually just the first 1024 bytes) to the Cld_Create upcall and to the
+> Cld_GraceStart downcall (which is what loads the data in the
+> reclaim_str_hashtbl). I couldn't really figure out what the maximum length
+> of a kerberos principal actually is (looking at krb5.h the length field in
+> the struct krb5_data is an unsigned int, so I guess it can be pretty big).
+> I don't think the principal will be that large in practice, and even if
+> it is the first 1024 bytes should be sufficient for our purposes.
+> 
+> Scott Mayhew (2):
+>  nfsd: add a "GetVersion" upcall for nfsdcld
+>  nfsd: add support for upcall version 2
+> 
+> fs/nfsd/nfs4recover.c         | 332 +++++++++++++++++++++++++++-------
+> fs/nfsd/nfs4state.c           |   6 +-
+> fs/nfsd/state.h               |   3 +-
+> include/uapi/linux/nfsd/cld.h |  37 +++-
+> 4 files changed, 311 insertions(+), 67 deletions(-)
+> 
+> -- 
+> 2.17.2
+> 
 
-Scott Mayhew (4):
-  nfsdcld: add a "GetVersion" upcall
-  nfsdcld: add support for upcall version 2
-  Add a tool for manipulating the nfsdcld sqlite database schema.
-  nfsdcld: update nfsdcld.man
+--
+Chuck Lever
 
- configure.ac                    |   1 +
- support/include/cld.h           |  37 ++++-
- tools/Makefile.am               |   4 +
- tools/clddb-tool/Makefile.am    |  13 ++
- tools/clddb-tool/clddb-tool.man |  83 ++++++++++
- tools/clddb-tool/clddb-tool.py  | 261 ++++++++++++++++++++++++++++++++
- utils/nfsdcld/cld-internal.h    |  13 +-
- utils/nfsdcld/nfsdcld.c         | 140 ++++++++++++++---
- utils/nfsdcld/nfsdcld.man       |  32 +++-
- utils/nfsdcld/sqlite.c          | 238 ++++++++++++++++++++++++-----
- utils/nfsdcld/sqlite.h          |   2 +
- 11 files changed, 755 insertions(+), 69 deletions(-)
- create mode 100644 tools/clddb-tool/Makefile.am
- create mode 100644 tools/clddb-tool/clddb-tool.man
- create mode 100644 tools/clddb-tool/clddb-tool.py
 
--- 
-2.17.2
 
