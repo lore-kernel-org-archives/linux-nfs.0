@@ -2,76 +2,102 @@ Return-Path: <SRS0=QzVm=W2=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-0.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-6.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 79AC5C3A5A4
-	for <linux-nfs@archiver.kernel.org>; Fri, 30 Aug 2019 16:26:37 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 38A8CC3A5A6
+	for <linux-nfs@archiver.kernel.org>; Fri, 30 Aug 2019 16:27:27 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 4FDBD2342B
-	for <linux-nfs@archiver.kernel.org>; Fri, 30 Aug 2019 16:26:37 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 1848823430
+	for <linux-nfs@archiver.kernel.org>; Fri, 30 Aug 2019 16:27:27 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727876AbfH3Q0g (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 30 Aug 2019 12:26:36 -0400
-Received: from mx1.redhat.com ([209.132.183.28]:48624 "EHLO mx1.redhat.com"
+        id S1728186AbfH3Q1Z (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 30 Aug 2019 12:27:25 -0400
+Received: from mx1.redhat.com ([209.132.183.28]:49242 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727246AbfH3Q0g (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 30 Aug 2019 12:26:36 -0400
-Received: from smtp.corp.redhat.com (int-mx03.intmail.prod.int.phx2.redhat.com [10.5.11.13])
+        id S1728169AbfH3Q1Z (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 30 Aug 2019 12:27:25 -0400
+Received: from smtp.corp.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id A7D0CA36EE3;
-        Fri, 30 Aug 2019 16:26:36 +0000 (UTC)
+        by mx1.redhat.com (Postfix) with ESMTPS id 2BF0B1893FB1
+        for <linux-nfs@vger.kernel.org>; Fri, 30 Aug 2019 16:27:25 +0000 (UTC)
 Received: from coeurl.usersys.redhat.com (ovpn-121-35.rdu2.redhat.com [10.10.121.35])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 8F7A26092D;
-        Fri, 30 Aug 2019 16:26:36 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 12B12600F8;
+        Fri, 30 Aug 2019 16:27:25 +0000 (UTC)
 Received: by coeurl.usersys.redhat.com (Postfix, from userid 1000)
-        id 2F67920963; Fri, 30 Aug 2019 12:26:31 -0400 (EDT)
+        id B8A1520B4C; Fri, 30 Aug 2019 12:27:24 -0400 (EDT)
 From:   Scott Mayhew <smayhew@redhat.com>
-To:     bfields@fieldses.org, chuck.lever@oracle.com
+To:     steved@redhat.com
 Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH 0/2] nfsd: add principal to the data being tracked by nfsdcld
-Date:   Fri, 30 Aug 2019 12:26:29 -0400
-Message-Id: <20190830162631.13195-1-smayhew@redhat.com>
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.13
-X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.6.2 (mx1.redhat.com [10.5.110.68]); Fri, 30 Aug 2019 16:26:36 +0000 (UTC)
+Subject: [nfs-utils PATCH v2 4/4] nfsdcld: update nfsdcld.man
+Date:   Fri, 30 Aug 2019 12:27:24 -0400
+Message-Id: <20190830162724.13862-5-smayhew@redhat.com>
+In-Reply-To: <20190830162724.13862-1-smayhew@redhat.com>
+References: <20190830162724.13862-1-smayhew@redhat.com>
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.11
+X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.6.2 (mx1.redhat.com [10.5.110.70]); Fri, 30 Aug 2019 16:27:25 +0000 (UTC)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-At the spring bakeathon, Chuck suggested that we should store the
-kerberos principal in addition to the client id string in nfsdcld.  The
-idea is to prevent an illegitimate client from reclaiming another
-client's opens by supplying that client's id string.
+Added some historical information to the notes section, along with
+some information regarding upgrading and downgrading nfsdcld.
 
-The first patch lays some groundwork for supporting multiple message
-versions for the nfsdcld upcalls, adding fields for version and message
-length to the nfsd4_client_tracking_ops (these fields are only used for
-the nfsdcld upcalls and ignored for the other tracking methods), as well
-as an upcall to get the maximum version supported by the userspace
-daemon.
+Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+---
+ utils/nfsdcld/nfsdcld.man | 32 +++++++++++++++++++++++++++-----
+ 1 file changed, 27 insertions(+), 5 deletions(-)
 
-The second patch actually adds the v2 message, which adds the principal
-(actually just the first 1024 bytes) to the Cld_Create upcall and to the
-Cld_GraceStart downcall (which is what loads the data in the
-reclaim_str_hashtbl). I couldn't really figure out what the maximum length
-of a kerberos principal actually is (looking at krb5.h the length field in
-the struct krb5_data is an unsigned int, so I guess it can be pretty big).
-I don't think the principal will be that large in practice, and even if
-it is the first 1024 bytes should be sufficient for our purposes.
-
-Scott Mayhew (2):
-  nfsd: add a "GetVersion" upcall for nfsdcld
-  nfsd: add support for upcall version 2
-
- fs/nfsd/nfs4recover.c         | 332 +++++++++++++++++++++++++++-------
- fs/nfsd/nfs4state.c           |   6 +-
- fs/nfsd/state.h               |   3 +-
- include/uapi/linux/nfsd/cld.h |  37 +++-
- 4 files changed, 311 insertions(+), 67 deletions(-)
-
+diff --git a/utils/nfsdcld/nfsdcld.man b/utils/nfsdcld/nfsdcld.man
+index c271d14..4c2b1e8 100644
+--- a/utils/nfsdcld/nfsdcld.man
++++ b/utils/nfsdcld/nfsdcld.man
+@@ -185,15 +185,37 @@ on stable storage by manipulating information on the filesystem
+ directly, in the directory to which \fI/proc/fs/nfsd/nfsv4recoverydir\fR
+ points.
+ .PP
+-This daemon requires a kernel that supports the nfsdcld upcall. If the
+-kernel does not support the new upcall, or is using the legacy client
+-name tracking code then it will not create the pipe that nfsdcld uses to
+-talk to the kernel.
++This changed with the original introduction of \fBnfsdcld\fR upcall in kernel version 3.4,
++which was later deprecated in favor of the \fBnfsdcltrack\fR(8) usermodehelper
++program, support for which was added in kernel version 3.8.  However, since the
++usermodehelper upcall does not work in containers, support for a new version of
++the \fBnfsdcld\fR upcall was added in kernel version 5.2.
++.PP
++This daemon requires a kernel that supports the \fBnfsdcld\fR upcall. On older kernels, if
++the legacy client name tracking code was in use, then the kernel would not create the
++pipe that \fBnfsdcld\fR uses to talk to the kernel.  On newer kernels, nfsd attempts to
++initialize client tracking in the following order:  First, the \fBnfsdcld\fR upcall.  Second,
++the \fBnfsdcltrack\fR usermodehelper upcall.  Finally, the legacy client tracking.
+ .PP
+ This daemon should be run as root, as the pipe that it uses to communicate
+ with the kernel is only accessable by root. The daemon however does drop all
+ superuser capabilities after starting. Because of this, the \fIstoragedir\fR
+ should be owned by root, and be readable and writable by owner.
++.PP
++The daemon now supports different upcall versions to allow the kernel to pass additional
++data to be stored in the on-disk database.  The kernel will query the supported upcall
++version from \fBnfsdcld\fR during client tracking initialization.  A restart of \fBnfsd\fR is
++not necessary after upgrading \fBnfsdcld\fR, however \fBnfsd\fR will not use a later upcall
++version until restart.  A restart of \fBnfsd is necessary\fR after downgrading \fBnfsdcld\fR,
++to ensure that \fBnfsd\fR does not use an upcall version that \fBnfsdcld\fR does not support.
++Additionally, a downgrade of \fBnfsdcld\fR requires the schema of the on-disk database to
++be downgraded as well.  That can be accomplished using the \fBclddb-tool\fR(8) utility.
++.SH FILES
++.TP
++.B /var/lib/nfs/nfsdcld/main.sqlite
++.SH SEE ALSO
++.BR nfsdcltrack "(8), " clddb-tool (8)
+ .SH "AUTHORS"
+ .IX Header "AUTHORS"
+-The nfsdcld daemon was developed by Jeff Layton <jlayton@redhat.com>.
++The nfsdcld daemon was developed by Jeff Layton <jlayton@redhat.com>
++with modifications from Scott Mayhew <smayhew@redhat.com>.
 -- 
 2.17.2
 
