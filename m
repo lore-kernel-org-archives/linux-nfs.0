@@ -5,57 +5,56 @@ X-Spam-Level:
 X-Spam-Status: No, score=-5.0 required=3.0 tests=DATE_IN_PAST_96_XX,
 	DKIMWL_WL_HIGH,DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS autolearn=unavailable autolearn_force=no version=3.4.0
+	SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 33DA5C4CEC6
+	by smtp.lore.kernel.org (Postfix) with ESMTP id CC151C4CEC8
 	for <linux-nfs@archiver.kernel.org>; Thu, 12 Sep 2019 17:29:03 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 0B7292081B
+	by mail.kernel.org (Postfix) with ESMTP id 919602081B
 	for <linux-nfs@archiver.kernel.org>; Thu, 12 Sep 2019 17:29:03 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=amazon.com header.i=@amazon.com header.b="c1nhCo3+"
+	dkim=pass (1024-bit key) header.d=amazon.com header.i=@amazon.com header.b="aIWL3ytd"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2387613AbfILR2y (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 12 Sep 2019 13:28:54 -0400
-Received: from smtp-fw-6001.amazon.com ([52.95.48.154]:7941 "EHLO
-        smtp-fw-6001.amazon.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2387601AbfILR2x (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Sep 2019 13:28:53 -0400
+        id S2387621AbfILR3C (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 12 Sep 2019 13:29:02 -0400
+Received: from smtp-fw-2101.amazon.com ([72.21.196.25]:44567 "EHLO
+        smtp-fw-2101.amazon.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2387594AbfILR2z (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Sep 2019 13:28:55 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
   d=amazon.com; i=@amazon.com; q=dns/txt; s=amazon201209;
-  t=1568309333; x=1599845333;
+  t=1568309334; x=1599845334;
   h=message-id:in-reply-to:references:from:date:subject:to:
    mime-version;
-  bh=UiFv3SNJuY94P5tjOwzpJIDbJB9YBiEh3khbIHtxppM=;
-  b=c1nhCo3+pYZdbcfGY6SwpfBYHOu6q/DfQuIC/MdCNIs1kkwuNu2efOKy
-   DJGFZZzHNLvqTfqyMa2l+ZTRP/iqgsOMUCx/a4FftnqqavuebswD9jXLN
-   vqQ5atiRfho7cZqtst/PuE/w+6T5iBI3MtbhMxUR0FZmppAH2eltJaP1m
-   U=;
+  bh=LP93UruatuZkR059tKtl4aY+x6e5dRSo0DB+aVTiB7o=;
+  b=aIWL3ytd1WaFe46m3qzYwE9Gn58OxysWNAaXtYEWZOuU32FmMMZyuy0q
+   qYKqJeev+medTYOoSk2zw1/H3ea/6HqO/rucI2Qh4NgXSx7dr3UvAX8mi
+   xzvMycwtvhNJLWbGhTPbJzeJilPuGeFPv8MnVAuy3htIKhMFJ85S8p/rl
+   Q=;
 X-IronPort-AV: E=Sophos;i="5.64,497,1559520000"; 
-   d="scan'208";a="414961236"
-Received: from iad6-co-svc-p1-lb1-vlan3.amazon.com (HELO email-inbound-relay-1d-f273de60.us-east-1.amazon.com) ([10.124.125.6])
-  by smtp-border-fw-out-6001.iad6.amazon.com with ESMTP; 12 Sep 2019 17:28:52 +0000
-Received: from EX13MTAUEA001.ant.amazon.com (iad55-ws-svc-p15-lb9-vlan2.iad.amazon.com [10.40.159.162])
-        by email-inbound-relay-1d-f273de60.us-east-1.amazon.com (Postfix) with ESMTPS id ABBCAA2B72;
+   d="scan'208";a="750440664"
+Received: from iad6-co-svc-p1-lb1-vlan2.amazon.com (HELO email-inbound-relay-2a-53356bf6.us-west-2.amazon.com) ([10.124.125.2])
+  by smtp-border-fw-out-2101.iad2.amazon.com with ESMTP; 12 Sep 2019 17:28:53 +0000
+Received: from EX13MTAUWC001.ant.amazon.com (pdx4-ws-svc-p6-lb7-vlan2.pdx.amazon.com [10.170.41.162])
+        by email-inbound-relay-2a-53356bf6.us-west-2.amazon.com (Postfix) with ESMTPS id 85C16A1E01;
         Thu, 12 Sep 2019 17:28:52 +0000 (UTC)
-Received: from EX13D04UEA003.ant.amazon.com (10.43.61.177) by
- EX13MTAUEA001.ant.amazon.com (10.43.61.82) with Microsoft SMTP Server (TLS)
+Received: from EX13d09UWC001.ant.amazon.com (10.43.162.60) by
+ EX13MTAUWC001.ant.amazon.com (10.43.162.135) with Microsoft SMTP Server (TLS)
  id 15.0.1367.3; Thu, 12 Sep 2019 17:28:52 +0000
-Received: from EX13MTAUEA001.ant.amazon.com (10.43.61.82) by
- EX13D04UEA003.ant.amazon.com (10.43.61.177) with Microsoft SMTP Server (TLS)
- id 15.0.1367.3; Thu, 12 Sep 2019 17:28:52 +0000
+Received: from EX13MTAUWC001.ant.amazon.com (10.43.162.135) by
+ EX13d09UWC001.ant.amazon.com (10.43.162.60) with Microsoft SMTP Server (TLS)
+ id 15.0.1367.3; Thu, 12 Sep 2019 17:28:51 +0000
 Received: from kaos-source-ops-60003.pdx1.corp.amazon.com (10.36.133.164) by
- mail-relay.amazon.com (10.43.61.243) with Microsoft SMTP Server id
+ mail-relay.amazon.com (10.43.162.232) with Microsoft SMTP Server id
  15.0.1367.3 via Frontend Transport; Thu, 12 Sep 2019 17:28:52 +0000
 Received: by kaos-source-ops-60003.pdx1.corp.amazon.com (Postfix, from userid 6262777)
-        id E52E9C0574; Thu, 12 Sep 2019 17:28:49 +0000 (UTC)
-Message-ID: <f85e8d3bf54eb8308cc854e852b2368560fdb828.1568309119.git.fllinden@amazon.com>
+        id E61B0C0515; Thu, 12 Sep 2019 17:28:49 +0000 (UTC)
+Message-ID: <05f6405b6bf29fde6ed411d2a472d63f87868e0b.1568309119.git.fllinden@amazon.com>
 In-Reply-To: <cover.1568309119.git.fllinden@amazon.com>
 References: <cover.1568309119.git.fllinden@amazon.com>
 From:   Frank van der Linden <fllinden@amazon.com>
-Date:   Mon, 26 Aug 2019 22:06:38 +0000
-Subject: [RFC PATCH 05/35] NFSv4.2: define a function to compute the maximum
- XDR size for listxattr
+Date:   Fri, 30 Aug 2019 23:59:56 +0000
+Subject: [RFC PATCH 20/35] nfs: add the NFS_V4_XATTR config option
 To:     <linux-nfs@vger.kernel.org>, <linux-fsdevel@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain
@@ -64,54 +63,34 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-RFC 8276 specifies the maximum return size of the LISTXATTRS operation
-as the XDR-encoded size of the entire reply.
-
-Define a function that computes the maximum needed XDR size (minus the
-cookie and the attribute count, which are in the XDR buffer header), to
-have an upper bound to check against.
+Add the CONFIG_NFS_V4_XATTR option to enable client side user extended
+attributes support for NFSv4.2
 
 Signed-off-by: Frank van der Linden <fllinden@amazon.com>
 ---
- fs/nfs/nfs42.h | 20 ++++++++++++++++++++
- 1 file changed, 20 insertions(+)
+ fs/nfs/Kconfig | 9 +++++++++
+ 1 file changed, 9 insertions(+)
 
-diff --git a/fs/nfs/nfs42.h b/fs/nfs/nfs42.h
-index 901cca7542f9..935651345be7 100644
---- a/fs/nfs/nfs42.h
-+++ b/fs/nfs/nfs42.h
-@@ -6,6 +6,10 @@
- #ifndef __LINUX_FS_NFS_NFS4_2_H
- #define __LINUX_FS_NFS_NFS4_2_H
+diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
+index 295a7a21b774..067689ea9e3f 100644
+--- a/fs/nfs/Kconfig
++++ b/fs/nfs/Kconfig
+@@ -152,6 +152,15 @@ config NFS_V4_1_MIGRATION
+           The NFSv4.1 pieces of the Linux NFSv4 migration implementation are
+           still experimental.  If you are not an NFSv4 developer, say N here.
  
-+#ifdef CONFIG_NFS_V4_XATTR
-+#include <linux/xattr.h>
-+#endif
++config NFS_V4_XATTR
++	bool "NFSv4.2 client support for extended attributes"
++	depends on NFS_V4_2
++	default n
++	help
++	  This option enables the optional NFSv4 client extended attributes
++	  support (https://tools.ietf.org/html/rfc8276). User namespace
++	  xattr support only, as specificed in the RFC.
 +
- /*
-  * FIXME:  four LAYOUTSTATS calls per compound at most! Do we need to support
-  * more? Need to consider not to pre-alloc too much for a compound.
-@@ -24,4 +28,20 @@ int nfs42_proc_layouterror(struct pnfs_layout_segment *lseg,
- 			   const struct nfs42_layout_error *errors,
- 			   size_t n);
- 
-+#ifdef CONFIG_NFS_V4_XATTR
-+/*
-+ * Maximum XDR buffer size needed for a listxattr buffer of buflen size.
-+ *
-+ * The upper boundary is a buffer with all 1-byte sized attribute names.
-+ * They would be 7 bytes long in the eventual buffer ("user.x\0"), and
-+ * 8 bytes long XDR-encoded.
-+ *
-+ * Include the trailing eof word as well.
-+ */
-+static inline u32 nfs42_listxattr_xdrsize(u32 buflen)
-+{
-+	return ((buflen / (XATTR_USER_PREFIX_LEN + 2)) * 8) + 4;
-+}
-+#endif
-+
- #endif /* __LINUX_FS_NFS_NFS4_2_H */
+ config NFS_V4_SECURITY_LABEL
+ 	bool
+ 	depends on NFS_V4_2 && SECURITY
 -- 
 2.17.2
 
