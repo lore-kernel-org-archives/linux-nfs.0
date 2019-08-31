@@ -7,54 +7,55 @@ X-Spam-Status: No, score=-5.0 required=3.0 tests=DATE_IN_PAST_96_XX,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
 	SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B469CC4CEC9
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 89994C4CEC5
 	for <linux-nfs@archiver.kernel.org>; Thu, 12 Sep 2019 17:28:55 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 8DDB0214AF
+	by mail.kernel.org (Postfix) with ESMTP id 63871214AE
 	for <linux-nfs@archiver.kernel.org>; Thu, 12 Sep 2019 17:28:55 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=amazon.com header.i=@amazon.com header.b="RAue6Llz"
+	dkim=pass (1024-bit key) header.d=amazon.com header.i=@amazon.com header.b="beHXutpl"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2387620AbfILR2y (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S2387617AbfILR2y (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Thu, 12 Sep 2019 13:28:54 -0400
-Received: from smtp-fw-4101.amazon.com ([72.21.198.25]:10141 "EHLO
-        smtp-fw-4101.amazon.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2387608AbfILR2y (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Sep 2019 13:28:54 -0400
+Received: from smtp-fw-2101.amazon.com ([72.21.196.25]:44567 "EHLO
+        smtp-fw-2101.amazon.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2387598AbfILR2x (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Sep 2019 13:28:53 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
   d=amazon.com; i=@amazon.com; q=dns/txt; s=amazon201209;
   t=1568309333; x=1599845333;
   h=message-id:in-reply-to:references:from:date:subject:to:
    mime-version;
-  bh=YLG9LrkTcV9Bkv1mJLOSlaN8R1K5vtemYmWMhgUh+zY=;
-  b=RAue6LlzPYwkUFeJppPq9ulgUTqqrOdsqfaFhyfia77Ud0DGgbTnPPcg
-   GT4dbRQ++uahw+2lOpW6WQD3trLER80oO/i+oVkHUIBXoFnqyN2ohWjSn
-   iF1gbzMnT2kJ003hjq8S0t3EAWbZZ4BRGIOQzCCQm7MMwoG10zofyRrLt
-   U=;
+  bh=AGAO4q+sahYkfsrmsJLVcWrv5VJxiw7TVhVh6xK5AXY=;
+  b=beHXutplI5rDNUk7DBJ6SuCpd1q4irB1Sz9bjzXsQApnUpwVx3TtKhv3
+   T2P6K6ukB+5A4KatdMSqgvAIIX6ly0+Od8Uy6oOIuFFgc5U47y0sChGEh
+   EqYuYj182FOfCvJvIeY4fZViscM+dPb7lTGRpbDxewCMXl/uJ7y6CzEs8
+   Y=;
 X-IronPort-AV: E=Sophos;i="5.64,497,1559520000"; 
-   d="scan'208";a="784654348"
-Received: from iad6-co-svc-p1-lb1-vlan3.amazon.com (HELO email-inbound-relay-1d-74cf8b49.us-east-1.amazon.com) ([10.124.125.6])
-  by smtp-border-fw-out-4101.iad4.amazon.com with ESMTP; 12 Sep 2019 17:28:53 +0000
-Received: from EX13MTAUEA001.ant.amazon.com (iad55-ws-svc-p15-lb9-vlan2.iad.amazon.com [10.40.159.162])
-        by email-inbound-relay-1d-74cf8b49.us-east-1.amazon.com (Postfix) with ESMTPS id C512AC125A;
-        Thu, 12 Sep 2019 17:28:52 +0000 (UTC)
-Received: from EX13D06UEA001.ant.amazon.com (10.43.61.154) by
- EX13MTAUEA001.ant.amazon.com (10.43.61.82) with Microsoft SMTP Server (TLS)
- id 15.0.1367.3; Thu, 12 Sep 2019 17:28:52 +0000
-Received: from EX13MTAUEA001.ant.amazon.com (10.43.61.82) by
- EX13D06UEA001.ant.amazon.com (10.43.61.154) with Microsoft SMTP Server (TLS)
+   d="scan'208";a="750440659"
+Received: from iad6-co-svc-p1-lb1-vlan2.amazon.com (HELO email-inbound-relay-2a-d0be17ee.us-west-2.amazon.com) ([10.124.125.2])
+  by smtp-border-fw-out-2101.iad2.amazon.com with ESMTP; 12 Sep 2019 17:28:52 +0000
+Received: from EX13MTAUEB001.ant.amazon.com (pdx4-ws-svc-p6-lb7-vlan3.pdx.amazon.com [10.170.41.166])
+        by email-inbound-relay-2a-d0be17ee.us-west-2.amazon.com (Postfix) with ESMTPS id E9216A23A6;
+        Thu, 12 Sep 2019 17:28:51 +0000 (UTC)
+Received: from EX13D01UEB002.ant.amazon.com (10.43.60.219) by
+ EX13MTAUEB001.ant.amazon.com (10.43.60.96) with Microsoft SMTP Server (TLS)
+ id 15.0.1367.3; Thu, 12 Sep 2019 17:28:51 +0000
+Received: from EX13MTAUEB001.ant.amazon.com (10.43.60.96) by
+ EX13D01UEB002.ant.amazon.com (10.43.60.219) with Microsoft SMTP Server (TLS)
  id 15.0.1367.3; Thu, 12 Sep 2019 17:28:51 +0000
 Received: from kaos-source-ops-60003.pdx1.corp.amazon.com (10.36.133.164) by
- mail-relay.amazon.com (10.43.61.243) with Microsoft SMTP Server id
+ mail-relay.amazon.com (10.43.60.129) with Microsoft SMTP Server id
  15.0.1367.3 via Frontend Transport; Thu, 12 Sep 2019 17:28:51 +0000
 Received: by kaos-source-ops-60003.pdx1.corp.amazon.com (Postfix, from userid 6262777)
-        id E419DC037E; Thu, 12 Sep 2019 17:28:49 +0000 (UTC)
-Message-ID: <726530112064dd8f44c8203ba91f720d2c16b4e1.1568309119.git.fllinden@amazon.com>
+        id E1935C053D; Thu, 12 Sep 2019 17:28:49 +0000 (UTC)
+Message-ID: <11fbf78833638e57b76950a74998b0c489fb3020.1568309119.git.fllinden@amazon.com>
 In-Reply-To: <cover.1568309119.git.fllinden@amazon.com>
 References: <cover.1568309119.git.fllinden@amazon.com>
 From:   Frank van der Linden <fllinden@amazon.com>
-Date:   Sun, 1 Sep 2019 01:19:41 +0000
-Subject: [RFC PATCH 27/35] nfsd: implement the xattr procedure functions.
+Date:   Sat, 31 Aug 2019 19:00:31 +0000
+Subject: [RFC PATCH 22/35] nfsd: split off the write decode code in to a
+ seperate function
 To:     <linux-nfs@vger.kernel.org>, <linux-fsdevel@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain
@@ -63,112 +64,114 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Implement the main entry points for the *XATTR operations.
+nfs4_decode_write has code to parse incoming XDR write data in to
+a kvec head, and a list of pages.
+
+Put this code in to a seperate function, so that it can be used
+later by the xattr code, for setxattr. No functional change.
 
 Signed-off-by: Frank van der Linden <fllinden@amazon.com>
 ---
- fs/nfsd/nfs4proc.c | 74 ++++++++++++++++++++++++++++++++++++++++++++++
- fs/nfsd/nfs4xdr.c  |  2 ++
- 2 files changed, 76 insertions(+)
+ fs/nfsd/nfs4xdr.c | 72 +++++++++++++++++++++++++++--------------------
+ 1 file changed, 42 insertions(+), 30 deletions(-)
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 6ade983dd9b2..db9f3fde164e 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1802,6 +1802,80 @@ nfsd4_layoutreturn(struct svc_rqst *rqstp,
- }
- #endif /* CONFIG_NFSD_PNFS */
- 
-+#ifdef CONFIG_NFSD_V4_XATTR
-+static __be32
-+nfsd4_getxattr(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
-+	       union nfsd4_op_u *u)
-+{
-+	struct nfsd4_getxattr *getxattr = &u->getxattr;
-+
-+	return nfsd_getxattr(rqstp, &cstate->current_fh,
-+			     getxattr->getxa_name, getxattr->getxa_buf,
-+			     &getxattr->getxa_len);
-+}
-+
-+static __be32
-+nfsd4_setxattr(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
-+	   union nfsd4_op_u *u)
-+{
-+	struct nfsd4_setxattr *setxattr = &u->setxattr;
-+	int ret;
-+
-+	if (opens_in_grace(SVC_NET(rqstp)))
-+		return nfserr_grace;
-+
-+	ret = nfsd_setxattr(rqstp, &cstate->current_fh, setxattr->setxa_name,
-+			    setxattr->setxa_buf, setxattr->setxa_len,
-+			    setxattr->setxa_flags);
-+
-+	if (!ret)
-+		set_change_info(&setxattr->setxa_cinfo, &cstate->current_fh);
-+
-+	return ret;
-+}
-+
-+static __be32
-+nfsd4_listxattrs(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
-+	   union nfsd4_op_u *u)
-+{
-+	int ret, len;
-+
-+	/*
-+	 * Get the entire list, then copy out only the user attributes
-+	 * in the encode function. lsxa_buf was previously allocated as
-+	 * tmp svc space, and will be automatically freed later.
-+	 */
-+	len = XATTR_LIST_MAX;
-+
-+	ret = nfsd_listxattr(rqstp, &cstate->current_fh, u->listxattrs.lsxa_buf,
-+			     &len);
-+	if (ret)
-+		return ret;
-+
-+	u->listxattrs.lsxa_len = len;
-+
-+	return nfs_ok;
-+}
-+
-+static __be32
-+nfsd4_removexattr(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
-+	   union nfsd4_op_u *u)
-+{
-+	struct nfsd4_removexattr *removexattr = &u->removexattr;
-+	int ret;
-+
-+	if (opens_in_grace(SVC_NET(rqstp)))
-+		return nfserr_grace;
-+
-+	ret = nfsd_removexattr(rqstp, &cstate->current_fh,
-+	    removexattr->rmxa_name);
-+
-+	if (!ret)
-+		set_change_info(&removexattr->rmxa_cinfo, &cstate->current_fh);
-+
-+	return ret;
-+}
-+#endif
- /*
-  * NULL call.
-  */
 diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 25cd597f7b4e..c921945f0df0 100644
+index f2090f7fed42..25cd597f7b4e 100644
 --- a/fs/nfsd/nfs4xdr.c
 +++ b/fs/nfsd/nfs4xdr.c
-@@ -40,6 +40,8 @@
- #include <linux/utsname.h>
- #include <linux/pagemap.h>
- #include <linux/sunrpc/svcauth_gss.h>
-+#include <linux/xattr.h>
-+#include <uapi/linux/xattr.h>
+@@ -248,6 +248,44 @@ svcxdr_dupstr(struct nfsd4_compoundargs *argp, void *buf, u32 len)
+ 	return p;
+ }
  
- #include "idmap.h"
- #include "acl.h"
++static __be32
++svcxdr_construct_vector(struct nfsd4_compoundargs *argp, struct kvec *head,
++                       struct page ***pagelist, u32 buflen)
++{
++	int avail;
++	int len;
++	int pages;
++
++	/* Sorry .. no magic macros for this.. *
++	 * READ_BUF(write->wr_buflen);
++	 * SAVEMEM(write->wr_buf, write->wr_buflen);
++	 */
++	avail = (char*)argp->end - (char*)argp->p;
++	if (avail + argp->pagelen < buflen) {
++		dprintk("NFSD: xdr error (%s:%d)\n",
++			       __FILE__, __LINE__);
++		return nfserr_bad_xdr;
++	}
++	head->iov_base = argp->p;
++	head->iov_len = avail;
++	*pagelist = argp->pagelist;
++
++	len = XDR_QUADLEN(buflen) << 2;
++	if (len >= avail) {
++	       len -= avail;
++
++	       pages = len >> PAGE_SHIFT;
++	       argp->pagelist += pages;
++	       argp->pagelen -= pages * PAGE_SIZE;
++	       len -= pages * PAGE_SIZE;
++
++	       next_decode_page(argp);
++	}
++	argp->p += XDR_QUADLEN(len);
++
++	return 0;
++}
++
+ /**
+  * savemem - duplicate a chunk of memory for later processing
+  * @argp: NFSv4 compound argument structure to be freed with
+@@ -1251,8 +1289,6 @@ nfsd4_decode_verify(struct nfsd4_compoundargs *argp, struct nfsd4_verify *verify
+ static __be32
+ nfsd4_decode_write(struct nfsd4_compoundargs *argp, struct nfsd4_write *write)
+ {
+-	int avail;
+-	int len;
+ 	DECODE_HEAD;
+ 
+ 	status = nfsd4_decode_stateid(argp, &write->wr_stateid);
+@@ -1265,34 +1301,10 @@ nfsd4_decode_write(struct nfsd4_compoundargs *argp, struct nfsd4_write *write)
+ 		goto xdr_error;
+ 	write->wr_buflen = be32_to_cpup(p++);
+ 
+-	/* Sorry .. no magic macros for this.. *
+-	 * READ_BUF(write->wr_buflen);
+-	 * SAVEMEM(write->wr_buf, write->wr_buflen);
+-	 */
+-	avail = (char*)argp->end - (char*)argp->p;
+-	if (avail + argp->pagelen < write->wr_buflen) {
+-		dprintk("NFSD: xdr error (%s:%d)\n",
+-				__FILE__, __LINE__);
+-		goto xdr_error;
+-	}
+-	write->wr_head.iov_base = p;
+-	write->wr_head.iov_len = avail;
+-	write->wr_pagelist = argp->pagelist;
+-
+-	len = XDR_QUADLEN(write->wr_buflen) << 2;
+-	if (len >= avail) {
+-		int pages;
+-
+-		len -= avail;
+-
+-		pages = len >> PAGE_SHIFT;
+-		argp->pagelist += pages;
+-		argp->pagelen -= pages * PAGE_SIZE;
+-		len -= pages * PAGE_SIZE;
+-
+-		next_decode_page(argp);
+-	}
+-	argp->p += XDR_QUADLEN(len);
++	status = svcxdr_construct_vector(argp, &write->wr_head,
++					 &write->wr_pagelist, write->wr_buflen);
++	if (status)
++		return status;
+ 
+ 	DECODE_TAIL;
+ }
 -- 
 2.17.2
 
