@@ -2,164 +2,130 @@ Return-Path: <SRS0=U+gK=XH=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-5.0 required=3.0 tests=DATE_IN_PAST_96_XX,
+	DKIMWL_WL_HIGH,DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id CE0B3C4CEC7
-	for <linux-nfs@archiver.kernel.org>; Thu, 12 Sep 2019 17:07:58 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E7294C4CEC5
+	for <linux-nfs@archiver.kernel.org>; Thu, 12 Sep 2019 17:28:53 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id B0A3C20856
-	for <linux-nfs@archiver.kernel.org>; Thu, 12 Sep 2019 17:07:58 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id B884B2081B
+	for <linux-nfs@archiver.kernel.org>; Thu, 12 Sep 2019 17:28:53 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (1024-bit key) header.d=amazon.com header.i=@amazon.com header.b="AhEPHZsX"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728646AbfILRH6 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 12 Sep 2019 13:07:58 -0400
-Received: from mx1.redhat.com ([209.132.183.28]:59977 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1729621AbfILRH5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 12 Sep 2019 13:07:57 -0400
-Received: from smtp.corp.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 75994190C005;
-        Thu, 12 Sep 2019 17:07:57 +0000 (UTC)
-Received: from bcodding.csb (ovpn-64-2.rdu2.redhat.com [10.10.64.2])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 102BB60167;
-        Thu, 12 Sep 2019 17:07:57 +0000 (UTC)
-Received: by bcodding.csb (Postfix, from userid 24008)
-        id 7C331109AF49; Thu, 12 Sep 2019 13:07:57 -0400 (EDT)
-From:   Benjamin Coddington <bcodding@redhat.com>
-To:     trond.myklebust@hammerspace.com, anna.schumaker@netapp.com,
-        tibbs@math.uh.edu
-Cc:     linux-nfs@vger.kernel.org, bfields@fieldses.org,
-        chuck.lever@oracle.com, km@cm4all.com
-Subject: [PATCH 2/2] SUNRPC: Rename xdr_buf_read_netobj to xdr_buf_read_mic
-Date:   Thu, 12 Sep 2019 13:07:57 -0400
-Message-Id: <85127ce63248b1f34182dfef21ed30b808bf88fb.1568307763.git.bcodding@redhat.com>
-In-Reply-To: <043d2ca649c3d81cdf0b43b149cd43069ad1c1e2.1568307763.git.bcodding@redhat.com>
-References: <043d2ca649c3d81cdf0b43b149cd43069ad1c1e2.1568307763.git.bcodding@redhat.com>
+        id S2387600AbfILR2x (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 12 Sep 2019 13:28:53 -0400
+Received: from smtp-fw-2101.amazon.com ([72.21.196.25]:44567 "EHLO
+        smtp-fw-2101.amazon.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2387596AbfILR2x (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Sep 2019 13:28:53 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+  d=amazon.com; i=@amazon.com; q=dns/txt; s=amazon201209;
+  t=1568309332; x=1599845332;
+  h=message-id:in-reply-to:references:from:date:subject:to:
+   mime-version;
+  bh=h7J2uw9Ut0Icf/XeWVsnv5/0niF/+yNuDvFrdNwUNvI=;
+  b=AhEPHZsX3T9pk3EfX9fY4q815PHYQenZ1eQ9frqibeH6kIHsYe4oulHD
+   caYklL6r5Em/dbj6JJhmrnBuSkeZV8Dk1oa+YGRjolgYGqos7ZhH4eH3F
+   PSdJ1caGuzoMF+qE9fEx07mN5VoKI/HEiyOy1wLc6NKEXfMavU9UuQWGw
+   U=;
+X-IronPort-AV: E=Sophos;i="5.64,497,1559520000"; 
+   d="scan'208";a="750440654"
+Received: from iad6-co-svc-p1-lb1-vlan2.amazon.com (HELO email-inbound-relay-2c-168cbb73.us-west-2.amazon.com) ([10.124.125.2])
+  by smtp-border-fw-out-2101.iad2.amazon.com with ESMTP; 12 Sep 2019 17:28:51 +0000
+Received: from EX13MTAUEB001.ant.amazon.com (pdx4-ws-svc-p6-lb7-vlan2.pdx.amazon.com [10.170.41.162])
+        by email-inbound-relay-2c-168cbb73.us-west-2.amazon.com (Postfix) with ESMTPS id 4E66FA1E72;
+        Thu, 12 Sep 2019 17:28:51 +0000 (UTC)
+Received: from EX13D11UEB004.ant.amazon.com (10.43.60.132) by
+ EX13MTAUEB001.ant.amazon.com (10.43.60.96) with Microsoft SMTP Server (TLS)
+ id 15.0.1367.3; Thu, 12 Sep 2019 17:28:50 +0000
+Received: from EX13MTAUEB001.ant.amazon.com (10.43.60.96) by
+ EX13D11UEB004.ant.amazon.com (10.43.60.132) with Microsoft SMTP Server (TLS)
+ id 15.0.1367.3; Thu, 12 Sep 2019 17:28:50 +0000
+Received: from kaos-source-ops-60003.pdx1.corp.amazon.com (10.36.133.164) by
+ mail-relay.amazon.com (10.43.60.129) with Microsoft SMTP Server id
+ 15.0.1367.3 via Frontend Transport; Thu, 12 Sep 2019 17:28:50 +0000
+Received: by kaos-source-ops-60003.pdx1.corp.amazon.com (Postfix, from userid 6262777)
+        id E0DB5C011C; Thu, 12 Sep 2019 17:28:49 +0000 (UTC)
+Message-ID: <3856e70da4d1742b77e6d26987618c58ec4acef5.1568309119.git.fllinden@amazon.com>
+In-Reply-To: <cover.1568309119.git.fllinden@amazon.com>
+References: <cover.1568309119.git.fllinden@amazon.com>
+From:   Frank van der Linden <fllinden@amazon.com>
+Date:   Sun, 1 Sep 2019 00:13:54 +0000
+Subject: [RFC PATCH 25/35] nfsd: take xattr access bits in to account when
+ checking
+To:     <linux-nfs@vger.kernel.org>, <linux-fsdevel@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.11
-X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.6.2 (mx1.redhat.com [10.5.110.70]); Thu, 12 Sep 2019 17:07:57 +0000 (UTC)
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Let the name reflect the single user and purpose.
+Since the NFSv4.2 extended attributes extension defines 3 new access
+bits for xattr operations, take them in to account when validating
+what the client is asking for, and when checking permissions.
 
-Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
+Signed-off-by: Frank van der Linden <fllinden@amazon.com>
 ---
- include/linux/sunrpc/xdr.h     |  2 +-
- net/sunrpc/auth_gss/auth_gss.c |  2 +-
- net/sunrpc/xdr.c               | 42 +++++++++++++++++-----------------
- 3 files changed, 23 insertions(+), 23 deletions(-)
+ fs/nfsd/nfs4proc.c | 10 +++++++++-
+ fs/nfsd/vfs.c      | 12 ++++++++++++
+ 2 files changed, 21 insertions(+), 1 deletion(-)
 
-diff --git a/include/linux/sunrpc/xdr.h b/include/linux/sunrpc/xdr.h
-index 9ee3970ba59c..a6b63e47a79b 100644
---- a/include/linux/sunrpc/xdr.h
-+++ b/include/linux/sunrpc/xdr.h
-@@ -179,7 +179,7 @@ xdr_adjust_iovec(struct kvec *iov, __be32 *p)
- extern void xdr_shift_buf(struct xdr_buf *, size_t);
- extern void xdr_buf_from_iov(struct kvec *, struct xdr_buf *);
- extern int xdr_buf_subsegment(struct xdr_buf *, struct xdr_buf *, unsigned int, unsigned int);
--extern int xdr_buf_read_netobj(struct xdr_buf *, struct xdr_netobj *, unsigned int);
-+extern int xdr_buf_read_mic(struct xdr_buf *, struct xdr_netobj *, unsigned int);
- extern int read_bytes_from_xdr_buf(struct xdr_buf *, unsigned int, void *, unsigned int);
- extern int write_bytes_to_xdr_buf(struct xdr_buf *, unsigned int, void *, unsigned int);
- 
-diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-index 4ce42c62458e..d75fddca44c9 100644
---- a/net/sunrpc/auth_gss/auth_gss.c
-+++ b/net/sunrpc/auth_gss/auth_gss.c
-@@ -1960,7 +1960,7 @@ gss_unwrap_resp_integ(struct rpc_task *task, struct rpc_cred *cred,
- 
- 	if (xdr_buf_subsegment(rcv_buf, &integ_buf, data_offset, integ_len))
- 		goto unwrap_failed;
--	if (xdr_buf_read_netobj(rcv_buf, &mic, mic_offset))
-+	if (xdr_buf_read_mic(rcv_buf, &mic, mic_offset))
- 		goto unwrap_failed;
- 	maj_stat = gss_verify_mic(ctx->gc_gss_ctx, &integ_buf, &mic);
- 	if (maj_stat == GSS_S_CONTEXT_EXPIRED)
-diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
-index 6e05a9693568..90dfde50f0ef 100644
---- a/net/sunrpc/xdr.c
-+++ b/net/sunrpc/xdr.c
-@@ -1236,52 +1236,52 @@ xdr_encode_word(struct xdr_buf *buf, unsigned int base, u32 obj)
- }
- EXPORT_SYMBOL_GPL(xdr_encode_word);
- 
--/* If the netobj starting offset bytes from the start of xdr_buf is contained
-- * entirely in the head, pages, or tail, set object to point to it; otherwise
-- * shift the buffer until it is contained entirely within the pages or tail.
-+/* If the mic starting offset bytes from the start of xdr_buf is contained
-+ * entirely in the head, pages, or tail, set mic to point to it; otherwise
-+ * shift the buf until it is contained entirely within the pages or tail.
-  */
--int xdr_buf_read_netobj(struct xdr_buf *buf, struct xdr_netobj *obj, unsigned int offset)
-+int xdr_buf_read_mic(struct xdr_buf *buf, struct xdr_netobj *mic, unsigned int offset)
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 6fc960677644..6ade983dd9b2 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -557,8 +557,16 @@ nfsd4_access(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	     union nfsd4_op_u *u)
  {
- 	struct xdr_buf subbuf;
- 	unsigned int len_to_boundary;
+ 	struct nfsd4_access *access = &u->access;
++	u32 access_full;
  
--	if (xdr_decode_word(buf, offset, &obj->len))
-+	if (xdr_decode_word(buf, offset, &mic->len))
- 		return -EFAULT;
+-	if (access->ac_req_access & ~NFS3_ACCESS_FULL)
++	access_full = NFS3_ACCESS_FULL;
++#ifdef CONFIG_NFSD_V4_XATTR
++	if (cstate->minorversion >= 2)
++		access_full |= NFS4_ACCESS_XALIST | NFS4_ACCESS_XAREAD |
++			       NFS4_ACCESS_XAWRITE;
++#endif
++
++	if (access->ac_req_access & ~access_full)
+ 		return nfserr_inval;
  
- 	offset += 4;
+ 	access->ac_resp_access = access->ac_req_access;
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index 99363e7ce044..d76e3041fa8e 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -611,6 +611,12 @@ static struct accessmap	nfs3_regaccess[] = {
+     {	NFS3_ACCESS_MODIFY,	NFSD_MAY_WRITE|NFSD_MAY_TRUNC	},
+     {	NFS3_ACCESS_EXTEND,	NFSD_MAY_WRITE			},
  
--	/* Is the obj partially in the head? */
-+	/* Is the mic partially in the head? */
- 	len_to_boundary = buf->head->iov_len - offset;
--	if (len_to_boundary > 0 && len_to_boundary < obj->len)
-+	if (len_to_boundary > 0 && len_to_boundary < mic->len)
- 		xdr_shift_buf(buf, len_to_boundary);
++#ifdef CONFIG_NFSD_V4_XATTR
++    {	NFS4_ACCESS_XAREAD,	NFSD_MAY_READ			},
++    {	NFS4_ACCESS_XAWRITE,	NFSD_MAY_WRITE			},
++    {	NFS4_ACCESS_XALIST,	NFSD_MAY_READ			},
++#endif
++
+     {	0,			0				}
+ };
  
--	/* Is the obj partially in the pages? */
-+	/* Is the mic partially in the pages? */
- 	len_to_boundary = buf->head->iov_len + buf->page_len - offset;
--	if (len_to_boundary > 0 && len_to_boundary < obj->len)
-+	if (len_to_boundary > 0 && len_to_boundary < mic->len)
- 		xdr_shrink_pagelen(buf, len_to_boundary);
+@@ -621,6 +627,12 @@ static struct accessmap	nfs3_diraccess[] = {
+     {	NFS3_ACCESS_EXTEND,	NFSD_MAY_EXEC|NFSD_MAY_WRITE	},
+     {	NFS3_ACCESS_DELETE,	NFSD_MAY_REMOVE			},
  
--	if (xdr_buf_subsegment(buf, &subbuf, offset, obj->len))
-+	if (xdr_buf_subsegment(buf, &subbuf, offset, mic->len))
- 		return -EFAULT;
++#ifdef CONFIG_NFSD_V4_XATTR
++    {	NFS4_ACCESS_XAREAD,	NFSD_MAY_READ			},
++    {	NFS4_ACCESS_XAWRITE,	NFSD_MAY_WRITE			},
++    {	NFS4_ACCESS_XALIST,	NFSD_MAY_READ			},
++#endif
++
+     {	0,			0				}
+ };
  
--	/* Most likely: is the obj contained entirely in the tail? */
--	obj->data = subbuf.tail[0].iov_base;
--	if (subbuf.tail[0].iov_len == obj->len)
-+	/* Most likely: is the mic contained entirely in the tail? */
-+	mic->data = subbuf.tail[0].iov_base;
-+	if (subbuf.tail[0].iov_len == mic->len)
- 		return 0;
- 
--	/* ..or is the obj contained entirely in the head? */
--	obj->data = subbuf.head[0].iov_base;
--	if (subbuf.head[0].iov_len == obj->len)
-+	/* ..or is the mic contained entirely in the head? */
-+	mic->data = subbuf.head[0].iov_base;
-+	if (subbuf.head[0].iov_len == mic->len)
- 		return 0;
- 
--	/* obj is in the pages: move to tail */
--	if (obj->len > buf->buflen - buf->len)
-+	/* mic is in the pages: move to tail */
-+	if (mic->len > buf->buflen - buf->len)
- 		return -ENOMEM;
--	obj->data = buf->head[0].iov_base + buf->head[0].iov_len;
--	__read_bytes_from_xdr_buf(&subbuf, obj->data, obj->len);
-+	mic->data = buf->head[0].iov_base + buf->head[0].iov_len;
-+	__read_bytes_from_xdr_buf(&subbuf, mic->data, mic->len);
- 
- 	return 0;
- }
--EXPORT_SYMBOL_GPL(xdr_buf_read_netobj);
-+EXPORT_SYMBOL_GPL(xdr_buf_read_mic);
- 
- /* Returns 0 on success, or else a negative error code. */
- static int
 -- 
-2.20.1
+2.17.2
 
