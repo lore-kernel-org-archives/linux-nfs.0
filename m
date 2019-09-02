@@ -7,55 +7,55 @@ X-Spam-Status: No, score=-5.0 required=3.0 tests=DATE_IN_PAST_96_XX,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
 	SPF_HELO_NONE,SPF_PASS autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id DB712C4CEC8
-	for <linux-nfs@archiver.kernel.org>; Thu, 12 Sep 2019 17:29:10 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C3015C4CEC5
+	for <linux-nfs@archiver.kernel.org>; Thu, 12 Sep 2019 17:29:11 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id B39EB2081B
-	for <linux-nfs@archiver.kernel.org>; Thu, 12 Sep 2019 17:29:10 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 9BB2120856
+	for <linux-nfs@archiver.kernel.org>; Thu, 12 Sep 2019 17:29:11 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=amazon.com header.i=@amazon.com header.b="X/riSZR1"
+	dkim=pass (1024-bit key) header.d=amazon.com header.i=@amazon.com header.b="DdeguOC1"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2387651AbfILR3J (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 12 Sep 2019 13:29:09 -0400
-Received: from smtp-fw-9102.amazon.com ([207.171.184.29]:6371 "EHLO
+        id S2387653AbfILR3K (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 12 Sep 2019 13:29:10 -0400
+Received: from smtp-fw-9102.amazon.com ([207.171.184.29]:2868 "EHLO
         smtp-fw-9102.amazon.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2387644AbfILR3J (ORCPT
+        with ESMTP id S2387645AbfILR3J (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Sep 2019 13:29:09 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
   d=amazon.com; i=@amazon.com; q=dns/txt; s=amazon201209;
   t=1568309348; x=1599845348;
   h=message-id:in-reply-to:references:from:date:subject:to:
    mime-version;
-  bh=oTbv3dJjarXMQuNPh8MeEh/YF+oXxjl4UMVtnFmqS/E=;
-  b=X/riSZR1+P5lFaEDcTjIyQZUYuJm39V699/Tf8NzcImr1G2XQk1gKHcI
-   lncBLzuZdsGF1GxB9cS241C7HALDlRNeRB/yHwEMlL6buowFjV00Dar4K
-   jmoHEJ0z3EXmeakXcUtpnE9uHjCexX9Q79bKHrub6quWHgVhiGDL3TAce
-   w=;
+  bh=4Kq2cc1aLZizNrBly3qQl/WIlwejY+2o+OBDITVYIcc=;
+  b=DdeguOC1xAYhVHPKbQA1c8QM1MYHNLhQ0MtBasWkQTrlnOYlA2gYnZKA
+   I8YnlD4Q5WF/qzyQn3RFpMP/k8ft+9d7Y9bMawn6qXtFYaBSqM3kD2MZK
+   qcjd34lnuz4D8l/aZO24lLyDFcT0lx2TTPONDqMR47HseD0cPo1v+Fqyn
+   o=;
 X-IronPort-AV: E=Sophos;i="5.64,497,1559520000"; 
-   d="scan'208";a="702191769"
-Received: from sea3-co-svc-lb6-vlan3.sea.amazon.com (HELO email-inbound-relay-1d-f273de60.us-east-1.amazon.com) ([10.47.22.38])
-  by smtp-border-fw-out-9102.sea19.amazon.com with ESMTP; 12 Sep 2019 17:28:56 +0000
+   d="scan'208";a="702191773"
+Received: from sea3-co-svc-lb6-vlan3.sea.amazon.com (HELO email-inbound-relay-1e-c7c08562.us-east-1.amazon.com) ([10.47.22.38])
+  by smtp-border-fw-out-9102.sea19.amazon.com with ESMTP; 12 Sep 2019 17:28:57 +0000
 Received: from EX13MTAUEA001.ant.amazon.com (iad55-ws-svc-p15-lb9-vlan2.iad.amazon.com [10.40.159.162])
-        by email-inbound-relay-1d-f273de60.us-east-1.amazon.com (Postfix) with ESMTPS id CB79AA2A95;
-        Thu, 12 Sep 2019 17:28:51 +0000 (UTC)
-Received: from EX13D12UEA003.ant.amazon.com (10.43.61.184) by
- EX13MTAUEA001.ant.amazon.com (10.43.61.82) with Microsoft SMTP Server (TLS)
- id 15.0.1367.3; Thu, 12 Sep 2019 17:28:51 +0000
+        by email-inbound-relay-1e-c7c08562.us-east-1.amazon.com (Postfix) with ESMTPS id 4B546244CE6;
+        Thu, 12 Sep 2019 17:28:52 +0000 (UTC)
+Received: from EX13D03UEA001.ant.amazon.com (10.43.61.200) by
+ EX13MTAUEA001.ant.amazon.com (10.43.61.243) with Microsoft SMTP Server (TLS)
+ id 15.0.1367.3; Thu, 12 Sep 2019 17:28:52 +0000
 Received: from EX13MTAUEA001.ant.amazon.com (10.43.61.82) by
- EX13D12UEA003.ant.amazon.com (10.43.61.184) with Microsoft SMTP Server (TLS)
- id 15.0.1367.3; Thu, 12 Sep 2019 17:28:50 +0000
+ EX13D03UEA001.ant.amazon.com (10.43.61.200) with Microsoft SMTP Server (TLS)
+ id 15.0.1367.3; Thu, 12 Sep 2019 17:28:51 +0000
 Received: from kaos-source-ops-60003.pdx1.corp.amazon.com (10.36.133.164) by
  mail-relay.amazon.com (10.43.61.243) with Microsoft SMTP Server id
  15.0.1367.3 via Frontend Transport; Thu, 12 Sep 2019 17:28:51 +0000
 Received: by kaos-source-ops-60003.pdx1.corp.amazon.com (Postfix, from userid 6262777)
-        id E13A8C053E; Thu, 12 Sep 2019 17:28:49 +0000 (UTC)
-Message-ID: <018d01382de6339edc925a9071a8bab21ef93830.1568309119.git.fllinden@amazon.com>
+        id E3059C051F; Thu, 12 Sep 2019 17:28:49 +0000 (UTC)
+Message-ID: <78ebac8806c7a8753c629fddb5dfa7340f8325a2.1568309119.git.fllinden@amazon.com>
 In-Reply-To: <cover.1568309119.git.fllinden@amazon.com>
 References: <cover.1568309119.git.fllinden@amazon.com>
 From:   Frank van der Linden <fllinden@amazon.com>
-Date:   Mon, 26 Aug 2019 22:44:17 +0000
-Subject: [RFC PATCH 08/35] NFSv4.2: define the encode/decode sizes for the
- XATTR operations
+Date:   Mon, 2 Sep 2019 23:06:35 +0000
+Subject: [RFC PATCH 34/35] nfsd: add export flag to disable user extended
+ attributes
 To:     <linux-nfs@vger.kernel.org>, <linux-fsdevel@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain
@@ -64,78 +64,108 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Define the maximum XDR sizes for the RFC 8276 XATTR operations.
-In the case of operations that carry a larger payload (SETXATTR,
-GETXATTR, LISTXATTR), these exclude that payload, which is added
-as seperate pages, like other operations do.
+Like with some other features, add a flag that allows a filesystem
+to be exported without extended user attribute support, even if
+support is compiled in.
 
 Signed-off-by: Frank van der Linden <fllinden@amazon.com>
 ---
- fs/nfs/nfs42xdr.c | 51 +++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 51 insertions(+)
+ fs/nfsd/export.c                 |  1 +
+ fs/nfsd/nfs4xdr.c                |  7 +++++--
+ fs/nfsd/vfs.c                    | 12 ++++++++++++
+ include/uapi/linux/nfsd/export.h |  3 ++-
+ 4 files changed, 20 insertions(+), 3 deletions(-)
 
-diff --git a/fs/nfs/nfs42xdr.c b/fs/nfs/nfs42xdr.c
-index aed865a84629..d7657be74557 100644
---- a/fs/nfs/nfs42xdr.c
-+++ b/fs/nfs/nfs42xdr.c
-@@ -150,6 +150,57 @@
- 					 decode_clone_maxsz + \
- 					 decode_getattr_maxsz)
+diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
+index baa01956a5b3..4e363272f757 100644
+--- a/fs/nfsd/export.c
++++ b/fs/nfsd/export.c
+@@ -1105,6 +1105,7 @@ static struct flags {
+ 	{ NFSEXP_V4ROOT, {"v4root", ""}},
+ 	{ NFSEXP_PNFS, {"pnfs", ""}},
+ 	{ NFSEXP_SECURITY_LABEL, {"security_label", ""}},
++	{ NFSEXP_NOUSERXATTR, {"no_userxattr", ""}},
+ 	{ 0, {"", ""}}
+ };
  
-+#ifdef CONFIG_NFS_V4_XATTR
-+/* Not limited by NFS itself, limited by the generic xattr code */
-+#define nfs4_xattr_name_maxsz   XDR_QUADLEN(XATTR_NAME_MAX)
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 92b9a067c744..4ed0fb023ee1 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -3154,8 +3154,11 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp,
+ 		p = xdr_reserve_space(xdr, 4);
+ 		if (!p)
+ 			goto out_resource;
+-		err = xattr_supported_namespace(d_inode(dentry),
+-						XATTR_USER_PREFIX);
++		if (exp->ex_flags & NFSEXP_NOUSERXATTR)
++			err = -EOPNOTSUPP;
++		else
++			err = xattr_supported_namespace(d_inode(dentry),
++							XATTR_USER_PREFIX);
+ 		*p++ = cpu_to_be32(err == 0);
+ 	}
+ #endif
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index d76e3041fa8e..97a40dbd53a7 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -2046,6 +2046,9 @@ nfsd_getxattr(struct svc_rqst *rqstp, struct svc_fh *fhp, char *name, void *buf,
+ 	if (err)
+ 		return err;
+ 
++	if (fhp->fh_export->ex_flags & NFSEXP_NOUSERXATTR)
++		return nfserr_opnotsupp;
 +
-+#define encode_getxattr_maxsz   (op_encode_hdr_maxsz + 1 + \
-+				 nfs4_xattr_name_maxsz)
-+#define decode_getxattr_maxsz   (op_decode_hdr_maxsz + 1 + 1)
-+#define encode_setxattr_maxsz   (op_encode_hdr_maxsz + \
-+				 1 + nfs4_xattr_name_maxsz + 1)
-+#define decode_setxattr_maxsz   (op_decode_hdr_maxsz + decode_change_info_maxsz)
-+#define encode_listxattrs_maxsz  (op_encode_hdr_maxsz + 2 + 1)
-+#define decode_listxattrs_maxsz  (op_decode_hdr_maxsz + 2 + 1 + 1)
-+#define encode_removexattr_maxsz (op_encode_hdr_maxsz + 1 + \
-+				  nfs4_xattr_name_maxsz)
-+#define decode_removexattr_maxsz (op_decode_hdr_maxsz + \
-+				  decode_change_info_maxsz)
+ 	lerr = vfs_getxattr(fhp->fh_dentry, name, buf, *lenp);
+ 	if (lerr < 0)
+ 		err = nfsd_xattr_errno(lerr);
+@@ -2065,6 +2068,9 @@ nfsd_listxattr(struct svc_rqst *rqstp, struct svc_fh *fhp, void *buf, int *lenp)
+ 	if (err)
+ 		return err;
+ 
++	if (fhp->fh_export->ex_flags & NFSEXP_NOUSERXATTR)
++		return nfserr_opnotsupp;
 +
-+#define NFS4_enc_getxattr_sz	(compound_encode_hdr_maxsz + \
-+				encode_sequence_maxsz + \
-+				encode_putfh_maxsz + \
-+				encode_getxattr_maxsz)
-+#define NFS4_dec_getxattr_sz	(compound_decode_hdr_maxsz + \
-+				decode_sequence_maxsz + \
-+				decode_putfh_maxsz + \
-+				decode_getxattr_maxsz)
-+#define NFS4_enc_setxattr_sz	(compound_encode_hdr_maxsz + \
-+				encode_sequence_maxsz + \
-+				encode_putfh_maxsz + \
-+				encode_setxattr_maxsz)
-+#define NFS4_dec_setxattr_sz	(compound_decode_hdr_maxsz + \
-+				decode_sequence_maxsz + \
-+				decode_putfh_maxsz + \
-+				decode_setxattr_maxsz)
-+#define NFS4_enc_listxattrs_sz	(compound_encode_hdr_maxsz + \
-+				encode_sequence_maxsz + \
-+				encode_putfh_maxsz + \
-+				encode_listxattrs_maxsz)
-+#define NFS4_dec_listxattrs_sz	(compound_decode_hdr_maxsz + \
-+				decode_sequence_maxsz + \
-+				decode_putfh_maxsz + \
-+				decode_listxattrs_maxsz)
-+#define NFS4_enc_removexattr_sz	(compound_encode_hdr_maxsz + \
-+				encode_sequence_maxsz + \
-+				encode_putfh_maxsz + \
-+				encode_removexattr_maxsz)
-+#define NFS4_dec_removexattr_sz	(compound_decode_hdr_maxsz + \
-+				decode_sequence_maxsz + \
-+				decode_putfh_maxsz + \
-+				decode_removexattr_maxsz)
-+#endif
+ 	lerr = vfs_listxattr(fhp->fh_dentry, buf, *lenp);
+ 
+ 	if (lerr < 0)
+@@ -2092,6 +2098,9 @@ nfsd_removexattr(struct svc_rqst *rqstp, struct svc_fh *fhp, char *name)
+ 	if (err)
+ 		return err;
+ 
++	if (fhp->fh_export->ex_flags & NFSEXP_NOUSERXATTR)
++		return nfserr_opnotsupp;
 +
- static void encode_fallocate(struct xdr_stream *xdr,
- 			     const struct nfs42_falloc_args *args)
- {
+ 	ret = fh_want_write(fhp);
+ 	if (ret)
+ 		return nfserrno(ret);
+@@ -2116,6 +2125,9 @@ nfsd_setxattr(struct svc_rqst *rqstp, struct svc_fh *fhp, char *name,
+ 	if (err)
+ 		return err;
+ 
++	if (fhp->fh_export->ex_flags & NFSEXP_NOUSERXATTR)
++		return nfserr_opnotsupp;
++
+ 	ret = fh_want_write(fhp);
+ 	if (ret)
+ 		return nfserrno(ret);
+diff --git a/include/uapi/linux/nfsd/export.h b/include/uapi/linux/nfsd/export.h
+index 2124ba904779..b46ee0240fca 100644
+--- a/include/uapi/linux/nfsd/export.h
++++ b/include/uapi/linux/nfsd/export.h
+@@ -53,9 +53,10 @@
+  */
+ #define	NFSEXP_V4ROOT		0x10000
+ #define NFSEXP_PNFS		0x20000
++#define NFSEXP_NOUSERXATTR	0x40000
+ 
+ /* All flags that we claim to support.  (Note we don't support NOACL.) */
+-#define NFSEXP_ALLFLAGS		0x3FEFF
++#define NFSEXP_ALLFLAGS		0x7FEFF
+ 
+ /* The flags that may vary depending on security flavor: */
+ #define NFSEXP_SECINFO_FLAGS	(NFSEXP_READONLY | NFSEXP_ROOTSQUASH \
 -- 
 2.17.2
 
