@@ -2,130 +2,138 @@ Return-Path: <SRS0=Gfnv=W6=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-0.9 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
-	SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-6.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4A305C3A5A2
-	for <linux-nfs@archiver.kernel.org>; Tue,  3 Sep 2019 19:12:16 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4EC74C3A5A2
+	for <linux-nfs@archiver.kernel.org>; Tue,  3 Sep 2019 20:32:18 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 1C16F2341E
-	for <linux-nfs@archiver.kernel.org>; Tue,  3 Sep 2019 19:12:16 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="c1TFU48C"
+	by mail.kernel.org (Postfix) with ESMTP id 2AD6A21897
+	for <linux-nfs@archiver.kernel.org>; Tue,  3 Sep 2019 20:32:18 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1725914AbfICTMP (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 3 Sep 2019 15:12:15 -0400
-Received: from aserp2120.oracle.com ([141.146.126.78]:47162 "EHLO
-        aserp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725994AbfICTMP (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Sep 2019 15:12:15 -0400
-Received: from pps.filterd (aserp2120.oracle.com [127.0.0.1])
-        by aserp2120.oracle.com (8.16.0.27/8.16.0.27) with SMTP id x83J9MVT177797;
-        Tue, 3 Sep 2019 19:09:22 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=content-type :
- mime-version : subject : from : in-reply-to : date : cc :
- content-transfer-encoding : message-id : references : to;
- s=corp-2019-08-05; bh=2mnaEi4L6RKyN2rqDPfcG1hrO0FOASLbWMPnmPGtg2k=;
- b=c1TFU48Cf0EWzEvaGESz7u27kDH+yXPTHUB2YfG+Q8pGkt3HI7D1lfjjgeC1UL/nvPGx
- +muoXQerj4apyXXK3bIcFmE6ErGW9gXzY9glmUbosfxEbUFtw8mqNYHi7zjIr90Xhfw+
- lbmGplCZ67qLwwctTonIu3/Ig9om8sDAepk+yEbQhe/3ZRyKgP2Pa3CsLSJonJg4IHlV
- Ej3DcE7viPLfHyLf7/pNh3haTrLz/gBOeZIS/AK7ar+0V6s8zl+GWPEG/0x07y6nSOUE
- Zi4e38vIZw/KIuT7XR0OyHStl0lwWdcvH2fN+Ir+bTRKCmJUTXxhkxPSeQiWLPDpxWyv bw== 
-Received: from aserp3030.oracle.com (aserp3030.oracle.com [141.146.126.71])
-        by aserp2120.oracle.com with ESMTP id 2usx2pg047-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Tue, 03 Sep 2019 19:09:22 +0000
-Received: from pps.filterd (aserp3030.oracle.com [127.0.0.1])
-        by aserp3030.oracle.com (8.16.0.27/8.16.0.27) with SMTP id x83J88mv133260;
-        Tue, 3 Sep 2019 19:09:18 GMT
-Received: from userv0121.oracle.com (userv0121.oracle.com [156.151.31.72])
-        by aserp3030.oracle.com with ESMTP id 2usu50xefm-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Tue, 03 Sep 2019 19:09:18 +0000
-Received: from abhmp0003.oracle.com (abhmp0003.oracle.com [141.146.116.9])
-        by userv0121.oracle.com (8.14.4/8.13.8) with ESMTP id x83J8NJs024856;
-        Tue, 3 Sep 2019 19:08:27 GMT
-Received: from [192.168.1.184] (/68.61.232.219)
-        by default (Oracle Beehive Gateway v4.0)
-        with ESMTP ; Tue, 03 Sep 2019 12:08:23 -0700
-Content-Type: text/plain;
-        charset=us-ascii
-Mime-Version: 1.0 (1.0)
-Subject: Re: Regression in 5.1.20: Reading long directory fails
-From:   Chuck Lever <chuck.lever@oracle.com>
-X-Mailer: iPad Mail (16G77)
-In-Reply-To: <ufapnkhqjwm.fsf@epithumia.math.uh.edu>
-Date:   Tue, 3 Sep 2019 15:08:22 -0400
-Cc:     Wolfgang Walter <linux@stwm.de>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        linux-nfs@vger.kernel.org, km@cm4all.com,
+        id S1727046AbfICUcR (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 3 Sep 2019 16:32:17 -0400
+Received: from mx1.redhat.com ([209.132.183.28]:47332 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726797AbfICUcR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 3 Sep 2019 16:32:17 -0400
+Received: from smtp.corp.redhat.com (int-mx03.intmail.prod.int.phx2.redhat.com [10.5.11.13])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id 85AEF190C01B;
+        Tue,  3 Sep 2019 20:32:16 +0000 (UTC)
+Received: from coeurl.usersys.redhat.com (ovpn-121-35.rdu2.redhat.com [10.10.121.35])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id E139B6092F;
+        Tue,  3 Sep 2019 20:32:15 +0000 (UTC)
+Received: by coeurl.usersys.redhat.com (Postfix, from userid 1000)
+        id 75AB420B4C; Tue,  3 Sep 2019 16:32:15 -0400 (EDT)
+From:   Scott Mayhew <smayhew@redhat.com>
+To:     trond.myklebust@hammerspace.com, anna.schumaker@netapp.com
+Cc:     dhowells@redhat.com, viro@zeniv.linux.org.uk,
+        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         linux-kernel@vger.kernel.org
-Content-Transfer-Encoding: quoted-printable
-Message-Id: <70F51337-A68B-473B-88B9-0CAC3D6F2AB9@oracle.com>
-References: <ufak1bhyuew.fsf@epithumia.math.uh.edu> <ufay2zduosz.fsf@epithumia.math.uh.edu> <ufa5zm9s7kz.fsf@epithumia.math.uh.edu> <4418877.15LTP4gqqJ@stwm.de> <ufapnkhqjwm.fsf@epithumia.math.uh.edu>
-To:     Jason L Tibbitts III <tibbs@math.uh.edu>
-X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9369 signatures=668685
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 suspectscore=0 malwarescore=0
- phishscore=0 bulkscore=0 spamscore=0 mlxscore=0 mlxlogscore=928
- adultscore=0 classifier=spam adjust=0 reason=mlx scancount=1
- engine=8.0.1-1906280000 definitions=main-1909030189
-X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9369 signatures=668685
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 priorityscore=1501 malwarescore=0
- suspectscore=0 phishscore=0 bulkscore=0 spamscore=0 clxscore=1011
- lowpriorityscore=0 mlxscore=0 impostorscore=0 mlxlogscore=976 adultscore=0
- classifier=spam adjust=0 reason=mlx scancount=1 engine=8.0.1-1906280000
- definitions=main-1909030189
+Subject: [PATCH v2 04/26] nfs: fold nfs4_remote_fs_type and nfs4_remote_referral_fs_type
+Date:   Tue,  3 Sep 2019 16:31:53 -0400
+Message-Id: <20190903203215.9157-5-smayhew@redhat.com>
+In-Reply-To: <20190903203215.9157-1-smayhew@redhat.com>
+References: <20190903203215.9157-1-smayhew@redhat.com>
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.13
+X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.6.2 (mx1.redhat.com [10.5.110.70]); Tue, 03 Sep 2019 20:32:16 +0000 (UTC)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
+From: Al Viro <viro@zeniv.linux.org.uk>
 
-On Sep 3, 2019, at 3:06 PM, Jason L Tibbitts III <tibbs@math.uh.edu> wrote:
+They are identical now.
 
->>>>>> "WW" =3D=3D Wolfgang Walter <linux@stwm.de> writes:
->=20
-> WW> What filesystem do you use on the server? xfs?
->=20
-> Yeah, it's XFS.
->=20
-> WW> If yes, does it use 64bit inodes (or started to use them)?
->=20
-> These filesystems aren't super old, and were all created with the
-> default RHEL7 options.
+Reviewed-by: David Howells <dhowells@redhat.com>
+Signed-off-by: Al Viro <viro@zeniv.linux.org.uk>
+---
+ fs/nfs/nfs4super.c | 26 ++++----------------------
+ 1 file changed, 4 insertions(+), 22 deletions(-)
 
-I think that means no 64-bit inodes.
-
-
-> I'm not sure how to check that 64 bit inodes are
-> being used, though.  xfs_info says:
->=20
-> meta-data=3D/dev/mapper/nas-faculty--08 isize=3D256    agcount=3D4, agsize=
-=3D3276800 blks
->         =3D                       sectsz=3D512   attr=3D2, projid32bit=3D1=
-
->         =3D                       crc=3D0        finobt=3D0 spinodes=3D0
-> data     =3D                       bsize=3D4096   blocks=3D13107200, imaxp=
-ct=3D25
->         =3D                       sunit=3D0      swidth=3D0 blks
-> naming   =3Dversion 2              bsize=3D4096   ascii-ci=3D0 ftype=3D0
-> log      =3Dinternal               bsize=3D4096   blocks=3D6400, version=3D=
-2
->         =3D                       sectsz=3D512   sunit=3D0 blks, lazy-coun=
-t=3D1
-> realtime =3Dnone                   extsz=3D4096   blocks=3D0, rtextents=3D=
-0
->=20
-> WW> Do you set a fsid when you export the filesystem?
->=20
-> I have never done so on any server.
->=20
-> And note that the servers are basically unchanged for quite some time,
-> while the problem I'm having is new.  I want to find some server-related
-> cause for this but so far I haven't been able to do so.  It seems my
-> best option now seems to be to migrate all data off of this server and
-> then wipe, reinstall and see if the problem reoccurs.
->=20
-> - J<
+diff --git a/fs/nfs/nfs4super.c b/fs/nfs/nfs4super.c
+index 773c347df3ab..d0237d8ffa2b 100644
+--- a/fs/nfs/nfs4super.c
++++ b/fs/nfs/nfs4super.c
+@@ -22,8 +22,6 @@ static struct dentry *nfs4_remote_mount(struct file_system_type *fs_type,
+ 	int flags, const char *dev_name, void *raw_data);
+ static struct dentry *nfs4_referral_mount(struct file_system_type *fs_type,
+ 	int flags, const char *dev_name, void *raw_data);
+-static struct dentry *nfs4_remote_referral_mount(struct file_system_type *fs_type,
+-	int flags, const char *dev_name, void *raw_data);
+ 
+ static struct file_system_type nfs4_remote_fs_type = {
+ 	.owner		= THIS_MODULE,
+@@ -33,14 +31,6 @@ static struct file_system_type nfs4_remote_fs_type = {
+ 	.fs_flags	= FS_RENAME_DOES_D_MOVE|FS_BINARY_MOUNTDATA,
+ };
+ 
+-static struct file_system_type nfs4_remote_referral_fs_type = {
+-	.owner		= THIS_MODULE,
+-	.name		= "nfs4",
+-	.mount		= nfs4_remote_referral_mount,
+-	.kill_sb	= nfs_kill_super,
+-	.fs_flags	= FS_RENAME_DOES_D_MOVE|FS_BINARY_MOUNTDATA,
+-};
+-
+ struct file_system_type nfs4_referral_fs_type = {
+ 	.owner		= THIS_MODULE,
+ 	.name		= "nfs4",
+@@ -111,8 +101,7 @@ nfs4_remote_mount(struct file_system_type *fs_type, int flags,
+ 	return nfs_fs_mount_common(flags, dev_name, info, &nfs_v4);
+ }
+ 
+-static struct vfsmount *nfs_do_root_mount(struct file_system_type *fs_type,
+-					  struct nfs_server *server, int flags,
++static struct vfsmount *nfs_do_root_mount(struct nfs_server *server, int flags,
+ 					  struct nfs_mount_info *info,
+ 					  const char *hostname)
+ {
+@@ -135,7 +124,7 @@ static struct vfsmount *nfs_do_root_mount(struct file_system_type *fs_type,
+ 	else
+ 		snprintf(root_devname, len, "%s:/", hostname);
+ 	info->server = server;
+-	root_mnt = vfs_kern_mount(fs_type, flags, root_devname, info);
++	root_mnt = vfs_kern_mount(&nfs4_remote_fs_type, flags, root_devname, info);
+ 	if (info->server)
+ 		nfs_free_server(info->server);
+ 	info->server = NULL;
+@@ -245,7 +234,7 @@ struct dentry *nfs4_try_mount(int flags, const char *dev_name,
+ 
+ 	export_path = data->nfs_server.export_path;
+ 	data->nfs_server.export_path = "/";
+-	root_mnt = nfs_do_root_mount(&nfs4_remote_fs_type,
++	root_mnt = nfs_do_root_mount(
+ 			nfs4_create_server(mount_info, &nfs_v4),
+ 			flags, mount_info,
+ 			data->nfs_server.hostname);
+@@ -259,13 +248,6 @@ struct dentry *nfs4_try_mount(int flags, const char *dev_name,
+ 	return res;
+ }
+ 
+-static struct dentry *
+-nfs4_remote_referral_mount(struct file_system_type *fs_type, int flags,
+-			   const char *dev_name, void *raw_data)
+-{
+-	return nfs_fs_mount_common(flags, dev_name, raw_data, &nfs_v4);
+-}
+-
+ /*
+  * Create an NFS4 server record on referral traversal
+  */
+@@ -290,7 +272,7 @@ static struct dentry *nfs4_referral_mount(struct file_system_type *fs_type,
+ 
+ 	export_path = data->mnt_path;
+ 	data->mnt_path = "/";
+-	root_mnt = nfs_do_root_mount(&nfs4_remote_referral_fs_type,
++	root_mnt = nfs_do_root_mount(
+ 			nfs4_create_referral_server(mount_info.cloned,
+ 						    mount_info.mntfh),
+ 			flags, &mount_info, data->hostname);
+-- 
+2.17.2
 
