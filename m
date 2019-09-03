@@ -2,113 +2,128 @@ Return-Path: <SRS0=Gfnv=W6=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-0.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-0.9 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,
+	SPF_PASS autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 53E26C3A5A2
-	for <linux-nfs@archiver.kernel.org>; Tue,  3 Sep 2019 20:34:30 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 571B3C3A5A2
+	for <linux-nfs@archiver.kernel.org>; Tue,  3 Sep 2019 21:37:35 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 304C022CF8
-	for <linux-nfs@archiver.kernel.org>; Tue,  3 Sep 2019 20:34:30 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id EB7242087E
+	for <linux-nfs@archiver.kernel.org>; Tue,  3 Sep 2019 21:37:34 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=stwm.de header.i=@stwm.de header.b="k0breuMk"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726873AbfICUcQ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 3 Sep 2019 16:32:16 -0400
-Received: from mx1.redhat.com ([209.132.183.28]:59922 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726600AbfICUcQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 3 Sep 2019 16:32:16 -0400
-Received: from smtp.corp.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 705B858569;
-        Tue,  3 Sep 2019 20:32:16 +0000 (UTC)
-Received: from coeurl.usersys.redhat.com (ovpn-121-35.rdu2.redhat.com [10.10.121.35])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id CDCD760BE2;
-        Tue,  3 Sep 2019 20:32:15 +0000 (UTC)
-Received: by coeurl.usersys.redhat.com (Postfix, from userid 1000)
-        id 5E78420963; Tue,  3 Sep 2019 16:32:15 -0400 (EDT)
-From:   Scott Mayhew <smayhew@redhat.com>
-To:     trond.myklebust@hammerspace.com, anna.schumaker@netapp.com
-Cc:     dhowells@redhat.com, viro@zeniv.linux.org.uk,
-        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        id S1726177AbfICVhe (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 3 Sep 2019 17:37:34 -0400
+Received: from dresden.studentenwerk.mhn.de ([141.84.225.229]:34850 "EHLO
+        email.studentenwerk.mhn.de" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1725882AbfICVhe (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Sep 2019 17:37:34 -0400
+Received: from mailhub.studentenwerk.mhn.de (mailhub.studentenwerk.mhn.de [127.0.0.1])
+        by email.studentenwerk.mhn.de (Postfix) with ESMTP id 46NKzt6zfJzRhSl;
+        Tue,  3 Sep 2019 23:37:30 +0200 (CEST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=stwm.de;
+        s=stwm-20170627; t=1567546650;
+        bh=x71KSc2S5IaHepI+fQ1jtlydMrj7kQCHxn9jAXkAW6w=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=k0breuMkUhAE0GGU0llN2c7HZwP//0ZLfgHw5SUfs1d4ZCj9Yxdnbxno2eO2kEOZU
+         eh1K6Vu2UZVUBbUW1HWx+Bv9GdnZ5q143Sawq0I+85ovGQC8W60Z+qIT0Jitg6xbvV
+         4rPyA36f3pWq68s3mzYXklOIxBrq3qbXK7NfEbyXuQLMTVP9BrxA96MpBUhkW+EmZ5
+         8y+l3xxc+FV2CsD+hQeeoEIrz4teMyGTjZ28+tEq9FSIfRSMaLYBsBC6VSPuZwZ8lN
+         gDqQbrUXX8f/QJLzEwQ5WWSc3bAokfnTtIPAOoewfA1g8ZRBXPtqO8Btln7Z7TZOoG
+         qcKymjAbvBv3Q==
+From:   Wolfgang Walter <linux@stwm.de>
+To:     Jason L Tibbitts III <tibbs@math.uh.edu>
+Cc:     "J. Bruce Fields" <bfields@fieldses.org>,
+        linux-nfs@vger.kernel.org, km@cm4all.com,
         linux-kernel@vger.kernel.org
-Subject: [PATCH v2 00/26] nfs: Mount API conversion
-Date:   Tue,  3 Sep 2019 16:31:49 -0400
-Message-Id: <20190903203215.9157-1-smayhew@redhat.com>
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.12
-X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.39]); Tue, 03 Sep 2019 20:32:16 +0000 (UTC)
+Subject: Re: Regression in 5.1.20: Reading long directory fails
+Date:   Tue, 03 Sep 2019 23:37:30 +0200
+Message-ID: <4198657.JbNDGbLXiX@h2o.as.studentenwerk.mhn.de>
+User-Agent: KMail/4.14.3 (Linux/5.0.6-050006-generic; KDE/4.14.13; x86_64; ; )
+In-Reply-To: <ufapnkhqjwm.fsf@epithumia.math.uh.edu>
+References: <ufak1bhyuew.fsf@epithumia.math.uh.edu> <4418877.15LTP4gqqJ@stwm.de> <ufapnkhqjwm.fsf@epithumia.math.uh.edu>
+MIME-Version: 1.0
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain; charset="iso-8859-1"
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hi Trond, Anna,
+Am Dienstag, 3. September 2019, 14:06:33 schrieb Jason L Tibbitts III:
+> >>>>> "WW" =3D=3D Wolfgang Walter <linux@stwm.de> writes:
+> WW> What filesystem do you use on the server? xfs?
+>=20
+> Yeah, it's XFS.
+>=20
+> WW> If yes, does it use 64bit inodes (or started to use them)?
+>=20
+> These filesystems aren't super old, and were all created with the
+> default RHEL7 options.  I'm not sure how to check that 64 bit inodes =
+are
+> being used, though.  xfs_info says:
+>=20
+> meta-data=3D/dev/mapper/nas-faculty--08 isize=3D256    agcount=3D4, a=
+gsize=3D3276800
+> blks =3D                       sectsz=3D512   attr=3D2, projid32bit=3D=
+1 =3D         =20
+>             crc=3D0        finobt=3D0 spinodes=3D0
+> data     =3D                       bsize=3D4096   blocks=3D13107200, =
+imaxpct=3D25
+>          =3D                       sunit=3D0      swidth=3D0 blks
+> naming   =3Dversion 2              bsize=3D4096   ascii-ci=3D0 ftype=3D=
+0
+> log      =3Dinternal               bsize=3D4096   blocks=3D6400, vers=
+ion=3D2
+>          =3D                       sectsz=3D512   sunit=3D0 blks, laz=
+y-count=3D1
+> realtime =3Dnone                   extsz=3D4096   blocks=3D0, rtexten=
+ts=3D0
+>=20
+> WW> Do you set a fsid when you export the filesystem?
+>=20
+> I have never done so on any server.
+>=20
+> And note that the servers are basically unchanged for quite some time=
+,
+> while the problem I'm having is new.  I want to find some server-rela=
+ted
+> cause for this but so far I haven't been able to do so.  It seems my
+> best option now seems to be to migrate all data off of this server an=
+d
+> then wipe, reinstall and see if the problem reoccurs.
+>=20
+>  - J<
 
-Here's a set of patches that converts NFS to use the mount API.  Note that
-there are a lot of preliminary patches, some from David and some from Al.
-The final patch (the one that does the actual conversion) from the David's
-initial posting has been split into 4 separate patches, and the entire set
-has been rebased on top of v5.3-rc6.
+I'm not familiar with RHEL7. But kernel 5.1.20 uses the inode64 mount o=
+ption=20
+by default, as far as I know (see Documentation/filesystems/xfs.txt). S=
+o if=20
+you do not use the mount option inode32 your xfs may now uses inode64 f=
+or=20
+newly created files?
 
--Scott
+We had similar problems some time ago. Then, inode64 was indeed the cau=
+se of=20
+the problem. With inode64 it seems that only little room is left in the=
+ nfs4=20
+handle for the fsid. When nfs mangles fsid and the xfs inode number to =
+form a=20
+nfs4 handle it seems that in large directories different files may end =
+having=20
+the same handle if there inodes do not fit in 32bit.
 
-Al Viro (15):
-  saner calling conventions for nfs_fs_mount_common()
-  nfs: stash server into struct nfs_mount_info
-  nfs: lift setting mount_info from nfs4_remote{,_referral}_mount
-  nfs: fold nfs4_remote_fs_type and nfs4_remote_referral_fs_type
-  nfs: don't bother setting/restoring export_path around
-    do_nfs_root_mount()
-  nfs4: fold nfs_do_root_mount/nfs_follow_remote_path
-  nfs: lift setting mount_info from nfs_xdev_mount()
-  nfs: stash nfs_subversion reference into nfs_mount_info
-  nfs: don't bother passing nfs_subversion to ->try_mount() and
-    nfs_fs_mount_common()
-  nfs: merge xdev and remote file_system_type
-  nfs: unexport nfs_fs_mount_common()
-  nfs: don't pass nfs_subversion to ->create_server()
-  nfs: get rid of mount_info ->fill_super()
-  nfs_clone_sb_security(): simplify the check for server bogosity
-  nfs: get rid of ->set_security()
+You may try setting a rather small fsid (say 500) and reexport the fs a=
+nd then=20
+see, if the problem disappears. I think our problems dissappered then, =
+but I=20
+do not remember exactly. We now use inode32 to avoid the problem.
 
-David Howells (8):
-  NFS: Move mount parameterisation bits into their own file
-  NFS: Constify mount argument match tables
-  NFS: Rename struct nfs_parsed_mount_data to struct nfs_fs_context
-  NFS: Split nfs_parse_mount_options()
-  NFS: Deindent nfs_fs_context_parse_option()
-  NFS: Add a small buffer in nfs_fs_context to avoid string dup
-  NFS: Do some tidying of the parsing code
-  NFS: Add fs_context support.
 
-Scott Mayhew (3):
-  NFS: rename nfs_fs_context pointer arg in a few functions
-  NFS: Convert mount option parsing to use functionality from
-    fs_parser.h
-  NFS: Attach supplementary error information to fs_context.
-
- fs/nfs/Makefile         |    2 +-
- fs/nfs/client.c         |   80 +-
- fs/nfs/fs_context.c     | 1423 ++++++++++++++++++++++++++++
- fs/nfs/fscache.c        |    2 +-
- fs/nfs/getroot.c        |   73 +-
- fs/nfs/internal.h       |  132 +--
- fs/nfs/namespace.c      |  144 +--
- fs/nfs/nfs3_fs.h        |    2 +-
- fs/nfs/nfs3client.c     |    6 +-
- fs/nfs/nfs3proc.c       |    2 +-
- fs/nfs/nfs4_fs.h        |    9 +-
- fs/nfs/nfs4client.c     |   99 +-
- fs/nfs/nfs4namespace.c  |  285 +++---
- fs/nfs/nfs4proc.c       |    2 +-
- fs/nfs/nfs4super.c      |  257 ++---
- fs/nfs/proc.c           |    2 +-
- fs/nfs/super.c          | 1962 ++++-----------------------------------
- include/linux/nfs_xdr.h |    9 +-
- 18 files changed, 2154 insertions(+), 2337 deletions(-)
- create mode 100644 fs/nfs/fs_context.c
-
--- 
-2.17.2
-
+Regards,
+--=20
+Wolfgang Walter
+Studentenwerk M=FCnchen
+Anstalt des =F6ffentlichen Rechts
