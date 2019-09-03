@@ -4,220 +4,388 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-6.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS
-	autolearn=unavailable autolearn_force=no version=3.4.0
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A7BE1C3A5A5
-	for <linux-nfs@archiver.kernel.org>; Tue,  3 Sep 2019 20:32:27 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id ADC2DC3A5A7
+	for <linux-nfs@archiver.kernel.org>; Tue,  3 Sep 2019 20:32:28 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 7F27E21897
-	for <linux-nfs@archiver.kernel.org>; Tue,  3 Sep 2019 20:32:27 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 84D2D21897
+	for <linux-nfs@archiver.kernel.org>; Tue,  3 Sep 2019 20:32:28 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727522AbfICUcY (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 3 Sep 2019 16:32:24 -0400
-Received: from mx1.redhat.com ([209.132.183.28]:47358 "EHLO mx1.redhat.com"
+        id S1727600AbfICUc2 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 3 Sep 2019 16:32:28 -0400
+Received: from mx1.redhat.com ([209.132.183.28]:40806 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727423AbfICUcU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 3 Sep 2019 16:32:20 -0400
-Received: from smtp.corp.redhat.com (int-mx05.intmail.prod.int.phx2.redhat.com [10.5.11.15])
+        id S1726440AbfICUcX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 3 Sep 2019 16:32:23 -0400
+Received: from smtp.corp.redhat.com (int-mx06.intmail.prod.int.phx2.redhat.com [10.5.11.16])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 5AF56190C022;
-        Tue,  3 Sep 2019 20:32:20 +0000 (UTC)
+        by mx1.redhat.com (Postfix) with ESMTPS id CD9203082133;
+        Tue,  3 Sep 2019 20:32:22 +0000 (UTC)
 Received: from coeurl.usersys.redhat.com (ovpn-121-35.rdu2.redhat.com [10.10.121.35])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 271075D6B2;
-        Tue,  3 Sep 2019 20:32:20 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 91C5A5C207;
+        Tue,  3 Sep 2019 20:32:22 +0000 (UTC)
 Received: by coeurl.usersys.redhat.com (Postfix, from userid 1000)
-        id B1B2220D2E; Tue,  3 Sep 2019 16:32:15 -0400 (EDT)
+        id 13A8C20F7F; Tue,  3 Sep 2019 16:32:16 -0400 (EDT)
 From:   Scott Mayhew <smayhew@redhat.com>
 To:     trond.myklebust@hammerspace.com, anna.schumaker@netapp.com
 Cc:     dhowells@redhat.com, viro@zeniv.linux.org.uk,
         linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         linux-kernel@vger.kernel.org
-Subject: [PATCH v2 13/26] nfs: get rid of mount_info ->fill_super()
-Date:   Tue,  3 Sep 2019 16:32:02 -0400
-Message-Id: <20190903203215.9157-14-smayhew@redhat.com>
+Subject: [PATCH v2 26/26] NFS: Attach supplementary error information to fs_context.
+Date:   Tue,  3 Sep 2019 16:32:15 -0400
+Message-Id: <20190903203215.9157-27-smayhew@redhat.com>
 In-Reply-To: <20190903203215.9157-1-smayhew@redhat.com>
 References: <20190903203215.9157-1-smayhew@redhat.com>
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.15
-X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.6.2 (mx1.redhat.com [10.5.110.70]); Tue, 03 Sep 2019 20:32:20 +0000 (UTC)
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.16
+X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.42]); Tue, 03 Sep 2019 20:32:22 +0000 (UTC)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Al Viro <viro@zeniv.linux.org.uk>
+Split out from commit "NFS: Add fs_context support."
 
-The only possible values are nfs_fill_super and nfs_clone_super.  The
-latter is used only when crossing into a submount and it is almost
-identical to the former; the only differences are
-	* ->s_time_gran unconditionally set to 1 (even for v2 mounts).
-Regression dating back to 2012, actually.
-	* ->s_blocksize/->s_blocksize_bits set to that of parent.
+Add wrappers nfs_errorf(), nfs_invalf(), and nfs_warnf() which log error
+information to the fs_context.  Convert some printk's to use these new
+wrappers instead.
 
-Rather than messing with the method, stash ->s_blocksize_bits in
-mount_info in submount case and after the (now unconditional)
-call of nfs_fill_super() override ->s_blocksize/->s_blocksize_bits
-if that has been set.
-
-Reviewed-by: David Howells <dhowells@redhat.com>
-Signed-off-by: Al Viro <viro@zeniv.linux.org.uk>
+Signed-off-by: Scott Mayhew <smayhew@redhat.com>
 ---
- fs/nfs/internal.h  |  4 +--
- fs/nfs/namespace.c |  2 +-
- fs/nfs/nfs4super.c |  1 -
- fs/nfs/super.c     | 66 +++++++++++-----------------------------------
- 4 files changed, 18 insertions(+), 55 deletions(-)
+ fs/nfs/fs_context.c | 105 +++++++++++++++-----------------------------
+ fs/nfs/getroot.c    |   3 ++
+ fs/nfs/internal.h   |   4 ++
+ fs/nfs/namespace.c  |   2 +-
+ fs/nfs/nfs4super.c  |   2 +
+ fs/nfs/super.c      |   4 +-
+ 6 files changed, 48 insertions(+), 72 deletions(-)
 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 444d0fc2bcca..fa737e37f7c9 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -144,7 +144,7 @@ struct nfs_mount_request {
- };
- 
- struct nfs_mount_info {
--	void (*fill_super)(struct super_block *, struct nfs_mount_info *);
-+	unsigned int inherited_bsize;
- 	int (*set_security)(struct super_block *, struct dentry *, struct nfs_mount_info *);
- 	struct nfs_parsed_mount_data *parsed;
- 	struct nfs_clone_mount *cloned;
-@@ -403,8 +403,6 @@ int nfs_set_sb_security(struct super_block *, struct dentry *, struct nfs_mount_
- int nfs_clone_sb_security(struct super_block *, struct dentry *, struct nfs_mount_info *);
- struct dentry *nfs_fs_mount(struct file_system_type *, int, const char *, void *);
- void nfs_kill_super(struct super_block *);
--void nfs_fill_super(struct super_block *, struct nfs_mount_info *);
--void nfs_clone_super(struct super_block *, struct nfs_mount_info *);
- 
- extern struct rpc_stat nfs_rpcstat;
- 
-diff --git a/fs/nfs/namespace.c b/fs/nfs/namespace.c
-index 970f92a860ed..7bc5b9b8f5ea 100644
---- a/fs/nfs/namespace.c
-+++ b/fs/nfs/namespace.c
-@@ -229,7 +229,7 @@ struct vfsmount *nfs_do_submount(struct dentry *dentry, struct nfs_fh *fh,
- 		.authflavor = authflavor,
- 	};
- 	struct nfs_mount_info mount_info = {
--		.fill_super = nfs_clone_super,
-+		.inherited_bsize = sb->s_blocksize_bits,
- 		.set_security = nfs_clone_sb_security,
- 		.cloned = &mountdata,
- 		.mntfh = fh,
-diff --git a/fs/nfs/nfs4super.c b/fs/nfs/nfs4super.c
-index b6cf62125380..d387c3c3b600 100644
---- a/fs/nfs/nfs4super.c
-+++ b/fs/nfs/nfs4super.c
-@@ -224,7 +224,6 @@ static struct dentry *nfs4_referral_mount(struct file_system_type *fs_type,
- {
- 	struct nfs_clone_mount *data = raw_data;
- 	struct nfs_mount_info mount_info = {
--		.fill_super = nfs_fill_super,
- 		.set_security = nfs_clone_sb_security,
- 		.cloned = data,
- 		.nfs_mod = &nfs_v4,
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 157d340333c8..89751ce21110 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -2339,29 +2339,9 @@ nfs_remount(struct super_block *sb, int *flags, char *raw_data)
- EXPORT_SYMBOL_GPL(nfs_remount);
- 
- /*
-- * Initialise the common bits of the superblock
-+ * Finish setting up an NFS superblock
-  */
--static void nfs_initialise_sb(struct super_block *sb)
--{
--	struct nfs_server *server = NFS_SB(sb);
--
--	sb->s_magic = NFS_SUPER_MAGIC;
--
--	/* We probably want something more informative here */
--	snprintf(sb->s_id, sizeof(sb->s_id),
--		 "%u:%u", MAJOR(sb->s_dev), MINOR(sb->s_dev));
--
--	if (sb->s_blocksize == 0)
--		sb->s_blocksize = nfs_block_bits(server->wsize,
--						 &sb->s_blocksize_bits);
--
--	nfs_super_set_maxbytes(sb, server->maxfilesize);
--}
--
--/*
-- * Finish setting up an NFS2/3 superblock
-- */
--void nfs_fill_super(struct super_block *sb, struct nfs_mount_info *mount_info)
-+static void nfs_fill_super(struct super_block *sb, struct nfs_mount_info *mount_info)
- {
- 	struct nfs_parsed_mount_data *data = mount_info->parsed;
- 	struct nfs_server *server = NFS_SB(sb);
-@@ -2382,35 +2362,17 @@ void nfs_fill_super(struct super_block *sb, struct nfs_mount_info *mount_info)
- 		sb->s_export_op = &nfs_export_ops;
+diff --git a/fs/nfs/fs_context.c b/fs/nfs/fs_context.c
+index 7284c5a18e2b..09525a40df0a 100644
+--- a/fs/nfs/fs_context.c
++++ b/fs/nfs/fs_context.c
+@@ -321,10 +321,8 @@ static int nfs_auth_info_add(struct fs_context *fc,
+ 			return 0;
  	}
  
-- 	nfs_initialise_sb(sb);
--}
--EXPORT_SYMBOL_GPL(nfs_fill_super);
--
--/*
-- * Finish setting up a cloned NFS2/3/4 superblock
-- */
--void nfs_clone_super(struct super_block *sb,
--			    struct nfs_mount_info *mount_info)
--{
--	const struct super_block *old_sb = mount_info->cloned->sb;
--	struct nfs_server *server = NFS_SB(sb);
-+	sb->s_magic = NFS_SUPER_MAGIC;
- 
--	sb->s_blocksize_bits = old_sb->s_blocksize_bits;
--	sb->s_blocksize = old_sb->s_blocksize;
--	sb->s_maxbytes = old_sb->s_maxbytes;
--	sb->s_xattr = old_sb->s_xattr;
--	sb->s_op = old_sb->s_op;
--	sb->s_time_gran = 1;
--	sb->s_export_op = old_sb->s_export_op;
-+	/* We probably want something more informative here */
-+	snprintf(sb->s_id, sizeof(sb->s_id),
-+		 "%u:%u", MAJOR(sb->s_dev), MINOR(sb->s_dev));
- 
--	if (server->nfs_client->rpc_ops->version != 2) {
--		/* The VFS shouldn't apply the umask to mode bits. We will do
--		 * so ourselves when necessary.
--		 */
--		sb->s_flags |= SB_POSIXACL;
+-	if (auth_info->flavor_len + 1 >= max_flavor_len) {
+-		dfprintk(MOUNT, "NFS: too many sec= flavors\n");
+-		return -EINVAL;
 -	}
-+	if (sb->s_blocksize == 0)
-+		sb->s_blocksize = nfs_block_bits(server->wsize,
-+						 &sb->s_blocksize_bits);
++	if (auth_info->flavor_len + 1 >= max_flavor_len)
++		return nfs_invalf(fc, "NFS: too many sec= flavors");
  
-- 	nfs_initialise_sb(sb);
-+	nfs_super_set_maxbytes(sb, server->maxfilesize);
+ 	auth_info->flavors[auth_info->flavor_len++] = flavor;
+ 	return 0;
+@@ -381,9 +379,7 @@ static int nfs_parse_security_flavors(struct fs_context *fc,
+ 			pseudoflavor = RPC_AUTH_GSS_SPKMP;
+ 			break;
+ 		default:
+-			dfprintk(MOUNT,
+-				 "NFS: sec= option '%s' not recognized\n", p);
+-			return -EINVAL;
++			return nfs_invalf(fc, "NFS: sec=%s option not recognized", p);
+ 		}
+ 
+ 		ret = nfs_auth_info_add(fc, &ctx->auth_info, pseudoflavor);
+@@ -428,8 +424,7 @@ static int nfs_parse_version_string(struct fs_context *fc,
+ 		ctx->minorversion = 2;
+ 		break;
+ 	default:
+-		dfprintk(MOUNT, "NFS:   Unsupported NFS version\n");
+-		return -EINVAL;
++		return nfs_invalf(fc, "NFS: Unsupported NFS version");
+ 	}
+ 	return 0;
+ }
+@@ -454,10 +449,8 @@ static int nfs_fs_context_parse_param(struct fs_context *fc,
+ 
+ 	switch (opt) {
+ 	case Opt_source:
+-		if (fc->source) {
+-			dfprintk(MOUNT, "NFS: Multiple sources not supported\n");
+-			return -EINVAL;
+-		}
++		if (fc->source)
++			return nfs_invalf(fc, "NFS: Multiple sources not supported");
+ 		fc->source = param->string;
+ 		param->string = NULL;
+ 		break;
+@@ -667,8 +660,7 @@ static int nfs_fs_context_parse_param(struct fs_context *fc,
+ 			xprt_load_transport(param->string);
+ 			break;
+ 		default:
+-			dfprintk(MOUNT, "NFS:   unrecognized transport protocol\n");
+-			return -EINVAL;
++			return nfs_invalf(fc, "NFS: Unrecognized transport protocol");
+ 		}
+ 
+ 		ctx->protofamily = protofamily;
+@@ -691,8 +683,7 @@ static int nfs_fs_context_parse_param(struct fs_context *fc,
+ 			break;
+ 		case Opt_xprt_rdma: /* not used for side protocols */
+ 		default:
+-			dfprintk(MOUNT, "NFS:   unrecognized transport protocol\n");
+-			return -EINVAL;
++			return nfs_invalf(fc, "NFS: Unrecognized transport protocol");
+ 		}
+ 		ctx->mountfamily = mountfamily;
+ 		break;
+@@ -777,13 +768,11 @@ static int nfs_fs_context_parse_param(struct fs_context *fc,
+ 	return 0;
+ 
+ out_invalid_value:
+-	printk(KERN_INFO "NFS: Bad mount option value specified\n");
+-	return -EINVAL;
++	return nfs_invalf(fc, "NFS: Bad mount option value specified");
+ out_invalid_address:
+-	printk(KERN_INFO "NFS: Bad IP address specified\n");
+-	return -EINVAL;
++	return nfs_invalf(fc, "NFS: Bad IP address specified");
+ out_of_bounds:
+-	printk(KERN_INFO "NFS: Value for '%s' out of range\n", param->key);
++	nfs_invalf(fc, "NFS: Value for '%s' out of range", param->key);
+ 	return -ERANGE;
  }
  
- static int nfs_compare_mount_options(const struct super_block *s, const struct nfs_server *b, int flags)
-@@ -2676,8 +2638,13 @@ static struct dentry *nfs_fs_mount_common(int flags, const char *dev_name,
+@@ -849,19 +838,15 @@ static int nfs_parse_source(struct fs_context *fc,
+ 	return 0;
+ 
+ out_bad_devname:
+-	dfprintk(MOUNT, "NFS: device name not in host:path format\n");
+-	return -EINVAL;
+-
++	return nfs_invalf(fc, "NFS: device name not in host:path format");
+ out_nomem:
+-	dfprintk(MOUNT, "NFS: not enough memory to parse device name\n");
++	nfs_errorf(fc, "NFS: not enough memory to parse device name");
+ 	return -ENOMEM;
+-
+ out_hostname:
+-	dfprintk(MOUNT, "NFS: server hostname too long\n");
++	nfs_errorf(fc, "NFS: server hostname too long");
+ 	return -ENAMETOOLONG;
+-
+ out_path:
+-	dfprintk(MOUNT, "NFS: export pathname too long\n");
++	nfs_errorf(fc, "NFS: export pathname too long");
+ 	return -ENAMETOOLONG;
+ }
+ 
+@@ -1018,29 +1003,23 @@ static int nfs23_parse_monolithic(struct fs_context *fc,
+ 		ctx->skip_reconfig_option_check = true;
+ 		return 0;
+ 	}
+-	dfprintk(MOUNT, "NFS: mount program didn't pass any mount data\n");
+-	return -EINVAL;
++	return nfs_invalf(fc, "NFS: mount program didn't pass any mount data");
+ 
+ out_no_v3:
+-	dfprintk(MOUNT, "NFS: nfs_mount_data version %d does not support v3\n",
+-		 data->version);
+-	return -EINVAL;
++	return nfs_invalf(fc, "NFS: nfs_mount_data version does not support v3");
+ 
+ out_no_sec:
+-	dfprintk(MOUNT, "NFS: nfs_mount_data version supports only AUTH_SYS\n");
+-	return -EINVAL;
++	return nfs_invalf(fc, "NFS: nfs_mount_data version supports only AUTH_SYS");
+ 
+ out_nomem:
+-	dfprintk(MOUNT, "NFS: not enough memory to handle mount options\n");
++	dfprintk(MOUNT, "NFS: not enough memory to handle mount options");
+ 	return -ENOMEM;
+ 
+ out_no_address:
+-	dfprintk(MOUNT, "NFS: mount program didn't pass remote address\n");
+-	return -EINVAL;
++	return nfs_invalf(fc, "NFS: mount program didn't pass remote address");
+ 
+ out_invalid_fh:
+-	dfprintk(MOUNT, "NFS: invalid root filehandle\n");
+-	return -EINVAL;
++	return nfs_invalf(fc, "NFS: invalid root filehandle");
+ }
+ 
+ /*
+@@ -1134,21 +1113,17 @@ static int nfs4_parse_monolithic(struct fs_context *fc,
+ 		ctx->skip_reconfig_option_check = true;
+ 		return 0;
+ 	}
+-	dfprintk(MOUNT, "NFS4: mount program didn't pass any mount data\n");
+-	return -EINVAL;
++	return nfs_invalf(fc, "NFS4: mount program didn't pass any mount data");
+ 
+ out_inval_auth:
+-	dfprintk(MOUNT, "NFS4: Invalid number of RPC auth flavours %d\n",
+-		 data->auth_flavourlen);
+-	return -EINVAL;
++	return nfs_invalf(fc, "NFS4: Invalid number of RPC auth flavours %d",
++		      data->auth_flavourlen);
+ 
+ out_no_address:
+-	dfprintk(MOUNT, "NFS4: mount program didn't pass remote address\n");
+-	return -EINVAL;
++	return nfs_invalf(fc, "NFS4: mount program didn't pass remote address");
+ 
+ out_invalid_transport_udp:
+-	dfprintk(MOUNT, "NFSv4: Unsupported transport protocol udp\n");
+-	return -EINVAL;
++	return nfs_invalf(fc, "NFSv4: Unsupported transport protocol udp");
+ }
+ 
+ /*
+@@ -1165,8 +1140,7 @@ static int nfs_fs_context_parse_monolithic(struct fs_context *fc,
+ 		return nfs4_parse_monolithic(fc, data);
+ #endif
+ 
+-	dfprintk(MOUNT, "NFS: Unsupported monolithic data version\n");
+-	return -EINVAL;
++	return nfs_invalf(fc, "NFS: Unsupported monolithic data version");
+ }
+ 
+ /*
+@@ -1254,32 +1228,25 @@ static int nfs_fs_context_validate(struct fs_context *fc)
+ 	return 0;
+ 
+ out_no_device_name:
+-	dfprintk(MOUNT, "NFS: Device name not specified\n");
+-	return -EINVAL;
++	return nfs_invalf(fc, "NFS: Device name not specified");
+ out_v4_not_compiled:
+-	dfprintk(MOUNT, "NFS: NFSv4 is not compiled into kernel\n");
++	nfs_errorf(fc, "NFS: NFSv4 is not compiled into kernel");
+ 	return -EPROTONOSUPPORT;
+ out_invalid_transport_udp:
+-	dfprintk(MOUNT, "NFSv4: Unsupported transport protocol udp\n");
+-	return -EINVAL;
++	return nfs_invalf(fc, "NFSv4: Unsupported transport protocol udp");
+ out_no_address:
+-	dfprintk(MOUNT, "NFS: mount program didn't pass remote address\n");
+-	return -EINVAL;
++	return nfs_invalf(fc, "NFS: mount program didn't pass remote address");
+ out_mountproto_mismatch:
+-	dfprintk(MOUNT, "NFS: Mount server address does not match mountproto= option\n");
+-	return -EINVAL;
++	return nfs_invalf(fc, "NFS: Mount server address does not match mountproto= option");
+ out_proto_mismatch:
+-	dfprintk(MOUNT, "NFS: Server address does not match proto= option\n");
+-	return -EINVAL;
++	return nfs_invalf(fc, "NFS: Server address does not match proto= option");
+ out_minorversion_mismatch:
+-	dfprintk(MOUNT, "NFS: Mount option vers=%u does not support minorversion=%u\n",
++	return nfs_invalf(fc, "NFS: Mount option vers=%u does not support minorversion=%u",
+ 			  ctx->version, ctx->minorversion);
+-	return -EINVAL;
+ out_migration_misuse:
+-	dfprintk(MOUNT, "NFS: 'Migration' not supported for this NFS version\n");
+-	return -EINVAL;
++	return nfs_invalf(fc, "NFS: 'Migration' not supported for this NFS version");
+ out_version_unavailable:
+-	dfprintk(MOUNT, "NFS: Version unavailable\n");
++	nfs_errorf(fc, "NFS: Version unavailable");
+ 	return ret;
+ }
+ 
+diff --git a/fs/nfs/getroot.c b/fs/nfs/getroot.c
+index ab45496d23a6..b012c2668a1f 100644
+--- a/fs/nfs/getroot.c
++++ b/fs/nfs/getroot.c
+@@ -86,6 +86,7 @@ int nfs_get_root(struct super_block *s, struct fs_context *fc)
+ 	error = server->nfs_client->rpc_ops->getroot(server, ctx->mntfh, &fsinfo);
+ 	if (error < 0) {
+ 		dprintk("nfs_get_root: getattr error = %d\n", -error);
++		nfs_errorf(fc, "NFS: Couldn't getattr on root");
+ 		goto out_fattr;
  	}
  
- 	if (!s->s_root) {
-+		unsigned bsize = mount_info->inherited_bsize;
- 		/* initial superblock/root creation */
--		mount_info->fill_super(s, mount_info);
-+		nfs_fill_super(s, mount_info);
-+		if (bsize) {
-+			s->s_blocksize_bits = bsize;
-+			s->s_blocksize = 1U << bsize;
-+		}
- 		nfs_get_cache_cookie(s, mount_info->parsed, mount_info->cloned);
- 		if (!(server->flags & NFS_MOUNT_UNSHARED))
- 			s->s_iflags |= SB_I_MULTIROOT;
-@@ -2712,7 +2679,6 @@ struct dentry *nfs_fs_mount(struct file_system_type *fs_type,
- 	int flags, const char *dev_name, void *raw_data)
+@@ -93,6 +94,7 @@ int nfs_get_root(struct super_block *s, struct fs_context *fc)
+ 	if (IS_ERR(inode)) {
+ 		dprintk("nfs_get_root: get root inode failed\n");
+ 		error = PTR_ERR(inode);
++		nfs_errorf(fc, "NFS: Couldn't get root inode");
+ 		goto out_fattr;
+ 	}
+ 
+@@ -108,6 +110,7 @@ int nfs_get_root(struct super_block *s, struct fs_context *fc)
+ 	if (IS_ERR(root)) {
+ 		dprintk("nfs_get_root: get root dentry failed\n");
+ 		error = PTR_ERR(root);
++		nfs_errorf(fc, "NFS: Couldn't get root dentry");
+ 		goto out_fattr;
+ 	}
+ 
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index e0911815e153..e1f46034814f 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -141,6 +141,10 @@ struct nfs_fs_context {
+ 	} clone_data;
+ };
+ 
++#define nfs_errorf(fc, fmt, ...) errorf(fc, fmt, ## __VA_ARGS__)
++#define nfs_invalf(fc, fmt, ...) invalf(fc, fmt, ## __VA_ARGS__)
++#define nfs_warnf(fc, fmt, ...) warnf(fc, fmt, ## __VA_ARGS__)
++
+ static inline struct nfs_fs_context *nfs_fc2context(const struct fs_context *fc)
  {
- 	struct nfs_mount_info mount_info = {
--		.fill_super = nfs_fill_super,
- 		.set_security = nfs_set_sb_security,
- 	};
- 	struct dentry *mntroot = ERR_PTR(-ENOMEM);
+ 	return fc->fs_private;
+diff --git a/fs/nfs/namespace.c b/fs/nfs/namespace.c
+index 3e566a632215..c1824bc6336b 100644
+--- a/fs/nfs/namespace.c
++++ b/fs/nfs/namespace.c
+@@ -278,7 +278,7 @@ int nfs_do_submount(struct fs_context *fc)
+ 
+ 	p = nfs_devname(dentry, buffer, 4096);
+ 	if (IS_ERR(p)) {
+-		dprintk("NFS: Couldn't determine submount pathname\n");
++		nfs_errorf(fc, "NFS: Couldn't determine submount pathname");
+ 		ret = PTR_ERR(p);
+ 	} else {
+ 		ret = vfs_parse_fs_string(fc, "source", p, buffer + 4096 - p);
+diff --git a/fs/nfs/nfs4super.c b/fs/nfs/nfs4super.c
+index 3b27c5e3d781..54e9c54bd08d 100644
+--- a/fs/nfs/nfs4super.c
++++ b/fs/nfs/nfs4super.c
+@@ -225,6 +225,7 @@ int nfs4_try_get_tree(struct fs_context *fc)
+ 			   fc, ctx->nfs_server.hostname,
+ 			   ctx->nfs_server.export_path);
+ 	if (err) {
++		nfs_errorf(fc, "NFS4: Couldn't follow remote path");
+ 		dfprintk(MOUNT, "<-- nfs4_try_get_tree() = %d [error]\n", err);
+ 	} else {
+ 		dfprintk(MOUNT, "<-- nfs4_try_get_tree() = 0\n");
+@@ -247,6 +248,7 @@ int nfs4_get_referral_tree(struct fs_context *fc)
+ 			    fc, ctx->nfs_server.hostname,
+ 			    ctx->nfs_server.export_path);
+ 	if (err) {
++		nfs_errorf(fc, "NFS4: Couldn't follow remote path");
+ 		dfprintk(MOUNT, "<-- nfs4_get_referral_tree() = %d [error]\n", err);
+ 	} else {
+ 		dfprintk(MOUNT, "<-- nfs4_get_referral_tree() = 0\n");
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 60174a30a91a..2e363cc65688 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -1189,7 +1189,7 @@ int nfs_get_tree_common(struct fs_context *fc)
+ 	fc->s_fs_info = NULL;
+ 	if (IS_ERR(s)) {
+ 		error = PTR_ERR(s);
+-		dfprintk(MOUNT, "NFS: Couldn't get superblock\n");
++		nfs_errorf(fc, "NFS: Couldn't get superblock");
+ 		goto out_err_nosb;
+ 	}
+ 
+@@ -1218,7 +1218,7 @@ int nfs_get_tree_common(struct fs_context *fc)
+ 
+ 	error = nfs_get_root(s, fc);
+ 	if (error < 0) {
+-		dfprintk(MOUNT, "NFS: Couldn't get root dentry\n");
++		nfs_errorf(fc, "NFS: Couldn't get root dentry");
+ 		goto error_splat_super;
+ 	}
+ 
 -- 
 2.17.2
 
