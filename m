@@ -2,72 +2,174 @@ Return-Path: <SRS0=Gfnv=W6=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-0.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=no
+X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5A1D3C3A5A2
-	for <linux-nfs@archiver.kernel.org>; Tue,  3 Sep 2019 15:50:06 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 55537C3A5A5
+	for <linux-nfs@archiver.kernel.org>; Tue,  3 Sep 2019 16:33:11 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 3934323431
-	for <linux-nfs@archiver.kernel.org>; Tue,  3 Sep 2019 15:50:06 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 2DA5D23431
+	for <linux-nfs@archiver.kernel.org>; Tue,  3 Sep 2019 16:33:11 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=default; t=1567528391;
+	bh=4Gj6mzOunVxYRVwiGI77AcUDa7ZD2zhYF2T7DezbG98=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
+	b=ztjZt6S3E/YELi+kMPDjPDtr8qfOX4LjUWx1+5Lh0sSJUUBleqJkJWERU1xmO3rV1
+	 l2o2Z6tIL4KVbDqJdMdrDJI0e/osoU+/UAbwpBAINIfDh+OQDdV9duG8dGYDwsCgxZ
+	 KcMu0tM6SOtjASuVPiPnxVsLIyAsUkRQk9wMy9zY=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729499AbfICPuF (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 3 Sep 2019 11:50:05 -0400
-Received: from mx1.math.uh.edu ([129.7.128.32]:56392 "EHLO mx1.math.uh.edu"
+        id S1731119AbfICQdE (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 3 Sep 2019 12:33:04 -0400
+Received: from mail.kernel.org ([198.145.29.99]:55400 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1729393AbfICPuF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 3 Sep 2019 11:50:05 -0400
-Received: from epithumia.math.uh.edu ([129.7.128.2])
-        by mx1.math.uh.edu with esmtp (Exim 4.92)
-        (envelope-from <tibbs@math.uh.edu>)
-        id 1i5B40-00036N-4s; Tue, 03 Sep 2019 10:50:03 -0500
-Received: by epithumia.math.uh.edu (Postfix, from userid 7225)
-        id 159ED801554; Tue,  3 Sep 2019 10:49:48 -0500 (CDT)
-From:   Jason L Tibbitts III <tibbs@math.uh.edu>
-To:     bfields@fieldses.org (J. Bruce Fields)
-Cc:     linux-nfs@vger.kernel.org, km@cm4all.com,
-        linux-kernel@vger.kernel.org
-Subject: Re: Regression in 5.1.20: Reading long directory fails
-References: <ufak1bhyuew.fsf@epithumia.math.uh.edu>
-        <ufapnkxkn0x.fsf@epithumia.math.uh.edu>
-        <20190828174609.GB29148@fieldses.org>
-        <ufay2zduosz.fsf@epithumia.math.uh.edu>
-Date:   Tue, 03 Sep 2019 10:49:48 -0500
-In-Reply-To: <ufay2zduosz.fsf@epithumia.math.uh.edu> (Jason L. Tibbitts, III's
-        message of "Wed, 28 Aug 2019 13:29:00 -0500")
-Message-ID: <ufa5zm9s7kz.fsf@epithumia.math.uh.edu>
-User-Agent: Gnus/5.13 (Gnus v5.13) Emacs/26.2 (gnu/linux)
+        id S1730808AbfICQcF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 3 Sep 2019 12:32:05 -0400
+Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+        (No client certificate requested)
+        by mail.kernel.org (Postfix) with ESMTPSA id D3BD3238CE;
+        Tue,  3 Sep 2019 16:32:03 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=default; t=1567528324;
+        bh=4Gj6mzOunVxYRVwiGI77AcUDa7ZD2zhYF2T7DezbG98=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=SbZeJZ1Ng8JIFE8KG+2+8gpeBY8pcGaV8k/YYvsbPvd8FFa2Z2/qn5eDaswT0ACPm
+         yaWKti+HEe14SFskRK10t9DV0j65dFitAJ5LBDSJDgqhGsdMZev/EdDvUgZ1r6w9ps
+         TgfQhn0we5uVU4sejpgRczfJJaN5Ya70/RG8f9Aw=
+From:   Sasha Levin <sashal@kernel.org>
+To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
+Cc:     Trond Myklebust <trond.myklebust@hammerspace.com>,
+        Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org
+Subject: [PATCH AUTOSEL 4.19 156/167] NFSv4: Fix delegation state recovery
+Date:   Tue,  3 Sep 2019 12:25:08 -0400
+Message-Id: <20190903162519.7136-156-sashal@kernel.org>
+X-Mailer: git-send-email 2.20.1
+In-Reply-To: <20190903162519.7136-1-sashal@kernel.org>
+References: <20190903162519.7136-1-sashal@kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain
+X-stable: review
+X-Patchwork-Hint: Ignore
+Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
->>>>> "JLT" == Jason L Tibbitts <tibbs@math.uh.edu> writes:
+From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-JLT> Certainly a server reboot, or maybe even just
-JLT> unmounting and remounting the filesystem or copying the data to
-JLT> another filesystem would tell me that.  In any case, as soon as I
-JLT> am able to mess with that server, I'll know more.
+[ Upstream commit 5eb8d18ca0e001c6055da2b7f30d8f6dca23a44f ]
 
-Rebooting the server did not make any difference, and now more users are
-seeing the problem.  At this point I'm in a state where NFS simply isn't
-reliable at all, and I'm not sure what to do.  If Centos 8 were out,
-I'd work on moving to that just so that the server was a little more
-modern.  (Currently the server is Centos 7.)  I guess I could try using
-Fedora, or installing one of the upstream kernels, just in case this has
-to do with some interaction between the client and the old RHEL7 kernel.
+Once we clear the NFS_DELEGATED_STATE flag, we're telling
+nfs_delegation_claim_opens() that we're done recovering all open state
+for that stateid, so we really need to ensure that we test for all
+open modes that are currently cached and recover them before exiting
+nfs4_open_delegation_recall().
 
-I do have a packet capture of a directory listing that fails with EIO,
-but I'm not sure if it's safe to simply post it, and I'm not sure what
-tshark options would be useful in decoding it.
+Fixes: 24311f884189d ("NFSv4: Recovery of recalled read delegations...")
+Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
+Cc: stable@vger.kernel.org # v4.3+
+Signed-off-by: Sasha Levin <sashal@kernel.org>
+---
+ fs/nfs/delegation.c |  2 +-
+ fs/nfs/delegation.h |  2 +-
+ fs/nfs/nfs4proc.c   | 25 ++++++++++++-------------
+ 3 files changed, 14 insertions(+), 15 deletions(-)
 
-I do know that I can rsync one of the problematic directories to a
-different server (running the same kernel) and it doesn't have the same
-problem.  What I'll try next is rsyncing to a different filesystem on
-the same server, but again I'll have to wait until people log off to do
-proper testing.
+diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
+index 75fe92eaa6818..1624618c2bc72 100644
+--- a/fs/nfs/delegation.c
++++ b/fs/nfs/delegation.c
+@@ -153,7 +153,7 @@ static int nfs_delegation_claim_opens(struct inode *inode,
+ 		/* Block nfs4_proc_unlck */
+ 		mutex_lock(&sp->so_delegreturn_mutex);
+ 		seq = raw_seqcount_begin(&sp->so_reclaim_seqcount);
+-		err = nfs4_open_delegation_recall(ctx, state, stateid, type);
++		err = nfs4_open_delegation_recall(ctx, state, stateid);
+ 		if (!err)
+ 			err = nfs_delegation_claim_locks(ctx, state, stateid);
+ 		if (!err && read_seqcount_retry(&sp->so_reclaim_seqcount, seq))
+diff --git a/fs/nfs/delegation.h b/fs/nfs/delegation.h
+index bb1ef8c37af42..c95477823fa6b 100644
+--- a/fs/nfs/delegation.h
++++ b/fs/nfs/delegation.h
+@@ -61,7 +61,7 @@ void nfs_reap_expired_delegations(struct nfs_client *clp);
+ 
+ /* NFSv4 delegation-related procedures */
+ int nfs4_proc_delegreturn(struct inode *inode, struct rpc_cred *cred, const nfs4_stateid *stateid, int issync);
+-int nfs4_open_delegation_recall(struct nfs_open_context *ctx, struct nfs4_state *state, const nfs4_stateid *stateid, fmode_t type);
++int nfs4_open_delegation_recall(struct nfs_open_context *ctx, struct nfs4_state *state, const nfs4_stateid *stateid);
+ int nfs4_lock_delegation_recall(struct file_lock *fl, struct nfs4_state *state, const nfs4_stateid *stateid);
+ bool nfs4_copy_delegation_stateid(struct inode *inode, fmode_t flags, nfs4_stateid *dst, struct rpc_cred **cred);
+ bool nfs4_refresh_delegation_stateid(nfs4_stateid *dst, struct inode *inode);
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 31ae3bd5d9d20..621e3cf90f4eb 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2113,12 +2113,10 @@ static int nfs4_handle_delegation_recall_error(struct nfs_server *server, struct
+ 		case -NFS4ERR_BAD_HIGH_SLOT:
+ 		case -NFS4ERR_CONN_NOT_BOUND_TO_SESSION:
+ 		case -NFS4ERR_DEADSESSION:
+-			set_bit(NFS_DELEGATED_STATE, &state->flags);
+ 			nfs4_schedule_session_recovery(server->nfs_client->cl_session, err);
+ 			return -EAGAIN;
+ 		case -NFS4ERR_STALE_CLIENTID:
+ 		case -NFS4ERR_STALE_STATEID:
+-			set_bit(NFS_DELEGATED_STATE, &state->flags);
+ 			/* Don't recall a delegation if it was lost */
+ 			nfs4_schedule_lease_recovery(server->nfs_client);
+ 			return -EAGAIN;
+@@ -2139,7 +2137,6 @@ static int nfs4_handle_delegation_recall_error(struct nfs_server *server, struct
+ 			return -EAGAIN;
+ 		case -NFS4ERR_DELAY:
+ 		case -NFS4ERR_GRACE:
+-			set_bit(NFS_DELEGATED_STATE, &state->flags);
+ 			ssleep(1);
+ 			return -EAGAIN;
+ 		case -ENOMEM:
+@@ -2155,8 +2152,7 @@ static int nfs4_handle_delegation_recall_error(struct nfs_server *server, struct
+ }
+ 
+ int nfs4_open_delegation_recall(struct nfs_open_context *ctx,
+-		struct nfs4_state *state, const nfs4_stateid *stateid,
+-		fmode_t type)
++		struct nfs4_state *state, const nfs4_stateid *stateid)
+ {
+ 	struct nfs_server *server = NFS_SERVER(state->inode);
+ 	struct nfs4_opendata *opendata;
+@@ -2167,20 +2163,23 @@ int nfs4_open_delegation_recall(struct nfs_open_context *ctx,
+ 	if (IS_ERR(opendata))
+ 		return PTR_ERR(opendata);
+ 	nfs4_stateid_copy(&opendata->o_arg.u.delegation, stateid);
+-	nfs_state_clear_delegation(state);
+-	switch (type & (FMODE_READ|FMODE_WRITE)) {
+-	case FMODE_READ|FMODE_WRITE:
+-	case FMODE_WRITE:
++	if (!test_bit(NFS_O_RDWR_STATE, &state->flags)) {
+ 		err = nfs4_open_recover_helper(opendata, FMODE_READ|FMODE_WRITE);
+ 		if (err)
+-			break;
++			goto out;
++	}
++	if (!test_bit(NFS_O_WRONLY_STATE, &state->flags)) {
+ 		err = nfs4_open_recover_helper(opendata, FMODE_WRITE);
+ 		if (err)
+-			break;
+-		/* Fall through */
+-	case FMODE_READ:
++			goto out;
++	}
++	if (!test_bit(NFS_O_RDONLY_STATE, &state->flags)) {
+ 		err = nfs4_open_recover_helper(opendata, FMODE_READ);
++		if (err)
++			goto out;
+ 	}
++	nfs_state_clear_delegation(state);
++out:
+ 	nfs4_opendata_put(opendata);
+ 	return nfs4_handle_delegation_recall_error(server, state, stateid, NULL, err);
+ }
+-- 
+2.20.1
 
- - J<
