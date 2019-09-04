@@ -7,46 +7,45 @@ X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 23D7BC3A5A8
-	for <linux-nfs@archiver.kernel.org>; Wed,  4 Sep 2019 16:17:41 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 00F21C3A5A9
+	for <linux-nfs@archiver.kernel.org>; Wed,  4 Sep 2019 16:17:46 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id E718A21883
-	for <linux-nfs@archiver.kernel.org>; Wed,  4 Sep 2019 16:17:40 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id C497221670
+	for <linux-nfs@archiver.kernel.org>; Wed,  4 Sep 2019 16:17:45 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1567613861;
-	bh=+PpyBe9AIAsblW3JyysaNGodo98udWJcx/rWMlVM3eg=;
+	s=default; t=1567613865;
+	bh=5NgFewY6WF0/ll0jM4pfbCuhJk4jlxUU9PS5C1LOheg=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=l4U8hU2vcYg4lRDs3qV+blO3QiLfw9R3j5j4vHn+JWY7HvyGNUGirx1L5Ud5mziJL
-	 KKI1+rvo81rmgyzKPA52N1+gflGmyOfroAhxjfSvZi1Gb1ylYoUfRxo6pwnO4xFxsr
-	 ufwxHF1cmDxmEtn8Si53lu78p2CrktZHtAeBJMhc=
+	b=uhvvgQdZXbwHaG5641UG4LG9V8B4dVY1xIoehriwzWDxqwCwdlHrHzJv/p3rzVwXA
+	 Iq+vgGTnIVrB9YCqzZtsh1cjUgftrtalXbLTlHyeH7ywDdIfqc/BSVLKh/yLKO5dNT
+	 zyjH5sz1J5uFnqmzdGOJ8cibbVwfaRmBFixYsCJs=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1732227AbfIDP7C (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 4 Sep 2019 11:59:02 -0400
-Received: from mail.kernel.org ([198.145.29.99]:33278 "EHLO mail.kernel.org"
+        id S1732453AbfIDQRk (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 4 Sep 2019 12:17:40 -0400
+Received: from mail.kernel.org ([198.145.29.99]:33304 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1732222AbfIDP7C (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 4 Sep 2019 11:59:02 -0400
+        id S1732190AbfIDP7D (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 4 Sep 2019 11:59:03 -0400
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 5745022DBF;
-        Wed,  4 Sep 2019 15:59:00 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 7F88A2339D;
+        Wed,  4 Sep 2019 15:59:01 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1567612741;
-        bh=+PpyBe9AIAsblW3JyysaNGodo98udWJcx/rWMlVM3eg=;
+        s=default; t=1567612742;
+        bh=5NgFewY6WF0/ll0jM4pfbCuhJk4jlxUU9PS5C1LOheg=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=eMjeTWpBfql8weIbqMAcRKBFa6putFfMakXzh1FtdtW7G1OfG0jyVSDiRH10lVN2z
-         p4AI0gJhySufpFq3sDV4erlNdwFqNQIL9oQpMa2uHfFa/8Xpem32iY/pGUhVQ+rkkE
-         SuUwBdRNMyBqUXQZlJ04xECGjj5O17CS7tleF9dk=
+        b=cGR986PhLclZx3vrvxk6NBv2pNyN8TqZsqPvk5/h3nmVZO7d4wuV+EuLKbdY0EsCY
+         +us7kvCEgHbbGHWpaCTXxQFXLfG25KJdx4MOc2jIePsZ4DKGduadgRCrTr5A32ClDT
+         ZTjEKhwn07j4cjNDD2c1ePOdIqCoiFia2NK+/7eM=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Jan Stancek <jstancek@redhat.com>,
-        Naresh Kamboju <naresh.kamboju@linaro.org>,
+Cc:     YueHaibing <yuehaibing@huawei.com>, Hulk Robot <hulkci@huawei.com>,
+        Trond Myklebust <trond.myklebust@hammerspace.com>,
         Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.2 54/94] NFSv2: Fix write regression
-Date:   Wed,  4 Sep 2019 11:56:59 -0400
-Message-Id: <20190904155739.2816-54-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 5.2 55/94] NFS: remove set but not used variable 'mapping'
+Date:   Wed,  4 Sep 2019 11:57:00 -0400
+Message-Id: <20190904155739.2816-55-sashal@kernel.org>
 X-Mailer: git-send-email 2.20.1
 In-Reply-To: <20190904155739.2816-1-sashal@kernel.org>
 References: <20190904155739.2816-1-sashal@kernel.org>
@@ -59,38 +58,46 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Trond Myklebust <trond.myklebust@hammerspace.com>
+From: YueHaibing <yuehaibing@huawei.com>
 
-[ Upstream commit d33d4beb522987d1c305c12500796f9be3687dee ]
+[ Upstream commit 99300a85260c2b7febd57082a617d1062532067e ]
 
-Ensure we update the write result count on success, since the
-RPC call itself does not do so.
+Fixes gcc '-Wunused-but-set-variable' warning:
 
-Reported-by: Jan Stancek <jstancek@redhat.com>
-Reported-by: Naresh Kamboju <naresh.kamboju@linaro.org>
+fs/nfs/write.c: In function nfs_page_async_flush:
+fs/nfs/write.c:609:24: warning: variable mapping set but not used [-Wunused-but-set-variable]
+
+It is not use since commit aefb623c422e ("NFS: Fix
+writepage(s) error handling to not report errors twice")
+
+Reported-by: Hulk Robot <hulkci@huawei.com>
+Signed-off-by: YueHaibing <yuehaibing@huawei.com>
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
-Tested-by: Jan Stancek <jstancek@redhat.com>
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- fs/nfs/proc.c | 4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
+ fs/nfs/write.c | 2 --
+ 1 file changed, 2 deletions(-)
 
-diff --git a/fs/nfs/proc.c b/fs/nfs/proc.c
-index ec79d2214a78c..0f7288b94633b 100644
---- a/fs/nfs/proc.c
-+++ b/fs/nfs/proc.c
-@@ -616,8 +616,10 @@ static int nfs_proc_pgio_rpc_prepare(struct rpc_task *task,
- 
- static int nfs_write_done(struct rpc_task *task, struct nfs_pgio_header *hdr)
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 0d6d7beb85053..ee6932c9819e0 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -606,7 +606,6 @@ static void nfs_write_error(struct nfs_page *req, int error)
+ static int nfs_page_async_flush(struct nfs_pageio_descriptor *pgio,
+ 				struct page *page)
  {
--	if (task->tk_status >= 0)
-+	if (task->tk_status >= 0) {
-+		hdr->res.count = hdr->args.count;
- 		nfs_writeback_update_inode(hdr);
-+	}
- 	return 0;
- }
+-	struct address_space *mapping;
+ 	struct nfs_page *req;
+ 	int ret = 0;
  
+@@ -621,7 +620,6 @@ static int nfs_page_async_flush(struct nfs_pageio_descriptor *pgio,
+ 	WARN_ON_ONCE(test_bit(PG_CLEAN, &req->wb_flags));
+ 
+ 	/* If there is a fatal error that covers this write, just exit */
+-	mapping = page_file_mapping(page);
+ 	ret = pgio->pg_error;
+ 	if (nfs_error_is_fatal_on_server(ret))
+ 		goto out_launder;
 -- 
 2.20.1
 
