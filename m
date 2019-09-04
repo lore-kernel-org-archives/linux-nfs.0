@@ -7,44 +7,45 @@ X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 371A7C3A5AA
-	for <linux-nfs@archiver.kernel.org>; Wed,  4 Sep 2019 16:18:20 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 173E2C3A5A8
+	for <linux-nfs@archiver.kernel.org>; Wed,  4 Sep 2019 16:18:29 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 06F9A22DBF
-	for <linux-nfs@archiver.kernel.org>; Wed,  4 Sep 2019 16:18:20 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id E126421670
+	for <linux-nfs@archiver.kernel.org>; Wed,  4 Sep 2019 16:18:28 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1567613900;
-	bh=d5uaYS9gM3soHszTjTVFuR9hBYYxU5cMWBxXdZnzURQ=;
+	s=default; t=1567613908;
+	bh=9ihFwqapVZ8ImWO7Fe8EEFOgFkuhEe0mW9hNiTymonE=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=FC//Q0KhUgmCtRTy95ihWO6qwrRkwnHsGCRn+LRbGpTCIiIIN1CGSRuaWY1WvK1M6
-	 1f7f+vKn8XUvl6QbzkZdx4OUfr+q8rq9E5+8U8Oy6GGox/eiew+7PCFAz5IaK26dwr
-	 3D2FoivWbDDS1Gfr9JGpM0zur21g0/tAmH3lezb4=
+	b=0/O8250WXWM1kUUAbrAxCqw4KHAshNvWFhi9QUSY/u6zAQvTbdCQcAvT0ltr4ozRX
+	 /KjBp78kTO5JUmR54wyKZ+YxSTgOSF8JmoOI545hFs6Hh94uFzE5ydgiCJj8EuMqAN
+	 w0+/pddPYhYRB8P7nAbdmYELXhL9VeDBTQbyyrvg=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1732135AbfIDP6x (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 4 Sep 2019 11:58:53 -0400
-Received: from mail.kernel.org ([198.145.29.99]:33072 "EHLO mail.kernel.org"
+        id S1732117AbfIDQSX (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 4 Sep 2019 12:18:23 -0400
+Received: from mail.kernel.org ([198.145.29.99]:33002 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1731540AbfIDP6w (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 4 Sep 2019 11:58:52 -0400
+        id S1731543AbfIDP6t (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 4 Sep 2019 11:58:49 -0400
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 599FE22CF7;
-        Wed,  4 Sep 2019 15:58:51 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id EF93B22CF7;
+        Wed,  4 Sep 2019 15:58:47 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1567612731;
-        bh=d5uaYS9gM3soHszTjTVFuR9hBYYxU5cMWBxXdZnzURQ=;
+        s=default; t=1567612728;
+        bh=9ihFwqapVZ8ImWO7Fe8EEFOgFkuhEe0mW9hNiTymonE=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=tC0E/pTygzPdnM5KTooOdg/7kVVAJpxavFZWzrMgrBV3NrsSKUBHXKSSTU7WHX3Bu
-         UAWFdiKDoijDBByIFsVGG8eGxMRltqZpva5mN18FmacGbbI4DU4deE74ERy5wYklX3
-         22y500/YVV3sYF9hiPyVtQcMmxMbLD8IgWpWaZCo=
+        b=ohLXILHVZqYXQ7dnTI/nap5vJ4RtGBTzoJiYYfcfqqMqMVgOBxeX3awnRp9+u0tA7
+         9J7Pb9v8Fb5cimz+ASNPkNOecG9nIngO/Xov283NAOjxdzgSOM56CPTwUoz+rbJu+H
+         lS7nHFssubgkJHeLWs4u+SdnRQcgPr/x0UoSopkk=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
 Cc:     Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.2 47/94] pNFS/flexfiles: Don't time out requests on hard mounts
-Date:   Wed,  4 Sep 2019 11:56:52 -0400
-Message-Id: <20190904155739.2816-47-sashal@kernel.org>
+        Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org,
+        netdev@vger.kernel.org
+Subject: [PATCH AUTOSEL 5.2 45/94] SUNRPC: Handle EADDRINUSE and ENOBUFS correctly
+Date:   Wed,  4 Sep 2019 11:56:50 -0400
+Message-Id: <20190904155739.2816-45-sashal@kernel.org>
 X-Mailer: git-send-email 2.20.1
 In-Reply-To: <20190904155739.2816-1-sashal@kernel.org>
 References: <20190904155739.2816-1-sashal@kernel.org>
@@ -59,65 +60,68 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-[ Upstream commit 7af46292dadcf8870946916f79fdddf79bd7267f ]
+[ Upstream commit 80f455da6cd0998a5be30a8af24ea2a22815c212 ]
 
-If the mount is hard, we should ignore the 'io_maxretrans' module
-parameter so that we always keep retrying.
+If a connect or bind attempt returns EADDRINUSE, that means we want to
+retry with a different port. It is not a fatal connection error.
+Similarly, ENOBUFS is not fatal, but just indicates a memory allocation
+issue. Retry after a short delay.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- fs/nfs/flexfilelayout/flexfilelayout.c | 11 +++++++++--
- 1 file changed, 9 insertions(+), 2 deletions(-)
+ net/sunrpc/clnt.c | 10 +++++++---
+ 1 file changed, 7 insertions(+), 3 deletions(-)
 
-diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
-index bcff3bf5ae09e..e7d365ccc258b 100644
---- a/fs/nfs/flexfilelayout/flexfilelayout.c
-+++ b/fs/nfs/flexfilelayout/flexfilelayout.c
-@@ -8,6 +8,7 @@
-  */
- 
- #include <linux/nfs_fs.h>
-+#include <linux/nfs_mount.h>
- #include <linux/nfs_page.h>
- #include <linux/module.h>
- #include <linux/sched/mm.h>
-@@ -928,7 +929,9 @@ ff_layout_pg_init_read(struct nfs_pageio_descriptor *pgio,
- 	pgm = &pgio->pg_mirrors[0];
- 	pgm->pg_bsize = mirror->mirror_ds->ds_versions[0].rsize;
- 
--	pgio->pg_maxretrans = io_maxretrans;
-+	if (NFS_SERVER(pgio->pg_inode)->flags &
-+			(NFS_MOUNT_SOFT|NFS_MOUNT_SOFTERR))
-+		pgio->pg_maxretrans = io_maxretrans;
- 	return;
- out_nolseg:
- 	if (pgio->pg_error < 0)
-@@ -936,6 +939,7 @@ ff_layout_pg_init_read(struct nfs_pageio_descriptor *pgio,
- out_mds:
- 	pnfs_put_lseg(pgio->pg_lseg);
- 	pgio->pg_lseg = NULL;
-+	pgio->pg_maxretrans = 0;
- 	nfs_pageio_reset_read_mds(pgio);
- }
- 
-@@ -996,12 +1000,15 @@ ff_layout_pg_init_write(struct nfs_pageio_descriptor *pgio,
- 		pgm->pg_bsize = mirror->mirror_ds->ds_versions[0].wsize;
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 9e1743b364ec4..3f090a75f3721 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -1926,6 +1926,9 @@ call_bind_status(struct rpc_task *task)
+ 		task->tk_rebind_retry--;
+ 		rpc_delay(task, 3*HZ);
+ 		goto retry_timeout;
++	case -ENOBUFS:
++		rpc_delay(task, HZ >> 2);
++		goto retry_timeout;
+ 	case -EAGAIN:
+ 		goto retry_timeout;
+ 	case -ETIMEDOUT:
+@@ -1949,7 +1952,6 @@ call_bind_status(struct rpc_task *task)
+ 	case -ENETDOWN:
+ 	case -EHOSTUNREACH:
+ 	case -ENETUNREACH:
+-	case -ENOBUFS:
+ 	case -EPIPE:
+ 		dprintk("RPC: %5u remote rpcbind unreachable: %d\n",
+ 				task->tk_pid, task->tk_status);
+@@ -2040,8 +2042,6 @@ call_connect_status(struct rpc_task *task)
+ 	case -ENETDOWN:
+ 	case -ENETUNREACH:
+ 	case -EHOSTUNREACH:
+-	case -EADDRINUSE:
+-	case -ENOBUFS:
+ 	case -EPIPE:
+ 		xprt_conditional_disconnect(task->tk_rqstp->rq_xprt,
+ 					    task->tk_rqstp->rq_connect_cookie);
+@@ -2050,6 +2050,7 @@ call_connect_status(struct rpc_task *task)
+ 		/* retry with existing socket, after a delay */
+ 		rpc_delay(task, 3*HZ);
+ 		/* fall through */
++	case -EADDRINUSE:
+ 	case -ENOTCONN:
+ 	case -EAGAIN:
+ 	case -ETIMEDOUT:
+@@ -2058,6 +2059,9 @@ call_connect_status(struct rpc_task *task)
+ 		clnt->cl_stats->netreconn++;
+ 		task->tk_action = call_transmit;
+ 		return;
++	case -ENOBUFS:
++		rpc_delay(task, HZ >> 2);
++		goto out_retry;
  	}
- 
--	pgio->pg_maxretrans = io_maxretrans;
-+	if (NFS_SERVER(pgio->pg_inode)->flags &
-+			(NFS_MOUNT_SOFT|NFS_MOUNT_SOFTERR))
-+		pgio->pg_maxretrans = io_maxretrans;
+ 	rpc_call_rpcerror(task, status);
  	return;
- 
- out_mds:
- 	pnfs_put_lseg(pgio->pg_lseg);
- 	pgio->pg_lseg = NULL;
-+	pgio->pg_maxretrans = 0;
- 	nfs_pageio_reset_write_mds(pgio);
- }
- 
 -- 
 2.20.1
 
