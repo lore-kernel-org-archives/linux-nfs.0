@@ -7,44 +7,44 @@ X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 28BA4C3A5A8
-	for <linux-nfs@archiver.kernel.org>; Wed,  4 Sep 2019 16:19:44 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4B0BEC3A5A8
+	for <linux-nfs@archiver.kernel.org>; Wed,  4 Sep 2019 16:19:49 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 01A7B21883
-	for <linux-nfs@archiver.kernel.org>; Wed,  4 Sep 2019 16:19:44 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 2372421883
+	for <linux-nfs@archiver.kernel.org>; Wed,  4 Sep 2019 16:19:49 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1567613984;
-	bh=oZpFZfTwuENTY5uN2YsGz9HBvNyxM2bkRXo0R1m53kc=;
+	s=default; t=1567613989;
+	bh=dQ1rcYng/vG9JREecmlY+aQhD8bv93+NXvLH83n+QRg=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=CjWMdWgCLDWNoqqi9ghtxPr2Ll0tuJUWAfBbQESIzDHDnkHNnlA6EsPPvTOSKfMWU
-	 qSa8HSa0bjJh5gH+SjrmV5011vL0Cbj5dagUs7/v8DGkVDrmO+45go0T37WqnrbytL
-	 2yR/DuMRsQtIEQp9JOpH+C1OII3uB4atPW1D34eM=
+	b=uRFf46puUXmbTCHyw8x3B/HKuO2S5KYzADMtkUn1CptsYOaobhmKfijtOpGwcMJj5
+	 ADNhYXZQ0eKnpknsuzQTrPQgnWxUzzNcnBME4SPBNN+ptYF3MChi5kmYYFk4df5psQ
+	 wuzYM+2AfOz+4IEqkBQckqDB3W/w9P502MMw0eqs=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1731915AbfIDP6V (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 4 Sep 2019 11:58:21 -0400
-Received: from mail.kernel.org ([198.145.29.99]:60382 "EHLO mail.kernel.org"
+        id S1732156AbfIDQTo (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 4 Sep 2019 12:19:44 -0400
+Received: from mail.kernel.org ([198.145.29.99]:60344 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1731905AbfIDP6U (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 4 Sep 2019 11:58:20 -0400
+        id S1730299AbfIDP6T (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 4 Sep 2019 11:58:19 -0400
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 2764C23697;
-        Wed,  4 Sep 2019 15:58:19 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 369A722CED;
+        Wed,  4 Sep 2019 15:58:18 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1567612699;
-        bh=oZpFZfTwuENTY5uN2YsGz9HBvNyxM2bkRXo0R1m53kc=;
+        s=default; t=1567612698;
+        bh=dQ1rcYng/vG9JREecmlY+aQhD8bv93+NXvLH83n+QRg=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=WDlDH41TnSdZyXYoWHe1/HEh8r77UeHPdk+dw11niA13TA1In+4tKULeMUCwMAJTc
-         DXEwnuoL+LLXFgi5qIW67yAF8hkcRrgoYYrWWa4nzWcLR6Wg3HufDsZDjLx00fuiBb
-         7isdoJ87pvxWvGgVmDK87AmS1CvD194TxJ2Tejw4=
+        b=QjKURkjedyQtM+2vCz2wQ62EwkRwNXn3zfwdRtpl5mvc/p3UGtCxkooPWkgyf7WRV
+         Pzx8p4XHQe5eHUaT2Q739w02R7Qev2SAomyoV3zsxsNBJU3pI83HrwIeZW3CPKeW6j
+         3lgIxPYXHXgQs45LDKHhS2wnxhqD4gyYfViq4SSw=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
 Cc:     Trond Myklebust <trond.myklebust@hammerspace.com>,
         Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.2 27/94] NFS: Fix initialisation of I/O result struct in nfs_pgio_rpcsetup
-Date:   Wed,  4 Sep 2019 11:56:32 -0400
-Message-Id: <20190904155739.2816-27-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 5.2 26/94] NFSv4: Fix return value in nfs_finish_open()
+Date:   Wed,  4 Sep 2019 11:56:31 -0400
+Message-Id: <20190904155739.2816-26-sashal@kernel.org>
 X-Mailer: git-send-email 2.20.1
 In-Reply-To: <20190904155739.2816-1-sashal@kernel.org>
 References: <20190904155739.2816-1-sashal@kernel.org>
@@ -59,32 +59,31 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-[ Upstream commit 17d8c5d145000070c581f2a8aa01edc7998582ab ]
+[ Upstream commit 9821421a291b548ef4369c6998745baa36ddecd5 ]
 
-Initialise the result count to 0 rather than initialising it to the
-argument count. The reason is that we want to ensure we record the
-I/O stats correctly in the case where an error is returned (for
-instance in the layoutstats).
+If the file turns out to be of the wrong type after opening, we want
+to revalidate the path and retry, so return EOPENSTALE rather than
+ESTALE.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- fs/nfs/pagelist.c | 2 +-
+ fs/nfs/dir.c | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-index 6ef5278326b67..3f6760b17d6a9 100644
---- a/fs/nfs/pagelist.c
-+++ b/fs/nfs/pagelist.c
-@@ -590,7 +590,7 @@ static void nfs_pgio_rpcsetup(struct nfs_pgio_header *hdr,
- 	}
- 
- 	hdr->res.fattr   = &hdr->fattr;
--	hdr->res.count   = count;
-+	hdr->res.count   = 0;
- 	hdr->res.eof     = 0;
- 	hdr->res.verf    = &hdr->verf;
- 	nfs_fattr_init(&hdr->fattr);
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index 9f44ddc34c7bf..3321cc7a7ead1 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -1483,7 +1483,7 @@ static int nfs_finish_open(struct nfs_open_context *ctx,
+ 	if (S_ISREG(file->f_path.dentry->d_inode->i_mode))
+ 		nfs_file_set_open_context(file, ctx);
+ 	else
+-		err = -ESTALE;
++		err = -EOPENSTALE;
+ out:
+ 	return err;
+ }
 -- 
 2.20.1
 
