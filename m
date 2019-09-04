@@ -4,49 +4,47 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 29DA2C3A5AA
-	for <linux-nfs@archiver.kernel.org>; Wed,  4 Sep 2019 16:10:29 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 37921C3A5AA
+	for <linux-nfs@archiver.kernel.org>; Wed,  4 Sep 2019 16:10:36 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id E937F20820
-	for <linux-nfs@archiver.kernel.org>; Wed,  4 Sep 2019 16:10:28 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 0759C2053B
+	for <linux-nfs@archiver.kernel.org>; Wed,  4 Sep 2019 16:10:36 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1567613429;
-	bh=ldNzaeVAzhULshkzKyV7DHrCylNozB6V+mzzSYdz/6E=;
+	s=default; t=1567613436;
+	bh=y+4/48mPRddCtsFRk2xtrrWt0Ag+cNN84eo2U1HHEZU=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=v5aNNWuN53HiGHiI8O+MVISnITA6BSQ0B6gasCac4Dh41q+xVFMmloUQ1ydckvo7u
-	 TCTj2E5UU8JIKp4f/nOVxXwwaaxK0zvMm8pjy2FanCP0uKMtZMiuHk1JcDHoDQsq+p
-	 AtJOa8nUwNe4tC0TKwoxtI7KiId4slNndp6g7Mog=
+	b=jUZ6n4Eb2gzbWLnSkkf1pCuxjrllmkx4EKK+TabvwKBaE30MzctPUAnQ/mdWtQZLK
+	 ogwWfL8J17rMVPyhC01d8laRBZ+GcU2ms2hgSmIbXcQHoh3iv2OzJA15/or99TPf4U
+	 XiPqSIIHqK5rxXnrDINxVq9eKiYut5fm3RE79924=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1732848AbfIDQAy (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 4 Sep 2019 12:00:54 -0400
-Received: from mail.kernel.org ([198.145.29.99]:35912 "EHLO mail.kernel.org"
+        id S1731766AbfIDQKe (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 4 Sep 2019 12:10:34 -0400
+Received: from mail.kernel.org ([198.145.29.99]:35890 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1732842AbfIDQAy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 4 Sep 2019 12:00:54 -0400
+        id S1732838AbfIDQAx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 4 Sep 2019 12:00:53 -0400
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id EE8DC22CF7;
-        Wed,  4 Sep 2019 16:00:52 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 059CD23400;
+        Wed,  4 Sep 2019 16:00:51 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1567612853;
-        bh=ldNzaeVAzhULshkzKyV7DHrCylNozB6V+mzzSYdz/6E=;
+        s=default; t=1567612852;
+        bh=y+4/48mPRddCtsFRk2xtrrWt0Ag+cNN84eo2U1HHEZU=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=KNRKjH3diuxCOqKbkrD83PTPxBrvtA6CCwgxmv+QcolfRRrECEKVtPZIz4redTb+A
-         ++GricmUGUrRJT8+fVc7a09M/MFfxtbh7PZqJKuJp+JguLKTE5/wIzT34tveonz+G4
-         UuS5cq6dOx4C5wFXLMqw00IfqFpPnFbyYf166Bss=
+        b=wmB9v/wbctG1IvkNhzYzYG+mNrjtbwT2sgPJrcuu0QSUovswOPPTB9VhTVF3Bg/uu
+         dK6/EUoRO4aR3T/nQKYdFcUzSaWmKbS7QoY/Uc0WgNFjdF/8QZ04o2NhLmFoyTpHDt
+         s7FPc+OiHFI9za9VezJger/b9kogvwpDUNtZFNck=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
 Cc:     Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Jan Stancek <jstancek@redhat.com>,
-        Naresh Kamboju <naresh.kamboju@linaro.org>,
         Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org
-Subject: [PATCH AUTOSEL 4.19 34/52] NFSv2: Fix write regression
-Date:   Wed,  4 Sep 2019 11:59:46 -0400
-Message-Id: <20190904160004.3671-34-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 4.19 33/52] NFSv2: Fix eof handling
+Date:   Wed,  4 Sep 2019 11:59:45 -0400
+Message-Id: <20190904160004.3671-33-sashal@kernel.org>
 X-Mailer: git-send-email 2.20.1
 In-Reply-To: <20190904160004.3671-1-sashal@kernel.org>
 References: <20190904160004.3671-1-sashal@kernel.org>
@@ -61,36 +59,31 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-[ Upstream commit d33d4beb522987d1c305c12500796f9be3687dee ]
+[ Upstream commit 71affe9be45a5c60b9772e1b2701710712637274 ]
 
-Ensure we update the write result count on success, since the
-RPC call itself does not do so.
+If we received a reply from the server with a zero length read and
+no error, then that implies we are at eof.
 
-Reported-by: Jan Stancek <jstancek@redhat.com>
-Reported-by: Naresh Kamboju <naresh.kamboju@linaro.org>
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
-Tested-by: Jan Stancek <jstancek@redhat.com>
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- fs/nfs/proc.c | 4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
+ fs/nfs/proc.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
 diff --git a/fs/nfs/proc.c b/fs/nfs/proc.c
-index 89fa9c706b380..0e0335e77ce68 100644
+index e0c257bd62b93..89fa9c706b380 100644
 --- a/fs/nfs/proc.c
 +++ b/fs/nfs/proc.c
-@@ -616,8 +616,10 @@ static int nfs_proc_pgio_rpc_prepare(struct rpc_task *task,
- 
- static int nfs_write_done(struct rpc_task *task, struct nfs_pgio_header *hdr)
- {
--	if (task->tk_status >= 0)
-+	if (task->tk_status >= 0) {
-+		hdr->res.count = hdr->args.count;
- 		nfs_writeback_update_inode(hdr);
-+	}
+@@ -594,7 +594,8 @@ static int nfs_read_done(struct rpc_task *task, struct nfs_pgio_header *hdr)
+ 		/* Emulate the eof flag, which isn't normally needed in NFSv2
+ 		 * as it is guaranteed to always return the file attributes
+ 		 */
+-		if (hdr->args.offset + hdr->res.count >= hdr->res.fattr->size)
++		if ((hdr->res.count == 0 && hdr->args.count > 0) ||
++		    hdr->args.offset + hdr->res.count >= hdr->res.fattr->size)
+ 			hdr->res.eof = 1;
+ 	}
  	return 0;
- }
- 
 -- 
 2.20.1
 
