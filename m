@@ -7,46 +7,44 @@ X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 466FAC41514
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 791AFC3A5AA
 	for <linux-nfs@archiver.kernel.org>; Wed,  4 Sep 2019 16:04:18 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 152162339D
+	by mail.kernel.org (Postfix) with ESMTP id 48DE023402
 	for <linux-nfs@archiver.kernel.org>; Wed,  4 Sep 2019 16:04:18 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
 	s=default; t=1567613058;
-	bh=s3X8KYhopGYFylN09akusJr4NOztZXLrmbfsb8R3yHg=;
+	bh=cF3MtTz0nl54vr9qdfCWKaugfJ7HGXcCO4z5/TrMAv4=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=YTtSE277ecQudr6DuhBwTWkOj0lMeATjI+BKCko6o+XvAZ86CRLh1P9cEcI3Eizd4
-	 EMRZvGR3UJDgAzrsOEkojfGsN3EZ1KQr8lsXW5CshXXOrzPhV4D63UAscGirTSrv8M
-	 Nu/TT8x4v96A/iHun2VJo9M241wHI3J7jmqOL2RQ=
+	b=m25qcl9a0xDvGkPNdwwG5E1Affd83qwZ5+z7coDe5JJh7XGR3wx10hPklX/FW/Vrh
+	 4od2XJk/EQfAUJCP+dSIQ/dMeJhPaUI890GWsmT64E4CSe15WJ02Lg5XFFiK2G5qi8
+	 DC2rtxnNSNA46bdTi6s6grAhKtn23NPVQKf7QwHE=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2387656AbfIDQDY (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S2387658AbfIDQDY (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Wed, 4 Sep 2019 12:03:24 -0400
 Received: from mail.kernel.org ([198.145.29.99]:39860 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2387654AbfIDQDX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        id S1733009AbfIDQDX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
         Wed, 4 Sep 2019 12:03:23 -0400
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 90AD52341C;
-        Wed,  4 Sep 2019 16:03:22 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 9C7B622DBF;
+        Wed,  4 Sep 2019 16:03:21 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1567613003;
-        bh=s3X8KYhopGYFylN09akusJr4NOztZXLrmbfsb8R3yHg=;
+        s=default; t=1567613002;
+        bh=cF3MtTz0nl54vr9qdfCWKaugfJ7HGXcCO4z5/TrMAv4=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=VHdrcNM09meJKAVE9ibnAWZuFC7KXbCGTsPxR3xBjuJlUteMw3962+3JyLGztP2LG
-         ayD7p6A+KNOzcLvaNdiMTKVWC07fHoNDJ9jzbJgoLhyhOxm7QOfEPinC4xsBP8OzSP
-         dJCehKEArlxASU4cYE6RudjLpa4kX5/zwxDTo1bA=
+        b=LlmFNHemSOJh5psaJh1RC2PMaI8TbbGOoC1AQS6gSO0Ut62Ag3IJ4inHlIUBQeb2M
+         2qEocYm2z6ZeHhQwltnmDJUMPU94qJ0JdoBwiRQKgA1JnRdC/ksDFpdITqQkbTn2Pj
+         q//fE8Rc1X40RPA33LQswYb6rcUw/Jv8xruJmSIY=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
 Cc:     Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Jan Stancek <jstancek@redhat.com>,
-        Naresh Kamboju <naresh.kamboju@linaro.org>,
         Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org
-Subject: [PATCH AUTOSEL 4.4 12/20] NFSv2: Fix write regression
-Date:   Wed,  4 Sep 2019 12:02:55 -0400
-Message-Id: <20190904160303.5062-12-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 4.4 11/20] NFSv2: Fix eof handling
+Date:   Wed,  4 Sep 2019 12:02:54 -0400
+Message-Id: <20190904160303.5062-11-sashal@kernel.org>
 X-Mailer: git-send-email 2.20.1
 In-Reply-To: <20190904160303.5062-1-sashal@kernel.org>
 References: <20190904160303.5062-1-sashal@kernel.org>
@@ -61,36 +59,31 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-[ Upstream commit d33d4beb522987d1c305c12500796f9be3687dee ]
+[ Upstream commit 71affe9be45a5c60b9772e1b2701710712637274 ]
 
-Ensure we update the write result count on success, since the
-RPC call itself does not do so.
+If we received a reply from the server with a zero length read and
+no error, then that implies we are at eof.
 
-Reported-by: Jan Stancek <jstancek@redhat.com>
-Reported-by: Naresh Kamboju <naresh.kamboju@linaro.org>
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
-Tested-by: Jan Stancek <jstancek@redhat.com>
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- fs/nfs/proc.c | 4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
+ fs/nfs/proc.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
 diff --git a/fs/nfs/proc.c b/fs/nfs/proc.c
-index 80ecdf2ec8b6a..b83e14ad13c45 100644
+index b417bbcd97046..80ecdf2ec8b6a 100644
 --- a/fs/nfs/proc.c
 +++ b/fs/nfs/proc.c
-@@ -610,8 +610,10 @@ static int nfs_proc_pgio_rpc_prepare(struct rpc_task *task,
- 
- static int nfs_write_done(struct rpc_task *task, struct nfs_pgio_header *hdr)
- {
--	if (task->tk_status >= 0)
-+	if (task->tk_status >= 0) {
-+		hdr->res.count = hdr->args.count;
- 		nfs_writeback_update_inode(hdr);
-+	}
+@@ -588,7 +588,8 @@ static int nfs_read_done(struct rpc_task *task, struct nfs_pgio_header *hdr)
+ 		/* Emulate the eof flag, which isn't normally needed in NFSv2
+ 		 * as it is guaranteed to always return the file attributes
+ 		 */
+-		if (hdr->args.offset + hdr->res.count >= hdr->res.fattr->size)
++		if ((hdr->res.count == 0 && hdr->args.count > 0) ||
++		    hdr->args.offset + hdr->res.count >= hdr->res.fattr->size)
+ 			hdr->res.eof = 1;
+ 	}
  	return 0;
- }
- 
 -- 
 2.20.1
 
