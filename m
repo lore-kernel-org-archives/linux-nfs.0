@@ -7,44 +7,45 @@ X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E04BAC3A5AB
-	for <linux-nfs@archiver.kernel.org>; Wed,  4 Sep 2019 15:58:20 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 41411C3A5AB
+	for <linux-nfs@archiver.kernel.org>; Wed,  4 Sep 2019 15:58:54 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id AF9FB22CED
-	for <linux-nfs@archiver.kernel.org>; Wed,  4 Sep 2019 15:58:20 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 1167A233FF
+	for <linux-nfs@archiver.kernel.org>; Wed,  4 Sep 2019 15:58:54 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1567612700;
-	bh=7gN4oGxskhNmUiNRGD1LOaJ12Rz2xRgqnnMm885HDkM=;
+	s=default; t=1567612734;
+	bh=fb/h9KR3pLXlfXJogUmAfXxs7PKwlfI//BnBLXHS7Mw=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=ClVmBb5ox5iqmD8aurkwEnzEu4yWTW8NuUBcXclyyYOua7VR6NAAMRmYJIbQcPMIO
-	 bEnHePSOuCTpHcmavWaOWd1uLycOqMpSw3usuhsJpmh/9cs7nfNQXg5w6qxUFBjRhj
-	 D894GWhYnJyAU+tgHlCwEVnYkpTFn2pjNS9jOHgc=
+	b=rmXPw5COJrQGvsTS0AaeKRHTab5fuqTYYc2JSDWxPydZPG1mQV88BZE/qnDAq/gtr
+	 2yxdqhZKBOyY3vQ2vFkoYnBA75eDcE7n62WUBpU7ZfaxlxmHSyVbmK2wJyuxVB1T1m
+	 lOhhhJ88u/OHXEz/vxdBgmY73a2nXRlAIy5dNW2o=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1731903AbfIDP6T (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 4 Sep 2019 11:58:19 -0400
-Received: from mail.kernel.org ([198.145.29.99]:60318 "EHLO mail.kernel.org"
+        id S1731554AbfIDP6x (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 4 Sep 2019 11:58:53 -0400
+Received: from mail.kernel.org ([198.145.29.99]:33032 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1731893AbfIDP6S (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 4 Sep 2019 11:58:18 -0400
+        id S1732119AbfIDP6u (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 4 Sep 2019 11:58:50 -0400
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 40C3B2342D;
-        Wed,  4 Sep 2019 15:58:17 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 00623233FF;
+        Wed,  4 Sep 2019 15:58:48 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1567612697;
-        bh=7gN4oGxskhNmUiNRGD1LOaJ12Rz2xRgqnnMm885HDkM=;
+        s=default; t=1567612729;
+        bh=fb/h9KR3pLXlfXJogUmAfXxs7PKwlfI//BnBLXHS7Mw=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=oBRfGjuz0NELG9IYDkeZOLDmt/3138DPrxlsbkisxkX2MdSGOGYCaeSGkOaw4owNM
-         fXvR3sVxPUnLHmfbkW97IaMeiUCo3TcIczyl1ukwy53gy2hw/HmVKdcEoqW58gzDgy
-         iA4yuLtK/8xJqmML0hvm0FLTexLFd6HP+tU7+IDg=
+        b=Zh7KWDeaHuaZgRyOqYsbMYM2+cGUB8zIA/5ZlzkBlvmF3VKjYFX89DYoVVg2PX3GI
+         ypFXym4AXnLoHQ/3CvGl0WqSgmVvqECpje1J22FQEy+VsAI+uSiPovpepslqO0CB6G
+         lGXVqtcQkIYtyZhq+yMebq7vxcImV//Y+gS4DAIw=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
 Cc:     Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.2 25/94] NFSv4: Fix return values for nfs4_file_open()
-Date:   Wed,  4 Sep 2019 11:56:30 -0400
-Message-Id: <20190904155739.2816-25-sashal@kernel.org>
+        Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org,
+        netdev@vger.kernel.org
+Subject: [PATCH AUTOSEL 5.2 46/94] SUNRPC: Handle connection breakages correctly in call_status()
+Date:   Wed,  4 Sep 2019 11:56:51 -0400
+Message-Id: <20190904155739.2816-46-sashal@kernel.org>
 X-Mailer: git-send-email 2.20.1
 In-Reply-To: <20190904155739.2816-1-sashal@kernel.org>
 References: <20190904155739.2816-1-sashal@kernel.org>
@@ -59,47 +60,31 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-[ Upstream commit 90cf500e338ab3f3c0f126ba37e36fb6a9058441 ]
+[ Upstream commit c82e5472c9980e0e483f4b689044150eefaca408 ]
 
-Currently, we are translating RPC level errors such as timeouts,
-as well as interrupts etc into EOPENSTALE, which forces a single
-replay of the open attempt. What we actually want to do is
-force the replay only in the cases where the returned error
-indicates that the file may have changed on the server.
+If the connection breaks while we're waiting for a reply from the
+server, then we want to immediately try to reconnect.
 
-So the fix is to spell out the exact set of errors where we want
-to return EOPENSTALE.
-
+Fixes: ec6017d90359 ("SUNRPC fix regression in umount of a secure mount")
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- fs/nfs/nfs4file.c | 12 ++++++------
- 1 file changed, 6 insertions(+), 6 deletions(-)
+ net/sunrpc/clnt.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/nfs/nfs4file.c b/fs/nfs/nfs4file.c
-index 3a507c42c1cae..113be154a1ec6 100644
---- a/fs/nfs/nfs4file.c
-+++ b/fs/nfs/nfs4file.c
-@@ -73,13 +73,13 @@ nfs4_file_open(struct inode *inode, struct file *filp)
- 	if (IS_ERR(inode)) {
- 		err = PTR_ERR(inode);
- 		switch (err) {
--		case -EPERM:
--		case -EACCES:
--		case -EDQUOT:
--		case -ENOSPC:
--		case -EROFS:
--			goto out_put_ctx;
- 		default:
-+			goto out_put_ctx;
-+		case -ENOENT:
-+		case -ESTALE:
-+		case -EISDIR:
-+		case -ENOTDIR:
-+		case -ELOOP:
- 			goto out_drop;
- 		}
- 	}
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 3f090a75f3721..49adae7cf4c2d 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -2292,7 +2292,7 @@ call_status(struct rpc_task *task)
+ 	case -ECONNABORTED:
+ 	case -ENOTCONN:
+ 		rpc_force_rebind(clnt);
+-		/* fall through */
++		break;
+ 	case -EADDRINUSE:
+ 		rpc_delay(task, 3*HZ);
+ 		/* fall through */
 -- 
 2.20.1
 
