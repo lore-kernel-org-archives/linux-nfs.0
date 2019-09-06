@@ -8,59 +8,59 @@ X-Spam-Status: No, score=-9.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id EC0AFC00307
-	for <linux-nfs@archiver.kernel.org>; Fri,  6 Sep 2019 23:36:25 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 783FCC43331
+	for <linux-nfs@archiver.kernel.org>; Fri,  6 Sep 2019 23:36:27 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id C71D720854
-	for <linux-nfs@archiver.kernel.org>; Fri,  6 Sep 2019 23:36:25 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 53EF520854
+	for <linux-nfs@archiver.kernel.org>; Fri,  6 Sep 2019 23:36:27 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="eLH/WSVC"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="U1lDaPyF"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2393122AbfIFXgZ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 6 Sep 2019 19:36:25 -0400
-Received: from mail-io1-f68.google.com ([209.85.166.68]:41022 "EHLO
-        mail-io1-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2393113AbfIFXgZ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 6 Sep 2019 19:36:25 -0400
-Received: by mail-io1-f68.google.com with SMTP id r26so16549270ioh.8
-        for <linux-nfs@vger.kernel.org>; Fri, 06 Sep 2019 16:36:24 -0700 (PDT)
+        id S2393146AbfIFXg0 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 6 Sep 2019 19:36:26 -0400
+Received: from mail-io1-f66.google.com ([209.85.166.66]:38443 "EHLO
+        mail-io1-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2393142AbfIFXg0 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 6 Sep 2019 19:36:26 -0400
+Received: by mail-io1-f66.google.com with SMTP id p12so16622692iog.5
+        for <linux-nfs@vger.kernel.org>; Fri, 06 Sep 2019 16:36:26 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references;
-        bh=TPUfdYPGh1LJiLP+QwTwv/M1dCmtn0bG5VMIacE+U3c=;
-        b=eLH/WSVCLR2HsgBWGaBj0INr9V+Ia76jzkz1Ry1pagG1Kgv/uZ92KWHbDc+cLtahND
-         umCvd9KZltek+QFaRDNPf/G6rfaHgHAH0Ofpoc8EI3ZtPbRxrIiJGoTGYoMKRTnPNoTw
-         9Kdd5klE9BhsA2M3esqw2d/do89Kvh89DRtK5DbqEaDCXI2SaQZlab8TzravdJoFVcwY
-         vSzQFdNDFyQr8eIxAuDNc/+qRuWTRGSaeIJFYUR08gKAV+8JbH2XloMAuIeED0S04jet
-         6Zroh/u1zsSUUtZ7VqpOnonq+B4jQSXaRlWrBF5TGA2MODvWZvQhdCtNYyicqyc9wwmj
-         txTw==
+        bh=JXH2tCBLDWSi1+VlBVKyQNoUN9Q1nVxnah6pXhDF+WA=;
+        b=U1lDaPyFZQQWgE3F3bwW6B+HBRcofWaIR2I4Fjf3R/atQkVIQwOZcOG5g7TMCfP+mC
+         C/ROZ73aZpA4GY18X6ddzCsIMwavE+TeeSAvr+LdHAcAvdDSHy6Vl1DznZPVxrMLh0Cv
+         bDUpjhMqNMUXVXpRi9Ip9a5abBBeaHX0+33cm0mweON0Bdot/7oF53Aox7J9nyqMP73h
+         CHfbpGZ7412RiAV8OAu68UA9Et+kCQfVNB/pR0NHlohtsF4XCLmUIaTNMLuy3kcL4bks
+         YcKJ3NLm06UMxO4CnbhAK0w9gL+nLDUiD8t/iWgNRjTZHX2+R7nHqSpAGES8aLHd8sbQ
+         sP1g==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references;
-        bh=TPUfdYPGh1LJiLP+QwTwv/M1dCmtn0bG5VMIacE+U3c=;
-        b=JG6K54eEyi+lDlWrmi7TO4dD9uo9pFYC5RTsbiZxZC2Z1p40SbXw1I2ZH8VBhS+JBF
-         v44X2DKW6IVTuaZ1vjSNnZJkF0f6k8FeOZrHSxcb1z8DEhb0pp9wT94b9RJlH/a8P2oi
-         WBoLLs1E80Nz6mbqVkOX6CMpMnha0uc73KNG8qhMsbPt2Q6sKTOrQQT0oOlPFhrTOV3F
-         4bhBN1cX/8PI0uSpekVQVKkLZK3fEV9+W3ymg839erql55IJ1VV3z5fjU+DBlQMO1Ntu
-         mayIW1R0Hqe9GV3WAuIBP4YeGm5Vv35qRgBWMvM9bsH0m+PDXaRRxys+O5lBp8KaYg0r
-         FvQA==
-X-Gm-Message-State: APjAAAVFZZ2DOj/MeYTaJsHPKWCUeb5V5qkQ9tM92WS3l2vCMSvYYm2N
-        jFw45WKtb2hZFX6sFw9SWaw=
-X-Google-Smtp-Source: APXvYqywZhFBzZv9Hibg5MQodaEWBTA/8vrjQ0VC0v0Ykw4RXKKfTzW+aqXrsuzifKNAgXVKPEqYng==
-X-Received: by 2002:a02:2a0b:: with SMTP id w11mr12739803jaw.43.1567812984186;
-        Fri, 06 Sep 2019 16:36:24 -0700 (PDT)
+        bh=JXH2tCBLDWSi1+VlBVKyQNoUN9Q1nVxnah6pXhDF+WA=;
+        b=IgrlYu6gRo9j9dArOs9syP9Bb3WAdBn7uCg2nqOUALgr54uhO1pyiQvc+VgP0ohHWJ
+         WEjxXB+CtXj4R3/lh8faqYdll04zWTlylBaPyDMsUz7RZIHqOhDeRSczfBdBaI5IZAUC
+         i72FKcTcaEMsxX56DTlFygo3DWVQ0cAVJxtbZSeanJFqV7rj39KTsd/JhV6wnLZxprUL
+         RrMbJ4nqzBJFqW5WwnbppJGcm4GsJjkm5UA9obBOX76R70jaDgo9bVunKDP67pUqS4lA
+         cBHskyT3vubffikbrB8CYbZJcNbOarc7Hdiv2fk2Bi6z6lf3atBomwDRUfKiVQpeHMzd
+         Vt3w==
+X-Gm-Message-State: APjAAAU/NC8V6hjQubTW7fjI5cHRHPKPwLi6VWGGoSi+d4BWHNjoQd3a
+        /+QulX0Hz9SYTxZR2GyidsA=
+X-Google-Smtp-Source: APXvYqwPab2mAMAEjoIA8/9zQlG2boJxKv+zf5fNxOwH759HnOQUm+ckfMmj207qc8FgSEuSeBl8LQ==
+X-Received: by 2002:a6b:6a19:: with SMTP id x25mr1580750iog.154.1567812985930;
+        Fri, 06 Sep 2019 16:36:25 -0700 (PDT)
 Received: from Olgas-MBP-201.attlocal.net (172-10-226-31.lightspeed.livnmi.sbcglobal.net. [172.10.226.31])
-        by smtp.gmail.com with ESMTPSA id r138sm10439360iod.59.2019.09.06.16.36.23
+        by smtp.gmail.com with ESMTPSA id r138sm10439360iod.59.2019.09.06.16.36.25
         (version=TLS1 cipher=AES128-SHA bits=128/128);
-        Fri, 06 Sep 2019 16:36:23 -0700 (PDT)
+        Fri, 06 Sep 2019 16:36:25 -0700 (PDT)
 From:   Olga Kornievskaia <olga.kornievskaia@gmail.com>
 To:     trond.myklebust@hammerspace.com, anna.schumaker@netapp.com,
         bfields@redhat.com
 Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH v7 11/21] NFS based on file size issue sync copy or fallback to generic copy offload
-Date:   Fri,  6 Sep 2019 19:36:01 -0400
-Message-Id: <20190906233611.4031-12-olga.kornievskaia@gmail.com>
+Subject: [PATCH v7 13/21] NFSD fill-in netloc4 structure
+Date:   Fri,  6 Sep 2019 19:36:03 -0400
+Message-Id: <20190906233611.4031-14-olga.kornievskaia@gmail.com>
 X-Mailer: git-send-email 2.10.1 (Apple Git-78)
 In-Reply-To: <20190906233611.4031-1-olga.kornievskaia@gmail.com>
 References: <20190906233611.4031-1-olga.kornievskaia@gmail.com>
@@ -71,96 +71,67 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Olga Kornievskaia <kolga@netapp.com>
 
-For small file sizes, it make sense to issue a synchronous copy (and
-save an RPC callback operation). Also, for the inter copy offload,
-copy len must be larger than the cost of doing a mount between the
-destination and source server (14RPCs are sent during 4.x mount).
+nfs.4 defines nfs42_netaddr structure that represents netloc4.
+
+Populate needed fields from the sockaddr structure.
+
+This will be used by flexfiles and 4.2 inter copy
 
 Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
 ---
- fs/nfs/nfs42.h     |  2 +-
- fs/nfs/nfs42proc.c |  4 ++--
- fs/nfs/nfs4file.c  | 16 +++++++++++++++-
- 3 files changed, 18 insertions(+), 4 deletions(-)
+ fs/nfsd/nfsd.h | 32 ++++++++++++++++++++++++++++++++
+ 1 file changed, 32 insertions(+)
 
-diff --git a/fs/nfs/nfs42.h b/fs/nfs/nfs42.h
-index 02e3810cd889..c891af949886 100644
---- a/fs/nfs/nfs42.h
-+++ b/fs/nfs/nfs42.h
-@@ -16,7 +16,7 @@
- #ifdef CONFIG_NFS_V4_2
- int nfs42_proc_allocate(struct file *, loff_t, loff_t);
- ssize_t nfs42_proc_copy(struct file *, loff_t, struct file *, loff_t, size_t,
--			struct nl4_server *, nfs4_stateid *);
-+			struct nl4_server *, nfs4_stateid *, bool);
- int nfs42_proc_deallocate(struct file *, loff_t, loff_t);
- loff_t nfs42_proc_llseek(struct file *, loff_t, int);
- int nfs42_proc_layoutstats_generic(struct nfs_server *,
-diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
-index 9c7feacb0358..aab6b7b6a24a 100644
---- a/fs/nfs/nfs42proc.c
-+++ b/fs/nfs/nfs42proc.c
-@@ -357,7 +357,7 @@ static ssize_t _nfs42_proc_copy(struct file *src,
- ssize_t nfs42_proc_copy(struct file *src, loff_t pos_src,
- 			struct file *dst, loff_t pos_dst, size_t count,
- 			struct nl4_server *nss,
--			nfs4_stateid *cnr_stateid)
-+			nfs4_stateid *cnr_stateid, bool sync)
- {
- 	struct nfs_server *server = NFS_SERVER(file_inode(dst));
- 	struct nfs_lock_context *src_lock;
-@@ -368,7 +368,7 @@ ssize_t nfs42_proc_copy(struct file *src, loff_t pos_src,
- 		.dst_fh		= NFS_FH(file_inode(dst)),
- 		.dst_pos	= pos_dst,
- 		.count		= count,
--		.sync		= false,
-+		.sync		= sync,
- 	};
- 	struct nfs42_copy_res res;
- 	struct nfs4_exception src_exception = {
-diff --git a/fs/nfs/nfs4file.c b/fs/nfs/nfs4file.c
-index 2af30b7f5bfd..897832564923 100644
---- a/fs/nfs/nfs4file.c
-+++ b/fs/nfs/nfs4file.c
-@@ -138,6 +138,7 @@ static ssize_t __nfs4_copy_file_range(struct file *file_in, loff_t pos_in,
- 	struct nl4_server *nss = NULL;
- 	nfs4_stateid *cnrs = NULL;
- 	ssize_t ret;
-+	bool sync = false;
+diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
+index af2947551e9c..687f8e15f386 100644
+--- a/fs/nfsd/nfsd.h
++++ b/fs/nfsd/nfsd.h
+@@ -19,6 +19,7 @@
+ #include <linux/sunrpc/svc.h>
+ #include <linux/sunrpc/svc_xprt.h>
+ #include <linux/sunrpc/msg_prot.h>
++#include <linux/sunrpc/addr.h>
  
- 	/* Only offload copy if superblock is the same */
- 	if (file_inode(file_in)->i_sb != file_inode(file_out)->i_sb)
-@@ -146,8 +147,21 @@ static ssize_t __nfs4_copy_file_range(struct file *file_in, loff_t pos_in,
- 		return -EOPNOTSUPP;
- 	if (file_inode(file_in) == file_inode(file_out))
- 		return -EOPNOTSUPP;
-+	/* if the copy size if smaller than 2 RPC payloads, make it
-+	 * synchronous
-+	 */
-+	if (count <= 2 * NFS_SERVER(file_inode(file_in))->rsize)
-+		sync = true;
- retry:
- 	if (!nfs42_files_from_same_server(file_in, file_out)) {
-+		/* for inter copy, if copy size if smaller than 12 RPC
-+		 * payloads, fallback to traditional copy. There are
-+		 * 14 RPCs during an NFSv4.x mount between source/dest
-+		 * servers.
-+		 */
-+		if (sync ||
-+			count <= 14 * NFS_SERVER(file_inode(file_in))->rsize)
-+			return -EOPNOTSUPP;
- 		cn_resp = kzalloc(sizeof(struct nfs42_copy_notify_res),
- 				GFP_NOFS);
- 		if (unlikely(cn_resp == NULL))
-@@ -162,7 +176,7 @@ static ssize_t __nfs4_copy_file_range(struct file *file_in, loff_t pos_in,
- 		cnrs = &cn_resp->cnr_stateid;
- 	}
- 	ret = nfs42_proc_copy(file_in, pos_in, file_out, pos_out, count,
--				nss, cnrs);
-+				nss, cnrs, sync);
- out:
- 	kfree(cn_resp);
- 	if (ret == -EAGAIN)
+ #include <uapi/linux/nfsd/debug.h>
+ 
+@@ -386,6 +387,37 @@ void		nfsd_lockd_shutdown(void);
+ 
+ extern const u32 nfsd_suppattrs[3][3];
+ 
++static inline u32 nfsd4_set_netaddr(struct sockaddr *addr,
++				    struct nfs42_netaddr *netaddr)
++{
++	struct sockaddr_in *sin = (struct sockaddr_in *)addr;
++	struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)addr;
++	unsigned int port;
++	size_t ret_addr, ret_port;
++
++	switch (addr->sa_family) {
++	case AF_INET:
++		port = ntohs(sin->sin_port);
++		sprintf(netaddr->netid, "tcp");
++		netaddr->netid_len = 3;
++		break;
++	case AF_INET6:
++		port = ntohs(sin6->sin6_port);
++		sprintf(netaddr->netid, "tcp6");
++		netaddr->netid_len = 4;
++		break;
++	default:
++		return nfserr_inval;
++	}
++	ret_addr = rpc_ntop(addr, netaddr->addr, sizeof(netaddr->addr));
++	ret_port = snprintf(netaddr->addr + ret_addr,
++			    RPCBIND_MAXUADDRLEN + 1 - ret_addr,
++			    ".%u.%u", port >> 8, port & 0xff);
++	WARN_ON(ret_port >= RPCBIND_MAXUADDRLEN + 1 - ret_addr);
++	netaddr->addr_len = ret_addr + ret_port;
++	return 0;
++}
++
+ static inline bool bmval_is_subset(const u32 *bm1, const u32 *bm2)
+ {
+ 	return !((bm1[0] & ~bm2[0]) ||
 -- 
 2.18.1
 
