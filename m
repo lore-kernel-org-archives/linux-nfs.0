@@ -2,45 +2,52 @@ Return-Path: <SRS0=Pg92=XF=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=no
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-1.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id F1559C3A5A2
-	for <linux-nfs@archiver.kernel.org>; Tue, 10 Sep 2019 13:28:38 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 70BBDC49ED7
+	for <linux-nfs@archiver.kernel.org>; Tue, 10 Sep 2019 14:46:05 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id CF52F206CD
-	for <linux-nfs@archiver.kernel.org>; Tue, 10 Sep 2019 13:28:38 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 4969221019
+	for <linux-nfs@archiver.kernel.org>; Tue, 10 Sep 2019 14:46:05 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727402AbfIJN2i (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 10 Sep 2019 09:28:38 -0400
-Received: from fieldses.org ([173.255.197.46]:32828 "EHLO fieldses.org"
+        id S1729132AbfIJOqE (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 10 Sep 2019 10:46:04 -0400
+Received: from mx1.redhat.com ([209.132.183.28]:46482 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726394AbfIJN2i (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 10 Sep 2019 09:28:38 -0400
-Received: by fieldses.org (Postfix, from userid 2815)
-        id 4F1632010; Tue, 10 Sep 2019 09:28:37 -0400 (EDT)
-Date:   Tue, 10 Sep 2019 09:28:37 -0400
-From:   "J. Bruce Fields" <bfields@fieldses.org>
-To:     Scott Mayhew <smayhew@redhat.com>
-Cc:     chuck.lever@oracle.com, simo@redhat.com, linux-nfs@vger.kernel.org
+        id S1726066AbfIJOqE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 10 Sep 2019 10:46:04 -0400
+Received: from smtp.corp.redhat.com (int-mx08.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id 2CED0C04B940;
+        Tue, 10 Sep 2019 14:46:04 +0000 (UTC)
+Received: from ovpn-116-252.phx2.redhat.com (ovpn-116-252.phx2.redhat.com [10.3.116.252])
+        by smtp.corp.redhat.com (Postfix) with ESMTPS id AFECF19C4F;
+        Tue, 10 Sep 2019 14:46:03 +0000 (UTC)
+Message-ID: <2351c8f2f97d8730fa4fc4e49175b6c42ddb3484.camel@redhat.com>
 Subject: Re: [PATCH v2 0/2] add hash of the kerberos principal to the data
  being tracked by nfsdcld
-Message-ID: <20190910132837.GB26695@fieldses.org>
-References: <20190909201031.12323-1-smayhew@redhat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
+From:   Simo Sorce <simo@redhat.com>
+To:     Scott Mayhew <smayhew@redhat.com>, bfields@fieldses.org,
+        chuck.lever@oracle.com
+Cc:     linux-nfs@vger.kernel.org
+Date:   Tue, 10 Sep 2019 10:46:02 -0400
 In-Reply-To: <20190909201031.12323-1-smayhew@redhat.com>
-User-Agent: Mutt/1.5.21 (2010-09-15)
+References: <20190909201031.12323-1-smayhew@redhat.com>
+Organization: Red Hat, Inc.
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
+Content-Transfer-Encoding: 7bit
+X-Scanned-By: MIMEDefang 2.84 on 10.5.11.23
+X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.31]); Tue, 10 Sep 2019 14:46:04 +0000 (UTC)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Applying for 5.4, thanks--b.
-
-On Mon, Sep 09, 2019 at 04:10:29PM -0400, Scott Mayhew wrote:
+On Mon, 2019-09-09 at 16:10 -0400, Scott Mayhew wrote:
 > At the spring bakeathon, Chuck suggested that we should store the
 > kerberos principal in addition to the client id string in nfsdcld.  The
 > idea is to prevent an illegitimate client from reclaiming another
@@ -72,5 +79,14 @@ On Mon, Sep 09, 2019 at 04:10:29PM -0400, Scott Mayhew wrote:
 >  include/uapi/linux/nfsd/cld.h |  41 +++-
 >  4 files changed, 371 insertions(+), 67 deletions(-)
 > 
-> -- 
-> 2.17.2
+
+LGTM.
+
+-- 
+Simo Sorce
+RHEL Crypto Team
+Red Hat, Inc
+
+
+
+
