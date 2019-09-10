@@ -2,790 +2,211 @@ Return-Path: <SRS0=Pg92=XF=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 47C57C5AE5D
-	for <linux-nfs@archiver.kernel.org>; Tue, 10 Sep 2019 14:50:07 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 17785C49ED7
+	for <linux-nfs@archiver.kernel.org>; Tue, 10 Sep 2019 17:05:10 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 13B5820872
-	for <linux-nfs@archiver.kernel.org>; Tue, 10 Sep 2019 14:50:07 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id CF42F20872
+	for <linux-nfs@archiver.kernel.org>; Tue, 10 Sep 2019 17:05:09 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="pSKo6xNB"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1732434AbfIJOuG (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 10 Sep 2019 10:50:06 -0400
-Received: from mx1.redhat.com ([209.132.183.28]:39618 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1730283AbfIJOuG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 10 Sep 2019 10:50:06 -0400
-Received: from smtp.corp.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 7AE752CE95A
-        for <linux-nfs@vger.kernel.org>; Tue, 10 Sep 2019 14:50:04 +0000 (UTC)
-Received: from coeurl.usersys.redhat.com (ovpn-121-35.rdu2.redhat.com [10.10.121.35])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 412C360BF3;
-        Tue, 10 Sep 2019 14:50:04 +0000 (UTC)
-Received: by coeurl.usersys.redhat.com (Postfix, from userid 1000)
-        id E9D8B20AB4; Tue, 10 Sep 2019 10:50:03 -0400 (EDT)
-From:   Scott Mayhew <smayhew@redhat.com>
-To:     steved@redhat.com
+        id S2436815AbfIJRFJ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 10 Sep 2019 13:05:09 -0400
+Received: from mail-io1-f68.google.com ([209.85.166.68]:40900 "EHLO
+        mail-io1-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2436760AbfIJRFJ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 10 Sep 2019 13:05:09 -0400
+Received: by mail-io1-f68.google.com with SMTP id h144so39137070iof.7
+        for <linux-nfs@vger.kernel.org>; Tue, 10 Sep 2019 10:05:06 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=from:to:cc:subject:date:message-id:mime-version
+         :content-transfer-encoding;
+        bh=jujwM56kPgDRllqGRmd8xDdso1+OBvApNmETfxOr8+s=;
+        b=pSKo6xNBquBboxVi7W+1k/A3HJGqxjEPvrY3yksSogtL81YSr5AW1mI/m4qv3ghjWj
+         CnjgrTfeY3lkmhj+VCUI+FFooWJAE57TdZ5hcNMAmSQq/XVa9Y9a4f5bFaLHXDEy92sY
+         bQl+/BXh/IdlRYBNkkVGs2tb6jumiLroAyoHzz3Eb5cqIZv18kECOn9ZHRvk+McKB99x
+         rUAk7r+BJ5NNx1lgkZ9Z0Vk1YD9Dxb8Y3QpplgnNlt/KjUEGq+r5i/XkgK+rWsR63yxh
+         4nmytZvtFn1eSzduLwOinOB83l3x/sByPr/oNkiOryuIzlTJMSe+U9aI5XZdx2lDyt/f
+         2E+A==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:from:to:cc:subject:date:message-id:mime-version
+         :content-transfer-encoding;
+        bh=jujwM56kPgDRllqGRmd8xDdso1+OBvApNmETfxOr8+s=;
+        b=IsplJEeK0P4XQEvJSPOtSHCyD72adiHyHYYtvntLDgJ+eAKjvN2DD9cj5Fp9+inz9N
+         CpwDDq6qY/fYAYQ3cSz4je59ajlHXtx1soxEUuUO6shEpeRBgwCIZ/EszldZNS/x1Fad
+         EKMZBzsscsNCH9nntj7oK1xBPstHjqk5VfrRm6ccW+N+Enq6+7OzLUh4pxiIk0Y7jFbZ
+         9u9HyjMph/JamGOBjcZNGy3tzqTpxfw3ArhLMafRN2Dck0G2qT3Ar3pL9yHbZLG/8n4q
+         WKz+XcE8nr+GTFdyGZt0CM8WWb3QSCoBBcf+X2LAJRbj6N3g4TjOp1RKFSB6/X7FKH+b
+         RCnw==
+X-Gm-Message-State: APjAAAVXBr7Dk3WnYKhGoFRUY7cZetYHYkorfNsFCU4olRcJzFmKbINs
+        S1dK2CWSTfjbiezoSVXtq1XNm37mPQ==
+X-Google-Smtp-Source: APXvYqwZv26OugVwhGtZ9Mk1ZBQj7NIDhsE0UZCOu6YynnyaUS8Jq2/p7YDznHaApeNobUFQFDH5TQ==
+X-Received: by 2002:a6b:9107:: with SMTP id t7mr32784916iod.150.1568135105949;
+        Tue, 10 Sep 2019 10:05:05 -0700 (PDT)
+Received: from localhost.localdomain (50-36-167-63.alma.mi.frontiernet.net. [50.36.167.63])
+        by smtp.gmail.com with ESMTPSA id e5sm5661417ioh.44.2019.09.10.10.05.03
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Tue, 10 Sep 2019 10:05:05 -0700 (PDT)
+From:   Trond Myklebust <trondmy@gmail.com>
+X-Google-Original-From: Trond Myklebust <trond.myklebust@hammerspace.com>
+To:     Anna Schumaker <Anna.Schumaker@netapp.com>
 Cc:     linux-nfs@vger.kernel.org
-Subject: [nfs-utils PATCH v3 2/4] nfsdcld: add support for upcall version 2
-Date:   Tue, 10 Sep 2019 10:50:01 -0400
-Message-Id: <20190910145003.4165-3-smayhew@redhat.com>
-In-Reply-To: <20190910145003.4165-1-smayhew@redhat.com>
-References: <20190910145003.4165-1-smayhew@redhat.com>
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.12
-X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.29]); Tue, 10 Sep 2019 14:50:04 +0000 (UTC)
+Subject: [PATCH v2] SUNRPC: Dequeue the request from the receive queue while we're re-encoding
+Date:   Tue, 10 Sep 2019 13:01:35 -0400
+Message-Id: <20190910170135.104865-1-trond.myklebust@hammerspace.com>
+X-Mailer: git-send-email 2.21.0
+MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Version 2 upcalls will allow the nfsd to include a hash of the kerberos
-principal string in the Cld_Create upcall.  If present, the hash
-will be stored along with the client id string in the database, and
-will be included in the Cld_GraceStart downcall whenever nfsd restarts.
+Ensure that we dequeue the request from the transport receive queue
+while we're re-encoding to prevent issues like use-after-free when
+we release the bvec.
 
-Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+Fixes: 7536908982047 ("SUNRPC: Ensure the bvecs are reset when we re-encode...")
+Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
+Cc: stable@vger.kernel.org # v4.20+
 ---
- support/include/cld.h        |  30 ++++-
- utils/nfsdcld/cld-internal.h |  11 +-
- utils/nfsdcld/nfsdcld.c      |  97 +++++++++++---
- utils/nfsdcld/sqlite.c       | 237 +++++++++++++++++++++++++++++------
- utils/nfsdcld/sqlite.h       |   2 +
- 5 files changed, 321 insertions(+), 56 deletions(-)
+v2: Ensure we also reset req->rq_reply_bytes_recvd in rpc_xdr_encode()
 
-diff --git a/support/include/cld.h b/support/include/cld.h
-index 00a40da..88d3b63 100644
---- a/support/include/cld.h
-+++ b/support/include/cld.h
-@@ -23,11 +23,15 @@
- #define _NFSD_CLD_H
+ include/linux/sunrpc/xprt.h |  1 +
+ net/sunrpc/clnt.c           |  6 ++---
+ net/sunrpc/xprt.c           | 54 +++++++++++++++++++++----------------
+ 3 files changed, 35 insertions(+), 26 deletions(-)
+
+diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
+index 13e108bcc9eb..d783e15ba898 100644
+--- a/include/linux/sunrpc/xprt.h
++++ b/include/linux/sunrpc/xprt.h
+@@ -352,6 +352,7 @@ bool			xprt_prepare_transmit(struct rpc_task *task);
+ void			xprt_request_enqueue_transmit(struct rpc_task *task);
+ void			xprt_request_enqueue_receive(struct rpc_task *task);
+ void			xprt_request_wait_receive(struct rpc_task *task);
++void			xprt_request_dequeue_xprt(struct rpc_task *task);
+ bool			xprt_request_need_retransmit(struct rpc_task *task);
+ void			xprt_transmit(struct rpc_task *task);
+ void			xprt_end_transmit(struct rpc_task *task);
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index a07b516e503a..7a75f34ad393 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -1862,6 +1862,7 @@ rpc_xdr_encode(struct rpc_task *task)
+ 		     req->rq_rbuffer,
+ 		     req->rq_rcvsize);
  
- /* latest upcall version available */
--#define CLD_UPCALL_VERSION 1
-+#define CLD_UPCALL_VERSION 2
- 
- /* defined by RFC3530 */
- #define NFS4_OPAQUE_LIMIT 1024
- 
-+#ifndef SHA256_DIGEST_SIZE
-+#define SHA256_DIGEST_SIZE      32
-+#endif
-+
- enum cld_command {
- 	Cld_Create,		/* create a record for this cm_id */
- 	Cld_Remove,		/* remove record of this cm_id */
-@@ -43,6 +47,17 @@ struct cld_name {
- 	unsigned char	cn_id[NFS4_OPAQUE_LIMIT];	/* client-provided */
- } __attribute__((packed));
- 
-+/* sha256 hash of the kerberos principal */
-+struct cld_princhash {
-+	uint8_t		cp_len;				/* length of cp_data */
-+	unsigned char	cp_data[SHA256_DIGEST_SIZE];	/* hash of principal */
-+} __attribute__((packed));
-+
-+struct cld_clntinfo {
-+	struct cld_name		cc_name;
-+	struct cld_princhash	cc_princhash;
-+} __attribute__((packed));
-+
- /* message struct for communication with userspace */
- struct cld_msg {
- 	uint8_t		cm_vers;		/* upcall version */
-@@ -56,6 +71,19 @@ struct cld_msg {
- 	} __attribute__((packed)) cm_u;
- } __attribute__((packed));
- 
-+/* version 2 message can include hash of kerberos principal */
-+struct cld_msg_v2 {
-+	uint8_t		cm_vers;		/* upcall version */
-+	uint8_t		cm_cmd;			/* upcall command */
-+	int16_t		cm_status;		/* return code */
-+	uint32_t	cm_xid;			/* transaction id */
-+	union {
-+		struct cld_name	cm_name;
-+		uint8_t		cm_version;	/* for getting max version */
-+		struct cld_clntinfo cm_clntinfo; /* name & princ hash */
-+	} __attribute__((packed)) cm_u;
-+} __attribute__((packed));
-+
- struct cld_msg_hdr {
- 	uint8_t		cm_vers;		/* upcall version */
- 	uint8_t		cm_cmd;			/* upcall command */
-diff --git a/utils/nfsdcld/cld-internal.h b/utils/nfsdcld/cld-internal.h
-index f33cb04..05f01be 100644
---- a/utils/nfsdcld/cld-internal.h
-+++ b/utils/nfsdcld/cld-internal.h
-@@ -18,11 +18,20 @@
- #ifndef _CLD_INTERNAL_H_
- #define _CLD_INTERNAL_H_
- 
-+#if CLD_UPCALL_VERSION >= 2
-+#define UPCALL_VERSION		2
-+#else
-+#define UPCALL_VERSION		1
-+#endif
-+
- struct cld_client {
- 	int			cl_fd;
- 	struct event		cl_event;
- 	union {
--		struct cld_msg	cl_msg;
-+		struct cld_msg		cl_msg;
-+#if UPCALL_VERSION >= 2
-+		struct cld_msg_v2	cl_msg_v2;
-+#endif
- 	} cl_u;
- };
- 
-diff --git a/utils/nfsdcld/nfsdcld.c b/utils/nfsdcld/nfsdcld.c
-index aa5594b..277b4ca 100644
---- a/utils/nfsdcld/nfsdcld.c
-+++ b/utils/nfsdcld/nfsdcld.c
-@@ -60,8 +60,6 @@
- 
- #define NFSD_END_GRACE_FILE "/proc/fs/nfsd/v4_end_grace"
- 
--#define UPCALL_VERSION		1
--
- /* private data structures */
- 
- /* global variables */
-@@ -338,20 +336,46 @@ cld_check_grace_period(void)
- 	return ret;
- }
- 
-+#if UPCALL_VERSION >= 2
-+static ssize_t cld_message_size(void *msg)
-+{
-+	struct cld_msg_hdr *hdr = (struct cld_msg_hdr *)msg;
-+
-+	switch (hdr->cm_vers) {
-+	case 1:
-+		return sizeof(struct cld_msg);
-+	case 2:
-+		return sizeof(struct cld_msg_v2);
-+	default:
-+		xlog(L_FATAL, "%s invalid upcall version %d", __func__,
-+		     hdr->cm_vers);
-+		exit(-EINVAL);
-+	}
-+}
-+#else
-+static ssize_t cld_message_size(void *UNUSED(msg))
-+{
-+	return sizeof(struct cld_msg);
-+}
-+#endif
-+
- static void
- cld_not_implemented(struct cld_client *clnt)
- {
- 	int ret;
- 	ssize_t bsize, wsize;
-+#if UPCALL_VERSION >= 2
-+	struct cld_msg_v2 *cmsg = &clnt->cl_u.cl_msg_v2;
-+#else
- 	struct cld_msg *cmsg = &clnt->cl_u.cl_msg;
-+#endif
- 
- 	xlog(D_GENERAL, "%s: downcalling with not implemented error", __func__);
- 
- 	/* set up reply */
- 	cmsg->cm_status = -EOPNOTSUPP;
- 
--	bsize = sizeof(*cmsg);
--
-+	bsize = cld_message_size(cmsg);
- 	wsize = atomicio((void *)write, clnt->cl_fd, cmsg, bsize);
- 	if (wsize != bsize)
- 		xlog(L_ERROR, "%s: problem writing to cld pipe (%ld): %m",
-@@ -370,15 +394,18 @@ cld_get_version(struct cld_client *clnt)
- {
- 	int ret;
- 	ssize_t bsize, wsize;
-+#if UPCALL_VERSION >= 2
-+	struct cld_msg_v2 *cmsg = &clnt->cl_u.cl_msg_v2;
-+#else
- 	struct cld_msg *cmsg = &clnt->cl_u.cl_msg;
-+#endif
- 
- 	xlog(D_GENERAL, "%s: version = %u.", __func__, UPCALL_VERSION);
- 
- 	cmsg->cm_u.cm_version = UPCALL_VERSION;
- 	cmsg->cm_status = 0;
- 
--	bsize = sizeof(*cmsg);
--
-+	bsize = cld_message_size(cmsg);
- 	xlog(D_GENERAL, "Doing downcall with status %d", cmsg->cm_status);
- 	wsize = atomicio((void *)write, clnt->cl_fd, cmsg, bsize);
- 	if (wsize != bsize) {
-@@ -398,7 +425,11 @@ cld_create(struct cld_client *clnt)
- {
- 	int ret;
- 	ssize_t bsize, wsize;
-+#if UPCALL_VERSION >= 2
-+	struct cld_msg_v2 *cmsg = &clnt->cl_u.cl_msg_v2;
-+#else
- 	struct cld_msg *cmsg = &clnt->cl_u.cl_msg;
-+#endif
- 
- 	ret = cld_check_grace_period();
- 	if (ret)
-@@ -406,15 +437,25 @@ cld_create(struct cld_client *clnt)
- 
- 	xlog(D_GENERAL, "%s: create client record.", __func__);
- 
--
-+#if UPCALL_VERSION >= 2
-+	if (cmsg->cm_vers >= 2)
-+		ret = sqlite_insert_client_and_princhash(
-+					cmsg->cm_u.cm_clntinfo.cc_name.cn_id,
-+					cmsg->cm_u.cm_clntinfo.cc_name.cn_len,
-+					cmsg->cm_u.cm_clntinfo.cc_princhash.cp_data,
-+					cmsg->cm_u.cm_clntinfo.cc_princhash.cp_len);
-+	else
-+		ret = sqlite_insert_client(cmsg->cm_u.cm_name.cn_id,
-+					   cmsg->cm_u.cm_name.cn_len);
-+#else
- 	ret = sqlite_insert_client(cmsg->cm_u.cm_name.cn_id,
- 				   cmsg->cm_u.cm_name.cn_len);
-+#endif
- 
- reply:
- 	cmsg->cm_status = ret ? -EREMOTEIO : ret;
- 
--	bsize = sizeof(*cmsg);
--
-+	bsize = cld_message_size(cmsg);
- 	xlog(D_GENERAL, "Doing downcall with status %d", cmsg->cm_status);
- 	wsize = atomicio((void *)write, clnt->cl_fd, cmsg, bsize);
- 	if (wsize != bsize) {
-@@ -434,7 +475,11 @@ cld_remove(struct cld_client *clnt)
- {
- 	int ret;
- 	ssize_t bsize, wsize;
-+#if UPCALL_VERSION >= 2
-+	struct cld_msg_v2 *cmsg = &clnt->cl_u.cl_msg_v2;
-+#else
- 	struct cld_msg *cmsg = &clnt->cl_u.cl_msg;
-+#endif
- 
- 	ret = cld_check_grace_period();
- 	if (ret)
-@@ -448,8 +493,7 @@ cld_remove(struct cld_client *clnt)
- reply:
- 	cmsg->cm_status = ret ? -EREMOTEIO : ret;
- 
--	bsize = sizeof(*cmsg);
--
-+	bsize = cld_message_size(cmsg);
- 	xlog(D_GENERAL, "%s: downcall with status %d", __func__,
- 			cmsg->cm_status);
- 	wsize = atomicio((void *)write, clnt->cl_fd, cmsg, bsize);
-@@ -470,7 +514,11 @@ cld_check(struct cld_client *clnt)
- {
- 	int ret;
- 	ssize_t bsize, wsize;
-+#if UPCALL_VERSION >= 2
-+	struct cld_msg_v2 *cmsg = &clnt->cl_u.cl_msg_v2;
-+#else
- 	struct cld_msg *cmsg = &clnt->cl_u.cl_msg;
-+#endif
- 
- 	/*
- 	 * If we get a check upcall at all, it means we're talking to an old
-@@ -495,8 +543,7 @@ reply:
- 	/* set up reply */
- 	cmsg->cm_status = ret ? -EACCES : ret;
- 
--	bsize = sizeof(*cmsg);
--
-+	bsize = cld_message_size(cmsg);
- 	xlog(D_GENERAL, "%s: downcall with status %d", __func__,
- 			cmsg->cm_status);
- 	wsize = atomicio((void *)write, clnt->cl_fd, cmsg, bsize);
-@@ -517,7 +564,11 @@ cld_gracedone(struct cld_client *clnt)
- {
- 	int ret;
- 	ssize_t bsize, wsize;
-+#if UPCALL_VERSION >= 2
-+	struct cld_msg_v2 *cmsg = &clnt->cl_u.cl_msg_v2;
-+#else
- 	struct cld_msg *cmsg = &clnt->cl_u.cl_msg;
-+#endif
- 
- 	/*
- 	 * If we got a "gracedone" upcall while we're not in grace, then
-@@ -552,8 +603,7 @@ reply:
- 	/* set up reply: downcall with 0 status */
- 	cmsg->cm_status = ret ? -EREMOTEIO : ret;
- 
--	bsize = sizeof(*cmsg);
--
-+	bsize = cld_message_size(cmsg);
- 	xlog(D_GENERAL, "Doing downcall with status %d", cmsg->cm_status);
- 	wsize = atomicio((void *)write, clnt->cl_fd, cmsg, bsize);
- 	if (wsize != bsize) {
-@@ -571,12 +621,15 @@ reply:
- static int
- gracestart_callback(struct cld_client *clnt) {
- 	ssize_t bsize, wsize;
-+#if UPCALL_VERSION >= 2
-+	struct cld_msg_v2 *cmsg = &clnt->cl_u.cl_msg_v2;
-+#else
- 	struct cld_msg *cmsg = &clnt->cl_u.cl_msg;
-+#endif
- 
- 	cmsg->cm_status = -EINPROGRESS;
- 
--	bsize = sizeof(struct cld_msg);
--
-+	bsize = cld_message_size(cmsg);
- 	xlog(D_GENERAL, "Sending client %.*s",
- 			cmsg->cm_u.cm_name.cn_len, cmsg->cm_u.cm_name.cn_id);
- 	wsize = atomicio((void *)write, clnt->cl_fd, cmsg, bsize);
-@@ -590,7 +643,11 @@ cld_gracestart(struct cld_client *clnt)
- {
- 	int ret;
- 	ssize_t bsize, wsize;
-+#if UPCALL_VERSION >= 2
-+	struct cld_msg_v2 *cmsg = &clnt->cl_u.cl_msg_v2;
-+#else
- 	struct cld_msg *cmsg = &clnt->cl_u.cl_msg;
-+#endif
- 
- 	xlog(D_GENERAL, "%s: updating grace epochs", __func__);
- 
-@@ -606,7 +663,7 @@ reply:
- 	/* set up reply: downcall with 0 status */
- 	cmsg->cm_status = ret ? -EREMOTEIO : ret;
- 
--	bsize = sizeof(struct cld_msg);
-+	bsize = cld_message_size(cmsg);
- 	xlog(D_GENERAL, "Doing downcall with status %d", cmsg->cm_status);
- 	wsize = atomicio((void *)write, clnt->cl_fd, cmsg, bsize);
- 	if (wsize != bsize) {
-@@ -626,7 +683,11 @@ cldcb(int UNUSED(fd), short which, void *data)
- {
- 	ssize_t len;
- 	struct cld_client *clnt = data;
-+#if UPCALL_VERSION >= 2
-+	struct cld_msg_v2 *cmsg = &clnt->cl_u.cl_msg_v2;
-+#else
- 	struct cld_msg *cmsg = &clnt->cl_u.cl_msg;
-+#endif
- 
- 	if (which != EV_READ)
++	req->rq_reply_bytes_recvd = 0;
+ 	req->rq_snd_buf.head[0].iov_len = 0;
+ 	xdr_init_encode(&xdr, &req->rq_snd_buf,
+ 			req->rq_snd_buf.head[0].iov_base, req);
+@@ -1881,6 +1882,8 @@ call_encode(struct rpc_task *task)
+ 	if (!rpc_task_need_encode(task))
  		goto out;
-diff --git a/utils/nfsdcld/sqlite.c b/utils/nfsdcld/sqlite.c
-index 6525fc1..151ea21 100644
---- a/utils/nfsdcld/sqlite.c
-+++ b/utils/nfsdcld/sqlite.c
-@@ -37,8 +37,9 @@
-  *        them in the database.
-  *
-  * rec-CCCCCCCCCCCCCCCC (where C is the hex representation of the epoch value):
-- *        a single "id" column containing a BLOB with the long-form clientid
-- *        as sent by the client.
-+ *        an "id" column containing a BLOB with the long-form clientid
-+ *        as sent by the client, and a "princhash" column containing a BLOB
-+ *        with the sha256 hash of the kerberos principal (if available).
-  */
- 
- #ifdef HAVE_CONFIG_H
-@@ -69,7 +70,7 @@
- #include "legacy.h"
- #include "nfslib.h"
- 
--#define CLD_SQLITE_LATEST_SCHEMA_VERSION 3
-+#define CLD_SQLITE_LATEST_SCHEMA_VERSION 4
- #define CLTRACK_DEFAULT_STORAGEDIR NFS_STATEDIR "/nfsdcltrack"
- 
- /* in milliseconds */
-@@ -173,35 +174,56 @@ out:
+ 	dprint_status(task);
++	/* Dequeue task from the receive queue while we're encoding */
++	xprt_request_dequeue_xprt(task);
+ 	/* Encode here so that rpcsec_gss can use correct sequence number. */
+ 	rpc_xdr_encode(task);
+ 	/* Did the encode result in an error condition? */
+@@ -2518,9 +2521,6 @@ call_decode(struct rpc_task *task)
+ 		return;
+ 	case -EAGAIN:
+ 		task->tk_status = 0;
+-		xdr_free_bvec(&req->rq_rcv_buf);
+-		req->rq_reply_bytes_recvd = 0;
+-		req->rq_rcv_buf.len = 0;
+ 		if (task->tk_client->cl_discrtry)
+ 			xprt_conditional_disconnect(req->rq_xprt,
+ 						    req->rq_connect_cookie);
+diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+index 2e71f5455c6c..20631d64312c 100644
+--- a/net/sunrpc/xprt.c
++++ b/net/sunrpc/xprt.c
+@@ -1323,6 +1323,36 @@ xprt_request_dequeue_transmit(struct rpc_task *task)
+ 	spin_unlock(&xprt->queue_lock);
  }
  
- static int
--sqlite_maindb_update_schema(int oldversion)
-+sqlite_add_princ_col_cb(void *UNUSED(arg), int ncols, char **cols,
-+			    char **UNUSED(colnames))
- {
--	int ret, ret2;
-+	int ret;
- 	char *err;
- 
--	/* begin transaction */
--	ret = sqlite3_exec(dbh, "BEGIN EXCLUSIVE TRANSACTION;", NULL, NULL,
--				&err);
-+	if (ncols > 1)
-+		return -EINVAL;
-+	ret = snprintf(buf, sizeof(buf), "ALTER TABLE \"%s\" "
-+			"ADD COLUMN princhash BLOB;", cols[0]);
-+	if (ret < 0) {
-+		xlog(L_ERROR, "sprintf failed!");
-+		return -EINVAL;
-+	} else if ((size_t)ret >= sizeof(buf)) {
-+		xlog(L_ERROR, "sprintf output too long! (%d chars)", ret);
-+		return -EINVAL;
-+	}
-+	ret = sqlite3_exec(dbh, (const char *)buf, NULL, NULL, &err);
- 	if (ret != SQLITE_OK) {
--		xlog(L_ERROR, "Unable to begin transaction: %s", err);
--		goto rollback;
-+		xlog(L_ERROR, "Unable to add princhash column to table %s: %s",
-+		     cols[0], err);
-+		goto out;
- 	}
-+	xlog(D_GENERAL, "Added princhash column to table %s", cols[0]);
-+out:
-+	sqlite3_free(err);
-+	return ret;
-+}
- 
--	/*
--	 * Check schema version again. This time, under an exclusive
--	 * transaction to guard against racing DB setup attempts
--	 */
--	ret = sqlite_query_schema_version();
--	if (ret != oldversion) {
--		if (ret == CLD_SQLITE_LATEST_SCHEMA_VERSION)
--			/* Someone else raced in and set it up */
--			ret = 0;
--		else
--			/* Something went wrong -- fail! */
--			ret = -EINVAL;
--		goto rollback;
-+static int
-+sqlite_maindb_update_v3_to_v4(void)
-+{
-+	int ret;
-+	char *err;
-+
-+	ret = sqlite3_exec(dbh, "SELECT name FROM sqlite_master "
-+			   "WHERE type=\"table\" AND name LIKE \"%rec-%\";",
-+			   sqlite_add_princ_col_cb, NULL, &err);
-+	if (ret != SQLITE_OK) {
-+		xlog(L_ERROR, "%s: Failed to update tables!: %s", __func__, err);
- 	}
-+	sqlite3_free(err);
-+	return ret;
-+}
- 
--	/* Still at old version -- do conversion */
-+static int
-+sqlite_maindb_update_v1v2_to_v4(void)
-+{
-+	int ret;
-+	char *err;
- 
- 	/* create grace table */
- 	ret = sqlite3_exec(dbh, "CREATE TABLE grace "
-@@ -209,7 +231,7 @@ sqlite_maindb_update_schema(int oldversion)
- 				NULL, NULL, &err);
- 	if (ret != SQLITE_OK) {
- 		xlog(L_ERROR, "Unable to create grace table: %s", err);
--		goto rollback;
-+		goto out;
- 	}
- 
- 	/* insert initial epochs into grace table */
-@@ -218,26 +240,26 @@ sqlite_maindb_update_schema(int oldversion)
- 				NULL, NULL, &err);
- 	if (ret != SQLITE_OK) {
- 		xlog(L_ERROR, "Unable to set initial epochs: %s", err);
--		goto rollback;
-+		goto out;
- 	}
- 
- 	/* create recovery table for current epoch */
- 	ret = sqlite3_exec(dbh, "CREATE TABLE \"rec-0000000000000001\" "
--				"(id BLOB PRIMARY KEY);",
-+				"(id BLOB PRIMARY KEY, princhash BLOB);",
- 				NULL, NULL, &err);
- 	if (ret != SQLITE_OK) {
- 		xlog(L_ERROR, "Unable to create recovery table "
- 				"for current epoch: %s", err);
--		goto rollback;
-+		goto out;
- 	}
- 
- 	/* copy records from old clients table */
--	ret = sqlite3_exec(dbh, "INSERT INTO \"rec-0000000000000001\" "
-+	ret = sqlite3_exec(dbh, "INSERT INTO \"rec-0000000000000001\" (id) "
- 				"SELECT id FROM clients;",
- 				NULL, NULL, &err);
- 	if (ret != SQLITE_OK) {
- 		xlog(L_ERROR, "Unable to copy client records: %s", err);
--		goto rollback;
-+		goto out;
- 	}
- 
- 	/* drop the old clients table */
-@@ -245,9 +267,57 @@ sqlite_maindb_update_schema(int oldversion)
- 				NULL, NULL, &err);
- 	if (ret != SQLITE_OK) {
- 		xlog(L_ERROR, "Unable to drop old clients table: %s", err);
-+	}
-+out:
-+	sqlite3_free(err);
-+	return ret;
-+}
-+
-+static int
-+sqlite_maindb_update_schema(int oldversion)
-+{
-+	int ret, ret2;
-+	char *err;
-+
-+	/* begin transaction */
-+	ret = sqlite3_exec(dbh, "BEGIN EXCLUSIVE TRANSACTION;", NULL, NULL,
-+				&err);
-+	if (ret != SQLITE_OK) {
-+		xlog(L_ERROR, "Unable to begin transaction: %s", err);
-+		goto rollback;
-+	}
-+
-+	/*
-+	 * Check schema version again. This time, under an exclusive
-+	 * transaction to guard against racing DB setup attempts
-+	 */
-+	ret = sqlite_query_schema_version();
-+	if (ret != oldversion) {
-+		if (ret == CLD_SQLITE_LATEST_SCHEMA_VERSION)
-+			/* Someone else raced in and set it up */
-+			ret = 0;
-+		else
-+			/* Something went wrong -- fail! */
-+			ret = -EINVAL;
- 		goto rollback;
- 	}
- 
-+	/* Still at old version -- do conversion */
-+
-+	switch (oldversion) {
-+	case 3:
-+	case 2:
-+		ret = sqlite_maindb_update_v3_to_v4();
-+		break;
-+	case 1:
-+		ret = sqlite_maindb_update_v1v2_to_v4();
-+		break;
-+	default:
-+		ret = -EINVAL;
-+	}
-+	if (ret != SQLITE_OK)
-+		goto rollback;
-+
- 	ret = snprintf(buf, sizeof(buf), "UPDATE parameters SET value = %d "
- 			"WHERE key = \"version\";",
- 			CLD_SQLITE_LATEST_SCHEMA_VERSION);
-@@ -300,7 +370,7 @@ rollback:
-  * transaction. On any error, rollback the transaction.
-  */
- static int
--sqlite_maindb_init_v3(void)
-+sqlite_maindb_init_v4(void)
- {
- 	int ret, ret2;
- 	char *err = NULL;
-@@ -360,7 +430,7 @@ sqlite_maindb_init_v3(void)
- 
- 	/* create recovery table for current epoch */
- 	ret = sqlite3_exec(dbh, "CREATE TABLE \"rec-0000000000000001\" "
--				"(id BLOB PRIMARY KEY);",
-+				"(id BLOB PRIMARY KEY, princhash BLOB);",
- 				NULL, NULL, &err);
- 	if (ret != SQLITE_OK) {
- 		xlog(L_ERROR, "Unable to create recovery table "
-@@ -675,7 +745,7 @@ sqlite_copy_cltrack_records(int *num_rec)
- 		xlog(L_ERROR, "Unable to clear records from current epoch: %s", err);
- 		goto rollback;
- 	}
--	ret = snprintf(buf, sizeof(buf), "INSERT INTO \"rec-%016" PRIx64 "\" "
-+	ret = snprintf(buf, sizeof(buf), "INSERT INTO \"rec-%016" PRIx64 "\" (id) "
- 				"SELECT id FROM attached.clients;",
- 				current_epoch);
- 	if (ret < 0) {
-@@ -763,6 +833,12 @@ sqlite_prepare_dbh(const char *topdir)
- 		/* DB is already set up. Do nothing */
- 		ret = 0;
- 		break;
-+	case 3:
-+		/* Old DB -- update to new schema */
-+		ret = sqlite_maindb_update_schema(3);
-+		if (ret)
-+			goto out_close;
-+		break;
- 	case 2:
- 		/* Old DB -- update to new schema */
- 		ret = sqlite_maindb_update_schema(2);
-@@ -778,7 +854,7 @@ sqlite_prepare_dbh(const char *topdir)
- 		break;
- 	case 0:
- 		/* Query failed -- try to set up new DB */
--		ret = sqlite_maindb_init_v3();
-+		ret = sqlite_maindb_init_v4();
- 		if (ret)
- 			goto out_close;
- 		break;
-@@ -835,7 +911,62 @@ sqlite_insert_client(const unsigned char *clname, const size_t namelen)
- 	int ret;
- 	sqlite3_stmt *stmt = NULL;
- 
--	ret = snprintf(buf, sizeof(buf), "INSERT OR REPLACE INTO \"rec-%016" PRIx64 "\" "
-+	ret = snprintf(buf, sizeof(buf), "INSERT OR REPLACE INTO \"rec-%016" PRIx64 "\" (id) "
-+				"VALUES (?);", current_epoch);
-+	if (ret < 0) {
-+		xlog(L_ERROR, "sprintf failed!");
-+		return ret;
-+	} else if ((size_t)ret >= sizeof(buf)) {
-+		xlog(L_ERROR, "sprintf output too long! (%d chars)", ret);
-+		return -EINVAL;
-+	}
-+
-+	ret = sqlite3_prepare_v2(dbh, buf, -1, &stmt, NULL);
-+	if (ret != SQLITE_OK) {
-+		xlog(L_ERROR, "%s: insert statement prepare failed: %s",
-+			__func__, sqlite3_errmsg(dbh));
-+		return ret;
-+	}
-+
-+	ret = sqlite3_bind_blob(stmt, 1, (const void *)clname, namelen,
-+				SQLITE_STATIC);
-+	if (ret != SQLITE_OK) {
-+		xlog(L_ERROR, "%s: bind blob failed: %s", __func__,
-+				sqlite3_errmsg(dbh));
-+		goto out_err;
-+	}
-+
-+	ret = sqlite3_step(stmt);
-+	if (ret == SQLITE_DONE)
-+		ret = SQLITE_OK;
-+	else
-+		xlog(L_ERROR, "%s: unexpected return code from insert: %s",
-+				__func__, sqlite3_errmsg(dbh));
-+
-+out_err:
-+	xlog(D_GENERAL, "%s: returning %d", __func__, ret);
-+	sqlite3_finalize(stmt);
-+	return ret;
-+}
-+
-+#if UPCALL_VERSION >= 2
-+/*
-+ * Create a client record including hash the kerberos principal
++/**
++ * xprt_request_dequeue_xprt - remove a task from the transmit+receive queue
++ * @task: pointer to rpc_task
 + *
-+ * Returns a non-zero sqlite error code, or SQLITE_OK (aka 0)
++ * Remove a task from the transmit and receive queues, and ensure that
++ * it is not pinned by the receive work item.
 + */
-+int
-+sqlite_insert_client_and_princhash(const unsigned char *clname, const size_t namelen,
-+		const unsigned char *clprinchash, const size_t princhashlen)
++void
++xprt_request_dequeue_xprt(struct rpc_task *task)
 +{
-+	int ret;
-+	sqlite3_stmt *stmt = NULL;
++	struct rpc_rqst	*req = task->tk_rqstp;
++	struct rpc_xprt *xprt = req->rq_xprt;
 +
-+	if (princhashlen > 0)
-+		ret = snprintf(buf, sizeof(buf), "INSERT OR REPLACE INTO \"rec-%016" PRIx64 "\" "
-+				"VALUES (?, ?);", current_epoch);
-+	else
-+		ret = snprintf(buf, sizeof(buf), "INSERT OR REPLACE INTO \"rec-%016" PRIx64 "\" (id) "
- 				"VALUES (?);", current_epoch);
- 	if (ret < 0) {
- 		xlog(L_ERROR, "sprintf failed!");
-@@ -860,6 +991,16 @@ sqlite_insert_client(const unsigned char *clname, const size_t namelen)
- 		goto out_err;
- 	}
- 
-+	if (princhashlen > 0) {
-+		ret = sqlite3_bind_blob(stmt, 2, (const void *)clprinchash, princhashlen,
-+					SQLITE_STATIC);
-+		if (ret != SQLITE_OK) {
-+			xlog(L_ERROR, "%s: bind blob failed: %s", __func__,
-+					sqlite3_errmsg(dbh));
-+			goto out_err;
++	if (test_bit(RPC_TASK_NEED_XMIT, &task->tk_runstate) ||
++	    test_bit(RPC_TASK_NEED_RECV, &task->tk_runstate) ||
++	    xprt_is_pinned_rqst(req)) {
++		spin_lock(&xprt->queue_lock);
++		xprt_request_dequeue_transmit_locked(task);
++		xprt_request_dequeue_receive_locked(task);
++		while (xprt_is_pinned_rqst(req)) {
++			set_bit(RPC_TASK_MSG_PIN_WAIT, &task->tk_runstate);
++			spin_unlock(&xprt->queue_lock);
++			xprt_wait_on_pinned_rqst(req);
++			spin_lock(&xprt->queue_lock);
++			clear_bit(RPC_TASK_MSG_PIN_WAIT, &task->tk_runstate);
 +		}
++		spin_unlock(&xprt->queue_lock);
 +	}
-+
- 	ret = sqlite3_step(stmt);
- 	if (ret == SQLITE_DONE)
- 		ret = SQLITE_OK;
-@@ -872,6 +1013,14 @@ out_err:
- 	sqlite3_finalize(stmt);
- 	return ret;
- }
-+#else
-+int
-+sqlite_insert_client_and_princhash(const unsigned char *clname, const size_t namelen,
-+		const unsigned char *clprinchash, const size_t princhashlen)
-+{
-+	return -EINVAL;
 +}
-+#endif
++
+ /**
+  * xprt_request_prepare - prepare an encoded request for transport
+  * @req: pointer to rpc_rqst
+@@ -1747,28 +1777,6 @@ void xprt_retry_reserve(struct rpc_task *task)
+ 	xprt_do_reserve(xprt, task);
+ }
  
- /* Remove a client record */
- int
-@@ -1024,7 +1173,7 @@ sqlite_grace_start(void)
- 		}
- 
- 		ret = snprintf(buf, sizeof(buf), "CREATE TABLE \"rec-%016" PRIx64 "\" "
--				"(id BLOB PRIMARY KEY);",
-+				"(id BLOB PRIMARY KEY, princhash blob);",
- 				tcur);
- 		if (ret < 0) {
- 			xlog(L_ERROR, "sprintf failed!");
-@@ -1152,7 +1301,11 @@ sqlite_iterate_recovery(int (*cb)(struct cld_client *clnt), struct cld_client *c
- {
- 	int ret;
- 	sqlite3_stmt *stmt = NULL;
-+#if UPCALL_VERSION >= 2
-+	struct cld_msg_v2 *cmsg = &clnt->cl_u.cl_msg_v2;
-+#else
- 	struct cld_msg *cmsg = &clnt->cl_u.cl_msg;
-+#endif
- 
- 	if (recovery_epoch == 0) {
- 		xlog(D_GENERAL, "%s: not in grace!", __func__);
-@@ -1177,9 +1330,21 @@ sqlite_iterate_recovery(int (*cb)(struct cld_client *clnt), struct cld_client *c
+-static void
+-xprt_request_dequeue_all(struct rpc_task *task, struct rpc_rqst *req)
+-{
+-	struct rpc_xprt *xprt = req->rq_xprt;
+-
+-	if (test_bit(RPC_TASK_NEED_XMIT, &task->tk_runstate) ||
+-	    test_bit(RPC_TASK_NEED_RECV, &task->tk_runstate) ||
+-	    xprt_is_pinned_rqst(req)) {
+-		spin_lock(&xprt->queue_lock);
+-		xprt_request_dequeue_transmit_locked(task);
+-		xprt_request_dequeue_receive_locked(task);
+-		while (xprt_is_pinned_rqst(req)) {
+-			set_bit(RPC_TASK_MSG_PIN_WAIT, &task->tk_runstate);
+-			spin_unlock(&xprt->queue_lock);
+-			xprt_wait_on_pinned_rqst(req);
+-			spin_lock(&xprt->queue_lock);
+-			clear_bit(RPC_TASK_MSG_PIN_WAIT, &task->tk_runstate);
+-		}
+-		spin_unlock(&xprt->queue_lock);
+-	}
+-}
+-
+ /**
+  * xprt_release - release an RPC request slot
+  * @task: task which is finished with the slot
+@@ -1788,7 +1796,7 @@ void xprt_release(struct rpc_task *task)
  	}
  
- 	while ((ret = sqlite3_step(stmt)) == SQLITE_ROW) {
-+		memset(&cmsg->cm_u, 0, sizeof(cmsg->cm_u));
-+#if UPCALL_VERSION >= 2
-+		memcpy(&cmsg->cm_u.cm_clntinfo.cc_name.cn_id,
-+			sqlite3_column_blob(stmt, 0), NFS4_OPAQUE_LIMIT);
-+		cmsg->cm_u.cm_clntinfo.cc_name.cn_len = sqlite3_column_bytes(stmt, 0);
-+		if (sqlite3_column_bytes(stmt, 1) > 0) {
-+			memcpy(&cmsg->cm_u.cm_clntinfo.cc_princhash.cp_data,
-+				sqlite3_column_blob(stmt, 1), NFS4_OPAQUE_LIMIT);
-+			cmsg->cm_u.cm_clntinfo.cc_princhash.cp_len = sqlite3_column_bytes(stmt, 1);
-+		}
-+#else
- 		memcpy(&cmsg->cm_u.cm_name.cn_id, sqlite3_column_blob(stmt, 0),
- 			NFS4_OPAQUE_LIMIT);
- 		cmsg->cm_u.cm_name.cn_len = sqlite3_column_bytes(stmt, 0);
-+#endif
- 		cb(clnt);
- 	}
- 	if (ret == SQLITE_DONE)
-diff --git a/utils/nfsdcld/sqlite.h b/utils/nfsdcld/sqlite.h
-index 7741382..0a26ad6 100644
---- a/utils/nfsdcld/sqlite.h
-+++ b/utils/nfsdcld/sqlite.h
-@@ -24,6 +24,8 @@ struct cld_client;
- 
- int sqlite_prepare_dbh(const char *topdir);
- int sqlite_insert_client(const unsigned char *clname, const size_t namelen);
-+int sqlite_insert_client_and_princhash(const unsigned char *clname, const size_t namelen,
-+		const unsigned char *clprinchash, const size_t princhashlen);
- int sqlite_remove_client(const unsigned char *clname, const size_t namelen);
- int sqlite_check_client(const unsigned char *clname, const size_t namelen);
- int sqlite_grace_start(void);
+ 	xprt = req->rq_xprt;
+-	xprt_request_dequeue_all(task, req);
++	xprt_request_dequeue_xprt(task);
+ 	spin_lock(&xprt->transport_lock);
+ 	xprt->ops->release_xprt(xprt, task);
+ 	if (xprt->ops->release_request)
 -- 
-2.17.2
+2.21.0
 
