@@ -4,42 +4,42 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	URIBL_BLOCKED autolearn=unavailable autolearn_force=no version=3.4.0
+	URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 67CDCECDE20
-	for <linux-nfs@archiver.kernel.org>; Wed, 11 Sep 2019 16:17:23 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 187B2C49ED6
+	for <linux-nfs@archiver.kernel.org>; Wed, 11 Sep 2019 16:17:25 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 491C220872
-	for <linux-nfs@archiver.kernel.org>; Wed, 11 Sep 2019 16:17:23 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id E3AD82075C
+	for <linux-nfs@archiver.kernel.org>; Wed, 11 Sep 2019 16:17:24 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729239AbfIKQRO (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 11 Sep 2019 12:17:14 -0400
-Received: from mx1.redhat.com ([209.132.183.28]:1886 "EHLO mx1.redhat.com"
+        id S1729272AbfIKQRX (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 11 Sep 2019 12:17:23 -0400
+Received: from mx1.redhat.com ([209.132.183.28]:40056 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1728993AbfIKQQY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 11 Sep 2019 12:16:24 -0400
-Received: from smtp.corp.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+        id S1728983AbfIKQQX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 11 Sep 2019 12:16:23 -0400
+Received: from smtp.corp.redhat.com (int-mx07.intmail.prod.int.phx2.redhat.com [10.5.11.22])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 4D2733086268;
+        by mx1.redhat.com (Postfix) with ESMTPS id 3740BA3718F;
         Wed, 11 Sep 2019 16:16:23 +0000 (UTC)
 Received: from coeurl.usersys.redhat.com (ovpn-122-52.rdu2.redhat.com [10.10.122.52])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 16B026013A;
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 065F810018FF;
         Wed, 11 Sep 2019 16:16:23 +0000 (UTC)
 Received: by coeurl.usersys.redhat.com (Postfix, from userid 1000)
-        id 3EC9120CEB; Wed, 11 Sep 2019 12:16:22 -0400 (EDT)
+        id 2E10320C2E; Wed, 11 Sep 2019 12:16:22 -0400 (EDT)
 From:   Scott Mayhew <smayhew@redhat.com>
 To:     anna.schumaker@netapp.com, trond.myklebust@hammerspace.com
 Cc:     dhowells@redhat.com, viro@zeniv.linux.org.uk,
         linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         linux-kernel@vger.kernel.org
-Subject: [PATCH v3 12/26] nfs: don't pass nfs_subversion to ->create_server()
-Date:   Wed, 11 Sep 2019 12:16:07 -0400
-Message-Id: <20190911161621.19832-13-smayhew@redhat.com>
+Subject: [PATCH v3 09/26] nfs: don't bother passing nfs_subversion to ->try_mount() and nfs_fs_mount_common()
+Date:   Wed, 11 Sep 2019 12:16:04 -0400
+Message-Id: <20190911161621.19832-10-smayhew@redhat.com>
 In-Reply-To: <20190911161621.19832-1-smayhew@redhat.com>
 References: <20190911161621.19832-1-smayhew@redhat.com>
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.11
-X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.49]); Wed, 11 Sep 2019 16:16:23 +0000 (UTC)
+X-Scanned-By: MIMEDefang 2.84 on 10.5.11.22
+X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.6.2 (mx1.redhat.com [10.5.110.68]); Wed, 11 Sep 2019 16:16:23 +0000 (UTC)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
@@ -47,187 +47,149 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Al Viro <viro@zeniv.linux.org.uk>
 
-pick it from mount_info
-
 Reviewed-by: David Howells <dhowells@redhat.com>
 Signed-off-by: Al Viro <viro@zeniv.linux.org.uk>
 ---
- fs/nfs/client.c         |  4 ++--
- fs/nfs/internal.h       |  7 ++-----
- fs/nfs/nfs3_fs.h        |  2 +-
- fs/nfs/nfs3client.c     |  5 ++---
- fs/nfs/nfs4client.c     |  3 +--
- fs/nfs/nfs4super.c      |  2 +-
- fs/nfs/super.c          | 14 +++++++-------
- include/linux/nfs_xdr.h |  2 +-
- 8 files changed, 17 insertions(+), 22 deletions(-)
+ fs/nfs/internal.h       |  6 ++----
+ fs/nfs/nfs4_fs.h        |  2 +-
+ fs/nfs/nfs4super.c      |  5 ++---
+ fs/nfs/super.c          | 19 ++++++++-----------
+ include/linux/nfs_xdr.h |  3 +--
+ 5 files changed, 14 insertions(+), 21 deletions(-)
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 30838304a0bf..130c065141b3 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -940,10 +940,10 @@ EXPORT_SYMBOL_GPL(nfs_free_server);
-  * Create a version 2 or 3 volume record
-  * - keyed on server and FSID
-  */
--struct nfs_server *nfs_create_server(struct nfs_mount_info *mount_info,
--				     struct nfs_subversion *nfs_mod)
-+struct nfs_server *nfs_create_server(struct nfs_mount_info *mount_info)
- {
- 	struct nfs_server *server;
-+	struct nfs_subversion *nfs_mod = mount_info->nfs_mod;
- 	struct nfs_fattr *fattr;
- 	int error;
- 
 diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 207d1574e246..444d0fc2bcca 100644
+index 0c42cf685d4b..3334d0f3ecf9 100644
 --- a/fs/nfs/internal.h
 +++ b/fs/nfs/internal.h
-@@ -178,11 +178,8 @@ extern struct nfs_client *nfs4_find_client_ident(struct net *, int);
- extern struct nfs_client *
- nfs4_find_client_sessionid(struct net *, const struct sockaddr *,
- 				struct nfs4_sessionid *, u32);
--extern struct nfs_server *nfs_create_server(struct nfs_mount_info *,
--					struct nfs_subversion *);
--extern struct nfs_server *nfs4_create_server(
--					struct nfs_mount_info *,
--					struct nfs_subversion *);
-+extern struct nfs_server *nfs_create_server(struct nfs_mount_info *);
-+extern struct nfs_server *nfs4_create_server(struct nfs_mount_info *);
- extern struct nfs_server *nfs4_create_referral_server(struct nfs_clone_mount *,
- 						      struct nfs_fh *);
- extern int nfs4_update_server(struct nfs_server *server, const char *hostname,
-diff --git a/fs/nfs/nfs3_fs.h b/fs/nfs/nfs3_fs.h
-index f82e11c4cb56..09602dc1889f 100644
---- a/fs/nfs/nfs3_fs.h
-+++ b/fs/nfs/nfs3_fs.h
-@@ -27,7 +27,7 @@ static inline int nfs3_proc_setacls(struct inode *inode, struct posix_acl *acl,
- #endif /* CONFIG_NFS_V3_ACL */
- 
- /* nfs3client.c */
--struct nfs_server *nfs3_create_server(struct nfs_mount_info *, struct nfs_subversion *);
-+struct nfs_server *nfs3_create_server(struct nfs_mount_info *);
- struct nfs_server *nfs3_clone_server(struct nfs_server *, struct nfs_fh *,
- 				     struct nfs_fattr *, rpc_authflavor_t);
- 
-diff --git a/fs/nfs/nfs3client.c b/fs/nfs/nfs3client.c
-index 148ceb74d27c..a340b5d0e1a3 100644
---- a/fs/nfs/nfs3client.c
-+++ b/fs/nfs/nfs3client.c
-@@ -46,10 +46,9 @@ static inline void nfs_init_server_aclclient(struct nfs_server *server)
- }
+@@ -401,12 +401,10 @@ extern struct file_system_type nfs_xdev_fs_type;
+ extern struct file_system_type nfs4_referral_fs_type;
  #endif
- 
--struct nfs_server *nfs3_create_server(struct nfs_mount_info *mount_info,
--				      struct nfs_subversion *nfs_mod)
-+struct nfs_server *nfs3_create_server(struct nfs_mount_info *mount_info)
- {
--	struct nfs_server *server = nfs_create_server(mount_info, nfs_mod);
-+	struct nfs_server *server = nfs_create_server(mount_info);
- 	/* Create a client RPC handle for the NFS v3 ACL management interface */
- 	if (!IS_ERR(server))
- 		nfs_init_server_aclclient(server);
-diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
-index da6204025a2d..16fba83b5c4b 100644
---- a/fs/nfs/nfs4client.c
-+++ b/fs/nfs/nfs4client.c
-@@ -1109,8 +1109,7 @@ static int nfs4_init_server(struct nfs_server *server,
-  */
- /*struct nfs_server *nfs4_create_server(const struct nfs_parsed_mount_data *data,
- 				      struct nfs_fh *mntfh)*/
--struct nfs_server *nfs4_create_server(struct nfs_mount_info *mount_info,
--				      struct nfs_subversion *nfs_mod)
-+struct nfs_server *nfs4_create_server(struct nfs_mount_info *mount_info)
- {
- 	struct nfs_server *server;
- 	bool auth_probe;
+ bool nfs_auth_info_match(const struct nfs_auth_info *, rpc_authflavor_t);
+-struct dentry *nfs_try_mount(int, const char *, struct nfs_mount_info *,
+-			struct nfs_subversion *);
++struct dentry *nfs_try_mount(int, const char *, struct nfs_mount_info *);
+ int nfs_set_sb_security(struct super_block *, struct dentry *, struct nfs_mount_info *);
+ int nfs_clone_sb_security(struct super_block *, struct dentry *, struct nfs_mount_info *);
+-struct dentry *nfs_fs_mount_common(int, const char *,
+-				   struct nfs_mount_info *, struct nfs_subversion *);
++struct dentry *nfs_fs_mount_common(int, const char *, struct nfs_mount_info *);
+ struct dentry *nfs_fs_mount(struct file_system_type *, int, const char *, void *);
+ struct dentry * nfs_xdev_mount_common(struct file_system_type *, int,
+ 		const char *, struct nfs_mount_info *);
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index 3564da1ba8a1..67ecd7bb512f 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -517,7 +517,7 @@ extern const nfs4_stateid invalid_stateid;
+ /* nfs4super.c */
+ struct nfs_mount_info;
+ extern struct nfs_subversion nfs_v4;
+-struct dentry *nfs4_try_mount(int, const char *, struct nfs_mount_info *, struct nfs_subversion *);
++struct dentry *nfs4_try_mount(int, const char *, struct nfs_mount_info *);
+ extern bool nfs4_disable_idmapping;
+ extern unsigned short max_session_slots;
+ extern unsigned short max_session_cb_slots;
 diff --git a/fs/nfs/nfs4super.c b/fs/nfs/nfs4super.c
-index 5bca30f704e4..b6cf62125380 100644
+index 88d83cab8e9b..83bca2ea566c 100644
 --- a/fs/nfs/nfs4super.c
 +++ b/fs/nfs/nfs4super.c
-@@ -205,7 +205,7 @@ struct dentry *nfs4_try_mount(int flags, const char *dev_name,
+@@ -98,7 +98,7 @@ static struct dentry *
+ nfs4_remote_mount(struct file_system_type *fs_type, int flags,
+ 		  const char *dev_name, void *info)
+ {
+-	return nfs_fs_mount_common(flags, dev_name, info, &nfs_v4);
++	return nfs_fs_mount_common(flags, dev_name, info);
+ }
  
- 	dfprintk(MOUNT, "--> nfs4_try_mount()\n");
+ struct nfs_referral_count {
+@@ -216,8 +216,7 @@ static struct dentry *do_nfs4_mount(struct nfs_server *server, int flags,
+ }
  
--	res = do_nfs4_mount(nfs4_create_server(mount_info, &nfs_v4),
-+	res = do_nfs4_mount(nfs4_create_server(mount_info),
- 			    flags, mount_info,
- 			    data->nfs_server.hostname,
- 			    data->nfs_server.export_path);
+ struct dentry *nfs4_try_mount(int flags, const char *dev_name,
+-			      struct nfs_mount_info *mount_info,
+-			      struct nfs_subversion *nfs_mod)
++			      struct nfs_mount_info *mount_info)
+ {
+ 	struct nfs_parsed_mount_data *data = mount_info->parsed;
+ 	struct dentry *res;
 diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index c3ee83c17f07..157d340333c8 100644
+index 2a6b4e4b0a2d..ca6295945880 100644
 --- a/fs/nfs/super.c
 +++ b/fs/nfs/super.c
-@@ -1820,8 +1820,7 @@ static int nfs_request_mount(struct nfs_parsed_mount_data *args,
- 	return 0;
+@@ -1893,15 +1893,15 @@ static struct nfs_server *nfs_try_mount_request(struct nfs_mount_info *mount_inf
  }
  
--static struct nfs_server *nfs_try_mount_request(struct nfs_mount_info *mount_info,
--					struct nfs_subversion *nfs_mod)
-+static struct nfs_server *nfs_try_mount_request(struct nfs_mount_info *mount_info)
+ struct dentry *nfs_try_mount(int flags, const char *dev_name,
+-			     struct nfs_mount_info *mount_info,
+-			     struct nfs_subversion *nfs_mod)
++			     struct nfs_mount_info *mount_info)
  {
- 	int status;
- 	unsigned int i;
-@@ -1831,6 +1830,7 @@ static struct nfs_server *nfs_try_mount_request(struct nfs_mount_info *mount_inf
- 	struct nfs_parsed_mount_data *args = mount_info->parsed;
- 	rpc_authflavor_t authlist[NFS_MAX_SECFLAVORS];
- 	unsigned int authlist_len = ARRAY_SIZE(authlist);
 +	struct nfs_subversion *nfs_mod = mount_info->nfs_mod;
- 
- 	status = nfs_request_mount(args, mount_info->mntfh, authlist,
- 					&authlist_len);
-@@ -1847,7 +1847,7 @@ static struct nfs_server *nfs_try_mount_request(struct nfs_mount_info *mount_inf
- 			 args->selected_flavor);
- 		if (status)
- 			return ERR_PTR(status);
--		return nfs_mod->rpc_ops->create_server(mount_info, nfs_mod);
-+		return nfs_mod->rpc_ops->create_server(mount_info);
- 	}
- 
- 	/*
-@@ -1874,7 +1874,7 @@ static struct nfs_server *nfs_try_mount_request(struct nfs_mount_info *mount_inf
- 		}
- 		dfprintk(MOUNT, "NFS: attempting to use auth flavor %u\n", flavor);
- 		args->selected_flavor = flavor;
--		server = nfs_mod->rpc_ops->create_server(mount_info, nfs_mod);
-+		server = nfs_mod->rpc_ops->create_server(mount_info);
- 		if (!IS_ERR(server))
- 			return server;
- 	}
-@@ -1890,7 +1890,7 @@ static struct nfs_server *nfs_try_mount_request(struct nfs_mount_info *mount_inf
- 	/* Last chance! Try AUTH_UNIX */
- 	dfprintk(MOUNT, "NFS: attempting to use auth flavor %u\n", RPC_AUTH_UNIX);
- 	args->selected_flavor = RPC_AUTH_UNIX;
--	return nfs_mod->rpc_ops->create_server(mount_info, nfs_mod);
-+	return nfs_mod->rpc_ops->create_server(mount_info);
- }
- 
- static struct dentry *nfs_fs_mount_common(int, const char *, struct nfs_mount_info *);
-@@ -1900,9 +1900,9 @@ struct dentry *nfs_try_mount(int flags, const char *dev_name,
- {
- 	struct nfs_subversion *nfs_mod = mount_info->nfs_mod;
  	if (mount_info->parsed->need_mount)
--		mount_info->server = nfs_try_mount_request(mount_info, nfs_mod);
-+		mount_info->server = nfs_try_mount_request(mount_info);
+ 		mount_info->server = nfs_try_mount_request(mount_info, nfs_mod);
  	else
--		mount_info->server = nfs_mod->rpc_ops->create_server(mount_info, nfs_mod);
-+		mount_info->server = nfs_mod->rpc_ops->create_server(mount_info);
+ 		mount_info->server = nfs_mod->rpc_ops->create_server(mount_info, nfs_mod);
  
- 	return nfs_fs_mount_common(flags, dev_name, mount_info);
+-	return nfs_fs_mount_common(flags, dev_name, mount_info, nfs_mod);
++	return nfs_fs_mount_common(flags, dev_name, mount_info);
  }
+ EXPORT_SYMBOL_GPL(nfs_try_mount);
+ 
+@@ -2623,8 +2623,7 @@ int nfs_clone_sb_security(struct super_block *s, struct dentry *mntroot,
+ EXPORT_SYMBOL_GPL(nfs_clone_sb_security);
+ 
+ struct dentry *nfs_fs_mount_common(int flags, const char *dev_name,
+-				   struct nfs_mount_info *mount_info,
+-				   struct nfs_subversion *nfs_mod)
++				   struct nfs_mount_info *mount_info)
+ {
+ 	struct super_block *s;
+ 	struct dentry *mntroot = ERR_PTR(-ENOMEM);
+@@ -2652,7 +2651,8 @@ struct dentry *nfs_fs_mount_common(int flags, const char *dev_name,
+ 			sb_mntdata.mntflags |= SB_SYNCHRONOUS;
+ 
+ 	/* Get a superblock - note that we may end up sharing one that already exists */
+-	s = sget(nfs_mod->nfs_fs, compare_super, nfs_set_super, flags, &sb_mntdata);
++	s = sget(mount_info->nfs_mod->nfs_fs, compare_super, nfs_set_super,
++		 flags, &sb_mntdata);
+ 	if (IS_ERR(s)) {
+ 		mntroot = ERR_CAST(s);
+ 		goto out_err_nosb;
+@@ -2738,7 +2738,7 @@ struct dentry *nfs_fs_mount(struct file_system_type *fs_type,
+ 	}
+ 	mount_info.nfs_mod = nfs_mod;
+ 
+-	mntroot = nfs_mod->rpc_ops->try_mount(flags, dev_name, &mount_info, nfs_mod);
++	mntroot = nfs_mod->rpc_ops->try_mount(flags, dev_name, &mount_info);
+ 
+ 	put_nfs_version(nfs_mod);
+ out:
+@@ -2772,10 +2772,7 @@ static struct dentry *
+ nfs_xdev_mount(struct file_system_type *fs_type, int flags,
+ 		const char *dev_name, void *raw_data)
+ {
+-	struct nfs_mount_info *info = raw_data;
+-	struct nfs_subversion *nfs_mod = NFS_SB(info->cloned->sb)->nfs_client->cl_nfs_mod;
+-
+-	return nfs_fs_mount_common(flags, dev_name, info, nfs_mod);
++	return nfs_fs_mount_common(flags, dev_name, raw_data);
+ }
+ 
+ #if IS_ENABLED(CONFIG_NFS_V4)
 diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 4fdf4a523185..82bdb91da2ae 100644
+index 9b8324ec08f3..4fdf4a523185 100644
 --- a/include/linux/nfs_xdr.h
 +++ b/include/linux/nfs_xdr.h
-@@ -1705,7 +1705,7 @@ struct nfs_rpc_ops {
- 	struct nfs_client *(*init_client) (struct nfs_client *,
- 				const struct nfs_client_initdata *);
- 	void	(*free_client) (struct nfs_client *);
--	struct nfs_server *(*create_server)(struct nfs_mount_info *, struct nfs_subversion *);
-+	struct nfs_server *(*create_server)(struct nfs_mount_info *);
- 	struct nfs_server *(*clone_server)(struct nfs_server *, struct nfs_fh *,
- 					   struct nfs_fattr *, rpc_authflavor_t);
- };
+@@ -1638,8 +1638,7 @@ struct nfs_rpc_ops {
+ 			    struct nfs_fsinfo *);
+ 	struct vfsmount *(*submount) (struct nfs_server *, struct dentry *,
+ 				      struct nfs_fh *, struct nfs_fattr *);
+-	struct dentry *(*try_mount) (int, const char *, struct nfs_mount_info *,
+-				     struct nfs_subversion *);
++	struct dentry *(*try_mount) (int, const char *, struct nfs_mount_info *);
+ 	int	(*getattr) (struct nfs_server *, struct nfs_fh *,
+ 			    struct nfs_fattr *, struct nfs4_label *,
+ 			    struct inode *);
 -- 
 2.17.2
 
