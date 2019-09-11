@@ -6,40 +6,40 @@ X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
 	URIBL_BLOCKED autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8C5FFC5ACAE
-	for <linux-nfs@archiver.kernel.org>; Wed, 11 Sep 2019 16:18:21 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 052F4ECDE20
+	for <linux-nfs@archiver.kernel.org>; Wed, 11 Sep 2019 16:18:23 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 6BD3720863
-	for <linux-nfs@archiver.kernel.org>; Wed, 11 Sep 2019 16:18:21 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id D524521A4C
+	for <linux-nfs@archiver.kernel.org>; Wed, 11 Sep 2019 16:18:22 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729380AbfIKQSC (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S1729374AbfIKQSC (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Wed, 11 Sep 2019 12:18:02 -0400
-Received: from mx1.redhat.com ([209.132.183.28]:40850 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:53542 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1728960AbfIKQQX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        id S1728976AbfIKQQX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
         Wed, 11 Sep 2019 12:16:23 -0400
-Received: from smtp.corp.redhat.com (int-mx07.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+Received: from smtp.corp.redhat.com (int-mx04.intmail.prod.int.phx2.redhat.com [10.5.11.14])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id D62431DB0;
-        Wed, 11 Sep 2019 16:16:22 +0000 (UTC)
+        by mx1.redhat.com (Postfix) with ESMTPS id 203708980F2;
+        Wed, 11 Sep 2019 16:16:23 +0000 (UTC)
 Received: from coeurl.usersys.redhat.com (ovpn-122-52.rdu2.redhat.com [10.10.122.52])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 9EF971001938;
-        Wed, 11 Sep 2019 16:16:22 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 053415DC18;
+        Wed, 11 Sep 2019 16:16:23 +0000 (UTC)
 Received: by coeurl.usersys.redhat.com (Postfix, from userid 1000)
-        id 0C35320AB4; Wed, 11 Sep 2019 12:16:22 -0400 (EDT)
+        id 3913E20C3B; Wed, 11 Sep 2019 12:16:22 -0400 (EDT)
 From:   Scott Mayhew <smayhew@redhat.com>
 To:     anna.schumaker@netapp.com, trond.myklebust@hammerspace.com
 Cc:     dhowells@redhat.com, viro@zeniv.linux.org.uk,
         linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         linux-kernel@vger.kernel.org
-Subject: [PATCH v3 03/26] nfs: lift setting mount_info from nfs4_remote{,_referral}_mount
-Date:   Wed, 11 Sep 2019 12:15:58 -0400
-Message-Id: <20190911161621.19832-4-smayhew@redhat.com>
+Subject: [PATCH v3 11/26] nfs: unexport nfs_fs_mount_common()
+Date:   Wed, 11 Sep 2019 12:16:06 -0400
+Message-Id: <20190911161621.19832-12-smayhew@redhat.com>
 In-Reply-To: <20190911161621.19832-1-smayhew@redhat.com>
 References: <20190911161621.19832-1-smayhew@redhat.com>
-X-Scanned-By: MIMEDefang 2.84 on 10.5.11.22
-X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.6.2 (mx1.redhat.com [10.5.110.71]); Wed, 11 Sep 2019 16:16:22 +0000 (UTC)
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.14
+X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.6.2 (mx1.redhat.com [10.5.110.67]); Wed, 11 Sep 2019 16:16:23 +0000 (UTC)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
@@ -47,156 +47,61 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Al Viro <viro@zeniv.linux.org.uk>
 
-Do that (fhandle allocation, setting struct server up) in
-nfs4_referral_mount() and nfs4_try_mount() resp. and pass the
-server and pointer to mount_info into nfs_do_root_mount() so that
-nfs4_remote_referral_mount()/nfs_remote_mount() could be merged.
-
-Since we are moving stuff from ->mount() instances to the points
-prior to vfs_kern_mount() that would trigger those, we need to
-make sure that do_nfs_root_mount() will do the corresponding
-cleanup itself if it doesn't trigger those ->mount() instances.
+Make it static, even.  And remove a stale extern of (long-gone)
+nfs_xdev_mount_common() from internal.h, while we are at it.
 
 Reviewed-by: David Howells <dhowells@redhat.com>
 Signed-off-by: Al Viro <viro@zeniv.linux.org.uk>
 ---
- fs/nfs/nfs4super.c | 67 ++++++++++++++++++++++++----------------------
- 1 file changed, 35 insertions(+), 32 deletions(-)
+ fs/nfs/internal.h | 3 ---
+ fs/nfs/super.c    | 5 +++--
+ 2 files changed, 3 insertions(+), 5 deletions(-)
 
-diff --git a/fs/nfs/nfs4super.c b/fs/nfs/nfs4super.c
-index 4591d6618efa..773c347df3ab 100644
---- a/fs/nfs/nfs4super.c
-+++ b/fs/nfs/nfs4super.c
-@@ -108,32 +108,37 @@ static struct dentry *
- nfs4_remote_mount(struct file_system_type *fs_type, int flags,
- 		  const char *dev_name, void *info)
- {
--	struct nfs_mount_info *mount_info = info;
--
--	mount_info->set_security = nfs_set_sb_security;
--
--	/* Get a volume representation */
--	mount_info->server = nfs4_create_server(mount_info, &nfs_v4);
--	return nfs_fs_mount_common(flags, dev_name, mount_info, &nfs_v4);
-+	return nfs_fs_mount_common(flags, dev_name, info, &nfs_v4);
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index ac3478827a83..207d1574e246 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -404,10 +404,7 @@ bool nfs_auth_info_match(const struct nfs_auth_info *, rpc_authflavor_t);
+ struct dentry *nfs_try_mount(int, const char *, struct nfs_mount_info *);
+ int nfs_set_sb_security(struct super_block *, struct dentry *, struct nfs_mount_info *);
+ int nfs_clone_sb_security(struct super_block *, struct dentry *, struct nfs_mount_info *);
+-struct dentry *nfs_fs_mount_common(int, const char *, struct nfs_mount_info *);
+ struct dentry *nfs_fs_mount(struct file_system_type *, int, const char *, void *);
+-struct dentry * nfs_xdev_mount_common(struct file_system_type *, int,
+-		const char *, struct nfs_mount_info *);
+ void nfs_kill_super(struct super_block *);
+ void nfs_fill_super(struct super_block *, struct nfs_mount_info *);
+ void nfs_clone_super(struct super_block *, struct nfs_mount_info *);
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index d80992d2b6fe..c3ee83c17f07 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -1893,6 +1893,8 @@ static struct nfs_server *nfs_try_mount_request(struct nfs_mount_info *mount_inf
+ 	return nfs_mod->rpc_ops->create_server(mount_info, nfs_mod);
  }
  
- static struct vfsmount *nfs_do_root_mount(struct file_system_type *fs_type,
--		int flags, void *data, const char *hostname)
-+					  struct nfs_server *server, int flags,
-+					  struct nfs_mount_info *info,
-+					  const char *hostname)
++static struct dentry *nfs_fs_mount_common(int, const char *, struct nfs_mount_info *);
++
+ struct dentry *nfs_try_mount(int flags, const char *dev_name,
+ 			     struct nfs_mount_info *mount_info)
  {
- 	struct vfsmount *root_mnt;
- 	char *root_devname;
- 	size_t len;
- 
-+	if (IS_ERR(server))
-+		return ERR_CAST(server);
-+
- 	len = strlen(hostname) + 5;
- 	root_devname = kmalloc(len, GFP_KERNEL);
--	if (root_devname == NULL)
-+	if (root_devname == NULL) {
-+		nfs_free_server(server);
- 		return ERR_PTR(-ENOMEM);
-+	}
- 	/* Does hostname needs to be enclosed in brackets? */
- 	if (strchr(hostname, ':'))
- 		snprintf(root_devname, len, "[%s]:/", hostname);
- 	else
- 		snprintf(root_devname, len, "%s:/", hostname);
--	root_mnt = vfs_kern_mount(fs_type, flags, root_devname, data);
-+	info->server = server;
-+	root_mnt = vfs_kern_mount(fs_type, flags, root_devname, info);
-+	if (info->server)
-+		nfs_free_server(info->server);
-+	info->server = NULL;
- 	kfree(root_devname);
- 	return root_mnt;
+@@ -2623,7 +2625,7 @@ int nfs_clone_sb_security(struct super_block *s, struct dentry *mntroot,
  }
-@@ -234,11 +239,15 @@ struct dentry *nfs4_try_mount(int flags, const char *dev_name,
- 	struct dentry *res;
- 	struct nfs_parsed_mount_data *data = mount_info->parsed;
+ EXPORT_SYMBOL_GPL(nfs_clone_sb_security);
  
-+	mount_info->set_security = nfs_set_sb_security;
-+
- 	dfprintk(MOUNT, "--> nfs4_try_mount()\n");
- 
- 	export_path = data->nfs_server.export_path;
- 	data->nfs_server.export_path = "/";
--	root_mnt = nfs_do_root_mount(&nfs4_remote_fs_type, flags, mount_info,
-+	root_mnt = nfs_do_root_mount(&nfs4_remote_fs_type,
-+			nfs4_create_server(mount_info, &nfs_v4),
-+			flags, mount_info,
- 			data->nfs_server.hostname);
- 	data->nfs_server.export_path = export_path;
- 
-@@ -254,25 +263,7 @@ static struct dentry *
- nfs4_remote_referral_mount(struct file_system_type *fs_type, int flags,
- 			   const char *dev_name, void *raw_data)
+-struct dentry *nfs_fs_mount_common(int flags, const char *dev_name,
++static struct dentry *nfs_fs_mount_common(int flags, const char *dev_name,
+ 				   struct nfs_mount_info *mount_info)
  {
--	struct nfs_mount_info mount_info = {
--		.fill_super = nfs_fill_super,
--		.set_security = nfs_clone_sb_security,
--		.cloned = raw_data,
--	};
--	struct dentry *mntroot = ERR_PTR(-ENOMEM);
--
--	dprintk("--> nfs4_referral_get_sb()\n");
--
--	mount_info.mntfh = nfs_alloc_fhandle();
--	if (mount_info.cloned == NULL || mount_info.mntfh == NULL)
--		goto out;
--
--	/* create a new volume representation */
--	mount_info.server = nfs4_create_referral_server(mount_info.cloned, mount_info.mntfh);
--	mntroot = nfs_fs_mount_common(flags, dev_name, &mount_info, &nfs_v4);
--out:
--	nfs_free_fhandle(mount_info.mntfh);
--	return mntroot;
-+	return nfs_fs_mount_common(flags, dev_name, raw_data, &nfs_v4);
+ 	struct super_block *s;
+@@ -2705,7 +2707,6 @@ struct dentry *nfs_fs_mount_common(int flags, const char *dev_name,
+ 	deactivate_locked_super(s);
+ 	goto out;
  }
+-EXPORT_SYMBOL_GPL(nfs_fs_mount_common);
  
- /*
-@@ -282,23 +273,35 @@ static struct dentry *nfs4_referral_mount(struct file_system_type *fs_type,
- 		int flags, const char *dev_name, void *raw_data)
- {
- 	struct nfs_clone_mount *data = raw_data;
-+	struct nfs_mount_info mount_info = {
-+		.fill_super = nfs_fill_super,
-+		.set_security = nfs_clone_sb_security,
-+		.cloned = data,
-+	};
- 	char *export_path;
- 	struct vfsmount *root_mnt;
- 	struct dentry *res;
- 
- 	dprintk("--> nfs4_referral_mount()\n");
- 
-+	mount_info.mntfh = nfs_alloc_fhandle();
-+	if (!mount_info.mntfh)
-+		return ERR_PTR(-ENOMEM);
-+
- 	export_path = data->mnt_path;
- 	data->mnt_path = "/";
--
- 	root_mnt = nfs_do_root_mount(&nfs4_remote_referral_fs_type,
--			flags, data, data->hostname);
-+			nfs4_create_referral_server(mount_info.cloned,
-+						    mount_info.mntfh),
-+			flags, &mount_info, data->hostname);
- 	data->mnt_path = export_path;
- 
- 	res = nfs_follow_remote_path(root_mnt, export_path);
- 	dprintk("<-- nfs4_referral_mount() = %d%s\n",
- 		PTR_ERR_OR_ZERO(res),
- 		IS_ERR(res) ? " [error]" : "");
-+
-+	nfs_free_fhandle(mount_info.mntfh);
- 	return res;
- }
- 
+ struct dentry *nfs_fs_mount(struct file_system_type *fs_type,
+ 	int flags, const char *dev_name, void *raw_data)
 -- 
 2.17.2
 
