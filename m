@@ -6,26 +6,26 @@ X-Spam-Status: No, score=-1.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1008DC49ED6
-	for <linux-nfs@archiver.kernel.org>; Wed, 11 Sep 2019 17:26:24 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id BD8A2C5ACAE
+	for <linux-nfs@archiver.kernel.org>; Wed, 11 Sep 2019 17:27:19 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id E272120863
-	for <linux-nfs@archiver.kernel.org>; Wed, 11 Sep 2019 17:26:23 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 9352D2084F
+	for <linux-nfs@archiver.kernel.org>; Wed, 11 Sep 2019 17:27:19 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729130AbfIKR0X (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 11 Sep 2019 13:26:23 -0400
-Received: from mx1.redhat.com ([209.132.183.28]:48178 "EHLO mx1.redhat.com"
+        id S1729617AbfIKR1T (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 11 Sep 2019 13:27:19 -0400
+Received: from mx1.redhat.com ([209.132.183.28]:43712 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1728897AbfIKR0X (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 11 Sep 2019 13:26:23 -0400
+        id S1728897AbfIKR1S (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 11 Sep 2019 13:27:18 -0400
 Received: from smtp.corp.redhat.com (int-mx04.intmail.prod.int.phx2.redhat.com [10.5.11.14])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id CB7B030A76BE;
-        Wed, 11 Sep 2019 17:26:22 +0000 (UTC)
+        by mx1.redhat.com (Postfix) with ESMTPS id B97A4307D945;
+        Wed, 11 Sep 2019 17:27:18 +0000 (UTC)
 Received: from [172.16.176.1] (ovpn-64-2.rdu2.redhat.com [10.10.64.2])
-        by smtp.corp.redhat.com (Postfix) with ESMTPS id F300F5DA5B;
-        Wed, 11 Sep 2019 17:26:21 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTPS id 0E7805D9E2;
+        Wed, 11 Sep 2019 17:27:17 +0000 (UTC)
 From:   "Benjamin Coddington" <bcodding@redhat.com>
 To:     "Chuck Lever" <chuck.lever@oracle.com>
 Cc:     "Jason L Tibbitts III" <tibbs@math.uh.edu>,
@@ -34,9 +34,9 @@ Cc:     "Jason L Tibbitts III" <tibbs@math.uh.edu>,
         "Linux NFS Mailing List" <linux-nfs@vger.kernel.org>,
         km@cm4all.com, linux-kernel@vger.kernel.org
 Subject: Re: Regression in 5.1.20: Reading long directory fails
-Date:   Wed, 11 Sep 2019 13:26:21 -0400
-Message-ID: <429B2B1F-FB55-46C5-8BC5-7644CE9A5894@redhat.com>
-In-Reply-To: <0089DF80-3A1C-4F0B-A200-28FF7CFD0C65@oracle.com>
+Date:   Wed, 11 Sep 2019 13:27:17 -0400
+Message-ID: <7D8C7BBD-8266-4A5A-9C95-0C8B57C10333@redhat.com>
+In-Reply-To: <429B2B1F-FB55-46C5-8BC5-7644CE9A5894@redhat.com>
 References: <ufak1bhyuew.fsf@epithumia.math.uh.edu>
  <4418877.15LTP4gqqJ@stwm.de> <ufapnkhqjwm.fsf@epithumia.math.uh.edu>
  <4198657.JbNDGbLXiX@h2o.as.studentenwerk.mhn.de>
@@ -45,32 +45,38 @@ References: <ufak1bhyuew.fsf@epithumia.math.uh.edu>
  <75F810C6-E99E-40C3-B5E1-34BA2CC42773@oracle.com>
  <DD6B77EE-3E25-4A65-9D0E-B06EEAD32B31@redhat.com>
  <0089DF80-3A1C-4F0B-A200-28FF7CFD0C65@oracle.com>
+ <429B2B1F-FB55-46C5-8BC5-7644CE9A5894@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; format=flowed
 X-Scanned-By: MIMEDefang 2.79 on 10.5.11.14
-X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.47]); Wed, 11 Sep 2019 17:26:23 +0000 (UTC)
+X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.48]); Wed, 11 Sep 2019 17:27:18 +0000 (UTC)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
 
-On 11 Sep 2019, at 12:39, Chuck Lever wrote:
 
->> On Sep 11, 2019, at 12:25 PM, Benjamin Coddington 
->> <bcodding@redhat.com> wrote:
->>
+On 11 Sep 2019, at 13:26, Benjamin Coddington wrote:
 
->> Instead, I think we want to make sure the mic falls squarely into the 
->> tail
->> every time.
+> On 11 Sep 2019, at 12:39, Chuck Lever wrote:
 >
-> I'm not clear how you could do that. The length of the page data is 
-> not
-> known to the client before it parses the reply. Are you suggesting 
-> that
-> gss_unwrap should do it somehow?
+>>> On Sep 11, 2019, at 12:25 PM, Benjamin Coddington 
+>>> <bcodding@redhat.com> wrote:
+>>>
+>
+>>> Instead, I think we want to make sure the mic falls squarely into 
+>>> the tail
+>>> every time.
+>>
+>> I'm not clear how you could do that. The length of the page data is 
+>> not
+>> known to the client before it parses the reply. Are you suggesting 
+>> that
+>> gss_unwrap should do it somehow?
+>
+> Is it too niave to always put the mic at the end of the tail?
 
-Is it too niave to always put the mic at the end of the tail?
+Naive, even..?
 
 Ben
