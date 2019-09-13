@@ -3,124 +3,78 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
 X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	URIBL_BLOCKED autolearn=unavailable autolearn_force=no version=3.4.0
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8CB00C49ED7
-	for <linux-nfs@archiver.kernel.org>; Fri, 13 Sep 2019 12:20:14 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1D75DC49ED7
+	for <linux-nfs@archiver.kernel.org>; Fri, 13 Sep 2019 12:29:06 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 6C05120CC7
-	for <linux-nfs@archiver.kernel.org>; Fri, 13 Sep 2019 12:20:14 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id F1A3C20678
+	for <linux-nfs@archiver.kernel.org>; Fri, 13 Sep 2019 12:29:05 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2388413AbfIMMUK (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 13 Sep 2019 08:20:10 -0400
-Received: from mx1.redhat.com ([209.132.183.28]:43464 "EHLO mx1.redhat.com"
+        id S1729801AbfIMM3F (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 13 Sep 2019 08:29:05 -0400
+Received: from mx1.redhat.com ([209.132.183.28]:45568 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1728666AbfIMMRu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 13 Sep 2019 08:17:50 -0400
-Received: from smtp.corp.redhat.com (int-mx03.intmail.prod.int.phx2.redhat.com [10.5.11.13])
+        id S1728746AbfIMM3F (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 13 Sep 2019 08:29:05 -0400
+Received: from smtp.corp.redhat.com (int-mx08.intmail.prod.int.phx2.redhat.com [10.5.11.23])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id D47E8C053FDF;
-        Fri, 13 Sep 2019 12:17:49 +0000 (UTC)
-Received: from coeurl.usersys.redhat.com (ovpn-122-52.rdu2.redhat.com [10.10.122.52])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id B6719608AB;
-        Fri, 13 Sep 2019 12:17:49 +0000 (UTC)
-Received: by coeurl.usersys.redhat.com (Postfix, from userid 1000)
-        id C190F20BF9; Fri, 13 Sep 2019 08:17:48 -0400 (EDT)
-From:   Scott Mayhew <smayhew@redhat.com>
-To:     anna.schumaker@netapp.com, trond.myklebust@hammerspace.com
-Cc:     dhowells@redhat.com, viro@zeniv.linux.org.uk,
-        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: [PATCH v4 08/26] nfs: stash nfs_subversion reference into nfs_mount_info
-Date:   Fri, 13 Sep 2019 08:17:30 -0400
-Message-Id: <20190913121748.25391-9-smayhew@redhat.com>
-In-Reply-To: <20190913121748.25391-1-smayhew@redhat.com>
-References: <20190913121748.25391-1-smayhew@redhat.com>
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.13
-X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.32]); Fri, 13 Sep 2019 12:17:49 +0000 (UTC)
+        by mx1.redhat.com (Postfix) with ESMTPS id 15D19875221;
+        Fri, 13 Sep 2019 12:29:05 +0000 (UTC)
+Received: from bcodding.csb (ovpn-64-2.rdu2.redhat.com [10.10.64.2])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id CDB2019C78;
+        Fri, 13 Sep 2019 12:29:04 +0000 (UTC)
+Received: by bcodding.csb (Postfix, from userid 24008)
+        id 337C2109AF42; Fri, 13 Sep 2019 08:29:04 -0400 (EDT)
+From:   Benjamin Coddington <bcodding@redhat.com>
+To:     Trond Myklebust <trondmy@gmail.com>,
+        Anna Schumaker <Anna.Schumaker@netapp.com>
+Cc:     Al Viro <viro@zeniv.linux.org.uk>, linux-nfs@vger.kernel.org
+Subject: [PATCH 3/3] NFS: remove unused check for negative dentry
+Date:   Fri, 13 Sep 2019 08:29:04 -0400
+Message-Id: <34f99243d118543593cf82d5862065fd037c58e7.1568377101.git.bcodding@redhat.com>
+In-Reply-To: <cover.1568377101.git.bcodding@redhat.com>
+References: <cover.1568377101.git.bcodding@redhat.com>
+MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
+X-Scanned-By: MIMEDefang 2.84 on 10.5.11.23
+X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.6.2 (mx1.redhat.com [10.5.110.68]); Fri, 13 Sep 2019 12:29:05 +0000 (UTC)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Al Viro <viro@zeniv.linux.org.uk>
+This check has been hanging out since we used to have parallel paths to add
+dentry in nfs_create(), but that hasn't been the case for some years.
 
-That will allow to get rid of passing those references around in
-quite a few places.  Moreover, that will allow to merge xdev and
-remote file_system_type.
-
-Reviewed-by: David Howells <dhowells@redhat.com>
-Signed-off-by: Al Viro <viro@zeniv.linux.org.uk>
+Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
 ---
- fs/nfs/internal.h  | 1 +
- fs/nfs/namespace.c | 6 +++---
- fs/nfs/nfs4super.c | 1 +
- fs/nfs/super.c     | 1 +
- 4 files changed, 6 insertions(+), 3 deletions(-)
+ fs/nfs/dir.c | 6 +-----
+ 1 file changed, 1 insertion(+), 5 deletions(-)
 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index eeb54b45875c..0c42cf685d4b 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -150,6 +150,7 @@ struct nfs_mount_info {
- 	struct nfs_clone_mount *cloned;
- 	struct nfs_server *server;
- 	struct nfs_fh *mntfh;
-+	struct nfs_subversion *nfs_mod;
- };
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index cb6ee1b41ab5..e180033e35cf 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -1677,15 +1677,11 @@ nfs_add_or_obtain(struct dentry *dentry, struct nfs_fh *fhandle,
+ 	struct dentry *parent = dget_parent(dentry);
+ 	struct inode *dir = d_inode(parent);
+ 	struct inode *inode;
+-	struct dentry *d = NULL;
++	struct dentry *d;
+ 	int error;
  
- extern int nfs_mount(struct nfs_mount_request *info);
-diff --git a/fs/nfs/namespace.c b/fs/nfs/namespace.c
-index 7c78e6956639..0d0587ed7d94 100644
---- a/fs/nfs/namespace.c
-+++ b/fs/nfs/namespace.c
-@@ -233,8 +233,8 @@ struct vfsmount *nfs_do_submount(struct dentry *dentry, struct nfs_fh *fh,
- 		.set_security = nfs_clone_sb_security,
- 		.cloned = &mountdata,
- 		.mntfh = fh,
-+		.nfs_mod = NFS_SB(sb)->nfs_client->cl_nfs_mod,
- 	};
--	struct nfs_subversion *nfs_mod = NFS_SB(sb)->nfs_client->cl_nfs_mod;
- 	struct nfs_server *server;
- 	struct vfsmount *mnt;
- 	char *page = (char *) __get_free_page(GFP_USER);
-@@ -243,8 +243,8 @@ struct vfsmount *nfs_do_submount(struct dentry *dentry, struct nfs_fh *fh,
- 	if (page == NULL)
- 		return ERR_PTR(-ENOMEM);
+ 	d_drop(dentry);
  
--	server = nfs_mod->rpc_ops->clone_server(NFS_SB(sb), fh,
--						fattr, authflavor);
-+	server = mount_info.nfs_mod->rpc_ops->clone_server(NFS_SB(sb), fh,
-+							   fattr, authflavor);
- 	if (IS_ERR(server))
- 		return ERR_CAST(server);
- 
-diff --git a/fs/nfs/nfs4super.c b/fs/nfs/nfs4super.c
-index 91ba1b6741dc..88d83cab8e9b 100644
---- a/fs/nfs/nfs4super.c
-+++ b/fs/nfs/nfs4super.c
-@@ -248,6 +248,7 @@ static struct dentry *nfs4_referral_mount(struct file_system_type *fs_type,
- 		.fill_super = nfs_fill_super,
- 		.set_security = nfs_clone_sb_security,
- 		.cloned = data,
-+		.nfs_mod = &nfs_v4,
- 	};
- 	struct dentry *res;
- 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 7fc354207347..2a6b4e4b0a2d 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -2736,6 +2736,7 @@ struct dentry *nfs_fs_mount(struct file_system_type *fs_type,
- 		mntroot = ERR_CAST(nfs_mod);
- 		goto out;
- 	}
-+	mount_info.nfs_mod = nfs_mod;
- 
- 	mntroot = nfs_mod->rpc_ops->try_mount(flags, dev_name, &mount_info, nfs_mod);
- 
+-	/* We may have been initialized further down */
+-	if (d_really_is_positive(dentry))
+-		goto out;
+-
+ 	if (fhandle->size == 0) {
+ 		error = NFS_PROTO(dir)->lookup(dir, &dentry->d_name, fhandle, fattr, NULL);
+ 		if (error)
 -- 
-2.17.2
+2.20.1
 
