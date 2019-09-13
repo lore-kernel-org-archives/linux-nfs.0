@@ -6,228 +6,333 @@ X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
 	URIBL_BLOCKED autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 60E89C4CEC8
+	by smtp.lore.kernel.org (Postfix) with ESMTP id CF64DC49ED7
 	for <linux-nfs@archiver.kernel.org>; Fri, 13 Sep 2019 12:19:14 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 42BBC208C0
+	by mail.kernel.org (Postfix) with ESMTP id A7B98208C0
 	for <linux-nfs@archiver.kernel.org>; Fri, 13 Sep 2019 12:19:14 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2388262AbfIMMS5 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S2388259AbfIMMS5 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Fri, 13 Sep 2019 08:18:57 -0400
-Received: from mx1.redhat.com ([209.132.183.28]:1682 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:49388 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1729591AbfIMMRu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        id S1729751AbfIMMRu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
         Fri, 13 Sep 2019 08:17:50 -0400
-Received: from smtp.corp.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+Received: from smtp.corp.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 21C32C050DFF;
+        by mx1.redhat.com (Postfix) with ESMTPS id 856C758487;
         Fri, 13 Sep 2019 12:17:50 +0000 (UTC)
 Received: from coeurl.usersys.redhat.com (ovpn-122-52.rdu2.redhat.com [10.10.122.52])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id DEF6A6013A;
-        Fri, 13 Sep 2019 12:17:49 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 51B9360CD0;
+        Fri, 13 Sep 2019 12:17:50 +0000 (UTC)
 Received: by coeurl.usersys.redhat.com (Postfix, from userid 1000)
-        id D91D420CEB; Fri, 13 Sep 2019 08:17:48 -0400 (EDT)
+        id 0F63720D63; Fri, 13 Sep 2019 08:17:49 -0400 (EDT)
 From:   Scott Mayhew <smayhew@redhat.com>
 To:     anna.schumaker@netapp.com, trond.myklebust@hammerspace.com
 Cc:     dhowells@redhat.com, viro@zeniv.linux.org.uk,
         linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         linux-kernel@vger.kernel.org
-Subject: [PATCH v4 12/26] nfs: don't pass nfs_subversion to ->create_server()
-Date:   Fri, 13 Sep 2019 08:17:34 -0400
-Message-Id: <20190913121748.25391-13-smayhew@redhat.com>
+Subject: [PATCH v4 19/26] NFS: Split nfs_parse_mount_options()
+Date:   Fri, 13 Sep 2019 08:17:41 -0400
+Message-Id: <20190913121748.25391-20-smayhew@redhat.com>
 In-Reply-To: <20190913121748.25391-1-smayhew@redhat.com>
 References: <20190913121748.25391-1-smayhew@redhat.com>
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.11
-X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.32]); Fri, 13 Sep 2019 12:17:50 +0000 (UTC)
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.12
+X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.6.2 (mx1.redhat.com [10.5.110.71]); Fri, 13 Sep 2019 12:17:50 +0000 (UTC)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Al Viro <viro@zeniv.linux.org.uk>
+From: David Howells <dhowells@redhat.com>
 
-pick it from mount_info
+Split nfs_parse_mount_options() to move the prologue, list-splitting and
+epilogue into one function and the per-option processing into another.
 
-Reviewed-by: David Howells <dhowells@redhat.com>
+Signed-off-by: David Howells <dhowells@redhat.com>
 Signed-off-by: Al Viro <viro@zeniv.linux.org.uk>
 ---
- fs/nfs/client.c         |  4 ++--
- fs/nfs/internal.h       |  7 ++-----
- fs/nfs/nfs3_fs.h        |  2 +-
- fs/nfs/nfs3client.c     |  5 ++---
- fs/nfs/nfs4client.c     |  3 +--
- fs/nfs/nfs4super.c      |  2 +-
- fs/nfs/super.c          | 14 +++++++-------
- include/linux/nfs_xdr.h |  2 +-
- 8 files changed, 17 insertions(+), 22 deletions(-)
+ fs/nfs/fs_context.c | 126 ++++++++++++++++++++++++--------------------
+ fs/nfs/internal.h   |   3 ++
+ 2 files changed, 73 insertions(+), 56 deletions(-)
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 30838304a0bf..130c065141b3 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -940,10 +940,10 @@ EXPORT_SYMBOL_GPL(nfs_free_server);
-  * Create a version 2 or 3 volume record
-  * - keyed on server and FSID
-  */
--struct nfs_server *nfs_create_server(struct nfs_mount_info *mount_info,
--				     struct nfs_subversion *nfs_mod)
-+struct nfs_server *nfs_create_server(struct nfs_mount_info *mount_info)
- {
- 	struct nfs_server *server;
-+	struct nfs_subversion *nfs_mod = mount_info->nfs_mod;
- 	struct nfs_fattr *fattr;
- 	int error;
+diff --git a/fs/nfs/fs_context.c b/fs/nfs/fs_context.c
+index 63aa5faed9da..3ad8fc68e623 100644
+--- a/fs/nfs/fs_context.c
++++ b/fs/nfs/fs_context.c
+@@ -496,36 +496,18 @@ static int nfs_get_option_ul_bound(substring_t args[], unsigned long *option,
+ }
  
+ /*
+- * Error-check and convert a string of mount options from user space into
+- * a data structure.  The whole mount string is processed; bad options are
+- * skipped as they are encountered.  If there were no errors, return 1;
+- * otherwise return 0 (zero).
++ * Parse a single mount option in "key[=val]" form.
+  */
+-int nfs_parse_mount_options(char *raw, struct nfs_fs_context *ctx)
++static int nfs_fs_context_parse_option(struct nfs_fs_context *ctx, char *p)
+ {
+-	char *p, *string;
+-	int rc, sloppy = 0, invalid_option = 0;
+-	unsigned short protofamily = AF_UNSPEC;
+-	unsigned short mountfamily = AF_UNSPEC;
+-
+-	if (!raw) {
+-		dfprintk(MOUNT, "NFS: mount options string was NULL.\n");
+-		return 1;
+-	}
+-	dfprintk(MOUNT, "NFS: nfs mount opts='%s'\n", raw);
+-
+-	rc = security_sb_eat_lsm_opts(raw, &ctx->lsm_opts);
+-	if (rc)
+-		goto out_security_failure;
++	char *string;
++	int rc;
+ 
+-	while ((p = strsep(&raw, ",")) != NULL) {
++	{
+ 		substring_t args[MAX_OPT_ARGS];
+ 		unsigned long option;
+ 		int token;
+ 
+-		if (!*p)
+-			continue;
+-
+ 		dfprintk(MOUNT, "NFS:   parsing nfs mount option '%s'\n", p);
+ 
+ 		token = match_token(p, nfs_mount_option_tokens, args);
+@@ -734,7 +716,7 @@ int nfs_parse_mount_options(char *raw, struct nfs_fs_context *ctx)
+ 			if (!rc) {
+ 				dfprintk(MOUNT, "NFS:   unrecognized "
+ 						"security flavor\n");
+-				return 0;
++				return -EINVAL;
+ 			}
+ 			break;
+ 		case Opt_proto:
+@@ -744,24 +726,24 @@ int nfs_parse_mount_options(char *raw, struct nfs_fs_context *ctx)
+ 			token = match_token(string,
+ 					    nfs_xprt_protocol_tokens, args);
+ 
+-			protofamily = AF_INET;
++			ctx->protofamily = AF_INET;
+ 			switch (token) {
+ 			case Opt_xprt_udp6:
+-				protofamily = AF_INET6;
++				ctx->protofamily = AF_INET6;
+ 				/* fall through */
+ 			case Opt_xprt_udp:
+ 				ctx->flags &= ~NFS_MOUNT_TCP;
+ 				ctx->nfs_server.protocol = XPRT_TRANSPORT_UDP;
+ 				break;
+ 			case Opt_xprt_tcp6:
+-				protofamily = AF_INET6;
++				ctx->protofamily = AF_INET6;
+ 				/* fall through */
+ 			case Opt_xprt_tcp:
+ 				ctx->flags |= NFS_MOUNT_TCP;
+ 				ctx->nfs_server.protocol = XPRT_TRANSPORT_TCP;
+ 				break;
+ 			case Opt_xprt_rdma6:
+-				protofamily = AF_INET6;
++				ctx->protofamily = AF_INET6;
+ 				/* fall through */
+ 			case Opt_xprt_rdma:
+ 				/* vector side protocols to TCP */
+@@ -773,7 +755,7 @@ int nfs_parse_mount_options(char *raw, struct nfs_fs_context *ctx)
+ 				dfprintk(MOUNT, "NFS:   unrecognized "
+ 						"transport protocol\n");
+ 				kfree(string);
+-				return 0;
++				return -EINVAL;
+ 			}
+ 			kfree(string);
+ 			break;
+@@ -785,16 +767,16 @@ int nfs_parse_mount_options(char *raw, struct nfs_fs_context *ctx)
+ 					    nfs_xprt_protocol_tokens, args);
+ 			kfree(string);
+ 
+-			mountfamily = AF_INET;
++			ctx->mountfamily = AF_INET;
+ 			switch (token) {
+ 			case Opt_xprt_udp6:
+-				mountfamily = AF_INET6;
++				ctx->mountfamily = AF_INET6;
+ 				/* fall through */
+ 			case Opt_xprt_udp:
+ 				ctx->mount_server.protocol = XPRT_TRANSPORT_UDP;
+ 				break;
+ 			case Opt_xprt_tcp6:
+-				mountfamily = AF_INET6;
++				ctx->mountfamily = AF_INET6;
+ 				/* fall through */
+ 			case Opt_xprt_tcp:
+ 				ctx->mount_server.protocol = XPRT_TRANSPORT_TCP;
+@@ -803,7 +785,7 @@ int nfs_parse_mount_options(char *raw, struct nfs_fs_context *ctx)
+ 			default:
+ 				dfprintk(MOUNT, "NFS:   unrecognized "
+ 						"transport protocol\n");
+-				return 0;
++				return -EINVAL;
+ 			}
+ 			break;
+ 		case Opt_addr:
+@@ -867,7 +849,7 @@ int nfs_parse_mount_options(char *raw, struct nfs_fs_context *ctx)
+ 				default:
+ 					dfprintk(MOUNT, "NFS:   invalid "
+ 							"lookupcache argument\n");
+-					return 0;
++					return -EINVAL;
+ 			};
+ 			break;
+ 		case Opt_fscache_uniq:
+@@ -900,7 +882,7 @@ int nfs_parse_mount_options(char *raw, struct nfs_fs_context *ctx)
+ 			default:
+ 				dfprintk(MOUNT, "NFS:	invalid	"
+ 						"local_lock argument\n");
+-				return 0;
++				return -EINVAL;
+ 			};
+ 			break;
+ 
+@@ -908,7 +890,7 @@ int nfs_parse_mount_options(char *raw, struct nfs_fs_context *ctx)
+ 		 * Special options
+ 		 */
+ 		case Opt_sloppy:
+-			sloppy = 1;
++			ctx->sloppy = 1;
+ 			dfprintk(MOUNT, "NFS:   relaxing parsing rules\n");
+ 			break;
+ 		case Opt_userspace:
+@@ -918,12 +900,53 @@ int nfs_parse_mount_options(char *raw, struct nfs_fs_context *ctx)
+ 			break;
+ 
+ 		default:
+-			invalid_option = 1;
+ 			dfprintk(MOUNT, "NFS:   unrecognized mount option "
+ 					"'%s'\n", p);
++			return -EINVAL;
+ 		}
+ 	}
+ 
++	return 0;
++
++out_invalid_address:
++	printk(KERN_INFO "NFS: bad IP address specified: %s\n", p);
++	return -EINVAL;
++out_invalid_value:
++	printk(KERN_INFO "NFS: bad mount option value specified: %s\n", p);
++	return -EINVAL;
++out_nomem:
++	printk(KERN_INFO "NFS: not enough memory to parse option\n");
++	return -ENOMEM;
++}
++
++/*
++ * Error-check and convert a string of mount options from user space into
++ * a data structure.  The whole mount string is processed; bad options are
++ * skipped as they are encountered.  If there were no errors, return 1;
++ * otherwise return 0 (zero).
++ */
++int nfs_parse_mount_options(char *raw, struct nfs_fs_context *ctx)
++{
++	char *p;
++	int rc, sloppy = 0, invalid_option = 0;
++
++	if (!raw) {
++		dfprintk(MOUNT, "NFS: mount options string was NULL.\n");
++		return 1;
++	}
++	dfprintk(MOUNT, "NFS: nfs mount opts='%s'\n", raw);
++
++	rc = security_sb_eat_lsm_opts(raw, &ctx->lsm_opts);
++	if (rc)
++		goto out_security_failure;
++
++	while ((p = strsep(&raw, ",")) != NULL) {
++		if (!*p)
++			continue;
++		if (nfs_fs_context_parse_option(ctx, p) < 0)
++			invalid_option = true;
++	}
++
+ 	if (!sloppy && invalid_option)
+ 		return 0;
+ 
+@@ -938,22 +961,26 @@ int nfs_parse_mount_options(char *raw, struct nfs_fs_context *ctx)
+ 	 * verify that any proto=/mountproto= options match the address
+ 	 * families in the addr=/mountaddr= options.
+ 	 */
+-	if (protofamily != AF_UNSPEC &&
+-	    protofamily != ctx->nfs_server.address.ss_family)
++	if (ctx->protofamily != AF_UNSPEC &&
++	    ctx->protofamily != ctx->nfs_server.address.ss_family)
+ 		goto out_proto_mismatch;
+ 
+-	if (mountfamily != AF_UNSPEC) {
++	if (ctx->mountfamily != AF_UNSPEC) {
+ 		if (ctx->mount_server.addrlen) {
+-			if (mountfamily != ctx->mount_server.address.ss_family)
++			if (ctx->mountfamily != ctx->mount_server.address.ss_family)
+ 				goto out_mountproto_mismatch;
+ 		} else {
+-			if (mountfamily != ctx->nfs_server.address.ss_family)
++			if (ctx->mountfamily != ctx->nfs_server.address.ss_family)
+ 				goto out_mountproto_mismatch;
+ 		}
+ 	}
+ 
+ 	return 1;
+ 
++out_minorversion_mismatch:
++	printk(KERN_INFO "NFS: mount option vers=%u does not support "
++			 "minorversion=%u\n", ctx->version, ctx->minorversion);
++	return 0;
+ out_mountproto_mismatch:
+ 	printk(KERN_INFO "NFS: mount server address does not match mountproto= "
+ 			 "option\n");
+@@ -961,23 +988,10 @@ int nfs_parse_mount_options(char *raw, struct nfs_fs_context *ctx)
+ out_proto_mismatch:
+ 	printk(KERN_INFO "NFS: server address does not match proto= option\n");
+ 	return 0;
+-out_invalid_address:
+-	printk(KERN_INFO "NFS: bad IP address specified: %s\n", p);
+-	return 0;
+-out_invalid_value:
+-	printk(KERN_INFO "NFS: bad mount option value specified: %s\n", p);
+-	return 0;
+-out_minorversion_mismatch:
+-	printk(KERN_INFO "NFS: mount option vers=%u does not support "
+-			 "minorversion=%u\n", ctx->version, ctx->minorversion);
+-	return 0;
+ out_migration_misuse:
+ 	printk(KERN_INFO
+ 		"NFS: 'migration' not supported for this NFS version\n");
+-	return 0;
+-out_nomem:
+-	printk(KERN_INFO "NFS: not enough memory to parse option\n");
+-	return 0;
++	return -EINVAL;
+ out_security_failure:
+ 	printk(KERN_INFO "NFS: security options invalid: %d\n", rc);
+ 	return 0;
 diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 207d1574e246..444d0fc2bcca 100644
+index 632174d666a8..d084182f8e43 100644
 --- a/fs/nfs/internal.h
 +++ b/fs/nfs/internal.h
-@@ -178,11 +178,8 @@ extern struct nfs_client *nfs4_find_client_ident(struct net *, int);
- extern struct nfs_client *
- nfs4_find_client_sessionid(struct net *, const struct sockaddr *,
- 				struct nfs4_sessionid *, u32);
--extern struct nfs_server *nfs_create_server(struct nfs_mount_info *,
--					struct nfs_subversion *);
--extern struct nfs_server *nfs4_create_server(
--					struct nfs_mount_info *,
--					struct nfs_subversion *);
-+extern struct nfs_server *nfs_create_server(struct nfs_mount_info *);
-+extern struct nfs_server *nfs4_create_server(struct nfs_mount_info *);
- extern struct nfs_server *nfs4_create_referral_server(struct nfs_clone_mount *,
- 						      struct nfs_fh *);
- extern int nfs4_update_server(struct nfs_server *server, const char *hostname,
-diff --git a/fs/nfs/nfs3_fs.h b/fs/nfs/nfs3_fs.h
-index f82e11c4cb56..09602dc1889f 100644
---- a/fs/nfs/nfs3_fs.h
-+++ b/fs/nfs/nfs3_fs.h
-@@ -27,7 +27,7 @@ static inline int nfs3_proc_setacls(struct inode *inode, struct posix_acl *acl,
- #endif /* CONFIG_NFS_V3_ACL */
+@@ -104,7 +104,10 @@ struct nfs_fs_context {
+ 	unsigned int		version;
+ 	unsigned int		minorversion;
+ 	char			*fscache_uniq;
++	unsigned short		protofamily;
++	unsigned short		mountfamily;
+ 	bool			need_mount;
++	bool			sloppy;
  
- /* nfs3client.c */
--struct nfs_server *nfs3_create_server(struct nfs_mount_info *, struct nfs_subversion *);
-+struct nfs_server *nfs3_create_server(struct nfs_mount_info *);
- struct nfs_server *nfs3_clone_server(struct nfs_server *, struct nfs_fh *,
- 				     struct nfs_fattr *, rpc_authflavor_t);
- 
-diff --git a/fs/nfs/nfs3client.c b/fs/nfs/nfs3client.c
-index 148ceb74d27c..a340b5d0e1a3 100644
---- a/fs/nfs/nfs3client.c
-+++ b/fs/nfs/nfs3client.c
-@@ -46,10 +46,9 @@ static inline void nfs_init_server_aclclient(struct nfs_server *server)
- }
- #endif
- 
--struct nfs_server *nfs3_create_server(struct nfs_mount_info *mount_info,
--				      struct nfs_subversion *nfs_mod)
-+struct nfs_server *nfs3_create_server(struct nfs_mount_info *mount_info)
- {
--	struct nfs_server *server = nfs_create_server(mount_info, nfs_mod);
-+	struct nfs_server *server = nfs_create_server(mount_info);
- 	/* Create a client RPC handle for the NFS v3 ACL management interface */
- 	if (!IS_ERR(server))
- 		nfs_init_server_aclclient(server);
-diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
-index da6204025a2d..16fba83b5c4b 100644
---- a/fs/nfs/nfs4client.c
-+++ b/fs/nfs/nfs4client.c
-@@ -1109,8 +1109,7 @@ static int nfs4_init_server(struct nfs_server *server,
-  */
- /*struct nfs_server *nfs4_create_server(const struct nfs_parsed_mount_data *data,
- 				      struct nfs_fh *mntfh)*/
--struct nfs_server *nfs4_create_server(struct nfs_mount_info *mount_info,
--				      struct nfs_subversion *nfs_mod)
-+struct nfs_server *nfs4_create_server(struct nfs_mount_info *mount_info)
- {
- 	struct nfs_server *server;
- 	bool auth_probe;
-diff --git a/fs/nfs/nfs4super.c b/fs/nfs/nfs4super.c
-index 5bca30f704e4..b6cf62125380 100644
---- a/fs/nfs/nfs4super.c
-+++ b/fs/nfs/nfs4super.c
-@@ -205,7 +205,7 @@ struct dentry *nfs4_try_mount(int flags, const char *dev_name,
- 
- 	dfprintk(MOUNT, "--> nfs4_try_mount()\n");
- 
--	res = do_nfs4_mount(nfs4_create_server(mount_info, &nfs_v4),
-+	res = do_nfs4_mount(nfs4_create_server(mount_info),
- 			    flags, mount_info,
- 			    data->nfs_server.hostname,
- 			    data->nfs_server.export_path);
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index c3ee83c17f07..157d340333c8 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -1820,8 +1820,7 @@ static int nfs_request_mount(struct nfs_parsed_mount_data *args,
- 	return 0;
- }
- 
--static struct nfs_server *nfs_try_mount_request(struct nfs_mount_info *mount_info,
--					struct nfs_subversion *nfs_mod)
-+static struct nfs_server *nfs_try_mount_request(struct nfs_mount_info *mount_info)
- {
- 	int status;
- 	unsigned int i;
-@@ -1831,6 +1830,7 @@ static struct nfs_server *nfs_try_mount_request(struct nfs_mount_info *mount_inf
- 	struct nfs_parsed_mount_data *args = mount_info->parsed;
- 	rpc_authflavor_t authlist[NFS_MAX_SECFLAVORS];
- 	unsigned int authlist_len = ARRAY_SIZE(authlist);
-+	struct nfs_subversion *nfs_mod = mount_info->nfs_mod;
- 
- 	status = nfs_request_mount(args, mount_info->mntfh, authlist,
- 					&authlist_len);
-@@ -1847,7 +1847,7 @@ static struct nfs_server *nfs_try_mount_request(struct nfs_mount_info *mount_inf
- 			 args->selected_flavor);
- 		if (status)
- 			return ERR_PTR(status);
--		return nfs_mod->rpc_ops->create_server(mount_info, nfs_mod);
-+		return nfs_mod->rpc_ops->create_server(mount_info);
- 	}
- 
- 	/*
-@@ -1874,7 +1874,7 @@ static struct nfs_server *nfs_try_mount_request(struct nfs_mount_info *mount_inf
- 		}
- 		dfprintk(MOUNT, "NFS: attempting to use auth flavor %u\n", flavor);
- 		args->selected_flavor = flavor;
--		server = nfs_mod->rpc_ops->create_server(mount_info, nfs_mod);
-+		server = nfs_mod->rpc_ops->create_server(mount_info);
- 		if (!IS_ERR(server))
- 			return server;
- 	}
-@@ -1890,7 +1890,7 @@ static struct nfs_server *nfs_try_mount_request(struct nfs_mount_info *mount_inf
- 	/* Last chance! Try AUTH_UNIX */
- 	dfprintk(MOUNT, "NFS: attempting to use auth flavor %u\n", RPC_AUTH_UNIX);
- 	args->selected_flavor = RPC_AUTH_UNIX;
--	return nfs_mod->rpc_ops->create_server(mount_info, nfs_mod);
-+	return nfs_mod->rpc_ops->create_server(mount_info);
- }
- 
- static struct dentry *nfs_fs_mount_common(int, const char *, struct nfs_mount_info *);
-@@ -1900,9 +1900,9 @@ struct dentry *nfs_try_mount(int flags, const char *dev_name,
- {
- 	struct nfs_subversion *nfs_mod = mount_info->nfs_mod;
- 	if (mount_info->parsed->need_mount)
--		mount_info->server = nfs_try_mount_request(mount_info, nfs_mod);
-+		mount_info->server = nfs_try_mount_request(mount_info);
- 	else
--		mount_info->server = nfs_mod->rpc_ops->create_server(mount_info, nfs_mod);
-+		mount_info->server = nfs_mod->rpc_ops->create_server(mount_info);
- 
- 	return nfs_fs_mount_common(flags, dev_name, mount_info);
- }
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 4fdf4a523185..82bdb91da2ae 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1705,7 +1705,7 @@ struct nfs_rpc_ops {
- 	struct nfs_client *(*init_client) (struct nfs_client *,
- 				const struct nfs_client_initdata *);
- 	void	(*free_client) (struct nfs_client *);
--	struct nfs_server *(*create_server)(struct nfs_mount_info *, struct nfs_subversion *);
-+	struct nfs_server *(*create_server)(struct nfs_mount_info *);
- 	struct nfs_server *(*clone_server)(struct nfs_server *, struct nfs_fh *,
- 					   struct nfs_fattr *, rpc_authflavor_t);
- };
+ 	struct {
+ 		struct sockaddr_storage	address;
 -- 
 2.17.2
 
