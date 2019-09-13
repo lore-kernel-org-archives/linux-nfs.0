@@ -4,201 +4,88 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
+	URIBL_BLOCKED autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id AE06DC4CEC5
-	for <linux-nfs@archiver.kernel.org>; Fri, 13 Sep 2019 12:19:49 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 67E7FC49ED7
+	for <linux-nfs@archiver.kernel.org>; Fri, 13 Sep 2019 12:19:57 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 904BD2089F
-	for <linux-nfs@archiver.kernel.org>; Fri, 13 Sep 2019 12:19:49 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 4199D20830
+	for <linux-nfs@archiver.kernel.org>; Fri, 13 Sep 2019 12:19:57 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2388354AbfIMMTt (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S2388359AbfIMMTt (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Fri, 13 Sep 2019 08:19:49 -0400
-Received: from mx1.redhat.com ([209.132.183.28]:33620 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:41454 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1729472AbfIMMRu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        id S1729673AbfIMMRu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
         Fri, 13 Sep 2019 08:17:50 -0400
 Received: from smtp.corp.redhat.com (int-mx03.intmail.prod.int.phx2.redhat.com [10.5.11.13])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id EF4DE307CDE7;
-        Fri, 13 Sep 2019 12:17:49 +0000 (UTC)
+        by mx1.redhat.com (Postfix) with ESMTPS id 45E6B87521A;
+        Fri, 13 Sep 2019 12:17:50 +0000 (UTC)
 Received: from coeurl.usersys.redhat.com (ovpn-122-52.rdu2.redhat.com [10.10.122.52])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id BE7C260920;
-        Fri, 13 Sep 2019 12:17:49 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 268296061E;
+        Fri, 13 Sep 2019 12:17:50 +0000 (UTC)
 Received: by coeurl.usersys.redhat.com (Postfix, from userid 1000)
-        id BBF6C20BE2; Fri, 13 Sep 2019 08:17:48 -0400 (EDT)
+        id 03C3420D46; Fri, 13 Sep 2019 08:17:49 -0400 (EDT)
 From:   Scott Mayhew <smayhew@redhat.com>
 To:     anna.schumaker@netapp.com, trond.myklebust@hammerspace.com
 Cc:     dhowells@redhat.com, viro@zeniv.linux.org.uk,
         linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         linux-kernel@vger.kernel.org
-Subject: [PATCH v4 07/26] nfs: lift setting mount_info from nfs_xdev_mount()
-Date:   Fri, 13 Sep 2019 08:17:29 -0400
-Message-Id: <20190913121748.25391-8-smayhew@redhat.com>
+Subject: [PATCH v4 17/26] NFS: Constify mount argument match tables
+Date:   Fri, 13 Sep 2019 08:17:39 -0400
+Message-Id: <20190913121748.25391-18-smayhew@redhat.com>
 In-Reply-To: <20190913121748.25391-1-smayhew@redhat.com>
 References: <20190913121748.25391-1-smayhew@redhat.com>
 X-Scanned-By: MIMEDefang 2.79 on 10.5.11.13
-X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.49]); Fri, 13 Sep 2019 12:17:50 +0000 (UTC)
+X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.6.2 (mx1.redhat.com [10.5.110.68]); Fri, 13 Sep 2019 12:17:50 +0000 (UTC)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Al Viro <viro@zeniv.linux.org.uk>
+From: David Howells <dhowells@redhat.com>
 
-Do it in nfs_do_submount() instead.  As a side benefit, nfs_clone_data
-doesn't need ->fh and ->fattr anymore.
+The mount argument match tables should never be altered so constify them.
 
-Reviewed-by: David Howells <dhowells@redhat.com>
+Signed-off-by: David Howells <dhowells@redhat.com>
 Signed-off-by: Al Viro <viro@zeniv.linux.org.uk>
 ---
- fs/nfs/internal.h  |  3 +--
- fs/nfs/namespace.c | 35 +++++++++++++++++++++--------------
- fs/nfs/super.c     | 25 ++++---------------------
- 3 files changed, 26 insertions(+), 37 deletions(-)
+ fs/nfs/fs_context.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index c132e683e1c9..eeb54b45875c 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -42,8 +42,6 @@ static inline int nfs_attr_use_mounted_on_fileid(struct nfs_fattr *fattr)
- struct nfs_clone_mount {
- 	const struct super_block *sb;
- 	const struct dentry *dentry;
--	struct nfs_fh *fh;
--	struct nfs_fattr *fattr;
- 	char *hostname;
- 	char *mnt_path;
- 	struct sockaddr *addr;
-@@ -413,6 +411,7 @@ struct dentry * nfs_xdev_mount_common(struct file_system_type *, int,
- 		const char *, struct nfs_mount_info *);
- void nfs_kill_super(struct super_block *);
- void nfs_fill_super(struct super_block *, struct nfs_mount_info *);
-+void nfs_clone_super(struct super_block *, struct nfs_mount_info *);
+diff --git a/fs/nfs/fs_context.c b/fs/nfs/fs_context.c
+index 3a34c8437917..de852177eca4 100644
+--- a/fs/nfs/fs_context.c
++++ b/fs/nfs/fs_context.c
+@@ -199,7 +199,7 @@ enum {
+ 	Opt_lookupcache_err
+ };
  
- extern struct rpc_stat nfs_rpcstat;
+-static match_table_t nfs_lookupcache_tokens = {
++static const match_table_t nfs_lookupcache_tokens = {
+ 	{ Opt_lookupcache_all, "all" },
+ 	{ Opt_lookupcache_positive, "pos" },
+ 	{ Opt_lookupcache_positive, "positive" },
+@@ -215,7 +215,7 @@ enum {
+ 	Opt_local_lock_err
+ };
  
-diff --git a/fs/nfs/namespace.c b/fs/nfs/namespace.c
-index 9287eb666322..7c78e6956639 100644
---- a/fs/nfs/namespace.c
-+++ b/fs/nfs/namespace.c
-@@ -19,6 +19,7 @@
- #include <linux/vfs.h>
- #include <linux/sunrpc/gss_api.h>
- #include "internal.h"
-+#include "nfs.h"
+-static match_table_t nfs_local_lock_tokens = {
++static const match_table_t nfs_local_lock_tokens = {
+ 	{ Opt_local_lock_all, "all" },
+ 	{ Opt_local_lock_flock, "flock" },
+ 	{ Opt_local_lock_posix, "posix" },
+@@ -231,7 +231,7 @@ enum {
+ 	Opt_vers_err
+ };
  
- #define NFSDBG_FACILITY		NFSDBG_VFS
- 
-@@ -210,16 +211,6 @@ void nfs_release_automount_timer(void)
- 		cancel_delayed_work(&nfs_automount_task);
- }
- 
--/*
-- * Clone a mountpoint of the appropriate type
-- */
--static struct vfsmount *nfs_do_clone_mount(struct nfs_server *server,
--					   const char *devname,
--					   struct nfs_clone_mount *mountdata)
--{
--	return vfs_submount(mountdata->dentry, &nfs_xdev_fs_type, devname, mountdata);
--}
--
- /**
-  * nfs_do_submount - set up mountpoint when crossing a filesystem boundary
-  * @dentry: parent directory
-@@ -231,13 +222,20 @@ static struct vfsmount *nfs_do_clone_mount(struct nfs_server *server,
- struct vfsmount *nfs_do_submount(struct dentry *dentry, struct nfs_fh *fh,
- 				 struct nfs_fattr *fattr, rpc_authflavor_t authflavor)
- {
-+	struct super_block *sb = dentry->d_sb;
- 	struct nfs_clone_mount mountdata = {
--		.sb = dentry->d_sb,
-+		.sb = sb,
- 		.dentry = dentry,
--		.fh = fh,
--		.fattr = fattr,
- 		.authflavor = authflavor,
- 	};
-+	struct nfs_mount_info mount_info = {
-+		.fill_super = nfs_clone_super,
-+		.set_security = nfs_clone_sb_security,
-+		.cloned = &mountdata,
-+		.mntfh = fh,
-+	};
-+	struct nfs_subversion *nfs_mod = NFS_SB(sb)->nfs_client->cl_nfs_mod;
-+	struct nfs_server *server;
- 	struct vfsmount *mnt;
- 	char *page = (char *) __get_free_page(GFP_USER);
- 	char *devname;
-@@ -245,12 +243,21 @@ struct vfsmount *nfs_do_submount(struct dentry *dentry, struct nfs_fh *fh,
- 	if (page == NULL)
- 		return ERR_PTR(-ENOMEM);
- 
-+	server = nfs_mod->rpc_ops->clone_server(NFS_SB(sb), fh,
-+						fattr, authflavor);
-+	if (IS_ERR(server))
-+		return ERR_CAST(server);
-+
-+	mount_info.server = server;
-+
- 	devname = nfs_devname(dentry, page, PAGE_SIZE);
- 	if (IS_ERR(devname))
- 		mnt = ERR_CAST(devname);
- 	else
--		mnt = nfs_do_clone_mount(NFS_SB(dentry->d_sb), devname, &mountdata);
-+		mnt = vfs_submount(dentry, &nfs_xdev_fs_type, devname, &mount_info);
- 
-+	if (mount_info.server)
-+		nfs_free_server(mount_info.server);
- 	free_page((unsigned long)page);
- 	return mnt;
- }
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 10544ef8de57..7fc354207347 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -2386,7 +2386,7 @@ EXPORT_SYMBOL_GPL(nfs_fill_super);
- /*
-  * Finish setting up a cloned NFS2/3/4 superblock
-  */
--static void nfs_clone_super(struct super_block *sb,
-+void nfs_clone_super(struct super_block *sb,
- 			    struct nfs_mount_info *mount_info)
- {
- 	const struct super_block *old_sb = mount_info->cloned->sb;
-@@ -2771,27 +2771,10 @@ static struct dentry *
- nfs_xdev_mount(struct file_system_type *fs_type, int flags,
- 		const char *dev_name, void *raw_data)
- {
--	struct nfs_clone_mount *data = raw_data;
--	struct nfs_mount_info mount_info = {
--		.fill_super = nfs_clone_super,
--		.set_security = nfs_clone_sb_security,
--		.cloned = data,
--	};
--	struct dentry *mntroot = ERR_PTR(-ENOMEM);
--	struct nfs_subversion *nfs_mod = NFS_SB(data->sb)->nfs_client->cl_nfs_mod;
--
--	dprintk("--> nfs_xdev_mount()\n");
-+	struct nfs_mount_info *info = raw_data;
-+	struct nfs_subversion *nfs_mod = NFS_SB(info->cloned->sb)->nfs_client->cl_nfs_mod;
- 
--	mount_info.mntfh = mount_info.cloned->fh;
--
--	/* create a new volume representation */
--	mount_info.server = nfs_mod->rpc_ops->clone_server(NFS_SB(data->sb), data->fh, data->fattr, data->authflavor);
--
--	mntroot = nfs_fs_mount_common(flags, dev_name, &mount_info, nfs_mod);
--
--	dprintk("<-- nfs_xdev_mount() = %ld\n",
--			IS_ERR(mntroot) ? PTR_ERR(mntroot) : 0L);
--	return mntroot;
-+	return nfs_fs_mount_common(flags, dev_name, info, nfs_mod);
- }
- 
- #if IS_ENABLED(CONFIG_NFS_V4)
+-static match_table_t nfs_vers_tokens = {
++static const match_table_t nfs_vers_tokens = {
+ 	{ Opt_vers_2, "2" },
+ 	{ Opt_vers_3, "3" },
+ 	{ Opt_vers_4, "4" },
 -- 
 2.17.2
 
