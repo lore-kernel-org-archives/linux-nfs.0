@@ -6,837 +6,190 @@ X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
 	URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 242DFC4CEC5
-	for <linux-nfs@archiver.kernel.org>; Fri, 13 Sep 2019 12:19:17 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5EB91C4CEC8
+	for <linux-nfs@archiver.kernel.org>; Fri, 13 Sep 2019 12:19:23 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id E3B5E208C2
-	for <linux-nfs@archiver.kernel.org>; Fri, 13 Sep 2019 12:19:16 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 40CB2208C0
+	for <linux-nfs@archiver.kernel.org>; Fri, 13 Sep 2019 12:19:23 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729871AbfIMMTP (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 13 Sep 2019 08:19:15 -0400
-Received: from mx1.redhat.com ([209.132.183.28]:55698 "EHLO mx1.redhat.com"
+        id S1729904AbfIMMTW (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 13 Sep 2019 08:19:22 -0400
+Received: from mx1.redhat.com ([209.132.183.28]:54410 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1729674AbfIMMRu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        id S1729488AbfIMMRu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
         Fri, 13 Sep 2019 08:17:50 -0400
-Received: from smtp.corp.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
+Received: from smtp.corp.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 5267850F64;
-        Fri, 13 Sep 2019 12:17:50 +0000 (UTC)
+        by mx1.redhat.com (Postfix) with ESMTPS id EFD9918C4273;
+        Fri, 13 Sep 2019 12:17:49 +0000 (UTC)
 Received: from coeurl.usersys.redhat.com (ovpn-122-52.rdu2.redhat.com [10.10.122.52])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 2847060C63;
-        Fri, 13 Sep 2019 12:17:50 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTP id BDD4E6012E;
+        Fri, 13 Sep 2019 12:17:49 +0000 (UTC)
 Received: by coeurl.usersys.redhat.com (Postfix, from userid 1000)
-        id 1518920E07; Fri, 13 Sep 2019 08:17:49 -0400 (EDT)
+        id B5BBB20B53; Fri, 13 Sep 2019 08:17:48 -0400 (EDT)
 From:   Scott Mayhew <smayhew@redhat.com>
 To:     anna.schumaker@netapp.com, trond.myklebust@hammerspace.com
 Cc:     dhowells@redhat.com, viro@zeniv.linux.org.uk,
         linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         linux-kernel@vger.kernel.org
-Subject: [PATCH v4 20/26] NFS: Deindent nfs_fs_context_parse_option()
-Date:   Fri, 13 Sep 2019 08:17:42 -0400
-Message-Id: <20190913121748.25391-21-smayhew@redhat.com>
+Subject: [PATCH v4 06/26] nfs4: fold nfs_do_root_mount/nfs_follow_remote_path
+Date:   Fri, 13 Sep 2019 08:17:28 -0400
+Message-Id: <20190913121748.25391-7-smayhew@redhat.com>
 In-Reply-To: <20190913121748.25391-1-smayhew@redhat.com>
 References: <20190913121748.25391-1-smayhew@redhat.com>
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.12
-X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.30]); Fri, 13 Sep 2019 12:17:50 +0000 (UTC)
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.11
+X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.6.2 (mx1.redhat.com [10.5.110.62]); Fri, 13 Sep 2019 12:17:50 +0000 (UTC)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: David Howells <dhowells@redhat.com>
+From: Al Viro <viro@zeniv.linux.org.uk>
 
-Deindent nfs_fs_context_parse_option().
-
-Signed-off-by: David Howells <dhowells@redhat.com>
+Reviewed-by: David Howells <dhowells@redhat.com>
 Signed-off-by: Al Viro <viro@zeniv.linux.org.uk>
 ---
- fs/nfs/fs_context.c | 739 ++++++++++++++++++++++----------------------
- 1 file changed, 367 insertions(+), 372 deletions(-)
+ fs/nfs/nfs4super.c | 88 +++++++++++++++++++---------------------------
+ 1 file changed, 37 insertions(+), 51 deletions(-)
 
-diff --git a/fs/nfs/fs_context.c b/fs/nfs/fs_context.c
-index 3ad8fc68e623..e2b584354731 100644
---- a/fs/nfs/fs_context.c
-+++ b/fs/nfs/fs_context.c
-@@ -500,410 +500,405 @@ static int nfs_get_option_ul_bound(substring_t args[], unsigned long *option,
-  */
- static int nfs_fs_context_parse_option(struct nfs_fs_context *ctx, char *p)
+diff --git a/fs/nfs/nfs4super.c b/fs/nfs/nfs4super.c
+index a0b66f98f6ba..91ba1b6741dc 100644
+--- a/fs/nfs/nfs4super.c
++++ b/fs/nfs/nfs4super.c
+@@ -101,37 +101,6 @@ nfs4_remote_mount(struct file_system_type *fs_type, int flags,
+ 	return nfs_fs_mount_common(flags, dev_name, info, &nfs_v4);
+ }
+ 
+-static struct vfsmount *nfs_do_root_mount(struct nfs_server *server, int flags,
+-					  struct nfs_mount_info *info,
+-					  const char *hostname)
+-{
+-	struct vfsmount *root_mnt;
+-	char *root_devname;
+-	size_t len;
+-
+-	if (IS_ERR(server))
+-		return ERR_CAST(server);
+-
+-	len = strlen(hostname) + 5;
+-	root_devname = kmalloc(len, GFP_KERNEL);
+-	if (root_devname == NULL) {
+-		nfs_free_server(server);
+-		return ERR_PTR(-ENOMEM);
+-	}
+-	/* Does hostname needs to be enclosed in brackets? */
+-	if (strchr(hostname, ':'))
+-		snprintf(root_devname, len, "[%s]:/", hostname);
+-	else
+-		snprintf(root_devname, len, "%s:/", hostname);
+-	info->server = server;
+-	root_mnt = vfs_kern_mount(&nfs4_remote_fs_type, flags, root_devname, info);
+-	if (info->server)
+-		nfs_free_server(info->server);
+-	info->server = NULL;
+-	kfree(root_devname);
+-	return root_mnt;
+-}
+-
+ struct nfs_referral_count {
+ 	struct list_head list;
+ 	const struct task_struct *task;
+@@ -198,11 +167,38 @@ static void nfs_referral_loop_unprotect(void)
+ 	kfree(p);
+ }
+ 
+-static struct dentry *nfs_follow_remote_path(struct vfsmount *root_mnt,
+-		const char *export_path)
++static struct dentry *do_nfs4_mount(struct nfs_server *server, int flags,
++				    struct nfs_mount_info *info,
++				    const char *hostname,
++				    const char *export_path)
  {
-+	substring_t args[MAX_OPT_ARGS];
-+	unsigned long option;
- 	char *string;
--	int rc;
--
--	{
--		substring_t args[MAX_OPT_ARGS];
--		unsigned long option;
--		int token;
-+	int token, rc;
- 
--		dfprintk(MOUNT, "NFS:   parsing nfs mount option '%s'\n", p);
--
--		token = match_token(p, nfs_mount_option_tokens, args);
--		switch (token) {
-+	dfprintk(MOUNT, "NFS:   parsing nfs mount option '%s'\n", p);
- 
-+	token = match_token(p, nfs_mount_option_tokens, args);
-+	switch (token) {
- 		/*
- 		 * boolean options:  foo/nofoo
- 		 */
--		case Opt_soft:
--			ctx->flags |= NFS_MOUNT_SOFT;
--			ctx->flags &= ~NFS_MOUNT_SOFTERR;
--			break;
--		case Opt_softerr:
--			ctx->flags |= NFS_MOUNT_SOFTERR;
--			ctx->flags &= ~NFS_MOUNT_SOFT;
--			break;
--		case Opt_hard:
--			ctx->flags &= ~(NFS_MOUNT_SOFT|NFS_MOUNT_SOFTERR);
--			break;
--		case Opt_posix:
--			ctx->flags |= NFS_MOUNT_POSIX;
--			break;
--		case Opt_noposix:
--			ctx->flags &= ~NFS_MOUNT_POSIX;
--			break;
--		case Opt_cto:
--			ctx->flags &= ~NFS_MOUNT_NOCTO;
--			break;
--		case Opt_nocto:
--			ctx->flags |= NFS_MOUNT_NOCTO;
--			break;
--		case Opt_ac:
--			ctx->flags &= ~NFS_MOUNT_NOAC;
--			break;
--		case Opt_noac:
--			ctx->flags |= NFS_MOUNT_NOAC;
--			break;
--		case Opt_lock:
--			ctx->flags &= ~NFS_MOUNT_NONLM;
--			ctx->flags &= ~(NFS_MOUNT_LOCAL_FLOCK |
--					NFS_MOUNT_LOCAL_FCNTL);
--			break;
--		case Opt_nolock:
--			ctx->flags |= NFS_MOUNT_NONLM;
--			ctx->flags |= (NFS_MOUNT_LOCAL_FLOCK |
--				       NFS_MOUNT_LOCAL_FCNTL);
--			break;
--		case Opt_udp:
--			ctx->flags &= ~NFS_MOUNT_TCP;
--			ctx->nfs_server.protocol = XPRT_TRANSPORT_UDP;
--			break;
--		case Opt_tcp:
--			ctx->flags |= NFS_MOUNT_TCP;
--			ctx->nfs_server.protocol = XPRT_TRANSPORT_TCP;
--			break;
--		case Opt_rdma:
--			ctx->flags |= NFS_MOUNT_TCP; /* for side protocols */
--			ctx->nfs_server.protocol = XPRT_TRANSPORT_RDMA;
--			xprt_load_transport(p);
--			break;
--		case Opt_acl:
--			ctx->flags &= ~NFS_MOUNT_NOACL;
--			break;
--		case Opt_noacl:
--			ctx->flags |= NFS_MOUNT_NOACL;
--			break;
--		case Opt_rdirplus:
--			ctx->flags &= ~NFS_MOUNT_NORDIRPLUS;
--			break;
--		case Opt_nordirplus:
--			ctx->flags |= NFS_MOUNT_NORDIRPLUS;
--			break;
--		case Opt_sharecache:
--			ctx->flags &= ~NFS_MOUNT_UNSHARED;
--			break;
--		case Opt_nosharecache:
--			ctx->flags |= NFS_MOUNT_UNSHARED;
--			break;
--		case Opt_resvport:
--			ctx->flags &= ~NFS_MOUNT_NORESVPORT;
--			break;
--		case Opt_noresvport:
--			ctx->flags |= NFS_MOUNT_NORESVPORT;
--			break;
--		case Opt_fscache:
--			ctx->options |= NFS_OPTION_FSCACHE;
--			kfree(ctx->fscache_uniq);
--			ctx->fscache_uniq = NULL;
--			break;
--		case Opt_nofscache:
--			ctx->options &= ~NFS_OPTION_FSCACHE;
--			kfree(ctx->fscache_uniq);
--			ctx->fscache_uniq = NULL;
--			break;
--		case Opt_migration:
--			ctx->options |= NFS_OPTION_MIGRATION;
--			break;
--		case Opt_nomigration:
--			ctx->options &= ~NFS_OPTION_MIGRATION;
--			break;
-+	case Opt_soft:
-+		ctx->flags |= NFS_MOUNT_SOFT;
-+		ctx->flags &= ~NFS_MOUNT_SOFTERR;
-+		break;
-+	case Opt_softerr:
-+		ctx->flags |= NFS_MOUNT_SOFTERR;
-+		ctx->flags &= ~NFS_MOUNT_SOFT;
-+		break;
-+	case Opt_hard:
-+		ctx->flags &= ~(NFS_MOUNT_SOFT|NFS_MOUNT_SOFTERR);
-+		break;
-+	case Opt_posix:
-+		ctx->flags |= NFS_MOUNT_POSIX;
-+		break;
-+	case Opt_noposix:
-+		ctx->flags &= ~NFS_MOUNT_POSIX;
-+		break;
-+	case Opt_cto:
-+		ctx->flags &= ~NFS_MOUNT_NOCTO;
-+		break;
-+	case Opt_nocto:
-+		ctx->flags |= NFS_MOUNT_NOCTO;
-+		break;
-+	case Opt_ac:
-+		ctx->flags &= ~NFS_MOUNT_NOAC;
-+		break;
-+	case Opt_noac:
-+		ctx->flags |= NFS_MOUNT_NOAC;
-+		break;
-+	case Opt_lock:
-+		ctx->flags &= ~NFS_MOUNT_NONLM;
-+		ctx->flags &= ~(NFS_MOUNT_LOCAL_FLOCK |
-+				NFS_MOUNT_LOCAL_FCNTL);
-+		break;
-+	case Opt_nolock:
-+		ctx->flags |= NFS_MOUNT_NONLM;
-+		ctx->flags |= (NFS_MOUNT_LOCAL_FLOCK |
-+			       NFS_MOUNT_LOCAL_FCNTL);
-+		break;
-+	case Opt_udp:
-+		ctx->flags &= ~NFS_MOUNT_TCP;
-+		ctx->nfs_server.protocol = XPRT_TRANSPORT_UDP;
-+		break;
-+	case Opt_tcp:
-+		ctx->flags |= NFS_MOUNT_TCP;
-+		ctx->nfs_server.protocol = XPRT_TRANSPORT_TCP;
-+		break;
-+	case Opt_rdma:
-+		ctx->flags |= NFS_MOUNT_TCP; /* for side protocols */
-+		ctx->nfs_server.protocol = XPRT_TRANSPORT_RDMA;
-+		xprt_load_transport(p);
-+		break;
-+	case Opt_acl:
-+		ctx->flags &= ~NFS_MOUNT_NOACL;
-+		break;
-+	case Opt_noacl:
-+		ctx->flags |= NFS_MOUNT_NOACL;
-+		break;
-+	case Opt_rdirplus:
-+		ctx->flags &= ~NFS_MOUNT_NORDIRPLUS;
-+		break;
-+	case Opt_nordirplus:
-+		ctx->flags |= NFS_MOUNT_NORDIRPLUS;
-+		break;
-+	case Opt_sharecache:
-+		ctx->flags &= ~NFS_MOUNT_UNSHARED;
-+		break;
-+	case Opt_nosharecache:
-+		ctx->flags |= NFS_MOUNT_UNSHARED;
-+		break;
-+	case Opt_resvport:
-+		ctx->flags &= ~NFS_MOUNT_NORESVPORT;
-+		break;
-+	case Opt_noresvport:
-+		ctx->flags |= NFS_MOUNT_NORESVPORT;
-+		break;
-+	case Opt_fscache:
-+		ctx->options |= NFS_OPTION_FSCACHE;
-+		kfree(ctx->fscache_uniq);
-+		ctx->fscache_uniq = NULL;
-+		break;
-+	case Opt_nofscache:
-+		ctx->options &= ~NFS_OPTION_FSCACHE;
-+		kfree(ctx->fscache_uniq);
-+		ctx->fscache_uniq = NULL;
-+		break;
-+	case Opt_migration:
-+		ctx->options |= NFS_OPTION_MIGRATION;
-+		break;
-+	case Opt_nomigration:
-+		ctx->options &= ~NFS_OPTION_MIGRATION;
-+		break;
- 
- 		/*
- 		 * options that take numeric values
- 		 */
--		case Opt_port:
--			if (nfs_get_option_ul(args, &option) ||
--			    option > USHRT_MAX)
--				goto out_invalid_value;
--			ctx->nfs_server.port = option;
--			break;
--		case Opt_rsize:
--			if (nfs_get_option_ul(args, &option))
--				goto out_invalid_value;
--			ctx->rsize = option;
--			break;
--		case Opt_wsize:
--			if (nfs_get_option_ul(args, &option))
--				goto out_invalid_value;
--			ctx->wsize = option;
--			break;
--		case Opt_bsize:
--			if (nfs_get_option_ul(args, &option))
--				goto out_invalid_value;
--			ctx->bsize = option;
--			break;
--		case Opt_timeo:
--			if (nfs_get_option_ul_bound(args, &option, 1, INT_MAX))
--				goto out_invalid_value;
--			ctx->timeo = option;
--			break;
--		case Opt_retrans:
--			if (nfs_get_option_ul_bound(args, &option, 0, INT_MAX))
--				goto out_invalid_value;
--			ctx->retrans = option;
--			break;
--		case Opt_acregmin:
--			if (nfs_get_option_ul(args, &option))
--				goto out_invalid_value;
--			ctx->acregmin = option;
--			break;
--		case Opt_acregmax:
--			if (nfs_get_option_ul(args, &option))
--				goto out_invalid_value;
--			ctx->acregmax = option;
--			break;
--		case Opt_acdirmin:
--			if (nfs_get_option_ul(args, &option))
--				goto out_invalid_value;
--			ctx->acdirmin = option;
--			break;
--		case Opt_acdirmax:
--			if (nfs_get_option_ul(args, &option))
--				goto out_invalid_value;
--			ctx->acdirmax = option;
--			break;
--		case Opt_actimeo:
--			if (nfs_get_option_ul(args, &option))
--				goto out_invalid_value;
--			ctx->acregmin = ctx->acregmax =
-+	case Opt_port:
-+		if (nfs_get_option_ul(args, &option) ||
-+		    option > USHRT_MAX)
-+			goto out_invalid_value;
-+		ctx->nfs_server.port = option;
-+		break;
-+	case Opt_rsize:
-+		if (nfs_get_option_ul(args, &option))
-+			goto out_invalid_value;
-+		ctx->rsize = option;
-+		break;
-+	case Opt_wsize:
-+		if (nfs_get_option_ul(args, &option))
-+			goto out_invalid_value;
-+		ctx->wsize = option;
-+		break;
-+	case Opt_bsize:
-+		if (nfs_get_option_ul(args, &option))
-+			goto out_invalid_value;
-+		ctx->bsize = option;
-+		break;
-+	case Opt_timeo:
-+		if (nfs_get_option_ul_bound(args, &option, 1, INT_MAX))
-+			goto out_invalid_value;
-+		ctx->timeo = option;
-+		break;
-+	case Opt_retrans:
-+		if (nfs_get_option_ul_bound(args, &option, 0, INT_MAX))
-+			goto out_invalid_value;
-+		ctx->retrans = option;
-+		break;
-+	case Opt_acregmin:
-+		if (nfs_get_option_ul(args, &option))
-+			goto out_invalid_value;
-+		ctx->acregmin = option;
-+		break;
-+	case Opt_acregmax:
-+		if (nfs_get_option_ul(args, &option))
-+			goto out_invalid_value;
-+		ctx->acregmax = option;
-+		break;
-+	case Opt_acdirmin:
-+		if (nfs_get_option_ul(args, &option))
-+			goto out_invalid_value;
-+		ctx->acdirmin = option;
-+		break;
-+	case Opt_acdirmax:
-+		if (nfs_get_option_ul(args, &option))
-+			goto out_invalid_value;
-+		ctx->acdirmax = option;
-+		break;
-+	case Opt_actimeo:
-+		if (nfs_get_option_ul(args, &option))
-+			goto out_invalid_value;
-+		ctx->acregmin = ctx->acregmax =
- 			ctx->acdirmin = ctx->acdirmax = option;
--			break;
--		case Opt_namelen:
--			if (nfs_get_option_ul(args, &option))
--				goto out_invalid_value;
--			ctx->namlen = option;
--			break;
--		case Opt_mountport:
--			if (nfs_get_option_ul(args, &option) ||
--			    option > USHRT_MAX)
--				goto out_invalid_value;
--			ctx->mount_server.port = option;
--			break;
--		case Opt_mountvers:
--			if (nfs_get_option_ul(args, &option) ||
--			    option < NFS_MNT_VERSION ||
--			    option > NFS_MNT3_VERSION)
--				goto out_invalid_value;
--			ctx->mount_server.version = option;
--			break;
--		case Opt_minorversion:
--			if (nfs_get_option_ul(args, &option))
--				goto out_invalid_value;
--			if (option > NFS4_MAX_MINOR_VERSION)
--				goto out_invalid_value;
--			ctx->minorversion = option;
--			break;
-+		break;
-+	case Opt_namelen:
-+		if (nfs_get_option_ul(args, &option))
-+			goto out_invalid_value;
-+		ctx->namlen = option;
-+		break;
-+	case Opt_mountport:
-+		if (nfs_get_option_ul(args, &option) ||
-+		    option > USHRT_MAX)
-+			goto out_invalid_value;
-+		ctx->mount_server.port = option;
-+		break;
-+	case Opt_mountvers:
-+		if (nfs_get_option_ul(args, &option) ||
-+		    option < NFS_MNT_VERSION ||
-+		    option > NFS_MNT3_VERSION)
-+			goto out_invalid_value;
-+		ctx->mount_server.version = option;
-+		break;
-+	case Opt_minorversion:
-+		if (nfs_get_option_ul(args, &option))
-+			goto out_invalid_value;
-+		if (option > NFS4_MAX_MINOR_VERSION)
-+			goto out_invalid_value;
-+		ctx->minorversion = option;
-+		break;
- 
- 		/*
- 		 * options that take text values
- 		 */
--		case Opt_nfsvers:
--			string = match_strdup(args);
--			if (string == NULL)
--				goto out_nomem;
--			rc = nfs_parse_version_string(string, ctx, args);
--			kfree(string);
--			if (!rc)
--				goto out_invalid_value;
-+	case Opt_nfsvers:
-+		string = match_strdup(args);
-+		if (string == NULL)
-+			goto out_nomem;
-+		rc = nfs_parse_version_string(string, ctx, args);
-+		kfree(string);
-+		if (!rc)
-+			goto out_invalid_value;
-+		break;
-+	case Opt_sec:
-+		string = match_strdup(args);
-+		if (string == NULL)
-+			goto out_nomem;
-+		rc = nfs_parse_security_flavors(string, ctx);
-+		kfree(string);
-+		if (!rc) {
-+			dfprintk(MOUNT, "NFS:   unrecognized "
-+				 "security flavor\n");
-+			return -EINVAL;
-+		}
-+		break;
-+	case Opt_proto:
-+		string = match_strdup(args);
-+		if (string == NULL)
-+			goto out_nomem;
-+		token = match_token(string,
-+				    nfs_xprt_protocol_tokens, args);
++	struct vfsmount *root_mnt;
+ 	struct dentry *dentry;
++	char *root_devname;
+ 	int err;
++	size_t len;
 +
-+		ctx->protofamily = AF_INET;
-+		switch (token) {
-+		case Opt_xprt_udp6:
-+			ctx->protofamily = AF_INET6;
-+			/* fall through */
-+		case Opt_xprt_udp:
-+			ctx->flags &= ~NFS_MOUNT_TCP;
-+			ctx->nfs_server.protocol = XPRT_TRANSPORT_UDP;
- 			break;
--		case Opt_sec:
--			string = match_strdup(args);
--			if (string == NULL)
--				goto out_nomem;
--			rc = nfs_parse_security_flavors(string, ctx);
--			kfree(string);
--			if (!rc) {
--				dfprintk(MOUNT, "NFS:   unrecognized "
--						"security flavor\n");
--				return -EINVAL;
--			}
-+		case Opt_xprt_tcp6:
-+			ctx->protofamily = AF_INET6;
-+			/* fall through */
-+		case Opt_xprt_tcp:
-+			ctx->flags |= NFS_MOUNT_TCP;
-+			ctx->nfs_server.protocol = XPRT_TRANSPORT_TCP;
- 			break;
--		case Opt_proto:
--			string = match_strdup(args);
--			if (string == NULL)
--				goto out_nomem;
--			token = match_token(string,
--					    nfs_xprt_protocol_tokens, args);
++	if (IS_ERR(server))
++		return ERR_CAST(server);
++
++	len = strlen(hostname) + 5;
++	root_devname = kmalloc(len, GFP_KERNEL);
++	if (root_devname == NULL) {
++		nfs_free_server(server);
++		return ERR_PTR(-ENOMEM);
++	}
++
++	/* Does hostname needs to be enclosed in brackets? */
++	if (strchr(hostname, ':'))
++		snprintf(root_devname, len, "[%s]:/", hostname);
++	else
++		snprintf(root_devname, len, "%s:/", hostname);
++	info->server = server;
++	root_mnt = vfs_kern_mount(&nfs4_remote_fs_type, flags, root_devname, info);
++	if (info->server)
++		nfs_free_server(info->server);
++	info->server = NULL;
++	kfree(root_devname);
+ 
+ 	if (IS_ERR(root_mnt))
+ 		return ERR_CAST(root_mnt);
+@@ -223,22 +219,17 @@ struct dentry *nfs4_try_mount(int flags, const char *dev_name,
+ 			      struct nfs_mount_info *mount_info,
+ 			      struct nfs_subversion *nfs_mod)
+ {
+-	char *export_path;
+-	struct vfsmount *root_mnt;
+-	struct dentry *res;
+ 	struct nfs_parsed_mount_data *data = mount_info->parsed;
++	struct dentry *res;
+ 
+ 	mount_info->set_security = nfs_set_sb_security;
+ 
+ 	dfprintk(MOUNT, "--> nfs4_try_mount()\n");
+ 
+-	export_path = data->nfs_server.export_path;
+-	root_mnt = nfs_do_root_mount(
+-			nfs4_create_server(mount_info, &nfs_v4),
+-			flags, mount_info,
+-			data->nfs_server.hostname);
 -
--			ctx->protofamily = AF_INET;
--			switch (token) {
--			case Opt_xprt_udp6:
--				ctx->protofamily = AF_INET6;
--				/* fall through */
--			case Opt_xprt_udp:
--				ctx->flags &= ~NFS_MOUNT_TCP;
--				ctx->nfs_server.protocol = XPRT_TRANSPORT_UDP;
--				break;
--			case Opt_xprt_tcp6:
--				ctx->protofamily = AF_INET6;
--				/* fall through */
--			case Opt_xprt_tcp:
--				ctx->flags |= NFS_MOUNT_TCP;
--				ctx->nfs_server.protocol = XPRT_TRANSPORT_TCP;
--				break;
--			case Opt_xprt_rdma6:
--				ctx->protofamily = AF_INET6;
--				/* fall through */
--			case Opt_xprt_rdma:
--				/* vector side protocols to TCP */
--				ctx->flags |= NFS_MOUNT_TCP;
--				ctx->nfs_server.protocol = XPRT_TRANSPORT_RDMA;
--				xprt_load_transport(string);
--				break;
--			default:
--				dfprintk(MOUNT, "NFS:   unrecognized "
--						"transport protocol\n");
--				kfree(string);
--				return -EINVAL;
--			}
--			kfree(string);
-+		case Opt_xprt_rdma6:
-+			ctx->protofamily = AF_INET6;
-+			/* fall through */
-+		case Opt_xprt_rdma:
-+			/* vector side protocols to TCP */
-+			ctx->flags |= NFS_MOUNT_TCP;
-+			ctx->nfs_server.protocol = XPRT_TRANSPORT_RDMA;
-+			xprt_load_transport(string);
- 			break;
--		case Opt_mountproto:
--			string = match_strdup(args);
--			if (string == NULL)
--				goto out_nomem;
--			token = match_token(string,
--					    nfs_xprt_protocol_tokens, args);
-+		default:
-+			dfprintk(MOUNT, "NFS:   unrecognized "
-+				 "transport protocol\n");
- 			kfree(string);
-+			return -EINVAL;
-+		}
-+		kfree(string);
-+		break;
-+	case Opt_mountproto:
-+		string = match_strdup(args);
-+		if (string == NULL)
-+			goto out_nomem;
-+		token = match_token(string,
-+				    nfs_xprt_protocol_tokens, args);
-+		kfree(string);
+-	res = nfs_follow_remote_path(root_mnt, export_path);
++	res = do_nfs4_mount(nfs4_create_server(mount_info, &nfs_v4),
++			    flags, mount_info,
++			    data->nfs_server.hostname,
++			    data->nfs_server.export_path);
  
--			ctx->mountfamily = AF_INET;
--			switch (token) {
--			case Opt_xprt_udp6:
--				ctx->mountfamily = AF_INET6;
--				/* fall through */
--			case Opt_xprt_udp:
--				ctx->mount_server.protocol = XPRT_TRANSPORT_UDP;
--				break;
--			case Opt_xprt_tcp6:
--				ctx->mountfamily = AF_INET6;
--				/* fall through */
--			case Opt_xprt_tcp:
--				ctx->mount_server.protocol = XPRT_TRANSPORT_TCP;
--				break;
--			case Opt_xprt_rdma: /* not used for side protocols */
--			default:
--				dfprintk(MOUNT, "NFS:   unrecognized "
--						"transport protocol\n");
--				return -EINVAL;
--			}
--			break;
--		case Opt_addr:
--			string = match_strdup(args);
--			if (string == NULL)
--				goto out_nomem;
--			ctx->nfs_server.addrlen =
--				rpc_pton(ctx->net, string, strlen(string),
--					(struct sockaddr *)
--					&ctx->nfs_server.address,
--					sizeof(ctx->nfs_server.address));
--			kfree(string);
--			if (ctx->nfs_server.addrlen == 0)
--				goto out_invalid_address;
--			break;
--		case Opt_clientaddr:
--			if (nfs_get_option_str(args, &ctx->client_address))
--				goto out_nomem;
-+		ctx->mountfamily = AF_INET;
-+		switch (token) {
-+		case Opt_xprt_udp6:
-+			ctx->mountfamily = AF_INET6;
-+			/* fall through */
-+		case Opt_xprt_udp:
-+			ctx->mount_server.protocol = XPRT_TRANSPORT_UDP;
-+			break;
-+		case Opt_xprt_tcp6:
-+			ctx->mountfamily = AF_INET6;
-+			/* fall through */
-+		case Opt_xprt_tcp:
-+			ctx->mount_server.protocol = XPRT_TRANSPORT_TCP;
-+			break;
-+		case Opt_xprt_rdma: /* not used for side protocols */
-+		default:
-+			dfprintk(MOUNT, "NFS:   unrecognized "
-+				 "transport protocol\n");
-+			return -EINVAL;
-+		}
-+		break;
-+	case Opt_addr:
-+		string = match_strdup(args);
-+		if (string == NULL)
-+			goto out_nomem;
-+		ctx->nfs_server.addrlen =
-+			rpc_pton(ctx->net, string, strlen(string),
-+				 (struct sockaddr *)
-+				 &ctx->nfs_server.address,
-+				 sizeof(ctx->nfs_server.address));
-+		kfree(string);
-+		if (ctx->nfs_server.addrlen == 0)
-+			goto out_invalid_address;
-+		break;
-+	case Opt_clientaddr:
-+		if (nfs_get_option_str(args, &ctx->client_address))
-+			goto out_nomem;
-+		break;
-+	case Opt_mounthost:
-+		if (nfs_get_option_str(args,
-+				       &ctx->mount_server.hostname))
-+			goto out_nomem;
-+		break;
-+	case Opt_mountaddr:
-+		string = match_strdup(args);
-+		if (string == NULL)
-+			goto out_nomem;
-+		ctx->mount_server.addrlen =
-+			rpc_pton(ctx->net, string, strlen(string),
-+				 (struct sockaddr *)
-+				 &ctx->mount_server.address,
-+				 sizeof(ctx->mount_server.address));
-+		kfree(string);
-+		if (ctx->mount_server.addrlen == 0)
-+			goto out_invalid_address;
-+		break;
-+	case Opt_nconnect:
-+		if (nfs_get_option_ul_bound(args, &option, 1, NFS_MAX_CONNECTIONS))
-+			goto out_invalid_value;
-+		ctx->nfs_server.nconnect = option;
-+		break;
-+	case Opt_lookupcache:
-+		string = match_strdup(args);
-+		if (string == NULL)
-+			goto out_nomem;
-+		token = match_token(string,
-+				    nfs_lookupcache_tokens, args);
-+		kfree(string);
-+		switch (token) {
-+		case Opt_lookupcache_all:
-+			ctx->flags &= ~(NFS_MOUNT_LOOKUP_CACHE_NONEG|NFS_MOUNT_LOOKUP_CACHE_NONE);
- 			break;
--		case Opt_mounthost:
--			if (nfs_get_option_str(args,
--					       &ctx->mount_server.hostname))
--				goto out_nomem;
-+		case Opt_lookupcache_positive:
-+			ctx->flags &= ~NFS_MOUNT_LOOKUP_CACHE_NONE;
-+			ctx->flags |= NFS_MOUNT_LOOKUP_CACHE_NONEG;
- 			break;
--		case Opt_mountaddr:
--			string = match_strdup(args);
--			if (string == NULL)
--				goto out_nomem;
--			ctx->mount_server.addrlen =
--				rpc_pton(ctx->net, string, strlen(string),
--					(struct sockaddr *)
--					&ctx->mount_server.address,
--					sizeof(ctx->mount_server.address));
--			kfree(string);
--			if (ctx->mount_server.addrlen == 0)
--				goto out_invalid_address;
-+		case Opt_lookupcache_none:
-+			ctx->flags |= NFS_MOUNT_LOOKUP_CACHE_NONEG|NFS_MOUNT_LOOKUP_CACHE_NONE;
- 			break;
--		case Opt_nconnect:
--			if (nfs_get_option_ul_bound(args, &option, 1, NFS_MAX_CONNECTIONS))
--				goto out_invalid_value;
--			ctx->nfs_server.nconnect = option;
-+		default:
-+			dfprintk(MOUNT, "NFS:   invalid "
-+				 "lookupcache argument\n");
-+			return -EINVAL;
-+		};
-+		break;
-+	case Opt_fscache_uniq:
-+		if (nfs_get_option_str(args, &ctx->fscache_uniq))
-+			goto out_nomem;
-+		ctx->options |= NFS_OPTION_FSCACHE;
-+		break;
-+	case Opt_local_lock:
-+		string = match_strdup(args);
-+		if (string == NULL)
-+			goto out_nomem;
-+		token = match_token(string, nfs_local_lock_tokens,
-+				    args);
-+		kfree(string);
-+		switch (token) {
-+		case Opt_local_lock_all:
-+			ctx->flags |= (NFS_MOUNT_LOCAL_FLOCK |
-+				       NFS_MOUNT_LOCAL_FCNTL);
- 			break;
--		case Opt_lookupcache:
--			string = match_strdup(args);
--			if (string == NULL)
--				goto out_nomem;
--			token = match_token(string,
--					nfs_lookupcache_tokens, args);
--			kfree(string);
--			switch (token) {
--				case Opt_lookupcache_all:
--					ctx->flags &= ~(NFS_MOUNT_LOOKUP_CACHE_NONEG|NFS_MOUNT_LOOKUP_CACHE_NONE);
--					break;
--				case Opt_lookupcache_positive:
--					ctx->flags &= ~NFS_MOUNT_LOOKUP_CACHE_NONE;
--					ctx->flags |= NFS_MOUNT_LOOKUP_CACHE_NONEG;
--					break;
--				case Opt_lookupcache_none:
--					ctx->flags |= NFS_MOUNT_LOOKUP_CACHE_NONEG|NFS_MOUNT_LOOKUP_CACHE_NONE;
--					break;
--				default:
--					dfprintk(MOUNT, "NFS:   invalid "
--							"lookupcache argument\n");
--					return -EINVAL;
--			};
-+		case Opt_local_lock_flock:
-+			ctx->flags |= NFS_MOUNT_LOCAL_FLOCK;
- 			break;
--		case Opt_fscache_uniq:
--			if (nfs_get_option_str(args, &ctx->fscache_uniq))
--				goto out_nomem;
--			ctx->options |= NFS_OPTION_FSCACHE;
-+		case Opt_local_lock_posix:
-+			ctx->flags |= NFS_MOUNT_LOCAL_FCNTL;
- 			break;
--		case Opt_local_lock:
--			string = match_strdup(args);
--			if (string == NULL)
--				goto out_nomem;
--			token = match_token(string, nfs_local_lock_tokens,
--					args);
--			kfree(string);
--			switch (token) {
--			case Opt_local_lock_all:
--				ctx->flags |= (NFS_MOUNT_LOCAL_FLOCK |
--					       NFS_MOUNT_LOCAL_FCNTL);
--				break;
--			case Opt_local_lock_flock:
--				ctx->flags |= NFS_MOUNT_LOCAL_FLOCK;
--				break;
--			case Opt_local_lock_posix:
--				ctx->flags |= NFS_MOUNT_LOCAL_FCNTL;
--				break;
--			case Opt_local_lock_none:
--				ctx->flags &= ~(NFS_MOUNT_LOCAL_FLOCK |
--						NFS_MOUNT_LOCAL_FCNTL);
--				break;
--			default:
--				dfprintk(MOUNT, "NFS:	invalid	"
--						"local_lock argument\n");
--				return -EINVAL;
--			};
-+		case Opt_local_lock_none:
-+			ctx->flags &= ~(NFS_MOUNT_LOCAL_FLOCK |
-+					NFS_MOUNT_LOCAL_FCNTL);
- 			break;
-+		default:
-+			dfprintk(MOUNT, "NFS:	invalid	"
-+				 "local_lock argument\n");
-+			return -EINVAL;
-+		};
-+		break;
+ 	dfprintk(MOUNT, "<-- nfs4_try_mount() = %d%s\n",
+ 		 PTR_ERR_OR_ZERO(res),
+@@ -258,8 +249,6 @@ static struct dentry *nfs4_referral_mount(struct file_system_type *fs_type,
+ 		.set_security = nfs_clone_sb_security,
+ 		.cloned = data,
+ 	};
+-	char *export_path;
+-	struct vfsmount *root_mnt;
+ 	struct dentry *res;
  
- 		/*
- 		 * Special options
- 		 */
--		case Opt_sloppy:
--			ctx->sloppy = 1;
--			dfprintk(MOUNT, "NFS:   relaxing parsing rules\n");
--			break;
--		case Opt_userspace:
--		case Opt_deprecated:
--			dfprintk(MOUNT, "NFS:   ignoring mount option "
--					"'%s'\n", p);
--			break;
-+	case Opt_sloppy:
-+		ctx->sloppy = 1;
-+		dfprintk(MOUNT, "NFS:   relaxing parsing rules\n");
-+		break;
-+	case Opt_userspace:
-+	case Opt_deprecated:
-+		dfprintk(MOUNT, "NFS:   ignoring mount option "
-+			 "'%s'\n", p);
-+		break;
+ 	dprintk("--> nfs4_referral_mount()\n");
+@@ -268,13 +257,10 @@ static struct dentry *nfs4_referral_mount(struct file_system_type *fs_type,
+ 	if (!mount_info.mntfh)
+ 		return ERR_PTR(-ENOMEM);
  
--		default:
--			dfprintk(MOUNT, "NFS:   unrecognized mount option "
--					"'%s'\n", p);
--			return -EINVAL;
--		}
-+	default:
-+		dfprintk(MOUNT, "NFS:   unrecognized mount option "
-+			 "'%s'\n", p);
-+		return -EINVAL;
- 	}
+-	export_path = data->mnt_path;
+-	root_mnt = nfs_do_root_mount(
+-			nfs4_create_referral_server(mount_info.cloned,
+-						    mount_info.mntfh),
+-			flags, &mount_info, data->hostname);
++	res = do_nfs4_mount(nfs4_create_referral_server(mount_info.cloned,
++							mount_info.mntfh),
++			    flags, &mount_info, data->hostname, data->mnt_path);
  
- 	return 0;
+-	res = nfs_follow_remote_path(root_mnt, export_path);
+ 	dprintk("<-- nfs4_referral_mount() = %d%s\n",
+ 		PTR_ERR_OR_ZERO(res),
+ 		IS_ERR(res) ? " [error]" : "");
 -- 
 2.17.2
 
