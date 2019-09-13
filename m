@@ -3,257 +3,193 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
 X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS
-	autolearn=unavailable autolearn_force=no version=3.4.0
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
+	URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 81F6BC49ED7
-	for <linux-nfs@archiver.kernel.org>; Fri, 13 Sep 2019 12:18:55 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id EEF56C49ED7
+	for <linux-nfs@archiver.kernel.org>; Fri, 13 Sep 2019 12:18:57 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 55C5920830
-	for <linux-nfs@archiver.kernel.org>; Fri, 13 Sep 2019 12:18:55 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id C75D021479
+	for <linux-nfs@archiver.kernel.org>; Fri, 13 Sep 2019 12:18:57 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2388188AbfIMMSk (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 13 Sep 2019 08:18:40 -0400
-Received: from mx1.redhat.com ([209.132.183.28]:41464 "EHLO mx1.redhat.com"
+        id S2388253AbfIMMS4 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 13 Sep 2019 08:18:56 -0400
+Received: from mx1.redhat.com ([209.132.183.28]:33624 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1729752AbfIMMRv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 13 Sep 2019 08:17:51 -0400
-Received: from smtp.corp.redhat.com (int-mx06.intmail.prod.int.phx2.redhat.com [10.5.11.16])
+        id S1729564AbfIMMRu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 13 Sep 2019 08:17:50 -0400
+Received: from smtp.corp.redhat.com (int-mx03.intmail.prod.int.phx2.redhat.com [10.5.11.13])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 91C8C875221;
+        by mx1.redhat.com (Postfix) with ESMTPS id 0EB88307CDEA;
         Fri, 13 Sep 2019 12:17:50 +0000 (UTC)
 Received: from coeurl.usersys.redhat.com (ovpn-122-52.rdu2.redhat.com [10.10.122.52])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 5BCAF5C207;
-        Fri, 13 Sep 2019 12:17:50 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTP id D1EA36061E;
+        Fri, 13 Sep 2019 12:17:49 +0000 (UTC)
 Received: by coeurl.usersys.redhat.com (Postfix, from userid 1000)
-        id 1AC7B20ED4; Fri, 13 Sep 2019 08:17:49 -0400 (EDT)
+        id C70C520C2E; Fri, 13 Sep 2019 08:17:48 -0400 (EDT)
 From:   Scott Mayhew <smayhew@redhat.com>
 To:     anna.schumaker@netapp.com, trond.myklebust@hammerspace.com
 Cc:     dhowells@redhat.com, viro@zeniv.linux.org.uk,
         linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         linux-kernel@vger.kernel.org
-Subject: [PATCH v4 21/26] NFS: Add a small buffer in nfs_fs_context to avoid string dup
-Date:   Fri, 13 Sep 2019 08:17:43 -0400
-Message-Id: <20190913121748.25391-22-smayhew@redhat.com>
+Subject: [PATCH v4 09/26] nfs: don't bother passing nfs_subversion to ->try_mount() and nfs_fs_mount_common()
+Date:   Fri, 13 Sep 2019 08:17:31 -0400
+Message-Id: <20190913121748.25391-10-smayhew@redhat.com>
 In-Reply-To: <20190913121748.25391-1-smayhew@redhat.com>
 References: <20190913121748.25391-1-smayhew@redhat.com>
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.16
-X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.6.2 (mx1.redhat.com [10.5.110.68]); Fri, 13 Sep 2019 12:17:50 +0000 (UTC)
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.13
+X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.49]); Fri, 13 Sep 2019 12:17:50 +0000 (UTC)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: David Howells <dhowells@redhat.com>
+From: Al Viro <viro@zeniv.linux.org.uk>
 
-Add a small buffer in nfs_fs_context to avoid string duplication when
-parsing numbers.  Also make the parsing function wrapper place the parsed
-integer directly in the appropriate nfs_fs_context struct member.
-
-Signed-off-by: David Howells <dhowells@redhat.com>
+Reviewed-by: David Howells <dhowells@redhat.com>
 Signed-off-by: Al Viro <viro@zeniv.linux.org.uk>
 ---
- fs/nfs/fs_context.c | 98 +++++++++++++++++++++------------------------
- fs/nfs/internal.h   |  2 +
- 2 files changed, 48 insertions(+), 52 deletions(-)
+ fs/nfs/internal.h       |  6 ++----
+ fs/nfs/nfs4_fs.h        |  2 +-
+ fs/nfs/nfs4super.c      |  5 ++---
+ fs/nfs/super.c          | 19 ++++++++-----------
+ include/linux/nfs_xdr.h |  3 +--
+ 5 files changed, 14 insertions(+), 21 deletions(-)
 
-diff --git a/fs/nfs/fs_context.c b/fs/nfs/fs_context.c
-index e2b584354731..ad502b37a3f3 100644
---- a/fs/nfs/fs_context.c
-+++ b/fs/nfs/fs_context.c
-@@ -468,27 +468,38 @@ static int nfs_get_option_str(substring_t args[], char **option)
- 	return !*option;
- }
- 
--static int nfs_get_option_ul(substring_t args[], unsigned long *option)
-+static int nfs_get_option_ui(struct nfs_fs_context *ctx,
-+			     substring_t args[], unsigned int *option)
- {
--	int rc;
--	char *string;
-+	match_strlcpy(ctx->buf, args, sizeof(ctx->buf));
-+	return kstrtouint(ctx->buf, 10, option);
-+}
- 
--	string = match_strdup(args);
--	if (string == NULL)
--		return -ENOMEM;
--	rc = kstrtoul(string, 10, option);
--	kfree(string);
-+static int nfs_get_option_ui_bound(struct nfs_fs_context *ctx,
-+				   substring_t args[], unsigned int *option,
-+				   unsigned int l_bound, unsigned u_bound)
-+{
-+	int ret;
- 
--	return rc;
-+	match_strlcpy(ctx->buf, args, sizeof(ctx->buf));
-+	ret = kstrtouint(ctx->buf, 10, option);
-+	if (ret < 0)
-+		return ret;
-+	if (*option < l_bound || *option > u_bound)
-+		return -ERANGE;
-+	return 0;
- }
- 
--static int nfs_get_option_ul_bound(substring_t args[], unsigned long *option,
--		unsigned long l_bound, unsigned long u_bound)
-+static int nfs_get_option_us_bound(struct nfs_fs_context *ctx,
-+				   substring_t args[], unsigned short *option,
-+				   unsigned short l_bound,
-+				   unsigned short u_bound)
- {
- 	int ret;
- 
--	ret = nfs_get_option_ul(args, option);
--	if (ret != 0)
-+	match_strlcpy(ctx->buf, args, sizeof(ctx->buf));
-+	ret = kstrtou16(ctx->buf, 10, option);
-+	if (ret < 0)
- 		return ret;
- 	if (*option < l_bound || *option > u_bound)
- 		return -ERANGE;
-@@ -501,7 +512,6 @@ static int nfs_get_option_ul_bound(substring_t args[], unsigned long *option,
- static int nfs_fs_context_parse_option(struct nfs_fs_context *ctx, char *p)
- {
- 	substring_t args[MAX_OPT_ARGS];
--	unsigned long option;
- 	char *string;
- 	int token, rc;
- 
-@@ -609,86 +619,70 @@ static int nfs_fs_context_parse_option(struct nfs_fs_context *ctx, char *p)
- 		 * options that take numeric values
- 		 */
- 	case Opt_port:
--		if (nfs_get_option_ul(args, &option) ||
--		    option > USHRT_MAX)
-+		if (nfs_get_option_ui_bound(ctx, args, &ctx->nfs_server.port,
-+					    0, USHRT_MAX))
- 			goto out_invalid_value;
--		ctx->nfs_server.port = option;
- 		break;
- 	case Opt_rsize:
--		if (nfs_get_option_ul(args, &option))
-+		if (nfs_get_option_ui(ctx, args, &ctx->rsize))
- 			goto out_invalid_value;
--		ctx->rsize = option;
- 		break;
- 	case Opt_wsize:
--		if (nfs_get_option_ul(args, &option))
-+		if (nfs_get_option_ui(ctx, args, &ctx->wsize))
- 			goto out_invalid_value;
--		ctx->wsize = option;
- 		break;
- 	case Opt_bsize:
--		if (nfs_get_option_ul(args, &option))
-+		if (nfs_get_option_ui(ctx, args, &ctx->bsize))
- 			goto out_invalid_value;
--		ctx->bsize = option;
- 		break;
- 	case Opt_timeo:
--		if (nfs_get_option_ul_bound(args, &option, 1, INT_MAX))
-+		if (nfs_get_option_ui_bound(ctx, args, &ctx->timeo, 1, INT_MAX))
- 			goto out_invalid_value;
--		ctx->timeo = option;
- 		break;
- 	case Opt_retrans:
--		if (nfs_get_option_ul_bound(args, &option, 0, INT_MAX))
-+		if (nfs_get_option_ui_bound(ctx, args, &ctx->retrans, 0, INT_MAX))
- 			goto out_invalid_value;
--		ctx->retrans = option;
- 		break;
- 	case Opt_acregmin:
--		if (nfs_get_option_ul(args, &option))
-+		if (nfs_get_option_ui(ctx, args, &ctx->acregmin))
- 			goto out_invalid_value;
--		ctx->acregmin = option;
- 		break;
- 	case Opt_acregmax:
--		if (nfs_get_option_ul(args, &option))
-+		if (nfs_get_option_ui(ctx, args, &ctx->acregmax))
- 			goto out_invalid_value;
--		ctx->acregmax = option;
- 		break;
- 	case Opt_acdirmin:
--		if (nfs_get_option_ul(args, &option))
-+		if (nfs_get_option_ui(ctx, args, &ctx->acdirmin))
- 			goto out_invalid_value;
--		ctx->acdirmin = option;
- 		break;
- 	case Opt_acdirmax:
--		if (nfs_get_option_ul(args, &option))
-+		if (nfs_get_option_ui(ctx, args, &ctx->acdirmax))
- 			goto out_invalid_value;
--		ctx->acdirmax = option;
- 		break;
- 	case Opt_actimeo:
--		if (nfs_get_option_ul(args, &option))
-+		if (nfs_get_option_ui(ctx, args, &ctx->acdirmax))
- 			goto out_invalid_value;
- 		ctx->acregmin = ctx->acregmax =
--			ctx->acdirmin = ctx->acdirmax = option;
-+			ctx->acdirmin = ctx->acdirmax;
- 		break;
- 	case Opt_namelen:
--		if (nfs_get_option_ul(args, &option))
-+		if (nfs_get_option_ui(ctx, args, &ctx->namlen))
- 			goto out_invalid_value;
--		ctx->namlen = option;
- 		break;
- 	case Opt_mountport:
--		if (nfs_get_option_ul(args, &option) ||
--		    option > USHRT_MAX)
-+		if (nfs_get_option_ui_bound(ctx, args, &ctx->mount_server.port,
-+					    0, USHRT_MAX))
- 			goto out_invalid_value;
--		ctx->mount_server.port = option;
- 		break;
- 	case Opt_mountvers:
--		if (nfs_get_option_ul(args, &option) ||
--		    option < NFS_MNT_VERSION ||
--		    option > NFS_MNT3_VERSION)
-+		if (nfs_get_option_ui_bound(ctx, args, &ctx->mount_server.version,
-+					    NFS_MNT_VERSION, NFS_MNT3_VERSION))
- 			goto out_invalid_value;
--		ctx->mount_server.version = option;
- 		break;
- 	case Opt_minorversion:
--		if (nfs_get_option_ul(args, &option))
--			goto out_invalid_value;
--		if (option > NFS4_MAX_MINOR_VERSION)
-+		if (nfs_get_option_ui_bound(ctx, args, &ctx->minorversion,
-+					    0, NFS4_MAX_MINOR_VERSION))
- 			goto out_invalid_value;
--		ctx->minorversion = option;
- 		break;
- 
- 		/*
-@@ -820,9 +814,9 @@ static int nfs_fs_context_parse_option(struct nfs_fs_context *ctx, char *p)
- 			goto out_invalid_address;
- 		break;
- 	case Opt_nconnect:
--		if (nfs_get_option_ul_bound(args, &option, 1, NFS_MAX_CONNECTIONS))
-+		if (nfs_get_option_us_bound(ctx, args, &ctx->nfs_server.nconnect,
-+					    1, NFS_MAX_CONNECTIONS))
- 			goto out_invalid_value;
--		ctx->nfs_server.nconnect = option;
- 		break;
- 	case Opt_lookupcache:
- 		string = match_strdup(args);
 diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index d084182f8e43..11df0d1f9fd4 100644
+index 0c42cf685d4b..3334d0f3ecf9 100644
 --- a/fs/nfs/internal.h
 +++ b/fs/nfs/internal.h
-@@ -130,6 +130,8 @@ struct nfs_fs_context {
+@@ -401,12 +401,10 @@ extern struct file_system_type nfs_xdev_fs_type;
+ extern struct file_system_type nfs4_referral_fs_type;
+ #endif
+ bool nfs_auth_info_match(const struct nfs_auth_info *, rpc_authflavor_t);
+-struct dentry *nfs_try_mount(int, const char *, struct nfs_mount_info *,
+-			struct nfs_subversion *);
++struct dentry *nfs_try_mount(int, const char *, struct nfs_mount_info *);
+ int nfs_set_sb_security(struct super_block *, struct dentry *, struct nfs_mount_info *);
+ int nfs_clone_sb_security(struct super_block *, struct dentry *, struct nfs_mount_info *);
+-struct dentry *nfs_fs_mount_common(int, const char *,
+-				   struct nfs_mount_info *, struct nfs_subversion *);
++struct dentry *nfs_fs_mount_common(int, const char *, struct nfs_mount_info *);
+ struct dentry *nfs_fs_mount(struct file_system_type *, int, const char *, void *);
+ struct dentry * nfs_xdev_mount_common(struct file_system_type *, int,
+ 		const char *, struct nfs_mount_info *);
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index 3564da1ba8a1..67ecd7bb512f 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -517,7 +517,7 @@ extern const nfs4_stateid invalid_stateid;
+ /* nfs4super.c */
+ struct nfs_mount_info;
+ extern struct nfs_subversion nfs_v4;
+-struct dentry *nfs4_try_mount(int, const char *, struct nfs_mount_info *, struct nfs_subversion *);
++struct dentry *nfs4_try_mount(int, const char *, struct nfs_mount_info *);
+ extern bool nfs4_disable_idmapping;
+ extern unsigned short max_session_slots;
+ extern unsigned short max_session_cb_slots;
+diff --git a/fs/nfs/nfs4super.c b/fs/nfs/nfs4super.c
+index 88d83cab8e9b..83bca2ea566c 100644
+--- a/fs/nfs/nfs4super.c
++++ b/fs/nfs/nfs4super.c
+@@ -98,7 +98,7 @@ static struct dentry *
+ nfs4_remote_mount(struct file_system_type *fs_type, int flags,
+ 		  const char *dev_name, void *info)
+ {
+-	return nfs_fs_mount_common(flags, dev_name, info, &nfs_v4);
++	return nfs_fs_mount_common(flags, dev_name, info);
+ }
  
- 	void			*lsm_opts;
- 	struct net		*net;
-+
-+	char			buf[32];	/* Parse buffer */
- };
+ struct nfs_referral_count {
+@@ -216,8 +216,7 @@ static struct dentry *do_nfs4_mount(struct nfs_server *server, int flags,
+ }
  
- /* mount_clnt.c */
+ struct dentry *nfs4_try_mount(int flags, const char *dev_name,
+-			      struct nfs_mount_info *mount_info,
+-			      struct nfs_subversion *nfs_mod)
++			      struct nfs_mount_info *mount_info)
+ {
+ 	struct nfs_parsed_mount_data *data = mount_info->parsed;
+ 	struct dentry *res;
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 2a6b4e4b0a2d..ca6295945880 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -1893,15 +1893,15 @@ static struct nfs_server *nfs_try_mount_request(struct nfs_mount_info *mount_inf
+ }
+ 
+ struct dentry *nfs_try_mount(int flags, const char *dev_name,
+-			     struct nfs_mount_info *mount_info,
+-			     struct nfs_subversion *nfs_mod)
++			     struct nfs_mount_info *mount_info)
+ {
++	struct nfs_subversion *nfs_mod = mount_info->nfs_mod;
+ 	if (mount_info->parsed->need_mount)
+ 		mount_info->server = nfs_try_mount_request(mount_info, nfs_mod);
+ 	else
+ 		mount_info->server = nfs_mod->rpc_ops->create_server(mount_info, nfs_mod);
+ 
+-	return nfs_fs_mount_common(flags, dev_name, mount_info, nfs_mod);
++	return nfs_fs_mount_common(flags, dev_name, mount_info);
+ }
+ EXPORT_SYMBOL_GPL(nfs_try_mount);
+ 
+@@ -2623,8 +2623,7 @@ int nfs_clone_sb_security(struct super_block *s, struct dentry *mntroot,
+ EXPORT_SYMBOL_GPL(nfs_clone_sb_security);
+ 
+ struct dentry *nfs_fs_mount_common(int flags, const char *dev_name,
+-				   struct nfs_mount_info *mount_info,
+-				   struct nfs_subversion *nfs_mod)
++				   struct nfs_mount_info *mount_info)
+ {
+ 	struct super_block *s;
+ 	struct dentry *mntroot = ERR_PTR(-ENOMEM);
+@@ -2652,7 +2651,8 @@ struct dentry *nfs_fs_mount_common(int flags, const char *dev_name,
+ 			sb_mntdata.mntflags |= SB_SYNCHRONOUS;
+ 
+ 	/* Get a superblock - note that we may end up sharing one that already exists */
+-	s = sget(nfs_mod->nfs_fs, compare_super, nfs_set_super, flags, &sb_mntdata);
++	s = sget(mount_info->nfs_mod->nfs_fs, compare_super, nfs_set_super,
++		 flags, &sb_mntdata);
+ 	if (IS_ERR(s)) {
+ 		mntroot = ERR_CAST(s);
+ 		goto out_err_nosb;
+@@ -2738,7 +2738,7 @@ struct dentry *nfs_fs_mount(struct file_system_type *fs_type,
+ 	}
+ 	mount_info.nfs_mod = nfs_mod;
+ 
+-	mntroot = nfs_mod->rpc_ops->try_mount(flags, dev_name, &mount_info, nfs_mod);
++	mntroot = nfs_mod->rpc_ops->try_mount(flags, dev_name, &mount_info);
+ 
+ 	put_nfs_version(nfs_mod);
+ out:
+@@ -2772,10 +2772,7 @@ static struct dentry *
+ nfs_xdev_mount(struct file_system_type *fs_type, int flags,
+ 		const char *dev_name, void *raw_data)
+ {
+-	struct nfs_mount_info *info = raw_data;
+-	struct nfs_subversion *nfs_mod = NFS_SB(info->cloned->sb)->nfs_client->cl_nfs_mod;
+-
+-	return nfs_fs_mount_common(flags, dev_name, info, nfs_mod);
++	return nfs_fs_mount_common(flags, dev_name, raw_data);
+ }
+ 
+ #if IS_ENABLED(CONFIG_NFS_V4)
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 9b8324ec08f3..4fdf4a523185 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -1638,8 +1638,7 @@ struct nfs_rpc_ops {
+ 			    struct nfs_fsinfo *);
+ 	struct vfsmount *(*submount) (struct nfs_server *, struct dentry *,
+ 				      struct nfs_fh *, struct nfs_fattr *);
+-	struct dentry *(*try_mount) (int, const char *, struct nfs_mount_info *,
+-				     struct nfs_subversion *);
++	struct dentry *(*try_mount) (int, const char *, struct nfs_mount_info *);
+ 	int	(*getattr) (struct nfs_server *, struct nfs_fh *,
+ 			    struct nfs_fattr *, struct nfs4_label *,
+ 			    struct inode *);
 -- 
 2.17.2
 
