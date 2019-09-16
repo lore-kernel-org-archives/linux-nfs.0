@@ -2,65 +2,65 @@ Return-Path: <SRS0=zNNA=XL=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+X-Spam-Status: No, score=-6.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
-	autolearn_force=no version=3.4.0
+	SPF_HELO_NONE,SPF_PASS,UNWANTED_LANGUAGE_BODY,URIBL_BLOCKED,USER_AGENT_GIT
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 27578C4CECE
-	for <linux-nfs@archiver.kernel.org>; Mon, 16 Sep 2019 21:14:11 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1D10EC4CECD
+	for <linux-nfs@archiver.kernel.org>; Mon, 16 Sep 2019 21:14:14 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id E725D2067B
-	for <linux-nfs@archiver.kernel.org>; Mon, 16 Sep 2019 21:14:10 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id E32DE2067B
+	for <linux-nfs@archiver.kernel.org>; Mon, 16 Sep 2019 21:14:13 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="vgeS23Bu"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="aGaEI/U8"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2391664AbfIPVOK (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 16 Sep 2019 17:14:10 -0400
-Received: from mail-io1-f65.google.com ([209.85.166.65]:40977 "EHLO
-        mail-io1-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2391594AbfIPVOK (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 16 Sep 2019 17:14:10 -0400
-Received: by mail-io1-f65.google.com with SMTP id r26so2428198ioh.8
-        for <linux-nfs@vger.kernel.org>; Mon, 16 Sep 2019 14:14:09 -0700 (PDT)
+        id S2391594AbfIPVON (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 16 Sep 2019 17:14:13 -0400
+Received: from mail-io1-f68.google.com ([209.85.166.68]:35221 "EHLO
+        mail-io1-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2391726AbfIPVON (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 16 Sep 2019 17:14:13 -0400
+Received: by mail-io1-f68.google.com with SMTP id q10so2534013iop.2
+        for <linux-nfs@vger.kernel.org>; Mon, 16 Sep 2019 14:14:12 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references;
-        bh=hjAJTKN2Wr909eRk4xvtUyAslhnEEJ+P1ZIFM0yaDRI=;
-        b=vgeS23BurDTFBecbxcL1JBbghsCYZzqkVvqZuDoEJuW/boP0xOXyNwkoEGArNi2AHJ
-         610H0IcNYi1AsM8nXq+/2XE8/fQArw+1td1orzhWIDIjeK3hpZNSZTWISFHccXcv7KDr
-         rM4rQNESlC/R5YhcHZuCqQLKCIgke+qx8eZWNvcIFu9lZtFvQOzAcLZaqmx/LiS+287H
-         pIm6RpcNs+hQta8dFBYhkMXf88Ttv80sAc/7ltAdA2OMiZ3jMx4eoc4nyyme6jaHo9kZ
-         +IDA9mm1UyvB6YSmNHGHhpv2wxOQDcYXzJiyt6RFHINTiSrmZIdOD4/4Cv6bj4ADjRk+
-         6d8w==
+        bh=FkJA5NZVA3SfnZ9SpaIKC970zxZFIqt+2LS0HGfJkFM=;
+        b=aGaEI/U846Un/LOj/dsdEYNaCz/YG7OimKyXrggszWFRGPYvJCfhXE3J6TxZXIIkDs
+         ejKA55lRCvRPZz1h8J7cbhjrDuMteacFFz6Did424MxHMstCIU3eCxKhTxd1/1bDFYC+
+         EeYXZDfyrUsATehCQgnW2mRMIf/R0WtYOs1qs5URFvOHOp/jn4eGVC1qPWWe8HWhM9gz
+         5iFPM6LBn7mvOUoNANaO+7udl10J2Cnz6Rf47LDoxIAVVQJbfcLd2BoNuAXcJMS1x96W
+         gSxiZP9KfW5SuocfuDq5odNCCG4u2f3IilnpFyp3CuM8GKNB6gbFCoSWLCljPyRttDtd
+         d85A==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references;
-        bh=hjAJTKN2Wr909eRk4xvtUyAslhnEEJ+P1ZIFM0yaDRI=;
-        b=E9QAUmb9P2lnH3CxmMneVkVCmdcTMmMbHIUzGe99J1FE0RSAGi7GhD1Umy1SXhwnzW
-         Vntu9sLPX6Gbb/0qNpU137MTmOFi9Zn/1+fZaW1ZoUwC8im5nU9yeFrVX8Ai8mcd8UAD
-         vu7nrqI9OnNzJHfD7eC3RskJpFK+uqGpiOLisxuUBdNag8zoZz0TV3YkpT2QzNPVQlHQ
-         4uaZm85/MFHLnQr2RmJ26dhot3EjoxN9XeJwmTbLsTdsT/lajXNJIoIz/8x0Zmb5WHaT
-         kw2Qpter0H+UXni1KIY/3+eoo6bpueLRHAWoLE+y30oSeDwNB1b800mcy6EcLL50nUhD
-         LIcQ==
-X-Gm-Message-State: APjAAAXB+2PoXgMfMWxYhEqzL2uRcFva0NYBtr7r3lVKNlz9smxjQXuR
-        agE2qum2P0s5mkOXATxy2u8=
-X-Google-Smtp-Source: APXvYqy0OPTRvg3NKHK1S22pg0achUvVKRbPL0uaYb9kHDR7Xu3nScxQYwSLacrkkDOsAKvbYP7oTQ==
-X-Received: by 2002:a5d:964f:: with SMTP id d15mr376587ios.230.1568668449244;
-        Mon, 16 Sep 2019 14:14:09 -0700 (PDT)
+        bh=FkJA5NZVA3SfnZ9SpaIKC970zxZFIqt+2LS0HGfJkFM=;
+        b=Vu8Gy/y0qBr14MdxZ7sBO6/FwjYnmk71oCsj2k1OweGyI2VJqYmfuprOc/9vwmFo7c
+         AV0w/CJt8YwzSiUR1Q7SXPo/1e/pEvEIJXG6ISa5TRDp1Vzj/IH3fa5aSE31+mCLZg8D
+         LaJ87c43+VxoH5th1khZrc4esUhf4ozvxdjlH2XnTL20DbuVvJnwcpgwagB8zzb6Wfsz
+         wkWh9z8qQg0Ck7sJX7su992knTeTS6EypZ/bW21JQnvQjtpOLrDCpveWADJ/jBhH2Ha8
+         H+jzG9psdYNR3VEAb8/HEMoZSGqVbGwTXTKFsFU+NA4ZPsr92lY8zFHumN9UJSxmRvoa
+         qwgw==
+X-Gm-Message-State: APjAAAUySV9gjINK4e4Zv8YqF1QGQr4TL7sK5yZNC8rJDmmSEGBYYMKS
+        QdM2rTD6rm9tK79tC7iLvdw=
+X-Google-Smtp-Source: APXvYqyALkxOyPSGHhdWe6O6OX0i+qahVpFmfm8FUyZQqk0t6C05wBAFKm8ubT0cVwjtpDW/l4h8oA==
+X-Received: by 2002:a6b:ec16:: with SMTP id c22mr342384ioh.185.1568668452377;
+        Mon, 16 Sep 2019 14:14:12 -0700 (PDT)
 Received: from Olgas-MBP-201.attlocal.net (172-10-226-31.lightspeed.livnmi.sbcglobal.net. [172.10.226.31])
-        by smtp.gmail.com with ESMTPSA id l186sm71853ioa.54.2019.09.16.14.14.08
+        by smtp.gmail.com with ESMTPSA id l186sm71853ioa.54.2019.09.16.14.14.11
         (version=TLS1 cipher=AES128-SHA bits=128/128);
-        Mon, 16 Sep 2019 14:14:08 -0700 (PDT)
+        Mon, 16 Sep 2019 14:14:11 -0700 (PDT)
 From:   Olga Kornievskaia <olga.kornievskaia@gmail.com>
 To:     trond.myklebust@hammerspace.com, anna.schumaker@netapp.com,
         bfields@redhat.com
 Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH v7 14/19] NFSD COPY_NOTIFY xdr
-Date:   Mon, 16 Sep 2019 17:13:48 -0400
-Message-Id: <20190916211353.18802-15-olga.kornievskaia@gmail.com>
+Subject: [PATCH v7 17/19] NFSD generalize nfsd4_compound_state flag names
+Date:   Mon, 16 Sep 2019 17:13:51 -0400
+Message-Id: <20190916211353.18802-18-olga.kornievskaia@gmail.com>
 X-Mailer: git-send-email 2.10.1 (Apple Git-78)
 In-Reply-To: <20190916211353.18802-1-olga.kornievskaia@gmail.com>
 References: <20190916211353.18802-1-olga.kornievskaia@gmail.com>
@@ -69,226 +69,93 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+From: Olga Kornievskaia <kolga@netapp.com>
+
+Allow for sid_flag field non-stateid use.
+
+Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- fs/nfsd/nfs4proc.c | 28 +++++++++++++++++
- fs/nfsd/nfs4xdr.c  | 90 ++++++++++++++++++++++++++++++++++++++++++++++++++++--
- fs/nfsd/xdr4.h     | 13 ++++++++
- 3 files changed, 129 insertions(+), 2 deletions(-)
+ fs/nfsd/nfs4proc.c  | 8 ++++----
+ fs/nfsd/nfs4state.c | 7 ++++---
+ fs/nfsd/xdr4.h      | 6 +++---
+ 3 files changed, 11 insertions(+), 10 deletions(-)
 
 diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 6c0d216..05519a2 100644
+index 75ecdbd..90d0b67 100644
 --- a/fs/nfsd/nfs4proc.c
 +++ b/fs/nfsd/nfs4proc.c
-@@ -1339,6 +1339,13 @@ struct nfsd4_copy *
+@@ -531,9 +531,9 @@ static __be32 nfsd4_open_omfg(struct svc_rqst *rqstp, struct nfsd4_compound_stat
+ 		return nfserr_restorefh;
+ 
+ 	fh_dup2(&cstate->current_fh, &cstate->save_fh);
+-	if (HAS_STATE_ID(cstate, SAVED_STATE_ID_FLAG)) {
++	if (HAS_CSTATE_FLAG(cstate, SAVED_STATE_ID_FLAG)) {
+ 		memcpy(&cstate->current_stateid, &cstate->save_stateid, sizeof(stateid_t));
+-		SET_STATE_ID(cstate, CURRENT_STATE_ID_FLAG);
++		SET_CSTATE_FLAG(cstate, CURRENT_STATE_ID_FLAG);
+ 	}
+ 	return nfs_ok;
+ }
+@@ -543,9 +543,9 @@ static __be32 nfsd4_open_omfg(struct svc_rqst *rqstp, struct nfsd4_compound_stat
+ 	     union nfsd4_op_u *u)
+ {
+ 	fh_dup2(&cstate->save_fh, &cstate->current_fh);
+-	if (HAS_STATE_ID(cstate, CURRENT_STATE_ID_FLAG)) {
++	if (HAS_CSTATE_FLAG(cstate, CURRENT_STATE_ID_FLAG)) {
+ 		memcpy(&cstate->save_stateid, &cstate->current_stateid, sizeof(stateid_t));
+-		SET_STATE_ID(cstate, SAVED_STATE_ID_FLAG);
++		SET_CSTATE_FLAG(cstate, SAVED_STATE_ID_FLAG);
+ 	}
+ 	return nfs_ok;
+ }
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 062c0c4..81c52282 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -7928,7 +7928,8 @@ static int nfs4_state_create_net(struct net *net)
+ static void
+ get_stateid(struct nfsd4_compound_state *cstate, stateid_t *stateid)
+ {
+-	if (HAS_STATE_ID(cstate, CURRENT_STATE_ID_FLAG) && CURRENT_STATEID(stateid))
++	if (HAS_CSTATE_FLAG(cstate, CURRENT_STATE_ID_FLAG) &&
++	    CURRENT_STATEID(stateid))
+ 		memcpy(stateid, &cstate->current_stateid, sizeof(stateid_t));
  }
  
- static __be32
-+nfsd4_copy_notify(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
-+		  union nfsd4_op_u *u)
-+{
-+	return nfserr_notsupp;
-+}
-+
-+static __be32
- nfsd4_fallocate(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		struct nfsd4_fallocate *fallocate, int flags)
+@@ -7937,14 +7938,14 @@ static int nfs4_state_create_net(struct net *net)
  {
-@@ -2291,6 +2298,21 @@ static inline u32 nfsd4_offload_status_rsize(struct svc_rqst *rqstp,
- 		1 /* osr_complete<1> optional 0 for now */) * sizeof(__be32);
+ 	if (cstate->minorversion) {
+ 		memcpy(&cstate->current_stateid, stateid, sizeof(stateid_t));
+-		SET_STATE_ID(cstate, CURRENT_STATE_ID_FLAG);
++		SET_CSTATE_FLAG(cstate, CURRENT_STATE_ID_FLAG);
+ 	}
  }
  
-+static inline u32 nfsd4_copy_notify_rsize(struct svc_rqst *rqstp,
-+					struct nfsd4_op *op)
-+{
-+	return (op_encode_hdr_size +
-+		3 /* cnr_lease_time */ +
-+		1 /* We support one cnr_source_server */ +
-+		1 /* cnr_stateid seq */ +
-+		op_encode_stateid_maxsz /* cnr_stateid */ +
-+		1 /* num cnr_source_server*/ +
-+		1 /* nl4_type */ +
-+		1 /* nl4 size */ +
-+		XDR_QUADLEN(NFS4_OPAQUE_LIMIT) /*nl4_loc + nl4_loc_sz */)
-+		* sizeof(__be32);
-+}
-+
- #ifdef CONFIG_NFSD_PNFS
- static inline u32 nfsd4_getdeviceinfo_rsize(struct svc_rqst *rqstp, struct nfsd4_op *op)
+ void
+ clear_current_stateid(struct nfsd4_compound_state *cstate)
  {
-@@ -2715,6 +2737,12 @@ static inline u32 nfsd4_seek_rsize(struct svc_rqst *rqstp, struct nfsd4_op *op)
- 		.op_name = "OP_OFFLOAD_CANCEL",
- 		.op_rsize_bop = nfsd4_only_status_rsize,
- 	},
-+	[OP_COPY_NOTIFY] = {
-+		.op_func = nfsd4_copy_notify,
-+		.op_flags = OP_MODIFIES_SOMETHING,
-+		.op_name = "OP_COPY_NOTIFY",
-+		.op_rsize_bop = nfsd4_copy_notify_rsize,
-+	},
- };
- 
- /**
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 3eccc81..ab6ca65 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -1838,6 +1838,18 @@ static __be32 nfsd4_decode_nl4_server(struct nfsd4_compoundargs *argp,
+-	CLEAR_STATE_ID(cstate, CURRENT_STATE_ID_FLAG);
++	CLEAR_CSTATE_FLAG(cstate, CURRENT_STATE_ID_FLAG);
  }
  
- static __be32
-+nfsd4_decode_copy_notify(struct nfsd4_compoundargs *argp,
-+			 struct nfsd4_copy_notify *cn)
-+{
-+	int status;
-+
-+	status = nfsd4_decode_stateid(argp, &cn->cpn_src_stateid);
-+	if (status)
-+		return status;
-+	return nfsd4_decode_nl4_server(argp, &cn->cpn_dst);
-+}
-+
-+static __be32
- nfsd4_decode_seek(struct nfsd4_compoundargs *argp, struct nfsd4_seek *seek)
- {
- 	DECODE_HEAD;
-@@ -1938,7 +1950,7 @@ static __be32 nfsd4_decode_nl4_server(struct nfsd4_compoundargs *argp,
- 	/* new operations for NFSv4.2 */
- 	[OP_ALLOCATE]		= (nfsd4_dec)nfsd4_decode_fallocate,
- 	[OP_COPY]		= (nfsd4_dec)nfsd4_decode_copy,
--	[OP_COPY_NOTIFY]	= (nfsd4_dec)nfsd4_decode_notsupp,
-+	[OP_COPY_NOTIFY]	= (nfsd4_dec)nfsd4_decode_copy_notify,
- 	[OP_DEALLOCATE]		= (nfsd4_dec)nfsd4_decode_fallocate,
- 	[OP_IO_ADVISE]		= (nfsd4_dec)nfsd4_decode_notsupp,
- 	[OP_LAYOUTERROR]	= (nfsd4_dec)nfsd4_decode_notsupp,
-@@ -4323,6 +4335,46 @@ static __be32 nfsd4_encode_readv(struct nfsd4_compoundres *resp,
- }
- 
- static __be32
-+nfsd42_encode_nl4_server(struct nfsd4_compoundres *resp, struct nl4_server *ns)
-+{
-+	struct xdr_stream *xdr = &resp->xdr;
-+	struct nfs42_netaddr *addr;
-+	__be32 *p;
-+
-+	p = xdr_reserve_space(xdr, 4);
-+	*p++ = cpu_to_be32(ns->nl4_type);
-+
-+	switch (ns->nl4_type) {
-+	case NL4_NETADDR:
-+		addr = &ns->u.nl4_addr;
-+
-+		/* netid_len, netid, uaddr_len, uaddr (port included
-+		 * in RPCBIND_MAXUADDRLEN)
-+		 */
-+		p = xdr_reserve_space(xdr,
-+			4 /* netid len */ +
-+			(XDR_QUADLEN(addr->netid_len) * 4) +
-+			4 /* uaddr len */ +
-+			(XDR_QUADLEN(addr->addr_len) * 4));
-+		if (!p)
-+			return nfserr_resource;
-+
-+		*p++ = cpu_to_be32(addr->netid_len);
-+		p = xdr_encode_opaque_fixed(p, addr->netid,
-+					    addr->netid_len);
-+		*p++ = cpu_to_be32(addr->addr_len);
-+		p = xdr_encode_opaque_fixed(p, addr->addr,
-+					addr->addr_len);
-+		break;
-+	default:
-+		WARN_ON_ONCE(ns->nl4_type != NL4_NETADDR);
-+		return nfserr_inval;
-+	}
-+
-+	return 0;
-+}
-+
-+static __be32
- nfsd4_encode_copy(struct nfsd4_compoundres *resp, __be32 nfserr,
- 		  struct nfsd4_copy *copy)
- {
-@@ -4356,6 +4408,40 @@ static __be32 nfsd4_encode_readv(struct nfsd4_compoundres *resp,
- }
- 
- static __be32
-+nfsd4_encode_copy_notify(struct nfsd4_compoundres *resp, __be32 nfserr,
-+			 struct nfsd4_copy_notify *cn)
-+{
-+	struct xdr_stream *xdr = &resp->xdr;
-+	__be32 *p;
-+
-+	if (nfserr)
-+		return nfserr;
-+
-+	/* 8 sec, 4 nsec */
-+	p = xdr_reserve_space(xdr, 12);
-+	if (!p)
-+		return nfserr_resource;
-+
-+	/* cnr_lease_time */
-+	p = xdr_encode_hyper(p, cn->cpn_sec);
-+	*p++ = cpu_to_be32(cn->cpn_nsec);
-+
-+	/* cnr_stateid */
-+	nfserr = nfsd4_encode_stateid(xdr, &cn->cpn_cnr_stateid);
-+	if (nfserr)
-+		return nfserr;
-+
-+	/* cnr_src.nl_nsvr */
-+	p = xdr_reserve_space(xdr, 4);
-+	if (!p)
-+		return nfserr_resource;
-+
-+	*p++ = cpu_to_be32(1);
-+
-+	return nfsd42_encode_nl4_server(resp, &cn->cpn_src);
-+}
-+
-+static __be32
- nfsd4_encode_seek(struct nfsd4_compoundres *resp, __be32 nfserr,
- 		  struct nfsd4_seek *seek)
- {
-@@ -4452,7 +4538,7 @@ static __be32 nfsd4_encode_readv(struct nfsd4_compoundres *resp,
- 	/* NFSv4.2 operations */
- 	[OP_ALLOCATE]		= (nfsd4_enc)nfsd4_encode_noop,
- 	[OP_COPY]		= (nfsd4_enc)nfsd4_encode_copy,
--	[OP_COPY_NOTIFY]	= (nfsd4_enc)nfsd4_encode_noop,
-+	[OP_COPY_NOTIFY]	= (nfsd4_enc)nfsd4_encode_copy_notify,
- 	[OP_DEALLOCATE]		= (nfsd4_enc)nfsd4_encode_noop,
- 	[OP_IO_ADVISE]		= (nfsd4_enc)nfsd4_encode_noop,
- 	[OP_LAYOUTERROR]	= (nfsd4_enc)nfsd4_encode_noop,
+ /*
 diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index e815a9c..8231fe0 100644
+index 2937e06..0b4fe07 100644
 --- a/fs/nfsd/xdr4.h
 +++ b/fs/nfsd/xdr4.h
-@@ -570,6 +570,18 @@ struct nfsd4_offload_status {
- 	u32		status;
- };
+@@ -46,9 +46,9 @@
+ #define CURRENT_STATE_ID_FLAG (1<<0)
+ #define SAVED_STATE_ID_FLAG (1<<1)
  
-+struct nfsd4_copy_notify {
-+	/* request */
-+	stateid_t		cpn_src_stateid;
-+	struct nl4_server	cpn_dst;
-+
-+	/* response */
-+	stateid_t		cpn_cnr_stateid;
-+	u64			cpn_sec;
-+	u32			cpn_nsec;
-+	struct nl4_server	cpn_src;
-+};
-+
- struct nfsd4_op {
- 	int					opnum;
- 	const struct nfsd4_operation *		opdesc;
-@@ -629,6 +641,7 @@ struct nfsd4_op {
- 		struct nfsd4_clone		clone;
- 		struct nfsd4_copy		copy;
- 		struct nfsd4_offload_status	offload_status;
-+		struct nfsd4_copy_notify	copy_notify;
- 		struct nfsd4_seek		seek;
- 	} u;
- 	struct nfs4_replay *			replay;
+-#define SET_STATE_ID(c, f) ((c)->sid_flags |= (f))
+-#define HAS_STATE_ID(c, f) ((c)->sid_flags & (f))
+-#define CLEAR_STATE_ID(c, f) ((c)->sid_flags &= ~(f))
++#define SET_CSTATE_FLAG(c, f) ((c)->sid_flags |= (f))
++#define HAS_CSTATE_FLAG(c, f) ((c)->sid_flags & (f))
++#define CLEAR_CSTATE_FLAG(c, f) ((c)->sid_flags &= ~(f))
+ 
+ struct nfsd4_compound_state {
+ 	struct svc_fh		current_fh;
 -- 
 1.8.3.1
 
