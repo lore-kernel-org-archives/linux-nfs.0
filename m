@@ -8,63 +8,65 @@ X-Spam-Status: No, score=-9.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 12DE4C4CECD
-	for <linux-nfs@archiver.kernel.org>; Mon, 16 Sep 2019 20:46:30 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 855F2C49ED7
+	for <linux-nfs@archiver.kernel.org>; Mon, 16 Sep 2019 20:46:31 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id DC22120644
-	for <linux-nfs@archiver.kernel.org>; Mon, 16 Sep 2019 20:46:29 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 5AAA820644
+	for <linux-nfs@archiver.kernel.org>; Mon, 16 Sep 2019 20:46:31 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="H/y+Kzrc"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="hQceF6fh"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727307AbfIPUq3 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 16 Sep 2019 16:46:29 -0400
-Received: from mail-io1-f68.google.com ([209.85.166.68]:37380 "EHLO
-        mail-io1-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1733156AbfIPUq3 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 16 Sep 2019 16:46:29 -0400
-Received: by mail-io1-f68.google.com with SMTP id b19so2341787iob.4
-        for <linux-nfs@vger.kernel.org>; Mon, 16 Sep 2019 13:46:28 -0700 (PDT)
+        id S2387682AbfIPUqa (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 16 Sep 2019 16:46:30 -0400
+Received: from mail-io1-f67.google.com ([209.85.166.67]:45443 "EHLO
+        mail-io1-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2387596AbfIPUqa (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 16 Sep 2019 16:46:30 -0400
+Received: by mail-io1-f67.google.com with SMTP id f12so2197679iog.12
+        for <linux-nfs@vger.kernel.org>; Mon, 16 Sep 2019 13:46:30 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references
          :mime-version:content-transfer-encoding;
-        bh=u+xAWTrh/Lsv4sQba0rlaTvUNAip8h2KHmmPmv3mJ88=;
-        b=H/y+KzrcAVu4Qc8SRgF0TYfxefcCwUAPGrFLdQ/DjbtdfTAtKaRqdijbI4YoH328Yi
-         UEjsWrgg62m6WShjxyKhkxK3E06M08Xhwf8eDMKx6RIeLBdV70TJHd+hfBNZILVJgYAq
-         WMojnVcs2MWYMJCPfqPOVqH13oxffNryw/N0G1KF0Dhtvp6dYeErU+u4c3kQcBdWYd3q
-         kpMT6XwjZmP6L2GXHQ/ZbiUHzAAYHLYtY/I1bbW8bdTGu3GBEL+fGqiWSzEQx8xsaAw+
-         dM5CVyl0Oayz/7kPt1Q7dMh3FHpsso0NjHDee8s4j3LwGUuSM/2kTX0mWD4QgJA4IQG6
-         0W1A==
+        bh=J/GVnqkPBoCv5U4dJF5GCvANtn9QnHDChOd9TrjN6yM=;
+        b=hQceF6fhAx1xDuK/qwPYfUSsgcui+y/THlOsBNucaKBBVhJ5DmuoLAFqFcTXAbCNl3
+         hEo5NlLGpe6y+PE6IjgnyH+enwCN2JUKXXmD5WOXDCpFZCUy4Moj9Rf1/7D4fJOomeEN
+         V77Z9LHgUVyZa4f7AHklCaeRSsgrVcwd/C/61Xe0Dj7kFnl154KEIGyKUho08Md08r/g
+         LtIaKqTAO0r3fyza3TPFtsaFggt8EB+SuM+JyzCXAeaaxnMhF5nclTV0udArZKLfV/XX
+         sjPDbbEMnSV5lK4153y7MM0Lo1juH2ep81GGZOhKwbacjPaAYj9mI+Lq6XMQ2PW0gAZ/
+         aeEA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=u+xAWTrh/Lsv4sQba0rlaTvUNAip8h2KHmmPmv3mJ88=;
-        b=rO3SCORPVa5VyfIFvsBZQhsNdGvwle5hIGjOu71OF8nWtAkTT7+B+sEGOQrCKuiZTK
-         h2plJchJmV8B0LfypQ0qanQ6pHFYAafoJTyFcpPCJf+KEgNNTwxzLVbkoNW9hjQaWKW/
-         FZDt6yWLyH8wIsgLgQCpAXaCfj0y3YfqK+oltrAktlpzHBn1RuWOycF0Fdh4i35QRADN
-         b3c+NaEdaO58HlS127+pK90EfM8okBgGIlvnxAtICFIUawzg0cvB2E8is7kBumks09VF
-         rGoLqi/ryjDbA3hD3Dq8PvnJBqmuWT6bBe8n7sAqwQlLxdH+HXwiraDEKzdF3VHJLIi3
-         cWaA==
-X-Gm-Message-State: APjAAAUwZGIYKDhni4e14Yfl7hfLytvshtIQHFEHIzEKMEyh2mNzxz1c
-        5ssOH4hbC+FQR9FwHCkzdA==
-X-Google-Smtp-Source: APXvYqzvV71DKHmIU7Ns1BbkO99NQpPpiOVUfzlKX/0m6DYa298aadnCRKSN5qAdsf9z7bYMp1NTCw==
-X-Received: by 2002:a6b:f311:: with SMTP id m17mr280679ioh.0.1568666788118;
-        Mon, 16 Sep 2019 13:46:28 -0700 (PDT)
+        bh=J/GVnqkPBoCv5U4dJF5GCvANtn9QnHDChOd9TrjN6yM=;
+        b=jvOPq2PBBOJs4stX4BDc60EojWQgEScIscMG/QZS5/NxfH8YqY7LaF3m/I6xxu1D6f
+         A/dTMUL2HE4LwajL2dKzf4IB7ZOOsOpJVurZOWwk6qvHQiLu107fEGZXCmj8Y6F6ZIP2
+         sBsp2QPhX8JpKOtuvRs5nPs2Pwfb1c7Gy4pBQbb0r8rzBADthF6X+5VUcVIGLOWfGBtl
+         DVFPoU0b5MP+x4vnFQ5/R9wjRaMY0vpWGGg9pYSMX192z6kmIFVZ9uNawa815aMB2E8a
+         hKg/5ym9YD5VCYgnk0jj5PCbh7d1DIaEAAmELz27fEwz/VEIuEGvy1oQ1AePTsgFhC3K
+         TFRA==
+X-Gm-Message-State: APjAAAWm2gTq5gN6/zS0RTs8YB2U5lDQuSKUvSLVzhJ2n1f2sIlkEp3b
+        jmECU5TPHwwyrX5nkjLqKw==
+X-Google-Smtp-Source: APXvYqwXxqI9I2I3BLVa9C4mLjWAUGW0PaQFmpeAL/7Bn9+12oNt5wSq5BA3pCi8eel3nCD8ExbH3g==
+X-Received: by 2002:a5d:861a:: with SMTP id f26mr212959iol.197.1568666789617;
+        Mon, 16 Sep 2019 13:46:29 -0700 (PDT)
 Received: from localhost.localdomain (c-68-40-189-247.hsd1.mi.comcast.net. [68.40.189.247])
-        by smtp.gmail.com with ESMTPSA id c6sm3528iom.34.2019.09.16.13.46.27
+        by smtp.gmail.com with ESMTPSA id c6sm3528iom.34.2019.09.16.13.46.28
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 16 Sep 2019 13:46:27 -0700 (PDT)
+        Mon, 16 Sep 2019 13:46:29 -0700 (PDT)
 From:   Trond Myklebust <trondmy@gmail.com>
 X-Google-Original-From: Trond Myklebust <trond.myklebust@hammerspace.com>
 To:     Anna Schumaker <Anna.Schumaker@netapp.com>
 Cc:     Olga Kornievskaia <aglo@umich.edu>, linux-nfs@vger.kernel.org
-Subject: [PATCH v2 1/9] pNFS: Ensure we do clear the return-on-close layout stateid on fatal errors
-Date:   Mon, 16 Sep 2019 16:44:11 -0400
-Message-Id: <20190916204419.21717-2-trond.myklebust@hammerspace.com>
+Subject: [PATCH v2 3/9] NFSv4: Handle NFS4ERR_DELAY correctly in return-on-close
+Date:   Mon, 16 Sep 2019 16:44:13 -0400
+Message-Id: <20190916204419.21717-4-trond.myklebust@hammerspace.com>
 X-Mailer: git-send-email 2.21.0
-In-Reply-To: <20190916204419.21717-1-trond.myklebust@hammerspace.com>
+In-Reply-To: <20190916204419.21717-3-trond.myklebust@hammerspace.com>
 References: <20190916204419.21717-1-trond.myklebust@hammerspace.com>
+ <20190916204419.21717-2-trond.myklebust@hammerspace.com>
+ <20190916204419.21717-3-trond.myklebust@hammerspace.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
@@ -72,39 +74,28 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-IF the server rejected our layout return with a state error such as
-NFS4ERR_BAD_STATEID, or even a stale inode error, then we do want
-to clear out all the remaining layout segments and mark that stateid
-as invalid.
+If the server sends a NFS4ERR_DELAY, then allow the caller to retry.
 
-Fixes: 1c5bd76d17cca ("pNFS: Enable layoutreturn operation for...")
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/pnfs.c | 9 +++++++--
- 1 file changed, 7 insertions(+), 2 deletions(-)
+ fs/nfs/pnfs.c | 4 ++++
+ 1 file changed, 4 insertions(+)
 
 diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 4525d5acae38..0418b198edd3 100644
+index 8769422a12f5..6436047dc999 100644
 --- a/fs/nfs/pnfs.c
 +++ b/fs/nfs/pnfs.c
-@@ -1449,10 +1449,15 @@ void pnfs_roc_release(struct nfs4_layoutreturn_args *args,
- 	const nfs4_stateid *res_stateid = NULL;
- 	struct nfs4_xdr_opaque_data *ld_private = args->ld_private;
- 
--	if (ret == 0) {
--		arg_stateid = &args->stateid;
-+	switch (ret) {
-+	case -NFS4ERR_NOMATCHING_LAYOUT:
-+		break;
-+	case 0:
- 		if (res->lrs_present)
- 			res_stateid = &res->stateid;
-+		/* Fallthrough */
-+	default:
-+		arg_stateid = &args->stateid;
- 	}
- 	pnfs_layoutreturn_free_lsegs(lo, arg_stateid, &args->range,
- 			res_stateid);
+@@ -1455,6 +1455,10 @@ int pnfs_roc_done(struct rpc_task *task, struct inode *inode,
+ 	case 0:
+ 		retval = 0;
+ 		break;
++	case -NFS4ERR_DELAY:
++		/* Let the caller handle the retry */
++		*ret = -NFS4ERR_NOMATCHING_LAYOUT;
++		return 0;
+ 	case -NFS4ERR_OLD_STATEID:
+ 		if (!nfs4_layoutreturn_refresh_stateid(&arg->stateid,
+ 					&arg->range, inode))
 -- 
 2.21.0
 
