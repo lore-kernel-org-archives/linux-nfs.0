@@ -2,123 +2,123 @@ Return-Path: <SRS0=zNNA=XL=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6AD32C4CECD
-	for <linux-nfs@archiver.kernel.org>; Mon, 16 Sep 2019 11:59:41 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id CDD71C49ED7
+	for <linux-nfs@archiver.kernel.org>; Mon, 16 Sep 2019 13:14:29 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 4A9A9214DE
-	for <linux-nfs@archiver.kernel.org>; Mon, 16 Sep 2019 11:59:41 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 976F420678
+	for <linux-nfs@archiver.kernel.org>; Mon, 16 Sep 2019 13:14:29 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="SxqUdtfW"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1731967AbfIPL7k (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 16 Sep 2019 07:59:40 -0400
-Received: from mx1.redhat.com ([209.132.183.28]:24058 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1731989AbfIPL7k (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 16 Sep 2019 07:59:40 -0400
-Received: from smtp.corp.redhat.com (int-mx08.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id EDB5F10CC1F0;
-        Mon, 16 Sep 2019 11:59:39 +0000 (UTC)
-Received: from bcodding.csb (ovpn-64-2.rdu2.redhat.com [10.10.64.2])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 5E440196AE;
-        Mon, 16 Sep 2019 11:59:39 +0000 (UTC)
-Received: by bcodding.csb (Postfix, from userid 24008)
-        id CC763109C550; Mon, 16 Sep 2019 07:59:38 -0400 (EDT)
-From:   Benjamin Coddington <bcodding@redhat.com>
-To:     trond.myklebust@hammerspace.com, anna.schumaker@netapp.com,
-        tibbs@math.uh.edu, chuck.lever@oracle.com
-Cc:     linux-nfs@vger.kernel.org, bfields@fieldses.org, km@cm4all.com
-Subject: [PATCH V3 1/2] SUNRPC: Fix buffer handling of GSS MIC without slack
-Date:   Mon, 16 Sep 2019 07:59:37 -0400
-Message-Id: <dad661c66dcbfb67714253d55d826ff126e53f50.1568635163.git.bcodding@redhat.com>
+        id S1732973AbfIPNO3 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 16 Sep 2019 09:14:29 -0400
+Received: from mail-io1-f66.google.com ([209.85.166.66]:37660 "EHLO
+        mail-io1-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1732956AbfIPNO3 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 16 Sep 2019 09:14:29 -0400
+Received: by mail-io1-f66.google.com with SMTP id b19so18497298iob.4
+        for <linux-nfs@vger.kernel.org>; Mon, 16 Sep 2019 06:14:28 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=from:to:cc:subject:date:message-id:mime-version
+         :content-transfer-encoding;
+        bh=yVInvsO0XUDxsdrFGpGxKQcmZOvRR+IwNsCMtfSsUyU=;
+        b=SxqUdtfWkLR8oDvq87BRINwTPMqSeLmySSefrfVL5+sXAw0HUteRx+v9EL/VYbBikf
+         EHNqI+tS2iWdTnx5xux6U31UJEcUixsAF8sojzNubl7bTnD1kD61q6zRWzEa/EgcMQS2
+         /F+LAM5FWzYrY/u2+2AvQvSJTfcGpFuYdYSUw/59lAa08DlhP86o2obzZv2wtZ/qnjBE
+         bUHZKwyM/rjAhtvAy9j6Tc7vt920d8nd7JjTqivOSh0+ARpLvVVg4VyEQJthhFIByONT
+         XYnXHSWHfCq+7r/hYt+LGCXYbqWaReV3aZ33zTPC89WxP6iiPREmHus+2IaxR2qhrInz
+         fdtw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:from:to:cc:subject:date:message-id:mime-version
+         :content-transfer-encoding;
+        bh=yVInvsO0XUDxsdrFGpGxKQcmZOvRR+IwNsCMtfSsUyU=;
+        b=lj/rFqHcDBAhXYqiWISfCE7n7yh/T35i7FJN2SLqazwuNPAwmlfpJJBHvDITALQvXn
+         ZuD217fOox/mN7YVSXRhdIMGTxKvOVLLJdhgORFpQyqyGE1vL+yPjctWlGR8yWqtTyWS
+         5yG4ywK9DtoqhTZ4vIOOtYrZL/Hv2GBW+fkedXa0PUfecnm3j9jXeJfPxBTIiFlDdfZi
+         oZTy+eKnQ+n2HXY8gUrtYfTHtEbVZYFZAufS32BPjJRm1B6IC/4oj2UGEz/P+YexTvFC
+         w64bZppej6ITpNYazKBg9ukAkznZm1iWbGiDsFe1483wqOCBIf45FuViBpwIO1Rn79gt
+         A25g==
+X-Gm-Message-State: APjAAAXQtsVm2ck3hJisPs+U+RtEcETWoYaL4hXo7tGhxlDybkqHBKA1
+        W33pI54cvb8eUPQ6ozz2Jg==
+X-Google-Smtp-Source: APXvYqwLQHMjHtcISG4NJXp7RQzvrGviNgKEYQ14U+tLoYZzRrgVOQS2ioahQJcqJaSUJiHAo9JrRg==
+X-Received: by 2002:a02:c983:: with SMTP id b3mr23345339jap.120.1568639667579;
+        Mon, 16 Sep 2019 06:14:27 -0700 (PDT)
+Received: from localhost.localdomain (c-68-40-189-247.hsd1.mi.comcast.net. [68.40.189.247])
+        by smtp.gmail.com with ESMTPSA id p7sm6205272iob.46.2019.09.16.06.14.26
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Mon, 16 Sep 2019 06:14:26 -0700 (PDT)
+From:   Trond Myklebust <trondmy@gmail.com>
+X-Google-Original-From: Trond Myklebust <trond.myklebust@hammerspace.com>
+To:     Anna Schumaker <Anna.Schumaker@netapp.com>
+Cc:     linux-nfs@vger.kernel.org
+Subject: [PATCH] SUNRPC: Don't try to parse incomplete RPC messages
+Date:   Mon, 16 Sep 2019 09:12:19 -0400
+Message-Id: <20190916131219.28753-1-trond.myklebust@hammerspace.com>
+X-Mailer: git-send-email 2.21.0
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 2.84 on 10.5.11.23
-X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.6.2 (mx1.redhat.com [10.5.110.65]); Mon, 16 Sep 2019 11:59:40 +0000 (UTC)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-The GSS Message Integrity Check data for krb5i may lie partially in the XDR
-reply buffer's pages and tail.  If so, we try to copy the entire MIC into
-free space in the tail.  But as the estimations of the slack space required
-for authentication and verification have improved there may be less free
-space in the tail to complete this copy -- see commit 2c94b8eca1a2
-("SUNRPC: Use au_rslack when computing reply buffer size").  In fact, there
-may only be room in the tail for a single copy of the MIC, and not part of
-the MIC and then another complete copy.
+If the copy of the RPC reply into our buffers did not complete, and
+we could end up with a truncated message. In that case, just resend
+the call.
 
-The real world failure reported is that `ls` of a directory on NFS may
-sometimes return -EIO, which can be traced back to xdr_buf_read_netobj()
-failing to find available free space in the tail to copy the MIC.
-
-Fix this by checking for the case of the MIC crossing the boundaries of
-head, pages, and tail. If so, shift the buffer until the MIC is contained
-completely within the pages or tail.  This allows the remainder of the
-function to create a sub buffer that directly address the complete MIC.
-
-Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
-Cc: stable@vger.kernel.org # v5.1
+Fixes: a0584ee9aed80 ("SUNRPC: Use struct xdr_stream when decoding...")
+Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- net/sunrpc/xdr.c | 27 ++++++++++++++++++---------
- 1 file changed, 18 insertions(+), 9 deletions(-)
+ net/sunrpc/clnt.c | 14 +++++++++++++-
+ 1 file changed, 13 insertions(+), 1 deletion(-)
 
-diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
-index 48c93b9e525e..b256806d69cd 100644
---- a/net/sunrpc/xdr.c
-+++ b/net/sunrpc/xdr.c
-@@ -1237,16 +1237,29 @@ xdr_encode_word(struct xdr_buf *buf, unsigned int base, u32 obj)
- EXPORT_SYMBOL_GPL(xdr_encode_word);
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index e7fdc400506e..f7f78566be46 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -2482,6 +2482,7 @@ call_decode(struct rpc_task *task)
+ 	struct rpc_clnt	*clnt = task->tk_client;
+ 	struct rpc_rqst	*req = task->tk_rqstp;
+ 	struct xdr_stream xdr;
++	int err;
  
- /* If the netobj starting offset bytes from the start of xdr_buf is contained
-- * entirely in the head or the tail, set object to point to it; otherwise
-- * try to find space for it at the end of the tail, copy it there, and
-- * set obj to point to it. */
-+ * entirely in the head, pages, or tail, set object to point to it; otherwise
-+ * shift the buffer until it is contained entirely within the pages or tail.
-+ */
- int xdr_buf_read_netobj(struct xdr_buf *buf, struct xdr_netobj *obj, unsigned int offset)
- {
- 	struct xdr_buf subbuf;
-+	unsigned int boundary;
+ 	dprint_status(task);
  
- 	if (xdr_decode_word(buf, offset, &obj->len))
- 		return -EFAULT;
--	if (xdr_buf_subsegment(buf, &subbuf, offset + 4, obj->len))
-+	offset += 4;
+@@ -2504,6 +2505,15 @@ call_decode(struct rpc_task *task)
+ 	 * before it changed req->rq_reply_bytes_recvd.
+ 	 */
+ 	smp_rmb();
 +
-+	/* Is the obj partially in the head? */
-+	boundary = buf->head[0].iov_len;
-+	if (offset < boundary && (offset + obj->len) > boundary)
-+		xdr_shift_buf(buf, boundary - offset);
++	/*
++	 * Did we ever call xprt_complete_rqst()? If not, we should assume
++	 * the message is incomplete.
++	 */
++	err = -EAGAIN;
++	if (!req->rq_reply_bytes_recvd)
++		goto out;
 +
-+	/* Is the obj partially in the pages? */
-+	boundary += buf->page_len;
-+	if (offset < boundary && (offset + obj->len) > boundary)
-+		xdr_shrink_pagelen(buf, boundary - offset);
-+
-+	if (xdr_buf_subsegment(buf, &subbuf, offset, obj->len))
- 		return -EFAULT;
+ 	req->rq_rcv_buf.len = req->rq_private_buf.len;
  
- 	/* Is the obj contained entirely in the head? */
-@@ -1258,11 +1271,7 @@ int xdr_buf_read_netobj(struct xdr_buf *buf, struct xdr_netobj *obj, unsigned in
- 	if (subbuf.tail[0].iov_len == obj->len)
- 		return 0;
+ 	/* Check that the softirq receive buffer is valid */
+@@ -2512,7 +2522,9 @@ call_decode(struct rpc_task *task)
  
--	/* use end of tail as storage for obj:
--	 * (We don't copy to the beginning because then we'd have
--	 * to worry about doing a potentially overlapping copy.
--	 * This assumes the object is at most half the length of the
--	 * tail.) */
-+	/* Find a contiguous area in @buf to hold all of @obj */
- 	if (obj->len > buf->buflen - buf->len)
- 		return -ENOMEM;
- 	if (buf->tail[0].iov_len != 0)
+ 	xdr_init_decode(&xdr, &req->rq_rcv_buf,
+ 			req->rq_rcv_buf.head[0].iov_base, req);
+-	switch (rpc_decode_header(task, &xdr)) {
++	err = rpc_decode_header(task, &xdr);
++out:
++	switch (err) {
+ 	case 0:
+ 		task->tk_action = rpc_exit_task;
+ 		task->tk_status = rpcauth_unwrap_resp(task, &xdr);
 -- 
-2.20.1
+2.21.0
 
