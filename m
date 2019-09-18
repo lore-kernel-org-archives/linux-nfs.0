@@ -6,157 +6,116 @@ X-Spam-Status: No, score=-0.9 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,
 	SPF_PASS autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 416E3C4CEC9
-	for <linux-nfs@archiver.kernel.org>; Wed, 18 Sep 2019 14:32:26 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 61747C4CEC9
+	for <linux-nfs@archiver.kernel.org>; Wed, 18 Sep 2019 19:39:02 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 03F07218AE
-	for <linux-nfs@archiver.kernel.org>; Wed, 18 Sep 2019 14:32:26 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 265092067B
+	for <linux-nfs@archiver.kernel.org>; Wed, 18 Sep 2019 19:39:02 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=umich.edu header.i=@umich.edu header.b="dFz2Zv/T"
+	dkim=pass (2048-bit key) header.d=umich.edu header.i=@umich.edu header.b="NlRb0CMO"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728863AbfIROcZ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 18 Sep 2019 10:32:25 -0400
-Received: from mail-ua1-f67.google.com ([209.85.222.67]:33077 "EHLO
-        mail-ua1-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727301AbfIROcZ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Sep 2019 10:32:25 -0400
-Received: by mail-ua1-f67.google.com with SMTP id u31so2412734uah.0
-        for <linux-nfs@vger.kernel.org>; Wed, 18 Sep 2019 07:32:24 -0700 (PDT)
+        id S1730159AbfIRTjB (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 18 Sep 2019 15:39:01 -0400
+Received: from mail-vk1-f196.google.com ([209.85.221.196]:37755 "EHLO
+        mail-vk1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727648AbfIRTjB (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Sep 2019 15:39:01 -0400
+Received: by mail-vk1-f196.google.com with SMTP id v78so288890vke.4
+        for <linux-nfs@vger.kernel.org>; Wed, 18 Sep 2019 12:39:00 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=umich.edu; s=google-2016-06-03;
         h=mime-version:references:in-reply-to:from:date:message-id:subject:to
          :cc;
-        bh=RaVAwtCASSEd7QPomlIIpQJEaEu/lRxVzzZy3ohNUAI=;
-        b=dFz2Zv/TTpBtcx56L7VAABZHiJVAKRAVfVJAVKCABMGImnPWShHKeZdiQkIOZTfK8N
-         SRypz5F9j00sJWaRzmIG5mIy5DLDToT8sDrUIpD2YKmzohR+kUtRHlls4wErtm57RGzt
-         hyubEoOdwxZhNSlScToNsT3GysCOvsIrl56kMGXHHmb7mt/sOJNDEvPF3PJKsAT6kkH6
-         Hu4UFoezXYQZaYq5mFYu3OobGMyb1RjoaHq5wGhEZtWq4kcWkkhbB93pOIfvBPTcnozl
-         0M0yE/RfsYRG68JTm44+/clzRke37pERMfivvi/kDRuY/A3tUEVAKmbThPze6kQZUz9c
-         SWVg==
+        bh=FM6TopUxE1Rtc6tttT63BlLsMhhNsHt3UWMSnYgpWdY=;
+        b=NlRb0CMOb3VFC9J5MfHfgo5t1sDQG8KY1DNrNwCpV1y7e95Gu4hiFPt+t0kuyOFWEL
+         yltM6kNPRpxe+DYeGYFQTDMl3Wup1bm1RJx0ODaevRejHY+cWW3hyRbebfqRInn0IvV9
+         E4KW16rYVGEyZ2jcowymvu8OUwxT+fzyHn5g3GGGsO880ACUw//OenRAkg+3Y2SStWy0
+         /r7yFcGPwz+wSjDTFEbgUmWRqOUUz9wbPUNfaMUBAbSJcE9s/CM16fZbuYvd/ROZzJuE
+         hEOJKc7w91CG8XmClwca7T0UxMfeWL28w9ifIGLAWVPAMUhv9C4iT5RoXubUtAFTNoH4
+         bEnA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:mime-version:references:in-reply-to:from:date
          :message-id:subject:to:cc;
-        bh=RaVAwtCASSEd7QPomlIIpQJEaEu/lRxVzzZy3ohNUAI=;
-        b=MZRClM/or1OntJadRm1zZVwNf/1G8bEBkHMjtOj67yKSOV9V7dMPAEG/mrmJ2aCyiO
-         RgmAxWmFtTy85rRcDcdvyrupOjd34tq6yxkzgrZDNNqq+5DmIGWdgCeOxL6sb7fnl0Fo
-         jWnpdhW3x9KFLnBr25EAHEqYK1fZQ32XUORNJ89MqchmKyD6lzPvsy3tBe4mI3vf/YbU
-         YQGnoUHrROZTYMbR9VLeKynHh9HbwmwkJIJKUGZus4iTfnVEdafRzylbgxnbY6ZkjR7r
-         xrggJDcPn8RpeYQKaCVe+URB9FAgwcNK/Fy0kj9HKkqscWuFe/8hyKsVGedj6tqi8X7T
-         4xmA==
-X-Gm-Message-State: APjAAAXhUDREfkb8Tr/G4NUWXWnfajFhNPy+Ov9xI5WM3YTzCls04Xsj
-        hl6smYzCqYXkw4w3ayUHu2INaADPUNYGpT1fZCg=
-X-Google-Smtp-Source: APXvYqxBhudoGte8PkQ4YyofHCXKvH+3+5V8ndAvWNU6+oHYlTQ/ZadCXF5Bp1zSFltZgBbM6e1EcliJTqJfc/jwPk4=
-X-Received: by 2002:ab0:6355:: with SMTP id f21mr1479926uap.40.1568817144118;
- Wed, 18 Sep 2019 07:32:24 -0700 (PDT)
+        bh=FM6TopUxE1Rtc6tttT63BlLsMhhNsHt3UWMSnYgpWdY=;
+        b=m1PO3Vadd1dVVUwabwdWYjWzCrxz10UgzCSviaAF0FPe91nyjCsh/0J1pS9Hs4ciyc
+         PW7gn7aOQ9Kq3fliVCIuzhl6NGFvXRZwEuBlbcrOBYRLf6YLYsMf/YwsiF56xX0T12dU
+         Nt5cEIzHXzcDCNjtdpDIprToMPHKtK8Aq1eCjI6YpTI5wyjw4ekduU/hqhmZO7+jllhF
+         lg0nBzn41Yv7T4o2mUW7Dc+r0EQHY9RKynVoHWbHYDdq2g2HFSOaMJwBqcYe/vKQoxft
+         65Ry3yCQClalNHgJwiHM4LxLdRmp9NxCDx6toUSD5Y+T2GQmytq3tuxtHEj7nUavIR57
+         jRhQ==
+X-Gm-Message-State: APjAAAUboQ3ZYzwxBc1PdreyjzyErJptpbhf+pYNflXxKvf33/nsyoXM
+        4dOBPfQlyreTigr2EQQNprqpqwJrNyr38R6eOPQ=
+X-Google-Smtp-Source: APXvYqxa+QfBCnGmHhvnMAcVexbErXO9TRxeyGp78vn0w4265oILp+ROr9Ufaovcl85nb0IbnTyzvBRHV1scBM5IZfc=
+X-Received: by 2002:a1f:53c5:: with SMTP id h188mr2904187vkb.33.1568835539816;
+ Wed, 18 Sep 2019 12:38:59 -0700 (PDT)
 MIME-Version: 1.0
-References: <CAACwWuN6siyM9t+rCmzxYPCf777bvD_J1xQKwNb7ZzBdzvy42Q@mail.gmail.com>
- <8217416C-F3E5-4BEE-BD01-2BE19952425E@redhat.com> <CAACwWuMbB=zTaXW-fQmUYHLvx=YgE=68M96=hq201pqn2wKxBw@mail.gmail.com>
- <66D00B9D-16DC-4979-8400-457398DC4801@redhat.com>
-In-Reply-To: <66D00B9D-16DC-4979-8400-457398DC4801@redhat.com>
+References: <20190916204419.21717-1-trond.myklebust@hammerspace.com>
+In-Reply-To: <20190916204419.21717-1-trond.myklebust@hammerspace.com>
 From:   Olga Kornievskaia <aglo@umich.edu>
-Date:   Wed, 18 Sep 2019 10:32:13 -0400
-Message-ID: <CAN-5tyERg5kwcD2iugwPVCLDSog0ufKoRRVbC-7pQW-hqLWncQ@mail.gmail.com>
-Subject: Re: troubleshooting LOCK FH and NFS4ERR_BAD_SEQID
-To:     Benjamin Coddington <bcodding@redhat.com>
-Cc:     Leon Kyneur <leonk@dug.com>, linux-nfs <linux-nfs@vger.kernel.org>
+Date:   Wed, 18 Sep 2019 15:38:48 -0400
+Message-ID: <CAN-5tyF27z=+3tbU1De_wR0aosiczn67dNanBmBe4icj=uAYwQ@mail.gmail.com>
+Subject: Re: [PATCH v2 0/9] Various NFSv4 state error handling fixes
+To:     Trond Myklebust <trondmy@gmail.com>
+Cc:     Anna Schumaker <Anna.Schumaker@netapp.com>,
+        linux-nfs <linux-nfs@vger.kernel.org>
 Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hi folks,
+Hi Trond,
 
-The bad_seqid error could have been the bug in 7.4
-https://access.redhat.com/solutions/3354251. It's been fixed in
-kernel-3.10.0-693.23.1.el7. Can you try to update and see if that
-helps? The bug was client was sending a double close throwing off the
-seqid use.
+These set of patches do not address the locking problem. It's actually
+not the locking patch (which I thought it was as I reverted it and
+still had the issue). Without the whole patch series the unlock works
+fine so something in these new patches. Something is up with the 2
+patches:
+NFSv4: Handle NFS4ERR_OLD_STATEID in CLOSE/OPEN_DOWNGRADE
+NFSv4: Handle NFS4ERR_OLD_STATEID in LOCKU
 
-On Wed, Sep 18, 2019 at 9:07 AM Benjamin Coddington <bcodding@redhat.com> wrote:
+If I remove either one separately, unlock fails but if I remove both
+unlock works.
+
+On Mon, Sep 16, 2019 at 4:46 PM Trond Myklebust <trondmy@gmail.com> wrote:
 >
-> On 17 Sep 2019, at 22:20, Leon Kyneur wrote:
+> Various NFSv4 fixes to ensure we handle state errors correctly. In
+> particular, we need to ensure that for COMPOUNDs like CLOSE and
+> DELEGRETURN, that may have an embedded LAYOUTRETURN, we handle the
+> layout state errors so that a retry of either the LAYOUTRETURN, or
+> the later CLOSE/DELEGRETURN does not corrupt the LAYOUTRETURN
+> reply.
 >
-> > On Tue, Sep 17, 2019 at 7:28 PM Benjamin Coddington
-> > <bcodding@redhat.com> wrote:
-> >>
-> >> On 12 Sep 2019, at 4:27, Leon Kyneur wrote:
-> >>
-> >>> Hi
-> >>>
-> >>> I'm experiencing an issue on NFS 4.0 + 4.1 where we cannot call
-> >>> fcntl
-> >>> locks on any file on the share. The problem goes away if the share
-> >>> is
-> >>> umount && mount (mount -o remount does not resolve the issue)
-> >>>
-> >>> Client:
-> >>> EL 7.4 3.10.0-693.5.2.el7.x86_64 nfs-utils-1.3.0-0.48.el7_4.x86_64
-> >>>
-> >>> Server:
-> >>> EL 7.4 3.10.0-693.5.2.el7.x86_64  nfs-utils-1.3.0-0.48.el7_4.x86_64
-> >>>
-> >>> I can't figure this out but the client reports bad-sequence-id in
-> >>> dupicate in the logs:
-> >>> Sep 12 02:16:59 client kernel: NFS: v4 server returned a bad
-> >>> sequence-id error on an unconfirmed sequence ffff881c52286220!
-> >>> Sep 12 02:16:59 client kernel: NFS: v4 server returned a bad
-> >>> sequence-id error on an unconfirmed sequence ffff881c52286220!
-> >>> Sep 12 02:17:39 client kernel: NFS: v4 server returned a bad
-> >>> sequence-id error on an unconfirmed sequence ffff8810889cb020!
-> >>> Sep 12 02:17:39 client kernel: NFS: v4 server returned a bad
-> >>> sequence-id error on an unconfirmed sequence ffff8810889cb020!
-> >>> Sep 12 02:17:44 client kernel: NFS: v4 server returned a bad
-> >>> sequence-id error on an unconfirmed sequence ffff881b414b2620!
-> >>>
-> >>> wireshark capture shows only 1 BAD_SEQID reply from the server:
-> >>> $ tshark -r client_broken.pcap -z proto,colinfo,rpc.xid,rpc.xid -z
-> >>> proto,colinfo,nfs.seqid,nfs.seqid -R 'rpc.xid == 0x9990c61d'
-> >>> tshark: -R without -2 is deprecated. For single-pass filtering use
-> >>> -Y.
-> >>> 141         93 172.27.30.129 -> 172.27.255.28 NFS 352 V4 Call LOCK
-> >>> FH:
-> >>> 0x80589398 Offset: 0 Length: <End of File>  nfs.seqid == 0x0000004e
-> >>> nfs.seqid == 0x00000002  rpc.xid == 0x9990c61d
-> >>> 142         93 172.27.255.28 -> 172.27.30.129 NFS 124 V4 Reply (Call
-> >>> In 141) LOCK Status: NFS4ERR_BAD_SEQID  rpc.xid == 0x9990c61d
-> >>>
-> >>> system call I have identified as triggering it is:
-> >>> fcntl(3, F_SETLK, {type=F_RDLCK, whence=SEEK_SET, start=1073741824,
-> >>> len=1}) = -1 EIO (Input/output error)
-> >>
-> >> Can you simplify the trigger into something repeatable?  Can you
-> >> determine
-> >> if the client or the server has lost track of the sequence?
-> >>
-> >
-> > I have tried, I wrote some code to perform the fcntl RDKLCK the same
-> > way and ran it accross
-> > thousands of machines without any success. I am quite sure this is a
-> > symptom of something
-> > not the cause.
-> >
-> > Is there a better way of tracking sequences other than monitoring the
-> > network traffic?
+> Also ensure that if we get a NFS4ERR_OLD_STATEID, then we do our
+> best to still try to destroy the state on the server, in order to
+> avoid causing state leakage.
 >
-> I think that's the best way, right now.  We do have tracepoints for
-> nfs4 open and close that show the sequence numbers on the client, but
-> I'm
-> not sure about how to get that from the server side.  I don't think we
-> have
-> seqid for locks in tracepoints.. I could be missing something.  Not only
-> that, but you might not get tracepoint output showing the sequence
-> numbers
-> if you're in an error-handling path.
+> v2: Fix bug reports from Olga
+>  - Try to avoid sending old stateids on CLOSE/OPEN_DOWNGRADE when
+>    doing fully serialised NFSv4.0.
+>  - Ensure LOCKU initialises the stateid correctly.
 >
-> If you have a wire capture of the event, you should be able to go
-> backwards
-> from the error and figure out what the sequence number on the state
-> should
-> be for the operation that received BAD_SEQID by finding the last
-> sequence-mutating (OPEN,CLOSE,LOCK) operation for that stateid that did
-> not
-> return an error.
+> Trond Myklebust (9):
+>   pNFS: Ensure we do clear the return-on-close layout stateid on fatal
+>     errors
+>   NFSv4: Clean up pNFS return-on-close error handling
+>   NFSv4: Handle NFS4ERR_DELAY correctly in return-on-close
+>   NFSv4: Handle RPC level errors in LAYOUTRETURN
+>   NFSv4: Add a helper to increment stateid seqids
+>   pNFS: Handle NFS4ERR_OLD_STATEID on layoutreturn by bumping the state
+>     seqid
+>   NFSv4: Fix OPEN_DOWNGRADE error handling
+>   NFSv4: Handle NFS4ERR_OLD_STATEID in CLOSE/OPEN_DOWNGRADE
+>   NFSv4: Handle NFS4ERR_OLD_STATEID in LOCKU
 >
-> Ben
+>  fs/nfs/nfs4_fs.h   |  11 ++-
+>  fs/nfs/nfs4proc.c  | 204 ++++++++++++++++++++++++++++++---------------
+>  fs/nfs/nfs4state.c |  16 ----
+>  fs/nfs/pnfs.c      |  71 ++++++++++++++--
+>  fs/nfs/pnfs.h      |  17 +++-
+>  5 files changed, 229 insertions(+), 90 deletions(-)
+>
+> --
+> 2.21.0
+>
