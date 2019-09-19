@@ -2,110 +2,256 @@ Return-Path: <SRS0=aIqi=XO=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-0.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
+	URIBL_BLOCKED autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 96C78C4CEC9
-	for <linux-nfs@archiver.kernel.org>; Thu, 19 Sep 2019 02:58:48 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 643B0C49ED7
+	for <linux-nfs@archiver.kernel.org>; Thu, 19 Sep 2019 04:22:57 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 78605218AF
-	for <linux-nfs@archiver.kernel.org>; Thu, 19 Sep 2019 02:58:48 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 1A7E4218AF
+	for <linux-nfs@archiver.kernel.org>; Thu, 19 Sep 2019 04:22:56 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=dug-com.20150623.gappssmtp.com header.i=@dug-com.20150623.gappssmtp.com header.b="OF/3hqka"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2388519AbfISC6m (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 18 Sep 2019 22:58:42 -0400
-Received: from szxga04-in.huawei.com ([45.249.212.190]:2679 "EHLO huawei.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S2388438AbfISC6W (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 18 Sep 2019 22:58:22 -0400
-Received: from DGGEMS406-HUB.china.huawei.com (unknown [172.30.72.58])
-        by Forcepoint Email with ESMTP id B9C7F296988817DA22CA;
-        Thu, 19 Sep 2019 10:58:19 +0800 (CST)
-Received: from use12-sp2.huawei.com (10.67.189.174) by
- DGGEMS406-HUB.china.huawei.com (10.3.19.206) with Microsoft SMTP Server id
- 14.3.439.0; Thu, 19 Sep 2019 10:58:10 +0800
-From:   Xiaoming Ni <nixiaoming@huawei.com>
-To:     <gregkh@linuxfoundation.org>, <akpm@linux-foundation.org>,
-        <vvs@virtuozzo.com>, <torvalds@linux-foundation.org>,
-        <adobriyan@gmail.com>, <anna.schumaker@netapp.com>,
-        <arjan@linux.intel.com>, <bfields@fieldses.org>,
-        <chuck.lever@oracle.com>, <davem@davemloft.net>,
-        <jlayton@kernel.org>, <luto@kernel.org>, <mingo@kernel.org>,
-        <Nadia.Derbey@bull.net>, <paulmck@linux.vnet.ibm.com>,
-        <semen.protsenko@linaro.org>, <stern@rowland.harvard.edu>,
-        <tglx@linutronix.de>, <trond.myklebust@hammerspace.com>,
-        <viresh.kumar@linaro.org>
-CC:     <stable@kernel.org>, <dylix.dailei@huawei.com>,
-        <nixiaoming@huawei.com>, <yuehaibing@huawei.com>,
-        <linux-kernel@vger.kernel.org>, <linux-nfs@vger.kernel.org>,
-        <netdev@vger.kernel.org>
-Subject: [PATCH v4 1/3] kernel/notifier.c: intercepting duplicate registrations to avoid infinite loops
-Date:   Thu, 19 Sep 2019 10:58:06 +0800
-Message-ID: <1568861888-34045-2-git-send-email-nixiaoming@huawei.com>
-X-Mailer: git-send-email 1.8.5.6
-In-Reply-To: <1568861888-34045-1-git-send-email-nixiaoming@huawei.com>
-References: <1568861888-34045-1-git-send-email-nixiaoming@huawei.com>
+        id S1730155AbfISEW4 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 19 Sep 2019 00:22:56 -0400
+Received: from mail-pl1-f176.google.com ([209.85.214.176]:43026 "EHLO
+        mail-pl1-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1728850AbfISEW4 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Sep 2019 00:22:56 -0400
+Received: by mail-pl1-f176.google.com with SMTP id 4so976634pld.10
+        for <linux-nfs@vger.kernel.org>; Wed, 18 Sep 2019 21:22:55 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=dug-com.20150623.gappssmtp.com; s=20150623;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc;
+        bh=X5/TPO01QMuA0YeXs/KB2eGihP/vdMESo0/Ft0uBd4E=;
+        b=OF/3hqkajYxwAFoXfxtwDHsZ4PGMdyuu+xqIv1Nm48YDdxTV9NLgt+p9HmrEjOmLoC
+         3ZsDicAgNb/S/ABmcdfNDMpD4ChIQr4C1XW59vK9yUJ4gphBKY8JZFiPsXxpZ2AiPVtn
+         0Z+E/4T0N1ktMtDblM4b/qfMQaGoO1wbCVjRvEHB0Bk64OvlQhIipWndRRwa81HtDLj/
+         h6K1mJ3hhO0mVzJNPEl+RXPfhrqE3zhiOue0O7brG3RtisKAcgyOdY5AuUpNwhyTVoVs
+         S1l3/Zc90QiQu8m7R/pDSeQa/XC07GJcNkfzmBN5LFU+4+s9Id6o/Fk7HlPuVAGKQK3f
+         fXTQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=X5/TPO01QMuA0YeXs/KB2eGihP/vdMESo0/Ft0uBd4E=;
+        b=AuI0fLMlPFcD1yMQaEKI+s8eiszYlXndT1Qk2GCQVx375lel9rTUICBxx0WVNC/9B1
+         5RsfBrYb7cn45E49Xu5o02JDifMCewZoJ8p7oLim9IKhcudSeSqHJL1yHJQ9uMe+dYLo
+         EVPDuV7ruH1HCXugawTqt8xjvP4TmI7oWy0iuduqBZDHUvAjgip9+bZwVBVAU8a8ysOy
+         oSwnNHPAetJ0KVZtj1rFXV5fAZYI7e5auu82DQ4QlDgR1gLApLuCmpDwlbvU0oSKmC1D
+         z2pdnrdOMtp6r5MqNN1g/wze2MwAFpDm2ZZBmh9xakcgAJdEhg26R9mzwnfW+BDSHYRR
+         3RKA==
+X-Gm-Message-State: APjAAAVWl0Oy343LZFGWO/BlUYRvPpKu2qq012dOmKCU+di1OuX1rzuo
+        CPgmrtzGPYbnnwzpixFQlHo7Okxz/osGDiOz2AYjRQ==
+X-Google-Smtp-Source: APXvYqwZwym1TAaajrJQeWUWs6ehIy59xF0LzWM09kGAh29IvjQYIUQqjX/gPDU6pdyEMsTVt79jtxPgQsRctD32HTg=
+X-Received: by 2002:a17:902:7885:: with SMTP id q5mr5852594pll.299.1568866974956;
+ Wed, 18 Sep 2019 21:22:54 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain
-X-Originating-IP: [10.67.189.174]
-X-CFilter-Loop: Reflected
+References: <CAACwWuN6siyM9t+rCmzxYPCf777bvD_J1xQKwNb7ZzBdzvy42Q@mail.gmail.com>
+ <8217416C-F3E5-4BEE-BD01-2BE19952425E@redhat.com> <CAACwWuMbB=zTaXW-fQmUYHLvx=YgE=68M96=hq201pqn2wKxBw@mail.gmail.com>
+ <66D00B9D-16DC-4979-8400-457398DC4801@redhat.com> <CAN-5tyERg5kwcD2iugwPVCLDSog0ufKoRRVbC-7pQW-hqLWncQ@mail.gmail.com>
+In-Reply-To: <CAN-5tyERg5kwcD2iugwPVCLDSog0ufKoRRVbC-7pQW-hqLWncQ@mail.gmail.com>
+From:   Leon Kyneur <leonk@dug.com>
+Date:   Thu, 19 Sep 2019 12:22:42 +0800
+Message-ID: <CAACwWuPxPmbZFTpLf0_Lsh+yJqz_JQrSGUY5_621P4MGd1H_wA@mail.gmail.com>
+Subject: Re: troubleshooting LOCK FH and NFS4ERR_BAD_SEQID
+To:     Olga Kornievskaia <aglo@umich.edu>
+Cc:     Benjamin Coddington <bcodding@redhat.com>,
+        linux-nfs <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Registering the same notifier to a hook repeatedly can cause the hook
-list to form a ring or lose other members of the list.
+On Wed, Sep 18, 2019 at 10:32 PM Olga Kornievskaia <aglo@umich.edu> wrote:
+>
+> Hi folks,
+>
+> The bad_seqid error could have been the bug in 7.4
+> https://access.redhat.com/solutions/3354251. It's been fixed in
+> kernel-3.10.0-693.23.1.el7. Can you try to update and see if that
+> helps? The bug was client was sending a double close throwing off the
+> seqid use.
+>
 
-case1: An infinite loop in notifier_chain_register() can cause soft lockup
-        atomic_notifier_chain_register(&test_notifier_list, &test1);
-        atomic_notifier_chain_register(&test_notifier_list, &test1);
-        atomic_notifier_chain_register(&test_notifier_list, &test2);
+Hi Olga
 
-case2: An infinite loop in notifier_chain_register() can cause soft lockup
-        atomic_notifier_chain_register(&test_notifier_list, &test1);
-        atomic_notifier_chain_register(&test_notifier_list, &test1);
-        atomic_notifier_call_chain(&test_notifier_list, 0, NULL);
+I did see that but discounted it as I am not seeing duplicate CLOSE
+for the same StateID when the client is affected, could this happened
+at some point earlier in time to trigger the condition? I don't
+understand how I can reproduce it.
 
-case3: lose other hook test2
-        atomic_notifier_chain_register(&test_notifier_list, &test1);
-        atomic_notifier_chain_register(&test_notifier_list, &test2);
-        atomic_notifier_chain_register(&test_notifier_list, &test1);
+When it's affected I don't see the duplicate close:
 
-case4: Unregister returns 0, but the hook is still in the linked list,
-        and it is not really registered. If you call notifier_call_chain
-        after ko is unloaded, it will trigger oops.
+$ tshark -n -r client_broken.pcap -z proto,colinfo,rpc.xid,rpc.xid
+|grep -E "CLOSE|BAD|LOCK|OPEN|ACCESS"
+ 14         10 172.27.30.129 -> 172.27.255.28 NFS 276 V4 Call ACCESS
+FH: 0xfd9d2fb5, [Check: RD LU MD XT DL]  rpc.xid == 0x6590c61d
+ 15         10 172.27.255.28 -> 172.27.30.129 NFS 196 V4 Reply (Call
+In 14) ACCESS, [Allowed: RD LU MD XT DL]  rpc.xid == 0x6590c61d
+ 19         10 172.27.30.129 -> 172.27.255.28 NFS 276 V4 Call ACCESS
+FH: 0xfd9d2fb5, [Check: RD LU MD XT DL]  rpc.xid == 0x6790c61d
+ 20         10 172.27.255.28 -> 172.27.30.129 NFS 196 V4 Reply (Call
+In 19) ACCESS, [Access Denied: MD XT DL], [Allowed: RD LU]  rpc.xid ==
+0x6790c61d
+ 21         10 172.27.30.129 -> 172.27.255.28 NFS 288 V4 Call ACCESS
+FH: 0x272b8d23, [Check: RD LU MD XT DL]  rpc.xid == 0x6890c61d
+ 22         10 172.27.255.28 -> 172.27.30.129 NFS 196 V4 Reply (Call
+In 21) ACCESS, [Allowed: RD LU MD XT DL]  rpc.xid == 0x6890c61d
+ 24         10 172.27.30.129 -> 172.27.255.28 NFS 288 V4 Call ACCESS
+FH: 0x54d7a1df, [Check: RD LU MD XT DL]  rpc.xid == 0x6990c61d
+ 25         10 172.27.255.28 -> 172.27.30.129 NFS 196 V4 Reply (Call
+In 24) ACCESS, [Allowed: RD LU MD XT DL]  rpc.xid == 0x6990c61d
+ 33         11 172.27.30.129 -> 172.27.255.28 NFS 372 V4 Call OPEN DH:
+0x272b8d23/.bash_history  rpc.xid == 0x6c90c61d
+ 34         11 172.27.255.28 -> 172.27.30.129 NFS 396 V4 Reply (Call
+In 33) OPEN StateID: 0x0f49  rpc.xid == 0x6c90c61d
+ 36         11 172.27.30.129 -> 172.27.255.28 NFS 288 V4 Call
+OPEN_CONFIRM  rpc.xid == 0x6d90c61d
+ 37         11 172.27.255.28 -> 172.27.30.129 NFS 140 V4 Reply (Call
+In 36) OPEN_CONFIRM  rpc.xid == 0x6d90c61d
+ 38         11 172.27.30.129 -> 172.27.255.28 NFS 304 V4 Call CLOSE
+StateID: 0x01be  rpc.xid == 0x6e90c61d
+ 39         11 172.27.255.28 -> 172.27.30.129 NFS 204 V4 Reply (Call
+In 38) CLOSE  rpc.xid == 0x6e90c61d
+ 44         11 172.27.30.129 -> 172.27.255.28 NFS 364 V4 Call OPEN DH:
+0x272b8d23/.bashrc  rpc.xid == 0x7090c61d
+ 45         11 172.27.255.28 -> 172.27.30.129 NFS 432 V4 Reply (Call
+In 44) OPEN StateID: 0x13f2  rpc.xid == 0x7090c61d
+ 46         11 172.27.30.129 -> 172.27.255.28 NFS 304 V4 Call CLOSE
+StateID: 0x13f2  rpc.xid == 0x7190c61d
+ 47         11 172.27.255.28 -> 172.27.30.129 NFS 204 V4 Reply (Call
+In 46) CLOSE  rpc.xid == 0x7190c61d
+ 48         11 172.27.30.129 -> 172.27.255.28 NFS 288 V4 Call ACCESS
+FH: 0xfb7c5154, [Check: RD MD XT XE]  rpc.xid == 0x7290c61d
+ 49         11 172.27.255.28 -> 172.27.30.129 NFS 196 V4 Reply (Call
+In 48) ACCESS, [Access Denied: XE], [Allowed: RD MD XT]  rpc.xid ==
+0x7290c61d
+ 50         11 172.27.30.129 -> 172.27.255.28 NFS 364 V4 Call OPEN DH:
+0x272b8d23/.bashenv  rpc.xid == 0x7390c61d
+ 51         11 172.27.255.28 -> 172.27.30.129 NFS 432 V4 Reply (Call
+In 50) OPEN StateID: 0xca9b  rpc.xid == 0x7390c61d
+ 52         11 172.27.30.129 -> 172.27.255.28 NFS 304 V4 Call CLOSE
+StateID: 0xca9b  rpc.xid == 0x7490c61d
+ 53         11 172.27.255.28 -> 172.27.30.129 NFS 204 V4 Reply (Call
+In 52) CLOSE  rpc.xid == 0x7490c61d
+ 55         16 172.27.30.129 -> 172.27.255.28 NFS 372 V4 Call OPEN DH:
+0x272b8d23/.bash_history  rpc.xid == 0x7590c61d
+ 56         16 172.27.255.28 -> 172.27.30.129 NFS 432 V4 Reply (Call
+In 55) OPEN StateID: 0xf3ed  rpc.xid == 0x7590c61d
+ 58         16 172.27.30.129 -> 172.27.255.28 NFS 304 V4 Call CLOSE
+StateID: 0xf3ed  rpc.xid == 0x7690c61d
+ 59         16 172.27.255.28 -> 172.27.30.129 NFS 204 V4 Reply (Call
+In 58) CLOSE  rpc.xid == 0x7690c61d
+ 61         21 172.27.30.129 -> 172.27.255.28 NFS 288 V4 Call ACCESS
+FH: 0xa77c94de, [Check: RD LU MD XT DL]  rpc.xid == 0x7790c61d
+ 62         21 172.27.255.28 -> 172.27.30.129 NFS 196 V4 Reply (Call
+In 61) ACCESS, [Allowed: RD LU MD XT DL]  rpc.xid == 0x7790c61d
+ 64         21 172.27.30.129 -> 172.27.255.28 NFS 364 V4 Call OPEN DH:
+0xa77c94de/a.out  rpc.xid == 0x7890c61d
+ 65         21 172.27.255.28 -> 172.27.30.129 NFS 432 V4 Reply (Call
+In 64) OPEN StateID: 0xb877  rpc.xid == 0x7890c61d
+ 66         21 172.27.30.129 -> 172.27.255.28 NFS 288 V4 Call ACCESS
+FH: 0xbfe01adc, [Check: RD LU MD XT DL]  rpc.xid == 0x7990c61d
+ 67         21 172.27.255.28 -> 172.27.30.129 NFS 196 V4 Reply (Call
+In 66) ACCESS, [Allowed: RD LU MD XT DL]  rpc.xid == 0x7990c61d
+ 68         21 172.27.30.129 -> 172.27.255.28 NFS 368 V4 Call OPEN DH:
+0xbfe01adc/m.db  rpc.xid == 0x7a90c61d
+ 69         21 172.27.255.28 -> 172.27.30.129 NFS 396 V4 Reply (Call
+In 68) OPEN StateID: 0x8101  rpc.xid == 0x7a90c61d
+ 70         21 172.27.30.129 -> 172.27.255.28 NFS 352 V4 Call LOCK FH:
+0x80589398 Offset: 0 Length: <End of File>  rpc.xid == 0x7b90c61d
+ 71         21 172.27.255.28 -> 172.27.30.129 NFS 124 V4 Reply (Call
+In 70) LOCK Status: NFS4ERR_BAD_SEQID  rpc.xid == 0x7b90c61d
+ 72         21 172.27.30.129 -> 172.27.255.28 NFS 304 V4 Call CLOSE
+StateID: 0xb877  rpc.xid == 0x7c90c61d
+ 73         21 172.27.255.28 -> 172.27.30.129 NFS 204 V4 Reply (Call
+In 72) CLOSE  rpc.xid == 0x7c90c61d
+ 74         21 172.27.30.129 -> 172.27.255.28 NFS 304 V4 Call CLOSE
+StateID: 0x8101  rpc.xid == 0x7d90c61d
+ 75         21 172.27.255.28 -> 172.27.30.129 NFS 204 V4 Reply (Call
+In 74) CLOSE  rpc.xid == 0x7d90c61d
 
-If the system is configured with softlockup_panic and the same
-hook is repeatedly registered on the panic_notifier_list, it
-will cause a loop panic.
 
-Add a check in notifier_chain_register(),
-Intercepting duplicate registrations to avoid infinite loops
 
-Signed-off-by: Xiaoming Ni <nixiaoming@huawei.com>
-Reviewed-by: Vasily Averin <vvs@virtuozzo.com>
----
- kernel/notifier.c | 5 ++++-
- 1 file changed, 4 insertions(+), 1 deletion(-)
+>
+> On Wed, Sep 18, 2019 at 9:07 AM Benjamin Coddington <bcodding@redhat.com> wrote:
+> >
 
-diff --git a/kernel/notifier.c b/kernel/notifier.c
-index d9f5081..30bedb8 100644
---- a/kernel/notifier.c
-+++ b/kernel/notifier.c
-@@ -23,7 +23,10 @@ static int notifier_chain_register(struct notifier_block **nl,
- 		struct notifier_block *n)
- {
- 	while ((*nl) != NULL) {
--		WARN_ONCE(((*nl) == n), "double register detected");
-+		if (unlikely((*nl) == n)) {
-+			WARN(1, "double register detected");
-+			return 0;
-+		}
- 		if (n->priority > (*nl)->priority)
- 			break;
- 		nl = &((*nl)->next);
--- 
-1.8.5.6
 
+> > > Is there a better way of tracking sequences other than monitoring the
+> > > network traffic?
+> >
+> > I think that's the best way, right now.  We do have tracepoints for
+> > nfs4 open and close that show the sequence numbers on the client, but
+> > I'm
+> > not sure about how to get that from the server side.  I don't think we
+> > have
+> > seqid for locks in tracepoints.. I could be missing something.  Not only
+> > that, but you might not get tracepoint output showing the sequence
+> > numbers
+> > if you're in an error-handling path.
+> >
+> > If you have a wire capture of the event, you should be able to go
+> > backwards
+> > from the error and figure out what the sequence number on the state
+> > should
+> > be for the operation that received BAD_SEQID by finding the last
+> > sequence-mutating (OPEN,CLOSE,LOCK) operation for that stateid that did
+> > not
+> > return an error.
+> >
+> > Ben
+
+
+Thanks Ben, I'll persist with the network monitoring for now. The
+sequence ids appear do appear to be sequential when it's in error
+state. I don't see it skipping any if that's what the error is
+expecting
+
+
+Client
+~~~~~
+
+Here is the sequence-id that gets returned as bad:
+
+$ tshark -n -2 -r client_broken.pcap -z proto,colinfo,rpc.xid,rpc.xid
+-R 'nfs.seqid == 0x0000003c && frame.number <= 70'
+ 70         21 172.27.30.129 -> 172.27.255.28 NFS 352 V4 Call LOCK FH:
+0x80589398 Offset: 0 Length: <End of File>  rpc.xid == 0x7b90c61d
+
+prior sequence is the OPEN as expected:
+
+$ tshark -n -2 -r client_broken.pcap -z proto,colinfo,rpc.xid,rpc.xid
+-R 'nfs.seqid == 0x0000003b && frame.number <= 70'
+ 68         21 172.27.30.129 -> 172.27.255.28 NFS 368 V4 Call OPEN DH:
+0xbfe01adc/m.db  rpc.xid == 0x7a90c61d
+
+Server
+~~~~~
+bad-sequence
+
+$ tshark -n -2 -r server_broken.pcap -z proto,colinfo,rpc.xid,rpc.xid
+-R 'nfs.seqid == 0x0000003c && frame.number <= 70'
+  1         65 172.27.30.129 -> 172.27.255.28 NFS 350 V4 Call (Reply
+In 2) LOCK FH: 0x80589398 Offset: 0 Length: <End of File>  rpc.xid ==
+0x7b90c61d
+  2         65 172.27.30.129 -> 172.27.255.28 NFS 302 V4 Call (Reply
+In 3) CLOSE StateID: 0xb877  rpc.xid == 0x7c90c61d
+
+prior sequence
+
+$ tshark -n -2 -r server_broken.pcap -z proto,colinfo,rpc.xid,rpc.xid
+-R 'nfs.seqid == 0x0000003b && frame.number <= 70'
+  1         65 172.27.30.129 -> 172.27.255.28 NFS 366 V4 Call (Reply
+In 2) OPEN DH: 0xbfe01adc/m.db  rpc.xid == 0x7a90c61d
+
+if it is indeed Red Hat KB 3354251 then there is greater motivation to
+try a kernel upgrade again. Though just trying to confirm I have not
+hit something new here.
+
+Leon
