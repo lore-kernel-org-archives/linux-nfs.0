@@ -6,28 +6,28 @@ X-Spam-Status: No, score=-6.7 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
 	URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B46F3C4740C
-	for <linux-nfs@archiver.kernel.org>; Mon, 23 Sep 2019 04:27:40 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E0628C3A5A6
+	for <linux-nfs@archiver.kernel.org>; Mon, 23 Sep 2019 04:27:46 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 88B742087C
-	for <linux-nfs@archiver.kernel.org>; Mon, 23 Sep 2019 04:27:40 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id BD2AE2087C
+	for <linux-nfs@archiver.kernel.org>; Mon, 23 Sep 2019 04:27:46 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2406625AbfIWE1k (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 23 Sep 2019 00:27:40 -0400
-Received: from mx2.suse.de ([195.135.220.15]:47328 "EHLO mx1.suse.de"
+        id S2406652AbfIWE1q (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 23 Sep 2019 00:27:46 -0400
+Received: from mx2.suse.de ([195.135.220.15]:47352 "EHLO mx1.suse.de"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S2405826AbfIWE1j (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 23 Sep 2019 00:27:39 -0400
+        id S2405826AbfIWE1q (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 23 Sep 2019 00:27:46 -0400
 X-Virus-Scanned: by amavisd-new at test-mx.suse.de
 Received: from relay2.suse.de (unknown [195.135.220.254])
-        by mx1.suse.de (Postfix) with ESMTP id 3B6ABAFA4;
-        Mon, 23 Sep 2019 04:27:38 +0000 (UTC)
+        by mx1.suse.de (Postfix) with ESMTP id 7A6E7B024;
+        Mon, 23 Sep 2019 04:27:44 +0000 (UTC)
 From:   NeilBrown <neilb@suse.de>
 To:     Steve Dickson <SteveD@RedHat.com>
 Date:   Mon, 23 Sep 2019 14:26:58 +1000
-Subject: [PATCH 2/3] conffile: allow optional include files.
+Subject: [PATCH 3/3] statd: take user-id from /var/lib/nfs/sm
 Cc:     linux-nfs@vger.kernel.org
-Message-ID: <156921281807.27519.17127755754207047423.stgit@noble.brown>
+Message-ID: <156921281809.27519.10997149063922425666.stgit@noble.brown>
 In-Reply-To: <156921267783.27519.2402857390317412450.stgit@noble.brown>
 References: <156921267783.27519.2402857390317412450.stgit@noble.brown>
 User-Agent: StGit/0.19
@@ -39,65 +39,94 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-If nfs.conf contains, for example
-  include = /etc/nfs.conf.local
-and /etc/nfs.conf.local doesn't exist, then a warning is given.
-Sometimes it is useful to have an optional include file which is
-included if present, but for which an absence doesn't give a
-warning.
-
-Systemd has a convention that a hyphen at the start of
-an include file name marks it as optional, so add this convention
-to nfs-utils.
-So
-  include = -/etc/nfs.conf.local
-will not give a warning if the file doesn't exist.
+Having /var/lib/nfs writeable by statd is not ideal
+as there are files in there that statd doesn't need
+to access.
+After dropping privs, statd and sm-notify only need to
+access files in the directories sm and sm.bak.
+So take the uid for these deamons from 'sm'.
 
 Signed-off-by: NeilBrown <neilb@suse.de>
 ---
- support/nfs/conffile.c |   13 ++++++++++---
- systemd/nfs.conf.man   |    3 +++
- 2 files changed, 13 insertions(+), 3 deletions(-)
+ support/nsm/file.c        |   16 +++++-----------
+ utils/statd/sm-notify.man |   10 +++++++++-
+ utils/statd/statd.man     |   10 +++++++++-
+ 3 files changed, 23 insertions(+), 13 deletions(-)
 
-diff --git a/support/nfs/conffile.c b/support/nfs/conffile.c
-index 6ba8a35ce7c6..d55bfe10120a 100644
---- a/support/nfs/conffile.c
-+++ b/support/nfs/conffile.c
-@@ -412,11 +412,18 @@ conf_parse_line(int trans, char *line, const char *filename, int lineno, char **
+diff --git a/support/nsm/file.c b/support/nsm/file.c
+index 0b66f123165e..f5b448015751 100644
+--- a/support/nsm/file.c
++++ b/support/nsm/file.c
+@@ -388,23 +388,17 @@ nsm_drop_privileges(const int pidfd)
  
- 	if (strcasecmp(line, "include")==0) {
- 		/* load and parse subordinate config files */
-+		_Bool optional = false;
+ 	(void)umask(S_IRWXO);
+ 
+-	/*
+-	 * XXX: If we can't stat dirname, or if dirname is owned by
+-	 *      root, we should use "statduser" instead, which is set up
+-	 *      by configure.ac.  Nothing in nfs-utils seems to use
+-	 *      "statduser," though.
+-	 */
+-	if (lstat(nsm_base_dirname, &st) == -1) {
+-		xlog(L_ERROR, "Failed to stat %s: %m", nsm_base_dirname);
+-		return false;
+-	}
+-
+ 	if (chdir(nsm_base_dirname) == -1) {
+ 		xlog(L_ERROR, "Failed to change working directory to %s: %m",
+ 				nsm_base_dirname);
+ 		return false;
+ 	}
+ 
++	if (lstat(NSM_MONITOR_DIR, &st) == -1) {
++		xlog(L_ERROR, "Failed to stat %s/%s: %m", nsm_base_dirname, NSM_MONITOR_DIR);
++		return false;
++	}
 +
-+		if (val && *val == '-') {
-+			optional = true;
-+			val++;
-+		}
-+
- 		relpath = relative_path(filename, val);
- 		if (relpath == NULL) {
--			xlog_warn("config error at %s:%d: "
--				"error loading included config",
--				  filename, lineno);
-+			if (!optional)
-+				xlog_warn("config error at %s:%d: error loading included config",
-+					  filename, lineno);
- 			return;
- 		}
+ 	if (!prune_bounding_set())
+ 		return false;
  
-diff --git a/systemd/nfs.conf.man b/systemd/nfs.conf.man
-index d375bcc1d5a7..3f1c7261991d 100644
---- a/systemd/nfs.conf.man
-+++ b/systemd/nfs.conf.man
-@@ -65,6 +65,9 @@ section headers, then new sections will be created just as if the
- included file appeared in place of the
- .B include
- line.
-+If the file name starts with a hyphen then that is stripped off
-+before the file is opened, and if file doesn't exist no warning is
-+given.  Normally a non-existent include file generates a warning.
- .PP
- Lookup of section and value names is case-insensitive.
- 
+diff --git a/utils/statd/sm-notify.man b/utils/statd/sm-notify.man
+index cfe1e4b1dac8..addf5d3c028e 100644
+--- a/utils/statd/sm-notify.man
++++ b/utils/statd/sm-notify.man
+@@ -190,7 +190,15 @@ by default.
+ After starting,
+ .B sm-notify
+ attempts to set its effective UID and GID to the owner
+-and group of this directory.
++and group of the subdirectory
++.B sm
++of this directory.  After changing the effective ids,
++.B sm-notify
++only needs to access files in
++.B sm
++and
++.B sm.bak
++within the state-directory-path.
+ .TP
+ .BI -v " ipaddr " | " hostname
+ Specifies the network address from which to send reboot notifications,
+diff --git a/utils/statd/statd.man b/utils/statd/statd.man
+index 71d58461b5ea..6222701e38a8 100644
+--- a/utils/statd/statd.man
++++ b/utils/statd/statd.man
+@@ -259,7 +259,15 @@ by default.
+ After starting,
+ .B rpc.statd
+ attempts to set its effective UID and GID to the owner
+-and group of this directory.
++and group of the subdirectory
++.B sm
++of this directory.  After changing the effective ids,
++.B rpc.statd
++only needs to access files in
++.B sm
++and
++.B sm.bak
++within the state-directory-path.
+ .TP
+ .BR -v ", " -V ", " --version
+ Causes
 
 
