@@ -7,50 +7,50 @@ X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 26AD2ECE587
-	for <linux-nfs@archiver.kernel.org>; Tue,  1 Oct 2019 16:58:49 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4468EECE58A
+	for <linux-nfs@archiver.kernel.org>; Tue,  1 Oct 2019 17:03:04 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id ECB8C2168B
-	for <linux-nfs@archiver.kernel.org>; Tue,  1 Oct 2019 16:58:48 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 11D162086A
+	for <linux-nfs@archiver.kernel.org>; Tue,  1 Oct 2019 17:03:04 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1569949129;
-	bh=sKBF4xUU1taMr94G4Nliz9kPsX8hP2tQ7LlSgY+UwAo=;
+	s=default; t=1569949384;
+	bh=hWFw/mm/IjB//DvfFJsOpdoICftIKYGQelaXG5osxR0=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=G4Ntb4FIJdSZLJ5TawwgY/raRMil5gwRWF5RZSqS14JE07sBXwHlO30YRdcEOZ2tf
-	 0j+7gtcZluUQBqRbWHi8mNgmEso3uWso3QS545ExoZ16ZsY0wXaHAUbRmRPpsnhm1/
-	 xVdSch4Yy2TB3VRVvUmlKL0JxaMVzqC3eL7tZR6c=
+	b=o67Tr6miEoEs7CPVrjrmTIalkgI5n2xCFHHGpog+brctuJC1F3XABVieVaX2Q/ZRr
+	 Cy1qdF3YUfKrge20yoVz2eVRVn/6q0hutBX9vPuLijhvFbt0DemuoTb+nfxoPY4ufI
+	 ceYc4Yqc5knge29yB8V7l/sP1ou4NuTtFkvvv53Y=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1731104AbfJAQle (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 1 Oct 2019 12:41:34 -0400
-Received: from mail.kernel.org ([198.145.29.99]:53152 "EHLO mail.kernel.org"
+        id S1729042AbfJAQj6 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 1 Oct 2019 12:39:58 -0400
+Received: from mail.kernel.org ([198.145.29.99]:51098 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1731081AbfJAQle (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 1 Oct 2019 12:41:34 -0400
+        id S1728879AbfJAQj6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 1 Oct 2019 12:39:58 -0400
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 8A22B205C9;
-        Tue,  1 Oct 2019 16:41:32 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 79F25222C3;
+        Tue,  1 Oct 2019 16:39:56 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1569948093;
-        bh=sKBF4xUU1taMr94G4Nliz9kPsX8hP2tQ7LlSgY+UwAo=;
+        s=default; t=1569947997;
+        bh=hWFw/mm/IjB//DvfFJsOpdoICftIKYGQelaXG5osxR0=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=r7e8UVi8erCHhfuBEz/R5Zi4pjMOomVdn1VtRpFXON2SKXtQmwH6Y1flDbjwMDEU+
-         9+JfzWrEWRz0uauyHBe7tXYAjIQmhbartw3tJ2/1GjAmV8vmebMpVmT1nt3dBdMf7g
-         7VC+0V+9KBLUei9tuEQnHUS4tITDgm+ZmnrvkIL8=
+        b=E8sm2+wBGCvobQTuZNtL0uZokilV4a0A8eNwLY6FVOM3JanrYTNhi44DMfLut5l7j
+         rzwSyimhfP/3iWCqv8b4m/89tyOfUbVcNLAPCXyOfg+ragQglFrAXKBENM5Ke/JtCu
+         rPyytnaZ0pzThZhj+H5BzQOyETsFuiLbArl9pus4=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     Chuck Lever <chuck.lever@oracle.com>,
-        Eli Dorfman <eli@vastdata.com>,
+Cc:     Trond Myklebust <trondmy@gmail.com>,
+        Trond Myklebust <trond.myklebust@hammerspace.com>,
         Anna Schumaker <Anna.Schumaker@Netapp.com>,
         Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org,
         netdev@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.2 05/63] xprtrdma: Send Queue size grows after a reconnect
-Date:   Tue,  1 Oct 2019 12:40:27 -0400
-Message-Id: <20191001164125.15398-5-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 5.3 23/71] SUNRPC: Don't try to parse incomplete RPC messages
+Date:   Tue,  1 Oct 2019 12:38:33 -0400
+Message-Id: <20191001163922.14735-23-sashal@kernel.org>
 X-Mailer: git-send-email 2.20.1
-In-Reply-To: <20191001164125.15398-1-sashal@kernel.org>
-References: <20191001164125.15398-1-sashal@kernel.org>
+In-Reply-To: <20191001163922.14735-1-sashal@kernel.org>
+References: <20191001163922.14735-1-sashal@kernel.org>
 MIME-Version: 1.0
 X-stable: review
 X-Patchwork-Hint: Ignore
@@ -60,120 +60,61 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Chuck Lever <chuck.lever@oracle.com>
+From: Trond Myklebust <trondmy@gmail.com>
 
-[ Upstream commit 98ef77d1aaa7a2f4e1b2a721faa084222021fda7 ]
+[ Upstream commit 9ba828861c56a21d211d5d10f5643774b1ea330d ]
 
-Eli Dorfman reports that after a series of idle disconnects, an
-RPC/RDMA transport becomes unusable (rdma_create_qp returns
--ENOMEM). Problem was tracked down to increasing Send Queue size
-after each reconnect.
+If the copy of the RPC reply into our buffers did not complete, and
+we could end up with a truncated message. In that case, just resend
+the call.
 
-The rdma_create_qp() API does not promise to leave its @qp_init_attr
-parameter unaltered. In fact, some drivers do modify one or more of
-its fields. Thus our calls to rdma_create_qp must use a fresh copy
-of ib_qp_init_attr each time.
-
-This fix is appropriate for kernels dating back to late 2007, though
-it will have to be adapted, as the connect code has changed over the
-years.
-
-Reported-by: Eli Dorfman <eli@vastdata.com>
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Fixes: a0584ee9aed80 ("SUNRPC: Use struct xdr_stream when decoding...")
+Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- net/sunrpc/xprtrdma/verbs.c | 26 ++++++++++++++------------
- 1 file changed, 14 insertions(+), 12 deletions(-)
+ net/sunrpc/clnt.c | 14 +++++++++++++-
+ 1 file changed, 13 insertions(+), 1 deletion(-)
 
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 84bb379245406..3f67c395845df 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -607,10 +607,10 @@ void rpcrdma_ep_destroy(struct rpcrdma_xprt *r_xprt)
-  * Unlike a normal reconnection, a fresh PD and a new set
-  * of MRs and buffers is needed.
-  */
--static int
--rpcrdma_ep_recreate_xprt(struct rpcrdma_xprt *r_xprt,
--			 struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
-+static int rpcrdma_ep_recreate_xprt(struct rpcrdma_xprt *r_xprt,
-+				    struct ib_qp_init_attr *qp_init_attr)
- {
-+	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
- 	int rc, err;
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 76e745ff78138..d8136b829804f 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -2479,6 +2479,7 @@ call_decode(struct rpc_task *task)
+ 	struct rpc_clnt	*clnt = task->tk_client;
+ 	struct rpc_rqst	*req = task->tk_rqstp;
+ 	struct xdr_stream xdr;
++	int err;
  
- 	trace_xprtrdma_reinsert(r_xprt);
-@@ -627,7 +627,7 @@ rpcrdma_ep_recreate_xprt(struct rpcrdma_xprt *r_xprt,
- 	}
+ 	dprint_status(task);
  
- 	rc = -ENETUNREACH;
--	err = rdma_create_qp(ia->ri_id, ia->ri_pd, &ep->rep_attr);
-+	err = rdma_create_qp(ia->ri_id, ia->ri_pd, qp_init_attr);
- 	if (err) {
- 		pr_err("rpcrdma: rdma_create_qp returned %d\n", err);
- 		goto out3;
-@@ -644,16 +644,16 @@ rpcrdma_ep_recreate_xprt(struct rpcrdma_xprt *r_xprt,
- 	return rc;
- }
+@@ -2501,6 +2502,15 @@ call_decode(struct rpc_task *task)
+ 	 * before it changed req->rq_reply_bytes_recvd.
+ 	 */
+ 	smp_rmb();
++
++	/*
++	 * Did we ever call xprt_complete_rqst()? If not, we should assume
++	 * the message is incomplete.
++	 */
++	err = -EAGAIN;
++	if (!req->rq_reply_bytes_recvd)
++		goto out;
++
+ 	req->rq_rcv_buf.len = req->rq_private_buf.len;
  
--static int
--rpcrdma_ep_reconnect(struct rpcrdma_xprt *r_xprt, struct rpcrdma_ep *ep,
--		     struct rpcrdma_ia *ia)
-+static int rpcrdma_ep_reconnect(struct rpcrdma_xprt *r_xprt,
-+				struct ib_qp_init_attr *qp_init_attr)
- {
-+	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
- 	struct rdma_cm_id *id, *old;
- 	int err, rc;
+ 	/* Check that the softirq receive buffer is valid */
+@@ -2509,7 +2519,9 @@ call_decode(struct rpc_task *task)
  
- 	trace_xprtrdma_reconnect(r_xprt);
- 
--	rpcrdma_ep_disconnect(ep, ia);
-+	rpcrdma_ep_disconnect(&r_xprt->rx_ep, ia);
- 
- 	rc = -EHOSTUNREACH;
- 	id = rpcrdma_create_id(r_xprt, ia);
-@@ -675,7 +675,7 @@ rpcrdma_ep_reconnect(struct rpcrdma_xprt *r_xprt, struct rpcrdma_ep *ep,
- 		goto out_destroy;
- 	}
- 
--	err = rdma_create_qp(id, ia->ri_pd, &ep->rep_attr);
-+	err = rdma_create_qp(id, ia->ri_pd, qp_init_attr);
- 	if (err)
- 		goto out_destroy;
- 
-@@ -700,25 +700,27 @@ rpcrdma_ep_connect(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
- 	struct rpcrdma_xprt *r_xprt = container_of(ia, struct rpcrdma_xprt,
- 						   rx_ia);
- 	struct rpc_xprt *xprt = &r_xprt->rx_xprt;
-+	struct ib_qp_init_attr qp_init_attr;
- 	int rc;
- 
- retry:
-+	memcpy(&qp_init_attr, &ep->rep_attr, sizeof(qp_init_attr));
- 	switch (ep->rep_connected) {
+ 	xdr_init_decode(&xdr, &req->rq_rcv_buf,
+ 			req->rq_rcv_buf.head[0].iov_base, req);
+-	switch (rpc_decode_header(task, &xdr)) {
++	err = rpc_decode_header(task, &xdr);
++out:
++	switch (err) {
  	case 0:
- 		dprintk("RPC:       %s: connecting...\n", __func__);
--		rc = rdma_create_qp(ia->ri_id, ia->ri_pd, &ep->rep_attr);
-+		rc = rdma_create_qp(ia->ri_id, ia->ri_pd, &qp_init_attr);
- 		if (rc) {
- 			rc = -ENETUNREACH;
- 			goto out_noupdate;
- 		}
- 		break;
- 	case -ENODEV:
--		rc = rpcrdma_ep_recreate_xprt(r_xprt, ep, ia);
-+		rc = rpcrdma_ep_recreate_xprt(r_xprt, &qp_init_attr);
- 		if (rc)
- 			goto out_noupdate;
- 		break;
- 	default:
--		rc = rpcrdma_ep_reconnect(r_xprt, ep, ia);
-+		rc = rpcrdma_ep_reconnect(r_xprt, &qp_init_attr);
- 		if (rc)
- 			goto out;
- 	}
+ 		task->tk_action = rpc_exit_task;
+ 		task->tk_status = rpcauth_unwrap_resp(task, &xdr);
 -- 
 2.20.1
 
