@@ -7,48 +7,48 @@ X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id DA325ECE587
-	for <linux-nfs@archiver.kernel.org>; Tue,  1 Oct 2019 16:41:34 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 09632C352AA
+	for <linux-nfs@archiver.kernel.org>; Tue,  1 Oct 2019 16:46:53 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 9F9EB21A4A
-	for <linux-nfs@archiver.kernel.org>; Tue,  1 Oct 2019 16:41:34 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id CA8B820659
+	for <linux-nfs@archiver.kernel.org>; Tue,  1 Oct 2019 16:46:52 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1569948094;
-	bh=cr6YBvpS3grHwJzik1Udnyg6TBccoNN3YeaiSRYHI9k=;
+	s=default; t=1569948412;
+	bh=OBdtrm8pJtajj5WunNduBtqbGjzE7rTRWzKQSZySMEs=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=pWUhH/ggUdeeZIw5z148Se4D7cJf19ffdUjGLL0/KWO5oEIOwcJEJwqgfdceTDvPy
-	 oQjalUsoKAaiiUZuYEoScYseETJx8bcxD/5sJ5HA77KSbp3RHJUnkoDWOe6seo8mC/
-	 ii6RTVul9exUglh88Jtv5iUn91O6tMuJih4yplRQ=
+	b=n4MCSnRWilLJPA+62moZh0xY3okFgS0rnwS28U+/ZlKoog9k6KjJoU3B8yrm9h7P3
+	 yb4iiF5qeneRCvbu8b6pOYXbELnIVobXuykojzUCH3fT47F9ODT5eUV1BgMiZ8XdU8
+	 oXau2ylroo7ORTVvFRz+wx/kGIbbkh7HLUJTvplw=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1731063AbfJAQlc (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 1 Oct 2019 12:41:32 -0400
-Received: from mail.kernel.org ([198.145.29.99]:53104 "EHLO mail.kernel.org"
+        id S2390346AbfJAQph (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 1 Oct 2019 12:45:37 -0400
+Received: from mail.kernel.org ([198.145.29.99]:58148 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1731048AbfJAQlb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 1 Oct 2019 12:41:31 -0400
+        id S2390339AbfJAQpg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 1 Oct 2019 12:45:36 -0400
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 244672190F;
-        Tue,  1 Oct 2019 16:41:30 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 61FB721A4A;
+        Tue,  1 Oct 2019 16:45:35 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1569948090;
-        bh=cr6YBvpS3grHwJzik1Udnyg6TBccoNN3YeaiSRYHI9k=;
+        s=default; t=1569948336;
+        bh=OBdtrm8pJtajj5WunNduBtqbGjzE7rTRWzKQSZySMEs=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=HCyHiPXOHsrzk6EANLSr/zDce8R7VB6EDjb3FbbLkdbySB1zno0ig1GfcuJaogrvo
-         /Hx1G0QS2LxHauQIOrVKoKmpAzGAKYU0P2kUz5/KXxzXGVXQJ4/SQKniC4IUqowk/R
-         PNun7qu9JZ//0I1m1g8FAyJqTUf+D7HQ9OVWMa0Y=
+        b=pkBGI4nQ2DTsGNnA1jt/FdLHP73glOUfBGR0K+WHKhggBQrjpmLPBa/NhivxgdeQU
+         hwEnRijwfTptRH7JMk2BUchSMcWaeTiql5x0RfMZaGvEOVaUEYXp5czNjvvAYS8q+m
+         GsUJ5kYvhtVTZLAeMzClDbu56Cuj3Acp7q2/eBEo=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
 Cc:     Jia-Ju Bai <baijiaju1990@gmail.com>,
         Anna Schumaker <Anna.Schumaker@Netapp.com>,
         Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.2 04/63] fs: nfs: Fix possible null-pointer dereferences in encode_attrs()
-Date:   Tue,  1 Oct 2019 12:40:26 -0400
-Message-Id: <20191001164125.15398-4-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 4.4 02/15] fs: nfs: Fix possible null-pointer dereferences in encode_attrs()
+Date:   Tue,  1 Oct 2019 12:45:20 -0400
+Message-Id: <20191001164533.16915-2-sashal@kernel.org>
 X-Mailer: git-send-email 2.20.1
-In-Reply-To: <20191001164125.15398-1-sashal@kernel.org>
-References: <20191001164125.15398-1-sashal@kernel.org>
+In-Reply-To: <20191001164533.16915-1-sashal@kernel.org>
+References: <20191001164533.16915-1-sashal@kernel.org>
 MIME-Version: 1.0
 X-stable: review
 X-Patchwork-Hint: Ignore
@@ -84,10 +84,10 @@ Signed-off-by: Sasha Levin <sashal@kernel.org>
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 602446158bfb5..ff06820b9efbf 100644
+index 1cb50bb898b01..15cd9db6d616d 100644
 --- a/fs/nfs/nfs4xdr.c
 +++ b/fs/nfs/nfs4xdr.c
-@@ -1172,7 +1172,7 @@ static void encode_attrs(struct xdr_stream *xdr, const struct iattr *iap,
+@@ -1123,7 +1123,7 @@ static void encode_attrs(struct xdr_stream *xdr, const struct iattr *iap,
  		} else
  			*p++ = cpu_to_be32(NFS4_SET_TO_SERVER_TIME);
  	}
