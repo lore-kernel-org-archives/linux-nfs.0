@@ -4,49 +4,50 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
-	version=3.4.0
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7487AC352AA
-	for <linux-nfs@archiver.kernel.org>; Tue,  1 Oct 2019 16:57:38 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id CD8ABECE587
+	for <linux-nfs@archiver.kernel.org>; Tue,  1 Oct 2019 16:58:04 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 4CC8921783
-	for <linux-nfs@archiver.kernel.org>; Tue,  1 Oct 2019 16:57:38 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 9F8282168B
+	for <linux-nfs@archiver.kernel.org>; Tue,  1 Oct 2019 16:58:04 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1569949058;
-	bh=9M5Nx3H8tNFe5QixqpzD9pf6eQnJZ5bl01NdqAyFi44=;
+	s=default; t=1569949084;
+	bh=HB5pc3swrauJmegZZvrtgZE1nd70LmkXU0RIyYHGTLw=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=0oFuKlHFi7UNmRCLBZOJsA8Q59yv+1linQsmE2ZobxP+T/BSZMinBhsj6crmIWSUX
-	 UtVxtCfomp07gOQNFPsDe2rLFXoRnhPFovxzVX6kAP1zxnMzRUjD/9QRZyvXIShQtI
-	 NgkkGuzyyutU7P+d/k261FTeBGraABJ8/2tPBc1c=
+	b=IjfVov1Hcn9PLPRGk8h73webPD4SGBjl2eHMkUlOaHNHrPOVNUeWUEKDGd0BSKeuf
+	 5DZm59jlrsROwjsEFYlcr70mubNcMO6Ar9YYLApIdi/M/ZaqQjmC384GS95AVgn66B
+	 H0m8zDasoZPZka4/1e5fQ03aIBo67vwKhJisfRLk=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1731394AbfJAQ5f (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 1 Oct 2019 12:57:35 -0400
-Received: from mail.kernel.org ([198.145.29.99]:53616 "EHLO mail.kernel.org"
+        id S1731304AbfJAQlp (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 1 Oct 2019 12:41:45 -0400
+Received: from mail.kernel.org ([198.145.29.99]:53382 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1731457AbfJAQly (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 1 Oct 2019 12:41:54 -0400
+        id S1731294AbfJAQlp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 1 Oct 2019 12:41:45 -0400
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 4482D21906;
-        Tue,  1 Oct 2019 16:41:53 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 9C94C2168B;
+        Tue,  1 Oct 2019 16:41:43 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1569948114;
-        bh=9M5Nx3H8tNFe5QixqpzD9pf6eQnJZ5bl01NdqAyFi44=;
+        s=default; t=1569948104;
+        bh=HB5pc3swrauJmegZZvrtgZE1nd70LmkXU0RIyYHGTLw=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=qZ8+JTvL/a9/wsLrgWCnx3Ja4yEC94Be2WcXUKu27Xx5+XFRXhm7prS6jkaNMMabf
-         E7dlAEwbvY/93daErbUOVpIRA+Jm3QwH1M65yes3P5/+mttD18hyvElduAO+1+J/Be
-         crTWme18fhgIWXf7c0zrVGsRguwV4sSDkx2rqCyM=
+        b=Jq7WnIwqnvI6Scjb+6/bDI9vxvCopOYV0NyXGx5ajGRA/wQfR6k6trjvcm9g8Or6A
+         Ez63x2gJGj0tx0R6Uh1Tf6qATQqbEwuZAoYiKYdDA5mPeBmW+B9CPDfe3Fj6bh40J3
+         3rCTz5ExaBURlUj73l5WUmli2SqBAhD3tPKqsAXA=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
 Cc:     Trond Myklebust <trondmy@gmail.com>,
         Trond Myklebust <trond.myklebust@hammerspace.com>,
         Anna Schumaker <Anna.Schumaker@Netapp.com>,
-        Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.2 20/63] pNFS: Ensure we do clear the return-on-close layout stateid on fatal errors
-Date:   Tue,  1 Oct 2019 12:40:42 -0400
-Message-Id: <20191001164125.15398-20-sashal@kernel.org>
+        Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org,
+        netdev@vger.kernel.org
+Subject: [PATCH AUTOSEL 5.2 15/63] SUNRPC: RPC level errors should always set task->tk_rpc_status
+Date:   Tue,  1 Oct 2019 12:40:37 -0400
+Message-Id: <20191001164125.15398-15-sashal@kernel.org>
 X-Mailer: git-send-email 2.20.1
 In-Reply-To: <20191001164125.15398-1-sashal@kernel.org>
 References: <20191001164125.15398-1-sashal@kernel.org>
@@ -61,43 +62,74 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trondmy@gmail.com>
 
-[ Upstream commit 9c47b18cf722184f32148784189fca945a7d0561 ]
+[ Upstream commit 714fbc73888f59321854e7f6c2f224213923bcad ]
 
-IF the server rejected our layout return with a state error such as
-NFS4ERR_BAD_STATEID, or even a stale inode error, then we do want
-to clear out all the remaining layout segments and mark that stateid
-as invalid.
+Ensure that we set task->tk_rpc_status for all RPC level errors so that
+the caller can distinguish between those and server reply status errors.
 
-Fixes: 1c5bd76d17cca ("pNFS: Enable layoutreturn operation for...")
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- fs/nfs/pnfs.c | 9 +++++++--
- 1 file changed, 7 insertions(+), 2 deletions(-)
+ net/sunrpc/clnt.c  | 6 +++---
+ net/sunrpc/sched.c | 5 ++++-
+ 2 files changed, 7 insertions(+), 4 deletions(-)
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index bfe1f4625f603..33c2ef416564a 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1449,10 +1449,15 @@ void pnfs_roc_release(struct nfs4_layoutreturn_args *args,
- 	const nfs4_stateid *res_stateid = NULL;
- 	struct nfs4_xdr_opaque_data *ld_private = args->ld_private;
- 
--	if (ret == 0) {
--		arg_stateid = &args->stateid;
-+	switch (ret) {
-+	case -NFS4ERR_NOMATCHING_LAYOUT:
-+		break;
-+	case 0:
- 		if (res->lrs_present)
- 			res_stateid = &res->stateid;
-+		/* Fallthrough */
-+	default:
-+		arg_stateid = &args->stateid;
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index fbb85ea24ea0f..8f32f73614111 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -1760,7 +1760,7 @@ call_allocate(struct rpc_task *task)
+ 		return;
  	}
- 	pnfs_layoutreturn_free_lsegs(lo, arg_stateid, &args->range,
- 			res_stateid);
+ 
+-	rpc_exit(task, -ERESTARTSYS);
++	rpc_call_rpcerror(task, -ERESTARTSYS);
+ }
+ 
+ static int
+@@ -2480,7 +2480,7 @@ rpc_encode_header(struct rpc_task *task, struct xdr_stream *xdr)
+ 	return 0;
+ out_fail:
+ 	trace_rpc_bad_callhdr(task);
+-	rpc_exit(task, error);
++	rpc_call_rpcerror(task, error);
+ 	return error;
+ }
+ 
+@@ -2547,7 +2547,7 @@ rpc_decode_header(struct rpc_task *task, struct xdr_stream *xdr)
+ 		return -EAGAIN;
+ 	}
+ out_err:
+-	rpc_exit(task, error);
++	rpc_call_rpcerror(task, error);
+ 	return error;
+ 
+ out_unparsable:
+diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
+index a2c1148127172..0b11971dec79b 100644
+--- a/net/sunrpc/sched.c
++++ b/net/sunrpc/sched.c
+@@ -914,8 +914,10 @@ static void __rpc_execute(struct rpc_task *task)
+ 		/*
+ 		 * Signalled tasks should exit rather than sleep.
+ 		 */
+-		if (RPC_SIGNALLED(task))
++		if (RPC_SIGNALLED(task)) {
++			task->tk_rpc_status = -ERESTARTSYS;
+ 			rpc_exit(task, -ERESTARTSYS);
++		}
+ 
+ 		/*
+ 		 * The queue->lock protects against races with
+@@ -951,6 +953,7 @@ static void __rpc_execute(struct rpc_task *task)
+ 			 */
+ 			dprintk("RPC: %5u got signal\n", task->tk_pid);
+ 			set_bit(RPC_TASK_SIGNALLED, &task->tk_runstate);
++			task->tk_rpc_status = -ERESTARTSYS;
+ 			rpc_exit(task, -ERESTARTSYS);
+ 		}
+ 		dprintk("RPC: %5u sync task resuming\n", task->tk_pid);
 -- 
 2.20.1
 
