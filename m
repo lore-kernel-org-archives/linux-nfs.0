@@ -7,46 +7,45 @@ X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 76560ECE587
-	for <linux-nfs@archiver.kernel.org>; Tue,  1 Oct 2019 16:53:15 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3FDE0C352AA
+	for <linux-nfs@archiver.kernel.org>; Tue,  1 Oct 2019 16:54:06 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 40E132168B
-	for <linux-nfs@archiver.kernel.org>; Tue,  1 Oct 2019 16:53:15 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 0B61F2168B
+	for <linux-nfs@archiver.kernel.org>; Tue,  1 Oct 2019 16:54:06 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1569948795;
-	bh=q5BxtsgnxxA6emR9f+27ejh2u61bFo5fC+LFUQ3QRZA=;
+	s=default; t=1569948846;
+	bh=Psok01rb9VQ9VEznPEyjc5+rXwjlQFDg2BvagxWZhyU=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=XqWYYFHs4UJcG37y6V+f7AFOZxE3jlxJu9jkheNKbTRo4a4OUdkx7pX2OwNKHk/AU
-	 Ppa25ILnvURnuMZSkKq9usUaTfmDQuc8h8e56TSDQVEIz4tbJrd16yXuFc9rVitXG3
-	 xl0mbrDBsTcVVh8Fx4fwEZmuwed8UmDA7+X8ZmuU=
+	b=c+6j+x0YwPSSvsOmkP89ZbQRETVdnaId8upz3k+l103IyfnZeKUomko7kGsfu/VqA
+	 S/PmWespZ0dnPy6HmvkDTqXm2d0haCYaYZun8sr26BjCAxVo8q1Dh0Nnh2faNn+D1p
+	 w6j+nbvzL8EsChiVaHaCNMAU8AwQgXa1Jpv8kWSM=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1732817AbfJAQnf (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 1 Oct 2019 12:43:35 -0400
-Received: from mail.kernel.org ([198.145.29.99]:55662 "EHLO mail.kernel.org"
+        id S1732535AbfJAQnQ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 1 Oct 2019 12:43:16 -0400
+Received: from mail.kernel.org ([198.145.29.99]:55268 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1732795AbfJAQnd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 1 Oct 2019 12:43:33 -0400
+        id S1732527AbfJAQnQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 1 Oct 2019 12:43:16 -0400
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 1769921924;
-        Tue,  1 Oct 2019 16:43:32 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id F104421906;
+        Tue,  1 Oct 2019 16:43:14 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1569948212;
-        bh=q5BxtsgnxxA6emR9f+27ejh2u61bFo5fC+LFUQ3QRZA=;
+        s=default; t=1569948195;
+        bh=Psok01rb9VQ9VEznPEyjc5+rXwjlQFDg2BvagxWZhyU=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=nVHbIiD6HElCTUjSIpDoqVP6buhtCXSVWAWnMHGl8vkYANNkJYnlPXQiwk4RzxiY6
-         QlwEvkkKtZlJIgnXqbhWJaugZ8YQfH5GPy3wQatxlVRoSMEC7GUbYaBeumM7MJT1fK
-         Xe5kZu6vVDyptpjOL/Y3VvwNIAnTWemZA45x3zLk=
+        b=z6mvd+zK0sqrFMmvytAZSqGVaZbYdMsq0G63JusNNldTLSwNJevIbKEyynO84LWep
+         6i5g0cnyRO2GW1x95aEf1LtZBFAUwt8TowRnMDs7XvHeM47UDd8kfuHiEOn859FJyo
+         cNN5w3b6n2X1wMio2I+CxWMlWzm1p9T9Hn9llmro=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     Trond Myklebust <trondmy@gmail.com>,
-        Trond Myklebust <trond.myklebust@hammerspace.com>,
+Cc:     Jia-Ju Bai <baijiaju1990@gmail.com>,
         Anna Schumaker <Anna.Schumaker@Netapp.com>,
         Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org
-Subject: [PATCH AUTOSEL 4.19 15/43] pNFS: Ensure we do clear the return-on-close layout stateid on fatal errors
-Date:   Tue,  1 Oct 2019 12:42:43 -0400
-Message-Id: <20191001164311.15993-15-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 4.19 03/43] fs: nfs: Fix possible null-pointer dereferences in encode_attrs()
+Date:   Tue,  1 Oct 2019 12:42:31 -0400
+Message-Id: <20191001164311.15993-3-sashal@kernel.org>
 X-Mailer: git-send-email 2.20.1
 In-Reply-To: <20191001164311.15993-1-sashal@kernel.org>
 References: <20191001164311.15993-1-sashal@kernel.org>
@@ -59,45 +58,44 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Trond Myklebust <trondmy@gmail.com>
+From: Jia-Ju Bai <baijiaju1990@gmail.com>
 
-[ Upstream commit 9c47b18cf722184f32148784189fca945a7d0561 ]
+[ Upstream commit e2751463eaa6f9fec8fea80abbdc62dbc487b3c5 ]
 
-IF the server rejected our layout return with a state error such as
-NFS4ERR_BAD_STATEID, or even a stale inode error, then we do want
-to clear out all the remaining layout segments and mark that stateid
-as invalid.
+In encode_attrs(), there is an if statement on line 1145 to check
+whether label is NULL:
+    if (label && (attrmask[2] & FATTR4_WORD2_SECURITY_LABEL))
 
-Fixes: 1c5bd76d17cca ("pNFS: Enable layoutreturn operation for...")
-Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
+When label is NULL, it is used on lines 1178-1181:
+    *p++ = cpu_to_be32(label->lfs);
+    *p++ = cpu_to_be32(label->pi);
+    *p++ = cpu_to_be32(label->len);
+    p = xdr_encode_opaque_fixed(p, label->label, label->len);
+
+To fix these bugs, label is checked before being used.
+
+These bugs are found by a static analysis tool STCheck written by us.
+
+Signed-off-by: Jia-Ju Bai <baijiaju1990@gmail.com>
 Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- fs/nfs/pnfs.c | 9 +++++++--
- 1 file changed, 7 insertions(+), 2 deletions(-)
+ fs/nfs/nfs4xdr.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 4931c3a75f038..c818f9886f618 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1426,10 +1426,15 @@ void pnfs_roc_release(struct nfs4_layoutreturn_args *args,
- 	const nfs4_stateid *res_stateid = NULL;
- 	struct nfs4_xdr_opaque_data *ld_private = args->ld_private;
- 
--	if (ret == 0) {
--		arg_stateid = &args->stateid;
-+	switch (ret) {
-+	case -NFS4ERR_NOMATCHING_LAYOUT:
-+		break;
-+	case 0:
- 		if (res->lrs_present)
- 			res_stateid = &res->stateid;
-+		/* Fallthrough */
-+	default:
-+		arg_stateid = &args->stateid;
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index b7bde12d8cd51..1c0227c78a7bc 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -1171,7 +1171,7 @@ static void encode_attrs(struct xdr_stream *xdr, const struct iattr *iap,
+ 		} else
+ 			*p++ = cpu_to_be32(NFS4_SET_TO_SERVER_TIME);
  	}
- 	pnfs_layoutreturn_free_lsegs(lo, arg_stateid, &args->range,
- 			res_stateid);
+-	if (bmval[2] & FATTR4_WORD2_SECURITY_LABEL) {
++	if (label && (bmval[2] & FATTR4_WORD2_SECURITY_LABEL)) {
+ 		*p++ = cpu_to_be32(label->lfs);
+ 		*p++ = cpu_to_be32(label->pi);
+ 		*p++ = cpu_to_be32(label->len);
 -- 
 2.20.1
 
