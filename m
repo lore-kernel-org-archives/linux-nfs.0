@@ -2,100 +2,115 @@ Return-Path: <SRS0=EkhZ=X2=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
+X-Spam-Status: No, score=-2.3 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=no
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 278CAC352AA
-	for <linux-nfs@archiver.kernel.org>; Tue,  1 Oct 2019 17:04:36 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A8E7CC352AA
+	for <linux-nfs@archiver.kernel.org>; Tue,  1 Oct 2019 17:13:56 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id E60E02190F
-	for <linux-nfs@archiver.kernel.org>; Tue,  1 Oct 2019 17:04:35 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1569949476;
-	bh=iqzG08jXsqIalfCrOb0Aw/LP+MoyhvRy0gqBfWrP+Q8=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=tcseMMPKxtdzO3YBo+MuF0bi5o4t4d4akfTwDHbCRqR/cCpetOgW5PgaeQv0cJpye
-	 tQhFL8D853k4tNN0xBbnWSroyNbaO8TYhoUKk2tBAW+qszGWLpdzrASjulCwGwUXDc
-	 XJiBweK8/tkd82ESpdgB6cdzf7pZa8ZBGhddzXOs=
+	by mail.kernel.org (Postfix) with ESMTP id 826922086A
+	for <linux-nfs@archiver.kernel.org>; Tue,  1 Oct 2019 17:13:56 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727705AbfJAQj2 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 1 Oct 2019 12:39:28 -0400
-Received: from mail.kernel.org ([198.145.29.99]:50394 "EHLO mail.kernel.org"
+        id S1729444AbfJARNz (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 1 Oct 2019 13:13:55 -0400
+Received: from fieldses.org ([173.255.197.46]:39648 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727699AbfJAQj2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 1 Oct 2019 12:39:28 -0400
-Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
-        (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id C3A8421855;
-        Tue,  1 Oct 2019 16:39:26 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1569947967;
-        bh=iqzG08jXsqIalfCrOb0Aw/LP+MoyhvRy0gqBfWrP+Q8=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=SawGvhNVGtufu3UYqHgwlmGYOX2MECmUbeDPBoQJY2UJSJ5B/xyQaI2g1c6OF2H1x
-         OpxihZcOFPcNV9Z5d8Qk5yA9bhPLuQ4ACC7sfYp5XGi3M0FsOkAT/+FCOh2P2X4QJV
-         Nnj/8JVeZ+aoeMkXeklVx1AM7kciLTPRd3mTkiCM=
-From:   Sasha Levin <sashal@kernel.org>
-To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     Jia-Ju Bai <baijiaju1990@gmail.com>,
-        Anna Schumaker <Anna.Schumaker@Netapp.com>,
-        Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.3 04/71] fs: nfs: Fix possible null-pointer dereferences in encode_attrs()
-Date:   Tue,  1 Oct 2019 12:38:14 -0400
-Message-Id: <20191001163922.14735-4-sashal@kernel.org>
-X-Mailer: git-send-email 2.20.1
-In-Reply-To: <20191001163922.14735-1-sashal@kernel.org>
-References: <20191001163922.14735-1-sashal@kernel.org>
+        id S1729439AbfJARNz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 1 Oct 2019 13:13:55 -0400
+Received: by fieldses.org (Postfix, from userid 2815)
+        id 48F9A150D; Tue,  1 Oct 2019 13:13:55 -0400 (EDT)
+Date:   Tue, 1 Oct 2019 13:13:55 -0400
+To:     Olga Kornievskaia <olga.kornievskaia@gmail.com>
+Cc:     "J. Bruce Fields" <bfields@redhat.com>,
+        linux-nfs <linux-nfs@vger.kernel.org>,
+        Trond Myklebust <trondmy@hammerspace.com>,
+        Anna Schumaker <schumakeranna@gmail.com>
+Subject: Re: [PATCH v7 00/19] client and server support for "inter" SSC copy
+Message-ID: <20191001171355.GA2372@fieldses.org>
+References: <20190916211353.18802-1-olga.kornievskaia@gmail.com>
+ <CAN-5tyHGq=4AiMuST1kqkZWOfijvuR3bUNChL+KaNnUN900cdA@mail.gmail.com>
 MIME-Version: 1.0
-X-stable: review
-X-Patchwork-Hint: Ignore
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <CAN-5tyHGq=4AiMuST1kqkZWOfijvuR3bUNChL+KaNnUN900cdA@mail.gmail.com>
+User-Agent: Mutt/1.5.21 (2010-09-15)
+From:   bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Jia-Ju Bai <baijiaju1990@gmail.com>
+On Mon, Sep 30, 2019 at 03:06:11PM -0400, Olga Kornievskaia wrote:
+> Have you had a chance to take a look at the new patch series and have
+> any more comments?
 
-[ Upstream commit e2751463eaa6f9fec8fea80abbdc62dbc487b3c5 ]
+Honestly, last time I checked I was having trouble finding things to
+complain about--it looked OK to me.
 
-In encode_attrs(), there is an if statement on line 1145 to check
-whether label is NULL:
-    if (label && (attrmask[2] & FATTR4_WORD2_SECURITY_LABEL))
+But I'm not sure I understood the management of copy id's, should I
+should give it one more read.  And then agree on how to merge it.
 
-When label is NULL, it is used on lines 1178-1181:
-    *p++ = cpu_to_be32(label->lfs);
-    *p++ = cpu_to_be32(label->pi);
-    *p++ = cpu_to_be32(label->len);
-    p = xdr_encode_opaque_fixed(p, label->label, label->len);
+I was thinking maybe you could give us a git branch based on 5.5-rc1 or
+5.5-rc2, Trond (I think it's Trond this time?) could pull the client
+ones into his tree, and I could pull the rest into mine.
 
-To fix these bugs, label is checked before being used.
+Trond/Anna?
 
-These bugs are found by a static analysis tool STCheck written by us.
+--b.
 
-Signed-off-by: Jia-Ju Bai <baijiaju1990@gmail.com>
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
-Signed-off-by: Sasha Levin <sashal@kernel.org>
----
- fs/nfs/nfs4xdr.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 46a8d636d151e..ab07db0f07cde 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -1174,7 +1174,7 @@ static void encode_attrs(struct xdr_stream *xdr, const struct iattr *iap,
- 		} else
- 			*p++ = cpu_to_be32(NFS4_SET_TO_SERVER_TIME);
- 	}
--	if (bmval[2] & FATTR4_WORD2_SECURITY_LABEL) {
-+	if (label && (bmval[2] & FATTR4_WORD2_SECURITY_LABEL)) {
- 		*p++ = cpu_to_be32(label->lfs);
- 		*p++ = cpu_to_be32(label->pi);
- 		*p++ = cpu_to_be32(label->len);
--- 
-2.20.1
-
+> 
+> On Mon, Sep 16, 2019 at 5:13 PM Olga Kornievskaia
+> <olga.kornievskaia@gmail.com> wrote:
+> >
+> > v7:
+> > --- rebased patches ontop of Bruce's nfsd-next
+> >
+> > Olga Kornievskaia (19):
+> >   NFS NFSD: defining nl4_servers structure needed by both
+> >   NFS: add COPY_NOTIFY operation
+> >   NFS: add ca_source_server<> to COPY
+> >   NFS: also send OFFLOAD_CANCEL to source server
+> >   NFS: inter ssc open
+> >   NFS: skip recovery of copy open on dest server
+> >   NFS: for "inter" copy treat ESTALE as ENOTSUPP
+> >   NFS: COPY handle ERR_OFFLOAD_DENIED
+> >   NFS: handle source server reboot
+> >   NFS: replace cross device check in copy_file_range
+> >   NFSD fill-in netloc4 structure
+> >   NFSD add ca_source_server<> to COPY
+> >   NFSD return nfs4_stid in nfs4_preprocess_stateid_op
+> >   NFSD COPY_NOTIFY xdr
+> >   NFSD add COPY_NOTIFY operation
+> >   NFSD check stateids against copy stateids
+> >   NFSD generalize nfsd4_compound_state flag names
+> >   NFSD: allow inter server COPY to have a STALE source server fh
+> >   NFSD add nfs4 inter ssc to nfsd4_copy
+> >
+> >  fs/nfs/nfs42.h            |  15 +-
+> >  fs/nfs/nfs42proc.c        | 193 ++++++++++++++++----
+> >  fs/nfs/nfs42xdr.c         | 190 +++++++++++++++++++-
+> >  fs/nfs/nfs4_fs.h          |  11 ++
+> >  fs/nfs/nfs4client.c       |   2 +-
+> >  fs/nfs/nfs4file.c         | 125 ++++++++++++-
+> >  fs/nfs/nfs4proc.c         |   6 +-
+> >  fs/nfs/nfs4state.c        |  29 ++-
+> >  fs/nfs/nfs4xdr.c          |   1 +
+> >  fs/nfsd/Kconfig           |  10 ++
+> >  fs/nfsd/nfs4proc.c        | 436 +++++++++++++++++++++++++++++++++++++++++-----
+> >  fs/nfsd/nfs4state.c       | 215 ++++++++++++++++++++---
+> >  fs/nfsd/nfs4xdr.c         | 155 +++++++++++++++-
+> >  fs/nfsd/nfsd.h            |  32 ++++
+> >  fs/nfsd/nfsfh.h           |   5 +-
+> >  fs/nfsd/nfssvc.c          |   6 +
+> >  fs/nfsd/state.h           |  34 +++-
+> >  fs/nfsd/xdr4.h            |  39 ++++-
+> >  include/linux/nfs4.h      |  25 +++
+> >  include/linux/nfs_fs.h    |   3 +-
+> >  include/linux/nfs_fs_sb.h |   1 +
+> >  include/linux/nfs_xdr.h   |  17 ++
+> >  22 files changed, 1429 insertions(+), 121 deletions(-)
+> >
+> > --
+> > 1.8.3.1
+> >
