@@ -1,110 +1,85 @@
-Return-Path: <SRS0=5NlU=X3=vger.kernel.org=linux-nfs-owner@kernel.org>
+Return-Path: <SRS0=z6tu=X4=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.3 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=no
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-2.1 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
+	USER_AGENT_SANE_1 autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3CB1FC4360C
-	for <linux-nfs@archiver.kernel.org>; Wed,  2 Oct 2019 19:55:13 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2EE30C4360C
+	for <linux-nfs@archiver.kernel.org>; Thu,  3 Oct 2019 00:17:30 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 1A9D02133F
-	for <linux-nfs@archiver.kernel.org>; Wed,  2 Oct 2019 19:55:13 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id EC18B222C0
+	for <linux-nfs@archiver.kernel.org>; Thu,  3 Oct 2019 00:17:29 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="AwsNENxf"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728124AbfJBTzM (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 2 Oct 2019 15:55:12 -0400
-Received: from fieldses.org ([173.255.197.46]:40798 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725951AbfJBTzM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 2 Oct 2019 15:55:12 -0400
-Received: by fieldses.org (Postfix, from userid 2815)
-        id E18841C84; Wed,  2 Oct 2019 15:55:11 -0400 (EDT)
-Date:   Wed, 2 Oct 2019 15:55:11 -0400
-To:     Olga Kornievskaia <olga.kornievskaia@gmail.com>
-Cc:     trond.myklebust@hammerspace.com, anna.schumaker@netapp.com,
-        bfields@redhat.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v7 18/19] NFSD: allow inter server COPY to have a STALE
- source server fh
-Message-ID: <20191002195511.GA21809@fieldses.org>
-References: <20190916211353.18802-1-olga.kornievskaia@gmail.com>
- <20190916211353.18802-19-olga.kornievskaia@gmail.com>
+        id S1729355AbfJCAR3 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 2 Oct 2019 20:17:29 -0400
+Received: from bombadil.infradead.org ([198.137.202.133]:55356 "EHLO
+        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726905AbfJCAR2 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 2 Oct 2019 20:17:28 -0400
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+        d=infradead.org; s=bombadil.20170209; h=Content-Transfer-Encoding:
+        Content-Type:MIME-Version:Date:Message-ID:Subject:From:Cc:To:Sender:Reply-To:
+        Content-ID:Content-Description:Resent-Date:Resent-From:Resent-Sender:
+        Resent-To:Resent-Cc:Resent-Message-ID:In-Reply-To:References:List-Id:
+        List-Help:List-Unsubscribe:List-Subscribe:List-Post:List-Owner:List-Archive;
+         bh=r/4tKD7Z80pSB1NpFz6ktZvS4AeDOiTyO5tnMVQxFzE=; b=AwsNENxfH6r20XNC5bvoj5r3b
+        Y5AcfJMCXynID6UqP63WtmwV90T30fCdSabszN+9PUzwbZlH6/aZpUgka37ESsDymXtIYznDYj2/f
+        mKjK3MkNDZSaiycOyt1fLLeENAHMNxAYdstuQhaZBeIWEBfUc4yQyZcsJ2viXZoqvTLOsFPzHvwhS
+        RIzhjBR+CaGRwKmDp5jy8aTrhLfIG8eJAWGRVaBud6KPAcNQV8Lmj7PBtssntdwL7b2WdnRl3xzoY
+        2IWiVRKjrnMVlbr6UF3rzm2ox6m2chzLsEfACyMcPqVTdsLa+6Bp1B7HPAdQw/blBxXARYyBb2q05
+        3lNnwPLwQ==;
+Received: from [2601:1c0:6280:3f0::9a1f]
+        by bombadil.infradead.org with esmtpsa (Exim 4.92.2 #3 (Red Hat Linux))
+        id 1iFooC-0002SA-Bn; Thu, 03 Oct 2019 00:17:28 +0000
+To:     Linux FS Devel <linux-fsdevel@vger.kernel.org>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Cc:     linux-nfs@vger.kernel.org, Al Viro <viro@ZenIV.linux.org.uk>
+From:   Randy Dunlap <rdunlap@infradead.org>
+Subject: fs/nfsd/nfs4state.c use of "\%s"
+Message-ID: <b76bde04-7970-c870-5af7-359141958c4f@infradead.org>
+Date:   Wed, 2 Oct 2019 17:17:27 -0700
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101
+ Thunderbird/60.8.0
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20190916211353.18802-19-olga.kornievskaia@gmail.com>
-User-Agent: Mutt/1.5.21 (2010-09-15)
-From:   bfields@fieldses.org (J. Bruce Fields)
+Content-Type: text/plain; charset=utf-8
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Mon, Sep 16, 2019 at 05:13:52PM -0400, Olga Kornievskaia wrote:
-> @@ -1956,6 +1964,45 @@ static void svcxdr_init_encode(struct svc_rqst *rqstp,
->  		- rqstp->rq_auth_slack;
->  }
->  
-> +#ifdef CONFIG_NFSD_V4_2_INTER_SSC
-> +static __be32
-> +check_if_stalefh_allowed(struct nfsd4_compoundargs *args)
-> +{
-> +	struct nfsd4_op	*op, *current_op, *saved_op;
+Hi Bruce,
 
-current_op and saved_op need to be initialized to NULL here.
+In commit 78599c42ae3c70300a38b0d1271a85bc9f2d704a
+(nfsd4: add file to display list of client's opens), some of the %s printk
+specifiers are \-escaped:
 
-> +	struct nfsd4_copy *copy;
-> +	struct nfsd4_putfh *putfh;
-> +	int i;
-> +
-> +	/* traverse all operation and if it's a COPY compound, mark the
-> +	 * source filehandle to skip verification
-> +	 */
-> +	for (i = 0; i < args->opcnt; i++) {
-> +		op = &args->ops[i];
-> +		if (op->opnum == OP_PUTFH)
-> +			current_op = op;
-> +		else if (op->opnum == OP_SAVEFH)
-> +			saved_op = current_op;
-> +		else if (op->opnum == OP_RESTOREFH)
-> +			current_op = saved_op;
-> +		else if (op->opnum == OP_COPY) {
-> +			copy = (struct nfsd4_copy *)&op->u;
-> +			if (!saved_op)
-> +				return nfserr_nofilehandle;
++       seq_printf(s, "access: \%s\%s, ",
++               access & NFS4_SHARE_ACCESS_READ ? "r" : "-",
++               access & NFS4_SHARE_ACCESS_WRITE ? "w" : "-");
++       seq_printf(s, "deny: \%s\%s, ",
++               deny & NFS4_SHARE_ACCESS_READ ? "r" : "-",
++               deny & NFS4_SHARE_ACCESS_WRITE ? "w" : "-");
 
-Looks like this results in returning an empty compound result with just
-the bare result.  I believe what we need to do is execute all the
-ops preceding the COPY normally, then return the nofilehandle error on
-the COPY.
 
-One approach might be
+sparse complains about these, as does gcc when used with --pedantic.
+sparse says:
 
-		if (!saved_op) {
-			op->status = nfserr_nofilehandle;
-			return;
-		}
+../fs/nfsd/nfs4state.c:2385:23: warning: unknown escape sequence: '\%'
+../fs/nfsd/nfs4state.c:2385:23: warning: unknown escape sequence: '\%'
+../fs/nfsd/nfs4state.c:2388:23: warning: unknown escape sequence: '\%'
+../fs/nfsd/nfs4state.c:2388:23: warning: unknown escape sequence: '\%'
 
-and change check_if_stalefh_allowed to have no return value.
+Is this just a typo?
 
---b.
+Please just fix it.
 
-> +			putfh = (struct nfsd4_putfh *)&saved_op->u;
-> +			if (!copy->cp_intra)
-> +				putfh->no_verify = true;
-> +		}
-> +	}
-> +	return nfs_ok;
-> +}
-...
-> @@ -2004,6 +2051,9 @@ static void svcxdr_init_encode(struct svc_rqst *rqstp,
->  		resp->opcnt = 1;
->  		goto encode_op;
->  	}
-> +	status = check_if_stalefh_allowed(args);
-> +	if (status)
-> +		goto out;
-
->  
->  	trace_nfsd_compound(rqstp, args->opcnt);
->  	while (!status && resp->opcnt < args->opcnt) {
+thanks,
+-- 
+~Randy
