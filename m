@@ -2,230 +2,154 @@ Return-Path: <SRS0=FqPe=YB=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
-	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-8.3 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
+	USER_AGENT_SANE_1 autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1229EC10F14
-	for <linux-nfs@archiver.kernel.org>; Tue,  8 Oct 2019 12:43:09 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id BD0F9C4360C
+	for <linux-nfs@archiver.kernel.org>; Tue,  8 Oct 2019 20:03:58 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id C5FE621721
-	for <linux-nfs@archiver.kernel.org>; Tue,  8 Oct 2019 12:43:08 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="JQYx0p+4"
+	by mail.kernel.org (Postfix) with ESMTP id 9B9B9206C0
+	for <linux-nfs@archiver.kernel.org>; Tue,  8 Oct 2019 20:03:58 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1730719AbfJHMnH (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 8 Oct 2019 08:43:07 -0400
-Received: from mail-eopbgr810137.outbound.protection.outlook.com ([40.107.81.137]:61072
-        "EHLO NAM01-BY2-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1730555AbfJHMnH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 8 Oct 2019 08:43:07 -0400
-ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
- b=FUQsBN1AmSgYb9uvVOL81V9B1gIT2Cf44DLBclHit8ykJ3wlZueppiEwAnQdC4G42vgthDSs/y3IM9z3pC6bAj2oVv5J6SgwT+pj2VBoUVsqdxgu0algp0LFlnL5SXN2JJXhuz3JcdVQzicjg1cn7APS+CFPK7PplIsEdRlMJf07eRyolzb/ZoIAPpTC5MF6CsQhFvdHrxAcO2SBug1F2uEKMIJyd0XPrTm/z8O7BHdgs0zu0nFd2DezIFvlFUlif+9DjtW0mgjsrn+a9MboDWWNeYNQWpfneCORXfCb4H2N4iTARlb7lcaJ9ed1Wbf/CkwcjHUQVXZIoRZf0KhqzQ==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
- s=arcselector9901;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=4kz/hto8N+NFFfgoUw8nh/uf8QEF2+8DPASpqgW7L2Q=;
- b=kwf1SpuG99tAhq5vpNACXIyVVU0ps7/PXRqY8BfGazdPg37bA9eULc6Bf44/oqL59r4WvCa24xFUPM6n02IEJ4QWmMzsqwrg5WT17pRRXezt3k2szWBlKoSj1eHriE3Lf6PBrDsnRzm2XluTy3kSkQ0ryhpJYVsAofR0zQGmZpD94UAVmLIqVMO77yuUomHGOyYUrWs+uOJNmjC9dTjhvYqUd337On2qZ3/5UAq5ZIhovZuawPEP6FgQsFEaeZV7GNbGbhZPsKrfWNhDPQGcVtv+BqNsGQ55GNFrIPBKp8NLjGpV4yIPpqJyYGa/2GMowCdf6mvhSvurX0Y9JAtT/g==
-ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
- smtp.mailfrom=hammerspace.com; dmarc=pass action=none
- header.from=hammerspace.com; dkim=pass header.d=hammerspace.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=hammerspace.com;
- s=selector2;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=4kz/hto8N+NFFfgoUw8nh/uf8QEF2+8DPASpqgW7L2Q=;
- b=JQYx0p+4fdokGgp4ShC/Di/+GK59RdmwgM6BUg/VcHL4VadhKaf8yYaLtNFqINZVTZnUjyPwNaeulwVU22/VNspYiGGnzoUeziClFdYq68jkY2wWidNGDX2aGY0csRibNW67tlz3YpBxE06z4SujsnVwnp/LZVfHrFpKKmrwa70=
-Received: from DM5PR13MB1851.namprd13.prod.outlook.com (10.171.159.143) by
- DM5PR13MB1257.namprd13.prod.outlook.com (10.168.114.18) with Microsoft SMTP
- Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- 15.20.2347.13; Tue, 8 Oct 2019 12:42:59 +0000
-Received: from DM5PR13MB1851.namprd13.prod.outlook.com
- ([fe80::d1be:764d:9347:764e]) by DM5PR13MB1851.namprd13.prod.outlook.com
- ([fe80::d1be:764d:9347:764e%10]) with mapi id 15.20.2347.015; Tue, 8 Oct 2019
- 12:42:59 +0000
-From:   Trond Myklebust <trondmy@hammerspace.com>
-To:     "Anna.Schumaker@netapp.com" <Anna.Schumaker@netapp.com>,
-        "suyj.fnst@cn.fujitsu.com" <suyj.fnst@cn.fujitsu.com>
-CC:     "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v2 1/2] NFS: Fix O_DIRECT accounting of number of bytes
- read/written
-Thread-Topic: [PATCH v2 1/2] NFS: Fix O_DIRECT accounting of number of bytes
- read/written
-Thread-Index: AQHVeJXoTps+EK3YYUmhD5Vo9ALxX6dQbvAAgABLtQA=
-Date:   Tue, 8 Oct 2019 12:42:59 +0000
-Message-ID: <720ba5cdec121e09bec59ef348d477f925000456.camel@hammerspace.com>
-References: <20191001202000.13248-1-trond.myklebust@hammerspace.com>
-         <20191001202000.13248-2-trond.myklebust@hammerspace.com>
-         <6185d0c7-9343-d524-a79d-7a9b2fbb4e1e@cn.fujitsu.com>
-In-Reply-To: <6185d0c7-9343-d524-a79d-7a9b2fbb4e1e@cn.fujitsu.com>
-Accept-Language: en-US, en-GB
-Content-Language: en-US
-X-MS-Has-Attach: 
-X-MS-TNEF-Correlator: 
-authentication-results: spf=none (sender IP is )
- smtp.mailfrom=trondmy@hammerspace.com; 
-x-originating-ip: [68.40.189.247]
-x-ms-publictraffictype: Email
-x-ms-office365-filtering-correlation-id: 8107ef96-704b-4924-0825-08d74bed0d14
-x-ms-traffictypediagnostic: DM5PR13MB1257:
-x-microsoft-antispam-prvs: <DM5PR13MB1257D730EB79C68ACC0D3F8AB89A0@DM5PR13MB1257.namprd13.prod.outlook.com>
-x-ms-oob-tlc-oobclassifiers: OLM:2803;
-x-forefront-prvs: 01842C458A
-x-forefront-antispam-report: SFV:NSPM;SFS:(10019020)(136003)(396003)(346002)(366004)(39840400004)(376002)(199004)(189003)(2906002)(71200400001)(7736002)(71190400001)(486006)(6116002)(15650500001)(6246003)(86362001)(25786009)(26005)(186003)(2501003)(3846002)(91956017)(476003)(99286004)(446003)(76116006)(11346002)(5660300002)(66946007)(256004)(6506007)(14444005)(118296001)(229853002)(110136005)(8936002)(36756003)(6436002)(76176011)(14454004)(478600001)(64756008)(6512007)(102836004)(8676002)(6486002)(66446008)(66066001)(66556008)(81156014)(4326008)(81166006)(2616005)(316002)(305945005)(66476007);DIR:OUT;SFP:1102;SCL:1;SRVR:DM5PR13MB1257;H:DM5PR13MB1851.namprd13.prod.outlook.com;FPR:;SPF:None;LANG:en;PTR:InfoNoRecords;A:1;MX:1;
-received-spf: None (protection.outlook.com: hammerspace.com does not designate
- permitted sender hosts)
-x-ms-exchange-senderadcheck: 1
-x-microsoft-antispam: BCL:0;
-x-microsoft-antispam-message-info: u48kqKfCXgTJYZFqEyshvOA4CkXWwZKJIRV9iWTyIRWQQXtsuDHpCTgLB8Q9a2i/wik5TZnb205JGUqzS/MdJe/CzNP46ZgY5FKFLm7m4Fw0oK5oSWFX4ax4mjOaIUqfV6M38boZPsksvzePhYS5lS+RSDz+uOQsvyBF25QfnGLoF4DG0yELGBU6+9Jx0QbCXEL/Uwl/0NTUXZV/MsrndFQHMaXFfiAEL6KTcNu2hNyo4L896POt4U1JeE3fYbxX4binYlHb/ra9tL3M3nzn7LmFJ8V2KhgczLrwzyrMXtSBJJwmjKU0aNZAbS2rBnZ+xGgJ+dCFyjKpfhxoD5xbt3ZpHr5AJg8IxZyYSP3XS0R5p+vnbZFCnY1mkSgrqjgM9CtbpfnoIPTvSinc0VFUDgszQti8HnSlpRBnbCXCTJo=
-x-ms-exchange-transport-forked: True
-Content-Type: text/plain; charset="utf-8"
-Content-ID: <E47B5A5119A33640B9CD466A0F4C1D17@namprd13.prod.outlook.com>
-Content-Transfer-Encoding: base64
+        id S1730218AbfJHUD6 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 8 Oct 2019 16:03:58 -0400
+Received: from fieldses.org ([173.255.197.46]:47282 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1730101AbfJHUD5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 8 Oct 2019 16:03:57 -0400
+Received: by fieldses.org (Postfix, from userid 2815)
+        id BEB7C1C21; Tue,  8 Oct 2019 16:03:56 -0400 (EDT)
+Date:   Tue, 8 Oct 2019 16:03:56 -0400
+From:   "J. Bruce Fields" <bfields@fieldses.org>
+To:     Chuck Lever <chuck.lever@oracle.com>
+Cc:     linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] svcrdma: Improve DMA mapping trace points
+Message-ID: <20191008200356.GA9151@fieldses.org>
+References: <20191004135745.2510.93924.stgit@manet.1015granger.net>
 MIME-Version: 1.0
-X-OriginatorOrg: hammerspace.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: 8107ef96-704b-4924-0825-08d74bed0d14
-X-MS-Exchange-CrossTenant-originalarrivaltime: 08 Oct 2019 12:42:59.3504
- (UTC)
-X-MS-Exchange-CrossTenant-fromentityheader: Hosted
-X-MS-Exchange-CrossTenant-id: 0d4fed5c-3a70-46fe-9430-ece41741f59e
-X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
-X-MS-Exchange-CrossTenant-userprincipalname: O5c20sp1ERYzmP+NVVIDoSFQfCQRyySB92x4wcbApOUsVgEIQbOKGheR5TMTOjH4RH+J3+nQ/ORqq3RHJsqeGg==
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: DM5PR13MB1257
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20191004135745.2510.93924.stgit@manet.1015granger.net>
+User-Agent: Mutt/1.5.21 (2010-09-15)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-T24gVHVlLCAyMDE5LTEwLTA4IGF0IDE2OjExICswODAwLCBTdSBZYW5qdW4gd3JvdGU6DQo+IEhp
-IFRyb25kLA0KPiANCj4gQWZ0ZXIgdGhpcyBwYXRjaCB3ZSBoYXZlIG5ldyBwcm9ibGVtLiBTb21l
-dGltZXMgZ2VuZXJpYy80NjUgdGVzdA0KPiBmYWlsZWQuDQo+IA0KPiBXZSBjYXB0dXJlIHRoZSBw
-YWNrZXRzIGFuZCBmaW5kIHRoYXQgInJlYWQiIHdpbGwgcmVhZCBmaWxlIGhvbGUgZGF0YSANCj4g
-d2hlbiAid3JpdGUiIGlzIGdvaW5nIG9uLg0KPiANCj4gU29tZXRoaW5nIGxpa2UgdGhpcyBzaXR1
-YXRpb24gYXMgYmVsb3csDQo+IA0KPiA+IHh4eHh4eHh4eHh4eHwgICAgICAgICAgICAgICAgICB8
-eHh4eHh4eHh4eHh4eHh4eHh8DQo+IA0KPiBcLS0tLS0tLXctLS0tLS9cLS0taG9sZS0tLS9cLS0t
-LS0tLS0tLXctLS0tLS0tLw0KPiANCj4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgXg0K
-PiANCj4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIFINCj4gDQo+IA0KPiBXaGVuICJy
-ZWFkIi8id3JpdGUiIG5lZWRzIG1vcmUgcnBjIGNhbGxzLCAgcmVhZCBycGMgY2FsbCBpbiBtaWRk
-bGUNCj4gd2lsbCANCj4gcmVhZCBmaWxlIGhvbGUgZGF0YS4NCj4gDQo+IEJlY2F1c2UgcnBjIGNh
-bGxzIGluICJ3cml0ZSIgYXJlIGFzeW5jLCBvbmNlIHJwYyBjYWxscyAgaW4gIndyaXRlIg0KPiBh
-cmUgDQo+IG91dCBvZiBvcmRlciB0aGVuICJyZWFkIiBtYXkgcmVhZCBob2xlIGRhdGEuDQo+IA0K
-PiBNYXliZSB3ZSBuZWVkIHNlcmlhbGl6ZSB0aGUgci93IGluIGRpcmVjdGlvIG1vZGUsIHdoYXQg
-ZG8geW91IHRoaW5rPw0KDQpOby4gQmFzaWMgT19ESVJFQ1QgZG9lcyBub3QgZ3VhcmFudGVlIGF0
-b21pY2l0eSBvZiByZXF1ZXN0cywgd2hpY2ggaXMNCndoeSB3ZSBkbyBub3QgaGF2ZSBnZW5lcmlj
-IGxvY2tpbmcgYXQgdGhlIFZGUyBsZXZlbCB3aGVuIHJlYWRpbmcgYW5kDQp3cml0aW5nLiBUaGUg
-b25seSBndWFyYW50ZWUgYmVpbmcgb2ZmZXJlZCBpcyB0aGF0IE9fRElSRUNUIGFuZCBidWZmZXJl
-ZA0Kd3JpdGVzIGRvIG5vdCBjb2xsaWRlLg0KDQpJT1c6IEkgdGhpbmsgdGhlIGJhc2ljIHByZW1p
-c2UgZm9yIHRoaXMgdGVzdCBpcyBqdXN0IGJyb2tlbiAoYXMgSQ0KY29tbWVudGVkIGluIHRoZSBw
-YXRjaCBzZXJpZXMgSSBzZW50KSBiZWNhdXNlIGl0IGlzIGFzc3VtaW5nIGENCmJlaGF2aW91ciB0
-aGF0IGlzIHNpbXBseSBub3QgZ3VhcmFudGVlZC4NCg0KDQpCVFc6IG5vdGUgdGhhdCBidWZmZXJl
-ZCB3cml0ZXMgaGF2ZSB0aGUgc2FtZSBwcm9wZXJ0eS4gVGhleSBhcmUgb3JkZXJlZA0Kd2hlbiBi
-ZWluZyB3cml0dGVuIGludG8gdGhlIHBhZ2UgY2FjaGUsIG1lYW5pbmcgdGhhdCByZWFkcyBvbiB0
-aGUgc2FtZQ0KY2xpZW50IHdpbGwgc2VlIG5vIGhvbGVzLCBob3dldmVyIGlmIHlvdSB0cnkgdG8g
-cmVhZCBmcm9tIGFub3RoZXINCmNsaWVudCwgdGhlbiB5b3Ugd2lsbCBzZWUgdGhlIHNhbWUgYmVo
-YXZpb3VyLCB3aXRoIHRlbXBvcmFyeSBob2xlcw0KbWFnaWNhbGx5IGFwcGVhcmluZyBpbiB0aGUg
-ZmlsZS4NCg0KPiANCj4gVGhhbmtzDQo+IA0KPiDlnKggMjAxOS8xMC8yIDQ6MTksIFRyb25kIE15
-a2xlYnVzdCDlhpnpgZM6DQo+ID4gV2hlbiBhIHNlcmllcyBvZiBPX0RJUkVDVCByZWFkcyBvciB3
-cml0ZXMgYXJlIHRydW5jYXRlZCwgZWl0aGVyIGR1ZQ0KPiA+IHRvDQo+ID4gZW9mIG9yIGR1ZSB0
-byBhbiBlcnJvciwgdGhlbiB3ZSBzaG91bGQgcmV0dXJuIHRoZSBudW1iZXIgb2YNCj4gPiBjb250
-aWd1b3VzDQo+ID4gYnl0ZXMgdGhhdCB3ZXJlIHJlY2VpdmVkL3NlbnQgc3RhcnRpbmcgYXQgdGhl
-IG9mZnNldCBzcGVjaWZpZWQgYnkNCj4gPiB0aGUNCj4gPiBhcHBsaWNhdGlvbi4NCj4gPiANCj4g
-PiBDdXJyZW50bHksIHdlIGFyZSBmYWlsaW5nIHRvIGNvcnJlY3RseSBjaGVjayBjb250aWd1aXR5
-LCBhbmQgc28NCj4gPiB3ZSdyZQ0KPiA+IGZhaWxpbmcgdGhlIGdlbmVyaWMvNDY1IGluIHhmc3Rl
-c3RzIHdoZW4gdGhlIHJhY2UgYmV0d2VlbiB0aGUgcmVhZA0KPiA+IGFuZCB3cml0ZSBSUENzIGNh
-dXNlcyB0aGUgZmlsZSB0byBnZXQgZXh0ZW5kZWQgd2hpbGUgdGhlIDIgcmVhZHMNCj4gPiBhcmUN
-Cj4gPiBvdXRzdGFuZGluZy4gSWYgdGhlIGZpcnN0IHJlYWQgUlBDIGNhbGwgd2lucyB0aGUgcmFj
-ZSBhbmQgcmV0dXJucw0KPiA+IHdpdGgNCj4gPiBlb2Ygc2V0LCB3ZSBzaG91bGQgdHJlYXQgdGhl
-IHNlY29uZCByZWFkIFJQQyBhcyBiZWluZyB0cnVuY2F0ZWQuDQo+ID4gDQo+ID4gUmVwb3J0ZWQt
-Ynk6IFN1IFlhbmp1biA8c3V5ai5mbnN0QGNuLmZ1aml0c3UuY29tPg0KPiA+IEZpeGVzOiAxY2Ni
-YWQ5ZjlmOWJkICgibmZzOiBmaXggRElPIGdvb2QgYnl0ZXMgY2FsY3VsYXRpb24iKQ0KPiA+IENj
-OiBzdGFibGVAdmdlci5rZXJuZWwub3JnICMgNC4xKw0KPiA+IFNpZ25lZC1vZmYtYnk6IFRyb25k
-IE15a2xlYnVzdCA8dHJvbmQubXlrbGVidXN0QGhhbW1lcnNwYWNlLmNvbT4NCj4gPiAtLS0NCj4g
-PiAgIGZzL25mcy9kaXJlY3QuYyB8IDgyICsrKysrKysrKysrKysrKysrKysrKysrKysrKystLS0t
-LS0tLS0tLS0tLQ0KPiA+IC0tLS0tLS0NCj4gPiAgIDEgZmlsZSBjaGFuZ2VkLCA0NyBpbnNlcnRp
-b25zKCspLCAzNSBkZWxldGlvbnMoLSkNCj4gPiANCj4gPiBkaWZmIC0tZ2l0IGEvZnMvbmZzL2Rp
-cmVjdC5jIGIvZnMvbmZzL2RpcmVjdC5jDQo+ID4gaW5kZXggMjIyZDcxMTVkYjcxLi42MmNiNGEx
-YTg3ZjAgMTAwNjQ0DQo+ID4gLS0tIGEvZnMvbmZzL2RpcmVjdC5jDQo+ID4gKysrIGIvZnMvbmZz
-L2RpcmVjdC5jDQo+ID4gQEAgLTEyMywzMiArMTIzLDUzIEBAIHN0YXRpYyBpbmxpbmUgaW50IHB1
-dF9kcmVxKHN0cnVjdA0KPiA+IG5mc19kaXJlY3RfcmVxICpkcmVxKQ0KPiA+ICAgfQ0KPiA+ICAg
-DQo+ID4gICBzdGF0aWMgdm9pZA0KPiA+IC1uZnNfZGlyZWN0X2dvb2RfYnl0ZXMoc3RydWN0IG5m
-c19kaXJlY3RfcmVxICpkcmVxLCBzdHJ1Y3QNCj4gPiBuZnNfcGdpb19oZWFkZXIgKmhkcikNCj4g
-PiArbmZzX2RpcmVjdF9oYW5kbGVfdHJ1bmNhdGVkKHN0cnVjdCBuZnNfZGlyZWN0X3JlcSAqZHJl
-cSwNCj4gPiArCQkJICAgIGNvbnN0IHN0cnVjdCBuZnNfcGdpb19oZWFkZXIgKmhkciwNCj4gPiAr
-CQkJICAgIHNzaXplX3QgZHJlcV9sZW4pDQo+ID4gICB7DQo+ID4gLQlpbnQgaTsNCj4gPiAtCXNz
-aXplX3QgY291bnQ7DQo+ID4gKwlzdHJ1Y3QgbmZzX2RpcmVjdF9taXJyb3IgKm1pcnJvciA9ICZk
-cmVxLT5taXJyb3JzW2hkci0NCj4gPiA+cGdpb19taXJyb3JfaWR4XTsNCj4gPiArCWxvZmZfdCBo
-ZHJfYXJnID0gaGRyLT5pb19zdGFydCArIGhkci0+YXJncy5jb3VudDsNCj4gPiArCXNzaXplX3Qg
-ZXhwZWN0ZWQgPSAwOw0KPiA+ICsNCj4gPiArCWlmIChoZHJfYXJnID4gZHJlcS0+aW9fc3RhcnQp
-DQo+ID4gKwkJZXhwZWN0ZWQgPSBoZHJfYXJnIC0gZHJlcS0+aW9fc3RhcnQ7DQo+ID4gKw0KPiA+
-ICsJaWYgKGRyZXFfbGVuID09IGV4cGVjdGVkKQ0KPiA+ICsJCXJldHVybjsNCj4gPiArCWlmIChk
-cmVxLT5tYXhfY291bnQgPiBkcmVxX2xlbikgew0KPiA+ICsJCWRyZXEtPm1heF9jb3VudCA9IGRy
-ZXFfbGVuOw0KPiA+ICsJCWlmIChkcmVxLT5jb3VudCA+IGRyZXFfbGVuKQ0KPiA+ICsJCQlkcmVx
-LT5jb3VudCA9IGRyZXFfbGVuOw0KPiA+ICsNCj4gPiArCQlpZiAodGVzdF9iaXQoTkZTX0lPSERS
-X0VSUk9SLCAmaGRyLT5mbGFncykpDQo+ID4gKwkJCWRyZXEtPmVycm9yID0gaGRyLT5lcnJvcjsN
-Cj4gPiArCQllbHNlIGlmIChoZHItPmdvb2RfYnl0ZXMgPiAwKQ0KPiA+ICsJCQlkcmVxLT5lcnJv
-ciA9IDA7DQo+ID4gKwl9DQo+ID4gKwlpZiAobWlycm9yLT5jb3VudCA+IGRyZXFfbGVuKQ0KPiA+
-ICsJCW1pcnJvci0+Y291bnQgPSBkcmVxX2xlbjsNCj4gPiArfQ0KPiA+ICAgDQo+ID4gLQlXQVJO
-X09OX09OQ0UoZHJlcS0+Y291bnQgPj0gZHJlcS0+bWF4X2NvdW50KTsNCj4gPiArc3RhdGljIHZv
-aWQNCj4gPiArbmZzX2RpcmVjdF9jb3VudF9ieXRlcyhzdHJ1Y3QgbmZzX2RpcmVjdF9yZXEgKmRy
-ZXEsDQo+ID4gKwkJICAgICAgIGNvbnN0IHN0cnVjdCBuZnNfcGdpb19oZWFkZXIgKmhkcikNCj4g
-PiArew0KPiA+ICsJc3RydWN0IG5mc19kaXJlY3RfbWlycm9yICptaXJyb3IgPSAmZHJlcS0+bWly
-cm9yc1toZHItDQo+ID4gPnBnaW9fbWlycm9yX2lkeF07DQo+ID4gKwlsb2ZmX3QgaGRyX2VuZCA9
-IGhkci0+aW9fc3RhcnQgKyBoZHItPmdvb2RfYnl0ZXM7DQo+ID4gKwlzc2l6ZV90IGRyZXFfbGVu
-ID0gMDsNCj4gPiAgIA0KPiA+IC0JaWYgKGRyZXEtPm1pcnJvcl9jb3VudCA9PSAxKSB7DQo+ID4g
-LQkJZHJlcS0+bWlycm9yc1toZHItPnBnaW9fbWlycm9yX2lkeF0uY291bnQgKz0gaGRyLQ0KPiA+
-ID5nb29kX2J5dGVzOw0KPiA+IC0JCWRyZXEtPmNvdW50ICs9IGhkci0+Z29vZF9ieXRlczsNCj4g
-PiAtCX0gZWxzZSB7DQo+ID4gLQkJLyogbWlycm9yZWQgd3JpdGVzICovDQo+ID4gLQkJY291bnQg
-PSBkcmVxLT5taXJyb3JzW2hkci0+cGdpb19taXJyb3JfaWR4XS5jb3VudDsNCj4gPiAtCQlpZiAo
-Y291bnQgKyBkcmVxLT5pb19zdGFydCA8IGhkci0+aW9fc3RhcnQgKyBoZHItDQo+ID4gPmdvb2Rf
-Ynl0ZXMpIHsNCj4gPiAtCQkJY291bnQgPSBoZHItPmlvX3N0YXJ0ICsgaGRyLT5nb29kX2J5dGVz
-IC0gZHJlcS0NCj4gPiA+aW9fc3RhcnQ7DQo+ID4gLQkJCWRyZXEtPm1pcnJvcnNbaGRyLT5wZ2lv
-X21pcnJvcl9pZHhdLmNvdW50ID0NCj4gPiBjb3VudDsNCj4gPiAtCQl9DQo+ID4gLQkJLyogdXBk
-YXRlIHRoZSBkcmVxLT5jb3VudCBieSBmaW5kaW5nIHRoZSBtaW5pbXVtIGFncmVlZA0KPiA+IGNv
-dW50IGZyb20gYWxsDQo+ID4gLQkJICogbWlycm9ycyAqLw0KPiA+IC0JCWNvdW50ID0gZHJlcS0+
-bWlycm9yc1swXS5jb3VudDsNCj4gPiArCWlmIChoZHJfZW5kID4gZHJlcS0+aW9fc3RhcnQpDQo+
-ID4gKwkJZHJlcV9sZW4gPSBoZHJfZW5kIC0gZHJlcS0+aW9fc3RhcnQ7DQo+ID4gICANCj4gPiAt
-CQlmb3IgKGkgPSAxOyBpIDwgZHJlcS0+bWlycm9yX2NvdW50OyBpKyspDQo+ID4gLQkJCWNvdW50
-ID0gbWluKGNvdW50LCBkcmVxLT5taXJyb3JzW2ldLmNvdW50KTsNCj4gPiArCW5mc19kaXJlY3Rf
-aGFuZGxlX3RydW5jYXRlZChkcmVxLCBoZHIsIGRyZXFfbGVuKTsNCj4gPiAgIA0KPiA+IC0JCWRy
-ZXEtPmNvdW50ID0gY291bnQ7DQo+ID4gLQl9DQo+ID4gKwlpZiAoZHJlcV9sZW4gPiBkcmVxLT5t
-YXhfY291bnQpDQo+ID4gKwkJZHJlcV9sZW4gPSBkcmVxLT5tYXhfY291bnQ7DQo+ID4gKw0KPiA+
-ICsJaWYgKG1pcnJvci0+Y291bnQgPCBkcmVxX2xlbikNCj4gPiArCQltaXJyb3ItPmNvdW50ID0g
-ZHJlcV9sZW47DQo+ID4gKwlpZiAoZHJlcS0+Y291bnQgPCBkcmVxX2xlbikNCj4gPiArCQlkcmVx
-LT5jb3VudCA9IGRyZXFfbGVuOw0KPiA+ICAgfQ0KPiA+ICAgDQo+ID4gICAvKg0KPiA+IEBAIC00
-MDIsMjAgKzQyMywxMiBAQCBzdGF0aWMgdm9pZCBuZnNfZGlyZWN0X3JlYWRfY29tcGxldGlvbihz
-dHJ1Y3QNCj4gPiBuZnNfcGdpb19oZWFkZXIgKmhkcikNCj4gPiAgIAlzdHJ1Y3QgbmZzX2RpcmVj
-dF9yZXEgKmRyZXEgPSBoZHItPmRyZXE7DQo+ID4gICANCj4gPiAgIAlzcGluX2xvY2soJmRyZXEt
-PmxvY2spOw0KPiA+IC0JaWYgKHRlc3RfYml0KE5GU19JT0hEUl9FUlJPUiwgJmhkci0+ZmxhZ3Mp
-KQ0KPiA+IC0JCWRyZXEtPmVycm9yID0gaGRyLT5lcnJvcjsNCj4gPiAtDQo+ID4gICAJaWYgKHRl
-c3RfYml0KE5GU19JT0hEUl9SRURPLCAmaGRyLT5mbGFncykpIHsNCj4gPiAgIAkJc3Bpbl91bmxv
-Y2soJmRyZXEtPmxvY2spOw0KPiA+ICAgCQlnb3RvIG91dF9wdXQ7DQo+ID4gICAJfQ0KPiA+ICAg
-DQo+ID4gLQlpZiAoaGRyLT5nb29kX2J5dGVzICE9IDApDQo+ID4gLQkJbmZzX2RpcmVjdF9nb29k
-X2J5dGVzKGRyZXEsIGhkcik7DQo+ID4gLQ0KPiA+IC0JaWYgKHRlc3RfYml0KE5GU19JT0hEUl9F
-T0YsICZoZHItPmZsYWdzKSkNCj4gPiAtCQlkcmVxLT5lcnJvciA9IDA7DQo+ID4gLQ0KPiA+ICsJ
-bmZzX2RpcmVjdF9jb3VudF9ieXRlcyhkcmVxLCBoZHIpOw0KPiA+ICAgCXNwaW5fdW5sb2NrKCZk
-cmVxLT5sb2NrKTsNCj4gPiAgIA0KPiA+ICAgCXdoaWxlICghbGlzdF9lbXB0eSgmaGRyLT5wYWdl
-cykpIHsNCj4gPiBAQCAtNjUyLDYgKzY2NSw5IEBAIHN0YXRpYyB2b2lkIG5mc19kaXJlY3Rfd3Jp
-dGVfcmVzY2hlZHVsZShzdHJ1Y3QNCj4gPiBuZnNfZGlyZWN0X3JlcSAqZHJlcSkNCj4gPiAgIAlu
-ZnNfZGlyZWN0X3dyaXRlX3NjYW5fY29tbWl0X2xpc3QoZHJlcS0+aW5vZGUsICZyZXFzLCAmY2lu
-Zm8pOw0KPiA+ICAgDQo+ID4gICAJZHJlcS0+Y291bnQgPSAwOw0KPiA+ICsJZHJlcS0+bWF4X2Nv
-dW50ID0gMDsNCj4gPiArCWxpc3RfZm9yX2VhY2hfZW50cnkocmVxLCAmcmVxcywgd2JfbGlzdCkN
-Cj4gPiArCQlkcmVxLT5tYXhfY291bnQgKz0gcmVxLT53Yl9ieXRlczsNCj4gPiAgIAlkcmVxLT52
-ZXJmLmNvbW1pdHRlZCA9IE5GU19JTlZBTElEX1NUQUJMRV9IT1c7DQo+ID4gICAJbmZzX2NsZWFy
-X3BuZnNfZHNfY29tbWl0X3ZlcmlmaWVycygmZHJlcS0+ZHNfY2luZm8pOw0KPiA+ICAgCWZvciAo
-aSA9IDA7IGkgPCBkcmVxLT5taXJyb3JfY291bnQ7IGkrKykNCj4gPiBAQCAtNzkxLDE3ICs4MDcs
-MTMgQEAgc3RhdGljIHZvaWQNCj4gPiBuZnNfZGlyZWN0X3dyaXRlX2NvbXBsZXRpb24oc3RydWN0
-IG5mc19wZ2lvX2hlYWRlciAqaGRyKQ0KPiA+ICAgCW5mc19pbml0X2NpbmZvX2Zyb21fZHJlcSgm
-Y2luZm8sIGRyZXEpOw0KPiA+ICAgDQo+ID4gICAJc3Bpbl9sb2NrKCZkcmVxLT5sb2NrKTsNCj4g
-PiAtDQo+ID4gLQlpZiAodGVzdF9iaXQoTkZTX0lPSERSX0VSUk9SLCAmaGRyLT5mbGFncykpDQo+
-ID4gLQkJZHJlcS0+ZXJyb3IgPSBoZHItPmVycm9yOw0KPiA+IC0NCj4gPiAgIAlpZiAodGVzdF9i
-aXQoTkZTX0lPSERSX1JFRE8sICZoZHItPmZsYWdzKSkgew0KPiA+ICAgCQlzcGluX3VubG9jaygm
-ZHJlcS0+bG9jayk7DQo+ID4gICAJCWdvdG8gb3V0X3B1dDsNCj4gPiAgIAl9DQo+ID4gICANCj4g
-PiArCW5mc19kaXJlY3RfY291bnRfYnl0ZXMoZHJlcSwgaGRyKTsNCj4gPiAgIAlpZiAoaGRyLT5n
-b29kX2J5dGVzICE9IDApIHsNCj4gPiAtCQluZnNfZGlyZWN0X2dvb2RfYnl0ZXMoZHJlcSwgaGRy
-KTsNCj4gPiAgIAkJaWYgKG5mc193cml0ZV9uZWVkX2NvbW1pdChoZHIpKSB7DQo+ID4gICAJCQlp
-ZiAoZHJlcS0+ZmxhZ3MgPT0gTkZTX09ESVJFQ1RfUkVTQ0hFRF9XUklURVMpDQo+ID4gICAJCQkJ
-cmVxdWVzdF9jb21taXQgPSB0cnVlOw0KPiANCj4gDQotLSANClRyb25kIE15a2xlYnVzdA0KTGlu
-dXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBIYW1tZXJzcGFjZQ0KdHJvbmQubXlrbGVidXN0QGhh
-bW1lcnNwYWNlLmNvbQ0KDQoNCg==
+On Fri, Oct 04, 2019 at 09:58:20AM -0400, Chuck Lever wrote:
+> Capture the total size of Sends, the size of DMA map and the
+> matching DMA unmap to ensure operation is correct.
+> 
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+>  include/trace/events/rpcrdma.h        |   30 +++++++++++++++++++++++-------
+>  net/sunrpc/xprtrdma/svc_rdma_sendto.c |    8 ++++++--
+>  2 files changed, 29 insertions(+), 9 deletions(-)
+> 
+> Hey Bruce-
+> 
+> Please consider this patch for v5.5. Thanks!
+
+Applied, thanks!
+
+--b.
+
+> 
+> 
+> diff --git a/include/trace/events/rpcrdma.h b/include/trace/events/rpcrdma.h
+> index a138306..9dd7680 100644
+> --- a/include/trace/events/rpcrdma.h
+> +++ b/include/trace/events/rpcrdma.h
+> @@ -1498,31 +1498,47 @@
+>   ** Server-side RDMA API events
+>   **/
+>  
+> -TRACE_EVENT(svcrdma_dma_map_page,
+> +DECLARE_EVENT_CLASS(svcrdma_dma_map_class,
+>  	TP_PROTO(
+>  		const struct svcxprt_rdma *rdma,
+> -		const void *page
+> +		u64 dma_addr,
+> +		u32 length
+>  	),
+>  
+> -	TP_ARGS(rdma, page),
+> +	TP_ARGS(rdma, dma_addr, length),
+>  
+>  	TP_STRUCT__entry(
+> -		__field(const void *, page);
+> +		__field(u64, dma_addr)
+> +		__field(u32, length)
+>  		__string(device, rdma->sc_cm_id->device->name)
+>  		__string(addr, rdma->sc_xprt.xpt_remotebuf)
+>  	),
+>  
+>  	TP_fast_assign(
+> -		__entry->page = page;
+> +		__entry->dma_addr = dma_addr;
+> +		__entry->length = length;
+>  		__assign_str(device, rdma->sc_cm_id->device->name);
+>  		__assign_str(addr, rdma->sc_xprt.xpt_remotebuf);
+>  	),
+>  
+> -	TP_printk("addr=%s device=%s page=%p",
+> -		__get_str(addr), __get_str(device), __entry->page
+> +	TP_printk("addr=%s device=%s dma_addr=%llu length=%u",
+> +		__get_str(addr), __get_str(device),
+> +		__entry->dma_addr, __entry->length
+>  	)
+>  );
+>  
+> +#define DEFINE_SVC_DMA_EVENT(name)					\
+> +		DEFINE_EVENT(svcrdma_dma_map_class, svcrdma_##name,	\
+> +				TP_PROTO(				\
+> +					const struct svcxprt_rdma *rdma,\
+> +					u64 dma_addr,			\
+> +					u32 length			\
+> +				),					\
+> +				TP_ARGS(rdma, dma_addr, length))
+> +
+> +DEFINE_SVC_DMA_EVENT(dma_map_page);
+> +DEFINE_SVC_DMA_EVENT(dma_unmap_page);
+> +
+>  TRACE_EVENT(svcrdma_dma_map_rwctx,
+>  	TP_PROTO(
+>  		const struct svcxprt_rdma *rdma,
+> diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+> index 6fdba72..f3f1080 100644
+> --- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+> +++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+> @@ -233,11 +233,15 @@ void svc_rdma_send_ctxt_put(struct svcxprt_rdma *rdma,
+>  	/* The first SGE contains the transport header, which
+>  	 * remains mapped until @ctxt is destroyed.
+>  	 */
+> -	for (i = 1; i < ctxt->sc_send_wr.num_sge; i++)
+> +	for (i = 1; i < ctxt->sc_send_wr.num_sge; i++) {
+>  		ib_dma_unmap_page(device,
+>  				  ctxt->sc_sges[i].addr,
+>  				  ctxt->sc_sges[i].length,
+>  				  DMA_TO_DEVICE);
+> +		trace_svcrdma_dma_unmap_page(rdma,
+> +					     ctxt->sc_sges[i].addr,
+> +					     ctxt->sc_sges[i].length);
+> +	}
+>  
+>  	for (i = 0; i < ctxt->sc_page_count; ++i)
+>  		put_page(ctxt->sc_pages[i]);
+> @@ -490,6 +494,7 @@ static int svc_rdma_dma_map_page(struct svcxprt_rdma *rdma,
+>  	dma_addr_t dma_addr;
+>  
+>  	dma_addr = ib_dma_map_page(dev, page, offset, len, DMA_TO_DEVICE);
+> +	trace_svcrdma_dma_map_page(rdma, dma_addr, len);
+>  	if (ib_dma_mapping_error(dev, dma_addr))
+>  		goto out_maperr;
+>  
+> @@ -499,7 +504,6 @@ static int svc_rdma_dma_map_page(struct svcxprt_rdma *rdma,
+>  	return 0;
+>  
+>  out_maperr:
+> -	trace_svcrdma_dma_map_page(rdma, page);
+>  	return -EIO;
+>  }
+>  
