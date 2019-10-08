@@ -1,4 +1,4 @@
-Return-Path: <SRS0=dxi0=YA=vger.kernel.org=linux-nfs-owner@kernel.org>
+Return-Path: <SRS0=FqPe=YB=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
@@ -6,130 +6,85 @@ X-Spam-Status: No, score=-2.3 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=no
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6EC20C47404
-	for <linux-nfs@archiver.kernel.org>; Mon,  7 Oct 2019 18:20:26 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1013EC47404
+	for <linux-nfs@archiver.kernel.org>; Tue,  8 Oct 2019 02:00:11 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 4884B206C2
-	for <linux-nfs@archiver.kernel.org>; Mon,  7 Oct 2019 18:20:26 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id D6CA120867
+	for <linux-nfs@archiver.kernel.org>; Tue,  8 Oct 2019 02:00:10 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728081AbfJGSUZ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 7 Oct 2019 14:20:25 -0400
-Received: from fieldses.org ([173.255.197.46]:46146 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1728031AbfJGSUZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 7 Oct 2019 14:20:25 -0400
-Received: by fieldses.org (Postfix, from userid 2815)
-        id 7A8C07EC; Mon,  7 Oct 2019 14:20:24 -0400 (EDT)
-Date:   Mon, 7 Oct 2019 14:20:24 -0400
-From:   "J. Bruce Fields" <bfields@fieldses.org>
-To:     Olga Kornievskaia <olga.kornievskaia@gmail.com>
-Cc:     trond.myklebust@hammerspace.com,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        linux-nfs <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v7 18/19] NFSD: allow inter server COPY to have a STALE
- source server fh
-Message-ID: <20191007182024.GB22450@fieldses.org>
-References: <20190916211353.18802-1-olga.kornievskaia@gmail.com>
- <20190916211353.18802-19-olga.kornievskaia@gmail.com>
- <20191002195511.GA21809@fieldses.org>
- <CAN-5tyEb=YG-5j7bNFSqefaC32vaTh3NQ0QgKPwgVuPg-quVQQ@mail.gmail.com>
+        id S1729725AbfJHCAK (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 7 Oct 2019 22:00:10 -0400
+Received: from szxga06-in.huawei.com ([45.249.212.32]:38938 "EHLO huawei.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1726917AbfJHCAK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 7 Oct 2019 22:00:10 -0400
+Received: from DGGEMS401-HUB.china.huawei.com (unknown [172.30.72.59])
+        by Forcepoint Email with ESMTP id E37F853114F9BFF904DF;
+        Tue,  8 Oct 2019 10:00:08 +0800 (CST)
+Received: from [127.0.0.1] (10.173.220.145) by DGGEMS401-HUB.china.huawei.com
+ (10.3.19.201) with Microsoft SMTP Server id 14.3.439.0; Tue, 8 Oct 2019
+ 10:00:08 +0800
+Subject: Re: [PATCH] nfs: Fix nfsi->nrequests count error on
+ nfs_inode_remove_request
+To:     Trond Myklebust <trondmy@hammerspace.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>
+References: <1569479378-128669-1-git-send-email-zhangxiaoxu5@huawei.com>
+ <08ce0101-e8df-509a-f3e5-07063aa5492e@huawei.com>
+ <5c50a4be3562877a5d96523e943b9976a3792e23.camel@hammerspace.com>
+ <cb955e718bd3c62f9c23661e95db77efa65d7177.camel@hammerspace.com>
+From:   "zhangxiaoxu (A)" <zhangxiaoxu5@huawei.com>
+Message-ID: <4096d9e4-f6a2-b1e1-4f52-81cf44fc4a1f@huawei.com>
+Date:   Tue, 8 Oct 2019 10:00:07 +0800
+User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64; rv:68.0) Gecko/20100101
+ Thunderbird/68.1.1
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <CAN-5tyEb=YG-5j7bNFSqefaC32vaTh3NQ0QgKPwgVuPg-quVQQ@mail.gmail.com>
-User-Agent: Mutt/1.5.21 (2010-09-15)
+In-Reply-To: <cb955e718bd3c62f9c23661e95db77efa65d7177.camel@hammerspace.com>
+Content-Type: text/plain; charset="utf-8"; format=flowed
+Content-Transfer-Encoding: 8bit
+X-Originating-IP: [10.173.220.145]
+X-CFilter-Loop: Reflected
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Mon, Oct 07, 2019 at 10:31:04AM -0400, Olga Kornievskaia wrote:
-> On Wed, Oct 2, 2019 at 3:55 PM J. Bruce Fields <bfields@fieldses.org> wrote:
-> >
-> > On Mon, Sep 16, 2019 at 05:13:52PM -0400, Olga Kornievskaia wrote:
-> > > @@ -1956,6 +1964,45 @@ static void svcxdr_init_encode(struct svc_rqst *rqstp,
-> > >               - rqstp->rq_auth_slack;
-> > >  }
-> > >
-> > > +#ifdef CONFIG_NFSD_V4_2_INTER_SSC
-> > > +static __be32
-> > > +check_if_stalefh_allowed(struct nfsd4_compoundargs *args)
-> > > +{
-> > > +     struct nfsd4_op *op, *current_op, *saved_op;
-> >
-> > current_op and saved_op need to be initialized to NULL here.
-> >
-> > > +     struct nfsd4_copy *copy;
-> > > +     struct nfsd4_putfh *putfh;
-> > > +     int i;
-> > > +
-> > > +     /* traverse all operation and if it's a COPY compound, mark the
-> > > +      * source filehandle to skip verification
-> > > +      */
-> > > +     for (i = 0; i < args->opcnt; i++) {
-> > > +             op = &args->ops[i];
-> > > +             if (op->opnum == OP_PUTFH)
-> > > +                     current_op = op;
-> > > +             else if (op->opnum == OP_SAVEFH)
-> > > +                     saved_op = current_op;
-> > > +             else if (op->opnum == OP_RESTOREFH)
-> > > +                     current_op = saved_op;
-> > > +             else if (op->opnum == OP_COPY) {
-> > > +                     copy = (struct nfsd4_copy *)&op->u;
-> > > +                     if (!saved_op)
-> > > +                             return nfserr_nofilehandle;
-> >
-> > Looks like this results in returning an empty compound result with just
-> > the bare result.  I believe what we need to do is execute all the
-> > ops preceding the COPY normally, then return the nofilehandle error on
-> > the COPY.
-> >
-> > One approach might be
-> >
-> >                 if (!saved_op) {
-> >                         op->status = nfserr_nofilehandle;
-> >                         return;
-> >                 }
-> >
-> > and change check_if_stalefh_allowed to have no return value.
+Thanks for your review.
+
+I think PG_REMOVE and PG_INODE_REF can't be both setted except in
+'nfs_inode_remove_request' function.
+
+nfs_inode_remove_request
+	// maybe set PG_REMOVE here.
+	nfs_page_group_sync_on_bit(req, PG_REMOVE)
+		nfs_page_group_lock(req);
+		nfs_page_group_sync_on_bit_locked
+			WARN_ON_ONCE(test_and_set_bit(bit, &req->wb_flags));
+		nfs_page_group_unlock(req);
+	// But also clear the PG_INODE_REF flag.
+	test_and_clear_bit(PG_INODE_REF, &req->wb_flags)
+
+'nfs_lock_and_join_requests' also need the PG_HEADLOCK flag:
+
+nfs_lock_and_join_requests
+	nfs_page_group_lock(head);
+		test_and_clear_bit(PG_REMOVE, &head->wb_flags)
+	nfs_page_group_unlock(head);
+
+
+在 2019/10/5 22:35, Trond Myklebust 写道:
+> However nfs_lock_and_join_requests() looks like it does need to change
+> to something like the following:
 > 
-> Ok thanks. I'm just curious if op->status assignment is necessary or I
-> can just do a return. When nfsd4_copy() calls nfs4_verify_copy() it
-> would check
->         if (!cstate->save_fh.fh_dentry)
->                 return nfserr_nofilehandle;
-
-Catching the error here might be a little safer if you think there's
-ever a risk of messing up the later logic?  But, really, either should
-work.
-
-Since a real client is never going to hit any interesting cases here, it
-could be useful to have a pynfs test or two that sent some weird illegal
-compounds.
-
---b.
-
+>          /* Postpone destruction of this request */
+> -       if (test_and_clear_bit(PG_REMOVE, &head->wb_flags)) {
+> -               set_bit(PG_INODE_REF, &head->wb_flags);
+> +       if (test_and_clear_bit(PG_REMOVE, &head->wb_flags) &&
+> +           !test_and_set_bit(PG_INODE_REF, &head->wb_flags)) {
+>                  kref_get(&head->wb_kref);
+>                  atomic_long_inc(&NFS_I(inode)->nrequests);
+>          }
 > 
-> >
-> > --b.
-> >
-> > > +                     putfh = (struct nfsd4_putfh *)&saved_op->u;
-> > > +                     if (!copy->cp_intra)
-> > > +                             putfh->no_verify = true;
-> > > +             }
-> > > +     }
-> > > +     return nfs_ok;
-> > > +}
-> > ...
-> > > @@ -2004,6 +2051,9 @@ static void svcxdr_init_encode(struct svc_rqst *rqstp,
-> > >               resp->opcnt = 1;
-> > >               goto encode_op;
-> > >       }
-> > > +     status = check_if_stalefh_allowed(args);
-> > > +     if (status)
-> > > +             goto out;
-> >
-> > >
-> > >       trace_nfsd_compound(rqstp, args->opcnt);
-> > >       while (!status && resp->opcnt < args->opcnt) {
+> 
+> Do you agree?
+
