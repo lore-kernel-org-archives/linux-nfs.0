@@ -8,59 +8,59 @@ X-Spam-Status: No, score=-9.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C6D1CC4360C
-	for <linux-nfs@archiver.kernel.org>; Thu, 10 Oct 2019 12:47:05 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4D7D1C10F14
+	for <linux-nfs@archiver.kernel.org>; Thu, 10 Oct 2019 12:47:07 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 93DB22067B
-	for <linux-nfs@archiver.kernel.org>; Thu, 10 Oct 2019 12:47:05 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 26750208C3
+	for <linux-nfs@archiver.kernel.org>; Thu, 10 Oct 2019 12:47:07 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="eqq6WxCu"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="rZtdSS+C"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2387872AbfJJMrF (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 10 Oct 2019 08:47:05 -0400
-Received: from mail-io1-f68.google.com ([209.85.166.68]:45174 "EHLO
-        mail-io1-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2387594AbfJJMrE (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Oct 2019 08:47:04 -0400
-Received: by mail-io1-f68.google.com with SMTP id c25so13233047iot.12
-        for <linux-nfs@vger.kernel.org>; Thu, 10 Oct 2019 05:47:03 -0700 (PDT)
+        id S2387870AbfJJMrG (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 10 Oct 2019 08:47:06 -0400
+Received: from mail-io1-f52.google.com ([209.85.166.52]:38027 "EHLO
+        mail-io1-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2387594AbfJJMrG (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Oct 2019 08:47:06 -0400
+Received: by mail-io1-f52.google.com with SMTP id u8so13328952iom.5
+        for <linux-nfs@vger.kernel.org>; Thu, 10 Oct 2019 05:47:05 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references;
-        bh=07aZGDA+cLPH1KOOSyLBLamAyYdD/WVZ9jB6KzMf93c=;
-        b=eqq6WxCuB4K7scUE/4K6UQZlOmciLYR9pPagH0hZma8hY5n7GgLEVr4zhAnbOyXXar
-         yoKCrfXea+CE2SK1Qix3XVTOXV5lrDktCfHIfGr9zWRa/flXPdQcZJfhpncSMqL+oWxm
-         QVT/Lq/O/xG/ciLiW7mkd9JMvGqWwH86D58phqJze95LE59O16EsWPeB8eECvnjC/LsF
-         j6gj6Ba88RIWO+xi37iG9JUqEZfLNh9m9vqXsG29AuLbQlwWOUuFlZz0iwbEKJjejKp4
-         njA/LhjRBhLhigLkwvFtfOmwWhCz/7w6nDSsFo9tzWUZvOWoW/NeZdRd6d8OfO7mpZgZ
-         BHeg==
+        bh=vYUW9IXrqpkv9hIRguedc0baL1AlyP7Y6THvHazRWcw=;
+        b=rZtdSS+CVQtS4XuzlJXhqZ9QxQAJuGLgsuxZmw3YmVHvBxAGPRffBh/qHlSGhppS2o
+         LSLZi2O6gS0iAbo2MMe5dSe1LyJ3eHp629pBArHROvwGj7ibwGu0adios7G74xB/8XjP
+         x1QOr0bjIn3G2iTQr9/O07iw2Q/r2jHvOO+BAZrl5J5Q1ffeYUFdPTqyc6GijuBDVU5F
+         s+9J2QfUjCJoyx0aedk6dJ+2CGffVGZ0wHGYOR74kbPCSdoINtqYulfrmeeqRnXtpSgD
+         tgp97dvIqfPCVHh1GFU+r+LYrVM0R7UyXltTuRyv2DvfLUBkaEWhi2h9MgLOm2qze5ma
+         UBFg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references;
-        bh=07aZGDA+cLPH1KOOSyLBLamAyYdD/WVZ9jB6KzMf93c=;
-        b=VWMCgvgbMvKEKk6vP18C0qezyCmTsWkZy1NS1+7Gx0k/lkqhSuPGFZXEd2O8FC4e7F
-         fTbg14g/+/nGKpym9epMFdUh58qLT5Jryi5lsio/jvy0tblMWZy1TzMZMZfaOk0Q3PBI
-         wM7e3ClJ/5AOvidxSleEcCq37ZrqyRVQSh+uBZX/k2Ndah/EaEnD1dnB5U4GMYCeW3Cr
-         +p+fOtj2CURIhpyTwYmnB9/c85uiF710xHBHeJi6p8eqJE1EPXvI0gEyUEJQphtRXPYX
-         HSPEJhJpMHvsg5ITLKGgNYnIb2+Z5O0UUWeA0ZdnXLxdr5BHiQO3VFVT3TrPr/8eB8ju
-         0V9Q==
-X-Gm-Message-State: APjAAAVbAdqVfkvTiXE7w9aGr0LSjCs3WjzceXULMs8yCyXdeAI9bH9c
-        0o3s9CgFxOHURxuQiYIA2kc=
-X-Google-Smtp-Source: APXvYqwFrsizpwo3prAUcZ7c2ep0M/G1ti7lXv9IlKrbLXL07v+MHUjZtLzt+sMKkN9lInHmbl4NWA==
-X-Received: by 2002:a5d:9ecc:: with SMTP id a12mr1498035ioe.195.1570711622787;
-        Thu, 10 Oct 2019 05:47:02 -0700 (PDT)
+        bh=vYUW9IXrqpkv9hIRguedc0baL1AlyP7Y6THvHazRWcw=;
+        b=AusDyp/fv2h5kN8+UWEpJwm7w7wnGptUtga8ooEjhoToe+DTj/RnRVe1VpVlQewUez
+         1FwBiPScNPV7fukHmkutQLkbXl0voS//366l9Koh5y9VPIE1M0AHTljbkQAd99OgZjQr
+         uR9NupLzatdPEolqEVOxBsxP3e+eTBByOBCKR1ZgpUXldvtBUXbeOArF0IjbjzTLimt/
+         L5UKX7c8xGTzFRIbFe3s/E8UmLd5vt98fDG9zn/ksg9+bJlLjKksDVvfjINf6GCTaI89
+         AYNM7ZcmmpEGoTJIyRF+5V3fPwYs159OaQ3aHzXXHBsWcP0o43PIeDMJAUlCDkD5rq5+
+         INGw==
+X-Gm-Message-State: APjAAAUcA7ZUB+atVztoaT+ffJBVMnsGDvcvNgEkn8QxRVSpeFT1axQj
+        2iEMmoBsDOZw8wHK+UPujJo=
+X-Google-Smtp-Source: APXvYqxtT72mvrQjbMWQgcLTbLNo+U3dkVGfuDqLZdYZvQDwcji43JmeoEk5g4x2ACZPHJMyuXuQkA==
+X-Received: by 2002:a6b:f90f:: with SMTP id j15mr9151821iog.257.1570711625371;
+        Thu, 10 Oct 2019 05:47:05 -0700 (PDT)
 Received: from Olgas-MBP-201.attlocal.net (172-10-226-31.lightspeed.livnmi.sbcglobal.net. [172.10.226.31])
-        by smtp.gmail.com with ESMTPSA id r2sm1100930ilm.17.2019.10.10.05.47.01
+        by smtp.gmail.com with ESMTPSA id r2sm1100930ilm.17.2019.10.10.05.47.04
         (version=TLS1 cipher=AES128-SHA bits=128/128);
-        Thu, 10 Oct 2019 05:47:02 -0700 (PDT)
+        Thu, 10 Oct 2019 05:47:04 -0700 (PDT)
 From:   Olga Kornievskaia <olga.kornievskaia@gmail.com>
 To:     trond.myklebust@hammerspace.com, anna.schumaker@netapp.com,
         bfields@redhat.com
 Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH v8 15/20] NFSD COPY_NOTIFY xdr
-Date:   Thu, 10 Oct 2019 08:46:17 -0400
-Message-Id: <20191010124622.27812-16-olga.kornievskaia@gmail.com>
+Subject: [PATCH v8 17/20] NFSD check stateids against copy stateids
+Date:   Thu, 10 Oct 2019 08:46:19 -0400
+Message-Id: <20191010124622.27812-18-olga.kornievskaia@gmail.com>
 X-Mailer: git-send-email 2.10.1 (Apple Git-78)
 In-Reply-To: <20191010124622.27812-1-olga.kornievskaia@gmail.com>
 References: <20191010124622.27812-1-olga.kornievskaia@gmail.com>
@@ -69,226 +69,168 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
+Incoming stateid (used by a READ) could be a saved copy stateid.
+Using the provided stateid, look it up in the list of copy_notify
+stateids. If found, use the parent's stateid and parent's clid
+to look up the parent's stid to do the appropriate checks.
+
+Update the copy notify timestamp (cpntf_time) with current time
+this making it 'active' so that laundromat thread will not delete
+copy notify state.
+
 Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
 ---
- fs/nfsd/nfs4proc.c | 28 +++++++++++++++++
- fs/nfsd/nfs4xdr.c  | 90 ++++++++++++++++++++++++++++++++++++++++++++++++++++--
- fs/nfsd/xdr4.h     | 13 ++++++++
- 3 files changed, 129 insertions(+), 2 deletions(-)
+ fs/nfsd/nfs4state.c | 74 +++++++++++++++++++++++++++++++++++++++++++++++------
+ 1 file changed, 66 insertions(+), 8 deletions(-)
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 4e3e77b..7fa694d 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1338,6 +1338,13 @@ struct nfsd4_copy *
- }
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index b7859b6..f0942bd 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4534,7 +4534,8 @@ static __be32 nfsd4_check_seqid(struct nfsd4_compound_state *cstate, struct nfs4
  
- static __be32
-+nfsd4_copy_notify(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
-+		  union nfsd4_op_u *u)
-+{
-+	return nfserr_notsupp;
-+}
-+
-+static __be32
- nfsd4_fallocate(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		struct nfsd4_fallocate *fallocate, int flags)
+ static __be32 lookup_clientid(clientid_t *clid,
+ 		struct nfsd4_compound_state *cstate,
+-		struct nfsd_net *nn)
++		struct nfsd_net *nn,
++		bool sessions)
  {
-@@ -2290,6 +2297,21 @@ static inline u32 nfsd4_offload_status_rsize(struct svc_rqst *rqstp,
- 		1 /* osr_complete<1> optional 0 for now */) * sizeof(__be32);
+ 	struct nfs4_client *found;
+ 
+@@ -4555,7 +4556,7 @@ static __be32 lookup_clientid(clientid_t *clid,
+ 	 */
+ 	WARN_ON_ONCE(cstate->session);
+ 	spin_lock(&nn->client_lock);
+-	found = find_confirmed_client(clid, false, nn);
++	found = find_confirmed_client(clid, sessions, nn);
+ 	if (!found) {
+ 		spin_unlock(&nn->client_lock);
+ 		return nfserr_expired;
+@@ -4588,7 +4589,7 @@ static __be32 lookup_clientid(clientid_t *clid,
+ 	if (open->op_file == NULL)
+ 		return nfserr_jukebox;
+ 
+-	status = lookup_clientid(clientid, cstate, nn);
++	status = lookup_clientid(clientid, cstate, nn, false);
+ 	if (status)
+ 		return status;
+ 	clp = cstate->clp;
+@@ -5177,7 +5178,7 @@ void nfsd4_cleanup_open_state(struct nfsd4_compound_state *cstate,
+ 
+ 	dprintk("process_renew(%08x/%08x): starting\n", 
+ 			clid->cl_boot, clid->cl_id);
+-	status = lookup_clientid(clid, cstate, nn);
++	status = lookup_clientid(clid, cstate, nn, false);
+ 	if (status)
+ 		goto out;
+ 	clp = cstate->clp;
+@@ -5579,7 +5580,8 @@ static __be32 nfsd4_validate_stateid(struct nfs4_client *cl, stateid_t *stateid)
+ 	if (ZERO_STATEID(stateid) || ONE_STATEID(stateid) ||
+ 		CLOSE_STATEID(stateid))
+ 		return nfserr_bad_stateid;
+-	status = lookup_clientid(&stateid->si_opaque.so_clid, cstate, nn);
++	status = lookup_clientid(&stateid->si_opaque.so_clid, cstate, nn,
++				 false);
+ 	if (status == nfserr_stale_clientid) {
+ 		if (cstate->session)
+ 			return nfserr_bad_stateid;
+@@ -5669,6 +5671,59 @@ static __be32 nfsd4_validate_stateid(struct nfs4_client *cl, stateid_t *stateid)
+ 		   cps->cp_stateid.stid.si_opaque.so_id);
+ 	kfree(cps);
  }
- 
-+static inline u32 nfsd4_copy_notify_rsize(struct svc_rqst *rqstp,
-+					struct nfsd4_op *op)
++/*
++ * A READ from an inter server to server COPY will have a
++ * copy stateid. Look up the copy notify stateid from the
++ * idr structure and take a reference on it.
++ */
++static __be32 _find_cpntf_state(struct nfsd_net *nn, stateid_t *st,
++		     struct nfs4_cpntf_state **cps)
 +{
-+	return (op_encode_hdr_size +
-+		3 /* cnr_lease_time */ +
-+		1 /* We support one cnr_source_server */ +
-+		1 /* cnr_stateid seq */ +
-+		op_encode_stateid_maxsz /* cnr_stateid */ +
-+		1 /* num cnr_source_server*/ +
-+		1 /* nl4_type */ +
-+		1 /* nl4 size */ +
-+		XDR_QUADLEN(NFS4_OPAQUE_LIMIT) /*nl4_loc + nl4_loc_sz */)
-+		* sizeof(__be32);
-+}
++	copy_stateid_t *cps_t;
++	struct nfs4_cpntf_state *state = NULL;
 +
- #ifdef CONFIG_NFSD_PNFS
- static inline u32 nfsd4_getdeviceinfo_rsize(struct svc_rqst *rqstp, struct nfsd4_op *op)
- {
-@@ -2714,6 +2736,12 @@ static inline u32 nfsd4_seek_rsize(struct svc_rqst *rqstp, struct nfsd4_op *op)
- 		.op_name = "OP_OFFLOAD_CANCEL",
- 		.op_rsize_bop = nfsd4_only_status_rsize,
- 	},
-+	[OP_COPY_NOTIFY] = {
-+		.op_func = nfsd4_copy_notify,
-+		.op_flags = OP_MODIFIES_SOMETHING,
-+		.op_name = "OP_COPY_NOTIFY",
-+		.op_rsize_bop = nfsd4_copy_notify_rsize,
-+	},
- };
- 
- /**
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index a664c18..a7b8b81 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -1838,6 +1838,18 @@ static __be32 nfsd4_decode_nl4_server(struct nfsd4_compoundargs *argp,
- }
- 
- static __be32
-+nfsd4_decode_copy_notify(struct nfsd4_compoundargs *argp,
-+			 struct nfsd4_copy_notify *cn)
-+{
-+	int status;
-+
-+	status = nfsd4_decode_stateid(argp, &cn->cpn_src_stateid);
-+	if (status)
-+		return status;
-+	return nfsd4_decode_nl4_server(argp, &cn->cpn_dst);
-+}
-+
-+static __be32
- nfsd4_decode_seek(struct nfsd4_compoundargs *argp, struct nfsd4_seek *seek)
- {
- 	DECODE_HEAD;
-@@ -1938,7 +1950,7 @@ static __be32 nfsd4_decode_nl4_server(struct nfsd4_compoundargs *argp,
- 	/* new operations for NFSv4.2 */
- 	[OP_ALLOCATE]		= (nfsd4_dec)nfsd4_decode_fallocate,
- 	[OP_COPY]		= (nfsd4_dec)nfsd4_decode_copy,
--	[OP_COPY_NOTIFY]	= (nfsd4_dec)nfsd4_decode_notsupp,
-+	[OP_COPY_NOTIFY]	= (nfsd4_dec)nfsd4_decode_copy_notify,
- 	[OP_DEALLOCATE]		= (nfsd4_dec)nfsd4_decode_fallocate,
- 	[OP_IO_ADVISE]		= (nfsd4_dec)nfsd4_decode_notsupp,
- 	[OP_LAYOUTERROR]	= (nfsd4_dec)nfsd4_decode_notsupp,
-@@ -4318,6 +4330,46 @@ static __be32 nfsd4_encode_readv(struct nfsd4_compoundres *resp,
- }
- 
- static __be32
-+nfsd42_encode_nl4_server(struct nfsd4_compoundres *resp, struct nl4_server *ns)
-+{
-+	struct xdr_stream *xdr = &resp->xdr;
-+	struct nfs42_netaddr *addr;
-+	__be32 *p;
-+
-+	p = xdr_reserve_space(xdr, 4);
-+	*p++ = cpu_to_be32(ns->nl4_type);
-+
-+	switch (ns->nl4_type) {
-+	case NL4_NETADDR:
-+		addr = &ns->u.nl4_addr;
-+
-+		/* netid_len, netid, uaddr_len, uaddr (port included
-+		 * in RPCBIND_MAXUADDRLEN)
-+		 */
-+		p = xdr_reserve_space(xdr,
-+			4 /* netid len */ +
-+			(XDR_QUADLEN(addr->netid_len) * 4) +
-+			4 /* uaddr len */ +
-+			(XDR_QUADLEN(addr->addr_len) * 4));
-+		if (!p)
-+			return nfserr_resource;
-+
-+		*p++ = cpu_to_be32(addr->netid_len);
-+		p = xdr_encode_opaque_fixed(p, addr->netid,
-+					    addr->netid_len);
-+		*p++ = cpu_to_be32(addr->addr_len);
-+		p = xdr_encode_opaque_fixed(p, addr->addr,
-+					addr->addr_len);
-+		break;
-+	default:
-+		WARN_ON_ONCE(ns->nl4_type != NL4_NETADDR);
-+		return nfserr_inval;
++	if (st->si_opaque.so_clid.cl_id != nn->s2s_cp_cl_id)
++		return nfserr_bad_stateid;
++	spin_lock(&nn->s2s_cp_lock);
++	cps_t = idr_find(&nn->s2s_cp_stateids, st->si_opaque.so_id);
++	if (cps_t) {
++		state = container_of(cps_t, struct nfs4_cpntf_state,
++				     cp_stateid);
++		if (state->cp_stateid.sc_type != NFS4_COPYNOTIFY_STID)
++			return nfserr_bad_stateid;
++		refcount_inc(&state->cp_stateid.sc_count);
 +	}
-+
++	spin_unlock(&nn->s2s_cp_lock);
++	if (!state)
++		return nfserr_bad_stateid;
++	*cps = state;
 +	return 0;
 +}
 +
-+static __be32
- nfsd4_encode_copy(struct nfsd4_compoundres *resp, __be32 nfserr,
- 		  struct nfsd4_copy *copy)
- {
-@@ -4351,6 +4403,40 @@ static __be32 nfsd4_encode_readv(struct nfsd4_compoundres *resp,
- }
- 
- static __be32
-+nfsd4_encode_copy_notify(struct nfsd4_compoundres *resp, __be32 nfserr,
-+			 struct nfsd4_copy_notify *cn)
++static __be32 find_cpntf_state(struct nfsd_net *nn, stateid_t *st,
++			       struct nfs4_stid **stid)
 +{
-+	struct xdr_stream *xdr = &resp->xdr;
-+	__be32 *p;
++	__be32 status;
++	struct nfs4_cpntf_state *cps = NULL;
++	struct nfsd4_compound_state cstate;
 +
-+	if (nfserr)
-+		return nfserr;
++	status = _find_cpntf_state(nn, st, &cps);
++	if (status)
++		return status;
 +
-+	/* 8 sec, 4 nsec */
-+	p = xdr_reserve_space(xdr, 12);
-+	if (!p)
-+		return nfserr_resource;
-+
-+	/* cnr_lease_time */
-+	p = xdr_encode_hyper(p, cn->cpn_sec);
-+	*p++ = cpu_to_be32(cn->cpn_nsec);
-+
-+	/* cnr_stateid */
-+	nfserr = nfsd4_encode_stateid(xdr, &cn->cpn_cnr_stateid);
-+	if (nfserr)
-+		return nfserr;
-+
-+	/* cnr_src.nl_nsvr */
-+	p = xdr_reserve_space(xdr, 4);
-+	if (!p)
-+		return nfserr_resource;
-+
-+	*p++ = cpu_to_be32(1);
-+
-+	return nfsd42_encode_nl4_server(resp, &cn->cpn_src);
++	cps->cpntf_time = get_seconds();
++	memset(&cstate, 0, sizeof(cstate));
++	status = lookup_clientid(&cps->cp_p_clid, &cstate, nn, true);
++	if (status)
++		goto out;
++	status = nfsd4_lookup_stateid(&cstate, &cps->cp_p_stateid,
++				NFS4_DELEG_STID|NFS4_OPEN_STID|NFS4_LOCK_STID,
++				stid, nn);
++	put_client_renew(cstate.clp);
++out:
++	nfs4_put_cpntf_state(nn, cps);
++	return status;
 +}
-+
-+static __be32
- nfsd4_encode_seek(struct nfsd4_compoundres *resp, __be32 nfserr,
- 		  struct nfsd4_seek *seek)
- {
-@@ -4447,7 +4533,7 @@ static __be32 nfsd4_encode_readv(struct nfsd4_compoundres *resp,
- 	/* NFSv4.2 operations */
- 	[OP_ALLOCATE]		= (nfsd4_enc)nfsd4_encode_noop,
- 	[OP_COPY]		= (nfsd4_enc)nfsd4_encode_copy,
--	[OP_COPY_NOTIFY]	= (nfsd4_enc)nfsd4_encode_noop,
-+	[OP_COPY_NOTIFY]	= (nfsd4_enc)nfsd4_encode_copy_notify,
- 	[OP_DEALLOCATE]		= (nfsd4_enc)nfsd4_encode_noop,
- 	[OP_IO_ADVISE]		= (nfsd4_enc)nfsd4_encode_noop,
- 	[OP_LAYOUTERROR]	= (nfsd4_enc)nfsd4_encode_noop,
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index e815a9c..8231fe0 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -570,6 +570,18 @@ struct nfsd4_offload_status {
- 	u32		status;
- };
  
-+struct nfsd4_copy_notify {
-+	/* request */
-+	stateid_t		cpn_src_stateid;
-+	struct nl4_server	cpn_dst;
-+
-+	/* response */
-+	stateid_t		cpn_cnr_stateid;
-+	u64			cpn_sec;
-+	u32			cpn_nsec;
-+	struct nl4_server	cpn_src;
-+};
-+
- struct nfsd4_op {
- 	int					opnum;
- 	const struct nfsd4_operation *		opdesc;
-@@ -629,6 +641,7 @@ struct nfsd4_op {
- 		struct nfsd4_clone		clone;
- 		struct nfsd4_copy		copy;
- 		struct nfsd4_offload_status	offload_status;
-+		struct nfsd4_copy_notify	copy_notify;
- 		struct nfsd4_seek		seek;
- 	} u;
- 	struct nfs4_replay *			replay;
+ void nfs4_put_cpntf_state(struct nfsd_net *nn, struct nfs4_cpntf_state *cps)
+ {
+@@ -5706,6 +5761,8 @@ void nfs4_put_cpntf_state(struct nfsd_net *nn, struct nfs4_cpntf_state *cps)
+ 	status = nfsd4_lookup_stateid(cstate, stateid,
+ 				NFS4_DELEG_STID|NFS4_OPEN_STID|NFS4_LOCK_STID,
+ 				&s, nn);
++	if (status == nfserr_bad_stateid)
++		status = find_cpntf_state(nn, stateid, &s);
+ 	if (status)
+ 		return status;
+ 	status = nfsd4_stid_check_stateid_generation(stateid, s,
+@@ -6738,7 +6795,8 @@ static __be32 nfsd_test_lock(struct svc_rqst *rqstp, struct svc_fh *fhp, struct
+ 		 return nfserr_inval;
+ 
+ 	if (!nfsd4_has_session(cstate)) {
+-		status = lookup_clientid(&lockt->lt_clientid, cstate, nn);
++		status = lookup_clientid(&lockt->lt_clientid, cstate, nn,
++					 false);
+ 		if (status)
+ 			goto out;
+ 	}
+@@ -6922,7 +6980,7 @@ static __be32 nfsd_test_lock(struct svc_rqst *rqstp, struct svc_fh *fhp, struct
+ 	dprintk("nfsd4_release_lockowner clientid: (%08x/%08x):\n",
+ 		clid->cl_boot, clid->cl_id);
+ 
+-	status = lookup_clientid(clid, cstate, nn);
++	status = lookup_clientid(clid, cstate, nn, false);
+ 	if (status)
+ 		return status;
+ 
+@@ -7069,7 +7127,7 @@ struct nfs4_client_reclaim *
+ 	__be32 status;
+ 
+ 	/* find clientid in conf_id_hashtbl */
+-	status = lookup_clientid(clid, cstate, nn);
++	status = lookup_clientid(clid, cstate, nn, false);
+ 	if (status)
+ 		return nfserr_reclaim_bad;
+ 
 -- 
 1.8.3.1
 
