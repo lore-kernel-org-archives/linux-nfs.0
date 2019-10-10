@@ -2,569 +2,162 @@ Return-Path: <SRS0=DdpP=YD=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-6.9 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
+	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id BDBF3C4360C
-	for <linux-nfs@archiver.kernel.org>; Thu, 10 Oct 2019 12:47:10 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 255DFC4360C
+	for <linux-nfs@archiver.kernel.org>; Thu, 10 Oct 2019 14:46:46 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 835F2208C3
-	for <linux-nfs@archiver.kernel.org>; Thu, 10 Oct 2019 12:47:10 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id F253D206A1
+	for <linux-nfs@archiver.kernel.org>; Thu, 10 Oct 2019 14:46:44 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="oezBRUi8"
+	dkim=pass (1024-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="FhifBekR"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1733171AbfJJMrK (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 10 Oct 2019 08:47:10 -0400
-Received: from mail-io1-f66.google.com ([209.85.166.66]:35070 "EHLO
-        mail-io1-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2387802AbfJJMrJ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Oct 2019 08:47:09 -0400
-Received: by mail-io1-f66.google.com with SMTP id q10so13411260iop.2
-        for <linux-nfs@vger.kernel.org>; Thu, 10 Oct 2019 05:47:09 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=from:to:cc:subject:date:message-id:in-reply-to:references;
-        bh=v9imY1M6ezwjeiXfTxtPv3ioweQ1g8KtmCIXfrxqQXc=;
-        b=oezBRUi8vHTyE/Wan9SLWQPaarE8a0saYRCNAAI56OybFnvg695Cq886vbfs/PZ3un
-         hefZ5RbUwRILQZOi/zTbv15+n74HdToJBU/6ZtQza9G+c/vhH8J64JV/VwJiyGdlWPVM
-         p7qA3nG1Mrppv3nUt26HM5pY+o1Od17PP8HB2zC/13HKLmTAgBMUELLxXSDqk2o9gdla
-         fDxFADhhe+VbL13TC8dGEOB0ajAc537IuWZIADA5g/RdV2jsdkPkLZddk9VI9WmAilxD
-         dXnxpBaY5Fp5qd1lZFqcPI3T6kTwMqmEBDL5XmxXDkNoMHxiAjteAyvNWOaCFUU07zdF
-         GTyw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
-         :references;
-        bh=v9imY1M6ezwjeiXfTxtPv3ioweQ1g8KtmCIXfrxqQXc=;
-        b=Gj5m26Vg+qoRbTYG2IlKCYP1ry1ntY6EuRYGav9ESyYMRhhOHUKmiiHhKWBl0N4HWv
-         VsXdHDxoabiQdGKlVtKW6PLQHuPOiic3qP/lxHR9+3Td6KYF1g9SPHFnrVmOrYnhKYtV
-         y/GqFTJa8sytbFb0IZyVQkhZIK9QyoUXXAyjAC57CrUKOusNaofweaozJlrSgBzlEqJb
-         AkYAelrXt20Pk0H8OLvxNRcc/E6aUgZMpAUP7lyRkquoWUmYSxYwKtQBkgFoaehnLE0S
-         bJcHBH/ebpZW82z4fxw+jDLWD5hHxOtOM+l8+BDElPcKnJaDPWR1ht28NpKfI2pWtld0
-         CPuQ==
-X-Gm-Message-State: APjAAAWIHIRdx/z22B4gdahZTQKCMd+ONZYzdcWuzvPGDNA/wvgR+0IS
-        ekfg1vbHZkglLqNQamas1aJEZ3cH
-X-Google-Smtp-Source: APXvYqwLjS5yeS1OfoY8q1jIIMGPrEbNEok1liyEaNNjAh2OYP87plt6O/MHctV3kMKSnk7ZSrJFVA==
-X-Received: by 2002:a92:1784:: with SMTP id 4mr444423ilx.142.1570711628774;
-        Thu, 10 Oct 2019 05:47:08 -0700 (PDT)
-Received: from Olgas-MBP-201.attlocal.net (172-10-226-31.lightspeed.livnmi.sbcglobal.net. [172.10.226.31])
-        by smtp.gmail.com with ESMTPSA id r2sm1100930ilm.17.2019.10.10.05.47.07
-        (version=TLS1 cipher=AES128-SHA bits=128/128);
-        Thu, 10 Oct 2019 05:47:08 -0700 (PDT)
-From:   Olga Kornievskaia <olga.kornievskaia@gmail.com>
-To:     trond.myklebust@hammerspace.com, anna.schumaker@netapp.com,
-        bfields@redhat.com
-Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH v8 20/20] NFSD add nfs4 inter ssc to nfsd4_copy
-Date:   Thu, 10 Oct 2019 08:46:22 -0400
-Message-Id: <20191010124622.27812-21-olga.kornievskaia@gmail.com>
-X-Mailer: git-send-email 2.10.1 (Apple Git-78)
-In-Reply-To: <20191010124622.27812-1-olga.kornievskaia@gmail.com>
-References: <20191010124622.27812-1-olga.kornievskaia@gmail.com>
+        id S1726331AbfJJOqo (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 10 Oct 2019 10:46:44 -0400
+Received: from mail-eopbgr730139.outbound.protection.outlook.com ([40.107.73.139]:60646
+        "EHLO NAM05-DM3-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1726222AbfJJOqo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 10 Oct 2019 10:46:44 -0400
+ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
+ b=bnUYil4/6MI4Pa2QjmYXW2sTUhKqEL7xKM9LCIcp31E1UZoPr3rl2jQGXnZh4omFF20oNud+txBGbJN+tU4EawsVIZ2ljPU1Ivz8Yy4FU6FvRvl22TvbfzyMUTl0jF8JyiSepobgU+TXKGaRRee7Ex3WYEa9oH8Fkc1IPCXFRN9OZHiM9t+BaokTqJ2zThNq4GDqJHdon9Wya8kAH15gn4irVAHDNG1f8NXkjOHYDN3KpDa2OOdDwY59rYm5eXOnnMlzx7J01LSgQWQ7mmtnveC7rORH8LWj4uANWLUwdD4/9zF/bBaToIrHKk6lGbjvyP2yEUL9vr9w8XQgu1/CSw==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
+ s=arcselector9901;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=kpxiHHFsK08QkDs9VRx8YHaGVTnxtaD+I3A+UIxsIgw=;
+ b=W2fJPZExbJ7DreAiMq3G0fTMdW2zt9tspbKqsQC6urnOUNyXIKRohYm6F5G8ZOu4q85fI1WphD5TyHNTOEd9rawHR8vKEUOxOTHn8WEmZc95JCRaltvRFy1RHHQRq9sA6EXTJzKwGUIcfLL8CdRI7Az/6hnkphOV1kC565RjsAA+1U8ExoUNaFeR14c06dzWELCGKwTlCnxs6PcGqfONIsjqkYo66aZFUxc9GBI85RYXJSdD9Tprri2V6gA5nh0ep8Ki68AsXaMq0zeDZiXyn/ADIVVbH1nFHI4Lg9/PY/4meeJaCC5YXY3B2Rtj7qsD0KgsVyluHGlsUuGaAWLeWg==
+ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
+ smtp.mailfrom=hammerspace.com; dmarc=pass action=none
+ header.from=hammerspace.com; dkim=pass header.d=hammerspace.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=hammerspace.com;
+ s=selector2;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=kpxiHHFsK08QkDs9VRx8YHaGVTnxtaD+I3A+UIxsIgw=;
+ b=FhifBekRPOX2k8oDh6A0C9hHd5j3IQf49NOla9R33OY//gqghYgT04ui1x2tf/TdC9CLU924Z28E3aXDl6UP4xb5MIIeDFtaPRh2uSOmLw1PYBv4iezjWUxkMSB1zNND6oceZDg2gZ+QAPa+2ztHPaFC7dKGZYdjiq0c2PKtJL0=
+Received: from DM5PR13MB1851.namprd13.prod.outlook.com (10.171.159.143) by
+ DM5PR13MB1340.namprd13.prod.outlook.com (10.168.113.139) with Microsoft SMTP
+ Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ 15.20.2347.16; Thu, 10 Oct 2019 14:46:40 +0000
+Received: from DM5PR13MB1851.namprd13.prod.outlook.com
+ ([fe80::d1be:764d:9347:764e]) by DM5PR13MB1851.namprd13.prod.outlook.com
+ ([fe80::d1be:764d:9347:764e%10]) with mapi id 15.20.2347.016; Thu, 10 Oct
+ 2019 14:46:40 +0000
+From:   Trond Myklebust <trondmy@hammerspace.com>
+To:     "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "jencce.kernel@gmail.com" <jencce.kernel@gmail.com>
+Subject: Re: [PATCH] NFSv4: fix stateid refreshing when CLOSE racing with OPEN
+Thread-Topic: [PATCH] NFSv4: fix stateid refreshing when CLOSE racing with
+ OPEN
+Thread-Index: AQHVfz4Dej3IfeNfekKrfX0XpGLKm6dT9I4A
+Date:   Thu, 10 Oct 2019 14:46:40 +0000
+Message-ID: <f81d80f09c59d78c32fddd535b5604bc05c2a2b5.camel@hammerspace.com>
+References: <20191010074020.o2uwtuyegtmfdlze@XZHOUW.usersys.redhat.com>
+In-Reply-To: <20191010074020.o2uwtuyegtmfdlze@XZHOUW.usersys.redhat.com>
+Accept-Language: en-US, en-GB
+Content-Language: en-US
+X-MS-Has-Attach: 
+X-MS-TNEF-Correlator: 
+authentication-results: spf=none (sender IP is )
+ smtp.mailfrom=trondmy@hammerspace.com; 
+x-originating-ip: [68.40.189.247]
+x-ms-publictraffictype: Email
+x-ms-office365-filtering-correlation-id: a177c067-857b-4b9b-05b1-08d74d90a91b
+x-ms-traffictypediagnostic: DM5PR13MB1340:
+x-microsoft-antispam-prvs: <DM5PR13MB1340DF190276FE91A51A7DE9B8940@DM5PR13MB1340.namprd13.prod.outlook.com>
+x-ms-oob-tlc-oobclassifiers: OLM:3276;
+x-forefront-prvs: 018632C080
+x-forefront-antispam-report: SFV:NSPM;SFS:(10019020)(366004)(39830400003)(136003)(376002)(346002)(396003)(199004)(189003)(4001150100001)(316002)(229853002)(305945005)(71190400001)(71200400001)(25786009)(8936002)(76176011)(14454004)(102836004)(86362001)(66066001)(6506007)(5660300002)(6246003)(6512007)(26005)(6486002)(91956017)(66446008)(3846002)(7736002)(2906002)(76116006)(64756008)(66556008)(66946007)(2501003)(8676002)(36756003)(66476007)(6116002)(478600001)(446003)(2616005)(476003)(11346002)(118296001)(486006)(256004)(81156014)(186003)(99286004)(81166006)(14444005)(110136005)(6436002);DIR:OUT;SFP:1102;SCL:1;SRVR:DM5PR13MB1340;H:DM5PR13MB1851.namprd13.prod.outlook.com;FPR:;SPF:None;LANG:en;PTR:InfoNoRecords;A:1;MX:1;
+received-spf: None (protection.outlook.com: hammerspace.com does not designate
+ permitted sender hosts)
+x-ms-exchange-senderadcheck: 1
+x-microsoft-antispam: BCL:0;
+x-microsoft-antispam-message-info: LRI9h2hgGQQX3QPRJbI94oADBkkulVFNXnhgs4BrTsI1Z958QxkVXmJLJM2o9PghmHrbZ6TIJzOw9Ik/tR6tm98fdIj04AMQd1NW5InRlQk8PRChmE3N/4K3z5qbvcJJ8B/V3v8aQYh515K+ql/IggKJHbZEaghOqAJybs4Y0V4aySnlB4Z4b25cRasHbMaD2A/mrlpMXqWAv/13dHFgUjheVrc3TUuhp63jh5gXE1p9KPlbPH1ofmNMaPM2KrnWMk71KzDX5FMeAQ/rHaHdTwxEu7QYSKLJpcazF8ubk8MryipWQKBMZ8DU8BJYzgxEg23FGflQkIysi7OifKIh/PE7SzD54WdbvaqFKwzTVXPbcFjE6bV8+An/+OI0SlK0YPGILDgpxQZOLb/jMWoIynmovBnaxSs5dTUFU+AhMx0=
+x-ms-exchange-transport-forked: True
+Content-Type: text/plain; charset="utf-8"
+Content-ID: <D634695A14355B46A74CB620CFE1035C@namprd13.prod.outlook.com>
+Content-Transfer-Encoding: base64
+MIME-Version: 1.0
+X-OriginatorOrg: hammerspace.com
+X-MS-Exchange-CrossTenant-Network-Message-Id: a177c067-857b-4b9b-05b1-08d74d90a91b
+X-MS-Exchange-CrossTenant-originalarrivaltime: 10 Oct 2019 14:46:40.2365
+ (UTC)
+X-MS-Exchange-CrossTenant-fromentityheader: Hosted
+X-MS-Exchange-CrossTenant-id: 0d4fed5c-3a70-46fe-9430-ece41741f59e
+X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
+X-MS-Exchange-CrossTenant-userprincipalname: HCJbcXv7CXemS9Yy5WNjb40nnatT26Xgq7G6BHeQPImXgnfJGPmK9+WMOQIUD8L7VYUEP5vLQ9TowdNiYmd+GQ==
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: DM5PR13MB1340
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Olga Kornievskaia <kolga@netapp.com>
-
-Given a universal address, mount the source server from the destination
-server.  Use an internal mount. Call the NFS client nfs42_ssc_open to
-obtain the NFS struct file suitable for nfsd_copy_range.
-
-Ability to do "inter" server-to-server depends on the an nfsd kernel
-parameter "inter_copy_offload_enable".
-
-Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
----
- fs/nfsd/nfs4proc.c  | 293 ++++++++++++++++++++++++++++++++++++++++++++++++----
- fs/nfsd/nfs4state.c |  15 ++-
- fs/nfsd/nfssvc.c    |   6 ++
- fs/nfsd/state.h     |   3 +
- fs/nfsd/xdr4.h      |   5 +
- 5 files changed, 295 insertions(+), 27 deletions(-)
-
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index dde42ea..1675129 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1143,6 +1143,208 @@ void nfsd4_shutdown_copy(struct nfs4_client *clp)
- 	while ((copy = nfsd4_get_copy(clp)) != NULL)
- 		nfsd4_stop_copy(copy);
- }
-+#ifdef CONFIG_NFSD_V4_2_INTER_SSC
-+
-+extern struct file *nfs42_ssc_open(struct vfsmount *ss_mnt,
-+				   struct nfs_fh *src_fh,
-+				   nfs4_stateid *stateid);
-+extern void nfs42_ssc_close(struct file *filep);
-+
-+extern void nfs_sb_deactive(struct super_block *sb);
-+
-+#define NFSD42_INTERSSC_MOUNTOPS "vers=4.2,addr=%s,sec=sys"
-+
-+/**
-+ * Support one copy source server for now.
-+ */
-+static __be32
-+nfsd4_interssc_connect(struct nl4_server *nss, struct svc_rqst *rqstp,
-+		       struct vfsmount **mount)
-+{
-+	struct file_system_type *type;
-+	struct vfsmount *ss_mnt;
-+	struct nfs42_netaddr *naddr;
-+	struct sockaddr_storage tmp_addr;
-+	size_t tmp_addrlen, match_netid_len = 3;
-+	char *startsep = "", *endsep = "", *match_netid = "tcp";
-+	char *ipaddr, *dev_name, *raw_data;
-+	int len, raw_len, status = -EINVAL;
-+
-+	naddr = &nss->u.nl4_addr;
-+	tmp_addrlen = rpc_uaddr2sockaddr(SVC_NET(rqstp), naddr->addr,
-+					 naddr->addr_len,
-+					 (struct sockaddr *)&tmp_addr,
-+					 sizeof(tmp_addr));
-+	if (tmp_addrlen == 0)
-+		goto out_err;
-+
-+	if (tmp_addr.ss_family == AF_INET6) {
-+		startsep = "[";
-+		endsep = "]";
-+		match_netid = "tcp6";
-+		match_netid_len = 4;
-+	}
-+
-+	if (naddr->netid_len != match_netid_len ||
-+		strncmp(naddr->netid, match_netid, naddr->netid_len))
-+		goto out_err;
-+
-+	/* Construct the raw data for the vfs_kern_mount call */
-+	len = RPC_MAX_ADDRBUFLEN + 1;
-+	ipaddr = kzalloc(len, GFP_KERNEL);
-+	if (!ipaddr)
-+		goto out_err;
-+
-+	rpc_ntop((struct sockaddr *)&tmp_addr, ipaddr, len);
-+
-+	/* 2 for ipv6 endsep and startsep. 3 for ":/" and trailing '/0'*/
-+
-+	raw_len = strlen(NFSD42_INTERSSC_MOUNTOPS) + strlen(ipaddr);
-+	raw_data = kzalloc(raw_len, GFP_KERNEL);
-+	if (!raw_data)
-+		goto out_free_ipaddr;
-+
-+	snprintf(raw_data, raw_len, NFSD42_INTERSSC_MOUNTOPS, ipaddr);
-+
-+	status = -ENODEV;
-+	type = get_fs_type("nfs");
-+	if (!type)
-+		goto out_free_rawdata;
-+
-+	/* Set the server:<export> for the vfs_kern_mount call */
-+	dev_name = kzalloc(len + 5, GFP_KERNEL);
-+	if (!dev_name)
-+		goto out_free_rawdata;
-+	snprintf(dev_name, len + 5, "%s%s%s:/", startsep, ipaddr, endsep);
-+
-+	/* Use an 'internal' mount: SB_KERNMOUNT -> MNT_INTERNAL */
-+	ss_mnt = vfs_kern_mount(type, SB_KERNMOUNT, dev_name, raw_data);
-+	module_put(type->owner);
-+	if (IS_ERR(ss_mnt))
-+		goto out_free_devname;
-+
-+	status = 0;
-+	*mount = ss_mnt;
-+
-+out_free_devname:
-+	kfree(dev_name);
-+out_free_rawdata:
-+	kfree(raw_data);
-+out_free_ipaddr:
-+	kfree(ipaddr);
-+out_err:
-+	return status;
-+}
-+
-+static void
-+nfsd4_interssc_disconnect(struct vfsmount *ss_mnt)
-+{
-+	nfs_sb_deactive(ss_mnt->mnt_sb);
-+	mntput(ss_mnt);
-+}
-+
-+/**
-+ * nfsd4_setup_inter_ssc
-+ *
-+ * Verify COPY destination stateid.
-+ * Connect to the source server with NFSv4.1.
-+ * Create the source struct file for nfsd_copy_range.
-+ * Called with COPY cstate:
-+ *    SAVED_FH: source filehandle
-+ *    CURRENT_FH: destination filehandle
-+ *
-+ * Returns errno (not nfserrxxx)
-+ */
-+static __be32
-+nfsd4_setup_inter_ssc(struct svc_rqst *rqstp,
-+		      struct nfsd4_compound_state *cstate,
-+		      struct nfsd4_copy *copy, struct vfsmount **mount)
-+{
-+	struct svc_fh *s_fh = NULL;
-+	stateid_t *s_stid = &copy->cp_src_stateid;
-+	__be32 status = -EINVAL;
-+
-+	/* Verify the destination stateid and set dst struct file*/
-+	status = nfs4_preprocess_stateid_op(rqstp, cstate, &cstate->current_fh,
-+					    &copy->cp_dst_stateid,
-+					    WR_STATE, &copy->nf_dst, NULL);
-+	if (status)
-+		goto out;
-+
-+	status = nfsd4_interssc_connect(&copy->cp_src, rqstp, mount);
-+	if (status)
-+		goto out;
-+
-+	s_fh = &cstate->save_fh;
-+
-+	copy->c_fh.size = s_fh->fh_handle.fh_size;
-+	memcpy(copy->c_fh.data, &s_fh->fh_handle.fh_base, copy->c_fh.size);
-+	copy->stateid.seqid = s_stid->si_generation;
-+	memcpy(copy->stateid.other, (void *)&s_stid->si_opaque,
-+	       sizeof(stateid_opaque_t));
-+
-+	status = 0;
-+out:
-+	return status;
-+}
-+
-+static void
-+nfsd4_cleanup_inter_ssc(struct vfsmount *ss_mnt, struct nfsd_file *src,
-+			struct nfsd_file *dst)
-+{
-+	nfs42_ssc_close(src->nf_file);
-+	nfsd_file_put(src);
-+	nfsd_file_put(dst);
-+	mntput(ss_mnt);
-+}
-+
-+#else /* CONFIG_NFSD_V4_2_INTER_SSC */
-+
-+static __be32
-+nfsd4_setup_inter_ssc(struct svc_rqst *rqstp,
-+		      struct nfsd4_compound_state *cstate,
-+		      struct nfsd4_copy *copy,
-+		      struct vfsmount **mount)
-+{
-+	*mount = NULL;
-+	return -EINVAL;
-+}
-+
-+static void
-+nfsd4_cleanup_inter_ssc(struct vfsmount *ss_mnt, struct nfsd_file *src,
-+			struct nfsd_file *dst)
-+{
-+}
-+
-+static void
-+nfsd4_interssc_disconnect(struct vfsmount *ss_mnt)
-+{
-+}
-+
-+static struct file *nfs42_ssc_open(struct vfsmount *ss_mnt,
-+				   struct nfs_fh *src_fh,
-+				   nfs4_stateid *stateid)
-+{
-+	return NULL;
-+}
-+#endif /* CONFIG_NFSD_V4_2_INTER_SSC */
-+
-+static __be32
-+nfsd4_setup_intra_ssc(struct svc_rqst *rqstp,
-+		      struct nfsd4_compound_state *cstate,
-+		      struct nfsd4_copy *copy)
-+{
-+	return nfsd4_verify_copy(rqstp, cstate, &copy->cp_src_stateid,
-+				 &copy->nf_src, &copy->cp_dst_stateid,
-+				 &copy->nf_dst);
-+}
-+
-+static void
-+nfsd4_cleanup_intra_ssc(struct nfsd_file *src, struct nfsd_file *dst)
-+{
-+	nfsd_file_put(src);
-+	nfsd_file_put(dst);
-+}
- 
- static void nfsd4_cb_offload_release(struct nfsd4_callback *cb)
- {
-@@ -1208,12 +1410,16 @@ static __be32 nfsd4_do_copy(struct nfsd4_copy *copy, bool sync)
- 		status = nfs_ok;
- 	}
- 
--	nfsd_file_put(copy->nf_src);
--	nfsd_file_put(copy->nf_dst);
-+	if (!copy->cp_intra) /* Inter server SSC */
-+		nfsd4_cleanup_inter_ssc(copy->ss_mnt, copy->nf_src,
-+					copy->nf_dst);
-+	else
-+		nfsd4_cleanup_intra_ssc(copy->nf_src, copy->nf_dst);
-+
- 	return status;
- }
- 
--static void dup_copy_fields(struct nfsd4_copy *src, struct nfsd4_copy *dst)
-+static int dup_copy_fields(struct nfsd4_copy *src, struct nfsd4_copy *dst)
- {
- 	dst->cp_src_pos = src->cp_src_pos;
- 	dst->cp_dst_pos = src->cp_dst_pos;
-@@ -1223,8 +1429,17 @@ static void dup_copy_fields(struct nfsd4_copy *src, struct nfsd4_copy *dst)
- 	memcpy(&dst->fh, &src->fh, sizeof(src->fh));
- 	dst->cp_clp = src->cp_clp;
- 	dst->nf_dst = nfsd_file_get(src->nf_dst);
--	dst->nf_src = nfsd_file_get(src->nf_src);
-+	dst->cp_intra = src->cp_intra;
-+	if (src->cp_intra) /* for inter, file_src doesn't exist yet */
-+		dst->nf_src = nfsd_file_get(src->nf_src);
-+
- 	memcpy(&dst->cp_stateid, &src->cp_stateid, sizeof(src->cp_stateid));
-+	memcpy(&dst->cp_src, &src->cp_src, sizeof(struct nl4_server));
-+	memcpy(&dst->stateid, &src->stateid, sizeof(src->stateid));
-+	memcpy(&dst->c_fh, &src->c_fh, sizeof(src->c_fh));
-+	dst->ss_mnt = src->ss_mnt;
-+
-+	return 0;
- }
- 
- static void cleanup_async_copy(struct nfsd4_copy *copy)
-@@ -1243,7 +1458,25 @@ static int nfsd4_do_async_copy(void *data)
- 	struct nfsd4_copy *copy = (struct nfsd4_copy *)data;
- 	struct nfsd4_copy *cb_copy;
- 
-+	if (!copy->cp_intra) { /* Inter server SSC */
-+		copy->nf_src = kzalloc(sizeof(struct nfsd_file), GFP_KERNEL);
-+		if (!copy->nf_src) {
-+			copy->nfserr = nfserr_serverfault;
-+			nfsd4_interssc_disconnect(copy->ss_mnt);
-+			goto do_callback;
-+		}
-+		copy->nf_src->nf_file = nfs42_ssc_open(copy->ss_mnt, &copy->c_fh,
-+					      &copy->stateid);
-+		if (IS_ERR(copy->nf_src->nf_file)) {
-+			kfree(copy->nf_src);
-+			copy->nfserr = nfserr_offload_denied;
-+			nfsd4_interssc_disconnect(copy->ss_mnt);
-+			goto do_callback;
-+		}
-+	}
-+
- 	copy->nfserr = nfsd4_do_copy(copy, 0);
-+do_callback:
- 	cb_copy = kzalloc(sizeof(struct nfsd4_copy), GFP_KERNEL);
- 	if (!cb_copy)
- 		goto out;
-@@ -1255,6 +1488,8 @@ static int nfsd4_do_async_copy(void *data)
- 			&nfsd4_cb_offload_ops, NFSPROC4_CLNT_CB_OFFLOAD);
- 	nfsd4_run_cb(&cb_copy->cp_cb);
- out:
-+	if (!copy->cp_intra)
-+		kfree(copy->nf_src);
- 	cleanup_async_copy(copy);
- 	return 0;
- }
-@@ -1267,11 +1502,20 @@ static int nfsd4_do_async_copy(void *data)
- 	__be32 status;
- 	struct nfsd4_copy *async_copy = NULL;
- 
--	status = nfsd4_verify_copy(rqstp, cstate, &copy->cp_src_stateid,
--				   &copy->nf_src, &copy->cp_dst_stateid,
--				   &copy->nf_dst);
--	if (status)
--		goto out;
-+	if (!copy->cp_intra) { /* Inter server SSC */
-+		if (!inter_copy_offload_enable || copy->cp_synchronous) {
-+			status = nfserr_notsupp;
-+			goto out;
-+		}
-+		status = nfsd4_setup_inter_ssc(rqstp, cstate, copy,
-+				&copy->ss_mnt);
-+		if (status)
-+			return nfserr_offload_denied;
-+	} else {
-+		status = nfsd4_setup_intra_ssc(rqstp, cstate, copy);
-+		if (status)
-+			return status;
-+	}
- 
- 	copy->cp_clp = cstate->clp;
- 	memcpy(&copy->fh, &cstate->current_fh.fh_handle,
-@@ -1282,15 +1526,15 @@ static int nfsd4_do_async_copy(void *data)
- 		status = nfserrno(-ENOMEM);
- 		async_copy = kzalloc(sizeof(struct nfsd4_copy), GFP_KERNEL);
- 		if (!async_copy)
--			goto out;
--		if (!nfs4_init_copy_state(nn, copy)) {
--			kfree(async_copy);
--			goto out;
--		}
-+			goto out_err;
-+		if (!nfs4_init_copy_state(nn, copy))
-+			goto out_err;
- 		refcount_set(&async_copy->refcount, 1);
- 		memcpy(&copy->cp_res.cb_stateid, &copy->cp_stateid,
- 			sizeof(copy->cp_stateid));
--		dup_copy_fields(copy, async_copy);
-+		status = dup_copy_fields(copy, async_copy);
-+		if (status)
-+			goto out_err;
- 		async_copy->copy_task = kthread_create(nfsd4_do_async_copy,
- 				async_copy, "%s", "copy thread");
- 		if (IS_ERR(async_copy->copy_task))
-@@ -1301,12 +1545,16 @@ static int nfsd4_do_async_copy(void *data)
- 		spin_unlock(&async_copy->cp_clp->async_lock);
- 		wake_up_process(async_copy->copy_task);
- 		status = nfs_ok;
--	} else
-+	} else {
- 		status = nfsd4_do_copy(copy, 1);
-+	}
- out:
- 	return status;
- out_err:
- 	cleanup_async_copy(async_copy);
-+	status = nfserrno(-ENOMEM);
-+	if (!copy->cp_intra)
-+		nfsd4_interssc_disconnect(copy->ss_mnt);
- 	goto out;
- }
- 
-@@ -1317,7 +1565,7 @@ struct nfsd4_copy *
- 
- 	spin_lock(&clp->async_lock);
- 	list_for_each_entry(copy, &clp->async_copies, copies) {
--		if (memcmp(&copy->cp_stateid, stateid, NFS4_STATEID_SIZE))
-+		if (memcmp(&copy->cp_stateid.stid, stateid, NFS4_STATEID_SIZE))
- 			continue;
- 		refcount_inc(&copy->refcount);
- 		spin_unlock(&clp->async_lock);
-@@ -1333,17 +1581,18 @@ struct nfsd4_copy *
- 		     union nfsd4_op_u *u)
- {
- 	struct nfsd4_offload_status *os = &u->offload_status;
--	__be32 status = 0;
- 	struct nfsd4_copy *copy;
- 	struct nfs4_client *clp = cstate->clp;
- 
- 	copy = find_async_copy(clp, &os->stateid);
--	if (copy)
-+	if (!copy) {
-+		struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
-+
-+		return manage_cpntf_state(nn, &os->stateid, clp, NULL);
-+	} else
- 		nfsd4_stop_copy(copy);
--	else
--		status = nfserr_bad_stateid;
- 
--	return status;
-+	return nfs_ok;
- }
- 
- static __be32
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 1a84616..767ada7 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -5676,8 +5676,9 @@ static __be32 nfsd4_validate_stateid(struct nfs4_client *cl, stateid_t *stateid)
-  * copy stateid. Look up the copy notify stateid from the
-  * idr structure and take a reference on it.
-  */
--static __be32 _find_cpntf_state(struct nfsd_net *nn, stateid_t *st,
--		     struct nfs4_cpntf_state **cps)
-+__be32 manage_cpntf_state(struct nfsd_net *nn, stateid_t *st,
-+			  struct nfs4_client *clp,
-+			  struct nfs4_cpntf_state **cps)
- {
- 	copy_stateid_t *cps_t;
- 	struct nfs4_cpntf_state *state = NULL;
-@@ -5691,12 +5692,16 @@ static __be32 _find_cpntf_state(struct nfsd_net *nn, stateid_t *st,
- 				     cp_stateid);
- 		if (state->cp_stateid.sc_type != NFS4_COPYNOTIFY_STID)
- 			return nfserr_bad_stateid;
--		refcount_inc(&state->cp_stateid.sc_count);
-+		if (!clp)
-+			refcount_inc(&state->cp_stateid.sc_count);
-+		else
-+			_free_cpntf_state_locked(nn, state);
- 	}
- 	spin_unlock(&nn->s2s_cp_lock);
- 	if (!state)
- 		return nfserr_bad_stateid;
--	*cps = state;
-+	if (!clp && state)
-+		*cps = state;
- 	return 0;
- }
- 
-@@ -5707,7 +5712,7 @@ static __be32 find_cpntf_state(struct nfsd_net *nn, stateid_t *st,
- 	struct nfs4_cpntf_state *cps = NULL;
- 	struct nfsd4_compound_state cstate;
- 
--	status = _find_cpntf_state(nn, st, &cps);
-+	status = manage_cpntf_state(nn, st, NULL, &cps);
- 	if (status)
- 		return status;
- 
-diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index fdf7ed4..97bfee9 100644
---- a/fs/nfsd/nfssvc.c
-+++ b/fs/nfsd/nfssvc.c
-@@ -31,6 +31,12 @@
- 
- #define NFSDDBG_FACILITY	NFSDDBG_SVC
- 
-+bool inter_copy_offload_enable;
-+EXPORT_SYMBOL_GPL(inter_copy_offload_enable);
-+module_param(inter_copy_offload_enable, bool, 0644);
-+MODULE_PARM_DESC(inter_copy_offload_enable,
-+		 "Enable inter server to server copy offload. Default: false");
-+
- extern struct svc_program	nfsd_program;
- static int			nfsd(void *vrqstp);
- #if defined(CONFIG_NFSD_V2_ACL) || defined(CONFIG_NFSD_V3_ACL)
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 967b937..3f57680 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -679,6 +679,9 @@ extern struct nfs4_client_reclaim *nfs4_client_to_reclaim(struct xdr_netobj name
- find_async_copy(struct nfs4_client *clp, stateid_t *staetid);
- extern void nfs4_put_cpntf_state(struct nfsd_net *nn,
- 				 struct nfs4_cpntf_state *cps);
-+extern __be32 manage_cpntf_state(struct nfsd_net *nn, stateid_t *st,
-+				 struct nfs4_client *clp,
-+				 struct nfs4_cpntf_state **cps);
- static inline void get_nfs4_file(struct nfs4_file *fi)
- {
- 	refcount_inc(&fi->fi_ref);
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index b16f602..db63d39 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -549,7 +549,12 @@ struct nfsd4_copy {
- 	struct task_struct	*copy_task;
- 	refcount_t		refcount;
- 	bool			stopped;
-+
-+	struct vfsmount		*ss_mnt;
-+	struct nfs_fh		c_fh;
-+	nfs4_stateid		stateid;
- };
-+extern bool inter_copy_offload_enable;
- 
- struct nfsd4_seek {
- 	/* request */
--- 
-1.8.3.1
-
+T24gVGh1LCAyMDE5LTEwLTEwIGF0IDE1OjQwICswODAwLCBNdXJwaHkgWmhvdSB3cm90ZToNCj4g
+U2luY2UgY29tbWl0Og0KPiAgIFswZTBjYjM1XSBORlN2NDogSGFuZGxlIE5GUzRFUlJfT0xEX1NU
+QVRFSUQgaW4gQ0xPU0UvT1BFTl9ET1dOR1JBREUNCj4gDQo+IHhmc3Rlc3RzIGdlbmVyaWMvMTY4
+IG9uIHY0LjIgc3RhcnRzIHRvIGZhaWwgYmVjYXVzZSByZWZsaW5rIGNhbGwNCj4gZ2V0czoNCj4g
+ICArWEZTX0lPQ19DTE9ORV9SQU5HRTogUmVzb3VyY2UgdGVtcG9yYXJpbHkgdW5hdmFpbGFibGUN
+Cj4gDQo+IEluIHRzaGFyayBvdXRwdXQsIE5GUzRFUlJfT0xEX1NUQVRFSUQgc3RhbmRzIG91dCB3
+aGVuIGNvbXBhcmluZyB3aXRoDQo+IGdvb2Qgb25lczoNCj4gDQo+ICA1MjEwICAgTkZTIDQwNiBW
+NCBSZXBseSAoQ2FsbCBJbiA1MjA5KSBPUEVOIFN0YXRlSUQ6IDB4YWRiNQ0KPiAgNTIxMSAgIE5G
+UyAzMTQgVjQgQ2FsbCBHRVRBVFRSIEZIOiAweDhkNDRhNmIxDQo+ICA1MjEyICAgTkZTIDI1MCBW
+NCBSZXBseSAoQ2FsbCBJbiA1MjExKSBHRVRBVFRSDQo+ICA1MjEzICAgTkZTIDMxNCBWNCBDYWxs
+IEdFVEFUVFIgRkg6IDB4OGQ0NGE2YjENCj4gIDUyMTQgICBORlMgMjUwIFY0IFJlcGx5IChDYWxs
+IEluIDUyMTMpIEdFVEFUVFINCj4gIDUyMTYgICBORlMgNDIyIFY0IENhbGwgV1JJVEUgU3RhdGVJ
+RDogMHhhODE4IE9mZnNldDogODUxOTY4IExlbjoNCj4gNjU1MzYNCj4gIDUyMTggICBORlMgMjY2
+IFY0IFJlcGx5IChDYWxsIEluIDUyMTYpIFdSSVRFDQo+ICA1MjE5ICAgTkZTIDM4MiBWNCBDYWxs
+IE9QRU4gREg6IDB4OGQ0NGE2YjEvDQo+ICA1MjIwICAgTkZTIDMzOCBWNCBDYWxsIENMT1NFIFN0
+YXRlSUQ6IDB4YWRiNQ0KPiAgNTIyMiAgIE5GUyA0MDYgVjQgUmVwbHkgKENhbGwgSW4gNTIxOSkg
+T1BFTiBTdGF0ZUlEOiAweGEzNDINCj4gIDUyMjMgICBORlMgMjUwIFY0IFJlcGx5IChDYWxsIElu
+IDUyMjApIENMT1NFIFN0YXR1czoNCj4gTkZTNEVSUl9PTERfU1RBVEVJRA0KPiAgNTIyNSAgIE5G
+UyAzMzggVjQgQ2FsbCBDTE9TRSBTdGF0ZUlEOiAweGEzNDINCj4gIDUyMjYgICBORlMgMzE0IFY0
+IENhbGwgR0VUQVRUUiBGSDogMHg4ZDQ0YTZiMQ0KPiAgNTIyNyAgIE5GUyAyNjYgVjQgUmVwbHkg
+KENhbGwgSW4gNTIyNSkgQ0xPU0UNCj4gIDUyMjggICBORlMgMjUwIFY0IFJlcGx5IChDYWxsIElu
+IDUyMjYpIEdFVEFUVFINCj4gDQo+IEl0J3MgZWFzeSB0byByZXByb2R1Y2UuIEJ5IHByaW50aW5n
+IHNvbWUgbG9ncywgZm91bmQgdGhhdCB3ZSBhcmUNCj4gbWFraW5nDQo+IENMT1NFIHNlcWlkIGxh
+cmdlciB0aGVuIE9QRU4gc2VxaWQgd2hlbiByYWNpbmcuDQo+IA0KPiBGaXggdGhpcyBieSBub3Qg
+YnVtcGluZyBzZXFpZCB3aGVuIGl0J3MgZXF1YWwgdG8gT1BFTiBzZXFpZC4gQWxzbw0KPiBwdXQg
+dGhlIHdob2xlIGNoYW5naW5nIHByb2Nlc3MgaW50byBzZXFsb2NrIHJlYWQgcHJvdGVjdGlvbiBp
+biBjYXNlDQo+IHJlYWxseSBiYWQgbHVjaywgYW5kIHRoaXMgaXMgdGhlIHNhbWUgbG9ja2luZyBi
+ZWhhdmlvciB3aXRoIHRoZQ0KPiBvbGQgZGVsZXRlZCBmdW5jdGlvbi4NCj4gDQo+IEZpeGVzOiAw
+ZTBjYjM1YjQxN2YgKCJORlN2NDogSGFuZGxlIE5GUzRFUlJfT0xEX1NUQVRFSUQgaW4NCj4gQ0xP
+U0UvT1BFTl9ET1dOR1JBREUiKQ0KPiBTaWduZWQtb2ZmLWJ5OiBNdXJwaHkgWmhvdSA8amVuY2Nl
+Lmtlcm5lbEBnbWFpbC5jb20+DQo+IC0tLQ0KPiAgZnMvbmZzL25mczRwcm9jLmMgfCAxMyArKysr
+KysrKy0tLS0tDQo+ICAxIGZpbGUgY2hhbmdlZCwgOCBpbnNlcnRpb25zKCspLCA1IGRlbGV0aW9u
+cygtKQ0KPiANCj4gZGlmZiAtLWdpdCBhL2ZzL25mcy9uZnM0cHJvYy5jIGIvZnMvbmZzL25mczRw
+cm9jLmMNCj4gaW5kZXggMTFlYWZjZi4uNmRiNWEwOSAxMDA2NDQNCj4gLS0tIGEvZnMvbmZzL25m
+czRwcm9jLmMNCj4gKysrIGIvZnMvbmZzL25mczRwcm9jLmMNCj4gQEAgLTMzMzQsMTIgKzMzMzQs
+MTMgQEAgc3RhdGljIHZvaWQNCj4gbmZzNF9zeW5jX29wZW5fc3RhdGVpZChuZnM0X3N0YXRlaWQg
+KmRzdCwNCj4gIAkJCWJyZWFrOw0KPiAgCQl9DQo+ICAJCXNlcWlkX29wZW4gPSBzdGF0ZS0+b3Bl
+bl9zdGF0ZWlkLnNlcWlkOw0KPiAtCQlpZiAocmVhZF9zZXFyZXRyeSgmc3RhdGUtPnNlcWxvY2ss
+IHNlcSkpDQo+IC0JCQljb250aW51ZTsNCj4gIA0KPiAgCQlkc3Rfc2VxaWQgPSBiZTMyX3RvX2Nw
+dShkc3QtPnNlcWlkKTsNCj4gIAkJaWYgKChzMzIpKGRzdF9zZXFpZCAtIGJlMzJfdG9fY3B1KHNl
+cWlkX29wZW4pKSA8IDApDQo+ICAJCQlkc3QtPnNlcWlkID0gc2VxaWRfb3BlbjsNCj4gKw0KPiAr
+CQlpZiAocmVhZF9zZXFyZXRyeSgmc3RhdGUtPnNlcWxvY2ssIHNlcSkpDQo+ICsJCQljb250aW51
+ZTsNCg0KV2hhdCdzIHRoZSBpbnRlbnRpb24gb2YgdGhpcyBjaGFuZ2U/IE5laXRoZXIgZHN0X3Nl
+cWlkIG5vciBkc3QtPnNlcWlkDQphcmUgcHJvdGVjdGVkIGJ5IHRoZSBzdGF0ZS0+c2VxbG9jayBz
+byB3aHkgbW92ZSB0aGlzIGNvZGUgdW5kZXIgdGhlDQpsb2NrLg0KDQo+ICAJCWJyZWFrOw0KPiAg
+CX0NCj4gIH0NCj4gQEAgLTMzNjcsMTQgKzMzNjgsMTYgQEAgc3RhdGljIGJvb2wNCj4gbmZzNF9y
+ZWZyZXNoX29wZW5fb2xkX3N0YXRlaWQobmZzNF9zdGF0ZWlkICpkc3QsDQo+ICAJCQlicmVhazsN
+Cj4gIAkJfQ0KPiAgCQlzZXFpZF9vcGVuID0gc3RhdGUtPm9wZW5fc3RhdGVpZC5zZXFpZDsNCj4g
+LQkJaWYgKHJlYWRfc2VxcmV0cnkoJnN0YXRlLT5zZXFsb2NrLCBzZXEpKQ0KPiAtCQkJY29udGlu
+dWU7DQo+ICANCj4gIAkJZHN0X3NlcWlkID0gYmUzMl90b19jcHUoZHN0LT5zZXFpZCk7DQo+IC0J
+CWlmICgoczMyKShkc3Rfc2VxaWQgLSBiZTMyX3RvX2NwdShzZXFpZF9vcGVuKSkgPj0gMCkNCj4g
+KwkJaWYgKChzMzIpKGRzdF9zZXFpZCAtIGJlMzJfdG9fY3B1KHNlcWlkX29wZW4pKSA+IDApDQo+
+ICAJCQlkc3QtPnNlcWlkID0gY3B1X3RvX2JlMzIoZHN0X3NlcWlkICsgMSk7DQoNClRoaXMgbmVn
+YXRlcyB0aGUgd2hvbGUgaW50ZW50aW9uIG9mIHRoZSBwYXRjaCB5b3UgcmVmZXJlbmNlIGluIHRo
+ZQ0KJ0ZpeGVzOicsIHdoaWNoIHdhcyB0byBhbGxvdyB1cyB0byBDTE9TRSBmaWxlcyBldmVuIGlm
+IHNlcWlkIGJ1bXBzIGhhdmUNCmJlZW4gbG9zdCBkdWUgdG8gaW50ZXJydXB0ZWQgUlBDIGNhbGxz
+IGUuZy4gd2hlbiB1c2luZyAnc29mdCcgb3INCidzb2Z0ZXJyJyBtb3VudHMuDQpXaXRoIHRoZSBh
+Ym92ZSBjaGFuZ2UsIHRoZSBjaGVjayBjb3VsZCBqdXN0IGJlIHRvc3NlZCBvdXQgYWx0b2dldGhl
+ciwNCmJlY2F1c2UgZHN0X3NlcWlkIHdpbGwgbmV2ZXIgYmVjb21lIGxhcmdlciB0aGFuIHNlcWlk
+X29wZW4uDQoNCj4gIAkJZWxzZQ0KPiAgCQkJZHN0LT5zZXFpZCA9IHNlcWlkX29wZW47DQo+ICsN
+Cj4gKwkJaWYgKHJlYWRfc2VxcmV0cnkoJnN0YXRlLT5zZXFsb2NrLCBzZXEpKQ0KPiArCQkJY29u
+dGludWU7DQo+ICsNCg0KQWdhaW4sIHdoeSB0aGlzIGNoYW5nZSB0byBjb2RlIHRoYXQgZG9lc24n
+dCBhcHBlYXIgdG8gbmVlZCBwcm90ZWN0aW9uPw0KSWYgdGhlIGJ1bXAgZG9lcyBzdWNjZWVkIGFi
+b3ZlLCB0aGVuIGxvb3BpbmcgYmFjayB3aWxsIGFjdHVhbGx5IGNhdXNlDQp1bnByZWRpY3RhYmxl
+IGJlaGF2aW91ci4NCg0KPiAgCQlyZXQgPSB0cnVlOw0KPiAgCQlicmVhazsNCj4gIAl9DQotLSAN
+ClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBIYW1tZXJzcGFj
+ZQ0KdHJvbmQubXlrbGVidXN0QGhhbW1lcnNwYWNlLmNvbQ0KDQoNCg==
