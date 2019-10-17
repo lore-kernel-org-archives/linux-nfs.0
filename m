@@ -8,61 +8,64 @@ X-Spam-Status: No, score=-9.7 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 65D18ECE597
-	for <linux-nfs@archiver.kernel.org>; Thu, 17 Oct 2019 17:38:03 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 881D4ECE58D
+	for <linux-nfs@archiver.kernel.org>; Thu, 17 Oct 2019 17:38:04 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 4105221835
-	for <linux-nfs@archiver.kernel.org>; Thu, 17 Oct 2019 17:38:03 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 6357521925
+	for <linux-nfs@archiver.kernel.org>; Thu, 17 Oct 2019 17:38:04 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="XEMba55B"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="B+KFLXGL"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2503068AbfJQRiC (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 17 Oct 2019 13:38:02 -0400
-Received: from mail-qk1-f196.google.com ([209.85.222.196]:41630 "EHLO
-        mail-qk1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2503066AbfJQRiB (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Oct 2019 13:38:01 -0400
-Received: by mail-qk1-f196.google.com with SMTP id p10so2644712qkg.8
-        for <linux-nfs@vger.kernel.org>; Thu, 17 Oct 2019 10:38:00 -0700 (PDT)
+        id S2503076AbfJQRiD (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 17 Oct 2019 13:38:03 -0400
+Received: from mail-qt1-f195.google.com ([209.85.160.195]:34321 "EHLO
+        mail-qt1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2503069AbfJQRiD (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Oct 2019 13:38:03 -0400
+Received: by mail-qt1-f195.google.com with SMTP id 3so4836992qta.1
+        for <linux-nfs@vger.kernel.org>; Thu, 17 Oct 2019 10:38:02 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
-        h=from:to:subject:date:message-id:mime-version
+        h=from:to:subject:date:message-id:in-reply-to:references:mime-version
          :content-transfer-encoding;
-        bh=KzDd/kJUTTdo9b021DqcVeh+HNqCV73bsFYcXsRARMs=;
-        b=XEMba55BuJu9UP9MZ+IfCVR1exBQAtiuZJReVEy5NurmLn4gZuX1pltEKMRcBOwNGj
-         s8EQevCagnyxKfrxOa66xF9vVeaSNX4dGeuxzqxTFTwDC3P9aXVEUh0Cm2m1E73sq+jG
-         WaYeVmVrhh42iHiVTp0m0QnRhLYnXZoZu6JLVSIUV878y8NexZjvOQFHPZLNwI1WbvdX
-         1P4YYlSTyS5ZmgUjjOAZBoMoNP2ufCtE80YQRNOuDxdmNi/6+b7+45+eH216vJfL/HVC
-         VNgYYueWebW3gH6hLBvE1Glui34SdDe9dgCvwlT2M/LLjGSTg2N45GpM+MxtTFgBO1uv
-         T8uw==
+        bh=EQCVmpQbShd7J6XF10Iggjgzbj/k5R7KYRToocgx48E=;
+        b=B+KFLXGLr4dE2i2pMfBMdfrNrrAJJWh/mFKHhvSoRlwJnQN59LSYfTd0miJlko4Mbf
+         PYXpWLpYRE+sYF146iFnnGNiC/eCMvQMQ9Oy9yyJm9PKKuugNfOkyBRc6o6HDWD4Fx0y
+         2iDzyb9PBvWiKkjjXGM4OJX0erTaoFDJO3loMei5hxuRzxkb3neeFaQxAmXZy6Qlq4Lb
+         RAvhgXk32Yn81wuuaZK0T5alQNuIdaCMrJCd6Xo9LEuEElZKQWhjdwd9odaf4D65NcWi
+         H9l9y4FDLx6Z0PP8dZ+TOJtiNnG28BVtpZN1sv4sysKy5eUCME2PZ6U9Lusj6H+/km7Z
+         1Gqg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:to:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=KzDd/kJUTTdo9b021DqcVeh+HNqCV73bsFYcXsRARMs=;
-        b=WImhTUEGcuj8hbKCQLGBW5nDhQlttoiW49KjHoEUSwhgFz1ane+DgkR7g4kLde1k4z
-         sf5+ZShBPj8EvCbDhZwIWx+nA94xM6njxixkda+4Dx9GanUdlsUWeVrlCmWwLghTcqUm
-         t+OTwckZu+CjY048LRxPXdDCGaTyj3VZgPnmqy3f/UkUeqVngrPHHApCCP8gYFxrR6p/
-         ku3vDCakwSuam4W+DZKXARS58CS0NWbhsZO+97a/n3orFNGGs3142tDv+wZmBExovMaQ
-         E+XW49boX+rkWy8YjfCNq21JxZWAEKCqnAUWoWfXhe0l1UMN7T8aVFsIw7tlvUby3CFw
-         F44Q==
-X-Gm-Message-State: APjAAAXQkREdCM0PEWQW39loGt38pOZO+3QvtjHAzwgACB4iNEtU0Pcd
-        KmyZtI1y7uRXNWDZS7qQV7gjKsc=
-X-Google-Smtp-Source: APXvYqwW9lnITBJdZ8T/alis1aUWOcp4/t+HkR6BqKk2PEAEXhWu5nC94Lo+IkYJsFrNZZL5BnSz6Q==
-X-Received: by 2002:a37:68e:: with SMTP id 136mr4404009qkg.211.1571333879699;
-        Thu, 17 Oct 2019 10:37:59 -0700 (PDT)
+        h=x-gm-message-state:from:to:subject:date:message-id:in-reply-to
+         :references:mime-version:content-transfer-encoding;
+        bh=EQCVmpQbShd7J6XF10Iggjgzbj/k5R7KYRToocgx48E=;
+        b=BDjj/6vEwMxDGsjtOUz0i+Rm2N9NWBkoJCXKyaPsHNy+/sQbNVCONBr5AlJk1fomjo
+         Fc5yU1QOrhYhe0E1UxdSqUbyRsADcETzSLK0pubIFdA+53QJAuAEcdpfVf2NIAUbq2Il
+         x9viMFSibOcuEjSLw1FNmhXFk4xXyH9IMkGFHSiJXp0xbRqAYiWYWN6iovJeUr81sMiG
+         sxXCNiYv1tp3j6HKgpG+tSYCVoWauxtrufKb9GAkmznUfNuD5yArJ8VGXSctO9KMxa4s
+         NmUBJchVUKsg7iTlPXJz+CriCGcQl5V4BAYycOrl9QkmmxjhemkuGzTvV24QO2N2tpzM
+         S/Fg==
+X-Gm-Message-State: APjAAAVOlw9G0ByuIxTiLmYkZx/j/UgiaJu+UBbooCI4gt+/5kNCbd9N
+        HP6zDBMd1KBtxy4IyWnYkaPBe0s=
+X-Google-Smtp-Source: APXvYqwxn+zo/8NYNs7RtFU2HA26j7WIH3wBDSqZFhnmx+uCwkdnfV4clD81nunyrfQMPLUPcLm+Jg==
+X-Received: by 2002:a05:6214:30f:: with SMTP id i15mr5134146qvu.213.1571333881338;
+        Thu, 17 Oct 2019 10:38:01 -0700 (PDT)
 Received: from localhost.localdomain ([66.187.232.65])
-        by smtp.gmail.com with ESMTPSA id l185sm1768610qkd.20.2019.10.17.10.37.57
+        by smtp.gmail.com with ESMTPSA id l185sm1768610qkd.20.2019.10.17.10.38.00
         for <linux-nfs@vger.kernel.org>
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 17 Oct 2019 10:37:58 -0700 (PDT)
+        Thu, 17 Oct 2019 10:38:00 -0700 (PDT)
 From:   Trond Myklebust <trondmy@gmail.com>
 X-Google-Original-From: Trond Myklebust <trond.myklebust@hammerspace.com>
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH 1/5] NFS: Use non-atomic bit ops when initialising struct nfs_client_initdata
-Date:   Thu, 17 Oct 2019 13:35:44 -0400
-Message-Id: <20191017173548.105111-1-trond.myklebust@hammerspace.com>
+Subject: [PATCH 3/5] pNFS: nfs3_set_ds_client should set NFS_CS_NOPING
+Date:   Thu, 17 Oct 2019 13:35:46 -0400
+Message-Id: <20191017173548.105111-3-trond.myklebust@hammerspace.com>
 X-Mailer: git-send-email 2.21.0
+In-Reply-To: <20191017173548.105111-2-trond.myklebust@hammerspace.com>
+References: <20191017173548.105111-1-trond.myklebust@hammerspace.com>
+ <20191017173548.105111-2-trond.myklebust@hammerspace.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
@@ -70,47 +73,28 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-We don't need atomic bit ops when initialising a local structure on the
-stack.
+Connecting to the DS is a non-interactive, asynchronous task, so there is
+no reason to fire up an extra RPC null ping in order to ensure that the
+server is up.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/nfs3client.c | 2 +-
- fs/nfs/nfs4client.c | 6 +++---
- 2 files changed, 4 insertions(+), 4 deletions(-)
+ fs/nfs/nfs3client.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
 diff --git a/fs/nfs/nfs3client.c b/fs/nfs/nfs3client.c
-index 148ceb74d27c..178dc102442f 100644
+index 178dc102442f..793fa4273edb 100644
 --- a/fs/nfs/nfs3client.c
 +++ b/fs/nfs/nfs3client.c
-@@ -106,7 +106,7 @@ struct nfs_client *nfs3_set_ds_client(struct nfs_server *mds_srv,
- 		cl_init.nconnect = mds_clp->cl_nconnect;
- 
+@@ -108,6 +108,8 @@ struct nfs_client *nfs3_set_ds_client(struct nfs_server *mds_srv,
  	if (mds_srv->flags & NFS_MOUNT_NORESVPORT)
--		set_bit(NFS_CS_NORESVPORT, &cl_init.init_flags);
-+		__set_bit(NFS_CS_NORESVPORT, &cl_init.init_flags);
+ 		__set_bit(NFS_CS_NORESVPORT, &cl_init.init_flags);
  
++	__set_bit(NFS_CS_NOPING, &cl_init.init_flags);
++
  	/* Use the MDS nfs_client cl_ipaddr. */
  	nfs_init_timeout_values(&ds_timeout, ds_proto, ds_timeo, ds_retrans);
-diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
-index da6204025a2d..ebc960dd89ff 100644
---- a/fs/nfs/nfs4client.c
-+++ b/fs/nfs/nfs4client.c
-@@ -882,11 +882,11 @@ static int nfs4_set_client(struct nfs_server *server,
- 	if (minorversion > 0 && proto == XPRT_TRANSPORT_TCP)
- 		cl_init.nconnect = nconnect;
- 	if (server->flags & NFS_MOUNT_NORESVPORT)
--		set_bit(NFS_CS_NORESVPORT, &cl_init.init_flags);
-+		__set_bit(NFS_CS_NORESVPORT, &cl_init.init_flags);
- 	if (server->options & NFS_OPTION_MIGRATION)
--		set_bit(NFS_CS_MIGRATION, &cl_init.init_flags);
-+		__set_bit(NFS_CS_MIGRATION, &cl_init.init_flags);
- 	if (test_bit(NFS_MIG_TSM_POSSIBLE, &server->mig_status))
--		set_bit(NFS_CS_TSM_POSSIBLE, &cl_init.init_flags);
-+		__set_bit(NFS_CS_TSM_POSSIBLE, &cl_init.init_flags);
- 	server->port = rpc_get_port(addr);
- 
- 	/* Allocate or find a client reference we can use */
+ 	clp = nfs_get_client(&cl_init);
 -- 
 2.21.0
 
