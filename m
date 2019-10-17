@@ -2,110 +2,94 @@ Return-Path: <SRS0=AtwM=YK=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.7 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-0.6 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
+	autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id AEF0DECE58E
-	for <linux-nfs@archiver.kernel.org>; Thu, 17 Oct 2019 17:38:46 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A1A91ECE58D
+	for <linux-nfs@archiver.kernel.org>; Thu, 17 Oct 2019 18:31:04 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 8509E20820
-	for <linux-nfs@archiver.kernel.org>; Thu, 17 Oct 2019 17:38:46 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 70E552067B
+	for <linux-nfs@archiver.kernel.org>; Thu, 17 Oct 2019 18:31:04 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="rVqaAC49"
+	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="tCJ3ArmR"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2503066AbfJQRiC (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 17 Oct 2019 13:38:02 -0400
-Received: from mail-qt1-f193.google.com ([209.85.160.193]:46215 "EHLO
-        mail-qt1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2503067AbfJQRiC (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Oct 2019 13:38:02 -0400
-Received: by mail-qt1-f193.google.com with SMTP id u22so4733613qtq.13
-        for <linux-nfs@vger.kernel.org>; Thu, 17 Oct 2019 10:38:01 -0700 (PDT)
+        id S2388163AbfJQSbE (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 17 Oct 2019 14:31:04 -0400
+Received: from mail-qt1-f196.google.com ([209.85.160.196]:33610 "EHLO
+        mail-qt1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1730906AbfJQSbD (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Oct 2019 14:31:03 -0400
+Received: by mail-qt1-f196.google.com with SMTP id r5so5097310qtd.0;
+        Thu, 17 Oct 2019 11:31:03 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
-        h=from:to:subject:date:message-id:in-reply-to:references:mime-version
+        h=sender:subject:from:to:date:message-id:user-agent:mime-version
          :content-transfer-encoding;
-        bh=91Ar9njuxszKzAtWm4iDPtBww2kCOTgcm5S5GW0aWZc=;
-        b=rVqaAC49daRLXAQctza0v0VkpoWK3Zj2mQs9MBffkAZCdrrWlqq985FIFSp9KaM3GC
-         UwXkOvtpQL6yVQgLebgLVtfV+XCW2RSfnQ4tTJzOasJNLZCyQJ3vveBYfWVPMGXUUT9m
-         o0XknNHIqjHWOYq9rMjGr+rok5Cso7DIe6BsIqazKhH8j4h3mZ3coAMe56MgccVUCuxn
-         17vfmZVo5+/PTtQurpYkAvNPXAWzoo1hbimXdqqgEVLIEsWx0IjIi2XFDCYhohF3M25E
-         b9cbmfpdLMWj8EkF7hv5Q6WzXc9GM1IcCpuDVHyK7AffJmxLPyg9nvJmpqfOjRbyGeyg
-         CqCA==
+        bh=R+R2e7M4AkVWKAQVOisqosE876Dhsx04bqtF3V42h50=;
+        b=tCJ3ArmR7tlmrcv9oFmJ27krlqxs8oY4jx75PKrlKbprFBzBfyq2UFqDDrTPlFgnFB
+         HCcof//EeQKdaqQxbcZWvaLbI04mvi3Kd01c3scGU8NjXxtF0As018UpbZTuSW9GaQJb
+         OzHqO6OZpmBQu2Wq5OcPsHEEm0jIhRv8vA1XL3QOOcfp7WYwGesl8J7ItEI2HBLNoEB3
+         gf/ejWILWMUXnWi+LkLeunsUVkbU3m+UCjSbdUDGgeXc1vsBnn1U6Jw+Kc3va2+jf9KC
+         IaVZsdwnD+oaJcx2MqXN32T/cw3lQhMaQyQ+UG3LeCgsE7UJQRZlFAOEotfJUKX3yV/8
+         G9Tg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:to:subject:date:message-id:in-reply-to
-         :references:mime-version:content-transfer-encoding;
-        bh=91Ar9njuxszKzAtWm4iDPtBww2kCOTgcm5S5GW0aWZc=;
-        b=nDcNPPI6fkCZE58oZAXXsuo7SN+Dk+4BvheGc2gzkEz1iCLvGzh1E7cqQG/kCIuO0N
-         oCHR/Owc5vozdFUmHtNz7DwhnnY5xId6va90teq87TFORugUhH3vBcdTAlIt1wNMCEdy
-         fismInf7SBFAHMIa78fAC4JXoqmfxTS1RPOWHEwdmIRDAJfqdyWJhVaN3p/WzCga80IL
-         Y/H2wnvR3YKrAgb7K5szExabXsLkIIMMr4oE7AQJ6e23GTQbepC+b2Y3a7RD9iNpXhfP
-         ZeAXxlJavkeRXLUMbCKnCeWRNJ1sG6QsWDsEVn9fby7/gMGb923P46njMBuTQecNSusc
-         K8Gw==
-X-Gm-Message-State: APjAAAUQrA0bIhFxY+o14hljKBS2GX16V06GXA6QXfIsaL9DBHMUPTd9
-        E7NqNMF6ofntdixlQcjT7KDu8Gk=
-X-Google-Smtp-Source: APXvYqz6pw4XRIGO03N/bXIyNwLevWHgWy0bqGoJY4k5hmDInbdvObll3Nl0YEtwOpDouDDDZaKzpg==
-X-Received: by 2002:a0c:b454:: with SMTP id e20mr5030457qvf.14.1571333880558;
-        Thu, 17 Oct 2019 10:38:00 -0700 (PDT)
-Received: from localhost.localdomain ([66.187.232.65])
-        by smtp.gmail.com with ESMTPSA id l185sm1768610qkd.20.2019.10.17.10.37.59
-        for <linux-nfs@vger.kernel.org>
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 17 Oct 2019 10:38:00 -0700 (PDT)
-From:   Trond Myklebust <trondmy@gmail.com>
-X-Google-Original-From: Trond Myklebust <trond.myklebust@hammerspace.com>
-To:     linux-nfs@vger.kernel.org
-Subject: [PATCH 2/5] NFS: Add a flag to tell nfs_client to set RPC_CLNT_CREATE_NOPING
-Date:   Thu, 17 Oct 2019 13:35:45 -0400
-Message-Id: <20191017173548.105111-2-trond.myklebust@hammerspace.com>
-X-Mailer: git-send-email 2.21.0
-In-Reply-To: <20191017173548.105111-1-trond.myklebust@hammerspace.com>
-References: <20191017173548.105111-1-trond.myklebust@hammerspace.com>
+        h=x-gm-message-state:sender:subject:from:to:date:message-id
+         :user-agent:mime-version:content-transfer-encoding;
+        bh=R+R2e7M4AkVWKAQVOisqosE876Dhsx04bqtF3V42h50=;
+        b=gmkv+RXcXqRPfEzC5ZraMKLP5oatGi3vCxxoEfu1UfMrokg2+1i3kXLNawuIyrWhyB
+         hXH/C/yi2wJ4jQSNqfn7w2niMKJ1MHWMiKd+Z98BHU7PDp4PK9Oe2LFS6RFFGr8qfu0Y
+         MxkrSNAueT3Mv/lWiUalFdTwiHTh0o/i1dGNbVoY8GabDqt5RhFEjIPrrbiGD91LXERi
+         JSV5die3zxHZMUWrpkVVY6acwZnvFn2sRXnc7Jq1hPvB+2EwFH07mOxwIoDwvcRAeRJe
+         xk0t7HJZNIxf/vUBob1I59uapgpcbS9QiMuQGPAieKP94SlpjyIKpVORG/A7Bxi0c5dI
+         07Yg==
+X-Gm-Message-State: APjAAAUHLq5UlKfSJWmz0LESHl4gKshfgMjeHe07lj4s0FzL8nPZh0xG
+        SKhYuJ55WPnIupKF7PMJzQbWf0bJ
+X-Google-Smtp-Source: APXvYqzBxImVOpsgr9R3vCaRhWXB8XhIgz/VhpXjCU7sJ7EkgC9iYjqDM5DxSNqtZTxyJRyLsmqxgw==
+X-Received: by 2002:ac8:237b:: with SMTP id b56mr5621730qtb.264.1571337062693;
+        Thu, 17 Oct 2019 11:31:02 -0700 (PDT)
+Received: from oracle-102.nfsv4bat.org ([66.187.232.65])
+        by smtp.gmail.com with ESMTPSA id x59sm1973858qte.20.2019.10.17.11.31.01
+        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Thu, 17 Oct 2019 11:31:02 -0700 (PDT)
+Subject: [PATCH v1 0/6] Sometimes pull up the Send buffer
+From:   Chuck Lever <chuck.lever@oracle.com>
+To:     linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Date:   Thu, 17 Oct 2019 14:31:01 -0400
+Message-ID: <20191017182811.2517.25676.stgit@oracle-102.nfsv4bat.org>
+User-Agent: StGit/0.17.1-dirty
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Add a flag to tell the nfs_client it should set RPC_CLNT_CREATE_NOPING when
-creating the rpc client.
+This series contains several clean-up/refactoring patches, then the
+last two patches in the series re-implement buffer pull-up for Send
+buffers. After this series is applied, the client may choose between
+using DMA-mapped Send buffers and pull-up. Sometimes one of these
+methods is strictly more efficient than the other.
 
-Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/client.c           | 2 ++
- include/linux/nfs_fs_sb.h | 1 +
- 2 files changed, 3 insertions(+)
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 30838304a0bf..fa7d92328c72 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -515,6 +515,8 @@ int nfs_create_rpc_client(struct nfs_client *clp,
- 		args.flags |= RPC_CLNT_CREATE_NONPRIVPORT;
- 	if (test_bit(NFS_CS_INFINITE_SLOTS, &clp->cl_flags))
- 		args.flags |= RPC_CLNT_CREATE_INFINITE_SLOTS;
-+	if (test_bit(NFS_CS_NOPING, &clp->cl_flags))
-+		args.flags |= RPC_CLNT_CREATE_NOPING;
- 
- 	if (!IS_ERR(clp->cl_rpcclient))
- 		return 0;
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index 47266870a235..a50dd432475b 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -45,6 +45,7 @@ struct nfs_client {
- #define NFS_CS_INFINITE_SLOTS	3		/* - don't limit TCP slots */
- #define NFS_CS_NO_RETRANS_TIMEOUT	4	/* - Disable retransmit timeouts */
- #define NFS_CS_TSM_POSSIBLE	5		/* - Maybe state migration */
-+#define NFS_CS_NOPING		6		/* - don't ping on connect */
- 	struct sockaddr_storage	cl_addr;	/* server identifier */
- 	size_t			cl_addrlen;
- 	char *			cl_hostname;	/* hostname of server */
--- 
-2.21.0
+Chuck Lever (6):
+      xprtrdma: Ensure ri_id is stable during MR recycling
+      xprtrdma: Remove rpcrdma_sendctx::sc_xprt
+      xprtrdma: Remove rpcrdma_sendctx::sc_device
+      xprtrdma: Move the rpcrdma_sendctx::sc_wr field
+      xprtrdma: Refactor rpcrdma_prepare_msg_sges()
+      xprtrdma: Pull up sometimes
 
+
+ net/sunrpc/xprtrdma/backchannel.c |    2 
+ net/sunrpc/xprtrdma/frwr_ops.c    |   25 +--
+ net/sunrpc/xprtrdma/rpc_rdma.c    |  352 ++++++++++++++++++++++++-------------
+ net/sunrpc/xprtrdma/verbs.c       |   26 +--
+ net/sunrpc/xprtrdma/xprt_rdma.h   |   14 -
+ 5 files changed, 251 insertions(+), 168 deletions(-)
+
+--
+Chuck Lever
