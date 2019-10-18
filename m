@@ -7,46 +7,45 @@ X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 27F4DCA9EA0
-	for <linux-nfs@archiver.kernel.org>; Fri, 18 Oct 2019 22:08:47 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B80D4CA9EA9
+	for <linux-nfs@archiver.kernel.org>; Fri, 18 Oct 2019 22:09:20 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id F061322466
-	for <linux-nfs@archiver.kernel.org>; Fri, 18 Oct 2019 22:08:46 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 8C6D5205F4
+	for <linux-nfs@archiver.kernel.org>; Fri, 18 Oct 2019 22:09:20 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1571436527;
-	bh=Xcw/RNR9EXgHEbuvdCsh/HVA7ipQvPjNV0sKMexd29I=;
+	s=default; t=1571436560;
+	bh=NLWDYhQ7BlPtONutR4aCq9O3/nd9q7B7s6ExkFNCdB8=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=WP9VSDynKP2HY1c2SerlXYtv2BMZkgkLzFDfLg2vJaz6YkYDnJoKNq4U4AL4IbS0J
-	 HwGMKMapSLHpcCwC68wa/KBAA/U51wsM/Yd2DI03Qspf/bsj8A0TUGZ6zYYf2y1jdl
-	 MjWYONBKMFy8mDu/7PDX+SkK9Nn9A1ajefO7J5mo=
+	b=zhIkcKVFXhh3icySvLGPGenYi/RUYg+B+O9y5bs5mvz5nstKlym9OhJlEEsxyA+DU
+	 9cCjCZ/sCXU7T6+cH4VvgoBl1TxRbjAhpmlsZmfSrHhzVloKM62IRLYRIrspIjIUNs
+	 pV5G+28WTTOHhDLwF/ghGvTnpzmi7tKO7rlXFkGc=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2388142AbfJRWIp (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 18 Oct 2019 18:08:45 -0400
-Received: from mail.kernel.org ([198.145.29.99]:41274 "EHLO mail.kernel.org"
+        id S2388773AbfJRWJT (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 18 Oct 2019 18:09:19 -0400
+Received: from mail.kernel.org ([198.145.29.99]:41976 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2388109AbfJRWIp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 18 Oct 2019 18:08:45 -0400
+        id S2388745AbfJRWJR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 18 Oct 2019 18:09:17 -0400
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 04A5522470;
-        Fri, 18 Oct 2019 22:08:42 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 53ED9205F4;
+        Fri, 18 Oct 2019 22:09:16 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1571436523;
-        bh=Xcw/RNR9EXgHEbuvdCsh/HVA7ipQvPjNV0sKMexd29I=;
+        s=default; t=1571436557;
+        bh=NLWDYhQ7BlPtONutR4aCq9O3/nd9q7B7s6ExkFNCdB8=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=1q36PAmxVf9E+yxXLzJVxJqCeB1HwlGuxIFS3r9NeBif5YJPycLiVIy6qHdfR+7fh
-         rYKvornUVFwlAiOf2OqaOv+2RCy5N+sovm94/uod1LOnr1O4VJNh997vo+mdsSCHsC
-         Mga/ZPcIr/M53QeigD4m1wJQMZK1Mh3qr2o0SBEQ=
+        b=hsJZSeOdK5gHNNCAlDQYGm5/5yWZsNPcOzqR+3929wbrR+bC//hwZA5IeJHnuDErm
+         F73ftStbUhDsheZVQRhTwMYNzsWsIzZu8agmdmiIQZ98OTXChBNJ5V0eGC2dr2y9BP
+         YOWmG7INU8IRzS5oXq7ef9laWLR5gVccasoZTCFE=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     ZhangXiaoxu <zhangxiaoxu5@huawei.com>,
-        Hulk Robot <hulkci@huawei.com>,
+Cc:     Chuck Lever <chuck.lever@oracle.com>,
         Anna Schumaker <Anna.Schumaker@Netapp.com>,
         Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org
-Subject: [PATCH AUTOSEL 4.14 30/56] nfs: Fix nfsi->nrequests count error on nfs_inode_remove_request
-Date:   Fri, 18 Oct 2019 18:07:27 -0400
-Message-Id: <20191018220753.10002-30-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 4.14 54/56] NFSv4: Fix leak of clp->cl_acceptor string
+Date:   Fri, 18 Oct 2019 18:07:51 -0400
+Message-Id: <20191018220753.10002-54-sashal@kernel.org>
 X-Mailer: git-send-email 2.20.1
 In-Reply-To: <20191018220753.10002-1-sashal@kernel.org>
 References: <20191018220753.10002-1-sashal@kernel.org>
@@ -59,89 +58,58 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: ZhangXiaoxu <zhangxiaoxu5@huawei.com>
+From: Chuck Lever <chuck.lever@oracle.com>
 
-[ Upstream commit 33ea5aaa87cdae0f9af4d6b7ee4f650a1a36fd1d ]
+[ Upstream commit 1047ec868332034d1fbcb2fae19fe6d4cb869ff2 ]
 
-When xfstests testing, there are some WARNING as below:
+Our client can issue multiple SETCLIENTID operations to the same
+server in some circumstances. Ensure that calls to
+nfs4_proc_setclientid() after the first one do not overwrite the
+previously allocated cl_acceptor string.
 
-WARNING: CPU: 0 PID: 6235 at fs/nfs/inode.c:122 nfs_clear_inode+0x9c/0xd8
-Modules linked in:
-CPU: 0 PID: 6235 Comm: umount.nfs
-Hardware name: linux,dummy-virt (DT)
-pstate: 60000005 (nZCv daif -PAN -UAO)
-pc : nfs_clear_inode+0x9c/0xd8
-lr : nfs_evict_inode+0x60/0x78
-sp : fffffc000f68fc00
-x29: fffffc000f68fc00 x28: fffffe00c53155c0
-x27: fffffe00c5315000 x26: fffffc0009a63748
-x25: fffffc000f68fd18 x24: fffffc000bfaaf40
-x23: fffffc000936d3c0 x22: fffffe00c4ff5e20
-x21: fffffc000bfaaf40 x20: fffffe00c4ff5d10
-x19: fffffc000c056000 x18: 000000000000003c
-x17: 0000000000000000 x16: 0000000000000000
-x15: 0000000000000040 x14: 0000000000000228
-x13: fffffc000c3a2000 x12: 0000000000000045
-x11: 0000000000000000 x10: 0000000000000000
-x9 : 0000000000000000 x8 : 0000000000000000
-x7 : 0000000000000000 x6 : fffffc00084b027c
-x5 : fffffc0009a64000 x4 : fffffe00c0e77400
-x3 : fffffc000c0563a8 x2 : fffffffffffffffb
-x1 : 000000000000764e x0 : 0000000000000001
-Call trace:
- nfs_clear_inode+0x9c/0xd8
- nfs_evict_inode+0x60/0x78
- evict+0x108/0x380
- dispose_list+0x70/0xa0
- evict_inodes+0x194/0x210
- generic_shutdown_super+0xb0/0x220
- nfs_kill_super+0x40/0x88
- deactivate_locked_super+0xb4/0x120
- deactivate_super+0x144/0x160
- cleanup_mnt+0x98/0x148
- __cleanup_mnt+0x38/0x50
- task_work_run+0x114/0x160
- do_notify_resume+0x2f8/0x308
- work_pending+0x8/0x14
+unreferenced object 0xffff888461031800 (size 32):
+  comm "mount.nfs", pid 2227, jiffies 4294822467 (age 1407.749s)
+  hex dump (first 32 bytes):
+    6e 66 73 40 6b 6c 69 6d 74 2e 69 62 2e 31 30 31  nfs@klimt.ib.101
+    35 67 72 61 6e 67 65 72 2e 6e 65 74 00 00 00 00  5granger.net....
+  backtrace:
+    [<00000000ab820188>] __kmalloc+0x128/0x176
+    [<00000000eeaf4ec8>] gss_stringify_acceptor+0xbd/0x1a7 [auth_rpcgss]
+    [<00000000e85e3382>] nfs4_proc_setclientid+0x34e/0x46c [nfsv4]
+    [<000000003d9cf1fa>] nfs40_discover_server_trunking+0x7a/0xed [nfsv4]
+    [<00000000b81c3787>] nfs4_discover_server_trunking+0x81/0x244 [nfsv4]
+    [<000000000801b55f>] nfs4_init_client+0x1b0/0x238 [nfsv4]
+    [<00000000977daf7f>] nfs4_set_client+0xfe/0x14d [nfsv4]
+    [<0000000053a68a2a>] nfs4_create_server+0x107/0x1db [nfsv4]
+    [<0000000088262019>] nfs4_remote_mount+0x2c/0x59 [nfsv4]
+    [<00000000e84a2fd0>] legacy_get_tree+0x2d/0x4c
+    [<00000000797e947c>] vfs_get_tree+0x20/0xc7
+    [<00000000ecabaaa8>] fc_mount+0xe/0x36
+    [<00000000f15fafc2>] vfs_kern_mount+0x74/0x8d
+    [<00000000a3ff4e26>] nfs_do_root_mount+0x8a/0xa3 [nfsv4]
+    [<00000000d1c2b337>] nfs4_try_mount+0x58/0xad [nfsv4]
+    [<000000004c9bddee>] nfs_fs_mount+0x820/0x869 [nfs]
 
-The nrequest should be increased/decreased only if PG_INODE_REF flag
-was setted.
-
-But in the nfs_inode_remove_request function, it maybe decrease when
-no PG_INODE_REF flag, this maybe lead nrequests count error.
-
-Reported-by: Hulk Robot <hulkci@huawei.com>
-Signed-off-by: ZhangXiaoxu <zhangxiaoxu5@huawei.com>
+Fixes: f11b2a1cfbf5 ("nfs4: copy acceptor name from context ... ")
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- fs/nfs/write.c | 5 +++--
- 1 file changed, 3 insertions(+), 2 deletions(-)
+ fs/nfs/nfs4proc.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 3c1e46f4bce32..01b9d9341b541 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -783,7 +783,6 @@ static void nfs_inode_remove_request(struct nfs_page *req)
- 	struct nfs_inode *nfsi = NFS_I(inode);
- 	struct nfs_page *head;
- 
--	atomic_long_dec(&nfsi->nrequests);
- 	if (nfs_page_group_sync_on_bit(req, PG_REMOVE)) {
- 		head = req->wb_head;
- 
-@@ -796,8 +795,10 @@ static void nfs_inode_remove_request(struct nfs_page *req)
- 		spin_unlock(&mapping->private_lock);
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 6409ff4876cb5..af062e9f45803 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -5655,6 +5655,7 @@ int nfs4_proc_setclientid(struct nfs_client *clp, u32 program,
  	}
- 
--	if (test_and_clear_bit(PG_INODE_REF, &req->wb_flags))
-+	if (test_and_clear_bit(PG_INODE_REF, &req->wb_flags)) {
- 		nfs_release_request(req);
-+		atomic_long_dec(&nfsi->nrequests);
-+	}
- }
- 
- static void
+ 	status = task->tk_status;
+ 	if (setclientid.sc_cred) {
++		kfree(clp->cl_acceptor);
+ 		clp->cl_acceptor = rpcauth_stringify_acceptor(setclientid.sc_cred);
+ 		put_rpccred(setclientid.sc_cred);
+ 	}
 -- 
 2.20.1
 
