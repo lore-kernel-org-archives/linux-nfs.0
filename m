@@ -4,51 +4,51 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
-	version=3.4.0
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B80D4CA9EA9
-	for <linux-nfs@archiver.kernel.org>; Fri, 18 Oct 2019 22:09:20 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A7F7CCA9EA0
+	for <linux-nfs@archiver.kernel.org>; Fri, 18 Oct 2019 22:11:27 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 8C6D5205F4
-	for <linux-nfs@archiver.kernel.org>; Fri, 18 Oct 2019 22:09:20 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 7C8CD22475
+	for <linux-nfs@archiver.kernel.org>; Fri, 18 Oct 2019 22:11:27 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1571436560;
-	bh=NLWDYhQ7BlPtONutR4aCq9O3/nd9q7B7s6ExkFNCdB8=;
+	s=default; t=1571436687;
+	bh=AW8JRg+49P+wsK0+18mdLzxYSUk1aFhVRS5tmh8A+Fw=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=zhIkcKVFXhh3icySvLGPGenYi/RUYg+B+O9y5bs5mvz5nstKlym9OhJlEEsxyA+DU
-	 9cCjCZ/sCXU7T6+cH4VvgoBl1TxRbjAhpmlsZmfSrHhzVloKM62IRLYRIrspIjIUNs
-	 pV5G+28WTTOHhDLwF/ghGvTnpzmi7tKO7rlXFkGc=
+	b=SKuimabdl961zkE4vgQWY+VpNAH3YYfsoaCrAyJFclqkyoJvVg3B+tp5mI5E1QCYn
+	 L623IE0+tm41+fu83yywuBZ8eri9Czd1ay4RbKvmbJx5EVhbPBH5dVFMCuphPZae77
+	 jiLpdDZJTcCt+uYn6kl8HwaOXGNnPGfFAm9tq4AE=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2388773AbfJRWJT (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 18 Oct 2019 18:09:19 -0400
-Received: from mail.kernel.org ([198.145.29.99]:41976 "EHLO mail.kernel.org"
+        id S2391052AbfJRWLV (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 18 Oct 2019 18:11:21 -0400
+Received: from mail.kernel.org ([198.145.29.99]:43618 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2388745AbfJRWJR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 18 Oct 2019 18:09:17 -0400
+        id S2390477AbfJRWKi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 18 Oct 2019 18:10:38 -0400
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 53ED9205F4;
-        Fri, 18 Oct 2019 22:09:16 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 0E3B62246F;
+        Fri, 18 Oct 2019 22:10:36 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1571436557;
-        bh=NLWDYhQ7BlPtONutR4aCq9O3/nd9q7B7s6ExkFNCdB8=;
+        s=default; t=1571436637;
+        bh=AW8JRg+49P+wsK0+18mdLzxYSUk1aFhVRS5tmh8A+Fw=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=hsJZSeOdK5gHNNCAlDQYGm5/5yWZsNPcOzqR+3929wbrR+bC//hwZA5IeJHnuDErm
-         F73ftStbUhDsheZVQRhTwMYNzsWsIzZu8agmdmiIQZ98OTXChBNJ5V0eGC2dr2y9BP
-         YOWmG7INU8IRzS5oXq7ef9laWLR5gVccasoZTCFE=
+        b=TC1g4vBnGTpDAGtGYYkZ+erpQHZUmXuvO4B9Mt7uNrFIrvp1F2AtcZ9zHAWaV/5te
+         Oe0x7q7xJqbBna7ezcmbBeny0BFRJkZh9mtGVqCaQQqT4lBhHp2FZFfiZ+YevMiL9l
+         n5yNkGU1V0zF0komiw8UgIFTeWFAgt547/FMSeUI=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
 Cc:     Chuck Lever <chuck.lever@oracle.com>,
         Anna Schumaker <Anna.Schumaker@Netapp.com>,
         Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org
-Subject: [PATCH AUTOSEL 4.14 54/56] NFSv4: Fix leak of clp->cl_acceptor string
-Date:   Fri, 18 Oct 2019 18:07:51 -0400
-Message-Id: <20191018220753.10002-54-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 4.4 20/21] NFSv4: Fix leak of clp->cl_acceptor string
+Date:   Fri, 18 Oct 2019 18:10:06 -0400
+Message-Id: <20191018221007.10851-20-sashal@kernel.org>
 X-Mailer: git-send-email 2.20.1
-In-Reply-To: <20191018220753.10002-1-sashal@kernel.org>
-References: <20191018220753.10002-1-sashal@kernel.org>
+In-Reply-To: <20191018221007.10851-1-sashal@kernel.org>
+References: <20191018221007.10851-1-sashal@kernel.org>
 MIME-Version: 1.0
 X-stable: review
 X-Patchwork-Hint: Ignore
@@ -99,10 +99,10 @@ Signed-off-by: Sasha Levin <sashal@kernel.org>
  1 file changed, 1 insertion(+)
 
 diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 6409ff4876cb5..af062e9f45803 100644
+index d1816ee0c11be..900a62a9ad4e5 100644
 --- a/fs/nfs/nfs4proc.c
 +++ b/fs/nfs/nfs4proc.c
-@@ -5655,6 +5655,7 @@ int nfs4_proc_setclientid(struct nfs_client *clp, u32 program,
+@@ -5255,6 +5255,7 @@ int nfs4_proc_setclientid(struct nfs_client *clp, u32 program,
  	}
  	status = task->tk_status;
  	if (setclientid.sc_cred) {
