@@ -1,112 +1,169 @@
-Return-Path: <SRS0=LCCi=YN=vger.kernel.org=linux-nfs-owner@kernel.org>
+Return-Path: <SRS0=7xtV=YO=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.3 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=unavailable
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-0.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,
+	SPF_PASS,URIBL_BLOCKED autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 74ECECA9EAD
-	for <linux-nfs@archiver.kernel.org>; Sun, 20 Oct 2019 13:50:37 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1B272CA9EAF
+	for <linux-nfs@archiver.kernel.org>; Mon, 21 Oct 2019 17:15:15 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 4A8F92089C
-	for <linux-nfs@archiver.kernel.org>; Sun, 20 Oct 2019 13:50:37 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id CAF422084B
+	for <linux-nfs@archiver.kernel.org>; Mon, 21 Oct 2019 17:15:14 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="L7j1pM2L"
+	dkim=pass (2048-bit key) header.d=umich.edu header.i=@umich.edu header.b="Yj95XOtP"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726301AbfJTNug (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 20 Oct 2019 09:50:36 -0400
-Received: from mail-pf1-f193.google.com ([209.85.210.193]:46651 "EHLO
-        mail-pf1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726299AbfJTNug (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 20 Oct 2019 09:50:36 -0400
-Received: by mail-pf1-f193.google.com with SMTP id q5so6637018pfg.13;
-        Sun, 20 Oct 2019 06:50:36 -0700 (PDT)
+        id S1726847AbfJURPO (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 21 Oct 2019 13:15:14 -0400
+Received: from mail-ua1-f68.google.com ([209.85.222.68]:44596 "EHLO
+        mail-ua1-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726672AbfJURPN (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Oct 2019 13:15:13 -0400
+Received: by mail-ua1-f68.google.com with SMTP id n2so4030752ual.11
+        for <linux-nfs@vger.kernel.org>; Mon, 21 Oct 2019 10:15:13 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=date:from:to:cc:subject:message-id:references:mime-version
-         :content-disposition:in-reply-to:user-agent;
-        bh=9efnMENP/VJVkPlRfJzxJpy/Qvr8rPVnQoIn87fOb8E=;
-        b=L7j1pM2LrLyr78v19iv75LxcO/y4D45ZfSOqxCCX36Dn2h5YoLYNmVWPK1FBI0Xk7i
-         b3FJnGZd5S06xuf3M8LwTvR+jYodxY23AnnYV6Wp8Cndbls8MznvaMPrghuZDu570xaB
-         +RC3iCM5xAZmtfnHOB63H7x281rz+BGv3fABEpO/mqHwzTYioJQkADpjgHUADYGGuMf7
-         y2ZUmc+nqRFljoK7NzJNG0Q+GtASyUwpXydCTVBC+KlUjNX6IoMGZwUWyx9exwsNTxhn
-         K2K2taO6IBDsENi+CnjGEDE44KzunHDYTAwbvmzYtXJ2iaiRS7ltNdfJSzd+d0FbwXZJ
-         R2qQ==
+        d=umich.edu; s=google-2016-06-03;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc;
+        bh=xryTGCidibadXIGE+mCISTnyk18m6yL5yTfW8sibCNY=;
+        b=Yj95XOtPvHrrVg6g62FjdNg9GFKeRhbBZot1gxQcWPPCOFH8BBQowo3yTjqc96mHDC
+         uog+EXuJzEauiB47Bjb3ye2tUmeAvJWByiegwVu3sO2kH9+PBXOlHSyifbSo9XjG5qZA
+         lDuBceJRsFe6PlF0J/+tF3x0WISAtzQLuy3iAaOH2Wtq3Qqv6AOegdFUOMkCljz84c8a
+         1bah9BuuzPj25ATPhZjZ1zzpQLUkMDqKDoqlb/WUzHsuJIQejmTS/43Cp6gCKaj6tM7R
+         R00eLpjzRZcGjQZTmSt0YUx9CLQmIb9kDvXtfWS7koTeTM9QZvKCxS7w414mn258iAhv
+         2uHg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:date:from:to:cc:subject:message-id:references
-         :mime-version:content-disposition:in-reply-to:user-agent;
-        bh=9efnMENP/VJVkPlRfJzxJpy/Qvr8rPVnQoIn87fOb8E=;
-        b=sFFLBAbfTVOFMeZdHgh/dfyRkPVPBoWRTWoVd06HfZnY7nck2+ZLUkysSW/DSaCI8i
-         DuNzF+MDvEkSpKSf/pt8Mh4VhRNWWJH6Q4sbFuajSwGUtDHfNRmGCjLhyewP01E3m9gG
-         hB2x5m4TYuKzb4g/Mwk8DgZGCmeJeXEszk7QT28ZoallA7KJc/XkGX5BZf2kdpFaLluH
-         iVDfBG7jAyn1+Fn2rUJ7cYl/0HeGOria9UxIGDAFMdcrRMNYAwsV0WPcYt3HTDrUR67F
-         iNr446VheqRDRXl21l4J4cNOCSUewTXBEEORvZUwIfM94ZjXHMoRCLVp7R//SOW+OzhQ
-         XA+g==
-X-Gm-Message-State: APjAAAVxn5aXK/ya2EXE3LexbMVxiXIXdAQ8y9jFTLucHqNpntfkhjOJ
-        sq6lD+wq+iKjLCS7gTpWXaI=
-X-Google-Smtp-Source: APXvYqxa+Jn8YcDQAqzGNhOlQ45bBQMN6M730g13TN9diCOGZGFhV7puabK8tK8mkfWsVUSmmQCMWg==
-X-Received: by 2002:a63:6f02:: with SMTP id k2mr20797283pgc.163.1571579435452;
-        Sun, 20 Oct 2019 06:50:35 -0700 (PDT)
-Received: from localhost ([178.128.102.47])
-        by smtp.gmail.com with ESMTPSA id s18sm12335203pji.30.2019.10.20.06.50.34
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Sun, 20 Oct 2019 06:50:34 -0700 (PDT)
-Date:   Sun, 20 Oct 2019 21:50:28 +0800
-From:   Eryu Guan <guaneryu@gmail.com>
-To:     schumaker.anna@gmail.com
-Cc:     fstests@vger.kernel.org, linux-nfs@vger.kernel.org,
-        Anna.Schumaker@netapp.com
-Subject: Re: [PATCH 2/2] generic: 448 shouldn't delete $BASE_TEST_FILE if it
- isn't set yet
-Message-ID: <20191020135028.GA2543@desktop>
-References: <20191018173343.303032-1-Anna.Schumaker@Netapp.com>
- <20191018173343.303032-2-Anna.Schumaker@Netapp.com>
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=xryTGCidibadXIGE+mCISTnyk18m6yL5yTfW8sibCNY=;
+        b=pt8mpC9Dhj25FXMnnyCcce5igkTMdqwftaw9Dw//yCYipjWtyWvsxIr2x2mVdP5HBi
+         cpgelVh6NojQ7KHjbi3hW9JrIiUzsdjkTQQo3acmEE+ebcxEnQjwHy5hXRVRheri0tdq
+         G5Yr4BfTTF8QstObKL3coBo54VVS+wBJO7j+OMTJWlchkXF6xNzdfXL15gn8vIhOr09r
+         Hi48RVCGdo9roilY3mSvfy79d5KJcE+I6G6EdOm7ihq07imbfJVJR3sv8caTxMBWRLW1
+         uN7CrbXsUghLYPm4mVetdrzTtdsw5m1FQzMSnME+4hg1jWfCtirMtfANlrSHOejIvYXt
+         S+fA==
+X-Gm-Message-State: APjAAAUvCPJpB1O8Udw+F4Tsu4lQ88Z8NeyOS3P/uP/9Ij8bDVGGNF5G
+        dd8nqiUhkItmNxEV0DUvgTWKEUPfIPGhvBq75hn1UkMk
+X-Google-Smtp-Source: APXvYqyQLLli8l1ygvZrdaKjr5T833+kH8S2ageB8SB068UxfDvs1XbzmAgtRH4N0lcUZvPM/m7L+pqChYhZFOoDTFo=
+X-Received: by 2002:a9f:31c5:: with SMTP id w5mr13668048uad.40.1571678112386;
+ Mon, 21 Oct 2019 10:15:12 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20191018173343.303032-2-Anna.Schumaker@Netapp.com>
-User-Agent: Mutt/1.12.1 (2019-06-15)
+References: <20191010074020.o2uwtuyegtmfdlze@XZHOUW.usersys.redhat.com>
+ <CAN-5tyGKNFsxQHne4hFhON1VRZzCkUjwFMX3ZuzfLASgEN0pMw@mail.gmail.com>
+ <2597b15558e1195436db68f019899694c796fef6.camel@hammerspace.com>
+ <CAN-5tyH8eRZh5rCwhY8mb7gFMj1QDXdXkRz+HzrZxVJb5Ta1xw@mail.gmail.com> <CAN-5tyEGO9MghXz3SKLFy_QCA7xyT+eq=pQOsVvZbhM=fonVbg@mail.gmail.com>
+In-Reply-To: <CAN-5tyEGO9MghXz3SKLFy_QCA7xyT+eq=pQOsVvZbhM=fonVbg@mail.gmail.com>
+From:   Olga Kornievskaia <aglo@umich.edu>
+Date:   Mon, 21 Oct 2019 13:15:01 -0400
+Message-ID: <CAN-5tyHSuhzGcx2R8w0hoAJEn3QuncptL4uQNVEy9-pJ=mhbow@mail.gmail.com>
+Subject: Re: [PATCH] NFSv4: fix stateid refreshing when CLOSE racing with OPEN
+To:     Trond Myklebust <trondmy@hammerspace.com>
+Cc:     "jencce.kernel@gmail.com" <jencce.kernel@gmail.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Fri, Oct 18, 2019 at 01:33:43PM -0400, schumaker.anna@gmail.com wrote:
-> From: Anna Schumaker <Anna.Schumaker@Netapp.com>
-> 
-> NFS v4.2 supports SEEK_DATA and SEEK_HOLE, but earlier versions do not.
-> As a result, the test exits and runs the cleanup function without the
-> $BASE_TEST_FILE variable set and the shell expands it to "rm -f .*",
-> deleting all hidden files in the current directory.
-> 
-> Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
-> ---
->  tests/generic/448 | 3 ++-
->  1 file changed, 2 insertions(+), 1 deletion(-)
-> 
-> diff --git a/tests/generic/448 b/tests/generic/448
-> index dada499b..d6cdebbf 100755
-> --- a/tests/generic/448
-> +++ b/tests/generic/448
-> @@ -17,7 +17,8 @@ trap "_cleanup; exit \$status" 0 1 2 3 15
->  
->  _cleanup()
->  {
-> -	rm -f $tmp.* $BASE_TEST_FILE.*
-> +	rm -f $tmp.*
-> +	[ ! -z $BASE_TEST_FILE ] && rm -f $BASE_TEST_FILE.*
->  }
+On Fri, Oct 18, 2019 at 8:34 PM Olga Kornievskaia <aglo@umich.edu> wrote:
+>
+> On Fri, Oct 11, 2019 at 2:50 PM Olga Kornievskaia <aglo@umich.edu> wrote:
+> >
+> > On Fri, Oct 11, 2019 at 10:18 AM Trond Myklebust
+> > <trondmy@hammerspace.com> wrote:
+> > >
+> > > On Thu, 2019-10-10 at 13:32 -0400, Olga Kornievskaia wrote:
+> > > > On Thu, Oct 10, 2019 at 3:42 AM Murphy Zhou <jencce.kernel@gmail.com>
+> > > > wrote:
+> > > > > Since commit:
+> > > > >   [0e0cb35] NFSv4: Handle NFS4ERR_OLD_STATEID in
+> > > > > CLOSE/OPEN_DOWNGRADE
+> > > > >
+> > > > > xfstests generic/168 on v4.2 starts to fail because reflink call
+> > > > > gets:
+> > > > >   +XFS_IOC_CLONE_RANGE: Resource temporarily unavailable
+> > > >
+> > > > I don't believe this failure has to do with getting ERR_OLD_STATEID
+> > > > on
+> > > > the CLOSE. What you see on the network trace is expected as the
+> > > > client
+> > > > in parallel sends OPEN/CLOSE thus server will fail the CLOSE with the
+> > > > ERR_OLD_STATEID since it already updated its stateid for the OPEN.
+> > > >
+> > > > > In tshark output, NFS4ERR_OLD_STATEID stands out when comparing
+> > > > > with
+> > > > > good ones:
+> > > > >
+> > > > >  5210   NFS 406 V4 Reply (Call In 5209) OPEN StateID: 0xadb5
+> > > > >  5211   NFS 314 V4 Call GETATTR FH: 0x8d44a6b1
+> > > > >  5212   NFS 250 V4 Reply (Call In 5211) GETATTR
+> > > > >  5213   NFS 314 V4 Call GETATTR FH: 0x8d44a6b1
+> > > > >  5214   NFS 250 V4 Reply (Call In 5213) GETATTR
+> > > > >  5216   NFS 422 V4 Call WRITE StateID: 0xa818 Offset: 851968 Len:
+> > > > > 65536
+> > > > >  5218   NFS 266 V4 Reply (Call In 5216) WRITE
+> > > > >  5219   NFS 382 V4 Call OPEN DH: 0x8d44a6b1/
+> > > > >  5220   NFS 338 V4 Call CLOSE StateID: 0xadb5
+> > > > >  5222   NFS 406 V4 Reply (Call In 5219) OPEN StateID: 0xa342
+> > > > >  5223   NFS 250 V4 Reply (Call In 5220) CLOSE Status:
+> > > > > NFS4ERR_OLD_STATEID
+> > > > >  5225   NFS 338 V4 Call CLOSE StateID: 0xa342
+> > > > >  5226   NFS 314 V4 Call GETATTR FH: 0x8d44a6b1
+> > > > >  5227   NFS 266 V4 Reply (Call In 5225) CLOSE
+> > > > >  5228   NFS 250 V4 Reply (Call In 5226) GETATTR
+> > > >
+> > > > "resource temporarily unavailable" is more likely to do with ulimit
+> > > > limits.
+> > > >
+> > > > I also saw the same error. After I increased the ulimit for the stack
+> > > > size, the problem went away. There might still be a problem somewhere
+> > > > in the kernel.
+> > > >
+> > > > Trond, is it possible that we have too many CLOSE recovery on the
+> > > > stack that's eating up stack space?
+> > >
+> > > That shouldn't normally happen. CLOSE runs as an asynchronous RPC call,
+> > > so its stack usage should be pretty minimal (limited to whatever each
+> > > callback function uses).
+> >
+> > Yeah, that wasn't it. I've straced generic/168 to catch
+> > ioctl(clone_file_range) returning EAGAIN.
+> >
+> > I've instrumented the kernel to see where we are returning an EAGAIN
+> > in nfs42_proc_clone(). nfs42_proc_clone is failing on
+> > nfs42_select_rw_context() because nfs4_copy_open_stateid() is failing
+> > to get the open state. Basically it looks like we are trying to do a
+> > clone on a file that's not opened. Still trying to understand
+> > things...
+>
+> Trond,
+>
+> Generic/168 fails in 2 ways (though only 1 leads to the failure in
+> xfs_io). Another way is having a file closed then client using the
+> stateid for the write and getting a bad_stateid which the client
+> recovers from (but the fact that client shouldn't have done that is a
+> problem). Another is the clone where again happens that file is
+> "closed" and clone is trying to use a stateid.
+>
+> The problem comes from the following fact. We have a racing CLOSE and
+> OPEN. Where client did the CLOSE followed by the OPEN but the server
+> processed OPEN and then the CLOSE. Server returns OLD_STATEID to the
+> CLOSE. What the code does it bumps the sequence id and resends the
+> CLOSE which inadvertently is closing a file that was opened before.
+> While IO errors from this are recoverable, the clone error is visible
+> to the application (I think another case would be a copy).
+>
+> I don't have a code solution yet. But it'll have to be something where
+> we need to ignore a CLOSE with OLD_STATEID when another OPEN happened.
 
-I'd just define BASE_TEST_FILE before _cleanup (and did it on commit).
-Thanks for the fix!
+Also besides the cases for the clone, copy, if the racing open got a
+delegation and that was used during the BAD_STATEID that's an
+automatic  EIO to the application.
 
-Eryu
->  
->  # get standard environment, filters and checks
-> -- 
-> 2.23.0
-> 
+I guess my proposal is to revert 12f275cdd1638. The same problem
+exists for the DELEGRETURN racing with the open and if we re-try we
+will return a delegation that was just given to us but client would
+think that we still have it.
