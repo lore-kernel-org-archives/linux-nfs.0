@@ -2,66 +2,70 @@ Return-Path: <SRS0=iyIL=YQ=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+X-Spam-Status: No, score=-9.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
-	USER_AGENT_GIT autolearn=no autolearn_force=no version=3.4.0
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7521FCA9EBC
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B9A26CA9EBB
 	for <linux-nfs@archiver.kernel.org>; Wed, 23 Oct 2019 23:58:13 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 49AB0207FD
+	by mail.kernel.org (Postfix) with ESMTP id 8C9A4207FD
 	for <linux-nfs@archiver.kernel.org>; Wed, 23 Oct 2019 23:58:13 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="QmBqhKli"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="iq2Sc6U+"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2389801AbfJWX6M (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 23 Oct 2019 19:58:12 -0400
-Received: from mail-il1-f195.google.com ([209.85.166.195]:37801 "EHLO
-        mail-il1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2388872AbfJWX6M (ORCPT
+        id S2388872AbfJWX6N (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 23 Oct 2019 19:58:13 -0400
+Received: from mail-il1-f194.google.com ([209.85.166.194]:33508 "EHLO
+        mail-il1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725852AbfJWX6M (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Oct 2019 19:58:12 -0400
-Received: by mail-il1-f195.google.com with SMTP id v2so209145ilq.4
-        for <linux-nfs@vger.kernel.org>; Wed, 23 Oct 2019 16:58:10 -0700 (PDT)
+Received: by mail-il1-f194.google.com with SMTP id v2so20669730ilm.0
+        for <linux-nfs@vger.kernel.org>; Wed, 23 Oct 2019 16:58:12 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
-        h=from:to:subject:date:message-id:mime-version
+        h=from:to:subject:date:message-id:in-reply-to:references:mime-version
          :content-transfer-encoding;
-        bh=pkYdnqokRnukDcWatRjivO6EIQAJGmk2G6A5jkZBj0o=;
-        b=QmBqhKliJbUNmfYuo4LOYHtXrpcQzFreK2K3U3aBYKcq0A7BPfeXMbfiib4IIkMPU1
-         g4Ea0Uo0FNin9AFjIrxwtlvlR2kZoEVXEOgYrJefoFyf77gvFUinaxh8RnEnwGu+yVRB
-         fLutJKXACuSsUILxz/PKdekjTkJZs+XKZj31C5BgX6q9HK7CkC/bvWF2/XhEAw27YY68
-         uISOKyXnR+a7Eo2lN/utttDtDyhG0YwEJr9OkRtrYiAi8A2akgy/JP90S2HLW+ZCD68v
-         t4mXvFtBv3bGSPx3JdWb4hFISiHEqfPoKyQ2IglxzHoFRL9syHkxPTMc67BwFpHoOLB3
-         /PkQ==
+        bh=UQJtG0eF3ROCDcYr9wQJYVSG7YUZRmSPD3to91dvFSk=;
+        b=iq2Sc6U+KcNW4lr49M4x33ApWffbZnqoIRNeSkFmUwFV+2zPZDGHpuJ0tNncqDHH3r
+         NSmd6GOaxp5SVaH4AmZ2lUSLNLl3RETo5h/s5Pkhwibeo1gs4OrFr/XgXXqXrr2BS+3M
+         hQsDI46K2CDQfYZk3j4grU+rcSaIlGmlszcHzV86NTaZ0+GyNvjpAEmDQGaaWUZbhIzV
+         Pw4Cj7SSouS9yekaUnpJ6diZc/3Xt3CTQV+LnxPlcY40CXcfEGXwtn1ZTTKYKrPrUSEg
+         3QL6Ypqhv8RYaQsotXhL+mf+n9ilQf/x7Tp9kahmui4I8H2H5MAcifpbNYwj82oEXutF
+         4Z2g==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:to:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=pkYdnqokRnukDcWatRjivO6EIQAJGmk2G6A5jkZBj0o=;
-        b=HNpcrL1tgkIu0sm87O4v5yuzFzWOYacrum6lHm88SvXj/A3AiLIy1kn+4+iS+T1Zz0
-         BkGBS0l0WEdyi0kOx5mh3MOtdO0C8GcjX9b26b2WWAOZrvEu8cP2RWJRSM4Yr/UtntPj
-         HMn1g9ZrrlSh1fg/WpLAaIEPoYZ8GA/NZGUSSDpN5evIc0uqVkZZjJIGp44IozhcRCav
-         N9fJC5AvIRPST+IYBqR5CFcvtaooUmbkVPV7KPzsNtjzyPgOOr9OlgVXru9vOgbznBd/
-         mK9TNAX9+hl9xe+F2E1rJwU5lpDcRcXclbu9Twnkue9FJu8a7+7En3Z3Vlb57w8X7ew/
-         8L7A==
-X-Gm-Message-State: APjAAAXXsxANzTw/QHkkwW8X5pmyQ6NJVFoKP2h8p3G+mg4OIYKxADI5
-        75IAOwvZyRdXkR/uyQvn9NUlsbg=
-X-Google-Smtp-Source: APXvYqwLu52FPQgIsCnJAPrb28gG6On8oMW13curlki/AhThiUg7XE8IMrC/cZiukHAnoDs1k4tmWA==
-X-Received: by 2002:a92:a308:: with SMTP id a8mr39762309ili.65.1571875089459;
-        Wed, 23 Oct 2019 16:58:09 -0700 (PDT)
+        h=x-gm-message-state:from:to:subject:date:message-id:in-reply-to
+         :references:mime-version:content-transfer-encoding;
+        bh=UQJtG0eF3ROCDcYr9wQJYVSG7YUZRmSPD3to91dvFSk=;
+        b=ZS7AtDTCquap4YK00XgncEaiolrtmjMGJVUhPT0B3FDavFmKEbCGsRyrIaNuMlf9oQ
+         YL1eBt46sQuevf2t6nd6EN/4sOg+VYTY5oY5x9eyqShtHUBTBcNAwPBmCJfr3Idf13lD
+         8SvwXaR50nLRO6NW2pmxSexjp0tam+9yVqaXxB2mWz5ty5nMs3YsKPx0PKa2p6M6xHSB
+         9ldXqDXYDEp66TN5ejCIgZVnbEGypzuaztGznVoud0/4WhFoxjryyA7IW5RTbQPQWDB6
+         FA2Go6Z6+6wMjv6OgOdna+yc7AglKYQTAOgrY26tlc+z+0XGvanoAVcg0p185SniuJFx
+         vXQQ==
+X-Gm-Message-State: APjAAAULP0YiEA6aEsz3FOMYYptx7a+HtrlS5dydnR0DwYe0e0iSXXW7
+        LAspsUiekIayeCajU+Dd4Ok5VAY=
+X-Google-Smtp-Source: APXvYqz9RA4lBtZKECl+AkEg56FIkR7KNF6SS0f2szufNHQSijA+7Wt61iuEKTqRcxS8eycN+fcdsA==
+X-Received: by 2002:a92:980f:: with SMTP id l15mr14130641ili.152.1571875091277;
+        Wed, 23 Oct 2019 16:58:11 -0700 (PDT)
 Received: from localhost.localdomain (c-68-40-189-247.hsd1.mi.comcast.net. [68.40.189.247])
-        by smtp.gmail.com with ESMTPSA id z18sm2405409iob.47.2019.10.23.16.58.08
+        by smtp.gmail.com with ESMTPSA id z18sm2405409iob.47.2019.10.23.16.58.10
         for <linux-nfs@vger.kernel.org>
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Wed, 23 Oct 2019 16:58:08 -0700 (PDT)
+        Wed, 23 Oct 2019 16:58:10 -0700 (PDT)
 From:   Trond Myklebust <trondmy@gmail.com>
 X-Google-Original-From: Trond Myklebust <trond.myklebust@hammerspace.com>
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH 00/14] Delegation bugfixes
-Date:   Wed, 23 Oct 2019 19:55:46 -0400
-Message-Id: <20191023235600.10880-1-trond.myklebust@hammerspace.com>
+Subject: [PATCH 02/14] NFSv4: Fix delegation handling in update_open_stateid()
+Date:   Wed, 23 Oct 2019 19:55:48 -0400
+Message-Id: <20191023235600.10880-3-trond.myklebust@hammerspace.com>
 X-Mailer: git-send-email 2.21.0
+In-Reply-To: <20191023235600.10880-2-trond.myklebust@hammerspace.com>
+References: <20191023235600.10880-1-trond.myklebust@hammerspace.com>
+ <20191023235600.10880-2-trond.myklebust@hammerspace.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
@@ -69,47 +73,35 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-The following patchset fixes up a number of issues with delegations,
-but mainly attempts to fix a race condition between open and
-delegreturn, where the open and the delegreturn get re-ordered so
-that the delegreturn ends up revoking the delegation that was returned
-by the open.
-The root cause is that in certain circumstances, we may currently end
-up freeing the delegation from delegreturn, so when we later receive
-the reply to the open, we've lost track of the fact that the seqid
-predates the one that was returned.
+If the delegation is marked as being revoked, then don't use it in
+the open state structure.
 
-This patchset fixes that case by ensuring that we always keep track
-of the last delegation stateid that was returned for any given inode.
-That way, if we later see a delegation stateid with the same opaque
-field, but an older seqid, we know we cannot trust it, and so we
-ask to replay the OPEN compound.
+Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
+---
+ fs/nfs/nfs4proc.c | 6 ++----
+ 1 file changed, 2 insertions(+), 4 deletions(-)
 
-Trond Myklebust (14):
-  NFSv4: Don't allow a cached open with a revoked delegation
-  NFSv4: Fix delegation handling in update_open_stateid()
-  NFSv4: nfs4_callback_getattr() should ignore revoked delegations
-  NFSv4: Delegation recalls should not find revoked delegations
-  NFSv4: fail nfs4_refresh_delegation_stateid() when the delegation was
-    revoked
-  NFS: Rename nfs_inode_return_delegation_noreclaim()
-  NFSv4: Don't remove the delegation from the super_list more than once
-  NFSv4: Hold the delegation spinlock when updating the seqid
-  NFSv4: Clear the NFS_DELEGATION_REVOKED flag in
-    nfs_update_inplace_delegation()
-  NFSv4: Update the stateid seqid in nfs_revoke_delegation()
-  NFSv4: Revoke the delegation on success in nfs4_delegreturn_done()
-  NFSv4: Ignore requests to return the delegation if it was revoked
-  NFSv4: Don't reclaim delegations that have been returned or revoked
-  NFSv4: Fix races between open and delegreturn
-
- fs/nfs/callback_proc.c |   2 +-
- fs/nfs/delegation.c    | 109 +++++++++++++++++++++++++++++------------
- fs/nfs/delegation.h    |   4 +-
- fs/nfs/nfs4proc.c      |  13 ++---
- fs/nfs/nfs4super.c     |   4 +-
- 5 files changed, 88 insertions(+), 44 deletions(-)
-
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 294ea8c1a163..c407e2eed3d5 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -1740,14 +1740,12 @@ static int update_open_stateid(struct nfs4_state *state,
+ 		goto no_delegation;
+ 
+ 	spin_lock(&deleg_cur->lock);
+-	if (rcu_dereference(nfsi->delegation) != deleg_cur ||
+-	   test_bit(NFS_DELEGATION_RETURNING, &deleg_cur->flags) ||
+-	    (deleg_cur->type & fmode) != fmode)
++	if (!nfs4_is_valid_delegation(deleg_cur, fmode))
+ 		goto no_delegation_unlock;
+ 
+ 	if (delegation == NULL)
+ 		delegation = &deleg_cur->stateid;
+-	else if (!nfs4_stateid_match(&deleg_cur->stateid, delegation))
++	else if (!nfs4_stateid_match_other(&deleg_cur->stateid, delegation))
+ 		goto no_delegation_unlock;
+ 
+ 	nfs_mark_delegation_referenced(deleg_cur);
 -- 
 2.21.0
 
