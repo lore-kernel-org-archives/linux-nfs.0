@@ -2,143 +2,54 @@ Return-Path: <SRS0=iyIL=YQ=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.3 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
-	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_SANE_1
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-2.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=no
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 448EECA9EB6
-	for <linux-nfs@archiver.kernel.org>; Wed, 23 Oct 2019 15:41:04 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6C5EACA9EB6
+	for <linux-nfs@archiver.kernel.org>; Wed, 23 Oct 2019 17:15:24 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 0E0042064A
-	for <linux-nfs@archiver.kernel.org>; Wed, 23 Oct 2019 15:41:04 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=android.com header.i=@android.com header.b="KBoKx5yO"
+	by mail.kernel.org (Postfix) with ESMTP id 468FF2086D
+	for <linux-nfs@archiver.kernel.org>; Wed, 23 Oct 2019 17:15:24 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2406864AbfJWPlD (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 23 Oct 2019 11:41:03 -0400
-Received: from mail-pg1-f195.google.com ([209.85.215.195]:46378 "EHLO
-        mail-pg1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2406858AbfJWPlC (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Oct 2019 11:41:02 -0400
-Received: by mail-pg1-f195.google.com with SMTP id e15so12349921pgu.13
-        for <linux-nfs@vger.kernel.org>; Wed, 23 Oct 2019 08:41:02 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=android.com; s=20161025;
-        h=subject:to:cc:references:from:message-id:date:user-agent
-         :mime-version:in-reply-to:content-transfer-encoding:content-language;
-        bh=TI9rW32nt+i6GyURUSN10bGjthP0EG+xScjnb+pkqac=;
-        b=KBoKx5yOJdWGZz7I1M810keaJ1ZlEuvnt+HTZJAS0UmK0LTUpPmdFTkklfgcGdi73r
-         feMTzV569J5UceysOEInvWeJdRd/ZzonW6Aa3VYlqczCqXy+PY9ipoJvzLD+NWbnZ5rP
-         mW2vwJLR0Vq7sY9XP/QBVZSb/GxJx9fS5CE5Yo07sdXhMNQdYvScXxROVKhe4Esy5Cvd
-         e50H85g6521yumbQVB+PGX8SW/L7QzMUvgyanXK1Toe52me2wt2CIUN9qyd4f938PFQ7
-         rthEsivMBKI4ftQ33yVLiM1NHSBLjKlHtZVEVP38OG7iyjy4z/skVUexYga7/45kjz+T
-         6+ug==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:subject:to:cc:references:from:message-id:date
-         :user-agent:mime-version:in-reply-to:content-transfer-encoding
-         :content-language;
-        bh=TI9rW32nt+i6GyURUSN10bGjthP0EG+xScjnb+pkqac=;
-        b=KPl0o23AycIrv6/l7zJMdYVgX5P5GRg6+BJUGDjzfmdCcHZEfPykuOF3TrdePHBheY
-         96GMyQ3ezQyG1VwA7kVgsPkTODgsijUuWwGIZjG35aZBhkUGpVJEyPQUuvwitMQEDtYS
-         jqTkk0URIy2bFOwh/oDTYH+IXKc3FupTQstFBU73FbTmMnHZfAPZUA18112e1Og5dwH5
-         G+3PjaDe3WiCQeRt2nnm7IakoqmjlbOak+Z8CPCVICWJq1gedGwb9JMOBEcjWJk7t2n+
-         ExxspBDi4gDujX7eHABNbMs/onI/isGmOFIr+1qrxuPP2SNfBLjO4bZMoWOmZ5GkhmTN
-         G7iQ==
-X-Gm-Message-State: APjAAAXv2JhJScWGwlW+T5+6NW09Onp+7QJliZEB/vjPSc2jHB8CdHac
-        DX9CCCUNZHcqDvGn2Q0q+wRu4g==
-X-Google-Smtp-Source: APXvYqxpUg0BJf6IgZEek+Avbtx6SaPZVRb4CoPCBRhASaoQxSh7v/tZYoAbFxDTBg5wYPAauGUeIw==
-X-Received: by 2002:a17:90a:e987:: with SMTP id v7mr765373pjy.86.1571845261541;
-        Wed, 23 Oct 2019 08:41:01 -0700 (PDT)
-Received: from nebulus.mtv.corp.google.com ([2620:15c:211:200:5404:91ba:59dc:9400])
-        by smtp.googlemail.com with ESMTPSA id r18sm28682272pfc.3.2019.10.23.08.40.59
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Wed, 23 Oct 2019 08:41:01 -0700 (PDT)
-Subject: Re: [PATCH] Cleanup: replace prefered with preferred
-To:     Jarkko Sakkinen <jarkko.sakkinen@linux.intel.com>
-Cc:     linux-kernel@vger.kernel.org, kernel-team@android.com,
-        "David S. Miller" <davem@davemloft.net>,
-        Jonathan Corbet <corbet@lwn.net>,
-        Ard Biesheuvel <ard.biesheuvel@linaro.org>,
-        Harry Wentland <harry.wentland@amd.com>,
-        Leo Li <sunpeng.li@amd.com>,
-        Alex Deucher <alexander.deucher@amd.com>,
-        =?UTF-8?Q?Christian_K=c3=b6nig?= <christian.koenig@amd.com>,
-        "David (ChunMing) Zhou" <David1.Zhou@amd.com>,
-        David Airlie <airlied@linux.ie>,
-        Daniel Vetter <daniel@ffwll.ch>,
-        VMware Graphics <linux-graphics-maintainer@vmware.com>,
-        Thomas Hellstrom <thellstrom@vmware.com>,
-        Laurent Pinchart <laurent.pinchart@ideasonboard.com>,
-        Mauro Carvalho Chehab <mchehab@kernel.org>,
-        Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Alexander Aring <alex.aring@gmail.com>,
-        Jukka Rissanen <jukka.rissanen@linux.intel.com>,
-        Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>,
-        Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>,
-        Ingo Molnar <mingo@kernel.org>,
-        Matthew Garrett <matthewgarrett@google.com>,
-        Hans de Goede <hdegoede@redhat.com>,
-        hersen wu <hersenxs.wu@amd.com>, Roman Li <Roman.Li@amd.com>,
-        Maxim Martynov <maxim@arista.com>,
-        David Ahern <dsahern@gmail.com>,
-        Francesco Ruggeri <fruggeri@arista.com>,
-        =?UTF-8?Q?Linus_L=c3=bcssing?= <linus.luessing@c0d3.blue>,
-        Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
-        Feng Tang <feng.tang@intel.com>,
-        "Steven Rostedt (VMware)" <rostedt@goodmis.org>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Rafael Aquini <aquini@redhat.com>, netdev@vger.kernel.org,
-        linux-doc@vger.kernel.org, linux-efi@vger.kernel.org,
-        amd-gfx@lists.freedesktop.org, dri-devel@lists.freedesktop.org,
-        linux-media@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-bluetooth@vger.kernel.org, linux-wpan@vger.kernel.org
-References: <20191022214208.211448-1-salyzyn@android.com>
- <20191023115637.GA23733@linux.intel.com>
-From:   Mark Salyzyn <salyzyn@android.com>
-Message-ID: <fa12cb96-7a93-bf85-214d-a7bfaf8b8b0a@android.com>
-Date:   Wed, 23 Oct 2019 08:40:59 -0700
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101
- Thunderbird/60.9.0
+        id S1728254AbfJWRPX (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 23 Oct 2019 13:15:23 -0400
+Received: from fieldses.org ([173.255.197.46]:38658 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1728245AbfJWRPX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 23 Oct 2019 13:15:23 -0400
+Received: by fieldses.org (Postfix, from userid 2815)
+        id 56014738; Wed, 23 Oct 2019 13:15:23 -0400 (EDT)
+Date:   Wed, 23 Oct 2019 13:15:23 -0400
+To:     Chandler <admin@genome.arizona.edu>
+Cc:     linux-nfs@vger.kernel.org
+Subject: Re: NFS hangs on one interface
+Message-ID: <20191023171523.GA18802@fieldses.org>
+References: <3447df77-1b2f-6d36-0516-3ae7267ab509@genome.arizona.edu>
 MIME-Version: 1.0
-In-Reply-To: <20191023115637.GA23733@linux.intel.com>
-Content-Type: text/plain; charset=utf-8; format=flowed
-Content-Transfer-Encoding: 7bit
-Content-Language: en-GB
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <3447df77-1b2f-6d36-0516-3ae7267ab509@genome.arizona.edu>
+User-Agent: Mutt/1.5.21 (2010-09-15)
+From:   bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On 10/23/19 4:56 AM, Jarkko Sakkinen wrote:
-> On Tue, Oct 22, 2019 at 02:41:45PM -0700, Mark Salyzyn wrote:
->> Replace all occurrences of prefered with preferred to make future
->> checkpatch.pl's happy.  A few places the incorrect spelling is
->> matched with the correct spelling to preserve existing user space API.
->>
->> Signed-off-by: Mark Salyzyn <salyzyn@android.com>
-> I'd fix such things when the code is otherwise change and scope this
-> patch only to Documentation/. There is no pragmatic benefit of doing
-> this for the code.
->
-> /Jarkko
+Beats me.  My first guess would be some kind of networking problem.
+Maybe try running wireshark and watching to see if certain calls aren't
+getting responses.
 
-The pragmatic benefit comes with the use of an ABI/API checker (which is 
-a 'distro' thing, not a top of tree kernel thing) produces its map which 
-is typically required to be co-located in the same tree as the kernel 
-repository. Quite a few ABI/API update checkins result in a 
-checkpatch.pl complaint about the misspelled elements being 
-(re-)recorded due to proximity. We have a separate task to improve how 
-it is tracked in Android to reduce milepost marker changes that result 
-in sweeping changes to the database which would reduce the occurrences.
+--b.
 
-I will split this between pure and inert documentation/comments for now, 
-with a followup later for the code portion which understandably is more 
-controversial.
-
-Cleanup is the least appreciated part of kernel maintenance ;-}.
-
-Sincerely -- Mark Salyzyn
-
+On Tue, Oct 22, 2019 at 05:34:51PM -0700, Chandler wrote:
+> Hi all, I'm sure you get this alot, but I couldn't figure out any solution.  We have a client/server pair with both 1Gb and 10Gb network interfaces.  I can mount the share on the client on the 1Gb interface just fine and interact with it normally.  If I unmount and try to mount the share on the 10Gb interface, it will mount but everything after that hangs (like ls or df).  The exports entry is the same on the server, i.e.:
+> 
+> #1Gb interface
+> /data   10.10.10.0/24(rw,no_root_squash,async)
+> #10Gb interface
+> /data   128.196.X.X/28(rw,no_root_squash,async)
+> 
+> I turned off iptables for troubleshooting and checked with the NOC here.  Using NFSv4 by default and CentOS 6.10 2.6.32 kernel.  I had some strange results if i try vers=3 or vers=2, then i can "ls /data" but if I try to "ls /data/subdir" then it hangs again.  Now it doesn't even mount if i try with vers=3 or vers=2
+> 
