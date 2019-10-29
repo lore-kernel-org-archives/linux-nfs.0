@@ -2,97 +2,58 @@ Return-Path: <SRS0=5qc3=YW=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.3 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=ham autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-2.3 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=no
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2F149CA9EAE
-	for <linux-nfs@archiver.kernel.org>; Tue, 29 Oct 2019 09:25:30 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id AFAA9CA9EAE
+	for <linux-nfs@archiver.kernel.org>; Tue, 29 Oct 2019 21:47:06 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id EDB3120830
-	for <linux-nfs@archiver.kernel.org>; Tue, 29 Oct 2019 09:25:29 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="KcazG+g+"
+	by mail.kernel.org (Postfix) with ESMTP id 7F9F421721
+	for <linux-nfs@archiver.kernel.org>; Tue, 29 Oct 2019 21:47:06 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727257AbfJ2JZ3 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 29 Oct 2019 05:25:29 -0400
-Received: from mail-pf1-f193.google.com ([209.85.210.193]:34058 "EHLO
-        mail-pf1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1730888AbfJ2JZ3 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Oct 2019 05:25:29 -0400
-Received: by mail-pf1-f193.google.com with SMTP id b128so9138094pfa.1;
-        Tue, 29 Oct 2019 02:25:28 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=date:from:to:cc:subject:message-id:mime-version:content-disposition
-         :user-agent;
-        bh=lMF9jzBd/DPhyvoBGQ0of2FjdBz2MdlsIzH7AFd0LSk=;
-        b=KcazG+g+o2NWTrILxZwSozfWu91dPPqZRPDQkiXbMOnoIkSfzbNwWwhIqEbMDraS8R
-         Sa8VxR4LesXnIoBP7bgCqDMqyeENTELc3aKp7BF8AxT6CooR0Hs6ge+sz32qB3+KHuHl
-         QRNDc/J1Tp7/BhTq3ugLu3OQU5Id9Q/K6R2lHRHk1iyMYEugQg9PTgJDxb7km62gGZI2
-         X5hfk/zeMNiCh0HYxO+4MjIqLYuW1o9eFNpDG7UBrRkrm/Iec34DMSUhQcp++Nm2oI0e
-         d68QGdx29srF05+cPP91ZEAFOWdLxIxGW9A4tidEREH1PEoiJEqywNA2op1DYO68TxXb
-         XlUw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:date:from:to:cc:subject:message-id:mime-version
-         :content-disposition:user-agent;
-        bh=lMF9jzBd/DPhyvoBGQ0of2FjdBz2MdlsIzH7AFd0LSk=;
-        b=qR9DfvKoMbMgyT2NBUrnsFQAY9atKboJVlhIZxjn2yJ6ZzdlXmaV2gfdhN7miDZqFP
-         Jc/cwNyf3mQVtSYG71buKY2fnodvqfqtZF5lZFhKIdBSGGjEmWQFcxbXVb9l+msidQm2
-         0636kID/v/nPtOPeiqeFe68yRwhyc7Nr1Xv8xtGsqd3G72Oh1Db/zidX4xXIpWhqrTF8
-         IR8v2ilEDwWMPF1elctw8K08f72mnOfdvU+qW7tV4qG9DiMQrVt4nezIEMFsJHChCwuF
-         6/h9cmJ7JEKBrngPr9uY+1qTTTQbhD0cX13xYPbyxT8b98J/qQsN6YwpV52bc4MKBKeq
-         GWEg==
-X-Gm-Message-State: APjAAAX962qhEqXus2fl+ihNBIR0sxnQJGZ8xcYnkiTfsLdZQcE+OY2H
-        WZKbYGhjGs1rmxe5WND5434aXMez46c=
-X-Google-Smtp-Source: APXvYqyD2R5boNAq/b6ijrZnhmAyXs8d26chBbMW0MXGHCSU/GyGwH+q+bvuOwov33ARHWvFv5NtFg==
-X-Received: by 2002:a63:ec03:: with SMTP id j3mr7194562pgh.212.1572341128439;
-        Tue, 29 Oct 2019 02:25:28 -0700 (PDT)
-Received: from saurav ([27.62.167.137])
-        by smtp.gmail.com with ESMTPSA id w62sm6245967pfb.15.2019.10.29.02.25.25
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 29 Oct 2019 02:25:27 -0700 (PDT)
-Date:   Tue, 29 Oct 2019 14:55:22 +0530
-From:   Saurav Girepunje <saurav.girepunje@gmail.com>
-To:     trond.myklebust@hammerspace.com, anna.schumaker@netapp.com,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Cc:     saurav.girepunje@hotmail.com
-Subject: [PATCH] fs: nfs: sysfs: Remove NULL check before kfree
-Message-ID: <20191029092522.GA10685@saurav>
+        id S1728464AbfJ2VrF (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 29 Oct 2019 17:47:05 -0400
+Received: from fieldses.org ([173.255.197.46]:35912 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726364AbfJ2VrF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 29 Oct 2019 17:47:05 -0400
+Received: by fieldses.org (Postfix, from userid 2815)
+        id 4D1A01508; Tue, 29 Oct 2019 17:47:05 -0400 (EDT)
+Date:   Tue, 29 Oct 2019 17:47:05 -0400
+From:   "J. Bruce Fields" <bfields@fieldses.org>
+To:     "J. Bruce Fields" <bfields@redhat.com>
+Cc:     Trond Myklebust <trondmy@hammerspace.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v2] nfsd: Fix races between nfsd4_cb_release() and
+ nfsd4_shutdown_callback()
+Message-ID: <20191029214705.GA29280@fieldses.org>
+References: <20191023214318.9350-1-trond.myklebust@hammerspace.com>
+ <20191025145147.GA16053@pick.fieldses.org>
+ <97f56de86f0aeafb56998023d0561bb4a6233eb8.camel@hammerspace.com>
+ <20191025152119.GC16053@pick.fieldses.org>
+ <20191025153336.GA20283@fieldses.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-User-Agent: Mutt/1.10.1 (2018-07-13)
+In-Reply-To: <20191025153336.GA20283@fieldses.org>
+User-Agent: Mutt/1.5.21 (2010-09-15)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Remove NULL check before kfree, NULL check is taken care
-on kfree.
+On Fri, Oct 25, 2019 at 11:33:36AM -0400, bfields wrote:
+> On Fri, Oct 25, 2019 at 11:21:19AM -0400, J. Bruce Fields wrote:
+> > I thought I was running v2, let me double-check....
+> 
+> Yes, with v2 I'm getting a hang on generic/013.
+> 
+> I checked quickly and didn't see anything interesting in the logs,
+> otherwise I haven't done any digging.
 
-Signed-off-by: Saurav Girepunje <saurav.girepunje@gmail.com>
----
- fs/nfs/sysfs.c | 3 +--
- 1 file changed, 1 insertion(+), 2 deletions(-)
+Reproduceable just with ./check -nfs generic/013.  The last thing I see
+in wireshark is an asynchronous COPY call and reply.  Which means it's
+probably trying to do a CB_OFFLOAD.  Hm.
 
-diff --git a/fs/nfs/sysfs.c b/fs/nfs/sysfs.c
-index 4f3390b20239..c489496b5659 100644
---- a/fs/nfs/sysfs.c
-+++ b/fs/nfs/sysfs.c
-@@ -121,8 +121,7 @@ static void nfs_netns_client_release(struct kobject *kobj)
- 			struct nfs_netns_client,
- 			kobject);
- 
--	if (c->identifier)
--		kfree(c->identifier);
-+	kfree(c->identifier);
- 	kfree(c);
- }
- 
--- 
-2.20.1
-
+--b.
