@@ -8,62 +8,62 @@ X-Spam-Status: No, score=-9.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C1979CA9ECF
-	for <linux-nfs@archiver.kernel.org>; Thu, 31 Oct 2019 22:43:30 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 39C8ECA9ECE
+	for <linux-nfs@archiver.kernel.org>; Thu, 31 Oct 2019 22:43:34 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 959ED2087F
-	for <linux-nfs@archiver.kernel.org>; Thu, 31 Oct 2019 22:43:30 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 0F007216F4
+	for <linux-nfs@archiver.kernel.org>; Thu, 31 Oct 2019 22:43:34 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="Y1kWcyG/"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="B3xdmvw0"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728076AbfJaWna (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 31 Oct 2019 18:43:30 -0400
-Received: from mail-yw1-f67.google.com ([209.85.161.67]:34747 "EHLO
-        mail-yw1-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728073AbfJaWn3 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 31 Oct 2019 18:43:29 -0400
-Received: by mail-yw1-f67.google.com with SMTP id z144so1171198ywd.1
-        for <linux-nfs@vger.kernel.org>; Thu, 31 Oct 2019 15:43:29 -0700 (PDT)
+        id S1729552AbfJaWnc (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 31 Oct 2019 18:43:32 -0400
+Received: from mail-yb1-f196.google.com ([209.85.219.196]:39806 "EHLO
+        mail-yb1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727922AbfJaWnc (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 31 Oct 2019 18:43:32 -0400
+Received: by mail-yb1-f196.google.com with SMTP id q18so2640998ybq.6
+        for <linux-nfs@vger.kernel.org>; Thu, 31 Oct 2019 15:43:32 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:subject:date:message-id:in-reply-to:references:mime-version
          :content-transfer-encoding;
-        bh=0w1x19jgGRQLmFP5d0KNhM8Dd0dSbZyA49/LiXX5964=;
-        b=Y1kWcyG/vHBOnOcTUrM0lq15Pv86FnZZL1sEVRRm/KQzo5lG4t7HaBk6H8yP/FMAqY
-         ElQE9yho2qwDjXf/bgmSPc33yBk1uWMyCIs5mjp1spQ9cfM5Olp1yvuwgXLLk9rlUCl/
-         rGKo6qdcXUWwfj26wbZSVz6cX6lkpWqSuUIqq/oPva8Tx6GfKAofavvUvz46gFejxOH5
-         elkiUaSBYb6FKdF0LcECMkUPLx5vX0wV0vtX2jO7p3hqtFgPWdnegrxZaQTnRVAlvtqS
-         NqaQAVDMCmRfKKMmURgfLVZHPyrmtw7Qa6LTIERLaC7tP6p2wHzKU8L5b34JkjEUVsRz
-         PhHQ==
+        bh=TvuonOVBM9ZQFTtoGztRGRv+Vmenki0IRgaTsWfruHI=;
+        b=B3xdmvw0MI7UxYogU+X4K710M480Lbk6obfnBGimijyROGb6mxheirD6GBWwR6xtHo
+         MQWr/N/ITisZvRPCy7Vxwm8lV4loJkIMSd8p4WpRKSCv/aPy72p5lOSqZEGv7QcobLhn
+         AeVZTBuZK3n+ayZKsQLj+o5LOxhFXA51008pg4U0yDsElKAvgMj8qym1qUBEHM7+fuod
+         2+Q+PIL+hyhHVKKFs7AKhfY461r6svnE2gMde1tOWPV8Qs5zdXn7rbny2zBt06PFM6MI
+         iUzX04AIeFurlnyvXzyfjSPXBCsqpCyW1R79iID1V3R+VRHIGNhvHb2ErkS/RFEnhHar
+         UYvQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=0w1x19jgGRQLmFP5d0KNhM8Dd0dSbZyA49/LiXX5964=;
-        b=BN4octkSzetnRZrEYFUiH8Ud1EJRa0k7L+Fm26jrsiMhO+b74phfGGXvaCQKL7mBpP
-         ULR779IJubAOnqnnEWxL/4SA0ufSpkjnatus/nPSygHEK/u5d4eM0Tv8h96MJRvSoK0u
-         AKw7kooHgZJ6Apa9td/XPiVWxe95J7TKyCNavuGmsigf2eFaW7nINILjTKZ8Ustcja2D
-         ruqYL5yS4xG7BASK2ZrFWeDtScQ0TlDOkfDMJ+MXObNgjS45u8lImYZxml7jgpfbcpBN
-         ahwDCzt/YE65cdJkPzAXoc5QCJix7wK0/1zWG7+ObYvFOH2UxdQ44Lv1UvwG9hMTefKV
-         //yQ==
-X-Gm-Message-State: APjAAAUx+KAZngRMg5l052BWHg8rERPW7aiU4NhhMNZn3oE5+sTYm41w
-        Ais1gAmUx55qRAn8gQgVunxn+Ds=
-X-Google-Smtp-Source: APXvYqypPeIcROQh49Q2lkbScU2+Rvs0Dde3VZsbwMQbsKLrZLfYpYQC68tTanOs+DHtVHT5IGBovw==
-X-Received: by 2002:a81:49c1:: with SMTP id w184mr6285788ywa.264.1572561808172;
-        Thu, 31 Oct 2019 15:43:28 -0700 (PDT)
+        bh=TvuonOVBM9ZQFTtoGztRGRv+Vmenki0IRgaTsWfruHI=;
+        b=ZRMWdO84k/OlRG1dB+YfFYxRe3wYHWJfTusiCLD+yDQRnBAW7SKnbwiX293vi8ZzFk
+         7d5+CYVJPFASaLheh+xA1hmL/oMvcTezAN7u3eY8MJGmo2sL4ooSo5D9ozTl/jmxYIX2
+         aVQbxZDlLH2Ip6dKNCBchDbJvtlkh/SWIdWlgmawWSRiHdPVGXJzsxzbK0CfLmJacwdU
+         mDuOc6l9nZvqbsCAzKHZGK69cpk/8/BK1SjsLJecF2VuXTAoDy/ob/sKdg26em/I4BHb
+         Vncjsm7bFxTHBZzEKVZja+cOmgw7DvVW61fyuMkSCj2P/g+YH8dUMfti4EmEA5yKZULE
+         yB0w==
+X-Gm-Message-State: APjAAAWMCBbIrks+AUfmYfNWGFb1E5jYenmH4YP7/8USzomYphtKh90n
+        IDKwjHY1KsAqAXBGHF9KgJSloFM=
+X-Google-Smtp-Source: APXvYqyC53Tm6+2yT0qVrzV0h93aGM6RZ+uRCp1uCnUeO+BITsEygKkZAP8iZ0OXbvQcG9K5WAbklA==
+X-Received: by 2002:a25:778d:: with SMTP id s135mr6843778ybc.20.1572561810867;
+        Thu, 31 Oct 2019 15:43:30 -0700 (PDT)
 Received: from localhost.localdomain ([50.105.87.1])
-        by smtp.gmail.com with ESMTPSA id d192sm1720287ywb.3.2019.10.31.15.43.27
+        by smtp.gmail.com with ESMTPSA id d192sm1720287ywb.3.2019.10.31.15.43.29
         for <linux-nfs@vger.kernel.org>
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 31 Oct 2019 15:43:27 -0700 (PDT)
+        Thu, 31 Oct 2019 15:43:30 -0700 (PDT)
 From:   Trond Myklebust <trondmy@gmail.com>
 X-Google-Original-From: Trond Myklebust <trond.myklebust@hammerspace.com>
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH v2 18/20] NFSv4: Fix races between open and delegreturn
-Date:   Thu, 31 Oct 2019 18:40:49 -0400
-Message-Id: <20191031224051.8923-19-trond.myklebust@hammerspace.com>
+Subject: [PATCH v2 20/20] NFSv4: Don't retry the GETATTR on old stateid in nfs4_delegreturn_done()
+Date:   Thu, 31 Oct 2019 18:40:51 -0400
+Message-Id: <20191031224051.8923-21-trond.myklebust@hammerspace.com>
 X-Mailer: git-send-email 2.23.0
-In-Reply-To: <20191031224051.8923-18-trond.myklebust@hammerspace.com>
+In-Reply-To: <20191031224051.8923-20-trond.myklebust@hammerspace.com>
 References: <20191031224051.8923-1-trond.myklebust@hammerspace.com>
  <20191031224051.8923-2-trond.myklebust@hammerspace.com>
  <20191031224051.8923-3-trond.myklebust@hammerspace.com>
@@ -82,6 +82,8 @@ References: <20191031224051.8923-1-trond.myklebust@hammerspace.com>
  <20191031224051.8923-16-trond.myklebust@hammerspace.com>
  <20191031224051.8923-17-trond.myklebust@hammerspace.com>
  <20191031224051.8923-18-trond.myklebust@hammerspace.com>
+ <20191031224051.8923-19-trond.myklebust@hammerspace.com>
+ <20191031224051.8923-20-trond.myklebust@hammerspace.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
@@ -89,179 +91,30 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-If the server returns the same delegation in an open that we just used
-in a delegreturn, we need to ensure we don't apply that stateid if
-the delegreturn has freed it on the server.
-To do so, we ensure that we do not free the storage for the delegation
-until either it is replaced by a new one, or we throw the inode out of
-cache.
+If the server returns NFS4ERR_OLD_STATEID, then just skip retrying the
+GETATTR when replaying the delegreturn compound. We know nothing will
+have changed on the server.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/delegation.c | 64 ++++++++++++++++++++-------------------------
- 1 file changed, 29 insertions(+), 35 deletions(-)
+ fs/nfs/nfs4proc.c | 4 ++++
+ 1 file changed, 4 insertions(+)
 
-diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
-index 902baea1ecc6..48f3c6c9672f 100644
---- a/fs/nfs/delegation.c
-+++ b/fs/nfs/delegation.c
-@@ -229,7 +229,6 @@ static int nfs_do_return_delegation(struct inode *inode, struct nfs_delegation *
- 				delegation->cred,
- 				&delegation->stateid,
- 				issync);
--	nfs_free_delegation(delegation);
- 	return res;
- }
- 
-@@ -302,7 +301,6 @@ nfs_detach_delegation_locked(struct nfs_inode *nfsi,
- 		spin_unlock(&delegation->lock);
- 		return NULL;
- 	}
--	set_bit(NFS_DELEGATION_RETURNING, &delegation->flags);
- 	list_del_rcu(&delegation->super_list);
- 	delegation->inode = NULL;
- 	rcu_assign_pointer(nfsi->delegation, NULL);
-@@ -329,10 +327,12 @@ nfs_inode_detach_delegation(struct inode *inode)
- 	struct nfs_server *server = NFS_SERVER(inode);
- 	struct nfs_delegation *delegation;
- 
--	delegation = nfs_start_delegation_return(nfsi);
--	if (delegation == NULL)
--		return NULL;
--	return nfs_detach_delegation(nfsi, delegation, server);
-+	rcu_read_lock();
-+	delegation = rcu_dereference(nfsi->delegation);
-+	if (delegation != NULL)
-+		delegation = nfs_detach_delegation(nfsi, delegation, server);
-+	rcu_read_unlock();
-+	return delegation;
- }
- 
- static void
-@@ -384,16 +384,18 @@ int nfs_inode_set_delegation(struct inode *inode, const struct cred *cred,
- 	spin_lock(&clp->cl_lock);
- 	old_delegation = rcu_dereference_protected(nfsi->delegation,
- 					lockdep_is_held(&clp->cl_lock));
--	if (old_delegation != NULL) {
--		/* Is this an update of the existing delegation? */
--		if (nfs4_stateid_match_other(&old_delegation->stateid,
--					&delegation->stateid)) {
--			spin_lock(&old_delegation->lock);
--			nfs_update_inplace_delegation(old_delegation,
--					delegation);
--			spin_unlock(&old_delegation->lock);
--			goto out;
--		}
-+	if (old_delegation == NULL)
-+		goto add_new;
-+	/* Is this an update of the existing delegation? */
-+	if (nfs4_stateid_match_other(&old_delegation->stateid,
-+				&delegation->stateid)) {
-+		spin_lock(&old_delegation->lock);
-+		nfs_update_inplace_delegation(old_delegation,
-+				delegation);
-+		spin_unlock(&old_delegation->lock);
-+		goto out;
-+	}
-+	if (!test_bit(NFS_DELEGATION_REVOKED, &old_delegation->flags)) {
- 		/*
- 		 * Deal with broken servers that hand out two
- 		 * delegations for the same file.
-@@ -412,11 +414,11 @@ int nfs_inode_set_delegation(struct inode *inode, const struct cred *cred,
- 		if (test_and_set_bit(NFS_DELEGATION_RETURNING,
- 					&old_delegation->flags))
- 			goto out;
--		freeme = nfs_detach_delegation_locked(nfsi,
--				old_delegation, clp);
--		if (freeme == NULL)
--			goto out;
- 	}
-+	freeme = nfs_detach_delegation_locked(nfsi, old_delegation, clp);
-+	if (freeme == NULL)
-+		goto out;
-+add_new:
- 	list_add_tail_rcu(&delegation->super_list, &server->delegations);
- 	rcu_assign_pointer(nfsi->delegation, delegation);
- 	delegation = NULL;
-@@ -431,8 +433,10 @@ int nfs_inode_set_delegation(struct inode *inode, const struct cred *cred,
- 	spin_unlock(&clp->cl_lock);
- 	if (delegation != NULL)
- 		nfs_free_delegation(delegation);
--	if (freeme != NULL)
-+	if (freeme != NULL) {
- 		nfs_do_return_delegation(inode, freeme, 0);
-+		nfs_free_delegation(freeme);
-+	}
- 	return status;
- }
- 
-@@ -442,7 +446,6 @@ int nfs_inode_set_delegation(struct inode *inode, const struct cred *cred,
- static int nfs_end_delegation_return(struct inode *inode, struct nfs_delegation *delegation, int issync)
- {
- 	struct nfs_client *clp = NFS_SERVER(inode)->nfs_client;
--	struct nfs_inode *nfsi = NFS_I(inode);
- 	int err = 0;
- 
- 	if (delegation == NULL)
-@@ -464,8 +467,6 @@ static int nfs_end_delegation_return(struct inode *inode, struct nfs_delegation
- 		nfs_abort_delegation_return(delegation, clp);
- 		goto out;
- 	}
--	if (!nfs_detach_delegation(nfsi, delegation, NFS_SERVER(inode)))
--		goto out;
- 
- 	err = nfs_do_return_delegation(inode, delegation, issync);
- out:
-@@ -608,6 +609,7 @@ void nfs_inode_evict_delegation(struct inode *inode)
- 	if (delegation != NULL) {
- 		set_bit(NFS_DELEGATION_INODE_FREEING, &delegation->flags);
- 		nfs_do_return_delegation(inode, delegation, 1);
-+		nfs_free_delegation(delegation);
- 	}
- }
- 
-@@ -763,10 +765,9 @@ static void nfs_mark_delegation_revoked(struct nfs_server *server,
- {
- 	set_bit(NFS_DELEGATION_REVOKED, &delegation->flags);
- 	delegation->stateid.type = NFS4_INVALID_STATEID_TYPE;
--	nfs_mark_return_delegation(server, delegation);
- }
- 
--static bool nfs_revoke_delegation(struct inode *inode,
-+static void nfs_revoke_delegation(struct inode *inode,
- 		const nfs4_stateid *stateid)
- {
- 	struct nfs_delegation *delegation;
-@@ -799,19 +800,12 @@ static bool nfs_revoke_delegation(struct inode *inode,
- 	rcu_read_unlock();
- 	if (ret)
- 		nfs_inode_find_state_and_recover(inode, stateid);
--	return ret;
- }
- 
- void nfs_remove_bad_delegation(struct inode *inode,
- 		const nfs4_stateid *stateid)
- {
--	struct nfs_delegation *delegation;
--
--	if (!nfs_revoke_delegation(inode, stateid))
--		return;
--	delegation = nfs_inode_detach_delegation(inode);
--	if (delegation)
--		nfs_free_delegation(delegation);
-+	nfs_revoke_delegation(inode, stateid);
- }
- EXPORT_SYMBOL_GPL(nfs_remove_bad_delegation);
- 
-@@ -839,7 +833,7 @@ void nfs_delegation_mark_returned(struct inode *inode,
- 			delegation->stateid.seqid = stateid->seqid;
- 	}
- 
--	set_bit(NFS_DELEGATION_REVOKED, &delegation->flags);
-+	nfs_mark_delegation_revoked(NFS_SERVER(inode), delegation);
- 
- out_clear_returning:
- 	clear_bit(NFS_DELEGATION_RETURNING, &delegation->flags);
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 33a8e53e976c..a64ce9518776 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -6198,6 +6198,10 @@ static void nfs4_delegreturn_done(struct rpc_task *task, void *calldata)
+ 	case -NFS4ERR_OLD_STATEID:
+ 		if (!nfs4_refresh_delegation_stateid(&data->stateid, data->inode))
+ 			nfs4_stateid_seqid_inc(&data->stateid);
++		if (data->args.bitmask) {
++			data->args.bitmask = NULL;
++			data->res.fattr = NULL;
++		}
+ 		goto out_restart;
+ 	case -NFS4ERR_ACCESS:
+ 		if (data->args.bitmask) {
 -- 
 2.23.0
 
