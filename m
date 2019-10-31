@@ -8,62 +8,62 @@ X-Spam-Status: No, score=-9.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9572DCA9ECB
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C6628CA9ECF
 	for <linux-nfs@archiver.kernel.org>; Thu, 31 Oct 2019 22:43:27 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 68D4920873
+	by mail.kernel.org (Postfix) with ESMTP id 9ABC62087F
 	for <linux-nfs@archiver.kernel.org>; Thu, 31 Oct 2019 22:43:27 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="Fq4pu+ak"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="vE5l75GV"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728057AbfJaWn1 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S1727611AbfJaWn1 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Thu, 31 Oct 2019 18:43:27 -0400
-Received: from mail-yw1-f67.google.com ([209.85.161.67]:35426 "EHLO
-        mail-yw1-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727611AbfJaWn0 (ORCPT
+Received: from mail-yw1-f65.google.com ([209.85.161.65]:43992 "EHLO
+        mail-yw1-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727922AbfJaWn0 (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Thu, 31 Oct 2019 18:43:26 -0400
-Received: by mail-yw1-f67.google.com with SMTP id r134so2799018ywg.2
-        for <linux-nfs@vger.kernel.org>; Thu, 31 Oct 2019 15:43:26 -0700 (PDT)
+Received: by mail-yw1-f65.google.com with SMTP id g77so2780210ywb.10
+        for <linux-nfs@vger.kernel.org>; Thu, 31 Oct 2019 15:43:24 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:subject:date:message-id:in-reply-to:references:mime-version
          :content-transfer-encoding;
-        bh=miHuqUqWzdE1nbZhl0K85EkExwuSgvBYv/eRMB4N1Ko=;
-        b=Fq4pu+akxnGfhPCWfDtr8jOA6vV2beNxDwmzyeU2raiCesZL/4eRlWEGkk5P4o93CA
-         PFwJN+5Wwu2gDhqlj0DGeZUnT2OVoiF+qRWlpW0W83vMczAOYkkIz1iYpmDJsO4VD2gM
-         8YjmBE6Ze8qTiI7fssjkZ+Zsn7ykkSYY1lfyN/Mb57O5+22bzifDu5yRReMcZQzq3IOm
-         oxZXjvUSF/U6NvTiV7pnmAElS0tqCW8LJw/9heMFVFhYoc3EorxjODX6qIhSRYFQ+jq2
-         J5jLZY/RKTpXfwY2f3sUrnkNnOIJSalumv+kYiLXquE0B6JFMTjE/fgOzfkOyPT3UoZE
-         Vsmg==
+        bh=YwWywFVCwgzZ4LH/87FN5wOH2rsbvdar3vb9Xu2sSu4=;
+        b=vE5l75GViOnfTGc9ccxX+PobFZOZ58h8Q7whh3SWc2HzQVt/DqmfUG7W6l4Y/o3G+3
+         pgIWKc3VDTQT8WXF1fg2BDcr/LLgz8sliIJN9c5cI1bz1SvK4SVR5H+V9jHiYKyrTDtK
+         09olcGvVh2jchjetz1ycUFIaWuq495by38as/rJrhg3WSSq9LPlOqcAH3mrAe8oRxiWx
+         LuMt2+YvMgqNCA8eIHCb6FAlkWT1S/t2gMHgv49TlEAf8/03M4V9TKpWABNk024fTjq8
+         zJfLJ4fcPT6v+cuT2voRPaMGPsO1KeXye/9BroMfMdMphZckP3DZ1j5oNdlHguEt2zDP
+         f0fQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=miHuqUqWzdE1nbZhl0K85EkExwuSgvBYv/eRMB4N1Ko=;
-        b=gbvBmB+u3pmLI45LUQ4zxz6noRZ6QD5owzzbtLkkw2lR9tzQN7t/QgXD/jAN6YChbj
-         v77SK0gGF4zw6BNyXD+9YpUCK9tCHYJzxsG1oZeNtNj4XDNgLz5d93JM9bAjWGFAueaI
-         i5HQcdGQKZpPBNff1clyRSOqG/FL/I9NJQww7nhogslLFYfzPq2wZs+ND2ey0TMglph7
-         BxRGDLeEfvAveHmoMQfbuzP+aSSHMG2q8Ud+JO/zC1ClhgJUWjq8nGNYVgKp8bukRyUG
-         MoWF/4698YizA99oIv8WoOiW3GL/gzTRF4+lnzBFeQd04dJS7n128721Xmwks7Z4MaUa
-         6K9A==
-X-Gm-Message-State: APjAAAUq7RfJUm6e9PuPKXllNVAKgQrKi/M0gAruXAo0i1yT5toDH66P
-        akODGIvVfdKwticyV6BvIa0Yyms=
-X-Google-Smtp-Source: APXvYqycYgr4TEz1ESR0AVwCe8Q1PW5wxXMGju8fqoW7biczO419qxkh+R+gQwTlOX2FJPWJ2Ljk4Q==
-X-Received: by 2002:a81:61c3:: with SMTP id v186mr6313170ywb.151.1572561805336;
-        Thu, 31 Oct 2019 15:43:25 -0700 (PDT)
+        bh=YwWywFVCwgzZ4LH/87FN5wOH2rsbvdar3vb9Xu2sSu4=;
+        b=IewIJTDd8c9q8x49+SsqfFMnyhPZNlIepj423A+FRkqmsEVBFMxnAAaHdvje/wyTgo
+         0syvX2fxd24Xsn8W6wHcA/0HkXbVqty+t4v1lPCJ58iAYl1W8HICg4UeWnxpblVugXGL
+         zdfQJJEiNB1NhvIq2KchyEwWnQVMJn7Vwa41zTfl9fbc9WGLbq1QivBSf1BzeoaxACU7
+         NBGq56P1/5ROOHxumFzYgZmKUYg6A8dXhXNJ1uAzr32Y5h2hwxoHkpFht17BNXj5+NFf
+         qSF0hEUrorrg+UTCH5oK3HGoWTuZTFyozbJsPtFIMGyw5LsWJQ4gCESiN2TQwbcGA7ix
+         cvbA==
+X-Gm-Message-State: APjAAAWBf28cAI5j2u0uUgWosOtAa2khux+8D++Hf6ERWQaUQOyE+drB
+        zDVeAPbmwX6FLx87Hh1KDXaReaI=
+X-Google-Smtp-Source: APXvYqzyY3Tr9AJABOo9SawxDpTmB1a3UdeAZnuzqdFnQY9hRUGZcHpWfGx2pyobSFBh9uoM8n4u7g==
+X-Received: by 2002:a81:241:: with SMTP id 62mr6354289ywc.19.1572561803946;
+        Thu, 31 Oct 2019 15:43:23 -0700 (PDT)
 Received: from localhost.localdomain ([50.105.87.1])
-        by smtp.gmail.com with ESMTPSA id d192sm1720287ywb.3.2019.10.31.15.43.24
+        by smtp.gmail.com with ESMTPSA id d192sm1720287ywb.3.2019.10.31.15.43.22
         for <linux-nfs@vger.kernel.org>
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 31 Oct 2019 15:43:24 -0700 (PDT)
+        Thu, 31 Oct 2019 15:43:22 -0700 (PDT)
 From:   Trond Myklebust <trondmy@gmail.com>
 X-Google-Original-From: Trond Myklebust <trond.myklebust@hammerspace.com>
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH v2 16/20] NFSv4: Fix nfs4_inode_make_writeable()
-Date:   Thu, 31 Oct 2019 18:40:47 -0400
-Message-Id: <20191031224051.8923-17-trond.myklebust@hammerspace.com>
+Subject: [PATCH v2 15/20] NFSv4: nfs4_return_incompatible_delegation() should check delegation validity
+Date:   Thu, 31 Oct 2019 18:40:46 -0400
+Message-Id: <20191031224051.8923-16-trond.myklebust@hammerspace.com>
 X-Mailer: git-send-email 2.23.0
-In-Reply-To: <20191031224051.8923-16-trond.myklebust@hammerspace.com>
+In-Reply-To: <20191031224051.8923-15-trond.myklebust@hammerspace.com>
 References: <20191031224051.8923-1-trond.myklebust@hammerspace.com>
  <20191031224051.8923-2-trond.myklebust@hammerspace.com>
  <20191031224051.8923-3-trond.myklebust@hammerspace.com>
@@ -79,7 +79,6 @@ References: <20191031224051.8923-1-trond.myklebust@hammerspace.com>
  <20191031224051.8923-13-trond.myklebust@hammerspace.com>
  <20191031224051.8923-14-trond.myklebust@hammerspace.com>
  <20191031224051.8923-15-trond.myklebust@hammerspace.com>
- <20191031224051.8923-16-trond.myklebust@hammerspace.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
@@ -87,42 +86,27 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Fix the checks in nfs4_inode_make_writeable() to ignore the case where
-we hold no delegations. Currently, in such a case, we automatically
-flush writes.
+Ensure that we check that the delegation is valid in
+nfs4_return_incompatible_delegation() before we try to return it.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/delegation.c | 16 ++++++++++++----
- 1 file changed, 12 insertions(+), 4 deletions(-)
+ fs/nfs/nfs4proc.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
-index 78df1cde286e..e3d8055f0c6d 100644
---- a/fs/nfs/delegation.c
-+++ b/fs/nfs/delegation.c
-@@ -644,10 +644,18 @@ int nfs4_inode_return_delegation(struct inode *inode)
-  */
- int nfs4_inode_make_writeable(struct inode *inode)
- {
--	if (!nfs4_has_session(NFS_SERVER(inode)->nfs_client) ||
--	    !nfs4_check_delegation(inode, FMODE_WRITE))
--		return nfs4_inode_return_delegation(inode);
--	return 0;
-+	struct nfs_delegation *delegation;
-+
-+	rcu_read_lock();
-+	delegation = nfs4_get_valid_delegation(inode);
-+	if (delegation == NULL ||
-+	    (nfs4_has_session(NFS_SERVER(inode)->nfs_client) &&
-+	     (delegation->type & FMODE_WRITE))) {
-+		rcu_read_unlock();
-+		return 0;
-+	}
-+	rcu_read_unlock();
-+	return nfs4_inode_return_delegation(inode);
- }
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index a222122e7151..c7e4a9ba8420 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -1796,7 +1796,7 @@ static void nfs4_return_incompatible_delegation(struct inode *inode, fmode_t fmo
  
- static void nfs_mark_return_if_closed_delegation(struct nfs_server *server,
+ 	fmode &= FMODE_READ|FMODE_WRITE;
+ 	rcu_read_lock();
+-	delegation = rcu_dereference(NFS_I(inode)->delegation);
++	delegation = nfs4_get_valid_delegation(inode);
+ 	if (delegation == NULL || (delegation->type & fmode) == fmode) {
+ 		rcu_read_unlock();
+ 		return;
 -- 
 2.23.0
 
