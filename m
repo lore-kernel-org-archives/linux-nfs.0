@@ -4,23 +4,23 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-9.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+	USER_AGENT_GIT autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A2702C43331
-	for <linux-nfs@archiver.kernel.org>; Mon, 11 Nov 2019 20:17:03 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3C3DEC43331
+	for <linux-nfs@archiver.kernel.org>; Mon, 11 Nov 2019 20:17:22 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 745CF214E0
-	for <linux-nfs@archiver.kernel.org>; Mon, 11 Nov 2019 20:17:03 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 0F84C20578
+	for <linux-nfs@archiver.kernel.org>; Mon, 11 Nov 2019 20:17:22 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727136AbfKKURC (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 11 Nov 2019 15:17:02 -0500
-Received: from mout.kundenserver.de ([212.227.17.10]:33919 "EHLO
+        id S1727685AbfKKURR (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 11 Nov 2019 15:17:17 -0500
+Received: from mout.kundenserver.de ([212.227.17.10]:54213 "EHLO
         mout.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726924AbfKKURC (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Nov 2019 15:17:02 -0500
+        with ESMTP id S1727103AbfKKURK (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Nov 2019 15:17:10 -0500
 Received: from threadripper.lan ([149.172.19.189]) by mrelayeu.kundenserver.de
  (mreue108 [212.227.15.145]) with ESMTPA (Nemesis) id
- 1N6svJ-1hphAy14rX-018NFQ; Mon, 11 Nov 2019 21:16:51 +0100
+ 1Mate1-1ht0Yh12Ed-00cNxc; Mon, 11 Nov 2019 21:16:52 +0100
 From:   Arnd Bergmann <arnd@arndb.de>
 To:     linux-nfs@vger.kernel.org,
         "J. Bruce Fields" <bfields@fieldses.org>,
@@ -29,67 +29,64 @@ To:     linux-nfs@vger.kernel.org,
         Anna Schumaker <anna.schumaker@netapp.com>
 Cc:     y2038@lists.linaro.org, linux-fsdevel@vger.kernel.org,
         linux-kernel@vger.kernel.org, Arnd Bergmann <arnd@arndb.de>
-Subject: [PATCH 15/19] nfsd: fix delay timer on 32-bit architectures
-Date:   Mon, 11 Nov 2019 21:16:35 +0100
-Message-Id: <20191111201639.2240623-16-arnd@arndb.de>
+Subject: [PATCH 18/19] nfsd: use ktime_get_real_seconds() in nfs4_verifier
+Date:   Mon, 11 Nov 2019 21:16:38 +0100
+Message-Id: <20191111201639.2240623-19-arnd@arndb.de>
 X-Mailer: git-send-email 2.20.0
 In-Reply-To: <20191111201639.2240623-1-arnd@arndb.de>
 References: <20191111201639.2240623-1-arnd@arndb.de>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-Provags-ID: V03:K1:gmiJexBFvqElF3mq4b9b+BZDQ8d72Q7kCeZTPOCjS6AhS6bzlDu
- NXJLMSB2hdsvgNmtvpikLv8CkbAUuuLITgyvau37mTIqgnGMh2E9z2Kqjdm+HVfcFTkEsgE
- 9/kcOOnOXlfAtr/6WB+MFLMVjWxlTuUuJmcpK3g5R/UWsE22dELI9rGE5eFOqYyEefJsgrh
- 5uj7yStbDDRkV90oaUamg==
-X-UI-Out-Filterresults: notjunk:1;V03:K0:OuSNcZeVEos=:x5ZXKdsBl17wIelyNU21r3
- 8HywO3EQnZh63jP5CdexIy9kbzHofX+dQ9vWCbGyNW6gxNBDmMoQdYNIOkN7oiQqhOxKT5miN
- LMLI3zCfLbaVnWqKzXHzkh4SXd60raLsDj6FZ9cqxRnLegxn+ujtQhmJ8O1qrAJ9uGHdZLEyo
- YYrIHvXt9yrS3dOKUH6D9er6OY6AE3pYEn6niAs26nWvtg31Oh8kIrebSr00Jfwq4uyVMUtMa
- LovWvlMjgjNNVvy2GM4CZgAc8qjB3IpKNM3Dk2tAM5WyUQRDj1rXtPNk0llxXBskdSmHWOGmM
- O01Z0XOSo8gBiTaL6JKDtCZPN7/mOK/La4BlGKGPel9nlWIqQdYIRC1lAQSz5LxrOdJNHNCQo
- c4Yeb6MDh1XYxzXp7hEifvWn65XWZ7EmeYVA8nlUZXm4F9K9Pl6WhGZjrqe15yqHsbxDtEyso
- zFCbNi+U+ezxW5uyTCO1WGPAhb5r84NSFv0BtGGH2jHcyiYKlhpDoxFXmco9e4u1oP9gxaqpV
- Coh9Kb8379K2/S45ksuq0DhJCSXfK2+/mVQS5ONJ/KKkCZeqe0VdQvVBVyEdyVL2cQZ6s2Eg4
- 2SWHkhksSI61c9TmpFxbCv5LIguBAC0j6yaj8sesQwBzjdB8Mqo51GEzubeCjZR2t4nnupwMF
- oATxST3QYVtUyEn+jyRsq1kCOMrKwM/LWp90kFyffh6rm3nE6VkM+HxbBRHOnuszqT5w59STU
- lpDJzUcRO0AazmApNe0Emg7YfFD1DDH1qopZZnpp6IhPj6fwpCXEvyn0ltAA5wp4hbWOfP4sh
- qgUW/h5GeiZ266/UeL//8fY8p9NQIQ9M6LE7YJzHNOR12p1iBWrbBBawW5Lv3hC4nCTp2Nh2e
- 47wyLsKwTNhlghaiTKhQ==
+X-Provags-ID: V03:K1:3MZ/g5jxoKowkWLqlAfuJN7w4g+Y5UGMW9ve+71EABUtr76lYR3
+ 6Aay31QafEpf1haodQTU7BXFpmYpzicHHH9yi4z7JPgP9ViZds/DpxNh5frARpPdRQqm+0R
+ uktE0QcKl8CDcOeJWR27whgguX5Bw1UmVC4KfMw63AZdZMR9XkwlMcxMafA6QE28cAdQ32o
+ s8VXRovcg4h4RrRCsiSxQ==
+X-UI-Out-Filterresults: notjunk:1;V03:K0:z0WOA+1LHJI=:5SchLrpliskcZbSi2buxVb
+ lagvOeB0sNZIRBE0oR0YRFXsSzh+M15xiFTdplHM7hJNqWffA4CiwxDahtpYjI1Cu4zvwJBh5
+ s3TEaHVY8I0BOC/LrzvFmOBR0AkQbYWT+VQmCzPHE4f2cx6ZmZwEwl2SpPpoW7W+qdA802jPA
+ xBgX3qoLC5ORVM4cV4AIvbH0uxobO/xbris+BxQYjLtsIKucEfo628TurEeKTXc8Aw3SPq5I7
+ 5aGa0C9ZP/oVAixGYOD1tk6Rrjy5ACuaYCvoXm08x6k9u6BvtiSXyAv0DAWyDwATt+eDXFdAF
+ kWhvy0HOdxsKY592R5ZOgf1qMgW2PXrfRlI0PKEM5rO5tLpuP2Ibtst7IqJJOSuXgDUftc7+N
+ R7Rpl5LjZaMdj7p1ZLK4NtzLLqbfPAmdD2O5tul8BvSI5JMtqu3JxCjEirGYPKrKj/8nJ3mqd
+ LuNMzhM8gMIN2VFYXZBVGkXUabcolx3XriQh9GrTBoqCqR+8YF0Le0L5sj32DkUyDKCEYUSPL
+ R8V2kJoq0UDrY3rAKCckZ+3DwpIEw9IEeCTTfdVcDXcWxRYs96aX/aivEzlBSA11M68ieMoOg
+ U4kQtBQfHaBb1tpafDDBD5Ci3Xgqy9eK05C6Amr6689o+2WNdmGDZdXJW9HOGcD2x9xe2FSoD
+ LTaRkXo1Q7b8498ijT6YhTvWh9rDBLFYCvK4UqBhGPLZBVhy0gLKaRjHKeAbqoLDGWM80r5So
+ 8ljr6kfb6W8AS9FMXTQ/2vcLpn5vVqeztV/Jab1Xo0DSbZTR5zFV3p+w0w/ljKXhKxFGCA/c6
+ /p2f5wL7A0IxlZhHS8JUTCkqnJcjqqfef7ybbRnkloDRAHNcmSIudCh1NLRqs0cz+KVXf41NS
+ IHAZvSYCDqlyofiEiSNQ==
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-The nfsd4_cb_layout_done() function takes a 'time_t' value,
-multiplied by NSEC_PER_SEC*2 to get a nanosecond value.
+gen_confirm() generates a unique identifier based on the current
+time. This overflows in year 2038, but that is harmless since it
+generally does not lead to duplicates, as long as the time has
+been initialized by a real-time clock or NTP.
 
-This works fine on 64-bit architectures, but on 32-bit, any
-value over 1 second results in a signed integer overflow
-with unexpected results.
+Using ktime_get_boottime_seconds() or ktime_get_seconds() would
+avoid the overflow, but it would be more likely to result in
+non-unique numbers.
 
-Cast one input to a 64-bit type in order to produce the
-same result that we have on 64-bit architectures, regarless
-of the type of nfsd4_lease.
-
-Fixes: 6b9b21073d3b ("nfsd: give up on CB_LAYOUTRECALLs after two lease periods")
 Signed-off-by: Arnd Bergmann <arnd@arndb.de>
 ---
- fs/nfsd/nfs4layouts.c | 2 +-
+ fs/nfsd/nfs4state.c | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/nfsd/nfs4layouts.c b/fs/nfsd/nfs4layouts.c
-index 2681c70283ce..e12409eca7cc 100644
---- a/fs/nfsd/nfs4layouts.c
-+++ b/fs/nfsd/nfs4layouts.c
-@@ -675,7 +675,7 @@ nfsd4_cb_layout_done(struct nfsd4_callback *cb, struct rpc_task *task)
- 
- 		/* Client gets 2 lease periods to return it */
- 		cutoff = ktime_add_ns(task->tk_start,
--					 nn->nfsd4_lease * NSEC_PER_SEC * 2);
-+					 (u64)nn->nfsd4_lease * NSEC_PER_SEC * 2);
- 
- 		if (ktime_before(now, cutoff)) {
- 			rpc_delay(task, HZ/100); /* 10 mili-seconds */
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 885a09b3a2c0..cb416b9f6536 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -2215,7 +2215,7 @@ static void gen_confirm(struct nfs4_client *clp, struct nfsd_net *nn)
+ 	 * This is opaque to client, so no need to byte-swap. Use
+ 	 * __force to keep sparse happy
+ 	 */
+-	verf[0] = (__force __be32)get_seconds();
++	verf[0] = (__force __be32)(u32)ktime_get_real_seconds();
+ 	verf[1] = (__force __be32)nn->clverifier_counter++;
+ 	memcpy(clp->cl_confirm.data, verf, sizeof(clp->cl_confirm.data));
+ }
 -- 
 2.20.0
 
