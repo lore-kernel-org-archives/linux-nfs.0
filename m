@@ -2,25 +2,25 @@ Return-Path: <SRS0=WfzW=ZD=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	USER_AGENT_GIT autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-3.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=no
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9A019C17445
-	for <linux-nfs@archiver.kernel.org>; Mon, 11 Nov 2019 20:17:47 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 32D17C43331
+	for <linux-nfs@archiver.kernel.org>; Mon, 11 Nov 2019 20:22:00 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 701442067B
-	for <linux-nfs@archiver.kernel.org>; Mon, 11 Nov 2019 20:17:47 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 09EDE206A3
+	for <linux-nfs@archiver.kernel.org>; Mon, 11 Nov 2019 20:22:00 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727185AbfKKURC (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 11 Nov 2019 15:17:02 -0500
-Received: from mout.kundenserver.de ([212.227.17.10]:47321 "EHLO
+        id S1727409AbfKKUV7 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 11 Nov 2019 15:21:59 -0500
+Received: from mout.kundenserver.de ([212.227.17.10]:40225 "EHLO
         mout.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727049AbfKKURC (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Nov 2019 15:17:02 -0500
+        with ESMTP id S1726951AbfKKUV7 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Nov 2019 15:21:59 -0500
 Received: from threadripper.lan ([149.172.19.189]) by mrelayeu.kundenserver.de
  (mreue108 [212.227.15.145]) with ESMTPA (Nemesis) id
- 1MDhth-1ieTNm3gZT-00AmNk; Mon, 11 Nov 2019 21:16:50 +0100
+ 1M8yoa-1iaKeu0fEE-0063PN; Mon, 11 Nov 2019 21:16:46 +0100
 From:   Arnd Bergmann <arnd@arndb.de>
 To:     linux-nfs@vger.kernel.org,
         "J. Bruce Fields" <bfields@fieldses.org>,
@@ -29,67 +29,110 @@ To:     linux-nfs@vger.kernel.org,
         Anna Schumaker <anna.schumaker@netapp.com>
 Cc:     y2038@lists.linaro.org, linux-fsdevel@vger.kernel.org,
         linux-kernel@vger.kernel.org, Arnd Bergmann <arnd@arndb.de>
-Subject: [PATCH 11/19] nfsd: use timespec64 in encode_time_delta
-Date:   Mon, 11 Nov 2019 21:16:31 +0100
-Message-Id: <20191111201639.2240623-12-arnd@arndb.de>
+Subject: [PATCH 00/19] nfs, nfsd: avoid 32-bit time_t
+Date:   Mon, 11 Nov 2019 21:16:20 +0100
+Message-Id: <20191111201639.2240623-1-arnd@arndb.de>
 X-Mailer: git-send-email 2.20.0
-In-Reply-To: <20191111201639.2240623-1-arnd@arndb.de>
-References: <20191111201639.2240623-1-arnd@arndb.de>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-Provags-ID: V03:K1:zBEHU7LOQ8BR+RvLscuFxq5Q8uP7KpIKmRblB/0JRwtkA5oax2n
- vTwmcYsK8Belkc2C9pPRkpxv9FO+mMRz4UGcaVU1rtmz641TyQdeWBICy8LAW2WMHOUZay2
- GwlOYDJzKFtZm7mAL5WBUfqjdYDxR55pYrhyv4E8Hd0fs6UiP21IceExVdpjEE44XEV02An
- hNZoR15EcnN6SPGGexKFw==
-X-UI-Out-Filterresults: notjunk:1;V03:K0:+4sYNMt7F9Q=:M3AyrELI81yH0KXCinQXj1
- izGRACW/Q+P5BQUA/EHio1Y0Qx5vawQ4Ti0Hsahd/my+mlXpfH7XisKxbIDUbEW3cpMMT3wuc
- 7tTX1zrpkLfYXAyTVdYFKuYz02QN3fgFtfNsOLzKqxB3JEfsy4V/ihvWinx+mascGq7FyuxkP
- IqfE2VSPFUJ/dIgVlR4tYeieXQ9E0UMu8iVrGAge/rR2HJbQbJOPBXPsKTkdwEoFpRjI1ZydA
- o+DllKKIYDaxAsz86d0VtZgjDXEyfnkbCbMDDiATRR1ZNBrwv/d4GpcT6OLXbZtzi8wcMv2rh
- TKpvekjvUJ4OlF2HrwoRxcCV+JF4VPYz7pjgZKvxHTtnbMnrS1z83tPJGjmwIE9/eI+Xfp4Ca
- sM9oesbDfuyzqVY0VH65JtBvdlKiHJQ0mIW0LRgTZWymcMoJqfdcOghXaI1iLJYHX1/ZODNsW
- P/B26nui60xr3mIUHJHOMBrGAEnsUuFrGbZYek+pN7bzUi1zX+EDY8yzl4ix6eB9ecU3p/Y1J
- Zokb7/hFED6sYkosupilI7GHPO36mX6G5EZrCWu18DvQcon9qm9EH+khNLIuiP6XpNdHVs4xz
- aSKkEMHpg8YDAt2iCuPZIOIqfNQ7Mv0oThau/CpKEeKAH3QGkVLsZEyooQD06S4W731YGxbp/
- LJWZnI25MxEH0SUqa29hNl4Oa8BbR2jbgSmrxqIZe05b/QUbqH/ynTQN0dEmGDFNQ5bHdxZ38
- Iq0tOOGp5a7VlL0A7d/A+Jf+3m5+V3tUxAmkhLv8S2jJ9bGQSVDoviyVUJozmhExYi7KLiE+b
- QHzMENIaZV7xDkQkCQ6q1gXSYZlV5WjW4Il+PjgzDTtt96dhvnXyd1dSGylKI+95DkpmJ1C1B
- r1KCi0NYqNlg8KpXnXXA==
+X-Provags-ID: V03:K1:JN3hpuFv/t2CfnZyt61MtRx0CiB1Qt5nIaW4ZS3du16NUH8dMu4
+ YzUQ3f6jQFhZwc/rSf6LciJS668cjuruv6UXtXMppewy+Zn4V39yi0GN92e2VmGblaGAITV
+ h0mJEZAO+IcXFKtZhdOWZZp/YUmpSC+HzcKZD6qECC93LLDUy5px+4sV3po6zUxaBuu9Bgm
+ yi4t9xYBfPDqzvmY2Uffw==
+X-UI-Out-Filterresults: notjunk:1;V03:K0:29bmaPZVYZ4=:3/cSUbtTGBhkrYm1WF+G8n
+ DZXhZSzdsRFBvSxzdPySopCDmZLeptnfFbV6F05/lmVN/2nSHbhskeq4HPAONDCZpyx1ucvIw
+ q67hshswo1euuPXMNk8a/lD1eBY2EEF5zA1eOvDjl7f89wyC59kem23VtX4w5JWK2YZAO4p7L
+ wRxKikw01WJKLcOCPeoRG/RqQF3QEXggeJ2XYhku8rDWm3nUDDNWkaZABw0tlyGWm2NLfrTFs
+ v4fAA0CAur7ySQZBbIL/Se4loN1bDsfNvVDINrA/HG94xyJgVcYMckaXqKf7nn/NHqAmtRlYQ
+ OuMzjTpEE7GAYCN6FjbyMadO/emufUYeSfD+KSc+ByGJrPDkQC2qjkPYkb7yAedbHceacBlv8
+ OEZ/kNI7EYh0MQJhBFELdkiFAjAuudk5HAXOphYeSVzXYyDbhBpha3k+PhpD3PnDuLnymMOhs
+ atpU6dvJGJAX8/McGWerLBEU651uZOa565q3tha6iygqnxBk3GSj7ZOuTFLbAVNc/TD6qVIjN
+ ++/duQKPiatSbhBpLTqhlA4B8RMjHBUzZSFsAm+henl5rfhWaDckPBDnLi7q31KsC+BwoSEch
+ QsnkszmQ8zEHxb6OOu6I3ANhEOLLVQjhMIySxVUg9cLFRLj1vylKHN4kVOGC9FtH380YpcdpS
+ JDEkGdIoeMhNwJxAUI7j8tDO7ZH2YC20ETjvUCkEPGBbVAW7Cya4+RnWay5/vEVwOv0F6Mz6p
+ ZQZSPfn95sds/UtHAEtaPdLsCDG4xipBm1aLNLd0iasSvW6pG2JTXWvjG0BBKy+vk6CCd+YhV
+ e/wXOp3iLyuNA82bcuYvzmsoDXVCn5/ZkyMk2EuMgDRw82JKKCt2XPr8I3WvAPHLP2LgNw7Lh
+ ZEzP5nFG3rhJEMOXHpqA==
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-The values in encode_time_delta are always small and don't
-overflow the range of 'struct timespec', so changing it has
-no effect.
+I have finally found the time to convert all of NFS away from
+using time_t derived data structures to (mostly) time64_t,
+unifying the behavior between 32-bit and 64-bit architectures
+and paving the way to removing the old time_t definition from
+the kernel.
 
-Change it to timespec64 as a prerequisite for removing the
-timespec definition later.
+Please review and test. This may be a little late for linux-5.5,
+but I hope to get it all into linux-5.6 once all review comments
+are addressed.
 
-Signed-off-by: Arnd Bergmann <arnd@arndb.de>
----
- fs/nfsd/nfs4xdr.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+     Arnd
 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 533d0fc3c96b..d8234d9e89fe 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -2024,11 +2024,11 @@ static __be32 *encode_change(__be32 *p, struct kstat *stat, struct inode *inode,
-  */
- static __be32 *encode_time_delta(__be32 *p, struct inode *inode)
- {
--	struct timespec ts;
-+	struct timespec64 ts;
- 	u32 ns;
- 
- 	ns = max_t(u32, NSEC_PER_SEC/HZ, inode->i_sb->s_time_gran);
--	ts = ns_to_timespec(ns);
-+	ts = ns_to_timespec64(ns);
- 
- 	p = xdr_encode_hyper(p, ts.tv_sec);
- 	*p++ = cpu_to_be32(ts.tv_nsec);
+Arnd Bergmann (19):
+  sunrpc: convert to time64_t for expiry
+  nfs: use time64_t internally
+  nfs: use timespec64 in nfs_fattr
+  nfs: callback: use timespec64 in cb_getattrres
+  nfs: fscache: use timespec64 in inode auxdata
+  nfs: remove timespec from xdr_encode_nfstime
+  nfs: encode nfsv4 timestamps as 64-bit
+  nfsd: use ktime_get_seconds() for timestamps
+  nfsd: print 64-bit timestamps in client_info_show
+  nfsd: handle nfs3 timestamps as unsigned
+  nfsd: use timespec64 in encode_time_delta
+  nfsd: make 'boot_time' 64-bit wide
+  nfsd: pass a 64-bit guardtime to nfsd_setattr()
+  nfsd: use time64_t in nfsd_proc_setattr() check
+  nfsd: fix delay timer on 32-bit architectures
+  nfsd: fix jiffies/time_t mixup in LRU list
+  nfsd: use boottime for lease expiry alculation
+  nfsd: use ktime_get_real_seconds() in nfs4_verifier
+  nfsd: remove nfs4_reset_lease() declarations
+
+ fs/nfs/callback.h                     |  4 +-
+ fs/nfs/callback_proc.c                |  4 +-
+ fs/nfs/callback_xdr.c                 |  6 +--
+ fs/nfs/fscache-index.c                |  6 ++-
+ fs/nfs/fscache.c                      | 18 ++++---
+ fs/nfs/fscache.h                      |  8 ++--
+ fs/nfs/inode.c                        | 54 ++++++++++-----------
+ fs/nfs/internal.h                     |  6 +--
+ fs/nfs/nfs2xdr.c                      | 33 ++++++-------
+ fs/nfs/nfs3xdr.c                      | 14 ++----
+ fs/nfs/nfs4xdr.c                      | 35 +++++++-------
+ fs/nfsd/netns.h                       |  6 +--
+ fs/nfsd/nfs3xdr.c                     | 20 ++++----
+ fs/nfsd/nfs4callback.c                |  7 ++-
+ fs/nfsd/nfs4layouts.c                 |  2 +-
+ fs/nfsd/nfs4proc.c                    |  2 +-
+ fs/nfsd/nfs4recover.c                 |  8 ++--
+ fs/nfsd/nfs4state.c                   | 68 +++++++++++++--------------
+ fs/nfsd/nfs4xdr.c                     |  4 +-
+ fs/nfsd/nfsctl.c                      |  6 +--
+ fs/nfsd/nfsd.h                        |  2 -
+ fs/nfsd/nfsfh.h                       |  4 +-
+ fs/nfsd/nfsproc.c                     |  6 +--
+ fs/nfsd/state.h                       | 10 ++--
+ fs/nfsd/vfs.c                         |  4 +-
+ fs/nfsd/vfs.h                         |  2 +-
+ fs/nfsd/xdr3.h                        |  2 +-
+ include/linux/nfs_fs_sb.h             |  2 +-
+ include/linux/nfs_xdr.h               | 14 +++---
+ include/linux/sunrpc/cache.h          | 42 +++++++++--------
+ include/linux/sunrpc/gss_api.h        |  4 +-
+ include/linux/sunrpc/gss_krb5.h       |  2 +-
+ net/sunrpc/auth_gss/gss_krb5_mech.c   | 12 +++--
+ net/sunrpc/auth_gss/gss_krb5_seal.c   |  8 ++--
+ net/sunrpc/auth_gss/gss_krb5_unseal.c |  6 +--
+ net/sunrpc/auth_gss/gss_krb5_wrap.c   | 16 +++----
+ net/sunrpc/auth_gss/gss_mech_switch.c |  2 +-
+ net/sunrpc/auth_gss/svcauth_gss.c     |  6 +--
+ net/sunrpc/cache.c                    | 18 +++----
+ net/sunrpc/svcauth_unix.c             | 10 ++--
+ 40 files changed, 243 insertions(+), 240 deletions(-)
+
 -- 
 2.20.0
 
