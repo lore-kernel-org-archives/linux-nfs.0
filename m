@@ -6,21 +6,21 @@ X-Spam-Status: No, score=-9.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
 	USER_AGENT_GIT autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0069EC17446
-	for <linux-nfs@archiver.kernel.org>; Mon, 11 Nov 2019 20:22:25 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 47B75C17441
+	for <linux-nfs@archiver.kernel.org>; Mon, 11 Nov 2019 20:22:29 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id CBC6C21655
-	for <linux-nfs@archiver.kernel.org>; Mon, 11 Nov 2019 20:22:24 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 27966222C1
+	for <linux-nfs@archiver.kernel.org>; Mon, 11 Nov 2019 20:22:29 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727647AbfKKUWB (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 11 Nov 2019 15:22:01 -0500
-Received: from mout.kundenserver.de ([217.72.192.74]:38207 "EHLO
+        id S1727865AbfKKUWY (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 11 Nov 2019 15:22:24 -0500
+Received: from mout.kundenserver.de ([217.72.192.74]:42093 "EHLO
         mout.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726954AbfKKUWA (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Nov 2019 15:22:00 -0500
+        with ESMTP id S1726951AbfKKUWB (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Nov 2019 15:22:01 -0500
 Received: from threadripper.lan ([149.172.19.189]) by mrelayeu.kundenserver.de
  (mreue108 [212.227.15.145]) with ESMTPA (Nemesis) id
- 1MMXcP-1iDyJd3NSx-00Jc5Q; Mon, 11 Nov 2019 21:16:46 +0100
+ 1MWRe1-1iNvX02Mbz-00Xvy8; Mon, 11 Nov 2019 21:16:49 +0100
 From:   Arnd Bergmann <arnd@arndb.de>
 To:     linux-nfs@vger.kernel.org,
         "J. Bruce Fields" <bfields@fieldses.org>,
@@ -29,320 +29,133 @@ To:     linux-nfs@vger.kernel.org,
         Anna Schumaker <anna.schumaker@netapp.com>
 Cc:     y2038@lists.linaro.org, linux-fsdevel@vger.kernel.org,
         linux-kernel@vger.kernel.org, Arnd Bergmann <arnd@arndb.de>
-Subject: [PATCH 02/19] nfs: use time64_t internally
-Date:   Mon, 11 Nov 2019 21:16:22 +0100
-Message-Id: <20191111201639.2240623-3-arnd@arndb.de>
+Subject: [PATCH 10/19] nfsd: handle nfs3 timestamps as unsigned
+Date:   Mon, 11 Nov 2019 21:16:30 +0100
+Message-Id: <20191111201639.2240623-11-arnd@arndb.de>
 X-Mailer: git-send-email 2.20.0
 In-Reply-To: <20191111201639.2240623-1-arnd@arndb.de>
 References: <20191111201639.2240623-1-arnd@arndb.de>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-Provags-ID: V03:K1:fAf2gAwX1eREIgqWnD/xnaA+lKEXHqO4cu9OJVKvRvoYHhZaQru
- CItU67QBzAi+i1+WixBdOxy2Ka0D7v+R0HRRUnJ+muD/WddljAq64Q1kKfp+a4Y0NzEl3Yg
- bCljuD7YpUhwXmX+7VjnKaPAfzBhWrzJiyPtdhzo9EntEcQdLQMpfNEMS4q2wUE2t6/nS6G
- 7WhVGcfTJGiE1r3b4kUfQ==
-X-UI-Out-Filterresults: notjunk:1;V03:K0:g35q0nZQPNM=:mAGIyZFY5uDS36gskSacpR
- dczgXgs3Joq2m8/9oheWXDzbxvITp8ajekY9Ty3zeNgKiItKjQDpzGPG6I87LBH7aPm6QmpNG
- iZ+LDEwDDhap0bwUoJLhMpRQQiSTUmv6Nyrulv/yJMGTYe1dXE2ggBl3ZxrxjJFNvSEsnDXJc
- y+KHreNqgCkFVs+qNAYuJa1+flqhDLV8mgp6kIEKv4bvbgMhRrVVfTKAQ6OHlOdfyUmvrUrSn
- 5vMMTrPd18ESzCpJH2OZoKFyNqV4cu85XSIzJgEikToynOInxrbvxMc8iHPywlYLpgU0finFt
- GI5OBgxJtFcwBZ8doTHNL4Bc2OYVhHvq1zF4SUyOqXGrGKNhZMuiZBpTyJNPb+r47YcbIbA7N
- oLc+3u4ppCAdi87e7ZvkdyYD1nX/8CaeqJqjKDLWWsp1okmTJC4m6r3ipcxTJDIEvp2NihlSu
- 21BOWmdPqADY9uYFku2NWul185SfIuxmaaRstnN/nPlp7FAp/+0+e6czvr6n6qKRHtTBwBMC8
- VVPBNKhD/qdymTiortmVptSTwuHUemFO0lz9x4Fn2lGDgMA5y+WI97YVDvFjhJ01Xyx1kAA5N
- b2nVUnfb+nZ/aDmatvEjtYSvzZ6OsVNPol/nCxhrLuuUM6aerDbG18GNLT26gSUEviWkLeDv0
- hgkwekllb2wJOhjyjBnWlBIKl7WeUa4npUAqemtUssZ1UrJo3ZSIBuG9bxFdoAw13+WfBIeOk
- vSeMI2Kbv3q6uoOc+l3P7hXsI1EnqqoMMpgWj6R2QuE7m0yimMpwOrA8s6lNQCytrvHMnHMlV
- KX64kuKEoPQ6EuHdJ3+XYWqUekxn5ryQBjRHZTcKpCUIZztkNSqRDVGbasm/vFXoF7T6vYAZl
- ezuA3nk5e96ckLpY2ZoQ==
+X-Provags-ID: V03:K1:rPopYro8ot3vLlYHqs08jMA1iOzd8VcnAKyD2rY2jki6oPrgMuC
+ NMGPjcrqJPo4F7Hv4mWpkXL7P7rZ0uqLZqthPPFHrqkaJCPF4kUxwpgsd0Q90ggeVevdXQ0
+ Qu4IxpZiHxBnIELSSTw4S9YFddZrgmJte3CIth/TX06xSZuEZvB80mQTjUBfIQHX+bIH0b4
+ FmP6G4mdZrSkaB2LDS/Fw==
+X-UI-Out-Filterresults: notjunk:1;V03:K0:eh3FrkVqo3Y=:1LVmj81qB3Y4wqPvxpklk1
+ L/pfT10ZZt30XKSVX63ABfJ99hxhIrRa/nBLh/2yvzZBOuQPzLBsY4uRVZ5/KkPOOj3sgVpgW
+ ReVeLk1YeDguLJIZLf1HTds0zbIqLz4a7Lqq6PgNKZlymipsDS6TNRAtqtqdiAwM8j/4BDaO4
+ qLitjwO1/pnuY2qY21fwSvkEQAiBQen1bSfCeM8nDhK0R0XAogya6RrCzf0L+VfhUcoPT5f6+
+ jI2gPjVDKDcDGex1Hq2xlIEtQDiIew1+mcbw938FihpHfB5w0ZAUvHSZ/WDcz8RZeKwmWxGWi
+ W19Ai7s47/FRuwTzwaBwpmS9p01jNRSOt0a+Y4idT+HFi2jEHOT+GZyqefAlwxIFk5uSP8SAN
+ VUw9/mMmFTub4ijxyxt5Xf8Cg3T+ESfC+FrA1ME79guspX4TwnfbzJvWGH1hfbw84nc3Ao00K
+ Hq97kdktbmiLmJFj+01RcEWRgVmyC/FXJRLmR4He6gymExyQM4f4Z5EBGYuZROt85gSnfrklz
+ Yj8gH6bc9uYnI+KRvv+R7K83zuQm6Xy3S47ihJR+LjJi+eJMiVeoOMkHHR5aSqPwFFnrJHo1e
+ tYrTDGgpW6PzfdZgrPEb1EZqM10yNixAZJrBoQen25mTbFIEqkWHJVXKS3XO/KHik36/dbUeG
+ T9Zz832RLTeNft4G3v8uhi0s2Fk+zKKmx+yRZnjKec4B7YobktNLiU+mqStfLXvrUqbGdOZgr
+ PFrjdwqU/B2Z9vA77eOzpdARrHb3FlkgtruZTKWqRBAt3EJG22H8uCgeFE4m1HvyxIlX+S7yd
+ fYkndMsUQJASnkzX03cGns6BHc9Zzr9ZVr7YJtptAmMQw6TU6ivKkR1SyXyHZUubu05VaYW7b
+ ERkM881HLqzHq4S9EZ7Q==
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-The timestamps for the cache are all in boottime seconds, so they
-don't overflow 32-bit values, but the use of time_t is deprecated
-because it generally does overflow when used with wall-clock time.
+The decode_time3 function behaves differently on 32-bit
+and 64-bit architectures: on the former, a 32-bit timestamp
+gets converted into an signed number and then into a timestamp
+between 1902 and 2038, while on the latter it is interpreted
+as unsigned in the range 1970-2106.
 
-There are multiple possible ways of avoiding it:
-
-- leave time_t, which is safe here, but forces others to
-  look into this code to determine that it is over and over.
-
-- use a more generic type, like 'int' or 'long', which is known
-  to be sufficient here but loses the documentation of referring
-  to timestamps
-
-- use ktime_t everywhere, and convert into seconds in the few
-  places where we want realtime-seconds. The conversion is
-  sometimes expensive, but not more so than the conversion we
-  do today.
-
-- use time64_t to clarify that this code is safe. Nothing would
-  change for 64-bit architectures, but it is slightly less
-  efficient on 32-bit architectures.
-
-Without a clear winner of the three approaches above, this picks
-the last one, favouring readability over a small performance
-loss on 32-bit architectures.
+Change all the remaining 'timespec' in nfsd to 'timespec64'
+to make the behavior the same, and use the current interpretation
+of the dominant 64-bit architectures.
 
 Signed-off-by: Arnd Bergmann <arnd@arndb.de>
 ---
- include/linux/sunrpc/cache.h      | 42 +++++++++++++++++--------------
- net/sunrpc/auth_gss/svcauth_gss.c |  2 +-
- net/sunrpc/cache.c                | 18 ++++++-------
- net/sunrpc/svcauth_unix.c         | 10 ++++----
- 4 files changed, 38 insertions(+), 34 deletions(-)
+ fs/nfsd/nfs3xdr.c | 20 ++++++++------------
+ fs/nfsd/nfsfh.h   |  4 ++--
+ 2 files changed, 10 insertions(+), 14 deletions(-)
 
-diff --git a/include/linux/sunrpc/cache.h b/include/linux/sunrpc/cache.h
-index f8603724fbee..fa46de3a8f2b 100644
---- a/include/linux/sunrpc/cache.h
-+++ b/include/linux/sunrpc/cache.h
-@@ -45,8 +45,8 @@
+diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
+index 86e5658651f1..0ace5ae0775c 100644
+--- a/fs/nfsd/nfs3xdr.c
++++ b/fs/nfsd/nfs3xdr.c
+@@ -32,14 +32,14 @@ static u32	nfs3_ftypes[] = {
+  * XDR functions for basic NFS types
   */
- struct cache_head {
- 	struct hlist_node	cache_list;
--	time_t		expiry_time;	/* After time time, don't use the data */
--	time_t		last_refresh;   /* If CACHE_PENDING, this is when upcall was
-+	time64_t	expiry_time;	/* After time time, don't use the data */
-+	time64_t	last_refresh;   /* If CACHE_PENDING, this is when upcall was
- 					 * sent, else this is when update was
- 					 * received, though it is alway set to
- 					 * be *after* ->flush_time.
-@@ -95,22 +95,22 @@ struct cache_detail {
- 	/* fields below this comment are for internal use
- 	 * and should not be touched by cache owners
- 	 */
--	time_t			flush_time;		/* flush all cache items with
-+	time64_t		flush_time;		/* flush all cache items with
- 							 * last_refresh at or earlier
- 							 * than this.  last_refresh
- 							 * is never set at or earlier
- 							 * than this.
- 							 */
- 	struct list_head	others;
--	time_t			nextcheck;
-+	time64_t		nextcheck;
- 	int			entries;
- 
- 	/* fields for communication over channel */
- 	struct list_head	queue;
- 
- 	atomic_t		writers;		/* how many time is /channel open */
--	time_t			last_close;		/* if no writers, when did last close */
--	time_t			last_warn;		/* when we last warned about no writers */
-+	time64_t		last_close;		/* if no writers, when did last close */
-+	time64_t		last_warn;		/* when we last warned about no writers */
- 
- 	union {
- 		struct proc_dir_entry	*procfs;
-@@ -147,18 +147,22 @@ struct cache_deferred_req {
-  * timestamps kept in the cache are expressed in seconds
-  * since boot.  This is the best for measuring differences in
-  * real time.
-+ * This reimplemnts ktime_get_boottime_seconds() in a slightly
-+ * faster but less accurate way. When we end up converting
-+ * back to wallclock (CLOCK_REALTIME), that error often
-+ * cancels out during the reverse operation.
-  */
--static inline time_t seconds_since_boot(void)
-+static inline time64_t seconds_since_boot(void)
+ static __be32 *
+-encode_time3(__be32 *p, struct timespec *time)
++encode_time3(__be32 *p, struct timespec64 *time)
  {
--	struct timespec boot;
--	getboottime(&boot);
--	return get_seconds() - boot.tv_sec;
-+	struct timespec64 boot;
-+	getboottime64(&boot);
-+	return ktime_get_seconds() - boot.tv_sec;
+ 	*p++ = htonl((u32) time->tv_sec); *p++ = htonl(time->tv_nsec);
+ 	return p;
  }
  
--static inline time_t convert_to_wallclock(time_t sinceboot)
-+static inline time64_t convert_to_wallclock(time64_t sinceboot)
+ static __be32 *
+-decode_time3(__be32 *p, struct timespec *time)
++decode_time3(__be32 *p, struct timespec64 *time)
  {
--	struct timespec boot;
--	getboottime(&boot);
-+	struct timespec64 boot;
-+	getboottime64(&boot);
- 	return boot.tv_sec + sinceboot;
- }
- 
-@@ -273,7 +277,7 @@ static inline int get_uint(char **bpp, unsigned int *anint)
- 	return 0;
- }
- 
--static inline int get_time(char **bpp, time_t *time)
-+static inline int get_time(char **bpp, time64_t *time)
+ 	time->tv_sec = ntohl(*p++);
+ 	time->tv_nsec = ntohl(*p++);
+@@ -167,7 +167,6 @@ encode_fattr3(struct svc_rqst *rqstp, __be32 *p, struct svc_fh *fhp,
+ 	      struct kstat *stat)
  {
- 	char buf[50];
- 	long long ll;
-@@ -287,20 +291,20 @@ static inline int get_time(char **bpp, time_t *time)
- 	if (kstrtoll(buf, 0, &ll))
- 		return -EINVAL;
+ 	struct user_namespace *userns = nfsd_user_namespace(rqstp);
+-	struct timespec ts;
+ 	*p++ = htonl(nfs3_ftypes[(stat->mode & S_IFMT) >> 12]);
+ 	*p++ = htonl((u32) (stat->mode & S_IALLUGO));
+ 	*p++ = htonl((u32) stat->nlink);
+@@ -183,12 +182,9 @@ encode_fattr3(struct svc_rqst *rqstp, __be32 *p, struct svc_fh *fhp,
+ 	*p++ = htonl((u32) MINOR(stat->rdev));
+ 	p = encode_fsid(p, fhp);
+ 	p = xdr_encode_hyper(p, stat->ino);
+-	ts = timespec64_to_timespec(stat->atime);
+-	p = encode_time3(p, &ts);
+-	ts = timespec64_to_timespec(stat->mtime);
+-	p = encode_time3(p, &ts);
+-	ts = timespec64_to_timespec(stat->ctime);
+-	p = encode_time3(p, &ts);
++	p = encode_time3(p, &stat->atime);
++	p = encode_time3(p, &stat->mtime);
++	p = encode_time3(p, &stat->ctime);
  
--	*time = (time_t)ll;
-+	*time = ll;
- 	return 0;
+ 	return p;
  }
+@@ -277,8 +273,8 @@ void fill_pre_wcc(struct svc_fh *fhp)
+ 		stat.size  = inode->i_size;
+ 	}
  
--static inline time_t get_expiry(char **bpp)
-+static inline time64_t get_expiry(char **bpp)
- {
--	time_t rv;
--	struct timespec boot;
-+	time64_t rv;
-+	struct timespec64 boot;
+-	fhp->fh_pre_mtime = timespec64_to_timespec(stat.mtime);
+-	fhp->fh_pre_ctime = timespec64_to_timespec(stat.ctime);
++	fhp->fh_pre_mtime = stat.mtime;
++	fhp->fh_pre_ctime = stat.ctime;
+ 	fhp->fh_pre_size  = stat.size;
+ 	fhp->fh_pre_change = nfsd4_change_attribute(&stat, inode);
+ 	fhp->fh_pre_saved = true;
+@@ -330,7 +326,7 @@ nfs3svc_decode_sattrargs(struct svc_rqst *rqstp, __be32 *p)
+ 	p = decode_sattr3(p, &args->attrs, nfsd_user_namespace(rqstp));
  
- 	if (get_time(bpp, &rv))
- 		return 0;
- 	if (rv < 0)
- 		return 0;
--	getboottime(&boot);
-+	getboottime64(&boot);
- 	return rv - boot.tv_sec;
- }
+ 	if ((args->check_guard = ntohl(*p++)) != 0) { 
+-		struct timespec time; 
++		struct timespec64 time;
+ 		p = decode_time3(p, &time);
+ 		args->guardtime = time.tv_sec;
+ 	}
+diff --git a/fs/nfsd/nfsfh.h b/fs/nfsd/nfsfh.h
+index 755e256a9103..495540a248a1 100644
+--- a/fs/nfsd/nfsfh.h
++++ b/fs/nfsd/nfsfh.h
+@@ -42,8 +42,8 @@ typedef struct svc_fh {
  
-diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
-index 30ed5585a42a..6268a2c7229d 100644
---- a/net/sunrpc/auth_gss/svcauth_gss.c
-+++ b/net/sunrpc/auth_gss/svcauth_gss.c
-@@ -200,7 +200,7 @@ static int rsi_parse(struct cache_detail *cd,
- 	char *ep;
- 	int len;
- 	struct rsi rsii, *rsip = NULL;
--	time_t expiry;
-+	time64_t expiry;
- 	int status = -EINVAL;
- 
- 	memset(&rsii, 0, sizeof(rsii));
-diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
-index a349094f6fb7..18d73d1f6734 100644
---- a/net/sunrpc/cache.c
-+++ b/net/sunrpc/cache.c
-@@ -42,7 +42,7 @@ static bool cache_listeners_exist(struct cache_detail *detail);
- 
- static void cache_init(struct cache_head *h, struct cache_detail *detail)
- {
--	time_t now = seconds_since_boot();
-+	time64_t now = seconds_since_boot();
- 	INIT_HLIST_NODE(&h->cache_list);
- 	h->flags = 0;
- 	kref_init(&h->ref);
-@@ -54,7 +54,7 @@ static void cache_init(struct cache_head *h, struct cache_detail *detail)
- }
- 
- static inline int cache_is_valid(struct cache_head *h);
--static void cache_fresh_locked(struct cache_head *head, time_t expiry,
-+static void cache_fresh_locked(struct cache_head *head, time64_t expiry,
- 				struct cache_detail *detail);
- static void cache_fresh_unlocked(struct cache_head *head,
- 				struct cache_detail *detail);
-@@ -145,10 +145,10 @@ EXPORT_SYMBOL_GPL(sunrpc_cache_lookup_rcu);
- 
- static void cache_dequeue(struct cache_detail *detail, struct cache_head *ch);
- 
--static void cache_fresh_locked(struct cache_head *head, time_t expiry,
-+static void cache_fresh_locked(struct cache_head *head, time64_t expiry,
- 			       struct cache_detail *detail)
- {
--	time_t now = seconds_since_boot();
-+	time64_t now = seconds_since_boot();
- 	if (now <= detail->flush_time)
- 		/* ensure it isn't immediately treated as expired */
- 		now = detail->flush_time + 1;
-@@ -280,7 +280,7 @@ int cache_check(struct cache_detail *detail,
- 		    struct cache_head *h, struct cache_req *rqstp)
- {
- 	int rv;
--	long refresh_age, age;
-+	time64_t refresh_age, age;
- 
- 	/* First decide return status as best we can */
- 	rv = cache_is_valid(h);
-@@ -294,7 +294,7 @@ int cache_check(struct cache_detail *detail,
- 			rv = -ENOENT;
- 	} else if (rv == -EAGAIN ||
- 		   (h->expiry_time != 0 && age > refresh_age/2)) {
--		dprintk("RPC:       Want update, refage=%ld, age=%ld\n",
-+		dprintk("RPC:       Want update, refage=%lld, age=%lld\n",
- 				refresh_age, age);
- 		if (!test_and_set_bit(CACHE_PENDING, &h->flags)) {
- 			switch (cache_make_upcall(detail, h)) {
-@@ -1410,7 +1410,7 @@ static int c_show(struct seq_file *m, void *p)
- 		return cd->cache_show(m, cd, NULL);
- 
- 	ifdebug(CACHE)
--		seq_printf(m, "# expiry=%ld refcnt=%d flags=%lx\n",
-+		seq_printf(m, "# expiry=%lld refcnt=%d flags=%lx\n",
- 			   convert_to_wallclock(cp->expiry_time),
- 			   kref_read(&cp->ref), cp->flags);
- 	cache_get(cp);
-@@ -1483,7 +1483,7 @@ static ssize_t read_flush(struct file *file, char __user *buf,
- 	char tbuf[22];
- 	size_t len;
- 
--	len = snprintf(tbuf, sizeof(tbuf), "%lu\n",
-+	len = snprintf(tbuf, sizeof(tbuf), "%llu\n",
- 			convert_to_wallclock(cd->flush_time));
- 	return simple_read_from_buffer(buf, count, ppos, tbuf, len);
- }
-@@ -1494,7 +1494,7 @@ static ssize_t write_flush(struct file *file, const char __user *buf,
- {
- 	char tbuf[20];
- 	char *ep;
--	time_t now;
-+	time64_t now;
- 
- 	if (*ppos || count > sizeof(tbuf)-1)
- 		return -EINVAL;
-diff --git a/net/sunrpc/svcauth_unix.c b/net/sunrpc/svcauth_unix.c
-index 5c04ba7d456b..04aa80a2d752 100644
---- a/net/sunrpc/svcauth_unix.c
-+++ b/net/sunrpc/svcauth_unix.c
-@@ -166,7 +166,7 @@ static void ip_map_request(struct cache_detail *cd,
- }
- 
- static struct ip_map *__ip_map_lookup(struct cache_detail *cd, char *class, struct in6_addr *addr);
--static int __ip_map_update(struct cache_detail *cd, struct ip_map *ipm, struct unix_domain *udom, time_t expiry);
-+static int __ip_map_update(struct cache_detail *cd, struct ip_map *ipm, struct unix_domain *udom, time64_t expiry);
- 
- static int ip_map_parse(struct cache_detail *cd,
- 			  char *mesg, int mlen)
-@@ -187,7 +187,7 @@ static int ip_map_parse(struct cache_detail *cd,
- 
- 	struct ip_map *ipmp;
- 	struct auth_domain *dom;
--	time_t expiry;
-+	time64_t expiry;
- 
- 	if (mesg[mlen-1] != '\n')
- 		return -EINVAL;
-@@ -308,7 +308,7 @@ static inline struct ip_map *ip_map_lookup(struct net *net, char *class,
- }
- 
- static int __ip_map_update(struct cache_detail *cd, struct ip_map *ipm,
--		struct unix_domain *udom, time_t expiry)
-+		struct unix_domain *udom, time64_t expiry)
- {
- 	struct ip_map ip;
- 	struct cache_head *ch;
-@@ -328,7 +328,7 @@ static int __ip_map_update(struct cache_detail *cd, struct ip_map *ipm,
- }
- 
- static inline int ip_map_update(struct net *net, struct ip_map *ipm,
--		struct unix_domain *udom, time_t expiry)
-+		struct unix_domain *udom, time64_t expiry)
- {
- 	struct sunrpc_net *sn;
- 
-@@ -491,7 +491,7 @@ static int unix_gid_parse(struct cache_detail *cd,
- 	int rv;
- 	int i;
- 	int err;
--	time_t expiry;
-+	time64_t expiry;
- 	struct unix_gid ug, *ugp;
- 
- 	if (mesg[mlen - 1] != '\n')
+ 	/* Pre-op attributes saved during fh_lock */
+ 	__u64			fh_pre_size;	/* size before operation */
+-	struct timespec		fh_pre_mtime;	/* mtime before oper */
+-	struct timespec		fh_pre_ctime;	/* ctime before oper */
++	struct timespec64	fh_pre_mtime;	/* mtime before oper */
++	struct timespec64	fh_pre_ctime;	/* ctime before oper */
+ 	/*
+ 	 * pre-op nfsv4 change attr: note must check IS_I_VERSION(inode)
+ 	 *  to find out if it is valid.
 -- 
 2.20.0
 
