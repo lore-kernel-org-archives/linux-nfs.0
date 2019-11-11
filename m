@@ -6,21 +6,21 @@ X-Spam-Status: No, score=-9.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
 	USER_AGENT_GIT autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 618ACC17441
-	for <linux-nfs@archiver.kernel.org>; Mon, 11 Nov 2019 20:17:46 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9A019C17445
+	for <linux-nfs@archiver.kernel.org>; Mon, 11 Nov 2019 20:17:47 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 3FF4D206BA
-	for <linux-nfs@archiver.kernel.org>; Mon, 11 Nov 2019 20:17:46 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 701442067B
+	for <linux-nfs@archiver.kernel.org>; Mon, 11 Nov 2019 20:17:47 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727764AbfKKURl (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 11 Nov 2019 15:17:41 -0500
-Received: from mout.kundenserver.de ([212.227.17.13]:42367 "EHLO
+        id S1727185AbfKKURC (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 11 Nov 2019 15:17:02 -0500
+Received: from mout.kundenserver.de ([212.227.17.10]:47321 "EHLO
         mout.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727059AbfKKURD (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Nov 2019 15:17:03 -0500
+        with ESMTP id S1727049AbfKKURC (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Nov 2019 15:17:02 -0500
 Received: from threadripper.lan ([149.172.19.189]) by mrelayeu.kundenserver.de
  (mreue108 [212.227.15.145]) with ESMTPA (Nemesis) id
- 1MiJdI-1i0zpq2YCs-00fOE5; Mon, 11 Nov 2019 21:16:52 +0100
+ 1MDhth-1ieTNm3gZT-00AmNk; Mon, 11 Nov 2019 21:16:50 +0100
 From:   Arnd Bergmann <arnd@arndb.de>
 To:     linux-nfs@vger.kernel.org,
         "J. Bruce Fields" <bfields@fieldses.org>,
@@ -29,69 +29,67 @@ To:     linux-nfs@vger.kernel.org,
         Anna Schumaker <anna.schumaker@netapp.com>
 Cc:     y2038@lists.linaro.org, linux-fsdevel@vger.kernel.org,
         linux-kernel@vger.kernel.org, Arnd Bergmann <arnd@arndb.de>
-Subject: [PATCH 19/19] nfsd: remove nfs4_reset_lease() declarations
-Date:   Mon, 11 Nov 2019 21:16:39 +0100
-Message-Id: <20191111201639.2240623-20-arnd@arndb.de>
+Subject: [PATCH 11/19] nfsd: use timespec64 in encode_time_delta
+Date:   Mon, 11 Nov 2019 21:16:31 +0100
+Message-Id: <20191111201639.2240623-12-arnd@arndb.de>
 X-Mailer: git-send-email 2.20.0
 In-Reply-To: <20191111201639.2240623-1-arnd@arndb.de>
 References: <20191111201639.2240623-1-arnd@arndb.de>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-Provags-ID: V03:K1:iafSuqH4Bp5e/AWz4sqAojsBIoYJnl02pkxascDjDPERrJsK5XY
- LuEVM2fqvh7m8JQnJKf732b2ymBeNnsygXViheIEE3f6FrCguecj23HqhwZRfpUdu80LURB
- gckupp9jrTa2thabVPppYnnMb8tsb6lU4wvWKhYMJg5DALwIuE3EC/1jiQkFqODqYrE958R
- YtJs0Lv6+joejC+leu3ZQ==
-X-UI-Out-Filterresults: notjunk:1;V03:K0:xGriYet1jFg=:/7jxH/nP273V1JjwioFy5f
- weSwzG82+77qaVH+KI7EcZrjwsUGhIVamdtpqMdnbCs36cuBxpsagITBnkyJngB6ZGKtZ/1kk
- lXrvwbV4AXeKGg1GnNOXhTM0GP4rP7rfBY7mEfeqiu9upppe0mKPZTlIVcip841Qcqx3Ma0nn
- vePqUtm2Y7a2NU1NHIeBQemiMDkQfV/Z+tCobAE2xfIsTLpi99QRU0FZnGbg7fldgd2XWy8V0
- JpwSqlZKos7f1wWwb7VgMYAHaLisxIzb3JX81eFVmTLbX0uNKMD0voZNZ+cWheh3i+HJaqbsF
- tKIOQ0ll6Y+Q6hndX7mZWCQdVFUeLAMDBSBgoLUs1nbH5a0xdOX7a6gz6ItLyU+BqP4KXH2DV
- rDFIpKRqnZqWvvYTdVqLx23v++HLYTnOu8E7My6GxofEUC3ePXcYWIRR8hp65uR15AdFRV/MS
- CLPyY0OiYkmJh7SU8TaQNza5iokt60ZZfr/rVVCv827HunPlTwtGV/AuAxLsMV2WYFGAg48P7
- Qb69Dlyva9zd4MpPR06pUmR5em8CsMZRDsmynkKANk1Xu6ZpJeQ/388Shfw8bo9PhTVlWZ2n7
- QAJx6wb8JPs7O0Wr12Hw2Ia0MvWpv1iA2vrcuoqlQ83cQLkywWKHRy0Lbrer7uG5YE+NuZByH
- SbTt0S3526fDNdnV8L9Yy2AAdw33Uz61+oC37Rx68D2Oc9JVDqrXcE66K1MIx/I5q2aVTcsPv
- c3SQzwHmdgY8Ub3y3w4m/EicJHOWEJZtHHr/RQiDBOa7uxazVPKTyk+onqlmKdEX+pFXM1jdX
- i754BZt1xhazqH80w7YY2OHBa7aaZ4CMa4ltQuuH/DfirTbR/AAZy3V6/VagRnhk31J7oFSZ4
- 7GX3Mi2TvHQhTkiGcQZw==
+X-Provags-ID: V03:K1:zBEHU7LOQ8BR+RvLscuFxq5Q8uP7KpIKmRblB/0JRwtkA5oax2n
+ vTwmcYsK8Belkc2C9pPRkpxv9FO+mMRz4UGcaVU1rtmz641TyQdeWBICy8LAW2WMHOUZay2
+ GwlOYDJzKFtZm7mAL5WBUfqjdYDxR55pYrhyv4E8Hd0fs6UiP21IceExVdpjEE44XEV02An
+ hNZoR15EcnN6SPGGexKFw==
+X-UI-Out-Filterresults: notjunk:1;V03:K0:+4sYNMt7F9Q=:M3AyrELI81yH0KXCinQXj1
+ izGRACW/Q+P5BQUA/EHio1Y0Qx5vawQ4Ti0Hsahd/my+mlXpfH7XisKxbIDUbEW3cpMMT3wuc
+ 7tTX1zrpkLfYXAyTVdYFKuYz02QN3fgFtfNsOLzKqxB3JEfsy4V/ihvWinx+mascGq7FyuxkP
+ IqfE2VSPFUJ/dIgVlR4tYeieXQ9E0UMu8iVrGAge/rR2HJbQbJOPBXPsKTkdwEoFpRjI1ZydA
+ o+DllKKIYDaxAsz86d0VtZgjDXEyfnkbCbMDDiATRR1ZNBrwv/d4GpcT6OLXbZtzi8wcMv2rh
+ TKpvekjvUJ4OlF2HrwoRxcCV+JF4VPYz7pjgZKvxHTtnbMnrS1z83tPJGjmwIE9/eI+Xfp4Ca
+ sM9oesbDfuyzqVY0VH65JtBvdlKiHJQ0mIW0LRgTZWymcMoJqfdcOghXaI1iLJYHX1/ZODNsW
+ P/B26nui60xr3mIUHJHOMBrGAEnsUuFrGbZYek+pN7bzUi1zX+EDY8yzl4ix6eB9ecU3p/Y1J
+ Zokb7/hFED6sYkosupilI7GHPO36mX6G5EZrCWu18DvQcon9qm9EH+khNLIuiP6XpNdHVs4xz
+ aSKkEMHpg8YDAt2iCuPZIOIqfNQ7Mv0oThau/CpKEeKAH3QGkVLsZEyooQD06S4W731YGxbp/
+ LJWZnI25MxEH0SUqa29hNl4Oa8BbR2jbgSmrxqIZe05b/QUbqH/ynTQN0dEmGDFNQ5bHdxZ38
+ Iq0tOOGp5a7VlL0A7d/A+Jf+3m5+V3tUxAmkhLv8S2jJ9bGQSVDoviyVUJozmhExYi7KLiE+b
+ QHzMENIaZV7xDkQkCQ6q1gXSYZlV5WjW4Il+PjgzDTtt96dhvnXyd1dSGylKI+95DkpmJ1C1B
+ r1KCi0NYqNlg8KpXnXXA==
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-The function was removed a long time ago, but the declaration
-and a dummy implementation are still there, referencing the
-deprecated time_t type.
+The values in encode_time_delta are always small and don't
+overflow the range of 'struct timespec', so changing it has
+no effect.
 
-Remove both.
+Change it to timespec64 as a prerequisite for removing the
+timespec definition later.
 
-Fixes: f958a1320ff7 ("nfsd4: remove unnecessary lease-setting function")
 Signed-off-by: Arnd Bergmann <arnd@arndb.de>
 ---
- fs/nfsd/nfsd.h | 2 --
- 1 file changed, 2 deletions(-)
+ fs/nfsd/nfs4xdr.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
-index af2947551e9c..e74979b5849e 100644
---- a/fs/nfsd/nfsd.h
-+++ b/fs/nfsd/nfsd.h
-@@ -142,7 +142,6 @@ int nfs4_state_start(void);
- int nfs4_state_start_net(struct net *net);
- void nfs4_state_shutdown(void);
- void nfs4_state_shutdown_net(struct net *net);
--void nfs4_reset_lease(time_t leasetime);
- int nfs4_reset_recoverydir(char *recdir);
- char * nfs4_recoverydir(void);
- bool nfsd4_spo_must_allow(struct svc_rqst *rqstp);
-@@ -153,7 +152,6 @@ static inline int nfs4_state_start(void) { return 0; }
- static inline int nfs4_state_start_net(struct net *net) { return 0; }
- static inline void nfs4_state_shutdown(void) { }
- static inline void nfs4_state_shutdown_net(struct net *net) { }
--static inline void nfs4_reset_lease(time_t leasetime) { }
- static inline int nfs4_reset_recoverydir(char *recdir) { return 0; }
- static inline char * nfs4_recoverydir(void) {return NULL; }
- static inline bool nfsd4_spo_must_allow(struct svc_rqst *rqstp)
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 533d0fc3c96b..d8234d9e89fe 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -2024,11 +2024,11 @@ static __be32 *encode_change(__be32 *p, struct kstat *stat, struct inode *inode,
+  */
+ static __be32 *encode_time_delta(__be32 *p, struct inode *inode)
+ {
+-	struct timespec ts;
++	struct timespec64 ts;
+ 	u32 ns;
+ 
+ 	ns = max_t(u32, NSEC_PER_SEC/HZ, inode->i_sb->s_time_gran);
+-	ts = ns_to_timespec(ns);
++	ts = ns_to_timespec64(ns);
+ 
+ 	p = xdr_encode_hyper(p, ts.tv_sec);
+ 	*p++ = cpu_to_be32(ts.tv_nsec);
 -- 
 2.20.0
 
