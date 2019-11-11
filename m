@@ -1,173 +1,111 @@
-Return-Path: <SRS0=c9+N=ZA=vger.kernel.org=linux-nfs-owner@kernel.org>
+Return-Path: <SRS0=WfzW=ZD=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.7 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-0.9 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,
+	SPF_PASS autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D5A4DFC6196
-	for <linux-nfs@archiver.kernel.org>; Fri,  8 Nov 2019 21:32:08 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id F37E5C43331
+	for <linux-nfs@archiver.kernel.org>; Mon, 11 Nov 2019 15:46:18 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id A82742087E
-	for <linux-nfs@archiver.kernel.org>; Fri,  8 Nov 2019 21:32:08 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id B8B0D20679
+	for <linux-nfs@archiver.kernel.org>; Mon, 11 Nov 2019 15:46:18 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="j3VWAyjr"
+	dkim=pass (2048-bit key) header.d=umich.edu header.i=@umich.edu header.b="fVPtPEvv"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1730525AbfKHVcI (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 8 Nov 2019 16:32:08 -0500
-Received: from mail-yb1-f195.google.com ([209.85.219.195]:44769 "EHLO
-        mail-yb1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726900AbfKHVcH (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Nov 2019 16:32:07 -0500
-Received: by mail-yb1-f195.google.com with SMTP id g38so3409411ybe.11
-        for <linux-nfs@vger.kernel.org>; Fri, 08 Nov 2019 13:32:07 -0800 (PST)
+        id S1726893AbfKKPqS (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 11 Nov 2019 10:46:18 -0500
+Received: from mail-vk1-f173.google.com ([209.85.221.173]:44438 "EHLO
+        mail-vk1-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726877AbfKKPqR (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Nov 2019 10:46:17 -0500
+Received: by mail-vk1-f173.google.com with SMTP id o198so3606579vko.11
+        for <linux-nfs@vger.kernel.org>; Mon, 11 Nov 2019 07:46:17 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=from:to:cc:subject:date:message-id;
-        bh=kY/SzJUCIsYRSiw736CwKmHg2w2sLucgkoqiohoP+mw=;
-        b=j3VWAyjrk2Xivm9bbbHp8k+e36eu5asrCex9MnOcfmr/MAboL1Di7R283Iz18s25MV
-         HQ20cwUMg/f2IHJqb62gGw57azlHNZM2XpY1Cl0PWoJxfSArzKILOVOMbsYrP0N41Bi+
-         kHoS7LRyvxSHgcuTQShDJZ50iXowsx3LqBABoFuWd66i+u+Ksa4aAEvYIiQXDxdOnj7c
-         sRp3JgAUjuzn4psTnud1t0EC2rF5S1E2o+5GU40ELnHQWOE4nlCuoGGOp11b4myqRDsw
-         i3E3N8NcT6ndy1S2dL2Ckora+jMaHatxvMWjyfeqqCZVm1IJl27hND6taDEaihbHOKux
-         xkVQ==
+        d=umich.edu; s=google-2016-06-03;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc:content-transfer-encoding;
+        bh=IjxyUeJmfia7EAT5YbQDeM+fqVaTpibwfUgtYJe3GVY=;
+        b=fVPtPEvvV8JxQkoZwbuzLlzp54TRMEzzh1y/HzKVricTjkW+03lOOkK5v5444gkH9Y
+         XDUGUvhXCrIc8rq+chwcTav+kLVILFDRMpA7EWnEZ0/gx0x7fqn8Z+STD9Zcjl1CT64t
+         HjYiR9lsKQxC722M9APtvB8Nv5s1v30MbvGVBd0Vluu6tG51/9xy82yRXxPyBhySEfcx
+         oal5QJ9+EojMYZ3RJNdqNNp18NVLHK4xrudEvmN13qECxTkOKCRqeB09AsGuhjy6itL7
+         UvsHyU/FTBecVkJZAX1cgQcSJi4jWPaqS0PjOoisBEFeMvVtdOq6bhFxPg6iN87twUrA
+         qQPw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id;
-        bh=kY/SzJUCIsYRSiw736CwKmHg2w2sLucgkoqiohoP+mw=;
-        b=HS9pFwK8no/yZ/8dZOGe2JYKK9FuQRVtV11yP0LArKq7varmngSJohihYq8QlhM/yL
-         FaWHogBVVfuRKT9wV/AxmGukmcEV79lfY4HdYArIl0UITzniG6bOsyWrrqC9kcpkc5Xt
-         XHN7YfZwBRNuFPveRnNoM10/TsITroLNUXbX94AWETR/KJVfOpVjiVKn/U4yZ0BL+szG
-         YBsGntCxptbZn5RCA4oJZ3/eTCym1r6s71Syswb2YQD8a+MzERIvSTvsX4sP/AQZ6dNr
-         7e3Rxh+P0pit54lixYhL1OsoUowj19QDYRiGkvM5iyUKdASwvrwuRkYBm0oW1YcvLKUl
-         HPOw==
-X-Gm-Message-State: APjAAAUs9eMBy3LkiXtLHvzwXUaQ1AxM5tY/q3zxKYOgHZ7GCQhsLwbu
-        9owC4z5c89BG16BCDAHXOTtr6JfK
-X-Google-Smtp-Source: APXvYqx4TXuaigwkdx0/QJgqJlJBDq4HjEZDCJSs5K1BbuAxc3NNEdy5bjJ9C593zv0HkFVdOuMM7A==
-X-Received: by 2002:a25:7383:: with SMTP id o125mr11163048ybc.8.1573248726590;
-        Fri, 08 Nov 2019 13:32:06 -0800 (PST)
-Received: from Olgas-MBP-201.attlocal.net (172-10-226-31.lightspeed.livnmi.sbcglobal.net. [172.10.226.31])
-        by smtp.gmail.com with ESMTPSA id d4sm3226748ywl.0.2019.11.08.13.32.05
-        (version=TLS1 cipher=AES128-SHA bits=128/128);
-        Fri, 08 Nov 2019 13:32:05 -0800 (PST)
-From:   Olga Kornievskaia <olga.kornievskaia@gmail.com>
-To:     trond.myklebust@hammerspace.com, anna.schumaker@netapp.com
-Cc:     linux-nfs@vger.kernel.org
-Subject: [RFC PATCH] NFS: allow deprecation of NFS UDP protocol
-Date:   Fri,  8 Nov 2019 16:32:01 -0500
-Message-Id: <20191108213201.66194-1-olga.kornievskaia@gmail.com>
-X-Mailer: git-send-email 2.10.1 (Apple Git-78)
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc:content-transfer-encoding;
+        bh=IjxyUeJmfia7EAT5YbQDeM+fqVaTpibwfUgtYJe3GVY=;
+        b=R5aYf+HSw8ll4+1yZko0T3DLnIt/HUyN4io7bjsI5Odi+ydbyoCM42N/fPtjzbfQ63
+         1m8gUh0XmTqafS72N23MShcfmqh2FEV63Cjo2WiLkn7zGbstnPsBeJzAD/0u1X1c0Njs
+         X9RO+TrmZu2djqYZCV7ui4YXwG4VMlw0IbjZqi1azObFaDSAa0ARaNhJ4fS0E1TxN7Yj
+         2baHUESFKha3mpgpDbsX3kIsg4d+JFEtm+9CPp2jkxUPuFwSj2h3o2qkGqC4ooJ5I1jy
+         KgiiD64Wl9MjB5ET5M4M5iLJxRkv8l7aIuYuJhWLBqfe/khryHNYPvCt+NXg0zwi8pd7
+         hqjQ==
+X-Gm-Message-State: APjAAAVz+Pa0oiIRz3jKE+MuJhqtaz+4g7xW/X5y6UQYYG2HeB4Xto6L
+        9SeLTTy7OtXg/dm/1FpW8fYME/7zg8cki4kakXMnUGkj
+X-Google-Smtp-Source: APXvYqz1rOe6pFqgfCFIsLE4i9/RcQZsyTTXF96oLiCa5O8apyD9O8P3g6Jj4O6R9ZI/ED31vU9miQoeSITX4a5+4j0=
+X-Received: by 2002:ac5:cc71:: with SMTP id w17mr18651650vkm.58.1573487176516;
+ Mon, 11 Nov 2019 07:46:16 -0800 (PST)
+MIME-Version: 1.0
+References: <3447df77-1b2f-6d36-0516-3ae7267ab509@genome.arizona.edu>
+ <20191023171523.GA18802@fieldses.org> <b6248a82-1f1a-7329-5ee0-6e026f6db697@genome.arizona.edu>
+ <YTBPR01MB2845B12E9C59F837FE35F40DDD650@YTBPR01MB2845.CANPRD01.PROD.OUTLOOK.COM>
+ <82ee292f-f126-9e9f-d023-deb72d1a3971@genome.arizona.edu> <1079a074-7580-e257-8b52-6e48f8822176@genome.arizona.edu>
+ <CAN-5tyExtO_HRGYrqq7UTObrHNsTp7UqwW=Kg4CFM3q-OnaUiQ@mail.gmail.com> <49472814-8dcd-4594-d48e-be4c1d9a8d8f@genome.arizona.edu>
+In-Reply-To: <49472814-8dcd-4594-d48e-be4c1d9a8d8f@genome.arizona.edu>
+From:   Olga Kornievskaia <aglo@umich.edu>
+Date:   Mon, 11 Nov 2019 10:46:05 -0500
+Message-ID: <CAN-5tyGD3hNcG7=+xdB4Bs1OCCUoLzZ5ocsJusuxd3n3+x=7gw@mail.gmail.com>
+Subject: Re: NFS hangs on one interface
+To:     Chandler <admin@genome.arizona.edu>
+Cc:     "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Olga Kornievskaia <kolga@netapp.com>
+Hi Chandler,
 
-Add a kernel config CONFIG_NFS_DISABLE_UDP_SUPPORT to disallow NFS
-UDP mounts.
+Given what you say, it sounds to me more like a generic networking
+issue between this particular problem and the server.
 
-I took the same approach as Chuck's deprecation of DES enc types
-to start with default to still allow but I think the ultimate
-goal is to disable
+debug messages are logging that client can't reach the server:
+Nov  8 17:58:21 NFSclient kernel: nfs: server x.2 not responding, still try=
+ing
 
-Question: how do we have folks trying this unless we set it to false?
+I'd recommend making sure that your network works alright between
+those interfaces. Perhaps running an iperf for a few minutes to make
+sure you are seeing expected, consistent performance between those two
+nodes. Another thing to check if you for some reason have duplicate
+IPs in the system that can show up as weird hangs.
 
-Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
----
- fs/nfs/Kconfig  | 10 ++++++++++
- fs/nfs/client.c |  4 ++++
- fs/nfs/super.c  |  8 ++++++++
- 3 files changed, 22 insertions(+)
-
-diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
-index 295a7a2..6320113 100644
---- a/fs/nfs/Kconfig
-+++ b/fs/nfs/Kconfig
-@@ -196,3 +196,13 @@ config NFS_DEBUG
- 	depends on NFS_FS && SUNRPC_DEBUG
- 	select CRC32
- 	default y
-+
-+config NFS_DISABLE_UDP_SUPPORT
-+	bool "NFS: Disable NFS UDP protocol support"
-+	depends on NFS_FS
-+	default n
-+	help
-+	  Choose Y here to disable the use of NFS over UDP. NFS over UDP
-+	  on modern networks (1Gb+) can lead to data corruption caused by
-+	  fragmentation during high loads.
-+	  The default is N because many deployments still use UDP.
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 02110a3..24ca314 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -474,6 +474,7 @@ void nfs_init_timeout_values(struct rpc_timeout *to, int proto,
- 			to->to_maxval = to->to_initval;
- 		to->to_exponential = 0;
- 		break;
-+#ifdef CONFIG_NFS_DISABLE_UDP_SUPPORT
- 	case XPRT_TRANSPORT_UDP:
- 		if (retrans == NFS_UNSPEC_RETRANS)
- 			to->to_retries = NFS_DEF_UDP_RETRANS;
-@@ -484,6 +485,7 @@ void nfs_init_timeout_values(struct rpc_timeout *to, int proto,
- 		to->to_maxval = NFS_MAX_UDP_TIMEOUT;
- 		to->to_exponential = 1;
- 		break;
-+#endif
- 	default:
- 		BUG();
- 	}
-@@ -580,8 +582,10 @@ static int nfs_start_lockd(struct nfs_server *server)
- 		default:
- 			nlm_init.protocol = IPPROTO_TCP;
- 			break;
-+#ifdef CONFIG_NFS_DISABLE_UDP_SUPPORT
- 		case XPRT_TRANSPORT_UDP:
- 			nlm_init.protocol = IPPROTO_UDP;
-+#endif
- 	}
- 
- 	host = nlmclnt_init(&nlm_init);
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index a84df7d6..21e59da 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -1011,7 +1011,9 @@ static void nfs_set_port(struct sockaddr *sap, int *port,
- static void nfs_validate_transport_protocol(struct nfs_parsed_mount_data *mnt)
- {
- 	switch (mnt->nfs_server.protocol) {
-+#ifdef CONFIG_NFS_DISABLE_UDP_SUPPORT
- 	case XPRT_TRANSPORT_UDP:
-+#endif
- 	case XPRT_TRANSPORT_TCP:
- 	case XPRT_TRANSPORT_RDMA:
- 		break;
-@@ -1033,8 +1035,10 @@ static void nfs_set_mount_transport_protocol(struct nfs_parsed_mount_data *mnt)
- 			return;
- 	switch (mnt->nfs_server.protocol) {
- 	case XPRT_TRANSPORT_UDP:
-+#ifdef CONFIG_NFS_DISABLE_UDP_SUPPORT
- 		mnt->mount_server.protocol = XPRT_TRANSPORT_UDP;
- 		break;
-+#endif
- 	case XPRT_TRANSPORT_TCP:
- 	case XPRT_TRANSPORT_RDMA:
- 		mnt->mount_server.protocol = XPRT_TRANSPORT_TCP;
-@@ -2204,6 +2208,10 @@ static int nfs_validate_text_mount_data(void *options,
- #endif /* CONFIG_NFS_V4 */
- 	} else {
- 		nfs_set_mount_transport_protocol(args);
-+#ifdef CONFIG_NFS_DISABLE_UDP_SUPPORT
-+		if (args->nfs_server.protocol == XPRT_TRANSPORT_UDP)
-+			goto out_invalid_transport_udp;
-+#endif
- 		if (args->nfs_server.protocol == XPRT_TRANSPORT_RDMA)
- 			port = NFS_RDMA_PORT;
- 	}
--- 
-1.8.3.1
-
+On Fri, Nov 8, 2019 at 8:22 PM Chandler <admin@genome.arizona.edu> wrote:
+>
+> Hi Olga, thanks so much for your help.
+>
+> I tried to reboot and still having weird issues.  If I mount over the loc=
+al network (10.x address) then there are no issues.  As soon as I try to mo=
+unt over the 10G network, weird things happen.  For example, I can perform =
+the mount just fine and do "ll /mount" but as soon as I try another directo=
+ry like "ll /mount/users" then it hangs.  Also this only happens between th=
+ese two machines with 10G interfaces.  The server with the 10G interface ha=
+s several other 1G clients that outside the local 10.x network that connect=
+ to it on the 10G interface, and those clients all work fine as well, so se=
+ems to be an issue specific to this client on the 10G interface.
+>
+> In my earlier post, I did try troubleshooting with vers=3D3 and vers=3D2 =
+just to see if that was the issue, but since then have been using the defau=
+lts (so vers=3D4).
+>
+> I turned on the rpcdebug on both client and server with "rpcdebug -m nfs(=
+d) all"  but it seemed to lock up the server and i had to reboot it, so wil=
+l keep that off for now.  I attached a log of the debug messages from the c=
+lient showing what commands I executed (snoopy) and the resulting kernel de=
+bug entries, hope this helps.  The hangup happens at the end when I ls -l o=
+n the users directory.  Let me know if there's anything else I can provide.
+>
