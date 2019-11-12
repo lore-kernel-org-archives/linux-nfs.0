@@ -1,445 +1,556 @@
-Return-Path: <SRS0=WfzW=ZD=vger.kernel.org=linux-nfs-owner@kernel.org>
+Return-Path: <SRS0=Um0H=ZE=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
 X-Spam-Status: No, score=-9.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	USER_AGENT_GIT autolearn=unavailable autolearn_force=no version=3.4.0
+	URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B9753C17441
-	for <linux-nfs@archiver.kernel.org>; Mon, 11 Nov 2019 20:24:26 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A30B4C43331
+	for <linux-nfs@archiver.kernel.org>; Tue, 12 Nov 2019 00:35:05 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 9AFB8214E0
-	for <linux-nfs@archiver.kernel.org>; Mon, 11 Nov 2019 20:24:26 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 6CA192196E
+	for <linux-nfs@archiver.kernel.org>; Tue, 12 Nov 2019 00:35:05 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727119AbfKKUYW (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 11 Nov 2019 15:24:22 -0500
-Received: from mout.kundenserver.de ([217.72.192.74]:39853 "EHLO
-        mout.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726877AbfKKUYW (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Nov 2019 15:24:22 -0500
-Received: from threadripper.lan ([149.172.19.189]) by mrelayeu.kundenserver.de
- (mreue108 [212.227.15.145]) with ESMTPA (Nemesis) id
- 1MybCV-1hgJG60W9l-00yzZy; Mon, 11 Nov 2019 21:16:47 +0100
-From:   Arnd Bergmann <arnd@arndb.de>
-To:     linux-nfs@vger.kernel.org,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Chuck Lever <chuck.lever@oracle.com>,
+        id S1726953AbfKLAfE (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 11 Nov 2019 19:35:04 -0500
+Received: from mga12.intel.com ([192.55.52.136]:13623 "EHLO mga12.intel.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726887AbfKLAfB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 11 Nov 2019 19:35:01 -0500
+X-Amp-Result: SKIPPED(no attachment in message)
+X-Amp-File-Uploaded: False
+Received: from fmsmga002.fm.intel.com ([10.253.24.26])
+  by fmsmga106.fm.intel.com with ESMTP/TLS/DHE-RSA-AES256-GCM-SHA384; 11 Nov 2019 16:34:59 -0800
+X-IronPort-AV: E=Sophos;i="5.68,294,1569308400"; 
+   d="scan'208";a="234658031"
+Received: from iweiny-desk2.sc.intel.com (HELO localhost) ([10.3.52.157])
+  by fmsmga002-auth.fm.intel.com with ESMTP/TLS/DHE-RSA-AES256-GCM-SHA384; 11 Nov 2019 16:34:59 -0800
+From:   ira.weiny@intel.com
+To:     Alexander Viro <viro@zeniv.linux.org.uk>,
+        Andrew Morton <akpm@linux-foundation.org>
+Cc:     Chris Mason <clm@fb.com>, Josef Bacik <josef@toxicpanda.com>,
+        David Sterba <dsterba@suse.com>,
+        Jaegeuk Kim <jaegeuk@kernel.org>, Chao Yu <chao@kernel.org>,
+        linux-xfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>
-Cc:     y2038@lists.linaro.org, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, Arnd Bergmann <arnd@arndb.de>
-Subject: [PATCH 03/19] nfs: use timespec64 in nfs_fattr
-Date:   Mon, 11 Nov 2019 21:16:23 +0100
-Message-Id: <20191111201639.2240623-4-arnd@arndb.de>
-X-Mailer: git-send-email 2.20.0
-In-Reply-To: <20191111201639.2240623-1-arnd@arndb.de>
-References: <20191111201639.2240623-1-arnd@arndb.de>
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        linux-btrfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net, linux-nfs@vger.kernel.org,
+        linux-mm@kvack.org, Ira Weiny <ira.weiny@intel.com>,
+        Dave Chinner <david@fromorbit.com>, Jan Kara <jack@suse.cz>
+Subject: [PATCH 2/2] fs: Move swap_[de]activate to file_operations
+Date:   Mon, 11 Nov 2019 16:34:52 -0800
+Message-Id: <20191112003452.4756-3-ira.weiny@intel.com>
+X-Mailer: git-send-email 2.20.1
+In-Reply-To: <20191112003452.4756-1-ira.weiny@intel.com>
+References: <20191112003452.4756-1-ira.weiny@intel.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-Provags-ID: V03:K1:bTNrHmlRSCS7Q648x/nXsNVWZf0YT/n2OGvDzscLgX4gSTeyge1
- w8gtmIRNPUgf5rs+6/4kNaOmz8Uf3AdEMF6+1QNwZfINyzPK+rFsWreUzr422FFqxTy44bC
- eZyaE9JVzyc5IC43vw2m/FE4dq2PN9KwsX4W/A5g7x3gI9vMlpg+t6Vqtzlzmg7sUdo13wC
- YV/efwQJHoEty06eYF88Q==
-X-UI-Out-Filterresults: notjunk:1;V03:K0:tIP4F6BZVzI=:vCH++yVboML+CBdyouR+bS
- XWMX83JBpOCXkmlpQ2D2E0FXk5l4mctoJlkwzoJr2jLt1fI+h3D7iFb0ueuB0LwYTrQ3kAcsI
- BY3pUAZsGRAXlb2mLyfiGS18JANp+o6KqNq+zeqyqBLOBd6VtEAr3OskWJd+KFkeMBJznMmKR
- DqE7Qw3yawAdXTzWdfwKV3CIijDhzDVPJUWNhWdMtkBk85TY6zPKgp+R4gAaGFVM9YRrYYaIk
- i8+afFGdqYNTngoqDyqfK8VawghZaqYcqY5Iwjgc1DRpBenajC1JXwk//Sl2Zk3wQXsNwNN3L
- jjA+h8HZBli9le5VPyzkkuYpw/Hc+gcCTSDbIMDdb+rlSOs2IEOsPKOUCfMEm4bouYwkAPCVL
- EWs65dTfFScE046oVM/XuWfhMCyUgUGYGICaIRwxpZ7Ep9hyRfV1ULU+gKiAn1f0LwyOp4dwY
- QcBYp+TbxVwvFTZdAzswsNuXRT+UUsClNmxkNuyiVgn5lWqNR3VU3yO/ULKIR07O+ojtWBH1K
- ORbNu56gccrwFyQra8cyby3dB8sy8LlhHk8U1X5uvdQhkblTYnkUuf70/rGwzKpz3fuM+f82z
- jru9dmvFLQMINvJypMXKxQvJV1H1XBmQ5Tip0F07NINAQmkOvyTfoMZDyGwHLcqoRR0nx7n4g
- wyeQwVQy18EyRgzWAqNVH16zB/ODhsJQy3a8PNgexqeHtFIl1l4rdRvVtY4vdHK2YXIwWh8mN
- ol02MD+XfNCxjIsiUQfQWQmSTG4I2PR/EWv2MD3SiYfYXwZDgc6D/F3XCfch6vGliJY8yNHpF
- +7UQtBOs+WTktlV+PVbqHnkRhPohVywLUDp5gPBVH5NjacznJx2Nk9PopfdW2OKGoHlzk6OER
- 1v2GAaLpHDopAyH0P5tw==
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Push down the use of timespec64 into NFS nfs_fattr, to avoid needless
-conversions, and get closer to having 64-bit time_t support on 32-bit
-NFSv4 and removing some old interfaces from the kernel.
+From: Ira Weiny <ira.weiny@intel.com>
 
-Signed-off-by: Arnd Bergmann <arnd@arndb.de>
+swap_activate() and swap_deactivate() have nothing to do with
+address spaces.  We want to eventually make the address space operations
+dynamic to switch inode flags on the fly.  So to simplify this code as
+well as properly track these operations we move these functions to the
+file_operations vector.
+
+This has been tested with XFS but not NFS, f2fs, or btrfs.
+
+Also note f2fs and xfs have simple moves of their functions to
+facilitate compilation.  No functional changes are contained within
+those functions.
+
+Cc: Dave Chinner <david@fromorbit.com>
+Cc: linux-fsdevel@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
+Suggested-by: Jan Kara <jack@suse.cz>
+Signed-off-by: Ira Weiny <ira.weiny@intel.com>
 ---
- fs/nfs/inode.c            | 54 +++++++++++++++++++--------------------
- fs/nfs/internal.h         |  6 ++---
- fs/nfs/nfs2xdr.c          |  2 +-
- fs/nfs/nfs3xdr.c          |  2 +-
- fs/nfs/nfs4xdr.c          | 24 ++++++++---------
- include/linux/nfs_fs_sb.h |  2 +-
- include/linux/nfs_xdr.h   | 12 ++++-----
- 7 files changed, 51 insertions(+), 51 deletions(-)
+ fs/btrfs/inode.c   |   4 +-
+ fs/f2fs/data.c     | 122 ---------------------------------------------
+ fs/f2fs/file.c     | 122 +++++++++++++++++++++++++++++++++++++++++++++
+ fs/nfs/file.c      |   4 +-
+ fs/xfs/xfs_aops.c  |  13 -----
+ fs/xfs/xfs_file.c  |  12 +++++
+ include/linux/fs.h |  10 ++--
+ mm/swapfile.c      |  12 ++---
+ 8 files changed, 148 insertions(+), 151 deletions(-)
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 2a03bfeec10a..b0b4b9f303fd 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -504,15 +504,15 @@ nfs_fhget(struct super_block *sb, struct nfs_fh *fh, struct nfs_fattr *fattr, st
- 		nfsi->read_cache_jiffies = fattr->time_start;
- 		nfsi->attr_gencount = fattr->gencount;
- 		if (fattr->valid & NFS_ATTR_FATTR_ATIME)
--			inode->i_atime = timespec_to_timespec64(fattr->atime);
-+			inode->i_atime = fattr->atime;
- 		else if (nfs_server_capable(inode, NFS_CAP_ATIME))
- 			nfs_set_cache_invalid(inode, NFS_INO_INVALID_ATIME);
- 		if (fattr->valid & NFS_ATTR_FATTR_MTIME)
--			inode->i_mtime = timespec_to_timespec64(fattr->mtime);
-+			inode->i_mtime = fattr->mtime;
- 		else if (nfs_server_capable(inode, NFS_CAP_MTIME))
- 			nfs_set_cache_invalid(inode, NFS_INO_INVALID_MTIME);
- 		if (fattr->valid & NFS_ATTR_FATTR_CTIME)
--			inode->i_ctime = timespec_to_timespec64(fattr->ctime);
-+			inode->i_ctime = fattr->ctime;
- 		else if (nfs_server_capable(inode, NFS_CAP_CTIME))
- 			nfs_set_cache_invalid(inode, NFS_INO_INVALID_CTIME);
- 		if (fattr->valid & NFS_ATTR_FATTR_CHANGE)
-@@ -698,7 +698,7 @@ void nfs_setattr_update_inode(struct inode *inode, struct iattr *attr,
- 		if ((attr->ia_valid & ATTR_GID) != 0)
- 			inode->i_gid = attr->ia_gid;
- 		if (fattr->valid & NFS_ATTR_FATTR_CTIME)
--			inode->i_ctime = timespec_to_timespec64(fattr->ctime);
-+			inode->i_ctime = fattr->ctime;
- 		else
- 			nfs_set_cache_invalid(inode, NFS_INO_INVALID_CHANGE
- 					| NFS_INO_INVALID_CTIME);
-@@ -709,14 +709,14 @@ void nfs_setattr_update_inode(struct inode *inode, struct iattr *attr,
- 		NFS_I(inode)->cache_validity &= ~(NFS_INO_INVALID_ATIME
- 				| NFS_INO_INVALID_CTIME);
- 		if (fattr->valid & NFS_ATTR_FATTR_ATIME)
--			inode->i_atime = timespec_to_timespec64(fattr->atime);
-+			inode->i_atime = fattr->atime;
- 		else if (attr->ia_valid & ATTR_ATIME_SET)
- 			inode->i_atime = attr->ia_atime;
- 		else
- 			nfs_set_cache_invalid(inode, NFS_INO_INVALID_ATIME);
+diff --git a/fs/btrfs/inode.c b/fs/btrfs/inode.c
+index 6d159df7b536..4521f7dc0e8c 100644
+--- a/fs/btrfs/inode.c
++++ b/fs/btrfs/inode.c
+@@ -11002,6 +11002,8 @@ static const struct file_operations btrfs_dir_file_operations = {
+ #endif
+ 	.release        = btrfs_release_file,
+ 	.fsync		= btrfs_sync_file,
++	.swap_activate	= btrfs_swap_activate,
++	.swap_deactivate = btrfs_swap_deactivate,
+ };
  
- 		if (fattr->valid & NFS_ATTR_FATTR_CTIME)
--			inode->i_ctime = timespec_to_timespec64(fattr->ctime);
-+			inode->i_ctime = fattr->ctime;
- 		else
- 			nfs_set_cache_invalid(inode, NFS_INO_INVALID_CHANGE
- 					| NFS_INO_INVALID_CTIME);
-@@ -725,14 +725,14 @@ void nfs_setattr_update_inode(struct inode *inode, struct iattr *attr,
- 		NFS_I(inode)->cache_validity &= ~(NFS_INO_INVALID_MTIME
- 				| NFS_INO_INVALID_CTIME);
- 		if (fattr->valid & NFS_ATTR_FATTR_MTIME)
--			inode->i_mtime = timespec_to_timespec64(fattr->mtime);
-+			inode->i_mtime = fattr->mtime;
- 		else if (attr->ia_valid & ATTR_MTIME_SET)
- 			inode->i_mtime = attr->ia_mtime;
- 		else
- 			nfs_set_cache_invalid(inode, NFS_INO_INVALID_MTIME);
+ static const struct extent_io_ops btrfs_extent_io_ops = {
+@@ -11032,8 +11034,6 @@ static const struct address_space_operations btrfs_aops = {
+ 	.releasepage	= btrfs_releasepage,
+ 	.set_page_dirty	= btrfs_set_page_dirty,
+ 	.error_remove_page = generic_error_remove_page,
+-	.swap_activate	= btrfs_swap_activate,
+-	.swap_deactivate = btrfs_swap_deactivate,
+ };
  
- 		if (fattr->valid & NFS_ATTR_FATTR_CTIME)
--			inode->i_ctime = timespec_to_timespec64(fattr->ctime);
-+			inode->i_ctime = fattr->ctime;
- 		else
- 			nfs_set_cache_invalid(inode, NFS_INO_INVALID_CHANGE
- 					| NFS_INO_INVALID_CTIME);
-@@ -1351,7 +1351,7 @@ static bool nfs_file_has_buffered_writers(struct nfs_inode *nfsi)
- 
- static void nfs_wcc_update_inode(struct inode *inode, struct nfs_fattr *fattr)
- {
--	struct timespec ts;
-+	struct timespec64 ts;
- 
- 	if ((fattr->valid & NFS_ATTR_FATTR_PRECHANGE)
- 			&& (fattr->valid & NFS_ATTR_FATTR_CHANGE)
-@@ -1361,18 +1361,18 @@ static void nfs_wcc_update_inode(struct inode *inode, struct nfs_fattr *fattr)
- 			nfs_set_cache_invalid(inode, NFS_INO_INVALID_DATA);
- 	}
- 	/* If we have atomic WCC data, we may update some attributes */
--	ts = timespec64_to_timespec(inode->i_ctime);
-+	ts = inode->i_ctime;
- 	if ((fattr->valid & NFS_ATTR_FATTR_PRECTIME)
- 			&& (fattr->valid & NFS_ATTR_FATTR_CTIME)
--			&& timespec_equal(&ts, &fattr->pre_ctime)) {
--		inode->i_ctime = timespec_to_timespec64(fattr->ctime);
-+			&& timespec64_equal(&ts, &fattr->pre_ctime)) {
-+		inode->i_ctime = fattr->ctime;
- 	}
- 
--	ts = timespec64_to_timespec(inode->i_mtime);
-+	ts = inode->i_mtime;
- 	if ((fattr->valid & NFS_ATTR_FATTR_PREMTIME)
- 			&& (fattr->valid & NFS_ATTR_FATTR_MTIME)
--			&& timespec_equal(&ts, &fattr->pre_mtime)) {
--		inode->i_mtime = timespec_to_timespec64(fattr->mtime);
-+			&& timespec64_equal(&ts, &fattr->pre_mtime)) {
-+		inode->i_mtime = fattr->mtime;
- 		if (S_ISDIR(inode->i_mode))
- 			nfs_set_cache_invalid(inode, NFS_INO_INVALID_DATA);
- 	}
-@@ -1398,7 +1398,7 @@ static int nfs_check_inode_attributes(struct inode *inode, struct nfs_fattr *fat
- 	struct nfs_inode *nfsi = NFS_I(inode);
- 	loff_t cur_size, new_isize;
- 	unsigned long invalid = 0;
--	struct timespec ts;
-+	struct timespec64 ts;
- 
- 	if (NFS_PROTO(inode)->have_delegation(inode, FMODE_READ))
- 		return 0;
-@@ -1425,12 +1425,12 @@ static int nfs_check_inode_attributes(struct inode *inode, struct nfs_fattr *fat
- 			invalid |= NFS_INO_INVALID_CHANGE
- 				| NFS_INO_REVAL_PAGECACHE;
- 
--		ts = timespec64_to_timespec(inode->i_mtime);
--		if ((fattr->valid & NFS_ATTR_FATTR_MTIME) && !timespec_equal(&ts, &fattr->mtime))
-+		ts = inode->i_mtime;
-+		if ((fattr->valid & NFS_ATTR_FATTR_MTIME) && !timespec64_equal(&ts, &fattr->mtime))
- 			invalid |= NFS_INO_INVALID_MTIME;
- 
--		ts = timespec64_to_timespec(inode->i_ctime);
--		if ((fattr->valid & NFS_ATTR_FATTR_CTIME) && !timespec_equal(&ts, &fattr->ctime))
-+		ts = inode->i_ctime;
-+		if ((fattr->valid & NFS_ATTR_FATTR_CTIME) && !timespec64_equal(&ts, &fattr->ctime))
- 			invalid |= NFS_INO_INVALID_CTIME;
- 
- 		if (fattr->valid & NFS_ATTR_FATTR_SIZE) {
-@@ -1460,8 +1460,8 @@ static int nfs_check_inode_attributes(struct inode *inode, struct nfs_fattr *fat
- 	if ((fattr->valid & NFS_ATTR_FATTR_NLINK) && inode->i_nlink != fattr->nlink)
- 		invalid |= NFS_INO_INVALID_OTHER;
- 
--	ts = timespec64_to_timespec(inode->i_atime);
--	if ((fattr->valid & NFS_ATTR_FATTR_ATIME) && !timespec_equal(&ts, &fattr->atime))
-+	ts = inode->i_atime;
-+	if ((fattr->valid & NFS_ATTR_FATTR_ATIME) && !timespec64_equal(&ts, &fattr->atime))
- 		invalid |= NFS_INO_INVALID_ATIME;
- 
- 	if (invalid != 0)
-@@ -1733,12 +1733,12 @@ int nfs_post_op_update_inode_force_wcc_locked(struct inode *inode, struct nfs_fa
- 	}
- 	if ((fattr->valid & NFS_ATTR_FATTR_CTIME) != 0 &&
- 			(fattr->valid & NFS_ATTR_FATTR_PRECTIME) == 0) {
--		fattr->pre_ctime = timespec64_to_timespec(inode->i_ctime);
-+		fattr->pre_ctime = inode->i_ctime;
- 		fattr->valid |= NFS_ATTR_FATTR_PRECTIME;
- 	}
- 	if ((fattr->valid & NFS_ATTR_FATTR_MTIME) != 0 &&
- 			(fattr->valid & NFS_ATTR_FATTR_PREMTIME) == 0) {
--		fattr->pre_mtime = timespec64_to_timespec(inode->i_mtime);
-+		fattr->pre_mtime = inode->i_mtime;
- 		fattr->valid |= NFS_ATTR_FATTR_PREMTIME;
- 	}
- 	if ((fattr->valid & NFS_ATTR_FATTR_SIZE) != 0 &&
-@@ -1899,7 +1899,7 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
- 	}
- 
- 	if (fattr->valid & NFS_ATTR_FATTR_MTIME) {
--		inode->i_mtime = timespec_to_timespec64(fattr->mtime);
-+		inode->i_mtime = fattr->mtime;
- 	} else if (server->caps & NFS_CAP_MTIME) {
- 		nfsi->cache_validity |= save_cache_validity &
- 				(NFS_INO_INVALID_MTIME
-@@ -1908,7 +1908,7 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
- 	}
- 
- 	if (fattr->valid & NFS_ATTR_FATTR_CTIME) {
--		inode->i_ctime = timespec_to_timespec64(fattr->ctime);
-+		inode->i_ctime = fattr->ctime;
- 	} else if (server->caps & NFS_CAP_CTIME) {
- 		nfsi->cache_validity |= save_cache_validity &
- 				(NFS_INO_INVALID_CTIME
-@@ -1946,7 +1946,7 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
- 
- 
- 	if (fattr->valid & NFS_ATTR_FATTR_ATIME)
--		inode->i_atime = timespec_to_timespec64(fattr->atime);
-+		inode->i_atime = fattr->atime;
- 	else if (server->caps & NFS_CAP_ATIME) {
- 		nfsi->cache_validity |= save_cache_validity &
- 				(NFS_INO_INVALID_ATIME
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 447a3c17fa8e..d3d3a9a0aa72 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -706,14 +706,14 @@ unsigned int nfs_page_array_len(unsigned int base, size_t len)
+ static const struct inode_operations btrfs_file_inode_operations = {
+diff --git a/fs/f2fs/data.c b/fs/f2fs/data.c
+index 3c7777bfae17..04b2a8f44fa9 100644
+--- a/fs/f2fs/data.c
++++ b/fs/f2fs/data.c
+@@ -14,7 +14,6 @@
+ #include <linux/pagevec.h>
+ #include <linux/blkdev.h>
+ #include <linux/bio.h>
+-#include <linux/swap.h>
+ #include <linux/prefetch.h>
+ #include <linux/uio.h>
+ #include <linux/cleancache.h>
+@@ -3142,125 +3141,6 @@ int f2fs_migrate_page(struct address_space *mapping,
  }
+ #endif
+ 
+-#ifdef CONFIG_SWAP
+-/* Copied from generic_swapfile_activate() to check any holes */
+-static int check_swap_activate(struct file *swap_file, unsigned int max)
+-{
+-	struct inode *inode = swap_file->f_mapping->host;
+-	unsigned blocks_per_page;
+-	unsigned long page_no;
+-	unsigned blkbits;
+-	sector_t probe_block;
+-	sector_t last_block;
+-	sector_t lowest_block = -1;
+-	sector_t highest_block = 0;
+-
+-	blkbits = inode->i_blkbits;
+-	blocks_per_page = PAGE_SIZE >> blkbits;
+-
+-	/*
+-	 * Map all the blocks into the extent list.  This code doesn't try
+-	 * to be very smart.
+-	 */
+-	probe_block = 0;
+-	page_no = 0;
+-	last_block = i_size_read(inode) >> blkbits;
+-	while ((probe_block + blocks_per_page) <= last_block && page_no < max) {
+-		unsigned block_in_page;
+-		sector_t first_block;
+-
+-		cond_resched();
+-
+-		first_block = bmap(inode, probe_block);
+-		if (first_block == 0)
+-			goto bad_bmap;
+-
+-		/*
+-		 * It must be PAGE_SIZE aligned on-disk
+-		 */
+-		if (first_block & (blocks_per_page - 1)) {
+-			probe_block++;
+-			goto reprobe;
+-		}
+-
+-		for (block_in_page = 1; block_in_page < blocks_per_page;
+-					block_in_page++) {
+-			sector_t block;
+-
+-			block = bmap(inode, probe_block + block_in_page);
+-			if (block == 0)
+-				goto bad_bmap;
+-			if (block != first_block + block_in_page) {
+-				/* Discontiguity */
+-				probe_block++;
+-				goto reprobe;
+-			}
+-		}
+-
+-		first_block >>= (PAGE_SHIFT - blkbits);
+-		if (page_no) {	/* exclude the header page */
+-			if (first_block < lowest_block)
+-				lowest_block = first_block;
+-			if (first_block > highest_block)
+-				highest_block = first_block;
+-		}
+-
+-		page_no++;
+-		probe_block += blocks_per_page;
+-reprobe:
+-		continue;
+-	}
+-	return 0;
+-
+-bad_bmap:
+-	pr_err("swapon: swapfile has holes\n");
+-	return -EINVAL;
+-}
+-
+-static int f2fs_swap_activate(struct swap_info_struct *sis, struct file *file,
+-				sector_t *span)
+-{
+-	struct inode *inode = file_inode(file);
+-	int ret;
+-
+-	if (!S_ISREG(inode->i_mode))
+-		return -EINVAL;
+-
+-	if (f2fs_readonly(F2FS_I_SB(inode)->sb))
+-		return -EROFS;
+-
+-	ret = f2fs_convert_inline_inode(inode);
+-	if (ret)
+-		return ret;
+-
+-	ret = check_swap_activate(file, sis->max);
+-	if (ret)
+-		return ret;
+-
+-	set_inode_flag(inode, FI_PIN_FILE);
+-	f2fs_precache_extents(inode);
+-	f2fs_update_time(F2FS_I_SB(inode), REQ_TIME);
+-	return 0;
+-}
+-
+-static void f2fs_swap_deactivate(struct file *file)
+-{
+-	struct inode *inode = file_inode(file);
+-
+-	clear_inode_flag(inode, FI_PIN_FILE);
+-}
+-#else
+-static int f2fs_swap_activate(struct swap_info_struct *sis, struct file *file,
+-				sector_t *span)
+-{
+-	return -EOPNOTSUPP;
+-}
+-
+-static void f2fs_swap_deactivate(struct file *file)
+-{
+-}
+-#endif
+-
+ const struct address_space_operations f2fs_dblock_aops = {
+ 	.readpage	= f2fs_read_data_page,
+ 	.readpages	= f2fs_read_data_pages,
+@@ -3273,8 +3153,6 @@ const struct address_space_operations f2fs_dblock_aops = {
+ 	.releasepage	= f2fs_release_page,
+ 	.direct_IO	= f2fs_direct_IO,
+ 	.bmap		= f2fs_bmap,
+-	.swap_activate  = f2fs_swap_activate,
+-	.swap_deactivate = f2fs_swap_deactivate,
+ #ifdef CONFIG_MIGRATION
+ 	.migratepage    = f2fs_migrate_page,
+ #endif
+diff --git a/fs/f2fs/file.c b/fs/f2fs/file.c
+index 483ad22a0946..de7f9cf36689 100644
+--- a/fs/f2fs/file.c
++++ b/fs/f2fs/file.c
+@@ -21,6 +21,7 @@
+ #include <linux/uuid.h>
+ #include <linux/file.h>
+ #include <linux/nls.h>
++#include <linux/swap.h>
+ 
+ #include "f2fs.h"
+ #include "node.h"
+@@ -3466,6 +3467,125 @@ long f2fs_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+ }
+ #endif
+ 
++#ifdef CONFIG_SWAP
++/* Copied from generic_swapfile_activate() to check any holes */
++static int check_swap_activate(struct file *swap_file, unsigned int max)
++{
++	struct inode *inode = swap_file->f_mapping->host;
++	unsigned blocks_per_page;
++	unsigned long page_no;
++	unsigned blkbits;
++	sector_t probe_block;
++	sector_t last_block;
++	sector_t lowest_block = -1;
++	sector_t highest_block = 0;
++
++	blkbits = inode->i_blkbits;
++	blocks_per_page = PAGE_SIZE >> blkbits;
++
++	/*
++	 * Map all the blocks into the extent list.  This code doesn't try
++	 * to be very smart.
++	 */
++	probe_block = 0;
++	page_no = 0;
++	last_block = i_size_read(inode) >> blkbits;
++	while ((probe_block + blocks_per_page) <= last_block && page_no < max) {
++		unsigned block_in_page;
++		sector_t first_block;
++
++		cond_resched();
++
++		first_block = bmap(inode, probe_block);
++		if (first_block == 0)
++			goto bad_bmap;
++
++		/*
++		 * It must be PAGE_SIZE aligned on-disk
++		 */
++		if (first_block & (blocks_per_page - 1)) {
++			probe_block++;
++			goto reprobe;
++		}
++
++		for (block_in_page = 1; block_in_page < blocks_per_page;
++					block_in_page++) {
++			sector_t block;
++
++			block = bmap(inode, probe_block + block_in_page);
++			if (block == 0)
++				goto bad_bmap;
++			if (block != first_block + block_in_page) {
++				/* Discontiguity */
++				probe_block++;
++				goto reprobe;
++			}
++		}
++
++		first_block >>= (PAGE_SHIFT - blkbits);
++		if (page_no) {	/* exclude the header page */
++			if (first_block < lowest_block)
++				lowest_block = first_block;
++			if (first_block > highest_block)
++				highest_block = first_block;
++		}
++
++		page_no++;
++		probe_block += blocks_per_page;
++reprobe:
++		continue;
++	}
++	return 0;
++
++bad_bmap:
++	pr_err("swapon: swapfile has holes\n");
++	return -EINVAL;
++}
++
++static int f2fs_swap_activate(struct swap_info_struct *sis, struct file *file,
++				sector_t *span)
++{
++	struct inode *inode = file_inode(file);
++	int ret;
++
++	if (!S_ISREG(inode->i_mode))
++		return -EINVAL;
++
++	if (f2fs_readonly(F2FS_I_SB(inode)->sb))
++		return -EROFS;
++
++	ret = f2fs_convert_inline_inode(inode);
++	if (ret)
++		return ret;
++
++	ret = check_swap_activate(file, sis->max);
++	if (ret)
++		return ret;
++
++	set_inode_flag(inode, FI_PIN_FILE);
++	f2fs_precache_extents(inode);
++	f2fs_update_time(F2FS_I_SB(inode), REQ_TIME);
++	return 0;
++}
++
++static void f2fs_swap_deactivate(struct file *file)
++{
++	struct inode *inode = file_inode(file);
++
++	clear_inode_flag(inode, FI_PIN_FILE);
++}
++#else
++static int f2fs_swap_activate(struct swap_info_struct *sis, struct file *file,
++				sector_t *span)
++{
++	return -EOPNOTSUPP;
++}
++
++static void f2fs_swap_deactivate(struct file *file)
++{
++}
++#endif
++
+ const struct file_operations f2fs_file_operations = {
+ 	.llseek		= f2fs_llseek,
+ 	.read_iter	= generic_file_read_iter,
+@@ -3482,4 +3602,6 @@ const struct file_operations f2fs_file_operations = {
+ #endif
+ 	.splice_read	= generic_file_splice_read,
+ 	.splice_write	= iter_file_splice_write,
++	.swap_activate  = f2fs_swap_activate,
++	.swap_deactivate = f2fs_swap_deactivate,
+ };
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index 95dc90570786..1f82f92185d6 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -520,8 +520,6 @@ const struct address_space_operations nfs_file_aops = {
+ 	.launder_page = nfs_launder_page,
+ 	.is_dirty_writeback = nfs_check_dirty_writeback,
+ 	.error_remove_page = generic_error_remove_page,
+-	.swap_activate = nfs_swap_activate,
+-	.swap_deactivate = nfs_swap_deactivate,
+ };
  
  /*
-- * Convert a struct timespec into a 64-bit change attribute
-+ * Convert a struct timespec64 into a 64-bit change attribute
-  *
-- * This does approximately the same thing as timespec_to_ns(),
-+ * This does approximately the same thing as timespec64_to_ns(),
-  * but for calculation efficiency, we multiply the seconds by
-  * 1024*1024*1024.
-  */
- static inline
--u64 nfs_timespec_to_change_attr(const struct timespec *ts)
-+u64 nfs_timespec_to_change_attr(const struct timespec64 *ts)
- {
- 	return ((u64)ts->tv_sec << 30) + ts->tv_nsec;
- }
-diff --git a/fs/nfs/nfs2xdr.c b/fs/nfs/nfs2xdr.c
-index cbc17a203248..d4e144712034 100644
---- a/fs/nfs/nfs2xdr.c
-+++ b/fs/nfs/nfs2xdr.c
-@@ -234,7 +234,7 @@ static __be32 *xdr_encode_current_server_time(__be32 *p,
- 	return p;
+@@ -847,5 +845,7 @@ const struct file_operations nfs_file_operations = {
+ 	.splice_write	= iter_file_splice_write,
+ 	.check_flags	= nfs_check_flags,
+ 	.setlease	= simple_nosetlease,
++	.swap_activate = nfs_swap_activate,
++	.swap_deactivate = nfs_swap_deactivate,
+ };
+ EXPORT_SYMBOL_GPL(nfs_file_operations);
+diff --git a/fs/xfs/xfs_aops.c b/fs/xfs/xfs_aops.c
+index 3a688eb5c5ae..99f578a9ed90 100644
+--- a/fs/xfs/xfs_aops.c
++++ b/fs/xfs/xfs_aops.c
+@@ -631,17 +631,6 @@ xfs_vm_readpages(
+ 	return iomap_readpages(mapping, pages, nr_pages, &xfs_read_iomap_ops);
  }
  
--static __be32 *xdr_decode_time(__be32 *p, struct timespec *timep)
-+static __be32 *xdr_decode_time(__be32 *p, struct timespec64 *timep)
- {
- 	timep->tv_sec = be32_to_cpup(p++);
- 	timep->tv_nsec = be32_to_cpup(p++) * NSEC_PER_USEC;
-diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
-index 602767850b36..2a16bbda3937 100644
---- a/fs/nfs/nfs3xdr.c
-+++ b/fs/nfs/nfs3xdr.c
-@@ -463,7 +463,7 @@ static __be32 *xdr_encode_nfstime3(__be32 *p, const struct timespec *timep)
- 	return p;
- }
+-static int
+-xfs_iomap_swapfile_activate(
+-	struct swap_info_struct		*sis,
+-	struct file			*swap_file,
+-	sector_t			*span)
+-{
+-	sis->bdev = xfs_inode_buftarg(XFS_I(file_inode(swap_file)))->bt_bdev;
+-	return iomap_swapfile_activate(sis, swap_file, span,
+-			&xfs_read_iomap_ops);
+-}
+-
+ const struct address_space_operations xfs_address_space_operations = {
+ 	.readpage		= xfs_vm_readpage,
+ 	.readpages		= xfs_vm_readpages,
+@@ -655,7 +644,6 @@ const struct address_space_operations xfs_address_space_operations = {
+ 	.migratepage		= iomap_migrate_page,
+ 	.is_partially_uptodate  = iomap_is_partially_uptodate,
+ 	.error_remove_page	= generic_error_remove_page,
+-	.swap_activate		= xfs_iomap_swapfile_activate,
+ };
  
--static __be32 *xdr_decode_nfstime3(__be32 *p, struct timespec *timep)
-+static __be32 *xdr_decode_nfstime3(__be32 *p, struct timespec64 *timep)
- {
- 	timep->tv_sec = be32_to_cpup(p++);
- 	timep->tv_nsec = be32_to_cpup(p++);
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index ab07db0f07cd..c917fb24c56f 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -4065,17 +4065,17 @@ static int decode_attr_space_used(struct xdr_stream *xdr, uint32_t *bitmap, uint
- }
- 
- static __be32 *
--xdr_decode_nfstime4(__be32 *p, struct timespec *t)
-+xdr_decode_nfstime4(__be32 *p, struct timespec64 *t)
- {
- 	__u64 sec;
- 
- 	p = xdr_decode_hyper(p, &sec);
--	t-> tv_sec = (time_t)sec;
-+	t-> tv_sec = sec;
- 	t->tv_nsec = be32_to_cpup(p++);
- 	return p;
- }
- 
--static int decode_attr_time(struct xdr_stream *xdr, struct timespec *time)
-+static int decode_attr_time(struct xdr_stream *xdr, struct timespec64 *time)
- {
- 	__be32 *p;
- 
-@@ -4086,7 +4086,7 @@ static int decode_attr_time(struct xdr_stream *xdr, struct timespec *time)
+ const struct address_space_operations xfs_dax_aops = {
+@@ -663,5 +651,4 @@ const struct address_space_operations xfs_dax_aops = {
+ 	.direct_IO		= noop_direct_IO,
+ 	.set_page_dirty		= noop_set_page_dirty,
+ 	.invalidatepage		= noop_invalidatepage,
+-	.swap_activate		= xfs_iomap_swapfile_activate,
+ };
+diff --git a/fs/xfs/xfs_file.c b/fs/xfs/xfs_file.c
+index 865543e41fb4..3d2e89ac72ed 100644
+--- a/fs/xfs/xfs_file.c
++++ b/fs/xfs/xfs_file.c
+@@ -1294,6 +1294,17 @@ xfs_file_mmap(
  	return 0;
  }
  
--static int decode_attr_time_access(struct xdr_stream *xdr, uint32_t *bitmap, struct timespec *time)
-+static int decode_attr_time_access(struct xdr_stream *xdr, uint32_t *bitmap, struct timespec64 *time)
- {
- 	int status = 0;
++static int
++xfs_iomap_swapfile_activate(
++	struct swap_info_struct		*sis,
++	struct file			*swap_file,
++	sector_t			*span)
++{
++	sis->bdev = xfs_inode_buftarg(XFS_I(file_inode(swap_file)))->bt_bdev;
++	return iomap_swapfile_activate(sis, swap_file, span,
++			&xfs_read_iomap_ops);
++}
++
+ const struct file_operations xfs_file_operations = {
+ 	.llseek		= xfs_file_llseek,
+ 	.read_iter	= xfs_file_read_iter,
+@@ -1314,6 +1325,7 @@ const struct file_operations xfs_file_operations = {
+ 	.fallocate	= xfs_file_fallocate,
+ 	.fadvise	= xfs_file_fadvise,
+ 	.remap_file_range = xfs_file_remap_range,
++	.swap_activate	= xfs_iomap_swapfile_activate,
+ };
  
-@@ -4100,11 +4100,11 @@ static int decode_attr_time_access(struct xdr_stream *xdr, uint32_t *bitmap, str
- 			status = NFS_ATTR_FATTR_ATIME;
- 		bitmap[1] &= ~FATTR4_WORD1_TIME_ACCESS;
+ const struct file_operations xfs_dir_file_operations = {
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 83e011e0df7f..1175815da3df 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -402,11 +402,6 @@ struct address_space_operations {
+ 					unsigned long);
+ 	void (*is_dirty_writeback) (struct page *, bool *, bool *);
+ 	int (*error_remove_page)(struct address_space *, struct page *);
+-
+-	/* swapfile support */
+-	int (*swap_activate)(struct swap_info_struct *sis, struct file *file,
+-				sector_t *span);
+-	void (*swap_deactivate)(struct file *file);
+ };
+ 
+ extern const struct address_space_operations empty_aops;
+@@ -1858,6 +1853,11 @@ struct file_operations {
+ 				   struct file *file_out, loff_t pos_out,
+ 				   loff_t len, unsigned int remap_flags);
+ 	int (*fadvise)(struct file *, loff_t, loff_t, int);
++
++	/* swapfile support */
++	int (*swap_activate)(struct swap_info_struct *sis, struct file *file,
++				sector_t *span);
++	void (*swap_deactivate)(struct file *file);
+ } __randomize_layout;
+ 
+ struct inode_operations {
+diff --git a/mm/swapfile.c b/mm/swapfile.c
+index bb3261d45b6a..d2de8d668708 100644
+--- a/mm/swapfile.c
++++ b/mm/swapfile.c
+@@ -2293,11 +2293,10 @@ static void destroy_swap_extents(struct swap_info_struct *sis)
+ 
+ 	if (sis->flags & SWP_ACTIVATED) {
+ 		struct file *swap_file = sis->swap_file;
+-		struct address_space *mapping = swap_file->f_mapping;
+ 
+ 		sis->flags &= ~SWP_ACTIVATED;
+-		if (mapping->a_ops->swap_deactivate)
+-			mapping->a_ops->swap_deactivate(swap_file);
++		if (swap_file->f_op->swap_deactivate)
++			swap_file->f_op->swap_deactivate(swap_file);
  	}
--	dprintk("%s: atime=%ld\n", __func__, (long)time->tv_sec);
-+	dprintk("%s: atime=%lld\n", __func__, time->tv_sec);
- 	return status;
  }
  
--static int decode_attr_time_metadata(struct xdr_stream *xdr, uint32_t *bitmap, struct timespec *time)
-+static int decode_attr_time_metadata(struct xdr_stream *xdr, uint32_t *bitmap, struct timespec64 *time)
+@@ -2381,8 +2380,7 @@ EXPORT_SYMBOL_GPL(add_swap_extent);
+ static int setup_swap_extents(struct swap_info_struct *sis, sector_t *span)
  {
- 	int status = 0;
+ 	struct file *swap_file = sis->swap_file;
+-	struct address_space *mapping = swap_file->f_mapping;
+-	struct inode *inode = mapping->host;
++	struct inode *inode = swap_file->f_mapping->host;
+ 	int ret;
  
-@@ -4118,12 +4118,12 @@ static int decode_attr_time_metadata(struct xdr_stream *xdr, uint32_t *bitmap, s
- 			status = NFS_ATTR_FATTR_CTIME;
- 		bitmap[1] &= ~FATTR4_WORD1_TIME_METADATA;
+ 	if (S_ISBLK(inode->i_mode)) {
+@@ -2391,8 +2389,8 @@ static int setup_swap_extents(struct swap_info_struct *sis, sector_t *span)
+ 		return ret;
  	}
--	dprintk("%s: ctime=%ld\n", __func__, (long)time->tv_sec);
-+	dprintk("%s: ctime=%lld\n", __func__, time->tv_sec);
- 	return status;
- }
  
- static int decode_attr_time_delta(struct xdr_stream *xdr, uint32_t *bitmap,
--				  struct timespec *time)
-+				  struct timespec64 *time)
- {
- 	int status = 0;
- 
-@@ -4135,8 +4135,8 @@ static int decode_attr_time_delta(struct xdr_stream *xdr, uint32_t *bitmap,
- 		status = decode_attr_time(xdr, time);
- 		bitmap[1] &= ~FATTR4_WORD1_TIME_DELTA;
- 	}
--	dprintk("%s: time_delta=%ld %ld\n", __func__, (long)time->tv_sec,
--		(long)time->tv_nsec);
-+	dprintk("%s: time_delta=%lld %ld\n", __func__, time->tv_sec,
-+		time->tv_nsec);
- 	return status;
- }
- 
-@@ -4186,7 +4186,7 @@ static int decode_attr_security_label(struct xdr_stream *xdr, uint32_t *bitmap,
- 	return status;
- }
- 
--static int decode_attr_time_modify(struct xdr_stream *xdr, uint32_t *bitmap, struct timespec *time)
-+static int decode_attr_time_modify(struct xdr_stream *xdr, uint32_t *bitmap, struct timespec64 *time)
- {
- 	int status = 0;
- 
-@@ -4200,7 +4200,7 @@ static int decode_attr_time_modify(struct xdr_stream *xdr, uint32_t *bitmap, str
- 			status = NFS_ATTR_FATTR_MTIME;
- 		bitmap[1] &= ~FATTR4_WORD1_TIME_MODIFY;
- 	}
--	dprintk("%s: mtime=%ld\n", __func__, (long)time->tv_sec);
-+	dprintk("%s: mtime=%lld\n", __func__, time->tv_sec);
- 	return status;
- }
- 
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index a87fe854f008..47266870a235 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -171,7 +171,7 @@ struct nfs_server {
- 
- 	struct nfs_fsid		fsid;
- 	__u64			maxfilesize;	/* maximum file size */
--	struct timespec		time_delta;	/* smallest time granularity */
-+	struct timespec64	time_delta;	/* smallest time granularity */
- 	unsigned long		mount_time;	/* when this fs was mounted */
- 	struct super_block	*super;		/* VFS super block */
- 	dev_t			s_dev;		/* superblock dev numbers */
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 9b8324ec08f3..db5c01001937 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -62,14 +62,14 @@ struct nfs_fattr {
- 	struct nfs_fsid		fsid;
- 	__u64			fileid;
- 	__u64			mounted_on_fileid;
--	struct timespec		atime;
--	struct timespec		mtime;
--	struct timespec		ctime;
-+	struct timespec64	atime;
-+	struct timespec64	mtime;
-+	struct timespec64	ctime;
- 	__u64			change_attr;	/* NFSv4 change attribute */
- 	__u64			pre_change_attr;/* pre-op NFSv4 change attribute */
- 	__u64			pre_size;	/* pre_op_attr.size	  */
--	struct timespec		pre_mtime;	/* pre_op_attr.mtime	  */
--	struct timespec		pre_ctime;	/* pre_op_attr.ctime	  */
-+	struct timespec64	pre_mtime;	/* pre_op_attr.mtime	  */
-+	struct timespec64	pre_ctime;	/* pre_op_attr.ctime	  */
- 	unsigned long		time_start;
- 	unsigned long		gencount;
- 	struct nfs4_string	*owner_name;
-@@ -143,7 +143,7 @@ struct nfs_fsinfo {
- 	__u32			wtmult;	/* writes should be multiple of this */
- 	__u32			dtpref;	/* pref. readdir transfer size */
- 	__u64			maxfilesize;
--	struct timespec		time_delta; /* server time granularity */
-+	struct timespec64	time_delta; /* server time granularity */
- 	__u32			lease_time; /* in seconds */
- 	__u32			nlayouttypes; /* number of layouttypes */
- 	__u32			layouttype[NFS_MAX_LAYOUT_TYPES]; /* supported pnfs layout driver */
+-	if (mapping->a_ops->swap_activate) {
+-		ret = mapping->a_ops->swap_activate(sis, swap_file, span);
++	if (swap_file->f_op->swap_activate) {
++		ret = swap_file->f_op->swap_activate(sis, swap_file, span);
+ 		if (ret >= 0)
+ 			sis->flags |= SWP_ACTIVATED;
+ 		if (!ret) {
 -- 
-2.20.0
+2.20.1
 
