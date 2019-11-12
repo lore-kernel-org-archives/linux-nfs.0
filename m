@@ -2,31 +2,30 @@ Return-Path: <SRS0=Um0H=ZE=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-3.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
+	autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2E239C17447
-	for <linux-nfs@archiver.kernel.org>; Tue, 12 Nov 2019 00:35:12 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id AD10CC1744A
+	for <linux-nfs@archiver.kernel.org>; Tue, 12 Nov 2019 00:35:14 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 027FE2196E
-	for <linux-nfs@archiver.kernel.org>; Tue, 12 Nov 2019 00:35:12 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 816062196E
+	for <linux-nfs@archiver.kernel.org>; Tue, 12 Nov 2019 00:35:14 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727112AbfKLAfA (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 11 Nov 2019 19:35:00 -0500
-Received: from mga09.intel.com ([134.134.136.24]:63175 "EHLO mga09.intel.com"
+        id S1726962AbfKLAe6 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 11 Nov 2019 19:34:58 -0500
+Received: from mga07.intel.com ([134.134.136.100]:45567 "EHLO mga07.intel.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726953AbfKLAfA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 11 Nov 2019 19:35:00 -0500
+        id S1726953AbfKLAe6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 11 Nov 2019 19:34:58 -0500
 X-Amp-Result: SKIPPED(no attachment in message)
 X-Amp-File-Uploaded: False
-Received: from fmsmga003.fm.intel.com ([10.253.24.29])
-  by orsmga102.jf.intel.com with ESMTP/TLS/DHE-RSA-AES256-GCM-SHA384; 11 Nov 2019 16:34:58 -0800
+Received: from fmsmga004.fm.intel.com ([10.253.24.48])
+  by orsmga105.jf.intel.com with ESMTP/TLS/DHE-RSA-AES256-GCM-SHA384; 11 Nov 2019 16:34:57 -0800
 X-IronPort-AV: E=Sophos;i="5.68,294,1569308400"; 
-   d="scan'208";a="252014011"
+   d="scan'208";a="229127871"
 Received: from iweiny-desk2.sc.intel.com (HELO localhost) ([10.3.52.157])
-  by fmsmga003-auth.fm.intel.com with ESMTP/TLS/DHE-RSA-AES256-GCM-SHA384; 11 Nov 2019 16:34:58 -0800
+  by fmsmga004-auth.fm.intel.com with ESMTP/TLS/DHE-RSA-AES256-GCM-SHA384; 11 Nov 2019 16:34:56 -0800
 From:   ira.weiny@intel.com
 To:     Alexander Viro <viro@zeniv.linux.org.uk>,
         Andrew Morton <akpm@linux-foundation.org>
@@ -39,12 +38,10 @@ Cc:     Chris Mason <clm@fb.com>, Josef Bacik <josef@toxicpanda.com>,
         linux-btrfs@vger.kernel.org, linux-kernel@vger.kernel.org,
         linux-f2fs-devel@lists.sourceforge.net, linux-nfs@vger.kernel.org,
         linux-mm@kvack.org, Ira Weiny <ira.weiny@intel.com>
-Subject: [PATCH 1/2] fs: Clean up mapping variable
-Date:   Mon, 11 Nov 2019 16:34:51 -0800
-Message-Id: <20191112003452.4756-2-ira.weiny@intel.com>
+Subject: [PATCH 0/2] Move swap functions out of address space operations
+Date:   Mon, 11 Nov 2019 16:34:50 -0800
+Message-Id: <20191112003452.4756-1-ira.weiny@intel.com>
 X-Mailer: git-send-email 2.20.1
-In-Reply-To: <20191112003452.4756-1-ira.weiny@intel.com>
-References: <20191112003452.4756-1-ira.weiny@intel.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
@@ -54,43 +51,28 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Ira Weiny <ira.weiny@intel.com>
 
-The mapping variable is not directly used in these functions.  Just
-remove the additional variable.
+As suggested by Jan Kara, move swap_[de]activate to file_operations to simplify
+address space operations for coming changes.
 
-Signed-off-by: Ira Weiny <ira.weiny@intel.com>
----
- fs/f2fs/data.c      | 3 +--
- fs/iomap/swapfile.c | 3 +--
- 2 files changed, 2 insertions(+), 4 deletions(-)
+I'm not sure if this should go through Al Viro or Andrew Morton so I'm sending
+it to both of you.  Sorry if this is a problem.  Let me know if there is
+something else I should do.
 
-diff --git a/fs/f2fs/data.c b/fs/f2fs/data.c
-index ba3bcf4c7889..3c7777bfae17 100644
---- a/fs/f2fs/data.c
-+++ b/fs/f2fs/data.c
-@@ -3146,8 +3146,7 @@ int f2fs_migrate_page(struct address_space *mapping,
- /* Copied from generic_swapfile_activate() to check any holes */
- static int check_swap_activate(struct file *swap_file, unsigned int max)
- {
--	struct address_space *mapping = swap_file->f_mapping;
--	struct inode *inode = mapping->host;
-+	struct inode *inode = swap_file->f_mapping->host;
- 	unsigned blocks_per_page;
- 	unsigned long page_no;
- 	unsigned blkbits;
-diff --git a/fs/iomap/swapfile.c b/fs/iomap/swapfile.c
-index a648dbf6991e..80571add0180 100644
---- a/fs/iomap/swapfile.c
-+++ b/fs/iomap/swapfile.c
-@@ -140,8 +140,7 @@ int iomap_swapfile_activate(struct swap_info_struct *sis,
- 		.sis = sis,
- 		.lowest_ppage = (sector_t)-1ULL,
- 	};
--	struct address_space *mapping = swap_file->f_mapping;
--	struct inode *inode = mapping->host;
-+	struct inode *inode = swap_file->f_mapping->host;
- 	loff_t pos = 0;
- 	loff_t len = ALIGN_DOWN(i_size_read(inode), PAGE_SIZE);
- 	loff_t ret;
+Ira Weiny (2):
+  fs: Clean up mapping variable
+  fs: Move swap_[de]activate to file_operations
+
+ fs/btrfs/inode.c    |   4 +-
+ fs/f2fs/data.c      | 123 --------------------------------------------
+ fs/f2fs/file.c      | 122 +++++++++++++++++++++++++++++++++++++++++++
+ fs/iomap/swapfile.c |   3 +-
+ fs/nfs/file.c       |   4 +-
+ fs/xfs/xfs_aops.c   |  13 -----
+ fs/xfs/xfs_file.c   |  12 +++++
+ include/linux/fs.h  |  10 ++--
+ mm/swapfile.c       |  12 ++---
+ 9 files changed, 149 insertions(+), 154 deletions(-)
+
 -- 
 2.20.1
 
