@@ -1,39 +1,35 @@
-Return-Path: <SRS0=Um0H=ZE=vger.kernel.org=linux-nfs-owner@kernel.org>
+Return-Path: <SRS0=TrC6=ZF=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,
-	USER_AGENT_SANE_1 autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-3.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=no
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B84F7C17448
-	for <linux-nfs@archiver.kernel.org>; Tue, 12 Nov 2019 23:52:49 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3F171C17441
+	for <linux-nfs@archiver.kernel.org>; Wed, 13 Nov 2019 00:42:54 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 92F3121D7F
-	for <linux-nfs@archiver.kernel.org>; Tue, 12 Nov 2019 23:52:49 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 22B3121D7F
+	for <linux-nfs@archiver.kernel.org>; Wed, 13 Nov 2019 00:42:54 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727551AbfKLXwn (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 12 Nov 2019 18:52:43 -0500
-Received: from mga14.intel.com ([192.55.52.115]:1529 "EHLO mga14.intel.com"
+        id S1727224AbfKMAmx (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 12 Nov 2019 19:42:53 -0500
+Received: from mga09.intel.com ([134.134.136.24]:39806 "EHLO mga09.intel.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726936AbfKLXwm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 12 Nov 2019 18:52:42 -0500
-X-Amp-Result: UNKNOWN
-X-Amp-Original-Verdict: FILE UNKNOWN
+        id S1726960AbfKMAmw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 12 Nov 2019 19:42:52 -0500
+X-Amp-Result: SKIPPED(no attachment in message)
 X-Amp-File-Uploaded: False
-Received: from fmsmga002.fm.intel.com ([10.253.24.26])
-  by fmsmga103.fm.intel.com with ESMTP/TLS/DHE-RSA-AES256-GCM-SHA384; 12 Nov 2019 15:52:41 -0800
-X-ExtLoop1: 1
+Received: from orsmga008.jf.intel.com ([10.7.209.65])
+  by orsmga102.jf.intel.com with ESMTP/TLS/DHE-RSA-AES256-GCM-SHA384; 12 Nov 2019 16:42:51 -0800
 X-IronPort-AV: E=Sophos;i="5.68,298,1569308400"; 
-   d="scan'208";a="235064254"
-Received: from iweiny-desk2.sc.intel.com ([10.3.52.157])
-  by fmsmga002.fm.intel.com with ESMTP; 12 Nov 2019 15:52:41 -0800
-Date:   Tue, 12 Nov 2019 15:52:41 -0800
-From:   Ira Weiny <ira.weiny@intel.com>
-To:     "Darrick J. Wong" <darrick.wong@oracle.com>
-Cc:     Alexander Viro <viro@zeniv.linux.org.uk>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Chris Mason <clm@fb.com>, Josef Bacik <josef@toxicpanda.com>,
+   d="scan'208";a="198274341"
+Received: from iweiny-desk2.sc.intel.com (HELO localhost) ([10.3.52.157])
+  by orsmga008-auth.jf.intel.com with ESMTP/TLS/DHE-RSA-AES256-GCM-SHA384; 12 Nov 2019 16:42:47 -0800
+From:   ira.weiny@intel.com
+To:     Alexander Viro <viro@zeniv.linux.org.uk>,
+        Andrew Morton <akpm@linux-foundation.org>
+Cc:     Chris Mason <clm@fb.com>, Josef Bacik <josef@toxicpanda.com>,
         David Sterba <dsterba@suse.com>,
         Jaegeuk Kim <jaegeuk@kernel.org>, Chao Yu <chao@kernel.org>,
         linux-xfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
@@ -41,44 +37,43 @@ Cc:     Alexander Viro <viro@zeniv.linux.org.uk>,
         Anna Schumaker <anna.schumaker@netapp.com>,
         linux-btrfs@vger.kernel.org, linux-kernel@vger.kernel.org,
         linux-f2fs-devel@lists.sourceforge.net, linux-nfs@vger.kernel.org,
-        linux-mm@kvack.org, Dave Chinner <david@fromorbit.com>,
-        Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 2/2] fs: Move swap_[de]activate to file_operations
-Message-ID: <20191112235240.GB5792@iweiny-DESK2.sc.intel.com>
-References: <20191112003452.4756-1-ira.weiny@intel.com>
- <20191112003452.4756-3-ira.weiny@intel.com>
- <20191112012017.GT6219@magnolia>
+        linux-mm@kvack.org, Ira Weiny <ira.weiny@intel.com>
+Subject: [PATCH V2 0/2] Move swap functions out of address space operations
+Date:   Tue, 12 Nov 2019 16:42:42 -0800
+Message-Id: <20191113004244.9981-1-ira.weiny@intel.com>
+X-Mailer: git-send-email 2.21.0
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20191112012017.GT6219@magnolia>
-User-Agent: Mutt/1.11.1 (2018-12-01)
+Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Mon, Nov 11, 2019 at 05:20:17PM -0800, Darrick J. Wong wrote:
-> On Mon, Nov 11, 2019 at 04:34:52PM -0800, ira.weiny@intel.com wrote:
-> > From: Ira Weiny <ira.weiny@intel.com>
-> > 
-> >  };
-> > diff --git a/fs/xfs/xfs_file.c b/fs/xfs/xfs_file.c
-> > index 865543e41fb4..3d2e89ac72ed 100644
-> > --- a/fs/xfs/xfs_file.c
-> > +++ b/fs/xfs/xfs_file.c
-> > @@ -1294,6 +1294,17 @@ xfs_file_mmap(
-> >  	return 0;
-> >  }
-> >  
-> > +static int
-> > +xfs_iomap_swapfile_activate(
-> 
-> Might as well rename this xfs_file_swap_activate().
+From: Ira Weiny <ira.weiny@intel.com>
 
-Done.
+As suggested by Jan Kara, move swap_[de]activate to file_operations to simplify
+address space operations for coming changes.
 
-V1 with fixed btrfs, to be out shortly.
+I'm not sure if this should go through Al Viro or Andrew Morton so I'm sending
+it to both of you.  Sorry if this is a problem.  Let me know if there is
+something else I should do.
 
-Ira
+Ira Weiny (2):
+  fs: Clean up mapping variable
+  fs: Move swap_[de]activate to file_operations
+
+ fs/btrfs/file.c     | 341 ++++++++++++++++++++++++++++++++++++++++++++
+ fs/btrfs/inode.c    | 340 -------------------------------------------
+ fs/f2fs/data.c      | 123 ----------------
+ fs/f2fs/file.c      | 122 ++++++++++++++++
+ fs/iomap/swapfile.c |   3 +-
+ fs/nfs/file.c       |   4 +-
+ fs/xfs/xfs_aops.c   |  13 --
+ fs/xfs/xfs_file.c   |  12 ++
+ include/linux/fs.h  |  10 +-
+ mm/swapfile.c       |  12 +-
+ 10 files changed, 488 insertions(+), 492 deletions(-)
+
+-- 
+2.21.0
 
