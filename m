@@ -7,48 +7,49 @@ X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0471AC432C3
-	for <linux-nfs@archiver.kernel.org>; Sat, 16 Nov 2019 16:12:01 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B9705C43141
+	for <linux-nfs@archiver.kernel.org>; Sat, 16 Nov 2019 16:23:48 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id D2A4D2089D
-	for <linux-nfs@archiver.kernel.org>; Sat, 16 Nov 2019 16:12:00 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 93330214DE
+	for <linux-nfs@archiver.kernel.org>; Sat, 16 Nov 2019 16:23:48 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1573920720;
-	bh=GrS/sfvynxkd0Z9uBnjBDVMYI0Mc/xdQEjRQgmhPX4Q=;
+	s=default; t=1573921428;
+	bh=JsC3oQ7k2jnfFKtbfYMCHgatAefXE5BD7sW+AdDdzsY=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=B/DNyViiefJcI/Spycg0Thy+BTZQbONGxYqJH+hxkr71U6giET3N6oHM0P/FEm9fk
-	 FSYROZ7kXEdciVZfdnzD2o9Ki5+2h1nYxC+oOzLAD2KtX2YZoGKzkE7aZNvMzAkTT8
-	 6/HTntMI/7Uxk/JRuLKfbja5YpCiZ35uVf53z08I=
+	b=P0i2iXb3k0tw0q4gRvdqk9EjVxczfS6Kra7XMm6GKwTh9LGNHN15vGrBGQVj0D3a3
+	 4+asKuQzb5WODcfh8ISZh8JoJ3erdGi+fG0x0UJkcZBMC7jlau53IuMahTTMONiZ8h
+	 CAcmLy4WUzGkmUg2L/npB25c/P+O3/wI6a6IQiv4=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1730515AbfKPQLx (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sat, 16 Nov 2019 11:11:53 -0500
-Received: from mail.kernel.org ([198.145.29.99]:55684 "EHLO mail.kernel.org"
+        id S1728489AbfKPQXl (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sat, 16 Nov 2019 11:23:41 -0500
+Received: from mail.kernel.org ([198.145.29.99]:46602 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1730070AbfKPPsb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sat, 16 Nov 2019 10:48:31 -0500
+        id S1728448AbfKPPmt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sat, 16 Nov 2019 10:42:49 -0500
 Received: from sasha-vm.mshome.net (unknown [50.234.116.4])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id CBCE8207FA;
-        Sat, 16 Nov 2019 15:48:30 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 337D7207DD;
+        Sat, 16 Nov 2019 15:42:47 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1573919311;
-        bh=GrS/sfvynxkd0Z9uBnjBDVMYI0Mc/xdQEjRQgmhPX4Q=;
+        s=default; t=1573918967;
+        bh=JsC3oQ7k2jnfFKtbfYMCHgatAefXE5BD7sW+AdDdzsY=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=eVXBzz9QpJ16TzeBGnBTBAbD7azpFde5INVj+0yH7zps4GFPq53Tyh+CCIEImCY9X
-         GqLR7JyjplCFyOlLPA0a3TKv5oit7kUFNaYbBEX+/t+1dLk2YoQWXoWdfGtnLRIkxv
-         biAdyMlrYPwJroT20stVlR+5+APfSsVZMderNYng=
+        b=00N1zSnlcW3BnXkYpXi+rva69fpJC/FHqe1BL2w5K/eFEIP0XPmvs+XeiB4k9sl4T
+         kJnMujaFK+X0o0fiC9rZ5aeU7DclqN56sQl9w1RVGsjp89JVtfXaIbw2ZQvrg/gVZr
+         q1qECgahiRBDH6rUDy6DFF8dZbxMh8Fa7GPq3PuQ=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     Trond Myklebust <trond.myklebust@hammerspace.com>,
+Cc:     "J. Bruce Fields" <bfields@redhat.com>,
+        Trond Myklebust <trond.myklebust@hammerspace.com>,
         Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org,
         netdev@vger.kernel.org
-Subject: [PATCH AUTOSEL 4.14 053/150] SUNRPC: Fix a compile warning for cmpxchg64()
-Date:   Sat, 16 Nov 2019 10:45:51 -0500
-Message-Id: <20191116154729.9573-53-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 4.19 083/237] sunrpc: safely reallow resvport min/max inversion
+Date:   Sat, 16 Nov 2019 10:38:38 -0500
+Message-Id: <20191116154113.7417-83-sashal@kernel.org>
 X-Mailer: git-send-email 2.20.1
-In-Reply-To: <20191116154729.9573-1-sashal@kernel.org>
-References: <20191116154729.9573-1-sashal@kernel.org>
+In-Reply-To: <20191116154113.7417-1-sashal@kernel.org>
+References: <20191116154113.7417-1-sashal@kernel.org>
 MIME-Version: 1.0
 X-stable: review
 X-Patchwork-Hint: Ignore
@@ -58,28 +59,122 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Trond Myklebust <trond.myklebust@hammerspace.com>
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-[ Upstream commit e732f4485a150492b286f3efc06f9b34dd6b9995 ]
+[ Upstream commit 826799e66e8683e5698e140bb9ef69afc8c0014e ]
 
+Commits ffb6ca33b04b and e08ea3a96fc7 prevent setting xprt_min_resvport
+greater than xprt_max_resvport, but may also break simple code that sets
+one parameter then the other, if the new range does not overlap the old.
+
+Also it looks racy to me, unless there's some serialization I'm not
+seeing.  Granted it would probably require malicious privileged processes
+(unless there's a chance these might eventually be settable in unprivileged
+containers), but still it seems better not to let userspace panic the
+kernel.
+
+Simpler seems to be to allow setting the parameters to whatever you want
+but interpret xprt_min_resvport > xprt_max_resvport as the empty range.
+
+Fixes: ffb6ca33b04b "sunrpc: Prevent resvport min/max inversion..."
+Fixes: e08ea3a96fc7 "sunrpc: Prevent rexvport min/max inversion..."
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- net/sunrpc/auth_gss/gss_krb5_seal.c | 1 +
- 1 file changed, 1 insertion(+)
+ net/sunrpc/xprtsock.c | 34 ++++++++++++++++++----------------
+ 1 file changed, 18 insertions(+), 16 deletions(-)
 
-diff --git a/net/sunrpc/auth_gss/gss_krb5_seal.c b/net/sunrpc/auth_gss/gss_krb5_seal.c
-index 1d74d653e6c05..ad0dcb69395d7 100644
---- a/net/sunrpc/auth_gss/gss_krb5_seal.c
-+++ b/net/sunrpc/auth_gss/gss_krb5_seal.c
-@@ -63,6 +63,7 @@
- #include <linux/sunrpc/gss_krb5.h>
- #include <linux/random.h>
- #include <linux/crypto.h>
-+#include <linux/atomic.h>
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 7d8cce1dfcad3..adecfd40953f6 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -129,7 +129,7 @@ static struct ctl_table xs_tunables_table[] = {
+ 		.mode		= 0644,
+ 		.proc_handler	= proc_dointvec_minmax,
+ 		.extra1		= &xprt_min_resvport_limit,
+-		.extra2		= &xprt_max_resvport
++		.extra2		= &xprt_max_resvport_limit
+ 	},
+ 	{
+ 		.procname	= "max_resvport",
+@@ -137,7 +137,7 @@ static struct ctl_table xs_tunables_table[] = {
+ 		.maxlen		= sizeof(unsigned int),
+ 		.mode		= 0644,
+ 		.proc_handler	= proc_dointvec_minmax,
+-		.extra1		= &xprt_min_resvport,
++		.extra1		= &xprt_min_resvport_limit,
+ 		.extra2		= &xprt_max_resvport_limit
+ 	},
+ 	{
+@@ -1773,11 +1773,17 @@ static void xs_udp_timer(struct rpc_xprt *xprt, struct rpc_task *task)
+ 	spin_unlock_bh(&xprt->transport_lock);
+ }
  
- #if IS_ENABLED(CONFIG_SUNRPC_DEBUG)
- # define RPCDBG_FACILITY        RPCDBG_AUTH
+-static unsigned short xs_get_random_port(void)
++static int xs_get_random_port(void)
+ {
+-	unsigned short range = xprt_max_resvport - xprt_min_resvport + 1;
+-	unsigned short rand = (unsigned short) prandom_u32() % range;
+-	return rand + xprt_min_resvport;
++	unsigned short min = xprt_min_resvport, max = xprt_max_resvport;
++	unsigned short range;
++	unsigned short rand;
++
++	if (max < min)
++		return -EADDRINUSE;
++	range = max - min + 1;
++	rand = (unsigned short) prandom_u32() % range;
++	return rand + min;
+ }
+ 
+ /**
+@@ -1833,9 +1839,9 @@ static void xs_set_srcport(struct sock_xprt *transport, struct socket *sock)
+ 		transport->srcport = xs_sock_getport(sock);
+ }
+ 
+-static unsigned short xs_get_srcport(struct sock_xprt *transport)
++static int xs_get_srcport(struct sock_xprt *transport)
+ {
+-	unsigned short port = transport->srcport;
++	int port = transport->srcport;
+ 
+ 	if (port == 0 && transport->xprt.resvport)
+ 		port = xs_get_random_port();
+@@ -1856,7 +1862,7 @@ static int xs_bind(struct sock_xprt *transport, struct socket *sock)
+ {
+ 	struct sockaddr_storage myaddr;
+ 	int err, nloop = 0;
+-	unsigned short port = xs_get_srcport(transport);
++	int port = xs_get_srcport(transport);
+ 	unsigned short last;
+ 
+ 	/*
+@@ -1874,8 +1880,8 @@ static int xs_bind(struct sock_xprt *transport, struct socket *sock)
+ 	 * transport->xprt.resvport == 1) xs_get_srcport above will
+ 	 * ensure that port is non-zero and we will bind as needed.
+ 	 */
+-	if (port == 0)
+-		return 0;
++	if (port <= 0)
++		return port;
+ 
+ 	memcpy(&myaddr, &transport->srcaddr, transport->xprt.addrlen);
+ 	do {
+@@ -3317,12 +3323,8 @@ static int param_set_uint_minmax(const char *val,
+ 
+ static int param_set_portnr(const char *val, const struct kernel_param *kp)
+ {
+-	if (kp->arg == &xprt_min_resvport)
+-		return param_set_uint_minmax(val, kp,
+-			RPC_MIN_RESVPORT,
+-			xprt_max_resvport);
+ 	return param_set_uint_minmax(val, kp,
+-			xprt_min_resvport,
++			RPC_MIN_RESVPORT,
+ 			RPC_MAX_RESVPORT);
+ }
+ 
 -- 
 2.20.1
 
