@@ -2,84 +2,168 @@ Return-Path: <SRS0=W40c=ZM=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
+X-Spam-Status: No, score=-6.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
+	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A594AC432C0
-	for <linux-nfs@archiver.kernel.org>; Wed, 20 Nov 2019 13:43:33 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 61912C432C3
+	for <linux-nfs@archiver.kernel.org>; Wed, 20 Nov 2019 15:27:56 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 7AD6F22529
-	for <linux-nfs@archiver.kernel.org>; Wed, 20 Nov 2019 13:43:33 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1574257413;
-	bh=Py4LIxOYIGUpBCC1UaHD/YjPJ7FIC1KP3vrfomorWQ4=;
-	h=From:To:Cc:Subject:Date:List-ID:From;
-	b=P1/aZsD2oCmsKrySJxjyFPHVz1996pZproY+v6GscMt45Q3bDVoIjcZF5Te0Q/74X
-	 MtE00WowdH84QeRp1n9HSchSqszz11d5exGXtl2/Gd1n03TLrJ0uBqlWdFJ1uEKzds
-	 BSPuhrlm6uL6YwpxrBE3U/fnmw31MWmcavhHUzJw=
+	by mail.kernel.org (Postfix) with ESMTP id 340AF20714
+	for <linux-nfs@archiver.kernel.org>; Wed, 20 Nov 2019 15:27:56 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="ir7N0f31"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1730677AbfKTNnc (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 20 Nov 2019 08:43:32 -0500
-Received: from mail.kernel.org ([198.145.29.99]:51398 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1730358AbfKTNnc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 20 Nov 2019 08:43:32 -0500
-Received: from localhost.localdomain (unknown [118.189.143.39])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+        id S1728554AbfKTP1z (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 20 Nov 2019 10:27:55 -0500
+Received: from us-smtp-delivery-1.mimecast.com ([207.211.31.120]:42186 "EHLO
+        us-smtp-1.mimecast.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+        with ESMTP id S1728202AbfKTP1z (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Nov 2019 10:27:55 -0500
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1574263674;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=bimceprUZXtgJwJ3r+uNah68s5oKbHDn9kJlulQ0RL0=;
+        b=ir7N0f31WFQppZem22qXKeUjilzlcUSl79ltYn9t/JA1AqJ4FRSs7jfQprAxkOExpT+TE9
+        mSbkWE/5JLYyn18MkDzcvjPMjedqUCba7JDeXEel2Dmb6H36jFWyIajzk96+n3SHp593m0
+        NUQwhlUgblxlN03OJcE60bdStWJm+Bs=
+Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
+ [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
+ us-mta-215-0lhVNJB-Na6Zu_SXt0PRAQ-1; Wed, 20 Nov 2019 10:27:52 -0500
+Received: from smtp.corp.redhat.com (int-mx04.intmail.prod.int.phx2.redhat.com [10.5.11.14])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 41C8722528;
-        Wed, 20 Nov 2019 13:43:30 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1574257411;
-        bh=Py4LIxOYIGUpBCC1UaHD/YjPJ7FIC1KP3vrfomorWQ4=;
-        h=From:To:Cc:Subject:Date:From;
-        b=uZ2j/2yP5YKrzqRAi0SKT0cOMOxFqg18x8GrUXE2shBcd39pZq47f6yVYUchlQN7R
-         W6U8mF5D+RMEmDyCUMcc1owRjIBf9Lngyq7581b0BauJDM8622I+YY0N/45VRPhQPu
-         M4XO2LNN5T0G/2nJqfbdvExXvpscW2ku5clXgpms=
-From:   Krzysztof Kozlowski <krzk@kernel.org>
-To:     linux-kernel@vger.kernel.org
-Cc:     Krzysztof Kozlowski <krzk@kernel.org>,
-        Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        linux-nfs@vger.kernel.org
-Subject: [PATCH] nfs: Fix Kconfig indentation
-Date:   Wed, 20 Nov 2019 21:43:27 +0800
-Message-Id: <20191120134327.16582-1-krzk@kernel.org>
-X-Mailer: git-send-email 2.17.1
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 15515DBAA;
+        Wed, 20 Nov 2019 15:27:51 +0000 (UTC)
+Received: from coeurl.usersys.redhat.com (ovpn-123-90.rdu2.redhat.com [10.10.123.90])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id A4E425E271;
+        Wed, 20 Nov 2019 15:27:50 +0000 (UTC)
+Received: by coeurl.usersys.redhat.com (Postfix, from userid 1000)
+        id 343142093D; Wed, 20 Nov 2019 10:27:50 -0500 (EST)
+From:   Scott Mayhew <smayhew@redhat.com>
+To:     anna.schumaker@netapp.com, trond.myklebust@hammerspace.com
+Cc:     dhowells@redhat.com, viro@zeniv.linux.org.uk,
+        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: [PATCH v5 04/27] nfs: fold nfs4_remote_fs_type and nfs4_remote_referral_fs_type
+Date:   Wed, 20 Nov 2019 10:27:27 -0500
+Message-Id: <20191120152750.6880-5-smayhew@redhat.com>
+In-Reply-To: <20191120152750.6880-1-smayhew@redhat.com>
+References: <20191120152750.6880-1-smayhew@redhat.com>
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.14
+X-MC-Unique: 0lhVNJB-Na6Zu_SXt0PRAQ-1
+X-Mimecast-Spam-Score: 0
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Adjust indentation from spaces to tab (+optional two spaces) as in
-coding style with command like:
-	$ sed -e 's/^        /\t/' -i */Kconfig
+From: Al Viro <viro@zeniv.linux.org.uk>
 
-Signed-off-by: Krzysztof Kozlowski <krzk@kernel.org>
+They are identical now.
+
+Reviewed-by: David Howells <dhowells@redhat.com>
+Signed-off-by: Al Viro <viro@zeniv.linux.org.uk>
 ---
- fs/nfs/Kconfig | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+ fs/nfs/nfs4super.c | 26 ++++----------------------
+ 1 file changed, 4 insertions(+), 22 deletions(-)
 
-diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
-index 295a7a21b774..3edf122b8044 100644
---- a/fs/nfs/Kconfig
-+++ b/fs/nfs/Kconfig
-@@ -147,10 +147,10 @@ config NFS_V4_1_MIGRATION
- 	default n
- 	help
- 	  This option makes the NFS client advertise to NFSv4.1 servers that
--          it can support NFSv4 migration.
-+	  it can support NFSv4 migration.
- 
--          The NFSv4.1 pieces of the Linux NFSv4 migration implementation are
--          still experimental.  If you are not an NFSv4 developer, say N here.
-+	  The NFSv4.1 pieces of the Linux NFSv4 migration implementation are
-+	  still experimental.  If you are not an NFSv4 developer, say N here.
- 
- config NFS_V4_SECURITY_LABEL
- 	bool
--- 
-2.17.1
+diff --git a/fs/nfs/nfs4super.c b/fs/nfs/nfs4super.c
+index 773c347df3ab..d0237d8ffa2b 100644
+--- a/fs/nfs/nfs4super.c
++++ b/fs/nfs/nfs4super.c
+@@ -22,8 +22,6 @@ static struct dentry *nfs4_remote_mount(struct file_syste=
+m_type *fs_type,
+ =09int flags, const char *dev_name, void *raw_data);
+ static struct dentry *nfs4_referral_mount(struct file_system_type *fs_type=
+,
+ =09int flags, const char *dev_name, void *raw_data);
+-static struct dentry *nfs4_remote_referral_mount(struct file_system_type *=
+fs_type,
+-=09int flags, const char *dev_name, void *raw_data);
+=20
+ static struct file_system_type nfs4_remote_fs_type =3D {
+ =09.owner=09=09=3D THIS_MODULE,
+@@ -33,14 +31,6 @@ static struct file_system_type nfs4_remote_fs_type =3D {
+ =09.fs_flags=09=3D FS_RENAME_DOES_D_MOVE|FS_BINARY_MOUNTDATA,
+ };
+=20
+-static struct file_system_type nfs4_remote_referral_fs_type =3D {
+-=09.owner=09=09=3D THIS_MODULE,
+-=09.name=09=09=3D "nfs4",
+-=09.mount=09=09=3D nfs4_remote_referral_mount,
+-=09.kill_sb=09=3D nfs_kill_super,
+-=09.fs_flags=09=3D FS_RENAME_DOES_D_MOVE|FS_BINARY_MOUNTDATA,
+-};
+-
+ struct file_system_type nfs4_referral_fs_type =3D {
+ =09.owner=09=09=3D THIS_MODULE,
+ =09.name=09=09=3D "nfs4",
+@@ -111,8 +101,7 @@ nfs4_remote_mount(struct file_system_type *fs_type, int=
+ flags,
+ =09return nfs_fs_mount_common(flags, dev_name, info, &nfs_v4);
+ }
+=20
+-static struct vfsmount *nfs_do_root_mount(struct file_system_type *fs_type=
+,
+-=09=09=09=09=09  struct nfs_server *server, int flags,
++static struct vfsmount *nfs_do_root_mount(struct nfs_server *server, int f=
+lags,
+ =09=09=09=09=09  struct nfs_mount_info *info,
+ =09=09=09=09=09  const char *hostname)
+ {
+@@ -135,7 +124,7 @@ static struct vfsmount *nfs_do_root_mount(struct file_s=
+ystem_type *fs_type,
+ =09else
+ =09=09snprintf(root_devname, len, "%s:/", hostname);
+ =09info->server =3D server;
+-=09root_mnt =3D vfs_kern_mount(fs_type, flags, root_devname, info);
++=09root_mnt =3D vfs_kern_mount(&nfs4_remote_fs_type, flags, root_devname, =
+info);
+ =09if (info->server)
+ =09=09nfs_free_server(info->server);
+ =09info->server =3D NULL;
+@@ -245,7 +234,7 @@ struct dentry *nfs4_try_mount(int flags, const char *de=
+v_name,
+=20
+ =09export_path =3D data->nfs_server.export_path;
+ =09data->nfs_server.export_path =3D "/";
+-=09root_mnt =3D nfs_do_root_mount(&nfs4_remote_fs_type,
++=09root_mnt =3D nfs_do_root_mount(
+ =09=09=09nfs4_create_server(mount_info, &nfs_v4),
+ =09=09=09flags, mount_info,
+ =09=09=09data->nfs_server.hostname);
+@@ -259,13 +248,6 @@ struct dentry *nfs4_try_mount(int flags, const char *d=
+ev_name,
+ =09return res;
+ }
+=20
+-static struct dentry *
+-nfs4_remote_referral_mount(struct file_system_type *fs_type, int flags,
+-=09=09=09   const char *dev_name, void *raw_data)
+-{
+-=09return nfs_fs_mount_common(flags, dev_name, raw_data, &nfs_v4);
+-}
+-
+ /*
+  * Create an NFS4 server record on referral traversal
+  */
+@@ -290,7 +272,7 @@ static struct dentry *nfs4_referral_mount(struct file_s=
+ystem_type *fs_type,
+=20
+ =09export_path =3D data->mnt_path;
+ =09data->mnt_path =3D "/";
+-=09root_mnt =3D nfs_do_root_mount(&nfs4_remote_referral_fs_type,
++=09root_mnt =3D nfs_do_root_mount(
+ =09=09=09nfs4_create_referral_server(mount_info.cloned,
+ =09=09=09=09=09=09    mount_info.mntfh),
+ =09=09=09flags, &mount_info, data->hostname);
+--=20
+2.17.2
 
