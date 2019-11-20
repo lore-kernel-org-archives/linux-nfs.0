@@ -4,22 +4,22 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-6.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
-	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS autolearn=unavailable autolearn_force=no
+	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id ED513C432C0
-	for <linux-nfs@archiver.kernel.org>; Wed, 20 Nov 2019 15:30:03 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 98935C432C3
+	for <linux-nfs@archiver.kernel.org>; Wed, 20 Nov 2019 15:30:04 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id B31E520637
-	for <linux-nfs@archiver.kernel.org>; Wed, 20 Nov 2019 15:30:03 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 6B465206B6
+	for <linux-nfs@archiver.kernel.org>; Wed, 20 Nov 2019 15:30:04 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="ilkHLL9O"
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="VL6/zb5z"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729811AbfKTPaC (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 20 Nov 2019 10:30:02 -0500
-Received: from us-smtp-delivery-1.mimecast.com ([207.211.31.120]:44921 "EHLO
-        us-smtp-1.mimecast.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1730220AbfKTP16 (ORCPT
+        id S1730220AbfKTPaD (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 20 Nov 2019 10:30:03 -0500
+Received: from us-smtp-1.mimecast.com ([207.211.31.81]:24590 "EHLO
+        us-smtp-delivery-1.mimecast.com" rhost-flags-OK-OK-OK-FAIL)
+        by vger.kernel.org with ESMTP id S1730145AbfKTP16 (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Nov 2019 10:27:58 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
         s=mimecast20190719; t=1574263677;
@@ -27,35 +27,35 @@ DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
          to:to:cc:cc:content-type:content-type:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=VfTwEHC91vLf788MahabIL/JjXF4xSOgcRFDg7nd7E0=;
-        b=ilkHLL9OR5Zu/9W6dx9MNggTLylxA0ANbyDexiKn4nGnfAMrV6jQm+qaxW9gQLHcJgTaz7
-        6nfjY8PDTUMBao1hhDK+ljUwahpw3tsCqNdBfEPl+5ORBpfGYlWCahIpCVkuvu/QuzmIn6
-        UCx5/rPcUWeRHU2HsqHGvQ4otFWk6yw=
+        bh=q0JqdtdvWpDH0/z44SL3BP0QhXk+xbUOP8E9mjHoWrs=;
+        b=VL6/zb5zEL/l7HNLtW31jXqF/xIEfUQijXMpzTdFO6w0T75arUubxqrwEwlTOT2pi3DiBY
+        grPMRKSiRYEgSfa+vG6v9t1xr7ft0bZ274WD5oMme/KpvH6vD0kUaFg9x7H5YkH6RoLYZZ
+        4N8+CprKpImMvvqusvlO60b20s5i6PE=
 Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
  [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-89-ZBvrTDm_MMy3MUvfRNLqDw-1; Wed, 20 Nov 2019 10:27:53 -0500
-Received: from smtp.corp.redhat.com (int-mx07.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+ us-mta-111-LolnuL5aMqa6vpo2lsZ_bA-1; Wed, 20 Nov 2019 10:27:54 -0500
+Received: from smtp.corp.redhat.com (int-mx05.intmail.prod.int.phx2.redhat.com [10.5.11.15])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 405FD18B5F75;
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 9977C107ACC7;
         Wed, 20 Nov 2019 15:27:52 +0000 (UTC)
 Received: from coeurl.usersys.redhat.com (ovpn-123-90.rdu2.redhat.com [10.10.123.90])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 184CF1037ADA;
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 7474046E76;
         Wed, 20 Nov 2019 15:27:52 +0000 (UTC)
 Received: by coeurl.usersys.redhat.com (Postfix, from userid 1000)
-        id 6B2F1209BA; Wed, 20 Nov 2019 10:27:50 -0500 (EST)
+        id 3A3192095B; Wed, 20 Nov 2019 10:27:50 -0500 (EST)
 From:   Scott Mayhew <smayhew@redhat.com>
 To:     anna.schumaker@netapp.com, trond.myklebust@hammerspace.com
 Cc:     dhowells@redhat.com, viro@zeniv.linux.org.uk,
         linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         linux-kernel@vger.kernel.org
-Subject: [PATCH v5 14/27] nfs_clone_sb_security(): simplify the check for server bogosity
-Date:   Wed, 20 Nov 2019 10:27:37 -0500
-Message-Id: <20191120152750.6880-15-smayhew@redhat.com>
+Subject: [PATCH v5 05/27] nfs: don't bother setting/restoring export_path around do_nfs_root_mount()
+Date:   Wed, 20 Nov 2019 10:27:28 -0500
+Message-Id: <20191120152750.6880-6-smayhew@redhat.com>
 In-Reply-To: <20191120152750.6880-1-smayhew@redhat.com>
 References: <20191120152750.6880-1-smayhew@redhat.com>
-X-Scanned-By: MIMEDefang 2.84 on 10.5.11.22
-X-MC-Unique: ZBvrTDm_MMy3MUvfRNLqDw-1
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.15
+X-MC-Unique: LolnuL5aMqa6vpo2lsZ_bA-1
 X-Mimecast-Spam-Score: 0
 Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: quoted-printable
@@ -66,33 +66,46 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Al Viro <viro@zeniv.linux.org.uk>
 
-We used to check ->i_op for being nfs_dir_inode_operations.  With
-separate inode_operations for v3 and v4 that became bogus, but
-rather than going for protocol-dependent comparison we could've
-just checked ->i_fop instead; _that_ is the same for all protocol
-versions.
+nothing in it will be looking at that thing anyway
 
 Reviewed-by: David Howells <dhowells@redhat.com>
 Signed-off-by: Al Viro <viro@zeniv.linux.org.uk>
 ---
- fs/nfs/super.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ fs/nfs/nfs4super.c | 4 ----
+ 1 file changed, 4 deletions(-)
 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index d8b53fcaa60e..c5fefd9bf6ae 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -2578,7 +2578,7 @@ int nfs_clone_sb_security(struct super_block *s, stru=
-ct dentry *mntroot,
- =09unsigned long kflags =3D 0, kflags_out =3D 0;
+diff --git a/fs/nfs/nfs4super.c b/fs/nfs/nfs4super.c
+index d0237d8ffa2b..a0b66f98f6ba 100644
+--- a/fs/nfs/nfs4super.c
++++ b/fs/nfs/nfs4super.c
+@@ -233,12 +233,10 @@ struct dentry *nfs4_try_mount(int flags, const char *=
+dev_name,
+ =09dfprintk(MOUNT, "--> nfs4_try_mount()\n");
 =20
- =09/* clone any lsm security options from the parent to the new sb */
--=09if (d_inode(mntroot)->i_op !=3D NFS_SB(s)->nfs_client->rpc_ops->dir_ino=
-de_ops)
-+=09if (d_inode(mntroot)->i_fop !=3D &nfs_dir_operations)
- =09=09return -ESTALE;
+ =09export_path =3D data->nfs_server.export_path;
+-=09data->nfs_server.export_path =3D "/";
+ =09root_mnt =3D nfs_do_root_mount(
+ =09=09=09nfs4_create_server(mount_info, &nfs_v4),
+ =09=09=09flags, mount_info,
+ =09=09=09data->nfs_server.hostname);
+-=09data->nfs_server.export_path =3D export_path;
 =20
- =09if (NFS_SB(s)->caps & NFS_CAP_SECURITY_LABEL)
+ =09res =3D nfs_follow_remote_path(root_mnt, export_path);
+=20
+@@ -271,12 +269,10 @@ static struct dentry *nfs4_referral_mount(struct file=
+_system_type *fs_type,
+ =09=09return ERR_PTR(-ENOMEM);
+=20
+ =09export_path =3D data->mnt_path;
+-=09data->mnt_path =3D "/";
+ =09root_mnt =3D nfs_do_root_mount(
+ =09=09=09nfs4_create_referral_server(mount_info.cloned,
+ =09=09=09=09=09=09    mount_info.mntfh),
+ =09=09=09flags, &mount_info, data->hostname);
+-=09data->mnt_path =3D export_path;
+=20
+ =09res =3D nfs_follow_remote_path(root_mnt, export_path);
+ =09dprintk("<-- nfs4_referral_mount() =3D %d%s\n",
 --=20
 2.17.2
 
