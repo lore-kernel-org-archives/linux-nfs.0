@@ -2,74 +2,72 @@ Return-Path: <SRS0=W40c=ZM=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	USER_AGENT_SANE_1 autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-0.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C9B19C43215
-	for <linux-nfs@archiver.kernel.org>; Wed, 20 Nov 2019 16:43:23 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id F3105C432C0
+	for <linux-nfs@archiver.kernel.org>; Wed, 20 Nov 2019 18:43:20 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id A990820895
-	for <linux-nfs@archiver.kernel.org>; Wed, 20 Nov 2019 16:43:23 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id D17962088F
+	for <linux-nfs@archiver.kernel.org>; Wed, 20 Nov 2019 18:43:20 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1732112AbfKTQnW (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 20 Nov 2019 11:43:22 -0500
-Received: from fieldses.org ([173.255.197.46]:34708 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1732895AbfKTQnR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 20 Nov 2019 11:43:17 -0500
-Received: by fieldses.org (Postfix, from userid 2815)
-        id B7E021C97; Wed, 20 Nov 2019 11:43:16 -0500 (EST)
-Date:   Wed, 20 Nov 2019 11:43:16 -0500
+        id S1727165AbfKTSnU (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 20 Nov 2019 13:43:20 -0500
+Received: from mails1n2-route0.email.arizona.edu ([128.196.130.79]:13410 "EHLO
+        mails1n2-route0.email.arizona.edu" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1726001AbfKTSnU (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Nov 2019 13:43:20 -0500
+IronPort-SDR: dd8PZixLCdvkl63BkRPmhIi9fiVRHY2HX4M1cPhZ68vYTu4uZsWMXp5b2LWzm/gR+mu33JkhQP
+ D9i7ckqeDhtQ==
+IronPort-PHdr: =?us-ascii?q?9a23=3AMFSWLhzG1sRMlRXXCy+O+j09IxM/srCxBDY+r6?=
+ =?us-ascii?q?Qd1O4WIJqq85mqBkHD//Il1AaPAdyArasZ06GP6vuocFdDyK7JiGoFfp1IWk?=
+ =?us-ascii?q?1NouQttCtkPvS4D1bmJuXhdS0wEZcKflZk+3amLRodQ56mNBXdrXKo8DEdBA?=
+ =?us-ascii?q?j0OxZrKeTpAI7SiNm82/yv95HJbAhEmTSwbalvIBi2sQndudQajZZsJ60s1h?=
+ =?us-ascii?q?bHv3xEdvhMy2h1P1yThRH85smx/J5n7Stdvu8q+tBDX6vnYak2VKRUAzs6PW?=
+ =?us-ascii?q?874s3rrgTDQhCU5nQASGUWkwFHDBbD4RrnQ5r+qCr6tu562CmHIc37SK0/VD?=
+ =?us-ascii?q?q+46t3ThLjlSEKPCM7/m7KkMx9lKJVrg+/qRxxwIDabo6aO/hica3SZt4aWW?=
+ =?us-ascii?q?hMU9xNWyBdHo+xbY0CBPcBM+ZCqIn9okMDoAW+BQa2AuPg1ztIiWHs3aYn1O?=
+ =?us-ascii?q?kuCxzJ3AkhH9IIq3nUo8v6NKEVUeCw0qbE1y/Mb+lX2Tb874jIdAoureuSUr?=
+ =?us-ascii?q?1tbMrc0E8iHB7GgFWIsYHpIi+Z2v4Qv2WV7OdsT+CihmE9pw1soTWixMEhgZ?=
+ =?us-ascii?q?TTiI0P0FDL7yB5zZ4wJd2/VUF0f8apEIBVtyGGL4t2Rd4iQ31wtCY61LIGvZ?=
+ =?us-ascii?q?m7cTAOx5g62xLTceGLfoaL7x75VuucLi10iG9mdb+9gRm+6UmgyuviWcmoyF?=
+ =?us-ascii?q?tGszZJnsPRun0D1BHf8MqKR/Rn8ku82juC1Rjf6uReLkA1karbJYQhwrk1lp?=
+ =?us-ascii?q?cLq0vMAyr2mETwjKKNeUUr5O6o6+PiYrr4vJOTLZV0igD/M6QpnMywG/40PR?=
+ =?us-ascii?q?YTUGiG4ei8zqHs/VXlQLVWif07iq3ZsJHcJcQGqa+1GglV0og46xukETem38?=
+ =?us-ascii?q?oXnWMdIFJGZh2HlY7pNE/KIPziCve/mVusw39XwKXCP7v8EtDLIGPrjrjsZ/?=
+ =?us-ascii?q?B+5lRaxQ51yspQtLxODbRUC/L6XEP1ucaQWhY1Ng2y6+nqDtJ428UXQ2OdBa?=
+ =?us-ascii?q?mQdq7erAnbtaoUP+CQadpN637GIP8/6qu2gA=3D=3D?=
+X-IronPort-Anti-Spam-Filtered: true
+X-IronPort-Anti-Spam-Result: =?us-ascii?q?A2BkCwAXiNVd/7tKigoNWBwBAQE4AQQ?=
+ =?us-ascii?q?EAQECAQcBAYFYAYE0AocurDsBCAEBAQ4vAQGENgEBCAKCSzgTAgMNAQEBBAE?=
+ =?us-ascii?q?BAQEBBQICAYVXgRoWAYFiIoJ1AgEDIxVRCxoCJgICV4M7glOvcHWBMoVOgns?=
+ =?us-ascii?q?fCYFVgQ4mAgEBjCx4gQeBOAyCXz6FEoJDgl4EgTqIb4w1RpcKH4IWgRwFX5N?=
+ =?us-ascii?q?JBhuCLgGCFJVRpXmDA4FpgXpNJROBWYFPTyWVLItChAABAQ?=
+X-IPAS-Result: =?us-ascii?q?A2BkCwAXiNVd/7tKigoNWBwBAQE4AQQEAQECAQcBAYFYA?=
+ =?us-ascii?q?YE0AocurDsBCAEBAQ4vAQGENgEBCAKCSzgTAgMNAQEBBAEBAQEBBQICAYVXg?=
+ =?us-ascii?q?RoWAYFiIoJ1AgEDIxVRCxoCJgICV4M7glOvcHWBMoVOgnsfCYFVgQ4mAgEBj?=
+ =?us-ascii?q?Cx4gQeBOAyCXz6FEoJDgl4EgTqIb4w1RpcKH4IWgRwFX5NJBhuCLgGCFJVRp?=
+ =?us-ascii?q?XmDA4FpgXpNJROBWYFPTyWVLItChAABAQ?=
+X-IronPort-AV: E=Sophos;i="5.69,222,1571727600"; 
+   d="scan'208";a="436224094"
+Received: from on-campus-10-138-74-187.vpn.arizona.edu (HELO [10.138.74.187]) ([10.138.74.187])
+  by mails1n2out.email.arizona.edu with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 20 Nov 2019 11:43:18 -0700
+From:   Chandler <admin@genome.arizona.edu>
+Subject: Re: NFS hangs on one interface
 To:     linux-nfs@vger.kernel.org
-Cc:     Trond Myklebust <trondmy@hammerspace.com>
-Subject: [PATCH] nfsd: restore NFSv3 ACL support
-Message-ID: <20191120164316.GA8520@fieldses.org>
+References: <3447df77-1b2f-6d36-0516-3ae7267ab509@genome.arizona.edu>
+Message-ID: <a790a87f-4062-0c8c-0957-2d59df64a870@genome.arizona.edu>
+Date:   Wed, 20 Nov 2019 11:43:18 -0700
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-User-Agent: Mutt/1.5.21 (2010-09-15)
-From:   bfields@fieldses.org (J. Bruce Fields)
+In-Reply-To: <3447df77-1b2f-6d36-0516-3ae7267ab509@genome.arizona.edu>
+Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: "J. Bruce Fields" <bfields@redhat.com>
-
-An error in e333f3bbefe3 left the nfsd_acl_program->pg_vers array empty,
-which effectively turned off the server's support for NFSv3 ACLs.
-
-Fixes: e333f3bbefe3 "nfsd: Allow containers to set supported nfs versions"
-Cc: stable@vger.kernel.org
-Cc: Trond Myklebust <trondmy@gmail.com>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfssvc.c | 3 +--
- 1 file changed, 1 insertion(+), 2 deletions(-)
-
-Kinda wondering if it says something that server NFSv3 ACL support was
-off in 5.2 and 5.3 and nobody noticed.  (At least I don't recall any
-reports.)
-
-diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index fdf7ed4bd5dd..e8bee8ff30c5 100644
---- a/fs/nfsd/nfssvc.c
-+++ b/fs/nfsd/nfssvc.c
-@@ -95,12 +95,11 @@ static const struct svc_version *nfsd_acl_version[] = {
- 
- #define NFSD_ACL_MINVERS            2
- #define NFSD_ACL_NRVERS		ARRAY_SIZE(nfsd_acl_version)
--static const struct svc_version *nfsd_acl_versions[NFSD_ACL_NRVERS];
- 
- static struct svc_program	nfsd_acl_program = {
- 	.pg_prog		= NFS_ACL_PROGRAM,
- 	.pg_nvers		= NFSD_ACL_NRVERS,
--	.pg_vers		= nfsd_acl_versions,
-+	.pg_vers		= nfsd_acl_version,
- 	.pg_name		= "nfsacl",
- 	.pg_class		= "nfsd",
- 	.pg_stats		= &nfsd_acl_svcstats,
--- 
-2.23.0
+Seems the problem was a mis-matched MTU setting with the switch.  Now that the port on the switch is set to 9000, everything is working.  Thanks for all your help.
 
