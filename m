@@ -2,228 +2,207 @@ Return-Path: <SRS0=W40c=ZM=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
-	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS autolearn=unavailable autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-6.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id AC191C432C0
-	for <linux-nfs@archiver.kernel.org>; Wed, 20 Nov 2019 15:30:43 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4A30CC432C0
+	for <linux-nfs@archiver.kernel.org>; Wed, 20 Nov 2019 16:29:09 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 7AB84206B6
-	for <linux-nfs@archiver.kernel.org>; Wed, 20 Nov 2019 15:30:43 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 08A3920656
+	for <linux-nfs@archiver.kernel.org>; Wed, 20 Nov 2019 16:29:09 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="U5KiCSSp"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="k9beHIcp"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728034AbfKTPam (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 20 Nov 2019 10:30:42 -0500
-Received: from us-smtp-1.mimecast.com ([205.139.110.61]:32133 "EHLO
-        us-smtp-delivery-1.mimecast.com" rhost-flags-OK-OK-OK-FAIL)
-        by vger.kernel.org with ESMTP id S1727470AbfKTP14 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Nov 2019 10:27:56 -0500
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1574263674;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=yzi8dEAv+gfwO2B7gh2eSuo+eQOiUqwSUFPcG6P3rtI=;
-        b=U5KiCSSp2x2n4ekc+L4uZcGAnjl7LH4mym9G0lfmzajcMCuz0cueMbHSn6tHfNqrdrJRey
-        GePO558THrs5DSTsB8ZZM0TWbIcflPSfoL8ved2hHfunMuYU2t6NUZIVqk+MnfRiph9KFD
-        MgRoWiowe4t7D0wT36tk8D7Cki+78So=
-Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
- [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-340-bi-9zjGAPn-MpcXoiWhXOw-1; Wed, 20 Nov 2019 10:27:52 -0500
-Received: from smtp.corp.redhat.com (int-mx06.intmail.prod.int.phx2.redhat.com [10.5.11.16])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 189B0802691;
-        Wed, 20 Nov 2019 15:27:51 +0000 (UTC)
-Received: from coeurl.usersys.redhat.com (ovpn-123-90.rdu2.redhat.com [10.10.123.90])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id A4E225C1D4;
-        Wed, 20 Nov 2019 15:27:50 +0000 (UTC)
-Received: by coeurl.usersys.redhat.com (Postfix, from userid 1000)
-        id 278C1208D9; Wed, 20 Nov 2019 10:27:50 -0500 (EST)
-From:   Scott Mayhew <smayhew@redhat.com>
-To:     anna.schumaker@netapp.com, trond.myklebust@hammerspace.com
-Cc:     dhowells@redhat.com, viro@zeniv.linux.org.uk,
-        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: [PATCH v5 02/27] nfs: stash server into struct nfs_mount_info
-Date:   Wed, 20 Nov 2019 10:27:25 -0500
-Message-Id: <20191120152750.6880-3-smayhew@redhat.com>
-In-Reply-To: <20191120152750.6880-1-smayhew@redhat.com>
-References: <20191120152750.6880-1-smayhew@redhat.com>
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.16
-X-MC-Unique: bi-9zjGAPn-MpcXoiWhXOw-1
-X-Mimecast-Spam-Score: 0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+        id S1729452AbfKTQ3I (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 20 Nov 2019 11:29:08 -0500
+Received: from mail-vs1-f67.google.com ([209.85.217.67]:33337 "EHLO
+        mail-vs1-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1729442AbfKTQ3I (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Nov 2019 11:29:08 -0500
+Received: by mail-vs1-f67.google.com with SMTP id c25so95290vsp.0
+        for <linux-nfs@vger.kernel.org>; Wed, 20 Nov 2019 08:29:07 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc;
+        bh=8zFeytZPJ2hwodtgn+WYt+KhkY1k3R4sGeEplqalu+M=;
+        b=k9beHIcpOy7+kfarhMj2IbD5f6IFWmZZ5u6o9WXKyVjbyckKr8oVxXjbq0aZMnlEQJ
+         Ur+XEl9I417mcWhXilkQKt52oTPCjlv8LR0D/roQLkwpM4eYEqLt5tI9Lkt9iCOfMUmh
+         axKU21ZDaUp+lFfZvaWPlJWRDL83+3CJu92k3uQWBge+fehLkGDwFsH4aViyMkW4KrVH
+         mrIUfZmjsbBxIa8p9ed0bOo9UmULIxPZneC36ffRWubqLf7fIl4U0ltaltgMAFKrc1wM
+         x8w0mFyUQCvvIqcciqHWEYp01TS75Wu68OQfHcjwUuWLC5/MeqN2apMEIy186dxV4Gyf
+         tGEA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=8zFeytZPJ2hwodtgn+WYt+KhkY1k3R4sGeEplqalu+M=;
+        b=nYJpV6UIJ7eryiKsgwfW1b1Nt//V01WGDcd+CjbhAlWH7zNEXndl1y3inDxbPDVE/l
+         Q5UFyCCdr6EQeU5ogxzPN5CJ3pg/qMtugE+0DCdjLv5rKrwTAH2B9T++sqLiH7ca/fEN
+         H4vOs0WlhhacTzph3yT1WzZ/dXo9eOb+5cpLm04LvvPvyIW98QQNz/vClKfujGC36d3E
+         lZqEuEX3J2h2zrow4A7nBFieXvyfmvHky3P5/p6//OsNTG8jKnnnG/AXsY8d4trmMFdh
+         3HdOGChVco7V/PFiDDeO/I12Wx4Tah6aa9+mMqa4Nz+LIFz8F1P1V8AYmdWBFp9PLSFD
+         VHhQ==
+X-Gm-Message-State: APjAAAW0BxgkwwHnY8rzPLXXsBtu/XJOyzXob7Wrf5e3jcnZAtY0UlLH
+        +LSYRhLIhp0irdXkxV99syEGW31DcJsGRPrZkRQJ2w==
+X-Google-Smtp-Source: APXvYqyDlALLpaehcli1+bbQtgGJ1GZ32emLDSjmspyHZF0J0hHdE7Giin64K3KgXJsBMeWlg7lUV/WrOAaukR79WbQ=
+X-Received: by 2002:a67:c097:: with SMTP id x23mr2372934vsi.164.1574267346535;
+ Wed, 20 Nov 2019 08:29:06 -0800 (PST)
+MIME-Version: 1.0
+References: <20191108213201.66194-1-olga.kornievskaia@gmail.com> <d96b92919fdfba28f53cd2770ebb99715c3d9a04.camel@hammerspace.com>
+In-Reply-To: <d96b92919fdfba28f53cd2770ebb99715c3d9a04.camel@hammerspace.com>
+From:   Olga Kornievskaia <olga.kornievskaia@gmail.com>
+Date:   Wed, 20 Nov 2019 11:28:54 -0500
+Message-ID: <CAN-5tyH7sd=pV65LpQmR1+A3TGq4yDGHP2uB82VRqTxnJWfaTw@mail.gmail.com>
+Subject: Re: [RFC PATCH] NFS: allow deprecation of NFS UDP protocol
+To:     Trond Myklebust <trondmy@hammerspace.com>
+Cc:     "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Al Viro <viro@zeniv.linux.org.uk>
+Hi Trond,
 
-Reviewed-by: David Howells <dhowells@redhat.com>
-Signed-off-by: Al Viro <viro@zeniv.linux.org.uk>
----
- fs/nfs/internal.h  |  3 ++-
- fs/nfs/nfs4super.c | 10 ++++------
- fs/nfs/super.c     | 19 ++++++++-----------
- 3 files changed, 14 insertions(+), 18 deletions(-)
+On Mon, Nov 18, 2019 at 4:46 AM Trond Myklebust <trondmy@hammerspace.com> wrote:
+>
+> Hi Olga
+>
+> On Fri, 2019-11-08 at 16:32 -0500, Olga Kornievskaia wrote:
+> > From: Olga Kornievskaia <kolga@netapp.com>
+> >
+> > Add a kernel config CONFIG_NFS_DISABLE_UDP_SUPPORT to disallow NFS
+> > UDP mounts.
+> >
+> > I took the same approach as Chuck's deprecation of DES enc types
+> > to start with default to still allow but I think the ultimate
+> > goal is to disable
+> >
+> > Question: how do we have folks trying this unless we set it to false?
+> >
+> > Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+> > ---
+> >  fs/nfs/Kconfig  | 10 ++++++++++
+> >  fs/nfs/client.c |  4 ++++
+> >  fs/nfs/super.c  |  8 ++++++++
+> >  3 files changed, 22 insertions(+)
+> >
+> > diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
+> > index 295a7a2..6320113 100644
+> > --- a/fs/nfs/Kconfig
+> > +++ b/fs/nfs/Kconfig
+> > @@ -196,3 +196,13 @@ config NFS_DEBUG
+> >       depends on NFS_FS && SUNRPC_DEBUG
+> >       select CRC32
+> >       default y
+> > +
+> > +config NFS_DISABLE_UDP_SUPPORT
+> > +     bool "NFS: Disable NFS UDP protocol support"
+> > +     depends on NFS_FS
+> > +     default n
+> > +     help
+> > +       Choose Y here to disable the use of NFS over UDP. NFS over
+> > UDP
+> > +       on modern networks (1Gb+) can lead to data corruption caused
+> > by
+> > +       fragmentation during high loads.
+> > +       The default is N because many deployments still use UDP.
+> > diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+> > index 02110a3..24ca314 100644
+> > --- a/fs/nfs/client.c
+> > +++ b/fs/nfs/client.c
+> > @@ -474,6 +474,7 @@ void nfs_init_timeout_values(struct rpc_timeout
+> > *to, int proto,
+> >                       to->to_maxval = to->to_initval;
+> >               to->to_exponential = 0;
+> >               break;
+> > +#ifdef CONFIG_NFS_DISABLE_UDP_SUPPORT
+> >       case XPRT_TRANSPORT_UDP:
+> >               if (retrans == NFS_UNSPEC_RETRANS)
+> >                       to->to_retries = NFS_DEF_UDP_RETRANS;
+> > @@ -484,6 +485,7 @@ void nfs_init_timeout_values(struct rpc_timeout
+> > *to, int proto,
+> >               to->to_maxval = NFS_MAX_UDP_TIMEOUT;
+> >               to->to_exponential = 1;
+> >               break;
+> > +#endif
+> >       default:
+> >               BUG();
+> >       }
+> > @@ -580,8 +582,10 @@ static int nfs_start_lockd(struct nfs_server
+> > *server)
+> >               default:
+> >                       nlm_init.protocol = IPPROTO_TCP;
+> >                       break;
+> > +#ifdef CONFIG_NFS_DISABLE_UDP_SUPPORT
+> >               case XPRT_TRANSPORT_UDP:
+> >                       nlm_init.protocol = IPPROTO_UDP;
+> > +#endif
+> >       }
+> >
+> >       host = nlmclnt_init(&nlm_init);
+> > diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+> > index a84df7d6..21e59da 100644
+> > --- a/fs/nfs/super.c
+> > +++ b/fs/nfs/super.c
+> > @@ -1011,7 +1011,9 @@ static void nfs_set_port(struct sockaddr *sap,
+> > int *port,
+> >  static void nfs_validate_transport_protocol(struct
+> > nfs_parsed_mount_data *mnt)
+> >  {
+> >       switch (mnt->nfs_server.protocol) {
+> > +#ifdef CONFIG_NFS_DISABLE_UDP_SUPPORT
+> >       case XPRT_TRANSPORT_UDP:
+> > +#endif
+> >       case XPRT_TRANSPORT_TCP:
+> >       case XPRT_TRANSPORT_RDMA:
+> >               break;
+> > @@ -1033,8 +1035,10 @@ static void
+> > nfs_set_mount_transport_protocol(struct nfs_parsed_mount_data *mnt)
+> >                       return;
+> >       switch (mnt->nfs_server.protocol) {
+> >       case XPRT_TRANSPORT_UDP:
+> > +#ifdef CONFIG_NFS_DISABLE_UDP_SUPPORT
+> >               mnt->mount_server.protocol = XPRT_TRANSPORT_UDP;
+> >               break;
+> > +#endif
+>
+> Don't we want to return an error here rather than defaulting to the
+> TCP/RDMA behaviour?
 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 447a3c17fa8e..89b3afa8b403 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -142,6 +142,7 @@ struct nfs_mount_info {
- =09int (*set_security)(struct super_block *, struct dentry *, struct nfs_m=
-ount_info *);
- =09struct nfs_parsed_mount_data *parsed;
- =09struct nfs_clone_mount *cloned;
-+=09struct nfs_server *server;
- =09struct nfs_fh *mntfh;
- };
-=20
-@@ -397,7 +398,7 @@ struct dentry *nfs_try_mount(int, const char *, struct =
-nfs_mount_info *,
- =09=09=09struct nfs_subversion *);
- int nfs_set_sb_security(struct super_block *, struct dentry *, struct nfs_=
-mount_info *);
- int nfs_clone_sb_security(struct super_block *, struct dentry *, struct nf=
-s_mount_info *);
--struct dentry *nfs_fs_mount_common(struct nfs_server *, int, const char *,
-+struct dentry *nfs_fs_mount_common(int, const char *,
- =09=09=09=09   struct nfs_mount_info *, struct nfs_subversion *);
- struct dentry *nfs_fs_mount(struct file_system_type *, int, const char *, =
-void *);
- struct dentry * nfs_xdev_mount_common(struct file_system_type *, int,
-diff --git a/fs/nfs/nfs4super.c b/fs/nfs/nfs4super.c
-index baece9857bcf..4591d6618efa 100644
---- a/fs/nfs/nfs4super.c
-+++ b/fs/nfs/nfs4super.c
-@@ -109,13 +109,12 @@ nfs4_remote_mount(struct file_system_type *fs_type, i=
-nt flags,
- =09=09  const char *dev_name, void *info)
- {
- =09struct nfs_mount_info *mount_info =3D info;
--=09struct nfs_server *server;
-=20
- =09mount_info->set_security =3D nfs_set_sb_security;
-=20
- =09/* Get a volume representation */
--=09server =3D nfs4_create_server(mount_info, &nfs_v4);
--=09return nfs_fs_mount_common(server, flags, dev_name, mount_info, &nfs_v4=
-);
-+=09mount_info->server =3D nfs4_create_server(mount_info, &nfs_v4);
-+=09return nfs_fs_mount_common(flags, dev_name, mount_info, &nfs_v4);
- }
-=20
- static struct vfsmount *nfs_do_root_mount(struct file_system_type *fs_type=
-,
-@@ -260,7 +259,6 @@ nfs4_remote_referral_mount(struct file_system_type *fs_=
-type, int flags,
- =09=09.set_security =3D nfs_clone_sb_security,
- =09=09.cloned =3D raw_data,
- =09};
--=09struct nfs_server *server;
- =09struct dentry *mntroot =3D ERR_PTR(-ENOMEM);
-=20
- =09dprintk("--> nfs4_referral_get_sb()\n");
-@@ -270,8 +268,8 @@ nfs4_remote_referral_mount(struct file_system_type *fs_=
-type, int flags,
- =09=09goto out;
-=20
- =09/* create a new volume representation */
--=09server =3D nfs4_create_referral_server(mount_info.cloned, mount_info.mn=
-tfh);
--=09mntroot =3D nfs_fs_mount_common(server, flags, dev_name, &mount_info, &=
-nfs_v4);
-+=09mount_info.server =3D nfs4_create_referral_server(mount_info.cloned, mo=
-unt_info.mntfh);
-+=09mntroot =3D nfs_fs_mount_common(flags, dev_name, &mount_info, &nfs_v4);
- out:
- =09nfs_free_fhandle(mount_info.mntfh);
- =09return mntroot;
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 9d2f1d6a5b9a..d57fc9983243 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -1896,14 +1896,12 @@ struct dentry *nfs_try_mount(int flags, const char =
-*dev_name,
- =09=09=09     struct nfs_mount_info *mount_info,
- =09=09=09     struct nfs_subversion *nfs_mod)
- {
--=09struct nfs_server *server;
--
- =09if (mount_info->parsed->need_mount)
--=09=09server =3D nfs_try_mount_request(mount_info, nfs_mod);
-+=09=09mount_info->server =3D nfs_try_mount_request(mount_info, nfs_mod);
- =09else
--=09=09server =3D nfs_mod->rpc_ops->create_server(mount_info, nfs_mod);
-+=09=09mount_info->server =3D nfs_mod->rpc_ops->create_server(mount_info, n=
-fs_mod);
-=20
--=09return nfs_fs_mount_common(server, flags, dev_name, mount_info, nfs_mod=
-);
-+=09return nfs_fs_mount_common(flags, dev_name, mount_info, nfs_mod);
- }
- EXPORT_SYMBOL_GPL(nfs_try_mount);
-=20
-@@ -2649,20 +2647,21 @@ static void nfs_set_readahead(struct backing_dev_in=
-fo *bdi,
- =09bdi->io_pages =3D iomax_pages;
- }
-=20
--struct dentry *nfs_fs_mount_common(struct nfs_server *server,
--=09=09=09=09   int flags, const char *dev_name,
-+struct dentry *nfs_fs_mount_common(int flags, const char *dev_name,
- =09=09=09=09   struct nfs_mount_info *mount_info,
- =09=09=09=09   struct nfs_subversion *nfs_mod)
- {
- =09struct super_block *s;
- =09struct dentry *mntroot =3D ERR_PTR(-ENOMEM);
- =09int (*compare_super)(struct super_block *, void *) =3D nfs_compare_supe=
-r;
-+=09struct nfs_server *server =3D mount_info->server;
- =09struct nfs_sb_mountdata sb_mntdata =3D {
- =09=09.mntflags =3D flags,
- =09=09.server =3D server,
- =09};
- =09int error;
-=20
-+=09mount_info->server =3D NULL;
- =09if (IS_ERR(server))
- =09=09return ERR_CAST(server);
-=20
-@@ -2803,7 +2802,6 @@ nfs_xdev_mount(struct file_system_type *fs_type, int =
-flags,
- =09=09.set_security =3D nfs_clone_sb_security,
- =09=09.cloned =3D data,
- =09};
--=09struct nfs_server *server;
- =09struct dentry *mntroot =3D ERR_PTR(-ENOMEM);
- =09struct nfs_subversion *nfs_mod =3D NFS_SB(data->sb)->nfs_client->cl_nfs=
-_mod;
-=20
-@@ -2812,10 +2810,9 @@ nfs_xdev_mount(struct file_system_type *fs_type, int=
- flags,
- =09mount_info.mntfh =3D mount_info.cloned->fh;
-=20
- =09/* create a new volume representation */
--=09server =3D nfs_mod->rpc_ops->clone_server(NFS_SB(data->sb), data->fh, d=
-ata->fattr, data->authflavor);
-+=09mount_info.server =3D nfs_mod->rpc_ops->clone_server(NFS_SB(data->sb), =
-data->fh, data->fattr, data->authflavor);
-=20
--=09mntroot =3D nfs_fs_mount_common(server, flags,
--=09=09=09=09dev_name, &mount_info, nfs_mod);
-+=09mntroot =3D nfs_fs_mount_common(flags, dev_name, &mount_info, nfs_mod);
-=20
- =09dprintk("<-- nfs_xdev_mount() =3D %ld\n",
- =09=09=09IS_ERR(mntroot) ? PTR_ERR(mntroot) : 0L);
---=20
-2.17.2
+Actually what I have here is incorrect then because I had things
+silently going to TCP instead. Because
+nfs_validate_transport_protocol() will set it to TCP so I think
+either I change nfs_validate_transport_protocol() and
+nfs_set_mount_transport_protocol() to return errors if UDP is
+specified or I just leave it as is just have one chunk (below) that
+checks the protocol and fails when it's UDP. Do you want less code
+change or more explicit failures for UDP?
 
+
+>
+> >       case XPRT_TRANSPORT_TCP:
+> >       case XPRT_TRANSPORT_RDMA:
+> >               mnt->mount_server.protocol = XPRT_TRANSPORT_TCP;
+> > @@ -2204,6 +2208,10 @@ static int nfs_validate_text_mount_data(void
+> > *options,
+> >  #endif /* CONFIG_NFS_V4 */
+> >       } else {
+> >               nfs_set_mount_transport_protocol(args);
+> > +#ifdef CONFIG_NFS_DISABLE_UDP_SUPPORT
+> > +             if (args->nfs_server.protocol == XPRT_TRANSPORT_UDP)
+> > +                     goto out_invalid_transport_udp;
+> > +#endif
+> >               if (args->nfs_server.protocol == XPRT_TRANSPORT_RDMA)
+> >                       port = NFS_RDMA_PORT;
+> >       }
+> --
+> Trond Myklebust
+> Linux NFS client maintainer, Hammerspace
+> trond.myklebust@hammerspace.com
+>
+>
