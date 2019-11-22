@@ -2,79 +2,101 @@ Return-Path: <SRS0=FZjK=ZO=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.3 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=ham autolearn_force=no
+X-Spam-Status: No, score=-9.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 08185C432C0
-	for <linux-nfs@archiver.kernel.org>; Fri, 22 Nov 2019 15:54:37 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 17AA9C432C0
+	for <linux-nfs@archiver.kernel.org>; Fri, 22 Nov 2019 16:25:38 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id CF12C2071B
-	for <linux-nfs@archiver.kernel.org>; Fri, 22 Nov 2019 15:54:36 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id D40B720714
+	for <linux-nfs@archiver.kernel.org>; Fri, 22 Nov 2019 16:25:37 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="fD8iDjU2"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="mK2IYdqC"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726568AbfKVPyg (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 22 Nov 2019 10:54:36 -0500
-Received: from us-smtp-2.mimecast.com ([205.139.110.61]:50900 "EHLO
-        us-smtp-delivery-1.mimecast.com" rhost-flags-OK-OK-OK-FAIL)
-        by vger.kernel.org with ESMTP id S1726546AbfKVPyg (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Nov 2019 10:54:36 -0500
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1574438075;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=3eWi5acOqqX+jJrRpSwJ0uNIiljhJ3OsJnI5IWgjSig=;
-        b=fD8iDjU2ZBGLqXh4fSWtiaCSOEOwH6ZBTOrnbAv/VGpBejwioUUfN/xpwaW2mJRQSc21C3
-        cIOjfXtgeWDc/wdRar9FgeJnTG8FqEKiSzotJEjgzr2+Mo3a4krmWznCTNJz5hyd1X30FP
-        rzuj98Oey4WQTAfz9Rc/sS1SVn+GvRM=
-Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
- [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-30-0Vvs-wqpPriis8oSIOOEdQ-1; Fri, 22 Nov 2019 10:54:33 -0500
-Received: from smtp.corp.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 8D5AB1005502;
-        Fri, 22 Nov 2019 15:54:32 +0000 (UTC)
-Received: from madhat.boston.devel.redhat.com (ovpn-117-36.phx2.redhat.com [10.3.117.36])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 3DBEF60179;
-        Fri, 22 Nov 2019 15:54:32 +0000 (UTC)
-Subject: Re: [patch] fix compilation with -Werror=format on i586
-To:     Guillaume Rousse <guillomovitch@gmail.com>,
-        linux-nfs@vger.kernel.org
-References: <d21f152d-1d9d-01c2-900e-39c67eb2cef3@gmail.com>
-From:   Steve Dickson <SteveD@RedHat.com>
-Message-ID: <4b47a9cd-5bec-518c-2282-bb020f92708e@RedHat.com>
-Date:   Fri, 22 Nov 2019 10:54:31 -0500
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:68.0) Gecko/20100101
- Thunderbird/68.1.1
+        id S1726666AbfKVQZh (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 22 Nov 2019 11:25:37 -0500
+Received: from mail-wm1-f67.google.com ([209.85.128.67]:51543 "EHLO
+        mail-wm1-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727088AbfKVQZh (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Nov 2019 11:25:37 -0500
+Received: by mail-wm1-f67.google.com with SMTP id g206so7803666wme.1
+        for <linux-nfs@vger.kernel.org>; Fri, 22 Nov 2019 08:25:35 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=from:to:cc:subject:date:message-id:mime-version
+         :content-transfer-encoding;
+        bh=+Pr8VdSbWS95Rs0+0v9E82ktDe81kht7cwjNgTU38tI=;
+        b=mK2IYdqCoq62YZrIgbWds77wHTlI++qMxzdY/51mJmaBTrWAvNJKg9kjwGsHdhcG++
+         DhD1XjAJPgSfHyNhF2am28Qrr8m3CmLmLgPG513awO5KZR0fqUp6n6l+lrTT/Ez1M6ey
+         VV8L479MGxd6jkeRN3ioDInxq8xKsxrDpFSbx5wx7LWEwI4nnu2xWhQ4JQzETcSHYRoZ
+         skkkHjGRkI5nGJ325VjEcqDKaxpVczlFvH/sFb7L8NomSlRijQSKiqDFbXb4MxgJVkcw
+         dDgiSbX3d86Bb1AUCmxS5KObbQPumZMmeyYBAU6Ue/WPwfmZ1BnBwFHfe+FsiTKSHmpw
+         U2wQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:from:to:cc:subject:date:message-id:mime-version
+         :content-transfer-encoding;
+        bh=+Pr8VdSbWS95Rs0+0v9E82ktDe81kht7cwjNgTU38tI=;
+        b=ouItQ1ETHWclDm/sqacr29kkRMqOHcCoCEHvMe2Ie8ykjkOLHZfc/p9oxW1rap80l+
+         wnjD9gQX5LR1VW3U6xE0hhl/kTfnvDL4gkkA0mpIf77AP8PXcOldC9V7clFqig8MDIB7
+         kuNkE1GhUnjqwRd168n7tKdP1qpPsaeaw2me3NnuOkNGFYunDFU+167ggpTBDsIHps/F
+         sa5Le0hn/xT9cSM+17RWycnXbYDsOwH/Gdi6A1bIcJIocHm1KJrcbSiC6XyqKjj7DXjr
+         Id7WWBGv5pN7wCldxpxbIUwM6d64qayaqSMicp+VESw34oFiK7yH80JI8OpSx8qJ5k4x
+         puHw==
+X-Gm-Message-State: APjAAAUFbtuxNEubGV01wTaHBnYL3LBczE1720TcMwQHdXF3qDfDv7Vd
+        6939e2gyjrkvELMgLgtAoljt/wNS
+X-Google-Smtp-Source: APXvYqw20JAK2vUjrCzyNc4flwBe5ZN1CKH5Il7ijFBCmc25iWLP0t28DbVjmBTb16OJtG4afCMuuQ==
+X-Received: by 2002:a7b:c8c2:: with SMTP id f2mr16440411wml.99.1574439934865;
+        Fri, 22 Nov 2019 08:25:34 -0800 (PST)
+Received: from dell5510.arch.suse.de ([178.21.189.11])
+        by smtp.gmail.com with ESMTPSA id f19sm9072961wrf.23.2019.11.22.08.25.33
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Fri, 22 Nov 2019 08:25:34 -0800 (PST)
+From:   Petr Vorel <petr.vorel@gmail.com>
+To:     linux-nfs@vger.kernel.org
+Cc:     Petr Vorel <petr.vorel@gmail.com>,
+        Steve Dickson <steved@redhat.com>
+Subject: [nfs-utils PATCH 1/1] mount: Fix return 0 from void function
+Date:   Fri, 22 Nov 2019 17:25:28 +0100
+Message-Id: <20191122162528.18199-1-petr.vorel@gmail.com>
+X-Mailer: git-send-email 2.24.0
 MIME-Version: 1.0
-In-Reply-To: <d21f152d-1d9d-01c2-900e-39c67eb2cef3@gmail.com>
-Content-Language: en-US
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.11
-X-MC-Unique: 0Vvs-wqpPriis8oSIOOEdQ-1
-X-Mimecast-Spam-Score: 0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hello,
+Fixes: d5e30346 ("mount: Do not overwrite /etc/mtab if it's symlink")
 
-On 11/21/19 5:59 PM, Guillaume Rousse wrote:
+Signed-off-by: Petr Vorel <petr.vorel@gmail.com>
+---
+Hi Steve,
 
-A couple things... In the future please in line the patch
-instead of attaching it and please use the appropriate
-Signed-off-by: line
+sorry for introducing a regression.
 
-Half of your patch already existed due to commit a20dbec9
+Kind regards,
+Petr
 
-The rest of the patch I did Commit (tag: nfs-utils-2-4-3-rc2)
+ utils/mount/mount.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-steved.
+diff --git a/utils/mount/mount.c b/utils/mount/mount.c
+index 92a0dfe4..2be3dc2f 100644
+--- a/utils/mount/mount.c
++++ b/utils/mount/mount.c
+@@ -208,7 +208,7 @@ create_mtab (void) {
+ 	   that would create a file /proc/mounts in case the proc filesystem
+ 	   is not mounted, and the fchmod below would also fail. */
+ 	if (mtab_is_a_symlink()) {
+-		return EX_SUCCESS;
++		return;
+ 	}
+ 
+ 	lock_mtab();
+-- 
+2.24.0
 
