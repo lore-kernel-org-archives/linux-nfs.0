@@ -2,95 +2,90 @@ Return-Path: <SRS0=SwIF=ZQ=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=no
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-0.7 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
+	URIBL_BLOCKED autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3D004C432C0
-	for <linux-nfs@archiver.kernel.org>; Sun, 24 Nov 2019 19:49:45 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id EFC0CC432C0
+	for <linux-nfs@archiver.kernel.org>; Sun, 24 Nov 2019 20:50:38 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 23B0F2075E
-	for <linux-nfs@archiver.kernel.org>; Sun, 24 Nov 2019 19:49:45 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id AC4E22075E
+	for <linux-nfs@archiver.kernel.org>; Sun, 24 Nov 2019 20:50:38 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="B92UTXX4"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726875AbfKXTtl (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 24 Nov 2019 14:49:41 -0500
-Received: from zeniv.linux.org.uk ([195.92.253.2]:51540 "EHLO
-        ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726803AbfKXTtk (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 24 Nov 2019 14:49:40 -0500
-Received: from viro by ZenIV.linux.org.uk with local (Exim 4.92.3 #3 (Red Hat Linux))
-        id 1iYxt0-0005eu-Q9; Sun, 24 Nov 2019 19:49:34 +0000
-Date:   Sun, 24 Nov 2019 19:49:34 +0000
-From:   Al Viro <viro@zeniv.linux.org.uk>
-To:     Amir Goldstein <amir73il@gmail.com>
+        id S1726855AbfKXUuh (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sun, 24 Nov 2019 15:50:37 -0500
+Received: from mail-yw1-f67.google.com ([209.85.161.67]:37194 "EHLO
+        mail-yw1-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726840AbfKXUuh (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 24 Nov 2019 15:50:37 -0500
+Received: by mail-yw1-f67.google.com with SMTP id 4so4289856ywx.4;
+        Sun, 24 Nov 2019 12:50:35 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc;
+        bh=M4Jt5yrKDU8F2fIaLcOguP/vgGp0gQsaGqz7ufIEi6I=;
+        b=B92UTXX4Hw1rzeudiYXCoNOuQZgp3UVkc9TtbiHLeSGlLVCFuslndr3L21sCWJNUZR
+         g/QWNw5pmDRxoK4VUeNsGmwJEZchiOrkVuCCC/gJM3vtUqhCHwUls5oknpZeqTh0uatw
+         UAlaSgHkiA8JHnP5zraksKljDfcwWsJG8lBHfN4OxyTfZTbDVhh49GPA5mPthgn3ByNu
+         kqlh+6zT+qlz8vVTCc9O4geXC/XcxGZpKKrpHBfixBJCGr38/XE+/fqDDCH0OjNitW3n
+         O3s86E4xilXD1gqif+ybEUbaxyXbKmfaw5dzD7k69l72soqSmq+t6K/lEyYyc7C9dAmp
+         81Ow==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=M4Jt5yrKDU8F2fIaLcOguP/vgGp0gQsaGqz7ufIEi6I=;
+        b=sFbw2WQKkQj4oWXnoUEiWojCxz3ffpA/+Iy2wU9iSUwaBqCqX7P1XxwDY2+YaOQO3e
+         38bMe7hPkdmnwQftDVXqaXJUT72pJzq7Ujr0ofyun0+DBZKCGazOmFHI6Pk/DN/rts5D
+         uEDWDfengJpTM3cNGfB2VxQju2jRxnLdeXKZaFuBge8INyMJFaFRPLYEbonyGhEDA6d/
+         NqTHpIBgXEv2uLF3U9KPlvdS8JmH+o9LVFALwh05g8lmbASBv1Ml8xBSmZIq40/s9Xfa
+         h5u1rPUbkUvfrtfRbe+FRycP6OF3trjtnxDMbeJsLozFle17y5sdaqbikjo3bHHinAXy
+         UM8A==
+X-Gm-Message-State: APjAAAWCuoUAHKoNHmXhlGmyroWPw9Y7mYZBB56JfAZQzuFOdpkpqzDp
+        iEmCAjREQmrP4Ilcwlfn7rKymnD/HLNc6WxEYZTOBQ==
+X-Google-Smtp-Source: APXvYqzLJipFAx0UYrDJ6Rm3/eyR3F9HzM7XHto0QkxHwcBc+WR9GbJhyiKDY7qRGKmt3yc+OD2/6mcxoCOWXLYsnzU=
+X-Received: by 2002:a81:58c6:: with SMTP id m189mr17689201ywb.25.1574628634187;
+ Sun, 24 Nov 2019 12:50:34 -0800 (PST)
+MIME-Version: 1.0
+References: <20191124193145.22945-1-amir73il@gmail.com> <20191124194934.GB4203@ZenIV.linux.org.uk>
+In-Reply-To: <20191124194934.GB4203@ZenIV.linux.org.uk>
+From:   Amir Goldstein <amir73il@gmail.com>
+Date:   Sun, 24 Nov 2019 22:50:23 +0200
+Message-ID: <CAOQ4uxjsOM+th1f4=wss4SCrwueUYuVT0FKX0GxtmHBG2juw+A@mail.gmail.com>
+Subject: Re: [PATCH] utimes: Clamp the timestamps in notify_change()
+To:     Al Viro <viro@zeniv.linux.org.uk>
 Cc:     Arnd Bergmann <arnd@arndb.de>,
         Deepa Dinamani <deepa.kernel@gmail.com>,
         Jeff Layton <jlayton@kernel.org>,
         "J . Bruce Fields" <bfields@fieldses.org>,
         Miklos Szeredi <miklos@szeredi.hu>,
-        linux-fsdevel@vger.kernel.org, linux-unionfs@vger.kernel.org,
-        linux-nfs@vger.kernel.org, y2038@lists.linaro.org
-Subject: Re: [PATCH] utimes: Clamp the timestamps in notify_change()
-Message-ID: <20191124194934.GB4203@ZenIV.linux.org.uk>
-References: <20191124193145.22945-1-amir73il@gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20191124193145.22945-1-amir73il@gmail.com>
-User-Agent: Mutt/1.12.1 (2019-06-15)
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        overlayfs <linux-unionfs@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        y2038@lists.linaro.org
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Sun, Nov 24, 2019 at 09:31:45PM +0200, Amir Goldstein wrote:
-> Push clamping timestamps down the call stack into notify_change(), so
-> in-kernel callers like nfsd and overlayfs will get similar timestamp
-> set behavior as utimes.
- 
-Makes sense; said that, shouldn't we go through ->setattr() instances and
-get rid of that there, now that notify_change() is made to do it?
+On Sun, Nov 24, 2019 at 9:49 PM Al Viro <viro@zeniv.linux.org.uk> wrote:
+>
+> On Sun, Nov 24, 2019 at 09:31:45PM +0200, Amir Goldstein wrote:
+> > Push clamping timestamps down the call stack into notify_change(), so
+> > in-kernel callers like nfsd and overlayfs will get similar timestamp
+> > set behavior as utimes.
+>
+> Makes sense; said that, shouldn't we go through ->setattr() instances and
+> get rid of that there, now that notify_change() is made to do it?
+>
 
-I mean,
-        if (ia_valid & ATTR_ATIME)
-                sd_iattr->ia_atime = timestamp_truncate(iattr->ia_atime,
-                                                      inode);
-in configfs_setattr() looks like it should be reverted to
-        if (ia_valid & ATTR_ATIME)
-                sd_iattr->ia_atime = iattr->ia_atime;
-with that, etc.
+Sounds reasonable. But I'd rather leave this cleanup to Deepa,
+who did all this work.
 
-Moreover, does that leave any valid callers of timestamp_truncate()
-outside of notify_change() and current_time()?  IOW, is there any
-point having it exported?  Look:
-fs/attr.c:187:          inode->i_atime = timestamp_truncate(attr->ia_atime,
-fs/attr.c:191:          inode->i_mtime = timestamp_truncate(attr->ia_mtime,
-fs/attr.c:195:          inode->i_ctime = timestamp_truncate(attr->ia_ctime,
-	setattr_copy(), called downstream of your changes.
-fs/configfs/inode.c:79:         sd_iattr->ia_atime = timestamp_truncate(iattr->ia_atime,
-fs/configfs/inode.c:82:         sd_iattr->ia_mtime = timestamp_truncate(iattr->ia_mtime,
-fs/configfs/inode.c:85:         sd_iattr->ia_ctime = timestamp_truncate(iattr->ia_ctime,
-	configfs_setattr(); ditto.
-fs/f2fs/file.c:755:             inode->i_atime = timestamp_truncate(attr->ia_atime,
-fs/f2fs/file.c:759:             inode->i_mtime = timestamp_truncate(attr->ia_mtime,
-fs/f2fs/file.c:763:             inode->i_ctime = timestamp_truncate(attr->ia_ctime,
-	__setattr_copy() from f2fs_setattr(); ditto.
-fs/inode.c:2224:        return timestamp_truncate(now, inode);
-	current_time()
-fs/kernfs/inode.c:163:  inode->i_atime = timestamp_truncate(attrs->ia_atime, inode);
-fs/kernfs/inode.c:164:  inode->i_mtime = timestamp_truncate(attrs->ia_mtime, inode);
-fs/kernfs/inode.c:165:  inode->i_ctime = timestamp_truncate(attrs->ia_ctime, inode);
-	->s_time_max and ->s_time_min are left TIME64_MAX and TIME64_MIN resp., so
-timestamp_truncate() should be a no-op there.
-fs/ntfs/inode.c:2903:           vi->i_atime = timestamp_truncate(attr->ia_atime,
-fs/ntfs/inode.c:2907:           vi->i_mtime = timestamp_truncate(attr->ia_mtime,
-fs/ntfs/inode.c:2911:           vi->i_ctime = timestamp_truncate(attr->ia_ctime,
-	ntfs_setattr(); downstream from your changes
-fs/ubifs/file.c:1082:           inode->i_atime = timestamp_truncate(attr->ia_atime,
-fs/ubifs/file.c:1086:           inode->i_mtime = timestamp_truncate(attr->ia_mtime,
-fs/ubifs/file.c:1090:           inode->i_ctime = timestamp_truncate(attr->ia_ctime,
-	do_attr_changes(), from do_truncation() or do_setattr(), both from ubifs_setattr();
-ditto.
-fs/utimes.c:39:                 newattrs.ia_atime = timestamp_truncate(times[0], inode);
-fs/utimes.c:46:                 newattrs.ia_mtime = timestamp_truncate(times[1], inode);
-	disappears in your patch.
+Thanks,
+Amir.
