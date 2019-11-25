@@ -2,95 +2,96 @@ Return-Path: <SRS0=CDh4=ZR=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-0.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+X-Spam-Status: No, score=-9.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
-	autolearn=no autolearn_force=no version=3.4.0
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7F099C432C0
-	for <linux-nfs@archiver.kernel.org>; Mon, 25 Nov 2019 18:17:12 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 974D1C432C0
+	for <linux-nfs@archiver.kernel.org>; Mon, 25 Nov 2019 22:52:56 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 5831720748
-	for <linux-nfs@archiver.kernel.org>; Mon, 25 Nov 2019 18:17:12 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 58EBA20733
+	for <linux-nfs@archiver.kernel.org>; Mon, 25 Nov 2019 22:52:56 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="cfpPCKzt"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="FiYbSb+h"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727885AbfKYSRL (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 25 Nov 2019 13:17:11 -0500
-Received: from mail-il1-f195.google.com ([209.85.166.195]:36506 "EHLO
-        mail-il1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727865AbfKYSRL (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Nov 2019 13:17:11 -0500
-Received: by mail-il1-f195.google.com with SMTP id s75so15105333ilc.3;
-        Mon, 25 Nov 2019 10:17:11 -0800 (PST)
+        id S1726873AbfKYWwz (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 25 Nov 2019 17:52:55 -0500
+Received: from mail-wr1-f65.google.com ([209.85.221.65]:46798 "EHLO
+        mail-wr1-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725946AbfKYWwz (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Nov 2019 17:52:55 -0500
+Received: by mail-wr1-f65.google.com with SMTP id z7so16733839wrl.13;
+        Mon, 25 Nov 2019 14:52:53 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
-        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
-         :cc;
-        bh=XNvmuvfR13K+bepkBmPkJQDh2DcCBvXY1vhlGmjrkSQ=;
-        b=cfpPCKztKRoWFw9gU0+NsNuYAetbF3Z/a4D/7R0eDl7/zhS7+oVdMGW62X2CKXoRwH
-         jfeDbMcGYFyGsRJ6DY2ACog0bpH++4TlJeHXHBbAN4UTbjWyCzBQOXQbTfmBkqtOFffb
-         L2cifP060mBBHiocqRCzV7sTnJb+CGEp+hkt1h3OVURv+kRe5ddgiaA9SmZHEE81PHly
-         QFY3FDXZswnaPgB3kqmMJLdTbghNw5MNntz8P7mTwEDUej5pr5fNq7+7+T/gEczCO+XN
-         hXUjtj70mm5RIC5G7pb1J875Gpr+43Ed3rWK7wCi71W4StwsMwzr1exl4jD5rBlvyT65
-         qTwg==
+        h=from:to:cc:subject:date:message-id:mime-version
+         :content-transfer-encoding;
+        bh=KptWbyZabaLucCpyXjZ1u4NhChnSG9+WDqnEB5rW2AQ=;
+        b=FiYbSb+h4Jhogduw+nEQ65ArHx4LR3FAO71An25+A3J1R7ohdp468z4Zh4hEHYgc83
+         dPiAOAoy5TwyltsdGVSUI4EnCEYw9eJjMFwO7JU8gavjLcLWpfaR+jxq+FxPNzY0xUA6
+         89+mvzi7aS43B9KgYDqCm4JC5FGndPbJCah01WZNgt+vrPM+6Y7/zEmMVEUko8Mi4Q8I
+         H9KF1/MTG72yd4CkMJohJjyBt3w6K2rnoOVNDyd/MSku+GwgjyCWys50tLGERhPXNzXi
+         S0f36xTIVr+ugYFRhMe8V1iPcEVid+ooThZ8i08rvucMKYJ2r8kPBEuI9uOIAhl6gndY
+         mgAA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
-         :message-id:subject:to:cc;
-        bh=XNvmuvfR13K+bepkBmPkJQDh2DcCBvXY1vhlGmjrkSQ=;
-        b=RTZFKUoPhSyaEotRxD0LhOf5eqAJnPS0pGPg2sd80SmZUCxYrx9D/tTVEMkIWUx4Lj
-         9gOaupdnWNvMNB4PEvOJn/fnHX8fcmYdV114hQHaUsIyHtWvXLqncDnGx+JD3lVQKoyP
-         sOcPEa3S8VONXifC36D6Eo/ymlYDP+KOV3F/Sp1ljcDtnoLx3JNSFLE+looVxZy+qgaV
-         TcjIcKmlLUSPVIMw+aFthbp1xvgn1LU6dp1O1FOkal13Ky0pBXpMzlH7ojelIlo37/XL
-         jnHppFXsJbmX77hRF7w2VHOiBdv6GmVUuynHQEU/cvs2TnQqZC2Y3Cnt/gQiP+2bCUMl
-         uo1A==
-X-Gm-Message-State: APjAAAWWV5wOgEhpjW4mLVo4s+hHQKgvD9Q0vhUGT+wxH3PPTyA8tltZ
-        9oTuW1zEiAB6XFd57kej1uuNmkwrWTinAKRZdyM=
-X-Google-Smtp-Source: APXvYqw78v3arYJMRZHIVLUyH0UknW8rGs2UZ5LBxnpquKgU2PPRG0oB/krijAz/74tFXtSGiOCOUuYep3Lc7hWfR5U=
-X-Received: by 2002:a92:d390:: with SMTP id o16mr34224478ilo.110.1574705830800;
- Mon, 25 Nov 2019 10:17:10 -0800 (PST)
+        h=x-gm-message-state:from:to:cc:subject:date:message-id:mime-version
+         :content-transfer-encoding;
+        bh=KptWbyZabaLucCpyXjZ1u4NhChnSG9+WDqnEB5rW2AQ=;
+        b=KRzzI4pCGg4jxQX1FcLod+0GLHQAfiXLs/Pgqrqx0MVqLyUUItt9z+WnjF+qHCswX4
+         i6/X6y8eqEVmUvPzVnAKRSnci0gdA5Acia5BlgwozX29OXTVXeSGQtL+N4opuANLVKTx
+         TNsR31Sx1raCAZCBFQqe3lio0tSE2eHTmgTq+G2NtWM/UJPFcaVeDu++Skt7EGVmaSUc
+         oFLXQxiXwF4650Z7ehO58THm1gY67Pw+eITOvG/MM2+6vE5MeJEJU1/L7jxU9aByeG2y
+         Ew1ZEx1joi9Dz5jFIkDlq5Dqzy8jQ1ujaW8IocF1G+eCcyuEOGtKB3vDUDr5AvGonZzi
+         7eJw==
+X-Gm-Message-State: APjAAAXI0/3sQTtVOLAN6TDoRvYHf/ZCT1eqzRO3LPnXJGiaLAHvrezS
+        BhXgtWSdOj9fCYV/EuR8NA==
+X-Google-Smtp-Source: APXvYqw2YE62y4OIk3k+fYmO9Vr0gZIGMKu6p+eRmBOh2OmIg3FWQTGpDGn3MQga1mPriXhHXz5Rzg==
+X-Received: by 2002:adf:f20b:: with SMTP id p11mr22843661wro.195.1574722372900;
+        Mon, 25 Nov 2019 14:52:52 -0800 (PST)
+Received: from ninjahub.lan (host-2-102-12-67.as13285.net. [2.102.12.67])
+        by smtp.googlemail.com with ESMTPSA id v128sm948599wmb.14.2019.11.25.14.52.51
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Mon, 25 Nov 2019 14:52:52 -0800 (PST)
+From:   Jules Irenge <jbi.octave@gmail.com>
+To:     trond.myklebust@hammerspace.com
+Cc:     anna.schumaker@netapp.com, davem@davemloft.net,
+        linux-nfs@vger.kernel.org, netdev@vger.kernel.org,
+        linux-kernel@vger.kernel.org, Jules Irenge <jbi.octave@gmail.com>
+Subject: [PATCH] net: sunrpc:  replace 0 with NULL
+Date:   Mon, 25 Nov 2019 22:52:39 +0000
+Message-Id: <20191125225239.384343-1-jbi.octave@gmail.com>
+X-Mailer: git-send-email 2.23.0
 MIME-Version: 1.0
-References: <20191124193145.22945-1-amir73il@gmail.com> <20191125164625.GB28608@fieldses.org>
-In-Reply-To: <20191125164625.GB28608@fieldses.org>
-From:   Deepa Dinamani <deepa.kernel@gmail.com>
-Date:   Mon, 25 Nov 2019 10:16:57 -0800
-Message-ID: <CABeXuvo3pToaexO26JarHHkQBWO9355YEyO=NeZh-36KciJu6Q@mail.gmail.com>
-Subject: Re: [PATCH] utimes: Clamp the timestamps in notify_change()
-To:     "J . Bruce Fields" <bfields@fieldses.org>
-Cc:     Amir Goldstein <amir73il@gmail.com>, Arnd Bergmann <arnd@arndb.de>,
-        Jeff Layton <jlayton@kernel.org>,
-        Miklos Szeredi <miklos@szeredi.hu>,
-        Al Viro <viro@zeniv.linux.org.uk>,
-        Linux FS-devel Mailing List <linux-fsdevel@vger.kernel.org>,
-        overlayfs <linux-unionfs@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        y2038 Mailman List <y2038@lists.linaro.org>
-Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Mon, Nov 25, 2019 at 8:46 AM J . Bruce Fields <bfields@fieldses.org> wrote:
->
-> On Sun, Nov 24, 2019 at 09:31:45PM +0200, Amir Goldstein wrote:
-> > Push clamping timestamps down the call stack into notify_change(), so
-> > in-kernel callers like nfsd and overlayfs will get similar timestamp
-> > set behavior as utimes.
->
-> So, nfsd has always bypassed timestamp_truncate() and we've never
-> noticed till now?  What are the symptoms?  (Do timestamps go backwards
-> after cache eviction on filesystems with large time granularity?)
->
-> Looks like generic/402 has never run in my tests:
->
->         generic/402     [not run] no kernel support for y2038 sysfs switch
+Replace 0 with NULL to fix warning detected by sparse tool.
+warning: Using plain integer as NULL pointer
 
-You need this in your xfstest:
-https://patchwork.kernel.org/patch/11049745/ . The test has been
-updated recently.
+Signed-off-by: Jules Irenge <jbi.octave@gmail.com>
+---
+ net/sunrpc/xprtsock.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-And, you need a change like for overlayfs as Amir pointed out.
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 70e52f567b2a..74d4ca06d572 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -614,7 +614,7 @@ xs_read_stream_reply(struct sock_xprt *transport, struct msghdr *msg, int flags)
+ static ssize_t
+ xs_read_stream(struct sock_xprt *transport, int flags)
+ {
+-	struct msghdr msg = { 0 };
++	struct msghdr msg = { NULL };
+ 	size_t want, read = 0;
+ 	ssize_t ret = 0;
+ 
+-- 
+2.23.0
 
--Deepa
