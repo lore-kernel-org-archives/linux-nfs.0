@@ -2,54 +2,58 @@ Return-Path: <SRS0=F8lJ=ZS=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-0.9 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
-	SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-6.9 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 63325C432C0
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8F393C43215
 	for <linux-nfs@archiver.kernel.org>; Tue, 26 Nov 2019 15:47:23 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 2A7F12071E
+	by mail.kernel.org (Postfix) with ESMTP id 6040920727
 	for <linux-nfs@archiver.kernel.org>; Tue, 26 Nov 2019 15:47:23 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="N6CVFeBl"
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="WqPX4ml5"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728641AbfKZPrW (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S1727533AbfKZPrW (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Tue, 26 Nov 2019 10:47:22 -0500
-Received: from us-smtp-delivery-1.mimecast.com ([207.211.31.120]:50865 "EHLO
+Received: from us-smtp-delivery-1.mimecast.com ([205.139.110.120]:38701 "EHLO
         us-smtp-1.mimecast.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1727533AbfKZPrW (ORCPT
+        with ESMTP id S1728620AbfKZPrW (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Nov 2019 10:47:22 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
         s=mimecast20190719; t=1574783241;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:cc:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding;
-        bh=Klmgo9VR6pUa/eaA3us09CLD2Dg/aX0EqkhFUyHPAf8=;
-        b=N6CVFeBlltIqOwWCYC+ipZqqszaGNkgYs2wRQjoL2/IcGLPD7iD2gz6jPSLo9g38avRGQJ
-        p035Je+BSTG02vwTSaRYcEjX/ldoQgMAPzG1A8422Hir1J3Jejx+lr8NheayRsfF/swVIa
-        10eflEJVJ2IkAxNFKhLU6162ezd99jg=
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=VRQrRgYBZsPKfq68KFpJ+l9WP997s45cG28WLAZ1K9Q=;
+        b=WqPX4ml5PWg0snDYfItJ7h4dQr4a6u5G9/30HO4Xu5Y/Y/QXlyJfeKJyVGSzCVWRr2OZ4Q
+        fUJP9FS7cW3pKjtdSEqyHO+EPjpIlE6s1J7mjGoSpO/iQ20Aiwk2q+NC5lPz6GUE7/6g24
+        UOfk7ODzEbNEXuL8xUrIrzGr1cSdhO4=
 Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
  [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-411-TzFt9ly9PHKzCWgL8bGdrQ-1; Tue, 26 Nov 2019 10:47:20 -0500
-Received: from smtp.corp.redhat.com (int-mx03.intmail.prod.int.phx2.redhat.com [10.5.11.13])
+ us-mta-366-_ZK_r-7ZPkOqqwwc7ga8kQ-1; Tue, 26 Nov 2019 10:47:20 -0500
+Received: from smtp.corp.redhat.com (int-mx07.intmail.prod.int.phx2.redhat.com [10.5.11.22])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 6247280268B
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 6988E18B9FCB
         for <linux-nfs@vger.kernel.org>; Tue, 26 Nov 2019 15:47:19 +0000 (UTC)
 Received: from coeurl.usersys.redhat.com (ovpn-123-90.rdu2.redhat.com [10.10.123.90])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 4451B88862;
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 4EBB31001281;
         Tue, 26 Nov 2019 15:47:19 +0000 (UTC)
 Received: by coeurl.usersys.redhat.com (Postfix, from userid 1000)
-        id D448A20781; Tue, 26 Nov 2019 10:47:18 -0500 (EST)
+        id E76A020844; Tue, 26 Nov 2019 10:47:18 -0500 (EST)
 From:   Scott Mayhew <smayhew@redhat.com>
 To:     steved@redhat.com
 Cc:     linux-nfs@vger.kernel.org
-Subject: [nfs-utils PATCH 0/3] A few small nfsdcld fixes
-Date:   Tue, 26 Nov 2019 10:47:15 -0500
-Message-Id: <20191126154718.22645-1-smayhew@redhat.com>
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.13
-X-MC-Unique: TzFt9ly9PHKzCWgL8bGdrQ-1
+Subject: [nfs-utils PATCH 3/3] nfsdcld: getopt_long() returns an int, not a char
+Date:   Tue, 26 Nov 2019 10:47:18 -0500
+Message-Id: <20191126154718.22645-4-smayhew@redhat.com>
+In-Reply-To: <20191126154718.22645-1-smayhew@redhat.com>
+References: <20191126154718.22645-1-smayhew@redhat.com>
+X-Scanned-By: MIMEDefang 2.84 on 10.5.11.22
+X-MC-Unique: _ZK_r-7ZPkOqqwwc7ga8kQ-1
 X-Mimecast-Spam-Score: 0
 Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: quoted-printable
@@ -58,20 +62,27 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-The first two patches fix problems I noticed when trying to build an rpm
-package w/ nfsdcld enabled.  The third patch fixes an issue I found
-trying to use nfsdcld on a ppc64le system.
+This was causing nfsdcld to spit out a usage message instead of starting
+up on non-x86_64 arches.
 
-Scott Mayhew (3):
-  nfsdcld: don't override sbindir
-  systemd: install nfsdcld.service when nfsdcld is enabled
-  nfsdcld: getopt_long() returns an int, not a char
+Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+---
+ utils/nfsdcld/nfsdcld.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
- systemd/Makefile.am       | 5 +++++
- utils/nfsdcld/Makefile.am | 4 ----
- utils/nfsdcld/nfsdcld.c   | 2 +-
- 3 files changed, 6 insertions(+), 5 deletions(-)
-
+diff --git a/utils/nfsdcld/nfsdcld.c b/utils/nfsdcld/nfsdcld.c
+index 9297df5..2ad1001 100644
+--- a/utils/nfsdcld/nfsdcld.c
++++ b/utils/nfsdcld/nfsdcld.c
+@@ -737,7 +737,7 @@ out:
+ int
+ main(int argc, char **argv)
+ {
+-=09char arg;
++=09int arg;
+ =09int rc =3D 0;
+ =09bool foreground =3D false;
+ =09char *progname;
 --=20
 2.17.2
 
