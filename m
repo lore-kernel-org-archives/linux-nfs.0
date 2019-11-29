@@ -4,28 +4,28 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-9.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+	USER_AGENT_GIT autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C45B2C43215
-	for <linux-nfs@archiver.kernel.org>; Fri, 29 Nov 2019 16:33:10 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 52AC6C432C0
+	for <linux-nfs@archiver.kernel.org>; Fri, 29 Nov 2019 16:33:26 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id A4DFA21781
-	for <linux-nfs@archiver.kernel.org>; Fri, 29 Nov 2019 16:33:10 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 32E9F2176D
+	for <linux-nfs@archiver.kernel.org>; Fri, 29 Nov 2019 16:33:26 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727213AbfK2QdK (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 29 Nov 2019 11:33:10 -0500
-Received: from mga14.intel.com ([192.55.52.115]:61235 "EHLO mga14.intel.com"
+        id S1727258AbfK2QdM (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 29 Nov 2019 11:33:12 -0500
+Received: from mga09.intel.com ([134.134.136.24]:10816 "EHLO mga09.intel.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727200AbfK2QdJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 29 Nov 2019 11:33:09 -0500
+        id S1727235AbfK2QdL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 29 Nov 2019 11:33:11 -0500
 X-Amp-Result: SKIPPED(no attachment in message)
 X-Amp-File-Uploaded: False
-Received: from fmsmga003.fm.intel.com ([10.253.24.29])
-  by fmsmga103.fm.intel.com with ESMTP/TLS/DHE-RSA-AES256-GCM-SHA384; 29 Nov 2019 08:33:07 -0800
+Received: from fmsmga001.fm.intel.com ([10.253.24.23])
+  by orsmga102.jf.intel.com with ESMTP/TLS/DHE-RSA-AES256-GCM-SHA384; 29 Nov 2019 08:33:10 -0800
 X-IronPort-AV: E=Sophos;i="5.69,257,1571727600"; 
-   d="scan'208";a="261567546"
+   d="scan'208";a="217811674"
 Received: from iweiny-desk2.sc.intel.com (HELO localhost) ([10.3.52.157])
-  by fmsmga003-auth.fm.intel.com with ESMTP/TLS/DHE-RSA-AES256-GCM-SHA384; 29 Nov 2019 08:33:07 -0800
+  by fmsmga001-auth.fm.intel.com with ESMTP/TLS/DHE-RSA-AES256-GCM-SHA384; 29 Nov 2019 08:33:09 -0800
 From:   ira.weiny@intel.com
 To:     Andrew Morton <akpm@linux-foundation.org>
 Cc:     Alexander Viro <viro@zeniv.linux.org.uk>, Chris Mason <clm@fb.com>,
@@ -39,9 +39,9 @@ Cc:     Alexander Viro <viro@zeniv.linux.org.uk>, Chris Mason <clm@fb.com>,
         linux-f2fs-devel@lists.sourceforge.net, linux-nfs@vger.kernel.org,
         linux-mm@kvack.org, Ira Weiny <ira.weiny@intel.com>,
         "Darrick J . Wong" <darrick.wong@oracle.com>
-Subject: [PATCH V3 1/3] fs: Clean up mapping variable
-Date:   Fri, 29 Nov 2019 08:32:58 -0800
-Message-Id: <20191129163300.14749-2-ira.weiny@intel.com>
+Subject: [PATCH V3 3/3] Documentation/fs: Move swap_[de]activate() to file_operations
+Date:   Fri, 29 Nov 2019 08:33:00 -0800
+Message-Id: <20191129163300.14749-4-ira.weiny@intel.com>
 X-Mailer: git-send-email 2.21.0
 In-Reply-To: <20191129163300.14749-1-ira.weiny@intel.com>
 References: <20191129163300.14749-1-ira.weiny@intel.com>
@@ -54,48 +54,77 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Ira Weiny <ira.weiny@intel.com>
 
-The mapping variable is not directly used in these functions.  Just
-remove the additional variable.
+Update the documentation for the move of the swap_* functions out of
+address_space_operations and into file_operations.
 
 Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
+Reviewed-by: David Sterba <dsterba@suse.com>
 Signed-off-by: Ira Weiny <ira.weiny@intel.com>
 
 ---
-Changes from V2:
-	updated Reviews
+Changes from V0:
+	Add to original series (now V3)
+	Add reviews
 
- fs/f2fs/data.c      | 3 +--
- fs/iomap/swapfile.c | 3 +--
- 2 files changed, 2 insertions(+), 4 deletions(-)
+ Documentation/filesystems/vfs.rst | 24 ++++++++++++------------
+ 1 file changed, 12 insertions(+), 12 deletions(-)
 
-diff --git a/fs/f2fs/data.c b/fs/f2fs/data.c
-index a034cd0ce021..9067c7e68992 100644
---- a/fs/f2fs/data.c
-+++ b/fs/f2fs/data.c
-@@ -3147,8 +3147,7 @@ int f2fs_migrate_page(struct address_space *mapping,
- /* Copied from generic_swapfile_activate() to check any holes */
- static int check_swap_activate(struct file *swap_file, unsigned int max)
- {
--	struct address_space *mapping = swap_file->f_mapping;
--	struct inode *inode = mapping->host;
-+	struct inode *inode = swap_file->f_mapping->host;
- 	unsigned blocks_per_page;
- 	unsigned long page_no;
- 	unsigned blkbits;
-diff --git a/fs/iomap/swapfile.c b/fs/iomap/swapfile.c
-index a648dbf6991e..80571add0180 100644
---- a/fs/iomap/swapfile.c
-+++ b/fs/iomap/swapfile.c
-@@ -140,8 +140,7 @@ int iomap_swapfile_activate(struct swap_info_struct *sis,
- 		.sis = sis,
- 		.lowest_ppage = (sector_t)-1ULL,
+diff --git a/Documentation/filesystems/vfs.rst b/Documentation/filesystems/vfs.rst
+index 7d4d09dd5e6d..03a740d7faa4 100644
+--- a/Documentation/filesystems/vfs.rst
++++ b/Documentation/filesystems/vfs.rst
+@@ -731,8 +731,6 @@ cache in your filesystem.  The following members are defined:
+ 					      unsigned long);
+ 		void (*is_dirty_writeback) (struct page *, bool *, bool *);
+ 		int (*error_remove_page) (struct mapping *mapping, struct page *page);
+-		int (*swap_activate)(struct file *);
+-		int (*swap_deactivate)(struct file *);
  	};
--	struct address_space *mapping = swap_file->f_mapping;
--	struct inode *inode = mapping->host;
-+	struct inode *inode = swap_file->f_mapping->host;
- 	loff_t pos = 0;
- 	loff_t len = ALIGN_DOWN(i_size_read(inode), PAGE_SIZE);
- 	loff_t ret;
+ 
+ ``writepage``
+@@ -924,16 +922,6 @@ cache in your filesystem.  The following members are defined:
+ 	Setting this implies you deal with pages going away under you,
+ 	unless you have them locked or reference counts increased.
+ 
+-``swap_activate``
+-	Called when swapon is used on a file to allocate space if
+-	necessary and pin the block lookup information in memory.  A
+-	return value of zero indicates success, in which case this file
+-	can be used to back swapspace.
+-
+-``swap_deactivate``
+-	Called during swapoff on files where swap_activate was
+-	successful.
+-
+ 
+ The File Object
+ ===============
+@@ -988,6 +976,8 @@ This describes how the VFS can manipulate an open file.  As of kernel
+ 					   struct file *file_out, loff_t pos_out,
+ 					   loff_t len, unsigned int remap_flags);
+ 		int (*fadvise)(struct file *, loff_t, loff_t, int);
++		int (*swap_activate)(struct file *);
++		int (*swap_deactivate)(struct file *);
+ 	};
+ 
+ Again, all methods are called without any locks being held, unless
+@@ -1108,6 +1098,16 @@ otherwise noted.
+ ``fadvise``
+ 	possibly called by the fadvise64() system call.
+ 
++``swap_activate``
++	Called when swapon is used on a file to allocate space if
++	necessary and pin the block lookup information in memory.  A
++	return value of zero indicates success, in which case this file
++	can be used to back swapspace.
++
++``swap_deactivate``
++	Called during swapoff on files where swap_activate was
++	successful.
++
+ Note that the file operations are implemented by the specific
+ filesystem in which the inode resides.  When opening a device node
+ (character or block special) most filesystems will call special
 -- 
 2.21.0
 
