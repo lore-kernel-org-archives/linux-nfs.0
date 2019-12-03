@@ -2,148 +2,181 @@ Return-Path: <SRS0=mSiw=ZZ=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=no
+X-Spam-Status: No, score=-2.4 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
+	SPF_HELO_NONE,SPF_PASS,UNPARSEABLE_RELAY,USER_AGENT_SANE_1 autolearn=no
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id AE51AC43141
-	for <linux-nfs@archiver.kernel.org>; Tue,  3 Dec 2019 11:48:30 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7C445C432C3
+	for <linux-nfs@archiver.kernel.org>; Tue,  3 Dec 2019 16:35:39 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 8C2D720684
-	for <linux-nfs@archiver.kernel.org>; Tue,  3 Dec 2019 11:48:30 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 4E07620675
+	for <linux-nfs@archiver.kernel.org>; Tue,  3 Dec 2019 16:35:39 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="sgIhIr6X"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726114AbfLCLrx (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 3 Dec 2019 06:47:53 -0500
-Received: from mx2.suse.de ([195.135.220.15]:49394 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1725773AbfLCLrw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 3 Dec 2019 06:47:52 -0500
-X-Virus-Scanned: by amavisd-new at test-mx.suse.de
-Received: from relay2.suse.de (unknown [195.135.220.254])
-        by mx1.suse.de (Postfix) with ESMTP id 6C137B183;
-        Tue,  3 Dec 2019 11:47:49 +0000 (UTC)
-From:   Nicolas Saenz Julienne <nsaenzjulienne@suse.de>
-To:     andrew.murray@arm.com, maz@kernel.org, linux-kernel@vger.kernel.org
-Cc:     james.quinlan@broadcom.com, mbrugger@suse.com,
-        f.fainelli@gmail.com, phil@raspberrypi.org, wahrenst@gmx.net,
-        jeremy.linton@arm.com, linux-pci@vger.kernel.org,
-        linux-rpi-kernel@lists.infradead.org,
-        Nicolas Saenz Julienne <nsaenzjulienne@suse.de>,
-        Robin Murphy <robin.murphy@arm.com>,
-        linux-arm-kernel@lists.infradead.org,
-        bcm-kernel-feedback-list@broadcom.com, devicetree@vger.kernel.org,
-        linux-acpi@vger.kernel.org, linux-clk@vger.kernel.org,
-        linux-rdma@vger.kernel.org, iommu@lists.linux-foundation.org,
-        netdev@vger.kernel.org, linux-rockchip@lists.infradead.org,
-        kexec@lists.infradead.org, linux-nfs@vger.kernel.org
-Subject: [PATCH v4 0/8] Raspberry Pi 4 PCIe support
-Date:   Tue,  3 Dec 2019 12:47:33 +0100
-Message-Id: <20191203114743.1294-1-nsaenzjulienne@suse.de>
-X-Mailer: git-send-email 2.24.0
+        id S1726330AbfLCQfi (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 3 Dec 2019 11:35:38 -0500
+Received: from userp2130.oracle.com ([156.151.31.86]:39992 "EHLO
+        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726105AbfLCQfi (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Dec 2019 11:35:38 -0500
+Received: from pps.filterd (userp2130.oracle.com [127.0.0.1])
+        by userp2130.oracle.com (8.16.0.27/8.16.0.27) with SMTP id xB3GJEYj001601;
+        Tue, 3 Dec 2019 16:35:32 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=date : from : to : cc
+ : subject : message-id : references : mime-version : content-type :
+ in-reply-to; s=corp-2019-08-05;
+ bh=CG2m3f4Oi7sNZTSZk9mkAnAp3Upf/MKRwb2/e/7lIqg=;
+ b=sgIhIr6XDq/lbHIMRf9YGKWvZO7v7P6D+/FDaUKWVPQepE6fxrKyS7yNwt6QWx2S3qr0
+ v1K9yCrjkOb9plETSzM/qLOvc8iZbUZWz1IhHLaA555OjMHwQSG8Xmb7t5nbjJDSgKhs
+ C/egZozHpI14q8ZOZPnaNP8RvqTjFIXhlq+uFfD5aUjTQMpm6x7fUrJaDe1dXg/c07HR
+ GT75U0xSRoQ4zp6ZzWsMty5BIbJs/bjxexIIbrbY/dKRy7oC1aDuQqtFjLZKS5Xsn7iC
+ +wygu52xavP2nGu5ipoep+P0bJCFRIznyo7CRyqkIRplkGGRPs/+1SJ77vKfB0oyn8yM Xg== 
+Received: from aserp3030.oracle.com (aserp3030.oracle.com [141.146.126.71])
+        by userp2130.oracle.com with ESMTP id 2wkfuu91yy-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Tue, 03 Dec 2019 16:35:32 +0000
+Received: from pps.filterd (aserp3030.oracle.com [127.0.0.1])
+        by aserp3030.oracle.com (8.16.0.27/8.16.0.27) with SMTP id xB3GJ9YK082241;
+        Tue, 3 Dec 2019 16:35:31 GMT
+Received: from userv0122.oracle.com (userv0122.oracle.com [156.151.31.75])
+        by aserp3030.oracle.com with ESMTP id 2wn8k2v9rt-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Tue, 03 Dec 2019 16:35:31 +0000
+Received: from abhmp0010.oracle.com (abhmp0010.oracle.com [141.146.116.16])
+        by userv0122.oracle.com (8.14.4/8.14.4) with ESMTP id xB3GZSBZ029804;
+        Tue, 3 Dec 2019 16:35:29 GMT
+Received: from localhost (/67.169.218.210)
+        by default (Oracle Beehive Gateway v4.0)
+        with ESMTP ; Tue, 03 Dec 2019 16:35:28 +0000
+Date:   Tue, 3 Dec 2019 08:35:26 -0800
+From:   "Darrick J. Wong" <darrick.wong@oracle.com>
+To:     Trond Myklebust <trondmy@hammerspace.com>
+Cc:     "david@fromorbit.com" <david@fromorbit.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
+Subject: Re: Question about clone_range() metadata stability
+Message-ID: <20191203163526.GD7323@magnolia>
+References: <f063089fb62c219ea6453c7b9b0aaafd50946dae.camel@hammerspace.com>
+ <20191127202136.GV6211@magnolia>
+ <20191201210519.GB2418@dread.disaster.area>
+ <52f1afb6e0a2026840da6f4b98a5e01a247447e5.camel@hammerspace.com>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <52f1afb6e0a2026840da6f4b98a5e01a247447e5.camel@hammerspace.com>
+User-Agent: Mutt/1.9.4 (2018-02-28)
+X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9460 signatures=668685
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 suspectscore=0 malwarescore=0
+ phishscore=0 bulkscore=0 spamscore=0 mlxscore=0 mlxlogscore=999
+ adultscore=0 classifier=spam adjust=0 reason=mlx scancount=1
+ engine=8.0.1-1911140001 definitions=main-1912030123
+X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9460 signatures=668685
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 priorityscore=1501 malwarescore=0
+ suspectscore=0 phishscore=0 bulkscore=0 spamscore=0 clxscore=1015
+ lowpriorityscore=0 mlxscore=0 impostorscore=0 mlxlogscore=999 adultscore=0
+ classifier=spam adjust=0 reason=mlx scancount=1 engine=8.0.1-1911140001
+ definitions=main-1912030123
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-This series aims at providing support for Raspberry Pi 4's PCIe
-controller, which is also shared with the Broadcom STB family of
-devices.
+On Tue, Dec 03, 2019 at 07:36:29AM +0000, Trond Myklebust wrote:
+> On Mon, 2019-12-02 at 08:05 +1100, Dave Chinner wrote:
+> > On Wed, Nov 27, 2019 at 12:21:36PM -0800, Darrick J. Wong wrote:
+> > > On Wed, Nov 27, 2019 at 06:38:46PM +0000, Trond Myklebust wrote:
+> > > > Hi all
+> > > > 
+> > > > A quick question about clone_range() and guarantees around
+> > > > metadata
+> > > > stability.
+> > > > 
+> > > > Are users required to call fsync/fsync_range() after calling
+> > > > clone_range() in order to guarantee that the cloned range
+> > > > metadata is
+> > > > persisted?
+> > > 
+> > > Yes.
+> > > 
+> > > > I'm assuming that it is required in order to guarantee that
+> > > > data is persisted.
+> > > 
+> > > Data and metadata.  XFS and ocfs2's reflink implementations will
+> > > flush
+> > > the page cache before starting the remap, but they both require
+> > > fsync to
+> > > force the log/journal to disk.
+> > 
+> > So we need to call xfs_fs_nfs_commit_metadata() to get that done
+> > post vfs_clone_file_range() completion on the server side, yes?
+> > 
+> 
+> I chose to implement this using a full call to vfs_fsync_range(), since
+> we really do want to ensure data stability as well. Consider, for
+> instance, the case where client A is running an application, and client
+> B runs vfs_clone_file_range() in order to create a point in time
+> snapshot of the file for disaster recovery purposes...
 
-There was a previous attempt to upstream this some years ago[1] but was
-blocked as most STB PCIe integrations have a sparse DMA mapping[2] which
-is something currently not supported by the kernel.  Luckily this is not
-the case for the Raspberry Pi 4.
+Seems reasonable, since (alas) we didn't define the ->remap_range api to
+guarantee that for you.
 
-Note that the driver code is to be based on top of Rob Herring's series
-simplifying inbound and outbound range parsing.
+> > > (AFAICT the same reasoning applies to btrfs, but don't trust my
+> > > word for
+> > > it.)
+> > > 
+> > > > I'm asking because knfsd currently just does a call to
+> > > > vfs_clone_file_range() when parsing a NFSv4.2 CLONE operation. It
+> > > > does
+> > > > not call fsync()/fsync_range() on the destination file, and since
+> > > > the
+> > > > NFSv4.2 protocol does not require you to perform any other
+> > > > operation in
+> > > > order to persist data/metadata, I'm worried that we may be
+> > > > corrupting
+> > > > the cloned file if the NFS server crashes at the wrong moment
+> > > > after the
+> > > > client has been told the clone completed.
+> > 
+> > Yup, that's exactly what server side calls to commit_metadata() are
+> > supposed to address.
+> > 
+> > I suspect to be correct, this might require commit_metadata() to be
+> > called on both the source and destination inodes, as both of them
+> > may have modified metadata as a result of the clone operation. For
+> > XFS one of them will be a no-op, but for other filesystems that
+> > don't implement ->commit_metadata, we'll need to call
+> > sync_inode_metadata() on both inodes...
+> > 
+> 
+> That's interesting. I hadn't considered that a clone might cause the
+> source metadata to change as well. What kind of change specifically are
+> we talking about? Is it just delayed block allocation, or is there
+> more?
 
-[1] https://patchwork.kernel.org/cover/10605933/
-[2] https://patchwork.kernel.org/patch/10605957/
+In XFS' case, we added a per-inode flag to help us bypass the reference
+count lookup during a write if the file has never shared any blocks, so
+if you never share anything, you'll never pay any of the runtime costs
+of the COW mechanism.
 
----
+ocfs2's design has a reference count tree that is shared between groups
+of files that have been reflinked from each other.  So if you start with
+unshared files A and B and clone A to A1 and A2; and B to B1 and B2,
+then A* will have their own refcount tree and B* will also have their
+own refcount tree.
 
-Changes since v3:
-  - Moved all the log2.h related changes at the end of the series, as I
-    presume they will be contentious and I don't want the PCIe patches
-    to depend on them. Ultimately I think I'll respin them on their own
-    series but wanted to keep them in for this submission just for the
-    sake of continuity.
-  - Addressed small nits here and there.
+Either way, nfs has to assume that changes could have been made to the
+source file.
 
-Changes since v2:
-  - Redo register access in driver avoiding indirection while keeping
-    the naming intact
-  - Add patch editing ARM64's config
-  - Last MSI cleanups, notably removing MSIX flag
-  - Got rid of all _RB writes
-  - Got rid of all of_data
-  - Overall churn removal
-  - Address the rest of Andrew's comments
+--D
 
-Changes since v1:
-  - add generic rounddown/roundup_pow_two64() patch
-  - Add MAINTAINERS patch
-  - Fix Kconfig
-  - Cleanup probe, use up to date APIs, exit on MSI failure
-  - Get rid of linux,pci-domain and other unused constructs
-  - Use edge triggered setup for MSI
-  - Cleanup MSI implementation
-  - Fix multiple cosmetic issues
-  - Remove supend/resume code
-
-Jim Quinlan (3):
-  dt-bindings: PCI: Add bindings for brcmstb's PCIe device
-  PCI: brcmstb: Add Broadcom STB PCIe host controller driver
-  PCI: brcmstb: Add MSI support
-
-Nicolas Saenz Julienne (5):
-  ARM: dts: bcm2711: Enable PCIe controller
-  MAINTAINERS: Add brcmstb PCIe controller
-  arm64: defconfig: Enable Broadcom's STB PCIe controller
-  linux/log2.h: Fix 64bit calculations in roundup/down_pow_two()
-  linux/log2.h: Use roundup/dow_pow_two() on 64bit calculations
-
- .../bindings/pci/brcm,stb-pcie.yaml           |   97 ++
- MAINTAINERS                                   |    4 +
- arch/arm/boot/dts/bcm2711.dtsi                |   37 +
- arch/arm64/configs/defconfig                  |    1 +
- drivers/acpi/arm64/iort.c                     |    2 +-
- drivers/clk/clk-divider.c                     |    8 +-
- drivers/clk/sunxi/clk-sunxi.c                 |    2 +-
- drivers/infiniband/hw/hfi1/chip.c             |    4 +-
- drivers/infiniband/hw/hfi1/init.c             |    4 +-
- drivers/infiniband/hw/mlx4/srq.c              |    2 +-
- drivers/infiniband/hw/mthca/mthca_srq.c       |    2 +-
- drivers/infiniband/sw/rxe/rxe_qp.c            |    4 +-
- drivers/iommu/intel-iommu.c                   |    4 +-
- drivers/iommu/intel-svm.c                     |    4 +-
- drivers/iommu/intel_irq_remapping.c           |    2 +-
- drivers/net/ethernet/amd/xgbe/xgbe-ethtool.c  |    4 +-
- drivers/net/ethernet/marvell/sky2.c           |    2 +-
- drivers/net/ethernet/mellanox/mlx4/en_clock.c |    3 +-
- drivers/net/ethernet/rocker/rocker_hw.h       |    4 +-
- drivers/net/ethernet/sfc/ef10.c               |    2 +-
- drivers/net/ethernet/sfc/efx.h                |    2 +-
- drivers/net/ethernet/sfc/falcon/efx.h         |    2 +-
- drivers/of/device.c                           |    3 +-
- drivers/pci/controller/Kconfig                |    9 +
- drivers/pci/controller/Makefile               |    1 +
- .../pci/controller/cadence/pcie-cadence-ep.c  |    3 +-
- drivers/pci/controller/cadence/pcie-cadence.c |    3 +-
- drivers/pci/controller/pcie-brcmstb.c         | 1008 +++++++++++++++++
- drivers/pci/controller/pcie-rockchip-ep.c     |    5 +-
- drivers/pci/msi.c                             |    2 +-
- include/linux/log2.h                          |   44 +-
- kernel/dma/direct.c                           |    2 +-
- kernel/kexec_core.c                           |    3 +-
- lib/rhashtable.c                              |    2 +-
- net/sunrpc/xprtrdma/verbs.c                   |    2 +-
- 35 files changed, 1211 insertions(+), 72 deletions(-)
- create mode 100644 Documentation/devicetree/bindings/pci/brcm,stb-pcie.yaml
- create mode 100644 drivers/pci/controller/pcie-brcmstb.c
-
--- 
-2.24.0
-
+> Thanks
+>   Trond
+> 
+> -- 
+> Trond Myklebust
+> Linux NFS client maintainer, Hammerspace
+> trond.myklebust@hammerspace.com
+> 
+> 
