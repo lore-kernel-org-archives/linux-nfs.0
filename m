@@ -2,55 +2,53 @@ Return-Path: <SRS0=1J9Y=Z3=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.0 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,
-	SPF_PASS,USER_AGENT_SANE_1 autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-5.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0158AC43603
-	for <linux-nfs@archiver.kernel.org>; Thu,  5 Dec 2019 13:38:32 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8126DC2D0BF
+	for <linux-nfs@archiver.kernel.org>; Thu,  5 Dec 2019 13:42:30 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id BE2F722525
-	for <linux-nfs@archiver.kernel.org>; Thu,  5 Dec 2019 13:38:31 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="WQ8Vdx+r"
+	by mail.kernel.org (Postfix) with ESMTP id 620C822525
+	for <linux-nfs@archiver.kernel.org>; Thu,  5 Dec 2019 13:42:30 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729187AbfLENib (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 5 Dec 2019 08:38:31 -0500
-Received: from bombadil.infradead.org ([198.137.202.133]:59996 "EHLO
-        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1729096AbfLENib (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Dec 2019 08:38:31 -0500
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-        d=infradead.org; s=bombadil.20170209; h=In-Reply-To:Content-Type:MIME-Version
-        :References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
-        Content-Transfer-Encoding:Content-ID:Content-Description:Resent-Date:
-        Resent-From:Resent-Sender:Resent-To:Resent-Cc:Resent-Message-ID:List-Id:
-        List-Help:List-Unsubscribe:List-Subscribe:List-Post:List-Owner:List-Archive;
-         bh=/zOhhsj0TF+2vJvyTuHdzp88oWZoS4k2GnHbq6L+gbQ=; b=WQ8Vdx+rYdfNKgHBZlpZyQEvg
-        dNca2+MGoqL1J/cqdzWS1Iy8NU0rFag2GarJnG+2yjff7htStPVDfKNfFdHMFHbb913qyCkvh2Xv1
-        5RB/o5sF918KgmAdOB+MVPse+TiqvW+lelx2xzUVeTeD/GRVn6mRV7373sHzp1eSKPH56Fb5unb+B
-        Q4sDVZqEQMFuWA5wc+/Ihm0N9RKbaMi3ztB9OpyrmSkA+kXJutuL18ro74O4FAEwYiu/F1LJINJ1h
-        QCconcly/Ku4jLN0cic7bifTVe2TdrxxFV/R3RKslMRsWfHsztZU+D1S9WY2Dh/66GC38AeqpeCGS
-        Sqgum2peQ==;
-Received: from willy by bombadil.infradead.org with local (Exim 4.92.3 #3 (Red Hat Linux))
-        id 1icrKw-00015o-Gj; Thu, 05 Dec 2019 13:38:30 +0000
-Date:   Thu, 5 Dec 2019 05:38:30 -0800
-From:   Matthew Wilcox <willy@infradead.org>
+        id S1729503AbfLENm3 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 5 Dec 2019 08:42:29 -0500
+Received: from mx2.suse.de ([195.135.220.15]:32800 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1729165AbfLENm2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 5 Dec 2019 08:42:28 -0500
+X-Virus-Scanned: by amavisd-new at test-mx.suse.de
+Received: from relay2.suse.de (unknown [195.135.220.254])
+        by mx1.suse.de (Postfix) with ESMTP id 880E7B1A3;
+        Thu,  5 Dec 2019 13:42:26 +0000 (UTC)
+Received: by ds.suse.cz (Postfix, from userid 10065)
+        id A1255DA733; Thu,  5 Dec 2019 14:42:20 +0100 (CET)
+Date:   Thu, 5 Dec 2019 14:42:20 +0100
+From:   David Sterba <dsterba@suse.cz>
 To:     Ritesh Harjani <riteshh@linux.ibm.com>
-Cc:     linux-fsdevel@vger.kernel.org, jlayton@kernel.org,
-        viro@zeniv.linux.org.uk, ceph-devel@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, linux-nfs@vger.kernel.org,
-        devel@lists.orangefs.org, linux-unionfs@vger.kernel.org
+Cc:     willy@infradead.org, linux-fsdevel@vger.kernel.org,
+        jlayton@kernel.org, viro@zeniv.linux.org.uk,
+        ceph-devel@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        linux-nfs@vger.kernel.org, devel@lists.orangefs.org,
+        linux-unionfs@vger.kernel.org
 Subject: Re: [PATCH 1/1] fs: Use inode_lock/unlock class of provided APIs in
  filesystems
-Message-ID: <20191205133830.GB29612@bombadil.infradead.org>
+Message-ID: <20191205134220.GM2734@twin.jikos.cz>
+Reply-To: dsterba@suse.cz
+Mail-Followup-To: dsterba@suse.cz, Ritesh Harjani <riteshh@linux.ibm.com>,
+        willy@infradead.org, linux-fsdevel@vger.kernel.org,
+        jlayton@kernel.org, viro@zeniv.linux.org.uk,
+        ceph-devel@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        linux-nfs@vger.kernel.org, devel@lists.orangefs.org,
+        linux-unionfs@vger.kernel.org
 References: <20191205103902.23618-1-riteshh@linux.ibm.com>
  <20191205103902.23618-2-riteshh@linux.ibm.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
 In-Reply-To: <20191205103902.23618-2-riteshh@linux.ibm.com>
-User-Agent: Mutt/1.12.1 (2019-06-15)
+User-Agent: Mutt/1.5.23.1-rc1 (2014-03-12)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
@@ -62,5 +60,11 @@ On Thu, Dec 05, 2019 at 04:09:02PM +0530, Ritesh Harjani wrote:
 > Instead those are replaced with inode_lock/unlock_** APIs.
 > 
 > Signed-off-by: Ritesh Harjani <riteshh@linux.ibm.com>
+> ---
 
-Reviewed-by: Matthew Wilcox (Oracle) <willy@infradead.org>
+For the btrfs part
+
+>  fs/btrfs/delayed-inode.c |  2 +-
+>  fs/btrfs/ioctl.c         |  4 ++--
+
+Acked-by: David Sterba <dsterba@suse.com>
