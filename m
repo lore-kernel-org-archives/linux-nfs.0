@@ -2,98 +2,517 @@ Return-Path: <SRS0=N5nt=2A=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
+X-Spam-Status: No, score=-6.9 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id F2184C2D0BE
-	for <linux-nfs@archiver.kernel.org>; Tue, 10 Dec 2019 05:47:12 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 68FDAC2D0BF
+	for <linux-nfs@archiver.kernel.org>; Tue, 10 Dec 2019 12:31:30 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id C7DB5206D5
-	for <linux-nfs@archiver.kernel.org>; Tue, 10 Dec 2019 05:47:12 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 2166B20838
+	for <linux-nfs@archiver.kernel.org>; Tue, 10 Dec 2019 12:31:30 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="h5ge2jCJ"
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="OeqHi5xQ"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726085AbfLJFrL (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 10 Dec 2019 00:47:11 -0500
-Received: from mail-pl1-f196.google.com ([209.85.214.196]:46743 "EHLO
-        mail-pl1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725857AbfLJFrL (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 10 Dec 2019 00:47:11 -0500
-Received: by mail-pl1-f196.google.com with SMTP id k20so6810800pll.13;
-        Mon, 09 Dec 2019 21:47:11 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=from:to:cc:subject:date:message-id;
-        bh=4PpU18WVGfu8W1dzcx6BhI1zCSeD4MNelLQRqcNILww=;
-        b=h5ge2jCJXFDHTh1fWNcu/9O+pouL8MOCQbEZhpeRILATJTIZodskMGyfBI0trwPGi9
-         RZaUTiMU+QaERHsiq82S1P5zomu67JjhrxMvp7pmJIUN+c3X53bU7H9m++MkmmE7f1DM
-         mUU5gP1MAfR0M1GnsQQy5AgMzTvwcIkNKALNGg/X0P4KEtvx2GyaeR/fB9T4n+TGmjnv
-         tq3q54IYY9Aug9l8RDTHBAcWSCVh6wjC2cfAchZwxgNlP5i5DsaiBtjjlvY9YSZUL/WE
-         NuuOx0uIGb29R7dROxL2LwG8o+5YM8KrBpP1i8/DlHG7gdgT2mom/aB7MmFbAeIvQW3d
-         FpMw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id;
-        bh=4PpU18WVGfu8W1dzcx6BhI1zCSeD4MNelLQRqcNILww=;
-        b=Ari/iZ1BRjREVkNn9GcCiuQ+KE6R/WLSbfuSm/A1OQgAOmWDOxegKiZEX7V4Wz4lwQ
-         IswtzX5fn9yAMc0PkIXQlbPOC2gkxbNAieRuSU61VarubPHKaLXIEwB31cJ0HZyBiSd3
-         bqgY6MkgavBivJZLgKWbAKbkkpXDsuQqvDhvBJ4uDz9VPKN9V5zHRABJ+GbdxVbkzNrD
-         uTBk5XC7sWlcshTXi3V6g/+uu4gDhs5Jrv+sem0JxGQpBQub6XYsPro0QA1rl7IXpuK2
-         z6hZaxVKQnpg7SWJkjgqL6waTEwTFU/pliCaa5IYb24mn35HeOeMDzFR/7vmr1Fp01nH
-         VdUg==
-X-Gm-Message-State: APjAAAVac5YNbcaOGvBOlWt7QvKYO45Q4AzEtB9uXvuJwqqLsBaFq6pQ
-        F95j84Jj82woPH0Js6mMKMo=
-X-Google-Smtp-Source: APXvYqxXXcF/D0VDW40F8ndwD793QLu7WN4Wy9SPAeh1eHSRmWB3nlsOnuscllQ1evZKi4Vqv4acSg==
-X-Received: by 2002:a17:902:8649:: with SMTP id y9mr33737643plt.67.1575956830540;
-        Mon, 09 Dec 2019 21:47:10 -0800 (PST)
-Received: from localhost.localdomain ([2402:3a80:13a2:ed96:d06d:42a7:9b38:e89c])
-        by smtp.gmail.com with ESMTPSA id s2sm1433072pfb.109.2019.12.09.21.47.07
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 09 Dec 2019 21:47:10 -0800 (PST)
-From:   madhuparnabhowmik04@gmail.com
-To:     trond.myklebust@hammerspace.com, anna.schumaker@netapp.com,
-        paulmck@kernel.org, joel@joelfernandes.org
-Cc:     linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        rcu@vger.kernel.org,
-        linux-kernel-mentees@lists.linuxfoundation.org,
-        Madhuparna Bhowmik <madhuparnabhowmik04@gmail.com>
-Subject: [PATCH] fs: nfs: dir.c: Fix sparse error
-Date:   Tue, 10 Dec 2019 11:16:39 +0530
-Message-Id: <20191210054639.30003-1-madhuparnabhowmik04@gmail.com>
-X-Mailer: git-send-email 2.17.1
+        id S1727608AbfLJMb2 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 10 Dec 2019 07:31:28 -0500
+Received: from us-smtp-1.mimecast.com ([207.211.31.81]:31700 "EHLO
+        us-smtp-delivery-1.mimecast.com" rhost-flags-OK-OK-OK-FAIL)
+        by vger.kernel.org with ESMTP id S1727607AbfLJMb1 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 10 Dec 2019 07:31:27 -0500
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1575981085;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=i4pZOY575C3XWd4ewUwz3HOnt5uDC6INuYO5kmnM1rM=;
+        b=OeqHi5xQroxizRzivIGaCGxgCEh20cZdPHWso9RkneHZy2d5glB31FZl6413siXeQJSa3+
+        nIkNy8cgBrQSvILf+aRvpLMt4GY/7Zzauc3TvRQ8D3WXxEQo/dF6vBo9POnA2gEGmnyUFS
+        Y09CW+BzaVlDWKTMoBrGplziOhiVofo=
+Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
+ [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
+ us-mta-389-3yQ3uaeSMM2fy493OJAxmQ-1; Tue, 10 Dec 2019 07:31:19 -0500
+Received: from smtp.corp.redhat.com (int-mx04.intmail.prod.int.phx2.redhat.com [10.5.11.14])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 9ABDD800D5E;
+        Tue, 10 Dec 2019 12:31:17 +0000 (UTC)
+Received: from coeurl.usersys.redhat.com (ovpn-123-90.rdu2.redhat.com [10.10.123.90])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 67E755DA60;
+        Tue, 10 Dec 2019 12:31:17 +0000 (UTC)
+Received: by coeurl.usersys.redhat.com (Postfix, from userid 1000)
+        id 0642920C40; Tue, 10 Dec 2019 07:31:16 -0500 (EST)
+From:   Scott Mayhew <smayhew@redhat.com>
+To:     anna.schumaker@netapp.com, trond.myklebust@hammerspace.com
+Cc:     dhowells@redhat.com, viro@zeniv.linux.org.uk,
+        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-security-module@vger.kernel.org
+Subject: [PATCH v6 22/27] NFS: Do some tidying of the parsing code
+Date:   Tue, 10 Dec 2019 07:31:10 -0500
+Message-Id: <20191210123115.1655-23-smayhew@redhat.com>
+In-Reply-To: <20191210123115.1655-1-smayhew@redhat.com>
+References: <20191210123115.1655-1-smayhew@redhat.com>
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.14
+X-MC-Unique: 3yQ3uaeSMM2fy493OJAxmQ-1
+X-Mimecast-Spam-Score: 0
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Madhuparna Bhowmik <madhuparnabhowmik04@gmail.com>
+From: David Howells <dhowells@redhat.com>
 
-This patch fixes the following sparse error:
-fs/nfs/dir.c:2353:14: error: incompatible types in comparison expression (different address spaces):
-fs/nfs/dir.c:2353:14:    struct list_head [noderef] <asn:4> *
-fs/nfs/dir.c:2353:14:    struct list_head *
+Do some tidying of the parsing code, including:
 
-Signed-off-by: Madhuparna Bhowmik <madhuparnabhowmik04@gmail.com>
+ (*) Returning 0/error rather than true/false.
+
+ (*) Putting the nfs_fs_context pointer first in some arg lists.
+
+ (*) Unwrap some lines that will now fit on one line.
+
+ (*) Provide unioned sockaddr/sockaddr_storage fields to avoid casts.
+
+ (*) nfs_parse_devname() can paste its return values directly into the
+     nfs_fs_context struct as that's where the caller puts them.
+
+Signed-off-by: David Howells <dhowells@redhat.com>
+Signed-off-by: Al Viro <viro@zeniv.linux.org.uk>
 ---
- fs/nfs/dir.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ fs/nfs/fs_context.c | 126 +++++++++++++++++++-------------------------
+ fs/nfs/internal.h   |  16 ++++--
+ fs/nfs/super.c      |   2 +-
+ 3 files changed, 66 insertions(+), 78 deletions(-)
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index e180033e35cf..b69370b6d317 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -2350,7 +2350,7 @@ static int nfs_access_get_cached_rcu(struct inode *inode, const struct cred *cre
- 	rcu_read_lock();
- 	if (nfsi->cache_validity & NFS_INO_INVALID_ACCESS)
- 		goto out;
--	lh = rcu_dereference(nfsi->access_cache_entry_lru.prev);
-+	lh = rcu_dereference(list_tail_rcu(&nfsi->access_cache_entry_lru));
- 	cache = list_entry(lh, struct nfs_access_entry, lru);
- 	if (lh == &nfsi->access_cache_entry_lru ||
- 	    cred != cache->cred)
--- 
-2.17.1
+diff --git a/fs/nfs/fs_context.c b/fs/nfs/fs_context.c
+index 2921c5820c31..44531443a92b 100644
+--- a/fs/nfs/fs_context.c
++++ b/fs/nfs/fs_context.c
+@@ -343,8 +343,9 @@ static void nfs_set_mount_transport_protocol(struct nfs=
+_fs_context *ctx)
+  * Add 'flavor' to 'auth_info' if not already present.
+  * Returns true if 'flavor' ends up in the list, false otherwise
+  */
+-static bool nfs_auth_info_add(struct nfs_auth_info *auth_info,
+-=09=09=09      rpc_authflavor_t flavor)
++static int nfs_auth_info_add(struct nfs_fs_context *ctx,
++=09=09=09     struct nfs_auth_info *auth_info,
++=09=09=09     rpc_authflavor_t flavor)
+ {
+ =09unsigned int i;
+ =09unsigned int max_flavor_len =3D ARRAY_SIZE(auth_info->flavors);
+@@ -352,26 +353,27 @@ static bool nfs_auth_info_add(struct nfs_auth_info *a=
+uth_info,
+ =09/* make sure this flavor isn't already in the list */
+ =09for (i =3D 0; i < auth_info->flavor_len; i++) {
+ =09=09if (flavor =3D=3D auth_info->flavors[i])
+-=09=09=09return true;
++=09=09=09return 0;
+ =09}
+=20
+ =09if (auth_info->flavor_len + 1 >=3D max_flavor_len) {
+ =09=09dfprintk(MOUNT, "NFS: too many sec=3D flavors\n");
+-=09=09return false;
++=09=09return -EINVAL;
+ =09}
+=20
+ =09auth_info->flavors[auth_info->flavor_len++] =3D flavor;
+-=09return true;
++=09return 0;
+ }
+=20
+ /*
+  * Parse the value of the 'sec=3D' option.
+  */
+-static int nfs_parse_security_flavors(char *value, struct nfs_fs_context *=
+ctx)
++static int nfs_parse_security_flavors(struct nfs_fs_context *ctx, char *va=
+lue)
+ {
+ =09substring_t args[MAX_OPT_ARGS];
+ =09rpc_authflavor_t pseudoflavor;
+ =09char *p;
++=09int ret;
+=20
+ =09dfprintk(MOUNT, "NFS: parsing sec=3D%s option\n", value);
+=20
+@@ -413,19 +415,20 @@ static int nfs_parse_security_flavors(char *value, st=
+ruct nfs_fs_context *ctx)
+ =09=09default:
+ =09=09=09dfprintk(MOUNT,
+ =09=09=09=09 "NFS: sec=3D option '%s' not recognized\n", p);
+-=09=09=09return 0;
++=09=09=09return -EINVAL;
+ =09=09}
+=20
+-=09=09if (!nfs_auth_info_add(&ctx->auth_info, pseudoflavor))
+-=09=09=09return 0;
++=09=09ret =3D nfs_auth_info_add(ctx, &ctx->auth_info, pseudoflavor);
++=09=09if (ret < 0)
++=09=09=09return ret;
+ =09}
+=20
+-=09return 1;
++=09return 0;
+ }
+=20
+-static int nfs_parse_version_string(char *string,
+-=09=09struct nfs_fs_context *ctx,
+-=09=09substring_t *args)
++static int nfs_parse_version_string(struct nfs_fs_context *ctx,
++=09=09=09=09    char *string,
++=09=09=09=09    substring_t *args)
+ {
+ =09ctx->flags &=3D ~NFS_MOUNT_VER3;
+ =09switch (match_token(string, nfs_vers_tokens, args)) {
+@@ -456,9 +459,10 @@ static int nfs_parse_version_string(char *string,
+ =09=09ctx->minorversion =3D 2;
+ =09=09break;
+ =09default:
+-=09=09return 0;
++=09=09dfprintk(MOUNT, "NFS:   Unsupported NFS version\n");
++=09=09return -EINVAL;
+ =09}
+-=09return 1;
++=09return 0;
+ }
+=20
+ static int nfs_get_option_str(substring_t args[], char **option)
+@@ -513,7 +517,7 @@ static int nfs_fs_context_parse_option(struct nfs_fs_co=
+ntext *ctx, char *p)
+ {
+ =09substring_t args[MAX_OPT_ARGS];
+ =09char *string;
+-=09int token, rc;
++=09int token, ret;
+=20
+ =09dfprintk(MOUNT, "NFS:   parsing nfs mount option '%s'\n", p);
+=20
+@@ -553,13 +557,11 @@ static int nfs_fs_context_parse_option(struct nfs_fs_=
+context *ctx, char *p)
+ =09=09break;
+ =09case Opt_lock:
+ =09=09ctx->flags &=3D ~NFS_MOUNT_NONLM;
+-=09=09ctx->flags &=3D ~(NFS_MOUNT_LOCAL_FLOCK |
+-=09=09=09=09NFS_MOUNT_LOCAL_FCNTL);
++=09=09ctx->flags &=3D ~(NFS_MOUNT_LOCAL_FLOCK | NFS_MOUNT_LOCAL_FCNTL);
+ =09=09break;
+ =09case Opt_nolock:
+ =09=09ctx->flags |=3D NFS_MOUNT_NONLM;
+-=09=09ctx->flags |=3D (NFS_MOUNT_LOCAL_FLOCK |
+-=09=09=09       NFS_MOUNT_LOCAL_FCNTL);
++=09=09ctx->flags |=3D (NFS_MOUNT_LOCAL_FLOCK | NFS_MOUNT_LOCAL_FCNTL);
+ =09=09break;
+ =09case Opt_udp:
+ =09=09ctx->flags &=3D ~NFS_MOUNT_TCP;
+@@ -692,29 +694,25 @@ static int nfs_fs_context_parse_option(struct nfs_fs_=
+context *ctx, char *p)
+ =09=09string =3D match_strdup(args);
+ =09=09if (string =3D=3D NULL)
+ =09=09=09goto out_nomem;
+-=09=09rc =3D nfs_parse_version_string(string, ctx, args);
++=09=09ret =3D nfs_parse_version_string(ctx, string, args);
+ =09=09kfree(string);
+-=09=09if (!rc)
+-=09=09=09goto out_invalid_value;
++=09=09if (ret < 0)
++=09=09=09return ret;
+ =09=09break;
+ =09case Opt_sec:
+ =09=09string =3D match_strdup(args);
+ =09=09if (string =3D=3D NULL)
+ =09=09=09goto out_nomem;
+-=09=09rc =3D nfs_parse_security_flavors(string, ctx);
++=09=09ret =3D nfs_parse_security_flavors(ctx, string);
+ =09=09kfree(string);
+-=09=09if (!rc) {
+-=09=09=09dfprintk(MOUNT, "NFS:   unrecognized "
+-=09=09=09=09 "security flavor\n");
+-=09=09=09return -EINVAL;
+-=09=09}
++=09=09if (ret < 0)
++=09=09=09return ret;
+ =09=09break;
+ =09case Opt_proto:
+ =09=09string =3D match_strdup(args);
+ =09=09if (string =3D=3D NULL)
+ =09=09=09goto out_nomem;
+-=09=09token =3D match_token(string,
+-=09=09=09=09    nfs_xprt_protocol_tokens, args);
++=09=09token =3D match_token(string, nfs_xprt_protocol_tokens, args);
+=20
+ =09=09ctx->protofamily =3D AF_INET;
+ =09=09switch (token) {
+@@ -742,9 +740,8 @@ static int nfs_fs_context_parse_option(struct nfs_fs_co=
+ntext *ctx, char *p)
+ =09=09=09xprt_load_transport(string);
+ =09=09=09break;
+ =09=09default:
+-=09=09=09dfprintk(MOUNT, "NFS:   unrecognized "
+-=09=09=09=09 "transport protocol\n");
+ =09=09=09kfree(string);
++=09=09=09dfprintk(MOUNT, "NFS:   unrecognized transport protocol\n");
+ =09=09=09return -EINVAL;
+ =09=09}
+ =09=09kfree(string);
+@@ -753,8 +750,7 @@ static int nfs_fs_context_parse_option(struct nfs_fs_co=
+ntext *ctx, char *p)
+ =09=09string =3D match_strdup(args);
+ =09=09if (string =3D=3D NULL)
+ =09=09=09goto out_nomem;
+-=09=09token =3D match_token(string,
+-=09=09=09=09    nfs_xprt_protocol_tokens, args);
++=09=09token =3D match_token(string, nfs_xprt_protocol_tokens, args);
+ =09=09kfree(string);
+=20
+ =09=09ctx->mountfamily =3D AF_INET;
+@@ -773,8 +769,7 @@ static int nfs_fs_context_parse_option(struct nfs_fs_co=
+ntext *ctx, char *p)
+ =09=09=09break;
+ =09=09case Opt_xprt_rdma: /* not used for side protocols */
+ =09=09default:
+-=09=09=09dfprintk(MOUNT, "NFS:   unrecognized "
+-=09=09=09=09 "transport protocol\n");
++=09=09=09dfprintk(MOUNT, "NFS:   unrecognized transport protocol\n");
+ =09=09=09return -EINVAL;
+ =09=09}
+ =09=09break;
+@@ -784,9 +779,8 @@ static int nfs_fs_context_parse_option(struct nfs_fs_co=
+ntext *ctx, char *p)
+ =09=09=09goto out_nomem;
+ =09=09ctx->nfs_server.addrlen =3D
+ =09=09=09rpc_pton(ctx->net, string, strlen(string),
+-=09=09=09=09 (struct sockaddr *)
+ =09=09=09=09 &ctx->nfs_server.address,
+-=09=09=09=09 sizeof(ctx->nfs_server.address));
++=09=09=09=09 sizeof(ctx->nfs_server._address));
+ =09=09kfree(string);
+ =09=09if (ctx->nfs_server.addrlen =3D=3D 0)
+ =09=09=09goto out_invalid_address;
+@@ -796,8 +790,7 @@ static int nfs_fs_context_parse_option(struct nfs_fs_co=
+ntext *ctx, char *p)
+ =09=09=09goto out_nomem;
+ =09=09break;
+ =09case Opt_mounthost:
+-=09=09if (nfs_get_option_str(args,
+-=09=09=09=09       &ctx->mount_server.hostname))
++=09=09if (nfs_get_option_str(args, &ctx->mount_server.hostname))
+ =09=09=09goto out_nomem;
+ =09=09break;
+ =09case Opt_mountaddr:
+@@ -806,9 +799,8 @@ static int nfs_fs_context_parse_option(struct nfs_fs_co=
+ntext *ctx, char *p)
+ =09=09=09goto out_nomem;
+ =09=09ctx->mount_server.addrlen =3D
+ =09=09=09rpc_pton(ctx->net, string, strlen(string),
+-=09=09=09=09 (struct sockaddr *)
+ =09=09=09=09 &ctx->mount_server.address,
+-=09=09=09=09 sizeof(ctx->mount_server.address));
++=09=09=09=09 sizeof(ctx->mount_server._address));
+ =09=09kfree(string);
+ =09=09if (ctx->mount_server.addrlen =3D=3D 0)
+ =09=09=09goto out_invalid_address;
+@@ -822,8 +814,7 @@ static int nfs_fs_context_parse_option(struct nfs_fs_co=
+ntext *ctx, char *p)
+ =09=09string =3D match_strdup(args);
+ =09=09if (string =3D=3D NULL)
+ =09=09=09goto out_nomem;
+-=09=09token =3D match_token(string,
+-=09=09=09=09    nfs_lookupcache_tokens, args);
++=09=09token =3D match_token(string, nfs_lookupcache_tokens, args);
+ =09=09kfree(string);
+ =09=09switch (token) {
+ =09=09case Opt_lookupcache_all:
+@@ -837,8 +828,7 @@ static int nfs_fs_context_parse_option(struct nfs_fs_co=
+ntext *ctx, char *p)
+ =09=09=09ctx->flags |=3D NFS_MOUNT_LOOKUP_CACHE_NONEG|NFS_MOUNT_LOOKUP_CAC=
+HE_NONE;
+ =09=09=09break;
+ =09=09default:
+-=09=09=09dfprintk(MOUNT, "NFS:   invalid "
+-=09=09=09=09 "lookupcache argument\n");
++=09=09=09dfprintk(MOUNT, "NFS:   invalid lookupcache argument\n");
+ =09=09=09return -EINVAL;
+ =09=09}
+ =09=09break;
+@@ -851,8 +841,7 @@ static int nfs_fs_context_parse_option(struct nfs_fs_co=
+ntext *ctx, char *p)
+ =09=09string =3D match_strdup(args);
+ =09=09if (string =3D=3D NULL)
+ =09=09=09goto out_nomem;
+-=09=09token =3D match_token(string, nfs_local_lock_tokens,
+-=09=09=09=09    args);
++=09=09token =3D match_token(string, nfs_local_lock_tokens, args);
+ =09=09kfree(string);
+ =09=09switch (token) {
+ =09=09case Opt_local_lock_all:
+@@ -870,8 +859,7 @@ static int nfs_fs_context_parse_option(struct nfs_fs_co=
+ntext *ctx, char *p)
+ =09=09=09=09=09NFS_MOUNT_LOCAL_FCNTL);
+ =09=09=09break;
+ =09=09default:
+-=09=09=09dfprintk(MOUNT, "NFS:=09invalid=09"
+-=09=09=09=09 "local_lock argument\n");
++=09=09=09dfprintk(MOUNT, "NFS:=09invalid=09local_lock argument\n");
+ =09=09=09return -EINVAL;
+ =09=09}
+ =09=09break;
+@@ -885,13 +873,11 @@ static int nfs_fs_context_parse_option(struct nfs_fs_=
+context *ctx, char *p)
+ =09=09break;
+ =09case Opt_userspace:
+ =09case Opt_deprecated:
+-=09=09dfprintk(MOUNT, "NFS:   ignoring mount option "
+-=09=09=09 "'%s'\n", p);
++=09=09dfprintk(MOUNT, "NFS:   ignoring mount option '%s'\n", p);
+ =09=09break;
+=20
+ =09default:
+-=09=09dfprintk(MOUNT, "NFS:   unrecognized mount option "
+-=09=09=09 "'%s'\n", p);
++=09=09dfprintk(MOUNT, "NFS:   unrecognized mount option '%s'\n", p);
+ =09=09return -EINVAL;
+ =09}
+=20
+@@ -951,15 +937,15 @@ int nfs_parse_mount_options(char *raw, struct nfs_fs_=
+context *ctx)
+ =09 * families in the addr=3D/mountaddr=3D options.
+ =09 */
+ =09if (ctx->protofamily !=3D AF_UNSPEC &&
+-=09    ctx->protofamily !=3D ctx->nfs_server.address.ss_family)
++=09    ctx->protofamily !=3D ctx->nfs_server.address.sa_family)
+ =09=09goto out_proto_mismatch;
+=20
+ =09if (ctx->mountfamily !=3D AF_UNSPEC) {
+ =09=09if (ctx->mount_server.addrlen) {
+-=09=09=09if (ctx->mountfamily !=3D ctx->mount_server.address.ss_family)
++=09=09=09if (ctx->mountfamily !=3D ctx->mount_server.address.sa_family)
+ =09=09=09=09goto out_mountproto_mismatch;
+ =09=09} else {
+-=09=09=09if (ctx->mountfamily !=3D ctx->nfs_server.address.ss_family)
++=09=09=09if (ctx->mountfamily !=3D ctx->nfs_server.address.sa_family)
+ =09=09=09=09goto out_mountproto_mismatch;
+ =09=09}
+ =09}
+@@ -995,9 +981,9 @@ int nfs_parse_mount_options(char *raw, struct nfs_fs_co=
+ntext *ctx)
+  *
+  * Note: caller frees hostname and export path, even on error.
+  */
+-static int nfs_parse_devname(const char *dev_name,
+-=09=09=09     char **hostname, size_t maxnamlen,
+-=09=09=09     char **export_path, size_t maxpathlen)
++static int nfs_parse_devname(struct nfs_fs_context *ctx,
++=09=09=09     const char *dev_name,
++=09=09=09     size_t maxnamlen, size_t maxpathlen)
+ {
+ =09size_t len;
+ =09char *end;
+@@ -1033,17 +1019,17 @@ static int nfs_parse_devname(const char *dev_name,
+ =09=09goto out_hostname;
+=20
+ =09/* N.B. caller will free nfs_server.hostname in all cases */
+-=09*hostname =3D kstrndup(dev_name, len, GFP_KERNEL);
+-=09if (*hostname =3D=3D NULL)
++=09ctx->nfs_server.hostname =3D kmemdup_nul(dev_name, len, GFP_KERNEL);
++=09if (!ctx->nfs_server.hostname)
+ =09=09goto out_nomem;
+ =09len =3D strlen(++end);
+ =09if (len > maxpathlen)
+ =09=09goto out_path;
+-=09*export_path =3D kstrndup(end, len, GFP_KERNEL);
+-=09if (!*export_path)
++=09ctx->nfs_server.export_path =3D kmemdup_nul(end, len, GFP_KERNEL);
++=09if (!ctx->nfs_server.export_path)
+ =09=09goto out_nomem;
+=20
+-=09dfprintk(MOUNT, "NFS: MNTPATH: '%s'\n", *export_path);
++=09dfprintk(MOUNT, "NFS: MNTPATH: '%s'\n", ctx->nfs_server.export_path);
+ =09return 0;
+=20
+ out_bad_devname:
+@@ -1064,7 +1050,7 @@ static int nfs_parse_devname(const char *dev_name,
+ }
+=20
+ /*
+- * Validate the NFS2/NFS3 mount data
++ * Parse monolithic NFS2/NFS3 mount data
+  * - fills in the mount root filehandle
+  *
+  * For option strings, user space handles the following behaviors:
+@@ -1393,11 +1379,7 @@ int nfs_validate_text_mount_data(void *options,
+=20
+ =09nfs_set_port(sap, &ctx->nfs_server.port, port);
+=20
+-=09return nfs_parse_devname(dev_name,
+-=09=09=09=09   &ctx->nfs_server.hostname,
+-=09=09=09=09   max_namelen,
+-=09=09=09=09   &ctx->nfs_server.export_path,
+-=09=09=09=09   max_pathlen);
++=09return nfs_parse_devname(ctx, dev_name, max_namelen, max_pathlen);
+=20
+ #if !IS_ENABLED(CONFIG_NFS_V4)
+ out_v4_not_compiled:
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 5342f3e4d565..003c2b8eb1e6 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -82,11 +82,11 @@ struct nfs_client_initdata {
+  * In-kernel mount arguments
+  */
+ struct nfs_fs_context {
+-=09int=09=09=09flags;
++=09unsigned int=09=09flags;=09=09/* NFS{,4}_MOUNT_* flags */
+ =09unsigned int=09=09rsize, wsize;
+ =09unsigned int=09=09timeo, retrans;
+-=09unsigned int=09=09acregmin, acregmax,
+-=09=09=09=09acdirmin, acdirmax;
++=09unsigned int=09=09acregmin, acregmax;
++=09unsigned int=09=09acdirmin, acdirmax;
+ =09unsigned int=09=09namlen;
+ =09unsigned int=09=09options;
+ =09unsigned int=09=09bsize;
+@@ -102,7 +102,10 @@ struct nfs_fs_context {
+ =09bool=09=09=09sloppy;
+=20
+ =09struct {
+-=09=09struct sockaddr_storage=09address;
++=09=09union {
++=09=09=09struct sockaddr=09address;
++=09=09=09struct sockaddr_storage=09_address;
++=09=09};
+ =09=09size_t=09=09=09addrlen;
+ =09=09char=09=09=09*hostname;
+ =09=09u32=09=09=09version;
+@@ -111,7 +114,10 @@ struct nfs_fs_context {
+ =09} mount_server;
+=20
+ =09struct {
+-=09=09struct sockaddr_storage=09address;
++=09=09union {
++=09=09=09struct sockaddr=09address;
++=09=09=09struct sockaddr_storage=09_address;
++=09=09};
+ =09=09size_t=09=09=09addrlen;
+ =09=09char=09=09=09*hostname;
+ =09=09char=09=09=09*export_path;
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 83527515590e..59962bc0118f 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -816,7 +816,7 @@ static int nfs_request_mount(struct nfs_fs_context *cfg=
+,
+ =09/*
+ =09 * Construct the mount server's address.
+ =09 */
+-=09if (cfg->mount_server.address.ss_family =3D=3D AF_UNSPEC) {
++=09if (cfg->mount_server.address.sa_family =3D=3D AF_UNSPEC) {
+ =09=09memcpy(request.sap, &cfg->nfs_server.address,
+ =09=09       cfg->nfs_server.addrlen);
+ =09=09cfg->mount_server.addrlen =3D cfg->nfs_server.addrlen;
+--=20
+2.17.2
 
