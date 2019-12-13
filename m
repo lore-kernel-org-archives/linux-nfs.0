@@ -2,122 +2,110 @@ Return-Path: <SRS0=bIcc=2D=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.6 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
-	USER_AGENT_SANE_1 autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.7 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
+	URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id F0E30C2D0C9
-	for <linux-nfs@archiver.kernel.org>; Fri, 13 Dec 2019 01:16:12 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D8877C5073D
+	for <linux-nfs@archiver.kernel.org>; Fri, 13 Dec 2019 20:37:39 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id C64D022527
-	for <linux-nfs@archiver.kernel.org>; Fri, 13 Dec 2019 01:16:12 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1576199772;
-	bh=41UXekEdF9kavlN11G4wL1lFhr5jX6Gv12aUkd97nZU=;
-	h=Date:From:To:Cc:Subject:Reply-To:References:In-Reply-To:List-ID:
-	 From;
-	b=HKbTWwq+HvEf1+nRQ82gqfFNSisatosNyum+8Y6up8Q31W6mEKH1AGrsiQmKjAvM4
-	 RDsh8VTIR9SkDsBcZnMJMZtxI5JtOCd1IX6W7eJ6XYe/QAlow5pugB3mROm0aT69da
-	 quDkrRPgMs+pM0TBwdJpewR/5hEfkn65V7Nbtiuk=
+	by mail.kernel.org (Postfix) with ESMTP id 2070624712
+	for <linux-nfs@archiver.kernel.org>; Fri, 13 Dec 2019 20:37:39 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1731465AbfLMBQM (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 12 Dec 2019 20:16:12 -0500
-Received: from mail.kernel.org ([198.145.29.99]:41776 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727084AbfLMBQL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 12 Dec 2019 20:16:11 -0500
-Received: from paulmck-ThinkPad-P72.home (unknown [199.201.64.130])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id E864B2173E;
-        Fri, 13 Dec 2019 01:16:10 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1576199770;
-        bh=41UXekEdF9kavlN11G4wL1lFhr5jX6Gv12aUkd97nZU=;
-        h=Date:From:To:Cc:Subject:Reply-To:References:In-Reply-To:From;
-        b=CIHvI4iA5Eab4AxzB1ehbOKRX3V0VZqXs9o2dsLS3Ww31ZEIHy3ZaaTARQTO58q1/
-         O17lww/L0A4aA8YGeNLuEvIjGBbZGK2GbN6zm0mUTxj6a+r7w6OpHmobyrMj0/SQjg
-         zMEChoKxDLuJKMh3n9Gdo1Sb3arovX5qCJ22OKEE=
-Received: by paulmck-ThinkPad-P72.home (Postfix, from userid 1000)
-        id 7180835227E8; Thu, 12 Dec 2019 17:16:10 -0800 (PST)
-Date:   Thu, 12 Dec 2019 17:16:10 -0800
-From:   "Paul E. McKenney" <paulmck@kernel.org>
-To:     Joel Fernandes <joel@joelfernandes.org>
-Cc:     madhuparnabhowmik04@gmail.com, trond.myklebust@hammerspace.com,
-        anna.schumaker@netapp.com, linux-nfs@vger.kernel.org,
-        rcu@vger.kernel.org,
-        linux-kernel-mentees@lists.linuxfoundation.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH 2/2] fs: nfs: dir.c: Fix sparse error
-Message-ID: <20191213011610.GC2889@paulmck-ThinkPad-P72>
-Reply-To: paulmck@kernel.org
-References: <20191206151640.10966-1-madhuparnabhowmik04@gmail.com>
- <20191206160238.GE2889@paulmck-ThinkPad-P72>
- <20191212215534.GE129023@google.com>
+        id S1727609AbfLMOLC (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 13 Dec 2019 09:11:02 -0500
+Received: from mout.kundenserver.de ([212.227.126.133]:51747 "EHLO
+        mout.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727507AbfLMOLC (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Dec 2019 09:11:02 -0500
+Received: from threadripper.lan ([149.172.19.189]) by mrelayeu.kundenserver.de
+ (mreue009 [212.227.15.129]) with ESMTPA (Nemesis) id
+ 1Macaw-1i84Sj1p7K-00cCpo; Fri, 13 Dec 2019 15:10:55 +0100
+From:   Arnd Bergmann <arnd@arndb.de>
+To:     "J. Bruce Fields" <bfields@fieldses.org>,
+        Chuck Lever <chuck.lever@oracle.com>
+Cc:     linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        y2038@lists.linaro.org, Arnd Bergmann <arnd@arndb.de>
+Subject: [PATCH v2 01/12] nfsd: use ktime_get_seconds() for timestamps
+Date:   Fri, 13 Dec 2019 15:10:35 +0100
+Message-Id: <20191213141046.1770441-2-arnd@arndb.de>
+X-Mailer: git-send-email 2.20.0
+In-Reply-To: <20191213141046.1770441-1-arnd@arndb.de>
+References: <20191213141046.1770441-1-arnd@arndb.de>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20191212215534.GE129023@google.com>
-User-Agent: Mutt/1.9.4 (2018-02-28)
+Content-Transfer-Encoding: 8bit
+X-Provags-ID: V03:K1:UIf61Zh2SX1jsmuKNONn62q4e8CIE4uEXBXf6f109VVpmdYXULw
+ 3DDB1afIxbPSigzPGj4zKy84ctp9G2LWRCnmiNkIqoV6z5Zbzp4ZaEjYXMvt/KdlcGScd85
+ CvkPLmDDRNSKusXQV1jFQnVyNcrmpdXyPhhO1iLZNoX7r3RHZmLXwh42dFUClt6jlfW3gB+
+ 5LDOGbPnVIvJ/6UhqWWXg==
+X-UI-Out-Filterresults: notjunk:1;V03:K0:Hp6SY27GsDo=:roxwhEgFNjaSqv9qD56rYs
+ aKJi8HwFgh2nqNbgz5XSZIExntsuKjtyQV+V3MTihNeQCpjp7o6Q3uLQlU4QxgXUoQlzEH6Hl
+ xdCdnZbd6z/CSE+NEA1fax+01ClDVcAVCX2KK/ITYYl9A22DQsZTooCPJ5uURpq6nVgYjoT5T
+ oWamxoH9qYQKdMoX0Gb8/LL/HbEot/xISWlkhaK2D5AmUTmpdrHL1MPp9bnFgL/P2JgNzzGRN
+ R+6Fy7d5axn77UC/DPyufnXcDXljXR+GSe28AmWxFbvZZwmNY3WP23O0FmEP4M2+kj4hx5jhn
+ O0e38IzmBWN492S5t5jfyRSWQk7Uaj9lbYh2tOPK+q1i5aFHAY2clTtEFY+798kvSkuCvzOy0
+ DayV7c8o2tLzxKV7Sko6HAZ6EHE9kIJJwnT6tnPPLA7Mtza873EHnIFrHBDJ4UD49vTpNUCNS
+ rFbLRdo9u4N+xk3PImvMw/5WzjFV1ejMQ3OqSboFF6SLl+9v0fIu9yH433WDyxX61flR5hsr2
+ iz4TIaLPctcgTKC7nSiENvssIXEGbbRsC6StTNtwNC7Q39A2WZJwm6Nt2kn+HpkFbvBZnWGEN
+ F0apOSYVE6Aib+6kx+2vTl8k7Go7hmQYhvDs3KZLsCV60i3BmykzAMGPUDzN65IM9jYu9djxb
+ h+m0PpeJTeQqIo8i5m1U0f8hsuiIyrMjU3JLsDz40z81LL1dt8Ena7vorRoWKTbTU4Li9Eu7o
+ aKqSlY6f5QnHdMiFro7PsgvqmvyzgSRz2q9EVhC0AJbZ+acBeieEWf0XIkp7eiayxYPK89mbr
+ L9LP0NJAi0/Spg0XZCgRYgCCk8KjPO1ovkUILkg41wtdDR47/EuSvphRALTvCMQgPUDbINiHZ
+ v8K4a5MueHJWbKn6X0kg==
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Thu, Dec 12, 2019 at 04:55:34PM -0500, Joel Fernandes wrote:
-> On Fri, Dec 06, 2019 at 08:02:38AM -0800, Paul E. McKenney wrote:
-> 
-> Thanks for fixing these issues and I caught up with all the patches.
-> 
-> > 
-> > o	Create a list that is safe for bidirectional RCU traversal.
-> > 	This can use list_head, and would need these functions,
-> > 	give or take the exact names:
-> 
-> On a related topic, I was trying to reason about how one could come up with
-> bidirectional traversal without ever getting rid of poisoning.
-> 
-> As you noted in another post, if during traversal, the node is deleted and
-> poisoned, then the traverser can access a poisoned pointer. If the list is
-> being traversed in reverse (by following prev), then poisioning could hurt
-> it.
-> 
-> Even with the below modifications, poisoning would still hurt it. No? Were
-> you suggesting to remove poisoning for such bidirectional RCU list?
+The delegation logic in nfsd uses the somewhat inefficient
+seconds_since_boot() function to record time intervals.
 
-Yes.  We removed forward poisoning from list_del_rcu(), and a
-list_del_rcuprev() or whatever name would need to avoid poisoning both
-pointers.
+Signed-off-by: Arnd Bergmann <arnd@arndb.de>
+---
+ fs/nfsd/nfs4state.c | 10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
 
-							Thanx, Paul
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 369e574c5092..bfdb3366239c 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -806,7 +806,7 @@ static void nfs4_free_deleg(struct nfs4_stid *stid)
+ static DEFINE_SPINLOCK(blocked_delegations_lock);
+ static struct bloom_pair {
+ 	int	entries, old_entries;
+-	time_t	swap_time;
++	time64_t swap_time;
+ 	int	new; /* index into 'set' */
+ 	DECLARE_BITMAP(set[2], 256);
+ } blocked_delegations;
+@@ -818,15 +818,15 @@ static int delegation_blocked(struct knfsd_fh *fh)
+ 
+ 	if (bd->entries == 0)
+ 		return 0;
+-	if (seconds_since_boot() - bd->swap_time > 30) {
++	if (ktime_get_seconds() - bd->swap_time > 30) {
+ 		spin_lock(&blocked_delegations_lock);
+-		if (seconds_since_boot() - bd->swap_time > 30) {
++		if (ktime_get_seconds() - bd->swap_time > 30) {
+ 			bd->entries -= bd->old_entries;
+ 			bd->old_entries = bd->entries;
+ 			memset(bd->set[bd->new], 0,
+ 			       sizeof(bd->set[0]));
+ 			bd->new = 1-bd->new;
+-			bd->swap_time = seconds_since_boot();
++			bd->swap_time = ktime_get_seconds();
+ 		}
+ 		spin_unlock(&blocked_delegations_lock);
+ 	}
+@@ -856,7 +856,7 @@ static void block_delegations(struct knfsd_fh *fh)
+ 	__set_bit((hash>>8)&255, bd->set[bd->new]);
+ 	__set_bit((hash>>16)&255, bd->set[bd->new]);
+ 	if (bd->entries == 0)
+-		bd->swap_time = seconds_since_boot();
++		bd->swap_time = ktime_get_seconds();
+ 	bd->entries += 1;
+ 	spin_unlock(&blocked_delegations_lock);
+ }
+-- 
+2.20.0
 
-> Sorry if I missed something.
-> thanks,
-> 
->  - Joel
-> 
-> 
-> > 	list_add_tail_rcuprev():  This is like list_add_tail_rcu(),
-> > 	but also has smp_store_release() for ->prev.  (As in there is
-> > 	also a __list_add_rcuprev() helper that actually contains the
-> > 	additional smp_store_release().)
-> > 
-> > 	list_del_rcuprev():  This can be exactly __list_del_entry(),
-> > 	but with the assignment to ->prev in __list_del() becoming
-> > 	WRITE_ONCE().  And it looks like callers to __list_del_entry()
-> > 	and __list_del() might need some attention!  And these might
-> > 	result in additional users of *_rcuprev().
-> > 
-> > 	list_prev_rcu() as in your first patch, but with READ_ONCE().
-> > 	Otherwise DEC Alpha can fail.  And more subtle compiler issues
-> > 	can appear on other architectures.
-> > 
-> > 	Note that list_move_tail() will be OK give or take *_ONCE().
-> > 	It might be better to define a list_move_tail_rcuprev(), given
-> > 	the large number of users of list_move_tail() -- some of these
-> > 	users might not like even the possibility of added overhead due
-> > 	to volatile accesses.  ;-)
-> > 
-> > Or am I missing something subtle here?
-> > 
-> > 							Thanx, Paul
