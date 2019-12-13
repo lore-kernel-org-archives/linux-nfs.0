@@ -2,93 +2,114 @@ Return-Path: <SRS0=bIcc=2D=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.7 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-8.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 65276C2D0C9
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C8DC8C32766
 	for <linux-nfs@archiver.kernel.org>; Fri, 13 Dec 2019 20:37:41 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id A3D3E24712
-	for <linux-nfs@archiver.kernel.org>; Fri, 13 Dec 2019 20:37:40 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 13DEF24717
+	for <linux-nfs@archiver.kernel.org>; Fri, 13 Dec 2019 20:37:41 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727722AbfLMOLK (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 13 Dec 2019 09:11:10 -0500
-Received: from mout.kundenserver.de ([212.227.126.130]:50571 "EHLO
+        id S1727728AbfLMOLL (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 13 Dec 2019 09:11:11 -0500
+Received: from mout.kundenserver.de ([212.227.126.131]:43697 "EHLO
         mout.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727666AbfLMOLE (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Dec 2019 09:11:04 -0500
+        with ESMTP id S1727656AbfLMOLD (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Dec 2019 09:11:03 -0500
 Received: from threadripper.lan ([149.172.19.189]) by mrelayeu.kundenserver.de
  (mreue009 [212.227.15.129]) with ESMTPA (Nemesis) id
- 1MK3eI-1iQyrf475S-00LVMW; Fri, 13 Dec 2019 15:10:58 +0100
+ 1MqatE-1htFYF0ymW-00mcAo; Fri, 13 Dec 2019 15:10:55 +0100
 From:   Arnd Bergmann <arnd@arndb.de>
 To:     "J. Bruce Fields" <bfields@fieldses.org>,
         Chuck Lever <chuck.lever@oracle.com>
 Cc:     linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
         y2038@lists.linaro.org, Arnd Bergmann <arnd@arndb.de>
-Subject: [PATCH v2 12/12] nfsd: remove nfs4_reset_lease() declarations
-Date:   Fri, 13 Dec 2019 15:10:46 +0100
-Message-Id: <20191213141046.1770441-13-arnd@arndb.de>
+Subject: [PATCH v2 00/12] nfsd: avoid 32-bit time_t
+Date:   Fri, 13 Dec 2019 15:10:34 +0100
+Message-Id: <20191213141046.1770441-1-arnd@arndb.de>
 X-Mailer: git-send-email 2.20.0
-In-Reply-To: <20191213141046.1770441-1-arnd@arndb.de>
-References: <20191213141046.1770441-1-arnd@arndb.de>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-Provags-ID: V03:K1:ZKDoE9QgssUEaF4ESIVfDgM6JJvUm/C6dyGIwg+yexjRBcXrUwm
- hst4t6IX7xAaZVaj/pOiP9MP7i6dIkJDNDt0a+FHxmxT1X1k0C+p7+Ws/qj5gef0dozZQ2B
- qLHaEEbKkSXSec+anp6BztnEkbxv1Wa6tunbyUd/NoOGcetuTEK04Q4jFRbxBLBGjRvm0ZS
- GLiZZqTHprSm8m6ItitfQ==
-X-UI-Out-Filterresults: notjunk:1;V03:K0:IbM7yEiXipE=:6X7jwtgzmmb9MKvUnt9E0Y
- dXCOBP06ZrqB3cgtvswg5L3oHYNBYrspPiM5rwALF0quasoWzYagSSjZvX3QErsP9Vx8sgm65
- tJaji1xG9BMEWCKqmG70OGUBdqpeQ/qpwZxrDUaQA+R1vsFZMAH7IsmVYGkbWUjhgysRlfAhQ
- G+xxqSEMW3S4xlbBmU4RXsk2BImOt5aXmPQzIiS7ej8VDcXcUqds5+WAw2dyQuZvVWnQCGP7f
- BPO94IBvxRPFgAMVtN83yhn4tZQ4L6TWg9u7aGwwRh0vvrxuK/sX7T0SEJK9ELGCzJ9uzhKug
- ZY98E1SQWDUs0WWHh+EwsXYqqda/S1BMTuoX7elPUQnsf6DQKnK9T5KyiiOq5YhhEUJ25Mgd+
- +FSswh/Y7xq4hIYXtvBn51twcQLK/QZCzRGBj/q378QlvI1gcgz/Rd2eBJT9lLvtG3wnveyJJ
- 53TSww8LgvMndlhYIo/CNyXRByQva8XaP8+ICFcLaFCNvZ94+Ew0ljzaPIW8uXZRTOVxcTgRB
- tb4QHALggAbZSCmo173owo3uK8H9pDr3EXMVlwfqwrpgfAbggI4CQ57nNAVrrUMu1plgiP7+i
- +LdKRuwTf8/8NbROdhVM21An1ZI4nRsUpeFTnh3f/dT5yNyWvN0iFXXhsxLwz2qbnNMBwo1I7
- Zj8LnQ18TZRjDYUZCgeR45eMpVjv8ci6V4T+m0qKZtzlJgF9ddI5zYdtp7+RJfuhKP2YPwgYM
- WCcWPJtuqJwqdI8UQf3cHDhRbtrhzi3UcYaWURXNINhjeId5TP7GqLjCowkYa3dBFuMa3v+at
- o5/9enAVhBgXv+5ElFYeBya0gx4RRb7cydfpDC3mgU77gMWJ7g9gtiQXxzB9Czm1HRU42NvK/
- Vp3PRn1kosvqocOoocrg==
+X-Provags-ID: V03:K1:+0lf7quhBTwr1hQIQfFsZXCeV8kC+cPWtTWgqbymNABPk3abhSO
+ NGcTswDiRg6NEXlWr/qKPkMTB+BZ7N4mAys245gZU6NRMDRj02KaTEN5pmlfFTWrKjNH8oh
+ OEHu5iwTenlUX1zqeFlO/jJ/Xwa+puWPcoKC475ZvukPVgMfsCarKZg8fQ1xgh7oaXBYEZb
+ 53++FXmqE/BaaFQgZ637w==
+X-UI-Out-Filterresults: notjunk:1;V03:K0:kl2yuRnl85w=:Q5K7j2VJHzNXxSbQSrNSby
+ SGlvYHGPH1AgusfKY+VgepU4tOw3M3/Oj1kAwlqsexgzKkg0jJDwuaeVKr2G+5pCvhMBfBD9E
+ Qzp8AI6zUehUMF7Eho3xPRPO22b08fIamGIYuT5QgjLyyy8p7OxEfqL5becxXLQzTJDJsNPST
+ aSBaX4fBHwG83S+YQQgxZf9LltmaJCZ1IRz4cJU41jQ2ZbXmgcA+/NcJ4qG6l7a0HoGvnPulS
+ YIz2rOhwuAxsP0WkoHbeNVxmR0Qk6PFoFvaJ2J9Y52UcEn1CJKi14DnhIfhODEypw1qHvY08t
+ TiooS8HXj8pNvTxCx39/FUrZrrhNSq80LVhiJ/O6bqz+zkT50HFzOJEfigDhfIf0sBSknmK3w
+ QBmHUyarHOWV/0zH6TOrXBoOvGw9HiSTNbg7f8m8TX+yfyMBr98t2NPhhzH45YLjXHeQT4xGS
+ ltbc3XHUOPj4Bw/2C9qy1ShSr1T/LbtgW4RukKODymSOWCuT1DnlHlM1LW0XFBf28qrDQbQhK
+ ZI8n3cEjulBu8rxip7ASwXmz44EH60PwhZydyntuyO63WWV6wdzRFTFyMEH4x/zB6CyL4Dm3q
+ jZAIBqIFtBrlpS0W0Zq6NTemkm9Qza3DPBoH7pByB+1J35IfKnIFA6wjrWk2+sluEW63xetgZ
+ sXv2TbOPS/b1rsbJUUyiykH5v1tsFXdXj6O1yDt+l/yCy5/3GD/xdVTZ6nGkwVE64pvq4+53t
+ tU/oHaTE4M7IV64zrd5PPIHgFQyfyIDzEVvlVhDTYvE7JjTClHBzt2rrqqfD4SsYPgZ4XE/HJ
+ DUdUaBaU385Omvxnx5AU63RnxIuYIeLFN5kWO0zGYJbcBVVNzG2vjs6XWFzpnf+r8W8DHEd5j
+ pFV7EuP33kJdIphbN33Q==
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-The function was removed a long time ago, but the declaration
-and a dummy implementation are still there, referencing the
-deprecated time_t type.
+Hi Bruce, Chuck,
 
-Remove both.
+NFSd is one of the last areas of the kernel that is not y2038 safe
+yet, this series addresses the remaining issues here.
 
-Fixes: f958a1320ff7 ("nfsd4: remove unnecessary lease-setting function")
-Signed-off-by: Arnd Bergmann <arnd@arndb.de>
----
- fs/nfsd/nfsd.h | 2 --
- 1 file changed, 2 deletions(-)
+I did not get any comments for the first version I posted [1], and
+I hope this just means that everything was fine and you plan to
+merge this soon ;-)
 
-diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
-index 57b93d95fa5c..31f152bbbb2f 100644
---- a/fs/nfsd/nfsd.h
-+++ b/fs/nfsd/nfsd.h
-@@ -142,7 +142,6 @@ int nfs4_state_start(void);
- int nfs4_state_start_net(struct net *net);
- void nfs4_state_shutdown(void);
- void nfs4_state_shutdown_net(struct net *net);
--void nfs4_reset_lease(time_t leasetime);
- int nfs4_reset_recoverydir(char *recdir);
- char * nfs4_recoverydir(void);
- bool nfsd4_spo_must_allow(struct svc_rqst *rqstp);
-@@ -153,7 +152,6 @@ static inline int nfs4_state_start(void) { return 0; }
- static inline int nfs4_state_start_net(struct net *net) { return 0; }
- static inline void nfs4_state_shutdown(void) { }
- static inline void nfs4_state_shutdown_net(struct net *net) { }
--static inline void nfs4_reset_lease(time_t leasetime) { }
- static inline int nfs4_reset_recoverydir(char *recdir) { return 0; }
- static inline char * nfs4_recoverydir(void) {return NULL; }
- static inline bool nfsd4_spo_must_allow(struct svc_rqst *rqstp)
+I uploaded a git branch to [2] for testing.
+
+Please review and merge for linux-5.6 so we can remove the 32-bit
+time handling from that release.
+
+      Arnd
+
+Changes from v1:
+- separate nfs and nfsd, as most of the nfs changes are merged now
+- rebase to v5.5
+
+[1] https://lore.kernel.org/lkml/20191111201639.2240623-1-arnd@arndb.de/
+[2] https://git.kernel.org/pub/scm/linux/kernel/git/arnd/playground.git/log/?h=y2038-nfsd
+
+Arnd Bergmann (12):
+  nfsd: use ktime_get_seconds() for timestamps
+  nfsd: print 64-bit timestamps in client_info_show
+  nfsd: handle nfs3 timestamps as unsigned
+  nfsd: use timespec64 in encode_time_delta
+  nfsd: make 'boot_time' 64-bit wide
+  nfsd: pass a 64-bit guardtime to nfsd_setattr()
+  nfsd: use time64_t in nfsd_proc_setattr() check
+  nfsd: fix delay timer on 32-bit architectures
+  nfsd: fix jiffies/time_t mixup in LRU list
+  nfsd: use boottime for lease expiry alculation
+  nfsd: use ktime_get_real_seconds() in nfs4_verifier
+  nfsd: remove nfs4_reset_lease() declarations
+
+ fs/nfsd/netns.h        |  6 ++--
+ fs/nfsd/nfs3xdr.c      | 20 +++++--------
+ fs/nfsd/nfs4callback.c |  7 ++++-
+ fs/nfsd/nfs4layouts.c  |  2 +-
+ fs/nfsd/nfs4proc.c     |  2 +-
+ fs/nfsd/nfs4recover.c  |  8 ++---
+ fs/nfsd/nfs4state.c    | 68 ++++++++++++++++++++----------------------
+ fs/nfsd/nfs4xdr.c      |  4 +--
+ fs/nfsd/nfsctl.c       |  6 ++--
+ fs/nfsd/nfsd.h         |  2 --
+ fs/nfsd/nfsfh.h        |  4 +--
+ fs/nfsd/nfsproc.c      |  6 ++--
+ fs/nfsd/state.h        | 10 +++----
+ fs/nfsd/vfs.c          |  4 +--
+ fs/nfsd/vfs.h          |  2 +-
+ fs/nfsd/xdr3.h         |  2 +-
+ 16 files changed, 74 insertions(+), 79 deletions(-)
+
 -- 
 2.20.0
 
