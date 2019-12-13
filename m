@@ -6,84 +6,153 @@ X-Spam-Status: No, score=-9.7 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
 	URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A6A8FC2D0D1
-	for <linux-nfs@archiver.kernel.org>; Fri, 13 Dec 2019 20:37:43 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 14058C2D0D2
+	for <linux-nfs@archiver.kernel.org>; Fri, 13 Dec 2019 20:37:44 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id E613024735
-	for <linux-nfs@archiver.kernel.org>; Fri, 13 Dec 2019 20:37:42 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 4DF5824712
+	for <linux-nfs@archiver.kernel.org>; Fri, 13 Dec 2019 20:37:43 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727602AbfLMOLg (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 13 Dec 2019 09:11:36 -0500
-Received: from mout.kundenserver.de ([212.227.126.131]:36859 "EHLO
+        id S1727573AbfLMOLm (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 13 Dec 2019 09:11:42 -0500
+Received: from mout.kundenserver.de ([212.227.126.131]:34193 "EHLO
         mout.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727573AbfLMOLD (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Dec 2019 09:11:03 -0500
+        with ESMTP id S1727572AbfLMOLC (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Dec 2019 09:11:02 -0500
 Received: from threadripper.lan ([149.172.19.189]) by mrelayeu.kundenserver.de
  (mreue009 [212.227.15.129]) with ESMTPA (Nemesis) id
- 1Mi2BV-1i1js033dh-00e7iJ; Fri, 13 Dec 2019 15:10:57 +0100
+ 1MmU9R-1hxOHO3fnt-00iVR1; Fri, 13 Dec 2019 15:10:55 +0100
 From:   Arnd Bergmann <arnd@arndb.de>
 To:     "J. Bruce Fields" <bfields@fieldses.org>,
         Chuck Lever <chuck.lever@oracle.com>
 Cc:     linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
         y2038@lists.linaro.org, Arnd Bergmann <arnd@arndb.de>
-Subject: [PATCH v2 11/12] nfsd: use ktime_get_real_seconds() in nfs4_verifier
-Date:   Fri, 13 Dec 2019 15:10:45 +0100
-Message-Id: <20191213141046.1770441-12-arnd@arndb.de>
+Subject: [PATCH v2 03/12] nfsd: handle nfs3 timestamps as unsigned
+Date:   Fri, 13 Dec 2019 15:10:37 +0100
+Message-Id: <20191213141046.1770441-4-arnd@arndb.de>
 X-Mailer: git-send-email 2.20.0
 In-Reply-To: <20191213141046.1770441-1-arnd@arndb.de>
 References: <20191213141046.1770441-1-arnd@arndb.de>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-Provags-ID: V03:K1:Pwg4ldcY+PirxuTk1NxKPR/wF0W7omnIpEhR4gWAXHpGQfencqU
- 9EjmqFwbCPgYhBby6Q3tH+JCuKvm94AFXcEYbOtHvvBFf6t6QfakjHUFeX/9+wZ0WXOnnAf
- 7Mj6sSgdq943phWuTRM8iA4/sHo+J04C+yauSKBDSHlxJ9ALUWqh/3hNXScfaod4Jm4H6EW
- TL/F8Z4OBfXWFGiYY0ojA==
-X-UI-Out-Filterresults: notjunk:1;V03:K0:taJeJc826rg=:gsJimcb309nz2tjW+nHMfT
- GfN+0U2212OBpxgW7egoFIGQ862g/bQvkrGmWwk6BlCUv2H3GGv3fwNrtYdaW/Q+PjOJZmAJk
- +dK25vCWRztDD50tdguuWnRXx875Hn+wEVYv/6TkFFDaMqRqmNefb4exZPSbWpniFe/lCeZW4
- 7B/FJM5yqkx3yVZvol7G4KSTp/totkFhFKDnr58T4mvRXNnqzhQeai5WL5hcA6AeONLwFSK6d
- iIQVqN/4hswZCeNX34EDDwDAKjreQA8NFkfUCLMOO7UBArxETkwq4GJqgh7Fnc6B6zSsrabv3
- HrrvQf0GEA1aVb/YDSqqfNhszpmPDG2YhJkrtc813TrR9WJfXCz46oNiJ8vdZ0KSODbvy3Pvn
- 4SAgh0DX41V96BZuFQOxt6lAlkcjWyFoooimY6kte2bluDN1Fi5RnBjrDDjgtumWA0Yho2LEN
- H8J2vSmFqLDUI5yGWhnR9qw9aMPe/swv/fuTTNLztVdcTwoFtsxQTGcDQkgHEeawX2UvCL5Zo
- PQJpcU1Tqdhw6S/gbwImUkqrbfOdpL9InZWTE6UBmtlHX1VpUx/hprHP0MtW+D7gMfZz6J0S4
- SCRv1BGJLJMOEl18unsekpH0O56m+qfl+h2S4MX5IxxiMXeuLtz5qYWMpoRqypa0PQfa5LTtd
- HQybvMPDK334iImyClesbRDePlvRHikkYSfP2RYsvuRgjX77uAP23PrPk568aer4mRcsDM7wB
- rIeR6WDUn9NFERKrHVuW3Ke+/Sdszf16X9oA6Sf/kN2xVZYxQLKs2PG5VUepNbX1Apchz0nYz
- 3PSpZK+XI5D/ctMMzt8O3Z6Lrvy2GNRKiDresjBT5jiAADMswqQkrvYa0GQkmC4ec3a++HXgJ
- 8HHnwgNFBKTuyN4ERjSQ==
+X-Provags-ID: V03:K1:RAcT70BOi6dHmwI2QhfGxwpnEjl8Xen3AOmqf/6IFLp0gdD9yWG
+ Dbi2Qqva4OJzNwTnQLnAgcWSZU801l9DwallJOmJl3lDQ6NmPxR+lV7AVfgGufQ0qEVmJYU
+ jwat9CZOl8PYNTLoJcKZ4H4ycr4wHjknk4DhfVY+Bo3NKExWjUhxgM8r8ID3OgmwyW/U09a
+ W1bZYKmA0QU0wXeH5mDVA==
+X-UI-Out-Filterresults: notjunk:1;V03:K0:F9gWEdFUl9Y=:AuUrT6ZxwheXz9gbaX9nA8
+ VBcgqdx4pgeuvh4BQK+JdUncPkMUcsR8Zj2wlNwLPAqgeIo/BFVJaIHrej3X6/CahQVYJEbtc
+ 5ueNY7LVZY2/m5h7FnDwTds4sxJ5iHe6CIq3WOXsHscPZRZdlnjL98GXK32bdiM/4pV4B+1s6
+ WaN2XhYi7aTHKeYMXIjOFXjdRSOxAHgHJrjnyJ1Ssp2kX5Hhsy7QaA/Uv2Pu9neunPqVaoluD
+ mJwrSoPJfYoIMzZbXCogbym/Qvuz3RS59chkxciH0kYAlrbHaZ1HLtsbJfD428bppcMkI/yL3
+ cuy7hX60DPQyGxYGBFHuOOSLJ8TXXvmoTGO+3T+Qku2teQlXKD6vV6ylPdx3FEkXNKB19RYXh
+ 0bilZ7qRptJk2DG5bEV+QGye+tE0UJuG+37lNCgf5wT126Yh83yKj8V3R5g5ppRgz8f0iQbpb
+ D5sIDNRhwr0h+Vh5H5iXVFo5lNU+K0mq40CEDXVV/T0M9hLlb7qUIKTOkkFdkRy2KMZepyrrU
+ qVNi6pHe7oVZ3GePPAs8YLWGrDKmzAlMK0MgwQCRU06bvHBP9ukD4oRGDsccxtfqWuggRZJyE
+ /Rxu7iEqoIuGFTEp4HwVwIoNOr3S32RXWbMTdfZgwgu6IfZ4yuPSUboNi2QWqlfZWc4Oc55uK
+ r6K9TbLIwAORI28te5SuvJNlsT+mBDmGyci3DJVNfNImgKdegYW9/BTQj9Dd/npqKudl8xf8R
+ I/v7yXERCFOg6ZOrjUoZjY9m531Il+o6AgLlNDqPWY6KFH11tSH9m+Rr79+UB6gFDn5JdkotO
+ DfWtpEstSEUJ/4odyAAgbNlNPhpAfczvJjyaRKrG/Mw7qKr3g9k1i9XtVfykbiIzVU765X3ii
+ VWIlLF7vHM26p4ZOWooA==
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-gen_confirm() generates a unique identifier based on the current
-time. This overflows in year 2038, but that is harmless since it
-generally does not lead to duplicates, as long as the time has
-been initialized by a real-time clock or NTP.
+The decode_time3 function behaves differently on 32-bit
+and 64-bit architectures: on the former, a 32-bit timestamp
+gets converted into an signed number and then into a timestamp
+between 1902 and 2038, while on the latter it is interpreted
+as unsigned in the range 1970-2106.
 
-Using ktime_get_boottime_seconds() or ktime_get_seconds() would
-avoid the overflow, but it would be more likely to result in
-non-unique numbers.
+Change all the remaining 'timespec' in nfsd to 'timespec64'
+to make the behavior the same, and use the current interpretation
+of the dominant 64-bit architectures.
 
 Signed-off-by: Arnd Bergmann <arnd@arndb.de>
 ---
- fs/nfsd/nfs4state.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ fs/nfsd/nfs3xdr.c | 20 ++++++++------------
+ fs/nfsd/nfsfh.h   |  4 ++--
+ 2 files changed, 10 insertions(+), 14 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 6afdef63f6d7..efe3161f6cf7 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -2215,7 +2215,7 @@ static void gen_confirm(struct nfs4_client *clp, struct nfsd_net *nn)
- 	 * This is opaque to client, so no need to byte-swap. Use
- 	 * __force to keep sparse happy
- 	 */
--	verf[0] = (__force __be32)get_seconds();
-+	verf[0] = (__force __be32)(u32)ktime_get_real_seconds();
- 	verf[1] = (__force __be32)nn->clverifier_counter++;
- 	memcpy(clp->cl_confirm.data, verf, sizeof(clp->cl_confirm.data));
+diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
+index 195ab7a0fc89..c997b710af27 100644
+--- a/fs/nfsd/nfs3xdr.c
++++ b/fs/nfsd/nfs3xdr.c
+@@ -32,14 +32,14 @@ static u32	nfs3_ftypes[] = {
+  * XDR functions for basic NFS types
+  */
+ static __be32 *
+-encode_time3(__be32 *p, struct timespec *time)
++encode_time3(__be32 *p, struct timespec64 *time)
+ {
+ 	*p++ = htonl((u32) time->tv_sec); *p++ = htonl(time->tv_nsec);
+ 	return p;
  }
+ 
+ static __be32 *
+-decode_time3(__be32 *p, struct timespec *time)
++decode_time3(__be32 *p, struct timespec64 *time)
+ {
+ 	time->tv_sec = ntohl(*p++);
+ 	time->tv_nsec = ntohl(*p++);
+@@ -167,7 +167,6 @@ encode_fattr3(struct svc_rqst *rqstp, __be32 *p, struct svc_fh *fhp,
+ 	      struct kstat *stat)
+ {
+ 	struct user_namespace *userns = nfsd_user_namespace(rqstp);
+-	struct timespec ts;
+ 	*p++ = htonl(nfs3_ftypes[(stat->mode & S_IFMT) >> 12]);
+ 	*p++ = htonl((u32) (stat->mode & S_IALLUGO));
+ 	*p++ = htonl((u32) stat->nlink);
+@@ -183,12 +182,9 @@ encode_fattr3(struct svc_rqst *rqstp, __be32 *p, struct svc_fh *fhp,
+ 	*p++ = htonl((u32) MINOR(stat->rdev));
+ 	p = encode_fsid(p, fhp);
+ 	p = xdr_encode_hyper(p, stat->ino);
+-	ts = timespec64_to_timespec(stat->atime);
+-	p = encode_time3(p, &ts);
+-	ts = timespec64_to_timespec(stat->mtime);
+-	p = encode_time3(p, &ts);
+-	ts = timespec64_to_timespec(stat->ctime);
+-	p = encode_time3(p, &ts);
++	p = encode_time3(p, &stat->atime);
++	p = encode_time3(p, &stat->mtime);
++	p = encode_time3(p, &stat->ctime);
+ 
+ 	return p;
+ }
+@@ -277,8 +273,8 @@ void fill_pre_wcc(struct svc_fh *fhp)
+ 		stat.size  = inode->i_size;
+ 	}
+ 
+-	fhp->fh_pre_mtime = timespec64_to_timespec(stat.mtime);
+-	fhp->fh_pre_ctime = timespec64_to_timespec(stat.ctime);
++	fhp->fh_pre_mtime = stat.mtime;
++	fhp->fh_pre_ctime = stat.ctime;
+ 	fhp->fh_pre_size  = stat.size;
+ 	fhp->fh_pre_change = nfsd4_change_attribute(&stat, inode);
+ 	fhp->fh_pre_saved = true;
+@@ -330,7 +326,7 @@ nfs3svc_decode_sattrargs(struct svc_rqst *rqstp, __be32 *p)
+ 	p = decode_sattr3(p, &args->attrs, nfsd_user_namespace(rqstp));
+ 
+ 	if ((args->check_guard = ntohl(*p++)) != 0) { 
+-		struct timespec time; 
++		struct timespec64 time;
+ 		p = decode_time3(p, &time);
+ 		args->guardtime = time.tv_sec;
+ 	}
+diff --git a/fs/nfsd/nfsfh.h b/fs/nfsd/nfsfh.h
+index 755e256a9103..495540a248a1 100644
+--- a/fs/nfsd/nfsfh.h
++++ b/fs/nfsd/nfsfh.h
+@@ -42,8 +42,8 @@ typedef struct svc_fh {
+ 
+ 	/* Pre-op attributes saved during fh_lock */
+ 	__u64			fh_pre_size;	/* size before operation */
+-	struct timespec		fh_pre_mtime;	/* mtime before oper */
+-	struct timespec		fh_pre_ctime;	/* ctime before oper */
++	struct timespec64	fh_pre_mtime;	/* mtime before oper */
++	struct timespec64	fh_pre_ctime;	/* ctime before oper */
+ 	/*
+ 	 * pre-op nfsv4 change attr: note must check IS_I_VERSION(inode)
+ 	 *  to find out if it is valid.
 -- 
 2.20.0
 
