@@ -6,87 +6,84 @@ X-Spam-Status: No, score=-9.7 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
 	URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1DC4CC33CA3
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A6A8FC2D0D1
 	for <linux-nfs@archiver.kernel.org>; Fri, 13 Dec 2019 20:37:43 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 5D3FA2470C
+	by mail.kernel.org (Postfix) with ESMTP id E613024735
 	for <linux-nfs@archiver.kernel.org>; Fri, 13 Dec 2019 20:37:42 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727656AbfLMOL3 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 13 Dec 2019 09:11:29 -0500
-Received: from mout.kundenserver.de ([212.227.126.134]:34069 "EHLO
+        id S1727602AbfLMOLg (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 13 Dec 2019 09:11:36 -0500
+Received: from mout.kundenserver.de ([212.227.126.131]:36859 "EHLO
         mout.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727602AbfLMOLD (ORCPT
+        with ESMTP id S1727573AbfLMOLD (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Dec 2019 09:11:03 -0500
 Received: from threadripper.lan ([149.172.19.189]) by mrelayeu.kundenserver.de
  (mreue009 [212.227.15.129]) with ESMTPA (Nemesis) id
- 1Mwfj0-1hm7jP0CVe-00y7RM; Fri, 13 Dec 2019 15:10:57 +0100
+ 1Mi2BV-1i1js033dh-00e7iJ; Fri, 13 Dec 2019 15:10:57 +0100
 From:   Arnd Bergmann <arnd@arndb.de>
 To:     "J. Bruce Fields" <bfields@fieldses.org>,
         Chuck Lever <chuck.lever@oracle.com>
 Cc:     linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
         y2038@lists.linaro.org, Arnd Bergmann <arnd@arndb.de>
-Subject: [PATCH v2 08/12] nfsd: fix delay timer on 32-bit architectures
-Date:   Fri, 13 Dec 2019 15:10:42 +0100
-Message-Id: <20191213141046.1770441-9-arnd@arndb.de>
+Subject: [PATCH v2 11/12] nfsd: use ktime_get_real_seconds() in nfs4_verifier
+Date:   Fri, 13 Dec 2019 15:10:45 +0100
+Message-Id: <20191213141046.1770441-12-arnd@arndb.de>
 X-Mailer: git-send-email 2.20.0
 In-Reply-To: <20191213141046.1770441-1-arnd@arndb.de>
 References: <20191213141046.1770441-1-arnd@arndb.de>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-Provags-ID: V03:K1:Ozu4/pW+qCLxecDh3MKrULZcF90m6hSpu021bvKefFoHkHEq9Ku
- shomPCLvJLy6Epoe1gwNj87M2yyVRlRTjcE1uGBY+fBu2xOkTAcJaqkxClVYajDllbEEsEE
- UznBhgfNHcVaIuEGBOuzRVu/h3WdhTHRdqa37WSuvJ8k+AA3Hla25u2Im4zr7eNRk5M96/C
- XW4TFyNNfbucorssE6dmg==
-X-UI-Out-Filterresults: notjunk:1;V03:K0:xuhYPSf0wgU=:io1itl3p42GbQW92RFBuA+
- 4gnILpuRAdX4u2bzsTAQA5ODcN6kOT6oOj8/AHpZFWau6BZmM/U2pAiKFn/gvqG9qhcO8ix89
- cbA0m9fDlvBgA9g6GcjxNyzvIZ6kFEOHWwf/sfqxYeysdRE234R2v4W4DKI6zBNWKR2tMxF8y
- aObBRkAoK3lTRNznjEf5vLWGIkLeznTEEME26UMN/OlWkdCtPKmvVAdV8Q8VMFPkjAOP7a+lt
- M+ddORi4ccutIEtU7ZJmIJKZz9ho1RJapgll/ls3piNBe//DFulDSSKAos5+SdOB53NE6/yxO
- HHKXsvMJf2budQ8AVP1jOlbCW0tEgk/PAnNQ//yg1n/DfeoUxqmhheXAIgsHBd+7gdIrE0yvy
- l91HRZorgdAhUlCPonat0PN9M7HCOnWtKyWES60ZfvZ5YaPGFcRCSS/ATCkL5QZfQ/K0pxkn9
- A1A7P/hBV8V4PO7q45DulM1C8lDGo+TI4Mb5KD7RxP53/yZ7X/iAY222useB8phaDcTf5sReN
- nwcE2SQjgZb4hezlKnspbCpl8RgdetnHrjK+FoRNj0TXviClHW4IosW+gakeBGUJoEQLATPHH
- /60w7BbuqArdaxd3+M09XNBkGujPDjMvdfLCPQtzHuhNHoocndClfoHoxRPW4AWj49PfcQ2PN
- 9MU88JRvfU/+A8fupAnUlXs1pJE56vyLELZCyPxKVLeksTmsrpKEdrE1pkjOSVrOiKY7kzQ+S
- oMhgwJcoWKibcSyhgRZds1GI+yFEIzJX8gI7oZNgE0l50q6miGjcJ0e7FlIRW0RJsI4ABHfS9
- PcucIbOr6HcyeslBNCzwUyaJHW/0rZZtKLelcrz6wYnz4MQn/IeeE4g6eGtTcuN7JmGyE2psx
- cMgxXcmxZ6OnldX6+30A==
+X-Provags-ID: V03:K1:Pwg4ldcY+PirxuTk1NxKPR/wF0W7omnIpEhR4gWAXHpGQfencqU
+ 9EjmqFwbCPgYhBby6Q3tH+JCuKvm94AFXcEYbOtHvvBFf6t6QfakjHUFeX/9+wZ0WXOnnAf
+ 7Mj6sSgdq943phWuTRM8iA4/sHo+J04C+yauSKBDSHlxJ9ALUWqh/3hNXScfaod4Jm4H6EW
+ TL/F8Z4OBfXWFGiYY0ojA==
+X-UI-Out-Filterresults: notjunk:1;V03:K0:taJeJc826rg=:gsJimcb309nz2tjW+nHMfT
+ GfN+0U2212OBpxgW7egoFIGQ862g/bQvkrGmWwk6BlCUv2H3GGv3fwNrtYdaW/Q+PjOJZmAJk
+ +dK25vCWRztDD50tdguuWnRXx875Hn+wEVYv/6TkFFDaMqRqmNefb4exZPSbWpniFe/lCeZW4
+ 7B/FJM5yqkx3yVZvol7G4KSTp/totkFhFKDnr58T4mvRXNnqzhQeai5WL5hcA6AeONLwFSK6d
+ iIQVqN/4hswZCeNX34EDDwDAKjreQA8NFkfUCLMOO7UBArxETkwq4GJqgh7Fnc6B6zSsrabv3
+ HrrvQf0GEA1aVb/YDSqqfNhszpmPDG2YhJkrtc813TrR9WJfXCz46oNiJ8vdZ0KSODbvy3Pvn
+ 4SAgh0DX41V96BZuFQOxt6lAlkcjWyFoooimY6kte2bluDN1Fi5RnBjrDDjgtumWA0Yho2LEN
+ H8J2vSmFqLDUI5yGWhnR9qw9aMPe/swv/fuTTNLztVdcTwoFtsxQTGcDQkgHEeawX2UvCL5Zo
+ PQJpcU1Tqdhw6S/gbwImUkqrbfOdpL9InZWTE6UBmtlHX1VpUx/hprHP0MtW+D7gMfZz6J0S4
+ SCRv1BGJLJMOEl18unsekpH0O56m+qfl+h2S4MX5IxxiMXeuLtz5qYWMpoRqypa0PQfa5LTtd
+ HQybvMPDK334iImyClesbRDePlvRHikkYSfP2RYsvuRgjX77uAP23PrPk568aer4mRcsDM7wB
+ rIeR6WDUn9NFERKrHVuW3Ke+/Sdszf16X9oA6Sf/kN2xVZYxQLKs2PG5VUepNbX1Apchz0nYz
+ 3PSpZK+XI5D/ctMMzt8O3Z6Lrvy2GNRKiDresjBT5jiAADMswqQkrvYa0GQkmC4ec3a++HXgJ
+ 8HHnwgNFBKTuyN4ERjSQ==
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-The nfsd4_cb_layout_done() function takes a 'time_t' value,
-multiplied by NSEC_PER_SEC*2 to get a nanosecond value.
+gen_confirm() generates a unique identifier based on the current
+time. This overflows in year 2038, but that is harmless since it
+generally does not lead to duplicates, as long as the time has
+been initialized by a real-time clock or NTP.
 
-This works fine on 64-bit architectures, but on 32-bit, any
-value over 1 second results in a signed integer overflow
-with unexpected results.
+Using ktime_get_boottime_seconds() or ktime_get_seconds() would
+avoid the overflow, but it would be more likely to result in
+non-unique numbers.
 
-Cast one input to a 64-bit type in order to produce the
-same result that we have on 64-bit architectures, regarless
-of the type of nfsd4_lease.
-
-Fixes: 6b9b21073d3b ("nfsd: give up on CB_LAYOUTRECALLs after two lease periods")
 Signed-off-by: Arnd Bergmann <arnd@arndb.de>
 ---
- fs/nfsd/nfs4layouts.c | 2 +-
+ fs/nfsd/nfs4state.c | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/nfsd/nfs4layouts.c b/fs/nfsd/nfs4layouts.c
-index 2681c70283ce..e12409eca7cc 100644
---- a/fs/nfsd/nfs4layouts.c
-+++ b/fs/nfsd/nfs4layouts.c
-@@ -675,7 +675,7 @@ nfsd4_cb_layout_done(struct nfsd4_callback *cb, struct rpc_task *task)
- 
- 		/* Client gets 2 lease periods to return it */
- 		cutoff = ktime_add_ns(task->tk_start,
--					 nn->nfsd4_lease * NSEC_PER_SEC * 2);
-+					 (u64)nn->nfsd4_lease * NSEC_PER_SEC * 2);
- 
- 		if (ktime_before(now, cutoff)) {
- 			rpc_delay(task, HZ/100); /* 10 mili-seconds */
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 6afdef63f6d7..efe3161f6cf7 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -2215,7 +2215,7 @@ static void gen_confirm(struct nfs4_client *clp, struct nfsd_net *nn)
+ 	 * This is opaque to client, so no need to byte-swap. Use
+ 	 * __force to keep sparse happy
+ 	 */
+-	verf[0] = (__force __be32)get_seconds();
++	verf[0] = (__force __be32)(u32)ktime_get_real_seconds();
+ 	verf[1] = (__force __be32)nn->clverifier_counter++;
+ 	memcpy(clp->cl_confirm.data, verf, sizeof(clp->cl_confirm.data));
+ }
 -- 
 2.20.0
 
