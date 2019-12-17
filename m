@@ -1,63 +1,116 @@
-Return-Path: <SRS0=1J9Y=Z3=vger.kernel.org=linux-nfs-owner@kernel.org>
+Return-Path: <SRS0=qcKy=2H=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.3 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=no
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-0.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
+	autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 56C4BC43603
-	for <linux-nfs@archiver.kernel.org>; Thu,  5 Dec 2019 08:40:26 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3A12BC43603
+	for <linux-nfs@archiver.kernel.org>; Tue, 17 Dec 2019 18:12:29 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 32F3B2245C
-	for <linux-nfs@archiver.kernel.org>; Thu,  5 Dec 2019 08:40:26 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 0BC342067C
+	for <linux-nfs@archiver.kernel.org>; Tue, 17 Dec 2019 18:12:29 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="KwFnS9QS"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726059AbfLEIkZ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 5 Dec 2019 03:40:25 -0500
-Received: from relay.sw.ru ([185.231.240.75]:44134 "EHLO relay.sw.ru"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726032AbfLEIkZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 5 Dec 2019 03:40:25 -0500
-Received: from vvs-ws.sw.ru ([172.16.24.21])
-        by relay.sw.ru with esmtp (Exim 4.92.3)
-        (envelope-from <vvs@virtuozzo.com>)
-        id 1icmg9-0005Cc-BT; Thu, 05 Dec 2019 11:40:05 +0300
-Subject: Re: unsafe req->rq_xprt using inside bc_svc_process() ?
-From:   Vasily Averin <vvs@virtuozzo.com>
-To:     "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>
-References: <79494560-1876-494a-0838-cc646eabf68c@virtuozzo.com>
-Message-ID: <3b4bd000-13f6-bd4e-a0ea-3e4da3882135@virtuozzo.com>
-Date:   Thu, 5 Dec 2019 11:40:04 +0300
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:68.0) Gecko/20100101
- Thunderbird/68.2.1
+        id S1727778AbfLQSM2 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 17 Dec 2019 13:12:28 -0500
+Received: from mail-qk1-f194.google.com ([209.85.222.194]:34230 "EHLO
+        mail-qk1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727360AbfLQSM2 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 17 Dec 2019 13:12:28 -0500
+Received: by mail-qk1-f194.google.com with SMTP id j9so8086008qkk.1;
+        Tue, 17 Dec 2019 10:12:27 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc;
+        bh=94WcDwyswmJ+xZ6oQZ+EBBfqZNKwF38tRDgKQsxSOP8=;
+        b=KwFnS9QSEv9LyokZomttACcmx6y4KqxsdPNANWGey9uKIUNfsof9hFIGFTRC9Gfy+Y
+         cnd8Dm5yrC1ntADbk8l8Z+LcB91W41sUUYz3r53dm4k/6xhpA66WJCQkkeygyqvnD4q1
+         4n81ah1szCmtBZTRCLlwoBa1IkQzwX2yUNG3kbpA1/XxBcbKcM+xNYtnLYrzg3rkIscT
+         PpZEEun1Fh4hk/EBlJ0FlN+Uch/oW6M72jt+S+ChnUkk0HEiKgDDTY29cDaZX/T8gE/g
+         JW2TF8xQwUEW5KUV6knwLB1W7PhY/vSllRQa5FVMEQ0yjvXqWoMfefhB7D3S9DTPD5Ba
+         NLEQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=94WcDwyswmJ+xZ6oQZ+EBBfqZNKwF38tRDgKQsxSOP8=;
+        b=ALg86n9as8j0r+xAgJ0KBCjNJ6Vijpw1adjVJbpT1OWXKynjImkWZuyG7CsGWn7+D6
+         NvUDYGp21jAYe7YQAsRS0cl4i/8XfmGvWhDHH4Aqt9fLmEZrbTMVZdAqm02YyfmC3cxQ
+         fPUoC2wddAmck4y2zv0vPcxT7qEtCsio1eyI3uyIYIqEvqE5JV2o8YF9UTIf2sMgt7z8
+         5e+58AqceIdlOm0aixLDIoncymDG5mQixRsDoGoEpz2fR2tsNz4e0xuTSvIutGoMFYb5
+         KBidYpIfkUZhokTjhrlwTajwXaZhpr/qI6miaDbE6MF6JKVjuVt0FLkJ7GzM16b60MYK
+         a8bQ==
+X-Gm-Message-State: APjAAAUuay48qvJTL1GLmOKiglKFR7Pi1YHimARb0hzusM/A8pJXcj+K
+        Ga0Q6ifG+W2syIKyVw+sHEnHQKZxy8yJqSSWx4A=
+X-Google-Smtp-Source: APXvYqxokIyQB2bMqD8wFppcI0RegO2Y2reD8DeoM3KJDcVm8CV1EP6T+DJcgKPlB40YGBxIkiBPJwxdgxPR5QmEflQ=
+X-Received: by 2002:a05:620a:1401:: with SMTP id d1mr5798512qkj.79.1576606347113;
+ Tue, 17 Dec 2019 10:12:27 -0800 (PST)
 MIME-Version: 1.0
-In-Reply-To: <79494560-1876-494a-0838-cc646eabf68c@virtuozzo.com>
-Content-Type: text/plain; charset=utf-8; format=flowed
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
+References: <056501d5b437$91f1c6c0$b5d55440$@gmail.com> <dea30ea3f0fc31e40b311c4d110c26cf40658dca.camel@hammerspace.com>
+ <05ea01d5b440$bd9d58d0$38d80a70$@gmail.com> <2d94fa3e9632c638f9e47999fd8e26cb3b34b4dc.camel@hammerspace.com>
+In-Reply-To: <2d94fa3e9632c638f9e47999fd8e26cb3b34b4dc.camel@hammerspace.com>
+From:   Robert Milkowski <rmilkowski@gmail.com>
+Date:   Tue, 17 Dec 2019 18:12:16 +0000
+Message-ID: <CALbTx=H_49MroKwuwyThirwtiJE5686cyCZwKth-yVSRx0srug@mail.gmail.com>
+Subject: Re: [PATCH] NFSv4: nfs4_do_fsinfo() should not do implicit lease renewals
+To:     Trond Myklebust <trondmy@hammerspace.com>
+Cc:     "chuck.lever@oracle.com" <chuck.lever@oracle.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-I've found that Trond fixed it recently in commit 875f0706acc
-"SUNRPC: The TCP back channel mustn't disappear while requests are outstanding"
+On Mon, 16 Dec 2019 at 18:58, Trond Myklebust <trondmy@hammerspace.com> wrote:
+>
+> -On Mon, 2019-12-16 at 18:43 +0000, Robert Milkowski wrote:
+> > > From: Trond Myklebust <trondmy@hammerspace.com>
+> > ...
+> > > NACK. The above argument only applies to legacy minor version 0
+> > > setups, and does not apply to NFSv4.1 or newer.
+> >
+> > Correct. However many sites still use v4.0.
+> >
+>
+> That's not a good reason to break code that works just fine for
+> NFSv4.1.
+>
 
-On 11/29/19 5:10 PM, Vasily Averin wrote:
-> OpenVz team got complain on crash in bc_svc_process().
-> Crashed node had 15 running containers with active nfsv4.1 mounts,
-> single nfsv4.1-svc thread was processed its back-channel requests.
-> In our case nfs41_callback_svc() took rpc_rqst *req from serv->sv_cb_list
-> started its processing but found that req->rq_xprt points to already freed
-> struct rpc_xprt aka part of struct sock_xprt transport.
-> 
-> Back-channel request was submitted via xprt_complete_bc_request(),
-> its processing uses req->rq_xprt reference in many times,
-> however I did not found who keeps this reference.
-> It seems sock_xprt or even whole its net namespace can be freed before bc_svc_process() will start processing of submitted back-channel request, and req->rq_xprt using is unsafe in bc_svc_process()
-> 
-> Am I missed something probably?
+Of course not, that's not what I meant and I misunderstood your nack too.
+
+> It would be better to move the initialisation of clp->cl_last_renewal
+> into nfs4_init_clientid() and nfs41_init_clientid() (after the calls to
+> nfs4_proc_setclientid_confirm() and nfs4_proc_create_session()
+> respectively).
+>
+
+This could be done but this is potentially a separate change, as in
+nfs4_do_fsinfo() we still need to
+make sure we do not implicitly renew lease for v4.0, so I think the
+patch needs to be modified as:
+
+...
++                       /* no implicit lease renewal allowed here for v4.0 */
++                       if (server->nfs_client->cl_minorversion == 0
+&& server->nfs_client->cl_last_renewal != 0)
++                               last_renewal =
+server->nfs_client->cl_last_renewal;
+                        nfs4_set_lease_period(server->nfs_client,
+                                        fsinfo->lease_time * HZ,
+-                                       now);
++                                       last_renewal);
+...
+
+This way it won't affect newer nfs versions (I don't think it affected
+them in any bad way, still it was unintended and not correct).
+Agree with the above change?
+
+btw: Chuck, thanks for the hint regarding the SEQUENCE op on v4.1+
