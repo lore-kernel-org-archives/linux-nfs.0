@@ -2,117 +2,92 @@ Return-Path: <SRS0=OszZ=2I=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-0.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
-	autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-5.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,SPF_HELO_NONE,SPF_PASS autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2BEEDC43603
-	for <linux-nfs@archiver.kernel.org>; Wed, 18 Dec 2019 14:48:50 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 10686C3F68F
+	for <linux-nfs@archiver.kernel.org>; Wed, 18 Dec 2019 17:21:26 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id F176A2176D
-	for <linux-nfs@archiver.kernel.org>; Wed, 18 Dec 2019 14:48:49 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="rCSqdHkH"
+	by mail.kernel.org (Postfix) with ESMTP id E81CD2467E
+	for <linux-nfs@archiver.kernel.org>; Wed, 18 Dec 2019 17:21:25 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727173AbfLROst (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 18 Dec 2019 09:48:49 -0500
-Received: from mail-qv1-f65.google.com ([209.85.219.65]:41145 "EHLO
-        mail-qv1-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726856AbfLROst (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Dec 2019 09:48:49 -0500
-Received: by mail-qv1-f65.google.com with SMTP id x1so829972qvr.8;
-        Wed, 18 Dec 2019 06:48:48 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
-         :cc;
-        bh=03LZZ1Q88h/Vi7kuW4/G+tMxZypv0uuxA868U5NI5Kg=;
-        b=rCSqdHkHdw7MyQM6V2wX4E41GW4G2/vwDR0auAmquMnDYrF6mEkBvcgOCXd6CzirIS
-         nevXw2d3ZwNWgS/vRbR65z56h7yfn6oqBPnz2Q9+qeS05WA8y6nNnnSc+CT1klQNHRp7
-         3u8v6YHI03PicsQ3UgXl6DHgn8VOldhF8JVNLDXHwQ4Z0Lj8W5hKj/w60g/jBA+Thgwj
-         0+dVqmYcBodrOPSc2Way2rzaDjH7P8VG6udeYL01JNOC1wxCjtcUHwfCDBRZk1Bzi2gG
-         SZHrg8FmdrWwaug1s28phPtgapdy3eSLtOMgGTCr7SeUrtwgRroMWSXg0HPgjXi356S/
-         cI3A==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
-         :message-id:subject:to:cc;
-        bh=03LZZ1Q88h/Vi7kuW4/G+tMxZypv0uuxA868U5NI5Kg=;
-        b=FRwCZMW9J1mtB89PzntwwCbGVeCYn4K0Pq6G3e9C4GtRaVTENlaUzwQcFK37Qg4xxI
-         Pia+SHxuApCz2cQn/ja3kTjQ5eDOYt4Dn2CeHyCQ9N34sSLsTX0v4rhM7PzggdxujLAw
-         qiVuuog/hA1QoZkUIsuh+F+eMLok8PiKRLWWo4jvb3UzsVqptKQ8ueZzTQMT0VFeAqNg
-         XMLmaGm1Dc0zoAG/dQQ/rkqLUvug2SQTsQDnlNIyj5rijvWdTgt6bt5VeYA/p/1+KjgL
-         zkWNpG5fGtJ7WZfSo/w+C5DMbveX84UWN1zcDE+7Xh/d1BuQUwhbvTv4OV+8QHvJYxrs
-         03yQ==
-X-Gm-Message-State: APjAAAVtkFMMq79KEVvfF9t0hQunAGd3BukJOQe2bYRwn9lzflazdJOF
-        6YG/3wITXvVxqrOo7X6lzCCsKu60OCtoMrkFGIwTUw7YFEg=
-X-Google-Smtp-Source: APXvYqyedeACk3XMykTt78aYIgOyHUys2yyKMAdabZPSCX7yCyBFKjkFUrlGmDMEkRU5DIovnwOh4ZgaqOg9FwEf3jI=
-X-Received: by 2002:ad4:46e4:: with SMTP id h4mr2690617qvw.181.1576680528099;
- Wed, 18 Dec 2019 06:48:48 -0800 (PST)
+        id S1727256AbfLRRVZ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 18 Dec 2019 12:21:25 -0500
+Received: from mout.kundenserver.de ([217.72.192.73]:52361 "EHLO
+        mout.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727241AbfLRRVY (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Dec 2019 12:21:24 -0500
+Received: from mail-qt1-f177.google.com ([209.85.160.177]) by
+ mrelayeu.kundenserver.de (mreue106 [212.227.15.145]) with ESMTPSA (Nemesis)
+ id 1MAxPb-1iWsaA174T-00BPI1; Wed, 18 Dec 2019 18:21:23 +0100
+Received: by mail-qt1-f177.google.com with SMTP id k40so2543612qtk.8;
+        Wed, 18 Dec 2019 09:21:23 -0800 (PST)
+X-Gm-Message-State: APjAAAX71HKNzIizOuvrXOxQNAbB5+bBUkh+oSzj9kc+tRFYid68Jsib
+        wHtokhwhpJr8F4GkEQR8xtS5aPmXwvhH62somh8=
+X-Google-Smtp-Source: APXvYqznHDIvsOsFi4e8w9aoxbL/RPtggV4tE5pA9VKKphGs791HZuLvv9iC58VLi9vjYFWdsRYK26eOQpCPgD46U/w=
+X-Received: by 2002:ac8:3a27:: with SMTP id w36mr3096663qte.204.1576689682103;
+ Wed, 18 Dec 2019 09:21:22 -0800 (PST)
 MIME-Version: 1.0
-References: <056501d5b437$91f1c6c0$b5d55440$@gmail.com> <dea30ea3f0fc31e40b311c4d110c26cf40658dca.camel@hammerspace.com>
- <05ea01d5b440$bd9d58d0$38d80a70$@gmail.com> <2d94fa3e9632c638f9e47999fd8e26cb3b34b4dc.camel@hammerspace.com>
- <CALbTx=H_49MroKwuwyThirwtiJE5686cyCZwKth-yVSRx0srug@mail.gmail.com>
-In-Reply-To: <CALbTx=H_49MroKwuwyThirwtiJE5686cyCZwKth-yVSRx0srug@mail.gmail.com>
-From:   Robert Milkowski <rmilkowski@gmail.com>
-Date:   Wed, 18 Dec 2019 14:48:37 +0000
-Message-ID: <CALbTx=HUA6PdBufwmyYaN3J1pETUzRk=5HM7BKCDv8+PM2Qm9Q@mail.gmail.com>
-Subject: Re: [PATCH] NFSv4: nfs4_do_fsinfo() should not do implicit lease renewals
-To:     Trond Myklebust <trondmy@hammerspace.com>
-Cc:     "chuck.lever@oracle.com" <chuck.lever@oracle.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+References: <20191213141046.1770441-1-arnd@arndb.de>
+In-Reply-To: <20191213141046.1770441-1-arnd@arndb.de>
+From:   Arnd Bergmann <arnd@arndb.de>
+Date:   Wed, 18 Dec 2019 18:21:06 +0100
+X-Gmail-Original-Message-ID: <CAK8P3a11e1OsP+KR5rYPyYo_nMz=y2_fqb6ZCmaQ_RUFcoEkrQ@mail.gmail.com>
+Message-ID: <CAK8P3a11e1OsP+KR5rYPyYo_nMz=y2_fqb6ZCmaQ_RUFcoEkrQ@mail.gmail.com>
+Subject: Re: [PATCH v2 00/12] nfsd: avoid 32-bit time_t
+To:     "J. Bruce Fields" <bfields@fieldses.org>,
+        Chuck Lever <chuck.lever@oracle.com>
+Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        y2038 Mailman List <y2038@lists.linaro.org>
 Content-Type: text/plain; charset="UTF-8"
+X-Provags-ID: V03:K1:3ejHaJCvJhrUxjTvdpSmPFwCIgHxmJ1AzDZM3xjfg5cCLVAl4DI
+ mPorb03spSOhSn29YE3ndn0kxRJt1NS5Z7iZMMORBByPOEj+nyGC5ZGfXmzAxxaitVIYjDN
+ C1YlhuQG3sE6+/l6g0lA75uVcOhOLSZofBhJoSQEBxMGXYarW7B23okIBGcmTtboXgYYE3M
+ zwKaHPF489/2/uqtNU4kw==
+X-UI-Out-Filterresults: notjunk:1;V03:K0:POvJ5XGNovA=:d0SD4nNOgoWRJtUu4T0v46
+ KmXi34+a02pKGC+pi5dOhIxIizgVOqKKNrQ0rzaSROuqHhMmjIi4HzSQuUXSvXKGv0d4URStJ
+ +nKmJh/YNTjdT1+6vQV28oJMnpYc3slb1u12+bESihh+L2iemGFlDv/XdOFyI3T3yrMiSlCFF
+ g153WnPsrgTyioQJdh+p9KNasFAp6Y5tSfmwirlLVTEpYylr9/fYWmJpPmjYCZHQORKikbq7m
+ hreEdj3HG45LSCuVfD/70vxUd/6FuDzFIJs2/+ui8sEllL0xcDLXYj+WEfG3fIPcqo7xrbzI9
+ sFPm5HPJ0u4KQtenfwi1jI7kp72v9vDZUAteZxMaiGupb6oos6BQtB2KcROhmUSlFaMZG/7wv
+ 6UsACTwhyFkDEz9lyZKXHXFW/WYpuFOotVFLsv/vrB/Yw9kke9+ALznhMcXxExgLrEqtVQpxx
+ AghdGXMS7OQmRTc3B43jX68wkUtJ/Xv8rdSmkwVqnkJNMKBl3RwiSZZY0E8tgfZBM4cubnLBU
+ I1Mem1SQWEyy0DHdl18Rx3dgk7lS8L8RAuT5GFqoqyaSJlJ/EDqbE+pZbTBEgNcnmaXl0T0zl
+ avRWuqTtJkZLsXV71jPNecu5wv/or5IXXspEkasE7naO7HvJm/YzwsgnMPKL5YBGb0l1YARsY
+ 7ff6WU6p+hMRaNst0ACcYXwiYJrzvU4f1vj4foHTzCxD01uTMZoMgfljkotkvlfv7AOSEWdEz
+ 6giClqb5go0JU7OtIsd1SVM0d1bp3m81iqwQeP20qrOttuGJzxh8eLtNIKxmSdoxNwOV0kRCF
+ J3GVSas6VLQR0iJOXqFSgb2i0DakhBnbsu6/4VJYb8sjjMkCHmrE4TgWVIgnhsHWnyM5RJofM
+ JtnMYhM6zaUDFN9vbteQ==
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Tue, 17 Dec 2019 at 18:12, Robert Milkowski <rmilkowski@gmail.com> wrote:
+On Fri, Dec 13, 2019 at 3:12 PM Arnd Bergmann <arnd@arndb.de> wrote:
 >
-> On Mon, 16 Dec 2019 at 18:58, Trond Myklebust <trondmy@hammerspace.com> wrote:
-> >
-> > It would be better to move the initialisation of clp->cl_last_renewal
-> > into nfs4_init_clientid() and nfs41_init_clientid() (after the calls to
-> > nfs4_proc_setclientid_confirm() and nfs4_proc_create_session()
-> > respectively).
-> >
+> Hi Bruce, Chuck,
 >
-> This could be done but this is potentially a separate change, as in
-> nfs4_do_fsinfo() we still need to
-> make sure we do not implicitly renew lease for v4.0, so I think the
-> patch needs to be modified as:
+> NFSd is one of the last areas of the kernel that is not y2038 safe
+> yet, this series addresses the remaining issues here.
+>
+> I did not get any comments for the first version I posted [1], and
+> I hope this just means that everything was fine and you plan to
+> merge this soon ;-)
+>
+> I uploaded a git branch to [2] for testing.
+>
+> Please review and merge for linux-5.6 so we can remove the 32-bit
+> time handling from that release.
 
-I took a look at the client initialization and the
-nfs4_init_clientid() already calls nfs4_setup_state_renewal(),
-which in turn calls nfs4_proc_get_lease_time(), however that might
-return with an error in which case it won't set the cl_last_renewal,
-the code is:
+I've included the update y2038 nfsd branch from
 
-static int nfs4_setup_state_renewal(struct nfs_client *clp)
-...
-        status = nfs4_proc_get_lease_time(clp, &fsinfo);
-        if (status == 0) {
-                nfs4_set_lease_period(clp, fsinfo.lease_time * HZ, now);
-...
+git://git.kernel.org/pub/scm/linux/kernel/git/arnd/playground.git y2038-nfsd-v2
 
-In my environment with nfsv4+krb the nfs4_proc_get_lease_time()
-returns with -10016 (NFS4ERR_WRONGSEC) during initial mount (which
-after a quick scan of the rfc seems that might be ok initially).
-Also for v4.1 do_renew_lease() is called by nfs41_sequence_process()
-multiple times during mount before we even reach nfs4_do_fsinfo() so
-for 4.1+ it never gets cl_last_renewal==0, at least not under this
-circumstances.
+in my y2038 branch now, so it should be part of linux-next from the coming
+snapshot. My plan is to send a linux-5.6 pull request to the nfsd
+maintainers for
+this branch unless we find bugs in linux-next or I get more review comments.
 
-There might be other cases where nfs4_do_fsinfo() will get
-clp->cl_last_renewal=0 for nfsv4.0, and since the nfs4_do_fsinfo()
-already initializes the cl_last_renewal record, plus as Chuck pointed
-out in case of v4.1+
-it is expected to implicitly renew the lease anyway, I would rather
-focus on fixing only the reported issue here for now, which is the
-incorrect implicit renewal in fsinfo for v4.0, and leave improvements
-to client initialization for another day.
-
-I will send an updated patch shortly which doesn't impact v4.1+.
+        Arnd
