@@ -2,66 +2,53 @@ Return-Path: <SRS0=hL3P=2J=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	USER_AGENT_SANE_1 autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-5.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8FF7EC43603
-	for <linux-nfs@archiver.kernel.org>; Thu, 19 Dec 2019 22:43:03 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6F492C43603
+	for <linux-nfs@archiver.kernel.org>; Thu, 19 Dec 2019 22:44:30 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 6B2AC24676
-	for <linux-nfs@archiver.kernel.org>; Thu, 19 Dec 2019 22:43:03 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 420F224676
+	for <linux-nfs@archiver.kernel.org>; Thu, 19 Dec 2019 22:44:30 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726830AbfLSWnC (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 19 Dec 2019 17:43:02 -0500
-Received: from fieldses.org ([173.255.197.46]:38778 "EHLO fieldses.org"
+        id S1726930AbfLSWo3 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 19 Dec 2019 17:44:29 -0500
+Received: from fieldses.org ([173.255.197.46]:38786 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726818AbfLSWnC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 19 Dec 2019 17:43:02 -0500
+        id S1726818AbfLSWo3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 19 Dec 2019 17:44:29 -0500
 Received: by fieldses.org (Postfix, from userid 2815)
-        id 6D2961C7C; Thu, 19 Dec 2019 17:43:02 -0500 (EST)
-Date:   Thu, 19 Dec 2019 17:43:02 -0500
-From:   "J. Bruce Fields" <bfields@fieldses.org>
-To:     zhengbin <zhengbin13@huawei.com>
-Cc:     chuck.lever@oracle.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfsd4: Remove unneeded semicolon
-Message-ID: <20191219224302.GD12026@fieldses.org>
-References: <1576747760-120195-1-git-send-email-zhengbin13@huawei.com>
+        id 705AB1C7C; Thu, 19 Dec 2019 17:44:29 -0500 (EST)
+Date:   Thu, 19 Dec 2019 17:44:29 -0500
+To:     Dave Chinner <david@fromorbit.com>
+Cc:     Trond Myklebust <trondmy@gmail.com>,
+        "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2] nfsd: Clone should commit src file metadata too
+Message-ID: <20191219224429.GE12026@fieldses.org>
+References: <20191218195723.395277-1-trond.myklebust@hammerspace.com>
+ <20191218211251.GX19213@dread.disaster.area>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <1576747760-120195-1-git-send-email-zhengbin13@huawei.com>
+In-Reply-To: <20191218211251.GX19213@dread.disaster.area>
 User-Agent: Mutt/1.5.21 (2010-09-15)
+From:   bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Thanks, applying.--b.
+On Thu, Dec 19, 2019 at 08:12:51AM +1100, Dave Chinner wrote:
+> On Wed, Dec 18, 2019 at 02:57:23PM -0500, Trond Myklebust wrote:
+> > vfs_clone_file_range() can modify the metadata on the source file too,
+> > so we need to commit that to stable storage as well.
+> > 
+> > Reported-by: Dave Chinner <david@fromorbit.com>
+> > Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
+> 
+> Looks ok to me now.
+> 
+> Acked-by: Dave Chinner <dchinner@redhat.com>
 
-On Thu, Dec 19, 2019 at 05:29:20PM +0800, zhengbin wrote:
-> Fixes coccicheck warning:
-> 
-> fs/nfsd/nfs4state.c:3376:2-3: Unneeded semicolon
-> 
-> Reported-by: Hulk Robot <hulkci@huawei.com>
-> Signed-off-by: zhengbin <zhengbin13@huawei.com>
-> ---
->  fs/nfsd/nfs4state.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 369e574..54c2917 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -3373,7 +3373,7 @@ static __be32 nfsd4_map_bcts_dir(u32 *dir)
->  	case NFS4_CDFC4_BACK_OR_BOTH:
->  		*dir = NFS4_CDFC4_BOTH;
->  		return nfs_ok;
-> -	};
-> +	}
->  	return nfserr_inval;
->  }
-> 
-> --
-> 2.7.4
+Thanks!  Applying for 5.6, with Dave's ACK.--b.
