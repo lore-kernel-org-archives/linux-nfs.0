@@ -1,102 +1,122 @@
-Return-Path: <SRS0=OKXS=2N=vger.kernel.org=linux-nfs-owner@kernel.org>
+Return-Path: <SRS0=gknM=2O=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.5 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
+X-Spam-Status: No, score=-6.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
+	SPF_HELO_NONE,SPF_PASS autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6284FC2D0C0
-	for <linux-nfs@archiver.kernel.org>; Mon, 23 Dec 2019 15:28:47 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 169DCC2D0CF
+	for <linux-nfs@archiver.kernel.org>; Tue, 24 Dec 2019 14:36:36 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 35E2820709
-	for <linux-nfs@archiver.kernel.org>; Mon, 23 Dec 2019 15:28:47 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id DC91C206B7
+	for <linux-nfs@archiver.kernel.org>; Tue, 24 Dec 2019 14:36:35 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="TKu1kaEl"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="LcXQ49j9"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726795AbfLWP2q (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 23 Dec 2019 10:28:46 -0500
-Received: from mail-yw1-f68.google.com ([209.85.161.68]:39911 "EHLO
-        mail-yw1-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726865AbfLWP2q (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Dec 2019 10:28:46 -0500
-Received: by mail-yw1-f68.google.com with SMTP id h126so7195619ywc.6
-        for <linux-nfs@vger.kernel.org>; Mon, 23 Dec 2019 07:28:46 -0800 (PST)
+        id S1726157AbfLXOgf (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 24 Dec 2019 09:36:35 -0500
+Received: from mail-lj1-f193.google.com ([209.85.208.193]:34000 "EHLO
+        mail-lj1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726128AbfLXOge (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Dec 2019 09:36:34 -0500
+Received: by mail-lj1-f193.google.com with SMTP id z22so16160260ljg.1;
+        Tue, 24 Dec 2019 06:36:32 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
-        h=sender:subject:from:to:cc:date:message-id:in-reply-to:references
-         :user-agent:mime-version:content-transfer-encoding;
-        bh=T+ADFNGa9n0HATqaY0uwOgcLmEGdFEnTBIf5g6n0X50=;
-        b=TKu1kaElOOqo2IIcJZzbvH5fxrCm+od1JSxYQGcp3XtHo66v3dxhi4jgJBOVuvaFz0
-         o2Dvuh9FDELPhIoCo5RMjPvzy2LiYpTM3zuuDC6ViDPLU1/gKhz25UIcywwaRVbmH7XI
-         eAtaU81KtX/NtWp/3rdyCLzsTk/YK9y6QUo8sTtKjXyU3S048p8gaerdGiVAx8dDrh6l
-         J9hxfl/xJX82SVcqlUQe8dux+UmmVCxP+MgQPEa+5RAikLrlirvltO+9+HNZperaBNuh
-         4JXcIdCaBdufYjZe5YOylfz+A+Ctip/mVzPAB/d49+w3rbG/HzIM2N5zGaqMVB8ivRRa
-         Bnfg==
+        h=from:to:cc:subject:date:message-id:mime-version
+         :content-transfer-encoding:thread-index:content-language;
+        bh=/+YjS98Z9lwGK4xAtM+uHlhw7vC65cvgwuOwRf+cKv8=;
+        b=LcXQ49j9nMxaAtMUCiy3D861QVGqLzjtMMfejFuiI+WrDjyKPrpMqBwCK7/aFRcGY4
+         rB1dIwxRW/onbueUeIAvymTVf2tW07/AwwMVX7Tb800xESyXk78lquiC1/tTUAikbJ3z
+         BeVkICbxoxOUeHepLe+X0JwzcRwocJJ75qIV9g4Ad/VodgHtyGWrHi0wSjGcnvLPw3+a
+         8jLJ4K7/l144SBDNBgMFU/kGqq2th507b4Or36PCWO6HL7z6p/STai8r49PxZb20I6y+
+         5/fXTZoVrF7Yye9sKTt53r8uqZ5ZPze9xiOunKs+upP2ig9RP0OMolYj9q18hJwupr+8
+         m1IQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:sender:subject:from:to:cc:date:message-id
-         :in-reply-to:references:user-agent:mime-version
-         :content-transfer-encoding;
-        bh=T+ADFNGa9n0HATqaY0uwOgcLmEGdFEnTBIf5g6n0X50=;
-        b=akmStVuZ+5iRf+VxEuLD/vQ34H4kzy8/O5hLqTPfM8pToiCv2fY0+8bqrefC5GnS5v
-         KbQZn06m9KlZPGyIk7p11+azxBpTI1NCkz8QfgaFU532gCJUmFUkGXLQ7s+1w5Qrtdwl
-         J7nVVCoNdLCee1ZGT/ryJkSuHdQZ8hVGrIPLmtN+EGJZJ7UfKdFlHD9UPg9/5zb41egX
-         plCQSFlHxQaDqgnMkgCcBe+BL1wIywovocDJSQdzIjttCIK+csDJfpe1wnd1uJ0tQn4u
-         +SinofGppiQcZUG+vrCowxyHZIdBsIHx9icmufiB0SN9zZs8fgH/P7LjHt31R5H9JWg2
-         tKOA==
-X-Gm-Message-State: APjAAAUgQY3YeXV0Y+dG+jvQ3cn2R5kjxl4uEyHpc8FEj6f3EWA0e3Q/
-        y0WHUlytHJJoKMsNqa2SYRgGRIZK
-X-Google-Smtp-Source: APXvYqyqoE8cfmmdtDm6QSxUD12nrSXHhFqsOeyzoWAutOdN25hURGXr1qPrwYzyn6yKzRd8pGKsLA==
-X-Received: by 2002:a81:1bc8:: with SMTP id b191mr22215048ywb.364.1577114925795;
-        Mon, 23 Dec 2019 07:28:45 -0800 (PST)
-Received: from gateway.1015granger.net (c-68-61-232-219.hsd1.mi.comcast.net. [68.61.232.219])
-        by smtp.gmail.com with ESMTPSA id l32sm7798651ywh.29.2019.12.23.07.28.45
+        h=x-gm-message-state:from:to:cc:subject:date:message-id:mime-version
+         :content-transfer-encoding:thread-index:content-language;
+        bh=/+YjS98Z9lwGK4xAtM+uHlhw7vC65cvgwuOwRf+cKv8=;
+        b=EwfWNCnlApzsZ7WVu65eciFckrT/3i+6sE3v3g7+Y5UHhuRqTIG5lP5s/PU0n138KL
+         Z/PndXchoWIOMQYQbUXZPPkaNz2B0h8SFSoY2dMlGY1hLGixevACdwStib12+fbZREvD
+         zBOv8XFgW0+m26G3aKA0o9Vnpx+/tnZ1XUGlMTSa1CFJFXO7w90Ru0iC0yvVUQ18BAmH
+         LON7MfPs7nCgGmgjKJ4wJYzDOChyMd/3T8gXiqIF8zUyK6uVVyT+mbAdJDf49HfasEwy
+         oGiPNe0FFfMzuUCgahUnjBCLbaqH9J2IKHQrTOCMIPI2umwSMkZtz0+2rEit0XdYQC8A
+         fo6Q==
+X-Gm-Message-State: APjAAAU3P/tK3jVt2ABJ/Joyi9W0BFNJ0+2CLdDUAo9myKkP0NfDwFCk
+        vatZqOKvBgVLA5lQ43dgjZxqtXxEarM=
+X-Google-Smtp-Source: APXvYqxGyd+HGVG1hizaf+ozPOcB/EjrLVF5gjv1Ltb04bhDlsiUSXUY2WMUcJ496kjlT+swZmtLPw==
+X-Received: by 2002:a2e:b1c3:: with SMTP id e3mr20781533lja.137.1577198192208;
+        Tue, 24 Dec 2019 06:36:32 -0800 (PST)
+Received: from loulrmilkow1 (227.46-29-148.tkchopin.pl. [46.29.148.227])
+        by smtp.gmail.com with ESMTPSA id l22sm5539885ljj.44.2019.12.24.06.36.31
         (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Mon, 23 Dec 2019 07:28:45 -0800 (PST)
-Received: from manet.1015granger.net (manet.1015granger.net [192.168.1.51])
-        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id xBNFSi6B008888;
-        Mon, 23 Dec 2019 15:28:44 GMT
-Subject: [PATCH v1 4/4] SUNRPC: call_connect_status should handle -EPROTO
-From:   Chuck Lever <chuck.lever@oracle.com>
-To:     anna.schumaker@netapp.com, trondmy@hammerspace.com
-Cc:     linux-nfs@vger.kernel.org
-Date:   Mon, 23 Dec 2019 10:28:44 -0500
-Message-ID: <20191223152844.17724.68321.stgit@manet.1015granger.net>
-In-Reply-To: <20191223152539.17724.52438.stgit@manet.1015granger.net>
-References: <20191223152539.17724.52438.stgit@manet.1015granger.net>
-User-Agent: StGit/0.17.1-dirty
+        Tue, 24 Dec 2019 06:36:31 -0800 (PST)
+From:   "Robert Milkowski" <rmilkowski@gmail.com>
+To:     <linux-nfs@vger.kernel.org>
+Cc:     "'Trond Myklebust'" <trond.myklebust@hammerspace.com>,
+        "'Anna Schumaker'" <anna.schumaker@netapp.com>,
+        <linux-kernel@vger.kernel.org>
+Subject: [PATCH v2] NFSv4.0: nfs4_do_fsinfo() should not do implicit lease
+Date:   Tue, 24 Dec 2019 14:36:31 -0000
+Message-ID: <001901d5ba67$8954ede0$9bfec9a0$@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain;
+        charset="us-ascii"
 Content-Transfer-Encoding: 7bit
+X-Mailer: Microsoft Outlook 16.0
+Thread-Index: AdW6ZxKSwNGVh9l6R3GFPFG08PYEHA==
+Content-Language: en-gb
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-The xprtrdma connect logic can return -EPROTO if the underlying
-device or network path does not support RDMA. This can happen
-after a device removal/insertion.
+From: Robert Milkowski <rmilkowski@gmail.com>
 
-- When SOFTCONN is set, EPROTO is a permanent error.
+Currently, each time nfs4_do_fsinfo() is called it will do an implicit
+NFS4 lease renewal, which is not compliant with the NFS4 specification.
+This can result in a lease being expired by an NFS server.
 
-- When SOFTCONN is not set, EPROTO is treated as a temporary error.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Robert Milkowski <rmilkowski@gmail.com>
 ---
- net/sunrpc/clnt.c |    1 +
- 1 file changed, 1 insertion(+)
+ fs/nfs/nfs4proc.c | 10 +++++++---
+ 1 file changed, 7 insertions(+), 3 deletions(-)
 
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index a3379765605d..7324b21f923e 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -2130,6 +2130,7 @@ void rpc_force_rebind(struct rpc_clnt *clnt)
- 	case -ENETUNREACH:
- 	case -EHOSTUNREACH:
- 	case -EPIPE:
-+	case -EPROTO:
- 		xprt_conditional_disconnect(task->tk_rqstp->rq_xprt,
- 					    task->tk_rqstp->rq_connect_cookie);
- 		if (RPC_IS_SOFTCONN(task))
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 76d3716..b6cad9a 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -5016,19 +5016,23 @@ static int _nfs4_do_fsinfo(struct nfs_server *server, struct nfs_fh *fhandle,
+ 
+ static int nfs4_do_fsinfo(struct nfs_server *server, struct nfs_fh *fhandle, struct nfs_fsinfo *fsinfo)
+ {
++	struct nfs_client *clp = server->nfs_client;
+ 	struct nfs4_exception exception = {
+ 		.interruptible = true,
+ 	};
+-	unsigned long now = jiffies;
++	unsigned long last_renewal = jiffies;
+ 	int err;
+ 
+ 	do {
+ 		err = _nfs4_do_fsinfo(server, fhandle, fsinfo);
+ 		trace_nfs4_fsinfo(server, fhandle, fsinfo->fattr, err);
+ 		if (err == 0) {
+-			nfs4_set_lease_period(server->nfs_client,
++			/* no implicit lease renewal allowed here for v4.0 */
++			if (clp->cl_minorversion == 0 && clp->cl_last_renewal != 0)
++				last_renewal = clp->cl_last_renewal;
++			nfs4_set_lease_period(clp,
+ 					fsinfo->lease_time * HZ,
+-					now);
++					last_renewal);
+ 			break;
+ 		}
+ 		err = nfs4_handle_exception(server, err, &exception);
+-- 
+1.8.3.1
+
 
