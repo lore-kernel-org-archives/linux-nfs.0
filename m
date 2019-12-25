@@ -2,36 +2,38 @@ Return-Path: <SRS0=oQpb=2P=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=no
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
+	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 14DE7C2D0C8
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3601DC2D0D2
 	for <linux-nfs@archiver.kernel.org>; Wed, 25 Dec 2019 03:12:26 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id E0B3D20663
-	for <linux-nfs@archiver.kernel.org>; Wed, 25 Dec 2019 03:12:25 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 0DDAA20679
+	for <linux-nfs@archiver.kernel.org>; Wed, 25 Dec 2019 03:12:26 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726352AbfLYDMY (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 24 Dec 2019 22:12:24 -0500
-Received: from szxga06-in.huawei.com ([45.249.212.32]:48648 "EHLO huawei.com"
+        id S1726328AbfLYDMZ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 24 Dec 2019 22:12:25 -0500
+Received: from szxga06-in.huawei.com ([45.249.212.32]:48652 "EHLO huawei.com"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726328AbfLYDMY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 24 Dec 2019 22:12:24 -0500
+        id S1726325AbfLYDMZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 24 Dec 2019 22:12:25 -0500
 Received: from DGGEMS405-HUB.china.huawei.com (unknown [172.30.72.59])
-        by Forcepoint Email with ESMTP id 3599DB904FB60BABC2D8;
+        by Forcepoint Email with ESMTP id 3D8926CD8E7B592D1A2F;
         Wed, 25 Dec 2019 11:12:23 +0800 (CST)
 Received: from huawei.com (10.90.53.225) by DGGEMS405-HUB.china.huawei.com
  (10.3.19.205) with Microsoft SMTP Server id 14.3.439.0; Wed, 25 Dec 2019
- 11:12:15 +0800
+ 11:12:16 +0800
 From:   zhengbin <zhengbin13@huawei.com>
 To:     <bfields@fieldses.org>, <chuck.lever@oracle.com>,
         <linux-nfs@vger.kernel.org>
 CC:     <zhengbin13@huawei.com>
-Subject: [PATCH 0/3] nfsd: use true,false for bool variable
-Date:   Wed, 25 Dec 2019 11:19:33 +0800
-Message-ID: <1577243976-46389-1-git-send-email-zhengbin13@huawei.com>
+Subject: [PATCH 2/3] nfsd: use true,false for bool variable in nfs4proc.c
+Date:   Wed, 25 Dec 2019 11:19:35 +0800
+Message-ID: <1577243976-46389-3-git-send-email-zhengbin13@huawei.com>
 X-Mailer: git-send-email 2.7.4
+In-Reply-To: <1577243976-46389-1-git-send-email-zhengbin13@huawei.com>
+References: <1577243976-46389-1-git-send-email-zhengbin13@huawei.com>
 MIME-Version: 1.0
 Content-Type: text/plain
 X-Originating-IP: [10.90.53.225]
@@ -41,16 +43,39 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-zhengbin (3):
-  nfsd: use true,false for bool variable in vfs.c
-  nfsd: use true,false for bool variable in nfs4proc.c
-  nfsd: use true,false for bool variable in nfssvc.c
+Fixes coccicheck warning:
 
+fs/nfsd/nfs4proc.c:235:1-18: WARNING: Assignment of 0/1 to bool variable
+fs/nfsd/nfs4proc.c:368:1-17: WARNING: Assignment of 0/1 to bool variable
+
+Reported-by: Hulk Robot <hulkci@huawei.com>
+Signed-off-by: zhengbin <zhengbin13@huawei.com>
+---
  fs/nfsd/nfs4proc.c | 4 ++--
- fs/nfsd/nfssvc.c   | 6 +++---
- fs/nfsd/vfs.c      | 6 +++---
- 3 files changed, 8 insertions(+), 8 deletions(-)
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 4798667..d7d910e 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -232,7 +232,7 @@ do_open_lookup(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate, stru
+ 	if (!*resfh)
+ 		return nfserr_jukebox;
+ 	fh_init(*resfh, NFS4_FHSIZE);
+-	open->op_truncate = 0;
++	open->op_truncate = false;
+
+ 	if (open->op_create) {
+ 		/* FIXME: check session persistence and pnfs flags.
+@@ -365,7 +365,7 @@ nfsd4_open(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	if (open->op_create && open->op_claim_type != NFS4_OPEN_CLAIM_NULL)
+ 		return nfserr_inval;
+
+-	open->op_created = 0;
++	open->op_created = false;
+ 	/*
+ 	 * RFC5661 18.51.3
+ 	 * Before RECLAIM_COMPLETE done, server should deny new lock
 --
 2.7.4
 
