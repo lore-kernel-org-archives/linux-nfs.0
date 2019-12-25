@@ -2,90 +2,122 @@ Return-Path: <SRS0=oQpb=2P=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
-	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-8.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 63165C2D0D0
-	for <linux-nfs@archiver.kernel.org>; Wed, 25 Dec 2019 03:12:26 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2DF9EC2D0C8
+	for <linux-nfs@archiver.kernel.org>; Wed, 25 Dec 2019 03:35:14 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 3891220663
-	for <linux-nfs@archiver.kernel.org>; Wed, 25 Dec 2019 03:12:26 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id DEA12206CB
+	for <linux-nfs@archiver.kernel.org>; Wed, 25 Dec 2019 03:35:13 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="WHmWnkkW"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726325AbfLYDMZ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 24 Dec 2019 22:12:25 -0500
-Received: from szxga06-in.huawei.com ([45.249.212.32]:48650 "EHLO huawei.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726330AbfLYDMZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 24 Dec 2019 22:12:25 -0500
-Received: from DGGEMS405-HUB.china.huawei.com (unknown [172.30.72.59])
-        by Forcepoint Email with ESMTP id 39A73636251883F0981A;
-        Wed, 25 Dec 2019 11:12:23 +0800 (CST)
-Received: from huawei.com (10.90.53.225) by DGGEMS405-HUB.china.huawei.com
- (10.3.19.205) with Microsoft SMTP Server id 14.3.439.0; Wed, 25 Dec 2019
- 11:12:15 +0800
-From:   zhengbin <zhengbin13@huawei.com>
-To:     <bfields@fieldses.org>, <chuck.lever@oracle.com>,
-        <linux-nfs@vger.kernel.org>
-CC:     <zhengbin13@huawei.com>
-Subject: [PATCH 1/3] nfsd: use true,false for bool variable in vfs.c
-Date:   Wed, 25 Dec 2019 11:19:34 +0800
-Message-ID: <1577243976-46389-2-git-send-email-zhengbin13@huawei.com>
-X-Mailer: git-send-email 2.7.4
-In-Reply-To: <1577243976-46389-1-git-send-email-zhengbin13@huawei.com>
-References: <1577243976-46389-1-git-send-email-zhengbin13@huawei.com>
+        id S1726332AbfLYDfN (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 24 Dec 2019 22:35:13 -0500
+Received: from mail-yw1-f65.google.com ([209.85.161.65]:43774 "EHLO
+        mail-yw1-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726330AbfLYDfN (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Dec 2019 22:35:13 -0500
+Received: by mail-yw1-f65.google.com with SMTP id v126so8985915ywc.10;
+        Tue, 24 Dec 2019 19:35:12 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=from:subject:to:cc:message-id:date:user-agent:mime-version
+         :content-transfer-encoding;
+        bh=f7OdTVI7jtXrQm/7QUzasuPuN5M09Cg0stJpVqfXKeQ=;
+        b=WHmWnkkWxsjSjUbUY0wzaOSTQSCHe0qF+Sh1LbvNUMl67+SUB4MXdKP8HpymHwrYv3
+         6k7K9Ij/OX3hmUZzWk03CJqB8zGkIoADgSTsBqK3mXOFUPbE9VR7LfCmDmtEHZ/Ybmd1
+         YBc+bqkedII6MSPlFfw+NAdonA0w4xqVYIGNMgoEoW2U/imA5qYTWnCR0BJHUKdD4cDG
+         CwB5u6hPsFg2eEpjLKEyTF5C491Xb8PZ+EjpmgrB0Mhim2ab1fq7fsRp6CO9Fqy1+P8B
+         2jHPW72Lqz2SlTqsNTGlo1gtUL8mhTB8WP0GA4FE1j+JXYfIfKvnRFITWYu5t6/akpSK
+         K4zQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:from:subject:to:cc:message-id:date:user-agent
+         :mime-version:content-transfer-encoding;
+        bh=f7OdTVI7jtXrQm/7QUzasuPuN5M09Cg0stJpVqfXKeQ=;
+        b=tE5rQc7PTbygJ2snoA1fSqDMHW59h2QFh69HrKs7sXR+tCPYZD/WZk31y3zZM5az2H
+         We5PCNTcdHhbz9LXv2NbokoBMtZOLTNQNxU0HTN+ftSjRB3mYgQgjbfCOmVeEWD01JSK
+         r+bz6XG8UV6Ha0YH5GxS04PTxLMdkLzuvqYpqG0ZhN+i/urArKDRHyYH2QyjLPrankLE
+         OOGplp5XH7l0rSs7MdHBug2nNPiCh+25CGsmoz7tfyGrS2GY3YQNot6QprtHAkVUIYWU
+         YEi8IiKylKxjYkMzI3UIZu4iSkd2lrm1CEkRsFgaTW6JG3Zc+eZhhdBZC7/u0LT0inPU
+         swPg==
+X-Gm-Message-State: APjAAAXPVpWgEfYkn/5sruUM/fNyE4yHqFqIHo7rqwJKs/TBV9rtMVJp
+        Prl36gS2gZewrcYgRPHCrJLlkmdgDBw=
+X-Google-Smtp-Source: APXvYqwUMy6rvG29I7N4EOQQjmmU5tQ/oGTvBJf3VdxU9GrfnE7jctaOMygTr25SbzA4eXKXx+YaRQ==
+X-Received: by 2002:a0d:d4cb:: with SMTP id w194mr28057103ywd.263.1577244911769;
+        Tue, 24 Dec 2019 19:35:11 -0800 (PST)
+Received: from [0.0.0.0] ([107.175.31.166])
+        by smtp.gmail.com with ESMTPSA id 144sm10437319ywy.20.2019.12.24.19.35.08
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Tue, 24 Dec 2019 19:35:11 -0800 (PST)
+From:   Su Yanjun <suyanjun218@gmail.com>
+Subject: [PATCH] NFSv3: FIx bug when using chacl and chmod to change acl
+To:     Trond Myklebust <trond.myklebust@hammerspace.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>
+Cc:     "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Message-ID: <0f14d9f5-c937-783b-d88f-047e78502f71@gmail.com>
+Date:   Wed, 25 Dec 2019 11:37:57 +0800
+User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64; rv:68.0) Gecko/20100101
+ Thunderbird/68.2.0
 MIME-Version: 1.0
-Content-Type: text/plain
-X-Originating-IP: [10.90.53.225]
-X-CFilter-Loop: Reflected
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Fixes coccicheck warning:
+We find a bug when running test under nfsv3  as below.
+1)
+chacl u::r--,g::rwx,o:rw- file1
+2)
+chmod u+w file1
+3)
+chacl -l file1
 
-fs/nfsd/vfs.c:1389:5-13: WARNING: Assignment of 0/1 to bool variable
-fs/nfsd/vfs.c:1398:5-13: WARNING: Assignment of 0/1 to bool variable
-fs/nfsd/vfs.c:1415:2-10: WARNING: Assignment of 0/1 to bool variable
+We expect u::rw-, but it shows u::r--, more likely it returns the
+cached acl in inode.
 
-Reported-by: Hulk Robot <hulkci@huawei.com>
-Signed-off-by: zhengbin <zhengbin13@huawei.com>
+We dig the code find that the code path is different.
+
+chacl->..->__nfs3_proc_setacls->nfs_zap_acl_cache
+Then nfs_zap_acl_cache clears the NFS_INO_INVALID_ACL in
+NFS_I(inode)->cache_validity.
+
+chmod->..->nfs3_proc_setattr
+Because NFS_INO_INVALID_ACL has been cleared by chacl path,
+nfs_zap_acl_cache wont be called.
+
+nfs_setattr_update_inode will set NFS_INO_INVALID_ACL so let it
+before nfs_zap_acl_cache call.
+
+Signed-off-by: Su Yanjun <suyanjun218@gmail.com>
 ---
- fs/nfsd/vfs.c | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+ fs/nfs/nfs3proc.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index c0dc491..891e09f 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -1386,7 +1386,7 @@ do_nfsd_create(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 			    && d_inode(dchild)->i_atime.tv_sec == v_atime
- 			    && d_inode(dchild)->i_size  == 0 ) {
- 				if (created)
--					*created = 1;
-+					*created = true;
- 				break;
- 			}
- 			/* fall through */
-@@ -1395,7 +1395,7 @@ do_nfsd_create(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 			    && d_inode(dchild)->i_atime.tv_sec == v_atime
- 			    && d_inode(dchild)->i_size  == 0 ) {
- 				if (created)
--					*created = 1;
-+					*created = true;
- 				goto set_attr;
- 			}
- 			/* fall through */
-@@ -1412,7 +1412,7 @@ do_nfsd_create(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 		goto out_nfserr;
- 	}
- 	if (created)
--		*created = 1;
-+		*created = true;
+diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
+index 9eb2f1a503ab..6d736f0ac811 100644
+--- a/fs/nfs/nfs3proc.c
++++ b/fs/nfs/nfs3proc.c
+@@ -140,9 +140,9 @@ nfs3_proc_setattr(struct dentry *dentry, struct nfs_fattr *fattr,
+     nfs_fattr_init(fattr);
+     status = rpc_call_sync(NFS_CLIENT(inode), &msg, 0);
+     if (status == 0) {
++        nfs_setattr_update_inode(inode, sattr, fattr);
+         if (NFS_I(inode)->cache_validity & NFS_INO_INVALID_ACL)
+             nfs_zap_acl_cache(inode);
+-        nfs_setattr_update_inode(inode, sattr, fattr);
+     }
+     dprintk("NFS reply setattr: %d\n", status);
+     return status;
 
- 	nfsd_check_ignore_resizing(iap);
-
---
-2.7.4
+-- 
+2.17.1
 
