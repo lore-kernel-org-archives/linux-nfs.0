@@ -6,91 +6,103 @@ X-Spam-Status: No, score=-3.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=no
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A9E1EC3F68F
-	for <linux-nfs@archiver.kernel.org>; Wed,  1 Jan 2020 08:21:09 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id F35F7C32765
+	for <linux-nfs@archiver.kernel.org>; Wed,  1 Jan 2020 10:53:02 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 8279B2072C
-	for <linux-nfs@archiver.kernel.org>; Wed,  1 Jan 2020 08:21:09 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id CFCD52073D
+	for <linux-nfs@archiver.kernel.org>; Wed,  1 Jan 2020 10:53:02 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727134AbgAAIUO (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 1 Jan 2020 03:20:14 -0500
-Received: from mail2-relais-roc.national.inria.fr ([192.134.164.83]:56955 "EHLO
-        mail2-relais-roc.national.inria.fr" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1725783AbgAAIUN (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Jan 2020 03:20:13 -0500
-X-IronPort-AV: E=Sophos;i="5.69,382,1571695200"; 
-   d="scan'208";a="429578748"
-Received: from palace.rsr.lip6.fr (HELO palace.lip6.fr) ([132.227.105.202])
-  by mail2-relais-roc.national.inria.fr with ESMTP/TLS/AES128-SHA256; 01 Jan 2020 09:20:08 +0100
-From:   Julia Lawall <Julia.Lawall@inria.fr>
-To:     Jernej Skrabec <jernej.skrabec@siol.net>
-Cc:     kernel-janitors@vger.kernel.org, Jonas Karlman <jonas@kwiboo.se>,
-        Laurent Pinchart <Laurent.pinchart@ideasonboard.com>,
-        linuxppc-dev@lists.ozlabs.org, linux-fbdev@vger.kernel.org,
-        dri-devel@lists.freedesktop.org, linux-media@vger.kernel.org,
-        linux-kernel@vger.kernel.org, alsa-devel@alsa-project.org,
-        linux-arm-kernel@lists.infradead.org, linux-usb@vger.kernel.org,
-        linux-arm-msm@vger.kernel.org, linux-gpio@vger.kernel.org,
-        linux-nfs@vger.kernel.org, netdev@vger.kernel.org
-Subject: [PATCH 00/16] constify copied structure
-Date:   Wed,  1 Jan 2020 08:43:18 +0100
-Message-Id: <1577864614-5543-1-git-send-email-Julia.Lawall@inria.fr>
-X-Mailer: git-send-email 1.9.1
+        id S1725884AbgAAKxC (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 1 Jan 2020 05:53:02 -0500
+Received: from mx0a-001b2d01.pphosted.com ([148.163.156.1]:20916 "EHLO
+        mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1725895AbgAAKxA (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Jan 2020 05:53:00 -0500
+Received: from pps.filterd (m0098409.ppops.net [127.0.0.1])
+        by mx0a-001b2d01.pphosted.com (8.16.0.42/8.16.0.42) with SMTP id 001ApYD3118759
+        for <linux-nfs@vger.kernel.org>; Wed, 1 Jan 2020 05:52:59 -0500
+Received: from e06smtp03.uk.ibm.com (e06smtp03.uk.ibm.com [195.75.94.99])
+        by mx0a-001b2d01.pphosted.com with ESMTP id 2x87ms4187-1
+        (version=TLSv1.2 cipher=AES256-GCM-SHA384 bits=256 verify=NOT)
+        for <linux-nfs@vger.kernel.org>; Wed, 01 Jan 2020 05:52:59 -0500
+Received: from localhost
+        by e06smtp03.uk.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+        for <linux-nfs@vger.kernel.org> from <riteshh@linux.ibm.com>;
+        Wed, 1 Jan 2020 10:52:57 -0000
+Received: from b06cxnps4074.portsmouth.uk.ibm.com (9.149.109.196)
+        by e06smtp03.uk.ibm.com (192.168.101.133) with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted;
+        (version=TLSv1/SSLv3 cipher=AES256-GCM-SHA384 bits=256/256)
+        Wed, 1 Jan 2020 10:52:53 -0000
+Received: from d06av21.portsmouth.uk.ibm.com (d06av21.portsmouth.uk.ibm.com [9.149.105.232])
+        by b06cxnps4074.portsmouth.uk.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 001AqqXU48103666
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Wed, 1 Jan 2020 10:52:52 GMT
+Received: from d06av21.portsmouth.uk.ibm.com (unknown [127.0.0.1])
+        by IMSVA (Postfix) with ESMTP id 680755204F;
+        Wed,  1 Jan 2020 10:52:52 +0000 (GMT)
+Received: from dhcp-9-199-159-72.in.ibm.com (unknown [9.199.159.72])
+        by d06av21.portsmouth.uk.ibm.com (Postfix) with ESMTP id 3A8C952054;
+        Wed,  1 Jan 2020 10:52:49 +0000 (GMT)
+From:   Ritesh Harjani <riteshh@linux.ibm.com>
+To:     linux-fsdevel@vger.kernel.org, viro@zeniv.linux.org.uk
+Cc:     willy@infradead.org, jlayton@kernel.org,
+        ceph-devel@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        linux-nfs@vger.kernel.org, devel@lists.orangefs.org,
+        linux-unionfs@vger.kernel.org, dsterba@suse.cz,
+        Ritesh Harjani <riteshh@linux.ibm.com>
+Subject: [RESEND PATCH 0/1] Use inode_lock/unlock class of provided APIs in filesystems
+Date:   Wed,  1 Jan 2020 16:22:47 +0530
+X-Mailer: git-send-email 2.21.0
+MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
+X-TM-AS-GCONF: 00
+x-cbid: 20010110-0012-0000-0000-00000379A8D2
+X-IBM-AV-DETECTION: SAVI=unused REMOTE=unused XFE=unused
+x-cbparentid: 20010110-0013-0000-0000-000021B5B68A
+Message-Id: <20200101105248.25304-1-riteshh@linux.ibm.com>
+X-Proofpoint-Virus-Version: vendor=fsecure engine=2.50.10434:6.0.95,18.0.572
+ definitions=2020-01-01_03:2019-12-30,2020-01-01 signatures=0
+X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 bulkscore=0
+ priorityscore=1501 mlxscore=0 adultscore=0 phishscore=0 malwarescore=0
+ clxscore=1015 suspectscore=0 impostorscore=0 lowpriorityscore=0
+ spamscore=0 mlxlogscore=384 classifier=spam adjust=0 reason=mlx
+ scancount=1 engine=8.12.0-1910280000 definitions=main-2001010101
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Make const static structures that are just copied into other structures.
+Al, any comments?
+Resending this after adding Reviewed-by/Acked-by tags.
 
-The semantic patch that detects the opportunity for this change is as
-follows: (http://coccinelle.lip6.fr/)
 
-<smpl>
-@r disable optional_qualifier@
-identifier i,j;
-position p;
-@@
-static struct i j@p = { ... };
+From previous version:-
+Matthew Wilcox in [1] suggested that it will be a good idea
+to define some missing API instead of directly using i_rwsem in
+filesystems drivers for lock/unlock/downgrade purposes.
 
-@upd@
-position p1;
-identifier r.j;
-expression e;
-@@
-e = j@p1
+This patch does that work. No functionality change in this patch.
 
-@ref@
-position p2 != {r.p,upd.p1};
-identifier r.j;
-@@
-j@p2
+After this there are only lockdep class of APIs at certain places
+in filesystems which are directly using i_rwsem and second is XFS,
+but it seems to be anyway defining it's own xfs_ilock/iunlock set
+of APIs and 'iolock' naming convention for this lock.
 
-@script:ocaml depends on upd && !ref@
-i << r.i;
-j << r.j;
-p << r.p;
-@@
-if j = (List.hd p).current_element
-then Coccilib.print_main i p
-</smpl>
+[1]: https://www.spinics.net/lists/linux-ext4/msg68689.html
 
----
+Ritesh Harjani (1):
+  fs: Use inode_lock/unlock class of provided APIs in filesystems
 
- arch/powerpc/sysdev/mpic.c                          |    4 ++--
- drivers/gpu/drm/bridge/synopsys/dw-hdmi-ahb-audio.c |    2 +-
- drivers/media/i2c/mt9v111.c                         |    2 +-
- drivers/media/platform/davinci/isif.c               |    2 +-
- drivers/media/usb/cx231xx/cx231xx-dvb.c             |    2 +-
- drivers/media/usb/dvb-usb-v2/anysee.c               |    4 ++--
- drivers/pinctrl/nuvoton/pinctrl-npcm7xx.c           |    2 +-
- drivers/pinctrl/qcom/pinctrl-ssbi-gpio.c            |    2 +-
- drivers/pinctrl/qcom/pinctrl-ssbi-mpp.c             |    2 +-
- drivers/ptp/ptp_clockmatrix.c                       |    2 +-
- drivers/usb/gadget/udc/atmel_usba_udc.c             |    2 +-
- drivers/video/fbdev/sa1100fb.c                      |    2 +-
- net/sunrpc/xdr.c                                    |    2 +-
- sound/isa/ad1816a/ad1816a_lib.c                     |    2 +-
- sound/pci/hda/hda_controller.c                      |    2 +-
- sound/soc/qcom/qdsp6/q6asm-dai.c                    |    2 +-
- 16 files changed, 18 insertions(+), 18 deletions(-)
+ fs/btrfs/delayed-inode.c |  2 +-
+ fs/btrfs/ioctl.c         |  4 ++--
+ fs/ceph/io.c             | 24 ++++++++++++------------
+ fs/nfs/io.c              | 24 ++++++++++++------------
+ fs/orangefs/file.c       |  4 ++--
+ fs/overlayfs/readdir.c   |  2 +-
+ fs/readdir.c             |  4 ++--
+ include/linux/fs.h       | 21 +++++++++++++++++++++
+ 8 files changed, 53 insertions(+), 32 deletions(-)
+
+-- 
+2.21.0
+
