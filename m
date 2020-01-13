@@ -2,136 +2,102 @@ Return-Path: <SRS0=A8Dn=3C=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-0.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-8.3 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,UNPARSEABLE_RELAY,
+	USER_AGENT_SANE_1 autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6164DC33CA9
-	for <linux-nfs@archiver.kernel.org>; Mon, 13 Jan 2020 01:34:01 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 0FB35C33CAD
+	for <linux-nfs@archiver.kernel.org>; Mon, 13 Jan 2020 13:23:56 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 3D395222D9
-	for <linux-nfs@archiver.kernel.org>; Mon, 13 Jan 2020 01:34:01 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id D5B202080D
+	for <linux-nfs@archiver.kernel.org>; Mon, 13 Jan 2020 13:23:55 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="alF88qWn"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727222AbgAMBeA (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 12 Jan 2020 20:34:00 -0500
-Received: from mail.cn.fujitsu.com ([183.91.158.132]:25426 "EHLO
-        heian.cn.fujitsu.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1732442AbgAMBeA (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 12 Jan 2020 20:34:00 -0500
-X-IronPort-AV: E=Sophos;i="5.69,427,1571673600"; 
-   d="scan'208";a="81705970"
-Received: from unknown (HELO cn.fujitsu.com) ([10.167.33.5])
-  by heian.cn.fujitsu.com with ESMTP; 13 Jan 2020 09:33:57 +0800
-Received: from G08CNEXMBPEKD05.g08.fujitsu.local (unknown [10.167.33.204])
-        by cn.fujitsu.com (Postfix) with ESMTP id F13B14CE1A00;
-        Mon, 13 Jan 2020 09:24:50 +0800 (CST)
-Received: from G08CNEXMBPEKD05.g08.fujitsu.local (10.167.33.204) by
- G08CNEXMBPEKD05.g08.fujitsu.local (10.167.33.204) with Microsoft SMTP Server
- (TLS) id 15.0.1395.4; Mon, 13 Jan 2020 09:33:57 +0800
-Received: from G08CNEXMBPEKD05.g08.fujitsu.local ([fe80::4049:4fec:8ba2:a0e4])
- by G08CNEXMBPEKD05.g08.fujitsu.local ([fe80::4049:4fec:8ba2:a0e4%14]) with
- mapi id 15.00.1395.000; Mon, 13 Jan 2020 09:33:57 +0800
-From:   "Su, Yanjun" <suyj.fnst@cn.fujitsu.com>
-To:     "ffilzlnx@mindspring.com" <ffilzlnx@mindspring.com>
-CC:     "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "dang@redhat.com" <dang@redhat.com>,
-        "calum.mackay@oracle.com" <calum.mackay@oracle.com>,
-        "bfields@fieldses.org" <bfields@fieldses.org>
-Subject: Re: [Problem]testOpenUpgradeLock test failed in nfsv4.0 in 5.2.0-rc7
-Thread-Topic: Re: [Problem]testOpenUpgradeLock test failed in nfsv4.0 in
- 5.2.0-rc7
-Thread-Index: AdXJsIQXuaZ2SnxFRGWSi1yoPcHO9w==
-Date:   Mon, 13 Jan 2020 01:33:57 +0000
-Message-ID: <6022b73b087d476f94f591292fdab933@G08CNEXMBPEKD05.g08.fujitsu.local>
-Accept-Language: zh-CN, en-US
-Content-Language: zh-CN
-X-MS-Has-Attach: 
-X-MS-TNEF-Correlator: 
-x-ms-exchange-transport-fromentityheader: Hosted
-x-originating-ip: [10.167.226.33]
-Content-Type: text/plain; charset="gb2312"
-Content-Transfer-Encoding: base64
+        id S1726505AbgAMNXz (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 13 Jan 2020 08:23:55 -0500
+Received: from userp2120.oracle.com ([156.151.31.85]:39564 "EHLO
+        userp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726277AbgAMNXz (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jan 2020 08:23:55 -0500
+Received: from pps.filterd (userp2120.oracle.com [127.0.0.1])
+        by userp2120.oracle.com (8.16.0.27/8.16.0.27) with SMTP id 00DDMe1h091442;
+        Mon, 13 Jan 2020 13:23:49 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=date : from : to : cc
+ : subject : message-id : mime-version : content-type; s=corp-2019-08-05;
+ bh=8OZxeanEuptXF8CJ0FdPIwRdmEuBYU+V1UcaAab/WP4=;
+ b=alF88qWnhtZBwRxjsDU+LhxfvFBhR8wdyI+nL8HIQYD7YOU859JkAYSrHQFjj3fsenhd
+ XvPaAPm2M7lQmDJKzhHQtmJcZzU8HvquwNQFO6ASTQea2tmtMERPad/lnnUnovDK0SVW
+ neiRQhgdgYq8tMOQ3YH32A8NztpVVb+TyB4xooUMO/CcaRXMZm/G9hQjxPzAQ5q8K389
+ 4RRFtevsA63LWAKWJDgaRdYI02HNCkTkroVM9aVRul7jC9LEGlzeVDtqAbFzuZUJA1cZ
+ H/85nOqumdRDi9bX1Jhj9Bjh8aN0decsUWpzmsS9aUw1Svn+k8sXnnlgfaR0HT89oRdE AQ== 
+Received: from userp3030.oracle.com (userp3030.oracle.com [156.151.31.80])
+        by userp2120.oracle.com with ESMTP id 2xf73y6vnb-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Mon, 13 Jan 2020 13:23:49 +0000
+Received: from pps.filterd (userp3030.oracle.com [127.0.0.1])
+        by userp3030.oracle.com (8.16.0.27/8.16.0.27) with SMTP id 00DDNnvl154646;
+        Mon, 13 Jan 2020 13:23:49 GMT
+Received: from aserv0122.oracle.com (aserv0122.oracle.com [141.146.126.236])
+        by userp3030.oracle.com with ESMTP id 2xfqu4hufy-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Mon, 13 Jan 2020 13:23:49 +0000
+Received: from abhmp0009.oracle.com (abhmp0009.oracle.com [141.146.116.15])
+        by aserv0122.oracle.com (8.14.4/8.14.4) with ESMTP id 00DDNEGb024717;
+        Mon, 13 Jan 2020 13:23:14 GMT
+Received: from kili.mountain (/129.205.23.165)
+        by default (Oracle Beehive Gateway v4.0)
+        with ESMTP ; Mon, 13 Jan 2020 05:23:14 -0800
+Date:   Mon, 13 Jan 2020 16:23:07 +0300
+From:   Dan Carpenter <dan.carpenter@oracle.com>
+To:     "J. Bruce Fields" <bfields@fieldses.org>,
+        Olga Kornievskaia <kolga@netapp.com>
+Cc:     Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org,
+        kernel-janitors@vger.kernel.org
+Subject: [PATCH] nfsd4: fix double free in nfsd4_do_async_copy()
+Message-ID: <20200113132307.frp6ur5zhzolu5ys@kili.mountain>
 MIME-Version: 1.0
-X-yoursite-MailScanner-ID: F13B14CE1A00.AD447
-X-yoursite-MailScanner: Found to be clean
-X-yoursite-MailScanner-From: suyj.fnst@cn.fujitsu.com
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+X-Mailer: git-send-email haha only kidding
+User-Agent: NeoMutt/20170113 (1.7.2)
+X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9498 signatures=668685
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 suspectscore=0 malwarescore=0
+ phishscore=0 bulkscore=0 spamscore=0 mlxscore=0 mlxlogscore=999
+ adultscore=0 classifier=spam adjust=0 reason=mlx scancount=1
+ engine=8.0.1-1911140001 definitions=main-2001130112
+X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9498 signatures=668685
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 priorityscore=1501 malwarescore=0
+ suspectscore=0 phishscore=0 bulkscore=0 spamscore=0 clxscore=1015
+ lowpriorityscore=0 mlxscore=0 impostorscore=0 mlxlogscore=999 adultscore=0
+ classifier=spam adjust=0 reason=mlx scancount=1 engine=8.0.1-1911140001
+ definitions=main-2001130112
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-QW55IHBpbmc/DQoNCtTaIDIwMTkvOC82IDE2OjIzLCBTdSBZYW5qdW4g0LS1
-wDoNCj4gSGksIEZyYW5rDQo+DQo+IFdlIG1vZGlmaWVkIHRoZSBjYXNlIGFj
-Y29yZGluZyB0byBDYWx1bSBNYWNrYXkncyBzdWdnZXN0aW9uIChzZXQgdGhl
-IHBhcmFtZXRlciBsa19pc19uZXcgaW4gdGhlIHNlY29uZCBsb2NrIHRvIEZB
-TFNFKQ0KPg0KPiBhbmQgdGhlIHRlc3QgcmVzdWx0IHBhc3NlZC4NCj4NCj4g
-QnV0IHdlIGRvbid0IGtub3cgaWYgdGhpcyBtb2RpZmljYXRpb24gdmlvbGF0
-ZXMgdGhlIHRlc3QgaW50ZW50Lg0KPg0KPiBDYW4geW91IHRlbGwgdXMgeW91
-ciB0ZXN0IGludGVudD8NCj4NCj4gQmVjYXVzZSBvdXIgZW1haWwgc3lzdGVt
-IGhhcyBzb21lIHByb2JsZW0gIHNvIGkgY29weSBDYWx1bSBNYWNrYXkncyBy
-ZXBseSBoZXJlLg0KPg0KPiBGcm9tOiBDYWx1bSBNYWNrYXkgQCAyMDE5LTA3
-LTI5IDEzOjEyIFVUQyAocGVybWFsaW5rIC8gcmF3KQ0KPiAgIFRvOiBTdSBZ
-YW5qdW4sIEouIEJydWNlIEZpZWxkczsgK0NjOiBjYWx1bS5tYWNrYXksIGxp
-bnV4LW5mcywgZGFuZywgZmZpbHpsbngNCj4NCj4gaGksIEkgZG9uJ3QgdGhp
-bmsgeW91IHdvdWxkIGV4cGVjdCBhbiB1bmxvY2sgdG8gZGVsZXRlIHRoZSBs
-b2NrIG93bmVyOg0KPiB0aGUgY2xpZW50IG1heSB3YW50IHRvIGRvIGZ1cnRo
-ZXIgbG9ja2luZyB3aXRoIHRoaXMgbG9jayBvd25lciAod2l0aG91dA0KPiB0
-aGUgbGtfaXNfbmV3IGJpdCBzZXQpLg0KPg0KPiBUaGUgc2VydmVyIHdvdWxk
-IGRlbGV0ZSB0aGUgTE8gd2hlbiB0aGUgY2xpZW50IHNlbmRzIGENCj4gUkVM
-RUFTRV9MT0NLT1dORVIsIG9yIHdoZW4gdGhlIGxlYXNlIGlzIGV4cGlyZWQs
-IGlmIGl0IGRvZXNuJ3QuDQo+DQo+IGNoZWVycywNCj4gY2FsdW0uDQo+DQo+
-INTaIDIwMTkvNy85IDEzOjI3LCBTdSBZYW5qdW4g0LS1wDoNCj4+IEhpIEJy
-dWNlDQo+Pg0KPj4g1NogMjAxOS83LzggMjI6NDUsIEZyYW5rIEZpbHog0LS1
-wDoNCj4+PiBZZWEsIHNvcnJ5LCBJIHRvdGFsbHkgbWlzc2VkIHRoaXMsIGJ1
-dCBpdCBkb2VzIGxvb2sgbGlrZSBpdCdzIGEgS2VybmVsIG5mc2QgDQo+PiBB
-bnkgc3VnZ2VzdGlvbnM/DQo+Pj4gaXNzdWUuDQo+Pj4NCj4+PiBGcmFuaw0K
-Pj4+DQo+Pj4+IC0tLS0tT3JpZ2luYWwgTWVzc2FnZS0tLS0tDQo+Pj4+IEZy
-b206IERhbmllbCBHcnluaWV3aWN6IFttYWlsdG86ZGFuZ0ByZWRoYXQuY29t
-XQ0KPj4+PiBTZW50OiBNb25kYXksIEp1bHkgOCwgMjAxOSA2OjQ5IEFNDQo+
-Pj4+IFRvOiBTdSBZYW5qdW4gPHN1eWouZm5zdEBjbi5mdWppdHN1LmNvbT47
-IGZmaWx6bG54QG1pbmRzcHJpbmcuY29tDQo+Pj4+IENjOiBsaW51eC1uZnNA
-dmdlci5rZXJuZWwub3JnDQo+Pj4+IFN1YmplY3Q6IFJlOiBbUHJvYmxlbV10
-ZXN0T3BlblVwZ3JhZGVMb2NrIHRlc3QgZmFpbGVkIGluIG5mc3Y0LjAgaW4N
-Cj4+Pj4gNS4yLjAtcmM3DQo+Pj4+DQo+Pj4+IElzIHRoaXMgcnVubmluZyBr
-bmZzZCBvciBHYW5lc2hhIGFzIHRoZSBzZXJ2ZXI/ICBJZiBpdCdzIEdhbmVz
-aGEsIHRoZQ0KPj4+PiBxdWVzdGlvbg0KPj4+PiB3b3VsZCBiZSBiZXR0ZXIg
-YXNrZWQgb24gdGhlIEdhbmVzaGEgRGV2ZWwgbGlzdA0KPj4+PiBkZXZlbEBs
-aXN0cy5uZnMtZ2FuZXNoYS5vcmcNCj4+Pj4NCj4+Pj4gSWYgaXQncyBrbmZz
-ZCwgdGhhbiBGcmFuayBpc24ndCB0aGUgcmlnaHQgcGVyc29uIHRvIGFzay4g
-DQo+PiBXZSBhcmUgdXNpbmcgdGhlIGtuZnNkLg0KPj4+Pg0KPj4+PiBEYW5p
-ZWwNCj4+Pj4NCj4+Pj4gT24gNy83LzE5IDEwOjIwIFBNLCBTdSBZYW5qdW4g
-d3JvdGU6DQo+Pj4+PiBBbmcgcGluZz8NCj4+Pj4+DQo+Pj4+PiDU2iAyMDE5
-LzcvMyA5OjM0LCBTdSBZYW5qdW4g0LS1wDoNCj4+Pj4+PiBIaSBGcmFuaw0K
-Pj4+Pj4+DQo+Pj4+Pj4gV2UgdGVzdGVkIHRoZSBweW5mcyBvZiBORlN2NC4w
-IG9uIHRoZSBsYXRlc3QgdmVyc2lvbiBvZiB0aGUga2VybmVsDQo+Pj4+Pj4g
-KDUuMi4wLXJjNykuDQo+Pj4+Pj4gSSBlbmNvdW50ZXJlZCBhIHByb2JsZW0g
-d2hpbGUgdGVzdGluZyBzdF9sb2NrLnRlc3RPcGVuVXBncmFkZUxvY2suDQo+
-Pj4+Pj4gVGhlIHByb2JsZW0gaXMgbm93IGFzIGZvbGxvd3M6DQo+Pj4+Pj4g
-KioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioq
-KioqKioNCj4+Pj4+PiBMT0NLMjQgc3RfbG9jay50ZXN0T3BlblVwZ3JhZGVM
-b2NrIDogRkFJTFVSRQ0KPj4+Pj4+ICAgICAgICAgICAgIE9QX0xPQ0sgc2hv
-dWxkIHJldHVybiBORlM0X09LLCBpbnN0ZWFkIGdvdA0KPj4+Pj4+ICAgICAg
-ICAgICAgIE5GUzRFUlJfQkFEX1NFUUlEDQo+Pj4+Pj4gKioqKioqKioqKioq
-KioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioNCj4+Pj4+
-PiBJcyB0aGlzIG5vcm1hbD8NCj4+Pj4+Pg0KPj4+Pj4+IFRoZSBjYXNlIGlz
-IGFzIGZvbGxvd3M6DQo+Pj4+Pj4gRGVmIHRlc3RPcGVuVXBncmFkZUxvY2so
-dCwgZW52KToNCj4+Pj4+PiAgICAgICIiIlRyeSBvcGVuLCBsb2NrLCBvcGVu
-LCBkb3duZ3JhZGUsIGNsb3NlDQo+Pj4+Pj4NCj4+Pj4+PiAgICAgIEZMQUdT
-OiBhbGwgbG9jaw0KPj4+Pj4+ICAgICAgQ09ERTogTE9DSzI0DQo+Pj4+Pj4g
-ICAgICAiIiINCj4+Pj4+PiAgICAgIGM9IGVudi5jMQ0KPj4+Pj4+ICAgICAg
-Qy5pbml0X2Nvbm5lY3Rpb24oKQ0KPj4+Pj4+ICAgICAgT3MgPSBvcGVuX3Nl
-cXVlbmNlKGMsIHQuY29kZSwgbG9ja293bmVyPSJsb2Nrb3duZXJfTE9DSzI0
-IikNCj4+Pj4+PiAgICAgIE9zLm9wZW4oT1BFTjRfU0hBUkVfQUNDRVNTX1JF
-QUQpDQo+Pj4+Pj4gICAgICBPcy5sb2NrKFJFQURfTFQpDQo+Pj4+Pj4gICAg
-ICBPcy5vcGVuKE9QRU40X1NIQVJFX0FDQ0VTU19XUklURSkNCj4+Pj4+PiAg
-ICAgIE9zLnVubG9jaygpDQo+Pj4+Pj4gICAgICBPcy5kb3duZ3JhZGUoT1BF
-TjRfU0hBUkVfQUNDRVNTX1dSSVRFKQ0KPj4+Pj4+ICAgICAgT3MubG9jayhX
-UklURV9MVCkNCj4+Pj4+PiAgICAgIE9zLmNsb3NlKCkNCj4+Pj4+Pg0KPj4+
-Pj4+IEFmdGVyIGludmVzdGlnYXRpb24sIHRoZXJlIHdhcyBhbiBlcnJvciBp
-biB1bmxvY2stPmxvY2suIFdoZW4NCj4+Pj4+PiB1bmxvY2tpbmcsIHRoZSBs
-b2Nrb3duZXIgb2YgdGhlIGZpbGUgd2FzIG5vdCByZWxlYXNlZCwgY2F1c2lu
-ZyBhbg0KPj4+Pj4+IGVycm9yIHdoZW4gbG9ja2luZyBhZ2Fpbi4NCj4+Pj4+
-PiBXaWxsIG5mczQuMCBzdXBwb3J0IDEpIG9wZW4tPiAyKSBsb2NrLT4gMykg
-dW5sb2NrLT4gNCkgbG9jayB0aGlzDQo+Pj4+Pj4gZnVuY3Rpb24/DQo+Pj4+
-Pj4NCj4+Pj4+Pg0KPj4+Pj4+DQo+Pj4+Pg0KPj4+DQo+Pj4NCj4+DQo+Pg0K
-Pg0KPg0KCgo=
+This frees "copy->nf_src" before and again after the goto.
+
+Fixes: ce0887ac96d3 ("NFSD add nfs4 inter ssc to nfsd4_copy")
+Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
+---
+ fs/nfsd/nfs4proc.c | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 1e14b3ed5674..c90c24c35b2e 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -1469,7 +1469,6 @@ static int nfsd4_do_async_copy(void *data)
+ 		copy->nf_src->nf_file = nfs42_ssc_open(copy->ss_mnt, &copy->c_fh,
+ 					      &copy->stateid);
+ 		if (IS_ERR(copy->nf_src->nf_file)) {
+-			kfree(copy->nf_src);
+ 			copy->nfserr = nfserr_offload_denied;
+ 			nfsd4_interssc_disconnect(copy->ss_mnt);
+ 			goto do_callback;
+-- 
+2.11.0
+
