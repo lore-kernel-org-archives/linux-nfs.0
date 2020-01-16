@@ -2,97 +2,96 @@ Return-Path: <SRS0=2HRz=3F=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
-	autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4910EC33CB1
-	for <linux-nfs@archiver.kernel.org>; Thu, 16 Jan 2020 11:34:05 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 61F27C33CB1
+	for <linux-nfs@archiver.kernel.org>; Thu, 16 Jan 2020 11:44:28 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 0A67A20748
-	for <linux-nfs@archiver.kernel.org>; Thu, 16 Jan 2020 11:34:05 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 393DA20748
+	for <linux-nfs@archiver.kernel.org>; Thu, 16 Jan 2020 11:44:28 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1579174445;
-	bh=YN8j+7TwUOddatueYP+sV+PGeo3r1YYN2GmB54ztjPY=;
-	h=From:Date:Subject:To:Cc:List-ID:From;
-	b=W+VJ9d0TYApV+Sw5rwPdyzcQBJYgQF07uvw9og6K3MfYOTG9RYUWJxJ90khrZXcX+
-	 ckE9amvQKZ/CFu7GIDWyYi9kTUkJMp4IwH0Oi8JEFiYkn36SYP/EhbUWDtGTnDNEi3
-	 j+L7iX8UUeelLCW65oemiE3cj9lXTnyCdGgXEWto=
+	s=default; t=1579175068;
+	bh=33EBja95wRnaNleuYy5XxD+LZM5YdUGD5P0ToeNX6gQ=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
+	b=n53dCnoV7Z6mt+W7opjm8qNL8RFmWAoVZs9SW75rSZtoaiD81+ZFRDzHqzbTfbBR+
+	 586KlkgGS0kBJPMJWaSEhm1sCojzIKxjp/dlupIqEp8pNDRC+CAA8fI2chmXVu51sb
+	 NueVqULoB8cLSdLgE/oGja8kdfjAvP+ZF+fln7xQ=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726189AbgAPLeE (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 16 Jan 2020 06:34:04 -0500
-Received: from mail.kernel.org ([198.145.29.99]:60050 "EHLO mail.kernel.org"
+        id S1726872AbgAPLoY (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 16 Jan 2020 06:44:24 -0500
+Received: from mail.kernel.org ([198.145.29.99]:38182 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725999AbgAPLeD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 16 Jan 2020 06:34:03 -0500
-Received: from mail-lf1-f52.google.com (mail-lf1-f52.google.com [209.85.167.52])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+        id S1725999AbgAPLoY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 16 Jan 2020 06:44:24 -0500
+Received: from PC-kkoz.proceq.com (unknown [213.160.61.66])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES128-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 9DAAF207E0;
-        Thu, 16 Jan 2020 11:34:02 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id A9B8D207E0;
+        Thu, 16 Jan 2020 11:44:21 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1579174443;
-        bh=YN8j+7TwUOddatueYP+sV+PGeo3r1YYN2GmB54ztjPY=;
-        h=From:Date:Subject:To:Cc:From;
-        b=lwY7747UA0/Ad4hTnw3SuGpIbJLCbA9KszNs9fiwKdqyA8sf4ZzW4ey+ZCN8L4OwB
-         CiynAfoRzY8dRVxv86yNAEu37zYMydSQVQRJFex1tw24c+0+hbPqSRvwZwpyO6k/sP
-         DXhHRJTxjpbom+9Fo99N0g4h4i8TfA4cyGiCTRbs=
-Received: by mail-lf1-f52.google.com with SMTP id 9so15319076lfq.10;
-        Thu, 16 Jan 2020 03:34:02 -0800 (PST)
-X-Gm-Message-State: APjAAAVv71VuHjIYvykVbzn5rYJxyB4OhvzNmORfxVdukcBdjROUYksK
-        Z+of5szNtiFnp+nWByuW+ZfEccpJ33r7XXI4oaU=
-X-Google-Smtp-Source: APXvYqz815lAbzRqNAw2pY9/fYiNRD+W0UE/cSdNWD7dLJrFmYug7V2XJAKoNgovEbrpV53MUMWcopTLiK8WGABLR3k=
-X-Received: by 2002:a19:ca0f:: with SMTP id a15mr2219060lfg.198.1579174440744;
- Thu, 16 Jan 2020 03:34:00 -0800 (PST)
-MIME-Version: 1.0
+        s=default; t=1579175063;
+        bh=33EBja95wRnaNleuYy5XxD+LZM5YdUGD5P0ToeNX6gQ=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=pXUPk2wBwNnoNQQ3GzQoZbPwEN8jZRUYYisL5GC74/OverB94Q+4zrzbrdfMcYvMe
+         1VXNTotPuLj1/R+gX5W1eT6QpYUvrGQvDKs7ulbVvOg7iCT+Lmos/+vUBTbY8+fven
+         EesDo2HbE5YXmPBJM0kdlntHnZX3CTgpM/Jdc1Ho=
 From:   Krzysztof Kozlowski <krzk@kernel.org>
-Date:   Thu, 16 Jan 2020 12:33:49 +0100
-X-Gmail-Original-Message-ID: <CAJKOXPeCVwZfBsCVbc9RQUGi0UfWQw0uFamPiQasiO8fSthFsQ@mail.gmail.com>
-Message-ID: <CAJKOXPeCVwZfBsCVbc9RQUGi0UfWQw0uFamPiQasiO8fSthFsQ@mail.gmail.com>
-Subject: [BISECT BUG] NFS v4 root not working after 6d972518b821 ("NFS: Add
- fs_context support.")
-To:     Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        linux-nfs@vger.kernel.org,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        David Howells <dhowells@redhat.com>,
-        Al Viro <viro@zeniv.linux.org.uk>,
-        Scott Mayhew <smayhew@redhat.com>
-Cc:     Arnd Bergmann <arnd@arndb.de>
-Content-Type: text/plain; charset="UTF-8"
+To:     Kukjin Kim <kgene@kernel.org>,
+        Krzysztof Kozlowski <krzk@kernel.org>,
+        Marek Szyprowski <m.szyprowski@samsung.com>,
+        Olof Johansson <olof@lixom.net>, Arnd Bergmann <arnd@arndb.de>,
+        Simon Horman <horms+renesas@verge.net.au>,
+        Geert Uytterhoeven <geert+renesas@glider.be>,
+        linux-arm-kernel@lists.infradead.org,
+        linux-samsung-soc@vger.kernel.org, linux-kernel@vger.kernel.org
+Cc:     linux-nfs@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@hammerspace.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>
+Subject: [PATCH 2/2] ARM: multi_v7_defconfig: Enable NFS v4.1 and v4.2
+Date:   Thu, 16 Jan 2020 12:44:07 +0100
+Message-Id: <1579175047-11351-2-git-send-email-krzk@kernel.org>
+X-Mailer: git-send-email 2.7.4
+In-Reply-To: <1579175047-11351-1-git-send-email-krzk@kernel.org>
+References: <1579175047-11351-1-git-send-email-krzk@kernel.org>
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hi all,
+NFS is widely used in debugging and Continuous Integration systems, so
+enable the newest versions of protocol: v4.1 and v4.2.
 
-Bisect pointed to 6d972518b821 ("NFS: Add fs_context support.") for
-failures of mounting NFS v4 root on my boards:
-mount.nfs4 -o vers=4,nolock 192.168.1.10:/srv/nfs/odroidhc1 /new_root
-[ 24.980839] NFS4: Couldn't follow remote path
-[ 24.986201] NFS: Value for 'minorversion' out of range
-mount.nfs4: Numerical result out of range
+Signed-off-by: Krzysztof Kozlowski <krzk@kernel.org>
 
-https://krzk.eu/#/builders/21/builds/1692
-Full console log:
-https://krzk.eu/#/builders/21/builds/1692/steps/14/logs/serial0
+---
 
-Enabling NFS v4.1 in defconfig seems to help. I can send patches for
-this (for defconfigs) but probably the root cause should be fixed as
-well.
+This happens to fix also troubles with mounting NFS v4 root after but in
+commit 6d972518b821 ("NFS: Add fs_context support."):
 
-Environment:
-1. Arch ARM Linux
-2. exynos_defconfig
-3. Exynos boards (Odroid XU3, etc), ARMv7, octa-core (Cortex-A7+A15),
-Exynos5422 SoC
-4. systemd, boot up with static IP set in kernel command line
-5. No swap
-6. Kernel, DTB and initramfs are downloaded with TFTP
-7. NFS root from NFSv4 server
+  mount.nfs4 -o vers=4,nolock 192.168.1.10:/srv/nfs/odroidhc1 /new_root
+  [ 24.980839] NFS4: Couldn't follow remote path
+  [ 24.986201] NFS: Value for 'minorversion' out of range
+  mount.nfs4: Numerical result out of range
+---
+ arch/arm/configs/multi_v7_defconfig | 2 ++
+ 1 file changed, 2 insertions(+)
 
-Let me know if you need more details.
+diff --git a/arch/arm/configs/multi_v7_defconfig b/arch/arm/configs/multi_v7_defconfig
+index 80373fe0280d..493ba3d3cf1e 100644
+--- a/arch/arm/configs/multi_v7_defconfig
++++ b/arch/arm/configs/multi_v7_defconfig
+@@ -1094,6 +1094,8 @@ CONFIG_PSTORE_RAM=y
+ CONFIG_NFS_FS=y
+ CONFIG_NFS_V3_ACL=y
+ CONFIG_NFS_V4=y
++CONFIG_NFS_V4_1=y
++CONFIG_NFS_V4_2=y
+ CONFIG_ROOT_NFS=y
+ CONFIG_NLS_CODEPAGE_437=y
+ CONFIG_NLS_ISO8859_1=y
+-- 
+2.7.4
 
-Best regards,
-Krzysztof
