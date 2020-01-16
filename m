@@ -2,121 +2,93 @@ Return-Path: <SRS0=2HRz=3F=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
+X-Spam-Status: No, score=-5.4 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
+	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1 autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B7F68C33CB7
-	for <linux-nfs@archiver.kernel.org>; Thu, 16 Jan 2020 19:23:26 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 92F52C33CAF
+	for <linux-nfs@archiver.kernel.org>; Thu, 16 Jan 2020 20:07:07 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 8E72D2073A
-	for <linux-nfs@archiver.kernel.org>; Thu, 16 Jan 2020 19:23:26 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1579202606;
-	bh=s7LTG2wB0wzmYFRwfx/x9FXxgBvnEO74YT1d8UFo9bA=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=OmsqSfq6oK8/Aw89qYGvls1RuKnWQxcxFGNXEvdl3mplA5Jv9fKo+dvhewLgShipx
-	 8iFpnCydl1gPqw/pJuU0kILVX4sB7YAGNbY4DqsL11gxxUc/zi5WckizLRhEv+9lw9
-	 3P++PQvGG5XehrWwBvHkD7cKkjSAN0l3COWtBVUI=
+	by mail.kernel.org (Postfix) with ESMTP id 5C9572064C
+	for <linux-nfs@archiver.kernel.org>; Thu, 16 Jan 2020 20:07:07 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="Jyaj/pN8"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1730705AbgAPQxO (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 16 Jan 2020 11:53:14 -0500
-Received: from mail.kernel.org ([198.145.29.99]:36890 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1729830AbgAPQxO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 16 Jan 2020 11:53:14 -0500
-Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+        id S1733232AbgAPUHG (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 16 Jan 2020 15:07:06 -0500
+Received: from us-smtp-1.mimecast.com ([205.139.110.61]:32392 "EHLO
+        us-smtp-delivery-1.mimecast.com" rhost-flags-OK-OK-OK-FAIL)
+        by vger.kernel.org with ESMTP id S1729075AbgAPUHG (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Jan 2020 15:07:06 -0500
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1579205225;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=870o2IH+Ue8GAMWvbSe6HFk8kAi6bYBenboeyuRM/ng=;
+        b=Jyaj/pN8vgc4y9iWNly/YgnbZ6ZEYC4ifLd0AJvQnb4OieoHUzXIIzne5eGniUkqbQj63X
+        QuMX+4tW09RbeCqA8w51BNsgjiWiBf1S2ZGZI0JEj+GQYzt74p+fvl4axitwAVRMyIA+Cx
+        iI9TjJWGys0NQdLUP915wvRws2FM4EQ=
+Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
+ [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
+ us-mta-102-qTqNWcsQNiC_omWNyqYW9Q-1; Thu, 16 Jan 2020 15:07:02 -0500
+X-MC-Unique: qTqNWcsQNiC_omWNyqYW9Q-1
+Received: from smtp.corp.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id E855021D56;
-        Thu, 16 Jan 2020 16:53:12 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1579193593;
-        bh=s7LTG2wB0wzmYFRwfx/x9FXxgBvnEO74YT1d8UFo9bA=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=j6IF1mqxZ4hfQw7AgoNlDBAGHlnz2MQAKyX9oKfso/HGATIGJsQoOpjb6cFwdRHYy
-         tLrrHCjRQyAWX08oCyogjewU1AVBafF0U2zyxC3FFO6mA0Tn5OAQDAic6KDBR5tHnd
-         w5+RVEDWHJG1JbxiyczL22zOlpG82dqZVzMcQuE0=
-From:   Sasha Levin <sashal@kernel.org>
-To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     Scott Mayhew <smayhew@redhat.com>,
-        Jamie Heilman <jamie@audible.transient.net>,
-        "J . Bruce Fields" <bfields@redhat.com>,
-        Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.4 133/205] nfsd: Fix cld_net->cn_tfm initialization
-Date:   Thu, 16 Jan 2020 11:41:48 -0500
-Message-Id: <20200116164300.6705-133-sashal@kernel.org>
-X-Mailer: git-send-email 2.20.1
-In-Reply-To: <20200116164300.6705-1-sashal@kernel.org>
-References: <20200116164300.6705-1-sashal@kernel.org>
+        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id 490E41015FA2;
+        Thu, 16 Jan 2020 20:07:01 +0000 (UTC)
+Received: from madhat.boston.devel.redhat.com (ovpn-117-35.phx2.redhat.com [10.3.117.35])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id CB4B460C87;
+        Thu, 16 Jan 2020 20:07:00 +0000 (UTC)
+Subject: Re: [nfs-utils PATCH 5/7] rpcgen: rpc_cout: fix potential
+ -Wformat-nonliteral warning
+To:     Giulio Benetti <giulio.benetti@benettiengineering.com>,
+        linux-nfs@vger.kernel.org
+References: <20200103215039.27471-1-giulio.benetti@benettiengineering.com>
+ <20200103215039.27471-6-giulio.benetti@benettiengineering.com>
+ <dd75fa26-a07a-49fb-ed22-1e60da31c8da@benettiengineering.com>
+From:   Steve Dickson <SteveD@RedHat.com>
+Message-ID: <a9f351c6-22e5-35ef-7119-d261ef8d0159@RedHat.com>
+Date:   Thu, 16 Jan 2020 15:07:00 -0500
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:68.0) Gecko/20100101
+ Thunderbird/68.2.2
 MIME-Version: 1.0
-X-stable: review
-X-Patchwork-Hint: Ignore
-Content-Transfer-Encoding: 8bit
+In-Reply-To: <dd75fa26-a07a-49fb-ed22-1e60da31c8da@benettiengineering.com>
+Content-Type: text/plain; charset=utf-8
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.12
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Scott Mayhew <smayhew@redhat.com>
 
-[ Upstream commit 18b9a895e652979b70f9c20565394a69354dfebc ]
 
-Don't assign an error pointer to cld_net->cn_tfm, otherwise an oops will
-occur in nfsd4_remove_cld_pipe().
+On 1/15/20 11:29 AM, Giulio Benetti wrote:
+> Hi Steve,
+> 
+> you've missed this patch while applying the series. Can you please commit it?
+It is in...
 
-Also, move the initialization of cld_net->cn_tfm so that it occurs after
-the check to see if nfsdcld is running.  This is necessary because
-nfsd4_client_tracking_init() looks for -ETIMEDOUT to determine whether
-to use the "old" nfsdcld tracking ops.
+commit 6f4568f1f7395f967cc03995dcfb79a1ac5c11cd
+Author: Giulio Benetti <giulio.benetti@benettiengineering.com>
+Date:   Mon Jan 6 14:23:04 2020 -0500
 
-Fixes: 6ee95d1c8991 ("nfsd: add support for upcall version 2")
-Reported-by: Jamie Heilman <jamie@audible.transient.net>
-Signed-off-by: Scott Mayhew <smayhew@redhat.com>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-Signed-off-by: Sasha Levin <sashal@kernel.org>
----
- fs/nfsd/nfs4recover.c | 12 +++++++-----
- 1 file changed, 7 insertions(+), 5 deletions(-)
+    rpcgen: rpc_hout: fix potential -Wformat-security warning
+    
+    f_print()'s argument "separator" is not known because it's passed as an
+    argument and with -Wformat-security will cause a useless warning. Let's
+    ignore by adding "#pragma GCC diagnostic ignored/warning" before and
+    after f_print().
+    
+    Signed-off-by: Giulio Benetti <giulio.benetti@benettiengineering.com>
+    Signed-off-by: Steve Dickson <steved@redhat.com>
 
-diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
-index cdc75ad4438b..c35c0ebaf722 100644
---- a/fs/nfsd/nfs4recover.c
-+++ b/fs/nfsd/nfs4recover.c
-@@ -1578,6 +1578,7 @@ nfsd4_cld_tracking_init(struct net *net)
- 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
- 	bool running;
- 	int retries = 10;
-+	struct crypto_shash *tfm;
- 
- 	status = nfs4_cld_state_init(net);
- 	if (status)
-@@ -1586,11 +1587,6 @@ nfsd4_cld_tracking_init(struct net *net)
- 	status = __nfsd4_init_cld_pipe(net);
- 	if (status)
- 		goto err_shutdown;
--	nn->cld_net->cn_tfm = crypto_alloc_shash("sha256", 0, 0);
--	if (IS_ERR(nn->cld_net->cn_tfm)) {
--		status = PTR_ERR(nn->cld_net->cn_tfm);
--		goto err_remove;
--	}
- 
- 	/*
- 	 * rpc pipe upcalls take 30 seconds to time out, so we don't want to
-@@ -1607,6 +1603,12 @@ nfsd4_cld_tracking_init(struct net *net)
- 		status = -ETIMEDOUT;
- 		goto err_remove;
- 	}
-+	tfm = crypto_alloc_shash("sha256", 0, 0);
-+	if (IS_ERR(tfm)) {
-+		status = PTR_ERR(tfm);
-+		goto err_remove;
-+	}
-+	nn->cld_net->cn_tfm = tfm;
- 
- 	status = nfsd4_cld_get_version(nn);
- 	if (status == -EOPNOTSUPP)
--- 
-2.20.1
+what am I missing?
+
+steved.
 
