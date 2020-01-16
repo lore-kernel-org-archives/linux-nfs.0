@@ -4,50 +4,49 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
-	autolearn_force=no version=3.4.0
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id BFF6BC33CB6
-	for <linux-nfs@archiver.kernel.org>; Thu, 16 Jan 2020 16:50:32 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E24F3C33CB1
+	for <linux-nfs@archiver.kernel.org>; Thu, 16 Jan 2020 16:53:17 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 97A772073A
-	for <linux-nfs@archiver.kernel.org>; Thu, 16 Jan 2020 16:50:32 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id B253221582
+	for <linux-nfs@archiver.kernel.org>; Thu, 16 Jan 2020 16:53:17 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1579193432;
-	bh=UvBSdpWu94Cr/vu/swFwEY05gb5S7dZpvtQ4ZH8wg9Q=;
+	s=default; t=1579193597;
+	bh=ZSxEVRSmMAAdMVZzDNhQUmTVVIl+v3iiq49YEo1QT9o=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=YGeAUnCOavg+zO8Ds4QA647Le9OAccr0G5X7uJJ3/Tqe10Wsr0OJCtL6P9wnwPbN/
-	 2dXWuFlPkzAlWvpSBENvDUZke1JRbG5TNgznbjar1Cz2HMRehJDDr2e6v8TFwzeMmW
-	 VjtBB8cucOf2YJ/fWJW5GGVXpQ9Xp7d1XZpiZtx8=
+	b=iXzEjv8IFhTRCLvJLgzCOibtovTNt8FU0p9xJPq8lUgi/YHV3KXIk3HxElNWhkI++
+	 FZOmqxycst/uPgbceweFZaqvOC3X3UdugTA9sFKPSnm6VvOYbUSt9lrNjtye6kwscU
+	 xCMdpY7BupUMqlghrbXP3eGB4/pxM5Z4nbIUCpL4=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729668AbgAPQrn (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 16 Jan 2020 11:47:43 -0500
-Received: from mail.kernel.org ([198.145.29.99]:57588 "EHLO mail.kernel.org"
+        id S1730697AbgAPQxQ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 16 Jan 2020 11:53:16 -0500
+Received: from mail.kernel.org ([198.145.29.99]:36910 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1729613AbgAPQrl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 16 Jan 2020 11:47:41 -0500
+        id S1730710AbgAPQxP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 16 Jan 2020 11:53:15 -0500
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id DC83821582;
-        Thu, 16 Jan 2020 16:47:38 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 1316F22464;
+        Thu, 16 Jan 2020 16:53:13 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1579193261;
-        bh=UvBSdpWu94Cr/vu/swFwEY05gb5S7dZpvtQ4ZH8wg9Q=;
+        s=default; t=1579193594;
+        bh=ZSxEVRSmMAAdMVZzDNhQUmTVVIl+v3iiq49YEo1QT9o=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=gp3hh562FFufViCb7wQkEBNZAnn6v/3KTBRiBUX95XSgFlpQVNY+5hsDUc18mUdIH
-         gHtvhmjw43U4v6uKRieq0RqujkcW2LzYvkGqZQvjaNwda0z+W8HHmfe2DPdsNAefSK
-         MCi2ZtsF42iV/AoD6dyqzKNIbujVw4V8neZ1HbFs=
+        b=kc7sez+dYG8soqToEjxoUc8ZCi4Sc6ycX8ij+bnlP3ikWKa10EgfhyycQMUaOFh0o
+         6Yeot9UcdOjM3mV4gOZU0yPgFEiBQmhGNsaBjGIpmhajSEYirhrbDahE3JRGjGRLNu
+         v119QNdxWXGoeqD7rB+xyEDXvtktXSZdsDyzsZw4=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     Chuck Lever <chuck.lever@oracle.com>,
-        Anna Schumaker <Anna.Schumaker@Netapp.com>,
-        Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org,
-        netdev@vger.kernel.org, linux-media@vger.kernel.org,
-        dri-devel@lists.freedesktop.org, linaro-mm-sig@lists.linaro.org
-Subject: [PATCH AUTOSEL 5.4 058/205] xprtrdma: Connection becomes unstable after a reconnect
-Date:   Thu, 16 Jan 2020 11:40:33 -0500
-Message-Id: <20200116164300.6705-58-sashal@kernel.org>
+Cc:     Scott Mayhew <smayhew@redhat.com>,
+        Jamie Heilman <jamie@audible.transient.net>,
+        "J . Bruce Fields" <bfields@redhat.com>,
+        Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org
+Subject: [PATCH AUTOSEL 5.4 134/205] nfsd: v4 support requires CRYPTO_SHA256
+Date:   Thu, 16 Jan 2020 11:41:49 -0500
+Message-Id: <20200116164300.6705-134-sashal@kernel.org>
 X-Mailer: git-send-email 2.20.1
 In-Reply-To: <20200116164300.6705-1-sashal@kernel.org>
 References: <20200116164300.6705-1-sashal@kernel.org>
@@ -60,93 +59,35 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Chuck Lever <chuck.lever@oracle.com>
+From: Scott Mayhew <smayhew@redhat.com>
 
-[ Upstream commit a31b2f939219dd9bffdf01a45bd91f209f8cc369 ]
+[ Upstream commit a2e2f2dc77a18d2b0f450fb7fcb4871c9f697822 ]
 
-This is because xprt_request_get_cong() is allowing more than one
-RPC Call to be transmitted before the first Receive on the new
-connection. The first Receive fills the Receive Queue based on the
-server's credit grant. Before that Receive, there is only a single
-Receive WR posted because the client doesn't know the server's
-credit grant.
+The new nfsdcld client tracking operations use sha256 to compute hashes
+of the kerberos principals, so make sure CRYPTO_SHA256 is enabled.
 
-Solution is to clear rq_cong on all outstanding rpc_rqsts when the
-the cwnd is reset. This is because an RPC/RDMA credit is good for
-one connection instance only.
-
-Fixes: 75891f502f5f ("SUNRPC: Support for congestion control ... ")
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+Fixes: 6ee95d1c8991 ("nfsd: add support for upcall version 2")
+Reported-by: Jamie Heilman <jamie@audible.transient.net>
+Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- net/sunrpc/xprtrdma/transport.c |  3 +++
- net/sunrpc/xprtrdma/verbs.c     | 22 ++++++++++++++++++++++
- 2 files changed, 25 insertions(+)
+ fs/nfsd/Kconfig | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index 160558b4135e..c67d465dc062 100644
---- a/net/sunrpc/xprtrdma/transport.c
-+++ b/net/sunrpc/xprtrdma/transport.c
-@@ -428,8 +428,11 @@ void xprt_rdma_close(struct rpc_xprt *xprt)
- 	/* Prepare @xprt for the next connection by reinitializing
- 	 * its credit grant to one (see RFC 8166, Section 3.3.3).
- 	 */
-+	spin_lock(&xprt->transport_lock);
- 	r_xprt->rx_buf.rb_credits = 1;
-+	xprt->cong = 0;
- 	xprt->cwnd = RPC_CWNDSHIFT;
-+	spin_unlock(&xprt->transport_lock);
- 
- out:
- 	xprt->reestablish_timeout = 0;
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 3a907537e2cf..f4b136504e96 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -75,6 +75,7 @@
-  * internal functions
-  */
- static void rpcrdma_sendctx_put_locked(struct rpcrdma_sendctx *sc);
-+static void rpcrdma_reqs_reset(struct rpcrdma_xprt *r_xprt);
- static void rpcrdma_reps_destroy(struct rpcrdma_buffer *buf);
- static void rpcrdma_mrs_create(struct rpcrdma_xprt *r_xprt);
- static void rpcrdma_mrs_destroy(struct rpcrdma_buffer *buf);
-@@ -780,6 +781,7 @@ rpcrdma_ep_disconnect(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
- 	trace_xprtrdma_disconnect(r_xprt, rc);
- 
- 	rpcrdma_xprt_drain(r_xprt);
-+	rpcrdma_reqs_reset(r_xprt);
- }
- 
- /* Fixed-size circular FIFO queue. This implementation is wait-free and
-@@ -1042,6 +1044,26 @@ struct rpcrdma_req *rpcrdma_req_create(struct rpcrdma_xprt *r_xprt, size_t size,
- 	return NULL;
- }
- 
-+/**
-+ * rpcrdma_reqs_reset - Reset all reqs owned by a transport
-+ * @r_xprt: controlling transport instance
-+ *
-+ * ASSUMPTION: the rb_allreqs list is stable for the duration,
-+ * and thus can be walked without holding rb_lock. Eg. the
-+ * caller is holding the transport send lock to exclude
-+ * device removal or disconnection.
-+ */
-+static void rpcrdma_reqs_reset(struct rpcrdma_xprt *r_xprt)
-+{
-+	struct rpcrdma_buffer *buf = &r_xprt->rx_buf;
-+	struct rpcrdma_req *req;
-+
-+	list_for_each_entry(req, &buf->rb_allreqs, rl_all) {
-+		/* Credits are valid only for one connection */
-+		req->rl_slot.rq_cong = 0;
-+	}
-+}
-+
- static struct rpcrdma_rep *rpcrdma_rep_create(struct rpcrdma_xprt *r_xprt,
- 					      bool temp)
- {
+diff --git a/fs/nfsd/Kconfig b/fs/nfsd/Kconfig
+index 10cefb0c07c7..c4b1a89b8845 100644
+--- a/fs/nfsd/Kconfig
++++ b/fs/nfsd/Kconfig
+@@ -73,7 +73,7 @@ config NFSD_V4
+ 	select NFSD_V3
+ 	select FS_POSIX_ACL
+ 	select SUNRPC_GSS
+-	select CRYPTO
++	select CRYPTO_SHA256
+ 	select GRACE_PERIOD
+ 	help
+ 	  This option enables support in your system's NFS server for
 -- 
 2.20.1
 
