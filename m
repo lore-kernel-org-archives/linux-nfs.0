@@ -7,49 +7,49 @@ X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E24F3C33CB1
-	for <linux-nfs@archiver.kernel.org>; Thu, 16 Jan 2020 16:53:17 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 13918C33CAF
+	for <linux-nfs@archiver.kernel.org>; Thu, 16 Jan 2020 17:06:28 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id B253221582
-	for <linux-nfs@archiver.kernel.org>; Thu, 16 Jan 2020 16:53:17 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id D4E95207FF
+	for <linux-nfs@archiver.kernel.org>; Thu, 16 Jan 2020 17:06:27 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1579193597;
-	bh=ZSxEVRSmMAAdMVZzDNhQUmTVVIl+v3iiq49YEo1QT9o=;
+	s=default; t=1579194387;
+	bh=Idwdf9oYrNJnx5TDr3DzrtEpAiY/RJkENvQhosI7ETE=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=iXzEjv8IFhTRCLvJLgzCOibtovTNt8FU0p9xJPq8lUgi/YHV3KXIk3HxElNWhkI++
-	 FZOmqxycst/uPgbceweFZaqvOC3X3UdugTA9sFKPSnm6VvOYbUSt9lrNjtye6kwscU
-	 xCMdpY7BupUMqlghrbXP3eGB4/pxM5Z4nbIUCpL4=
+	b=NHd8VSAbuxrkQxFmj+g/ipAZgpJvj+M1hB0YPre8Ul3THgcKdSlIRN9f1h07kk9GA
+	 dDgAxbFdJkDfvmgMR75hkQL6OX9U5hTOn+79ynExXwvgIQz6y4wzVEBJVRwzFDM6Oc
+	 xIgLEb5/y//YIgci1YfRm9Bk3+zY/YINsGEWMT9c=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1730697AbgAPQxQ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 16 Jan 2020 11:53:16 -0500
-Received: from mail.kernel.org ([198.145.29.99]:36910 "EHLO mail.kernel.org"
+        id S2388281AbgAPRGX (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 16 Jan 2020 12:06:23 -0500
+Received: from mail.kernel.org ([198.145.29.99]:36412 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1730710AbgAPQxP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 16 Jan 2020 11:53:15 -0500
+        id S2388920AbgAPRGW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 16 Jan 2020 12:06:22 -0500
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 1316F22464;
-        Thu, 16 Jan 2020 16:53:13 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 119C3214AF;
+        Thu, 16 Jan 2020 17:06:20 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1579193594;
-        bh=ZSxEVRSmMAAdMVZzDNhQUmTVVIl+v3iiq49YEo1QT9o=;
+        s=default; t=1579194381;
+        bh=Idwdf9oYrNJnx5TDr3DzrtEpAiY/RJkENvQhosI7ETE=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=kc7sez+dYG8soqToEjxoUc8ZCi4Sc6ycX8ij+bnlP3ikWKa10EgfhyycQMUaOFh0o
-         6Yeot9UcdOjM3mV4gOZU0yPgFEiBQmhGNsaBjGIpmhajSEYirhrbDahE3JRGjGRLNu
-         v119QNdxWXGoeqD7rB+xyEDXvtktXSZdsDyzsZw4=
+        b=CJd8+FHwyrcbzO1a3Ajv4PySqwwEAhe+xq4hctAyuJL8uR4/Z4pDVNzxMgQ521QR9
+         rzNCKxYPJmb4l4fA3v9FVyVp8zYvW7AA1+xoox0t2CmIm2+P+Sd3rmMc9OkZmAFo5F
+         QiVRnwooj/tSgz1i0FEAUWFy4jw6WYsHflYrjznw=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     Scott Mayhew <smayhew@redhat.com>,
-        Jamie Heilman <jamie@audible.transient.net>,
-        "J . Bruce Fields" <bfields@redhat.com>,
+Cc:     Trond Myklebust <trondmy@gmail.com>,
+        Trond Myklebust <trond.myklebust@hammerspace.com>,
+        Anna Schumaker <Anna.Schumaker@Netapp.com>,
         Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.4 134/205] nfsd: v4 support requires CRYPTO_SHA256
-Date:   Thu, 16 Jan 2020 11:41:49 -0500
-Message-Id: <20200116164300.6705-134-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 4.19 312/671] NFS: Don't interrupt file writeout due to fatal errors
+Date:   Thu, 16 Jan 2020 11:59:10 -0500
+Message-Id: <20200116170509.12787-49-sashal@kernel.org>
 X-Mailer: git-send-email 2.20.1
-In-Reply-To: <20200116164300.6705-1-sashal@kernel.org>
-References: <20200116164300.6705-1-sashal@kernel.org>
+In-Reply-To: <20200116170509.12787-1-sashal@kernel.org>
+References: <20200116170509.12787-1-sashal@kernel.org>
 MIME-Version: 1.0
 X-stable: review
 X-Patchwork-Hint: Ignore
@@ -59,35 +59,35 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Scott Mayhew <smayhew@redhat.com>
+From: Trond Myklebust <trondmy@gmail.com>
 
-[ Upstream commit a2e2f2dc77a18d2b0f450fb7fcb4871c9f697822 ]
+[ Upstream commit 14bebe3c90b326d2a0df78aed5e9de090c71d878 ]
 
-The new nfsdcld client tracking operations use sha256 to compute hashes
-of the kerberos principals, so make sure CRYPTO_SHA256 is enabled.
+When flushing out dirty pages, the fact that we may hit fatal errors
+is not a reason to stop writeback. Those errors are reported through
+fsync(), not through the flush mechanism.
 
-Fixes: 6ee95d1c8991 ("nfsd: add support for upcall version 2")
-Reported-by: Jamie Heilman <jamie@audible.transient.net>
-Signed-off-by: Scott Mayhew <smayhew@redhat.com>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Fixes: a6598813a4c5b ("NFS: Don't write back further requests if there...")
+Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- fs/nfsd/Kconfig | 2 +-
+ fs/nfs/write.c | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/nfsd/Kconfig b/fs/nfsd/Kconfig
-index 10cefb0c07c7..c4b1a89b8845 100644
---- a/fs/nfsd/Kconfig
-+++ b/fs/nfsd/Kconfig
-@@ -73,7 +73,7 @@ config NFSD_V4
- 	select NFSD_V3
- 	select FS_POSIX_ACL
- 	select SUNRPC_GSS
--	select CRYPTO
-+	select CRYPTO_SHA256
- 	select GRACE_PERIOD
- 	help
- 	  This option enables support in your system's NFS server for
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 117ffd90419e..e27637fa0f79 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -646,7 +646,7 @@ static int nfs_page_async_flush(struct nfs_pageio_descriptor *pgio,
+ 	return ret;
+ out_launder:
+ 	nfs_write_error_remove_page(req);
+-	return ret;
++	return 0;
+ }
+ 
+ static int nfs_do_writepage(struct page *page, struct writeback_control *wbc,
 -- 
 2.20.1
 
