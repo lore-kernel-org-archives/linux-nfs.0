@@ -4,47 +4,47 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
-	version=3.4.0
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 26AB3C33CB6
-	for <linux-nfs@archiver.kernel.org>; Thu, 16 Jan 2020 19:04:04 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8ECE6C33CAF
+	for <linux-nfs@archiver.kernel.org>; Thu, 16 Jan 2020 19:05:07 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 00520206E6
-	for <linux-nfs@archiver.kernel.org>; Thu, 16 Jan 2020 19:04:03 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 6A298206E6
+	for <linux-nfs@archiver.kernel.org>; Thu, 16 Jan 2020 19:05:07 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1579201444;
-	bh=t2pCbgLU6bYVpMZGNQjLIu/gBmRQLtz6DvACAV5Ms0o=;
+	s=default; t=1579201507;
+	bh=sGT4U/EuUFpxYX6PNmsr5Up6MeN1x5KpmDS/cSuuv8U=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=ESMcFyRgnzdx8bbMPGdw6myVO5jIbeAxVGJkiLzW5aEU8hceQQW3CddQB5aMKJrVn
-	 E9oL88GP7jV6rfF/QFYcYJt3dgTGTt8CQ6LDU42aq1HE91iCK38IhY6ymLSKcJ5xOT
-	 Ne0cGjH/yScEP5Vj47WCsyjvY/iBZIs/MUSKAVzg=
+	b=P1/TycQEPpv+U7Wq5sf6oZJpQO6rs4XCpuGYzkkmBy/gm5t1sOnx2K6Ne+cmIrVqm
+	 w0wW5fl4fSn7ozzCkoOI476y37IbkdFyOKS/LHyIleuaJUBVZDxv8oaLdKFzHHSyCz
+	 29k0298noaIvUC4DceWziiNxiZpb0GwdTtXlIt9c=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729160AbgAPTEC (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 16 Jan 2020 14:04:02 -0500
-Received: from mail.kernel.org ([198.145.29.99]:55192 "EHLO mail.kernel.org"
+        id S2388317AbgAPTFG (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 16 Jan 2020 14:05:06 -0500
+Received: from mail.kernel.org ([198.145.29.99]:54316 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2388360AbgAPRC0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 16 Jan 2020 12:02:26 -0500
+        id S2388261AbgAPRCG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 16 Jan 2020 12:02:06 -0500
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 82A4121582;
-        Thu, 16 Jan 2020 17:02:25 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id CDCC424685;
+        Thu, 16 Jan 2020 17:02:04 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1579194146;
-        bh=t2pCbgLU6bYVpMZGNQjLIu/gBmRQLtz6DvACAV5Ms0o=;
+        s=default; t=1579194125;
+        bh=sGT4U/EuUFpxYX6PNmsr5Up6MeN1x5KpmDS/cSuuv8U=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=qsSDbekmsse7Ny95kPkQIh9kr2cCfr+TSDoZdaUAx/yjIzouHr6TQDRMzbChmgveu
-         /yPNnlYetLwuUkV1Mwvqx9gK1msHWCnCwqnB6vWc4GvQnjdV8yAKNMhsVNjH794fZN
-         LbtYC9N2Em9mZCdPsf2DgVYJQTe2MVv7/msAFqg0=
+        b=CHqHbnPx9nc+b0nSIz6C8HVYp6Py/yrL4rkPXinym7Adygd2REDVle80ceJNgmMLA
+         36fgFcx1IbF2dVPJbWzCdZBvMbEga3EJjP7UQFVCF6fa0shv8g43RKwOWBkaiPIbrX
+         Qj6ovrlQxBG4bFgU+iqvTGHXFD6ItYuV9x0iqJ7k=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
 Cc:     Trond Myklebust <trond.myklebust@hammerspace.com>,
         Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org
-Subject: [PATCH AUTOSEL 4.19 231/671] NFSv4/flexfiles: Fix invalid deref in FF_LAYOUT_DEVID_NODE()
-Date:   Thu, 16 Jan 2020 11:52:20 -0500
-Message-Id: <20200116165940.10720-114-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 4.19 217/671] NFS/pnfs: Bulk destroy of layouts needs to be safe w.r.t. umount
+Date:   Thu, 16 Jan 2020 11:52:06 -0500
+Message-Id: <20200116165940.10720-100-sashal@kernel.org>
 X-Mailer: git-send-email 2.20.1
 In-Reply-To: <20200116165940.10720-1-sashal@kernel.org>
 References: <20200116165940.10720-1-sashal@kernel.org>
@@ -59,69 +59,90 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-[ Upstream commit 108bb4afd351d65826648a47f11fa3104e250d9b ]
+[ Upstream commit 5085607d209102b37b169bc94d0aa39566a9842a ]
 
-If the attempt to instantiate the mirror's layout DS pointer failed,
-then that pointer may hold a value of type ERR_PTR(), so we need
-to check that before we dereference it.
+If a bulk layout recall or a metadata server reboot coincides with a
+umount, then holding a reference to an inode is unsafe unless we
+also hold a reference to the super block.
 
-Fixes: 65990d1afbd2d ("pNFS/flexfiles: Fix a deadlock on LAYOUTGET")
+Fixes: fd9a8d7160937 ("NFSv4.1: Fix bulk recall and destroy of layouts")
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- fs/nfs/flexfilelayout/flexfilelayout.h | 32 +++++++++++++++-----------
- 1 file changed, 19 insertions(+), 13 deletions(-)
+ fs/nfs/pnfs.c | 33 +++++++++++++++++++++++----------
+ fs/nfs/pnfs.h |  1 +
+ 2 files changed, 24 insertions(+), 10 deletions(-)
 
-diff --git a/fs/nfs/flexfilelayout/flexfilelayout.h b/fs/nfs/flexfilelayout/flexfilelayout.h
-index de50a342d5a5..2ac99124474c 100644
---- a/fs/nfs/flexfilelayout/flexfilelayout.h
-+++ b/fs/nfs/flexfilelayout/flexfilelayout.h
-@@ -132,16 +132,6 @@ FF_LAYOUT_LSEG(struct pnfs_layout_segment *lseg)
- 			    generic_hdr);
- }
- 
--static inline struct nfs4_deviceid_node *
--FF_LAYOUT_DEVID_NODE(struct pnfs_layout_segment *lseg, u32 idx)
--{
--	if (idx >= FF_LAYOUT_LSEG(lseg)->mirror_array_cnt ||
--	    FF_LAYOUT_LSEG(lseg)->mirror_array[idx] == NULL ||
--	    FF_LAYOUT_LSEG(lseg)->mirror_array[idx]->mirror_ds == NULL)
--		return NULL;
--	return &FF_LAYOUT_LSEG(lseg)->mirror_array[idx]->mirror_ds->id_node;
--}
--
- static inline struct nfs4_ff_layout_ds *
- FF_LAYOUT_MIRROR_DS(struct nfs4_deviceid_node *node)
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index c818f9886f61..66f699e18755 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -758,22 +758,35 @@ static int
+ pnfs_layout_bulk_destroy_byserver_locked(struct nfs_client *clp,
+ 		struct nfs_server *server,
+ 		struct list_head *layout_list)
++	__must_hold(&clp->cl_lock)
++	__must_hold(RCU)
  {
-@@ -151,9 +141,25 @@ FF_LAYOUT_MIRROR_DS(struct nfs4_deviceid_node *node)
- static inline struct nfs4_ff_layout_mirror *
- FF_LAYOUT_COMP(struct pnfs_layout_segment *lseg, u32 idx)
- {
--	if (idx >= FF_LAYOUT_LSEG(lseg)->mirror_array_cnt)
--		return NULL;
--	return FF_LAYOUT_LSEG(lseg)->mirror_array[idx];
-+	struct nfs4_ff_layout_segment *fls = FF_LAYOUT_LSEG(lseg);
-+
-+	if (idx < fls->mirror_array_cnt)
-+		return fls->mirror_array[idx];
-+	return NULL;
-+}
-+
-+static inline struct nfs4_deviceid_node *
-+FF_LAYOUT_DEVID_NODE(struct pnfs_layout_segment *lseg, u32 idx)
-+{
-+	struct nfs4_ff_layout_mirror *mirror = FF_LAYOUT_COMP(lseg, idx);
-+
-+	if (mirror != NULL) {
-+		struct nfs4_ff_layout_ds *mirror_ds = mirror->mirror_ds;
-+
-+		if (!IS_ERR_OR_NULL(mirror_ds))
-+			return &mirror_ds->id_node;
-+	}
-+	return NULL;
- }
+ 	struct pnfs_layout_hdr *lo, *next;
+ 	struct inode *inode;
  
- static inline u32
+ 	list_for_each_entry_safe(lo, next, &server->layouts, plh_layouts) {
+-		if (test_bit(NFS_LAYOUT_INVALID_STID, &lo->plh_flags))
++		if (test_bit(NFS_LAYOUT_INVALID_STID, &lo->plh_flags) ||
++		    test_bit(NFS_LAYOUT_INODE_FREEING, &lo->plh_flags) ||
++		    !list_empty(&lo->plh_bulk_destroy))
+ 			continue;
++		/* If the sb is being destroyed, just bail */
++		if (!nfs_sb_active(server->super))
++			break;
+ 		inode = igrab(lo->plh_inode);
+-		if (inode == NULL)
+-			continue;
+-		list_del_init(&lo->plh_layouts);
+-		if (pnfs_layout_add_bulk_destroy_list(inode, layout_list))
+-			continue;
+-		rcu_read_unlock();
+-		spin_unlock(&clp->cl_lock);
+-		iput(inode);
++		if (inode != NULL) {
++			list_del_init(&lo->plh_layouts);
++			if (pnfs_layout_add_bulk_destroy_list(inode,
++						layout_list))
++				continue;
++			rcu_read_unlock();
++			spin_unlock(&clp->cl_lock);
++			iput(inode);
++		} else {
++			rcu_read_unlock();
++			spin_unlock(&clp->cl_lock);
++			set_bit(NFS_LAYOUT_INODE_FREEING, &lo->plh_flags);
++		}
++		nfs_sb_deactive(server->super);
+ 		spin_lock(&clp->cl_lock);
+ 		rcu_read_lock();
+ 		return -EAGAIN;
+@@ -811,7 +824,7 @@ pnfs_layout_free_bulk_destroy_list(struct list_head *layout_list,
+ 		/* Free all lsegs that are attached to commit buckets */
+ 		nfs_commit_inode(inode, 0);
+ 		pnfs_put_layout_hdr(lo);
+-		iput(inode);
++		nfs_iput_and_deactive(inode);
+ 	}
+ 	return ret;
+ }
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index ece367ebde69..3ba44819a88a 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -104,6 +104,7 @@ enum {
+ 	NFS_LAYOUT_RETURN_REQUESTED,	/* Return this layout ASAP */
+ 	NFS_LAYOUT_INVALID_STID,	/* layout stateid id is invalid */
+ 	NFS_LAYOUT_FIRST_LAYOUTGET,	/* Serialize first layoutget */
++	NFS_LAYOUT_INODE_FREEING,	/* The inode is being freed */
+ };
+ 
+ enum layoutdriver_policy_flags {
 -- 
 2.20.1
 
