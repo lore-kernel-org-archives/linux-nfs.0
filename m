@@ -2,119 +2,228 @@ Return-Path: <SRS0=2HRz=3F=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-0.9 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,
-	SPF_PASS autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id BFCABC33CB3
-	for <linux-nfs@archiver.kernel.org>; Thu, 16 Jan 2020 16:44:59 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id BCC23C33CB3
+	for <linux-nfs@archiver.kernel.org>; Thu, 16 Jan 2020 16:49:38 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 6FE83208C3
-	for <linux-nfs@archiver.kernel.org>; Thu, 16 Jan 2020 16:44:59 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="Ed2FDTdA"
+	by mail.kernel.org (Postfix) with ESMTP id 93B2C2081E
+	for <linux-nfs@archiver.kernel.org>; Thu, 16 Jan 2020 16:49:38 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=default; t=1579193378;
+	bh=4E9XPMcrBh1AGx7c18Ngtyk2plVV5ulDn6RIrQdXGGg=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
+	b=VFCwlf02IXb3zKfwzywx/U0G/+O/T0WXwhSBm6BsYYTDku4iIwaoPZ96AI8ayADTX
+	 Q/0F99FZZRqc0SBR5jJRGEJKjTNGzzNQlC9hqBRhiI6z3hyiG+Ai/jnwg0LNRRBxrs
+	 IJBwUSa/PsY8tRp6r5liuRoX9+D7mwfz3En8bhes=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729012AbgAPQo6 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 16 Jan 2020 11:44:58 -0500
-Received: from mail-dm6nam11on2137.outbound.protection.outlook.com ([40.107.223.137]:55104
-        "EHLO NAM11-DM6-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1729010AbgAPQo6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 16 Jan 2020 11:44:58 -0500
-ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
- b=aeneNDBNVde1hA6OJetjB4SrhGjV1oxkwDIlG73if7J1BsraNuCXQNVBNYWn77WW6qPcNcTNqsRdLIQloXZy3IiL4MzK7UIUsvr44KuUA5ZKwxFeiv2Qg3uCCKkoJYMfW9GolJidI5lufEZcGHEtwZNKruY8UQpsKtVsJDXdI45yiUrZxNqI4JzltlCkHuBlG2/+I126EUatHNu/CJlG08/H7WtGfqVwnb1XC/E70xgDcm5FZykviQFo2AAm0gdw6c4VQlzZ7qs2syXg7aU3mScs+wRepUnYGc2BV9+2WgbYFsr2AYkE1guxg6VaYDSB8DbgCxRLMVmJuNEUEHXm9A==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
- s=arcselector9901;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=475eMCesv5i4OO13xzhXGRYVFpodWziFm0WaJ23jVqc=;
- b=E2pkVXF2InYVEdVk7qOOdm017pm7EWaGdZhhw6BKA2Nn25zTEuqduDZGOUjEm8KVfZdVOCXSGsikk3dPCmXdAGqBBIdxQTbY94ih0T9hreEBKnwJDqrSZzwxV37x+vHeHdUvo74dl8ZWID+pMgP7Qg+x5i9+FMVkTzUPeSWJDYCNxtFhKEO3yJ5CuoxmHFxaiE/ym1dNWJSAsvaxa9vtj4IqCoHNKEQGUfLd3IDG6qvCLo/dxan8GGjBCqH+VMvfq6GOjVqji9E0woFD6swubuEWqumAGs8Z7neEhnSBkmKttm141gPd4UuSmFPEjTg7ro8hSaTwlrFEP+mrVo9u7Q==
-ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
- smtp.mailfrom=hammerspace.com; dmarc=pass action=none
- header.from=hammerspace.com; dkim=pass header.d=hammerspace.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=hammerspace.com;
- s=selector2;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=475eMCesv5i4OO13xzhXGRYVFpodWziFm0WaJ23jVqc=;
- b=Ed2FDTdA33+NlWSRYCn/krg9cXW3JtYxFykmRBAx+h91w1tdZZHARk6hFJQtToVe84GXetGTcoYYMz+AxRGjiyYIyCvTujZUtLXz5hTqya0m6hjUh7v5bc0M6SBHMQd8H+etKwiL0rOs4HyWDR4twGjYR9/mXsGzVsnMlbgr/0c=
-Received: from DM5PR1301MB2108.namprd13.prod.outlook.com (10.174.186.34) by
- DM5PR1301MB2171.namprd13.prod.outlook.com (10.174.181.164) with Microsoft
- SMTP Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- 15.20.2644.16; Thu, 16 Jan 2020 16:44:54 +0000
-Received: from DM5PR1301MB2108.namprd13.prod.outlook.com
- ([fe80::2d32:cf4b:1b58:16ce]) by DM5PR1301MB2108.namprd13.prod.outlook.com
- ([fe80::2d32:cf4b:1b58:16ce%7]) with mapi id 15.20.2644.021; Thu, 16 Jan 2020
- 16:44:54 +0000
-From:   Trond Myklebust <trondmy@hammerspace.com>
-To:     "bcodding@redhat.com" <bcodding@redhat.com>
-CC:     "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>
-Subject: Re: [PATCH v2] NFS: Don't skip lookup when holding a delegation
-Thread-Topic: [PATCH v2] NFS: Don't skip lookup when holding a delegation
-Thread-Index: AQHVbvlhXK/ljPJmmUKulFnJAnn0pafuIqIAgAAMCICAAAhYgIAAA5iA
-Date:   Thu, 16 Jan 2020 16:44:54 +0000
-Message-ID: <3150bc5fb89ceccb53f4625b9e332377a3470ab4.camel@hammerspace.com>
-References: <77be993185fa7f114f6856f74f2f7affb5bd411d.1568904510.git.bcodding@redhat.com>
-         <6399DBA2-DA9D-40C3-80BC-6DCE94BB9C49@redhat.com>
-         <d8639ad40df3b0a814e7396e1e824220c4d21a55.camel@hammerspace.com>
-         <C5892E37-4731-4AD5-97FE-D8151C289CE9@redhat.com>
-In-Reply-To: <C5892E37-4731-4AD5-97FE-D8151C289CE9@redhat.com>
-Accept-Language: en-US, en-GB
-Content-Language: en-US
-X-MS-Has-Attach: 
-X-MS-TNEF-Correlator: 
-authentication-results: spf=none (sender IP is )
- smtp.mailfrom=trondmy@hammerspace.com; 
-x-originating-ip: [68.40.189.247]
-x-ms-publictraffictype: Email
-x-ms-office365-filtering-correlation-id: e33e101c-dd70-48fe-ea0a-08d79aa36a0e
-x-ms-traffictypediagnostic: DM5PR1301MB2171:
-x-microsoft-antispam-prvs: <DM5PR1301MB2171C9B03A3F40D768E31434B8360@DM5PR1301MB2171.namprd13.prod.outlook.com>
-x-ms-oob-tlc-oobclassifiers: OLM:9508;
-x-forefront-prvs: 02843AA9E0
-x-forefront-antispam-report: SFV:NSPM;SFS:(10019020)(136003)(39830400003)(396003)(376002)(346002)(366004)(199004)(189003)(81156014)(66476007)(64756008)(6512007)(54906003)(66556008)(26005)(8676002)(4326008)(186003)(66446008)(81166006)(71200400001)(478600001)(36756003)(5660300002)(8936002)(2906002)(66946007)(6506007)(53546011)(6916009)(316002)(2616005)(6486002)(86362001)(91956017)(76116006);DIR:OUT;SFP:1102;SCL:1;SRVR:DM5PR1301MB2171;H:DM5PR1301MB2108.namprd13.prod.outlook.com;FPR:;SPF:None;LANG:en;PTR:InfoNoRecords;A:1;MX:1;
-received-spf: None (protection.outlook.com: hammerspace.com does not designate
- permitted sender hosts)
-x-ms-exchange-senderadcheck: 1
-x-microsoft-antispam: BCL:0;
-x-microsoft-antispam-message-info: 2pWRW3qx6IfvpL0aV4mSV25IfyQ9/bPXFybyKcdyouX0Zf9bFxQMSiEN16AziiCF9p7bBdZs0Jvwk9wP2e0zsbMFcv3RzcVjffMwUVy/kYUKlEyr6Y4JnFrkqamYg6D66C+LKPKQ1eEG+1Glqmz/ZNCVcPwqJOHUxqMhkrUcygzEzSRXtVK3c6NelfBFCrZ3oJte3Za2t5Vud+pc6enmh7TqLZ3n5geCyWnEHrk/FYFEDqTnS3NAHUHKYP31wFR0l+aIqCmxdgBoClRUI3orYgRW25YEclBsklmcV2rQdz1ch8gNqTSNq8g20tm3Ve9Q8zrrdTXrpIgZyXmR0iv96uVGSsghVqQ+TnGLkOXVsJgWar+lnYMJsWdjJUM2lBJN037dxqTBJ4tTkPHtkLEQLczZL6qqbIYnGZc52bEoUuNAIq9fGBD7M/SifXECuTbi
-x-ms-exchange-transport-forked: True
-Content-Type: text/plain; charset="utf-8"
-Content-ID: <A42CC49A3753EA4D96D042F131B27CA7@namprd13.prod.outlook.com>
-Content-Transfer-Encoding: base64
+        id S1729629AbgAPQta (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 16 Jan 2020 11:49:30 -0500
+Received: from mail.kernel.org ([198.145.29.99]:60398 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1729211AbgAPQta (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 16 Jan 2020 11:49:30 -0500
+Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+        (No client certificate requested)
+        by mail.kernel.org (Postfix) with ESMTPSA id 2A0CF207FF;
+        Thu, 16 Jan 2020 16:49:20 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=default; t=1579193369;
+        bh=4E9XPMcrBh1AGx7c18Ngtyk2plVV5ulDn6RIrQdXGGg=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=CmfvKwoh11niLZqVzfasE0gINrUZJudbBfIUf0ZuNXacPXDhrwGR7eJy+dPYgx+rV
+         QBoZMZjNvVafh7U7sSj3meHH7kMFu8hvMkjDCxQOFo/36I/4uwRLRddtlWSZYm4P6B
+         CNTJtAvpkAlAemELbuZ25MjM0WaeoJ93y/RItRzc=
+From:   Sasha Levin <sashal@kernel.org>
+To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
+Cc:     Chuck Lever <chuck.lever@oracle.com>,
+        Bill Baker <bill.baker@oracle.com>,
+        Simo Sorce <simo@redhat.com>,
+        "J . Bruce Fields" <bfields@redhat.com>,
+        Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org,
+        netdev@vger.kernel.org
+Subject: [PATCH AUTOSEL 5.4 083/205] SUNRPC: Fix svcauth_gss_proxy_init()
+Date:   Thu, 16 Jan 2020 11:40:58 -0500
+Message-Id: <20200116164300.6705-83-sashal@kernel.org>
+X-Mailer: git-send-email 2.20.1
+In-Reply-To: <20200116164300.6705-1-sashal@kernel.org>
+References: <20200116164300.6705-1-sashal@kernel.org>
 MIME-Version: 1.0
-X-OriginatorOrg: hammerspace.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: e33e101c-dd70-48fe-ea0a-08d79aa36a0e
-X-MS-Exchange-CrossTenant-originalarrivaltime: 16 Jan 2020 16:44:54.4354
- (UTC)
-X-MS-Exchange-CrossTenant-fromentityheader: Hosted
-X-MS-Exchange-CrossTenant-id: 0d4fed5c-3a70-46fe-9430-ece41741f59e
-X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
-X-MS-Exchange-CrossTenant-userprincipalname: 2/BhDhkK380g2O3IA7DXZzBsruLQgwbRWzSFB0CNwA3popeHKW6ZNZaA5ij3/JQllmvvbdkCrE5tpi2JbPr8Hg==
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: DM5PR1301MB2171
+X-stable: review
+X-Patchwork-Hint: Ignore
+Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-T24gVGh1LCAyMDIwLTAxLTE2IGF0IDExOjMyIC0wNTAwLCBCZW5qYW1pbiBDb2RkaW5ndG9uIHdy
-b3RlOg0KPiBPbiAxNiBKYW4gMjAyMCwgYXQgMTE6MDIsIFRyb25kIE15a2xlYnVzdCB3cm90ZToN
-Cj4gPiBXZSBzaG91bGQgbmVlZCB0byBwZXJmb3JtIHRoaXMgcmV2YWxpZGF0aW9uIG9uY2UsIGFu
-ZCBvbmx5IG9uY2UgZm9yDQo+ID4gdGhhdCBkaXJlY3RvcnksIGFuZCBvbmx5IGlmIHdlIG9wZW5l
-ZCB0aGUgZmlsZSB1c2luZyBhIENMQUlNX0ZIDQo+ID4gb3BlbiwNCj4gPiBvciBpZiB3ZSBvcGVu
-ZWQgaXQgdGhyb3VnaCBhIGRpZmZlcmVudCBoYXJkIGxpbmtlZCBuYW1lIChhbmQgZGlkDQo+ID4g
-bm90DQo+ID4gY3JlYXRlIHRoaXMgaGFyZCBsaW5rIGFmdGVyIHdlIGdvdCB0aGUgZGVsZWdhdGlv
-bikuDQo+ID4gDQo+ID4gUGVyaGFwcyB3ZSBjb3VsZCBkZWZpbmUgYSBtYWdpYyB2YWx1ZSBmb3Ig
-ZGVudHJ5LT5kX3RpbWUgdGhhdA0KPiA+IGNhdXNlcyB1cw0KPiA+IHRvIHNraXAgcmV2YWxpZGF0
-aW9uIGlmIGFuZCBvbmx5IGlmIHdlIGhvbGQgYSBkZWxlZ2F0aW9uPw0KPiANCj4gQ2FuIHdlIHB1
-dCB0aGUgZGVsZWdhdGlvbidzIGNoYW5nZV9hdHRyIGluIGRfdGltZSBmb3IgZGVudHJpZXMgdGhh
-dA0KPiBoYXZlDQo+IGJlZW4gcmV2YWxpZGVkIHdoaWxlIGhvbGRpbmcgYSBkZWxlZ2F0aW9uPw0K
-DQpXZSBjb3VsZCwgYnV0IHRoYXQgc2VlbXMgbW9yZSBjb21wbGljYXRlZCBiZWNhdXNlIGl0IG1l
-YW5zIHlvdSBuZWVkIHRvDQpkZWNpZGUgd2hldGhlciB5b3UgYXJlIGNoZWNraW5nIHRoZSBwYXJl
-bnQgaW5vZGUgb3IgeW91ciBvd24gaW5vZGUuDQoNCkl0IHNlZW1zIGVhc2llciB0byBqdXN0IGhh
-dmUgbmZzX2ZvcmNlX2xvb2t1cF9yZXZhbGlkYXRlKCkgc2tpcCB0aGUNCm1hZ2ljIHZhbHVlIHNv
-IHRoYXQgd2Uga25vdyB0aGF0IHRoZXJlIGFyZSBubyBjb2xsaXNpb25zLiBPbmNlIHRoZQ0KcmV2
-YWxpZGF0aW9uIGlzIGRvbmUgb24gdGhlIGRlbnRyeSBob2xkaW5nIHRoZSBkZWxlZ2F0aW9uLCB0
-aGVuIHdlIGNhbg0Kc2V0IGRlbnRyeS0+ZF90aW1lIHRvIHRoZSBtYWdpYyB2YWx1ZSwgYW5kIHdl
-J3JlIGRvbmUuLi4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFp
-bnRhaW5lciwgSGFtbWVyc3BhY2UNCnRyb25kLm15a2xlYnVzdEBoYW1tZXJzcGFjZS5jb20NCg0K
-DQo=
+From: Chuck Lever <chuck.lever@oracle.com>
+
+[ Upstream commit 5866efa8cbfbadf3905072798e96652faf02dbe8 ]
+
+gss_read_proxy_verf() assumes things about the XDR buffer containing
+the RPC Call that are not true for buffers generated by
+svc_rdma_recv().
+
+RDMA's buffers look more like what the upper layer generates for
+sending: head is a kmalloc'd buffer; it does not point to a page
+whose contents are contiguous with the first page in the buffers'
+page array. The result is that ACCEPT_SEC_CONTEXT via RPC/RDMA has
+stopped working on Linux NFS servers that use gssproxy.
+
+This does not affect clients that use only TCP to send their
+ACCEPT_SEC_CONTEXT operation (that's all Linux clients). Other
+clients, like Solaris NFS clients, send ACCEPT_SEC_CONTEXT on the
+same transport as they send all other NFS operations. Such clients
+can send ACCEPT_SEC_CONTEXT via RPC/RDMA.
+
+I thought I had found every direct reference in the server RPC code
+to the rqstp->rq_pages field.
+
+Bug found at the 2019 Westford NFS bake-a-thon.
+
+Fixes: 3316f0631139 ("svcrdma: Persistently allocate and DMA- ... ")
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Tested-by: Bill Baker <bill.baker@oracle.com>
+Reviewed-by: Simo Sorce <simo@redhat.com>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Signed-off-by: Sasha Levin <sashal@kernel.org>
+---
+ net/sunrpc/auth_gss/svcauth_gss.c | 84 +++++++++++++++++++++++--------
+ 1 file changed, 63 insertions(+), 21 deletions(-)
+
+diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
+index 8be2f209982b..908b60a72d95 100644
+--- a/net/sunrpc/auth_gss/svcauth_gss.c
++++ b/net/sunrpc/auth_gss/svcauth_gss.c
+@@ -1075,24 +1075,32 @@ gss_read_verf(struct rpc_gss_wire_cred *gc,
+ 	return 0;
+ }
+ 
+-/* Ok this is really heavily depending on a set of semantics in
+- * how rqstp is set up by svc_recv and pages laid down by the
+- * server when reading a request. We are basically guaranteed that
+- * the token lays all down linearly across a set of pages, starting
+- * at iov_base in rq_arg.head[0] which happens to be the first of a
+- * set of pages stored in rq_pages[].
+- * rq_arg.head[0].iov_base will provide us the page_base to pass
+- * to the upcall.
+- */
+-static inline int
+-gss_read_proxy_verf(struct svc_rqst *rqstp,
+-		    struct rpc_gss_wire_cred *gc, __be32 *authp,
+-		    struct xdr_netobj *in_handle,
+-		    struct gssp_in_token *in_token)
++static void gss_free_in_token_pages(struct gssp_in_token *in_token)
+ {
+-	struct kvec *argv = &rqstp->rq_arg.head[0];
+ 	u32 inlen;
+-	int res;
++	int i;
++
++	i = 0;
++	inlen = in_token->page_len;
++	while (inlen) {
++		if (in_token->pages[i])
++			put_page(in_token->pages[i]);
++		inlen -= inlen > PAGE_SIZE ? PAGE_SIZE : inlen;
++	}
++
++	kfree(in_token->pages);
++	in_token->pages = NULL;
++}
++
++static int gss_read_proxy_verf(struct svc_rqst *rqstp,
++			       struct rpc_gss_wire_cred *gc, __be32 *authp,
++			       struct xdr_netobj *in_handle,
++			       struct gssp_in_token *in_token)
++{
++	struct kvec *argv = &rqstp->rq_arg.head[0];
++	unsigned int page_base, length;
++	int pages, i, res;
++	size_t inlen;
+ 
+ 	res = gss_read_common_verf(gc, argv, authp, in_handle);
+ 	if (res)
+@@ -1102,10 +1110,36 @@ gss_read_proxy_verf(struct svc_rqst *rqstp,
+ 	if (inlen > (argv->iov_len + rqstp->rq_arg.page_len))
+ 		return SVC_DENIED;
+ 
+-	in_token->pages = rqstp->rq_pages;
+-	in_token->page_base = (ulong)argv->iov_base & ~PAGE_MASK;
++	pages = DIV_ROUND_UP(inlen, PAGE_SIZE);
++	in_token->pages = kcalloc(pages, sizeof(struct page *), GFP_KERNEL);
++	if (!in_token->pages)
++		return SVC_DENIED;
++	in_token->page_base = 0;
+ 	in_token->page_len = inlen;
++	for (i = 0; i < pages; i++) {
++		in_token->pages[i] = alloc_page(GFP_KERNEL);
++		if (!in_token->pages[i]) {
++			gss_free_in_token_pages(in_token);
++			return SVC_DENIED;
++		}
++	}
+ 
++	length = min_t(unsigned int, inlen, argv->iov_len);
++	memcpy(page_address(in_token->pages[0]), argv->iov_base, length);
++	inlen -= length;
++
++	i = 1;
++	page_base = rqstp->rq_arg.page_base;
++	while (inlen) {
++		length = min_t(unsigned int, inlen, PAGE_SIZE);
++		memcpy(page_address(in_token->pages[i]),
++		       page_address(rqstp->rq_arg.pages[i]) + page_base,
++		       length);
++
++		inlen -= length;
++		page_base = 0;
++		i++;
++	}
+ 	return 0;
+ }
+ 
+@@ -1280,8 +1314,11 @@ static int svcauth_gss_proxy_init(struct svc_rqst *rqstp,
+ 		break;
+ 	case GSS_S_COMPLETE:
+ 		status = gss_proxy_save_rsc(sn->rsc_cache, &ud, &handle);
+-		if (status)
++		if (status) {
++			pr_info("%s: gss_proxy_save_rsc failed (%d)\n",
++				__func__, status);
+ 			goto out;
++		}
+ 		cli_handle.data = (u8 *)&handle;
+ 		cli_handle.len = sizeof(handle);
+ 		break;
+@@ -1292,15 +1329,20 @@ static int svcauth_gss_proxy_init(struct svc_rqst *rqstp,
+ 
+ 	/* Got an answer to the upcall; use it: */
+ 	if (gss_write_init_verf(sn->rsc_cache, rqstp,
+-				&cli_handle, &ud.major_status))
++				&cli_handle, &ud.major_status)) {
++		pr_info("%s: gss_write_init_verf failed\n", __func__);
+ 		goto out;
++	}
+ 	if (gss_write_resv(resv, PAGE_SIZE,
+ 			   &cli_handle, &ud.out_token,
+-			   ud.major_status, ud.minor_status))
++			   ud.major_status, ud.minor_status)) {
++		pr_info("%s: gss_write_resv failed\n", __func__);
+ 		goto out;
++	}
+ 
+ 	ret = SVC_COMPLETE;
+ out:
++	gss_free_in_token_pages(&ud.in_token);
+ 	gssp_free_upcall_data(&ud);
+ 	return ret;
+ }
+-- 
+2.20.1
+
