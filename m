@@ -2,89 +2,103 @@ Return-Path: <SRS0=2HRz=3F=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 049F3C33CAF
-	for <linux-nfs@archiver.kernel.org>; Thu, 16 Jan 2020 19:09:14 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9657DC33CB6
+	for <linux-nfs@archiver.kernel.org>; Thu, 16 Jan 2020 19:18:36 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id CA844206E6
-	for <linux-nfs@archiver.kernel.org>; Thu, 16 Jan 2020 19:09:13 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="rCXoPHw7"
+	by mail.kernel.org (Postfix) with ESMTP id 64F452073A
+	for <linux-nfs@archiver.kernel.org>; Thu, 16 Jan 2020 19:18:36 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=default; t=1579202316;
+	bh=KwjDVFbYw+rVNx+dp2OcqyOgdPW3JmecrfBX7PlNNsA=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
+	b=iHyUPCtIMJEqwOZlZkhASGfuFHT/2efFvNVaUJ3gZJP0l+0w8/SkSHPPhTVpt5YS3
+	 CNiUtycvWQxRCKT9cdke9sPZ012uG3UjOZ1MQS+5egNDZTSUNUNXl+zmiIJ4PFcdK5
+	 XRI9bsQ5NCbH8mCTwI5H791ZI5gAxHVzSC2hodkE=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2387912AbgAPTJL (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 16 Jan 2020 14:09:11 -0500
-Received: from mail-yb1-f180.google.com ([209.85.219.180]:45487 "EHLO
-        mail-yb1-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2437354AbgAPTJG (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Jan 2020 14:09:06 -0500
-Received: by mail-yb1-f180.google.com with SMTP id x191so1857280ybg.12
-        for <linux-nfs@vger.kernel.org>; Thu, 16 Jan 2020 11:09:06 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=from:to:cc:subject:date:message-id;
-        bh=ckkzP+yL9tj6yrjGxw9BY9p5/uItt5Rg4Vpd+3titek=;
-        b=rCXoPHw7SHaPHOJVpH6ebRe43qVIKLkWUuskkJfziDGajwGjzjydKIG5csASwuxjiE
-         x6yduGTzwVXE0YNop9DRl8pkl9g1QPhFCuayja6wC6xanMGuhGuL+hTVWfmdXbYxcUM4
-         HgXEIAWD7l0uz7NHI0qKSao82xgRQcnMqnGIQ1su2Nk/XfrAPAqRnwClca0GGBOEYY6I
-         1be3iBBTI9XKXukkT3dALSkh+VvwlStOWU+2p9fXsDt6M4hziJUrDalAS1o5ktKS/wg0
-         Si11E/njHZesGikmKhnb9+6P9j8OUqmbnhFMvyOGl9bK1ECwVj5Bnlmdn8ONo56ATMKc
-         PSBA==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id;
-        bh=ckkzP+yL9tj6yrjGxw9BY9p5/uItt5Rg4Vpd+3titek=;
-        b=HFgzm9PggCEIzxxqTei7lUkkT68fDKrGQM8aK6cGw3K9EETeMx7kyfNQHylvtjmbVu
-         VdgiX9VpNHLxlxaR7R9pCQrnaj0C2uW7jSib1mClS+wgJYFqueHZS7pm72Yv3OQfUGJD
-         3rk9xw7Gl3dxglLfkCmdLfF0HSb9gwDd882bWA0uHLY5/OHo6yaMP36FdC8k8m6QKuU6
-         E/ZvdRgXTrOK4q01Pe2ECaN7XvqHnlz4jjEGhKOfAHgdBXsIQra6GfvRebF79Psrd6+K
-         fcJdnR9fvIJnA9ILcAqvb0FBEdGI7/aoH4exwsO/rIu/mUAdHTItriAw5RYALEBiOpeB
-         oI3w==
-X-Gm-Message-State: APjAAAUdbXa7UX0izeVOSBA4tHoD9iGjJEPx3ShRFdENrs5p648k4Q/B
-        OP2gxRVjhtwPYg4Qu4jL3aw=
-X-Google-Smtp-Source: APXvYqywzw/Tc4R6UQ8gCFj8rcO0njUk7QoGEWZD+N5X+cs5kvj2O011ku8qPf97r8wpLIRLf8Se2Q==
-X-Received: by 2002:a25:5889:: with SMTP id m131mr24370982ybb.89.1579201745577;
-        Thu, 16 Jan 2020 11:09:05 -0800 (PST)
-Received: from Olgas-MBP-201.attlocal.net (172-10-226-31.lightspeed.livnmi.sbcglobal.net. [172.10.226.31])
-        by smtp.gmail.com with ESMTPSA id p206sm10295332ywg.94.2020.01.16.11.08.59
-        (version=TLS1 cipher=AES128-SHA bits=128/128);
-        Thu, 16 Jan 2020 11:09:00 -0800 (PST)
-From:   Olga Kornievskaia <olga.kornievskaia@gmail.com>
-To:     trond.myklebust@hammerspace.com, anna.schumaker@netapp.com
-Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH 1/1] NFSv4.0 allow nconnect for v4.0
-Date:   Thu, 16 Jan 2020 14:08:57 -0500
-Message-Id: <20200116190857.26026-1-olga.kornievskaia@gmail.com>
-X-Mailer: git-send-email 2.10.1 (Apple Git-78)
+        id S1732267AbgAPQyf (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 16 Jan 2020 11:54:35 -0500
+Received: from mail.kernel.org ([198.145.29.99]:39198 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1729225AbgAPQyf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 16 Jan 2020 11:54:35 -0500
+Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+        (No client certificate requested)
+        by mail.kernel.org (Postfix) with ESMTPSA id E308E20730;
+        Thu, 16 Jan 2020 16:54:33 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=default; t=1579193674;
+        bh=KwjDVFbYw+rVNx+dp2OcqyOgdPW3JmecrfBX7PlNNsA=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=KF/bgcjUQ6fGDGbGXgCFC0sOBU85OD+e6lk9JAy8++Rz7MEWP2iXne2rkREFyc1kD
+         hTTqV8SPfUzgAseu1GJLVv8nuDx336Ig1jD+ZOJl7O/OKRKPCnHtRm4GKRriP4m1UY
+         0MBseTMhv0GCmQNoDuBXaCePifxZL4dLpmc3n5Q8=
+From:   Sasha Levin <sashal@kernel.org>
+To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
+Cc:     Patrick Steinhardt <ps@pks.im>,
+        "J . Bruce Fields" <bfields@redhat.com>,
+        Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org
+Subject: [PATCH AUTOSEL 5.4 199/205] nfsd: depend on CRYPTO_MD5 for legacy client tracking
+Date:   Thu, 16 Jan 2020 11:42:54 -0500
+Message-Id: <20200116164300.6705-199-sashal@kernel.org>
+X-Mailer: git-send-email 2.20.1
+In-Reply-To: <20200116164300.6705-1-sashal@kernel.org>
+References: <20200116164300.6705-1-sashal@kernel.org>
+MIME-Version: 1.0
+X-stable: review
+X-Patchwork-Hint: Ignore
+Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Olga Kornievskaia <kolga@netapp.com>
+From: Patrick Steinhardt <ps@pks.im>
 
-Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+[ Upstream commit 38a2204f5298620e8a1c3b1dc7b831425106dbc0 ]
+
+The legacy client tracking infrastructure of nfsd makes use of MD5 to
+derive a client's recovery directory name. As the nfsd module doesn't
+declare any dependency on CRYPTO_MD5, though, it may fail to allocate
+the hash if the kernel was compiled without it. As a result, generation
+of client recovery directories will fail with the following error:
+
+    NFSD: unable to generate recoverydir name
+
+The explicit dependency on CRYPTO_MD5 was removed as redundant back in
+6aaa67b5f3b9 (NFSD: Remove redundant "select" clauses in fs/Kconfig
+2008-02-11) as it was already implicitly selected via RPCSEC_GSS_KRB5.
+This broke when RPCSEC_GSS_KRB5 was made optional for NFSv4 in commit
+df486a25900f (NFS: Fix the selection of security flavours in Kconfig) at
+a later point.
+
+Fix the issue by adding back an explicit dependency on CRYPTO_MD5.
+
+Fixes: df486a25900f (NFS: Fix the selection of security flavours in Kconfig)
+Signed-off-by: Patrick Steinhardt <ps@pks.im>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- fs/nfs/nfs4client.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ fs/nfsd/Kconfig | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
-index 460d625..4df3fb0 100644
---- a/fs/nfs/nfs4client.c
-+++ b/fs/nfs/nfs4client.c
-@@ -881,7 +881,7 @@ static int nfs4_set_client(struct nfs_server *server,
- 
- 	if (minorversion == 0)
- 		__set_bit(NFS_CS_REUSEPORT, &cl_init.init_flags);
--	else if (proto == XPRT_TRANSPORT_TCP)
-+	if (proto == XPRT_TRANSPORT_TCP)
- 		cl_init.nconnect = nconnect;
- 
- 	if (server->flags & NFS_MOUNT_NORESVPORT)
+diff --git a/fs/nfsd/Kconfig b/fs/nfsd/Kconfig
+index c4b1a89b8845..f2f81561ebb6 100644
+--- a/fs/nfsd/Kconfig
++++ b/fs/nfsd/Kconfig
+@@ -73,6 +73,7 @@ config NFSD_V4
+ 	select NFSD_V3
+ 	select FS_POSIX_ACL
+ 	select SUNRPC_GSS
++	select CRYPTO_MD5
+ 	select CRYPTO_SHA256
+ 	select GRACE_PERIOD
+ 	help
 -- 
-1.8.3.1
+2.20.1
 
