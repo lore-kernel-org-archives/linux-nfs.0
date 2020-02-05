@@ -2,92 +2,165 @@ Return-Path: <SRS0=/Pif=3Z=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-0.9 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
-	SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-6.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
+	URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7CF46C35254
-	for <linux-nfs@archiver.kernel.org>; Wed,  5 Feb 2020 14:02:20 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6FCDFC352A1
+	for <linux-nfs@archiver.kernel.org>; Wed,  5 Feb 2020 22:04:30 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 489032082E
-	for <linux-nfs@archiver.kernel.org>; Wed,  5 Feb 2020 14:02:20 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="SBY1n15f"
+	by mail.kernel.org (Postfix) with ESMTP id 4ED61218AC
+	for <linux-nfs@archiver.kernel.org>; Wed,  5 Feb 2020 22:04:30 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728102AbgBEOCT (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 5 Feb 2020 09:02:19 -0500
-Received: from us-smtp-1.mimecast.com ([205.139.110.61]:30559 "EHLO
-        us-smtp-delivery-1.mimecast.com" rhost-flags-OK-OK-OK-FAIL)
-        by vger.kernel.org with ESMTP id S1728018AbgBEOCT (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Feb 2020 09:02:19 -0500
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1580911338;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:mime-version:mime-version:
-         content-transfer-encoding:content-transfer-encoding;
-        bh=5lRmpGvzisEa2DVVVMJu9Kts+4NR5hx+8FbYl2A/2kY=;
-        b=SBY1n15fbJAfx/GfYXkm8YYZokLW+6fV4VGhcFMDKJFReahZehsItA5vGoSh6+nvbh24iM
-        ZX93t//F6gi+MMqqxzgVobNN/Mw6RuEw0OHE8Qh4t6v6qInqasPpcX5SqwssyDziZPv9aQ
-        pGyqKAHKkUWSwfE+w3VJofnHvHmDdPY=
-Received: from mimecast-mx01.redhat.com (mimecast-mx01.redhat.com
- [209.132.183.4]) (Using TLS) by relay.mimecast.com with ESMTP id
- us-mta-312-HewY4UGsMI-aa4hRzgo-0g-1; Wed, 05 Feb 2020 09:01:58 -0500
-X-MC-Unique: HewY4UGsMI-aa4hRzgo-0g-1
-Received: from smtp.corp.redhat.com (int-mx04.intmail.prod.int.phx2.redhat.com [10.5.11.14])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mimecast-mx01.redhat.com (Postfix) with ESMTPS id C3ECBDBA3;
-        Wed,  5 Feb 2020 14:01:55 +0000 (UTC)
-Received: from bcodding.csb (ovpn-64-2.rdu2.redhat.com [10.10.64.2])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 644475DA7B;
-        Wed,  5 Feb 2020 14:01:55 +0000 (UTC)
-Received: by bcodding.csb (Postfix, from userid 24008)
-        id E4BEC10C1FC7; Wed,  5 Feb 2020 09:01:54 -0500 (EST)
-From:   Benjamin Coddington <bcodding@redhat.com>
-To:     Anna Schumaker <Anna.Schumaker@netapp.com>,
-        Trond Myklebust <trond.myklebust@hammerspace.com>
-Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH 0/3] Dentry revalidation fixups
-Date:   Wed,  5 Feb 2020 09:01:51 -0500
-Message-Id: <cover.1580910601.git.bcodding@redhat.com>
+        id S1727441AbgBEWE3 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 5 Feb 2020 17:04:29 -0500
+Received: from mx2.suse.de ([195.135.220.15]:59466 "EHLO mx2.suse.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1727033AbgBEWE2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 5 Feb 2020 17:04:28 -0500
+X-Virus-Scanned: by amavisd-new at test-mx.suse.de
+Received: from relay2.suse.de (unknown [195.135.220.254])
+        by mx2.suse.de (Postfix) with ESMTP id 61CA9AFD4;
+        Wed,  5 Feb 2020 22:04:26 +0000 (UTC)
+From:   NeilBrown <neilb@suse.de>
+To:     Steve Dickson <SteveD@RedHat.com>
+Date:   Thu, 06 Feb 2020 09:04:18 +1100
+Subject: [PATCH nfs-utils] Allow compilation to succeed with -fno-common
+cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-ID: <87ftfo8zdp.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.14
-Content-Transfer-Encoding: quoted-printable
+Content-Type: multipart/signed; boundary="=-=-=";
+        micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Trond's helped me out with my dentry revalidation woes.  The first two
-patches fix races that may occur, and the third patch fixes a problem I'v=
-e
-tried to solve in the past where the client can decide not to revalidate =
-a
-dentry because we hold a delegation, but really it should be revalidated
-because we cached that dentry before the delegation.  The most recent
-attempt and discussion of that problem was here:
+--=-=-=
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
-https://lore.kernel.org/linux-nfs/bcb5ffd399c4434730e6d100a5b7cae5e207244=
-e.1580225161.git.bcodding@redhat.com/#t
 
-That patch went to linux-next and should be dropped.  Anna, it looks like
-you've already dropped it, but I just wanted to make a note of it.
+When compiled with -fno-common, global variables that are declared
+multple times cause an error.  With -fcommon (the default), they are
+merged.
 
-Thanks for all the help, Trond!
+Declaring such variable multiple times is probably not a good idea, and
+is definitely not necessary.
 
-Trond Myklebust (3):
-  NFS: Fix up directory verifier races
-  NFSv4: Fix races between open and dentry revalidation
-  NFSv4: Fix revalidation of dentries with delegations
+This patch changes all the global variables defined in include files to
+be explicitly "extern", and where necessary, adds the variable
+declaration to a suitable .c file.
 
- fs/nfs/delegation.c    |   6 ++
- fs/nfs/dir.c           | 124 +++++++++++++++++++++++++++++++++++++----
- fs/nfs/inode.c         |   1 +
- fs/nfs/nfs4file.c      |   1 -
- fs/nfs/nfs4proc.c      |  18 +++++-
- include/linux/nfs_fs.h |  26 ++-------
- 6 files changed, 143 insertions(+), 33 deletions(-)
+To test, run
+  CFLAGS=3D-fno-common ./configure
+  make
 
---=20
-2.20.1
+Signed-off-by: NeilBrown <neilb@suse.de>
+=2D--
+ utils/mountd/v4root.c        |  2 --
+ utils/nfsdcld/cld-internal.h | 10 +++++-----
+ utils/nfsdcld/nfsdcld.c      |  6 ++++++
+ utils/statd/statd.c          |  1 +
+ utils/statd/statd.h          |  2 +-
+ 5 files changed, 13 insertions(+), 8 deletions(-)
 
+diff --git a/utils/mountd/v4root.c b/utils/mountd/v4root.c
+index d735dbfe192d..dd9828eb0c11 100644
+=2D-- a/utils/mountd/v4root.c
++++ b/utils/mountd/v4root.c
+@@ -28,8 +28,6 @@
+ #include "v4root.h"
+ #include "pseudoflavors.h"
+=20
+=2Dint v4root_needed;
+=2D
+ static nfs_export pseudo_root =3D {
+ 	.m_next =3D NULL,
+ 	.m_client =3D NULL,
+diff --git a/utils/nfsdcld/cld-internal.h b/utils/nfsdcld/cld-internal.h
+index 05f01be2105a..cc283dae9dbf 100644
+=2D-- a/utils/nfsdcld/cld-internal.h
++++ b/utils/nfsdcld/cld-internal.h
+@@ -35,10 +35,10 @@ struct cld_client {
+ 	} cl_u;
+ };
+=20
+=2Duint64_t current_epoch;
+=2Duint64_t recovery_epoch;
+=2Dint first_time;
+=2Dint num_cltrack_records;
+=2Dint num_legacy_records;
++extern uint64_t current_epoch;
++extern uint64_t recovery_epoch;
++extern int first_time;
++extern int num_cltrack_records;
++extern int num_legacy_records;
+=20
+ #endif /* _CLD_INTERNAL_H_ */
+diff --git a/utils/nfsdcld/nfsdcld.c b/utils/nfsdcld/nfsdcld.c
+index 2ad1001988d2..be6556262504 100644
+=2D-- a/utils/nfsdcld/nfsdcld.c
++++ b/utils/nfsdcld/nfsdcld.c
+@@ -69,6 +69,12 @@ static int 		inotify_fd =3D -1;
+ static struct event	pipedir_event;
+ static bool old_kernel =3D false;
+=20
++uint64_t current_epoch;
++uint64_t recovery_epoch;
++int first_time;
++int num_cltrack_records;
++int num_legacy_records;
++
+ static struct option longopts[] =3D
+ {
+ 	{ "help", 0, NULL, 'h' },
+diff --git a/utils/statd/statd.c b/utils/statd/statd.c
+index 8eef2ff24fe8..e4a1df43b73f 100644
+=2D-- a/utils/statd/statd.c
++++ b/utils/statd/statd.c
+@@ -67,6 +67,7 @@ static struct option longopts[] =3D
+ };
+=20
+ extern void sm_prog_1 (struct svc_req *, register SVCXPRT *);
++stat_chge	SM_stat_chge;
+=20
+ #ifdef SIMULATIONS
+ extern void simulator (int, char **);
+diff --git a/utils/statd/statd.h b/utils/statd/statd.h
+index 231ac7e0764b..bb1fecbb6a51 100644
+=2D-- a/utils/statd/statd.h
++++ b/utils/statd/statd.h
+@@ -41,7 +41,7 @@ extern void	load_state(void);
+ /*
+  * Host status structure and macros.
+  */
+=2Dstat_chge		SM_stat_chge;
++extern stat_chge	SM_stat_chge;
+ #define MY_NAME		SM_stat_chge.mon_name
+ #define MY_STATE	SM_stat_chge.state
+=20
+=2D-=20
+2.24.1
+
+
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+
+iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAl47O+MACgkQOeye3VZi
+gbkUfA/+IX1v+uQ+tfqEZswer62r0r36/cuL+njw4Fc9/s0+BOPlkLhsJ7tVaM3F
+KDMH07dS7gpLAlYH2v0Rm6Lo+7c2Gla4d1B1bXnRJy3jyA4uWsb7dpanvOv7Q45g
+GqIe1YdXK/EY3ULe5qPdKXySK2WQH9nYfvHIoEA08aMqFYW+s9I6CWX8q0WLVGMG
+0GD4zFZd5b5igJBjjavCl9PRkdILJpVKlOjonIOyFP1lFdD9MhFdbmpGsoIs4Ug6
+mtdvVKcGcxn9nhszarYGKZw8ZiaOmQYqrqwzniqkvFpcnL4L50EWGv7eh8SUdBUs
+tRKXST/7Btu3MQ/bQMvdpnk1L8ekcuvPl5LTIgV3TFg/UEOSg61bGAgbVU+ZT1DZ
+RQngxgVmgZDyNfimQp5fvaXx5yv32wcnTYvOE2vnYtnHnDnc8YfcP2KzpG/LEzPv
+j5h+ouaLbXuvMc2PMLayFuKKIEG0tih8mOZtdtoT5D2w4JZurdPKjjl5y5vYg1al
+gEEOp0FVzPJpHvewHXYe5UahAQu+7/dv9GLnRaJ9hoE3cB7LYIuifedW5ZDC8pyN
+oVAmbcTkismh6VGGseXyPb7gihNUvZCtPEU/oVhgfageXnzE4T2sjFdypGK13swF
+pp0e4YAkUn/KZKMGfKRa5mKJonAwjZjDxQclBF0ret8607cyqtM=
+=+ffx
+-----END PGP SIGNATURE-----
+--=-=-=--
