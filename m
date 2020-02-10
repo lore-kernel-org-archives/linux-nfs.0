@@ -8,64 +8,66 @@ X-Spam-Status: No, score=-9.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1FA6DC35254
-	for <linux-nfs@archiver.kernel.org>; Mon, 10 Feb 2020 19:16:09 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D987AC35254
+	for <linux-nfs@archiver.kernel.org>; Mon, 10 Feb 2020 19:16:10 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id E458520838
-	for <linux-nfs@archiver.kernel.org>; Mon, 10 Feb 2020 19:16:08 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id AA3E520838
+	for <linux-nfs@archiver.kernel.org>; Mon, 10 Feb 2020 19:16:10 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="sL1kiPZb"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="WtHiTNJU"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727555AbgBJTQI (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 10 Feb 2020 14:16:08 -0500
-Received: from mail-yw1-f66.google.com ([209.85.161.66]:37197 "EHLO
-        mail-yw1-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727029AbgBJTQI (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Feb 2020 14:16:08 -0500
-Received: by mail-yw1-f66.google.com with SMTP id l5so3952827ywd.4
-        for <linux-nfs@vger.kernel.org>; Mon, 10 Feb 2020 11:16:07 -0800 (PST)
+        id S1727433AbgBJTQK (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 10 Feb 2020 14:16:10 -0500
+Received: from mail-yb1-f194.google.com ([209.85.219.194]:33598 "EHLO
+        mail-yb1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727029AbgBJTQJ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Feb 2020 14:16:09 -0500
+Received: by mail-yb1-f194.google.com with SMTP id s35so4114043ybi.0
+        for <linux-nfs@vger.kernel.org>; Mon, 10 Feb 2020 11:16:09 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:subject:date:message-id:in-reply-to:references:mime-version
          :content-transfer-encoding;
-        bh=DHtLO0P0Zh+VIrDFcyw7AYu4iOARJCtRd5zyI+nBa7U=;
-        b=sL1kiPZbuQUD7GMMkSObcRQKjOtJUpRQMlgY2bTY5LAj22TX+Z6wooONERmedkCWIU
-         uf4Gu7H6+zLVxgbRuNXOE753J3bdoTp67sGzPRY/UZSmhbMCpTqD5kKObOfc4wYi7vCj
-         ZCVMLQZ/1h8bC9C6m9i3XClxUPyELkrf+YspgmiQ1+k9ozNdtGRj3H4rHS8uhs0V8wP7
-         jIirKPm1BABM9a5YjcwUu5Jnqlkn/0wf0/kQ2YwQXDBamQnRUf7OTgEpDpcNAfJXSpy+
-         R+TVLbrQrZlsVTKXoJtgVYt/VXKRHuHouTmaLANEfHngfNYOmPwDQZHEuvfG3U0B0vrG
-         08TA==
+        bh=OMqptcmVRzEg42M/Hggynq9yT5bF0SzCr+29ph874gs=;
+        b=WtHiTNJUUYm2HOKw903oyXMskaymXXDRO+BgikK+fDWnDwBQmx62+aS/meJ7QyvhYt
+         Polkexse58XqBG9iEouFX//dYxFaJusjmF1muyM0i6YzSDUvrXzQ1HO0S5IkwHBRR/Lz
+         tNu+p8ygigSmW/6KAhd1J3/EG37Wp8VRrA9vl/dUyunhgZZl52an7otRZxGu+nTPkXJj
+         eZ3rwy7f0uBq+SYvahbJ3CZRoIq9Kq8kAUZDOEVwxOsfU6/qkycJ/n0l4a8rUjbeL1rM
+         AV7+xujds8DQ1BtYRfx08rpcdFs130UZJnIjVwqzqG13T6rD6K0a9atuYtZCxNzv3/LG
+         A+fw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=DHtLO0P0Zh+VIrDFcyw7AYu4iOARJCtRd5zyI+nBa7U=;
-        b=WQQwMADrUEFciIVL+YaPXgxgj/l+fJ9ljB5KOW2uZl2QNfHQ2jKCSRfpDIWz+HtvUy
-         GDC8IATQIOg0p5j2Qg2ktdlzHYpmUn0YG2/XxUUm5NzQqWIWOIk2T79x8iOJWzFAtplz
-         nc8nytpnl9GGL4MF15tdIHdb5D8Iaashhqnt6L02dhMWHL59G4sE9yOTqTuOUkI0/eLo
-         bBsWyBrlvBkH6oQU4fsl8j7dMXW/nBQNM/bhFBPvtLWDmAAYUWaKEzJ+aGv7r1vg2Lva
-         aDMEGqyzPzFwFxfRDluMS3lVMTjbDUT1NuSkOSZ7DuhbOjKSGv+eLgMe6dVNFywGByt1
-         o/mw==
-X-Gm-Message-State: APjAAAWpCLDb0+mBl1byi1gywYQq6UwWFHDRWiq+YoUVrZ0+1MgLPR2S
-        gNO0mKUnpvLONRnJ5wlzPvwHQQkA3g==
-X-Google-Smtp-Source: APXvYqyZtdlHbuj7v9r6j3S6VJVR1MFa600geyb7YpLpTf8PTQuFHODF5UqquuGox+UxiARe5f/KgA==
-X-Received: by 2002:a81:a642:: with SMTP id d63mr2367225ywh.202.1581362166768;
-        Mon, 10 Feb 2020 11:16:06 -0800 (PST)
+        bh=OMqptcmVRzEg42M/Hggynq9yT5bF0SzCr+29ph874gs=;
+        b=V+8nqUnZpg4fEL2b30cjhL+QOPAa3SKcMRaAiM+ckvfvt8ZopBbeY2mTfNIj25/4ML
+         XnjpjTs1y9gLDWUAnrrL1yj0q8pIYREPsAmRQYHpKxxoSq1cTi1joaCCvaUoj8X1/h6I
+         xwJ62LCu7iJtg9NwDasCsp4cvwESzjQK4tNQW+ieGexlm52y41SEkDmszgckz6s3BEef
+         FQwhSshV+K1TC+I2wsrz/U+pgPlRKUi6Y7hPBc6n48jFRvAD2c8igRwELN8tUYq5XiLy
+         np2ZuLhZ1Rb6+r6urH4hw0cSvltCi2Pgy20kwnla9o/eysOm7Ulc/dfDMthXNAblmHZg
+         BSZQ==
+X-Gm-Message-State: APjAAAW8AbfacCAfLm65UQpz+SMbGA0Ti0q9Eydqckgk1pGDfiGTOY5i
+        YdMQPG6CnGHiSb9e2eZ+1bpTPk8upg==
+X-Google-Smtp-Source: APXvYqzO+gbVYHwgqMICdW6fFFbTxZ9yoP9aEKL/rpGFA517LTjqUIJNwO+EOsHPOl4xFRAurFNdfg==
+X-Received: by 2002:a25:cb90:: with SMTP id b138mr2770485ybg.128.1581362168661;
+        Mon, 10 Feb 2020 11:16:08 -0800 (PST)
 Received: from localhost.localdomain (c-68-40-189-247.hsd1.mi.comcast.net. [68.40.189.247])
-        by smtp.gmail.com with ESMTPSA id o4sm660222ywd.5.2020.02.10.11.16.05
+        by smtp.gmail.com with ESMTPSA id o4sm660222ywd.5.2020.02.10.11.16.07
         for <linux-nfs@vger.kernel.org>
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 10 Feb 2020 11:16:06 -0800 (PST)
+        Mon, 10 Feb 2020 11:16:08 -0800 (PST)
 From:   Trond Myklebust <trondmy@gmail.com>
 X-Google-Original-From: Trond Myklebust <trond.myklebust@hammerspace.com>
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH 2/8] SUNRPC: Add a flag to avoid reference counts on credentials
-Date:   Mon, 10 Feb 2020 14:13:39 -0500
-Message-Id: <20200210191345.557460-3-trond.myklebust@hammerspace.com>
+Subject: [PATCH 4/8] NFS: Assume cred is pinned by open context in I/O requests
+Date:   Mon, 10 Feb 2020 14:13:41 -0500
+Message-Id: <20200210191345.557460-5-trond.myklebust@hammerspace.com>
 X-Mailer: git-send-email 2.24.1
-In-Reply-To: <20200210191345.557460-2-trond.myklebust@hammerspace.com>
+In-Reply-To: <20200210191345.557460-4-trond.myklebust@hammerspace.com>
 References: <20200210191345.557460-1-trond.myklebust@hammerspace.com>
  <20200210191345.557460-2-trond.myklebust@hammerspace.com>
+ <20200210191345.557460-3-trond.myklebust@hammerspace.com>
+ <20200210191345.557460-4-trond.myklebust@hammerspace.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
@@ -73,58 +75,41 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Add a flag to signal to the RPC layer that the credential is already
-pinned for the duration of the RPC call.
+In read/write/commit, we should be able to assume that the cred is
+pinned by the open context.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- include/linux/sunrpc/sched.h | 1 +
- net/sunrpc/clnt.c            | 5 +++--
- net/sunrpc/sched.c           | 3 ++-
- 3 files changed, 6 insertions(+), 3 deletions(-)
+ fs/nfs/pagelist.c | 2 +-
+ fs/nfs/write.c    | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/include/linux/sunrpc/sched.h b/include/linux/sunrpc/sched.h
-index a6ef35184ef1..df696efdd675 100644
---- a/include/linux/sunrpc/sched.h
-+++ b/include/linux/sunrpc/sched.h
-@@ -132,6 +132,7 @@ struct rpc_task_setup {
- #define RPC_TASK_TIMEOUT	0x1000		/* fail with ETIMEDOUT on timeout */
- #define RPC_TASK_NOCONNECT	0x2000		/* return ENOTCONN if not connected */
- #define RPC_TASK_NO_RETRANS_TIMEOUT	0x4000		/* wait forever for a reply */
-+#define RPC_TASK_CRED_NOREF	0x8000		/* No refcount on the credential */
+diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+index 20b3717cd7ca..c9c3edefc5be 100644
+--- a/fs/nfs/pagelist.c
++++ b/fs/nfs/pagelist.c
+@@ -627,7 +627,7 @@ int nfs_initiate_pgio(struct rpc_clnt *clnt, struct nfs_pgio_header *hdr,
+ 		.callback_ops = call_ops,
+ 		.callback_data = hdr,
+ 		.workqueue = nfsiod_workqueue,
+-		.flags = RPC_TASK_ASYNC | flags,
++		.flags = RPC_TASK_ASYNC | RPC_TASK_CRED_NOREF | flags,
+ 	};
+ 	int ret = 0;
  
- #define RPC_IS_ASYNC(t)		((t)->tk_flags & RPC_TASK_ASYNC)
- #define RPC_IS_SWAPPER(t)	((t)->tk_flags & RPC_TASK_SWAPPER)
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index 7324b21f923e..2345e563c2f4 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -1099,8 +1099,9 @@ rpc_task_set_rpc_message(struct rpc_task *task, const struct rpc_message *msg)
- 		task->tk_msg.rpc_proc = msg->rpc_proc;
- 		task->tk_msg.rpc_argp = msg->rpc_argp;
- 		task->tk_msg.rpc_resp = msg->rpc_resp;
--		if (msg->rpc_cred != NULL)
--			task->tk_msg.rpc_cred = get_cred(msg->rpc_cred);
-+		task->tk_msg.rpc_cred = msg->rpc_cred;
-+		if (!(task->tk_flags & RPC_TASK_CRED_NOREF))
-+			get_cred(task->tk_msg.rpc_cred);
- 	}
- }
- 
-diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
-index 55e900255b0c..6eff14119a88 100644
---- a/net/sunrpc/sched.c
-+++ b/net/sunrpc/sched.c
-@@ -1162,7 +1162,8 @@ static void rpc_release_resources_task(struct rpc_task *task)
- {
- 	xprt_release(task);
- 	if (task->tk_msg.rpc_cred) {
--		put_cred(task->tk_msg.rpc_cred);
-+		if (!(task->tk_flags & RPC_TASK_CRED_NOREF))
-+			put_cred(task->tk_msg.rpc_cred);
- 		task->tk_msg.rpc_cred = NULL;
- 	}
- 	rpc_task_release_client(task);
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index c478b772cc49..5544ee6cfda8 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -1707,7 +1707,7 @@ int nfs_initiate_commit(struct rpc_clnt *clnt, struct nfs_commit_data *data,
+ 		.callback_ops = call_ops,
+ 		.callback_data = data,
+ 		.workqueue = nfsiod_workqueue,
+-		.flags = RPC_TASK_ASYNC | flags,
++		.flags = RPC_TASK_ASYNC | RPC_TASK_CRED_NOREF | flags,
+ 		.priority = priority,
+ 	};
+ 	/* Set up the initial task struct.  */
 -- 
 2.24.1
 
