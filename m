@@ -8,66 +8,65 @@ X-Spam-Status: No, score=-9.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D987AC35254
-	for <linux-nfs@archiver.kernel.org>; Mon, 10 Feb 2020 19:16:10 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4691FC3F68F
+	for <linux-nfs@archiver.kernel.org>; Mon, 10 Feb 2020 19:16:11 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id AA3E520838
-	for <linux-nfs@archiver.kernel.org>; Mon, 10 Feb 2020 19:16:10 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 178082051A
+	for <linux-nfs@archiver.kernel.org>; Mon, 10 Feb 2020 19:16:11 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="WtHiTNJU"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="G7rLe0vc"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727433AbgBJTQK (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S1727029AbgBJTQK (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Mon, 10 Feb 2020 14:16:10 -0500
-Received: from mail-yb1-f194.google.com ([209.85.219.194]:33598 "EHLO
-        mail-yb1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727029AbgBJTQJ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Feb 2020 14:16:09 -0500
-Received: by mail-yb1-f194.google.com with SMTP id s35so4114043ybi.0
-        for <linux-nfs@vger.kernel.org>; Mon, 10 Feb 2020 11:16:09 -0800 (PST)
+Received: from mail-yw1-f68.google.com ([209.85.161.68]:35402 "EHLO
+        mail-yw1-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727331AbgBJTQK (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Feb 2020 14:16:10 -0500
+Received: by mail-yw1-f68.google.com with SMTP id i190so3953347ywc.2
+        for <linux-nfs@vger.kernel.org>; Mon, 10 Feb 2020 11:16:08 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:subject:date:message-id:in-reply-to:references:mime-version
          :content-transfer-encoding;
-        bh=OMqptcmVRzEg42M/Hggynq9yT5bF0SzCr+29ph874gs=;
-        b=WtHiTNJUUYm2HOKw903oyXMskaymXXDRO+BgikK+fDWnDwBQmx62+aS/meJ7QyvhYt
-         Polkexse58XqBG9iEouFX//dYxFaJusjmF1muyM0i6YzSDUvrXzQ1HO0S5IkwHBRR/Lz
-         tNu+p8ygigSmW/6KAhd1J3/EG37Wp8VRrA9vl/dUyunhgZZl52an7otRZxGu+nTPkXJj
-         eZ3rwy7f0uBq+SYvahbJ3CZRoIq9Kq8kAUZDOEVwxOsfU6/qkycJ/n0l4a8rUjbeL1rM
-         AV7+xujds8DQ1BtYRfx08rpcdFs130UZJnIjVwqzqG13T6rD6K0a9atuYtZCxNzv3/LG
-         A+fw==
+        bh=8aMIdSbKzgajTBdWOQFKylPBEb9etNnzN78zz1ELB7I=;
+        b=G7rLe0vcAN4k2w8fEwt+dfhRGowGdgQsW7H6EqQi0X7v958EekjBav0RJ2GIt/5XXX
+         yyDDEztaQoh7CwUK/jTwype/bOBlCqekGZDuvUWz8N1CBNrQZC73j5P5sqZJemrxJKzf
+         19GWrq+DlNX2HqddfL7OB7/pYnBUwFI7kXsOmOmwSTi9++NidqCQEMOBd1ubA1+BlLCW
+         /yzBSFEQNVm8B6Nj0CkTZINWZQtWsuYL0Df+GuKcbe9Pk8dBUDT2NrQYkqWlFwd4l2kj
+         Xo6PXL92Li+0c1o+zZF6ajbLrBhYV8eYXXuC0lOl29wgYUS9I+k+sosFxt0TU62+s2SU
+         0mwg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=OMqptcmVRzEg42M/Hggynq9yT5bF0SzCr+29ph874gs=;
-        b=V+8nqUnZpg4fEL2b30cjhL+QOPAa3SKcMRaAiM+ckvfvt8ZopBbeY2mTfNIj25/4ML
-         XnjpjTs1y9gLDWUAnrrL1yj0q8pIYREPsAmRQYHpKxxoSq1cTi1joaCCvaUoj8X1/h6I
-         xwJ62LCu7iJtg9NwDasCsp4cvwESzjQK4tNQW+ieGexlm52y41SEkDmszgckz6s3BEef
-         FQwhSshV+K1TC+I2wsrz/U+pgPlRKUi6Y7hPBc6n48jFRvAD2c8igRwELN8tUYq5XiLy
-         np2ZuLhZ1Rb6+r6urH4hw0cSvltCi2Pgy20kwnla9o/eysOm7Ulc/dfDMthXNAblmHZg
-         BSZQ==
-X-Gm-Message-State: APjAAAW8AbfacCAfLm65UQpz+SMbGA0Ti0q9Eydqckgk1pGDfiGTOY5i
-        YdMQPG6CnGHiSb9e2eZ+1bpTPk8upg==
-X-Google-Smtp-Source: APXvYqzO+gbVYHwgqMICdW6fFFbTxZ9yoP9aEKL/rpGFA517LTjqUIJNwO+EOsHPOl4xFRAurFNdfg==
-X-Received: by 2002:a25:cb90:: with SMTP id b138mr2770485ybg.128.1581362168661;
-        Mon, 10 Feb 2020 11:16:08 -0800 (PST)
+        bh=8aMIdSbKzgajTBdWOQFKylPBEb9etNnzN78zz1ELB7I=;
+        b=efSfjIGGzncPbkkuFtuQJ3ijX0CTePFoJmE+FhiP90APeXjmryLVe07Mcqy0XCkCOz
+         KJofMzh0b4QaYLD+jtB+F5q15PPvsU/nbcQYdAotasUOzImmy8FuSEH+/BhNcf7NTBKK
+         8TwmPzawowSYZmSBUSMrQodN9/jfa9LKMei9bwJeWtjxmAdMX1rXK7y/Q/lbonOkq5/D
+         K+0UF9VUwBJ/giR9D6LbRfesAHH65iKxuUJOHOHUvroDrZX5VuMbcIdBWeh0ndi4+fsY
+         b05WmQaNPP5WmQTiEkUYfG2t3J0ZAnDHvyvnrsL6SwNaXtJnhiacaNuD0C7E0QDxiPIP
+         3rXg==
+X-Gm-Message-State: APjAAAW8OrIjxxDFzl2fcObLUbcm+3iS/Isyo4UJZ87/QQzM0qRAIZHV
+        coVXKZjZll1SIhCqFPG0Hp6Z2vVQyw==
+X-Google-Smtp-Source: APXvYqw6Lw96yfg2kRot6kWWIMC/Twgbh0BFhBjVOdPxZgDdgOP27mjsEn9+A7PhoIms29RGg/tt3g==
+X-Received: by 2002:a81:52cd:: with SMTP id g196mr2362676ywb.89.1581362167649;
+        Mon, 10 Feb 2020 11:16:07 -0800 (PST)
 Received: from localhost.localdomain (c-68-40-189-247.hsd1.mi.comcast.net. [68.40.189.247])
-        by smtp.gmail.com with ESMTPSA id o4sm660222ywd.5.2020.02.10.11.16.07
+        by smtp.gmail.com with ESMTPSA id o4sm660222ywd.5.2020.02.10.11.16.06
         for <linux-nfs@vger.kernel.org>
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 10 Feb 2020 11:16:08 -0800 (PST)
+        Mon, 10 Feb 2020 11:16:07 -0800 (PST)
 From:   Trond Myklebust <trondmy@gmail.com>
 X-Google-Original-From: Trond Myklebust <trond.myklebust@hammerspace.com>
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH 4/8] NFS: Assume cred is pinned by open context in I/O requests
-Date:   Mon, 10 Feb 2020 14:13:41 -0500
-Message-Id: <20200210191345.557460-5-trond.myklebust@hammerspace.com>
+Subject: [PATCH 3/8] SUNRPC: Don't take a reference to the cred on synchronous tasks
+Date:   Mon, 10 Feb 2020 14:13:40 -0500
+Message-Id: <20200210191345.557460-4-trond.myklebust@hammerspace.com>
 X-Mailer: git-send-email 2.24.1
-In-Reply-To: <20200210191345.557460-4-trond.myklebust@hammerspace.com>
+In-Reply-To: <20200210191345.557460-3-trond.myklebust@hammerspace.com>
 References: <20200210191345.557460-1-trond.myklebust@hammerspace.com>
  <20200210191345.557460-2-trond.myklebust@hammerspace.com>
  <20200210191345.557460-3-trond.myklebust@hammerspace.com>
- <20200210191345.557460-4-trond.myklebust@hammerspace.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
@@ -75,41 +74,28 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-In read/write/commit, we should be able to assume that the cred is
-pinned by the open context.
+If the RPC call is synchronous, assume the cred is already pinned
+by the caller.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/pagelist.c | 2 +-
- fs/nfs/write.c    | 2 +-
- 2 files changed, 2 insertions(+), 2 deletions(-)
+ net/sunrpc/clnt.c | 3 +++
+ 1 file changed, 3 insertions(+)
 
-diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-index 20b3717cd7ca..c9c3edefc5be 100644
---- a/fs/nfs/pagelist.c
-+++ b/fs/nfs/pagelist.c
-@@ -627,7 +627,7 @@ int nfs_initiate_pgio(struct rpc_clnt *clnt, struct nfs_pgio_header *hdr,
- 		.callback_ops = call_ops,
- 		.callback_data = hdr,
- 		.workqueue = nfsiod_workqueue,
--		.flags = RPC_TASK_ASYNC | flags,
-+		.flags = RPC_TASK_ASYNC | RPC_TASK_CRED_NOREF | flags,
- 	};
- 	int ret = 0;
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 2345e563c2f4..252b044cdcdf 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -1127,6 +1127,9 @@ struct rpc_task *rpc_run_task(const struct rpc_task_setup *task_setup_data)
  
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index c478b772cc49..5544ee6cfda8 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -1707,7 +1707,7 @@ int nfs_initiate_commit(struct rpc_clnt *clnt, struct nfs_commit_data *data,
- 		.callback_ops = call_ops,
- 		.callback_data = data,
- 		.workqueue = nfsiod_workqueue,
--		.flags = RPC_TASK_ASYNC | flags,
-+		.flags = RPC_TASK_ASYNC | RPC_TASK_CRED_NOREF | flags,
- 		.priority = priority,
- 	};
- 	/* Set up the initial task struct.  */
+ 	task = rpc_new_task(task_setup_data);
+ 
++	if (!RPC_IS_ASYNC(task))
++		task->tk_flags |= RPC_TASK_CRED_NOREF;
++
+ 	rpc_task_set_client(task, task_setup_data->rpc_client);
+ 	rpc_task_set_rpc_message(task, task_setup_data->rpc_message);
+ 
 -- 
 2.24.1
 
