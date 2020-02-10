@@ -8,68 +8,69 @@ X-Spam-Status: No, score=-9.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E24DAC352A5
-	for <linux-nfs@archiver.kernel.org>; Mon, 10 Feb 2020 19:16:12 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D79D8C35254
+	for <linux-nfs@archiver.kernel.org>; Mon, 10 Feb 2020 19:16:13 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id A89672051A
-	for <linux-nfs@archiver.kernel.org>; Mon, 10 Feb 2020 19:16:12 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id A853720838
+	for <linux-nfs@archiver.kernel.org>; Mon, 10 Feb 2020 19:16:13 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="CMr80gXg"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="GgZ6eIZj"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727331AbgBJTQM (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 10 Feb 2020 14:16:12 -0500
-Received: from mail-yw1-f67.google.com ([209.85.161.67]:41708 "EHLO
-        mail-yw1-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        id S1727587AbgBJTQN (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 10 Feb 2020 14:16:13 -0500
+Received: from mail-yw1-f68.google.com ([209.85.161.68]:44119 "EHLO
+        mail-yw1-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
         with ESMTP id S1727572AbgBJTQM (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Feb 2020 14:16:12 -0500
-Received: by mail-yw1-f67.google.com with SMTP id l22so3939022ywc.8
-        for <linux-nfs@vger.kernel.org>; Mon, 10 Feb 2020 11:16:11 -0800 (PST)
+Received: by mail-yw1-f68.google.com with SMTP id t141so3931965ywc.11
+        for <linux-nfs@vger.kernel.org>; Mon, 10 Feb 2020 11:16:12 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:subject:date:message-id:in-reply-to:references:mime-version
          :content-transfer-encoding;
-        bh=ZcmMvtTswIf+YTA+DDJp0GV3gjjxF4a82aq2v6Pllwk=;
-        b=CMr80gXgP7NEy5pxOzpF/mHW6wKRRgYI8oY4Ebw1PklTuLjqP1dyXNAbhzD3Ludaiz
-         r2LbNmrFOGCTAQ27DbJFbMbQFyqv2ZHqCWKh7yjEO7FG0XCtLOiLtoMj9NMy+/0WMWrs
-         y4CA+xFAm+WndqwNaVGHX5OWXi7Uetnk3J8K76gJSeZjyaWAaILYeJH5/a0CI+Ng/xoa
-         UYN8XJKGcKOO0pyUWCqgSibFSbzGGhoHkzrXxZWnEzREa4LqmO8eOANyXbTOooW0dhWG
-         O8z46N3hKThPwKla0flZgAJwVSxGgsYFgsfWdjbJBqnvPj36WrPPERgb0EnvBe8znMUZ
-         mmBA==
+        bh=a+13WK+Oz13ZrEk9aniPwYJ/cSiJ37KnFThG8SEGIeU=;
+        b=GgZ6eIZjLQxLLqbZrVoSTkzMgVbN/ajMHuWoz4PQkrW7jzcD5ixDKQdVerWFEtdCS2
+         lM8e72DAHDvJbEPs6kiTSTyEnlU3eoLk2useIgl4NGJvJHA44hbwKuoJGLA/JD8uwgEK
+         zQ//fVOgT40NWlJ+3MVvlEM4QYZRcwMDRB8AgwO8X9UMI98xeBactWnzq7hbxMaJJx/q
+         pMbT6NeTEQr3unWM/NS5eZ6GAP6Oi4X4Cyxqwu/LJxW4L8ZA5qV2pNsD163OrOUgy8Ts
+         Klyk1cOrVJHh84td5rgEPT11PTp5/sjvkIipTvUFpqvKsIPZXGv0N8FZ5NJDD6sOzw/q
+         ez9Q==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=ZcmMvtTswIf+YTA+DDJp0GV3gjjxF4a82aq2v6Pllwk=;
-        b=eCn7eiIrqlhvqfLs6dKc/nGIuAGGMGruE7UcaefYrC1doWLnmdXcjuCjYpxKHRHFz6
-         bhSmsz35pBo5JxHwZG4F5Mi05gtsQK3MQbFgMoQxEcbQd8qcEa7h9uUz3vJU+Ink+m17
-         Weh0C7LMXWX26fHR2KpCWEl1+oSp0I5WlCQL01nXDOnHt3GLE7rjL/ncDZYuBLIeFstY
-         HSROOF07dM2Tv3RqO44bgEKziVzpg3NMP7IoUYctVjAsDzLYLsEEAj3OQTmA1jhWvtGZ
-         AETxQjF8GOv4izrqSFy5K4aLofsxLzd3rffatvB1PRXlRt+6t2vCR3LZlqydsQKO1Ev5
-         0IbA==
-X-Gm-Message-State: APjAAAV1yHLdRjdzinERhzC+lG3tJ68Ppp6CiFDRqrrSC6dD61d0fdJT
-        yF5PAMsyv53ocyyGyFcJl+efl2ZcWg==
-X-Google-Smtp-Source: APXvYqxg7MhfqQvz0QXyd8iYTAuqieE78vE6p4sHhMEorpTTGewJa3NpIcWBpNXDWL4rB8+HPcsIAw==
-X-Received: by 2002:a0d:db47:: with SMTP id d68mr2428247ywe.338.1581362170423;
-        Mon, 10 Feb 2020 11:16:10 -0800 (PST)
+        bh=a+13WK+Oz13ZrEk9aniPwYJ/cSiJ37KnFThG8SEGIeU=;
+        b=ia1ofhLwAQBmSFD3YbqfGCwbxET/mC5nGrAqRmgpkN5Msp9QDITgp5gHygVfXO1aZq
+         3oA7VK04NMlsUuQXy1Kwbp3M+da+p81l4qiDBFEwVhhyoHr1Lf4zltwirdueubq+qU/Q
+         HcwxvMLLu2u9ilC0gA71Rp8j+tO0yavAXEOx54Apr+PSTC5q0Mk0RcfArb6nGG2MGhet
+         QpUiF3MvJ1VjgyKRlpGSBQ2/VReaF+R+kOGiRVpO+ZWSWS9vs+KALgcnJCLOc2P9k3PI
+         NEcwrgse3sVZnAVUkptpEF5KzRl/9AdXcFBhzMw2WCS7bIZ2IjIzMJqpouVk9SIECy26
+         Kdlw==
+X-Gm-Message-State: APjAAAWvaPTE8gfP+QfSoLRyTD1xzZ4SAOjpxtiSCL1b+L8NMveMvV4b
+        +wzPMKmNYtiTimgrdv33L/vYcwpnJA==
+X-Google-Smtp-Source: APXvYqzcB2M1xN6pV6/e7/B65yB6pNLPKEAsNNPm4WycGa3XwqCy93Mesnsej88RJuyMvqrRHQxKdQ==
+X-Received: by 2002:a0d:e186:: with SMTP id k128mr2310405ywe.178.1581362171224;
+        Mon, 10 Feb 2020 11:16:11 -0800 (PST)
 Received: from localhost.localdomain (c-68-40-189-247.hsd1.mi.comcast.net. [68.40.189.247])
-        by smtp.gmail.com with ESMTPSA id o4sm660222ywd.5.2020.02.10.11.16.09
+        by smtp.gmail.com with ESMTPSA id o4sm660222ywd.5.2020.02.10.11.16.10
         for <linux-nfs@vger.kernel.org>
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
         Mon, 10 Feb 2020 11:16:10 -0800 (PST)
 From:   Trond Myklebust <trondmy@gmail.com>
 X-Google-Original-From: Trond Myklebust <trond.myklebust@hammerspace.com>
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH 6/8] NFSv4: Avoid unnecessary credential references in layoutget
-Date:   Mon, 10 Feb 2020 14:13:43 -0500
-Message-Id: <20200210191345.557460-7-trond.myklebust@hammerspace.com>
+Subject: [PATCH 7/8] NFS: Avoid referencing the cred twice in async rename/unlink
+Date:   Mon, 10 Feb 2020 14:13:44 -0500
+Message-Id: <20200210191345.557460-8-trond.myklebust@hammerspace.com>
 X-Mailer: git-send-email 2.24.1
-In-Reply-To: <20200210191345.557460-6-trond.myklebust@hammerspace.com>
+In-Reply-To: <20200210191345.557460-7-trond.myklebust@hammerspace.com>
 References: <20200210191345.557460-1-trond.myklebust@hammerspace.com>
  <20200210191345.557460-2-trond.myklebust@hammerspace.com>
  <20200210191345.557460-3-trond.myklebust@hammerspace.com>
  <20200210191345.557460-4-trond.myklebust@hammerspace.com>
  <20200210191345.557460-5-trond.myklebust@hammerspace.com>
  <20200210191345.557460-6-trond.myklebust@hammerspace.com>
+ <20200210191345.557460-7-trond.myklebust@hammerspace.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
@@ -77,48 +78,36 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Layoutget is just using the credential attached to the open context.
+In both async rename and rename, we take a reference to the
+cred in the call arguments.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/nfs4proc.c | 2 +-
- fs/nfs/pnfs.c     | 3 +--
- 2 files changed, 2 insertions(+), 3 deletions(-)
+ fs/nfs/unlink.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 47464fb419dc..7f5802b6d404 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -9177,7 +9177,7 @@ nfs4_proc_layoutget(struct nfs4_layoutget *lgp, long *timeout)
- 		.rpc_message = &msg,
- 		.callback_ops = &nfs4_layoutget_call_ops,
- 		.callback_data = lgp,
+diff --git a/fs/nfs/unlink.c b/fs/nfs/unlink.c
+index 0effeee28352..b27ebdccef70 100644
+--- a/fs/nfs/unlink.c
++++ b/fs/nfs/unlink.c
+@@ -98,7 +98,7 @@ static void nfs_do_call_unlink(struct inode *inode, struct nfs_unlinkdata *data)
+ 		.callback_ops = &nfs_unlink_ops,
+ 		.callback_data = data,
+ 		.workqueue = nfsiod_workqueue,
 -		.flags = RPC_TASK_ASYNC,
 +		.flags = RPC_TASK_ASYNC | RPC_TASK_CRED_NOREF,
  	};
- 	struct pnfs_layout_segment *lseg = NULL;
- 	struct nfs4_exception exception = {
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index b21eb4882846..cb99ac954688 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1073,7 +1073,7 @@ pnfs_alloc_init_layoutget_args(struct inode *ino,
- 	lgp->args.ctx = get_nfs_open_context(ctx);
- 	nfs4_stateid_copy(&lgp->args.stateid, stateid);
- 	lgp->gfp_flags = gfp_flags;
--	lgp->cred = get_cred(ctx->cred);
-+	lgp->cred = ctx->cred;
- 	return lgp;
- }
+ 	struct rpc_task *task;
+ 	struct inode *dir = d_inode(data->dentry->d_parent);
+@@ -341,7 +341,7 @@ nfs_async_rename(struct inode *old_dir, struct inode *new_dir,
+ 		.callback_ops = &nfs_rename_ops,
+ 		.workqueue = nfsiod_workqueue,
+ 		.rpc_client = NFS_CLIENT(old_dir),
+-		.flags = RPC_TASK_ASYNC,
++		.flags = RPC_TASK_ASYNC | RPC_TASK_CRED_NOREF,
+ 	};
  
-@@ -1084,7 +1084,6 @@ void pnfs_layoutget_free(struct nfs4_layoutget *lgp)
- 	nfs4_free_pages(lgp->args.layout.pages, max_pages);
- 	if (lgp->args.inode)
- 		pnfs_put_layout_hdr(NFS_I(lgp->args.inode)->layout);
--	put_cred(lgp->cred);
- 	put_nfs_open_context(lgp->args.ctx);
- 	kfree(lgp);
- }
+ 	data = kzalloc(sizeof(*data), GFP_KERNEL);
 -- 
 2.24.1
 
