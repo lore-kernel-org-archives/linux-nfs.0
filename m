@@ -7,46 +7,47 @@ X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1FFF1C3B1A6
-	for <linux-nfs@archiver.kernel.org>; Fri, 14 Feb 2020 17:26:00 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id BD752C2BA83
+	for <linux-nfs@archiver.kernel.org>; Fri, 14 Feb 2020 17:33:38 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id EABB2222C2
-	for <linux-nfs@archiver.kernel.org>; Fri, 14 Feb 2020 17:25:59 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 963472082F
+	for <linux-nfs@archiver.kernel.org>; Fri, 14 Feb 2020 17:33:38 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1581701160;
-	bh=nV2rG360gPkk6R2U9iXdSMSM4aIx3EOLH+KRbqeh7XI=;
+	s=default; t=1581701618;
+	bh=yBlDfK0Mudw/4zVvE2Xj4NPpTKUWG5OSwDqj4f9zWs0=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=WA3KdLkrBNoErzcHBCm67lbUsCgxe6DfXjrCVJfVaVhr4uu4m471evgw2xt2IcKOH
-	 alh8sFMIKSAkZJWRE8JhWwq3dKZXSG/ER7XGwW2h9unudKekX/3rGbmXIuLMeILfng
-	 mEeb9LHFcOJzxn2DnuXFvlN+pxvNAlB+Gb7N8cOg=
+	b=JRfarpvSdYFIOU7ogalaQs1iigfpyBBtl0fSXaCdDGPFvvxNAt4cQAE1TWuFKi97f
+	 Igg51c28SKiImLjrZVd9cpevaC5KMznFaOhZxFtHoIYOM4SndmX/VL33wvW4LQNFO9
+	 W/Ac5yHjEeKkAhHTkJEzxuKFZ2/2s4VJE/7rNy4U=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2391170AbgBNRZz (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 14 Feb 2020 12:25:55 -0500
-Received: from mail.kernel.org ([198.145.29.99]:60754 "EHLO mail.kernel.org"
+        id S2390203AbgBNQGU (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 14 Feb 2020 11:06:20 -0500
+Received: from mail.kernel.org ([198.145.29.99]:56754 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2391020AbgBNQIk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 14 Feb 2020 11:08:40 -0500
+        id S2390386AbgBNQGU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 14 Feb 2020 11:06:20 -0500
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id F28EA2467E;
-        Fri, 14 Feb 2020 16:08:38 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id B64042187F;
+        Fri, 14 Feb 2020 16:06:18 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1581696519;
-        bh=nV2rG360gPkk6R2U9iXdSMSM4aIx3EOLH+KRbqeh7XI=;
+        s=default; t=1581696379;
+        bh=yBlDfK0Mudw/4zVvE2Xj4NPpTKUWG5OSwDqj4f9zWs0=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=ULIjdQ1xi5K0PjogMcoqK5peCcxxcxsdrjZTnu2smpKxXspoAhzGf6oqc+XLlOWs7
-         sXYBsAMGaZqkS7equucEporgkI1Cw/OjZKJI04MnhWEsDmYu6m9tZm9kfhfotL1cHl
-         A7yY9qem19Ht3+vreJT4cQnyxyHwQhbu2gMvqzMM=
+        b=XVLofO0E5D9EVGi3knAChFC/mcSIHtDDMSg62n3WjO6gikX2m23BmuonRpYpZv8iG
+         be5CG4fx+8X7RYZFmZ0PyHlMdTuugPT09AKuAC9sBNbfTqNqktJ52DideX399RY+YY
+         BuUPgFR4Vc6mDtbRAHnnljy7NKn+NLA6oX5ck3YI=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
 Cc:     Trond Myklebust <trondmy@gmail.com>,
+        Dave Chinner <david@fromorbit.com>,
         Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Anna Schumaker <Anna.Schumaker@Netapp.com>,
+        "J . Bruce Fields" <bfields@redhat.com>,
         Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.4 320/459] NFS: Revalidate the file size on a fatal write error
-Date:   Fri, 14 Feb 2020 10:59:30 -0500
-Message-Id: <20200214160149.11681-320-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 5.4 207/459] nfsd: Clone should commit src file metadata too
+Date:   Fri, 14 Feb 2020 10:57:37 -0500
+Message-Id: <20200214160149.11681-207-sashal@kernel.org>
 X-Mailer: git-send-email 2.20.1
 In-Reply-To: <20200214160149.11681-1-sashal@kernel.org>
 References: <20200214160149.11681-1-sashal@kernel.org>
@@ -61,40 +62,65 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trondmy@gmail.com>
 
-[ Upstream commit 0df68ced55443243951d02cc497be31fadf28173 ]
+[ Upstream commit 57f64034966fb945fc958f95f0c51e47af590344 ]
 
-If we suffer a fatal error upon writing a file, which causes us to
-need to revalidate the entire mapping, then we should also revalidate
-the file size.
+vfs_clone_file_range() can modify the metadata on the source file too,
+so we need to commit that to stable storage as well.
 
-Fixes: d2ceb7e57086 ("NFS: Don't use page_file_mapping after removing the page")
+Reported-by: Dave Chinner <david@fromorbit.com>
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+Acked-by: Dave Chinner <david@fromorbit.com>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- fs/nfs/write.c | 8 ++++++++
- 1 file changed, 8 insertions(+)
+ fs/nfsd/vfs.c | 19 ++++++++++++++-----
+ 1 file changed, 14 insertions(+), 5 deletions(-)
 
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 52cab65f91cf0..f5170bc839aa2 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -243,7 +243,15 @@ static void nfs_grow_file(struct page *page, unsigned int offset, unsigned int c
- /* A writeback failed: mark the page as bad, and invalidate the page cache */
- static void nfs_set_pageerror(struct address_space *mapping)
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index fc38b9fe45495..005d1802ab40e 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -280,19 +280,25 @@ nfsd_lookup(struct svc_rqst *rqstp, struct svc_fh *fhp, const char *name,
+  * Commit metadata changes to stable storage.
+  */
+ static int
+-commit_metadata(struct svc_fh *fhp)
++commit_inode_metadata(struct inode *inode)
  {
-+	struct inode *inode = mapping->host;
-+
- 	nfs_zap_mapping(mapping->host, mapping);
-+	/* Force file size revalidation */
-+	spin_lock(&inode->i_lock);
-+	NFS_I(inode)->cache_validity |= NFS_INO_REVAL_FORCED |
-+					NFS_INO_REVAL_PAGECACHE |
-+					NFS_INO_INVALID_SIZE;
-+	spin_unlock(&inode->i_lock);
+-	struct inode *inode = d_inode(fhp->fh_dentry);
+ 	const struct export_operations *export_ops = inode->i_sb->s_export_op;
+ 
+-	if (!EX_ISSYNC(fhp->fh_export))
+-		return 0;
+-
+ 	if (export_ops->commit_metadata)
+ 		return export_ops->commit_metadata(inode);
+ 	return sync_inode_metadata(inode, 1);
  }
  
- static void nfs_mapping_set_error(struct page *page, int error)
++static int
++commit_metadata(struct svc_fh *fhp)
++{
++	struct inode *inode = d_inode(fhp->fh_dentry);
++
++	if (!EX_ISSYNC(fhp->fh_export))
++		return 0;
++	return commit_inode_metadata(inode);
++}
++
+ /*
+  * Go over the attributes and take care of the small differences between
+  * NFS semantics and what Linux expects.
+@@ -537,6 +543,9 @@ __be32 nfsd4_clone_file_range(struct file *src, u64 src_pos, struct file *dst,
+ 	if (sync) {
+ 		loff_t dst_end = count ? dst_pos + count - 1 : LLONG_MAX;
+ 		int status = vfs_fsync_range(dst, dst_pos, dst_end, 0);
++
++		if (!status)
++			status = commit_inode_metadata(file_inode(src));
+ 		if (status < 0)
+ 			return nfserrno(status);
+ 	}
 -- 
 2.20.1
 
