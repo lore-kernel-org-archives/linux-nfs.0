@@ -2,138 +2,108 @@ Return-Path: <SRS0=JHN1=4C=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-0.6 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
-	autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 191C0C2BA83
-	for <linux-nfs@archiver.kernel.org>; Fri, 14 Feb 2020 18:21:32 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5DF2EC2BA83
+	for <linux-nfs@archiver.kernel.org>; Fri, 14 Feb 2020 18:25:54 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id E22892168B
-	for <linux-nfs@archiver.kernel.org>; Fri, 14 Feb 2020 18:21:31 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="gNM5lKg4"
+	by mail.kernel.org (Postfix) with ESMTP id 236292086A
+	for <linux-nfs@archiver.kernel.org>; Fri, 14 Feb 2020 18:25:54 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=default; t=1581704754;
+	bh=nJbDNA7aBbKm++/k9gvMPLr0AAdaS0Gjqct3g8AWz18=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
+	b=vup2rz/s75MIN3udhQO794ckBstNVP75sUT7zXClMLg3MRMGM+8EM/09jGrr9UI4D
+	 IQo2+5lWSeapqJenwF50+giWBvov6KTPcJsRFiLFflIdkecQoy+xhDDqWsJd/uyDBc
+	 ZeWaYiYQ38Sm1jrmbWYCiRyv5r7qfzrd9w6Ihiuo=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2388384AbgBNSV1 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 14 Feb 2020 13:21:27 -0500
-Received: from mail-yb1-f195.google.com ([209.85.219.195]:33257 "EHLO
-        mail-yb1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1730179AbgBNPtq (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Feb 2020 10:49:46 -0500
-Received: by mail-yb1-f195.google.com with SMTP id b6so4973054ybr.0;
-        Fri, 14 Feb 2020 07:49:46 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=sender:subject:from:to:cc:date:message-id:user-agent:mime-version
-         :content-transfer-encoding;
-        bh=B4Yces3GA3NT+lBTZdVIgNxGvj/dhKg96+I5y5scsvg=;
-        b=gNM5lKg4vqIVz/o8q+PAO9NAWIc47FwnqjDp8dx2ZnbpQNZB/Aw4uddWrR5bBA7Duo
-         zFIWz1fTR3bLrwy9nOKkRi71pKjuKhEsxcZQoBjP8MWVmZtbPiESyAlBC6FcLmOloeAN
-         sZBUpacJqvXzUCIUvkxe+a8XFuX0cJm0dcPmvQv481ce8YolmgUlp0PSjnr/Up00ezFF
-         HyxHPzUllJUZW71Px0gArL+i8hyGuiysSALcWKUvbmqxgEfR89kqB/Ni7wYZEYBT7nWh
-         rvv7FCwSvZFQzejwT26HFGRwnItSEpSykJITzpyZY678quSn27BmaYH+jF90FrB565x+
-         kqRg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:sender:subject:from:to:cc:date:message-id
-         :user-agent:mime-version:content-transfer-encoding;
-        bh=B4Yces3GA3NT+lBTZdVIgNxGvj/dhKg96+I5y5scsvg=;
-        b=hSeL8iflMR42EnluJx/dM4Dj7Rxp565y5vfqyZwvsSKs/EoSr/6HsMyQ1NL0eHojbm
-         ue8cAtGdhkXCIRdAkoHhBCq4dPKvC6kaeE5IbwKM2tjLrq90lvuxcOACN6XVQu1J5DGK
-         GDDe8ha/jqTwa2XIWf5O7Xd5BjenpHqYc61Hb9RFa4ekZfTgflKWiswexAV2ZP19wUf3
-         LhkLkpFxLIw02YD24IrgNSuEsVYSgRh7hnG+pz/CLMIPYCJQnCTC1ly51pAf4oo0uniz
-         XhrdmiV94i6Nj7mp1+tQ+mQCSenu/82zyAFtTRbEMwYdKSkj3Ne8TSfcx7z+rFxkkEDF
-         NbZA==
-X-Gm-Message-State: APjAAAWgOisfgXJedFUoHdZRrmxLn8RsvCwmKjg+w0DcW/hVh36da8rB
-        dPmSBhD0ugXb5vEYzYwO+jL4i085
-X-Google-Smtp-Source: APXvYqzKbkj09pM79pXgkQDMAlSRFxHqG0ms5dFZBDHSILLBgE1Api88TzotZgVMmu8BiEkgpQXcag==
-X-Received: by 2002:a25:c945:: with SMTP id z66mr3463977ybf.206.1581695385184;
-        Fri, 14 Feb 2020 07:49:45 -0800 (PST)
-Received: from gateway.1015granger.net (c-68-61-232-219.hsd1.mi.comcast.net. [68.61.232.219])
-        by smtp.gmail.com with ESMTPSA id v7sm2630937ywh.62.2020.02.14.07.49.44
-        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Fri, 14 Feb 2020 07:49:44 -0800 (PST)
-Received: from klimt.1015granger.net (klimt.1015granger.net [192.168.1.55])
-        by gateway.1015granger.net (8.14.7/8.14.7) with ESMTP id 01EFneeg029147;
-        Fri, 14 Feb 2020 15:49:41 GMT
-Subject: [PATCH RFC 0/9] Address bugzilla 198053 and more ...
-From:   Chuck Lever <chuck.lever@oracle.com>
-To:     bfields@fieldses.org
-Cc:     linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date:   Fri, 14 Feb 2020 10:49:40 -0500
-Message-ID: <20200214151427.3848.49739.stgit@klimt.1015granger.net>
-User-Agent: StGit/0.17.1-dirty
+        id S2394988AbgBNSZv (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 14 Feb 2020 13:25:51 -0500
+Received: from mail.kernel.org ([198.145.29.99]:51566 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1729701AbgBNPtH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 14 Feb 2020 10:49:07 -0500
+Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+        (No client certificate requested)
+        by mail.kernel.org (Postfix) with ESMTPSA id 80E9124650;
+        Fri, 14 Feb 2020 15:49:05 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=default; t=1581695346;
+        bh=nJbDNA7aBbKm++/k9gvMPLr0AAdaS0Gjqct3g8AWz18=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=cdL70xUuHSyCi7jG7AzLsuMgd6dJbU4TYlAzTN2HLTS2121YN+4HgNspboZ5m6+k1
+         ufyRu4ReUxihjDZxGZ34sefn6vkeMMVSd+b4Ava8SiXtx5E5KGWcPRuiFo+hmfuTRF
+         e+eRqtmgL5Mq0sBna3lr6x1IIk1jIRIDzQSHJCks=
+From:   Sasha Levin <sashal@kernel.org>
+To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
+Cc:     "J. Bruce Fields" <bfields@redhat.com>,
+        Dan Carpenter <dan.carpenter@oracle.com>,
+        Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org
+Subject: [PATCH AUTOSEL 5.5 009/542] nfsd4: avoid NULL deference on strange COPY compounds
+Date:   Fri, 14 Feb 2020 10:40:01 -0500
+Message-Id: <20200214154854.6746-9-sashal@kernel.org>
+X-Mailer: git-send-email 2.20.1
+In-Reply-To: <20200214154854.6746-1-sashal@kernel.org>
+References: <20200214154854.6746-1-sashal@kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
+X-stable: review
+X-Patchwork-Hint: Ignore
+Content-Transfer-Encoding: 8bit
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hi Bruce-
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-As promised, I'm resending the fix for 198053, now that the v5.6
-merge window has closed. This fix gets splice-incapable file systems
-working with NFS/RDMA. That's the first patch in this series.
+[ Upstream commit d781e3df710745fbbaee4eb07fd5b64331a1b175 ]
 
-We can discuss splitting the fix up again, if you so desire, but my
-sense is that will make the fix more challenging to backport into
-stable kernels.
+With cross-server COPY we've introduced the possibility that the current
+or saved filehandle might not have fh_dentry/fh_export filled in, but we
+missed a place that assumed it was.  I think this could be triggered by
+a compound like:
 
-The next logical step is to add support for multiple READ payloads
-to the server's RPC-over-RDMA transport implementation. Subsequent
-patches in this series start down that path. There is more work to
-do to finish that task. Today I'm sending only what is code-complete
-and working.
+	PUTFH(foreign filehandle)
+	GETATTR
+	SAVEFH
+	COPY
 
-The primary issue is that today svcrdma assumes that rq_res's page
-vector is exactly what needs to be pushed in a single Write chunk.
-In other words, only one read payload is supported, and it has to
-fit exactly into that page vector. And critically, the XDR pad for
-that payload must not be included in the page vector.
+First, check_if_stalefh_allowed sets no_verify on the first (PUTFH) op.
+Then op_func = nfsd4_putfh runs and leaves current_fh->fh_export NULL.
+need_wrongsec_check returns true, since this PUTFH has OP_IS_PUTFH_LIKE
+set and GETATTR does not have OP_HANDLES_WRONGSEC set.
 
-I've already implemented changes to handle Writing more than one
-chunk back to a client. See patches 4 and 7.
+We should probably also consider tightening the checks in
+check_if_stalefh_allowed and double-checking that we don't assume the
+filehandle is verified elsewhere in the compound.  But I think this
+fixes the immediate issue.
 
-Patch 9 introduces a data structure to keep track of multiple Write
-chunks and multiple read payloads. Next, the svc_rdma_sendto path
-needs to be changed to use the information in this data structure to
-exclude arbitrary segments of rq_res (ie, read payloads already sent
-via explicit RDMA) when constructing each RPC/RDMA Reply.
-
-Comments and input are welcome as always.
-
-
+Reported-by: Dan Carpenter <dan.carpenter@oracle.com>
+Fixes: 4e48f1cccab3 "NFSD: allow inter server COPY to have... "
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
+ fs/nfsd/nfs4proc.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-Chuck Lever (9):
-      nfsd: Fix NFSv4 READ on RDMA when using readv
-      NFSD: Clean up nfsd4_encode_readv
-      svcrdma: Avoid DMA mapping small RPC Replies
-      NFSD: Invoke svc_encode_read_payload in "read" NFSD encoders
-      svcrdma: Add trace point to examine client-provided write segment
-      svcrdma: De-duplicate code that locates Write and Reply chunks
-      svcrdma: Post RDMA Writes while XDR encoding replies
-      svcrdma: Refactor svc_rdma_sendto()
-      svcrdma: Add data structure to track READ payloads
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 4798667af647c..4d1d0bf8e385f 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -2025,7 +2025,8 @@ nfsd4_proc_compound(struct svc_rqst *rqstp)
+ 			if (op->opdesc->op_flags & OP_CLEAR_STATEID)
+ 				clear_current_stateid(cstate);
+ 
+-			if (need_wrongsec_check(rqstp))
++			if (current_fh->fh_export &&
++					need_wrongsec_check(rqstp))
+ 				op->status = check_nfsd_access(current_fh->fh_export, rqstp);
+ 		}
+ encode_op:
+-- 
+2.20.1
 
-
- fs/nfsd/nfs3xdr.c                          |    4 
- fs/nfsd/nfs4xdr.c                          |   32 ++--
- fs/nfsd/nfsxdr.c                           |    4 
- include/linux/sunrpc/svc.h                 |    3 
- include/linux/sunrpc/svc_rdma.h            |   21 ++
- include/linux/sunrpc/svc_xprt.h            |    2 
- include/trace/events/rpcrdma.h             |   47 +++++
- net/sunrpc/svc.c                           |   16 ++
- net/sunrpc/svcsock.c                       |    8 +
- net/sunrpc/xprtrdma/svc_rdma_backchannel.c |    2 
- net/sunrpc/xprtrdma/svc_rdma_recvfrom.c    |   58 +++++--
- net/sunrpc/xprtrdma/svc_rdma_rw.c          |   42 +++--
- net/sunrpc/xprtrdma/svc_rdma_sendto.c      |  248 +++++++++++++---------------
- net/sunrpc/xprtrdma/svc_rdma_transport.c   |    1 
- 14 files changed, 308 insertions(+), 180 deletions(-)
-
---
-Chuck Lever
