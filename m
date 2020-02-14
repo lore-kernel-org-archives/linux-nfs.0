@@ -7,47 +7,46 @@ X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id BCFA5C2BA83
-	for <linux-nfs@archiver.kernel.org>; Fri, 14 Feb 2020 17:22:43 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 98410C2BA83
+	for <linux-nfs@archiver.kernel.org>; Fri, 14 Feb 2020 17:25:53 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 945F12082F
-	for <linux-nfs@archiver.kernel.org>; Fri, 14 Feb 2020 17:22:43 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 740D42082F
+	for <linux-nfs@archiver.kernel.org>; Fri, 14 Feb 2020 17:25:53 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1581700963;
-	bh=AxKfZmAdFXCPVhMsF/7rjFQ7ZLiEFxpynnsIU06lQ8s=;
+	s=default; t=1581701153;
+	bh=TkHJs0QFR74EgvbI6KN/SCHrDlKm2agv2LEG94vl1qo=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=Z2IUXfuaY6SAkCoRs+6ccEC5wHzqT8iHC5O/dmLmPu5pBwrivErTBnkh6Y1eHGwkH
-	 27WIk95Vf13gPJPuAFr9s067w0fsr9K7DITDK144sqfAybgm2VSk1UfXMT6ZClMdJS
-	 n32F+sHlaS/7OELknpwEnclAjTA7OigOBeLg5B8M=
+	b=u/2SHFuQ6Ex1ITPj3XrhCCSg/Ct5BQqqIDHm/1bh2PhN7UBUOdNY3WqnBIr3i4N9N
+	 UGo2k24BC/QR5+n5B0dlOOK/lvRZQtOyTwI+DxhHs3Mp74hTbL7J5so7Qv/cyJiA9i
+	 QnB894n76LOP2EiZ5qqMiskPSUJdUyyriYUasc+s=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2391641AbgBNRWg (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 14 Feb 2020 12:22:36 -0500
-Received: from mail.kernel.org ([198.145.29.99]:34824 "EHLO mail.kernel.org"
+        id S2391034AbgBNQIm (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 14 Feb 2020 11:08:42 -0500
+Received: from mail.kernel.org ([198.145.29.99]:60788 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2391291AbgBNQJw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 14 Feb 2020 11:09:52 -0500
+        id S2391029AbgBNQIm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 14 Feb 2020 11:08:42 -0500
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 972DC24676;
-        Fri, 14 Feb 2020 16:09:50 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 6090A222C2;
+        Fri, 14 Feb 2020 16:08:40 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1581696591;
-        bh=AxKfZmAdFXCPVhMsF/7rjFQ7ZLiEFxpynnsIU06lQ8s=;
+        s=default; t=1581696521;
+        bh=TkHJs0QFR74EgvbI6KN/SCHrDlKm2agv2LEG94vl1qo=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=Cby0UzXSk6AH5wccfs7GKpFXvhm28Ygr3wAMpeSo+2t82jWvPPts7VGlCsUwQk5So
-         J5l/iFme2u67cBF71aJhRjUy0NWRxv60Imp7bVYYj7PEoW2ufZ1dpNYMDooVCQuBCL
-         zdKLctkpMy0I8lSqjjkLaRIC7/3315cM066VGFIQ=
+        b=XfQ1c7lhIYxyjZstnM8ZJz417Xod1RioN49pPBig1gj2HEWWsOjRpX/qiBymNqOus
+         jFzzz1xFQZRafBo4QZ60lo2VJ8AWv3if2JGC1a/N9W9PhY90+ckTtp0tb9QbvF8jwZ
+         RuMUWseQDJCd9XrraqcsNVOoQBMMAboB4IUDDRKk=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
 Cc:     Trond Myklebust <trondmy@gmail.com>,
         Trond Myklebust <trond.myklebust@hammerspace.com>,
-        "J . Bruce Fields" <bfields@redhat.com>,
-        Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org,
-        netdev@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.4 378/459] sunrpc: Fix potential leaks in sunrpc_cache_unhash()
-Date:   Fri, 14 Feb 2020 11:00:28 -0500
-Message-Id: <20200214160149.11681-378-sashal@kernel.org>
+        Anna Schumaker <Anna.Schumaker@Netapp.com>,
+        Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org
+Subject: [PATCH AUTOSEL 5.4 321/459] NFS/pnfs: Fix pnfs_generic_prepare_to_resend_writes()
+Date:   Fri, 14 Feb 2020 10:59:31 -0500
+Message-Id: <20200214160149.11681-321-sashal@kernel.org>
 X-Mailer: git-send-email 2.20.1
 In-Reply-To: <20200214160149.11681-1-sashal@kernel.org>
 References: <20200214160149.11681-1-sashal@kernel.org>
@@ -62,32 +61,126 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trondmy@gmail.com>
 
-[ Upstream commit 1d82163714c16ebe09c7a8c9cd3cef7abcc16208 ]
+[ Upstream commit 221203ce6406273cf00e5c6397257d986c003ee6 ]
 
-When we unhash the cache entry, we need to handle any pending upcalls
-by calling cache_fresh_unlocked().
+Instead of making assumptions about the commit verifier contents, change
+the commit code to ensure we always check that the verifier was set
+by the XDR code.
 
+Fixes: f54bcf2ecee9 ("pnfs: Prepare for flexfiles by pulling out common code")
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- net/sunrpc/cache.c | 2 ++
- 1 file changed, 2 insertions(+)
+ fs/nfs/direct.c   | 4 ++--
+ fs/nfs/nfs3xdr.c  | 5 ++++-
+ fs/nfs/nfs4xdr.c  | 5 ++++-
+ fs/nfs/pnfs_nfs.c | 7 +++----
+ fs/nfs/write.c    | 4 +++-
+ 5 files changed, 16 insertions(+), 9 deletions(-)
 
-diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
-index f740cb51802af..7ede1e52fd812 100644
---- a/net/sunrpc/cache.c
-+++ b/net/sunrpc/cache.c
-@@ -1888,7 +1888,9 @@ void sunrpc_cache_unhash(struct cache_detail *cd, struct cache_head *h)
- 	if (!hlist_unhashed(&h->cache_list)){
- 		hlist_del_init_rcu(&h->cache_list);
- 		cd->entries--;
-+		set_bit(CACHE_CLEANED, &h->flags);
- 		spin_unlock(&cd->hash_lock);
-+		cache_fresh_unlocked(h, cd);
- 		cache_put(h, cd);
- 	} else
- 		spin_unlock(&cd->hash_lock);
+diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+index 040a50fd9bf30..29f00da8a0b7f 100644
+--- a/fs/nfs/direct.c
++++ b/fs/nfs/direct.c
+@@ -245,10 +245,10 @@ static int nfs_direct_cmp_commit_data_verf(struct nfs_direct_req *dreq,
+ 					 data->ds_commit_index);
+ 
+ 	/* verifier not set so always fail */
+-	if (verfp->committed < 0)
++	if (verfp->committed < 0 || data->res.verf->committed <= NFS_UNSTABLE)
+ 		return 1;
+ 
+-	return nfs_direct_cmp_verf(verfp, &data->verf);
++	return nfs_direct_cmp_verf(verfp, data->res.verf);
+ }
+ 
+ /**
+diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
+index 602767850b360..1f60ab2535eed 100644
+--- a/fs/nfs/nfs3xdr.c
++++ b/fs/nfs/nfs3xdr.c
+@@ -2338,6 +2338,7 @@ static int nfs3_xdr_dec_commit3res(struct rpc_rqst *req,
+ 				   void *data)
+ {
+ 	struct nfs_commitres *result = data;
++	struct nfs_writeverf *verf = result->verf;
+ 	enum nfs_stat status;
+ 	int error;
+ 
+@@ -2350,7 +2351,9 @@ static int nfs3_xdr_dec_commit3res(struct rpc_rqst *req,
+ 	result->op_status = status;
+ 	if (status != NFS3_OK)
+ 		goto out_status;
+-	error = decode_writeverf3(xdr, &result->verf->verifier);
++	error = decode_writeverf3(xdr, &verf->verifier);
++	if (!error)
++		verf->committed = NFS_FILE_SYNC;
+ out:
+ 	return error;
+ out_status:
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index ab07db0f07cde..7c0ff1a3b5914 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -4316,11 +4316,14 @@ static int decode_write_verifier(struct xdr_stream *xdr, struct nfs_write_verifi
+ 
+ static int decode_commit(struct xdr_stream *xdr, struct nfs_commitres *res)
+ {
++	struct nfs_writeverf *verf = res->verf;
+ 	int status;
+ 
+ 	status = decode_op_hdr(xdr, OP_COMMIT);
+ 	if (!status)
+-		status = decode_write_verifier(xdr, &res->verf->verifier);
++		status = decode_write_verifier(xdr, &verf->verifier);
++	if (!status)
++		verf->committed = NFS_FILE_SYNC;
+ 	return status;
+ }
+ 
+diff --git a/fs/nfs/pnfs_nfs.c b/fs/nfs/pnfs_nfs.c
+index 82af4809b869a..8b37e7f8e789f 100644
+--- a/fs/nfs/pnfs_nfs.c
++++ b/fs/nfs/pnfs_nfs.c
+@@ -31,12 +31,11 @@ EXPORT_SYMBOL_GPL(pnfs_generic_rw_release);
+ /* Fake up some data that will cause nfs_commit_release to retry the writes. */
+ void pnfs_generic_prepare_to_resend_writes(struct nfs_commit_data *data)
+ {
+-	struct nfs_page *first = nfs_list_entry(data->pages.next);
++	struct nfs_writeverf *verf = data->res.verf;
+ 
+ 	data->task.tk_status = 0;
+-	memcpy(&data->verf.verifier, &first->wb_verf,
+-	       sizeof(data->verf.verifier));
+-	data->verf.verifier.data[0]++; /* ensure verifier mismatch */
++	memset(&verf->verifier, 0, sizeof(verf->verifier));
++	verf->committed = NFS_UNSTABLE;
+ }
+ EXPORT_SYMBOL_GPL(pnfs_generic_prepare_to_resend_writes);
+ 
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index f5170bc839aa2..913eb37c249bb 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -1837,6 +1837,7 @@ static void nfs_commit_done(struct rpc_task *task, void *calldata)
+ 
+ static void nfs_commit_release_pages(struct nfs_commit_data *data)
+ {
++	const struct nfs_writeverf *verf = data->res.verf;
+ 	struct nfs_page	*req;
+ 	int status = data->task.tk_status;
+ 	struct nfs_commit_info cinfo;
+@@ -1864,7 +1865,8 @@ static void nfs_commit_release_pages(struct nfs_commit_data *data)
+ 
+ 		/* Okay, COMMIT succeeded, apparently. Check the verifier
+ 		 * returned by the server against all stored verfs. */
+-		if (!nfs_write_verifier_cmp(&req->wb_verf, &data->verf.verifier)) {
++		if (verf->committed > NFS_UNSTABLE &&
++		    !nfs_write_verifier_cmp(&req->wb_verf, &verf->verifier)) {
+ 			/* We have a match */
+ 			if (req->wb_page)
+ 				nfs_inode_remove_request(req);
 -- 
 2.20.1
 
