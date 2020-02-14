@@ -4,51 +4,51 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
-	autolearn_force=no version=3.4.0
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id F253BC3B1A1
-	for <linux-nfs@archiver.kernel.org>; Fri, 14 Feb 2020 16:01:27 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D959EC2BA83
+	for <linux-nfs@archiver.kernel.org>; Fri, 14 Feb 2020 16:11:55 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id C08E8206CC
-	for <linux-nfs@archiver.kernel.org>; Fri, 14 Feb 2020 16:01:27 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id A8E37246A9
+	for <linux-nfs@archiver.kernel.org>; Fri, 14 Feb 2020 16:11:55 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1581696087;
-	bh=fWkVieqX4+okU8uVSg0m7NTofCEOdf4K60FWuuLXt9s=;
+	s=default; t=1581696715;
+	bh=+NmEuyq8mQFGbLYQc1FS3z+h4kYdwClNqmJPSq+cznk=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=or/1/nm/T/ze9DiFVZVQsk14vIO/MSOqp7iIunCXyQaPP3vr6xCjbTk2CxUrXtsYo
-	 g5y+bt7v4uC/J/gqgNUK32E+XJuEv6hvwEEkRNEo69PLyneCQjx2sYhSyN0cnClp6j
-	 jmRypIFS0avAOLnINzW6Vy9hVxCY2ByRov8iG8/c=
+	b=yRXLdgCXBCM+CDzGbHLA3VNpWj0xsOfgOaQFKGJBA+oN+19v40x+6tmkSultUc4zz
+	 yetA2tRaEcpRFlLh1AtpyQvTBcj8wu+kAIeAEZzkqQPRvfbm4+QHOiec8zfa/EUbmd
+	 hK0O+2h6ud3MyRZ50JFCYqEY066TZRXg4jjsMtPs=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2388499AbgBNQBW (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 14 Feb 2020 11:01:22 -0500
-Received: from mail.kernel.org ([198.145.29.99]:45522 "EHLO mail.kernel.org"
+        id S2391871AbgBNQLy (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 14 Feb 2020 11:11:54 -0500
+Received: from mail.kernel.org ([198.145.29.99]:38886 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2389092AbgBNQAP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 14 Feb 2020 11:00:15 -0500
+        id S2391582AbgBNQLx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 14 Feb 2020 11:11:53 -0500
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 2C3C524681;
-        Fri, 14 Feb 2020 16:00:14 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 7E19B246A2;
+        Fri, 14 Feb 2020 16:11:51 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1581696014;
-        bh=fWkVieqX4+okU8uVSg0m7NTofCEOdf4K60FWuuLXt9s=;
+        s=default; t=1581696712;
+        bh=+NmEuyq8mQFGbLYQc1FS3z+h4kYdwClNqmJPSq+cznk=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=Kkfg0LkLSMRg4CQEm7e4XVogPHn44+O4nhE9YO5x0qvL7aRg1qzGZhWgOP0MPzogE
-         3qDAdztgZvLpaXhGxnS/eKcdg3TqNxomrsoZFjw9y9UKxDCZl/BZLEFy8zWqMVd04a
-         RBE/bF7Yvz+JZxfpdRnOX9lIX20b4rp6tTDR+VUQ=
+        b=JHHKm5D2ZIZ8eMhRmjK3JxaCxi7zdswDBHOerAUN1RrbkgulFFEzIaxoGvWYaEeiU
+         H1Aj+/gLMEe3rSP/RoYZbwGAs78Rv7ChuB7N1uEA36UoDhAyYBmXK6uO1JhQE4LBV6
+         8VMhV9KsYoLWTc24VMBhajEGDUBT0yXuRNTMiMsE=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     Wenwen Wang <wenwen@cs.uga.edu>,
-        Anna Schumaker <Anna.Schumaker@Netapp.com>,
+Cc:     "J. Bruce Fields" <bfields@redhat.com>,
+        Dan Carpenter <dan.carpenter@oracle.com>,
         Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.5 531/542] NFS: Fix memory leaks
-Date:   Fri, 14 Feb 2020 10:48:43 -0500
-Message-Id: <20200214154854.6746-531-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 4.19 003/252] nfsd4: avoid NULL deference on strange COPY compounds
+Date:   Fri, 14 Feb 2020 11:07:38 -0500
+Message-Id: <20200214161147.15842-3-sashal@kernel.org>
 X-Mailer: git-send-email 2.20.1
-In-Reply-To: <20200214154854.6746-1-sashal@kernel.org>
-References: <20200214154854.6746-1-sashal@kernel.org>
+In-Reply-To: <20200214161147.15842-1-sashal@kernel.org>
+References: <20200214161147.15842-1-sashal@kernel.org>
 MIME-Version: 1.0
 X-stable: review
 X-Patchwork-Hint: Ignore
@@ -58,49 +58,52 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Wenwen Wang <wenwen@cs.uga.edu>
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-[ Upstream commit 123c23c6a7b7ecd2a3d6060bea1d94019f71fd66 ]
+[ Upstream commit d781e3df710745fbbaee4eb07fd5b64331a1b175 ]
 
-In _nfs42_proc_copy(), 'res->commit_res.verf' is allocated through
-kzalloc() if 'args->sync' is true. In the following code, if
-'res->synchronous' is false, handle_async_copy() will be invoked. If an
-error occurs during the invocation, the following code will not be executed
-and the error will be returned . However, the allocated
-'res->commit_res.verf' is not deallocated, leading to a memory leak. This
-is also true if the invocation of process_copy_commit() returns an error.
+With cross-server COPY we've introduced the possibility that the current
+or saved filehandle might not have fh_dentry/fh_export filled in, but we
+missed a place that assumed it was.  I think this could be triggered by
+a compound like:
 
-To fix the above leaks, redirect the execution to the 'out' label if an
-error is encountered.
+	PUTFH(foreign filehandle)
+	GETATTR
+	SAVEFH
+	COPY
 
-Signed-off-by: Wenwen Wang <wenwen@cs.uga.edu>
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+First, check_if_stalefh_allowed sets no_verify on the first (PUTFH) op.
+Then op_func = nfsd4_putfh runs and leaves current_fh->fh_export NULL.
+need_wrongsec_check returns true, since this PUTFH has OP_IS_PUTFH_LIKE
+set and GETATTR does not have OP_HANDLES_WRONGSEC set.
+
+We should probably also consider tightening the checks in
+check_if_stalefh_allowed and double-checking that we don't assume the
+filehandle is verified elsewhere in the compound.  But I think this
+fixes the immediate issue.
+
+Reported-by: Dan Carpenter <dan.carpenter@oracle.com>
+Fixes: 4e48f1cccab3 "NFSD: allow inter server COPY to have... "
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- fs/nfs/nfs42proc.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ fs/nfsd/nfs4proc.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
-index 9637aad36bdca..e2ae54b35dfe1 100644
---- a/fs/nfs/nfs42proc.c
-+++ b/fs/nfs/nfs42proc.c
-@@ -343,14 +343,14 @@ static ssize_t _nfs42_proc_copy(struct file *src,
- 		status = handle_async_copy(res, dst_server, src_server, src,
- 				dst, &args->src_stateid, restart);
- 		if (status)
--			return status;
-+			goto out;
- 	}
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index f35aa9f88b5ec..895123518fd42 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -1789,7 +1789,8 @@ nfsd4_proc_compound(struct svc_rqst *rqstp)
+ 			if (op->opdesc->op_flags & OP_CLEAR_STATEID)
+ 				clear_current_stateid(cstate);
  
- 	if ((!res->synchronous || !args->sync) &&
- 			res->write_res.verifier.committed != NFS_FILE_SYNC) {
- 		status = process_copy_commit(dst, pos_dst, res);
- 		if (status)
--			return status;
-+			goto out;
- 	}
- 
- 	truncate_pagecache_range(dst_inode, pos_dst,
+-			if (need_wrongsec_check(rqstp))
++			if (current_fh->fh_export &&
++					need_wrongsec_check(rqstp))
+ 				op->status = check_nfsd_access(current_fh->fh_export, rqstp);
+ 		}
+ encode_op:
 -- 
 2.20.1
 
