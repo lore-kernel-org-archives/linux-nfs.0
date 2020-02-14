@@ -7,48 +7,49 @@ X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 58625C3B1A1
-	for <linux-nfs@archiver.kernel.org>; Fri, 14 Feb 2020 16:46:44 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id F264CC3B1A6
+	for <linux-nfs@archiver.kernel.org>; Fri, 14 Feb 2020 16:46:51 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 2804E24682
-	for <linux-nfs@archiver.kernel.org>; Fri, 14 Feb 2020 16:46:44 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id C23782082F
+	for <linux-nfs@archiver.kernel.org>; Fri, 14 Feb 2020 16:46:51 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1581698804;
-	bh=r6PZK6eZxmiLBusEq9dbpk9JS+rlZUqk08fcxqmtm2I=;
+	s=default; t=1581698811;
+	bh=fppwK7igpAZIBIAafKhiw59ppIZh6j8Uu3lCEEW1frI=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=SURB4uXpOUmUVRjc/aBbCg+JVhSXrjLpCl6hIVoEMbryMa63cKIv71sXUgQun/Ru2
-	 aPiixJ4N9O/I4BRlbtaXPzykg49yhfJp9CpxVWnBI0/XhI5zb3o43fhzHoI//0B4kk
-	 BDQVBJc1zCFHe/axS3SBDtDKm9lF4IPG9FVWpeUg=
+	b=XSrV+HY/4MxOQieG82Qo3gV0S57tK951R87hf/ECz04OQvAYbxJCyGDZs6HR4IZn+
+	 IWFrf2LJGdr757Z87nTzJejJ05w3dINXbKAUZNP+yU5OjrYqA+Vo+pbtNmsHiog3+C
+	 Knflx7yeM9HDyhU6ON9xPWBshcMZIyVstLiWrrIY=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2392936AbgBNQV0 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 14 Feb 2020 11:21:26 -0500
-Received: from mail.kernel.org ([198.145.29.99]:55882 "EHLO mail.kernel.org"
+        id S2405334AbgBNQVL (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 14 Feb 2020 11:21:11 -0500
+Received: from mail.kernel.org ([198.145.29.99]:55558 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2405375AbgBNQV0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 14 Feb 2020 11:21:26 -0500
+        id S2405329AbgBNQVK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 14 Feb 2020 11:21:10 -0500
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 6DDFE246AE;
-        Fri, 14 Feb 2020 16:21:24 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 1A9E72469F;
+        Fri, 14 Feb 2020 16:21:09 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1581697285;
-        bh=r6PZK6eZxmiLBusEq9dbpk9JS+rlZUqk08fcxqmtm2I=;
+        s=default; t=1581697269;
+        bh=fppwK7igpAZIBIAafKhiw59ppIZh6j8Uu3lCEEW1frI=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=rBu/0/HEb0Qh+ud/eOGcejSXFeczjskyzV9JC6LXHcDMf4+6Yae0LcL5H/zkQxbaF
-         vKX8n/oGawTeDhhKYbtyBstWRL+48MZFhaB8yQFgXHBgupHF04eAP9Imq3DSeQHuhj
-         Rdl8Mjg+e+NHX/PZglVJc/7XpJEABG5TcjRCkbaw=
+        b=NZ9FraCkz2P3tMMKQuPqS4ypo45h4zMlbfxmit45nhhbViwqkTC//NsdvA3YfwexB
+         MTtt64+pIHMMNapseoo3YmbKS5IayfJzR80Rsls5+ZhPBzDHR7kWkmDtLGnzqyMFCg
+         Ex+JDl1AsgPlo8BfTpmtlLfG8FXCg/g3SquvzJbM=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     "J. Bruce Fields" <bfields@redhat.com>,
-        Dan Carpenter <dan.carpenter@oracle.com>,
+Cc:     Robert Milkowski <rmilkowski@gmail.com>,
+        Trond Myklebust <trond.myklebust@hammerspace.com>,
+        Anna Schumaker <Anna.Schumaker@Netapp.com>,
         Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org
-Subject: [PATCH AUTOSEL 4.9 002/141] nfsd4: avoid NULL deference on strange COPY compounds
-Date:   Fri, 14 Feb 2020 11:19:02 -0500
-Message-Id: <20200214162122.19794-2-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 4.14 183/186] NFSv4: try lease recovery on NFS4ERR_EXPIRED
+Date:   Fri, 14 Feb 2020 11:17:12 -0500
+Message-Id: <20200214161715.18113-183-sashal@kernel.org>
 X-Mailer: git-send-email 2.20.1
-In-Reply-To: <20200214162122.19794-1-sashal@kernel.org>
-References: <20200214162122.19794-1-sashal@kernel.org>
+In-Reply-To: <20200214161715.18113-1-sashal@kernel.org>
+References: <20200214161715.18113-1-sashal@kernel.org>
 MIME-Version: 1.0
 X-stable: review
 X-Patchwork-Hint: Ignore
@@ -58,52 +59,38 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+From: Robert Milkowski <rmilkowski@gmail.com>
 
-[ Upstream commit d781e3df710745fbbaee4eb07fd5b64331a1b175 ]
+[ Upstream commit 924491f2e476f7234d722b24171a4daff61bbe13 ]
 
-With cross-server COPY we've introduced the possibility that the current
-or saved filehandle might not have fh_dentry/fh_export filled in, but we
-missed a place that assumed it was.  I think this could be triggered by
-a compound like:
+Currently, if an nfs server returns NFS4ERR_EXPIRED to open(),
+we return EIO to applications without even trying to recover.
 
-	PUTFH(foreign filehandle)
-	GETATTR
-	SAVEFH
-	COPY
-
-First, check_if_stalefh_allowed sets no_verify on the first (PUTFH) op.
-Then op_func = nfsd4_putfh runs and leaves current_fh->fh_export NULL.
-need_wrongsec_check returns true, since this PUTFH has OP_IS_PUTFH_LIKE
-set and GETATTR does not have OP_HANDLES_WRONGSEC set.
-
-We should probably also consider tightening the checks in
-check_if_stalefh_allowed and double-checking that we don't assume the
-filehandle is verified elsewhere in the compound.  But I think this
-fixes the immediate issue.
-
-Reported-by: Dan Carpenter <dan.carpenter@oracle.com>
-Fixes: 4e48f1cccab3 "NFSD: allow inter server COPY to have... "
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Fixes: 272289a3df72 ("NFSv4: nfs4_do_handle_exception() handle revoke/expiry of a single stateid")
+Signed-off-by: Robert Milkowski <rmilkowski@gmail.com>
+Reviewed-by: Trond Myklebust <trond.myklebust@hammerspace.com>
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- fs/nfsd/nfs4proc.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+ fs/nfs/nfs4proc.c | 5 +++++
+ 1 file changed, 5 insertions(+)
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 66985a6a7047b..33537bbb70b36 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1800,7 +1800,8 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
- 			if (opdesc->op_flags & OP_CLEAR_STATEID)
- 				clear_current_stateid(cstate);
- 
--			if (need_wrongsec_check(rqstp))
-+			if (current_fh->fh_export &&
-+					need_wrongsec_check(rqstp))
- 				op->status = check_nfsd_access(current_fh->fh_export, rqstp);
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 3dd403943b07f..4d45786738ab4 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2923,6 +2923,11 @@ static struct nfs4_state *nfs4_do_open(struct inode *dir,
+ 			exception.retry = 1;
+ 			continue;
  		}
- encode_op:
++		if (status == -NFS4ERR_EXPIRED) {
++			nfs4_schedule_lease_recovery(server->nfs_client);
++			exception.retry = 1;
++			continue;
++		}
+ 		if (status == -EAGAIN) {
+ 			/* We must have found a delegation */
+ 			exception.retry = 1;
 -- 
 2.20.1
 
