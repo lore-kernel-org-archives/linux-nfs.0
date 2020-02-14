@@ -7,46 +7,46 @@ X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id DBAC5C3B1B1
-	for <linux-nfs@archiver.kernel.org>; Fri, 14 Feb 2020 17:59:20 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C5903C2BA83
+	for <linux-nfs@archiver.kernel.org>; Fri, 14 Feb 2020 17:59:27 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id B712720873
-	for <linux-nfs@archiver.kernel.org>; Fri, 14 Feb 2020 17:59:20 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 95CA524649
+	for <linux-nfs@archiver.kernel.org>; Fri, 14 Feb 2020 17:59:27 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1581703160;
-	bh=APZQeH46kSGpCe91fNpBZZhxxDnpa9pVAups4SHmJ+A=;
+	s=default; t=1581703167;
+	bh=nV2rG360gPkk6R2U9iXdSMSM4aIx3EOLH+KRbqeh7XI=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=LC04jpRHmsutUOzcPxkQusSLh1JuxTlt3N4JK2DTfm7C/lfijIyOhJnJhOpmvBYHF
-	 lF47wJfC35izuuQbqlvoPJMuK6Od1uRLtwMFXHATRIqG5CXyl6xiMr9MXGVK2/Xv5/
-	 y0dP6B5eO0bQnq9xdRXgzY7QJWlWLZmsEyqB9x3Y=
+	b=TvmXdOJF3IDDcPCWO1XJ14q6rxHoLhTdhg3Cbqe8ndesLHFNv0I7xzX+XeSlRDBMH
+	 5OJNAVH36LspKgWNYUIq7s4lhCB/bw4HUtQhj/y3zbP5GfiiAxtwdDlbvJh41gXM22
+	 aY3na+XL+82pghHt9HOhjKty0iT6gijyjzrHcIjE=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2388076AbgBNR7O (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 14 Feb 2020 12:59:14 -0500
-Received: from mail.kernel.org ([198.145.29.99]:38964 "EHLO mail.kernel.org"
+        id S2389648AbgBNR7W (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 14 Feb 2020 12:59:22 -0500
+Received: from mail.kernel.org ([198.145.29.99]:38908 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2387984AbgBNP4t (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 14 Feb 2020 10:56:49 -0500
+        id S2387586AbgBNP4r (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 14 Feb 2020 10:56:47 -0500
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 9E691206D7;
-        Fri, 14 Feb 2020 15:56:47 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 46A312086A;
+        Fri, 14 Feb 2020 15:56:46 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1581695808;
-        bh=APZQeH46kSGpCe91fNpBZZhxxDnpa9pVAups4SHmJ+A=;
+        s=default; t=1581695807;
+        bh=nV2rG360gPkk6R2U9iXdSMSM4aIx3EOLH+KRbqeh7XI=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=XucW2Pfq7cECfeSPJ6SSu3cPEu3zfqEjTJOSKDj2g4/qT+Jeomvu4Pfsje1HhZ6v1
-         ZBlXY7CLDZwSBQnZNlc78CzMV6nicOoQIM/45pR/q3q5bPSwqitn63aeEixBPR3au9
-         lfFf6bNWpTup073LWuTqBU0bVRudwP4t9kE5YDjw=
+        b=Cl74ntDv+OPVVBEveVpzIMBeds4RdDu0EZoySDVnEzQfH/ptLQs2ohVpEyg1yYw5r
+         jAVz+hZtcmmJJZJcB8VZ58LfKosrZcMR0wb7dg0HmRHkFmxgoL+rRUcqr/mvtcbsHX
+         D2MzrhgcjcUbAKW4KGeZBg0j4pp/ezjpbQqCr3F8=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
 Cc:     Trond Myklebust <trondmy@gmail.com>,
         Trond Myklebust <trond.myklebust@hammerspace.com>,
         Anna Schumaker <Anna.Schumaker@Netapp.com>,
         Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.5 367/542] NFS/pnfs: Fix pnfs_generic_prepare_to_resend_writes()
-Date:   Fri, 14 Feb 2020 10:45:59 -0500
-Message-Id: <20200214154854.6746-367-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 5.5 366/542] NFS: Revalidate the file size on a fatal write error
+Date:   Fri, 14 Feb 2020 10:45:58 -0500
+Message-Id: <20200214154854.6746-366-sashal@kernel.org>
 X-Mailer: git-send-email 2.20.1
 In-Reply-To: <20200214154854.6746-1-sashal@kernel.org>
 References: <20200214154854.6746-1-sashal@kernel.org>
@@ -61,126 +61,40 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trondmy@gmail.com>
 
-[ Upstream commit 221203ce6406273cf00e5c6397257d986c003ee6 ]
+[ Upstream commit 0df68ced55443243951d02cc497be31fadf28173 ]
 
-Instead of making assumptions about the commit verifier contents, change
-the commit code to ensure we always check that the verifier was set
-by the XDR code.
+If we suffer a fatal error upon writing a file, which causes us to
+need to revalidate the entire mapping, then we should also revalidate
+the file size.
 
-Fixes: f54bcf2ecee9 ("pnfs: Prepare for flexfiles by pulling out common code")
+Fixes: d2ceb7e57086 ("NFS: Don't use page_file_mapping after removing the page")
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- fs/nfs/direct.c   | 4 ++--
- fs/nfs/nfs3xdr.c  | 5 ++++-
- fs/nfs/nfs4xdr.c  | 5 ++++-
- fs/nfs/pnfs_nfs.c | 7 +++----
- fs/nfs/write.c    | 4 +++-
- 5 files changed, 16 insertions(+), 9 deletions(-)
+ fs/nfs/write.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
 
-diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-index 040a50fd9bf30..29f00da8a0b7f 100644
---- a/fs/nfs/direct.c
-+++ b/fs/nfs/direct.c
-@@ -245,10 +245,10 @@ static int nfs_direct_cmp_commit_data_verf(struct nfs_direct_req *dreq,
- 					 data->ds_commit_index);
- 
- 	/* verifier not set so always fail */
--	if (verfp->committed < 0)
-+	if (verfp->committed < 0 || data->res.verf->committed <= NFS_UNSTABLE)
- 		return 1;
- 
--	return nfs_direct_cmp_verf(verfp, &data->verf);
-+	return nfs_direct_cmp_verf(verfp, data->res.verf);
- }
- 
- /**
-diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
-index 927eb680f1613..69971f6c840d2 100644
---- a/fs/nfs/nfs3xdr.c
-+++ b/fs/nfs/nfs3xdr.c
-@@ -2334,6 +2334,7 @@ static int nfs3_xdr_dec_commit3res(struct rpc_rqst *req,
- 				   void *data)
- {
- 	struct nfs_commitres *result = data;
-+	struct nfs_writeverf *verf = result->verf;
- 	enum nfs_stat status;
- 	int error;
- 
-@@ -2346,7 +2347,9 @@ static int nfs3_xdr_dec_commit3res(struct rpc_rqst *req,
- 	result->op_status = status;
- 	if (status != NFS3_OK)
- 		goto out_status;
--	error = decode_writeverf3(xdr, &result->verf->verifier);
-+	error = decode_writeverf3(xdr, &verf->verifier);
-+	if (!error)
-+		verf->committed = NFS_FILE_SYNC;
- out:
- 	return error;
- out_status:
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 728d88b6a698a..dc6b9c2f36b2a 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -4313,11 +4313,14 @@ static int decode_write_verifier(struct xdr_stream *xdr, struct nfs_write_verifi
- 
- static int decode_commit(struct xdr_stream *xdr, struct nfs_commitres *res)
- {
-+	struct nfs_writeverf *verf = res->verf;
- 	int status;
- 
- 	status = decode_op_hdr(xdr, OP_COMMIT);
- 	if (!status)
--		status = decode_write_verifier(xdr, &res->verf->verifier);
-+		status = decode_write_verifier(xdr, &verf->verifier);
-+	if (!status)
-+		verf->committed = NFS_FILE_SYNC;
- 	return status;
- }
- 
-diff --git a/fs/nfs/pnfs_nfs.c b/fs/nfs/pnfs_nfs.c
-index 82af4809b869a..8b37e7f8e789f 100644
---- a/fs/nfs/pnfs_nfs.c
-+++ b/fs/nfs/pnfs_nfs.c
-@@ -31,12 +31,11 @@ EXPORT_SYMBOL_GPL(pnfs_generic_rw_release);
- /* Fake up some data that will cause nfs_commit_release to retry the writes. */
- void pnfs_generic_prepare_to_resend_writes(struct nfs_commit_data *data)
- {
--	struct nfs_page *first = nfs_list_entry(data->pages.next);
-+	struct nfs_writeverf *verf = data->res.verf;
- 
- 	data->task.tk_status = 0;
--	memcpy(&data->verf.verifier, &first->wb_verf,
--	       sizeof(data->verf.verifier));
--	data->verf.verifier.data[0]++; /* ensure verifier mismatch */
-+	memset(&verf->verifier, 0, sizeof(verf->verifier));
-+	verf->committed = NFS_UNSTABLE;
- }
- EXPORT_SYMBOL_GPL(pnfs_generic_prepare_to_resend_writes);
- 
 diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index f5170bc839aa2..913eb37c249bb 100644
+index 52cab65f91cf0..f5170bc839aa2 100644
 --- a/fs/nfs/write.c
 +++ b/fs/nfs/write.c
-@@ -1837,6 +1837,7 @@ static void nfs_commit_done(struct rpc_task *task, void *calldata)
- 
- static void nfs_commit_release_pages(struct nfs_commit_data *data)
+@@ -243,7 +243,15 @@ static void nfs_grow_file(struct page *page, unsigned int offset, unsigned int c
+ /* A writeback failed: mark the page as bad, and invalidate the page cache */
+ static void nfs_set_pageerror(struct address_space *mapping)
  {
-+	const struct nfs_writeverf *verf = data->res.verf;
- 	struct nfs_page	*req;
- 	int status = data->task.tk_status;
- 	struct nfs_commit_info cinfo;
-@@ -1864,7 +1865,8 @@ static void nfs_commit_release_pages(struct nfs_commit_data *data)
++	struct inode *inode = mapping->host;
++
+ 	nfs_zap_mapping(mapping->host, mapping);
++	/* Force file size revalidation */
++	spin_lock(&inode->i_lock);
++	NFS_I(inode)->cache_validity |= NFS_INO_REVAL_FORCED |
++					NFS_INO_REVAL_PAGECACHE |
++					NFS_INO_INVALID_SIZE;
++	spin_unlock(&inode->i_lock);
+ }
  
- 		/* Okay, COMMIT succeeded, apparently. Check the verifier
- 		 * returned by the server against all stored verfs. */
--		if (!nfs_write_verifier_cmp(&req->wb_verf, &data->verf.verifier)) {
-+		if (verf->committed > NFS_UNSTABLE &&
-+		    !nfs_write_verifier_cmp(&req->wb_verf, &verf->verifier)) {
- 			/* We have a match */
- 			if (req->wb_page)
- 				nfs_inode_remove_request(req);
+ static void nfs_mapping_set_error(struct page *page, int error)
 -- 
 2.20.1
 
