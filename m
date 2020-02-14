@@ -7,46 +7,45 @@ X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6D32FC2BA83
-	for <linux-nfs@archiver.kernel.org>; Fri, 14 Feb 2020 16:59:04 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id F01D0C3B1A4
+	for <linux-nfs@archiver.kernel.org>; Fri, 14 Feb 2020 16:59:05 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 3B7732067D
-	for <linux-nfs@archiver.kernel.org>; Fri, 14 Feb 2020 16:59:04 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id BFB38206CC
+	for <linux-nfs@archiver.kernel.org>; Fri, 14 Feb 2020 16:59:05 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1581699544;
-	bh=qD5oinFqQkByq7/irBUjoNg9jOIzyD30ArzLyX1YXy8=;
+	s=default; t=1581699545;
+	bh=na6MCkvM/gU1JTmFSKwL58UmWb1R7nW/sp5fjyKvY64=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=IaWmy0RLkPqmcmACFVnNNUzkEAY86f0ixShIz9hSeGDY3pmM3BK89gc2N53oDDarP
-	 xNUSbM4/OjHIM+F8uYWA0jknxbQ7DHjS805qbwtjy/ANHI89bZDQGZ3hCZDH3aQBrx
-	 OR22TkPCJ1D4w1hpfVxbIOpEfm6dCnlwnU/O+YRI=
+	b=JlXyoNN8CfMyswGTWVwnh1/J1eQasgSYu9J4Wh8y3Qn0/XNWNLK53RaaOmIm9swpm
+	 1/cikb/WbmfMIQRDE+xh73wTaIWEtDh59IoXdLFhJhA0akpmNwVcidjnZnPfcjH3oI
+	 00KUGk/RsCdOH0bzvQSXNVmnCmUt7nflDMl83JhI=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2404343AbgBNQRA (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 14 Feb 2020 11:17:00 -0500
-Received: from mail.kernel.org ([198.145.29.99]:48114 "EHLO mail.kernel.org"
+        id S2404083AbgBNQQ7 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 14 Feb 2020 11:16:59 -0500
+Received: from mail.kernel.org ([198.145.29.99]:48080 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2404338AbgBNQRA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 14 Feb 2020 11:17:00 -0500
+        id S2392705AbgBNQQ6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 14 Feb 2020 11:16:58 -0500
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 74BD824685;
-        Fri, 14 Feb 2020 16:16:58 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 4F3BD24691;
+        Fri, 14 Feb 2020 16:16:57 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1581697019;
-        bh=qD5oinFqQkByq7/irBUjoNg9jOIzyD30ArzLyX1YXy8=;
+        s=default; t=1581697018;
+        bh=na6MCkvM/gU1JTmFSKwL58UmWb1R7nW/sp5fjyKvY64=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=vgMMBWCiqI72aI+gj6Dr9s4xJNb4YlvqYqYrfC/EkkKe//JkKcWLJZL3JQVMrEIzn
-         l6liiuoYBfvOw4Dopfm+s6hYTHEOSkDo1d46oqqb5PnUnxtllcQTm7rXUnDbTjAq+J
-         nb/2Hod4Z+vvZkOnC1sexCVAh73MavDuUcP3HZqI=
+        b=auVYCH5/qDW/bAK4wkJ5M/0oigy0UU0PFYZyOBZOm1heeGdqa0Gp0euF4I9sB7Se1
+         I6IPu1k1aIYcE03W8DvPHBd5EB5UzalbOhiNlRSCL8Z/lwIigAtR3Skift+ziDP3pC
+         1Ix0MnGVpsm30gPoBqPew2Kxcf9Ub2RrD1gx+2B0=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     Robert Milkowski <rmilkowski@gmail.com>,
-        Trond Myklebust <trond.myklebust@hammerspace.com>,
+Cc:     Wenwen Wang <wenwen@cs.uga.edu>,
         Anna Schumaker <Anna.Schumaker@Netapp.com>,
         Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org
-Subject: [PATCH AUTOSEL 4.19 248/252] NFSv4: try lease recovery on NFS4ERR_EXPIRED
-Date:   Fri, 14 Feb 2020 11:11:43 -0500
-Message-Id: <20200214161147.15842-248-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 4.19 247/252] NFS: Fix memory leaks
+Date:   Fri, 14 Feb 2020 11:11:42 -0500
+Message-Id: <20200214161147.15842-247-sashal@kernel.org>
 X-Mailer: git-send-email 2.20.1
 In-Reply-To: <20200214161147.15842-1-sashal@kernel.org>
 References: <20200214161147.15842-1-sashal@kernel.org>
@@ -59,38 +58,49 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Robert Milkowski <rmilkowski@gmail.com>
+From: Wenwen Wang <wenwen@cs.uga.edu>
 
-[ Upstream commit 924491f2e476f7234d722b24171a4daff61bbe13 ]
+[ Upstream commit 123c23c6a7b7ecd2a3d6060bea1d94019f71fd66 ]
 
-Currently, if an nfs server returns NFS4ERR_EXPIRED to open(),
-we return EIO to applications without even trying to recover.
+In _nfs42_proc_copy(), 'res->commit_res.verf' is allocated through
+kzalloc() if 'args->sync' is true. In the following code, if
+'res->synchronous' is false, handle_async_copy() will be invoked. If an
+error occurs during the invocation, the following code will not be executed
+and the error will be returned . However, the allocated
+'res->commit_res.verf' is not deallocated, leading to a memory leak. This
+is also true if the invocation of process_copy_commit() returns an error.
 
-Fixes: 272289a3df72 ("NFSv4: nfs4_do_handle_exception() handle revoke/expiry of a single stateid")
-Signed-off-by: Robert Milkowski <rmilkowski@gmail.com>
-Reviewed-by: Trond Myklebust <trond.myklebust@hammerspace.com>
+To fix the above leaks, redirect the execution to the 'out' label if an
+error is encountered.
+
+Signed-off-by: Wenwen Wang <wenwen@cs.uga.edu>
 Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- fs/nfs/nfs4proc.c | 5 +++++
- 1 file changed, 5 insertions(+)
+ fs/nfs/nfs42proc.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 7834b325394fc..fad795041d324 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -3089,6 +3089,11 @@ static struct nfs4_state *nfs4_do_open(struct inode *dir,
- 			exception.retry = 1;
- 			continue;
- 		}
-+		if (status == -NFS4ERR_EXPIRED) {
-+			nfs4_schedule_lease_recovery(server->nfs_client);
-+			exception.retry = 1;
-+			continue;
-+		}
- 		if (status == -EAGAIN) {
- 			/* We must have found a delegation */
- 			exception.retry = 1;
+diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
+index 94f98e190e632..526441de89c1d 100644
+--- a/fs/nfs/nfs42proc.c
++++ b/fs/nfs/nfs42proc.c
+@@ -283,14 +283,14 @@ static ssize_t _nfs42_proc_copy(struct file *src,
+ 		status = handle_async_copy(res, server, src, dst,
+ 				&args->src_stateid);
+ 		if (status)
+-			return status;
++			goto out;
+ 	}
+ 
+ 	if ((!res->synchronous || !args->sync) &&
+ 			res->write_res.verifier.committed != NFS_FILE_SYNC) {
+ 		status = process_copy_commit(dst, pos_dst, res);
+ 		if (status)
+-			return status;
++			goto out;
+ 	}
+ 
+ 	truncate_pagecache_range(dst_inode, pos_dst,
 -- 
 2.20.1
 
