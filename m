@@ -7,45 +7,45 @@ X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 35950C3B1B0
-	for <linux-nfs@archiver.kernel.org>; Fri, 14 Feb 2020 17:42:54 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6A88CC2BA83
+	for <linux-nfs@archiver.kernel.org>; Fri, 14 Feb 2020 17:47:11 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 0A049206B6
-	for <linux-nfs@archiver.kernel.org>; Fri, 14 Feb 2020 17:42:54 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 3743F206B6
+	for <linux-nfs@archiver.kernel.org>; Fri, 14 Feb 2020 17:47:11 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1581702174;
-	bh=MJ2uyHPzkXeagzrBI1E8WUEzNGc86rzpa+3s1n5VZTU=;
+	s=default; t=1581702431;
+	bh=nJbDNA7aBbKm++/k9gvMPLr0AAdaS0Gjqct3g8AWz18=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=AoWXJnkg8OWyS6dkGUorYX2Z94E6nqJZLQx+ICqJl8akwtTXO1ZkJkV+ojwBym0bl
-	 QLSWIJg92iOubIzbCNgkd9HsCiV2lpuM08cmB47lHm21Xm4UZa+grFEjfKp3G7VN3l
-	 PCyrcKaApBlwoWKTfL7qOsRZXJoZ+xCd733cqQNM=
+	b=rS4UzRk+Xc+ayofOlWqi8P7OAOvu1F7Dm1W9goLRhdUXwlNRDgBhpcUhv0u3tNfCJ
+	 jfFbofcOeevXWIkKUZRX219IY6yTyZCHOj1dRKQx/xE+zKaUqlW9uL6Tme6M5EhcHJ
+	 HD6bMo6W6+U6BaQNV79ybvFVln9LyciU8ZjytQXE=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2390735AbgBNRml (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 14 Feb 2020 12:42:41 -0500
-Received: from mail.kernel.org ([198.145.29.99]:50386 "EHLO mail.kernel.org"
+        id S1728741AbgBNRrI (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 14 Feb 2020 12:47:08 -0500
+Received: from mail.kernel.org ([198.145.29.99]:47868 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2388977AbgBNQDW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 14 Feb 2020 11:03:22 -0500
+        id S2389182AbgBNQB6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 14 Feb 2020 11:01:58 -0500
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 79E7E2067D;
-        Fri, 14 Feb 2020 16:03:21 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 50E522067D;
+        Fri, 14 Feb 2020 16:01:57 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1581696202;
-        bh=MJ2uyHPzkXeagzrBI1E8WUEzNGc86rzpa+3s1n5VZTU=;
+        s=default; t=1581696118;
+        bh=nJbDNA7aBbKm++/k9gvMPLr0AAdaS0Gjqct3g8AWz18=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=e72QCDWZRB/3Ayxdcv0okWathEA1HQ65VTYUvU12IcEaGD3nKKK0Auyv77zOaGc1a
-         9ANSTy78g5ZInje6yUfQS7M72Yx6cIOiyeq9xrdden0OKksJ7ibrBmCcaRKIhCBPwQ
-         yXdaTujn/wrdfKwnAzRGCNHzmz5+jkxPj08ibK2I=
+        b=G7sekgYG8gQSwARRkxVMsNTnWDZ5cmLmY8LQmp35GgIHbBB5EsLXNCrjJ2umxHxOe
+         hHESRSpzwCMcSZUU03yLdfa2BLRdgzcDZ1PS22KeraJ+Yv5/QK4qMNMGbcgq5tQW5h
+         gpSXWJFvZd5YcVeHjmnhonT55+8jMjORXNbKAvbo=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     Geert Uytterhoeven <geert+renesas@glider.be>,
-        Anna Schumaker <Anna.Schumaker@Netapp.com>,
+Cc:     "J. Bruce Fields" <bfields@redhat.com>,
+        Dan Carpenter <dan.carpenter@oracle.com>,
         Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.4 068/459] nfs: NFS_SWAP should depend on SWAP
-Date:   Fri, 14 Feb 2020 10:55:18 -0500
-Message-Id: <20200214160149.11681-68-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 5.4 006/459] nfsd4: avoid NULL deference on strange COPY compounds
+Date:   Fri, 14 Feb 2020 10:54:16 -0500
+Message-Id: <20200214160149.11681-6-sashal@kernel.org>
 X-Mailer: git-send-email 2.20.1
 In-Reply-To: <20200214160149.11681-1-sashal@kernel.org>
 References: <20200214160149.11681-1-sashal@kernel.org>
@@ -58,40 +58,52 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Geert Uytterhoeven <geert+renesas@glider.be>
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-[ Upstream commit 474c4f306eefbb21b67ebd1de802d005c7d7ecdc ]
+[ Upstream commit d781e3df710745fbbaee4eb07fd5b64331a1b175 ]
 
-If CONFIG_SWAP=n, it does not make much sense to offer the user the
-option to enable support for swapping over NFS, as that will still fail
-at run time:
+With cross-server COPY we've introduced the possibility that the current
+or saved filehandle might not have fh_dentry/fh_export filled in, but we
+missed a place that assumed it was.  I think this could be triggered by
+a compound like:
 
-    # swapon /swap
-    swapon: /swap: swapon failed: Function not implemented
+	PUTFH(foreign filehandle)
+	GETATTR
+	SAVEFH
+	COPY
 
-Fix this by adding a dependency on CONFIG_SWAP.
+First, check_if_stalefh_allowed sets no_verify on the first (PUTFH) op.
+Then op_func = nfsd4_putfh runs and leaves current_fh->fh_export NULL.
+need_wrongsec_check returns true, since this PUTFH has OP_IS_PUTFH_LIKE
+set and GETATTR does not have OP_HANDLES_WRONGSEC set.
 
-Fixes: a564b8f0398636ba ("nfs: enable swap on NFS")
-Signed-off-by: Geert Uytterhoeven <geert+renesas@glider.be>
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+We should probably also consider tightening the checks in
+check_if_stalefh_allowed and double-checking that we don't assume the
+filehandle is verified elsewhere in the compound.  But I think this
+fixes the immediate issue.
+
+Reported-by: Dan Carpenter <dan.carpenter@oracle.com>
+Fixes: 4e48f1cccab3 "NFSD: allow inter server COPY to have... "
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- fs/nfs/Kconfig | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ fs/nfsd/nfs4proc.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
-index 295a7a21b7744..e7dd07f478259 100644
---- a/fs/nfs/Kconfig
-+++ b/fs/nfs/Kconfig
-@@ -90,7 +90,7 @@ config NFS_V4
- config NFS_SWAP
- 	bool "Provide swap over NFS support"
- 	default n
--	depends on NFS_FS
-+	depends on NFS_FS && SWAP
- 	select SUNRPC_SWAP
- 	help
- 	  This option enables swapon to work on files located on NFS mounts.
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 4798667af647c..4d1d0bf8e385f 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -2025,7 +2025,8 @@ nfsd4_proc_compound(struct svc_rqst *rqstp)
+ 			if (op->opdesc->op_flags & OP_CLEAR_STATEID)
+ 				clear_current_stateid(cstate);
+ 
+-			if (need_wrongsec_check(rqstp))
++			if (current_fh->fh_export &&
++					need_wrongsec_check(rqstp))
+ 				op->status = check_nfsd_access(current_fh->fh_export, rqstp);
+ 		}
+ encode_op:
 -- 
 2.20.1
 
