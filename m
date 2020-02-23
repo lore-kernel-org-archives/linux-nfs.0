@@ -7,37 +7,37 @@ X-Spam-Status: No, score=-10.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9D102C35669
-	for <linux-nfs@archiver.kernel.org>; Sun, 23 Feb 2020 02:33:39 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 40ECDC35674
+	for <linux-nfs@archiver.kernel.org>; Sun, 23 Feb 2020 02:37:35 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 73E7B20707
-	for <linux-nfs@archiver.kernel.org>; Sun, 23 Feb 2020 02:33:39 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 0DB9820659
+	for <linux-nfs@archiver.kernel.org>; Sun, 23 Feb 2020 02:37:35 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1582425219;
-	bh=yHzv1T7w5XflZfTdu0V4RPQ231BUuBe0kt/RYKK4i94=;
+	s=default; t=1582425455;
+	bh=wW3mnCktbCYmM3gZdL9hrOX6Kz4wm/IgY/aenYoR6z4=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=1MVDIWWMkAPrTyHLAsJt5c6Gs/DJfiMxyqP5vV9Rn+jaUd8I37pnDv0T60l6IhTMC
-	 GpHSDr/7beaFdkXRMBGilD4IMrRCRDj1liCenih0bhhfD4lOgP9lAac6niVHMdqzKV
-	 yHPxXbPF3NxeH3wntvaHJWCDPHNHEStWzYpSoD5I=
+	b=gF4DbSEp50XmPp5rrT7P3gVwi6oIUQwN5Skfy9kkfrcXXXelERkKAuKuymmsJo1Er
+	 fY0hZvWW1d1N4+sSGHpuv8Kf5V6Hy271nb2SiNf0TfGudhS3oF64G7iULLI1yCTxU2
+	 Qo+qfrDGxRkmAydNmc66vBMLCNrB7tw1ja1QmMog=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728327AbgBWCdd (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sat, 22 Feb 2020 21:33:33 -0500
-Received: from mail.kernel.org ([198.145.29.99]:52010 "EHLO mail.kernel.org"
+        id S1727483AbgBWCVh (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sat, 22 Feb 2020 21:21:37 -0500
+Received: from mail.kernel.org ([198.145.29.99]:50022 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1728298AbgBWCWv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sat, 22 Feb 2020 21:22:51 -0500
+        id S1727463AbgBWCVg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sat, 22 Feb 2020 21:21:36 -0500
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 44E562071E;
-        Sun, 23 Feb 2020 02:22:50 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 7231D206D7;
+        Sun, 23 Feb 2020 02:21:35 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1582424571;
-        bh=yHzv1T7w5XflZfTdu0V4RPQ231BUuBe0kt/RYKK4i94=;
+        s=default; t=1582424496;
+        bh=wW3mnCktbCYmM3gZdL9hrOX6Kz4wm/IgY/aenYoR6z4=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=I4isqsCHm+zq2jqG72JbzyQs/VlCQA/E8l4eG7Qshhj+4lMa1xTwNB/fvirf8yYMk
-         UDQjtVL1uc4zXPHvWSP8zc0CAfcsK9s4CnurpsiriajYjSjYeTB949BQyaLmaaM8f4
-         Qs43rg1EszlXVEmnujT5RM5NIFZdBVI8BO5o9QnE=
+        b=WQBAbsWzvtMRjXQbTgdX4fDc5GPRQQFng1WapaT/Wvc6IaJjmeg/rkqLkB0igxBNa
+         O9Lzu1VeOL26H2/7WP7JwmwtS/dcZFYoOCsD3VcFCsI8M0RP7n4ZUFd0O6bnEAT8Wc
+         eaRMPCEebJsvL4MXokF3uMLB5bsVFcZPFo2fy9oI=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
 Cc:     Trond Myklebust <trondmy@gmail.com>,
@@ -45,12 +45,12 @@ Cc:     Trond Myklebust <trondmy@gmail.com>,
         Benjamin Coddington <bcodding@gmail.com>,
         Anna Schumaker <Anna.Schumaker@Netapp.com>,
         Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.4 12/50] NFSv4: Fix races between open and dentry revalidation
-Date:   Sat, 22 Feb 2020 21:21:57 -0500
-Message-Id: <20200223022235.1404-12-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 5.5 13/58] NFSv4: Fix races between open and dentry revalidation
+Date:   Sat, 22 Feb 2020 21:20:34 -0500
+Message-Id: <20200223022119.707-13-sashal@kernel.org>
 X-Mailer: git-send-email 2.20.1
-In-Reply-To: <20200223022235.1404-1-sashal@kernel.org>
-References: <20200223022235.1404-1-sashal@kernel.org>
+In-Reply-To: <20200223022119.707-1-sashal@kernel.org>
+References: <20200223022119.707-1-sashal@kernel.org>
 MIME-Version: 1.0
 X-stable: review
 X-Patchwork-Hint: Ignore
@@ -82,7 +82,7 @@ Signed-off-by: Sasha Levin <sashal@kernel.org>
  2 files changed, 16 insertions(+), 3 deletions(-)
 
 diff --git a/fs/nfs/nfs4file.c b/fs/nfs/nfs4file.c
-index 339663d04bf83..54f1c1f626fc5 100644
+index 620de905cba97..3f892035c1413 100644
 --- a/fs/nfs/nfs4file.c
 +++ b/fs/nfs/nfs4file.c
 @@ -86,7 +86,6 @@ nfs4_file_open(struct inode *inode, struct file *filp)
@@ -94,7 +94,7 @@ index 339663d04bf83..54f1c1f626fc5 100644
  	nfs_fscache_open_file(inode, filp);
  	err = 0;
 diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index f808fb34b1101..6b29703d2fe1e 100644
+index 6ddb4f517d373..13c2de527718a 100644
 --- a/fs/nfs/nfs4proc.c
 +++ b/fs/nfs/nfs4proc.c
 @@ -2962,10 +2962,13 @@ static int _nfs4_open_and_get_state(struct nfs4_opendata *opendata,
