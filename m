@@ -1,127 +1,119 @@
-Return-Path: <SRS0=zwoO=4S=vger.kernel.org=linux-nfs-owner@kernel.org>
+Return-Path: <SRS0=kaop=4T=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-8.3 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,UNPARSEABLE_RELAY,
+	USER_AGENT_SANE_1 autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1483BC3F2D1
-	for <linux-nfs@archiver.kernel.org>; Sun,  1 Mar 2020 23:25:24 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 01F8EC3F2D1
+	for <linux-nfs@archiver.kernel.org>; Mon,  2 Mar 2020 07:31:10 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id DECCC24699
-	for <linux-nfs@archiver.kernel.org>; Sun,  1 Mar 2020 23:25:23 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id CC41A20866
+	for <linux-nfs@archiver.kernel.org>; Mon,  2 Mar 2020 07:31:09 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="RuZZD6G0"
+	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="Tupk1l8V"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726673AbgCAXZX (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 1 Mar 2020 18:25:23 -0500
-Received: from mail-yw1-f67.google.com ([209.85.161.67]:33271 "EHLO
-        mail-yw1-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726682AbgCAXZW (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 1 Mar 2020 18:25:22 -0500
-Received: by mail-yw1-f67.google.com with SMTP id j186so9530226ywe.0
-        for <linux-nfs@vger.kernel.org>; Sun, 01 Mar 2020 15:25:22 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=from:to:cc:subject:date:message-id:in-reply-to:references
-         :mime-version:content-transfer-encoding;
-        bh=U14Uy4stoVVLCX7z3eAHr/J7no/Y5EZ7ZoEpafZVGbk=;
-        b=RuZZD6G0ydqhvfQDgzlWyAL3zjtZ60VfWDcCOPMuuHw7jw14D2d2wA4zcUsUjNg2DR
-         MMecdQW74NTkV0GaX7/FfNaw3tqFvFix1rNClaUlovL57pbtxH9BYLHiC35c3gTpArNU
-         Fy6JCyvVe/GYrfWX0yNiuW6gHA+gSW+2e+En3gqQ7iyxPM6Bmzt6azjv0nHFD5lh5iy0
-         nVX09fNLtKkMkvxg0fjELXh0y6bs3lDbf6lysTinIr0o9rTwsDlwAAQVd4JPPmX5EvMc
-         WDYu251PGoxhYN//CI+LRa9fRfSzCKu8MhpErcbfisNfbqbeRQ2UIB4JnpctAvH8kiWP
-         2otQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
-         :references:mime-version:content-transfer-encoding;
-        bh=U14Uy4stoVVLCX7z3eAHr/J7no/Y5EZ7ZoEpafZVGbk=;
-        b=c/MFvCb6znjTpNX5TBm/aZhyhoP/rfSwCRorq9RUTUS9i830OlUxmOs+D8dxuE5UWB
-         q9bqjyTeF+/fujOWFY6Yj+WRVVoFzrtyD9HKX9GKGJ3AQIDNwt6+R7fp0N/9XQbMz4fE
-         AKSAH/JKn+uNbytP3rfesO02V7qtAyrhM5gPSCGItImXiNkp2Fms8OwQqE5rUpVeOal9
-         dIm93Sbdctsgg5oV+TTmQ/HULi8VcAFdQNfaAKVrhRCQQVngfkt8n/C+AeyhZhmgsFnE
-         m6W59+/0b7Jr3EJP6hV/P0hIgtRliq2S9+n0vY8vM8GliGEa7ChpFJMkbm/kWjJWS1EV
-         /p3Q==
-X-Gm-Message-State: APjAAAWF9cekg3oMwTuJxr894/ewlgsmFbS6/lgkmaWX0sJgiN7uiQGn
-        z7T5QjzUmaMkDj3y3AY90w==
-X-Google-Smtp-Source: APXvYqzGYnnf6TQShe/Q82d/fM3T8RYzOVDQb6SgJP6valb5CRt+NUN6GPw20aj45Vf5m+WCVCIKpA==
-X-Received: by 2002:a25:8804:: with SMTP id c4mr14255517ybl.387.1583105121539;
-        Sun, 01 Mar 2020 15:25:21 -0800 (PST)
-Received: from localhost.localdomain (c-68-40-189-247.hsd1.mi.comcast.net. [68.40.189.247])
-        by smtp.gmail.com with ESMTPSA id u4sm7167301ywu.26.2020.03.01.15.25.20
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Sun, 01 Mar 2020 15:25:21 -0800 (PST)
-From:   Trond Myklebust <trondmy@gmail.com>
-X-Google-Original-From: Trond Myklebust <trond.myklebust@hammerspace.com>
-To:     "J. Bruce Fields" <bfields@redhat.com>
-Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH 8/8] sunrpc: Drop the connection when the server drops a request
-Date:   Sun,  1 Mar 2020 18:21:45 -0500
-Message-Id: <20200301232145.1465430-9-trond.myklebust@hammerspace.com>
-X-Mailer: git-send-email 2.24.1
-In-Reply-To: <20200301232145.1465430-8-trond.myklebust@hammerspace.com>
-References: <20200301232145.1465430-1-trond.myklebust@hammerspace.com>
- <20200301232145.1465430-2-trond.myklebust@hammerspace.com>
- <20200301232145.1465430-3-trond.myklebust@hammerspace.com>
- <20200301232145.1465430-4-trond.myklebust@hammerspace.com>
- <20200301232145.1465430-5-trond.myklebust@hammerspace.com>
- <20200301232145.1465430-6-trond.myklebust@hammerspace.com>
- <20200301232145.1465430-7-trond.myklebust@hammerspace.com>
- <20200301232145.1465430-8-trond.myklebust@hammerspace.com>
+        id S1726382AbgCBHbG (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 2 Mar 2020 02:31:06 -0500
+Received: from userp2130.oracle.com ([156.151.31.86]:49078 "EHLO
+        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726300AbgCBHbF (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Mar 2020 02:31:05 -0500
+Received: from pps.filterd (userp2130.oracle.com [127.0.0.1])
+        by userp2130.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 0227Rhvh106798;
+        Mon, 2 Mar 2020 07:30:58 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=date : from : to : cc
+ : subject : message-id : references : mime-version : content-type :
+ in-reply-to; s=corp-2020-01-29;
+ bh=Ri8h7A40DW+uVbQeQtC6y9Sx1MYlmgBF2ya0vuR0GRE=;
+ b=Tupk1l8V/EgapKFZinI18DFI9MRmBo31jh3y2yVF0mfSb8ANaS8pMP2lHndS3drl0HPR
+ ZZbEpeC9vavzkhEqU0Q+ozE72C4gF1T+P/fHsEsmZwepIgBojvueY+OzJjui9nywyVyl
+ vsVr4LHP2nbImKcuKaU2n4e/CMsyyluXzrQHKHz5vFVRP0FRt10Yk8lBgOJXU6R75Har
+ DHEiLZhszxcJvXOwYaBc9mRI3gKAuOpLwOju7BzkAbZgYy+CZnR8PMb/3Hoegt0cwVP3
+ uW75/NHCNuslaUPY22xGCIPpiFIqzsEA+AWV0rCuB1CMgypR2EtiGHwtImaSxGnOy+hK 4Q== 
+Received: from aserp3020.oracle.com (aserp3020.oracle.com [141.146.126.70])
+        by userp2130.oracle.com with ESMTP id 2yffcu5vfn-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Mon, 02 Mar 2020 07:30:57 +0000
+Received: from pps.filterd (aserp3020.oracle.com [127.0.0.1])
+        by aserp3020.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 0227QZFw178044;
+        Mon, 2 Mar 2020 07:30:57 GMT
+Received: from userv0121.oracle.com (userv0121.oracle.com [156.151.31.72])
+        by aserp3020.oracle.com with ESMTP id 2yg1re6ghn-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Mon, 02 Mar 2020 07:30:56 +0000
+Received: from abhmp0016.oracle.com (abhmp0016.oracle.com [141.146.116.22])
+        by userv0121.oracle.com (8.14.4/8.13.8) with ESMTP id 0227UrOl018351;
+        Mon, 2 Mar 2020 07:30:53 GMT
+Received: from kadam (/129.205.23.165)
+        by default (Oracle Beehive Gateway v4.0)
+        with ESMTP ; Sun, 01 Mar 2020 23:30:51 -0800
+Date:   Mon, 2 Mar 2020 10:30:43 +0300
+From:   Dan Carpenter <dan.carpenter@oracle.com>
+To:     Colin King <colin.king@canonical.com>
+Cc:     Trond Myklebust <trond.myklebust@hammerspace.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        linux-nfs@vger.kernel.org, kernel-janitors@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] NFS: check for allocation failure from mempool_alloc
+Message-ID: <20200302073043.GA4140@kadam>
+References: <20200226234320.7722-1-colin.king@canonical.com>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20200226234320.7722-1-colin.king@canonical.com>
+User-Agent: Mutt/1.9.4 (2018-02-28)
+X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9547 signatures=668685
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 mlxscore=0 mlxlogscore=999
+ suspectscore=0 malwarescore=0 adultscore=0 spamscore=0 phishscore=0
+ bulkscore=0 classifier=spam adjust=0 reason=mlx scancount=1
+ engine=8.12.0-2001150001 definitions=main-2003020057
+X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9547 signatures=668685
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 phishscore=0 mlxscore=0 bulkscore=0
+ adultscore=0 suspectscore=0 spamscore=0 malwarescore=0 impostorscore=0
+ priorityscore=1501 mlxlogscore=999 lowpriorityscore=0 clxscore=1011
+ classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2001150001
+ definitions=main-2003020057
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-If a server wants to drop a request, then it should also drop the
-connection, in order to let the client know.
+On Wed, Feb 26, 2020 at 11:43:20PM +0000, Colin King wrote:
+> From: Colin Ian King <colin.king@canonical.com>
+> 
+> It is possible for mempool_alloc to return null when using
+> the GFP_KERNEL flag, so return NULL and avoid a null pointer
+> dereference on the following memset of the null pointer.
+> 
+> Addresses-Coverity: ("Dereference null return")
+> Fixes: 2b17d725f9be ("NFS: Clean up writeback code")
+> Signed-off-by: Colin Ian King <colin.king@canonical.com>
+> ---
+>  fs/nfs/write.c | 3 +++
+>  1 file changed, 3 insertions(+)
+> 
+> diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+> index c478b772cc49..7ca036660dd1 100644
+> --- a/fs/nfs/write.c
+> +++ b/fs/nfs/write.c
+> @@ -106,6 +106,9 @@ static struct nfs_pgio_header *nfs_writehdr_alloc(void)
+>  {
+>  	struct nfs_pgio_header *p = mempool_alloc(nfs_wdata_mempool, GFP_KERNEL);
+>  
+> +	if (!p)
 
-Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
----
- net/sunrpc/svc_xprt.c | 10 ++++++++++
- 1 file changed, 10 insertions(+)
+The fixes tag was wrong.  When I searched for the correct fixes tag,
+it turned out this was intentional.  See commit 237f8306c302
+("NFS: don't expect errors from mempool_alloc().") and commit 518662e0fcb9
+("NFS: fix usage of mempools.").
 
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index de3c077733a7..83a527e56c87 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -873,6 +873,13 @@ int svc_recv(struct svc_rqst *rqstp, long timeout)
- }
- EXPORT_SYMBOL_GPL(svc_recv);
- 
-+static void svc_drop_connection(struct svc_xprt *xprt)
-+{
-+	if (test_bit(XPT_TEMP, &xprt->xpt_flags) &&
-+	    !test_and_set_bit(XPT_CLOSE, &xprt->xpt_flags))
-+		svc_xprt_enqueue(xprt);
-+}
-+
- /*
-  * Drop request
-  */
-@@ -880,6 +887,8 @@ void svc_drop(struct svc_rqst *rqstp)
- {
- 	trace_svc_drop(rqstp);
- 	dprintk("svc: xprt %p dropped request\n", rqstp->rq_xprt);
-+	/* Close the connection when dropping a request */
-+	svc_drop_connection(rqstp->rq_xprt);
- 	svc_xprt_release(rqstp);
- }
- EXPORT_SYMBOL_GPL(svc_drop);
-@@ -1148,6 +1157,7 @@ static void svc_revisit(struct cache_deferred_req *dreq, int too_many)
- 	if (too_many || test_bit(XPT_DEAD, &xprt->xpt_flags)) {
- 		spin_unlock(&xprt->xpt_lock);
- 		dprintk("revisit canceled\n");
-+		svc_drop_connection(xprt);
- 		svc_xprt_put(xprt);
- 		trace_svc_drop_deferred(dr);
- 		kfree(dr);
--- 
-2.24.1
+    When passed GFP flags that allow sleeping (such as
+    GFP_NOIO), mempool_alloc() will never return NULL, it will
+    wait until memory is available.
+
+regards,
+dan carpenter
 
