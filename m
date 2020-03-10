@@ -2,140 +2,69 @@ Return-Path: <SRS0=8VYw=43=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-0.6 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
-	URIBL_BLOCKED autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,
+	USER_AGENT_GIT autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 71F1EC3F2C6
-	for <linux-nfs@archiver.kernel.org>; Tue, 10 Mar 2020 09:18:21 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E57BAC18E5B
+	for <linux-nfs@archiver.kernel.org>; Tue, 10 Mar 2020 12:32:19 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 4BA5B208E4
-	for <linux-nfs@archiver.kernel.org>; Tue, 10 Mar 2020 09:18:21 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=fail reason="key not found in DNS" (0-bit key) header.d=szeredi.hu header.i=@szeredi.hu header.b="CLeuNfcd"
+	by mail.kernel.org (Postfix) with ESMTP id C69752468D
+	for <linux-nfs@archiver.kernel.org>; Tue, 10 Mar 2020 12:32:19 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726437AbgCJJSU (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 10 Mar 2020 05:18:20 -0400
-Received: from mail-il1-f194.google.com ([209.85.166.194]:33563 "EHLO
-        mail-il1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726378AbgCJJST (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 10 Mar 2020 05:18:19 -0400
-Received: by mail-il1-f194.google.com with SMTP id k29so6143480ilg.0
-        for <linux-nfs@vger.kernel.org>; Tue, 10 Mar 2020 02:18:19 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=szeredi.hu; s=google;
-        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
-         :cc;
-        bh=Hhr2JQNCTfwAz5fM8AxpKXVAk7m03eW/WPRPp++R3bc=;
-        b=CLeuNfcd8lneEopBSQtHp3Kt+HipoV0gZP6IuZpydHV2/p4TlsVqkfu5HowfqMTXt4
-         B6Nes0PUjpXtVP2DD/+CYwm5MJkMF1NpiN6Pigz83+0gVtQu29MQJHpZf1loCCFWgnuY
-         NvSCicUjakpnIekJzu1+qB/DP+TL60iT/Mg+Y=
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
-         :message-id:subject:to:cc;
-        bh=Hhr2JQNCTfwAz5fM8AxpKXVAk7m03eW/WPRPp++R3bc=;
-        b=hiBG8INfLzNs4eDW2amLPus4Swsw5Uy8vGtKATKUrUmYkYQwK9z6B5A7H91NmM+VER
-         ezo7KLX3vekCUfieqcu/0jYmuY6wsfdWrWATLma43aHN6zMpwn6ut35XkMfMrDB29izS
-         zVhTYvtB4Jwhcy+onAElPtPTAEbsjS0hvXyQME12gW5rK5z5hM3i0SSxeMDjWjBoJ8cf
-         YKSaInCcYaWSTWQhLkaEVEz6gYyFe8bC24rQhhcGTUurSW1ZZ8CasFCPYdKLaRbDGzEA
-         vUtsjA5X5PqcCwFvQ8AnNxgLG6WngvMi9PQrVYPapWqMZpIvSa1NMrGzz9G4z6rZ0I0y
-         WshA==
-X-Gm-Message-State: ANhLgQ1LCee39einQTul0D/IO8LfkKMQhJwsVvOcUqzXYIPeHM0sLoxh
-        phVn6mEG5NHAjyiGVlMV7tkhgghB7/VNZPJLgeAOZw==
-X-Google-Smtp-Source: ADFU+vugKYA3Ig1dwzBjyGS81nr/dzb7dU1rNPjVpJ6bTLDiyqMRJ04NHueIU+BRzWkQaOZi8m5WZXZZBMnnCNWaxaA=
-X-Received: by 2002:a92:9602:: with SMTP id g2mr18883520ilh.212.1583831899169;
- Tue, 10 Mar 2020 02:18:19 -0700 (PDT)
+        id S1726315AbgCJMcT (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 10 Mar 2020 08:32:19 -0400
+Received: from szxga06-in.huawei.com ([45.249.212.32]:46854 "EHLO huawei.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1726252AbgCJMcT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 10 Mar 2020 08:32:19 -0400
+Received: from DGGEMS413-HUB.china.huawei.com (unknown [172.30.72.59])
+        by Forcepoint Email with ESMTP id D43095AD1AB69C88E07F;
+        Tue, 10 Mar 2020 20:32:16 +0800 (CST)
+Received: from fedora-aep.huawei.cmm (10.175.113.49) by
+ DGGEMS413-HUB.china.huawei.com (10.3.19.213) with Microsoft SMTP Server id
+ 14.3.487.0; Tue, 10 Mar 2020 20:32:10 +0800
+From:   yangerkun <yangerkun@huawei.com>
+To:     <sashal@kernel.org>, <gregkh@linuxfoundation.org>
+CC:     <trond.myklebust@primarydata.com>, <anna.schumaker@netapp.com>,
+        <linux-nfs@vger.kernel.org>, <stable@vger.kernel.org>,
+        <yangerkun@huawei.com>
+Subject: [PATCH 4.4.y/4.9.y] NFS: fix highmem leak exist in nfs_readdir_xdr_to_array
+Date:   Tue, 10 Mar 2020 21:00:52 +0800
+Message-ID: <20200310130052.5728-1-yangerkun@huawei.com>
+X-Mailer: git-send-email 2.17.2
 MIME-Version: 1.0
-References: <158376244589.344135.12925590041630631412.stgit@warthog.procyon.org.uk>
- <20200309200238.GB28467@miu.piliscsaba.redhat.com> <537182.1583794373@warthog.procyon.org.uk>
-In-Reply-To: <537182.1583794373@warthog.procyon.org.uk>
-From:   Miklos Szeredi <miklos@szeredi.hu>
-Date:   Tue, 10 Mar 2020 10:18:08 +0100
-Message-ID: <CAJfpegt9TqfyJuk0G-OJdWLiKuxSeY0cQKK=1GVf1fStA9COBw@mail.gmail.com>
-Subject: Re: [PATCH 00/14] VFS: Filesystem information [ver #18]
-To:     David Howells <dhowells@redhat.com>
-Cc:     Linus Torvalds <torvalds@linux-foundation.org>,
-        Al Viro <viro@zeniv.linux.org.uk>,
-        "Theodore Ts'o" <tytso@mit.edu>,
-        Stefan Metzmacher <metze@samba.org>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        linux-ext4@vger.kernel.org, Aleksa Sarai <cyphar@cyphar.com>,
-        Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux API <linux-api@vger.kernel.org>,
-        Ian Kent <raven@themaw.net>,
-        Miklos Szeredi <mszeredi@redhat.com>,
-        Christian Brauner <christian@brauner.io>,
-        Jann Horn <jannh@google.com>,
-        "Darrick J. Wong" <darrick.wong@oracle.com>,
-        Karel Zak <kzak@redhat.com>, Jeff Layton <jlayton@redhat.com>,
-        linux-fsdevel@vger.kernel.org,
-        LSM <linux-security-module@vger.kernel.org>,
-        linux-kernel@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain
+X-Originating-IP: [10.175.113.49]
+X-CFilter-Loop: Reflected
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Mon, Mar 9, 2020 at 11:53 PM David Howells <dhowells@redhat.com> wrote:
->
-> Miklos Szeredi <miklos@szeredi.hu> wrote:
->
-> > >  (1) It can be targetted.  It makes it easy to query directly by path or
-> > >      fd, but can also query by mount ID or fscontext fd.  procfs and sysfs
-> > >      cannot do three of these things easily.
-> >
-> > See above: with the addition of open(path, O_PATH) it can do all of these.
->
-> That's a horrible interface.  To query a file by path, you have to do:
->
->         fd = open(path, O_PATH);
->         sprintf(procpath, "/proc/self/fdmount/%u/<attr>");
->         fd2 = open(procpath, O_RDONLY);
->         read(fd2, ...);
->         close(fd2);
->         close(fd);
->
-> See point (3) about efficiency also.  You're having to open *two* files.
+The patch 'e22dea67d2f7 ("NFS: Fix memory leaks and corruption in
+readdir")' in 4.4.y/4.9.y will introduce a highmem leak.
+Actually, nfs_readdir_get_array has did what we want to do. No need to
+call kmap again.
 
-I completely agree, opening two files is surely going to kill
-performance of application needing to retrieve a billion mount
-attributes per second.</sarcasm>
+Signed-off-by: yangerkun <yangerkun@huawei.com>
+---
+ fs/nfs/dir.c | 2 --
+ 1 file changed, 2 deletions(-)
 
-> > >  (2) Easier to provide LSM oversight.  Is the accessing process allowed to
-> > >      query information pertinent to a particular file?
-> >
-> > Not quite sure why this would be easier for a new ad-hoc interface than for
-> > the well established filesystem API.
->
-> You're right.  That's why fsinfo() uses standard pathwalk where possible,
-> e.g.:
->
->         fsinfo(AT_FDCWD, "/path/to/file", ...);
->
-> or a fairly standard fd-querying interface:
->
->         fsinfo(fd, "", { resolve_flags = RESOLVE_EMPTY_PATH },  ...);
->
-> to query an open file descriptor.  These are well-established filesystem APIs.
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index c2665d920cf8..2517fcd423b6 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -678,8 +678,6 @@ int nfs_readdir_xdr_to_array(nfs_readdir_descriptor_t *desc, struct page *page,
+ 		goto out_label_free;
+ 	}
+ 
+-	array = kmap(page);
+-
+ 	status = nfs_readdir_alloc_pages(pages, array_size);
+ 	if (status < 0)
+ 		goto out_release_array;
+-- 
+2.17.2
 
-Yes.  The problem is with the "..." part where you pass random
-structures to a function.   That's useful sometimes, but at the very
-least it breaks type safety, and not what I would call a "clean" API.
-
-> > Now onto the advantages of a filesystem based API:
-> >
-> >  - immediately usable from all programming languages, including scripts
->
-> This is not true.  You can't open O_PATH from shell scripts, so you can't
-> query things by path that you can't or shouldn't open (dev file paths, for
-> example; symlinks).
-
-Yes.  However, you just wrote the core of a utility that could do this
-(in 6 lines, no less).  Now try that feat with fsinfo(2)!
-
-Thanks,
-Miklos
