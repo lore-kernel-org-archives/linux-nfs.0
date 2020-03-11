@@ -2,65 +2,62 @@ Return-Path: <SRS0=GU+o=44=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.9 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-3.9 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=no autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 59AC6C5ACC2
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B6948C5ACBF
 	for <linux-nfs@archiver.kernel.org>; Wed, 11 Mar 2020 20:00:03 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 62C9920746
+	by mail.kernel.org (Postfix) with ESMTP id AB26620739
 	for <linux-nfs@archiver.kernel.org>; Wed, 11 Mar 2020 20:00:04 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=amazon.com header.i=@amazon.com header.b="UUQlf3+7"
+	dkim=pass (1024-bit key) header.d=amazon.com header.i=@amazon.com header.b="ZzD7ttOw"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2387438AbgCKUAC (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 11 Mar 2020 16:00:02 -0400
-Received: from smtp-fw-33001.amazon.com ([207.171.190.10]:63735 "EHLO
-        smtp-fw-33001.amazon.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2387410AbgCKUAA (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Mar 2020 16:00:00 -0400
+        id S2387445AbgCKUAD (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 11 Mar 2020 16:00:03 -0400
+Received: from smtp-fw-2101.amazon.com ([72.21.196.25]:62469 "EHLO
+        smtp-fw-2101.amazon.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2387426AbgCKUAB (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Mar 2020 16:00:01 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
   d=amazon.com; i=@amazon.com; q=dns/txt; s=amazon201209;
-  t=1583956801; x=1615492801;
-  h=from:to:cc:subject:date:message-id:in-reply-to:
-   references:mime-version;
-  bh=lKNSkvesFNpZPEmw6V5MJ+I34oPWUtH7xUB1yfyP5bM=;
-  b=UUQlf3+7NYruyWCK2rMz8z01ePEXPKWDnUsCujcKPj8IznBy8XJoc4z8
-   q7SUCjN2N5m1DdKbmC3ZLLqraIr0yh+89wF2p+1D/fLflQi0AHm1/CHYb
-   CuYNOUItlonHW7l3vfU7V7X8UOtJzWvGXV/0m15x8MHrucjm4xUFfP6lN
-   E=;
-IronPort-SDR: BCsJ+vOwtG/ehwm2R9ONbW2zpn9DG/22VCM4D3UJuONgzoiQIqKAHRHLtpTVevNgK5gqm25Ga8
- 8nMrsqNRQ6TA==
+  t=1583956800; x=1615492800;
+  h=from:to:cc:subject:date:message-id:mime-version;
+  bh=LbJW0Zt8Sq9kif23K5B2AYAf81NCOkTuXMuqg14/4mo=;
+  b=ZzD7ttOwZV3kTXgYQqUUlcUQED9dGBSEyvZgHk/FrIsDJi5EAKfDnduy
+   WQKv1j40UC0NylxbW+uzT/XnMAGtr3epQOFXfMXLxi0lXbFV7vxW1jcK2
+   4tN+O+6FQ3l2E8zWuify05ayPpWIN+9elNDxqKdBE2DYWM4YaZvqMVJUv
+   k=;
+IronPort-SDR: asw/sxJZKxONTyvRJ0+XpkX4hUE3e1c8JeqzHs8bSMoAcpWbuVp0f8NdOaM371B3inON2Z8LpH
+ soKdqzo0BUzA==
 X-IronPort-AV: E=Sophos;i="5.70,541,1574121600"; 
-   d="scan'208";a="32054199"
-Received: from sea32-co-svc-lb4-vlan3.sea.corp.amazon.com (HELO email-inbound-relay-1e-c7c08562.us-east-1.amazon.com) ([10.47.23.38])
-  by smtp-border-fw-out-33001.sea14.amazon.com with ESMTP; 11 Mar 2020 20:00:00 +0000
+   d="scan'208";a="21101078"
+Received: from iad12-co-svc-p1-lb1-vlan2.amazon.com (HELO email-inbound-relay-1e-c7c08562.us-east-1.amazon.com) ([10.43.8.2])
+  by smtp-border-fw-out-2101.iad2.amazon.com with ESMTP; 11 Mar 2020 19:59:59 +0000
 Received: from EX13MTAUWA001.ant.amazon.com (iad55-ws-svc-p15-lb9-vlan2.iad.amazon.com [10.40.159.162])
-        by email-inbound-relay-1e-c7c08562.us-east-1.amazon.com (Postfix) with ESMTPS id BD035240AFA;
-        Wed, 11 Mar 2020 19:59:58 +0000 (UTC)
+        by email-inbound-relay-1e-c7c08562.us-east-1.amazon.com (Postfix) with ESMTPS id BCFDB248F59;
+        Wed, 11 Mar 2020 19:59:57 +0000 (UTC)
 Received: from EX13D13UWA002.ant.amazon.com (10.43.160.172) by
  EX13MTAUWA001.ant.amazon.com (10.43.160.118) with Microsoft SMTP Server (TLS)
  id 15.0.1367.3; Wed, 11 Mar 2020 19:59:56 +0000
-Received: from EX13MTAUEE002.ant.amazon.com (10.43.62.24) by
+Received: from EX13MTAUEA002.ant.amazon.com (10.43.61.77) by
  EX13D13UWA002.ant.amazon.com (10.43.160.172) with Microsoft SMTP Server (TLS)
  id 15.0.1497.2; Wed, 11 Mar 2020 19:59:55 +0000
 Received: from dev-dsk-fllinden-2c-c1893d73.us-west-2.amazon.com
- (172.23.141.97) by mail-relay.amazon.com (10.43.62.224) with Microsoft SMTP
- Server id 15.0.1367.3 via Frontend Transport; Wed, 11 Mar 2020 19:59:55 +0000
+ (172.23.141.97) by mail-relay.amazon.com (10.43.61.169) with Microsoft SMTP
+ Server id 15.0.1236.3 via Frontend Transport; Wed, 11 Mar 2020 19:59:55 +0000
 Received: by dev-dsk-fllinden-2c-c1893d73.us-west-2.amazon.com (Postfix, from userid 6262777)
-        id 13D75DEF44; Wed, 11 Mar 2020 19:59:55 +0000 (UTC)
+        id 04B4FDD8DB; Wed, 11 Mar 2020 19:59:54 +0000 (UTC)
 From:   Frank van der Linden <fllinden@amazon.com>
 To:     <bfields@fieldses.org>, <chuck.lever@oracle.com>,
         <linux-nfs@vger.kernel.org>
 CC:     Frank van der Linden <fllinden@amazon.com>
-Subject: [PATCH 06/14] nfsd: define xattr functions to call in to their vfs counterparts
-Date:   Wed, 11 Mar 2020 19:59:46 +0000
-Message-ID: <20200311195954.27117-7-fllinden@amazon.com>
+Subject: [PATCH 00/14] server side user xattr support (RFC 8276)
+Date:   Wed, 11 Mar 2020 19:59:40 +0000
+Message-ID: <20200311195954.27117-1-fllinden@amazon.com>
 X-Mailer: git-send-email 2.16.6
-In-Reply-To: <20200311195954.27117-1-fllinden@amazon.com>
-References: <20200311195954.27117-1-fllinden@amazon.com>
 MIME-Version: 1.0
 Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
@@ -68,177 +65,70 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-This adds the filehandle based functions for the xattr operations
-that call in to the vfs layer to do the actual work.
+This patchset implements the server side for NFS user extended attributes,
+as defined in RFC8726.
 
-Signed-off-by: Frank van der Linden <fllinden@amazon.com>
----
- fs/nfsd/vfs.c | 130 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- fs/nfsd/vfs.h |  10 +++++
- 2 files changed, 140 insertions(+)
+This was originally posted as an RFC in:
 
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index 0aa02eb18bd3..115449009bc0 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -2058,6 +2058,136 @@ static int exp_rdonly(struct svc_rqst *rqstp, struct svc_export *exp)
- 	return nfsexp_flags(rqstp, exp) & NFSEXP_READONLY;
- }
- 
-+#ifdef CONFIG_NFSD_V4
-+/*
-+ * Helper function to translate error numbers. In the case of xattr operations,
-+ * some error codes need to be translated outside of the standard translations.
-+ *
-+ * ENODATA needs to be translated to nfserr_noxattr.
-+ * E2BIG to nfserr_xattr2big.
-+ *
-+ * Additionally, vfs_listxattr can return -ERANGE. This means that the
-+ * file has too many extended attributes to retrieve inside an
-+ * XATTR_LIST_MAX sized buffer. This is a bug in the xattr implementation:
-+ * filesystems will allow the adding of extended attributes until they hit
-+ * their own internal limit. This limit may be larger than XATTR_LIST_MAX.
-+ * So, at that point, the attributes are present and valid, but can't
-+ * be retrieved using listxattr, since the upper level xattr code enforces
-+ * the XATTR_LIST_MAX limit.
-+ *
-+ * This bug means that we need to deal with listxattr returning -ERANGE. The
-+ * best mapping is to return TOOSMALL.
-+ */
-+static __be32
-+nfsd_xattr_errno(int err)
-+{
-+	switch (err) {
-+	case -ENODATA:
-+		return nfserr_noxattr;
-+	case -E2BIG:
-+		return nfserr_xattr2big;
-+	case -ERANGE:
-+		return nfserr_toosmall;
-+	}
-+	return nfserrno(err);
-+}
-+
-+__be32
-+nfsd_getxattr(struct svc_rqst *rqstp, struct svc_fh *fhp, char *name,
-+	      void *buf, int *lenp)
-+{
-+	ssize_t lerr;
-+	int err;
-+
-+	err = fh_verify(rqstp, fhp, 0, NFSD_MAY_READ);
-+	if (err)
-+		return err;
-+
-+	lerr = vfs_getxattr(fhp->fh_dentry, name, buf, *lenp);
-+	if (lerr < 0)
-+		err = nfsd_xattr_errno(lerr);
-+	else
-+		*lenp = lerr;
-+
-+	return err;
-+}
-+
-+__be32
-+nfsd_listxattr(struct svc_rqst *rqstp, struct svc_fh *fhp, void *buf, int *lenp)
-+{
-+	ssize_t lerr;
-+	int err;
-+
-+	err = fh_verify(rqstp, fhp, 0, NFSD_MAY_READ);
-+	if (err)
-+		return err;
-+
-+	lerr = vfs_listxattr(fhp->fh_dentry, buf, *lenp);
-+
-+	if (lerr < 0)
-+		err = nfsd_xattr_errno(lerr);
-+	else
-+		*lenp = lerr;
-+
-+	return err;
-+}
-+
-+/*
-+ * Removexattr and setxattr need to call fh_lock to both lock the inode
-+ * and set the change attribute. Since the top-level vfs_removexattr
-+ * and vfs_setxattr calls already do their own inode_lock calls, call
-+ * the _locked variant. Pass in a NULL pointer for delegated_inode,
-+ * and let the client deal with NFS4ERR_DELAY (same as with e.g.
-+ * setattr and remove).
-+ */
-+__be32
-+nfsd_removexattr(struct svc_rqst *rqstp, struct svc_fh *fhp, char *name)
-+{
-+	int err, ret;
-+
-+	err = fh_verify(rqstp, fhp, 0, NFSD_MAY_WRITE);
-+	if (err)
-+		return err;
-+
-+	ret = fh_want_write(fhp);
-+	if (ret)
-+		return nfserrno(ret);
-+
-+	fh_lock(fhp);
-+
-+	ret = __vfs_removexattr_locked(fhp->fh_dentry, name, NULL);
-+
-+	fh_unlock(fhp);
-+	fh_drop_write(fhp);
-+
-+	return nfsd_xattr_errno(ret);
-+}
-+
-+__be32
-+nfsd_setxattr(struct svc_rqst *rqstp, struct svc_fh *fhp, char *name,
-+	      void *buf, u32 len, u32 flags)
-+{
-+	int err, ret;
-+
-+	err = fh_verify(rqstp, fhp, 0, NFSD_MAY_WRITE);
-+	if (err)
-+		return err;
-+
-+	ret = fh_want_write(fhp);
-+	if (ret)
-+		return nfserrno(ret);
-+	fh_lock(fhp);
-+
-+	ret = __vfs_setxattr_locked(fhp->fh_dentry, name, buf, len, flags,
-+				    NULL);
-+
-+	fh_unlock(fhp);
-+	fh_drop_write(fhp);
-+
-+	return nfsd_xattr_errno(ret);
-+}
-+#endif
-+
- /*
-  * Check for a user's access permissions to this inode.
-  */
-diff --git a/fs/nfsd/vfs.h b/fs/nfsd/vfs.h
-index 3eb660ad80d1..2d2cf5b0543b 100644
---- a/fs/nfsd/vfs.h
-+++ b/fs/nfsd/vfs.h
-@@ -76,6 +76,16 @@ __be32		do_nfsd_create(struct svc_rqst *, struct svc_fh *,
- __be32		nfsd_commit(struct svc_rqst *, struct svc_fh *,
- 				loff_t, unsigned long, __be32 *verf);
- #endif /* CONFIG_NFSD_V3 */
-+#ifdef CONFIG_NFSD_V4
-+__be32		nfsd_getxattr(struct svc_rqst *rqstp, struct svc_fh *fhp,
-+			    char *name, void *buf, int *lenp);
-+__be32		nfsd_listxattr(struct svc_rqst *rqstp, struct svc_fh *fhp,
-+			    void *buf, int *lenp);
-+__be32		nfsd_removexattr(struct svc_rqst *rqstp, struct svc_fh *fhp,
-+			    char *name);
-+__be32		nfsd_setxattr(struct svc_rqst *rqstp, struct svc_fh *fhp,
-+			    char *name, void *buf, u32 len, u32 flags);
-+#endif
- int 		nfsd_open_break_lease(struct inode *, int);
- __be32		nfsd_open(struct svc_rqst *, struct svc_fh *, umode_t,
- 				int, struct file **);
+https://patchwork.kernel.org/cover/11143565/
+
+Patch 1 is shared with the client side patch, posted
+separately.
+
+Most comments in there still apply, except that:
+
+1. As per the discussion, user extended attributes are enabled if
+   the client and server support them (e.g. they support 4.2 and
+   advertise the user extended attribute FATTR). There are no longer
+   options to switch them off on either the client or the server.
+2. The code is no longer conditioned on a config option.
+3. The number of patches has been reduced somewhat by merging
+   smaller, related ones.
+
+This has been tested as follows:
+
+* Linux client and server:
+	* Test all corner cases (XATTR_SIZE_*)
+	* Test all failure cases (no xattr, setxattr with different or
+	  invalid flags, etc).
+	* Verify the content of xattrs across several operations.
+	* Use KASAN and KMEMLEAK for a longer mix of testruns to verify
+	  that there were no leaks (after unmounting the filesystem).
+
+* Tested against the FreeBSD-current implementation as well, which works
+  (after I fixed 2 bugs in that implementation, which I'm sending out to
+  them too).
+
+* Not tested: RDMA (I couldn't get a setup going).
+
+Frank van der Linden (14):
+  nfs,nfsd: NFSv4.2 extended attribute protocol definitions
+  xattr: modify vfs_{set,remove}xattr for NFS server use
+  nfsd: split off the write decode code in to a separate function
+  nfsd: make sure the nfsd4_ops array has the right size
+  nfsd: add defines for NFSv4.2 extended attribute support
+  nfsd: define xattr functions to call in to their vfs counterparts
+  nfsd: take xattr bits in to account for permission checks
+  nfsd: add structure definitions for xattr requests / responses
+  nfsd: use kvmalloc in svcxdr_tmpalloc
+  nfsd: implement the xattr procedure functions.
+  nfsd: add user xattr RPC XDR encoding/decoding logic
+  nfsd: add xattr operations to ops array
+  xattr: add a function to check if a namespace is supported
+  nfsd: add fattr support for user extended attributes
+
+ fs/nfsd/nfs4proc.c        | 141 +++++++++++-
+ fs/nfsd/nfs4xdr.c         | 535 +++++++++++++++++++++++++++++++++++++++++++---
+ fs/nfsd/nfsd.h            |   5 +-
+ fs/nfsd/vfs.c             | 142 ++++++++++++
+ fs/nfsd/vfs.h             |  10 +
+ fs/nfsd/xdr4.h            |  31 +++
+ fs/xattr.c                |  90 +++++++-
+ include/linux/nfs4.h      |  22 +-
+ include/linux/xattr.h     |   4 +
+ include/uapi/linux/nfs4.h |   3 +
+ 10 files changed, 940 insertions(+), 43 deletions(-)
+
 -- 
 2.16.6
 
