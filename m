@@ -7,57 +7,57 @@ X-Spam-Status: No, score=-9.9 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 325B7C5ACC1
-	for <linux-nfs@archiver.kernel.org>; Wed, 11 Mar 2020 20:00:02 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A9E21C5ACC0
+	for <linux-nfs@archiver.kernel.org>; Wed, 11 Mar 2020 20:00:01 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 3B3BB20739
-	for <linux-nfs@archiver.kernel.org>; Wed, 11 Mar 2020 20:00:03 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id B619220739
+	for <linux-nfs@archiver.kernel.org>; Wed, 11 Mar 2020 20:00:02 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=amazon.com header.i=@amazon.com header.b="ambZ6a0p"
+	dkim=pass (1024-bit key) header.d=amazon.com header.i=@amazon.com header.b="qh+b2jw8"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2387469AbgCKUAA (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S2387436AbgCKUAA (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Wed, 11 Mar 2020 16:00:00 -0400
 Received: from smtp-fw-9102.amazon.com ([207.171.184.29]:21948 "EHLO
         smtp-fw-9102.amazon.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2387463AbgCKUAA (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Mar 2020 16:00:00 -0400
+        with ESMTP id S2387469AbgCKT77 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Mar 2020 15:59:59 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
   d=amazon.com; i=@amazon.com; q=dns/txt; s=amazon201209;
-  t=1583956800; x=1615492800;
+  t=1583956799; x=1615492799;
   h=from:to:cc:subject:date:message-id:in-reply-to:
    references:mime-version;
-  bh=6qiAtbom8sWGtv53ltUBs+gBP2p6c6TlVosvwWopK0g=;
-  b=ambZ6a0pw1QqCEw6ZGjN31mcdCVlfjXRlFmNHr42SKnzXoBUpEl8xmIx
-   V8IUXBjzpFOEbxKZAR8UujXnxBz6N/YlmLjuEXk3HwMBM7SNGP0eFh+GB
-   WXVYE4r3s4avusOXzGWglGKfkFz4xU3tHYT8bJY1fvb4lJznYS55oZEmm
-   I=;
-IronPort-SDR: GfS9mFJhmqg5ZuUZJq84opFpwZEMoP0H+NwuJvFr98MOIfxU39nrfYRjLCky2JFZeUc+pC52mt
- BlGN4vGZ4Ibw==
+  bh=ECKRP8QI91xkBXqgzzaaw62R8Y/U8A7xJx56JpnoJJo=;
+  b=qh+b2jw8J0tbl35+Df7Y5o3nUEJSx8wYBRr7oF/YCVPY274a2r+XTQ2H
+   4J6hX64AmnsafN/G30jsahX6kgOVP6praGXXsUwsWKAoWU9ecHGyT2hFl
+   HKDqSbdATcHyxmgqNFNbClxQ4mX4Z8qkEPGsEyfbb3ij2VK6ZHc0FOIO8
+   4=;
+IronPort-SDR: GOm82r+IBTyGLdcIazep9R1/FlGOf+sRxTENBirVliN2R7hUttMc5Dy3n7NeclDpppdy90hHl5
+ 2kyev8GHgzwA==
 X-IronPort-AV: E=Sophos;i="5.70,541,1574121600"; 
-   d="scan'208";a="30664623"
+   d="scan'208";a="30664618"
 Received: from sea32-co-svc-lb4-vlan3.sea.corp.amazon.com (HELO email-inbound-relay-1a-715bee71.us-east-1.amazon.com) ([10.47.23.38])
   by smtp-border-fw-out-9102.sea19.amazon.com with ESMTP; 11 Mar 2020 19:59:57 +0000
-Received: from EX13MTAUWA001.ant.amazon.com (iad55-ws-svc-p15-lb9-vlan2.iad.amazon.com [10.40.159.162])
-        by email-inbound-relay-1a-715bee71.us-east-1.amazon.com (Postfix) with ESMTPS id 6A293A33FF;
-        Wed, 11 Mar 2020 19:59:57 +0000 (UTC)
-Received: from EX13D13UWA001.ant.amazon.com (10.43.160.136) by
- EX13MTAUWA001.ant.amazon.com (10.43.160.58) with Microsoft SMTP Server (TLS)
- id 15.0.1367.3; Wed, 11 Mar 2020 19:59:56 +0000
-Received: from EX13MTAUEA002.ant.amazon.com (10.43.61.77) by
- EX13D13UWA001.ant.amazon.com (10.43.160.136) with Microsoft SMTP Server (TLS)
+Received: from EX13MTAUWB001.ant.amazon.com (iad55-ws-svc-p15-lb9-vlan2.iad.amazon.com [10.40.159.162])
+        by email-inbound-relay-1a-715bee71.us-east-1.amazon.com (Postfix) with ESMTPS id 3E420A33FB;
+        Wed, 11 Mar 2020 19:59:55 +0000 (UTC)
+Received: from EX13D13UWB003.ant.amazon.com (10.43.161.233) by
+ EX13MTAUWB001.ant.amazon.com (10.43.161.207) with Microsoft SMTP Server (TLS)
+ id 15.0.1367.3; Wed, 11 Mar 2020 19:59:55 +0000
+Received: from EX13MTAUWC001.ant.amazon.com (10.43.162.135) by
+ EX13D13UWB003.ant.amazon.com (10.43.161.233) with Microsoft SMTP Server (TLS)
  id 15.0.1497.2; Wed, 11 Mar 2020 19:59:55 +0000
 Received: from dev-dsk-fllinden-2c-c1893d73.us-west-2.amazon.com
- (172.23.141.97) by mail-relay.amazon.com (10.43.61.169) with Microsoft SMTP
- Server id 15.0.1236.3 via Frontend Transport; Wed, 11 Mar 2020 19:59:55 +0000
+ (172.23.141.97) by mail-relay.amazon.com (10.43.162.232) with Microsoft SMTP
+ Server id 15.0.1367.3 via Frontend Transport; Wed, 11 Mar 2020 19:59:55 +0000
 Received: by dev-dsk-fllinden-2c-c1893d73.us-west-2.amazon.com (Postfix, from userid 6262777)
-        id 112FADEC15; Wed, 11 Mar 2020 19:59:55 +0000 (UTC)
+        id 2687EDEF4B; Wed, 11 Mar 2020 19:59:55 +0000 (UTC)
 From:   Frank van der Linden <fllinden@amazon.com>
 To:     <bfields@fieldses.org>, <chuck.lever@oracle.com>,
         <linux-nfs@vger.kernel.org>
 CC:     Frank van der Linden <fllinden@amazon.com>
-Subject: [PATCH 05/14] nfsd: add defines for NFSv4.2 extended attribute support
-Date:   Wed, 11 Mar 2020 19:59:45 +0000
-Message-ID: <20200311195954.27117-6-fllinden@amazon.com>
+Subject: [PATCH 13/14] xattr: add a function to check if a namespace is supported
+Date:   Wed, 11 Mar 2020 19:59:53 +0000
+Message-ID: <20200311195954.27117-14-fllinden@amazon.com>
 X-Mailer: git-send-email 2.16.6
 In-Reply-To: <20200311195954.27117-1-fllinden@amazon.com>
 References: <20200311195954.27117-1-fllinden@amazon.com>
@@ -68,40 +68,69 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Add defines for server-side extended attribute support. Most have
-already been added as part of client support, but these are
-the network order error codes for the noxattr and xattr2big errors,
-and the addition of the xattr support to the supported file
-attributes (if configured).
+Add a function that checks is an extended attribute namespace is
+supported for an inode.
+
+To be used by the nfs server code when being queried for extended
+attributes support.
 
 Signed-off-by: Frank van der Linden <fllinden@amazon.com>
 ---
- fs/nfsd/nfsd.h | 5 ++++-
- 1 file changed, 4 insertions(+), 1 deletion(-)
+ fs/xattr.c            | 27 +++++++++++++++++++++++++++
+ include/linux/xattr.h |  2 ++
+ 2 files changed, 29 insertions(+)
 
-diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
-index 2ab5569126b8..362d481b28c9 100644
---- a/fs/nfsd/nfsd.h
-+++ b/fs/nfsd/nfsd.h
-@@ -281,6 +281,8 @@ void		nfsd_lockd_shutdown(void);
- #define nfserr_wrong_lfs		cpu_to_be32(NFS4ERR_WRONG_LFS)
- #define nfserr_badlabel			cpu_to_be32(NFS4ERR_BADLABEL)
- #define nfserr_file_open		cpu_to_be32(NFS4ERR_FILE_OPEN)
-+#define nfserr_xattr2big		cpu_to_be32(NFS4ERR_XATTR2BIG)
-+#define nfserr_noxattr			cpu_to_be32(NFS4ERR_NOXATTR)
+diff --git a/fs/xattr.c b/fs/xattr.c
+index 58013bcbc333..7d0ebab1df30 100644
+--- a/fs/xattr.c
++++ b/fs/xattr.c
+@@ -134,6 +134,33 @@ xattr_permission(struct inode *inode, const char *name, int mask)
+ 	return inode_permission(inode, mask);
+ }
  
- /* error codes for internal use */
- /* if a request fails due to kmalloc failure, it gets dropped.
-@@ -382,7 +384,8 @@ void		nfsd_lockd_shutdown(void);
- 	(NFSD4_1_SUPPORTED_ATTRS_WORD2 | \
- 	FATTR4_WORD2_CHANGE_ATTR_TYPE | \
- 	FATTR4_WORD2_MODE_UMASK | \
--	NFSD4_2_SECURITY_ATTRS)
-+	NFSD4_2_SECURITY_ATTRS | \
-+	FATTR4_WORD2_XATTR_SUPPORT)
++/*
++ * Look for any handler that deals with the specified namespace.
++ */
++int
++xattr_supported_namespace(struct inode *inode, const char *prefix)
++{
++	const struct xattr_handler **handlers = inode->i_sb->s_xattr;
++	const struct xattr_handler *handler;
++	size_t preflen;
++
++	if (!(inode->i_opflags & IOP_XATTR)) {
++		if (unlikely(is_bad_inode(inode)))
++			return -EIO;
++		return -EOPNOTSUPP;
++	}
++
++	preflen = strlen(prefix);
++
++	for_each_xattr_handler(handlers, handler) {
++		if (!strncmp(xattr_prefix(handler), prefix, preflen))
++			return 0;
++	}
++
++	return -EOPNOTSUPP;
++}
++EXPORT_SYMBOL(xattr_supported_namespace);
++
+ int
+ __vfs_setxattr(struct dentry *dentry, struct inode *inode, const char *name,
+ 	       const void *value, size_t size, int flags)
+diff --git a/include/linux/xattr.h b/include/linux/xattr.h
+index 3a71ad716da5..32e377602068 100644
+--- a/include/linux/xattr.h
++++ b/include/linux/xattr.h
+@@ -61,6 +61,8 @@ ssize_t generic_listxattr(struct dentry *dentry, char *buffer, size_t buffer_siz
+ ssize_t vfs_getxattr_alloc(struct dentry *dentry, const char *name,
+ 			   char **xattr_value, size_t size, gfp_t flags);
  
- extern const u32 nfsd_suppattrs[3][3];
- 
++int xattr_supported_namespace(struct inode *inode, const char *prefix);
++
+ static inline const char *xattr_prefix(const struct xattr_handler *handler)
+ {
+ 	return handler->prefix ?: handler->name;
 -- 
 2.16.6
 
