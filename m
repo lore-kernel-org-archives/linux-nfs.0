@@ -7,60 +7,60 @@ X-Spam-Status: No, score=-9.9 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 40AAAC2BAEE
-	for <linux-nfs@archiver.kernel.org>; Wed, 11 Mar 2020 19:56:44 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 808E4C0044D
+	for <linux-nfs@archiver.kernel.org>; Wed, 11 Mar 2020 19:59:58 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 4095020739
-	for <linux-nfs@archiver.kernel.org>; Wed, 11 Mar 2020 19:56:45 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 7F22020739
+	for <linux-nfs@archiver.kernel.org>; Wed, 11 Mar 2020 19:59:59 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=amazon.com header.i=@amazon.com header.b="VLk6cV64"
+	dkim=pass (1024-bit key) header.d=amazon.com header.i=@amazon.com header.b="RuMm6k6W"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2387405AbgCKT4n (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 11 Mar 2020 15:56:43 -0400
-Received: from smtp-fw-2101.amazon.com ([72.21.196.25]:61723 "EHLO
-        smtp-fw-2101.amazon.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2387431AbgCKT4n (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Mar 2020 15:56:43 -0400
+        id S2387433AbgCKT75 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 11 Mar 2020 15:59:57 -0400
+Received: from smtp-fw-6002.amazon.com ([52.95.49.90]:23579 "EHLO
+        smtp-fw-6002.amazon.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1731114AbgCKT75 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Mar 2020 15:59:57 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
   d=amazon.com; i=@amazon.com; q=dns/txt; s=amazon201209;
-  t=1583956602; x=1615492602;
+  t=1583956798; x=1615492798;
   h=from:to:cc:subject:date:message-id:in-reply-to:
    references:mime-version;
-  bh=xooXU7M8vhd10XITmEl/ZD52kvtmY62kFOlidC+EigU=;
-  b=VLk6cV647KER/m5pIqd7zPY1bvJLGWgKZ6vcYPcwE7jLC0/jTj+24I51
-   LAP3p9GvM9hDxWtoTJao48Hm9/d2qttLUyK/HW1XUMJ6rTivbUu7/GJoP
-   Bgka7vqdO+32yamAW6iniSu1jgTj7wpCPWDcmQ51LdXTBG7PKvGWVGy4S
-   I=;
-IronPort-SDR: xOHd1wMgX0GtGKt/11QC+MiuAsdxsWf24TY/UVcLnJ51a9+KxEDq/OP25EhQxLGwfmJPAQjP7e
- 5WR3yAeHdsHg==
+  bh=ROXlFFlPjSQ2iimx+oHHLVf9NqixAlMXraRw9w77D0M=;
+  b=RuMm6k6WV8fLw/bETae/Waa/pDPfQhM5t7DsYgiq+20sSQiwQOfmMG4G
+   gK/plQfJamUhGMVMVrmYW71jdwKrTydT+r3GnAQR5EwzYLqgKF81DCwBt
+   DN+bJq60AywiXOQ2XiAcu4vXTSkKvvjuhA8w0qzVEeJRL7mZwZX5E9yHO
+   g=;
+IronPort-SDR: bTK9H2J8809YLJe23dWenz/LR0kMQFWB5D8gl6xuZSJH6knl65AMwlj8HXqd74wSMtaHv3BzHt
+ HwJMs3LagS5g==
 X-IronPort-AV: E=Sophos;i="5.70,541,1574121600"; 
-   d="scan'208";a="21100390"
-Received: from iad12-co-svc-p1-lb1-vlan2.amazon.com (HELO email-inbound-relay-1e-303d0b0e.us-east-1.amazon.com) ([10.43.8.2])
-  by smtp-border-fw-out-2101.iad2.amazon.com with ESMTP; 11 Mar 2020 19:56:32 +0000
-Received: from EX13MTAUWA001.ant.amazon.com (iad55-ws-svc-p15-lb9-vlan3.iad.amazon.com [10.40.159.166])
-        by email-inbound-relay-1e-303d0b0e.us-east-1.amazon.com (Postfix) with ESMTPS id CD7B8A2B6B;
-        Wed, 11 Mar 2020 19:56:31 +0000 (UTC)
-Received: from EX13D13UWA001.ant.amazon.com (10.43.160.136) by
- EX13MTAUWA001.ant.amazon.com (10.43.160.58) with Microsoft SMTP Server (TLS)
- id 15.0.1367.3; Wed, 11 Mar 2020 19:56:31 +0000
-Received: from EX13MTAUEB002.ant.amazon.com (10.43.60.12) by
- EX13D13UWA001.ant.amazon.com (10.43.160.136) with Microsoft SMTP Server (TLS)
- id 15.0.1497.2; Wed, 11 Mar 2020 19:56:30 +0000
+   d="scan'208";a="20656068"
+Received: from iad12-co-svc-p1-lb1-vlan3.amazon.com (HELO email-inbound-relay-1d-74cf8b49.us-east-1.amazon.com) ([10.43.8.6])
+  by smtp-border-fw-out-6002.iad6.amazon.com with ESMTP; 11 Mar 2020 19:59:57 +0000
+Received: from EX13MTAUWB001.ant.amazon.com (iad55-ws-svc-p15-lb9-vlan2.iad.amazon.com [10.40.159.162])
+        by email-inbound-relay-1d-74cf8b49.us-east-1.amazon.com (Postfix) with ESMTPS id D176AC1B2C;
+        Wed, 11 Mar 2020 19:59:55 +0000 (UTC)
+Received: from EX13D13UWB004.ant.amazon.com (10.43.161.218) by
+ EX13MTAUWB001.ant.amazon.com (10.43.161.249) with Microsoft SMTP Server (TLS)
+ id 15.0.1367.3; Wed, 11 Mar 2020 19:59:55 +0000
+Received: from EX13MTAUWC001.ant.amazon.com (10.43.162.135) by
+ EX13D13UWB004.ant.amazon.com (10.43.161.218) with Microsoft SMTP Server (TLS)
+ id 15.0.1497.2; Wed, 11 Mar 2020 19:59:54 +0000
 Received: from dev-dsk-fllinden-2c-c1893d73.us-west-2.amazon.com
- (172.23.141.97) by mail-relay.amazon.com (10.43.60.234) with Microsoft SMTP
- Server id 15.0.1367.3 via Frontend Transport; Wed, 11 Mar 2020 19:56:24 +0000
+ (172.23.141.97) by mail-relay.amazon.com (10.43.162.232) with Microsoft SMTP
+ Server id 15.0.1367.3 via Frontend Transport; Wed, 11 Mar 2020 19:59:54 +0000
 Received: by dev-dsk-fllinden-2c-c1893d73.us-west-2.amazon.com (Postfix, from userid 6262777)
-        id 07C16DEF47; Wed, 11 Mar 2020 19:56:24 +0000 (UTC)
+        id 09136DEC12; Wed, 11 Mar 2020 19:59:55 +0000 (UTC)
 From:   Frank van der Linden <fllinden@amazon.com>
-To:     <trond.myklebust@hammerspace.com>, <anna.schumaker@netapp.com>,
+To:     <bfields@fieldses.org>, <chuck.lever@oracle.com>,
         <linux-nfs@vger.kernel.org>
 CC:     Frank van der Linden <fllinden@amazon.com>
-Subject: [PATCH 09/13] nfs: define and use the NFS_INO_INVALID_XATTR flag
-Date:   Wed, 11 Mar 2020 19:56:09 +0000
-Message-ID: <20200311195613.26108-10-fllinden@amazon.com>
+Subject: [PATCH 02/14] xattr: modify vfs_{set,remove}xattr for NFS server use
+Date:   Wed, 11 Mar 2020 19:59:42 +0000
+Message-ID: <20200311195954.27117-3-fllinden@amazon.com>
 X-Mailer: git-send-email 2.16.6
-In-Reply-To: <20200311195613.26108-1-fllinden@amazon.com>
-References: <20200311195613.26108-1-fllinden@amazon.com>
+In-Reply-To: <20200311195954.27117-1-fllinden@amazon.com>
+References: <20200311195954.27117-1-fllinden@amazon.com>
 MIME-Version: 1.0
 Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
@@ -68,91 +68,163 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Define the NFS_INO_INVALID_XATTR flag, to be used for the NFSv4.2 xattr
-cache, and use it where appropriate.
+To be called from the upcoming NFS server xattr code, the vfs_removexattr
+and vfs_setxattr need some modifications.
 
-No functional change as yet.
+First, they need to grow a _locked variant, since the NFS server code
+will call this with i_rwsem held. It needs to do that in fh_lock to be
+able to atomically provide the before and after change attributes.
+
+Second, RFC 8276 (NFSv4 extended attribute support) specifies that
+delegations should be recalled (8.4.2.4, 8.4.4.4) when a SETXATTR
+or REMOVEXATTR operation is performed. So, like with other fs
+operations, try to break the delegation. The _locked version of
+these operations will not wait for the delegation to be successfully
+broken, instead returning an error if it wasn't, so that the NFS
+server code can return NFS4ERR_DELAY to the client (similar to
+what e.g. vfs_link does).
 
 Signed-off-by: Frank van der Linden <fllinden@amazon.com>
 ---
- fs/nfs/inode.c         | 7 ++++++-
- fs/nfs/nfs4proc.c      | 3 ++-
- fs/nfs/nfstrace.h      | 3 ++-
- include/linux/nfs_fs.h | 1 +
- 4 files changed, 11 insertions(+), 3 deletions(-)
+ fs/xattr.c            | 63 +++++++++++++++++++++++++++++++++++++++++++++------
+ include/linux/xattr.h |  2 ++
+ 2 files changed, 58 insertions(+), 7 deletions(-)
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 11bf15800ac9..d2be152796ef 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -205,7 +205,8 @@ static void nfs_set_cache_invalid(struct inode *inode, unsigned long flags)
- 			flags &= ~NFS_INO_INVALID_OTHER;
- 		flags &= ~(NFS_INO_INVALID_CHANGE
- 				| NFS_INO_INVALID_SIZE
--				| NFS_INO_REVAL_PAGECACHE);
-+				| NFS_INO_REVAL_PAGECACHE
-+				| NFS_INO_INVALID_XATTR);
+diff --git a/fs/xattr.c b/fs/xattr.c
+index 90dd78f0eb27..58013bcbc333 100644
+--- a/fs/xattr.c
++++ b/fs/xattr.c
+@@ -204,10 +204,10 @@ int __vfs_setxattr_noperm(struct dentry *dentry, const char *name,
+ 	return error;
+ }
+ 
+-
+ int
+-vfs_setxattr(struct dentry *dentry, const char *name, const void *value,
+-		size_t size, int flags)
++__vfs_setxattr_locked(struct dentry *dentry, const char *name,
++		const void *value, size_t size, int flags,
++		struct inode **delegated_inode)
+ {
+ 	struct inode *inode = dentry->d_inode;
+ 	int error;
+@@ -216,15 +216,40 @@ vfs_setxattr(struct dentry *dentry, const char *name, const void *value,
+ 	if (error)
+ 		return error;
+ 
+-	inode_lock(inode);
+ 	error = security_inode_setxattr(dentry, name, value, size, flags);
+ 	if (error)
+ 		goto out;
+ 
++	error = try_break_deleg(inode, delegated_inode);
++	if (error)
++		goto out;
++
+ 	error = __vfs_setxattr_noperm(dentry, name, value, size, flags);
+ 
+ out:
++	return error;
++}
++EXPORT_SYMBOL_GPL(__vfs_setxattr_locked);
++
++int
++vfs_setxattr(struct dentry *dentry, const char *name, const void *value,
++		size_t size, int flags)
++{
++	struct inode *inode = dentry->d_inode;
++	struct inode *delegated_inode = NULL;
++	int error;
++
++retry_deleg:
++	inode_lock(inode);
++	error = __vfs_setxattr_locked(dentry, name, value, size, flags,
++	    &delegated_inode);
+ 	inode_unlock(inode);
++
++	if (delegated_inode) {
++		error = break_deleg_wait(&delegated_inode);
++		if (!error)
++			goto retry_deleg;
++	}
+ 	return error;
+ }
+ EXPORT_SYMBOL_GPL(vfs_setxattr);
+@@ -379,7 +404,8 @@ __vfs_removexattr(struct dentry *dentry, const char *name)
+ EXPORT_SYMBOL(__vfs_removexattr);
+ 
+ int
+-vfs_removexattr(struct dentry *dentry, const char *name)
++__vfs_removexattr_locked(struct dentry *dentry, const char *name,
++		struct inode **delegated_inode)
+ {
+ 	struct inode *inode = dentry->d_inode;
+ 	int error;
+@@ -388,11 +414,14 @@ vfs_removexattr(struct dentry *dentry, const char *name)
+ 	if (error)
+ 		return error;
+ 
+-	inode_lock(inode);
+ 	error = security_inode_removexattr(dentry, name);
+ 	if (error)
+ 		goto out;
+ 
++	error = try_break_deleg(inode, delegated_inode);
++	if (error)
++		goto out;
++
+ 	error = __vfs_removexattr(dentry, name);
+ 
+ 	if (!error) {
+@@ -401,12 +430,32 @@ vfs_removexattr(struct dentry *dentry, const char *name)
  	}
  
- 	if (inode->i_mapping->nrpages == 0)
-@@ -535,6 +536,8 @@ nfs_fhget(struct super_block *sb, struct nfs_fh *fh, struct nfs_fattr *fattr, st
- 			inode->i_gid = fattr->gid;
- 		else if (nfs_server_capable(inode, NFS_CAP_OWNER_GROUP))
- 			nfs_set_cache_invalid(inode, NFS_INO_INVALID_OTHER);
-+		if (nfs_server_capable(inode, NFS_CAP_XATTR))
-+			nfs_set_cache_invalid(inode, NFS_INO_INVALID_XATTR);
- 		if (fattr->valid & NFS_ATTR_FATTR_BLOCKS_USED)
- 			inode->i_blocks = fattr->du.nfs2.blocks;
- 		if (fattr->valid & NFS_ATTR_FATTR_SPACE_USED) {
-@@ -1365,6 +1368,8 @@ static void nfs_wcc_update_inode(struct inode *inode, struct nfs_fattr *fattr)
- 		inode_set_iversion_raw(inode, fattr->change_attr);
- 		if (S_ISDIR(inode->i_mode))
- 			nfs_set_cache_invalid(inode, NFS_INO_INVALID_DATA);
-+		else if (nfs_server_capable(inode, NFS_CAP_XATTR))
-+			nfs_set_cache_invalid(inode, NFS_INO_INVALID_XATTR);
- 	}
- 	/* If we have atomic WCC data, we may update some attributes */
- 	ts = inode->i_ctime;
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 31d65bbf4a23..725ae64f62f7 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -1182,7 +1182,8 @@ nfs4_update_changeattr_locked(struct inode *inode,
+ out:
++	return error;
++}
++EXPORT_SYMBOL_GPL(__vfs_removexattr_locked);
++
++int
++vfs_removexattr(struct dentry *dentry, const char *name)
++{
++	struct inode *inode = dentry->d_inode;
++	struct inode *delegated_inode = NULL;
++	int error;
++
++retry_deleg:
++	inode_lock(inode);
++	error = __vfs_removexattr_locked(dentry, name, &delegated_inode);
+ 	inode_unlock(inode);
++
++	if (delegated_inode) {
++		error = break_deleg_wait(&delegated_inode);
++		if (!error)
++			goto retry_deleg;
++	}
++
+ 	return error;
+ }
+ EXPORT_SYMBOL_GPL(vfs_removexattr);
  
- 		if (cinfo->before != inode_peek_iversion_raw(inode))
- 			nfsi->cache_validity |= NFS_INO_INVALID_ACCESS |
--						NFS_INO_INVALID_ACL;
-+						NFS_INO_INVALID_ACL |
-+						NFS_INO_INVALID_XATTR;
- 	}
- 	inode_set_iversion_raw(inode, cinfo->after);
- 	nfsi->read_cache_jiffies = timestamp;
-diff --git a/fs/nfs/nfstrace.h b/fs/nfs/nfstrace.h
-index a9588d19a5ae..b941ad1199e5 100644
---- a/fs/nfs/nfstrace.h
-+++ b/fs/nfs/nfstrace.h
-@@ -59,7 +59,8 @@ TRACE_DEFINE_ENUM(NFS_INO_INVALID_OTHER);
- 			{ NFS_INO_INVALID_CTIME, "INVALID_CTIME" }, \
- 			{ NFS_INO_INVALID_MTIME, "INVALID_MTIME" }, \
- 			{ NFS_INO_INVALID_SIZE, "INVALID_SIZE" }, \
--			{ NFS_INO_INVALID_OTHER, "INVALID_OTHER" })
-+			{ NFS_INO_INVALID_OTHER, "INVALID_OTHER" }, \
-+			{ NFS_INO_INVALID_XATTR, "INVALID_XATTR" })
+-
+ /*
+  * Extended attribute SET operations
+  */
+diff --git a/include/linux/xattr.h b/include/linux/xattr.h
+index 6dad031be3c2..3a71ad716da5 100644
+--- a/include/linux/xattr.h
++++ b/include/linux/xattr.h
+@@ -51,8 +51,10 @@ ssize_t vfs_getxattr(struct dentry *, const char *, void *, size_t);
+ ssize_t vfs_listxattr(struct dentry *d, char *list, size_t size);
+ int __vfs_setxattr(struct dentry *, struct inode *, const char *, const void *, size_t, int);
+ int __vfs_setxattr_noperm(struct dentry *, const char *, const void *, size_t, int);
++int __vfs_setxattr_locked(struct dentry *, const char *, const void *, size_t, int, struct inode **);
+ int vfs_setxattr(struct dentry *, const char *, const void *, size_t, int);
+ int __vfs_removexattr(struct dentry *, const char *);
++int __vfs_removexattr_locked(struct dentry *, const char *, struct inode **);
+ int vfs_removexattr(struct dentry *, const char *);
  
- TRACE_DEFINE_ENUM(NFS_INO_ADVISE_RDPLUS);
- TRACE_DEFINE_ENUM(NFS_INO_STALE);
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index e86e7a747092..1fcfef670a4a 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -233,6 +233,7 @@ struct nfs4_copy_state {
- #define NFS_INO_INVALID_OTHER	BIT(12)		/* other attrs are invalid */
- #define NFS_INO_DATA_INVAL_DEFER	\
- 				BIT(13)		/* Deferred cache invalidation */
-+#define NFS_INO_INVALID_XATTR	BIT(14)		/* xattrs are invalid */
- 
- #define NFS_INO_INVALID_ATTR	(NFS_INO_INVALID_CHANGE \
- 		| NFS_INO_INVALID_CTIME \
+ ssize_t generic_listxattr(struct dentry *dentry, char *buffer, size_t buffer_size);
 -- 
 2.16.6
 
