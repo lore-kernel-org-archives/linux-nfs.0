@@ -7,57 +7,57 @@ X-Spam-Status: No, score=-9.9 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 808E4C0044D
-	for <linux-nfs@archiver.kernel.org>; Wed, 11 Mar 2020 19:59:58 +0000 (UTC)
-Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 7F22020739
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9E141C2BB1D
 	for <linux-nfs@archiver.kernel.org>; Wed, 11 Mar 2020 19:59:59 +0000 (UTC)
+Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
+	by mail.kernel.org (Postfix) with ESMTP id A867420739
+	for <linux-nfs@archiver.kernel.org>; Wed, 11 Mar 2020 20:00:00 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=amazon.com header.i=@amazon.com header.b="RuMm6k6W"
+	dkim=pass (1024-bit key) header.d=amazon.com header.i=@amazon.com header.b="TjkcZpcs"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2387433AbgCKT75 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 11 Mar 2020 15:59:57 -0400
-Received: from smtp-fw-6002.amazon.com ([52.95.49.90]:23579 "EHLO
-        smtp-fw-6002.amazon.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1731114AbgCKT75 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Mar 2020 15:59:57 -0400
+        id S2387460AbgCKT76 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 11 Mar 2020 15:59:58 -0400
+Received: from smtp-fw-4101.amazon.com ([72.21.198.25]:58410 "EHLO
+        smtp-fw-4101.amazon.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1731123AbgCKT76 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Mar 2020 15:59:58 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
   d=amazon.com; i=@amazon.com; q=dns/txt; s=amazon201209;
   t=1583956798; x=1615492798;
   h=from:to:cc:subject:date:message-id:in-reply-to:
    references:mime-version;
-  bh=ROXlFFlPjSQ2iimx+oHHLVf9NqixAlMXraRw9w77D0M=;
-  b=RuMm6k6WV8fLw/bETae/Waa/pDPfQhM5t7DsYgiq+20sSQiwQOfmMG4G
-   gK/plQfJamUhGMVMVrmYW71jdwKrTydT+r3GnAQR5EwzYLqgKF81DCwBt
-   DN+bJq60AywiXOQ2XiAcu4vXTSkKvvjuhA8w0qzVEeJRL7mZwZX5E9yHO
-   g=;
-IronPort-SDR: bTK9H2J8809YLJe23dWenz/LR0kMQFWB5D8gl6xuZSJH6knl65AMwlj8HXqd74wSMtaHv3BzHt
- HwJMs3LagS5g==
+  bh=qJTJHD1CTWEOyy5G47yBhltgHAntap4FlRSHEOJxImM=;
+  b=TjkcZpcskl1vYJuSKqVTh3KyQq6WyoIaPr+PFwCmlfPcDLOAai/bqNph
+   xE3VlAWutbq2as9fmA5N9i3XRFVBWQ/Qo7OO30x0cBInAQ2Kc2IsUHJ5F
+   lphKHI/U9SLTnWinbIm7Mv65+5N+Oh46N2xkDbXA9pB6NnuIvyZfGLdbZ
+   4=;
+IronPort-SDR: +5236ghas3eaRMki9QP+3hez4MkwZ5GKnJDuMg0b6V+eV55GYvb+2SoH3LAjeLn8nbXrmw1jWR
+ tGRpxqeVjT7w==
 X-IronPort-AV: E=Sophos;i="5.70,541,1574121600"; 
-   d="scan'208";a="20656068"
-Received: from iad12-co-svc-p1-lb1-vlan3.amazon.com (HELO email-inbound-relay-1d-74cf8b49.us-east-1.amazon.com) ([10.43.8.6])
-  by smtp-border-fw-out-6002.iad6.amazon.com with ESMTP; 11 Mar 2020 19:59:57 +0000
-Received: from EX13MTAUWB001.ant.amazon.com (iad55-ws-svc-p15-lb9-vlan2.iad.amazon.com [10.40.159.162])
-        by email-inbound-relay-1d-74cf8b49.us-east-1.amazon.com (Postfix) with ESMTPS id D176AC1B2C;
+   d="scan'208";a="20833428"
+Received: from iad12-co-svc-p1-lb1-vlan3.amazon.com (HELO email-inbound-relay-1d-37fd6b3d.us-east-1.amazon.com) ([10.43.8.6])
+  by smtp-border-fw-out-4101.iad4.amazon.com with ESMTP; 11 Mar 2020 19:59:58 +0000
+Received: from EX13MTAUWA001.ant.amazon.com (iad55-ws-svc-p15-lb9-vlan2.iad.amazon.com [10.40.159.162])
+        by email-inbound-relay-1d-37fd6b3d.us-east-1.amazon.com (Postfix) with ESMTPS id 1A5E628388C;
         Wed, 11 Mar 2020 19:59:55 +0000 (UTC)
-Received: from EX13D13UWB004.ant.amazon.com (10.43.161.218) by
- EX13MTAUWB001.ant.amazon.com (10.43.161.249) with Microsoft SMTP Server (TLS)
+Received: from EX13D13UWA003.ant.amazon.com (10.43.160.181) by
+ EX13MTAUWA001.ant.amazon.com (10.43.160.118) with Microsoft SMTP Server (TLS)
  id 15.0.1367.3; Wed, 11 Mar 2020 19:59:55 +0000
 Received: from EX13MTAUWC001.ant.amazon.com (10.43.162.135) by
- EX13D13UWB004.ant.amazon.com (10.43.161.218) with Microsoft SMTP Server (TLS)
- id 15.0.1497.2; Wed, 11 Mar 2020 19:59:54 +0000
+ EX13D13UWA003.ant.amazon.com (10.43.160.181) with Microsoft SMTP Server (TLS)
+ id 15.0.1497.2; Wed, 11 Mar 2020 19:59:55 +0000
 Received: from dev-dsk-fllinden-2c-c1893d73.us-west-2.amazon.com
  (172.23.141.97) by mail-relay.amazon.com (10.43.162.232) with Microsoft SMTP
  Server id 15.0.1367.3 via Frontend Transport; Wed, 11 Mar 2020 19:59:54 +0000
 Received: by dev-dsk-fllinden-2c-c1893d73.us-west-2.amazon.com (Postfix, from userid 6262777)
-        id 09136DEC12; Wed, 11 Mar 2020 19:59:55 +0000 (UTC)
+        id 192D1DEF46; Wed, 11 Mar 2020 19:59:55 +0000 (UTC)
 From:   Frank van der Linden <fllinden@amazon.com>
 To:     <bfields@fieldses.org>, <chuck.lever@oracle.com>,
         <linux-nfs@vger.kernel.org>
 CC:     Frank van der Linden <fllinden@amazon.com>
-Subject: [PATCH 02/14] xattr: modify vfs_{set,remove}xattr for NFS server use
-Date:   Wed, 11 Mar 2020 19:59:42 +0000
-Message-ID: <20200311195954.27117-3-fllinden@amazon.com>
+Subject: [PATCH 08/14] nfsd: add structure definitions for xattr requests / responses
+Date:   Wed, 11 Mar 2020 19:59:48 +0000
+Message-ID: <20200311195954.27117-9-fllinden@amazon.com>
 X-Mailer: git-send-email 2.16.6
 In-Reply-To: <20200311195954.27117-1-fllinden@amazon.com>
 References: <20200311195954.27117-1-fllinden@amazon.com>
@@ -68,163 +68,62 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-To be called from the upcoming NFS server xattr code, the vfs_removexattr
-and vfs_setxattr need some modifications.
-
-First, they need to grow a _locked variant, since the NFS server code
-will call this with i_rwsem held. It needs to do that in fh_lock to be
-able to atomically provide the before and after change attributes.
-
-Second, RFC 8276 (NFSv4 extended attribute support) specifies that
-delegations should be recalled (8.4.2.4, 8.4.4.4) when a SETXATTR
-or REMOVEXATTR operation is performed. So, like with other fs
-operations, try to break the delegation. The _locked version of
-these operations will not wait for the delegation to be successfully
-broken, instead returning an error if it wasn't, so that the NFS
-server code can return NFS4ERR_DELAY to the client (similar to
-what e.g. vfs_link does).
+Add the structures used in extended attribute request / response handling.
 
 Signed-off-by: Frank van der Linden <fllinden@amazon.com>
 ---
- fs/xattr.c            | 63 +++++++++++++++++++++++++++++++++++++++++++++------
- include/linux/xattr.h |  2 ++
- 2 files changed, 58 insertions(+), 7 deletions(-)
+ fs/nfsd/xdr4.h | 31 +++++++++++++++++++++++++++++++
+ 1 file changed, 31 insertions(+)
 
-diff --git a/fs/xattr.c b/fs/xattr.c
-index 90dd78f0eb27..58013bcbc333 100644
---- a/fs/xattr.c
-+++ b/fs/xattr.c
-@@ -204,10 +204,10 @@ int __vfs_setxattr_noperm(struct dentry *dentry, const char *name,
- 	return error;
- }
+diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+index db63d39b1507..66499fb6b567 100644
+--- a/fs/nfsd/xdr4.h
++++ b/fs/nfsd/xdr4.h
+@@ -224,6 +224,32 @@ struct nfsd4_putfh {
+ 	bool		no_verify;	    /* represents foreigh fh */
+ };
  
--
- int
--vfs_setxattr(struct dentry *dentry, const char *name, const void *value,
--		size_t size, int flags)
-+__vfs_setxattr_locked(struct dentry *dentry, const char *name,
-+		const void *value, size_t size, int flags,
-+		struct inode **delegated_inode)
- {
- 	struct inode *inode = dentry->d_inode;
- 	int error;
-@@ -216,15 +216,40 @@ vfs_setxattr(struct dentry *dentry, const char *name, const void *value,
- 	if (error)
- 		return error;
- 
--	inode_lock(inode);
- 	error = security_inode_setxattr(dentry, name, value, size, flags);
- 	if (error)
- 		goto out;
- 
-+	error = try_break_deleg(inode, delegated_inode);
-+	if (error)
-+		goto out;
++struct nfsd4_getxattr {
++	char		*getxa_name;		/* request */
++	u32		getxa_len;		/* request */
++	void		*getxa_buf;
++};
 +
- 	error = __vfs_setxattr_noperm(dentry, name, value, size, flags);
- 
- out:
-+	return error;
-+}
-+EXPORT_SYMBOL_GPL(__vfs_setxattr_locked);
++struct nfsd4_setxattr {
++	u32		setxa_flags;		/* request */
++	char		*setxa_name;		/* request */
++	char		*setxa_buf;		/* request */
++	u32		setxa_len;		/* request */
++	struct nfsd4_change_info  setxa_cinfo;	/* response */
++};
 +
-+int
-+vfs_setxattr(struct dentry *dentry, const char *name, const void *value,
-+		size_t size, int flags)
-+{
-+	struct inode *inode = dentry->d_inode;
-+	struct inode *delegated_inode = NULL;
-+	int error;
++struct nfsd4_removexattr {
++	char		*rmxa_name;		/* request */
++	struct nfsd4_change_info  rmxa_cinfo;	/* response */
++};
 +
-+retry_deleg:
-+	inode_lock(inode);
-+	error = __vfs_setxattr_locked(dentry, name, value, size, flags,
-+	    &delegated_inode);
- 	inode_unlock(inode);
++struct nfsd4_listxattrs {
++	u64		lsxa_cookie;		/* request */
++	u32		lsxa_maxcount;		/* request */
++	char		*lsxa_buf;		/* unfiltered buffer (reply) */
++	u32		lsxa_len;		/* unfiltered len (reply) */
++};
 +
-+	if (delegated_inode) {
-+		error = break_deleg_wait(&delegated_inode);
-+		if (!error)
-+			goto retry_deleg;
-+	}
- 	return error;
- }
- EXPORT_SYMBOL_GPL(vfs_setxattr);
-@@ -379,7 +404,8 @@ __vfs_removexattr(struct dentry *dentry, const char *name)
- EXPORT_SYMBOL(__vfs_removexattr);
- 
- int
--vfs_removexattr(struct dentry *dentry, const char *name)
-+__vfs_removexattr_locked(struct dentry *dentry, const char *name,
-+		struct inode **delegated_inode)
- {
- 	struct inode *inode = dentry->d_inode;
- 	int error;
-@@ -388,11 +414,14 @@ vfs_removexattr(struct dentry *dentry, const char *name)
- 	if (error)
- 		return error;
- 
--	inode_lock(inode);
- 	error = security_inode_removexattr(dentry, name);
- 	if (error)
- 		goto out;
- 
-+	error = try_break_deleg(inode, delegated_inode);
-+	if (error)
-+		goto out;
+ struct nfsd4_open {
+ 	u32		op_claim_type;      /* request */
+ 	struct xdr_netobj op_fname;	    /* request - everything but CLAIM_PREV */
+@@ -649,6 +675,11 @@ struct nfsd4_op {
+ 		struct nfsd4_offload_status	offload_status;
+ 		struct nfsd4_copy_notify	copy_notify;
+ 		struct nfsd4_seek		seek;
 +
- 	error = __vfs_removexattr(dentry, name);
- 
- 	if (!error) {
-@@ -401,12 +430,32 @@ vfs_removexattr(struct dentry *dentry, const char *name)
- 	}
- 
- out:
-+	return error;
-+}
-+EXPORT_SYMBOL_GPL(__vfs_removexattr_locked);
-+
-+int
-+vfs_removexattr(struct dentry *dentry, const char *name)
-+{
-+	struct inode *inode = dentry->d_inode;
-+	struct inode *delegated_inode = NULL;
-+	int error;
-+
-+retry_deleg:
-+	inode_lock(inode);
-+	error = __vfs_removexattr_locked(dentry, name, &delegated_inode);
- 	inode_unlock(inode);
-+
-+	if (delegated_inode) {
-+		error = break_deleg_wait(&delegated_inode);
-+		if (!error)
-+			goto retry_deleg;
-+	}
-+
- 	return error;
- }
- EXPORT_SYMBOL_GPL(vfs_removexattr);
- 
--
- /*
-  * Extended attribute SET operations
-  */
-diff --git a/include/linux/xattr.h b/include/linux/xattr.h
-index 6dad031be3c2..3a71ad716da5 100644
---- a/include/linux/xattr.h
-+++ b/include/linux/xattr.h
-@@ -51,8 +51,10 @@ ssize_t vfs_getxattr(struct dentry *, const char *, void *, size_t);
- ssize_t vfs_listxattr(struct dentry *d, char *list, size_t size);
- int __vfs_setxattr(struct dentry *, struct inode *, const char *, const void *, size_t, int);
- int __vfs_setxattr_noperm(struct dentry *, const char *, const void *, size_t, int);
-+int __vfs_setxattr_locked(struct dentry *, const char *, const void *, size_t, int, struct inode **);
- int vfs_setxattr(struct dentry *, const char *, const void *, size_t, int);
- int __vfs_removexattr(struct dentry *, const char *);
-+int __vfs_removexattr_locked(struct dentry *, const char *, struct inode **);
- int vfs_removexattr(struct dentry *, const char *);
- 
- ssize_t generic_listxattr(struct dentry *dentry, char *buffer, size_t buffer_size);
++		struct nfsd4_getxattr		getxattr;
++		struct nfsd4_setxattr		setxattr;
++		struct nfsd4_listxattrs		listxattrs;
++		struct nfsd4_removexattr	removexattr;
+ 	} u;
+ 	struct nfs4_replay *			replay;
+ };
 -- 
 2.16.6
 
