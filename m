@@ -7,57 +7,57 @@ X-Spam-Status: No, score=-9.9 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id BB950C2BB1D
-	for <linux-nfs@archiver.kernel.org>; Wed, 11 Mar 2020 19:56:29 +0000 (UTC)
-Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id B7C5020737
+	by smtp.lore.kernel.org (Postfix) with ESMTP id F249FC5ACC2
 	for <linux-nfs@archiver.kernel.org>; Wed, 11 Mar 2020 19:56:30 +0000 (UTC)
+Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
+	by mail.kernel.org (Postfix) with ESMTP id F289020739
+	for <linux-nfs@archiver.kernel.org>; Wed, 11 Mar 2020 19:56:31 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=amazon.com header.i=@amazon.com header.b="M3fIdp5U"
+	dkim=pass (1024-bit key) header.d=amazon.com header.i=@amazon.com header.b="nyK7UL1Z"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2387463AbgCKT43 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 11 Mar 2020 15:56:29 -0400
-Received: from smtp-fw-9102.amazon.com ([207.171.184.29]:20946 "EHLO
-        smtp-fw-9102.amazon.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2387437AbgCKT42 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Mar 2020 15:56:28 -0400
+        id S2387404AbgCKT4a (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 11 Mar 2020 15:56:30 -0400
+Received: from smtp-fw-6001.amazon.com ([52.95.48.154]:18122 "EHLO
+        smtp-fw-6001.amazon.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2387464AbgCKT43 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Mar 2020 15:56:29 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
   d=amazon.com; i=@amazon.com; q=dns/txt; s=amazon201209;
-  t=1583956588; x=1615492588;
+  t=1583956589; x=1615492589;
   h=from:to:cc:subject:date:message-id:in-reply-to:
    references:mime-version;
-  bh=vgp6ghTpRkjgwKA7BgI7ZDfPMP1WhZx4MyGYD3oF/Uw=;
-  b=M3fIdp5UYT4agK+Ud495Ya9AwcOoTEBztlEcM3nZM7UpsmCw9ZUEIMaw
-   aayR6fABc6PuJSNJ/gT37yNOrNfHh2GpWJJzpRiXJdeN8T6jV5y5GTF5c
-   xCJm+AAdA5vr3QdxIlzjLjNPXxn3aTqgEK/qruke7sUtHYJXBmAiyg8TL
-   s=;
-IronPort-SDR: vtAyuHE8BvAO/io+2b1y1lwDI0MZHJJcuLn0+WINC8zLBDr9q9f3eYjIRhr2RgiSIWQt6RfJQ7
- ZVlWRCFNQGDw==
-X-IronPort-AV: E=Sophos;i="5.70,541,1574121600"; 
-   d="scan'208";a="30663721"
-Received: from sea32-co-svc-lb4-vlan3.sea.corp.amazon.com (HELO email-inbound-relay-1a-821c648d.us-east-1.amazon.com) ([10.47.23.38])
-  by smtp-border-fw-out-9102.sea19.amazon.com with ESMTP; 11 Mar 2020 19:56:27 +0000
-Received: from EX13MTAUWB001.ant.amazon.com (iad55-ws-svc-p15-lb9-vlan3.iad.amazon.com [10.40.159.166])
-        by email-inbound-relay-1a-821c648d.us-east-1.amazon.com (Postfix) with ESMTPS id 1F46CA2C20;
+  bh=aUyCvmJeVimsldJavFTnJVPmccm351/T0R89OCZpMT8=;
+  b=nyK7UL1Zr3X27K++Efb1mIU2hgnpJ2uX7e9p0blLzrF6rz6Tg2cOFttC
+   r0vVOnDr6L7B/527PA2gDPEa5XRgtW6siCiQddVDHWKNz5LcGTTJcNC+E
+   rBOy/OU8aL1JP1dnNUIRlHD8VvfPMIHrNzptCq5+vQHEGPo3udP6pDcef
+   k=;
+IronPort-SDR: 9tgZHRYT99s5olU882VBiyEyLDCMf3dwDj0Q/ktT/r/ZG2qL+sbJm1GWUNe60gQnhK/dAOWTyn
+ x0ORM+QLGnzg==
+X-IronPort-AV: E=Sophos;i="5.70,542,1574121600"; 
+   d="scan'208";a="22094073"
+Received: from iad12-co-svc-p1-lb1-vlan3.amazon.com (HELO email-inbound-relay-1d-98acfc19.us-east-1.amazon.com) ([10.43.8.6])
+  by smtp-border-fw-out-6001.iad6.amazon.com with ESMTP; 11 Mar 2020 19:56:25 +0000
+Received: from EX13MTAUWA001.ant.amazon.com (iad55-ws-svc-p15-lb9-vlan3.iad.amazon.com [10.40.159.166])
+        by email-inbound-relay-1d-98acfc19.us-east-1.amazon.com (Postfix) with ESMTPS id 63DD6A28C2;
         Wed, 11 Mar 2020 19:56:24 +0000 (UTC)
-Received: from EX13D13UWB004.ant.amazon.com (10.43.161.218) by
- EX13MTAUWB001.ant.amazon.com (10.43.161.249) with Microsoft SMTP Server (TLS)
+Received: from EX13D13UWA003.ant.amazon.com (10.43.160.181) by
+ EX13MTAUWA001.ant.amazon.com (10.43.160.118) with Microsoft SMTP Server (TLS)
  id 15.0.1367.3; Wed, 11 Mar 2020 19:56:24 +0000
-Received: from EX13MTAUWC001.ant.amazon.com (10.43.162.135) by
- EX13D13UWB004.ant.amazon.com (10.43.161.218) with Microsoft SMTP Server (TLS)
+Received: from EX13MTAUWA001.ant.amazon.com (10.43.160.58) by
+ EX13D13UWA003.ant.amazon.com (10.43.160.181) with Microsoft SMTP Server (TLS)
  id 15.0.1497.2; Wed, 11 Mar 2020 19:56:24 +0000
 Received: from dev-dsk-fllinden-2c-c1893d73.us-west-2.amazon.com
- (172.23.141.97) by mail-relay.amazon.com (10.43.162.232) with Microsoft SMTP
- Server id 15.0.1367.3 via Frontend Transport; Wed, 11 Mar 2020 19:56:23 +0000
+ (172.23.141.97) by mail-relay.amazon.com (10.43.160.118) with Microsoft SMTP
+ Server id 15.0.1367.3 via Frontend Transport; Wed, 11 Mar 2020 19:56:24 +0000
 Received: by dev-dsk-fllinden-2c-c1893d73.us-west-2.amazon.com (Postfix, from userid 6262777)
-        id 0D1F3DEF49; Wed, 11 Mar 2020 19:56:24 +0000 (UTC)
+        id E8E10DEC12; Wed, 11 Mar 2020 19:56:23 +0000 (UTC)
 From:   Frank van der Linden <fllinden@amazon.com>
 To:     <trond.myklebust@hammerspace.com>, <anna.schumaker@netapp.com>,
         <linux-nfs@vger.kernel.org>
 CC:     Frank van der Linden <fllinden@amazon.com>
-Subject: [PATCH 11/13] NFSv4.2: add the extended attribute proc functions.
-Date:   Wed, 11 Mar 2020 19:56:11 +0000
-Message-ID: <20200311195613.26108-12-fllinden@amazon.com>
+Subject: [PATCH 02/13] nfs: add client side only definitions for user xattrs
+Date:   Wed, 11 Mar 2020 19:56:02 +0000
+Message-ID: <20200311195613.26108-3-fllinden@amazon.com>
 X-Mailer: git-send-email 2.16.6
 In-Reply-To: <20200311195613.26108-1-fllinden@amazon.com>
 References: <20200311195613.26108-1-fllinden@amazon.com>
@@ -68,278 +68,47 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Implement the extended attribute procedures for NFSv4.2 extended
-attribute support (RFC 8276).
+Add client-side only definitions for user extended
+attributes (RFC8276). These are the access bits
+as used by the client code, and the CLNT procedure
+number definition.
 
 Signed-off-by: Frank van der Linden <fllinden@amazon.com>
 ---
- fs/nfs/nfs42.h     |   8 ++
- fs/nfs/nfs42proc.c | 236 +++++++++++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 244 insertions(+)
+ include/linux/nfs4.h   | 5 +++++
+ include/linux/nfs_fs.h | 3 +++
+ 2 files changed, 8 insertions(+)
 
-diff --git a/fs/nfs/nfs42.h b/fs/nfs/nfs42.h
-index 51de8ddc7d88..0fe5aacbcfdf 100644
---- a/fs/nfs/nfs42.h
-+++ b/fs/nfs/nfs42.h
-@@ -39,6 +39,14 @@ static inline bool nfs42_files_from_same_server(struct file *in,
- 					       c_out->cl_serverowner);
- }
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index 350aeda0c48c..dd3871b05ae5 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -553,6 +553,11 @@ enum {
+ 	NFSPROC4_CLNT_LAYOUTERROR,
  
-+ssize_t nfs42_proc_getxattr(struct inode *inode, const char *name,
-+			    void *buf, size_t buflen);
-+int nfs42_proc_setxattr(struct inode *inode, const char *name,
-+			const void *buf, size_t buflen, int flags);
-+ssize_t nfs42_proc_listxattrs(struct inode *inode, void *buf,
-+			       size_t buflen, u64 *cookiep, bool *eofp);
-+int nfs42_proc_removexattr(struct inode *inode, const char *name);
+ 	NFSPROC4_CLNT_COPY_NOTIFY,
 +
++	NFSPROC4_CLNT_GETXATTR,
++	NFSPROC4_CLNT_SETXATTR,
++	NFSPROC4_CLNT_LISTXATTRS,
++	NFSPROC4_CLNT_REMOVEXATTR,
+ };
+ 
+ /* nfs41 types */
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index 5d5b91e54f73..442458e94ab5 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -212,6 +212,9 @@ struct nfs4_copy_state {
+ #define NFS_ACCESS_EXTEND      0x0008
+ #define NFS_ACCESS_DELETE      0x0010
+ #define NFS_ACCESS_EXECUTE     0x0020
++#define NFS_ACCESS_XAREAD      0x0040
++#define NFS_ACCESS_XAWRITE     0x0080
++#define NFS_ACCESS_XALIST      0x0100
+ 
  /*
-  * Maximum XDR buffer size needed for a listxattr buffer of buflen size.
-  *
-diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
-index e2ae54b35dfe..8c2e52bc986a 100644
---- a/fs/nfs/nfs42proc.c
-+++ b/fs/nfs/nfs42proc.c
-@@ -1088,3 +1088,239 @@ int nfs42_proc_clone(struct file *src_f, struct file *dst_f,
- 	nfs_put_lock_context(src_lock);
- 	return err;
- }
-+
-+#define NFS4XATTR_MAXPAGES DIV_ROUND_UP(XATTR_SIZE_MAX, PAGE_SIZE)
-+
-+static int _nfs42_proc_removexattr(struct inode *inode, const char *name)
-+{
-+	struct nfs_server *server = NFS_SERVER(inode);
-+	struct nfs42_removexattrargs args = {
-+		.fh = NFS_FH(inode),
-+		.xattr_name = name,
-+	};
-+	struct nfs42_removexattrres res;
-+	struct rpc_message msg = {
-+		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_REMOVEXATTR],
-+		.rpc_argp = &args,
-+		.rpc_resp = &res,
-+	};
-+	int ret;
-+	unsigned long timestamp = jiffies;
-+
-+	ret = nfs4_call_sync(server->client, server, &msg, &args.seq_args,
-+	    &res.seq_res, 1);
-+	if (!ret)
-+		nfs4_update_changeattr(inode, &res.cinfo, timestamp, 0);
-+
-+	return ret;
-+}
-+
-+static int _nfs42_proc_setxattr(struct inode *inode, const char *name,
-+				const void *buf, size_t buflen, int flags)
-+{
-+	struct nfs_server *server = NFS_SERVER(inode);
-+	struct page *pages[NFS4XATTR_MAXPAGES];
-+	struct nfs42_setxattrargs arg = {
-+		.fh		= NFS_FH(inode),
-+		.xattr_pages	= pages,
-+		.xattr_len	= buflen,
-+		.xattr_name	= name,
-+		.xattr_flags	= flags,
-+	};
-+	struct nfs42_setxattrres res;
-+	struct rpc_message msg = {
-+		.rpc_proc	= &nfs4_procedures[NFSPROC4_CLNT_SETXATTR],
-+		.rpc_argp	= &arg,
-+		.rpc_resp	= &res,
-+	};
-+	int ret, np;
-+	unsigned long timestamp = jiffies;
-+
-+	if (buflen > server->sxasize)
-+		return -ERANGE;
-+
-+	if (buflen > 0) {
-+		np = nfs4_buf_to_pages_noslab(buf, buflen, arg.xattr_pages);
-+		if (np < 0)
-+			return np;
-+	} else
-+		np = 0;
-+
-+	ret = nfs4_call_sync(server->client, server, &msg, &arg.seq_args,
-+	    &res.seq_res, 1);
-+
-+	for (; np > 0; np--)
-+		put_page(pages[np - 1]);
-+
-+	if (!ret)
-+		nfs4_update_changeattr(inode, &res.cinfo, timestamp, 0);
-+
-+	return ret;
-+}
-+
-+static ssize_t _nfs42_proc_getxattr(struct inode *inode, const char *name,
-+				void *buf, size_t buflen)
-+{
-+	struct nfs_server *server = NFS_SERVER(inode);
-+	struct page *pages[NFS4XATTR_MAXPAGES] = {};
-+	struct nfs42_getxattrargs arg = {
-+		.fh		= NFS_FH(inode),
-+		.xattr_pages	= pages,
-+		.xattr_len	= buflen,
-+		.xattr_name	= name,
-+	};
-+	struct nfs42_getxattrres res;
-+	struct rpc_message msg = {
-+		.rpc_proc	= &nfs4_procedures[NFSPROC4_CLNT_GETXATTR],
-+		.rpc_argp	= &arg,
-+		.rpc_resp	= &res,
-+	};
-+	int ret, np;
-+
-+	ret = nfs4_call_sync(server->client, server, &msg, &arg.seq_args,
-+	    &res.seq_res, 0);
-+	if (ret < 0)
-+		return ret;
-+
-+	if (buflen) {
-+		if (res.xattr_len > buflen)
-+			return -ERANGE;
-+		_copy_from_pages(buf, pages, 0, res.xattr_len);
-+	}
-+
-+	np = DIV_ROUND_UP(res.xattr_len, PAGE_SIZE);
-+	while (--np >= 0)
-+		__free_page(pages[np]);
-+
-+	return res.xattr_len;
-+}
-+
-+static ssize_t _nfs42_proc_listxattrs(struct inode *inode, void *buf,
-+				 size_t buflen, u64 *cookiep, bool *eofp)
-+{
-+	struct nfs_server *server = NFS_SERVER(inode);
-+	struct page **pages;
-+	struct nfs42_listxattrsargs arg = {
-+		.fh		= NFS_FH(inode),
-+		.cookie		= *cookiep,
-+	};
-+	struct nfs42_listxattrsres res = {
-+		.eof = false,
-+		.xattr_buf = buf,
-+		.xattr_len = buflen,
-+	};
-+	struct rpc_message msg = {
-+		.rpc_proc	= &nfs4_procedures[NFSPROC4_CLNT_LISTXATTRS],
-+		.rpc_argp	= &arg,
-+		.rpc_resp	= &res,
-+	};
-+	u32 xdrlen;
-+	int ret, np;
-+
-+
-+	res.scratch = alloc_page(GFP_KERNEL);
-+	if (!res.scratch)
-+		return -ENOMEM;
-+
-+	xdrlen = nfs42_listxattr_xdrsize(buflen);
-+	if (xdrlen > server->lxasize)
-+		xdrlen = server->lxasize;
-+	np = xdrlen / PAGE_SIZE + 1;
-+
-+	pages = kcalloc(np, sizeof(struct page *), GFP_KERNEL);
-+	if (pages == NULL) {
-+		__free_page(res.scratch);
-+		return -ENOMEM;
-+	}
-+
-+	arg.xattr_pages = pages;
-+	arg.count = xdrlen;
-+
-+	ret = nfs4_call_sync(server->client, server, &msg, &arg.seq_args,
-+	    &res.seq_res, 0);
-+
-+	if (ret >= 0) {
-+		ret = res.copied;
-+		*cookiep = res.cookie;
-+		*eofp = res.eof;
-+	}
-+
-+	while (--np >= 0) {
-+		if (pages[np])
-+			__free_page(pages[np]);
-+	}
-+
-+	__free_page(res.scratch);
-+	kfree(pages);
-+
-+	return ret;
-+
-+}
-+
-+ssize_t nfs42_proc_getxattr(struct inode *inode, const char *name,
-+			      void *buf, size_t buflen)
-+{
-+	struct nfs4_exception exception = { };
-+	ssize_t err;
-+
-+	do {
-+		err = _nfs42_proc_getxattr(inode, name, buf, buflen);
-+		if (err >= 0)
-+			break;
-+		err = nfs4_handle_exception(NFS_SERVER(inode), err,
-+				&exception);
-+	} while (exception.retry);
-+
-+	return err;
-+}
-+
-+int nfs42_proc_setxattr(struct inode *inode, const char *name,
-+			      const void *buf, size_t buflen, int flags)
-+{
-+	struct nfs4_exception exception = { };
-+	int err;
-+
-+	do {
-+		err = _nfs42_proc_setxattr(inode, name, buf, buflen, flags);
-+		if (!err)
-+			break;
-+		err = nfs4_handle_exception(NFS_SERVER(inode), err,
-+				&exception);
-+	} while (exception.retry);
-+
-+	return err;
-+}
-+
-+ssize_t nfs42_proc_listxattrs(struct inode *inode, void *buf,
-+			      size_t buflen, u64 *cookiep, bool *eofp)
-+{
-+	struct nfs4_exception exception = { };
-+	ssize_t err;
-+
-+	do {
-+		err = _nfs42_proc_listxattrs(inode, buf, buflen,
-+		    cookiep, eofp);
-+		if (err >= 0)
-+			break;
-+		err = nfs4_handle_exception(NFS_SERVER(inode), err,
-+				&exception);
-+	} while (exception.retry);
-+
-+	return err;
-+}
-+
-+int nfs42_proc_removexattr(struct inode *inode, const char *name)
-+{
-+	struct nfs4_exception exception = { };
-+	int err;
-+
-+	do {
-+		err = _nfs42_proc_removexattr(inode, name);
-+		if (!err)
-+			break;
-+		err = nfs4_handle_exception(NFS_SERVER(inode), err,
-+				&exception);
-+	} while (exception.retry);
-+
-+	return err;
-+}
+  * Cache validity bit flags
 -- 
 2.16.6
 
