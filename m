@@ -7,57 +7,57 @@ X-Spam-Status: No, score=-9.9 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 25579C5ACD3
-	for <linux-nfs@archiver.kernel.org>; Wed, 11 Mar 2020 20:00:04 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 362F2C0044D
+	for <linux-nfs@archiver.kernel.org>; Wed, 11 Mar 2020 20:00:19 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 29D3C20739
-	for <linux-nfs@archiver.kernel.org>; Wed, 11 Mar 2020 20:00:05 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 3F37D2073E
+	for <linux-nfs@archiver.kernel.org>; Wed, 11 Mar 2020 20:00:20 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=amazon.com header.i=@amazon.com header.b="Q4GlN1Or"
+	dkim=pass (1024-bit key) header.d=amazon.com header.i=@amazon.com header.b="Tiki7QWE"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2387426AbgCKUAD (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 11 Mar 2020 16:00:03 -0400
-Received: from smtp-fw-2101.amazon.com ([72.21.196.25]:62480 "EHLO
-        smtp-fw-2101.amazon.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2387465AbgCKUAB (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Mar 2020 16:00:01 -0400
+        id S2387463AbgCKUAS (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 11 Mar 2020 16:00:18 -0400
+Received: from smtp-fw-9101.amazon.com ([207.171.184.25]:56670 "EHLO
+        smtp-fw-9101.amazon.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2387447AbgCKUAS (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Mar 2020 16:00:18 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
   d=amazon.com; i=@amazon.com; q=dns/txt; s=amazon201209;
-  t=1583956800; x=1615492800;
+  t=1583956817; x=1615492817;
   h=from:to:cc:subject:date:message-id:in-reply-to:
    references:mime-version;
-  bh=hTGKUo6Uq6PG8dHjHGv5Arulaqx2wFajptSp9n4AP8U=;
-  b=Q4GlN1OrtAS5AF+4qy0BYllYIuibSDE9iDJ2Ym+WN5nVvZyZO/Hlxb2S
-   TJdSzur6yUtfdqhOQBwTSzm2y1OvtJdVCzSmf7X8RUf8eEF+fmN6nzCad
-   CBc3uBJ8GOmVWMaYUFgm10yiRA/X9GnKKJnSh/9yIBQTVZiQCKRA0J52M
-   g=;
-IronPort-SDR: AvItUznlFTWqqSYgBhm3uGRGI6zAaHzntuRwoj8IjDm116Xsbpc7IjrzRuhZ7uxdAwq1TRKzyW
- J+s/R9wbHyYQ==
+  bh=4THswT0o52ovnlzrXKlcAZT1YB714M/0FcpslE4Pfsw=;
+  b=Tiki7QWEQHqXwsTDaEgr6Z56X+2seMlA4dQFA2D1FOvtazs76ONQDpst
+   SlTGE1CEZRjiRCH25U2KqzI61jcCqiSxUdki+rsEUa3NqmNOyaeCb90nE
+   k7EqWBV5+EAYFe2QNt0DyPogS//0UieqR+V+9WaAV8FDrz+jgW0O4lOLk
+   E=;
+IronPort-SDR: OPsR8adRoXxDdGxbP1UpIoarxi54t1P3vm6FT2w+4BVLTOIo0Zay+FQymQymFZe2emu5vfRdG0
+ ZQCSaduazOng==
 X-IronPort-AV: E=Sophos;i="5.70,541,1574121600"; 
-   d="scan'208";a="21101080"
-Received: from iad12-co-svc-p1-lb1-vlan2.amazon.com (HELO email-inbound-relay-1d-5dd976cd.us-east-1.amazon.com) ([10.43.8.2])
-  by smtp-border-fw-out-2101.iad2.amazon.com with ESMTP; 11 Mar 2020 19:59:59 +0000
+   d="scan'208";a="22302158"
+Received: from sea32-co-svc-lb4-vlan3.sea.corp.amazon.com (HELO email-inbound-relay-1e-303d0b0e.us-east-1.amazon.com) ([10.47.23.38])
+  by smtp-border-fw-out-9101.sea19.amazon.com with ESMTP; 11 Mar 2020 20:00:16 +0000
 Received: from EX13MTAUWB001.ant.amazon.com (iad55-ws-svc-p15-lb9-vlan3.iad.amazon.com [10.40.159.166])
-        by email-inbound-relay-1d-5dd976cd.us-east-1.amazon.com (Postfix) with ESMTPS id 191F2A2573;
-        Wed, 11 Mar 2020 19:59:57 +0000 (UTC)
-Received: from EX13D13UWB002.ant.amazon.com (10.43.161.21) by
- EX13MTAUWB001.ant.amazon.com (10.43.161.249) with Microsoft SMTP Server (TLS)
- id 15.0.1367.3; Wed, 11 Mar 2020 19:59:55 +0000
-Received: from EX13MTAUWB001.ant.amazon.com (10.43.161.207) by
- EX13D13UWB002.ant.amazon.com (10.43.161.21) with Microsoft SMTP Server (TLS)
- id 15.0.1497.2; Wed, 11 Mar 2020 19:59:55 +0000
+        by email-inbound-relay-1e-303d0b0e.us-east-1.amazon.com (Postfix) with ESMTPS id BC635A3059;
+        Wed, 11 Mar 2020 20:00:15 +0000 (UTC)
+Received: from EX13D13UWB001.ant.amazon.com (10.43.161.156) by
+ EX13MTAUWB001.ant.amazon.com (10.43.161.207) with Microsoft SMTP Server (TLS)
+ id 15.0.1367.3; Wed, 11 Mar 2020 19:59:56 +0000
+Received: from EX13MTAUEA002.ant.amazon.com (10.43.61.77) by
+ EX13D13UWB001.ant.amazon.com (10.43.161.156) with Microsoft SMTP Server (TLS)
+ id 15.0.1497.2; Wed, 11 Mar 2020 19:59:56 +0000
 Received: from dev-dsk-fllinden-2c-c1893d73.us-west-2.amazon.com
- (172.23.141.97) by mail-relay.amazon.com (10.43.161.249) with Microsoft SMTP
- Server id 15.0.1367.3 via Frontend Transport; Wed, 11 Mar 2020 19:59:55 +0000
+ (172.23.141.97) by mail-relay.amazon.com (10.43.61.169) with Microsoft SMTP
+ Server id 15.0.1236.3 via Frontend Transport; Wed, 11 Mar 2020 19:59:55 +0000
 Received: by dev-dsk-fllinden-2c-c1893d73.us-west-2.amazon.com (Postfix, from userid 6262777)
-        id 23FB3DEF4A; Wed, 11 Mar 2020 19:59:55 +0000 (UTC)
+        id 0E5E9DEC0F; Wed, 11 Mar 2020 19:59:55 +0000 (UTC)
 From:   Frank van der Linden <fllinden@amazon.com>
 To:     <bfields@fieldses.org>, <chuck.lever@oracle.com>,
         <linux-nfs@vger.kernel.org>
 CC:     Frank van der Linden <fllinden@amazon.com>
-Subject: [PATCH 12/14] nfsd: add xattr operations to ops array
-Date:   Wed, 11 Mar 2020 19:59:52 +0000
-Message-ID: <20200311195954.27117-13-fllinden@amazon.com>
+Subject: [PATCH 04/14] nfsd: make sure the nfsd4_ops array has the right size
+Date:   Wed, 11 Mar 2020 19:59:44 +0000
+Message-ID: <20200311195954.27117-5-fllinden@amazon.com>
 X-Mailer: git-send-email 2.16.6
 In-Reply-To: <20200311195954.27117-1-fllinden@amazon.com>
 References: <20200311195954.27117-1-fllinden@amazon.com>
@@ -68,61 +68,36 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-With all underlying code implemented, let's add the user extended
-attributes operations to nfsd4_ops.
+The nfsd4_ops was initialized by initializing individual indices (op
+numbers). So, the size of the array was determined by the largest
+op number.
+
+Some operations are enabled conditionally, based on config options.
+If a conditionally enabled operation were to be the highest numbered
+operation, the code (through OPDESC) would attempt to access memory
+beyond the end of the array. This currently can't happen, since the
+highest numbered op is not conditional, but it might in the future.
+
+So, always size the array with LAST_NFS4_OP + 1.
 
 Signed-off-by: Frank van der Linden <fllinden@amazon.com>
 ---
- fs/nfsd/nfs4proc.c   | 22 ++++++++++++++++++++++
- include/linux/nfs4.h |  2 +-
- 2 files changed, 23 insertions(+), 1 deletion(-)
+ fs/nfsd/nfs4proc.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 44d488bdebd9..889cb6538244 100644
+index 0e75f7fb5fec..5de6449e6ff8 100644
 --- a/fs/nfsd/nfs4proc.c
 +++ b/fs/nfsd/nfs4proc.c
-@@ -3195,6 +3195,28 @@ static const struct nfsd4_operation nfsd4_ops[LAST_NFS4_OP + 1] = {
- 		.op_name = "OP_COPY_NOTIFY",
- 		.op_rsize_bop = nfsd4_copy_notify_rsize,
- 	},
-+	[OP_GETXATTR] = {
-+		.op_func = nfsd4_getxattr,
-+		.op_name = "OP_GETXATTR",
-+		.op_rsize_bop = nfsd4_getxattr_rsize,
-+	},
-+	[OP_SETXATTR] = {
-+		.op_func = nfsd4_setxattr,
-+		.op_flags = OP_MODIFIES_SOMETHING | OP_CACHEME,
-+		.op_name = "OP_SETXATTR",
-+		.op_rsize_bop = nfsd4_setxattr_rsize,
-+	},
-+	[OP_LISTXATTRS] = {
-+		.op_func = nfsd4_listxattrs,
-+		.op_name = "OP_LISTXATTRS",
-+		.op_rsize_bop = nfsd4_listxattrs_rsize,
-+	},
-+	[OP_REMOVEXATTR] = {
-+		.op_func = nfsd4_removexattr,
-+		.op_flags = OP_MODIFIES_SOMETHING | OP_CACHEME,
-+		.op_name = "OP_REMOVEXATTR",
-+		.op_rsize_bop = nfsd4_removexattr_rsize,
-+	},
- };
+@@ -2699,7 +2699,7 @@ static inline u32 nfsd4_seek_rsize(struct svc_rqst *rqstp, struct nfsd4_op *op)
+ 	return (op_encode_hdr_size + 3) * sizeof(__be32);
+ }
  
- /**
-diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-index 350aeda0c48c..cbe50e452f19 100644
---- a/include/linux/nfs4.h
-+++ b/include/linux/nfs4.h
-@@ -165,7 +165,7 @@ Needs to be updated if more operations are defined in future.*/
- #define FIRST_NFS4_OP	OP_ACCESS
- #define LAST_NFS40_OP	OP_RELEASE_LOCKOWNER
- #define LAST_NFS41_OP	OP_RECLAIM_COMPLETE
--#define LAST_NFS42_OP	OP_CLONE
-+#define LAST_NFS42_OP	OP_REMOVEXATTR
- #define LAST_NFS4_OP	LAST_NFS42_OP
- 
- enum nfsstat4 {
+-static const struct nfsd4_operation nfsd4_ops[] = {
++static const struct nfsd4_operation nfsd4_ops[LAST_NFS4_OP + 1] = {
+ 	[OP_ACCESS] = {
+ 		.op_func = nfsd4_access,
+ 		.op_name = "OP_ACCESS",
 -- 
 2.16.6
 
