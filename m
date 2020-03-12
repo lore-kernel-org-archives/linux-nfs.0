@@ -2,217 +2,139 @@ Return-Path: <SRS0=/zOr=45=vger.kernel.org=linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.9 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,HK_RANDOM_FROM,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-6.9 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS,UNPARSEABLE_RELAY
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id EF3BDC10DCE
-	for <linux-nfs@archiver.kernel.org>; Thu, 12 Mar 2020 16:15:14 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A548CC10DCE
+	for <linux-nfs@archiver.kernel.org>; Thu, 12 Mar 2020 16:24:00 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 8EACB2071B
-	for <linux-nfs@archiver.kernel.org>; Thu, 12 Mar 2020 16:15:14 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 7995520663
+	for <linux-nfs@archiver.kernel.org>; Thu, 12 Mar 2020 16:24:00 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=desy.de header.i=@desy.de header.b="y8kdpOcO"
+	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="ULG6hOTM"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727123AbgCLQPO (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 12 Mar 2020 12:15:14 -0400
-Received: from smtp-o-1.desy.de ([131.169.56.154]:42581 "EHLO smtp-o-1.desy.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727001AbgCLQPN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 12 Mar 2020 12:15:13 -0400
-Received: from smtp-buf-1.desy.de (smtp-buf-1.desy.de [131.169.56.164])
-        by smtp-o-1.desy.de (Postfix) with ESMTP id 764ABE07D9
-        for <linux-nfs@vger.kernel.org>; Thu, 12 Mar 2020 17:15:11 +0100 (CET)
-DKIM-Filter: OpenDKIM Filter v2.11.0 smtp-o-1.desy.de 764ABE07D9
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=desy.de; s=default;
-        t=1584029711; bh=qYUCrS4Wn5gbng3eCqVtNEG71sv57E1ak+mNPNGUPCg=;
-        h=Date:From:To:Cc:In-Reply-To:References:Subject:From;
-        b=y8kdpOcOblLEPMi03E2m9fGLDd0dkK6HICKFseSJRNC64EiXccG5lSYcCsdAtKuL6
-         UVEo9hD5zcei5NBSMWrWKVLOkpKGxDWKcpTyce8xE+dzs4nMzU5KrItS+UbMzn+9fK
-         qJfsqYv8JXb4LupkgqmOVEkGthqEEDV6Vkq4AFlM=
-Received: from smtp-m-1.desy.de (smtp-m-1.desy.de [131.169.56.129])
-        by smtp-buf-1.desy.de (Postfix) with ESMTP id 6AB87120262;
-        Thu, 12 Mar 2020 17:15:11 +0100 (CET)
-X-Virus-Scanned: amavisd-new at desy.de
-Received: from z-mbx-2.desy.de (z-mbx-2.desy.de [131.169.55.140])
-        by smtp-intra-2.desy.de (Postfix) with ESMTP id 3D62F100076;
-        Thu, 12 Mar 2020 17:15:11 +0100 (CET)
-Date:   Thu, 12 Mar 2020 17:15:10 +0100 (CET)
-From:   "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
-To:     Frank van der Linden <fllinden@amazon.com>
-Cc:     Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        linux-nfs <linux-nfs@vger.kernel.org>
-Message-ID: <530167624.4533477.1584029710746.JavaMail.zimbra@desy.de>
-In-Reply-To: <20200311195613.26108-4-fllinden@amazon.com>
-References: <20200311195613.26108-1-fllinden@amazon.com> <20200311195613.26108-4-fllinden@amazon.com>
-Subject: Re: [PATCH 03/13] NFSv4.2: query the server for extended attribute
+        id S1727417AbgCLQX7 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 12 Mar 2020 12:23:59 -0400
+Received: from userp2120.oracle.com ([156.151.31.85]:42618 "EHLO
+        userp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726971AbgCLQX7 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Mar 2020 12:23:59 -0400
+Received: from pps.filterd (userp2120.oracle.com [127.0.0.1])
+        by userp2120.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 02CGNlQC116626;
+        Thu, 12 Mar 2020 16:23:54 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=content-type :
+ mime-version : subject : from : in-reply-to : date : cc :
+ content-transfer-encoding : message-id : references : to;
+ s=corp-2020-01-29; bh=rAgn1U2CCy00wghQSTmXaLbxJqzit9lDTXSghMc0/i4=;
+ b=ULG6hOTMcywNkO55edk4uiOSfVMEZLZqa9IVIietNLGirr5Nkru3ezxCZsMvGpKqGC5k
+ dR8KBPgS0D8DyBb6FjIpT9DLKqZlOIbPJHhmgbEGNIHnrGB0LqQiyqg5vHziFJh+9WP6
+ NcBcv5oFd0PYoPR2D8HnYbQoGFcVrmXXWzFvsbHHcKAQQPdNtuEqTxhFpR3zGqzguzRy
+ ldIoo4UEQGw7zf8sE8R1tJ5zsYrjZwsKVr5PwPXxGnEbaeBtHP048YheOoa3KOMu2m6c
+ MlgwFstNrNc0CWApe9GycFEiLumg64Nf9UdnxHozCjnjKibH1dTUJIx5yLMmVI8UNGwc tg== 
+Received: from userp3020.oracle.com (userp3020.oracle.com [156.151.31.79])
+        by userp2120.oracle.com with ESMTP id 2yqkg89u2n-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Thu, 12 Mar 2020 16:23:53 +0000
+Received: from pps.filterd (userp3020.oracle.com [127.0.0.1])
+        by userp3020.oracle.com (8.16.0.42/8.16.0.42) with SMTP id 02CGM8BN085313;
+        Thu, 12 Mar 2020 16:23:53 GMT
+Received: from aserv0122.oracle.com (aserv0122.oracle.com [141.146.126.236])
+        by userp3020.oracle.com with ESMTP id 2yqgvd91x4-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Thu, 12 Mar 2020 16:23:53 +0000
+Received: from abhmp0012.oracle.com (abhmp0012.oracle.com [141.146.116.18])
+        by aserv0122.oracle.com (8.14.4/8.14.4) with ESMTP id 02CGNqaK014362;
+        Thu, 12 Mar 2020 16:23:52 GMT
+Received: from anon-dhcp-153.1015granger.net (/68.61.232.219)
+        by default (Oracle Beehive Gateway v4.0)
+        with ESMTP ; Thu, 12 Mar 2020 09:23:52 -0700
+Content-Type: text/plain;
+        charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 12.4 \(3445.104.11\))
+Subject: Re: [PATCH 05/14] nfsd: add defines for NFSv4.2 extended attribute
  support
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 7bit
-X-Mailer: Zimbra 8.8.15_GA_3901 (ZimbraWebClient - FF73 (Linux)/8.8.15_GA_3895)
-Thread-Topic: NFSv4.2: query the server for extended attribute support
-Thread-Index: MDwlLLyBBH3+dOprCluNI/1+/8upHQ==
+From:   Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20200311195954.27117-6-fllinden@amazon.com>
+Date:   Thu, 12 Mar 2020 12:23:51 -0400
+Cc:     Bruce Fields <bfields@fieldses.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Transfer-Encoding: quoted-printable
+Message-Id: <581E8839-3BFE-4B14-B2D2-910500785502@oracle.com>
+References: <20200311195954.27117-1-fllinden@amazon.com>
+ <20200311195954.27117-6-fllinden@amazon.com>
+To:     Frank van der Linden <fllinden@amazon.com>
+X-Mailer: Apple Mail (2.3445.104.11)
+X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9558 signatures=668685
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 mlxscore=0 malwarescore=0 adultscore=0
+ phishscore=0 bulkscore=0 mlxlogscore=999 suspectscore=0 spamscore=0
+ classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2001150001
+ definitions=main-2003120084
+X-Proofpoint-Virus-Version: vendor=nai engine=6000 definitions=9558 signatures=668685
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 clxscore=1011 lowpriorityscore=0
+ mlxlogscore=999 spamscore=0 phishscore=0 adultscore=0 impostorscore=0
+ malwarescore=0 priorityscore=1501 suspectscore=0 bulkscore=0 mlxscore=0
+ classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2001150001
+ definitions=main-2003120084
 Sender: linux-nfs-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hi Frank,
 
------ Original Message -----
-> From: "Frank van der Linden" <fllinden@amazon.com>
-> To: "Trond Myklebust" <trond.myklebust@hammerspace.com>, "Anna Schumaker" <anna.schumaker@netapp.com>, "linux-nfs"
-> <linux-nfs@vger.kernel.org>
-> Cc: "Frank van der Linden" <fllinden@amazon.com>
-> Sent: Wednesday, March 11, 2020 8:56:03 PM
-> Subject: [PATCH 03/13] NFSv4.2: query the server for extended attribute support
 
-> Query the server for extended attribute support, and record it
-> as the NFS_CAP_XATTR flag in the server capabilities.
-> 
+> On Mar 11, 2020, at 3:59 PM, Frank van der Linden =
+<fllinden@amazon.com> wrote:
+>=20
+> Add defines for server-side extended attribute support. Most have
+> already been added as part of client support, but these are
+> the network order error codes for the noxattr and xattr2big errors,
+> and the addition of the xattr support to the supported file
+> attributes (if configured).
+>=20
 > Signed-off-by: Frank van der Linden <fllinden@amazon.com>
 > ---
-> fs/nfs/nfs4proc.c         | 14 ++++++++++++--
-> fs/nfs/nfs4xdr.c          | 23 +++++++++++++++++++++++
-> include/linux/nfs_fs_sb.h |  1 +
-> include/linux/nfs_xdr.h   |  1 +
-> 4 files changed, 37 insertions(+), 2 deletions(-)
-> 
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index 69b7ab7a5815..47bbd7db9d18 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -3742,6 +3742,7 @@ static void nfs4_close_context(struct nfs_open_context
-> *ctx, int is_sync)
-> static int _nfs4_server_capabilities(struct nfs_server *server, struct nfs_fh
-> *fhandle)
-> {
-> 	u32 bitmask[3] = {}, minorversion = server->nfs_client->cl_minorversion;
-> +	u32 fattr4_word2_nfs42_mask;
-> 	struct nfs4_server_caps_arg args = {
-> 		.fhandle = fhandle,
-> 		.bitmask = bitmask,
-> @@ -3763,6 +3764,13 @@ static int _nfs4_server_capabilities(struct nfs_server
-> *server, struct nfs_fh *f
-> 	if (minorversion)
-> 		bitmask[2] = FATTR4_WORD2_SUPPATTR_EXCLCREAT;
-> 
-> +	fattr4_word2_nfs42_mask = FATTR4_WORD2_NFS42_MASK;
-> +
-> +	if (minorversion >= 2) {
+> fs/nfsd/nfsd.h | 5 ++++-
+> 1 file changed, 4 insertions(+), 1 deletion(-)
+>=20
+> diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
+> index 2ab5569126b8..362d481b28c9 100644
+> --- a/fs/nfsd/nfsd.h
+> +++ b/fs/nfsd/nfsd.h
+> @@ -281,6 +281,8 @@ void		nfsd_lockd_shutdown(void);
+> #define nfserr_wrong_lfs		cpu_to_be32(NFS4ERR_WRONG_LFS)
+> #define nfserr_badlabel			=
+cpu_to_be32(NFS4ERR_BADLABEL)
+> #define nfserr_file_open		cpu_to_be32(NFS4ERR_FILE_OPEN)
+> +#define nfserr_xattr2big		cpu_to_be32(NFS4ERR_XATTR2BIG)
+> +#define nfserr_noxattr			=
+cpu_to_be32(NFS4ERR_NOXATTR)
 
-I am not sure you need this extra check as by querying for  FATTR4_WORD0_SUPPORTED_ATTRS
-server already will return FATTR4_WORD2_XATTR_SUPPORT if supported.
+Not clear to me why these shouldn't go into 01/14
 
-Tigran.
 
-> +		bitmask[2] |= FATTR4_WORD2_XATTR_SUPPORT;
-> +		fattr4_word2_nfs42_mask |= FATTR4_WORD2_XATTR_SUPPORT;
-> +	}
-> +
-> 	status = nfs4_call_sync(server->client, server, &msg, &args.seq_args,
-> 	&res.seq_res, 0);
-> 	if (status == 0) {
-> 		/* Sanity check the server answers */
-> @@ -3775,7 +3783,7 @@ static int _nfs4_server_capabilities(struct nfs_server
-> *server, struct nfs_fh *f
-> 			res.attr_bitmask[2] &= FATTR4_WORD2_NFS41_MASK;
-> 			break;
-> 		case 2:
-> -			res.attr_bitmask[2] &= FATTR4_WORD2_NFS42_MASK;
-> +			res.attr_bitmask[2] &= fattr4_word2_nfs42_mask;
-> 		}
-> 		memcpy(server->attr_bitmask, res.attr_bitmask, sizeof(server->attr_bitmask));
-> 		server->caps &= ~(NFS_CAP_ACLS|NFS_CAP_HARDLINKS|
-> @@ -3783,7 +3791,7 @@ static int _nfs4_server_capabilities(struct nfs_server
-> *server, struct nfs_fh *f
-> 				NFS_CAP_MODE|NFS_CAP_NLINK|NFS_CAP_OWNER|
-> 				NFS_CAP_OWNER_GROUP|NFS_CAP_ATIME|
-> 				NFS_CAP_CTIME|NFS_CAP_MTIME|
-> -				NFS_CAP_SECURITY_LABEL);
-> +				NFS_CAP_SECURITY_LABEL|NFS_CAP_XATTR);
-> 		if (res.attr_bitmask[0] & FATTR4_WORD0_ACL &&
-> 				res.acl_bitmask & ACL4_SUPPORT_ALLOW_ACL)
-> 			server->caps |= NFS_CAP_ACLS;
-> @@ -3811,6 +3819,8 @@ static int _nfs4_server_capabilities(struct nfs_server
-> *server, struct nfs_fh *f
-> 		if (res.attr_bitmask[2] & FATTR4_WORD2_SECURITY_LABEL)
-> 			server->caps |= NFS_CAP_SECURITY_LABEL;
-> #endif
-> +		if (res.has_xattr)
-> +			server->caps |= NFS_CAP_XATTR;
-> 		memcpy(server->attr_bitmask_nl, res.attr_bitmask,
-> 				sizeof(server->attr_bitmask));
-> 		server->attr_bitmask_nl[2] &= ~FATTR4_WORD2_SECURITY_LABEL;
-> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-> index 47817ef0aadb..bebc087a1433 100644
-> --- a/fs/nfs/nfs4xdr.c
-> +++ b/fs/nfs/nfs4xdr.c
-> @@ -4201,6 +4201,26 @@ static int decode_attr_time_modify(struct xdr_stream
-> *xdr, uint32_t *bitmap, str
-> 	return status;
-> }
-> 
-> +static int decode_attr_xattrsupport(struct xdr_stream *xdr, uint32_t *bitmap,
-> +				    uint32_t *res)
-> +{
-> +	__be32 *p;
-> +
-> +	*res = 0;
-> +	if (unlikely(bitmap[2] & (FATTR4_WORD2_XATTR_SUPPORT - 1U)))
-> +		return -EIO;
-> +	if (likely(bitmap[2] & FATTR4_WORD2_XATTR_SUPPORT)) {
-> +		p = xdr_inline_decode(xdr, 4);
-> +		if (unlikely(!p))
-> +			return -EIO;
-> +		*res = be32_to_cpup(p);
-> +		bitmap[2] &= ~FATTR4_WORD2_XATTR_SUPPORT;
-> +	}
-> +	dprintk("%s: XATTR support=%s\n", __func__,
-> +		*res == 0 ? "false" : "true");
-> +	return 0;
-> +}
-> +
-> static int verify_attr_len(struct xdr_stream *xdr, unsigned int savep, uint32_t
-> attrlen)
-> {
-> 	unsigned int attrwords = XDR_QUADLEN(attrlen);
-> @@ -4371,6 +4391,9 @@ static int decode_server_caps(struct xdr_stream *xdr,
-> struct nfs4_server_caps_re
-> 	if ((status = decode_attr_exclcreat_supported(xdr, bitmap,
-> 				res->exclcreat_bitmask)) != 0)
-> 		goto xdr_error;
-> +	status = decode_attr_xattrsupport(xdr, bitmap, &res->has_xattr);
-> +	if (status != 0)
-> +		goto xdr_error;
-> 	status = verify_attr_len(xdr, savep, attrlen);
-> xdr_error:
-> 	dprintk("%s: xdr returned %d!\n", __func__, -status);
-> diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-> index 465fa98258a3..d881f7a38bc9 100644
-> --- a/include/linux/nfs_fs_sb.h
-> +++ b/include/linux/nfs_fs_sb.h
-> @@ -281,5 +281,6 @@ struct nfs_server {
-> #define NFS_CAP_OFFLOAD_CANCEL	(1U << 25)
-> #define NFS_CAP_LAYOUTERROR	(1U << 26)
-> #define NFS_CAP_COPY_NOTIFY	(1U << 27)
-> +#define NFS_CAP_XATTR		(1U << 28)
-> 
-> #endif
-> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-> index 94c77ed55ce1..5076fe42c693 100644
-> --- a/include/linux/nfs_xdr.h
-> +++ b/include/linux/nfs_xdr.h
-> @@ -1178,6 +1178,7 @@ struct nfs4_server_caps_res {
-> 	u32				has_links;
-> 	u32				has_symlinks;
-> 	u32				fh_expire_type;
-> +	u32				has_xattr;
-> };
-> 
-> #define NFS4_PATHNAME_MAXCOMPONENTS 512
-> --
+> /* error codes for internal use */
+> /* if a request fails due to kmalloc failure, it gets dropped.
+> @@ -382,7 +384,8 @@ void		nfsd_lockd_shutdown(void);
+> 	(NFSD4_1_SUPPORTED_ATTRS_WORD2 | \
+> 	FATTR4_WORD2_CHANGE_ATTR_TYPE | \
+> 	FATTR4_WORD2_MODE_UMASK | \
+> -	NFSD4_2_SECURITY_ATTRS)
+> +	NFSD4_2_SECURITY_ATTRS | \
+> +	FATTR4_WORD2_XATTR_SUPPORT)
+
+Should this instead be added, say, in 14/14 ?
+
+
+> extern const u32 nfsd_suppattrs[3][3];
+>=20
+> --=20
 > 2.16.6
+>=20
+
+--
+Chuck Lever
+
+
+
